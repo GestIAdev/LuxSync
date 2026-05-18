@@ -74,9 +74,10 @@ describe('WAVE 2602 — IK Basic Geometry', () => {
 
   it('Ceiling fixture pointing straight down → valid DMX, no NaN', () => {
     // Fixture en techo a (0, 4, 0). Target directamente abajo en (0, 0, 0).
-    // Ceiling: pitch base = -90° → mira hacia abajo.
-    // Tras rotación inversa, en frame local: (0, 0, -4) → pan = atan2(0, -4) = 180°.
-    // Pan DMX = (180 + 270)/540 * 255 ≈ 213. Esto es correcto geométricamente.
+    // ── WAVE 4881 ──
+    // Ceiling: mount R_x(+90) → lente apunta a -Y. Inversa R_x(-90) lleva
+    // dy=-4 mundo → local.z=+4. pan = atan2(0, +4) = 0° (centro mecánico).
+    // Pan DMX ≈ 127.5. Tilt = atan2(0, 4) = 0° → DMX ≈ 127.
     const fixture = ceilingFixture('f1', 0, 4, 0)
     const target: Target3D = { x: 0, y: 0, z: 0 }
     const result = solve(fixture, target)
@@ -91,8 +92,9 @@ describe('WAVE 2602 — IK Basic Geometry', () => {
 
   it('Ceiling fixture pointing forward (Z+) → tilt changes with depth', () => {
     // Fixture en techo a (0, 4, -3). Target en suelo frente a él: (0, 0, 3).
-    // Vector mundo: (0, -4, 6). Tras rotación ceiling, local.z < 0.
-    // Pan será ~180° (target en "back" del frame local del ceiling).
+    // ── WAVE 4881 ──
+    // Vector mundo: (0, -4, 6). Tras rotación ceiling (R_x(-90)), local =
+    // (0, -6, 4). pan = atan2(0, 4) = 0° (centro), tilt = atan2(6, 4) ≈ +56°.
     // Lo importante: tilt cambia respecto al caso "straight down".
     const fixture = ceilingFixture('f2', 0, 4, -3)
     const targetFront: Target3D = { x: 0, y: 0, z: 3 }
@@ -174,9 +176,11 @@ describe('WAVE 2602 — IK Basic Geometry', () => {
 
 describe('WAVE 2602 — Orientation Matrix', () => {
 
-  it('Floor fixture pointing at target above → different tilt than ceiling', () => {
-    // Ceiling y floor en la misma columna vertical, mirando al mismo target.
-    // Ceiling mira abajo, floor mira arriba → tilts deben ser distintos.
+  it('Floor vs ceiling on same column → divergent pan (yaw:180 inverts X+Z, matrix is single source of truth)', () => {
+    // WAVE 4898 (Forensic Math Alignment):
+    // ceiling usa yaw:180. cy=cos(-π)=-1, sy=0 → local.x=-dx, local.z=-dz.
+    // floor usa yaw:0 (identidad) → local.x=dx, local.z=dz.
+    // Para target con dz>0: ceiling panDeg=atan2(-dx,-dz), floor panDeg=atan2(dx,dz) → hemisferios opuestos.
     const ceiling = ceilingFixture('ceil', 0, 5, 0)
     const floor   = floorFixture('flr', 0, 0, 0)
     const target: Target3D = { x: 2, y: 2.5, z: 3 }
@@ -184,8 +188,8 @@ describe('WAVE 2602 — Orientation Matrix', () => {
     const rCeiling = solve(ceiling, target)
     const rFloor   = solve(floor, target)
 
-    // Tilts distintos — miran desde direcciones opuestas
-    expect(rCeiling.tilt).not.toBe(rFloor.tilt)
+    // Pan diverge: yaw:180 invierte X+Z → ángulos en hemisferios opuestos
+    expect(Math.abs(rCeiling.pan - rFloor.pan)).toBeGreaterThan(20)
     expect(rCeiling.reachable).toBe(true)
     expect(rFloor.reachable).toBe(true)
   })

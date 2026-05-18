@@ -1699,8 +1699,6 @@ export class TitanOrchestrator {
                 // FASE 2: POST-RESOLVE  — Throttle + virtual skip before sendUniverseRaw
                 // ═══════════════════════════════════════════════════════════════════════
                 const aetherSafety = this._aetherSafety;
-                // 🏎️ WAVE 4831: Propagar nodos con DarkSpin bypass al safety middleware
-                aetherSafety.setSkipDarkSpinNodes(aetherArbiter.getSkipDarkSpinNodeIds());
                 // FASE 0: Set frame context + apply output gate
                 aetherSafety.setFrameContext(now, this._aetherCtx.vibe.name);
                 aetherSafety.setOutputEnabled(this._outputEnabled);

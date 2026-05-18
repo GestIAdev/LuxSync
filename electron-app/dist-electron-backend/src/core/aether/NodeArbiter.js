@@ -69,6 +69,15 @@ const FIXTURE_DIMMER_LOCK_EXEMPT_FAMILIES = new Set([
     'petal-c',
     'petal-r',
 ]);
+// ── WAVE 4871: L3 LUMINANCE GAG — canales de luminancia del fixture padre ─────
+// Si L3 (effect/hephaestus) escribe en CUALQUIER canal de un nodo :impact o
+// :color, TODOS estos canales quedan dominados en _l3DominatedChannels para
+// el fixture padre completo. L0 queda físicamente amordazado en luminancia.
+const L3_LUMINANCE_GAG_CHANNELS = new Set([
+    'dimmer', 'strobe', 'shutter', 'master_brightness', 'brightness',
+]);
+// Familias de nodo que disparan el Gag cuando L3 las escribe
+const L3_GAG_TRIGGER_FAMILIES = new Set(['impact', 'color']);
 // ── WAVE 4752: Canales con duración de release larga (movers) ────────────────
 // Estos canales usan RELEASE_MS_SLOW (1000ms) al soltar el override.
 // El resto usa RELEASE_MS_FAST (200ms).
@@ -107,12 +116,6 @@ export class NodeArbiter {
          * Limpiado al inicio de cada arbitrate(). Pool compartido con _opaqueNodeChannels.
          */
         this._l3DominatedChannels = new Map();
-        /**
-         * 🏎️ WAVE 4831: DARKSPIN BYPASS — Nodos que solicitan skip de blackout.
-         * Si un intent L3 declara skipDarkSpin, su nodo se registra aquí.
-         * El middleware de seguridad consultará este set antes de forzar dimmer=0.
-         */
-        this._skipDarkSpinNodeIds = new Set();
         /**
          * Pasaporte diplomático por frame para la capa Selene (L1).
          * Cuando está activo, los canales de color NO son bloqueados por Mover Shield.
@@ -332,7 +335,6 @@ export class NodeArbiter {
         this._opaqueNodeChannels.clear();
         this._opaquePlaybackChannels.clear();
         this._l3DominatedChannels.clear();
-        this._skipDarkSpinNodeIds.clear();
         // WAVE 4752: SMART GATE — pre-computar canales tocados por L2/LP por nodo.
         // Sustituye el fixture-wide opaque mask de WAVE 4775.
         // L0/L1 solo bloqueados en los canales exactos que L2/LP están escribiendo.
@@ -666,10 +668,25 @@ export class NodeArbiter {
                     this._l3DominatedChannels.set(intent.nodeId, dominated);
                 }
                 dominated.add(channel);
-            }
-            // 🏎️ WAVE 4831: Registrar DarkSpin bypass por nodo.
-            if (intent.skipDarkSpin === true) {
-                this._skipDarkSpinNodeIds.add(intent.nodeId);
+                // ⚡ WAVE 4871: L3 LUMINANCE GAG — Amordaza Total.
+                // Si L3 escribe en CUALQUIER canal de un nodo :impact o :color,
+                // sellar TODOS los canales de luminancia en TODOS los nodos del fixture.
+                // L0 queda físicamente amordazado — cumbia_moon al 30% = 30% absoluto.
+                const _sepGag = intent.nodeId.lastIndexOf(':');
+                if (_sepGag > 0 && L3_GAG_TRIGGER_FAMILIES.has(intent.nodeId.slice(_sepGag + 1))) {
+                    const _fixturePrefix = intent.nodeId.slice(0, _sepGag);
+                    for (const _gagFamily of L3_GAG_TRIGGER_FAMILIES) {
+                        const _gagNodeId = `${_fixturePrefix}:${_gagFamily}`;
+                        let _gagDominated = this._l3DominatedChannels.get(_gagNodeId);
+                        if (!_gagDominated) {
+                            _gagDominated = this._acquireChannelSet();
+                            this._l3DominatedChannels.set(_gagNodeId, _gagDominated);
+                        }
+                        for (const _lumCh of L3_LUMINANCE_GAG_CHANNELS) {
+                            _gagDominated.add(_lumCh);
+                        }
+                    }
+                }
             }
             if (STRICT_PRIORITY_CHANNELS.has(channel)) {
                 // strobe/shutter: PRIORIDAD ESTRICTA POR CAPA.
@@ -721,17 +738,11 @@ export class NodeArbiter {
     getManualOverrideNodeIds() {
         return [...this._manualOverrides.keys()];
     }
-    /**
-     * 🏎️ WAVE 4831: Devuelve los nodeIds que solicitaron DarkSpin bypass este frame.
-     */
-    getSkipDarkSpinNodeIds() {
-        return [...this._skipDarkSpinNodeIds];
-    }
-    // ── Inhibit Limit API (WAVE 4531) ─────────────────────────────────────
+    // ── Inhibit Limit API (WAVE 4531) ─────────────────────────────────────────────────────
     /**
      * WAVE 4531: Registra un inhibit limit (cap 0-1) sobre el canal `dimmer`
      * del nodo indicado. El cap se aplica post-arbitraje, antes de retornar
-    * el resultado — sin alterar ninguna capa.
+     * el resultado — sin alterar ninguna capa.
      *
      * @param nodeId  NodeId en formato Aether (ej: 'fix-01:impact')
      * @param limit   Valor 0-1. 1.0 = sin límite. 0.0 = oscuro total.

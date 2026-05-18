@@ -46,23 +46,46 @@ const PAN_SAFETY_MARGIN = 5;
 /**
  * Ángulos base de montaje (grados) por tipo de instalación.
  *
- * - ceiling: colgado del techo → mira hacia abajo → pitch base = -90°
- * - floor: en el suelo → mira hacia arriba → pitch base = +90°
- * - truss-front: en truss frontal → mira hacia abajo, dirección audiencia
- * - truss-back: en truss trasero → mira hacia abajo, dirección fondo
- * - wall-left: pared izquierda → mira hacia la derecha
- * - wall-right: pared derecha → mira hacia la izquierda
+ * ── WAVE 4896 — THE ABSOLUTE ZERO (TELEMETRY CONFIRMED) ──
  *
- * Estos valores son coherentes con INSTALLATION_PRESETS del FixturePhysicsDriver.
+ * Confirmado por telemetría real (docs/logs/1234.md):
+ * pitch:180 producía local.y = -dy y local.z = -dz, invirtiendo tanto
+ * el Tilt (cabeza sube en lugar de bajar) como el Pan en Z (focos a la pared).
+ *
+ * El pipeline DMX y el visualizador ya manejan la orientación física del
+ * techo de forma nativa. Aplicar rotaciones en el IK causaba doble inversión.
+ *
+ * Solución: identidad absoluta para ceiling y truss-front.
+ *   local = (dx, dy, dz) — sin transformación.
+ *   pan  = atan2(dx, dz)  → target adelante (dz>0) → ángulo correcto ✓
+ *   tilt = atan2(dy, dist) → target abajo (dy<0) → tilt<0 → cabeza baja ✓
+ *
+ * truss-back: solo yaw:180 para voltear frente↔espalda.
+ *   local = (-dx, dy, -dz) → pan = atan2(-dx, -dz) ✓
+ *
+ * wall-left/right: solo yaw. Sin inversión Y↔Z.
  */
 const MOUNT_ANGLES = {
-    'ceiling': { pitch: -90, yaw: 0 },
-    'floor': { pitch: 90, yaw: 0 },
-    'truss-front': { pitch: -90, yaw: 0 },
-    'truss-back': { pitch: -90, yaw: 180 },
-    'wall-left': { pitch: 0, yaw: 90 },
-    'wall-right': { pitch: 0, yaw: -90 },
+    'floor': { pitch: 0, yaw: 0, roll: 0 },
+    'ceiling': { pitch: 0, yaw: 0, roll: 0 },
+    'truss-front': { pitch: 0, yaw: 0, roll: 0 },
+    'truss-back': { pitch: 0, yaw: 180, roll: 0 },
+    'wall-left': { pitch: 0, yaw: 90, roll: 0 },
+    'wall-right': { pitch: 0, yaw: -90, roll: 0 },
 };
+/**
+ * WAVE 4892/4893 — Telemetría temporal del solver IK.
+ * Activar con env LUX_DEBUG_IK=1 o setIKDebug(true) en runtime.
+ * Emite por cada solve() el frame completo: fixture, pos, target, local, ángulos.
+ * Usado para cerrar diagnóstico mecánico fixture-por-fixture sin ensayo ciego.
+ *
+ * Desde DevTools de Electron: window.lux_ik_debug(true)
+ */
+let DEBUG_IK = typeof process !== 'undefined' &&
+    typeof process.env !== 'undefined' &&
+    process.env.LUX_DEBUG_IK === '1';
+export function setIKDebug(enabled) { DEBUG_IK = enabled; }
+export function isIKDebug() { return DEBUG_IK; }
 // ═══════════════════════════════════════════════════════════════════════════
 // MOTOR IK — FUNCIONES PURAS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -84,14 +107,17 @@ export function solve(fixture, target, currentPanDMX = null) {
     const mountAngles = MOUNT_ANGLES[fixture.orientation.installation] ?? MOUNT_ANGLES['ceiling'];
     const totalPitchRad = (mountAngles.pitch + fixture.orientation.rotation.pitch) * DEG_TO_RAD;
     const totalYawRad = (mountAngles.yaw + fixture.orientation.rotation.yaw) * DEG_TO_RAD;
-    const totalRollRad = fixture.orientation.rotation.roll * DEG_TO_RAD;
+    const totalRollRad = (mountAngles.roll + fixture.orientation.rotation.roll) * DEG_TO_RAD;
     const local = rotateToLocalFrame(dx, dy, dz, totalPitchRad, totalYawRad, totalRollRad);
     // ── PASO 3: Detección de Gimbal Lock ──
     const horizontalDist = Math.sqrt(local.x * local.x + local.z * local.z);
     const isGimbalLock = horizontalDist < GIMBAL_LOCK_EPSILON;
     // ── PASO 4: Calcular ángulos en el frame local ──
     // Pan = rotación horizontal. atan2(x, z) → 0 = frente del fixture
-    // Tilt = elevación vertical. atan2(-y, distHorizontal) → 0 = horizontal
+    // Tilt = elevación vertical. atan2(local.y, distHorizontal) → 0 = horizontal
+    // Con identidad (pitch:0): local.y = dy.
+    //   Target abajo del fixture (dy<0) → tilt<0 → DMX<127 → cabeza baja ✓
+    //   Subir target (dy↑) → dy sube hacia 0 → tilt↑ hacia 0 → cabeza vuelve al centro ✓
     let panDeg;
     if (isGimbalLock) {
         // Target directamente arriba/abajo del fixture → pan indeterminado.
@@ -107,7 +133,19 @@ export function solve(fixture, target, currentPanDMX = null) {
     else {
         panDeg = Math.atan2(local.x, local.z) * RAD_TO_DEG;
     }
-    const tiltDeg = Math.atan2(-local.y, horizontalDist) * RAD_TO_DEG;
+    const tiltDeg = Math.atan2(local.y, horizontalDist) * RAD_TO_DEG; // WAVE 4896: local.y puro, sin negación
+    // WAVE 4892 — Telemetría temporal (gated). Cerrar diagnóstico del rombo.
+    if (DEBUG_IK) {
+        // eslint-disable-next-line no-console
+        console.log('[IK]', JSON.stringify({
+            fixture: fixture.id,
+            installation: fixture.orientation.installation,
+            pos: [fixture.position.x, fixture.position.y, fixture.position.z],
+            target: [target.x, target.y, target.z],
+            local: [local.x, local.y, local.z],
+            angles: [panDeg, tiltDeg],
+        }));
+    }
     // ── PASO 5: Aplicar calibración en grados (ANTES de mapear a DMX) ──
     let calibratedPanDeg = panDeg + fixture.calibration.panOffset;
     let calibratedTiltDeg = tiltDeg + fixture.calibration.tiltOffset;
@@ -359,6 +397,11 @@ export function buildProfile(id, position, rotation, installation, calibration, 
  *
  * Orden de aplicación: -Yaw → -Pitch → -Roll
  * (inverso del orden de composición Yaw·Pitch·Roll)
+ *
+ * INVARIANTE (WAVE 4889): con pitch=0 (ceiling/truss-front), esta función
+ * produce local.x=dx, local.y=dy, local.z=dz (identidad en el plano XZ).
+ * Solo el yaw mezcla X↔Z. El pitch NUNCA debe ser ±90° para orientaciones
+ * donde el pan deba depender de la profundidad del escenario (dz).
  */
 function rotateToLocalFrame(dx, dy, dz, pitchRad, yawRad, rollRad) {
     // Rotación inversa de Yaw (eje Y)

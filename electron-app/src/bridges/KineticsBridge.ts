@@ -31,7 +31,9 @@
 import { useMovementStore, type PatternType } from '../stores/movementStore'
 import { useProgrammerStore } from '../stores/programmerStore'
 import { useSelectionStore } from '../stores/selectionStore'
+import { useStageStore } from '../stores/stageStore'
 import { useKineticHydrationStore, nativePatternToUI } from '../stores/kineticHydrationStore'
+import type { Position3D } from '../core/stage/ShowFileV2'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
@@ -238,16 +240,16 @@ class KineticsBridgeClass {
     )
 
     // ── Suscripción 3: spatial target ───────────────────────────────────
+    // WAVE 4884 Fase 1B: guard manualOverrideFixtureIds eliminado.
+    // El target espacial ES el override — debe cruzar el puente siempre.
+    // El guard anterior (M1 FIX WAVE 4579) era el segundo disparo del Dead Loop
+    // identificado en la auditoría WAVE 4883.
     const unsubSpatial = useMovementStore.subscribe(
       (s) => s.spatialTarget,
       (spatialTarget) => {
         const ids = getSelectedIds()
         if (ids.length === 0) return
-        // M1 FIX WAVE 4579: Si TODOS los fixtures están en manual override, el canal
-        // spatial compite con el override del programmerStore y gana vía IKEngine.
-        // En ese caso, el bridge NO despacha — el ProgrammerAetherBridge maneja el pan/tilt.
-        const { manualOverrideFixtureIds, spatialFanMode, spatialFanAmplitude } = useMovementStore.getState()
-        if (ids.length > 0 && ids.every(id => manualOverrideFixtureIds.has(id))) return
+        const { spatialFanMode, spatialFanAmplitude } = useMovementStore.getState()
         this._scheduleSpatialFlush(spatialTarget, ids, spatialFanMode, spatialFanAmplitude)
       },
       { equalityFn: (a, b) =>
@@ -256,13 +258,13 @@ class KineticsBridgeClass {
     )
 
     // ── Suscripción 4: spatial fan mode / amplitude (re-enviar spatial si activo) ─
+    // WAVE 4884 Fase 1B: guard manualOverrideFixtureIds eliminado (mismo motivo que sub 3).
     const unsubFan = useMovementStore.subscribe(
       (s) => ({ spatialFanMode: s.spatialFanMode, spatialFanAmplitude: s.spatialFanAmplitude }),
       ({ spatialFanMode, spatialFanAmplitude }) => {
         const ids = getSelectedIds()
         if (ids.length === 0) return
-        const { manualOverrideFixtureIds, spatialTarget } = useMovementStore.getState()
-        if (ids.length > 0 && ids.every(id => manualOverrideFixtureIds.has(id))) return
+        const { spatialTarget } = useMovementStore.getState()
         this._scheduleSpatialFlush(spatialTarget, ids, spatialFanMode, spatialFanAmplitude)
       },
       { equalityFn: (a, b) =>
@@ -607,14 +609,48 @@ class KineticsBridgeClass {
     fanMode: string,
     fanAmplitude: number,
   ): Promise<void> {
-    // WAVE 4719: spatial tampoco bloquea por posicion — solo por overrides no-posicion.
-    if (hasNonPositionKineticManual(fixtureIds)) return
+    // WAVE 4884 Fase 2A: leer posiciones reales desde stageStore y empaquetarlas
+    // en el payload del IPC. El backend usaba (orchestrator as any).fixtures que
+    // podría tener posiciones {0,0,0} si el sync setFixtures no ocurrió con
+    // isPlaced:true — provocando que todos los fixtures apuntaran en paralelo.
+    const stageFixtures = useStageStore.getState().fixtures
+    const fixturePositions: Record<string, Position3D> = {}
+    const fixtureIKProfiles: Record<string, {
+      orientation?: string
+      rotation?: { pitch: number; yaw: number; roll: number }
+      calibration?: {
+        panOffset: number
+        tiltOffset: number
+        panInvert: boolean
+        tiltInvert: boolean
+      }
+      panRangeDeg?: number
+      tiltRangeDeg?: number
+      isPlaced?: boolean
+    }> = {}
+    for (const id of fixtureIds) {
+      const sf = stageFixtures.find(f => f.id === id)
+      if (sf?.position) {
+        fixturePositions[id] = sf.position
+        fixtureIKProfiles[id] = {
+          orientation: sf.orientation,
+          rotation: sf.rotation,
+          calibration: sf.calibration,
+          panRangeDeg: sf.panRangeDeg,
+          tiltRangeDeg: sf.tiltRangeDeg,
+          isPlaced: sf.isPlaced,
+        }
+      }
+    }
+
     try {
       const result = await window.lux?.aether?.applySpatialTarget({
         target,
         fixtureIds,
         fanMode: fanMode as 'converge' | 'line' | 'circle',
         fanAmplitude,
+        fixturePositions,
+        fixtureIKProfiles,
       })
 
       // Detectar fixtures que no puedo controlar (motor superior activo)

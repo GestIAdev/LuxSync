@@ -132,8 +132,6 @@ function isHslColor(color) {
  */
 export class SeleneAetherAdapter {
     constructor(zoneRouter) {
-        /** 🏎️ WAVE 4831: DarkSpin bypass flag para este frame */
-        this._skipDarkSpin = false;
         /** 🔬 WAVE 4832 DIAG: firma de zonas previamente loggeada (anti-spam). */
         this._lastDiagSignature = '';
         /** 🔬 WAVE 4832 DIAG: contador anti-spam para values trace (1 cada 60 frames con valor). */
@@ -147,7 +145,6 @@ export class SeleneAetherAdapter {
             priority: L3_PRIORITY,
             confidence: 1.0,
             source: L3_SOURCE,
-            skipDarkSpin: false,
             mergeStrategy: 'LTP',
         };
         /** Scratch para canales COLOR (aliases duales rgb + red/green/blue + white/amber) */
@@ -167,7 +164,6 @@ export class SeleneAetherAdapter {
             priority: L3_PRIORITY,
             confidence: 1.0,
             source: L3_SOURCE,
-            skipDarkSpin: false,
             mergeStrategy: 'LTP',
         };
         /** Scratch para canales STROBE (strobeRate, shutter) */
@@ -178,7 +174,6 @@ export class SeleneAetherAdapter {
             priority: L3_PRIORITY,
             confidence: 1.0,
             source: L3_SOURCE,
-            skipDarkSpin: false,
             mergeStrategy: 'LTP',
         };
         this._zoneRouter = zoneRouter;
@@ -215,9 +210,7 @@ export class SeleneAetherAdapter {
             composition < MIN_GLOBAL_COMPOSITION) {
             return;
         }
-        // 🏎️ WAVE 4831: DarkSpin bypass flag para este frame
-        this._skipDarkSpin = effectOutput.skipDarkSpin === true;
-        // ── Fase 1: Overrides globales (zona 'all') ───────────────────────────
+        // ── Fase 1: Overrides globales (zona 'all') ──────────────────────────────────────
         this._processGlobalOverrides(effectOutput, composition, bus);
         // ── Fase 2: Zone overrides (zonas específicas) ────────────────────────
         if (effectOutput.zoneOverrides) {
@@ -399,7 +392,6 @@ export class SeleneAetherAdapter {
         const vals = this._impactValues;
         vals.dimmer = dimmer;
         scratch.confidence = confidence;
-        scratch.skipDarkSpin = this._skipDarkSpin;
         scratch.mergeStrategy = mergeStrategy;
         for (let i = 0; i < nodeIds.length; i++) {
             scratch.nodeId = nodeIds[i];
@@ -443,7 +435,6 @@ export class SeleneAetherAdapter {
         vals.green = g;
         vals.blue = b;
         scratch.confidence = confidence;
-        scratch.skipDarkSpin = this._skipDarkSpin;
         // 🌊 WAVE 4832: el color SIEMPRE se emite como LTP. Mezclar componentes
         // RGB por máximo rompe la identidad cromática (rojo + plata = magenta sucio).
         scratch.mergeStrategy = 'LTP';
@@ -464,7 +455,6 @@ export class SeleneAetherAdapter {
         const vals = this._colorValues;
         vals.white = white;
         scratch.confidence = confidence;
-        scratch.skipDarkSpin = this._skipDarkSpin;
         scratch.mergeStrategy = mergeStrategy;
         for (let i = 0; i < nodeIds.length; i++) {
             scratch.nodeId = nodeIds[i];
@@ -483,7 +473,6 @@ export class SeleneAetherAdapter {
         const vals = this._colorValues;
         vals.amber = amber;
         scratch.confidence = confidence;
-        scratch.skipDarkSpin = this._skipDarkSpin;
         scratch.mergeStrategy = mergeStrategy;
         for (let i = 0; i < nodeIds.length; i++) {
             scratch.nodeId = nodeIds[i];
@@ -503,7 +492,6 @@ export class SeleneAetherAdapter {
         vals.strobeRate = strobeRate;
         vals.shutter = 1.0;
         scratch.confidence = confidence;
-        scratch.skipDarkSpin = this._skipDarkSpin;
         // Strobe es siempre LTP estricto (canal STRICT_PRIORITY en el Arbiter).
         scratch.mergeStrategy = 'LTP';
         for (let i = 0; i < nodeIds.length; i++) {

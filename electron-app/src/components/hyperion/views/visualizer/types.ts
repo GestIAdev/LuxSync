@@ -97,6 +97,20 @@ export interface Fixture3DData {
    * False/undefined → guerrilla fixture, use zone layout fallback.
    */
   isPlaced: boolean
+
+  // ─ RANGO MECÁNICO (WAVE 4887) ────────────────────────────────────────
+
+  /**
+   * Rango de Pan en grados. Mismo fallback que el IK engine: 540°.
+   * Usado por HyperionMovingHead3D para escalar la rotación visual.
+   */
+  panRangeDeg: number
+
+  /**
+   * Rango de Tilt en grados. Mismo fallback que el IK engine: 270°.
+   * Usado por HyperionMovingHead3D para escalar la rotación visual.
+   */
+  tiltRangeDeg: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

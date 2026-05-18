@@ -131,7 +131,11 @@ function drawBeam(ctx, x, y, fixture, canvasHeight) {
     // En 3D, pan=0 → yoke gira -135° → beam apunta derecha (+X) desde vista top-down.
     // En 2D era pan=0 → angle=-81° → beam apuntaba izquierda. Mirror invertido.
     // Con el mapRange invertido, pan=0 → +81° → endX = x + sin(81°)·L → beam apunta derecha.
-    const panAngle = mapRange(physicalPan, 0, 1, Math.PI * 0.45, -Math.PI * 0.45);
+    // WAVE 4887: FASE 1 — FIX ESPEJO ROTO.
+    // El IK (ceiling): target a +X → panDeg > 0 → physicalPan > 0.5.
+    // Con slope POSITIVA: physicalPan > 0.5 → panAngle > 0 → endX = x + sin(pos)·L → beam a +X (derecha). ✓
+    // WAVE 4620-B usaba slope negativa alineando 2D con 3D, pero AMBOS estaban en espejo vs el IK.
+    const panAngle = mapRange(physicalPan, 0, 1, -Math.PI * 0.45, Math.PI * 0.45);
     // Tilt affects throw length: parabolic (max at 0.5)
     const tiltFactor = 1 - Math.abs(physicalTilt - 0.5) * 2;
     const throwLength = canvasHeight * FIXTURE_CONFIG.BEAM_MAX_THROW * Math.max(0.15, tiltFactor);

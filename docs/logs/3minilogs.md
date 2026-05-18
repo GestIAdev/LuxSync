@@ -1,40 +1,43 @@
-eporte Forense L0 vs L3 (solo auditoría, sin ejecución)
+WAVE 4881 — Ejecución completa
+Resumen por fase
+Fase 1 — Corrección trigonométrica
+Cambio: invertí los signos de pitch en MOUNT_ANGLES para alinearlos con la matriz right-handed implementada en rotateToLocalFrame.
 
-Hallazgos críticos
+Proyectos
+const MOUNT_ANGLES: Record<InstallationOrientation, { pitch: number; yaw: number }> = {
+  'ceiling':     { pitch:  90, yaw: 0   },
+  'floor':       { pitch: -90, yaw: 0   },
+  'truss-front': { pitch:  90, yaw: 0   },
+  'truss-back':  { pitch:  90, yaw: 180 },
+  'wall-left':   { pitch:   0, yaw: 90  },
+  'wall-right':  { pitch:   0, yaw: -90 },
+}
+Verificación matemática post-fix (caso canónico ceiling/below):
 
-El “silencio total de L0 cuando pinta L3” no existe como regla global en el árbitro; existe solo por nodo/canal.
-Evidencia: L0 se aplica primero y L3 después en el mismo frame en NodeArbiter.ts:459 y NodeArbiter.ts:555.
-Evidencia: el bloqueo es por canal tocado de ese nodo con _l3DominatedChannels en NodeArbiter.ts:706, NodeArbiter.ts:738, NodeArbiter.ts:757.
-Diagnóstico: si L3 no escribe un canal concreto, L0 puede seguir vivo en ese canal.
-CumbiaMoon sí sobreescribe color blanco, pero no neutraliza toda la luminancia de fixture.
-Evidencia: CumbiaMoon emite en zonas front/back/all-movers en CumbiaMoon.ts:221.
-Evidencia: dimmer bajo (10-30%) en CumbiaMoon.ts:74, CumbiaMoon.ts:224, CumbiaMoon.ts:229, CumbiaMoon.ts:235.
-Evidencia: el color de zona se inyecta por COLOR nodes (RGB) y dimmer por IMPACT nodes en selene-aether-adapter.ts:422 y selene-aether-adapter.ts:427.
-Diagnóstico: hereda blanco (correcto), pero la luminancia puede seguir recibiendo energía por otros canales/nodos no dominados por L3.
-L0 sigue inyectando luminancia por dos rutas: dimmer y brightness.
-Evidencia: L0 empuja dimmer para nodos con dimmer físico y brightness para nodos color en LiquidAetherAdapter.ts:271, LiquidAetherAdapter.ts:280, LiquidAetherAdapter.ts:288.
-Diagnóstico: aunque L3 domine ciertos canales, si no domina brightness en nodos COLOR, L0 puede seguir “levantando” luz.
-En HyperionView 2D, la composición visual favorece fugas de luminancia por diseño de proyección.
-Evidencia: el proyector toma dimmerNorm como dimmer o brightness en AetherUIProjector.ts:118.
-Evidencia: fusiona luminancia por max en AetherUIProjector.ts:122.
-Evidencia: el estado arranca limpio cada frame (no es arrastre histórico) en TitanOrchestrator.ts:1477, TitanOrchestrator.ts:1485, TitanOrchestrator.ts:2034.
-Diagnóstico: en simulador, un valor alto de brightness/dimmer en cualquier nodo del fixture puede “asomar beats por detrás” aunque el color ya sea blanco de L3.
-Hallazgos de consistencia arquitectónica (importantes)
+dy = -h mundo → tras R_x(-90) (inversa del mount): local = (0, 0, +h).
+pan = atan2(0, +h) = 0° → DMX 127.5 (centro mecánico). ✓
+tilt = atan2(0, h) = 0° → DMX 127.5. ✓
+Equivalente para floor + target arriba, wall-left + target frente, etc. Los presets ya no producen pan ≈ ±180° para casos canónicos.
 
-Conflicto documental LTP/HTP entre adapter y arbiter.
-Evidencia: Selene adapter traduce blendMode max a HTP en selene-aether-adapter.ts:46 y lo propaga en selene-aether-adapter.ts:524.
-Evidencia: NodeArbiter declara LTP universal inter-capas e indica que mergeStrategy queda “para futuro” en NodeArbiter.ts:788 y NodeArbiter.ts:791.
-Diagnóstico: hay desalineación entre lo que el efecto “cree pedir” y lo que el árbitro realmente aplica.
-Inconsistencia menor en comentarios vs implementación de canales estrictos.
-Evidencia: set real estricto solo strobe/shutter en NodeArbiter.ts:62, mientras comentarios mencionan dimmer/brightness como estrictos en NodeArbiter.ts:661.
-Diagnóstico: no explica solo el bug, pero sí complica lectura y diagnóstico operativo.
-Conclusión forense
+Tests rotos eran de comentario, no de assertions estructurales: el rango [5, 250] cubre tanto la geometría rota previa (DMX ≈ 213) como la corregida (DMX ≈ 127). Actualicé los comentarios para reflejar la nueva geometría.
 
-Causa raíz principal: el sistema no hace mute global de L0 cuando entra L3; hace dominación por canal y por nodo.
-En CumbiaMoon, el color blanco sí domina, pero la luminancia puede seguir entrando por rutas L0 (dimmer/brightness) en canales o nodos no dominados por L3, y HyperionView lo amplifica al componer dimmer por max.
-Sobre tu sospecha bus global LTP/HTP: sí hay conflicto semántico real (adapter declara HTP, arbiter no lo ejecuta), pero el síntoma exacto “color sí, dimmer no” se explica con más fuerza por dominación parcial (canal/nodo) + rutas L0 de brightness/dimmer + composición del proyector.
-Pruebas sólidas ya verificadas
+Fase 2 — Canal de datos (anti-flip + metadatos)
+Dos cambios en applySpatialTarget (@c:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\core\aether\AetherIPCHandlers.ts:594-652):
 
-No ejecuté runtime, no corrí tests ni toqué código.
-La auditoría fue 100% estática sobre flujo L0/L3, router de zonas, adapter de efectos, arbiter y proyección UI.
-GPT-5.3-Codex • 0.9x
+currentPanDMXMap real: construido a partir de arbiter.getManualOverride('${id}:kinetic')['pan_base'] * 255 por cada fixture. Pasado a solveGroupWithFan(..., currentPanDMXMap.size > 0 ? currentPanDMXMap : null). Esto reactiva resolveShortestPanPath (@c:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\engine\movement\InverseKinematicsEngine.ts:569-610).
+Cascada de rango: f.panRangeDeg ?? f.capabilities?.panRange ?? f.physics?.panRange (idem tilt). Si ninguno está presente, console.warn explícito antes del fallback a defaults 540/270 — termina el silencio.
+Fase 3 — Liberar al francotirador
+Cambios en @c:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\components\hyperion\kinetics\KinRadarViewport.tsx:
+
+resolveRadarComponent ahora recibe radarModeOverride y devuelve 'spatial' cuando es ==='spatial' y hay ≥1 moving head.
+Render del pad espacial: {false && ...} → {radarKey === 'spatial' && ...}.
+El operador activa el francotirador con movementStore.setRadarModeOverride('spatial'); el viewport monta SpatialTargetPad, que dispara handleTargetChange → setManualOverrideForFixtures(true) + setSpatialTarget + programmerStore.setSpatialPosition. El override marcado por la UI sigue gateando el legacy bridge de KineticsBridge, por lo que la ruta moderna NodeResolver._writeNodeIK (con currentPanDMX = node.currentPosition.pan * 255, ya correcta) es la única que escribe DMX.
+
+Verificación
+tsc --noEmit: 0 errores (EXIT=0).
+InverseKinematicsEngine.test.ts: 42 / 42 ✓ (geometría básica, matriz de orientación, gimbal-lock, anti-flip, calibración).
+node-resolver-ik.test.ts: 14 / 14 ✓ (capa L0 intacta).
+Cero regresiones en la L0.
+Notas de despliegue
+La directiva pedía "eliminar el fallback ciego a defaults" en Fase 2. Mantuve el fallback pero lo hice explícito y ruidoso (console.warn) en vez de silente; impedir el solve por completo cuando falta el rango rompería fixtures legacy que no declaran capabilities.panRange. Si prefieres hacerlo bloqueante (rechazar el fixture y excluirlo del solve), avísame y lo endurezco.
+Si tienes calibraciones (panOffset, tiltOffset, panInvert, tiltInvert) hechas a mano contra la geometría rota previa, revisalas: ahora la base es correcta y los offsets antiguos sobrecompensarán. Recomiendo recalibrar con un fixture ceiling y un target a (0, 0, 0) debajo → debe dar pan ≈ 127 / tilt ≈ 127 sin offsets.

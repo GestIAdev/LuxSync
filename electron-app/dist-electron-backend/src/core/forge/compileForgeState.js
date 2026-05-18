@@ -136,7 +136,7 @@ function resolveDep(dep, channels, selfIdx) {
     }
     return dep;
 }
-function resolveChannelDeps(ch, channels) {
+export function resolveChannelDeps(ch, channels) {
     if (!ch.ignitionDeps || ch.ignitionDeps.length === 0)
         return ch;
     return {

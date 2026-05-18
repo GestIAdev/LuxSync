@@ -765,6 +765,20 @@ export interface FixtureV2 {
     /** Invert tilt direction */
     tiltInvert: boolean
   }
+
+  /**
+   * 🎯 WAVE 4887: VISUALIZER ALIGNMENT — Rango mecánico de Pan del fixture en grados.
+   * Propagado al IK engine y al visualizador 3D para escalar el ángulo visual correcto.
+   * Fallback exacto del backend: DEFAULT_PAN_RANGE_DEG = 540 en InverseKinematicsEngine.ts.
+   */
+  panRangeDeg?: number
+
+  /**
+   * 🎯 WAVE 4887: VISUALIZER ALIGNMENT — Rango mecánico de Tilt del fixture en grados.
+   * Propagado al IK engine y al visualizador 3D para escalar el ángulo visual correcto.
+   * Fallback exacto del backend: DEFAULT_TILT_RANGE_DEG = 270 en InverseKinematicsEngine.ts.
+   */
+  tiltRangeDeg?: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

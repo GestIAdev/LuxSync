@@ -21,7 +21,7 @@
 import { ipcMain } from 'electron';
 import { getTitanOrchestrator } from '../orchestrator/TitanOrchestrator';
 // 🚦 WAVE 4704: masterArbiter eliminado. IK solver nativo directo.
-import { buildProfile, solveGroupWithFan } from '../../engine/movement/InverseKinematicsEngine';
+import { buildProfile, solveGroupWithFan, setIKDebug } from '../../engine/movement/InverseKinematicsEngine';
 // WAVE 4659: V3 — vibeMovementManager para propagar patrones manuales al pipeline Aether
 import { vibeMovementManager } from '../../engine/movement/VibeMovementManager';
 // ⚡ WAVE 4700: Motor cinético nativo L2 — sustituye masterArbiter + VMM para patrones manuales
@@ -464,9 +464,14 @@ export function registerAetherIPCHandlers() {
      * E12: Apply spatial target (IK solve) para fixtures.
      * Ruta: lux:aether:applySpatialTarget (Aether IPC)
      * Engine: InverseKinematicsEngine.solveGroupWithFan() — WAVE 4704 (masterArbiter eliminado)
-     * Payload: { target: {x,y,z}, fixtureIds, fanMode?, fanAmplitude? }
+     * Payload: { target: {x,y,z}, fixtureIds, fanMode?, fanAmplitude?, fixturePositions? }
+     *
+     * WAVE 4884 Fase 2B: fixturePositions es un mapa id→Position3D enviado por el frontend
+     * (KineticsBridge) con las coordenadas reales del stageStore. Se usa con prioridad sobre
+     * f.position del Orchestrator para evitar la amnesia espacial (posiciones {0,0,0} cuando
+     * isPlaced:true no ha sido sincronizado).
      */
-    ipcMain.handle('lux:aether:applySpatialTarget', (_event, { target, fixtureIds, fanMode, fanAmplitude }) => {
+    ipcMain.handle('lux:aether:applySpatialTarget', (_event, { target, fixtureIds, fanMode, fanAmplitude, fixturePositions, fixtureIKProfiles }) => {
         if (!Array.isArray(fixtureIds) || fixtureIds.length === 0) {
             return { success: false, error: 'fixtureIds must be a non-empty array' };
         }
@@ -476,33 +481,90 @@ export function registerAetherIPCHandlers() {
             const allFixtures = orchestrator.fixtures ?? [];
             const profiles = [];
             const validIds = [];
+            // ── WAVE 4881 Fase 2: anti-flip ──
+            // Construir mapa fixtureId → currentPanDMX leyendo el override L2 vivo
+            // del arbiter (pan_base 0..1) y escalándolo a DMX. Sin esto el solver
+            // no puede aplicar shortest-path y los cruces de hemisferio giran 540°.
+            const currentPanDMXMap = new Map();
             for (const id of fixtureIds) {
                 const f = allFixtures.find((x) => x.id === id);
-                if (!f || !f.position)
+                const stageIK = fixtureIKProfiles?.[id];
+                if (stageIK?.isPlaced === false)
                     continue;
-                const cal = f.calibration;
-                const physics = f.physics;
-                const profile = buildProfile(id, f.position, f.rotation, f.orientation ?? f.installationType ?? 'ceiling', cal ? {
-                    panOffset: cal.panOffset ?? 0,
-                    tiltOffset: cal.tiltOffset ?? 0,
-                    panInvert: cal.panInvert ?? false,
-                    tiltInvert: cal.tiltInvert ?? false,
-                } : undefined, f.panRangeDeg, f.tiltRangeDeg, physics?.tiltLimits);
+                // WAVE 4884 Fase 2B: la posición real llega en el payload (fixturePositions).
+                // Si no está en el payload, fallback a f.position del Orchestrator.
+                // Si ninguno tiene posición válida, se salta el fixture.
+                const resolvedPosition = fixturePositions?.[id] ?? f?.position;
+                if (!resolvedPosition)
+                    continue;
+                const cal = stageIK?.calibration ?? f?.calibration;
+                const physics = f?.physics;
+                const orientationRaw = stageIK?.orientation ?? f?.orientation ?? f?.installationType;
+                const installation = (orientationRaw === 'ceiling' ||
+                    orientationRaw === 'floor' ||
+                    orientationRaw === 'truss-front' ||
+                    orientationRaw === 'truss-back' ||
+                    orientationRaw === 'wall-left' ||
+                    orientationRaw === 'wall-right')
+                    ? orientationRaw
+                    : 'ceiling';
+                // WAVE 4892: el fallback invertByOrientation fue ELIMINADO.
+                // La inversión mecánica del techo (boca abajo) vive ahora en
+                // MOUNT_ANGLES (ceiling/truss-front pitch:180) dentro del IK engine.
+                // Aplicarla además como panInvert/tiltInvert DMX duplica la inversión
+                // en X y deja Z sin tocar → efecto rombo. La matriz es la única
+                // fuente de verdad geométrica.
+                // ── WAVE 4881 Fase 2: rango mecánico real ──
+                // Leer panRange/tiltRange en cascada para evitar el fallback ciego
+                // a 540/270. Orden: root-level legacy → capabilities → physics.
+                const panRangeDeg = stageIK?.panRangeDeg ?? f?.panRangeDeg ?? f?.capabilities?.panRange ?? physics?.panRange;
+                const tiltRangeDeg = stageIK?.tiltRangeDeg ?? f?.tiltRangeDeg ?? f?.capabilities?.tiltRange ?? physics?.tiltRange;
+                if (panRangeDeg === undefined || tiltRangeDeg === undefined) {
+                    console.warn(`[AetherIPC applySpatialTarget] fixture=${id} sin panRange/tiltRange explícitos; ` +
+                        `IK caerá a defaults industria 540°/270°. Recomendado: declarar capabilities.panRange/tiltRange.`);
+                }
+                const profile = buildProfile(id, resolvedPosition, stageIK?.rotation ?? f?.rotation, installation, {
+                    panOffset: cal?.panOffset ?? 0,
+                    tiltOffset: cal?.tiltOffset ?? 0,
+                    panInvert: cal?.panInvert ?? false,
+                    tiltInvert: cal?.tiltInvert ?? false,
+                }, panRangeDeg, tiltRangeDeg, physics?.tiltLimits);
                 profiles.push(profile);
                 validIds.push(id);
+                // ── currentPanDMX desde L2: pan_base está en 0..1, DMX en 0..255 ──
+                const l2 = arbiter.getManualOverride(`${id}:kinetic`);
+                const panBase = l2 && Number.isFinite(l2['pan_base']) ? l2['pan_base'] : undefined;
+                if (panBase !== undefined) {
+                    const clamped = panBase < 0 ? 0 : panBase > 1 ? 1 : panBase;
+                    currentPanDMXMap.set(id, clamped * 255);
+                }
             }
             if (profiles.length === 0)
                 return { success: true, results: {} };
-            const results = solveGroupWithFan(profiles, target, (fanMode ?? 'converge'), fanAmplitude ?? 0, null);
+            const results = solveGroupWithFan(profiles, target, (fanMode ?? 'converge'), fanAmplitude ?? 0, currentPanDMXMap.size > 0 ? currentPanDMXMap : null);
             const serialized = {};
             for (const id of validIds) {
                 const ikResult = results.get(id);
                 if (!ikResult)
                     continue;
-                // Inject into Aether L2 as pan_base/tilt_base (0-1 normalized)
-                arbiter.setManualOverride(`${id}:kinetic`, {
-                    pan_base: ikResult.pan / 255,
-                    tilt_base: ikResult.tilt / 255,
+                // WAVE 4885 Fase 2: guard anti-NaN.
+                // El IK puede producir NaN si resolvedPosition llegó malformado (x/y/z no-finitos).
+                // Un NaN en _motorKineticOverrides envenenaría el árbitro para ese fixture.
+                const panNorm = ikResult.pan / 255;
+                const tiltNorm = ikResult.tilt / 255;
+                if (!Number.isFinite(panNorm) || !Number.isFinite(tiltNorm)) {
+                    console.error(`[AetherIPC applySpatialTarget] NaN en output IK fixture=${id}` +
+                        ` pan=${ikResult.pan} tilt=${ikResult.tilt} — fixture ignorado.`);
+                    continue;
+                }
+                // WAVE 4885 Fase 2: setMotorKineticOverride en lugar de setManualOverride.
+                // setManualOverride escribe en _manualOverrides donde pan_base/tilt_base son
+                // el anchor del radar clásico y NO se traducen a pan/tilt (ver NodeArbiter.ts:532).
+                // setMotorKineticOverride escribe en _motorKineticOverrides — bloque L2-MOTOR
+                // que aplica DESPUÉS del Grand Master con supremacía absoluta sobre pan/tilt.
+                arbiter.setMotorKineticOverride(`${id}:kinetic`, {
+                    pan_base: panNorm,
+                    tilt_base: tiltNorm,
                 });
                 serialized[id] = ikResult;
             }
@@ -694,6 +756,15 @@ export function registerAetherIPCHandlers() {
             console.error('[AetherIPC] getL2State error:', err);
             return { success: false, error: String(err) };
         }
+    });
+    /**
+     * WAVE 4893: Toggle telemetría temporal del IK engine.
+     * Uso desde DevTools del renderer: await window.luxDebug.ikDebug(true)
+     * Activa console.log('[IK] {...}') por cada solve() en el proceso main.
+     */
+    ipcMain.handle('lux:ik:setDebug', (_event, { enabled }) => {
+        setIKDebug(!!enabled);
+        return { success: true, enabled: !!enabled };
     });
 }
 // ─────────────────────────────────────────────────────────────────────────────

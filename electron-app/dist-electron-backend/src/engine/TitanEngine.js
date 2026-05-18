@@ -753,7 +753,7 @@ export class TitanEngine extends EventEmitter {
                 this.effectManager.trigger({
                     effectType,
                     intensity,
-                    source: 'hunt_strike', // Disparado por decisión de consciencia/HuntEngine
+                    source: consciousnessOutput.source, // 🎧 WAVE 4867: Fuente real (hunt|dream|prediction|...) en vez de hunt_strike hardcodeado
                     reason,
                     musicalContext: {
                         zScore: this.selene.getEnergyZScore(), // 🧠 Desde SeleneTitanConscious

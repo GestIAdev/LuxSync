@@ -51,11 +51,15 @@ type RadarKey = 'xypad' | 'radarxy' | 'spatial' | 'empty' | 'static-warning'
 function resolveRadarComponent(
   selectedCount: number,
   movingHeadCount: number,
+  radarModeOverride: 'spatial' | 'classic' | null,
 ): RadarKey {
   if (selectedCount === 0) return 'empty'
   if (movingHeadCount === 0) return 'static-warning'
-  // WAVE 4717.3: cuarentena total de spatial routing.
-  // Con moving heads seleccionados, SIEMPRE montar ruta clásica.
+  // WAVE 4881 Fase 3: el SpatialTargetPad sale de cuarentena.
+  // Cuando el operador fija explícitamente radarModeOverride='spatial',
+  // el viewport monta el pad de IK 3D (Francotirador). En ausencia de
+  // override (null) o con override='classic' se mantiene la ruta clásica.
+  if (radarModeOverride === 'spatial') return 'spatial'
   if (movingHeadCount === 1) return 'xypad'
   return 'radarxy'
 }
@@ -102,13 +106,12 @@ export const KinRadarViewport: React.FC = () => {
   const pan  = radarAggregate.panAnchor  ?? 270  // [0, 540] deg — fallback centro
   const tilt = radarAggregate.tiltAnchor ?? 135  // [0, 270] deg — fallback centro
 
-  const { setPanTilt, setSpatialTarget, setSpatialFanMode, setSpatialFanAmplitude, setManualOverrideForFixtures } =
+  const { setPanTilt, setSpatialTarget, setSpatialFanMode, setSpatialFanAmplitude } =
     useMovementStore(useShallow(s => ({
       setPanTilt: s.setPanTilt,
       setSpatialTarget: s.setSpatialTarget,
       setSpatialFanMode: s.setSpatialFanMode,
       setSpatialFanAmplitude: s.setSpatialFanAmplitude,
-      setManualOverrideForFixtures: s.setManualOverrideForFixtures,
     })))
 
   // ── Derived: clasificar fixtures seleccionados ────────────────────────────
@@ -133,7 +136,7 @@ export const KinRadarViewport: React.FC = () => {
   }, [selectedIds, hardware?.fixtures, stageFixtures, stageFromStore])
 
   const radarMode = useAdiabaticRadarMode(selectedIds, stageFixtures, radarModeOverride)
-  const radarKey = resolveRadarComponent(selectedIds.length, movingHeadIds.length)
+  const radarKey = resolveRadarComponent(selectedIds.length, movingHeadIds.length, radarModeOverride)
 
   // ── Ghost points para RadarXY (classic multi) ─────────────────────────────
   const ghostPoints = useMemo(() => {
@@ -223,15 +226,12 @@ export const KinRadarViewport: React.FC = () => {
   }, [handlePanTiltChange])
 
   const handleTargetChange = useCallback((t: Target3D) => {
-    // WAVE 4578-B: un solo carril de salida.
-    // movementStore conserva estado visual; programmerStore emite targetX/Y/Z
-    // por la familia KINETIC vía ProgrammerAetherBridge.
-    // Marcamos manual override para que KineticsBridge no despache la ruta
-    // espacial legacy en paralelo.
-    setManualOverrideForFixtures(movingHeadIds, true)
+    // WAVE 4884 Fase 1A: canal único — solo movementStore.
+    // setManualOverrideForFixtures(true) fue eliminado: activaba el guard de
+    // KineticsBridge que silenciaba la propia emisión del target (Dead Loop).
+    // Con Aether L2 la supremacía IK espacial es automática.
     setSpatialTarget(t)
-    useProgrammerStore.getState().setSpatialPosition(t)
-  }, [movingHeadIds, setManualOverrideForFixtures, setSpatialTarget])
+  }, [setSpatialTarget])
 
   const handleFanModeChange = useCallback((mode: SpatialFanMode) => {
     setSpatialFanMode(mode)
@@ -302,8 +302,8 @@ export const KinRadarViewport: React.FC = () => {
           />
         )}
 
-        {/* Spatial IK target pad en cuarentena: montaje deshabilitado en V1.0 */}
-        {false && (
+        {/* WAVE 4881 Fase 3 — Spatial IK target pad activo (Francotirador) */}
+        {radarKey === 'spatial' && (
           <SpatialTargetPad
             target={spatialTarget}
             onChange={handleTargetChange}

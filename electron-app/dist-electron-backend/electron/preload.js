@@ -1157,12 +1157,16 @@ const luxDebug = {
         return { fixtureId, note: 'Use React DevTools to inspect stageStore' };
     },
     /**
-     * List all available API methods
+     * WAVE 4893: Toggle telemetría IK engine desde DevTools.
+     * Usage: await window.luxDebug.ikDebug(true)   // activa logs [IK] en consola main
+     *        await window.luxDebug.ikDebug(false)  // desactiva
      */
+    ikDebug: (enabled) => ipcRenderer.invoke('lux:ik:setDebug', { enabled }),
     help: () => {
         console.log('\n🔥 LUXDEBUG - Available Commands:');
         console.log('  window.luxDebug.testConstructor()     - Test WAVE 384 data flow');
         console.log('  window.luxDebug.inspectFixture(id)    - Inspect a fixture');
+        console.log('  window.luxDebug.ikDebug(true/false)   - Toggle IK telemetry (logs [IK] en main)');
         console.log('  window.luxDebug.telemetry.export()    - Volcar captura latino 4.1 a disco');
         console.log('  window.luxDebug.telemetry.stop()      - Detener captura latino 4.1');
         console.log('  window.luxDebug.telemetry.start()     - Reanudar captura latino 4.1');

@@ -843,6 +843,22 @@ declare global {
         fixtureIds: string[]
         fanMode?: 'converge' | 'line' | 'circle'
         fanAmplitude?: number
+        /** WAVE 4884: posiciones reales del stageStore — evita la amnesia espacial */
+        fixturePositions?: Record<string, { x: number; y: number; z: number }>
+        /** WAVE 4889: metadatos IK del stageStore — evita defaults stale del orchestrator */
+        fixtureIKProfiles?: Record<string, {
+          orientation?: string
+          rotation?: { pitch: number; yaw: number; roll: number }
+          calibration?: {
+            panOffset: number
+            tiltOffset: number
+            panInvert: boolean
+            tiltInvert: boolean
+          }
+          panRangeDeg?: number
+          tiltRangeDeg?: number
+          isPlaced?: boolean
+        }>
       }) => Promise<{ success: boolean; results?: Record<string, unknown>; error?: string }>
 
       /**

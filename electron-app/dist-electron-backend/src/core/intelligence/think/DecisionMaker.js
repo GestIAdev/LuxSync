@@ -23,6 +23,16 @@ import { createEmptyOutput } from '../types';
 import { getContextualEffectSelector } from '../../effects/ContextualEffectSelector';
 // 🎲 WAVE 2183: DIVERSITY FIX — Arsenal selector respeta penalización de diversidad
 import { getDNAAnalyzer } from '../dna/EffectDNA';
+// 🛡️ WAVE 4866: Zone validation for hunt_strike anti-osmosis protection
+import { EFFECT_ZONE_MAP } from '../../effects/EffectManager';
+const HUNT_STRIKE_VETO_LOGGED = new Set();
+function logHuntStrikeVetoOnce(key, message) {
+    if (HUNT_STRIKE_VETO_LOGGED.has(key)) {
+        return;
+    }
+    HUNT_STRIKE_VETO_LOGGED.add(key);
+    console.log(message);
+}
 // ═══════════════════════════════════════════════════════════════════════════
 // 🔪 WAVE 1010: DIVINE THRESHOLD & VIBE-AWARE ARSENAL
 // ═══════════════════════════════════════════════════════════════════════════
@@ -218,6 +228,77 @@ export function makeDecision(inputs, config = {}) {
  * 4. 📈 Buildup/Beauty
  * 5. 🧘 Hold
  */
+// ═══════════════════════════════════════════════════════════════════════════
+// 🛡️ WAVE 4866: HUNT STRIKE ZONE PROTECTION
+// ═══════════════════════════════════════════════════════════════════════════
+// Valida que un efecto propuesto sea progresivamente alcanzable desde la zona
+// actual. Previene que hunt_strike saltee la escalera energética (ej.
+// active → peak sin pasar por intense).
+// ═══════════════════════════════════════════════════════════════════════════
+function validateHuntStrikeZoneProgression(candidateEffectId, currentZone) {
+    // 🛡️ REGLA 1: Prohibición absoluta de efectos nucleares en hunt_strike
+    // Los efectos nucleares están reservados para DIVINE moments + deliberate actions
+    const NUCLEAR_ARSENAL = new Set([
+        'latina_meltdown', // 💥 Nuclear latina
+        'oro_solido', // 🥇 Muro de oro
+        'solar_flare', // ☀️ Takeover explosivo
+        'core_meltdown', // ☢️ Techno nuclear
+        'strobe_storm', // ⚡ Tormenta strobe
+        'feedback_storm', // 😵 Caos visual
+        'industrial_strobe', // 🔧 Martillo
+        'gatling_raid', // 🔫 Ráfaga
+        'abyssal_rise', // 🌊 Ola abismal
+    ]);
+    if (NUCLEAR_ARSENAL.has(candidateEffectId)) {
+        const logKey = `nuclear:${candidateEffectId}`;
+        return {
+            allowed: false,
+            reason: `🛑 [WAVE 4866] Nuclear weapon (${candidateEffectId}) prohibited in tactical hunt_strike. Weapon reserved for DIVINE moments.`,
+            logKey,
+        };
+    }
+    // 🛡️ REGLA 2: Escalera energética estricta — sin ósmosis inversa
+    // Si el efecto está catalogado en una zona más alta que la actual,
+    // permitir solo si la progresión es suave (máximo 1 zona de salto).
+    const candidateZone = EFFECT_ZONE_MAP[candidateEffectId];
+    if (!candidateZone || !currentZone) {
+        // Si no hay mapping, permitir (puede ser efecto nuevo o fallback)
+        return { allowed: true };
+    }
+    // Orden de zonas (de menor a mayor energía)
+    const ZONE_ORDER = [
+        'silence',
+        'valley',
+        'ambient',
+        'gentle',
+        'active',
+        'intense',
+        'peak',
+    ];
+    const currentIndex = ZONE_ORDER.indexOf(currentZone);
+    const candidateIndex = ZONE_ORDER.indexOf(candidateZone);
+    // ❌ Ósmosis inversa prohibida: no bajar de zona en hunt_strike
+    if (candidateIndex < currentIndex) {
+        const logKey = `zone-drop:${candidateEffectId}:${currentZone}:${candidateZone}`;
+        return {
+            allowed: false,
+            reason: `🛑 [WAVE 4866] Incompatible zone drop: ${currentZone}(${currentIndex}) → ${candidateZone}(${candidateIndex}). Hunt_strike cannot reduce energy.`,
+            logKey,
+        };
+    }
+    // ⚠️ Progresión suave: permite máximo 1 zona de salto
+    const zoneDelta = candidateIndex - currentIndex;
+    if (zoneDelta > 1) {
+        const logKey = `zone-jump:${candidateEffectId}:${currentZone}:${candidateZone}`;
+        return {
+            allowed: false,
+            reason: `🛑 [WAVE 4866] Excessive zone jump: ${currentZone}(${currentIndex}) → ${candidateZone}(${candidateIndex}) = Δ${zoneDelta}. Max Δ=1 allowed in hunt_strike.`,
+            logKey,
+        };
+    }
+    // ✅ Progresión válida
+    return { allowed: true };
+}
 function determineDecisionType(inputs) {
     const { huntDecision, prediction, pattern, beauty, dreamIntegration, energyContext, zScore, activeDictator, fuzzyDecision, energyMaxHistoric } = inputs;
     // ═══════════════════════════════════════════════════════════════════════
@@ -242,7 +323,36 @@ function determineDecisionType(inputs) {
     const absoluteGateThreshold = maxHistoric !== null
         ? maxHistoric * ABSOLUTE_ENERGY_GATE_RATIO
         : ABSOLUTE_ENERGY_GATE_FALLBACK;
-    const isAbsoluteGateOpen = rawEnergy >= absoluteGateThreshold;
+    const energyGateOpen = rawEnergy >= absoluteGateThreshold;
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🌴 WAVE 4864: SPECTRAL GATE — Anti-Bad-Bunny
+    // ═══════════════════════════════════════════════════════════════════════
+    // PROBLEMA CONFIRMADO (FFT X-RAY): En reggaetón/latino, la compresión de
+    // voces autotuneadas infla la banda MID, elevando rawEnergy (TOTAL) por
+    // encima del umbral del Absolute Gate durante valles rítmicos donde el
+    // bombo/bajo ha desaparecido. Resultado: disparos HEAVY/DROP en silencios.
+    //
+    // SOLUCIÓN: En latino/dembow, exigir presencia física del bajo/bombo:
+    //   • hasHeavyKick:   lowBand >= maxHistoric * 0.55  (bombo empujando fuerte)
+    //   • isNotJustVocals: lowBand >= midBand * 0.8     (bajo domina a la voz)
+    //
+    // MANTENIMIENTO: Este gate solo afecta DIVINE/DROP/HEAVY. Efectos menores
+    // (DNA, hunt_strike suave, buildup, ambientales) siguen fluyendo libremente
+    // para vestir el valle vocal de forma bonita y suave.
+    // ═══════════════════════════════════════════════════════════════════════
+    const _vId = pattern.vibeId ?? '';
+    const isLatinoVibeForSpectral = _vId.includes('latino') || _vId.includes('latina') || _vId.includes('dembow');
+    let spectralGateOpen = true;
+    if (isLatinoVibeForSpectral && energyGateOpen) {
+        const lowBand = pattern.bassPresenceSustained ?? pattern.bassPresence ?? 0;
+        const midBand = pattern.midPresence ?? 0;
+        const kickThreshold = (maxHistoric ?? 0) * 0.85;
+        const hasHeavyKick = lowBand >= kickThreshold;
+        const isNotJustVocals = lowBand >= (midBand * 0.8);
+        spectralGateOpen = hasHeavyKick && isNotJustVocals;
+        // 🌴 WAVE 4865: Log suprimido — candado opera en silencio salvo intención real de disparo
+    }
+    const isAbsoluteGateOpen = energyGateOpen && spectralGateOpen;
     // ═══════════════════════════════════════════════════════════════════════
     // 🌩️ PRIORIDAD -1: DIVINE MOMENT (Z > 4.0 + energy gate)
     // WAVE 1010: Movido desde ContextualEffectSelector - EL GENERAL DECIDE
@@ -297,9 +407,20 @@ function determineDecisionType(inputs) {
             // Fall through a siguiente prioridad
         }
         else if (!isAbsoluteGateOpen) {
-            // 🐘 WAVE 4861: Candado físico — energía real insuficiente vs. histórico 30s
-            console.log(`[DecisionMaker 🐘] DIVINE BLOCKED (AbsGate): E=${rawEnergy.toFixed(2)} < ` +
-                `${absoluteGateThreshold.toFixed(2)} (${(ABSOLUTE_ENERGY_GATE_RATIO * 100).toFixed(0)}% of max=${(maxHistoric ?? 0).toFixed(2)}) → HOLD`);
+            if (!energyGateOpen) {
+                // 🐘 WAVE 4861: Candado físico — energía real insuficiente vs. histórico 30s
+                console.log(`[DecisionMaker 🐘] DIVINE BLOCKED (AbsGate): E=${rawEnergy.toFixed(2)} < ` +
+                    `${absoluteGateThreshold.toFixed(2)} (${(ABSOLUTE_ENERGY_GATE_RATIO * 100).toFixed(0)}% of max=${(maxHistoric ?? 0).toFixed(2)}) → HOLD`);
+            }
+            else {
+                // 🌴 WAVE 4865: Bloqueado por Spectral Gate — candado opera en silencio salvo intención real
+                const lowBand = pattern.bassPresenceSustained ?? pattern.bassPresence ?? 0;
+                const midBand = pattern.midPresence ?? 0;
+                const kickThreshold = (maxHistoric ?? 0) * 0.85;
+                const hasHeavyKick = lowBand >= kickThreshold;
+                console.log(`[DecisionMaker 🌴] DIVINE BLOCKED (SpectralGate): ${!hasHeavyKick ? 'Low-Band Insufficient' : 'Vocals Eclipse Beat'} | ` +
+                    `LOW=${lowBand.toFixed(3)} MID=${midBand.toFixed(3)}`);
+            }
             // Fall through
         }
         else if (effectiveEnergy < DIVINE_ENERGY_GATE) {
@@ -373,7 +494,15 @@ function determineDecisionType(inputs) {
             // Fall through — el buildup handler (más abajo) se encargará con efectos suaves
         }
         else {
-            return 'strike'; // DNA aprobó → strike con efecto de DNA
+            // 🛡️ WAVE 4866: Hunt_Strike Zone Protection — validate hunt_strike safety before return
+            const huntEligibility = validateHuntStrikeZoneProgression(proposedEffect, energyContext?.zone);
+            if (!huntEligibility.allowed) {
+                logHuntStrikeVetoOnce(huntEligibility.logKey ?? `hunt-veto:${proposedEffect}:${energyContext?.zone ?? 'unknown'}`, `[DecisionMaker ${huntEligibility.reason}]`);
+                // Fall through — no 'strike', wait for better conditions
+            }
+            else {
+                return 'strike'; // DNA aprobó + zona validada → strike con efecto de DNA
+            }
         }
     }
     // ═══════════════════════════════════════════════════════════════════════
@@ -426,14 +555,32 @@ function determineDecisionType(inputs) {
         }
         else {
             if (fuzzyDecision.action === 'force_strike' && fuzzyDecision.confidence >= 0.60 && hasDNAProposal) {
-                console.log(`[DecisionMaker 🧠] FUZZY FORCE_STRIKE → strike | ` +
-                    `conf=${fuzzyDecision.confidence.toFixed(2)} | ${fuzzyDecision.dominantRule}`);
-                return 'strike';
+                // 🛡️ WAVE 4866: Fuzzy force_strike also subject to zone validation
+                const candidateEffect = dreamIntegration.effect.effect;
+                const fuzzyZoneCheck = validateHuntStrikeZoneProgression(candidateEffect, energyContext?.zone);
+                if (!fuzzyZoneCheck.allowed) {
+                    logHuntStrikeVetoOnce(fuzzyZoneCheck.logKey ?? `hunt-veto:${candidateEffect}:${energyContext?.zone ?? 'unknown'}`, `[DecisionMaker ${fuzzyZoneCheck.reason}]`);
+                    // Fall through instead of forcing strike through zone barrier
+                }
+                else {
+                    console.log(`[DecisionMaker 🧠] FUZZY FORCE_STRIKE → strike | ` +
+                        `conf=${fuzzyDecision.confidence.toFixed(2)} | ${fuzzyDecision.dominantRule}`);
+                    return 'strike';
+                }
             }
             if (fuzzyDecision.action === 'strike' && fuzzyDecision.confidence >= 0.50 && hasDNAProposal) {
-                console.log(`[DecisionMaker 🧠] FUZZY STRIKE → strike | ` +
-                    `conf=${fuzzyDecision.confidence.toFixed(2)} | ${fuzzyDecision.dominantRule}`);
-                return 'strike';
+                // 🛡️ WAVE 4866: Fuzzy normal strike also subject to zone validation
+                const candidateEffect = dreamIntegration.effect.effect;
+                const fuzzyZoneCheck = validateHuntStrikeZoneProgression(candidateEffect, energyContext?.zone);
+                if (!fuzzyZoneCheck.allowed) {
+                    logHuntStrikeVetoOnce(fuzzyZoneCheck.logKey ?? `hunt-veto:${candidateEffect}:${energyContext?.zone ?? 'unknown'}`, `[DecisionMaker ${fuzzyZoneCheck.reason}]`);
+                    // Fall through instead of forcing strike through zone barrier
+                }
+                else {
+                    console.log(`[DecisionMaker 🧠] FUZZY STRIKE → strike | ` +
+                        `conf=${fuzzyDecision.confidence.toFixed(2)} | ${fuzzyDecision.dominantRule}`);
+                    return 'strike';
+                }
             }
         }
     }
@@ -448,7 +595,19 @@ function determineDecisionType(inputs) {
             // Fall through to buildup_enhance
         }
         else {
-            return 'strike';
+            // 🛡️ WAVE 4866: Hunt tactical strike also subject to zone validation
+            const candidateEffect = dreamIntegration?.effect?.effect;
+            if (!candidateEffect) {
+                return 'strike'; // No DNA proposal — legacy strike sin zona check
+            }
+            const huntZoneCheck = validateHuntStrikeZoneProgression(candidateEffect, energyContext?.zone);
+            if (!huntZoneCheck.allowed) {
+                logHuntStrikeVetoOnce(huntZoneCheck.logKey ?? `hunt-veto:${candidateEffect}:${energyContext?.zone ?? 'unknown'}`, `[DecisionMaker ${huntZoneCheck.reason}]`);
+                // Fall through instead of forcing strike through zone barrier
+            }
+            else {
+                return 'strike';
+            }
         }
     }
     // Prioridad 2: Drop predicho con alta probabilidad
@@ -751,21 +910,40 @@ function generateDropPreparationDecision(inputs, output, confidence) {
         const dropGateThreshold = dropMaxHistoric !== null
             ? dropMaxHistoric * 0.60
             : 0.45;
-        const dropAbsGateOpen = dropRawEnergy >= dropGateThreshold;
+        const dropEnergyGateOpen = dropRawEnergy >= dropGateThreshold;
+        // 🌴 WAVE 4864: SPECTRAL GATE — Anti-Bad-Bunny (DROP path)
+        const _vIdDrop = pattern.vibeId ?? '';
+        const dropIsLatinoVibe = _vIdDrop.includes('latino') || _vIdDrop.includes('latina') || _vIdDrop.includes('dembow');
+        let dropSpectralGateOpen = true;
+        if (dropIsLatinoVibe && dropEnergyGateOpen) {
+            const lowBand = inputs.pattern.bassPresenceSustained ?? inputs.pattern.bassPresence ?? 0;
+            const midBand = inputs.pattern.midPresence ?? 0;
+            const kickThreshold = (dropMaxHistoric ?? 0) * 0.85;
+            const hasHeavyKick = lowBand >= kickThreshold;
+            const isNotJustVocals = lowBand >= (midBand * 0.8);
+            dropSpectralGateOpen = hasHeavyKick && isNotJustVocals;
+            // 🌴 WAVE 4865: Log temprano suprimido — candado silencioso, detalle en DROP BLOCKED si aplica
+        }
+        const dropAbsGateOpen = dropEnergyGateOpen && dropSpectralGateOpen;
         if (!dropAbsGateOpen) {
-            console.log(`[DecisionMaker 🐘] DROP BLOCKED (AbsGate): E=${dropRawEnergy.toFixed(2)} < ` +
-                `${dropGateThreshold.toFixed(2)} (60% of max=${(dropMaxHistoric ?? 0).toFixed(2)}) → no heavy fire in a valley`);
+            if (!dropEnergyGateOpen) {
+                console.log(`[DecisionMaker 🐘] DROP BLOCKED (AbsGate): E=${dropRawEnergy.toFixed(2)} < ` +
+                    `${dropGateThreshold.toFixed(2)} (60% of max=${(dropMaxHistoric ?? 0).toFixed(2)}) → no heavy fire in a valley`);
+            }
+            else {
+                // 🌴 WAVE 4865: Bloqueado por Spectral Gate en DROP candidato real
+                const lowBand = inputs.pattern.bassPresenceSustained ?? inputs.pattern.bassPresence ?? 0;
+                const midBand = inputs.pattern.midPresence ?? 0;
+                const kickThreshold = (dropMaxHistoric ?? 0) * 0.85;
+                const hasHeavyKick = lowBand >= kickThreshold;
+                console.log(`[DecisionMaker 🌴] DROP BLOCKED (SpectralGate): ${!hasHeavyKick ? 'Low-Band Insufficient' : 'Vocals Eclipse Beat'} | ` +
+                    `LOW=${lowBand.toFixed(3)} MID=${midBand.toFixed(3)}`);
+            }
             // Sin effectDecision — physics reactivas siguen
         }
         if (dropAbsGateOpen) {
-            // 🎧 WAVE 4863: Correlación de disparo — ¿qué bandas abrieron el candado?
-            // Objetivo: detectar si MID (voces comprimidas) sostiene el gate artificialmente.
-            console.log(`[AbsGate PASS 🐘] DROP path abierto | ` +
-                `LOW:${(inputs.pattern.bassPresence ?? 0).toFixed(3)} ` +
-                `MID:${(inputs.pattern.midPresence ?? 0).toFixed(3)} ` +
-                `HIGH:${(inputs.pattern.highPresence ?? 0).toFixed(3)} ` +
-                `TOTAL:${dropRawEnergy.toFixed(3)} | ` +
-                `Gate threshold:${dropGateThreshold.toFixed(3)} | Max_30s:${(dropMaxHistoric ?? 0).toFixed(3)}`);
+            // 🎧 WAVE 4863/4865: Correlación suprimida en PASS para silencio operativo.
+            // El FFT X-RAY en SeleneTitanConscious sigue registrando bandas cada 3s.
             // 🔒 WAVE 2187: THE DROP LOCK — Anti-Esquizofrenia
             // Si ya disparamos un efecto en este drop, NO volver a disparar.
             // Un Drop = Un Efecto principal. El DIVINE (Z>4σ) tiene su propio path.

@@ -207,7 +207,6 @@ export class OroSolido extends BaseEffect {
                 },
             },
             overrideMoverShield: true,
-            skipDarkSpin: true, // 🏎️ WAVE 4831: OroSolido es corto — preferible ver scroll que blackout
         };
     }
     isFinished() {

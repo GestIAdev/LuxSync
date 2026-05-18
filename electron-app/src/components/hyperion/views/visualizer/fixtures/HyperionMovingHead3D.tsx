@@ -30,24 +30,6 @@ import { MOUNT_QUATERNIONS } from '../utils/mountQuaternion'
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * 🛡️ WAVE 2088.2: ANGULAR RANGE — Aligned with real fixtures & 2D views
- * 
- * BEFORE: PAN_RANGE = 2π (±180°), TILT_RANGE = π (±90°)
- *   → A physicalPan sweep from 0→1 rotated 360° in 3D — INSANE.
- *   → TacticalCanvas and Cinema only use ±81° (Math.PI * 0.45).
- *   → Same data looked 2.2x more aggressive in 3D vs 2D.
- * 
- * NOW: Matched to professional moving head specs:
- *   Pan:  ±135° (270° total) — Standard for Clay Paky, Robe, etc.
- *   Tilt: ±67.5° (135° total) — Typical tilt arc for yoke fixtures.
- * 
- * These are visual/cosmetic — they don't affect DMX output.
- * The 2D views use ±81° because that's appropriate for a top-down view.
- * The 3D uses wider range because you SEE the full mechanical rotation.
- */
-const PAN_RANGE = Math.PI * 1.5    // ±135° (270° total sweep)
-const TILT_RANGE = Math.PI * 0.75  // ±67.5° (135° total arc)
 const NEON_CYAN = '#00F0FF'
 
 /**
@@ -139,6 +121,16 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
   const lensMaterialRef = useRef<THREE.MeshBasicMaterial>(null)
   const beamMaterialRef = useRef<THREE.MeshBasicMaterial>(null)
   const beamMeshRef = useRef<THREE.Mesh>(null)
+
+  // WAVE 4887: rangos mecánicos visuales desde fixture (mismos defaults que IK backend).
+  const mechanicalPanRangeRad = useMemo(
+    () => THREE.MathUtils.degToRad(fixture.panRangeDeg || 540),
+    [fixture.panRangeDeg]
+  )
+  const mechanicalTiltRangeRad = useMemo(
+    () => THREE.MathUtils.degToRad(fixture.tiltRangeDeg || 270),
+    [fixture.tiltRangeDeg]
+  )
 
   // ═══════════════════════════════════════════════════════════════════════
   // 🛡️ WAVE 2088.1: Visual smoothing state — persistent across renders.
@@ -301,11 +293,10 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
       smoothZoom.current! += (liveZoom - smoothZoom.current!) * ZOOM_SMOOTH
     }
 
-    // Convert smoothed 0-1 to radians
-    // 🛡️ WAVE 2088.11: TILT_REST_ANGLE makes beam point ~45° forward at DMX center.
-    // Without this, tilt=0.5 → beam perpendicular to floor → pan sweeps are invisible.
-    const panAngle = (smoothPan.current! - 0.5) * PAN_RANGE
-    const tiltAngle = -(smoothTilt.current! - 0.5) * TILT_RANGE + TILT_REST_ANGLE
+    // WAVE 4887: map visual exactamente a rango mecánico del fixture.
+    // Pan invertido para alinear con IK (ceiling): target +X => physicalPan>0.5 => haz hacia +X en top-down.
+    const panAngle = -(smoothPan.current! - 0.5) * mechanicalPanRangeRad
+    const tiltAngle = -(smoothTilt.current! - 0.5) * mechanicalTiltRangeRad + TILT_REST_ANGLE
     yokeQuat.current.setFromAxisAngle(PAN_AXIS, panAngle)
     headQuat.current.setFromAxisAngle(TILT_AXIS, tiltAngle)
 

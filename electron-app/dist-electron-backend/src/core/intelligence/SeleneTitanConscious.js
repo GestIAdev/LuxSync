@@ -484,6 +484,8 @@ export class SeleneTitanConscious extends EventEmitter {
         const enrichedPattern = {
             ...pattern,
             energyZScore: this.lastMemoryOutput.stats.energy.zScore,
+            // 🎧 WAVE 4867: Bass suavizado — inercia contra plosivas y 808 cortos
+            bassPresenceSustained: this._fftXRayAvgLowLastN(30),
         };
         // 🎧 WAVE 4863: FFT X-Ray — alimentar buffer de diagnóstico de bandas
         this._fftXRayUpdate(state.bass, state.mid, state.high, state.rawEnergy, state.timestamp);
@@ -491,6 +493,22 @@ export class SeleneTitanConscious extends EventEmitter {
         this.currentBeauty = senseBeauty(state.currentPalette, enrichedPattern);
         this.currentConsonance = senseConsonance(state.currentPalette, enrichedPattern);
         return enrichedPattern;
+    }
+    /**
+     * 🎧 WAVE 4867: Promedio de los últimos N frames del buffer LOW.
+     * Usado por el Sustained Spectral Gate para ignorar plosivas instantáneas.
+     */
+    _fftXRayAvgLowLastN(n) {
+        const count = Math.min(n, this._fftXRayCount);
+        if (count === 0)
+            return 0;
+        let sum = 0;
+        const head = this._fftXRayHead;
+        for (let i = 0; i < count; i++) {
+            const idx = (head - 1 - i + this.FFT_XRAY_BUFFER_SIZE) % this.FFT_XRAY_BUFFER_SIZE;
+            sum += this._fftXRayLow[idx];
+        }
+        return sum / count;
     }
     /**
      * 🎧 WAVE 4863: FFT X-RAY SNIFFER

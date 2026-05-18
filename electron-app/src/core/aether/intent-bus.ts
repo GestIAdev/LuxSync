@@ -333,6 +333,15 @@ export interface INodeArbiter {
   clearManualOverride(nodeId: NodeId): void
 
   /**
+   * WAVE 4885: Inyecta output del motor IK en el bloque L2-MOTOR del árbitro.
+   * Escribe en _motorKineticOverrides — se aplica DESPUÉS del Grand Master y el
+   * Hard Lock, traduciendo pan_base/tilt_base a pan/tilt con supremacía absoluta.
+   * Usar exclusivamente para output de IKEngine (applySpatialTarget).
+   * NO usar para el anchor del radar clásico (eso usa setManualOverride).
+   */
+  setMotorKineticOverride(nodeId: NodeId, channels: Readonly<Record<string, number>>): void
+
+  /**
    * Inyecta intents de efectos (capa L3).
    * @param intents — Intents producidos por ILiveFXEngine
    */

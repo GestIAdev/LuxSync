@@ -210,6 +210,68 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
+ * PARADIGM BAR — WAVE 4882: selector Individual / Formación / Espacial
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+.kc-paradigm-bar {
+  display: flex;
+  gap: 4px;
+  padding: 6px 12px 8px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--kc-border);
+}
+
+.kc-paradigm-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 7px 4px 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--kc-border);
+  border-radius: 3px;
+  color: var(--kc-text-dim);
+  font-family: var(--kc-font-display);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s, box-shadow 0.12s;
+  letter-spacing: 0.04em;
+}
+
+.kc-paradigm-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: var(--kc-border-bright);
+  color: var(--kc-text);
+}
+
+.kc-paradigm-btn--active {
+  background: rgba(0, 240, 255, 0.1);
+  border-color: var(--kc-cyan);
+  color: var(--kc-cyan);
+  box-shadow: var(--kc-glow-cyan);
+}
+
+/* Modo espacial — acento magenta para distinguirlo visualmente */
+.kc-paradigm-btn--spatial.kc-paradigm-btn--active {
+  background: rgba(255, 0, 229, 0.1);
+  border-color: var(--kc-magenta);
+  color: var(--kc-magenta);
+  box-shadow: var(--kc-glow-magenta);
+}
+
+.kc-paradigm-btn__icon {
+  font-size: 16px;
+  line-height: 1;
+  display: block;
+}
+
+.kc-paradigm-btn__label {
+  font-size: 8px;
+  line-height: 1;
+  display: block;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
  * FADERS ROW — WAVE 4564: Radar relocado al Main Viewport
  * Los faders ahora ocupan el ancho completo de la sidebar
  * ───────────────────────────────────────────────────────────────────────────── */

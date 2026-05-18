@@ -15,7 +15,7 @@
  * @version WAVE 4564
  */
 
-import React, { useCallback, useMemo } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { useShallow } from 'zustand/shallow'
 
 import { useMovementStore, type PatternType } from '../../../stores/movementStore'
@@ -48,17 +48,24 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
     chaosSeed:    s.chaosSeed,
   })))
 
+  // ── WAVE 4882: modo de paradigma del radar ─────────────────────────────
+  // 'individual' = XY Pad 1:1, 'formacion' = Radar XY multi, 'spatial' = IK 3D.
+  // CathedralViewMode es estado local UI — no persiste en store ni en escena.
+  type CathedralViewMode = 'individual' | 'formacion' | 'spatial'
+  const [viewMode, setViewMode] = useState<CathedralViewMode>('individual')
+
   // ── Acciones del movementStore — operador → bridge → IPC ──────────────
   const {
     setActivePattern, setPatternSpeed, setPatternAmplitude,
-    setChaosAmount, reseed, setCathedralTab,
+    setChaosAmount, reseed, setCathedralTab, setRadarModeOverride,
   } = useMovementStore(useShallow(s => ({
     setActivePattern:     s.setActivePattern,
     setPatternSpeed:      s.setPatternSpeed,
     setPatternAmplitude:  s.setPatternAmplitude,
-    setChaosAmount:       s.setChaosAmount,
-    reseed:               s.reseed,
-    setCathedralTab:      s.setCathedralTab,
+    setChaosAmount:         s.setChaosAmount,
+    reseed:                 s.reseed,
+    setCathedralTab:        s.setCathedralTab,
+    setRadarModeOverride:   s.setRadarModeOverride,
   })))
 
   // ── WAVE 4712: HYDRATION STORE — la verdad visual para la selección ───
@@ -123,6 +130,14 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
   // el Dual-Map del motor (_motorKineticOverrides) y dejaba al operador sin
   // forma de detener un patrón activo cuyo anchor seguía en defaults.
 
+  // ── WAVE 4882: botonera de paradigmas ───────────────────────────────────
+  const handleViewMode = useCallback((mode: CathedralViewMode) => {
+    setViewMode(mode)
+    // Sincronizar radarModeOverride en el store para que KinRadarViewport
+    // monte el pad correcto. 'spatial' activa el IK 3D; el resto = clásico.
+    setRadarModeOverride(mode === 'spatial' ? 'spatial' : null)
+  }, [setRadarModeOverride])
+
   const handleUnlockKinetics = useCallback(() => {
     // WAVE 4868: unlock de Cathedral debe ser estrictamente cinético.
     // Limpia solo KINETIC + motor cinético + estado UI asociado.
@@ -156,6 +171,9 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
     // 7) EXORCISMO: limpiar Sets zombificados
     ms.setManualOverrideForFixtures(selectedIds, false)
     ms.setLockedFixtures(new Set())
+    // 8) WAVE 4882: resetear paradigma de radar al estado neutro
+    ms.setRadarModeOverride(null)
+    setViewMode('individual')
   }, [selectedIds])
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -227,12 +245,38 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
             >🔓 UNLOCK</button>
           </div>
 
+          {/* ── PARADIGM SELECTOR — WAVE 4882 ── */}
+          <div className="kc-paradigm-bar">
+            <button
+              className={`kc-paradigm-btn${viewMode === 'individual' ? ' kc-paradigm-btn--active' : ''}`}
+              onClick={() => handleViewMode('individual')}
+              title="Control individual 1:1 — XY Pad clásico"
+            >
+              <span className="kc-paradigm-btn__icon">⊕</span>
+              <span className="kc-paradigm-btn__label">INDIVIDUAL</span>
+            </button>
+            <button
+              className={`kc-paradigm-btn${viewMode === 'formacion' ? ' kc-paradigm-btn--active' : ''}`}
+              onClick={() => handleViewMode('formacion')}
+              title="Formación multi-fixture — Radar XY con fan"
+            >
+              <span className="kc-paradigm-btn__icon">⋮⋮</span>
+              <span className="kc-paradigm-btn__label">FORMACIÓN</span>
+            </button>
+            <button
+              className={`kc-paradigm-btn kc-paradigm-btn--spatial${viewMode === 'spatial' ? ' kc-paradigm-btn--active' : ''}`}
+              onClick={() => handleViewMode('spatial')}
+              title="Apuntado espacial IK 3D — Francotirador"
+            >
+              <span className="kc-paradigm-btn__icon">🎯</span>
+              <span className="kc-paradigm-btn__label">ESPACIAL</span>
+            </button>
+          </div>
+
           {/* ── RADAR EMBED ── WAVE 4647: centro de mando integrado en la Cathedral ── */}
           <div className="kinetics-cathedral__radar-embed">
             <KinRadarViewport />
           </div>
-
-          {/* SPATIAL FAN CONTROLS — WAVE 4717: en cuarentena. Solo Classic mode activo. */}
 
           {/* ── FADERS — SPEED + AMP ── */}
           <div className="kinetics-cathedral__faders-row">

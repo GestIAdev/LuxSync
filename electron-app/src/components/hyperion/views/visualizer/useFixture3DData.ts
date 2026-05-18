@@ -30,7 +30,9 @@ import type { InstallationOrientation, Rotation3D } from '../../../../core/stage
 /** Default stage dimensions for position calculation */
 const STAGE_HALF_WIDTH = 6    // 12m / 2
 const STAGE_HALF_DEPTH = 4    // 8m / 2
-const TRUSS_HEIGHT = 5        // 5m
+const DEFAULT_PAN_RANGE_DEG = 540
+const DEFAULT_TILT_RANGE_DEG = 270
+const UNPLACED_SENTINEL_Y = 3
 
 // ═══════════════════════════════════════════════════════════════════════════
 // UTILITY FUNCTIONS
@@ -77,6 +79,27 @@ function resolveFixtureType(
   }
   
   return 'generic'
+}
+
+function resolveMechanicalRanges(fixture: any): { panRangeDeg: number; tiltRangeDeg: number } {
+  const panRangeDeg = Number(
+    fixture?.panRangeDeg
+    ?? fixture?.capabilities?.panRange
+    ?? fixture?.physics?.panRange
+    ?? DEFAULT_PAN_RANGE_DEG
+  )
+
+  const tiltRangeDeg = Number(
+    fixture?.tiltRangeDeg
+    ?? fixture?.capabilities?.tiltRange
+    ?? fixture?.physics?.tiltRange
+    ?? DEFAULT_TILT_RANGE_DEG
+  )
+
+  return {
+    panRangeDeg: Number.isFinite(panRangeDeg) && panRangeDeg > 0 ? panRangeDeg : DEFAULT_PAN_RANGE_DEG,
+    tiltRangeDeg: Number.isFinite(tiltRangeDeg) && tiltRangeDeg > 0 ? tiltRangeDeg : DEFAULT_TILT_RANGE_DEG,
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -127,7 +150,6 @@ export function useFixture3DData(options: UseFixture3DDataOptions = {}) {
   const halfDepth = options.stageConfig?.depth 
     ? options.stageConfig.depth / 2 
     : STAGE_HALF_DEPTH
-  const trussHeight = options.stageConfig?.trussHeight ?? TRUSS_HEIGHT
 
   // ── Group fixtures by zone for positioning ────────────────────────────────
   const fixturesByZone = useMemo(() => {
@@ -170,7 +192,8 @@ export function useFixture3DData(options: UseFixture3DDataOptions = {}) {
         } else if (layout.vertical && layout.fixedX !== undefined) {
           // Vertical column (movers-left, movers-right)
           x = layout.fixedX * halfWidth
-          y = distributeInRange(index, total, trussHeight * 0.5, trussHeight * 0.9)
+          // WAVE 4887: fixtures no colocados deben visualizarse en el mismo sentinel que usa IK/bridge.
+          y = UNPLACED_SENTINEL_Y
           z = layout.depthFactor * halfDepth
         } else {
           // Horizontal distribution
@@ -180,9 +203,12 @@ export function useFixture3DData(options: UseFixture3DDataOptions = {}) {
             layout.xRange[0] * halfWidth, 
             layout.xRange[1] * halfWidth
           )
-          y = layout.heightFactor * trussHeight
+          // WAVE 4887: unificar altura de guerrilla fixtures a y=3m.
+          y = UNPLACED_SENTINEL_Y
           z = layout.depthFactor * halfDepth
         }
+
+        const { panRangeDeg, tiltRangeDeg } = resolveMechanicalRanges(fixture)
 
         // ═══════════════════════════════════════════════════════════════════
         // 🔥 WAVE 2236: STATIC SNAPSHOT — Dynamic values read in useFrame()
@@ -270,6 +296,8 @@ export function useFixture3DData(options: UseFixture3DDataOptions = {}) {
           orientation,
           baseRotation,
           isPlaced: fixture.isPlaced === true,
+          panRangeDeg,
+          tiltRangeDeg,
         })
       })
     }
@@ -281,7 +309,7 @@ export function useFixture3DData(options: UseFixture3DDataOptions = {}) {
     }
 
     return result
-  }, [fixtures, fixturesByZone, selectedIds, overrides, halfWidth, halfDepth, trussHeight])
+  }, [fixtures, fixturesByZone, selectedIds, overrides, halfWidth, halfDepth])
 
   // ── Separate by type for instancing ───────────────────────────────────────
   const movingHeads = useMemo(

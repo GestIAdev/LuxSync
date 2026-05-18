@@ -48,8 +48,6 @@ export class AetherSafetyMiddleware {
         this._kineticState = new Map();
         // ── Per-node DarkSpin transit state ────────────────────────────────────
         this._darkSpinState = new Map();
-        // 🏎️ WAVE 4831: DarkSpin bypass — nodos que solicitaron skip este frame
-        this._skipDarkSpinNodeIds = new Set();
         // ── Output gate ────────────────────────────────────────────────────────
         this._outputEnabled = true;
         this._manualNodeIds = new Set();
@@ -264,21 +262,6 @@ export class AetherSafetyMiddleware {
     // ═════════════════════════════════════════════════════════════════════════
     // FASE 1b: DarkSpin — Transit Blackout
     // ═════════════════════════════════════════════════════════════════════════
-    // ═════════════════════════════════════════════════════════════════════════
-    // 🏎️ WAVE 4831: DARKSPIN BYPASS API
-    // ═════════════════════════════════════════════════════════════════════════
-    setSkipDarkSpinNodes(nodeIds) {
-        this._skipDarkSpinNodeIds.clear();
-        for (let i = 0; i < nodeIds.length; i++) {
-            this._skipDarkSpinNodeIds.add(nodeIds[i]);
-        }
-    }
-    clearSkipDarkSpinNodes() {
-        this._skipDarkSpinNodeIds.clear();
-    }
-    isSkipDarkSpinNode(nodeId) {
-        return this._skipDarkSpinNodeIds.has(nodeId);
-    }
     /**
      * WAVE 4685: Returns all NodeIds currently in active wheel transit.
      * Used by NodeResolver for cross-node DarkSpin sweep (COLOR→IMPACT dimmer kill).
@@ -296,10 +279,6 @@ export class AetherSafetyMiddleware {
      * Woodstock-compliant: uses this._nowMs (performance.now()-based).
      */
     checkDarkSpin(nodeId, currentWheelDmx, minTransitMs, safetyMargin = 1.1) {
-        // 🏎️ WAVE 4831: DarkSpin bypass — efectos cortos solicitan ignorar blackout
-        if (this._skipDarkSpinNodeIds.has(nodeId)) {
-            return false;
-        }
         let s = this._darkSpinState.get(nodeId);
         if (!s) {
             s = { lastStableWheelDmx: currentWheelDmx, pendingWheelDmx: currentWheelDmx,

@@ -149,7 +149,7 @@ export const SpatialTargetPad: React.FC<SpatialTargetPadProps> = ({
   const worldToGrid = useCallback(
     (x: number, z: number): { pctX: number; pctZ: number } => ({
       pctX: ((x + halfW) / stage.width) * 100,
-      pctZ: ((-z + halfD) / stage.depth) * 100, // Z- is top
+      pctZ: ((z + halfD) / stage.depth) * 100, // Z- is top
     }),
     [halfW, halfD, stage.width, stage.depth]
   )
@@ -164,7 +164,7 @@ export const SpatialTargetPad: React.FC<SpatialTargetPadProps> = ({
       const normZ = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height))
       return {
         x: normX * stage.width - halfW,
-        z: -(normZ * stage.depth - halfD), // invert: screen top → Z-
+        z: normZ * stage.depth - halfD, // screen top → Z- (back), bottom → Z+ (front)
       }
     },
     [stage.width, stage.depth, halfW, halfD]
@@ -390,7 +390,7 @@ export const SpatialTargetPad: React.FC<SpatialTargetPadProps> = ({
 
     // Horizontal lines (Z axis)
     for (let z = -halfD; z <= halfD; z += gridStep) {
-      const pct = ((-z + halfD) / stage.depth) * 100
+      const pct = ((z + halfD) / stage.depth) * 100
       const isCenter = Math.abs(z) < 0.01
       lines.push(
         <div

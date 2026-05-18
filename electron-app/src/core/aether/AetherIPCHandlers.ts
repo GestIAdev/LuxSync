@@ -639,29 +639,20 @@ export function registerAetherIPCHandlers(): void {
           )
             ? orientationRaw
             : 'ceiling'
-          // WAVE 4905 — FUENTE DE VERDAD: orientación, no calibración.
+          // WAVE 4910: REVERT WAVE 4905 — panInvert debe ser false.
           //
-          // Bug chain documentado:
-          //  WAVE 4892: eliminó panInvert=true para ceiling esperando migrar a
-          //             MOUNT_ANGLES.ceiling=pitch:180. Esa migración nunca ocurrió.
-          //  WAVE 4903: restauró el fallback via ??, pero ?? NO protege contra false
-          //             explícito. El showfile siempre serializa panInvert:false (default),
-          //             así que false ?? true === false — el fix nunca llegó.
+          // WAVE 4905 asumió que la fórmula del visualizador era:
+          //   panAngle = -(physicalPan - 0.5) * range  (con negativo)
+          // y concluyó que panInvert=true convergía. Ese análisis era incorrecto.
           //
-          // Prueba algebraica (6 fixtures reales del log DEBUG_IK):
-          //  panDeg = atan2(local.x, local.z). Para ceiling fixture izquierdo
-          //  apuntando al centro: local.x>0 → panDeg>0 → panDMXRaw>127.5.
-          //  Visualizador: panAngle = -(physicalPan - 0.5) * range (PAN_AXIS = +Y).
-          //  Sin invertir: physicalPan=0.63 → panAngle=-71° → R_Y(-71°) → haz a -X (DIVERGE).
-          //  Con invertir: physicalPan=0.37 → panAngle=+71° → R_Y(+71°) → haz a +X (CONVERGE).
+          // El código real del visualizador (HyperionMovingHead3D.tsx L242) es:
+          //   panAngle = (smoothPan - 0.5) * PAN_RANGE  (SIN negativo)
           //
-          // Solución: ignorar cal.panInvert en el IK espacial. La orientación
-          // determina la inversión mecánica real del motor. cal.panInvert es para
-          // control manual (joystick), no para geometría inversa.
-          // tiltInvert: siempre false — atan2(horizontalDist, -local.y) ya está en
-          // el frame correcto para fixtures ceiling (WAVE 4898).
-          const invertPanByOrientation = installation === 'ceiling'
-
+          // Con la fórmula real:
+          //   panInvert=false: panDMX=161 → livePan=0.63 → panAngle=+35° → CONVERGE ✓
+          //   panInvert=true:  panDMX=94  → livePan=0.37 → panAngle=-35° → DIVERGE ✗
+          //
+          // El showfile tiene panInvert:false (configurado por el usuario). Respetamos eso.
           // ── WAVE 4881 Fase 2: rango mecánico real ──
           // Leer panRange/tiltRange en cascada para evitar el fallback ciego
           // a 540/270. Orden: root-level legacy → capabilities → physics.
@@ -683,8 +674,8 @@ export function registerAetherIPCHandlers(): void {
             {
               panOffset:  cal?.panOffset  ?? 0,
               tiltOffset: cal?.tiltOffset ?? 0,
-              panInvert:  invertPanByOrientation,   // orientación manda, no el showfile
-              tiltInvert: false,                    // siempre false (WAVE 4898 frame correcto)
+              panInvert:  false,  // WAVE 4910: visualizador usa (pan-0.5)*range (sin negativo)
+              tiltInvert: false,  // siempre false (WAVE 4898 frame correcto)
             },
             panRangeDeg,
             tiltRangeDeg,

@@ -89,8 +89,12 @@ export class AetherUIProjector {
                         fixture.rotation = toDmx(kn.currentPosition.rotation ?? 0.5);
                     }
                     else {
-                        fixture.pan = toDmx(kn.currentPosition.pan ?? 0.5);
-                        fixture.tilt = toDmx(kn.currentPosition.tilt ?? 0.5);
+                        const panDmx = toDmx(kn.currentPosition.pan ?? 0.5);
+                        const tiltDmx = toDmx(kn.currentPosition.tilt ?? 0.5);
+                        fixture.pan = panDmx;
+                        fixture.tilt = tiltDmx;
+                        fixture.physicalPan = panDmx;
+                        fixture.physicalTilt = tiltDmx;
                     }
                     continue;
                 }

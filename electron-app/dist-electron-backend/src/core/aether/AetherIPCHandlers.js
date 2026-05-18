@@ -508,16 +508,20 @@ export function registerAetherIPCHandlers() {
                     orientationRaw === 'wall-right')
                     ? orientationRaw
                     : 'ceiling';
-                // WAVE 4903: panInvert por orientación RESTAURADO solo para pan.
-                // WAVE 4892 lo eliminó esperando moverlo a MOUNT_ANGLES pitch:180,
-                // pero esa migración nunca se completó y MOUNT_ANGLES.ceiling sigue
-                // siendo pitch:0 (identidad). Sin panInvert, los fixtures ceiling
-                // divergen en lugar de converger → efecto rombo.
-                // tiltInvert NO se invierte: atan2(horizontalDist, -local.y) ya
-                // calcula el tilt en el frame correcto del fixture ceiling.
-                const invertPanByOrientation = installation === 'ceiling' ||
-                    installation === 'truss-front' ||
-                    installation === 'truss-back';
+                // WAVE 4910: REVERT WAVE 4905 — panInvert debe ser false.
+                //
+                // WAVE 4905 asumió que la fórmula del visualizador era:
+                //   panAngle = -(physicalPan - 0.5) * range  (con negativo)
+                // y concluyó que panInvert=true convergía. Ese análisis era incorrecto.
+                //
+                // El código real del visualizador (HyperionMovingHead3D.tsx L242) es:
+                //   panAngle = (smoothPan - 0.5) * PAN_RANGE  (SIN negativo)
+                //
+                // Con la fórmula real:
+                //   panInvert=false: panDMX=161 → livePan=0.63 → panAngle=+35° → CONVERGE ✓
+                //   panInvert=true:  panDMX=94  → livePan=0.37 → panAngle=-35° → DIVERGE ✗
+                //
+                // El showfile tiene panInvert:false (configurado por el usuario). Respetamos eso.
                 // ── WAVE 4881 Fase 2: rango mecánico real ──
                 // Leer panRange/tiltRange en cascada para evitar el fallback ciego
                 // a 540/270. Orden: root-level legacy → capabilities → physics.
@@ -530,8 +534,8 @@ export function registerAetherIPCHandlers() {
                 const profile = buildProfile(id, resolvedPosition, stageIK?.rotation ?? f?.rotation, installation, {
                     panOffset: cal?.panOffset ?? 0,
                     tiltOffset: cal?.tiltOffset ?? 0,
-                    panInvert: cal?.panInvert ?? invertPanByOrientation,
-                    tiltInvert: cal?.tiltInvert ?? false,
+                    panInvert: false, // WAVE 4910: visualizador usa (pan-0.5)*range (sin negativo)
+                    tiltInvert: false, // siempre false (WAVE 4898 frame correcto)
                 }, panRangeDeg, tiltRangeDeg, physics?.tiltLimits);
                 profiles.push(profile);
                 validIds.push(id);

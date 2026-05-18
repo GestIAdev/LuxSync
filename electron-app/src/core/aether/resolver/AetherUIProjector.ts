@@ -101,8 +101,17 @@ export class AetherUIProjector {
           if (kn.isContinuous) {
             fixture.rotation = toDmx(kn.currentPosition.rotation ?? 0.5)
           } else {
-            fixture.pan  = toDmx(kn.currentPosition.pan  ?? 0.5)
-            fixture.tilt = toDmx(kn.currentPosition.tilt ?? 0.5)
+            const panDmx  = toDmx(kn.currentPosition.pan  ?? 0.5)
+            const tiltDmx = toDmx(kn.currentPosition.tilt ?? 0.5)
+            fixture.pan  = panDmx
+            fixture.tilt = tiltDmx
+            // WAVE 4910: Proyectar también physicalPan/Tilt para que emitHotFrame()
+            // no use el valor stale del pipeline legacy, que no conoce los overrides IK
+            // escritos vía setMotorKineticOverride (pan_base/tilt_base).
+            // Sin esto, hot-frame envía physicalPan=(legacy_stale/255) y el visualizador
+            // 3D lo prioriza sobre .pan, generando anti-convergencia en el simulador.
+            ;(fixture as any).physicalPan  = panDmx
+            ;(fixture as any).physicalTilt = tiltDmx
           }
           continue
         }

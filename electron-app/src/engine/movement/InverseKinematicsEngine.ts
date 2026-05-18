@@ -238,7 +238,7 @@ export function solve(
       panDeg = 0  // Default: mirar al frente
     }
   } else {
-    panDeg = Math.atan2(local.x, local.z) * RAD_TO_DEG
+    panDeg = Math.atan2(local.x, -local.z) * RAD_TO_DEG
   }
 
   const tiltDeg = Math.atan2(horizontalDist, -local.y) * RAD_TO_DEG  // WAVE 4898: 0° = suelo (alineado con visualizador)

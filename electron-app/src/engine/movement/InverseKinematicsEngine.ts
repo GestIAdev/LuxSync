@@ -146,29 +146,27 @@ const PAN_SAFETY_MARGIN = 5
 /**
  * Ángulos base de montaje (grados) por tipo de instalación.
  *
- * ── WAVE 4898 — THE FORENSIC MATH ALIGNMENT ──
+ * ── WAVE 4899 — THE FINAL CONVERGENCE (PAN UNFLIP) ──
  *
- * Dictaminado por reporte forense WAVE 4897 (docs/logs/animalog.md):
- * El pipeline y el visualizador son inocentes. El problema radicaba en
- * las entradas del atan2 en el IK Engine.
+ * WAVE 4898 confirmó que tiltDeg = atan2(horizontalDist, -local.y) es correcto.
+ * El yaw:180 de WAVE 4898 invertía local.x → efecto aspa en pan.
  *
- * yaw:180 en ceiling/truss-front: voltea el origen de Pan del yugo.
- *   cy = cos(-π) = -1, sy = 0 → local.x = -dx, local.z = -dz.
- *   pan = atan2(-dx, -dz): fixture izq (-dx>0) apunta hacia centro (pan>127.5) ✓
- *   Dos fixtures simétricos en X convergen al target — sin efecto aspa ✓
+ * Solución: identidad para ceiling/truss-front (local = dx, dy, dz sin cambio).
+ *   pan = atan2(dx, dz): fixture derecho (dx>0) → pan>127.5 → gira a la derecha ✓
+ *   Dos fixtures simétricos convergen — sin aspa ✓
  *
- * tiltDeg usa atan2(horizontalDist, -local.y) — ver comentario en solve().
+ * tiltDeg = atan2(horizontalDist, -local.y) — BLINDADO, no tocar.
+ *   0° = suelo bajo el fixture (alineado con visualizador WAVE 4898) ✓
  *
- * truss-back: yaw:0 (identidad). El delta de 180° con ceiling se mantiene
- *   por el cambio de ceiling a yaw:180. Frente↔espalda correctamente voltado.
+ * truss-back: yaw:180 voltea frente↔espalda para fixtures montados de espaldas.
  *
  * wall-left/right: solo yaw. Sin inversión Y↔Z.
  */
 const MOUNT_ANGLES: Record<InstallationOrientation, { pitch: number; yaw: number; roll: number }> = {
   'floor':       { pitch: 0, yaw:   0, roll: 0 },
-  'ceiling':     { pitch: 0, yaw: 180, roll: 0 },
-  'truss-front': { pitch: 0, yaw: 180, roll: 0 },
-  'truss-back':  { pitch: 0, yaw:   0, roll: 0 },
+  'ceiling':     { pitch: 0, yaw:   0, roll: 0 },
+  'truss-front': { pitch: 0, yaw:   0, roll: 0 },
+  'truss-back':  { pitch: 0, yaw: 180, roll: 0 },
   'wall-left':   { pitch: 0, yaw:  90, roll: 0 },
   'wall-right':  { pitch: 0, yaw: -90, roll: 0 },
 }
@@ -225,11 +223,10 @@ export function solve(
   const isGimbalLock = horizontalDist < GIMBAL_LOCK_EPSILON
 
   // ── PASO 4: Calcular ángulos en el frame local ──
-  // Pan = rotación horizontal. atan2(x, z) → 0 = frente del fixture
-  // Tilt = elevación vertical. atan2(horizontalDist, -local.y) → 0 = suelo bajo el fixture
-  // Reporte forense WAVE 4897: visualizador define DMX 127.5 (tiltAngle=0) como haz hacia el suelo.
-  //   Target bajo el fixture: horizontalDist≈0, -local.y>0 → atan2(0, pos) = 0° → DMX 127.5 → suelo ✓
-  //   Target al frente: horizontalDist>0, -local.y>0 → atan2>0 → DMX>127.5 → haz se inclina adelante ✓
+  // Pan = rotación horizontal. atan2(local.x, local.z) → 0° = frente del fixture.
+  //   Telemetría WAVE 4901: fixture izq (local.x>0) → panDeg>0 → DMX>127.5 → converge al centro ✓
+  //   La negación de WAVE 4902 fue revertida — invierte la convergencia (confirmado por hardware).
+  // Tilt = elevación vertical. atan2(horizontalDist, -local.y) → 0° = suelo bajo el fixture (WAVE 4898).
   let panDeg: number
   if (isGimbalLock) {
     // Target directamente arriba/abajo del fixture → pan indeterminado.

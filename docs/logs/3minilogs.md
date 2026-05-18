@@ -1,43 +1,63 @@
-WAVE 4881 — Ejecución completa
-Resumen por fase
-Fase 1 — Corrección trigonométrica
-Cambio: invertí los signos de pitch en MOUNT_ANGLES para alinearlos con la matriz right-handed implementada en rotateToLocalFrame.
+WAVE 4901 — KINEMATIC LITMUS TEST
+Test 1: ¿Yaw:180 invierte solo X o también Z?
+@c:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\engine\movement\InverseKinematicsEngine.ts:572-577
 
-Proyectos
-const MOUNT_ANGLES: Record<InstallationOrientation, { pitch: number; yaw: number }> = {
-  'ceiling':     { pitch:  90, yaw: 0   },
-  'floor':       { pitch: -90, yaw: 0   },
-  'truss-front': { pitch:  90, yaw: 0   },
-  'truss-back':  { pitch:  90, yaw: 180 },
-  'wall-left':   { pitch:   0, yaw: 90  },
-  'wall-right':  { pitch:   0, yaw: -90 },
-}
-Verificación matemática post-fix (caso canónico ceiling/below):
+ts
+const cy = Math.cos(-yawRad)   // yaw=180° → cos(-π) = -1
+const sy = Math.sin(-yawRad)   // yaw=180° → sin(-π) =  0
+const x1 =  dx * cy + dz * sy  //  dx*(-1) + dz*0   = -dx
+const z1 = -dx * sy + dz * cy  // -dx*0   + dz*(-1) = -dz
+Veredicto: yaw:180 invierte AMBOS — local.x = -dx y local.z = -dz. No solo X.
 
-dy = -h mundo → tras R_x(-90) (inversa del mount): local = (0, 0, +h).
-pan = atan2(0, +h) = 0° → DMX 127.5 (centro mecánico). ✓
-tilt = atan2(0, h) = 0° → DMX 127.5. ✓
-Equivalente para floor + target arriba, wall-left + target frente, etc. Los presets ya no producen pan ≈ ±180° para casos canónicos.
+Test 2: Aislamiento X puro — DMX 191 ¿gira a qué lado?
+IK con identidad, target en dx=+4, dz=0:
 
-Tests rotos eran de comentario, no de assertions estructurales: el rango [5, 250] cubre tanto la geometría rota previa (DMX ≈ 213) como la corregida (DMX ≈ 127). Actualicé los comentarios para reflejar la nueva geometría.
+panDeg = atan2(4, 0) = +90°
+panDMX = ((90 + 270) / 540) * 255 = (360/540) * 255 ≈ 170 DMX
+Nota: con rango 540° el +90° da 170, no 191. El 191 correspondería a atan2(dx, dz) con otro rango o offset. Pero el análisis de polaridad es el mismo.
 
-Fase 2 — Canal de datos (anti-flip + metadatos)
-Dos cambios en applySpatialTarget (@c:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\core\aether\AetherIPCHandlers.ts:594-652):
+Visualizador con pan = 170/255 = 0.667:
 
-currentPanDMXMap real: construido a partir de arbiter.getManualOverride('${id}:kinetic')['pan_base'] * 255 por cada fixture. Pasado a solveGroupWithFan(..., currentPanDMXMap.size > 0 ? currentPanDMXMap : null). Esto reactiva resolveShortestPanPath (@c:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\engine\movement\InverseKinematicsEngine.ts:569-610).
-Cascada de rango: f.panRangeDeg ?? f.capabilities?.panRange ?? f.physics?.panRange (idem tilt). Si ninguno está presente, console.warn explícito antes del fallback a defaults 540/270 — termina el silencio.
-Fase 3 — Liberar al francotirador
-Cambios en @c:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\components\hyperion\kinetics\KinRadarViewport.tsx:
+@c:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\components\hyperion\views\visualizer\fixtures\HyperionMovingHead3D.tsx:298
 
-resolveRadarComponent ahora recibe radarModeOverride y devuelve 'spatial' cuando es ==='spatial' y hay ≥1 moving head.
-Render del pad espacial: {false && ...} → {radarKey === 'spatial' && ...}.
-El operador activa el francotirador con movementStore.setRadarModeOverride('spatial'); el viewport monta SpatialTargetPad, que dispara handleTargetChange → setManualOverrideForFixtures(true) + setSpatialTarget + programmerStore.setSpatialPosition. El override marcado por la UI sigue gateando el legacy bridge de KineticsBridge, por lo que la ruta moderna NodeResolver._writeNodeIK (con currentPanDMX = node.currentPosition.pan * 255, ya correcta) es la única que escribe DMX.
+ts
+panAngle = -(0.667 - 0.5) * panRangeRad = -0.167 * 9.425 = -1.571 rad = -90°
+panAngle = -90° sobre PAN_AXIS = Y(0,1,0): rotación negativa en Y = gira hacia -X en Three.js (right-hand rule desde arriba: negativo = sentido horario = hacia la derecha del escenario = +X visual desde perspectiva del público).
 
-Verificación
-tsc --noEmit: 0 errores (EXIT=0).
-InverseKinematicsEngine.test.ts: 42 / 42 ✓ (geometría básica, matriz de orientación, gimbal-lock, anti-flip, calibración).
-node-resolver-ik.test.ts: 14 / 14 ✓ (capa L0 intacta).
-Cero regresiones en la L0.
-Notas de despliegue
-La directiva pedía "eliminar el fallback ciego a defaults" en Fase 2. Mantuve el fallback pero lo hice explícito y ruidoso (console.warn) en vez de silente; impedir el solve por completo cuando falta el rango rompería fixtures legacy que no declaran capabilities.panRange. Si prefieres hacerlo bloqueante (rechazar el fixture y excluirlo del solve), avísame y lo endurezco.
-Si tienes calibraciones (panOffset, tiltOffset, panInvert, tiltInvert) hechas a mano contra la geometría rota previa, revisalas: ahora la base es correcta y los offsets antiguos sobrecompensarán. Recomiendo recalibrar con un fixture ceiling y un target a (0, 0, 0) debajo → debe dar pan ≈ 127 / tilt ≈ 127 sin offsets.
+Polaridad del visualizador: panDMX > 127.5 → panAngle < 0 → gira hacia la derecha (+X visual).
+
+Con dx = +4 (target a la derecha), IK produce panDMX ≈ 170 > 127.5 → visualizador gira a la derecha. Correcto: sin inversión X.
+
+Test 3: Aislamiento Z puro — DMX 127.5 ¿mira al frente o al fondo?
+IK con identidad, target al frente dx=0, dz=+4:
+
+panDeg = atan2(0, 4) = 0°
+panDMX = ((0 + 270) / 540) * 255 = 127.5
+Visualizador con pan = 0.5:
+
+ts
+panAngle = -(0.5 - 0.5) * panRangeRad = 0 rad
+yokeQuat = R_Y(0) = identidad. El yokeRef con rotación cero tiene al headRef apuntando en -Y local. El modelo ceiling = quaternion identidad → -Y local = -Y mundo = hacia el suelo.
+
+DMX 127.5 → yoke sin rotación → el haz apunta verticalmente al suelo (-Y). No apunta ni al frente ni al fondo — es totalmente vertical. La dirección Z solo aparece cuando el tilt es distinto de cero.
+
+Con tilt > 127.5 (inclinado): tiltAngle < 0 sobre TILT_AXIS = X(1,0,0) → rota en -X → haz se mueve de -Y hacia +Z (frente del escenario).
+
+Diagnóstico del Rombo
+Con panDeg = atan2(dx, dz) e identidad, para un target fijo con dz > 0:
+
+Fixture izquierdo (x=-5, pos): dx = targetX - (-5) = targetX + 5 > 0 → panDeg > 0 → panDMX > 127.5 Fixture derecho (x=+5, pos): dx = targetX - 5 < 0 (si targetX < 5) → panDeg < 0 → panDMX < 127.5
+
+El fixture izquierdo gira a la derecha y el derecho a la izquierda → convergen hacia el centro. Matemáticamente no hay rombo en el IK.
+
+La causa probable del rombo observado es el tiltDeg aún siendo positivo para targets por encima del fixture. Con atan2(horizontalDist, -local.y), si el target está encima del fixture (dy > 0), entonces -local.y = -dy < 0 → atan2(hdist, negativo) > 90° → tiltDMX > 127 + range/4. En un fixture de techo (y=6m) apuntando a un target en y=1m (dy=-5): -local.y=+5, correcto. Pero si el sistema envía targets sobre y=6m, el tilt se invierte.
+
+Diagnóstico definitivo
+Test	Resultado
+yaw:180	Invierte X y Z simultáneamente — no es cirugía limpia
+panDMX > 127.5	Gira visual hacia +X (derecha) ✓ sin inversión
+panDMX = 127.5	Yoke neutral, haz al suelo (no hay desfase Z en el pan)
+Rombo	No proviene de inversión X/Z. El atan2(dx, dz) converge correctamente.
+La causa más probable del "rombo" observado no es el eje Z del pan. Es que el visualizador muestra el pan con la fórmula correcta pero el hardware físico tiene la convención de pan invertida respecto al IK — es decir, en el fixture real panDMX > 127.5 gira a la izquierda física, no a la derecha. Eso produce que los fixtures laterales diverjan en lugar de converger.
+
+Recomendación: antes de tocar matrices, activar LUX_DEBUG_IK y comparar los valores [IK] con el movimiento visual en el visualizador para un solo fixture. Si el visualizador muestra convergencia pero el hardware diverge, el fix correcto es panInvert: true en el perfil del fixture o en MOUNT_ANGLES vía roll:180 (que solo invierte X sin tocar Z ni Y).

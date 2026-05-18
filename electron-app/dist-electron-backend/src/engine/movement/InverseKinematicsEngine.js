@@ -46,22 +46,19 @@ const PAN_SAFETY_MARGIN = 5;
 /**
  * Ángulos base de montaje (grados) por tipo de instalación.
  *
- * ── WAVE 4896 — THE ABSOLUTE ZERO (TELEMETRY CONFIRMED) ──
+ * ── WAVE 4899 — THE FINAL CONVERGENCE (PAN UNFLIP) ──
  *
- * Confirmado por telemetría real (docs/logs/1234.md):
- * pitch:180 producía local.y = -dy y local.z = -dz, invirtiendo tanto
- * el Tilt (cabeza sube en lugar de bajar) como el Pan en Z (focos a la pared).
+ * WAVE 4898 confirmó que tiltDeg = atan2(horizontalDist, -local.y) es correcto.
+ * El yaw:180 de WAVE 4898 invertía local.x → efecto aspa en pan.
  *
- * El pipeline DMX y el visualizador ya manejan la orientación física del
- * techo de forma nativa. Aplicar rotaciones en el IK causaba doble inversión.
+ * Solución: identidad para ceiling/truss-front (local = dx, dy, dz sin cambio).
+ *   pan = atan2(dx, dz): fixture derecho (dx>0) → pan>127.5 → gira a la derecha ✓
+ *   Dos fixtures simétricos convergen — sin aspa ✓
  *
- * Solución: identidad absoluta para ceiling y truss-front.
- *   local = (dx, dy, dz) — sin transformación.
- *   pan  = atan2(dx, dz)  → target adelante (dz>0) → ángulo correcto ✓
- *   tilt = atan2(dy, dist) → target abajo (dy<0) → tilt<0 → cabeza baja ✓
+ * tiltDeg = atan2(horizontalDist, -local.y) — BLINDADO, no tocar.
+ *   0° = suelo bajo el fixture (alineado con visualizador WAVE 4898) ✓
  *
- * truss-back: solo yaw:180 para voltear frente↔espalda.
- *   local = (-dx, dy, -dz) → pan = atan2(-dx, -dz) ✓
+ * truss-back: yaw:180 voltea frente↔espalda para fixtures montados de espaldas.
  *
  * wall-left/right: solo yaw. Sin inversión Y↔Z.
  */
@@ -113,11 +110,10 @@ export function solve(fixture, target, currentPanDMX = null) {
     const horizontalDist = Math.sqrt(local.x * local.x + local.z * local.z);
     const isGimbalLock = horizontalDist < GIMBAL_LOCK_EPSILON;
     // ── PASO 4: Calcular ángulos en el frame local ──
-    // Pan = rotación horizontal. atan2(x, z) → 0 = frente del fixture
-    // Tilt = elevación vertical. atan2(local.y, distHorizontal) → 0 = horizontal
-    // Con identidad (pitch:0): local.y = dy.
-    //   Target abajo del fixture (dy<0) → tilt<0 → DMX<127 → cabeza baja ✓
-    //   Subir target (dy↑) → dy sube hacia 0 → tilt↑ hacia 0 → cabeza vuelve al centro ✓
+    // Pan = rotación horizontal. atan2(local.x, local.z) → 0° = frente del fixture.
+    //   Telemetría WAVE 4901: fixture izq (local.x>0) → panDeg>0 → DMX>127.5 → converge al centro ✓
+    //   La negación de WAVE 4902 fue revertida — invierte la convergencia (confirmado por hardware).
+    // Tilt = elevación vertical. atan2(horizontalDist, -local.y) → 0° = suelo bajo el fixture (WAVE 4898).
     let panDeg;
     if (isGimbalLock) {
         // Target directamente arriba/abajo del fixture → pan indeterminado.
@@ -133,7 +129,7 @@ export function solve(fixture, target, currentPanDMX = null) {
     else {
         panDeg = Math.atan2(local.x, local.z) * RAD_TO_DEG;
     }
-    const tiltDeg = Math.atan2(local.y, horizontalDist) * RAD_TO_DEG; // WAVE 4896: local.y puro, sin negación
+    const tiltDeg = Math.atan2(horizontalDist, -local.y) * RAD_TO_DEG; // WAVE 4898: 0° = suelo (alineado con visualizador)
     // WAVE 4892 — Telemetría temporal (gated). Cerrar diagnóstico del rombo.
     if (DEBUG_IK) {
         // eslint-disable-next-line no-console

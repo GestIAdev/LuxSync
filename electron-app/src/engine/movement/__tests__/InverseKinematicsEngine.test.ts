@@ -176,11 +176,11 @@ describe('WAVE 2602 — IK Basic Geometry', () => {
 
 describe('WAVE 2602 — Orientation Matrix', () => {
 
-  it('Floor vs ceiling on same column → divergent pan (yaw:180 inverts X+Z, matrix is single source of truth)', () => {
-    // WAVE 4898 (Forensic Math Alignment):
-    // ceiling usa yaw:180. cy=cos(-π)=-1, sy=0 → local.x=-dx, local.z=-dz.
-    // floor usa yaw:0 (identidad) → local.x=dx, local.z=dz.
-    // Para target con dz>0: ceiling panDeg=atan2(-dx,-dz), floor panDeg=atan2(dx,dz) → hemisferios opuestos.
+  it('Floor vs ceiling on same column → same pan, different tilt (identity matrix, tilt formula is vertical-referenced)', () => {
+    // WAVE 4899 (Pan Unflip):
+    // ceiling/floor ambos usan identidad → local = (dx, dy, dz).
+    // Pan = atan2(dx, dz): mismo resultado para misma proyección XZ → pan igual.
+    // Tilt = atan2(horizontalDist, -local.y): dy opuesto (ceiling dy<0, floor dy>0) → tilt distinto.
     const ceiling = ceilingFixture('ceil', 0, 5, 0)
     const floor   = floorFixture('flr', 0, 0, 0)
     const target: Target3D = { x: 2, y: 2.5, z: 3 }
@@ -188,8 +188,10 @@ describe('WAVE 2602 — Orientation Matrix', () => {
     const rCeiling = solve(ceiling, target)
     const rFloor   = solve(floor, target)
 
-    // Pan diverge: yaw:180 invierte X+Z → ángulos en hemisferios opuestos
-    expect(Math.abs(rCeiling.pan - rFloor.pan)).toBeGreaterThan(20)
+    // Pan igual: misma proyección XZ con identidad de montaje para ambos
+    expect(Math.abs(rCeiling.pan - rFloor.pan)).toBeLessThan(DMX_TOLERANCE)
+    // Tilt distinto: dy opuesto (ceiling apunta abajo, floor apunta arriba)
+    expect(Math.abs(rCeiling.tilt - rFloor.tilt)).toBeGreaterThan(10)
     expect(rCeiling.reachable).toBe(true)
     expect(rFloor.reachable).toBe(true)
   })

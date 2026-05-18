@@ -508,12 +508,16 @@ export function registerAetherIPCHandlers() {
                     orientationRaw === 'wall-right')
                     ? orientationRaw
                     : 'ceiling';
-                // WAVE 4892: el fallback invertByOrientation fue ELIMINADO.
-                // La inversión mecánica del techo (boca abajo) vive ahora en
-                // MOUNT_ANGLES (ceiling/truss-front pitch:180) dentro del IK engine.
-                // Aplicarla además como panInvert/tiltInvert DMX duplica la inversión
-                // en X y deja Z sin tocar → efecto rombo. La matriz es la única
-                // fuente de verdad geométrica.
+                // WAVE 4903: panInvert por orientación RESTAURADO solo para pan.
+                // WAVE 4892 lo eliminó esperando moverlo a MOUNT_ANGLES pitch:180,
+                // pero esa migración nunca se completó y MOUNT_ANGLES.ceiling sigue
+                // siendo pitch:0 (identidad). Sin panInvert, los fixtures ceiling
+                // divergen en lugar de converger → efecto rombo.
+                // tiltInvert NO se invierte: atan2(horizontalDist, -local.y) ya
+                // calcula el tilt en el frame correcto del fixture ceiling.
+                const invertPanByOrientation = installation === 'ceiling' ||
+                    installation === 'truss-front' ||
+                    installation === 'truss-back';
                 // ── WAVE 4881 Fase 2: rango mecánico real ──
                 // Leer panRange/tiltRange en cascada para evitar el fallback ciego
                 // a 540/270. Orden: root-level legacy → capabilities → physics.
@@ -526,7 +530,7 @@ export function registerAetherIPCHandlers() {
                 const profile = buildProfile(id, resolvedPosition, stageIK?.rotation ?? f?.rotation, installation, {
                     panOffset: cal?.panOffset ?? 0,
                     tiltOffset: cal?.tiltOffset ?? 0,
-                    panInvert: cal?.panInvert ?? false,
+                    panInvert: cal?.panInvert ?? invertPanByOrientation,
                     tiltInvert: cal?.tiltInvert ?? false,
                 }, panRangeDeg, tiltRangeDeg, physics?.tiltLimits);
                 profiles.push(profile);

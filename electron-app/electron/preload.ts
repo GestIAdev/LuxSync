@@ -711,7 +711,7 @@ const luxApi = {
    * 
    * @param config - { effect: 'solar_flare', intensity: 0-1 }
    */
-  forceStrike: (config: { effect: string; intensity: number }) => 
+  forceStrike: (config: { effect: string; intensity: number; scope?: string[] }) => 
     ipcRenderer.invoke('lux:forceStrike', config),
 
   // ============================================

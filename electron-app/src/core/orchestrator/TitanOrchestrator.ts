@@ -211,6 +211,14 @@ export interface ForceStrikeConfig {
   source?: 'manual' | 'chronos'
   /** ⚒️ WAVE 2030.4: Hephaestus automation curves */
   hephCurves?: HephAutomationClip
+  /**
+   * ⌨ WAVE 4802-D: Scoped fixture IDs.
+   * When present, the effect is applied ONLY to these fixture IDs.
+   * Propagates from the KeyForge chord payload through the full
+   * IPC → TitanEngine → EffectManager pipeline.
+   * Default (undefined) = all currently active fixtures.
+   */
+  scope?: string[]
 }
 
 /**

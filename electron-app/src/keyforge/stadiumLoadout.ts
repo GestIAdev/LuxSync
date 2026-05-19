@@ -130,14 +130,14 @@ const STADIUM_BINDINGS: readonly KeyBinding[] = [
 ]
 
 const STADIUM_CHORDS: readonly ChordBinding[] = [
-  // 1 + F → strobe only on group 1 (scope not yet implemented; fires group
-  // select silently before strobe — Batch 3 will scope via IPC)
+  // 1 + F → strobe ONLY on group 1 (scope resolved at dispatch via scopeGroupIndex)
   {
     chordId:  'chord-group1-strobe',
     keys:     ['1', 'F'],
     layer:    'base',
     actionId: 'fx-strobe_storm',
     behavior: { kind: 'hold' },
+    scopeGroupIndex: 1,  // ⌨ WAVE 4802-D: scope = group 1 fixture IDs
   },
   {
     chordId:  'chord-group2-strobe',
@@ -145,6 +145,7 @@ const STADIUM_CHORDS: readonly ChordBinding[] = [
     layer:    'base',
     actionId: 'fx-strobe_storm',
     behavior: { kind: 'hold' },
+    scopeGroupIndex: 2,  // ⌨ WAVE 4802-D: scope = group 2 fixture IDs
   },
 ]
 

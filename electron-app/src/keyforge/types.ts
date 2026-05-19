@@ -185,6 +185,14 @@ export interface ChordBinding {
   readonly actionId: string
   readonly behavior: KeyBehavior
   readonly label?:   string
+  /**
+   * ⌨ WAVE 4802-D: Scoped group targeting.
+   * 1-based index into the show's fixture groups (matches `sel-group-N`).
+   * When present, the chord dispatcher resolves the group's fixture IDs at
+   * runtime and sets them as `ActionPayload.scope`, so the action applies
+   * ONLY to those fixtures WITHOUT altering the persistent UI selection.
+   */
+  readonly scopeGroupIndex?: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -210,6 +218,13 @@ export interface ActionPayload {
   readonly modifiers?: ModifierState
   /** Phase of the action — relevant for hold/momentary/charge. */
   readonly phase?:     'press' | 'release' | 'repeat'
+  /**
+   * ⌨ WAVE 4802-D: Scoped fixture IDs.
+   * When present the action applies ONLY to these fixtures, ignoring the
+   * current global UI selection. Populated by chord dispatch when the chord
+   * declares a `scopeGroupIndex`. Default (undefined) = current selection.
+   */
+  readonly scope?:     string[]
 }
 
 /** Default payload for a clean keyboard tap. */

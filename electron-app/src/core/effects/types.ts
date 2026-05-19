@@ -328,6 +328,14 @@ export interface EffectTriggerConfig {
    * @see HephParameterOverlay
    */
   hephCurves?: HephAutomationClip
+  /**
+   * ⌨ WAVE 4802-D: Scoped fixture IDs.
+   * When defined, this effect render pass targets ONLY these fixture IDs.
+   * Populated from `ForceStrikeConfig.scope` via the IPC pipeline.
+   * EffectManager stores this alongside the active effect for downstream
+   * zone-routing use. Empty array = treat as undefined (apply globally).
+   */
+  fixtureScope?: string[]
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

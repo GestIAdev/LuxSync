@@ -42,7 +42,7 @@ import { shouldInterceptKey } from '../keyforge/captureGuard'
 import { normalizeKeyCode, captureModifiers } from '../keyforge/normalizeKeyCode'
 import { resolveActiveLayer } from '../keyforge/layerResolver'
 import { matchChord } from '../keyforge/chordMatcher'
-import { dispatchAction } from '../keyforge/KeyActionDispatcher'
+import { dispatchAction, resolveGroupScope } from '../keyforge/KeyActionDispatcher'
 import { useKeyMapStore, getBindingSnapshot, getChordsSnapshot } from '../stores/keyMapStore'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -364,12 +364,22 @@ export function useKeyboardCortex(): void {
         //  release-phase is skipped for tap behaviors.)
         for (const k of chord.keys) runtime.chordSuppressed.add(k)
 
+        // ⌨ WAVE 4802-D: Resolve fixture scope when the chord declares a target group.
+        // Uses resolveGroupScope (reads luxStageSnapshot groups at dispatch time).
+        // Falls back to undefined → action applies to the current UI selection.
+        let chordScope: string[] | undefined
+        if (chord.scopeGroupIndex !== undefined) {
+          const ids = resolveGroupScope(chord.scopeGroupIndex)
+          if (ids.length > 0) chordScope = ids
+        }
+
         // Dispatch the chord with `press` phase semantics.
         const dispatched = dispatchAction(chord.actionId, {
           source:    'keyforge',
           intensity: 1.0,
           modifiers: mods,
           phase:     'press',
+          scope:     chordScope,
         })
 
         if (dispatched) {

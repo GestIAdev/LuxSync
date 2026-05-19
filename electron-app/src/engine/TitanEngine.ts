@@ -1004,8 +1004,9 @@ export class TitanEngine extends EventEmitter {
     
     // 🧨 WAVE 610: Procesar manual strike si está pendiente (prioridad sobre AI)
     // ⚒️ WAVE 2030.4: Incluye soporte para Hephaestus automation curves
+    // ⌨ WAVE 4802-D: scope forwarded as fixtureScope to EffectManager
     if (this.manualStrikePending) {
-      const { effect, intensity, source, hephCurves } = this.manualStrikePending
+      const { effect, intensity, source, hephCurves, scope } = this.manualStrikePending
       
       this.effectManager.trigger({
         effectType: effect,
@@ -1013,10 +1014,12 @@ export class TitanEngine extends EventEmitter {
         source: source || 'manual',  // 🧠 WAVE 2019.3: Dynamic source (chronos bypasses Shield)
         reason: source === 'chronos' ? 'Chronos timeline trigger' : 'Manual strike from FORCE STRIKE button',
         hephCurves,  // ⚒️ WAVE 2030.4: Pass automation curves to EffectManager
+        fixtureScope: scope && scope.length > 0 ? scope : undefined,  // ⌨ WAVE 4802-D
       })
       
       const hephTag = hephCurves ? ` ⚒️[HEPH]` : ''
-      console.log(`[TitanEngine] 🧨 MANUAL STRIKE: ${effect} @ ${intensity.toFixed(2)}${hephTag}`)
+      const scopeTag = scope && scope.length > 0 ? ` [🎯 ${scope.length} fixtures]` : ''
+      console.log(`[TitanEngine] 🧨 MANUAL STRIKE: ${effect} @ ${intensity.toFixed(2)}${hephTag}${scopeTag}`)
       this.manualStrikePending = null  // Consumir la flag
     }
     // Si la consciencia decidió disparar un efecto, hacerlo (solo si no hay manual strike)

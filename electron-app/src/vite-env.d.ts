@@ -319,7 +319,8 @@ declare global {
     setLiquidLayout: (mode: '4.1' | '7.1') => Promise<{ success: boolean; error?: string }>
     
     // 🧨 WAVE 610: Force Strike - Manual Effect Detonator
-    forceStrike: (config: { effect: string; intensity: number }) => Promise<{ success: boolean }>
+    // ⌨ WAVE 4802-D: scope added — optional fixture-ID array for targeted dispatch
+    forceStrike: (config: { effect: string; intensity: number; scope?: string[] }) => Promise<{ success: boolean }>
     
     // 🎛️ WAVE 62: Vibe Selector
     setVibe: (vibeId: string) => Promise<{ success: boolean; vibeId?: string; error?: string }>

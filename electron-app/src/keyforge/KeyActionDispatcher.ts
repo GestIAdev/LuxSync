@@ -62,7 +62,8 @@ interface LuxBridgeAetherSubset {
 }
 
 interface LuxBridgeSubset {
-  forceStrike?: (args: { effect: string; intensity: number }) => Promise<unknown> | void
+  /** ⌨ WAVE 4802-D: scope added — optional array of fixture IDs to target. */
+  forceStrike?: (args: { effect: string; intensity: number; scope?: string[] }) => Promise<unknown> | void
   setVibe?: (vibeId: string) => Promise<unknown> | void
   cancelAllEffects?: () => Promise<unknown> | void
   aether?: LuxBridgeAetherSubset
@@ -179,6 +180,15 @@ function dispatchSelAction(actionId: string): boolean {
 
   console.warn(`[KeyForge] ⚠️ Unknown sel-* sub-action: ${actionId}`)
   return false
+}
+
+/**
+ * ⌨ WAVE 4802-D: Resolve fixture IDs for a 1-based group index.
+ * Re-exported so `useKeyboardCortex` can populate `ActionPayload.scope`
+ * for chords that declare `scopeGroupIndex`.
+ */
+export function resolveGroupScope(groupIndex: number): string[] {
+  return getGroupFixtureIds(groupIndex)
 }
 
 /** Pull all fixture IDs from the stageStore (renderer-side snapshot). */
@@ -391,7 +401,8 @@ export function dispatchAction(actionId: string, payload: ActionPayload): boolea
   if (actionId.startsWith('fx-')) {
     if (payload.phase === 'release') return true  // only fire on press
     const effectId = actionId.slice(3)
-    lux?.forceStrike?.({ effect: effectId, intensity: payload.intensity })
+    // ⌨ WAVE 4802-D: pass scope when present so the backend targets only those fixtures
+    lux?.forceStrike?.({ effect: effectId, intensity: payload.intensity, scope: payload.scope })
     return true
   }
 

@@ -1,63 +1,204 @@
-WAVE 4901 — KINEMATIC LITMUS TEST
-Test 1: ¿Yaw:180 invierte solo X o también Z?
-@c:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\engine\movement\InverseKinematicsEngine.ts:572-577
-
-ts
-const cy = Math.cos(-yawRad)   // yaw=180° → cos(-π) = -1
-const sy = Math.sin(-yawRad)   // yaw=180° → sin(-π) =  0
-const x1 =  dx * cy + dz * sy  //  dx*(-1) + dz*0   = -dx
-const z1 = -dx * sy + dz * cy  // -dx*0   + dz*(-1) = -dz
-Veredicto: yaw:180 invierte AMBOS — local.x = -dx y local.z = -dz. No solo X.
-
-Test 2: Aislamiento X puro — DMX 191 ¿gira a qué lado?
-IK con identidad, target en dx=+4, dz=0:
-
-panDeg = atan2(4, 0) = +90°
-panDMX = ((90 + 270) / 540) * 255 = (360/540) * 255 ≈ 170 DMX
-Nota: con rango 540° el +90° da 170, no 191. El 191 correspondería a atan2(dx, dz) con otro rango o offset. Pero el análisis de polaridad es el mismo.
-
-Visualizador con pan = 170/255 = 0.667:
-
-@c:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\components\hyperion\views\visualizer\fixtures\HyperionMovingHead3D.tsx:298
-
-ts
-panAngle = -(0.667 - 0.5) * panRangeRad = -0.167 * 9.425 = -1.571 rad = -90°
-panAngle = -90° sobre PAN_AXIS = Y(0,1,0): rotación negativa en Y = gira hacia -X en Three.js (right-hand rule desde arriba: negativo = sentido horario = hacia la derecha del escenario = +X visual desde perspectiva del público).
-
-Polaridad del visualizador: panDMX > 127.5 → panAngle < 0 → gira hacia la derecha (+X visual).
-
-Con dx = +4 (target a la derecha), IK produce panDMX ≈ 170 > 127.5 → visualizador gira a la derecha. Correcto: sin inversión X.
-
-Test 3: Aislamiento Z puro — DMX 127.5 ¿mira al frente o al fondo?
-IK con identidad, target al frente dx=0, dz=+4:
-
-panDeg = atan2(0, 4) = 0°
-panDMX = ((0 + 270) / 540) * 255 = 127.5
-Visualizador con pan = 0.5:
-
-ts
-panAngle = -(0.5 - 0.5) * panRangeRad = 0 rad
-yokeQuat = R_Y(0) = identidad. El yokeRef con rotación cero tiene al headRef apuntando en -Y local. El modelo ceiling = quaternion identidad → -Y local = -Y mundo = hacia el suelo.
-
-DMX 127.5 → yoke sin rotación → el haz apunta verticalmente al suelo (-Y). No apunta ni al frente ni al fondo — es totalmente vertical. La dirección Z solo aparece cuando el tilt es distinto de cero.
-
-Con tilt > 127.5 (inclinado): tiltAngle < 0 sobre TILT_AXIS = X(1,0,0) → rota en -X → haz se mueve de -Y hacia +Z (frente del escenario).
-
-Diagnóstico del Rombo
-Con panDeg = atan2(dx, dz) e identidad, para un target fijo con dz > 0:
-
-Fixture izquierdo (x=-5, pos): dx = targetX - (-5) = targetX + 5 > 0 → panDeg > 0 → panDMX > 127.5 Fixture derecho (x=+5, pos): dx = targetX - 5 < 0 (si targetX < 5) → panDeg < 0 → panDMX < 127.5
-
-El fixture izquierdo gira a la derecha y el derecho a la izquierda → convergen hacia el centro. Matemáticamente no hay rombo en el IK.
-
-La causa probable del rombo observado es el tiltDeg aún siendo positivo para targets por encima del fixture. Con atan2(horizontalDist, -local.y), si el target está encima del fixture (dy > 0), entonces -local.y = -dy < 0 → atan2(hdist, negativo) > 90° → tiltDMX > 127 + range/4. En un fixture de techo (y=6m) apuntando a un target en y=1m (dy=-5): -local.y=+5, correcto. Pero si el sistema envía targets sobre y=6m, el tilt se invierte.
-
-Diagnóstico definitivo
-Test	Resultado
-yaw:180	Invierte X y Z simultáneamente — no es cirugía limpia
-panDMX > 127.5	Gira visual hacia +X (derecha) ✓ sin inversión
-panDMX = 127.5	Yoke neutral, haz al suelo (no hay desfase Z en el pan)
-Rombo	No proviene de inversión X/Z. El atan2(dx, dz) converge correctamente.
-La causa más probable del "rombo" observado no es el eje Z del pan. Es que el visualizador muestra el pan con la fórmula correcta pero el hardware físico tiene la convención de pan invertida respecto al IK — es decir, en el fixture real panDMX > 127.5 gira a la izquierda física, no a la derecha. Eso produce que los fixtures laterales diverjan en lugar de converger.
-
-Recomendación: antes de tocar matrices, activar LUX_DEBUG_IK y comparar los valores [IK] con el movimiento visual en el visualizador para un solo fixture. Si el visualizador muestra convergencia pero el hardware diverge, el fix correcto es panInvert: true en el perfil del fixture o en MOUNT_ANGLES vía roll:180 (que solo invierte X sin tocar Z ni Y).
+[Egress 📤] Universe 0 → HAL. Suma bytes: 4189 | outputEnabled: false | blackout: false
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: pulse | Speed: 0.500 | Amplitude: 0.170 | Fan: 0.000 (0/6) | Output: {pan: 0.682, tilt: 0.638}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: pulse | Speed: 0.500 | Amplitude: 0.170 | Fan: 0.000 (0/6) | Output: {pan: 0.707, tilt: 0.650}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: pulse | Speed: 0.500 | Amplitude: 0.170 | Fan: 0.000 (0/6) | Output: {pan: 0.693, tilt: 0.598}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[NodeArbiter L2-DIAG] frame=14200 | manualOverrides=18 | samples:[fixture-1778098981365:impact,fixture-1778098987590:impact,fixture-1778098998853:impact]
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: pulse | Speed: 0.500 | Amplitude: 0.170 | Fan: 0.000 (0/6) | Output: {pan: 0.665, tilt: 0.651}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: pulse | Speed: 0.500 | Amplitude: 0.170 | Fan: 0.000 (0/6) | Output: {pan: 0.692, tilt: 0.694}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[Aether IPC] 📥 Recibidos overrides manuales: 6
+[Aether IPC] 📥 Overrides aplicados. Total L2 nodes: 18
+[SONDA L2-IPC] Payload recibido: {
+  fixtureIds: 6,
+  pattern: 'circle',
+  speed: 50,
+  amplitude: 17,
+  fan: 0,
+  anchorPan: 0.5,
+  anchorTilt: 0.5
+}
+[CHOREO] Pattern → AI control (Selene)
+[CHOREO] Speed -> AI control
+[CHOREO] Amplitude -> AI control
+[AetherIPC ⚡ WAVE-4916] setManualPattern preservó IK anchor en 6/6 fixtures (pattern=circle)
+[SONDA L2-ENGINE] Multitrack upsert: circle Nodos: 6 IDs: [
+  'fixture-1778098981365:kinetic',
+  'fixture-1778098987590:kinetic',
+  'fixture-1778098998853:kinetic',
+  'fixture-1778099003797:kinetic',
+  'fixture-1778099032397:kinetic',
+  'fixture-1778099037840:kinetic'
+]
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.500 | Amplitude: 0.170 | Fan: 0.000 (0/6) | Output: {pan: 0.735, tilt: 0.712}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.500 | Amplitude: 0.170 | Fan: 0.000 (0/6) | Output: {pan: 0.715, tilt: 0.591}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[Egress 📤] Universe 0 → HAL. Suma bytes: 4327 | outputEnabled: false | blackout: false
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.500 | Amplitude: 0.170 | Fan: 0.000 (0/6) | Output: {pan: 0.667, tilt: 0.675}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[NodeArbiter L2-DIAG] frame=14400 | manualOverrides=18 | samples:[fixture-1778098981365:impact,fixture-1778098987590:impact,fixture-1778098998853:impact]
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.500 | Amplitude: 0.170 | Fan: 0.000 (0/6) | Output: {pan: 0.725, tilt: 0.730}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.500 | Amplitude: 0.170 | Fan: 0.000 (0/6) | Output: {pan: 0.728, tilt: 0.603}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.500 | Amplitude: 0.170 | Fan: 0.000 (0/6) | Output: {pan: 0.668, tilt: 0.647}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.500 | Amplitude: 0.170 | Fan: 0.000 (0/6) | Output: {pan: 0.712, tilt: 0.740}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[NodeArbiter L2-DIAG] frame=14600 | manualOverrides=18 | samples:[fixture-1778098981365:impact,fixture-1778098987590:impact,fixture-1778098998853:impact]
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.500 | Amplitude: 0.170 | Fan: 0.000 (0/6) | Output: {pan: 0.738, tilt: 0.624}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.500 | Amplitude: 0.170 | Fan: 0.000 (0/6) | Output: {pan: 0.674, tilt: 0.621}
+[AetherAduana 🛂] VelClamp:6 Airbag:0 DarkSpin:0 AduanaGate:1320
+[Egress 📤] Universe 0 → HAL. Suma bytes: 4219 | outputEnabled: false | blackout: false
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.500 | Amplitude: 0.170 | Fan: 0.000 (0/6) | Output: {pan: 0.698, tilt: 0.740}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[Aether IPC] 📥 Recibidos overrides manuales: 6
+[Aether IPC] 📥 Overrides aplicados. Total L2 nodes: 18
+[Aether IPC] 📥 Recibidos overrides manuales: 6
+[Aether IPC] 📥 Overrides aplicados. Total L2 nodes: 18
+[Aether IPC] 📥 Recibidos overrides manuales: 6
+[Aether IPC] 📥 Overrides aplicados. Total L2 nodes: 18
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.500 | Amplitude: 0.080 | Fan: 0.000 (0/6) | Output: {pan: 0.723, tilt: 0.658}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.500 | Amplitude: 0.080 | Fan: 0.000 (0/6) | Output: {pan: 0.695, tilt: 0.635}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[NodeArbiter L2-DIAG] frame=14800 | manualOverrides=18 | samples:[fixture-1778098981365:impact,fixture-1778098987590:impact,fixture-1778098998853:impact]
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.500 | Amplitude: 0.080 | Fan: 0.000 (0/6) | Output: {pan: 0.696, tilt: 0.695}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.500 | Amplitude: 0.080 | Fan: 0.000 (0/6) | Output: {pan: 0.723, tilt: 0.671}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[Aether IPC] 📥 Recibidos overrides manuales: 6
+[Aether IPC] 📥 Overrides aplicados. Total L2 nodes: 18
+[Aether IPC] 📥 Recibidos overrides manuales: 6
+[Aether IPC] 📥 Overrides aplicados. Total L2 nodes: 18
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.500 | Amplitude: 0.250 | Fan: 0.000 (0/6) | Output: {pan: 0.693, tilt: 0.555}
+[Aether IPC] 📥 Recibidos overrides manuales: 6
+[Aether IPC] 📥 Overrides aplicados. Total L2 nodes: 18
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.500 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.647, tilt: 0.749}
+[Egress 📤] Universe 0 → HAL. Suma bytes: 4033 | outputEnabled: false | blackout: false
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[NodeArbiter L2-DIAG] frame=15000 | manualOverrides=18 | samples:[fixture-1778098981365:impact,fixture-1778098987590:impact,fixture-1778098998853:impact]
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.500 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.767, tilt: 0.739}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[Aether IPC] 📥 Recibidos overrides manuales: 6
+[Aether IPC] 📥 Overrides aplicados. Total L2 nodes: 18
+[Aether IPC] 📥 Recibidos overrides manuales: 6
+[Aether IPC] 📥 Overrides aplicados. Total L2 nodes: 18
+[Aether IPC] 📥 Recibidos overrides manuales: 6
+[Aether IPC] 📥 Overrides aplicados. Total L2 nodes: 18
+[Aether IPC] 📥 Recibidos overrides manuales: 6
+[Aether IPC] 📥 Overrides aplicados. Total L2 nodes: 18
+[Aether IPC] 📥 Recibidos overrides manuales: 6
+[Aether IPC] 📥 Overrides aplicados. Total L2 nodes: 18
+[Aether IPC] 📥 Recibidos overrides manuales: 6
+[Aether IPC] 📥 Overrides aplicados. Total L2 nodes: 18
+[Aether IPC] 📥 Recibidos overrides manuales: 6
+[Aether IPC] 📥 Overrides aplicados. Total L2 nodes: 18
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.170 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.740, tilt: 0.538}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[Aether IPC] 📥 Recibidos overrides manuales: 6
+[Aether IPC] 📥 Overrides aplicados. Total L2 nodes: 18
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.170 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.687, tilt: 0.525}
+[Aether IPC] 📥 Recibidos overrides manuales: 6
+[Aether IPC] 📥 Overrides aplicados. Total L2 nodes: 18
+[Aether IPC] 📥 Recibidos overrides manuales: 6
+[Aether IPC] 📥 Overrides aplicados. Total L2 nodes: 18
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[Aether IPC] 📥 Recibidos overrides manuales: 6
+[Aether IPC] 📥 Overrides aplicados. Total L2 nodes: 18
+[Aether IPC] 📥 Recibidos overrides manuales: 6
+[Aether IPC] 📥 Overrides aplicados. Total L2 nodes: 18
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.340 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.633, tilt: 0.664}
+[Aether IPC] 📥 Recibidos overrides manuales: 6
+[Aether IPC] 📥 Overrides aplicados. Total L2 nodes: 18
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.713, tilt: 0.808}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[NodeArbiter L2-DIAG] frame=15200 | manualOverrides=18 | samples:[fixture-1778098981365:impact,fixture-1778098987590:impact,fixture-1778098998853:impact]
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.775, tilt: 0.629}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[Egress 📤] Universe 0 → HAL. Suma bytes: 4351 | outputEnabled: false | blackout: false
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.678, tilt: 0.532}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.643, tilt: 0.738}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.750, tilt: 0.777}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.754, tilt: 0.559}
+[NodeArbiter L2-DIAG] frame=15400 | manualOverrides=18 | samples:[fixture-1778098981365:impact,fixture-1778098987590:impact,fixture-1778098998853:impact]
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.646, tilt: 0.582}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.673, tilt: 0.793}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.774, tilt: 0.711}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[Egress 📤] Universe 0 → HAL. Suma bytes: 4381 | outputEnabled: false | blackout: false
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.718, tilt: 0.523}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[NodeArbiter L2-DIAG] frame=15600 | manualOverrides=18 | samples:[fixture-1778098981365:impact,fixture-1778098987590:impact,fixture-1778098998853:impact]
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.633, tilt: 0.659}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.713, tilt: 0.808}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.775, tilt: 0.630}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.678, tilt: 0.531}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.643, tilt: 0.737}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[NodeArbiter L2-DIAG] frame=15800 | manualOverrides=18 | samples:[fixture-1778098981365:impact,fixture-1778098987590:impact,fixture-1778098998853:impact]
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.750, tilt: 0.777}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[Egress 📤] Universe 0 → HAL. Suma bytes: 4231 | outputEnabled: false | blackout: false
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.755, tilt: 0.560}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.646, tilt: 0.582}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.673, tilt: 0.793}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[NodeArbiter L2-DIAG] frame=16000 | manualOverrides=18 | samples:[fixture-1778098981365:impact,fixture-1778098987590:impact,fixture-1778098998853:impact]
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.773, tilt: 0.711}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.719, tilt: 0.523}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.633, tilt: 0.658}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.712, tilt: 0.808}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[Egress 📤] Universe 0 → HAL. Suma bytes: 4021 | outputEnabled: false | blackout: false
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.775, tilt: 0.631}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[NodeArbiter L2-DIAG] frame=16200 | manualOverrides=18 | samples:[fixture-1778098981365:impact,fixture-1778098987590:impact,fixture-1778098998853:impact]
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.679, tilt: 0.531}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.643, tilt: 0.737}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.750, tilt: 0.778}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.755, tilt: 0.561}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[NodeArbiter L2-DIAG] frame=16400 | manualOverrides=18 | samples:[fixture-1778098981365:impact,fixture-1778098987590:impact,fixture-1778098998853:impact]
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.647, tilt: 0.581}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.672, tilt: 0.793}
+[Egress 📤] Universe 0 → HAL. Suma bytes: 3895 | outputEnabled: false | blackout: false
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.773, tilt: 0.712}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.719, tilt: 0.523}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.633, tilt: 0.657}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[NodeArbiter L2-DIAG] frame=16600 | manualOverrides=18 | samples:[fixture-1778098981365:impact,fixture-1778098987590:impact,fixture-1778098998853:impact]
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.712, tilt: 0.808}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-1778098981365:kinetic]: circle | Speed: 0.430 | Amplitude: 0.320 | Fan: 0.000 (0/6) | Output: {pan: 0.775, tilt: 0.632}
+[AetherAduana 🛂] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1320
+[KineticEngine L2] Pistas activas: 6 | Muestra[fixture-17780989813

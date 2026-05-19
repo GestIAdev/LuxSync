@@ -139,7 +139,7 @@ export const HorizontalFader: React.FC<HorizontalFaderProps> = ({
           <span
             className="h-fader__value"
             onClick={() => !disabled && setEditMode(true)}
-            title={isMixed ? 'Valores divergentes en la selección' : 'Click para editar'}
+            title={isMixed ? 'Divergent values in selection' : 'Click to edit'}
           >
             {isMixed ? '——' : `${Math.round(numericValue)}${unit}`}
           </span>

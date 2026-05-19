@@ -432,6 +432,11 @@ export function registerAetherIPCHandlers(): void {
         const amplitudeNorm = (amplitude ?? 50) / 100
         const fanNorm       = (fan       ?? 0)  / 100
 
+        // ⚡ WAVE 4915: Wire-up del slider de Amplitude al Relative Offset Routing.
+        // Mapeo: slider [0..100] → ratio [0..2.0] (50 = 1.0 = legacy default).
+        // El arbiter aplica clamp interno [0, 2] como red de seguridad.
+        arbiter.setRelativeOffsetAmplitude(amplitudeNorm * 2)
+
         // Construir nodeIds en formato Aether: `${fixtureId}:kinetic`
         const nodeIds = fixtureIds.map(id => `${id}:kinetic`)
 
@@ -445,22 +450,49 @@ export function registerAetherIPCHandlers(): void {
         vibeMovementManager.setManualAmplitude(null)
         vibeMovementManager.setKineticFanOffsets({})
 
-        // WAVE 4708 T2 — ANCHOR HYDRATION ATÓMICA:
-        // Si el cliente envió anchorPan/anchorTilt (posición actual del radar),
-        // los inyectamos en _manualOverrides como pan_base/tilt_base ANTES de
-        // activar el motor. Garantiza que el primer tick del engine lea el
-        // anchor correcto en lugar del fallback 0.5 (centro), eliminando el
-        // "snap a centro" cuando el operador activa un patrón sin haber
-        // disparado un _flushClassic previo en el mismo frame lógico.
-        if (typeof anchorPan === 'number' && typeof anchorTilt === 'number'
-            && Number.isFinite(anchorPan) && Number.isFinite(anchorTilt)) {
-          const pan_base  = anchorPan  < 0 ? 0 : anchorPan  > 1 ? 1 : anchorPan
-          const tilt_base = anchorTilt < 0 ? 0 : anchorTilt > 1 ? 1 : anchorTilt
-          for (const nodeId of nodeIds) {
-            // Merge no-destructivo con overrides existentes (preserva otros canales L2).
-            const prev = arbiter.getManualOverride(nodeId) ?? {}
-            arbiter.setManualOverride(nodeId, { ...prev, pan_base, tilt_base })
-          }
+        // ⚡ WAVE 4916 — IK ANCHOR PRESERVATION:
+        // Antes de aceptar el anchor del payload UI (típicamente 0.5/0.5 = centro
+        // muerto), por cada fixture comprobamos si tiene un Spatial Target IK
+        // activo. Si sí, EL IK GANA: usamos `_motorKineticOverrides[pan/tilt_base]`
+        // como anchor. El motor pattern entonces orbita alrededor del target real
+        // del IK en lugar de saltar destructivamente al centro de la sala.
+        //
+        // Prioridad final del anchor por nodo:
+        //   1. IK target activo (motor override) → preserva posición espacial.
+        //   2. anchorPan/anchorTilt del payload UI → ancla del radar clásico.
+        //   3. Sin escritura → engine cae al fallback 0.5 en su tick().
+        //
+        // WAVE 4708 T2 (legacy): la hidratación atómica anti-race-condition
+        // sigue cubierta por las ramas 1 y 2.
+        const fallbackPan  = (typeof anchorPan  === 'number' && Number.isFinite(anchorPan))
+          ? (anchorPan  < 0 ? 0 : anchorPan  > 1 ? 1 : anchorPan)
+          : null
+        const fallbackTilt = (typeof anchorTilt === 'number' && Number.isFinite(anchorTilt))
+          ? (anchorTilt < 0 ? 0 : anchorTilt > 1 ? 1 : anchorTilt)
+          : null
+
+        let ikPreservedCount = 0
+        for (const nodeId of nodeIds) {
+          const ik = arbiter.getMotorKineticOverride(nodeId)
+          const ikPan  = ik && Number.isFinite(ik['pan_base'])  ? ik['pan_base']  : null
+          const ikTilt = ik && Number.isFinite(ik['tilt_base']) ? ik['tilt_base'] : null
+
+          const finalPan  = ikPan  ?? fallbackPan
+          const finalTilt = ikTilt ?? fallbackTilt
+
+          if (finalPan === null || finalTilt === null) continue
+
+          // Merge no-destructivo (preserva otros canales L2 — speed, etc.).
+          const prev = arbiter.getManualOverride(nodeId) ?? {}
+          arbiter.setManualOverride(nodeId, { ...prev, pan_base: finalPan, tilt_base: finalTilt })
+
+          if (ikPan !== null && ikTilt !== null) ikPreservedCount++
+        }
+        if (ikPreservedCount > 0) {
+          console.log(
+            `[AetherIPC ⚡ WAVE-4916] setManualPattern preservó IK anchor en ` +
+            `${ikPreservedCount}/${nodeIds.length} fixtures (pattern=${pattern})`,
+          )
         }
 
         // Activar motor nativo con la configuración completa.
@@ -495,6 +527,12 @@ export function registerAetherIPCHandlers(): void {
         const speed     = (payload?.speed     ?? 50) / 100
         const amplitude = (payload?.amplitude ?? 50) / 100
         const fan       = (payload?.fan       ?? 0)  / 100
+
+        // ⚡ WAVE 4915: live update del Relative Offset Amplitude (sin reiniciar fase).
+        // Mismo mapeo que setManualPattern: [0..100] → [0..2.0].
+        const arbiterForAmp = getTitanOrchestrator().getAetherArbiter()
+        arbiterForAmp.setRelativeOffsetAmplitude(amplitude * 2)
+
         let nodeIds: string[]
         if (Array.isArray(payload?.fixtureIds) && payload.fixtureIds.length > 0) {
           nodeIds = payload.fixtureIds.map(id => `${id}:kinetic`)
@@ -695,6 +733,28 @@ export function registerAetherIPCHandlers(): void {
 
         if (profiles.length === 0) return { success: true, results: {} }
 
+        // ⚡ WAVE 4915: Pre-computar Spatial Distance Scale por fixture (§3.2 del blueprint).
+        // Mantiene el arco visual del patrón VMM aproximadamente constante entre fixtures
+        // cercanos y lejanos al target. Formula lineal simple: scale = d_ref / distance,
+        // recortado a [0.25, 2.0] por el setter del arbiter.
+        const D_REF = 8.0  // metros — distancia "de diseño" (blueprint §3.2)
+        for (let i = 0; i < profiles.length; i++) {
+          const id = validIds[i]
+          const fxPos = profiles[i].position
+          if (!fxPos) continue
+          const dx = fxPos.x - target.x
+          const dy = fxPos.y - target.y
+          const dz = fxPos.z - target.z
+          const distance = Math.sqrt(dx * dx + dy * dy + dz * dz)
+          if (!Number.isFinite(distance) || distance < 1e-6) {
+            // Fixture prácticamente encima del target — máximo arco órbital.
+            arbiter.setSpatialDistanceScale(`${id}:kinetic`, 2.0)
+            continue
+          }
+          const scale = D_REF / distance
+          arbiter.setSpatialDistanceScale(`${id}:kinetic`, scale)
+        }
+
         const results = solveGroupWithFan(
           profiles,
           target,
@@ -757,6 +817,13 @@ export function registerAetherIPCHandlers(): void {
         const arbiter = getTitanOrchestrator().getAetherArbiter()
         for (const id of fixtureIds) {
           arbiter.clearManualOverride(`${id}:kinetic`)
+          // ⚡ WAVE 4915: limpiar la distance scale junto con el override.
+          arbiter.clearSpatialDistanceScale(`${id}:kinetic`)
+        }
+        // Si el caller libera todos los fixtures (release global), limpiar la tabla entera
+        // como red de seguridad ante leaks de scales huérfanas.
+        if (fixtureIds.length === 0) {
+          arbiter.clearAllSpatialDistanceScales()
         }
         return { success: true }
       } catch (err) {

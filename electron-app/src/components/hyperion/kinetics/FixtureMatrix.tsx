@@ -91,7 +91,7 @@ function buildGroupsFromShowGroups(
     .sort((a, b) => a.name.localeCompare(b.name))
 
   if (uncovered.length > 0) {
-    result.push({ label: 'OTROS', key: '__otros__', fixtures: uncovered })
+    result.push({ label: 'OTHERS', key: '__otros__', fixtures: uncovered })
   }
 
   return result
@@ -199,7 +199,7 @@ export const FixtureMatrix: React.FC = () => {
     return (
       <div className="fixture-matrix fixture-matrix--empty">
         <span className="fixture-matrix__empty-icon">⊕</span>
-        <span className="fixture-matrix__empty-text">No hay moving heads en el show</span>
+        <span className="fixture-matrix__empty-text">No moving heads in the show</span>
       </div>
     )
   }
@@ -211,14 +211,14 @@ export const FixtureMatrix: React.FC = () => {
         <button
           className="fixture-matrix__tool-btn"
           onClick={() => selectMultiple(moverFixtures.map(f => f.id), 'replace')}
-          title="Seleccionar todos los moving heads"
+          title="Select all moving heads"
         >
           ALL MOVERS
         </button>
         <button
           className="fixture-matrix__tool-btn fixture-matrix__tool-btn--clear"
           onClick={deselectAll}
-          title="Limpiar selección"
+          title="Clear selection"
           disabled={selectedIds.length === 0}
         >
           CLR
@@ -239,7 +239,7 @@ export const FixtureMatrix: React.FC = () => {
               <button
                 className="fixture-matrix__group-select"
                 onClick={e => handleSelectGroup(group, e)}
-                title={`Seleccionar todos los ${group.label}`}
+                title={`Select all ${group.label}`}
               >
                 {group.fixtures.every(f => selectedSet.has(f.id)) ? '-ALL' : '+ALL'}
               </button>

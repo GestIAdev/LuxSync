@@ -49,9 +49,9 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
   })))
 
   // ── WAVE 4882: modo de paradigma del radar ─────────────────────────────
-  // 'individual' = XY Pad 1:1, 'formacion' = Radar XY multi, 'spatial' = IK 3D.
+  // 'individual' = XY Pad 1:1, 'formation' = Radar XY multi, 'spatial' = IK 3D.
   // CathedralViewMode es estado local UI — no persiste en store ni en escena.
-  type CathedralViewMode = 'individual' | 'formacion' | 'spatial'
+  type CathedralViewMode = 'individual' | 'formation' | 'spatial'
   const [viewMode, setViewMode] = useState<CathedralViewMode>('individual')
 
   // ── Acciones del movementStore — operador → bridge → IPC ──────────────
@@ -190,7 +190,7 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
         <span className="kinetics-cathedral__title">⊕ KINETICS CATHEDRAL</span>
         <span className="kinetics-cathedral__wave">WAVE 4568</span>
         {onClose && (
-          <button className="kinetics-cathedral__close-btn" onClick={onClose} title="Volver a CONTROLS">
+          <button className="kinetics-cathedral__close-btn" onClick={onClose} title="Back to CONTROLS">
             ✕
           </button>
         )}
@@ -222,14 +222,14 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
       {noSelection && (
         <div className="kinetics-cathedral__empty">
           <div className="kinetics-cathedral__empty-icon">⊕</div>
-          <div className="kinetics-cathedral__empty-text">Selecciona fixtures para controlar</div>
+          <div className="kinetics-cathedral__empty-text">Select fixtures to control</div>
         </div>
       )}
 
       {notMoving && (
         <div className="kinetics-cathedral__empty">
           <div className="kinetics-cathedral__empty-icon">⚠</div>
-          <div className="kinetics-cathedral__empty-text">No hay moving heads en la selección</div>
+          <div className="kinetics-cathedral__empty-text">No moving heads in the selection</div>
         </div>
       )}
 
@@ -241,7 +241,7 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
             <button
               className="kc-mode-btn kc-mode-btn--unlock"
               onClick={handleUnlockKinetics}
-              title="Liberar control cinético total (Motor + Ancla L2 + UI)"
+              title="Release full kinetic control (Engine + L2 Anchor + UI)"
             >🔓 UNLOCK</button>
           </div>
 
@@ -250,26 +250,26 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
             <button
               className={`kc-paradigm-btn${viewMode === 'individual' ? ' kc-paradigm-btn--active' : ''}`}
               onClick={() => handleViewMode('individual')}
-              title="Control individual 1:1 — XY Pad clásico"
+              title="1:1 individual control - classic XY Pad"
             >
               <span className="kc-paradigm-btn__icon">⊕</span>
               <span className="kc-paradigm-btn__label">INDIVIDUAL</span>
             </button>
             <button
-              className={`kc-paradigm-btn${viewMode === 'formacion' ? ' kc-paradigm-btn--active' : ''}`}
-              onClick={() => handleViewMode('formacion')}
-              title="Formación multi-fixture — Radar XY con fan"
+              className={`kc-paradigm-btn${viewMode === 'formation' ? ' kc-paradigm-btn--active' : ''}`}
+              onClick={() => handleViewMode('formation')}
+              title="Multi-fixture formation - Radar XY with fan"
             >
               <span className="kc-paradigm-btn__icon">⋮⋮</span>
-              <span className="kc-paradigm-btn__label">FORMACIÓN</span>
+              <span className="kc-paradigm-btn__label">FORMATION</span>
             </button>
             <button
               className={`kc-paradigm-btn kc-paradigm-btn--spatial${viewMode === 'spatial' ? ' kc-paradigm-btn--active' : ''}`}
               onClick={() => handleViewMode('spatial')}
-              title="Apuntado espacial IK 3D — Francotirador"
+              title="IK 3D spatial targeting - Sniper"
             >
               <span className="kc-paradigm-btn__icon">🎯</span>
-              <span className="kc-paradigm-btn__label">ESPACIAL</span>
+              <span className="kc-paradigm-btn__label">SPATIAL</span>
             </button>
           </div>
 

@@ -66,7 +66,7 @@ function resolveRadarComponent(
 
 const RADAR_LABELS: Record<RadarKey, string> = {
   xypad:          '⊕ XY PAD — CLASSIC 1:1',
-  radarxy:        '⊕ RADAR XY — FORMACIÓN',
+  radarxy:        '⊕ RADAR XY — FORMATION',
   spatial:        '⊕ SPATIAL 3D — IK TARGET',
   empty:          '⊕ KIN RADAR',
   'static-warning': '⊕ KIN RADAR — NO MOVING HEADS',
@@ -263,9 +263,8 @@ export const KinRadarViewport: React.FC = () => {
       {staticIds.length > 0 && movingHeadIds.length > 0 && !bannerDismissed && (
         <div className="kin-radar-viewport__static-banner">
           <span className="kin-radar-viewport__static-banner-text">
-            ⚠ {staticIds.length} fixture{staticIds.length !== 1 ? 's' : ''} estático
-            {staticIds.length !== 1 ? 's' : ''} ignorado{staticIds.length !== 1 ? 's' : ''} —
-            controlando {movingHeadIds.length} moving head{movingHeadIds.length !== 1 ? 's' : ''}
+            ⚠ {staticIds.length} static fixture{staticIds.length !== 1 ? 's' : ''} ignored -
+            controlling {movingHeadIds.length} moving head{movingHeadIds.length !== 1 ? 's' : ''}
           </span>
           <button
             className="kin-radar-viewport__static-banner-dismiss"
@@ -324,7 +323,7 @@ export const KinRadarViewport: React.FC = () => {
           <div className="kin-radar-viewport__empty">
             <div className="kin-radar-viewport__empty-icon">⊕</div>
             <div className="kin-radar-viewport__empty-text">
-              Selecciona fixtures en la sidebar KIN para activar el radar
+              Select fixtures in the KIN sidebar to activate the radar
             </div>
           </div>
         )}
@@ -334,8 +333,8 @@ export const KinRadarViewport: React.FC = () => {
           <div className="kin-radar-viewport__empty">
             <div className="kin-radar-viewport__empty-icon">⚠</div>
             <div className="kin-radar-viewport__empty-text">
-              No hay moving heads en la selección.<br />
-              Los fixtures estáticos no tienen control de posición.
+              No moving heads in the selection.<br />
+              Static fixtures do not support position control.
             </div>
           </div>
         )}

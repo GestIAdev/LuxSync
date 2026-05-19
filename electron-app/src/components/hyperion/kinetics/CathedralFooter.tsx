@@ -83,7 +83,7 @@ export const CathedralFooter: React.FC = () => {
                   isPartial ? 'cathedral-footer__chip--partial' : '',
                 ].join(' ')}
                 onClick={() => handleGroupClick(ids)}
-                title={`${label}: ${selCount}/${ids.length} seleccionados`}
+                title={`${label}: ${selCount}/${ids.length} selected`}
               >
                 {label}{' '}
                 <span className="cathedral-footer__chip-count">
@@ -105,7 +105,7 @@ export const CathedralFooter: React.FC = () => {
           <button
             className="cathedral-footer__unlock-btn"
             onClick={handleUnlockAll}
-            title="Liberar todas las posiciones → AI controla"
+            title="Release all positions - AI takes control"
           >
             🔓 UNLOCK ALL
           </button>
@@ -117,7 +117,7 @@ export const CathedralFooter: React.FC = () => {
         <div className="cathedral-footer__locks cathedral-footer__locks--external">
           <span className="cathedral-footer__lock-icon">⛔</span>
           <span className="cathedral-footer__lock-text">
-            MOTOR OVERRIDE: {externalLockCount} fixture{externalLockCount !== 1 ? 's' : ''} bajo control superior
+            MOTOR OVERRIDE: {externalLockCount} fixture{externalLockCount !== 1 ? 's' : ''} under higher-level control
           </span>
         </div>
       )}

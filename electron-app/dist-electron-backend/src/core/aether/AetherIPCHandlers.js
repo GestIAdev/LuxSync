@@ -347,6 +347,10 @@ export function registerAetherIPCHandlers() {
             const speedNorm = (speed ?? 50) / 100;
             const amplitudeNorm = (amplitude ?? 50) / 100;
             const fanNorm = (fan ?? 0) / 100;
+            // ⚡ WAVE 4915: Wire-up del slider de Amplitude al Relative Offset Routing.
+            // Mapeo: slider [0..100] → ratio [0..2.0] (50 = 1.0 = legacy default).
+            // El arbiter aplica clamp interno [0, 2] como red de seguridad.
+            arbiter.setRelativeOffsetAmplitude(amplitudeNorm * 2);
             // Construir nodeIds en formato Aether: `${fixtureId}:kinetic`
             const nodeIds = fixtureIds.map(id => `${id}:kinetic`);
             // Mapear nombre de patrón UI → NativeKineticPattern
@@ -397,6 +401,10 @@ export function registerAetherIPCHandlers() {
             const speed = (payload?.speed ?? 50) / 100;
             const amplitude = (payload?.amplitude ?? 50) / 100;
             const fan = (payload?.fan ?? 0) / 100;
+            // ⚡ WAVE 4915: live update del Relative Offset Amplitude (sin reiniciar fase).
+            // Mismo mapeo que setManualPattern: [0..100] → [0..2.0].
+            const arbiterForAmp = getTitanOrchestrator().getAetherArbiter();
+            arbiterForAmp.setRelativeOffsetAmplitude(amplitude * 2);
             let nodeIds;
             if (Array.isArray(payload?.fixtureIds) && payload.fixtureIds.length > 0) {
                 nodeIds = payload.fixtureIds.map(id => `${id}:kinetic`);
@@ -549,6 +557,28 @@ export function registerAetherIPCHandlers() {
             }
             if (profiles.length === 0)
                 return { success: true, results: {} };
+            // ⚡ WAVE 4915: Pre-computar Spatial Distance Scale por fixture (§3.2 del blueprint).
+            // Mantiene el arco visual del patrón VMM aproximadamente constante entre fixtures
+            // cercanos y lejanos al target. Formula lineal simple: scale = d_ref / distance,
+            // recortado a [0.25, 2.0] por el setter del arbiter.
+            const D_REF = 8.0; // metros — distancia "de diseño" (blueprint §3.2)
+            for (let i = 0; i < profiles.length; i++) {
+                const id = validIds[i];
+                const fxPos = profiles[i].position;
+                if (!fxPos)
+                    continue;
+                const dx = fxPos.x - target.x;
+                const dy = fxPos.y - target.y;
+                const dz = fxPos.z - target.z;
+                const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                if (!Number.isFinite(distance) || distance < 1e-6) {
+                    // Fixture prácticamente encima del target — máximo arco órbital.
+                    arbiter.setSpatialDistanceScale(`${id}:kinetic`, 2.0);
+                    continue;
+                }
+                const scale = D_REF / distance;
+                arbiter.setSpatialDistanceScale(`${id}:kinetic`, scale);
+            }
             const results = solveGroupWithFan(profiles, target, (fanMode ?? 'converge'), fanAmplitude ?? 0, currentPanDMXMap.size > 0 ? currentPanDMXMap : null);
             const serialized = {};
             for (const id of validIds) {
@@ -596,6 +626,13 @@ export function registerAetherIPCHandlers() {
             const arbiter = getTitanOrchestrator().getAetherArbiter();
             for (const id of fixtureIds) {
                 arbiter.clearManualOverride(`${id}:kinetic`);
+                // ⚡ WAVE 4915: limpiar la distance scale junto con el override.
+                arbiter.clearSpatialDistanceScale(`${id}:kinetic`);
+            }
+            // Si el caller libera todos los fixtures (release global), limpiar la tabla entera
+            // como red de seguridad ante leaks de scales huérfanas.
+            if (fixtureIds.length === 0) {
+                arbiter.clearAllSpatialDistanceScales();
             }
             return { success: true };
         }

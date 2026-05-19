@@ -61,7 +61,7 @@ export const ChaosOrderSlider: React.FC<ChaosOrderSliderProps> = ({
           className="chaos-slider__reseed-btn"
           onClick={onReseed}
           disabled={disabled}
-          title="Generar nueva semilla determinista"
+          title="Generate new deterministic seed"
         >
           🔄 RESEED
         </button>

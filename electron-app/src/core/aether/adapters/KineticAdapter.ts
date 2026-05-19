@@ -13,11 +13,15 @@
  * En Split-Brain, el flujo automático (VMM) pertenece a la ruta clásica.
  * El flujo espacial (targetX/Y/Z) queda reservado para overrides manuales L2.
  *
- * MAPPING:
- * El VMM entrega `intent.x`/`intent.y` en [-1,+1]. Se mapean linealmente a
- * normalizados [0,1] para canales pan/tilt:
- *   pan  = (x + 1) / 2
- *   tilt = (y + 1) / 2
+ * MAPPING (WAVE 4914 — Relative Offset Routing):
+ * El VMM entrega `intent.x`/`intent.y` en [-1,+1]. Se emiten DIRECTAMENTE como
+ * offsets relativos en los canales `pan_offset`/`tilt_offset`. La fusión final
+ *   `pan_final  = clamp01(pan_base  + pan_offset  * amp * aspect)`
+ *   `tilt_final = clamp01(tilt_base + tilt_offset * amp * aspect)`
+ * ocurre en `NodeArbiter._applyRelativeOffsetFusion()`. Cuando no hay base IK
+ * (`pan_base` ausente en motor/manual override), el arbiter usa 0.5 como
+ * centro neutro y la fórmula degenera al mapeo legacy `(x+1)/2` con
+ * `amp=1, aspect=0.5`. Cero regresión visual cuando el IK no está activo.
  *
  * NODOS CONTINUOS (fan, mirror ball):
  * Para `isContinuous === true`, el IK no aplica (no hay un "target 3D" para
@@ -30,7 +34,7 @@
  * - La proyección holográfica usa solo aritmética de stack.
  *
  * @module core/aether/adapters/KineticAdapter
- * @version WAVE 4632 — CLASSIC PIPE
+ * @version WAVE 4914 — RELATIVE OFFSET ROUTING
  */
 
 import { NodeFamily } from '../types'
@@ -201,11 +205,13 @@ export class KineticAdapter extends BaseSystem<IKineticNodeData> implements IAet
       this._valuesDict['targetX'] = undefined as any
       this._valuesDict['targetY'] = undefined as any
       this._valuesDict['targetZ'] = undefined as any
-      // Canales clásicos/continuos.
-      this._valuesDict['pan']      = undefined as any
-      this._valuesDict['tilt']     = undefined as any
-      this._valuesDict['rotation'] = undefined as any
-      this._valuesDict['speed']    = undefined as any
+      // Canales clásicos/continuos + canales de offset relativo (WAVE 4914).
+      this._valuesDict['pan']         = undefined as any
+      this._valuesDict['tilt']        = undefined as any
+      this._valuesDict['pan_offset']  = undefined as any
+      this._valuesDict['tilt_offset'] = undefined as any
+      this._valuesDict['rotation']    = undefined as any
+      this._valuesDict['speed']       = undefined as any
 
       // ── 4b. GATE L2-SUPREMACY: si el motor nativo L2 tiene este nodo bajo
       // control manual, NO emitir intent L0 — el engine ya escribió pan_base/tilt_base
@@ -247,6 +253,9 @@ export class KineticAdapter extends BaseSystem<IKineticNodeData> implements IAet
 
       if (isChillVibe) {
         // WAVE 4845: Movimiento de hielo — LFO paramétrico ultra-lento + lerp perezoso.
+        // WAVE 4914: el LFO sigue acumulándose en currentPosition (para continuidad inter-frame),
+        // pero se emite como OFFSET relativo al centro (∈ [-1,+1]) para que el arbiter lo sume
+        // sobre la base IK / radar anchor.
         const tSec = context.nowMs / 1000
         const total = node.stereoTotal > 0 ? node.stereoTotal : 1
         const frac = node.stereoIndex / total
@@ -255,8 +264,9 @@ export class KineticAdapter extends BaseSystem<IKineticNodeData> implements IAet
         const targetTilt = BaseSystem.clamp01(0.5 + Math.cos((TWO_PI * tSec) / 240 + phase) * 0.10)
         const pan = node.currentPosition.pan + (targetPan - node.currentPosition.pan) * GLACIER_LERP_ALPHA
         const tilt = node.currentPosition.tilt + (targetTilt - node.currentPosition.tilt) * GLACIER_LERP_ALPHA
-        this._valuesDict['pan'] = BaseSystem.clamp01(pan)
-        this._valuesDict['tilt'] = BaseSystem.clamp01(tilt)
+        // Convertir [0,1] → [-1,+1] (offset relativo centrado en 0).
+        this._valuesDict['pan_offset']  = clamp(pan  * 2 - 1, -1, 1)
+        this._valuesDict['tilt_offset'] = clamp(tilt * 2 - 1, -1, 1)
         this._valuesDict['speed'] = 0.05
       } else {
         const intent = this._vmm.generateIntent(
@@ -268,9 +278,14 @@ export class KineticAdapter extends BaseSystem<IKineticNodeData> implements IAet
           phaseOffset,
         )
 
-        // ── FLUJO CLÁSICO SPLIT-BRAIN: VMM → pan/tilt normalizados ──────
-        this._valuesDict['pan'] = BaseSystem.clamp01((intent.x + 1) * 0.5)
-        this._valuesDict['tilt'] = BaseSystem.clamp01((intent.y + 1) * 0.5)
+        // ── WAVE 4914 RELATIVE OFFSET ROUTING ────────────────────────────
+        // VMM intent.x / intent.y ∈ [-1,+1] se emiten TAL CUAL como offsets.
+        // El NodeArbiter._applyRelativeOffsetFusion suma con la base IK/anchor:
+        //   pan_final = clamp01(pan_base + pan_offset * amp * aspect)
+        // Cuando no hay base, el arbiter usa 0.5 como centro neutro y la
+        // fórmula degenera al mapeo legacy `(x+1)/2` (con amp=1, aspect=0.5).
+        this._valuesDict['pan_offset']  = clamp(intent.x, -1, 1)
+        this._valuesDict['tilt_offset'] = clamp(intent.y, -1, 1)
         this._valuesDict['speed'] = BaseSystem.clamp01(intent.speed)
       }
 

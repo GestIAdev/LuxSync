@@ -40,8 +40,15 @@
  * - `_opaqueNodeChannels` usa Set pool — sin alloc en hot path.
  * - No se crean nuevos Maps, Sets ni Arrays durante `arbitrate()`.
  *
+ * WAVE 4914 — RELATIVE OFFSET ROUTING:
+ * - Sustituye el pin absoluto del bloque L2-MOTOR por una fusión aditiva final.
+ * - L2 (IK / AetherKineticEngine) escribe `pan_base`/`tilt_base` (centro de gravedad).
+ * - L0 (KineticAdapter VMM) escribe `pan_offset`/`tilt_offset` ∈ [-1,+1] (órbita).
+ * - Fórmula: `pan_final = clamp01(pan_base + pan_offset * amp * aspect * distScale * gimbalFactor)`.
+ * - Gimbal Lock fade en pan_offset cuando tilt_base ≈ 0.5 (haz cenital/nadiral).
+ *
  * @module core/aether/NodeArbiter
- * @version WAVE 4752 — The Smart Gate
+ * @version WAVE 4914 — Relative Offset Routing
  */
 // ── Canales con prioridad estricta por capa (WAVE 4775 / 4752) ─────────────
 // strobe/shutter: prioridad estricta descendente (L4>LP>L3>L2>L1>L0).
@@ -85,6 +92,19 @@ const SLOW_RELEASE_CHANNELS = new Set(['pan', 'tilt', 'zoom', 'focus', 'rotation
 const RELEASE_MS_FAST = 200;
 const RELEASE_MS_SLOW = 1000;
 const PHOTON_TRACER_EVERY_FRAMES = 20;
+// ── WAVE 4914: Relative Offset Routing ────────────────────────────────
+// Factor de escala que mapea offset ∈ [-1,+1] a desviación DMX normalizada.
+// 0.5 = legacy split-brain: `(x+1)/2 = 0.5 + x*0.5` se preserva cuando
+// la base es 0.5 (sin IK), garantizando cero regresión visual.
+const RELATIVE_OFFSET_SCALE_PAN = 0.5;
+const RELATIVE_OFFSET_SCALE_TILT = 0.5;
+// Gimbal Lock fade: cuando el haz apunta cerca del cenit (tilt_base ≈ 0.5),
+// el pan offset rota la carcasa sin desplazamiento visual del beam. Atenuamos
+// el offset de pan dentro de una banda de ±GIMBAL_TILT_FADE_HALFWIDTH alrededor
+// del centro para evitar el "spinning hat" mecánico.
+const GIMBAL_TILT_CENTER = 0.5;
+const GIMBAL_TILT_FADE_HALFWIDTH = 10 / 255; // ~10 DMX byte = ~3.9% norm space
+const RELATIVE_FUSION_LOG_EVERY_FRAMES = 220;
 function isFiniteChannelValue(value) {
     return value !== undefined && Number.isFinite(value);
 }
@@ -195,6 +215,22 @@ export class NodeArbiter {
          * Key = `${fixtureId}:kinetic`, Value = { pan_base, tilt_base } computados.
          */
         this._motorKineticOverrides = new Map();
+        /**
+         * WAVE 4914: Amplitud global del flujo de offset relativo (escala el offset VMM).
+         * 1.0 = legacy (preserva el mapeo `(intent.x+1)/2` cuando no hay base IK).
+         * <1.0 = órbitas más pequeñas. >1.0 = sobrepasa el envelope (se recorta con clamp01).
+         * Seteado externamente desde AetherIPCHandlers / Programmer UI.
+         */
+        this._relativeOffsetAmplitude = 1.0;
+        /**
+         * WAVE 4914: Scale por nodo derivado de la distancia fixture→target.
+         * Pre-computado en patch-time por `applySpatialTarget`. Default 1.0.
+         * Permite que un mismo offset DMX produzca un arco visual similar para
+         * fixtures cercanos y lejanos al objetivo (ver blueprint §3.2).
+         */
+        this._spatialDistanceScales = new Map();
+        /** WAVE 4914: contador throttled de logs de fusión. */
+        this._fusionLogCounter = 0;
     }
     // ── INodeArbiter API ──────────────────────────────────────────────────
     setSystemIntents(bus) {
@@ -552,26 +588,175 @@ export class NodeArbiter {
                 }
             }
         }
-        // WAVE L2-SUPREMACY — L2-MOTOR: output del AetherKineticEngine.
-        // Aplicado DESPUÉS del Grand Master y los inhibit limits — el motor nativo
-        // tiene la última palabra absoluta sobre pan/tilt de sus fixtures.
-        // Nunca mezcla aditiva: el engine ya embedió el anchor_radar en el cómputo.
-        for (const [nodeId, channels] of this._motorKineticOverrides) {
-            let record = this._result.get(nodeId);
-            if (!record) {
-                record = this._acquireRecord();
-                this._result.set(nodeId, record);
-            }
-            const panBase = channels['pan_base'];
-            const tiltBase = channels['tilt_base'];
-            if (isFiniteChannelValue(panBase)) {
-                record['pan'] = panBase < 0 ? 0 : panBase > 1 ? 1 : panBase;
-            }
-            if (isFiniteChannelValue(tiltBase)) {
-                record['tilt'] = tiltBase < 0 ? 0 : tiltBase > 1 ? 1 : tiltBase;
+        // ⚡ WAVE 4914 — RELATIVE OFFSET FUSION (L2 Base + L0 Offset).
+        // Sustituye al antiguo pin absoluto del L2-MOTOR. Para cada nodo:
+        //   pan_final  = clamp01(pan_base  + pan_offset  * amp * aspect * dist_k)
+        //   tilt_final = clamp01(tilt_base + tilt_offset * amp * aspect * dist_k)
+        // Cuando no hay base, fallback a 0.5 (centro neutro → mapeo legacy).
+        // Cuando no hay offset, fallback a 0 (base pura sin órbita).
+        this._applyRelativeOffsetFusion();
+        return this._result;
+    }
+    /**
+     * WAVE 4914 — RELATIVE OFFSET FUSION.
+     *
+     * Mezclador aditivo final: combina la base estática del IK / radar (L2)
+     * con el offset orbital del VMM (L0). Sustituye al gate de exclusión del
+     * antiguo bloque L2-MOTOR.
+     *
+     * Fórmula por canal:
+     *   final = clamp01(base + offset * amp * aspect * distScale * gimbalFactor)
+     *
+     * Donde:
+     *   base       = motor.pan_base ∥ manual.pan_base ∥ 0.5 (centro neutro)
+     *   offset     = record.pan_offset ∥ 0 (sin órbita)
+     *   amp        = this._relativeOffsetAmplitude (slider del Programmer)
+     *   aspect     = RELATIVE_OFFSET_SCALE_PAN (0.5 — preserva legacy)
+     *   distScale  = this._spatialDistanceScales[nodeId] ∥ 1.0
+     *   gimbalFactor = solo en pan, atenuado cuando tilt_base ≈ 0.5
+     *
+     * INVARIANTE: cero alloc. Solo aritmética + lookups O(1) en Maps existentes.
+     */
+    _applyRelativeOffsetFusion() {
+        const amp = this._relativeOffsetAmplitude;
+        const ampPan = amp * RELATIVE_OFFSET_SCALE_PAN;
+        const ampTilt = amp * RELATIVE_OFFSET_SCALE_TILT;
+        // Tracker para telemetría throttled.
+        let sampleNodeId = null;
+        let samplePan = 0;
+        let sampleTilt = 0;
+        let samplePanOffset = 0;
+        let sampleTiltOffset = 0;
+        let sampleBasePan = 0;
+        let sampleBaseTilt = 0;
+        let fusionCount = 0;
+        // Garantizar que cualquier nodo con base IK/motor pero sin L0 offset
+        // siga presente en _result (el VMM puede no haber emitido para él).
+        for (const [nodeId] of this._motorKineticOverrides) {
+            if (!this._result.has(nodeId)) {
+                this._result.set(nodeId, this._acquireRecord());
             }
         }
-        return this._result;
+        for (const [nodeId, record] of this._result) {
+            const panOffset = record['pan_offset'];
+            const tiltOffset = record['tilt_offset'];
+            const hasPanOffset = isFiniteChannelValue(panOffset);
+            const hasTiltOffset = isFiniteChannelValue(tiltOffset);
+            const motor = this._motorKineticOverrides.get(nodeId);
+            const manual = this._manualOverrides.get(nodeId);
+            const motorPan = motor ? motor['pan_base'] : undefined;
+            const motorTilt = motor ? motor['tilt_base'] : undefined;
+            const manualPan = manual ? manual['pan_base'] : undefined;
+            const manualTilt = manual ? manual['tilt_base'] : undefined;
+            const hasMotorPan = isFiniteChannelValue(motorPan);
+            const hasMotorTilt = isFiniteChannelValue(motorTilt);
+            const hasManualPan = isFiniteChannelValue(manualPan);
+            const hasManualTilt = isFiniteChannelValue(manualTilt);
+            const hasBasePan = hasMotorPan || hasManualPan;
+            const hasBaseTilt = hasMotorTilt || hasManualTilt;
+            // Skip nodos sin base ni offset — no son cinéticos en este frame.
+            if (!hasBasePan && !hasBaseTilt && !hasPanOffset && !hasTiltOffset) {
+                continue;
+            }
+            // Resolver base con prioridad motor > manual > 0.5 (centro neutro).
+            const basePan = hasMotorPan ? motorPan
+                : hasManualPan ? manualPan
+                    : 0.5;
+            const baseTilt = hasMotorTilt ? motorTilt
+                : hasManualTilt ? manualTilt
+                    : 0.5;
+            // Escala por distancia (WAVE 4914 §3.2) — default 1.0 si no se configuró.
+            const distScale = this._spatialDistanceScales.get(nodeId) ?? 1.0;
+            // ── Gimbal Lock fade sobre pan_offset ──────────────────────────
+            // Cuando baseTilt ≈ 0.5 (haz cenital/nadiral), pan_offset rota la
+            // carcasa sin mover el haz visualmente. Atenuar a 0 en la zona muerta
+            // y crecer linealmente hasta 1 fuera de la banda de fade.
+            let gimbalFactor = 1;
+            if (hasBaseTilt) {
+                const tiltDist = baseTilt - GIMBAL_TILT_CENTER;
+                const tiltDistAbs = tiltDist < 0 ? -tiltDist : tiltDist;
+                gimbalFactor = tiltDistAbs >= GIMBAL_TILT_FADE_HALFWIDTH
+                    ? 1
+                    : tiltDistAbs / GIMBAL_TILT_FADE_HALFWIDTH;
+            }
+            // ── Fusión aditiva con clamp01 (capa 2 de defensa en profundidad) ────
+            if (hasBasePan || hasPanOffset) {
+                const ox = hasPanOffset ? panOffset : 0;
+                let final = basePan + ox * ampPan * distScale * gimbalFactor;
+                if (final < 0)
+                    final = 0;
+                else if (final > 1)
+                    final = 1;
+                record['pan'] = final;
+            }
+            if (hasBaseTilt || hasTiltOffset) {
+                const oy = hasTiltOffset ? tiltOffset : 0;
+                let final = baseTilt + oy * ampTilt * distScale;
+                if (final < 0)
+                    final = 0;
+                else if (final > 1)
+                    final = 1;
+                record['tilt'] = final;
+            }
+            fusionCount++;
+            if (sampleNodeId === null && (hasBasePan || hasBaseTilt) && (hasPanOffset || hasTiltOffset)) {
+                sampleNodeId = nodeId;
+                samplePan = record['pan'] ?? basePan;
+                sampleTilt = record['tilt'] ?? baseTilt;
+                samplePanOffset = hasPanOffset ? panOffset : 0;
+                sampleTiltOffset = hasTiltOffset ? tiltOffset : 0;
+                sampleBasePan = basePan;
+                sampleBaseTilt = baseTilt;
+            }
+        }
+        // Telemetría throttled — confirma que la fusión está viva en producción.
+        this._fusionLogCounter++;
+        if (this._fusionLogCounter >= RELATIVE_FUSION_LOG_EVERY_FRAMES && sampleNodeId !== null) {
+            this._fusionLogCounter = 0;
+            console.log(`[NodeArbiter ⚡ WAVE-4914] fusion=${fusionCount} amp=${amp.toFixed(2)} ` +
+                `sample[${sampleNodeId}] base=(${sampleBasePan.toFixed(3)},${sampleBaseTilt.toFixed(3)}) ` +
+                `offset=(${samplePanOffset.toFixed(3)},${sampleTiltOffset.toFixed(3)}) ` +
+                `→ final=(${samplePan.toFixed(3)},${sampleTilt.toFixed(3)})`);
+        }
+    }
+    // ── WAVE 4914 PUBLIC API ─ RELATIVE OFFSET CONTROL ─────────────────────
+    /**
+     * WAVE 4914: Setter de la amplitud global del offset relativo.
+     * Llamado por AetherIPCHandlers cuando el slider de Amplitude del
+     * Programmer cambia. Rango [0, 2.0] (>1 sobrepasa el envelope pero el
+     * clamp01 del fusion lo recorta).
+     */
+    setRelativeOffsetAmplitude(value) {
+        if (!Number.isFinite(value))
+            return;
+        this._relativeOffsetAmplitude = value < 0 ? 0 : value > 2 ? 2 : value;
+    }
+    /** WAVE 4914: lectura del valor actual de amplitud (telemetría / UI sync). */
+    getRelativeOffsetAmplitude() {
+        return this._relativeOffsetAmplitude;
+    }
+    /**
+     * WAVE 4914: Setter de la escala de distancia para un nodo.
+     * Pre-computado por AetherIPCHandlers.applySpatialTarget — una vez por
+     * target update, NO por frame. Mantiene el arco visual del patrón VMM
+     * aproximadamente constante para fixtures cercanos y lejanos al objetivo.
+     *
+     * @param nodeId   NodeId formato `${fixtureId}:kinetic`
+     * @param scale    [0.25, 2.0]. Default implícito 1.0 si no se setea.
+     */
+    setSpatialDistanceScale(nodeId, scale) {
+        if (!Number.isFinite(scale))
+            return;
+        const clamped = scale < 0.25 ? 0.25 : scale > 2 ? 2 : scale;
+        this._spatialDistanceScales.set(nodeId, clamped);
+    }
+    /** WAVE 4914: limpia la escala de distancia de un nodo. */
+    clearSpatialDistanceScale(nodeId) {
+        this._spatialDistanceScales.delete(nodeId);
+    }
+    /** WAVE 4914: limpia todas las escalas de distancia (release total). */
+    clearAllSpatialDistanceScales() {
+        this._spatialDistanceScales.clear();
     }
     // ── Métodos internos ──────────────────────────────────────────────────
     /**

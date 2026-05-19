@@ -283,7 +283,13 @@ const ActionPalette: React.FC<ActionPaletteProps> = ({
                 <button
                   key={action.id}
                   type="button"
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('text/plain', action.id)
+                    e.dataTransfer.effectAllowed = 'copy'
+                  }}
                   onClick={() => onLearnAction(action.id)}
+                  title={`${action.label}\n• Click → Arm for Learn mode\n• Drag → Drop on a key to bind`}
                   style={{
                     width: '100%',
                     border: `1px solid ${isArmed ? '#f59e0b' : '#2b3644'}`,
@@ -295,7 +301,7 @@ const ActionPalette: React.FC<ActionPaletteProps> = ({
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     gap: '12px',
-                    cursor: 'pointer',
+                    cursor: 'grab',
                     textAlign: 'left',
                   }}
                 >

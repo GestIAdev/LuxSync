@@ -41,6 +41,7 @@ import {
   type ChordBinding,
   type KeyBinding,
   type KeyCode,
+  type KeyForgeLoadout,
   type ModifierState,
   type LayerId,
   bindingKey,
@@ -58,8 +59,10 @@ export interface ListeningSlot {
 
 export interface KeyMapState {
   // ── Persistent ──
-  readonly bindings: Readonly<Record<string /* `${layer}::${key}` */, KeyBinding>>
-  readonly chords:   readonly ChordBinding[]
+  readonly bindings:     Readonly<Record<string /* `${layer}::${key}` */, KeyBinding>>
+  readonly chords:       readonly ChordBinding[]
+  /** Name of the currently active loadout profile (persisted). */
+  readonly loadoutName:  string
 
   // ── Transient (NOT persisted) ──
   readonly currentLayer:   LayerId
@@ -69,6 +72,16 @@ export interface KeyMapState {
   readonly listeningSlot:  ListeningSlot | null
   readonly lastBoundKey:   string | null   // storageKey — for UI flash feedback
   readonly lastMappingWarning: string | null
+  /**
+   * WAVE 4808: Master Arm toggle.
+   *
+   * When `false` (default on boot), KeyForge does NOT intercept keyboard
+   * events at all — the cortex’s `onKeyDown` / `onKeyUp` are no-ops.
+   * The operator must consciously flip this to `true` before a show.
+   * This state is intentionally ephemeral: it resets to `false` on every
+   * app restart so the system boots in the safe “off” state.
+   */
+  readonly isArmed: boolean
 
   // ── Actions: bindings CRUD ──
   bindKey:     (binding: KeyBinding) => void
@@ -95,6 +108,32 @@ export interface KeyMapState {
   cancelListening:    () => void
   clearLastBound:     () => void
   clearLastMappingWarning: () => void
+
+  // ── Actions: master arm (WAVE 4808) ──
+  /**
+   * Flip the Master Arm on/off. When off, `useKeyboardCortex` drops all
+   * keyboard events immediately — the teclado vuelve a ser un teclado normal.
+   */
+  toggleArmed: () => void
+
+  // ── Actions: loadout I/O (WAVE 4805) ──
+  /**
+   * Snapshot the current bindings + chords into an immutable `KeyForgeLoadout`.
+   * Pure renderer operation — does NOT trigger any IPC or file I/O.
+   * Call `window.lux.keyforge.exportLoadout(loadout)` to persist to disk.
+   */
+  exportCurrentAsLoadout: (name: string) => KeyForgeLoadout
+  /**
+   * Hydrate the store from a `KeyForgeLoadout`.
+   * Replaces ALL bindings and chords; updates `loadoutName`.
+   * Pure renderer operation — localStorage persistence is automatic via Zustand.
+   */
+  importLoadout: (loadout: KeyForgeLoadout) => void
+  /**
+   * Wipe all bindings + chords, then re-apply the stadium-default loadout.
+   * Convenience reset button for the UI.
+   */
+  resetToStadiumDefaults: () => void
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -181,6 +220,7 @@ export const useKeyMapStore = create<KeyMapState>()(
       // ── Initial state ──
       bindings: {},
       chords: [],
+      loadoutName: 'stadium-default',
       currentLayer: 'base',
       isLearning: false,
       isLearnModeActive: false,
@@ -188,6 +228,7 @@ export const useKeyMapStore = create<KeyMapState>()(
       listeningSlot: null,
       lastBoundKey: null,
       lastMappingWarning: null,
+      isArmed: false,      // WAVE 4808: safe-off on every boot
 
       // ── Bindings CRUD ──
       bindKey: (binding) => {
@@ -395,15 +436,77 @@ export const useKeyMapStore = create<KeyMapState>()(
       clearLastBound: () => set({ lastBoundKey: null }),
 
       clearLastMappingWarning: () => set({ lastMappingWarning: null }),
+
+      // ── Master Arm (WAVE 4808) ──
+      toggleArmed: () => {
+        const next = !get().isArmed
+        set({ isArmed: next })
+        console.log(`[KeyForge] 🔐 Master Arm → ${next ? '⚡ ARMED' : '🔒 SAFE'}`)
+      },
+
+      // ── Loadout I/O (WAVE 4805) ──
+      exportCurrentAsLoadout: (name) => {
+        const { bindings, chords } = get()
+        const now = new Date().toISOString()
+        const loadout: KeyForgeLoadout = {
+          id:        crypto.randomUUID(),
+          name,
+          version:   1,
+          createdAt: now,
+          updatedAt: now,
+          bindings:  { ...bindings },
+          chords:    [...chords],
+        }
+        console.log(`[KeyForge] 📦 Loadout snapshot: "${name}" — ${Object.keys(bindings).length} bindings, ${chords.length} chords`)
+        return loadout
+      },
+
+      importLoadout: (loadout) => {
+        console.log(`[KeyForge] 📥 Importing loadout: "${loadout.name}" (v${loadout.version})`)
+        set({
+          bindings:    loadout.bindings,
+          chords:      loadout.chords as ChordBinding[],
+          loadoutName: loadout.name,
+          // Reset transient learn state after a full loadout swap
+          isLearning:          false,
+          isLearnModeActive:   false,
+          pendingMappingAction: null,
+          listeningSlot:       null,
+        })
+        console.log(
+          `[KeyForge] ✅ Loadout applied: ${Object.keys(loadout.bindings).length} bindings, ${loadout.chords.length} chords`,
+        )
+      },
+
+      resetToStadiumDefaults: () => {
+        console.log('[KeyForge] 🔄 Resetting to stadium-default loadout…')
+        // Clear everything, then let initStadiumLoadoutIfEmpty run unconditionally.
+        // We bypass the "skip if bindings present" guard by clearing first.
+        set({ bindings: {}, chords: [], loadoutName: 'stadium-default' })
+        // Deferred import to avoid circular dependency at module load time.
+        import('../keyforge/stadiumLoadout').then(({ initStadiumLoadoutIfEmpty }) => {
+          initStadiumLoadoutIfEmpty()
+        }).catch((err) => {
+          console.error('[KeyForge] ❌ Failed to reset to stadium defaults:', err)
+        })
+      },
     }),
     {
       name: 'luxsync-keyforge',
-      version: 1,
+      version: 2,
       // Persist ONLY user-owned data; transient runtime state is excluded.
       partialize: (state) => ({
-        bindings: state.bindings,
-        chords:   state.chords,
+        bindings:    state.bindings,
+        chords:      state.chords,
+        loadoutName: state.loadoutName,
       }),
+      // v1 → v2: add loadoutName field with default
+      migrate: (persistedState: unknown, fromVersion: number) => {
+        if (fromVersion === 1) {
+          return { ...(persistedState as object), loadoutName: 'stadium-default' }
+        }
+        return persistedState
+      },
     },
   ),
 )
@@ -421,6 +524,10 @@ export const selectPendingMappingAction = (s: KeyMapState): string | null => s.p
 export const selectListening    = (s: KeyMapState): ListeningSlot | null => s.listeningSlot
 export const selectLastBound    = (s: KeyMapState): string | null => s.lastBoundKey
 export const selectLastMappingWarning = (s: KeyMapState): string | null => s.lastMappingWarning
+// ⌨ WAVE 4805: Loadout name (persisted profile label)
+export const selectLoadoutName  = (s: KeyMapState): string => s.loadoutName
+// ⌨ WAVE 4808: Master Arm — ephemeral session flag
+export const selectIsArmed      = (s: KeyMapState): boolean => s.isArmed
 
 export const selectKeyMapActions = (s: KeyMapState) => ({
   bindKey:            s.bindKey,
@@ -439,6 +546,10 @@ export const selectKeyMapActions = (s: KeyMapState) => ({
   clearLayer:         s.clearLayer,
   clearAll:           s.clearAll,
   clearLastMappingWarning: s.clearLastMappingWarning,
+  // ⌨ WAVE 4805: Loadout I/O
+  exportCurrentAsLoadout: s.exportCurrentAsLoadout,
+  importLoadout:          s.importLoadout,
+  resetToStadiumDefaults: s.resetToStadiumDefaults,
 })
 
 // ═══════════════════════════════════════════════════════════════════════════

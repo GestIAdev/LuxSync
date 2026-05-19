@@ -305,7 +305,9 @@ export function useKeyboardCortex(): void {
     const runtime = runtimeRef.current
 
     // ─────────────────────────── KEYDOWN ───────────────────────────
-    const onKeyDown = (e: KeyboardEvent): void => {
+    const onKeyDown = (e: KeyboardEvent): void => {      // WAVE 4808: Master Arm gate — total blackout when not armed.
+      // This check runs BEFORE everything else, including captureGuard.
+      if (!useKeyMapStore.getState().isArmed) return
       // Browser autorepeat → ignore (KeyForge implements its own repeat).
       if (e.repeat) {
         runtime.lastConsumed = false
@@ -425,6 +427,10 @@ export function useKeyboardCortex(): void {
       const tStart = runtime.downTimes.get(key) ?? now
       runtime.heldKeys.delete(key)
       runtime.downTimes.delete(key)
+
+      // WAVE 4808: Master Arm gate — cleanup ran above to prevent ghost key
+      // accumulation (arm could be toggled off while a key was mid-held).
+      if (!useKeyMapStore.getState().isArmed) return
 
       // If this key was suppressed because it joined a chord, skip release dispatch.
       const wasChordSuppressed = runtime.chordSuppressed.delete(key)

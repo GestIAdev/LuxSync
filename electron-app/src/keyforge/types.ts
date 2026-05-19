@@ -268,3 +268,34 @@ export function parseBindingKey(storageKey: string): { layer: LayerId; key: KeyC
     key:   storageKey.slice(idx + 2) as KeyCode,
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LOADOUT — Portable profile for export / import (WAVE 4805)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * A complete, self-contained KeyForge profile.
+ *
+ * Designed for JSON serialization. The `bindings` and `chords` fields are
+ * structurally identical to what `keyMapStore.partialize` persists in
+ * localStorage, so hydrating the store is a direct `set({ bindings, chords })`.
+ *
+ * Schema evolution: bump `version` and add a migrate branch in the store's
+ * `migrate` callback when the shape changes.
+ */
+export interface KeyForgeLoadout {
+  /** Unique identifier — `crypto.randomUUID()` generated at export time. */
+  readonly id:        string
+  /** Human-readable profile name (e.g. "Stadium Default", "Festival Hard"). */
+  readonly name:      string
+  /** Schema version. Current = 1. */
+  readonly version:   1
+  /** ISO 8601 creation timestamp. */
+  readonly createdAt: string
+  /** ISO 8601 last-updated timestamp. */
+  readonly updatedAt: string
+  /** All key bindings, keyed by `${layer}::${keyCode}`. */
+  readonly bindings:  Readonly<Record<string, KeyBinding>>
+  /** All chord bindings. */
+  readonly chords:    readonly ChordBinding[]
+}

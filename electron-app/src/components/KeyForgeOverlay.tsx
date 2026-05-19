@@ -28,6 +28,8 @@ import {
   selectListening,
   selectPendingMappingAction,
   selectLastMappingWarning,
+  selectLoadoutName,
+  selectIsArmed,
 } from '../stores/keyMapStore'
 import type { KeyCode, LayerId } from '../keyforge/types'
 import { MODIFIER_KEYS } from '../keyforge/types'
@@ -178,6 +180,40 @@ const LAYER_META: Record<LayerId, { label: string; color: string }> = {
 // KEY CELL
 // ═══════════════════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ACTION LABEL FORMATTER (WAVE 4807)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Convierte un actionId técnico en una etiqueta legible para el operador.
+ *
+ * Reglas (en orden):
+ *   1. Extrae la parte tras el último prefijo técnico (fx-, sel-, ctrl-, vibe-,
+ *      arb-, tung-, kin-, ui-, action-).
+ *   2. Reemplaza guiones bajos y guiones restantes por espacio.
+ *   3. UPPERCASE — la paleta opera en modo de teatro, no de IDE.
+ *
+ * Ejemplos:
+ *   fx-strobe_storm    → STROBE STORM
+ *   sel-group-3        → GROUP 3
+ *   ctrl-tap-tempo     → TAP TEMPO
+ *   arb-blackout       → BLACKOUT
+ *   tung-nuke-all      → NUKE ALL
+ *   vibe-slot-9        → SLOT 9
+ *   select-ALL         → ALL
+ */
+const KNOWN_PREFIXES = /^(fx|sel|select|ctrl|arb|tung|kin|vibe|ui|action|midi|osc|mqtt)-/
+
+function formatActionLabel(actionId: string): string {
+  // Strip leading known prefix (one pass — greedy stripping stops at first unknown segment)
+  let raw = actionId
+  while (KNOWN_PREFIXES.test(raw)) {
+    raw = raw.replace(KNOWN_PREFIXES, '')
+  }
+  // Normalise separators → space, then uppercase
+  return raw.replace(/[_-]+/g, ' ').trim().toUpperCase()
+}
+
 interface KeyCellProps {
   code: KeyCode
   label: string
@@ -191,6 +227,8 @@ interface KeyCellProps {
   onArmAction: (actionId: string) => void
   onBind: (code: KeyCode) => void
   onUnbind: (code: KeyCode) => void
+  /** WAVE 4806: Drop an action from the ActionPalette onto this key. */
+  onDropAction: (code: KeyCode, actionId: string) => void
   unitPx: number
 }
 
@@ -198,7 +236,7 @@ const UNIT_GAP_PX = 3
 
 const KeyCell: React.FC<KeyCellProps> = ({
   code, label, w, layer, bindings, listeningSlot, lastBoundKey,
-  isLearning, pendingMappingAction, onArmAction, onBind, onUnbind, unitPx,
+  isLearning, pendingMappingAction, onArmAction, onBind, onUnbind, onDropAction, unitPx,
 }) => {
   const isModifier = MODIFIER_KEYS.has(code)
   const storageKey = `${layer}::${code}`
@@ -206,6 +244,9 @@ const KeyCell: React.FC<KeyCellProps> = ({
   const actionId = binding?.actionId
   const family = classifyAction(actionId)
   const colors = FAMILY_COLORS[family]
+
+  // ── WAVE 4806: Drag-over visual state ──
+  const [isDragOver, setIsDragOver] = useState(false)
 
   const isListening = !!listeningSlot
     && listeningSlot.layer === layer
@@ -231,6 +272,27 @@ const KeyCell: React.FC<KeyCellProps> = ({
     onUnbind(code)
   }, [isLearning, isModifier, onUnbind, code])
 
+  // ── WAVE 4806: Drag-and-drop handlers ──
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    if (isModifier) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+    setIsDragOver(true)
+  }, [isModifier])
+
+  const handleDragLeave = useCallback(() => {
+    setIsDragOver(false)
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(false)
+    if (isModifier) return
+    const droppedActionId = e.dataTransfer.getData('text/plain').trim()
+    if (!droppedActionId) return
+    onDropAction(code, droppedActionId)
+  }, [isModifier, code, onDropAction])
+
   const glowColor = isListening
     ? '#fb923c'
     : isFlashing
@@ -243,27 +305,31 @@ const KeyCell: React.FC<KeyCellProps> = ({
 
   const opacity = isModifier ? 0.45 : (family === 'unbound' ? 0.55 : 1)
 
-  const actionShort = actionId
-    ? actionId.length > 12 ? actionId.slice(0, 10) + '…' : actionId
-    : null
+  // Formatted label: strips technical prefixes, normalises separators → UPPERCASE
+  const actionLabel = actionId ? formatActionLabel(actionId) : null
 
   return (
     <div
       className="kfo-key"
       onClick={handleClick}
       onContextMenu={handleContextMenu}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
       title={actionId
-        ? `${layer}::${code} → ${actionId} (${binding?.behavior.kind})\nClick to rebind · Right-click to unbind`
-        : `${layer}::${code} — unbound\nClick to bind`}
+        ? `${layer}::${code} → ${actionId} (${binding?.behavior.kind})\nClick to rebind · Right-click to unbind · Drop action to replace`
+        : `${layer}::${code} — unbound\nClick to bind · Drop action to assign`}
       style={{
         width:    `${widthPx}px`,
         minWidth: `${widthPx}px`,
         height:   `${unitPx}px`,
-        background: bgColor,
-        boxShadow: family !== 'unbound'
+        background: isDragOver ? '#1a2a1a' : bgColor,
+        boxShadow: isDragOver
+          ? `0 0 14px #4ade8090, inset 0 0 6px #4ade8040`
+          : family !== 'unbound'
           ? `0 0 8px ${glowColor}60, inset 0 0 4px ${glowColor}30`
           : 'none',
-        border: `1px solid ${glowColor}`,
+        border: `1px solid ${isDragOver ? '#4ade80' : glowColor}`,
         outline: isArmed ? '2px solid #fb923c' : 'none',
         outlineOffset: isArmed ? '1px' : '0',
         opacity,
@@ -298,22 +364,26 @@ const KeyCell: React.FC<KeyCellProps> = ({
         {label}
       </span>
 
-      {/* Action label (only if bound) */}
-      {actionShort && (
+      {/* Action label (only if bound) — WAVE 4807: formatted, multiline, no overflow */}
+      {actionLabel && (
         <span style={{
-          fontSize: '14px',
+          fontSize: '9px',
           fontFamily: 'monospace',
-          color: `${colors.text}bb`,
-          lineHeight: 1,
-          fontWeight: 500,
+          color: `${colors.text}cc`,
+          lineHeight: 1.1,
+          fontWeight: 700,
+          letterSpacing: '0.04em',
           marginTop: '2px',
-          textOverflow: 'ellipsis',
           overflow: 'hidden',
-          whiteSpace: 'nowrap',
+          whiteSpace: 'normal',
+          wordBreak: 'break-word',
           maxWidth: '100%',
           textAlign: 'center',
+          display: '-webkit-box',
+          WebkitLineClamp: 3,
+          WebkitBoxOrient: 'vertical',
         }}>
-          {actionShort}
+          {actionLabel}
         </span>
       )}
 
@@ -456,6 +526,8 @@ const KeyForgeView: React.FC = () => {
   const pendingMappingAction = useKeyMapStore(selectPendingMappingAction)
   const lastMappingWarning = useKeyMapStore(selectLastMappingWarning)
   const lastBoundKey = useKeyMapStore(s => s.lastBoundKey)
+  const loadoutName  = useKeyMapStore(selectLoadoutName)
+  const isArmed      = useKeyMapStore(selectIsArmed)
 
   const {
     setLayer,
@@ -466,7 +538,42 @@ const KeyForgeView: React.FC = () => {
     clearLastMappingWarning,
     unbindKey,
     clearLayer,
+    exportCurrentAsLoadout,
+    importLoadout,
+    resetToStadiumDefaults,
+    toggleArmed,
   } = useKeyMapStore.getState()
+
+  // ── Loadout handlers (WAVE 4805) ─────────────────────────────────────────
+  const handleExportLoadout = useCallback(async () => {
+    const name = window.prompt('Nombre del perfil KeyForge:', loadoutName ?? 'mi-perfil')
+    if (name === null) return // cancelled
+    const trimmed = name.trim() || loadoutName
+    const loadout = exportCurrentAsLoadout(trimmed)
+    try {
+      const result = await window.lux.keyforge.exportLoadout(loadout)
+      if (!result.success && !result.cancelled) {
+        console.error('[KeyForge] Export failed:', result.error)
+      }
+    } catch (err) {
+      console.error('[KeyForge] exportLoadout IPC error:', err)
+    }
+  }, [loadoutName, exportCurrentAsLoadout])
+
+  const handleImportLoadout = useCallback(async () => {
+    try {
+      const result = await window.lux.keyforge.importLoadout()
+      if (result.cancelled) return
+      if (!result.success || !result.loadout) {
+        console.error('[KeyForge] Import failed:', result.error)
+        return
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      importLoadout(result.loadout as any)
+    } catch (err) {
+      console.error('[KeyForge] importLoadout IPC error:', err)
+    }
+  }, [importLoadout])
 
   // ── Local state ──────────────────────────────────────────────────────────
   const [viewLayer, setViewLayer] = useState<LayerId>('base')
@@ -582,6 +689,20 @@ const KeyForgeView: React.FC = () => {
     unbindKey(viewLayer, code)
   }, [unbindKey, viewLayer])
 
+  // ── WAVE 4806: Drag-and-drop → direct binding (bypasses learn mode) ──
+  const handleDropAction = useCallback((code: KeyCode, droppedActionId: string) => {
+    // Unconditionally replace: remove old binding then apply new one.
+    // This is the user's explicit intent when dragging.
+    unbindKey(viewLayer, code)
+    const { bindKey: storeBindKey } = useKeyMapStore.getState()
+    storeBindKey({
+      layer:    viewLayer,
+      key:      code,
+      actionId: droppedActionId,
+      behavior: { kind: 'tap' },
+    })
+  }, [unbindKey, viewLayer])
+
   // Count bound keys in active layer
   const boundCount = useMemo(() => {
     const prefix = `${viewLayer}::`
@@ -651,6 +772,92 @@ const KeyForgeView: React.FC = () => {
 
             {/* Spacer */}
             <div style={{ flex: 1 }} />
+
+            {/* ── WAVE 4805: Loadout buttons ────────────────────────────── */}
+            <button
+              onClick={handleExportLoadout}
+              title='Export Loadout to JSON'
+              style={{
+                fontSize: '10px',
+                fontFamily: 'monospace',
+                letterSpacing: '0.08em',
+                color: '#34d399',
+                background: '#0a1a12',
+                border: '1px solid #34d39950',
+                borderRadius: '4px',
+                padding: '3px 10px',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              ↑ EXPORT
+            </button>
+
+            <button
+              onClick={handleImportLoadout}
+              title='Import Loadout from JSON'
+              style={{
+                fontSize: '10px',
+                fontFamily: 'monospace',
+                letterSpacing: '0.08em',
+                color: '#60a5fa',
+                background: '#0a1020',
+                border: '1px solid #60a5fa50',
+                borderRadius: '4px',
+                padding: '3px 10px',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              ↓ IMPORT
+            </button>
+
+            <button
+              onClick={resetToStadiumDefaults}
+              title='Reset to default bindings'
+              style={{
+                fontSize: '10px',
+                fontFamily: 'monospace',
+                letterSpacing: '0.08em',
+                color: '#f87171',
+                background: '#1a0a0a',
+                border: '1px solid #f8717150',
+                borderRadius: '4px',
+                padding: '3px 10px',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              ↺ RESET
+            </button>
+
+            {/* ── WAVE 4808: Master Arm Toggle ──────────────────────────── */}
+            <button
+              onClick={toggleArmed}
+              title={isArmed
+                ? 'Toggle Master Arm (Disable Keyboard Control)'
+                : 'Toggle Master Arm (Enable Keyboard Control)'}
+              style={{
+                fontSize: '10px',
+                fontFamily: 'monospace',
+                letterSpacing: '0.1em',
+                fontWeight: 900,
+                color:      isArmed ? '#000000'   : '#6b7280',
+                background: isArmed ? '#dc2626'   : '#1a1a1a',
+                border:     `2px solid ${isArmed ? '#ef4444' : '#374151'}`,
+                borderRadius: '4px',
+                padding: '3px 12px',
+                cursor: 'pointer',
+                textShadow: isArmed ? '0 1px 2px rgba(0,0,0,0.6)' : 'none',
+                boxShadow:  isArmed
+                  ? '0 0 18px #ef444480, inset 0 0 6px #fca5a520'
+                  : 'none',
+                transition: 'all 0.2s',
+                animation:  isArmed ? 'kfo-pulse 1.6s ease-in-out infinite' : 'none',
+              }}
+            >
+              {isArmed ? '⚡ ARMED' : '🔒 SAFE'}
+            </button>
 
             {/* Learn mode toggle */}
             <button
@@ -765,6 +972,7 @@ const KeyForgeView: React.FC = () => {
                           onArmAction={armActionFromPalette}
                           onBind={handleBind}
                           onUnbind={handleUnbind}
+                          onDropAction={handleDropAction}
                           unitPx={UNIT_PX}
                         />
                       ))}

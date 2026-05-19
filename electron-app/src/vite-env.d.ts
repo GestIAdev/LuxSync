@@ -1039,6 +1039,32 @@ declare global {
         warnings?: string[]
       }) => void) => () => void
     }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // ⌨ WAVE 4805: KEYFORGE — Loadout persistence
+    // ─────────────────────────────────────────────────────────────────────
+    keyforge: {
+      /**
+       * Open a native Save As dialog and write the given loadout as JSON.
+       * @returns `{ success, filePath }` on success, `{ success: false, cancelled }` if dismissed.
+       */
+      exportLoadout: (loadout: import('./keyforge/types').KeyForgeLoadout) => Promise<{
+        success:    boolean
+        filePath?:  string
+        cancelled?: boolean
+        error?:     string
+      }>
+      /**
+       * Open a native Open dialog, read and validate a `.kf.json` loadout file.
+       * @returns `{ success, loadout }` on success, `{ success: false, error }` on failure.
+       */
+      importLoadout: () => Promise<{
+        success:    boolean
+        loadout?:   import('./keyforge/types').KeyForgeLoadout
+        cancelled?: boolean
+        error?:     string
+      }>
+    }
   }
 }
 } // End declare global

@@ -124,6 +124,9 @@ export interface HephFixtureOutput {
   normalizedRgb?: { r: number; g: number; b: number }
   // WAVE 3521: true if the originating clip has effectType === 'heph_custom'
   isCustomClip: boolean
+  // 🏛️ WAVE 2483: ID of the source clip (for spatialBehavior lookup in DynamicEffectRegistry).
+  // Optional + lazy: legacy code paths that don't stamp it remain valid.
+  clipId?: string
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -550,7 +553,7 @@ export class HephaestusRuntime {
           this._normRgbBuf.g = rgb.g / 255
           this._normRgbBuf.b = rgb.b / 255
 
-          this.writeOutput(fp.fixtureId, 'all', paramName, 0, rgb, undefined, 0, this._normRgbBuf, isCustomThisClip)
+          this.writeOutput(fp.fixtureId, 'all', paramName, 0, rgb, undefined, 0, this._normRgbBuf, isCustomThisClip, active.clip.id)
         } else {
           const rawValue = active.evaluator.getValue(paramName, fixtureTimeMs)
           const withIntensity = rawValue * active.intensity
@@ -559,7 +562,7 @@ export class HephaestusRuntime {
             ? scaleToDMX16(withIntensity).fine
             : undefined
 
-          this.writeOutput(fp.fixtureId, 'all', paramName, scaledValue, undefined, fine, withIntensity, undefined, isCustomThisClip)
+          this.writeOutput(fp.fixtureId, 'all', paramName, scaledValue, undefined, fine, withIntensity, undefined, isCustomThisClip, active.clip.id)
         }
       }
     }
@@ -612,7 +615,7 @@ export class HephaestusRuntime {
         this._normRgbBuf.b = rgb.b / 255
 
         for (const fixtureId of targetFixtureIds) {
-          this.writeOutput(fixtureId, 'all', paramName, 0, rgb, undefined, 0, this._normRgbBuf, isCustomThisClip)
+          this.writeOutput(fixtureId, 'all', paramName, 0, rgb, undefined, 0, this._normRgbBuf, isCustomThisClip, active.clip.id)
         }
         continue
       }
@@ -626,7 +629,7 @@ export class HephaestusRuntime {
         : undefined
 
       for (const fixtureId of targetFixtureIds) {
-        this.writeOutput(fixtureId, 'all', paramName, scaledValue, undefined, fine, withIntensity, undefined, isCustomThisClip)
+        this.writeOutput(fixtureId, 'all', paramName, scaledValue, undefined, fine, withIntensity, undefined, isCustomThisClip, active.clip.id)
       }
     }
   }
@@ -671,6 +674,7 @@ export class HephaestusRuntime {
         normalizedValue: 0,
         normalizedRgb: undefined,
         isCustomClip: false,
+        clipId: undefined,
       }
     }
     this.outputCapacity = newCapacity
@@ -690,7 +694,8 @@ export class HephaestusRuntime {
     fine?: number,
     normalizedValue?: number,
     normalizedRgb?: { r: number; g: number; b: number },
-    isCustomClip?: boolean
+    isCustomClip?: boolean,
+    clipId?: string
   ): void {
     // Auto-grow if needed (rare — only if capacity estimate was wrong)
     if (this.outputCursor >= this.outputCapacity) {
@@ -707,6 +712,7 @@ export class HephaestusRuntime {
     out.normalizedValue = normalizedValue ?? 0
     out.normalizedRgb = normalizedRgb
     out.isCustomClip = isCustomClip ?? false
+    out.clipId = clipId
     // out.source is always 'hephaestus-runtime' — set once at buffer creation
   }
 

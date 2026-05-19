@@ -14,6 +14,9 @@ import { NodeFamily, type IntentSource, type NodeId } from '../types'
 import type { INodeGraph } from '../node-graph'
 import type { INodeArbiter, INodeIntent } from '../intent-bus'
 import type { HephFixtureOutput } from '../../hephaestus/runtime/HephaestusRuntime'
+// 🏛️ WAVE 2483: Registry lookup for spatialBehavior (relative_offset routing).
+import { getDynamicEffectRegistry, type DynamicEffectRegistry } from '../../arsenal/DynamicEffectRegistry'
+import type { SpatialBehavior } from '../../arsenal/lfxTypes'
 
 // L3+ priority: after IntentComposer effects (300) so Heph custom curves dominate
 const L3_HEPH_PRIORITY = 350
@@ -30,6 +33,7 @@ interface MutableNodeIntent {
 
 export class HephaestusAetherAdapter {
   private readonly _graph: INodeGraph
+  private readonly _registry: DynamicEffectRegistry
 
   // Zero-alloc intent pool: grows during warm-up, then stabilizes
   private readonly _intentPool: MutableNodeIntent[] = []
@@ -38,8 +42,14 @@ export class HephaestusAetherAdapter {
 
   private readonly _emptyIntents: readonly INodeIntent[] = Object.freeze([])
 
-  constructor(graph: INodeGraph) {
+  // 🏛️ WAVE 2483: per-frame cached lookup of (clipId → spatialBehavior).
+  // Avoids hitting the registry once per output (N outputs → 1 lookup per
+  // distinct clip). Cleared at the start of every ingest().
+  private readonly _spatialCache = new Map<string, SpatialBehavior>()
+
+  constructor(graph: INodeGraph, registry?: DynamicEffectRegistry) {
     this._graph = graph
+    this._registry = registry ?? getDynamicEffectRegistry()
   }
 
   /**
@@ -57,6 +67,7 @@ export class HephaestusAetherAdapter {
 
     this._intentCursor = 0
     this._frameIntents.length = 0
+    this._spatialCache.clear()
 
     // Group outputs by fixtureId so we can emit one intent per node per family
     // We process outputs sequentially: each output targets one fixture + one param.
@@ -78,6 +89,10 @@ export class HephaestusAetherAdapter {
       const family = _paramFamily(param)
       if (family === null) continue
 
+      // 🏛️ WAVE 2483: resolve spatialBehavior for this output's source clip.
+      // Defaults to 'absolute' for clips without a registry entry (legacy behaviour).
+      const behavior = this._resolveSpatialBehavior(output.clipId)
+
       // Find the node for this fixture that belongs to the target family
       for (let j = 0; j < nodeIds.length; j++) {
         const nodeId = nodeIds[j]
@@ -86,7 +101,7 @@ export class HephaestusAetherAdapter {
 
         // Acquire an intent from the pool and populate values
         const intent = this._acquireIntent(nodeId)
-        _populateValues(intent.values, param, output)
+        _populateValues(intent.values, param, output, behavior)
         this._frameIntents.push(intent as INodeIntent)
         // Only one node per family per fixture — stop searching
         break
@@ -94,6 +109,26 @@ export class HephaestusAetherAdapter {
     }
 
     arbiter.setHephaestusIntents(this._frameIntents)
+  }
+
+  /**
+   * 🏛️ WAVE 2483: Resolve spatialBehavior for a given clipId.
+   *
+   *   - No clipId               → 'absolute' (legacy, no rewrite).
+   *   - clipId not in registry  → 'absolute' (legacy clip, no rewrite).
+   *   - clipId in registry      → entry.spatialBehavior.
+   *
+   * Per-frame memoization avoids repeated Map lookups when many outputs
+   * share the same clipId (typical for a multi-fixture sweep).
+   */
+  private _resolveSpatialBehavior(clipId: string | undefined): SpatialBehavior {
+    if (!clipId) return 'absolute'
+    const cached = this._spatialCache.get(clipId)
+    if (cached !== undefined) return cached
+    const entry = this._registry.getEntry(clipId)
+    const behavior: SpatialBehavior = entry?.spatialBehavior ?? 'absolute'
+    this._spatialCache.set(clipId, behavior)
+    return behavior
   }
 
   /**
@@ -167,11 +202,21 @@ function _paramFamily(param: string): NodeFamily | null {
 /**
  * Populates the mutable values dict from a HephFixtureOutput.
  * All values are normalized 0-1 (Aether contract).
+ *
+ * 🏛️ WAVE 2483: When `behavior === 'relative_offset'`, the kinetic params
+ * pan/tilt are remapped to pan_offset/tilt_offset and the value is
+ * transformed [0,1] → [-1,+1] via `2v - 1`. The convention is:
+ *   - 0.5 in the curve  → offset 0   (no displacement of IK base)
+ *   - 0.0 in the curve  → offset -1  (full negative)
+ *   - 1.0 in the curve  → offset +1  (full positive)
+ * The NodeArbiter then sums the offset onto the IK-resolved pan/tilt base
+ * via _applyRelativeOffsetFusion (WAVE 4914).
  */
 function _populateValues(
   values: Record<string, number>,
   param: string,
   output: HephFixtureOutput,
+  behavior: SpatialBehavior = 'absolute',
 ): void {
   switch (param) {
     case 'intensity':
@@ -196,10 +241,18 @@ function _populateValues(
       values['amber'] = output.normalizedValue
       break
     case 'pan':
-      values['pan'] = output.normalizedValue
+      if (behavior === 'relative_offset') {
+        values['pan_offset'] = _toOffset(output.normalizedValue)
+      } else {
+        values['pan'] = output.normalizedValue
+      }
       break
     case 'tilt':
-      values['tilt'] = output.normalizedValue
+      if (behavior === 'relative_offset') {
+        values['tilt_offset'] = _toOffset(output.normalizedValue)
+      } else {
+        values['tilt'] = output.normalizedValue
+      }
       break
     case 'speed':
       values['speed'] = output.normalizedValue
@@ -225,4 +278,10 @@ function _populateValues(
     default:
       break
   }
+}
+
+/** 🏛️ WAVE 2483: [0,1] → [-1,+1] linear remap for relative offsets. */
+function _toOffset(v: number): number {
+  const o = 2 * v - 1
+  return o < -1 ? -1 : o > 1 ? 1 : o
 }

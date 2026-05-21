@@ -216,6 +216,9 @@ export const GroupsPanel: React.FC<GroupsPanelProps> = ({ onSwitchToControls }) 
                   className={`group-btn user-group ${isGroupActive(group.fixtureIds) ? 'active' : ''}`}
                   onClick={() => handleGroupClick(group.fixtureIds)}
                 >
+                  {group.hotkey && (
+                    <span className="group-hotkey-badge">{group.hotkey}</span>
+                  )}
                   <span className="group-name">{group.name}</span>
                   <span className="group-count">({group.fixtureIds.length})</span>
                 </button>

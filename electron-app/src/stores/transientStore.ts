@@ -21,6 +21,7 @@
  */
 
 import type { SeleneTruth } from '../core/protocol/SeleneProtocol'
+import { useEffectsStore } from './effectsStore'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MUTABLE REFERENCE - "The Ghost Store"
@@ -88,6 +89,20 @@ export function injectTransientTruth(truth: SeleneTruth): void {
     for (let i = 0; i < fixtures.length; i++) {
       const f = fixtures[i]
       if (f?.id) fixtureIndex.set(f.id, f)
+    }
+
+    // WAVE 4914: Blackout mirror — zero renderer state when blackout is active.
+    // The DMX egress applies soft-blackout on hardware; the renderer must mirror
+    // this so the 3D simulator reflects reality. Pan/tilt preserved (same as egress).
+    if (useEffectsStore.getState().blackout) {
+      for (let i = 0; i < fixtures.length; i++) {
+        const f = fixtures[i] as any
+        if (!f) continue
+        f.dimmer = 0
+        f.intensity = 0
+        f.active = false
+        if (f.color) { f.color.r = 0; f.color.g = 0; f.color.b = 0 }
+      }
     }
 
     // 🔍 WAVE 4573 Phase 0: ID MISMATCH DIAGNOSTIC
@@ -186,6 +201,22 @@ export function injectHotFrame(hotFrame: any): void {
       }
 
       if (hot.dimmer > 0) activeCount++
+    }
+
+    // WAVE 4914: Blackout mirror (hot-frame path, 44Hz).
+    // After patching real dimmer values, if blackout is active in the renderer
+    // store, zero-out luminance channels so the 3D simulator goes dark —
+    // matching what the DMX egress sends to hardware. Pan/tilt untouched.
+    if (useEffectsStore.getState().blackout) {
+      for (const f of existingFixtures) {
+        if (!f) continue
+        const mutable = f as any
+        mutable.dimmer = 0
+        mutable.intensity = 0
+        mutable.active = false
+        if (f.color) { f.color.r = 0; f.color.g = 0; f.color.b = 0 }
+      }
+      activeCount = 0
     }
 
     transientRef.current.hardware.fixturesActive = activeCount

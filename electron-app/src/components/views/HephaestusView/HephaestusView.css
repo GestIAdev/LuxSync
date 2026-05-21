@@ -2330,3 +2330,67 @@
   opacity: 0.5;
   pointer-events: none;
 }
+
+/* ===========================================================================
+ * WAVE 4811: SpatialBehavior Section (inside PhaseControls floating HUD)
+ * =========================================================================== */
+
+.heph-phase__section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 107, 43, 0.1);
+}
+
+.heph-phase__section--spatial {
+  margin-bottom: 2px;
+}
+
+.heph-phase__section-header {
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: rgba(255, 107, 43, 0.45);
+  text-transform: uppercase;
+}
+
+.heph-phase__spatial-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.heph-phase__spatial-btn {
+  padding: 6px 8px;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.heph-phase__spatial-btn:hover:not(:disabled) {
+  border-color: rgba(255, 107, 43, 0.3);
+  color: rgba(255, 107, 43, 0.7);
+  background: rgba(255, 107, 43, 0.06);
+}
+
+.heph-phase__spatial-btn--active {
+  background: rgba(255, 107, 43, 0.12) !important;
+  border-color: rgba(255, 107, 43, 0.5) !important;
+  color: #ff6b2b !important;
+}
+
+.heph-phase__spatial-hint {
+  font-size: 0.55rem;
+  color: rgba(255, 255, 255, 0.2);
+  font-style: italic;
+  margin: 0;
+  line-height: 1.4;
+}

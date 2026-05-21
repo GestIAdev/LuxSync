@@ -18,6 +18,7 @@
  */
 
 import { useKeyMapStore } from '../stores/keyMapStore'
+import { bindingKey } from './types'
 import type { KeyBinding, ChordBinding } from './types'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -40,6 +41,19 @@ const STADIUM_BINDINGS: readonly KeyBinding[] = [
   { layer: 'base', key: '8', actionId: 'sel-group-8', behavior: { kind: 'tap' } },
   { layer: 'base', key: '9', actionId: 'sel-group-9', behavior: { kind: 'tap' } },
   { layer: 'base', key: '0', actionId: 'sel-all',     behavior: { kind: 'tap' } },
+
+  // ── ASSIGN GROUPS: Ctrl+1..9 (RTS style) ─────────────────────────────────
+  // Ctrl activates the `cmd` layer automatically (layerResolver.ts line 55).
+  // Selection → Ctrl+N → assigns current selection to group N.
+  { layer: 'cmd', key: '1', actionId: 'sel-assign-group-1', behavior: { kind: 'tap' } },
+  { layer: 'cmd', key: '2', actionId: 'sel-assign-group-2', behavior: { kind: 'tap' } },
+  { layer: 'cmd', key: '3', actionId: 'sel-assign-group-3', behavior: { kind: 'tap' } },
+  { layer: 'cmd', key: '4', actionId: 'sel-assign-group-4', behavior: { kind: 'tap' } },
+  { layer: 'cmd', key: '5', actionId: 'sel-assign-group-5', behavior: { kind: 'tap' } },
+  { layer: 'cmd', key: '6', actionId: 'sel-assign-group-6', behavior: { kind: 'tap' } },
+  { layer: 'cmd', key: '7', actionId: 'sel-assign-group-7', behavior: { kind: 'tap' } },
+  { layer: 'cmd', key: '8', actionId: 'sel-assign-group-8', behavior: { kind: 'tap' } },
+  { layer: 'cmd', key: '9', actionId: 'sel-assign-group-9', behavior: { kind: 'tap' } },
 
   // ── SELECT LAYER: additive group pick (Shift + held-S + digit) ────────────
   // (S as pivot is handled by LayerResolver; below are the digit bindings
@@ -177,6 +191,55 @@ export function initStadiumLoadoutIfEmpty(): void {
     `[KeyForge] ✅ Stadium loadout applied: ${STADIUM_BINDINGS.length} bindings, `
     + `${STADIUM_CHORDS.length} chords.`,
   )
+}
+
+/**
+ * WAVE 4914: Migration patch — inject any MISSING stadium defaults into an
+ * existing store WITHOUT touching slots the user has already customized.
+ *
+ * Logic per binding:
+ *   - Slot empty           → add the stadium default ✓
+ *   - Slot = same action   → no-op (already correct) ✓
+ *   - Slot = user action   → skip silently (user wins) ✓
+ *
+ * Logic per chord:
+ *   - chordId not found    → add ✓
+ *   - chordId already exists → skip (user may have customized it) ✓
+ *
+ * Call this at boot ALWAYS (idempotent). This is how new stadium defaults
+ * (added in future WAVEs) get propagated to existing user stores.
+ */
+export function patchMissingStadiumBindings(): void {
+  const state = useKeyMapStore.getState()
+  const currentBindings = state.bindings
+  const currentChords   = state.chords
+
+  let patchedBindings = 0
+  let patchedChords   = 0
+
+  for (const binding of STADIUM_BINDINGS) {
+    const slot = bindingKey(binding.layer, binding.key)
+    if (currentBindings[slot] === undefined) {
+      state.bindKey(binding)
+      patchedBindings++
+    }
+    // If slot occupied (same or different action) → leave it alone.
+  }
+
+  for (const chord of STADIUM_CHORDS) {
+    const exists = currentChords.some(c => c.chordId === chord.chordId)
+    if (!exists) {
+      state.bindChord(chord)
+      patchedChords++
+    }
+  }
+
+  if (patchedBindings > 0 || patchedChords > 0) {
+    console.log(
+      `[KeyForge] 🩹 Patched ${patchedBindings} missing bindings, `
+      + `${patchedChords} missing chords from stadium defaults.`,
+    )
+  }
 }
 
 /** Expose the raw loadout arrays (for tests and the overlay's reset button). */

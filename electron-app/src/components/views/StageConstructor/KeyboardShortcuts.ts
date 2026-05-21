@@ -162,17 +162,9 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers = {}): void {
     const key = event.key
     const isCtrlOrCmd = event.ctrlKey || event.metaKey
     
-    // ─────────────────────────────────────────────────────────────────────
-    // 1-9: Selección rápida de grupos
-    // ─────────────────────────────────────────────────────────────────────
-    if (/^[1-9]$/.test(key) && !isCtrlOrCmd && !event.shiftKey && !event.altKey) {
-      const handled = handleGroupSelection(key)
-      if (handled) {
-        event.preventDefault()
-        return
-      }
-    }
-    
+    // 1-9 group selection is now handled exclusively by KeyForge (KeyActionDispatcher).
+    // Removed from here to eliminate the dual-listener conflict (WAVE 4913).
+
     // ─────────────────────────────────────────────────────────────────────
     // Ctrl+G / Cmd+G: Crear grupo
     // ─────────────────────────────────────────────────────────────────────

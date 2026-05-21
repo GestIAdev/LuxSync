@@ -411,6 +411,10 @@ export interface HephAutomationClip {
    * Equivalente al `params` actual de FXClip.
    */
   staticParams: Record<string, number | string | boolean>
+
+  // ── WAVE 4811: Cognitive DNA (optional — .lfx v2.1 compatible clips) ──
+  cognitiveDNA?: import('../arsenal/lfxTypes').CognitiveDNA
+  simulationMeta?: import('../arsenal/lfxTypes').SimulationMeta
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -501,6 +505,9 @@ export interface HephAutomationClipSerialized {
   staticParams: Record<string, number | string | boolean>
   /** ⚡ WAVE 2403: FixtureSelector survives IPC — PhaseConfig is a POJO, JSON-safe */
   selector?: import('../stage/ShowFileV2').FixtureSelector
+  // ── WAVE 4811: Cognitive DNA (POJO — JSON-safe for IPC) ──
+  cognitiveDNA?: import('../arsenal/lfxTypes').CognitiveDNA
+  simulationMeta?: import('../arsenal/lfxTypes').SimulationMeta
 }
 
 /**
@@ -528,6 +535,8 @@ export function serializeHephClip(clip: HephAutomationClip): HephAutomationClipS
     curves: curvesRecord,
     staticParams: clip.staticParams,
     selector: clip.selector,  // ⚡ WAVE 2403: Pass-through (POJO, JSON-safe)
+    cognitiveDNA: clip.cognitiveDNA,  // WAVE 4811: Pass-through
+    simulationMeta: clip.simulationMeta,  // WAVE 4811: Pass-through
   }
 }
 
@@ -556,6 +565,8 @@ export function deserializeHephClip(serialized: HephAutomationClipSerialized): H
     curves: curvesMap,
     staticParams: serialized.staticParams,
     selector: serialized.selector,  // ⚡ WAVE 2403: Restore selector from IPC
+    cognitiveDNA: serialized.cognitiveDNA,   // WAVE 4811: Restore from IPC
+    simulationMeta: serialized.simulationMeta, // WAVE 4811: Restore from IPC
   }
 }
 

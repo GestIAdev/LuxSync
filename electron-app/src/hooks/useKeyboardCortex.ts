@@ -307,7 +307,12 @@ export function useKeyboardCortex(): void {
     // ─────────────────────────── KEYDOWN ───────────────────────────
     const onKeyDown = (e: KeyboardEvent): void => {      // WAVE 4808: Master Arm gate — total blackout when not armed.
       // This check runs BEFORE everything else, including captureGuard.
-      if (!useKeyMapStore.getState().isArmed) return
+      if (!useKeyMapStore.getState().isArmed) {
+        // Even disarmed, absorb Space so focused CommandDeck buttons
+        // (GO, ARM, BlackoutButton) don't receive native Space-activation.
+        if (e.code === 'Space') e.preventDefault()
+        return
+      }
       // Browser autorepeat → ignore (KeyForge implements its own repeat).
       if (e.repeat) {
         runtime.lastConsumed = false

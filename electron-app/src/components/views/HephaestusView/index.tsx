@@ -37,6 +37,9 @@ import { createDummyClip } from './dummyData'
 import { getCategoryIcon, generateShapeInWindow } from './curveTemplates'
 import { HephRadar } from './HephRadar'
 import { PhaseControls } from './PhaseControls'
+import { SafetyStrip } from './safety/SafetyStrip'
+import { DnaRail, DEFAULT_COGNITIVE_DNA, DEFAULT_SIMULATION_META } from './dna/DnaRail'
+import type { CognitiveDNA, SimulationMeta, SpatialBehavior } from '../../../core/arsenal/lfxTypes'
 import { useHephPreview } from './useHephPreview'
 import { useTemporalStore } from './useTemporalStore'
 import { useStageStore, selectFixtures } from '../../../stores/stageStore'
@@ -150,6 +153,9 @@ const HephaestusView: React.FC = () => {
 
   // ── Radar Preview State (WAVE 2030.25) ──
   const [showRadar, setShowRadar] = useState(true)
+
+  // ── WAVE 4811: DNA Designer Rail ──
+  const [showDna, setShowDna] = useState(false)
   const stageFixtures = useStageStore(selectFixtures)
   const preview = useHephPreview(clip, stageFixtures)
 
@@ -1437,6 +1443,17 @@ const HephaestusView: React.FC = () => {
             disabled={isSaving}
           />
           
+          {/* 🛡️ WAVE 4811: Safety Strip G1-G7 */}
+          <span className="heph-header__divider">│</span>
+          <SafetyStrip
+            clip={clip}
+            onClipPatch={(patch) => {
+              temporalActions.snapshot()
+              setClip(prev => ({ ...prev, ...patch }))
+              setIsDirty(true)
+            }}
+          />
+
           {saveMessage && (
             <>
               <span className="heph-header__divider">│</span>
@@ -1519,6 +1536,13 @@ const HephaestusView: React.FC = () => {
             title="Toggle Radar Preview"
           >
             🛰
+          </button>
+          <button
+            className={`heph-header__btn heph-header__btn--toggle ${showDna ? 'heph-header__btn--active' : ''}`}
+            onClick={() => setShowDna(d => !d)}
+            title="Toggle DNA Designer"
+          >
+            🧬
           </button>
         </div>
       </header>
@@ -1733,6 +1757,16 @@ const HephaestusView: React.FC = () => {
                   onChange={handlePhaseConfigChange}
                   fixtureCount={clip.zones.length}
                   disabled={isSaving}
+                  spatialBehavior={clip.cognitiveDNA?.spatialBehavior}
+                  onSpatialBehaviorChange={(sb: SpatialBehavior) => {
+                    if (!clip.cognitiveDNA) return
+                    temporalActions.snapshot()
+                    setClip(prev => ({
+                      ...prev,
+                      cognitiveDNA: { ...prev.cognitiveDNA!, spatialBehavior: sb },
+                    }))
+                    setIsDirty(true)
+                  }}
                 />
               </div>
             )}
@@ -1803,6 +1837,33 @@ const HephaestusView: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* ── WAVE 4811: DNA Designer Rail (right rail) ── */}
+        {showDna && (
+          <DnaRail
+            dna={clip.cognitiveDNA}
+            simMeta={clip.simulationMeta}
+            onDnaChange={(dna: CognitiveDNA) => {
+              temporalActions.snapshot()
+              setClip(prev => ({ ...prev, cognitiveDNA: dna }))
+              setIsDirty(true)
+            }}
+            onSimMetaChange={(meta: SimulationMeta) => {
+              temporalActions.snapshot()
+              setClip(prev => ({ ...prev, simulationMeta: meta }))
+              setIsDirty(true)
+            }}
+            onEnableDna={() => {
+              temporalActions.snapshot()
+              setClip(prev => ({
+                ...prev,
+                cognitiveDNA: DEFAULT_COGNITIVE_DNA,
+                simulationMeta: DEFAULT_SIMULATION_META,
+              }))
+              setIsDirty(true)
+            }}
+          />
+        )}
       </div>
 
       {/* ═══ TOOLBAR ═══ */}

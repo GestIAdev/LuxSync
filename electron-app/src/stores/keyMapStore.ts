@@ -493,19 +493,27 @@ export const useKeyMapStore = create<KeyMapState>()(
     }),
     {
       name: 'luxsync-keyforge',
-      version: 2,
-      // Persist ONLY user-owned data; transient runtime state is excluded.
+      version: 3,
+      // Persist user-owned data + arm state (WAVE 4914: isArmed now persists so
+      // the operator doesn't have to re-arm on every reboot).
       partialize: (state) => ({
         bindings:    state.bindings,
         chords:      state.chords,
         loadoutName: state.loadoutName,
+        isArmed:     state.isArmed,
       }),
-      // v1 → v2: add loadoutName field with default
       migrate: (persistedState: unknown, fromVersion: number) => {
-        if (fromVersion === 1) {
-          return { ...(persistedState as object), loadoutName: 'stadium-default' }
+        const s = persistedState as Record<string, unknown>
+        // v1 → v2: add loadoutName
+        if (fromVersion <= 1) {
+          s.loadoutName = s.loadoutName ?? 'stadium-default'
         }
-        return persistedState
+        // v2 → v3: add isArmed (default true — operator experience, not safety risk;
+        //          captureGuard already protects text inputs)
+        if (fromVersion <= 2) {
+          s.isArmed = s.isArmed ?? true
+        }
+        return s
       },
     },
   ),

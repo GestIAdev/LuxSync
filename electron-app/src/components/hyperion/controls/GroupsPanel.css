@@ -144,6 +144,27 @@
   width: 100%;
 }
 
+.group-hotkey-badge {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--group-color, #00FFFF) 70%, white 10%);
+  background: color-mix(in srgb, var(--group-color, #00FFFF) 18%, rgba(0, 0, 0, 0.35));
+  color: color-mix(in srgb, var(--group-color, #00FFFF) 88%, white 12%);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+}
+
 .group-delete-btn {
   position: absolute;
   top: 4px;

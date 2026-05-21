@@ -21,7 +21,7 @@ import { useSeleneTruth } from './hooks/useSeleneTruth'
 import { setupStageStoreListeners } from './stores/stageStore'
 import { initializeLogIPC } from './stores/logStore' // 📜 WAVE 1198: THE WARLOG HEARTBEAT
 import { useLicenseStore } from './stores/licenseStore' // 🔒 WAVE 2490: THE TIER SEPARATION PROTOCOL
-import { initStadiumLoadoutIfEmpty } from './keyforge/stadiumLoadout' // ⌨ WAVE 4800-F
+import { initStadiumLoadoutIfEmpty, patchMissingStadiumBindings } from './keyforge/stadiumLoadout' // ⌨ WAVE 4800-F
 import './styles/globals.css'
 
 function AppContent() {
@@ -51,6 +51,9 @@ function AppContent() {
     
     // ⌨ WAVE 4800-F: Load stadium-default bindings on fresh install
     initStadiumLoadoutIfEmpty()
+    // ⌨ WAVE 4914: Migrate any missing stadium defaults to existing user stores
+    // (new bindings added to stadiumLoadout.ts propagate without wiping user config)
+    patchMissingStadiumBindings()
 
     // 🔌 WAVE 438: Setup stageStore IPC listeners
     const unsubscribeStageListeners = setupStageStoreListeners()

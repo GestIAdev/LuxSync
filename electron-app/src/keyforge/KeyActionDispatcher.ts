@@ -37,6 +37,8 @@ import { useMovementStore } from '../stores/movementStore'
 import { useSceneStore } from '../stores/sceneStore'
 import { useNavigationStore } from '../stores/navigationStore'
 import type { TabId } from '../stores/navigationStore'
+import { useEffectsStore } from '../stores/effectsStore'
+import { useStageStore } from '../stores/stageStore'
 import type {
   ActionPayload,
   ResolvedAction,
@@ -178,6 +180,33 @@ function dispatchSelAction(actionId: string): boolean {
     return true
   }
 
+  // sel-assign-group-N : RTS-style group assignment.
+  // Current selection → assigned to group N (create if not exists, replace if exists).
+  // Ctrl+1..9 in the `cmd` layer triggers this.
+  const assignMatch = sub.match(/^assign-group-(\d+)$/)
+  if (assignMatch) {
+    const groupIndex = parseInt(assignMatch[1], 10)
+    const selectedIds = Array.from(useSelectionStore.getState().selectedIds)
+    if (selectedIds.length === 0) {
+      console.log(`[KeyForge] sel-assign-group-${groupIndex}: nothing selected — ignored.`)
+      return true
+    }
+    const stageState = useStageStore.getState()
+    const groups = stageState.groups
+    const byHotkey = groups.find(g => g.hotkey === String(groupIndex))
+    const byIndex  = groups[groupIndex - 1]
+    const existing = byHotkey ?? byIndex
+    if (existing !== undefined) {
+      stageState.updateGroup(existing.id, { fixtureIds: selectedIds })
+      console.log(`[KeyForge] ✅ Group ${groupIndex} updated (${selectedIds.length} fixtures)`)
+    } else {
+      const created = stageState.createGroup(`Group ${groupIndex}`, selectedIds)
+      stageState.updateGroup(created.id, { hotkey: String(groupIndex), order: groupIndex - 1 })
+      console.log(`[KeyForge] ✅ Group ${groupIndex} created (${selectedIds.length} fixtures)`)
+    }
+    return true
+  }
+
   console.warn(`[KeyForge] ⚠️ Unknown sel-* sub-action: ${actionId}`)
   return false
 }
@@ -191,36 +220,21 @@ export function resolveGroupScope(groupIndex: number): string[] {
   return getGroupFixtureIds(groupIndex)
 }
 
-/** Pull all fixture IDs from the stageStore (renderer-side snapshot). */
+/** Pull all fixture IDs directly from stageStore (authoritative source). */
 function getAllFixtureIds(): string[] {
-  try {
-    const w = globalThis as unknown as {
-      luxStageSnapshot?: { fixtures?: Array<{ id: string }> }
-    }
-    return w.luxStageSnapshot?.fixtures?.map(f => f.id) ?? []
-  } catch {
-    return []
-  }
+  return useStageStore.getState().fixtures.map(f => f.id)
 }
 
 /**
  * Get fixture IDs belonging to a 1-based group index.
- * Groups are not formally typed in this context so we attempt a dynamic
- * lookup against the stageStore's groups array if available.
+ * Resolves against the live stageStore: tries explicit hotkey assignment
+ * first, then falls back to positional index (groups[N-1]).
  */
 function getGroupFixtureIds(groupIndex: number): string[] {
-  try {
-    const w = globalThis as unknown as {
-      luxStageSnapshot?: {
-        groups?: Array<{ fixtureIds: string[] }>
-      }
-    }
-    const groups = w.luxStageSnapshot?.groups ?? []
-    const group = groups[groupIndex - 1]
-    return group?.fixtureIds ?? []
-  } catch {
-    return []
-  }
+  const groups = useStageStore.getState().groups
+  const byHotkey = groups.find(g => g.hotkey === String(groupIndex))
+  if (byHotkey !== undefined) return byHotkey.fixtureIds
+  return groups[groupIndex - 1]?.fixtureIds ?? []
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -438,13 +452,17 @@ export function dispatchAction(actionId: string, payload: ActionPayload): boolea
     if (payload.phase === 'release') return true
     const sub = actionId.slice(4)
     switch (sub) {
-      case 'blackout':
-        // The caller is expected to read the current blackout state and
-        // negate it before calling. Per blueprint R3 (double confirmation
-        // <500ms) we keep the dispatcher dumb and let the store add the
-        // debounce in a later batch.
-        lux?.aether?.setBlackout?.(true).catch(() => {})
+      case 'blackout': {
+        // Read authoritative state from effectsStore and send the opposite.
+        const currentBlackout = useEffectsStore.getState().blackout
+        const targetBlackout = !currentBlackout
+        lux?.aether?.setBlackout?.(targetBlackout).then((result) => {
+          if (result?.success) {
+            useEffectsStore.getState().setBlackout(result.blackoutActive ?? targetBlackout)
+          }
+        }).catch(() => {})
         return true
+      }
       case 'grand-master':
         lux?.aether?.setGrandMaster?.(payload.intensity)?.catch?.(() => {})
         return true

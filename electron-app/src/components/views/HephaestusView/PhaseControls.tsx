@@ -22,6 +22,7 @@
 import React, { useCallback } from 'react'
 import type { PhaseConfig, PhaseSymmetryMode, PhaseDirection } from '../../../core/hephaestus/types'
 import { DEFAULT_PHASE_CONFIG } from '../../../core/hephaestus/types'
+import type { SpatialBehavior } from '../../../core/arsenal/lfxTypes'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -36,6 +37,11 @@ interface PhaseControlsProps {
   fixtureCount: number
   /** Whether controls are disabled (e.g. during save) */
   disabled?: boolean
+  // ── WAVE 4811: Spatial Behavior ──
+  /** Current spatialBehavior from cognitiveDNA (undefined = no DNA yet) */
+  spatialBehavior?: SpatialBehavior
+  /** Callback when spatialBehavior changes */
+  onSpatialBehaviorChange?: (sb: SpatialBehavior) => void
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -53,6 +59,14 @@ const SYMMETRY_MODES: Array<{
   { id: 'center-out', label: 'CENTER',     icon: '🎯', hint: 'Pulse from center — radial expansion' },
 ]
 
+// WAVE 4811: Spatial behavior options
+const SPATIAL_OPTIONS: Array<{ value: SpatialBehavior; label: string; hint: string }> = [
+  { value: 'static',          label: 'STATIC',     hint: 'No pan/tilt. Only dimmer/color/optics.' },
+  { value: 'absolute',        label: 'ABSOLUTE',   hint: 'Clip controls pan/tilt directly (DMX absolute).' },
+  { value: 'relative_offset', label: 'RELATIVE',   hint: 'Emits pan_offset/tilt_offset ∈ [-1,+1] over IK anchor.' },
+  { value: 'spatial',         label: 'SPATIAL 3D', hint: 'Reserved: emits 3D target trajectory (future).' },
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 // COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
@@ -62,6 +76,8 @@ export const PhaseControls: React.FC<PhaseControlsProps> = ({
   onChange,
   fixtureCount,
   disabled = false,
+  spatialBehavior,
+  onSpatialBehaviorChange,
 }) => {
   const active = config ?? DEFAULT_PHASE_CONFIG
 
@@ -101,6 +117,30 @@ export const PhaseControls: React.FC<PhaseControlsProps> = ({
           <span className="heph-phase__badge">{spreadPercent}%</span>
         )}
       </div>
+
+      {/* ── WAVE 4811: Spatial Behavior (if DNA available) ── */}
+      {onSpatialBehaviorChange && (
+        <div className="heph-phase__section heph-phase__section--spatial">
+          <div className="heph-phase__section-header">SPATIAL BEHAVIOR</div>
+          <div className="heph-phase__spatial-grid">
+            {SPATIAL_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                className={`heph-phase__spatial-btn ${spatialBehavior === opt.value ? 'heph-phase__spatial-btn--active' : ''}`}
+                onClick={() => onSpatialBehaviorChange(opt.value)}
+                title={opt.hint}
+                disabled={disabled}
+                type="button"
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <p className="heph-phase__spatial-hint">
+            {SPATIAL_OPTIONS.find(o => o.value === (spatialBehavior ?? 'absolute'))?.hint ?? ''}
+          </p>
+        </div>
+      )}
 
       {/* ── Spread Slider ── */}
       <div className="heph-phase__row">

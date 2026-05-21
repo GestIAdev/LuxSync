@@ -1,0 +1,747 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 🧬 WAVE 4818 — DNA RAIL STYLES (REDESIGN)
+ * Mirrors heph-library tokens. Reuses --heph-* orange ember palette.
+ * New: archetype grid, slider bias overlay, energy thermometer,
+ *      vibe checkboxes, linter panel, footer safety strip.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Rail container ── */
+.dna-rail {
+  width: 240px;
+  min-width: 240px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.4);
+  border-left: 1px solid rgba(255, 107, 43, 0.12);
+  overflow: hidden;
+  animation: dna-rail-slide-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes dna-rail-slide-in {
+  from { transform: translateX(20px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+/* ── Header (mirrored from heph-library__header) ── */
+.dna-rail__header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 107, 43, 0.1);
+  flex-shrink: 0;
+}
+
+.dna-rail__title {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: rgba(255, 107, 43, 0.6);
+  text-transform: uppercase;
+}
+
+/* ── Scrollable body ── */
+.dna-rail__body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px 0;
+}
+
+.dna-rail__body::-webkit-scrollbar {
+  width: 4px;
+}
+.dna-rail__body::-webkit-scrollbar-thumb {
+  background: rgba(255, 107, 43, 0.2);
+  border-radius: 2px;
+}
+
+/* ── Section ── */
+.dna-rail__section {
+  padding: 10px 14px 12px;
+  border-bottom: 1px solid rgba(255, 107, 43, 0.07);
+}
+
+.dna-rail__section-label {
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: rgba(255, 107, 43, 0.45);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+/* ── GenomeCube ── */
+.dna-rail__cube-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.dna-cube {
+  width: 120px;
+  height: 110px;
+}
+
+.dna-cube__label {
+  font-size: 8px;
+  font-weight: 700;
+  fill: rgba(255, 107, 43, 0.5);
+  font-family: var(--font-mono, monospace);
+}
+
+.dna-cube__dot {
+  filter: drop-shadow(0 0 6px #ff6b2b);
+  animation: dna-dot-pulse 2s ease infinite;
+}
+
+@keyframes dna-dot-pulse {
+  0%, 100% { filter: drop-shadow(0 0 4px #ff6b2b); }
+  50%       { filter: drop-shadow(0 0 10px #ff6b2b); }
+}
+
+/* ── Genome sliders ── */
+.dna-rail__genome-sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dna-rail__genome-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.dna-rail__genome-axis {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #ff6b2b;
+  min-width: 12px;
+  font-family: var(--font-mono, monospace);
+}
+
+.dna-rail__genome-slider {
+  flex: 1;
+  appearance: none;
+  height: 3px;
+  background: rgba(255, 107, 43, 0.15);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.dna-rail__genome-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ff6b2b;
+  box-shadow: 0 0 6px rgba(255, 107, 43, 0.6);
+  cursor: grab;
+  transition: box-shadow 0.1s ease;
+}
+
+.dna-rail__genome-slider::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  box-shadow: 0 0 12px rgba(255, 107, 43, 0.9);
+}
+
+.dna-rail__genome-slider--sim::-webkit-slider-thumb {
+  background: rgba(255, 107, 43, 0.7);
+}
+
+.dna-rail__genome-val {
+  font-size: 0.58rem;
+  color: rgba(255, 255, 255, 0.4);
+  min-width: 30px;
+  text-align: right;
+  font-family: var(--font-mono, monospace);
+}
+
+/* ── Texture affinity radios ── */
+.dna-rail__radio-group {
+  display: flex;
+  gap: 4px;
+}
+
+.dna-rail__radio-btn {
+  flex: 1;
+  padding: 5px 4px;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.dna-rail__radio-btn:hover {
+  border-color: rgba(255, 107, 43, 0.3);
+  color: rgba(255, 107, 43, 0.7);
+}
+
+.dna-rail__radio-btn--active {
+  background: rgba(255, 107, 43, 0.12);
+  border-color: rgba(255, 107, 43, 0.45);
+  color: #ff6b2b;
+}
+
+/* ── Chips (vibes / sections) ── */
+.dna-rail__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.dna-rail__chip {
+  padding: 3px 8px;
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.dna-rail__chip:hover {
+  border-color: rgba(255, 107, 43, 0.25);
+  color: rgba(255, 107, 43, 0.6);
+}
+
+.dna-rail__chip--active {
+  background: rgba(255, 107, 43, 0.12);
+  border-color: rgba(255, 107, 43, 0.4);
+  color: #ff6b2b;
+}
+
+/* ── Simulation rows ── */
+.dna-rail__sim-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 6px;
+}
+
+.dna-rail__sim-label {
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.3);
+  min-width: 48px;
+  text-transform: uppercase;
+}
+
+.dna-rail__sim-val {
+  font-size: 0.58rem;
+  color: rgba(255, 255, 255, 0.35);
+  min-width: 30px;
+  text-align: right;
+  font-family: var(--font-mono, monospace);
+}
+
+/* Beauty bar (read-only progress) */
+.dna-rail__bar-wrap {
+  flex: 1;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.dna-rail__bar {
+  height: 100%;
+  background: linear-gradient(90deg, #ff6b2b, #fbbf24);
+  border-radius: 2px;
+  transition: width 0.2s ease;
+}
+
+/* ── Boolean flag buttons ── */
+.dna-rail__bool-row {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.dna-rail__bool-btn {
+  flex: 1;
+  padding: 5px 3px;
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  text-align: center;
+}
+
+.dna-rail__bool-btn:hover {
+  border-color: rgba(255, 107, 43, 0.25);
+  color: rgba(255, 107, 43, 0.5);
+}
+
+.dna-rail__bool-btn--on {
+  background: rgba(255, 107, 43, 0.1);
+  border-color: rgba(255, 107, 43, 0.4);
+  color: #ff6b2b;
+}
+
+/* ── Empty / CTA state ── */
+.dna-rail__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 20px 24px;
+  gap: 12px;
+  text-align: center;
+}
+
+.dna-rail__empty-icon {
+  font-size: 2rem;
+  opacity: 0.3;
+}
+
+.dna-rail__empty-text {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.3);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.dna-rail__enable-btn {
+  padding: 8px 20px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  background: rgba(255, 107, 43, 0.12);
+  border: 1px solid rgba(255, 107, 43, 0.4);
+  border-radius: 5px;
+  color: #ff6b2b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dna-rail__enable-btn:hover {
+  background: rgba(255, 107, 43, 0.22);
+  border-color: rgba(255, 107, 43, 0.7);
+  box-shadow: 0 0 12px rgba(255, 107, 43, 0.25);
+}
+
+.dna-rail__empty-hint {
+  font-size: 0.55rem;
+  color: rgba(255, 255, 255, 0.18);
+  font-style: italic;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * WAVE 4818 — NEW COMPONENTS
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Rail width upgrade ── */
+.dna-rail {
+  width: 260px;
+  min-width: 260px;
+}
+
+/* ── Header badges ── */
+.dna-rail__header {
+  gap: 8px;
+}
+
+.dna-rail__header-badge {
+  margin-left: auto;
+  padding: 2px 6px;
+  font-size: 0.5rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  border-radius: 4px;
+  font-family: var(--font-mono, monospace);
+}
+
+.dna-rail__header-badge--critical {
+  background: rgba(239, 68, 68, 0.18);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #ef4444;
+}
+
+.dna-rail__header-badge--error {
+  background: rgba(248, 113, 113, 0.15);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  color: #f87171;
+}
+
+.dna-rail__header-badge--warn {
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  color: #fbbf24;
+}
+
+/* ── Archetype grid ── */
+.dna-rail__archetype-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+}
+
+.dna-rail__arch-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 4px 6px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.dna-rail__arch-card:hover {
+  border-color: rgba(var(--arch-color, 255 107 43) / 0.3);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.dna-rail__arch-card--active {
+  background: color-mix(in srgb, var(--arch-color, #ff6b2b) 12%, transparent);
+  border-color: color-mix(in srgb, var(--arch-color, #ff6b2b) 50%, transparent);
+  color: var(--arch-color, #ff6b2b);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--arch-color, #ff6b2b) 20%, transparent);
+}
+
+.dna-rail__arch-glyph {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.dna-rail__arch-label {
+  font-size: 0.42rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  font-family: var(--font-mono, monospace);
+}
+
+/* ── Narrative text ── */
+.dna-rail__narrative {
+  margin: 6px 0 0;
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.35);
+  font-style: italic;
+  text-align: center;
+  line-height: 1.4;
+  letter-spacing: 0.3px;
+}
+
+/* ── Slider wrap with bias overlay ── */
+.dna-rail__slider-wrap {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.dna-rail__slider-locked {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 107, 43, 0.15);
+  border: 1px solid rgba(255, 107, 43, 0.25);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.dna-rail__genome-slider--locked {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Genome right column (val + semantic label) ── */
+.dna-rail__genome-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 48px;
+  gap: 1px;
+}
+
+.dna-rail__genome-label {
+  font-size: 0.45rem;
+  color: rgba(255, 255, 255, 0.25);
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 56px;
+  text-align: right;
+}
+
+/* ── Strobe Hz row ── */
+.dna-rail__strobe-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 8px;
+  padding: 6px 8px;
+  background: rgba(251, 191, 36, 0.06);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  border-radius: 5px;
+}
+
+.dna-rail__strobe-input {
+  width: 52px;
+  padding: 3px 6px;
+  font-size: 0.6rem;
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 4px;
+  color: #fbbf24;
+  outline: none;
+  text-align: center;
+}
+
+.dna-rail__strobe-input:focus {
+  border-color: rgba(251, 191, 36, 0.6);
+  box-shadow: 0 0 6px rgba(251, 191, 36, 0.15);
+}
+
+/* ── Energy Thermometer ── */
+.dna-rail__thermometer {
+  display: flex;
+  gap: 2px;
+}
+
+.dna-rail__zone-seg {
+  flex: 1;
+  padding: 5px 0;
+  font-size: 0.42rem;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  font-family: var(--font-mono, monospace);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 3px;
+  color: rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  transition: all 0.1s ease;
+  text-align: center;
+}
+
+.dna-rail__zone-seg:hover:not(:disabled) {
+  border-color: rgba(255, 107, 43, 0.3);
+  color: rgba(255, 107, 43, 0.6);
+}
+
+.dna-rail__zone-seg--active {
+  background: rgba(255, 107, 43, 0.14);
+  border-color: rgba(255, 107, 43, 0.5);
+  color: #ff6b2b;
+}
+
+.dna-rail__zone-seg--blocked {
+  opacity: 0.2;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.dna-rail__zone-desc {
+  margin: 5px 0 0;
+  font-size: 0.5rem;
+  color: rgba(255, 255, 255, 0.22);
+  font-style: italic;
+  line-height: 1.4;
+}
+
+/* ── Vibe checkboxes ── */
+.dna-rail__vibes {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.dna-rail__vibe-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.dna-rail__vibe-row--disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.dna-rail__vibe-check {
+  width: 13px;
+  height: 13px;
+  accent-color: #ff6b2b;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.dna-rail__vibe-label {
+  font-size: 0.58rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: var(--font-mono, monospace);
+  letter-spacing: 0.3px;
+  transition: color 0.1s ease;
+}
+
+.dna-rail__vibe-row:not(.dna-rail__vibe-row--disabled):hover .dna-rail__vibe-label {
+  color: rgba(255, 107, 43, 0.8);
+}
+
+.dna-rail__vibe-soon {
+  margin-left: auto;
+  font-size: 0.45rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 1px 5px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+
+/* ── Linter section ── */
+.dna-rail__section--linter {
+  border-bottom-color: rgba(239, 68, 68, 0.1);
+}
+
+.dna-rail__linter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dna-rail__linter-card {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid color-mix(in srgb, var(--linter-color, #fff) 25%, transparent);
+  border-radius: 5px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.1s ease;
+}
+
+.dna-rail__linter-card:hover {
+  border-color: color-mix(in srgb, var(--linter-color, #fff) 45%, transparent);
+}
+
+.dna-rail__linter-card:focus {
+  outline: 1px solid color-mix(in srgb, var(--linter-color, #fff) 50%, transparent);
+}
+
+.dna-rail__linter-card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+}
+
+.dna-rail__linter-icon {
+  font-size: 0.7rem;
+  color: var(--linter-color, #fff);
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.dna-rail__linter-title {
+  flex: 1;
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: var(--linter-color, #fff);
+  font-family: var(--font-mono, monospace);
+  text-transform: uppercase;
+}
+
+.dna-rail__linter-chevron {
+  font-size: 0.45rem;
+  color: rgba(255, 255, 255, 0.25);
+  flex-shrink: 0;
+}
+
+.dna-rail__linter-card-body {
+  padding: 0 8px 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.dna-rail__linter-msg {
+  margin: 6px 0 4px;
+  font-size: 0.55rem;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.45;
+}
+
+.dna-rail__linter-engine {
+  margin: 0;
+  font-size: 0.48rem;
+  color: rgba(255, 255, 255, 0.22);
+  font-family: var(--font-mono, monospace);
+  font-style: italic;
+}
+
+/* ── Linter OK state ── */
+.dna-rail__linter-ok {
+  font-size: 0.58rem;
+  color: rgba(110, 231, 183, 0.7);
+  text-align: center;
+  padding: 4px 0;
+}
+
+/* ── Footer strip ── */
+.dna-rail__footer {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-top: 1px solid rgba(255, 107, 43, 0.1);
+  background: rgba(255, 107, 43, 0.04);
+  display: flex;
+  align-items: center;
+}
+
+.dna-rail__footer--blocked {
+  background: rgba(239, 68, 68, 0.06);
+  border-top-color: rgba(239, 68, 68, 0.2);
+  animation: dna-footer-pulse 2s ease infinite;
+}
+
+@keyframes dna-footer-pulse {
+  0%, 100% { background: rgba(239, 68, 68, 0.04); }
+  50%       { background: rgba(239, 68, 68, 0.10); }
+}
+
+.dna-rail__footer-text {
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: rgba(255, 107, 43, 0.6);
+  text-transform: uppercase;
+  font-family: var(--font-mono, monospace);
+}
+
+.dna-rail__footer-text--blocked {
+  color: #ef4444;
+}

@@ -41,6 +41,7 @@ export const BlackoutButton: React.FC = () => {
     <button
       className={`blackout-master ${blackout ? 'active' : ''}`}
       onClick={handleBlackout}
+      onMouseDown={(e) => e.preventDefault()}
       title="BLACKOUT - All lights off [SPACE]"
     >
       <BlackoutIcon size={32} className="blackout-icon" />

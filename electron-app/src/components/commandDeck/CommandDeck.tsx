@@ -193,6 +193,7 @@ export const CommandDeck: React.FC = () => {
         <button
           className={`intelligence-badge arm-badge ${systemArmed ? 'armed' : 'disarmed'}`}
           onClick={handleArmToggle}
+          onMouseDown={(e) => e.preventDefault()}
           disabled={powerState === 'STARTING'}
           title={systemArmed 
             ? 'ENGINE RUNNING — Click to shut down' 
@@ -247,6 +248,7 @@ export const CommandDeck: React.FC = () => {
         <button
           className={`trigger-sq trigger-go ${outputEnabled ? 'active' : ''}`}
           onClick={handleOutputToggle}
+          onMouseDown={(e) => e.preventDefault()}
           title={outputEnabled ? 'Output ENABLED - Click to pause' : 'Output PAUSED - Click to go live'}
         >
           <ReactorIcon size={28} className="trigger-icon" />

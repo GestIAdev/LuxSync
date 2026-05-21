@@ -7,8 +7,8 @@
 
 /* ── Rail container ── */
 .dna-rail {
-  width: 240px;
-  min-width: 240px;
+  width: 300px;
+  min-width: 300px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -33,11 +33,12 @@
 }
 
 .dna-rail__title {
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 2px;
-  color: rgba(255, 107, 43, 0.6);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 2.5px;
+  color: rgba(255, 107, 43, 0.75);
   text-transform: uppercase;
+  text-shadow: 0 0 12px rgba(255, 107, 43, 0.3);
 }
 
 /* ── Scrollable body ── */
@@ -45,7 +46,7 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 10px 0;
+  padding: 14px 0;
 }
 
 .dna-rail__body::-webkit-scrollbar {
@@ -351,10 +352,10 @@
  * WAVE 4818 — NEW COMPONENTS
  * ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ── Rail width upgrade ── */
+/* ── Rail width override (final value) ── */
 .dna-rail {
-  width: 260px;
-  min-width: 260px;
+  width: 300px;
+  min-width: 300px;
 }
 
 /* ── Header badges ── */
@@ -430,22 +431,26 @@
 }
 
 .dna-rail__arch-label {
-  font-size: 0.42rem;
+  font-size: 0.52rem;
   font-weight: 800;
   letter-spacing: 0.5px;
   text-transform: uppercase;
   font-family: var(--font-mono, monospace);
 }
 
-/* ── Narrative text ── */
+/* ── Narrative text (AI diagnosis glow) ── */
 .dna-rail__narrative {
-  margin: 6px 0 0;
-  font-size: 0.6rem;
-  color: rgba(255, 255, 255, 0.35);
+  margin: 8px 0 0;
+  font-size: 0.72rem;
+  color: rgba(255, 200, 140, 0.7);
   font-style: italic;
   text-align: center;
-  line-height: 1.4;
-  letter-spacing: 0.3px;
+  line-height: 1.5;
+  letter-spacing: 0.4px;
+  text-shadow:
+    0 0 8px  rgba(255, 107, 43, 0.5),
+    0 0 20px rgba(255, 107, 43, 0.2);
+  padding: 0 4px;
 }
 
 /* ── Slider wrap with bias overlay ── */
@@ -483,13 +488,13 @@
 }
 
 .dna-rail__genome-label {
-  font-size: 0.45rem;
-  color: rgba(255, 255, 255, 0.25);
+  font-size: 0.52rem;
+  color: rgba(255, 255, 255, 0.32);
   font-style: italic;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 56px;
+  max-width: 64px;
   text-align: right;
 }
 
@@ -532,8 +537,8 @@
 
 .dna-rail__zone-seg {
   flex: 1;
-  padding: 5px 0;
-  font-size: 0.42rem;
+  padding: 6px 0;
+  font-size: 0.52rem;
   font-weight: 800;
   letter-spacing: 0.3px;
   text-transform: uppercase;
@@ -601,7 +606,7 @@
 }
 
 .dna-rail__vibe-label {
-  font-size: 0.58rem;
+  font-size: 0.68rem;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.5);
   font-family: var(--font-mono, monospace);
@@ -670,7 +675,7 @@
 
 .dna-rail__linter-title {
   flex: 1;
-  font-size: 0.52rem;
+  font-size: 0.6rem;
   font-weight: 700;
   letter-spacing: 0.4px;
   color: var(--linter-color, #fff);
@@ -691,7 +696,7 @@
 
 .dna-rail__linter-msg {
   margin: 6px 0 4px;
-  font-size: 0.55rem;
+  font-size: 0.63rem;
   color: rgba(255, 255, 255, 0.5);
   line-height: 1.45;
 }
@@ -734,7 +739,7 @@
 }
 
 .dna-rail__footer-text {
-  font-size: 0.52rem;
+  font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.5px;
   color: rgba(255, 107, 43, 0.6);
@@ -744,4 +749,107 @@
 
 .dna-rail__footer-text--blocked {
   color: #ef4444;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * WAVE 4818.1 — CSS 3D GENOME CUBE
+ * Uses transform-style: preserve-3d + continuous @keyframes rotation.
+ * --cube-color CSS var drives border glow per archetype.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.dna-cube3d__scene {
+  /* WAVE 4818.2 FIX: perspective bumped to 1000px per spec; glow moved here
+     (away from .dna-cube3d) so preserve-3d is never flattened by a filter. */
+  perspective: 1000px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  filter: drop-shadow(0 0 14px color-mix(in srgb, var(--cube-color, #ff6b2b) 45%, transparent));
+}
+
+.dna-cube3d {
+  width: 80px;
+  height: 80px;
+  position: relative;
+  transform-style: preserve-3d;
+  animation: cube-spin 12s linear infinite;
+  /* WAVE 4818.2 FIX: filter REMOVED — any filter != none on a preserve-3d
+     element creates a flat compositing context and collapses the 3D hierarchy
+     into a 2D plane. Glow is now applied to the parent .dna-cube3d__scene. */
+}
+
+@keyframes cube-spin {
+  0%   { transform: rotateX(-20deg) rotateY(0deg);   }
+  100% { transform: rotateX(-20deg) rotateY(360deg); }
+}
+
+.dna-cube3d__face {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  border: 1px solid color-mix(in srgb, var(--cube-color, #ff6b2b) 55%, transparent);
+  background: color-mix(in srgb, var(--cube-color, #ff6b2b) 6%, rgba(0,0,0,0.15));
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.dna-cube3d__face--front  { transform: translateZ(40px); }
+.dna-cube3d__face--back   { transform: rotateY(180deg) translateZ(40px); }
+.dna-cube3d__face--right  { transform: rotateY(90deg)  translateZ(40px); }
+.dna-cube3d__face--left   { transform: rotateY(-90deg) translateZ(40px); }
+.dna-cube3d__face--top    { transform: rotateX(90deg)  translateZ(40px); }
+.dna-cube3d__face--bottom { transform: rotateX(-90deg) translateZ(40px); }
+
+.dna-cube3d__face--front {
+  background: color-mix(in srgb, var(--cube-color, #ff6b2b) 10%, rgba(0,0,0,0.2));
+  border-color: color-mix(in srgb, var(--cube-color, #ff6b2b) 70%, transparent);
+  border-width: 1.5px;
+}
+
+.dna-cube3d__axis {
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  font-size: 0.45rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: color-mix(in srgb, var(--cube-color, #ff6b2b) 60%, transparent);
+  font-family: var(--font-mono, monospace);
+  line-height: 1;
+  pointer-events: none;
+}
+
+.dna-cube3d__dot {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--cube-color, #ff6b2b);
+  transform: translate(-50%, -50%);
+  box-shadow:
+    0 0 6px  var(--cube-color, #ff6b2b),
+    0 0 14px color-mix(in srgb, var(--cube-color, #ff6b2b) 50%, transparent);
+  transition: left 0.15s ease, top 0.15s ease;
+  pointer-events: none;
+}
+
+.dna-cube3d__values {
+  display: flex;
+  gap: 12px;
+  font-size: 0.62rem;
+  font-family: var(--font-mono, monospace);
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.5px;
+}
+
+.dna-cube3d__values strong {
+  color: var(--cube-color, #ff6b2b);
+  font-weight: 800;
 }

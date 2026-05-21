@@ -125,30 +125,7 @@ const VIBE_UI: readonly VibeUIDef[] = [
   { id: 'chill-lounge', label: 'chill-lounge' },
 ]
 
-// ─── GENOME CUBE SVG (unchanged from WAVE 4811) ─────────────────────────────
-
-const CX = 60
-const CY = 55
-const SCALE = 35
-
-function iso(x: number, y: number, z: number): [number, number] {
-  return [
-    CX + (x - z) * SCALE * 0.866,
-    CY + (x + z) * SCALE * 0.5 - y * SCALE,
-  ]
-}
-
-const V = {
-  O:  iso(0, 0, 0),
-  A:  iso(1, 0, 0),
-  C:  iso(0, 1, 0),
-  Or: iso(0, 0, 1),
-  AC: iso(1, 1, 0),
-  CO: iso(0, 1, 1),
-  AO: iso(1, 0, 1),
-}
-
-const pt = (v: [number, number]) => `${v[0].toFixed(1)},${v[1].toFixed(1)}`
+// ─── GENOME CUBE 3D (CSS transform-style: preserve-3d) ──────────────────────
 
 interface GenomeCubeProps {
   aggression: number
@@ -159,55 +136,49 @@ interface GenomeCubeProps {
 
 const GenomeCube: React.FC<GenomeCubeProps> = React.memo(
   ({ aggression, chaos, organicity, archetype }) => {
-    const [dx, dy] = iso(aggression, chaos, organicity)
     const def = ARCHETYPE_UI.find(a => a.id === archetype)
-    const dotColor = def?.color ?? '#ff6b2b'
+    const color = def?.color ?? '#ff6b2b'
+
+    // Dot position on the front face: aggression=x, chaos=y
+    const dotX = aggression * 100
+    const dotY = (1 - chaos) * 100
 
     return (
-      <svg
-        className="dna-cube"
-        viewBox="0 0 120 110"
-        xmlns="http://www.w3.org/2000/svg"
-        aria-label="Genome cube"
+      <div
+        className="dna-cube3d__scene"
+        style={{ '--cube-color': color } as React.CSSProperties}
+        aria-label="Genome cube 3D"
       >
-        <defs>
-          <radialGradient id={`dot-glow-${archetype}`} cx="50%" cy="50%" r="50%">
-            <stop offset="0%"   stopColor={dotColor} stopOpacity="0.9" />
-            <stop offset="60%"  stopColor={dotColor} stopOpacity="0.4" />
-            <stop offset="100%" stopColor={dotColor} stopOpacity="0" />
-          </radialGradient>
-        </defs>
-
-        <g stroke="rgba(255,107,43,0.12)" strokeWidth="0.8" fill="none" strokeDasharray="2,2">
-          <line x1={pt(V.AO)[0]} y1={pt(V.AO)[1]} x2={pt(V.A)[0]} y2={pt(V.A)[1]} />
-          <line x1={pt(V.AO)[0]} y1={pt(V.AO)[1]} x2={pt(V.Or)[0]} y2={pt(V.Or)[1]} />
-        </g>
-
-        <polygon points={`${pt(V.C)} ${pt(V.AC)} ${pt(V.O)} ${pt(V.CO)}`}
-          fill="rgba(255,107,43,0.04)" stroke="rgba(255,107,43,0.22)" strokeWidth="0.8" />
-        <polygon points={`${pt(V.O)} ${pt(V.AC)} ${pt(V.A)} ${pt(V.AO)}`}
-          fill="rgba(255,107,43,0.03)" stroke="rgba(255,107,43,0.18)" strokeWidth="0.8" />
-        <polygon points={`${pt(V.O)} ${pt(V.CO)} ${pt(V.Or)} ${pt(V.AO)}`}
-          fill="rgba(255,107,43,0.03)" stroke="rgba(255,107,43,0.18)" strokeWidth="0.8" />
-
-        <g stroke="rgba(255,107,43,0.30)" strokeWidth="0.8" strokeDasharray="3,2">
-          <line x1={pt(V.O)[0]} y1={pt(V.O)[1]} x2={pt(V.A)[0]}  y2={pt(V.A)[1]} />
-          <line x1={pt(V.O)[0]} y1={pt(V.O)[1]} x2={pt(V.C)[0]}  y2={pt(V.C)[1]} />
-          <line x1={pt(V.O)[0]} y1={pt(V.O)[1]} x2={pt(V.Or)[0]} y2={pt(V.Or)[1]} />
-        </g>
-
-        <text x={V.A[0] + 4}   y={V.A[1] + 3}  className="dna-cube__label">A</text>
-        <text x={V.C[0] - 6}   y={V.C[1] - 4}  className="dna-cube__label">C</text>
-        <text x={V.Or[0] - 12} y={V.Or[1] + 3} className="dna-cube__label">O</text>
-
-        {[V.C, V.A, V.Or, V.AC, V.CO, V.AO].map(([vx, vy], i) => (
-          <circle key={i} cx={vx} cy={vy} r="1.5" fill="rgba(255,107,43,0.35)" />
-        ))}
-
-        <circle cx={dx} cy={dy} r="10" fill={`url(#dot-glow-${archetype})`} />
-        <circle cx={dx} cy={dy} r="4"  fill={dotColor} className="dna-cube__dot" />
-        <circle cx={dx} cy={dy} r="2"  fill="#fff" opacity="0.8" />
-      </svg>
+        <div className="dna-cube3d">
+          <div className="dna-cube3d__face dna-cube3d__face--front">
+            <span className="dna-cube3d__axis">A·C</span>
+            <div
+              className="dna-cube3d__dot"
+              style={{ left: `${dotX}%`, top: `${dotY}%` }}
+            />
+          </div>
+          <div className="dna-cube3d__face dna-cube3d__face--back">
+            <span className="dna-cube3d__axis">A·C</span>
+          </div>
+          <div className="dna-cube3d__face dna-cube3d__face--right">
+            <span className="dna-cube3d__axis">O·C</span>
+          </div>
+          <div className="dna-cube3d__face dna-cube3d__face--left">
+            <span className="dna-cube3d__axis">O·C</span>
+          </div>
+          <div className="dna-cube3d__face dna-cube3d__face--top">
+            <span className="dna-cube3d__axis">A·O</span>
+          </div>
+          <div className="dna-cube3d__face dna-cube3d__face--bottom">
+            <span className="dna-cube3d__axis">A·O</span>
+          </div>
+        </div>
+        <div className="dna-cube3d__values">
+          <span>A <strong>{aggression.toFixed(2)}</strong></span>
+          <span>C <strong>{chaos.toFixed(2)}</strong></span>
+          <span>O <strong>{organicity.toFixed(2)}</strong></span>
+        </div>
+      </div>
     )
   },
 )
@@ -301,7 +272,14 @@ export const DnaRail: React.FC<DnaRailProps> = ({
     [form],
   )
 
-  const lintResult = useMemo(() => validateClip(instance), [instance])
+  // Pass form.aco (raw slider values, pre-bake) so the bias rule (R0) can
+  // compare against what the user actually set — not against the clamped
+  // value that bakeCognitiveDNA() already corrected inside the instance.
+  const lintResult = useMemo(
+    () => validateClip(instance, form.aco),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [instance, form.aco],
+  )
 
   // ── Derive narrative text ──
   const narrative = useMemo(
@@ -475,8 +453,9 @@ export const DnaRail: React.FC<DnaRailProps> = ({
           <div className="dna-rail__section-label">ACO MATRIX</div>
           <div className="dna-rail__genome-sliders">
             {(['aggression', 'chaos', 'organicity'] as const).map(axis => {
-              const min = (bias as Record<string, number | undefined>)[`${axis}Min`] ?? 0
-              const max = (bias as Record<string, number | undefined>)[`${axis}Max`] ?? 1
+              const biasRec = bias as unknown as Record<string, number | undefined>
+              const min = biasRec[`${axis}Min`] ?? 0
+              const max = biasRec[`${axis}Max`] ?? 1
               const isLocked = min === max
               const label = semanticLabel(axis, form.aco[axis])
               return (

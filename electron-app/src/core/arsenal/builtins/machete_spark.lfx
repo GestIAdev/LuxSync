@@ -1,0 +1,120 @@
+{
+  "$schema": "hephaestus/v2.1",
+  "version": "2.1.0",
+  "clip": {
+    "id": "machete_spark",
+    "name": "Machete Spark",
+    "author": "LuxSync Genesis Migrator / WAVE 4821",
+    "category": "fiesta-latina",
+    "tags": [
+      "accent",
+      "intensity"
+    ],
+    "vibeCompat": [
+      "fiesta-latina"
+    ],
+    "zones": [
+      "active"
+    ],
+    "mixBus": "accent",
+    "priority": 40,
+    "durationMs": 2000,
+    "effectType": "heph_custom",
+    "curves": {
+      "intensity": {
+        "paramId": "intensity",
+        "valueType": "number",
+        "range": [
+          0,
+          1
+        ],
+        "defaultValue": 0,
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": 0,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.9099999999999999,
+              0,
+              0.1,
+              1
+            ]
+          },
+          {
+            "timeMs": 2000,
+            "value": 1,
+            "interpolation": "hold"
+          }
+        ],
+        "mode": "absolute"
+      }
+    },
+    "staticParams": {
+      "dominantColorH": 45,
+      "dominantColorS": 100,
+      "dominantColorL": 65,
+      "isOneShot": false,
+      "legacyMixBus": "accent",
+      "movementTransitionMs": 0,
+      "bpmRef": 128
+    },
+    "cognitiveDNA": {
+      "genome": {
+        "aggression": 0.72,
+        "chaos": 0.62,
+        "organicity": 0.18
+      },
+      "textureAffinity": "dirty",
+      "compatibleVibes": [
+        "fiesta-latina"
+      ],
+      "validSections": [],
+      "energyZone": {
+        "min": "active",
+        "max": "active"
+      },
+      "aggressionRange": {
+        "min": 0.72,
+        "max": 0.72
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.7,
+        "energyMultiplier": 1.31,
+        "vibeBonus": 0.1
+      },
+      "gpuCost": 0.25,
+      "fatigueImpact": 0.15,
+      "minDurationMs": 1000,
+      "cooldownMs": 2000,
+      "isStrobe": false,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": true,
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": null,
+        "minimumEnergy": null
+      }
+    },
+    "executionHints": {
+      "overlayMode": "absolute",
+      "phaseConfig": {
+        "spread": 0,
+        "symmetry": "linear",
+        "wings": 1,
+        "direction": 1
+      },
+      "intensityScaling": "energyDriven",
+      "fixtureTargeting": "all"
+    },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 0,
+      "containsRapidFlash": false,
+      "communityTrusted": true
+    }
+  },
+  "checksum": "sha256:7c564d0284f215cd80a99fc6c698223b9972a2a721adf6df3470b414ed91b239"
+}

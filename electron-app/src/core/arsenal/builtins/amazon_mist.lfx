@@ -1,0 +1,132 @@
+{
+  "$schema": "hephaestus/v2.1",
+  "version": "2.1.0",
+  "clip": {
+    "id": "amazon_mist",
+    "name": "Amazon Mist",
+    "author": "LuxSync Genesis Migrator / WAVE 4821",
+    "category": "fiesta-latina",
+    "tags": [
+      "atmospheric",
+      "color"
+    ],
+    "vibeCompat": [
+      "fiesta-latina"
+    ],
+    "zones": [
+      "silence",
+      "valley"
+    ],
+    "mixBus": "ambient",
+    "priority": 30,
+    "durationMs": 8000,
+    "effectType": "heph_custom",
+    "curves": {
+      "intensity": {
+        "paramId": "intensity",
+        "valueType": "number",
+        "range": [
+          0,
+          1
+        ],
+        "defaultValue": 0,
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": 0,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              0,
+              0.67,
+              1
+            ]
+          },
+          {
+            "timeMs": 4000,
+            "value": 1,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              1,
+              0.67,
+              0
+            ]
+          },
+          {
+            "timeMs": 8000,
+            "value": 0,
+            "interpolation": "hold"
+          }
+        ],
+        "mode": "absolute"
+      }
+    },
+    "staticParams": {
+      "dominantColorH": 165,
+      "dominantColorS": 80,
+      "dominantColorL": 35,
+      "isOneShot": false,
+      "legacyMixBus": "ambient",
+      "movementTransitionMs": 0,
+      "bpmRef": 128
+    },
+    "cognitiveDNA": {
+      "genome": {
+        "aggression": 0.15,
+        "chaos": 0.14,
+        "organicity": 0.82
+      },
+      "textureAffinity": "clean",
+      "compatibleVibes": [
+        "fiesta-latina"
+      ],
+      "validSections": [],
+      "energyZone": {
+        "min": "silence",
+        "max": "valley"
+      },
+      "aggressionRange": {
+        "min": 0.15,
+        "max": 0.15
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.35,
+        "energyMultiplier": 1.07,
+        "vibeBonus": 0.1
+      },
+      "gpuCost": 0.25,
+      "fatigueImpact": 0.02,
+      "minDurationMs": 1000,
+      "cooldownMs": 2000,
+      "isStrobe": false,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": false,
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": null,
+        "minimumEnergy": null
+      }
+    },
+    "executionHints": {
+      "overlayMode": "absolute",
+      "phaseConfig": {
+        "spread": 0,
+        "symmetry": "linear",
+        "wings": 1,
+        "direction": 1
+      },
+      "intensityScaling": "energyDriven",
+      "fixtureTargeting": "pars"
+    },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 0,
+      "containsRapidFlash": false,
+      "communityTrusted": true
+    }
+  },
+  "checksum": "sha256:db578ed8d9dc72f65e839ec488e2376ea605723a676746c6c8346fc576eedcff"
+}

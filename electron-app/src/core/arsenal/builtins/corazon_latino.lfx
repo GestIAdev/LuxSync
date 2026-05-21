@@ -1,0 +1,219 @@
+{
+  "$schema": "hephaestus/v2.1",
+  "version": "2.1.0",
+  "clip": {
+    "id": "corazon_latino",
+    "name": "Corazón Latino",
+    "author": "LuxSync Genesis Migrator / WAVE 4821",
+    "category": "fiesta-latina",
+    "tags": [
+      "rhythmic",
+      "intensity"
+    ],
+    "vibeCompat": [
+      "fiesta-latina"
+    ],
+    "zones": [
+      "intense"
+    ],
+    "mixBus": "htp",
+    "priority": 60,
+    "durationMs": 4000,
+    "effectType": "heph_custom",
+    "curves": {
+      "intensity": {
+        "paramId": "intensity",
+        "valueType": "number",
+        "range": [
+          0,
+          1
+        ],
+        "defaultValue": 0,
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": 0,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              0,
+              0.67,
+              1
+            ]
+          },
+          {
+            "timeMs": 469,
+            "value": 1,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              1,
+              0.67,
+              0
+            ]
+          },
+          {
+            "timeMs": 938,
+            "value": 0,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              0,
+              0.67,
+              1
+            ]
+          },
+          {
+            "timeMs": 1406,
+            "value": 1,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              1,
+              0.67,
+              0
+            ]
+          },
+          {
+            "timeMs": 1875,
+            "value": 0,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              0,
+              0.67,
+              1
+            ]
+          },
+          {
+            "timeMs": 2344,
+            "value": 1,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              1,
+              0.67,
+              0
+            ]
+          },
+          {
+            "timeMs": 2813,
+            "value": 0,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              0,
+              0.67,
+              1
+            ]
+          },
+          {
+            "timeMs": 3281,
+            "value": 1,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              1,
+              0.67,
+              0
+            ]
+          },
+          {
+            "timeMs": 3750,
+            "value": 0,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              0,
+              0.67,
+              1
+            ]
+          },
+          {
+            "timeMs": 3875,
+            "value": 1,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              1,
+              0.67,
+              0
+            ]
+          },
+          {
+            "timeMs": 4000,
+            "value": 0,
+            "interpolation": "hold"
+          }
+        ],
+        "mode": "absolute"
+      }
+    },
+    "staticParams": {
+      "dominantColorH": 340,
+      "dominantColorS": 100,
+      "dominantColorL": 55,
+      "isOneShot": false,
+      "legacyMixBus": "htp",
+      "movementTransitionMs": 0,
+      "bpmRef": 128
+    },
+    "cognitiveDNA": {
+      "genome": {
+        "aggression": 0.78,
+        "chaos": 0.42,
+        "organicity": 0.4
+      },
+      "textureAffinity": "dirty",
+      "compatibleVibes": [
+        "fiesta-latina"
+      ],
+      "validSections": [],
+      "energyZone": {
+        "min": "intense",
+        "max": "intense"
+      },
+      "aggressionRange": {
+        "min": 0.78,
+        "max": 0.78
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.7,
+        "energyMultiplier": 1.21,
+        "vibeBonus": 0.1
+      },
+      "gpuCost": 0.25,
+      "fatigueImpact": 0.15,
+      "minDurationMs": 1000,
+      "cooldownMs": 2000,
+      "isStrobe": false,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": true,
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": null,
+        "minimumEnergy": null
+      }
+    },
+    "executionHints": {
+      "overlayMode": "additive",
+      "phaseConfig": {
+        "spread": 0,
+        "symmetry": "linear",
+        "wings": 1,
+        "direction": 1
+      },
+      "intensityScaling": "energyDriven",
+      "fixtureTargeting": "all"
+    },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 0,
+      "containsRapidFlash": false,
+      "communityTrusted": true
+    }
+  },
+  "checksum": "sha256:ef41de04c79ef2b269e384caae076f4c0484d2e230e86022991831ab912c44df"
+}

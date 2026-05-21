@@ -1,0 +1,341 @@
+{
+  "$schema": "hephaestus/v2.1",
+  "version": "2.1.0",
+  "clip": {
+    "id": "clave_rhythm",
+    "name": "Clave Rhythm",
+    "author": "LuxSync Genesis Migrator / WAVE 4821",
+    "category": "fiesta-latina",
+    "tags": [
+      "rhythmic",
+      "movement"
+    ],
+    "vibeCompat": [
+      "fiesta-latina"
+    ],
+    "zones": [
+      "active"
+    ],
+    "mixBus": "htp",
+    "priority": 60,
+    "durationMs": 4000,
+    "effectType": "heph_custom",
+    "curves": {
+      "intensity": {
+        "paramId": "intensity",
+        "valueType": "number",
+        "range": [
+          0,
+          1
+        ],
+        "defaultValue": 0,
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": 0,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              0,
+              0.67,
+              1
+            ]
+          },
+          {
+            "timeMs": 469,
+            "value": 1,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              1,
+              0.67,
+              0
+            ]
+          },
+          {
+            "timeMs": 938,
+            "value": 0,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              0,
+              0.67,
+              1
+            ]
+          },
+          {
+            "timeMs": 1406,
+            "value": 1,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              1,
+              0.67,
+              0
+            ]
+          },
+          {
+            "timeMs": 1875,
+            "value": 0,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              0,
+              0.67,
+              1
+            ]
+          },
+          {
+            "timeMs": 2344,
+            "value": 1,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              1,
+              0.67,
+              0
+            ]
+          },
+          {
+            "timeMs": 2813,
+            "value": 0,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              0,
+              0.67,
+              1
+            ]
+          },
+          {
+            "timeMs": 3281,
+            "value": 1,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              1,
+              0.67,
+              0
+            ]
+          },
+          {
+            "timeMs": 3750,
+            "value": 0,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              0,
+              0.67,
+              1
+            ]
+          },
+          {
+            "timeMs": 3875,
+            "value": 1,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              1,
+              0.67,
+              0
+            ]
+          },
+          {
+            "timeMs": 4000,
+            "value": 0,
+            "interpolation": "hold"
+          }
+        ],
+        "mode": "absolute"
+      },
+      "pan": {
+        "paramId": "pan",
+        "valueType": "number",
+        "range": [
+          -1,
+          1
+        ],
+        "defaultValue": 0,
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": 0,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              0,
+              0.67,
+              1
+            ]
+          },
+          {
+            "timeMs": 1000,
+            "value": 0.4,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              1,
+              0.67,
+              0
+            ]
+          },
+          {
+            "timeMs": 2000,
+            "value": 0,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              0,
+              0.67,
+              -1
+            ]
+          },
+          {
+            "timeMs": 3000,
+            "value": -0.4,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              -1,
+              0.67,
+              0
+            ]
+          },
+          {
+            "timeMs": 4000,
+            "value": 0,
+            "interpolation": "hold"
+          }
+        ],
+        "mode": "additive"
+      },
+      "tilt": {
+        "paramId": "tilt",
+        "valueType": "number",
+        "range": [
+          -1,
+          1
+        ],
+        "defaultValue": 0,
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": 0,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              0,
+              0.67,
+              1
+            ]
+          },
+          {
+            "timeMs": 1000,
+            "value": 0.25,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              1,
+              0.67,
+              0
+            ]
+          },
+          {
+            "timeMs": 2000,
+            "value": 0,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              0,
+              0.67,
+              -1
+            ]
+          },
+          {
+            "timeMs": 3000,
+            "value": -0.25,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              -1,
+              0.67,
+              0
+            ]
+          },
+          {
+            "timeMs": 4000,
+            "value": 0,
+            "interpolation": "hold"
+          }
+        ],
+        "mode": "additive"
+      }
+    },
+    "staticParams": {
+      "dominantColorH": 28,
+      "dominantColorS": 100,
+      "dominantColorL": 55,
+      "isOneShot": false,
+      "legacyMixBus": "htp",
+      "movementTransitionMs": 0,
+      "bpmRef": 128
+    },
+    "cognitiveDNA": {
+      "genome": {
+        "aggression": 0.75,
+        "chaos": 0.55,
+        "organicity": 0.4
+      },
+      "textureAffinity": "dirty",
+      "compatibleVibes": [
+        "fiesta-latina"
+      ],
+      "validSections": [],
+      "energyZone": {
+        "min": "active",
+        "max": "active"
+      },
+      "aggressionRange": {
+        "min": 0.75,
+        "max": 0.75
+      },
+      "spatialBehavior": "relative_offset"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.7,
+        "energyMultiplier": 1.275,
+        "vibeBonus": 0.1
+      },
+      "gpuCost": 0.45,
+      "fatigueImpact": 0.15,
+      "minDurationMs": 1000,
+      "cooldownMs": 2000,
+      "isStrobe": false,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": true,
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": null,
+        "minimumEnergy": null
+      }
+    },
+    "executionHints": {
+      "overlayMode": "additive",
+      "phaseConfig": {
+        "spread": 0.5,
+        "symmetry": "linear",
+        "wings": 1,
+        "direction": 1
+      },
+      "intensityScaling": "energyDriven",
+      "fixtureTargeting": "movers"
+    },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 0,
+      "containsRapidFlash": false,
+      "communityTrusted": true
+    }
+  },
+  "checksum": "sha256:dc832e6bf050b6b97f8e7155b6eff4d37a37858c8bfd7205977f69ca8475eecf"
+}

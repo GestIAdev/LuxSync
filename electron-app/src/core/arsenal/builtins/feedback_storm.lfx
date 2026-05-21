@@ -1,0 +1,518 @@
+{
+  "$schema": "hephaestus/v2.1",
+  "version": "2.1.0",
+  "clip": {
+    "id": "feedback_storm",
+    "name": "Feedback Storm",
+    "author": "LuxSync Genesis Migrator / WAVE 4821",
+    "category": "pop-rock",
+    "tags": [
+      "strobe",
+      "intensity"
+    ],
+    "vibeCompat": [
+      "pop-rock"
+    ],
+    "zones": [
+      "peak"
+    ],
+    "mixBus": "global",
+    "priority": 90,
+    "durationMs": 3000,
+    "effectType": "heph_custom",
+    "curves": {
+      "intensity": {
+        "paramId": "intensity",
+        "valueType": "number",
+        "range": [
+          0,
+          1
+        ],
+        "defaultValue": 0,
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": 0,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.9,
+              0,
+              0.1,
+              1
+            ]
+          },
+          {
+            "timeMs": 150,
+            "value": 0.9,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2550,
+            "value": 0.85,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0,
+              0,
+              0.42,
+              1
+            ]
+          },
+          {
+            "timeMs": 3000,
+            "value": 0,
+            "interpolation": "hold"
+          }
+        ],
+        "mode": "absolute"
+      },
+      "strobe": {
+        "paramId": "strobe",
+        "valueType": "number",
+        "range": [
+          0,
+          1
+        ],
+        "defaultValue": 0,
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 42,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 83,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 125,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 167,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 208,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 250,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 292,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 333,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 375,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 417,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 458,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 500,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 542,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 583,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 625,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 667,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 708,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 750,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 792,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 833,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 875,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 917,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 958,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1000,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1042,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1083,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1125,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1167,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1208,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1250,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1292,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1333,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1375,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1417,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1458,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1500,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1542,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1583,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1625,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1667,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1708,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1750,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1792,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1833,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1875,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1917,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1958,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2000,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2042,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2083,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2125,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2167,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2208,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2250,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2292,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2333,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2375,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2417,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2458,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2500,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2542,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2583,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2625,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2667,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2708,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2750,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2792,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2833,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2875,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2917,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2958,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 3000,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 3000,
+            "value": 0,
+            "interpolation": "hold"
+          }
+        ],
+        "mode": "absolute"
+      }
+    },
+    "staticParams": {
+      "dominantColorH": 355,
+      "dominantColorS": 100,
+      "dominantColorL": 45,
+      "isOneShot": true,
+      "legacyMixBus": "global",
+      "movementTransitionMs": 100,
+      "bpmRef": 128
+    },
+    "cognitiveDNA": {
+      "genome": {
+        "aggression": 0.85,
+        "chaos": 0.8,
+        "organicity": 0.15
+      },
+      "textureAffinity": "dirty",
+      "compatibleVibes": [
+        "pop-rock"
+      ],
+      "validSections": [],
+      "energyZone": {
+        "min": "peak",
+        "max": "peak"
+      },
+      "aggressionRange": {
+        "min": 0.85,
+        "max": 0.85
+      },
+      "spatialBehavior": "absolute"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.7,
+        "energyMultiplier": 1.4,
+        "vibeBonus": 0.1
+      },
+      "gpuCost": 0.6,
+      "fatigueImpact": 0.15,
+      "minDurationMs": 3000,
+      "cooldownMs": 8000,
+      "isStrobe": true,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": false,
+      "zScoreGuards": {
+        "requireRising": true,
+        "minimumZ": 1.2,
+        "minimumEnergy": 0.7
+      }
+    },
+    "executionHints": {
+      "overlayMode": "absolute",
+      "phaseConfig": {
+        "spread": 0,
+        "symmetry": "linear",
+        "wings": 1,
+        "direction": 1
+      },
+      "intensityScaling": "fixed",
+      "fixtureTargeting": "strobes"
+    },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 12,
+      "containsRapidFlash": true,
+      "communityTrusted": true
+    }
+  },
+  "checksum": "sha256:b4c5218d395dc4467a44df424adb70eb8bacf4c7b54f70b60638cc4577b6de8e"
+}

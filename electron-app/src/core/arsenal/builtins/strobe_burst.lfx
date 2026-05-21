@@ -1,0 +1,737 @@
+{
+  "$schema": "hephaestus/v2.1",
+  "version": "2.1.0",
+  "clip": {
+    "id": "strobe_burst",
+    "name": "Strobe Burst",
+    "author": "LuxSync Genesis Migrator / WAVE 4821",
+    "category": "fiesta-latina",
+    "tags": [
+      "strobe",
+      "intensity"
+    ],
+    "vibeCompat": [
+      "techno-club"
+    ],
+    "zones": [
+      "intense",
+      "peak"
+    ],
+    "mixBus": "global",
+    "priority": 80,
+    "durationMs": 2000,
+    "effectType": "heph_custom",
+    "curves": {
+      "intensity": {
+        "paramId": "intensity",
+        "valueType": "number",
+        "range": [
+          0,
+          1
+        ],
+        "defaultValue": 0,
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 33,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 67,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 100,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 133,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 167,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 200,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 233,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 267,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 300,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 333,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 367,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 400,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 433,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 467,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 500,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 533,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 567,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 600,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 633,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 667,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 700,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 733,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 767,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 800,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 833,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 867,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 900,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 933,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 967,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1000,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1033,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1067,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1100,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1133,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1167,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1200,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1233,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1267,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1300,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1333,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1367,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1400,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1433,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1467,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1500,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1533,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1567,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1600,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1633,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1667,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1700,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1733,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1767,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1800,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1833,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1867,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1900,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1933,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1967,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2000,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2000,
+            "value": 0,
+            "interpolation": "hold"
+          }
+        ],
+        "mode": "absolute"
+      },
+      "strobe": {
+        "paramId": "strobe",
+        "valueType": "number",
+        "range": [
+          0,
+          1
+        ],
+        "defaultValue": 0,
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 33,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 67,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 100,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 133,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 167,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 200,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 233,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 267,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 300,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 333,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 367,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 400,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 433,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 467,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 500,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 533,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 567,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 600,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 633,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 667,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 700,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 733,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 767,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 800,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 833,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 867,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 900,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 933,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 967,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1000,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1033,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1067,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1100,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1133,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1167,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1200,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1233,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1267,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1300,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1333,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1367,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1400,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1433,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1467,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1500,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1533,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1567,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1600,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1633,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1667,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1700,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1733,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1767,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1800,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1833,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1867,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1900,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1933,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1967,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2000,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2000,
+            "value": 0,
+            "interpolation": "hold"
+          }
+        ],
+        "mode": "absolute"
+      }
+    },
+    "staticParams": {
+      "dominantColorH": 0,
+      "dominantColorS": 0,
+      "dominantColorL": 100,
+      "isOneShot": false,
+      "legacyMixBus": "global",
+      "movementTransitionMs": 0,
+      "bpmRef": 128
+    },
+    "cognitiveDNA": {
+      "genome": {
+        "aggression": 0.88,
+        "chaos": 0.55,
+        "organicity": 0.12
+      },
+      "textureAffinity": "dirty",
+      "compatibleVibes": [
+        "techno-club"
+      ],
+      "validSections": [],
+      "energyZone": {
+        "min": "intense",
+        "max": "peak"
+      },
+      "aggressionRange": {
+        "min": 0.88,
+        "max": 0.88
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.7,
+        "energyMultiplier": 1.275,
+        "vibeBonus": 0.1
+      },
+      "gpuCost": 0.6,
+      "fatigueImpact": 0.15,
+      "minDurationMs": 1000,
+      "cooldownMs": 5000,
+      "isStrobe": true,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": false,
+      "zScoreGuards": {
+        "requireRising": true,
+        "minimumZ": 1.2,
+        "minimumEnergy": 0.7
+      }
+    },
+    "executionHints": {
+      "overlayMode": "absolute",
+      "phaseConfig": {
+        "spread": 0,
+        "symmetry": "linear",
+        "wings": 1,
+        "direction": 1
+      },
+      "intensityScaling": "fixed",
+      "fixtureTargeting": "strobes"
+    },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 15,
+      "containsRapidFlash": true,
+      "communityTrusted": true
+    }
+  },
+  "checksum": "sha256:76ac14423803fe3bfd21c1740a176a4b27cf00e224604a5357bd5b52e84ebac3"
+}

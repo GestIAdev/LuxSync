@@ -1,0 +1,115 @@
+{
+  "$schema": "hephaestus/v2.1",
+  "version": "2.1.0",
+  "clip": {
+    "id": "acid_sweep",
+    "name": "Acid Sweep",
+    "author": "LuxSync Genesis Migrator / WAVE 4821",
+    "category": "techno",
+    "tags": [
+      "sweep",
+      "movement"
+    ],
+    "vibeCompat": [
+      "techno-club"
+    ],
+    "zones": [
+      "active",
+      "intense"
+    ],
+    "mixBus": "htp",
+    "priority": 60,
+    "durationMs": 4000,
+    "effectType": "heph_custom",
+    "curves": {
+      "intensity": {
+        "paramId": "intensity",
+        "valueType": "number",
+        "range": [
+          0,
+          1
+        ],
+        "defaultValue": 0,
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": 0,
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 4000,
+            "value": 1,
+            "interpolation": "hold"
+          }
+        ],
+        "mode": "absolute"
+      }
+    },
+    "staticParams": {
+      "dominantColorH": 120,
+      "dominantColorS": 100,
+      "dominantColorL": 50,
+      "isOneShot": false,
+      "legacyMixBus": "htp",
+      "movementTransitionMs": 600,
+      "bpmRef": 128
+    },
+    "cognitiveDNA": {
+      "genome": {
+        "aggression": 0.7,
+        "chaos": 0.4,
+        "organicity": 0.45
+      },
+      "textureAffinity": "dirty",
+      "compatibleVibes": [
+        "techno-club"
+      ],
+      "validSections": [],
+      "energyZone": {
+        "min": "active",
+        "max": "intense"
+      },
+      "aggressionRange": {
+        "min": 0.7,
+        "max": 0.7
+      },
+      "spatialBehavior": "absolute"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.7,
+        "energyMultiplier": 1.2,
+        "vibeBonus": 0.1
+      },
+      "gpuCost": 0.45,
+      "fatigueImpact": 0.15,
+      "minDurationMs": 1000,
+      "cooldownMs": 2000,
+      "isStrobe": false,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": true,
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": null,
+        "minimumEnergy": null
+      }
+    },
+    "executionHints": {
+      "overlayMode": "additive",
+      "phaseConfig": {
+        "spread": 0,
+        "symmetry": "linear",
+        "wings": 1,
+        "direction": 1
+      },
+      "intensityScaling": "energyDriven",
+      "fixtureTargeting": "movers"
+    },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 0,
+      "containsRapidFlash": false,
+      "communityTrusted": true
+    }
+  },
+  "checksum": "sha256:3b3925328917f248621a6543bb83d131a22def5e91ce27435629cd1e6c77ce52"
+}

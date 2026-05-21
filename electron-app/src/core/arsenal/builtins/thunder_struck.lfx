@@ -1,0 +1,147 @@
+{
+  "$schema": "hephaestus/v2.1",
+  "version": "2.1.0",
+  "clip": {
+    "id": "thunder_struck",
+    "name": "Thunder Struck",
+    "author": "LuxSync Genesis Migrator / WAVE 4821",
+    "category": "pop-rock",
+    "tags": [
+      "intensity",
+      "accent"
+    ],
+    "vibeCompat": [
+      "pop-rock"
+    ],
+    "zones": [
+      "intense"
+    ],
+    "mixBus": "htp",
+    "priority": 90,
+    "durationMs": 2000,
+    "effectType": "heph_custom",
+    "curves": {
+      "intensity": {
+        "paramId": "intensity",
+        "valueType": "number",
+        "range": [
+          0,
+          1
+        ],
+        "defaultValue": 0,
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": 0,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.9,
+              0,
+              0.1,
+              1
+            ]
+          },
+          {
+            "timeMs": 200,
+            "value": 0.95,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.33,
+              1,
+              0.67,
+              1
+            ]
+          },
+          {
+            "timeMs": 1000,
+            "value": 0.95,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0,
+              0,
+              0.42,
+              1
+            ]
+          },
+          {
+            "timeMs": 1600,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2000,
+            "value": 0.05,
+            "interpolation": "hold"
+          }
+        ],
+        "mode": "absolute"
+      }
+    },
+    "staticParams": {
+      "dominantColorH": 40,
+      "dominantColorS": 85,
+      "dominantColorL": 70,
+      "isOneShot": true,
+      "legacyMixBus": "htp",
+      "movementTransitionMs": 0,
+      "bpmRef": 128
+    },
+    "cognitiveDNA": {
+      "genome": {
+        "aggression": 0.88,
+        "chaos": 0.4,
+        "organicity": 0.38
+      },
+      "textureAffinity": "dirty",
+      "compatibleVibes": [
+        "pop-rock"
+      ],
+      "validSections": [],
+      "energyZone": {
+        "min": "intense",
+        "max": "intense"
+      },
+      "aggressionRange": {
+        "min": 0.88,
+        "max": 0.88
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.7,
+        "energyMultiplier": 1.2,
+        "vibeBonus": 0.1
+      },
+      "gpuCost": 0.25,
+      "fatigueImpact": 0.15,
+      "minDurationMs": 2000,
+      "cooldownMs": 8000,
+      "isStrobe": false,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": true,
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": null,
+        "minimumEnergy": null
+      }
+    },
+    "executionHints": {
+      "overlayMode": "additive",
+      "phaseConfig": {
+        "spread": 0,
+        "symmetry": "linear",
+        "wings": 1,
+        "direction": 1
+      },
+      "intensityScaling": "fixed",
+      "fixtureTargeting": "all"
+    },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 0,
+      "containsRapidFlash": false,
+      "communityTrusted": true
+    }
+  },
+  "checksum": "sha256:425f774ae6ab383ab0c7aef27f116b30736e8eacbe845fb2e944bbe7b0656420"
+}

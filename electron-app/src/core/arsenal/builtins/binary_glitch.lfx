@@ -1,0 +1,446 @@
+{
+  "$schema": "hephaestus/v2.1",
+  "version": "2.1.0",
+  "clip": {
+    "id": "binary_glitch",
+    "name": "Binary Glitch",
+    "author": "LuxSync Genesis Migrator / WAVE 4821",
+    "category": "techno",
+    "tags": [
+      "accent",
+      "rhythmic"
+    ],
+    "vibeCompat": [
+      "techno-club"
+    ],
+    "zones": [
+      "active"
+    ],
+    "mixBus": "accent",
+    "priority": 40,
+    "durationMs": 2000,
+    "effectType": "heph_custom",
+    "curves": {
+      "intensity": {
+        "paramId": "intensity",
+        "valueType": "number",
+        "range": [
+          0,
+          1
+        ],
+        "defaultValue": 0,
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 63,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 125,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 188,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 250,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 313,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 375,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 438,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 500,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 563,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 625,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 688,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 750,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 813,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 875,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 938,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1000,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1063,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1125,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1188,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1250,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1313,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1375,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1438,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1500,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1563,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1625,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1688,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1750,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1813,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1875,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1938,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2000,
+            "value": 0,
+            "interpolation": "hold"
+          }
+        ],
+        "mode": "absolute"
+      },
+      "strobe": {
+        "paramId": "strobe",
+        "valueType": "number",
+        "range": [
+          0,
+          1
+        ],
+        "defaultValue": 0,
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 63,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 125,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 188,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 250,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 313,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 375,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 438,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 500,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 563,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 625,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 688,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 750,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 813,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 875,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 938,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1000,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1063,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1125,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1188,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1250,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1313,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1375,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1438,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1500,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1563,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1625,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1688,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1750,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1813,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1875,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1938,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2000,
+            "value": 0,
+            "interpolation": "hold"
+          }
+        ],
+        "mode": "absolute"
+      }
+    },
+    "staticParams": {
+      "dominantColorH": 90,
+      "dominantColorS": 100,
+      "dominantColorL": 60,
+      "isOneShot": false,
+      "legacyMixBus": "accent",
+      "movementTransitionMs": 0,
+      "bpmRef": 128
+    },
+    "cognitiveDNA": {
+      "genome": {
+        "aggression": 0.75,
+        "chaos": 0.75,
+        "organicity": 0.18
+      },
+      "textureAffinity": "dirty",
+      "compatibleVibes": [
+        "techno-club"
+      ],
+      "validSections": [],
+      "energyZone": {
+        "min": "active",
+        "max": "active"
+      },
+      "aggressionRange": {
+        "min": 0.75,
+        "max": 0.75
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.7,
+        "energyMultiplier": 1.375,
+        "vibeBonus": 0.1
+      },
+      "gpuCost": 0.6,
+      "fatigueImpact": 0.15,
+      "minDurationMs": 1000,
+      "cooldownMs": 5000,
+      "isStrobe": true,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": false,
+      "zScoreGuards": {
+        "requireRising": true,
+        "minimumZ": 1.2,
+        "minimumEnergy": 0.7
+      }
+    },
+    "executionHints": {
+      "overlayMode": "absolute",
+      "phaseConfig": {
+        "spread": 0,
+        "symmetry": "linear",
+        "wings": 1,
+        "direction": 1
+      },
+      "intensityScaling": "energyDriven",
+      "fixtureTargeting": "all"
+    },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 8,
+      "containsRapidFlash": true,
+      "communityTrusted": true
+    }
+  },
+  "checksum": "sha256:94686128cc05a23373e4793a8fafa7659d192c8fd219fab8eaf229f2bf13c081"
+}

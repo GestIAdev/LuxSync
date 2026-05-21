@@ -144,7 +144,7 @@ const FOSSIL_MANIFEST: readonly FossilEntry[] = Object.freeze([
     id: 'tropical_pulse',     title: 'Tropical Pulse',
     category: 'fiesta-latina', vibes: ['latino-organic'],
     // Blueprint §3.4 — heavy; state machine: preDuck+3×flash+gaps+finale+release
-    rawAco: { aggression: 0.80, chaos: 0.55, organicity: 0.25 },
+    rawAco: { aggression: 0.80, chaos: 0.55, organicity: 0.38 }, // o>0.35 → heavy, not strobe
     zones: ['active', 'intense'],
     spatialBehavior: 'static',
     mixBus: 'global',  waveform: 'adsr',
@@ -180,7 +180,7 @@ const FOSSIL_MANIFEST: readonly FossilEntry[] = Object.freeze([
     id: 'clave_rhythm',       title: 'Clave Rhythm',
     category: 'fiesta-latina', vibes: ['latino-organic'],
     // 3-2 clave pattern drives mover orbital (relative_offset LFO)
-    rawAco: { aggression: 0.75, chaos: 0.55, organicity: 0.32 },
+    rawAco: { aggression: 0.75, chaos: 0.55, organicity: 0.40 }, // o>0.35 → heavy, not strobe
     zones: ['active'],
     spatialBehavior: 'relative_offset',
     mixBus: 'htp',     waveform: 'bpm_sine',
@@ -228,7 +228,7 @@ const FOSSIL_MANIFEST: readonly FossilEntry[] = Object.freeze([
     id: 'glitch_guaguanco',   title: 'Glitch Guaguancó',
     category: 'fiesta-latina', vibes: ['latino-organic'],
     // Digital glitch strobe at 6Hz (below epilepsy ceiling)
-    rawAco: { aggression: 0.68, chaos: 0.68, organicity: 0.22 },
+    rawAco: { aggression: 0.70, chaos: 0.68, organicity: 0.22 }, // a≥0.70 → heavy min
     zones: ['active'],
     spatialBehavior: 'static',
     mixBus: 'accent',  waveform: 'square',
@@ -303,7 +303,7 @@ const FOSSIL_MANIFEST: readonly FossilEntry[] = Object.freeze([
     id: 'cyber_dualism',      title: 'Cyber Dualism',
     category: 'techno',        vibes: ['techno-dark'],
     // §5.1 — ping-pong L↔R alternation; blueprint §1.2 → absolute
-    rawAco: { aggression: 0.85, chaos: 0.45, organicity: 0.15 },
+    rawAco: { aggression: 0.85, chaos: 0.45, organicity: 0.38 }, // o>0.35 → heavy, not strobe
     zones: ['active', 'intense'],
     spatialBehavior: 'absolute',
     mixBus: 'htp',     waveform: 'bpm_sine',
@@ -327,7 +327,7 @@ const FOSSIL_MANIFEST: readonly FossilEntry[] = Object.freeze([
     id: 'sky_saw',            title: 'Sky Saw',
     category: 'techno',        vibes: ['techno-dark'],
     // Mover orbital sweep (LFO sinusoidal) — relative_offset
-    rawAco: { aggression: 0.80, chaos: 0.58, organicity: 0.15 },
+    rawAco: { aggression: 0.80, chaos: 0.58, organicity: 0.38 }, // o>0.35 → heavy, not strobe
     zones: ['intense'],
     spatialBehavior: 'relative_offset',
     mixBus: 'htp',     waveform: 'linear',
@@ -339,7 +339,7 @@ const FOSSIL_MANIFEST: readonly FossilEntry[] = Object.freeze([
     id: 'abyssal_rise',       title: 'Abyssal Rise',
     category: 'techno',        vibes: ['techno-dark'],
     // 8-bar power-curve build; dictates mover position → absolute
-    rawAco: { aggression: 0.76, chaos: 0.45, organicity: 0.30 },
+    rawAco: { aggression: 0.76, chaos: 0.45, organicity: 0.38 }, // o>0.35 → heavy, not strobe
     zones: ['intense'],
     spatialBehavior: 'absolute',
     mixBus: 'htp',     waveform: 'power_attack',
@@ -411,7 +411,7 @@ const FOSSIL_MANIFEST: readonly FossilEntry[] = Object.freeze([
     id: 'binary_glitch',      title: 'Binary Glitch',
     category: 'techno',        vibes: ['techno-dark'],
     // Morse-code corrupt square wave glitch at 8Hz
-    rawAco: { aggression: 0.65, chaos: 0.75, organicity: 0.18 },
+    rawAco: { aggression: 0.75, chaos: 0.75, organicity: 0.18 }, // a≥0.75 → strobe min
     zones: ['active'],
     spatialBehavior: 'static',
     mixBus: 'accent',  waveform: 'square',
@@ -423,7 +423,7 @@ const FOSSIL_MANIFEST: readonly FossilEntry[] = Object.freeze([
     id: 'seismic_snap',       title: 'Seismic Snap',
     category: 'techno',        vibes: ['techno-dark'],
     // Shutter-style power-attack accent
-    rawAco: { aggression: 0.78, chaos: 0.62, organicity: 0.15 },
+    rawAco: { aggression: 0.78, chaos: 0.62, organicity: 0.38 }, // o>0.35 → heavy, not strobe
     zones: ['active'],
     spatialBehavior: 'static',
     mixBus: 'accent',  waveform: 'power_attack',
@@ -485,7 +485,7 @@ const FOSSIL_MANIFEST: readonly FossilEntry[] = Object.freeze([
     id: 'ghost_chase',        title: 'Ghost Chase',
     category: 'techno',        vibes: ['techno-dark'],
     // §8.3 WAVE 2182: movers frozen; only dimmer breathes (sine)
-    rawAco: { aggression: 0.25, chaos: 0.32, organicity: 0.68 },
+    rawAco: { aggression: 0.25, chaos: 0.28, organicity: 0.68 }, // c≤0.30 → within ambient bounds
     zones: ['valley'],
     spatialBehavior: 'static',
     mixBus: 'global',  waveform: 'sine',
@@ -501,7 +501,7 @@ const FOSSIL_MANIFEST: readonly FossilEntry[] = Object.freeze([
     category: 'pop-rock',      vibes: ['pop-rock'],
     // §5.3 + Blueprint §3.4 — ADSR: attack(pow 0.3)+sustain+decay+gap BPM-synced
     // §8.3 WAVE 2690: movement PURGED
-    rawAco: { aggression: 0.88, chaos: 0.40, organicity: 0.20 },
+    rawAco: { aggression: 0.88, chaos: 0.40, organicity: 0.38 }, // o>0.35 → heavy, not strobe
     zones: ['intense'],
     spatialBehavior: 'static',
     mixBus: 'htp',     waveform: 'adsr',

@@ -1,0 +1,115 @@
+{
+  "$schema": "hephaestus/v2.1",
+  "version": "2.1.0",
+  "clip": {
+    "id": "arena_sweep",
+    "name": "Arena Sweep",
+    "author": "LuxSync Genesis Migrator / WAVE 4821",
+    "category": "pop-rock",
+    "tags": [
+      "sweep",
+      "movement"
+    ],
+    "vibeCompat": [
+      "pop-rock"
+    ],
+    "zones": [
+      "ambient",
+      "active"
+    ],
+    "mixBus": "htp",
+    "priority": 60,
+    "durationMs": 4000,
+    "effectType": "heph_custom",
+    "curves": {
+      "intensity": {
+        "paramId": "intensity",
+        "valueType": "number",
+        "range": [
+          0,
+          1
+        ],
+        "defaultValue": 0,
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": 0,
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 4000,
+            "value": 1,
+            "interpolation": "hold"
+          }
+        ],
+        "mode": "absolute"
+      }
+    },
+    "staticParams": {
+      "dominantColorH": 220,
+      "dominantColorS": 80,
+      "dominantColorL": 60,
+      "isOneShot": false,
+      "legacyMixBus": "htp",
+      "movementTransitionMs": 800,
+      "bpmRef": 128
+    },
+    "cognitiveDNA": {
+      "genome": {
+        "aggression": 0.68,
+        "chaos": 0.38,
+        "organicity": 0.42
+      },
+      "textureAffinity": "universal",
+      "compatibleVibes": [
+        "pop-rock"
+      ],
+      "validSections": [],
+      "energyZone": {
+        "min": "ambient",
+        "max": "active"
+      },
+      "aggressionRange": {
+        "min": 0.68,
+        "max": 0.68
+      },
+      "spatialBehavior": "absolute"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.55,
+        "energyMultiplier": 1.19,
+        "vibeBonus": 0.1
+      },
+      "gpuCost": 0.45,
+      "fatigueImpact": 0.06,
+      "minDurationMs": 1000,
+      "cooldownMs": 2000,
+      "isStrobe": false,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": false,
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": null,
+        "minimumEnergy": null
+      }
+    },
+    "executionHints": {
+      "overlayMode": "additive",
+      "phaseConfig": {
+        "spread": 0,
+        "symmetry": "linear",
+        "wings": 1,
+        "direction": 1
+      },
+      "intensityScaling": "energyDriven",
+      "fixtureTargeting": "movers"
+    },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 0,
+      "containsRapidFlash": false,
+      "communityTrusted": true
+    }
+  },
+  "checksum": "sha256:4d306e29694ae19972a84cdaf007e00b48a339af75197161593d2dc45d9fe09e"
+}

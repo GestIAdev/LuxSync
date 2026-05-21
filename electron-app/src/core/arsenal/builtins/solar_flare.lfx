@@ -1,0 +1,140 @@
+{
+  "$schema": "hephaestus/v2.1",
+  "version": "2.1.0",
+  "clip": {
+    "id": "solar_flare",
+    "name": "Solar Flare",
+    "author": "LuxSync Genesis Migrator / WAVE 4821",
+    "category": "fiesta-latina",
+    "tags": [
+      "intensity"
+    ],
+    "vibeCompat": [
+      "fiesta-latina"
+    ],
+    "zones": [
+      "peak"
+    ],
+    "mixBus": "global",
+    "priority": 90,
+    "durationMs": 3800,
+    "effectType": "heph_custom",
+    "curves": {
+      "intensity": {
+        "paramId": "intensity",
+        "valueType": "number",
+        "range": [
+          0,
+          1
+        ],
+        "defaultValue": 0,
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": 0,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.42,
+              0,
+              1,
+              1
+            ]
+          },
+          {
+            "timeMs": 1500,
+            "value": 0.6,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1560,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1800,
+            "value": 1,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0,
+              0,
+              0.35,
+              1
+            ]
+          },
+          {
+            "timeMs": 3800,
+            "value": 0,
+            "interpolation": "hold"
+          }
+        ],
+        "mode": "absolute"
+      }
+    },
+    "staticParams": {
+      "dominantColorH": 38,
+      "dominantColorS": 100,
+      "dominantColorL": 60,
+      "isOneShot": true,
+      "legacyMixBus": "global",
+      "movementTransitionMs": 0,
+      "bpmRef": 128
+    },
+    "cognitiveDNA": {
+      "genome": {
+        "aggression": 0.95,
+        "chaos": 0.3,
+        "organicity": 0.2
+      },
+      "textureAffinity": "dirty",
+      "compatibleVibes": [
+        "fiesta-latina"
+      ],
+      "validSections": [],
+      "energyZone": {
+        "min": "peak",
+        "max": "peak"
+      },
+      "aggressionRange": {
+        "min": 0.95,
+        "max": 0.95
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.9,
+        "energyMultiplier": 1.15,
+        "vibeBonus": 0.1
+      },
+      "gpuCost": 0.25,
+      "fatigueImpact": 0.25,
+      "minDurationMs": 3800,
+      "cooldownMs": 8000,
+      "isStrobe": false,
+      "isDivineCandidate": true,
+      "isHeavyCandidate": false,
+      "zScoreGuards": {
+        "requireRising": true,
+        "minimumZ": 1.8,
+        "minimumEnergy": 0.85
+      }
+    },
+    "executionHints": {
+      "overlayMode": "absolute",
+      "phaseConfig": {
+        "spread": 0,
+        "symmetry": "linear",
+        "wings": 1,
+        "direction": 1
+      },
+      "intensityScaling": "fixed",
+      "fixtureTargeting": "all"
+    },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 0,
+      "containsRapidFlash": false,
+      "communityTrusted": true
+    }
+  },
+  "checksum": "sha256:bb69ff9b097f73cc1f84b9089e3ac5a5de7c577cbe662bd2c25ffb1c8a74560e"
+}

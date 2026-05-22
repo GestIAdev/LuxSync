@@ -317,6 +317,16 @@ export class NodeArbiter {
     clearMotorKineticOverride(nodeId) {
         this._motorKineticOverrides.delete(nodeId);
     }
+    /**
+     * WAVE 4916: Lectura del override del motor cinético (IK puro o motor pattern).
+     * Devuelve `{ pan_base, tilt_base }` si el fixture tiene un Spatial Target IK
+     * activo. Usado por `setManualPattern` para preservar la posición IK como
+     * anchor cuando el operador activa un patrón sobre un fixture ya apuntando
+     * a un target 3D — evita el snap destructivo a (0.5, 0.5).
+     */
+    getMotorKineticOverride(nodeId) {
+        return this._motorKineticOverrides.get(nodeId);
+    }
     clearAllMotorKineticOverrides() {
         this._motorKineticOverrides.clear();
     }

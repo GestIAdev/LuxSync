@@ -396,7 +396,7 @@ export class HephaestusRuntime {
                     this._normRgbBuf.r = rgb.r / 255;
                     this._normRgbBuf.g = rgb.g / 255;
                     this._normRgbBuf.b = rgb.b / 255;
-                    this.writeOutput(fp.fixtureId, 'all', paramName, 0, rgb, undefined, 0, this._normRgbBuf, isCustomThisClip);
+                    this.writeOutput(fp.fixtureId, 'all', paramName, 0, rgb, undefined, 0, this._normRgbBuf, isCustomThisClip, active.clip.id);
                 }
                 else {
                     const rawValue = active.evaluator.getValue(paramName, fixtureTimeMs);
@@ -405,7 +405,7 @@ export class HephaestusRuntime {
                     const fine = (paramName === 'pan' || paramName === 'tilt')
                         ? scaleToDMX16(withIntensity).fine
                         : undefined;
-                    this.writeOutput(fp.fixtureId, 'all', paramName, scaledValue, undefined, fine, withIntensity, undefined, isCustomThisClip);
+                    this.writeOutput(fp.fixtureId, 'all', paramName, scaledValue, undefined, fine, withIntensity, undefined, isCustomThisClip, active.clip.id);
                 }
             }
         }
@@ -454,7 +454,7 @@ export class HephaestusRuntime {
                 this._normRgbBuf.g = rgb.g / 255;
                 this._normRgbBuf.b = rgb.b / 255;
                 for (const fixtureId of targetFixtureIds) {
-                    this.writeOutput(fixtureId, 'all', paramName, 0, rgb, undefined, 0, this._normRgbBuf, isCustomThisClip);
+                    this.writeOutput(fixtureId, 'all', paramName, 0, rgb, undefined, 0, this._normRgbBuf, isCustomThisClip, active.clip.id);
                 }
                 continue;
             }
@@ -466,7 +466,7 @@ export class HephaestusRuntime {
                 ? scaleToDMX16(withIntensity).fine
                 : undefined;
             for (const fixtureId of targetFixtureIds) {
-                this.writeOutput(fixtureId, 'all', paramName, scaledValue, undefined, fine, withIntensity, undefined, isCustomThisClip);
+                this.writeOutput(fixtureId, 'all', paramName, scaledValue, undefined, fine, withIntensity, undefined, isCustomThisClip, active.clip.id);
             }
         }
     }
@@ -493,6 +493,7 @@ export class HephaestusRuntime {
                 normalizedValue: 0,
                 normalizedRgb: undefined,
                 isCustomClip: false,
+                clipId: undefined,
             };
         }
         this.outputCapacity = newCapacity;
@@ -502,7 +503,7 @@ export class HephaestusRuntime {
      * Mutates in-place — zero allocation in the hot path.
      * Auto-grows if capacity estimate was wrong (rare).
      */
-    writeOutput(fixtureId, zone, parameter, value, rgb, fine, normalizedValue, normalizedRgb, isCustomClip) {
+    writeOutput(fixtureId, zone, parameter, value, rgb, fine, normalizedValue, normalizedRgb, isCustomClip, clipId) {
         // Auto-grow if needed (rare — only if capacity estimate was wrong)
         if (this.outputCursor >= this.outputCapacity) {
             this.ensureOutputCapacity(this.outputCursor + 64);
@@ -517,6 +518,7 @@ export class HephaestusRuntime {
         out.normalizedValue = normalizedValue ?? 0;
         out.normalizedRgb = normalizedRgb;
         out.isCustomClip = isCustomClip ?? false;
+        out.clipId = clipId;
         // out.source is always 'hephaestus-runtime' — set once at buffer creation
     }
     /**

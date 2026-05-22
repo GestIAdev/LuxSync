@@ -53,6 +53,8 @@ import { SeleneAetherAdapter } from '../aether/adapters/selene-aether-adapter';
 import { ZoneNodeRouter } from '../aether/adapters/helpers/zone-node-router';
 import { ChronosAetherAdapter } from '../aether/adapters/ChronosAetherAdapter';
 import { HephaestusAetherAdapter } from '../aether/adapters/HephaestusAetherAdapter';
+// 🏛️ WAVE 2483: Infinite Arsenal — bridge wiring (playHook → HephaestusRuntime.play).
+import { getSeleneHephBridge } from '../arsenal/SeleneHephBridge';
 // 🛂 WAVE 4557: Aether Safety Middleware — La Aduana Aether
 import { AetherSafetyMiddleware } from '../aether/egress/AetherSafetyMiddleware';
 // 🎭 WAVE 4559: THE MIRROR — Projecta estado Aether → FixtureState[] legacy para la UI
@@ -563,6 +565,34 @@ export class TitanOrchestrator {
         this.eventRouter = getEventRouter();
         // WAVE 4703: _outputEnabled starts false at boot — canonical state owned by TitanOrchestrator
         // WAVE 2098: Boot silence
+        // ─────────────────────────────────────────────────────────────────────
+        // 🏛️ WAVE 2483: Wire SeleneHephBridge.playHook → HephaestusRuntime.play.
+        // Idempotente: si el constructor corre dos veces (tests), el último wins.
+        // Si el HephaestusRuntime aún no estuviera disponible, el lookup es lazy
+        // dentro del closure, así que no hay race condition al boot.
+        // ─────────────────────────────────────────────────────────────────────
+        try {
+            const bridge = getSeleneHephBridge();
+            bridge.setPlayHook((resolved, _entry) => {
+                if (!resolved.filePath)
+                    return -1;
+                // Lazy import: HephaestusRuntime singleton vive en IPCHandlers, que a
+                // su vez importa TitanOrchestrator → resolución circular si lo
+                // hiciéramos en top-level. require() resuelve el ciclo en runtime.
+                // eslint-disable-next-line @typescript-eslint/no-var-requires
+                const { getHephaestusRuntime } = require('./IPCHandlers');
+                const runtime = getHephaestusRuntime();
+                const instanceId = runtime.play(resolved.filePath, {
+                    intensity: resolved.intensity,
+                    durationOverrideMs: resolved.durationMs,
+                });
+                // Bridge contract returns number: success=1 (sentinel), failure=-1.
+                return instanceId != null ? 1 : -1;
+            });
+        }
+        catch (err) {
+            console.warn('[TitanOrchestrator 🏛️] WAVE 2483 playHook wiring failed:', err);
+        }
     }
     /**
      * 🔒 WAVE 2490: Set license tier — DJ_FOUNDER silences Hephaestus output

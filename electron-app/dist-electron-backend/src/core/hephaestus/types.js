@@ -100,6 +100,8 @@ export function serializeHephClip(clip) {
         curves: curvesRecord,
         staticParams: clip.staticParams,
         selector: clip.selector, // ⚡ WAVE 2403: Pass-through (POJO, JSON-safe)
+        cognitiveDNA: clip.cognitiveDNA, // WAVE 4811: Pass-through
+        simulationMeta: clip.simulationMeta, // WAVE 4811: Pass-through
     };
 }
 /**
@@ -126,6 +128,8 @@ export function deserializeHephClip(serialized) {
         curves: curvesMap,
         staticParams: serialized.staticParams,
         selector: serialized.selector, // ⚡ WAVE 2403: Restore selector from IPC
+        cognitiveDNA: serialized.cognitiveDNA, // WAVE 4811: Restore from IPC
+        simulationMeta: serialized.simulationMeta, // WAVE 4811: Restore from IPC
     };
 }
 // ═══════════════════════════════════════════════════════════════════════════

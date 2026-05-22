@@ -1086,6 +1086,21 @@ const luxApi = {
          */
         getState: () => ipcRenderer.invoke('lux:playback:state'),
     },
+    // ─────────────────────────────────────────────────────────────────────────
+    // ⌨ WAVE 4805: KEYFORGE — Loadout persistence
+    // ─────────────────────────────────────────────────────────────────────────
+    keyforge: {
+        /**
+         * Open a native Save As dialog and write the given loadout as JSON.
+         * @returns `{ success, filePath }` on success, `{ success: false, cancelled }` if dismissed.
+         */
+        exportLoadout: (loadout) => ipcRenderer.invoke('lux:keyforge:export', loadout),
+        /**
+         * Open a native Open dialog, read and validate a `.kf.json` loadout file.
+         * @returns `{ success, loadout }` on success, `{ success: false, error }` on failure.
+         */
+        importLoadout: () => ipcRenderer.invoke('lux:keyforge:import'),
+    },
 };
 // ═══════════════════════════════════════════════════════════════════════════
 // 🔥 WAVE 384: LUXDEBUG - Test utilities for Constructor verification

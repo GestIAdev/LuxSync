@@ -28,6 +28,8 @@ import { TitanOrchestrator, setupIPCHandlers, registerTitanOrchestrator } from '
 import { registerAetherIPCHandlers } from '../src/core/aether/AetherIPCHandlers';
 // Stage Persistence (WAVE 365)
 import { stagePersistence, setupStageIPCHandlers } from '../src/core/stage';
+// ⌨ WAVE 4805: KeyForge Loadout IPC
+import { setupKeyForgeIPCHandlers } from '../src/core/keyforge/KeyForgeIPCHandlers';
 // ⚒️ Hephaestus File I/O (WAVE 2030.5)
 import { setupHephIPCHandlers } from '../src/core/hephaestus';
 // Config Manager V2 (WAVE 367) - PREFERENCES ONLY, NO FIXTURES
@@ -343,6 +345,10 @@ async function initTitan() {
     // ═══════════════════════════════════════════════════════════════════════════
     await stagePersistence.init();
     setupStageIPCHandlers(() => mainWindow);
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ⌨ WAVE 4805: KeyForge Loadout persistence
+    // ═══════════════════════════════════════════════════════════════════════════
+    setupKeyForgeIPCHandlers(() => mainWindow);
     // ═══════════════════════════════════════════════════════════════════════════
     // ⚒️ WAVE 2030.5: Initialize Hephaestus File I/O
     // ═══════════════════════════════════════════════════════════════════════════

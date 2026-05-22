@@ -1,0 +1,285 @@
+// ════════════════════════════════════════════════════════════════════════════
+// 🏛️ WAVE 2482 — INFINITE ARSENAL · DYNAMIC EFFECT REGISTRY
+// ════════════════════════════════════════════════════════════════════════════
+//  Almacén in-memory zero-alloc para `.lfx v2.1`.
+//
+//  POLÍTICA:
+//    - TODA allocación ocurre en `registerEffect()` / `clear()` / hot-reload.
+//    - CERO allocaciones en lookups (`getEffectsForVibe`, `getDNA`, etc.).
+//    - Cada `RegistryEntry` se congela con Object.freeze() al ingresar.
+//    - Los índices `vibeIndex`, `divinePool`, `heavyPool` son arrays
+//      pre-construidos que el Registry mantiene actualizados en escritura.
+//
+//  POLÍTICA DE RETROCOMPATIBILIDAD (WAVE 2482):
+//    - Este registry NO sustituye a EffectDreamSimulator ni a EFFECT_DNA_REGISTRY.
+//    - Convive en paralelo. Mientras esté vacío, el sistema funciona idéntico.
+//    - SeleneHephBridge consulta primero AQUÍ; si miss, delega al pipeline legacy.
+// ════════════════════════════════════════════════════════════════════════════
+import { DEFAULT_IK_COMPATIBILITY, DEFAULT_SAFETY_DECLARATION, DEFAULT_SIMULATION_META, hasCognitiveDNA, isSeleneEligible, } from './lfxTypes';
+// ─── REGISTRY ───────────────────────────────────────────────────────────────
+/**
+ * Singleton de efectos cognitivos cargados.
+ *
+ * NO es un singleton tipo módulo-global por defecto: exponemos clase + factory
+ * para facilitar testing. Existe `getDynamicEffectRegistry()` al final.
+ */
+export class DynamicEffectRegistry {
+    constructor() {
+        // ── Índices primarios ────────────────────────────────────────────────────
+        this._byId = new Map();
+        this._byVibe = new Map();
+        this._divineByVibe = new Map();
+        this._heavyByVibe = new Map();
+        /** Snapshot inmutable plano (refrescado solo en mutaciones). */
+        this._allEntries = Object.freeze([]);
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+    // INGESTA / MUTACIÓN
+    // ─────────────────────────────────────────────────────────────────────────
+    /**
+     * Registra un `.lfx v2.1` en el registry.
+     *
+     * Validaciones aplicadas (gates G1..G7 del Blueprint V2):
+     *   G1: schema correcto y `effectType === 'heph_custom'`.
+     *   G3: rangos del genoma ∈ [0,1].
+     *   G4: `compatibleVibes` no vacío.
+     *
+     * Gates G2 (checksum), G5 (curve sanity), G6 (strobe consistency), G7
+     * (offset range) corren ANTES de llamar a este método, en el cargador FS.
+     *
+     * @returns la entry congelada si fue aceptada, o `null` si fue rechazada.
+     */
+    registerEffect(clip, options = {}) {
+        if (!isSeleneEligible(clip)) {
+            // Clip Hephaestus puro (v1, o v2 sin DNA) → invisible para Selene.
+            // No es error, no es warning — es by-design.
+            return null;
+        }
+        // Type narrow: hasCognitiveDNA garantiza presencia.
+        if (!hasCognitiveDNA(clip))
+            return null;
+        const dna = clip.clip.cognitiveDNA;
+        if (!_validateGenomeRanges(dna)) {
+            console.warn(`[DynamicEffectRegistry ⚠️] G3 fail: genome out of range for "${clip.clip.id}"`);
+            return null;
+        }
+        if (dna.compatibleVibes.length === 0) {
+            console.warn(`[DynamicEffectRegistry ⚠️] G4 fail: empty compatibleVibes for "${clip.clip.id}"`);
+            return null;
+        }
+        const entry = _buildEntry(clip, dna, options);
+        // Reemplazo idempotente: si ya existía, removerlo de los índices antes.
+        const prev = this._byId.get(entry.id);
+        if (prev)
+            this._removeFromIndices(prev);
+        this._byId.set(entry.id, entry);
+        this._appendToIndices(entry);
+        this._rebuildAllEntries();
+        return entry;
+    }
+    /**
+     * Elimina un efecto del registry.
+     * @returns true si existía.
+     */
+    unregisterEffect(effectId) {
+        const prev = this._byId.get(effectId);
+        if (!prev)
+            return false;
+        this._byId.delete(effectId);
+        this._removeFromIndices(prev);
+        this._rebuildAllEntries();
+        return true;
+    }
+    /** Vacía completamente el registry. */
+    clear() {
+        this._byId.clear();
+        this._byVibe.clear();
+        this._divineByVibe.clear();
+        this._heavyByVibe.clear();
+        this._allEntries = DynamicEffectRegistry._EMPTY_ENTRIES;
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+    // LOOKUPS O(1) — zero-alloc
+    // ─────────────────────────────────────────────────────────────────────────
+    /** Retorna efectos pre-filtrados por vibe (referencia al array indexado). */
+    getEffectsForVibe(vibe) {
+        return this._byVibe.get(vibe) ?? DynamicEffectRegistry._EMPTY_ENTRIES;
+    }
+    /** Retorna arsenal DIVINE pre-indexado por vibe. */
+    getDivineArsenal(vibe) {
+        return this._divineByVibe.get(vibe) ?? DynamicEffectRegistry._EMPTY_ENTRIES;
+    }
+    /** Retorna arsenal HEAVY pre-indexado por vibe. */
+    getHeavyArsenal(vibe) {
+        return this._heavyByVibe.get(vibe) ?? DynamicEffectRegistry._EMPTY_ENTRIES;
+    }
+    /** Lookup por ID. */
+    getEntry(effectId) {
+        return this._byId.get(effectId);
+    }
+    /** Conveniencia: genoma plano. */
+    getDNA(effectId) {
+        return this._byId.get(effectId)?.dna;
+    }
+    /** Conveniencia: simulationMeta. */
+    getSimMeta(effectId) {
+        return this._byId.get(effectId)?.simMeta;
+    }
+    /** Conveniencia: executionHints. */
+    getExecHints(effectId) {
+        return this._byId.get(effectId)?.execHints;
+    }
+    /** Path al `.lfx` para carga lazy de curvas. */
+    getEffectFilePath(effectId) {
+        return this._byId.get(effectId)?.filePath;
+    }
+    /** ¿Existe este effectId en el registry como clip cognitivo? */
+    has(effectId) {
+        return this._byId.has(effectId);
+    }
+    /** Snapshot inmutable de TODAS las entries. */
+    getAllEntries() {
+        return this._allEntries;
+    }
+    getEntryCount() {
+        return this._byId.size;
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+    // INTERNALS — INDEX MAINTENANCE
+    // ─────────────────────────────────────────────────────────────────────────
+    _appendToIndices(entry) {
+        for (const vibe of entry.compatibleVibes) {
+            let bucket = this._byVibe.get(vibe);
+            if (!bucket) {
+                bucket = [];
+                this._byVibe.set(vibe, bucket);
+            }
+            bucket.push(entry);
+            if (entry.simMeta.isDivineCandidate) {
+                let dBucket = this._divineByVibe.get(vibe);
+                if (!dBucket) {
+                    dBucket = [];
+                    this._divineByVibe.set(vibe, dBucket);
+                }
+                dBucket.push(entry);
+            }
+            if (entry.simMeta.isHeavyCandidate) {
+                let hBucket = this._heavyByVibe.get(vibe);
+                if (!hBucket) {
+                    hBucket = [];
+                    this._heavyByVibe.set(vibe, hBucket);
+                }
+                hBucket.push(entry);
+            }
+        }
+    }
+    _removeFromIndices(entry) {
+        for (const vibe of entry.compatibleVibes) {
+            _spliceFrom(this._byVibe.get(vibe), entry);
+            _spliceFrom(this._divineByVibe.get(vibe), entry);
+            _spliceFrom(this._heavyByVibe.get(vibe), entry);
+        }
+    }
+    _rebuildAllEntries() {
+        const next = [];
+        for (const e of this._byId.values())
+            next.push(e);
+        this._allEntries = Object.freeze(next);
+    }
+}
+/** Vista vacía pre-congelada — devolverla en lookups miss evita alloc. */
+DynamicEffectRegistry._EMPTY_ENTRIES = Object.freeze([]);
+// ─── HELPERS PRIVADOS ───────────────────────────────────────────────────────
+function _validateGenomeRanges(dna) {
+    const g = dna.genome;
+    if (!_in01(g.aggression) || !_in01(g.chaos) || !_in01(g.organicity))
+        return false;
+    if (!_in01(dna.aggressionRange.min) || !_in01(dna.aggressionRange.max))
+        return false;
+    if (dna.aggressionRange.min > dna.aggressionRange.max)
+        return false;
+    return true;
+}
+function _in01(n) {
+    return Number.isFinite(n) && n >= 0 && n <= 1;
+}
+function _spliceFrom(arr, target) {
+    if (!arr)
+        return;
+    const idx = arr.indexOf(target);
+    if (idx >= 0)
+        arr.splice(idx, 1);
+}
+function _buildEntry(clip, dna, options) {
+    const c = clip.clip;
+    const simMeta = c.simulationMeta ?? DEFAULT_SIMULATION_META;
+    const execHints = c.executionHints ?? _DEFAULT_EXECUTION_HINTS;
+    const safetyDecl = c.safetyDeclaration ?? DEFAULT_SAFETY_DECLARATION;
+    const ikCompat = dna.ikCompatibility ?? DEFAULT_IK_COMPATIBILITY;
+    // Congelar arrays defensivamente para honrar `readonly` en runtime.
+    const compatibleVibes = Object.freeze([...dna.compatibleVibes]);
+    const validSections = Object.freeze([...dna.validSections]);
+    const tags = Object.freeze([...c.tags]);
+    const entry = {
+        id: c.id,
+        name: c.name,
+        author: c.author,
+        category: c.category,
+        tags,
+        durationMs: c.durationMs,
+        effectType: c.effectType,
+        filePath: options.filePath ?? null,
+        dna: Object.freeze({
+            aggression: dna.genome.aggression,
+            chaos: dna.genome.chaos,
+            organicity: dna.genome.organicity,
+        }),
+        textureAffinity: dna.textureAffinity,
+        compatibleVibes,
+        validSections,
+        energyZone: Object.freeze({ min: dna.energyZone.min, max: dna.energyZone.max }),
+        aggressionRange: Object.freeze({
+            min: dna.aggressionRange.min,
+            max: dna.aggressionRange.max,
+        }),
+        spatialBehavior: dna.spatialBehavior,
+        ikCompatibility: Object.freeze({ ...ikCompat }),
+        simMeta: Object.freeze({
+            ...simMeta,
+            beautyWeights: Object.freeze({ ...simMeta.beautyWeights }),
+            zScoreGuards: Object.freeze({ ...simMeta.zScoreGuards }),
+        }),
+        execHints: Object.freeze({
+            ...execHints,
+            phaseConfig: Object.freeze({ ...execHints.phaseConfig }),
+        }),
+        safetyDecl: Object.freeze({ ...safetyDecl }),
+        isBuiltin: options.isBuiltin ?? false,
+        loadedAt: Date.now(),
+        source: options.keepSource ? clip : null,
+    };
+    return Object.freeze(entry);
+}
+const _DEFAULT_EXECUTION_HINTS = Object.freeze({
+    overlayMode: 'absolute',
+    phaseConfig: Object.freeze({
+        spread: 0,
+        symmetry: 'linear',
+        wings: 1,
+        direction: 1,
+    }),
+    intensityScaling: 'proportional',
+    fixtureTargeting: 'all',
+});
+// ─── SINGLETON ──────────────────────────────────────────────────────────────
+let _instance = null;
+/** Acceso al singleton compartido del proceso. */
+export function getDynamicEffectRegistry() {
+    if (_instance == null)
+        _instance = new DynamicEffectRegistry();
+    return _instance;
+}
+/** SOLO para tests: resetea el singleton. */
+export function __resetDynamicEffectRegistryForTests() {
+    _instance = null;
+}

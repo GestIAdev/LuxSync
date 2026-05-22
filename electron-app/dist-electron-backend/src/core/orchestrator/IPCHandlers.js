@@ -122,6 +122,7 @@ function setupSeleneLuxHandlers(deps) {
         return { success: true };
     });
     // 🧨 WAVE 610: FORCE STRIKE - Manual Effect Detonator
+    // ⌨ WAVE 4802-D: scope field threaded through for chord scoped dispatch
     ipcMain.handle('lux:forceStrike', (_event, config) => {
         console.log('[IPC] ðŸ§¨ lux:forceStrike:', config);
         if (titanOrchestrator) {

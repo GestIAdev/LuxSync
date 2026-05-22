@@ -305,7 +305,11 @@ function _validateChecksum(clip: LfxClipV2, _raw: string, _filePath: string): bo
   try {
     const canonical = JSON.stringify(clip.clip)
     const hash = createHash('sha256').update(canonical).digest('hex')
-    return hash === clip.checksum
+    // Los archivos .lfx declaran el formato "sha256:<hex>" — normalizar antes de comparar.
+    const declaredHash = clip.checksum.startsWith('sha256:')
+      ? clip.checksum.slice(7)
+      : clip.checksum
+    return hash === declaredHash
   } catch {
     return false
   }

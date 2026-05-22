@@ -40,7 +40,7 @@ import type { SpectralContext } from '../../protocol/MusicalContext'
 // 🩸 WAVE 2105: FUZZY RESURRECTION — Fuzzy gets a real vote
 import type { FuzzyDecision } from './FuzzyDecisionMaker'
 // 🎲 WAVE 2183: DIVERSITY FIX — Arsenal selector respeta penalización de diversidad
-import { getDNAAnalyzer, EFFECT_DNA_REGISTRY } from '../dna/EffectDNA'
+import { getDNAAnalyzer } from '../dna/EffectDNA'
 // 🛡️ WAVE 4866: Zone validation for hunt_strike anti-osmosis protection
 import { EFFECT_ZONE_MAP } from '../../effects/EffectManager'
 

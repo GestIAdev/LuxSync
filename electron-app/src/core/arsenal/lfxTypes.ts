@@ -95,7 +95,7 @@ export interface IKCompatibility {
 
 /**
  * Genoma cognitivo para el matching de Selene IA.
- * Reemplaza progresivamente `EFFECT_DNA_REGISTRY` hardcodeado.
+ * Fuente de verdad única — EFFECT_DNA_REGISTRY purgado (WAVE 4825).
  */
 export interface CognitiveDNA {
   readonly genome: FrozenGenome

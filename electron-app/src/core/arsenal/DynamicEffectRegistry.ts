@@ -10,10 +10,9 @@
 //    - Los índices `vibeIndex`, `divinePool`, `heavyPool` son arrays
 //      pre-construidos que el Registry mantiene actualizados en escritura.
 //
-//  POLÍTICA DE RETROCOMPATIBILIDAD (WAVE 2482):
-//    - Este registry NO sustituye a EffectDreamSimulator ni a EFFECT_DNA_REGISTRY.
-//    - Convive en paralelo. Mientras esté vacío, el sistema funciona idéntico.
-//    - SeleneHephBridge consulta primero AQUÍ; si miss, delega al pipeline legacy.
+//  POLÍTICA ACTUAL (WAVE 4825):
+//    - Este registry ES la fuente de verdad única. EFFECT_DNA_REGISTRY purgado.
+//    - Todos los módulos leen DNA, textureAffinity y energyZone desde aquí.
 // ════════════════════════════════════════════════════════════════════════════
 
 import {

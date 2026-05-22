@@ -29,7 +29,7 @@
 import type { AudienceSafetyContext } from '../dream/AudienceSafetyContext'
 import type { EffectCandidate } from '../dream/EffectDreamSimulator'
 // 🛡️ WAVE 1030: DNA registry for texture affinity checking
-import { EFFECT_DNA_REGISTRY } from '../dna/EffectDNA'
+import { getDynamicEffectRegistry } from '../../arsenal/DynamicEffectRegistry'
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES
@@ -490,9 +490,9 @@ const AESTHETIC_BEAUTY: EthicalValue = {
           return { passed: true } // Sin contexto espectral, sin verificación
         }
         
-        // Obtener la afinidad de textura del efecto del DNA Registry
-        const effectDNA = EFFECT_DNA_REGISTRY[effect.effect]
-        const effectTextureAffinity = effectDNA?.textureAffinity || 'universal'
+        // Obtener la afinidad de textura del efecto del Registry dinámico
+        const effectEntry = getDynamicEffectRegistry().getEntry(effect.effect)
+        const effectTextureAffinity = effectEntry?.textureAffinity ?? 'universal'
         
         // 🎨 CASO 1: Música CLEAN/WARM + Efecto DIRTY = INCOHERENCIA GRAVE
         // Es como poner death metal visual sobre un balada de piano

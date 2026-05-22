@@ -39,8 +39,7 @@ import { MoodController } from '../../mood/MoodController'
 // 🧬 WAVE 970: CONTEXTUAL DNA SYSTEM
 // 🎨 WAVE 1029: THE DREAMER - Texture Affinity Integration
 import { 
-  getDNAAnalyzer, 
-  EFFECT_DNA_REGISTRY,
+  getDNAAnalyzer,
   type TargetDNA,
   type AudioMetricsForDNA,
   type MusicalContextForDNA,
@@ -506,13 +505,14 @@ export class EffectDreamSimulator {
     
     const limits = aggressionLimits[zone] || { min: 0, max: 1 }
     
+    const registry = getDynamicEffectRegistry()
     const filtered = effects.filter(effect => {
-      const dna = EFFECT_DNA_REGISTRY[effect]
-      if (!dna) {
-        console.warn(`[DREAM_SIMULATOR] ⚠️ No DNA for effect: ${effect}`)
+      const entry = registry.getEntry(effect)
+      if (!entry) {
+        console.warn(`[DREAM_SIMULATOR] ⚠️ No Registry entry for effect: ${effect}`)
         return false
       }
-      return dna.aggression >= limits.min && dna.aggression <= limits.max
+      return entry.dna.aggression >= limits.min && entry.dna.aggression <= limits.max
     })
     
     // Si el filtro es demasiado estricto y no queda nada, relajar
@@ -520,8 +520,8 @@ export class EffectDreamSimulator {
       console.log(`[DREAM_SIMULATOR] 🧘 Zone ${zone} filter too strict (limits: ${limits.min}-${limits.max}), returning suavest available`)
       // Devolver los 3 efectos con menor agresión de la lista original
       return effects
-        .filter(e => EFFECT_DNA_REGISTRY[e])
-        .sort((a, b) => EFFECT_DNA_REGISTRY[a].aggression - EFFECT_DNA_REGISTRY[b].aggression)
+        .filter(e => registry.getEntry(e))
+        .sort((a, b) => (registry.getEntry(a)?.dna.aggression ?? 0) - (registry.getEntry(b)?.dna.aggression ?? 0))
         .slice(0, 3)
     }
     
@@ -895,12 +895,8 @@ export class EffectDreamSimulator {
       return { compatible: true, reason: 'No spectral context - assuming universal', penalty: 0 }
     }
     
-    const effectDNA = EFFECT_DNA_REGISTRY[effectId]
-    if (!effectDNA) {
-      return { compatible: true, reason: 'Unknown effect - assuming universal', penalty: 0 }
-    }
-    
-    const textureAffinity = effectDNA.textureAffinity || 'universal'
+    const effectEntry = getDynamicEffectRegistry().getEntry(effectId)
+    const textureAffinity: TextureAffinity = effectEntry?.textureAffinity ?? 'universal'
     
     // 🌐 UNIVERSAL: Siempre compatible
     if (textureAffinity === 'universal') {
@@ -1036,12 +1032,12 @@ export class EffectDreamSimulator {
     state: SystemState,
     context: AudienceSafetyContext
   ): { relevance: number; distance: number; targetDNA: TargetDNA; textureRejected?: boolean } {
-    // Obtener el DNA del efecto del registry
-    const effectDNA = EFFECT_DNA_REGISTRY[effect.effect]
+    // Obtener el DNA del efecto del Registry dinámico
+    const effectEntry = getDynamicEffectRegistry().getEntry(effect.effect)
     
-    // Si no existe en el registry, usar valores neutros (wildcard)
-    if (!effectDNA) {
-      console.warn(`[DREAM_SIMULATOR] ⚠️ Effect ${effect.effect} not in DNA registry, using neutral DNA`)
+    // Si no existe en el registry, usar valores neutros
+    if (!effectEntry) {
+      console.warn(`[DREAM_SIMULATOR] ⚠️ Effect ${effect.effect} not in Registry, using neutral DNA`)
       return {
         relevance: 0.50,  // Neutral
         distance: 0.866,  // √3/2 = centro del espacio
@@ -1056,7 +1052,7 @@ export class EffectDreamSimulator {
     if (!textureCheck.compatible) {
       // REJECTED by texture filter - return zero relevance
       // � WAVE 2104.1: DIAGNOSTIC — Log texture rejections (estábamos ciegos aquí)
-      console.log(`[DREAM_TEXTURE] 🎨 REJECTED: ${effect.effect} (affinity=${EFFECT_DNA_REGISTRY[effect.effect]?.textureAffinity}) | texture=${spectralContext.texture} harsh=${spectralContext.harshness.toFixed(2)} clarity=${spectralContext.clarity.toFixed(2)}`)
+      console.log(`[DREAM_TEXTURE] 🎨 REJECTED: ${effect.effect} (affinity=${getDynamicEffectRegistry().getEntry(effect.effect)?.textureAffinity ?? 'unknown'}) | texture=${spectralContext.texture} harsh=${spectralContext.harshness.toFixed(2)} clarity=${spectralContext.clarity.toFixed(2)}`)
       return {
         relevance: 0,
         distance: Math.sqrt(3),  // Máxima distancia
@@ -1109,10 +1105,11 @@ export class EffectDreamSimulator {
       console.log(`[DNA_TARGET] 🎯 Target: A=${targetDNA.aggression.toFixed(2)} C=${targetDNA.chaos.toFixed(2)} O=${targetDNA.organicity.toFixed(2)} | E=${state.energy.toFixed(2)} texture=${spectralContext.texture} harsh=${spectralContext.harshness.toFixed(2)}`)
     }
     
-    // Calcular distancia euclidiana 3D (effectDNA es directamente EffectDNA, no tiene .dna)
-    const dA = effectDNA.aggression - targetDNA.aggression
-    const dC = effectDNA.chaos - targetDNA.chaos
-    const dO = effectDNA.organicity - targetDNA.organicity
+    // Calcular distancia euclidiana 3D usando dna del Registry
+    const effDna = effectEntry.dna
+    const dA = effDna.aggression - targetDNA.aggression
+    const dC = effDna.chaos - targetDNA.chaos
+    const dO = effDna.organicity - targetDNA.organicity
     const distance = Math.sqrt(dA * dA + dC * dC + dO * dO)
     
     // Convertir distancia a relevancia (0-1)
@@ -1120,8 +1117,9 @@ export class EffectDreamSimulator {
     const MAX_DISTANCE = Math.sqrt(3)
     let relevance = 1.0 - (distance / MAX_DISTANCE)
     
-    // 🎨 WAVE 1029: Apply texture bonus/penalty
-    relevance = Math.max(0, Math.min(1, (relevance - textureCheck.penalty) * (effectDNA.selectionBias ?? 1)))
+    // 🎨 WAVE 1029: Apply texture bonus/penalty (selectionBias desde execHints si disponible)
+    const selectionBias = (effectEntry as any).selectionBias ?? 1
+    relevance = Math.max(0, Math.min(1, (relevance - textureCheck.penalty) * selectionBias))
     
     return { relevance, distance, targetDNA }
   }
@@ -1294,9 +1292,8 @@ export class EffectDreamSimulator {
       confidence *= 0.8
     }
     
-    // 🧬 WAVE 970: Usar EFFECT_DNA_REGISTRY para verificar efectos conocidos
-    // Reducir confianza si efecto desconocido
-    if (!(effect.effect in EFFECT_DNA_REGISTRY)) {
+    // Reducir confianza si efecto desconocido en Registry
+    if (!getDynamicEffectRegistry().getEntry(effect.effect)) {
       confidence *= 0.5
     }
     

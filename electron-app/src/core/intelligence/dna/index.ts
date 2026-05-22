@@ -18,10 +18,6 @@ export {
   type AudioMetricsForDNA,
   type MusicalContextForDNA,
   
-  // Registry
-  EFFECT_DNA_REGISTRY,
-  WILDCARD_EFFECTS,
-  
   // Class
   DNAAnalyzer,
   

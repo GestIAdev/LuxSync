@@ -21,7 +21,8 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest'
-import { EFFECT_DNA_REGISTRY, EffectDNA } from '../../dna/EffectDNA.js'
+import { getDynamicEffectRegistry } from '../../../arsenal/DynamicEffectRegistry'
+import type { FrozenGenome } from '../../../arsenal/lfxTypes'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TIPOS PARA EL TEST
@@ -96,7 +97,7 @@ const ZONE_LIMITS: Record<string, { min: number; max: number }> = {
 /**
  * Calcula la distancia euclidiana en el espacio DNA 3D
  */
-function calculateDNADistance(effectDNA: EffectDNA, targetDNA: EffectDNA): number {
+function calculateDNADistance(effectDNA: FrozenGenome, targetDNA: FrozenGenome): number {
   const dA = effectDNA.aggression - targetDNA.aggression
   const dC = effectDNA.chaos - targetDNA.chaos
   const dO = effectDNA.organicity - targetDNA.organicity
@@ -114,9 +115,9 @@ function distanceToRelevance(distance: number): number {
 /**
  * Obtiene el target DNA basado en la zona energética
  */
-function getTargetDNA(zone: string, energy: number): EffectDNA {
+function getTargetDNA(zone: string, energy: number): FrozenGenome {
   // Target DNA varía según zona
-  const targetMap: Record<string, EffectDNA> = {
+  const targetMap: Record<string, FrozenGenome> = {
     'silence': { aggression: 0.05, chaos: 0.10, organicity: 0.90 },
     'valley':  { aggression: 0.15, chaos: 0.20, organicity: 0.80 },
     'ambient': { aggression: 0.30, chaos: 0.35, organicity: 0.60 },
@@ -133,11 +134,11 @@ function getTargetDNA(zone: string, energy: number): EffectDNA {
  */
 function filterByZone(effects: string[], zone: string): string[] {
   const limits = ZONE_LIMITS[zone] || { min: 0, max: 1 }
-  
+  const registry = getDynamicEffectRegistry()
   return effects.filter(effectId => {
-    const dna = EFFECT_DNA_REGISTRY[effectId]
-    if (!dna) return false
-    return dna.aggression >= limits.min && dna.aggression <= limits.max
+    const entry = registry.getEntry(effectId)
+    if (!entry) return false
+    return entry.dna.aggression >= limits.min && entry.dna.aggression <= limits.max
   })
 }
 
@@ -168,8 +169,9 @@ function simulateEffectSelection(context: MockContext): string {
   
   if (candidates.length === 0) {
     // Fallback: devolver el menos agresivo disponible
+    const registry = getDynamicEffectRegistry()
     return TECHNO_EFFECTS.sort((a, b) => 
-      (EFFECT_DNA_REGISTRY[a]?.aggression || 0) - (EFFECT_DNA_REGISTRY[b]?.aggression || 0)
+      (registry.getEntry(a)?.dna.aggression || 0) - (registry.getEntry(b)?.dna.aggression || 0)
     )[0]
   }
   
@@ -177,11 +179,12 @@ function simulateEffectSelection(context: MockContext): string {
   const targetDNA = getTargetDNA(context.zone, context.energy)
   
   const scores = candidates.map(effectId => {
-    const effectDNA = EFFECT_DNA_REGISTRY[effectId]
-    if (!effectDNA) return { effectId, score: 0 }
+    const registry = getDynamicEffectRegistry()
+    const effectEntry = registry.getEntry(effectId)
+    if (!effectEntry) return { effectId, score: 0 }
     
     // DNA Relevance
-    const distance = calculateDNADistance(effectDNA, targetDNA)
+    const distance = calculateDNADistance(effectEntry.dna, targetDNA)
     const relevance = distanceToRelevance(distance)
     
     // Diversity Score (ESCALERA)
@@ -393,8 +396,8 @@ describe('🧪 WAVE 982.5: DIVERSITY STRESS TEST', () => {
         
         console.log(`\n🎯 Zone "${zone}": ${candidates.length} candidates`)
         candidates.forEach(c => {
-          const dna = EFFECT_DNA_REGISTRY[c]
-          console.log(`   - ${c}: A=${dna?.aggression.toFixed(2)}`)
+          const entry = getDynamicEffectRegistry().getEntry(c)
+          console.log(`   - ${c}: A=${entry?.dna.aggression.toFixed(2)}`)
         })
         
         expect(candidates.length).toBeGreaterThan(0)
@@ -408,19 +411,19 @@ describe('🧪 WAVE 982.5: DIVERSITY STRESS TEST', () => {
       const invalid: string[] = []
       
       TECHNO_EFFECTS.forEach(effectId => {
-        const dna = EFFECT_DNA_REGISTRY[effectId]
+        const entry = getDynamicEffectRegistry().getEntry(effectId)
         
-        if (!dna) {
-          invalid.push(`${effectId}: NO DNA`)
+        if (!entry) {
+          invalid.push(`${effectId}: NO Registry entry`)
         } else {
-          if (dna.aggression < 0 || dna.aggression > 1) {
-            invalid.push(`${effectId}: aggression out of range (${dna.aggression})`)
+          if (entry.dna.aggression < 0 || entry.dna.aggression > 1) {
+            invalid.push(`${effectId}: aggression out of range (${entry.dna.aggression})`)
           }
-          if (dna.chaos < 0 || dna.chaos > 1) {
-            invalid.push(`${effectId}: chaos out of range (${dna.chaos})`)
+          if (entry.dna.chaos < 0 || entry.dna.chaos > 1) {
+            invalid.push(`${effectId}: chaos out of range (${entry.dna.chaos})`)
           }
-          if (dna.organicity < 0 || dna.organicity > 1) {
-            invalid.push(`${effectId}: organicity out of range (${dna.organicity})`)
+          if (entry.dna.organicity < 0 || entry.dna.organicity > 1) {
+            invalid.push(`${effectId}: organicity out of range (${entry.dna.organicity})`)
           }
         }
       })
@@ -436,8 +439,9 @@ describe('🧪 WAVE 982.5: DIVERSITY STRESS TEST', () => {
     })
     
     it('should have DNA spread across aggression spectrum', () => {
+      const registry = getDynamicEffectRegistry()
       const aggressionValues = TECHNO_EFFECTS
-        .map(e => EFFECT_DNA_REGISTRY[e]?.aggression || 0)
+        .map(e => registry.getEntry(e)?.dna.aggression || 0)
         .sort((a, b) => a - b)
       
       console.log('\n📊 Aggression Distribution:')

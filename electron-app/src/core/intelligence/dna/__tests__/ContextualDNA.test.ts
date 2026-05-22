@@ -18,12 +18,12 @@
 
 import { describe, test, expect, beforeEach } from 'vitest'
 import { 
-  DNAAnalyzer, 
-  EFFECT_DNA_REGISTRY,
+  DNAAnalyzer,
   type MusicalContextForDNA,
   type AudioMetricsForDNA,
   type TargetDNA
 } from '../EffectDNA'
+import { getDynamicEffectRegistry } from '../../../arsenal/DynamicEffectRegistry'
 
 describe('🧬 DNA SYSTEM: The Mind of Selene', () => {
   let analyzer: DNAAnalyzer
@@ -453,17 +453,18 @@ describe('🧬 EFFECT DNA REGISTRY: Integrity Check', () => {
     
     console.log(`\nChecking ${expectedEffects.length} effects...`)
     
+    const registry = getDynamicEffectRegistry()
     expectedEffects.forEach(effectId => {
-      const dna = EFFECT_DNA_REGISTRY[effectId]
-      expect(dna).toBeDefined()
-      expect(dna.aggression).toBeGreaterThanOrEqual(0)
-      expect(dna.aggression).toBeLessThanOrEqual(1)
-      expect(dna.chaos).toBeGreaterThanOrEqual(0)
-      expect(dna.chaos).toBeLessThanOrEqual(1)
-      expect(dna.organicity).toBeGreaterThanOrEqual(0)
-      expect(dna.organicity).toBeLessThanOrEqual(1)
+      const entry = registry.getEntry(effectId)
+      expect(entry).toBeDefined()
+      expect(entry!.dna.aggression).toBeGreaterThanOrEqual(0)
+      expect(entry!.dna.aggression).toBeLessThanOrEqual(1)
+      expect(entry!.dna.chaos).toBeGreaterThanOrEqual(0)
+      expect(entry!.dna.chaos).toBeLessThanOrEqual(1)
+      expect(entry!.dna.organicity).toBeGreaterThanOrEqual(0)
+      expect(entry!.dna.organicity).toBeLessThanOrEqual(1)
       
-      console.log(`  ✅ ${effectId}: (${dna.aggression.toFixed(2)}, ${dna.chaos.toFixed(2)}, ${dna.organicity.toFixed(2)})`)
+      console.log(`  ✅ ${effectId}: (${entry!.dna.aggression.toFixed(2)}, ${entry!.dna.chaos.toFixed(2)}, ${entry!.dna.organicity.toFixed(2)})`)
     })
     
     console.log(`\n✅ Registry integrity: ${expectedEffects.length}/${expectedEffects.length} effects valid`)

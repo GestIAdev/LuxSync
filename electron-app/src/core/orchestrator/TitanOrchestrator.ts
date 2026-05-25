@@ -1224,6 +1224,10 @@ export class TitanOrchestrator {
     if (!this.brain || !this.engine || !this.hal) return
     
     this.frameCount++
+
+    // 🎬 WAVE 4860: Advance the master SAB clock so ThetaWorker can read tickId
+    // lock-free, zero IPC overhead — written directly into SharedArrayBuffer
+    this.trinity?.advanceFrameContext(this.frameCount, Date.now())
     
     // WAVE 255: No more auto-rotation, system stays in selected vibe
     // Vibe changes only via IPC lux:setVibe

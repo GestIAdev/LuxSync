@@ -5,22 +5,52 @@
     "name": "Abyssal Rise",
     "author": "LuxSync Factory",
     "category": "composite",
-    "tags": ["fade", "strobe", "techno", "spatial", "epic"],
-    "vibeCompat": ["techno"],
-    "spatialZones": ["all-pars", "all-movers"],
+    "tags": [
+      "fade",
+      "strobe",
+      "techno",
+      "spatial",
+      "epic"
+    ],
+    "vibeCompat": [
+      "techno"
+    ],
+    "spatialZones": [
+      "all-pars",
+      "all-movers"
+    ],
     "durationMs": 3800,
     "effectType": "heph_custom",
     "cognitiveDNA": {
-      "genome": { "aggression": 0.7, "chaos": 0.4, "organicity": 0.2 },
+      "genome": {
+        "aggression": 0.7,
+        "chaos": 0.4,
+        "organicity": 0.2
+      },
       "textureAffinity": "clean",
-      "compatibleVibes": ["techno"],
-      "validSections": ["build", "buildup"],
-      "energyZone": { "min": "active", "max": "intense" },
-      "aggressionRange": { "min": 0.4, "max": 0.9 },
+      "compatibleVibes": [
+        "techno"
+      ],
+      "validSections": [
+        "build",
+        "buildup"
+      ],
+      "energyZone": {
+        "min": "active",
+        "max": "intense"
+      },
+      "aggressionRange": {
+        "min": 0.4,
+        "max": 0.9
+      },
       "spatialBehavior": "absolute"
     },
     "simulationMeta": {
-      "beautyWeights": { "base": 0.8, "energyMultiplier": 1.0, "vibeBonus": 0.1 },
+      "beautyWeights": {
+        "base": 0.8,
+        "energyMultiplier": 1,
+        "vibeBonus": 0.1
+      },
       "gpuCost": 0.2,
       "fatigueImpact": 0.3,
       "minDurationMs": 3800,
@@ -28,65 +58,135 @@
       "isStrobe": true,
       "isDivineCandidate": false,
       "isHeavyCandidate": true,
-      "zScoreGuards": { "requireRising": true, "minimumZ": 1, "minimumEnergy": 0.6 }
+      "zScoreGuards": {
+        "requireRising": true,
+        "minimumZ": 1,
+        "minimumEnergy": 0.6
+      }
     },
     "tracks": [
       {
         "id": "abyss-intensity",
         "paramId": "intensity",
-        "zones": ["all-pars"],
+        "zones": [
+          "all-pars"
+        ],
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
           "defaultValue": 0,
           "keyframes": [
-            { "timeMs": 0,    "value": 0,   "interpolation": "bezier", "bezierHandles": [0.85, 0, 1, 1] },
-            { "timeMs": 3800, "value": 0.9, "interpolation": "linear" }
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.85,
+                0,
+                1,
+                1
+              ]
+            },
+            {
+              "timeMs": 3800,
+              "value": 0.9,
+              "interpolation": "linear"
+            }
           ]
-        }
+        },
+        "blendMode": "replace"
       },
       {
         "id": "abyss-color",
         "paramId": "color",
-        "zones": ["all-pars"],
+        "zones": [
+          "all-pars"
+        ],
         "curve": {
           "paramId": "color",
           "valueType": "color",
-          "defaultValue": { "h": 240, "s": 100, "l": 12 },
+          "defaultValue": {
+            "h": 240,
+            "s": 100,
+            "l": 12
+          },
           "keyframes": [
-            { "timeMs": 0,    "value": { "h": 240, "s": 100, "l": 12 }, "interpolation": "linear" },
-            { "timeMs": 3800, "value": { "h": 235, "s": 100, "l": 50 }, "interpolation": "linear" }
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 240,
+                "s": 100,
+                "l": 12
+              },
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 3800,
+              "value": {
+                "h": 235,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "linear"
+            }
           ]
-        }
+        },
+        "blendMode": "replace"
       },
       {
         "id": "abyss-strobe",
         "paramId": "strobeRate",
-        "zones": ["all-movers"],
+        "zones": [
+          "all-movers"
+        ],
         "curve": {
           "paramId": "strobeRate",
           "valueType": "number",
           "defaultValue": 0,
           "keyframes": [
-            { "timeMs": 0,    "value": 0, "interpolation": "hold" },
-            { "timeMs": 3000, "value": 1, "interpolation": "hold" }
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 3000,
+              "value": 1,
+              "interpolation": "hold"
+            }
           ]
-        }
+        },
+        "blendMode": "replace"
       },
       {
         "id": "abyss-par-ministrobe",
         "paramId": "strobeRate",
-        "zones": ["all-pars"],
+        "zones": [
+          "all-pars"
+        ],
         "curve": {
           "paramId": "strobeRate",
           "valueType": "number",
           "defaultValue": 0,
           "keyframes": [
-            { "timeMs": 0,    "value": 0,    "interpolation": "hold" },
-            { "timeMs": 3400, "value": 0,    "interpolation": "hold" },
-            { "timeMs": 3600, "value": 0.35, "interpolation": "hold" }
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 3400,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 3600,
+              "value": 0.35,
+              "interpolation": "hold"
+            }
           ]
-        }
+        },
+        "blendMode": "replace"
       }
     ]
   }

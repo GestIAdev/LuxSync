@@ -114,6 +114,43 @@
           }
         ],
         "mode": "absolute"
+      },
+      "strobe": {
+        "paramId": "strobeRate",
+        "valueType": "number",
+        "range": [
+          0,
+          1
+        ],
+        "defaultValue": 0,
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 120,
+            "value": 0.9,
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 860,
+            "value": 0.9,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 1200,
+            "value": 0,
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 3000,
+            "value": 0,
+            "interpolation": "hold"
+          }
+        ],
+        "mode": "absolute"
       }
     },
     "staticParams": {
@@ -158,7 +195,7 @@
       "fatigueImpact": 0.06,
       "minDurationMs": 1000,
       "cooldownMs": 4500,
-      "isStrobe": false,
+      "isStrobe": true,
       "isDivineCandidate": false,
       "isHeavyCandidate": true,
       "zScoreGuards": {
@@ -179,10 +216,10 @@
       "fixtureTargeting": "all"
     },
     "safetyDeclaration": {
-      "maxStrobeFreqHz": 0,
-      "containsRapidFlash": false,
+      "maxStrobeFreqHz": 5,
+      "containsRapidFlash": true,
       "communityTrusted": true
     }
   },
-  "checksum": "sha256:88d9a0bc9cea50969c9637b5a2fdb9f8c4045705d451df01503793beaf05ca0d"
+  "checksum": "sha256:2e36843fb5b42314b1b0f178b68af3bbb9e5fd903f749b5bde2b917f2ce47c6a"
 }

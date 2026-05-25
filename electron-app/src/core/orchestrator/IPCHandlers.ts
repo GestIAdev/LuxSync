@@ -121,6 +121,19 @@ export function setupIPCHandlers(deps: IPCDependencies): void {
   setupDMXHandlers(deps)
   setupArtNetHandlers(deps)
   setupAudioMatrixHandlers(deps)
+  setupTheiaHandlers()
+}
+
+// =============================================================================
+// 🎬 WAVE 4860: THEIA ENGINE — SAB one-shot IPC bridge
+// =============================================================================
+
+function setupTheiaHandlers(): void {
+  ipcMain.handle('theia:get-frame-context', (): SharedArrayBuffer | null => {
+    const trinity = getTrinity()
+    if (!trinity) return null
+    return trinity.getFrameContextSAB()
+  })
 }
 
 // =============================================================================

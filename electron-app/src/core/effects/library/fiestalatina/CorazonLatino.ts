@@ -121,7 +121,7 @@ export class CorazonLatino extends BaseEffect {
   readonly name = 'Corazón Latino'
   readonly category: EffectCategory = 'physical'
   readonly priority = 85  // Alta prioridad - es épico
-  readonly mixBus = 'htp' as const  // 🚂 WAVE 3307: HTP — ambient effect, color flows to movers through Deep Seal
+  readonly mixBus = 'global' as const  // WAVE 4859+: dictador L0 — sin bleed de fondo
   
   private config: CorazonLatinoConfig
   private currentHeartbeat = 0
@@ -355,9 +355,9 @@ export class CorazonLatino extends BaseEffect {
     // 🎨 WAVE 750/780: zoneOverrides - ARQUITECTURA PURA + SMART BLEND
     // 🚨 WAVE 1004.2: MOVER LAW applied to moverOverride (no color)
     const zoneOverrides = {
-      'back': { ...backOverride, blendMode: 'max' as const },
-      'all-movers': { ...moverOverride, blendMode: 'max' as const },
-      'front': { ...frontOverride, blendMode: 'max' as const },
+      'back': { ...backOverride, blendMode: 'replace' as const },
+      'all-movers': { ...moverOverride, blendMode: 'replace' as const },
+      'front': { ...frontOverride, blendMode: 'replace' as const },
     }
     
     return {

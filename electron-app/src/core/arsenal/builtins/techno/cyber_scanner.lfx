@@ -5,74 +5,178 @@
     "name": "Cyber Scanner",
     "author": "LuxSync Factory",
     "category": "physical",
-    "tags": ["divine", "scanner", "phase", "techno", "laser"],
-    "vibeCompat": ["techno"],
-    "durationMs": 1500,
+    "tags": [
+      "divine",
+      "scanner",
+      "phase",
+      "techno",
+      "laser"
+    ],
+    "vibeCompat": [
+      "techno"
+    ],
+    "durationMs": 3000,
     "effectType": "heph_custom",
     "cognitiveDNA": {
-      "genome": { "aggression": 0.9, "chaos": 0.2, "organicity": 0.1 },
+      "genome": {
+        "aggression": 0.9,
+        "chaos": 0.2,
+        "organicity": 0.1
+      },
       "textureAffinity": "clean",
-      "compatibleVibes": ["techno"],
-      "validSections": ["drop", "active"],
-      "energyZone": { "min": "intense", "max": "peak" },
-      "aggressionRange": { "min": 0.7, "max": 1.0 },
+      "compatibleVibes": [
+        "techno"
+      ],
+      "validSections": [
+        "drop",
+        "active"
+      ],
+      "energyZone": {
+        "min": "intense",
+        "max": "peak"
+      },
+      "aggressionRange": {
+        "min": 0.7,
+        "max": 1
+      },
       "spatialBehavior": "dynamic"
     },
     "simulationMeta": {
-      "beautyWeights": { "base": 0.9, "energyMultiplier": 1.2, "vibeBonus": 0.3 },
+      "beautyWeights": {
+        "base": 0.9,
+        "energyMultiplier": 1.2,
+        "vibeBonus": 0.3
+      },
       "gpuCost": 0.4,
       "fatigueImpact": 0.85,
-      "minDurationMs": 1500,
+      "minDurationMs": 3000,
       "cooldownMs": 18000,
       "isStrobe": false,
       "isDivineCandidate": true,
       "isHeavyCandidate": true,
-      "zScoreGuards": { "requireRising": false, "minimumZ": 4.0, "minimumEnergy": 0.8 }
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": 4,
+        "minimumEnergy": 0.8
+      }
     },
     "tracks": [
       {
-        "id": "scanner-intensity",
+        "id": "scanner-intensity-kitt",
         "paramId": "intensity",
-        "zones": ["all-movers"],
-        "blendMode": "max",
-        "phaseConfig": { "spread": 1.0, "symmetry": "mirror" },
+        "zones": [
+          "all-movers"
+        ],
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spread": 0.22,
+          "symmetry": "linear",
+          "wings": 1,
+          "direction": 1
+        },
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
           "defaultValue": 0,
           "keyframes": [
-            { "timeMs": 0, "value": 0, "interpolation": "linear" },
-            { "timeMs": 100, "value": 1.0, "interpolation": "linear" },
-            { "timeMs": 300, "value": 0, "interpolation": "hold" },
-            { "timeMs": 1500, "value": 0, "interpolation": "hold" }
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 40,
+              "value": 1,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 180,
+              "value": 0,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 980,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1120,
+              "value": 1,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 1260,
+              "value": 0,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 1960,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 2100,
+              "value": 1,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2240,
+              "value": 0,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 3000,
+              "value": 0,
+              "interpolation": "hold"
+            }
           ]
         }
       },
       {
         "id": "scanner-color",
         "paramId": "color",
-        "zones": ["all-movers"],
+        "zones": [
+          "all-movers"
+        ],
         "blendMode": "replace",
         "curve": {
           "paramId": "color",
           "valueType": "color",
-          "defaultValue": { "h": 0, "s": 100, "l": 50 },
+          "defaultValue": {
+            "h": 0,
+            "s": 100,
+            "l": 50
+          },
           "keyframes": [
-            { "timeMs": 0, "value": { "h": 0, "s": 100, "l": 50 }, "interpolation": "hold" }
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 0,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            }
           ]
         }
       },
       {
         "id": "scanner-blackout-pars",
         "paramId": "intensity",
-        "zones": ["all-pars"],
+        "zones": [
+          "all-pars"
+        ],
         "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
           "defaultValue": 0,
           "keyframes": [
-            { "timeMs": 0, "value": 0, "interpolation": "hold" }
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            }
           ]
         }
       }

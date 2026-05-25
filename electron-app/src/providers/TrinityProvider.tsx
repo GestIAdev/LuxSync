@@ -11,6 +11,7 @@
  */
 
 import { createContext, useContext, useEffect, useRef, ReactNode, useCallback, useState } from 'react'
+import { ThetaOrchestrator } from '../theia'
 import { useAudioCapture, AudioMetrics } from '../hooks/useAudioCapture'
 import { useAudioStore, selectTrinityAudioActions } from '../stores/audioStore'
 import { useSeleneStore, LogEntryType, selectTrinitySeleneActions } from '../stores/seleneStore'
@@ -190,6 +191,8 @@ export function TrinityProvider({ children }: TrinityProviderProps) {
   const unsubscribeRef = useRef<(() => void) | null>(null)
   const lastModeRef = useRef<string>('')
   const lastSectionRef = useRef<string>('')
+  // 🎬 WAVE 4860: Theia renderer Web Worker manager
+  const thetaRef = useRef<ThetaOrchestrator | null>(null)
   
   // Handle state updates from Main Process
   const handleStateUpdate = useCallback((seleneState: SeleneStateUpdate) => {
@@ -616,6 +619,32 @@ export function TrinityProvider({ children }: TrinityProviderProps) {
       stopTrinity()
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 🎬 WAVE 4860: ThetaOrchestrator lifecycle — mirrors power state
+  useEffect(() => {
+    if (powerState === 'ONLINE' && !thetaRef.current) {
+      const theta = new ThetaOrchestrator()
+      thetaRef.current = theta
+
+      // Create a hidden canvas and transfer control to OffscreenCanvas
+      const canvas = document.createElement('canvas')
+      canvas.width = 1920
+      canvas.height = 1080
+      canvas.style.display = 'none'
+      document.body.appendChild(canvas)
+      const offscreen = canvas.transferControlToOffscreen()
+      theta.attachOffscreenCanvas(offscreen)
+
+      theta.start().catch((err: unknown) => {
+        console.error('[TrinityProvider] ThetaOrchestrator start failed:', err)
+      })
+    }
+
+    if (powerState === 'OFFLINE' && thetaRef.current) {
+      thetaRef.current.stop()
+      thetaRef.current = null
+    }
+  }, [powerState]) // eslint-disable-line react-hooks/exhaustive-deps
   
   // B2 FIX: stopAudio wrapper que para captura Y refleja isAudioActive=false en el estado.
   // Antes: stopAudio: stopCapture → stopCapture no toca state.isAudioActive

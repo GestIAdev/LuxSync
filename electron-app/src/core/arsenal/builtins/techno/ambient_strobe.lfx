@@ -20,7 +20,7 @@
       "gentle",
       "active"
     ],
-    "mixBus": "htp",
+    "mixBus": "override",
     "priority": 65,
     "durationMs": 4000,
     "effectType": "heph_custom",
@@ -195,5 +195,5 @@
       "communityTrusted": true
     }
   },
-  "checksum": "sha256:a4ed9236fa3605c60f4bc59199cefb92631810ab2907dd2ae9f1deb008d1e72a"
+  "checksum": "sha256:ff5cbfde435043b7c14cb5e54016c2410f7a5e48bcf262bf2402e6e12276ac48"
 }

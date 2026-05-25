@@ -741,6 +741,19 @@ const luxApi = {
   // 🎭 WAVE 700.5.4: MOOD CONTROL
   // ============================================
   
+  // ============================================
+  // 🎬 WAVE 4860: THEIA ENGINE — SAB one-shot bridge
+  // ============================================
+  theia: {
+    /**
+     * Obtiene el SharedArrayBuffer del FrameContextRing del main process.
+     * Se llama UNA SOLA VEZ al arrancar ThetaOrchestrator. El SAB viaja
+     * por IPC (structured clone comparte por referencia) sin copia de datos.
+     */
+    getFrameContextSAB: (): Promise<SharedArrayBuffer | null> =>
+      ipcRenderer.invoke('theia:get-frame-context'),
+  },
+
   mood: {
     /** Set active Mood (calm, balanced, punk) */
     setMood: (moodId: 'calm' | 'balanced' | 'punk') => 

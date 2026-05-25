@@ -42,6 +42,9 @@ import { AudioMatrix } from '../core/audio/AudioMatrix';
 import { LegacyBridgeProvider } from '../core/audio/LegacyBridgeProvider';
 import type { IAudioMatrix } from '../core/audio/OmniInputTypes';
 
+// 🎬 WAVE 4860: THEIA FrameContext — reloj maestro compartido con ThetaWorker (renderer).
+import { createFrameContextSAB, FrameContextWriter } from '../theia/FrameContextRing';
+
 // ============================================
 // CIRCUIT BREAKER (Adapted from Swarm)
 // ============================================
@@ -116,9 +119,27 @@ export class TrinityOrchestrator extends EventEmitter {
   private audioMatrix: AudioMatrix | null = null;
   private legacyBridge: LegacyBridgeProvider | null = null;
 
+  // 🎬 WAVE 4860: THEIA FrameContext — SAB de 16 bytes con tickId/timestamp/generation.
+  // Se crea EAGER en el constructor (antes de start()) para que esté disponible
+  // en cuanto el renderer arranque y pida el SAB vía IPC, sin condiciones de carrera.
+  private readonly frameContextSAB: SharedArrayBuffer = createFrameContextSAB();
+  private readonly frameContextWriter: FrameContextWriter = new FrameContextWriter(this.frameContextSAB);
+
   // WAVE 3401: Expose AudioMatrix for external provider registration (OSCNexus, USB, etc.)
   getAudioMatrix(): IAudioMatrix | null {
     return this.audioMatrix;
+  }
+
+  // 🎬 WAVE 4860: Expose FrameContext SAB para el preload/IPC bridge con el renderer.
+  // Devuelve siempre el MISMO SAB durante toda la vida del proceso — no se recrea.
+  getFrameContextSAB(): SharedArrayBuffer {
+    return this.frameContextSAB;
+  }
+
+  // 🎬 WAVE 4860: Avanza el reloj maestro. Llamado desde TitanOrchestrator.processFrame()
+  // a 44Hz (~23ms). El ThetaWorker leerá el SAB en su propio loop sin IPC en el hot-path.
+  advanceFrameContext(tickId: number, timestampMs: number): void {
+    this.frameContextWriter.advance(tickId, timestampMs);
   }
   
   private static getWorkerDir(): string {

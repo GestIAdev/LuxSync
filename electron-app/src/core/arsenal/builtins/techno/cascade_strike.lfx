@@ -5,21 +5,49 @@
     "name": "Cascade Strike",
     "author": "LuxSync Factory",
     "category": "physical",
-    "tags": ["strobe", "cascade", "techno", "spatial", "drop", "front-back"],
-    "vibeCompat": ["techno"],
+    "tags": [
+      "strobe",
+      "cascade",
+      "techno",
+      "spatial",
+      "drop",
+      "front-back"
+    ],
+    "vibeCompat": [
+      "techno"
+    ],
     "durationMs": 2000,
     "effectType": "heph_custom",
     "cognitiveDNA": {
-      "genome": { "aggression": 0.85, "chaos": 0.7, "organicity": 0.2 },
+      "genome": {
+        "aggression": 0.85,
+        "chaos": 0.7,
+        "organicity": 0.2
+      },
       "textureAffinity": "dirty",
-      "compatibleVibes": ["techno"],
-      "validSections": ["drop", "peak"],
-      "energyZone": { "min": "intense", "max": "peak" },
-      "aggressionRange": { "min": 0.6, "max": 1.0 },
+      "compatibleVibes": [
+        "techno"
+      ],
+      "validSections": [
+        "drop",
+        "peak"
+      ],
+      "energyZone": {
+        "min": "intense",
+        "max": "peak"
+      },
+      "aggressionRange": {
+        "min": 0.6,
+        "max": 1
+      },
       "spatialBehavior": "dynamic"
     },
     "simulationMeta": {
-      "beautyWeights": { "base": 0.85, "energyMultiplier": 1.0, "vibeBonus": 0.1 },
+      "beautyWeights": {
+        "base": 0.85,
+        "energyMultiplier": 1,
+        "vibeBonus": 0.1
+      },
       "gpuCost": 0.35,
       "fatigueImpact": 0.45,
       "minDurationMs": 2000,
@@ -27,106 +55,196 @@
       "isStrobe": true,
       "isDivineCandidate": false,
       "isHeavyCandidate": true,
-      "zScoreGuards": { "requireRising": false, "minimumZ": 1.5, "minimumEnergy": 0.8 }
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": 1.5,
+        "minimumEnergy": 0.8
+      }
     },
     "tracks": [
       {
         "id": "strobe-front",
         "paramId": "strobeRate",
-        "zones": ["front"],
+        "zones": [
+          "front"
+        ],
         "curve": {
           "paramId": "strobeRate",
           "valueType": "number",
           "defaultValue": 0,
           "keyframes": [
-            { "timeMs": 0,    "value": 1.0, "interpolation": "hold" },
-            { "timeMs": 250,  "value": 0,   "interpolation": "hold" },
-            { "timeMs": 1000, "value": 1.0, "interpolation": "hold" },
-            { "timeMs": 1250, "value": 0,   "interpolation": "hold" }
+            {
+              "timeMs": 0,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 250,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1000,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1250,
+              "value": 0,
+              "interpolation": "hold"
+            }
           ]
-        }
+        },
+        "blendMode": "replace"
       },
       {
         "id": "strobe-back",
         "paramId": "strobeRate",
-        "zones": ["back"],
+        "zones": [
+          "back"
+        ],
         "curve": {
           "paramId": "strobeRate",
           "valueType": "number",
           "defaultValue": 0,
           "keyframes": [
-            { "timeMs": 250,  "value": 1.0, "interpolation": "hold" },
-            { "timeMs": 500,  "value": 0,   "interpolation": "hold" },
-            { "timeMs": 1250, "value": 1.0, "interpolation": "hold" },
-            { "timeMs": 1500, "value": 0,   "interpolation": "hold" }
+            {
+              "timeMs": 250,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 500,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1250,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1500,
+              "value": 0,
+              "interpolation": "hold"
+            }
           ]
-        }
+        },
+        "blendMode": "replace"
       },
       {
         "id": "color-front-blue",
         "paramId": "color",
-        "zones": ["front"],
+        "zones": [
+          "front"
+        ],
         "curve": {
           "paramId": "color",
           "valueType": "color",
-          "defaultValue": { "h": 220, "s": 100, "l": 60 },
+          "defaultValue": {
+            "h": 220,
+            "s": 100,
+            "l": 60
+          },
           "keyframes": [
-            { "timeMs": 0, "value": { "h": 220, "s": 100, "l": 60 }, "interpolation": "hold" }
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 220,
+                "s": 100,
+                "l": 60
+              },
+              "interpolation": "hold"
+            }
           ]
-        }
+        },
+        "blendMode": "replace"
       },
       {
         "id": "color-back-cyan",
         "paramId": "color",
-        "zones": ["back"],
+        "zones": [
+          "back"
+        ],
         "curve": {
           "paramId": "color",
           "valueType": "color",
-          "defaultValue": { "h": 185, "s": 100, "l": 55 },
+          "defaultValue": {
+            "h": 185,
+            "s": 100,
+            "l": 55
+          },
           "keyframes": [
-            { "timeMs": 0, "value": { "h": 185, "s": 100, "l": 55 }, "interpolation": "hold" }
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 185,
+                "s": 100,
+                "l": 55
+              },
+              "interpolation": "hold"
+            }
           ]
-        }
+        },
+        "blendMode": "replace"
       },
       {
         "id": "intensity-front",
         "paramId": "intensity",
-        "zones": ["front"],
-        "blendMode": "max",
+        "zones": [
+          "front"
+        ],
+        "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
-          "defaultValue": 1.0,
+          "defaultValue": 1,
           "keyframes": [
-            { "timeMs": 0, "value": 1.0, "interpolation": "hold" }
+            {
+              "timeMs": 0,
+              "value": 1,
+              "interpolation": "hold"
+            }
           ]
         }
       },
       {
         "id": "intensity-back",
         "paramId": "intensity",
-        "zones": ["back"],
-        "blendMode": "max",
+        "zones": [
+          "back"
+        ],
+        "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
-          "defaultValue": 1.0,
+          "defaultValue": 1,
           "keyframes": [
-            { "timeMs": 0, "value": 1.0, "interpolation": "hold" }
+            {
+              "timeMs": 0,
+              "value": 1,
+              "interpolation": "hold"
+            }
           ]
         }
       },
       {
         "id": "movers-blackout",
         "paramId": "intensity",
-        "zones": ["all-movers"],
+        "zones": [
+          "all-movers"
+        ],
         "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
           "defaultValue": 0,
           "keyframes": [
-            { "timeMs": 0, "value": 0, "interpolation": "hold" }
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            }
           ]
         }
       }

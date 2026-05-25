@@ -5,21 +5,48 @@
     "name": "Machine Gun",
     "author": "LuxSync Factory",
     "category": "physical",
-    "tags": ["strobe", "techno", "brutal", "drop", "maxrate"],
-    "vibeCompat": ["techno"],
+    "tags": [
+      "strobe",
+      "techno",
+      "brutal",
+      "drop",
+      "maxrate"
+    ],
+    "vibeCompat": [
+      "techno"
+    ],
     "durationMs": 800,
     "effectType": "heph_custom",
     "cognitiveDNA": {
-      "genome": { "aggression": 1.0, "chaos": 0.9, "organicity": 0.0 },
+      "genome": {
+        "aggression": 1,
+        "chaos": 0.9,
+        "organicity": 0
+      },
       "textureAffinity": "dirty",
-      "compatibleVibes": ["techno"],
-      "validSections": ["drop", "peak"],
-      "energyZone": { "min": "intense", "max": "peak" },
-      "aggressionRange": { "min": 0.85, "max": 1.0 },
+      "compatibleVibes": [
+        "techno"
+      ],
+      "validSections": [
+        "drop",
+        "peak"
+      ],
+      "energyZone": {
+        "min": "intense",
+        "max": "peak"
+      },
+      "aggressionRange": {
+        "min": 0.85,
+        "max": 1
+      },
       "spatialBehavior": "static"
     },
     "simulationMeta": {
-      "beautyWeights": { "base": 0.9, "energyMultiplier": 1.3, "vibeBonus": 0.1 },
+      "beautyWeights": {
+        "base": 0.9,
+        "energyMultiplier": 1.3,
+        "vibeBonus": 0.1
+      },
       "gpuCost": 0.3,
       "fatigueImpact": 0.65,
       "minDurationMs": 800,
@@ -27,61 +54,103 @@
       "isStrobe": true,
       "isDivineCandidate": false,
       "isHeavyCandidate": true,
-      "zScoreGuards": { "requireRising": true, "minimumZ": 2, "minimumEnergy": 0.92 }
+      "zScoreGuards": {
+        "requireRising": true,
+        "minimumZ": 2,
+        "minimumEnergy": 0.92
+      }
     },
     "tracks": [
       {
         "id": "par-strobe-max",
         "paramId": "strobeRate",
-        "zones": ["all-pars"],
+        "zones": [
+          "all-pars"
+        ],
         "curve": {
           "paramId": "strobeRate",
           "valueType": "number",
           "defaultValue": 0,
           "keyframes": [
-            { "timeMs": 0,   "value": 1.0, "interpolation": "hold" },
-            { "timeMs": 800, "value": 0,   "interpolation": "hold" }
+            {
+              "timeMs": 0,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 800,
+              "value": 0,
+              "interpolation": "hold"
+            }
           ]
-        }
+        },
+        "blendMode": "replace"
       },
       {
         "id": "par-white",
         "paramId": "color",
-        "zones": ["all-pars"],
+        "zones": [
+          "all-pars"
+        ],
         "curve": {
           "paramId": "color",
           "valueType": "color",
-          "defaultValue": { "h": 0, "s": 0, "l": 100 },
+          "defaultValue": {
+            "h": 0,
+            "s": 0,
+            "l": 100
+          },
           "keyframes": [
-            { "timeMs": 0, "value": { "h": 0, "s": 0, "l": 100 }, "interpolation": "hold" }
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 0,
+                "s": 0,
+                "l": 100
+              },
+              "interpolation": "hold"
+            }
           ]
-        }
+        },
+        "blendMode": "replace"
       },
       {
         "id": "par-intensity",
         "paramId": "intensity",
-        "zones": ["all-pars"],
-        "blendMode": "max",
+        "zones": [
+          "all-pars"
+        ],
+        "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
-          "defaultValue": 1.0,
+          "defaultValue": 1,
           "keyframes": [
-            { "timeMs": 0, "value": 1.0, "interpolation": "hold" }
+            {
+              "timeMs": 0,
+              "value": 1,
+              "interpolation": "hold"
+            }
           ]
         }
       },
       {
         "id": "movers-blackout",
         "paramId": "intensity",
-        "zones": ["all-movers"],
+        "zones": [
+          "all-movers"
+        ],
         "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
           "defaultValue": 0,
           "keyframes": [
-            { "timeMs": 0, "value": 0, "interpolation": "hold" }
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            }
           ]
         }
       }

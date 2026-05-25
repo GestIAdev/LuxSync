@@ -327,7 +327,13 @@ declare global {
     getVibe: () => Promise<{ success: boolean; vibeId: string; error?: string }>
     onVibeChange: (callback: (data: { vibeId: string; timestamp: number }) => void) => () => void
     
-    // 🎭 WAVE 700.5.4: Mood Control
+    // � WAVE 4860: THEIA ENGINE — SAB one-shot bridge
+    theia: {
+      /** Returns the SharedArrayBuffer of the FrameContextRing from the main process. Called once. */
+      getFrameContextSAB: () => Promise<SharedArrayBuffer | null>
+    }
+
+    // �🎭 WAVE 700.5.4: Mood Control
     mood: {
       setMood: (moodId: 'calm' | 'balanced' | 'punk') => Promise<{ success: boolean; moodId?: string; error?: string }>
       getMood: () => Promise<{ success: boolean; moodId: string; error?: string }>

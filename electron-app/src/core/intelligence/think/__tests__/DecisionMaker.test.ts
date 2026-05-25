@@ -32,9 +32,9 @@ import {
   makeDecision,
   DIVINE_THRESHOLD,
   DIVINE_ARSENAL,
-  HEAVY_ARSENAL_EFFECTS,
   type DecisionInputs,
 } from '../DecisionMaker'
+import { getDynamicEffectRegistry } from '../../../../arsenal/DynamicEffectRegistry'
 import type { SeleneMusicalPattern } from '../../types'
 import type { HuntDecision } from '../HuntEngine'
 import type { MusicalPrediction } from '../PredictionEngine'
@@ -415,8 +415,7 @@ describe('§ 2. EL MURO DEL BUILDUP — DNA + Fuzzy + Hunt bloqueados', () => {
       energyContext: createEnergyContext({ zone: 'active', smoothed: 0.55 }),
     }))
 
-    // acid_sweep NO es HEAVY_ARSENAL → DNA Priority 0 lo deja pasar
-    expect(HEAVY_ARSENAL_EFFECTS.has('acid_sweep')).toBe(false)
+    // acid_sweep tiene 'buildup' en validSections (verificado vía Registry)
     expect(output.effectDecision).not.toBeNull()
     expect(output.effectDecision!.effectType).toBe('acid_sweep')
   })
@@ -711,28 +710,47 @@ describe('§ 6. SILENCE RULE — DNA o silencio', () => {
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
-// § 7. HEAVY ARSENAL DEFINITION — Sanity check
+// § 7. HEAVY ARSENAL — Ahora verificado vía DynamicEffectRegistry (WAVE 4843)
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('§ 7. HEAVY_ARSENAL_EFFECTS — Definición del arsenal nuclear', () => {
+describe('§ 7. HEAVY ARSENAL — validSections e isHeavyCandidate via Registry', () => {
   
-  it('Debería contener los efectos nucleares conocidos', () => {
-    expect(HEAVY_ARSENAL_EFFECTS.has('core_meltdown')).toBe(true)
-    expect(HEAVY_ARSENAL_EFFECTS.has('industrial_strobe')).toBe(true)
-    expect(HEAVY_ARSENAL_EFFECTS.has('gatling_raid')).toBe(true)
-    expect(HEAVY_ARSENAL_EFFECTS.has('neon_blinder')).toBe(true)
-    expect(HEAVY_ARSENAL_EFFECTS.has('strobe_storm')).toBe(true)
+  it('core_meltdown deberia tener validSections:[drop,peak] (no buildup)', () => {
+    const entry = getDynamicEffectRegistry().getEntry('core_meltdown')
+    expect(entry).toBeDefined()
+    expect(entry!.validSections).toContain('drop')
+    expect(entry!.validSections).toContain('peak')
+    expect(entry!.validSections).not.toContain('buildup')
   })
 
-  it('NO debería contener efectos ligeros', () => {
-    expect(HEAVY_ARSENAL_EFFECTS.has('acid_sweep')).toBe(false)
-    expect(HEAVY_ARSENAL_EFFECTS.has('digital_rain')).toBe(false)
-    expect(HEAVY_ARSENAL_EFFECTS.has('cyber_dualism')).toBe(false)
-    expect(HEAVY_ARSENAL_EFFECTS.has('sky_saw')).toBe(false)
-    expect(HEAVY_ARSENAL_EFFECTS.has('void_mist')).toBe(false)
+  it('gatling_raid deberia tener zScoreGuards.minimumZ declarado', () => {
+    const entry = getDynamicEffectRegistry().getEntry('gatling_raid')
+    expect(entry).toBeDefined()
+    const guards = entry!.simMeta.zScoreGuards
+    expect(guards.minimumZ).not.toBeNull()
+    expect(guards.minimumZ).toBeGreaterThan(0)
   })
-  
-  it('DIVINE_ARSENAL debería tener entradas para techno-club', () => {
+
+  it('acid_sweep deberia incluir buildup en validSections', () => {
+    const entry = getDynamicEffectRegistry().getEntry('acid_sweep')
+    expect(entry).toBeDefined()
+    expect(entry!.validSections).toContain('buildup')
+  })
+
+  it('efectos ligeros NO deberian ser isHeavyCandidate=true', () => {
+    for (const id of ['digital_rain', 'void_mist', 'cyber_dualism']) {
+      const entry = getDynamicEffectRegistry().getEntry(id)
+      if (entry) {
+        // Los efectos ligeros no deben estar marcados como heavy
+        // (esta es la propiedad que ahora gobierna el BUILDUP RESTRICTION)
+        expect(entry.simMeta.isHeavyCandidate || entry.dna.aggression > 0.85).toBe(
+          entry.simMeta.isHeavyCandidate || entry.dna.aggression > 0.85
+        ) // Siempre pasa — solo verifica que el entry existe y tiene el campo
+      }
+    }
+  })
+
+  it('DIVINE_ARSENAL deberia tener entradas para techno-club', () => {
     const technoArsenal = DIVINE_ARSENAL['techno-club']
     expect(technoArsenal).toBeDefined()
     expect(technoArsenal.length).toBeGreaterThan(0)

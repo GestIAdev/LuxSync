@@ -32,6 +32,9 @@ import { stagePersistence, setupStageIPCHandlers } from '../src/core/stage';
 import { setupKeyForgeIPCHandlers } from '../src/core/keyforge/KeyForgeIPCHandlers';
 // ⚒️ Hephaestus File I/O (WAVE 2030.5)
 import { setupHephIPCHandlers } from '../src/core/hephaestus';
+// ⚡ WAVE 4822: INFINITE ARSENAL — Boot ingestion
+import { LfxFileLoader } from '../src/core/arsenal/LfxFileLoader';
+import { getDynamicEffectRegistry } from '../src/core/arsenal/DynamicEffectRegistry';
 // Config Manager V2 (WAVE 367) - PREFERENCES ONLY, NO FIXTURES
 import { configManager } from '../src/core/config/ConfigManagerV2';
 // External Services
@@ -382,6 +385,31 @@ async function initTitan() {
     titanOrchestrator.setLicenseTier(currentLicenseTier);
     // WAVE 380: Register as singleton so IPC handlers can access the same instance
     registerTitanOrchestrator(titanOrchestrator);
+    // ════════════════════════════════════════════════════════════
+    // ⚡ WAVE 4822: INFINITE ARSENAL — BOOT INGESTION
+    // Poblar DynamicEffectRegistry antes del primer ciclo de Selene.
+    // Fallo silencioso: si los .lfx no están, el sistema cae al path legacy.
+    // ════════════════════════════════════════════════════════════
+    try {
+        const _builtinPath = app.isPackaged
+            ? path.join(process.resourcesPath, 'app.asar.unpacked', 'src', 'core', 'arsenal', 'builtins')
+            : path.join(__dirname, '..', 'src', 'core', 'arsenal', 'builtins');
+        const _lfxLoader = new LfxFileLoader(getDynamicEffectRegistry());
+        const _arsenalReport = await _lfxLoader.loadAll([
+            { absolutePath: _builtinPath, source: 'builtin' }
+        ]);
+        console.log(`[TitanOrchestrator] ⚡ Infinite Arsenal: ` +
+            `${_arsenalReport.accepted}/${_arsenalReport.scanned} .lfx cargados ` +
+            `(rechazados: ${_arsenalReport.rejected}, errores: ${_arsenalReport.errors})`);
+        if (isDev && _arsenalReport.accepted < 48) {
+            console.warn(`[TitanOrchestrator] ⚠️ Arsenal incompleto: esperados ≥48, ` +
+                `cargados ${_arsenalReport.accepted}`);
+        }
+    }
+    catch (_arsenalErr) {
+        console.error('[TitanOrchestrator] ❌ Arsenal boot failed (non-fatal):', _arsenalErr);
+    }
+    // ════════════════════════════════════════════════════════════
     await titanOrchestrator.init();
     // WAVE 255.5: Connect broadcast callback to send fixture states to frontend
     // 🛡️ WAVE 2005.1: Added try-catch for "Render frame disposed" errors

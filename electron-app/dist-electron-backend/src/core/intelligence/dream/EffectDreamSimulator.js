@@ -34,271 +34,12 @@
 import { MoodController } from '../../mood/MoodController';
 // 🧬 WAVE 970: CONTEXTUAL DNA SYSTEM
 // 🎨 WAVE 1029: THE DREAMER - Texture Affinity Integration
-import { getDNAAnalyzer, EFFECT_DNA_REGISTRY } from '../dna/EffectDNA';
-// ═══════════════════════════════════════════════════════════════
-// CONSTANTS
-// ═══════════════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════════════════════════
-// 🌀 WAVE 902: VOCABULARY SYNC - Real effect names only
-// 🔫 WAVE 930.2: ARSENAL PESADO - GatlingRaid, SkySaw added
-// ═══════════════════════════════════════════════════════════════════════════
-// Efectos conocidos agrupados por categoría (SYNCED with EffectManager registry)
-// 🎯 WAVE 902.1: TRUTH - Only 2 genres implemented (Latina + Techno)
-const EFFECT_CATEGORIES = {
-    'techno-industrial': [
-        'industrial_strobe', // ✅ WAVE 780: The hammer
-        'acid_sweep', // ✅ WAVE 780: The blade
-        'cyber_dualism', // ✅ WAVE 810: The twins
-        'gatling_raid', // ✅ WAVE 930: Machine gun PAR barrage
-        'sky_saw', // ✅ WAVE 930: Aggressive mover cuts
-        'abyssal_rise', // ⚡ WAVE 988 RECONECTADO: 5s epic rise (was 8s, excluded)
-        'neon_blinder', // ⚡ WAVE 2182: APEX flash wall
-        'surgical_strike', // 🎯 WAVE 2182: APEX mover strobe
-    ],
-    // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL (low-energy zones)
-    // 🗑️ WAVE 986: static_pulse ELIMINADO - Reemplazado por binary_glitch
-    // 🔮 WAVE 988: fiber_optics AÑADIDO (traveling ambient colors)
-    'techno-atmospheric': [
-        'void_mist', // ✅ WAVE 938: Purple fog breathing (WAVE 2182 rework)
-        'digital_rain', // ✅ WAVE 938: Matrix flicker cyan/lime
-        'deep_breath', // ✅ WAVE 938: Organic 4-bar breathing
-        'binary_glitch', // ⚔️ WAVE 986: Digital stutter chaos
-        'seismic_snap', // ⚔️ WAVE 986: Mechanical impact snap
-        'fiber_optics', // 🔮 WAVE 988: Traveling ambient colors
-        'ghost_chase', // 👻 WAVE 2182: Phantom dimmer chase
-    ],
-    // ☢️ WAVE 988: EXTREME ARSENAL (peak/epic zones only)
-    'techno-extreme': [
-        'core_meltdown', // ☢️ WAVE 988: LA BESTIA - extreme strobe
-    ],
-    'latino-organic': [
-        'solar_flare', // ✅ WAVE 600: Takeover — APEX de luz latina
-        'strobe_burst', // ✅ WAVE 691: Rhythmic latina strobe
-        'tidal_wave', // ✅ WAVE 680: Wave flow
-        'ghost_breath', // ✅ WAVE 680: Soft breathing
-        'tropical_pulse', // ✅ WAVE 692: Conga bursts
-        'salsa_fire', // ✅ WAVE 692: Fire flicker
-        'cumbia_moon', // ✅ WAVE 692: Moon glow
-        'clave_rhythm', // ✅ WAVE 700.6: 3-2 pattern
-        'corazon_latino', // ✅ WAVE 750: Heartbeat passion
-        'amazon_mist', // ✅ WAVE 1009.1: Neblina amazónica
-        'glitch_guaguanco', // ✅ WAVE 1009.1: Guaguancó glitcheado
-        'machete_spark', // ✅ WAVE 1009.1: Chispa de machete
-        'latina_meltdown', // ✅ WAVE 1009.1: Nuclear latina
-    ]
-    // 🚧 chill-ambient: NOT IMPLEMENTED YET
-    // ✅ WAVE 1020: pop-rock IMPLEMENTED - Los 5 Magnificos LIVE
-};
-// Pesos de belleza por tipo de efecto (WAVE 902.1: TRUTH - Only Latina + Techno)
-const EFFECT_BEAUTY_WEIGHTS = {
-    // 🔪 TECHNO-INDUSTRIAL (6 effects - WAVE 996 FIX)
-    'industrial_strobe': { base: 0.88, energyMultiplier: 1.45, technoBonus: 0.20 }, // 🔨 WAVE 2202: 0.75→0.88 base, 1.2→1.45 mult, 0.15→0.20 bonus. El Martillo es APEX, no mid-tier.
-    'acid_sweep': { base: 0.78, energyMultiplier: 1.15, technoBonus: 0.13 },
-    'cyber_dualism': { base: 0.65, energyMultiplier: 1.0, technoBonus: 0.10 },
-    'gatling_raid': { base: 0.82, energyMultiplier: 1.35, technoBonus: 0.20 }, // 🔫 WAVE 930
-    'sky_saw': { base: 0.76, energyMultiplier: 1.25, technoBonus: 0.16 }, // 🗡️ WAVE 930
-    'abyssal_rise': { base: 0.88, energyMultiplier: 1.40, technoBonus: 0.22 }, // 🌊 WAVE 996: Epic 5s rise - high beauty
-    // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL (low-energy zones)
-    'void_mist': { base: 0.55, energyMultiplier: 0.6, technoBonus: 0.08 }, // 🌫️ Fog - low energy beauty
-    // 🗑️ WAVE 986: static_pulse ELIMINADO
-    'digital_rain': { base: 0.60, energyMultiplier: 0.75, technoBonus: 0.09 }, // 💧 Matrix - cyber beauty
-    'deep_breath': { base: 0.52, energyMultiplier: 0.5, technoBonus: 0.07 }, // 🫁 Breathing - zen beauty
-    // ⚡ WAVE 977: LA FÁBRICA
-    'ambient_strobe': { base: 0.62, energyMultiplier: 0.9, technoBonus: 0.11 }, // 📸 Camera flashes - mid beauty
-    'sonar_ping': { base: 0.54, energyMultiplier: 0.55, technoBonus: 0.06 }, // 🔵 Submarine ping - subtle beauty
-    // ⚔️ WAVE 986: ACTIVE REINFORCEMENTS
-    'binary_glitch': { base: 0.72, energyMultiplier: 1.05, technoBonus: 0.14 }, // 💻 Digital stutter - chaos beauty
-    'seismic_snap': { base: 0.74, energyMultiplier: 1.10, technoBonus: 0.15 }, // 💥 Mechanical snap - impact beauty
-    // 🔮 WAVE 988: THE FINAL ARSENAL
-    'fiber_optics': { base: 0.50, energyMultiplier: 0.4, technoBonus: 0.05 }, // 🌈 Traveling colors - ambient beauty
-    'core_meltdown': { base: 0.97, energyMultiplier: 1.6, technoBonus: 0.28 }, // ☢️ WAVE 2202: base 0.95→0.97, mult 1.5→1.6, bonus 0.25→0.28. La Bestia recupera su corona.
-    // 🔥 WAVE 2182: PARS PAINT, MOVERS PIERCE
-    'neon_blinder': { base: 0.86, energyMultiplier: 1.38, technoBonus: 0.21 }, // ⚡ APEX flash wall - high impact
-    'surgical_strike': { base: 0.62, energyMultiplier: 1.10, technoBonus: 0.12 }, // ⚰️ WAVE 2214: DEMOTED 0.84→0.62 — intense tier, deja peak a IndustrialStrobe
-    'ghost_chase': { base: 0.60, energyMultiplier: 0.75, technoBonus: 0.10 }, // 👻 Ghost chase — WAVE 2186: base 0.56→0.60, multiplier 0.55→0.75, bonus 0.07→0.10
-    // 🌴 LATINO-ORGANIC (14 effects - THE LATINO LADDER)
-    // WAVE 1009.1: Añadidos amazon_mist, glitch_guaguanco, machete_spark, latina_meltdown
-    // 👻 ZONA 1: SILENCE (0-15%)
-    'ghost_breath': { base: 0.68, energyMultiplier: 0.95, latinoBonus: 0.10 },
-    'amazon_mist': { base: 0.62, energyMultiplier: 0.85, latinoBonus: 0.08 }, // 🆕 Neblina amazónica
-    // 🌙 ZONA 2: VALLEY (15-30%)
-    'cumbia_moon': { base: 0.70, energyMultiplier: 1.00, latinoBonus: 0.11 },
-    'tidal_wave': { base: 0.72, energyMultiplier: 1.05, latinoBonus: 0.12 },
-    // 💓 ZONA 3: AMBIENT (30-45%)
-    'corazon_latino': { base: 0.90, energyMultiplier: 1.4, latinoBonus: 0.25 },
-    'strobe_burst': { base: 0.78, energyMultiplier: 1.22, latinoBonus: 0.16 },
-    // 🥁 ZONA 4: GENTLE (45-60%)
-    'clave_rhythm': { base: 0.74, energyMultiplier: 1.10, latinoBonus: 0.13 },
-    'tropical_pulse': { base: 0.82, energyMultiplier: 1.25, latinoBonus: 0.17 },
-    // ⚔️ ZONA 5: ACTIVE (60-75%)
-    'glitch_guaguanco': { base: 0.75, energyMultiplier: 1.15, latinoBonus: 0.14 }, // 🆕 Guaguancó glitcheado
-    'machete_spark': { base: 0.77, energyMultiplier: 1.18, latinoBonus: 0.15 }, // 🆕 Chispa de machete
-    // 🔥 ZONA 6: INTENSE (75-90%)
-    'salsa_fire': { base: 0.76, energyMultiplier: 1.15, latinoBonus: 0.14 },
-    'solar_flare': { base: 0.85, energyMultiplier: 1.3, latinoBonus: 0.20 },
-    // 💥 ZONA 7: PEAK (90-100%)
-    'latina_meltdown': { base: 0.92, energyMultiplier: 1.45, latinoBonus: 0.24 }, // 🆕 LA BESTIA LATINA
-    'strobe_storm': { base: 0.80, energyMultiplier: 1.25, latinoBonus: 0.18 },
-    // 🎸 WAVE 1020: POP-ROCK ARSENAL - LOS 5 MAGNÍFICOS
-    // Beauty weights calibrados para stadium performance
-    'thunder_struck': { base: 0.88, energyMultiplier: 1.35, rockBonus: 0.22 }, // ⚡ Stadium blinder - high impact
-    'feedback_storm': { base: 0.82, energyMultiplier: 1.30, rockBonus: 0.20 }, // 😵 Chaos - peak moment beauty
-    'arena_sweep': { base: 0.74, energyMultiplier: 1.10, rockBonus: 0.14 }, // 🌊 Wembley sweep - steady beauty
-    'liquid_solo': { base: 0.78, energyMultiplier: 1.15, rockBonus: 0.16 }, // 🎸 Spotlight - organic elegance
-    'amp_heat': { base: 0.68, energyMultiplier: 0.90, rockBonus: 0.10 }, // 🔥 Breathing valves - intimate beauty
-    // 🎸 WAVE 1020.9: ROCK ARSENAL EXPANSION - LOS 3 NUEVOS MAGNÍFICOS
-    'power_chord': { base: 0.84, energyMultiplier: 1.28, rockBonus: 0.19 }, // ⚡ Power chord flash - strong impact
-    'stage_wash': { base: 0.70, energyMultiplier: 0.95, rockBonus: 0.12 }, // 🌊 Warm wash - transition beauty
-    'spotlight_pulse': { base: 0.76, energyMultiplier: 1.12, rockBonus: 0.15 }, // 💡 Breathing pulse - moderate beauty
-    // 🌊 WAVE 1070: THE LIVING OCEAN - Oceanic Creature Effects
-    'solar_caustics': { base: 0.72, energyMultiplier: 0.85, chillBonus: 0.14 }, // ☀️ Sun rays in shallows - gentle beauty
-    'school_of_fish': { base: 0.68, energyMultiplier: 0.90, chillBonus: 0.12 }, // 🐟 Fish crossing - natural elegance
-    'whale_song': { base: 0.82, energyMultiplier: 0.75, chillBonus: 0.18 }, // 🐋 Majestic whale - deep beauty
-    'abyssal_jellyfish': { base: 0.78, energyMultiplier: 1.05, chillBonus: 0.16 }, // 🪼 Bioluminescent bloom - mysterious beauty
-    // 🦠 WAVE 1074: MICRO-FAUNA - Ambient Fillers (sutiles, puntúan bien en chill)
-    'surface_shimmer': { base: 0.65, energyMultiplier: 0.50, chillBonus: 0.20 }, // ✨ Sparkles - gentle
-    'plankton_drift': { base: 0.60, energyMultiplier: 0.40, chillBonus: 0.25 }, // 🦠 Particles - ambient
-    'deep_current_pulse': { base: 0.70, energyMultiplier: 0.60, chillBonus: 0.15 }, // 🌀 Currents - presence
-    'bioluminescent_spore': { base: 0.75, energyMultiplier: 0.30, chillBonus: 0.30 }, // ✨ Spores - magical
-};
-// GPU cost por efecto (WAVE 902.1: TRUTH, WAVE 930.2: Arsenal added)
-const EFFECT_GPU_COST = {
-    // 🔪 TECHNO-INDUSTRIAL (Alta intensidad)
-    'industrial_strobe': 0.35, // 🔨 WAVE 2202: 0.25→0.35. El Martillo es APEX — mismo tier que gatling_raid
-    'acid_sweep': 0.30,
-    'cyber_dualism': 0.28,
-    'gatling_raid': 0.35, // 🔫 Alto costo - muchos PARs disparando
-    'sky_saw': 0.32, // 🗡️ Alto costo - movimiento agresivo
-    'abyssal_rise': 0.28, // 🌊 WAVE 996: Medium-high - 5s epic ramp
-    // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL (Bajo costo - efectos suaves)
-    'void_mist': 0.08, // 🌫️ Muy bajo - solo dimmer suave
-    // 🗑️ WAVE 986: static_pulse ELIMINADO
-    'digital_rain': 0.10, // 💧 Bajo - flicker ligero
-    'deep_breath': 0.06, // 🫁 Muy bajo - solo breathing
-    // ⚡ WAVE 977: LA FÁBRICA
-    'ambient_strobe': 0.14, // 📸 Bajo - flashes dispersos
-    'sonar_ping': 0.09, // 🔵 Muy bajo - ping secuencial
-    // ⚔️ WAVE 986: ACTIVE REINFORCEMENTS
-    'binary_glitch': 0.15, // 💻 Bajo-medio - flashes rápidos
-    'seismic_snap': 0.18, // 💥 Medio - flash + movement
-    // 🔮 WAVE 988: THE FINAL ARSENAL
-    'fiber_optics': 0.05, // 🌈 Muy bajo - solo colores viajando
-    'core_meltdown': 0.40, // ☢️ ALTO - LA BESTIA consume GPU — intocable, es correcto
-    // 🌴 LATINO-ORGANIC (14 effects - THE LATINO LADDER)
-    // WAVE 1009.1: Añadidos nuevos efectos
-    // 👻 ZONA 1: SILENCE
-    'ghost_breath': 0.12,
-    'amazon_mist': 0.08, // 🆕 Muy bajo - neblina suave
-    // 🌙 ZONA 2: VALLEY
-    'cumbia_moon': 0.08,
-    'tidal_wave': 0.10,
-    // 💓 ZONA 3: AMBIENT
-    'corazon_latino': 0.24,
-    'strobe_burst': 0.28,
-    // 🥁 ZONA 4: GENTLE
-    'clave_rhythm': 0.15,
-    'tropical_pulse': 0.20,
-    // ⚔️ ZONA 5: ACTIVE
-    'glitch_guaguanco': 0.22, // 🆕 Medio - glitches + groove
-    'machete_spark': 0.25, // 🆕 Medio-alto - chispas
-    // 🔥 ZONA 6: INTENSE
-    'salsa_fire': 0.18,
-    'solar_flare': 0.22,
-    // 💥 ZONA 7: PEAK
-    'latina_meltdown': 0.38, // 🆕 ALTO - LA BESTIA LATINA
-    'strobe_storm': 0.32,
-    // 🎸 WAVE 1020: POP-ROCK ARSENAL
-    'thunder_struck': 0.30, // ⚡ Alto - double flash stadium blinder
-    'feedback_storm': 0.35, // 😵 Muy alto - strobe caótico + intensidad
-    'arena_sweep': 0.26, // 🌊 Medio-alto - sweep amplio con inercia
-    'liquid_solo': 0.22, // 🎸 Medio - spotlight asimétrico L/R
-    'amp_heat': 0.12, // 🔥 Bajo - solo breathing suave
-    // 🎸 WAVE 1020.9: ROCK ARSENAL EXPANSION
-    'power_chord': 0.28, // ⚡ Medio-alto - flash + strobe 4 golpes
-    'stage_wash': 0.14, // 🌊 Bajo - wash suave fade in/out
-    'spotlight_pulse': 0.20, // 💡 Medio - pulsing dimmer sinusoidal
-    // 🌊 WAVE 1070: THE LIVING OCEAN - Oceanic Creature Effects
-    'solar_caustics': 0.16, // ☀️ Bajo - caustic patterns suaves
-    'school_of_fish': 0.18, // 🐟 Bajo-medio - sweep direccional
-    'whale_song': 0.20, // 🐋 Medio - crossing sweep + pulses
-    'abyssal_jellyfish': 0.24, // 🪼 Medio - gaussian blooms + color rotation
-    // 🦠 WAVE 1074: MICRO-FAUNA - GPU Cost (muy bajos - efectos sutiles)
-    'surface_shimmer': 0.08, // ✨ Muy bajo - sparkles simples
-    'plankton_drift': 0.10, // 🦠 Muy bajo - partículas
-    'deep_current_pulse': 0.12, // 🌀 Bajo - ondas suaves
-    'bioluminescent_spore': 0.14, // ✨ Bajo - flashes puntuales
-};
-// Fatigue impact por efecto (WAVE 902.1: TRUTH, WAVE 930.2: Arsenal added)
-const EFFECT_FATIGUE_IMPACT = {
-    // 🔪 TECHNO-INDUSTRIAL (Aumenta fatiga)
-    'industrial_strobe': 0.11, // 🔨 WAVE 2202: 0.08→0.11. Sube acorde al nuevo rango APEX. Sigue siendo controlado.
-    'acid_sweep': 0.07,
-    'cyber_dualism': 0.06,
-    'gatling_raid': 0.10, // 🔫 Alta fatiga - muy intenso
-    'sky_saw': 0.08, // 🗡️ Alta fatiga - movimiento agresivo
-    'abyssal_rise': 0.04, // 🌊 WAVE 996: Low fatigue - epic build creates anticipation, not exhaustion
-    // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL (REDUCE fatiga - efectos relajantes)
-    'void_mist': -0.04, // 🌫️ Reduce fatiga - ambiente zen
-    // 🗑️ WAVE 986: static_pulse ELIMINADO
-    'digital_rain': -0.02, // 💧 Reduce fatiga - hipnótico
-    'deep_breath': -0.05, // 🫁 Muy relajante - máxima reducción
-    // ⚡ WAVE 977: LA FÁBRICA
-    'ambient_strobe': 0.03, // 📸 Leve fatiga - flashes moderados
-    'sonar_ping': -0.03, // 🔵 Reduce fatiga - efecto zen/submarino
-    // ⚔️ WAVE 986: ACTIVE REINFORCEMENTS
-    'binary_glitch': 0.04, // 💻 Leve fatiga - glitches cortos
-    'seismic_snap': 0.05, // 💥 Moderada fatiga - golpe seco
-    // 🔮 WAVE 988: THE FINAL ARSENAL
-    'fiber_optics': -0.06, // 🌈 Reduce fatiga - efecto hipnótico zen
-    'core_meltdown': 0.10, // ☢️ WAVE 2202: 0.15→0.10. La fatiga excesiva era el castrador silencioso.
-    // 0.15 era la fatiga más alta del arsenal — tras 2-3 disparos el simulador
-    // la penalizaba tan fuerte que nunca volvía a seleccionarla aunque fuera el
-    // efecto más relevante. La Bestia no se cansa tan rápido. 0.10 = ALTA fatiga
-    // pero no absurda. gatling_raid tiene 0.10 y nadie se queja de él.
-    // 🌴 LATINO-ORGANIC (14 effects - THE LATINO LADDER)
-    // WAVE 1009.1: Añadidos nuevos efectos
-    // 👻 ZONA 1: SILENCE (REDUCE FATIGA - muy relajante)
-    'ghost_breath': -0.02, // Breathing, reduce fatiga
-    'amazon_mist': -0.04, // 🆕 Neblina zen, reduce fatiga
-    // 🌙 ZONA 2: VALLEY (REDUCE FATIGA - suaves)
-    'cumbia_moon': -0.03, // Moon glow, reduce fatiga
-    'tidal_wave': -0.01, // Suave, reduce fatiga
-    // 💓 ZONA 3: AMBIENT (NEUTRAL)
-    'corazon_latino': 0.05,
-    'strobe_burst': 0.07,
-    // 🥁 ZONA 4: GENTLE (LEVE AUMENTO)
-    'clave_rhythm': 0.02,
-    'tropical_pulse': 0.04,
-    // ⚔️ ZONA 5: ACTIVE (MODERADO AUMENTO)
-    'glitch_guaguanco': 0.05, // 🆕 Moderada - groove frenético
-    'machete_spark': 0.06, // 🆕 Moderada - chispas rítmicas
-    // 🔥 ZONA 6: INTENSE (AUMENTO)
-    'salsa_fire': 0.03,
-    'solar_flare': 0.06,
-    // 💥 ZONA 7: PEAK (ALTA FATIGA)
-    'latina_meltdown': 0.12, // 🆕 ALTA - LA BESTIA LATINA agota
-    'strobe_storm': 0.09,
-    // 🎸 WAVE 1020: POP-ROCK ARSENAL
-    'thunder_struck': 0.08, // ⚡ Alta - blinder brutal doble flash
-    'feedback_storm': 0.11, // 😵 MUY alta - caos visual agota
-    'arena_sweep': 0.04, // 🌊 Moderada - sweep amplio pero fluido
-    'liquid_solo': 0.03, // 🎸 Baja - spotlight elegante, no cansa
-    'amp_heat': -0.02, // 🔥 REDUCE fatiga - breathing intimista
-    // 🎸 WAVE 1020.9: ROCK ARSENAL EXPANSION
-    'power_chord': 0.07, // ⚡ Alta - flash + strobe impacto
-    'stage_wash': -0.01, // 🌊 REDUCE fatiga - respiro cálido
-    'spotlight_pulse': 0.03, // 💡 Baja - pulso suave, no cansa
-    // 🌊 WAVE 1070: THE LIVING OCEAN - Oceanic Creature Effects
-    'solar_caustics': -0.04, // ☀️ REDUCE fatiga - sun rays hipnóticos
-    'school_of_fish': -0.02, // 🐟 REDUCE fatiga - natural calming
-    'whale_song': -0.05, // 🐋 MÁXIMA reducción fatiga - majestic zen
-    'abyssal_jellyfish': -0.03, // 🪼 REDUCE fatiga - bioluminescent zen
-    // 🦠 WAVE 1074: MICRO-FAUNA - Fatigue Impact (negativos = relajan la vista)
-    'surface_shimmer': -0.03, // ✨ Reduce fatiga - gentle sparkles
-    'plankton_drift': -0.04, // 🦠 Reduce fatiga - hypnotic drift
-    'deep_current_pulse': -0.02, // 🌀 Reduce fatiga - slow movement
-    'bioluminescent_spore': -0.05, // ✨ Reduce fatiga - magical moments
-};
+import { getDNAAnalyzer } from '../dna/EffectDNA';
+// ⚡ WAVE 4824: DYNAMIC EFFECT REGISTRY — fuente única de verdad del arsenal
+import { getDynamicEffectRegistry } from '../../arsenal/DynamicEffectRegistry';
+// ⚡ WAVE 4846: SPATIAL COGNITION — Hardware Guard
+import { getTitanOrchestrator } from '../../orchestrator/TitanOrchestrator';
+import { normalizeZone } from '../../stage/ShowFileV2';
 export class EffectDreamSimulator {
     constructor() {
         this.simulationCount = 0;
@@ -307,25 +48,6 @@ export class EffectDreamSimulator {
         this.PRE_BUFFER_MIN_PROBABILITY = 0.65; // Solo buffer si Oráculo > 65% seguro
         this.PRE_BUFFER_MIN_TIME_MS = 2000; // Solo buffer si > 2s hasta evento
         this.PRE_BUFFER_MAX_AGE_MS = 5000; // Expira después de 5s
-        // ═══════════════════════════════════════════════════════════════
-        // 🧬 WAVE 970: DNA-BASED CONTEXTUAL RELEVANCE
-        // 🎨 WAVE 1029: THE DREAMER - Texture DNA Integration
-        // ═══════════════════════════════════════════════════════════════
-        /**
-         * 🎨 WAVE 1029: THE DREAMER - Ghost Input System
-         *
-         * Permite inyectar un SpectralContext falso para testing/simulación.
-         * Cuando está seteado, calculateDNARelevance usará este contexto
-         * en lugar de derivar uno del AudienceSafetyContext.
-         *
-         * Uso:
-         * ```ts
-         * simulator.setGhostSpectralContext({ texture: 'harsh', clarity: 0.3, harshness: 0.8, ... })
-         * const result = simulator.dreamEffects(...) // Usará ghost context
-         * simulator.clearGhostSpectralContext()
-         * ```
-         */
-        this.ghostSpectralContext = null;
         // WAVE 2098: Boot silence
     }
     // ═══════════════════════════════════════════════════════════════
@@ -509,33 +231,21 @@ export class EffectDreamSimulator {
      * Explora efectos alternativos (similar a hue shifts pero para efectos)
      */
     exploreAlternatives(primaryEffect, context) {
-        const alternatives = [];
-        // Encontrar categoría del efecto primario
-        let category = null;
-        for (const [cat, effects] of Object.entries(EFFECT_CATEGORIES)) {
-            if (effects.includes(primaryEffect.effect)) {
-                category = cat;
-                break;
-            }
-        }
-        if (!category) {
-            console.warn(`[DREAM_SIMULATOR] ⚠️ Unknown category for ${primaryEffect.effect}`);
+        // ⚡ WAVE 4824: Registry exclusivo — EFFECT_CATEGORIES exterminado
+        const registry = getDynamicEffectRegistry();
+        const primaryEntry = registry.getEntry(primaryEffect.effect);
+        if (!primaryEntry)
             return [];
-        }
-        // Generar alternativas de la misma categoría
-        const categoryEffects = EFFECT_CATEGORIES[category];
-        for (const effect of categoryEffects) {
-            if (effect === primaryEffect.effect)
-                continue;
-            alternatives.push({
-                effect,
-                intensity: primaryEffect.intensity * 0.9, // Ligeramente menor
-                zones: primaryEffect.zones,
-                reasoning: `Alternative to ${primaryEffect.effect} (same category)`,
-                confidence: primaryEffect.confidence * 0.8
-            });
-        }
-        return alternatives;
+        const vibe = primaryEntry.compatibleVibes[0] ?? '';
+        return registry.getEffectsForVibe(vibe)
+            .filter(e => e.id !== primaryEffect.effect)
+            .map(e => ({
+            effect: e.id,
+            intensity: primaryEffect.intensity * 0.9,
+            zones: primaryEffect.zones,
+            reasoning: `Alternative to ${primaryEffect.effect} (same vibe)`,
+            confidence: primaryEffect.confidence * 0.8
+        }));
     }
     // ═══════════════════════════════════════════════════════════════
     // PRIVATE: CANDIDATE GENERATION
@@ -548,191 +258,11 @@ export class EffectDreamSimulator {
      * cumbia_moon NUNCA aparece en techno-club.
      */
     getVibeAllowedEffects(vibe) {
-        const EFFECTS_BY_VIBE = {
-            // 🔪 TECHNO CLUB: El Arsenal Industrial
-            // 🗑️ WAVE 986: static_pulse ELIMINADO, binary_glitch y seismic_snap AÑADIDOS
-            // 🎚️ WAVE 996: THE LADDER - 16 efectos techno totales
-            'techno-club': [
-                // PEAK (90-100%)
-                'industrial_strobe', // El martillo — APEX único en peak
-                'gatling_raid', // Machine gun
-                'core_meltdown', // ☢️ WAVE 988: LA BESTIA
-                'neon_blinder', // ⚡ WAVE 2182: APEX flash wall
-                // INTENSE (75-90%)
-                'surgical_strike', // ⚰️ WAVE 2214: DEMOTED — bisturí de movers, dimmer puro
-                'sky_saw', // Cortes agresivos
-                'abyssal_rise', // 🌪️ WAVE 930: Epic rise
-                // ACTIVE (60-75%)
-                'cyber_dualism', // Ping-pong L/R
-                'seismic_snap', // ⚔️ WAVE 986: Golpe mecánico
-                // GENTLE (45-60%)
-                'ambient_strobe', // ⚡ WAVE 977: Flashes dispersos
-                'binary_glitch', // ⚔️ WAVE 986: Tartamudeo digital
-                // AMBIENT (30-45%)
-                'acid_sweep', // Sweeps volumétricos
-                'digital_rain', // Matrix flicker
-                // VALLEY (15-30%)
-                'void_mist', // 🌫️ WAVE 938: Neblina púrpura
-                'fiber_optics', // 🔮 WAVE 988: Traveling colors
-                'ghost_chase', // 👻 WAVE 2182: Phantom dimmer chase
-                // SILENCE (0-15%)
-                'deep_breath', // 🫁 Respiración orgánica
-                'sonar_ping', // ⚡ WAVE 977: Ping submarino
-            ],
-            // Aliases para techno
-            'techno': [
-                'industrial_strobe', 'gatling_raid', 'core_meltdown',
-                'neon_blinder', 'surgical_strike',
-                'sky_saw', 'abyssal_rise',
-                'cyber_dualism', 'seismic_snap',
-                'ambient_strobe', 'binary_glitch',
-                'acid_sweep', 'digital_rain',
-                'void_mist', 'fiber_optics', 'ghost_chase',
-                'deep_breath', 'sonar_ping'
-            ],
-            'industrial': [
-                'industrial_strobe', 'gatling_raid', 'core_meltdown',
-                'neon_blinder', 'surgical_strike',
-                'sky_saw', 'abyssal_rise',
-                'cyber_dualism', 'seismic_snap',
-                'ambient_strobe', 'binary_glitch',
-                'acid_sweep', 'digital_rain',
-                'void_mist', 'fiber_optics', 'ghost_chase',
-                'deep_breath', 'sonar_ping'
-            ],
-            // 🎺 FIESTA LATINA: El Arsenal Tropical Completo (14 efectos)
-            // WAVE 1009.1: Añadidos los 5 efectos faltantes de THE LATINO LADDER
-            'fiesta-latina': [
-                // 👻 ZONA 1: SILENCE (0-15%)
-                'ghost_breath', // Respiro suave (A=0.12)
-                'amazon_mist', // Neblina amazónica (A=0.10)
-                // 🌙 ZONA 2: VALLEY (15-30%)
-                'cumbia_moon', // Luna cumbianchera (A=0.25)
-                'tidal_wave', // Ola oceánica (A=0.28)
-                // 💓 ZONA 3: AMBIENT (30-45%)
-                'corazon_latino', // El alma del arquitecto (A=0.38)
-                'strobe_burst', // Destello rítmico (A=0.42)
-                // 🥁 ZONA 4: GENTLE (45-60%)
-                'clave_rhythm', // Ritmo de clave (A=0.52)
-                'tropical_pulse', // Pulso de conga (A=0.55)
-                // ⚔️ ZONA 5: ACTIVE (60-75%)
-                'glitch_guaguanco', // 🆕 Guaguancó glitcheado (A=0.68)
-                'machete_spark', // 🆕 Chispa de machete (A=0.72)
-                // 🔥 ZONA 6: INTENSE (75-90%)
-                'salsa_fire', // Fuego salsero (A=0.82)
-                'solar_flare', // Explosión solar (A=0.85)
-                // 💥 ZONA 7: PEAK (90-100%)
-                'latina_meltdown', // 🆕 Meltdown latino (A=0.92)
-                'strobe_storm', // 🆕 Tormenta estroboscópica (A=0.95)
-            ],
-            // Aliases para latino (FULL ARSENAL)
-            'latino': [
-                'ghost_breath', 'amazon_mist',
-                'cumbia_moon', 'tidal_wave',
-                'corazon_latino', 'strobe_burst',
-                'clave_rhythm', 'tropical_pulse',
-                'glitch_guaguanco', 'machete_spark',
-                'salsa_fire', 'solar_flare',
-                'latina_meltdown', 'strobe_storm'
-            ],
-            'tropical': [
-                'ghost_breath', 'amazon_mist',
-                'cumbia_moon', 'tidal_wave',
-                'corazon_latino', 'strobe_burst',
-                'clave_rhythm', 'tropical_pulse',
-                'glitch_guaguanco', 'machete_spark',
-                'salsa_fire', 'solar_flare',
-                'latina_meltdown', 'strobe_storm'
-            ],
-            // 🎸 WAVE 1020: POP-ROCK ARSENAL - LOS 5 MAGNÍFICOS
-            // 🔧 WAVE 1020.7: PURGED techno contamination (digital_rain, cyber_dualism)
-            // 🎸 WAVE 1020.9: EXPANDED with 3 new effects
-            'pop-rock': [
-                // PEAK/INTENSE (75-100%) - Stadium moments
-                'thunder_struck', // ⚡ Stadium blinder PAM-PAM (A=0.95)
-                'power_chord', // ⚡ Power chord flash + strobe (A=0.85)
-                'feedback_storm', // 😵 Visual chaos (A=0.85)
-                // ACTIVE/GENTLE (45-75%) - Performance zone
-                'arena_sweep', // 🌊 Wembley sweep (A=0.50)
-                'spotlight_pulse', // 💡 Breathing spotlight (A=0.50)
-                'liquid_solo', // 🎸 Guitarist spotlight (A=0.40)
-                // AMBIENT/VALLEY (15-45%) - Intimate moments
-                'stage_wash', // 🌊 Warm amber wash (A=0.25)
-                'amp_heat', // 🔥 Hot valves breathing (A=0.15)
-                // Universal fallback only
-                'strobe_burst', // Rhythmic flash - works in ANY genre
-            ],
-            // Aliases for rock
-            'rock': [
-                'thunder_struck', 'power_chord', 'feedback_storm',
-                'arena_sweep', 'spotlight_pulse', 'liquid_solo',
-                'stage_wash', 'amp_heat',
-                'strobe_burst'
-            ],
-            'alternative': [
-                'thunder_struck', 'power_chord', 'feedback_storm',
-                'arena_sweep', 'spotlight_pulse', 'liquid_solo',
-                'stage_wash', 'amp_heat',
-                'strobe_burst'
-            ],
-            'indie': [
-                'thunder_struck', 'power_chord', 'feedback_storm',
-                'arena_sweep', 'spotlight_pulse', 'liquid_solo',
-                'stage_wash', 'amp_heat',
-                'strobe_burst'
-            ],
-            // 🌊 WAVE 1070: THE LIVING OCEAN - CHILL LOUNGE ARSENAL
-            // PUREZA TOTAL: Solo efectos oceánicos, NADA MÁS
-            'chill-lounge': [
-                // 🌊 THE LIVING OCEAN - Major Effects (4)
-                'solar_caustics', // ☀️ Sun rays in shallows (depth < 1000m)
-                'school_of_fish', // 🐠 Fish school crossing (1000-3000m)
-                'whale_song', // 🐋 Whale song in twilight zone (3000-6000m)
-                'abyssal_jellyfish', // 🪼 Bioluminescent pulse (depth > 6000m)
-                // 🦠 WAVE 1074: MICRO-FAUNA - Ambient Fillers (4)
-                'surface_shimmer', // ✨ Surface sparkles (0-1000m)
-                'plankton_drift', // 🦠 Plankton particles (1000-3000m)
-                'deep_current_pulse', // 🌀 Deep currents (3000-6000m)
-                'bioluminescent_spore', // ✨ Abyssal spores (6000m+)
-            ],
-            // Aliases for chill - MISMA PUREZA
-            'chill': [
-                'solar_caustics', 'school_of_fish', 'whale_song', 'abyssal_jellyfish',
-                'surface_shimmer', 'plankton_drift', 'deep_current_pulse', 'bioluminescent_spore'
-            ],
-            'ambient': [
-                'solar_caustics', 'school_of_fish', 'whale_song', 'abyssal_jellyfish',
-                'surface_shimmer', 'plankton_drift', 'deep_current_pulse', 'bioluminescent_spore'
-            ],
-            'lounge': [
-                'solar_caustics', 'school_of_fish', 'whale_song', 'abyssal_jellyfish',
-                'surface_shimmer', 'plankton_drift', 'deep_current_pulse', 'bioluminescent_spore'
-            ],
-            'jazz': [
-                'solar_caustics', 'school_of_fish', 'whale_song', 'abyssal_jellyfish',
-                'surface_shimmer', 'plankton_drift', 'deep_current_pulse', 'bioluminescent_spore'
-            ],
-        };
-        // Buscar match exacto
-        if (EFFECTS_BY_VIBE[vibe]) {
-            return EFFECTS_BY_VIBE[vibe];
-        }
-        // Buscar match parcial (contiene)
-        if (vibe.includes('techno') || vibe.includes('industrial')) {
-            return EFFECTS_BY_VIBE['techno-club'];
-        }
-        if (vibe.includes('latin') || vibe.includes('latino') || vibe.includes('tropical') || vibe.includes('fiesta')) {
-            return EFFECTS_BY_VIBE['fiesta-latina'];
-        }
-        if (vibe.includes('rock') || vibe.includes('alternative') || vibe.includes('indie') || vibe.includes('pop')) {
-            return EFFECTS_BY_VIBE['pop-rock'];
-        }
-        if (vibe.includes('chill') || vibe.includes('lounge') || vibe.includes('ambient') || vibe.includes('jazz')) {
-            return EFFECTS_BY_VIBE['chill-lounge'];
-        }
-        // Default: todas (vibe desconocido)
-        console.warn(`[DREAM_SIMULATOR] ⚠️ Unknown vibe: ${vibe}, allowing all effects`);
-        return Object.values(EFFECTS_BY_VIBE).flat();
+        // ⚡ WAVE 4824: Registry exclusivo — EFFECTS_BY_VIBE exterminado
+        const entries = getDynamicEffectRegistry().getEffectsForVibe(vibe);
+        if (entries.length > 0)
+            return entries.map(e => e.id);
+        return [];
     }
     /**
      * 🧘 WAVE 975: ZONE AWARENESS
@@ -770,21 +300,22 @@ export class EffectDreamSimulator {
             'peak': { min: 0.70, max: 1.00 }, // Solo los más brutales (gatling, core_meltdown, industrial)
         };
         const limits = aggressionLimits[zone] || { min: 0, max: 1 };
+        const registry = getDynamicEffectRegistry();
         const filtered = effects.filter(effect => {
-            const dna = EFFECT_DNA_REGISTRY[effect];
-            if (!dna) {
-                console.warn(`[DREAM_SIMULATOR] ⚠️ No DNA for effect: ${effect}`);
+            const entry = registry.getEntry(effect);
+            if (!entry) {
+                console.warn(`[DREAM_SIMULATOR] ⚠️ No Registry entry for effect: ${effect}`);
                 return false;
             }
-            return dna.aggression >= limits.min && dna.aggression <= limits.max;
+            return entry.dna.aggression >= limits.min && entry.dna.aggression <= limits.max;
         });
         // Si el filtro es demasiado estricto y no queda nada, relajar
         if (filtered.length === 0) {
             console.log(`[DREAM_SIMULATOR] 🧘 Zone ${zone} filter too strict (limits: ${limits.min}-${limits.max}), returning suavest available`);
             // Devolver los 3 efectos con menor agresión de la lista original
             return effects
-                .filter(e => EFFECT_DNA_REGISTRY[e])
-                .sort((a, b) => EFFECT_DNA_REGISTRY[a].aggression - EFFECT_DNA_REGISTRY[b].aggression)
+                .filter(e => registry.getEntry(e))
+                .sort((a, b) => (registry.getEntry(a)?.dna.aggression ?? 0) - (registry.getEntry(b)?.dna.aggression ?? 0))
                 .slice(0, 3);
         }
         return filtered;
@@ -868,6 +399,13 @@ export class EffectDreamSimulator {
         const currentProfile = moodController.getCurrentProfile();
         let blockedCount = 0;
         let zoneBlockedCount = vibeAllowedEffects.length - zoneFilteredEffects.length;
+        // ⚡ WAVE 4846: SPATIAL COGNITION — Hardware manifest snapshot (once per call)
+        // Construimos el Set de CanonicalZones activas UNA SOLA VEZ antes del loop.
+        // Cada fixture habilitado contribuye su zona normalizada → el guard compara contra este Set.
+        const _hwManifest = getTitanOrchestrator().getFixturesForZoneMapping();
+        const activeZoneSet = new Set(_hwManifest
+            .filter(f => f.enabled !== false)
+            .map(f => normalizeZone(f.zone)));
         // Generar candidatos SOLO de efectos filtrados
         for (const effect of zoneFilteredEffects) {
             // 🎭 WAVE 920.2: Skip efectos bloqueados por mood (no gastar CPU simulando)
@@ -876,41 +414,45 @@ export class EffectDreamSimulator {
                 continue;
             }
             // ═══════════════════════════════════════════════════════════════════════════
-            // 🔥 WAVE 1179: STROBE Z-GUARD - Los strobes SOLO disparan en energía SUBIENDO
-            // 💥 WAVE 1180: SEISMIC SNAP Z-GUARD - Añadido al filtro (flash estroboscópico)
+            // ⚡ WAVE 4843: COGNITIVE BRIDGE — STROBE Z-GUARD + ZSCORE GUARDS
             // ═══════════════════════════════════════════════════════════════════════════
-            // PROBLEMA: industrial_strobe se disparó con Z=-1.5 (valle profundo).
-            // seismic_snap se disparó con Z=-0.7 (energía cayendo).
-            // Los efectos estroboscópicos/flash son efectos de IMPACTO que deben coincidir
-            // con momentos de energía ASCENDENTE, no descendente. Disparar un strobe/snap
-            // en un valle es como gritar en un funeral.
-            // 
-            // CRITERIO: Si el efecto es strobe o seismic_snap y Z <= 0 → NO CANDIDATO
+            // WAVE 1179/1180 usaban una lista hardcodeada STROBE_EFFECTS y un nombre
+            // hardcodeado ('gatling_raid'). Ambos destruidos en WAVE 4843.
+            //
+            // NUEVO COMPORTAMIENTO (lee directamente del .lfx):
+            //   1. Si entry.simMeta.isStrobe === true y zScore <= 0 → skip
+            //      (los efectos strobe se auto-declaran strobe en su JSON)
+            //
+            //   2. Si entry.simMeta.zScoreGuards.minimumZ existe y zScore < minimumZ → skip
+            //      (cualquier efecto puede declarar su guard mínimo de Z-Score)
+            //
+            //   3. Si entry.simMeta.zScoreGuards.minimumEnergy existe y energy < minimumEnergy → skip
+            //      (idem para energía)
+            //
+            // Esto convierte los guards en metadatos del efecto, no del motor.
             // ═══════════════════════════════════════════════════════════════════════════
-            const STROBE_EFFECTS = ['industrial_strobe', 'strobe_storm', 'strobe_burst', 'ambient_strobe', 'seismic_snap'];
-            const isStrobeEffect = STROBE_EFFECTS.includes(effect);
-            if (isStrobeEffect && zScore <= 0) {
-                // 🔇 Silent skip - strobe/snap in falling energy = bad match
-                continue;
-            }
-            // ═══════════════════════════════════════════════════════════════════════════
-            // 🔫 WAVE 1180: GATLING PEAK REQUIREMENT - La ametralladora necesita PICOS
-            // ═══════════════════════════════════════════════════════════════════════════
-            // PROBLEMA: gatling_raid (DNA: aggression=0.85, chaos=0.60) se disparó en
-            // momentos medios (I:0.45 Z:0.4). Es una AMETRALLADORA de 6 balas x 3 sweeps.
-            // Es VIOLENCE pura, no un efecto casual.
-            // 
-            // CRITERIO: gatling_raid necesita:
-            // - Intensidad >= 0.65 (por encima del promedio)
-            // - Z-Score >= 0.8 (energía subiendo fuerte, no plano)
-            // 
-            // FILOSOFÍA: Gatling no es para "active" genérico, es para BUILDS PRE-DROP
-            // y PEAKS con momentum fuerte. Es el "pre-drop snare roll" de los efectos.
-            // ═══════════════════════════════════════════════════════════════════════════
-            if (effect === 'gatling_raid') {
-                const intensity = this.calculateIntensity(prediction.predictedEnergy, effect);
-                if (intensity < 0.65 || zScore < 0.8) {
-                    // 🔇 Silent skip - gatling needs peak conditions
+            const registry = getDynamicEffectRegistry();
+            const entry = registry.getEntry(effect);
+            if (entry) {
+                const { isStrobe, zScoreGuards } = entry.simMeta;
+                const { energy } = context;
+                // Guard 1: Strobe en energía descendente
+                if (isStrobe && zScore <= 0) {
+                    continue;
+                }
+                // Guard 2: minimumZ declarado en el .lfx
+                if (zScoreGuards.minimumZ !== null && zScore < zScoreGuards.minimumZ) {
+                    continue;
+                }
+                // Guard 3: minimumEnergy declarado en el .lfx
+                if (zScoreGuards.minimumEnergy !== null && energy < zScoreGuards.minimumEnergy) {
+                    continue;
+                }
+                // Guard 4: Hardware Compatibility — fixtureTargeting vs active manifest
+                // ⚡ WAVE 4846: Si el .lfx exige un hardware específico (movers, strobes, pars…)
+                // que no está presente en el rig actual, el candidato se descarta aquí.
+                // 'all' = universal, siempre pasa. Fail-open: targeting desconocido → no bloquea.
+                if (!this._isTargetingAvailable(entry.execHints.fixtureTargeting, activeZoneSet)) {
                     continue;
                 }
             }
@@ -943,6 +485,37 @@ export class EffectDreamSimulator {
         }
         return candidates;
     }
+    /**
+     * ⚡ WAVE 4846: SPATIAL COGNITION — Hardware Guard
+     *
+     * Verifica si el hardware presente en el rig satisface el requisito declarado
+     * en `fixtureTargeting` del .lfx. Opera sobre el Set de CanonicalZones activas
+     * construido una vez en `generateCandidates()` con normalizeZone().
+     *
+     * Mapping FixtureTargeting → CanonicalZone:
+     *   'all'        → universal, siempre true
+     *   'movers'     → movers-left | movers-right
+     *   'pars'       → front | back | floor
+     *   'strobes'    → center  (normalizeZone('strobes') = 'center')
+     *   'zone-front' → front
+     *   'zone-back'  → back
+     *   'zone-left'  → movers-left
+     *   'zone-right' → movers-right
+     *   unknown      → true  (fail-open: no bloqueamos targeting futuro desconocido)
+     */
+    _isTargetingAvailable(targeting, activeZones) {
+        switch (targeting) {
+            case 'all': return true;
+            case 'movers': return activeZones.has('movers-left') || activeZones.has('movers-right');
+            case 'pars': return activeZones.has('front') || activeZones.has('back') || activeZones.has('floor');
+            case 'strobes': return activeZones.has('center');
+            case 'zone-front': return activeZones.has('front');
+            case 'zone-back': return activeZones.has('back');
+            case 'zone-left': return activeZones.has('movers-left');
+            case 'zone-right': return activeZones.has('movers-right');
+            default: return true;
+        }
+    }
     calculateIntensity(predictedEnergy, effect) {
         // Intensidad base de la energía predicha
         let intensity = predictedEnergy;
@@ -972,29 +545,17 @@ export class EffectDreamSimulator {
     // TODO WAVE 971+: Remover completamente una vez validado DNA system
     // ═══════════════════════════════════════════════════════════════
     projectBeauty(effect, state, context) {
-        const weights = EFFECT_BEAUTY_WEIGHTS[effect.effect];
-        if (!weights) {
-            console.warn(`[DREAM_SIMULATOR] ⚠️ Unknown effect beauty weights: ${effect.effect}`);
-            return 0.5; // Neutral
-        }
-        // Base beauty
-        let beauty = weights.base;
-        // Energy multiplier
-        beauty *= (1 + (context.energy - 0.5) * (weights.energyMultiplier - 1));
-        // Vibe bonus (WAVE 902.1: Techno + Latino, WAVE 1020: Rock added)
-        if (context.vibe.includes('techno') && 'technoBonus' in weights) {
-            beauty += weights.technoBonus;
-        }
-        else if (context.vibe.includes('latino') && 'latinoBonus' in weights) {
-            beauty += weights.latinoBonus;
-        }
-        else if (context.vibe.includes('rock') && 'rockBonus' in weights) {
-            beauty += weights.rockBonus;
-        }
-        // Note: chillBonus removed - chill genre not implemented yet
-        // Intensity factor
+        // ⚡ WAVE 4823: Registry exclusivo — EFFECT_BEAUTY_WEIGHTS exterminado (ACO Triad)
+        const simMeta = getDynamicEffectRegistry().getSimMeta(effect.effect);
+        if (!simMeta)
+            return 0.5; // No en registry → neutro
+        const { base, energyMultiplier, vibeBonus } = simMeta.beautyWeights;
+        // ACO Triad: base × energía × vibe
+        let beauty = base;
+        beauty *= (1 + (context.energy - 0.5) * (energyMultiplier - 1));
+        beauty += vibeBonus;
+        // Intensity factor + momentum de belleza actual
         beauty *= (0.7 + 0.3 * effect.intensity);
-        // Current beauty influence (momentum)
         beauty = beauty * 0.7 + state.currentBeauty * 0.3;
         return Math.max(0, Math.min(1, beauty));
     }
@@ -1003,8 +564,9 @@ export class EffectDreamSimulator {
     // ═══════════════════════════════════════════════════════════════
     calculateRisk(effect, state, context) {
         let risk = 0.0;
-        // GPU overload risk
-        const gpuCost = EFFECT_GPU_COST[effect.effect] || 0.15;
+        // GPU overload risk — ⚡ WAVE 4823: Registry
+        const simMeta = getDynamicEffectRegistry().getSimMeta(effect.effect);
+        const gpuCost = simMeta?.gpuCost ?? 0.15;
         const projectedGpuLoad = context.gpuLoad + gpuCost * effect.intensity;
         if (projectedGpuLoad > 0.8) {
             risk += 0.3; // High GPU risk
@@ -1012,8 +574,8 @@ export class EffectDreamSimulator {
         else if (projectedGpuLoad > 0.6) {
             risk += 0.1; // Moderate GPU risk
         }
-        // Audience fatigue risk
-        const fatigueImpact = EFFECT_FATIGUE_IMPACT[effect.effect] || 0.05;
+        // Audience fatigue risk — ⚡ WAVE 4823: Registry
+        const fatigueImpact = simMeta?.fatigueImpact ?? 0.05;
         const projectedFatigue = context.audienceFatigue + fatigueImpact * effect.intensity;
         if (projectedFatigue > 0.8) {
             risk += 0.4; // High fatigue risk
@@ -1045,206 +607,40 @@ export class EffectDreamSimulator {
         // Mismo efecto = alta consonancia (pero puede ser monotonía)
         if (effect.effect === state.lastEffect)
             return 0.9;
-        // Efectos de misma categoría = moderada consonancia
-        for (const effects of Object.values(EFFECT_CATEGORIES)) {
-            const effectList = effects;
-            if (effectList.includes(effect.effect) &&
-                effectList.includes(state.lastEffect)) {
-                return 0.7;
-            }
+        // ⚡ WAVE 4824: Misma familia de vibes = consonancia moderada (Registry)
+        const registry = getDynamicEffectRegistry();
+        const effectVibes = registry.getEntry(effect.effect)?.compatibleVibes ?? [];
+        const lastVibes = registry.getEntry(state.lastEffect)?.compatibleVibes ?? [];
+        if (effectVibes.some(v => lastVibes.includes(v))) {
+            return 0.7;
         }
         // Efectos de categoría diferente = baja consonancia (puede ser bueno o malo)
         return 0.4;
     }
-    /**
-     * 🎨 WAVE 1029: Set ghost spectral context for testing
-     */
-    setGhostSpectralContext(context) {
-        this.ghostSpectralContext = context;
-        console.log(`[DREAM_SIMULATOR] 👻 Ghost SpectralContext SET: texture=${context.texture}, clarity=${context.clarity.toFixed(2)}, harshness=${context.harshness.toFixed(2)}`);
-    }
-    /**
-     * 🎨 WAVE 1029: Clear ghost spectral context
-     */
-    clearGhostSpectralContext() {
-        this.ghostSpectralContext = null;
-        console.log(`[DREAM_SIMULATOR] 👻 Ghost SpectralContext CLEARED`);
-    }
-    /**
-     * 🎨 WAVE 1029: Check if effect is compatible with current spectral texture
-     *
-     * REGLAS:
-     * - 'dirty' effects: ONLY with harsh/noisy textures (harshness > 0.5)
-     * - 'clean' effects: ONLY with clean/crystal textures (clarity > 0.6, harshness < 0.4)
-     * - 'universal': Always compatible
-     *
-     * @returns { compatible: boolean, reason: string, penalty: number }
-     */
-    checkTextureCompatibility(effectId, spectralContext, vibeId // 🔓 WAVE 2188: DREAM TEXTURE JAILBREAK
-    ) {
-        // 🔓 WAVE 2188: DREAM TEXTURE JAILBREAK — fiesta-latina bypassa todo
-        if (vibeId === 'fiesta-latina') {
-            return { compatible: true, reason: 'JAILBREAK: fiesta-latina bypasses Dream texture rules', penalty: 0 };
-        }
-        // Si no hay contexto espectral, asumir universal
-        if (!spectralContext) {
-            return { compatible: true, reason: 'No spectral context - assuming universal', penalty: 0 };
-        }
-        const effectDNA = EFFECT_DNA_REGISTRY[effectId];
-        if (!effectDNA) {
-            return { compatible: true, reason: 'Unknown effect - assuming universal', penalty: 0 };
-        }
-        const textureAffinity = effectDNA.textureAffinity || 'universal';
-        // 🌐 UNIVERSAL: Siempre compatible
-        if (textureAffinity === 'universal') {
-            return { compatible: true, reason: 'Universal affinity', penalty: 0 };
-        }
-        // 🔥 DIRTY: Requiere texturas sucias (harsh/noisy)
-        if (textureAffinity === 'dirty') {
-            const isHarsh = spectralContext.texture === 'harsh' ||
-                spectralContext.texture === 'noisy' ||
-                spectralContext.harshness > 0.5;
-            if (isHarsh) {
-                // BONUS: +0.15 relevance por match perfecto
-                return {
-                    compatible: true,
-                    reason: `Dirty effect matches ${spectralContext.texture} texture`,
-                    penalty: -0.15 // Negative penalty = bonus
-                };
-            }
-            else {
-                // INCOMPATIBLE: Efecto dirty con textura limpia
-                return {
-                    compatible: false,
-                    reason: `Dirty effect REJECTED - context is ${spectralContext.texture} (clarity=${spectralContext.clarity.toFixed(2)})`,
-                    penalty: 1.0 // Total rejection
-                };
-            }
-        }
-        // 💎 CLEAN: Requiere texturas limpias (crystal/clean)
-        if (textureAffinity === 'clean') {
-            const isClean = spectralContext.texture === 'clean' ||
-                spectralContext.texture === 'warm' ||
-                (spectralContext.clarity > 0.6 && spectralContext.harshness < 0.4);
-            if (isClean) {
-                // BONUS: +0.15 relevance por match perfecto
-                return {
-                    compatible: true,
-                    reason: `Clean effect matches ${spectralContext.texture} texture`,
-                    penalty: -0.15 // Negative penalty = bonus
-                };
-            }
-            else {
-                // INCOMPATIBLE: Efecto clean con textura sucia
-                return {
-                    compatible: false,
-                    reason: `Clean effect REJECTED - context is ${spectralContext.texture} (harshness=${spectralContext.harshness.toFixed(2)})`,
-                    penalty: 1.0 // Total rejection
-                };
-            }
-        }
-        return { compatible: true, reason: 'Default pass', penalty: 0 };
-    }
-    /**
-     * 🎨 WAVE 1029: Derive SpectralContext from AudienceSafetyContext
-     * 🧬 WAVE 2093 COG-3: Prioridad: context.spectral (REAL) > ghost > vibe fallback
-     *
-     * Antes: hardcodeaba textura por vibe (chill=clean, techno=harsh).
-     * Ahora: usa datos reales del análisis FFT cuando están disponibles.
-     * Dark Ambient ya no se trata como "clean" solo por ser chill-lounge.
-     */
-    deriveSpectralContext(context, state) {
-        // 🧬 WAVE 2093 COG-3: PRIORIDAD 1 — Datos REALES del sensory layer
-        if (context.spectral) {
-            return context.spectral;
-        }
-        // PRIORIDAD 2 — Ghost context (inyectado para testing)
-        if (this.ghostSpectralContext) {
-            return this.ghostSpectralContext;
-        }
-        // PRIORIDAD 3 — Fallback: derivar del vibe (legacy, última línea de defensa)
-        let texture = 'warm'; // Default safe
-        let harshness = 0.4;
-        let clarity = 0.5;
-        if (context.vibe.includes('techno') || context.vibe.includes('industrial')) {
-            texture = state.energy > 0.7 ? 'harsh' : 'noisy';
-            harshness = 0.5 + (state.energy * 0.3);
-            clarity = 0.4;
-        }
-        else if (context.vibe.includes('chill') || context.vibe.includes('ambient')) {
-            texture = 'clean';
-            harshness = 0.2;
-            clarity = 0.8;
-        }
-        else if (context.vibe.includes('rock') || context.vibe.includes('pop-rock')) {
-            if (state.energy > 0.75) {
-                texture = 'harsh';
-                harshness = 0.6;
-                clarity = 0.5;
-            }
-            else {
-                texture = 'warm';
-                harshness = 0.35;
-                clarity = 0.65;
-            }
-        }
-        else if (context.vibe.includes('latino')) {
-            texture = 'warm';
-            harshness = 0.3;
-            clarity = 0.7;
-        }
-        return {
-            texture,
-            clarity,
-            harshness,
-            flatness: 0.5, // Default
-            centroid: 2500, // Default ~2.5kHz
-            bands: {
-                subBass: 0.5,
-                bass: 0.5,
-                lowMid: 0.5,
-                mid: 0.5,
-                highMid: 0.5,
-                treble: 0.5,
-                ultraAir: 0.3
-            }
-        };
-    }
+    // ═══════════════════════════════════════════════════════════════
+    // 🧬 WAVE 970: DNA-BASED CONTEXTUAL RELEVANCE
+    // ═══════════════════════════════════════════════════════════════
     /**
      * Calcula la relevancia contextual de un efecto usando DNA matching.
      * Reemplaza el antiguo sistema de "belleza" con algo más inteligente.
      *
-     * 🎨 WAVE 1029: Ahora incluye verificación de textura espectral.
-     * Un efecto incompatible con la textura actual será RECHAZADO (relevance=0).
-     *
-     * @returns { relevance: 0-1, distance: 0-√3, targetDNA: TargetDNA, textureRejected: boolean }
+    * @returns { relevance: 0-1, distance: 0-√3, targetDNA: TargetDNA }
      */
     calculateDNARelevance(effect, state, context) {
-        // Obtener el DNA del efecto del registry
-        const effectDNA = EFFECT_DNA_REGISTRY[effect.effect];
-        // Si no existe en el registry, usar valores neutros (wildcard)
-        if (!effectDNA) {
-            console.warn(`[DREAM_SIMULATOR] ⚠️ Effect ${effect.effect} not in DNA registry, using neutral DNA`);
+        // Obtener el DNA del efecto del Registry dinámico
+        const effectEntry = getDynamicEffectRegistry().getEntry(effect.effect);
+        // Si no existe en el registry, usar valores neutros
+        if (!effectEntry) {
+            console.warn(`[DREAM_SIMULATOR] ⚠️ Effect ${effect.effect} not in Registry, using neutral DNA`);
             return {
                 relevance: 0.50, // Neutral
                 distance: 0.866, // √3/2 = centro del espacio
                 targetDNA: { aggression: 0.5, chaos: 0.5, organicity: 0.5, confidence: 0.5 }
             };
         }
-        // 🎨 WAVE 1029: Check texture compatibility FIRST
-        const spectralContext = this.deriveSpectralContext(context, state);
-        const textureCheck = this.checkTextureCompatibility(effect.effect, spectralContext, context.vibe);
-        if (!textureCheck.compatible) {
-            // REJECTED by texture filter - return zero relevance
-            // � WAVE 2104.1: DIAGNOSTIC — Log texture rejections (estábamos ciegos aquí)
-            console.log(`[DREAM_TEXTURE] 🎨 REJECTED: ${effect.effect} (affinity=${EFFECT_DNA_REGISTRY[effect.effect]?.textureAffinity}) | texture=${spectralContext.texture} harsh=${spectralContext.harshness.toFixed(2)} clarity=${spectralContext.clarity.toFixed(2)}`);
-            return {
-                relevance: 0,
-                distance: Math.sqrt(3), // Máxima distancia
-                targetDNA: { aggression: 0.5, chaos: 0.5, organicity: 0.5, confidence: 0.5 },
-                textureRejected: true
-            };
-        }
+        // ⚡ WAVE 4849: Texture neutralized in Selene runtime (no reject/boost by texture)
+        const harshness = context.spectral?.harshness ?? 0.4;
+        const spectralFlatness = context.spectral?.flatness ?? 0.5;
         // Construir MusicalContext para el DNAAnalyzer
         // Derivamos todo lo que podemos de AudienceSafetyContext + SystemState
         const musicalContext = {
@@ -1274,8 +670,8 @@ export class EffectDreamSimulator {
             mid: 0.5,
             treble: context.vibe.includes('techno') ? 0.6 : 0.4,
             volume: state.energy,
-            harshness: spectralContext.harshness, // 🎨 WAVE 1029: Usar spectralContext
-            spectralFlatness: spectralContext.flatness
+            harshness,
+            spectralFlatness
         };
         // Usar el DNAAnalyzer singleton para derivar el Target DNA
         const dnaAnalyzer = getDNAAnalyzer();
@@ -1283,19 +679,19 @@ export class EffectDreamSimulator {
         // 🩸 WAVE 2104.1: DIAGNOSTIC — Target DNA (throttled: 1 per effect per dream cycle)
         // Solo loguear para el PRIMER efecto evaluado en cada dream cycle (evitar spam)
         if (this.simulationCount % 5 === 0 && effect.effect === 'acid_sweep') {
-            console.log(`[DNA_TARGET] 🎯 Target: A=${targetDNA.aggression.toFixed(2)} C=${targetDNA.chaos.toFixed(2)} O=${targetDNA.organicity.toFixed(2)} | E=${state.energy.toFixed(2)} texture=${spectralContext.texture} harsh=${spectralContext.harshness.toFixed(2)}`);
+            console.log(`[DNA_TARGET] 🎯 Target: A=${targetDNA.aggression.toFixed(2)} C=${targetDNA.chaos.toFixed(2)} O=${targetDNA.organicity.toFixed(2)} | E=${state.energy.toFixed(2)} H=${harshness.toFixed(2)}`);
         }
-        // Calcular distancia euclidiana 3D (effectDNA es directamente EffectDNA, no tiene .dna)
-        const dA = effectDNA.aggression - targetDNA.aggression;
-        const dC = effectDNA.chaos - targetDNA.chaos;
-        const dO = effectDNA.organicity - targetDNA.organicity;
+        // Calcular distancia euclidiana 3D usando dna del Registry
+        const effDna = effectEntry.dna;
+        const dA = effDna.aggression - targetDNA.aggression;
+        const dC = effDna.chaos - targetDNA.chaos;
+        const dO = effDna.organicity - targetDNA.organicity;
         const distance = Math.sqrt(dA * dA + dC * dC + dO * dO);
         // Convertir distancia a relevancia (0-1)
         // Distancia máxima teórica es √3 ≈ 1.732
         const MAX_DISTANCE = Math.sqrt(3);
         let relevance = 1.0 - (distance / MAX_DISTANCE);
-        // 🎨 WAVE 1029: Apply texture bonus/penalty
-        relevance = Math.max(0, Math.min(1, (relevance - textureCheck.penalty) * (effectDNA.selectionBias ?? 1)));
+        relevance = Math.max(0, Math.min(1, relevance));
         return { relevance, distance, targetDNA };
     }
     /**
@@ -1324,11 +720,13 @@ export class EffectDreamSimulator {
         return 'verse';
     }
     calculateGpuImpact(effect, context) {
-        const gpuCost = EFFECT_GPU_COST[effect.effect] || 0.15;
+        // ⚡ WAVE 4823: Registry
+        const gpuCost = getDynamicEffectRegistry().getSimMeta(effect.effect)?.gpuCost ?? 0.15;
         return Math.min(1.0, gpuCost * effect.intensity);
     }
     calculateFatigueImpact(effect, context) {
-        const fatigueImpact = EFFECT_FATIGUE_IMPACT[effect.effect] || 0.05;
+        // ⚡ WAVE 4823: Registry
+        const fatigueImpact = getDynamicEffectRegistry().getSimMeta(effect.effect)?.fatigueImpact ?? 0.05;
         return fatigueImpact * effect.intensity;
     }
     detectCooldownConflicts(effect, state) {
@@ -1341,8 +739,8 @@ export class EffectDreamSimulator {
     }
     detectHardwareConflicts(effect, context) {
         const conflicts = [];
-        // GPU overload
-        const gpuCost = EFFECT_GPU_COST[effect.effect] || 0.15;
+        // GPU overload — ⚡ WAVE 4823: Registry
+        const gpuCost = getDynamicEffectRegistry().getSimMeta(effect.effect)?.gpuCost ?? 0.15;
         if (context.gpuLoad + gpuCost > 0.9) {
             conflicts.push('GPU overload risk');
         }
@@ -1442,9 +840,8 @@ export class EffectDreamSimulator {
         if (context.audienceFatigue > 0.7) {
             confidence *= 0.8;
         }
-        // 🧬 WAVE 970: Usar EFFECT_DNA_REGISTRY para verificar efectos conocidos
-        // Reducir confianza si efecto desconocido
-        if (!(effect.effect in EFFECT_DNA_REGISTRY)) {
+        // Reducir confianza si efecto desconocido en Registry
+        if (!getDynamicEffectRegistry().getEntry(effect.effect)) {
             confidence *= 0.5;
         }
         return confidence;

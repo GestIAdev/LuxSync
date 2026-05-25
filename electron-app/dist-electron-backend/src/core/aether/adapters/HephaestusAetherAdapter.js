@@ -27,6 +27,7 @@ export class HephaestusAetherAdapter {
         // Avoids hitting the registry once per output (N outputs → 1 lookup per
         // distinct clip). Cleared at the start of every ingest().
         this._spatialCache = new Map();
+        this._debugFrameCount = 0;
         this._graph = graph;
         this._registry = registry ?? getDynamicEffectRegistry();
     }
@@ -66,7 +67,15 @@ export class HephaestusAetherAdapter {
             // 🏛️ WAVE 2483: resolve spatialBehavior for this output's source clip.
             // Defaults to 'absolute' for clips without a registry entry (legacy behaviour).
             const behavior = this._resolveSpatialBehavior(output.clipId);
-            // Find the node for this fixture that belongs to the target family
+            // Find the node for this fixture that belongs to the target family.
+            // 🩹 WAVE 4852 FIX-B: the original code used `break` after the push,
+            // which is correct for the happy path. The silent-drop occurred when NO
+            // node matched `family` — the loop exited without pushing anything and
+            // control fell into the WAVE 4844 guard which then stamped dimmer=1.0
+            // without a corresponding color intent. The loop logic is correct; the
+            // root cause was the guard below (FIX-A). No change needed here beyond
+            // the clarifying comment — `break` after the push is intentional (one
+            // node per family per fixture).
             for (let j = 0; j < nodeIds.length; j++) {
                 const nodeId = nodeIds[j];
                 const nodeData = this._graph.getNodeData(nodeId);
@@ -78,6 +87,34 @@ export class HephaestusAetherAdapter {
                 this._frameIntents.push(intent);
                 // Only one node per family per fixture — stop searching
                 break;
+            }
+            // ⚡ WAVE 4844 (NEUTRALIZED by WAVE 4852 FIX-A):
+            // The original guard stamped dimmer=1.0 on the :impact node whenever a
+            // color intent was emitted, intending to guarantee opacity for clips
+            // without a separate intensity curve. However HephaestusRuntime iterates
+            // curves in Map insertion order (intensity first, color second), so the
+            // LTP merge inside NodeArbiter._applyIntent caused the guard's dimmer=1.0
+            // to overwrite the curve-evaluated dimmer value every frame — producing a
+            // hard 100 % brightness block for the entire clip duration.
+            // Correct fix: clips that need an opacity floor must carry an explicit
+            // 'intensity' curve. The guard is removed entirely; no dimmer injection.
+        }
+        // 🔬 WAVE-DEBUG: Log color intents emitted every 44 frames (1s at 44Hz)
+        if (this._frameIntents.length > 0 && (this._debugFrameCount = ((this._debugFrameCount ?? 0) + 1)) % 44 === 0) {
+            const colorIntents = this._frameIntents.filter(i => {
+                const v = i.values;
+                return v['red'] !== undefined || v['green'] !== undefined || v['blue'] !== undefined;
+            });
+            if (colorIntents.length > 0) {
+                const first = colorIntents[0];
+                const v = first.values;
+                console.log(`[HephAetherAdapter 🔬] f=${this._debugFrameCount} | ` +
+                    `intents=${this._frameIntents.length} colorIntents=${colorIntents.length} | ` +
+                    `first=${first.nodeId} r=${v['red']?.toFixed(3)} g=${v['green']?.toFixed(3)} b=${v['blue']?.toFixed(3)}`);
+            }
+            else {
+                console.log(`[HephAetherAdapter 🔬] f=${this._debugFrameCount} | outputs=${outputs.length} intents=${this._frameIntents.length} (no color intents) | ` +
+                    `sampleParam=${outputs[0]?.parameter} isCustom=${outputs[0]?.isCustomClip} nodeLen=${this._graph.getDeviceNodes(outputs[0]?.fixtureId ?? '').length}`);
             }
         }
         arbiter.setHephaestusIntents(this._frameIntents);
@@ -128,6 +165,7 @@ export class HephaestusAetherAdapter {
             priority: L3_HEPH_PRIORITY,
             confidence: L3_HEPH_CONFIDENCE,
             source: L3_HEPH_SOURCE,
+            mergeStrategy: 'LTP',
         };
         this._intentPool.push(intent);
         this._intentCursor++;
@@ -143,6 +181,7 @@ function _paramFamily(param) {
     switch (param) {
         case 'intensity':
         case 'strobe':
+        case 'strobeRate': // 🩹 WAVE 4852 FIX-C: v3 canonical alias for 'strobe'
             return NodeFamily.IMPACT;
         case 'color':
         case 'white':
@@ -186,11 +225,38 @@ function _populateValues(values, param, output, behavior = 'absolute') {
             values['dimmer'] = output.normalizedValue;
             break;
         case 'strobe':
+        case 'strobeRate': // 🩹 WAVE 4852 FIX-C: v3 canonical alias falls through
+            // 🩹 WAVE 4830: STROBE BLIND PATH FIX
+            // LiquidAetherAdapter (L0) escribe { shutter: 1.0, strobeRate: v } para
+            // abrir el obturador mecánico. HephaestusAetherAdapter solo escribía
+            // { strobe: v }, dejando el shutter cerrado → strobe silencioso en hardware.
+            // 🩹 WAVE 4853 FIX-D (DUAL-ALIAS): los perfiles de fixture declaran
+            // `chDef.type` indistintamente como 'strobe' o 'strobeRate'. NodeResolver
+            // busca por nombre literal — si solo escribimos uno, los fixtures que
+            // declaran el otro pierden el canal y caen a defaultValue. Además
+            // _l3DominatedChannels en NodeArbiter indexa por nombre literal: si L3
+            // solo reclama 'strobeRate', L0's 'strobe' queda sin amordazar y
+            // sangra. Escribir AMBOS aliases garantiza dominación y ruteo DMX.
             values['strobe'] = output.normalizedValue;
+            values['strobeRate'] = output.normalizedValue;
+            if (output.normalizedValue > 0) {
+                values['shutter'] = 1.0; // abre el obturador mecánico cuando hay strobe
+            }
             break;
         case 'color': {
             const nr = output.normalizedRgb;
             if (nr) {
+                // 🩹 WAVE 4853 FIX-D (DUAL-ALIAS): NodeResolver._writeNode resuelve
+                // canales COLOR vía `channelValues[CH_R] ?? channelValues[CH_RED]`,
+                // priorizando 'r' sobre 'red'. ColorAdapter (L0) escribe 'r/g/b';
+                // HephaestusAetherAdapter solo escribía 'red/green/blue'. Resultado:
+                // ambos coexistían en el record arbitrado y L0 ganaba la lectura
+                // pese a la "dominación" L3 (que indexa por nombre literal). Escribir
+                // AMBOS aliases sella la dominación efectivamente y garantiza que el
+                // proyector y el resolver lean la fuente L3.
+                values['r'] = nr.r;
+                values['g'] = nr.g;
+                values['b'] = nr.b;
                 values['red'] = nr.r;
                 values['green'] = nr.g;
                 values['blue'] = nr.b;

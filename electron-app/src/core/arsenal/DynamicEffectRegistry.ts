@@ -25,9 +25,11 @@ import {
   type ExecutionHints,
   type FrozenGenome,
   type LfxClipV2,
+  type PixelExecutionHints,
   type RegistryEntry,
   type SimulationMeta,
 } from './lfxTypes'
+import { VIBE_ALIAS_MAP } from '../../engine/vibe/profiles/index'
 
 // ─── OPCIONES DE INGESTA ────────────────────────────────────────────────────
 
@@ -196,7 +198,10 @@ export class DynamicEffectRegistry {
   // ─────────────────────────────────────────────────────────────────────────
 
   private _appendToIndices(entry: RegistryEntry): void {
-    for (const vibe of entry.compatibleVibes) {
+    for (const rawVibe of entry.compatibleVibes) {
+      // Normalizar alias legacy → slug canónico del sistema (ej: 'latin' → 'fiesta-latina')
+      const vibe = (VIBE_ALIAS_MAP as Record<string, string>)[rawVibe] ?? rawVibe
+
       let bucket = this._byVibe.get(vibe)
       if (!bucket) { bucket = []; this._byVibe.set(vibe, bucket) }
       bucket.push(entry)
@@ -215,7 +220,8 @@ export class DynamicEffectRegistry {
   }
 
   private _removeFromIndices(entry: RegistryEntry): void {
-    for (const vibe of entry.compatibleVibes) {
+    for (const rawVibe of entry.compatibleVibes) {
+      const vibe = (VIBE_ALIAS_MAP as Record<string, string>)[rawVibe] ?? rawVibe
       _spliceFrom(this._byVibe.get(vibe), entry)
       _spliceFrom(this._divineByVibe.get(vibe), entry)
       _spliceFrom(this._heavyByVibe.get(vibe), entry)
@@ -303,6 +309,20 @@ function _buildEntry(
       phaseConfig: Object.freeze({ ...execHints.phaseConfig }),
     }) as ExecutionHints,
     safetyDecl: Object.freeze({ ...safetyDecl }),
+
+    // 🎨 WAVE 4812: Pixel mapping aliases (default 'vector' / null).
+    executionDomain: dna.executionDomain ?? 'vector',
+    pixelHints:
+      dna.pixelHints != null
+        ? (Object.freeze({
+            ...dna.pixelHints,
+            preferredResolution: Object.freeze({ ...dna.pixelHints.preferredResolution }),
+            hybridChannels:
+              dna.pixelHints.hybridChannels != null
+                ? Object.freeze([...dna.pixelHints.hybridChannels])
+                : undefined,
+          }) as PixelExecutionHints)
+        : null,
 
     isBuiltin: options.isBuiltin ?? false,
     loadedAt: Date.now(),

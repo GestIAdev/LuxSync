@@ -32,6 +32,8 @@
  * @version WAVE 4822 — Universal Canvas
  */
 import { NodeFamily } from '../types';
+// ⚡ WAVE 4855: motor virtual de strobo — simulador WYSIWYG del obturador.
+import { AetherVirtualStrobeEngine } from './AetherVirtualStrobeEngine';
 /** Conversión de valor normalizado 0-1 a rango DMX 0-255 */
 const DMX_MAX = 255;
 function toDmx(v) {
@@ -46,6 +48,15 @@ function isAtmosphericZone(zoneId) {
     return ATMOSPHERIC_ZONES.has(z);
 }
 export class AetherUIProjector {
+    constructor() {
+        this._debugFrameCount = 0;
+        /**
+         * ⚡ WAVE 4855: Motor virtual de strobo. Instancia única reutilizada por
+         * todos los fixtures de la escena. El estado interno (fase per-fixture)
+         * persiste entre frames para continuidad temporal del oscilador.
+         */
+        this._strobeEngine = new AetherVirtualStrobeEngine();
+    }
     /**
      * Proyecta el estado Aether sobre el array legacy de FixtureState.
      *
@@ -61,7 +72,10 @@ export class AetherUIProjector {
      * @param arbitrated    ArbitratedNodeMap post-arbitraje — fuente de verdad
      * @param _blackoutActive Ignorado (ver WAVE 4822). HAL es la única Aduana real.
      */
-    project(fixtures, graph, arbitrated, _blackoutActive = false) {
+    project(fixtures, graph, arbitrated, _blackoutActive = false, deltaMs = 0) {
+        this._debugFrameCount++;
+        const doDebug = this._debugFrameCount % 44 === 0;
+        let debugColorFound = false;
         for (const fixture of fixtures) {
             // DeviceId canónico: el UUID del fixture (no fixtureId ni name)
             // ⚡ WAVE 4559: fixtureId es el UUID canónico — el DeviceId que indexa el NodeGraph
@@ -78,6 +92,29 @@ export class AetherUIProjector {
             // here would cause quadratic L0² attenuation (Moiré / besugo effect).
             // Pure-RGB fixtures with no IMPACT node keep the brightness-as-scale path.
             const hasImpactDimmer = nodeIds.some(nid => graph.getNodeData(nid)?.family === NodeFamily.IMPACT);
+            // ⚡ WAVE 4855: Pre-scan IMPACT → leer strobeRate / shutter arbitrados.
+            // El motor virtual produce una máscara binaria {0,1} que se aplica a
+            // todos los canales de luminancia y crominancia del fixture. Sin esto
+            // la UI 2D nunca dibujaría los flashes del shutter (lee estado puro).
+            // Hardware DMX no necesita esta máscara: NodeResolver escribe el byte
+            // strobe directo y el fixture físico hace su propia oscilación.
+            let strobeMask = 1.0;
+            for (let i = 0; i < nodeIds.length; i++) {
+                const _nid = nodeIds[i];
+                const _nd = graph.getNodeData(_nid);
+                if (!_nd || _nd.family !== NodeFamily.IMPACT)
+                    continue;
+                const _impactCh = arbitrated.get(_nid);
+                if (!_impactCh)
+                    continue;
+                const rate = _impactCh['strobeRate'] ?? _impactCh['strobe'] ?? 0;
+                // shutter ausente ⇒ abierto por defecto (1.0). Solo cierra si está
+                // explicitamente a 0 (semantic: fixture sin shutter físico siempre
+                // dejaría pasar luz).
+                const shutter = _impactCh['shutter'] ?? 1.0;
+                strobeMask = this._strobeEngine.computeMask(deviceId, rate, shutter, deltaMs);
+                break; // un solo nodo IMPACT por fixture
+            }
             for (const nodeId of nodeIds) {
                 const node = graph.getNodeData(nodeId);
                 if (!node)
@@ -110,7 +147,9 @@ export class AetherUIProjector {
                 if (dimmerNorm !== undefined) {
                     // 🌊 WAVE 4696 M2: Gain compensation para role='primary' (física de mover).
                     const gainFactor = node.role === 'primary' ? 1.25 : 1.0;
-                    fixture.dimmer = Math.max(fixture.dimmer, toDmx(dimmerNorm * gainFactor));
+                    // ⚡ WAVE 4855: Máscara virtual de strobo aplicada a luminancia.
+                    // strobeMask = 0 durante el half-cycle apagado del shutter virtual.
+                    fixture.dimmer = Math.max(fixture.dimmer, toDmx(dimmerNorm * gainFactor * strobeMask));
                 }
                 // ── Crominancia: r/g/b ────────────────────────────────────────────
                 const rRaw = ch['r'] ?? ch['red'];
@@ -120,9 +159,23 @@ export class AetherUIProjector {
                     // 🌊 WAVE 4695: Luminance-chrominance decoupling.
                     // Si existe nodo IMPACT en el device, brightness ya porta luminancia → no escalar.
                     const brightnessScale = hasImpactDimmer ? 1.0 : (ch['brightness'] ?? 1.0);
-                    const projectedR = toDmx((rRaw ?? 0) * brightnessScale);
-                    const projectedG = toDmx((gRaw ?? 0) * brightnessScale);
-                    const projectedB = toDmx((bRaw ?? 0) * brightnessScale);
+                    // ⚡ WAVE 4855: La máscara de strobo se compone con brightnessScale.
+                    // En fixtures pure-RGB (sin IMPACT) el shutter virtual interrumpe la
+                    // crominancia directamente; en fixtures con IMPACT, la interrupción
+                    // viaja vía fixture.dimmer y el renderer escala color por dimmer.
+                    // Multiplicar aquí garantiza la representación WYSIWYG en ambos.
+                    const chromaScale = brightnessScale * strobeMask;
+                    const projectedR = toDmx((rRaw ?? 0) * chromaScale);
+                    const projectedG = toDmx((gRaw ?? 0) * chromaScale);
+                    const projectedB = toDmx((bRaw ?? 0) * chromaScale);
+                    // 🔬 WAVE-DEBUG: log first non-zero color projected
+                    if (doDebug && !debugColorFound && (projectedR > 0 || projectedG > 0 || projectedB > 0)) {
+                        debugColorFound = true;
+                        console.log(`[AetherUIProjector 🔬] f=${this._debugFrameCount} | ` +
+                            `nodeId=${String(nodeId)} fixture=${fixture.fixtureId} | ` +
+                            `r=${rRaw?.toFixed(3)} g=${gRaw?.toFixed(3)} b=${bRaw?.toFixed(3)} → ` +
+                            `R=${projectedR} G=${projectedG} B=${projectedB} zone=${node.zoneId}`);
+                    }
                     // 🌊 WAVE 4696 M1: Zone-aware color routing.
                     // Atmospheric zones (ambient, air, flash) → additive blending.
                     // Rhythmic/spatial zones → channel-wise max blend.
@@ -138,17 +191,18 @@ export class AetherUIProjector {
                     }
                 }
                 // ── Canales extendidos: white, amber, uv ────────────────────────
+                // ⚡ WAVE 4855: extendidos también se interrumpen por shutter virtual.
                 const whiteNorm = ch['white'] ?? ch['w'];
                 if (whiteNorm !== undefined && fixture.white !== undefined) {
-                    fixture.white = Math.max(fixture.white, toDmx(whiteNorm));
+                    fixture.white = Math.max(fixture.white, toDmx(whiteNorm * strobeMask));
                 }
                 const amberNorm = ch['amber'] ?? ch['a'];
                 if (amberNorm !== undefined && fixture.amber !== undefined) {
-                    fixture.amber = Math.max(fixture.amber, toDmx(amberNorm));
+                    fixture.amber = Math.max(fixture.amber, toDmx(amberNorm * strobeMask));
                 }
                 const uvNorm = ch['uv'];
                 if (uvNorm !== undefined && fixture.uv !== undefined) {
-                    fixture.uv = Math.max(fixture.uv, toDmx(uvNorm));
+                    fixture.uv = Math.max(fixture.uv, toDmx(uvNorm * strobeMask));
                 }
             }
             // WAVE 4822: Blackout eliminado del proyector UI.
@@ -156,6 +210,20 @@ export class AetherUIProjector {
             // exclusivamente en la capa de bytes DMX, sin mutar FixtureState.
             // El simulador Canvas 2D/3D SIEMPRE recibe el estado combinado real
             // (L0 + L1 + L2) para permitir pre-programación a ciegas (Blind Mode).
+        }
+        // 🔬 WAVE-DEBUG: If no color found this debug frame but arbitrated has data, log first arbitrated entry with color keys
+        if (doDebug && !debugColorFound && arbitrated.size > 0) {
+            for (const [nid, ch] of arbitrated) {
+                const r = ch['red'] ?? ch['r'];
+                const g = ch['green'] ?? ch['g'];
+                const b = ch['blue'] ?? ch['b'];
+                if (r !== undefined || g !== undefined || b !== undefined) {
+                    console.log(`[AetherUIProjector 🔬 NO-COLOR] f=${this._debugFrameCount} | ` +
+                        `arbitrated has color in nodeId=${String(nid)} r=${r?.toFixed(3)} g=${g?.toFixed(3)} b=${b?.toFixed(3)} ` +
+                        `but fixture r/g/b=0. arbitrated.size=${arbitrated.size}`);
+                    break;
+                }
+            }
         }
     }
 }

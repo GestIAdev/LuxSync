@@ -539,7 +539,11 @@ export class SeleneAetherAdapter {
     bus: IIntentBus,
   ): void {
     const nodeIds = this._zoneRouter.resolve(zone, NodeFamily.COLOR)
-    if (nodeIds.length === 0) return
+    if (nodeIds.length === 0) {
+      // 🔬 WAVE-4913 DIAG: silenciosa emisión a zona no resuelta
+      console.log(`[SeleneAetherAdapter 🔬 NO-NODOS] zone='${zone}' → 0 COLOR nodes`)
+      return
+    }
 
     if (isHslColor(color)) {
       hslToRgbInto(color.h, color.s, color.l, _rgbBuffer)
@@ -565,6 +569,14 @@ export class SeleneAetherAdapter {
     // 🌊 WAVE 4832: el color SIEMPRE se emite como LTP. Mezclar componentes
     // RGB por máximo rompe la identidad cromática (rojo + plata = magenta sucio).
     scratch.mergeStrategy = 'LTP'
+
+    // 🔬 WAVE-4913 DIAG: log cuando emitimos color L3 a una zona
+    if (nodeIds.length > 0) {
+      console.log(
+        `[SeleneAetherAdapter 🎨 L3-COLOR-EMIT] zone='${zone}' nodeCount=${nodeIds.length} ` +
+        `r=${r.toFixed(3)} g=${g.toFixed(3)} b=${b.toFixed(3)} conf=${confidence.toFixed(2)}`
+      )
+    }
 
     for (let i = 0; i < nodeIds.length; i++) {
       scratch.nodeId = nodeIds[i]

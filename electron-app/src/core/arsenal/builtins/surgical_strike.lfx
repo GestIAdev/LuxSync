@@ -4,21 +4,25 @@
   "clip": {
     "id": "surgical_strike",
     "name": "Surgical Strike",
-    "author": "LuxSync Genesis Migrator / WAVE 4821",
-    "category": "techno",
+    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "category": "physical",
     "tags": [
+      "surgical",
       "strobe",
-      "intensity"
+      "intense",
+      "techno"
     ],
     "vibeCompat": [
-      "techno-club"
+      "techno",
+      "minimal"
     ],
     "zones": [
+      "intense",
       "peak"
     ],
     "mixBus": "global",
-    "priority": 80,
-    "durationMs": 350,
+    "priority": 90,
+    "durationMs": 600,
     "effectType": "heph_custom",
     "curves": {
       "intensity": {
@@ -32,69 +36,55 @@
         "keyframes": [
           {
             "timeMs": 0,
+            "value": 0,
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 1,
+            "value": 1,
+            "interpolation": "linear",
+            "bezierHandles": [
+              0,
+              0,
+              1,
+              1
+            ]
+          },
+          {
+            "timeMs": 600,
             "value": 1,
             "interpolation": "hold"
-          },
+          }
+        ],
+        "mode": "absolute"
+      },
+      "color": {
+        "paramId": "color",
+        "valueType": "color",
+        "range": [
+          0,
+          360
+        ],
+        "defaultValue": {
+          "h": 0,
+          "s": 0,
+          "l": 100
+        },
+        "keyframes": [
           {
-            "timeMs": 33,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 67,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 100,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 133,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 167,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 200,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 233,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 267,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 300,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 333,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 350,
-            "value": 0,
+            "timeMs": 0,
+            "value": {
+              "h": 0,
+              "s": 0,
+              "l": 100
+            },
             "interpolation": "hold"
           }
         ],
         "mode": "absolute"
       },
       "strobe": {
-        "paramId": "strobe",
+        "paramId": "strobeRate",
         "valueType": "number",
         "range": [
           0,
@@ -104,61 +94,16 @@
         "keyframes": [
           {
             "timeMs": 0,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 33,
             "value": 0,
             "interpolation": "hold"
           },
           {
-            "timeMs": 67,
-            "value": 1,
+            "timeMs": 0,
+            "value": 0.9333333333333333,
             "interpolation": "hold"
           },
           {
-            "timeMs": 100,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 133,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 167,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 200,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 233,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 267,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 300,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 333,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 350,
+            "timeMs": 600,
             "value": 0,
             "interpolation": "hold"
           }
@@ -172,47 +117,51 @@
       "dominantColorL": 100,
       "isOneShot": false,
       "legacyMixBus": "global",
-      "movementTransitionMs": 0,
-      "bpmRef": 128
+      "bpmRef": 128,
+      "strobeHz": 14
     },
     "cognitiveDNA": {
       "genome": {
-        "aggression": 0.92,
-        "chaos": 0.42,
-        "organicity": 0.08
+        "aggression": 0.9500000000000001,
+        "chaos": 0.75,
+        "organicity": 0.1
       },
       "textureAffinity": "dirty",
       "compatibleVibes": [
-        "techno-club"
+        "techno",
+        "minimal"
       ],
-      "validSections": [],
+      "validSections": [
+        "drop",
+        "peak"
+      ],
       "energyZone": {
-        "min": "peak",
+        "min": "intense",
         "max": "peak"
       },
       "aggressionRange": {
-        "min": 0.92,
-        "max": 0.92
+        "min": 0,
+        "max": 1
       },
       "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
-        "base": 0.9,
-        "energyMultiplier": 1.21,
-        "vibeBonus": 0.1
+        "base": 0.8500000000000001,
+        "energyMultiplier": 1.05,
+        "vibeBonus": 0.05
       },
-      "gpuCost": 0.6,
-      "fatigueImpact": 0.25,
-      "minDurationMs": 350,
-      "cooldownMs": 5000,
+      "gpuCost": 0.3,
+      "fatigueImpact": 0.18,
+      "minDurationMs": 600,
+      "cooldownMs": 3000,
       "isStrobe": true,
       "isDivineCandidate": true,
-      "isHeavyCandidate": false,
+      "isHeavyCandidate": true,
       "zScoreGuards": {
         "requireRising": true,
-        "minimumZ": 1.8,
-        "minimumEnergy": 0.85
+        "minimumZ": 2,
+        "minimumEnergy": 0.7
       }
     },
     "executionHints": {
@@ -223,14 +172,14 @@
         "wings": 1,
         "direction": 1
       },
-      "intensityScaling": "fixed",
-      "fixtureTargeting": "strobes"
+      "intensityScaling": "energyDriven",
+      "fixtureTargeting": "movers"
     },
     "safetyDeclaration": {
-      "maxStrobeFreqHz": 15,
+      "maxStrobeFreqHz": 14,
       "containsRapidFlash": true,
       "communityTrusted": true
     }
   },
-  "checksum": "sha256:09f23d53e677cbd5297a2189f49eff97b24b37e6b00a1e1a4686bdc770b777d6"
+  "checksum": "sha256:078d77196a0629f642a7f61e841480c33c14a3dfe9c0a04e6915fd6c2eec7aa0"
 }

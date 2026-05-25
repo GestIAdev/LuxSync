@@ -397,7 +397,16 @@ export class VisualConscienceEngine {
     // 🧬 WAVE 2093 COG-7: Threshold dinámico — epilepsyMode = más estricto
     const approvalThreshold = getApprovalThreshold(context.epilepsyMode)
     
-    if (best.ethicalScore >= approvalThreshold && best.violations.length === 0) {
+    // 🩸 WAVE 4832 P3: TOLERANT APPROVAL GATE
+    // Solo las violaciones high/critical son bloqueos reales.
+    // Las violaciones low/medium son warnings — el score matemático ya las penaliza.
+    // Antes: violations.length === 0 (cero tolerancia)
+    // Ahora: blockingViolations.length === 0 (solo severidades graves bloquean)
+    const blockingViolations = best.violations.filter(
+      v => v.severity === 'high' || v.severity === 'critical'
+    )
+    
+    if (best.ethicalScore >= approvalThreshold && blockingViolations.length === 0) {
       // APPROVED
       const verdict: EthicalVerdict = {
         verdict: 'APPROVED',
@@ -406,7 +415,7 @@ export class VisualConscienceEngine {
         valueScores: best.valueScores,
         reasoning: best.reasoning,
         warnings: best.warnings,
-        violations: [],
+        violations: best.violations,  // preservar para diagnóstico (warnings no bloqueantes)
         alternatives: sorted.slice(1, 3).map(e => e.candidate),
         circuitBreakerStatus: this.circuitBreaker.getStatus().state,
         evaluationTime: Date.now() - startTime,

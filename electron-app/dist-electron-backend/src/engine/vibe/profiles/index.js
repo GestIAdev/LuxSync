@@ -52,6 +52,26 @@ export const VIBE_ALIAS_MAP = {
     'hiphop': 'pop-rock',
     'latin': 'fiesta-latina',
     'fiesta': 'fiesta-latina',
+    // Latin sub-genres → fiesta-latina
+    'salsa': 'fiesta-latina',
+    'cumbia': 'fiesta-latina',
+    'tropical': 'fiesta-latina',
+    'bachata': 'fiesta-latina',
+    // Chill sub-genres → chill-lounge
+    'chill': 'chill-lounge',
+    'romantic': 'chill-lounge',
+    // Techno/Electronic sub-genres → techno-club
+    'acid': 'techno-club',
+    'minimal': 'techno-club',
+    'industrial': 'techno-club',
+    'dubstep': 'techno-club',
+    'neurofunk': 'techno-club',
+    'dark': 'techno-club',
+    'cyberpunk': 'techno-club',
+    // Rock sub-genres → pop-rock
+    'metal': 'pop-rock',
+    'blues': 'pop-rock',
+    'rock-anthem': 'pop-rock',
     // Direct mappings (already valid)
     'fiesta-latina': 'fiesta-latina',
     'techno-club': 'techno-club',

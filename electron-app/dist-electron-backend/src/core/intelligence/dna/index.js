@@ -11,8 +11,6 @@
  * @version WAVE 970.2
  */
 export { 
-// Registry
-EFFECT_DNA_REGISTRY, WILDCARD_EFFECTS, 
 // Class
 DNAAnalyzer, 
 // Singleton

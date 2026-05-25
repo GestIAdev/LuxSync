@@ -220,7 +220,29 @@ export class DreamEngineIntegrator {
         alternatives: []
       }
     }
-    
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 🔮 WAVE 4913: TEMPORAL SEAL GATE
+    // Si CASSANDRA sellá un pre-buffer, recommendation === 'modify'.
+    // Cortocircuitar ANTES de ethics para que el sello sea real (no residual).
+    // De lo contrario, un Z-score alto podría hacer pasar ethics y disparar
+    // el efecto prematuramente, vaciando el pre-buffer antes de la sección.
+    // ═════════════════════════════════════════════════════════════════════
+    if (dreamResult.recommendation === 'modify') {
+      return {
+        approved: false,
+        effect: null,
+        dreamTime,
+        filterTime: 0,
+        totalTime: Date.now() - pipelineStartTime,
+        dreamRecommendation: dreamResult.recommendation,
+        ethicalVerdict: null,
+        circuitHealthy: true,
+        fallbackUsed: false,
+        alternatives: []
+      }
+    }
+
     // ═════════════════════════════════════════════════════════════════════
     // STEP 3: FILTER (Conscience evalúa ética)
     // ═════════════════════════════════════════════════════════════════════
@@ -285,10 +307,19 @@ export class DreamEngineIntegrator {
         `Dream: ${dreamTime}ms | Total: ${decision.totalTime}ms`
       )
     } else if (decision.totalTime > 10 || !decision.approved) {
+      // 🩸 WAVE 4832 P1: TRANSPARENT DIAGNOSTICS — exposes real verdict, score, violations
+      const conscienceVerdict = ethicalVerdict?.verdict ?? 'NO_VERDICT'
+      const verdictEmoji = decision.approved ? '✅' :
+                           conscienceVerdict === 'DEFERRED' ? '⏸️' : '❌'
+      const violationSummary = (ethicalVerdict?.violations ?? [])
+        .map(v => `${v.value}/${v.severity}`)
+        .slice(0, 3)
+        .join(', ') || 'none'
       console.log(
-        `[INTEGRATOR] 📊 Pipeline: ${decision.approved ? '✅ APPROVED' : '❌ REJECTED'} | ` +
-        `Dream: ${dreamTime}ms | Filter: ${filterTime}ms | Total: ${decision.totalTime}ms | ` +
-        `reason=${decision.dreamRecommendation?.substring(0, 60) ?? '?'}`
+        `[INTEGRATOR] 📊 Pipeline: ${verdictEmoji} ${conscienceVerdict} | ` +
+        `score=${ethicalVerdict?.ethicalScore?.toFixed(3) ?? '?'} | ` +
+        `dream=${decision.dreamRecommendation} | violations=[${violationSummary}] | ` +
+        `${dreamTime}+${filterTime}=${decision.totalTime}ms`
       )
     }
 

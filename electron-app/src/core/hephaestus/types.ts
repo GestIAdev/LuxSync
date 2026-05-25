@@ -29,6 +29,7 @@
  */
 
 import type { EffectCategory, EffectZone } from '../effects/types'
+import type { CanonicalZone } from '../stage/ShowFileV2'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ATOMIC TYPES
@@ -189,6 +190,11 @@ export type HephParamId =
   | 'gobo2'
   | 'prism'
   | 'strobe'
+  /**
+   * WAVE 4848 V3: normalizedValue ∈ [0,1]. Adapter abre shutter automáticamente.
+   * Alias de contrato v3 — en v2 era 'strobe', en v3 se documenta como 'strobeRate'.
+   */
+  | 'strobeRate'
   | 'globalComp'
   | 'width'
   | 'direction'
@@ -415,6 +421,143 @@ export interface HephAutomationClip {
   // ── WAVE 4811: Cognitive DNA (optional — .lfx v2.1 compatible clips) ──
   cognitiveDNA?: import('../arsenal/lfxTypes').CognitiveDNA
   simulationMeta?: import('../arsenal/lfxTypes').SimulationMeta
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// V3 MULTICELLULAR TYPES — WAVE 4848
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Objetivo espacial de un HephTrack v3.
+ * Puede ser cualquiera de las 9 zonas canónicas o un helper compuesto.
+ *
+ * Canon: ShowFileV2.ts → CanonicalZone (9 zonas).
+ * Helpers: 'all' = todas excepto unassigned; 'all-pars' / 'all-movers' expandidos por ZoneMapper.
+ */
+export type ZoneTarget = CanonicalZone | 'all' | 'all-pars' | 'all-movers'
+
+/**
+ * Estrategia de fusión cuando múltiples tracks coinciden en el mismo (paramId, fixture).
+ *
+ *  'max'      → HTP: gana el valor más alto                  (default para 'intensity')
+ *  'replace'  → LTP: el track de mayor prioridad gana        (default para 'color', 'pan', 'tilt')
+ *  'add'      → Aditivo: suma clampeada a range.max
+ *  'multiply' → Multiplicativo: producto de valores
+ */
+export type BlendMode = 'max' | 'replace' | 'add' | 'multiply'
+
+/**
+ * ⚒️ WAVE 4848 — Track multicelular.
+ *
+ * Unidad atómica del genoma V3: UNA curva aplicada sobre UN conjunto
+ * de zonas canónicas. Múltiples HephTrack en un clip = multicelularidad.
+ *
+ * INVARIANTES:
+ *   - zones.length >= 1  (track sin destino es error de Loader)
+ *   - dimmerScale ∈ [0, 1]
+ *   - Si paramId === 'color' y colorOverride definido → suplanta la curva
+ *   - cell es RESERVADO v3.0 — Runtime no lo consume. Migrator no lo emite todavía.
+ */
+export interface HephTrack {
+  /** ID estable del track (UUID v4 o slug determinista del migrator). */
+  id: string
+
+  /** Parámetro DMX-semántico que este track controla. */
+  paramId: HephParamId
+
+  /** Zonas canónicas (o helpers) sobre las que aplica. NUNCA vacío. */
+  zones: readonly ZoneTarget[]
+
+  /** La curva de keyframes para este parámetro. */
+  curve: HephCurve
+
+  /**
+   * Multiplicador del dimmer del fixture.
+   * Solo semántico cuando paramId === 'intensity'. [0..1] Default 1.
+   */
+  dimmerScale?: number
+
+  /**
+   * Override de color constante.
+   * Si definido y paramId === 'color' → suplanta el output evaluado de la curva.
+   */
+  colorOverride?: HSL
+
+  /**
+   * Estrategia de fusión multi-track.
+   * Default implícito: 'max' si paramId === 'intensity'; 'replace' para el resto.
+   */
+  blendMode?: BlendMode
+
+  /**
+   * Forward-compat SOLO: ID de celda dentro de un fixture multicell.
+   * RESERVADO en v3.0 — Runtime no lo consume. Migrator no lo emite todavía.
+   */
+  cell?: string
+
+  /**
+   * Selector fino de fixtures (intersección AND con zones).
+   * Si presente, filtra los fixtures resueltos por zones a un subconjunto.
+   */
+  selector?: import('../stage/ShowFileV2').FixtureSelector
+}
+
+/**
+ * ⚒️ WAVE 4848 — Automation Clip V3.0 (Multicelular).
+ *
+ * Reemplaza HephAutomationClip en el pipeline V3.
+ * Cambio clave: `curves: Map<HephParamId, HephCurve>` → `tracks: HephTrack[]`.
+ *
+ * Discriminado por `schemaVersion: '3.0'` en el LfxFileLoader.
+ * Si schemaVersion es '2.x', el Loader usa el adapter in-memory v2→v3.
+ *
+ * SEPARACIÓN DE NAMESPACES (cierra F3b de WAVE-4847):
+ *   - spatialZones → DÓNDE van los fixtures (CanonicalZone / helpers)
+ *   - cognitiveDNA  → CUÁNDO/CÓMO actúa Selene (EnergyZone, ACO, vibes)
+ *   El Loader rechaza cualquier EnergyZoneId en spatialZones.
+ */
+export interface HephAutomationClipV3 {
+  // ── Identidad ──
+  id: string
+  name: string
+  author: string
+  category: EffectCategory
+  tags: string[]
+  vibeCompat: string[]
+
+  // ── ESPACIAL CANÓNICO (resumen — cierra F3b de WAVE-4847) ──
+  /**
+   * Unión de todas las zones de tracks[]. Resumen para Selene/UI.
+   * El LfxFileLoader auto-recomputa y valida en carga.
+   * Para targeting granular → iterar tracks[].
+   */
+  spatialZones: readonly ZoneTarget[]
+
+  // ── Ejecución ──
+  mixBus: 'global' | 'htp' | 'ambient' | 'accent'
+  priority: number
+  durationMs: number
+  effectType: string
+
+  /**
+   * ❤️ EL CORAZÓN MULTICELULAR.
+   * Cada track = una curva sobre un conjunto de zonas.
+   * Orden canónico (migrator): zona ASC → paramId ASC (garantiza idempotencia/checksum).
+   */
+  tracks: HephTrack[]
+
+  /**
+   * Parámetros estáticos (escalares constantes durante el clip).
+   * NUNCA dominantColorH/S/L — se derivan de curvas 'color' en runtime.
+   */
+  staticParams: Record<string, number | string | boolean>
+
+  // ── Cognitivo (opcional — solo clips Selene-visibles) ──
+  cognitiveDNA?: import('../arsenal/lfxTypes').CognitiveDNA
+  simulationMeta?: import('../arsenal/lfxTypes').SimulationMeta
+
+  /** Discriminador para LfxFileLoader. Literal exacto '3.0'. */
+  schemaVersion: '3.0'
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

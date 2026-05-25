@@ -34,7 +34,11 @@ import {
   getDynamicEffectRegistry,
   type DynamicEffectRegistry,
 } from './DynamicEffectRegistry'
-import type { RegistryEntry, SpatialBehavior } from './lfxTypes'
+import type {
+  PixelExecutionHints,
+  RegistryEntry,
+  SpatialBehavior,
+} from './lfxTypes'
 
 // ─── TIPOS PÚBLICOS ─────────────────────────────────────────────────────────
 
@@ -78,6 +82,20 @@ export interface ResolvedPlayParams {
   readonly silenceSpatial: boolean
 }
 
+/**
+ * 🎨 WAVE 4812: Parámetros resueltos para un clip pixel-mapped.
+ * Equivalente a `ResolvedPlayParams` para el dominio bitmap.
+ */
+export interface ResolvedPixelParams {
+  readonly effectId: string
+  readonly filePath: string | null
+  readonly intensity: number
+  readonly durationMs: number
+  readonly fixtureTargeting: string
+  /** Hints declarados por el clip — propagación literal desde el `.lfx`. */
+  readonly pixelHints: PixelExecutionHints
+}
+
 export type BridgeRoute =
   | {
       readonly kind: 'hephaestus'
@@ -87,9 +105,17 @@ export type BridgeRoute =
       readonly instanceId: number
     }
   | {
+      // 🎨 WAVE 4812: dominio pixel-mapped.
+      readonly kind: 'pixelmap'
+      readonly entry: RegistryEntry
+      readonly resolved: ResolvedPixelParams
+      /** ID del Virtual Frame Buffer adquirido por el RenderHook; null si fallback. */
+      readonly canvasId: string
+    }
+  | {
       readonly kind: 'legacy'
       /** Razón legible del miss (debug only). */
-      readonly reason: 'no-entry' | 'spatial-incompatible' | 'no-file'
+      readonly reason: 'no-entry' | 'spatial-incompatible' | 'no-file' | 'no-canvas-engine'
     }
 
 /**
@@ -99,16 +125,33 @@ export type BridgeRoute =
  */
 export type PlayHook = (params: ResolvedPlayParams, entry: RegistryEntry) => number
 
+/**
+ * 🎨 WAVE 4812: Callback para clips `executionDomain === 'pixel'`.
+ * El caller (TitanOrchestrator) implementa este hook llamando a
+ * `AetherCanvasManager.acquire(...)` y `PixelMapAetherAdapter.bindCanvas(...)`.
+ *
+ * @returns canvasId del frame buffer adquirido, o `null` si el motor de
+ *          canvas aún no está montado (degrada a `'legacy'`).
+ */
+export type RenderHook = (
+  params: ResolvedPixelParams,
+  entry: RegistryEntry,
+) => string | null
+
 // ─── BRIDGE ─────────────────────────────────────────────────────────────────
 
 export class SeleneHephBridge {
   private readonly _registry: DynamicEffectRegistry
   private _playHook: PlayHook | null = null
+  // 🎨 WAVE 4812: hook para clips pixel-mapped.
+  private _renderHook: RenderHook | null = null
 
   // Telemetría
   private _hephRoutes = 0
   private _legacyRoutes = 0
   private _spatialSilenced = 0
+  // 🎨 WAVE 4812
+  private _pixelmapRoutes = 0
 
   constructor(registry?: DynamicEffectRegistry) {
     this._registry = registry ?? getDynamicEffectRegistry()
@@ -121,6 +164,15 @@ export class SeleneHephBridge {
    */
   public setPlayHook(hook: PlayHook | null): void {
     this._playHook = hook
+  }
+
+  /**
+   * 🎨 WAVE 4812: Conecta el callback al `AetherCanvasManager`.
+   * Si está null, los clips pixel-mapped degradan a `'legacy'` con
+   * `reason='no-canvas-engine'` — útil en boot temprano.
+   */
+  public setRenderHook(hook: RenderHook | null): void {
+    this._renderHook = hook
   }
 
   /**
@@ -138,6 +190,39 @@ export class SeleneHephBridge {
       this._legacyRoutes++
       return _LEGACY_NO_ENTRY
     }
+
+    // 🎨 WAVE 4812: Discriminador vector vs pixel.
+    // El default 'vector' garantiza retrocompat: clips pre-WAVE-4812
+    // recorren exactamente la misma rama que antes.
+    const domain = entry.executionDomain ?? 'vector'
+
+    if (domain === 'pixel') {
+      // Sin RenderHook → degradar a legacy, no pisar el flujo Hephaestus.
+      if (!this._renderHook || !entry.pixelHints) {
+        this._legacyRoutes++
+        return _LEGACY_NO_CANVAS_ENGINE
+      }
+      const resolvedPx = _resolvePixelParams(entry, decision)
+      let canvasId: string | null = null
+      try {
+        canvasId = this._renderHook(resolvedPx, entry)
+      } catch (err) {
+        console.warn(
+          `[SeleneArsenalBridge ⚠️] renderHook threw for "${decision.effectType}":`,
+          err,
+        )
+      }
+      if (!canvasId) {
+        this._legacyRoutes++
+        return _LEGACY_NO_CANVAS_ENGINE
+      }
+      this._pixelmapRoutes++
+      return { kind: 'pixelmap', entry, resolved: resolvedPx, canvasId }
+    }
+
+    // domain === 'vector' o 'hybrid' (hybrid trata como vector aquí;
+    // los canales pixel del híbrido los emite el caller en una segunda
+    // pasada vía renderHook — ver blueprint §2.5).
 
     // Spatial compatibility check.
     const silenceSpatial = _shouldSilenceSpatial(entry.spatialBehavior, context)
@@ -185,11 +270,13 @@ export class SeleneHephBridge {
     readonly hephRoutes: number
     readonly legacyRoutes: number
     readonly spatialSilenced: number
+    readonly pixelmapRoutes: number
   } {
     return {
       hephRoutes: this._hephRoutes,
       legacyRoutes: this._legacyRoutes,
       spatialSilenced: this._spatialSilenced,
+      pixelmapRoutes: this._pixelmapRoutes,
     }
   }
 
@@ -198,8 +285,19 @@ export class SeleneHephBridge {
     this._hephRoutes = 0
     this._legacyRoutes = 0
     this._spatialSilenced = 0
+    this._pixelmapRoutes = 0
   }
 }
+
+/**
+ * 🎨 WAVE 4812 — Alias semántico.
+ * El bridge enruta tres `kind`: 'hephaestus' (vectorial), 'pixelmap' (canvas)
+ * y 'legacy' (fallback). Mantenemos `SeleneHephBridge` como nombre canónico
+ * para no romper imports existentes; `SeleneArsenalBridge` documenta la
+ * naturaleza multi-arsenal del componente.
+ */
+export const SeleneArsenalBridge = SeleneHephBridge
+export type SeleneArsenalBridge = SeleneHephBridge
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
 
@@ -242,6 +340,30 @@ function _clamp01(n: number): number {
   return n
 }
 
+/**
+ * 🎨 WAVE 4812: Resuelve los parámetros de un clip pixel-mapped.
+ * Pre-condición: `entry.executionDomain === 'pixel'` && `entry.pixelHints != null`.
+ */
+function _resolvePixelParams(
+  entry: RegistryEntry,
+  decision: ConsciousnessEffectDecision,
+): ResolvedPixelParams {
+  const intensity =
+    entry.execHints.intensityScaling === 'fixed'
+      ? 1.0
+      : _clamp01(decision.intensity)
+
+  // El caller garantiza pixelHints != null antes de llamar.
+  return {
+    effectId: entry.id,
+    filePath: entry.filePath,
+    intensity,
+    durationMs: entry.durationMs,
+    fixtureTargeting: entry.execHints.fixtureTargeting,
+    pixelHints: entry.pixelHints as PixelExecutionHints,
+  }
+}
+
 // ─── ROUTE LITERALS pre-congelados (zero-alloc misses) ──────────────────────
 
 const _LEGACY_NO_ENTRY: BridgeRoute = Object.freeze({
@@ -252,6 +374,12 @@ const _LEGACY_NO_ENTRY: BridgeRoute = Object.freeze({
 const _LEGACY_SPATIAL_INCOMPATIBLE: BridgeRoute = Object.freeze({
   kind: 'legacy',
   reason: 'spatial-incompatible',
+}) as BridgeRoute
+
+// 🎨 WAVE 4812
+const _LEGACY_NO_CANVAS_ENGINE: BridgeRoute = Object.freeze({
+  kind: 'legacy',
+  reason: 'no-canvas-engine',
 }) as BridgeRoute
 
 // ─── SINGLETON ──────────────────────────────────────────────────────────────

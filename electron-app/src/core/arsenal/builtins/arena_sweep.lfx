@@ -4,21 +4,24 @@
   "clip": {
     "id": "arena_sweep",
     "name": "Arena Sweep",
-    "author": "LuxSync Genesis Migrator / WAVE 4821",
-    "category": "pop-rock",
+    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "category": "composite",
     "tags": [
       "sweep",
-      "movement"
+      "arena",
+      "rock",
+      "poprock"
     ],
     "vibeCompat": [
-      "pop-rock"
+      "rock",
+      "rock-anthem"
     ],
     "zones": [
-      "ambient",
-      "active"
+      "active",
+      "intense"
     ],
-    "mixBus": "htp",
-    "priority": 60,
+    "mixBus": "global",
+    "priority": 75,
     "durationMs": 4000,
     "effectType": "heph_custom",
     "curves": {
@@ -37,8 +40,64 @@
             "interpolation": "linear"
           },
           {
+            "timeMs": 600,
+            "value": 0.9,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.42,
+              0,
+              0.58,
+              1
+            ]
+          },
+          {
+            "timeMs": 3200,
+            "value": 0.9,
+            "interpolation": "hold"
+          },
+          {
             "timeMs": 4000,
-            "value": 1,
+            "value": 0,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.42,
+              0,
+              0.58,
+              1
+            ]
+          }
+        ],
+        "mode": "absolute"
+      },
+      "color": {
+        "paramId": "color",
+        "valueType": "color",
+        "range": [
+          0,
+          360
+        ],
+        "defaultValue": {
+          "h": 0,
+          "s": 100,
+          "l": 50
+        },
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": {
+              "h": 0,
+              "s": 100,
+              "l": 50
+            },
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 4000,
+            "value": {
+              "h": 240,
+              "s": 100,
+              "l": 60
+            },
             "interpolation": "hold"
           }
         ],
@@ -46,45 +105,49 @@
       }
     },
     "staticParams": {
-      "dominantColorH": 220,
-      "dominantColorS": 80,
-      "dominantColorL": 60,
+      "dominantColorH": 0,
+      "dominantColorS": 100,
+      "dominantColorL": 50,
       "isOneShot": false,
-      "legacyMixBus": "htp",
-      "movementTransitionMs": 800,
+      "legacyMixBus": "global",
       "bpmRef": 128
     },
     "cognitiveDNA": {
       "genome": {
-        "aggression": 0.68,
-        "chaos": 0.38,
-        "organicity": 0.42
+        "aggression": 0.75,
+        "chaos": 0.5,
+        "organicity": 0.25
       },
       "textureAffinity": "universal",
       "compatibleVibes": [
-        "pop-rock"
+        "rock",
+        "rock-anthem"
       ],
-      "validSections": [],
+      "validSections": [
+        "build",
+        "drop",
+        "breakdown"
+      ],
       "energyZone": {
-        "min": "ambient",
-        "max": "active"
+        "min": "active",
+        "max": "intense"
       },
       "aggressionRange": {
-        "min": 0.68,
-        "max": 0.68
+        "min": 0,
+        "max": 0.9
       },
-      "spatialBehavior": "absolute"
+      "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
-        "base": 0.55,
-        "energyMultiplier": 1.19,
-        "vibeBonus": 0.1
+        "base": 0.775,
+        "energyMultiplier": 1.05,
+        "vibeBonus": 0.05
       },
       "gpuCost": 0.45,
       "fatigueImpact": 0.06,
       "minDurationMs": 1000,
-      "cooldownMs": 2000,
+      "cooldownMs": 6000,
       "isStrobe": false,
       "isDivineCandidate": false,
       "isHeavyCandidate": false,
@@ -95,7 +158,7 @@
       }
     },
     "executionHints": {
-      "overlayMode": "additive",
+      "overlayMode": "absolute",
       "phaseConfig": {
         "spread": 0,
         "symmetry": "linear",
@@ -103,7 +166,7 @@
         "direction": 1
       },
       "intensityScaling": "energyDriven",
-      "fixtureTargeting": "movers"
+      "fixtureTargeting": "all"
     },
     "safetyDeclaration": {
       "maxStrobeFreqHz": 0,
@@ -111,5 +174,5 @@
       "communityTrusted": true
     }
   },
-  "checksum": "sha256:4d306e29694ae19972a84cdaf007e00b48a339af75197161593d2dc45d9fe09e"
+  "checksum": "sha256:4a5cb9d52f75e03eb4ca73fc1f81bf1265150c36964e7332a04f2c89075d95e5"
 }

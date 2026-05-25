@@ -31,6 +31,7 @@ export const PARAM_META: Record<HephParamId, {
   // PHYSICAL - Intensity/brightness controls
   intensity:  { label: 'INTENSITY',  color: '#fbbf24', icon: '☀', category: 'physical' },
   strobe:     { label: 'STROBE',     color: '#ef4444', icon: '⚡', category: 'physical' },
+  strobeRate: { label: 'STROBE RATE', color: '#f87171', icon: '⚡', category: 'physical' },
   white:      { label: 'WHITE',      color: '#e2e8f0', icon: '◎', category: 'physical' },
   amber:      { label: 'AMBER',      color: '#f97316', icon: '◉', category: 'physical' },
   

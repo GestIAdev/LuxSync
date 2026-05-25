@@ -80,14 +80,19 @@
       "compatibleVibes": [
         "chill-lounge"
       ],
-      "validSections": [],
+      "validSections": [
+        "intro",
+        "breakdown",
+        "valley",
+        "outro"
+      ],
       "energyZone": {
         "min": "valley",
         "max": "valley"
       },
       "aggressionRange": {
-        "min": 0.14,
-        "max": 0.14
+        "min": 0,
+        "max": 0.29
       },
       "spatialBehavior": "static"
     },
@@ -97,8 +102,8 @@
         "energyMultiplier": 1.085,
         "vibeBonus": 0.1
       },
-      "gpuCost": 0.25,
-      "fatigueImpact": 0.02,
+      "gpuCost": 0.2,
+      "fatigueImpact": 0.1,
       "minDurationMs": 1000,
       "cooldownMs": 2000,
       "isStrobe": false,
@@ -127,5 +132,5 @@
       "communityTrusted": true
     }
   },
-  "checksum": "sha256:f85aec3d970f538d9ed0ae97c6f00728031fdc855e25b0ffe4a11b0308654ebb"
+  "checksum": "sha256:19b65165cd074ca9d145feb0ee083a583215db67d2d941643684a4d99d8c74dd"
 }

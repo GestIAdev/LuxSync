@@ -4,26 +4,130 @@
   "clip": {
     "id": "salsa_fire",
     "name": "Salsa Fire",
-    "author": "LuxSync Genesis Migrator / WAVE 4821",
-    "category": "fiesta-latina",
+    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "category": "physical",
     "tags": [
-      "rhythmic",
-      "color"
+      "fire",
+      "salsa",
+      "intense",
+      "fiesta-latina"
     ],
     "vibeCompat": [
-      "fiesta-latina"
+      "latin",
+      "salsa"
     ],
     "zones": [
       "active",
       "intense"
     ],
-    "mixBus": "htp",
-    "priority": 60,
-    "durationMs": 4000,
+    "mixBus": "global",
+    "priority": 80,
+    "durationMs": 2000,
     "effectType": "heph_custom",
     "curves": {
       "intensity": {
         "paramId": "intensity",
+        "valueType": "number",
+        "range": [
+          0,
+          1
+        ],
+        "defaultValue": 0.35,
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": 0.35,
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 50,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 200,
+            "value": 0.8,
+            "interpolation": "linear",
+            "bezierHandles": [
+              0,
+              0,
+              1,
+              1
+            ]
+          },
+          {
+            "timeMs": 1650,
+            "value": 0.8,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2000,
+            "value": 0.35,
+            "interpolation": "linear",
+            "bezierHandles": [
+              0,
+              0,
+              1,
+              1
+            ]
+          }
+        ],
+        "mode": "absolute"
+      },
+      "color": {
+        "paramId": "color",
+        "valueType": "color",
+        "range": [
+          0,
+          360
+        ],
+        "defaultValue": {
+          "h": 5,
+          "s": 100,
+          "l": 50
+        },
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": {
+              "h": 5,
+              "s": 100,
+              "l": 50
+            },
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 667,
+            "value": {
+              "h": 20,
+              "s": 100,
+              "l": 55
+            },
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 1333,
+            "value": {
+              "h": 55,
+              "s": 100,
+              "l": 75
+            },
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 2000,
+            "value": {
+              "h": 10,
+              "s": 100,
+              "l": 50
+            },
+            "interpolation": "hold"
+          }
+        ],
+        "mode": "absolute"
+      },
+      "strobe": {
+        "paramId": "strobeRate",
         "valueType": "number",
         "range": [
           0,
@@ -34,115 +138,15 @@
           {
             "timeMs": 0,
             "value": 0,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              0,
-              0.67,
-              1
-            ]
+            "interpolation": "hold"
           },
           {
-            "timeMs": 469,
+            "timeMs": 150,
             "value": 1,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              1,
-              0.67,
-              0
-            ]
+            "interpolation": "hold"
           },
           {
-            "timeMs": 938,
-            "value": 0,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              0,
-              0.67,
-              1
-            ]
-          },
-          {
-            "timeMs": 1406,
-            "value": 1,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              1,
-              0.67,
-              0
-            ]
-          },
-          {
-            "timeMs": 1875,
-            "value": 0,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              0,
-              0.67,
-              1
-            ]
-          },
-          {
-            "timeMs": 2344,
-            "value": 1,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              1,
-              0.67,
-              0
-            ]
-          },
-          {
-            "timeMs": 2813,
-            "value": 0,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              0,
-              0.67,
-              1
-            ]
-          },
-          {
-            "timeMs": 3281,
-            "value": 1,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              1,
-              0.67,
-              0
-            ]
-          },
-          {
-            "timeMs": 3750,
-            "value": 0,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              0,
-              0.67,
-              1
-            ]
-          },
-          {
-            "timeMs": 3875,
-            "value": 1,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              1,
-              0.67,
-              0
-            ]
-          },
-          {
-            "timeMs": 4000,
+            "timeMs": 1650,
             "value": 0,
             "interpolation": "hold"
           }
@@ -151,56 +155,62 @@
       }
     },
     "staticParams": {
-      "dominantColorH": 0,
+      "dominantColorH": 5,
       "dominantColorS": 100,
-      "dominantColorL": 55,
+      "dominantColorL": 50,
       "isOneShot": false,
-      "legacyMixBus": "htp",
-      "movementTransitionMs": 0,
-      "bpmRef": 128
+      "legacyMixBus": "global",
+      "bpmRef": 128,
+      "flickerFrequency": 15,
+      "preBlackoutMs": 50
     },
     "cognitiveDNA": {
       "genome": {
-        "aggression": 0.72,
-        "chaos": 0.45,
-        "organicity": 0.38
+        "aggression": 0.8500000000000001,
+        "chaos": 0.75,
+        "organicity": 0.1
       },
       "textureAffinity": "dirty",
       "compatibleVibes": [
-        "fiesta-latina"
+        "latin",
+        "salsa"
       ],
-      "validSections": [],
+      "validSections": [
+        "build",
+        "drop",
+        "breakdown"
+      ],
       "energyZone": {
         "min": "active",
         "max": "intense"
       },
       "aggressionRange": {
-        "min": 0.72,
-        "max": 0.72
+        "min": 0,
+        "max": 1
       },
       "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
-        "base": 0.7,
-        "energyMultiplier": 1.225,
-        "vibeBonus": 0.1
+        "base": 0.8,
+        "energyMultiplier": 1.05,
+        "vibeBonus": 0.05
       },
-      "gpuCost": 0.25,
-      "fatigueImpact": 0.15,
+      "gpuCost": 0.3,
+      "fatigueImpact": 0.18,
       "minDurationMs": 1000,
-      "cooldownMs": 2000,
-      "isStrobe": false,
+      "cooldownMs": 3000,
+      "isStrobe": true,
       "isDivineCandidate": false,
       "isHeavyCandidate": true,
       "zScoreGuards": {
         "requireRising": false,
-        "minimumZ": null,
+        "minimumZ": 2,
         "minimumEnergy": null
       }
     },
     "executionHints": {
-      "overlayMode": "additive",
+      "overlayMode": "absolute",
       "phaseConfig": {
         "spread": 0,
         "symmetry": "linear",
@@ -208,13 +218,13 @@
         "direction": 1
       },
       "intensityScaling": "energyDriven",
-      "fixtureTargeting": "all"
+      "fixtureTargeting": "pars"
     },
     "safetyDeclaration": {
-      "maxStrobeFreqHz": 0,
-      "containsRapidFlash": false,
+      "maxStrobeFreqHz": 15,
+      "containsRapidFlash": true,
       "communityTrusted": true
     }
   },
-  "checksum": "sha256:bacdc3f2856d4b11eb4506b8c2a39fe0b8e1c5396dfd249bdd0c4d92d85cbba3"
+  "checksum": "sha256:81cf4684d201e53b98196b3df4c40e1ee24d21cc126fe404973d083c4ecae3a1"
 }

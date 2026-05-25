@@ -614,6 +614,24 @@ export class NodeArbiter implements INodeArbiter {
       this._applyIntent(this._hephaestusIntents[i], 'hephaestus')
     }
 
+    // 🔬 WAVE-4913 DIAG: log L3+ result ANTES del MANUAL HARD LOCK para confirmar
+    // si el color de Hephaestus está ganando sobre L0 en el mapa arbitrado.
+    if (this._hephaestusIntents.length > 0 && this._photonTracerFrame % 44 === 1) {
+      const firstHeph = this._hephaestusIntents[0]
+      const resultRecord = this._result.get(firstHeph.nodeId)
+      const red = resultRecord?.['red'] ?? resultRecord?.['r'] ?? 'N/A'
+      const green = resultRecord?.['green'] ?? resultRecord?.['g'] ?? 'N/A'
+      const blue = resultRecord?.['blue'] ?? resultRecord?.['b'] ?? 'N/A'
+      const l2Lock = this._manualChannelLocks.has(firstHeph.nodeId)
+      console.log(
+        `[NodeArbiter 🎨 HEPH-RESULT] frame=${this._photonTracerFrame} | ` +
+        `node=${firstHeph.nodeId} | ` +
+        `result red=${red} g=${green} b=${blue} | ` +
+        `L2-lock-will-override=${l2Lock} | ` +
+        `hephIntents=${this._hephaestusIntents.length}`
+      )
+    }
+
     // WAVE 4714: MANUAL HARD LOCK (ley del operador).
     // Reaplica todos los canales manuales L2 (salvo orbit base channels)
     // después de L3/L3+ para evitar intrusiones de capas automáticas.

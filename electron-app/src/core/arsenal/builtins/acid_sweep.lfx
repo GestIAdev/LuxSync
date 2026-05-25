@@ -4,22 +4,24 @@
   "clip": {
     "id": "acid_sweep",
     "name": "Acid Sweep",
-    "author": "LuxSync Genesis Migrator / WAVE 4821",
-    "category": "techno",
+    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "category": "color",
     "tags": [
       "sweep",
-      "movement"
+      "acid",
+      "techno"
     ],
     "vibeCompat": [
-      "techno-club"
+      "techno",
+      "acid"
     ],
     "zones": [
       "active",
       "intense"
     ],
     "mixBus": "htp",
-    "priority": 60,
-    "durationMs": 4000,
+    "priority": 75,
+    "durationMs": 6000,
     "effectType": "heph_custom",
     "curves": {
       "intensity": {
@@ -37,8 +39,73 @@
             "interpolation": "linear"
           },
           {
-            "timeMs": 4000,
-            "value": 1,
+            "timeMs": 200,
+            "value": 0.85,
+            "interpolation": "linear",
+            "bezierHandles": [
+              0,
+              0,
+              1,
+              1
+            ]
+          },
+          {
+            "timeMs": 5600,
+            "value": 0.85,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 6000,
+            "value": 0,
+            "interpolation": "linear",
+            "bezierHandles": [
+              0,
+              0,
+              1,
+              1
+            ]
+          }
+        ],
+        "mode": "absolute"
+      },
+      "color": {
+        "paramId": "color",
+        "valueType": "color",
+        "range": [
+          0,
+          360
+        ],
+        "defaultValue": {
+          "h": 180,
+          "s": 100,
+          "l": 60
+        },
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": {
+              "h": 180,
+              "s": 100,
+              "l": 60
+            },
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 3000,
+            "value": {
+              "h": 120,
+              "s": 100,
+              "l": 55
+            },
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 6000,
+            "value": {
+              "h": 0,
+              "s": 0,
+              "l": 100
+            },
             "interpolation": "hold"
           }
         ],
@@ -46,48 +113,55 @@
       }
     },
     "staticParams": {
-      "dominantColorH": 120,
+      "dominantColorH": 180,
       "dominantColorS": 100,
-      "dominantColorL": 50,
+      "dominantColorL": 60,
       "isOneShot": false,
       "legacyMixBus": "htp",
-      "movementTransitionMs": 600,
-      "bpmRef": 128
+      "bpmRef": 128,
+      "sweepCount": 3,
+      "beatsPerSweep": 3,
+      "bladeWidth": 0.45
     },
     "cognitiveDNA": {
       "genome": {
-        "aggression": 0.7,
-        "chaos": 0.4,
-        "organicity": 0.45
+        "aggression": 0.75,
+        "chaos": 0.3,
+        "organicity": 0.1
       },
-      "textureAffinity": "dirty",
+      "textureAffinity": "universal",
       "compatibleVibes": [
-        "techno-club"
+        "techno",
+        "acid"
       ],
-      "validSections": [],
+      "validSections": [
+        "build",
+        "drop",
+        "breakdown"
+      ],
       "energyZone": {
         "min": "active",
         "max": "intense"
       },
       "aggressionRange": {
-        "min": 0.7,
-        "max": 0.7
+        "min": 0,
+        "max": 0.9
       },
-      "spatialBehavior": "absolute"
+      "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
-        "base": 0.7,
-        "energyMultiplier": 1.2,
-        "vibeBonus": 0.1
+        "base": 0.775,
+        "energyMultiplier": 1.05,
+        "vibeBonus": 0.05
       },
-      "gpuCost": 0.45,
-      "fatigueImpact": 0.15,
+      "gpuCost": 0.3,
+      "fatigueImpact": 0.06,
       "minDurationMs": 1000,
-      "cooldownMs": 2000,
+      "cooldownMs": 9000,
       "isStrobe": false,
       "isDivineCandidate": false,
-      "isHeavyCandidate": true,
+      "isHeavyCandidate": false,
       "zScoreGuards": {
         "requireRising": false,
         "minimumZ": null,
@@ -95,7 +169,7 @@
       }
     },
     "executionHints": {
-      "overlayMode": "additive",
+      "overlayMode": "relative",
       "phaseConfig": {
         "spread": 0,
         "symmetry": "linear",
@@ -103,7 +177,7 @@
         "direction": 1
       },
       "intensityScaling": "energyDriven",
-      "fixtureTargeting": "movers"
+      "fixtureTargeting": "all"
     },
     "safetyDeclaration": {
       "maxStrobeFreqHz": 0,
@@ -111,5 +185,5 @@
       "communityTrusted": true
     }
   },
-  "checksum": "sha256:3b3925328917f248621a6543bb83d131a22def5e91ce27435629cd1e6c77ce52"
+  "checksum": "sha256:75a7cfaef5d22c50d020586739d9ff1812be36d235e428db4a523d7bf2bed4e5"
 }

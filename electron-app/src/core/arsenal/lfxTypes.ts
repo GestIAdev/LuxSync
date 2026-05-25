@@ -16,8 +16,17 @@
 //     correctamente.
 // ════════════════════════════════════════════════════════════════════════════
 
-import type { HephCurve, HephParamId, PhaseConfig } from '../hephaestus/types'
+import type { HephCurve, HephParamId, PhaseConfig, HephTrack } from '../hephaestus/types'
 import type { EnergyZone } from '../protocol/MusicalContext'
+
+// ─── WAVE 4856 — V3 GENOME UPGRADE ──────────────────────────────────────────
+// El esquema canónico para clips ejecutables a partir de WAVE 4856 es V3:
+// `tracks: HephTrackV3[]` reemplaza al `curves: Record<paramId, curve>` plano,
+// permitiendo MÚLTIPLES pistas con el mismo `paramId` enrutadas a zonas
+// distintas (multicelularidad espacial). El alias `HephTrackV3` apunta al
+// tipo `HephTrack` definido en `core/hephaestus/types.ts` y existe únicamente
+// como contrato de naming hacia el cargador / Runtime / adapters.
+export type HephTrackV3 = HephTrack
 
 // ─── ENUMS / UNIONES ────────────────────────────────────────────────────────
 
@@ -94,6 +103,44 @@ export interface IKCompatibility {
 }
 
 /**
+ * 🎨 WAVE 4812: Dominio de ejecución del clip.
+ *
+ * - `'vector'` (default si omitido) → curvas Bézier evaluadas por
+ *   `HephaestusRuntime`. Flujo legacy intacto.
+ * - `'pixel'`  → render bitmap a un `Uint8ClampedArray` muestreado por
+ *   `PixelMapAetherAdapter`. Selene/Bridge encolan a `RenderHook`.
+ * - `'hybrid'` → emite ambos: curvas Hephaestus para canales declarados
+ *   en `pixelHints.hybridChannels` + canvas para el resto.
+ */
+export type ExecutionDomain = 'vector' | 'pixel' | 'hybrid'
+
+/**
+ * 🎨 WAVE 4812: Hints específicos del dominio pixel.
+ * Solo relevante si `executionDomain ∈ {pixel, hybrid}`.
+ */
+export interface PixelExecutionHints {
+  /** 'world' = textura proyectada al stage (UV from x,z). 'local' = grid intra-fixture (UV from cellIndex). */
+  readonly mappingSpace: 'world' | 'local'
+  /** Resolución preferida del Virtual Frame Buffer (W×H interleaved RGBA8). */
+  readonly preferredResolution: { readonly w: number; readonly h: number }
+  /** Modo de blend del sample sobre el target node. */
+  readonly blend: 'replace' | 'multiply' | 'add' | 'screen'
+  /** Si true, el alpha del pixel modula `dimmer`/`brightness` del target. */
+  readonly alphaToDimmer: boolean
+  /** Solo `'hybrid'`: lista de canales Bézier (no-pixel) que también se ejecutan. */
+  readonly hybridChannels?: readonly string[]
+  /** Override opcional al targetFps del productor (15-60). Default = arbiter rate (44 Hz). */
+  readonly targetFps?: number
+  /**
+   * Política para fixtures sin posición 3D (`isPlaced=false`) cuando
+   * `mappingSpace='world'`:
+   *   - 'omit'           (default) → el fixture no recibe sample.
+   *   - 'fallback-zone'  → muestrea el centro de la zona del fixture.
+   */
+  readonly guerrillaPolicy?: 'omit' | 'fallback-zone'
+}
+
+/**
  * Genoma cognitivo para el matching de Selene IA.
  * Fuente de verdad única — EFFECT_DNA_REGISTRY purgado (WAVE 4825).
  */
@@ -108,6 +155,12 @@ export interface CognitiveDNA {
   // ── WAVE 2481 V2: directiva espacial obligatoria ──
   readonly spatialBehavior: SpatialBehavior
   readonly ikCompatibility?: IKCompatibility
+
+  // ── WAVE 4812: dominio de ejecución (vector vs pixel-map) ──
+  /** Discriminador vector/pixel. Default `'vector'` si omitido. */
+  readonly executionDomain?: ExecutionDomain
+  /** Solo si `executionDomain ∈ {pixel, hybrid}`. */
+  readonly pixelHints?: PixelExecutionHints
 }
 
 /** Metadata para el EffectDreamSimulator (beauty, GPU cost, fatigue). */
@@ -178,8 +231,28 @@ export interface LfxClipV2 {
     /** `'heph_custom'` para clips que entran en pipeline L3+ del NodeArbiter. */
     readonly effectType: string
 
-    /** Curvas Bézier reales (Record para sobrevivir IPC / JSON). */
+    /**
+     * @deprecated WAVE 4856 — Esquema plano legacy (v2.1).
+     *
+     * Limita a UNA curva por `paramId`, lo que impide ruteo espacial
+     * independiente (ej. dos colores distintos para dos zonas distintas).
+     *
+     * Sustituido por {@link tracks} (`HephTrackV3[]`). El `HephaestusRuntime`
+     * sigue aceptando este campo en clips v2.1: realiza una migración
+     * in-memory a `tracks[]` usando la zona global del clip como destino
+     * común. Para nuevas autorías → emitir `tracks[]` directamente.
+     */
     readonly curves: Readonly<Record<string, HephCurve>>
+
+    /**
+     * 🧬 WAVE 4856 — V3 multicelular (opcional en el wrapper v2.1).
+     *
+     * Cuando está presente, SUSTITUYE a `curves` para todos los efectos de
+     * runtime. Cada track porta su propio conjunto de zonas, permitiendo N
+     * pistas distintas con el mismo `paramId`. El Loader v2.1 ignora este
+     * campo (usa `curves`); el Runtime lo prioriza si existe.
+     */
+    readonly tracks?: readonly HephTrackV3[]
 
     readonly staticParams: Readonly<Record<string, number | string | boolean>>
 
@@ -228,6 +301,14 @@ export interface RegistryEntry {
   readonly simMeta: SimulationMeta
   readonly execHints: ExecutionHints
   readonly safetyDecl: SafetyDeclaration
+
+  /**
+   * 🎨 WAVE 4812: Alias plano del dominio de ejecución del clip.
+   * Default `'vector'` cuando el `.lfx` no lo declara — flujo legacy.
+   */
+  readonly executionDomain: ExecutionDomain
+  /** 🎨 WAVE 4812: Hints de pixel; null cuando `executionDomain === 'vector'`. */
+  readonly pixelHints: PixelExecutionHints | null
 
   /** True para `.lfx` originados en `/builtin-effects/`. */
   readonly isBuiltin: boolean
@@ -286,6 +367,23 @@ export function isSeleneEligible(clip: LfxClipV2): boolean {
   return clip.clip.effectType === 'heph_custom' && hasCognitiveDNA(clip)
 }
 
+// ─── LFX FILE V3.0 ──────────────────────────────────────────────────────────
+
+/**
+ * Wrapper de archivo `.lfx v3.0`.
+ *
+ * $schema:  discriminador en carga. Literal exacto 'luxsync.lfx/3.0'.
+ * checksum: SHA-256 sobre JSON.stringify(clip) sin pretty-print.
+ *           Calculado por el migrator v3; validado (opcional en dev) por LfxFileLoader.
+ */
+export interface LFXFileV3 {
+  readonly $schema: 'luxsync.lfx/3.0'
+  readonly clip: import('../hephaestus/types').HephAutomationClipV3
+  readonly checksum: string
+}
+
 // ─── RE-EXPORTS de tipos compatibles ────────────────────────────────────────
 
 export type { HephCurve, HephParamId, PhaseConfig, EnergyZone }
+export type { ZoneTarget, BlendMode, HephTrack, HephAutomationClipV3 } from '../hephaestus/types'
+// `HephTrackV3` se declara arriba como alias de `HephTrack` (WAVE 4856).

@@ -61,46 +61,56 @@ function hasAnyLowZone(zones) {
     return false;
 }
 /**
- * R0: ACO triad outside the bias envelope defined by ARCHETYPE_BIAS_MAP.
- * Blocks save with severity 'error'.
- * Rationale: LfxClipInstance clamps triad values at runtime, but the UI
- * sliders expose unclamped user input. The Linter must surface the mismatch
- * before the clip is persisted so the operator can make an informed decision.
+ * R0 factory — validates the RAW (pre-bake) ACO triad against the
+ * ARCHETYPE_BIAS_MAP envelope for the given clip's archetype.
+ *
+ * CRITICAL DESIGN NOTE:
+ *   LfxClipInstance.bakeCognitiveDNA() clamps the acoTriad **in the
+ *   constructor** before the linter ever reads it. Therefore, reading
+ *   `clip.acoTriad` always yields a value that already satisfies the
+ *   constraints — the violation is invisible to the linter.
+ *
+ *   Solution: the factory receives the UNCLAMPED `rawAco` (straight from
+ *   the UI slider state) as a closure parameter, so the comparison is
+ *   always against what the user actually typed, not what the engine
+ *   silently corrected.
  */
-const ruleArchetypeBiasViolation = (clip) => {
-    const bias = ARCHETYPE_BIAS_MAP[clip.userArchetype];
-    if (!bias)
-        return null;
-    const { aggression, chaos, organicity } = clip.acoTriad;
-    const violations = [];
-    if (bias.aggressionMin !== undefined && aggression < bias.aggressionMin)
-        violations.push(`aggression=${aggression.toFixed(2)} < min ${bias.aggressionMin.toFixed(2)}`);
-    if (bias.aggressionMax !== undefined && aggression > bias.aggressionMax)
-        violations.push(`aggression=${aggression.toFixed(2)} > max ${bias.aggressionMax.toFixed(2)}`);
-    if (bias.chaosMin !== undefined && chaos < bias.chaosMin)
-        violations.push(`chaos=${chaos.toFixed(2)} < min ${bias.chaosMin.toFixed(2)}`);
-    if (bias.chaosMax !== undefined && chaos > bias.chaosMax)
-        violations.push(`chaos=${chaos.toFixed(2)} > max ${bias.chaosMax.toFixed(2)}`);
-    if (bias.organicityMin !== undefined && organicity < bias.organicityMin)
-        violations.push(`organicity=${organicity.toFixed(2)} < min ${bias.organicityMin.toFixed(2)}`);
-    if (bias.organicityMax !== undefined && organicity > bias.organicityMax)
-        violations.push(`organicity=${organicity.toFixed(2)} > max ${bias.organicityMax.toFixed(2)}`);
-    if (violations.length === 0)
-        return null;
-    return Object.freeze({
-        id: 'ARCHETYPE_BIAS_VIOLATION',
-        severity: 'error',
-        title: 'Archetype Bias Violation',
-        message: `Archetype "${clip.userArchetype}" requires an ACO envelope that the current triad ` +
-            `violates: ${violations.join(' · ')}. ` +
-            `Adjust the sliders to satisfy the bias constraints, or choose a different archetype.`,
-        affectedFields: Object.freeze(['userArchetype', 'acoTriad']),
-        seleneCorrelation: Object.freeze({
-            engine: 'EnergyConsciousness',
-            rule: 'archetype_bias_clamp',
-        }),
-    });
-};
+function makeBiasRule(rawAco) {
+    return (clip) => {
+        const bias = ARCHETYPE_BIAS_MAP[clip.userArchetype];
+        if (!bias)
+            return null;
+        const { aggression, chaos, organicity } = rawAco;
+        const violations = [];
+        if (bias.aggressionMin !== undefined && aggression < bias.aggressionMin)
+            violations.push(`aggression=${aggression.toFixed(2)} < min ${bias.aggressionMin.toFixed(2)}`);
+        if (bias.aggressionMax !== undefined && aggression > bias.aggressionMax)
+            violations.push(`aggression=${aggression.toFixed(2)} > max ${bias.aggressionMax.toFixed(2)}`);
+        if (bias.chaosMin !== undefined && chaos < bias.chaosMin)
+            violations.push(`chaos=${chaos.toFixed(2)} < min ${bias.chaosMin.toFixed(2)}`);
+        if (bias.chaosMax !== undefined && chaos > bias.chaosMax)
+            violations.push(`chaos=${chaos.toFixed(2)} > max ${bias.chaosMax.toFixed(2)}`);
+        if (bias.organicityMin !== undefined && organicity < bias.organicityMin)
+            violations.push(`organicity=${organicity.toFixed(2)} < min ${bias.organicityMin.toFixed(2)}`);
+        if (bias.organicityMax !== undefined && organicity > bias.organicityMax)
+            violations.push(`organicity=${organicity.toFixed(2)} > max ${bias.organicityMax.toFixed(2)}`);
+        if (violations.length === 0)
+            return null;
+        return Object.freeze({
+            id: 'ARCHETYPE_BIAS_VIOLATION',
+            severity: 'error',
+            title: 'Archetype Bias Violation',
+            message: `Archetype "${clip.userArchetype}" requires an ACO envelope that the current triad ` +
+                `violates: ${violations.join(' · ')}. ` +
+                `Adjust the sliders to satisfy the bias constraints, or choose a different archetype.`,
+            affectedFields: Object.freeze(['userArchetype', 'acoTriad']),
+            seleneCorrelation: Object.freeze({
+                engine: 'EnergyConsciousness',
+                rule: 'archetype_bias_clamp',
+            }),
+        });
+    };
+}
 /** R1: archetype='ambient' con aggression > 0.35 → peligro físico. */
 const ruleAmbientAggressionOverflow = (clip) => {
     if (clip.userArchetype !== 'ambient')
@@ -274,10 +284,9 @@ const ruleEmptyVibes = (clip) => {
         }),
     });
 };
-const ALL_RULES = Object.freeze([
-    // R0 first: bias check must fire before the more-specific ambient rule (R1)
-    // so that all archetypes are validated unconditionally.
-    ruleArchetypeBiasViolation,
+// R0 (bias) is NOT in this array — it is built dynamically per call
+// because it needs the rawAco captured before bakeCognitiveDNA() runs.
+const STATIC_RULES = Object.freeze([
     ruleAmbientAggressionOverflow,
     ruleStrobeFreqDangerous,
     ruleStrobeFreqUndeclared,
@@ -290,10 +299,22 @@ const ALL_RULES = Object.freeze([
 /**
  * Audita estáticamente el clip y devuelve la lista completa de warnings.
  * Función pura. No muta el clip. Idempotente.
+ *
+ * @param clip     La instancia ya horneada (bakeCognitiveDNA ha corrido).
+ * @param rawAco   Los valores crudos del slider ANTES del bake. Necesarios
+ *                 para detectar violaciones de bias (R0), ya que el bake las
+ *                 silencia corrigiéndolas automáticamente. Si se omite, R0
+ *                 cae back a los valores baked (sin detección real de bias).
  */
-export function validateClip(clip) {
+export function validateClip(clip, rawAco) {
     const warnings = [];
-    for (const rule of ALL_RULES) {
+    // R0: bias check against RAW values (pre-bake)
+    const biasRule = makeBiasRule(rawAco ?? clip.acoTriad);
+    const biasWarning = biasRule(clip);
+    if (biasWarning !== null)
+        warnings.push(biasWarning);
+    // R1-R6: static rules (operate on the baked instance, which is correct)
+    for (const rule of STATIC_RULES) {
         const w = rule(clip);
         if (w !== null)
             warnings.push(w);

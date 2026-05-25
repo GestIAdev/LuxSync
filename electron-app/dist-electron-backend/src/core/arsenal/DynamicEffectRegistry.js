@@ -10,12 +10,12 @@
 //    - Los índices `vibeIndex`, `divinePool`, `heavyPool` son arrays
 //      pre-construidos que el Registry mantiene actualizados en escritura.
 //
-//  POLÍTICA DE RETROCOMPATIBILIDAD (WAVE 2482):
-//    - Este registry NO sustituye a EffectDreamSimulator ni a EFFECT_DNA_REGISTRY.
-//    - Convive en paralelo. Mientras esté vacío, el sistema funciona idéntico.
-//    - SeleneHephBridge consulta primero AQUÍ; si miss, delega al pipeline legacy.
+//  POLÍTICA ACTUAL (WAVE 4825):
+//    - Este registry ES la fuente de verdad única. EFFECT_DNA_REGISTRY purgado.
+//    - Todos los módulos leen DNA, textureAffinity y energyZone desde aquí.
 // ════════════════════════════════════════════════════════════════════════════
 import { DEFAULT_IK_COMPATIBILITY, DEFAULT_SAFETY_DECLARATION, DEFAULT_SIMULATION_META, hasCognitiveDNA, isSeleneEligible, } from './lfxTypes';
+import { VIBE_ALIAS_MAP } from '../../engine/vibe/profiles/index';
 // ─── REGISTRY ───────────────────────────────────────────────────────────────
 /**
  * Singleton de efectos cognitivos cargados.
@@ -148,7 +148,9 @@ export class DynamicEffectRegistry {
     // INTERNALS — INDEX MAINTENANCE
     // ─────────────────────────────────────────────────────────────────────────
     _appendToIndices(entry) {
-        for (const vibe of entry.compatibleVibes) {
+        for (const rawVibe of entry.compatibleVibes) {
+            // Normalizar alias legacy → slug canónico del sistema (ej: 'latin' → 'fiesta-latina')
+            const vibe = VIBE_ALIAS_MAP[rawVibe] ?? rawVibe;
             let bucket = this._byVibe.get(vibe);
             if (!bucket) {
                 bucket = [];
@@ -174,7 +176,8 @@ export class DynamicEffectRegistry {
         }
     }
     _removeFromIndices(entry) {
-        for (const vibe of entry.compatibleVibes) {
+        for (const rawVibe of entry.compatibleVibes) {
+            const vibe = VIBE_ALIAS_MAP[rawVibe] ?? rawVibe;
             _spliceFrom(this._byVibe.get(vibe), entry);
             _spliceFrom(this._divineByVibe.get(vibe), entry);
             _spliceFrom(this._heavyByVibe.get(vibe), entry);
@@ -254,6 +257,17 @@ function _buildEntry(clip, dna, options) {
             phaseConfig: Object.freeze({ ...execHints.phaseConfig }),
         }),
         safetyDecl: Object.freeze({ ...safetyDecl }),
+        // 🎨 WAVE 4812: Pixel mapping aliases (default 'vector' / null).
+        executionDomain: dna.executionDomain ?? 'vector',
+        pixelHints: dna.pixelHints != null
+            ? Object.freeze({
+                ...dna.pixelHints,
+                preferredResolution: Object.freeze({ ...dna.pixelHints.preferredResolution }),
+                hybridChannels: dna.pixelHints.hybridChannels != null
+                    ? Object.freeze([...dna.pixelHints.hybridChannels])
+                    : undefined,
+            })
+            : null,
         isBuiltin: options.isBuiltin ?? false,
         loadedAt: Date.now(),
         source: options.keepSource ? clip : null,

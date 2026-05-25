@@ -472,21 +472,11 @@ export class ContextualEffectSelector {
       const availability = this.checkAvailability(effect, vibeId)
       if (!availability.available) continue
       
-      // 🎨 WAVE 1028: THE CURATOR - Texture filtering
-      // 🔓 WAVE 2187: Pass vibeId so fiesta-latina bypasses texture rules
-      if (spectralContext) {
-        const textureResult = this.applyTextureFilter(effect, spectralContext, vibeId)
-        if (!textureResult.allowed) {
-          console.log(`[EffectRepository 🎨] Arsenal TEXTURE BLOCKED: ${effect} (${textureResult.reason})`)
-          continue
-        }
-      }
-      
       console.log(`[EffectRepository 🔪] Arsenal selection: ${effect} AVAILABLE (from [${arsenal.join(', ')}])`)
       return effect
     }
     
-    console.log(`[EffectRepository 🔪] Arsenal EXHAUSTED - all effects in cooldown or texture-blocked: [${arsenal.join(', ')}]`)
+    console.log(`[EffectRepository 🔪] Arsenal EXHAUSTED - all effects in cooldown: [${arsenal.join(', ')}]`)
     return null
   }
 
@@ -532,106 +522,14 @@ export class ContextualEffectSelector {
     spectralContext: SpectralContext,
     vibeId?: string
   ): TextureFilterResult {
-    // 🔓 WAVE 2187: TEXTURE JAILBREAK — fiesta-latina nunca filtra por textura
-    // La producción del reggaetón es limpia (clarity >0.85) pero sus efectos
-    // son 'dirty' por diseño. El contraste visual/audio ES el arte.
-    if (vibeId === 'fiesta-latina') {
-      return {
-        allowed: true,
-        probabilityMod: 0.0,
-        reason: `JAILBREAK: fiesta-latina bypasses all texture rules`,
-        rule: 'none'
-      }
-    }
-
-    const { texture, clarity, harshness } = spectralContext
-    const compatibility = EFFECT_TEXTURE_COMPATIBILITY[effectType] || 'universal'
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // 📜 REGLA DE LA SUCIEDAD (The Grime Rule)
-    // Si texture === 'harsh' o 'noisy': BAN clean effects, BOOST dirty effects
-    // ═══════════════════════════════════════════════════════════════════════
-    if (texture === 'harsh' || texture === 'noisy') {
-      // 🚫 BAN: Efectos líquidos/limpios NO van con texturas sucias
-      if (compatibility === 'clean') {
-        return {
-          allowed: false,
-          probabilityMod: -1.0,
-          reason: `GRIME RULE: ${effectType} (clean) incompatible with ${texture} texture`,
-          rule: 'grime'
-        }
-      }
-      
-      // ✅ BOOST: Efectos sucios van PERFECTO con texturas sucias
-      if (compatibility === 'dirty') {
-        return {
-          allowed: true,
-          probabilityMod: 0.30, // +30% probabilidad
-          reason: `GRIME RULE: ${effectType} (dirty) BOOSTED for ${texture} texture`,
-          rule: 'grime'
-        }
-      }
-    }
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // 💎 REGLA DEL CRISTAL (The Crystal Rule)
-    // Si clarity > 0.85: BAN chaotic effects, BOOST geometric effects
-    // ═══════════════════════════════════════════════════════════════════════
-    if (clarity > 0.85) {
-      // 🚫 BAN: Efectos caóticos NO van con sonido HD cristalino
-      if (compatibility === 'dirty') {
-        return {
-          allowed: false,
-          probabilityMod: -1.0,
-          reason: `CRYSTAL RULE: ${effectType} (chaotic) blocked by high clarity (${clarity.toFixed(2)})`,
-          rule: 'crystal'
-        }
-      }
-      
-      // ✅ BOOST: Efectos de geometría definida brillan con claridad alta
-      if (compatibility === 'clean') {
-        return {
-          allowed: true,
-          probabilityMod: 0.25, // +25% probabilidad
-          reason: `CRYSTAL RULE: ${effectType} (geometric) BOOSTED for high clarity (${clarity.toFixed(2)})`,
-          rule: 'crystal'
-        }
-      }
-    }
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // � REGLA DE LA CALIDEZ (The Warmth Rule)
-    // Si texture === 'warm': BOOST slow/atmospheric effects
-    // ═══════════════════════════════════════════════════════════════════════
-    if (texture === 'warm') {
-      // ✅ BOOST: Efectos lentos y atmosféricos van con warmth
-      if (compatibility === 'clean') {
-        return {
-          allowed: true,
-          probabilityMod: 0.20, // +20% probabilidad
-          reason: `WARMTH RULE: ${effectType} (atmospheric) BOOSTED for warm texture`,
-          rule: 'warmth'
-        }
-      }
-      
-      // Efectos sucios son MENOS apropiados para warmth (pero no bloqueados)
-      if (compatibility === 'dirty') {
-        return {
-          allowed: true,
-          probabilityMod: -0.15, // -15% probabilidad (pero permitido)
-          reason: `WARMTH RULE: ${effectType} (dirty) slightly penalized for warm texture`,
-          rule: 'warmth'
-        }
-      }
-    }
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🌐 DEFAULT: Sin regla específica aplicada
-    // ═══════════════════════════════════════════════════════════════════════
+    // ⚡ WAVE 4849: Texture concept disabled in Selene runtime (types preserved)
+    void effectType
+    void spectralContext
+    void vibeId
     return {
       allowed: true,
       probabilityMod: 0.0,
-      reason: `NO RULE: ${effectType} allowed (compatibility=${compatibility}, texture=${texture})`,
+      reason: 'TEXTURE_DISABLED: pass-through',
       rule: 'none'
     }
   }
@@ -640,8 +538,7 @@ export class ContextualEffectSelector {
    * 🎨 WAVE 1028: Quick check if effect passes texture filter
    */
   public isTextureCompatible(effectType: string, spectralContext?: SpectralContext): boolean {
-    if (!spectralContext) return true // Sin contexto = permitir
-    return this.applyTextureFilter(effectType, spectralContext).allowed
+    return true
   }
 
   /**
@@ -658,21 +555,7 @@ export class ContextualEffectSelector {
     spectralContext?: SpectralContext,
     vibeId?: string
   ): string[] {
-    if (!spectralContext) return arsenal
-    
-    const filtered = arsenal.filter(effect => {
-      const result = this.applyTextureFilter(effect, spectralContext, vibeId)
-      if (!result.allowed) {
-        console.log(`[TextureFilter 🎨] ${effect} FILTERED OUT: ${result.reason}`)
-      }
-      return result.allowed
-    })
-    
-    if (filtered.length < arsenal.length) {
-      console.log(`[TextureFilter 🎨] Arsenal reduced: ${arsenal.length} → ${filtered.length} (texture=${spectralContext.texture}, clarity=${spectralContext.clarity.toFixed(2)})`)
-    }
-    
-    return filtered
+    return arsenal
   }
 
   /**
@@ -689,21 +572,7 @@ export class ContextualEffectSelector {
     boost: number
     rule: string
   }> {
-    const boosted: Array<{ effect: string; boost: number; rule: string }> = []
-    
-    for (const [effect, compatibility] of Object.entries(EFFECT_TEXTURE_COMPATIBILITY)) {
-      const result = this.applyTextureFilter(effect, spectralContext)
-      if (result.allowed && result.probabilityMod > 0) {
-        boosted.push({
-          effect,
-          boost: result.probabilityMod,
-          rule: result.rule
-        })
-      }
-    }
-    
-    // Ordenar por boost descendente
-    return boosted.sort((a, b) => b.boost - a.boost)
+    return []
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

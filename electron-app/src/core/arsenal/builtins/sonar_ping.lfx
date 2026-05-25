@@ -4,21 +4,26 @@
   "clip": {
     "id": "sonar_ping",
     "name": "Sonar Ping",
-    "author": "LuxSync Genesis Migrator / WAVE 4821",
-    "category": "techno",
+    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "category": "physical",
     "tags": [
-      "atmospheric",
-      "movement"
+      "sonar",
+      "ping",
+      "silence",
+      "techno"
     ],
     "vibeCompat": [
-      "techno-club"
+      "techno",
+      "minimal",
+      "dark"
     ],
     "zones": [
-      "silence"
+      "silence",
+      "valley"
     ],
-    "mixBus": "ambient",
-    "priority": 30,
-    "durationMs": 3000,
+    "mixBus": "global",
+    "priority": 35,
+    "durationMs": 740,
     "effectType": "heph_custom",
     "curves": {
       "intensity": {
@@ -32,186 +37,122 @@
         "keyframes": [
           {
             "timeMs": 0,
-            "value": 1,
-            "interpolation": "bezier",
+            "value": 0,
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 30,
+            "value": 0.4,
+            "interpolation": "linear",
             "bezierHandles": [
               0,
               0,
-              0.475,
+              1,
               1
             ]
           },
           {
-            "timeMs": 3000,
-            "value": 0,
+            "timeMs": 210,
+            "value": 0.4,
             "interpolation": "hold"
+          },
+          {
+            "timeMs": 740,
+            "value": 0,
+            "interpolation": "linear",
+            "bezierHandles": [
+              0,
+              0,
+              1,
+              1
+            ]
           }
         ],
         "mode": "absolute"
       },
-      "pan": {
-        "paramId": "pan",
-        "valueType": "number",
+      "color": {
+        "paramId": "color",
+        "valueType": "color",
         "range": [
-          -1,
-          1
+          0,
+          360
         ],
-        "defaultValue": 0,
+        "defaultValue": {
+          "h": 190,
+          "s": 100,
+          "l": 45
+        },
         "keyframes": [
           {
             "timeMs": 0,
-            "value": 0,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              0,
-              0.67,
-              1
-            ]
+            "value": {
+              "h": 190,
+              "s": 100,
+              "l": 45
+            },
+            "interpolation": "linear"
           },
           {
-            "timeMs": 750,
-            "value": 0.4,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              1,
-              0.67,
-              0
-            ]
-          },
-          {
-            "timeMs": 1500,
-            "value": 0,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              0,
-              0.67,
-              -1
-            ]
-          },
-          {
-            "timeMs": 2250,
-            "value": -0.4,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              -1,
-              0.67,
-              0
-            ]
-          },
-          {
-            "timeMs": 3000,
-            "value": 0,
+            "timeMs": 740,
+            "value": {
+              "h": 210,
+              "s": 80,
+              "l": 40
+            },
             "interpolation": "hold"
           }
         ],
-        "mode": "additive"
-      },
-      "tilt": {
-        "paramId": "tilt",
-        "valueType": "number",
-        "range": [
-          -1,
-          1
-        ],
-        "defaultValue": 0,
-        "keyframes": [
-          {
-            "timeMs": 0,
-            "value": 0,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              0,
-              0.67,
-              1
-            ]
-          },
-          {
-            "timeMs": 750,
-            "value": 0.25,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              1,
-              0.67,
-              0
-            ]
-          },
-          {
-            "timeMs": 1500,
-            "value": 0,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              0,
-              0.67,
-              -1
-            ]
-          },
-          {
-            "timeMs": 2250,
-            "value": -0.25,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              -1,
-              0.67,
-              0
-            ]
-          },
-          {
-            "timeMs": 3000,
-            "value": 0,
-            "interpolation": "hold"
-          }
-        ],
-        "mode": "additive"
+        "mode": "absolute"
       }
     },
     "staticParams": {
-      "dominantColorH": 210,
+      "dominantColorH": 190,
       "dominantColorS": 100,
-      "dominantColorL": 55,
+      "dominantColorL": 45,
       "isOneShot": false,
-      "legacyMixBus": "ambient",
-      "movementTransitionMs": 0,
-      "bpmRef": 128
+      "legacyMixBus": "global",
+      "bpmRef": 128,
+      "pingDurationMs": 180,
+      "zoneGapMs": 100,
+      "pingIntensity": 0.4
     },
     "cognitiveDNA": {
       "genome": {
-        "aggression": 0.22,
-        "chaos": 0.18,
-        "organicity": 0.75
+        "aggression": 0.35,
+        "chaos": 0.3,
+        "organicity": 0.1
       },
       "textureAffinity": "clean",
       "compatibleVibes": [
-        "techno-club"
+        "techno",
+        "minimal",
+        "dark"
       ],
-      "validSections": [],
+      "validSections": [
+        "intro",
+        "outro",
+        "silence"
+      ],
       "energyZone": {
         "min": "silence",
-        "max": "silence"
+        "max": "valley"
       },
       "aggressionRange": {
-        "min": 0.22,
-        "max": 0.22
+        "min": 0,
+        "max": 0.5
       },
-      "spatialBehavior": "relative_offset"
+      "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
-        "base": 0.35,
-        "energyMultiplier": 1.09,
-        "vibeBonus": 0.1
+        "base": 0.575,
+        "energyMultiplier": 1.05,
+        "vibeBonus": 0.05
       },
-      "gpuCost": 0.45,
-      "fatigueImpact": 0.02,
-      "minDurationMs": 1000,
-      "cooldownMs": 2000,
+      "gpuCost": 0.3,
+      "fatigueImpact": 0.06,
+      "minDurationMs": 740,
+      "cooldownMs": 3000,
       "isStrobe": false,
       "isDivineCandidate": false,
       "isHeavyCandidate": false,
@@ -224,13 +165,13 @@
     "executionHints": {
       "overlayMode": "absolute",
       "phaseConfig": {
-        "spread": 0.5,
+        "spread": 0,
         "symmetry": "linear",
         "wings": 1,
         "direction": 1
       },
       "intensityScaling": "energyDriven",
-      "fixtureTargeting": "movers"
+      "fixtureTargeting": "pars"
     },
     "safetyDeclaration": {
       "maxStrobeFreqHz": 0,
@@ -238,5 +179,5 @@
       "communityTrusted": true
     }
   },
-  "checksum": "sha256:7d69bae1e55bfa98e952db680b024d1d9fd1cc39ef73f0a7187269ac7c082c37"
+  "checksum": "sha256:44e83f3def0eb27bba6ce8800b22e725eb1f2fdb98c8540c7923c5e6d4a5e7fc"
 }

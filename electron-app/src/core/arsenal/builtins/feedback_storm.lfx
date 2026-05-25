@@ -4,21 +4,26 @@
   "clip": {
     "id": "feedback_storm",
     "name": "Feedback Storm",
-    "author": "LuxSync Genesis Migrator / WAVE 4821",
-    "category": "pop-rock",
+    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "category": "physical",
     "tags": [
       "strobe",
-      "intensity"
+      "chaos",
+      "feedback",
+      "poprock"
     ],
     "vibeCompat": [
-      "pop-rock"
+      "rock",
+      "metal",
+      "industrial"
     ],
     "zones": [
-      "peak"
+      "active",
+      "intense"
     ],
     "mixBus": "global",
-    "priority": 90,
-    "durationMs": 3000,
+    "priority": 88,
+    "durationMs": 2200,
     "effectType": "heph_custom",
     "curves": {
       "intensity": {
@@ -33,40 +38,65 @@
           {
             "timeMs": 0,
             "value": 0,
-            "interpolation": "bezier",
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 100,
+            "value": 1,
+            "interpolation": "linear",
             "bezierHandles": [
-              0.9,
               0,
-              0.1,
+              0,
+              1,
               1
             ]
           },
           {
-            "timeMs": 150,
-            "value": 0.9,
+            "timeMs": 1900,
+            "value": 1,
             "interpolation": "hold"
           },
           {
-            "timeMs": 2550,
-            "value": 0.85,
-            "interpolation": "bezier",
+            "timeMs": 2200,
+            "value": 0,
+            "interpolation": "linear",
             "bezierHandles": [
               0,
               0,
-              0.42,
+              1,
               1
             ]
-          },
+          }
+        ],
+        "mode": "absolute"
+      },
+      "color": {
+        "paramId": "color",
+        "valueType": "color",
+        "range": [
+          0,
+          360
+        ],
+        "defaultValue": {
+          "h": 0,
+          "s": 0,
+          "l": 100
+        },
+        "keyframes": [
           {
-            "timeMs": 3000,
-            "value": 0,
+            "timeMs": 0,
+            "value": {
+              "h": 0,
+              "s": 0,
+              "l": 100
+            },
             "interpolation": "hold"
           }
         ],
         "mode": "absolute"
       },
       "strobe": {
-        "paramId": "strobe",
+        "paramId": "strobeRate",
         "valueType": "number",
         "range": [
           0,
@@ -76,371 +106,16 @@
         "keyframes": [
           {
             "timeMs": 0,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 42,
             "value": 0,
             "interpolation": "hold"
           },
           {
-            "timeMs": 83,
-            "value": 1,
+            "timeMs": 100,
+            "value": 0.8,
             "interpolation": "hold"
           },
           {
-            "timeMs": 125,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 167,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 208,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 250,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 292,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 333,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 375,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 417,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 458,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 500,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 542,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 583,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 625,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 667,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 708,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 750,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 792,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 833,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 875,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 917,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 958,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1000,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1042,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1083,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1125,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1167,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1208,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1250,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1292,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1333,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1375,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1417,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1458,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1500,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1542,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1583,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1625,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1667,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1708,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1750,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1792,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1833,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1875,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1917,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1958,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2000,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2042,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2083,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2125,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2167,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2208,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2250,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2292,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2333,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2375,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2417,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2458,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2500,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2542,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2583,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2625,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2667,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2708,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2750,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2792,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2833,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2875,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2917,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2958,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 3000,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 3000,
+            "timeMs": 1900,
             "value": 0,
             "interpolation": "hold"
           }
@@ -449,51 +124,55 @@
       }
     },
     "staticParams": {
-      "dominantColorH": 355,
-      "dominantColorS": 100,
-      "dominantColorL": 45,
-      "isOneShot": true,
+      "dominantColorH": 0,
+      "dominantColorS": 0,
+      "dominantColorL": 100,
+      "isOneShot": false,
       "legacyMixBus": "global",
-      "movementTransitionMs": 100,
       "bpmRef": 128
     },
     "cognitiveDNA": {
       "genome": {
-        "aggression": 0.85,
-        "chaos": 0.8,
-        "organicity": 0.15
+        "aggression": 0.93,
+        "chaos": 0.75,
+        "organicity": 0.1
       },
       "textureAffinity": "dirty",
       "compatibleVibes": [
-        "pop-rock"
+        "rock",
+        "metal",
+        "industrial"
       ],
-      "validSections": [],
+      "validSections": [
+        "drop",
+        "peak"
+      ],
       "energyZone": {
-        "min": "peak",
-        "max": "peak"
+        "min": "active",
+        "max": "intense"
       },
       "aggressionRange": {
-        "min": 0.85,
-        "max": 0.85
+        "min": 0,
+        "max": 1
       },
-      "spatialBehavior": "absolute"
+      "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
-        "base": 0.7,
-        "energyMultiplier": 1.4,
-        "vibeBonus": 0.1
+        "base": 0.8400000000000001,
+        "energyMultiplier": 1.05,
+        "vibeBonus": 0.05
       },
-      "gpuCost": 0.6,
-      "fatigueImpact": 0.15,
-      "minDurationMs": 3000,
-      "cooldownMs": 8000,
+      "gpuCost": 0.3,
+      "fatigueImpact": 0.18,
+      "minDurationMs": 1000,
+      "cooldownMs": 3300,
       "isStrobe": true,
       "isDivineCandidate": false,
-      "isHeavyCandidate": false,
+      "isHeavyCandidate": true,
       "zScoreGuards": {
         "requireRising": true,
-        "minimumZ": 1.2,
+        "minimumZ": 2,
         "minimumEnergy": 0.7
       }
     },
@@ -505,8 +184,8 @@
         "wings": 1,
         "direction": 1
       },
-      "intensityScaling": "fixed",
-      "fixtureTargeting": "strobes"
+      "intensityScaling": "energyDriven",
+      "fixtureTargeting": "pars"
     },
     "safetyDeclaration": {
       "maxStrobeFreqHz": 12,
@@ -514,5 +193,5 @@
       "communityTrusted": true
     }
   },
-  "checksum": "sha256:b4c5218d395dc4467a44df424adb70eb8bacf4c7b54f70b60638cc4577b6de8e"
+  "checksum": "sha256:a7e82d2f27c9744002c15c9f7360305b2714f0a5cb96ac1cec719a0ad3dfc67e"
 }

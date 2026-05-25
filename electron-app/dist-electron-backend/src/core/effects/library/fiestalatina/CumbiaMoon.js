@@ -157,6 +157,11 @@ export class CumbiaMoon extends BaseEffect {
         // El traductor HAL tiene múltiples medidas de seguridad para EL-1140
         // Color lunar sutil para sobresalir sin romper atmósfera.
         const moonWhite = { h: 0, s: 0, l: 80 };
+        // 🔬 WAVE-4913 DIAG: CumbiaMoon emite este color exactamente
+        console.log(`[CumbiaMoon 🌙 L3] phase=${this.phase} ` +
+            `calc_color=H${Math.round(this.currentColor.h)}/S${Math.round(this.currentColor.s)}/L${Math.round(this.currentColor.l)} ` +
+            `EMITTED=H${moonWhite.h}/S${moonWhite.s}/L${moonWhite.l} ` +
+            `intensity=${this.currentIntensity.toFixed(3)}`);
         const zoneOverrides = {
             'front': {
                 color: moonWhite, // Blanco lunar en front

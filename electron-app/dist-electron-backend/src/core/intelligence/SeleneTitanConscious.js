@@ -58,7 +58,9 @@ import { processHunt, resetHuntEngine, getHuntState, } from './think/HuntEngine'
 import { predictCombined, // 🔮 WAVE 1169: Predicción reactiva por energía
 resetPredictionEngine, getEnergyPredictionState, // 🔥 WAVE 1176: OPERATION SNIPER - Expose velocity for UI
  } from './think/PredictionEngine';
-import { makeDecision, HEAVY_ARSENAL_EFFECTS, } from './think/DecisionMaker';
+import { makeDecision, } from './think/DecisionMaker';
+// ⚡ WAVE 4843: COGNITIVE BRIDGE — isHighSeverityEffect() reemplaza HEAVY_ARSENAL_EFFECTS
+import { getDynamicEffectRegistry } from '../arsenal/DynamicEffectRegistry';
 // ═══════════════════════════════════════════════════════════════════════════
 // WAVE 973.3: MOOD CONTROLLER - Para ethics threshold
 // ═══════════════════════════════════════════════════════════════════════════
@@ -67,6 +69,17 @@ import { MoodController } from '../mood/MoodController';
 // 🧪 WAVE 978: ENERGY LOGGER
 // ═══════════════════════════════════════════════════════════════════════════
 import { EnergyLogger } from './EnergyLogger';
+/**
+ * ⚡ WAVE 4843: ¿Es este efecto de alta severidad (DROP/DIVINE-tier)?
+ * Consulta el RegistryEntry: isHeavyCandidate, isDivineCandidate o isStrobe.
+ * Reemplaza HEAVY_ARSENAL_EFFECTS.has() en el Refractory Lock de WAVE 4860.
+ */
+function isHighSeverityEffect(effectId) {
+    const simMeta = getDynamicEffectRegistry().getEntry(effectId)?.simMeta;
+    if (!simMeta)
+        return false;
+    return simMeta.isHeavyCandidate || simMeta.isDivineCandidate || simMeta.isStrobe;
+}
 // DEBUG ENERGY FLAG - Set to true to enable CSV logging
 const DEBUG_ENERGY = false; // WAVE 2098: Calibration complete, lab closed
 // ═══════════════════════════════════════════════════════════════════════════
@@ -190,7 +203,7 @@ export class SeleneTitanConscious extends EventEmitter {
         this.GLOBAL_EFFECT_COOLDOWN_MS = 7000; // 🩸 WAVE 2106: 7s (was 4s) — physics breathe
         // WAVE 4834: Fiesta Latina necesita más aire entre disparos para evitar
         // ráfagas de 4-6 EPM en BALANCED cuando el groove mantiene worthiness alto.
-        this.LATINA_GLOBAL_EFFECT_COOLDOWN_MS = 12000;
+        this.LATINA_GLOBAL_EFFECT_COOLDOWN_MS = 8000; // ⚡ WAVE 4849: 12000→8000 | ×2.2 balanced = 17.6s → objetivo 3-4 EPM
         // ═══════════════════════════════════════════════════════════════════════
         // 🛡️ WAVE 4860: POST-DROP REFRACTORY LOCK — La Regla del Respiro Retinal
         // ═══════════════════════════════════════════════════════════════════════
@@ -719,9 +732,18 @@ export class SeleneTitanConscious extends EventEmitter {
                 ? this.LATINA_GLOBAL_EFFECT_COOLDOWN_MS
                 : this.GLOBAL_EFFECT_COOLDOWN_MS;
             // 🎭 WAVE 4860: Conectar mood cooldownMultiplier al reloj global
-            // CALM x4.0 = 28s-48s | BALANCED x2.2 = 15s-26s | PUNK x0.7 = 5s-8s
+            // CALM x4.0 = 28s-32s | BALANCED x2.2 = 15s-18s | PUNK x0.7 = 5s-6s
             const globalCooldownMs = MoodController.getInstance().applyCooldown(baseCooldownMs);
-            if (timeSinceLastEffect < globalCooldownMs && !isDropUrgent) {
+            // ⚡ WAVE 4849: JUST-FIRED HARD SHIELD — 2s de inmunidad total
+            // Evita el doble-disparo cuando prediction y drop-urgente coinciden en <1s.
+            // isDropUrgent bypasea el cooldown largo, pero NO puede saltar este escudo.
+            // Raíz del bug: solar_flare (prediction) se dispara y 50ms después isDropUrgent=true
+            // abre el pipeline → latina_meltdown se superpone en pantalla.
+            const JUST_FIRED_SHIELD_MS = 2000;
+            if (timeSinceLastEffect < JUST_FIRED_SHIELD_MS) {
+                dreamIntegrationData = this.lastDreamIntegrationResult; // Hard block — ni drops pasan
+            }
+            else if (timeSinceLastEffect < globalCooldownMs && !isDropUrgent) {
                 // 🩸 WAVE 2104.1: DIAGNOSTIC — Ver cuánto bloquea el global cooldown
                 if (this.stats.framesProcessed % 15 === 0) {
                     console.log(`[GLOBAL_COOLDOWN] ⏸️ Cached: ${Math.ceil((globalCooldownMs - timeSinceLastEffect) / 1000)}s left | vibe=${pattern.vibeId} lastEffect=${this.lastEffectType ?? 'none'}`);
@@ -983,7 +1005,8 @@ export class SeleneTitanConscious extends EventEmitter {
             // en los siguientes 4s es vetado para preservar el contraste visual.
             const timeSinceHighSeverity = now - this.lastHighSeverityEffectTimestamp;
             const isInRefractory = timeSinceHighSeverity < this.POST_DROP_REFRACTORY_MS;
-            const isHighSeverityCandidate = HEAVY_ARSENAL_EFFECTS.has(intent)
+            // ⚡ WAVE 4843: isHighSeverityEffect() reemplaza HEAVY_ARSENAL_EFFECTS.has()
+            const isHighSeverityCandidate = isHighSeverityEffect(intent)
                 || output.effectDecision?.reason?.includes('DROP')
                 || output.effectDecision?.reason?.includes('DIVINE');
             const refractoryBlocked = isInRefractory && !isHighSeverityCandidate && !isHardMinimumBlocked;
@@ -1004,7 +1027,8 @@ export class SeleneTitanConscious extends EventEmitter {
                 finalEffectDecision = output.effectDecision;
                 // 🛡️ WAVE 4860: Registrar si este efecto es de alta severidad para activar
                 // el Post-Drop Refractory Lock en el próximo frame.
-                const isHighSeverityApproved = HEAVY_ARSENAL_EFFECTS.has(intent)
+                // ⚡ WAVE 4843: isHighSeverityEffect() reemplaza HEAVY_ARSENAL_EFFECTS.has()
+                const isHighSeverityApproved = isHighSeverityEffect(intent)
                     || output.effectDecision.reason?.includes('DROP')
                     || output.effectDecision.reason?.includes('DIVINE')
                     || pattern.section === 'drop';

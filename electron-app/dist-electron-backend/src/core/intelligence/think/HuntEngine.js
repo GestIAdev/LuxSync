@@ -321,7 +321,7 @@ function createCandidate(worthiness, reason) {
  *
  * - High Harshness + LOW CLARITY = CHAOS (PENALTY)
  *   → Ruido sucio sin definición = estrés real
- *   → Glitch effects solo si texture === 'noisy' || 'harsh' && clarity < 0.4
+ *   → Glitch effects: desactivado en runtime por simplificación de Selene
  */
 function calculateWorthiness(pattern, beauty, consonance, spectralHint) {
     // Combinar métricas para "worthiness" de caza
@@ -357,7 +357,7 @@ function calculateWorthiness(pattern, beauty, consonance, spectralHint) {
     // 🔮 WAVE 1026: SPECTRAL CONSCIOUSNESS - The Rosetta Stone Formula
     // ═══════════════════════════════════════════════════════════════════════
     if (spectralHint) {
-        const { clarity, harshness, texture } = spectralHint;
+        const { clarity, harshness } = spectralHint;
         // 🎸 EUPHORIA DETECTION: High Energy + High Harshness + HIGH CLARITY
         // = Metal bien producido = PODER, no estrés
         const isControlledPower = harshness > 0.5 && clarity > 0.65;
@@ -375,12 +375,6 @@ function calculateWorthiness(pattern, beauty, consonance, spectralHint) {
         const isChaotic = harshness > 0.6 && clarity < 0.4;
         if (isChaotic) {
             bonus -= 0.15; // Penalizar - esto NO es disfrutable
-        }
-        // 🎭 TEXTURE-BASED DECISIONS (para efectos glitch/noise más adelante)
-        // Solo permitir efectos "glitch" si la textura lo amerita Y hay control
-        if (texture === 'noisy' && clarity < 0.4) {
-            // Ruido real sin control - reducir worthiness para evitar overwhelm
-            bonus -= 0.10;
         }
     }
     // Combinar (ponderado)

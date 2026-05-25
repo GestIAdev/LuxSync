@@ -487,11 +487,14 @@ export class HephaestusRuntime {
                 zone: 'all',
                 parameter: '',
                 value: 0,
-                rgb: undefined,
+                // 🩹 WAVE 4830: Pre-allocate per-slot rgb/normalizedRgb objects to
+                // prevent color leak. writeOutput copies values INTO these objects
+                // instead of assigning the shared _normRgbBuf reference.
+                rgb: { r: 0, g: 0, b: 0 },
                 fine: undefined,
                 source: 'hephaestus-runtime',
                 normalizedValue: 0,
-                normalizedRgb: undefined,
+                normalizedRgb: { r: 0, g: 0, b: 0 },
                 isCustomClip: false,
                 clipId: undefined,
             };
@@ -513,12 +516,31 @@ export class HephaestusRuntime {
         out.zone = zone;
         out.parameter = parameter;
         out.value = value;
-        out.rgb = rgb;
         out.fine = fine;
         out.normalizedValue = normalizedValue ?? 0;
-        out.normalizedRgb = normalizedRgb;
         out.isCustomClip = isCustomClip ?? false;
         out.clipId = clipId;
+        // 🩹 WAVE 4830: COLOR LEAK FIX
+        // Copy color values INTO the per-slot pre-allocated objects instead of
+        // assigning the shared scratch buffer reference (_normRgbBuf).
+        // Previously: out.rgb = rgb  →  all slots pointing to same object mutated
+        // Now: values are copied per-slot, each frame is independent.
+        if (rgb && out.rgb) {
+            out.rgb.r = rgb.r;
+            out.rgb.g = rgb.g;
+            out.rgb.b = rgb.b;
+        }
+        else {
+            out.rgb = rgb; // undefined path (non-color params)
+        }
+        if (normalizedRgb && out.normalizedRgb) {
+            out.normalizedRgb.r = normalizedRgb.r;
+            out.normalizedRgb.g = normalizedRgb.g;
+            out.normalizedRgb.b = normalizedRgb.b;
+        }
+        else {
+            out.normalizedRgb = normalizedRgb; // undefined path (non-color params)
+        }
         // out.source is always 'hephaestus-runtime' — set once at buffer creation
     }
     /**

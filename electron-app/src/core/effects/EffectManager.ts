@@ -50,85 +50,10 @@ import {
 // ⚒️ WAVE 2030.4: HEPHAESTUS INTEGRATION
 import { HephParameterOverlay } from '../hephaestus/HephParameterOverlay'
 
-// Import effect library
-import { SolarFlare } from './library/fiestalatina/SolarFlare'
-import { StrobeStorm } from './library/fiestalatina/StrobeStorm'
-import { StrobeBurst } from './library/fiestalatina/StrobeBurst'
-import { TidalWave } from './library/fiestalatina/TidalWave'
-import { GhostBreath } from './library/fiestalatina/GhostBreath'
-// 🎺 WAVE 692: FIESTA LATINA ARSENAL
-import { TropicalPulse } from './library/fiestalatina/TropicalPulse'
-import { SalsaFire } from './library/fiestalatina/SalsaFire'
-// 🥁 WAVE 700.6: NEW LATINA EFFECT
-import { ClaveRhythm } from './library/fiestalatina/ClaveRhythm'
-import { CumbiaMoon } from './library/fiestalatina/CumbiaMoon'
-// ❤️ WAVE 750: THE ARCHITECT'S SOUL
-import { CorazonLatino } from './library/fiestalatina/CorazonLatino'
-
-// ═══════════════════════════════════════════════════════════════════════════
-// 🆕 WAVE 1010.5: THE LOST FOUR - 4 Efectos Huérfanos Conectados
-// ═══════════════════════════════════════════════════════════════════════════
-import { AmazonMist } from './library/fiestalatina/AmazonMist'
-import { MacheteSpark } from './library/fiestalatina/MacheteSpark'
-import { GlitchGuaguanco } from './library/fiestalatina/GlitchGuaguanco'
-import { LatinaMeltdown } from './library/fiestalatina/LatinaMeltdown'
-// 🥇 WAVE 2189: EL TROMPETAZO
-import { OroSolido } from './library/fiestalatina/OroSolido'
-
-// 🔪 WAVE 780: TECHNO CLUB - THE BLADE
-import { IndustrialStrobe } from './library/techno/IndustrialStrobe'
-import { AcidSweep } from './library/techno/AcidSweep'
-
-// 🤖 WAVE 810: UNLOCK THE TWINS
-import { CyberDualism } from './library/techno/CyberDualism'
-
-// � WAVE 930: ARSENAL PESADO
-import { GatlingRaid } from './library/techno/GatlingRaid'
-import { SkySaw } from './library/techno/SkySaw'
-import { AbyssalRise } from './library/techno/AbyssalRise'
-
-// 🌫️ WAVE 938: ATMOSPHERIC ARSENAL (low-energy zones)
-import { VoidMist } from './library/techno/VoidMist'
-// 🔪 WAVE 986: StaticPulse PURGED - replaced by BinaryGlitch + SeismicSnap
-import { DigitalRain } from './library/techno/DigitalRain'
-import { DeepBreath } from './library/techno/DeepBreath'
-
-// ⚡ WAVE 977: LA FÁBRICA - Nuevos efectos
-import { AmbientStrobe } from './library/techno/AmbientStrobe'
-import { SonarPing } from './library/techno/SonarPing'
-
-// 🔪 WAVE 986: ACTIVE REINFORCEMENTS - Nuevas armas rápidas
-import { BinaryGlitch } from './library/techno/BinaryGlitch'
-import { SeismicSnap } from './library/techno/SeismicSnap'
-
-// � WAVE 988: THE FINAL ARSENAL
-import { FiberOptics } from './library/techno/FiberOptics'
-import { CoreMeltdown } from './library/techno/CoreMeltdown'
-
-// 🔥 WAVE 2182: PARS PAINT, MOVERS PIERCE
-import { NeonBlinder } from './library/techno/NeonBlinder'
-import { SurgicalStrike } from './library/techno/SurgicalStrike'
-import { GhostChase } from './library/techno/GhostChase'
-
-// ═══════════════════════════════════════════════════════════════════════════
-// 🎸 WAVE 1020: POP-ROCK LEGENDS ARSENAL - LOS 5 MAGNÍFICOS
-// ═══════════════════════════════════════════════════════════════════════════
-import { ThunderStruck } from './library/poprock/ThunderStruck'
-import { LiquidSolo } from './library/poprock/LiquidSolo'
-import { AmpHeat } from './library/poprock/AmpHeat'
-import { ArenaSweep } from './library/poprock/ArenaSweep'
-import { FeedbackStorm } from './library/poprock/FeedbackStorm'
-
-// ═══════════════════════════════════════════════════════════════════════════
-// 🎸 WAVE 1020.9: ROCK ARSENAL EXPANSION - LOS 3 NUEVOS MAGNÍFICOS
-// ═══════════════════════════════════════════════════════════════════════════
-import { PowerChord } from './library/poprock/PowerChord'
-import { StageWash } from './library/poprock/StageWash'
-import { SpotlightPulse } from './library/poprock/SpotlightPulse'
-
-// ⚰️ WAVE 3450: Efectos chillLounge movidos a _legacy_archive. ChillAmbientEngine
-// gestiona la luz de ambiente chill directamente mediante osciladores sen. No hay
-// effectos oceánicos que registrar — el sistema ya no los dispara.
+// ⚡ WAVE 4827: MUSCLE REWIRING — DynamicEffectRegistry + SeleneHephBridge
+import { getDynamicEffectRegistry } from '../arsenal/DynamicEffectRegistry'
+import { getSeleneHephBridge } from '../arsenal/SeleneHephBridge'
+import type { ConsciousnessEffectDecision } from '../protocol/ConsciousnessOutput'
 
 // 💚🛡️ WAVE 680: Import VibeManager for THE SHIELD
 import { VibeManager } from '../../engine/vibe/VibeManager'
@@ -279,11 +204,6 @@ const EFFECT_VIBE_RULES: Record<string, {
 // EFFECT FACTORY TYPE
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * Factory function para crear efectos
- */
-type EffectFactory = () => ILightEffect
-
 // ═══════════════════════════════════════════════════════════════════════════
 // 🔒 WAVE 996: ZONE MUTEX - THE LADDER
 // ═══════════════════════════════════════════════════════════════════════════
@@ -395,9 +315,6 @@ export class EffectManager extends EventEmitter {
   // State
   // ─────────────────────────────────────────────────────────────────────────
   
-  /** Registry de factories de efectos */
-  private effectFactories: Map<string, EffectFactory> = new Map()
-  
   /** Efectos actualmente activos */
   private activeEffects: Map<string, ILightEffect> = new Map()
   
@@ -426,7 +343,6 @@ export class EffectManager extends EventEmitter {
   
   constructor() {
     super()
-    this.registerBuiltinEffects()
     // WAVE 2098: Boot silence
   }
   
@@ -449,10 +365,10 @@ export class EffectManager extends EventEmitter {
    * @returns ID de la instancia del efecto, o null si bloqueado/falla
    */
   trigger(config: EffectTriggerConfig): string | null {
-    const factory = this.effectFactories.get(config.effectType)
-    
-    if (!factory) {
-      console.warn(`[EffectManager ⚠️] Unknown effect type: ${config.effectType}`)
+    // ⚡ WAVE 4827: REGISTRY LOOKUP — fuente única de verdad
+    const entry = getDynamicEffectRegistry().getEntry(config.effectType)
+    if (!entry) {
+      console.warn(`[EffectManager ⚠️] Unknown effect: "${config.effectType}" — not found in DynamicEffectRegistry`)
       return null
     }
     
@@ -522,67 +438,65 @@ export class EffectManager extends EventEmitter {
       }
     }
     
-    // Crear nueva instancia
-    const effect = factory()
-    
-    // 🛡️ Si está degradado, aplicar constraints
-    if (shieldResult.degraded && shieldResult.constraints) {
-      this.applyShieldConstraints(effect, shieldResult.constraints)
+    // ═══════════════════════════════════════════════════════════════════════
+    // ⚡ WAVE 4827: DISPATCH VÍA SELENEHEPHBRIDGE — el músculo mueve .lfx, no clases
+    // ═══════════════════════════════════════════════════════════════════════
+    const decision: ConsciousnessEffectDecision = {
+      effectType: config.effectType,
+      intensity: shieldResult.degraded && shieldResult.constraints?.maxIntensity !== undefined
+        ? Math.min(config.intensity, shieldResult.constraints.maxIntensity)
+        : config.intensity,
+      zones: config.zones as any,
+      reason: config.reason,
+      confidence: 1.0,
+    }
+    const route = getSeleneHephBridge().route(decision, { ikActiveNodeIds: null })
+
+    if (route.kind !== 'hephaestus') {
+      console.warn(
+        `[EffectManager ⚠️] Bridge miss for "${config.effectType}": ${(route as any).reason}`,
+      )
+      return null
+    }
+
+    if (shieldResult.degraded) {
       console.log(`[EffectManager ⚠️] ${config.effectType} DEGRADED in ${vibeId}. ${shieldResult.message}`)
     }
-    
-    // Disparar
-    effect.trigger(config)
-    
-    // Registrar como activo
-    this.activeEffects.set(effect.id, effect)
-    
-    // ⚒️ WAVE 2030.4: HEPHAESTUS - Crear overlay si hay curvas de automatización
-    if (config.hephCurves) {
-      const overlay = new HephParameterOverlay(config.hephCurves)
-      this.overlays.set(effect.id, overlay)
-      console.log(`[EffectManager ⚒️] HEPHAESTUS: Overlay created for ${effect.id} with ${config.hephCurves.curves.size} curves`)
-    }
-    
+    const instanceToken = `${config.effectType}:${route.instanceId}`
+
     // Stats
     this.stats.totalTriggered++
     this.stats.lastTriggered = config.effectType
     this.stats.lastTriggerTime = Date.now()
-    
-    // Emit event
+
     this.emit('effectTriggered', {
-      effectId: effect.id,
+      effectId: instanceToken,
       effectType: config.effectType,
-      intensity: config.intensity,
+      intensity: decision.intensity,
       source: config.source,
       vibeId,
       degraded: shieldResult.degraded,
-      hephEnabled: !!config.hephCurves,  // ⚒️ WAVE 2030.4
+      hephEnabled: true,  // ⚡ WAVE 4827: all paths route through SeleneHephBridge
     })
-    
-    // 🛡️ WAVE 811: Log ÚNICO de ejecución - LA VOZ DEL EJECUTOR
-    // Incluye: efecto, vibe, source, degraded, intensidad, z-score
+
     const shieldStatus = shieldResult.degraded ? '⚠️DEGRADED' : ''
-    const zInfo = config.musicalContext?.zScore 
-      ? `Z:${config.musicalContext.zScore.toFixed(1)}` 
+    const zInfo = config.musicalContext?.zScore
+      ? `Z:${config.musicalContext.zScore.toFixed(1)}`
       : ''
     const sourceTag = config.source ? `[${config.source}]` : ''
-    const hephTag = config.hephCurves ? ' ⚒️[HEPH]' : ''
-    console.log(`[EffectManager 🔥] ${config.effectType} FIRED ${sourceTag} in ${vibeId} ${shieldStatus}${hephTag} | I:${config.intensity.toFixed(2)} ${zInfo}`)
-    
+    console.log(`[EffectManager 🔥] ${config.effectType} FIRED ${sourceTag} in ${vibeId} ${shieldStatus} ⚡[HEPH-BRIDGE] | I:${decision.intensity.toFixed(2)} ${zInfo}`)
+
     // ═══════════════════════════════════════════════════════════════════════
-    // 🌊 WAVE 1071: COOLDOWN REGISTRATION - Informar al ContextualEffectSelector
-    // Esto asegura que CUALQUIER sistema que quiera disparar este efecto
-    // (DreamEngine, DecisionMaker, etc.) sepa que ya está en cooldown.
+    // 🌊 WAVE 1071: COOLDOWN REGISTRATION
     // ═══════════════════════════════════════════════════════════════════════
     try {
       const selector = getContextualEffectSelector()
       selector.registerEffectFired(config.effectType)
     } catch (e) {
-      // Fail silently - el selector puede no estar inicializado aún
+      // Fail silently
     }
-    
-    return effect.id
+
+    return instanceToken
   }
   
   // ═══════════════════════════════════════════════════════════════════════════
@@ -926,207 +840,7 @@ export class EffectManager extends EventEmitter {
    * 📋 LIST AVAILABLE - Lista tipos de efectos disponibles
    */
   getAvailableEffects(): string[] {
-    return Array.from(this.effectFactories.keys())
-  }
-  
-  /**
-   * 🔌 REGISTER EFFECT - Registra un nuevo tipo de efecto
-   */
-  registerEffect(effectType: string, factory: EffectFactory): void {
-    this.effectFactories.set(effectType, factory)
-    console.log(`[EffectManager 🔌] Registered effect: ${effectType}`)
-  }
-  
-  // ─────────────────────────────────────────────────────────────────────────
-  // PRIVATE: Built-in effects registration
-  // ─────────────────────────────────────────────────────────────────────────
-  
-  private registerBuiltinEffects(): void {
-    // ☀️ Solar Flare - WAVE 600
-    this.effectFactories.set('solar_flare', () => new SolarFlare())
-    
-    // ⚡ Strobe Storm - WAVE 680 (harsh, for rock/techno)
-    this.effectFactories.set('strobe_storm', () => new StrobeStorm())
-    
-    // 🔥 Strobe Burst - WAVE 691 (rhythmic, for latina/festive)
-    this.effectFactories.set('strobe_burst', () => new StrobeBurst())
-    
-    // 🌊 Tidal Wave - WAVE 680
-    this.effectFactories.set('tidal_wave', () => new TidalWave())
-    
-    // 👻 Ghost Breath - WAVE 680
-    this.effectFactories.set('ghost_breath', () => new GhostBreath())
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🎺 WAVE 692: FIESTA LATINA ARSENAL
-    // ═══════════════════════════════════════════════════════════════════════
-    
-    // 🌴 Tropical Pulse - Crescendo bursts like conga rhythm
-    this.effectFactories.set('tropical_pulse', () => new TropicalPulse())
-    
-    // 🔥 Salsa Fire - Organic fire flicker effect  
-    this.effectFactories.set('salsa_fire', () => new SalsaFire())
-    
-    // 🌙 Cumbia Moon - Soft breathing glow for breakdowns
-    this.effectFactories.set('cumbia_moon', () => new CumbiaMoon())
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🥁 WAVE 700.6: NEW LATINA EFFECT
-    // ═══════════════════════════════════════════════════════════════════════
-    
-    // 🥁 Clave Rhythm - 3-2 pattern with color + movement
-    this.effectFactories.set('clave_rhythm', () => new ClaveRhythm())
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // ❤️ WAVE 750: THE ARCHITECT'S SOUL
-    // ═══════════════════════════════════════════════════════════════════════
-    
-    // ❤️ Corazón Latino - Heartbeat passion effect for epic moments
-    this.effectFactories.set('corazon_latino', () => new CorazonLatino())
-    
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🆕 WAVE 1010.5: THE LOST FOUR - Los 4 Huérfanos Conectados
-    // ═══════════════════════════════════════════════════════════════════════════
-    // Estos efectos existían en DreamSimulator pero NO estaban registrados aquí.
-    // Por eso ganaban simulaciones pero nunca disparaban. THE PURGE los encontró.
-    
-    // 🌿 Amazon Mist - Neblina amazónica para zonas silence/valley
-    this.effectFactories.set('amazon_mist', () => new AmazonMist())
-    
-    // ⚔️ Machete Spark - Chispa de machete para active zone
-    this.effectFactories.set('machete_spark', () => new MacheteSpark())
-    
-    // 🪘 Glitch Guaguanco - Digital glitch con ritmo cubano para active zone
-    this.effectFactories.set('glitch_guaguanco', () => new GlitchGuaguanco())
-    
-    // 💥 Latina Meltdown - LA BESTIA LATINA para peak zone
-    this.effectFactories.set('latina_meltdown', () => new LatinaMeltdown())
-    
-    // 🥇 WAVE 2189: EL TROMPETAZO — muro de oro sólido para drops latinos
-    this.effectFactories.set('oro_solido', () => new OroSolido())
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🔪 WAVE 780: TECHNO CLUB - THE BLADE
-    // 🤖 WAVE 810: UNLOCK THE TWINS
-    // 🔫 WAVE 930: ARSENAL PESADO
-    // ═══════════════════════════════════════════════════════════════════════
-    
-    // ⚡ Industrial Strobe - The hammer that strikes steel
-    this.effectFactories.set('industrial_strobe', () => new IndustrialStrobe())
-    
-    // 🧪 Acid Sweep - Volumetric blade of light
-    this.effectFactories.set('acid_sweep', () => new AcidSweep())
-    
-    // 🤖 Cyber Dualism - The ping-pong twins (L/R spatial targeting)
-    this.effectFactories.set('cyber_dualism', () => new CyberDualism())
-    
-    // 🔫 Gatling Raid - Machine gun PAR barrage
-    this.effectFactories.set('gatling_raid', () => new GatlingRaid())
-    
-    // 🗡️ Sky Saw - Aggressive mover cuts
-    this.effectFactories.set('sky_saw', () => new SkySaw())
-    
-    // 🌪️ Abyssal Rise - Epic 8-bar transition
-    this.effectFactories.set('abyssal_rise', () => new AbyssalRise())
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL (low-energy zones)
-    // ═══════════════════════════════════════════════════════════════════════
-    
-    // 🌫️ Void Mist - Purple fog with breathing
-    this.effectFactories.set('void_mist', () => new VoidMist())
-    
-    // 🔪 WAVE 986: static_pulse PURGED - replaced by binary_glitch + seismic_snap
-    
-    // 💧 Digital Rain - Matrix flicker (cyan/lime)
-    this.effectFactories.set('digital_rain', () => new DigitalRain())
-    
-    // 🫁 Deep Breath - Organic 4-bar breathing (blue/purple)
-    this.effectFactories.set('deep_breath', () => new DeepBreath())
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // ⚡ WAVE 977: LA FÁBRICA - Nuevos Efectos
-    // ═══════════════════════════════════════════════════════════════════════
-    
-    // 📸 Ambient Strobe - Flashes dispersos tipo cámara de estadio (gentle/active zone)
-    this.effectFactories.set('ambient_strobe', () => new AmbientStrobe())
-    
-    // 🔵 Sonar Ping - Ping submarino back→front (silence/valley zone)
-    this.effectFactories.set('sonar_ping', () => new SonarPing())
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🔪 WAVE 986: ACTIVE REINFORCEMENTS - Nuevas armas rápidas
-    // ═══════════════════════════════════════════════════════════════════════
-    
-    // ⚡ Binary Glitch - Tartamudeo de código morse corrupto (active zone)
-    this.effectFactories.set('binary_glitch', () => new BinaryGlitch())
-    
-    // 💥 Seismic Snap - Golpe físico de luz tipo obturador (active/intense zone)
-    this.effectFactories.set('seismic_snap', () => new SeismicSnap())
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🔮 WAVE 988: THE FINAL ARSENAL
-    // ═══════════════════════════════════════════════════════════════════════
-    
-    // 🌈 Fiber Optics - Traveling ambient colors (silence/valley/ambient)
-    this.effectFactories.set('fiber_optics', () => new FiberOptics())
-    
-    // ☢️ Core Meltdown - LA BESTIA extreme strobe (intense/peak)
-    this.effectFactories.set('core_meltdown', () => new CoreMeltdown())
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🔥 WAVE 2182: PARS PAINT, MOVERS PIERCE
-    // ═══════════════════════════════════════════════════════════════════════
-    
-    // ⚡ Neon Blinder - Flash wall APEX (ADSR envelope, movers latched)
-    this.effectFactories.set('neon_blinder', () => new NeonBlinder())
-    
-    // 🎯 Surgical Strike - Scalpel in the dark (par blackout, mover strobe)
-    this.effectFactories.set('surgical_strike', () => new SurgicalStrike())
-    
-    // 👻 Ghost Chase - Phantom dimmer chase (frozen movers, breathing pars)
-    this.effectFactories.set('ghost_chase', () => new GhostChase())
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🎸 WAVE 1020: POP-ROCK LEGENDS ARSENAL - LOS 5 MAGNÍFICOS
-    // ═══════════════════════════════════════════════════════════════════════
-    
-    // ⚡ Thunder Struck - Stadium blinder para drops de estribillo
-    this.effectFactories.set('thunder_struck', () => new ThunderStruck())
-    
-    // 🎸 Liquid Solo - Spotlight del guitarrista, MoverR rápido, MoverL estable
-    this.effectFactories.set('liquid_solo', () => new LiquidSolo())
-    
-    // 🔥 Amp Heat - Válvulas calientes respirando, intros/versos íntimos
-    this.effectFactories.set('amp_heat', () => new AmpHeat())
-    
-    // 🌊 Arena Sweep - El barrido de Wembley, vShape con inercia
-    this.effectFactories.set('arena_sweep', () => new ArenaSweep())
-    
-    // 😵 Feedback Storm - Caos visual, strobe random escalado por harshness
-    this.effectFactories.set('feedback_storm', () => new FeedbackStorm())
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🎸 WAVE 1020.9: ROCK ARSENAL EXPANSION - LOS 3 NUEVOS MAGNÍFICOS
-    // ═══════════════════════════════════════════════════════════════════════
-    
-    // ⚡ Power Chord - Flash + strobe rítmico, golpe del acorde
-    this.effectFactories.set('power_chord', () => new PowerChord())
-    
-    // 🌊 Stage Wash - Respiro cálido amber, transiciones suaves
-    this.effectFactories.set('stage_wash', () => new StageWash())
-    
-    // 💡 Spotlight Pulse - Breathing spotlight, pulso emotivo
-    this.effectFactories.set('spotlight_pulse', () => new SpotlightPulse())
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🌊 WAVE 1070.6: THE LIVING OCEAN - CHILL LOUNGE OCEANIC EFFECTS
-    // ═══════════════════════════════════════════════════════════════════════
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // ⚰️ WAVE 3450: CHILL LOUNGE ARSENAL PURGED — efectos oceánicos archivados.
-    // ChillAmbientEngine gestiona la iluminación ambiental directamente.
-    // ═══════════════════════════════════════════════════════════════════════
+    return getDynamicEffectRegistry().getAllEntries().map(e => e.id)
   }
   
   // ─────────────────────────────────────────────────────────────────────────
@@ -1538,8 +1252,4 @@ export function resetEffectManager(): void {
   effectManagerInstance = null
 }
 
-/**
- * 🛡️ WAVE 4866: Export EFFECT_ZONE_MAP para validación en DecisionMaker
- * Permite que sistemas upstream validen zona antes de trigger
- */
-export { EFFECT_ZONE_MAP }
+

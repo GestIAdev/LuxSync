@@ -4,21 +4,26 @@
   "clip": {
     "id": "gatling_raid",
     "name": "Gatling Raid",
-    "author": "LuxSync Genesis Migrator / WAVE 4821",
-    "category": "techno",
+    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "category": "physical",
     "tags": [
-      "strobe",
-      "intensity"
+      "gatling",
+      "machine-gun",
+      "peak",
+      "techno"
     ],
     "vibeCompat": [
-      "techno-club"
+      "techno",
+      "industrial",
+      "metal"
     ],
     "zones": [
+      "intense",
       "peak"
     ],
     "mixBus": "global",
-    "priority": 80,
-    "durationMs": 2000,
+    "priority": 88,
+    "durationMs": 1760,
     "effectType": "heph_custom",
     "curves": {
       "intensity": {
@@ -32,414 +37,66 @@
         "keyframes": [
           {
             "timeMs": 0,
+            "value": 0,
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 1,
+            "value": 1,
+            "interpolation": "linear",
+            "bezierHandles": [
+              0,
+              0,
+              1,
+              1
+            ]
+          },
+          {
+            "timeMs": 1560,
             "value": 1,
             "interpolation": "hold"
           },
           {
-            "timeMs": 25,
+            "timeMs": 1760,
             "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 50,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 75,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 100,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 125,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 150,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 175,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 200,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 225,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 250,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 275,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 300,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 325,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 350,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 375,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 400,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 425,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 450,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 475,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 500,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 525,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 550,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 575,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 600,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 625,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 650,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 675,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 700,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 725,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 750,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 775,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 800,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 825,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 850,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 875,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 900,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 925,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 950,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 975,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1000,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1025,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1050,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1075,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1100,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1125,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1150,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1175,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1200,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1225,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1250,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1275,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1300,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1325,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1350,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1375,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1400,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1425,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1450,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1475,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1500,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1525,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1550,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1575,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1600,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1625,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1650,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1675,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1700,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1725,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1750,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1775,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1800,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1825,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1850,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1875,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1900,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1925,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1950,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1975,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2000,
-            "value": 0,
+            "interpolation": "linear",
+            "bezierHandles": [
+              0,
+              0,
+              1,
+              1
+            ]
+          }
+        ],
+        "mode": "absolute"
+      },
+      "color": {
+        "paramId": "color",
+        "valueType": "color",
+        "range": [
+          0,
+          360
+        ],
+        "defaultValue": {
+          "h": 0,
+          "s": 0,
+          "l": 100
+        },
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": {
+              "h": 0,
+              "s": 0,
+              "l": 100
+            },
             "interpolation": "hold"
           }
         ],
         "mode": "absolute"
       },
       "strobe": {
-        "paramId": "strobe",
+        "paramId": "strobeRate",
         "valueType": "number",
         "range": [
           0,
@@ -449,406 +106,16 @@
         "keyframes": [
           {
             "timeMs": 0,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 25,
             "value": 0,
             "interpolation": "hold"
           },
           {
-            "timeMs": 50,
+            "timeMs": 0,
             "value": 1,
             "interpolation": "hold"
           },
           {
-            "timeMs": 75,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 100,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 125,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 150,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 175,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 200,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 225,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 250,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 275,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 300,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 325,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 350,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 375,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 400,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 425,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 450,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 475,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 500,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 525,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 550,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 575,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 600,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 625,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 650,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 675,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 700,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 725,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 750,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 775,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 800,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 825,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 850,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 875,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 900,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 925,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 950,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 975,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1000,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1025,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1050,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1075,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1100,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1125,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1150,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1175,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1200,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1225,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1250,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1275,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1300,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1325,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1350,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1375,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1400,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1425,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1450,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1475,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1500,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1525,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1550,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1575,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1600,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1625,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1650,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1675,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1700,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1725,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1750,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1775,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1800,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1825,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1850,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1875,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1900,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1925,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1950,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1975,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2000,
+            "timeMs": 1560,
             "value": 0,
             "interpolation": "hold"
           }
@@ -857,52 +124,60 @@
       }
     },
     "staticParams": {
-      "dominantColorH": 20,
-      "dominantColorS": 100,
-      "dominantColorL": 55,
+      "dominantColorH": 0,
+      "dominantColorS": 0,
+      "dominantColorL": 100,
       "isOneShot": false,
       "legacyMixBus": "global",
-      "movementTransitionMs": 0,
-      "bpmRef": 128
+      "bpmRef": 128,
+      "bulletCount": 8,
+      "bulletDurationMs": 30,
+      "bulletGapMs": 35,
+      "sweepCount": 3
     },
     "cognitiveDNA": {
       "genome": {
-        "aggression": 0.9,
-        "chaos": 0.72,
-        "organicity": 0.05
+        "aggression": 0.93,
+        "chaos": 0.75,
+        "organicity": 0.1
       },
       "textureAffinity": "dirty",
       "compatibleVibes": [
-        "techno-club"
+        "techno",
+        "industrial",
+        "metal"
       ],
-      "validSections": [],
+      "validSections": [
+        "drop",
+        "peak"
+      ],
       "energyZone": {
-        "min": "peak",
+        "min": "intense",
         "max": "peak"
       },
       "aggressionRange": {
-        "min": 0.9,
-        "max": 0.9
+        "min": 0,
+        "max": 1
       },
       "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
-        "base": 0.9,
-        "energyMultiplier": 1.3599999999999999,
-        "vibeBonus": 0.1
+        "base": 0.8400000000000001,
+        "energyMultiplier": 1.05,
+        "vibeBonus": 0.05
       },
-      "gpuCost": 0.6,
-      "fatigueImpact": 0.25,
+      "gpuCost": 0.3,
+      "fatigueImpact": 0.18,
       "minDurationMs": 1000,
-      "cooldownMs": 5000,
+      "cooldownMs": 3000,
       "isStrobe": true,
-      "isDivineCandidate": true,
-      "isHeavyCandidate": false,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": true,
       "zScoreGuards": {
         "requireRising": true,
-        "minimumZ": 1.8,
-        "minimumEnergy": 0.85
+        "minimumZ": 2,
+        "minimumEnergy": 0.7
       }
     },
     "executionHints": {
@@ -913,14 +188,14 @@
         "wings": 1,
         "direction": 1
       },
-      "intensityScaling": "fixed",
-      "fixtureTargeting": "strobes"
+      "intensityScaling": "energyDriven",
+      "fixtureTargeting": "pars"
     },
     "safetyDeclaration": {
-      "maxStrobeFreqHz": 20,
+      "maxStrobeFreqHz": 15,
       "containsRapidFlash": true,
       "communityTrusted": true
     }
   },
-  "checksum": "sha256:09a542c0b342446c7e5684b0fc9abdbce6197d6898af9a75148d25bca490fafb"
+  "checksum": "sha256:c676eeb850928b4112d94c48050a7c99c23724ad7407487be8c22a05243a8b12"
 }

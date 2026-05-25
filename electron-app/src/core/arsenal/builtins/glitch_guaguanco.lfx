@@ -4,21 +4,26 @@
   "clip": {
     "id": "glitch_guaguanco",
     "name": "Glitch Guaguancó",
-    "author": "LuxSync Genesis Migrator / WAVE 4821",
-    "category": "fiesta-latina",
+    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "category": "composite",
     "tags": [
-      "accent",
-      "rhythmic"
-    ],
-    "vibeCompat": [
+      "glitch",
+      "guaguanco",
+      "active",
       "fiesta-latina"
     ],
-    "zones": [
-      "active"
+    "vibeCompat": [
+      "latin",
+      "electronic",
+      "techno"
     ],
-    "mixBus": "accent",
-    "priority": 40,
-    "durationMs": 3000,
+    "zones": [
+      "active",
+      "intense"
+    ],
+    "mixBus": "global",
+    "priority": 72,
+    "durationMs": 1500,
     "effectType": "heph_custom",
     "curves": {
       "intensity": {
@@ -32,384 +37,73 @@
         "keyframes": [
           {
             "timeMs": 0,
-            "value": 1,
-            "interpolation": "hold"
+            "value": 0,
+            "interpolation": "linear"
           },
           {
-            "timeMs": 83,
+            "timeMs": 30,
             "value": 0,
             "interpolation": "hold"
           },
           {
-            "timeMs": 167,
-            "value": 1,
-            "interpolation": "hold"
+            "timeMs": 80,
+            "value": 0.9,
+            "interpolation": "linear",
+            "bezierHandles": [
+              0,
+              0,
+              1,
+              1
+            ]
           },
           {
             "timeMs": 250,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 333,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 417,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 500,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 583,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 667,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 750,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 833,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 917,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1000,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1083,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1167,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1250,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1333,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1417,
-            "value": 0,
+            "value": 0.9,
             "interpolation": "hold"
           },
           {
             "timeMs": 1500,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1583,
             "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1667,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1750,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1833,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1917,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2000,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2083,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2167,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2250,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2333,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2417,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2500,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2583,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2667,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2750,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2833,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2917,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 3000,
-            "value": 0,
-            "interpolation": "hold"
+            "interpolation": "linear",
+            "bezierHandles": [
+              0,
+              0,
+              1,
+              1
+            ]
           }
         ],
         "mode": "absolute"
       },
-      "strobe": {
-        "paramId": "strobe",
-        "valueType": "number",
+      "color": {
+        "paramId": "color",
+        "valueType": "color",
         "range": [
           0,
-          1
+          360
         ],
-        "defaultValue": 0,
+        "defaultValue": {
+          "h": 270,
+          "s": 100,
+          "l": 50
+        },
         "keyframes": [
           {
             "timeMs": 0,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 83,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 167,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 250,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 333,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 417,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 500,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 583,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 667,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 750,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 833,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 917,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1000,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1083,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1167,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1250,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1333,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1417,
-            "value": 0,
-            "interpolation": "hold"
+            "value": {
+              "h": 270,
+              "s": 100,
+              "l": 50
+            },
+            "interpolation": "linear"
           },
           {
             "timeMs": 1500,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1583,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1667,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1750,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1833,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1917,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2000,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2083,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2167,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2250,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2333,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2417,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2500,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2583,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2667,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2750,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2833,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2917,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 3000,
-            "value": 0,
+            "value": {
+              "h": 60,
+              "s": 100,
+              "l": 50
+            },
             "interpolation": "hold"
           }
         ],
@@ -417,52 +111,57 @@
       }
     },
     "staticParams": {
-      "dominantColorH": 285,
-      "dominantColorS": 80,
+      "dominantColorH": 270,
+      "dominantColorS": 100,
       "dominantColorL": 50,
       "isOneShot": false,
-      "legacyMixBus": "accent",
-      "movementTransitionMs": 0,
+      "legacyMixBus": "global",
       "bpmRef": 128
     },
     "cognitiveDNA": {
       "genome": {
-        "aggression": 0.7,
-        "chaos": 0.68,
-        "organicity": 0.22
+        "aggression": 0.72,
+        "chaos": 0.5,
+        "organicity": 0.25
       },
-      "textureAffinity": "dirty",
+      "textureAffinity": "universal",
       "compatibleVibes": [
-        "fiesta-latina"
+        "latin",
+        "electronic",
+        "techno"
       ],
-      "validSections": [],
+      "validSections": [
+        "build",
+        "drop",
+        "breakdown"
+      ],
       "energyZone": {
         "min": "active",
-        "max": "active"
+        "max": "intense"
       },
       "aggressionRange": {
-        "min": 0.7,
-        "max": 0.7
+        "min": 0,
+        "max": 0.87
       },
       "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
-        "base": 0.7,
-        "energyMultiplier": 1.34,
-        "vibeBonus": 0.1
+        "base": 0.76,
+        "energyMultiplier": 1.05,
+        "vibeBonus": 0.05
       },
-      "gpuCost": 0.6,
-      "fatigueImpact": 0.15,
+      "gpuCost": 0.45,
+      "fatigueImpact": 0.06,
       "minDurationMs": 1000,
-      "cooldownMs": 5000,
-      "isStrobe": true,
+      "cooldownMs": 3000,
+      "isStrobe": false,
       "isDivineCandidate": false,
       "isHeavyCandidate": false,
       "zScoreGuards": {
-        "requireRising": true,
-        "minimumZ": 1.2,
-        "minimumEnergy": 0.7
+        "requireRising": false,
+        "minimumZ": null,
+        "minimumEnergy": null
       }
     },
     "executionHints": {
@@ -477,10 +176,10 @@
       "fixtureTargeting": "all"
     },
     "safetyDeclaration": {
-      "maxStrobeFreqHz": 6,
-      "containsRapidFlash": true,
+      "maxStrobeFreqHz": 0,
+      "containsRapidFlash": false,
       "communityTrusted": true
     }
   },
-  "checksum": "sha256:99e80f90deec040fb1e35d1c5c268b3ddd2f23bfc2fdb6b837d5683dedc7d591"
+  "checksum": "sha256:619a86dcf41dc85764f3b6d3bfa3637dd339ba15bf2ceb2b51ecd9e32c45508f"
 }

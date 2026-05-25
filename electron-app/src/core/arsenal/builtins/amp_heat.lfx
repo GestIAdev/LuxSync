@@ -4,17 +4,22 @@
   "clip": {
     "id": "amp_heat",
     "name": "Amp Heat",
-    "author": "LuxSync Genesis Migrator / WAVE 4821",
-    "category": "pop-rock",
+    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "category": "color",
     "tags": [
-      "atmospheric",
-      "color"
+      "heat",
+      "warm",
+      "ambient",
+      "poprock"
     ],
     "vibeCompat": [
-      "pop-rock"
+      "rock",
+      "pop-rock",
+      "blues"
     ],
     "zones": [
-      "valley"
+      "ambient",
+      "gentle"
     ],
     "mixBus": "ambient",
     "priority": 30,
@@ -28,33 +33,72 @@
           0,
           1
         ],
-        "defaultValue": 0,
+        "defaultValue": 0.25,
         "keyframes": [
           {
             "timeMs": 0,
-            "value": 0,
+            "value": 0.25,
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 2000,
+            "value": 0.55,
             "interpolation": "bezier",
             "bezierHandles": [
-              0.33,
+              0.42,
               0,
-              0.67,
+              0.58,
               1
             ]
           },
           {
-            "timeMs": 4000,
-            "value": 1,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              1,
-              0.67,
-              0
-            ]
+            "timeMs": 6000,
+            "value": 0.55,
+            "interpolation": "hold"
           },
           {
             "timeMs": 8000,
-            "value": 0,
+            "value": 0.25,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.42,
+              0,
+              0.58,
+              1
+            ]
+          }
+        ],
+        "mode": "absolute"
+      },
+      "color": {
+        "paramId": "color",
+        "valueType": "color",
+        "range": [
+          0,
+          360
+        ],
+        "defaultValue": {
+          "h": 25,
+          "s": 80,
+          "l": 50
+        },
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": {
+              "h": 25,
+              "s": 80,
+              "l": 50
+            },
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 8000,
+            "value": {
+              "h": 35,
+              "s": 70,
+              "l": 55
+            },
             "interpolation": "hold"
           }
         ],
@@ -62,45 +106,51 @@
       }
     },
     "staticParams": {
-      "dominantColorH": 28,
-      "dominantColorS": 90,
-      "dominantColorL": 45,
+      "dominantColorH": 25,
+      "dominantColorS": 80,
+      "dominantColorL": 50,
       "isOneShot": false,
       "legacyMixBus": "ambient",
-      "movementTransitionMs": 0,
       "bpmRef": 128
     },
     "cognitiveDNA": {
       "genome": {
-        "aggression": 0.28,
-        "chaos": 0.18,
-        "organicity": 0.72
+        "aggression": 0.3,
+        "chaos": 0.3,
+        "organicity": 0.1
       },
       "textureAffinity": "clean",
       "compatibleVibes": [
-        "pop-rock"
+        "rock",
+        "pop-rock",
+        "blues"
       ],
-      "validSections": [],
+      "validSections": [
+        "intro",
+        "breakdown",
+        "valley",
+        "outro"
+      ],
       "energyZone": {
-        "min": "valley",
-        "max": "valley"
+        "min": "ambient",
+        "max": "gentle"
       },
       "aggressionRange": {
-        "min": 0.28,
-        "max": 0.28
+        "min": 0,
+        "max": 0.44999999999999996
       },
       "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
-        "base": 0.35,
-        "energyMultiplier": 1.09,
-        "vibeBonus": 0.1
+        "base": 0.55,
+        "energyMultiplier": 1.05,
+        "vibeBonus": 0.05
       },
-      "gpuCost": 0.25,
-      "fatigueImpact": 0.02,
+      "gpuCost": 0.3,
+      "fatigueImpact": 0.06,
       "minDurationMs": 1000,
-      "cooldownMs": 2000,
+      "cooldownMs": 12000,
       "isStrobe": false,
       "isDivineCandidate": false,
       "isHeavyCandidate": false,
@@ -111,7 +161,7 @@
       }
     },
     "executionHints": {
-      "overlayMode": "absolute",
+      "overlayMode": "relative",
       "phaseConfig": {
         "spread": 0,
         "symmetry": "linear",
@@ -127,5 +177,5 @@
       "communityTrusted": true
     }
   },
-  "checksum": "sha256:394c9c6bc7e8a9cb62f60a5d91a6c871e25c173ea088c494ded7f2e2ffd991fd"
+  "checksum": "sha256:8a94d838ee3f34533933b8b0b07bd300c975c6b7437c5671a70247d9477e5f9b"
 }

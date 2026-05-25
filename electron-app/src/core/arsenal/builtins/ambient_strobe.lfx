@@ -4,20 +4,24 @@
   "clip": {
     "id": "ambient_strobe",
     "name": "Ambient Strobe",
-    "author": "LuxSync Genesis Migrator / WAVE 4821",
-    "category": "techno",
+    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "category": "physical",
     "tags": [
       "strobe",
-      "accent"
+      "ambient",
+      "stadium",
+      "techno"
     ],
     "vibeCompat": [
-      "techno-club"
+      "techno",
+      "minimal"
     ],
     "zones": [
-      "gentle"
+      "gentle",
+      "active"
     ],
-    "mixBus": "global",
-    "priority": 80,
+    "mixBus": "htp",
+    "priority": 65,
     "durationMs": 4000,
     "effectType": "heph_custom",
     "curves": {
@@ -32,139 +36,66 @@
         "keyframes": [
           {
             "timeMs": 0,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 167,
             "value": 0,
-            "interpolation": "hold"
+            "interpolation": "linear"
           },
           {
-            "timeMs": 333,
+            "timeMs": 1,
             "value": 1,
-            "interpolation": "hold"
+            "interpolation": "linear",
+            "bezierHandles": [
+              0,
+              0,
+              1,
+              1
+            ]
           },
           {
-            "timeMs": 500,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 667,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 833,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1000,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1167,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1333,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1500,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1667,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1833,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2000,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2167,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2333,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2500,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2667,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2833,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 3000,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 3167,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 3333,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 3500,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 3667,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 3833,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 4000,
+            "timeMs": 3999,
             "value": 1,
             "interpolation": "hold"
           },
           {
             "timeMs": 4000,
             "value": 0,
+            "interpolation": "linear",
+            "bezierHandles": [
+              0,
+              0,
+              1,
+              1
+            ]
+          }
+        ],
+        "mode": "absolute"
+      },
+      "color": {
+        "paramId": "color",
+        "valueType": "color",
+        "range": [
+          0,
+          360
+        ],
+        "defaultValue": {
+          "h": 0,
+          "s": 0,
+          "l": 90
+        },
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": {
+              "h": 0,
+              "s": 0,
+              "l": 90
+            },
             "interpolation": "hold"
           }
         ],
         "mode": "absolute"
       },
       "strobe": {
-        "paramId": "strobe",
+        "paramId": "strobeRate",
         "valueType": "number",
         "range": [
           0,
@@ -174,127 +105,12 @@
         "keyframes": [
           {
             "timeMs": 0,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 167,
             "value": 0,
             "interpolation": "hold"
           },
           {
-            "timeMs": 333,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 500,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 667,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 833,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1000,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1167,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1333,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1500,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1667,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1833,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2000,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2167,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2333,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2500,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2667,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 2833,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 3000,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 3167,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 3333,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 3500,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 3667,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 3833,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 4000,
-            "value": 1,
+            "timeMs": 0,
+            "value": 0.75,
             "interpolation": "hold"
           },
           {
@@ -309,54 +125,61 @@
     "staticParams": {
       "dominantColorH": 0,
       "dominantColorS": 0,
-      "dominantColorL": 95,
+      "dominantColorL": 90,
       "isOneShot": false,
-      "legacyMixBus": "global",
-      "movementTransitionMs": 0,
-      "bpmRef": 128
+      "legacyMixBus": "htp",
+      "bpmRef": 128,
+      "flashDurationMs": 33,
+      "flashProbability": 0.08,
+      "tickIntervalMs": 100
     },
     "cognitiveDNA": {
       "genome": {
-        "aggression": 0.55,
-        "chaos": 0.35,
-        "organicity": 0.42
+        "aggression": 0.7000000000000001,
+        "chaos": 0.75,
+        "organicity": 0.1
       },
-      "textureAffinity": "universal",
+      "textureAffinity": "dirty",
       "compatibleVibes": [
-        "techno-club"
+        "techno",
+        "minimal"
       ],
-      "validSections": [],
+      "validSections": [
+        "build",
+        "active",
+        "breakdown"
+      ],
       "energyZone": {
         "min": "gentle",
-        "max": "gentle"
+        "max": "active"
       },
       "aggressionRange": {
-        "min": 0.55,
-        "max": 0.55
+        "min": 0,
+        "max": 0.8500000000000001
       },
       "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
-        "base": 0.55,
-        "energyMultiplier": 1.175,
-        "vibeBonus": 0.1
+        "base": 0.7250000000000001,
+        "energyMultiplier": 1.05,
+        "vibeBonus": 0.05
       },
-      "gpuCost": 0.6,
-      "fatigueImpact": 0.06,
+      "gpuCost": 0.3,
+      "fatigueImpact": 0.18,
       "minDurationMs": 1000,
-      "cooldownMs": 5000,
+      "cooldownMs": 6000,
       "isStrobe": true,
       "isDivineCandidate": false,
       "isHeavyCandidate": false,
       "zScoreGuards": {
-        "requireRising": true,
-        "minimumZ": 1.2,
-        "minimumEnergy": 0.7
+        "requireRising": false,
+        "minimumZ": 2,
+        "minimumEnergy": null
       }
     },
     "executionHints": {
-      "overlayMode": "absolute",
+      "overlayMode": "relative",
       "phaseConfig": {
         "spread": 0,
         "symmetry": "linear",
@@ -364,7 +187,7 @@
         "direction": 1
       },
       "intensityScaling": "energyDriven",
-      "fixtureTargeting": "strobes"
+      "fixtureTargeting": "pars"
     },
     "safetyDeclaration": {
       "maxStrobeFreqHz": 3,
@@ -372,5 +195,5 @@
       "communityTrusted": true
     }
   },
-  "checksum": "sha256:a8d2bc0d67bc64ce8a7b84b48a68e1930453b611cfd9dad126467266af571c18"
+  "checksum": "sha256:a4ed9236fa3605c60f4bc59199cefb92631810ab2907dd2ae9f1deb008d1e72a"
 }

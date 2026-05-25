@@ -1,0 +1,219 @@
+{
+  "$schema": "hephaestus/v2.1",
+  "version": "2.1.0",
+  "clip": {
+    "id": "static_pulse",
+    "name": "Static Pulse",
+    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "category": "physical",
+    "tags": [
+      "stab",
+      "uv",
+      "laser",
+      "techno"
+    ],
+    "vibeCompat": [
+      "techno",
+      "minimal",
+      "acid"
+    ],
+    "zones": [
+      "active",
+      "intense"
+    ],
+    "mixBus": "global",
+    "priority": 70,
+    "durationMs": 5000,
+    "effectType": "heph_custom",
+    "curves": {
+      "intensity": {
+        "paramId": "intensity",
+        "valueType": "number",
+        "range": [
+          0,
+          1
+        ],
+        "defaultValue": 0,
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": 0,
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 100,
+            "value": 0.75,
+            "interpolation": "linear",
+            "bezierHandles": [
+              0,
+              0,
+              1,
+              1
+            ]
+          },
+          {
+            "timeMs": 4800,
+            "value": 0.75,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 5000,
+            "value": 0,
+            "interpolation": "linear",
+            "bezierHandles": [
+              0,
+              0,
+              1,
+              1
+            ]
+          }
+        ],
+        "mode": "absolute"
+      },
+      "color": {
+        "paramId": "color",
+        "valueType": "color",
+        "range": [
+          0,
+          360
+        ],
+        "defaultValue": {
+          "h": 270,
+          "s": 100,
+          "l": 35
+        },
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": {
+              "h": 270,
+              "s": 100,
+              "l": 35
+            },
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 2500,
+            "value": {
+              "h": 120,
+              "s": 100,
+              "l": 50
+            },
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 5000,
+            "value": {
+              "h": 210,
+              "s": 100,
+              "l": 55
+            },
+            "interpolation": "hold"
+          }
+        ],
+        "mode": "absolute"
+      },
+      "strobe": {
+        "paramId": "strobeRate",
+        "valueType": "number",
+        "range": [
+          0,
+          1
+        ],
+        "defaultValue": 0,
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 0,
+            "value": 0.6666666666666666,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 5000,
+            "value": 0,
+            "interpolation": "hold"
+          }
+        ],
+        "mode": "absolute"
+      }
+    },
+    "staticParams": {
+      "dominantColorH": 270,
+      "dominantColorS": 100,
+      "dominantColorL": 35,
+      "isOneShot": false,
+      "legacyMixBus": "global",
+      "bpmRef": 128,
+      "flashDurationMs": 50,
+      "minBeatsInterval": 2,
+      "maxBeatsInterval": 4
+    },
+    "cognitiveDNA": {
+      "genome": {
+        "aggression": 0.75,
+        "chaos": 0.75,
+        "organicity": 0.1
+      },
+      "textureAffinity": "dirty",
+      "compatibleVibes": [
+        "techno",
+        "minimal",
+        "acid"
+      ],
+      "validSections": [
+        "build",
+        "drop",
+        "breakdown"
+      ],
+      "energyZone": {
+        "min": "active",
+        "max": "intense"
+      },
+      "aggressionRange": {
+        "min": 0,
+        "max": 0.9
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.75,
+        "energyMultiplier": 1.05,
+        "vibeBonus": 0.05
+      },
+      "gpuCost": 0.3,
+      "fatigueImpact": 0.18,
+      "minDurationMs": 1000,
+      "cooldownMs": 7500,
+      "isStrobe": true,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": false,
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": 2,
+        "minimumEnergy": null
+      }
+    },
+    "executionHints": {
+      "overlayMode": "absolute",
+      "phaseConfig": {
+        "spread": 0,
+        "symmetry": "linear",
+        "wings": 1,
+        "direction": 1
+      },
+      "intensityScaling": "energyDriven",
+      "fixtureTargeting": "pars"
+    },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 2,
+      "containsRapidFlash": false,
+      "communityTrusted": true
+    }
+  },
+  "checksum": "sha256:42ee3f959058597a1ce8ae8839af5357fe423959caa5177968737aa4d90f5cc3"
+}

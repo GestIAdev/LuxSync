@@ -42,15 +42,15 @@ import {
   getDNAAnalyzer,
   type TargetDNA,
   type AudioMetricsForDNA,
-  type MusicalContextForDNA,
-  type TextureAffinity
+  type MusicalContextForDNA
 } from '../dna/EffectDNA'
-
-// 🎨 WAVE 1029: THE DREAMER - SpectralContext for Texture Awareness
-import type { SpectralTexture, SpectralContext } from '../../protocol/MusicalContext'
 
 // ⚡ WAVE 4824: DYNAMIC EFFECT REGISTRY — fuente única de verdad del arsenal
 import { getDynamicEffectRegistry } from '../../arsenal/DynamicEffectRegistry'
+
+// ⚡ WAVE 4846: SPATIAL COGNITION — Hardware Guard
+import { getTitanOrchestrator } from '../../orchestrator/TitanOrchestrator'
+import { normalizeZone } from '../../stage/ShowFileV2'
 
 // SelenePalette type (minimal definition for Phase 1)
 interface SelenePalette {
@@ -617,6 +617,16 @@ export class EffectDreamSimulator {
     let blockedCount = 0
     let zoneBlockedCount = vibeAllowedEffects.length - zoneFilteredEffects.length
     
+    // ⚡ WAVE 4846: SPATIAL COGNITION — Hardware manifest snapshot (once per call)
+    // Construimos el Set de CanonicalZones activas UNA SOLA VEZ antes del loop.
+    // Cada fixture habilitado contribuye su zona normalizada → el guard compara contra este Set.
+    const _hwManifest = getTitanOrchestrator().getFixturesForZoneMapping()
+    const activeZoneSet = new Set<string>(
+      _hwManifest
+        .filter(f => f.enabled !== false)
+        .map(f => normalizeZone(f.zone))
+    )
+
     // Generar candidatos SOLO de efectos filtrados
     for (const effect of zoneFilteredEffects) {
       // 🎭 WAVE 920.2: Skip efectos bloqueados por mood (no gastar CPU simulando)
@@ -626,46 +636,52 @@ export class EffectDreamSimulator {
       }
       
       // ═══════════════════════════════════════════════════════════════════════════
-      // 🔥 WAVE 1179: STROBE Z-GUARD - Los strobes SOLO disparan en energía SUBIENDO
-      // 💥 WAVE 1180: SEISMIC SNAP Z-GUARD - Añadido al filtro (flash estroboscópico)
+      // ⚡ WAVE 4843: COGNITIVE BRIDGE — STROBE Z-GUARD + ZSCORE GUARDS
       // ═══════════════════════════════════════════════════════════════════════════
-      // PROBLEMA: industrial_strobe se disparó con Z=-1.5 (valle profundo).
-      // seismic_snap se disparó con Z=-0.7 (energía cayendo).
-      // Los efectos estroboscópicos/flash son efectos de IMPACTO que deben coincidir
-      // con momentos de energía ASCENDENTE, no descendente. Disparar un strobe/snap
-      // en un valle es como gritar en un funeral.
-      // 
-      // CRITERIO: Si el efecto es strobe o seismic_snap y Z <= 0 → NO CANDIDATO
+      // WAVE 1179/1180 usaban una lista hardcodeada STROBE_EFFECTS y un nombre
+      // hardcodeado ('gatling_raid'). Ambos destruidos en WAVE 4843.
+      //
+      // NUEVO COMPORTAMIENTO (lee directamente del .lfx):
+      //   1. Si entry.simMeta.isStrobe === true y zScore <= 0 → skip
+      //      (los efectos strobe se auto-declaran strobe en su JSON)
+      //
+      //   2. Si entry.simMeta.zScoreGuards.minimumZ existe y zScore < minimumZ → skip
+      //      (cualquier efecto puede declarar su guard mínimo de Z-Score)
+      //
+      //   3. Si entry.simMeta.zScoreGuards.minimumEnergy existe y energy < minimumEnergy → skip
+      //      (idem para energía)
+      //
+      // Esto convierte los guards en metadatos del efecto, no del motor.
       // ═══════════════════════════════════════════════════════════════════════════
-      const STROBE_EFFECTS = ['industrial_strobe', 'strobe_storm', 'strobe_burst', 'ambient_strobe', 'seismic_snap']
-      const isStrobeEffect = STROBE_EFFECTS.includes(effect)
-      if (isStrobeEffect && zScore <= 0) {
-        // 🔇 Silent skip - strobe/snap in falling energy = bad match
-        continue
-      }
-      
-      // ═══════════════════════════════════════════════════════════════════════════
-      // 🔫 WAVE 1180: GATLING PEAK REQUIREMENT - La ametralladora necesita PICOS
-      // ═══════════════════════════════════════════════════════════════════════════
-      // PROBLEMA: gatling_raid (DNA: aggression=0.85, chaos=0.60) se disparó en
-      // momentos medios (I:0.45 Z:0.4). Es una AMETRALLADORA de 6 balas x 3 sweeps.
-      // Es VIOLENCE pura, no un efecto casual.
-      // 
-      // CRITERIO: gatling_raid necesita:
-      // - Intensidad >= 0.65 (por encima del promedio)
-      // - Z-Score >= 0.8 (energía subiendo fuerte, no plano)
-      // 
-      // FILOSOFÍA: Gatling no es para "active" genérico, es para BUILDS PRE-DROP
-      // y PEAKS con momentum fuerte. Es el "pre-drop snare roll" de los efectos.
-      // ═══════════════════════════════════════════════════════════════════════════
-      if (effect === 'gatling_raid') {
-        const intensity = this.calculateIntensity(prediction.predictedEnergy, effect)
-        if (intensity < 0.65 || zScore < 0.8) {
-          // 🔇 Silent skip - gatling needs peak conditions
+      const registry = getDynamicEffectRegistry()
+      const entry = registry.getEntry(effect)
+      if (entry) {
+        const { isStrobe, zScoreGuards } = entry.simMeta
+        const { energy } = context
+
+        // Guard 1: Strobe en energía descendente
+        if (isStrobe && zScore <= 0) {
+          continue
+        }
+
+        // Guard 2: minimumZ declarado en el .lfx
+        if (zScoreGuards.minimumZ !== null && zScore < zScoreGuards.minimumZ) {
+          continue
+        }
+
+        // Guard 3: minimumEnergy declarado en el .lfx
+        if (zScoreGuards.minimumEnergy !== null && energy < zScoreGuards.minimumEnergy) {
+          continue
+        }
+
+        // Guard 4: Hardware Compatibility — fixtureTargeting vs active manifest
+        // ⚡ WAVE 4846: Si el .lfx exige un hardware específico (movers, strobes, pars…)
+        // que no está presente en el rig actual, el candidato se descarta aquí.
+        // 'all' = universal, siempre pasa. Fail-open: targeting desconocido → no bloquea.
+        if (!this._isTargetingAvailable(entry.execHints.fixtureTargeting, activeZoneSet)) {
           continue
         }
       }
-
       
       // Calcular intensidad basada en energía predicha
       const intensity = this.calculateIntensity(prediction.predictedEnergy, effect)
@@ -706,6 +722,38 @@ export class EffectDreamSimulator {
     return candidates
   }
   
+  /**
+   * ⚡ WAVE 4846: SPATIAL COGNITION — Hardware Guard
+   *
+   * Verifica si el hardware presente en el rig satisface el requisito declarado
+   * en `fixtureTargeting` del .lfx. Opera sobre el Set de CanonicalZones activas
+   * construido una vez en `generateCandidates()` con normalizeZone().
+   *
+   * Mapping FixtureTargeting → CanonicalZone:
+   *   'all'        → universal, siempre true
+   *   'movers'     → movers-left | movers-right
+   *   'pars'       → front | back | floor
+   *   'strobes'    → center  (normalizeZone('strobes') = 'center')
+   *   'zone-front' → front
+   *   'zone-back'  → back
+   *   'zone-left'  → movers-left
+   *   'zone-right' → movers-right
+   *   unknown      → true  (fail-open: no bloqueamos targeting futuro desconocido)
+   */
+  private _isTargetingAvailable(targeting: string, activeZones: Set<string>): boolean {
+    switch (targeting) {
+      case 'all':   return true
+      case 'movers':    return activeZones.has('movers-left') || activeZones.has('movers-right')
+      case 'pars':      return activeZones.has('front') || activeZones.has('back') || activeZones.has('floor')
+      case 'strobes':   return activeZones.has('center')
+      case 'zone-front': return activeZones.has('front')
+      case 'zone-back':  return activeZones.has('back')
+      case 'zone-left':  return activeZones.has('movers-left')
+      case 'zone-right': return activeZones.has('movers-right')
+      default:      return true
+    }
+  }
+
   private calculateIntensity(predictedEnergy: number, effect: string): number {
     // Intensidad base de la energía predicha
     let intensity = predictedEnergy
@@ -835,203 +883,19 @@ export class EffectDreamSimulator {
   
   // ═══════════════════════════════════════════════════════════════
   // 🧬 WAVE 970: DNA-BASED CONTEXTUAL RELEVANCE
-  // 🎨 WAVE 1029: THE DREAMER - Texture DNA Integration
   // ═══════════════════════════════════════════════════════════════
-  
-  /**
-   * 🎨 WAVE 1029: THE DREAMER - Ghost Input System
-   * 
-   * Permite inyectar un SpectralContext falso para testing/simulación.
-   * Cuando está seteado, calculateDNARelevance usará este contexto
-   * en lugar de derivar uno del AudienceSafetyContext.
-   * 
-   * Uso:
-   * ```ts
-   * simulator.setGhostSpectralContext({ texture: 'harsh', clarity: 0.3, harshness: 0.8, ... })
-   * const result = simulator.dreamEffects(...) // Usará ghost context
-   * simulator.clearGhostSpectralContext()
-   * ```
-   */
-  private ghostSpectralContext: SpectralContext | null = null
-  
-  /**
-   * 🎨 WAVE 1029: Set ghost spectral context for testing
-   */
-  setGhostSpectralContext(context: SpectralContext): void {
-    this.ghostSpectralContext = context
-    console.log(`[DREAM_SIMULATOR] 👻 Ghost SpectralContext SET: texture=${context.texture}, clarity=${context.clarity.toFixed(2)}, harshness=${context.harshness.toFixed(2)}`)
-  }
-  
-  /**
-   * 🎨 WAVE 1029: Clear ghost spectral context
-   */
-  clearGhostSpectralContext(): void {
-    this.ghostSpectralContext = null
-    console.log(`[DREAM_SIMULATOR] 👻 Ghost SpectralContext CLEARED`)
-  }
-  
-  /**
-   * 🎨 WAVE 1029: Check if effect is compatible with current spectral texture
-   * 
-   * REGLAS:
-   * - 'dirty' effects: ONLY with harsh/noisy textures (harshness > 0.5)
-   * - 'clean' effects: ONLY with clean/crystal textures (clarity > 0.6, harshness < 0.4)
-   * - 'universal': Always compatible
-   * 
-   * @returns { compatible: boolean, reason: string, penalty: number }
-   */
-  private checkTextureCompatibility(
-    effectId: string,
-    spectralContext: SpectralContext | null,
-    vibeId?: string  // 🔓 WAVE 2188: DREAM TEXTURE JAILBREAK
-  ): { compatible: boolean; reason: string; penalty: number } {
-    // 🔓 WAVE 2188: DREAM TEXTURE JAILBREAK — fiesta-latina bypassa todo
-    if (vibeId === 'fiesta-latina') {
-      return { compatible: true, reason: 'JAILBREAK: fiesta-latina bypasses Dream texture rules', penalty: 0 }
-    }
-
-    // Si no hay contexto espectral, asumir universal
-    if (!spectralContext) {
-      return { compatible: true, reason: 'No spectral context - assuming universal', penalty: 0 }
-    }
-    
-    const effectEntry = getDynamicEffectRegistry().getEntry(effectId)
-    const textureAffinity: TextureAffinity = effectEntry?.textureAffinity ?? 'universal'
-    
-    // 🌐 UNIVERSAL: Siempre compatible
-    if (textureAffinity === 'universal') {
-      return { compatible: true, reason: 'Universal affinity', penalty: 0 }
-    }
-    
-    // 🔥 DIRTY: Requiere texturas sucias (harsh/noisy)
-    if (textureAffinity === 'dirty') {
-      const isHarsh = spectralContext.texture === 'harsh' || 
-                      spectralContext.texture === 'noisy' ||
-                      spectralContext.harshness > 0.5
-      
-      if (isHarsh) {
-        // BONUS: +0.15 relevance por match perfecto
-        return { 
-          compatible: true, 
-          reason: `Dirty effect matches ${spectralContext.texture} texture`, 
-          penalty: -0.15  // Negative penalty = bonus
-        }
-      } else {
-        // INCOMPATIBLE: Efecto dirty con textura limpia
-        return { 
-          compatible: false, 
-          reason: `Dirty effect REJECTED - context is ${spectralContext.texture} (clarity=${spectralContext.clarity.toFixed(2)})`, 
-          penalty: 1.0  // Total rejection
-        }
-      }
-    }
-    
-    // 💎 CLEAN: Requiere texturas limpias (crystal/clean)
-    if (textureAffinity === 'clean') {
-      const isClean = spectralContext.texture === 'clean' || 
-                      spectralContext.texture === 'warm' ||
-                      (spectralContext.clarity > 0.6 && spectralContext.harshness < 0.4)
-      
-      if (isClean) {
-        // BONUS: +0.15 relevance por match perfecto
-        return { 
-          compatible: true, 
-          reason: `Clean effect matches ${spectralContext.texture} texture`, 
-          penalty: -0.15  // Negative penalty = bonus
-        }
-      } else {
-        // INCOMPATIBLE: Efecto clean con textura sucia
-        return { 
-          compatible: false, 
-          reason: `Clean effect REJECTED - context is ${spectralContext.texture} (harshness=${spectralContext.harshness.toFixed(2)})`, 
-          penalty: 1.0  // Total rejection
-        }
-      }
-    }
-    
-    return { compatible: true, reason: 'Default pass', penalty: 0 }
-  }
-  
-  /**
-   * 🎨 WAVE 1029: Derive SpectralContext from AudienceSafetyContext
-   * 🧬 WAVE 2093 COG-3: Prioridad: context.spectral (REAL) > ghost > vibe fallback
-   * 
-   * Antes: hardcodeaba textura por vibe (chill=clean, techno=harsh).
-   * Ahora: usa datos reales del análisis FFT cuando están disponibles.
-   * Dark Ambient ya no se trata como "clean" solo por ser chill-lounge.
-   */
-  private deriveSpectralContext(context: AudienceSafetyContext, state: SystemState): SpectralContext {
-    // 🧬 WAVE 2093 COG-3: PRIORIDAD 1 — Datos REALES del sensory layer
-    if (context.spectral) {
-      return context.spectral
-    }
-
-    // PRIORIDAD 2 — Ghost context (inyectado para testing)
-    if (this.ghostSpectralContext) {
-      return this.ghostSpectralContext
-    }
-    
-    // PRIORIDAD 3 — Fallback: derivar del vibe (legacy, última línea de defensa)
-    let texture: SpectralTexture = 'warm'  // Default safe
-    let harshness = 0.4
-    let clarity = 0.5
-    
-    if (context.vibe.includes('techno') || context.vibe.includes('industrial')) {
-      texture = state.energy > 0.7 ? 'harsh' : 'noisy'
-      harshness = 0.5 + (state.energy * 0.3)
-      clarity = 0.4
-    } else if (context.vibe.includes('chill') || context.vibe.includes('ambient')) {
-      texture = 'clean'
-      harshness = 0.2
-      clarity = 0.8
-    } else if (context.vibe.includes('rock') || context.vibe.includes('pop-rock')) {
-      if (state.energy > 0.75) {
-        texture = 'harsh'
-        harshness = 0.6
-        clarity = 0.5
-      } else {
-        texture = 'warm'
-        harshness = 0.35
-        clarity = 0.65
-      }
-    } else if (context.vibe.includes('latino')) {
-      texture = 'warm'
-      harshness = 0.3
-      clarity = 0.7
-    }
-    
-    return {
-      texture,
-      clarity,
-      harshness,
-      flatness: 0.5,  // Default
-      centroid: 2500, // Default ~2.5kHz
-      bands: { 
-        subBass: 0.5, 
-        bass: 0.5, 
-        lowMid: 0.5, 
-        mid: 0.5, 
-        highMid: 0.5, 
-        treble: 0.5, 
-        ultraAir: 0.3 
-      }
-    }
-  }
 
   /**
    * Calcula la relevancia contextual de un efecto usando DNA matching.
    * Reemplaza el antiguo sistema de "belleza" con algo más inteligente.
    * 
-   * 🎨 WAVE 1029: Ahora incluye verificación de textura espectral.
-   * Un efecto incompatible con la textura actual será RECHAZADO (relevance=0).
-   * 
-   * @returns { relevance: 0-1, distance: 0-√3, targetDNA: TargetDNA, textureRejected: boolean }
+  * @returns { relevance: 0-1, distance: 0-√3, targetDNA: TargetDNA }
    */
   private calculateDNARelevance(
     effect: EffectCandidate,
     state: SystemState,
     context: AudienceSafetyContext
-  ): { relevance: number; distance: number; targetDNA: TargetDNA; textureRejected?: boolean } {
+  ): { relevance: number; distance: number; targetDNA: TargetDNA } {
     // Obtener el DNA del efecto del Registry dinámico
     const effectEntry = getDynamicEffectRegistry().getEntry(effect.effect)
     
@@ -1045,21 +909,9 @@ export class EffectDreamSimulator {
       }
     }
     
-    // 🎨 WAVE 1029: Check texture compatibility FIRST
-    const spectralContext = this.deriveSpectralContext(context, state)
-    const textureCheck = this.checkTextureCompatibility(effect.effect, spectralContext, context.vibe)
-    
-    if (!textureCheck.compatible) {
-      // REJECTED by texture filter - return zero relevance
-      // � WAVE 2104.1: DIAGNOSTIC — Log texture rejections (estábamos ciegos aquí)
-      console.log(`[DREAM_TEXTURE] 🎨 REJECTED: ${effect.effect} (affinity=${getDynamicEffectRegistry().getEntry(effect.effect)?.textureAffinity ?? 'unknown'}) | texture=${spectralContext.texture} harsh=${spectralContext.harshness.toFixed(2)} clarity=${spectralContext.clarity.toFixed(2)}`)
-      return {
-        relevance: 0,
-        distance: Math.sqrt(3),  // Máxima distancia
-        targetDNA: { aggression: 0.5, chaos: 0.5, organicity: 0.5, confidence: 0.5 },
-        textureRejected: true
-      }
-    }
+    // ⚡ WAVE 4849: Texture neutralized in Selene runtime (no reject/boost by texture)
+    const harshness = context.spectral?.harshness ?? 0.4
+    const spectralFlatness = context.spectral?.flatness ?? 0.5
     
     // Construir MusicalContext para el DNAAnalyzer
     // Derivamos todo lo que podemos de AudienceSafetyContext + SystemState
@@ -1091,8 +943,8 @@ export class EffectDreamSimulator {
       mid: 0.5,
       treble: context.vibe.includes('techno') ? 0.6 : 0.4,
       volume: state.energy,
-      harshness: spectralContext.harshness,  // 🎨 WAVE 1029: Usar spectralContext
-      spectralFlatness: spectralContext.flatness
+      harshness,
+      spectralFlatness
     }
     
     // Usar el DNAAnalyzer singleton para derivar el Target DNA
@@ -1102,7 +954,7 @@ export class EffectDreamSimulator {
     // 🩸 WAVE 2104.1: DIAGNOSTIC — Target DNA (throttled: 1 per effect per dream cycle)
     // Solo loguear para el PRIMER efecto evaluado en cada dream cycle (evitar spam)
     if (this.simulationCount % 5 === 0 && effect.effect === 'acid_sweep') {
-      console.log(`[DNA_TARGET] 🎯 Target: A=${targetDNA.aggression.toFixed(2)} C=${targetDNA.chaos.toFixed(2)} O=${targetDNA.organicity.toFixed(2)} | E=${state.energy.toFixed(2)} texture=${spectralContext.texture} harsh=${spectralContext.harshness.toFixed(2)}`)
+      console.log(`[DNA_TARGET] 🎯 Target: A=${targetDNA.aggression.toFixed(2)} C=${targetDNA.chaos.toFixed(2)} O=${targetDNA.organicity.toFixed(2)} | E=${state.energy.toFixed(2)} H=${harshness.toFixed(2)}`)
     }
     
     // Calcular distancia euclidiana 3D usando dna del Registry
@@ -1117,9 +969,7 @@ export class EffectDreamSimulator {
     const MAX_DISTANCE = Math.sqrt(3)
     let relevance = 1.0 - (distance / MAX_DISTANCE)
     
-    // 🎨 WAVE 1029: Apply texture bonus/penalty (selectionBias desde execHints si disponible)
-    const selectionBias = (effectEntry as any).selectionBias ?? 1
-    relevance = Math.max(0, Math.min(1, (relevance - textureCheck.penalty) * selectionBias))
+    relevance = Math.max(0, Math.min(1, relevance))
     
     return { relevance, distance, targetDNA }
   }

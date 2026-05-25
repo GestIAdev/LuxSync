@@ -96,6 +96,12 @@ import { ChronosAetherAdapter } from '../aether/adapters/ChronosAetherAdapter'
 import { HephaestusAetherAdapter } from '../aether/adapters/HephaestusAetherAdapter'
 // 🏛️ WAVE 2483: Infinite Arsenal — bridge wiring (playHook → HephaestusRuntime.play).
 import { getSeleneHephBridge } from '../arsenal/SeleneHephBridge'
+import type { ResolvedPixelParams, RenderHook } from '../arsenal/SeleneHephBridge'
+import type { RegistryEntry } from '../arsenal/lfxTypes'
+// 🎨 WAVE 4812: Aether Canvas — Pixel Mapping engine
+import { AetherCanvasManager } from '../aether/canvas/AetherCanvasManager'
+import { PixelMapAetherAdapter } from '../aether/canvas/PixelMapAetherAdapter'
+import { PlasmaRenderer } from '../aether/canvas/PlasmaRenderer'
 // 🛂 WAVE 4557: Aether Safety Middleware — La Aduana Aether
 import { AetherSafetyMiddleware } from '../aether/egress/AetherSafetyMiddleware'
 // 🎭 WAVE 4559: THE MIRROR — Projecta estado Aether → FixtureState[] legacy para la UI
@@ -417,6 +423,11 @@ export class TitanOrchestrator {
   private readonly _chronosAetherAdapter = new ChronosAetherAdapter(this._aetherGraph)
   // WAVE 3521: Hephaestus Diamond Data L3+ adapter
   private readonly _hephaestusAetherAdapter = new HephaestusAetherAdapter(this._aetherGraph)
+  // 🎨 WAVE 4812: Aether Canvas — Pixel Mapping engine (patch-time acquire, hot-path ingest)
+  private readonly _aetherCanvasManager = new AetherCanvasManager()
+  private readonly _pixelMapAdapter = new PixelMapAetherAdapter({ targetLayer: 'effect' })
+  /** Active PlasmaRenderer instances keyed by canvasId — lifecycle managed by RenderHook. */
+  private readonly _plasmaRenderers = new Map<string, PlasmaRenderer>()
   private readonly _timelineEngine = timelineEngine
   // FrameContext pre-alloc — mutable in-place, cero alloc en hot-path
   private readonly _aetherAudio: AudioMetrics = {
@@ -757,21 +768,63 @@ export class TitanOrchestrator {
       const bridge = getSeleneHephBridge()
       bridge.setPlayHook((resolved, _entry) => {
         if (!resolved.filePath) return -1
-        // Lazy import: HephaestusRuntime singleton vive en IPCHandlers, que a
-        // su vez importa TitanOrchestrator → resolución circular si lo
-        // hiciéramos en top-level. require() resuelve el ciclo en runtime.
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const { getHephaestusRuntime } = require('./IPCHandlers') as {
-          getHephaestusRuntime: () => import('../hephaestus/runtime/HephaestusRuntime').HephaestusRuntime
-        }
+        // ⚡ WAVE 4913: import top-level (line 48) — la dependencia circular
+        // ya está resuelta por el bundler. El require() lazy fallaba en el
+        // build empaquetado porque no existe un archivo físico ./IPCHandlers.
         const runtime = getHephaestusRuntime()
         const instanceId = runtime.play(resolved.filePath, {
           intensity: resolved.intensity,
           durationOverrideMs: resolved.durationMs,
         })
-        // Bridge contract returns number: success=1 (sentinel), failure=-1.
         return instanceId != null ? 1 : -1
       })
+
+      // 🎨 WAVE 4812: RenderHook — activated for clips with executionDomain='pixel'.
+      // Acquires a VirtualFrameBuffer, binds world samplers from the NodeGraph,
+      // and starts a PlasmaRenderer as the test pattern producer.
+      const renderHook: RenderHook = (resolved: ResolvedPixelParams, _entry: RegistryEntry): string | null => {
+        const hints = resolved.pixelHints
+        const w = hints.preferredResolution?.w ?? 32
+        const h = hints.preferredResolution?.h ?? 32
+        const canvasId = `lfx:plasma:${resolved.effectId}`
+
+        try {
+          // Patch-time: acquire/reuse the VirtualFrameBuffer.
+          this._aetherCanvasManager.acquire(canvasId, w, h)
+
+          // Bind world samplers if graph has positioned nodes.
+          // Falls back to a no-op bind (0 samplers) if graph is empty — the
+          // renderer still produces frames but no intents reach the arbiter.
+          const stageRect = {
+            x0: -this._aetherStageBounds.width  * 0.5,
+            z0: -this._aetherStageBounds.depth  * 0.5,
+            x1:  this._aetherStageBounds.width  * 0.5,
+            z1:  this._aetherStageBounds.depth  * 0.5,
+          }
+          this._pixelMapAdapter.bindWorldSamplers(
+            canvasId,
+            { intensity: resolved.intensity, alphaToDimmer: hints.alphaToDimmer ?? false },
+            this._aetherGraph,
+            stageRect,
+            w,
+            h,
+          )
+
+          // Start (or restart) the PlasmaRenderer for this canvasId.
+          let renderer = this._plasmaRenderers.get(canvasId)
+          if (!renderer) {
+            renderer = new PlasmaRenderer(canvasId, this._aetherCanvasManager)
+            this._plasmaRenderers.set(canvasId, renderer)
+          }
+          renderer.start(performance.now())
+
+          return canvasId
+        } catch (err) {
+          console.warn(`[TitanOrchestrator 🎨] WAVE 4812 renderHook failed for "${resolved.effectId}":`, err)
+          return null
+        }
+      }
+      bridge.setRenderHook(renderHook)
     } catch (err) {
       console.warn('[TitanOrchestrator 🏛️] WAVE 2483 playHook wiring failed:', err)
     }
@@ -2001,6 +2054,16 @@ export class TitanOrchestrator {
         aetherKineticEngine.tick(this._aetherCtx.deltaMs / 1000, aetherArbiter)
       }
 
+      // 🎨 WAVE 4812: Pixel Mapping — tick all active PlasmaRenderers into their
+      // back buffers, then ingest front buffers → L3 intents, before arbitrate().
+      if (this._plasmaRenderers.size > 0) {
+        const tickNow = this._aetherCtx.nowMs
+        for (const renderer of this._plasmaRenderers.values()) {
+          renderer.tick(tickNow)
+        }
+      }
+      this._pixelMapAdapter.ingest(aetherArbiter, this._aetherCanvasManager)
+
       // 3. El Arbiter unifica todas las capas → ArbitratedNodeMap
       aetherArbiter.setSystemIntents(this._aetherBus)
       aetherArbiter.setEffectIntents(this._effectBus.getAll())
@@ -2067,7 +2130,7 @@ export class TitanOrchestrator {
       // 🚨 WAVE 4634: blackoutActive se lee ANTES de project() para sincronizar
       // la UI con el apagón real del DMX (zero desfase visual).
       const blackoutActive = aetherArbiter.isBlackoutActive()
-      this._aetherUIProjector.project(fixtureStates, this._aetherGraph, arbitrated, blackoutActive)
+      this._aetherUIProjector.project(fixtureStates, this._aetherGraph, arbitrated, blackoutActive, this._aetherCtx.deltaMs)
       emitHotFrame()
       // FASE 2: POST-RESOLVE EGRESS — Throttle + virtual skip + send
       // WAVE 4656: Output gate final en orquestador (source of truth Aether).

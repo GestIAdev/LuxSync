@@ -4,20 +4,24 @@
   "clip": {
     "id": "neon_blinder",
     "name": "Neon Blinder",
-    "author": "LuxSync Genesis Migrator / WAVE 4821",
-    "category": "techno",
+    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "category": "physical",
     "tags": [
-      "strobe",
-      "intensity"
+      "blinder",
+      "flash-wall",
+      "peak",
+      "techno"
     ],
     "vibeCompat": [
-      "techno-club"
+      "techno",
+      "industrial"
     ],
     "zones": [
+      "intense",
       "peak"
     ],
     "mixBus": "global",
-    "priority": 90,
+    "priority": 93,
     "durationMs": 1000,
     "effectType": "heph_custom",
     "curves": {
@@ -32,30 +36,89 @@
         "keyframes": [
           {
             "timeMs": 0,
-            "value": 1,
+            "value": 0,
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 50,
+            "value": 0,
             "interpolation": "hold"
           },
           {
-            "timeMs": 266,
+            "timeMs": 51,
             "value": 1,
-            "interpolation": "bezier",
+            "interpolation": "linear",
             "bezierHandles": [
               0,
               0,
-              0.15,
+              1,
               1
             ]
           },
           {
+            "timeMs": 316,
+            "value": 1,
+            "interpolation": "hold"
+          },
+          {
             "timeMs": 1000,
             "value": 0,
+            "interpolation": "linear",
+            "bezierHandles": [
+              0,
+              0,
+              1,
+              1
+            ]
+          }
+        ],
+        "mode": "absolute"
+      },
+      "color": {
+        "paramId": "color",
+        "valueType": "color",
+        "range": [
+          0,
+          360
+        ],
+        "defaultValue": {
+          "h": 185,
+          "s": 100,
+          "l": 55
+        },
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": {
+              "h": 185,
+              "s": 100,
+              "l": 55
+            },
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 500,
+            "value": {
+              "h": 300,
+              "s": 100,
+              "l": 55
+            },
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 1000,
+            "value": {
+              "h": 0,
+              "s": 100,
+              "l": 50
+            },
             "interpolation": "hold"
           }
         ],
         "mode": "absolute"
       },
       "strobe": {
-        "paramId": "strobe",
+        "paramId": "strobeRate",
         "valueType": "number",
         "range": [
           0,
@@ -65,46 +128,16 @@
         "keyframes": [
           {
             "timeMs": 0,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 33,
             "value": 0,
             "interpolation": "hold"
           },
           {
-            "timeMs": 67,
+            "timeMs": 50,
             "value": 1,
             "interpolation": "hold"
           },
           {
-            "timeMs": 100,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 133,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 167,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 200,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 233,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 266,
+            "timeMs": 316,
             "value": 0,
             "interpolation": "hold"
           }
@@ -116,49 +149,55 @@
       "dominantColorH": 185,
       "dominantColorS": 100,
       "dominantColorL": 55,
-      "isOneShot": true,
+      "isOneShot": false,
       "legacyMixBus": "global",
-      "movementTransitionMs": 200,
-      "bpmRef": 128
+      "bpmRef": 128,
+      "attackMs": 50,
+      "strobePhaseMs": 266,
+      "strobeHz": 15
     },
     "cognitiveDNA": {
       "genome": {
-        "aggression": 0.92,
-        "chaos": 0.35,
+        "aggression": 0.9800000000000001,
+        "chaos": 0.75,
         "organicity": 0.1
       },
       "textureAffinity": "dirty",
       "compatibleVibes": [
-        "techno-club"
+        "techno",
+        "industrial"
       ],
-      "validSections": [],
+      "validSections": [
+        "drop",
+        "peak"
+      ],
       "energyZone": {
-        "min": "peak",
+        "min": "intense",
         "max": "peak"
       },
       "aggressionRange": {
-        "min": 0.92,
-        "max": 0.92
+        "min": 0,
+        "max": 1
       },
-      "spatialBehavior": "absolute"
+      "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
-        "base": 0.9,
-        "energyMultiplier": 1.175,
-        "vibeBonus": 0.1
+        "base": 0.865,
+        "energyMultiplier": 1.05,
+        "vibeBonus": 0.05
       },
-      "gpuCost": 0.6,
-      "fatigueImpact": 0.25,
+      "gpuCost": 0.3,
+      "fatigueImpact": 0.18,
       "minDurationMs": 1000,
-      "cooldownMs": 8000,
+      "cooldownMs": 3000,
       "isStrobe": true,
       "isDivineCandidate": true,
-      "isHeavyCandidate": false,
+      "isHeavyCandidate": true,
       "zScoreGuards": {
         "requireRising": true,
-        "minimumZ": 1.8,
-        "minimumEnergy": 0.85
+        "minimumZ": 2,
+        "minimumEnergy": 0.7
       }
     },
     "executionHints": {
@@ -169,8 +208,8 @@
         "wings": 1,
         "direction": 1
       },
-      "intensityScaling": "fixed",
-      "fixtureTargeting": "strobes"
+      "intensityScaling": "energyDriven",
+      "fixtureTargeting": "all"
     },
     "safetyDeclaration": {
       "maxStrobeFreqHz": 15,
@@ -178,5 +217,5 @@
       "communityTrusted": true
     }
   },
-  "checksum": "sha256:a5d73d9f58df892cc5e43874893dd54936ef72121f29b1f6a386002a312e9cc4"
+  "checksum": "sha256:9b1238675ff89fd1d69c5e65fd3dcc09c2c037dfa4670425e812bad749a10449"
 }

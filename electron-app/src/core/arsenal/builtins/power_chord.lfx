@@ -4,21 +4,25 @@
   "clip": {
     "id": "power_chord",
     "name": "Power Chord",
-    "author": "LuxSync Genesis Migrator / WAVE 4821",
-    "category": "pop-rock",
+    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "category": "physical",
     "tags": [
-      "strobe",
-      "accent"
+      "flash",
+      "chord",
+      "rock",
+      "poprock"
     ],
     "vibeCompat": [
+      "rock",
       "pop-rock"
     ],
     "zones": [
-      "intense"
+      "intense",
+      "peak"
     ],
     "mixBus": "global",
-    "priority": 80,
-    "durationMs": 1000,
+    "priority": 92,
+    "durationMs": 2000,
     "effectType": "heph_custom",
     "curves": {
       "intensity": {
@@ -33,24 +37,65 @@
           {
             "timeMs": 0,
             "value": 0,
-            "interpolation": "bezier",
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 10,
+            "value": 1,
+            "interpolation": "linear",
             "bezierHandles": [
-              0.9099999999999999,
               0,
-              0.1,
+              0,
+              1,
               1
             ]
           },
           {
-            "timeMs": 1000,
+            "timeMs": 410,
             "value": 1,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 2000,
+            "value": 0,
+            "interpolation": "linear",
+            "bezierHandles": [
+              0,
+              0,
+              1,
+              1
+            ]
+          }
+        ],
+        "mode": "absolute"
+      },
+      "color": {
+        "paramId": "color",
+        "valueType": "color",
+        "range": [
+          0,
+          360
+        ],
+        "defaultValue": {
+          "h": 40,
+          "s": 80,
+          "l": 85
+        },
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": {
+              "h": 40,
+              "s": 80,
+              "l": 85
+            },
             "interpolation": "hold"
           }
         ],
         "mode": "absolute"
       },
       "strobe": {
-        "paramId": "strobe",
+        "paramId": "strobeRate",
         "valueType": "number",
         "range": [
           0,
@@ -60,102 +105,12 @@
         "keyframes": [
           {
             "timeMs": 0,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 50,
             "value": 0,
             "interpolation": "hold"
           },
           {
-            "timeMs": 100,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 150,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 200,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 250,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 300,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 350,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 400,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 450,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 500,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 550,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 600,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 650,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 700,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 750,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 800,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 850,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 900,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 950,
-            "value": 0,
+            "timeMs": 410,
+            "value": 0.5333333333333333,
             "interpolation": "hold"
           },
           {
@@ -168,51 +123,54 @@
       }
     },
     "staticParams": {
-      "dominantColorH": 28,
-      "dominantColorS": 100,
-      "dominantColorL": 60,
+      "dominantColorH": 40,
+      "dominantColorS": 80,
+      "dominantColorL": 85,
       "isOneShot": false,
       "legacyMixBus": "global",
-      "movementTransitionMs": 0,
       "bpmRef": 128
     },
     "cognitiveDNA": {
       "genome": {
-        "aggression": 0.88,
-        "chaos": 0.52,
-        "organicity": 0.12
+        "aggression": 0.9700000000000001,
+        "chaos": 0.75,
+        "organicity": 0.1
       },
       "textureAffinity": "dirty",
       "compatibleVibes": [
+        "rock",
         "pop-rock"
       ],
-      "validSections": [],
+      "validSections": [
+        "drop",
+        "peak"
+      ],
       "energyZone": {
         "min": "intense",
-        "max": "intense"
+        "max": "peak"
       },
       "aggressionRange": {
-        "min": 0.88,
-        "max": 0.88
+        "min": 0,
+        "max": 1
       },
       "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
-        "base": 0.7,
-        "energyMultiplier": 1.26,
-        "vibeBonus": 0.1
+        "base": 0.8600000000000001,
+        "energyMultiplier": 1.05,
+        "vibeBonus": 0.05
       },
-      "gpuCost": 0.6,
-      "fatigueImpact": 0.15,
+      "gpuCost": 0.3,
+      "fatigueImpact": 0.18,
       "minDurationMs": 1000,
-      "cooldownMs": 5000,
+      "cooldownMs": 3000,
       "isStrobe": true,
-      "isDivineCandidate": false,
-      "isHeavyCandidate": false,
+      "isDivineCandidate": true,
+      "isHeavyCandidate": true,
       "zScoreGuards": {
         "requireRising": true,
-        "minimumZ": 1.2,
+        "minimumZ": 2,
         "minimumEnergy": 0.7
       }
     },
@@ -224,14 +182,14 @@
         "wings": 1,
         "direction": 1
       },
-      "intensityScaling": "fixed",
-      "fixtureTargeting": "strobes"
+      "intensityScaling": "energyDriven",
+      "fixtureTargeting": "pars"
     },
     "safetyDeclaration": {
-      "maxStrobeFreqHz": 10,
+      "maxStrobeFreqHz": 8,
       "containsRapidFlash": true,
       "communityTrusted": true
     }
   },
-  "checksum": "sha256:4a4ad83ec486a5b286032906a64e610c121048294d8bba16f029fc2082b6a741"
+  "checksum": "sha256:8d3e599233481401f1169b2e8990b9904202dbb5b6ef62bd76b391d35d00d1b1"
 }

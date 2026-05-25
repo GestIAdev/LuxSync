@@ -4,21 +4,26 @@
   "clip": {
     "id": "fiber_optics",
     "name": "Fiber Optics",
-    "author": "LuxSync Genesis Migrator / WAVE 4821",
-    "category": "techno",
+    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "category": "color",
     "tags": [
-      "atmospheric",
-      "color"
+      "ambient",
+      "color",
+      "flow",
+      "techno"
     ],
     "vibeCompat": [
-      "techno-club"
+      "techno",
+      "minimal",
+      "cyberpunk"
     ],
     "zones": [
-      "valley"
+      "ambient",
+      "gentle"
     ],
-    "mixBus": "ambient",
-    "priority": 30,
-    "durationMs": 8000,
+    "mixBus": "global",
+    "priority": 45,
+    "durationMs": 6000,
     "effectType": "heph_custom",
     "curves": {
       "intensity": {
@@ -28,33 +33,81 @@
           0,
           1
         ],
-        "defaultValue": 0,
+        "defaultValue": 0.2,
         "keyframes": [
           {
             "timeMs": 0,
-            "value": 0,
+            "value": 0.2,
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 600,
+            "value": 0.85,
             "interpolation": "bezier",
             "bezierHandles": [
-              0.33,
+              0.42,
               0,
-              0.67,
+              0.58,
               1
             ]
           },
           {
-            "timeMs": 4000,
-            "value": 1,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              1,
-              0.67,
-              0
-            ]
+            "timeMs": 5400,
+            "value": 0.85,
+            "interpolation": "hold"
           },
           {
-            "timeMs": 8000,
-            "value": 0,
+            "timeMs": 6000,
+            "value": 0.2,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.42,
+              0,
+              0.58,
+              1
+            ]
+          }
+        ],
+        "mode": "absolute"
+      },
+      "color": {
+        "paramId": "color",
+        "valueType": "color",
+        "range": [
+          0,
+          360
+        ],
+        "defaultValue": {
+          "h": 190,
+          "s": 100,
+          "l": 50
+        },
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": {
+              "h": 190,
+              "s": 100,
+              "l": 50
+            },
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 3000,
+            "value": {
+              "h": 280,
+              "s": 80,
+              "l": 55
+            },
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 6000,
+            "value": {
+              "h": 230,
+              "s": 90,
+              "l": 50
+            },
             "interpolation": "hold"
           }
         ],
@@ -62,45 +115,54 @@
       }
     },
     "staticParams": {
-      "dominantColorH": 300,
+      "dominantColorH": 190,
       "dominantColorS": 100,
-      "dominantColorL": 60,
+      "dominantColorL": 50,
       "isOneShot": false,
-      "legacyMixBus": "ambient",
-      "movementTransitionMs": 0,
-      "bpmRef": 128
+      "legacyMixBus": "global",
+      "bpmRef": 128,
+      "waveSpeedHz": 1,
+      "parIntensity": 0.85,
+      "moverIntensity": 0.5
     },
     "cognitiveDNA": {
       "genome": {
-        "aggression": 0.22,
-        "chaos": 0.28,
-        "organicity": 0.72
+        "aggression": 0.45,
+        "chaos": 0.3,
+        "organicity": 0.1
       },
-      "textureAffinity": "clean",
+      "textureAffinity": "universal",
       "compatibleVibes": [
-        "techno-club"
+        "techno",
+        "minimal",
+        "cyberpunk"
       ],
-      "validSections": [],
+      "validSections": [
+        "build",
+        "active",
+        "breakdown",
+        "valley"
+      ],
       "energyZone": {
-        "min": "valley",
-        "max": "valley"
+        "min": "ambient",
+        "max": "gentle"
       },
       "aggressionRange": {
-        "min": 0.22,
-        "max": 0.22
+        "min": 0,
+        "max": 0.6
       },
       "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
-        "base": 0.35,
-        "energyMultiplier": 1.1400000000000001,
-        "vibeBonus": 0.1
+        "base": 0.625,
+        "energyMultiplier": 1.05,
+        "vibeBonus": 0.05
       },
-      "gpuCost": 0.25,
-      "fatigueImpact": 0.02,
+      "gpuCost": 0.3,
+      "fatigueImpact": 0.06,
       "minDurationMs": 1000,
-      "cooldownMs": 2000,
+      "cooldownMs": 9000,
       "isStrobe": false,
       "isDivineCandidate": false,
       "isHeavyCandidate": false,
@@ -119,7 +181,7 @@
         "direction": 1
       },
       "intensityScaling": "energyDriven",
-      "fixtureTargeting": "pars"
+      "fixtureTargeting": "all"
     },
     "safetyDeclaration": {
       "maxStrobeFreqHz": 0,
@@ -127,5 +189,5 @@
       "communityTrusted": true
     }
   },
-  "checksum": "sha256:205209e0939d6ef1a2a1258f683d8f15b7bac25928125bad8d89090863b856f0"
+  "checksum": "sha256:df8e5dce9e756a6ecbc000b5e65d51df540f9c071740654dc68b46d45b649cf7"
 }

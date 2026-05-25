@@ -4,22 +4,25 @@
   "clip": {
     "id": "tidal_wave",
     "name": "Tidal Wave",
-    "author": "LuxSync Genesis Migrator / WAVE 4821",
-    "category": "chill-lounge",
+    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "category": "composite",
     "tags": [
-      "atmospheric",
-      "movement"
+      "sweep",
+      "wave",
+      "valley",
+      "fiesta-latina"
     ],
     "vibeCompat": [
-      "chill-lounge"
+      "latin",
+      "ambient"
     ],
     "zones": [
-      "ambient",
-      "gentle"
+      "gentle",
+      "active"
     ],
-    "mixBus": "ambient",
-    "priority": 30,
-    "durationMs": 8000,
+    "mixBus": "global",
+    "priority": 55,
+    "durationMs": 6000,
     "effectType": "heph_custom",
     "curves": {
       "intensity": {
@@ -34,196 +37,127 @@
           {
             "timeMs": 0,
             "value": 0,
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 2000,
+            "value": 0.5,
             "interpolation": "bezier",
             "bezierHandles": [
-              0.33,
+              0.42,
               0,
-              0.67,
+              0.58,
               1
             ]
           },
           {
-            "timeMs": 4000,
-            "value": 1,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              1,
-              0.67,
-              0
-            ]
+            "timeMs": 2800,
+            "value": 0.5,
+            "interpolation": "hold"
           },
           {
-            "timeMs": 8000,
+            "timeMs": 6000,
             "value": 0,
-            "interpolation": "hold"
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.42,
+              0,
+              0.58,
+              1
+            ]
           }
         ],
         "mode": "absolute"
       },
-      "pan": {
-        "paramId": "pan",
-        "valueType": "number",
+      "color": {
+        "paramId": "color",
+        "valueType": "color",
         "range": [
-          -1,
-          1
+          0,
+          360
         ],
-        "defaultValue": 0,
+        "defaultValue": {
+          "h": 200,
+          "s": 80,
+          "l": 45
+        },
         "keyframes": [
           {
             "timeMs": 0,
-            "value": 0,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              0,
-              0.67,
-              1
-            ]
+            "value": {
+              "h": 200,
+              "s": 80,
+              "l": 45
+            },
+            "interpolation": "linear"
           },
           {
-            "timeMs": 2000,
-            "value": 0.4,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              1,
-              0.67,
-              0
-            ]
-          },
-          {
-            "timeMs": 4000,
-            "value": 0,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              0,
-              0.67,
-              -1
-            ]
+            "timeMs": 3000,
+            "value": {
+              "h": 220,
+              "s": 90,
+              "l": 50
+            },
+            "interpolation": "linear"
           },
           {
             "timeMs": 6000,
-            "value": -0.4,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              -1,
-              0.67,
-              0
-            ]
-          },
-          {
-            "timeMs": 8000,
-            "value": 0,
+            "value": {
+              "h": 200,
+              "s": 75,
+              "l": 40
+            },
             "interpolation": "hold"
           }
         ],
-        "mode": "additive"
-      },
-      "tilt": {
-        "paramId": "tilt",
-        "valueType": "number",
-        "range": [
-          -1,
-          1
-        ],
-        "defaultValue": 0,
-        "keyframes": [
-          {
-            "timeMs": 0,
-            "value": 0,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              0,
-              0.67,
-              1
-            ]
-          },
-          {
-            "timeMs": 2000,
-            "value": 0.25,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              1,
-              0.67,
-              0
-            ]
-          },
-          {
-            "timeMs": 4000,
-            "value": 0,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              0,
-              0.67,
-              -1
-            ]
-          },
-          {
-            "timeMs": 6000,
-            "value": -0.25,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              -1,
-              0.67,
-              0
-            ]
-          },
-          {
-            "timeMs": 8000,
-            "value": 0,
-            "interpolation": "hold"
-          }
-        ],
-        "mode": "additive"
+        "mode": "absolute"
       }
     },
     "staticParams": {
       "dominantColorH": 200,
       "dominantColorS": 80,
-      "dominantColorL": 55,
+      "dominantColorL": 45,
       "isOneShot": false,
-      "legacyMixBus": "ambient",
-      "movementTransitionMs": 0,
+      "legacyMixBus": "global",
       "bpmRef": 128
     },
     "cognitiveDNA": {
       "genome": {
-        "aggression": 0.18,
-        "chaos": 0.15,
-        "organicity": 0.82
+        "aggression": 0.55,
+        "chaos": 0.5,
+        "organicity": 0.25
       },
-      "textureAffinity": "clean",
+      "textureAffinity": "universal",
       "compatibleVibes": [
-        "chill-lounge"
+        "latin",
+        "ambient"
       ],
-      "validSections": [],
+      "validSections": [
+        "intro",
+        "breakdown",
+        "valley",
+        "outro"
+      ],
       "energyZone": {
-        "min": "ambient",
-        "max": "gentle"
+        "min": "gentle",
+        "max": "active"
       },
       "aggressionRange": {
-        "min": 0.18,
-        "max": 0.18
+        "min": 0,
+        "max": 0.7000000000000001
       },
-      "spatialBehavior": "relative_offset"
+      "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
-        "base": 0.35,
-        "energyMultiplier": 1.075,
-        "vibeBonus": 0.1
+        "base": 0.675,
+        "energyMultiplier": 1.05,
+        "vibeBonus": 0.05
       },
       "gpuCost": 0.45,
-      "fatigueImpact": 0.02,
+      "fatigueImpact": 0.06,
       "minDurationMs": 1000,
-      "cooldownMs": 2000,
+      "cooldownMs": 9000,
       "isStrobe": false,
       "isDivineCandidate": false,
       "isHeavyCandidate": false,
@@ -236,13 +170,13 @@
     "executionHints": {
       "overlayMode": "absolute",
       "phaseConfig": {
-        "spread": 0.5,
+        "spread": 0,
         "symmetry": "linear",
         "wings": 1,
         "direction": 1
       },
       "intensityScaling": "energyDriven",
-      "fixtureTargeting": "movers"
+      "fixtureTargeting": "all"
     },
     "safetyDeclaration": {
       "maxStrobeFreqHz": 0,
@@ -250,5 +184,5 @@
       "communityTrusted": true
     }
   },
-  "checksum": "sha256:37cb100424e9000ed973cc50d39066762a80b19ccde4293fd2310443c61c2314"
+  "checksum": "sha256:6757a5f8109240e974301a41bed23ab47a8b5a4de7fca686c92be18925d817ba"
 }

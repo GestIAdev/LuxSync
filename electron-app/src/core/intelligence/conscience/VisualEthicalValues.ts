@@ -110,29 +110,9 @@ const AUDIENCE_SAFETY: EthicalValue = {
           return { passed: true }
         }
         
-        // 🤘 METAL LICENSE: texture='harsh' && clarity>0.7
-        // En Rock/Metal bien producido, el strobe rápido es PERCUSIVO, no error
-        const isMetalContext = spectral.texture === 'harsh' && spectral.clarity > 0.7
-        
-        if (isMetalContext) {
-          // BOOST: Permitir strobes más intensos sin penalización
-          // El límite de Hz se maneja en el efecto mismo, aquí damos el OK ético
-          return {
-            passed: true,
-            boost: 0.20,  // +20% bonus de aprobación
-            reason: `🤘 METAL LICENSE: High clarity (${(spectral.clarity * 100).toFixed(0)}%) harsh context permits aggressive strobes`
-          }
-        }
-        
-        // Si texture es 'noisy' (audio malo) pero alta intensidad de strobe → penalizar
-        if (spectral.texture === 'noisy' && effect.intensity > 0.7) {
-          return {
-            passed: true,
-            penalty: 0.2,
-            reason: `Noisy audio with intense strobe may cause discomfort`,
-            suggestion: 'Reduce strobe intensity or wait for cleaner audio'
-          }
-        }
+        // ⚡ WAVE 4849: Texture concept disabled in Selene ethics runtime.
+        // Mantener esta regla como pass-through para no afectar interfaz ni tipos.
+        void spectral
         
         return { passed: true }
       }
@@ -481,57 +461,11 @@ const AESTHETIC_BEAUTY: EthicalValue = {
     },
     {
       // 🛡️ WAVE 1030: THE GUARDIAN - Aesthetic Coherence (The Vibe Check) 🎨
-      // Penalizar incoherencia entre textura del audio y textura del efecto
+      // ⚡ WAVE 4840-B: REALITY CHECK — Texture coherence disabled by reality check
       id: 'texture_coherence',
       severity: 'high',
-      check: (context, effect) => {
-        const spectral = context.spectral
-        if (!spectral) {
-          return { passed: true } // Sin contexto espectral, sin verificación
-        }
-        
-        // Obtener la afinidad de textura del efecto del Registry dinámico
-        const effectEntry = getDynamicEffectRegistry().getEntry(effect.effect)
-        const effectTextureAffinity = effectEntry?.textureAffinity ?? 'universal'
-        
-        // 🎨 CASO 1: Música CLEAN/WARM + Efecto DIRTY = INCOHERENCIA GRAVE
-        // Es como poner death metal visual sobre un balada de piano
-        const isCleanAudio = spectral.texture === 'clean' || spectral.texture === 'warm'
-        if (isCleanAudio && effectTextureAffinity === 'dirty') {
-          return {
-            passed: false,
-            reason: `🎨 AESTHETIC INCOHERENCE: ${effect.effect} (dirty) clashes with ${spectral.texture} audio`,
-            penalty: 0.5,
-            suggestion: 'Use clean or universal effect for this audio texture'
-          }
-        }
-        
-        // 🎨 CASO 2: Música HARSH/NOISY + Efecto CLEAN = FALTA DE ENERGÍA
-        // Es como poner una vela en un concierto de Metallica
-        const isHarshAudio = spectral.texture === 'harsh' || spectral.texture === 'noisy'
-        if (isHarshAudio && effectTextureAffinity === 'clean') {
-          // Penalización LEVE - no es un error grave, solo falta punch
-          return {
-            passed: true,  // Permitir pero penalizar
-            penalty: 0.15,
-            reason: `🎨 LOW ENERGY: ${effect.effect} (clean) may lack punch for ${spectral.texture} audio`,
-            suggestion: 'Consider dirty or universal effect for more impact'
-          }
-        }
-        
-        // 🎨 CASO 3: MATCH PERFECTO
-        // Música harsh + efecto dirty = BOOST
-        // Música clean + efecto clean = BOOST
-        if ((isHarshAudio && effectTextureAffinity === 'dirty') ||
-            (isCleanAudio && effectTextureAffinity === 'clean')) {
-          return {
-            passed: true,
-            boost: 0.15,
-            reason: `🎨 PERFECT TEXTURE MATCH: ${effect.effect} (${effectTextureAffinity}) with ${spectral.texture} audio`
-          }
-        }
-        
-        return { passed: true }
+      check: () => {
+        return { passed: true, reason: 'Texture coherence disabled by reality check' }
       }
     }
   ]
@@ -653,13 +587,13 @@ const RISK_CREATIVITY: EthicalValue = {
       id: 'allow_experimental',
       severity: 'low',
       check: (context, effect) => {
-        // 10% de las veces, permitir efecto "fuera de zona"
-        if (Math.random() < 0.1 && effect.riskLevel && effect.riskLevel < 0.7) {
-          return {
-            passed: true,
-            boost: 0.1,
-            reason: 'Experimental effect allowed (10% creativity budget)'
-          }
+        // ⚡ WAVE 4845: Determinista — Axioma Anti-Simulación.
+        // Reemplaza Math.random() con hash del effectId + ventana temporal de 8s.
+        // ~10% de efectos reciben boost en cada ventana, reproducible y auditable.
+        const nameHash = effect.effect.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
+        const creativeSeed = (nameHash + Math.floor(Date.now() / 8000)) % 100
+        if (creativeSeed < 10 && effect.riskLevel && effect.riskLevel < 0.7) {
+          return { passed: true, boost: 0.1, reason: 'Experimental effect allowed (creativity budget)' }
         }
         
         return { passed: true }

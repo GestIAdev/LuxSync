@@ -4,20 +4,25 @@
   "clip": {
     "id": "thunder_struck",
     "name": "Thunder Struck",
-    "author": "LuxSync Genesis Migrator / WAVE 4821",
-    "category": "pop-rock",
+    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "category": "physical",
     "tags": [
-      "intensity",
-      "accent"
+      "flash",
+      "blinder",
+      "rock",
+      "poprock"
     ],
     "vibeCompat": [
-      "pop-rock"
+      "rock",
+      "pop-rock",
+      "metal"
     ],
     "zones": [
-      "intense"
+      "intense",
+      "peak"
     ],
-    "mixBus": "htp",
-    "priority": 90,
+    "mixBus": "global",
+    "priority": 95,
     "durationMs": 2000,
     "effectType": "heph_custom",
     "curves": {
@@ -33,44 +38,67 @@
           {
             "timeMs": 0,
             "value": 0,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.9,
-              0,
-              0.1,
-              1
-            ]
+            "interpolation": "linear"
           },
           {
-            "timeMs": 200,
-            "value": 0.95,
-            "interpolation": "bezier",
+            "timeMs": 20,
+            "value": 1,
+            "interpolation": "linear",
             "bezierHandles": [
-              0.33,
+              0,
+              0,
               1,
-              0.67,
               1
             ]
           },
           {
-            "timeMs": 1000,
-            "value": 0.95,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0,
-              0,
-              0.42,
-              1
-            ]
-          },
-          {
-            "timeMs": 1600,
-            "value": 0,
+            "timeMs": 820,
+            "value": 1,
             "interpolation": "hold"
           },
           {
             "timeMs": 2000,
-            "value": 0.05,
+            "value": 0,
+            "interpolation": "linear",
+            "bezierHandles": [
+              0,
+              0,
+              1,
+              1
+            ]
+          }
+        ],
+        "mode": "absolute"
+      },
+      "color": {
+        "paramId": "color",
+        "valueType": "color",
+        "range": [
+          0,
+          360
+        ],
+        "defaultValue": {
+          "h": 40,
+          "s": 15,
+          "l": 95
+        },
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": {
+              "h": 40,
+              "s": 15,
+              "l": 95
+            },
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 2000,
+            "value": {
+              "h": 35,
+              "s": 85,
+              "l": 55
+            },
             "interpolation": "hold"
           }
         ],
@@ -79,62 +107,68 @@
     },
     "staticParams": {
       "dominantColorH": 40,
-      "dominantColorS": 85,
-      "dominantColorL": 70,
-      "isOneShot": true,
-      "legacyMixBus": "htp",
-      "movementTransitionMs": 0,
-      "bpmRef": 128
+      "dominantColorS": 15,
+      "dominantColorL": 95,
+      "isOneShot": false,
+      "legacyMixBus": "global",
+      "bpmRef": 128,
+      "flashCount": 2,
+      "beatsPerFlash": 1
     },
     "cognitiveDNA": {
       "genome": {
-        "aggression": 0.88,
-        "chaos": 0.4,
-        "organicity": 0.38
+        "aggression": 0.95,
+        "chaos": 0.3,
+        "organicity": 0.1
       },
-      "textureAffinity": "dirty",
+      "textureAffinity": "universal",
       "compatibleVibes": [
-        "pop-rock"
+        "rock",
+        "pop-rock",
+        "metal"
       ],
-      "validSections": [],
+      "validSections": [
+        "drop",
+        "peak"
+      ],
       "energyZone": {
         "min": "intense",
-        "max": "intense"
+        "max": "peak"
       },
       "aggressionRange": {
-        "min": 0.88,
-        "max": 0.88
+        "min": 0,
+        "max": 1
       },
       "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
-        "base": 0.7,
-        "energyMultiplier": 1.2,
-        "vibeBonus": 0.1
+        "base": 0.875,
+        "energyMultiplier": 1.05,
+        "vibeBonus": 0.05
       },
-      "gpuCost": 0.25,
-      "fatigueImpact": 0.15,
-      "minDurationMs": 2000,
-      "cooldownMs": 8000,
+      "gpuCost": 0.3,
+      "fatigueImpact": 0.06,
+      "minDurationMs": 1000,
+      "cooldownMs": 3000,
       "isStrobe": false,
       "isDivineCandidate": false,
       "isHeavyCandidate": true,
       "zScoreGuards": {
         "requireRising": false,
         "minimumZ": null,
-        "minimumEnergy": null
+        "minimumEnergy": 0.7
       }
     },
     "executionHints": {
-      "overlayMode": "additive",
+      "overlayMode": "absolute",
       "phaseConfig": {
         "spread": 0,
         "symmetry": "linear",
         "wings": 1,
         "direction": 1
       },
-      "intensityScaling": "fixed",
+      "intensityScaling": "energyDriven",
       "fixtureTargeting": "all"
     },
     "safetyDeclaration": {
@@ -143,5 +177,5 @@
       "communityTrusted": true
     }
   },
-  "checksum": "sha256:425f774ae6ab383ab0c7aef27f116b30736e8eacbe845fb2e944bbe7b0656420"
+  "checksum": "sha256:53b916f823c8ee0420ac25766fe86922f8a82497873aecd75e04085da216953c"
 }

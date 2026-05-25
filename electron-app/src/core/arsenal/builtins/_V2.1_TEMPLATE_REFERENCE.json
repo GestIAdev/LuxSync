@@ -1,0 +1,68 @@
+{
+  "$schema": "hephaestus/v2.1",
+  "version": "2.1.0",
+  "clip": {
+    "id": "template_effect",
+    "name": "Template Effect",
+    "author": "LuxSync Factory",
+    "category": "physical",
+    "tags": ["strobe", "peak", "techno"],
+    "vibeCompat": ["techno", "industrial"],
+    "zones": ["intense", "peak"],
+    "mixBus": "global",
+    "priority": 100,
+    "durationMs": 4000,
+    "effectType": "heph_custom",
+    "curves": {
+      "intensity": {
+        "paramId": "intensity",
+        "valueType": "number",
+        "range": [0, 1],
+        "defaultValue": 0,
+        "keyframes": [
+          { "timeMs": 0, "value": 0, "interpolation": "linear" },
+          { "timeMs": 1, "value": 1, "interpolation": "hold" },
+          { "timeMs": 4000, "value": 1, "interpolation": "hold" }
+        ],
+        "mode": "absolute"
+      },
+      "color": {
+        "paramId": "color",
+        "valueType": "color",
+        "range": [0, 360],
+        "defaultValue": { "h": 0, "s": 100, "l": 50 },
+        "keyframes": [
+          { "timeMs": 0, "value": { "h": 0, "s": 100, "l": 50 }, "interpolation": "hold" }
+        ],
+        "mode": "absolute"
+      }
+    },
+    "staticParams": {
+      "strobeRateHz": 15
+    },
+    "cognitiveDNA": {
+      "genome": { "aggression": 0.9, "chaos": 0.5, "organicity": 0.1 },
+      "textureAffinity": "dirty",
+      "compatibleVibes": ["techno"],
+      "validSections": ["drop", "peak"],
+      "energyZone": { "min": "intense", "max": "peak" },
+      "aggressionRange": { "min": 0, "max": 1 },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": { "base": 0.8, "energyMultiplier": 1.0, "vibeBonus": 0.1 },
+      "gpuCost": 0.3,
+      "fatigueImpact": 0.15,
+      "minDurationMs": 1000,
+      "cooldownMs": 5000,
+      "isStrobe": true,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": true,
+      "zScoreGuards": { "requireRising": true, "minimumZ": 1, "minimumEnergy": 0.7 }
+    },
+    "executionHints": {
+      "overlayMode": "absolute",
+      "phaseConfig": { "spread": 0, "symmetry": "none" }
+    }
+  }
+}

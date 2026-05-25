@@ -4,21 +4,26 @@
   "clip": {
     "id": "ghost_breath",
     "name": "Ghost Breath",
-    "author": "LuxSync Genesis Migrator / WAVE 4821",
-    "category": "chill-lounge",
+    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "category": "physical",
     "tags": [
-      "atmospheric",
-      "intensity"
+      "ambient",
+      "soft",
+      "silence",
+      "fiesta-latina"
     ],
     "vibeCompat": [
-      "chill-lounge"
+      "chill",
+      "latin",
+      "ambient"
     ],
     "zones": [
-      "silence"
+      "silence",
+      "valley"
     ],
     "mixBus": "ambient",
-    "priority": 30,
-    "durationMs": 8000,
+    "priority": 10,
+    "durationMs": 3000,
     "effectType": "heph_custom",
     "curves": {
       "intensity": {
@@ -33,28 +38,58 @@
           {
             "timeMs": 0,
             "value": 0,
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 1200,
+            "value": 0.15,
             "interpolation": "bezier",
             "bezierHandles": [
-              0.33,
+              0.42,
               0,
-              0.67,
+              0.58,
               1
             ]
           },
           {
-            "timeMs": 4000,
-            "value": 1,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              1,
-              0.67,
-              0
-            ]
+            "timeMs": 1800,
+            "value": 0.15,
+            "interpolation": "hold"
           },
           {
-            "timeMs": 8000,
+            "timeMs": 3000,
             "value": 0,
+            "interpolation": "bezier",
+            "bezierHandles": [
+              0.42,
+              0,
+              0.58,
+              1
+            ]
+          }
+        ],
+        "mode": "absolute"
+      },
+      "color": {
+        "paramId": "color",
+        "valueType": "color",
+        "range": [
+          0,
+          360
+        ],
+        "defaultValue": {
+          "h": 200,
+          "s": 30,
+          "l": 40
+        },
+        "keyframes": [
+          {
+            "timeMs": 0,
+            "value": {
+              "h": 200,
+              "s": 30,
+              "l": 40
+            },
             "interpolation": "hold"
           }
         ],
@@ -62,45 +97,50 @@
       }
     },
     "staticParams": {
-      "dominantColorH": 0,
-      "dominantColorS": 0,
-      "dominantColorL": 97,
+      "dominantColorH": 200,
+      "dominantColorS": 30,
+      "dominantColorL": 40,
       "isOneShot": false,
       "legacyMixBus": "ambient",
-      "movementTransitionMs": 0,
       "bpmRef": 128
     },
     "cognitiveDNA": {
       "genome": {
-        "aggression": 0.12,
-        "chaos": 0.1,
-        "organicity": 0.88
+        "aggression": 0.1,
+        "chaos": 0.3,
+        "organicity": 0.1
       },
       "textureAffinity": "clean",
       "compatibleVibes": [
-        "chill-lounge"
+        "chill",
+        "latin",
+        "ambient"
       ],
-      "validSections": [],
+      "validSections": [
+        "intro",
+        "outro",
+        "silence"
+      ],
       "energyZone": {
         "min": "silence",
-        "max": "silence"
+        "max": "valley"
       },
       "aggressionRange": {
-        "min": 0.12,
-        "max": 0.12
+        "min": 0,
+        "max": 0.25
       },
       "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
-        "base": 0.35,
+        "base": 0.45,
         "energyMultiplier": 1.05,
-        "vibeBonus": 0.1
+        "vibeBonus": 0.05
       },
-      "gpuCost": 0.25,
-      "fatigueImpact": 0.02,
+      "gpuCost": 0.3,
+      "fatigueImpact": 0.06,
       "minDurationMs": 1000,
-      "cooldownMs": 2000,
+      "cooldownMs": 4500,
       "isStrobe": false,
       "isDivineCandidate": false,
       "isHeavyCandidate": false,
@@ -111,7 +151,7 @@
       }
     },
     "executionHints": {
-      "overlayMode": "absolute",
+      "overlayMode": "relative",
       "phaseConfig": {
         "spread": 0,
         "symmetry": "linear",
@@ -127,5 +167,5 @@
       "communityTrusted": true
     }
   },
-  "checksum": "sha256:7ca778a06a3d2532682381858373cda702c6172f745fa6f2de277ae5095c3310"
+  "checksum": "sha256:aba51f8e357a06c99fd015d4abda1197d14ea909e0a2c7e210d6a684224958e2"
 }

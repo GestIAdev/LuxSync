@@ -1,0 +1,77 @@
+{
+  "$schema": "luxsync.lfx/3.0",
+  "clip": {
+    "id": "void_collapse",
+    "name": "Void Collapse",
+    "author": "LuxSync Factory",
+    "category": "physical",
+    "tags": ["flash", "blackout", "techno", "brutal", "drop", "divine"],
+    "vibeCompat": ["techno"],
+    "durationMs": 1500,
+    "effectType": "heph_custom",
+    "cognitiveDNA": {
+      "genome": { "aggression": 0.95, "chaos": 0.4, "organicity": 0.0 },
+      "textureAffinity": "dirty",
+      "compatibleVibes": ["techno"],
+      "validSections": ["drop", "peak"],
+      "energyZone": { "min": "intense", "max": "peak" },
+      "aggressionRange": { "min": 0.75, "max": 1.0 },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": { "base": 0.95, "energyMultiplier": 1.2, "vibeBonus": 0.15 },
+      "gpuCost": 0.2,
+      "fatigueImpact": 0.55,
+      "minDurationMs": 1500,
+      "cooldownMs": 5000,
+      "isStrobe": false,
+      "isDivineCandidate": true,
+      "isHeavyCandidate": true,
+      "zScoreGuards": { "requireRising": true, "minimumZ": 2, "minimumEnergy": 0.9 }
+    },
+    "tracks": [
+      {
+        "id": "par-flash-punch",
+        "paramId": "intensity",
+        "zones": ["all-pars"],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "defaultValue": 0,
+          "keyframes": [
+            { "timeMs": 0,    "value": 0,   "interpolation": "hold" },
+            { "timeMs": 500,  "value": 1.0, "interpolation": "hold" },
+            { "timeMs": 600,  "value": 0,   "interpolation": "hold" }
+          ]
+        }
+      },
+      {
+        "id": "par-white",
+        "paramId": "color",
+        "zones": ["all-pars"],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "defaultValue": { "h": 0, "s": 0, "l": 100 },
+          "keyframes": [
+            { "timeMs": 0, "value": { "h": 0, "s": 0, "l": 100 }, "interpolation": "hold" }
+          ]
+        }
+      },
+      {
+        "id": "movers-blackout",
+        "paramId": "intensity",
+        "zones": ["all-movers"],
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "defaultValue": 0,
+          "keyframes": [
+            { "timeMs": 0, "value": 0, "interpolation": "hold" }
+          ]
+        }
+      }
+    ]
+  }
+}

@@ -33,10 +33,17 @@ export interface RollingStatsConfig {
   windowSize: number;
   /** Desviación estándar mínima para evitar división por cero */
   minStdDev?: number;
+  /**
+   * Cap máximo del Z-Score en valor absoluto.
+   * Evita outliers absurdos (ej: silencio prolongado → spike súbito = 19σ).
+   * El rango 0-10σ cubre toda la semántica real del sistema (DIVINE_THRESHOLD=4.0).
+   */
+  maxZScoreCap?: number;
 }
 
 const DEFAULT_CONFIG: Required<RollingStatsConfig> = {
   windowSize: 300, // ~5 segundos a 60fps
+  maxZScoreCap: 10.0, // Cap: Z > 10σ es cosméticamente absurdo y numéricamente inestable
   // ═══════════════════════════════════════════════════════════════════════════
   // 🔬 WAVE 1181.1: Z-SCORE FLOOR FIX
   // 🔬 WAVE 2185: RECALIBRATED — 0.08 → 0.05
@@ -131,7 +138,9 @@ export class RollingStats {
     const stdDev = Math.max(this.config.minStdDev, Math.sqrt(variance));
     
     // Z-Score: cuántas desviaciones estándar del valor actual respecto a la media
-    const zScore = (value - mean) / stdDev;
+    // Cap: clamp a ±maxZScoreCap para evitar outliers absurdos (silencio→boom = ~20σ)
+    const rawZScore = (value - mean) / stdDev;
+    const zScore = Math.max(-this.config.maxZScoreCap, Math.min(this.config.maxZScoreCap, rawZScore));
     
     this.cachedStats = {
       mean,
@@ -165,7 +174,8 @@ export class RollingStats {
     const variance = Math.max(0, (this.sumSquares / n) - (mean * mean));
     const stdDev = Math.max(this.config.minStdDev, Math.sqrt(variance));
     
-    return (value - mean) / stdDev;
+    const raw = (value - mean) / stdDev;
+    return Math.max(-this.config.maxZScoreCap, Math.min(this.config.maxZScoreCap, raw));
   }
 
   /**

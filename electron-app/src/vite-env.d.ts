@@ -1065,6 +1065,16 @@ declare global {
         error?:     string
       }>
     }
+
+    // ⚡ WAVE 4914: ARSENAL CATALOG — catálogo dinámico de efectos .lfx
+    arsenal: {
+      getCatalog: () => Promise<{
+        id: string
+        name: string
+        energyZone: string
+        compatibleVibes: string[]
+      }[]>
+    }
   }
 }
 } // End declare global

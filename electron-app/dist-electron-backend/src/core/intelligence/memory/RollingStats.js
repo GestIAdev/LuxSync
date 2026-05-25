@@ -7,6 +7,7 @@
 import { CircularBuffer } from './CircularBuffer';
 const DEFAULT_CONFIG = {
     windowSize: 300, // ~5 segundos a 60fps
+    maxZScoreCap: 10.0, // Cap: Z > 10σ es cosméticamente absurdo y numéricamente inestable
     // ═══════════════════════════════════════════════════════════════════════════
     // 🔬 WAVE 1181.1: Z-SCORE FLOOR FIX
     // 🔬 WAVE 2185: RECALIBRATED — 0.08 → 0.05
@@ -90,7 +91,9 @@ export class RollingStats {
         const variance = Math.max(0, (this.sumSquares / n) - (mean * mean));
         const stdDev = Math.max(this.config.minStdDev, Math.sqrt(variance));
         // Z-Score: cuántas desviaciones estándar del valor actual respecto a la media
-        const zScore = (value - mean) / stdDev;
+        // Cap: clamp a ±maxZScoreCap para evitar outliers absurdos (silencio→boom = ~20σ)
+        const rawZScore = (value - mean) / stdDev;
+        const zScore = Math.max(-this.config.maxZScoreCap, Math.min(this.config.maxZScoreCap, rawZScore));
         this.cachedStats = {
             mean,
             stdDev,
@@ -119,7 +122,8 @@ export class RollingStats {
         const mean = this.sum / n;
         const variance = Math.max(0, (this.sumSquares / n) - (mean * mean));
         const stdDev = Math.max(this.config.minStdDev, Math.sqrt(variance));
-        return (value - mean) / stdDev;
+        const raw = (value - mean) / stdDev;
+        return Math.max(-this.config.maxZScoreCap, Math.min(this.config.maxZScoreCap, raw));
     }
     /**
      * ¿Está el buffer suficientemente lleno para estadísticas confiables?

@@ -1,0 +1,93 @@
+{
+  "$schema": "luxsync.lfx/3.0",
+  "clip": {
+    "id": "red_surge",
+    "name": "Red Surge",
+    "author": "LuxSync Factory",
+    "category": "composite",
+    "tags": ["strobe", "escalation", "techno", "red", "drop", "buildup"],
+    "vibeCompat": ["techno"],
+    "durationMs": 3000,
+    "effectType": "heph_custom",
+    "cognitiveDNA": {
+      "genome": { "aggression": 0.88, "chaos": 0.65, "organicity": 0.15 },
+      "textureAffinity": "dirty",
+      "compatibleVibes": ["techno"],
+      "validSections": ["drop", "peak"],
+      "energyZone": { "min": "intense", "max": "peak" },
+      "aggressionRange": { "min": 0.5, "max": 1.0 },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": { "base": 0.82, "energyMultiplier": 1.15, "vibeBonus": 0.1 },
+      "gpuCost": 0.25,
+      "fatigueImpact": 0.5,
+      "minDurationMs": 3000,
+      "cooldownMs": 5000,
+      "isStrobe": true,
+      "isDivineCandidate": true,
+      "isHeavyCandidate": true,
+      "zScoreGuards": { "requireRising": true, "minimumZ": 1.5, "minimumEnergy": 0.8 }
+    },
+    "tracks": [
+      {
+        "id": "par-strobe-escalate",
+        "paramId": "strobeRate",
+        "zones": ["all-pars"],
+        "curve": {
+          "paramId": "strobeRate",
+          "valueType": "number",
+          "defaultValue": 0,
+          "keyframes": [
+            { "timeMs": 0,    "value": 0.12, "interpolation": "linear" },
+            { "timeMs": 1500, "value": 0.55, "interpolation": "linear" },
+            { "timeMs": 3000, "value": 1.0,  "interpolation": "hold" }
+          ]
+        }
+      },
+      {
+        "id": "par-red-ignition",
+        "paramId": "color",
+        "zones": ["all-pars"],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "defaultValue": { "h": 0, "s": 100, "l": 20 },
+          "keyframes": [
+            { "timeMs": 0,    "value": { "h": 0, "s": 100, "l": 18 }, "interpolation": "linear" },
+            { "timeMs": 1500, "value": { "h": 2, "s": 100, "l": 38 }, "interpolation": "linear" },
+            { "timeMs": 3000, "value": { "h": 5, "s": 100, "l": 58 }, "interpolation": "linear" }
+          ]
+        }
+      },
+      {
+        "id": "par-intensity",
+        "paramId": "intensity",
+        "zones": ["all-pars"],
+        "blendMode": "max",
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "defaultValue": 1.0,
+          "keyframes": [
+            { "timeMs": 0, "value": 1.0, "interpolation": "hold" }
+          ]
+        }
+      },
+      {
+        "id": "movers-blackout",
+        "paramId": "intensity",
+        "zones": ["all-movers"],
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "defaultValue": 0,
+          "keyframes": [
+            { "timeMs": 0, "value": 0, "interpolation": "hold" }
+          ]
+        }
+      }
+    ]
+  }
+}

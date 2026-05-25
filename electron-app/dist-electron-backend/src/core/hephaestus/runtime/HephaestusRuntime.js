@@ -40,6 +40,26 @@ import { PhaseDistributor } from './PhaseDistributor';
 import { resolveZoneTags } from '../../zones/ZoneMapper';
 import { getTitanOrchestrator } from '../../orchestrator/TitanOrchestrator';
 // ═══════════════════════════════════════════════════════════════════════════
+// 🧬 WAVE 4856 — V3 SCHEMA HELPERS (module-private, type-narrowing)
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Discrimina V3 (`tracks: HephTrack[]`) de V2 (`curves: Map<paramId, HephCurve>`).
+ * Usar como type-guard — narrows TS al subtipo correspondiente.
+ */
+function _isV3Clip(clip) {
+    return Array.isArray(clip.tracks);
+}
+/**
+ * Default `BlendMode` por parámetro — utilizado durante la migración v2→v3
+ * cuando el clip legado no declara estrategia de fusión. Se alinea con la
+ * semántica histórica que el motor expone:
+ *   - `intensity`         → 'max' (HTP — highest takes precedence).
+ *   - `color` / `pan` / `tilt` y demás → 'replace' (LTP — last write wins).
+ */
+function _defaultBlendModeFor(paramId) {
+    return paramId === 'intensity' ? 'max' : 'replace';
+}
+// ═══════════════════════════════════════════════════════════════════════════
 // 🔥 WAVE 2495: Pure utilities re-exported from HephUtils.ts
 // Extracted so renderer code can import them without dragging in the
 // full Runtime (which depends on MasterArbiter → EventEmitter → Node.js).
@@ -52,7 +72,11 @@ export { hslToRgb, scaleToDMX, scaleToDMX16 };
 // ═══════════════════════════════════════════════════════════════════════════
 export class HephaestusRuntime {
     constructor() {
-        /** Cache of loaded clips (path → parsed clip) */
+        /**
+         * Cache de clips cargados (filePath → clip parseado).
+         * 🧬 WAVE 4856: Tipo unión v2/v3 — el formato en disco se preserva tal cual
+         * y la migración a tracks ejecutables ocurre per-instancia en `play()`.
+         */
         this.clipCache = new Map();
         /** Currently active clips being executed */
         this.activeClips = new Map();
@@ -79,8 +103,8 @@ export class HephaestusRuntime {
     // CLIP LOADING
     // ─────────────────────────────────────────────────────────────────────────
     /**
-     * Load and cache a .lfx file
-     * Returns the parsed clip or null if failed
+     * Load and cache a .lfx file. Acepta esquemas v2.1 y v3.0 (WAVE 4856).
+     * Returns the parsed clip (v2 o v3) o null si falla.
      */
     loadClip(filePath) {
         // Check cache first
@@ -108,58 +132,93 @@ export class HephaestusRuntime {
                 console.error(`[HephRuntime] ❌ Invalid JSON in ${filePath}:`, parseErr);
                 return null;
             }
-            // ⚒️ WAVE 2030.20: UNWRAP FILE FORMAT
-            // .lfx files have wrapper structure: { $schema, version, clip: {...} }
-            // We need the inner 'clip' object for deserialization
-            let serialized;
-            if (parsed.clip && typeof parsed.clip === 'object') {
-                // File format v1.0.0: { clip: {...} }
-                serialized = parsed.clip;
-            }
-            else if (parsed.curves && typeof parsed.curves === 'object') {
-                // Legacy format: direct clip object
-                serialized = parsed;
+            // ⚒️ WAVE 2030.20 / 🧬 WAVE 4856: UNWRAP FILE FORMAT (v2.1 + v3.0).
+            //
+            // Schemas aceptados:
+            //   - 'luxsync.lfx/3.0' → wrapper V3 con `clip: { tracks: HephTrack[] }`.
+            //   - 'hephaestus/v2.1' → wrapper V2.1 con `clip: { curves: {...} }`.
+            //   - Sin wrapper        → objeto plano legacy con `curves`.
+            //
+            // Para V3, el cargador devuelve un `HephAutomationClipV3` tal cual; el
+            // Runtime lo procesa nativamente en `play()/playFromClip()`. Para V2.1,
+            // se deserializa al `HephAutomationClip` legacy y la migración a tracks
+            // sucede en `_buildResolvedTracks()` justo antes de ejecutar.
+            //
+            // El cache (`clipCache`) almacena el formato CARGADO (v2 o v3) — es
+            // tipo unión. La conversión a tracks ejecutables es per-instancia.
+            const schema = parsed?.$schema;
+            let clip = null;
+            if (schema === 'luxsync.lfx/3.0' && parsed?.clip && typeof parsed.clip === 'object') {
+                // ── V3 PATH ──────────────────────────────────────────────────────
+                const v3 = parsed.clip;
+                if (!Array.isArray(v3.tracks) || v3.tracks.length === 0) {
+                    console.error(`[HephRuntime] ❌ V3 clip in ${filePath} has no tracks[]`);
+                    return null;
+                }
+                for (const t of v3.tracks) {
+                    if (!t || typeof t !== 'object' || !t.curve || !Array.isArray(t.curve.keyframes)) {
+                        console.error(`[HephRuntime] ❌ Invalid V3 track in ${filePath}: missing curve/keyframes`);
+                        return null;
+                    }
+                    if (!Array.isArray(t.zones) || t.zones.length === 0) {
+                        console.error(`[HephRuntime] ❌ Invalid V3 track in ${filePath}: track '${t.id}' has no zones`);
+                        return null;
+                    }
+                }
+                clip = v3;
             }
             else {
-                console.error(`[HephRuntime] ❌ Invalid clip structure in ${filePath}: no 'clip' or 'curves' field`);
-                return null;
-            }
-            // Validate structure
-            if (!serialized || typeof serialized !== 'object') {
-                console.error(`[HephRuntime] ❌ Invalid clip structure in ${filePath}: not an object`);
-                return null;
-            }
-            if (!serialized.curves || typeof serialized.curves !== 'object') {
-                console.error(`[HephRuntime] ❌ Invalid clip structure in ${filePath}: missing or invalid curves`);
-                return null;
-            }
-            // ⚒️ WAVE 2030.20: VALIDATE CURVES STRUCTURE
-            // Each curve must have a keyframes array
-            for (const [paramId, curve] of Object.entries(serialized.curves)) {
-                if (!curve || typeof curve !== 'object') {
-                    console.error(`[HephRuntime] ❌ Invalid curve '${paramId}' in ${filePath}: not an object`);
+                // ── V2.1 PATH (legacy curves Record) ─────────────────────────────
+                let serialized;
+                if (parsed?.clip && typeof parsed.clip === 'object') {
+                    serialized = parsed.clip;
+                }
+                else if (parsed?.curves && typeof parsed.curves === 'object') {
+                    serialized = parsed;
+                }
+                else {
+                    console.error(`[HephRuntime] ❌ Invalid clip structure in ${filePath}: no V3 tracks[] and no V2 curves{}`);
                     return null;
                 }
-                const hephCurve = curve;
-                if (!Array.isArray(hephCurve.keyframes)) {
-                    console.error(`[HephRuntime] ❌ Invalid curve '${paramId}' in ${filePath}: keyframes is not an array`);
+                if (!serialized || typeof serialized !== 'object') {
+                    console.error(`[HephRuntime] ❌ Invalid clip structure in ${filePath}: not an object`);
                     return null;
                 }
-                if (hephCurve.keyframes.length === 0) {
-                    console.warn(`[HephRuntime] ⚠️ Curve '${paramId}' in ${filePath} has no keyframes (will be ignored)`);
+                if (!serialized.curves || typeof serialized.curves !== 'object') {
+                    console.error(`[HephRuntime] ❌ Invalid clip structure in ${filePath}: missing or invalid curves`);
+                    return null;
                 }
+                // Validar estructura de cada curva (keyframes array obligatorio)
+                for (const [paramId, curve] of Object.entries(serialized.curves)) {
+                    if (!curve || typeof curve !== 'object') {
+                        console.error(`[HephRuntime] ❌ Invalid curve '${paramId}' in ${filePath}: not an object`);
+                        return null;
+                    }
+                    const hephCurve = curve;
+                    if (!Array.isArray(hephCurve.keyframes)) {
+                        console.error(`[HephRuntime] ❌ Invalid curve '${paramId}' in ${filePath}: keyframes is not an array`);
+                        return null;
+                    }
+                    if (hephCurve.keyframes.length === 0) {
+                        console.warn(`[HephRuntime] ⚠️ Curve '${paramId}' in ${filePath} has no keyframes (will be ignored)`);
+                    }
+                }
+                const v2 = deserializeHephClip(serialized);
+                if (!v2 || !v2.curves || v2.curves.size === 0) {
+                    console.error(`[HephRuntime] ❌ Deserialization failed or empty curves in ${filePath}`);
+                    return null;
+                }
+                clip = v2;
             }
-            // Deserialize (converts curves Record to Map)
-            const clip = deserializeHephClip(serialized);
-            // Final validation
-            if (!clip || !clip.curves || clip.curves.size === 0) {
-                console.error(`[HephRuntime] ❌ Deserialization failed or empty curves in ${filePath}`);
+            if (!clip)
                 return null;
-            }
-            // Cache it
+            // Cache it (union: v2 o v3)
             this.clipCache.set(filePath, clip);
             if (this.debug) {
-                console.log(`[HephRuntime] 📁 Loaded: ${path.basename(filePath)} (${clip.curves.size} curves, ${clip.durationMs}ms)`);
+                const desc = _isV3Clip(clip)
+                    ? `V3: ${clip.tracks.length} tracks`
+                    : `V2: ${clip.curves.size} curves`;
+                console.log(`[HephRuntime] 📁 Loaded: ${path.basename(filePath)} (${desc}, ${clip.durationMs}ms)`);
             }
             return clip;
         }
@@ -206,20 +265,22 @@ export class HephaestusRuntime {
         }
         const instanceId = `heph_${++this.instanceCounter}_${Date.now()}`;
         const now = Date.now();
-        // Create the curve evaluator instance for this clip
-        const evaluator = new CurveEvaluator(clip.curves, clip.durationMs);
-        // ── WAVE 2400: Resolve phase distribution ─────────────────────────
-        const { fixturePhases, phaseConfig } = this.resolvePhaseForClip(clip, options.durationOverrideMs ?? clip.durationMs, options.fixtureIds);
+        const durationMs = options.durationOverrideMs ?? clip.durationMs;
+        // 🧬 WAVE 4856: Construir tracks resueltos (v3 nativo o migración v2 → v3).
+        const { tracks, phaseConfig } = this._buildResolvedTracks(clip, durationMs, options.fixtureIds);
+        if (tracks.length === 0) {
+            console.warn(`[HephRuntime] ⚠️ play(${path.basename(filePath)}): zero resolved tracks — clip will not emit`);
+            return null;
+        }
         const activeClip = {
             instanceId,
             filePath,
             clip,
-            evaluator,
+            tracks,
             startTimeMs: now,
-            durationMs: options.durationOverrideMs ?? clip.durationMs,
+            durationMs,
             intensity: options.intensity ?? 1.0,
             loop: options.loop ?? false,
-            fixturePhases,
             phaseConfig,
         };
         this.activeClips.set(instanceId, activeClip);
@@ -227,10 +288,9 @@ export class HephaestusRuntime {
         // ⚒️ WAVE 2400: Ensure output buffer capacity
         this.ensureOutputCapacity(this.estimateTotalOutputs());
         if (this.debug) {
-            const phaseInfo = fixturePhases
-                ? ` [PHASE: ${fixturePhases.length} fixtures, ${phaseConfig?.symmetry}]`
-                : '';
-            console.log(`[HephRuntime] ▶️ PLAY: ${clip.name} (${activeClip.durationMs}ms)${phaseInfo} ID=${instanceId}`);
+            const anyPhases = tracks.some(t => t.fixturePhases !== null);
+            const phaseInfo = anyPhases ? ` [PHASE: ${phaseConfig?.symmetry}]` : '';
+            console.log(`[HephRuntime] ▶️ PLAY: ${clip.name} (${activeClip.durationMs}ms, ${tracks.length} tracks)${phaseInfo} ID=${instanceId}`);
         }
         return instanceId;
     }
@@ -250,19 +310,18 @@ export class HephaestusRuntime {
     playFromClip(clip, options = {}) {
         const instanceId = `heph_diamond_${++this.instanceCounter}_${Date.now()}`;
         const now = Date.now();
-        const evaluator = new CurveEvaluator(clip.curves, clip.durationMs);
-        // ── WAVE 2400: Resolve phase distribution ─────────────────────────
-        const { fixturePhases, phaseConfig } = this.resolvePhaseForClip(clip, options.durationOverrideMs ?? clip.durationMs, options.fixtureIds);
+        const durationMs = options.durationOverrideMs ?? clip.durationMs;
+        // 🧬 WAVE 4856: V3 nativo o migración v2 → v3 in-memory.
+        const { tracks, phaseConfig } = this._buildResolvedTracks(clip, durationMs, options.fixtureIds);
         const activeClip = {
             instanceId,
             filePath: '<diamond-inline>', // No file — curves came inline
             clip,
-            evaluator,
+            tracks,
             startTimeMs: now,
-            durationMs: options.durationOverrideMs ?? clip.durationMs,
+            durationMs,
             intensity: options.intensity ?? 1.0,
             loop: options.loop ?? false,
-            fixturePhases,
             phaseConfig,
         };
         this.activeClips.set(instanceId, activeClip);
@@ -270,10 +329,10 @@ export class HephaestusRuntime {
         // ⚒️ WAVE 2400: Ensure output buffer capacity
         this.ensureOutputCapacity(this.estimateTotalOutputs());
         if (this.debug) {
-            const phaseInfo = fixturePhases
-                ? ` [PHASE: ${fixturePhases.length} fixtures, ${phaseConfig?.symmetry}]`
-                : '';
-            console.log(`[HephRuntime] ▶️💎 DIAMOND PLAY: ${clip.name} (${activeClip.durationMs}ms) ${clip.curves.size} curves${phaseInfo} ID=${instanceId}`);
+            const anyPhases = tracks.some(t => t.fixturePhases !== null);
+            const phaseInfo = anyPhases ? ` [PHASE: ${phaseConfig?.symmetry}]` : '';
+            const sourceCount = _isV3Clip(clip) ? `${clip.tracks.length} v3-tracks` : `${clip.curves.size} v2-curves`;
+            console.log(`[HephRuntime] ▶️💎 DIAMOND PLAY: ${clip.name} (${activeClip.durationMs}ms, ${sourceCount} → ${tracks.length} resolved)${phaseInfo} ID=${instanceId}`);
         }
         return instanceId;
     }
@@ -308,16 +367,18 @@ export class HephaestusRuntime {
      * @returns Array of fixture outputs to apply
      */
     /**
-     * ⚒️ WAVE 2400: THE PHASER REVOLUTION + ZERO-ALLOC
+     * 🧬 WAVE 4856 — UNIFIED TRACK-ITERATING TICK + ZERO-ALLOC.
      *
-     * tick() now branches between:
-     * - tickWithPhase(): Per-fixture phase evaluation (WAVE 2400 path)
-     * - tickLegacy(): Zone-based, same time for all (backward compat)
+     * tick() ya no se ramifica en `tickWithPhase` / `tickLegacy`. La elección
+     * phase-vs-flat se hace PER-TRACK dentro de `tickActive()` consultando
+     * `track.fixturePhases`. Un mismo clip puede ahora mezclar pistas con y
+     * sin distribución de fase; cada una se evalúa con el `CurveEvaluator`
+     * de su propia curva (cursor cache aislado).
      *
      * ZERO-ALLOC: Uses pre-allocated outputBuffer with writeOutput().
      * Only 1 array allocation per frame (getOutputSlice) vs N objects before.
      *
-     * SCALING PIPELINE:
+     * SCALING PIPELINE (en `_emitTrackSample`):
      *   1. CurveEvaluator → raw 0-1 (number) or HSL (color)
      *   2. Apply intensity multiplier
      *   3. SCALE to target format:
@@ -342,15 +403,10 @@ export class HephaestusRuntime {
                 expiredClips.push(instanceId);
                 continue;
             }
-            // ── WAVE 2400: Branch between phase-aware and legacy paths ────
-            if (active.fixturePhases && active.fixturePhases.length > 0) {
-                // 🔥 PER-FIXTURE PHASE EVALUATION
-                this.tickWithPhase(active, baseClipTimeMs);
-            }
-            else {
-                // Legacy: zone-based, same time for all
-                this.tickLegacy(active, baseClipTimeMs);
-            }
+            // 🧬 WAVE 4856: Unified track-iterating evaluation. Branching legacy/phase
+            // ahora vive PER-TRACK dentro de tickActive — un mismo clip puede tener
+            // unas pistas con phase y otras sin, evaluadas con tiempos independientes.
+            this.tickActive(active, baseClipTimeMs);
         }
         // Clean up expired clips
         for (const instanceId of expiredClips) {
@@ -363,111 +419,80 @@ export class HephaestusRuntime {
         return this.getOutputSlice();
     }
     /**
-     * ⚒️ WAVE 2400: Phase-aware evaluation path.
+     * 🧬 WAVE 4856 — UNIFIED TRACK-ITERATING TICK
      *
-     * fixturePhases is SORTED by phaseOffsetMs ASC.
-     * This means CurveEvaluator queries go in monotonically
-     * increasing time order → cursor cache stays O(1) amortized.
+     * Reemplaza la pareja `tickWithPhase` + `tickLegacy` por un único pase que
+     * itera `active.tracks[]`. Cada pista decide:
+     *   - SI tiene `fixturePhases` → emite con tiempo `clipTime + phaseOffset`
+     *     por cada FixturePhase (cursor-cache friendly: phases pre-ordenadas).
+     *   - SI NO tiene phases → emite con `clipTime` global por cada fixtureId.
      *
-     * For each fixture, we calculate a fixture-specific time
-     * (baseClipTimeMs + phaseOffsetMs) and evaluate all curves at that time.
+     * El evaluador per-track contiene UNA sola curva: `evaluator.getValue/`
+     * `getColorValue(track.paramId, t)`. Esto permite que múltiples pistas
+     * compartan paramId sin colisión de cursor cache (cada una mantiene el
+     * suyo). Garantiza routing espacial aislado: `track.fixtureIds` se resolvió
+     * a partir de `track.zones` específico, NO del bloque global del clip.
      */
-    tickWithPhase(active, baseClipTimeMs) {
-        for (const fp of active.fixturePhases) {
-            // ── Calculate fixture-specific time ──────────────────────────
-            let fixtureTimeMs = baseClipTimeMs + fp.phaseOffsetMs;
-            // Wrap if looping (phase offset can push beyond duration)
-            if (active.loop) {
-                fixtureTimeMs = ((fixtureTimeMs % active.durationMs) + active.durationMs) % active.durationMs;
-            }
-            else {
-                fixtureTimeMs = Math.min(fixtureTimeMs, active.durationMs);
-            }
-            // ── Evaluate each curve at fixture-specific time ────────────
-            // WAVE 3521: isCustomClip determined once per active clip
-            const isCustomThisClip = active.clip.effectType === 'heph_custom';
-            for (const [paramName, curve] of active.clip.curves) {
-                if (curve.valueType === 'color') {
-                    const hsl = active.evaluator.getColorValue(paramName, fixtureTimeMs);
-                    // Intensity modulates lightness (dim the color, don't destroy hue/sat)
-                    const modulatedL = (hsl.l / 100) * active.intensity;
-                    const rgb = hslToRgb(hsl.h, hsl.s / 100, modulatedL);
-                    // WAVE 3521: normalized RGB for Aether adapter (shared scratch buf)
-                    this._normRgbBuf.r = rgb.r / 255;
-                    this._normRgbBuf.g = rgb.g / 255;
-                    this._normRgbBuf.b = rgb.b / 255;
-                    this.writeOutput(fp.fixtureId, 'all', paramName, 0, rgb, undefined, 0, this._normRgbBuf, isCustomThisClip, active.clip.id);
+    tickActive(active, baseClipTimeMs) {
+        const isCustomThisClip = active.clip.effectType === 'heph_custom';
+        const clipId = active.clip.id;
+        const intensity = active.intensity;
+        const durationMs = active.durationMs;
+        const isLoop = active.loop;
+        for (let ti = 0; ti < active.tracks.length; ti++) {
+            const track = active.tracks[ti];
+            const paramName = track.paramId;
+            const evaluator = track.evaluator;
+            // ── Path A: per-fixture phase distribution ────────────────────────
+            if (track.fixturePhases !== null && track.fixturePhases.length > 0) {
+                for (let pi = 0; pi < track.fixturePhases.length; pi++) {
+                    const fp = track.fixturePhases[pi];
+                    let fixtureTimeMs = baseClipTimeMs + fp.phaseOffsetMs;
+                    if (isLoop) {
+                        fixtureTimeMs = ((fixtureTimeMs % durationMs) + durationMs) % durationMs;
+                    }
+                    else {
+                        fixtureTimeMs = Math.min(fixtureTimeMs, durationMs);
+                    }
+                    this._emitTrackSample(track, fp.fixtureId, fixtureTimeMs, evaluator, paramName, intensity, isCustomThisClip, clipId);
                 }
-                else {
-                    const rawValue = active.evaluator.getValue(paramName, fixtureTimeMs);
-                    const withIntensity = rawValue * active.intensity;
-                    const scaledValue = scaleToDMX(paramName, withIntensity);
-                    const fine = (paramName === 'pan' || paramName === 'tilt')
-                        ? scaleToDMX16(withIntensity).fine
-                        : undefined;
-                    this.writeOutput(fp.fixtureId, 'all', paramName, scaledValue, undefined, fine, withIntensity, undefined, isCustomThisClip, active.clip.id);
-                }
+                continue;
+            }
+            // ── Path B: zona resuelta sin phase distribution ──────────────────
+            const fixtureIds = track.fixtureIds;
+            if (fixtureIds.length === 0)
+                continue;
+            for (let fi = 0; fi < fixtureIds.length; fi++) {
+                this._emitTrackSample(track, fixtureIds[fi], baseClipTimeMs, evaluator, paramName, intensity, isCustomThisClip, clipId);
             }
         }
     }
     /**
-     * Legacy path: sin phase distribution.
-     * Mantiene backward compatibility 1:1 con el tick() pre-WAVE 2400.
-     * Used when clip has no PhaseConfig / no FixtureSelector.
+     * 🧬 WAVE 4856 — Emite UNA muestra de UNA pista para UN fixture en UN tiempo.
      *
-     * 🎯 WAVE 2544.3: AND-GATE FIX
-     * Previously emitted one output per zone tag (OR semantics in TitanOrchestrator).
-     * Now resolves the AND-intersection of all zone tags to concrete fixture IDs
-     * using resolveZoneTags, then emits per-fixture outputs (same as tickWithPhase).
-     * This ensures ['back', 'all-right'] → only back-right fixtures, not all-right ∪ back.
+     * Centraliza la lógica color-vs-numeric que antes se duplicaba en
+     * `tickWithPhase` y `tickLegacy`. La pista ya trae cacheado `valueType`
+     * para evitar el lookup `curve.valueType` en hot-path.
      */
-    tickLegacy(active, clipTimeMs) {
-        const clipZones = active.clip.zones;
-        // ── Resolve target fixture IDs (AND-intersection via ZoneMapper) ──────
-        // Single 'all' or empty → all fixtures. Multiple tags → AND-intersection.
-        let targetFixtureIds;
-        if (clipZones.length === 0 || (clipZones.length === 1 && clipZones[0] === 'all')) {
-            targetFixtureIds = getTitanOrchestrator().getFixtureIds();
+    _emitTrackSample(track, fixtureId, timeMs, evaluator, paramName, intensity, isCustomThisClip, clipId) {
+        if (track.valueType === 'color') {
+            const hsl = evaluator.getColorValue(paramName, timeMs);
+            // Intensity modula lightness — preserva hue/sat (HSL standard heph: 0-100)
+            const modulatedL = (hsl.l / 100) * intensity;
+            const rgb = hslToRgb(hsl.h, hsl.s / 100, modulatedL);
+            this._normRgbBuf.r = rgb.r / 255;
+            this._normRgbBuf.g = rgb.g / 255;
+            this._normRgbBuf.b = rgb.b / 255;
+            this.writeOutput(fixtureId, 'all', paramName, 0, rgb, undefined, 0, this._normRgbBuf, isCustomThisClip, clipId);
         }
         else {
-            const fixtures = getTitanOrchestrator().getFixturesForZoneMapping();
-            targetFixtureIds = resolveZoneTags(clipZones, fixtures);
-            // Fallback: if zone combo resolves to nothing, treat as global
-            if (targetFixtureIds.length === 0) {
-                targetFixtureIds = getTitanOrchestrator().getFixtureIds();
-            }
-        }
-        if (targetFixtureIds.length === 0)
-            return;
-        // ── Evaluate each curve → scale → emit per-fixture ────────────────────
-        // WAVE 3521: isCustomClip determined once per legacy tick call
-        const isCustomThisClip = active.clip.effectType === 'heph_custom';
-        for (const [paramName, curve] of active.clip.curves) {
-            // ─── COLOR CURVE PATH ───────────────────────────────────
-            if (curve.valueType === 'color') {
-                const hsl = active.evaluator.getColorValue(paramName, clipTimeMs);
-                // ⚒️ WAVE 2040.22c: HSL values are 0-100 (Heph standard), hslToRgb expects 0-1
-                const modulatedL = (hsl.l / 100) * active.intensity;
-                const rgb = hslToRgb(hsl.h, hsl.s / 100, modulatedL);
-                // WAVE 3521: normalized RGB for Aether adapter (shared scratch buf)
-                this._normRgbBuf.r = rgb.r / 255;
-                this._normRgbBuf.g = rgb.g / 255;
-                this._normRgbBuf.b = rgb.b / 255;
-                for (const fixtureId of targetFixtureIds) {
-                    this.writeOutput(fixtureId, 'all', paramName, 0, rgb, undefined, 0, this._normRgbBuf, isCustomThisClip, active.clip.id);
-                }
-                continue;
-            }
-            // ─── NUMERIC CURVE PATH ─────────────────────────────────
-            const rawValue = active.evaluator.getValue(paramName, clipTimeMs);
-            const withIntensity = rawValue * active.intensity;
+            const rawValue = evaluator.getValue(paramName, timeMs);
+            const withIntensity = rawValue * intensity;
             const scaledValue = scaleToDMX(paramName, withIntensity);
             const fine = (paramName === 'pan' || paramName === 'tilt')
                 ? scaleToDMX16(withIntensity).fine
                 : undefined;
-            for (const fixtureId of targetFixtureIds) {
-                this.writeOutput(fixtureId, 'all', paramName, scaledValue, undefined, fine, withIntensity, undefined, isCustomThisClip, active.clip.id);
-            }
+            this.writeOutput(fixtureId, 'all', paramName, scaledValue, undefined, fine, withIntensity, undefined, isCustomThisClip, clipId);
         }
     }
     /**
@@ -559,72 +584,132 @@ export class HephaestusRuntime {
     /**
      * Estimate total output count across all active clips.
      * Used to pre-size the output buffer at play() time.
+     *
+     * 🧬 WAVE 4856: Suma over tracks[] (cada track tiene su propio fixture set).
      */
     estimateTotalOutputs() {
         let total = 0;
-        const allFixtureCount = getTitanOrchestrator().getFixtureIds().length || 32;
         for (const [, active] of this.activeClips) {
-            // Legacy clips now emit per-fixture (not per-zone), use full fixture count as upper bound
-            const fixtureCount = active.fixturePhases?.length ?? allFixtureCount;
-            total += fixtureCount * active.clip.curves.size;
+            for (let i = 0; i < active.tracks.length; i++) {
+                const t = active.tracks[i];
+                // Phases (si existen) son por-fixture; si no hay phases, contamos fixtureIds.
+                total += t.fixturePhases?.length ?? t.fixtureIds.length;
+            }
         }
         return total;
     }
     // ─────────────────────────────────────────────────────────────────────────
-    // ⚒️ WAVE 2400: PHASE RESOLUTION HELPER
+    // 🧬 WAVE 4856 — V3 RESOLUTION PIPELINE
     // ─────────────────────────────────────────────────────────────────────────
     /**
-     * Resolves phase distribution for a clip at play() time.
+     * 🧬 WAVE 4856 — Construye los `ResolvedTrack[]` ejecutables de un clip.
      *
-     * Resolution priority:
-     * 1. clip.selector.phase (full PhaseConfig) — highest priority
-     * 2. clip.selector.phaseSpread (legacy shorthand → converted to linear PhaseConfig)
-     * 3. null (no phase distribution — legacy zone mode)
+     * Acepta tanto `HephAutomationClipV3` (canónico) como `HephAutomationClip`
+     * (v2.1 legado). Para v2 sintetiza UN track por entrada de `clip.curves`
+     * usando `clip.zones` como destino común — la equivalencia semántica con
+     * el comportamiento previo es 1:1.
      *
-     * @param clip — The clip to resolve phase for
-     * @param durationMs — Effective duration (may be overridden)
-     * @param externalFixtureIds — Pre-resolved fixture IDs (optional, bypasses selector resolution)
-     * @returns { fixturePhases, phaseConfig } or both null if no phase config
+     * Ruteo espacial AISLADO: cada track resuelve sus propios `zones` via
+     * `resolveZoneTags` (AND-intersección). Si la intersección resulta vacía,
+     * la pista queda silenciada (sin fallback global) — el autor puede
+     * declarar zonas inexistentes y el sistema lo respeta sin máscaras.
+     *
+     * Distribución de fase per-track:
+     *   - V3: cada `track.selector?.phase` se evalúa independientemente.
+     *   - V2: el `clip.selector?.phase` original se hereda a TODAS las pistas
+     *     migradas (preserva semántica histórica).
      */
-    resolvePhaseForClip(clip, durationMs, externalFixtureIds) {
-        const selector = clip.selector;
-        if (!selector) {
-            return { fixturePhases: null, phaseConfig: null };
-        }
-        // Determine PhaseConfig (full config takes precedence over legacy phaseSpread)
-        let config = null;
-        if (selector.phase) {
-            config = selector.phase;
-        }
-        else if (selector.phaseSpread && selector.phaseSpread > 0) {
-            // Legacy shorthand → convert to linear PhaseConfig
-            config = {
-                spread: selector.phaseSpread,
-                symmetry: 'linear',
-                wings: 1,
-                direction: 1,
-            };
-        }
-        if (!config || config.spread === 0) {
-            return { fixturePhases: null, phaseConfig: null };
-        }
-        // Resolve fixture IDs
-        const fixtureIds = externalFixtureIds && externalFixtureIds.length > 0
+    _buildResolvedTracks(clip, durationMs, externalFixtureIds) {
+        const tracks = [];
+        let topLevelPhaseConfig = null;
+        // ── Resolución del inventario de fixtures (compartido entre tracks) ──
+        // Las zonas se resuelven contra el inventario actual del Orchestrator.
+        // Caller puede pre-resolver `externalFixtureIds` para ahorrar lookups
+        // en el path Diamond / IPC; en ese caso es la fuente de verdad.
+        const orchFixtures = (externalFixtureIds == null || externalFixtureIds.length === 0)
+            ? getTitanOrchestrator().getFixturesForZoneMapping()
+            : null;
+        const allFixtureIds = (externalFixtureIds && externalFixtureIds.length > 0)
             ? externalFixtureIds
-            : []; // Caller should provide pre-resolved IDs; empty = no phase
-        if (fixtureIds.length === 0) {
-            // No fixture IDs available — can't distribute phase
-            // This happens when resolveFixtureSelector() hasn't been called externally.
-            // The runtime doesn't have access to the fixture store directly.
-            // Phase will be resolved when TitanOrchestrator provides fixture IDs.
-            if (this.debug) {
-                console.warn(`[HephRuntime] ⚠️ Phase config present but no fixture IDs provided. Falling back to legacy mode.`);
+            : getTitanOrchestrator().getFixtureIds();
+        /** Resuelve un `zones[]` a fixtureIds via AND-intersección. */
+        const resolveZonesToFixtures = (zones) => {
+            if (zones.length === 0)
+                return [...allFixtureIds];
+            if (zones.length === 1 && zones[0] === 'all')
+                return [...allFixtureIds];
+            if (orchFixtures != null) {
+                const ids = resolveZoneTags(zones, orchFixtures);
+                return ids;
             }
-            return { fixturePhases: null, phaseConfig: config };
+            // Pre-resolved IDs (externalFixtureIds) — ya filtrados por el caller.
+            return [...allFixtureIds];
+        };
+        if (_isV3Clip(clip)) {
+            // ── V3 NATIVO ─────────────────────────────────────────────────────
+            for (let i = 0; i < clip.tracks.length; i++) {
+                const t = clip.tracks[i];
+                const fixtureIds = resolveZonesToFixtures(t.zones);
+                const trackPhase = this._extractPhaseConfig(t.selector?.phase, t.selector?.phaseSpread);
+                if (trackPhase != null && topLevelPhaseConfig == null) {
+                    topLevelPhaseConfig = trackPhase;
+                }
+                tracks.push(this._buildResolvedTrack(t.id, t.paramId, t.curve, t.blendMode, fixtureIds, trackPhase, durationMs));
+            }
         }
-        // Resolve phase distribution
-        const fixturePhases = PhaseDistributor.resolve(fixtureIds, config, durationMs);
-        return { fixturePhases, phaseConfig: config };
+        else {
+            // ── V2.1 → V3 IN-MEMORY MIGRATION ─────────────────────────────────
+            // Una entrada por (paramId, curve) en el Map legado, hereda la zona
+            // global del clip y el `selector.phase` clip-level (si existe).
+            const clipPhase = this._extractPhaseConfig(clip.selector?.phase, clip.selector?.phaseSpread);
+            topLevelPhaseConfig = clipPhase;
+            // 🔧 WAVE 4914 FIX: En V2.1, el campo `zones[]` era un energy label
+            // ('intense', 'peak', 'active'…) — no un fixture zone tag. Si la
+            // resolución devuelve array vacío, fallback a todos los fixtures del rig
+            // para preservar el comportamiento pre-WAVE 4856 donde V2.1 siempre
+            // iluminaba el rig completo.
+            const _rawZoneIds = resolveZonesToFixtures(clip.zones);
+            const sharedFixtureIds = _rawZoneIds.length > 0 ? _rawZoneIds : [...allFixtureIds];
+            for (const [paramId, curve] of clip.curves) {
+                tracks.push(this._buildResolvedTrack(`legacy:${paramId}`, paramId, curve, _defaultBlendModeFor(paramId), sharedFixtureIds, clipPhase, durationMs));
+            }
+        }
+        return { tracks, phaseConfig: topLevelPhaseConfig };
+    }
+    /**
+     * 🧬 WAVE 4856 — Ensambla un único `ResolvedTrack` listo para `tickActive`.
+     * Crea un `CurveEvaluator` con UNA sola curva (Map de tamaño 1) y, si hay
+     * `phaseConfig + fixtureIds`, calcula la distribución de fase per-fixture.
+     */
+    _buildResolvedTrack(id, paramId, curve, blendMode, fixtureIds, phaseConfig, durationMs) {
+        const singleCurveMap = new Map([[paramId, curve]]);
+        const evaluator = new CurveEvaluator(singleCurveMap, durationMs);
+        let fixturePhases = null;
+        if (phaseConfig && phaseConfig.spread > 0 && fixtureIds.length > 0) {
+            fixturePhases = PhaseDistributor.resolve(fixtureIds, phaseConfig, durationMs);
+        }
+        return {
+            id,
+            paramId,
+            valueType: curve.valueType,
+            evaluator,
+            fixtureIds,
+            fixturePhases,
+            blendMode: blendMode ?? _defaultBlendModeFor(paramId),
+        };
+    }
+    /**
+     * 🧬 WAVE 4856 — Normaliza el origen de `PhaseConfig` (full vs legacy spread).
+     * Devuelve null si no hay configuración significativa (spread 0 incluido).
+     */
+    _extractPhaseConfig(phase, legacySpread) {
+        if (phase) {
+            return phase.spread > 0 ? phase : null;
+        }
+        if (legacySpread != null && legacySpread > 0) {
+            return { spread: legacySpread, symmetry: 'linear', wings: 1, direction: 1 };
+        }
+        return null;
     }
     // ─────────────────────────────────────────────────────────────────────────
     // STATUS & STATS

@@ -500,6 +500,19 @@ export interface HephTrack {
    * Si presente, filtra los fixtures resueltos por zones a un subconjunto.
    */
   selector?: import('../stage/ShowFileV2').FixtureSelector
+
+  /**
+   * ⚒️ WAVE 4859 — Distribución de fase grandMA3-style per-fixture.
+   *
+   * Shorthand directo en el track (alternativa a declarar `selector.phase`).
+   * Cuando presente, el Runtime llama a `PhaseDistributor.resolve()` al
+   * activar el clip y almacena los offsets en `ResolvedTrack.fixturePhases`.
+   *
+   * MODELO MA3: `spread: 1.0` = el último fixture empieza su animación
+   * exactamente un ciclo después que el primero. El offset se resta al
+   * tiempo del clip → `localElapsedMs = max(0, clipTime - fixtureOffsetMs)`.
+   */
+  phaseConfig?: PhaseConfig
 }
 
 /**

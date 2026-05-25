@@ -1101,6 +1101,13 @@ const luxApi = {
          */
         importLoadout: () => ipcRenderer.invoke('lux:keyforge:import'),
     },
+    // ⚡ WAVE 4914: ARSENAL CATALOG — catálogo dinámico para MidiLearn + KeyForge
+    // Retorna todos los efectos .lfx cargados en el DynamicEffectRegistry.
+    // El renderer usa esto para construir la lista de acciones fx-* en tiempo real,
+    // eliminando el EFFECT_ZONE_MAP hardcoded de MidiActionRegistry.
+    arsenal: {
+        getCatalog: () => ipcRenderer.invoke('lux:arsenal:getCatalog'),
+    },
 };
 // ═══════════════════════════════════════════════════════════════════════════
 // 🔥 WAVE 384: LUXDEBUG - Test utilities for Constructor verification

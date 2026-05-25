@@ -664,11 +664,20 @@ export class HephaestusRuntime {
       if (track.fixturePhases !== null && track.fixturePhases.length > 0) {
         for (let pi = 0; pi < track.fixturePhases.length; pi++) {
           const fp = track.fixturePhases[pi]
-          let fixtureTimeMs = baseClipTimeMs + fp.phaseOffsetMs
+          // ⚒️ WAVE 4859 — MODELO MA3: el offset representa cuánto TARDA en
+          // arrancar este fixture. Se resta al tiempo del clip, no se suma.
+          // Antes (bug): fixtureTimeMs = baseClipTimeMs + fp.phaseOffsetMs
+          //   → todos los fixtures en posiciones distintas de la curva al t=0
+          //   → efecto simultáneo, no escalonado.
+          // Ahora (MA3): localElapsedMs = max(0, clipTime - offset)
+          //   → fixture con offset=500ms comienza su ciclo 500ms después
+          //   → wave genuina: fixture[0] dispara primero, luego fixture[1], etc.
+          const localElapsedMs = Math.max(0, baseClipTimeMs - fp.phaseOffsetMs)
+          let fixtureTimeMs: number
           if (isLoop) {
-            fixtureTimeMs = ((fixtureTimeMs % durationMs) + durationMs) % durationMs
+            fixtureTimeMs = ((localElapsedMs % durationMs) + durationMs) % durationMs
           } else {
-            fixtureTimeMs = Math.min(fixtureTimeMs, durationMs)
+            fixtureTimeMs = Math.min(localElapsedMs, durationMs)
           }
           this._emitTrackSample(
             track,
@@ -931,7 +940,14 @@ export class HephaestusRuntime {
       for (let i = 0; i < clip.tracks.length; i++) {
         const t = clip.tracks[i]
         const fixtureIds = resolveZonesToFixtures(t.zones as readonly string[])
-        const trackPhase = this._extractPhaseConfig(t.selector?.phase, t.selector?.phaseSpread)
+        // ⚒️ WAVE 4859: `phaseConfig` es el shorthand canónico directo en el
+        // track (formato nativo .lfx). `selector.phase` es la variante via
+        // FixtureSelector (legado). Se da prioridad a `phaseConfig` y se usa
+        // `selector.phase` / `selector.phaseSpread` como fallback.
+        const trackPhase = this._extractPhaseConfig(
+          t.phaseConfig ?? t.selector?.phase,
+          t.selector?.phaseSpread,
+        )
         if (trackPhase != null && topLevelPhaseConfig == null) {
           topLevelPhaseConfig = trackPhase
         }
@@ -946,7 +962,13 @@ export class HephaestusRuntime {
         clip.selector?.phaseSpread,
       )
       topLevelPhaseConfig = clipPhase
-      const sharedFixtureIds = resolveZonesToFixtures(clip.zones as readonly string[])
+      // 🔧 WAVE 4914 FIX: En V2.1, el campo `zones[]` era un energy label
+      // ('intense', 'peak', 'active'…) — no un fixture zone tag. Si la
+      // resolución devuelve array vacío, fallback a todos los fixtures del rig
+      // para preservar el comportamiento pre-WAVE 4856 donde V2.1 siempre
+      // iluminaba el rig completo.
+      const _rawZoneIds = resolveZonesToFixtures(clip.zones as readonly string[])
+      const sharedFixtureIds = _rawZoneIds.length > 0 ? _rawZoneIds : [...allFixtureIds]
       for (const [paramId, curve] of clip.curves) {
         tracks.push(this._buildResolvedTrack(
           `legacy:${paramId}`,

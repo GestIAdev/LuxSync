@@ -4,21 +4,27 @@
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * Single source of truth for every action that can be MIDI-mapped.
- * Builds a categorized catalog from known effect IDs, vibe profiles,
- * and arbiter overrides.
+ * Builds a categorized catalog from the live DynamicEffectRegistry via IPC.
  *
  * ARCHITECTURE:
  * - Runs in RENDERER process (no access to EffectManager singleton)
- * - Effect IDs are embedded at build time (they only change with code)
- * - Grouped by energy zone via EFFECT_ZONE_MAP mirror
+ * - Effect IDs come from the live DynamicEffectRegistry via `lux:arsenal:getCatalog`
+ * - Grouped by energy zone via the energyZone.max field in the registry entry
  * - Consumed by MidiLearnOverlay for categorized display
  * - Consumed by useMidiLearn for prefix-based dispatch routing
  *
+ * WAVE 4914: EFFECT_ZONE_MAP hardcoded replaced by live registry feed.
+ * `initArsenalCatalog()` must be called once at app boot (AppCommander).
+ * The static EFFECT_ZONE_MAP is kept as emergency fallback only.
+ *
  * @module midi/MidiActionRegistry
- * @version WAVE 3300
+ * @version WAVE 4914
  */
 // ═══════════════════════════════════════════════════════════════════════════
-// EFFECT ZONE MAP (mirror of EffectManager's EFFECT_ZONE_MAP)
+// EFFECT ZONE MAP — BOOTSTRAP FALLBACK
+// Fuente estática de arranque. Se reemplaza por el catálogo vivo del
+// DynamicEffectRegistry en cuanto `initArsenalCatalog()` complete el IPC.
+// Mantener actualizado es opcional — es solo el estado pre-IPC.
 // ═══════════════════════════════════════════════════════════════════════════
 const EFFECT_ZONE_MAP = {
     // SILENCE
@@ -88,6 +94,60 @@ function humanize(snakeCase) {
         .join(' ');
 }
 // ═══════════════════════════════════════════════════════════════════════════
+// DYNAMIC EFFECT CONTROLS — WAVE 4914
+// Inicializados desde el EFFECT_ZONE_MAP (fallback síncrono al module load).
+// `initArsenalCatalog()` los reemplaza con el catálogo vivo del registry.
+// ═══════════════════════════════════════════════════════════════════════════
+function _buildFromZoneMap(map) {
+    return Object.entries(map).map(([effectId, zone]) => ({
+        id: `fx-${effectId}`,
+        label: humanize(effectId),
+        category: 'button',
+        group: 'effect',
+        energyZone: zone,
+    }));
+}
+/** Catálogo mutable de efectos — se actualiza en runtime via `initArsenalCatalog()`. */
+let _effectControls = _buildFromZoneMap(EFFECT_ZONE_MAP);
+/**
+ * Reemplaza el catálogo de efectos con los datos del DynamicEffectRegistry.
+ * Llamar desde `initArsenalCatalog()`. Exportado para testing.
+ */
+export function setLiveEffectCatalog(entries) {
+    _effectControls = entries.map(e => ({
+        id: `fx-${e.id}`,
+        label: e.name,
+        category: 'button',
+        group: 'effect',
+        energyZone: e.energyZone ?? 'active',
+    }));
+}
+function _getArsenalBridge() {
+    const w = globalThis;
+    return w.lux?.arsenal ?? null;
+}
+/**
+ * Llama a `lux:arsenal:getCatalog` vía IPC y actualiza el catálogo en vivo.
+ * Debe llamarse UNA VEZ en AppCommander.useEffect al arrancar la app.
+ *
+ * Falla silenciosamente si el bridge no está disponible (entorno no-Electron).
+ */
+export async function initArsenalCatalog() {
+    const bridge = _getArsenalBridge();
+    if (!bridge) {
+        console.warn('[MidiActionRegistry] ⚠️ lux.arsenal bridge no disponible — usando fallback estático');
+        return;
+    }
+    try {
+        const entries = await bridge.getCatalog();
+        setLiveEffectCatalog(entries);
+        console.log(`[MidiActionRegistry] ⚡ Catálogo vivo cargado: ${entries.length} efectos`);
+    }
+    catch (err) {
+        console.error('[MidiActionRegistry] ❌ getCatalog falló — usando fallback estático:', err);
+    }
+}
+// ═══════════════════════════════════════════════════════════════════════════
 // SYSTEM CONTROLS (the original 7 + flow)
 // ═══════════════════════════════════════════════════════════════════════════
 const SYSTEM_CONTROLS = [
@@ -131,16 +191,6 @@ const TUNGSTEN_CONTROLS = [
     { id: 'tung-petal-r', label: 'Petal Right Burst', category: 'button', group: 'arbiter' },
 ];
 // ═══════════════════════════════════════════════════════════════════════════
-// EFFECT CONTROLS (built from EFFECT_ZONE_MAP)
-// ═══════════════════════════════════════════════════════════════════════════
-const EFFECT_CONTROLS = Object.entries(EFFECT_ZONE_MAP).map(([effectId, zone]) => ({
-    id: `fx-${effectId}`,
-    label: humanize(effectId),
-    category: 'button',
-    group: 'effect',
-    energyZone: zone,
-}));
-// ═══════════════════════════════════════════════════════════════════════════
 // ZONE DISPLAY ORDER (peak first — the user thinks "dame algo para el DROP")
 // ═══════════════════════════════════════════════════════════════════════════
 const ZONE_ORDER = ['peak', 'intense', 'active', 'gentle', 'ambient', 'valley', 'silence'];
@@ -169,7 +219,7 @@ const ZONE_EMOJI = {
 export function getAllActions() {
     return [
         ...SYSTEM_CONTROLS,
-        ...EFFECT_CONTROLS,
+        ..._effectControls,
         ...VIBE_CONTROLS,
         ...ARBITER_CONTROLS,
         ...TUNGSTEN_CONTROLS,
@@ -189,7 +239,7 @@ export function getEffectsByZone() {
         zone,
         label: ZONE_LABELS[zone],
         emoji: ZONE_EMOJI[zone],
-        effects: EFFECT_CONTROLS.filter(e => e.energyZone === zone),
+        effects: _effectControls.filter(e => e.energyZone === zone),
     })).filter(g => g.effects.length > 0);
 }
 /** Vibe controls */

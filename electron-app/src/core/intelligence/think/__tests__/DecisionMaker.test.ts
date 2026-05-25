@@ -31,7 +31,6 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import {
   makeDecision,
   DIVINE_THRESHOLD,
-  DIVINE_ARSENAL,
   type DecisionInputs,
 } from '../DecisionMaker'
 import { getDynamicEffectRegistry } from '../../../../arsenal/DynamicEffectRegistry'
@@ -750,12 +749,12 @@ describe('§ 7. HEAVY ARSENAL — validSections e isHeavyCandidate via Registry'
     }
   })
 
-  it('DIVINE_ARSENAL deberia tener entradas para techno-club', () => {
-    const technoArsenal = DIVINE_ARSENAL['techno-club']
-    expect(technoArsenal).toBeDefined()
-    expect(technoArsenal.length).toBeGreaterThan(0)
-    expect(technoArsenal).toContain('core_meltdown')
-    expect(technoArsenal).toContain('industrial_strobe')
-    expect(technoArsenal).toContain('gatling_raid')
+  it('Live Registry deberia tener divines para techno-club (WAVE 4915)', () => {
+    const technoDivines = getDynamicEffectRegistry().getDivineArsenal('techno-club')
+    expect(technoDivines.length).toBeGreaterThan(0)
+    const ids = technoDivines.map((e: { id: string }) => e.id)
+    expect(ids).toContain('core_meltdown')
+    expect(ids).toContain('industrial_strobe')
+    expect(ids).toContain('gatling_raid')
   })
 })

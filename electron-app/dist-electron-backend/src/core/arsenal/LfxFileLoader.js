@@ -30,6 +30,8 @@ const USER_SAFETY_POLICY = Object.freeze({
     /** Tamaño máximo de archivo (bytes). 256KB de holgura. */
     MAX_FILE_SIZE_BYTES: 256 * 1024,
 });
+/** Valores válidos de textureAffinity en CognitiveDNA. */
+const VALID_TEXTURE_AFFINITIES = new Set(['clean', 'dirty', 'universal']);
 // ─── LOADER ─────────────────────────────────────────────────────────────────
 export class LfxFileLoader {
     constructor(registry) {
@@ -75,14 +77,28 @@ export class LfxFileLoader {
                 return false;
             }
             const raw = await fs.readFile(filePath, 'utf-8');
-            const result = this._parseAndValidate(raw, filePath, source);
-            if (!result)
-                return false;
+            // Peek del schema para routing: V2.1 legacy vs V3 nativo
+            let schemaHint = null;
+            try {
+                const peeked = JSON.parse(raw);
+                schemaHint = typeof peeked?.$schema === 'string' ? peeked.$schema : null;
+            }
+            catch { /* JSON inválido — el parser lo reportará */ }
             const opts = {
                 filePath,
                 isBuiltin: source === 'builtin',
                 keepSource: false,
             };
+            if (schemaHint === 'luxsync.lfx/3.0') {
+                const v3 = this._parseAndValidateV3(raw, filePath, source);
+                if (!v3)
+                    return false;
+                const entry = this._registry.registerEffectV3(v3, opts);
+                return entry !== null;
+            }
+            const result = this._parseAndValidate(raw, filePath, source);
+            if (!result)
+                return false;
             const entry = this._registry.registerEffect(result, opts);
             return entry !== null;
         }
@@ -202,6 +218,167 @@ export class LfxFileLoader {
             }
         }
         return validated;
+    }
+    /**
+     * Parsea + valida un clip `.lfx v3.0` nativo.
+     *
+     * GATES:
+     *   Struct: id, name, author, category, tags, vibeCompat, durationMs, effectType, tracks[].
+     *   G5: cada track tiene zones[] y curve.keyframes[] no vacíos.
+     *   DNA: genome ∈ [0,1], compatibleVibes, textureAffinity válida.
+     *   G2: checksum SHA-256 sobre clip (si declarado y no vacío).
+     *   USER: aggression ≤ 0.95.
+     *
+     * `curves{}` NO es requerido. `staticParams`, `mixBus`, `priority` opcionales.
+     */
+    _parseAndValidateV3(raw, filePath, source) {
+        let parsed;
+        try {
+            parsed = JSON.parse(raw);
+        }
+        catch {
+            console.warn(`[LfxFileLoader ⚠️] V3 JSON parse fail at ${filePath}`);
+            return null;
+        }
+        const wrapper = parsed;
+        const clip = wrapper.clip;
+        if (!clip || typeof clip !== 'object') {
+            console.warn(`[LfxFileLoader ⚠️] V3 struct fail: missing clip at ${filePath}`);
+            return null;
+        }
+        // ── Estructura mínima ─────────────────────────────────────────────────
+        if (typeof clip.id !== 'string' || clip.id.length === 0) {
+            console.warn(`[LfxFileLoader ⚠️] V3 struct fail: id at ${filePath}`);
+            return null;
+        }
+        if (typeof clip.name !== 'string') {
+            console.warn(`[LfxFileLoader ⚠️] V3 struct fail: name at ${filePath}`);
+            return null;
+        }
+        if (typeof clip.author !== 'string') {
+            console.warn(`[LfxFileLoader ⚠️] V3 struct fail: author at ${filePath}`);
+            return null;
+        }
+        if (typeof clip.category !== 'string') {
+            console.warn(`[LfxFileLoader ⚠️] V3 struct fail: category at ${filePath}`);
+            return null;
+        }
+        if (!Array.isArray(clip.tags)) {
+            console.warn(`[LfxFileLoader ⚠️] V3 struct fail: tags at ${filePath}`);
+            return null;
+        }
+        if (!Array.isArray(clip.vibeCompat) || clip.vibeCompat.length === 0) {
+            console.warn(`[LfxFileLoader ⚠️] V3 struct fail: vibeCompat at ${filePath}`);
+            return null;
+        }
+        if (typeof clip.durationMs !== 'number' || !Number.isFinite(clip.durationMs) || clip.durationMs <= 0) {
+            console.warn(`[LfxFileLoader ⚠️] V3 struct fail: durationMs at ${filePath}`);
+            return null;
+        }
+        if (typeof clip.effectType !== 'string') {
+            console.warn(`[LfxFileLoader ⚠️] V3 struct fail: effectType at ${filePath}`);
+            return null;
+        }
+        // ── G5: tracks[] con al menos 1 track válido ──────────────────────────
+        if (!Array.isArray(clip.tracks) || clip.tracks.length === 0) {
+            console.warn(`[LfxFileLoader ⚠️] V3 G5 fail: missing/empty tracks at ${filePath}`);
+            return null;
+        }
+        for (const t of clip.tracks) {
+            if (!t || typeof t !== 'object') {
+                console.warn(`[LfxFileLoader ⚠️] V3 G5 fail: invalid track at ${filePath}`);
+                return null;
+            }
+            if (!Array.isArray(t.zones) || t.zones.length === 0) {
+                console.warn(`[LfxFileLoader ⚠️] V3 G5 fail: track '${t.id}' has no zones at ${filePath}`);
+                return null;
+            }
+            const curve = t.curve;
+            if (!curve || typeof curve !== 'object') {
+                console.warn(`[LfxFileLoader ⚠️] V3 G5 fail: track '${t.id}' missing curve at ${filePath}`);
+                return null;
+            }
+            if (!Array.isArray(curve.keyframes) || curve.keyframes.length === 0) {
+                console.warn(`[LfxFileLoader ⚠️] V3 G5 fail: track '${t.id}' no keyframes at ${filePath}`);
+                return null;
+            }
+        }
+        // ── cognitiveDNA ──────────────────────────────────────────────────────
+        // Sin DNA el clip no entra al arsenal de Selene — lo pasamos al registry
+        // que devuelve null silenciosamente. No es error del archivo.
+        const rawDna = clip.cognitiveDNA;
+        if (rawDna) {
+            const genome = rawDna.genome;
+            if (!genome || typeof genome !== 'object') {
+                console.warn(`[LfxFileLoader ⚠️] V3 DNA fail: genome at ${filePath}`);
+                return null;
+            }
+            for (const k of ['aggression', 'chaos', 'organicity']) {
+                const v = genome[k];
+                if (typeof v !== 'number' || !Number.isFinite(v) || v < 0 || v > 1) {
+                    console.warn(`[LfxFileLoader ⚠️] V3 DNA fail: genome.${k} at ${filePath}`);
+                    return null;
+                }
+            }
+            if (!Array.isArray(rawDna.compatibleVibes) || rawDna.compatibleVibes.length === 0) {
+                console.warn(`[LfxFileLoader ⚠️] V3 DNA fail: compatibleVibes at ${filePath}`);
+                return null;
+            }
+            if (!VALID_TEXTURE_AFFINITIES.has(rawDna.textureAffinity)) {
+                console.warn(`[LfxFileLoader ⚠️] V3 DNA fail: textureAffinity '${rawDna.textureAffinity}' at ${filePath}`);
+                return null;
+            }
+        }
+        // ── USER policy ───────────────────────────────────────────────────────
+        if (source === 'user' && rawDna) {
+            const genome = rawDna.genome;
+            if (genome.aggression > USER_SAFETY_POLICY.MAX_AGGRESSION) {
+                console.warn(`[LfxFileLoader ⚠️] USER policy: V3 aggression=${genome.aggression} at ${filePath}`);
+                return null;
+            }
+        }
+        // ── G2: Checksum opcional ─────────────────────────────────────────────
+        const checksum = typeof wrapper.checksum === 'string' ? wrapper.checksum : '';
+        if (checksum.length > 0) {
+            try {
+                const canonical = JSON.stringify(clip);
+                const hash = createHash('sha256').update(canonical).digest('hex');
+                const declared = checksum.startsWith('sha256:') ? checksum.slice(7) : checksum;
+                if (hash !== declared) {
+                    console.warn(`[LfxFileLoader ⚠️] V3 G2 fail: checksum mismatch at ${filePath}`);
+                    return null;
+                }
+            }
+            catch {
+                console.warn(`[LfxFileLoader ⚠️] V3 G2 fail: checksum compute error at ${filePath}`);
+                return null;
+            }
+        }
+        // ── Ensamblar LFXFileV3 tipado ────────────────────────────────────────
+        const v3File = {
+            $schema: 'luxsync.lfx/3.0',
+            checksum,
+            clip: {
+                id: clip.id,
+                name: clip.name,
+                author: clip.author,
+                category: clip.category,
+                tags: clip.tags,
+                vibeCompat: clip.vibeCompat,
+                durationMs: clip.durationMs,
+                effectType: clip.effectType,
+                tracks: clip.tracks,
+                cognitiveDNA: clip.cognitiveDNA || undefined,
+                simulationMeta: clip.simulationMeta || undefined,
+                schemaVersion: '3.0',
+                staticParams: clip.staticParams ?? {},
+                spatialZones: clip.spatialZones ?? [],
+                mixBus: clip.mixBus ?? 'htp',
+                priority: typeof clip.priority === 'number' ? clip.priority : 70,
+            },
+        };
+        console.log(`[LfxFileLoader 🏛️] V3 accepted: ${clip.id} at ${filePath}`);
+        return v3File;
     }
 }
 // ─── VALIDADORES PRIVADOS ───────────────────────────────────────────────────

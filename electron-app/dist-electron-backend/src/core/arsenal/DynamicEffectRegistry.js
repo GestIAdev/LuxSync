@@ -78,6 +78,42 @@ export class DynamicEffectRegistry {
         return entry;
     }
     /**
+     * Registra un `.lfx v3.0` nativo en el registry.
+     *
+     * Gates aplicados:
+     *   G1: effectType === 'heph_custom' (no obligatorio en V3 — se acepta cualquier valor).
+     *   G3: rangos del genoma ∈ [0,1].
+     *   G4: `compatibleVibes` no vacío.
+     *
+     * Si `cognitiveDNA` está ausente, el clip es Hephaestus-only (invisible para Selene).
+     *
+     * @returns la entry congelada si fue aceptada, o `null` si fue rechazada.
+     */
+    registerEffectV3(v3, options = {}) {
+        const clip = v3.clip;
+        if (!clip.cognitiveDNA) {
+            // V3 sin DNA: clip Hephaestus puro — invisible para Selene por diseño.
+            return null;
+        }
+        const dna = clip.cognitiveDNA;
+        if (!_validateGenomeRanges(dna)) {
+            console.warn(`[DynamicEffectRegistry ⚠️] V3 G3 fail: genome out of range for "${clip.id}"`);
+            return null;
+        }
+        if (dna.compatibleVibes.length === 0) {
+            console.warn(`[DynamicEffectRegistry ⚠️] V3 G4 fail: empty compatibleVibes for "${clip.id}"`);
+            return null;
+        }
+        const entry = _buildEntryFromV3(clip, options);
+        const prev = this._byId.get(entry.id);
+        if (prev)
+            this._removeFromIndices(prev);
+        this._byId.set(entry.id, entry);
+        this._appendToIndices(entry);
+        this._rebuildAllEntries();
+        return entry;
+    }
+    /**
      * Elimina un efecto del registry.
      * @returns true si existía.
      */
@@ -143,6 +179,24 @@ export class DynamicEffectRegistry {
     }
     getEntryCount() {
         return this._byId.size;
+    }
+    /**
+     * Catálogo serializable para IPC renderer → MidiLearn / KeyForge.
+     *
+     * Devuelve solo los campos necesarios para construir la lista de acciones
+     * disparables. `energyZone` es el `max` del rango declarado en el DNA
+     * (zona pico del efecto — la más representativa para el catálogo de usuario).
+     *
+     * Nota: solo incluye efectos *cognitivos* (con DNA). Los clips Hephaestus-only
+     * no son disparables via `forceStrike` desde el registry.
+     */
+    getEffectCatalog() {
+        return this._allEntries.map(e => ({
+            id: e.id,
+            name: e.name,
+            energyZone: e.energyZone.max,
+            compatibleVibes: [...e.compatibleVibes],
+        }));
     }
     // ─────────────────────────────────────────────────────────────────────────
     // INTERNALS — INDEX MAINTENANCE
@@ -212,6 +266,62 @@ function _spliceFrom(arr, target) {
     const idx = arr.indexOf(target);
     if (idx >= 0)
         arr.splice(idx, 1);
+}
+/**
+ * Construye una RegistryEntry desde un clip V3 nativo.
+ * Equivalente a `_buildEntry` para el formato hephaestus/v2.1.
+ */
+function _buildEntryFromV3(clip, options) {
+    const dna = clip.cognitiveDNA;
+    const simMeta = clip.simulationMeta ?? DEFAULT_SIMULATION_META;
+    const ikCompat = dna.ikCompatibility ?? DEFAULT_IK_COMPATIBILITY;
+    const compatibleVibes = Object.freeze([...dna.compatibleVibes]);
+    const validSections = Object.freeze([...dna.validSections]);
+    const tags = Object.freeze([...clip.tags]);
+    const entry = {
+        id: clip.id,
+        name: clip.name,
+        author: clip.author,
+        category: clip.category,
+        tags,
+        durationMs: clip.durationMs,
+        effectType: clip.effectType,
+        filePath: options.filePath ?? null,
+        dna: Object.freeze({
+            aggression: dna.genome.aggression,
+            chaos: dna.genome.chaos,
+            organicity: dna.genome.organicity,
+        }),
+        textureAffinity: dna.textureAffinity,
+        compatibleVibes,
+        validSections,
+        energyZone: Object.freeze({ min: dna.energyZone.min, max: dna.energyZone.max }),
+        aggressionRange: Object.freeze({
+            min: dna.aggressionRange.min,
+            max: dna.aggressionRange.max,
+        }),
+        spatialBehavior: dna.spatialBehavior,
+        ikCompatibility: Object.freeze({ ...ikCompat }),
+        simMeta: Object.freeze({
+            ...simMeta,
+            beautyWeights: Object.freeze({ ...simMeta.beautyWeights }),
+            zScoreGuards: Object.freeze({ ...simMeta.zScoreGuards }),
+        }),
+        // V3 no declara executionHints → usar default
+        execHints: Object.freeze({
+            ..._DEFAULT_EXECUTION_HINTS,
+            phaseConfig: Object.freeze({ ..._DEFAULT_EXECUTION_HINTS.phaseConfig }),
+        }),
+        // V3 no declara safetyDeclaration → usar default
+        safetyDecl: Object.freeze({ ...DEFAULT_SAFETY_DECLARATION }),
+        // V3 siempre vector en esta fase (pixel domain reservado)
+        executionDomain: dna.executionDomain ?? 'vector',
+        pixelHints: null,
+        isBuiltin: options.isBuiltin ?? false,
+        loadedAt: Date.now(),
+        source: null,
+    };
+    return Object.freeze(entry);
 }
 function _buildEntry(clip, dna, options) {
     const c = clip.clip;

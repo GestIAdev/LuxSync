@@ -50,3 +50,4 @@ export function hasCognitiveDNA(clip) {
 export function isSeleneEligible(clip) {
     return clip.clip.effectType === 'heph_custom' && hasCognitiveDNA(clip);
 }
+// `HephTrackV3` se declara arriba como alias de `HephTrack` (WAVE 4856).

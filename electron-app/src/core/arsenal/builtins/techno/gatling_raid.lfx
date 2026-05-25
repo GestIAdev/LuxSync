@@ -1,0 +1,109 @@
+{
+  "$schema": "luxsync.lfx/3.0",
+  "clip": {
+    "id": "gatling_raid",
+    "name": "Gatling Raid",
+    "author": "LuxSync Factory",
+    "category": "physical",
+    "tags": ["gatling", "machine-gun", "peak", "techno"],
+    "vibeCompat": ["techno"],
+    "durationMs": 1760,
+    "effectType": "heph_custom",
+    "cognitiveDNA": {
+      "genome": { "aggression": 0.93, "chaos": 0.75, "organicity": 0.10 },
+      "textureAffinity": "dirty",
+      "compatibleVibes": ["techno"],
+      "validSections": ["drop", "peak"],
+      "energyZone": { "min": "intense", "max": "peak" },
+      "aggressionRange": { "min": 0.80, "max": 1.0 },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": { "base": 0.84, "energyMultiplier": 1.05, "vibeBonus": 0.05 },
+      "gpuCost": 0.30,
+      "fatigueImpact": 0.18,
+      "minDurationMs": 1760,
+      "cooldownMs": 5000,
+      "isStrobe": true,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": true,
+      "zScoreGuards": { "requireRising": true, "minimumZ": 2.0, "minimumEnergy": 0.7 }
+    },
+    "tracks": [
+      {
+        "id": "gatling-color-front-red",
+        "paramId": "color",
+        "zones": ["front"],
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "defaultValue": { "h": 0, "s": 100, "l": 50 },
+          "keyframes": [
+            { "timeMs": 0, "value": { "h": 0, "s": 100, "l": 50 }, "interpolation": "hold" }
+          ]
+        }
+      },
+      {
+        "id": "gatling-color-back-cyan",
+        "paramId": "color",
+        "zones": ["back"],
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "defaultValue": { "h": 185, "s": 100, "l": 50 },
+          "keyframes": [
+            { "timeMs": 0, "value": { "h": 185, "s": 100, "l": 50 }, "interpolation": "hold" }
+          ]
+        }
+      },
+      {
+        "id": "gatling-intensity",
+        "paramId": "intensity",
+        "zones": ["front", "back"],
+        "blendMode": "max",
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "defaultValue": 0,
+          "keyframes": [
+            { "timeMs": 0, "value": 1.0, "interpolation": "hold" },
+            { "timeMs": 1560, "value": 1.0, "interpolation": "hold" },
+            { "timeMs": 1760, "value": 0.0, "interpolation": "linear" }
+          ]
+        }
+      },
+      {
+        "id": "gatling-strobe",
+        "paramId": "strobeRate",
+        "zones": ["front", "back"],
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "strobeRate",
+          "valueType": "number",
+          "defaultValue": 0,
+          "keyframes": [
+            { "timeMs": 0, "value": 1.0, "interpolation": "hold" },
+            { "timeMs": 1560, "value": 1.0, "interpolation": "hold" },
+            { "timeMs": 1760, "value": 0.0, "interpolation": "hold" }
+          ]
+        }
+      },
+      {
+        "id": "movers-blackout",
+        "paramId": "intensity",
+        "zones": ["all-movers"],
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "defaultValue": 0,
+          "keyframes": [
+            { "timeMs": 0, "value": 0, "interpolation": "hold" }
+          ]
+        }
+      }
+    ]
+  }
+}

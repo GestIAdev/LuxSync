@@ -17,6 +17,7 @@
  */
 import { app, BrowserWindow, ipcMain, desktopCapturer, dialog, clipboard } from 'electron';
 import path from 'path';
+import fs from 'fs';
 // ═══════════════════════════════════════════════════════════════════════════
 // 🛡️ WAVE 2489: THE OBSIDIAN VAULT — V8 Bytecode License Validator
 // bytenode registra el handler para .jsc ANTES de cualquier require()
@@ -389,17 +390,39 @@ async function initTitan() {
     // ⚡ WAVE 4822: INFINITE ARSENAL — BOOT INGESTION
     // Poblar DynamicEffectRegistry antes del primer ciclo de Selene.
     // Fallo silencioso: si los .lfx no están, el sistema cae al path legacy.
+    // 
+    // ORGANIZACIÓN POR VIBES:
+    // - Descubre automáticamente todas las subcarpetas dentro de /builtins/
+    // - Cada vibe (techno/, latin/, etc.) se carga como un DirectorySpec
     // ════════════════════════════════════════════════════════════
     try {
         const _builtinPath = app.isPackaged
             ? path.join(process.resourcesPath, 'app.asar.unpacked', 'src', 'core', 'arsenal', 'builtins')
             : path.join(__dirname, '..', 'src', 'core', 'arsenal', 'builtins');
+        // Auto-discover todas las carpetas de vibes dentro de /builtins/
+        const _vibeDirectories = [];
+        try {
+            const _dirEntries = fs.readdirSync(_builtinPath, { withFileTypes: true });
+            for (const entry of _dirEntries) {
+                if (entry.isDirectory()) {
+                    _vibeDirectories.push({
+                        absolutePath: path.join(_builtinPath, entry.name),
+                        source: 'builtin'
+                    });
+                }
+            }
+        }
+        catch (_discoverErr) {
+            console.warn('[TitanOrchestrator] ⚠️ Failed to discover vibe directories:', _discoverErr);
+        }
+        // Si no encontró ninguna subcarpeta, cargar desde la raíz (fallback legacy)
+        if (_vibeDirectories.length === 0) {
+            _vibeDirectories.push({ absolutePath: _builtinPath, source: 'builtin' });
+        }
         const _lfxLoader = new LfxFileLoader(getDynamicEffectRegistry());
-        const _arsenalReport = await _lfxLoader.loadAll([
-            { absolutePath: _builtinPath, source: 'builtin' }
-        ]);
+        const _arsenalReport = await _lfxLoader.loadAll(_vibeDirectories);
         console.log(`[TitanOrchestrator] ⚡ Infinite Arsenal: ` +
-            `${_arsenalReport.accepted}/${_arsenalReport.scanned} .lfx cargados ` +
+            `${_arsenalReport.accepted}/${_arsenalReport.scanned} .lfx cargados desde ${_vibeDirectories.length} vibe(s) ` +
             `(rechazados: ${_arsenalReport.rejected}, errores: ${_arsenalReport.errors})`);
         if (isDev && _arsenalReport.accepted < 48) {
             console.warn(`[TitanOrchestrator] ⚠️ Arsenal incompleto: esperados ≥48, ` +
@@ -552,6 +575,10 @@ async function initTitan() {
     // 🔒 WAVE 2490: THE TIER SEPARATION PROTOCOL — License tier IPC
     // ═══════════════════════════════════════════════════════════════════════════
     ipcMain.handle('license:getTier', () => currentLicenseTier);
+    // ⚡ WAVE 4914: ARSENAL CATALOG IPC
+    // Expone el DynamicEffectRegistry al renderer para que MidiLearn y KeyForge
+    // muestren la lista real de efectos .lfx cargados en vez de IDs hardcoded.
+    ipcMain.handle('lux:arsenal:getCatalog', () => getDynamicEffectRegistry().getEffectCatalog());
     // ArtNet event forwarding
     artNetDriver.on('ready', () => {
         mainWindow?.webContents.send('artnet:ready', artNetDriver.getStatus());

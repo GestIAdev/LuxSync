@@ -1,0 +1,102 @@
+{
+  "$schema": "luxsync.lfx/3.0",
+  "clip": {
+    "id": "binary_glitch",
+    "name": "Binary Glitch",
+    "author": "LuxSync Factory",
+    "category": "physical",
+    "tags": ["strobe", "glitch", "techno", "spatial", "digital"],
+    "vibeCompat": ["techno"],
+    "spatialZones": ["front", "back"],
+    "durationMs": 800,
+    "effectType": "heph_custom",
+    "cognitiveDNA": {
+      "genome": { "aggression": 0.88, "chaos": 0.75, "organicity": 0.05 },
+      "textureAffinity": "universal",
+      "compatibleVibes": ["techno"],
+      "validSections": ["drop", "impact"],
+      "energyZone": { "min": "intense", "max": "peak" },
+      "aggressionRange": { "min": 0.7, "max": 1.0 },
+      "spatialBehavior": "absolute"
+    },
+    "simulationMeta": {
+      "beautyWeights": { "base": 0.68, "energyMultiplier": 1.3, "vibeBonus": 0.12 },
+      "gpuCost": 0.15,
+      "fatigueImpact": 0.55,
+      "minDurationMs": 800,
+      "cooldownMs": 4000,
+      "isStrobe": true,
+      "isDivineCandidate": true,
+      "isHeavyCandidate": false,
+      "zScoreGuards": { "requireRising": true, "minimumZ": 2.5, "minimumEnergy": 0.75 }
+    },
+    "tracks": [
+      {
+        "id": "glitch-front",
+        "paramId": "intensity",
+        "zones": ["front"],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "defaultValue": 0,
+          "keyframes": [
+            { "timeMs": 0,   "value": 1.0, "interpolation": "hold" },
+            { "timeMs": 100, "value": 0,   "interpolation": "hold" },
+            { "timeMs": 200, "value": 1.0, "interpolation": "hold" },
+            { "timeMs": 300, "value": 0,   "interpolation": "hold" },
+            { "timeMs": 400, "value": 1.0, "interpolation": "hold" },
+            { "timeMs": 500, "value": 0,   "interpolation": "hold" },
+            { "timeMs": 600, "value": 1.0, "interpolation": "hold" },
+            { "timeMs": 700, "value": 0,   "interpolation": "hold" }
+          ]
+        }
+      },
+      {
+        "id": "glitch-back",
+        "paramId": "intensity",
+        "zones": ["back"],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "defaultValue": 0,
+          "keyframes": [
+            { "timeMs": 0,   "value": 0,   "interpolation": "hold" },
+            { "timeMs": 100, "value": 1.0, "interpolation": "hold" },
+            { "timeMs": 200, "value": 0,   "interpolation": "hold" },
+            { "timeMs": 300, "value": 1.0, "interpolation": "hold" },
+            { "timeMs": 400, "value": 0,   "interpolation": "hold" },
+            { "timeMs": 500, "value": 1.0, "interpolation": "hold" },
+            { "timeMs": 600, "value": 0,   "interpolation": "hold" },
+            { "timeMs": 700, "value": 1.0, "interpolation": "hold" }
+          ]
+        }
+      },
+      {
+        "id": "white-front",
+        "paramId": "color",
+        "zones": ["front"],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "defaultValue": { "h": 0, "s": 0, "l": 100 },
+          "keyframes": [
+            { "timeMs": 0, "value": { "h": 0, "s": 0, "l": 100 }, "interpolation": "hold" }
+          ]
+        }
+      },
+      {
+        "id": "white-back",
+        "paramId": "color",
+        "zones": ["back"],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "defaultValue": { "h": 0, "s": 0, "l": 100 },
+          "keyframes": [
+            { "timeMs": 0, "value": { "h": 0, "s": 0, "l": 100 }, "interpolation": "hold" }
+          ]
+        }
+      }
+    ]
+  }
+}

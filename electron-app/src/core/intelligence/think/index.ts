@@ -48,13 +48,13 @@ export {
 } from './PredictionEngine'
 
 // Decision Maker - Síntesis final
-// 🔪 WAVE 1010: Ahora incluye DIVINE_THRESHOLD y DIVINE_ARSENAL
+// 🔪 WAVE 1010: Ahora incluye DIVINE_THRESHOLD
+// ⚡ WAVE 4915: DIVINE_ARSENAL purgado — vive en el Live Registry.
 export {
   makeDecision,
   mergeDecisions,
   isSignificantDecision,
   DIVINE_THRESHOLD,
-  DIVINE_ARSENAL,
   type DecisionInputs,
   type DecisionMakerConfig
 } from './DecisionMaker'

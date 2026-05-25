@@ -56,47 +56,13 @@ import { getDynamicEffectRegistry } from '../../arsenal/DynamicEffectRegistry'
 export const DIVINE_THRESHOLD = 4.0
 
 /**
- * 🔪 WAVE 1010: DIVINE ARSENAL BY VIBE
- * Armas de destrucción masiva por género musical.
- * Cuando Z > DIVINE_THRESHOLD, el General ordena fuego pesado.
+ * ⚡ WAVE 4915: DIVINE ARSENAL purgado.
+ *
+ * El arsenal divino vive 100% en el DynamicEffectRegistry.
+ * Un efecto entra al pool divino de un vibe cuando su .lfx declara
+ * `simulationMeta.isDivineCandidate: true` y su `compatibleVibes`
+ * incluye ese vibe. No hay fallback hardcodeado.
  */
-export const DIVINE_ARSENAL: Record<string, string[]> = {
-  'fiesta-latina': [
-    'latina_meltdown',   // 🔥 El derretimiento final — APEX LATINO PURO
-    'oro_solido',        // 🥇 WAVE 2189: El Trompetazo — muro de oro, peso y brillo
-    'solar_flare',       // ☀️ Explosión dorada
-    'salsa_fire',        // 🔥 Fuego salsero como drop de refuerzo
-    //  WAVE 2187: strobe_storm EXILIADO — deportado a techno-club.
-    // El strobe_storm es una criatura techno/industrial. En fiesta-latina
-    // provocaba multi-disparos caóticos y rompía la identidad sonora del show.
-    // Su hogar es el bunker, no la cantina.
-  ],
-  'techno-club': [
-    'neon_blinder',      // ⚡ WAVE 2182: APEX flash wall (primero — más nuevo y brutal)
-    'industrial_strobe', // 🔨 El Martillo — APEX único, dueño del DROP
-    'gatling_raid',      // 🔫 Metralladora
-    'core_meltdown',     // ☢️ LA BESTIA
-    'strobe_storm',      // ⚡ 🛸 WAVE 2187: Tormenta — SOLO techno, su hogar natural
-    // ⚰️ WAVE 2214: surgical_strike EXILIADO del DIVINE_ARSENAL
-    // Era el segundo en el arsenal y ganaba el DROP con score de diversidad inflado.
-    // El surgical_strike es tier INTENSE, no PEAK/DIVINE. Su hogar es la buildup,
-    // no el drop. El DROP pertenece al Martillo.
-  ],
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 🎸 WAVE 1020: POP-ROCK LEGENDS - DIVINE ARSENAL
-  // ═══════════════════════════════════════════════════════════════════════════
-  'pop-rock': [
-    'thunder_struck',    // ⚡ Stadium blinder - AC/DC moment
-    'feedback_storm',    // 😵 Caos visual - metal/harshness peak
-    'strobe_burst',      // 💥 Impacto puntual - drops menores
-    'liquid_solo',       // 🎸 Spotlight guitarra - solos épicos
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🎸 WAVE 1020.9: ROCK ARSENAL EXPANSION - DIVINE ADDITIONS
-    // ═══════════════════════════════════════════════════════════════════════
-    'power_chord',       // ⚡ Flash + strobe - power chord hits
-    'spotlight_pulse',   // 💡 Pulso emotivo - builds épicos
-  ],
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ⚡ WAVE 4843: COGNITIVE BRIDGE — isHeavyEffect() reemplaza HEAVY_ARSENAL_EFFECTS
@@ -822,14 +788,17 @@ function generateDivineStrikeDecision(
   output.debugInfo.huntState = 'striking'
   output.debugInfo.beautyScore = beauty.totalBeauty
   
-  // 🔪 WAVE 1010: Seleccionar arsenal según vibe
-  // 🌊 WAVE 2470: fallback seguro por familia — chill → chill, techno → techno, etc.
-  const _arsenalFallback = (vibeId.includes('chill') || vibeId.includes('lounge') || vibeId.includes('ambient'))
-    ? DIVINE_ARSENAL['chill-lounge']
-    : (vibeId.includes('latin') || vibeId.includes('fiesta'))
-      ? DIVINE_ARSENAL['fiesta-latina']
-      : DIVINE_ARSENAL['techno-club']
-  let arsenal = DIVINE_ARSENAL[vibeId] || _arsenalFallback
+  // ⚡ WAVE 4914+4915: LIVE REGISTRY — única fuente de verdad.
+  const _registryDivine = getDynamicEffectRegistry().getDivineArsenal(vibeId)
+  const arsenal: string[] = _registryDivine.map(e => e.id)
+
+  if (arsenal.length === 0) {
+    console.warn(`[DecisionMaker 🌩️] DIVINE registry empty for vibe=${vibeId} — no divine strike possible.`)
+    output.confidence = 0.0
+    output.source = 'hunt'
+    output.debugInfo.reasoning = `DIVINE SUPPRESSED: empty divine registry for ${vibeId}`
+    return output
+  }
   
   // ⚡ WAVE 4849: TEXTURE FILTER ELIMINADO
   // WAVE 1028 filtraba el arsenal DIVINE por textura espectral (clean/harsh/warm/noisy).
@@ -1055,60 +1024,49 @@ function generateDropPreparationDecision(
       // Sin effectDecision — las physics reactivas siguen funcionando
     } else {
       const vibeId = pattern.vibeId
-      // Usar el arsenal DIVINE como pool de efectos hard para drops
-      // 🌊 WAVE 2470: fallback seguro — chill no hereda el arsenal techno
-      const _dropFallback = (vibeId.includes('chill') || vibeId.includes('lounge') || vibeId.includes('ambient'))
-        ? DIVINE_ARSENAL['chill-lounge']
-        : (vibeId.includes('latin') || vibeId.includes('fiesta'))
-          ? DIVINE_ARSENAL['fiesta-latina']
-          : DIVINE_ARSENAL['techno-club']
-      const dropArsenal = DIVINE_ARSENAL[vibeId] || _dropFallback
-      
-      // 🎲 WAVE 2183: DIVERSITY FIX — DROP no puede saltarse la penalización
-      // 🎲 WAVE 2183.1: LOBOTOMY FIX — pasar [winner] no el arsenal completo
-      // ANTES: dropArsenal completo → Repository cogía índice 0 → neon_blinder siempre
-      // AHORA: [winner] → Repository solo valida HARD_COOLDOWN. El General ya eligió.
-      const suggestedEffect = selectFromArsenalWithDiversity(dropArsenal)
-      
-      // ═══════════════════════════════════════════════════════════════════
-      // 🛡️ WAVE 2200.2 + WAVE 4860: ANTI-FAKE-DROP — Z-Score Sanity Check
-      // ═══════════════════════════════════════════════════════════════════
-      // ROOT CAUSE: generateDropPreparationDecision() tenía CERO validación
-      // energética. Un drop con Z negativo (energía colapsando) seguía
-      // disparando arsenal pesado. El Oracle predice ESTRUCTURA (hay drop),
-      // pero la ENERGÍA puede no acompañar (fake drop, DJ cortó graves).
-      //
-      // FIX (WAVE 2200.2): Si el efecto seleccionado es HEAVY ARSENAL Y Z < 0.5σ → abortar.
-      //
-      // 🌴 WAVE 4860: LATINO CONSCIOUSNESS — El groove pesado del reggaetón mantiene
-      // Z entre 0.5-1.0 de forma CONSTANTE (no es clímax, es el ritmo). Para evitar
-      // que heavy arsenal dispare en cada kick de dembow, elevar umbral a 1.2σ en latino.
-      // ═══════════════════════════════════════════════════════════════════
-      const currentZ = zScore ?? 0
-      const isLatinoVibe = vibeId === 'fiesta-latina' || vibeId?.includes('latina') || false
-      const antiFakeThreshold = isLatinoVibe ? 1.2 : 0.5
-      // ⚡ WAVE 4843: COGNITIVE BRIDGE — isHeavyEffect() reemplaza HEAVY_ARSENAL_EFFECTS.has()
-      if (isHeavyEffect(suggestedEffect) && currentZ < antiFakeThreshold) {
-        console.log(
-          `[DecisionMaker 🛡️] ANTI-FAKE-DROP (${isLatinoVibe ? 'LATINO' : 'STANDARD'}): "${suggestedEffect}" ABORTED — ` +
-          `Z=${currentZ.toFixed(2)}σ < ${antiFakeThreshold} (energy insufficient for heavy arsenal)`
-        )
-        // Sin effectDecision — las physics reactivas manejan la transición suavemente
+      // ⚡ WAVE 4914+4915: LIVE REGISTRY — única fuente de verdad para drops.
+      const _registryDivineForDrop = getDynamicEffectRegistry().getDivineArsenal(vibeId)
+      const dropArsenal: string[] = _registryDivineForDrop.map(e => e.id)
+
+      if (dropArsenal.length === 0) {
+        console.warn(`[DecisionMaker 🔴] DROP registry empty for vibe=${vibeId} — no drop effect possible.`)
+        // Sin effectDecision — las physics reactivas siguen funcionando
       } else {
-        output.effectDecision = {
-          effectType: suggestedEffect,
-          intensity: 0.8 + prediction.probability * 0.2,  // 0.94-1.0 según probabilidad
-          zones: ['all'],
-          reason: `🔴 DROP: prob=${prediction.probability.toFixed(2)} | winner=${suggestedEffect} | full arsenal=${dropArsenal.join(', ')}`,
-          confidence: prediction.probability,
-          // 🎲 WAVE 2183.1: [winner] solamente — Frontal Lobe Supremacy
-          divineArsenal: [suggestedEffect],
-        } as any
+        // 🎲 WAVE 2183: DIVERSITY FIX — DROP no puede saltarse la penalización
+        // 🎲 WAVE 2183.1: LOBOTOMY FIX — pasar [winner] no el arsenal completo
+        // ANTES: dropArsenal completo → Repository cogía índice 0 → neon_blinder siempre
+        // AHORA: [winner] → Repository solo valida HARD_COOLDOWN. El General ya eligió.
+        const suggestedEffect = selectFromArsenalWithDiversity(dropArsenal)
         
-        console.log(
-          `[DecisionMaker 🔴] DROP EFFECT: ${suggestedEffect} | prob=${prediction.probability.toFixed(2)} ` +
-          `vibe=${vibeId} | Z=${currentZ.toFixed(2)}`
-        )
+        // ═══════════════════════════════════════════════════════════════════
+        // 🛡️ WAVE 2200.2 + WAVE 4860: ANTI-FAKE-DROP — Z-Score Sanity Check
+        // ═══════════════════════════════════════════════════════════════════
+        const currentZ = zScore ?? 0
+        const isLatinoVibe = vibeId === 'fiesta-latina' || vibeId?.includes('latina') || false
+        const antiFakeThreshold = isLatinoVibe ? 1.2 : 0.5
+        // ⚡ WAVE 4843: COGNITIVE BRIDGE — isHeavyEffect() reemplaza HEAVY_ARSENAL_EFFECTS.has()
+        if (isHeavyEffect(suggestedEffect) && currentZ < antiFakeThreshold) {
+          console.log(
+            `[DecisionMaker 🛡️] ANTI-FAKE-DROP (${isLatinoVibe ? 'LATINO' : 'STANDARD'}): "${suggestedEffect}" ABORTED — ` +
+            `Z=${currentZ.toFixed(2)}σ < ${antiFakeThreshold} (energy insufficient for heavy arsenal)`
+          )
+          // Sin effectDecision — las physics reactivas manejan la transición suavemente
+        } else {
+          output.effectDecision = {
+            effectType: suggestedEffect,
+            intensity: 0.8 + prediction.probability * 0.2,  // 0.94-1.0 según probabilidad
+            zones: ['all'],
+            reason: `🔴 DROP: prob=${prediction.probability.toFixed(2)} | winner=${suggestedEffect} | full arsenal=${dropArsenal.join(', ')}`,
+            confidence: prediction.probability,
+            // 🎲 WAVE 2183.1: [winner] solamente — Frontal Lobe Supremacy
+            divineArsenal: [suggestedEffect],
+          } as any
+          
+          console.log(
+            `[DecisionMaker 🔴] DROP EFFECT: ${suggestedEffect} | prob=${prediction.probability.toFixed(2)} ` +
+            `vibe=${vibeId} | Z=${currentZ.toFixed(2)}`
+          )
+        }
       }
     }
     } // end if(dropAbsGateOpen)

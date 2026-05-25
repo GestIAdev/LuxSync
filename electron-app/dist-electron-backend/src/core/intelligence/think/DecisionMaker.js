@@ -640,7 +640,13 @@ function generateDivineStrikeDecision(inputs, output, confidence) {
         : (vibeId.includes('latin') || vibeId.includes('fiesta'))
             ? DIVINE_ARSENAL['fiesta-latina']
             : DIVINE_ARSENAL['techno-club'];
-    let arsenal = DIVINE_ARSENAL[vibeId] || _arsenalFallback;
+    // ⚡ WAVE 4914: LIVE REGISTRY — el registry es la fuente de verdad.
+    // Si hay candidatos divine cargados para este vibe, usarlos.
+    // Fallback al pool hardcodeado mientras se migra el arsenal a V3.
+    const _registryDivine = getDynamicEffectRegistry().getDivineArsenal(vibeId);
+    let arsenal = _registryDivine.length > 0
+        ? _registryDivine.map(e => e.id)
+        : (DIVINE_ARSENAL[vibeId] || _arsenalFallback);
     // ⚡ WAVE 4849: TEXTURE FILTER ELIMINADO
     // WAVE 1028 filtraba el arsenal DIVINE por textura espectral (clean/harsh/warm/noisy).
     // Problema: Solo era efectivo en techno (donde la FFT distingue texturas claras).
@@ -834,7 +840,11 @@ function generateDropPreparationDecision(inputs, output, confidence) {
                     : (vibeId.includes('latin') || vibeId.includes('fiesta'))
                         ? DIVINE_ARSENAL['fiesta-latina']
                         : DIVINE_ARSENAL['techno-club'];
-                const dropArsenal = DIVINE_ARSENAL[vibeId] || _dropFallback;
+                // ⚡ WAVE 4914: LIVE REGISTRY — mismo patrón que DIVINE STRIKE.
+                const _registryDivineForDrop = getDynamicEffectRegistry().getDivineArsenal(vibeId);
+                const dropArsenal = _registryDivineForDrop.length > 0
+                    ? _registryDivineForDrop.map(e => e.id)
+                    : (DIVINE_ARSENAL[vibeId] || _dropFallback);
                 // 🎲 WAVE 2183: DIVERSITY FIX — DROP no puede saltarse la penalización
                 // 🎲 WAVE 2183.1: LOBOTOMY FIX — pasar [winner] no el arsenal completo
                 // ANTES: dropArsenal completo → Repository cogía índice 0 → neon_blinder siempre

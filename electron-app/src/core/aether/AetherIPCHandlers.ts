@@ -44,6 +44,11 @@ export interface ManualOverridePayload {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// CALIBRATION STATE — Global tracker para fixtures en modo calibración
+// ─────────────────────────────────────────────────────────────────────────────
+const _calibrationModeFixtures = new Set<string>()
+
+// ─────────────────────────────────────────────────────────────────────────────
 // REGISTRATION
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1009,6 +1014,122 @@ export function registerAetherIPCHandlers(): void {
       setIKDebug(!!enabled)
       return { success: true, enabled: !!enabled }
     },
+  )
+
+  // ── CALIBRATION MODE HANDLERS (NEW) ──────────────────────────────────────────
+
+  /**
+   * WAVE 4918: Enter calibration mode para un fixture.
+   * Marca el fixture como "en calibración", permitiendo acceso directo a canales.
+   * Payload: { fixtureId: string }
+   * Return: { success: boolean, error?: string }
+   */
+  ipcMain.handle(
+    'lux:arbiter:enterCalibrationMode',
+    (_event, { fixtureId }: { fixtureId: string }) => {
+      try {
+        if (typeof fixtureId !== 'string' || fixtureId.length === 0) {
+          return { success: false, error: 'Invalid fixtureId' }
+        }
+        _calibrationModeFixtures.add(fixtureId)
+        console.log(`[CalibrationIPC] 📋 Entrada: ${fixtureId}`)
+        return { success: true }
+      } catch (err) {
+        console.error('[CalibrationIPC] enterCalibrationMode error:', err)
+        return { success: false, error: String(err) }
+      }
+    }
+  )
+
+  /**
+   * WAVE 4918: Exit calibration mode para un fixture.
+   * Quita el fixture del set de calibración.
+   * Payload: { fixtureId: string }
+   * Return: { success: boolean, error?: string }
+   */
+  ipcMain.handle(
+    'lux:arbiter:exitCalibrationMode',
+    (_event, { fixtureId }: { fixtureId: string }) => {
+      try {
+        if (typeof fixtureId !== 'string' || fixtureId.length === 0) {
+          return { success: false, error: 'Invalid fixtureId' }
+        }
+        _calibrationModeFixtures.delete(fixtureId)
+        console.log(`[CalibrationIPC] 📋 Salida: ${fixtureId}`)
+        return { success: true }
+      } catch (err) {
+        console.error('[CalibrationIPC] exitCalibrationMode error:', err)
+        return { success: false, error: String(err) }
+      }
+    }
+  )
+
+  /**
+   * WAVE 4918: Query si un fixture está en calibración.
+   * Payload: { fixtureId: string }
+   * Return: { success: boolean, calibrating: boolean, error?: string }
+   */
+  ipcMain.handle(
+    'lux:arbiter:isCalibrating',
+    (_event, { fixtureId }: { fixtureId: string }) => {
+      try {
+        if (typeof fixtureId !== 'string' || fixtureId.length === 0) {
+          return { success: false, error: 'Invalid fixtureId' }
+        }
+        const calibrating = _calibrationModeFixtures.has(fixtureId)
+        return { success: true, calibrating }
+      } catch (err) {
+        console.error('[CalibrationIPC] isCalibrating error:', err)
+        return { success: false, error: String(err) }
+      }
+    }
+  )
+
+  /**
+   * WAVE 4918: Get fixture state snapshot para hydración en CalibrationView.
+   * Retorna dimmer, pan, tilt, etc. normalizados 0-1 por fixture.
+   * Payload: { fixtureIds: string[] }
+   * Return: { success: boolean, state: { [fixtureId]: { dimmer?, pan?, tilt?, ... } }, error?: string }
+   */
+  ipcMain.handle(
+    'lux:arbiter:getFixturesState',
+    (_event, { fixtureIds }: { fixtureIds: string[] }) => {
+      try {
+        if (!Array.isArray(fixtureIds) || fixtureIds.length === 0) {
+          return { success: false, error: 'fixtureIds must be a non-empty array' }
+        }
+
+        const orchestrator = getTitanOrchestrator()
+        const fixturesMapping = orchestrator.getFixturesForZoneMapping()
+
+        // Construir estado para cada fixture solicitado
+        const stateByFixtureId: Record<string, Record<string, number>> = {}
+
+        for (const fixtureId of fixtureIds) {
+          if (typeof fixtureId !== 'string') continue
+
+          const fixtureData = fixturesMapping.find(f => f.id === fixtureId)
+          if (!fixtureData) {
+            stateByFixtureId[fixtureId] = {}
+            continue
+          }
+
+          // Estado default: dimmer apagado, pan/tilt centrados
+          const state: Record<string, number> = {
+            dimmer: 0, // default: off
+            pan: 0.5, // default: centered
+            tilt: 0.5, // default: centered
+          }
+
+          stateByFixtureId[fixtureId] = state
+        }
+
+        return { success: true, state: stateByFixtureId }
+      } catch (err) {
+        console.error('[CalibrationIPC] getFixturesState error:', err)
+        return { success: false, error: String(err) }
+      }
+    }
   )
 }
 

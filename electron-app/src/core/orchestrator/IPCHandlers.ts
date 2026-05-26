@@ -130,9 +130,20 @@ export function setupIPCHandlers(deps: IPCDependencies): void {
 
 function setupTheiaHandlers(): void {
   ipcMain.handle('theia:get-frame-context', (): SharedArrayBuffer | null => {
-    const trinity = getTrinity()
-    if (!trinity) return null
-    return trinity.getFrameContextSAB()
+    try {
+      const trinity = getTrinity()
+      if (!trinity) return null
+      const sab = trinity.getFrameContextSAB()
+      // Validar que es realmente un SharedArrayBuffer para evitar serialización fallida
+      if (sab instanceof SharedArrayBuffer) {
+        return sab
+      }
+      console.warn('[IPCHandlers] getFrameContextSAB returned non-SAB:', typeof sab)
+      return null
+    } catch (err) {
+      console.error('[IPCHandlers] theia:get-frame-context error:', err)
+      return null
+    }
   })
 }
 

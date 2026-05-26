@@ -59,6 +59,25 @@ function _isV3Clip(clip) {
 function _defaultBlendModeFor(paramId) {
     return paramId === 'intensity' ? 'max' : 'replace';
 }
+/**
+ * Blend mode derivado para clips v2.1 durante migración in-memory.
+ *
+ * V2.1 no declaraba blend por track: solo un `mixBus` global de clip.
+ * Si ignoramos ese campo, `intensity` cae siempre en HTP (`max`) y se
+ * reintroduce bleed de L0 en efectos ambientes. Esta función restaura
+ * intención de autor para clips legacy.
+ */
+function _v2BlendModeFor(paramId, mixBus) {
+    const bus = typeof mixBus === 'string' ? mixBus.trim().toLowerCase() : '';
+    if (bus === 'htp' || bus === 'max') {
+        return paramId === 'intensity' ? 'max' : 'replace';
+    }
+    if (bus === 'ambient' || bus === 'accent' || bus === 'add') {
+        return paramId === 'intensity' ? 'add' : 'replace';
+    }
+    // global/override/replace/unknown → LTP seguro.
+    return 'replace';
+}
 // ═══════════════════════════════════════════════════════════════════════════
 // 🔥 WAVE 2495: Pure utilities re-exported from HephUtils.ts
 // Extracted so renderer code can import them without dragging in the
@@ -447,12 +466,21 @@ export class HephaestusRuntime {
             if (track.fixturePhases !== null && track.fixturePhases.length > 0) {
                 for (let pi = 0; pi < track.fixturePhases.length; pi++) {
                     const fp = track.fixturePhases[pi];
-                    let fixtureTimeMs = baseClipTimeMs + fp.phaseOffsetMs;
+                    // ⚒️ WAVE 4859 — MODELO MA3: el offset representa cuánto TARDA en
+                    // arrancar este fixture. Se resta al tiempo del clip, no se suma.
+                    // Antes (bug): fixtureTimeMs = baseClipTimeMs + fp.phaseOffsetMs
+                    //   → todos los fixtures en posiciones distintas de la curva al t=0
+                    //   → efecto simultáneo, no escalonado.
+                    // Ahora (MA3): localElapsedMs = max(0, clipTime - offset)
+                    //   → fixture con offset=500ms comienza su ciclo 500ms después
+                    //   → wave genuina: fixture[0] dispara primero, luego fixture[1], etc.
+                    const localElapsedMs = Math.max(0, baseClipTimeMs - fp.phaseOffsetMs);
+                    let fixtureTimeMs;
                     if (isLoop) {
-                        fixtureTimeMs = ((fixtureTimeMs % durationMs) + durationMs) % durationMs;
+                        fixtureTimeMs = ((localElapsedMs % durationMs) + durationMs) % durationMs;
                     }
                     else {
-                        fixtureTimeMs = Math.min(fixtureTimeMs, durationMs);
+                        fixtureTimeMs = Math.min(localElapsedMs, durationMs);
                     }
                     this._emitTrackSample(track, fp.fixtureId, fixtureTimeMs, evaluator, paramName, intensity, isCustomThisClip, clipId);
                 }
@@ -650,7 +678,11 @@ export class HephaestusRuntime {
             for (let i = 0; i < clip.tracks.length; i++) {
                 const t = clip.tracks[i];
                 const fixtureIds = resolveZonesToFixtures(t.zones);
-                const trackPhase = this._extractPhaseConfig(t.selector?.phase, t.selector?.phaseSpread);
+                // ⚒️ WAVE 4859: `phaseConfig` es el shorthand canónico directo en el
+                // track (formato nativo .lfx). `selector.phase` es la variante via
+                // FixtureSelector (legado). Se da prioridad a `phaseConfig` y se usa
+                // `selector.phase` / `selector.phaseSpread` como fallback.
+                const trackPhase = this._extractPhaseConfig(t.phaseConfig ?? t.selector?.phase, t.selector?.phaseSpread);
                 if (trackPhase != null && topLevelPhaseConfig == null) {
                     topLevelPhaseConfig = trackPhase;
                 }
@@ -671,7 +703,7 @@ export class HephaestusRuntime {
             const _rawZoneIds = resolveZonesToFixtures(clip.zones);
             const sharedFixtureIds = _rawZoneIds.length > 0 ? _rawZoneIds : [...allFixtureIds];
             for (const [paramId, curve] of clip.curves) {
-                tracks.push(this._buildResolvedTrack(`legacy:${paramId}`, paramId, curve, _defaultBlendModeFor(paramId), sharedFixtureIds, clipPhase, durationMs));
+                tracks.push(this._buildResolvedTrack(`legacy:${paramId}`, paramId, curve, _v2BlendModeFor(paramId, clip.mixBus), sharedFixtureIds, clipPhase, durationMs));
             }
         }
         return { tracks, phaseConfig: topLevelPhaseConfig };

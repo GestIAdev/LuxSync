@@ -6,7 +6,21 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import AppCommander from './AppCommander'
+import TheiaOutputView from './components/views/TheiaOutputView'  // 🎬 WAVE 4864
 import './styles/globals.css'
+
+// 🎬 WAVE 4864 — Theia Output Window: ventana secundaria del proyector.
+// Misma URL/bundle que la app principal pero con flag ?theia-output=1.
+// Branchea aquí para evitar montar todo el AppCommander cuando solo
+// necesitamos un canvas hiper-ligero que blittea el SAB.
+const isTheiaOutputWindow = (() => {
+  try {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('theia-output') === '1'
+  } catch {
+    return false
+  }
+})()
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🔇 WAVE 3290: RENDERER SILENCED — Blackout total del proceso renderer.
@@ -28,6 +42,6 @@ import './styles/globals.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <AppCommander />
+    {isTheiaOutputWindow ? <TheiaOutputView /> : <AppCommander />}
   </React.StrictMode>,
 )

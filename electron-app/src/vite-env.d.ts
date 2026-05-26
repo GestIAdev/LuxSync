@@ -327,10 +327,18 @@ declare global {
     getVibe: () => Promise<{ success: boolean; vibeId: string; error?: string }>
     onVibeChange: (callback: (data: { vibeId: string; timestamp: number }) => void) => () => void
     
-    // � WAVE 4860: THEIA ENGINE — SAB one-shot bridge
+    // � WAVE 4860 + 4864: THEIA ENGINE — SAB one-shot bridge + Output Window
     theia: {
       /** Returns the SharedArrayBuffer of the FrameContextRing from the main process. Called once. */
       getFrameContextSAB: () => Promise<SharedArrayBuffer | null>
+      /** WAVE 4864 — Returns the SAB of the video frame buffer (full-res RGBA). Lazy-created in main. */
+      getVideoFrameBufferSAB: () => Promise<SharedArrayBuffer | null>
+      /** WAVE 4864 — Opens the secondary projector BrowserWindow. */
+      openOutput: () => Promise<{ ok: boolean; error?: string }>
+      /** WAVE 4864 — Closes the projector window. */
+      closeOutput: () => Promise<{ ok: boolean }>
+      /** WAVE 4864 — Reports whether the projector window is currently open. */
+      isOutputOpen: () => Promise<boolean>
     }
 
     // �🎭 WAVE 700.5.4: Mood Control

@@ -393,6 +393,9 @@ export class EffectDreamSimulator {
         }
         const zoneSource = context.energyZone ? 'SeleneTitanConscious' : 'local-fallback';
         const zoneFilteredEffects = this.filterByZone(vibeAllowedEffects, energyZone);
+        // 🎯 WAVE 4865: Muestreo sin reemplazo por effect id.
+        // Evita clones en ranking cuando múltiples aliases/vías aportan el mismo efecto.
+        const seenEffectIds = new Set();
         // 🧹 WAVE 1015: Silenciado - spam innecesario
         // 🎭 WAVE 920.2: Pre-filtrar efectos bloqueados por mood
         const moodController = MoodController.getInstance();
@@ -408,6 +411,10 @@ export class EffectDreamSimulator {
             .map(f => normalizeZone(f.zone)));
         // Generar candidatos SOLO de efectos filtrados
         for (const effect of zoneFilteredEffects) {
+            if (seenEffectIds.has(effect)) {
+                continue;
+            }
+            seenEffectIds.add(effect);
             // 🎭 WAVE 920.2: Skip efectos bloqueados por mood (no gastar CPU simulando)
             if (moodController.isEffectBlocked(effect)) {
                 blockedCount++;
@@ -827,6 +834,14 @@ export class EffectDreamSimulator {
             default:
                 diversityScore = 0.1; // 🔴 Usado 3+x - 90% SHADOWBAN
                 break;
+        }
+        // 🩸 WAVE 4865: FATIGUE Z-SCORE — efectos con fatiga extrema se castigan más.
+        // 0.80 -> x1.00, 0.90 -> x0.75, 1.00 -> x0.50
+        const fatigueImpact = getDynamicEffectRegistry().getSimMeta(effect.effect)?.fatigueImpact ?? 0;
+        if (fatigueImpact > 0.8) {
+            const highFatigueMultiplier = 1 - ((fatigueImpact - 0.8) * 2.5);
+            diversityScore *= Math.max(0.5, highFatigueMultiplier);
+            diversityScore = Math.max(0.05, diversityScore);
         }
         return diversityScore;
     }

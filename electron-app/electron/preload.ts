@@ -752,6 +752,22 @@ const luxApi = {
      */
     getFrameContextSAB: (): Promise<SharedArrayBuffer | null> =>
       ipcRenderer.invoke('theia:get-frame-context'),
+
+    /** 🎬 WAVE 4864 — SAB del video pipeline full-resolution. Lazy-creado en main. */
+    getVideoFrameBufferSAB: (): Promise<SharedArrayBuffer | null> =>
+      ipcRenderer.invoke('theia:get-video-sab'),
+
+    /** 🎬 WAVE 4864 — Abre la ventana secundaria del proyector. */
+    openOutput: (): Promise<{ ok: boolean; error?: string }> =>
+      ipcRenderer.invoke('theia:open-output'),
+
+    /** 🎬 WAVE 4864 — Cierra la ventana del proyector. */
+    closeOutput: (): Promise<{ ok: boolean }> =>
+      ipcRenderer.invoke('theia:close-output'),
+
+    /** 🎬 WAVE 4864 — Estado actual de la ventana del proyector. */
+    isOutputOpen: (): Promise<boolean> =>
+      ipcRenderer.invoke('theia:is-output-open'),
   },
 
   mood: {

@@ -61,7 +61,7 @@ const FIESTA_LATINA_EFFECTS = [
         isDynamic: true,
         description: 'Flickeo orgánico de fuego',
         suggestedDuration: 4000,
-        mixBus: 'htp',
+        mixBus: 'global',
         tags: ['rhythmic', 'color'],
     },
     {
@@ -74,7 +74,7 @@ const FIESTA_LATINA_EFFECTS = [
         isDynamic: false,
         description: 'Respiración suave para breakdowns',
         suggestedDuration: 6000,
-        mixBus: 'ambient',
+        mixBus: 'global',
         tags: ['atmospheric', 'color'],
     },
     {
@@ -100,7 +100,7 @@ const FIESTA_LATINA_EFFECTS = [
         isDynamic: true,
         description: 'Latido de pasión para momentos épicos',
         suggestedDuration: 4000,
-        mixBus: 'htp',
+        mixBus: 'global',
         tags: ['rhythmic', 'intensity'],
     },
     {

@@ -166,12 +166,12 @@ export class CumbiaMoon extends BaseEffect {
             'front': {
                 color: moonWhite, // Blanco lunar en front
                 dimmer: this.currentIntensity,
-                blendMode: 'max',
+                blendMode: 'replace',
             },
             'back': {
                 color: moonWhite, // Blanco lunar en back
                 dimmer: this.currentIntensity * 0.7, // Back más tenue (atmósfera)
-                blendMode: 'max',
+                blendMode: 'replace',
             },
             // � WAVE 1010.6: MOVERS reciben BLANCO - HAL traduce a DMX seguro
             'all-movers': {

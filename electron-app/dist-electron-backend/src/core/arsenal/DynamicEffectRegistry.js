@@ -202,9 +202,17 @@ export class DynamicEffectRegistry {
     // INTERNALS — INDEX MAINTENANCE
     // ─────────────────────────────────────────────────────────────────────────
     _appendToIndices(entry) {
+        // 🎯 WAVE 4865: Deduplicar por canonical vibe.
+        // Un efecto puede declarar ['latin', 'fiesta-latina'] — ambos mapean al mismo canonical.
+        // Sin este Set, el entry se insertaría DOS VECES en el mismo bucket → candidatos clonados.
+        const seenCanonicalVibes = new Set();
         for (const rawVibe of entry.compatibleVibes) {
             // Normalizar alias legacy → slug canónico del sistema (ej: 'latin' → 'fiesta-latina')
             const vibe = VIBE_ALIAS_MAP[rawVibe] ?? rawVibe;
+            // Saltar si ya procesamos este canonical vibe para este entry
+            if (seenCanonicalVibes.has(vibe))
+                continue;
+            seenCanonicalVibes.add(vibe);
             let bucket = this._byVibe.get(vibe);
             if (!bucket) {
                 bucket = [];

@@ -28,93 +28,8 @@
  */
 import { getTitanOrchestrator } from '../orchestrator/TitanOrchestrator';
 import { resolveZoneTags } from '../zones/ZoneMapper';
-// ═══════════════════════════════════════════════════════════════════════════
-// EFFECT FACTORY IMPORTS — The Full Arsenal
-// ═══════════════════════════════════════════════════════════════════════════
-// ─── TECHNO ───
-import { CoreMeltdown } from '../effects/library/techno/CoreMeltdown';
-import { IndustrialStrobe } from '../effects/library/techno/IndustrialStrobe';
-import { VoidMist } from '../effects/library/techno/VoidMist';
-import { AcidSweep } from '../effects/library/techno/AcidSweep';
-import { CyberDualism } from '../effects/library/techno/CyberDualism';
-import { GatlingRaid } from '../effects/library/techno/GatlingRaid';
-import { SkySaw } from '../effects/library/techno/SkySaw';
-import { AbyssalRise } from '../effects/library/techno/AbyssalRise';
-import { DigitalRain } from '../effects/library/techno/DigitalRain';
-import { DeepBreath } from '../effects/library/techno/DeepBreath';
-import { AmbientStrobe } from '../effects/library/techno/AmbientStrobe';
-import { SonarPing } from '../effects/library/techno/SonarPing';
-import { BinaryGlitch } from '../effects/library/techno/BinaryGlitch';
-import { SeismicSnap } from '../effects/library/techno/SeismicSnap';
-import { FiberOptics } from '../effects/library/techno/FiberOptics';
-// ─── POP-ROCK ───
-import { ThunderStruck } from '../effects/library/poprock/ThunderStruck';
-import { LiquidSolo } from '../effects/library/poprock/LiquidSolo';
-import { AmpHeat } from '../effects/library/poprock/AmpHeat';
-import { ArenaSweep } from '../effects/library/poprock/ArenaSweep';
-import { FeedbackStorm } from '../effects/library/poprock/FeedbackStorm';
-import { SpotlightPulse } from '../effects/library/poprock/SpotlightPulse';
-import { PowerChord } from '../effects/library/poprock/PowerChord';
-import { StageWash } from '../effects/library/poprock/StageWash';
-// ─── CHILL-LOUNGE ───
-// ⚰️ WAVE 3450: Efectos oceánicos purged — ChillAmbientEngine gestiona la luz directamente.
-// ─── FIESTA LATINA ───
-import { SolarFlare } from '../effects/library/fiestalatina/SolarFlare';
-import { SalsaFire } from '../effects/library/fiestalatina/SalsaFire';
-import { TropicalPulse } from '../effects/library/fiestalatina/TropicalPulse';
-import { StrobeBurst } from '../effects/library/fiestalatina/StrobeBurst';
-import { StrobeStorm } from '../effects/library/fiestalatina/StrobeStorm';
-import { LatinaMeltdown } from '../effects/library/fiestalatina/LatinaMeltdown';
-import { CorazonLatino } from '../effects/library/fiestalatina/CorazonLatino';
-import { TidalWave } from '../effects/library/fiestalatina/TidalWave';
-import { GhostBreath } from '../effects/library/fiestalatina/GhostBreath';
-import { CumbiaMoon } from '../effects/library/fiestalatina/CumbiaMoon';
-import { AmazonMist } from '../effects/library/fiestalatina/AmazonMist';
-import { MacheteSpark } from '../effects/library/fiestalatina/MacheteSpark';
-import { GlitchGuaguanco } from '../effects/library/fiestalatina/GlitchGuaguanco';
-import { ClaveRhythm } from '../effects/library/fiestalatina/ClaveRhythm';
+// Deprecated path intentionally left empty so no legacy class can execute.
 const EFFECT_FACTORIES = new Map();
-// ── TECHNO ──
-EFFECT_FACTORIES.set('core_meltdown', () => new CoreMeltdown());
-EFFECT_FACTORIES.set('industrial_strobe', () => new IndustrialStrobe());
-EFFECT_FACTORIES.set('void_mist', () => new VoidMist());
-EFFECT_FACTORIES.set('acid_sweep', () => new AcidSweep());
-EFFECT_FACTORIES.set('cyber_dualism', () => new CyberDualism());
-EFFECT_FACTORIES.set('gatling_raid', () => new GatlingRaid());
-EFFECT_FACTORIES.set('sky_saw', () => new SkySaw());
-EFFECT_FACTORIES.set('abyssal_rise', () => new AbyssalRise());
-EFFECT_FACTORIES.set('digital_rain', () => new DigitalRain());
-EFFECT_FACTORIES.set('deep_breath', () => new DeepBreath());
-EFFECT_FACTORIES.set('ambient_strobe', () => new AmbientStrobe());
-EFFECT_FACTORIES.set('sonar_ping', () => new SonarPing());
-EFFECT_FACTORIES.set('binary_glitch', () => new BinaryGlitch());
-EFFECT_FACTORIES.set('seismic_snap', () => new SeismicSnap());
-EFFECT_FACTORIES.set('fiber_optics', () => new FiberOptics());
-// ── POP-ROCK ──
-EFFECT_FACTORIES.set('thunder_struck', () => new ThunderStruck());
-EFFECT_FACTORIES.set('liquid_solo', () => new LiquidSolo());
-EFFECT_FACTORIES.set('amp_heat', () => new AmpHeat());
-EFFECT_FACTORIES.set('arena_sweep', () => new ArenaSweep());
-EFFECT_FACTORIES.set('feedback_storm', () => new FeedbackStorm());
-EFFECT_FACTORIES.set('spotlight_pulse', () => new SpotlightPulse());
-EFFECT_FACTORIES.set('power_chord', () => new PowerChord());
-EFFECT_FACTORIES.set('stage_wash', () => new StageWash());
-// ── CHILL-LOUNGE — WAVE 3450: arsenal purged, ChillAmbientEngine autogestiona ──
-// ── FIESTA LATINA ──
-EFFECT_FACTORIES.set('solar_flare', () => new SolarFlare());
-EFFECT_FACTORIES.set('salsa_fire', () => new SalsaFire());
-EFFECT_FACTORIES.set('tropical_pulse', () => new TropicalPulse());
-EFFECT_FACTORIES.set('strobe_burst', () => new StrobeBurst());
-EFFECT_FACTORIES.set('strobe_storm', () => new StrobeStorm());
-EFFECT_FACTORIES.set('latina_meltdown', () => new LatinaMeltdown());
-EFFECT_FACTORIES.set('corazon_latino', () => new CorazonLatino());
-EFFECT_FACTORIES.set('tidal_wave', () => new TidalWave());
-EFFECT_FACTORIES.set('ghost_breath', () => new GhostBreath());
-EFFECT_FACTORIES.set('cumbia_moon', () => new CumbiaMoon());
-EFFECT_FACTORIES.set('amazon_mist', () => new AmazonMist());
-EFFECT_FACTORIES.set('machete_spark', () => new MacheteSpark());
-EFFECT_FACTORIES.set('glitch_guaguanco', () => new GlitchGuaguanco());
-EFFECT_FACTORIES.set('clave_rhythm', () => new ClaveRhythm());
 // ═══════════════════════════════════════════════════════════════════════════
 // HSL → RGB CONVERSION (deterministic, no random)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -178,6 +93,8 @@ export class TimelineEngine {
         this.activeClips = new Map();
         // ── Last active set for cleanup ──
         this.previousActiveIds = new Set();
+        // Warn once per deprecated fxType to avoid log spam at 44Hz.
+        this.warnedDeprecatedFxTypes = new Set();
         // ── 🎬 WAVE 2063: Active vibe tracking for Titan handoff ──
         this.currentPlaybackVibeId = null;
         // ── 🔥 WAVE 2056: Frame accumulator for Direct Drive ──
@@ -398,17 +315,19 @@ export class TimelineEngine {
         const localTimeMs = timeMs - clip.startMs;
         const clipDurationMs = clip.endMs - clip.startMs;
         // ─── HEPHAESTUS CUSTOM CLIPS ───
-        if (fxType === 'heph-custom' && clip.hephClip?.curves) {
+        const hephClip = clip.hephClip;
+        const hasHephPayload = hephClip != null && (hephClip?.curves != null ||
+            Array.isArray(hephClip?.tracks));
+        if (fxType === 'heph-custom' && hasHephPayload) {
             this.processHephClip(clip, localTimeMs);
             return;
         }
-        // ─── CORE EFFECTS (procedural class) ───
-        if (EFFECT_FACTORIES.has(fxType)) {
-            this.processCoreEffect(clip, localTimeMs, deltaMs);
-            return;
+        // ─── LEGACY ROUTES DISABLED (WAVE 4859+) ───────────────────────────
+        if (!this.warnedDeprecatedFxTypes.has(fxType)) {
+            this.warnedDeprecatedFxTypes.add(fxType);
+            console.warn(`[TimelineEngine] ⚠️ DEPRECATED route blocked for fxType='${fxType}'. ` +
+                `Only .lfx Hephaestus clips (heph-custom) are supported in the main flow.`);
         }
-        // ─── LEGACY FX TYPES (strobe, blackout, color-wash, etc.) ───
-        this.processLegacyFx(clip, localTimeMs, clipDurationMs);
     }
     // ═══════════════════════════════════════════════════════════════════════
     // 🔥 CORE EFFECTS — Real procedural classes
@@ -432,11 +351,11 @@ export class TimelineEngine {
             this.activeClips.set(clip.id, state);
         }
         const effect = state.effect;
-        // 🎛️ WAVE 2066.1: Read blendMode DIRECTLY from the effect instance
-        // Each Core Effect declares its own mixBus ('global' | 'htp') via readonly property.
-        // No hardcoded lists needed — the effect knows what it needs.
-        // clip.mixBus override takes precedence (user can override in timeline)
-        const effectMixBus = clip.mixBus ?? effect.mixBus ?? 'htp';
+        // 🎛️ WAVE 2066.1 / WAVE 4859: effect mixBus is canonical authority.
+        // Clips viejos pueden traer mixBus heredado (htp/global) que rompe la
+        // semántica actual al recargar proyectos antiguos. Para evitar poltergeist,
+        // primero manda el mixBus de la clase del efecto y recién después el clip.
+        const effectMixBus = effect.mixBus ?? clip.mixBus ?? 'htp';
         const blendMode = effectMixBus === 'global' ? 'LTP' : 'HTP';
         // Trigger on first activation
         if (!state.triggered) {
@@ -844,16 +763,13 @@ export class TimelineEngine {
         }
         if (channels.length === 0)
             return;
-        // 🎛️ WAVE 2066: Resolve blendMode from Hephaestus clip's mixBus
-        // 'global' → LTP (takeover: strobes, blinders, meltdowns)
-        // 'htp'    → HTP (cooperative: sweeps, chases)
-        // 'ambient'/'accent' → ADD (additive: atmospheres, accents)
-        const mixBus = clip.mixBus ?? clip.hephClip?.mixBus ?? 'htp';
-        let blendMode = 'HTP';
-        if (mixBus === 'global')
-            blendMode = 'LTP';
-        else if (mixBus === 'ambient' || mixBus === 'accent')
-            blendMode = 'ADD';
+        // 🎛️ WAVE 4859: Hephaestus payload manda por encima del clip serializado.
+        // En recargas de proyectos viejos, clip.mixBus puede venir contaminado
+        // (htp/ambient) aunque el builtin actual ya sea global/override.
+        const hephMixBus = clip.hephClip?.mixBus;
+        const timelineMixBus = clip.mixBus;
+        const resolvedMixBus = hephMixBus ?? timelineMixBus ?? 'global';
+        const blendMode = this.resolveBlendModeFromMixBus(resolvedMixBus);
         const fixtureIds = this.resolveFixtureIds(clip);
         this.dispatchToArbiter(fixtureIds, controls, { blendMode });
     }
@@ -934,6 +850,25 @@ export class TimelineEngine {
         const blendMode = LTP_EFFECTS.has(fxType) ? 'LTP' : 'HTP';
         const fixtureIds = this.resolveFixtureIds(clip);
         this.dispatchToArbiter(fixtureIds, controls, { blendMode });
+    }
+    resolveBlendModeFromMixBus(mixBus) {
+        const normalized = String(mixBus ?? '').toLowerCase();
+        switch (normalized) {
+            case 'global':
+            case 'override':
+            case 'replace':
+                return 'LTP';
+            case 'ambient':
+            case 'accent':
+            case 'add':
+                return 'ADD';
+            case 'htp':
+            case 'max':
+                return 'HTP';
+            default:
+                // Modo seguro anti-bleed: si el bus no se reconoce, priorizar takeover.
+                return 'LTP';
+        }
     }
     // ═══════════════════════════════════════════════════════════════════════
     // 🌈 VIBE CLIPS — Vibe Handoff to Titan (WAVE 2065)

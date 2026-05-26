@@ -19,12 +19,19 @@
 
 import {
   makeThetaMessage,
+  type TheiaAssetStateId,
+  type ThetaAssetStatePayload,
   type ThetaErrorPayload,
+  type ThetaForceStatePayload,
   type ThetaHeartbeatAckPayload,
   type ThetaHeartbeatPayload,
+  type ThetaLoadStreamPayload,
   type ThetaMessage,
   type ThetaStateReportPayload,
+  type ThetaVideoStatusPayload,
 } from './protocol'
+// 🎬 WAVE 4867 — Phase 6: thumb buffer SAB
+import { createThumbSAB } from './TheiaThumbBuffer'
 
 // ─────────────────────────────────────────────────────────────────────────
 // Circuit breaker (paridad con TrinityOrchestrator)
@@ -78,6 +85,11 @@ const DEFAULT_CONFIG: ThetaOrchestratorConfig = {
 
 interface TheiaIPCBridge {
   getFrameContextSAB: () => Promise<SharedArrayBuffer | null>
+  // 🎬 WAVE 4864 — Phase 3 additions (preload-exposed)
+  getVideoFrameBufferSAB?: () => Promise<SharedArrayBuffer | null>
+  openOutput?: () => Promise<{ ok: boolean; error?: string }>
+  closeOutput?: () => Promise<{ ok: boolean }>
+  isOutputOpen?: () => Promise<boolean>
 }
 
 function getBridge(): TheiaIPCBridge | null {
@@ -111,6 +123,20 @@ export class ThetaOrchestrator {
 
   private frameContextSAB: SharedArrayBuffer | null = null
   private offscreenCanvas: OffscreenCanvas | null = null
+  // 🎬 WAVE 4864 — Phase 3: SAB shared with TheiaOutputWindow
+  private videoFrameSAB: SharedArrayBuffer | null = null
+  // 🎬 WAVE 4867 — Phase 6: thumb SAB (64×64 RGBA8) — allocado aquí y compartido con
+  // TitanOrchestrator a través de `getThumbPixelSAB()` para TheiaVideoRenderer.
+  private readonly thumbPixelSAB: SharedArrayBuffer = createThumbSAB()
+  // 🎬 WAVE 4864 — Phase 4: last asset-state report from worker
+  private lastAssetState: ThetaAssetStatePayload | null = null
+
+  // Phase 2: Hidden video pipeline
+  private videoElement: HTMLVideoElement | null = null
+  private videoStream: MediaStream | null = null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private trackProcessor: any = null
+  private lastVideoStatus: ThetaVideoStatusPayload | null = null
 
   private heartbeatHandle: number | null = null
   private heartbeatSequence = 0
@@ -153,6 +179,21 @@ export class ThetaOrchestrator {
     }
     this.frameContextSAB = sab
 
+    // 🎬 WAVE 4864 — Phase 3: also fetch the video frame SAB. Optional —
+    // if the bridge method is missing or returns null, the worker will run
+    // in legacy mode (no projector window blit).
+    if (typeof bridge.getVideoFrameBufferSAB === 'function') {
+      try {
+        const vSab = await bridge.getVideoFrameBufferSAB()
+        if (vSab instanceof SharedArrayBuffer) {
+          this.videoFrameSAB = vSab
+        }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn('[THETA] getVideoFrameBufferSAB failed (continuing without projector SAB):', err)
+      }
+    }
+
     this.isRunning = true
     this.resurrections = 0
     await this.spawnWorker()
@@ -162,6 +203,7 @@ export class ThetaOrchestrator {
   async stop(): Promise<void> {
     this.isRunning = false
     this.stopHeartbeat()
+    this.teardownVideo()
     if (this.worker) {
       try {
         this.worker.postMessage(makeThetaMessage('theia:shutdown', {}))
@@ -185,6 +227,8 @@ export class ThetaOrchestrator {
     circuitState: CircuitState
     lastHeartbeatLatencyMs: number
     lastStateReport: ThetaStateReportPayload | null
+    videoStatus: ThetaVideoStatusPayload | null
+    assetState: ThetaAssetStatePayload | null
   } {
     return {
       isRunning: this.isRunning,
@@ -193,6 +237,229 @@ export class ThetaOrchestrator {
       circuitState: this.circuit.state,
       lastHeartbeatLatencyMs: this.lastHeartbeatLatencyMs,
       lastStateReport: this.lastStateReport,
+      videoStatus: this.lastVideoStatus,
+      assetState: this.lastAssetState,
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────
+  // 🎬 WAVE 4864 — Phase 4: AssetStateMachine API (force-state)
+  // ──────────────────────────────────────────────────────────────────
+
+  /**
+   * Solicita una transición de la Asset State Machine en el worker. El worker
+   * iniciará un crossfade de 500ms (default) entre el frame anterior y el nuevo.
+   *
+   * Usado por la UI manual (botones Force Drop / Force Ambient en TheiaEngineView)
+   * y, en futuras fases, por el BrainTheiaBridge derivando de MusicalContext.
+   */
+  forceState(
+    state: TheiaAssetStateId,
+    opts: {
+      curve?: 'linear' | 'easeInOut' | 'cosine'
+      totalTicks?: number
+      waitAnchor?: boolean
+      manual?: boolean
+    } = {},
+  ): void {
+    if (!this.worker || !this.isReady) {
+      // eslint-disable-next-line no-console
+      console.warn('[THETA] forceState called before worker is ready — ignored')
+      return
+    }
+    const payload: ThetaForceStatePayload = {
+      state,
+      curve: opts.curve,
+      totalTicks: opts.totalTicks,
+      waitAnchor: opts.waitAnchor,
+      manual: opts.manual ?? true, // UI calls are manual by default
+    }
+    try {
+      this.worker.postMessage(makeThetaMessage('theia:force-state', payload))
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[THETA] forceState postMessage failed:', err)
+    }
+  }
+
+  /** Último reporte de la AssetStateMachine recibido del worker. */
+  getAssetState(): ThetaAssetStatePayload | null {
+    return this.lastAssetState
+  }
+
+  // ──────────────────────────────────────────────────────────────────
+  // 🎬 WAVE 4867 — Phase 6: Thumb SAB accessor para TheiaVideoRenderer
+  // ──────────────────────────────────────────────────────────────────
+
+  /**
+   * Devuelve el SAB de 64×64 RGBA8 que el worker rellena con el downscale
+   * de cada frame. TitanOrchestrator lo usa para construir TheiaVideoRenderer.
+   * El SAB vive para toda la vida del orchestrator (inmutable).
+   */
+  getThumbPixelSAB(): SharedArrayBuffer {
+    return this.thumbPixelSAB
+  }
+
+  // ──────────────────────────────────────────────────────────────────
+  // 🎬 WAVE 4864 — Phase 3: Output Window control (BrowserWindow secundaria)
+  // ──────────────────────────────────────────────────────────────────
+
+  /** Abre la ventana secundaria del proyector (frameless, fullscreen). */
+  async openOutputWindow(): Promise<{ ok: boolean; error?: string }> {
+    const bridge = getBridge()
+    if (!bridge || typeof bridge.openOutput !== 'function') {
+      return { ok: false, error: 'preload bridge missing openOutput' }
+    }
+    return bridge.openOutput()
+  }
+
+  /** Cierra la ventana del proyector si está abierta. */
+  async closeOutputWindow(): Promise<{ ok: boolean }> {
+    const bridge = getBridge()
+    if (!bridge || typeof bridge.closeOutput !== 'function') return { ok: false }
+    return bridge.closeOutput()
+  }
+
+  /** Reporta si la ventana del proyector está abierta actualmente. */
+  async isOutputWindowOpen(): Promise<boolean> {
+    const bridge = getBridge()
+    if (!bridge || typeof bridge.isOutputOpen !== 'function') return false
+    return bridge.isOutputOpen()
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Phase 2: Video playback API
+  // ─────────────────────────────────────────────────────────────────────
+
+  /**
+   * Load a video URL into the hidden player, extract a ReadableStream<VideoFrame>
+   * via MediaStreamTrackProcessor, and transfer it to the ThetaWorker.
+   * The worker will consume frames and render them to its OffscreenCanvas.
+   */
+  async loadVideo(url: string): Promise<void> {
+    if (!this.isRunning || !this.worker) {
+      throw new Error('[THETA] loadVideo called before start() or worker is dead')
+    }
+
+    // Tear down any previous video pipeline
+    this.teardownVideo()
+
+    // 1) Create a hidden <video> element
+    const video = document.createElement('video')
+    video.src = url
+    video.crossOrigin = 'anonymous'
+    video.muted = true // required for autoplay in Chromium
+    video.playsInline = true
+    video.preload = 'auto'
+    video.style.position = 'fixed'
+    video.style.top = '-9999px'
+    video.style.left = '-9999px'
+    video.style.width = '1px'
+    video.style.height = '1px'
+    video.style.opacity = '0'
+    video.style.pointerEvents = 'none'
+    this.videoElement = video
+
+    // 2) Wait for metadata to resolve dimensions
+    await new Promise<void>((resolve, reject) => {
+      video.addEventListener('loadedmetadata', () => resolve(), { once: true })
+      video.addEventListener('error', () => reject(new Error(`[THETA] video load error: ${video.error?.message ?? 'unknown'}`)), { once: true })
+    })
+
+    // 3) Capture the video stream
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const stream: MediaStream = (video as any).captureStream()
+    this.videoStream = stream
+    const videoTrack = stream.getVideoTracks()[0]
+    if (!videoTrack) {
+      throw new Error('[THETA] captureStream() returned no video tracks')
+    }
+
+    // 4) MediaStreamTrackProcessor → ReadableStream<VideoFrame>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const MediaStreamTrackProcessorCtor = (globalThis as any).MediaStreamTrackProcessor
+    if (!MediaStreamTrackProcessorCtor) {
+      throw new Error('[THETA] MediaStreamTrackProcessor not available in this browser/Electron version')
+    }
+    this.trackProcessor = new MediaStreamTrackProcessorCtor({ track: videoTrack })
+    const readable: ReadableStream<VideoFrame> = (this.trackProcessor as any).readable
+
+    // 5) Transfer the ReadableStream to the worker
+    const payload: ThetaLoadStreamPayload = {
+      stream: readable,
+      width: video.videoWidth,
+      height: video.videoHeight,
+    }
+    this.worker.postMessage(
+      makeThetaMessage('theia:load-stream', payload),
+      // Transfer the stream — ownership moves to the worker
+      [readable] as unknown as Transferable[],
+    )
+
+    // eslint-disable-next-line no-console
+    console.log(`[THETA] 🎬 loadVideo: ${video.videoWidth}x${video.videoHeight} — stream transferred to worker`)
+  }
+
+  /**
+   * Start or resume video playback. The worker will start receiving frames.
+   */
+  play(): void {
+    if (this.videoElement) {
+      this.videoElement.play().catch((err) => {
+        // eslint-disable-next-line no-console
+        console.error('[THETA] video.play() failed:', err)
+      })
+    }
+  }
+
+  /**
+   * Pause video playback. Frame stream stops flowing.
+   */
+  pause(): void {
+    if (this.videoElement) {
+      this.videoElement.pause()
+    }
+  }
+
+  /**
+   * Set playback rate (1.0 = normal, 0.5 = half speed, 2.0 = double).
+   */
+  setPlaybackRate(rate: number): void {
+    if (this.videoElement) {
+      this.videoElement.playbackRate = rate
+    }
+  }
+
+  /**
+   * Unload the current video, stopping the stream and cleaning up resources.
+   */
+  unloadVideo(): void {
+    this.teardownVideo()
+    if (this.worker) {
+      try {
+        this.worker.postMessage(makeThetaMessage('theia:unload-stream', {}))
+      } catch { /* worker may be dead */ }
+    }
+  }
+
+  private teardownVideo(): void {
+    if (this.trackProcessor) {
+      // Stop the track processor (closes the readable stream)
+      try {
+        const track = this.videoStream?.getVideoTracks()[0]
+        if (track) track.stop()
+      } catch { /* noop */ }
+      this.trackProcessor = null
+    }
+    if (this.videoStream) {
+      this.videoStream.getTracks().forEach((t) => t.stop())
+      this.videoStream = null
+    }
+    if (this.videoElement) {
+      this.videoElement.pause()
+      this.videoElement.src = ''
+      this.videoElement.remove()
+      this.videoElement = null
     }
   }
 
@@ -253,6 +520,11 @@ export class ThetaOrchestrator {
         frameContextSAB: this.frameContextSAB,
         pollIntervalMs: this.config.workerPollIntervalMs,
         offscreenCanvas: canvas ?? undefined,
+        // 🎬 WAVE 4864 — Phase 3: pass the projector SAB. The SAB is shared
+        // by reference (structured-clone share); no transfer slot needed.
+        videoFrameSAB: this.videoFrameSAB ?? undefined,
+        // 🎬 WAVE 4867 — Phase 6: pass the thumb SAB (always present).
+        thumbPixelSAB: this.thumbPixelSAB,
       }),
       transfer,
     )
@@ -289,6 +561,14 @@ export class ThetaOrchestrator {
 
       case 'theia:state-report':
         this.lastStateReport = msg.payload as ThetaStateReportPayload
+        break
+
+      case 'theia:video-status':
+        this.lastVideoStatus = msg.payload as ThetaVideoStatusPayload
+        break
+
+      case 'theia:asset-state':
+        this.lastAssetState = msg.payload as ThetaAssetStatePayload
         break
 
       case 'theia:error': {

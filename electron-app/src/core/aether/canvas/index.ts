@@ -16,4 +16,7 @@ export {
   type PixelMapAetherAdapterOptions,
 } from './PixelMapAetherAdapter'
 
+// 🎬 WAVE 4867 — TheiaVideoRenderer: twin-output bridge (THETA thumb SAB → AetherCanvas)
+export { TheiaVideoRenderer } from './renderers/TheiaVideoRenderer'
+
 export { PlasmaRenderer } from './PlasmaRenderer'

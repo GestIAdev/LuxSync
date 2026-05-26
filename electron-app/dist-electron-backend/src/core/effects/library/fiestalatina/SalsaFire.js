@@ -164,10 +164,10 @@ export class SalsaFire extends BaseEffect {
     getOutput() {
         if (this.phase === 'idle' || this.phase === 'finished')
             return null;
-        // PARs: rojo dictador fijo. Movers: solo dimmer (sin override de color).
+        // PARs: color dinámico fuego (rojo→naranja→amarillo según intensidad).
         const zoneOverrides = {
             'all-pars': {
-                color: { h: 0, s: 100, l: 50 },
+                color: this.currentColor,
                 dimmer: this.currentIntensity,
                 blendMode: 'replace',
             },

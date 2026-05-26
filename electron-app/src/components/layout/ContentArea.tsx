@@ -28,6 +28,7 @@ const VisualPatcher = lazy(() => import('../views/VisualPatcher/VisualPatcher'))
 const NeuralCommandView = lazy(() => import('../views/NeuralCommandView'))  // 🧠 WAVE 1167
 const ChronosStudio = lazy(() => import('../../chronos/ui/ChronosLayout'))  // ⏱️ WAVE 2004
 const HephaestusView = lazy(() => import('../views/HephaestusView'))  // ⚒️ WAVE 2030.3
+const TheiaEngineView = lazy(() => import('../views/TheiaEngineView'))  // 🎬 WAVE 4863
 
 // Loading fallback
 const ViewLoader: React.FC = () => (
@@ -146,6 +147,8 @@ const ContentArea: React.FC = () => {
         return <VisualPatcher />
       case 'core':
         return <NeuralCommandView />  // 🧠 WAVE 1167
+      case 'theia':
+        return <TheiaEngineView />   // 🎬 WAVE 4863
       default:
         return <DashboardView />
     }

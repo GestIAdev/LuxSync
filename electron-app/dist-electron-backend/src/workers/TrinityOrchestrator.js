@@ -22,6 +22,8 @@ import { MessageType, MessagePriority, NODE_NAMES, DEFAULT_CONFIG, createMessage
 import { createSharedRingBuffer } from '../core/audio/SharedRingBuffer';
 import { AudioMatrix } from '../core/audio/AudioMatrix';
 import { LegacyBridgeProvider } from '../core/audio/LegacyBridgeProvider';
+// 🎬 WAVE 4860: THEIA FrameContext — reloj maestro compartido con ThetaWorker (renderer).
+import { createFrameContextSAB, FrameContextWriter } from '../theia/FrameContextRing';
 // ============================================
 // CIRCUIT BREAKER (Adapted from Swarm)
 // ============================================
@@ -41,6 +43,16 @@ export class TrinityOrchestrator extends EventEmitter {
     // WAVE 3401: Expose AudioMatrix for external provider registration (OSCNexus, USB, etc.)
     getAudioMatrix() {
         return this.audioMatrix;
+    }
+    // 🎬 WAVE 4860: Expose FrameContext SAB para el preload/IPC bridge con el renderer.
+    // Devuelve siempre el MISMO SAB durante toda la vida del proceso — no se recrea.
+    getFrameContextSAB() {
+        return this.frameContextSAB;
+    }
+    // 🎬 WAVE 4860: Avanza el reloj maestro. Llamado desde TitanOrchestrator.processFrame()
+    // a 44Hz (~23ms). El ThetaWorker leerá el SAB en su propio loop sin IPC en el hot-path.
+    advanceFrameContext(tickId, timestampMs) {
+        this.frameContextWriter.advance(tickId, timestampMs);
     }
     static getWorkerDir() {
         // In Electron bundled with Vite, we need to find dist-electron
@@ -80,6 +92,11 @@ export class TrinityOrchestrator extends EventEmitter {
         this.sharedAudioBuffer = null;
         this.audioMatrix = null;
         this.legacyBridge = null;
+        // 🎬 WAVE 4860: THEIA FrameContext — SAB de 16 bytes con tickId/timestamp/generation.
+        // Se crea EAGER en el constructor (antes de start()) para que esté disponible
+        // en cuanto el renderer arranque y pida el SAB vía IPC, sin condiciones de carrera.
+        this.frameContextSAB = createFrameContextSAB();
+        this.frameContextWriter = new FrameContextWriter(this.frameContextSAB);
         // ============================================
         // AUDIO INPUT
         // ============================================

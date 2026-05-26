@@ -561,6 +561,25 @@ const luxApi = {
     // ============================================
     // 🎭 WAVE 700.5.4: MOOD CONTROL
     // ============================================
+    // ============================================
+    // 🎬 WAVE 4860: THEIA ENGINE — SAB one-shot bridge
+    // ============================================
+    theia: {
+        /**
+         * Obtiene el SharedArrayBuffer del FrameContextRing del main process.
+         * Se llama UNA SOLA VEZ al arrancar ThetaOrchestrator. El SAB viaja
+         * por IPC (structured clone comparte por referencia) sin copia de datos.
+         */
+        getFrameContextSAB: () => ipcRenderer.invoke('theia:get-frame-context'),
+        /** 🎬 WAVE 4864 — SAB del video pipeline full-resolution. Lazy-creado en main. */
+        getVideoFrameBufferSAB: () => ipcRenderer.invoke('theia:get-video-sab'),
+        /** 🎬 WAVE 4864 — Abre la ventana secundaria del proyector. */
+        openOutput: () => ipcRenderer.invoke('theia:open-output'),
+        /** 🎬 WAVE 4864 — Cierra la ventana del proyector. */
+        closeOutput: () => ipcRenderer.invoke('theia:close-output'),
+        /** 🎬 WAVE 4864 — Estado actual de la ventana del proyector. */
+        isOutputOpen: () => ipcRenderer.invoke('theia:is-output-open'),
+    },
     mood: {
         /** Set active Mood (calm, balanced, punk) */
         setMood: (moodId) => ipcRenderer.invoke('lux:setMood', moodId),

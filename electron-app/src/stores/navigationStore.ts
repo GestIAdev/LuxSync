@@ -21,7 +21,7 @@ import { create } from 'zustand'
 // ============================================
 
 export type StageId = 'dashboard' | 'live' | 'calibration' | 'chronos'
-export type ToolId = 'constructor' | 'forge' | 'keyforge' | 'hephaestus' | 'nexus' | 'core'
+export type ToolId = 'constructor' | 'forge' | 'keyforge' | 'hephaestus' | 'nexus' | 'core' | 'theia'
 export type TabId = StageId | ToolId
 
 export interface TabConfig {
@@ -171,9 +171,18 @@ export const TABS: TabConfig[] = [
     shortcut: 'Alt+0',      // WAVE 2030.3: Shifted for KeyForge/Hephaestus
     description: 'Selene AI Monitoring & Telemetry',
   },
+  {
+    id: 'theia',
+    label: 'THEIA',
+    icon: 'theia',          // IconTheia (custom SVG) - WAVE 4863
+    customIcon: true,
+    type: 'tool',
+    shortcut: 'Alt+-',
+    description: 'Theia Video Engine — Frame Analysis & Sync',
+  },
 ]
 
-const TAB_ORDER: TabId[] = ['dashboard', 'live', 'calibration', 'chronos', 'constructor', 'forge', 'keyforge', 'hephaestus', 'nexus', 'core']
+const TAB_ORDER: TabId[] = ['dashboard', 'live', 'calibration', 'chronos', 'constructor', 'forge', 'keyforge', 'hephaestus', 'nexus', 'core', 'theia']
 
 // ============================================
 // STORE - WAVE 1112: Added targetFixtureId for Builder -> Forge bridge

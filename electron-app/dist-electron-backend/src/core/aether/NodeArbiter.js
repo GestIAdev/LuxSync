@@ -142,6 +142,13 @@ export class NodeArbiter {
          */
         this._seleneOverrideMoverShield = false;
         /**
+         * WAVE 4918.5: Nodos COLOR que L3 (Hephaestus) escribió en este frame.
+         * Cuando Hephaestus emite color a un nodo mover (rueda de colores físicas),
+         * L0 (Selene IA) debe callar COMPLETAMENTE en ese nodo.
+         * Limpiado al inicio de cada arbitrate() junto con _l3DominatedChannels.
+         */
+        this._l3HephColorNodeIds = new Set();
+        /**
          * WAVE 4670: Lock de dimmer manual explícito (L2) por frame.
          * Si el operador toca dimmer, ese valor se vuelve piso HTP del canal.
          */
@@ -389,6 +396,8 @@ export class NodeArbiter {
         this._opaquePlaybackChannels.clear();
         // WAVE 4829: ABSOLUTE L3 OVERRIDE — limpiar mapa de dominación L3 del frame anterior.
         this._l3DominatedChannels.clear();
+        // WAVE 4918.5: limpiar nodos Hephaestus-color silenciadores de L0
+        this._l3HephColorNodeIds.clear();
         // L2: registrar canales tocados por nodo
         for (const [nodeId, channels] of this._manualOverrides) {
             let set = this._opaqueNodeChannels.get(nodeId);
@@ -431,6 +440,11 @@ export class NodeArbiter {
                 continue;
             this._manualDimmerFixtureIds.add(nodeId.slice(0, sep));
         }
+        // ⚡ WAVE 4917: L3 DOMINANCE PRE-PASS.
+        // Construir el mapa de dominación ANTES de aplicar L0/L1 para que
+        // el blindaje intra-frame sea real (L0 no llega a escribir lo que L3
+        // ya reclama en effect/hephaestus durante este mismo arbitrate()).
+        this._primeL3DominancePrePass();
         // 2. Recolectar intents en orden ascendente de prioridad de capa.
         //    El orden de escritura garantiza que las capas superiores
         //    sobreescriban a las inferiores en el merge LTP.
@@ -838,6 +852,12 @@ export class NodeArbiter {
         const shieldedColorNode = layer === 'selene' &&
             !this._seleneOverrideMoverShield &&
             this._moverShieldNodeIds.has(intent.nodeId);
+        // WAVE 4918.5: Si L0 quiere escribir a un nodo que Hephaestus (L3) ya
+        // reclamó con color, L0 calla completamente. La rueda de color física del
+        // mover es propiedad exclusiva del efecto en este frame.
+        if (layer === 'system' && this._l3HephColorNodeIds.has(intent.nodeId)) {
+            return;
+        }
         // 🌊 WAVE 4836 — L3 SUPREMACY ABSOLUTA (Doctrina sellada en WAVE-4835):
         // Cuando L3 escribe un canal, L0/L1 callan en ese canal de ese nodo.
         // El campo `intent.mergeStrategy` queda preservado en los tipos para
@@ -872,30 +892,13 @@ export class NodeArbiter {
             // Los efectos blandos (CumbiaMoon/CorazonLatino) cargan su propio dimmer
             // (peakIntensity/heartIntensity) y no necesitan a L0 como soporte.
             if (layer === 'effect' || layer === 'hephaestus') {
-                let dominated = this._l3DominatedChannels.get(intent.nodeId);
-                if (!dominated) {
-                    dominated = this._acquireChannelSet();
-                    this._l3DominatedChannels.set(intent.nodeId, dominated);
-                }
-                dominated.add(channel);
-                // ⚡ WAVE 4871: L3 LUMINANCE GAG — Amordaza Total.
-                // Si L3 escribe en CUALQUIER canal de un nodo :impact o :color,
-                // sellar TODOS los canales de luminancia en TODOS los nodos del fixture.
-                // L0 queda físicamente amordazado — cumbia_moon al 30% = 30% absoluto.
-                const _sepGag = intent.nodeId.lastIndexOf(':');
-                if (_sepGag > 0 && L3_GAG_TRIGGER_FAMILIES.has(intent.nodeId.slice(_sepGag + 1))) {
-                    const _fixturePrefix = intent.nodeId.slice(0, _sepGag);
-                    for (const _gagFamily of L3_GAG_TRIGGER_FAMILIES) {
-                        const _gagNodeId = `${_fixturePrefix}:${_gagFamily}`;
-                        let _gagDominated = this._l3DominatedChannels.get(_gagNodeId);
-                        if (!_gagDominated) {
-                            _gagDominated = this._acquireChannelSet();
-                            this._l3DominatedChannels.set(_gagNodeId, _gagDominated);
-                        }
-                        for (const _lumCh of L3_LUMINANCE_GAG_CHANNELS) {
-                            _gagDominated.add(_lumCh);
-                        }
-                    }
+                this._registerL3Dominance(intent.nodeId, channel);
+                // WAVE 4918.5: Si Hephaestus escribe color a este nodo, marcarlo para
+                // bloquear L0 completamente (silencio total en ese nodo este frame).
+                if (layer === 'hephaestus' && (channel === 'r' || channel === 'g' || channel === 'b' ||
+                    channel === 'red' || channel === 'green' || channel === 'blue' ||
+                    channel === 'colorWheel' || channel === 'color_wheel')) {
+                    this._l3HephColorNodeIds.add(intent.nodeId);
                 }
             }
             if (STRICT_PRIORITY_CHANNELS.has(channel)) {
@@ -928,6 +931,71 @@ export class NodeArbiter {
                 // Nota: `intent.mergeStrategy` se preserva en el tipo para futuro
                 // arbitraje intra-L3 (varios efectos L3 escribiendo el mismo canal).
                 record[channel] = incoming;
+            }
+        }
+    }
+    /**
+     * ⚡ WAVE 4917: Pre-carga dominación L3 desde los intents ya presentes
+     * en este frame. Esto permite bloquear L0/L1 desde el inicio del arbitraje.
+     */
+    _primeL3DominancePrePass() {
+        for (let i = 0; i < this._effectIntents.length; i++) {
+            const intent = this._effectIntents[i];
+            const values = intent.values;
+            for (const channel in values) {
+                const incoming = values[channel];
+                if (!isFiniteChannelValue(incoming))
+                    continue;
+                this._registerL3Dominance(intent.nodeId, channel);
+            }
+        }
+        for (let i = 0; i < this._hephaestusIntents.length; i++) {
+            const intent = this._hephaestusIntents[i];
+            const values = intent.values;
+            for (const channel in values) {
+                const incoming = values[channel];
+                if (!isFiniteChannelValue(incoming))
+                    continue;
+                this._registerL3Dominance(intent.nodeId, channel);
+                // WAVE 4918.5: marcar el nodo para silenciar L0 completamente si Hephaestus escribe color
+                if (channel === 'r' || channel === 'g' || channel === 'b' ||
+                    channel === 'red' || channel === 'green' || channel === 'blue' ||
+                    channel === 'colorWheel' || channel === 'color_wheel') {
+                    this._l3HephColorNodeIds.add(intent.nodeId);
+                }
+            }
+        }
+    }
+    /**
+     * Registra dominación L3 por canal + aplica el gag de luminancia cross-family.
+     * Reutilizado por pre-pass y por el flujo normal de _applyIntent.
+     */
+    _registerL3Dominance(nodeId, channel) {
+        let dominated = this._l3DominatedChannels.get(nodeId);
+        if (!dominated) {
+            dominated = this._acquireChannelSet();
+            this._l3DominatedChannels.set(nodeId, dominated);
+        }
+        dominated.add(channel);
+        // ⚡ WAVE 4871 + WAVE 4917: L3 LUMINANCE GAG.
+        // Si L3 escribe en :impact o :color, dominar también luminancia
+        // en ambos nodos del fixture para apagar sangrado L0/L1.
+        const sep = nodeId.lastIndexOf(':');
+        if (sep <= 0)
+            return;
+        const family = nodeId.slice(sep + 1);
+        if (!L3_GAG_TRIGGER_FAMILIES.has(family))
+            return;
+        const fixturePrefix = nodeId.slice(0, sep);
+        for (const gagFamily of L3_GAG_TRIGGER_FAMILIES) {
+            const gagNodeId = `${fixturePrefix}:${gagFamily}`;
+            let gagDominated = this._l3DominatedChannels.get(gagNodeId);
+            if (!gagDominated) {
+                gagDominated = this._acquireChannelSet();
+                this._l3DominatedChannels.set(gagNodeId, gagDominated);
+            }
+            for (const lumCh of L3_LUMINANCE_GAG_CHANNELS) {
+                gagDominated.add(lumCh);
             }
         }
     }

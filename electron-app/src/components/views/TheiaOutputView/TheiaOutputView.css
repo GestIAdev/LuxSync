@@ -1,0 +1,28 @@
+/* 🎬 WAVE 4864 — THEIA OUTPUT VIEW (fullscreen projector window) */
+
+html,
+body,
+#root,
+.theia-output-root {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #000000;
+}
+
+/* cursor: none SOLO en la ventana del proyector Theia — NO en la app principal.
+   El CSS se importa en el bundle global, por eso no puede estar en el selector
+   html/body/#root (se aplica a las dos ventanas). */
+.theia-output-root {
+  cursor: none;
+}
+
+.theia-output-canvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  background: #000000;
+  image-rendering: auto;
+}

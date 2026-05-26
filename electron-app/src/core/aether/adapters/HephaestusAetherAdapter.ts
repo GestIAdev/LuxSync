@@ -104,6 +104,10 @@ export class HephaestusAetherAdapter {
       // root cause was the guard below (FIX-A). No change needed here beyond
       // the clarifying comment — `break` after the push is intentional (one
       // node per family per fixture).
+      //
+      // ⚡ WAVE 4917: Track whether any intent was pushed so the brightness
+      // fallback below can detect COLOR-only fixtures (no IMPACT node).
+      let _foundNode = false
       for (let j = 0; j < nodeIds.length; j++) {
         const nodeId = nodeIds[j]
         const nodeData = this._graph.getNodeData(nodeId)
@@ -113,8 +117,38 @@ export class HephaestusAetherAdapter {
         const intent = this._acquireIntent(nodeId)
         _populateValues(intent.values, param, output, behavior)
         this._frameIntents.push(intent as INodeIntent)
+        _foundNode = true
         // Only one node per family per fixture — stop searching
         break
+      }
+
+      // ⚡ WAVE 4917: COLOR-ONLY BRIGHTNESS FALLBACK
+      //
+      // PROBLEM: For RGB-only fixtures (no physical dimmer channel) the node
+      // graph registers them as NodeFamily.COLOR, not IMPACT. The 'intensity'
+      // param targets IMPACT → no node found → L3 emits nothing for this
+      // fixture's luminance channel. L0's LiquidAetherAdapter._routeMoodToColor
+      // Intensity writes 'brightness=musicEnergy' to the COLOR node every frame
+      // and NodeResolver._translateColor uses it as a multiplicative scalar on
+      // r/g/b. Result: the par continues to breathe with L0's musical energy
+      // while acid-color-pars drives the hue — the classic "L0 bleeds back"
+      // symptom on back/front pars even though L3 has the color.
+      //
+      // FIX: If param='intensity' found no IMPACT node, locate the COLOR node
+      // for this fixture and emit 'brightness=normalizedValue'. LTP in
+      // NodeArbiter._applyIntent then overrides L0's brightness with L3's
+      // curve value (0 when the sweep is not in this zone, >0 when it is).
+      if (!_foundNode && param === 'intensity') {
+        for (let j = 0; j < nodeIds.length; j++) {
+          const nodeId = nodeIds[j]
+          const nodeData = this._graph.getNodeData(nodeId)
+          if (!nodeData || nodeData.family !== NodeFamily.COLOR) continue
+
+          const intent = this._acquireIntent(nodeId)
+          intent.values['brightness'] = output.normalizedValue
+          this._frameIntents.push(intent as INodeIntent)
+          break
+        }
       }
 
       // ⚡ WAVE 4844 (NEUTRALIZED by WAVE 4852 FIX-A):

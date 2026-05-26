@@ -626,13 +626,8 @@ export function TrinityProvider({ children }: TrinityProviderProps) {
       const theta = new ThetaOrchestrator()
       thetaRef.current = theta
 
-      // Create a hidden canvas and transfer control to OffscreenCanvas
-      const canvas = document.createElement('canvas')
-      canvas.width = 1920
-      canvas.height = 1080
-      canvas.style.display = 'none'
-      document.body.appendChild(canvas)
-      const offscreen = canvas.transferControlToOffscreen()
+      // Create the offscreen canvas directly; no DOM attachment needed.
+      const offscreen = new OffscreenCanvas(1920, 1080)
       theta.attachOffscreenCanvas(offscreen)
 
       theta.start().catch((err: unknown) => {

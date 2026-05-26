@@ -49,9 +49,9 @@ export class PhantomWorkerManager {
             return;
         }
         // WAVE 2098: Boot silence
-        // Create hidden BrowserWindow
+        // 👻 WAVE 2005.3: Phantom Worker — ventanita de Chronos, show:true intencional
         this.phantomWindow = new BrowserWindow({
-            show: true, // 👻 INVISIBLE - this is the magic
+            show: true,
             width: 400,
             height: 300,
             webPreferences: {

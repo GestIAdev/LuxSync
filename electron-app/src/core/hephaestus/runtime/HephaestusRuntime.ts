@@ -77,6 +77,29 @@ function _defaultBlendModeFor(paramId: HephParamId): BlendMode {
   return paramId === 'intensity' ? 'max' : 'replace'
 }
 
+/**
+ * Blend mode derivado para clips v2.1 durante migración in-memory.
+ *
+ * V2.1 no declaraba blend por track: solo un `mixBus` global de clip.
+ * Si ignoramos ese campo, `intensity` cae siempre en HTP (`max`) y se
+ * reintroduce bleed de L0 en efectos ambientes. Esta función restaura
+ * intención de autor para clips legacy.
+ */
+function _v2BlendModeFor(paramId: HephParamId, mixBus: unknown): BlendMode {
+  const bus = typeof mixBus === 'string' ? mixBus.trim().toLowerCase() : ''
+
+  if (bus === 'htp' || bus === 'max') {
+    return paramId === 'intensity' ? 'max' : 'replace'
+  }
+
+  if (bus === 'ambient' || bus === 'accent' || bus === 'add') {
+    return paramId === 'intensity' ? 'add' : 'replace'
+  }
+
+  // global/override/replace/unknown → LTP seguro.
+  return 'replace'
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
@@ -974,7 +997,7 @@ export class HephaestusRuntime {
           `legacy:${paramId}`,
           paramId,
           curve,
-          _defaultBlendModeFor(paramId),
+          _v2BlendModeFor(paramId, clip.mixBus),
           sharedFixtureIds,
           clipPhase,
           durationMs,

@@ -56,6 +56,30 @@ export function setupIPCHandlers(deps) {
     setupDMXHandlers(deps);
     setupArtNetHandlers(deps);
     setupAudioMatrixHandlers(deps);
+    setupTheiaHandlers();
+}
+// =============================================================================
+// 🎬 WAVE 4860: THEIA ENGINE — SAB one-shot IPC bridge
+// =============================================================================
+function setupTheiaHandlers() {
+    ipcMain.handle('theia:get-frame-context', () => {
+        try {
+            const trinity = getTrinity();
+            if (!trinity)
+                return null;
+            const sab = trinity.getFrameContextSAB();
+            // Validar que es realmente un SharedArrayBuffer para evitar serialización fallida
+            if (sab instanceof SharedArrayBuffer) {
+                return sab;
+            }
+            console.warn('[IPCHandlers] getFrameContextSAB returned non-SAB:', typeof sab);
+            return null;
+        }
+        catch (err) {
+            console.error('[IPCHandlers] theia:get-frame-context error:', err);
+            return null;
+        }
+    });
 }
 // =============================================================================
 // TITAN ORCHESTRATOR HANDLERS (WAVE 254: THE SPARK)

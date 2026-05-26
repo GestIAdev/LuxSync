@@ -41,6 +41,9 @@ import { setupKeyForgeIPCHandlers } from '../src/core/keyforge/KeyForgeIPCHandle
 // ⚒️ Hephaestus File I/O (WAVE 2030.5)
 import { setupHephIPCHandlers } from '../src/core/hephaestus'
 
+// 🎬 WAVE 4864: Theia Output Window manager (Phase 3)
+import { setupTheiaWindowManager } from './TheiaWindowManager'
+
 // ⚡ WAVE 4822: INFINITE ARSENAL — Boot ingestion
 import { LfxFileLoader, type DirectorySpec } from '../src/core/arsenal/LfxFileLoader'
 import { getDynamicEffectRegistry } from '../src/core/arsenal/DynamicEffectRegistry'
@@ -1032,7 +1035,17 @@ app.whenReady().then(async () => {
   await initTitan()
   
   createWindow()
-  
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🎬 WAVE 4864: Theia Output Window Manager (Phase 3)
+  // ═══════════════════════════════════════════════════════════════════════════
+  setupTheiaWindowManager({
+    isDev,
+    devUrl: 'http://localhost:5173',
+    prodIndexPath: path.join(__dirname, '../dist/index.html'),
+    preloadPath: path.join(__dirname, 'preload.js'),
+  })
+
   // ═══════════════════════════════════════════════════════════════════════════
   // WAVE 367: TitanOrchestrator fixture injection happens from renderer
   // When stageStore loads ShowFileV2, it syncs to main process via IPC

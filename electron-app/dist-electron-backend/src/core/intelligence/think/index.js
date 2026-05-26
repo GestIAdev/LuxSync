@@ -26,8 +26,9 @@ predictFromEnergy, // 🔮 WAVE 1169: Solo por tendencia de energía
 getLastPrediction, getSectionHistory, getEnergyPredictionState, // 🔮 WAVE 1169: Debug del historial de energía
 validatePrediction, resetPredictionEngine, resetEnergyHistory } from './PredictionEngine';
 // Decision Maker - Síntesis final
-// 🔪 WAVE 1010: Ahora incluye DIVINE_THRESHOLD y DIVINE_ARSENAL
-export { makeDecision, mergeDecisions, isSignificantDecision, DIVINE_THRESHOLD, DIVINE_ARSENAL } from './DecisionMaker';
+// 🔪 WAVE 1010: Ahora incluye DIVINE_THRESHOLD
+// ⚡ WAVE 4915: DIVINE_ARSENAL purgado — vive en el Live Registry.
+export { makeDecision, mergeDecisions, isSignificantDecision, DIVINE_THRESHOLD } from './DecisionMaker';
 // 🆕 WAVE 667: Fuzzy Decision Maker - Lógica difusa
 export { fuzzyEvaluate, debugFuzzify, getFuzzyRules, FuzzyDecisionMaker, } from './FuzzyDecisionMaker';
 // 🆕 WAVE 668: Drop Bridge - Override divino para momentos épicos

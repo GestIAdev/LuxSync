@@ -376,6 +376,46 @@ export const IconHephaestus: React.FC<IconProps> = ({ size = 20, className = '' 
   </svg>
 )
 
+/**
+ * 🎬 THEIA / Video Engine Icon - WAVE 4863
+ * Camera aperture with scanning eye — frame analysis & sync
+ */
+export const IconTheia: React.FC<IconProps> = ({ size = 20, className = '' }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    className={className}
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    {/* Outer aperture ring */}
+    <circle cx="12" cy="12" r="9" stroke="currentColor" />
+
+    {/* Iris / aperture blades */}
+    <path d="M12 3C12 3 9 7 9 12C9 17 12 21 12 21" stroke="currentColor" opacity="0.5" />
+    <path d="M3 12C3 12 7 9 12 9C17 9 21 12 21 12" stroke="currentColor" opacity="0.5" />
+    <path d="M5.6 5.6C5.6 5.6 8 9.5 11 11.5C14 13.5 18.4 14.4 18.4 14.4" stroke="currentColor" opacity="0.35" />
+    <path d="M5.6 18.4C5.6 18.4 9.5 16 11.5 13C13.5 10 14.4 5.6 14.4 5.6" stroke="currentColor" opacity="0.35" />
+
+    {/* Central pupil */}
+    <circle cx="12" cy="12" r="3" stroke="currentColor" />
+    <circle cx="12" cy="12" r="1" stroke="currentColor" fill="currentColor" opacity="0.8" />
+
+    {/* Scan line hint */}
+    <path d="M3.5 10H7" stroke="currentColor" opacity="0.6" strokeWidth="1" />
+    <path d="M17 10H20.5" stroke="currentColor" opacity="0.6" strokeWidth="1" />
+
+    {/* HUD corner brackets */}
+    <path d="M1 3V1H3" stroke="currentColor" opacity="0.4" />
+    <path d="M23 3V1H21" stroke="currentColor" opacity="0.4" />
+    <path d="M1 21V23H3" stroke="currentColor" opacity="0.4" />
+    <path d="M23 21V23H21" stroke="currentColor" opacity="0.4" />
+  </svg>
+)
+
 export default {
   IconDashboard,
   IconLiveStage,
@@ -386,4 +426,5 @@ export default {
   IconForge,
   IconChronos,      // WAVE 2004
   IconHephaestus,   // WAVE 2030.3
+  IconTheia,        // WAVE 4863
 }

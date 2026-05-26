@@ -29,6 +29,7 @@ import {
   IconForge,        // 🔨 WAVE 1110: Forge icon
   IconChronos,      // ⏱️ WAVE 2004: Chronos icon
   IconHephaestus,   // ⚒️ WAVE 2030.3: Hephaestus icon
+  IconTheia,        // 🎬 WAVE 4863: Theia Video Engine icon
 } from './NavigationIcons'
 import './Sidebar.css'
 
@@ -45,6 +46,7 @@ const TAB_COLORS: Record<TabId, string> = {
   'hephaestus': '#ff6b2b',   // Deep Orange/Ember (The God Forge) - WAVE 2030.3
   'core': '#f59e0b',         // Amber (AI Monitor)
   'nexus': '#ef4444',
+  'theia': '#06b6d4',    // Cyan-500 (Theia Video Engine) - WAVE 4863
 }
 
 // WAVE 1110: Custom SVG Icons mapping (added forge)
@@ -59,6 +61,7 @@ const TAB_ICONS: Record<string, React.FC<{ size?: number; className?: string }>>
   'brain': IconLuxCore,       // LUX CORE (neural network)
   'forge': IconForge,         // Forge (hammer + anvil) - WAVE 1110
   'hephaestus': IconHephaestus, // Hephaestus (anvil + bezier curves) - WAVE 2030.3
+  'theia': IconTheia,             // Theia (camera aperture + scan eye) - WAVE 4863
 }
 
 // Separar tabs por tipo

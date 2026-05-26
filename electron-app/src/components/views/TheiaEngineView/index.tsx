@@ -29,7 +29,14 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './TheiaEngineView.css'
-import { getThetaOrchestrator } from '../../../theia'
+import { getThetaOrchestrator, getSeleneTheiaBridge } from '../../../theia'
+import { getTheiaRegistry } from '../../../core/theia/TheiaRegistry'
+import type { ITheiaAsset } from '../../../types/theiaTypes'
+import { useControlStore } from '../../../stores/controlStore'
+import { useTheiaEditorStore } from '../../../stores/useTheiaEditorStore'
+import { useAuthoringShortcuts } from '../../../hooks/useAuthoringShortcuts'
+import TheiaDNALab from '../../theia/TheiaDNALab'
+import TheiaTimeline from '../../theia/TheiaTimeline'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -166,12 +173,46 @@ const TheiaEngineView: React.FC = () => {
   const sparkRef = useRef<number[]>(new Array(60).fill(0.3))
   const [sparkData, setSparkData] = useState<number[]>(sparkRef.current)
 
+  // ── Output window state ──────────────────────────────────────────────
+  const [isOutputActive, setIsOutputActive] = useState(false)
+
   // ── Drop zone ─────────────────────────────────────────────────────────
   const [isDraggingFile, setIsDraggingFile] = useState(false)
+
+  // ── AI / SeleneTheiaBridge ─────────────────────────────────────────────
+  const aiEnabled = useControlStore((s) => s.aiEnabled)
+
+  // ── Theia Editor Mode (WAVE 4910.1) ──────────────────────────────────
+  const editorMode    = useTheiaEditorStore((s) => s.editorMode)
+  const setEditorMode = useTheiaEditorStore((s) => s.setEditorMode)
+
+  // ── WAVE 4910.7: atajos de teclado en modo AUTHOR ────────────────────
+  useAuthoringShortcuts()
 
   // ── Clips ─────────────────────────────────────────────────────────────
   const [clips, setClips] = useState<ClipManifest[]>(MOCK_CLIPS)
   const activeClip = useMemo(() => clips.find((c) => c.active) ?? clips[0], [clips])
+
+  // ─── WAVE 4870: SeleneTheiaBridge — attach/detach por aiEnabled ─────────
+  useEffect(() => {
+    const bridge = getSeleneTheiaBridge()
+    const theta  = getThetaOrchestrator()
+    if (aiEnabled) {
+      bridge.attach(theta)
+    } else {
+      bridge.detach()
+    }
+    return () => { bridge.detach() }
+  }, [aiEnabled])
+
+  // ─── WAVE 4910.2: Bloqueo de Selene en modo AUTHOR ─────────────────────
+  // En AUTHOR el operador edita visualmente; Selene no debe interferir.
+  useEffect(() => {
+    if (editorMode === 'author') {
+      getSeleneTheiaBridge().detach()
+    }
+    // En 'perform', el efecto de aiEnabled es la fuente de verdad para attach.
+  }, [editorMode])
 
   // ─── Mock heartbeat: drives the live section monitor every 100ms ──────
   useEffect(() => {
@@ -242,14 +283,18 @@ const TheiaEngineView: React.FC = () => {
   }, [])
 
   // 🎬 WAVE 4864 — Phase 3: Open / Close projector window
+  // 💡 WAVE 4870: Tracks isOutputActive for visual feedback on the button
   const handleToggleOutput = useCallback(async () => {
     const orch = getThetaOrchestrator()
     const isOpen = await orch.isOutputWindowOpen()
     if (isOpen) {
       await orch.closeOutputWindow()
+      setIsOutputActive(false)
     } else {
       const res = await orch.openOutputWindow()
-      if (!res.ok) {
+      if (res.ok) {
+        setIsOutputActive(true)
+      } else {
         console.error('[Theia UI] openOutputWindow failed:', res.error)
       }
     }
@@ -260,13 +305,26 @@ const TheiaEngineView: React.FC = () => {
     getThetaOrchestrator().setPlaybackRate(value)
   }, [])
 
+  // Mata el comportamiento por defecto de Chromium (navegar al archivo)
+  // en toda la superficie del componente. Solo onDrop en la drop zone real procesa el archivo.
+  const killDragDefault = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }, [])
+
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
+    e.stopPropagation()
     setIsDraggingFile(true)
   }, [])
-  const handleDragLeave = useCallback(() => setIsDraggingFile(false), [])
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingFile(false)
+  }, [])
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
     setIsDraggingFile(false)
     const file = e.dataTransfer.files[0]
     if (!file) return
@@ -274,10 +332,20 @@ const TheiaEngineView: React.FC = () => {
       console.warn('[Theia UI] Ignored non-mp4 file:', file.name)
       return
     }
-    const url = URL.createObjectURL(file)
-    getThetaOrchestrator()
-      .loadVideo(url)
-      .catch((err: unknown) => console.error('[Theia UI] loadVideo() failed:', err))
+    const url   = URL.createObjectURL(file)
+    const theta = getThetaOrchestrator()
+    try {
+      await theta.loadVideo(url)
+      // En AUTHOR mode: crear/actualizar el draft con duración real del vídeo
+      const { editorMode: mode } = useTheiaEditorStore.getState()
+      if (mode === 'author') {
+        const filePath = (file as { path?: string }).path ?? file.name
+        const durMs    = Math.round((theta.getVideoElement()?.duration ?? 0) * 1000)
+        useTheiaEditorStore.getState().newDraftFromPath(filePath, durMs)
+      }
+    } catch (err) {
+      console.error('[Theia UI] loadVideo() failed:', err)
+    }
   }, [])
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -287,6 +355,10 @@ const TheiaEngineView: React.FC = () => {
   return (
     <div
       className={`theia-view ${inspectorOpen ? 'theia-view--insp-open' : 'theia-view--insp-closed'}`}
+      onDragEnter={killDragDefault}
+      onDragOver={killDragDefault}
+      onDragLeave={killDragDefault}
+      onDrop={killDragDefault}
     >
       {/* ═══════════════════════════════════════════════════════════════════
        * HEADER TOOLBAR
@@ -303,12 +375,34 @@ const TheiaEngineView: React.FC = () => {
           <span className="theia-header__beta">BETA</span>
           {/* 🎬 WAVE 4864 — Open the secondary projector window */}
           <button
-            className="theia-header__output-btn"
+            className={`theia-header__output-btn${isOutputActive ? ' theia-header__output-btn--active' : ''}`}
             onClick={handleToggleOutput}
             title="Open Theia output window (HDMI / LED wall)"
             data-midi-bind="theia.toggle-output"
           >
             OUTPUT
+          </button>
+        </div>
+
+        {/* ── WAVE 4910.2: PERFORM ◐ AUTHOR mode toggle ── */}
+        <div
+          className={`theia-mode-toggle${editorMode === 'author' ? ' is-author' : ' is-perform'}`}
+          data-midi-bind="theia.editor-mode"
+        >
+          <button
+            className={`theia-mode-toggle__btn${editorMode === 'perform' ? ' is-active' : ''}`}
+            onClick={() => setEditorMode('perform')}
+            title="PERFORM — runtime, Selene al mando"
+          >
+            PERFORM
+          </button>
+          <span className="theia-mode-toggle__divider">◐</span>
+          <button
+            className={`theia-mode-toggle__btn${editorMode === 'author' ? ' is-active' : ''}`}
+            onClick={() => setEditorMode('author')}
+            title="AUTHOR — edición de cuepoints y ADN"
+          >
+            AUTHOR
           </button>
         </div>
 
@@ -389,8 +483,8 @@ const TheiaEngineView: React.FC = () => {
       {/* ═══════════════════════════════════════════════════════════════════
        * MAIN GRID (viewport + asset deck + inspector)
        * ═══════════════════════════════════════════════════════════════════ */}
-      <div className="theia-main">
-        {/* ─── LEFT COLUMN: viewport + asset deck ─── */}
+      <div className={`theia-main${editorMode === 'author' ? ' theia-main--author' : ''}`}>
+        {/* ─── LEFT COLUMN: viewport + (asset deck | timeline placeholder) ─── */}
         <div className="theia-stage">
           <Viewport
             mode={viewportMode}
@@ -401,27 +495,38 @@ const TheiaEngineView: React.FC = () => {
             section={section}
           />
 
-          <AssetDeck
-            clips={clips}
-            onSelectClip={handleSelectClip}
-            sectionConfidence={sectionConfidence}
-          />
+          {editorMode === 'perform' ? (
+            <AssetDeck
+              clips={clips}
+              onSelectClip={handleSelectClip}
+              sectionConfidence={sectionConfidence}
+            />
+          ) : (
+            <>
+              <AuthorAssetDeck />
+              <TheiaTimeline />
+            </>
+          )}
         </div>
 
-        {/* ─── RIGHT COLUMN: inspector ─── */}
-        <Inspector
-          open={inspectorOpen}
-          activeClip={activeClip}
-          section={section}
-          sectionConfidence={sectionConfidence}
-          bpm={bpm}
-          setBpm={setBpm}
-          energyValue={energyValue}
-          sparkData={sparkData}
-          onForceDrop={handleForceDrop}
-          onForceAmbient={handleForceAmbient}
-          enginePower={enginePower}
-        />
+        {/* ─── RIGHT COLUMN: inspector | dna-lab placeholder ─── */}
+        {editorMode === 'perform' ? (
+          <Inspector
+            open={inspectorOpen}
+            activeClip={activeClip}
+            section={section}
+            sectionConfidence={sectionConfidence}
+            bpm={bpm}
+            setBpm={setBpm}
+            energyValue={energyValue}
+            sparkData={sparkData}
+            onForceDrop={handleForceDrop}
+            onForceAmbient={handleForceAmbient}
+            enginePower={enginePower}
+          />
+        ) : (
+          <TheiaDNALab />
+        )}
       </div>
     </div>
   )
@@ -598,6 +703,68 @@ const Totem: React.FC<{ index: number; palette: [string, string, string] }> = ({
       ))}
       <div className="theia-totem__label">T-{index + 1}</div>
     </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUB-COMPONENT: AuthorAssetDeck — WAVE 4910.7
+// Deck de assets del TheiaRegistry para modo AUTHOR.
+// Permite cargar un asset existente en el editor o empezar uno nuevo.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const AuthorAssetDeck: React.FC = () => {
+  const currentDraftId = useTheiaEditorStore((s) => s.draftAsset?.id ?? null)
+  // TheiaRegistry no emite eventos → leemos en render (estático por sesión)
+  const assets = getTheiaRegistry().getAllAssets()
+
+  const handleSelect = useCallback((asset: ITheiaAsset) => {
+    useTheiaEditorStore.getState().loadDraft(asset)
+    // Si el filePath apunta a un vídeo, cargarlo en el orquestrador
+    const fp = asset.filePath
+    if (fp && (fp.endsWith('.mp4') || fp.endsWith('.webm') || fp.endsWith('.mov'))) {
+      const url = fp.startsWith('blob:')
+        ? fp
+        : `file:///${fp.replace(/\\/g, '/')}`
+      getThetaOrchestrator().loadVideo(url).catch((err) => {
+        console.error('[AuthorAssetDeck] loadVideo failed:', err)
+      })
+    }
+  }, [])
+
+  const handleNewAsset = useCallback(() => {
+    useTheiaEditorStore.getState().clearDraft()
+  }, [])
+
+  return (
+    <section className="theia-author-deck">
+      <div className="theia-author-deck__header">
+        <span className="theia-author-deck__title">ASSET DECK</span>
+        <span className="theia-author-deck__count">{assets.length} THEIA</span>
+      </div>
+      <div className="theia-author-deck__rail">
+        {assets.map((asset) => (
+          <button
+            key={asset.id}
+            className={`theia-asset-card${asset.id === currentDraftId ? ' is-active' : ''}`}
+            onClick={() => handleSelect(asset)}
+            title={asset.filePath}
+            data-midi-bind={`theia.author.asset.${asset.id}`}
+          >
+            <span className="theia-asset-card__id">{asset.id}</span>
+            <span className="theia-asset-card__cues">{asset.cuePoints.length} cues</span>
+          </button>
+        ))}
+        <button
+          className="theia-asset-card theia-asset-card--new"
+          onClick={handleNewAsset}
+          title="Crear nuevo asset desde cero"
+          data-midi-bind="theia.author.asset.new"
+        >
+          <span className="theia-asset-card__icon">+</span>
+          <span className="theia-asset-card__label">NEW ASSET</span>
+        </button>
+      </div>
+    </section>
   )
 }
 

@@ -19,6 +19,8 @@ export type ThetaMessageType =
   | 'theia:unload-stream'
   // WAVE 4864 — Phase 4: Asset state machine (orchestrator → worker)
   | 'theia:force-state'
+  // 🎬 WAVE 4903 — Phase 7: cognitive seek (Selene → orchestrator → worker)
+  | 'theia:seek'
   // Lifecycle (worker → orchestrator)
   | 'theia:ready'
   | 'theia:heartbeat-ack'
@@ -28,6 +30,8 @@ export type ThetaMessageType =
   | 'theia:video-status'
   // WAVE 4864 — Phase 4: AssetStateMachine status (worker → orchestrator)
   | 'theia:asset-state'
+  // 🎬 WAVE 4903 — ack del seek (worker → orchestrator)
+  | 'theia:seek-ack'
 
 export interface ThetaInitPayload {
   /** Reloj maestro compartido — escrito por TrinityOrchestrator @ 44Hz. */
@@ -130,6 +134,72 @@ export interface ThetaAssetStatePayload {
   crossfadeProgress: number
   /** Si está esperando al downbeat. */
   waitingAnchor: boolean
+}
+
+// ──────────────────────────────────────────────────────────────────
+// 🎬 WAVE 4903 — Phase 7: Cognitive Seek (Selene → Theia)
+// ──────────────────────────────────────────────────────────────────
+
+/**
+ * Mensaje IPC público (renderer-internal) emitido por el wiring de Selene
+ * cuando `SeleneTheiaAdapter` produce un `CueJumpIntent`. Es consumido por
+ * `ThetaOrchestrator.handleCueJump()`.
+ *
+ * Nota arquitectónica: en LuxSync, tanto Selene como Theta viven en el
+ * proceso renderer. NO hay `mainWindow.webContents.send` real — el "IPC"
+ * es un EventTarget interno del renderer (`theiaCueJumpBus`). Se conserva
+ * la nomenclatura IPC para compatibilidad si en el futuro se separan los
+ * procesos.
+ */
+export interface TheiaCueJumpMessage {
+  type: 'theia:cue-jump'
+  payload: {
+    /** ID del asset (.theia) destino. Vacío = blackout. */
+    clipId: string
+    /** ID del cuepoint dentro del asset. */
+    cuepointId: string
+    /** Offset temporal donde el videoElement debe saltar (ms). */
+    startMs: number
+    /** Duración del crossfade visual (ms). */
+    crossfadeMs: number
+    /** Texto humano de telemetría. */
+    reason: string
+    /** Timestamp de emisión (renderer ms) — para latency tracking. */
+    emittedAt: number
+  }
+}
+
+/**
+ * Payload `orchestrator → worker`. El orchestrator ya hizo el `videoElement.currentTime`
+ * y la lazy-load del .mp4 si era necesario; el worker solo necesita preparar
+ * el crossfade visual (snapshot del frame previo + arranque de la curva).
+ */
+export interface ThetaSeekPayload {
+  /** ID del asset destino (informativo para logs). */
+  clipId: string
+  /** ID del cuepoint destino (informativo). */
+  cuepointId: string
+  /** Posición destino dentro del asset (ms). Solo informativo — el seek real
+   *  ya lo aplicó el orchestrator sobre el videoElement. */
+  startMs: number
+  /** Duración del crossfade visual en ms. Se traduce a ticks (~22ms cada uno). */
+  crossfadeMs: number
+  /** Razón legible (telemetría). */
+  reason: string
+  /** Timestamp de emisión (renderer ms). */
+  emittedAt: number
+}
+
+/** Ack del worker tras procesar `theia:seek`. */
+export interface ThetaSeekAckPayload {
+  clipId: string
+  cuepointId: string
+  /** Latencia medida emit→worker (ms). */
+  latencyMs: number
+  /** Snapshot capturado correctamente. False si el canvas estaba vacío. */
+  snapshotOk: boolean
+  /** Total de ticks programados para el crossfade. */
+  crossfadeTicks: number
 }
 
 export interface ThetaMessage<T = unknown> {

@@ -24,6 +24,8 @@ import {
   type ThetaInitPayload,
   type ThetaLoadStreamPayload,
   type ThetaMessage,
+  type ThetaSeekAckPayload,
+  type ThetaSeekPayload,
   type ThetaStateReportPayload,
   type ThetaVideoStatusPayload,
 } from './protocol'
@@ -386,6 +388,60 @@ function handleForceState(payload: ThetaForceStatePayload): void {
   sendAssetState()
 }
 
+/**
+ * 🎬 WAVE 4903 — Phase 7: Cognitive Seek handler.
+ *
+ * El orchestrator ya hizo `videoElement.currentTime = startMs/1000` y, si el
+ * `clipId` cambió, recargó el .mp4 vía `loadVideo()`. Cuando este mensaje
+ * llega al worker, el frame pump ya está siendo reabastecido con frames
+ * de la nueva posición temporal.
+ *
+ * Responsabilidad del worker:
+ *   1. Capturar snapshot del último frame visible (lo que el espectador
+ *      "ve" justo antes del salto cognitivo).
+ *   2. Iniciar el `CrossfadeUnit` con la duración recibida en `crossfadeMs`.
+ *      `renderCurrentFrame` (44Hz) blendea el snapshot vs los nuevos frames.
+ *   3. Emitir `theia:seek-ack` con la latencia y el conteo de ticks.
+ */
+function handleSeek(payload: ThetaSeekPayload): void {
+  const recvAt = Date.now()
+  const latency = Math.max(0, recvAt - payload.emittedAt)
+
+  // Capturar el frame actual ANTES de cualquier cambio (será el `prev` del fade).
+  captureCurrentSnapshot()
+  const snapshotOk = state.prevSnapshotValid
+
+  // Traducir crossfadeMs → ticks. pollIntervalMs ~ 22ms = 1 tick.
+  // Mínimo 1 tick (corte casi duro), máximo 200 ticks (~4.4s) por seguridad.
+  const ms = Number.isFinite(payload.crossfadeMs) ? Math.max(0, payload.crossfadeMs) : 500
+  const totalTicks = Math.min(200, Math.max(1, Math.round(ms / Math.max(1, state.pollIntervalMs))))
+
+  // Curva acorde a la urgencia: cortes duros = lineal; transiciones suaves = easeInOut.
+  const curve: CrossfadeCurve = totalTicks <= 4 ? 'linear' : 'easeInOut'
+
+  if (snapshotOk) {
+    state.crossfade.start({ totalTicks, curve, waitAnchor: false })
+  } else {
+    // Sin snapshot válido (primer cue del show, canvas vacío) → corte duro.
+    state.crossfade.abort()
+    state.prevSnapshotValid = false
+  }
+
+  // Si el cuepoint apunta a un clip vacío => blackout: forzar FSM a idle.
+  if (!payload.clipId) {
+    state.fsm.reset()
+  }
+
+  const ack: ThetaSeekAckPayload = {
+    clipId: payload.clipId,
+    cuepointId: payload.cuepointId,
+    latencyMs: latency,
+    snapshotOk,
+    crossfadeTicks: snapshotOk ? totalTicks : 0,
+  }
+  send('theia:seek-ack', ack)
+}
+
 function sendAssetState(): void {
   const xf = state.crossfade
   const payload: ThetaAssetStatePayload = {
@@ -612,6 +668,9 @@ self.addEventListener('message', (ev: MessageEvent<ThetaMessage>) => {
         break
       case 'theia:force-state':
         handleForceState(msg.payload as ThetaForceStatePayload)
+        break
+      case 'theia:seek':
+        handleSeek(msg.payload as ThetaSeekPayload)
         break
       default:
         sendError(`Unknown message type: ${msg.type}`, false)

@@ -59,6 +59,8 @@ import { getSeleneHephBridge } from '../arsenal/SeleneHephBridge';
 import { AetherCanvasManager } from '../aether/canvas/AetherCanvasManager';
 import { PixelMapAetherAdapter } from '../aether/canvas/PixelMapAetherAdapter';
 import { PlasmaRenderer } from '../aether/canvas/PlasmaRenderer';
+// 🎬 WAVE 4867: TheiaVideoRenderer — twin-output bridge (THETA thumb SAB → AetherCanvas)
+import { TheiaVideoRenderer } from '../aether/canvas/renderers/TheiaVideoRenderer';
 // 🛂 WAVE 4557: Aether Safety Middleware — La Aduana Aether
 import { AetherSafetyMiddleware } from '../aether/egress/AetherSafetyMiddleware';
 // 🎭 WAVE 4559: THE MIRROR — Projecta estado Aether → FixtureState[] legacy para la UI
@@ -474,6 +476,10 @@ export class TitanOrchestrator {
         this._pixelMapAdapter = new PixelMapAetherAdapter({ targetLayer: 'effect' });
         /** Active PlasmaRenderer instances keyed by canvasId — lifecycle managed by RenderHook. */
         this._plasmaRenderers = new Map();
+        // 🎬 WAVE 4867: TheiaVideoRenderer — null hasta que se llame attachTheiaRenderer()
+        this._theiaVideoRenderer = null;
+        // 🌉 WAVE 4869: SeleneTheiaBridge — null hasta que se llame attachSeleneTheiaBridge()
+        this._seleneThetaBridge = null;
         this._timelineEngine = timelineEngine;
         // FrameContext pre-alloc — mutable in-place, cero alloc en hot-path
         this._aetherAudio = {
@@ -641,6 +647,69 @@ export class TitanOrchestrator {
      */
     setLicenseTier(tier) {
         this._licenseTier = tier;
+    }
+    // ── 🎬 WAVE 4867: Theia Twin-Output Bridge ───────────────────────────────
+    /**
+     * Conecta el renderer de vídeo de Theia al pipeline de Pixel Mapping.
+     *
+     * Llamar desde el renderer (TheiaEngineView / ThetaOrchestrator) después de
+     * que el ThetaOrchestrator haya iniciado y el SAB esté listo:
+     *
+     *   const thumbSAB = getThetaOrchestrator().getThumbPixelSAB()
+     *   getTitanOrchestrator().attachTheiaRenderer('theia:active', thumbSAB)
+     *
+     * La llamada es idempotente: si ya existe un renderer para el mismo canvasId,
+     * lo reemplaza (util para reconnect).
+     */
+    attachTheiaRenderer(canvasId, thumbPixelSAB, opts = {}) {
+        this._theiaVideoRenderer?.stop();
+        this._theiaVideoRenderer = new TheiaVideoRenderer(canvasId, this._aetherCanvasManager, thumbPixelSAB);
+        this._theiaVideoRenderer.active = true;
+        // Patch-time: bind world samplers so the PixelMapAetherAdapter knows which
+        // nodes to sample from 'theia:active'. Falls back gracefully if the graph
+        // has no positioned nodes (produces zero intents but no crash).
+        const stageRect = {
+            x0: -this._aetherStageBounds.width * 0.5,
+            z0: -this._aetherStageBounds.depth * 0.5,
+            x1: this._aetherStageBounds.width * 0.5,
+            z1: this._aetherStageBounds.depth * 0.5,
+        };
+        this._pixelMapAdapter.bindWorldSamplers(canvasId, {
+            intensity: opts.intensity ?? 1.0,
+            alphaToDimmer: opts.alphaToDimmer ?? false,
+        }, this._aetherGraph, stageRect, 64, 64);
+        // eslint-disable-next-line no-console
+        console.log(`[TitanOrchestrator 🎬] WAVE 4867: TheiaVideoRenderer attached (canvasId='${canvasId}')`);
+    }
+    /**
+     * Desconecta el renderer de vídeo de Theia. El canvas queda a negro y el
+     * PixelMapAetherAdapter deja de emitir intents para ese canvasId.
+     */
+    detachTheiaRenderer() {
+        if (this._theiaVideoRenderer) {
+            this._theiaVideoRenderer.stop();
+            const canvasId = this._theiaVideoRenderer.getTelemetry().canvasId;
+            this._pixelMapAdapter.unbindCanvas(canvasId);
+            this._aetherCanvasManager.release(canvasId);
+            this._theiaVideoRenderer = null;
+            // eslint-disable-next-line no-console
+            console.log('[TitanOrchestrator 🎬] WAVE 4867: TheiaVideoRenderer detached');
+        }
+    }
+    // ── WAVE 4869: SeleneTheiaBridge ─────────────────────────────────────────
+    /**
+     * Conecta el SeleneTheiaBridge al pipeline de processFrame().
+     * Llámalo después de que ThetaOrchestrator.start() haya completado.
+     */
+    attachSeleneTheiaBridge(bridge) {
+        this._seleneThetaBridge = bridge;
+        // eslint-disable-next-line no-console
+        console.log('[TitanOrchestrator 🌉] WAVE 4869: SeleneTheiaBridge attached');
+    }
+    detachSeleneTheiaBridge() {
+        this._seleneThetaBridge = null;
+        // eslint-disable-next-line no-console
+        console.log('[TitanOrchestrator 🌉] WAVE 4869: SeleneTheiaBridge detached');
     }
     /**
      * Initialize all TITAN modules
@@ -1241,6 +1310,17 @@ export class TitanOrchestrator {
             // para que HarmonicQuantizer funcione universalmente en translateColorToWheel()
             bpmConfidence: this.lastAudioData?.workerBpmConfidence ?? 0,
         };
+        // ── WAVE 4869: SeleneTheiaBridge ─ Observer pasivo, zero-alloc ────────
+        // Llamada DESPUÉS de construir engineAudioMetrics (energy, sectionType listos).
+        // El bridge solo hace forceState() cuando detecta un cambio de estado estable.
+        if (this._seleneThetaBridge !== null) {
+            this._seleneThetaBridge.notify({
+                energy: engineAudioMetrics.energy,
+                sectionType: (context.section?.type ?? 'unknown'),
+                dropImminent: context.energy > 0.8,
+                frameIndex: this.frameCount,
+            });
+        }
         // 3. Engine processes context -> produces LightingIntent (🧬 DNA Brain now awaited)
         const intent = await this.engine.update(context, engineAudioMetrics);
         // ═══════════════════════════════════════════════════════════════════════
@@ -1766,6 +1846,11 @@ export class TitanOrchestrator {
                     for (const renderer of this._plasmaRenderers.values()) {
                         renderer.tick(tickNow);
                     }
+                }
+                // 🎬 WAVE 4867: Tick TheiaVideoRenderer — copia el thumb SAB al back buffer de
+                // 'theia:active' si hay frame nuevo, sin allocaciones extra.
+                if (this._theiaVideoRenderer !== null) {
+                    this._theiaVideoRenderer.tick();
                 }
                 this._pixelMapAdapter.ingest(aetherArbiter, this._aetherCanvasManager);
                 // 3. El Arbiter unifica todas las capas → ArbitratedNodeMap

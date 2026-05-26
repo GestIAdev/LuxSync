@@ -27,6 +27,8 @@ import {
   type ThetaHeartbeatPayload,
   type ThetaLoadStreamPayload,
   type ThetaMessage,
+  type ThetaSeekAckPayload,
+  type ThetaSeekPayload,
   type ThetaStateReportPayload,
   type ThetaVideoStatusPayload,
 } from './protocol'
@@ -137,6 +139,14 @@ export class ThetaOrchestrator {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private trackProcessor: any = null
   private lastVideoStatus: ThetaVideoStatusPayload | null = null
+
+  // 🎬 WAVE 4903 — Phase 7: cognitive cue-jump tracking
+  /** ID del asset (.theia) actualmente cargado en el videoElement. */
+  private currentClipId: string | null = null
+  /** Última URL pasada a loadVideo() — usada para evitar re-loads idempotentes. */
+  private currentClipUrl: string | null = null
+  /** Último ack de seek recibido del worker (telemetría). */
+  private lastSeekAck: ThetaSeekAckPayload | null = null
 
   private heartbeatHandle: number | null = null
   private heartbeatSequence = 0
@@ -285,6 +295,148 @@ export class ThetaOrchestrator {
   /** Último reporte de la AssetStateMachine recibido del worker. */
   getAssetState(): ThetaAssetStatePayload | null {
     return this.lastAssetState
+  }
+
+  // ──────────────────────────────────────────────────────────────────
+  // 🎬 WAVE 4903 — Phase 7: Cognitive Cue-Jump (Selene → Theta)
+  // ──────────────────────────────────────────────────────────────────
+
+  /**
+   * Procesa un `CueJumpIntent` emitido por `SeleneTheiaAdapter`.
+   *
+   * Pipeline:
+   *   1. Si `clipId === ''` → blackout: detiene reproducción y limpia worker.
+   *   2. Si `clipId !== currentClipId` → resuelve filePath via `TheiaRegistry`
+   *      y llama a `loadVideo()` (lazy load del asset binario).
+   *   3. Aplica `videoElement.currentTime = startMs / 1000`.
+   *   4. Asegura `play()` (Selene asume reproducción activa post-cue).
+   *   5. PostMessage al worker con `theia:seek` para que prepare el crossfade
+   *      visual (snapshot + curva de mezcla).
+   *
+   * Es idempotente y resiliente: si el worker no está listo, log + return.
+   * No lanza excepciones.
+   */
+  async handleCueJump(intent: {
+    clipId: string
+    cuepointId: string
+    startMs: number
+    crossfadeMs: number
+    reason: string
+    /** Resolver opcional `clipId → URL`. Si no se provee, se intenta el
+     *  resolver interno (TheiaRegistry-aware) registrado vía
+     *  `setClipUrlResolver()`. */
+    urlResolver?: (clipId: string) => string | null
+  }): Promise<void> {
+    if (!this.isRunning || !this.worker) {
+      // eslint-disable-next-line no-console
+      console.warn('[THETA 🎬] handleCueJump called before start — ignored')
+      return
+    }
+
+    // ── Caso 1: blackout ─────────────────────────────────────────────────
+    if (!intent.clipId) {
+      this._emitSeekToWorker({
+        clipId: '',
+        cuepointId: '',
+        startMs: 0,
+        crossfadeMs: intent.crossfadeMs,
+        reason: 'blackout',
+      })
+      try {
+        if (this.videoElement) this.videoElement.pause()
+      } catch { /* noop */ }
+      return
+    }
+
+    // ── Caso 2: cambio de asset → lazy load ──────────────────────────────
+    if (intent.clipId !== this.currentClipId) {
+      const resolver = intent.urlResolver ?? this._clipUrlResolver
+      const url = resolver ? resolver(intent.clipId) : null
+      if (!url) {
+        // eslint-disable-next-line no-console
+        console.warn(`[THETA 🎬] cue-jump '${intent.clipId}' — no URL resolver`)
+        return
+      }
+      try {
+        await this.loadVideo(url)
+        this.currentClipId = intent.clipId
+        this.currentClipUrl = url
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error(`[THETA 🎬] cue-jump load failed for '${intent.clipId}':`, err)
+        return
+      }
+    }
+
+    // ── Caso 3: SEEK + play ──────────────────────────────────────────────
+    if (this.videoElement) {
+      try {
+        // Math.max porque ms negativos romperían el currentTime; clampear a 0.
+        const seconds = Math.max(0, intent.startMs / 1000)
+        this.videoElement.currentTime = seconds
+        if (this.videoElement.paused) {
+          this.videoElement.play().catch((err) => {
+            // eslint-disable-next-line no-console
+            console.warn('[THETA 🎬] play() after seek failed:', err)
+          })
+        }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('[THETA 🎬] videoElement.currentTime assignment failed:', err)
+      }
+    }
+
+    // ── Caso 4: notificar al worker para crossfade visual ────────────────
+    this._emitSeekToWorker({
+      clipId: intent.clipId,
+      cuepointId: intent.cuepointId,
+      startMs: intent.startMs,
+      crossfadeMs: intent.crossfadeMs,
+      reason: intent.reason,
+    })
+  }
+
+  /**
+   * Registra un resolver `clipId → URL` para que `handleCueJump` pueda
+   * cargar lazily los `.mp4` declarados por los manifests `.theia`.
+   *
+   * Típicamente la wiring de Selene hace:
+   *   `orchestrator.setClipUrlResolver(id => theiaRegistry.getAsset(id)?.filePath ?? null)`
+   */
+  setClipUrlResolver(resolver: ((clipId: string) => string | null) | null): void {
+    this._clipUrlResolver = resolver
+  }
+  private _clipUrlResolver: ((clipId: string) => string | null) | null = null
+
+  /** Último ack de seek recibido del worker (telemetría). */
+  getLastSeekAck(): ThetaSeekAckPayload | null {
+    return this.lastSeekAck
+  }
+
+  /**
+   * WAVE 4910.5 — Expone el videoElement interno para que el renderer pueda
+   * consultar `currentTime` y `duration` sin IPC round-trip.
+   * Solo válido después de un `loadVideo()` exitoso.
+   */
+  getVideoElement(): HTMLVideoElement | null {
+    return this.videoElement
+  }
+
+  /** ID del asset actualmente cargado, o null. */
+  getCurrentClipId(): string | null {
+    return this.currentClipId
+  }
+
+  // ── private helper ──
+  private _emitSeekToWorker(p: Omit<ThetaSeekPayload, 'emittedAt'>): void {
+    if (!this.worker) return
+    const payload: ThetaSeekPayload = { ...p, emittedAt: Date.now() }
+    try {
+      this.worker.postMessage(makeThetaMessage('theia:seek', payload))
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[THETA 🎬] seek postMessage failed:', err)
+    }
   }
 
   // ──────────────────────────────────────────────────────────────────
@@ -443,6 +595,9 @@ export class ThetaOrchestrator {
   }
 
   private teardownVideo(): void {
+    // 🎬 WAVE 4903 — clear cue-jump tracking when the underlying asset goes away.
+    this.currentClipId = null
+    this.currentClipUrl = null
     if (this.trackProcessor) {
       // Stop the track processor (closes the readable stream)
       try {
@@ -569,6 +724,10 @@ export class ThetaOrchestrator {
 
       case 'theia:asset-state':
         this.lastAssetState = msg.payload as ThetaAssetStatePayload
+        break
+
+      case 'theia:seek-ack':
+        this.lastSeekAck = msg.payload as ThetaSeekAckPayload
         break
 
       case 'theia:error': {

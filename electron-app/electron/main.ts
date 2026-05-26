@@ -463,6 +463,52 @@ async function initTitan(): Promise<void> {
   setupKeyForgeIPCHandlers(() => mainWindow)
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // 🎬 WAVE 4910.6: Theia Asset export — Native Save As dialog
+  // ═══════════════════════════════════════════════════════════════════════════
+  ipcMain.handle('lux:theia:exportAsset', async (_event, asset: unknown, suggestedName?: string) => {
+    const win = mainWindow
+    if (!win) return { success: false, error: 'No main window' }
+    try {
+      const result = await dialog.showSaveDialog(win, {
+        title: 'Exportar Asset .theia',
+        defaultPath: suggestedName ?? 'asset.theia',
+        filters: [{ name: 'Theia Asset', extensions: ['theia'] }],
+      })
+      if (result.canceled || !result.filePath) return { success: false, cancelled: true }
+      await fs.promises.writeFile(result.filePath, JSON.stringify(asset, null, 2), 'utf-8')
+      console.log(`[TheiaExport] ✅ ${result.filePath}`)
+      return { success: true, filePath: result.filePath }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error('[TheiaExport] ❌', msg)
+      return { success: false, error: msg }
+    }
+  })
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🎬 WAVE 4910.6: Theia Asset export — Native Save As dialog
+  // ═══════════════════════════════════════════════════════════════════════════
+  ipcMain.handle('lux:theia:exportAsset', async (_event, asset: unknown, suggestedName?: string) => {
+    const win = mainWindow
+    if (!win) return { success: false, error: 'No main window' }
+    try {
+      const result = await dialog.showSaveDialog(win, {
+        title: 'Exportar Asset .theia',
+        defaultPath: suggestedName ?? 'asset.theia',
+        filters: [{ name: 'Theia Asset', extensions: ['theia'] }],
+      })
+      if (result.canceled || !result.filePath) return { success: false, cancelled: true }
+      await fs.promises.writeFile(result.filePath, JSON.stringify(asset, null, 2), 'utf-8')
+      console.log(`[TheiaExport] ✅ ${result.filePath}`)
+      return { success: true, filePath: result.filePath }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error('[TheiaExport] ❌', msg)
+      return { success: false, error: msg }
+    }
+  })
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // ⚒️ WAVE 2030.5: Initialize Hephaestus File I/O
   // ═══════════════════════════════════════════════════════════════════════════
   setupHephIPCHandlers()

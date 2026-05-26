@@ -579,6 +579,10 @@ const luxApi = {
         closeOutput: () => ipcRenderer.invoke('theia:close-output'),
         /** 🎬 WAVE 4864 — Estado actual de la ventana del proyector. */
         isOutputOpen: () => ipcRenderer.invoke('theia:is-output-open'),
+        /** 🎬 WAVE 4910.6 — Abre diálogo Save As nativo y escribe el asset .theia como JSON. */
+        exportAsset: (asset, suggestedName) => ipcRenderer.invoke('lux:theia:exportAsset', asset, suggestedName),
+        /** 🎬 WAVE 4910.6 — Abre diálogo Save As nativo y escribe el asset .theia como JSON. */
+        exportAsset: (asset, suggestedName) => ipcRenderer.invoke('lux:theia:exportAsset', asset, suggestedName),
     },
     mood: {
         /** Set active Mood (calm, balanced, punk) */

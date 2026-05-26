@@ -1,0 +1,402 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🧬 THEIA DNA LAB — CSS
+ * Panel lateral glassmorphism. Accent: magenta (AUTHOR mode).
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/* ── Contenedor principal ── */
+.dna-lab {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
+  padding: 16px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: rgba(15, 22, 38, 0.72);
+  backdrop-filter: blur(12px) saturate(120%);
+  border-left: 2px solid #a855f7;
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(168, 85, 247, 0.4) transparent;
+}
+
+.dna-lab::-webkit-scrollbar { width: 4px; }
+.dna-lab::-webkit-scrollbar-track { background: transparent; }
+.dna-lab::-webkit-scrollbar-thumb { background: rgba(168, 85, 247, 0.4); border-radius: 2px; }
+
+/* Empty state */
+.dna-lab--empty {
+  border-left-color: rgba(168, 85, 247, 0.3);
+}
+
+/* ── Export button ── */
+.dna-lab__export-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 5px;
+  border: 1px solid rgba(168, 85, 247, 0.45);
+  background: rgba(168, 85, 247, 0.08);
+  color: #a855f7;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 150ms ease;
+  flex-shrink: 0;
+}
+
+.dna-lab__export-btn:hover:not(:disabled) {
+  border-color: #a855f7;
+  background: rgba(168, 85, 247, 0.18);
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.35);
+}
+
+.dna-lab__export-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.dna-lab__export-btn.is-dirty {
+  border-color: rgba(251, 191, 36, 0.6);
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.07);
+}
+
+.dna-lab__export-btn.is-dirty:hover:not(:disabled) {
+  border-color: #fbbf24;
+  background: rgba(251, 191, 36, 0.16);
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.3);
+}
+
+.dna-lab__export-icon { font-size: 14px; }
+
+.dna-lab__export-label {
+  flex: 1;
+  text-align: center;
+}
+
+.dna-lab__export-dirty {
+  color: #fbbf24;
+  font-size: 10px;
+  animation: pulse-dot 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+/* ── Export button ── */
+.dna-lab__export-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 5px;
+  border: 1px solid rgba(168, 85, 247, 0.45);
+  background: rgba(168, 85, 247, 0.08);
+  color: #a855f7;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 150ms ease;
+  flex-shrink: 0;
+}
+
+.dna-lab__export-btn:hover:not(:disabled) {
+  border-color: #a855f7;
+  background: rgba(168, 85, 247, 0.18);
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.35);
+}
+
+.dna-lab__export-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.dna-lab__export-btn.is-dirty {
+  border-color: rgba(251, 191, 36, 0.6);
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.07);
+}
+
+.dna-lab__export-btn.is-dirty:hover:not(:disabled) {
+  border-color: #fbbf24;
+  background: rgba(251, 191, 36, 0.16);
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.3);
+}
+
+.dna-lab__export-icon { font-size: 14px; }
+
+.dna-lab__export-label {
+  flex: 1;
+  text-align: center;
+}
+
+.dna-lab__export-dirty {
+  color: #fbbf24;
+  font-size: 10px;
+  animation: pulse-dot 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+/* ── Header ── */
+.dna-lab__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(168, 85, 247, 0.2);
+}
+
+.dna-lab__icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.dna-lab__title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.dna-lab__label {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: #a855f7;
+  text-transform: uppercase;
+}
+
+.dna-lab__focus {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.dna-lab__badge {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.dna-lab__badge--default {
+  color: #22c55e;
+}
+
+.dna-lab__badge--divine {
+  color: #a855f7;
+}
+
+/* ── Sections ── */
+.dna-lab__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: opacity 120ms ease;
+}
+
+.dna-lab__section--muted {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.dna-lab__section-title {
+  margin: 0;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: rgba(255, 255, 255, 0.35);
+  text-transform: uppercase;
+}
+
+.dna-lab__hint {
+  font-size: 9px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.25);
+  letter-spacing: 0.05em;
+}
+
+/* ── DNA Sliders ── */
+.dna-lab__sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dna-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dna-slider__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.dna-slider__label {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--dna-color, #06b6d4);
+  text-transform: uppercase;
+}
+
+.dna-slider__value {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.dna-slider__track {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: visible;
+}
+
+.dna-slider__fill {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--dna-color, #06b6d4);
+  box-shadow: 0 0 6px var(--dna-color, #06b6d4);
+  pointer-events: none;
+  transition: width 60ms linear;
+}
+
+.dna-slider__input {
+  position: absolute;
+  inset: -8px 0;
+  width: 100%;
+  height: calc(100% + 16px);
+  opacity: 0;
+  cursor: pointer;
+  margin: 0;
+  padding: 0;
+}
+
+.dna-slider__input:disabled {
+  cursor: not-allowed;
+}
+
+.dna-slider__input:focus-visible ~ .dna-slider__fill {
+  box-shadow: 0 0 10px var(--dna-color, #06b6d4), 0 0 0 2px rgba(255, 255, 255, 0.3);
+}
+
+/* ── Energy Zone tags ── */
+.dna-zone {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dna-zone__group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dna-zone__label {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: rgba(255, 255, 255, 0.35);
+  text-transform: uppercase;
+}
+
+.dna-zone__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.dna-zone__tag {
+  padding: 3px 8px;
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  border-radius: 3px;
+  background: rgba(168, 85, 247, 0.06);
+  color: rgba(255, 255, 255, 0.5);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: all 120ms ease;
+  white-space: nowrap;
+}
+
+.dna-zone__tag:hover:not(:disabled) {
+  border-color: rgba(168, 85, 247, 0.6);
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(168, 85, 247, 0.14);
+}
+
+.dna-zone__tag.is-active {
+  border-color: #a855f7;
+  color: #a855f7;
+  background: rgba(168, 85, 247, 0.18);
+  box-shadow: 0 0 6px rgba(168, 85, 247, 0.35);
+}
+
+.dna-zone__tag:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Empty state ── */
+.dna-lab__empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 24px 12px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.28);
+}
+
+.dna-lab__empty-icon {
+  font-size: 28px;
+  opacity: 0.4;
+}
+
+.dna-lab__empty-state p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.dna-lab__empty-state code {
+  font-family: 'JetBrains Mono', monospace;
+  color: rgba(168, 85, 247, 0.7);
+}

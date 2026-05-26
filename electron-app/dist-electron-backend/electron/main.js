@@ -33,6 +33,8 @@ import { stagePersistence, setupStageIPCHandlers } from '../src/core/stage';
 import { setupKeyForgeIPCHandlers } from '../src/core/keyforge/KeyForgeIPCHandlers';
 // ⚒️ Hephaestus File I/O (WAVE 2030.5)
 import { setupHephIPCHandlers } from '../src/core/hephaestus';
+// 🎬 WAVE 4864: Theia Output Window manager (Phase 3)
+import { setupTheiaWindowManager } from './TheiaWindowManager';
 // ⚡ WAVE 4822: INFINITE ARSENAL — Boot ingestion
 import { LfxFileLoader } from '../src/core/arsenal/LfxFileLoader';
 import { getDynamicEffectRegistry } from '../src/core/arsenal/DynamicEffectRegistry';
@@ -353,6 +355,56 @@ async function initTitan() {
     // ⌨ WAVE 4805: KeyForge Loadout persistence
     // ═══════════════════════════════════════════════════════════════════════════
     setupKeyForgeIPCHandlers(() => mainWindow);
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🎬 WAVE 4910.6: Theia Asset export — Native Save As dialog
+    // ═══════════════════════════════════════════════════════════════════════════
+    ipcMain.handle('lux:theia:exportAsset', async (_event, asset, suggestedName) => {
+        const win = mainWindow;
+        if (!win)
+            return { success: false, error: 'No main window' };
+        try {
+            const result = await dialog.showSaveDialog(win, {
+                title: 'Exportar Asset .theia',
+                defaultPath: suggestedName ?? 'asset.theia',
+                filters: [{ name: 'Theia Asset', extensions: ['theia'] }],
+            });
+            if (result.canceled || !result.filePath)
+                return { success: false, cancelled: true };
+            await fs.promises.writeFile(result.filePath, JSON.stringify(asset, null, 2), 'utf-8');
+            console.log(`[TheiaExport] ✅ ${result.filePath}`);
+            return { success: true, filePath: result.filePath };
+        }
+        catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error('[TheiaExport] ❌', msg);
+            return { success: false, error: msg };
+        }
+    });
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🎬 WAVE 4910.6: Theia Asset export — Native Save As dialog
+    // ═══════════════════════════════════════════════════════════════════════════
+    ipcMain.handle('lux:theia:exportAsset', async (_event, asset, suggestedName) => {
+        const win = mainWindow;
+        if (!win)
+            return { success: false, error: 'No main window' };
+        try {
+            const result = await dialog.showSaveDialog(win, {
+                title: 'Exportar Asset .theia',
+                defaultPath: suggestedName ?? 'asset.theia',
+                filters: [{ name: 'Theia Asset', extensions: ['theia'] }],
+            });
+            if (result.canceled || !result.filePath)
+                return { success: false, cancelled: true };
+            await fs.promises.writeFile(result.filePath, JSON.stringify(asset, null, 2), 'utf-8');
+            console.log(`[TheiaExport] ✅ ${result.filePath}`);
+            return { success: true, filePath: result.filePath };
+        }
+        catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error('[TheiaExport] ❌', msg);
+            return { success: false, error: msg };
+        }
+    });
     // ═══════════════════════════════════════════════════════════════════════════
     // ⚒️ WAVE 2030.5: Initialize Hephaestus File I/O
     // ═══════════════════════════════════════════════════════════════════════════
@@ -877,17 +929,13 @@ app.whenReady().then(async () => {
     createWindow();
     // ═══════════════════════════════════════════════════════════════════════════
     // 🎬 WAVE 4864: Theia Output Window Manager (Phase 3)
-    // ⚠️ WAVE 4866: DESACTIVADO TEMPORALMENTE — la ventana secundaria secuestra
-    // el ratón del monitor principal. Reactivar cuando se resuelva el pipeline
-    // de captura de vídeo. Los IPC 'theia:*' quedan sin handler (fallarán gracefully
-    // en el renderer — ThetaOrchestrator ya tiene guards defensivos).
     // ═══════════════════════════════════════════════════════════════════════════
-    // setupTheiaWindowManager({
-    //   isDev,
-    //   devUrl: 'http://localhost:5173',
-    //   prodIndexPath: path.join(__dirname, '../dist/index.html'),
-    //   preloadPath: path.join(__dirname, 'preload.js'),
-    // })
+    setupTheiaWindowManager({
+        isDev,
+        devUrl: 'http://localhost:5173',
+        prodIndexPath: path.join(__dirname, '../dist/index.html'),
+        preloadPath: path.join(__dirname, 'preload.js'),
+    });
     // ═══════════════════════════════════════════════════════════════════════════
     // WAVE 367: TitanOrchestrator fixture injection happens from renderer
     // When stageStore loads ShowFileV2, it syncs to main process via IPC

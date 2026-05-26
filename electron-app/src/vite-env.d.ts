@@ -339,6 +339,16 @@ declare global {
       closeOutput: () => Promise<{ ok: boolean }>
       /** WAVE 4864 — Reports whether the projector window is currently open. */
       isOutputOpen: () => Promise<boolean>
+      /** WAVE 4910.6 — Native Save As dialog to export a .theia asset JSON to disk. */
+      exportAsset: (
+        asset: unknown,
+        suggestedName?: string,
+      ) => Promise<{ success: boolean; filePath?: string; cancelled?: boolean; error?: string }>
+      /** WAVE 4910.6 — Native Save As dialog to export a .theia asset JSON to disk. */
+      exportAsset: (
+        asset: unknown,
+        suggestedName?: string,
+      ) => Promise<{ success: boolean; filePath?: string; cancelled?: boolean; error?: string }>
     }
 
     // �🎭 WAVE 700.5.4: Mood Control

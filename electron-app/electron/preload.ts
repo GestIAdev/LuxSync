@@ -750,12 +750,24 @@ const luxApi = {
      * Se llama UNA SOLA VEZ al arrancar ThetaOrchestrator. El SAB viaja
      * por IPC (structured clone comparte por referencia) sin copia de datos.
      */
-    getFrameContextSAB: (): Promise<SharedArrayBuffer | null> =>
-      ipcRenderer.invoke('theia:get-frame-context'),
+    getFrameContextSAB: async (): Promise<SharedArrayBuffer | null> => {
+      try {
+        return await ipcRenderer.invoke('theia:get-frame-context')
+      } catch (err) {
+        console.warn('[preload] theia:get-frame-context failed:', err)
+        return null
+      }
+    },
 
-    /** 🎬 WAVE 4864 — SAB del video pipeline full-resolution. Lazy-creado en main. */
-    getVideoFrameBufferSAB: (): Promise<SharedArrayBuffer | null> =>
-      ipcRenderer.invoke('theia:get-video-sab'),
+    /** 🎬 WAVE 4864 — SAB del video pipeline full-resolution (best effort). */
+    getVideoFrameBufferSAB: async (): Promise<SharedArrayBuffer | null> => {
+      try {
+        return await ipcRenderer.invoke('theia:get-video-sab')
+      } catch (err) {
+        console.warn('[preload] theia:get-video-sab failed:', err)
+        return null
+      }
+    },
 
     /** 🎬 WAVE 4864 — Abre la ventana secundaria del proyector. */
     openOutput: (): Promise<{ ok: boolean; error?: string }> =>

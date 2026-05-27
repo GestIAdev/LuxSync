@@ -17,6 +17,7 @@
  * NO renderiza vídeo. NO decodifica. Eso llega en Phase 2/F3.
  */
 import { makeThetaMessage, } from './protocol';
+import { createFrameContextSAB } from './FrameContextRing';
 // 🎬 WAVE 4867 — Phase 6: thumb buffer SAB
 import { createThumbSAB } from './TheiaThumbBuffer';
 // ─────────────────────────────────────────────────────────────────────────
@@ -78,6 +79,7 @@ export class ThetaOrchestrator {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         this.trackProcessor = null;
         this.lastVideoStatus = null;
+        this.hasLoggedFirstFrame = false;
         // 🎬 WAVE 4903 — Phase 7: cognitive cue-jump tracking
         /** ID del asset (.theia) actualmente cargado en el videoElement. */
         this.currentClipId = null;
@@ -114,9 +116,20 @@ export class ThetaOrchestrator {
         if (!bridge) {
             throw new Error('[THETA] preload bridge not found (window.lux.theia.getFrameContextSAB missing)');
         }
-        const sab = await bridge.getFrameContextSAB();
+        let sab = null;
+        try {
+            sab = await bridge.getFrameContextSAB();
+        }
+        catch (err) {
+            // En algunos entornos Electron, invoke() no clona SAB correctamente.
+            // No tumbamos el motor: arrancamos con un SAB local y seguimos.
+            // eslint-disable-next-line no-console
+            console.warn('[THETA] getFrameContextSAB IPC failed, using local fallback SAB:', err);
+        }
         if (!sab || !(sab instanceof SharedArrayBuffer)) {
-            throw new Error('[THETA] main process did not return a SharedArrayBuffer for FrameContext');
+            sab = createFrameContextSAB();
+            // eslint-disable-next-line no-console
+            console.warn('[THETA] using local FrameContext SAB fallback (IPC bridge unavailable)');
         }
         this.frameContextSAB = sab;
         // 🎬 WAVE 4864 — Phase 3: also fetch the video frame SAB. Optional —
@@ -381,8 +394,11 @@ export class ThetaOrchestrator {
         if (!this.isRunning || !this.worker) {
             throw new Error('[THETA] loadVideo called before start() or worker is dead');
         }
+        // eslint-disable-next-line no-console
+        console.log('[THETA TRACE] 🎬 loadVideo enter:', { url });
         // Tear down any previous video pipeline
         this.teardownVideo();
+        this.hasLoggedFirstFrame = false;
         // 1) Create a hidden <video> element
         const video = document.createElement('video');
         video.src = url;
@@ -402,6 +418,11 @@ export class ThetaOrchestrator {
         await new Promise((resolve, reject) => {
             video.addEventListener('loadedmetadata', () => resolve(), { once: true });
             video.addEventListener('error', () => reject(new Error(`[THETA] video load error: ${video.error?.message ?? 'unknown'}`)), { once: true });
+        });
+        // eslint-disable-next-line no-console
+        console.log('[THETA TRACE] 🎬 metadata ready:', {
+            width: video.videoWidth,
+            height: video.videoHeight,
         });
         // 3) Capture the video stream
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -425,6 +446,8 @@ export class ThetaOrchestrator {
             width: video.videoWidth,
             height: video.videoHeight,
         };
+        // eslint-disable-next-line no-console
+        console.log('[THETA TRACE] 📡 posting theia:load-stream to worker');
         this.worker.postMessage(makeThetaMessage('theia:load-stream', payload), 
         // Transfer the stream — ownership moves to the worker
         [readable]);
@@ -586,6 +609,15 @@ export class ThetaOrchestrator {
                 break;
             case 'theia:video-status':
                 this.lastVideoStatus = msg.payload;
+                if (!this.hasLoggedFirstFrame && this.lastVideoStatus.framesDecoded > 0) {
+                    this.hasLoggedFirstFrame = true;
+                    // eslint-disable-next-line no-console
+                    console.log('[THETA TRACE] ✅ first frame received from worker', {
+                        state: this.lastVideoStatus.state,
+                        framesDecoded: this.lastVideoStatus.framesDecoded,
+                        framesDropped: this.lastVideoStatus.framesDropped,
+                    });
+                }
                 break;
             case 'theia:asset-state':
                 this.lastAssetState = msg.payload;

@@ -216,8 +216,10 @@ export class TheiaWindowManager {
       return { ok: true }
     })
     ipcMain.handle('theia:is-output-open', () => this.isOutputOpen())
-    ipcMain.handle('theia:get-video-sab', (): SharedArrayBuffer => {
-      return this.getVideoFrameSAB()
+    ipcMain.handle('theia:get-video-sab', (): SharedArrayBuffer | null => {
+      // invoke()+structured clone no es fiable para SAB en todos los entornos
+      // de Electron (especialmente file:// empaquetado). Evitamos throw global.
+      return null
     })
   }
 

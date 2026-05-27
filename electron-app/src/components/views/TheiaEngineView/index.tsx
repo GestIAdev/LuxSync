@@ -30,13 +30,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './TheiaEngineView.css'
 import { getThetaOrchestrator, getSeleneTheiaBridge } from '../../../theia'
-import { getTheiaRegistry } from '../../../core/theia/TheiaRegistry'
-import type { ITheiaAsset } from '../../../types/theiaTypes'
 import { useControlStore } from '../../../stores/controlStore'
 import { useTheiaEditorStore } from '../../../stores/useTheiaEditorStore'
 import { useAuthoringShortcuts } from '../../../hooks/useAuthoringShortcuts'
 import TheiaDNALab from '../../theia/TheiaDNALab'
-import TheiaTimeline from '../../theia/TheiaTimeline'
+import TheiaTrimmer from '../../theia/TheiaTrimmer'
+import { FolderIcon } from '../../icons/LuxIcons'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -145,6 +144,13 @@ function fmtDuration(ms: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
+const ALLOWED_VIDEO_EXTENSIONS = ['.mp4', '.mkv', '.webm', '.mov'] as const
+
+function isSupportedVideoFileName(fileName: string): boolean {
+  const lower = fileName.toLowerCase()
+  return ALLOWED_VIDEO_EXTENSIONS.some((ext) => lower.endsWith(ext))
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
@@ -176,9 +182,6 @@ const TheiaEngineView: React.FC = () => {
   // ── Output window state ──────────────────────────────────────────────
   const [isOutputActive, setIsOutputActive] = useState(false)
 
-  // ── Drop zone ─────────────────────────────────────────────────────────
-  const [isDraggingFile, setIsDraggingFile] = useState(false)
-
   // ── AI / SeleneTheiaBridge ─────────────────────────────────────────────
   const aiEnabled = useControlStore((s) => s.aiEnabled)
 
@@ -208,10 +211,10 @@ const TheiaEngineView: React.FC = () => {
   // ─── WAVE 4910.2: Bloqueo de Selene en modo AUTHOR ─────────────────────
   // En AUTHOR el operador edita visualmente; Selene no debe interferir.
   useEffect(() => {
-    if (editorMode === 'author') {
+    if (editorMode === 'workshop') {
       getSeleneTheiaBridge().detach()
     }
-    // En 'perform', el efecto de aiEnabled es la fuente de verdad para attach.
+    // En 'live', el efecto de aiEnabled es la fuente de verdad para attach.
   }, [editorMode])
 
   // ─── Mock heartbeat: drives the live section monitor every 100ms ──────
@@ -305,47 +308,58 @@ const TheiaEngineView: React.FC = () => {
     getThetaOrchestrator().setPlaybackRate(value)
   }, [])
 
-  // Mata el comportamiento por defecto de Chromium (navegar al archivo)
-  // en toda la superficie del componente. Solo onDrop en la drop zone real procesa el archivo.
-  const killDragDefault = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-  }, [])
+  // ── File Picker ──────────────────────────────────────────────────────
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  // Versión del registro — al incrementar fuerza re-render de AuthorAssetDeck
+  const [, setAssetVersion] = useState(0)
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDraggingFile(true)
-  }, [])
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDraggingFile(false)
-  }, [])
-  const handleDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDraggingFile(false)
-    const file = e.dataTransfer.files[0]
-    if (!file) return
-    if (!file.name.toLowerCase().endsWith('.mp4')) {
-      console.warn('[Theia UI] Ignored non-mp4 file:', file.name)
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []).filter((f) =>
+      isSupportedVideoFileName(f.name)
+    )
+    // Reset para permitir re-selección del mismo archivo
+    e.target.value = ''
+    if (files.length === 0) {
+      console.warn('[Theia UI] No supported video files in selection')
       return
     }
-    const url   = URL.createObjectURL(file)
+
+    // WAVE 4921: el modelo cuepoint murió. El picker sólo carga el primer
+    // .mp4 como draft atómico activo. La gestión multi-átomo se delegará
+    // al verdadero Pack Manager en una fase posterior.
     const theta = getThetaOrchestrator()
+    const { editorMode: mode } = useTheiaEditorStore.getState()
+
+    const primary = files[0]
+    const primaryPath = (primary as { path?: string }).path ?? primary.name
+    const primaryUrl = URL.createObjectURL(primary)
+
     try {
-      await theta.loadVideo(url)
-      // En AUTHOR mode: crear/actualizar el draft con duración real del vídeo
-      const { editorMode: mode } = useTheiaEditorStore.getState()
-      if (mode === 'author') {
-        const filePath = (file as { path?: string }).path ?? file.name
-        const durMs    = Math.round((theta.getVideoElement()?.duration ?? 0) * 1000)
-        useTheiaEditorStore.getState().newDraftFromPath(filePath, durMs)
+      await theta.start()
+      await theta.loadVideo(primaryUrl)
+      // WAVE 4910.14 M2: NO autoplay — el operador controla la reproducción (Space).
+
+      const vidDuration = theta.getVideoElement()?.duration ?? 0
+      const durMs = Number.isFinite(vidDuration) && vidDuration > 0
+        ? Math.round(vidDuration * 1000)
+        : 0
+
+      if (mode === 'workshop') {
+        useTheiaEditorStore.getState().newDraftFromPath(primaryPath, durMs)
       }
+
+      if (files.length > 1) {
+        console.warn(
+          `[Theia UI] Multi-file ingest no soportado en WAVE 4921 — ` +
+          `sólo se cargó '${primary.name}'. Pendiente: Pack Manager.`,
+        )
+      }
+
+      console.log('[Theia UI] ✅ File picker ingestion complete:', primary.name)
     } catch (err) {
       console.error('[Theia UI] loadVideo() failed:', err)
     }
+    setAssetVersion((v) => v + 1)
   }, [])
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -355,10 +369,6 @@ const TheiaEngineView: React.FC = () => {
   return (
     <div
       className={`theia-view ${inspectorOpen ? 'theia-view--insp-open' : 'theia-view--insp-closed'}`}
-      onDragEnter={killDragDefault}
-      onDragOver={killDragDefault}
-      onDragLeave={killDragDefault}
-      onDrop={killDragDefault}
     >
       {/* ═══════════════════════════════════════════════════════════════════
        * HEADER TOOLBAR
@@ -384,25 +394,25 @@ const TheiaEngineView: React.FC = () => {
           </button>
         </div>
 
-        {/* ── WAVE 4910.2: PERFORM ◐ AUTHOR mode toggle ── */}
+        {/* ── WAVE 4921: LIVE ◐ WORKSHOP mode toggle ── */}
         <div
-          className={`theia-mode-toggle${editorMode === 'author' ? ' is-author' : ' is-perform'}`}
+          className={`theia-mode-toggle${editorMode === 'workshop' ? ' is-author' : ' is-perform'}`}
           data-midi-bind="theia.editor-mode"
         >
           <button
-            className={`theia-mode-toggle__btn${editorMode === 'perform' ? ' is-active' : ''}`}
-            onClick={() => setEditorMode('perform')}
-            title="PERFORM — runtime, Selene al mando"
+            className={`theia-mode-toggle__btn${editorMode === 'live' ? ' is-active' : ''}`}
+            onClick={() => setEditorMode('live')}
+            title="LIVE — runtime, Selene al mando"
           >
-            PERFORM
+            LIVE
           </button>
           <span className="theia-mode-toggle__divider">◐</span>
           <button
-            className={`theia-mode-toggle__btn${editorMode === 'author' ? ' is-active' : ''}`}
-            onClick={() => setEditorMode('author')}
-            title="AUTHOR — edición de cuepoints y ADN"
+            className={`theia-mode-toggle__btn${editorMode === 'workshop' ? ' is-active' : ''}`}
+            onClick={() => setEditorMode('workshop')}
+            title="WORKSHOP — trim, genómoa, export atómico"
           >
-            AUTHOR
+            WORKSHOP
           </button>
         </div>
 
@@ -457,18 +467,24 @@ const TheiaEngineView: React.FC = () => {
           <span className="theia-blackout__label">BLACKOUT</span>
         </button>
 
-        {/* ── Drop zone ── */}
-        <div
-          className={`theia-dropzone ${isDraggingFile ? 'is-active' : ''}`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
+        {/* ── File Picker ── */}
+        <button
+          className="theia-load-assets-btn"
+          onClick={() => fileInputRef.current?.click()}
+          title="Cargar assets de vídeo (.mp4 · .webm · .mkv · .mov)"
+          data-midi-bind="theia.load-assets"
         >
-          <span className="theia-dropzone__icon">⤓</span>
-          <span className="theia-dropzone__label">
-            {isDraggingFile ? 'DROP TO INGEST' : 'DROP .mp4 / .theia HERE'}
-          </span>
-        </div>
+          <span className="theia-load-assets-btn__icon">📂</span>
+          <span className="theia-load-assets-btn__label">LOAD ASSETS</span>
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept=".mp4,.webm,.mkv,.mov"
+          style={{ display: 'none' }}
+          onChange={handleFileSelect}
+        />
 
         {/* ── Inspector toggle ── */}
         <button
@@ -483,19 +499,20 @@ const TheiaEngineView: React.FC = () => {
       {/* ═══════════════════════════════════════════════════════════════════
        * MAIN GRID (viewport + asset deck + inspector)
        * ═══════════════════════════════════════════════════════════════════ */}
-      <div className={`theia-main${editorMode === 'author' ? ' theia-main--author' : ''}`}>
-        {/* ─── LEFT COLUMN: viewport + (asset deck | timeline placeholder) ─── */}
+      <div className={`theia-main${editorMode === 'workshop' ? ' theia-main--author' : ''}`}>
+        {/* ─── LEFT COLUMN: viewport + (asset deck | trimmer) ─── */}
         <div className="theia-stage">
           <Viewport
             mode={viewportMode}
             onModeChange={setViewportMode}
+            showModeToggle={editorMode !== 'workshop'}
             enginePower={enginePower}
             blackout={blackout}
             activeClip={activeClip}
             section={section}
           />
 
-          {editorMode === 'perform' ? (
+          {editorMode === 'live' ? (
             <AssetDeck
               clips={clips}
               onSelectClip={handleSelectClip}
@@ -504,13 +521,13 @@ const TheiaEngineView: React.FC = () => {
           ) : (
             <>
               <AuthorAssetDeck />
-              <TheiaTimeline />
+              <TheiaTrimmer />
             </>
           )}
         </div>
 
         {/* ─── RIGHT COLUMN: inspector | dna-lab placeholder ─── */}
-        {editorMode === 'perform' ? (
+        {editorMode === 'live' ? (
           <Inspector
             open={inspectorOpen}
             activeClip={activeClip}
@@ -589,6 +606,7 @@ const MasterSlider: React.FC<MasterSliderProps> = ({
 interface ViewportProps {
   mode: ViewportMode
   onModeChange: (m: ViewportMode) => void
+  showModeToggle: boolean
   enginePower: boolean
   blackout: boolean
   activeClip: ClipManifest
@@ -596,28 +614,105 @@ interface ViewportProps {
 }
 
 const Viewport: React.FC<ViewportProps> = ({
-  mode, onModeChange, enginePower, blackout, activeClip, section
+  mode, onModeChange, showModeToggle, enginePower, blackout, activeClip, section
 }) => {
   const sectionMeta = SECTION_LABELS[section]
+
+  // ── WAVE 4910.14 M3: Author mode — native video viewer ──────────────────
+  // En AUTHOR el canvas/worker no está activo. Mostramos el <video> nativo
+  // directamente en el viewport usando un div contenedor como slot.
+  const editorMode = useTheiaEditorStore((s) => s.editorMode)
+  const draftId    = useTheiaEditorStore((s) => s.draftAtom?.id)  // dep para re-trigger
+  const isAuthorMode = editorMode === 'workshop'
+  const videoSlotRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!isAuthorMode) return
+    const container = videoSlotRef.current
+    if (!container) return
+    const vid = getThetaOrchestrator().getVideoElement()
+    if (!vid) return
+
+    // Override los estilos ocultos del orchestrator para mostrar el vídeo
+    vid.style.position    = 'relative'
+    vid.style.top         = ''
+    vid.style.left        = ''
+    vid.style.width       = '100%'
+    vid.style.height      = '100%'
+    vid.style.objectFit   = 'contain'
+    vid.style.opacity     = '1'
+    vid.style.zIndex      = '50'
+    vid.style.pointerEvents = 'none'
+    container.appendChild(vid)
+
+    return () => {
+      if (vid.parentElement === container) {
+        container.removeChild(vid)
+      }
+      // Restaurar estilo oculto (idéntico a lo que ThetaOrchestrator.loadVideo() establece)
+      vid.style.position    = 'fixed'
+      vid.style.top         = '-9999px'
+      vid.style.left        = '-9999px'
+      vid.style.width       = '1px'
+      vid.style.height      = '1px'
+      vid.style.opacity     = '0'
+      vid.style.zIndex      = ''
+      vid.style.pointerEvents = 'none'
+    }
+  }, [isAuthorMode, draftId])  // re-ejecuta cuando se carga un nuevo archivo en author mode
+
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const hasTransferredCanvasRef = useRef(false)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || hasTransferredCanvasRef.current) return
+    if (typeof canvas.transferControlToOffscreen !== 'function') {
+      console.error('[Theia UI] OffscreenCanvas not supported in this renderer')
+      return
+    }
+
+    let rafId = 0
+    rafId = window.requestAnimationFrame(() => {
+      const host = canvasRef.current
+      if (!host || hasTransferredCanvasRef.current) return
+
+      const rect = host.getBoundingClientRect()
+      const dpr = Math.max(1, window.devicePixelRatio || 1)
+      host.width = Math.max(1, Math.floor(rect.width * dpr))
+      host.height = Math.max(1, Math.floor(rect.height * dpr))
+
+      const offscreen = host.transferControlToOffscreen()
+      getThetaOrchestrator().attachOffscreenCanvas(offscreen)
+      hasTransferredCanvasRef.current = true
+      console.log('[Theia UI] 🎬 viewport canvas attached to Theta worker')
+    })
+
+    return () => {
+      window.cancelAnimationFrame(rafId)
+    }
+  }, [])
 
   return (
     <section className={`theia-viewport ${blackout ? 'is-blackout' : ''}`}>
       {/* ── Mode toggle ── */}
       <div className="theia-vp__bar">
-        <div className="theia-vp__mode-toggle" data-midi-bind="theia.mode-toggle">
-          <button
-            className={mode === 'raw' ? 'is-active' : ''}
-            onClick={() => onModeChange('raw')}
-          >
-            RAW
-          </button>
-          <button
-            className={mode === 'patch' ? 'is-active' : ''}
-            onClick={() => onModeChange('patch')}
-          >
-            PATCH PREVIEW
-          </button>
-        </div>
+        {showModeToggle && (
+          <div className="theia-vp__mode-toggle" data-midi-bind="theia.mode-toggle">
+            <button
+              className={mode === 'raw' ? 'is-active' : ''}
+              onClick={() => onModeChange('raw')}
+            >
+              RAW
+            </button>
+            <button
+              className={mode === 'patch' ? 'is-active' : ''}
+              onClick={() => onModeChange('patch')}
+            >
+              PATCH PREVIEW
+            </button>
+          </div>
+        )}
 
         <div className="theia-vp__live-tag">
           <span className={`theia-vp__live-dot ${enginePower ? 'is-on' : ''}`} />
@@ -639,21 +734,31 @@ const Viewport: React.FC<ViewportProps> = ({
         {/* Background grid */}
         <div className="theia-vp__grid" />
 
-        {/* Scanlines overlay */}
-        <div className={`theia-vp__scanlines ${enginePower ? 'is-on' : ''}`} />
+        {/* Scanlines overlay — solo en perform mode */}
+        <div className={`theia-vp__scanlines ${!isAuthorMode && enginePower ? 'is-on' : ''}`} />
 
-        {/* The "video" surface — placeholder gradient mimicking the active palette */}
-        {enginePower && !blackout ? (
-          <div
-            className="theia-vp__surface"
-            style={{
-              background: `radial-gradient(circle at 30% 40%, ${activeClip.palette[0]}55 0%, transparent 50%),
-                           radial-gradient(circle at 70% 60%, ${activeClip.palette[1]}55 0%, transparent 50%),
-                           radial-gradient(circle at 50% 80%, ${activeClip.palette[2]}33 0%, transparent 60%),
-                           #050510`,
-            }}
-          />
-        ) : (
+        {/* ── AUTHOR MODE: slot donde useEffect inyecta el <video> nativo ── */}
+        {isAuthorMode && (
+          <div ref={videoSlotRef} className="theia-vp__video-slot">
+            {/* Placeholder visible hasta que se cargue un archivo */}
+            {!draftId && (
+              <div className="theia-vp__off">
+                <span className="theia-vp__off-icon">◯</span>
+                <span className="theia-vp__off-text">AUTHOR STANDBY — CARGA UN ASSET</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── PERFORM MODE: canvas renderizado por el worker vía OffscreenCanvas ── */}
+        <canvas
+          ref={canvasRef}
+          className="theia-vp__surface"
+          style={{ visibility: isAuthorMode ? 'hidden' : 'visible' }}
+        />
+
+        {/* Off state overlay — solo en perform mode */}
+        {!isAuthorMode && (!enginePower || blackout) && (
           <div className="theia-vp__off">
             <span className="theia-vp__off-icon">◯</span>
             <span className="theia-vp__off-text">
@@ -707,66 +812,49 @@ const Totem: React.FC<{ index: number; palette: [string, string, string] }> = ({
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SUB-COMPONENT: AuthorAssetDeck — WAVE 4910.7
-// Deck de assets del TheiaRegistry para modo AUTHOR.
-// Permite cargar un asset existente en el editor o empezar uno nuevo.
+// SUB-COMPONENT: AuthorAssetDeck — WAVE 4921 placeholder
+// El deck multi-asset / multi-cuepoint de WAVE 4910.13 quedó retirado con el
+// pivote al paradigma atómico. Esta versión es un placeholder mínimo que
+// muestra el átomo en edición y prepara el espacio para el futuro Pack
+// Manager (próxima fase del WAVE 4920).
 // ═══════════════════════════════════════════════════════════════════════════
 
 const AuthorAssetDeck: React.FC = () => {
-  const currentDraftId = useTheiaEditorStore((s) => s.draftAsset?.id ?? null)
-  // TheiaRegistry no emite eventos → leemos en render (estático por sesión)
-  const assets = getTheiaRegistry().getAllAssets()
-
-  const handleSelect = useCallback((asset: ITheiaAsset) => {
-    useTheiaEditorStore.getState().loadDraft(asset)
-    // Si el filePath apunta a un vídeo, cargarlo en el orquestrador
-    const fp = asset.filePath
-    if (fp && (fp.endsWith('.mp4') || fp.endsWith('.webm') || fp.endsWith('.mov'))) {
-      const url = fp.startsWith('blob:')
-        ? fp
-        : `file:///${fp.replace(/\\/g, '/')}`
-      getThetaOrchestrator().loadVideo(url).catch((err) => {
-        console.error('[AuthorAssetDeck] loadVideo failed:', err)
-      })
-    }
-  }, [])
-
-  const handleNewAsset = useCallback(() => {
-    useTheiaEditorStore.getState().clearDraft()
-  }, [])
+  const draftAtom = useTheiaEditorStore((s) => s.draftAtom)
 
   return (
     <section className="theia-author-deck">
       <div className="theia-author-deck__header">
-        <span className="theia-author-deck__title">ASSET DECK</span>
-        <span className="theia-author-deck__count">{assets.length} THEIA</span>
+        <span className="theia-author-deck__title">ATOM DECK</span>
+        <span className="theia-author-deck__count">
+          {draftAtom ? '1 DRAFT' : '0 ATOMS'}
+        </span>
+        <span className="theia-author-deck__hint">
+          PACK MANAGER pendiente — usa LOAD ASSETS
+        </span>
       </div>
       <div className="theia-author-deck__rail">
-        {assets.map((asset) => (
-          <button
-            key={asset.id}
-            className={`theia-asset-card${asset.id === currentDraftId ? ' is-active' : ''}`}
-            onClick={() => handleSelect(asset)}
-            title={asset.filePath}
-            data-midi-bind={`theia.author.asset.${asset.id}`}
+        {draftAtom ? (
+          <div
+            className="theia-asset-card is-active is-draft"
+            title={`DRAFT EN EDICIÓN\n${draftAtom.filePath}`}
           >
-            <span className="theia-asset-card__id">{asset.id}</span>
-            <span className="theia-asset-card__cues">{asset.cuePoints.length} cues</span>
-          </button>
-        ))}
-        <button
-          className="theia-asset-card theia-asset-card--new"
-          onClick={handleNewAsset}
-          title="Crear nuevo asset desde cero"
-          data-midi-bind="theia.author.asset.new"
-        >
-          <span className="theia-asset-card__icon">+</span>
-          <span className="theia-asset-card__label">NEW ASSET</span>
-        </button>
+            <span className="theia-asset-card__id">{draftAtom.id}</span>
+            <span className="theia-asset-card__cues">
+              {Math.round((draftAtom.trim.endMs - draftAtom.trim.startMs) / 1000)}s · DRAFT
+            </span>
+          </div>
+        ) : (
+          <div className="theia-asset-card theia-asset-card--empty">
+            <FolderIcon size={18} />
+            <span className="theia-asset-card__label">LOAD ASSETS</span>
+          </div>
+        )}
       </div>
     </section>
   )
 }
+
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SUB-COMPONENT: AssetDeck — horizontal clip timeline

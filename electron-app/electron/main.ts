@@ -16,7 +16,7 @@
  * LuxSync V2 - NO HAY VUELTA ATRAS
  */
 
-import { app, BrowserWindow, ipcMain, desktopCapturer, dialog, clipboard } from 'electron'
+import { app, BrowserWindow, ipcMain, desktopCapturer, dialog, clipboard, session } from 'electron'
 import path from 'path'
 import fs from 'fs'
 
@@ -414,6 +414,13 @@ function createWindow(): void {
       }
     })
     
+
+  // Evita que un drop de archivo navegue el BrowserWindow fuera de la app.
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (url.startsWith('file://')) {
+      event.preventDefault()
+    }
+  })
     // Broadcast fixtures if loaded
     if (patchedFixtures.length > 0 && mainWindow) {
       mainWindow.webContents.send('lux:fixtures-loaded', patchedFixtures)
@@ -1056,7 +1063,26 @@ app.whenReady().then(async () => {
   // This ensures IPC handlers are registered BEFORE renderer loads and sends IPCs
   // ═══════════════════════════════════════════════════════════════════════════
   await initTitan()
-  
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🧬 WAVE 4910.9-B: Cross-Origin Isolation — habilita SharedArrayBuffer vía IPC
+  //
+  // ipcMain.handle() usa structured clone para serializar la respuesta. Los SABs
+  // son bloqueados por el algoritmo de clonación a menos que la ventana tenga
+  // crossOriginIsolated=true. Forzamos COOP + COEP en TODAS las respuestas de la
+  // sesión default (mainWindow + TheiaWindow comparten session.defaultSession).
+  // LuxSync es 100% local — no hay recursos cross-origin que romper.
+  // ═══════════════════════════════════════════════════════════════════════════
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Cross-Origin-Opener-Policy': ['same-origin'],
+        'Cross-Origin-Embedder-Policy': ['require-corp'],
+      },
+    })
+  })
+
   createWindow()
 
   // ═══════════════════════════════════════════════════════════════════════════

@@ -32,6 +32,7 @@ import {
   type ThetaStateReportPayload,
   type ThetaVideoStatusPayload,
 } from './protocol'
+import { createFrameContextSAB } from './FrameContextRing'
 // 🎬 WAVE 4867 — Phase 6: thumb buffer SAB
 import { createThumbSAB } from './TheiaThumbBuffer'
 
@@ -139,6 +140,7 @@ export class ThetaOrchestrator {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private trackProcessor: any = null
   private lastVideoStatus: ThetaVideoStatusPayload | null = null
+  private hasLoggedFirstFrame = false
 
   // 🎬 WAVE 4903 — Phase 7: cognitive cue-jump tracking
   /** ID del asset (.theia) actualmente cargado en el videoElement. */
@@ -183,9 +185,20 @@ export class ThetaOrchestrator {
         '[THETA] preload bridge not found (window.lux.theia.getFrameContextSAB missing)',
       )
     }
-    const sab = await bridge.getFrameContextSAB()
+    let sab: SharedArrayBuffer | null = null
+    try {
+      sab = await bridge.getFrameContextSAB()
+    } catch (err) {
+      // En algunos entornos Electron, invoke() no clona SAB correctamente.
+      // No tumbamos el motor: arrancamos con un SAB local y seguimos.
+      // eslint-disable-next-line no-console
+      console.warn('[THETA] getFrameContextSAB IPC failed, using local fallback SAB:', err)
+    }
+
     if (!sab || !(sab instanceof SharedArrayBuffer)) {
-      throw new Error('[THETA] main process did not return a SharedArrayBuffer for FrameContext')
+      sab = createFrameContextSAB()
+      // eslint-disable-next-line no-console
+      console.warn('[THETA] using local FrameContext SAB fallback (IPC bridge unavailable)')
     }
     this.frameContextSAB = sab
 
@@ -305,9 +318,9 @@ export class ThetaOrchestrator {
    * Procesa un `CueJumpIntent` emitido por `SeleneTheiaAdapter`.
    *
    * Pipeline:
-   *   1. Si `clipId === ''` → blackout: detiene reproducción y limpia worker.
-   *   2. Si `clipId !== currentClipId` → resuelve filePath via `TheiaRegistry`
-   *      y llama a `loadVideo()` (lazy load del asset binario).
+   *   1. Si `atomId === ''` → blackout: detiene reproducción y limpia worker.
+   *   2. Si `atomId !== currentClipId` → resuelve filePath via `TheiaRegistry`
+   *      y llama a `loadVideo()` (lazy load del átomo binario).
    *   3. Aplica `videoElement.currentTime = startMs / 1000`.
    *   4. Asegura `play()` (Selene asume reproducción activa post-cue).
    *   5. PostMessage al worker con `theia:seek` para que prepare el crossfade
@@ -317,15 +330,14 @@ export class ThetaOrchestrator {
    * No lanza excepciones.
    */
   async handleCueJump(intent: {
-    clipId: string
-    cuepointId: string
+    atomId: string
     startMs: number
     crossfadeMs: number
     reason: string
-    /** Resolver opcional `clipId → URL`. Si no se provee, se intenta el
+    /** Resolver opcional `atomId → URL`. Si no se provee, se intenta el
      *  resolver interno (TheiaRegistry-aware) registrado vía
      *  `setClipUrlResolver()`. */
-    urlResolver?: (clipId: string) => string | null
+    urlResolver?: (atomId: string) => string | null
   }): Promise<void> {
     if (!this.isRunning || !this.worker) {
       // eslint-disable-next-line no-console
@@ -334,10 +346,9 @@ export class ThetaOrchestrator {
     }
 
     // ── Caso 1: blackout ─────────────────────────────────────────────────
-    if (!intent.clipId) {
+    if (!intent.atomId) {
       this._emitSeekToWorker({
-        clipId: '',
-        cuepointId: '',
+        atomId: '',
         startMs: 0,
         crossfadeMs: intent.crossfadeMs,
         reason: 'blackout',
@@ -349,21 +360,21 @@ export class ThetaOrchestrator {
     }
 
     // ── Caso 2: cambio de asset → lazy load ──────────────────────────────
-    if (intent.clipId !== this.currentClipId) {
+    if (intent.atomId !== this.currentClipId) {
       const resolver = intent.urlResolver ?? this._clipUrlResolver
-      const url = resolver ? resolver(intent.clipId) : null
+      const url = resolver ? resolver(intent.atomId) : null
       if (!url) {
         // eslint-disable-next-line no-console
-        console.warn(`[THETA 🎬] cue-jump '${intent.clipId}' — no URL resolver`)
+        console.warn(`[THETA 🎬] cue-jump '${intent.atomId}' — no URL resolver`)
         return
       }
       try {
         await this.loadVideo(url)
-        this.currentClipId = intent.clipId
+        this.currentClipId = intent.atomId
         this.currentClipUrl = url
       } catch (err) {
         // eslint-disable-next-line no-console
-        console.error(`[THETA 🎬] cue-jump load failed for '${intent.clipId}':`, err)
+        console.error(`[THETA 🎬] cue-jump load failed for '${intent.atomId}':`, err)
         return
       }
     }
@@ -388,8 +399,7 @@ export class ThetaOrchestrator {
 
     // ── Caso 4: notificar al worker para crossfade visual ────────────────
     this._emitSeekToWorker({
-      clipId: intent.clipId,
-      cuepointId: intent.cuepointId,
+      atomId: intent.atomId,
       startMs: intent.startMs,
       crossfadeMs: intent.crossfadeMs,
       reason: intent.reason,
@@ -397,16 +407,16 @@ export class ThetaOrchestrator {
   }
 
   /**
-   * Registra un resolver `clipId → URL` para que `handleCueJump` pueda
+   * Registra un resolver `atomId → URL` para que `handleCueJump` pueda
    * cargar lazily los `.mp4` declarados por los manifests `.theia`.
    *
    * Típicamente la wiring de Selene hace:
-   *   `orchestrator.setClipUrlResolver(id => theiaRegistry.getAsset(id)?.filePath ?? null)`
+   *   `orchestrator.setClipUrlResolver(id => theiaRegistry.getAtom(id)?.filePath ?? null)`
    */
-  setClipUrlResolver(resolver: ((clipId: string) => string | null) | null): void {
+  setClipUrlResolver(resolver: ((atomId: string) => string | null) | null): void {
     this._clipUrlResolver = resolver
   }
-  private _clipUrlResolver: ((clipId: string) => string | null) | null = null
+  private _clipUrlResolver: ((atomId: string) => string | null) | null = null
 
   /** Último ack de seek recibido del worker (telemetría). */
   getLastSeekAck(): ThetaSeekAckPayload | null {
@@ -493,8 +503,12 @@ export class ThetaOrchestrator {
       throw new Error('[THETA] loadVideo called before start() or worker is dead')
     }
 
+    // eslint-disable-next-line no-console
+    console.log('[THETA TRACE] 🎬 loadVideo enter:', { url })
+
     // Tear down any previous video pipeline
     this.teardownVideo()
+    this.hasLoggedFirstFrame = false
 
     // 1) Create a hidden <video> element
     const video = document.createElement('video')
@@ -516,6 +530,12 @@ export class ThetaOrchestrator {
     await new Promise<void>((resolve, reject) => {
       video.addEventListener('loadedmetadata', () => resolve(), { once: true })
       video.addEventListener('error', () => reject(new Error(`[THETA] video load error: ${video.error?.message ?? 'unknown'}`)), { once: true })
+    })
+
+    // eslint-disable-next-line no-console
+    console.log('[THETA TRACE] 🎬 metadata ready:', {
+      width: video.videoWidth,
+      height: video.videoHeight,
     })
 
     // 3) Capture the video stream
@@ -542,6 +562,8 @@ export class ThetaOrchestrator {
       width: video.videoWidth,
       height: video.videoHeight,
     }
+    // eslint-disable-next-line no-console
+    console.log('[THETA TRACE] 📡 posting theia:load-stream to worker')
     this.worker.postMessage(
       makeThetaMessage('theia:load-stream', payload),
       // Transfer the stream — ownership moves to the worker
@@ -720,6 +742,15 @@ export class ThetaOrchestrator {
 
       case 'theia:video-status':
         this.lastVideoStatus = msg.payload as ThetaVideoStatusPayload
+        if (!this.hasLoggedFirstFrame && this.lastVideoStatus.framesDecoded > 0) {
+          this.hasLoggedFirstFrame = true
+          // eslint-disable-next-line no-console
+          console.log('[THETA TRACE] ✅ first frame received from worker', {
+            state: this.lastVideoStatus.state,
+            framesDecoded: this.lastVideoStatus.framesDecoded,
+            framesDropped: this.lastVideoStatus.framesDropped,
+          })
+        }
         break
 
       case 'theia:asset-state':

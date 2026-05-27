@@ -72,6 +72,38 @@ function AppContent() {
     }
   }, [startSession, addLogEntry])
 
+  // ─── WAVE 4910.9-B: Drag-global guard ────────────────────────────────────
+  // Viviendo aquí (AppContent = siempre montado) el preventDefault es permanente.
+  // Sin esto, cualquier vista que no tenga TheiaEngineView montada muestra el
+  // cursor de "prohibido" al arrastrar un archivo encima de la app.
+  useEffect(() => {
+    const onDragEnter = (e: DragEvent) => {
+      e.preventDefault()
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
+    }
+    const onDragOver = (e: DragEvent) => {
+      e.preventDefault()
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
+    }
+    const onDrop = (e: DragEvent) => {
+      e.preventDefault() // evita que Electron navegue al file://
+    }
+    document.addEventListener('dragenter', onDragEnter, true)
+    document.addEventListener('dragover', onDragOver, true)
+    window.addEventListener('dragenter', onDragEnter, true)
+    window.addEventListener('dragover', onDragOver, true)
+    document.addEventListener('drop', onDrop, true)
+    window.addEventListener('drop', onDrop, true)
+    return () => {
+      document.removeEventListener('dragenter', onDragEnter, true)
+      document.removeEventListener('dragover', onDragOver, true)
+      window.removeEventListener('dragenter', onDragEnter, true)
+      window.removeEventListener('dragover', onDragOver, true)
+      document.removeEventListener('drop', onDrop, true)
+      window.removeEventListener('drop', onDrop, true)
+    }
+  }, [])
+
   return (
     <>
       {/* 🌉 WAVE 377: Invisible Sync Bridge - stageStore → Backend */}

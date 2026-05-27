@@ -211,6 +211,33 @@
   color: #a855f7;
 }
 
+/* ── SET DEFAULT button (aparece en header cuando cue seleccionado no es default) ── */
+.dna-lab__set-default-btn {
+  margin-left: auto;
+  padding: 2px 8px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+  flex-shrink: 0;
+}
+
+.dna-lab__set-default-btn:hover {
+  background: rgba(251, 191, 36, 0.18);
+  border-color: rgba(251, 191, 36, 0.55);
+  color: #fde68a;
+}
+
+.dna-lab__set-default-btn:active {
+  background: rgba(251, 191, 36, 0.28);
+}
+
 /* ── Sections ── */
 .dna-lab__section {
   display: flex;

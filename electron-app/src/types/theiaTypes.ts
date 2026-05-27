@@ -1,17 +1,16 @@
 /**
  * ════════════════════════════════════════════════════════════════════════════
- * 🎬 THEIA TYPES — WAVE 4901 (Phase 1/3 of WAVE-4900-THEIADNA)
+ * 🎬 THEIA TYPES — WAVE 4921 (Atomic Paradigm · Fase 1)
  * ════════════════════════════════════════════════════════════════════════════
  *
- * Tipos canónicos para el formato `.theia v1.0`. Este módulo es la fuente
- * de verdad estructural — paralelo a `core/arsenal/lfxTypes.ts` para `.lfx`.
+ * Tipos canónicos para el formato `.theia v2.0`. Esta wave abandona el
+ * modelo multi-cuepoint de v1 en favor del paradigma ATÓMICO descrito en
+ * el blueprint WAVE 4920:
  *
- * PRINCIPIO RECTOR (WAVE 4900):
- *   El `.theia` HEREDA el genoma cognitivo de `.lfx V3`. Selene no aprende
- *   dos vocabularios — aprende uno y lo aplica a dos dominios (luz / vídeo).
- *
- *   - `ITheiaGenome` ≡ shape de `FrozenGenome` (`lfxTypes.ts`).
- *   - `EnergyZone` reusado de `core/protocol/MusicalContext.ts`.
+ *   - Un `.theia` = un único loop visual con un único genoma cognitivo.
+ *   - El genoma vive EN LA RAÍZ del átomo (sin anidar en cuepoints).
+ *   - El recorte temporal se reduce a `trim: { startMs, endMs }`.
+ *   - Los átomos se agrupan en `Pack`s (carpetas del filesystem).
  *
  * Importante: este archivo SOLO declara tipos. No expone runtime ni
  * dependencias. Puede ser consumido tanto por main como por renderer.
@@ -69,100 +68,85 @@ export const ENERGY_ZONE_ORDINAL: Readonly<Record<EnergyZone, number>> = Object.
   peak: 6,
 })
 
-// ─── CUEPOINT (sub-genoma temporal dentro de un .mp4) ────────────────────────
+// ─── ATOM (manifiesto completo del .theia v2) ────────────────────────────────
 
 /**
- * Sub-genoma cognitivo de una zona temporal dentro del asset de vídeo.
+ * Manifiesto cognitivo de un átomo `.theia v2.0`.
  *
- * Cada cuepoint actúa como un mini-`.lfx` con un rango `[startMs, endMs]`
- * y su propio ADN. El `SeleneTheiaAdapter` (WAVE 4903) usa estos cuepoints
- * para decidir SEEKs precisos basados en distancia euclidiana al targetDNA.
+ * Un `ITheiaAtom` es la unidad indivisible del paradigma WAVE 4920:
+ * un único micro-vídeo (loop) con un único estado cognitivo. Sin cuepoints,
+ * sin secciones internas. Si necesitas comportamientos cognitivos distintos
+ * en el mismo material, créalos como átomos separados en el mismo Pack.
  *
- * REGLAS estructurales (validadas por TheiaFileLoader, WAVE 4902):
- *   - `startMs >= 0`
- *   - `endMs > startMs`
- *   - `endMs <= asset.durationMs`
- *   - cuepoints de un mismo asset NO pueden solaparse
- *   - exactamente UNO debe tener `default: true`
+ * REGLAS estructurales (validadas por el loader):
+ *   - `id` no vacío, único dentro del pack
+ *   - `trim.endMs > trim.startMs + 250`
+ *   - `aggression / chaos / organicity` ∈ [0, 1]
+ *   - `energyZone.min ≤ energyZone.max`
+ *   - `validSections.length >= 1`
  */
-export interface ITheiaCuePoint {
-  /** ID único dentro del clip (ej. 'intro', 'lift', 'drop-01'). */
+export interface ITheiaAtom {
+  /** ID único del átomo dentro de su pack (slug local). */
   readonly id: string
 
-  /** Etiqueta legible para UI (ej. 'The Big Drop'). */
-  readonly name: string
+  /** Slug del pack al que pertenece (folder name). Vacío si todavía es draft. */
+  readonly packId: string
 
-  // ── Rango temporal ──────────────────────────────────────────────────────
-  /** Inicio del cuepoint en ms (offset dentro del .mp4). */
-  readonly startMs: number
-  /** Fin del cuepoint en ms (exclusivo). */
-  readonly endMs: number
+  /** Ruta absoluta al .mp4/.webm en disco. */
+  readonly filePath: string
 
-  // ── ADN cognitivo ──────────────────────────────────────────────────────
-  /** Genoma específico de este segmento de vídeo. */
-  readonly dna: ITheiaGenome
+  // ── Genoma al ROOT (antes ITheiaCuePoint.dna) ─────────────────────────────
+  /** Combatividad visual percibida. 0..1. */
+  readonly aggression: number
+  /** Densidad de eventos / desorden organizado. 0..1. */
+  readonly chaos: number
+  /** Suavidad y respiración. 0..1. */
+  readonly organicity: number
 
-  /** Rango de zonas energéticas en las que este cuepoint es elegible. */
+  /** Rango de zonas energéticas en las que este átomo es elegible. */
   readonly energyZone: IEnergyZoneRange
 
   /** Secciones musicales válidas (subset de los strings que emite Selene). */
   readonly validSections: readonly string[]
 
-  // ── Flags opcionales ───────────────────────────────────────────────────
-  /** True si es el cuepoint de fallback cuando ningún otro matchea. */
-  readonly default?: boolean
-  /** True si es candidato a DIVINE strikes. */
-  readonly isDivineCandidate?: boolean
-  /** True si es candidato a HEAVY strikes. */
-  readonly isHeavyCandidate?: boolean
-  /** Hint opcional: vibes en los que este cuepoint brilla especialmente. */
-  readonly preferredVibes?: readonly string[]
-}
-
-// ─── ASSET (manifiesto completo del .theia) ───────────────────────────────────
-
-/**
- * Manifiesto cognitivo de un clip de vídeo `.theia v1.0`.
- *
- * Es la forma INTERNA del registry — pre-validada y pre-congelada por
- * `TheiaFileLoader` (WAVE 4902). El binario .mp4 NO está aquí; este objeto
- * solo declara metadatos cognitivos y la ruta al asset.
- */
-export interface ITheiaAsset {
-  /** ID único del asset en el registry. */
-  readonly id: string
-
-  /** Ruta absoluta al .mp4/.webm en disco. */
-  readonly filePath: string
-
+  // ── Recorte temporal del .mp4 (define EL LOOP) ───────────────────────────
   /**
-   * ADN del CLIP COMPLETO. Fallback cuando ningún cuepoint específico aplica.
-   * Equivalente a `cognitiveDNA.genome` de un `.lfx`.
+   * Define qué fragmento del .mp4 ES el loop:
+   *   - El video se reproduce desde `startMs` y vuelve a `startMs` al llegar
+   *     a `endMs`.
+   *   - Si `endMs === durationMs`, el loop es el clip completo.
+   *   - Mínimo 250ms entre IN y OUT (validation gate).
    */
-  readonly globalDNA: ITheiaGenome
+  readonly trim: {
+    readonly startMs: number
+    readonly endMs: number
+  }
 
   /**
-   * Vibes musicales en los que este asset es elegible.
+   * Vibes musicales en los que este átomo es elegible.
    * Idéntica semántica que `compatibleVibes` de un `.lfx`.
    */
   readonly compatibleVibes: readonly string[]
 
-  /** Cuepoints declarados dentro del asset (length >= 1). */
-  readonly cuePoints: readonly ITheiaCuePoint[]
+  // ── Flags opcionales ───────────────────────────────────────────────────
+  /** True si es candidato a DIVINE strikes. */
+  readonly isDivineCandidate?: boolean
+  /** True si es candidato a HEAVY strikes. */
+  readonly isHeavyCandidate?: boolean
 }
 
 // ─── RESULTADO DEL MATCHING ───────────────────────────────────────────────────
 
 /**
- * Resultado canónico de `TheiaRegistry.findBestMatch()`.
+ * Resultado canónico del `AtomMatcher` (sucesor cognitivo de
+ * `TheiaRegistry.findBestMatch()`).
  *
- * - `assetId` + `cuePointId`: identifican unívocamente qué reproducir.
+ * - `atomId`: identifica unívocamente qué átomo reproducir.
  * - `distance`: distancia euclidiana 3D al `targetDNA` (∈ [0, √3]).
  * - `score`: relevancia normalizada en [0, 1] (1 = match perfecto).
  */
 export interface ITheiaMatch {
-  readonly assetId: string
-  readonly cuePointId: string
+  readonly atomId: string
   readonly distance: number
   readonly score: number
 }

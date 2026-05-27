@@ -1,35 +1,35 @@
 /**
  * ════════════════════════════════════════════════════════════════════════════
- * 🎬 THEIA REGISTRY — WAVE 4901 (Phase 1/3 of WAVE-4900-THEIADNA)
+ * 🎬 THEIA REGISTRY — WAVE 4921 (Atomic Paradigm · Fase 2)
  * ════════════════════════════════════════════════════════════════════════════
  *
- * Singleton del Main Process que indexa los `ITheiaAsset` cargados y resuelve
- * el matching cognitivo entre el `targetDNA` que pide Selene y el cuepoint
- * de vídeo más cercano en el espacio 3D del genoma.
+ * Singleton que indexa los `ITheiaAtom` cargados y resuelve el matching
+ * cognitivo entre el `targetDNA` que pide Selene y el átomo de vídeo más
+ * cercano en el espacio 3D del genoma.
  *
  * PARALELO ARQUITECTÓNICO:
  *   `core/arsenal/DynamicEffectRegistry` ↔  `core/theia/TheiaRegistry`
  *
- *   Ambos exponen lookup O(1) por vibe, gates de validación al registrar y
- *   un snapshot inmutable para consumidores. La diferencia: este registry
- *   opera sobre cuepoints temporales en vez de tracks/curves.
- *
- * COSTE COMPUTACIONAL (ver §3.2 del blueprint WAVE-4900):
- *   - register / unregister: O(V) — V = compatibleVibes del asset.
- *   - findBestMatch:          O(N × M) — N = assets del vibe, M = cuepoints/asset.
- *                             Típicamente 10 × 4 = 40 distancias 3D + sort.
- *                             ≈ 0.05 ms en V8 moderno → invisible al hot-path.
+ * COSTE COMPUTACIONAL:
+ *   - register / unregister: O(V) — V = compatibleVibes del átomo.
+ *   - findBestMatch:          O(N) — N = átomos del vibe.
+ *                             Típicamente 30 distancias 3D + min lineal.
+ *                             ≈ 0.02 ms en V8 moderno → invisible al hot-path.
  *
  * OPTIMIZACIÓN MATEMÁTICA:
  *   La distancia euclidiana se compara internamente como **distancia² (sin sqrt)**
  *   porque (sqrt es monotónico): argmin(d) = argmin(d²). El sqrt solo se aplica
  *   al ganador para reportar el valor real al consumer.
+ *
+ * NOTA DE COMPATIBILIDAD:
+ *   El método legacy `getAsset(id)` se conserva como alias de `getAtom(id)`
+ *   hasta que toda la UI consuma el nuevo nombre. Se eliminará en una fase
+ *   posterior junto con el AuthorAssetDeck legacy.
  * ════════════════════════════════════════════════════════════════════════════
  */
 
 import type {
-  ITheiaAsset,
-  ITheiaCuePoint,
+  ITheiaAtom,
   ITheiaGenome,
   ITheiaMatch,
   EnergyZone,
@@ -45,12 +45,12 @@ import { ENERGY_ZONE_ORDINAL, isValidGenome } from '../../types/theiaTypes'
 const MAX_DISTANCE_3D = Math.sqrt(3)
 
 /** Snapshot vacío pre-congelado — devolverlo en lookups miss evita alloc. */
-const EMPTY_ASSETS: readonly ITheiaAsset[] = Object.freeze<ITheiaAsset[]>([])
+const EMPTY_ATOMS: readonly ITheiaAtom[] = Object.freeze<ITheiaAtom[]>([])
 
 // ─── REGISTRY ────────────────────────────────────────────────────────────────
 
 /**
- * Singleton de assets `.theia` cargados.
+ * Singleton de átomos `.theia` cargados.
  *
  * NO es un singleton tipo módulo-global por construcción: exponemos clase +
  * factory para facilitar testing. La instancia compartida vive en
@@ -58,53 +58,54 @@ const EMPTY_ASSETS: readonly ITheiaAsset[] = Object.freeze<ITheiaAsset[]>([])
  */
 export class TheiaRegistry {
   // ── Índices primarios ──────────────────────────────────────────────────
-  private readonly _byId = new Map<string, ITheiaAsset>()
-  private readonly _byVibe = new Map<string, ITheiaAsset[]>()
+  private readonly _byId = new Map<string, ITheiaAtom>()
+  private readonly _byVibe = new Map<string, ITheiaAtom[]>()
 
   /** Snapshot inmutable plano (refrescado solo en mutaciones). */
-  private _allAssets: readonly ITheiaAsset[] = EMPTY_ASSETS
+  private _allAtoms: readonly ITheiaAtom[] = EMPTY_ATOMS
 
   // ─────────────────────────────────────────────────────────────────────────
   // INGESTA / MUTACIÓN
   // ─────────────────────────────────────────────────────────────────────────
 
   /**
-   * Registra un asset `.theia` ya validado en el registry.
+   * Registra un átomo `.theia` ya validado en el registry.
    *
-   * Validaciones mínimas (gates ESTRUCTURALES — los gates de archivo G1..G7
+   * Validaciones mínimas (gates ESTRUCTURALES — los gates de archivo A1..A5
    * corren ANTES en `TheiaFileLoader`):
    *   - `id` no vacío y único
-   *   - `globalDNA` con valores ∈ [0, 1]
+   *   - genoma (aggression/chaos/organicity) ∈ [0, 1]
    *   - `compatibleVibes.length > 0`
-   *   - `cuePoints.length > 0` y cada uno con `dna` válido
+   *   - `trim.endMs > trim.startMs`
+   *   - `energyZone.min ≤ energyZone.max`
    *
-   * @returns el asset congelado si fue aceptado, o `null` si fue rechazado.
+   * @returns el átomo congelado si fue aceptado, o `null` si fue rechazado.
    */
-  public register(asset: ITheiaAsset): ITheiaAsset | null {
-    if (!this._validateStructure(asset)) return null
+  public register(atom: ITheiaAtom): ITheiaAtom | null {
+    if (!this._validateStructure(atom)) return null
 
     // Reemplazo idempotente: si ya existía, removerlo de los índices antes.
-    const prev = this._byId.get(asset.id)
+    const prev = this._byId.get(atom.id)
     if (prev) this._removeFromIndices(prev)
 
-    const frozen = this._freezeAsset(asset)
+    const frozen = this._freezeAtom(atom)
     this._byId.set(frozen.id, frozen)
     this._appendToIndices(frozen)
-    this._rebuildAllAssets()
+    this._rebuildAllAtoms()
 
     return frozen
   }
 
   /**
-   * Elimina un asset del registry.
+   * Elimina un átomo del registry.
    * @returns true si existía.
    */
-  public unregister(assetId: string): boolean {
-    const prev = this._byId.get(assetId)
+  public unregister(atomId: string): boolean {
+    const prev = this._byId.get(atomId)
     if (!prev) return false
-    this._byId.delete(assetId)
+    this._byId.delete(atomId)
     this._removeFromIndices(prev)
-    this._rebuildAllAssets()
+    this._rebuildAllAtoms()
     return true
   }
 
@@ -112,32 +113,47 @@ export class TheiaRegistry {
   public clear(): void {
     this._byId.clear()
     this._byVibe.clear()
-    this._allAssets = EMPTY_ASSETS
+    this._allAtoms = EMPTY_ATOMS
   }
 
   // ─────────────────────────────────────────────────────────────────────────
   // LOOKUPS O(1)
   // ─────────────────────────────────────────────────────────────────────────
 
-  public getAsset(assetId: string): ITheiaAsset | undefined {
-    return this._byId.get(assetId)
+  public getAtom(atomId: string): ITheiaAtom | undefined {
+    return this._byId.get(atomId)
   }
 
-  public has(assetId: string): boolean {
-    return this._byId.has(assetId)
+  /**
+   * @deprecated WAVE 4921 — alias legacy de `getAtom`. Se eliminará cuando
+   * `TheiaEngineView` y consumidores migren a la nomenclatura atómica.
+   */
+  public getAsset(atomId: string): ITheiaAtom | undefined {
+    return this._byId.get(atomId)
   }
 
-  /** Assets pre-filtrados por vibe (referencia al array indexado). */
-  public getAssetsForVibe(vibe: string): readonly ITheiaAsset[] {
-    return this._byVibe.get(vibe) ?? EMPTY_ASSETS
+  public has(atomId: string): boolean {
+    return this._byId.has(atomId)
   }
 
-  /** Snapshot inmutable de TODOS los assets registrados. */
-  public getAllAssets(): readonly ITheiaAsset[] {
-    return this._allAssets
+  /** Átomos pre-filtrados por vibe (referencia al array indexado). */
+  public getAtomsForVibe(vibe: string): readonly ITheiaAtom[] {
+    return this._byVibe.get(vibe) ?? EMPTY_ATOMS
   }
 
-  public getAssetCount(): number {
+  /** Snapshot inmutable de TODOS los átomos registrados. */
+  public getAllAtoms(): readonly ITheiaAtom[] {
+    return this._allAtoms
+  }
+
+  /**
+   * @deprecated WAVE 4921 — alias legacy. Migrar callers a `getAllAtoms()`.
+   */
+  public getAllAssets(): readonly ITheiaAtom[] {
+    return this._allAtoms
+  }
+
+  public getAtomCount(): number {
     return this._byId.size
   }
 
@@ -146,20 +162,17 @@ export class TheiaRegistry {
   // ─────────────────────────────────────────────────────────────────────────
 
   /**
-   * Encuentra el cuepoint cuyo ADN minimiza la distancia euclidiana 3D al
+   * Encuentra el átomo cuyo ADN minimiza la distancia euclidiana 3D al
    * `targetDNA` solicitado por Selene.
    *
    * Pipeline:
-   *   1. Filtrar assets por `vibe` (lookup O(1)).
-   *   2. Iterar cuepoints; descartar los cuya `energyZone` no incluya `currentZone`.
-   *   3. Calcular distancia² entre `targetDNA` y `cuepoint.dna`.
-   *   4. Memorizar el mínimo (sin sort — single pass O(N×M)).
+   *   1. Filtrar átomos por `vibe` (lookup O(1)).
+   *   2. Descartar los cuya `energyZone` no incluya `currentZone`.
+   *   3. Calcular distancia² entre `targetDNA` y el genoma plano del átomo.
+   *   4. Memorizar el mínimo (sin sort — single pass O(N)).
    *   5. Aplicar sqrt solo al ganador y normalizar `score ∈ [0, 1]`.
    *
-   * @param targetDNA  ADN deseado por Selene (`DNAAnalyzer.deriveTargetDNA`).
-   * @param currentZone Zona energética actual (de `EnergyConsciousness`).
-   * @param vibe        Vibe musical actual (de `VibeProfile`).
-   * @returns El match más cercano, o `null` si no hay cuepoints elegibles.
+   * @returns El match más cercano, o `null` si no hay átomos elegibles.
    */
   public findBestMatch(
     targetDNA: ITheiaGenome,
@@ -168,39 +181,31 @@ export class TheiaRegistry {
   ): ITheiaMatch | null {
     if (!isValidGenome(targetDNA)) return null
 
-    const assets = this._byVibe.get(vibe)
-    if (!assets || assets.length === 0) return null
+    const atoms = this._byVibe.get(vibe)
+    if (!atoms || atoms.length === 0) return null
 
     const tA = targetDNA.aggression
     const tC = targetDNA.chaos
     const tO = targetDNA.organicity
     const zoneOrd = ENERGY_ZONE_ORDINAL[currentZone]
 
-    // Acumuladores zero-alloc del mínimo encontrado.
     let bestDistSq = Infinity
-    let bestAssetId = ''
-    let bestCueId = ''
+    let bestAtomId = ''
 
-    // Single-pass O(N×M). Sin sort. Sin allocs intermedios.
-    for (let i = 0; i < assets.length; i++) {
-      const asset = assets[i]
-      const cps = asset.cuePoints
-      for (let j = 0; j < cps.length; j++) {
-        const cp = cps[j]
+    for (let i = 0; i < atoms.length; i++) {
+      const atom = atoms[i]
 
-        // Filtro hard: la zona actual debe estar dentro del rango del cuepoint.
-        if (!_zoneInRange(zoneOrd, cp.energyZone)) continue
+      // Filtro hard: la zona actual debe estar dentro del rango del átomo.
+      if (!_zoneInRange(zoneOrd, atom.energyZone)) continue
 
-        const dA = tA - cp.dna.aggression
-        const dC = tC - cp.dna.chaos
-        const dO = tO - cp.dna.organicity
-        const distSq = dA * dA + dC * dC + dO * dO
+      const dA = tA - atom.aggression
+      const dC = tC - atom.chaos
+      const dO = tO - atom.organicity
+      const distSq = dA * dA + dC * dC + dO * dO
 
-        if (distSq < bestDistSq) {
-          bestDistSq = distSq
-          bestAssetId = asset.id
-          bestCueId = cp.id
-        }
+      if (distSq < bestDistSq) {
+        bestDistSq = distSq
+        bestAtomId = atom.id
       }
     }
 
@@ -210,8 +215,7 @@ export class TheiaRegistry {
     const score = 1 - distance / MAX_DISTANCE_3D
 
     return {
-      assetId: bestAssetId,
-      cuePointId: bestCueId,
+      atomId: bestAtomId,
       distance,
       score,
     }
@@ -221,50 +225,54 @@ export class TheiaRegistry {
   // INTERNALS
   // ─────────────────────────────────────────────────────────────────────────
 
-  private _validateStructure(asset: ITheiaAsset): boolean {
-    if (!asset || typeof asset !== 'object') return false
-    if (typeof asset.id !== 'string' || asset.id.length === 0) return false
-    if (typeof asset.filePath !== 'string' || asset.filePath.length === 0) return false
-    if (!isValidGenome(asset.globalDNA)) return false
-    if (!_isReadonlyArray(asset.compatibleVibes) || asset.compatibleVibes.length === 0) return false
-    if (!_isReadonlyArray(asset.cuePoints) || asset.cuePoints.length === 0) return false
+  private _validateStructure(atom: ITheiaAtom): boolean {
+    if (!atom || typeof atom !== 'object') return false
+    if (typeof atom.id !== 'string' || atom.id.length === 0) return false
+    if (typeof atom.filePath !== 'string' || atom.filePath.length === 0) return false
 
-    for (const cp of asset.cuePoints) {
-      if (!cp || typeof cp.id !== 'string' || cp.id.length === 0) return false
-      if (typeof cp.startMs !== 'number' || !Number.isFinite(cp.startMs) || cp.startMs < 0) return false
-      if (typeof cp.endMs !== 'number' || !Number.isFinite(cp.endMs) || cp.endMs <= cp.startMs) return false
-      if (!isValidGenome(cp.dna)) return false
-      if (!cp.energyZone) return false
-      if (!_isEnergyZone(cp.energyZone.min)) return false
-      if (!_isEnergyZone(cp.energyZone.max)) return false
-      if (ENERGY_ZONE_ORDINAL[cp.energyZone.min] > ENERGY_ZONE_ORDINAL[cp.energyZone.max]) return false
-      if (!Array.isArray(cp.validSections)) return false
-    }
+    // Genoma plano al root
+    if (typeof atom.aggression !== 'number' || !_in01(atom.aggression)) return false
+    if (typeof atom.chaos !== 'number' || !_in01(atom.chaos)) return false
+    if (typeof atom.organicity !== 'number' || !_in01(atom.organicity)) return false
+
+    // Trim
+    if (!atom.trim || typeof atom.trim !== 'object') return false
+    if (typeof atom.trim.startMs !== 'number' || atom.trim.startMs < 0) return false
+    if (typeof atom.trim.endMs !== 'number' || atom.trim.endMs <= atom.trim.startMs) return false
+
+    // EnergyZone
+    if (!atom.energyZone) return false
+    if (!_isEnergyZone(atom.energyZone.min)) return false
+    if (!_isEnergyZone(atom.energyZone.max)) return false
+    if (ENERGY_ZONE_ORDINAL[atom.energyZone.min] > ENERGY_ZONE_ORDINAL[atom.energyZone.max]) return false
+
+    // Listas
+    if (!_isReadonlyArray(atom.compatibleVibes) || atom.compatibleVibes.length === 0) return false
+    if (!_isReadonlyArray(atom.validSections)) return false
+
     return true
   }
 
-  private _freezeAsset(asset: ITheiaAsset): ITheiaAsset {
-    const frozenCps = asset.cuePoints.map(cp => Object.freeze({
-      ...cp,
-      dna: Object.freeze({ ...cp.dna }),
-      energyZone: Object.freeze({ ...cp.energyZone }),
-      validSections: Object.freeze([...cp.validSections]),
-      preferredVibes: cp.preferredVibes
-        ? Object.freeze([...cp.preferredVibes])
-        : undefined,
-    }))
+  private _freezeAtom(atom: ITheiaAtom): ITheiaAtom {
     return Object.freeze({
-      id: asset.id,
-      filePath: asset.filePath,
-      globalDNA: Object.freeze({ ...asset.globalDNA }),
-      compatibleVibes: Object.freeze([...asset.compatibleVibes]),
-      cuePoints: Object.freeze(frozenCps),
+      id: atom.id,
+      packId: atom.packId,
+      filePath: atom.filePath,
+      aggression: atom.aggression,
+      chaos: atom.chaos,
+      organicity: atom.organicity,
+      energyZone: Object.freeze({ ...atom.energyZone }),
+      validSections: Object.freeze([...atom.validSections]),
+      trim: Object.freeze({ ...atom.trim }),
+      compatibleVibes: Object.freeze([...atom.compatibleVibes]),
+      isDivineCandidate: atom.isDivineCandidate,
+      isHeavyCandidate: atom.isHeavyCandidate,
     })
   }
 
-  private _appendToIndices(asset: ITheiaAsset): void {
+  private _appendToIndices(atom: ITheiaAtom): void {
     const seen = new Set<string>()
-    for (const vibe of asset.compatibleVibes) {
+    for (const vibe of atom.compatibleVibes) {
       if (seen.has(vibe)) continue
       seen.add(vibe)
       let bucket = this._byVibe.get(vibe)
@@ -272,25 +280,29 @@ export class TheiaRegistry {
         bucket = []
         this._byVibe.set(vibe, bucket)
       }
-      bucket.push(asset)
+      bucket.push(atom)
     }
   }
 
-  private _removeFromIndices(asset: ITheiaAsset): void {
-    for (const vibe of asset.compatibleVibes) {
+  private _removeFromIndices(atom: ITheiaAtom): void {
+    for (const vibe of atom.compatibleVibes) {
       const bucket = this._byVibe.get(vibe)
       if (!bucket) continue
-      const idx = bucket.indexOf(asset)
+      const idx = bucket.indexOf(atom)
       if (idx >= 0) bucket.splice(idx, 1)
       if (bucket.length === 0) this._byVibe.delete(vibe)
     }
   }
 
-  private _rebuildAllAssets(): void {
-    const next: ITheiaAsset[] = []
+  private _rebuildAllAtoms(): void {
+    const next: ITheiaAtom[] = []
     for (const a of this._byId.values()) next.push(a)
-    this._allAssets = Object.freeze(next)
+    this._allAtoms = Object.freeze(next)
   }
+}
+
+function _in01(n: number): boolean {
+  return Number.isFinite(n) && n >= 0 && n <= 1
 }
 
 // ─── HELPERS PRIVADOS ────────────────────────────────────────────────────────

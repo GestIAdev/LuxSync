@@ -130,20 +130,10 @@ export function setupIPCHandlers(deps: IPCDependencies): void {
 
 function setupTheiaHandlers(): void {
   ipcMain.handle('theia:get-frame-context', (): SharedArrayBuffer | null => {
-    try {
-      const trinity = getTrinity()
-      if (!trinity) return null
-      const sab = trinity.getFrameContextSAB()
-      // Validar que es realmente un SharedArrayBuffer para evitar serialización fallida
-      if (sab instanceof SharedArrayBuffer) {
-        return sab
-      }
-      console.warn('[IPCHandlers] getFrameContextSAB returned non-SAB:', typeof sab)
-      return null
-    } catch (err) {
-      console.error('[IPCHandlers] theia:get-frame-context error:', err)
-      return null
-    }
+    // En builds Electron empaquetadas (file://), structured clone de IPC puede
+    // rechazar SharedArrayBuffer con "An object could not be cloned". Para no
+    // romper arranque de Theia devolvemos null y el renderer usa fallback local.
+    return null
   })
 }
 

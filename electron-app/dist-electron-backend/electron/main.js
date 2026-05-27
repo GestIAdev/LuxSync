@@ -15,7 +15,7 @@
  *
  * LuxSync V2 - NO HAY VUELTA ATRAS
  */
-import { app, BrowserWindow, ipcMain, desktopCapturer, dialog, clipboard } from 'electron';
+import { app, BrowserWindow, ipcMain, desktopCapturer, dialog, clipboard, session } from 'electron';
 import path from 'path';
 import fs from 'fs';
 // ═══════════════════════════════════════════════════════════════════════════
@@ -314,6 +314,12 @@ function createWindow() {
                 mainWindow?.webContents.toggleDevTools();
             }
         });
+        // Evita que un drop de archivo navegue el BrowserWindow fuera de la app.
+        mainWindow.webContents.on('will-navigate', (event, url) => {
+            if (url.startsWith('file://')) {
+                event.preventDefault();
+            }
+        });
         // Broadcast fixtures if loaded
         if (patchedFixtures.length > 0 && mainWindow) {
             mainWindow.webContents.send('lux:fixtures-loaded', patchedFixtures);
@@ -355,31 +361,6 @@ async function initTitan() {
     // ⌨ WAVE 4805: KeyForge Loadout persistence
     // ═══════════════════════════════════════════════════════════════════════════
     setupKeyForgeIPCHandlers(() => mainWindow);
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🎬 WAVE 4910.6: Theia Asset export — Native Save As dialog
-    // ═══════════════════════════════════════════════════════════════════════════
-    ipcMain.handle('lux:theia:exportAsset', async (_event, asset, suggestedName) => {
-        const win = mainWindow;
-        if (!win)
-            return { success: false, error: 'No main window' };
-        try {
-            const result = await dialog.showSaveDialog(win, {
-                title: 'Exportar Asset .theia',
-                defaultPath: suggestedName ?? 'asset.theia',
-                filters: [{ name: 'Theia Asset', extensions: ['theia'] }],
-            });
-            if (result.canceled || !result.filePath)
-                return { success: false, cancelled: true };
-            await fs.promises.writeFile(result.filePath, JSON.stringify(asset, null, 2), 'utf-8');
-            console.log(`[TheiaExport] ✅ ${result.filePath}`);
-            return { success: true, filePath: result.filePath };
-        }
-        catch (err) {
-            const msg = err instanceof Error ? err.message : String(err);
-            console.error('[TheiaExport] ❌', msg);
-            return { success: false, error: msg };
-        }
-    });
     // ═══════════════════════════════════════════════════════════════════════════
     // 🎬 WAVE 4910.6: Theia Asset export — Native Save As dialog
     // ═══════════════════════════════════════════════════════════════════════════
@@ -926,6 +907,24 @@ app.whenReady().then(async () => {
     // This ensures IPC handlers are registered BEFORE renderer loads and sends IPCs
     // ═══════════════════════════════════════════════════════════════════════════
     await initTitan();
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🧬 WAVE 4910.9-B: Cross-Origin Isolation — habilita SharedArrayBuffer vía IPC
+    //
+    // ipcMain.handle() usa structured clone para serializar la respuesta. Los SABs
+    // son bloqueados por el algoritmo de clonación a menos que la ventana tenga
+    // crossOriginIsolated=true. Forzamos COOP + COEP en TODAS las respuestas de la
+    // sesión default (mainWindow + TheiaWindow comparten session.defaultSession).
+    // LuxSync es 100% local — no hay recursos cross-origin que romper.
+    // ═══════════════════════════════════════════════════════════════════════════
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+        callback({
+            responseHeaders: {
+                ...details.responseHeaders,
+                'Cross-Origin-Opener-Policy': ['same-origin'],
+                'Cross-Origin-Embedder-Policy': ['require-corp'],
+            },
+        });
+    });
     createWindow();
     // ═══════════════════════════════════════════════════════════════════════════
     // 🎬 WAVE 4864: Theia Output Window Manager (Phase 3)

@@ -1,79 +1,84 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🧬 THEIA EDITOR STORE — WAVE 4910.1
- * Estado global del editor de assets .theia (modo AUTHOR).
+ * 🧬 THEIA EDITOR STORE — WAVE 4921 (Atomic Paradigm · Fase 1)
+ * Estado global del editor del WORKSHOP de Theia.
  *
- * Deliberadamente separado de truthStore / controlStore porque:
+ * Refactor desde WAVE 4910.1: el draft ya NO es un asset multi-cuepoint;
+ * es un ÁTOMO único (`draftAtom`) con genoma plano y trim simple {in, out}.
+ *
+ * Sigue siendo deliberadamente independiente de truthStore / controlStore:
  *  - El estado de edición es transiente; no contamina el runtime de Selene.
  *  - Tiene autosave propio a localStorage (no al IPC backend).
- *  - Completamente ignorado cuando editorMode === 'perform'.
- *
- * TIPOS DRAFT: versiones mutables de los tipos readonly de theiaTypes.ts.
- * IDs de cuepoints: contador monótonamente creciente. Sin Math.random().
+ *  - Completamente ignorado cuando editorMode === 'live'.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import type { ITheiaAsset, ITheiaCuePoint, ITheiaGenome } from '../types/theiaTypes'
+import type { EnergyZone, ITheiaAtom } from '../types/theiaTypes'
 
 // ─── MUTABLE DRAFT TYPES ──────────────────────────────────────────────────────
 
-export type EditorMode = 'perform' | 'author'
+/**
+ * Modo del editor.
+ *  - `live`     → performance en tiempo real (Selene + manual triggers).
+ *  - `workshop` → taller offline (drop, trim, tunear ADN, exportar).
+ */
+export type EditorMode = 'live' | 'workshop'
 
-/** Versión mutable de ITheiaGenome para edición en el DNA Lab. */
+/** Versión mutable del genoma cognitivo (subset del átomo). */
 export interface DraftGenome {
   aggression: number
   chaos: number
   organicity: number
 }
 
-/** Versión mutable de ITheiaCuePoint para edición en el Timeline. */
-export interface DraftCuePoint {
+/** Versión mutable de `ITheiaAtom` para edición en el Workshop. */
+export interface DraftAtom {
   id: string
-  name: string
-  startMs: number
-  endMs: number
-  dna: DraftGenome
-  energyZone: { min: string; max: string }
+  packId: string
+  filePath: string
+
+  // ── Genoma al ROOT ───────────────────────────────────────────────────────
+  aggression: number
+  chaos: number
+  organicity: number
+  energyZone: { min: EnergyZone; max: EnergyZone }
   validSections: string[]
-  default?: boolean
+
+  // ── Recorte temporal del .mp4 ───────────────────────────────────────────
+  trim: {
+    startMs: number
+    endMs: number
+  }
+
+  compatibleVibes: string[]
   isDivineCandidate?: boolean
   isHeavyCandidate?: boolean
-  preferredVibes?: string[]
-  /** Flag UI: true si fue creado en esta sesión y aún no exportado. */
-  isNew: boolean
-}
-
-/** Versión mutable de ITheiaAsset para edición. */
-export interface DraftAsset {
-  id: string
-  filePath: string
-  globalDNA: DraftGenome
-  compatibleVibes: string[]
-  cuePoints: DraftCuePoint[]
 }
 
 // ─── STORE INTERFACE ───────────────────────────────────────────────────────────
 
 interface TheiaEditorState {
   editorMode: EditorMode
-  draftAsset: DraftAsset | null
-  selectedCueId: string | null
+  draftAtom: DraftAtom | null
   isDirty: boolean
 }
 
 interface TheiaEditorActions {
   setEditorMode: (mode: EditorMode) => void
-  selectCue: (id: string | null) => void
-  loadDraft: (asset: ITheiaAsset) => void
+  /** Carga un átomo existente (read-only) como draft editable. */
+  loadDraft: (atom: ITheiaAtom) => void
+  /** Crea un draft nuevo desde la ruta de un .mp4 recién dropeado. */
   newDraftFromPath: (filePath: string, durationMs: number) => void
-  updateGlobalDNA: (patch: Partial<DraftGenome>) => void
-  addCuePoint: (cue: Omit<DraftCuePoint, 'id' | 'isNew'>) => void
-  updateCuePoint: (id: string, patch: Partial<Omit<DraftCuePoint, 'id'>>) => void
-  deleteCuePoint: (id: string) => void
-  /** Divide un cuepoint en dos en el instante `atMs`. Guard: atMs debe estar dentro del rango del cue. */
-  splitCuePoint: (cueId: string, atMs: number) => void
+  /** Aplica un patch parcial al genoma (`aggression / chaos / organicity`). */
+  updateGenome: (patch: Partial<DraftGenome>) => void
+  /** Actualiza los handles IN/OUT del trim. Clamp interno a [0, ∞). */
+  updateTrim: (startMs: number, endMs: number) => void
+  /** Cambia un edge de la energy zone. Mantiene `min ≤ max`. */
+  updateEnergyZone: (edge: 'min' | 'max', value: EnergyZone) => void
+  /** Reemplaza la lista de secciones válidas. */
+  setValidSections: (sections: string[]) => void
   /** Reinicia el editor a estado limpio (sin draft). */
   clearDraft: () => void
   markClean: () => void
@@ -81,55 +86,43 @@ interface TheiaEditorActions {
 
 export type TheiaEditorStore = TheiaEditorState & TheiaEditorActions
 
-// ─── ID GENERATION (determinista, sin Math.random) ────────────────────────────
-
-let _cueIdCounter = 0
-
-function nextCueId(): string {
-  return `cue-${Date.now()}-${++_cueIdCounter}`
-}
-
 // ─── CLONE HELPERS ────────────────────────────────────────────────────────────
 
-function cloneGenome(g: ITheiaGenome | DraftGenome): DraftGenome {
-  return { aggression: g.aggression, chaos: g.chaos, organicity: g.organicity }
-}
-
-function cloneCuePoint(cp: ITheiaCuePoint): DraftCuePoint {
+function cloneAtomToDraft(atom: ITheiaAtom): DraftAtom {
   return {
-    id: cp.id,
-    name: cp.name,
-    startMs: cp.startMs,
-    endMs: cp.endMs,
-    dna: cloneGenome(cp.dna),
-    energyZone: { min: cp.energyZone.min, max: cp.energyZone.max },
-    validSections: [...cp.validSections],
-    default: cp.default,
-    isDivineCandidate: cp.isDivineCandidate,
-    isHeavyCandidate: cp.isHeavyCandidate,
-    preferredVibes: cp.preferredVibes ? [...cp.preferredVibes] : undefined,
-    isNew: false,
+    id: atom.id,
+    packId: atom.packId,
+    filePath: atom.filePath,
+    aggression: atom.aggression,
+    chaos: atom.chaos,
+    organicity: atom.organicity,
+    energyZone: { min: atom.energyZone.min, max: atom.energyZone.max },
+    validSections: [...atom.validSections],
+    trim: { startMs: atom.trim.startMs, endMs: atom.trim.endMs },
+    compatibleVibes: [...atom.compatibleVibes],
+    isDivineCandidate: atom.isDivineCandidate,
+    isHeavyCandidate: atom.isHeavyCandidate,
   }
 }
 
-function cloneAsset(asset: ITheiaAsset): DraftAsset {
-  return {
-    id: asset.id,
-    filePath: asset.filePath,
-    globalDNA: cloneGenome(asset.globalDNA),
-    compatibleVibes: [...asset.compatibleVibes],
-    cuePoints: asset.cuePoints.map(cloneCuePoint),
-  }
+// ─── ENERGY ZONE GUARD ────────────────────────────────────────────────────────
+
+const ENERGY_ZONES_ORDER: readonly EnergyZone[] = [
+  'silence', 'valley', 'ambient', 'gentle', 'active', 'intense', 'peak',
+]
+
+function clampInRange(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value))
 }
 
 // ─── AUTOSAVE ─────────────────────────────────────────────────────────────────
 
 const AUTOSAVE_DEBOUNCE_MS = 2_000
-const AUTOSAVE_KEY_PREFIX = 'luxsync.theia.draft.'
+const AUTOSAVE_KEY_PREFIX = 'luxsync.theia.atomDraft.'
 
 let _autosaveTimer: ReturnType<typeof setTimeout> | null = null
 
-function scheduleAutosave(draft: DraftAsset): void {
+function scheduleAutosave(draft: DraftAtom): void {
   if (_autosaveTimer !== null) clearTimeout(_autosaveTimer)
   _autosaveTimer = setTimeout(() => {
     _autosaveTimer = null
@@ -151,11 +144,11 @@ export function clearAutosave(draftId: string): void {
 }
 
 /** Intenta recuperar un draft autosaved. Retorna null si no existe o está corrupto. */
-export function loadAutosave(draftId: string): DraftAsset | null {
+export function loadAutosave(draftId: string): DraftAtom | null {
   try {
     const raw = localStorage.getItem(AUTOSAVE_KEY_PREFIX + draftId)
     if (!raw) return null
-    return JSON.parse(raw) as DraftAsset
+    return JSON.parse(raw) as DraftAtom
   } catch {
     return null
   }
@@ -166,9 +159,8 @@ export function loadAutosave(draftId: string): DraftAsset | null {
 export const useTheiaEditorStore = create<TheiaEditorStore>()(
   subscribeWithSelector((set, get) => ({
     // ── State defaults ──────────────────────────────────────────────────────
-    editorMode: 'perform',
-    draftAsset: null,
-    selectedCueId: null,
+    editorMode: 'live',
+    draftAtom: null,
     isDirty: false,
 
     // ── Actions ────────────────────────────────────────────────────────────
@@ -177,128 +169,89 @@ export const useTheiaEditorStore = create<TheiaEditorStore>()(
       set({ editorMode: mode })
     },
 
-    selectCue(id) {
-      set({ selectedCueId: id })
-    },
-
-    /** Carga un ITheiaAsset existente (read-only) como draft editable. */
-    loadDraft(asset) {
-      set({ draftAsset: cloneAsset(asset), selectedCueId: null, isDirty: false })
+    /** Carga un ITheiaAtom existente como draft editable. */
+    loadDraft(atom) {
+      set({ draftAtom: cloneAtomToDraft(atom), isDirty: false })
     },
 
     /**
      * Crea un draft nuevo desde la ruta de un .mp4 recién dropeado.
-     * Genera un cuepoint default que cubre la duración completa.
+     * Trim inicial = clip completo. Genoma centrado (0.5).
      */
     newDraftFromPath(filePath, durationMs) {
-      const id = `draft-${Date.now()}`
-      const defaultCue: DraftCuePoint = {
-        id: nextCueId(),
-        name: 'default',
-        startMs: 0,
-        endMs: durationMs,
-        dna: { aggression: 0.5, chaos: 0.5, organicity: 0.5 },
+      const rawName = filePath.split(/[\\/]/).pop() ?? 'untitled'
+      const baseName = rawName.replace(/\.[^.]+$/, '')
+      const id = baseName || `draft-${Date.now()}`
+      const draft: DraftAtom = {
+        id,
+        packId: '', // pack target se asigna en el momento del export
+        filePath,
+        aggression: 0.5,
+        chaos: 0.5,
+        organicity: 0.5,
         energyZone: { min: 'silence', max: 'peak' },
         validSections: [],
-        default: true,
-        isNew: true,
-      }
-      const draft: DraftAsset = {
-        id,
-        filePath,
-        globalDNA: { aggression: 0.5, chaos: 0.5, organicity: 0.5 },
+        trim: { startMs: 0, endMs: Math.max(250, Math.round(durationMs)) },
         compatibleVibes: ['unspecified'],
-        cuePoints: [defaultCue],
       }
-      set({ draftAsset: draft, selectedCueId: defaultCue.id, isDirty: true })
+      set({ draftAtom: draft, isDirty: true })
     },
 
-    updateGlobalDNA(patch) {
-      const { draftAsset } = get()
-      if (!draftAsset) return
+    updateGenome(patch) {
+      const { draftAtom } = get()
+      if (!draftAtom) return
+      const next: DraftAtom = { ...draftAtom }
+      if (patch.aggression !== undefined) next.aggression = clampInRange(patch.aggression, 0, 1)
+      if (patch.chaos !== undefined) next.chaos = clampInRange(patch.chaos, 0, 1)
+      if (patch.organicity !== undefined) next.organicity = clampInRange(patch.organicity, 0, 1)
+      set({ draftAtom: next, isDirty: true })
+    },
+
+    /**
+     * Actualiza el rango de trim del átomo.
+     * - Garantiza `endMs > startMs + 250` (gate A2 del blueprint).
+     * - Clamp inferior a 0; clamp superior se delega al caller (conoce duración real).
+     */
+    updateTrim(startMs, endMs) {
+      const { draftAtom } = get()
+      if (!draftAtom) return
+      const MIN_DURATION_MS = 250
+      const safeStart = Math.max(0, Math.round(startMs))
+      const safeEnd = Math.max(safeStart + MIN_DURATION_MS, Math.round(endMs))
       set({
-        draftAsset: { ...draftAsset, globalDNA: { ...draftAsset.globalDNA, ...patch } },
+        draftAtom: { ...draftAtom, trim: { startMs: safeStart, endMs: safeEnd } },
         isDirty: true,
       })
     },
 
-    addCuePoint(cue) {
-      const { draftAsset } = get()
-      if (!draftAsset) return
-      const newCue: DraftCuePoint = { ...cue, id: nextCueId(), isNew: true }
+    updateEnergyZone(edge, value) {
+      const { draftAtom } = get()
+      if (!draftAtom) return
+      const minIdx = ENERGY_ZONES_ORDER.indexOf(draftAtom.energyZone.min)
+      const maxIdx = ENERGY_ZONES_ORDER.indexOf(draftAtom.energyZone.max)
+      const newIdx = ENERGY_ZONES_ORDER.indexOf(value)
+      if (edge === 'min' && newIdx > maxIdx) return
+      if (edge === 'max' && newIdx < minIdx) return
       set({
-        draftAsset: { ...draftAsset, cuePoints: [...draftAsset.cuePoints, newCue] },
-        selectedCueId: newCue.id,
-        isDirty: true,
-      })
-    },
-
-    updateCuePoint(id, patch) {
-      const { draftAsset } = get()
-      if (!draftAsset) return
-      set({
-        draftAsset: {
-          ...draftAsset,
-          cuePoints: draftAsset.cuePoints.map((cp) =>
-            cp.id === id ? { ...cp, ...patch } : cp,
-          ),
+        draftAtom: {
+          ...draftAtom,
+          energyZone: { ...draftAtom.energyZone, [edge]: value },
         },
         isDirty: true,
       })
     },
 
-    /**
-     * Borra un cuepoint. Guard: el draft debe conservar al menos 1.
-     * Si se borra el `default`, el primero restante hereda automáticamente ese flag.
-     */
-    deleteCuePoint(id) {
-      const { draftAsset, selectedCueId } = get()
-      if (!draftAsset || draftAsset.cuePoints.length <= 1) return
-
-      const remaining = draftAsset.cuePoints.filter((cp) => cp.id !== id)
-      const deletedWasDefault = draftAsset.cuePoints.find((cp) => cp.id === id)?.default
-      const updatedCues = deletedWasDefault
-        ? remaining.map((cp, i) => (i === 0 ? { ...cp, default: true } : cp))
-        : remaining
-
+    setValidSections(sections) {
+      const { draftAtom } = get()
+      if (!draftAtom) return
       set({
-        draftAsset: { ...draftAsset, cuePoints: updatedCues },
-        selectedCueId: selectedCueId === id ? (updatedCues[0]?.id ?? null) : selectedCueId,
-        isDirty: true,
-      })
-    },
-
-    splitCuePoint(cueId, atMs) {
-      const { draftAsset } = get()
-      if (!draftAsset) return
-
-      const cue = draftAsset.cuePoints.find((cp) => cp.id === cueId)
-      if (!cue) return
-      // Guard: split point must be strictly inside the cue's range
-      if (atMs <= cue.startMs || atMs >= cue.endMs) return
-
-      const firstHalf: DraftCuePoint = { ...cue, id: nextCueId(), endMs: atMs, isNew: true }
-      const secondHalf: DraftCuePoint = {
-        ...cue,
-        id: nextCueId(),
-        startMs: atMs,
-        default: false, // default stays on first half
-        isNew: true,
-      }
-
-      const updated = draftAsset.cuePoints.flatMap((cp) =>
-        cp.id === cueId ? [firstHalf, secondHalf] : [cp],
-      )
-
-      set({
-        draftAsset: { ...draftAsset, cuePoints: updated },
-        selectedCueId: secondHalf.id,
+        draftAtom: { ...draftAtom, validSections: [...sections] },
         isDirty: true,
       })
     },
 
     clearDraft() {
-      set({ draftAsset: null, selectedCueId: null, isDirty: false })
+      set({ draftAtom: null, isDirty: false })
     },
 
     markClean() {
@@ -308,10 +261,10 @@ export const useTheiaEditorStore = create<TheiaEditorStore>()(
 )
 
 // ─── AUTOSAVE SUBSCRIPTION ────────────────────────────────────────────────────
-// Se dispara cada vez que cambia isDirty o draftAsset. Debounced a 2s.
+// Se dispara cada vez que cambia isDirty o draftAtom. Debounced a 2s.
 
 useTheiaEditorStore.subscribe(
-  (s) => ({ draft: s.draftAsset, dirty: s.isDirty }),
+  (s) => ({ draft: s.draftAtom, dirty: s.isDirty }),
   ({ draft, dirty }) => {
     if (dirty && draft) scheduleAutosave(draft)
   },

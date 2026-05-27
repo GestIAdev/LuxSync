@@ -427,14 +427,13 @@ function handleSeek(payload: ThetaSeekPayload): void {
     state.prevSnapshotValid = false
   }
 
-  // Si el cuepoint apunta a un clip vacío => blackout: forzar FSM a idle.
-  if (!payload.clipId) {
+  // Si el átomo destino es vacío => blackout: forzar FSM a idle.
+  if (!payload.atomId) {
     state.fsm.reset()
   }
 
   const ack: ThetaSeekAckPayload = {
-    clipId: payload.clipId,
-    cuepointId: payload.cuepointId,
+    atomId: payload.atomId,
     latencyMs: latency,
     snapshotOk,
     crossfadeTicks: snapshotOk ? totalTicks : 0,

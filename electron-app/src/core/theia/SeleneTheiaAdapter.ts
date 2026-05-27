@@ -76,8 +76,10 @@ export interface ISeleneTheiaInput {
  * NO contiene ms timestamp de emisión — el orchestrator lo añade al IPC.
  */
 export interface CueJumpIntent {
-  readonly clipId: string
-  readonly cuepointId: string
+  /** Id del átomo destino (.theia). Vacío = blackout. */
+  readonly atomId: string
+  /** Offset temporal donde el videoElement debe saltar (ms).
+   *  Por defecto coincide con `atom.trim.startMs`. */
   readonly startMs: number
   readonly crossfadeMs: number
   /** Texto humano (telemetría). Ej: 'dna-match|score=0.83|sec=drop'. */
@@ -106,8 +108,7 @@ const CROSSFADE_AMBIENT_MS = 500
 // ─── ADAPTER ─────────────────────────────────────────────────────────────────
 
 interface LastEmitted {
-  readonly clipId: string
-  readonly cuepointId: string
+  readonly atomId: string
   readonly t: number
 }
 
@@ -148,22 +149,20 @@ export class SeleneTheiaAdapter {
     if (this._isRedundant(match)) return null
 
     // STEP 3: derivar crossfade y construir intent.
-    const cuepoint = this._resolveCuepoint(match.assetId, match.cuePointId)
-    if (!cuepoint) return null  // race con unregister — defensivo.
+    const atom = this._registry.getAtom(match.atomId)
+    if (!atom) return null  // race con unregister — defensivo.
 
     const crossfadeMs = this._deriveCrossfade(input)
     const intent: CueJumpIntent = {
-      clipId: match.assetId,
-      cuepointId: match.cuePointId,
-      startMs: cuepoint.startMs,
+      atomId: match.atomId,
+      startMs: atom.trim.startMs,
       crossfadeMs,
       reason: this._buildReason(input, match),
     }
 
     // STEP 4: registrar emisión para el throttle de la próxima llamada.
     this._lastEmitted = {
-      clipId: intent.clipId,
-      cuepointId: intent.cuepointId,
+      atomId: intent.atomId,
       t: Date.now(),
     }
 
@@ -185,18 +184,8 @@ export class SeleneTheiaAdapter {
   private _isRedundant(match: ITheiaMatch): boolean {
     const last = this._lastEmitted
     if (!last) return false
-    if (last.clipId !== match.assetId) return false
-    if (last.cuepointId !== match.cuePointId) return false
+    if (last.atomId !== match.atomId) return false
     return (Date.now() - last.t) < REEMIT_THROTTLE_MS
-  }
-
-  private _resolveCuepoint(assetId: string, cuePointId: string) {
-    const asset = this._registry.getAsset(assetId)
-    if (!asset) return null
-    for (const cp of asset.cuePoints) {
-      if (cp.id === cuePointId) return cp
-    }
-    return null
   }
 
   private _deriveCrossfade(input: ISeleneTheiaInput): number {
@@ -231,8 +220,7 @@ export class SeleneTheiaAdapter {
   private _emitBlackout(): CueJumpIntent {
     this._lastEmitted = null
     return {
-      clipId: '',
-      cuepointId: '',
+      atomId: '',
       startMs: 0,
       crossfadeMs: CROSSFADE_AMBIENT_MS,
       reason: 'blackout',

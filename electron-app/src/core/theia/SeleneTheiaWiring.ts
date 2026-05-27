@@ -90,10 +90,10 @@ export interface AttachOptions {
   /** Cerebro de Selene (emite outputs cognitivos). */
   selene: SeleneEmitterLike
   /**
-   * Resolver `clipId → URL`. Por defecto consulta `TheiaRegistry.getAsset(id).filePath`.
+   * Resolver `atomId → URL`. Por defecto consulta `TheiaRegistry.getAtom(id).filePath`.
    * Permite override para tests o pipelines de assets remotos.
    */
-  clipUrlResolver?: (clipId: string) => string | null
+  clipUrlResolver?: (atomId: string) => string | null
 }
 
 /**
@@ -107,10 +107,10 @@ export function attachSeleneTheia(opts: AttachOptions): () => void {
   const orchestrator = getThetaOrchestrator()
   const bus = getTheiaCueJumpBus()
 
-  // 1) Resolver clipId → URL.
-  const defaultResolver = (clipId: string): string | null => {
-    const asset = getTheiaRegistry().getAsset(clipId)
-    return asset?.filePath ?? null
+  // 1) Resolver atomId → URL.
+  const defaultResolver = (atomId: string): string | null => {
+    const atom = getTheiaRegistry().getAtom(atomId)
+    return atom?.filePath ?? null
   }
   orchestrator.setClipUrlResolver(opts.clipUrlResolver ?? defaultResolver)
 
@@ -132,8 +132,7 @@ export function attachSeleneTheia(opts: AttachOptions): () => void {
   // 3) Listener: bus → orchestrator.handleCueJump.
   const unsubscribeBus = bus.on((payload) => {
     void orchestrator.handleCueJump({
-      clipId: payload.clipId,
-      cuepointId: payload.cuepointId,
+      atomId: payload.atomId,
       startMs: payload.startMs,
       crossfadeMs: payload.crossfadeMs,
       reason: payload.reason,

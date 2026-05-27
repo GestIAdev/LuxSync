@@ -19,7 +19,7 @@ export type ThetaMessageType =
   | 'theia:unload-stream'
   // WAVE 4864 — Phase 4: Asset state machine (orchestrator → worker)
   | 'theia:force-state'
-  // 🎬 WAVE 4903 — Phase 7: cognitive seek (Selene → orchestrator → worker)
+  // 🎬 WAVE 4921 — Atomic cognitive seek (Selene → orchestrator → worker)
   | 'theia:seek'
   // Lifecycle (worker → orchestrator)
   | 'theia:ready'
@@ -142,8 +142,11 @@ export interface ThetaAssetStatePayload {
 
 /**
  * Mensaje IPC público (renderer-internal) emitido por el wiring de Selene
- * cuando `SeleneTheiaAdapter` produce un `CueJumpIntent`. Es consumido por
+ * cuando `SeleneTheiaAdapter` produce un `AtomPlayIntent`. Es consumido por
  * `ThetaOrchestrator.handleCueJump()`.
+ *
+ * WAVE 4921: el payload abandona `cuepointId` (el modelo cuepoint murió);
+ * ahora identifica únicamente al átomo destino vía `atomId`.
  *
  * Nota arquitectónica: en LuxSync, tanto Selene como Theta viven en el
  * proceso renderer. NO hay `mainWindow.webContents.send` real — el "IPC"
@@ -154,10 +157,8 @@ export interface ThetaAssetStatePayload {
 export interface TheiaCueJumpMessage {
   type: 'theia:cue-jump'
   payload: {
-    /** ID del asset (.theia) destino. Vacío = blackout. */
-    clipId: string
-    /** ID del cuepoint dentro del asset. */
-    cuepointId: string
+    /** ID del átomo (.theia) destino. Vacío = blackout. */
+    atomId: string
     /** Offset temporal donde el videoElement debe saltar (ms). */
     startMs: number
     /** Duración del crossfade visual (ms). */
@@ -173,13 +174,13 @@ export interface TheiaCueJumpMessage {
  * Payload `orchestrator → worker`. El orchestrator ya hizo el `videoElement.currentTime`
  * y la lazy-load del .mp4 si era necesario; el worker solo necesita preparar
  * el crossfade visual (snapshot del frame previo + arranque de la curva).
+ *
+ * WAVE 4921: `atomId` reemplaza al legacy `clipId + cuepointId`.
  */
 export interface ThetaSeekPayload {
-  /** ID del asset destino (informativo para logs). */
-  clipId: string
-  /** ID del cuepoint destino (informativo). */
-  cuepointId: string
-  /** Posición destino dentro del asset (ms). Solo informativo — el seek real
+  /** ID del átomo destino (informativo para logs). Vacío = blackout. */
+  atomId: string
+  /** Posición destino dentro del átomo (ms). Solo informativo — el seek real
    *  ya lo aplicó el orchestrator sobre el videoElement. */
   startMs: number
   /** Duración del crossfade visual en ms. Se traduce a ticks (~22ms cada uno). */
@@ -192,8 +193,7 @@ export interface ThetaSeekPayload {
 
 /** Ack del worker tras procesar `theia:seek`. */
 export interface ThetaSeekAckPayload {
-  clipId: string
-  cuepointId: string
+  atomId: string
   /** Latencia medida emit→worker (ms). */
   latencyMs: number
   /** Snapshot capturado correctamente. False si el canvas estaba vacío. */

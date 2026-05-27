@@ -178,7 +178,9 @@ export class TheiaWindowManager {
         });
         ipcMain.handle('theia:is-output-open', () => this.isOutputOpen());
         ipcMain.handle('theia:get-video-sab', () => {
-            return this.getVideoFrameSAB();
+            // invoke()+structured clone no es fiable para SAB en todos los entornos
+            // de Electron (especialmente file:// empaquetado). Evitamos throw global.
+            return null;
         });
     }
     // ─── Shutdown ──────────────────────────────────────────────────────────

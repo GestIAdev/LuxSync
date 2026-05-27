@@ -32,10 +32,12 @@ import './TheiaEngineView.css'
 import { getThetaOrchestrator, getSeleneTheiaBridge } from '../../../theia'
 import { useControlStore } from '../../../stores/controlStore'
 import { useTheiaEditorStore } from '../../../stores/useTheiaEditorStore'
+import { useTheiaPackStore } from '../../../stores/useTheiaPackStore'
 import { useAuthoringShortcuts } from '../../../hooks/useAuthoringShortcuts'
 import TheiaDNALab from '../../theia/TheiaDNALab'
 import TheiaTrimmer from '../../theia/TheiaTrimmer'
-import { FolderIcon } from '../../icons/LuxIcons'
+import WorkshopDeck from '../../theia/WorkshopDeck'
+import LiveDeck from '../../theia/LiveDeck'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -324,38 +326,39 @@ const TheiaEngineView: React.FC = () => {
       return
     }
 
-    // WAVE 4921: el modelo cuepoint murió. El picker sólo carga el primer
-    // .mp4 como draft atómico activo. La gestión multi-átomo se delegará
-    // al verdadero Pack Manager en una fase posterior.
+    // ── WAVE 4922 — ingest via Pack Store ────────────────────────────────
+    // El store agrupa por carpeta contenedora (webkitRelativePath) o crea
+    // un Pack autogenerado si vienen sueltos. Cada archivo se materializa
+    // como `RawClip` queued visible en el WorkshopDeck.
+    const { ingestFiles, updateRawClip } = useTheiaPackStore.getState()
+    const { clips } = ingestFiles(files)
+    if (clips.length === 0) return
+
+    // ── Cargar el primer clip en el orchestrator ─────────────────────────
     const theta = getThetaOrchestrator()
     const { editorMode: mode } = useTheiaEditorStore.getState()
-
-    const primary = files[0]
-    const primaryPath = (primary as { path?: string }).path ?? primary.name
-    const primaryUrl = URL.createObjectURL(primary)
+    const primary = clips[0]
 
     try {
       await theta.start()
-      await theta.loadVideo(primaryUrl)
+      await theta.loadVideo(primary.url)
       // WAVE 4910.14 M2: NO autoplay — el operador controla la reproducción (Space).
 
       const vidDuration = theta.getVideoElement()?.duration ?? 0
       const durMs = Number.isFinite(vidDuration) && vidDuration > 0
         ? Math.round(vidDuration * 1000)
         : 0
+      if (durMs > 0) updateRawClip(primary.id, { durationMs: durMs })
 
       if (mode === 'workshop') {
-        useTheiaEditorStore.getState().newDraftFromPath(primaryPath, durMs)
+        useTheiaEditorStore.getState().newDraftFromPath(primary.filePath, durMs)
+        updateRawClip(primary.id, { state: 'editing' })
       }
 
-      if (files.length > 1) {
-        console.warn(
-          `[Theia UI] Multi-file ingest no soportado en WAVE 4921 — ` +
-          `sólo se cargó '${primary.name}'. Pendiente: Pack Manager.`,
-        )
-      }
-
-      console.log('[Theia UI] ✅ File picker ingestion complete:', primary.name)
+      console.log(
+        `[Theia UI] ✅ Ingested ${clips.length} clip(s) into pack ` +
+        `'${primary.packId}' (primary: ${primary.name})`
+      )
     } catch (err) {
       console.error('[Theia UI] loadVideo() failed:', err)
     }
@@ -513,14 +516,10 @@ const TheiaEngineView: React.FC = () => {
           />
 
           {editorMode === 'live' ? (
-            <AssetDeck
-              clips={clips}
-              onSelectClip={handleSelectClip}
-              sectionConfidence={sectionConfidence}
-            />
+            <LiveDeck />
           ) : (
             <>
-              <AuthorAssetDeck />
+              <WorkshopDeck />
               <TheiaTrimmer />
             </>
           )}
@@ -811,139 +810,9 @@ const Totem: React.FC<{ index: number; palette: [string, string, string] }> = ({
   )
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// SUB-COMPONENT: AuthorAssetDeck — WAVE 4921 placeholder
-// El deck multi-asset / multi-cuepoint de WAVE 4910.13 quedó retirado con el
-// pivote al paradigma atómico. Esta versión es un placeholder mínimo que
-// muestra el átomo en edición y prepara el espacio para el futuro Pack
-// Manager (próxima fase del WAVE 4920).
-// ═══════════════════════════════════════════════════════════════════════════
-
-const AuthorAssetDeck: React.FC = () => {
-  const draftAtom = useTheiaEditorStore((s) => s.draftAtom)
-
-  return (
-    <section className="theia-author-deck">
-      <div className="theia-author-deck__header">
-        <span className="theia-author-deck__title">ATOM DECK</span>
-        <span className="theia-author-deck__count">
-          {draftAtom ? '1 DRAFT' : '0 ATOMS'}
-        </span>
-        <span className="theia-author-deck__hint">
-          PACK MANAGER pendiente — usa LOAD ASSETS
-        </span>
-      </div>
-      <div className="theia-author-deck__rail">
-        {draftAtom ? (
-          <div
-            className="theia-asset-card is-active is-draft"
-            title={`DRAFT EN EDICIÓN\n${draftAtom.filePath}`}
-          >
-            <span className="theia-asset-card__id">{draftAtom.id}</span>
-            <span className="theia-asset-card__cues">
-              {Math.round((draftAtom.trim.endMs - draftAtom.trim.startMs) / 1000)}s · DRAFT
-            </span>
-          </div>
-        ) : (
-          <div className="theia-asset-card theia-asset-card--empty">
-            <FolderIcon size={18} />
-            <span className="theia-asset-card__label">LOAD ASSETS</span>
-          </div>
-        )}
-      </div>
-    </section>
-  )
-}
-
-
-// ═══════════════════════════════════════════════════════════════════════════
-// SUB-COMPONENT: AssetDeck — horizontal clip timeline
-// ═══════════════════════════════════════════════════════════════════════════
-
-interface AssetDeckProps {
-  clips: ClipManifest[]
-  onSelectClip: (id: string) => void
-  sectionConfidence: number
-}
-
-const AssetDeck: React.FC<AssetDeckProps> = ({ clips, onSelectClip }) => {
-  return (
-    <section className="theia-deck">
-      <div className="theia-deck__header">
-        <span className="theia-deck__title">ASSET DECK</span>
-        <span className="theia-deck__count">{clips.length} CLIPS</span>
-        <div className="theia-deck__nav">
-          <button data-midi-bind="theia.prev-clip" title="Previous Clip">◀</button>
-          <button data-midi-bind="theia.next-clip" title="Next Clip">▶</button>
-        </div>
-      </div>
-
-      <div className="theia-deck__rail">
-        {clips.map((clip) => (
-          <ClipCard
-            key={clip.id}
-            clip={clip}
-            onClick={() => onSelectClip(clip.id)}
-          />
-        ))}
-        <div className="theia-deck__add">
-          <span>+</span>
-          <span className="theia-deck__add-label">ADD CLIP</span>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-// ─── Clip Card with Asset DNA timeline ──────────────────────────────────
-const ClipCard: React.FC<{
-  clip: ClipManifest
-  onClick: () => void
-}> = ({ clip, onClick }) => {
-  return (
-    <button
-      className={`theia-clip ${clip.active ? 'is-active' : ''} theia-clip--${clip.state}`}
-      onClick={onClick}
-    >
-      {/* Palette stripe */}
-      <div className="theia-clip__palette">
-        {clip.palette.map((c, i) => (
-          <span key={i} style={{ background: c }} />
-        ))}
-      </div>
-
-      {/* Body */}
-      <div className="theia-clip__body">
-        <div className="theia-clip__name">{clip.name}</div>
-        <div className="theia-clip__meta">
-          <span className="theia-clip__duration">{fmtDuration(clip.durationMs)}</span>
-          <span className={`theia-clip__state theia-clip__state--${clip.state}`}>
-            {clip.state.toUpperCase()}
-          </span>
-        </div>
-
-        {/* Asset DNA: zones of interest */}
-        <div className="theia-clip__dna">
-          <span className="theia-clip__dna-track" />
-          {clip.zones.map((z, i) => (
-            <span
-              key={i}
-              className="theia-clip__dna-marker"
-              style={{
-                left: `${z.t * 100}%`,
-                ['--energy' as string]: z.energy,
-              }}
-              title={z.label ?? `t=${(z.t * 100).toFixed(0)}% · e=${(z.energy * 100).toFixed(0)}%`}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Active indicator */}
-      {clip.active && <span className="theia-clip__live-bar" />}
-    </button>
-  )
-}
+// WAVE 4922 — `AuthorAssetDeck`, `AssetDeck` y `ClipCard` retirados.
+// El LIVE deck ahora vive en `components/theia/LiveDeck.tsx` (Pack Slots +
+// Atom Tiles) y el WORKSHOP deck en `components/theia/WorkshopDeck.tsx`.
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SUB-COMPONENT: Inspector (right rail, retractable)

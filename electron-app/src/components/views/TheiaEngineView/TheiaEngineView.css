@@ -1611,3 +1611,331 @@
   border-radius: 2px;
   font-size: 9px;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 🎛️ LIVE DECK + PACK SLOTS + ATOM TILES — WAVE 4922
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.theia-live-deck {
+  display: flex;
+  flex-direction: column;
+  min-height: 132px;
+  background:
+    linear-gradient(180deg, rgba(6, 182, 212, 0.08) 0%, rgba(11, 18, 32, 0.92) 60%),
+    rgba(8, 11, 20, 0.94);
+  border: 1px solid rgba(6, 182, 212, 0.2);
+  border-radius: 8px;
+  backdrop-filter: blur(10px) saturate(1.05);
+  overflow: hidden;
+}
+
+.theia-live-deck__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.22);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.theia-live-deck__title {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  color: var(--theia-cyan-bright);
+  text-shadow: 0 0 10px rgba(6, 182, 212, 0.45);
+}
+
+.theia-live-deck__count {
+  font-size: 9px;
+  letter-spacing: 1.6px;
+  color: var(--theia-text-muted);
+}
+
+/* ── Fila de slots ── */
+.theia-live-deck__slots {
+  display: flex;
+  gap: 10px;
+  padding: 12px 16px;
+  overflow-x: auto;
+  flex: 0 0 auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(6, 182, 212, 0.35) rgba(0, 0, 0, 0.24);
+}
+
+.theia-live-deck__slots::-webkit-scrollbar { height: 6px; }
+.theia-live-deck__slots::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.24); }
+.theia-live-deck__slots::-webkit-scrollbar-thumb {
+  background: rgba(6, 182, 212, 0.35);
+  border-radius: 4px;
+}
+
+.theia-pack-slot {
+  --pack-accent: rgba(6, 182, 212, 0.85);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 10px 14px;
+  min-width: 130px;
+  height: 78px;
+  background:
+    linear-gradient(180deg, rgba(15, 22, 38, 0.78) 0%, rgba(8, 11, 20, 0.92) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  color: var(--theia-text);
+  cursor: pointer;
+  user-select: none;
+  text-align: left;
+  transition: border-color 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+
+.theia-pack-slot:hover {
+  border-color: var(--pack-accent);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.46), 0 0 14px var(--pack-accent);
+}
+
+.theia-pack-slot.is-expanded {
+  border-color: var(--pack-accent);
+  background:
+    linear-gradient(180deg, rgba(6, 182, 212, 0.18) 0%, rgba(6, 182, 212, 0.05) 100%),
+    rgba(8, 11, 20, 0.92);
+}
+
+.theia-pack-slot.is-live {
+  border-color: var(--pack-accent);
+  box-shadow:
+    0 0 0 1px var(--pack-accent),
+    0 10px 28px rgba(0, 0, 0, 0.48),
+    0 0 22px var(--pack-accent);
+}
+
+.theia-pack-slot.is-pending {
+  border-style: dashed;
+  opacity: 0.78;
+}
+
+.theia-pack-slot.is-empty {
+  cursor: default;
+  align-items: center;
+  justify-content: center;
+  min-width: 200px;
+  border-style: dashed;
+  color: var(--theia-text-muted);
+  text-align: center;
+}
+
+.theia-pack-slot__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.theia-pack-slot__indicator {
+  font-size: 12px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.theia-pack-slot__indicator.is-live {
+  color: var(--pack-accent);
+  text-shadow: 0 0 8px var(--pack-accent);
+  animation: theia-pulse-live 2s ease-in-out infinite;
+}
+
+@keyframes theia-pulse-live {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+
+.theia-pack-slot__name {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: var(--theia-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 auto;
+}
+
+.theia-pack-slot__count {
+  font-size: 9px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--theia-text-muted);
+}
+
+.theia-pack-slot__pending {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: rgba(251, 191, 36, 0.85);
+}
+
+/* ── Expansión: grilla de Atom Tiles ── */
+.theia-live-deck__expansion {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid rgba(6, 182, 212, 0.18);
+  background: rgba(0, 0, 0, 0.32);
+  padding: 10px 16px 14px;
+}
+
+.theia-live-deck__expansion-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.theia-live-deck__expansion-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: var(--theia-cyan-bright);
+}
+
+.theia-live-deck__expansion-count {
+  font-size: 9px;
+  letter-spacing: 1.4px;
+  color: var(--theia-text-muted);
+}
+
+.theia-live-deck__expansion-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 4px;
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  color: var(--theia-text-muted);
+}
+
+.theia-live-deck__tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  max-height: 220px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(6, 182, 212, 0.35) rgba(0, 0, 0, 0.24);
+}
+
+.theia-live-deck__tile-grid::-webkit-scrollbar { width: 6px; }
+.theia-live-deck__tile-grid::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.24); }
+.theia-live-deck__tile-grid::-webkit-scrollbar-thumb {
+  background: rgba(6, 182, 212, 0.35);
+  border-radius: 4px;
+}
+
+.theia-atom-tile {
+  --atom-accent: rgba(6, 182, 212, 0.85);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background:
+    linear-gradient(180deg, rgba(15, 22, 38, 0.78) 0%, rgba(8, 11, 20, 0.92) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+  text-align: left;
+  color: var(--theia-text);
+  transition: border-color 0.14s ease, transform 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
+}
+
+.theia-atom-tile:hover {
+  border-color: var(--atom-accent);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.5), 0 0 14px var(--atom-accent);
+  background:
+    linear-gradient(180deg, rgba(6, 182, 212, 0.18) 0%, rgba(6, 182, 212, 0.05) 100%),
+    rgba(8, 11, 20, 0.92);
+}
+
+.theia-atom-tile:active {
+  transform: translateY(0);
+}
+
+.theia-atom-tile__thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 56px;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 4px;
+  color: var(--atom-accent);
+}
+
+.theia-atom-tile__name {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  color: var(--theia-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theia-atom-tile__meta {
+  font-size: 8.5px;
+  letter-spacing: 1px;
+  color: var(--theia-text-muted);
+  text-transform: uppercase;
+}
+
+.theia-atom-tile__badges {
+  display: flex;
+  gap: 5px;
+}
+
+.theia-atom-tile__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--atom-accent);
+  border: 1px solid var(--atom-accent);
+}
+
+.theia-atom-tile__badge.is-divine {
+  color: rgba(34, 197, 94, 0.95);
+  border-color: rgba(34, 197, 94, 0.7);
+}
+
+.theia-atom-tile__badge.is-heavy {
+  color: rgba(244, 114, 182, 0.95);
+  border-color: rgba(244, 114, 182, 0.7);
+}
+
+/* ── Workshop deck — refinamiento de la card con state badge ── */
+.theia-asset-card__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.theia-asset-card__state {
+  font-size: 8px;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--theia-text-muted);
+}
+
+.theia-asset-card.is-exported {
+  border-color: rgba(34, 197, 94, 0.55);
+}
+
+.theia-asset-card.is-exported .theia-asset-card__state {
+  color: rgba(34, 197, 94, 0.9);
+}

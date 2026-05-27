@@ -142,11 +142,11 @@ export class ThetaOrchestrator {
   private lastVideoStatus: ThetaVideoStatusPayload | null = null
   private hasLoggedFirstFrame = false
 
-  // 🎬 WAVE 4903 — Phase 7: cognitive cue-jump tracking
-  /** ID del asset (.theia) actualmente cargado en el videoElement. */
-  private currentClipId: string | null = null
+  // 🎬 WAVE 4922 — cognitive play-atom tracking
+  /** ID del átomo (.theia) actualmente cargado en el videoElement. */
+  private currentAtomId: string | null = null
   /** Última URL pasada a loadVideo() — usada para evitar re-loads idempotentes. */
-  private currentClipUrl: string | null = null
+  private currentAtomUrl: string | null = null
   /** Último ack de seek recibido del worker (telemetría). */
   private lastSeekAck: ThetaSeekAckPayload | null = null
 
@@ -311,25 +311,25 @@ export class ThetaOrchestrator {
   }
 
   // ──────────────────────────────────────────────────────────────────
-  // 🎬 WAVE 4903 — Phase 7: Cognitive Cue-Jump (Selene → Theta)
+  // 🎬 WAVE 4922 — Cognitive Play-Atom (Selene → Theta)
   // ──────────────────────────────────────────────────────────────────
 
   /**
-   * Procesa un `CueJumpIntent` emitido por `SeleneTheiaAdapter`.
+   * Procesa un `AtomPlayIntent` emitido por `SeleneTheiaAdapter`.
    *
    * Pipeline:
    *   1. Si `atomId === ''` → blackout: detiene reproducción y limpia worker.
-   *   2. Si `atomId !== currentClipId` → resuelve filePath via `TheiaRegistry`
+   *   2. Si `atomId !== currentAtomId` → resuelve filePath via `TheiaRegistry`
    *      y llama a `loadVideo()` (lazy load del átomo binario).
    *   3. Aplica `videoElement.currentTime = startMs / 1000`.
-   *   4. Asegura `play()` (Selene asume reproducción activa post-cue).
+   *   4. Asegura `play()` (Selene asume reproducción activa post-trigger).
    *   5. PostMessage al worker con `theia:seek` para que prepare el crossfade
    *      visual (snapshot + curva de mezcla).
    *
    * Es idempotente y resiliente: si el worker no está listo, log + return.
    * No lanza excepciones.
    */
-  async handleCueJump(intent: {
+  async playAtom(intent: {
     atomId: string
     startMs: number
     crossfadeMs: number
@@ -341,7 +341,7 @@ export class ThetaOrchestrator {
   }): Promise<void> {
     if (!this.isRunning || !this.worker) {
       // eslint-disable-next-line no-console
-      console.warn('[THETA 🎬] handleCueJump called before start — ignored')
+      console.warn('[THETA 🎬] playAtom called before start — ignored')
       return
     }
 
@@ -360,21 +360,21 @@ export class ThetaOrchestrator {
     }
 
     // ── Caso 2: cambio de asset → lazy load ──────────────────────────────
-    if (intent.atomId !== this.currentClipId) {
+    if (intent.atomId !== this.currentAtomId) {
       const resolver = intent.urlResolver ?? this._clipUrlResolver
       const url = resolver ? resolver(intent.atomId) : null
       if (!url) {
         // eslint-disable-next-line no-console
-        console.warn(`[THETA 🎬] cue-jump '${intent.atomId}' — no URL resolver`)
+        console.warn(`[THETA 🎬] play-atom '${intent.atomId}' — no URL resolver`)
         return
       }
       try {
         await this.loadVideo(url)
-        this.currentClipId = intent.atomId
-        this.currentClipUrl = url
+        this.currentAtomId = intent.atomId
+        this.currentAtomUrl = url
       } catch (err) {
         // eslint-disable-next-line no-console
-        console.error(`[THETA 🎬] cue-jump load failed for '${intent.atomId}':`, err)
+        console.error(`[THETA 🎬] play-atom load failed for '${intent.atomId}':`, err)
         return
       }
     }
@@ -407,7 +407,7 @@ export class ThetaOrchestrator {
   }
 
   /**
-   * Registra un resolver `atomId → URL` para que `handleCueJump` pueda
+   * Registra un resolver `atomId → URL` para que `playAtom` pueda
    * cargar lazily los `.mp4` declarados por los manifests `.theia`.
    *
    * Típicamente la wiring de Selene hace:
@@ -432,9 +432,27 @@ export class ThetaOrchestrator {
     return this.videoElement
   }
 
-  /** ID del asset actualmente cargado, o null. */
+  /** ID del átomo actualmente cargado, o null. */
+  getCurrentAtomId(): string | null {
+    return this.currentAtomId
+  }
+
+  /** @deprecated WAVE 4922 — alias histórico de `getCurrentAtomId`. */
   getCurrentClipId(): string | null {
-    return this.currentClipId
+    return this.currentAtomId
+  }
+
+  /**
+   * @deprecated WAVE 4922 — alias histórico de `playAtom`.
+   */
+  handleCueJump(intent: {
+    atomId: string
+    startMs: number
+    crossfadeMs: number
+    reason: string
+    urlResolver?: (atomId: string) => string | null
+  }): Promise<void> {
+    return this.playAtom(intent)
   }
 
   // ── private helper ──
@@ -617,9 +635,9 @@ export class ThetaOrchestrator {
   }
 
   private teardownVideo(): void {
-    // 🎬 WAVE 4903 — clear cue-jump tracking when the underlying asset goes away.
-    this.currentClipId = null
-    this.currentClipUrl = null
+    // 🎬 WAVE 4922 — clear play-atom tracking when the underlying átomo goes away.
+    this.currentAtomId = null
+    this.currentAtomUrl = null
     if (this.trackProcessor) {
       // Stop the track processor (closes the readable stream)
       try {

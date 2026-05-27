@@ -135,6 +135,49 @@ export interface ITheiaAtom {
   readonly isHeavyCandidate?: boolean
 }
 
+// ─── PACK (carpeta-contenedor del filesystem) ───────────────────────────────
+
+/**
+ * Manifiesto opcional `pack.theiapack.json` a la raíz de la carpeta del Pack.
+ * Si está ausente, el Pack se reconstruye dinámicamente desde los `.theia`
+ * encontrados en su directorio (modo zero-conf).
+ */
+export interface ITheiaPackManifest {
+  readonly schemaVersion: 1
+  readonly displayName: string
+  readonly description?: string
+  /** Color de acento (HEX) que tinta el slot en el LiveDeck. */
+  readonly accentColor?: string
+  /** Orden explícito de átomos (slugs). Los no listados quedan al final. */
+  readonly atomOrder?: readonly string[]
+}
+
+/**
+ * Agrupación lógica de átomos. Equivale a una *carpeta* del filesystem.
+ *
+ *   `<packs-root>/<packId>/<atomId>.theia + .mp4`
+ *
+ * En la sesión actual el Pack puede estar en memoria sin haberse exportado
+ * todavía (sus átomos vienen del WORKSHOP); el flag `pending` lo marca.
+ */
+export interface ITheiaPack {
+  /** Slug del Pack — coincide con el nombre del directorio. */
+  readonly id: string
+  /** Ruta absoluta al directorio raíz del Pack en disco. Vacío si pending. */
+  readonly rootPath: string
+  /** Átomos contenidos (orden visible). */
+  readonly atoms: readonly ITheiaAtom[]
+  /** Manifiesto opcional. */
+  readonly manifest: ITheiaPackManifest | null
+  /** Timestamp (ms) de la última ingestión / refresh. */
+  readonly scannedAt: number
+  /**
+   * True si el Pack vive sólo en memoria (todavía sin export-to-disk).
+   * Útil para que la UI distinga "sesión actual" vs "Pack del filesystem".
+   */
+  readonly pending?: boolean
+}
+
 // ─── RESULTADO DEL MATCHING ───────────────────────────────────────────────────
 
 /**

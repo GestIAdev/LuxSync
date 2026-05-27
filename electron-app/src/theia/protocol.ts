@@ -154,8 +154,8 @@ export interface ThetaAssetStatePayload {
  * la nomenclatura IPC para compatibilidad si en el futuro se separan los
  * procesos.
  */
-export interface TheiaCueJumpMessage {
-  type: 'theia:cue-jump'
+export interface TheiaPlayAtomMessage {
+  type: 'theia:play-atom'
   payload: {
     /** ID del átomo (.theia) destino. Vacío = blackout. */
     atomId: string
@@ -169,6 +169,9 @@ export interface TheiaCueJumpMessage {
     emittedAt: number
   }
 }
+
+/** @deprecated WAVE 4922 — alias histórico de `TheiaPlayAtomMessage`. */
+export type TheiaCueJumpMessage = TheiaPlayAtomMessage
 
 /**
  * Payload `orchestrator → worker`. El orchestrator ya hizo el `videoElement.currentTime`

@@ -30,7 +30,7 @@
  * ════════════════════════════════════════════════════════════════════════════
  */
 
-import type { TheiaCueJumpMessage } from '../../theia/protocol'
+import type { TheiaPlayAtomMessage } from '../../theia/protocol'
 import { getThetaOrchestrator } from '../../theia/ThetaOrchestrator'
 import {
   getSeleneTheiaAdapter,
@@ -42,34 +42,37 @@ import { getTheiaRegistry } from './TheiaRegistry'
 // ─── BUS INTERNO (renderer-only) ──────────────────────────────────────────────
 
 /**
- * Bus del cue-jump. Conserva semántica "IPC" para que un futuro refactor
+ * Bus del play-atom. Conserva semántica "IPC" para que un futuro refactor
  * que separe Selene y Theta en procesos distintos pueda reemplazar la
  * implementación sin cambiar consumidores.
  *
- * Eventos: `'theia:cue-jump'` con `event.detail = TheiaCueJumpMessage['payload']`.
+ * Eventos: `'theia:play-atom'` con `event.detail = TheiaPlayAtomMessage['payload']`.
  */
-class TheiaCueJumpBus {
+class TheiaPlayAtomBus {
   private readonly _target: EventTarget = new EventTarget()
 
-  emit(payload: TheiaCueJumpMessage['payload']): void {
-    this._target.dispatchEvent(new CustomEvent('theia:cue-jump', { detail: payload }))
+  emit(payload: TheiaPlayAtomMessage['payload']): void {
+    this._target.dispatchEvent(new CustomEvent('theia:play-atom', { detail: payload }))
   }
 
-  on(handler: (payload: TheiaCueJumpMessage['payload']) => void): () => void {
+  on(handler: (payload: TheiaPlayAtomMessage['payload']) => void): () => void {
     const listener = (ev: Event): void => {
-      const detail = (ev as CustomEvent).detail as TheiaCueJumpMessage['payload']
+      const detail = (ev as CustomEvent).detail as TheiaPlayAtomMessage['payload']
       handler(detail)
     }
-    this._target.addEventListener('theia:cue-jump', listener)
-    return () => this._target.removeEventListener('theia:cue-jump', listener)
+    this._target.addEventListener('theia:play-atom', listener)
+    return () => this._target.removeEventListener('theia:play-atom', listener)
   }
 }
 
-let _bus: TheiaCueJumpBus | null = null
-export function getTheiaCueJumpBus(): TheiaCueJumpBus {
-  if (!_bus) _bus = new TheiaCueJumpBus()
+let _bus: TheiaPlayAtomBus | null = null
+export function getTheiaPlayAtomBus(): TheiaPlayAtomBus {
+  if (!_bus) _bus = new TheiaPlayAtomBus()
   return _bus
 }
+
+/** @deprecated WAVE 4922 — alias histórico de `getTheiaPlayAtomBus`. */
+export const getTheiaCueJumpBus = getTheiaPlayAtomBus
 
 // ─── WIRING API ──────────────────────────────────────────────────────────────
 
@@ -105,7 +108,7 @@ export interface AttachOptions {
 export function attachSeleneTheia(opts: AttachOptions): () => void {
   const adapter = getSeleneTheiaAdapter()
   const orchestrator = getThetaOrchestrator()
-  const bus = getTheiaCueJumpBus()
+  const bus = getTheiaPlayAtomBus()
 
   // 1) Resolver atomId → URL.
   const defaultResolver = (atomId: string): string | null => {
@@ -129,9 +132,9 @@ export function attachSeleneTheia(opts: AttachOptions): () => void {
   }
   opts.selene.on('cognitiveOutput', onCognitive)
 
-  // 3) Listener: bus → orchestrator.handleCueJump.
+  // 3) Listener: bus → orchestrator.playAtom.
   const unsubscribeBus = bus.on((payload) => {
-    void orchestrator.handleCueJump({
+    void orchestrator.playAtom({
       atomId: payload.atomId,
       startMs: payload.startMs,
       crossfadeMs: payload.crossfadeMs,
@@ -164,5 +167,5 @@ export function pushCognitiveInput(input: ISeleneTheiaInput): void {
   const adapter = getSeleneTheiaAdapter()
   const intent = adapter.process(input)
   if (!intent) return
-  getTheiaCueJumpBus().emit({ ...intent, emittedAt: Date.now() })
+  getTheiaPlayAtomBus().emit({ ...intent, emittedAt: Date.now() })
 }

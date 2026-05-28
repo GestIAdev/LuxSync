@@ -75,7 +75,8 @@ import type {
   FixtureType,
 } from '../../../types/FixtureDefinition'
 import type { IForgeNodeGraph, IForgeNode, IOutputDmxConfig } from '../../forge/types'
-import type { FixtureV2 } from '../../stage/ShowFileV2'
+import type { FixtureV2, InstallationOrientation } from '../../stage/ShowFileV2'
+import type { FixtureOrientation as IKOrientation } from '../../../engine/movement/InverseKinematicsEngine'
 import { normalizeZoneId } from '../adapters/zoneUtils'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -402,6 +403,7 @@ export class NodeExtractionPipeline {
             fixtureDef,
             topology,
             resolvedPosition,
+            resolvedOrientation,
           ),
         )
     const calibration = this._buildCalibration(fixtureDef, v2CalibOverride)
@@ -809,11 +811,12 @@ export class NodeExtractionPipeline {
   }
 
   private _buildAllNodes(
-    deviceId:   DeviceId,
-    zoneId:     ZoneId,
-    fixtureDef: Readonly<FixtureDefinition>,
-    topology:   TopologyAnalysis,
-    position?:  Position3D,
+    deviceId:     DeviceId,
+    zoneId:       ZoneId,
+    fixtureDef:   Readonly<FixtureDefinition>,
+    topology:     TopologyAnalysis,
+    position?:    Position3D,
+    orientation?: string,
   ): ICapabilityNode[] {
     const nodes: ICapabilityNode[] = []
 
@@ -824,7 +827,7 @@ export class NodeExtractionPipeline {
       nodes.push(this._buildImpactNode(deviceId, zoneId, topology.impactChannels, position))
     }
     if (topology.kineticChannels.length > 0) {
-      nodes.push(this._buildKineticNode(deviceId, zoneId, fixtureDef, topology.kineticChannels, position))
+      nodes.push(this._buildKineticNode(deviceId, zoneId, fixtureDef, topology.kineticChannels, position, orientation))
     }
     if (topology.beamChannels.length > 0) {
       nodes.push(this._buildBeamNode(deviceId, zoneId, topology.beamChannels, position))
@@ -975,11 +978,12 @@ export class NodeExtractionPipeline {
   // ── KINETIC NODE ──────────────────────────────────────────────────────────
 
   private _buildKineticNode(
-    deviceId:   DeviceId,
-    zoneId:     ZoneId,
-    fixtureDef: Readonly<FixtureDefinition>,
-    kineticChs: readonly FixtureChannel[],
-    position?:  Position3D,
+    deviceId:     DeviceId,
+    zoneId:       ZoneId,
+    fixtureDef:   Readonly<FixtureDefinition>,
+    kineticChs:   readonly FixtureChannel[],
+    position?:    Position3D,
+    orientation?: string,
   ): IKineticNodeData {
     const nodeId: NodeId = `${deviceId}:kinetic`
 
@@ -1018,6 +1022,12 @@ export class NodeExtractionPipeline {
       stereoTotal:       1,
       state:             new Float64Array(4),
       ...(position !== undefined && { position }),
+      ...(orientation !== undefined && {
+        ikOrientation: {
+          installation: orientation as InstallationOrientation,
+          rotation:     { pitch: 0, yaw: 0, roll: 0 },
+        } satisfies IKOrientation,
+      }),
     } satisfies IKineticNodeData
   }
 

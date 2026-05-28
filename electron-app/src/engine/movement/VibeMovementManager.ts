@@ -1073,14 +1073,27 @@ export class VibeMovementManager {
     // Aplicar amplitud (con phrase envelope de WAVE 2086.3)
     // WAVE 2224: DANCEFLOOR GRAVITY — techno-club apunta a la pista (adelante/abajo)
     // 🔧 WAVE 2233: -0.35 → -0.20. Con tiltScale 0.70, -0.20 points toward dancefloor.
-    const tiltOffset = mountOrientation === 'totem'
-      ? -0.45
-      : (TILT_OFFSET_BY_VIBE[vibeId] ?? 0)
+    // WAVE 4932: Para ceiling/truss, el NodeResolver invierte el eje tilt en DMX.
+    // El tiltOffset (diseñado para floor) actuaría al revés tras la inversión → se omite.
+    // El TILT_CEILING también se espeja: en vez de cap +0.15, se aplica floor -0.15
+    // (que tras la inversión del resolver = cap físico de techo).
+    const isCeilingMount = mountOrientation === 'ceiling'
+      || mountOrientation === 'truss-front'
+      || mountOrientation === 'truss-back'
+    const tiltOffset = isCeilingMount
+      ? 0
+      : mountOrientation === 'totem'
+        ? -0.45
+        : (TILT_OFFSET_BY_VIBE[vibeId] ?? 0)
     const position = {
       x: Math.max(-1, Math.min(1, rawPosition.x * finalPanAmplitude)),
       y: Math.max(-1, Math.min(1, (rawPosition.y * finalTiltAmplitude) + tiltOffset)),
     }
-    position.y = Math.min(position.y, TILT_CEILING)
+    if (isCeilingMount) {
+      position.y = Math.max(position.y, -TILT_CEILING)
+    } else {
+      position.y = Math.min(position.y, TILT_CEILING)
+    }
     
     // WAVE 4741 ASALTO 2: KINETIC CROSSFADE
     // Guard defensivo: si el fromPattern ya no existe en este vibe (edge case de cambio
@@ -1114,7 +1127,11 @@ export class VibeMovementManager {
           x: Math.max(-1, Math.min(1, fromRaw.x * finalPanAmplitude)),
           y: Math.max(-1, Math.min(1, (fromRaw.y * finalTiltAmplitude) + tiltOffset)),
         }
-        fromPosition.y = Math.min(fromPosition.y, TILT_CEILING)
+        if (isCeilingMount) {
+          fromPosition.y = Math.max(fromPosition.y, -TILT_CEILING)
+        } else {
+          fromPosition.y = Math.min(fromPosition.y, TILT_CEILING)
+        }
         // Smoothstep ease-in-out: t² × (3 − 2t)
         const t = Math.min(1.0, this.kineticTransition.progressBeats / this.kineticTransition.totalBeats)
         crossfadeSmoothT = t * t * (3 - 2 * t)
@@ -1122,7 +1139,9 @@ export class VibeMovementManager {
           x: fromPosition.x + (position.x - fromPosition.x) * crossfadeSmoothT,
           y: fromPosition.y + (position.y - fromPosition.y) * crossfadeSmoothT,
         }
-        finalPosition.y = Math.min(finalPosition.y, TILT_CEILING)
+        finalPosition.y = isCeilingMount
+          ? Math.max(finalPosition.y, -TILT_CEILING)
+          : Math.min(finalPosition.y, TILT_CEILING)
       }
     }
 

@@ -98,7 +98,7 @@ export interface AudioMetrics {
 /** HAL configuration */
 export interface HALConfig {
   driverType: DriverType
-  installationType: 'floor' | 'ceiling'
+  installationType: 'floor' | 'ceiling' | 'totem'
   debug: boolean
   /** 🎨 WAVE 686.10: Optional external driver (e.g., ArtNetDriverAdapter) */
   externalDriver?: IDMXDriver

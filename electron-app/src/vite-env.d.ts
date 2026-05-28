@@ -423,9 +423,9 @@ declare global {
     forceFixtureType: (dmxAddress: number, newType: string) => Promise<{ success: boolean; fixture?: PatchedFixture }>
     
     // 🎯 WAVE 12.5: Installation Type Selector (ceiling/floor)
-    setInstallationType: (type: 'ceiling' | 'floor') => Promise<{ 
+    setInstallationType: (type: 'ceiling' | 'floor' | 'totem') => Promise<{ 
       success: boolean
-      installationType?: 'ceiling' | 'floor'
+      installationType?: 'ceiling' | 'floor' | 'totem'
       appliedTo?: number
       description?: string 
     }>

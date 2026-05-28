@@ -48,6 +48,7 @@ const LiveDeck: React.FC = () => {
   const expandedPackId  = useTheiaPackStore((s) => s.expandedPackId)
   const setLivePack     = useTheiaPackStore((s) => s.setLivePack)
   const setExpandedPack = useTheiaPackStore((s) => s.setExpandedPack)
+  const removePack      = useTheiaPackStore((s) => s.removePack)
 
   const packs = useMemo(() => Array.from(packsMap.values()), [packsMap])
   const expandedPack = expandedPackId ? packsMap.get(expandedPackId) ?? null : null
@@ -62,6 +63,10 @@ const LiveDeck: React.FC = () => {
   const handleSlotDoubleClick = useCallback((packId: string) => {
     setLivePack(packId === livePackId ? null : packId)
   }, [livePackId, setLivePack])
+
+  const handleDeletePack = useCallback((packId: string) => {
+    removePack(packId)
+  }, [removePack])
 
   const handleAtomTrigger = useCallback(async (atom: ITheiaAtom) => {
     try {
@@ -100,6 +105,7 @@ const LiveDeck: React.FC = () => {
               isExpanded={pack.id === expandedPackId}
               onClick={handleSlotClick}
               onDoubleClick={handleSlotDoubleClick}
+              onDelete={handleDeletePack}
             />
           ))
         )}
@@ -152,9 +158,10 @@ interface PackSlotProps {
   isExpanded: boolean
   onClick: (packId: string) => void
   onDoubleClick: (packId: string) => void
+  onDelete: (packId: string) => void
 }
 
-const PackSlot: React.FC<PackSlotProps> = ({ pack, isLive, isExpanded, onClick, onDoubleClick }) => {
+const PackSlot: React.FC<PackSlotProps> = ({ pack, isLive, isExpanded, onClick, onDoubleClick, onDelete }) => {
   const className = [
     'theia-pack-slot',
     isLive ? 'is-live' : '',
@@ -165,19 +172,30 @@ const PackSlot: React.FC<PackSlotProps> = ({ pack, isLive, isExpanded, onClick, 
   const accent = pack.manifest?.accentColor
 
   return (
-    <button
-      type="button"
-      role="listitem"
+    <div
+      role="button"
+      tabIndex={0}
       className={className}
       style={accent ? { ['--pack-accent' as string]: accent } : undefined}
       onClick={() => onClick(pack.id)}
       onDoubleClick={() => onDoubleClick(pack.id)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick(pack.id) }}
       data-midi-bind={`theia.live.pack.${pack.id}`}
       title={pack.pending
         ? `${pack.id} (pending export)\nClick: expand · Double-click: set ●live`
         : `${pack.id}\n${pack.atoms.length} atoms\nClick: expand · Double-click: set ●live`
       }
     >
+      <button
+        type="button"
+        className="theia-pack-slot__delete"
+        title="Remove pack from memory"
+        onClick={(e) => { e.stopPropagation(); onDelete(pack.id) }}
+        onDoubleClick={(e) => e.stopPropagation()}
+        aria-label={`Remove pack ${pack.id}`}
+      >
+        <LuxIcon name="trash" size={11} />
+      </button>
       <header className="theia-pack-slot__head">
         <span className={`theia-pack-slot__indicator ${isLive ? 'is-live' : ''}`}>
           {isLive ? '●' : '○'}
@@ -190,7 +208,7 @@ const PackSlot: React.FC<PackSlotProps> = ({ pack, isLive, isExpanded, onClick, 
         {pack.atoms.length} {pack.atoms.length === 1 ? 'atom' : 'atoms'}
       </span>
       {pack.pending && <span className="theia-pack-slot__pending">PENDING</span>}
-    </button>
+    </div>
   )
 }
 

@@ -1015,7 +1015,7 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
     return { success: false, error: 'Fixture not found' }
   })
   
-  ipcMain.handle('lux:set-installation', (_event, type: 'ceiling' | 'floor') => {
+  ipcMain.handle('lux:set-installation', (_event, type: 'ceiling' | 'floor' | 'totem') => {
     configManager.updateConfig({ installation: type })
     console.log(`[IPC] Installation type set to: ${type}`)
     return { success: true }

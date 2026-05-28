@@ -276,6 +276,7 @@ export class KineticAdapter extends BaseSystem<IKineticNodeData> implements IAet
           node.stereoTotal,
           node.maxPanSpeed,
           phaseOffset,
+          node.ikOrientation?.installation,
         )
 
         // ── WAVE 4914 RELATIVE OFFSET ROUTING ────────────────────────────

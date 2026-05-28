@@ -91,11 +91,15 @@ interface TheiaPackActions {
    *   - Si `file.webkitRelativePath` viene definido (folder-pick),
    *     el primer segmento del path se usa como `packId`.
    *   - Si no, todos van al mismo Pack autogenerado `New_Pack_<n>`.
+   *
+   * WAVE 4924 — M2: Los archivos `.theia` se parsean como ITheiaAtom y se
+   * adjuntan directamente al Pack correspondiente. El pack pierde el flag
+   * `pending` en cuanto tiene ≥1 átomo real.
    */
-  ingestFiles(files: readonly File[]): {
+  ingestFiles(files: readonly File[]): Promise<{
     clips: readonly RawClip[]
     packId: string
-  }
+  }>
 }
 
 export type TheiaPackStore = TheiaPackState & TheiaPackActions
@@ -125,6 +129,25 @@ function _packIdFromPath(file: File): string | null {
 
 function _safeBasename(name: string): string {
   return name.replace(/\.[^.]+$/, '').replace(/[^\w\-]+/g, '_') || 'clip'
+}
+
+/**
+ * Validación mínima runtime de un objeto como ITheiaAtom.
+ * No carga el modelo completo — sólo comprueba campos críticos del paradigma atómico.
+ */
+function _isValidTheiaAtom(obj: unknown): boolean {
+  if (!obj || typeof obj !== 'object') return false
+  const a = obj as Record<string, unknown>
+  return (
+    typeof a.id === 'string' && a.id.length > 0 &&
+    typeof a.packId === 'string' &&
+    typeof a.filePath === 'string' &&
+    typeof a.aggression === 'number' &&
+    typeof a.chaos === 'number' &&
+    typeof a.organicity === 'number' &&
+    typeof a.energyZone === 'object' && a.energyZone !== null &&
+    typeof a.trim === 'object' && a.trim !== null
+  )
 }
 
 // ─── STORE ───────────────────────────────────────────────────────────────────
@@ -195,7 +218,7 @@ export const useTheiaPackStore = create<TheiaPackStore>((set, get) => ({
   },
 
   // ── Bulk ingestion ───────────────────────────────────────────────────────
-  ingestFiles(files) {
+  async ingestFiles(files) {
     if (files.length === 0) {
       return { clips: [], packId: '' }
     }
@@ -203,9 +226,12 @@ export const useTheiaPackStore = create<TheiaPackStore>((set, get) => ({
     const state = get()
     const ts = Date.now()
 
-    // STEP 1 — Determinar packId (carpeta) por archivo.
-    // Si NINGUNO trae webkitRelativePath, todos van a un mismo pack autogenerado.
-    const groupKeys: string[] = files.map((f) => _packIdFromPath(f) ?? '')
+    // Separar archivos de vídeo de archivos .theia
+    const videoFiles = files.filter((f) => !f.name.toLowerCase().endsWith('.theia'))
+    const theiaFiles = files.filter((f) => f.name.toLowerCase().endsWith('.theia'))
+
+    // STEP 1 — Determinar packId (carpeta) por archivo de vídeo.
+    const groupKeys: string[] = videoFiles.map((f) => _packIdFromPath(f) ?? '')
     const allEmpty = groupKeys.every((k) => k === '')
     const autoPackId = allEmpty ? _nextAutoPackId(state.packs) : ''
 
@@ -214,7 +240,7 @@ export const useTheiaPackStore = create<TheiaPackStore>((set, get) => ({
     const clips: RawClip[] = []
     const ensuredPacks = new Set<string>()
 
-    files.forEach((file, idx) => {
+    videoFiles.forEach((file, idx) => {
       const explicit = groupKeys[idx]
       const packId = explicit || autoPackId
       const base = _safeBasename(file.name)
@@ -250,6 +276,48 @@ export const useTheiaPackStore = create<TheiaPackStore>((set, get) => ({
         }
       }
     })
+
+    // STEP 3 — Parsear archivos .theia y adjuntar sus átomos al pack.
+    for (const file of theiaFiles) {
+      try {
+        const text = await file.text()
+        const parsed: unknown = JSON.parse(text)
+        if (!_isValidTheiaAtom(parsed)) {
+          console.warn(`[PackStore] ingestFiles: .theia inválido (schema), ignorado: ${file.name}`)
+          continue
+        }
+        const atom = parsed as ITheiaAtom
+
+        // packId: preferir el segmento de carpeta sobre el packId embebido en el .theia
+        const packId = _packIdFromPath(file) ?? atom.packId
+
+        if (!ensuredPacks.has(packId)) {
+          ensuredPacks.add(packId)
+          if (!nextPacks.has(packId)) {
+            nextPacks.set(packId, {
+              id: packId,
+              rootPath: '',
+              atoms: [],
+              manifest: null,
+              scannedAt: ts,
+              pending: false,
+            })
+          }
+        }
+
+        // Adjuntar átomo al pack (dedup por id).
+        const existingPack = nextPacks.get(packId)!
+        const dedupAtoms = existingPack.atoms.filter((a) => a.id !== atom.id)
+        nextPacks.set(packId, {
+          ...existingPack,
+          atoms: [...dedupAtoms, atom],
+          pending: false,
+          scannedAt: ts,
+        })
+      } catch (err) {
+        console.warn(`[PackStore] ingestFiles: error al parsear .theia: ${file.name}`, err)
+      }
+    }
 
     set({
       packs: nextPacks,

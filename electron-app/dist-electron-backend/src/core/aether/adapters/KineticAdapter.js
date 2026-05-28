@@ -232,7 +232,7 @@ export class KineticAdapter extends BaseSystem {
                 this._valuesDict['speed'] = 0.05;
             }
             else {
-                const intent = this._vmm.generateIntent(vibeId, va, node.stereoIndex, node.stereoTotal, node.maxPanSpeed, phaseOffset);
+                const intent = this._vmm.generateIntent(vibeId, va, node.stereoIndex, node.stereoTotal, node.maxPanSpeed, phaseOffset, node.ikOrientation?.installation);
                 // ── WAVE 4914 RELATIVE OFFSET ROUTING ────────────────────────────
                 // VMM intent.x / intent.y ∈ [-1,+1] se emiten TAL CUAL como offsets.
                 // El NodeArbiter._applyRelativeOffsetFusion suma con la base IK/anchor:

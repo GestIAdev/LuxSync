@@ -112,6 +112,7 @@ export type MotorType = 'servo-pro' | 'stepper-quality' | 'stepper-cheap' | 'unk
 export type InstallationOrientation = 
   | 'ceiling' 
   | 'floor' 
+  | 'totem'
   | 'wall-left' 
   | 'wall-right' 
   | 'truss-front' 

@@ -27,6 +27,7 @@
  * ════════════════════════════════════════════════════════════════════════════
  */
 import { getTheiaRegistry } from './TheiaRegistry';
+import { useTheiaPackStore } from '../../stores/useTheiaPackStore';
 // ─── CONSTANTES DE THROTTLE / CROSSFADE ──────────────────────────────────────
 /**
  * Ventana anti-flicker. Si Selene emite la misma decisión repetidamente
@@ -57,39 +58,47 @@ export class SeleneTheiaAdapter {
      *
      * ZERO-ALLOC en hot-path cuando el resultado es deduplicado (early return
      * sin construir objetos intermedios).
+     *
+     * WAVE 4923 — M3: Solo busca dentro del pack activo (livePackId).
+     * Si no hay pack activo, el adapter permanece en standby.
      */
     process(input) {
         // GUARD 1: hold → no tocar el vídeo.
         if (input.decision === 'hold')
             return null;
         // GUARD 2: blackout → emitir intent especial con clip vacío.
-        // (El ThetaOrchestrator interpretará clipId='' como blackout.)
         if (input.decision === 'blackout') {
             return this._emitBlackout();
         }
-        // STEP 1: matching cognitivo via Registry.
-        const match = this._registry.findBestMatch(input.targetDNA, input.energyZone, input.vibe);
+        // GUARD 3 (WAVE 4923): standby si no hay pack activo.
+        const packStore = useTheiaPackStore.getState();
+        const { livePackId, packs } = packStore;
+        if (!livePackId)
+            return null;
+        const pack = packs.get(livePackId);
+        if (!pack || pack.atoms.length === 0)
+            return null;
+        // STEP 1: matching cognitivo dentro del pack activo.
+        const match = this._findBestMatchFromAtoms(pack.atoms, input);
         if (!match)
             return null;
         // STEP 2: throttle anti-flicker.
         if (this._isRedundant(match))
             return null;
         // STEP 3: derivar crossfade y construir intent.
-        const cuepoint = this._resolveCuepoint(match.assetId, match.cuePointId);
-        if (!cuepoint)
-            return null; // race con unregister — defensivo.
+        const atom = pack.atoms.find((a) => a.id === match.atomId);
+        if (!atom)
+            return null; // race con hot-reload — defensivo.
         const crossfadeMs = this._deriveCrossfade(input);
         const intent = {
-            clipId: match.assetId,
-            cuepointId: match.cuePointId,
-            startMs: cuepoint.startMs,
+            atomId: match.atomId,
+            startMs: atom.trim.startMs,
             crossfadeMs,
             reason: this._buildReason(input, match),
         };
         // STEP 4: registrar emisión para el throttle de la próxima llamada.
         this._lastEmitted = {
-            clipId: intent.clipId,
-            cuepointId: intent.cuepointId,
+            atomId: intent.atomId,
             t: Date.now(),
         };
         return intent;
@@ -104,25 +113,58 @@ export class SeleneTheiaAdapter {
     // ─────────────────────────────────────────────────────────────────────────
     // INTERNALS
     // ─────────────────────────────────────────────────────────────────────────
+    /**
+     * Busca el átomo más cercano al targetDNA dentro de un conjunto acotado de
+     * átomos (el pack activo). Aplica filtro de energyZone antes de comparar.
+     */
+    _findBestMatchFromAtoms(atoms, input) {
+        // Filtrar por solapamiento de energyZone
+        const ZONES = [
+            'silence', 'valley', 'ambient', 'gentle', 'active', 'intense', 'peak',
+        ];
+        const targetIdx = ZONES.indexOf(input.energyZone);
+        const compatible = atoms.filter((a) => {
+            const minIdx = ZONES.indexOf(a.energyZone.min);
+            const maxIdx = ZONES.indexOf(a.energyZone.max);
+            return targetIdx >= minIdx && targetIdx <= maxIdx;
+        });
+        const candidates = compatible.length > 0 ? compatible : atoms;
+        return this._closestAtom(candidates, input.targetDNA);
+    }
+    /**
+     * Distancia euclidiana en el espacio (aggression, chaos, organicity).
+     * Devuelve el ITheiaMatch con score e distance calculados.
+     */
+    _closestAtom(atoms, genome) {
+        if (atoms.length === 0)
+            return null;
+        let bestAtom = atoms[0];
+        let bestDist = Infinity;
+        for (const atom of atoms) {
+            const da = atom.aggression - genome.aggression;
+            const dc = atom.chaos - genome.chaos;
+            const do_ = atom.organicity - genome.organicity;
+            const dist = Math.sqrt(da * da + dc * dc + do_ * do_);
+            if (dist < bestDist) {
+                bestDist = dist;
+                bestAtom = atom;
+            }
+        }
+        // score ∈ [0,1]: 0 = distancia máxima posible (√3), 1 = match perfecto.
+        const MAX_DIST = Math.sqrt(3);
+        return {
+            atomId: bestAtom.id,
+            distance: bestDist,
+            score: Math.max(0, 1 - bestDist / MAX_DIST),
+        };
+    }
     _isRedundant(match) {
         const last = this._lastEmitted;
         if (!last)
             return false;
-        if (last.clipId !== match.assetId)
-            return false;
-        if (last.cuepointId !== match.cuePointId)
+        if (last.atomId !== match.atomId)
             return false;
         return (Date.now() - last.t) < REEMIT_THROTTLE_MS;
-    }
-    _resolveCuepoint(assetId, cuePointId) {
-        const asset = this._registry.getAsset(assetId);
-        if (!asset)
-            return null;
-        for (const cp of asset.cuePoints) {
-            if (cp.id === cuePointId)
-                return cp;
-        }
-        return null;
     }
     _deriveCrossfade(input) {
         if (input.decision === 'divine_strike')
@@ -156,8 +198,7 @@ export class SeleneTheiaAdapter {
     _emitBlackout() {
         this._lastEmitted = null;
         return {
-            clipId: '',
-            cuepointId: '',
+            atomId: '',
             startMs: 0,
             crossfadeMs: CROSSFADE_AMBIENT_MS,
             reason: 'blackout',

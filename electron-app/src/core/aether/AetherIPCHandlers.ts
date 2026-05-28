@@ -675,6 +675,7 @@ export function registerAetherIPCHandlers(): void {
           const installation = (
             orientationRaw === 'ceiling' ||
             orientationRaw === 'floor' ||
+            orientationRaw === 'totem' ||
             orientationRaw === 'truss-front' ||
             orientationRaw === 'truss-back' ||
             orientationRaw === 'wall-left' ||

@@ -57,6 +57,7 @@ export const MOUNT_QUATERNIONS: Readonly<Record<InstallationOrientation, THREE.Q
   return {
     'ceiling':    ceiling,
     'floor':      floor,
+    'totem':      floor,
     'truss-front': trussFront,
     'truss-back':  trussBack,
     'wall-left':   wallLeft,

@@ -536,6 +536,7 @@ export function registerAetherIPCHandlers() {
                 const orientationRaw = stageIK?.orientation ?? f?.orientation ?? f?.installationType;
                 const installation = (orientationRaw === 'ceiling' ||
                     orientationRaw === 'floor' ||
+                    orientationRaw === 'totem' ||
                     orientationRaw === 'truss-front' ||
                     orientationRaw === 'truss-back' ||
                     orientationRaw === 'wall-left' ||

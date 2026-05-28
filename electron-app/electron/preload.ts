@@ -865,7 +865,7 @@ const luxApi = {
     ipcRenderer.invoke('lux:force-fixture-type', dmxAddress, newType),
   
   /** 🎯 WAVE 12.5: Selector de Montaje (ceiling/floor) */
-  setInstallationType: (type: 'ceiling' | 'floor') =>
+  setInstallationType: (type: 'ceiling' | 'floor' | 'totem') =>
     ipcRenderer.invoke('lux:set-installation', type),
   
   /** Limpiar todo el patch */

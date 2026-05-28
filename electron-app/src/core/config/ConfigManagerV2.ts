@@ -109,7 +109,7 @@ export interface LuxSyncPreferencesV2 {
   seleneMode: 'idle' | 'reactive' | 'autonomous' | 'choreography'
   
   /** Global default installation type (can be overridden per-fixture in ShowFile) */
-  installationType: 'ceiling' | 'floor'
+  installationType: 'ceiling' | 'floor' | 'totem'
   
   /** UI preferences */
   ui: UIPreferences
@@ -185,7 +185,7 @@ interface LegacyConfigV1 {
   dmx?: Partial<DMXInterfaceConfig>
   audio?: Partial<AudioInputConfig>
   seleneMode?: string
-  installationType?: 'ceiling' | 'floor'
+  installationType?: 'ceiling' | 'floor' | 'totem'
   ui?: Partial<UIPreferences>
 }
 
@@ -401,7 +401,7 @@ class ConfigManagerV2 {
     return this.config.ui
   }
   
-  getInstallationType(): 'ceiling' | 'floor' {
+  getInstallationType(): 'ceiling' | 'floor' | 'totem' {
     return this.config.installationType
   }
   
@@ -429,7 +429,7 @@ class ConfigManagerV2 {
     this.saveDebounced()
   }
   
-  setInstallationType(type: 'ceiling' | 'floor'): void {
+  setInstallationType(type: 'ceiling' | 'floor' | 'totem'): void {
     this.config.installationType = type
     this.saveDebounced()
     console.log(`[ConfigManagerV2] 🎯 Installation type: ${type}`)
@@ -490,7 +490,7 @@ class ConfigManagerV2 {
       this.setSeleneMode(partial.seleneMode as LuxSyncPreferencesV2['seleneMode'])
     }
     if ('installationType' in partial || 'installation' in partial) {
-      const type = (partial.installationType || partial.installation) as 'ceiling' | 'floor'
+      const type = (partial.installationType || partial.installation) as 'ceiling' | 'floor' | 'totem'
       this.setInstallationType(type)
     }
     if ('ui' in partial) {

@@ -16,6 +16,7 @@
 import React, { useCallback } from 'react'
 import { useTheiaEditorStore, clearAutosave } from '../../stores/useTheiaEditorStore'
 import type { DraftGenome } from '../../stores/useTheiaEditorStore'
+import { useTheiaPackStore } from '../../stores/useTheiaPackStore'
 import type { EnergyZone } from '../../types/theiaTypes'
 import {
   BrainNeuralIcon,   // 🧬 DNA / cognición
@@ -80,6 +81,9 @@ const TheiaDNALab: React.FC = () => {
       if (res.success) {
         markClean()
         clearAutosave(draftAtom.id)
+        if (draftAtom.rawClipId) {
+          useTheiaPackStore.getState().updateRawClip(draftAtom.rawClipId, { state: 'exported' })
+        }
       } else if (!res.cancelled) {
         console.error('[DNALab] Export IPC failed:', res.error)
       }
@@ -92,6 +96,9 @@ const TheiaDNALab: React.FC = () => {
       a.click()
       URL.revokeObjectURL(url)
       markClean()
+      if (draftAtom.rawClipId) {
+        useTheiaPackStore.getState().updateRawClip(draftAtom.rawClipId, { state: 'exported' })
+      }
     }
   }, [draftAtom, markClean])
 

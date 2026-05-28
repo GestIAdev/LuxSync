@@ -34,34 +34,36 @@ import { getSeleneTheiaAdapter, } from './SeleneTheiaAdapter';
 import { getTheiaRegistry } from './TheiaRegistry';
 // ─── BUS INTERNO (renderer-only) ──────────────────────────────────────────────
 /**
- * Bus del cue-jump. Conserva semántica "IPC" para que un futuro refactor
+ * Bus del play-atom. Conserva semántica "IPC" para que un futuro refactor
  * que separe Selene y Theta en procesos distintos pueda reemplazar la
  * implementación sin cambiar consumidores.
  *
- * Eventos: `'theia:cue-jump'` con `event.detail = TheiaCueJumpMessage['payload']`.
+ * Eventos: `'theia:play-atom'` con `event.detail = TheiaPlayAtomMessage['payload']`.
  */
-class TheiaCueJumpBus {
+class TheiaPlayAtomBus {
     constructor() {
         this._target = new EventTarget();
     }
     emit(payload) {
-        this._target.dispatchEvent(new CustomEvent('theia:cue-jump', { detail: payload }));
+        this._target.dispatchEvent(new CustomEvent('theia:play-atom', { detail: payload }));
     }
     on(handler) {
         const listener = (ev) => {
             const detail = ev.detail;
             handler(detail);
         };
-        this._target.addEventListener('theia:cue-jump', listener);
-        return () => this._target.removeEventListener('theia:cue-jump', listener);
+        this._target.addEventListener('theia:play-atom', listener);
+        return () => this._target.removeEventListener('theia:play-atom', listener);
     }
 }
 let _bus = null;
-export function getTheiaCueJumpBus() {
+export function getTheiaPlayAtomBus() {
     if (!_bus)
-        _bus = new TheiaCueJumpBus();
+        _bus = new TheiaPlayAtomBus();
     return _bus;
 }
+/** @deprecated WAVE 4922 — alias histórico de `getTheiaPlayAtomBus`. */
+export const getTheiaCueJumpBus = getTheiaPlayAtomBus;
 /**
  * Conecta Selene → adapter → bus → ThetaOrchestrator.
  *
@@ -71,11 +73,11 @@ export function getTheiaCueJumpBus() {
 export function attachSeleneTheia(opts) {
     const adapter = getSeleneTheiaAdapter();
     const orchestrator = getThetaOrchestrator();
-    const bus = getTheiaCueJumpBus();
-    // 1) Resolver clipId → URL.
-    const defaultResolver = (clipId) => {
-        const asset = getTheiaRegistry().getAsset(clipId);
-        return asset?.filePath ?? null;
+    const bus = getTheiaPlayAtomBus();
+    // 1) Resolver atomId → URL.
+    const defaultResolver = (atomId) => {
+        const atom = getTheiaRegistry().getAtom(atomId);
+        return atom?.filePath ?? null;
     };
     orchestrator.setClipUrlResolver(opts.clipUrlResolver ?? defaultResolver);
     // 2) Listener: Selene cognitive output → adapter → bus.
@@ -94,11 +96,10 @@ export function attachSeleneTheia(opts) {
         bus.emit({ ...intent, emittedAt: Date.now() });
     };
     opts.selene.on('cognitiveOutput', onCognitive);
-    // 3) Listener: bus → orchestrator.handleCueJump.
+    // 3) Listener: bus → orchestrator.playAtom.
     const unsubscribeBus = bus.on((payload) => {
-        void orchestrator.handleCueJump({
-            clipId: payload.clipId,
-            cuepointId: payload.cuepointId,
+        void orchestrator.playAtom({
+            atomId: payload.atomId,
             startMs: payload.startMs,
             crossfadeMs: payload.crossfadeMs,
             reason: payload.reason,
@@ -129,5 +130,5 @@ export function pushCognitiveInput(input) {
     const intent = adapter.process(input);
     if (!intent)
         return;
-    getTheiaCueJumpBus().emit({ ...intent, emittedAt: Date.now() });
+    getTheiaPlayAtomBus().emit({ ...intent, emittedAt: Date.now() });
 }

@@ -21,6 +21,7 @@ import type { FixtureV2, InstallationOrientation, CanonicalZone, FixtureZone } f
 /** Infer Y from mount orientation when dropped onto 2D canvas */
 const ORIENTATION_HEIGHT: Record<InstallationOrientation, number> = {
   'ceiling':     4.0,
+  'totem':       1.5,
   'truss-front': 3.5,
   'truss-back':  3.5,
   'wall-left':   2.5,

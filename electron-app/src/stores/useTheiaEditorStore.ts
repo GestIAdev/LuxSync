@@ -38,6 +38,12 @@ export interface DraftAtom {
   id: string
   packId: string
   filePath: string
+  /**
+   * ID del RawClip correspondiente en `useTheiaPackStore`.
+   * Se asigna cuando el draft nace de un drop (newDraftFromPath). Permite
+   * marcar el clip como 'exported' tras un export exitoso.
+   */
+  rawClipId?: string
 
   // ── Genoma al ROOT ───────────────────────────────────────────────────────
   aggression: number
@@ -70,7 +76,7 @@ interface TheiaEditorActions {
   /** Carga un átomo existente (read-only) como draft editable. */
   loadDraft: (atom: ITheiaAtom) => void
   /** Crea un draft nuevo desde la ruta de un .mp4 recién dropeado. */
-  newDraftFromPath: (filePath: string, durationMs: number) => void
+  newDraftFromPath: (filePath: string, durationMs: number, rawClipId?: string) => void
   /** Aplica un patch parcial al genoma (`aggression / chaos / organicity`). */
   updateGenome: (patch: Partial<DraftGenome>) => void
   /** Actualiza los handles IN/OUT del trim. Clamp interno a [0, ∞). */
@@ -178,7 +184,7 @@ export const useTheiaEditorStore = create<TheiaEditorStore>()(
      * Crea un draft nuevo desde la ruta de un .mp4 recién dropeado.
      * Trim inicial = clip completo. Genoma centrado (0.5).
      */
-    newDraftFromPath(filePath, durationMs) {
+    newDraftFromPath(filePath, durationMs, rawClipId) {
       const rawName = filePath.split(/[\\/]/).pop() ?? 'untitled'
       const baseName = rawName.replace(/\.[^.]+$/, '')
       const id = baseName || `draft-${Date.now()}`
@@ -186,6 +192,7 @@ export const useTheiaEditorStore = create<TheiaEditorStore>()(
         id,
         packId: '', // pack target se asigna en el momento del export
         filePath,
+        rawClipId,
         aggression: 0.5,
         chaos: 0.5,
         organicity: 0.5,

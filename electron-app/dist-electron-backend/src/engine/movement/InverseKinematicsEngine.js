@@ -64,6 +64,7 @@ const PAN_SAFETY_MARGIN = 5;
  */
 const MOUNT_ANGLES = {
     'floor': { pitch: 0, yaw: 0, roll: 0 },
+    'totem': { pitch: 0, yaw: 0, roll: 0 },
     'ceiling': { pitch: 0, yaw: 0, roll: 0 },
     'truss-front': { pitch: 0, yaw: 0, roll: 0 },
     'truss-back': { pitch: 0, yaw: 180, roll: 0 },

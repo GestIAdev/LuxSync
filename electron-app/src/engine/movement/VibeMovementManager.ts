@@ -169,6 +169,16 @@ interface SchedulerState {
   sceneBeatsElapsed: number
 }
 
+const TILT_CEILING = 0.15
+
+const TILT_OFFSET_BY_VIBE: Readonly<Record<string, number>> = {
+  'techno-club': -0.35,
+  'fiesta-latina': -0.35,
+  'pop-rock': -0.30,
+  'chill-lounge': -0.25,
+  'idle': -0.10,
+} as const
+
 // VIBE CONFIGURATIONS
 
 const VIBE_CONFIG: Record<string, VibeConfig> = {
@@ -177,8 +187,8 @@ const VIBE_CONFIG: Record<string, VibeConfig> = {
   //   Barrido enorme (92% del pan = ~497°), frecuencia sostenible para hardware real.
   'techno-club': {
     panScale: 0.92,
-    tiltScale: 0.85,
-    baseFrequency: 0.22,    // 🔥 NITRO: restaurado al valor original pre-WAVE-4730
+    tiltScale: 0.60,
+    baseFrequency: 0.13,
     patterns: ['scan_x', 'square', 'diamond', 'botstep', 'darkspin'],
     homeOnSilence: false,
   },
@@ -188,8 +198,8 @@ const VIBE_CONFIG: Record<string, VibeConfig> = {
   //   Full stage pan, tilt abierto (88% = ~238°), frecuencia oceánica.
   'fiesta-latina': {
     panScale: 0.95,
-    tiltScale: 0.88,
-    baseFrequency: 0.17,    // 🔥 NITRO: restaurado al valor original pre-WAVE-4730
+    tiltScale: 0.60,
+    baseFrequency: 0.10,
     patterns: ['figure8', 'wave_y', 'ballyhoo', 'cadera_libre', 'espiral_conga'],
     homeOnSilence: false,
   },
@@ -199,8 +209,8 @@ const VIBE_CONFIG: Record<string, VibeConfig> = {
   //   Arcos enormes de estadio (90% pan = ~486°), frecuencia lenta y solemne.
   'pop-rock': {
     panScale: 0.90,
-    tiltScale: 0.82,
-    baseFrequency: 0.20,    // 🔥 NITRO: restaurado al valor original pre-WAVE-4730
+    tiltScale: 0.59,
+    baseFrequency: 0.14,
     patterns: ['circle_big', 'cancan', 'dual_sweep'],
     homeOnSilence: true,
   },
@@ -210,8 +220,8 @@ const VIBE_CONFIG: Record<string, VibeConfig> = {
   //   La medusa ahora abarca más océano, pero más lentamente que nunca.
   'chill-lounge': {
     panScale: 0.85,
-    tiltScale: 0.80,
-    baseFrequency: 0.03,
+    tiltScale: 0.58,
+    baseFrequency: 0.02,
     patterns: ['drift', 'sway', 'breath'],
     homeOnSilence: false,
   },
@@ -687,7 +697,7 @@ export class VibeMovementManager {
   //   circle_big (32b) @ 120 BPM: 1 ciclo cada 20 s (majestuoso)
   //   scan_x (16b) @ 130 BPM:     1 ciclo cada 9 s  (catedral industrial)
   //   drift (256b) @ 100 BPM:     1 ciclo cada ~192 s (glacial)
-  private globalSpeedMultiplier: number = 0.8
+  private globalSpeedMultiplier: number = 0.52
 
   // 🌪️ WAVE 4708 T3: CAOS UNIFICADO — amplitud y semilla globales del slider
   // ChaosOrderSlider, leídos por el KineticAdapter (L0) para calcular un
@@ -857,7 +867,9 @@ export class VibeMovementManager {
     /** 🏎️ WAVE 2074.3: Per-fixture max speed (DMX/s). Defaults to 250 if not provided. */
     fixtureMaxSpeed: number = 250,
     /** 🎭 WAVE 4645: Phase offset (rad) for left/right asymmetry */
-    phaseOffset: number = 0
+    phaseOffset: number = 0,
+    /** WAVE 4931: Mount orientation for audience-facing bias */
+    mountOrientation?: string
   ): MovementIntent {
     // ═══════════════════════════════════════════════════════════════════════
     // 🎭 WAVE 2086.1: FRAME-ONCE GUARD
@@ -1061,11 +1073,14 @@ export class VibeMovementManager {
     // Aplicar amplitud (con phrase envelope de WAVE 2086.3)
     // WAVE 2224: DANCEFLOOR GRAVITY — techno-club apunta a la pista (adelante/abajo)
     // 🔧 WAVE 2233: -0.35 → -0.20. Con tiltScale 0.70, -0.20 points toward dancefloor.
-    const tiltOffset = vibeId === 'techno-club' ? -0.20 : 0
+    const tiltOffset = mountOrientation === 'totem'
+      ? -0.45
+      : (TILT_OFFSET_BY_VIBE[vibeId] ?? 0)
     const position = {
       x: Math.max(-1, Math.min(1, rawPosition.x * finalPanAmplitude)),
       y: Math.max(-1, Math.min(1, (rawPosition.y * finalTiltAmplitude) + tiltOffset)),
     }
+    position.y = Math.min(position.y, TILT_CEILING)
     
     // WAVE 4741 ASALTO 2: KINETIC CROSSFADE
     // Guard defensivo: si el fromPattern ya no existe en este vibe (edge case de cambio
@@ -1099,6 +1114,7 @@ export class VibeMovementManager {
           x: Math.max(-1, Math.min(1, fromRaw.x * finalPanAmplitude)),
           y: Math.max(-1, Math.min(1, (fromRaw.y * finalTiltAmplitude) + tiltOffset)),
         }
+        fromPosition.y = Math.min(fromPosition.y, TILT_CEILING)
         // Smoothstep ease-in-out: t² × (3 − 2t)
         const t = Math.min(1.0, this.kineticTransition.progressBeats / this.kineticTransition.totalBeats)
         crossfadeSmoothT = t * t * (3 - 2 * t)
@@ -1106,6 +1122,7 @@ export class VibeMovementManager {
           x: fromPosition.x + (position.x - fromPosition.x) * crossfadeSmoothT,
           y: fromPosition.y + (position.y - fromPosition.y) * crossfadeSmoothT,
         }
+        finalPosition.y = Math.min(finalPosition.y, TILT_CEILING)
       }
     }
 

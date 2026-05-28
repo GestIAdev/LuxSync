@@ -312,26 +312,36 @@ const TheiaEngineView: React.FC = () => {
 
   // ── File Picker ──────────────────────────────────────────────────────
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const packInputRef = useRef<HTMLInputElement | null>(null)
+
+  // Inyecta webkitdirectory/directory sobre el input del Pack una sola vez al montar.
+  // Son atributos no-estándar que React no acepta como props declarativas.
+  useEffect(() => {
+    if (packInputRef.current) {
+      packInputRef.current.setAttribute('webkitdirectory', '')
+      packInputRef.current.setAttribute('directory', '')
+    }
+  }, [])
+
   // Versión del registro — al incrementar fuerza re-render de AuthorAssetDeck
   const [, setAssetVersion] = useState(0)
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []).filter((f) =>
-      isSupportedVideoFileName(f.name)
+      isSupportedVideoFileName(f.name) || f.name.toLowerCase().endsWith('.theia')
     )
     // Reset para permitir re-selección del mismo archivo
     e.target.value = ''
     if (files.length === 0) {
-      console.warn('[Theia UI] No supported video files in selection')
+      console.warn('[Theia UI] No supported files in selection')
       return
     }
 
-    // ── WAVE 4922 — ingest via Pack Store ────────────────────────────────
-    // El store agrupa por carpeta contenedora (webkitRelativePath) o crea
-    // un Pack autogenerado si vienen sueltos. Cada archivo se materializa
-    // como `RawClip` queued visible en el WorkshopDeck.
+    // ── WAVE 4924 — ingest via Pack Store (async) ─────────────────────────
+    // Los .theia se parsean como ITheiaAtom y se adjuntan al pack sin pasar
+    // por el workshop. Los vídeos van a rawClips. ingestFiles es async.
     const { ingestFiles, updateRawClip } = useTheiaPackStore.getState()
-    const { clips } = ingestFiles(files)
+    const { clips } = await ingestFiles(files)
     if (clips.length === 0) return
 
     // ── Cargar el primer clip en el orchestrator ─────────────────────────
@@ -351,7 +361,7 @@ const TheiaEngineView: React.FC = () => {
       if (durMs > 0) updateRawClip(primary.id, { durationMs: durMs })
 
       if (mode === 'workshop') {
-        useTheiaEditorStore.getState().newDraftFromPath(primary.filePath, durMs)
+        useTheiaEditorStore.getState().newDraftFromPath(primary.filePath, durMs, primary.id)
         updateRawClip(primary.id, { state: 'editing' })
       }
 
@@ -480,11 +490,29 @@ const TheiaEngineView: React.FC = () => {
           <span className="theia-load-assets-btn__icon">📂</span>
           <span className="theia-load-assets-btn__label">LOAD ASSETS</span>
         </button>
+        <button
+          className="theia-load-assets-btn theia-load-assets-btn--pack"
+          onClick={() => packInputRef.current?.click()}
+          title="Cargar una carpeta entera como Pack (.mp4 · .webm · .mkv · .mov)"
+          data-midi-bind="theia.load-pack"
+        >
+          <span className="theia-load-assets-btn__icon">🗂️</span>
+          <span className="theia-load-assets-btn__label">LOAD PACK</span>
+        </button>
         <input
           ref={fileInputRef}
           type="file"
           multiple
-          accept=".mp4,.webm,.mkv,.mov"
+          accept=".mp4,.webm,.mkv,.mov,.theia"
+          style={{ display: 'none' }}
+          onChange={handleFileSelect}
+        />
+        {/* webkitdirectory/directory se inyectan vía useEffect (atributos no-estándar) */}
+        <input
+          ref={packInputRef}
+          type="file"
+          multiple
+          accept=".mp4,.webm,.mkv,.mov,.theia"
           style={{ display: 'none' }}
           onChange={handleFileSelect}
         />

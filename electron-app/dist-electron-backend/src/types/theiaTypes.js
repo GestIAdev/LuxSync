@@ -1,17 +1,16 @@
 /**
  * ════════════════════════════════════════════════════════════════════════════
- * 🎬 THEIA TYPES — WAVE 4901 (Phase 1/3 of WAVE-4900-THEIADNA)
+ * 🎬 THEIA TYPES — WAVE 4921 (Atomic Paradigm · Fase 1)
  * ════════════════════════════════════════════════════════════════════════════
  *
- * Tipos canónicos para el formato `.theia v1.0`. Este módulo es la fuente
- * de verdad estructural — paralelo a `core/arsenal/lfxTypes.ts` para `.lfx`.
+ * Tipos canónicos para el formato `.theia v2.0`. Esta wave abandona el
+ * modelo multi-cuepoint de v1 en favor del paradigma ATÓMICO descrito en
+ * el blueprint WAVE 4920:
  *
- * PRINCIPIO RECTOR (WAVE 4900):
- *   El `.theia` HEREDA el genoma cognitivo de `.lfx V3`. Selene no aprende
- *   dos vocabularios — aprende uno y lo aplica a dos dominios (luz / vídeo).
- *
- *   - `ITheiaGenome` ≡ shape de `FrozenGenome` (`lfxTypes.ts`).
- *   - `EnergyZone` reusado de `core/protocol/MusicalContext.ts`.
+ *   - Un `.theia` = un único loop visual con un único genoma cognitivo.
+ *   - El genoma vive EN LA RAÍZ del átomo (sin anidar en cuepoints).
+ *   - El recorte temporal se reduce a `trim: { startMs, endMs }`.
+ *   - Los átomos se agrupan en `Pack`s (carpetas del filesystem).
  *
  * Importante: este archivo SOLO declara tipos. No expone runtime ni
  * dependencias. Puede ser consumido tanto por main como por renderer.

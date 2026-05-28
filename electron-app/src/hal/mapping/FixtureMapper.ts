@@ -207,7 +207,7 @@ export type EffectId = 'strobe' | 'blinder' | 'police' | 'rainbow'
 
 export class FixtureMapper {
   // Installation type affects tilt inversion
-  private installationType: 'floor' | 'ceiling' = 'floor'
+  private installationType: 'floor' | 'ceiling' | 'totem' = 'floor'
   
   // Manual overrides storage
   private manualOverrides = new Map<string, ManualOverride>()
@@ -662,7 +662,7 @@ export class FixtureMapper {
   // STATE MANAGEMENT
   // ═══════════════════════════════════════════════════════════════════════
   
-  public setInstallationType(type: 'floor' | 'ceiling'): void {
+  public setInstallationType(type: 'floor' | 'ceiling' | 'totem'): void {
     this.installationType = type
   }
   

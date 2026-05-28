@@ -863,6 +863,7 @@ const PropertiesContent: React.FC = () => {
   const ORIENTATIONS: { value: InstallationOrientation; label: string; icon: string }[] = [
     { value: 'ceiling',     label: 'Ceiling (Truss)',   icon: '⬇️' },
     { value: 'floor',       label: 'Floor (Standing)',  icon: '⬆️' },
+    { value: 'totem',       label: 'Totem (Audience)',  icon: '🎯' },
     { value: 'wall-left',   label: 'Wall Left',         icon: '➡️' },
     { value: 'wall-right',  label: 'Wall Right',        icon: '⬅️' },
     { value: 'truss-front', label: 'Truss Front',       icon: '🔛' },

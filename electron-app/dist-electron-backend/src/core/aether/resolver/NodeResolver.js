@@ -883,8 +883,24 @@ export class NodeResolver {
             }
             // WAVE 4639: La inversión por orientación en ruta clásica se aplica
             // en dominio DMX final para respetar offsets/límites y corregir pivote.
-            if (invertClassicKineticAxes && chDef.type === TILT_COARSE) {
-                dmxValue = sanitizeDmxByte(255 - dmxValue);
+            // WAVE 4932.3: Pre-Vis actualiza currentPosition ANTES de la inversión de ejes.
+            // currentPosition debe reflejar el espacio lógico (0=suelo, 1=techo en floor;
+            // se invierte en pre-vis para ceiling via invertClassicKineticAxes).
+            // Si se guardara post-invert, el visualizador vería tilt=0.86 para un ceiling
+            // apuntando al suelo y lo renderizaría incorrectamente apuntando al techo.
+            if (node.family === NodeFamily.KINETIC) {
+                const kn = node;
+                if (chDef.type === PAN_COARSE) {
+                    kn.currentPosition.pan = dmxValue / 255;
+                }
+                else if (chDef.type === TILT_COARSE) {
+                    kn.currentPosition.tilt = dmxValue / 255;
+                }
+            }
+            if (chDef.type === TILT_COARSE) {
+                if (invertClassicKineticAxes) {
+                    dmxValue = sanitizeDmxByte(255 - dmxValue);
+                }
             }
             // ★ WAVE 4557: Velocity clamp + Airbag for Classic pan/tilt path
             if (this._safetyMiddleware && node.family === NodeFamily.KINETIC) {
@@ -895,17 +911,6 @@ export class NodeResolver {
                 else if (TILT_CHANNELS.has(chDef.type) && chDef.type === TILT_COARSE) {
                     dmxValue = sanitizeDmxByte(this._safetyMiddleware.clampKineticSingleAxis(node.nodeId, false, dmxValue));
                     dmxValue = sanitizeDmxByte(this._safetyMiddleware.applyAirbag(dmxValue, false));
-                }
-            }
-            // WAVE 4616: Pre-Vis rescue — currentPosition siempre debe actualizarse
-            // con la matemática real aunque output esté desarmado.
-            if (node.family === NodeFamily.KINETIC) {
-                const kn = node;
-                if (chDef.type === PAN_COARSE) {
-                    kn.currentPosition.pan = dmxValue / 255;
-                }
-                else if (chDef.type === TILT_COARSE) {
-                    kn.currentPosition.tilt = dmxValue / 255;
                 }
             }
             // Clamp final de seguridad

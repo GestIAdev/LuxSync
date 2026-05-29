@@ -332,6 +332,9 @@ export class AetherKineticEngine {
   /** WAVE 4706 TELEMETRÍA — contador de frames para heartbeat rate-limited */
   private _heartbeatCounter = 0
 
+  /** WAVE 4938: Referencia al último NodeArbiter pasado en tick() */
+  private _arbiter: NodeArbiter | null = null
+
   /**
    * 🔥 WAVE 4731 PASO 3: Grand Master Speed multiplicador para L2.
    * Escala la frecuencia del motor L2 igual que globalSpeedMultiplier escala L0.
@@ -526,6 +529,11 @@ export class AetherKineticEngine {
     return this._gmSpeed
   }
 
+  /** WAVE 4938: Exponer el arbiter para que KineticAdapter consulte overrides espaciales. */
+  get arbiter(): NodeArbiter | null {
+    return this._arbiter
+  }
+
   /**
    * HOT PATH — 44Hz.
    *
@@ -545,6 +553,7 @@ export class AetherKineticEngine {
    * @param arbiter   Referencia al NodeArbiter activo.
    */
   tick(dtSeconds: number, arbiter: NodeArbiter): void {
+    this._arbiter = arbiter
     if (this._nodeConfigs.size === 0) return
 
     // WAVE 4712: iteramos el Map directamente — cada nodo tiene su propia pista.

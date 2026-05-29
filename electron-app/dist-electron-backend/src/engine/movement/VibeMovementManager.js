@@ -40,6 +40,19 @@
  * @author PunkOpus
  */
 const TILT_CEILING = 0.15;
+// WAVE 4932.5: Límite inferior para ceiling. Sin este límite, intent.y muy negativo
+// genera DMX > 212 que en fixtures con tiltRange=270° envía el haz al horizonte trasero.
+// WAVE 4933.3: Reducido de 0.67 a 0.50 — máx 67° de inclinación desde vertical.
+// A 0.67 (90°) el cono aparece a nivel de techo desde vista oblicua (efecto PACMAN residual).
+// A 0.50 (67°) el cono base queda a ~1.25m del suelo: claramente apuntando al escenario.
+const TILT_FLOOR_LIMIT = 0.50;
+// WAVE 4933.3: Offset de tilt para ceiling — centra el patrón en el centro del rango seguro
+// [-TILT_FLOOR_LIMIT, -TILT_CEILING] = [-0.50, -0.15]. Centro = -0.325.
+// Con tiltOffset=-0.325 y tiltScale=0.60: raw+offset ∈ [-0.925, +0.275].
+// Upper clamp (-0.15) recorta +0.275→-0.15 (~14% del ciclo — breve toque vertical).
+// Lower clamp (-0.50) recorta -0.925→-0.50 (~17% del ciclo — breve toque extremo).
+// 69% del ciclo activo oscilando entre -0.50 y -0.15: haz siempre en semiesfera inferior.
+const TILT_OFFSET_CEILING = -0.325;
 const TILT_OFFSET_BY_VIBE = {
     'techno-club': -0.35,
     'fiesta-latina': -0.35,
@@ -50,22 +63,22 @@ const TILT_OFFSET_BY_VIBE = {
 // VIBE CONFIGURATIONS
 const VIBE_CONFIG = {
     // TECHNO: Geometría dura, cortes precisos — CATEDRAL industrial
-    // �️ WAVE 4730 TRÍADA: panScale 0.72→0.92, tiltScale 0.68→0.85, freq 0.22→0.10
+    //  WAVE 4730 TRÍADA: panScale 0.72→0.92, tiltScale 0.68→0.85, freq 0.22→0.10
     //   Barrido enorme (92% del pan = ~497°), frecuencia sostenible para hardware real.
     'techno-club': {
         panScale: 0.92,
         tiltScale: 0.60,
-        baseFrequency: 0.13,
+        baseFrequency: 0.15,
         patterns: ['scan_x', 'square', 'diamond', 'botstep', 'darkspin'],
         homeOnSilence: false,
     },
     // LATINO: Curvas, fluidez, caderas — CATEDRAL sensual
-    // �️ WAVE 4730 TRÍADA: panScale 0.95→0.95, tiltScale 0.80→0.88, freq 0.17→0.12
+    //  WAVE 4730 TRÍADA: panScale 0.95→0.95, tiltScale 0.80→0.88, freq 0.17→0.12
     //   Full stage pan, tilt abierto (88% = ~238°), frecuencia oceánica.
     'fiesta-latina': {
         panScale: 0.95,
         tiltScale: 0.60,
-        baseFrequency: 0.10,
+        baseFrequency: 0.12,
         patterns: ['figure8', 'wave_y', 'ballyhoo', 'cadera_libre', 'espiral_conga'],
         homeOnSilence: false,
     },
@@ -80,7 +93,7 @@ const VIBE_CONFIG = {
         homeOnSilence: true,
     },
     // CHILL: Oceánico, deriva continental — CATEDRAL submarina
-    // �️ WAVE 4730 TRÍADA: panScale 0.70→0.85, tiltScale 0.70→0.80, freq 0.04→0.03
+    //  WAVE 4730 TRÍADA: panScale 0.70→0.85, tiltScale 0.70→0.80, freq 0.04→0.03
     //   La medusa ahora abarca más océano, pero más lentamente que nunca.
     'chill-lounge': {
         panScale: 0.85,
@@ -90,7 +103,7 @@ const VIBE_CONFIG = {
         homeOnSilence: false,
     },
     // IDLE: Mínimo — respiración imperceptible
-    // �️ WAVE 4730 TRÍADA: sin cambio significativo (ya era correcto)
+    //  WAVE 4730 TRÍADA: sin cambio significativo (ya era correcto)
     'idle': {
         panScale: 0.15,
         tiltScale: 0.20,
@@ -125,8 +138,8 @@ const PATTERN_PERIOD = {
     figure8: 32, // 🏛️ 16→32. 8 compases: el infinito respira profundo
     wave_y: 16, // 🏛️ 8→16. 4 compases: ola con masa, no espuma
     ballyhoo: 32, // 🏛️ 16→32. 8 compases: espiral épica con cadencia
-    cadera_libre: 32, // �️ 20→32. 8 compases: Lissajous 3:2 necesita espacio
-    espiral_conga: 48, // �️ 24→48. 12 compases: hélice monumental
+    cadera_libre: 32, //  20→32. 8 compases: Lissajous 3:2 necesita espacio
+    espiral_conga: 48, //  24→48. 12 compases: hélice monumental
     // POP-ROCK — estadio, simetría, majestuosidad — arcos de catedral
     circle_big: 32, // 🏛️ 16→32. 8 compases: el rey recorre TODO el escenario
     cancan: 16, // 🏛️ 8→16. 4 compases: subida/bajada con gravitas
@@ -154,11 +167,11 @@ const PATTERN_CONFIG = {
     // ── TECHNO — geometría industrial, majestuosa (CALIBRACIÓN DE FÁBRICA) ───
     // cycleBeats duplicados → mitad de velocidad física con GM=1.0x
     // phraseDuration extendido → 4-8 compases para que el show respire
-    scan_x: { cycleBeats: 8, phraseDuration: 32, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 8, transitionBeats: 1 },
-    square: { cycleBeats: 8, phraseDuration: 32, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 8, transitionBeats: 1 },
-    diamond: { cycleBeats: 8, phraseDuration: 32, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 8, transitionBeats: 1 },
-    botstep: { cycleBeats: 4, phraseDuration: 16, safeHarborPhase: Math.PI, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 4, transitionBeats: 0.5 },
-    darkspin: { cycleBeats: 12, phraseDuration: 48, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 12, transitionBeats: 2 },
+    scan_x: { cycleBeats: 16, phraseDuration: 64, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 16, transitionBeats: 2 },
+    square: { cycleBeats: 16, phraseDuration: 64, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 16, transitionBeats: 2 },
+    diamond: { cycleBeats: 16, phraseDuration: 64, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 16, transitionBeats: 2 },
+    botstep: { cycleBeats: 8, phraseDuration: 32, safeHarborPhase: Math.PI, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 8, transitionBeats: 1 },
+    darkspin: { cycleBeats: 24, phraseDuration: 96, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 24, transitionBeats: 4 },
     // ── LATINO — fluido, sensual, cadencia relajada (CALIBRACIÓN DE FÁBRICA) ──
     // cycleBeats 12-20 → 1 revolución en 6-10 compases a 100 BPM = meditativo
     figure8: { cycleBeats: 16, phraseDuration: 64, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 16, transitionBeats: 2 },
@@ -490,7 +503,7 @@ export class VibeMovementManager {
         //   circle_big (32b) @ 120 BPM: 1 ciclo cada 20 s (majestuoso)
         //   scan_x (16b) @ 130 BPM:     1 ciclo cada 9 s  (catedral industrial)
         //   drift (256b) @ 100 BPM:     1 ciclo cada ~192 s (glacial)
-        this.globalSpeedMultiplier = 0.52;
+        this.globalSpeedMultiplier = 1.0;
         // 🌪️ WAVE 4708 T3: CAOS UNIFICADO — amplitud y semilla globales del slider
         // ChaosOrderSlider, leídos por el KineticAdapter (L0) para calcular un
         // desfase determinista por nodo. Permite que el caos afecte a la IA igual
@@ -782,15 +795,18 @@ export class VibeMovementManager {
         // Aplicar amplitud (con phrase envelope de WAVE 2086.3)
         // WAVE 2224: DANCEFLOOR GRAVITY — techno-club apunta a la pista (adelante/abajo)
         // 🔧 WAVE 2233: -0.35 → -0.20. Con tiltScale 0.70, -0.20 points toward dancefloor.
-        // WAVE 4932: Para ceiling/truss, el NodeResolver invierte el eje tilt en DMX.
-        // El tiltOffset (diseñado para floor) actuaría al revés tras la inversión → se omite.
-        // El TILT_CEILING también se espeja: en vez de cap +0.15, se aplica floor -0.15
-        // (que tras la inversión del resolver = cap físico de techo).
+        // WAVE 4932.2: Para ceiling/truss, el NodeResolver invierte el eje tilt en DMX
+        // via (255 - dmxValue). Esta inversión afecta TODA la señal incluyendo el tiltOffset.
+        // Por tanto ceiling necesita el MISMO offset negativo que floor: el offset negativo
+        // centra la onda hacia el público (y<0), y tras la inversión del resolver eso se
+        // convierte en DMX alto = físicamente apunta al suelo (audiencia). Correcto.
+        // El clamp para ceiling es Math.min(y, -TILT_CEILING): asegura que el lado positivo
+        // nunca llega al resolver (lo que tras la inversión sería apuntar al techo).
         const isCeilingMount = mountOrientation === 'ceiling'
             || mountOrientation === 'truss-front'
             || mountOrientation === 'truss-back';
         const tiltOffset = isCeilingMount
-            ? 0
+            ? TILT_OFFSET_CEILING
             : mountOrientation === 'totem'
                 ? -0.45
                 : (TILT_OFFSET_BY_VIBE[vibeId] ?? 0);
@@ -799,7 +815,12 @@ export class VibeMovementManager {
             y: Math.max(-1, Math.min(1, (rawPosition.y * finalTiltAmplitude) + tiltOffset)),
         };
         if (isCeilingMount) {
-            position.y = Math.max(position.y, -TILT_CEILING);
+            // WAVE 4932.5: clamp bilateral. Limitar tanto cresta (upper) como valle (lower)
+            // dentro de la semiesfera inferior segura.
+            if (position.y > -TILT_CEILING)
+                position.y = -TILT_CEILING;
+            else if (position.y < -TILT_FLOOR_LIMIT)
+                position.y = -TILT_FLOOR_LIMIT;
         }
         else {
             position.y = Math.min(position.y, TILT_CEILING);
@@ -834,7 +855,10 @@ export class VibeMovementManager {
                     y: Math.max(-1, Math.min(1, (fromRaw.y * finalTiltAmplitude) + tiltOffset)),
                 };
                 if (isCeilingMount) {
-                    fromPosition.y = Math.max(fromPosition.y, -TILT_CEILING);
+                    if (fromPosition.y > -TILT_CEILING)
+                        fromPosition.y = -TILT_CEILING;
+                    else if (fromPosition.y < -TILT_FLOOR_LIMIT)
+                        fromPosition.y = -TILT_FLOOR_LIMIT;
                 }
                 else {
                     fromPosition.y = Math.min(fromPosition.y, TILT_CEILING);
@@ -846,9 +870,15 @@ export class VibeMovementManager {
                     x: fromPosition.x + (position.x - fromPosition.x) * crossfadeSmoothT,
                     y: fromPosition.y + (position.y - fromPosition.y) * crossfadeSmoothT,
                 };
-                finalPosition.y = isCeilingMount
-                    ? Math.max(finalPosition.y, -TILT_CEILING)
-                    : Math.min(finalPosition.y, TILT_CEILING);
+                if (isCeilingMount) {
+                    if (finalPosition.y > -TILT_CEILING)
+                        finalPosition.y = -TILT_CEILING;
+                    else if (finalPosition.y < -TILT_FLOOR_LIMIT)
+                        finalPosition.y = -TILT_FLOOR_LIMIT;
+                }
+                else {
+                    finalPosition.y = Math.min(finalPosition.y, TILT_CEILING);
+                }
             }
         }
         // 🎭 WAVE 2086.1: Save lastPosition ONE per frame (para GHOST PROTOCOL)

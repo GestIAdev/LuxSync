@@ -370,6 +370,11 @@ export class NodeArbiter implements INodeArbiter {
       }
     }
     this._manualOverrides.delete(nodeId)
+    
+    // WAVE 4935 M2: Ghost Anchor fix.
+    // L2 clear debe limpiar también el estado cinético nativo (IK targets, orbits)
+    // para evitar que L0 lea posiciones fantasma al retomar el control.
+    this._motorKineticOverrides.delete(nodeId)
   }
 
   /**
@@ -752,6 +757,7 @@ export class NodeArbiter implements INodeArbiter {
     const amp = this._relativeOffsetAmplitude
     const ampPan  = amp * RELATIVE_OFFSET_SCALE_PAN
     const ampTilt = amp * RELATIVE_OFFSET_SCALE_TILT
+    const intentsByFixture = Object.fromEntries(this._result)
 
     // Tracker para telemetría throttled.
     let sampleNodeId: string | null = null
@@ -794,6 +800,52 @@ export class NodeArbiter implements INodeArbiter {
 
       // Skip nodos sin base ni offset — no son cinéticos en este frame.
       if (!hasBasePan && !hasBaseTilt && !hasPanOffset && !hasTiltOffset) {
+        continue
+      }
+
+      // WAVE 4933.2: L2 ABSOLUTE SUPREMACY.
+      // Si _manualOverrides tiene pan/tilt ABSOLUTO (radar touch sin patrón)
+      // pero NO pan_base/tilt_base (que indicaría modo órbita con patrón activo),
+      // el offset de L0 (VMM automático) se descarta por completo.
+      // Los valores absolutos ya están en el record desde _applyIntent('manual').
+      // Doctrina: tocar el radar = congelación total de la automatización L0.
+      const manualAbsPan  = manual ? manual['pan']  : undefined
+      const manualAbsTilt = manual ? manual['tilt'] : undefined
+      const hasAbsoluteManualLock =
+        (isFiniteChannelValue(manualAbsPan)  && !hasManualPan)  ||
+        (isFiniteChannelValue(manualAbsTilt) && !hasManualTilt)
+      if (hasAbsoluteManualLock) continue
+
+      const sep = nodeId.indexOf(':')
+      const fixtureId = sep >= 0 ? nodeId.slice(0, sep) : nodeId
+
+      // [WAVE 4936] RADAR TELEMETRY TRAP
+      if (manual && (manual['pan'] !== undefined || manual['pan_base'] !== undefined)) {
+        // Filtramos para loguear solo un fixture y evitar spam en consola
+        if (fixtureId === Object.keys(intentsByFixture)[0]) { 
+          console.warn(`[ARBITER DIAG] Fixture: ${fixtureId}`, {
+            payload_pan: manual['pan'],
+            payload_base: manual['pan_base'],
+            hasMotorPan: hasMotorPan,
+            isHoldActive: (!hasMotorPan && !hasMotorTilt)
+          });
+        }
+      }
+
+      // WAVE 4934 M1: HOLD STATE DETECTION.
+      // _manualOverrides tiene pan_base/tilt_base (anchor del radar escrito por
+      // _flushClassic al activar el patrón) pero _motorKineticOverrides NO tiene
+      // nada (removeNodes() fue llamado por HOLD → engine sacó el nodo).
+      // En este estado el mover debe CONGELARSE exactamente en el anchor del radar.
+      // Sin este check, L0 sumaba su offset al anchor (hasManualPan=true →
+      // basePan=radarAnchor → final=radarAnchor + L0_offset * amp → deriva).
+      // Doctrina: HOLD = posición estática absoluta, L0 completamente silenciado.
+      // WAVE 4935: Sticky Clutch fix. Si hay un payload absoluto fresco ('pan'),
+      // respetar su supremacía, no sobrescribir con el 'pan_base' congelado.
+      const isHoldState = (hasManualPan || hasManualTilt) && !hasMotorPan && !hasMotorTilt
+      if (isHoldState) {
+        if (hasManualPan && !isFiniteChannelValue(manualAbsPan)) record['pan'] = manualPan as number
+        if (hasManualTilt && !isFiniteChannelValue(manualAbsTilt)) record['tilt'] = manualTilt as number
         continue
       }
 

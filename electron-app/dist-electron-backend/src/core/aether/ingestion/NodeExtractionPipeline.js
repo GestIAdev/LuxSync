@@ -255,7 +255,7 @@ export class NodeExtractionPipeline {
         }
         const nodes = hasForgeGraph
             ? this._buildNodesFromForgeGraph(resolvedDeviceId, resolvedZone, fixtureDef, fixtureGraph, resolvedPosition)
-            : this._sanitizeOverlappingChannels(resolvedDeviceId, this._buildAllNodes(resolvedDeviceId, resolvedZone, fixtureDef, topology, resolvedPosition));
+            : this._sanitizeOverlappingChannels(resolvedDeviceId, this._buildAllNodes(resolvedDeviceId, resolvedZone, fixtureDef, topology, resolvedPosition, resolvedOrientation));
         const calibration = this._buildCalibration(fixtureDef, v2CalibOverride);
         return {
             deviceId: resolvedDeviceId,
@@ -608,7 +608,7 @@ export class NodeExtractionPipeline {
             return 'rgb';
         return 'rgb';
     }
-    _buildAllNodes(deviceId, zoneId, fixtureDef, topology, position) {
+    _buildAllNodes(deviceId, zoneId, fixtureDef, topology, position, orientation) {
         const nodes = [];
         for (const group of topology.colorGroups) {
             nodes.push(this._buildColorNode(deviceId, zoneId, fixtureDef, group, position));
@@ -617,7 +617,7 @@ export class NodeExtractionPipeline {
             nodes.push(this._buildImpactNode(deviceId, zoneId, topology.impactChannels, position));
         }
         if (topology.kineticChannels.length > 0) {
-            nodes.push(this._buildKineticNode(deviceId, zoneId, fixtureDef, topology.kineticChannels, position));
+            nodes.push(this._buildKineticNode(deviceId, zoneId, fixtureDef, topology.kineticChannels, position, orientation));
         }
         if (topology.beamChannels.length > 0) {
             nodes.push(this._buildBeamNode(deviceId, zoneId, topology.beamChannels, position));
@@ -721,7 +721,7 @@ export class NodeExtractionPipeline {
         };
     }
     // ── KINETIC NODE ──────────────────────────────────────────────────────────
-    _buildKineticNode(deviceId, zoneId, fixtureDef, kineticChs, position) {
+    _buildKineticNode(deviceId, zoneId, fixtureDef, kineticChs, position, orientation) {
         const nodeId = `${deviceId}:kinetic`;
         const motorType = this._mapMotorType(fixtureDef.physics?.motorType);
         const maxSpeed = fixtureDef.physics?.maxVelocity ?? 540;
@@ -756,6 +756,12 @@ export class NodeExtractionPipeline {
             stereoTotal: 1,
             state: new Float64Array(4),
             ...(position !== undefined && { position }),
+            ...(orientation !== undefined && {
+                ikOrientation: {
+                    installation: orientation,
+                    rotation: { pitch: 0, yaw: 0, roll: 0 },
+                },
+            }),
         };
     }
     // ── BEAM NODE ─────────────────────────────────────────────────────────────

@@ -48,6 +48,7 @@ import {
   type AudioContext as VmmAudioContext,
 } from '../../../engine/movement/VibeMovementManager'
 import { aetherKineticEngine } from '../AetherKineticEngine'
+import { fnv1aChaosPhase } from '../../../engine/movement/ChaosHash'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -103,19 +104,6 @@ const FALLBACK_VIBE_ID = 'techno-club'
 const CHILL_VIBE_ID = 'chill-lounge'
 const GLACIER_LERP_ALPHA = 0.0005
 
-// 🌪️ WAVE 4708 T3: hash FNV-1a determinista (espejo del que usa el bridge en
-// _flushClassic) para distribuir caos por nodeId. Retorna un offset de fase
-// signado en [-π, π] modulado por amount × seed × hash(nodeId).
-function fnv1aChaosPhase(nodeId: string, seed: number): number {
-  const s = nodeId + ':' + (seed & 0xFFFF)
-  let h = 2166136261
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i)
-    h = Math.imul(h, 16777619) >>> 0
-  }
-  // [0..0xFFFF] → [-π, π]
-  return (((h & 0xFFFF) / 0x7FFF) - 1) * Math.PI
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // KINETIC ADAPTER
@@ -216,9 +204,16 @@ export class KineticAdapter extends BaseSystem<IKineticNodeData> implements IAet
       // ── 4b. GATE L2-SUPREMACY: si el motor nativo L2 tiene este nodo bajo
       // control manual, NO emitir intent L0 — el engine ya escribió pan_base/tilt_base
       // en L2 antes de este tick. Emitir L0 aquí contaminaría el resultado final.
-      if (aetherKineticEngine.hasNode(node.nodeId)) {
-        return
+      // ─── FIX WAVE 4938: L2 SUPREMACY SPATIAL GATE ───
+      const fixtureId = node.nodeId.split(':')[0] // Sacamos el ID puro
+      const arbiter = aetherKineticEngine.arbiter
+      if (
+        aetherKineticEngine.hasNode(node.nodeId) ||
+        (arbiter && arbiter.getMotorKineticOverride(`${fixtureId}:kinetic`) !== undefined)
+      ) {
+        return // L2 SUPREMACY: El VMM clásico se calla.
       }
+      // ───────────────────────────────────────────────
 
       // 🛡️ WAVE 4824.1: KINETIC ADAPTER SHIELD — Early exit para rotación continua.
       //
@@ -241,13 +236,13 @@ export class KineticAdapter extends BaseSystem<IKineticNodeData> implements IAet
       // según el orden de selección del usuario (determinista, cero alloc).
       const lrPhaseOffset = (node.physicalPosition?.x ?? 0) > 0 ? Math.PI : 0
       const l2PhaseOffset = this._vmm._l2PhaseOverrides[node.nodeId] ?? 0
-      // 🌪️ WAVE 4708 T3: caos global del slider — desfase determinista por nodo.
-      // amount === 0 → offset === 0 (sin caos, sincronía total).
-      // amount > 0   → cada nodo ve su propio offset hash-derived, distribuyendo
-      //                la fase de la IA igual que el patrón manual L2.
+      // 🌪️ WAVE 4708 T3: caos global del slider — desfase determinista por fixture.
+      // Se extrae fixtureId puro (sin :kinetic) para que el hash coincida con el
+      // usado por KineticsBridge._flushClassic en el frontend, unificando el
+      // comportamiento caótico entre patrones manuales (L2) e IA (L0).
       const chaosAmount = this._vmm.globalChaosAmount
       const chaosPhase  = chaosAmount > 0
-        ? fnv1aChaosPhase(node.nodeId, this._vmm.globalChaosSeed) * chaosAmount
+        ? fnv1aChaosPhase(fixtureId, this._vmm.globalChaosSeed) * chaosAmount
         : 0
       const phaseOffset = lrPhaseOffset + l2PhaseOffset + chaosPhase
 

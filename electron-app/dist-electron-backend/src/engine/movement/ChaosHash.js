@@ -66,6 +66,25 @@ export function computeChaosOffsets(fixtureIds, seed, chaosAmount, amplitude) {
     return result;
 }
 /**
+ * 🌪️ WAVE 4708 T3: hash FNV-1a determinista para offset de fase caótica.
+ * Espejo del usado en KineticsBridge._flushClassic, pero normalizado a [-π, π]
+ * para aplicar como desfase de fase en patrones cinéticos (L0 / L2 nativo).
+ *
+ * @param fixtureId - UUID canónico del fixture (sin sufijo :kinetic)
+ * @param seed      - Semilla de sesión (16-bit)
+ * @returns Offset de fase en [-π, π]
+ */
+export function fnv1aChaosPhase(fixtureId, seed) {
+    const s = fixtureId + ':' + (seed & 0xFFFF);
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) {
+        h ^= s.charCodeAt(i);
+        h = Math.imul(h, 16777619) >>> 0;
+    }
+    // [0..0xFFFF] → [-π, π]
+    return (((h & 0xFFFF) / 0x7FFF) - 1) * Math.PI;
+}
+/**
  * Genera un seed de sesión nuevo a partir del timestamp actual.
  * Es determinista dentro de la sesión (mismo valor toda la sesión si no se resembra).
  * El operador hace click en RESEED para obtener otro.

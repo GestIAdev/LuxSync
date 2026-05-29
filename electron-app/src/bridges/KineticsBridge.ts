@@ -350,6 +350,21 @@ class KineticsBridgeClass {
         },
       }))
       hydration.setNodeStates(states, fixtureIds)
+
+      // ─── FIX WAVE 4939: SELECTION AMNESIA ───
+      // Sincronizamos movementStore con la realidad del backend para evitar
+      // que el radar arrastre posiciones stale del fixture anteriormente seleccionado.
+      const leadState = res.states[0]
+      if (leadState) {
+        const panDeg  = (leadState.panAnchor  ?? 0.5) * 540
+        const tiltDeg = (leadState.tiltAnchor ?? 0.5) * 270
+
+        // Suprimimos el flush clásico derivado — no queremos reescribir L2
+        // con valores que acabamos de leer del backend.
+        this._suppressClassicFlushCount++
+        useMovementStore.getState().setPanTilt(panDeg, tiltDeg)
+      }
+      // ───────────────────────────────────────
     } catch (err) {
       console.error('[KineticsBridge] _hydrateFromBackend error:', err)
     }

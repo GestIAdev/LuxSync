@@ -338,6 +338,14 @@ export function registerAetherIPCHandlers() {
             if (pattern === null || pattern === 'static' || pattern === 'hold') {
                 const removeNodeIds = fixtureIds.map(id => `${id}:kinetic`);
                 aetherKineticEngine.removeNodes(removeNodeIds, arbiter);
+                // [WAVE 4937.1] EXPLICIT ARBITER CACHE PURGE ON UNLOCK
+                // Si el patrón es null y no hay coordenadas de ancla, es un Unlock total.
+                // Limpiar _manualOverrides para evitar Ghost Anchors congelados en L2.
+                if (pattern === null && anchorPan === undefined && anchorTilt === undefined) {
+                    for (const id of fixtureIds) {
+                        arbiter.clearManualOverride(`${id}:kinetic`);
+                    }
+                }
                 // VMM: silenciar solo si el motor ya no tiene pistas (paridad legacy).
                 if (!aetherKineticEngine.isActive()) {
                     vibeMovementManager.setManualPattern(null);
@@ -385,24 +393,47 @@ export function registerAetherIPCHandlers() {
             const fallbackTilt = (typeof anchorTilt === 'number' && Number.isFinite(anchorTilt))
                 ? (anchorTilt < 0 ? 0 : anchorTilt > 1 ? 1 : anchorTilt)
                 : null;
+            let radarPreservedCount = 0;
             let ikPreservedCount = 0;
             for (const nodeId of nodeIds) {
+                // WAVE 4934 M2: RADAR ANCHOR IMMUTABILITY.
+                // Al cambiar de patrón (ballyhoo → figure8, etc.), el anchor del radar
+                // DEBE ser el centro del radar — NO la posición actual del LFO.
+                //
+                // _manualOverrides.pan_base  = centro del radar (escrito por _flushClassic)
+                // _motorKineticOverrides.pan_base = posición actual del LFO (órbita en curso)
+                //
+                // Usar _motorKineticOverrides como anchor causaba que el nuevo patrón
+                // empezara desde la posición de la órbita anterior, perdiendo el centro
+                // del radar y produciendo saltos de posición visibles.
+                //
+                // Prioridad correcta:
+                //   1. _manualOverrides.pan_base   — anchor del Radar (L2 clásico)
+                //   2. _motorKineticOverrides.pan_base — solo para IK puro (sin anchor Radar)
+                //   3. fallbackPan/Tilt del payload UI
+                const radarAnchor = arbiter.getManualOverride(nodeId);
+                const radarPan = radarAnchor && Number.isFinite(radarAnchor['pan_base']) ? radarAnchor['pan_base'] : null;
+                const radarTilt = radarAnchor && Number.isFinite(radarAnchor['tilt_base']) ? radarAnchor['tilt_base'] : null;
                 const ik = arbiter.getMotorKineticOverride(nodeId);
                 const ikPan = ik && Number.isFinite(ik['pan_base']) ? ik['pan_base'] : null;
                 const ikTilt = ik && Number.isFinite(ik['tilt_base']) ? ik['tilt_base'] : null;
-                const finalPan = ikPan ?? fallbackPan;
-                const finalTilt = ikTilt ?? fallbackTilt;
+                const finalPan = radarPan ?? ikPan ?? fallbackPan;
+                const finalTilt = radarTilt ?? ikTilt ?? fallbackTilt;
                 if (finalPan === null || finalTilt === null)
                     continue;
                 // Merge no-destructivo (preserva otros canales L2 — speed, etc.).
                 const prev = arbiter.getManualOverride(nodeId) ?? {};
                 arbiter.setManualOverride(nodeId, { ...prev, pan_base: finalPan, tilt_base: finalTilt });
-                if (ikPan !== null && ikTilt !== null)
+                if (radarPan !== null)
+                    radarPreservedCount++;
+                else if (ikPan !== null)
                     ikPreservedCount++;
             }
-            if (ikPreservedCount > 0) {
-                console.log(`[AetherIPC ⚡ WAVE-4916] setManualPattern preservó IK anchor en ` +
-                    `${ikPreservedCount}/${nodeIds.length} fixtures (pattern=${pattern})`);
+            if (radarPreservedCount > 0 || ikPreservedCount > 0) {
+                console.log(`[AetherIPC ⚡ WAVE-4934] setManualPattern anchor: ` +
+                    `radar=${radarPreservedCount} ik=${ikPreservedCount} ` +
+                    `fallback=${nodeIds.length - radarPreservedCount - ikPreservedCount} ` +
+                    `total=${nodeIds.length} (pattern=${pattern})`);
             }
             // Activar motor nativo con la configuración completa.
             // WAVE 4710: Programmer Paradigm — la selección NO dicta el ciclo de vida en L2.

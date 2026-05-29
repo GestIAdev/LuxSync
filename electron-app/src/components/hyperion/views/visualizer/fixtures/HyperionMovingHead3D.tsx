@@ -295,8 +295,14 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
 
     // WAVE 4887: map visual exactamente a rango mecánico del fixture.
     // Pan invertido para alinear con IK (ceiling): target +X => physicalPan>0.5 => haz hacia +X en top-down.
+    // WAVE 4932.4: Para ceiling/truss el NodeResolver aplica (255-dmx) en hardware. El visualizador
+    // recibe el valor pre-inversión (lógico 0-1). Invertimos aquí para que el render coincida con
+    // la física real: tilt lógico bajo → hardware apunta al suelo → visual apunta al suelo.
+    const orientation = fixture.orientation ?? 'ceiling'
+    const isCeilingVisual = orientation === 'ceiling' || orientation === 'truss-front' || orientation === 'truss-back'
+    const visualTilt = isCeilingVisual ? (1 - smoothTilt.current!) : smoothTilt.current!
     const panAngle = -(smoothPan.current! - 0.5) * mechanicalPanRangeRad
-    const tiltAngle = -(smoothTilt.current! - 0.5) * mechanicalTiltRangeRad + TILT_REST_ANGLE
+    const tiltAngle = -(visualTilt - 0.5) * mechanicalTiltRangeRad + TILT_REST_ANGLE
     yokeQuat.current.setFromAxisAngle(PAN_AXIS, panAngle)
     headQuat.current.setFromAxisAngle(TILT_AXIS, tiltAngle)
 

@@ -39,6 +39,9 @@ const DEFAULT_CONFIG = {
     resurrectionDelay: 500,
     workerPollIntervalMs: 22,
 };
+// WAVE 4933.1 - THETA KILLSWITCH
+// Emergency global shutdown: disables worker spawn, heartbeat, and phoenix loop.
+const ENABLE_THETA_ORCHESTRATOR = false;
 function getBridge() {
     // Acceso defensivo — el preload puede no haber expuesto el namespace en
     // configuraciones legacy.
@@ -111,6 +114,13 @@ export class ThetaOrchestrator {
     async start() {
         if (this.isRunning)
             return;
+        if (!ENABLE_THETA_ORCHESTRATOR) {
+            this.isRunning = false;
+            this.isReady = false;
+            this.resurrections = 0;
+            this.stopHeartbeat();
+            return;
+        }
         // 1) Pedir el SAB al main process — UNA SOLA VEZ.
         const bridge = getBridge();
         if (!bridge) {
@@ -399,6 +409,11 @@ export class ThetaOrchestrator {
      * The worker will consume frames and render them to its OffscreenCanvas.
      */
     async loadVideo(url) {
+        if (!ENABLE_THETA_ORCHESTRATOR) {
+            // eslint-disable-next-line no-console
+            console.warn('[THETA] loadVideo ignored (Theta disabled by WAVE 4933.1 killswitch)');
+            return;
+        }
         if (!this.isRunning || !this.worker) {
             throw new Error('[THETA] loadVideo called before start() or worker is dead');
         }
@@ -530,6 +545,9 @@ export class ThetaOrchestrator {
     // Spawn / lifecycle
     // ───────────────────────────────────────────────────────────────────────
     async spawnWorker() {
+        if (!ENABLE_THETA_ORCHESTRATOR) {
+            return;
+        }
         if (this.circuit.state === CircuitState.OPEN) {
             const elapsed = Date.now() - this.circuit.lastFailure;
             if (elapsed < CIRCUIT_TIMEOUT) {

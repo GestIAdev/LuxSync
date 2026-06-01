@@ -116,7 +116,7 @@ export class IntentComposer {
         const fixtureZone = fixture.zone || ''
         const positionX   = fixture.position?.x ?? 0
 
-        if (!fixtureMatchesZone(fixtureZone, zoneId, positionX)) continue
+        if (!fixtureMatchesZone(fixtureZone, zoneId, positionX, fixture)) continue
 
         // Build raw intent for this zone
         const intent: EffectIntent = {

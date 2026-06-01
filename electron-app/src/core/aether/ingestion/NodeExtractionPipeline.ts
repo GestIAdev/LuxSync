@@ -115,7 +115,8 @@ const KINETIC_CHANNEL_TYPES = new Set<string>([
 ])
 
 const BEAM_CHANNEL_TYPES = new Set<string>([
-  'focus', 'zoom', 'frost',
+  'focus', 'zoom', 'frost', 'iris',
+  'gobo', 'gobo_rotation', 'prism', 'prism_rotation',
 ])
 
 // WAVE 4708: canales mecánicos/legacy cuarentenados.
@@ -125,10 +126,6 @@ const BEAM_CHANNEL_TYPES = new Set<string>([
 // Pares LED baratos tienen canales auto-program que el LiquidEngine excita
 // sin querer. Cuarentena total: defaultValue=0 forzado en build.
 const QUARANTINED_MECHANICAL_CHANNEL_TYPES = new Set<string>([
-  'gobo',
-  'gobo_rotation',
-  'prism',
-  'prism_rotation',
   'macro',
   'effect',
   'sound_active',
@@ -235,6 +232,7 @@ const CHANNEL_PRIORITY_BY_TYPE: Readonly<Record<string, number>> = Object.freeze
   focus: 65,
   zoom: 64,
   frost: 63,
+  iris: 62,
   red: 50,
   green: 49,
   blue: 48,
@@ -759,7 +757,7 @@ export class NodeExtractionPipeline {
 
     // BEAM: has beam-shaping channels
     if ([...typeSet].some(t => BEAM_CHANNEL_TYPES.has(t))) {
-      const hasBeamShaping = typeSet.has('zoom') || typeSet.has('focus')
+      const hasBeamShaping = typeSet.has('zoom') || typeSet.has('focus') || typeSet.has('iris')
       return {
         nodeId,
         family:           NodeFamily.BEAM,
@@ -1045,7 +1043,7 @@ export class NodeExtractionPipeline {
     // Blueprint 3506 §1.5: zoom/focus/iris → role 'primary'; gobo/prism → role 'decoration'.
     // Si hay zoom, focus o iris, el nodo es primario (conformación del haz).
     // Si solo hay gobos/prism, es decoración pura.
-    const hasBeamShaping = types.has('zoom') || types.has('focus')
+    const hasBeamShaping = types.has('zoom') || types.has('focus') || types.has('iris')
 
     return {
       nodeId,

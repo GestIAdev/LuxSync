@@ -169,9 +169,14 @@ export class KineticAdapter extends BaseSystem {
             // ── 4b. GATE L2-SUPREMACY: si el motor nativo L2 tiene este nodo bajo
             // control manual, NO emitir intent L0 — el engine ya escribió pan_base/tilt_base
             // en L2 antes de este tick. Emitir L0 aquí contaminaría el resultado final.
-            if (aetherKineticEngine.hasNode(node.nodeId)) {
-                return;
+            // ─── FIX WAVE 4938: L2 SUPREMACY SPATIAL GATE ───
+            const fixtureId = node.nodeId.split(':')[0]; // Sacamos el ID puro
+            const arbiter = aetherKineticEngine.arbiter;
+            if (aetherKineticEngine.hasNode(node.nodeId) ||
+                (arbiter && arbiter.getMotorKineticOverride(`${fixtureId}:kinetic`) !== undefined)) {
+                return; // L2 SUPREMACY: El VMM clásico se calla.
             }
+            // ───────────────────────────────────────────────
             // 🛡️ WAVE 4824.1: KINETIC ADAPTER SHIELD — Early exit para rotación continua.
             //
             // Nodos isContinuous (ventiladores, fans, mirror balls) esperan velocidad
@@ -197,7 +202,6 @@ export class KineticAdapter extends BaseSystem {
             // usado por KineticsBridge._flushClassic en el frontend, unificando el
             // comportamiento caótico entre patrones manuales (L2) e IA (L0).
             const chaosAmount = this._vmm.globalChaosAmount;
-            const fixtureId = node.nodeId.split(':')[0];
             const chaosPhase = chaosAmount > 0
                 ? fnv1aChaosPhase(fixtureId, this._vmm.globalChaosSeed) * chaosAmount
                 : 0;

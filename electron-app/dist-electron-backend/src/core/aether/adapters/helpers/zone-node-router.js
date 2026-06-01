@@ -189,38 +189,70 @@ export class ZoneNodeRouter {
                 this._appendNodesToZone(canonical, familyKey, rawNodeIds);
             }
         }
-        // Alias compuesto: all-movers = union determinista movers + movers-left + movers-right.
-        // Incluye fixtures asignados directamente a 'movers' (sin estereo L/R).
-        // Se precalcula en patch-time para evitar fallback accidental a 'all'.
+        // 🌊 WAVE 4951: Alias compuesto all-movers = union estática + recolección dinámica.
+        // Backward compat: absorbe fixtures asignados a 'movers'/'movers-left'/'movers-right'.
+        // Dinámico: escanea TODOS los devices del grafo y añade los nodos de todo aparato
+        // cuyo type indique que es un mover (moving-head, scanner). Esto garantiza que
+        // un mover etiquetado espacialmente (ej. 'front-left') responda a 'all-movers'.
         {
+            const allMoversMap = new Map();
+            for (const family of ZoneNodeRouter.ROUTABLE_FAMILIES) {
+                allMoversMap.set(family, []);
+            }
+            // ── 1. Unión estática (legacy fixture-type zones) ──
             const moversMap = this._zoneCache.get('movers');
             const leftMap = this._zoneCache.get('movers-left');
             const rightMap = this._zoneCache.get('movers-right');
-            if (moversMap || leftMap || rightMap) {
-                const allMoversMap = new Map();
+            const staticSources = [moversMap, leftMap, rightMap];
+            for (const srcMap of staticSources) {
+                if (!srcMap)
+                    continue;
                 for (const family of ZoneNodeRouter.ROUTABLE_FAMILIES) {
                     const familyKey = family;
-                    const center = moversMap?.get(familyKey) ?? ZoneNodeRouter.EMPTY_NODE_ARRAY;
-                    const left = leftMap?.get(familyKey) ?? ZoneNodeRouter.EMPTY_NODE_ARRAY;
-                    const right = rightMap?.get(familyKey) ?? ZoneNodeRouter.EMPTY_NODE_ARRAY;
-                    const merged = [];
-                    const sources = [center, left, right];
-                    for (let s = 0; s < sources.length; s++) {
-                        const src = sources[s];
-                        for (let i = 0; i < src.length; i++) {
-                            if (!merged.includes(src[i])) {
-                                merged.push(src[i]);
-                            }
+                    const nodes = srcMap.get(familyKey) ?? ZoneNodeRouter.EMPTY_NODE_ARRAY;
+                    const merged = allMoversMap.get(familyKey);
+                    for (let i = 0; i < nodes.length; i++) {
+                        if (!merged.includes(nodes[i])) {
+                            merged.push(nodes[i]);
                         }
                     }
-                    if (merged.length === 0) {
-                        allMoversMap.set(familyKey, ZoneNodeRouter.EMPTY_NODE_ARRAY);
-                        continue;
-                    }
-                    allMoversMap.set(familyKey, Object.freeze(merged));
                 }
-                this._zoneCache.set('all-movers', allMoversMap);
             }
+            // ── 2. Recolección dinámica por capability de device ──
+            const snapshot = nodeGraph.snapshot();
+            for (let d = 0; d < snapshot.deviceIds.length; d++) {
+                const deviceId = snapshot.deviceIds[d];
+                const deviceDef = nodeGraph.getDevice(deviceId);
+                if (!deviceDef)
+                    continue;
+                const isMover = deviceDef.type === 'moving-head' || deviceDef.type === 'scanner';
+                if (!isMover)
+                    continue;
+                const deviceNodeIds = nodeGraph.getDeviceNodes(deviceId);
+                for (let n = 0; n < deviceNodeIds.length; n++) {
+                    const nodeData = nodeGraph.getNodeData(deviceNodeIds[n]);
+                    if (!nodeData)
+                        continue;
+                    const familyKey = nodeData.family;
+                    const merged = allMoversMap.get(familyKey);
+                    if (merged && !merged.includes(deviceNodeIds[n])) {
+                        merged.push(deviceNodeIds[n]);
+                    }
+                }
+            }
+            // Freeze and cache
+            const frozenMap = new Map();
+            for (const family of ZoneNodeRouter.ROUTABLE_FAMILIES) {
+                const familyKey = family;
+                const merged = allMoversMap.get(familyKey);
+                if (merged.length === 0) {
+                    frozenMap.set(familyKey, ZoneNodeRouter.EMPTY_NODE_ARRAY);
+                }
+                else {
+                    frozenMap.set(familyKey, Object.freeze(merged));
+                }
+            }
+            this._zoneCache.set('all-movers', frozenMap);
         }
         // Agregados estéreo: front/back/floor deben incluir sus subzonas L/R.
         this._mergeZones('front', ['front', 'front-left', 'front-right']);

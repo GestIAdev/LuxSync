@@ -17,7 +17,6 @@
  * RESPONSABILIDADES:
  *   1. _routeImpactNodes   → dimmer por zona para IMPACT nodes
  *   2. _routeStrobeNodes   → shutter + strobeRate para IMPACT con shutter
- *   3. _routeMoodToColorIntensity → brightness (no RGB) para COLOR nodes
  *
  * INVARIANTES:
  *   - L0 es base, no override. priority = 0 siempre.
@@ -200,31 +199,6 @@ export class LiquidAetherAdapter {
             this._colorScratch.nodeId = node.nodeId;
             bus.push(this._colorScratch);
         }
-    }
-    /**
-     * Inyecta la intensidad de "mood" al canal `brightness` de todos los
-     * COLOR nodes.
-     *
-     * NO escribe RGB (eso es responsabilidad exclusiva de ColorAdapter en L1).
-     * Solo el canal `brightness` — el NodeArbiter usa MergeStrategy.MULTIPLY
-     * para combinarlo con el color de ColorAdapter.
-     *
-     * mood = clamp01(morphFactor × recoveryFactor)
-     * final_brightness = clamp01(mood × zoneIntensity)
-     */
-    _routeMoodToColorIntensity(result, frame, bus) {
-        const colorNodes = this._nodeGraph.getView(NodeFamily.COLOR);
-        const moodIntensity = clamp01(frame.morphFactor * frame.recoveryFactor);
-        colorNodes.forEach((node) => {
-            // ── Zero-alloc stale cleanup ────────────────────────────
-            this._colorValues['brightness'] = undefined;
-            // ── Intensidad zonal — uniforme por zona semántica, sin falloff (F3) ────
-            const zoneIntensity = selectZoneFromResult(result, node.zoneId);
-            // ── Intent L0 — solo brightness, no tinte ─────────────────
-            this._colorValues['brightness'] = clamp01(moodIntensity * zoneIntensity);
-            this._colorScratch.nodeId = node.nodeId;
-            bus.push(this._colorScratch);
-        });
     }
     // ─────────────────────────────────────────────────────────────────────────
     // PATCH-TIME API

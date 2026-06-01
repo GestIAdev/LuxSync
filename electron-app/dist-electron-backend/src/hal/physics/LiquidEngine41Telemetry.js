@@ -349,7 +349,7 @@ LiquidEngine41Telemetry.BUFFER_SIZE = 600;
 // WAVE 2460: Telemetría siempre activa en desarrollo — se desactiva manualmente
 // con window.luxDebug.telemetry.stop() o IPC 'telemetry:lt41:stop' antes de producción.
 export const latinoEngine41Telemetry = new LiquidEngine41Telemetry();
-latinoEngine41Telemetry.setTelemetryEnabled(false);
+latinoEngine41Telemetry.setTelemetryEnabled(true);
 // ── WAVE 2434: IPC bridge expuesto en preload.ts → window.luxDebug.telemetry ──
 // Llamar desde DevTools del renderer:
 //   await window.luxDebug.telemetry.export()   → vuelca docs/logs/latinocalib41.md

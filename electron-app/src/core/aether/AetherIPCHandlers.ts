@@ -1090,6 +1090,16 @@ export function registerAetherIPCHandlers(): void {
           return { success: false, error: 'Invalid fixtureId' }
         }
         _calibrationModeFixtures.delete(fixtureId)
+        // 🎯 WAVE 4949: Red de seguridad backend — limpiar overrides manuales
+        // del fixture al salir de calibración para evitar fugas persistentes.
+        try {
+          const arbiter = getTitanOrchestrator().getAetherArbiter()
+          arbiter.clearManualOverride(`${fixtureId}:color`)
+          arbiter.clearManualOverride(`${fixtureId}:impact`)
+          arbiter.clearManualOverride(`${fixtureId}:kinetic`)
+        } catch (clearErr) {
+          console.warn(`[CalibrationIPC] Safety-net clear failed for ${fixtureId}:`, clearErr)
+        }
         console.log(`[CalibrationIPC] 📋 Salida: ${fixtureId}`)
         return { success: true }
       } catch (err) {

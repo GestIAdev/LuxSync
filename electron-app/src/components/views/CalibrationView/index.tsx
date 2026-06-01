@@ -295,13 +295,22 @@ const CalibrationView: React.FC = () => {
     return () => {
       cancelled = true
       try {
-        // WAVE 3479.4: no hacer wipe global al salir de Calibración.
-        // El panel debe respetar el estado manual existente del Arbiter para que
-        // Canvas y Calibración compartan la misma verdad visual al navegar.
+        // 🎯 WAVE 4949: Forzar limpieza del Arbiter al cerrar el panel.
+        // Los overrides manuales del fixture activo deben borrarse para evitar
+        // que colores de calibración persistan y sobreescriban la Vibe.
+        void electron.ipcRenderer.invoke('lux:aether:clearManualOverrides', [
+          `${activeFixtureId}:color`,
+          `${activeFixtureId}:impact`,
+          `${activeFixtureId}:kinetic`,
+        ])
+      } catch (e) {
+        console.warn('[CalibrationLab] Failed to clear overrides on unmount', e)
+      }
+      try {
         void electron.ipcRenderer.invoke('lux:arbiter:exitCalibrationMode', {
           fixtureId: activeFixtureId,
         })
-        console.log(`[CalibrationLab] 🧹 Calibration EXIT preserving manual state for ${activeFixtureId}`)
+        console.log(`[CalibrationLab] 🧹 Calibration EXIT for ${activeFixtureId}`)
       } catch {
         // ignore cleanup errors
       }

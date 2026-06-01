@@ -599,14 +599,16 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
       )
       // Fall through — buildup_enhance handler below will manage with soft effects
     } else {
-      if (fuzzyDecision.action === 'force_strike' && fuzzyDecision.confidence >= 0.60 && hasDNAProposal) {
+      // 🔪 WAVE 4947 MISIÓN 4: Descastrar Fuzzy — Eliminar restricción hasDNAProposal
+      if (fuzzyDecision.action === 'force_strike' && fuzzyDecision.confidence >= 0.60) {
         console.log(
           `[DecisionMaker 🧠] FUZZY FORCE_STRIKE → strike | ` +
           `conf=${fuzzyDecision.confidence.toFixed(2)} | ${fuzzyDecision.dominantRule}`
         )
         return 'strike'
       }
-      if (fuzzyDecision.action === 'strike' && fuzzyDecision.confidence >= 0.50 && hasDNAProposal) {
+      // 🔪 WAVE 4947 MISIÓN 4: Descastrar Fuzzy — Eliminar restricción hasDNAProposal
+      if (fuzzyDecision.action === 'strike' && fuzzyDecision.confidence >= 0.50) {
         console.log(
           `[DecisionMaker 🧠] FUZZY STRIKE → strike | ` +
           `conf=${fuzzyDecision.confidence.toFixed(2)} | ${fuzzyDecision.dominantRule}`

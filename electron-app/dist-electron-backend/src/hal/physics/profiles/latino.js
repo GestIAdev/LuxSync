@@ -100,7 +100,7 @@ export const LATINO_PROFILE = {
         gateOn: 0.28,
         boost: 3.5,
         crushExponent: 1.0,
-        decayBase: 0.45,
+        decayBase: 0.72,
         decayRange: 0.10,
         maxIntensity: 0.85,
         squelchBase: 0.03,
@@ -145,7 +145,7 @@ export const LATINO_PROFILE = {
         gateOn: 0.18, // WAVE 3492: 0.25->0.18 — deja pasar melodias reales
         boost: 4.2,
         crushExponent: 1.8, // WAVE 3492: 3.5->1.8 — picos melódicos no aplastados
-        decayBase: 0.62, // WAVE 3494: 0.70->0.62 — contraste real entre notas
+        decayBase: 0.72, // WAVE 3494: 0.70->0.62 — contraste real entre notas
         decayRange: 0.05,
         maxIntensity: 0.85,
         squelchBase: 0.12, // WAVE 3492: 0.30->0.12 — melodías suaves pasan
@@ -297,7 +297,7 @@ export const LATINO_PROFILE = {
             gateOn: 0.18, // WAVE 3492: igual que base
             squelchBase: 0.12, // WAVE 3492: igual que base
             boost: 4.10,
-            decayBase: 0.62, // WAVE 3494: alineado con base
+            decayBase: 0.72, // WAVE 4945: transferimos inercia viscosa al mover
             ghostCap: 0.06,
             riseRate: 0.12, // WAVE 3494: alineado con base
         },
@@ -347,8 +347,8 @@ export const LATINO_PROFILE = {
         envelopeSnare: {
             gateOn: 0.52,
             squelchBase: 0.40,
-            decayBase: 0.34,
-            decayRange: 0.16,
+            decayBase: 0.45,
+            decayRange: 0.10,
             ghostCap: 0.01,
             boost: 2.5,
         },

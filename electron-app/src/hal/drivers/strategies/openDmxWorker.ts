@@ -125,11 +125,15 @@ function handleConnect(portPath: string, refreshRate?: number, requestedBreakMod
     log(`⏱️ Adaptive Pacing: ${refreshRate}Hz → ${Number(minFrameNs / BigInt(1_000_000))}ms/frame`)
   }
 
-  // BREAK mode: default 'set' para FTDI puro, 'baudrate' para chips genéricos
-  if (requestedBreakMode === 'baudrate' || requestedBreakMode === 'set') {
-    breakMode = requestedBreakMode
-    log(`🔧 BREAK mode: ${breakMode}`)
+  // WAVE 4942: FORCE BAUD BREAK MODE (CH340 FIX).
+  // OpenDMX debe operar SIEMPRE en baudrate-switch para garantizar compatibilidad
+  // con interfaces que ignoran SetCommBreak/port.set({brk:true}).
+  // Ignoramos cualquier requestedBreakMode externo ('set' incluido).
+  breakMode = 'baudrate'
+  if (requestedBreakMode === 'set') {
+    log(`⚠️ BREAK mode request '${requestedBreakMode}' ignored (WAVE 4942 forced 'baudrate')`)
   }
+  log(`🔧 BREAK mode: ${breakMode}`)
 
   import('serialport').then((serialportModule) => {
     const SerialPort: any = (serialportModule as any).SerialPort ??

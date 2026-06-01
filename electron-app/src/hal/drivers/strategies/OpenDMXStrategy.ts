@@ -143,11 +143,10 @@ export class OpenDMXStrategy implements DMXSendStrategy {
 
         // 🔥 WAVE 2100: Adaptive Pacing — 30Hz conservador para cables tontos (FTDI/CH340).
         // Tornado spec: 33fps max. 30Hz da margen de seguridad.
-        // 🔬 WAVE 3180: THE NATIVE BREAK — modo 'set' usa SetCommBreak IOCTL del driver.
-        // Delega la generación del pulso BREAK al hardware FTDI/CH340 en lugar de
-        // depender del baudrate-switch asíncrono. Si el chip no soporta SetCommBreak,
-        // sendFrameSetBreak() degrada automáticamente a baudrate-switch.
-        this.child!.send({ type: 'CONNECT', portPath, refreshRate: 30, breakMode: 'set' })
+        // WAVE 4942: FORCE BAUD BREAK MODE (CH340 FIX).
+        // Forzamos breakMode='baudrate' para garantizar BREAK falso universal
+        // (baud trick) y evitar interfaces que ignoran port.set({brk:true}).
+        this.child!.send({ type: 'CONNECT', portPath, refreshRate: 30, breakMode: 'baudrate' })
       })
 
       this.workerReady = connected

@@ -356,7 +356,7 @@ export class SeleneTitanConscious extends EventEmitter {
   private readonly GLOBAL_EFFECT_COOLDOWN_MS = 7000  // 🩸 WAVE 2106: 7s (was 4s) — physics breathe
   // WAVE 4834: Fiesta Latina necesita más aire entre disparos para evitar
   // ráfagas de 4-6 EPM en BALANCED cuando el groove mantiene worthiness alto.
-  private readonly LATINA_GLOBAL_EFFECT_COOLDOWN_MS = 8000   // ⚡ WAVE 4849: 12000→8000 | ×2.2 balanced = 17.6s → objetivo 3-4 EPM
+  private readonly LATINA_GLOBAL_EFFECT_COOLDOWN_MS = 5000   // 🔪 WAVE 4947 MISIÓN 3: 8000→5000 para ritmo acorde al género latino
 
   // ═══════════════════════════════════════════════════════════════════════
   // 🛡️ WAVE 4860: POST-DROP REFRACTORY LOCK — La Regla del Respiro Retinal

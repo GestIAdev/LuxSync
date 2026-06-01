@@ -396,36 +396,37 @@ export function registerAetherIPCHandlers() {
             let radarPreservedCount = 0;
             let ikPreservedCount = 0;
             for (const nodeId of nodeIds) {
-                // WAVE 4934 M2: RADAR ANCHOR IMMUTABILITY.
-                // Al cambiar de patrón (ballyhoo → figure8, etc.), el anchor del radar
-                // DEBE ser el centro del radar — NO la posición actual del LFO.
+                // WAVE 4940: DYNAMIC ANCHOR RESOLUTION — Jerarquía (Vivo > IK > Payload > Caché).
+                // Reemplaza WAVE 4934 M2 que priorizaba el pan_base residual de la caché
+                // del radar, causando el "efecto boomerang" al reactivar un patrón tras mover
+                // el fixture: el LFO saltaba al centro del patrón original en lugar de orbitar
+                // alrededor de la posición actual del fixture.
                 //
-                // _manualOverrides.pan_base  = centro del radar (escrito por _flushClassic)
-                // _motorKineticOverrides.pan_base = posición actual del LFO (órbita en curso)
-                //
-                // Usar _motorKineticOverrides como anchor causaba que el nuevo patrón
-                // empezara desde la posición de la órbita anterior, perdiendo el centro
-                // del radar y produciendo saltos de posición visibles.
-                //
-                // Prioridad correcta:
-                //   1. _manualOverrides.pan_base   — anchor del Radar (L2 clásico)
-                //   2. _motorKineticOverrides.pan_base — solo para IK puro (sin anchor Radar)
-                //   3. fallbackPan/Tilt del payload UI
-                const radarAnchor = arbiter.getManualOverride(nodeId);
-                const radarPan = radarAnchor && Number.isFinite(radarAnchor['pan_base']) ? radarAnchor['pan_base'] : null;
-                const radarTilt = radarAnchor && Number.isFinite(radarAnchor['tilt_base']) ? radarAnchor['tilt_base'] : null;
-                const ik = arbiter.getMotorKineticOverride(nodeId);
-                const ikPan = ik && Number.isFinite(ik['pan_base']) ? ik['pan_base'] : null;
-                const ikTilt = ik && Number.isFinite(ik['tilt_base']) ? ik['tilt_base'] : null;
-                const finalPan = radarPan ?? ikPan ?? fallbackPan;
-                const finalTilt = radarTilt ?? ikTilt ?? fallbackTilt;
-                if (finalPan === null || finalTilt === null)
-                    continue;
-                // Merge no-destructivo (preserva otros canales L2 — speed, etc.).
-                const prev = arbiter.getManualOverride(nodeId) ?? {};
-                arbiter.setManualOverride(nodeId, { ...prev, pan_base: finalPan, tilt_base: finalTilt });
-                if (radarPan !== null)
-                    radarPreservedCount++;
+                // Nueva prioridad por nodo:
+                //   1. manual.pan / manual.tilt   — posición viva actual (Programmer override directo)
+                //   2. motor.pan_base / tilt_base — target IK activo (applySpatialTarget)
+                //   3. fallbackPan / fallbackTilt  — payload del UI normalizado (anchorPan del radar)
+                //   4. manual.pan_base / tilt_base — caché del radar (último recurso)
+                //   5. 0.5                         — fallback absoluto neutro
+                const manual = arbiter.getManualOverride(nodeId);
+                const motor = arbiter.getMotorKineticOverride(nodeId);
+                // Posición viva absoluta (canal directo pan/tilt, sin sufijo _base)
+                const livePan = manual && Number.isFinite(manual['pan']) ? manual['pan'] : null;
+                const liveTilt = manual && Number.isFinite(manual['tilt']) ? manual['tilt'] : null;
+                // Target base del motor IK activo
+                const ikPan = motor && Number.isFinite(motor['pan_base']) ? motor['pan_base'] : null;
+                const ikTilt = motor && Number.isFinite(motor['tilt_base']) ? motor['tilt_base'] : null;
+                // Caché del radar (activo tóxico — sólo como última red de seguridad)
+                const cachePan = manual && Number.isFinite(manual['pan_base']) ? manual['pan_base'] : null;
+                const cacheTilt = manual && Number.isFinite(manual['tilt_base']) ? manual['tilt_base'] : null;
+                const resolvedAnchorPan = livePan ?? ikPan ?? fallbackPan ?? cachePan ?? 0.5;
+                const resolvedAnchorTilt = liveTilt ?? ikTilt ?? fallbackTilt ?? cacheTilt ?? 0.5;
+                // Purga del "Activo Tóxico": sobrescribimos la caché con la verdad actual
+                // para que un reactivar posterior siga viendo la posición correcta.
+                const prev = manual ?? {};
+                arbiter.setManualOverride(nodeId, { ...prev, pan_base: resolvedAnchorPan, tilt_base: resolvedAnchorTilt });
+                if (livePan !== null)
+                    radarPreservedCount++; // "vivo" cuenta como radar-preserved en logs
                 else if (ikPan !== null)
                     ikPreservedCount++;
             }
@@ -902,6 +903,17 @@ export function registerAetherIPCHandlers() {
                 return { success: false, error: 'Invalid fixtureId' };
             }
             _calibrationModeFixtures.delete(fixtureId);
+            // 🎯 WAVE 4949: Red de seguridad backend — limpiar overrides manuales
+            // del fixture al salir de calibración para evitar fugas persistentes.
+            try {
+                const arbiter = getTitanOrchestrator().getAetherArbiter();
+                arbiter.clearManualOverride(`${fixtureId}:color`);
+                arbiter.clearManualOverride(`${fixtureId}:impact`);
+                arbiter.clearManualOverride(`${fixtureId}:kinetic`);
+            }
+            catch (clearErr) {
+                console.warn(`[CalibrationIPC] Safety-net clear failed for ${fixtureId}:`, clearErr);
+            }
             console.log(`[CalibrationIPC] 📋 Salida: ${fixtureId}`);
             return { success: true };
         }

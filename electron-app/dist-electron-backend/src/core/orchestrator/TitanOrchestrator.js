@@ -58,7 +58,7 @@ import { getSeleneHephBridge } from '../arsenal/SeleneHephBridge';
 // 🎨 WAVE 4812: Aether Canvas — Pixel Mapping engine
 import { AetherCanvasManager } from '../aether/canvas/AetherCanvasManager';
 import { PixelMapAetherAdapter } from '../aether/canvas/PixelMapAetherAdapter';
-import { PlasmaRenderer } from '../aether/canvas/PlasmaRenderer';
+// 👻 WAVE 4952: PlasmaRenderer import REMOVED — test-pattern poltergeist amputated.
 // 🎬 WAVE 4867: TheiaVideoRenderer — twin-output bridge (THETA thumb SAB → AetherCanvas)
 import { TheiaVideoRenderer } from '../aether/canvas/renderers/TheiaVideoRenderer';
 // 🛂 WAVE 4557: Aether Safety Middleware — La Aduana Aether
@@ -474,8 +474,7 @@ export class TitanOrchestrator {
         // 🎨 WAVE 4812: Aether Canvas — Pixel Mapping engine (patch-time acquire, hot-path ingest)
         this._aetherCanvasManager = new AetherCanvasManager();
         this._pixelMapAdapter = new PixelMapAetherAdapter({ targetLayer: 'effect' });
-        /** Active PlasmaRenderer instances keyed by canvasId — lifecycle managed by RenderHook. */
-        this._plasmaRenderers = new Map();
+        // 👻 WAVE 4952: _plasmaRenderers map REMOVED — test-pattern poltergeist amputated.
         // 🎬 WAVE 4867: TheiaVideoRenderer — null hasta que se llame attachTheiaRenderer()
         this._theiaVideoRenderer = null;
         // 🌉 WAVE 4869: SeleneTheiaBridge — null hasta que se llame attachSeleneTheiaBridge()
@@ -601,40 +600,30 @@ export class TitanOrchestrator {
                 });
                 return instanceId != null ? 1 : -1;
             });
-            // 🎨 WAVE 4812: RenderHook — activated for clips with executionDomain='pixel'.
-            // Acquires a VirtualFrameBuffer, binds world samplers from the NodeGraph,
-            // and starts a PlasmaRenderer as the test pattern producer.
-            const renderHook = (resolved, _entry) => {
-                const hints = resolved.pixelHints;
-                const w = hints.preferredResolution?.w ?? 32;
-                const h = hints.preferredResolution?.h ?? 32;
-                const canvasId = `lfx:plasma:${resolved.effectId}`;
-                try {
-                    // Patch-time: acquire/reuse the VirtualFrameBuffer.
-                    this._aetherCanvasManager.acquire(canvasId, w, h);
-                    // Bind world samplers if graph has positioned nodes.
-                    // Falls back to a no-op bind (0 samplers) if graph is empty — the
-                    // renderer still produces frames but no intents reach the arbiter.
-                    const stageRect = {
-                        x0: -this._aetherStageBounds.width * 0.5,
-                        z0: -this._aetherStageBounds.depth * 0.5,
-                        x1: this._aetherStageBounds.width * 0.5,
-                        z1: this._aetherStageBounds.depth * 0.5,
-                    };
-                    this._pixelMapAdapter.bindWorldSamplers(canvasId, { intensity: resolved.intensity, alphaToDimmer: hints.alphaToDimmer ?? false }, this._aetherGraph, stageRect, w, h);
-                    // Start (or restart) the PlasmaRenderer for this canvasId.
-                    let renderer = this._plasmaRenderers.get(canvasId);
-                    if (!renderer) {
-                        renderer = new PlasmaRenderer(canvasId, this._aetherCanvasManager);
-                        this._plasmaRenderers.set(canvasId, renderer);
-                    }
-                    renderer.start(performance.now());
-                    return canvasId;
-                }
-                catch (err) {
-                    console.warn(`[TitanOrchestrator 🎨] WAVE 4812 renderHook failed for "${resolved.effectId}":`, err);
-                    return null;
-                }
+            // 👻 WAVE 4952 — THE POLTERGEIST HUNT: PlasmaRenderer test-pattern AMPUTATED.
+            //
+            // ROOT CAUSE of the "ghost color flashes" (green→yellow/lighter in Front,
+            // even in absolute silence, surviving every restart):
+            //   1. SeleneHephBridge.route() invoked this renderHook for any clip with
+            //      executionDomain='pixel', which (a) bound world samplers on the
+            //      PixelMapAetherAdapter and (b) started a perpetual PlasmaRenderer —
+            //      a demoscene Math.sin(t) rainbow generator (a "test pattern producer").
+            //   2. EffectManager THEN rejects pixelmap routes (route.kind !== 'hephaestus',
+            //      EffectManager.ts:455) and returns null — but the side-effects above
+            //      were NEVER undone. Nothing ever called renderer.stop() or
+            //      unbindCanvas() for plasma canvases.
+            //   3. Result: the plasma front buffer was sampled every frame in the hot
+            //      loop (_pixelMapAdapter.ingest) and bled time-cycling RGB into
+            //      front-zone COLOR nodes at L3 (effect layer), which dominates L0/L1.
+            //      Time-based (not audio-based) → flashed in silence. Re-armed on EVERY
+            //      boot the instant any pixel-domain clip was attempted.
+            //
+            // FIX: degrade pixel-domain clips to 'legacy' (return null) WITHOUT starting
+            // any generative renderer or binding any canvas. route() and EffectManager
+            // already handle the null/legacy path gracefully. The Theia video pipeline
+            // (attachTheiaRenderer) is a SEPARATE path and is unaffected.
+            const renderHook = (_resolved, _entry) => {
+                return null;
             };
             bridge.setRenderHook(renderHook);
         }
@@ -1514,7 +1503,7 @@ export class TitanOrchestrator {
                     for (const [zoneKey] of this._hephByZone) {
                         if (zoneKey === 'all')
                             continue;
-                        if (zoneMapperMatch(fixtureZone, zoneKey, positionX)) {
+                        if (zoneMapperMatch(fixtureZone, zoneKey, positionX, this.fixtures[index])) {
                             hasAny = true;
                             break;
                         }
@@ -1584,10 +1573,11 @@ export class TitanOrchestrator {
                     applyOutputs(allOutputs);
                 // Check zone-specific outputs (old zone-string path)
                 // 🗺️ WAVE 2543.5: Pass positionX for stereo zone support
+                // 🌊 WAVE 4951: Pass fixture object for dynamic composite zone resolution
                 for (const [zoneKey, outputs] of this._hephByZone) {
                     if (zoneKey === 'all')
                         continue;
-                    if (zoneMapperMatch(fixtureZone, zoneKey, positionX)) {
+                    if (zoneMapperMatch(fixtureZone, zoneKey, positionX, this.fixtures[index])) {
                         applyOutputs(outputs);
                     }
                 }
@@ -1839,14 +1829,8 @@ export class TitanOrchestrator {
                 if (aetherKineticEngine.isActive()) {
                     aetherKineticEngine.tick(this._aetherCtx.deltaMs / 1000, aetherArbiter);
                 }
-                // 🎨 WAVE 4812: Pixel Mapping — tick all active PlasmaRenderers into their
-                // back buffers, then ingest front buffers → L3 intents, before arbitrate().
-                if (this._plasmaRenderers.size > 0) {
-                    const tickNow = this._aetherCtx.nowMs;
-                    for (const renderer of this._plasmaRenderers.values()) {
-                        renderer.tick(tickNow);
-                    }
-                }
+                // 👻 WAVE 4952: PlasmaRenderer tick loop REMOVED (test-pattern poltergeist
+                // amputated in the renderHook above — no plasma renderers are ever created).
                 // 🎬 WAVE 4867: Tick TheiaVideoRenderer — copia el thumb SAB al back buffer de
                 // 'theia:active' si hay frame nuevo, sin allocaciones extra.
                 if (this._theiaVideoRenderer !== null) {
@@ -3027,6 +3011,8 @@ export class TitanOrchestrator {
     }
     /**
      * WAVE 4703: Zone mapping data — replaces masterArbiter.getFixturesForZoneMapping().
+     * 🌊 WAVE 4951: Includes fixture type + capabilities for dynamic composite zone
+     * resolution (all-movers, all-pars via capability, not just zone tags).
      */
     getFixturesForZoneMapping() {
         return this.fixtures.map((f) => ({
@@ -3034,6 +3020,8 @@ export class TitanOrchestrator {
             zone: f.zone || '',
             position: f.position,
             enabled: f.enabled !== false,
+            type: this._normalizeFixtureType(f.type),
+            capabilities: f.capabilities,
         }));
     }
     /**

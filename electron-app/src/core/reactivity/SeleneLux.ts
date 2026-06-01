@@ -547,7 +547,8 @@ export class SeleneLux {
           },
           elementalMods
         );
-        outputPalette.accent = result.palette.accent;
+        // 🔪 WAVE 4947 MISIÓN 1: Guillotina de Color — outputPalette.accent COMENTADA
+        // outputPalette.accent = result.palette.accent;
         debugInfo = result.debugInfo;
       } else if (
         vibeNormalized.includes('latin') || vibeNormalized.includes('fiesta') ||
@@ -567,8 +568,9 @@ export class SeleneLux {
           vibeContext.bpm,
           elementalMods
         );
-        outputPalette.primary = result.palette.primary;
-        outputPalette.accent = result.palette.accent;
+        // 🔪 WAVE 4947 MISIÓN 1: Guillotina de Color — outputPalette mutations COMENTADAS
+        // outputPalette.primary = result.palette.primary;
+        // outputPalette.accent = result.palette.accent;
         isSolarFlare = result.isSolarFlare;
         forceMovement = result.forceMovement;
         if (result.dimmerOverride !== null) {
@@ -675,7 +677,8 @@ export class SeleneLux {
         },
         elementalMods
       );
-      outputPalette.accent = result.palette.accent;
+      // 🔪 WAVE 4947 MISIÓN 1: Guillotina de Color — outputPalette.accent COMENTADA
+      // outputPalette.accent = result.palette.accent;
       isStrobeActive = result.isStrobeActive;
       physicsApplied = 'techno';
       debugInfo = result.debugInfo;
@@ -809,8 +812,9 @@ export class SeleneLux {
         elementalMods
       );
       
-      outputPalette.primary = result.palette.primary;
-      outputPalette.accent = result.palette.accent;
+      // 🔪 WAVE 4947 MISIÓN 1: Guillotina de Color — outputPalette mutations COMENTADAS
+      // outputPalette.primary = result.palette.primary;
+      // outputPalette.accent = result.palette.accent;
       isSolarFlare = result.isSolarFlare;
       forceMovement = result.forceMovement;
       if (result.dimmerOverride !== null) {

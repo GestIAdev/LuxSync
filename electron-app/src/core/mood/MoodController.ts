@@ -43,7 +43,7 @@ export const MOOD_PROFILES: Record<MoodId, MoodProfile> = {
     name: 'calm',
     description: 'Zen mode. Efectos suaves, nada agresivo. 🍹',
     emoji: '😌',
-    thresholdMultiplier: 2.5,      // 🧘 WAVE 1182.2: Filtro fuerte pero no imposible (era 99.0)
+    thresholdMultiplier: 1.2,      // 🔪 WAVE 4947 MISIÓN 2: 2.5→1.2 para Worthiness gate occasional pass
     cooldownMultiplier: 4.0,       // 🧘 WAVE 1182.2: Cooldowns x4 (era 10.0)
     ethicsThreshold: 0.95,         // 🧘 WAVE 1182.2: Solo LEGENDARY bypassea (era 99.0)
     maxIntensity: 0.6,             // 🧘 WAVE 1182.2: Max 60% - todo suave (era 0.7)

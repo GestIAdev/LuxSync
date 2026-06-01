@@ -47,6 +47,33 @@ const COMPOSITE_ZONES = {
     'movers': ['movers-left', 'movers-right'],
 };
 /**
+ * 🌊 WAVE 4951: DYNAMIC COMPOSITE RESOLUTION — Capability-based zone matching.
+ *
+ * When a fixture is NOT tagged with the legacy fixture-type zones (e.g.,
+ * 'movers-left'), but IS a mover by capability (hasMovementChannels=true
+ * or type='moving-head'/'scanner'), it MUST still respond to 'all-movers'.
+ *
+ * This bridges the gap between spatial zoning (front-left, back-right)
+ * and fixture-type zoning (movers, pars) that previously caused L3
+ * effects like CorazonLatino to silently fail on spatially-zoned movers.
+ */
+const DYNAMIC_COMPOSITE_RESOLVERS = {
+    'all-movers': f => f.type === 'moving-head' ||
+        f.type === 'scanner' ||
+        f.type === 'spot' ||
+        f.capabilities?.hasMovementChannels === true,
+    'movers': f => f.type === 'moving-head' ||
+        f.type === 'scanner' ||
+        f.type === 'spot' ||
+        f.capabilities?.hasMovementChannels === true,
+    'all-pars': f => f.type === 'par' ||
+        f.type === 'wash' ||
+        f.type === 'bar',
+    'pars': f => f.type === 'par' ||
+        f.type === 'wash' ||
+        f.type === 'bar',
+};
+/**
  * Modifier zones that filter by physical position (position.x).
  * These are spatial modifiers (WHERE on stage), applied as AND-intersection.
  *
@@ -202,11 +229,12 @@ export function resolveZone(zone, fixtures) {
         return fixtures.filter(f => f.enabled !== false &&
             (isLeft ? (f.position?.x ?? 0) < 0 : (f.position?.x ?? 0) >= 0)).map(f => f.id);
     }
-    // Composite zones
+    // Composite zones (string match + WAVE 4951 dynamic fallback)
     const compositeTargets = COMPOSITE_ZONES[z];
     if (compositeTargets) {
         return fixtures.filter(f => f.enabled !== false &&
-            compositeTargets.includes(normalizeZone(f.zone))).map(f => f.id);
+            (compositeTargets.includes(normalizeZone(f.zone)) ||
+                DYNAMIC_COMPOSITE_RESOLVERS[z]?.(f) === true)).map(f => f.id);
     }
     // Direct canonical match
     return fixtures.filter(f => f.enabled !== false &&
@@ -261,13 +289,25 @@ export function resolveZoneTags(tags, fixtures) {
         pool = [];
         for (const tag of targetTags) {
             const t = tag.toLowerCase().trim();
-            // Composite expansion
+            // Composite expansion (string match + WAVE 4951 dynamic fallback)
             const canonicalTargets = COMPOSITE_ZONES[t];
             if (canonicalTargets) {
                 for (const f of enabledFixtures) {
                     if (!poolIds.has(f.id) && canonicalTargets.includes(normalizeZone(f.zone))) {
                         poolIds.add(f.id);
                         pool.push(f);
+                    }
+                }
+                // 🌊 WAVE 4951: Dynamic capability-based fallback.
+                // If a fixture wasn't matched by its zone tag but IS a mover/par by
+                // type/capability, include it anyway for all-movers/all-pars.
+                const dynamicPred = DYNAMIC_COMPOSITE_RESOLVERS[t];
+                if (dynamicPred) {
+                    for (const f of enabledFixtures) {
+                        if (!poolIds.has(f.id) && dynamicPred(f)) {
+                            poolIds.add(f.id);
+                            pool.push(f);
+                        }
                     }
                 }
                 continue;
@@ -301,7 +341,7 @@ export function resolveZoneTags(tags, fixtures) {
  * @param targetZone — The zone target to check (from effect)
  * @param positionX — Optional fixture position.x for stereo resolution
  */
-export function fixtureMatchesZone(fixtureZone, targetZone, positionX) {
+export function fixtureMatchesZone(fixtureZone, targetZone, positionX, fixture) {
     const fz = normalizeZone(fixtureZone);
     const tz = targetZone.toLowerCase().trim();
     // Wildcards
@@ -322,10 +362,15 @@ export function fixtureMatchesZone(fixtureZone, targetZone, positionX) {
             return true;
         return tz === 'all-left' ? positionX < 0 : positionX >= 0;
     }
-    // Composite zones
+    // Composite zones (string match + WAVE 4951 dynamic fallback)
     const compositeTargets = COMPOSITE_ZONES[tz];
     if (compositeTargets) {
-        return compositeTargets.includes(fz);
+        if (compositeTargets.includes(fz))
+            return true;
+        // 🌊 WAVE 4951: If string match fails, try capability-based match
+        if (fixture && DYNAMIC_COMPOSITE_RESOLVERS[tz]?.(fixture) === true)
+            return true;
+        return false;
     }
     // Direct canonical match
     return fz === tz;

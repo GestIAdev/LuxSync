@@ -258,6 +258,45 @@ export abstract class LiquidEngineBase {
     const now = Date.now()
     const p = this.profile
 
+    // [WAVE 4941.5] HARMONIC REJECTION GATE + WHISPER GATE
+    const harmonicBase = bands.mid
+    // midHigh/air en la directiva -> highMid/ultraAir en GodEarBands.
+    const transientTop = bands.highMid + bands.treble + (bands.ultraAir * 0.5)
+
+    let tonalSquelch = 1.0
+    let percussiveRatio = 0 // hoisted para telemetría y probes
+
+    // 1. BAJAMOS EL SUELO: evaluamos ratio incluso en susurros y pianos suaves.
+    if (harmonicBase > 0.05) {
+      percussiveRatio = transientTop / (harmonicBase || 0.01)
+
+      // WAVE 4948 — LATINO VOCAL KILL HARDENING
+      // Endurece el rechazo armónico para cortar voz/autotune en back pars.
+      if (percussiveRatio < 0.88) {
+        tonalSquelch = 0.0 // muerte absoluta en zona tonal predominante
+      } else if (percussiveRatio < 1.12) {
+        tonalSquelch = 0.22 // zona mixta ultra-castigada (antes 0.4)
+      }
+      // Ratio >= 1.12 -> tonalSquelch queda en 1.0 (transiente realmente percusivo)
+    }
+
+    // 2. THE WHISPER GATE: anti-fantasmas en pasajes de baja energía.
+    if (transientTop < 0.15 && harmonicBase < 0.3) {
+      tonalSquelch = 0.0 // WAVE 4945: cero puro en apagones
+    }
+
+    // [WAVE 4941.3→4] DSP SQUELCH PROBE silenciado (WAVE 4947.2)
+    // if (bands.highMid > 0.45) {
+    //   console.log(`[DSP PROBE] 🥁 Snare Hit Validado`, {
+    //     ratio: percussiveRatio.toFixed(3),
+    //     squelch: tonalSquelch,
+    //   })
+    // }
+
+    // Entradas rítmicas crudas filtradas ANTES de los envelopes de percusión.
+    const rawSnare = bands.highMid * tonalSquelch
+    const rawHat = bands.treble * tonalSquelch
+
     // ═══════════════════════════════════════════════════════════════════
     // 1. MORPHFACTOR
     // WAVE 2470 — HYDROSTATIC BRIDGE:
@@ -403,8 +442,8 @@ export abstract class LiquidEngineBase {
     //   centroidFloor = 900 * (1 - morphFactor): en Anyma el suelo cae a ~180Hz (todo pasa),
     //   en techno industrial sube a ~810Hz (bloqueo total del cuerpo del bombo).
     //   El Salvoconducto Dubstep (harshness ≥ 0.024) permite snare fills sobre el bombo.
-    const currentTreble  = bands.treble
-    const currentHighMid = bands.highMid
+    const currentTreble  = rawHat
+    const currentHighMid = rawSnare
     const currentMid     = bands.mid
     const trebleDelta    = Math.max(0, currentTreble  - this.lastTreble)
     const highMidDelta   = Math.max(0, currentHighMid - this.lastHighMid)

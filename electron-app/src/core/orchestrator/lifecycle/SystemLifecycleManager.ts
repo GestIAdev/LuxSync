@@ -3,14 +3,14 @@
  * @module SystemLifecycleManager
  */
 
-import { TrinityBrain } from '../../../workers/TrinityBrain'
-import { getTrinity } from '../../../workers/TrinityOrchestrator'
+import { VirtualWireProvider } from '../../audio/VirtualWireProvider'
+import { USBDirectLinkProvider } from '../../audio/USBDirectLinkProvider'
 import { TitanEngine } from '../../../engine/TitanEngine'
 import { HardwareAbstraction } from '../../../hal/HardwareAbstraction'
-import { OSCNexusProvider } from '../../../osc/OscNexusProvider'
-import { VirtualWireProvider } from '../../../audio/VirtualWireProvider'
-import { USBDirectLinkProvider } from '../../../audio/USBDirectLinkProvider'
 import { universalDMX } from '../../../hal/drivers/UniversalDMXDriver'
+import { TrinityBrain } from '../../../brain/TrinityBrain'
+import { getTrinity } from '../../../workers/TrinityOrchestrator'
+import { OSCNexusProvider } from '../../audio/OSCNexusProvider'
 import { vibeMovementManager } from '../../../engine/movement/VibeMovementManager'
 
 export interface SystemLifecycleContext {

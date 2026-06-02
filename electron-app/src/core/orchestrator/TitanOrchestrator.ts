@@ -1,8 +1,8 @@
 ﻿/**
  * WAVE 243.5: TITAN ORCHESTRATOR - SIMPLIFIED V2
  * WAVE 374: MASTER ARBITER INTEGRATION
- * âš’ï¸ WAVE 2030.4: HEPHAESTUS INTEGRATION
- * ðŸ”’ WAVE 2211: PIPELINE EXORCISM â€” Async Stampede Guard + IPC Throttle + GC reduction
+ * WAVE 2030.4: HEPHAESTUS INTEGRATION
+ * WAVE 2211: PIPELINE EXORCISM â€” Async Stampede Guard + IPC Throttle + GC reduction
  * 
  * Orquesta Brain -> Engine -> Arbiter -> HAL pipeline.
  * main.ts se encarga de IPC handlers, este mÃ³dulo solo orquesta el flujo de datos.
@@ -22,7 +22,7 @@ import {
   createDefaultSensory 
 } from '../protocol/SeleneProtocol'
 
-// ðŸŽ­ WAVE 374: Import Arbiter types (masterArbiter singleton removed WAVE 4703)
+// ­ WAVE 374: Import Arbiter types (masterArbiter singleton removed WAVE 4703)
 import { 
   type Layer0_Titan,
   type FinalLightingTarget,
@@ -31,31 +31,24 @@ import {
   ControlLayer 
 } from '../arbiter'
 
-// ðŸ§¨ WAVE 635: Import EffectManager para color override global
-// ðŸš€ WAVE 4524.3: TambiÃ©n necesario para SCN
-import { getEffectManager } from '../effects/EffectManager'
-
-// â¤ï¸ WAVE 1153: THE PACEMAKER - Real Beat Detection
+//  WAVE 1153: THE PACEMAKER - Real Beat Detection
 import { BeatDetector } from '../../engine/audio/BeatDetector'
 
-// ðŸŽ­ WAVE 700.5.4: Import MoodController for backend mood control
-import { MoodController } from '../mood/MoodController'
-
-// âš’ï¸ WAVE 2030.4: Hephaestus types
+//  WAVE 2030.4: Hephaestus types
 import type { HephAutomationClip } from '../hephaestus/types'
 
-// âš’ï¸ WAVE 2030.19: HephaestusRuntime for .lfx execution
+//  WAVE 2030.19: HephaestusRuntime for .lfx execution
 import { getHephaestusRuntime } from './IPCHandlers'
 import type { HephFixtureOutput } from '../hephaestus/runtime/HephaestusRuntime'
 
-// ðŸŽµ WAVE 2672â†’2720: Harmonic Quantizer MIGRADO AL HAL
+//  WAVE 2672â†’2720: Harmonic Quantizer MIGRADO AL HAL
 // La cuantizaciÃ³n armÃ³nica vive ahora en HAL.translateColorToWheel()
 // (LA LEY UNIVERSAL DEL PÃ‰NDULO â€” WAVE 2720)
 
 // Use inline type to avoid import issues
 type VibeId = 'fiesta-latina' | 'techno-club' | 'pop-rock' | 'chill-lounge' | 'idle'
 
-// ðŸŽ¨ WAVE 686.10: Import IDMXDriver for external driver injection
+// WAVE 686.10: Import IDMXDriver for external driver injection
 import type { IDMXDriver } from '../../hal/drivers'
 
 // WAVE 3401: OSC Nexus Provider for bidirectional OSC over UDP
@@ -64,32 +57,29 @@ import { OSCNexusProvider } from '../audio/OSCNexusProvider'
 import { VirtualWireProvider } from '../audio/VirtualWireProvider'
 import { USBDirectLinkProvider } from '../audio/USBDirectLinkProvider'
 
-// âš¡ WAVE 3504.5: Extracted math + scheduling modules
-import { SyncSmoother } from './metrics/SyncSmoother'
-import { IntentComposer } from './intent/IntentComposer'
+//  WAVE 3504.5: Extracted math + scheduling modules
 import { FrameScheduler } from './scheduler/FrameScheduler'
-import type { FixtureSnapshot } from './intent/types'
 
-// âš›ï¸ WAVE 3505.4: AETHER MATRIX â€” Agnostic Engine V2 Pipeline
+// WAVE 3505.4: AETHER MATRIX â€” Agnostic Engine V2 Pipeline
 import { NodeGraph, IntentBus, NodeArbiter, NodeResolver, PhysicsPostProcessor } from '../aether'
 import type { IDeviceDefinition, IKineticNodeData } from '../aether'
 // WAVE 4548.6: Forge Evaluator â€” compiled graphs for zero-alloc DMX
 import { ForgeGraphCompiler } from '../forge/compiler/ForgeGraphCompiler'
 import type { ForgeFrameContext, MutableForgeFrameContext } from '../forge/compiler/types'
 import type { IForgeNodeGraph } from '../forge/types'
-// ðŸŒŠ WAVE 3516.2: Adapters â€” cableado al hot-path del frame loop
+// WAVE 3516.2: Adapters â€” cableado al hot-path del frame loop
 import { LiquidImpactAdapter, VMMAdapter } from '../aether'
-// ðŸŽ¨ WAVE 3516.3: ColorAdapter â€” extraÃ­da a su propio archivo
-// ðŸŽ¨ WAVE 4522.3: Actualizado para ingesta via setIngress() (paleta RGB de SeleneLux)
+//  WAVE 3516.3: ColorAdapter â€” extraÃ­da a su propio archivo
+//  WAVE 4522.3: Actualizado para ingesta via setIngress() (paleta RGB de SeleneLux)
 import { ColorAdapter } from '../aether/adapters/ColorAdapter'
-// ðŸ”¦ðŸŒ«ï¸ WAVE 3516.4: Optic & Elemental Bridges
+// WAVE 3516.4: Optic & Elemental Bridges
 import { BeamAdapter } from '../aether/adapters/BeamAdapter'
 import { AtmosphereAdapter } from '../aether/adapters/AtmosphereAdapter'
-// ðŸŒŠ WAVE 4521.3: LiquidAetherAdapter â€” Capa L0 del IntentBus
+// WAVE 4521.3: LiquidAetherAdapter â€” Capa L0 del IntentBus
 import { LiquidAetherAdapter } from '../aether/adapters/LiquidAetherAdapter'
 import { NodeFamily } from '../aether'
 import type { FrameContext, AudioMetrics, VibeProfile, MusicalContext } from '../aether'
-// ðŸš€ WAVE 4524.3: Selene-Aether Adapter â€” Puente Cognitivo L3
+// WAVE 4524.3: Selene-Aether Adapter â€” Puente Cognitivo L3
 import { SeleneAetherAdapter } from '../aether/adapters/selene-aether-adapter'
 import { ZoneNodeRouter } from '../aether/adapters/helpers/zone-node-router'
 import { ChronosAetherAdapter } from '../aether/adapters/ChronosAetherAdapter'
@@ -101,52 +91,48 @@ import type { RegistryEntry } from '../arsenal/lfxTypes'
 // ðŸŽ¨ WAVE 4812: Aether Canvas â€” Pixel Mapping engine
 import { AetherCanvasManager } from '../aether/canvas/AetherCanvasManager'
 import { PixelMapAetherAdapter } from '../aether/canvas/PixelMapAetherAdapter'
-// ðŸ‘» WAVE 4952: PlasmaRenderer import REMOVED â€” test-pattern poltergeist amputated.
-// ðŸŽ¬ WAVE 4867: TheiaVideoRenderer â€” twin-output bridge (THETA thumb SAB â†’ AetherCanvas)
+//  WAVE 4952: PlasmaRenderer import REMOVED â€” test-pattern poltergeist amputated.
+//  WAVE 4867: TheiaVideoRenderer â€” twin-output bridge (THETA thumb SAB â†’ AetherCanvas)
 import { TheiaVideoRenderer } from '../aether/canvas/renderers/TheiaVideoRenderer'
-// ðŸŒ‰ WAVE 4869: SeleneTheiaBridge â€” Observer cognitivo Selene â†’ ThetaOrchestrator
+// WAVE 4869: SeleneTheiaBridge â€” Observer cognitivo Selene â†’ ThetaOrchestrator
 import { type SeleneTheiaBridge } from '../../theia/SeleneTheiaBridge'
-// ðŸ›‚ WAVE 4557: Aether Safety Middleware â€” La Aduana Aether
+// WAVE 4557: Aether Safety Middleware â€” La Aduana Aether
 import { AetherSafetyMiddleware } from '../aether/egress/AetherSafetyMiddleware'
-// ðŸŽ­ WAVE 4559: THE MIRROR â€” Projecta estado Aether â†’ FixtureState[] legacy para la UI
+// WAVE 4559: THE MIRROR â€” Projecta estado Aether â†’ FixtureState[] legacy para la UI
 import { AetherUIProjector } from '../aether/resolver/AetherUIProjector'
-// âš¡ WAVE 4594: THE AETHER AWAKENING â€” NodeExtractionPipeline for fixtureâ†’NodeGraph injection
+//  WAVE 4594: THE AETHER AWAKENING â€” NodeExtractionPipeline for fixtureâ†’NodeGraph injection
 import { NodeExtractionPipeline } from '../aether/ingestion/NodeExtractionPipeline'
 import { timelineEngine } from '../engine/TimelineEngine'
 
-// ðŸ§© WAVE 4959 PHASE 1-3: Extracted managers
+//  WAVE 4959 PHASE 1-3: Extracted managers
 import { TacticalLogManager } from './logging/TacticalLogManager'
 import { TheiaBridgeManager } from './theia/TheiaBridgeManager'
 import { StateManager } from './lifecycle/StateManager'
 import { VibeLifecycleManager } from './lifecycle/VibeLifecycleManager'
-// ðŸ§© WAVE 4960.1 PHASE 5: Hydration managers
+//  WAVE 4960.1 PHASE 5: Hydration managers
 import { FixtureHydrationEngine } from './hydration/FixtureHydrationEngine'
 import type { HydrationContext } from './hydration/FixtureHydrationEngine'
 import { FixtureProfileResolver } from './hydration/FixtureProfileResolver'
 import { StageBoundsManager } from './hydration/StageBoundsManager'
-// ðŸ§© WAVE 4961 PHASE 6: I/O managers
-import { BroadcastManager } from './tick/BroadcastManager'
-import type { BroadcastManagerContext } from './tick/BroadcastManager'
-import { HardwareDispatcher } from './hal/HardwareDispatcher'
-import type { HardwareDispatcherContext } from './hal/HardwareDispatcher'
+//  WAVE 4961 PHASE 6: I/O managers
 import { AudioPipelineManager } from './audio/AudioPipelineManager'
 import type { AudioPipelineContext } from './audio/AudioPipelineManager'
 import { TickEngine } from './tick/TickEngine'
 import { SystemLifecycleManager } from './lifecycle/SystemLifecycleManager'
 import type { SystemLifecycleContext } from './lifecycle/SystemLifecycleManager'
 
-// ðŸ§Ÿ ZOMBIE KILLER: singleton DMX para flushing fÃ­sico en stop()
+// ZOMBIE KILLER: singleton DMX para flushing fÃ­sico en stop()
 import { universalDMX } from '../../hal/drivers/UniversalDMXDriver'
-// âš¡ WAVE 4700: Motor cinÃ©tico nativo L2 â€” reemplaza masterArbiter para patrones manuales
+//  WAVE 4700: Motor cinÃ©tico nativo L2 â€” reemplaza masterArbiter para patrones manuales
 import { aetherKineticEngine } from '../aether/AetherKineticEngine'
 
-// ðŸ§¹ WAVE 2227: VMM singleton para cleanup en stop()
+//  WAVE 2227: VMM singleton para cleanup en stop()
 import { vibeMovementManager } from '../../engine/movement/VibeMovementManager'
 
-// ðŸ—ºï¸ WAVE 2543.4: Centralized zone resolution
+//  WAVE 2543.4: Centralized zone resolution
 import { fixtureMatchesZone as zoneMapperMatch, resolveZone } from '../zones/ZoneMapper'
 
-// âš¡ WAVE 3050: MODULE-LEVEL CONSTANTS â€” allocated once, reused per frame
+//  WAVE 3050: MODULE-LEVEL CONSTANTS â€” allocated once, reused per frame
 // Zone mapping for StageSimulator2 compatibility (was recreated per fixture * per truth broadcast)
 const ZONE_MAP: Readonly<Record<string, string>> = {
   // Legacy canvas zones
@@ -182,7 +168,7 @@ const DEFAULT_AETHER_STAGE_BOUNDS = {
 }
 
 /**
- * âš’ï¸ WAVE 2030.4: Config for manual/timeline effect triggers
+ *  WAVE 2030.4: Config for manual/timeline effect triggers
  */
 export interface ForceStrikeConfig {
   /** Effect ID to trigger */
@@ -191,10 +177,10 @@ export interface ForceStrikeConfig {
   intensity: number
   /** Source of trigger for bypass rules */
   source?: 'manual' | 'chronos'
-  /** âš’ï¸ WAVE 2030.4: Hephaestus automation curves */
+  /**  WAVE 2030.4: Hephaestus automation curves */
   hephCurves?: HephAutomationClip
   /**
-   * âŒ¨ WAVE 4802-D: Scoped fixture IDs.
+   * WAVE 4802-D: Scoped fixture IDs.
    * When present, the effect is applied ONLY to these fixture IDs.
    * Propagates from the KeyForge chord payload through the full
    * IPC â†’ TitanEngine â†’ EffectManager pipeline.
@@ -209,7 +195,7 @@ export interface ForceStrikeConfig {
 export interface TitanConfig {
   debug?: boolean
   initialVibe?: VibeId
-  /** ðŸŽ¨ WAVE 686.10: Optional external DMX driver (e.g., ArtNetDriverAdapter) */
+  /** WAVE 686.10: Optional external DMX driver (e.g., ArtNetDriverAdapter) */
   dmxDriver?: IDMXDriver
 }
 
@@ -220,7 +206,7 @@ export class TitanOrchestrator {
   private brain: TrinityBrain | null = null
   private engine: TitanEngine | null = null
   private hal: HardwareAbstraction | null = null
-  private trinity: TrinityOrchestrator | null = null  // ðŸ§  WAVE 258: Trinity reference
+  private trinity: TrinityOrchestrator | null = null  //   WAVE 258: Trinity reference
   private eventRouter: EventRouter
 
   // WAVE 3401: OSC Nexus Provider (bidirectional OSC over UDP)
@@ -229,25 +215,16 @@ export class TitanOrchestrator {
   private virtualWireProvider: VirtualWireProvider | null = null
   private usbDirectLinkProvider: USBDirectLinkProvider | null = null
   
-  // â¤ï¸ WAVE 1153: THE PACEMAKER - Heart of the rhythm system
+  // WAVE 1153: THE PACEMAKER - Heart of the rhythm system
   private beatDetector: BeatDetector | null = null
-
-  // ðŸ”¥ WAVE 2179: FREEWHEEL MEMORY â€” Cerebro retiene el Ãºltimo BPM estable del Worker
-  // Cuando Worker conf=0 (break, silencio, transiciÃ³n), el PLL freewheela
-  // en la frecuencia correcta en lugar de caer al default 120 BPM del Pacemaker.
-  // Timeout: 300 frames (~5s a 60fps) â†’ luego cede al Pacemaker interno.
-  private lastStableWorkerBpm = 0
-  private lastStableWorkerBpmFrame = 0
-  private readonly FREEWHEEL_TIMEOUT_FRAMES = 125  // ~5s a 25fps
 
   private config: TitanConfig
   private isInitialized = false
   private isRunning = false
   private cardiogramaInterval: NodeJS.Timeout | null = null
   private frameCount = 0
-  private _lastLoggedEngine: string = ''
   
-  // ðŸ§© WAVE 4959: Extracted managers
+  // WAVE 4959: Extracted managers
   private readonly logManager = new TacticalLogManager()
   private readonly stateManager = new StateManager()
   private readonly vibeManager = new VibeLifecycleManager(this.stateManager, this.logManager)
@@ -256,34 +233,33 @@ export class TitanOrchestrator {
   private readonly profileResolver = new FixtureProfileResolver()
   // stageBoundsManager initialized after _physicsPostProcessor
   // hydrationEngine initialized in constructor
-  // ðŸ§© WAVE 4961: I/O managers
-  // broadcastManager + hardwareDispatcher initialized in constructor
-  private readonly audioPipeline: AudioPipelineManager
-  private readonly tickEngine: TickEngine
+  //  WAVE 4961: I/O managers
+  private readonly audioPipeline!: AudioPipelineManager
+  private readonly tickEngine!: TickEngine
   private readonly lifecycleManager: SystemLifecycleManager
   private readonly theiaBridgeManager: TheiaBridgeManager
   private readonly vibeLifecycleManager: VibeLifecycleManager
   
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ 
   // âš¡ WAVE 3504.5: FRAME SCHEDULER â€” replaces bare setInterval + isProcessingFrame
   // The Stampede Guard now lives inside FrameScheduler (WAVE 2211 contract kept).
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ 
   private readonly scheduler = new FrameScheduler(23, () => this.processFrame())
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  
   // ðŸ”§ DMX TIMING â€” Frame-drop protection for physical DMX timing
   // DMX512 spec: 1 frame = ~25ms (Break 88Âµs + MAB 8Âµs + 512ch Ã— 44Âµs).
   // Combined with isProcessingFrame (WAVE 2211), the 40ms loop interval
   // guarantees ~13ms of margin for the FTDI chip to drain its buffer before
   // the next frame arrives. No explicit isSendingDMX flag needed: the
   // Stampede Guard already ensures the pipeline is never re-entered.
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  
   // ðŸ—‘ï¸ WAVE 2211: PRE-ALLOCATED FFT BUFFER â€” GC pressure reduction
   // BEFORE: `new Array(256).fill(0)` every frame = 256 floats Ã— 30fps = 7,680 allocs/sec
   // AFTER: Single buffer reused across frames. Zero GC from FFT.
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  
   private readonly EMPTY_FFT_BUFFER: readonly number[] = Object.freeze(new Array(256).fill(0))
 
   // WAVE 3190: PRE-ALLOCATED HEPHAESTUS ROUTING BUFFERS â€” GC Zero Allocation
@@ -294,18 +270,11 @@ export class TitanOrchestrator {
   // Pool de arrays de outputs por fixture â€” se reusan across frames
   // El pool crece hasta N fixtures y nunca encoge (GC amortizado)
   private readonly _hephOutputPool = new Map<string, HephFixtureOutput[]>()
-  // WAVE 3190: Pre-allocated EffectIntentMap â€” evita new Map() cada frame con effects activos
-  private readonly _effectIntentBuf: EffectIntentMap = new Map()
-  
   // WAVE 252: Real fixtures from ConfigManager (no more mocks)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private fixtures: any[] = []
   
-  // Vibe rotation for demo
-  private vibeSequence: VibeId[] = ['fiesta-latina', 'techno-club', 'pop-rock', 'chill-lounge']
-  private currentVibeIndex = 0
-
-  // ðŸ”’ WAVE 2490: THE TIER SEPARATION PROTOCOL â€” Hephaestus gate
+  // WAVE 2490: THE TIER SEPARATION PROTOCOL â€” Hephaestus gate
   private _licenseTier: 'DJ_FOUNDER' | 'FULL_SUITE' = 'FULL_SUITE'
 
   // WAVE 254: Control state
@@ -313,14 +282,14 @@ export class TitanOrchestrator {
   private useBrain = true
   private inputGain = 1.0
   
-  // ðŸ§¬ WAVE 560: Separated consciousness toggle (Layer 1 only)
+  //  WAVE 560: Separated consciousness toggle (Layer 1 only)
   // useBrain = Layer 0 (reactiva) + Layer 1 (consciousness)
   // consciousnessEnabled = ONLY Layer 1 (consciousness)
   private consciousnessEnabled = true
 
   // WAVE 255: Real audio buffer from frontend
-  // ðŸŽ¸ WAVE 1011: Extended para RockStereoPhysics2 (subBass, lowMid, highMid, transients)
-  // ðŸ”¥ WAVE 1162: THE BYPASS - rawBassEnergy para BeatDetector
+  //  WAVE 1011: Extended para RockStereoPhysics2 (subBass, lowMid, highMid, transients)
+  //  WAVE 1162: THE BYPASS - rawBassEnergy para BeatDetector
   private lastAudioData: { 
     bass: number; 
     mid: number; 
@@ -338,17 +307,17 @@ export class TitanOrchestrator {
     snareDetected?: boolean;    // ðŸŽ¸ WAVE 1011: Snare transient
     hihatDetected?: boolean;    // ðŸŽ¸ WAVE 1011: Hihat transient
     rawBassEnergy?: number;     // ðŸ”¥ WAVE 1162: Bass SIN AGC para BeatDetector
-    // ï¿½ WAVE 2347: crestFactor desde GodEar para kick classification
+    //  WAVE 2347: crestFactor desde GodEar para kick classification
     crestFactor?: number;
-    // ï¿½ðŸ”¥ WAVE 2112: Worker BPM fields â€” GodEarBPMTracker is the authority
+    //  WAVE 2112: Worker BPM fields â€” GodEarBPMTracker is the authority
     workerBpm?: number;
     workerBpmConfidence?: number;
     workerOnBeat?: boolean;
     workerBeatPhase?: number;
     workerBeatStrength?: number;
-    // ðŸ¥ WAVE 2213: Cumulative kick counter from Worker (phrase detection)
+    // WAVE 2213: Cumulative kick counter from Worker (phrase detection)
     workerKickCount?: number;
-    // ðŸ”¬ WAVE 3418: Raw input telemetry (peak y RMS del buffer crudo pre-ring-buffer)
+    //  WAVE 3418: Raw input telemetry (peak y RMS del buffer crudo pre-ring-buffer)
     inputPeakAbs?: number;
     inputRMS?: number;
   } = {
@@ -357,29 +326,20 @@ export class TitanOrchestrator {
   private hasRealAudio = false
   private currentLiquidLayout: '4.1' | '7.1' = '4.1'
 
-  // ðŸš€ WAVE 4524.3: Last ConsciousnessOutput from the DecisionMaker
+  //  WAVE 4524.3: Last ConsciousnessOutput from the DecisionMaker
   // Se utiliza en el SeleneAetherAdapter para traducciÃ³n de efectos L3.
   // Por ahora inicializado como null; en el futuro el engine populate esto.
   private lastConsciousnessOutput: any = null
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  
   // âš¡ WAVE 3504.5: PURE MATH MODULES â€” extracted from the monolith
   // SyncSmoother:   EMA filter bank + syncopation estimator + freewheel chain
-  // IntentComposer: CombinedEffectOutput â†’ per-fixture EffectIntentMap
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-  private readonly syncSmoother = new SyncSmoother()
-  private readonly intentComposer = new IntentComposer()
-
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-  // âš›ï¸ WAVE 3505.4: AETHER MATRIX â€” Agnostic Engine V2 Pipeline
-  //
   // Este pipeline corre EN PARALELO con el pipeline legacy (masterArbiter â†’ HAL).
   // Los devices registrados en NodeGraph son procesados por Systems â†’ Arbiter â†’
   // Resolver y sus paquetes DMX son enviados directamente via HAL.sendUniverseRaw().
-  //
   // ACTIVACIÃ“N: registerAetherDevice() activa automaticamente el pipeline.
   // Si _aetherNodeGraph estÃ¡ vacÃ­o, el bloque Aether en processFrame() es no-op.
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  //
   private readonly _aetherGraph   = new NodeGraph()
   private readonly _aetherBus     = new IntentBus(4096)
   // WAVE 4663: Bus dedicado para Selene (L1). Aislado del bus L0 de los Systems.
@@ -389,43 +349,40 @@ export class TitanOrchestrator {
   private readonly _effectBus     = new IntentBus(512)
   private _aetherArbiter: NodeArbiter | null = null
   private _aetherResolver: NodeResolver | null = null
-  // âš™ï¸ WAVE 4518.1: Physics Post-Processor â€” The Inertia Engine
+  // WAVE 4518.1: Physics Post-Processor â€” The Inertia Engine
   private readonly _physicsPostProcessor = new PhysicsPostProcessor()
   // stageBoundsManager initialized after _aetherStageBounds
-  private readonly hydrationEngine: FixtureHydrationEngine
-  // ðŸ§© WAVE 4961: I/O managers
-  private readonly broadcastManager: BroadcastManager
-  private readonly hardwareDispatcher: HardwareDispatcher
+  private readonly hydrationEngine!: FixtureHydrationEngine
   private _aetherHasDevices = false
-  // âš¡ WAVE 4594: Stateless extraction pipeline â€” lazy-init, reutilizado en cada resync
+  //  WAVE 4594: Stateless extraction pipeline â€” lazy-init, reutilizado en cada resync
   private _aetherPipeline: NodeExtractionPipeline | null = null
-  // ï¿½ WAVE 4559: THE MIRROR â€” instancia Ãºnica, zero-alloc projection cada frame
+  //  WAVE 4559: THE MIRROR â€” instancia Ãºnica, zero-alloc projection cada frame
   private readonly _aetherUIProjector = new AetherUIProjector()
-  // ï¿½ðŸŒŠ WAVE 3516.2: Adapters â€” instanciados una vez, reutilizados cada frame
+  //  WAVE 3516.2: Adapters â€” instanciados una vez, reutilizados cada frame
   private readonly _impactAdapter  = new LiquidImpactAdapter()
-  // ðŸŽ¨ WAVE 3516.3: ColorAdapter â€” rebautizada de LiquidColorAdapter
+  //  WAVE 3516.3: ColorAdapter â€” rebautizada de LiquidColorAdapter
   private _colorAdapter: ColorAdapter | null = null
   private _kineticAdapter: InstanceType<typeof VMMAdapter> | null = null
-  // ðŸ”¦ðŸŒ«ï¸ WAVE 3516.4: Optic & Elemental Bridges
+  //  WAVE 3516.4: Optic & Elemental Bridges
   private _beamAdapter: BeamAdapter | null = null
   private _atmosphereAdapter: AtmosphereAdapter | null = null
-  // ðŸŒŠ WAVE 4521.3: LiquidAetherAdapter â€” Capa L0 del IntentBus
+  // WAVE 4521.3: LiquidAetherAdapter â€” Capa L0 del IntentBus
   // Se instancia con el NodeGraph y el liquidEngine71 para acceder a lastFrame
   private _liquidAetherAdapter: LiquidAetherAdapter | null = null
-  // ðŸš€ WAVE 4524.3: Selene-Aether Adapter â€” Puente Cognitivo L3
+  //  WAVE 4524.3: Selene-Aether Adapter â€” Puente Cognitivo L3
   // Se instancia solo una vez. ZoneNodeRouter se construye en el constructor.
   private _zoneNodeRouter: ZoneNodeRouter | null = null
   private _seleneAetherAdapter: SeleneAetherAdapter | null = null
   private readonly _chronosAetherAdapter = new ChronosAetherAdapter(this._aetherGraph)
   // WAVE 3521: Hephaestus Diamond Data L3+ adapter
   private readonly _hephaestusAetherAdapter = new HephaestusAetherAdapter(this._aetherGraph)
-  // ðŸŽ¨ WAVE 4812: Aether Canvas â€” Pixel Mapping engine (patch-time acquire, hot-path ingest)
+  //  WAVE 4812: Aether Canvas â€” Pixel Mapping engine (patch-time acquire, hot-path ingest)
   private readonly _aetherCanvasManager = new AetherCanvasManager()
   private readonly _pixelMapAdapter = new PixelMapAetherAdapter({ targetLayer: 'effect' })
-  // ðŸ‘» WAVE 4952: _plasmaRenderers map REMOVED â€” test-pattern poltergeist amputated.
-  // ðŸŽ¬ WAVE 4867: TheiaVideoRenderer â€” null hasta que se llame attachTheiaRenderer()
+  //  WAVE 4952: _plasmaRenderers map REMOVED â€” test-pattern poltergeist amputated.
+  //  WAVE 4867: TheiaVideoRenderer â€” null hasta que se llame attachTheiaRenderer()
   private _theiaVideoRenderer: TheiaVideoRenderer | null = null
-  // ðŸŒ‰ WAVE 4869: SeleneTheiaBridge â€” null hasta que se llame attachSeleneTheiaBridge()
+  //  WAVE 4869: SeleneTheiaBridge â€” null hasta que se llame attachSeleneTheiaBridge()
   private _seleneThetaBridge: SeleneTheiaBridge | null = null
   private readonly _timelineEngine = timelineEngine
   // FrameContext pre-alloc â€” mutable in-place, cero alloc en hot-path
@@ -450,7 +407,7 @@ export class TitanOrchestrator {
     depth: DEFAULT_AETHER_STAGE_BOUNDS.depth,
     centerY: DEFAULT_AETHER_STAGE_BOUNDS.centerY,
   }
-  // ðŸ§© WAVE 4960.1: StageBoundsManager (needs _physicsPostProcessor + _aetherStageBounds)
+  //  WAVE 4960.1: StageBoundsManager (needs _physicsPostProcessor + _aetherStageBounds)
   private readonly stageBoundsManager = new StageBoundsManager(
     this._aetherStageBounds,
     this._physicsPostProcessor,
@@ -465,7 +422,7 @@ export class TitanOrchestrator {
     frameIndex: 0,
   }
 
-  // ðŸ›‚ WAVE 4557: Aether Safety Middleware â€” velocity clamp, airbag, DarkSpin, output gate, throttle
+  //  WAVE 4557: Aether Safety Middleware â€” velocity clamp, airbag, DarkSpin, output gate, throttle
   private readonly _aetherSafety = new AetherSafetyMiddleware()
 
   // WAVE 4548.6: Pre-allocated ForgeFrameContext â€” mutable in-place, zero alloc
@@ -488,8 +445,8 @@ export class TitanOrchestrator {
    * pipeline V2. El NodeGraph y NodeResolver se configuran automÃ¡ticamente.
    * El pipeline legacy mantiene el control de todos los demÃ¡s fixtures.
    *
-   * @param definition â€” IDeviceDefinition con nodes, calibraciÃ³n y universo DMX
-   * @param forgeGraph â€” WAVE 4548.6: Optional ForgeNodeGraph for zero-alloc evaluation
+   * @param definition  IDeviceDefinition con nodes, calibraciÃ³n y universo DMX
+   * @param forgeGraph  WAVE 4548.6: Optional ForgeNodeGraph for zero-alloc evaluation
    */
   public registerAetherDevice(definition: IDeviceDefinition, forgeGraph?: IForgeNodeGraph): void {
     this.hydrationEngine.registerAetherDevice(definition, forgeGraph)
@@ -508,7 +465,7 @@ export class TitanOrchestrator {
   }
 
   /**
-   * ðŸŒŠ WAVE 4699.2 M2: Resuelve los nodeIds del Tungsten para el Golden Nuke.
+   * WAVE 4699.2 M2: Resuelve los nodeIds del Tungsten para el Golden Nuke.
    * Busca el/los fixtures cuya definiciÃ³n tenga name === 'Tungsten',
    * luego devuelve un mapa de sufijo â†’ nodeId para cada nodo de flash.
    *
@@ -541,7 +498,7 @@ export class TitanOrchestrator {
   }
 
   /**
-   * ðŸ”¥ WAVE 4835 â€” DMX BYPASS: Habilita la inyecciÃ³n directa de 255 en los canales Golden Nuke
+   *  WAVE 4835 â€” DMX BYPASS: Habilita la inyecciÃ³n directa de 255 en los canales Golden Nuke
    */
   public setGoldenNukeLock(deviceId: string): void {
     const device = this._aetherGraph?.getDevice(deviceId)
@@ -553,7 +510,7 @@ export class TitanOrchestrator {
   }
 
   /**
-   * ðŸ”¥ WAVE 4835 â€” DMX BYPASS: Deshabilita la inyecciÃ³n directa
+   *WAVE 4835 â€” DMX BYPASS: Deshabilita la inyecciÃ³n directa
    */
   public clearGoldenNukeLock(deviceId: string): void {
     this._goldenNukeLocks.delete(deviceId)
@@ -568,7 +525,7 @@ export class TitanOrchestrator {
     this.hydrationEngine.unregisterAetherDevice(deviceId)
   }
 
-  // ðŸ—¡ï¸ WAVE 265: STALENESS DETECTION - Anti-SimulaciÃ³n
+  //  WAVE 265: STALENESS DETECTION - Anti-SimulaciÃ³n
   // Si no llega audio fresco en AUDIO_STALENESS_THRESHOLD_MS, hasRealAudio = false
   // Esto evita que el sistema siga "animando" con datos congelados cuando el frontend muere
   private lastAudioTimestamp = 0
@@ -585,24 +542,24 @@ export class TitanOrchestrator {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private onBroadcast: ((truth: any) => void) | null = null
 
-  // âš¡ WAVE 2510: Hot Frame callback â€” high-frequency fixture data at 44Hz
+  //  WAVE 2510: Hot Frame callback â€” high-frequency fixture data at 44Hz
   // Carries ONLY dynamic fixture data (fixtures array + beat flag + frame number)
   // Separate from full SeleneTruth which broadcasts at ~7Hz
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private onHotFrame: ((hotFrame: any) => void) | null = null
 
-  // âš¡ WAVE 2510: Full truth broadcast divider
+  //  WAVE 2510: Full truth broadcast divider
   // At 44Hz tick, send full SeleneTruth every TRUTH_BROADCAST_DIVIDER ticks (~7Hz)
   private static readonly TRUTH_BROADCAST_DIVIDER = 6
 
-  // âš¡ WAVE 3050: HOT FRAME BROADCAST DIVIDER
+  // WAVE 3050: HOT FRAME BROADCAST DIVIDER
   // Decouple IPC rate from DMX engine rate. DMX runs at 44Hz, UI gets hot-frames at 44Hz.
-  // âš¡ WAVE 4559: Overclock â€” subido de 2 (22Hz) a 1 (44Hz).
+  //  WAVE 4559: Overclock â€” subido de 2 (22Hz) a 1 (44Hz).
   // Strobe y flash ahora llegan sin frame-skip al canvas 2D.
   // transientStore + RenderWorker interpolates between frames anyway.
   private static readonly HOT_FRAME_DIVIDER = 1
 
-  // âš¡ WAVE 2464: PEAK HOLD â€” Captura el pico de intensidad del frame skipeado.
+  //  WAVE 2464: PEAK HOLD â€” Captura el pico de intensidad del frame skipeado.
   // El throttle frameCount % 2 hace que broadcasts salten 1 de cada 2 frames (40ms).
   // Un beat con decay de 40ms puede nacer y morir en ese frame skipeado â€” el canvas
   // nunca lo ve. SoluciÃ³n: guardar el dimmer mÃ¡ximo visto entre dos broadcasts.
@@ -612,10 +569,25 @@ export class TitanOrchestrator {
   // WAVE 4590: Output gate canonical state para AetherSafety (independiente del arbiter clÃ¡sico)
   private _outputEnabled = false
 
-  // ðŸ”¥ WAVE 4835 â€” DMX BYPASS: Golden Nuke Lock
+  //  WAVE 4835 â€” DMX BYPASS: Golden Nuke Lock
   // Key: deviceId, Value: { universe, dmxAddress }
   // Cuando estÃ¡ presente, inyecta 255 directamente en los canales del Tungsteno
   private _goldenNukeLocks = new Map<string, { universe: number; dmxAddress: number }>()
+
+  private createMutableProxy<T extends object>(...internalNames: string[]): T {
+    const self = this as any;
+    const obj: any = {};
+    for (const name of internalNames) {
+      const proxyKey = name.startsWith('_') ? name.slice(1) : name;
+      Object.defineProperty(obj, proxyKey, {
+        get() { return self[name]; },
+        set(v: any) { self[name] = v; },
+        enumerable: true,
+        configurable: true,
+      });
+    }
+    return obj as T;
+  }
 
   constructor(config: TitanConfig = {}) {
     this.config = {
@@ -624,133 +596,15 @@ export class TitanOrchestrator {
       initialVibe: 'idle',
       ...config,
     }
-    
-    // ðŸ§© WAVE 4960.1: Build hydration context with getters/setters into orchestrator fields
-    const self = this
-    const hydrationCtx: HydrationContext = {
-      aetherGraph: this._aetherGraph,
-      get aetherArbiter() { return self._aetherArbiter },
-      set aetherArbiter(v: NodeArbiter | null) { self._aetherArbiter = v },
-      get aetherResolver() { return self._aetherResolver },
-      set aetherResolver(v: NodeResolver | null) { self._aetherResolver = v },
-      get aetherPipeline() { return self._aetherPipeline },
-      set aetherPipeline(v: NodeExtractionPipeline | null) { self._aetherPipeline = v },
-      get aetherHasDevices() { return self._aetherHasDevices },
-      set aetherHasDevices(v: boolean) { self._aetherHasDevices = v },
-      physicsPostProcessor: this._physicsPostProcessor,
-      aetherSafety: this._aetherSafety,
-      chronosAetherAdapter: this._chronosAetherAdapter,
-      get colorAdapter() { return self._colorAdapter },
-      set colorAdapter(v: ColorAdapter | null) { self._colorAdapter = v },
-      get kineticAdapter() { return self._kineticAdapter },
-      set kineticAdapter(v: InstanceType<typeof VMMAdapter> | null) { self._kineticAdapter = v },
-      get beamAdapter() { return self._beamAdapter },
-      set beamAdapter(v: BeamAdapter | null) { self._beamAdapter = v },
-      get atmosphereAdapter() { return self._atmosphereAdapter },
-      set atmosphereAdapter(v: AtmosphereAdapter | null) { self._atmosphereAdapter = v },
-      get liquidAetherAdapter() { return self._liquidAetherAdapter },
-      set liquidAetherAdapter(v: LiquidAetherAdapter | null) { self._liquidAetherAdapter = v },
-      get seleneAetherAdapter() { return self._seleneAetherAdapter },
-      set seleneAetherAdapter(v: SeleneAetherAdapter | null) { self._seleneAetherAdapter = v },
-      get zoneNodeRouter() { return self._zoneNodeRouter },
-      set zoneNodeRouter(v: ZoneNodeRouter | null) { self._zoneNodeRouter = v },
-      get hal() { return self.hal },
-      logManager: this.logManager,
-      stateManager: this.stateManager,
-      vibeManager: this.vibeManager,
-      get fixtures() { return self.fixtures },
-      set fixtures(v: any[]) { self.fixtures = v },
-      profileResolver: this.profileResolver,
-      stageBoundsManager: this.stageBoundsManager,
-      seleneBus: this._seleneBus,
-    }
-    this.hydrationEngine = new FixtureHydrationEngine(hydrationCtx)
-    
-    // ðŸ§© WAVE 4961: Build broadcast + HAL dispatch contexts
-    const broadcastCtx: BroadcastManagerContext = {
-      logManager: this.logManager,
-      trinity: this.trinity,
-      engine: this.engine,
-      get fixtures() { return self.fixtures },
-      get frameCount() { return self.frameCount },
-      peakHoldMap: this.peakHoldMap,
-      oscProvider: this.oscProvider,
-      syncSmoother: this.syncSmoother,
-      stateManager: this.stateManager,
-      get hasRealAudio() { return self.hasRealAudio },
-      lastAudioData: this.lastAudioData,
-      EMPTY_FFT_BUFFER: this.EMPTY_FFT_BUFFER,
-    }
-    this.broadcastManager = new BroadcastManager(broadcastCtx)
 
-    const halCtx: HardwareDispatcherContext = {
-      get hal() { return self.hal },
-      get aetherResolver() { return self._aetherResolver },
-      aetherSafety: this._aetherSafety,
-      goldenNukeLocks: this._goldenNukeLocks,
-      get fixtures() { return self.fixtures },
-      stateManager: this.stateManager,
-      get frameCount() { return self.frameCount },
-    }
-    this.hardwareDispatcher = new HardwareDispatcher(halCtx)
-    const audioCtx: AudioPipelineContext = {
-      trinity: this.trinity,
-      brain: this.brain,
-      log: (category, message, data) => this.log(category, message, data),
-      getInputGain: () => this.inputGain,
-    }
-    this.audioPipeline = new AudioPipelineManager(audioCtx)
-    this.tickEngine = new TickEngine({
-      brain: this.brain, engine: this.engine, hal: this.hal, trinity: this.trinity,
-      audioPipeline: this.audioPipeline, fixtures: this.fixtures,
-      onHotFrame: this.onHotFrame, onBroadcast: this.onBroadcast,
-      _aetherHasDevices: this._aetherHasDevices,
-      _aetherArbiter: this._aetherArbiter, _aetherResolver: this._aetherResolver,
-      _colorAdapter: this._colorAdapter, _kineticAdapter: this._kineticAdapter,
-      _beamAdapter: this._beamAdapter, _atmosphereAdapter: this._atmosphereAdapter,
-      _liquidAetherAdapter: this._liquidAetherAdapter,
-      _seleneAetherAdapter: this._seleneAetherAdapter,
-      _chronosAetherAdapter: this._chronosAetherAdapter,
-      _hephaestusAetherAdapter: this._hephaestusAetherAdapter,
-      _aetherCanvasManager: this._aetherCanvasManager,
-      _pixelMapAdapter: this._pixelMapAdapter,
-      _theiaVideoRenderer: this._theiaVideoRenderer,
-      _physicsPostProcessor: this._physicsPostProcessor,
-      _aetherSafety: this._aetherSafety,
-      _forgeFrameCtx: this._forgeFrameCtx, _forgeAudioBands: this._forgeAudioBands,
-      _aetherUIProjector: this._aetherUIProjector,
-      _goldenNukeLocks: this._goldenNukeLocks,
-      _aetherGraph: this._aetherGraph, _aetherBus: this._aetherBus,
-      _seleneBus: this._seleneBus, _effectBus: this._effectBus,
-      _impactAdapter: this._impactAdapter,
-      _aetherAudio: this._aetherAudio, _aetherMusical: this._aetherMusical,
-      _aetherVibe: this._aetherVibe, _aetherCtx: this._aetherCtx,
-      _aetherStageBounds: this._aetherStageBounds,
-      _hephByFixtureId: this._hephByFixtureId, _hephByZone: this._hephByZone,
-      _hephOutputPool: this._hephOutputPool, peakHoldMap: this.peakHoldMap,
-      _seleneThetaBridge: this._seleneThetaBridge,
-      _timelineEngine: this._timelineEngine,
-      EMPTY_FFT_BUFFER: this.EMPTY_FFT_BUFFER,
-      oscProvider: this.oscProvider,
-      _licenseTier: this._licenseTier,
-      lastConsciousnessOutput: this.lastConsciousnessOutput,
-      mode: this.mode, inputGain: this.inputGain, useBrain: this.useBrain,
-      log: (category: string, message: string, data?: Record<string, unknown>) => this.log(category, message, data),
-    })
+    const hydrationCtx = this.createMutableProxy<HydrationContext>(
+    '_aetherCtx', '_aetherAudio', '_aetherMusical', '_aetherVibe', '_aetherStageBounds', '_forgeFrameCtx', '_forgeAudioBands', '_zoneNodeRouter', '_aetherHasDevices', '_aetherPipeline'
+  );
     const lifecycleCtx: SystemLifecycleContext = {
-      brain: this.brain, trinity: this.trinity, engine: this.engine, hal: this.hal,
-      audioPipeline: this.audioPipeline,
-      oscProvider: this.oscProvider, virtualWireProvider: this.virtualWireProvider,
-      usbDirectLinkProvider: this.usbDirectLinkProvider,
-      isInitialized: this.isInitialized, isRunning: this.isRunning,
-      config: this.config, scheduler: this.scheduler,
-      cardiogramaInterval: this.cardiogramaInterval,
-      fixtures: this.fixtures, beatDetector: this.beatDetector,
-      log: (category, message, data) => this.log(category, message, data),
+      ...this.createMutableProxy<SystemLifecycleContext>('brain', 'engine', 'hal', 'trinity', 'audioPipeline', 'oscProvider', 'virtualWireProvider', 'usbDirectLinkProvider', 'isInitialized', 'isRunning', 'config', 'scheduler', 'cardiogramaInterval', 'fixtures', 'beatDetector'),
+      log: (category: string, message: string, data?: Record<string, unknown>) => this.log(category, message, data),
     }
     this.lifecycleManager = new SystemLifecycleManager(lifecycleCtx)
-    this.theiaBridgeManager = new TheiaBridgeManager(this._aetherCanvasManager, this._pixelMapAdapter, this._aetherGraph, this._aetherStageBounds)
-    this.vibeLifecycleManager = this.vibeManager
     this.theiaBridgeManager = new TheiaBridgeManager(this._aetherCanvasManager, this._pixelMapAdapter, this._aetherGraph, this._aetherStageBounds)
     this.vibeLifecycleManager = this.vibeManager
     
@@ -758,17 +612,17 @@ export class TitanOrchestrator {
     // WAVE 4703: _outputEnabled starts false at boot â€” canonical state owned by TitanOrchestrator
     // WAVE 2098: Boot silence
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    // ðŸ›ï¸ WAVE 2483: Wire SeleneHephBridge.playHook â†’ HephaestusRuntime.play.
+    //
+    //  WAVE 2483: Wire SeleneHephBridge.playHook â†’ HephaestusRuntime.play.
     // Idempotente: si el constructor corre dos veces (tests), el Ãºltimo wins.
     // Si el HephaestusRuntime aÃºn no estuviera disponible, el lookup es lazy
     // dentro del closure, asÃ­ que no hay race condition al boot.
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // 
     try {
       const bridge = getSeleneHephBridge()
       bridge.setPlayHook((resolved, _entry) => {
         if (!resolved.filePath) return -1
-        // âš¡ WAVE 4913: import top-level (line 48) â€” la dependencia circular
+        //  WAVE 4913: import top-level (line 48) â€” la dependencia circular
         // ya estÃ¡ resuelta por el bundler. El require() lazy fallaba en el
         // build empaquetado porque no existe un archivo fÃ­sico ./IPCHandlers.
         const runtime = getHephaestusRuntime()
@@ -779,7 +633,7 @@ export class TitanOrchestrator {
         return instanceId != null ? 1 : -1
       })
 
-      // ðŸ‘» WAVE 4952 â€” THE POLTERGEIST HUNT: PlasmaRenderer test-pattern AMPUTATED.
+      // WAVE 4952 â€” THE POLTERGEIST HUNT: PlasmaRenderer test-pattern AMPUTATED.
       //
       // ROOT CAUSE of the "ghost color flashes" (greenâ†’yellow/lighter in Front,
       // even in absolute silence, surviving every restart):
@@ -811,13 +665,13 @@ export class TitanOrchestrator {
   }
 
   /**
-   * ðŸ”’ WAVE 2490: Set license tier â€” DJ_FOUNDER silences Hephaestus output
+   *WAVE 2490: Set license tier â€” DJ_FOUNDER silences Hephaestus output
    */
   setLicenseTier(tier: 'DJ_FOUNDER' | 'FULL_SUITE'): void {
     this._licenseTier = tier
   }
 
-  // â”€â”€ ðŸŽ¬ WAVE 4867: Theia Twin-Output Bridge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //  WAVE 4867: Theia Twin-Output Bridge 
 
   /**
    * Conecta el renderer de vÃ­deo de Theia al pipeline de Pixel Mapping.
@@ -839,7 +693,7 @@ export class TitanOrchestrator {
    */
     detachTheiaRenderer(): void { this.theiaBridgeManager.detachTheiaRenderer() }
 
-  // â”€â”€ WAVE 4869: SeleneTheiaBridge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //  WAVE 4869: SeleneTheiaBridge 
 
   /**
    * Conecta el SeleneTheiaBridge al pipeline de processFrame().
@@ -862,7 +716,7 @@ export class TitanOrchestrator {
   /**
    * Stop the main loop.
    * 
-   * ðŸ§Ÿ ZOMBIE KILLER: antes de matar el loop, forzamos un frame de ceros
+   * ZOMBIE KILLER: antes de matar el loop, forzamos un frame de ceros
    * fÃ­sico al hardware. Sin esto, el Ãºltimo frame de luz queda "congelado"
    * en el buffer FTDI â†’ los cabezales mÃ³viles siguen recibiendo su Ãºltimo
    * comando y sus motores oscilan (micro-tug-of-war â†’ pÃ©rdida de pasos).
@@ -877,9 +731,9 @@ export class TitanOrchestrator {
 
   /**
    * Process a single frame of the Brain -> Engine -> HAL pipeline
-   * ðŸŽ¬ PROCESAR FRAME: El latido del universo
-   * ðŸ§¬ WAVE 972: ASYNC para DNA Brain sincrÃ³nico
-   * ðŸ”’ WAVE 2211: Stampede guard delegated to FrameScheduler (WAVE 3504.5)
+   * PROCESAR FRAME: El latido del universo
+   *  WAVE 972: ASYNC para DNA Brain sincrÃ³nico
+   *  WAVE 2211: Stampede guard delegated to FrameScheduler (WAVE 3504.5)
    */
     private async processFrame(): Promise<void> {
     await this.tickEngine.tick()
@@ -887,13 +741,13 @@ export class TitanOrchestrator {
 
   /**
    * Set the current vibe
-   * ðŸŽ¯ WAVE 289: Propagate vibe to Workers for Vibe-Aware Section Tracking
-   * ðŸ”§ WAVE 2040.3: Fixed HAL receiving legacy alias instead of normalized ID
+   * WAVE 289: Propagate vibe to Workers for Vibe-Aware Section Tracking
+   * WAVE 2040.3: Fixed HAL receiving legacy alias instead of normalized ID
    */
     setVibe(vibeId: VibeId): void { this.vibeLifecycleManager.setVibe(vibeId) }
   
   /**
-   * ðŸŽ¨ WAVE 2019.6: Force Palette Sync
+   *  WAVE 2019.6: Force Palette Sync
    * 
    * Regenera la paleta del Engine usando el color constitution del Vibe activo.
    * Usado por Chronos Timeline para sincronizar Stage color al cambiar Vibe.
@@ -901,7 +755,7 @@ export class TitanOrchestrator {
     forcePaletteSync(): void { this.vibeLifecycleManager.forcePaletteSync() }
 
   /**
-   * ðŸŽ­ WAVE 700.5.4: Set the current mood (calm/balanced/punk)
+   * WAVE 700.5.4: Set the current mood (calm/balanced/punk)
    * 
    * Mood controls effect frequency and intensity:
    * - CALM: 1-3 EPM (effects minimal, paleta respira)
@@ -916,13 +770,13 @@ export class TitanOrchestrator {
     getMood(): 'calm' | 'balanced' | 'punk' { return this.vibeLifecycleManager.getMood() }
 
   /**
-   * ðŸ‘» WAVE 2540.4: THE PHANTOM BUFFER â€” Cache pre-calculated GodEar heatmap
+   * WAVE 2540.4: THE PHANTOM BUFFER â€” Cache pre-calculated GodEar heatmap
    * in TitanEngine for offline band lookup during timeline playback.
    */
     setChronosHeatmap(heatmap: unknown): void { this.vibeLifecycleManager.setChronosHeatmap(heatmap) }
 
   /**
-   * ðŸ‘» WAVE 2540.5: PLAYHEAD SYNC â€” Forward Chronos playhead to TitanEngine.
+   *  WAVE 2540.5: PLAYHEAD SYNC â€” Forward Chronos playhead to TitanEngine.
    * Called every frame from the frontend during Chronos playback.
    */
     setChronosPlayhead(timeMs: number, isPlaying: boolean): void { this.vibeLifecycleManager.setChronosPlayhead(timeMs, isPlaying) }
@@ -934,13 +788,13 @@ export class TitanOrchestrator {
 
   /**
    * WAVE 254: Enable/disable brain processing (Layer 0 + Layer 1)
-   * ðŸ”´ DEPRECATED for consciousness control - use setConsciousnessEnabled instead
+   *  DEPRECATED for consciousness control - use setConsciousnessEnabled instead
    * This kills EVERYTHING (blackout) - only use for full system stop
    */
     setUseBrain(enabled: boolean): void { this.vibeLifecycleManager.setUseBrain(enabled) }
   
   /**
-   * ðŸ§¬ WAVE 560: Enable/disable consciousness ONLY (Layer 1)
+   *  WAVE 560: Enable/disable consciousness ONLY (Layer 1)
    * 
    * This is the CORRECT toggle for the AI switch:
    * - When OFF: Layer 0 (fÃ­sica reactiva) keeps running
@@ -951,27 +805,27 @@ export class TitanOrchestrator {
     setConsciousnessEnabled(enabled: boolean): void { this.vibeLifecycleManager.setConsciousnessEnabled(enabled) }
   
   /**
-   * ðŸŒŠ WAVE 2401: Set Liquid Stereo mode (7-band per-zone envelopes)
+   * WAVE 2401: Set Liquid Stereo mode (7-band per-zone envelopes)
    */
     setLiquidStereo(enabled: boolean): void { this.vibeLifecycleManager.setLiquidStereo(enabled) }
 
   /**
-   * ðŸŒŠ WAVE 2432: THE GREAT WIRING â€” Layout Switch (4.1 / 7.1)
+   * WAVE 2432: THE GREAT WIRING â€” Layout Switch (4.1 / 7.1)
    */
     setLiquidLayout(mode: '4.1' | '7.1'): void { this.vibeLifecycleManager.setLiquidLayout(mode) }
 
     getLiquidLayout(): '4.1' | '7.1' { return this.vibeLifecycleManager.getLiquidLayout() }
   
   /**
-   * ðŸ§¬ WAVE 560: Get consciousness state
+   * WAVE 560: Get consciousness state
    */
   isConsciousnessEnabled(): boolean {
     return this.consciousnessEnabled
   }
   
   /**
-   * ðŸ§¨ WAVE 610: FORCE STRIKE - Manual Effect Detonator
-   * âš’ï¸ WAVE 2030.4: Hephaestus curve automation support
+   *  WAVE 610: FORCE STRIKE - Manual Effect Detonator
+   * WAVE 2030.4: Hephaestus curve automation support
    * 
    * Dispara un efecto manualmente sin esperar decisiÃ³n de HuntEngine.
    * Ãštil para testear efectos visuales sin alterar umbrales de los algoritmos.
@@ -981,7 +835,7 @@ export class TitanOrchestrator {
    * 2. IPC handler llama titanOrchestrator.forceStrikeNextFrame(config)
    * 3. Este mÃ©todo llama engine's forceStrikeNextFrame(config)
    * 4. TitanEngine fuerza un trigger de EffectManager en el prÃ³ximo frame
-   * 5. âš’ï¸ WAVE 2030.4: Si config.hephCurves existe, EffectManager crea un overlay
+   * 5.  WAVE 2030.4: Si config.hephCurves existe, EffectManager crea un overlay
    * 
    * @param config - ForceStrikeConfig with effect, intensity, source, and optional hephCurves
    */
@@ -1018,7 +872,7 @@ export class TitanOrchestrator {
   }
 
   /**
-   * âš¡ WAVE 2510: Set callback for hot-frame broadcast (44Hz fixture data)
+   * WAVE 2510: Set callback for hot-frame broadcast (44Hz fixture data)
    * Carries only dynamic fixture data for the RenderWorker.
    * Separate from full SeleneTruth which continues at ~7Hz.
    */
@@ -1058,8 +912,8 @@ export class TitanOrchestrator {
 
   /**
    * WAVE 255: Process incoming audio frame from frontend
-   * ðŸ”¥ WAVE 1012.5: HYBRID SOURCE â€” Frontend = 30fps bass/mid/high/energy, Worker = extended FFT
-   * âš¡ WAVE 3060b PHOENIX: RESTAURADO como hot-path. Frontend tiene prioridad visual.
+   *  WAVE 1012.5: HYBRID SOURCE â€” Frontend = 30fps bass/mid/high/energy, Worker = extended FFT
+   *  WAVE 3060b PHOENIX: RESTAURADO como hot-path. Frontend tiene prioridad visual.
    */
   processAudioFrame(data: Record<string, unknown>): void {
     if (!this.isRunning || !this.useBrain) return

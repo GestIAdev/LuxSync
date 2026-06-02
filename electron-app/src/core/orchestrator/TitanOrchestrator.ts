@@ -15,22 +15,6 @@ import { TitanEngine } from '../../engine/TitanEngine'
 import { HardwareAbstraction } from '../../hal/HardwareAbstraction'
 import { EventRouter, getEventRouter } from './EventRouter'
 import { getTrinity, TrinityOrchestrator } from '../../workers/TrinityOrchestrator'
-import { 
-  SeleneTruth, 
-  createDefaultTruth,
-  createDefaultCognitive,
-  createDefaultSensory 
-} from '../protocol/SeleneProtocol'
-
-// ­ WAVE 374: Import Arbiter types (masterArbiter singleton removed WAVE 4703)
-import { 
-  type Layer0_Titan,
-  type FinalLightingTarget,
-  type EffectIntentMap,
-  type EffectIntent,
-  ControlLayer 
-} from '../arbiter'
-
 //  WAVE 1153: THE PACEMAKER - Real Beat Detection
 import { BeatDetector } from '../../engine/audio/BeatDetector'
 
@@ -39,7 +23,6 @@ import type { HephAutomationClip } from '../hephaestus/types'
 
 //  WAVE 2030.19: HephaestusRuntime for .lfx execution
 import { getHephaestusRuntime } from './IPCHandlers'
-import type { HephFixtureOutput } from '../hephaestus/runtime/HephaestusRuntime'
 
 //  WAVE 2672â†’2720: Harmonic Quantizer MIGRADO AL HAL
 // La cuantizaciÃ³n armÃ³nica vive ahora en HAL.translateColorToWheel()
@@ -61,29 +44,15 @@ import { USBDirectLinkProvider } from '../audio/USBDirectLinkProvider'
 import { FrameScheduler } from './scheduler/FrameScheduler'
 
 // WAVE 3505.4: AETHER MATRIX â€” Agnostic Engine V2 Pipeline
-import { NodeGraph, IntentBus, NodeArbiter, NodeResolver, PhysicsPostProcessor } from '../aether'
-import type { IDeviceDefinition, IKineticNodeData } from '../aether'
+import { NodeGraph, IntentBus, NodeArbiter, PhysicsPostProcessor } from '../aether'
+import type { IDeviceDefinition } from '../aether'
 // WAVE 4548.6: Forge Evaluator â€” compiled graphs for zero-alloc DMX
-import { ForgeGraphCompiler } from '../forge/compiler/ForgeGraphCompiler'
-import type { ForgeFrameContext, MutableForgeFrameContext } from '../forge/compiler/types'
+import type { MutableForgeFrameContext } from '../forge/compiler/types'
 import type { IForgeNodeGraph } from '../forge/types'
 // WAVE 3516.2: Adapters â€” cableado al hot-path del frame loop
-import { LiquidImpactAdapter, VMMAdapter } from '../aether'
-//  WAVE 3516.3: ColorAdapter â€” extraÃ­da a su propio archivo
-//  WAVE 4522.3: Actualizado para ingesta via setIngress() (paleta RGB de SeleneLux)
-import { ColorAdapter } from '../aether/adapters/ColorAdapter'
-// WAVE 3516.4: Optic & Elemental Bridges
-import { BeamAdapter } from '../aether/adapters/BeamAdapter'
-import { AtmosphereAdapter } from '../aether/adapters/AtmosphereAdapter'
-// WAVE 4521.3: LiquidAetherAdapter â€” Capa L0 del IntentBus
-import { LiquidAetherAdapter } from '../aether/adapters/LiquidAetherAdapter'
-import { NodeFamily } from '../aether'
 import type { FrameContext, AudioMetrics, VibeProfile, MusicalContext } from '../aether'
 // WAVE 4524.3: Selene-Aether Adapter â€” Puente Cognitivo L3
-import { SeleneAetherAdapter } from '../aether/adapters/selene-aether-adapter'
 import { ZoneNodeRouter } from '../aether/adapters/helpers/zone-node-router'
-import { ChronosAetherAdapter } from '../aether/adapters/ChronosAetherAdapter'
-import { HephaestusAetherAdapter } from '../aether/adapters/HephaestusAetherAdapter'
 // ðŸ›ï¸ WAVE 2483: Infinite Arsenal â€” bridge wiring (playHook â†’ HephaestusRuntime.play).
 import { getSeleneHephBridge } from '../arsenal/SeleneHephBridge'
 import type { ResolvedPixelParams, RenderHook } from '../arsenal/SeleneHephBridge'
@@ -91,18 +60,10 @@ import type { RegistryEntry } from '../arsenal/lfxTypes'
 // ðŸŽ¨ WAVE 4812: Aether Canvas â€” Pixel Mapping engine
 import { AetherCanvasManager } from '../aether/canvas/AetherCanvasManager'
 import { PixelMapAetherAdapter } from '../aether/canvas/PixelMapAetherAdapter'
-//  WAVE 4952: PlasmaRenderer import REMOVED â€” test-pattern poltergeist amputated.
-//  WAVE 4867: TheiaVideoRenderer â€” twin-output bridge (THETA thumb SAB â†’ AetherCanvas)
-import { TheiaVideoRenderer } from '../aether/canvas/renderers/TheiaVideoRenderer'
 // WAVE 4869: SeleneTheiaBridge â€” Observer cognitivo Selene â†’ ThetaOrchestrator
 import { type SeleneTheiaBridge } from '../../theia/SeleneTheiaBridge'
-// WAVE 4557: Aether Safety Middleware â€” La Aduana Aether
-import { AetherSafetyMiddleware } from '../aether/egress/AetherSafetyMiddleware'
-// WAVE 4559: THE MIRROR â€” Projecta estado Aether â†’ FixtureState[] legacy para la UI
-import { AetherUIProjector } from '../aether/resolver/AetherUIProjector'
 //  WAVE 4594: THE AETHER AWAKENING â€” NodeExtractionPipeline for fixtureâ†’NodeGraph injection
 import { NodeExtractionPipeline } from '../aether/ingestion/NodeExtractionPipeline'
-import { timelineEngine } from '../engine/TimelineEngine'
 
 //  WAVE 4959 PHASE 1-3: Extracted managers
 import { TacticalLogManager } from './logging/TacticalLogManager'
@@ -113,24 +74,17 @@ import { VibeLifecycleManager } from './lifecycle/VibeLifecycleManager'
 import { FixtureHydrationEngine } from './hydration/FixtureHydrationEngine'
 import type { HydrationContext } from './hydration/FixtureHydrationEngine'
 import { FixtureProfileResolver } from './hydration/FixtureProfileResolver'
-import { StageBoundsManager } from './hydration/StageBoundsManager'
 //  WAVE 4961 PHASE 6: I/O managers
 import { AudioPipelineManager } from './audio/AudioPipelineManager'
-import type { AudioPipelineContext } from './audio/AudioPipelineManager'
 import { TickEngine } from './tick/TickEngine'
 import { SystemLifecycleManager } from './lifecycle/SystemLifecycleManager'
 import type { SystemLifecycleContext } from './lifecycle/SystemLifecycleManager'
 
 // ZOMBIE KILLER: singleton DMX para flushing fÃ­sico en stop()
 import { universalDMX } from '../../hal/drivers/UniversalDMXDriver'
-//  WAVE 4700: Motor cinÃ©tico nativo L2 â€” reemplaza masterArbiter para patrones manuales
-import { aetherKineticEngine } from '../aether/AetherKineticEngine'
-
-//  WAVE 2227: VMM singleton para cleanup en stop()
-import { vibeMovementManager } from '../../engine/movement/VibeMovementManager'
 
 //  WAVE 2543.4: Centralized zone resolution
-import { fixtureMatchesZone as zoneMapperMatch, resolveZone } from '../zones/ZoneMapper'
+import { resolveZone } from '../zones/ZoneMapper'
 
 //  WAVE 3050: MODULE-LEVEL CONSTANTS â€” allocated once, reused per frame
 // Zone mapping for StageSimulator2 compatibility (was recreated per fixture * per truth broadcast)
@@ -231,7 +185,6 @@ export class TitanOrchestrator {
   // theiaManager initialized inline below (needs _aetherCanvasManager etc.)
   // ðŸ§© WAVE 4960.1: Hydration managers
   private readonly profileResolver = new FixtureProfileResolver()
-  // stageBoundsManager initialized after _physicsPostProcessor
   // hydrationEngine initialized in constructor
   //  WAVE 4961: I/O managers
   private readonly audioPipeline!: AudioPipelineManager
@@ -256,20 +209,6 @@ export class TitanOrchestrator {
   
 
   
-  // ðŸ—‘ï¸ WAVE 2211: PRE-ALLOCATED FFT BUFFER â€” GC pressure reduction
-  // BEFORE: `new Array(256).fill(0)` every frame = 256 floats Ã— 30fps = 7,680 allocs/sec
-  // AFTER: Single buffer reused across frames. Zero GC from FFT.
-  
-  private readonly EMPTY_FFT_BUFFER: readonly number[] = Object.freeze(new Array(256).fill(0))
-
-  // WAVE 3190: PRE-ALLOCATED HEPHAESTUS ROUTING BUFFERS â€” GC Zero Allocation
-  // Eliminan los new Map() que se creaban CADA FRAME cuando hay clips activos.
-  // Se limpian con .clear() al inicio del bloque Hephaestus y se reusan.
-  private readonly _hephByFixtureId = new Map<string, HephFixtureOutput[]>()
-  private readonly _hephByZone = new Map<string, HephFixtureOutput[]>()
-  // Pool de arrays de outputs por fixture â€” se reusan across frames
-  // El pool crece hasta N fixtures y nunca encoge (GC amortizado)
-  private readonly _hephOutputPool = new Map<string, HephFixtureOutput[]>()
   // WAVE 252: Real fixtures from ConfigManager (no more mocks)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private fixtures: any[] = []
@@ -324,14 +263,7 @@ export class TitanOrchestrator {
     bass: 0, mid: 0, high: 0, energy: 0
   }
   private hasRealAudio = false
-  private currentLiquidLayout: '4.1' | '7.1' = '4.1'
 
-  //  WAVE 4524.3: Last ConsciousnessOutput from the DecisionMaker
-  // Se utiliza en el SeleneAetherAdapter para traducciÃ³n de efectos L3.
-  // Por ahora inicializado como null; en el futuro el engine populate esto.
-  private lastConsciousnessOutput: any = null
-
-  
   // âš¡ WAVE 3504.5: PURE MATH MODULES â€” extracted from the monolith
   // SyncSmoother:   EMA filter bank + syncopation estimator + freewheel chain
   // Este pipeline corre EN PARALELO con el pipeline legacy (masterArbiter â†’ HAL).
@@ -341,50 +273,23 @@ export class TitanOrchestrator {
   // Si _aetherNodeGraph estÃ¡ vacÃ­o, el bloque Aether en processFrame() es no-op.
   //
   private readonly _aetherGraph   = new NodeGraph()
-  private readonly _aetherBus     = new IntentBus(4096)
   // WAVE 4663: Bus dedicado para Selene (L1). Aislado del bus L0 de los Systems.
   // Capacity 512: Selene emite dimmer+color+strobe por nodo (~50 fixtures Ã— 3 familias).
   private readonly _seleneBus     = new IntentBus(512)
-  // WAVE 4705: Bus dedicado para LiveFX (L3). Autoridad sobre L2 manual.
-  private readonly _effectBus     = new IntentBus(512)
   private _aetherArbiter: NodeArbiter | null = null
-  private _aetherResolver: NodeResolver | null = null
   // WAVE 4518.1: Physics Post-Processor â€” The Inertia Engine
   private readonly _physicsPostProcessor = new PhysicsPostProcessor()
-  // stageBoundsManager initialized after _aetherStageBounds
   private readonly hydrationEngine!: FixtureHydrationEngine
   private _aetherHasDevices = false
   //  WAVE 4594: Stateless extraction pipeline â€” lazy-init, reutilizado en cada resync
   private _aetherPipeline: NodeExtractionPipeline | null = null
-  //  WAVE 4559: THE MIRROR â€” instancia Ãºnica, zero-alloc projection cada frame
-  private readonly _aetherUIProjector = new AetherUIProjector()
-  //  WAVE 3516.2: Adapters â€” instanciados una vez, reutilizados cada frame
-  private readonly _impactAdapter  = new LiquidImpactAdapter()
-  //  WAVE 3516.3: ColorAdapter â€” rebautizada de LiquidColorAdapter
-  private _colorAdapter: ColorAdapter | null = null
-  private _kineticAdapter: InstanceType<typeof VMMAdapter> | null = null
-  //  WAVE 3516.4: Optic & Elemental Bridges
-  private _beamAdapter: BeamAdapter | null = null
-  private _atmosphereAdapter: AtmosphereAdapter | null = null
-  // WAVE 4521.3: LiquidAetherAdapter â€” Capa L0 del IntentBus
-  // Se instancia con el NodeGraph y el liquidEngine71 para acceder a lastFrame
-  private _liquidAetherAdapter: LiquidAetherAdapter | null = null
   //  WAVE 4524.3: Selene-Aether Adapter â€” Puente Cognitivo L3
   // Se instancia solo una vez. ZoneNodeRouter se construye en el constructor.
   private _zoneNodeRouter: ZoneNodeRouter | null = null
-  private _seleneAetherAdapter: SeleneAetherAdapter | null = null
-  private readonly _chronosAetherAdapter = new ChronosAetherAdapter(this._aetherGraph)
-  // WAVE 3521: Hephaestus Diamond Data L3+ adapter
-  private readonly _hephaestusAetherAdapter = new HephaestusAetherAdapter(this._aetherGraph)
   //  WAVE 4812: Aether Canvas â€” Pixel Mapping engine (patch-time acquire, hot-path ingest)
   private readonly _aetherCanvasManager = new AetherCanvasManager()
   private readonly _pixelMapAdapter = new PixelMapAetherAdapter({ targetLayer: 'effect' })
   //  WAVE 4952: _plasmaRenderers map REMOVED â€” test-pattern poltergeist amputated.
-  //  WAVE 4867: TheiaVideoRenderer â€” null hasta que se llame attachTheiaRenderer()
-  private _theiaVideoRenderer: TheiaVideoRenderer | null = null
-  //  WAVE 4869: SeleneTheiaBridge â€” null hasta que se llame attachSeleneTheiaBridge()
-  private _seleneThetaBridge: SeleneTheiaBridge | null = null
-  private readonly _timelineEngine = timelineEngine
   // FrameContext pre-alloc â€” mutable in-place, cero alloc en hot-path
   private readonly _aetherAudio: AudioMetrics = {
     subBass: 0, bass: 0, mid: 0, highMid: 0, presence: 0, air: 0,
@@ -407,11 +312,6 @@ export class TitanOrchestrator {
     depth: DEFAULT_AETHER_STAGE_BOUNDS.depth,
     centerY: DEFAULT_AETHER_STAGE_BOUNDS.centerY,
   }
-  //  WAVE 4960.1: StageBoundsManager (needs _physicsPostProcessor + _aetherStageBounds)
-  private readonly stageBoundsManager = new StageBoundsManager(
-    this._aetherStageBounds,
-    this._physicsPostProcessor,
-  )
   private readonly _aetherCtx: FrameContext = {
     audio:      this._aetherAudio as AudioMetrics,
     musical:    this._aetherMusical as MusicalContext,
@@ -421,9 +321,6 @@ export class TitanOrchestrator {
     deltaMs:    23,
     frameIndex: 0,
   }
-
-  //  WAVE 4557: Aether Safety Middleware â€” velocity clamp, airbag, DarkSpin, output gate, throttle
-  private readonly _aetherSafety = new AetherSafetyMiddleware()
 
   // WAVE 4548.6: Pre-allocated ForgeFrameContext â€” mutable in-place, zero alloc
   private readonly _forgeAudioBands = new Float64Array(6)

@@ -132,6 +132,8 @@ import type { HardwareDispatcherContext } from './hal/HardwareDispatcher'
 import { AudioPipelineManager } from './audio/AudioPipelineManager'
 import type { AudioPipelineContext } from './audio/AudioPipelineManager'
 import { TickEngine } from './tick/TickEngine'
+import { SystemLifecycleManager } from './lifecycle/SystemLifecycleManager'
+import type { SystemLifecycleContext } from './lifecycle/SystemLifecycleManager'
 
 // ðŸ§Ÿ ZOMBIE KILLER: singleton DMX para flushing fÃ­sico en stop()
 import { universalDMX } from '../../hal/drivers/UniversalDMXDriver'
@@ -258,6 +260,9 @@ export class TitanOrchestrator {
   // broadcastManager + hardwareDispatcher initialized in constructor
   private readonly audioPipeline: AudioPipelineManager
   private readonly tickEngine: TickEngine
+  private readonly lifecycleManager: SystemLifecycleManager
+  private readonly theiaBridgeManager: TheiaBridgeManager
+  private readonly vibeLifecycleManager: VibeLifecycleManager
   
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // âš¡ WAVE 3504.5: FRAME SCHEDULER â€” replaces bare setInterval + isProcessingFrame
@@ -732,6 +737,22 @@ export class TitanOrchestrator {
       mode: this.mode, inputGain: this.inputGain, useBrain: this.useBrain,
       log: (category: string, message: string, data?: Record<string, unknown>) => this.log(category, message, data),
     })
+    const lifecycleCtx: SystemLifecycleContext = {
+      brain: this.brain, trinity: this.trinity, engine: this.engine, hal: this.hal,
+      audioPipeline: this.audioPipeline,
+      oscProvider: this.oscProvider, virtualWireProvider: this.virtualWireProvider,
+      usbDirectLinkProvider: this.usbDirectLinkProvider,
+      isInitialized: this.isInitialized, isRunning: this.isRunning,
+      config: this.config, scheduler: this.scheduler,
+      cardiogramaInterval: this.cardiogramaInterval,
+      fixtures: this.fixtures, beatDetector: this.beatDetector,
+      log: (category, message, data) => this.log(category, message, data),
+    }
+    this.lifecycleManager = new SystemLifecycleManager(lifecycleCtx)
+    this.theiaBridgeManager = new TheiaBridgeManager(this._aetherCanvasManager, this._pixelMapAdapter, this._aetherGraph, this._aetherStageBounds)
+    this.vibeLifecycleManager = this.vibeManager
+    this.theiaBridgeManager = new TheiaBridgeManager(this._aetherCanvasManager, this._pixelMapAdapter, this._aetherGraph, this._aetherStageBounds)
+    this.vibeLifecycleManager = this.vibeManager
     
     this.eventRouter = getEventRouter()
     // WAVE 4703: _outputEnabled starts false at boot â€” canonical state owned by TitanOrchestrator
@@ -810,64 +831,13 @@ export class TitanOrchestrator {
    * La llamada es idempotente: si ya existe un renderer para el mismo canvasId,
    * lo reemplaza (util para reconnect).
    */
-  attachTheiaRenderer(
-    canvasId: string,
-    thumbPixelSAB: SharedArrayBuffer,
-    opts: {
-      /** Intensidad del muestreo [0..1]. Default: 1.0. */
-      intensity?: number
-      /** Si true, el alpha del pÃ­xel modula el dimmer. Default: false. */
-      alphaToDimmer?: boolean
-    } = {},
-  ): void {
-    this._theiaVideoRenderer?.stop()
-    this._theiaVideoRenderer = new TheiaVideoRenderer(
-      canvasId,
-      this._aetherCanvasManager,
-      thumbPixelSAB,
-    )
-    this._theiaVideoRenderer.active = true
-
-    // Patch-time: bind world samplers so the PixelMapAetherAdapter knows which
-    // nodes to sample from 'theia:active'. Falls back gracefully if the graph
-    // has no positioned nodes (produces zero intents but no crash).
-    const stageRect = {
-      x0: -this._aetherStageBounds.width  * 0.5,
-      z0: -this._aetherStageBounds.depth  * 0.5,
-      x1:  this._aetherStageBounds.width  * 0.5,
-      z1:  this._aetherStageBounds.depth  * 0.5,
-    }
-    this._pixelMapAdapter.bindWorldSamplers(
-      canvasId,
-      {
-        intensity: opts.intensity ?? 1.0,
-        alphaToDimmer: opts.alphaToDimmer ?? false,
-      },
-      this._aetherGraph,
-      stageRect,
-      64,
-      64,
-    )
-
-    // eslint-disable-next-line no-console
-    console.log(`[TitanOrchestrator ðŸŽ¬] WAVE 4867: TheiaVideoRenderer attached (canvasId='${canvasId}')`)
-  }
+    attachTheiaRenderer(canvasId: string, thumbPixelSAB: SharedArrayBuffer, opts: { intensity?: number; alphaToDimmer?: boolean } = {}): void { this.theiaBridgeManager.attachTheiaRenderer(canvasId, thumbPixelSAB, opts) }
 
   /**
    * Desconecta el renderer de vÃ­deo de Theia. El canvas queda a negro y el
    * PixelMapAetherAdapter deja de emitir intents para ese canvasId.
    */
-  detachTheiaRenderer(): void {
-    if (this._theiaVideoRenderer) {
-      this._theiaVideoRenderer.stop()
-      const canvasId = this._theiaVideoRenderer.getTelemetry().canvasId
-      this._pixelMapAdapter.unbindCanvas(canvasId)
-      this._aetherCanvasManager.release(canvasId)
-      this._theiaVideoRenderer = null
-      // eslint-disable-next-line no-console
-      console.log('[TitanOrchestrator ðŸŽ¬] WAVE 4867: TheiaVideoRenderer detached')
-    }
-  }
+    detachTheiaRenderer(): void { this.theiaBridgeManager.detachTheiaRenderer() }
 
   // â”€â”€ WAVE 4869: SeleneTheiaBridge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -875,174 +845,19 @@ export class TitanOrchestrator {
    * Conecta el SeleneTheiaBridge al pipeline de processFrame().
    * LlÃ¡malo despuÃ©s de que ThetaOrchestrator.start() haya completado.
    */
-  attachSeleneTheiaBridge(bridge: SeleneTheiaBridge): void {
-    this._seleneThetaBridge = bridge
-    // eslint-disable-next-line no-console
-    console.log('[TitanOrchestrator ðŸŒ‰] WAVE 4869: SeleneTheiaBridge attached')
-  }
+    attachSeleneTheiaBridge(bridge: SeleneTheiaBridge): void { this.theiaBridgeManager.attachSeleneTheiaBridge(bridge) }
 
-  detachSeleneTheiaBridge(): void {
-    this._seleneThetaBridge = null
-    // eslint-disable-next-line no-console
-    console.log('[TitanOrchestrator ðŸŒ‰] WAVE 4869: SeleneTheiaBridge detached')
-  }
+    detachSeleneTheiaBridge(): void { this.theiaBridgeManager.detachSeleneTheiaBridge() }
 
   /**
    * Initialize all TITAN modules
    */
-  async init(): Promise<void> {
-    if (this.isInitialized) {
-      return
-    }
-    
-    // Initialize Brain
-    this.brain = new TrinityBrain()
-    
-    // Connect Brain to Trinity Orchestrator and START the neural network
-    try {
-      const trinity = getTrinity()
-      this.trinity = trinity  // ðŸ§  WAVE 258: Save reference for audio feeding
-      this.brain.connectToOrchestrator(trinity)
-      
-      // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-      // ðŸ”¥ WAVE 1012.5: HYBRID SOURCE ARCHITECTURE
-      // 
-      // Frontend (30fps) â†’ bass/mid/high/energy â†’ processAudioFrame()
-      // Worker (10fps) â†’ harshness/flatness/centroid/transients â†’ brain.on('audio-levels')
-      // 
-      // El Worker TAMBIÃ‰N envÃ­a bass/mid/high, pero los IGNORAMOS aquÃ­ porque
-      // el Frontend tiene mayor frecuencia (30fps vs 10fps) y da fluidez visual.
-      // El Worker es autoritativo SOLO para mÃ©tricas FFT extendidas.
-      // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-      // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-      // ðŸ”¥ WAVE 1012.5: HYBRID SOURCE ARCHITECTURE
-      // 
-      // Frontend (60fps) â†’ bass/mid/high/energy â†’ processAudioFrame()
-      // Worker (10fps) â†’ harshness/flatness/centroid/transients â†’ brain.on('audio-levels')
-      // 
-      // Frontend tiene PRIORIDAD TEMPORAL para core bands (60fps > 10fps)
-      // Worker es autoritativo SOLO para mÃ©tricas FFT extendidas.
-      // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-      // âš¡ WAVE 3060b PHOENIX: RESTAURADO â€” Frontend = core bands, Worker = extended FFT only
-            this.audioPipeline.wireAudioLevelsHandler()
-      
-      await trinity.start()
-
-      // WAVE 3401: Initialize OSC Nexus Provider
-      // Register with AudioMatrix for bidirectional OSC + audio input
-      this.oscProvider = new OSCNexusProvider()
-      const audioMatrix = trinity.getAudioMatrix()
-      if (audioMatrix) {
-        audioMatrix.registerProvider(this.oscProvider)
-      }
-      try {
-        await this.oscProvider.start()
-        console.log('[TitanOrchestrator] WAVE 3401: OSCNexusProvider started (UDP 9000/9001)')
-      } catch (oscErr) {
-        console.error('[TitanOrchestrator] âš ï¸ OSCNexusProvider failed to start:', oscErr)
-        // Non-fatal: LuxSync operates without OSC. Provider state â†’ error, AudioMatrix falls back.
-      }
-
-      // WAVE 3402: Register native audio providers (VirtualWire + USBDirectLink)
-      // initialize() detects hardware / checks addon availability â€” never throws
-      if (audioMatrix) {
-        this.virtualWireProvider = new VirtualWireProvider()
-        await this.virtualWireProvider.initialize({})
-        audioMatrix.registerProvider(this.virtualWireProvider)
-        console.log('[TitanOrchestrator] WAVE 3402: VirtualWireProvider registered')
-
-        this.usbDirectLinkProvider = new USBDirectLinkProvider()
-        await this.usbDirectLinkProvider.initialize({})
-        audioMatrix.registerProvider(this.usbDirectLinkProvider)
-        console.log('[TitanOrchestrator] WAVE 3402: USBDirectLinkProvider registered')
-      }
-    } catch (e) {
-      console.error('[TitanOrchestrator] âŒ Trinity startup failed:', e)
-    }
-    
-    // Initialize Engine with initial vibe
-    this.engine = new TitanEngine({ 
-      debug: this.config.debug, 
-      initialVibe: this.config.initialVibe 
-    })
-    
-    this.audioPipeline.initBeatDetector()
-    
-    this.engine.on('log', (logEntry: { category: string; message: string; data?: Record<string, unknown> }) => {
-      this.log(logEntry.category, logEntry.message, logEntry.data)
-    })
-    
-    this.hal = new HardwareAbstraction({ 
-      debug: this.config.debug,
-      // ðŸ”¥ WAVE: USB por defecto. Si hay externalDriver, HardwareAbstraction lo usa y este valor no estorba.
-      driverType: 'usb',
-      externalDriver: this.config.dmxDriver
-    })
-    
-    this.isInitialized = true
-    // WAVE 2098: Boot silence â€” all init logs removed, unified banner in main.ts
-  }
+    async init(): Promise<void> { await this.lifecycleManager.init() }
 
   /**
    * Start the main loop
    */
-  start(): void {
-    if (!this.isInitialized) {
-      console.error('[TitanOrchestrator] Cannot start - not initialized')
-      return
-    }
-    
-    if (this.isRunning) {
-      return
-    }
-    
-    this.isRunning = true
-    // âš¡ WAVE 3504.5: 44 Hz interval + Stampede Guard delegated to FrameScheduler
-    this.scheduler.start()
-
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    // ðŸ«€ OPERACIÃ“N CARDIOGRAMA â€” Event Loop Lag Monitor (Main Thread)
-    // Detecta GC Stop-The-World pauses y saturaciÃ³n del event loop.
-    // Un delta > 25ms indica que el event loop estuvo bloqueado mÃ¡s de
-    // lo esperado â€” GC mayor, IPC backpressure, spin-lock, etc.
-    // 5ms interval = detecta spikes con 5ms de resoluciÃ³n.
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    // DEBUG PROBE â€” Reactivar para auditorÃ­a (WAVE 3290 OJO DEL HURACÃN)
-    // let _cardiogramaLastTick = performance.now()
-    // let _cardiogramaPeak = 0
-    // let _cardiogramaCount = 0
-    // this.cardiogramaInterval = setInterval(() => {
-    //   const _now = performance.now()
-    //   const _delta = _now - _cardiogramaLastTick
-    //   _cardiogramaLastTick = _now
-    //   if (_delta > _cardiogramaPeak) _cardiogramaPeak = _delta
-    //   _cardiogramaCount++
-    //   // Solo loguear si supera 40ms (bloqueo GRAVE, no baseline de 15ms)
-    //   // o cada 600 ticks (~5s) como heartbeat de diagnÃ³stico
-    //   if (_delta > 40) {
-    //     const _msg = `ðŸ«€ HARD BLOCK ${_delta.toFixed(1)}ms â€” event loop frozen`
-    //     console.warn(`[CARDIOGRAMA MAIN] âš ï¸ ${_msg}`)
-    //     this.log('Error', `[CARDIOGRAMA MAIN] ${_msg}`)
-    //   } else if (_cardiogramaCount % 600 === 0) {
-    //     const _msg = `ðŸ«€ heartbeat â€” peak:${_cardiogramaPeak.toFixed(1)}ms (last 5s)`
-    //     console.warn(`[CARDIOGRAMA MAIN] ${_msg}`)
-    //     this.log('Error', `[CARDIOGRAMA MAIN] ${_msg}`)
-    //     _cardiogramaPeak = 0
-    //   }
-    // }, 5)
-
-    // Relay CARDIOGRAMA del USB Worker â†’ Tactical Log del frontend
-    universalDMX.onWarning = (msg: string) => {
-      console.warn(msg)
-      this.log('Error', msg)
-    }
-    
-    // WAVE 257: Log system start to Tactical Log (delayed to ensure callback is set)
-    setTimeout(() => {
-      this.log('System', 'ðŸš€ TITAN 2.0 ONLINE - Main loop started @ 44fps (WAVE 2510 hot-frame)')
-      this.log('Info', `ðŸ“Š Fixtures loaded: ${this.fixtures.length}`)
-    }, 100)
-  }
+    start(): void { this.lifecycleManager.start() }
 
   /**
    * Stop the main loop.
@@ -1058,62 +873,7 @@ export class TitanOrchestrator {
    *   3. Espera 30ms para que el chip FTDI drene los bytes al cable RS-485
    *   4. clearInterval + isRunning = false
    */
-  async stop(): Promise<void> {
-    // Paso 1: Blackout lÃ³gico en el HAL (si ya fue inicializado)
-    if (this.hal) {
-      this.hal.setBlackout(true)
-    }
-
-    // Paso 2: Forzar buffer de ceros directo al driver serial
-    universalDMX.blackout()
-    await universalDMX.sendAll()
-
-    // Paso 3: Dar tiempo al chip FTDI para drenar los bytes al cable RS-485
-    await new Promise<void>(resolve => setTimeout(resolve, 30))
-
-    // Paso 4: Ahora sÃ­ podemos matar el loop sin dejar zombis
-    // WAVE 3504.5: scheduler encapsulates the interval and stampede guard
-    await this.scheduler.stop()
-    if (this.cardiogramaInterval) {
-      clearInterval(this.cardiogramaInterval)
-      this.cardiogramaInterval = null
-    }
-    universalDMX.onWarning = null
-    this.isRunning = false
-
-    // WAVE 3401: Stop OSC Nexus Provider
-    if (this.oscProvider) {
-      this.oscProvider.stop()
-      this.oscProvider = null
-    }
-
-    // WAVE 3402: Stop native audio providers
-    if (this.virtualWireProvider) {
-      await this.virtualWireProvider.stop()
-      this.virtualWireProvider = null
-    }
-    if (this.usbDirectLinkProvider) {
-      await this.usbDirectLinkProvider.stop()
-      this.usbDirectLinkProvider = null
-    }
-
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    // ðŸ§¹ WAVE 2227: REACTOR CLEANUP â€” Purgar estado residual
-    // Sin esto, al re-armar el engine retoma desde la fase congelada:
-    // VMM con acumuladores viejos, BeatDetector con BPM acumulado.
-    // El resultado: saltos de posiciÃ³n al rearmar.
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-    // Purgar acumuladores de fase del movement engine
-    vibeMovementManager.resetTime()
-
-    // WAVE 4703: ArbitrationDirector bypased (WAVE 4592) â€” clearTitanState removed
-
-    // Purgar estado acumulado del beat detector
-    if (this.beatDetector) {
-      this.beatDetector.reset()
-    }
-  }
+    async stop(): Promise<void> { await this.lifecycleManager.stop() }
 
   /**
    * Process a single frame of the Brain -> Engine -> HAL pipeline
@@ -1130,54 +890,7 @@ export class TitanOrchestrator {
    * ðŸŽ¯ WAVE 289: Propagate vibe to Workers for Vibe-Aware Section Tracking
    * ðŸ”§ WAVE 2040.3: Fixed HAL receiving legacy alias instead of normalized ID
    */
-  setVibe(vibeId: VibeId): void {
-    if (this.engine) {
-      // 1ï¸âƒ£ Set vibe in engine (normalizes legacy aliases internally)
-      this.engine.setVibe(vibeId)
-      
-      // 2ï¸âƒ£ Get the ACTUAL normalized vibe ID from engine
-      // This ensures HAL receives 'techno-club' not 'techno'
-      const normalizedVibeId = this.engine.getCurrentVibe()
-      
-      console.log(`[TitanOrchestrator] Vibe set to: ${normalizedVibeId}`)
-      // WAVE 257: Log vibe change to Tactical Log
-      this.log('Mode', `ðŸŽ­ Vibe changed to: ${normalizedVibeId.toUpperCase()}`)
-      
-      // ðŸŽ¯ WAVE 289: Propagate vibe to Trinity Workers
-      // El SectionTracker en los Workers usarÃ¡ perfiles vibe-aware
-      if (this.trinity) {
-        this.trinity.setVibe(normalizedVibeId)
-        console.log(`[TitanOrchestrator] ðŸŽ¯ WAVE 289: Vibe propagated to Workers`)
-      }
-      
-      // ðŸŽ¯ WAVE 338: Propagate vibe to HAL for Movement Physics
-      // ðŸ”§ WAVE 2040.3: FIX - Use normalizedVibeId so HAL gets 'techno-club' not 'techno'
-      // Los movers usarÃ¡n fÃ­sica diferente segÃºn el vibe
-      if (this.hal) {
-        this.hal.setVibe(normalizedVibeId)
-        console.log(`[TitanOrchestrator] ðŸŽ›ï¸ WAVE 338: Movement physics updated for vibe`)
-      }
-
-      // ðŸ§¨ WAVE 2140: AMNESIA PROTOCOL â€” Hard reset del Pacemaker en BETA.
-      // Un cambio de Vibe = nuevo track = el BPM anterior es basura.
-      // Obligamos al motor a escuchar en blanco.
-      if (this.trinity) {
-        this.trinity.resetPacemaker()
-        console.log(`[TitanOrchestrator] ðŸ§¨ WAVE 2140: Pacemaker reset triggered by vibe change â†’ ${normalizedVibeId}`)
-      }
-
-      // ðŸŒŠ WAVE 2432: THE GREAT WIRING â€” Hot-swap profile on vibe change
-      this.engine.setActiveProfile(normalizedVibeId)
-
-      // ðŸ§¹ WAVE 3230: THE VIBE RESET â€” Clean Slate al cambiar de motor de fÃ­sicas
-      // Un cambio de Vibe es un cambio de universo. Los overrides manuales del
-      // Layer 2 pertenecen al universo anterior. Limpiarlos garantiza que el
-      // nuevo estado se hidrate desde cero desde la AI (Layer 0).
-      // WAVE 4703: ArbitrationDirector bypased (WAVE 4592) â€” releaseAllManualOverrides removed.
-      // L2 manual overrides en NodeArbiter se limpian via getAetherArbiter().releaseAll() si aplica.
-      console.log(`[TitanOrchestrator] ðŸ§¹ WAVE 3230: Clean Slate for vibe ${normalizedVibeId}`)
-    }
-  }
+    setVibe(vibeId: VibeId): void { this.vibeLifecycleManager.setVibe(vibeId) }
   
   /**
    * ðŸŽ¨ WAVE 2019.6: Force Palette Sync
@@ -1185,12 +898,7 @@ export class TitanOrchestrator {
    * Regenera la paleta del Engine usando el color constitution del Vibe activo.
    * Usado por Chronos Timeline para sincronizar Stage color al cambiar Vibe.
    */
-  forcePaletteSync(): void {
-    if (this.engine) {
-      this.engine.forcePaletteRefresh()
-      console.log(`[TitanOrchestrator] ðŸŽ¨ Palette forcefully synced to current vibe`)
-    }
-  }
+    forcePaletteSync(): void { this.vibeLifecycleManager.forcePaletteSync() }
 
   /**
    * ðŸŽ­ WAVE 700.5.4: Set the current mood (calm/balanced/punk)
@@ -1200,63 +908,36 @@ export class TitanOrchestrator {
    * - BALANCED: 4-6 EPM (narrativa visual)
    * - PUNK: 8-10 EPM (caos controlado)
    */
-  setMood(moodId: 'calm' | 'balanced' | 'punk'): void {
-    if (this.engine) {
-      // Access backend MoodController singleton (already imported at top)
-      MoodController.getInstance().setMood(moodId)
-      
-      console.log(`[TitanOrchestrator] ðŸŽ­ Mood set to: ${moodId.toUpperCase()}`)
-      this.log('Mode', `ðŸŽ­ Mood changed to: ${moodId.toUpperCase()}`)
-    }
-  }
+    setMood(moodId: 'calm' | 'balanced' | 'punk'): void { this.vibeLifecycleManager.setMood(moodId) }
 
   /**
    * ðŸŽ­ WAVE 700.5.4: Get the current mood
    */
-  getMood(): 'calm' | 'balanced' | 'punk' {
-    return MoodController.getInstance().getCurrentMood()
-  }
+    getMood(): 'calm' | 'balanced' | 'punk' { return this.vibeLifecycleManager.getMood() }
 
   /**
    * ðŸ‘» WAVE 2540.4: THE PHANTOM BUFFER â€” Cache pre-calculated GodEar heatmap
    * in TitanEngine for offline band lookup during timeline playback.
    */
-  setChronosHeatmap(heatmap: unknown): void {
-    if (this.engine) {
-      this.engine.setChronosHeatmap(heatmap as any)
-    }
-  }
+    setChronosHeatmap(heatmap: unknown): void { this.vibeLifecycleManager.setChronosHeatmap(heatmap) }
 
   /**
    * ðŸ‘» WAVE 2540.5: PLAYHEAD SYNC â€” Forward Chronos playhead to TitanEngine.
    * Called every frame from the frontend during Chronos playback.
    */
-  setChronosPlayhead(timeMs: number, isPlaying: boolean): void {
-    if (this.engine) {
-      this.engine.setChronosPlayhead(timeMs, isPlaying)
-    }
-  }
+    setChronosPlayhead(timeMs: number, isPlaying: boolean): void { this.vibeLifecycleManager.setChronosPlayhead(timeMs, isPlaying) }
 
   /**
    * WAVE 254: Set mode (auto/manual)
    */
-  setMode(mode: string): void {
-    this.mode = mode as 'auto' | 'manual'
-    console.log(`[TitanOrchestrator] Mode set to: ${mode}`)
-    // WAVE 257: Log mode change to Tactical Log
-    this.log('System', `âš™ï¸ Mode: ${mode.toUpperCase()}`)
-  }
+    setMode(mode: string): void { this.vibeLifecycleManager.setMode(mode) }
 
   /**
    * WAVE 254: Enable/disable brain processing (Layer 0 + Layer 1)
    * ðŸ”´ DEPRECATED for consciousness control - use setConsciousnessEnabled instead
    * This kills EVERYTHING (blackout) - only use for full system stop
    */
-  setUseBrain(enabled: boolean): void {
-    this.useBrain = enabled
-    console.log(`[TitanOrchestrator] Brain ${enabled ? 'enabled' : 'disabled'} (FULL SYSTEM)`)
-    this.log('System', `ðŸ§  Brain: ${enabled ? 'ONLINE' : 'OFFLINE'}`)
-  }
+    setUseBrain(enabled: boolean): void { this.vibeLifecycleManager.setUseBrain(enabled) }
   
   /**
    * ðŸ§¬ WAVE 560: Enable/disable consciousness ONLY (Layer 1)
@@ -1267,44 +948,19 @@ export class TitanOrchestrator {
    * 
    * NO MORE BLACKOUT!
    */
-  setConsciousnessEnabled(enabled: boolean): void {
-    this.consciousnessEnabled = enabled
-    
-    // Propagar al TitanEngine (Selene V2)
-    if (this.engine) {
-      this.engine.setConsciousnessEnabled(enabled)
-    }
-    
-    console.log(`[TitanOrchestrator] ðŸ§¬ Consciousness ${enabled ? 'ENABLED âœ…' : 'DISABLED â¸ï¸'}`)
-    this.log('Brain', `ðŸ§¬ Consciousness: ${enabled ? 'ACTIVE' : 'STANDBY'}`)
-  }
+    setConsciousnessEnabled(enabled: boolean): void { this.vibeLifecycleManager.setConsciousnessEnabled(enabled) }
   
   /**
    * ðŸŒŠ WAVE 2401: Set Liquid Stereo mode (7-band per-zone envelopes)
    */
-  setLiquidStereo(enabled: boolean): void {
-    if (this.engine) {
-      this.engine.setLiquidStereo(enabled)
-    }
-    console.log(`[TitanOrchestrator] ðŸŒŠ Liquid Stereo: ${enabled ? 'ACTIVE' : 'OFF'}`)
-    this.log('Physics', `ðŸŒŠ Liquid Stereo: ${enabled ? '7-BAND' : 'GOD MODE'}`)
-  }
+    setLiquidStereo(enabled: boolean): void { this.vibeLifecycleManager.setLiquidStereo(enabled) }
 
   /**
    * ðŸŒŠ WAVE 2432: THE GREAT WIRING â€” Layout Switch (4.1 / 7.1)
    */
-  setLiquidLayout(mode: '4.1' | '7.1'): void {
-    this.currentLiquidLayout = mode
-    if (this.engine) {
-      this.engine.setLiquidLayout(mode)
-    }
-    console.log(`[TitanOrchestrator] ðŸŒŠ Layout: ${mode}`)
-    this.log('Physics', `ðŸŒŠ Layout switched to ${mode}`)
-  }
+    setLiquidLayout(mode: '4.1' | '7.1'): void { this.vibeLifecycleManager.setLiquidLayout(mode) }
 
-  getLiquidLayout(): '4.1' | '7.1' {
-    return this.currentLiquidLayout
-  }
+    getLiquidLayout(): '4.1' | '7.1' { return this.vibeLifecycleManager.getLiquidLayout() }
   
   /**
    * ðŸ§¬ WAVE 560: Get consciousness state

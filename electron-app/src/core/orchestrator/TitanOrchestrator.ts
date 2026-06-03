@@ -23,6 +23,7 @@ import type { HephAutomationClip } from '../hephaestus/types'
 
 //  WAVE 2030.19: HephaestusRuntime for .lfx execution
 import { getHephaestusRuntime } from './IPCHandlers'
+import type { HephFixtureOutput } from '../hephaestus/runtime/HephaestusRuntime'
 
 //  WAVE 2672â†’2720: Harmonic Quantizer MIGRADO AL HAL
 // La cuantizaciÃ³n armÃ³nica vive ahora en HAL.translateColorToWheel()
@@ -44,14 +45,25 @@ import { USBDirectLinkProvider } from '../audio/USBDirectLinkProvider'
 import { FrameScheduler } from './scheduler/FrameScheduler'
 
 // WAVE 3505.4: AETHER MATRIX â€” Agnostic Engine V2 Pipeline
-import { NodeGraph, IntentBus, NodeArbiter, PhysicsPostProcessor } from '../aether'
+import { NodeGraph, IntentBus, NodeArbiter, NodeResolver, PhysicsPostProcessor } from '../aether'
 import type { IDeviceDefinition } from '../aether'
 // WAVE 4548.6: Forge Evaluator â€” compiled graphs for zero-alloc DMX
 import type { MutableForgeFrameContext } from '../forge/compiler/types'
 import type { IForgeNodeGraph } from '../forge/types'
 // WAVE 3516.2: Adapters â€” cableado al hot-path del frame loop
+import { LiquidImpactAdapter, VMMAdapter } from '../aether'
+//  WAVE 3516.3: ColorAdapter â€” extraÃ­da a su propio archivo
+import { ColorAdapter } from '../aether/adapters/ColorAdapter'
+// WAVE 3516.4: Optic & Elemental Bridges
+import { BeamAdapter } from '../aether/adapters/BeamAdapter'
+import { AtmosphereAdapter } from '../aether/adapters/AtmosphereAdapter'
+// WAVE 4521.3: LiquidAetherAdapter â€” Capa L0 del IntentBus
+import { LiquidAetherAdapter } from '../aether/adapters/LiquidAetherAdapter'
 import type { FrameContext, AudioMetrics, VibeProfile, MusicalContext } from '../aether'
 // WAVE 4524.3: Selene-Aether Adapter â€” Puente Cognitivo L3
+import { SeleneAetherAdapter } from '../aether/adapters/selene-aether-adapter'
+import { ChronosAetherAdapter } from '../aether/adapters/ChronosAetherAdapter'
+import { HephaestusAetherAdapter } from '../aether/adapters/HephaestusAetherAdapter'
 import { ZoneNodeRouter } from '../aether/adapters/helpers/zone-node-router'
 // ðŸ›ï¸ WAVE 2483: Infinite Arsenal â€” bridge wiring (playHook â†’ HephaestusRuntime.play).
 import { getSeleneHephBridge } from '../arsenal/SeleneHephBridge'
@@ -60,10 +72,17 @@ import type { RegistryEntry } from '../arsenal/lfxTypes'
 // ðŸŽ¨ WAVE 4812: Aether Canvas â€” Pixel Mapping engine
 import { AetherCanvasManager } from '../aether/canvas/AetherCanvasManager'
 import { PixelMapAetherAdapter } from '../aether/canvas/PixelMapAetherAdapter'
+// WAVE 4557: Aether Safety Middleware â€” La Aduana Aether
+import { AetherSafetyMiddleware } from '../aether/egress/AetherSafetyMiddleware'
+// WAVE 4559: THE MIRROR â€” Projecta estado Aether â†’ FixtureState[] legacy para la UI
+import { AetherUIProjector } from '../aether/resolver/AetherUIProjector'
+//  WAVE 4867: TheiaVideoRenderer â€” twin-output bridge (THETA thumb SAB â†’ AetherCanvas)
+import { TheiaVideoRenderer } from '../aether/canvas/renderers/TheiaVideoRenderer'
 // WAVE 4869: SeleneTheiaBridge â€” Observer cognitivo Selene â†’ ThetaOrchestrator
 import { type SeleneTheiaBridge } from '../../theia/SeleneTheiaBridge'
 //  WAVE 4594: THE AETHER AWAKENING â€” NodeExtractionPipeline for fixtureâ†’NodeGraph injection
 import { NodeExtractionPipeline } from '../aether/ingestion/NodeExtractionPipeline'
+import { timelineEngine } from '../engine/TimelineEngine'
 
 //  WAVE 4959 PHASE 1-3: Extracted managers
 import { TacticalLogManager } from './logging/TacticalLogManager'
@@ -74,14 +93,21 @@ import { VibeLifecycleManager } from './lifecycle/VibeLifecycleManager'
 import { FixtureHydrationEngine } from './hydration/FixtureHydrationEngine'
 import type { HydrationContext } from './hydration/FixtureHydrationEngine'
 import { FixtureProfileResolver } from './hydration/FixtureProfileResolver'
+import { StageBoundsManager } from './hydration/StageBoundsManager'
 //  WAVE 4961 PHASE 6: I/O managers
 import { AudioPipelineManager } from './audio/AudioPipelineManager'
+import type { AudioPipelineContext } from './audio/AudioPipelineManager'
 import { TickEngine } from './tick/TickEngine'
 import { SystemLifecycleManager } from './lifecycle/SystemLifecycleManager'
 import type { SystemLifecycleContext } from './lifecycle/SystemLifecycleManager'
 
 // ZOMBIE KILLER: singleton DMX para flushing fÃ­sico en stop()
 import { universalDMX } from '../../hal/drivers/UniversalDMXDriver'
+//  WAVE 4700: Motor cinÃ©tico nativo L2 â€” reemplaza masterArbiter para patrones manuales
+import { aetherKineticEngine } from '../aether/AetherKineticEngine'
+
+//  WAVE 2227: VMM singleton para cleanup en stop()
+import { vibeMovementManager } from '../../engine/movement/VibeMovementManager'
 
 //  WAVE 2543.4: Centralized zone resolution
 import { resolveZone } from '../zones/ZoneMapper'
@@ -263,6 +289,12 @@ export class TitanOrchestrator {
     bass: 0, mid: 0, high: 0, energy: 0
   }
   private hasRealAudio = false
+  private currentLiquidLayout: '4.1' | '7.1' = '4.1'
+
+  //  WAVE 4524.3: Last ConsciousnessOutput from the DecisionMaker
+  // Se utiliza en el SeleneAetherAdapter para traducciÃ³n de efectos L3.
+  // Por ahora inicializado como null; en el futuro el engine populate esto.
+  private lastConsciousnessOutput: any = null
 
   // âš¡ WAVE 3504.5: PURE MATH MODULES â€” extracted from the monolith
   // SyncSmoother:   EMA filter bank + syncopation estimator + freewheel chain
@@ -273,23 +305,49 @@ export class TitanOrchestrator {
   // Si _aetherNodeGraph estÃ¡ vacÃ­o, el bloque Aether en processFrame() es no-op.
   //
   private readonly _aetherGraph   = new NodeGraph()
+  private readonly _aetherBus     = new IntentBus(4096)
   // WAVE 4663: Bus dedicado para Selene (L1). Aislado del bus L0 de los Systems.
   // Capacity 512: Selene emite dimmer+color+strobe por nodo (~50 fixtures Ã— 3 familias).
   private readonly _seleneBus     = new IntentBus(512)
+  // WAVE 4705: Bus dedicado para LiveFX (L3). Autoridad sobre L2 manual.
+  private readonly _effectBus     = new IntentBus(512)
   private _aetherArbiter: NodeArbiter | null = null
+  private _aetherResolver: NodeResolver | null = null
   // WAVE 4518.1: Physics Post-Processor â€” The Inertia Engine
   private readonly _physicsPostProcessor = new PhysicsPostProcessor()
   private readonly hydrationEngine!: FixtureHydrationEngine
   private _aetherHasDevices = false
   //  WAVE 4594: Stateless extraction pipeline â€” lazy-init, reutilizado en cada resync
   private _aetherPipeline: NodeExtractionPipeline | null = null
+  //  WAVE 4559: THE MIRROR â€” instancia Ãºnica, zero-alloc projection cada frame
+  private readonly _aetherUIProjector = new AetherUIProjector()
+  //  WAVE 3516.2: Adapters â€” instanciados una vez, reutilizados cada frame
+  private readonly _impactAdapter  = new LiquidImpactAdapter()
+  //  WAVE 3516.3: ColorAdapter â€” rebautizada de LiquidColorAdapter
+  private _colorAdapter: ColorAdapter | null = null
+  private _kineticAdapter: InstanceType<typeof VMMAdapter> | null = null
+  //  WAVE 3516.4: Optic & Elemental Bridges
+  private _beamAdapter: BeamAdapter | null = null
+  private _atmosphereAdapter: AtmosphereAdapter | null = null
+  // WAVE 4521.3: LiquidAetherAdapter â€” Capa L0 del IntentBus
+  // Se instancia con el NodeGraph y el liquidEngine71 para acceder a lastFrame
+  private _liquidAetherAdapter: LiquidAetherAdapter | null = null
   //  WAVE 4524.3: Selene-Aether Adapter â€” Puente Cognitivo L3
   // Se instancia solo una vez. ZoneNodeRouter se construye en el constructor.
   private _zoneNodeRouter: ZoneNodeRouter | null = null
+  private _seleneAetherAdapter: SeleneAetherAdapter | null = null
+  private readonly _chronosAetherAdapter = new ChronosAetherAdapter(this._aetherGraph)
+  // WAVE 3521: Hephaestus Diamond Data L3+ adapter
+  private readonly _hephaestusAetherAdapter = new HephaestusAetherAdapter(this._aetherGraph)
   //  WAVE 4812: Aether Canvas â€” Pixel Mapping engine (patch-time acquire, hot-path ingest)
   private readonly _aetherCanvasManager = new AetherCanvasManager()
   private readonly _pixelMapAdapter = new PixelMapAetherAdapter({ targetLayer: 'effect' })
   //  WAVE 4952: _plasmaRenderers map REMOVED â€” test-pattern poltergeist amputated.
+  //  WAVE 4867: TheiaVideoRenderer â€” null hasta que se llame attachTheiaRenderer()
+  private _theiaVideoRenderer: TheiaVideoRenderer | null = null
+  //  WAVE 4869: SeleneTheiaBridge â€” null hasta que se llame attachSeleneTheiaBridge()
+  private _seleneThetaBridge: SeleneTheiaBridge | null = null
+  private readonly _timelineEngine = timelineEngine
   // FrameContext pre-alloc â€” mutable in-place, cero alloc en hot-path
   private readonly _aetherAudio: AudioMetrics = {
     subBass: 0, bass: 0, mid: 0, highMid: 0, presence: 0, air: 0,
@@ -312,6 +370,11 @@ export class TitanOrchestrator {
     depth: DEFAULT_AETHER_STAGE_BOUNDS.depth,
     centerY: DEFAULT_AETHER_STAGE_BOUNDS.centerY,
   }
+  //  WAVE 4960.1: StageBoundsManager (needs _physicsPostProcessor + _aetherStageBounds)
+  private readonly stageBoundsManager = new StageBoundsManager(
+    this._aetherStageBounds,
+    this._physicsPostProcessor,
+  )
   private readonly _aetherCtx: FrameContext = {
     audio:      this._aetherAudio as AudioMetrics,
     musical:    this._aetherMusical as MusicalContext,
@@ -321,6 +384,9 @@ export class TitanOrchestrator {
     deltaMs:    23,
     frameIndex: 0,
   }
+
+  //  WAVE 4557: Aether Safety Middleware â€” velocity clamp, airbag, DarkSpin, output gate, throttle
+  private readonly _aetherSafety = new AetherSafetyMiddleware()
 
   // WAVE 4548.6: Pre-allocated ForgeFrameContext â€” mutable in-place, zero alloc
   private readonly _forgeAudioBands = new Float64Array(6)
@@ -334,6 +400,21 @@ export class TitanOrchestrator {
     audioBands: this._forgeAudioBands,
     frameIndex: 0,
   }
+
+  // ðŸ—‘ï¸ WAVE 2211: PRE-ALLOCATED FFT BUFFER â€” GC pressure reduction
+  // BEFORE: `new Array(256).fill(0)` every frame = 256 floats Ã— 30fps = 7,680 allocs/sec
+  // AFTER: Single buffer reused across frames. Zero GC from FFT.
+  
+  private readonly EMPTY_FFT_BUFFER: readonly number[] = Object.freeze(new Array(256).fill(0))
+
+  // WAVE 3190: PRE-ALLOCATED HEPHAESTUS ROUTING BUFFERS â€” GC Zero Allocation
+  // Eliminan los new Map() que se creaban CADA FRAME cuando hay clips activos.
+  // Se limpian con .clear() al inicio del bloque Hephaestus y se reusan.
+  private readonly _hephByFixtureId = new Map<string, HephFixtureOutput[]>()
+  private readonly _hephByZone = new Map<string, HephFixtureOutput[]>()
+  // Pool de arrays de outputs por fixture â€” se reusan across frames
+  // El pool crece hasta N fixtures y nunca encoge (GC amortizado)
+  private readonly _hephOutputPool = new Map<string, HephFixtureOutput[]>()
 
   /**
    * Registra un dispositivo en el Motor Agnostico Aether (WAVE 3505.4).
@@ -494,13 +575,87 @@ export class TitanOrchestrator {
       ...config,
     }
 
-    const hydrationCtx = this.createMutableProxy<HydrationContext>(
-    '_aetherCtx', '_aetherAudio', '_aetherMusical', '_aetherVibe', '_aetherStageBounds', '_forgeFrameCtx', '_forgeAudioBands', '_zoneNodeRouter', '_aetherHasDevices', '_aetherPipeline'
-  );
-    const lifecycleCtx: SystemLifecycleContext = {
-      ...this.createMutableProxy<SystemLifecycleContext>('brain', 'engine', 'hal', 'trinity', 'audioPipeline', 'oscProvider', 'virtualWireProvider', 'usbDirectLinkProvider', 'isInitialized', 'isRunning', 'config', 'scheduler', 'cardiogramaInterval', 'fixtures', 'beatDetector'),
-      log: (category: string, message: string, data?: Record<string, unknown>) => this.log(category, message, data),
+    const hydrationCtx: HydrationContext = Object.assign(
+      this.createMutableProxy<HydrationContext>(
+        '_aetherGraph', '_aetherArbiter', '_aetherResolver', '_aetherPipeline', '_aetherHasDevices',
+        '_colorAdapter', '_kineticAdapter', '_beamAdapter', '_atmosphereAdapter', '_liquidAetherAdapter',
+        '_seleneAetherAdapter', '_zoneNodeRouter', 'hal', 'fixtures'
+      ),
+      {
+        physicsPostProcessor: this._physicsPostProcessor,
+        aetherSafety: this._aetherSafety,
+        chronosAetherAdapter: this._chronosAetherAdapter,
+        logManager: this.logManager,
+        stateManager: this.stateManager,
+        vibeManager: this.vibeManager,
+        profileResolver: this.profileResolver,
+        stageBoundsManager: this.stageBoundsManager,
+        seleneBus: this._seleneBus,
+      }
+    )
+    this.hydrationEngine = new FixtureHydrationEngine(hydrationCtx)
+    
+    const self = this
+    const audioCtx: AudioPipelineContext = {
+      get trinity() { return self.trinity },
+      get brain() { return self.brain },
+      log: (category: string, message: string, data?: Record<string, unknown>) => self.log(category, message, data),
+      getInputGain: () => self.inputGain,
     }
+    this.audioPipeline = new AudioPipelineManager(audioCtx)
+    this.tickEngine = new TickEngine({
+      get brain() { return self.brain },
+      get engine() { return self.engine },
+      get hal() { return self.hal },
+      get trinity() { return self.trinity },
+      audioPipeline: this.audioPipeline,
+      get fixtures() { return self.fixtures },
+      get onHotFrame() { return self.onHotFrame },
+      get onBroadcast() { return self.onBroadcast },
+      get _aetherHasDevices() { return self._aetherHasDevices },
+      get _aetherArbiter() { return self._aetherArbiter },
+      get _aetherResolver() { return self._aetherResolver },
+      get _colorAdapter() { return self._colorAdapter },
+      get _kineticAdapter() { return self._kineticAdapter },
+      get _beamAdapter() { return self._beamAdapter },
+      get _atmosphereAdapter() { return self._atmosphereAdapter },
+      get _liquidAetherAdapter() { return self._liquidAetherAdapter },
+      get _seleneAetherAdapter() { return self._seleneAetherAdapter },
+      get _chronosAetherAdapter() { return self._chronosAetherAdapter },
+      get _hephaestusAetherAdapter() { return self._hephaestusAetherAdapter },
+      get _aetherCanvasManager() { return self._aetherCanvasManager },
+      get _pixelMapAdapter() { return self._pixelMapAdapter },
+      get _theiaVideoRenderer() { return self._theiaVideoRenderer },
+      get _physicsPostProcessor() { return self._physicsPostProcessor },
+      get _aetherSafety() { return self._aetherSafety },
+      get _forgeFrameCtx() { return self._forgeFrameCtx },
+      get _forgeAudioBands() { return self._forgeAudioBands },
+      get _aetherUIProjector() { return self._aetherUIProjector },
+      _goldenNukeLocks: this._goldenNukeLocks,
+      _aetherGraph: this._aetherGraph, _aetherBus: this._aetherBus,
+      _seleneBus: this._seleneBus, _effectBus: this._effectBus,
+      _impactAdapter: this._impactAdapter,
+      _aetherAudio: this._aetherAudio, _aetherMusical: this._aetherMusical,
+      get _aetherVibe() { return self._aetherVibe },
+      _aetherCtx: this._aetherCtx,
+      _aetherStageBounds: this._aetherStageBounds,
+      _hephByFixtureId: this._hephByFixtureId, _hephByZone: this._hephByZone,
+      _hephOutputPool: this._hephOutputPool, peakHoldMap: this.peakHoldMap,
+      _seleneThetaBridge: this._seleneThetaBridge,
+      _timelineEngine: this._timelineEngine,
+      EMPTY_FFT_BUFFER: this.EMPTY_FFT_BUFFER,
+      oscProvider: this.oscProvider,
+      _licenseTier: this._licenseTier,
+      lastConsciousnessOutput: this.lastConsciousnessOutput,
+      mode: this.mode, inputGain: this.inputGain, useBrain: this.useBrain,
+      log: (category: string, message: string, data?: Record<string, unknown>) => this.log(category, message, data),
+    })
+    const lifecycleCtx: SystemLifecycleContext = Object.assign(
+      this.createMutableProxy<SystemLifecycleContext>('brain', 'engine', 'hal', 'trinity', 'audioPipeline', 'oscProvider', 'virtualWireProvider', 'usbDirectLinkProvider', 'isInitialized', 'isRunning', 'config', 'scheduler', 'cardiogramaInterval', 'fixtures', 'beatDetector'),
+      {
+        log: (category: string, message: string, data?: Record<string, unknown>) => this.log(category, message, data),
+      }
+    )
     this.lifecycleManager = new SystemLifecycleManager(lifecycleCtx)
     this.theiaBridgeManager = new TheiaBridgeManager(this._aetherCanvasManager, this._pixelMapAdapter, this._aetherGraph, this._aetherStageBounds)
     this.vibeLifecycleManager = this.vibeManager
@@ -641,7 +796,16 @@ export class TitanOrchestrator {
    * WAVE 289: Propagate vibe to Workers for Vibe-Aware Section Tracking
    * WAVE 2040.3: Fixed HAL receiving legacy alias instead of normalized ID
    */
-    setVibe(vibeId: VibeId): void { this.vibeLifecycleManager.setVibe(vibeId) }
+    setVibe(vibeId: VibeId): void {
+      // WAVE 4970 FIX: Inyectar dependencias perdidas en la refactorización
+      if (!this.vibeLifecycleManager['engine']) {
+        this.vibeLifecycleManager.setEngine(this.engine)
+        this.vibeLifecycleManager.setHal(this.hal)
+        this.vibeLifecycleManager.setTrinity(this.trinity)
+      }
+      this._aetherVibe.name = vibeId // Bypass sincronización local
+      this.vibeLifecycleManager.setVibe(vibeId)
+    }
   
   /**
    *  WAVE 2019.6: Force Palette Sync
@@ -813,117 +977,15 @@ export class TitanOrchestrator {
    *  WAVE 3060b PHOENIX: RESTAURADO como hot-path. Frontend tiene prioridad visual.
    */
   processAudioFrame(data: Record<string, unknown>): void {
-    if (!this.isRunning || !this.useBrain) return
-    
-    // Core bands - FRONTEND SOURCE (30fps)
-    const bass = typeof data.bass === 'number' ? data.bass : this.lastAudioData.bass
-    const mid = typeof data.mid === 'number' ? data.mid : this.lastAudioData.mid
-    const high = typeof data.treble === 'number' ? data.treble : 
-                 typeof data.high === 'number' ? data.high : this.lastAudioData.high
-    const energy = typeof data.energy === 'number' ? data.energy : this.lastAudioData.energy
-    
-    // ðŸ”¥ WAVE 1012.5: HYBRID MERGE â€” Frontend core + preserve Worker extended
-    this.lastAudioData = { 
-      bass,
-      mid,
-      high,
-      energy,
-      // Preserve Worker FFT metrics
-      harshness: this.lastAudioData.harshness,
-      spectralFlatness: this.lastAudioData.spectralFlatness,
-      spectralCentroid: this.lastAudioData.spectralCentroid,
-      subBass: this.lastAudioData.subBass,
-      lowMid: this.lastAudioData.lowMid,
-      highMid: this.lastAudioData.highMid,
-      kickDetected: this.lastAudioData.kickDetected,
-      snareDetected: this.lastAudioData.snareDetected,
-      hihatDetected: this.lastAudioData.hihatDetected,
-      rawBassEnergy: this.lastAudioData.rawBassEnergy,
-      crestFactor: this.lastAudioData.crestFactor,
-      workerBpm: this.lastAudioData.workerBpm,
-      workerBpmConfidence: this.lastAudioData.workerBpmConfidence,
-      workerOnBeat: this.lastAudioData.workerOnBeat,
-      workerBeatPhase: this.lastAudioData.workerBeatPhase,
-      workerBeatStrength: this.lastAudioData.workerBeatStrength,
-      workerKickCount: this.lastAudioData.workerKickCount,
-    }
-    
-    // Detect audio presence
-    const wasAudioActive = this.hasRealAudio
-    this.hasRealAudio = energy > 0.01
-    
-    if (this.hasRealAudio && !this.hasLoggedFirstAudio) {
-      this.hasLoggedFirstAudio = true
-      this.log('System', 'ðŸŽ§ AUDIO DETECTED - Selene is now listening!')
-    } else if (!this.hasRealAudio && wasAudioActive) {
-      this.log('System', 'ðŸ”‡ AUDIO LOST - Waiting for signal...')
-    }
-    
-    this.lastAudioTimestamp = Date.now()
+    this.audioPipeline?.processAudioFrame(data)
   }
 
   /**
    * ðŸ©¸ WAVE 259: RAW VEIN - Process raw audio buffer from frontend
    * This sends the Float32Array directly to BETA Worker for real FFT analysis
    */
-  private audioBufferRejectCount = 0;
-  private _audioSondaCount = 0;
-  private _audioSondaTotal = 0;
-  private _audioSondaStart = 0;
   processAudioBuffer(buffer: Float32Array): void {
-    const _audioStart = performance.now() // ðŸ”¬ WAVE 3041: SONDA AUDIO
-    // ðŸ” WAVE 264.7: LOG CUANDO SE RECHAZA
-    if (!this.isRunning || !this.useBrain) {
-      this.audioBufferRejectCount++;
-      if (this.audioBufferRejectCount % 60 === 1) { // Log cada ~1 segundo
-        console.warn(`[TitanOrchestrator] â›” audioBuffer REJECTED #${this.audioBufferRejectCount} | isRunning=${this.isRunning} | useBrain=${this.useBrain}`);
-      }
-      return;
-    }
-    
-    // ï¿½ WAVE 3040: Loop RMS eliminado â€” buffer.reduce sobre 8192 floats
-    // aunque sea cada 300 frames es trabajo innecesario en el hilo principal.
-    // El buffer llega correctamente â€” log eliminado.
-    
-    // ðŸ—¡ï¸ WAVE 265: Update timestamp - el buffer llegando ES la seÃ±al de que el frontend vive
-    this.lastAudioTimestamp = Date.now()
-
-    // WAVE 3424: TWO MASTERS GUARD â€” Early exit si la fuente activa del AudioMatrix
-    // NO es legacy-bridge. Cuando VW (u otra fuente SAB) estÃ¡ activa, AudioMatrix.ingestAudio()
-    // rechaza el dato IPC con `source !== effectiveSource`. Pero el trabajo ya habrÃ­a
-    // ocurrido: applyMicHeadroom (O(n) loop), write al SAB, etc.
-    // Cortamos aquÃ­: si audioMatrix existe y la fuente activa es SAB, no hay nada que hacer.
-    if (this.trinity) {
-      const _matrix = this.trinity.getAudioMatrix()
-      if (_matrix) {
-        const _matrixStatus = _matrix.getStatus()
-        if (_matrixStatus.activeSource && _matrixStatus.activeSource !== 'legacy-bridge') {
-          // Fuente SAB activa â€” el IPC data es redundante, AudioMatrix lo rechazarÃ¡ de todos modos.
-          // Marcamos timestamp pero descartamos el buffer para evitar trabajo innecesario.
-          return
-        }
-      }
-    }
-
-    // ðŸ©¸ Send raw buffer to Trinity -> BETA Worker for FFT
-    if (this.trinity) {
-      this.trinity.feedAudioBuffer(buffer)
-    } else {
-      console.warn(`[TitanOrchestrator] âš ï¸ trinity is null! Buffer discarded.`);
-    }
-    
-    // ðŸ”¬ WAVE 3041: acumular telemetrÃ­a de coste del handler de audio
-    const _audioCostMs = performance.now() - _audioStart
-    if (!this._audioSondaCount) this._audioSondaCount = 0
-    if (!this._audioSondaTotal) this._audioSondaTotal = 0
-    this._audioSondaCount++
-    this._audioSondaTotal += _audioCostMs
-    if (this._audioSondaCount % 40 === 0) { // ~2s a 20fps
-      const _avg = (this._audioSondaTotal / 40).toFixed(3)
-      console.warn(`[SONDA AUDIO] ðŸ”¬ avg:${_avg}ms last:${_audioCostMs.toFixed(3)}ms`)
-      this.log('Error', `[SONDA AUDIO] ðŸ”¬ avg:${_avg}ms last:${_audioCostMs.toFixed(3)}ms`)
-      this._audioSondaCount = 0; this._audioSondaTotal = 0
-    }
+    this.audioPipeline?.processAudioBuffer(buffer)
   }
 
   /**
@@ -935,7 +997,16 @@ export class TitanOrchestrator {
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setFixtures(fixtures: any[], stageBounds?: StageBoundsInput): '4.1' | '7.1' {
-    return this.hydrationEngine.setFixtures(fixtures, stageBounds)
+    // WAVE 4968 FIX: Directly update this.fixtures before delegating to hydrationEngine.
+    // The hydrationCtx proxy setter should also update this, but we ensure it here
+    // to prevent stale fixture IDs in the truth broadcast.
+    this.fixtures = fixtures.map(f => ({
+      ...f,
+      dmxAddress: f.dmxAddress || f.address,
+      isVirtual: f.isVirtual ?? false,
+    }))
+    console.log(`[TitanOrchestrator] setFixtures: ${this.fixtures.length} fixtures | IDs: ${this.fixtures.slice(0, 3).map((f: any) => f.id).join(', ')}...`)
+    return this.hydrationEngine.setFixtures(this.fixtures, stageBounds)
   }
 
 

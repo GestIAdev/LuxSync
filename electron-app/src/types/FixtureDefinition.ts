@@ -31,6 +31,7 @@ export type ChannelType =
   | 'focus'
   | 'zoom'
   | 'frost'
+  | 'iris'
   // CONTROL
   | 'speed'
   | 'macro'

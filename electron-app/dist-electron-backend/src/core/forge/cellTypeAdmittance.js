@@ -60,6 +60,7 @@ export const CELL_TYPE_ADMITTANCE = Object.freeze({
     focus: [NodeFamily.BEAM],
     zoom: [NodeFamily.BEAM],
     frost: [NodeFamily.BEAM],
+    iris: [NodeFamily.BEAM],
     // ── CONTROL / ATMOSPHERE ──────────────────────────────────────────────
     macro: [NodeFamily.ATMOSPHERE, NodeFamily.IMPACT],
     control: [NodeFamily.ATMOSPHERE],

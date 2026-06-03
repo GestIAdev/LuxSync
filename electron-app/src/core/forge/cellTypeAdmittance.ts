@@ -68,6 +68,7 @@ export const CELL_TYPE_ADMITTANCE: Readonly<Record<ChannelType, readonly NodeFam
     focus:          [NodeFamily.BEAM],
     zoom:           [NodeFamily.BEAM],
     frost:          [NodeFamily.BEAM],
+    iris:           [NodeFamily.BEAM],
 
     // ── CONTROL / ATMOSPHERE ──────────────────────────────────────────────
     macro:          [NodeFamily.ATMOSPHERE, NodeFamily.IMPACT],

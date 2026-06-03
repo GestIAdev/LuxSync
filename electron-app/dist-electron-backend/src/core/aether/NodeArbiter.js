@@ -98,6 +98,10 @@ const PHOTON_TRACER_EVERY_FRAMES = 20;
 // la base es 0.5 (sin IK), garantizando cero regresión visual.
 const RELATIVE_OFFSET_SCALE_PAN = 0.5;
 const RELATIVE_OFFSET_SCALE_TILT = 0.5;
+// WAVE 4980: Límite físico superior del tilt en espacio normalizado [0, 1].
+// Corresponde a ~217 DMX — impide que la fusión empuje el haz a posiciones
+// extremas de hardware independientemente del origen del valor (IK o VMM).
+const TILT_ARBITER_MAX = 0.85;
 // Gimbal Lock fade: cuando el haz apunta cerca del cenit (tilt_base ≈ 0.5),
 // el pan offset rota la carcasa sin desplazamiento visual del beam. Atenuamos
 // el offset de pan dentro de una banda de ±GIMBAL_TILT_FADE_HALFWIDTH alrededor
@@ -312,10 +316,14 @@ export class NodeArbiter {
             }
         }
         this._manualOverrides.delete(nodeId);
-        // WAVE 4935 M2: Ghost Anchor fix.
-        // L2 clear debe limpiar también el estado cinético nativo (IK targets, orbits)
-        // para evitar que L0 lea posiciones fantasma al retomar el control.
-        this._motorKineticOverrides.delete(nodeId);
+        // WAVE 4984 Paso 2: NO borrar _motorKineticOverrides aquí.
+        // WAVE 4935 M2 lo hacía como "Ghost Anchor fix", pero causa amnesia IK:
+        // apagar un patrón (clearManualOverride) borraba el target espacial IK,
+        // de modo que al reactivar el patrón, ikPan/ikTilt eran undefined y el
+        // fallback era anchorPan=0.5 → foco pierde su target y se va al centro.
+        // Regla de Oro: _motorKineticOverrides SOLO se limpia desde clearMotorKineticOverride,
+        // que es llamado exclusivamente por releaseSpatialTarget (botón Unlock del operador)
+        // y removeNodes (cuando el engine elimina la pista por completo).
     }
     /**
      * WAVE L2-SUPREMACY: Registra el output computado del motor cinético nativo.
@@ -597,11 +605,6 @@ export class NodeArbiter {
                 record['brightness'] = lockValue;
             }
         }
-        // WAVE 4752: RELEASE FADES — interpolación ease-out al soltar overrides.
-        // Se aplica DESPUÉS de L2/L3 y ANTES del Grand Master.
-        if (this._releaseStates.size > 0) {
-            this._applyReleaseFades();
-        }
         // 3. Aplicar Grand Master sobre canales de intensidad.
         // dimmer y brightness son ahora LTP (no están en STRICT_PRIORITY_CHANNELS)
         // pero sí escalan con el Grand Master.
@@ -638,6 +641,14 @@ export class NodeArbiter {
         // Cuando no hay base, fallback a 0.5 (centro neutro → mapeo legacy).
         // Cuando no hay offset, fallback a 0 (base pura sin órbita).
         this._applyRelativeOffsetFusion();
+        // WAVE 4984 Paso 1a: RELEASE FADES — interpolación ease-out al soltar overrides.
+        // Se aplica DESPUÉS de _applyRelativeOffsetFusion para que el blend compare
+        // el snapshot del manual contra el valor ya fusionado y clampeado (TILT_ARBITER_MAX).
+        // Antes (WAVE 4752) corría antes de la fusión: el fade degradaba hacia 0 cuando
+        // L0 no había escrito 'tilt', enviando el mover al techo en ceiling mounts.
+        if (this._releaseStates.size > 0) {
+            this._applyReleaseFades();
+        }
         return this._result;
     }
     /**
@@ -767,9 +778,13 @@ export class NodeArbiter {
                     ? 1
                     : tiltDistAbs / GIMBAL_TILT_FADE_HALFWIDTH;
             }
-            // ── Fusión aditiva con clamp01 (capa 2 de defensa en profundidad) ────
+            // ── Fusión aditiva — WAVE 4980: LTP SUPPRESSION + hard tilt cap ────────
+            // REGLA LTP: si L2 tiene base activa, el offset L0 (VMM) se anula.
+            // El operador está apuntando con IK; el patrón automático NO puede
+            // sumar grados encima. Cuando no hay base L2, el offset fluye normal
+            // (degeneración al comportamiento legacy orbit-around-0.5).
             if (hasBasePan || hasPanOffset) {
-                const ox = hasPanOffset ? panOffset : 0;
+                const ox = (!hasBasePan && hasPanOffset) ? panOffset : 0;
                 let final = basePan + ox * ampPan * distScale * gimbalFactor;
                 if (final < 0)
                     final = 0;
@@ -778,12 +793,12 @@ export class NodeArbiter {
                 record['pan'] = final;
             }
             if (hasBaseTilt || hasTiltOffset) {
-                const oy = hasTiltOffset ? tiltOffset : 0;
+                const oy = (!hasBaseTilt && hasTiltOffset) ? tiltOffset : 0;
                 let final = baseTilt + oy * ampTilt * distScale;
                 if (final < 0)
                     final = 0;
-                else if (final > 1)
-                    final = 1;
+                else if (final > TILT_ARBITER_MAX)
+                    final = TILT_ARBITER_MAX;
                 record['tilt'] = final;
             }
             fusionCount++;
@@ -1142,19 +1157,22 @@ export class NodeArbiter {
                 if (fadeWeight <= 0)
                     continue;
                 const releaseValue = rel.channels[key];
-                if (!record) {
-                    record = this._acquireRecord();
-                    this._result.set(nodeId, record);
-                }
+                // WAVE 4984 Paso 1b: Si el record no existe (nodo sin output L0 este frame),
+                // no crear un record vacío y degradar hacia 0. Saltar este canal.
+                // Degradar a 0 en tilt = apuntar al techo en ceiling mounts. Ignorar es más seguro.
+                if (!record)
+                    continue;
                 const l0Value = record[key];
                 if (l0Value !== undefined && Number.isFinite(l0Value)) {
-                    // Blend: snapshot del manual → valor L0 actual
-                    record[key] = releaseValue * fadeWeight + l0Value * (1.0 - fadeWeight);
+                    // Blend: snapshot del manual → valor L0 ya fusionado + clampeado
+                    let blended = releaseValue * fadeWeight + l0Value * (1.0 - fadeWeight);
+                    // Guardia final: el blend nunca puede superar el límite físico del tilt.
+                    if (key === 'tilt' && blended > TILT_ARBITER_MAX)
+                        blended = TILT_ARBITER_MAX;
+                    record[key] = blended;
                 }
-                else {
-                    // L0 no escribió este canal aún: fade a 0
-                    record[key] = releaseValue * fadeWeight;
-                }
+                // Si l0Value es undefined (L0 no escribió este canal), no actuamos.
+                // El valor que dejó _applyRelativeOffsetFusion (si lo dejó) ya es correcto.
             }
             if (fadeCompleted) {
                 this._releaseStates.delete(nodeId);

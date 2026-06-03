@@ -234,7 +234,14 @@ export class KineticAdapter extends BaseSystem<IKineticNodeData> implements IAet
       // Fixtures on the right side (x > 0) get π phase offset for counterpoint motion
       // 🎭 WAVE 4717.2: L2 fan phase offset — suma el desfase calculado por el bridge
       // según el orden de selección del usuario (determinista, cero alloc).
-      const lrPhaseOffset = (node.physicalPosition?.x ?? 0) > 0 ? Math.PI : 0
+      // WAVE 4986 Paso 3: Deadzone de eje X para evitar singularidad binaria.
+      // La condición original (x > 0 ? π : 0) crea un salto discontinuo de π rad
+      // en x = 0. Fixtures físicamente centrados (x ≈ 0) oscilan entre 0 y π
+      // frame a frame si physicalPosition.x fluctúa alrededor de la frontera.
+      // Con la deadzone de ±5% del rango de escena, los focos centrales
+      // reciben lrPhaseOffset = 0 (zona izquierda/neutral) — sin jitter.
+      const lrX = node.physicalPosition?.x ?? 0
+      const lrPhaseOffset = Math.abs(lrX) < 0.05 ? 0 : (lrX > 0 ? Math.PI : 0)
       const l2PhaseOffset = this._vmm._l2PhaseOverrides[node.nodeId] ?? 0
       // 🌪️ WAVE 4708 T3: caos global del slider — desfase determinista por fixture.
       // Se extrae fixtureId puro (sin :kinetic) para que el hash coincida con el

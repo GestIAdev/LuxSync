@@ -175,11 +175,17 @@ class KineticsBridgeClass {
         // El ChaosOrderSlider es el control de dispersión/fan del motor nativo.
         // fanValue (radar gesture spread) sigue siendo el fan del flush clásico.
         this._schedulePatternFlush(activePattern, patternSpeed, patternAmplitude, chaosAmount * 100)
-        // cuando cambia el estado activo/inactivo del patrón,
-        // re-emitir el classic flush con los nombres de canal correctos
-        // (pan/tilt ↔ pan_base/tilt_base) para evitar stale orbit channels.
-        const { pan, tilt } = useMovementStore.getState()
-        this._scheduleClassicFlush(pan, tilt, fanValue)
+        // WAVE 4982 Paso 1: Solo re-emitir classic flush cuando el patrón está ACTIVO
+        // (cambia de patrón o enciende uno nuevo), para actualizar los canales orbit
+        // pan_base/tilt_base con la posición correcta del radar.
+        // Al apagar (pattern null/none/static), el backend purga _manualOverrides vía
+        // clearManualOverride (WAVE 4937.1) y lanza el ease-out. Un classic flush aquí
+        // escribiría 'pan'/'tilt' absolutos de vuelta en L2, re-bloqueando la Guillotina
+        // LTP y cancelando el suavizado antes de que el Arbiter lo pueda aplicar.
+        if (isActivePattern(activePattern)) {
+          const { pan, tilt } = useMovementStore.getState()
+          this._scheduleClassicFlush(pan, tilt, fanValue)
+        }
       },
       { equalityFn: (a, b) =>
           a.activePattern === b.activePattern &&
@@ -573,25 +579,32 @@ class KineticsBridgeClass {
     this._lastPatternSent = isStop ? null : enginePattern
     this._lastFixtureKeysSent = isStop ? null : fixtureKey
 
-    // WAVE 4708 T2 — ANCHOR HYDRATION: leer la posición ACTUAL del radar
-    // del movementStore y enviarla normalizada en el mismo payload. El handler
-    // IPC inyecta pan_base/tilt_base en _manualOverrides ANTES de activar el
-    // motor → el primer tick lee el anchor real, no el fallback 0.5.
-    const { pan: anchorPanDeg, tilt: anchorTiltDeg } = useMovementStore.getState()
-    const anchorPan  = Math.max(0, Math.min(1, anchorPanDeg  / 540))
-    const anchorTilt = Math.max(0, Math.min(1, anchorTiltDeg / 270))
-
-    // WAVE 4700: Incluir fan en el payload — el motor nativo integra el desfase
-    console.log('[SONDA L2-FRONT] Enviando patrón:', enginePattern, 'Fixtures:', fixtureIds.length, 'anchor:', { anchorPan, anchorTilt })
+    // WAVE 4986 Paso 1: NO leer movementStore.pan/tilt aquí.
+    // El store puede estar en el default 270°/135° (→ 0.5/0.5) si el operador
+    // nunca tocó el radar. Enviar 0.5 como anchor falsifica la posición del foco
+    // y pisa la memoria IK que el backend ya tiene en _motorKineticOverrides.
+    //
+    // La fuente de verdad del anchor es el backend (WAVE 4940 — jerarquía completa):
+    //   1. manual.pan / manual.tilt   → posición viva actual del Programmer
+    //   2. motor.pan_base / tilt_base → target IK activo (applySpatialTarget)
+    //   3. payload.anchorPan          → ancla del radar SI el operador lo movió
+    //   4. manual.pan_base / tilt_base→ caché anterior del radar
+    //   5. 0.5                        → fallback absoluto neutro (foco nuevo)
+    //
+    // Al pasar anchorPan/anchorTilt: undefined el handler IPC sabe que el frontend
+    // no tiene información fresca y respeta la memoria existente en L2.
+    // Cuando el operador SÍ mueve el radar, _flushClassic escribe pan_base/tilt_base
+    // en _manualOverrides vía setManualOverrides — esa es la ruta correcta para el anchor.
+    console.log('[SONDA L2-FRONT] Enviando patrón:', enginePattern, 'Fixtures:', fixtureIds.length, '(anchor delegado al backend)')
     try {
       await window.lux?.aether?.setManualPattern({
         fixtureIds,
         pattern: enginePattern,
         speed: patternSpeed,
         amplitude: patternAmplitude,
-        fan: fanValue,  // [-100, 100] — el handler IPC normaliza a [0, 1]
-        anchorPan,      // [0, 1] — WAVE 4708 T2
-        anchorTilt,     // [0, 1] — WAVE 4708 T2
+        fan: fanValue,        // [-100, 100] — el handler IPC normaliza a [0, 1]
+        anchorPan:  undefined, // WAVE 4986: sin anchor tóxico — backend resuelve
+        anchorTilt: undefined, // WAVE 4986: sin anchor tóxico — backend resuelve
       })
     } catch (err) {
       // Si el setManualPattern falla, invalidar caché para forzar reintento completo

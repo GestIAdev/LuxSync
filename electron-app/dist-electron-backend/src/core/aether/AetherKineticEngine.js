@@ -268,9 +268,10 @@ export class AetherKineticEngine {
         const total = nodeIds.length;
         for (let i = 0; i < total; i++) {
             const nodeId = nodeIds[i];
-            if (!this._phaseMap.has(nodeId)) {
-                this._phaseMap.set(nodeId, 0);
-            }
+            // WAVE 4982 Paso 2: Reiniciar fase siempre — no solo en nodos nuevos.
+            // El guard anterior heredaba la fase acumulada del patrón anterior,
+            // causando saltos bruscos al cambiar de patrón (ej. circle → eight).
+            this._phaseMap.set(nodeId, 0);
             if (!this._overridePool.has(nodeId)) {
                 this._overridePool.set(nodeId, { pan_base: 0.5, tilt_base: 0.5 });
             }
@@ -294,6 +295,11 @@ export class AetherKineticEngine {
             if (this._nodeConfigs.delete(nodeId)) {
                 arbiter.clearMotorKineticOverride(nodeId);
                 this._phaseMap.delete(nodeId);
+                // WAVE 4982 Paso 3: Purgar posición anterior del Filtro Glaciar.
+                // Sin esto, _prevPositionMap retiene el último frame activo. Al reactivar,
+                // el cálculo de velocidad compara contra un valor potencialmente stale
+                // (segundos/minutos atrás), activando el dither de forma incorrecta.
+                this._prevPositionMap.delete(nodeId);
                 // _overridePool y _manualOverrides: PRESERVADOS — paradigma Programmer.
             }
         }

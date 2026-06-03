@@ -684,9 +684,30 @@ export function registerAetherIPCHandlers() {
         try {
             const arbiter = getTitanOrchestrator().getAetherArbiter();
             for (const id of fixtureIds) {
-                arbiter.clearManualOverride(`${id}:kinetic`);
+                const nodeId = `${id}:kinetic`;
+                // WAVE 4980: Anti-jitter release fade.
+                // Leemos la posición IK actual (_motorKineticOverrides) y la
+                // inyectamos como pan/tilt absolutos en _manualOverrides ANTES de
+                // llamar a clearManualOverride. Así, clearManualOverride captura el
+                // snapshot en _releaseStates con RELEASE_MS_SLOW (1000ms) y el
+                // Árbitro aplica ease-out cubic de vuelta hacia L0, eliminando el
+                // latigazo (snap) de la cabeza móvil al soltar el target espacial.
+                const motorOverride = arbiter.getMotorKineticOverride(nodeId);
+                if (motorOverride) {
+                    const panBase = motorOverride['pan_base'];
+                    const tiltBase = motorOverride['tilt_base'];
+                    const fadeChannels = {};
+                    if (Number.isFinite(panBase))
+                        fadeChannels['pan'] = panBase;
+                    if (Number.isFinite(tiltBase))
+                        fadeChannels['tilt'] = tiltBase;
+                    if (Object.keys(fadeChannels).length > 0) {
+                        arbiter.setManualOverride(nodeId, fadeChannels);
+                    }
+                }
+                arbiter.clearManualOverride(nodeId); // captura snapshot → _releaseStates
                 // ⚡ WAVE 4915: limpiar la distance scale junto con el override.
-                arbiter.clearSpatialDistanceScale(`${id}:kinetic`);
+                arbiter.clearSpatialDistanceScale(nodeId);
             }
             // Si el caller libera todos los fixtures (release global), limpiar la tabla entera
             // como red de seguridad ante leaks de scales huérfanas.

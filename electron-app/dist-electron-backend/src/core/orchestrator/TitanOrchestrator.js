@@ -399,29 +399,36 @@ export class TitanOrchestrator {
             get engine() { return self.engine; },
             get hal() { return self.hal; },
             get trinity() { return self.trinity; },
-            audioPipeline: this.audioPipeline, fixtures: this.fixtures,
-            onHotFrame: this.onHotFrame, onBroadcast: this.onBroadcast,
-            _aetherHasDevices: this._aetherHasDevices,
-            _aetherArbiter: this._aetherArbiter, _aetherResolver: this._aetherResolver,
-            _colorAdapter: this._colorAdapter, _kineticAdapter: this._kineticAdapter,
-            _beamAdapter: this._beamAdapter, _atmosphereAdapter: this._atmosphereAdapter,
-            _liquidAetherAdapter: this._liquidAetherAdapter,
-            _seleneAetherAdapter: this._seleneAetherAdapter,
-            _chronosAetherAdapter: this._chronosAetherAdapter,
-            _hephaestusAetherAdapter: this._hephaestusAetherAdapter,
-            _aetherCanvasManager: this._aetherCanvasManager,
-            _pixelMapAdapter: this._pixelMapAdapter,
-            _theiaVideoRenderer: this._theiaVideoRenderer,
-            _physicsPostProcessor: this._physicsPostProcessor,
-            _aetherSafety: this._aetherSafety,
-            _forgeFrameCtx: this._forgeFrameCtx, _forgeAudioBands: this._forgeAudioBands,
-            _aetherUIProjector: this._aetherUIProjector,
+            audioPipeline: this.audioPipeline,
+            get fixtures() { return self.fixtures; },
+            get onHotFrame() { return self.onHotFrame; },
+            get onBroadcast() { return self.onBroadcast; },
+            get _aetherHasDevices() { return self._aetherHasDevices; },
+            get _aetherArbiter() { return self._aetherArbiter; },
+            get _aetherResolver() { return self._aetherResolver; },
+            get _colorAdapter() { return self._colorAdapter; },
+            get _kineticAdapter() { return self._kineticAdapter; },
+            get _beamAdapter() { return self._beamAdapter; },
+            get _atmosphereAdapter() { return self._atmosphereAdapter; },
+            get _liquidAetherAdapter() { return self._liquidAetherAdapter; },
+            get _seleneAetherAdapter() { return self._seleneAetherAdapter; },
+            get _chronosAetherAdapter() { return self._chronosAetherAdapter; },
+            get _hephaestusAetherAdapter() { return self._hephaestusAetherAdapter; },
+            get _aetherCanvasManager() { return self._aetherCanvasManager; },
+            get _pixelMapAdapter() { return self._pixelMapAdapter; },
+            get _theiaVideoRenderer() { return self._theiaVideoRenderer; },
+            get _physicsPostProcessor() { return self._physicsPostProcessor; },
+            get _aetherSafety() { return self._aetherSafety; },
+            get _forgeFrameCtx() { return self._forgeFrameCtx; },
+            get _forgeAudioBands() { return self._forgeAudioBands; },
+            get _aetherUIProjector() { return self._aetherUIProjector; },
             _goldenNukeLocks: this._goldenNukeLocks,
             _aetherGraph: this._aetherGraph, _aetherBus: this._aetherBus,
             _seleneBus: this._seleneBus, _effectBus: this._effectBus,
             _impactAdapter: this._impactAdapter,
             _aetherAudio: this._aetherAudio, _aetherMusical: this._aetherMusical,
-            _aetherVibe: this._aetherVibe, _aetherCtx: this._aetherCtx,
+            get _aetherVibe() { return self._aetherVibe; },
+            _aetherCtx: this._aetherCtx,
             _aetherStageBounds: this._aetherStageBounds,
             _hephByFixtureId: this._hephByFixtureId, _hephByZone: this._hephByZone,
             _hephOutputPool: this._hephOutputPool, peakHoldMap: this.peakHoldMap,
@@ -564,7 +571,16 @@ export class TitanOrchestrator {
      * WAVE 289: Propagate vibe to Workers for Vibe-Aware Section Tracking
      * WAVE 2040.3: Fixed HAL receiving legacy alias instead of normalized ID
      */
-    setVibe(vibeId) { this.vibeLifecycleManager.setVibe(vibeId); }
+    setVibe(vibeId) {
+        // WAVE 4970 FIX: Inyectar dependencias perdidas en la refactorización
+        if (!this.vibeLifecycleManager['engine']) {
+            this.vibeLifecycleManager.setEngine(this.engine);
+            this.vibeLifecycleManager.setHal(this.hal);
+            this.vibeLifecycleManager.setTrinity(this.trinity);
+        }
+        this._aetherVibe.name = vibeId; // Bypass sincronización local
+        this.vibeLifecycleManager.setVibe(vibeId);
+    }
     /**
      *  WAVE 2019.6: Force Palette Sync
      *
@@ -727,7 +743,16 @@ export class TitanOrchestrator {
      */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setFixtures(fixtures, stageBounds) {
-        return this.hydrationEngine.setFixtures(fixtures, stageBounds);
+        // WAVE 4968 FIX: Directly update this.fixtures before delegating to hydrationEngine.
+        // The hydrationCtx proxy setter should also update this, but we ensure it here
+        // to prevent stale fixture IDs in the truth broadcast.
+        this.fixtures = fixtures.map(f => ({
+            ...f,
+            dmxAddress: f.dmxAddress || f.address,
+            isVirtual: f.isVirtual ?? false,
+        }));
+        console.log(`[TitanOrchestrator] setFixtures: ${this.fixtures.length} fixtures | IDs: ${this.fixtures.slice(0, 3).map((f) => f.id).join(', ')}...`);
+        return this.hydrationEngine.setFixtures(this.fixtures, stageBounds);
     }
     /**
      * WAVE 4590: Output gate canonical state for Aether pipeline.

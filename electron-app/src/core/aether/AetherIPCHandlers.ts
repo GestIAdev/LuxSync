@@ -514,13 +514,32 @@ export function registerAetherIPCHandlers(): void {
           const cachePan  = manual && Number.isFinite(manual['pan_base'])  ? manual['pan_base']  : null
           const cacheTilt = manual && Number.isFinite(manual['tilt_base']) ? manual['tilt_base'] : null
 
-          const resolvedAnchorPan  = livePan  ?? ikPan  ?? fallbackPan  ?? cachePan  ?? 0.5
-          const resolvedAnchorTilt = liveTilt ?? ikTilt ?? fallbackTilt ?? cacheTilt ?? 0.5
+          // WAVE 4986 Paso 2: El fallback absoluto 0.5 solo se aplica a nodos
+          // completamente nuevos — sin ningún historial en L2.
+          // Si el fixture tiene live override, IK, payload o caché, los respetamos.
+          // El 0.5 anterior pisaba la memoria IK de focos que ya tenían target spatial.
+          //
+          // hasAnyL2 = true → el nodo existe con algún dato válido en L2.
+          //   → resolvedAnchor = mejor dato disponible (puede ser null si IK aún no escribió pan_base)
+          //   → NO sobrescribir si null: el motor IK ya tiene el anchor real en tick()
+          // hasAnyL2 = false → nodo completamente nuevo
+          //   → resolvedAnchor = 0.5 (centro neutro, primer frame seguro)
+          const hasAnyL2Pan  = livePan  !== null || ikPan  !== null || fallbackPan  !== null || cachePan  !== null
+          const hasAnyL2Tilt = liveTilt !== null || ikTilt !== null || fallbackTilt !== null || cacheTilt !== null
 
-          // Purga del "Activo Tóxico": sobrescribimos la caché con la verdad actual
-          // para que un reactivar posterior siga viendo la posición correcta.
+          const resolvedAnchorPan  = livePan  ?? ikPan  ?? fallbackPan  ?? cachePan  ?? (hasAnyL2Pan  ? null : 0.5)
+          const resolvedAnchorTilt = liveTilt ?? ikTilt ?? fallbackTilt ?? cacheTilt ?? (hasAnyL2Tilt ? null : 0.5)
+
+          // Solo escribir el anchor en _manualOverrides cuando tenemos un valor real.
+          // Si resolvedAnchor es null (ej. nodo con IK activo en motor pero sin pan_base
+          // en manual), no tocar — el engine IK escribirá el anchor en el siguiente tick.
           const prev = manual ?? {}
-          arbiter.setManualOverride(nodeId, { ...prev, pan_base: resolvedAnchorPan, tilt_base: resolvedAnchorTilt })
+          const anchorWrite: Record<string, number> = {}
+          if (resolvedAnchorPan  !== null) anchorWrite['pan_base']  = resolvedAnchorPan
+          if (resolvedAnchorTilt !== null) anchorWrite['tilt_base'] = resolvedAnchorTilt
+          if (Object.keys(anchorWrite).length > 0) {
+            arbiter.setManualOverride(nodeId, { ...prev, ...anchorWrite })
+          }
 
           if (livePan !== null)      radarPreservedCount++   // "vivo" cuenta como radar-preserved en logs
           else if (ikPan !== null)   ikPreservedCount++
@@ -856,9 +875,28 @@ export function registerAetherIPCHandlers(): void {
       try {
         const arbiter = getTitanOrchestrator().getAetherArbiter()
         for (const id of fixtureIds) {
-          arbiter.clearManualOverride(`${id}:kinetic`)
+          const nodeId = `${id}:kinetic`
+          // WAVE 4980: Anti-jitter release fade.
+          // Leemos la posición IK actual (_motorKineticOverrides) y la
+          // inyectamos como pan/tilt absolutos en _manualOverrides ANTES de
+          // llamar a clearManualOverride. Así, clearManualOverride captura el
+          // snapshot en _releaseStates con RELEASE_MS_SLOW (1000ms) y el
+          // Árbitro aplica ease-out cubic de vuelta hacia L0, eliminando el
+          // latigazo (snap) de la cabeza móvil al soltar el target espacial.
+          const motorOverride = arbiter.getMotorKineticOverride(nodeId)
+          if (motorOverride) {
+            const panBase  = (motorOverride as Record<string, number>)['pan_base']
+            const tiltBase = (motorOverride as Record<string, number>)['tilt_base']
+            const fadeChannels: Record<string, number> = {}
+            if (Number.isFinite(panBase))  fadeChannels['pan']  = panBase
+            if (Number.isFinite(tiltBase)) fadeChannels['tilt'] = tiltBase
+            if (Object.keys(fadeChannels).length > 0) {
+              arbiter.setManualOverride(nodeId, fadeChannels)
+            }
+          }
+          arbiter.clearManualOverride(nodeId)  // captura snapshot → _releaseStates
           // ⚡ WAVE 4915: limpiar la distance scale junto con el override.
-          arbiter.clearSpatialDistanceScale(`${id}:kinetic`)
+          arbiter.clearSpatialDistanceScale(nodeId)
         }
         // Si el caller libera todos los fixtures (release global), limpiar la tabla entera
         // como red de seguridad ante leaks de scales huérfanas.

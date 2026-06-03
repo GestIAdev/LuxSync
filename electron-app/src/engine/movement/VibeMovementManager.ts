@@ -1193,14 +1193,20 @@ export class VibeMovementManager {
     let stereoPosition = { ...finalPosition }
 
     if (stereoConfig.type === 'mirror' && totalFixtures > 1) {
-      // 🪞 MIRROR: Fixtures impares (derecha) invierten PAN (eje X)
-      // Fixture 0 (L): x se mantiene → puerta izquierda
-      // Fixture 1 (R): x se invierte → puerta derecha
-      // Efecto: las puertas se abren y cierran en espejo horizontal
-      // TILT (eje Y) es compartido: ambos apuntan al mismo nivel vertical
-      const mirrorSign = fixtureIndex % 2 === 0 ? 1 : -1
-      stereoPosition.x = finalPosition.x * mirrorSign
-      // Y no se toca: stereoPosition.y = finalPosition.y (ya copiado)
+      // 🪞 MIRROR: El efecto espejo se gestiona EXCLUSIVAMENTE mediante lrPhaseOffset.
+      // WAVE 4986 Paso 4: Eliminar la inversión física de stereoPosition.x.
+      //
+      // La lógica anterior invertía el eje X en espacio de posición:
+      //   stereoPosition.x = finalPosition.x * (fixtureIndex % 2 === 0 ? 1 : -1)
+      // Esto se aplicaba DESPUÉS de que lrPhaseOffset=π ya había desplazado la fase.
+      // El resultado era: phase_shift=π + position_flip = desfase compuesto no lineal
+      // que producía movimientos caóticos e impredecibles (jitter, bucles).
+      //
+      // Con lrPhaseOffset=π (en KineticAdapter, con deadzone WAVE 4986 Paso 3):
+      //   Fixture L (x < -0.05): fase θ     → patrón natural
+      //   Fixture R (x > +0.05): fase θ+π   → patrón espejado naturalmente
+      // El generador de patrones (sin/cos) evalúa fase+π y produce x=-x, y=y
+      // automáticamente para osciladores simétricos. Cero inversión manual necesaria.
       
     } else if (stereoConfig.type === 'snake' && totalFixtures > 1) {
       // 🐍 SNAKE: Cada fixture aplica un desfase angular a la posición

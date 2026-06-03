@@ -242,7 +242,14 @@ export function solve(
     panDeg = Math.atan2(local.x, -local.z) * RAD_TO_DEG
   }
 
-  const tiltDeg = Math.atan2(horizontalDist, -local.y) * RAD_TO_DEG  // WAVE 4898: 0° = suelo (alineado con visualizador)
+  // WAVE 4990: Límite inferior de seguridad para horizontalDist.
+  // Cuando el target cae exactamente en la vertical del fixture (dx=0, dz=0),
+  // horizontalDist = 0 → atan2(0, -local.y) = 0° → haz horizontal (techo).
+  // El épsilon de 1mm (= GIMBAL_LOCK_EPSILON) previene el colapso:
+  // tiltDeg ≈ atan2(0.001, -local.y) ≈ 0° para focos en suelo (local.y < 0)
+  // pero ≈ 90° para focos en techo (local.y > 0, -local.y < 0) → correcto.
+  const safeHorizontalDist = Math.max(GIMBAL_LOCK_EPSILON, horizontalDist)
+  const tiltDeg = Math.atan2(safeHorizontalDist, -local.y) * RAD_TO_DEG  // WAVE 4898: 0° = suelo (alineado con visualizador)
 
   // WAVE 4892 — Telemetría temporal (gated). Cerrar diagnóstico del rombo.
   if (DEBUG_IK) {

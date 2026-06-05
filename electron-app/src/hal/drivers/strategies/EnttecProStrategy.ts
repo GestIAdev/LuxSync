@@ -36,6 +36,10 @@ export class EnttecProStrategy implements DMXSendStrategy {
   readonly name = 'Enttec Pro (Label 6 / 0xA9)'
   readonly selfManaged = false
 
+  // 🛠️ WAVE 5034: Pre-allocated packet buffer — 518 bytes (513 + 5 header/footer)
+  // Elimina new Uint8Array() en el hot path a 44Hz.
+  private readonly _packetBuf = new Uint8Array(518)
+
   async send(
     port: SerialPortInstance | null,
     buffer: Buffer,
@@ -48,7 +52,7 @@ export class EnttecProStrategy implements DMXSendStrategy {
     }
 
     const dataLen = buffer.length
-    const packet = new Uint8Array(dataLen + 5)
+    const packet = this._packetBuf
     const label = ENTTEC_LABEL[universe] ?? ENTTEC_LABEL_FALLBACK
 
     packet[0] = 0x7E        // Start Code
@@ -56,7 +60,7 @@ export class EnttecProStrategy implements DMXSendStrategy {
     packet[2] = dataLen & 0xFF          // Length LSB
     packet[3] = (dataLen >> 8) & 0xFF   // Length MSB
     packet.set(buffer, 4)               // Payload (start code DMX + 512 canales)
-    packet[packet.length - 1] = 0xE7    // End Code
+    packet[dataLen + 4] = 0xE7          // End Code
 
     return new Promise<void>((resolve) => {
       port.write(packet, (err: Error | null | undefined) => {

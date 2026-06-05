@@ -538,13 +538,16 @@ export class TickEngine {
     const shouldLogToTactical = this.frameCount % 240 === 0
     
     if (shouldLogToTactical && this.audioPipeline.hasRealAudio) {
-      const avgDimmer = fixtureStates.length > 0 
-        ? fixtureStates.reduce((sum, f) => sum + f.dimmer, 0) / fixtureStates.length 
-        : 0
-      const movers = fixtureStates.filter(f => f.zone.includes('MOVING'))
-      const avgMover = movers.length > 0 ? movers.reduce((s, f) => s + f.dimmer, 0) / movers.length : 0
-      const frontPars = fixtureStates.filter(f => f.zone === 'FRONT_PARS')
-      const avgFront = frontPars.length > 0 ? frontPars.reduce((s, f) => s + f.dimmer, 0) / frontPars.length : 0
+      let _dimSum = 0, _movSum = 0, _movCount = 0, _frontSum = 0, _frontCount = 0
+      for (let _ti = 0; _ti < fixtureStates.length; _ti++) {
+        const _tf = fixtureStates[_ti]
+        _dimSum += _tf.dimmer
+        if (_tf.zone.includes('MOVING')) { _movSum += _tf.dimmer; _movCount++ }
+        if (_tf.zone === 'FRONT_PARS')   { _frontSum += _tf.dimmer; _frontCount++ }
+      }
+      const avgDimmer = fixtureStates.length > 0 ? _dimSum / fixtureStates.length : 0
+      const avgMover  = _movCount > 0   ? _movSum / _movCount   : 0
+      const avgFront  = _frontCount > 0 ? _frontSum / _frontCount : 0
       
       // Send to Tactical Log
       this.log('Visual', `ðŸŽ¨ P:${intent.palette.primary.hex || '#???'} | Front:${avgFront.toFixed(0)} Mover:${avgMover.toFixed(0)}`, {
@@ -732,7 +735,8 @@ export class TickEngine {
     if (!chronosPlaying) {
       for (let _pi = 0; _pi < fixtureStates.length; _pi++) {
         const _f = fixtureStates[_pi]
-        const _id = this.fixtures[_pi]?.id || `fix_${_pi}`
+        const _id = this.fixtures[_pi]?.id
+        if (!_id) continue
         const _prev = this.peakHoldMap.get(_id) ?? 0
         if (_f.dimmer > _prev) this.peakHoldMap.set(_id, _f.dimmer)
       }

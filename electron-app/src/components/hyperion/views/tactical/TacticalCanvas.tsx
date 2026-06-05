@@ -52,6 +52,7 @@ import type {
   WorkerInboundMessage,
   WorkerOutboundMessage,
   WorkerFixtureScaffold,
+  WorkerMsgFrame,
 } from '../../../../workers/hyperion-render.types'
 import './TacticalCanvas.css'
 
@@ -127,18 +128,18 @@ function createRenderWorker(): Worker {
  * Pack fixture frame data into Float32Array for zero-copy transfer.
  * Called every frame in the data pump (~44Hz from hot-frame or ~12.5Hz fallback).
  */
-function packFrameData(
-  fixtureCount: number,
-  fixtureIds: string[],
+function packFrameDataInto(
+  buffer: Float32Array,
+  fixtures: any[],
   transientMap: Map<string, any> | null,
   controlState: ReturnType<typeof useControlStore.getState>,
   overrides: Map<string, any>,
-): Float32Array {
-  const buffer = new Float32Array(fixtureCount * FLOATS_PER_FIXTURE)
+): void {
+  const fixtureCount = fixtures.length
   const cinema = selectCinemaControl(controlState)
 
   for (let i = 0; i < fixtureCount; i++) {
-    const id = fixtureIds[i]
+    const id = fixtures[i].id as string
     const transientState = transientMap?.get(id)
     const offset = i * FLOATS_PER_FIXTURE
 
@@ -179,8 +180,6 @@ function packFrameData(
       buffer[offset + FIXTURE_FIELD.FOCUS] = 127
     }
   }
-
-  return buffer
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -239,6 +238,11 @@ export const TacticalCanvas = memo(function TacticalCanvas({
 
   // ── Persistent transient map — reutilizado cada frame, cero allocations ──
   const transientMapRef = useRef<Map<string, any>>(new Map())
+
+  // 🛠️ WAVE 5033: Pre-allocated frame buffer — grows to maxFixtureCount, then reused
+  const frameBufferRef = useRef<Float32Array | null>(null)
+  // 🛠️ WAVE 5033: Pre-allocated FRAME msg template — mutated in-place
+  const msgTemplateRef = useRef<WorkerMsgFrame>({ type: 'FRAME', frameNumber: 0, timestamp: 0, onBeat: false, beatIntensity: 0, fixtureCount: 0, frameData: new Float32Array(0) })
 
   // ── State ───────────────────────────────────────────────────────────────
   
@@ -649,36 +653,36 @@ export const TacticalCanvas = memo(function TacticalCanvas({
       lastOnBeatRef.current = currentOnBeat
 
       // Pack frame data
-      const fixtureIds = currentFixtures.map(f => f.id)
       const controlState = useControlStore.getState()
       const overrides = useOverrideStore.getState().overrides
-      const frameData = packFrameData(
-        currentFixtures.length,
-        fixtureIds,
-        transientMap,
-        controlState,
-        overrides,
-      )
+      // 🛠️ WAVE 5033: Pre-allocated buffer — grows to max fixture count, then reused
+      const neededSize = currentFixtures.length * FLOATS_PER_FIXTURE
+      let buffer = frameBufferRef.current
+      if (!buffer || buffer.length < neededSize) {
+        buffer = new Float32Array(neededSize)
+        frameBufferRef.current = buffer
+      }
+      packFrameDataInto(buffer, currentFixtures, transientMap, controlState, overrides)
 
       frameNumber++
 
       // Mailbox latest-only: keep only freshest frame while worker is busy.
-      const msg: WorkerInboundMessage = {
-        type: 'FRAME',
-        frameNumber,
-        timestamp: performance.now(),
-        onBeat: isNewBeat,
-        beatIntensity: isNewBeat ? 1.0 : 0,
-        fixtureCount: currentFixtures.length,
-        frameData,
-      }
+      // 🛠️ WAVE 5033: Mutate pre-allocated msg template in-place (zero alloc)
+      const msg = msgTemplateRef.current
+      msg.frameNumber = frameNumber
+      msg.timestamp = performance.now()
+      msg.onBeat = isNewBeat
+      msg.beatIntensity = isNewBeat ? 1.0 : 0
+      msg.fixtureCount = currentFixtures.length
+      msg.frameData = buffer
 
       if (mailboxRef.current) {
         runtimeCountersRef.current.framesDropped++
       }
 
       mailboxRef.current = msg
-      mailboxTransferRef.current = [frameData.buffer]
+      // 🛠️ WAVE 5033: No transfer — buffer is reused next frame (zero alloc)
+      mailboxTransferRef.current = undefined
       flushFrameMailbox()
       publishRuntimeMetrics()
 

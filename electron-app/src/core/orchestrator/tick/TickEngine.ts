@@ -33,6 +33,7 @@ export class TickEngine {
   private _cachedFixtureStates: any[] = []
   private _cachedHotFrame: any = {}
   private _cachedHotFrameFixtures: any[] = []
+  private _cachedChronosSet = new Set<string>()
 
   get brain() { return this.ctx.brain }
   get engine() { return this.ctx.engine }
@@ -408,9 +409,15 @@ export class TickEngine {
 
     // Chronos protection: fixtures being painted by Chronos are off-limits
     const playbackFrame = this._timelineEngine.getLastPlaybackFrame()
-    const chronosFixtureIds = new Set<string>(
-      (playbackFrame?.targets ?? []).map((t: any) => t.fixtureId)
-    )
+    const chronosTargets = playbackFrame?.targets
+    if (chronosTargets && chronosTargets.length > 0) {
+      this._cachedChronosSet.clear()
+      for (let _ct = 0; _ct < chronosTargets.length; _ct++) {
+        const _cid = chronosTargets[_ct].fixtureId
+        if (typeof _cid === 'string') this._cachedChronosSet.add(_cid)
+      }
+    }
+    const chronosFixtureIds = this._cachedChronosSet
 
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // ðŸ”Ž FORENSIC TRACE (CP2): Aether â†’ HAL handoff snapshot

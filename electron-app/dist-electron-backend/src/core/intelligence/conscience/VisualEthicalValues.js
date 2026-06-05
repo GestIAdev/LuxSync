@@ -36,6 +36,7 @@ export const SEVERITY_PENALTIES = {
 };
 // ═══════════════════════════════════════════════════════════════
 // VALUE 1: AUDIENCE SAFETY (Weight: 1.0)
+import { MoodController } from '../../mood/MoodController';
 // ═══════════════════════════════════════════════════════════════
 const AUDIENCE_SAFETY = {
     name: 'audience_safety',
@@ -217,10 +218,16 @@ const VIBE_COHERENCE = {
             check: (context, effect) => {
                 // TECHNO NO DEBE USAR SOLAR_FLARE (HEREJÍA ABSOLUTA)
                 if (context.vibe.includes('techno') && effect.effect === 'solar_flare') {
+                    // ⏳ FIX 3: WAVE 5008 - Falsa Rebeldía del Modo PUNK
+                    // En modo PUNK, vibe_coherence se degrada a warning (penalty=0.1) en lugar de crítico
+                    const moodController = MoodController.getInstance();
+                    const currentProfile = moodController.getCurrentProfile();
+                    const isPunk = currentProfile.name.toUpperCase() === 'PUNK' || currentProfile.allowEthicsOverride;
                     return {
                         passed: false,
-                        reason: 'HERESY: solar_flare forbidden in Techno',
-                        penalty: 1.0
+                        reason: isPunk ? 'HERESY: solar_flare forbidden in Techno (OVERRIDDEN BY PUNK)' : 'HERESY: solar_flare forbidden in Techno',
+                        penalty: isPunk ? 0.1 : 1.0,
+                        severity: isPunk ? 'low' : 'critical'
                     };
                 }
                 // Latino NO debe usar industrial_strobe (a menos que sea drop épico)

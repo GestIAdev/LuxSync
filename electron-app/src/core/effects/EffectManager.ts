@@ -61,8 +61,8 @@ import type { VibeProfile, VibeId } from '../../types/VibeProfile'
 
 // ⚰️ WAVE 3450: isOceanicEffectValidForDepth eliminado junto con ChillStereoPhysics.
 
-// 🌊 WAVE 1071: Import ContextualEffectSelector for cooldown registration
-import { getContextualEffectSelector } from './ContextualEffectSelector'
+// 🌊 WAVE 1071: Import ArsenalRepository for cooldown registration
+import { getArsenalRepository } from './ContextualEffectSelector'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🛡️ WAVE 1070: CHILL LOUNGE SHIELD - ALLOW/BLOCK LISTS
@@ -422,7 +422,7 @@ export class EffectManager extends EventEmitter {
     const bypassCooldownGate = config.source === 'chronos' || config.source === 'manual'
     if (!bypassCooldownGate) {
       try {
-        const selector = getContextualEffectSelector()
+        const selector = getArsenalRepository()
         const cooldownCheck = selector.checkAvailability(config.effectType, vibeId)
         if (!cooldownCheck.available) {
           console.log(`[EffectManager ⏱️ GATEKEEPER] ${config.effectType} BLOCKED: ${cooldownCheck.reason}`)
@@ -490,7 +490,7 @@ export class EffectManager extends EventEmitter {
     // 🌊 WAVE 1071: COOLDOWN REGISTRATION
     // ═══════════════════════════════════════════════════════════════════════
     try {
-      const selector = getContextualEffectSelector()
+      const selector = getArsenalRepository()
       selector.registerEffectFired(config.effectType)
     } catch (e) {
       // Fail silently

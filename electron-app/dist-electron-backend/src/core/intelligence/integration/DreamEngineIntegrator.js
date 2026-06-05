@@ -65,7 +65,9 @@ export class DreamEngineIntegrator {
         //   Eso bloqueó 4-5 momentos dignos en el log. 0.55 deja pasar el rango útil de Brejcha (0.66+)
         //   pero sigue filtrando los <0.66 (effective<0.55). El control de calidad real está en el
         //   ethicsThreshold que ahora es 1.20 (el override ya no es gratis).
-        if (effectiveWorthiness < 0.55) { // 🩸 WAVE 2104.2: was 0.58
+        // ⏳ FIX 2: WAVE 5008 - Bypass worthiness gate si el Oráculo tiene una predicción
+        const hasPrediction = context.predictionTimeMs !== undefined && context.predictionTimeMs > 0;
+        if (effectiveWorthiness < 0.55 && !hasPrediction) { // 🩸 WAVE 2104.2: was 0.58
             // 🩸 WAVE 2104.1: DIAGNOSTIC — Ver qué momentos se descartan
             console.log(`[INTEGRATOR_GATE] 🚫 WORTHINESS BLOCKED: raw=${rawWorthiness.toFixed(2)} effective=${effectiveWorthiness.toFixed(2)} < 0.55 | ${currentProfile.emoji} ${currentProfile.name}`);
             return {
@@ -139,7 +141,11 @@ export class DreamEngineIntegrator {
         // De lo contrario, un Z-score alto podría hacer pasar ethics y disparar
         // el efecto prematuramente, vaciando el pre-buffer antes de la sección.
         // ═════════════════════════════════════════════════════════════════════
-        if (dreamResult.recommendation === 'modify') {
+        // ⏳ WAVE 5009 FIX 3: El Contrato Blindado de Cassandra
+        // Si la recomendacion es modify pero HAY urgencia / timeToEvent = 0
+        // O si la razon menciona FAST PATH, DEBEMOS ejecutar. No cortocircuitar.
+        const isFastPath = dreamResult.reason.includes('FAST PATH');
+        if (dreamResult.recommendation === 'modify' && !isFastPath) {
             return {
                 approved: false,
                 effect: null,

@@ -19,7 +19,7 @@
  */
 
 import { EnergyConsciousnessEngine } from '../core/intelligence/EnergyConsciousnessEngine'
-import { ContextualEffectSelector } from '../core/effects/ContextualEffectSelector'
+import { ArsenalRepository } from '../core/effects/ContextualEffectSelector'
 import { createDefaultEnergyContext, EnergyZone } from '../core/protocol/MusicalContext'
 import { MoodController } from '../core/mood'
 

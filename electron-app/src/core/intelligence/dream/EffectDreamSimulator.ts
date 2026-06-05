@@ -230,14 +230,19 @@ export class EffectDreamSimulator {
     if (this.preBuffer) {
       const bufferAge = now - this.preBuffer.bufferedAt
       const isExpired = bufferAge > this.PRE_BUFFER_MAX_AGE_MS
-      const isEventImminent = timeToEvent < 1500 // < 1.5s = ya casi llega
+      
+      // ⏳ WAVE 5009 FIX 3: El reloj real de Cassandra
+      // predictionTimeMs es estático (siempre 2000 o 4000). Debemos usar el reloj interno
+      // del pre-buffer (predictedEventAt) para saber si de verdad el evento es inminente.
+      const realTimeToEvent = this.preBuffer.predictedEventAt - now
+      const isEventImminent = realTimeToEvent < 1500 // < 1.5s = ya casi llega
       
       if (isExpired) {
         // Buffer expirado, limpiar
         this.preBuffer = null
-      } else if (isEventImminent && isUrgent) {
+      } else if (isEventImminent) {
         // 🚀 CASSANDRA FAST PATH: Usar el efecto pre-bufferizado!
-        console.log(`[DREAM_SIMULATOR] 🔮⚡ CASSANDRA FAST PATH: Using pre-buffered "${this.preBuffer.effect.effect}" (buffered ${bufferAge}ms ago, event in ${timeToEvent}ms)`)
+        console.log(`[DREAM_SIMULATOR] 🔮⚡ CASSANDRA FAST PATH: Using pre-buffered "${this.preBuffer.effect.effect}" (buffered ${bufferAge}ms ago, event in ${realTimeToEvent}ms)`)
         
         // Crear escenario desde el buffer
         const bufferedScenario = this.simulateScenario(this.preBuffer.effect, currentState, context)
@@ -252,7 +257,7 @@ export class EffectDreamSimulator {
           scenarios: [bufferedScenario],
           bestScenario: bufferedScenario,
           recommendation: 'execute',
-          reason: `🔮 CASSANDRA PRE-BUFFER: "${usedBuffer.effect.effect}" ready for ${usedBuffer.predictionType} (${(usedBuffer.oracleProbability * 100).toFixed(0)}% confidence)`,
+          reason: `🔮 CASSANDRA FAST PATH: "${usedBuffer.effect.effect}" ready for ${usedBuffer.predictionType} (${(usedBuffer.oracleProbability * 100).toFixed(0)}% confidence)`,
           warnings: [],
           simulationTimeMs
         }
@@ -449,6 +454,44 @@ export class EffectDreamSimulator {
       }))
   }
   
+  // ═══════════════════════════════════════════════════════════════════
+  // 🔮 WAVE 5011: CASSANDRA'S SOVEREIGN CLOCK — Pre-buffer introspection API
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Returns the current Cassandra pre-buffer status for sovereign fast path checks.
+   * null = no active pre-buffer.
+   */
+  public getPreBufferStatus(): { effectId: string; predictedEventAt: number; bufferedAt: number } | null {
+    if (!this.preBuffer) return null
+    return {
+      effectId: this.preBuffer.effect.effect,
+      predictedEventAt: this.preBuffer.predictedEventAt,
+      bufferedAt: this.preBuffer.bufferedAt,
+    }
+  }
+
+  /**
+   * Returns the full pre-buffered effect candidate (needed to build the sovereign output).
+   * null = no active pre-buffer.
+   */
+  public getPreBufferedCandidate(): { effect: string; intensity: number; zones: string[]; confidence: number } | null {
+    if (!this.preBuffer) return null
+    return {
+      effect: this.preBuffer.effect.effect,
+      intensity: this.preBuffer.effect.intensity,
+      zones: this.preBuffer.effect.zones ?? [],
+      confidence: this.preBuffer.effect.confidence,
+    }
+  }
+
+  /**
+   * Clears the Cassandra pre-buffer (called after sovereign fast path consumes it).
+   */
+  public clearPreBuffer(): void {
+    this.preBuffer = null
+  }
+
   // ═══════════════════════════════════════════════════════════════
   // PRIVATE: CANDIDATE GENERATION
   // ═══════════════════════════════════════════════════════════════
@@ -498,8 +541,8 @@ export class EffectDreamSimulator {
       'valley':  { min: 0, max: 0.50 },    // Suaves + algo de respiración
       'ambient': { min: 0, max: 0.70 },    // Moderados (ampliar para digital_rain + acid_sweep)
       'gentle':  { min: 0, max: 0.85 },    // Transición amplia (incluir ambient_strobe, binary_glitch)
-      'active':  { min: 0.20, max: 1.00 }, // Libertad casi total (cyber_dualism, seismic_snap)
-      'intense': { min: 0.45, max: 1.00 }, // Agresivos completos (sky_saw, abyssal_rise)
+      'active':  { min: 0.40, max: 0.80 }, // 🔬 WAVE 5003: Separar soft de hard
+      'intense': { min: 0.60, max: 1.00 }, // 🔬 WAVE 5003: Solo hard, medios a active
       'peak':    { min: 0.70, max: 1.00 }, // Solo los más brutales (gatling, core_meltdown, industrial)
     }
     
@@ -538,8 +581,8 @@ export class EffectDreamSimulator {
       'valley': '0-0.50',
       'ambient': '0-0.70',
       'gentle': '0-0.85',
-      'active': '0.20-1.00',
-      'intense': '0.45-1.00',
+      'active': '0.40-0.80',
+      'intense': '0.60-1.00',
       'peak': '0.70-1.00',
     }
     return ranges[zone] || '0-1.00'
@@ -607,7 +650,54 @@ export class EffectDreamSimulator {
     
     const zoneSource = context.energyZone ? 'SeleneTitanConscious' : 'local-fallback'
     
-    const zoneFilteredEffects = this.filterByZone(vibeAllowedEffects, energyZone)
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🔮 WAVE 5014: THE ORACLE'S VISION — Projected Zone & Z-Guard Relaxation
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ROOT CAUSE (WAVE 5013-ALPHA forensics):
+    //   generateCandidates() evaluaba filterByZone y zScoreGuards usando la
+    //   energía y Z-Score del frame ACTUAL, incluso cuando Cassandra simulaba
+    //   un Drop que ocurriría en 3 segundos. Durante un buildup (zona 'active',
+    //   aggression max 0.80), todos los efectos pesados (A>0.80) eran descartados
+    //   ANTES de que sus Z-Guards fueran evaluados. Resultado: solo void_mist y
+    //   abyssal_rise sobrevivían → arsenal nuclear invisible para Cassandra.
+    //
+    // FIX: Si la predicción es un evento futuro garantizado (drop_predicted,
+    //   buildup_starting) con timeToEventMs > 0, usar una zona proyectada
+    //   que refleje las condiciones DEL EVENTO, no del frame actual.
+    //   También relajar minimumZ y minimumEnergy porque en el momento del drop
+    //   la señal habrá explosionado — no tiene sentido bloquear el arsenal hoy
+    //   por culpa de un Z-Score de buildup tranquilo.
+    // ═══════════════════════════════════════════════════════════════════════════
+    const predType = prediction.predictionType ?? 'none'
+    const timeToEvent = (Number.isFinite(prediction.timeToEventMs) && prediction.timeToEventMs! > 0)
+      ? prediction.timeToEventMs! : 0
+    const isFutureHeavyEvent = (
+      predType === 'drop_incoming' ||
+      predType === 'energy_spike'
+    ) && timeToEvent > 0
+    const isFutureBuildup = predType === 'buildup_starting' && timeToEvent > 0
+
+    // Zona proyectada: la que habrá en el momento del evento, no la actual.
+    // drop/energy_spike → peak; buildup → intense; cualquier otro → zona actual.
+    const projectedZone = isFutureHeavyEvent ? 'peak'
+      : isFutureBuildup ? 'intense'
+      : energyZone
+
+    // Relajar guards predictivos: si el evento está garantizado, el Z y la energía
+    // del frame actual son irrelevantes — subirán cuando el drop rompa.
+    // Solo se relaja si la predicción es de alta confianza (> 0.55).
+    const relaxGuardsForFuture = (isFutureHeavyEvent || isFutureBuildup)
+      && prediction.confidence > 0.55
+
+    if (projectedZone !== energyZone) {
+      console.log(
+        `[DREAM_SIMULATOR] 🔮 ORACLE VISION: zone override ${energyZone} → ${projectedZone} ` +
+        `(pred=${predType} timeToEvent=${timeToEvent}ms conf=${prediction.confidence.toFixed(2)})` +
+        (relaxGuardsForFuture ? ' | Z-guards RELAXED' : '')
+      )
+    }
+
+    const zoneFilteredEffects = this.filterByZone(vibeAllowedEffects, projectedZone)
 
     // 🎯 WAVE 4865: Muestreo sin reemplazo por effect id.
     // Evita clones en ranking cuando múltiples aliases/vías aportan el mismo efecto.
@@ -646,19 +736,21 @@ export class EffectDreamSimulator {
       
       // ═══════════════════════════════════════════════════════════════════════════
       // ⚡ WAVE 4843: COGNITIVE BRIDGE — STROBE Z-GUARD + ZSCORE GUARDS
+      // 🔮 WAVE 5014: Guards relajados para predicciones futuras garantizadas
       // ═══════════════════════════════════════════════════════════════════════════
       // WAVE 1179/1180 usaban una lista hardcodeada STROBE_EFFECTS y un nombre
       // hardcodeado ('gatling_raid'). Ambos destruidos en WAVE 4843.
       //
       // NUEVO COMPORTAMIENTO (lee directamente del .lfx):
       //   1. Si entry.simMeta.isStrobe === true y zScore <= 0 → skip
-      //      (los efectos strobe se auto-declaran strobe en su JSON)
+      //      EXCEPCIÓN (WAVE 5014): Si es predicción futura garantizada (relaxGuardsForFuture)
+      //      el strobe guard se omite — el Z subirá cuando el drop rompa.
       //
       //   2. Si entry.simMeta.zScoreGuards.minimumZ existe y zScore < minimumZ → skip
-      //      (cualquier efecto puede declarar su guard mínimo de Z-Score)
+      //      EXCEPCIÓN (WAVE 5014): Omitido si relaxGuardsForFuture.
       //
       //   3. Si entry.simMeta.zScoreGuards.minimumEnergy existe y energy < minimumEnergy → skip
-      //      (idem para energía)
+      //      EXCEPCIÓN (WAVE 5014): Omitido si relaxGuardsForFuture.
       //
       // Esto convierte los guards en metadatos del efecto, no del motor.
       // ═══════════════════════════════════════════════════════════════════════════
@@ -669,17 +761,20 @@ export class EffectDreamSimulator {
         const { energy } = context
 
         // Guard 1: Strobe en energía descendente
-        if (isStrobe && zScore <= 0) {
+        // 🔮 WAVE 5014: Solo se aplica si NO es una predicción futura garantizada
+        if (isStrobe && zScore <= 0 && !relaxGuardsForFuture) {
           continue
         }
 
         // Guard 2: minimumZ declarado en el .lfx
-        if (zScoreGuards.minimumZ !== null && zScore < zScoreGuards.minimumZ) {
+        // 🔮 WAVE 5014: Omitido en predicciones futuras — el Z subirá en el evento
+        if (!relaxGuardsForFuture && zScoreGuards.minimumZ !== null && zScore < zScoreGuards.minimumZ) {
           continue
         }
 
         // Guard 3: minimumEnergy declarado en el .lfx
-        if (zScoreGuards.minimumEnergy !== null && energy < zScoreGuards.minimumEnergy) {
+        // 🔮 WAVE 5014: Omitido en predicciones futuras — la energía subirá en el evento
+        if (!relaxGuardsForFuture && zScoreGuards.minimumEnergy !== null && energy < zScoreGuards.minimumEnergy) {
           continue
         }
 
@@ -711,8 +806,8 @@ export class EffectDreamSimulator {
         intensity,
         zones: ['all'], // Simplificado para Phase 1
         reasoning: isSuggestedByOracle 
-          ? `🔮 CASSANDRA: Oracle suggested | vibe=${state.vibe} zone=${energyZone}`
-          : `🧬 DNA Dream: vibe=${state.vibe} zone=${energyZone}`,
+          ? `🔮 CASSANDRA: Oracle suggested | vibe=${state.vibe} zone=${projectedZone}${projectedZone !== energyZone ? ` (actual:${energyZone})` : ''}`
+          : `🧬 DNA Dream: vibe=${state.vibe} zone=${projectedZone}${projectedZone !== energyZone ? ` (actual:${energyZone})` : ''}`,
         confidence: finalConfidence
       })
     }
@@ -726,6 +821,43 @@ export class EffectDreamSimulator {
         `urgent=${prediction.isUrgent} ` +
         `candidates=${candidates.length}`
       )
+    }
+
+    // ⏳ WAVE 5009 FIX 4: THE MINIMAL RESCUE
+    // Si todos los efectos fueron bloqueados por guards (como pasa en Techno Minimal
+    // donde Z-Score es muy bajo < 1.0 pero la zona es Peak/Intense).
+    // 🔮 WAVE 5014: Si la projectedZone amplió el pool pero todos siguen bloqueados,
+    //   el Rescue parte desde todos los efectos del vibe (no solo los filtrados por zona)
+    //   para garantizar candidatos en cualquier escenario predictivo.
+    if (candidates.length === 0 && zoneFilteredEffects.length > 0) {
+      console.log(`[DREAM_SIMULATOR] ⚠️ All effects blocked by Z-guards! (Z=${zScore.toFixed(2)} projectedZone=${projectedZone}). Attempting Minimal Rescue...`)
+      
+      const registry = getDynamicEffectRegistry()
+      for (const effect of zoneFilteredEffects) {
+        if (moodController.isEffectBlocked(effect)) continue
+        const entry = registry.getEntry(effect)
+        if (!entry) continue
+        
+        if (!this._isTargetingAvailable(entry.execHints.fixtureTargeting, activeZoneSet)) continue
+        
+        // Strobe guard: solo bloquear si Z <= 0 Y no es predicción futura garantizada
+        if (entry.simMeta.isStrobe && zScore <= 0 && !relaxGuardsForFuture) continue
+        
+        const intensity = this.calculateIntensity(prediction.predictedEnergy, effect)
+        const isSuggestedByOracle = prediction.suggestedEffects?.some(
+          suggested => effect.includes(suggested) || suggested.includes(effect)
+        ) ?? false
+        
+        const finalConfidence = Math.min(1, prediction.confidence * 0.9 + (isSuggestedByOracle ? 0.08 : 0))
+        
+        candidates.push({
+          effect,
+          intensity,
+          zones: ['all'],
+          reasoning: `⚠️ MINIMAL RESCUE (Guards bypassed) | vibe=${state.vibe} projectedZone=${projectedZone}`,
+          confidence: finalConfidence
+        })
+      }
     }
     
     return candidates
@@ -764,16 +896,19 @@ export class EffectDreamSimulator {
   }
 
   private calculateIntensity(predictedEnergy: number, effect: string): number {
-    // Intensidad base de la energía predicha
-    let intensity = predictedEnergy
+    // ⚡ WAVE 4997: SELENE INTENSITY FLOOR & DE-GHOSTING
+    const MIN_VISIBLE_INTENSITY = 0.80
     
-    // Ajustar por tipo de efecto
+    // Intensidad base: la energía predicha o el suelo garantizado
+    let intensity = Math.max(MIN_VISIBLE_INTENSITY, predictedEnergy)
+    
+    // Ajustar por tipo de efecto (usando la intensidad base con suelo)
     if (effect.includes('strobe') || effect.includes('laser')) {
       // Efectos agresivos usan full energy
-      intensity = Math.min(1.0, predictedEnergy * 1.1)
+      intensity = Math.min(1.0, intensity * 1.1)
     } else if (effect.includes('wave') || effect.includes('cascade')) {
       // Efectos suaves usan menos energy
-      intensity = predictedEnergy * 0.8
+      intensity = intensity * 0.8
     }
     
     return Math.max(0, Math.min(1, intensity))

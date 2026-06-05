@@ -73,14 +73,18 @@ export class EffectDreamSimulator {
         if (this.preBuffer) {
             const bufferAge = now - this.preBuffer.bufferedAt;
             const isExpired = bufferAge > this.PRE_BUFFER_MAX_AGE_MS;
-            const isEventImminent = timeToEvent < 1500; // < 1.5s = ya casi llega
+            // ⏳ WAVE 5009 FIX 3: El reloj real de Cassandra
+            // predictionTimeMs es estático (siempre 2000 o 4000). Debemos usar el reloj interno
+            // del pre-buffer (predictedEventAt) para saber si de verdad el evento es inminente.
+            const realTimeToEvent = this.preBuffer.predictedEventAt - now;
+            const isEventImminent = realTimeToEvent < 1500; // < 1.5s = ya casi llega
             if (isExpired) {
                 // Buffer expirado, limpiar
                 this.preBuffer = null;
             }
-            else if (isEventImminent && isUrgent) {
+            else if (isEventImminent) {
                 // 🚀 CASSANDRA FAST PATH: Usar el efecto pre-bufferizado!
-                console.log(`[DREAM_SIMULATOR] 🔮⚡ CASSANDRA FAST PATH: Using pre-buffered "${this.preBuffer.effect.effect}" (buffered ${bufferAge}ms ago, event in ${timeToEvent}ms)`);
+                console.log(`[DREAM_SIMULATOR] 🔮⚡ CASSANDRA FAST PATH: Using pre-buffered "${this.preBuffer.effect.effect}" (buffered ${bufferAge}ms ago, event in ${realTimeToEvent}ms)`);
                 // Crear escenario desde el buffer
                 const bufferedScenario = this.simulateScenario(this.preBuffer.effect, currentState, context);
                 // Limpiar buffer (usado)
@@ -91,7 +95,7 @@ export class EffectDreamSimulator {
                     scenarios: [bufferedScenario],
                     bestScenario: bufferedScenario,
                     recommendation: 'execute',
-                    reason: `🔮 CASSANDRA PRE-BUFFER: "${usedBuffer.effect.effect}" ready for ${usedBuffer.predictionType} (${(usedBuffer.oracleProbability * 100).toFixed(0)}% confidence)`,
+                    reason: `🔮 CASSANDRA FAST PATH: "${usedBuffer.effect.effect}" ready for ${usedBuffer.predictionType} (${(usedBuffer.oracleProbability * 100).toFixed(0)}% confidence)`,
                     warnings: [],
                     simulationTimeMs
                 };
@@ -295,8 +299,8 @@ export class EffectDreamSimulator {
             'valley': { min: 0, max: 0.50 }, // Suaves + algo de respiración
             'ambient': { min: 0, max: 0.70 }, // Moderados (ampliar para digital_rain + acid_sweep)
             'gentle': { min: 0, max: 0.85 }, // Transición amplia (incluir ambient_strobe, binary_glitch)
-            'active': { min: 0.20, max: 1.00 }, // Libertad casi total (cyber_dualism, seismic_snap)
-            'intense': { min: 0.45, max: 1.00 }, // Agresivos completos (sky_saw, abyssal_rise)
+            'active': { min: 0.40, max: 0.80 }, // 🔬 WAVE 5003: Separar soft de hard
+            'intense': { min: 0.60, max: 1.00 }, // 🔬 WAVE 5003: Solo hard, medios a active
             'peak': { min: 0.70, max: 1.00 }, // Solo los más brutales (gatling, core_meltdown, industrial)
         };
         const limits = aggressionLimits[zone] || { min: 0, max: 1 };
@@ -330,8 +334,8 @@ export class EffectDreamSimulator {
             'valley': '0-0.50',
             'ambient': '0-0.70',
             'gentle': '0-0.85',
-            'active': '0.20-1.00',
-            'intense': '0.45-1.00',
+            'active': '0.40-0.80',
+            'intense': '0.60-1.00',
             'peak': '0.70-1.00',
         };
         return ranges[zone] || '0-1.00';
@@ -490,6 +494,35 @@ export class EffectDreamSimulator {
                 `urgent=${prediction.isUrgent} ` +
                 `candidates=${candidates.length}`);
         }
+        // ⏳ WAVE 5009 FIX 4: THE MINIMAL RESCUE
+        // Si todos los efectos fueron bloqueados por guards (como pasa en Techno Minimal
+        // donde Z-Score es muy bajo < 1.0 pero la zona es Peak/Intense).
+        if (candidates.length === 0 && zoneFilteredEffects.length > 0) {
+            console.log(`[DREAM_SIMULATOR] ⚠️ All effects blocked by Z-guards! (Z=${zScore.toFixed(2)}). Attempting Minimal Rescue...`);
+            const registry = getDynamicEffectRegistry();
+            for (const effect of zoneFilteredEffects) {
+                if (moodController.isEffectBlocked(effect))
+                    continue;
+                const entry = registry.getEntry(effect);
+                if (!entry)
+                    continue;
+                if (!this._isTargetingAvailable(entry.execHints.fixtureTargeting, activeZoneSet))
+                    continue;
+                // Mantenemos strobe block si Z <= 0, pero ignoramos minimumZ y minimumEnergy
+                if (entry.simMeta.isStrobe && zScore <= 0)
+                    continue;
+                const intensity = this.calculateIntensity(prediction.predictedEnergy, effect);
+                const isSuggestedByOracle = prediction.suggestedEffects?.some(suggested => effect.includes(suggested) || suggested.includes(effect)) ?? false;
+                const finalConfidence = Math.min(1, prediction.confidence * 0.9 + (isSuggestedByOracle ? 0.08 : 0));
+                candidates.push({
+                    effect,
+                    intensity,
+                    zones: ['all'],
+                    reasoning: `⚠️ MINIMAL RESCUE (Guards bypassed) | vibe=${state.vibe}`,
+                    confidence: finalConfidence
+                });
+            }
+        }
         return candidates;
     }
     /**
@@ -524,16 +557,18 @@ export class EffectDreamSimulator {
         }
     }
     calculateIntensity(predictedEnergy, effect) {
-        // Intensidad base de la energía predicha
-        let intensity = predictedEnergy;
-        // Ajustar por tipo de efecto
+        // ⚡ WAVE 4997: SELENE INTENSITY FLOOR & DE-GHOSTING
+        const MIN_VISIBLE_INTENSITY = 0.80;
+        // Intensidad base: la energía predicha o el suelo garantizado
+        let intensity = Math.max(MIN_VISIBLE_INTENSITY, predictedEnergy);
+        // Ajustar por tipo de efecto (usando la intensidad base con suelo)
         if (effect.includes('strobe') || effect.includes('laser')) {
             // Efectos agresivos usan full energy
-            intensity = Math.min(1.0, predictedEnergy * 1.1);
+            intensity = Math.min(1.0, intensity * 1.1);
         }
         else if (effect.includes('wave') || effect.includes('cascade')) {
             // Efectos suaves usan menos energy
-            intensity = predictedEnergy * 0.8;
+            intensity = intensity * 0.8;
         }
         return Math.max(0, Math.min(1, intensity));
     }

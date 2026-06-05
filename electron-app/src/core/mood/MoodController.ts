@@ -46,6 +46,7 @@ export const MOOD_PROFILES: Record<MoodId, MoodProfile> = {
     thresholdMultiplier: 1.2,      // 🔪 WAVE 4947 MISIÓN 2: 2.5→1.2 para Worthiness gate occasional pass
     cooldownMultiplier: 4.0,       // 🧘 WAVE 1182.2: Cooldowns x4 (era 10.0)
     ethicsThreshold: 0.95,         // 🧘 WAVE 1182.2: Solo LEGENDARY bypassea (era 99.0)
+    allowEthicsOverride: true,      // 🔪 WAVE 4992: Override permitido (muy raro por 0.95)
     maxIntensity: 0.6,             // 🧘 WAVE 1182.2: Max 60% - todo suave (era 0.7)
     minIntensity: undefined,       // Sin mínimo
     blockList: [
@@ -96,9 +97,10 @@ export const MOOD_PROFILES: Record<MoodId, MoodProfile> = {
     name: 'balanced',
     description: 'El profesional. El DJ está sobrio. 🎧',
     emoji: '⚖️',
-    thresholdMultiplier: 1.10,     // 🩸 WAVE 2492: 1.20→1.10 (hard techno raw 0.50-0.66 needs to breathe)
+    thresholdMultiplier: 1.05,     // 📉 WAVE 5001: 1.10→1.05 (Latino Montecarlo worthiness breathing room)
     cooldownMultiplier: 2.2,       // 🩸 WAVE 4829: 1.8→2.2 — más aire en latino, objetivo 3-4 EPM
-    ethicsThreshold: 1.20,         // 🩸 WAVE 2104.2: 1.12→1.20. Con 1.12, ethics=1.134 pasaba con margen de 0.014 = GRATIS. El override debe ser ÉPICO, no rutinario.
+    ethicsThreshold: 1.0,          // 🔪 WAVE 4992: 1.20→1.0. Ya no es un hack mágico.
+    allowEthicsOverride: false,     // 🔪 WAVE 4992: Override DESACTIVADO en BALANCED. Cooldowns son ley.
     maxIntensity: 1.0,             // Sin límite
     minIntensity: undefined,       // Los pads tienen su propio dimmer mínimo
     blockList: [],                 // Nada bloqueado
@@ -118,6 +120,7 @@ export const MOOD_PROFILES: Record<MoodId, MoodProfile> = {
     thresholdMultiplier: 0.8,      // 20% más fácil
     cooldownMultiplier: 0.7,       // Cooldowns x0.7
     ethicsThreshold: 0.75,         // 🧬 WAVE 973: "Si mola (7.5/10), ¡A LA MIERDA EL COOLDOWN!"
+    allowEthicsOverride: true,      // 🔪 WAVE 4992: Override activado
     maxIntensity: 1.0,             // Sin límite
     minIntensity: 0.5,             // MÍNIMO 50% intensidad siempre
     blockList: [],                 // Nada bloqueado

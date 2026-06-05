@@ -171,6 +171,69 @@
         }
       },
       {
+        "id": "front-glow-color",
+        "paramId": "color",
+        "zones": [
+          "front"
+        ],
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "defaultValue": {
+            "h": 352,
+            "s": 84,
+            "l": 46
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 352,
+                "s": 84,
+                "l": 46
+              },
+              "interpolation": "hold"
+            }
+          ]
+        }
+      },
+      {
+        "id": "front-glow-intensity",
+        "paramId": "intensity",
+        "zones": [
+          "front"
+        ],
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "defaultValue": 0.1,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0.1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 3400,
+              "value": 0.1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 3720,
+              "value": 0.58,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 4000,
+              "value": 0.2,
+              "interpolation": "linear"
+            }
+          ]
+        }
+      },
+      {
         "id": "heat-movers-color",
         "paramId": "color",
         "zones": [
@@ -444,69 +507,6 @@
             {
               "timeMs": 4000,
               "value": 0.12,
-              "interpolation": "linear"
-            }
-          ]
-        }
-      },
-      {
-        "id": "front-glow-color",
-        "paramId": "color",
-        "zones": [
-          "front"
-        ],
-        "blendMode": "replace",
-        "curve": {
-          "paramId": "color",
-          "valueType": "color",
-          "defaultValue": {
-            "h": 352,
-            "s": 84,
-            "l": 46
-          },
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": {
-                "h": 352,
-                "s": 84,
-                "l": 46
-              },
-              "interpolation": "hold"
-            }
-          ]
-        }
-      },
-      {
-        "id": "front-glow-intensity",
-        "paramId": "intensity",
-        "zones": [
-          "front"
-        ],
-        "blendMode": "replace",
-        "curve": {
-          "paramId": "intensity",
-          "valueType": "number",
-          "defaultValue": 0.1,
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": 0.1,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 3400,
-              "value": 0.1,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 3720,
-              "value": 0.58,
-              "interpolation": "linear"
-            },
-            {
-              "timeMs": 4000,
-              "value": 0.2,
               "interpolation": "linear"
             }
           ]

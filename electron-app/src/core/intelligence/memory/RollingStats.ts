@@ -61,7 +61,7 @@ const DEFAULT_CONFIG: Required<RollingStatsConfig> = {
   //   - Z típico en drop real = (0.7 - 0.3) / 0.05 = 8σ (filtrado por DIVINE_THRESHOLD=4.0)
   //   - Z en micro-valley = (0.35 - 0.30) / 0.05 = 1σ (ignorado correctamente)
   // ═══════════════════════════════════════════════════════════════════════════
-  minStdDev: 0.05, // 🔬 WAVE 2185: Recalibrado (was 0.08, was 0.001)
+  minStdDev: 0.10, // 🔬 WAVE 5003: Suelo de varianza (was 0.05, 0.08, 0.001)
 };
 
 /**

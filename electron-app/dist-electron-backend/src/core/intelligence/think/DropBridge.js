@@ -87,6 +87,13 @@ export function checkDropBridge(input, config = {}) {
         cfg.watchingThreshold = Math.max(cfg.watchingThreshold, 2.5);
         cfg.imminentThreshold = Math.max(cfg.imminentThreshold, 3.0);
     }
+    const isTechnoVibe = vibeId === 'techno-club' || vibeId === 'hard-techno' || vibeId?.includes('techno') || false;
+    if (isTechnoVibe) {
+        cfg.zScoreThreshold = Math.min(cfg.zScoreThreshold, 2.2); // Techno maxes at ~2.6
+        cfg.minEnergy = Math.min(cfg.minEnergy, 0.55);
+        cfg.watchingThreshold = Math.min(cfg.watchingThreshold, 1.5);
+        cfg.imminentThreshold = Math.min(cfg.imminentThreshold, 2.0);
+    }
     // === EVALUAR CONDICIONES ===
     const conditionsMet = [];
     // Condición 1: Z-Score épico

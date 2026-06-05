@@ -195,7 +195,13 @@ export class KineticAdapter extends BaseSystem {
             // Fixtures on the right side (x > 0) get π phase offset for counterpoint motion
             // 🎭 WAVE 4717.2: L2 fan phase offset — suma el desfase calculado por el bridge
             // según el orden de selección del usuario (determinista, cero alloc).
-            const lrPhaseOffset = (node.physicalPosition?.x ?? 0) > 0 ? Math.PI : 0;
+            // WAVE 4988 Paso 1: Topología declarativa por zoneId.
+            // Reemplaza la lógica physicalPosition.x + deadzone (WAVE 4986) que rompía
+            // la simetría al agrupar focos derechos centrados con los izquierdos.
+            // La clasificación L/R ahora es determinista: cualquier zona cuyo nombre
+            // contiene 'right' (front-right, back-right, side-right…) recibe π.
+            // El resto (left, center, undefined) recibe 0. Sin coordenadas X, sin ruido.
+            const lrPhaseOffset = (node.zoneId && typeof node.zoneId === 'string' && node.zoneId.includes('right')) ? Math.PI : 0;
             const l2PhaseOffset = this._vmm._l2PhaseOverrides[node.nodeId] ?? 0;
             // 🌪️ WAVE 4708 T3: caos global del slider — desfase determinista por fixture.
             // Se extrae fixtureId puro (sin :kinetic) para que el hash coincida con el

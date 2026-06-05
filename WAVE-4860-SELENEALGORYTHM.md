@@ -9,9 +9,9 @@
 
 Selene tiene **16 submotores** operando en 4 capas. La mayoría de sus algoritmos son **saludables pero superpoblados**. La arquitectura ha evolucionado orgánicamente durante más de 40 waves (WAVE 500 → 4867), acumulando capas de parches sobre parches. Tres hallazgos críticos:
 
-1. **ContextualEffectSelector está muerto como decisor** — WAVE 1010 lo lobotomizó. Ahora es un repositorio puro, pero DecisionMaker aún lo importa para `getAvailableFromArsenal()` y `checkAvailability()`, creando una dependencia fantasma.
+1. **[RESUELTO WAVE 4992]** ContextualEffectSelector fue purificado. Renombrado a `ArsenalRepository`, métodos de decisión eliminados (`selectEffectForContext`, `calculateIntensity`, `getHighImpactEffect`). DecisionMaker ya no importa fantasmas. Es un repositorio puro de cooldowns y disponibilidad.
 2. **La competencia de ADN funciona, pero el registry es la única fuente de verdad** — WAVE 4843 destruyó las listas hardcodeadas (HEAVY_ARSENAL_EFFECTS, DIVINE_ARSENAL). Los `.lfx` ahora declaran `isHeavyCandidate`, `isDivineCandidate` y `validSections`. Esto es CORRECTO pero implica que el comportamiento de Selene depende 100% del contenido del registry.
-3. **Las 3 vías de disparo (Divine, DNA, Fuzzy→Hunt) están sanas en jerarquía, pero Fuzzy está DORMANTE en la práctica** — WAVE 2109 lo castró para evitar "void screams" (Fuzzy ordena strike pero DNA no tiene propuesta cargada). El resultado: Fuzzy solo acelera decisiones cuando DNA ya está listo. Nunca dispara solo.
+3. **Las 3 vías de disparo (Divine, DNA, Fuzzy→Hunt) están sanas en jerarquía. Fuzzy fue descastrado en WAVE 4947 MISIÓN 4** — `hasDNAProposal` eliminado. Fuzzy ahora dispara independientemente de DNA cuando conf≥0.50/0.60. La vía Fuzzy pura está activa.
 
 ---
 
@@ -25,15 +25,15 @@ Selene tiene **16 submotores** operando en 4 capas. La mayoría de sus algoritmo
 
 | Mood | thresholdMultiplier | raw 0.60 → effective | raw 0.70 → effective | raw 0.75 → effective |
 |------|--------------------:|-------------------:|---------------------:|---------------------:|
-| CALM | 2.5 | 0.24 ❌ | 0.28 ❌ | 0.30 ❌ |
+| CALM | 1.2 | 0.50 ✅ | 0.58 ✅ | 0.63 ✅ |
 | BALANCED | 1.10 | 0.55 ✅ | 0.64 ✅ | 0.68 ✅ |
 | PUNK | 0.8 | 0.75 ✅ | 0.88 ✅ | 0.94 ✅ |
 
 **Diagnóstico:**
-- En CALM, Hunt necesita `rawWorthiness ≥ 1.375` para pasar. Imposible (max teórico = 1.0).
-- En la práctica, **CALM nunca ejecuta el pipeline DNA completo** a través de este gate. Solo puede disparar vía DIVINE (que no usa este gate) o vía Fuzzy→Hunt fallback.
-- BALANCED es el único mood donde el gate respira — `raw=0.61` pasa justo.
-- **Esto es INTENCIONAL** (WAVE 1182.2): CALM = efectos suaves, no DNA heavy.
+- En CALM (WAVE 4947 MISIÓN 2: 2.5→1.2), `raw=0.61 → effective=0.51` queda justo debajo del gate. `raw=0.70 → effective=0.58` pasa limpio.
+- En la práctica, **CALM PUEDE ejecutar el pipeline DNA** cuando worthiness es ≥0.66. Ya no está bloqueado por diseño.
+- BALANCED sigue siendo el mood más confiable — `raw=0.61` pasa justo.
+- **El gate de CALM ahora respira** (WAVE 4947 MISIÓN 2). No depende de DIVINE ni Fuzzy fallback forzoso.
 
 ### 1.2 Gate de Zona (DreamEngineIntegrator)
 
@@ -102,9 +102,10 @@ Selene tiene **16 submotores** operando en 4 capas. La mayoría de sus algoritmo
 
 | Parámetro | CALM | BALANCED | PUNK |
 |-----------|------|----------|------|
-| `thresholdMultiplier` | 2.5 | 1.10 | 0.8 |
+| `thresholdMultiplier` | **1.2** | 1.10 | 0.8 |
 | `cooldownMultiplier` | 4.0 | 2.2 | 0.7 |
-| `ethicsThreshold` | 0.95 | 1.20 | 0.75 |
+| `ethicsThreshold` | 0.95 | **1.0** | 0.75 |
+| `allowEthicsOverride` | true | **false** | true |
 | `maxIntensity` | 0.6 | 1.0 | 1.0 |
 | `minIntensity` | — | — | 0.5 |
 | `blockList` | 11 efectos | — | — |
@@ -113,17 +114,17 @@ Selene tiene **16 submotores** operando en 4 capas. La mayoría de sus algoritmo
 ### 2.2 Análisis por Mood
 
 **CALM ("Cubata en mano"):**
-- `thresholdMultiplier = 2.5`: Necesitas `rawScore ≥ 0.70` para que `effective ≥ 0.28`. Ni siquiera pasa el defuzzify de Fuzzy (que necesita `effective > 0.25`).
+- `thresholdMultiplier = 1.2` (WAVE 4947 MISIÓN 2: 2.5→1.2): `raw=0.66 → effective=0.55` pasa justo. `raw=0.70 → effective=0.58` pasa cómodo.
 - `cooldownMultiplier = 4.0`: 28s-48s entre efectos. Target EPM = 1-2.
 - `maxIntensity = 0.6`: Todo está suavizado al 60%.
 - `blockList` incluye: todos los strobes, raids, meltdowns, glitches, solar_flares, seismic_snaps.
-- **Conclusión forense:** CALM es un modo de "efectos suaves o nada". El pipeline DNA raramente se ejecuta (worthiness gate falla). Los efectos que sí pasan son seleccionados por el fallback del DreamSimulator o por el arsenal suave del registry.
+- **Conclusión forense:** CALM ahora puede ejecutar el pipeline DNA cuando worthiness es sólido (≥0.66). El gate ya no es una pared. Los efectos que pasan siguen siendo suaves por blockList + maxIntensity, pero provienen del DNA real, no de fallback forzoso.
 
 **BALANCED ("El profesional"):**
 - `thresholdMultiplier = 1.10`: Recalibrado en WAVE 2492 de 1.20 → 1.10 para hard techno. `raw=0.61` pasa justo.
 - `cooldownMultiplier = 2.2`: Recalibrado en WAVE 4829 de 1.8 → 2.2 para dar más aire en latino (target 3-4 EPM).
-- `ethicsThreshold = 1.20`: El override de cooldown por DNA requiere `ethicalScore ≥ 1.20`. Dado que `ethicalScore` máximo teórico es 1.0, **este override es IMPOSIBLE en la práctica** (a menos que el cálculo de ethicalScore supere 1.0 por algún path, lo cual no ocurre con weighted product ≤ 1.0).
-- **Conclusión forense:** BALANCED es el modo más sano. El override de cooldown por ethics está técnicamente bloqueado (`ethicsThreshold = 1.20 > max possible = 1.0`), lo cual es INTENCIONAL (WAVE 2104.2: "el override debe ser ÉPICO, no rutinario").
+- `ethicsThreshold = 1.0` (WAVE 4992: 1.20→1.0): El umbral ya no es un hack mágico. `allowEthicsOverride = false` hace el bloqueo EXPLÍCITO.
+- **Conclusión forense:** BALANCED es el modo más sano. El override de cooldown por ethics está DESHABILITADO por diseño (`allowEthicsOverride = false`). Cooldowns son ley en BALANCED. No hay trucos matemáticos.
 
 **PUNK ("El DJ se ha drogado"):**
 - `thresholdMultiplier = 0.8`: 20% más fácil de disparar.
@@ -254,8 +255,8 @@ Prioridad 0: DNA BRAIN (IntegrationDecision)
 Prioridad 1: FUZZY STRIKE
   └─ fuzzyDecision.action === 'strike'/'force_strike'
   └─ AND fuzzyDecision.confidence ≥ 0.50 (strike) / 0.60 (force_strike)
-  └─ AND hasDNAProposal (WAVE 2109 FIX — no más void screams)
   └─ AND NO buildup+heavy arsenal block (WAVE 2203)
+  └─ 🔪 WAVE 4947 MISIÓN 4: hasDNAProposal ELIMINADO — Fuzzy ya no requiere DNA cargado
   └─ Acción: strike
 
 Prioridad 2: HUNT STRIKE
@@ -285,15 +286,17 @@ Default: HOLD
 |-----|--------|-------------|
 | **DIVINE** | 🟢 Sana | Candados WAVE 4861 (absoluta energía) + WAVE 4864 (spectral) + WAVE 2201 (energy gate 0.72) hacen que DIVINE sea raro pero legítimo. No dispara en silencios. |
 | **DNA** | 🟢 Sana | El pipeline funciona. El único riesgo es que en BALANCED con `thresholdMultiplier=1.10`, `rawWorthiness` de 0.55-0.60 no pasa el gate 0.55. Pero eso es intencional (WAVE 2492). |
-| **Fuzzy→Hunt** | 🟡 Dormante | Fuzzy nunca dispara solo (WAVE 2109). Solo acelera cuando DNA ya tiene propuesta. Hunt sigue siendo el sensor de fondo. La vía Fuzzy pura está muerta. |
+| **Fuzzy→Hunt** | 🟢 Sana (WAVE 4947) | WAVE 4947 MISIÓN 4 eliminó `hasDNAProposal`. Fuzzy ahora dispara independientemente de DNA cuando conf≥0.50/0.60. La vía Fuzzy pura está **ACTIVA**. |
 
-### 5.3 El Problema del "Void Scream" (WAVE 2109)
+### 5.3 El Problema del "Void Scream" (WAVE 2109) — RESUELTO EN WAVE 4947
 
-**Síntoma histórico:** Fuzzy emitía `action='strike'` 16 veces, pero `generateStrikeDecision()` encontraba `dreamIntegration?.approved === false` → SILENCE. Resultado: 16 líneas de log `[FUZZY STRIKE → strike]` seguidas de `SILENCE: DNA has no proposal`.
+**Síntoma histórico:** Fuzzy emitía `action='strike'` 16 veces, pero `generateStrikeDecision()` encontraba `dreamIntegration?.approved === false` → SILENCE.
 
-**Fix (WAVE 2109):** Fuzzy STRIKE solo dispara `return 'strike'` si `hasDNAProposal === true`. Si DNA no tiene nada cargado, Fuzzy cae through a Hunt/prediction/buildup.
+**Fix (WAVE 2109):** Se añadió `hasDNAProposal` como requisito para evitar void screams.
 
-**Efecto colateral:** Fuzzy ya no puede disparar efectos independientemente de DNA. Necesita que el pipeline DNA haya corrido recientemente y tenga un cache válido.
+**Nuevo problema (WAVE 4947):** `hasDNAProposal` castró a Fuzzy. Cuando DNA estaba en cooldown, Fuzzy era completamente inútil.
+
+**Fix definitivo (WAVE 4947 MISIÓN 4):** `hasDNAProposal` ELIMINADO. Fuzzy `strike` y `force_strike` disparan directamente cuando `confidence ≥ 0.50/0.60`, sin depender de DNA. El void scream era un problema de log, no de hardware — era preferible un log ruidoso que un pipeline dormido.
 
 ---
 
@@ -389,7 +392,7 @@ El `DynamicEffectRegistry` lee los `.lfx` y expone:
 | DREAM_CACHE_TTL | 5000ms | DreamEngineIntegrator | WAVE 900.4 | Vida del cache de sueños |
 | DNA_SMOOTHING_ALPHA | 0.30 | DNAAnalyzer | WAVE 2107 | EMA anti-jitter |
 | DNA_DIVERSITY_WINDOW | 120000ms | DNAAnalyzer | WAVE 2095.3 | Ventana anti-repetición |
-| CALM_thresholdMultiplier | 2.5 | MoodController | WAVE 1182.2 | Filtro CALM |
+| CALM_thresholdMultiplier | **1.2** | MoodController | WAVE 4947 MISIÓN 2 | Filtro CALM (era 2.5, WAVE 1182.2) |
 | BALANCED_thresholdMultiplier | 1.10 | MoodController | WAVE 2492 | Filtro BALANCED |
 | PUNK_thresholdMultiplier | 0.8 | MoodController | WAVE 700.1 | Filtro PUNK |
 
@@ -399,23 +402,23 @@ El `DynamicEffectRegistry` lee los `.lfx` y expone:
 
 ### 9.1 Hallazgos Críticos
 
-1. **[ARCHITECTURE]** ContextualEffectSelector es un zombi. No decide, pero sigue siendo el gatekeeper de cooldowns para DecisionMaker y SeleneTitanConscious. Migración incompleta.
+1. **[ARCHITECTURE] RESUELTO WAVE 4992.** ContextualEffectSelector fue renombrado a `ArsenalRepository`, purificado de métodos de decisión, y todos los import sites actualizados. Migración completa.
 
-2. **[LOGIC]** BALANCED `ethicsThreshold = 1.20` es técnicamente imposible de alcanzar (max score = 1.0). El override de cooldown por DNA nunca ocurre en BALANCED. Esto es intencional según WAVE 2104.2, pero podría ser un bug si el diseñador esperaba que override funcionase ocasionalmente.
+2. **[LOGIC] RESUELTO WAVE 4992.** BALANCED ahora usa `ethicsThreshold = 1.0` + `allowEthicsOverride = false`. El hack matemático desapareció; el bloqueo es explícito y semántico. Cooldowns son ley en BALANCED.
 
-3. **[LOGIC]** CALM nunca ejecuta el pipeline DNA completo debido al worthiness gate (`effective = raw / 2.5`, necesita `raw ≥ 1.375`, imposible). Los efectos en CALM provienen de DIVINE (raro) o del fallback del DreamSimulator cuando Fuzzy desbloquea el pipeline (pero Fuzzy necesita DNA propuesta, que no existe porque el pipeline no corrió). **CALM depende de Prioridad 3+ (drop/buildup/subtle) o de HOLD puro.**
+3. **[LOGIC] RESUELTO WAVE 4947** CALM thresholdMultiplier cambió de 2.5→1.2. Ahora `raw=0.66 → effective=0.55` pasa el gate. El pipeline DNA puede ejecutarse en CALM cuando worthiness es sólido. **YA NO aplica.**
 
-4. **[LOGIC]** Fuzzy está castrado (WAVE 2109). Su único propósito actual es acelerar decisiones cuando DNA ya tiene propuesta. La vía Fuzzy independiente está muerta.
+4. **[LOGIC] RESUELTO WAVE 4947** Fuzzy fue descastrado en WAVE 4947 MISIÓN 4. `hasDNAProposal` fue eliminado del gate de strike/force_strike. Fuzzy ahora dispara independientemente de DNA cuando conf≥0.50/0.60. La vía Fuzzy independiente está **ACTIVA**. **YA NO aplica.**
 
 5. **[RISK]** VisualConscienceEngine.suggestAlternatives() hardcodea IDs de efecto (`acid_sweep`, `tropical_pulse`, `tidal_wave`). Si estos IDs no existen en el DynamicEffectRegistry, las alternativas fallan silenciosamente.
 
 ### 9.2 Recomendaciones (Solo constatación, no ejecución)
 
-- **R1:** Documentar explícitamente que CALM no usa el pipeline DNA completo. Si el objetivo es que CALM sí tenga efectos suaves generados por DNA, el worthiness gate necesitaría un bypass o un umbral separado para CALM.
-- **R2:** Evaluar si `ethicsThreshold = 1.20` en BALANCED debería ser `1.0` o `0.95` para permitir overrides legítimos pero raros.
+- **R1: RESUELTO WAVE 4947.** CALM ahora usa thresholdMultiplier=1.2 — el pipeline DNA respira en CALM.
+- **R2: RESUELTO WAVE 4992.** `allowEthicsOverride = false` en BALANCED hace el bloqueo explícito. `ethicsThreshold = 1.0` elimina el hack mágico.
 - **R3:** Migrar `suggestAlternatives()` a consultar el DynamicEffectRegistry en lugar de hardcodear IDs.
-- **R4:** Auditar si ContextualEffectSelector puede ser reemplazado completamente por `EffectManager.checkAvailability()` + `DynamicEffectRegistry.getDivineArsenal()`.
-- **R5:** Considerar reactivar Fuzzy con un path independiente que NO requiera DNA proposal (p.ej. usando el arsenal suave del registry directamente).
+- **R4: RESUELTO WAVE 4992.** ContextualEffectSelector fue purificado renombrado a `ArsenalRepository`. Ya es solo un repositorio de cooldowns/disponibilidad.
+- **R5: RESUELTO WAVE 4947.** Fuzzy fue descastrado en WAVE 4947 MISIÓN 4. Ya no requiere DNA proposal.
 
 ---
 

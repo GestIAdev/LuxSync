@@ -35,7 +35,6 @@ import type { IntegrationDecision } from '../integration/DreamEngineIntegrator'
 // 🔪 WAVE 1010: Zone Awareness (movido desde ContextualEffectSelector)
 import type { EnergyZone, EnergyContext } from '../../protocol/MusicalContext'
 // 🎨 WAVE 1028: THE CURATOR - Texture Filter integration
-import { getContextualEffectSelector } from '../../effects/ContextualEffectSelector'
 import type { SpectralContext } from '../../protocol/MusicalContext'
 // 🩸 WAVE 2105: FUZZY RESURRECTION — Fuzzy gets a real vote
 import type { FuzzyDecision } from './FuzzyDecisionMaker'
@@ -43,6 +42,20 @@ import type { FuzzyDecision } from './FuzzyDecisionMaker'
 import { getDNAAnalyzer } from '../dna/EffectDNA'
 // ⚡ WAVE 4843: COGNITIVE BRIDGE — Registry como fuente de verdad de pesadez de efectos
 import { getDynamicEffectRegistry } from '../../arsenal/DynamicEffectRegistry'
+import { MoodController } from '../../mood/MoodController'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ⏱️ WAVE 5009: THROTTLE MECHANISM PARA LOGS DE BLOQUEO
+// ═══════════════════════════════════════════════════════════════════════════
+const logThrottles = new Map<string, number>()
+function throttledLog(reason: string, message: string, limitMs: number = 1000) {
+  const now = Date.now()
+  const lastTime = logThrottles.get(reason) || 0
+  if (now - lastTime >= limitMs) {
+    console.log(message)
+    logThrottles.set(reason, now)
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🔪 WAVE 1010: DIVINE THRESHOLD & VIBE-AWARE ARSENAL
@@ -96,7 +109,13 @@ function isHeavyEffect(effectId: string): boolean {
 function isEffectAllowedInSection(effectId: string, section: string): boolean {
   const entry = getDynamicEffectRegistry().getEntry(effectId)
   if (!entry || entry.validSections.length === 0) return true
-  return entry.validSections.includes(section)
+  
+  // ⏳ WAVE 5009 FIX 5: Section Aliasing
+  // Algunos .lfx usan 'build' en lugar de 'buildup', o 'active' en lugar de 'chorus'
+  const normalizedSection = section === 'buildup' ? 'build' : 
+                            section === 'chorus' ? 'active' : section
+  
+  return entry.validSections.includes(section) || entry.validSections.includes(normalizedSection)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -350,8 +369,11 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
   //
   // EXCEPCIÓN: Si no hay historial aún (primeros 30s), usar 0.45 como fallback.
   // ═══════════════════════════════════════════════════════════════════════
-  const ABSOLUTE_ENERGY_GATE_RATIO = 0.60
-  const ABSOLUTE_ENERGY_GATE_FALLBACK = 0.45
+  // 🐘 WAVE 5001: Calibración Latino Montecarlo
+  // Los redobles bajan temporalmente al ~50%. 0.60 ahogaba drops legítimos.
+  // 0.48 permite el clímax tras el redoble sin habilitar silencios (< 30%).
+  const ABSOLUTE_ENERGY_GATE_RATIO = 0.48
+  const ABSOLUTE_ENERGY_GATE_FALLBACK = 0.40
   const rawEnergy = energyContext?.absolute ?? pattern.rawEnergy ?? 0
   const maxHistoric = (energyMaxHistoric ?? 0) > 0 ? energyMaxHistoric! : null
   const absoluteGateThreshold = maxHistoric !== null
@@ -369,7 +391,7 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
   //
   // SOLUCIÓN: En latino/dembow, exigir presencia física del bajo/bombo:
   //   • hasHeavyKick:   lowBand >= maxHistoric * 0.55  (bombo empujando fuerte)
-  //   • isNotJustVocals: lowBand >= midBand * 0.8     (bajo domina a la voz)
+  //   • isNotJustVocals: lowBand >= midBand * 0.95    (WAVE 5001 Spotify fix)
   //
   // MANTENIMIENTO: Este gate solo afecta DIVINE/DROP/HEAVY. Efectos menores
   // (DNA, hunt_strike suave, buildup, ambientales) siguen fluyendo libremente
@@ -383,7 +405,9 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
     const midBand = pattern.midPresence ?? 0
     const kickThreshold = (maxHistoric ?? 0) * 0.75
     const hasHeavyKick = lowBand >= kickThreshold
-    const isNotJustVocals = lowBand >= (midBand * 0.8)
+    // 🔪 WAVE 5000: Suavizar multiplicador de 0.8 a 1.2 (permitir más medios)
+    // 🔪 WAVE 5001: Bajar multiplicador a 0.95 para pistas Hi-Fi y Spotify
+    const isNotJustVocals = lowBand >= (midBand * 0.95)
     spectralGateOpen = hasHeavyKick && isNotJustVocals
     // 🌴 WAVE 4865: Log suprimido — candado opera en silencio salvo intención real de disparo
   }
@@ -429,10 +453,13 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
   
   // 🔒 WAVE 1177: Si hay dictador activo, no intentar DIVINE
   // (El efecto activo tiene "la palabra", no le interrumpimos)
+  const isTechnoVibe = (pattern.vibeId as string) === 'techno-club' || (pattern.vibeId as string) === 'hard-techno' || (pattern.vibeId as string)?.includes('techno') || false
+  const effectiveDivineThreshold = isTechnoVibe ? 2.5 : DIVINE_THRESHOLD
+
   if (activeDictator) {
     // No loggear nada - silencio total para evitar spam
     // El dictador ya fue anunciado cuando se disparó
-  } else if (currentZ >= DIVINE_THRESHOLD) {
+  } else if (currentZ >= effectiveDivineThreshold) {
     const zone = energyContext?.zone ?? 'gentle'
     // 🔬 WAVE 2494: Usar absolute (rawEnergy) para eliminar desync temporal con Z-score
     // Z se computa sobre rawEnergy → absolute y Z pican en el MISMO frame
@@ -536,10 +563,11 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
     // Esto reemplaza el HEAVY_ARSENAL_EFFECTS hardcodeado: los propios .lfx declaran
     // en qué secciones son admisibles. Un efecto sin validSections pasa sin restricción.
     if (section === 'buildup' && !isEffectAllowedInSection(proposedEffect, section)) {
-      console.log(
-        `[DecisionMaker 🛡️] BUILDUP RESTRICTION: "${proposedEffect}" BLOCKED — ` +
-        `section=${section}, Z=${currentZ.toFixed(2)}σ → validSections: [${getDynamicEffectRegistry().getEntry(proposedEffect)?.validSections.join(', ') ?? 'none'}]`
-      )
+      // 🔇 WAVE 4998: Log silenciado — BUILDUP RESTRICTION ya manejado por validSections
+      // console.log(
+      //   `[DecisionMaker 🛡️] BUILDUP RESTRICTION: "${proposedEffect}" BLOCKED — ` +
+      //   `section=${section}, Z=${currentZ.toFixed(2)}σ → validSections: [${getDynamicEffectRegistry().getEntry(proposedEffect)?.validSections.join(', ') ?? 'none'}]`
+      // )
       // Fall through — el buildup handler (más abajo) se encargará con efectos suaves
     } else {
       return 'strike'  // DNA aprobó → strike con efecto de DNA
@@ -592,11 +620,12 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
   if (fuzzyDecision) {
     if (fuzzyBlockedByBuildup) {
       const blockedEffect = dreamIntegration!.effect!.effect
-      console.log(
-        `[DecisionMaker 🛡️] FUZZY BUILDUP WALL: "${blockedEffect}" ` +
-        `blocked — Fuzzy wanted ${fuzzyDecision.action} (${fuzzyDecision.dominantRule}) ` +
-        `but section=${section}, validSections: [${getDynamicEffectRegistry().getEntry(blockedEffect)?.validSections.join(', ') ?? 'none'}]`
-      )
+      // 🔇 WAVE 4998: Log silenciado — FUZZY BUILDUP WALL ya manejado por validSections
+      // console.log(
+      //   `[DecisionMaker 🛡️] FUZZY BUILDUP WALL: "${blockedEffect}" ` +
+      //   `blocked — Fuzzy wanted ${fuzzyDecision.action} (${fuzzyDecision.dominantRule}) ` +
+      //   `but section=${section}, validSections: [${getDynamicEffectRegistry().getEntry(blockedEffect)?.validSections.join(', ') ?? 'none'}]`
+      // )
       // Fall through — buildup_enhance handler below will manage with soft effects
     } else {
       // 🔪 WAVE 4947 MISIÓN 4: Descastrar Fuzzy — Eliminar restricción hasDNAProposal
@@ -609,10 +638,11 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
       }
       // 🔪 WAVE 4947 MISIÓN 4: Descastrar Fuzzy — Eliminar restricción hasDNAProposal
       if (fuzzyDecision.action === 'strike' && fuzzyDecision.confidence >= 0.50) {
-        console.log(
-          `[DecisionMaker 🧠] FUZZY STRIKE → strike | ` +
-          `conf=${fuzzyDecision.confidence.toFixed(2)} | ${fuzzyDecision.dominantRule}`
-        )
+        // 🔇 WAVE 4998: Log silenciado — FUZZY STRICE decision activa
+        // console.log(
+        //   `[DecisionMaker 🧠] FUZZY STRIKE → strike | ` +
+        //   `conf=${fuzzyDecision.confidence.toFixed(2)} | ${fuzzyDecision.dominantRule}`
+        // )
         return 'strike'
       }
     }
@@ -944,7 +974,9 @@ function generateStrikeDecision(
   }
   
   output.debugInfo.reasoning = `🧘 SILENCE: DNA has no proposal | vibe=${pattern.vibeId} | energy=${pattern.rawEnergy.toFixed(2)}`
-  console.log(`[DecisionMaker 🧘] SILENCE: DNA has no proposal | ${pattern.vibeId} | E=${pattern.rawEnergy.toFixed(2)}`)
+  // 🔇 WAVE 4998: Log silenciado — SILENCE es estado normal, no requiere console
+  // ⏳ WAVE 5009 FIX 1: Restaurar log usando Throttle (max 1 por segundo)
+  throttledLog('silence_dna', `[DecisionMaker 🧘] SILENCE: DNA has no proposal | ${pattern.vibeId} | E=${pattern.rawEnergy.toFixed(2)}`, 1000)
   
   return output
 }
@@ -977,8 +1009,8 @@ function generateDropPreparationDecision(
     const dropRawEnergy = inputs.energyContext?.absolute ?? inputs.pattern.rawEnergy ?? 0
     const dropMaxHistoric = (inputs.energyMaxHistoric ?? 0) > 0 ? inputs.energyMaxHistoric! : null
     const dropGateThreshold = dropMaxHistoric !== null
-      ? dropMaxHistoric * 0.60
-      : 0.45
+      ? dropMaxHistoric * 0.48 // 📉 WAVE 5001: 0.60 → 0.48
+      : 0.40 // 📉 WAVE 5001: 0.45 → 0.40
     const dropEnergyGateOpen = dropRawEnergy >= dropGateThreshold
 
     // 🌴 WAVE 4864: SPECTRAL GATE — Anti-Bad-Bunny (DROP path)
@@ -990,7 +1022,8 @@ function generateDropPreparationDecision(
       const midBand = inputs.pattern.midPresence ?? 0
       const kickThreshold = (dropMaxHistoric ?? 0) * 0.75
       const hasHeavyKick = lowBand >= kickThreshold
-      const isNotJustVocals = lowBand >= (midBand * 0.8)
+      // 🔪 WAVE 5001: Bajar multiplicador a 0.95 para pistas Hi-Fi y Spotify
+      const isNotJustVocals = lowBand >= (midBand * 0.95)
       dropSpectralGateOpen = hasHeavyKick && isNotJustVocals
       // 🌴 WAVE 4865: Log temprano suprimido — candado silencioso, detalle en DROP BLOCKED si aplica
     }
@@ -998,9 +1031,11 @@ function generateDropPreparationDecision(
 
     if (!dropAbsGateOpen) {
       if (!dropEnergyGateOpen) {
-        console.log(
+        // ⏳ WAVE 5009 FIX 1: Restaurar log de AbsGate usando Throttle
+        throttledLog('drop_blocked_abs_gate',
           `[DecisionMaker 🐘] DROP BLOCKED (AbsGate): E=${dropRawEnergy.toFixed(2)} < ` +
-          `${dropGateThreshold.toFixed(2)} (60% of max=${(dropMaxHistoric ?? 0).toFixed(2)}) → no heavy fire in a valley`
+          `${dropGateThreshold.toFixed(2)} (60% of max=${(dropMaxHistoric ?? 0).toFixed(2)}) → no heavy fire in a valley`,
+          1000
         )
       } else {
         // 🌴 WAVE 4865: Bloqueado por Spectral Gate en DROP candidato real
@@ -1008,9 +1043,11 @@ function generateDropPreparationDecision(
         const midBand = inputs.pattern.midPresence ?? 0
         const kickThreshold = (dropMaxHistoric ?? 0) * 0.75
         const hasHeavyKick = lowBand >= kickThreshold
-        console.log(
+        // ⏳ WAVE 5009 FIX 1: Restaurar log de SpectralGate usando Throttle
+        throttledLog('drop_blocked_spectral_gate',
           `[DecisionMaker 🌴] DROP BLOCKED (SpectralGate): ${!hasHeavyKick ? 'Low-Band Insufficient' : 'Vocals Eclipse Beat'} | ` +
-          `LOW=${lowBand.toFixed(3)} MID=${midBand.toFixed(3)}`
+          `LOW=${lowBand.toFixed(3)} MID=${midBand.toFixed(3)}`,
+          1000
         )
       }
       // Sin effectDecision — physics reactivas siguen
@@ -1018,41 +1055,66 @@ function generateDropPreparationDecision(
     if (dropAbsGateOpen) {
     // 🎧 WAVE 4863/4865: Correlación suprimida en PASS para silencio operativo.
     // El FFT X-RAY en SeleneTitanConscious sigue registrando bandas cada 3s.
-    // 🔒 WAVE 2187: THE DROP LOCK — Anti-Esquizofrenia
-    // Si ya disparamos un efecto en este drop, NO volver a disparar.
-    // Un Drop = Un Efecto principal. El DIVINE (Z>4σ) tiene su propio path.
-    if (!acquireDropLock()) {
-      console.log(`[DecisionMaker 🔒] DROP LOCKED — effect already fired for this drop section. Suppressing.`)
+    const vibeId = pattern.vibeId
+    // ⚡ WAVE 4914+4915: LIVE REGISTRY — única fuente de verdad para drops.
+    let _registryDivineForDrop = getDynamicEffectRegistry().getDivineArsenal(vibeId)
+    if (_registryDivineForDrop.length < 2) {
+      const heavyFallback = getDynamicEffectRegistry().getHeavyArsenal(vibeId)
+      // Fusionar evitando duplicados
+      const merged = [..._registryDivineForDrop, ...heavyFallback]
+      _registryDivineForDrop = Array.from(new Map(merged.map(item => [item.id, item])).values())
+    }
+    const dropArsenal: string[] = _registryDivineForDrop.map(e => e.id)
+
+    if (dropArsenal.length === 0) {
+      console.warn(`[DecisionMaker 🔴] DROP registry empty for vibe=${vibeId} — no drop effect possible.`)
       // Sin effectDecision — las physics reactivas siguen funcionando
     } else {
-      const vibeId = pattern.vibeId
-      // ⚡ WAVE 4914+4915: LIVE REGISTRY — única fuente de verdad para drops.
-      const _registryDivineForDrop = getDynamicEffectRegistry().getDivineArsenal(vibeId)
-      const dropArsenal: string[] = _registryDivineForDrop.map(e => e.id)
-
-      if (dropArsenal.length === 0) {
-        console.warn(`[DecisionMaker 🔴] DROP registry empty for vibe=${vibeId} — no drop effect possible.`)
-        // Sin effectDecision — las physics reactivas siguen funcionando
-      } else {
-        // 🎲 WAVE 2183: DIVERSITY FIX — DROP no puede saltarse la penalización
-        // 🎲 WAVE 2183.1: LOBOTOMY FIX — pasar [winner] no el arsenal completo
-        // ANTES: dropArsenal completo → Repository cogía índice 0 → neon_blinder siempre
-        // AHORA: [winner] → Repository solo valida HARD_COOLDOWN. El General ya eligió.
-        const suggestedEffect = selectFromArsenalWithDiversity(dropArsenal)
+      // 🎲 WAVE 2183: DIVERSITY FIX — DROP no puede saltarse la penalización
+      // 🎲 WAVE 2183.1: LOBOTOMY FIX — pasar [winner] no el arsenal completo
+      // ANTES: dropArsenal completo → Repository cogía índice 0 → neon_blinder siempre
+      // AHORA: [winner] → Repository solo valida HARD_COOLDOWN. El General ya eligió.
+      const suggestedEffect = selectFromArsenalWithDiversity(dropArsenal)
+      
+      // ═══════════════════════════════════════════════════════════════════
+      // 🛡️ WAVE 2200.2 + WAVE 4860 + WAVE 5000: ANTI-FAKE-DROP — Z-Score Sanity Check
+      // ═══════════════════════════════════════════════════════════════════
+      const currentZ = zScore ?? 0
+      const isLatinoVibe = vibeId === 'fiesta-latina' || (vibeId as string)?.includes('latina') || false
+      const isTechnoVibeForDrop = vibeId === 'techno-club' || (vibeId as string) === 'hard-techno' || (vibeId as string)?.includes('techno') || false
+      // 🔪 WAVE 5000: Bajar umbral latino de 1.2 a 0.85
+      let antiFakeThreshold = isLatinoVibe ? 0.85 : 0.5
+      
+      if (isTechnoVibeForDrop) {
+        const lowBandDrop = inputs.pattern.bassPresenceSustained ?? inputs.pattern.bassPresence ?? 0
+        // Si el bombo revienta los subgraves (>0.65), ignorar el Z-Score plano típico del Minimal.
+        antiFakeThreshold = lowBandDrop > 0.65 ? -1.0 : 0.2
         
-        // ═══════════════════════════════════════════════════════════════════
-        // 🛡️ WAVE 2200.2 + WAVE 4860: ANTI-FAKE-DROP — Z-Score Sanity Check
-        // ═══════════════════════════════════════════════════════════════════
-        const currentZ = zScore ?? 0
-        const isLatinoVibe = vibeId === 'fiesta-latina' || vibeId?.includes('latina') || false
-        const antiFakeThreshold = isLatinoVibe ? 1.2 : 0.5
-        // ⚡ WAVE 4843: COGNITIVE BRIDGE — isHeavyEffect() reemplaza HEAVY_ARSENAL_EFFECTS.has()
-        if (isHeavyEffect(suggestedEffect) && currentZ < antiFakeThreshold) {
-          console.log(
-            `[DecisionMaker 🛡️] ANTI-FAKE-DROP (${isLatinoVibe ? 'LATINO' : 'STANDARD'}): "${suggestedEffect}" ABORTED — ` +
-            `Z=${currentZ.toFixed(2)}σ < ${antiFakeThreshold} (energy insufficient for heavy arsenal)`
-          )
-          // Sin effectDecision — las physics reactivas manejan la transición suavemente
+        // ⏳ WAVE 5009 FIX 2: Bajar los escudos de Minimal Techno si el ADN lo aprobó
+        // Si estamos en PUNK o BALANCED y el integrador ya aprobó esto, confiamos
+        // El Minimal juega con texturas y subidas sutiles (Z muy plano, usualmente < 0.2)
+        if (inputs.dreamIntegration?.approved) {
+          const profileName = MoodController.getInstance().getCurrentProfile().name.toUpperCase()
+          if (profileName === 'PUNK' || profileName === 'BALANCED') {
+             // Reducción drástica del umbral para que el efecto "pesado" pero texturizado de DNA pase
+             antiFakeThreshold = -0.2 
+          }
+        }
+      }
+      // ⚡ WAVE 4843: COGNITIVE BRIDGE — isHeavyEffect() reemplaza HEAVY_ARSENAL_EFFECTS.has()
+      if (isHeavyEffect(suggestedEffect) && currentZ < antiFakeThreshold) {
+        // ⏳ WAVE 5009 FIX 1: Restaurar log de Anti-Fake-Drop usando Throttle
+        throttledLog('anti_fake_drop', 
+          `[DecisionMaker 🛡️] ANTI-FAKE-DROP (${isLatinoVibe ? 'LATINO' : 'STANDARD'}): "${suggestedEffect}" ABORTED — ` +
+          `Z=${currentZ.toFixed(2)}σ < ${antiFakeThreshold} (energy insufficient for heavy arsenal)`, 
+          1000
+        )
+        // Sin effectDecision — las physics reactivas manejan la transición suavemente
+      } else {
+        // 🔒 WAVE 5003: THE DROP LOCK — Anti-Esquizofrenia (MOVIDO AQUÍ)
+        // Si ya disparamos un efecto en este drop, NO volver a disparar.
+        if (!acquireDropLock()) {
+          console.log(`[DecisionMaker 🔒] DROP LOCKED — effect already fired for this drop section. Suppressing.`)
         } else {
           output.effectDecision = {
             effectType: suggestedEffect,

@@ -851,24 +851,21 @@ export class HephaestusRuntime {
     out.normalizedValue = normalizedValue ?? 0
     out.isCustomClip = isCustomClip ?? false
     out.clipId = clipId
-    // 🩹 WAVE 4830: COLOR LEAK FIX
-    // Copy color values INTO the per-slot pre-allocated objects instead of
-    // assigning the shared scratch buffer reference (_normRgbBuf).
-    // Previously: out.rgb = rgb  →  all slots pointing to same object mutated
-    // Now: values are copied per-slot, each frame is independent.
-    if (rgb && out.rgb) {
+    // 🩹 WAVE 4995: Protect Memory Reference
+    // Only copy color values if the track actually provides them.
+    // Do not destroy the pre-allocated references when processing non-color params.
+    if (rgb) {
+      if (!out.rgb) out.rgb = { r: 0, g: 0, b: 0 }
       out.rgb.r = rgb.r
       out.rgb.g = rgb.g
       out.rgb.b = rgb.b
-    } else {
-      out.rgb = rgb  // undefined path (non-color params)
     }
-    if (normalizedRgb && out.normalizedRgb) {
+    
+    if (normalizedRgb) {
+      if (!out.normalizedRgb) out.normalizedRgb = { r: 0, g: 0, b: 0 }
       out.normalizedRgb.r = normalizedRgb.r
       out.normalizedRgb.g = normalizedRgb.g
       out.normalizedRgb.b = normalizedRgb.b
-    } else {
-      out.normalizedRgb = normalizedRgb  // undefined path (non-color params)
     }
     // out.source is always 'hephaestus-runtime' — set once at buffer creation
   }

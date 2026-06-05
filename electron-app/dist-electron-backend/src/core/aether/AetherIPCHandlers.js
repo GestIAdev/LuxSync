@@ -419,12 +419,32 @@ export function registerAetherIPCHandlers() {
                 // Caché del radar (activo tóxico — sólo como última red de seguridad)
                 const cachePan = manual && Number.isFinite(manual['pan_base']) ? manual['pan_base'] : null;
                 const cacheTilt = manual && Number.isFinite(manual['tilt_base']) ? manual['tilt_base'] : null;
-                const resolvedAnchorPan = livePan ?? ikPan ?? fallbackPan ?? cachePan ?? 0.5;
-                const resolvedAnchorTilt = liveTilt ?? ikTilt ?? fallbackTilt ?? cacheTilt ?? 0.5;
-                // Purga del "Activo Tóxico": sobrescribimos la caché con la verdad actual
-                // para que un reactivar posterior siga viendo la posición correcta.
+                // WAVE 4986 Paso 2: El fallback absoluto 0.5 solo se aplica a nodos
+                // completamente nuevos — sin ningún historial en L2.
+                // Si el fixture tiene live override, IK, payload o caché, los respetamos.
+                // El 0.5 anterior pisaba la memoria IK de focos que ya tenían target spatial.
+                //
+                // hasAnyL2 = true → el nodo existe con algún dato válido en L2.
+                //   → resolvedAnchor = mejor dato disponible (puede ser null si IK aún no escribió pan_base)
+                //   → NO sobrescribir si null: el motor IK ya tiene el anchor real en tick()
+                // hasAnyL2 = false → nodo completamente nuevo
+                //   → resolvedAnchor = 0.5 (centro neutro, primer frame seguro)
+                const hasAnyL2Pan = livePan !== null || ikPan !== null || fallbackPan !== null || cachePan !== null;
+                const hasAnyL2Tilt = liveTilt !== null || ikTilt !== null || fallbackTilt !== null || cacheTilt !== null;
+                const resolvedAnchorPan = livePan ?? ikPan ?? fallbackPan ?? cachePan ?? (hasAnyL2Pan ? null : 0.5);
+                const resolvedAnchorTilt = liveTilt ?? ikTilt ?? fallbackTilt ?? cacheTilt ?? (hasAnyL2Tilt ? null : 0.5);
+                // Solo escribir el anchor en _manualOverrides cuando tenemos un valor real.
+                // Si resolvedAnchor es null (ej. nodo con IK activo en motor pero sin pan_base
+                // en manual), no tocar — el engine IK escribirá el anchor en el siguiente tick.
                 const prev = manual ?? {};
-                arbiter.setManualOverride(nodeId, { ...prev, pan_base: resolvedAnchorPan, tilt_base: resolvedAnchorTilt });
+                const anchorWrite = {};
+                if (resolvedAnchorPan !== null)
+                    anchorWrite['pan_base'] = resolvedAnchorPan;
+                if (resolvedAnchorTilt !== null)
+                    anchorWrite['tilt_base'] = resolvedAnchorTilt;
+                if (Object.keys(anchorWrite).length > 0) {
+                    arbiter.setManualOverride(nodeId, { ...prev, ...anchorWrite });
+                }
                 if (livePan !== null)
                     radarPreservedCount++; // "vivo" cuenta como radar-preserved en logs
                 else if (ikPan !== null)

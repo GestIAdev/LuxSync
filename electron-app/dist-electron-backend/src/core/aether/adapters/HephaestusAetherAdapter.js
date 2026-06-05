@@ -22,6 +22,8 @@ export class HephaestusAetherAdapter {
         this._intentPool = [];
         this._intentCursor = 0;
         this._frameIntents = [];
+        // 🩹 WAVE 4995: Zero-alloc intent consolidation map
+        this._frameIntentMap = new Map();
         this._emptyIntents = Object.freeze([]);
         // 🏛️ WAVE 2483: per-frame cached lookup of (clipId → spatialBehavior).
         // Avoids hitting the registry once per output (N outputs → 1 lookup per
@@ -46,10 +48,12 @@ export class HephaestusAetherAdapter {
         this._intentCursor = 0;
         this._frameIntents.length = 0;
         this._spatialCache.clear();
-        // Group outputs by fixtureId so we can emit one intent per node per family
-        // We process outputs sequentially: each output targets one fixture + one param.
-        // The NodeArbiter merges per-channel, so emitting multiple intents for the same
-        // nodeId is fine — LTP applies the last written value per channel.
+        this._frameIntentMap.clear();
+        // 🩹 WAVE 4995: Zero-alloc intent consolidation.
+        // Instead of emitting multiple disconnected intents for the same nodeId,
+        // we accumulate them in _frameIntentMap. The last track to touch a node
+        // for a specific channel will overwrite within the intent dictionary,
+        // sending exactly 1 intent per node to the Arbiter.
         for (let i = 0; i < outputs.length; i++) {
             const output = outputs[i];
             // Only heph_custom clips belong in the L3+ Aether path
@@ -68,69 +72,42 @@ export class HephaestusAetherAdapter {
             // Defaults to 'absolute' for clips without a registry entry (legacy behaviour).
             const behavior = this._resolveSpatialBehavior(output.clipId);
             // Find the node for this fixture that belongs to the target family.
-            // 🩹 WAVE 4852 FIX-B: the original code used `break` after the push,
-            // which is correct for the happy path. The silent-drop occurred when NO
-            // node matched `family` — the loop exited without pushing anything and
-            // control fell into the WAVE 4844 guard which then stamped dimmer=1.0
-            // without a corresponding color intent. The loop logic is correct; the
-            // root cause was the guard below (FIX-A). No change needed here beyond
-            // the clarifying comment — `break` after the push is intentional (one
-            // node per family per fixture).
-            //
-            // ⚡ WAVE 4917: Track whether any intent was pushed so the brightness
-            // fallback below can detect COLOR-only fixtures (no IMPACT node).
             let _foundNode = false;
             for (let j = 0; j < nodeIds.length; j++) {
                 const nodeId = nodeIds[j];
                 const nodeData = this._graph.getNodeData(nodeId);
                 if (!nodeData || nodeData.family !== family)
                     continue;
-                // Acquire an intent from the pool and populate values
-                const intent = this._acquireIntent(nodeId);
+                // 🩹 WAVE 4995: Retrieve intent from map or acquire new
+                let intent = this._frameIntentMap.get(nodeId);
+                if (!intent) {
+                    intent = this._acquireIntent(nodeId);
+                    this._frameIntentMap.set(nodeId, intent);
+                    this._frameIntents.push(intent);
+                }
                 _populateValues(intent.values, param, output, behavior);
-                this._frameIntents.push(intent);
                 _foundNode = true;
                 // Only one node per family per fixture — stop searching
                 break;
             }
             // ⚡ WAVE 4917: COLOR-ONLY BRIGHTNESS FALLBACK
-            //
-            // PROBLEM: For RGB-only fixtures (no physical dimmer channel) the node
-            // graph registers them as NodeFamily.COLOR, not IMPACT. The 'intensity'
-            // param targets IMPACT → no node found → L3 emits nothing for this
-            // fixture's luminance channel. L0's LiquidAetherAdapter._routeMoodToColor
-            // Intensity writes 'brightness=musicEnergy' to the COLOR node every frame
-            // and NodeResolver._translateColor uses it as a multiplicative scalar on
-            // r/g/b. Result: the par continues to breathe with L0's musical energy
-            // while acid-color-pars drives the hue — the classic "L0 bleeds back"
-            // symptom on back/front pars even though L3 has the color.
-            //
-            // FIX: If param='intensity' found no IMPACT node, locate the COLOR node
-            // for this fixture and emit 'brightness=normalizedValue'. LTP in
-            // NodeArbiter._applyIntent then overrides L0's brightness with L3's
-            // curve value (0 when the sweep is not in this zone, >0 when it is).
             if (!_foundNode && param === 'intensity') {
                 for (let j = 0; j < nodeIds.length; j++) {
                     const nodeId = nodeIds[j];
                     const nodeData = this._graph.getNodeData(nodeId);
                     if (!nodeData || nodeData.family !== NodeFamily.COLOR)
                         continue;
-                    const intent = this._acquireIntent(nodeId);
+                    // 🩹 WAVE 4995: Retrieve intent from map or acquire new
+                    let intent = this._frameIntentMap.get(nodeId);
+                    if (!intent) {
+                        intent = this._acquireIntent(nodeId);
+                        this._frameIntentMap.set(nodeId, intent);
+                        this._frameIntents.push(intent);
+                    }
                     intent.values['brightness'] = output.normalizedValue;
-                    this._frameIntents.push(intent);
                     break;
                 }
             }
-            // ⚡ WAVE 4844 (NEUTRALIZED by WAVE 4852 FIX-A):
-            // The original guard stamped dimmer=1.0 on the :impact node whenever a
-            // color intent was emitted, intending to guarantee opacity for clips
-            // without a separate intensity curve. However HephaestusRuntime iterates
-            // curves in Map insertion order (intensity first, color second), so the
-            // LTP merge inside NodeArbiter._applyIntent caused the guard's dimmer=1.0
-            // to overwrite the curve-evaluated dimmer value every frame — producing a
-            // hard 100 % brightness block for the entire clip duration.
-            // Correct fix: clips that need an opacity floor must carry an explicit
-            // 'intensity' curve. The guard is removed entirely; no dimmer injection.
         }
         // 🔬 WAVE-DEBUG: Log color intents emitted every 44 frames (1s at 44Hz)
         if (this._frameIntents.length > 0 && (this._debugFrameCount = ((this._debugFrameCount ?? 0) + 1)) % 44 === 0) {

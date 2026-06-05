@@ -148,7 +148,9 @@ export class DreamEngineIntegrator {
     //   Eso bloqueó 4-5 momentos dignos en el log. 0.55 deja pasar el rango útil de Brejcha (0.66+)
     //   pero sigue filtrando los <0.66 (effective<0.55). El control de calidad real está en el
     //   ethicsThreshold que ahora es 1.20 (el override ya no es gratis).
-    if (effectiveWorthiness < 0.55) {  // 🩸 WAVE 2104.2: was 0.58
+    // ⏳ FIX 2: WAVE 5008 - Bypass worthiness gate si el Oráculo tiene una predicción
+    const hasPrediction = context.predictionTimeMs !== undefined && context.predictionTimeMs > 0
+    if (effectiveWorthiness < 0.55 && !hasPrediction) {  // 🩸 WAVE 2104.2: was 0.58
       // 🩸 WAVE 2104.1: DIAGNOSTIC — Ver qué momentos se descartan
       console.log(`[INTEGRATOR_GATE] 🚫 WORTHINESS BLOCKED: raw=${rawWorthiness.toFixed(2)} effective=${effectiveWorthiness.toFixed(2)} < 0.55 | ${currentProfile.emoji} ${currentProfile.name}`)
       return {
@@ -223,12 +225,16 @@ export class DreamEngineIntegrator {
 
     // ═════════════════════════════════════════════════════════════════════
     // 🔮 WAVE 4913: TEMPORAL SEAL GATE
-    // Si CASSANDRA sellá un pre-buffer, recommendation === 'modify'.
+    // Si CASSANDRA selló un pre-buffer, recommendation === 'modify'.
     // Cortocircuitar ANTES de ethics para que el sello sea real (no residual).
     // De lo contrario, un Z-score alto podría hacer pasar ethics y disparar
     // el efecto prematuramente, vaciando el pre-buffer antes de la sección.
     // ═════════════════════════════════════════════════════════════════════
-    if (dreamResult.recommendation === 'modify') {
+    // ⏳ WAVE 5009 FIX 3: El Contrato Blindado de Cassandra
+    // Si la recomendacion es modify pero HAY urgencia / timeToEvent = 0
+    // O si la razon menciona FAST PATH, DEBEMOS ejecutar. No cortocircuitar.
+    const isFastPath = dreamResult.reason.includes('FAST PATH')
+    if (dreamResult.recommendation === 'modify' && !isFastPath) {
       return {
         approved: false,
         effect: null,
@@ -240,6 +246,42 @@ export class DreamEngineIntegrator {
         circuitHealthy: true,
         fallbackUsed: false,
         alternatives: []
+      }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 🔮 WAVE 5011: CASSANDRA PRE-BUFFER GUARD
+    // Si hay un pre-buffer activo (el simulador no lo limpió porque timeToEvent
+    // era > 1500ms), el pipeline ejecuta normalmente y puede aprobar un efecto
+    // DIFERENTE al pre-bufferizado, robándole el slot al Oráculo.
+    // SOLUCIÓN: Si el pre-buffer existe y aún no expiró, bloquear aprobaciones
+    // de efectos distintos. El Sovereign Clock en process() disparará el efecto
+    // correcto cuando el reloj llegue a cero.
+    // ═════════════════════════════════════════════════════════════════════
+    {
+      const activeBuffer = effectDreamSimulator.getPreBufferStatus()
+      if (activeBuffer && !isFastPath) {
+        const nowGuard = Date.now()
+        const bufferAge = nowGuard - activeBuffer.bufferedAt
+        const isBufferExpired = bufferAge > 5000  // PRE_BUFFER_MAX_AGE_MS
+        if (!isBufferExpired) {
+          console.log(
+            `[INTEGRATOR] 🔮🛡️ PRE-BUFFER GUARD: blocking normal approval — ` +
+            `"${activeBuffer.effectId}" sealed, ${Math.ceil((activeBuffer.predictedEventAt - nowGuard) / 1000)}s remaining`
+          )
+          return {
+            approved: false,
+            effect: null,
+            dreamTime,
+            filterTime: 0,
+            totalTime: Date.now() - pipelineStartTime,
+            dreamRecommendation: `pre-buffer-guard: awaiting "${activeBuffer.effectId}"`,
+            ethicalVerdict: null,
+            circuitHealthy: true,
+            fallbackUsed: false,
+            alternatives: []
+          }
+        }
       }
     }
 
@@ -635,6 +677,25 @@ export class DreamEngineIntegrator {
     if (this.executionHistory.length > this.maxHistorySize) {
       this.executionHistory.shift()
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 🔮 WAVE 5011: CASSANDRA'S SOVEREIGN CLOCK — Pre-buffer proxy API
+  // ═══════════════════════════════════════════════════════════════════
+
+  /** @see EffectDreamSimulator.getPreBufferStatus */
+  public getPreBufferStatus(): { effectId: string; predictedEventAt: number; bufferedAt: number } | null {
+    return effectDreamSimulator.getPreBufferStatus()
+  }
+
+  /** @see EffectDreamSimulator.getPreBufferedCandidate */
+  public getPreBufferedCandidate(): { effect: string; intensity: number; zones: string[]; confidence: number } | null {
+    return effectDreamSimulator.getPreBufferedCandidate()
+  }
+
+  /** @see EffectDreamSimulator.clearPreBuffer */
+  public clearPreBuffer(): void {
+    effectDreamSimulator.clearPreBuffer()
   }
 }
 

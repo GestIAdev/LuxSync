@@ -148,7 +148,7 @@
       "minDurationMs": 1000,
       "cooldownMs": 3000,
       "isStrobe": false,
-      "isDivineCandidate": false,
+      "isDivineCandidate": true,
       "isHeavyCandidate": true,
       "zScoreGuards": {
         "requireRising": false,

@@ -149,7 +149,14 @@ export class PhysicsPostProcessor {
         this._states = new Map();
         // ── Configuración de modo ──────────────────────────────────────────────
         this._mode = 'classic';
-        this._snapFactor = 0.5;
+        // WAVE 4990 Paso 2: 0.5 → 0.8 — convergencia más rápida del target IK espacial.
+        // Con 0.5, el target suavizado necesita ~8 frames (≈180ms a 44Hz) para alcanzar
+        // 99% del objetivo real. Durante ese tiempo, los focos centrales pueden quedar
+        // en el borde de la singularidad (horizontalDist ≈ 0) y apuntar horizontal.
+        // Con 0.8, la convergencia cae a ~4 frames (≈90ms) — reducción del 50% de lag.
+        // Vibes SNAP (Techno, Latino, Rock) — El suavizado del target 3D NO afecta
+        // al suavizado de pan/tilt físico (eso lo maneja applyPhysicsEasing). Safe.
+        this._snapFactor = 0.8;
         // ── Variables temporales reutilizadas en el hot path (zero-alloc) ─────
         // NO son const porque se mutan en cada iteración del process()
         this._panTarget = 0;

@@ -102,6 +102,10 @@ const RELATIVE_OFFSET_SCALE_TILT = 0.5;
 // Corresponde a ~217 DMX — impide que la fusión empuje el haz a posiciones
 // extremas de hardware independientemente del origen del valor (IK o VMM).
 const TILT_ARBITER_MAX = 0.85;
+// WAVE 4988 Paso 2: Límite físico inferior del tilt en espacio normalizado [0, 1].
+// Corresponde a ~38 DMX — impide que el fade o la fusión degraden hacia 0 (techo)
+// en rigs donde DMX 0 = posición de techo. Protege ceiling y floor mounts por igual.
+const TILT_ARBITER_MIN = 0.15;
 // Gimbal Lock fade: cuando el haz apunta cerca del cenit (tilt_base ≈ 0.5),
 // el pan offset rota la carcasa sin desplazamiento visual del beam. Atenuamos
 // el offset de pan dentro de una banda de ±GIMBAL_TILT_FADE_HALFWIDTH alrededor
@@ -795,8 +799,9 @@ export class NodeArbiter {
             if (hasBaseTilt || hasTiltOffset) {
                 const oy = (!hasBaseTilt && hasTiltOffset) ? tiltOffset : 0;
                 let final = baseTilt + oy * ampTilt * distScale;
-                if (final < 0)
-                    final = 0;
+                // WAVE 4988 Paso 2: Clamp bilateral — protege suelo (MAX) y techo (MIN).
+                if (final < TILT_ARBITER_MIN)
+                    final = TILT_ARBITER_MIN;
                 else if (final > TILT_ARBITER_MAX)
                     final = TILT_ARBITER_MAX;
                 record['tilt'] = final;
@@ -1166,9 +1171,10 @@ export class NodeArbiter {
                 if (l0Value !== undefined && Number.isFinite(l0Value)) {
                     // Blend: snapshot del manual → valor L0 ya fusionado + clampeado
                     let blended = releaseValue * fadeWeight + l0Value * (1.0 - fadeWeight);
-                    // Guardia final: el blend nunca puede superar el límite físico del tilt.
-                    if (key === 'tilt' && blended > TILT_ARBITER_MAX)
-                        blended = TILT_ARBITER_MAX;
+                    // WAVE 4988 Paso 2: Guardia dual — el blend no puede salir del rango físico
+                    // del tilt en ningún sentido (ni suelo ni techo).
+                    if (key === 'tilt')
+                        blended = Math.max(TILT_ARBITER_MIN, Math.min(blended, TILT_ARBITER_MAX));
                     record[key] = blended;
                 }
                 // Si l0Value es undefined (L0 no escribió este canal), no actuamos.

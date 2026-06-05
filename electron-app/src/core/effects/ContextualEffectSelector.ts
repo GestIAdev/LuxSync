@@ -1,44 +1,27 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎯 CONTEXTUAL EFFECT SELECTOR - THE ARTISTIC BRAIN
+ * �️ ARSENAL REPOSITORY (ArsenalRepository → Purificado)
  * ═══════════════════════════════════════════════════════════════════════════
- * 
- * WAVE 685: CONTEXTUAL INTELLIGENCE
- * WAVE 700.1: MOOD INTEGRATION
- * WAVE 931: ENERGY CONSCIOUSNESS Z-SCORE CAPPING
- * WAVE 933: EFFECT INTENSITY MAPPING - Zone-appropriate effect selection
- * 
- * "MG Music: Sonido e Iluminación Contextual IA"
- * 
- * Este módulo es EL CEREBRO ARTÍSTICO de Selene. Decide QUÉ efecto disparar
- * basándose en el contexto musical completo:
- * 
- * - Z-Score: ¿Qué tan intenso es el momento?
- * - Section Type: ¿Es buildup, drop, breakdown?
- * - Vibe: ¿Qué restricciones tenemos?
- * - Hunt Decision: ¿El cazador dice que es momento de atacar?
- * - Energy Trend: ¿Subiendo o bajando?
- * - 🎭 Mood: ¿Estamos en CALM, BALANCED o PUNK mode?
- * - 🔋 Energy Zone: ¿Silencio, valle, ambiente, activo, pico? (WAVE 933)
- * 
- * FILOSOFÍA:
- * - NO es aleatorio - es contextual
- * - NO es repetitivo - variamos los efectos
- * - NO es invasivo - respetamos el Vibe
- * - SÍ es musical - respiramos con la canción
- * 
+ *
+ * 🔪 WAVE 4992: PURIFICACIÓN COMPLETA
+ *   Este módulo ya NO toma decisiones artísticas. Es un REPOSITORIO PURO.
+ *   Responsabilidades:
+ *     - Registrar cooldowns de efectos
+ *     - Consultar disponibilidad (checkAvailability / isAvailable)
+ *     - Filtrar arsenal DIVINE por vibe y textura
+ *     - Gestionar blockList del mood
+ *   Decisiones artísticas: DecisionMaker.ts único cerebro.
+ *
+ * Historial: WAVE 685 (ArsenalRepository) → WAVE 1010.5 (PURGE)
+ *            → WAVE 4992 (RENOMBRADO + MÉTODOS DECISIÓN ELIMINADOS)
+ *
  * @module core/effects/ContextualEffectSelector
- * @version WAVE 685, 700.1
+ * @version WAVE 4992
  */
 
-import type { MusicalContext } from '../protocol/MusicalContext'
-import type { HuntDecision } from '../intelligence/think/HuntEngine'
-import type { FuzzyDecision } from '../intelligence/think/FuzzyDecisionMaker'
 import { MoodController } from '../mood'
-// 🔋 WAVE 931: Import EnergyZone para consciencia energética
-import type { EnergyZone, EnergyContext } from '../protocol/MusicalContext'
 // 🎨 WAVE 1028: THE CURATOR - Spectral Texture Awareness
-import type { SpectralTexture, SpectralContext } from '../protocol/MusicalContext'
+import type { SpectralContext } from '../protocol/MusicalContext'
 // 🚨 WAVE 1004.2: DNA Diversity System - Shadowban por repetición
 import { getDNAAnalyzer } from '../intelligence/dna'
 
@@ -344,83 +327,21 @@ const DEFAULT_CONFIG: EffectSelectionConfig = {
 // EFFECT MAPPING BY CONTEXT
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * 🎨 EFFECT PALETTE BY SECTION
- * 
- * Define qué efectos son apropiados para cada sección de la canción.
- * El selector elige de esta paleta basándose en intensidad y contexto.
- * 
- * � WAVE 692: FIESTA LATINA ARSENAL - Paleta expandida con nuevos efectos
- * - tropical_pulse: Crescendo bursts como ritmo de conga
- * - salsa_fire: Parpadeo orgánico de fuego  
- * - cumbia_moon: Respiro suave para breakdowns
- * 
- * �🌊 WAVE 691.5: PURGA - TidalWave y GhostBreath ELIMINADOS para Fiesta Latina
- * Estos efectos espaciales no funcionan con la arquitectura actual.
- */
-const SECTION_EFFECT_PALETTE: Record<string, {
-  primary: string      // Efecto principal para esta sección
-  secondary: string    // Alternativa
-  ambient: string      // Para momentos suaves dentro de la sección
-  latinaOverride?: string  // Override para fiesta-latina
-}> = {
-  'intro': {
-    primary: 'solar_flare',     
-    secondary: 'tropical_pulse',  // 🌴 WAVE 692
-    ambient: 'cumbia_moon',       // 🌙 WAVE 692
-  },
-  'verse': {
-    primary: 'tropical_pulse',    // 🌴 WAVE 692: Pulsos como conga
-    secondary: 'salsa_fire',      // 🔥 WAVE 692: Fuego orgánico
-    ambient: 'cumbia_moon',       // 🌙 WAVE 692
-  },
-  'chorus': {
-    primary: 'solar_flare',       // Momento épico
-    secondary: 'strobe_burst',
-    ambient: 'tropical_pulse',
-    latinaOverride: 'tropical_pulse',  // 🌴 WAVE 692
-  },
-  'bridge': {
-    primary: 'salsa_fire',        // 🔥 WAVE 692: Transición ardiente
-    secondary: 'tropical_pulse',
-    ambient: 'cumbia_moon',       // 🌙 WAVE 692
-  },
-  'buildup': {
-    primary: 'tropical_pulse',    // 🌴 WAVE 692: Tensión creciente
-    secondary: 'salsa_fire',
-    ambient: 'strobe_burst',
-  },
-  'drop': {
-    primary: 'solar_flare',       // BOOM
-    secondary: 'strobe_burst',
-    ambient: 'tropical_pulse',
-    latinaOverride: 'oro_solido',   // 🥇 WAVE 2189: El Trompetazo reemplaza strobe_burst en drops latinos
-  },
-  'breakdown': {
-    primary: 'cumbia_moon',       // 🌙 WAVE 692: Respiro suave
-    secondary: 'salsa_fire',      // 🔥 WAVE 692
-    ambient: 'cumbia_moon',
-  },
-  'outro': {
-    primary: 'solar_flare',       
-    secondary: 'cumbia_moon',     // 🌙 WAVE 692: Cierre suave
-    ambient: 'cumbia_moon',
-  },
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
-// MAIN SELECTOR CLASS
+// MAIN SELECTOR CLASS → ArsenalRepository
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * 🎯 CONTEXTUAL EFFECT SELECTOR
- * 
- * El cerebro artístico que decide qué efecto pintar en cada momento.
- * 
- * 🌊 WAVE 691: Ahora con cooldowns por tipo y protección anti-ghost
- * 🎭 WAVE 700.1: Integración con MoodController para cooldowns y blockList
+ * �️ ARSENAL REPOSITORY
+ *
+ * Puro repositorio de datos: cooldowns, disponibilidad, arsenal por vibe.
+ * ZERO lógica de decisión artística. DecisionMaker es el único cerebro.
+ *
+ * 🔪 WAVE 4992: Renombrado desde ArsenalRepository.
+ *   Métodos de decisión eliminados: selectEffectForContext, calculateIntensity,
+ *   getHighImpactEffect, getEffectsAllowedForZone, isEffectAppropriateForZone.
  */
-export class ContextualEffectSelector {
+export class ArsenalRepository {
   private config: EffectSelectionConfig
   private consecutiveSameEffect = 0
   
@@ -838,149 +759,6 @@ export class ContextualEffectSelector {
     ],
   }
   
-  /**
-   * 🔋 WAVE 936 + 961: EFECTOS PERMITIDOS POR ZONA + VIBE (INTERSECCIÓN)
-   * 
-   * Esta es la corrección arquitectónica al VibeLeakProblem:
-   * Un efecto SOLO puede disparar si está en AMBAS listas:
-   * - Permitido para esta ZONA energética
-   * - Permitido para este VIBE musical
-   * 
-   * 🔪 WAVE 961: VIBE LEAK SURGERY
-   * Efectos latinos REMOVIDOS de zonas compartidas (valley, ambient, gentle).
-   * Solo aparecen en fiesta-latina. Techno tiene sus propios atmosféricos.
-   */
-  private getEffectsAllowedForZone(zone: EnergyZone, vibe?: string): string[] {
-    // 🔋 Efectos permitidos por intensidad energética (base)
-    // 🩸 WAVE 2103: THE REAL FIX - ZONE OVERLAP FOR ROTATION
-    //
-    // THE BUG: Each zone had EXACTLY 2 effects. When both were on cooldown = SILENCE.
-    // With BALANCED mood (1.5x multiplier), cyber_dualism cooldown = 22.5s.
-    // If both effects in a zone are cooling, the AI goes mute for 10-20 seconds.
-    //
-    // THE FIX: Adjacent zones SHARE effects (overlap). This creates a 4-5 effect
-    // rotation pool per zone instead of 2. The AI can always find SOMETHING to fire.
-    // Philosophy: Energy zones are FUZZY, not rigid boxes. A build at E=0.44 
-    // (ambient) should still consider gentle-zone effects like binary_glitch.
-    const EFFECTS_BY_INTENSITY: Record<EnergyZone, string[]> = {
-      // SILENCE (0-15%): Respiración + eco
-      silence: ['deep_breath', 'sonar_ping', 'void_mist'],
-      
-      // VALLEY (15-30%): Niebla + fibras + overlap from silence/ambient
-      valley: ['void_mist', 'fiber_optics', 'deep_breath', 'digital_rain', 'ghost_chase'],
-      
-      // AMBIENT (30-45%): Lluvia digital + acid + overlap from valley/gentle
-      ambient: ['digital_rain', 'acid_sweep', 'void_mist', 'ambient_strobe', 'binary_glitch', 'ghost_chase'],
-      
-      // GENTLE (45-60%): Flashes + glitches + overlap from ambient/active
-      gentle: ['ambient_strobe', 'binary_glitch', 'acid_sweep', 'cyber_dualism', 'digital_rain'],
-      
-      // ACTIVE (60-75%): Dualismo + snaps + overlap from gentle/intense
-      active: ['cyber_dualism', 'seismic_snap', 'binary_glitch', 'sky_saw', 'acid_sweep'],
-      
-      // INTENSE (75-90%): Sierra + abyssal + overlap from active/peak
-      intense: ['sky_saw', 'abyssal_rise', 'cyber_dualism', 'industrial_strobe', 'seismic_snap'],
-      
-      // PEAK (90-100%): Artillería pesada + overlap from intense + WAVE 2182 APEX
-      peak: ['gatling_raid', 'core_meltdown', 'industrial_strobe', 'sky_saw', 'abyssal_rise', 'neon_blinder', 'surgical_strike'],
-    }
-    
-    const intensityAllowed = EFFECTS_BY_INTENSITY[zone] || []
-    
-    // 🛡️ WAVE 936 + 961: VIBE LEAK SHIELD + LATINA ZONE OVERRIDES
-    // Si no hay vibe o es desconocido, usar lista base (legacy)
-    if (!vibe || !ContextualEffectSelector.EFFECTS_BY_VIBE[vibe]) {
-      return intensityAllowed
-    }
-    
-    // 🎺 WAVE 961: FIESTA LATINA - Zone Overrides
-    // Los efectos latinos SÍ pueden aparecer en zonas bajas cuando vibe=fiesta-latina
-    let zoneAdjusted = [...intensityAllowed]
-    if (vibe === 'fiesta-latina') {
-      if (zone === 'valley') {
-        zoneAdjusted.push('cumbia_moon', 'clave_rhythm', 'amazon_mist')
-      }
-      if (zone === 'ambient') {
-        zoneAdjusted.push('cumbia_moon', 'tropical_pulse', 'salsa_fire', 'amazon_mist')
-      }
-      if (zone === 'gentle') {
-        zoneAdjusted.push('tropical_pulse', 'salsa_fire', 'clave_rhythm', 'glitch_guaguanco')
-      }
-      if (zone === 'active') {
-        zoneAdjusted.push('tropical_pulse', 'salsa_fire', 'clave_rhythm', 'machete_spark', 'glitch_guaguanco')
-      }
-      if (zone === 'intense') {
-        zoneAdjusted.push('salsa_fire', 'machete_spark', 'glitch_guaguanco', 'strobe_burst')
-      }
-      if (zone === 'peak') {
-        zoneAdjusted.push('latina_meltdown', 'oro_solido', 'strobe_burst', 'solar_flare')
-      }
-    }
-    
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🎸 WAVE 1020: POP-ROCK - Zone Overrides
-    // Los efectos rock aparecen según intensidad energética
-    // ═══════════════════════════════════════════════════════════════════════════
-    if (vibe === 'pop-rock') {
-      if (zone === 'valley') {
-        // 🔥 Válvulas calientes - intros, versos tranquilos
-        zoneAdjusted.push('amp_heat', 'ghost_breath')
-      }
-      if (zone === 'ambient') {
-        // 🌊 Arena sweep empieza, stage_wash entra, amp_heat sigue disponible
-        zoneAdjusted.push('amp_heat', 'arena_sweep', 'stage_wash')
-      }
-      if (zone === 'gentle') {
-        // 🌊 Arena sweep domina, stage_wash de respaldo
-        zoneAdjusted.push('arena_sweep', 'stage_wash')
-      }
-      if (zone === 'active') {
-        // 🎸 Solos + spotlight pulse pueden entrar, arena sweep continúa
-        zoneAdjusted.push('arena_sweep', 'liquid_solo', 'spotlight_pulse')
-      }
-      if (zone === 'intense') {
-        // ⚡ Thunder struck + power chord disponibles, solos + pulse en peak
-        zoneAdjusted.push('liquid_solo', 'thunder_struck', 'power_chord', 'spotlight_pulse')
-      }
-      if (zone === 'peak') {
-        // 😵 Todo el arsenal pesado: blinder + power chord + caos
-        zoneAdjusted.push('thunder_struck', 'power_chord', 'feedback_storm', 'strobe_burst')
-      }
-    }
-    
-    // INTERSECCIÓN: Solo efectos que están en AMBAS listas
-    const vibeAllowed = ContextualEffectSelector.EFFECTS_BY_VIBE[vibe]
-    const validEffects = zoneAdjusted.filter(fx => vibeAllowed.includes(fx))
-    
-    // Debug: si la intersección eliminó algo, loggear
-    if (validEffects.length < zoneAdjusted.length) {
-      const blocked = zoneAdjusted.filter(fx => !vibeAllowed.includes(fx))
-      if (blocked.length > 0) {
-        console.log(`[EffectSelector 🛡️] VIBE LEAK BLOCKED: ${blocked.join(', ')} (zone=${zone}, vibe=${vibe})`)
-      }
-    }
-    
-    return validEffects
-  }
-  
-  /**
-   * 🔋 WAVE 931 + 936: Verificar si un efecto es apropiado para zona + vibe
-   * 
-   * 🛡️ WAVE 936: Ahora también considera el VIBE para la intersección.
-   * Un efecto solo es apropiado si está en la lista filtrada por zona Y vibe.
-   */
-  private isEffectAppropriateForZone(effectType: string, energyContext?: EnergyContext, vibe?: string): boolean {
-    if (!energyContext) return true // Sin contexto = permitir todo
-    
-    // 🛡️ WAVE 936: Usar la lista filtrada por zona + vibe
-    const allowedEffects = this.getEffectsAllowedForZone(energyContext.zone, vibe)
-    
-    // Si la lista está vacía, permitir cualquier cosa (zona desconocida)
-    if (allowedEffects.length === 0) return true
-    
-    return allowedEffects.includes(effectType)
-  }
-  
   private calculateCooldown(lastEffectType: string | null): number {
     if (!lastEffectType) return this.config.minCooldownMs
     
@@ -1008,22 +786,6 @@ export class ContextualEffectSelector {
   // ─────────────────────────────────────────────────────────────────────────
   
   /**
-   * 🔪 WAVE 814.2: HIGH IMPACT EFFECT - Vibe-Aware
-   * Devuelve el efecto de máximo impacto según el vibe actual.
-   * Usado en: DIVINE moments y HUNT HIGH WORTHINESS.
-   * 
-   * Filosofía:
-   * - Techno: industrial_strobe (El Martillo) - Impacto mecánico
-   * - Latino/Default: solar_flare (El Sol) - Explosión dorada
-   */
-  private getHighImpactEffect(vibe: string): string {
-    if (vibe === 'techno-club') {
-      return 'industrial_strobe' // 🔨 El Martillo Techno
-    }
-    return 'solar_flare' // ☀️ Default Latino/Global
-  }
-  
-  /**
    * 🎭 WAVE 700.1: Verifica si un efecto está disponible
    * Combina check de cooldown Y check de blockList del mood
    * 🔥 WAVE 790.2: Ahora acepta vibe para cooldowns específicos por vibe
@@ -1043,514 +805,6 @@ export class ContextualEffectSelector {
     return true
   }
   
-  private selectEffectForContext(
-    sectionType: string,
-    zLevel: 'normal' | 'elevated' | 'epic' | 'divine',
-    energyTrend: 'rising' | 'stable' | 'falling',
-    lastEffectType: string | null,
-    musicalContext?: MusicalContext,
-    vibe?: string
-  ): string {
-    const palette = SECTION_EFFECT_PALETTE[sectionType] || SECTION_EFFECT_PALETTE['verse']
-    const energy = musicalContext?.energy ?? 0.5
-    const moodProfile = this.moodController.getCurrentProfile()
-    
-    // 🔍 WAVE 692/700.1: Debug logging con mood
-    console.log(`[EffectSelector 🎯] Section=${sectionType} Z=${zLevel} Vibe=${vibe} Energy=${energy.toFixed(2)} Trend=${energyTrend} ${moodProfile.emoji}Mood=${moodProfile.name.toUpperCase()}`)
-    
-    // ═══════════════════════════════════════════════════════════════
-    // 🎺 WAVE 692: FIESTA LATINA - ARSENAL COMPLETO
-    // 🔥 WAVE 730: Resucitados ghost_breath y tidal_wave con zone overrides
-    // ❤️ WAVE 750: CORAZÓN LATINO - El alma del arquitecto
-    // 🎭 WAVE 700.1: Ahora usa isEffectAvailable que considera mood
-    // ═══════════════════════════════════════════════════════════════
-    if (vibe === 'fiesta-latina') {
-      // ❤️ WAVE 750: CORAZÓN LATINO - Para coros épicos y finales emocionales
-      // Triggers: DIVINE+CHORUS, ELEVATED+ENDING, EPIC+CHORUS
-      
-      // ❤️ DIVINE + CHORUS = El momento más épico
-      if (zLevel === 'divine' && sectionType === 'chorus') {
-        if (this.isEffectAvailable('corazon_latino', vibe)) {
-          console.log(`[EffectSelector ❤️] LATINA DIVINE CHORUS: corazon_latino (THE ARCHITECT'S SOUL)`)
-          return 'corazon_latino'
-        }
-      }
-      
-      // ❤️ ELEVATED + ENDING = Final emocional de la canción
-      if (zLevel === 'elevated' && sectionType === 'ending') {
-        if (this.isEffectAvailable('corazon_latino', vibe)) {
-          console.log(`[EffectSelector ❤️] LATINA ELEVATED ENDING: corazon_latino (PASSION FINALE)`)
-          return 'corazon_latino'
-        }
-      }
-      
-      // ❤️ EPIC + CHORUS = Coro con mucha energía
-      if (zLevel === 'epic' && sectionType === 'chorus') {
-        if (this.isEffectAvailable('corazon_latino', vibe)) {
-          console.log(`[EffectSelector ❤️] LATINA EPIC CHORUS: corazon_latino (EPIC PASSION)`)
-          return 'corazon_latino'
-        }
-      }
-      
-      // 🔥 EPIC/DIVINE: Strobe o Solar (efectos de impacto)
-      if (zLevel === 'divine' || zLevel === 'epic') {
-        if (this.isEffectAvailable('strobe_burst', vibe)) {
-          console.log(`[EffectSelector 🔥] LATINA EPIC: strobe_burst`)
-          return 'strobe_burst'
-        }
-        // ❤️ WAVE 750: Corazón Latino como alternativa épica al strobe (si no es chorus/ending)
-        if (this.isEffectAvailable('corazon_latino', vibe) && sectionType !== 'chorus' && sectionType !== 'ending') {
-          console.log(`[EffectSelector ❤️] LATINA EPIC FALLBACK: corazon_latino`)
-          return 'corazon_latino'
-        }
-        // Fallback a tropical pulse si strobe en cooldown o bloqueado
-        if (this.isEffectAvailable('tropical_pulse', vibe)) {
-          console.log(`[EffectSelector 🌴] LATINA EPIC FALLBACK: tropical_pulse`)
-          return 'tropical_pulse'
-        }
-      }
-      
-      // 🌊 WAVE 730: TIDAL WAVE para buildups y alta energía
-      if ((sectionType === 'buildup' || energyTrend === 'rising') && zLevel === 'elevated') {
-        if (this.isEffectAvailable('tidal_wave', vibe)) {
-          console.log(`[EffectSelector 🌊] LATINA BUILDUP: tidal_wave`)
-          return 'tidal_wave'
-        }
-      }
-      
-      // 🌴 ELEVATED: TropicalPulse o SalsaFire (efectos de relleno medio)
-      if (zLevel === 'elevated') {
-        if (energyTrend === 'rising' && this.isEffectAvailable('tropical_pulse', vibe)) {
-          console.log(`[EffectSelector 🌴] LATINA ELEVATED RISING: tropical_pulse`)
-          return 'tropical_pulse'
-        }
-        if (this.isEffectAvailable('salsa_fire', vibe)) {
-          console.log(`[EffectSelector 🔥] LATINA ELEVATED: salsa_fire`)
-          return 'salsa_fire'
-        }
-      }
-      
-      // 👻 WAVE 730: GHOST BREATH solo en intro/breakdown (respiro profundo)
-      if (sectionType === 'intro' || sectionType === 'breakdown') {
-        if (this.isEffectAvailable('ghost_breath', vibe)) {
-          console.log(`[EffectSelector 👻] LATINA BREAKDOWN: ghost_breath (back+movers only)`)
-          return 'ghost_breath'
-        }
-      }
-      
-      // 🌙 NORMAL/LOW + BREAKDOWN: CumbiaMoon (respiro suave)
-      if (sectionType === 'breakdown' || energyTrend === 'falling') {
-        if (this.isEffectAvailable('cumbia_moon', vibe)) {
-          console.log(`[EffectSelector 🌙] LATINA BREAKDOWN: cumbia_moon`)
-          return 'cumbia_moon'
-        }
-      }
-      
-      // 🎲 NORMAL: Rotación de efectos medios (evita monotonía)
-      if (zLevel === 'normal') {
-        // 🔥 WAVE 730: Añadido tidal_wave a la rotación
-        const candidates = ['clave_rhythm', 'tropical_pulse', 'salsa_fire', 'cumbia_moon', 'tidal_wave']
-        for (const effect of candidates) {
-          if (this.isEffectAvailable(effect, vibe) && effect !== lastEffectType) {
-            console.log(`[EffectSelector 🎺] LATINA NORMAL: ${effect}`)
-            return effect
-          }
-        }
-      }
-      
-      // 😴 Si todo está en cooldown, dejar respirar
-      console.log(`[EffectSelector 😴] LATINA: all effects in cooldown, breathing`)
-      return 'none'
-    }
-    
-    // ═══════════════════════════════════════════════════════════════
-    // 🔪 WAVE 780: TECHNO CLUB - THE BLADE
-    // 🔫 WAVE 930: ARSENAL PESADO - GatlingRaid, SkySaw, AbyssalRise
-    // 🔫 WAVE 930.1 FIX: GatlingRaid más accesible (EPIC drop también)
-    // 🎤 WAVE 936: VOCAL FILTER - Protección contra voces que disparan artillería
-    // ═══════════════════════════════════════════════════════════════
-    if (vibe === 'techno-club') {
-      
-      // 🌪️ ABYSSAL RISE: Transición épica en breakdown→buildup
-      // Solo se dispara en puntos de transición dramática
-      if (sectionType === 'breakdown' && energyTrend === 'falling') {
-        if (this.isEffectAvailable('abyssal_rise', vibe)) {
-          console.log(`[EffectSelector 🌪️] TECHNO BREAKDOWN→RISE: abyssal_rise (8-BAR JOURNEY)`)
-          return 'abyssal_rise'
-        }
-      }
-      
-      // 🔪 DIVINE/EPIC (DROP/PEAK): GatlingRaid, IndustrialStrobe, CyberDualism
-      // 🔫 WAVE 930.4: DIVERSITY ENFORCEMENT - Relajar triggers para todos los efectos
-      if (zLevel === 'divine' || zLevel === 'epic') {
-        const currentZ = musicalContext?.zScore ?? 0
-        const energyContext = musicalContext?.energyContext
-        
-        // 🎤 WAVE 936: VOCAL FILTER
-        // Si la transición de zona es MUY reciente (<150ms), reducir intensidad del efecto
-        // Esto evita que una voz de golpe dispare gatling_raid
-        let isRecentTransition = false
-        if (energyContext) {
-          const timeSinceZoneChange = Date.now() - energyContext.lastZoneChange
-          const wasLowZone = energyContext.previousZone === 'silence' || energyContext.previousZone === 'valley'
-          isRecentTransition = wasLowZone && timeSinceZoneChange < 200
-          
-          if (isRecentTransition) {
-            console.log(`[EffectSelector 🎤] VOCAL FILTER: Recent transition (${timeSinceZoneChange}ms from ${energyContext.previousZone}) - soft effect only`)
-          }
-        }
-        
-        // 🔫 GatlingRaid: EPIC+ con alta energía (Z>1.5σ) - PERO no en transiciones recientes
-        if (!isRecentTransition && currentZ >= 1.5 && this.isEffectAvailable('gatling_raid', vibe)) {
-          console.log(`[EffectSelector 🔫] TECHNO ${zLevel.toUpperCase()}: gatling_raid (MACHINE GUN)`)
-          return 'gatling_raid'
-        }
-        
-        // 🤖 CyberDualism: Alternativa dinámica - OK en transiciones recientes (más suave)
-        if (this.isEffectAvailable('cyber_dualism', vibe)) {
-          console.log(`[EffectSelector 🤖] TECHNO ${zLevel.toUpperCase()}: cyber_dualism (L/R ASSAULT)`)
-          return 'cyber_dualism'
-        }
-        
-        // ⚡ IndustrialStrobe: SOLO si otros en cooldown Y no es transición reciente
-        if (!isRecentTransition && this.isEffectAvailable('industrial_strobe', vibe)) {
-          console.log(`[EffectSelector ⚡] TECHNO ${zLevel.toUpperCase()}: industrial_strobe (THE HAMMER)`)
-          return 'industrial_strobe'
-        }
-        
-        // Fallback a strobe_burst (suave, ok en cualquier caso)
-        if (this.isEffectAvailable('strobe_burst', vibe)) {
-          console.log(`[EffectSelector ⚡] TECHNO ${zLevel.toUpperCase()} FALLBACK: strobe_burst`)
-          return 'strobe_burst'
-        }
-      }
-      
-      // 🎯 WAVE 937: PROTOCOLO EDGING - BUILDUP NO DISPARA ARTILLERÍA PESADA
-      // ═════════════════════════════════════════════════════════════════
-      // Buildup = Tensión, NO clímax → Prohibir gatling_raid, industrial_strobe, solar_flare
-      // Solo permitir: sky_saw, acid_sweep, strobe_burst (efectos de tensión)
-      // Razón: Si disparamos munición pesada en el upswing, cuando llegue el drop
-      //        estará en cooldown → Selene desnuda en el momento crítico
-      if (sectionType === 'buildup') {
-        // 🗡️ SkySaw en ANY buildup - cortes agresivos de TENSIÓN
-        if (this.isEffectAvailable('sky_saw', vibe)) {
-          console.log(`[EffectSelector 🗡️] BUILDUP EDGING: sky_saw (TENSION)`)
-          return 'sky_saw'
-        }
-        // AcidSweep como alternativa
-        if (this.isEffectAvailable('acid_sweep', vibe)) {
-          console.log(`[EffectSelector 🧪] BUILDUP EDGING: acid_sweep (TENSION)`)
-          return 'acid_sweep'
-        }
-        // Fallback: strobe burst (mini-strobe, no pesado)
-        if (this.isEffectAvailable('strobe_burst', vibe)) {
-          console.log(`[EffectSelector ⚡] BUILDUP EDGING: strobe_burst (TENSION)`)
-          return 'strobe_burst'
-        }
-        
-        // 🛡️ Si ninguno está disponible, cyber_dualism como último recurso
-        console.log(`[EffectSelector 🛡️] BUILDUP EDGING: Holding fire - cyber_dualism fallback`)
-        return 'cyber_dualism'
-      }
-      
-      // 🔪 BREAKDOWN/INTRO: AcidSweep (Ambiente volumétrico)
-      if (sectionType === 'breakdown' || sectionType === 'intro') {
-        if (this.isEffectAvailable('acid_sweep', vibe)) {
-          console.log(`[EffectSelector 🧪] TECHNO ${sectionType.toUpperCase()}: acid_sweep (VOLUMETRIC)`)
-          return 'acid_sweep'
-        }
-      }
-      
-      // 🔪 ELEVATED + RISING: SkySaw/AcidSweep para tensión agresiva
-      // 🔫 WAVE 930.4: SkySaw prioridad sobre AcidSweep para más movimiento
-      if (zLevel === 'elevated' && energyTrend === 'rising') {
-        if (this.isEffectAvailable('sky_saw', vibe)) {
-          console.log(`[EffectSelector 🗡️] TECHNO ELEVATED RISING: sky_saw`)
-          return 'sky_saw'
-        }
-        if (this.isEffectAvailable('acid_sweep', vibe)) {
-          console.log(`[EffectSelector 🧪] TECHNO ELEVATED RISING: acid_sweep`)
-          return 'acid_sweep'
-        }
-      }
-      
-      // ═════════════════════════════════════════════════════════════════
-      // 🎚️ WAVE 998.2: GENTLE/ELEVATED ZONE (45-75%)
-      // Binary Glitch, Seismic Snap, Ambient Strobe - El ritmo constante
-      // ═════════════════════════════════════════════════════════════════
-      // PROBLEMA ORIGINAL: Estos efectos estaban registrados pero NUNCA propuestos
-      // ContextualEffectSelector solo tenía lógica para DIVINE/EPIC/BUILDUP
-      // RESULTADO: binary_glitch/seismic_snap NUNCA disparaban → Usuario: "no he visto binary_glitch!!"
-      // SOLUCIÓN: Añadir lógica explícita para zona GENTLE/ELEVATED (45-75% energy)
-      
-      if (zLevel === 'elevated' && energy > 0.45 && energy <= 0.75) {
-        // Priority 1: Binary Glitch (digital stutter chaos)
-        if (this.isEffectAvailable('binary_glitch', vibe)) {
-          console.log(`[EffectSelector 💻] TECHNO ELEVATED: binary_glitch (DIGITAL STUTTER)`)
-          return 'binary_glitch'
-        }
-        
-        // Priority 2: Seismic Snap (mechanical impact)
-        if (this.isEffectAvailable('seismic_snap', vibe)) {
-          console.log(`[EffectSelector 💥] TECHNO ELEVATED: seismic_snap (MECHANICAL SNAP)`)
-          return 'seismic_snap'
-        }
-        
-        // Priority 3: Ambient Strobe (camera flashes)
-        if (this.isEffectAvailable('ambient_strobe', vibe)) {
-          console.log(`[EffectSelector 📸] TECHNO ELEVATED: ambient_strobe (CAMERA FLASHES)`)
-          return 'ambient_strobe'
-        }
-        
-        // Fallback: Cyber Dualism (si todo lo demás está en cooldown)
-        if (this.isEffectAvailable('cyber_dualism', vibe)) {
-          console.log(`[EffectSelector 🤖] TECHNO ELEVATED FALLBACK: cyber_dualism`)
-          return 'cyber_dualism'
-        }
-      }
-      
-      // ═════════════════════════════════════════════════════════════════
-      // 🌫️ WAVE 998.2: NORMAL ZONE (30-60%)
-      // Acid Sweep, Digital Rain, Binary Glitch - Movimiento suave y glitches
-      // ═════════════════════════════════════════════════════════════════
-      
-      if (zLevel === 'normal' && energy > 0.30 && energy <= 0.60) {
-        // Priority 1: Acid Sweep (wobble bass)
-        if (this.isEffectAvailable('acid_sweep', vibe)) {
-          console.log(`[EffectSelector 🧪] TECHNO NORMAL: acid_sweep (ACID WOBBLE)`)
-          return 'acid_sweep'
-        }
-        
-        // Priority 2: Digital Rain (matrix flicker)
-        if (this.isEffectAvailable('digital_rain', vibe)) {
-          console.log(`[EffectSelector 💧] TECHNO NORMAL: digital_rain (MATRIX FLICKER)`)
-          return 'digital_rain'
-        }
-        
-        // Priority 3: Binary Glitch (fallback - también válido en NORMAL)
-        if (this.isEffectAvailable('binary_glitch', vibe)) {
-          console.log(`[EffectSelector 💻] TECHNO NORMAL FALLBACK: binary_glitch`)
-          return 'binary_glitch'
-        }
-      }
-      
-      // 🤖 WAVE 810 + WAVE 930.4: ELEVATED: CyberDualism más accesible (no requiere verse/chorus)
-      if (zLevel === 'elevated') {
-        if (this.isEffectAvailable('cyber_dualism', vibe)) {
-          console.log(`[EffectSelector 🤖] TECHNO ELEVATED: cyber_dualism (L/R PING-PONG)`)
-          return 'cyber_dualism'
-        }
-      }
-      
-      // 🔪 ELEVATED + STABLE/FALLING: AcidSweep antes que Strobe
-      // 🔫 WAVE 930.4: Reducir presencia de industrial_strobe
-      if (zLevel === 'elevated') {
-        if (this.isEffectAvailable('acid_sweep', vibe)) {
-          console.log(`[EffectSelector 🧪] TECHNO ELEVATED: acid_sweep`)
-          return 'acid_sweep'
-        }
-        // IndustrialStrobe como último recurso
-        if (this.isEffectAvailable('industrial_strobe', vibe)) {
-          console.log(`[EffectSelector ⚡] TECHNO ELEVATED: industrial_strobe`)
-          return 'industrial_strobe'
-        }
-      }
-      
-      // 🔪 WAVE 961 + 963: NORMAL - ATMOSPHERIC INJECTION with ZONE PRIORITY
-      // WAVE 963: Priorizar atmosféricos en zonas bajas (valley, silence)
-      // Priorizar sweeps/saws en zonas medias (ambient, gentle, active)
-      if (zLevel === 'normal') {
-        const energyContext = musicalContext?.energyContext
-        const zone = energyContext?.zone
-        
-        // 🌫️ ZONE PRIORITY: Si estamos en zonas bajas, atmosféricos primero
-        let candidates: string[]
-        if (zone === 'silence' || zone === 'valley') {
-          candidates = [
-            'void_mist',      // 🌫️ Neblina púrpura
-            'deep_breath',    // 🫁 Respiración orgánica
-            // 🔪 WAVE 986: static_pulse PURGED
-            'digital_rain',   // 💚 Matrix flicker
-            'acid_sweep',     // Sweeps volumétricos (fallback)
-            'sky_saw',        // Cortes agresivos (fallback)
-          ]
-        } else {
-          // Zonas medias/altas: sweeps y saws tienen prioridad
-          // 🔪 WAVE 986: binary_glitch + seismic_snap AÑADIDOS
-          candidates = [
-            'acid_sweep',     // Sweeps volumétricos
-            'sky_saw',        // Cortes agresivos
-            'binary_glitch',  // ⚡ WAVE 986: Glitch digital
-            'seismic_snap',   // 💥 WAVE 986: Golpe mecánico
-            'digital_rain',   // 💚 Matrix flicker
-            'void_mist',      // 🌫️ Neblina púrpura (fallback)
-            'deep_breath',    // 🫁 Respiración orgánica (fallback)
-          ]
-        }
-        
-        for (const effect of candidates) {
-          if (this.isEffectAvailable(effect, vibe) && effect !== lastEffectType) {
-            console.log(`[EffectSelector 🔪] TECHNO NORMAL (zone=${zone}): ${effect}`)
-            return effect
-          }
-        }
-      }
-      
-      // 😴 Si todo está en cooldown, dejar respirar
-      console.log(`[EffectSelector 😴] TECHNO: all effects in cooldown, breathing`)
-      return 'none'
-    }
-    
-    // ═══════════════════════════════════════════════════════════════
-    // REGLA 1: DIVINE/EPIC = Primary effect (lo más potente)
-    // 🎭 WAVE 700.5.2: TODOS los returns deben pasar por isEffectAvailable
-    // ═══════════════════════════════════════════════════════════════
-    if (zLevel === 'divine' || zLevel === 'epic') {
-      // Evitar repetir el mismo efecto
-      const primary = palette.primary
-      if (primary === lastEffectType && this.consecutiveSameEffect >= 2) {
-        if (this.isEffectAvailable(palette.secondary, vibe)) {
-          return palette.secondary
-        }
-      }
-      if (this.isEffectAvailable(primary, vibe)) {
-        return primary
-      }
-      // 🎭 WAVE 700.5.2: Fallback también debe verificar blockList
-      if (this.isEffectAvailable(palette.secondary, vibe)) {
-        return palette.secondary
-      }
-      // Si secondary también bloqueado, usar tidal_wave como fallback seguro
-      if (this.isEffectAvailable('tidal_wave', vibe)) {
-        return 'tidal_wave'
-      }
-      return 'none'
-    }
-    
-    // ═══════════════════════════════════════════════════════════════
-    // 🌊 WAVE 691: ANTI-GHOST - Bloquear ghost_breath si hay ritmo
-    // 🎭 WAVE 700.1: También considerar blockList del mood
-    // 🔥 WAVE 725: Desbloquear ghost_breath para fiesta-latina con zona overrides
-    // ═══════════════════════════════════════════════════════════════
-    const ghostBlocked = (vibe !== 'fiesta-latina' && energy > this.config.ambientBlockEnergyThreshold) || 
-                         !this.isEffectAvailable('ghost_breath', vibe)
-    
-    // ═══════════════════════════════════════════════════════════════
-    // REGLA 2: ELEVATED + RISING = Build tension
-    // ═══════════════════════════════════════════════════════════════
-    if (zLevel === 'elevated' && energyTrend === 'rising') {
-      // Buildup/Bridge: Ghost Breath solo si NO bloqueado
-      if ((sectionType === 'buildup' || sectionType === 'bridge') && !ghostBlocked) {
-        return 'ghost_breath'
-      }
-      // Default: Tidal Wave para momentum
-      if (this.isEffectAvailable('tidal_wave', vibe)) {
-        return 'tidal_wave'
-      }
-    }
-    
-    // ═══════════════════════════════════════════════════════════════
-    // REGLA 3: ELEVATED + FALLING = Release suave
-    // ═══════════════════════════════════════════════════════════════
-    if (zLevel === 'elevated' && energyTrend === 'falling') {
-      if (this.isEffectAvailable('tidal_wave', vibe)) {
-        return 'tidal_wave'  // Ola que baja
-      }
-    }
-    
-    // ═══════════════════════════════════════════════════════════════
-    // REGLA 4: ELEVATED + STABLE = Mantener momentum
-    // ═══════════════════════════════════════════════════════════════
-    if (zLevel === 'elevated') {
-      // En drop/chorus/breakdown: strobe para mantener energía
-      if (sectionType === 'drop' || sectionType === 'chorus' || sectionType === 'breakdown') {
-        const strobeType = 'strobe_storm'
-        if (lastEffectType !== strobeType && this.isEffectAvailable(strobeType, vibe)) {
-          return strobeType
-        }
-        return 'tidal_wave'
-      }
-      // Evitar ghost si está bloqueado
-      if (palette.secondary === 'ghost_breath' && ghostBlocked) {
-        return 'tidal_wave'
-      }
-      if (this.isEffectAvailable(palette.secondary, vibe)) {
-        return palette.secondary
-      }
-    }
-    
-    // ═══════════════════════════════════════════════════════════════
-    // DEFAULT: Ambient effect (pero NO ghost si hay ritmo)
-    // ═══════════════════════════════════════════════════════════════
-    if (palette.ambient === 'ghost_breath' && ghostBlocked) {
-      return 'tidal_wave'
-    }
-    
-    if (this.isEffectAvailable(palette.ambient)) {
-      return palette.ambient
-    }
-    
-    // ═══════════════════════════════════════════════════════════════
-    // 🔪 WAVE 814: VIBE-AWARE FALLBACK - La Red de Seguridad Inteligente
-    // ═══════════════════════════════════════════════════════════════
-    // Si llegamos aquí, ningún efecto específico ni la paleta funcionaron.
-    // Aplicamos un fallback que RESPETA LA IDENTIDAD DEL VIBE.
-    
-    let ultimateFallback = 'tidal_wave' // Default mundial
-    
-    if (vibe === 'techno-club') {
-      // 🔪 EN TECHNO, EL SOL NO EXISTE
-      // Si es sección de alta energía (drop/chorus/peak) → Martillo
-      if (['drop', 'chorus', 'peak'].includes(sectionType)) {
-        ultimateFallback = 'industrial_strobe' // El Martillo (backup)
-        console.log(`[EffectSelector 🔪] TECHNO HIGH-ENERGY FALLBACK: industrial_strobe`)
-      } 
-      // Si es sección de baja energía (verse/intro/breakdown) → Cuchilla
-      else {
-        ultimateFallback = 'acid_sweep' // La Cuchilla (default)
-        console.log(`[EffectSelector 🔪] TECHNO LOW-ENERGY FALLBACK: acid_sweep`)
-      }
-    } 
-    else if (vibe === 'chill-lounge') {
-      // En Chill, efecto espacial suave
-      ultimateFallback = 'borealis_wave'
-      console.log(`[EffectSelector 🌌] CHILL FALLBACK: borealis_wave`)
-    }
-    // else: otros vibes usan tidal_wave (default universal)
-    
-    // 🛡️ WAVE 814: ESCUDO FINAL - Si por algún motivo sacamos solar_flare en Techno, matarlo
-    if (vibe === 'techno-club' && ultimateFallback === 'solar_flare') {
-      ultimateFallback = 'acid_sweep'
-      console.log(`[EffectSelector 🔪⚠️] TECHNO ANTI-SUN SHIELD ACTIVATED: Replaced solar_flare → acid_sweep`)
-    }
-    
-    return ultimateFallback
-  }
-  
-  // ─────────────────────────────────────────────────────────────────────────
-  // PRIVATE: Intensity calculation
-  // ─────────────────────────────────────────────────────────────────────────
-  
-  private calculateIntensity(
-    musicalContext: MusicalContext,
-    zLevel: 'normal' | 'elevated' | 'epic' | 'divine'
-  ): number {
-    // Base intensity por nivel de Z
-    const baseIntensity: Record<typeof zLevel, number> = {
-      normal: 0.4,
-      elevated: 0.6,
-      epic: 0.85,
-      divine: 1.0,
-    }
-    
-    let intensity = baseIntensity[zLevel]
-    
-    // Modular con energía del audio
-    intensity = intensity * (0.7 + musicalContext.energy * 0.3)
-    
-    // Clamp
-    return Math.min(1.0, Math.max(0.2, intensity))
-  }
   
   // ─────────────────────────────────────────────────────────────────────────
   // 🔪 WAVE 1010 DEPRECATED: Decision builders
@@ -1574,15 +828,15 @@ export class ContextualEffectSelector {
 // SINGLETON
 // ═══════════════════════════════════════════════════════════════════════════
 
-let selectorInstance: ContextualEffectSelector | null = null
+let repositoryInstance: ArsenalRepository | null = null
 
-export function getContextualEffectSelector(): ContextualEffectSelector {
-  if (!selectorInstance) {
-    selectorInstance = new ContextualEffectSelector()
+export function getArsenalRepository(): ArsenalRepository {
+  if (!repositoryInstance) {
+    repositoryInstance = new ArsenalRepository()
   }
-  return selectorInstance
+  return repositoryInstance
 }
 
-export function resetContextualEffectSelector(): void {
-  selectorInstance = null
+export function resetArsenalRepository(): void {
+  repositoryInstance = null
 }

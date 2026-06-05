@@ -185,8 +185,8 @@ import {
 // ═══════════════════════════════════════════════════════════════════════════
 
 import {
-  ContextualEffectSelector,
-  getContextualEffectSelector,
+  ArsenalRepository,
+  getArsenalRepository,
 } from '../effects/ContextualEffectSelector'
 
 // 🔋 WAVE 931: Motor de Consciencia Energética
@@ -304,8 +304,8 @@ export class SeleneTitanConscious extends EventEmitter {
   private lastFuzzyDecision: FuzzyDecision | null = null
   private lastDropBridgeResult: DropBridgeResult | null = null
   
-  // 🎯 WAVE 685: Contextual Effect Selector
-  private effectSelector: ContextualEffectSelector
+  // 🎯 WAVE 685: Arsenal Repository (WAVE 4992)
+  private effectSelector: ArsenalRepository
   private lastEffectTimestamp: number = 0
   private lastEffectType: string | null = null
   private energyTrend: 'rising' | 'stable' | 'falling' = 'stable'
@@ -431,8 +431,8 @@ export class SeleneTitanConscious extends EventEmitter {
       minEnergy: 0.75,
     })
     
-    // 🎯 WAVE 685: Inicializar selector de efectos contextual
-    this.effectSelector = new ContextualEffectSelector()
+    // 🎯 WAVE 685: Inicializar Arsenal Repository
+    this.effectSelector = new ArsenalRepository()
     
     // 🔋 WAVE 931: Inicializar motor de consciencia energética
     // Diseño asimétrico: Lento para entrar en silencio, rápido para detectar drops
@@ -511,6 +511,67 @@ export class SeleneTitanConscious extends EventEmitter {
       return this.lastOutput
     }
     
+    // ─────────────────────────────────────────────────────────────────────
+    // 0.5 🔮 CASSANDRA'S SOVEREIGN CLOCK (WAVE 5011)
+    // Fast path: si Cassandra tiene un efecto pre-bufferizado cuyo executeAt
+    // ha llegado, lo disparamos AHORA — sin pasar por HuntEngine, Fuzzy,
+    // ni ningún gate energético. Esta es la voluntad del Oráculo y es LEY.
+    // Ventana de ejecución: [predictedEventAt, predictedEventAt + 500ms]
+    // ─────────────────────────────────────────────────────────────────────
+    {
+      const bufferStatus = dreamEngineIntegrator.getPreBufferStatus()
+      if (bufferStatus) {
+        const nowSovereign = Date.now()
+        const timeToEvent = bufferStatus.predictedEventAt - nowSovereign
+        const SOVEREIGN_WINDOW_MS = 500
+
+        if (timeToEvent <= 0 && timeToEvent >= -SOVEREIGN_WINDOW_MS) {
+          // ✅ Dentro de la ventana soberana — ejecutar inmediatamente
+          const candidate = dreamEngineIntegrator.getPreBufferedCandidate()
+          dreamEngineIntegrator.clearPreBuffer()
+
+          if (candidate) {
+            console.log(
+              `[SeleneTitanConscious] 🔮👑 CASSANDRA SOVEREIGN CLOCK: firing "${candidate.effect}" ` +
+              `| overdue=${Math.abs(timeToEvent)}ms | confidence=${candidate.confidence.toFixed(2)} ` +
+              `| bypassing HuntEngine + Fuzzy + EnergyOverride`
+            )
+
+            const sovereignOutput: ConsciousnessOutput = {
+              ...createEmptyOutput(),
+              confidence: Math.max(candidate.confidence, 0.85),
+              effectDecision: {
+                effectType: candidate.effect,
+                intensity: candidate.intensity,
+                zones: (candidate.zones.length > 0 ? candidate.zones : ['all']) as any,
+                confidence: Math.max(candidate.confidence, 0.85),
+                reason: '🔮👑 CASSANDRA SOVEREIGN CLOCK (WAVE 5011)',
+              },
+              timestamp: nowSovereign,
+              source: 'hunt',
+            }
+
+            // Registrar en historial para cooldowns y estadísticas
+            this.lastGlobalEffectTimestamp = nowSovereign
+            this.lastEffectTimestamp = nowSovereign
+            this.lastEffectType = candidate.effect
+            this.effectHistory.push({ type: candidate.effect, timestamp: nowSovereign })
+            if (this.effectHistory.length > 20) this.effectHistory.shift()
+
+            this.lastOutput = sovereignOutput
+            return sovereignOutput
+          }
+        } else if (timeToEvent < -SOVEREIGN_WINDOW_MS) {
+          // ⚰️ Ventana expirada — limpiar silenciosamente
+          console.log(
+            `[SeleneTitanConscious] 🔮💀 CASSANDRA SILENT CLEAR: "${bufferStatus.effectId}" ` +
+            `expired ${Math.abs(timeToEvent + SOVEREIGN_WINDOW_MS)}ms ago`
+          )
+          dreamEngineIntegrator.clearPreBuffer()
+        }
+      }
+    }
+
     // ─────────────────────────────────────────────────────────────────────
     // 1. ⚡ ENERGY OVERRIDE CHECK (PRIMERO SIEMPRE)
     // "En los drops, la física manda"
@@ -935,7 +996,7 @@ export class SeleneTitanConscious extends EventEmitter {
     if (this.lastDreamIntegrationResult?.approved && this.lastDreamIntegrationResult.effect?.effect) {
       const cachedEffect = this.lastDreamIntegrationResult.effect.effect
       try {
-        const selector = getContextualEffectSelector()
+        const selector = getArsenalRepository()
         const cachedAvailability = selector.checkAvailability(cachedEffect, pattern.vibeId)
         if (!cachedAvailability.available) {
           this.lastDreamIntegrationResult = null
@@ -1090,7 +1151,7 @@ export class SeleneTitanConscious extends EventEmitter {
         ])
         
         // � WAVE 1168: NEURAL BRIDGE - Cache dream result for UI telemetry
-        this.lastDreamIntegrationResult = dreamIntegrationData
+        this.lastDreamIntegrationResult = dreamIntegrationData?.approved ? dreamIntegrationData : null
         
         // ⚡ WAVE 2093.3: DNA SIMULATION LOG restaurado (información vital para debug)
         if (dreamIntegrationData) {
@@ -1162,7 +1223,7 @@ export class SeleneTitanConscious extends EventEmitter {
     
     // ═══════════════════════════════════════════════════════════════════════
     // 🔪 WAVE 1010: SIMPLIFIED FLOW - DecisionMaker is THE ONLY decision point
-    // ContextualEffectSelector is now EffectRepository (only availability check)
+    // ArsenalRepository (WAVE 4992) — only availability check
     // ═══════════════════════════════════════════════════════════════════════
     
     // Actualizar trend de energía
@@ -1265,7 +1326,9 @@ export class SeleneTitanConscious extends EventEmitter {
       // 🩸 WAVE 2102: DNA COOLDOWN OVERRIDE RESTAURADO
       // Le habíamos cortado las alas a la IA. Si la ética es fuerte, DEBE disparar,
       // margin pequeño o grande, es la consciencia hablando. Se relaja la restricción.
-      const hasHighEthicsOverride = isDNADecision 
+      // 🔪 WAVE 4992: allowEthicsOverride hace el gate explícito. BALANCED = false.
+      const hasHighEthicsOverride = currentMoodProfile.allowEthicsOverride
+        && isDNADecision
         && ethicsScore >= ethicsThreshold
         && !oceanicProtection
         && overrideTemporalReady

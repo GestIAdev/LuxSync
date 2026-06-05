@@ -104,7 +104,7 @@ import { FuzzyDecisionMaker, DropBridge, } from './think';
 // 🎯 WAVE 685: CONTEXTUAL EFFECT SELECTOR
 // 🔪 WAVE 1010.5: THE PURGE - Interfaces deprecated removidas
 // ═══════════════════════════════════════════════════════════════════════════
-import { ContextualEffectSelector, getContextualEffectSelector, } from '../effects/ContextualEffectSelector';
+import { ArsenalRepository, getArsenalRepository, } from '../effects/ContextualEffectSelector';
 // 🔋 WAVE 931: Motor de Consciencia Energética
 import { createEnergyConsciousnessEngine } from './EnergyConsciousnessEngine';
 // ═══════════════════════════════════════════════════════════════════════════
@@ -276,8 +276,8 @@ export class SeleneTitanConscious extends EventEmitter {
             peakSections: ['drop', 'chorus'],
             minEnergy: 0.75,
         });
-        // 🎯 WAVE 685: Inicializar selector de efectos contextual
-        this.effectSelector = new ContextualEffectSelector();
+        // 🎯 WAVE 685: Inicializar Arsenal Repository
+        this.effectSelector = new ArsenalRepository();
         // 🔋 WAVE 931: Inicializar motor de consciencia energética
         // Diseño asimétrico: Lento para entrar en silencio, rápido para detectar drops
         this.energyConsciousness = createEnergyConsciousnessEngine();
@@ -689,7 +689,7 @@ export class SeleneTitanConscious extends EventEmitter {
         if (this.lastDreamIntegrationResult?.approved && this.lastDreamIntegrationResult.effect?.effect) {
             const cachedEffect = this.lastDreamIntegrationResult.effect.effect;
             try {
-                const selector = getContextualEffectSelector();
+                const selector = getArsenalRepository();
                 const cachedAvailability = selector.checkAvailability(cachedEffect, pattern.vibeId);
                 if (!cachedAvailability.available) {
                     this.lastDreamIntegrationResult = null;
@@ -839,7 +839,7 @@ export class SeleneTitanConscious extends EventEmitter {
                             new Promise((_, reject) => setTimeout(() => reject(new Error('Dream timeout')), 15))
                         ]);
                         // � WAVE 1168: NEURAL BRIDGE - Cache dream result for UI telemetry
-                        this.lastDreamIntegrationResult = dreamIntegrationData;
+                        this.lastDreamIntegrationResult = dreamIntegrationData?.approved ? dreamIntegrationData : null;
                         // ⚡ WAVE 2093.3: DNA SIMULATION LOG restaurado (información vital para debug)
                         if (dreamIntegrationData) {
                             console.log(`[SeleneTitanConscious] 🧬 DNA: ${dreamIntegrationData.approved ? '✅' : '❌'} ${dreamIntegrationData.effect?.effect ?? 'none'} | ` +
@@ -902,7 +902,7 @@ export class SeleneTitanConscious extends EventEmitter {
         let output = makeDecision(inputs);
         // ═══════════════════════════════════════════════════════════════════════
         // 🔪 WAVE 1010: SIMPLIFIED FLOW - DecisionMaker is THE ONLY decision point
-        // ContextualEffectSelector is now EffectRepository (only availability check)
+        // ArsenalRepository (WAVE 4992) — only availability check
         // ═══════════════════════════════════════════════════════════════════════
         // Actualizar trend de energía
         this.updateEnergyTrend(state.rawEnergy);
@@ -989,7 +989,9 @@ export class SeleneTitanConscious extends EventEmitter {
             // 🩸 WAVE 2102: DNA COOLDOWN OVERRIDE RESTAURADO
             // Le habíamos cortado las alas a la IA. Si la ética es fuerte, DEBE disparar,
             // margin pequeño o grande, es la consciencia hablando. Se relaja la restricción.
-            const hasHighEthicsOverride = isDNADecision
+            // 🔪 WAVE 4992: allowEthicsOverride hace el gate explícito. BALANCED = false.
+            const hasHighEthicsOverride = currentMoodProfile.allowEthicsOverride
+                && isDNADecision
                 && ethicsScore >= ethicsThreshold
                 && !oceanicProtection
                 && overrideTemporalReady;

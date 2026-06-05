@@ -96,6 +96,18 @@ export interface MoodProfile {
    * PUNK: DNA ethics=0.50 < 0.75 → respeta cooldown
    */
   ethicsThreshold: number;
+
+  /**
+   * 🔪 WAVE 4992: Permiso explícito para DNA cooldown override.
+   *
+   * Si es `false`, el override ético está DESHABILITADO sin importar el
+   * ethicsThreshold. Esto elimina el hack de ethicsThreshold=1.20 en BALANCED.
+   *
+   * - BALANCED: false (override desactivado — cooldowns son ley)
+   * - PUNK: true (override activado — la ética rompe reglas)
+   * - CALM: true (override muy raro, ethicsThreshold=0.95 lo restringe)
+   */
+  allowEthicsOverride: boolean;
   
   // ═══════════════════════════════════════════════════════════════════════
   // INTENSITY LIMITS - Techo y suelo de intensidad

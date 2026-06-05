@@ -51,6 +51,10 @@ const transientRef: {
 // Se reconstruye solo cuando llega una full SeleneTruth (7Hz), no en cada hot-frame.
 let fixtureIndex: Map<string, any> = new Map()
 
+// 🛠️ WAVE 5034: Pre-allocated Map for hot-frame ID lookup — zero alloc en 44Hz.
+// Se limpia y rellena cada hot frame en lugar de crear new Map().
+const _hotFrameExistingById: Map<string, any> = new Map()
+
 // WAVE 3403: AudioMatrix telemetry — piggybacked on hot-frame, read by RAF components
 const audioMatrixTelemetry = {
   ringBufferFillLevel: 0,
@@ -163,7 +167,8 @@ export function injectHotFrame(hotFrame: any): void {
     // Build a Map from the existing base truth so any ordering difference
     // between the full-truth array and the hot-frame array is irrelevant.
     // O(N) construction, O(1) lookup — no regression on the hot path.
-    const existingById: Map<string, any> = new Map()
+    const existingById = _hotFrameExistingById
+    existingById.clear()
     for (const f of existingFixtures) {
       if (f?.id) existingById.set(f.id, f)
     }

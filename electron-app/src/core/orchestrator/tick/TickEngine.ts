@@ -29,6 +29,11 @@ export class TickEngine {
   frameCount = 0; warlogHeartbeatFrame = 0; _lastLoggedEngine = ''
   private ctx: any
 
+  // ðŸ› ï¸ WAVE 5032: Pre-allocated mutable caches to eliminate .map() / {} / [] in hot path
+  private _cachedFixtureStates: any[] = []
+  private _cachedHotFrame: any = {}
+  private _cachedHotFrameFixtures: any[] = []
+
   get brain() { return this.ctx.brain }
   get engine() { return this.ctx.engine }
   get hal() { return this.ctx.hal }
@@ -454,26 +459,44 @@ export class TickEngine {
     // AetherUIProjector.project() lo rellena con la verdad Aether cada frame.
     // hal.renderFromTarget() ya NO se llama: Aether es el productor exclusivo.
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    const fixtureStates: import('../../../hal/mapping/FixtureMapper').FixtureState[] =
-      this.fixtures.map((fix: any) => ({
-        dmxAddress: fix.dmxAddress,
-        universe:   fix.universe,
-        name:       fix.name,
-        zone:       fix.zone   ?? 'center',
-        type:       fix.type   ?? 'generic',
-        isVirtual:  fix.isVirtual,
-        dimmer: 0,
-        r: 0, g: 0, b: 0,
-        pan:    128,
-        tilt:   128,
-        zoom:   128,
-        focus:  128,
-        channels:   fix.channels,
-        profileId:  fix.profileId,
-        fixtureId:  fix.id,
-        hasColorWheel:  fix.hasColorWheel,
-        hasColorMixing: fix.hasColorMixing,
-      }))
+    // ðŸ› ï¸ WAVE 5032: Reuse _cachedFixtureStates â€” grow array if needed, mutate in-place
+    const fixtureCount = this.fixtures.length
+    for (let _fi = 0; _fi < fixtureCount; _fi++) {
+      const fix = this.fixtures[_fi]
+      let state = this._cachedFixtureStates[_fi]
+      if (!state) {
+        state = {
+          dmxAddress: 0, universe: 0, name: '', zone: 'center', type: 'generic',
+          isVirtual: false, dimmer: 0, r: 0, g: 0, b: 0,
+          pan: 128, tilt: 128, zoom: 128, focus: 128,
+          channels: null, profileId: '', fixtureId: '',
+          hasColorWheel: false, hasColorMixing: false,
+        }
+        this._cachedFixtureStates[_fi] = state
+      }
+      state.dmxAddress = fix.dmxAddress
+      state.universe   = fix.universe
+      state.name       = fix.name
+      state.zone       = fix.zone   ?? 'center'
+      state.type       = fix.type   ?? 'generic'
+      state.isVirtual  = fix.isVirtual
+      state.dimmer     = 0
+      state.r = 0; state.g = 0; state.b = 0
+      state.pan  = 128
+      state.tilt = 128
+      state.zoom = 128
+      state.focus = 128
+      state.channels      = fix.channels
+      state.profileId     = fix.profileId
+      state.fixtureId     = fix.id
+      state.hasColorWheel  = fix.hasColorWheel
+      state.hasColorMixing = fix.hasColorMixing
+    }
+    // Trim excess if fixtures shrunk
+    if (this._cachedFixtureStates.length > fixtureCount) {
+      this._cachedFixtureStates.length = fixtureCount
+    }
+    const fixtureStates = this._cachedFixtureStates
     
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // ï¿½ WAVE 2662: POST-HAL MUTATION ELIMINATED
@@ -714,45 +737,50 @@ export class TickEngine {
 
       // WAVE 3403: Snapshot AudioMatrix status once per hot-frame (avoid double getStatus())
       const matrixStatus = this.trinity?.getAudioMatrix()?.getStatus()
-      const hotFrame = {
-        frameNumber: this.frameCount,
-        timestamp: now, // âš¡ WAVE 3050: unified timestamp
-        onBeat: engineAudioMetrics.isBeat,
-        beatConfidence: engineAudioMetrics.beatConfidence,
-        bpm: engineAudioMetrics.bpm,
-        // ðŸŽµ WAVE 3250: UNLEASH THE SPECTRUM â€” Audio bands en hot-frame (44Hz)
-        // Antes: bass/mid/high/energy solo viajaban en selene:truth (~7Hz).
-        // AudioSpectrumTitan leÃ­a el MISMO valor 8-9 frames seguidos â†’ escalones.
-        // Ahora viajan a 44Hz â€” el smoothstep del frontend interpola a 60fps.
-        bass,
-        mid,
-        high,
-        energy,
-        // WAVE 3403: AudioMatrix telemetry piggybacked on hot-frame (zero extra IPC)
-        ringBufferFillLevel: matrixStatus?.ringBufferFillLevel ?? 0,
-        activeAudioSource: matrixStatus?.activeSource ?? null,
-        fixtures: fixtureStates.map((f, i) => {
-          const originalFixture = this.fixtures[i]
-          const realId = originalFixture?.id || `fix_${i}`
-          return {
-            id: realId,
-            dimmer: f.dimmer / 255,
-            r: Math.round(f.r),
-            g: Math.round(f.g),
-            b: Math.round(f.b),
-            white: Math.round(f.white ?? 0),
-            amber: Math.round(f.amber ?? 0),
-            pan: f.pan / 255,
-            tilt: f.tilt / 255,
-            zoom: f.zoom,
-            focus: f.focus,
-            physicalPan: (f.physicalPan ?? f.pan) / 255,
-            physicalTilt: (f.physicalTilt ?? f.tilt) / 255,
-            panVelocity: f.panVelocity ?? 0,
-            tiltVelocity: f.tiltVelocity ?? 0,
-          }
-        })
+
+      // ðŸ› ï¸ WAVE 5032: Mutate _cachedHotFrameFixtures in-place instead of .map()
+      const _hfCount = fixtureStates.length
+      for (let _hi = 0; _hi < _hfCount; _hi++) {
+        const _hf = fixtureStates[_hi]
+        const _orig = this.fixtures[_hi]
+        let _hff = this._cachedHotFrameFixtures[_hi]
+        if (!_hff) {
+          _hff = { id: '', dimmer: 0, r: 0, g: 0, b: 0, white: 0, amber: 0, pan: 0, tilt: 0, zoom: 0, focus: 0, physicalPan: 0, physicalTilt: 0, panVelocity: 0, tiltVelocity: 0 }
+          this._cachedHotFrameFixtures[_hi] = _hff
+        }
+        _hff.id = _orig?.id || ''
+        _hff.dimmer = _hf.dimmer / 255
+        _hff.r = Math.round(_hf.r)
+        _hff.g = Math.round(_hf.g)
+        _hff.b = Math.round(_hf.b)
+        _hff.white = Math.round(_hf.white ?? 0)
+        _hff.amber = Math.round(_hf.amber ?? 0)
+        _hff.pan = _hf.pan / 255
+        _hff.tilt = _hf.tilt / 255
+        _hff.zoom = _hf.zoom
+        _hff.focus = _hf.focus
+        _hff.physicalPan = (_hf.physicalPan ?? _hf.pan) / 255
+        _hff.physicalTilt = (_hf.physicalTilt ?? _hf.tilt) / 255
+        _hff.panVelocity = _hf.panVelocity ?? 0
+        _hff.tiltVelocity = _hf.tiltVelocity ?? 0
       }
+      if (this._cachedHotFrameFixtures.length > _hfCount) {
+        this._cachedHotFrameFixtures.length = _hfCount
+      }
+
+      const hotFrame = this._cachedHotFrame
+      hotFrame.frameNumber = this.frameCount
+      hotFrame.timestamp = now
+      hotFrame.onBeat = engineAudioMetrics.isBeat
+      hotFrame.beatConfidence = engineAudioMetrics.beatConfidence
+      hotFrame.bpm = engineAudioMetrics.bpm
+      hotFrame.bass = bass
+      hotFrame.mid = mid
+      hotFrame.high = high
+      hotFrame.energy = energy
+      hotFrame.ringBufferFillLevel = matrixStatus?.ringBufferFillLevel ?? 0
+      hotFrame.activeAudioSource = matrixStatus?.activeSource ?? null
+      hotFrame.fixtures = this._cachedHotFrameFixtures
       this.onHotFrame(hotFrame)
     }
 

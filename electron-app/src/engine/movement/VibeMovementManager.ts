@@ -637,6 +637,7 @@ export class VibeMovementManager {
   private _tempPos = { x: 0, y: 0 }
   private _tempFromPos = { x: 0, y: 0 }
   private _tempFinalPos = { x: 0, y: 0 }
+  private _tempIntent: MovementIntent = { x: 0, y: 0, pattern: '', speed: 0, amplitude: 0 }
   // ─────────────────────────────────────────────────────────────────────
   // Reemplaza phaseAccumulator+barCount+lastBeatCount como fuente de verdad.
   // schedulerState.phase avanza a (2π/cycleBeats)*beatsThisFrame (velocidad pura).
@@ -1229,16 +1230,16 @@ export class VibeMovementManager {
       ? this.kineticTransition.fromPattern
       : patternName
 
-    return {
-      x: stereoPosition.x,
-      y: stereoPosition.y,
-      pattern: reportedPattern,
-      speed: effectiveFrequency,
-      amplitude: effectivePanAmplitude,
-      phaseType,
-      _frequency: effectiveFrequency,
-      _phrase: this.schedulerState.patternIndex,
-    }
+    const intent = this._tempIntent
+    intent.x = stereoPosition.x
+    intent.y = stereoPosition.y
+    intent.pattern = reportedPattern
+    intent.speed = effectiveFrequency
+    intent.amplitude = effectivePanAmplitude
+    intent.phaseType = phaseType
+    intent._frequency = effectiveFrequency
+    intent._phrase = this.schedulerState.patternIndex
+    return intent
   }
 
   // PATTERN SELECTION
@@ -1320,15 +1321,15 @@ export class VibeMovementManager {
   }
   
   private createHomeIntent(pattern: string): MovementIntent {
-    return {
-      x: 0,
-      y: 0,
-      pattern: 'home',
-      speed: 0,
-      amplitude: 0,
-      _frequency: 0,
-      _phrase: this.schedulerState.patternIndex,
-    }
+    const intent = this._tempIntent
+    intent.x = 0
+    intent.y = 0
+    intent.pattern = 'home'
+    intent.speed = 0
+    intent.amplitude = 0
+    intent._frequency = 0
+    intent._phrase = this.schedulerState.patternIndex
+    return intent
   }
 
   /**
@@ -1337,15 +1338,15 @@ export class VibeMovementManager {
    * This prevents the "whip to center" movement when audio stops
    */
   private createFreezeIntent(pattern: string): MovementIntent {
-    return {
-      x: this.lastPosition.x,  // Stay where you are
-      y: this.lastPosition.y,  // Stay where you are
-      pattern: 'freeze',       // Special pattern name for debugging
-      speed: 0,
-      amplitude: 0,
-      _frequency: 0,
-      _phrase: this.schedulerState.patternIndex,
-    }
+    const intent = this._tempIntent
+    intent.x = this.lastPosition.x
+    intent.y = this.lastPosition.y
+    intent.pattern = 'freeze'
+    intent.speed = 0
+    intent.amplitude = 0
+    intent._frequency = 0
+    intent._phrase = this.schedulerState.patternIndex
+    return intent
   }
 
   // PUBLIC GETTERS

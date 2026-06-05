@@ -259,6 +259,9 @@ export class NodeArbiter implements INodeArbiter {
    */
   private readonly _result = new Map<NodeId, Record<string, number>>()
 
+  /** 🛠️ WAVE 5034: Scratch array para getManualOverrideNodeIds — zero alloc. */
+  private readonly _manualOverrideNodeIdsScratch: string[] = []
+
   /**
    * Pool de Records reutilizables — evita `{} ` en el hot path.
    * Crece hasta el número máximo de nodos activos simultáneamente
@@ -1195,7 +1198,12 @@ export class NodeArbiter implements INodeArbiter {
    * Útil para debug/telemetría.
    */
   getManualOverrideNodeIds(): readonly string[] {
-    return [...this._manualOverrides.keys()]
+    const out = this._manualOverrideNodeIdsScratch
+    out.length = 0
+    for (const key of this._manualOverrides.keys()) {
+      out.push(key)
+    }
+    return out
   }
 
   // ── Inhibit Limit API (WAVE 4531) ─────────────────────────────────────────────────────

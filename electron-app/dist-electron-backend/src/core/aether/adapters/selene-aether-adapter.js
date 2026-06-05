@@ -132,10 +132,6 @@ function isHslColor(color) {
  */
 export class SeleneAetherAdapter {
     constructor(zoneRouter) {
-        /** 🔬 WAVE 4832 DIAG: firma de zonas previamente loggeada (anti-spam). */
-        this._lastDiagSignature = '';
-        /** 🔬 WAVE 4832 DIAG: contador anti-spam para values trace (1 cada 60 frames con valor). */
-        this._diagFrameCount = 0;
         // ── Scratch objects pre-allocated (ver §5.4 del blueprint) ─────────────
         /** Scratch para canales IMPACT (dimmer) */
         this._impactValues = { dimmer: 0 };
@@ -275,39 +271,9 @@ export class SeleneAetherAdapter {
      * DESCARTA completamente el campo `movement` de cada zona (regla L3).
      */
     _processZoneOverrides(zoneOverrides, composition, bus) {
-        // 🔬 WAVE 4832 DIAG: log one-shot per zone-set signature.
-        // Imprime qué zonas declara el efecto y cuántos NodeIds resuelve cada una
-        // por familia. Permite detectar shows con fixtures en zonas que el adapter
-        // NO conoce (causa de "soft effects no pintan"). Auto-throttled: misma firma
-        // de zonas no re-imprime hasta que cambie el set.
-        const zoneSignature = Object.keys(zoneOverrides).sort().join(',');
-        if (zoneSignature !== this._lastDiagSignature) {
-            this._lastDiagSignature = zoneSignature;
-            const summary = [];
-            for (const z of Object.keys(zoneOverrides)) {
-                const impactCount = this._zoneRouter.resolve(z, NodeFamily.IMPACT).length;
-                const colorCount = this._zoneRouter.resolve(z, NodeFamily.COLOR).length;
-                summary.push(`${z}(I:${impactCount},C:${colorCount})`);
-            }
-            console.log(`[SeleneAetherAdapter 🔬] zone resolution: ${summary.join(' | ')}`);
-        }
-        // 🔬 WAVE 4832 DIAG: dump real de valores 1 vez/segundo (~60 frames a 60fps).
-        // Permite ver si dimmer/color emitidos son != 0 cuando el user reporta
-        // "no pinta". Captura SÓLO si pasaron suficientes frames para evitar spam.
-        this._diagFrameCount++;
-        const shouldDumpValues = this._diagFrameCount % 60 === 0;
         for (const zoneId in zoneOverrides) {
             const override = zoneOverrides[zoneId];
             const zone = zoneId;
-            if (shouldDumpValues) {
-                const colorStr = override.color
-                    ? `H${Math.round(override.color.h)}/S${Math.round(override.color.s)}/L${Math.round(override.color.l)}`
-                    : '—';
-                const dimStr = override.dimmer !== undefined ? override.dimmer.toFixed(2) : '—';
-                const wStr = override.white !== undefined ? override.white.toFixed(2) : '—';
-                const aStr = override.amber !== undefined ? override.amber.toFixed(2) : '—';
-                console.log(`[SeleneAetherAdapter 🔬] zone=${zoneId} blend=${override.blendMode ?? '?'} dim=${dimStr} color=${colorStr} w=${wStr} a=${aStr}`);
-            }
             // 🌊 WAVE 4832: El blendMode declarado por el efecto se traduce
             // a mergeStrategy. SOLO afecta a canales de luminancia (dimmer/white/amber):
             //   'max'     → 'HTP'  (CumbiaMoon/CorazonLatino: tintan sin matar L0)

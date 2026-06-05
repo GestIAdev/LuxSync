@@ -141,32 +141,8 @@ export class HephaestusAetherAdapter {
       }
     }
 
-    // 🔬 WAVE-DEBUG: Log color intents emitted every 44 frames (1s at 44Hz)
-    if (this._frameIntents.length > 0 && (this._debugFrameCount = ((this._debugFrameCount ?? 0) + 1)) % 44 === 0) {
-      const colorIntents = this._frameIntents.filter(i => {
-        const v = i.values as Record<string, number>
-        return v['red'] !== undefined || v['green'] !== undefined || v['blue'] !== undefined
-      })
-      if (colorIntents.length > 0) {
-        const first = colorIntents[0]
-        const v = first.values as Record<string, number>
-        console.log(
-          `[HephAetherAdapter 🔬] f=${this._debugFrameCount} | ` +
-          `intents=${this._frameIntents.length} colorIntents=${colorIntents.length} | ` +
-          `first=${first.nodeId} r=${v['red']?.toFixed(3)} g=${v['green']?.toFixed(3)} b=${v['blue']?.toFixed(3)}`
-        )
-      } else {
-        console.log(
-          `[HephAetherAdapter 🔬] f=${this._debugFrameCount} | outputs=${outputs.length} intents=${this._frameIntents.length} (no color intents) | ` +
-          `sampleParam=${outputs[0]?.parameter} isCustom=${outputs[0]?.isCustomClip} nodeLen=${this._graph.getDeviceNodes(outputs[0]?.fixtureId ?? '').length}`
-        )
-      }
-    }
-
     arbiter.setHephaestusIntents(this._frameIntents)
   }
-
-  private _debugFrameCount = 0
 
   /**
    * 🏛️ WAVE 2483: Resolve spatialBehavior for a given clipId.

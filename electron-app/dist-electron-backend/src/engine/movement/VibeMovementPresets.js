@@ -27,14 +27,14 @@ export const MOVEMENT_PRESETS = {
     // ───────────────────────────────────────────────────────────────
     'techno-club': {
         physics: {
-            maxAcceleration: 850, // 🔥 600→850. Explosivo — Speed Ch=0 lo permite
-            maxVelocity: 380, // 🔥 320→380. ~805°/s — Techno REAL agresivo
-            friction: 0.06, // 🔥 0.08→0.06. Más inercia industrial
-            arrivalThreshold: 0.3, // 🔥 0.5→0.3. Esquinas clavadas
-            physicsMode: 'snap', // Sin cambio
-            snapFactor: 1.0, // Sin cambio
-            revLimitPanPerSec: 360, // 🔥 300→360. ~763°/s — geometría aflática
-            revLimitTiltPerSec: 270, // 🔥 220→270. ~572°/s — tilt con fuerza máxima
+            maxAcceleration: 500, // Bajado de 850. Mantiene el punch, salva el motor.
+            maxVelocity: 300, // Bajado de 380.
+            friction: 0.08, // Subido de 0.06 para frenar mejor los latigazos.
+            arrivalThreshold: 0.5, // Suaviza el impacto al llegar a la coordenada.
+            physicsMode: 'snap',
+            snapFactor: 0.85, // Bajado de 1.0. Redondea la onda cuadrada.
+            revLimitPanPerSec: 280, // Límite físico realista.
+            revLimitTiltPerSec: 220, // Límite físico realista.
         },
         optics: {
             zoomDefault: 30, // Beam cerrado (láser)

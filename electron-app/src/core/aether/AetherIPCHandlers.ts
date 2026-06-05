@@ -423,9 +423,11 @@ export function registerAetherIPCHandlers(): void {
           const removeNodeIds = fixtureIds.map(id => `${id}:kinetic`)
           aetherKineticEngine.removeNodes(removeNodeIds, arbiter)
           // [WAVE 4937.1] EXPLICIT ARBITER CACHE PURGE ON UNLOCK
-          // Si el patrón es null y no hay coordenadas de ancla, es un Unlock total.
-          // Limpiar _manualOverrides para evitar Ghost Anchors congelados en L2.
-          if (pattern === null && anchorPan === undefined && anchorTilt === undefined) {
+          // Si el patrón es null|'hold'|'static' y no hay coordenadas de ancla,
+          // es un Unlock total. Limpiar _manualOverrides para evitar Ghost Anchors
+          // congelados en L2. El frontend envía 'hold' tras setActivePattern('none')
+          // en el flujo de unlock, por lo que el backend debe tratarlo igual que null.
+          if (anchorPan === undefined && anchorTilt === undefined) {
             for (const id of fixtureIds) {
               arbiter.clearManualOverride(`${id}:kinetic`)
             }
@@ -895,12 +897,17 @@ export function registerAetherIPCHandlers(): void {
             }
           }
           arbiter.clearManualOverride(nodeId)  // captura snapshot → _releaseStates
+          // WAVE 5023: Limpiar el motor override espacial. Si persiste, el arbitraje
+          // sigue usando pan_base/tilt_base del IK como base absoluta, anulando el
+          // offset VMM (ox=0) y congelando el fixture en la última posición espacial.
+          arbiter.clearMotorKineticOverride(nodeId)
           // ⚡ WAVE 4915: limpiar la distance scale junto con el override.
           arbiter.clearSpatialDistanceScale(nodeId)
         }
-        // Si el caller libera todos los fixtures (release global), limpiar la tabla entera
-        // como red de seguridad ante leaks de scales huérfanas.
+        // Si el caller libera todos los fixtures (release global), limpiar las tablas
+        // enteras como red de seguridad ante leaks de overrides huérfanos.
         if (fixtureIds.length === 0) {
+          arbiter.clearAllMotorKineticOverrides()
           arbiter.clearAllSpatialDistanceScales()
         }
         return { success: true }

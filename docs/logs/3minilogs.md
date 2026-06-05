@@ -1,78 +1,153 @@
-WAVE 4966 — PRE-PHASE 12 REALITY CHECK
-Auditor: Cascade (Forensic Mode)
-Target: TitanOrchestrator.ts
-Status: READ-ONLY — ZERO CODE GENERATION
 
-1. Estado del Constructor
-El método createMutableProxy(...internalNames: string[]): T existe en la clase (línea 577) y está siendo utilizado activamente en el constructor para construir dos contextos:
-
-hydrationCtx (línea 600): proxy con 10 claves (_aetherCtx, _aetherAudio, _aetherMusical, _aetherVibe, _aetherStageBounds, _forgeFrameCtx, _forgeAudioBands, _zoneNodeRouter, _aetherHasDevices, _aetherPipeline).
-lifecycleCtx (línea 603): proxy con 14 claves (brain, engine, hal, trinity, audioPipeline, oscProvider, virtualWireProvider, usbDirectLinkProvider, isInitialized, isRunning, config, scheduler, cardiogramaInterval, fixtures, beatDetector).
-No se detectan otros proxies (no hay tickCtx ni audioCtx en el archivo actual). No se evalúa la corrección de las claves — solo se confirma que el mecanismo existe y está en uso.
-
-2. Censo de Campos Huérfanos (Orphan Fields)
-Se dividen en dos categorías para que decidas qué suprimir:
-
-2A. Campos COMPLETAMENTE huérfanos
-Aparecen únicamente en su declaración. Ni siquiera están en las cadenas de createMutableProxy.
-
-#	Campo	Línea	Estado
-1	EMPTY_FFT_BUFFER	263	Pre-alloc de FFT; nunca referenciado con this.
-2	_hephByFixtureId	268	Buffer de routing Hephaestus; nunca usado
-3	_hephByZone	269	Buffer de routing Hephaestus; nunca usado
-4	_hephOutputPool	272	Pool de arrays Hephaestus; nunca usado
-5	_aetherBus	344	Instanciado pero nunca referenciado
-6	_effectBus	349	Instanciado pero nunca referenciado
-7	_aetherResolver	351	Declarado como NodeResolver | null; nunca leído/escrito
-8	_aetherUIProjector	360	Instanciado pero nunca referenciado
-9	_impactAdapter	362	Instanciado pero nunca referenciado
-10	_colorAdapter	364	Declarado como ColorAdapter | null; nunca usado
-11	_kineticAdapter	365	Declarado como VMMAdapter | null; nunca usado
-12	_beamAdapter	367	Declarado como BeamAdapter | null; nunca usado
-13	_atmosphereAdapter	368	Declarado como AtmosphereAdapter | null; nunca usado
-14	_liquidAetherAdapter	371	Declarado como LiquidAetherAdapter | null; nunca usado
-15	_seleneAetherAdapter	375	Declarado como SeleneAetherAdapter | null; nunca usado
-16	_chronosAetherAdapter	376	Instanciado pero nunca referenciado
-17	_hephaestusAetherAdapter	378	Instanciado pero nunca referenciado
-18	_theiaVideoRenderer	384	Declarado como TheiaVideoRenderer | null; nunca usado
-19	_seleneThetaBridge	386	Declarado como SeleneTheiaBridge | null; nunca usado
-20	_timelineEngine	387	Asignado a timelineEngine pero nunca referenciado
-21	_aetherSafety	426	Instanciado pero nunca referenciado
-22	stageBoundsManager	411	Instanciado pero nunca referenciado
-23	lastConsciousnessOutput	332	Inicializado a null; nunca leído ni escrito
-24	currentLiquidLayout	327	Inicializado a '4.1'; nunca leído ni escrito
-2B. Campos referenciados SOLO en cadenas de createMutableProxy
-Estos campos no se acceden con this. en ningún método de TitanOrchestrator, pero sí aparecen como strings en los proxies. Los managers externos pueden leerlos/escribirlos a través del proxy.
-
-#	Campo	Línea	Aparece en proxy de...
-1	_forgeFrameCtx	430	hydrationCtx
-2	_forgeAudioBands	429	hydrationCtx (también usado en init de _forgeFrameCtx)
-3	_aetherCtx	415	hydrationCtx
-4	_aetherAudio	389	hydrationCtx (también usado en init de _aetherCtx)
-5	_aetherMusical	394	hydrationCtx (también usado en init de _aetherCtx)
-6	_aetherVibe	397	hydrationCtx (también usado en init de _aetherCtx)
-7	_aetherStageBounds	404	hydrationCtx (también usado en init de _aetherCtx y stageBoundsManager)
-8	_zoneNodeRouter	374	hydrationCtx
-9	_aetherHasDevices	356	hydrationCtx
-10	_aetherPipeline	358	hydrationCtx
-3. Censo de Imports Muertos
-Importados en la cabecera pero nunca utilizados como tipo o valor en el cuerpo del archivo.
-
-#	Import	Línea	Notas
-1	SeleneTruth	19	Solo importado; no aparece en anotaciones de tipo ni valores
-2	createDefaultTruth	20	Solo importado
-3	createDefaultCognitive	21	Solo importado
-4	createDefaultSensory	22	Solo importado
-5	Layer0_Titan	27	Solo importado
-6	FinalLightingTarget	28	Solo importado
-7	EffectIntentMap	29	Solo importado
-8	EffectIntent	30	Solo importado
-9	ControlLayer	31	Solo importado
-10	ForgeGraphCompiler	67	Solo importado
-11	NodeFamily	80	Solo importado
-12	zoneMapperMatch (alias de fixtureMatchesZone)	133	Solo resolveZone es usado; el alias zoneMapperMatch nunca se referencia
-Resumen Ejecutivo
-Constructor: createMutableProxy funciona y está en uso para 2 contextos. No se toca.
-Campos 100% huérfanos: 24 campos listados en §2A listos para Suprimir.
-Campos en proxy (uso externo): 10 campos en §2B. Si sus managers no los necesitan, también son candidatos.
-Imports muertos: 12 imports listados en §3 listos para Suprimir.
+[TitanOrchestrator] ðŸŽ§ WORKER BPM=100 conf=0.75 | PLL=FREEWHEEL [mem=100@-0f] phase=0.00 sync=0.52 | beat #45 | bass=0.0197 sab=0.000 | ðŸ”¬in_peak=0.01656 in_rms=0.00669
+[TitanEngine 🧠] Stabilization: Key=E Emotion=BRIGHT Strategy=analogous Temp=3997K
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:0%
+[Egress ðŸ“¤] Universe 0 â†’ HAL. Suma bytes: 0 | outputEnabled: false | blackout: false
+[AetherUIProjector 🔬] f=1144 | nodeId=fixture-1769740928922:color fixture=fixture-1769740928922 | r=0.569 g=0.055 b=0.055 → R=145 G=14 B=14 zone=movers-left
+[KineticAdapter 🔬] nodes=4 pushed=4 blocked=0 vibe=fiesta-latina
+[NodeArbiter 🔬] L0 systemIntents=32 kineticIntents=4
+[AetherUIProjector 🔬] f=1145 fixture=fixture-1769740928922 pan=0.812→207 tilt=0.251→64
+[AetherUIProjector 🔬] f=1145 fixture=fixture-1769740934504 pan=0.812→207 tilt=0.251→64
+[AetherUIProjector 🔬] f=1145 fixture=fixture-1769740939144 pan=0.188→48 tilt=0.251→64
+[AetherUIProjector 🔬] f=1145 fixture=fixture-1769740944991 pan=0.188→48 tilt=0.251→64
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:54b | Pan:167 Tilt:-108 | sBPM:100 phase:141°
+[VirtualWire] 📡 SAB feed — cb#3000 | frames=441 | peak=0.0795 | ch=2
+[ARBITER 🎭] In: mood='dreamy' mode='minor' → instant=NEUTRAL stable=BRIGHT dom=64% B/D/N=317/108/68
+[AetherAduana ðŸ›‚] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1408
+[TickEngine 🔬] vibe=fiesta-latina kineticNodes=ok
+[AetherUIProjector 🔬] f=1188 | nodeId=fixture-1769740928922:color fixture=fixture-1769740928922 | r=0.627 g=0.047 b=0.047 → R=160 G=12 B=12 zone=movers-left
+[KineticAdapter 🔬] nodes=4 pushed=4 blocked=0 vibe=fiesta-latina
+[NodeArbiter 🔬] L0 systemIntents=36 kineticIntents=4
+[AetherUIProjector 🔬] f=1189 fixture=fixture-1769740928922 pan=0.467→119 tilt=0.369→94
+[AetherUIProjector 🔬] f=1189 fixture=fixture-1769740934504 pan=0.467→119 tilt=0.369→94
+[AetherUIProjector 🔬] f=1189 fixture=fixture-1769740939144 pan=0.533→136 tilt=0.369→94
+[AetherUIProjector 🔬] f=1189 fixture=fixture-1769740944991 pan=0.533→136 tilt=0.369→94
+[TitanOrchestrator] ðŸŽ§ WORKER BPM=100 conf=0.69 | PLL=FREEWHEEL [mem=100@-0f] phase=0.00 sync=0.49 | beat #45 | bass=0.0438 sab=0.000 | ðŸ”¬in_peak=0.40077 in_rms=0.14182
+[TitanEngine 🧠] Stabilization: Key=E Emotion=BRIGHT Strategy=analogous Temp=4483K
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:0%
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:57b | Pan:-68 Tilt:-16 | sBPM:100 phase:195°
+[NodeResolver 🚨 SILENT-BLACKOUT?] f=1200 | gateOpen=false, manualNodes=0, arbitrated.size=32 → Smart Gate is blocking ALL non-KINETIC nodes. Check TitanOrchestrator._outputEnabled (boot default = false).
+[AetherAduana ðŸ›‚] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1408
+[TickEngine 🔬] vibe=fiesta-latina kineticNodes=ok
+[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=BRIGHT dom=50% B/D/N=229/164/68
+[StrategyArbiter] 🔄 Running... frame=1200 | current=analogous | commitment=601
+[StrategyArbiter] 🔒 LOCKED: analogous | Remaining: 600 frames (10.0s)
+[AetherUIProjector 🔬] f=1232 | nodeId=fixture-1769740928922:color fixture=fixture-1769740928922 | r=0.639 g=0.047 b=0.047 → R=163 G=12 B=12 zone=movers-left
+[KineticAdapter 🔬] nodes=4 pushed=4 blocked=0 vibe=fiesta-latina
+[NodeArbiter 🔬] L0 systemIntents=36 kineticIntents=4
+[AetherUIProjector 🔬] f=1233 fixture=fixture-1769740928922 pan=0.122→31 tilt=0.424→108
+[AetherUIProjector 🔬] f=1233 fixture=fixture-1769740934504 pan=0.122→31 tilt=0.424→108
+[AetherUIProjector 🔬] f=1233 fixture=fixture-1769740939144 pan=0.878→224 tilt=0.424→108
+[AetherUIProjector 🔬] f=1233 fixture=fixture-1769740944991 pan=0.878→224 tilt=0.424→108
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:59b | Pan:-238 Tilt:3 | sBPM:100 phase:244°
+[TitanOrchestrator] ðŸŽ§ WORKER BPM=100 conf=0.34 | PLL=FREEWHEEL [mem=100@-0f] phase=0.00 sync=0.52 | beat #45 | bass=0.0259 sab=0.054 | ðŸ”¬in_peak=0.06540 in_rms=0.03181
+[TitanEngine 🧠] Stabilization: Key=E Emotion=BRIGHT Strategy=analogous Temp=4961K
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:0%
+[AetherAduana ðŸ›‚] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1408
+[TickEngine 🔬] vibe=fiesta-latina kineticNodes=ok
+[AetherUIProjector 🔬] f=1276 | nodeId=fixture-1769740928922:color fixture=fixture-1769740928922 | r=0.620 g=0.051 b=0.051 → R=158 G=13 B=13 zone=movers-left
+[KineticAdapter 🔬] nodes=4 pushed=4 blocked=0 vibe=fiesta-latina
+[NodeArbiter 🔬] L0 systemIntents=36 kineticIntents=4
+[AetherUIProjector 🔬] f=1277 fixture=fixture-1769740928922 pan=0.012→3 tilt=0.298→76
+[AetherUIProjector 🔬] f=1277 fixture=fixture-1769740934504 pan=0.012→3 tilt=0.298→76
+[AetherUIProjector 🔬] f=1277 fixture=fixture-1769740939144 pan=0.988→252 tilt=0.298→76
+[AetherUIProjector 🔬] f=1277 fixture=fixture-1769740944991 pan=0.988→252 tilt=0.298→76
+[ARBITER 🎭] In: mood='neutral' mode='unknown' → instant=NEUTRAL stable=BRIGHT dom=46% B/D/N=154/198/78
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:61b | Pan:-233 Tilt:-101 | sBPM:100 phase:298°
+[AetherAduana ðŸ›‚] VelClamp:0 Airbag:76 DarkSpin:0 AduanaGate:1408
+[TickEngine 🔬] vibe=fiesta-latina kineticNodes=ok
+[TitanOrchestrator] ðŸŽ§ WORKER BPM=100 conf=0.00 | PLL=FREEWHEEL [mem=100@-44f] phase=0.00 sync=0.06 | beat #45 | bass=0.0277 sab=0.108 | ðŸ”¬in_peak=0.07220 in_rms=0.03098
+[TitanEngine 🧠] Stabilization: Key=E Emotion=BRIGHT Strategy=analogous Temp=5440K
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:0%
+[AetherUIProjector 🔬] f=1320 | nodeId=fixture-1769740928922:color fixture=fixture-1769740928922 | r=0.647 g=0.047 b=0.047 → R=165 G=12 B=12 zone=movers-left
+[KineticAdapter 🔬] nodes=4 pushed=4 blocked=0 vibe=fiesta-latina
+[NodeArbiter 🔬] L0 systemIntents=36 kineticIntents=4
+[AetherUIProjector 🔬] f=1321 fixture=fixture-1769740928922 pan=0.196→50 tilt=0.251→64
+[AetherUIProjector 🔬] f=1321 fixture=fixture-1769740934504 pan=0.196→50 tilt=0.251→64
+[AetherUIProjector 🔬] f=1321 fixture=fixture-1769740939144 pan=0.804→205 tilt=0.251→64
+[AetherUIProjector 🔬] f=1321 fixture=fixture-1769740944991 pan=0.804→205 tilt=0.251→64
+[AudioMatrix] 📊 SAB fill=0.108 | src=virtual-wire | forced=virtual-wire | active=virtual-wire | total=1536003
+[VirtualWire] 📡 SAB feed — cb#3500 | frames=441 | peak=0.1092 | ch=2
+[AetherAduana ðŸ›‚] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1408
+[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=BRIGHT dom=55% B/D/N=110/226/76
+[TickEngine 🔬] vibe=fiesta-latina kineticNodes=ok
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:64b | Pan:-39 Tilt:-66 | sBPM:100 phase:352°
+[SCHED] 🌊 figure8 → wave_y | harbor:true deadline:false | phase:1°
+[AetherUIProjector 🔬] f=1364 | nodeId=fixture-1769740928922:color fixture=fixture-1769740928922 | r=0.631 g=0.047 b=0.047 → R=161 G=12 B=12 zone=movers-left
+[MoodArbiter] 🎭 EMOTION SHIFT: BRIGHT → DARK (dominance=60.1%, after 20.3s)
+[KineticAdapter 🔬] nodes=4 pushed=4 blocked=0 vibe=fiesta-latina
+[NodeArbiter 🔬] L0 systemIntents=34 kineticIntents=4
+[AetherUIProjector 🔬] f=1365 fixture=fixture-1769740928922 pan=0.573→146 tilt=0.408→104
+[AetherUIProjector 🔬] f=1365 fixture=fixture-1769740934504 pan=0.573→146 tilt=0.408→104
+[AetherUIProjector 🔬] f=1365 fixture=fixture-1769740939144 pan=0.427→109 tilt=0.396→101
+[AetherUIProjector 🔬] f=1365 fixture=fixture-1769740944991 pan=0.427→109 tilt=0.396→101
+[TitanOrchestrator] ðŸŽ§ WORKER BPM=100 conf=0.00 | PLL=FREEWHEEL [mem=100@-104f] phase=0.00 sync=0.00 | beat #45 | bass=0.1713 sab=0.108 | ðŸ”¬in_peak=0.17903 in_rms=0.08270
+[TitanEngine 🧠] Stabilization: Key=E Emotion=DARK Strategy=analogous Temp=5812K
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:0%
+[AetherAduana ðŸ›‚] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1408
+[TickEngine 🔬] vibe=fiesta-latina kineticNodes=ok
+[CHOREO] fiesta-latina | #1:wave_y [XF→wave_y] [SNAKE ×2] | scene:2b | Pan:177 Tilt:-13 | sBPM:100 phase:57°
+[SCHED] ✅ Crossfade complete → wave_y
+[NodeResolver 🚨 SILENT-BLACKOUT?] f=1400 | gateOpen=false, manualNodes=0, arbitrated.size=32 → Smart Gate is blocking ALL non-KINETIC nodes. Check TitanOrchestrator._outputEnabled (boot default = false).
+[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=DARK dom=60% B/D/N=86/240/71
+[AetherUIProjector 🔬] f=1408 | nodeId=fixture-1769740928922:color fixture=fixture-1769740928922 | r=0.655 g=0.043 b=0.043 → R=167 G=11 B=11 zone=movers-left
+[KineticAdapter 🔬] nodes=4 pushed=4 blocked=0 vibe=fiesta-latina
+[NodeArbiter 🔬] L0 systemIntents=36 kineticIntents=4
+[AetherUIProjector 🔬] f=1409 fixture=fixture-1769740928922 pan=0.875→223 tilt=0.404→103
+[AetherUIProjector 🔬] f=1409 fixture=fixture-1769740934504 pan=0.875→223 tilt=0.404→103
+[AetherUIProjector 🔬] f=1409 fixture=fixture-1769740939144 pan=0.125→32 tilt=0.271→69
+[AetherUIProjector 🔬] f=1409 fixture=fixture-1769740944991 pan=0.125→32 tilt=0.271→69
+[AetherAduana ðŸ›‚] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1408
+[TickEngine 🔬] vibe=fiesta-latina kineticNodes=ok
+[TitanOrchestrator] ðŸŽ§ WORKER BPM=100 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #45 | bass=0.1077 sab=0.108 | ðŸ”¬in_peak=0.12302 in_rms=0.03969
+[TitanEngine 🧠] Stabilization: Key=E Emotion=DARK Strategy=analogous Temp=5681K
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:0%
+[Egress ðŸ“¤] Universe 0 â†’ HAL. Suma bytes: 0 | outputEnabled: false | blackout: false
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×2] | scene:4b | Pan:183 Tilt:-77 | sBPM:100 phase:120°
+[AetherUIProjector 🔬] f=1452 | nodeId=fixture-1769740928922:color fixture=fixture-1769740928922 | r=0.643 g=0.047 b=0.047 → R=164 G=12 B=12 zone=movers-left
+[KineticAdapter 🔬] nodes=4 pushed=4 blocked=0 vibe=fiesta-latina
+[NodeArbiter 🔬] L0 systemIntents=36 kineticIntents=4
+[AetherUIProjector 🔬] f=1453 fixture=fixture-1769740928922 pan=0.780→199 tilt=0.251→64
+[AetherUIProjector 🔬] f=1453 fixture=fixture-1769740934504 pan=0.780→199 tilt=0.251→64
+[AetherUIProjector 🔬] f=1453 fixture=fixture-1769740939144 pan=0.220→56 tilt=0.424→108
+[AetherUIProjector 🔬] f=1453 fixture=fixture-1769740944991 pan=0.220→56 tilt=0.424→108
+[ARBITER 🎭] In: mood='dreamy' mode='minor' → instant=NEUTRAL stable=DARK dom=62% B/D/N=116/260/41
+[AetherAduana ðŸ›‚] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1408
+[TickEngine 🔬] vibe=fiesta-latina kineticNodes=ok
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×2] | scene:6b | Pan:-30 Tilt:-111 | sBPM:100 phase:188°
+[TitanOrchestrator] ðŸŽ§ WORKER BPM=100 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #46 | bass=0.1490 sab=0.108 | ðŸ”¬in_peak=0.35559 in_rms=0.12639
+[TitanEngine 🧠] Stabilization: Key=E Emotion=DARK Strategy=analogous Temp=5524K
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:0%
+[AetherUIProjector 🔬] f=1496 | nodeId=fixture-1769740928922:color fixture=fixture-1769740928922 | r=0.616 g=0.051 b=0.051 → R=157 G=13 B=13 zone=movers-left
+[KineticAdapter 🔬] nodes=4 pushed=4 blocked=0 vibe=fiesta-latina
+[NodeArbiter 🔬] L0 systemIntents=36 kineticIntents=4
+[AetherUIProjector 🔬] f=1497 fixture=fixture-1769740928922 pan=0.404→103 tilt=0.251→64
+[AetherUIProjector 🔬] f=1497 fixture=fixture-1769740934504 pan=0.404→103 tilt=0.251→64
+[AetherUIProjector 🔬] f=1497 fixture=fixture-1769740939144 pan=0.596→152 tilt=0.424→108
+[AetherUIProjector 🔬] f=1497 fixture=fixture-1769740944991 pan=0.596→152 tilt=0.424→108
+[AetherAduana ðŸ›‚] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1408
+[VirtualWire] 📡 SAB feed — cb#4000 | frames=441 | peak=0.2028 | ch=2
+[TickEngine 🔬] vibe=fiesta-latina kineticNodes=ok
+[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=DARK dom=54% B/D/N=132/224/62
+[StrategyArbiter] 🔒 LOCKED: analogous | Remaining: 300 frames (5.0s)
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×2] | scene:9b | Pan:-206 Tilt:-61 | sBPM:100 phase:256°
+[AetherUIProjector 🔬] f=1540 | nodeId=fixture-1769740928922:color fixture=fixture-1769740928922 | r=0.655 g=0.043 b=0.043 → R=167 G=11 B=11 zone=movers-left
+[KineticAdapter 🔬] nodes=4 pushed=4 blocked=0 vibe=fiesta-latina
+[NodeArbiter 🔬] L0 systemIntents=36 kineticIntents=4
+[AetherUIProjector 🔬] f=1541 fixture=fixture-1769740928922 pan=0.114→29 tilt=0.286→73
+[AetherUIProjector 🔬] f=1541 fixture=fixture-1769740934504 pan=0.114→29 tilt=0.286→73
+[AetherUIProjector 🔬] f=1541 fixture=fixture-1769740939144 pan=0.886→226 tilt=0.392→100
+[AetherUIProjector 🔬] f=1541 fixture=fixture-1769740944991 pan=0.886→226 tilt=0.392→100
+[TitanOrchestrator] ðŸŽ§ WORKER BPM=100 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #46 | bass=0.0130 sab=0.108 | ðŸ”¬in_peak=0.06544 in_rms=0.02879
+[TitanEngine 🧠] Stabilization: Key=E Emotion=DARK Strategy=analogous Temp=5373K
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:0%
+[AetherAduana ðŸ›‚] VelClamp:0 Airbag:0 DarkSpin:0 AduanaGate:1408
+[TickEngine 🔬] vibe=fiesta-latina kineticNodes=ok
+[AetherUIProjector 🔬] f=1584 | nodeId=fixture-1769740928922:color fixture=fixture-1769740928922 | r=0.675 g=0.039 b=0.039 → R=172 G=10 B=10 zone=movers-left
+[ARBITER 🎭] In: mood='dreamy' mode='unknown' → instant=NEUTRAL stable=DARK dom=50% B/D/N=145/210/68
+[KineticAdapter 🔬] nodes=4 pushed=4 blocked=0 vibe=fiesta-latina
+[NodeArbiter 🔬] L0 systemIntents=36 kineticIntents=4
+[AetherUIProjector 🔬] f=1585 fixture=fixture-1769740928922 pan=0.235→60 tilt=0.424→108
+[AetherUIProjector 🔬] f=1585 fixture=fixture-1769740934504 pan=0.235→60 tilt=0.424→108
+[AetherUIProjector 🔬] f=1585 fixture=fixture-1769740939144 pan=0.765→195 tilt=0.251→64
+[AetherUIProjector 🔬] f=1585 fixture=fixture-1769740944991 pan=0.765→195 tilt=0.251→64

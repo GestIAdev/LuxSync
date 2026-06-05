@@ -26,7 +26,7 @@ const DMX_OUTPUT_ZEROS: readonly number[] = Object.freeze(new Array(512).fill(0)
 export class TickEngine {
   private static readonly TRUTH_BROADCAST_DIVIDER = 6
   private static readonly HOT_FRAME_DIVIDER = 1
-  frameCount = 0; warlogHeartbeatFrame = 0; _lastLoggedEngine = ''; _outputEnabled = false
+  frameCount = 0; warlogHeartbeatFrame = 0; _lastLoggedEngine = ''
   private ctx: any
 
   get brain() { return this.ctx.brain }
@@ -38,6 +38,7 @@ export class TickEngine {
   get onHotFrame() { return this.ctx.onHotFrame }
   get onBroadcast() { return this.ctx.onBroadcast }
   get _aetherHasDevices() { return this.ctx._aetherHasDevices }
+  get _outputEnabled() { return this.ctx._outputEnabled }
   get _aetherArbiter() { return this.ctx._aetherArbiter }
   get _aetherResolver() { return this.ctx._aetherResolver }
   get _colorAdapter() { return this.ctx._colorAdapter }

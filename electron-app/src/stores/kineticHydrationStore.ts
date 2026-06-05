@@ -41,7 +41,7 @@ import type { PatternType } from './movementStore'
 /** Snapshot per-fixture devuelto por el IPC `getKineticNodeStates`. */
 export interface NodeKineticSnapshot {
   active: boolean
-  pattern: PatternType        // ya traducido a UI pattern (engine 'figure8' → ui 'eight')
+  pattern: string              // WAVE 5027: passthrough de patrones L0 dinámicos (ej. cadera_libre)
   speed: number               // 0..100 (UI scale)
   amplitude: number           // 0..100 (UI scale)
   fan: number                 // -100..100 (UI scale)  — equivalente a chaos del slider
@@ -57,7 +57,7 @@ export interface NodeKineticSnapshot {
  * Cuando la selección está vacía, todos los campos son `null`.
  */
 export interface KineticAggregate {
-  pattern: PatternType | null
+  pattern: string | null       // WAVE 5027: permite patrones automáticos del VMM no listados en PatternType
   speed: number | null        // 0..100
   amplitude: number | null    // 0..100
   fan: number | null          // -100..100
@@ -118,9 +118,11 @@ const VALID_UI_PATTERNS: ReadonlySet<string> = new Set([
   'circle', 'eight', 'sweep', 'darkspin', 'bounce', 'butterfly', 'pulse',
 ])
 
-export function nativePatternToUI(native: string | null): PatternType {
+export function nativePatternToUI(native: string | null): string {
   if (native === null || native === 'static' || native === 'hold') return 'none'
-  return VALID_UI_PATTERNS.has(native) ? (native as PatternType) : 'none'
+  // WAVE 5027: passthrough directo para patrones automáticos del VMM.
+  // Si el nombre no está en el arsenal manual, se muestra tal cual en la UI.
+  return VALID_UI_PATTERNS.has(native) ? native : native
 }
 
 const EMPTY_AGGREGATE: KineticAggregate = {
@@ -153,7 +155,7 @@ function computeAggregate(
   // Tolerancia para igualar floats (evita "mixed" por ruido de IPC).
   const EPS = 1e-3
 
-  let pattern: PatternType | null = present[0].pattern
+  let pattern: string | null = present[0].pattern
   let speed: number | null        = present[0].speed
   let amplitude: number | null    = present[0].amplitude
   let fan: number | null          = present[0].fan
@@ -214,7 +216,7 @@ export const useKineticHydrationStore = create<KineticHydrationState & KineticHy
       for (const id of selectedIds) {
         const prev = next.get(id) ?? {
           active: false,
-          pattern: 'none' as PatternType,
+          pattern: 'none' as string,
           speed: 50,
           amplitude: 50,
           fan: 0,

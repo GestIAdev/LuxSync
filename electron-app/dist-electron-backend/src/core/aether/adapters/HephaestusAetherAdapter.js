@@ -29,7 +29,6 @@ export class HephaestusAetherAdapter {
         // Avoids hitting the registry once per output (N outputs → 1 lookup per
         // distinct clip). Cleared at the start of every ingest().
         this._spatialCache = new Map();
-        this._debugFrameCount = 0;
         this._graph = graph;
         this._registry = registry ?? getDynamicEffectRegistry();
     }
@@ -107,24 +106,6 @@ export class HephaestusAetherAdapter {
                     intent.values['brightness'] = output.normalizedValue;
                     break;
                 }
-            }
-        }
-        // 🔬 WAVE-DEBUG: Log color intents emitted every 44 frames (1s at 44Hz)
-        if (this._frameIntents.length > 0 && (this._debugFrameCount = ((this._debugFrameCount ?? 0) + 1)) % 44 === 0) {
-            const colorIntents = this._frameIntents.filter(i => {
-                const v = i.values;
-                return v['red'] !== undefined || v['green'] !== undefined || v['blue'] !== undefined;
-            });
-            if (colorIntents.length > 0) {
-                const first = colorIntents[0];
-                const v = first.values;
-                console.log(`[HephAetherAdapter 🔬] f=${this._debugFrameCount} | ` +
-                    `intents=${this._frameIntents.length} colorIntents=${colorIntents.length} | ` +
-                    `first=${first.nodeId} r=${v['red']?.toFixed(3)} g=${v['green']?.toFixed(3)} b=${v['blue']?.toFixed(3)}`);
-            }
-            else {
-                console.log(`[HephAetherAdapter 🔬] f=${this._debugFrameCount} | outputs=${outputs.length} intents=${this._frameIntents.length} (no color intents) | ` +
-                    `sampleParam=${outputs[0]?.parameter} isCustom=${outputs[0]?.isCustomClip} nodeLen=${this._graph.getDeviceNodes(outputs[0]?.fixtureId ?? '').length}`);
             }
         }
         arbiter.setHephaestusIntents(this._frameIntents);

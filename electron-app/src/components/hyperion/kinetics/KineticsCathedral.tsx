@@ -18,7 +18,7 @@
 import React, { useCallback, useMemo, useState } from 'react'
 import { useShallow } from 'zustand/shallow'
 
-import { useMovementStore, type PatternType } from '../../../stores/movementStore'
+import { useMovementStore } from '../../../stores/movementStore'
 import { useSelectionStore } from '../../../stores/selectionStore'
 import { useProgrammerStore } from '../../../stores/programmerStore'
 import { useHardware } from '../../../stores/truthStore'
@@ -100,7 +100,7 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
   // ─────────────────────────────────────────────────────────────────────────
 
   /** Pattern change — KineticsBridge suscribe activePattern y despacha setManualFixturePattern */
-  const handlePatternChange = useCallback((pattern: PatternType) => {
+  const handlePatternChange = useCallback((pattern: string) => {
     setActivePattern(pattern)
     // WAVE 4712: patternSpeed agregado puede ser null (mixed); usar fallback 50.
     useProgrammerStore.getState().setKineticSpeed(patternSpeed ?? 50)

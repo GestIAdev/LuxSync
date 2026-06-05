@@ -28,8 +28,8 @@ const PATTERNS: PatternConfig[] = [
 
 interface PatternArsenalProps {
   /** WAVE 4712: null = estado mixto (selección con patrones divergentes) → ningún botón se ilumina */
-  activePattern: PatternType | null
-  onChange: (pattern: PatternType) => void
+  activePattern: string | null
+  onChange: (pattern: string) => void
   disabled?: boolean
 }
 
@@ -38,7 +38,7 @@ export const PatternArsenal: React.FC<PatternArsenalProps> = ({
   onChange,
   disabled = false,
 }) => {
-  const handleClick = useCallback((id: PatternType) => {
+  const handleClick = useCallback((id: string) => {
     if (disabled) return
     // WAVE 4712: si está mixed, primer click siempre asigna (no toggle).
     // Click en patrón activo (no-mixed) → deseleccionar.

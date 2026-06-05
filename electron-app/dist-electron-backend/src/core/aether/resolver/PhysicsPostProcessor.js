@@ -147,6 +147,14 @@ export class PhysicsPostProcessor {
     constructor() {
         // ── Estado de inercia por nodo (patch-time allocated) ─────────────────
         this._states = new Map();
+        // ── WAVE 5023: Bandera de inicialización 3D por nodo ─────────────────
+        // Un nodo entra aquí la primera vez que recibe targetX en el ArbitratedNodeMap.
+        // En ese primer frame se teleporta el state 3D al target real para evitar
+        // el "salto mortal" por state zombie (DEFAULT_3D_Y=1.5 cuando el target
+        // real puede estar en Y=0, causando lag y apuntado al techo en fixtures
+        // centrales cercanos a X=0). Se borra al hacer Unlock (targetX desaparece)
+        // para que el próximo L2 también arranque limpio.
+        this._3dInitialized = new Set();
         // ── Configuración de modo ──────────────────────────────────────────────
         this._mode = 'classic';
         // WAVE 4990 Paso 2: 0.5 → 0.8 — convergencia más rápida del target IK espacial.
@@ -231,6 +239,19 @@ export class PhysicsPostProcessor {
                 this._x3dTarget = isFinite(xT) ? xT : state[SLOT_X3D_POS];
                 this._y3dTarget = isFinite(yT ?? NaN) ? (yT ?? DEFAULT_3D_Y) : state[SLOT_Y3D_POS];
                 this._z3dTarget = isFinite(zT ?? NaN) ? (zT ?? DEFAULT_3D_Z) : state[SLOT_Z3D_POS];
+                // WAVE 5023: Primer frame en modo 3D → teleportar estado al target real.
+                // Sin esto, el suavizado arranca desde DEFAULT_3D_Y=1.5 hacia el target
+                // real (ej. Y=0 en suelo), produciendo un arco de ~8 frames donde el
+                // IK calcula ángulos incorrectos y los fixtures centrales apuntan al techo.
+                if (!this._3dInitialized.has(node.nodeId)) {
+                    this._3dInitialized.add(node.nodeId);
+                    state[SLOT_X3D_POS] = this._x3dTarget;
+                    state[SLOT_Y3D_POS] = this._y3dTarget;
+                    state[SLOT_Z3D_POS] = this._z3dTarget;
+                    state[SLOT_X3D_VEL] = 0;
+                    state[SLOT_Y3D_VEL] = 0;
+                    state[SLOT_Z3D_VEL] = 0;
+                }
                 // WAVE 4617-B M3: Derivar límites de velocidad por eje a partir de
                 // la velocidad angular del motor y la escala real del escenario.
                 //
@@ -282,6 +303,23 @@ export class PhysicsPostProcessor {
                 entry['targetY'] = state[SLOT_Y3D_POS];
                 entry['targetZ'] = state[SLOT_Z3D_POS];
                 return; // nodo espacial procesado — skip flujo legacy pan/tilt
+            }
+            // WAVE 5023: El nodo ha salido del modo 3D (targetX ya no está presente).
+            // Seedear el estado clásico desde la posición física REAL que el NodeResolver
+            // acaba de calcular por IK. Sin esto, state[SLOT_PAN_POS] sigue congelado en
+            // un valor de hace minutos (zombie) y el primer delta clásico es un latigazo.
+            if (this._3dInitialized.has(node.nodeId)) {
+                const actualPan = node.currentPosition?.pan;
+                const actualTilt = node.currentPosition?.tilt;
+                if (typeof actualPan === 'number' && isFinite(actualPan)) {
+                    state[SLOT_PAN_POS] = actualPan;
+                }
+                if (typeof actualTilt === 'number' && isFinite(actualTilt)) {
+                    state[SLOT_TILT_POS] = actualTilt;
+                }
+                state[SLOT_PAN_VEL] = 0;
+                state[SLOT_TILT_VEL] = 0;
+                this._3dInitialized.delete(node.nodeId);
             }
             // Leer target del ArbitratedNodeMap
             this._panTarget = entry['pan'] ?? 0.5;

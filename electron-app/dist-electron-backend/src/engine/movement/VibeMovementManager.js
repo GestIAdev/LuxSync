@@ -55,7 +55,7 @@ const TILT_FLOOR_LIMIT = 0.50;
 const TILT_OFFSET_CEILING = -0.325;
 const TILT_OFFSET_BY_VIBE = {
     'techno-club': -0.35,
-    'fiesta-latina': -0.35,
+    'fiesta-latina': -0.15, // Subido de -0.35. Levanta la cabeza para hacer círculos amplios.
     'pop-rock': -0.30,
     'chill-lounge': -0.25,
     'idle': -0.10,
@@ -77,7 +77,7 @@ const VIBE_CONFIG = {
     //   Full stage pan, tilt abierto (88% = ~238°), frecuencia oceánica.
     'fiesta-latina': {
         panScale: 0.95,
-        tiltScale: 0.60,
+        tiltScale: 0.85, // Subido de 0.60. ¡Ahora usarán toda la pista!
         baseFrequency: 0.12,
         patterns: ['figure8', 'wave_y', 'ballyhoo', 'cadera_libre', 'espiral_conga'],
         homeOnSilence: false,
@@ -266,9 +266,9 @@ const PATTERNS = {
             y: from.y + (to.y - from.y) * t,
         };
     },
-    // BOTSTEP: Posiciones cuantizadas robóticas con interpolación lineal
+    // BOTSTEP (TECHNO): Robótico, pero con amortiguación matemática (SmoothStep)
     // 🔧 WAVE 2088.7: THE PHYSICS UNCHAINING — Target lineal puro.
-    // 8 posiciones golden-ratio con transición a velocidad constante.
+    // 8 posiciones golden-ratio con transición suavizada por SmoothStep.
     // El carácter "robótico" lo dará el PhysicsDriver al frenar en cada posición.
     botstep: (phase, audio) => {
         const phi = 1.618033988749;
@@ -276,11 +276,14 @@ const PATTERNS = {
         const normalizedPhase = (phase / (Math.PI * 2)) * totalSteps;
         const currentStep = Math.floor(normalizedPhase) % totalSteps;
         const nextStep = (currentStep + 1) % totalSteps;
-        const t = normalizedPhase - Math.floor(normalizedPhase);
-        const fromX = Math.sin(currentStep * phi * Math.PI) * 0.9;
-        const fromY = Math.cos(currentStep * phi * phi * Math.PI) * 0.9; // 🔧 WAVE 2221: 0.6→0.9. Tilt agresivo para saltos verticales obvios
-        const toX = Math.sin(nextStep * phi * Math.PI) * 0.9;
-        const toY = Math.cos(nextStep * phi * phi * Math.PI) * 0.9; // 🔧 WAVE 2221: 0.6→0.9
+        // t original era lineal. Inyectamos SmoothStep para frenar latigazos:
+        let t = normalizedPhase - Math.floor(normalizedPhase);
+        t = t * t * (3 - 2 * t); // La magia que salva los motores
+        // Reducimos la amplitud de 0.9 a 0.65 para que los saltos sean más cortos
+        const fromX = Math.sin(currentStep * phi * Math.PI) * 0.65;
+        const fromY = Math.cos(currentStep * phi * phi * Math.PI) * 0.65;
+        const toX = Math.sin(nextStep * phi * Math.PI) * 0.65;
+        const toY = Math.cos(nextStep * phi * phi * Math.PI) * 0.65;
         return {
             x: fromX + (toX - fromX) * t,
             y: fromY + (toY - fromY) * t,
@@ -306,49 +309,30 @@ const PATTERNS = {
             y: Math.sin(phase * 2) * 0.75,
         };
     },
-    // WAVE_Y: Péndulo elíptico — ola suave con elevación
-    // WAVE 4740 FIX: La fórmula anterior tenía dos bugs críticos:
-    //   1) y = -(Math.abs(cos(p*0.5)) * 0.6) → y SIEMPRE ≤ 0 (cabeza al suelo)
-    //      → con ancla baja, tiltBase clipea a 0 → deadzone de 2+ compases.
-    //   2) Math.abs(cos(p*0.5)) = 0 en p=π y 3π → y=0 exacto dos veces
-    //      por ciclo: el foco se queda estático en el ancla durante ~2s.
-    // FIX: Péndulo elíptico simétrico. X=balanceo, Y=elevación.
-    //   Nunca toca (0,0) excepto instantáneamente. Rango completo en ambos ejes.
+    // WAVE_Y: Auténtico barrido en forma de "U" (cruzando la pista elegantemente)
     wave_y: (phase, audio) => {
         return {
-            x: Math.sin(phase) * 0.80,
-            y: Math.cos(phase) * 0.70,
+            x: Math.sin(phase) * 0.85,
+            y: Math.sin(phase * 2) * 0.40, // Doble frecuencia en Y crea la curva
         };
     },
-    // BALLYHOO: Espiral polar con radio garantizado (WAVE 4740 REDISEÑO)
-    // DIAGNÓSTICO: La serie de Fourier anterior colapsaba a (0,0) cuando
-    //   phase = π/2 (todos los armónicos cos/sin en cuadratura suman cero).
-    //   El ×1.8 amplifier llevaba picos a ±1.35 → clipping duro adicional.
-    // REDISEÑO: Polar con envolvente garantizada.
-    //   r = 0.75 + 0.25×cos(2p) → r ∈ [0.50, 1.00] — piso del 50% garantizado.
-    //   x = sin(1.5p)×r / y = cos(p)×r: ratio 3:2 Lissajous no cierra exactamente
-    //   → patrón siempre activo, NUNCA colapsa al centro (x=0, y=0).
+    // BALLYHOO: El clásico e icónico "8" (Infinito) perfecto
     ballyhoo: (phase, audio, index = 0, total = 1) => {
-        const r = 0.75 + 0.25 * Math.cos(phase * 2); // r ∈ [0.50, 1.00]
+        const r = 0.75 + 0.25 * Math.cos(phase * 2);
         return {
-            x: Math.sin(phase * 1.5) * r, // barrido complejo en X
-            y: Math.cos(phase) * r, // elevación que respira con r
+            x: Math.sin(phase) * r, // Frecuencia 1:1 con la fase base
+            y: Math.cos(phase * 2) * r, // Frecuencia x2 en tilt = forma de 8
         };
     },
     // ─────────────────────────────────────────────────────────────────────
     // 🌊 WAVE 4703: NUEVOS PATRONES LATINOS — La Expansión del Alma
     // ─────────────────────────────────────────────────────────────────────
-    // CADERA_LIBRE: Lissajous 3:2 con micro-deriva de fase orgánica
-    // La relación 3:2 crea una figura-8 asimétrica que nunca cierra exactamente
-    // (ligeramente irracional) — da la sensación de movimiento vivo, no mecánico.
-    // La deriva senoidal lenta (period ≈ 37 beats) hace que el patrón "respire".
-    // Resultado: una cadera que no repite exactamente, como una bailarina real.
+    // CADERA_LIBRE: Movimiento amplio, sensual y orgánico
     cadera_libre: (phase, audio, index = 0, total = 1) => {
-        // Deriva lenta: 1 ciclo cada ~37 beats (primo relativo al período de 20)
         const drift = Math.sin(phase * 0.137) * 0.18;
         return {
-            x: Math.sin(phase * 3 + drift) * 0.90,
-            y: Math.sin(phase * 2) * 0.65 + Math.sin(phase * 0.5) * 0.12,
+            x: Math.sin(phase) * 0.90, // Frecuencia normal (no x3) para evitar epilepsia
+            y: Math.cos(phase * 2 + drift) * 0.65, // El coseno desfasado crea el contoneo
         };
     },
     // ESPIRAL_CONGA: Hélice tridimensional con modulación de elevación
@@ -1092,6 +1076,21 @@ export class VibeMovementManager {
     getBarCount() {
         // WAVE 4741: aprox desde sceneBeatsElapsed (mantiene compatibilidad de tests)
         return Math.floor(this.schedulerState.sceneBeatsElapsed / 4);
+    }
+    // WAVE 5025: Expone el nombre del patrón activo sin generar ningún intent.
+    // Si hay override manual, devuelve ese; si no, el índice actual del scheduler.
+    // Devuelve null si el VMM todavía no tiene vibeId cargado.
+    getCurrentPatternName() {
+        if (this.manualPatternOverride !== null)
+            return this.manualPatternOverride;
+        if (this.lastVibeId === null)
+            return null;
+        const config = VIBE_CONFIG[this.lastVibeId] || VIBE_CONFIG['idle'];
+        const patterns = config.patterns;
+        if (!patterns || patterns.length === 0)
+            return null;
+        const safeIndex = this.schedulerState.patternIndex % patterns.length;
+        return patterns[safeIndex] ?? null;
     }
 }
 // UI Pattern → GoldenPattern Translation Map

@@ -579,7 +579,8 @@ export class TitanOrchestrator {
       this.createMutableProxy<HydrationContext>(
         '_aetherGraph', '_aetherArbiter', '_aetherResolver', '_aetherPipeline', '_aetherHasDevices',
         '_colorAdapter', '_kineticAdapter', '_beamAdapter', '_atmosphereAdapter', '_liquidAetherAdapter',
-        '_seleneAetherAdapter', '_zoneNodeRouter', 'hal', 'fixtures'
+        '_seleneAetherAdapter', '_zoneNodeRouter', 'hal', 'fixtures',
+        '_outputEnabled'
       ),
       {
         physicsPostProcessor: this._physicsPostProcessor,
@@ -627,6 +628,7 @@ export class TitanOrchestrator {
       get _pixelMapAdapter() { return self._pixelMapAdapter },
       get _theiaVideoRenderer() { return self._theiaVideoRenderer },
       get _physicsPostProcessor() { return self._physicsPostProcessor },
+      get _outputEnabled() { return self._outputEnabled },
       get _aetherSafety() { return self._aetherSafety },
       get _forgeFrameCtx() { return self._forgeFrameCtx },
       get _forgeAudioBands() { return self._forgeAudioBands },

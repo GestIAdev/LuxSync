@@ -22,6 +22,7 @@
 
 import type { SeleneTruth } from '../core/protocol/SeleneProtocol'
 import { useEffectsStore } from './effectsStore'
+import { useKineticHydrationStore, nativePatternToUI } from './kineticHydrationStore'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MUTABLE REFERENCE - "The Ghost Store"
@@ -61,6 +62,9 @@ const audioMatrixTelemetry = {
 // instead of slowly lerping to the new state (which creates desync).
 let vibeGeneration = 0
 let lastVibeId: string | null = null
+
+// WAVE 5025: Last VMM pattern propagated to kineticHydrationStore (debounced by value-change).
+let _lastVmmPattern: string | null = null
 
 // ═══════════════════════════════════════════════════════════════════════════
 // API PÚBLICA
@@ -248,6 +252,26 @@ export function injectHotFrame(hotFrame: any): void {
   // ── Patch frame number ────────────────────────────────────────────
   if (transientRef.current.system) {
     transientRef.current.system.frameNumber = hotFrame.frameNumber ?? transientRef.current.system.frameNumber
+  }
+
+  // WAVE 5025: Propagar patrón activo L0 (VMM) al kineticHydrationStore.
+  // Se escribe sólo cuando el valor cambia y con throttle para evitar
+  // actualizaciones de Zustand a 44Hz (los patrones cambian cada ~8 beats).
+  if (hotFrame.activeKineticPattern !== undefined && hotFrame.activeKineticPattern !== null) {
+    const uiPattern = nativePatternToUI(hotFrame.activeKineticPattern as string)
+    const prev = _lastVmmPattern
+    if (uiPattern !== prev) {
+      _lastVmmPattern = uiPattern
+      // Escribe en aggregate directamente sólo si el operador NO tiene fixtures
+      // seleccionados con un override manual activo (aggregate.anyActive === false).
+      // Si hay override manual el hydration store ya tiene los datos correctos desde el bridge.
+      const { aggregate } = useKineticHydrationStore.getState()
+      if (!aggregate.anyActive && aggregate.pattern !== uiPattern) {
+        useKineticHydrationStore.setState(state => ({
+          aggregate: { ...state.aggregate, pattern: uiPattern },
+        }))
+      }
+    }
   }
 }
 

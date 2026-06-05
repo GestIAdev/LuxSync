@@ -58,8 +58,6 @@ function isAtmosphericZone(zoneId: string): boolean {
 }
 
 export class AetherUIProjector {
-  private _debugFrameCount = 0
-
   /**
    * ⚡ WAVE 4855: Motor virtual de strobo. Instancia única reutilizada por
    * todos los fixtures de la escena. El estado interno (fase per-fixture)
@@ -82,10 +80,6 @@ export class AetherUIProjector {
    * @param _blackoutActive Ignorado (ver WAVE 4822). HAL es la única Aduana real.
    */
   project(fixtures: FixtureState[], graph: NodeGraph, arbitrated: ArbitratedNodeMap, _blackoutActive: boolean = false, deltaMs: number = 0): void {
-    this._debugFrameCount++
-    const doDebug = this._debugFrameCount % 44 === 0
-    let debugColorFound = false
-
     for (const fixture of fixtures) {
       // DeviceId canónico: el UUID del fixture (no fixtureId ni name)
       // ⚡ WAVE 4559: fixtureId es el UUID canónico — el DeviceId que indexa el NodeGraph
@@ -187,17 +181,6 @@ export class AetherUIProjector {
           const projectedG = toDmx((gRaw ?? 0) * chromaScale)
           const projectedB = toDmx((bRaw ?? 0) * chromaScale)
 
-          // 🔬 WAVE-DEBUG: log first non-zero color projected
-          if (doDebug && !debugColorFound && (projectedR > 0 || projectedG > 0 || projectedB > 0)) {
-            debugColorFound = true
-            console.log(
-              `[AetherUIProjector 🔬] f=${this._debugFrameCount} | ` +
-              `nodeId=${String(nodeId)} fixture=${fixture.fixtureId} | ` +
-              `r=${rRaw?.toFixed(3)} g=${gRaw?.toFixed(3)} b=${bRaw?.toFixed(3)} → ` +
-              `R=${projectedR} G=${projectedG} B=${projectedB} zone=${node.zoneId}`
-            )
-          }
-
           // 🌊 WAVE 4696 M1: Zone-aware color routing.
           // Atmospheric zones (ambient, air, flash) → additive blending.
           // Rhythmic/spatial zones → channel-wise max blend.
@@ -235,21 +218,5 @@ export class AetherUIProjector {
       // (L0 + L1 + L2) para permitir pre-programación a ciegas (Blind Mode).
     }
 
-    // 🔬 WAVE-DEBUG: If no color found this debug frame but arbitrated has data, log first arbitrated entry with color keys
-    if (doDebug && !debugColorFound && arbitrated.size > 0) {
-      for (const [nid, ch] of arbitrated) {
-        const r = (ch as Record<string, number>)['red'] ?? (ch as Record<string, number>)['r']
-        const g = (ch as Record<string, number>)['green'] ?? (ch as Record<string, number>)['g']
-        const b = (ch as Record<string, number>)['blue'] ?? (ch as Record<string, number>)['b']
-        if (r !== undefined || g !== undefined || b !== undefined) {
-          console.log(
-            `[AetherUIProjector 🔬 NO-COLOR] f=${this._debugFrameCount} | ` +
-            `arbitrated has color in nodeId=${String(nid)} r=${r?.toFixed(3)} g=${g?.toFixed(3)} b=${b?.toFixed(3)} ` +
-            `but fixture r/g/b=0. arbitrated.size=${arbitrated.size}`
-          )
-          break
-        }
-      }
-    }
   }
 }

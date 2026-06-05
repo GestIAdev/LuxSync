@@ -650,6 +650,11 @@ export class UniversalDMXDriver extends EventEmitter {
             return false;
         this.isTransmitting = true;
         const promises = [];
+        // 🛠️ WAVE 5030: L0-DEBUG — inspect DMX buffer before hardware write.
+        const dmxBuf0 = this.universeBuffers.get(0);
+        if (dmxBuf0) {
+            console.log('[L0-DEBUG] Buffer DMX antes de escribir:', Array.from(dmxBuf0.slice(0, 6)));
+        }
         // ─── Driver-managed universes (EnttecPro): enviar con port ──────────
         for (const [universe, port] of this.ports) {
             const buffer = this.universeBuffers.get(universe);

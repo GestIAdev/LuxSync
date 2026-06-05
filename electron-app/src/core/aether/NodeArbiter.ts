@@ -209,9 +209,6 @@ export class NodeArbiter implements INodeArbiter {
   /** Effect intents (L3) */
   private _effectIntents: readonly INodeIntent[] = []
 
-  /** 🔬 WAVE 4832 DIAG: contador de frames con intents L3 (anti-spam). */
-  private _diagL3FrameCount = 0
-
   /** Hephaestus custom clip intents (L3+ — Diamond Data direct curves) */
   private _hephaestusIntents: readonly INodeIntent[] = []
 
@@ -625,18 +622,6 @@ export class NodeArbiter implements INodeArbiter {
     // WAVE 4829: Se aplica ANTES de L2 en el flujo de datos internos para
     // poder registrar dominación. El MANUAL HARD LOCK sigue siendo la
     // autoridad final del operador humano (paso post-L3 abajo).
-    // 🔬 WAVE 4832 DIAG: contador para verificar arrival de intents L3.
-    if (this._effectIntents.length > 0) {
-      this._diagL3FrameCount++
-      if (this._diagL3FrameCount % 60 === 1) {
-        // Sample 1ª intent para confirmar valores
-        const sample = this._effectIntents[0]
-        const sampleVals = Object.entries(sample.values)
-          .map(([k, v]) => `${k}=${v.toFixed(2)}`)
-          .join(',')
-        console.log(`[NodeArbiter 🔬] L3 intents=${this._effectIntents.length} sample[${sample.nodeId}] merge=${sample.mergeStrategy ?? '?'} ${sampleVals}`)
-      }
-    }
     for (let i = 0; i < this._effectIntents.length; i++) {
       this._applyIntent(this._effectIntents[i], 'effect')
     }

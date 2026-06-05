@@ -176,8 +176,6 @@ export class NodeArbiter {
         this._inhibitLimits = new Map();
         /** Effect intents (L3) */
         this._effectIntents = [];
-        /** 🔬 WAVE 4832 DIAG: contador de frames con intents L3 (anti-spam). */
-        this._diagL3FrameCount = 0;
         /** Hephaestus custom clip intents (L3+ — Diamond Data direct curves) */
         this._hephaestusIntents = [];
         /** Playback intents (LP — Chronos Timeline, prioridad entre L1-L3) */
@@ -542,18 +540,6 @@ export class NodeArbiter {
         // WAVE 4829: Se aplica ANTES de L2 en el flujo de datos internos para
         // poder registrar dominación. El MANUAL HARD LOCK sigue siendo la
         // autoridad final del operador humano (paso post-L3 abajo).
-        // 🔬 WAVE 4832 DIAG: contador para verificar arrival de intents L3.
-        if (this._effectIntents.length > 0) {
-            this._diagL3FrameCount++;
-            if (this._diagL3FrameCount % 60 === 1) {
-                // Sample 1ª intent para confirmar valores
-                const sample = this._effectIntents[0];
-                const sampleVals = Object.entries(sample.values)
-                    .map(([k, v]) => `${k}=${v.toFixed(2)}`)
-                    .join(',');
-                console.log(`[NodeArbiter 🔬] L3 intents=${this._effectIntents.length} sample[${sample.nodeId}] merge=${sample.mergeStrategy ?? '?'} ${sampleVals}`);
-            }
-        }
         for (let i = 0; i < this._effectIntents.length; i++) {
             this._applyIntent(this._effectIntents[i], 'effect');
         }
@@ -652,6 +638,25 @@ export class NodeArbiter {
         // L0 no había escrito 'tilt', enviando el mover al techo en ceiling mounts.
         if (this._releaseStates.size > 0) {
             this._applyReleaseFades();
+        }
+        // 🛠️ WAVE 5030: L0-DEBUG — trace whether automatic layer survives arbitration.
+        // Log every ~2s (at 44Hz → frame % 88). Check a kinetic node sample for pan/tilt.
+        if (this._photonTracerFrame % 88 === 0) {
+            const l0HasBus = this._systemBus !== null;
+            const l0Count = l0HasBus ? this._systemBus.count : 0;
+            const l2Active = this._manualOverrides.size > 0 || this._manualChannelLocks.size > 0;
+            // Sample first kinetic node in result to see if pan/tilt survived
+            let kineticSample = null;
+            for (const [nodeId, record] of this._result) {
+                if (nodeId.includes(':kinetic') && ('pan' in record || 'tilt' in record)) {
+                    kineticSample = `pan=${record['pan']?.toFixed(2) ?? 'N/A'} tilt=${record['tilt']?.toFixed(2) ?? 'N/A'}`;
+                    break;
+                }
+            }
+            console.log(`[L0-DEBUG] Prioridad: ${l2Active ? 'manual' : 'auto'} | ` +
+                `¿Pasa L0?: ${l0Count > 0 && !l2Active ? 'SI' : (l0Count > 0 ? 'L0-presente-pero-L2-bloquea' : 'L0-muerto')} | ` +
+                `L0-intents=${l0Count} | L2-locks=${this._manualChannelLocks.size} | ` +
+                `sample=${kineticSample ?? 'N/A'}`);
         }
         return this._result;
     }

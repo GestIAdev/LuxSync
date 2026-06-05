@@ -62,7 +62,7 @@ interface MovementState {
   cathedralTab: CathedralTab
 
   // ── Pattern + dynamics ──────────────────────────────────────────────────
-  activePattern: PatternType
+  activePattern: string
   patternSpeed: number     // 0-100
   patternAmplitude: number // 0-100
 
@@ -99,7 +99,7 @@ interface MovementActions {
   setCathedralTab: (tab: CathedralTab) => void
 
   // Pattern
-  setActivePattern: (p: PatternType) => void
+  setActivePattern: (p: string) => void
   setPatternSpeed: (v: number) => void
   setPatternAmplitude: (v: number) => void
 
@@ -229,7 +229,7 @@ export const useMovementStore = create<MovementState & MovementActions>()(subscr
     set({
       pan: pan ?? 270,
       tilt: tilt ?? 135,
-      activePattern: uiPattern as PatternType,
+      activePattern: uiPattern as string,
       patternSpeed: speed ?? 50,
       patternAmplitude: amplitude ?? 50,
     })
@@ -268,7 +268,7 @@ export const useMovementStore = create<MovementState & MovementActions>()(subscr
         'heartbeat': 'pulse',
       }
       const raw = pattern ?? 'none'
-      next.activePattern = (UI_PATTERN_MAP[raw] ?? 'none') as PatternType
+      next.activePattern = (UI_PATTERN_MAP[raw] ?? 'none') as string
     }
     if (amplitude !== undefined && amplitude !== null) {
       next.patternAmplitude = Math.max(0, Math.min(100, amplitude * 100))

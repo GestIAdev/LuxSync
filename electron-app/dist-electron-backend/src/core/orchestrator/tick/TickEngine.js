@@ -6,6 +6,7 @@ import { fixtureMatchesZone as zoneMapperMatch } from '../../zones/ZoneMapper';
 import { getHephaestusRuntime } from '../IPCHandlers';
 import { getEffectManager } from '../../effects/EffectManager';
 import { aetherKineticEngine } from '../../aether/AetherKineticEngine';
+import { vibeMovementManager } from '../../../engine/movement/VibeMovementManager';
 import { NodeFamily } from '../../aether';
 import { createDefaultCognitive } from '../../protocol/SeleneProtocol';
 const ZONE_MAP = {
@@ -26,6 +27,7 @@ export class TickEngine {
     get fixtures() { return this.ctx.fixtures; }
     get onHotFrame() { return this.ctx.onHotFrame; }
     get onBroadcast() { return this.ctx.onBroadcast; }
+    get _outputEnabled() { return this.ctx._outputEnabled; }
     get _aetherHasDevices() { return this.ctx._aetherHasDevices; }
     get _aetherArbiter() { return this.ctx._aetherArbiter; }
     get _aetherResolver() { return this.ctx._aetherResolver; }
@@ -74,7 +76,6 @@ export class TickEngine {
         this.frameCount = 0;
         this.warlogHeartbeatFrame = 0;
         this._lastLoggedEngine = '';
-        this._outputEnabled = false;
         this.ctx = ctx;
     }
     async tick() {
@@ -708,6 +709,9 @@ export class TickEngine {
                 // WAVE 3403: AudioMatrix telemetry piggybacked on hot-frame (zero extra IPC)
                 ringBufferFillLevel: matrixStatus?.ringBufferFillLevel ?? 0,
                 activeAudioSource: matrixStatus?.activeSource ?? null,
+                // WAVE 5025: Patrón activo L0 (VMM) para sincronizar PatternArsenal en el frontend.
+                // El L2 manual tiene prioridad: si hay override manual en el VMM, llega aquí también.
+                activeKineticPattern: vibeMovementManager.getCurrentPatternName(),
                 fixtures: fixtureStates.map((f, i) => {
                     const originalFixture = this.fixtures[i];
                     const realId = originalFixture?.id || `fix_${i}`;
@@ -844,6 +848,14 @@ export class TickEngine {
                 beamAdapter.process(this._aetherGraph.getView(NodeFamily.BEAM), ctx, this._aetherBus);
                 // ðŸŒ«ï¸ WAVE 3516.4: Atmosphere â€” elementos (fog, haze, fan, spark, pyro)
                 atmosphereAdapter.process(this._aetherGraph.getView(NodeFamily.ATMOSPHERE), ctx, this._aetherBus);
+                // 🛠️ WAVE 5030: DIAG — Check if L0 adapters actually produced intents.
+                if (this.frameCount % 88 === 0) {
+                    const kineticView = this._aetherGraph.getView(NodeFamily.KINETIC);
+                    const colorView = this._aetherGraph.getView(NodeFamily.COLOR);
+                    console.log(`[L0-DEBUG PIPELINE] _aetherBus.count=${this._aetherBus.count} | ` +
+                        `kineticNodes=${kineticView.length} colorNodes=${colorView.length} | ` +
+                        `aetherHasDevices=${this._aetherHasDevices}`);
+                }
                 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
                 // ðŸš€ WAVE 4524.3: L3 â€” Selene-Aether Adapter (Puente Cognitivo)
                 // Consume el output de Selene (effectDecision, colorDecision, physicsModifier)
@@ -887,6 +899,18 @@ export class TickEngine {
                 aetherArbiter.setSystemIntents(this._aetherBus);
                 aetherArbiter.setEffectIntents(this._effectBus.getAll());
                 const arbitrated = aetherArbiter.arbitrate();
+                // 🛠️ WAVE 5030: DIAG — Did arbitration produce any results?
+                if (this.frameCount % 88 === 0) {
+                    let kineticSample = 'N/A';
+                    for (const [nodeId, record] of arbitrated) {
+                        if (nodeId.includes(':kinetic')) {
+                            kineticSample = `pan=${record['pan']?.toFixed(2) ?? 'N/A'} tilt=${record['tilt']?.toFixed(2) ?? 'N/A'}`;
+                            break;
+                        }
+                    }
+                    console.log(`[L0-DEBUG PIPELINE] arbitrated.size=${arbitrated.size} | ` +
+                        `kineticSample=${kineticSample}`);
+                }
                 // 3.5. âš™ï¸ WAVE 4518.1: Physics Post-Processor â€” aplica inercia a nodos KINETIC
                 // WOODSTOCK: deltaMs viene del FrameScheduler (performance.now()-based), NUNCA Date.now()
                 this._physicsPostProcessor.process(arbitrated, this._aetherGraph, this._aetherCtx.deltaMs, this._aetherCtx.vibe.name);
@@ -999,6 +1023,13 @@ export class TickEngine {
                         }
                     }
                     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+                    // 🛠️ WAVE 5030: DIAG — Check if NodeResolver produced actual DMX data.
+                    if (this.frameCount % 88 === 0 && universe === 1) {
+                        let byteSum = 0;
+                        for (let _bi = 0; _bi < egressBuf.length; _bi++)
+                            byteSum += egressBuf[_bi];
+                        console.log(`[L0-DEBUG PIPELINE] Universe ${universe} egress sum=${byteSum}`);
+                    }
                     this.hal.sendUniverseRaw(universe, egressBuf);
                     // ðŸ”¬ WAVE 4681: Log de supervivencia cada 300 frames (~5s a 44Hz)
                     if (this.frameCount % 300 === 0) {

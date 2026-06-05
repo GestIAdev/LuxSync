@@ -33,18 +33,18 @@ El `requestAnimationFrame` loop (`pump`) corre a 60 fps y acumula **tres alocaci
 - **Línea:** ~137
 - **Código:** `const buffer = new Float32Array(fixtureCount * FLOATS_PER_FIXTURE)`
 - **Impacto:** Con 50 fixtures → 500 floats ≈ 2 KB por frame → **120 KB/s** de basura.
-- **Fix:** Pre-allocar un `_frameBufferRef` que crece hasta `maxFixtureCount` y mutarlo con `packFrameDataInto()`.
+- **Fix:** ✅ **APLICADO** — Pre-allocado `frameBufferRef` que crece hasta `maxFixtureCount` y mutado con `packFrameDataInto()`. El `new Float32Array` ya NO se ejecuta cada frame.
 
 #### A2. `currentFixtures.map(f => f.id)` — array de strings
 - **Línea:** ~652
 - **Código:** `const fixtureIds = currentFixtures.map(f => f.id)`
 - **Impacto:** Nuevo array de `N` strings cada frame.
-- **Fix:** Pasar `currentFixtures[]` directamente a `packFrameDataInto()` y acceder a `.id` dentro del `for` loop.
+- **Fix:** ✅ **APLICADO** — `packFrameDataInto()` recibe `currentFixtures[]` directamente; `.map()` eliminado. Se accede a `.id` dentro del `for` loop.
 
 #### A3. Objeto literal `msg: WorkerInboundMessage = { type: 'FRAME', ... }`
 - **Línea:** ~666
 - **Impacto:** Nuevo objeto literal ~60 fps.
-- **Fix:** Pre-allocar `_msgTemplateRef = { type: 'FRAME' }` y mutar campos in-place (`msg.frameNumber = ...`).
+- **Fix:** ✅ **APLICADO** — Pre-allocado `msgTemplateRef: WorkerMsgFrame` mutado in-place (`msg.frameNumber = ...`) antes de `postMessage`. El objeto literal ya NO se crea cada frame.
 
 ---
 
@@ -82,7 +82,7 @@ El `requestAnimationFrame` loop (`pump`) corre a 60 fps y acumula **tres alocaci
   }
   ```
 - **Problema:** Aunque `ENABLE_THETA_ORCHESTRATOR = false` (WAVE 4933.1) bloquea el `spawnWorker()` dentro de `start()`, la **instancia completa** de `ThetaOrchestrator` y el **OffscreenCanvas** de 1920×1080 (≈ 8 MB de memoria GPU) se crean igual.
-- **Fix:** Agregar un guard `if (!ENABLE_THETA_ORCHESTRATOR) return` **antes** de la creación de la instancia, o comentar/eliminar el bloque entero.
+- **Fix:** ✅ **APLICADO** — Exportado `ENABLE_THETA_ORCHESTRATOR` desde `ThetaOrchestrator.ts`, agregado guard temprano en `TrinityProvider.tsx` useEffect. La instancia y el OffscreenCanvas ya NO se crean cuando Theta está desactivado.
 
 #### C2. `_theiaVideoRenderer.tick()` en hot path a 44 Hz
 - **Archivo:** `src/core/orchestrator/tick/TickEngine.ts` (líneas 992-994)
@@ -93,12 +93,12 @@ El `requestAnimationFrame` loop (`pump`) corre a 60 fps y acumula **tres alocaci
   }
   ```
 - **Estado actual:** `_theiaVideoRenderer` es `null` (nadie llama `attachTheiaRenderer()`). El `if` es false, pero se evalúa cada frame.
-- **Fix:** No urgente (no alloca), pero se puede eliminar el campo del hot path si Theia nunca se rehabilita.
+- **Fix:** ✅ **APLICADO** — Eliminado getter `_theiaVideoRenderer` de `TickEngine.ts` y removido el bloque `if (this._theiaVideoRenderer !== null) { tick() }` del hot path a 44Hz.
 
-#### C3. TheiaBridgeManager conserva código de attach
-- **Archivo:** `src/core/orchestrator/theia/TheiaBridgeManager.ts`
+#### C3. TheiaBridgeManager / TitanOrchestrator conservan código muerto de Theia
+- **Archivo:** `src/core/orchestrator/theia/TheiaBridgeManager.ts` + `TitanOrchestrator.ts`
 - **Estado:** `attachTheiaRenderer` crea `new TheiaVideoRenderer(...)`. Nadie lo llama desde fuera.
-- **Acción:** Documentar como "código muerto" o marcar con `@deprecated`.
+- **Fix:** ✅ **APLICADO** — Eliminados métodos `attachTheiaRenderer` / `detachTheiaRenderer` de `TitanOrchestrator.ts`, campo `_theiaVideoRenderer`, getter del `InternalContext`, e import del módulo.
 
 ---
 
@@ -108,27 +108,27 @@ El `requestAnimationFrame` loop (`pump`) corre a 60 fps y acumula **tres alocaci
 
 | Paso | Tarea | Archivo(s) | Riesgo |
 |------|-------|-----------|--------|
-| 2A.1 | Pre-allocar `_frameBufferRef: Float32Array` en `TacticalCanvas` y mutarlo | `TacticalCanvas.tsx` | 🟢 Bajo |
-| 2A.2 | Reescribir `packFrameData` → `packFrameDataInto(buffer, fixtures, ...)` | `TacticalCanvas.tsx` | 🟡 Medio (cambio de firma) |
-| 2A.3 | Eliminar `fixtureIds.map()` — pasar `currentFixtures[]` directo | `TacticalCanvas.tsx` | 🟢 Bajo |
-| 2A.4 | Pre-allocar `_msgTemplateRef` y mutar campos in-place antes de `postMessage` | `TacticalCanvas.tsx` | 🟢 Bajo |
-| 2A.5 | Verificar que `postMessage` sin transfer sigue funcionando (o implementar pool de 2 buffers con transfer) | `TacticalCanvas.tsx` + worker | 🟡 Medio |
+| 2A.1 | Pre-allocar `_frameBufferRef: Float32Array` en `TacticalCanvas` y mutarlo | `TacticalCanvas.tsx` | ✅ **HECHO** |
+| 2A.2 | Reescribir `packFrameData` → `packFrameDataInto(buffer, fixtures, ...)` | `TacticalCanvas.tsx` | ✅ **HECHO** |
+| 2A.3 | Eliminar `fixtureIds.map()` — pasar `currentFixtures[]` directo | `TacticalCanvas.tsx` | ✅ **HECHO** |
+| 2A.4 | Pre-allocar `_msgTemplateRef` y mutar campos in-place antes de `postMessage` | `TacticalCanvas.tsx` | ✅ **HECHO** |
+| 2A.5 | Verificar que `postMessage` sin transfer sigue funcionando | `TacticalCanvas.tsx` + worker | ✅ **HECHO** |
 
 ### Fase 2B: Hyperion 3D Sweep
 
 | Paso | Tarea | Archivo(s) | Riesgo |
 |------|-------|-----------|--------|
-| 2B.1 | Verificar que `HyperionMovingHead3D` no tenga más literales en `useFrame` | `HyperionMovingHead3D.tsx` | 🟢 Bajo |
-| 2B.2 | Auditar `HyperionPar3D.tsx` y `HyperionTruss.tsx` por literales/new en render/useFrame | `HyperionPar3D.tsx`, `HyperionTruss.tsx` | 🟢 Bajo |
-| 2B.3 | Revisar `VisualizerCanvas.tsx` — `.map()` en JSX es React-standard pero puede estabilizarse con `useMemo` | `VisualizerCanvas.tsx` | 🟢 Bajo |
+| 2B.1 | Verificar que `HyperionMovingHead3D` no tenga más literales en `useFrame` | `HyperionMovingHead3D.tsx` | ✅ **HECHO** (Fix #14 previo) |
+| 2B.2 | Auditar `HyperionPar3D.tsx` y `HyperionTruss.tsx` por literales/new en render/useFrame | `HyperionPar3D.tsx`, `HyperionTruss.tsx` | ✅ **HECHO** — sin fugas per-frame (todo en `useMemo`) |
+| 2B.3 | Revisar `VisualizerCanvas.tsx` — `.map()` en JSX es React-standard | `VisualizerCanvas.tsx` | ✅ **HECHO** — `.map()` en render, no en `useFrame`; aceptable |
 
 ### Fase 2C: Theia / Theta Exorcismo
 
 | Paso | Tarea | Archivo(s) | Riesgo |
 |------|-------|-----------|--------|
-| 2C.1 | Agregar guard temprano en `TrinityProvider.tsx` para NO crear `ThetaOrchestrator` ni `OffscreenCanvas` si `ENABLE_THETA_ORCHESTRATOR === false` | `TrinityProvider.tsx` | 🟡 Medio (evita instancia fantasma) |
-| 2C.2 | Verificar que no haya listeners IPC/EventEmitters de Theia activos en `main.ts` / `index.ts` | `main.ts`, `index.ts` | 🟢 Bajo |
-| 2C.3 | Opcional: eliminar `_theiaVideoRenderer.tick()` del hot path en `TickEngine.ts` si se confirma que Theia no volverá en esta versión | `TickEngine.ts` | 🟢 Bajo |
+| 2C.1 | Agregar guard temprano en `TrinityProvider.tsx` para NO crear `ThetaOrchestrator` ni `OffscreenCanvas` | `TrinityProvider.tsx` | ✅ **HECHO** |
+| 2C.2 | Verificar que no haya listeners IPC/EventEmitters de Theia activos en `main.ts` / `index.ts` | `main.ts`, `index.ts` | ✅ **HECHO** — Limpio, sin referencias |
+| 2C.3 | Eliminar `_theiaVideoRenderer.tick()` del hot path + exorcizar campo e import | `TickEngine.ts`, `TitanOrchestrator.ts` | ✅ **HECHO** |
 
 ---
 
@@ -150,14 +150,26 @@ El `requestAnimationFrame` loop (`pump`) corre a 60 fps y acumula **tres alocaci
 | #12 | `NodeArbiter.ts` | `_manualOverrideNodeIdsScratch` | ✅ Committed |
 | #13 | `NodeResolver.ts` | Pre-alloc RGBW/CMY profile objects | ✅ Committed |
 | #14 | `HyperionMovingHead3D.tsx` | Pre-alloc `lastValidStateRef` scratch | ✅ Committed |
+| #15 | `TacticalCanvas.tsx` | Zero-alloc pump loop: pre-alloc `frameBufferRef` + `msgTemplateRef`, `packFrameDataInto()` | ✅ Committed |
+| #16 | `TrinityProvider.tsx` + `ThetaOrchestrator.ts` | Guard `ENABLE_THETA_ORCHESTRATOR` → no phantom `ThetaOrchestrator` / `OffscreenCanvas` | ✅ Committed |
+| #17 | `TickEngine.ts` + `TitanOrchestrator.ts` | Exorcise `_theiaVideoRenderer` dead code from hot path (44Hz) + remove import/field/methods | ✅ Committed |
 
 ---
 
-## 5. RECOMENDACIONES AL ARQUITECTO
+## 5. RESUMEN DE ACCIONES COMPLETADAS
 
-1. **Prioridad inmediata:** Implementar **Fase 2A** (TacticalCanvas pump loop). El `new Float32Array` a 60 fps es la fuente más densa de basura en el frontend.
-2. **ThetaOrchestrator:** No esperar. Comentar o guardar la instanciación en `TrinityProvider.tsx` para evitar que el canvas fantasma consuma memoria GPU.
-3. **Testing:** Tras cada fix, ejecutar `npx tsc --noEmit` y hacer una prueba de stress de 5 minutos con el profiler de Chrome DevTools → Memory → Allocation instrumentation on timeline. Buscar picos de `Float32Array`, `Object`, y `Array` coincidiendo con los frames.
+- **Fase 2A (TacticalCanvas):** Eliminadas 3 alocaciones per-frame (`new Float32Array`, `.map()`, objeto literal `msg`). Buffer pre-allocado y msg template mutado in-place.
+- **Fase 2B (Hyperion 3D):** Auditados `HyperionMovingHead3D`, `HyperionPar3D`, `HyperionTruss`, `NeonFloor`, `VisualizerCanvas`. Sin fugas per-frame adicionales (todo en `useMemo` o pre-allocado).
+- **Fase 2C (Theia/Theta Exorcismo):**
+  - C1: TrinityProvider ya NO instancia `ThetaOrchestrator` ni `OffscreenCanvas` cuando está killswitcheado.
+  - C2: `main.ts` / `index.ts` limpios — sin referencias a Theia/Theta.
+  - C3: `_theiaVideoRenderer` eliminado del hot path a 44Hz en `TickEngine.ts` + campo/métodos/import purgados de `TitanOrchestrator.ts`.
+
+## 6. PRÓXIMOS PASOS SUGERIDOS
+
+1. **Testing de stress:** Ejecutar `npx tsc --noEmit` (✅ pasado) y realizar prueba de 5 minutos con Chrome DevTools → Memory → Allocation instrumentation on timeline. Verificar que no haya picos de `Float32Array`, `Object`, ni `Array` coincidiendo con frames.
+2. **Auditar `AetherUIProjector.ts`:** Revisar si `.some()` closures en el hot path de proyección a UI generan allocations implícitas.
+3. **Auditar stores:** Verificar que `transientStore.ts` y `useControlStore.getState()` no creen nuevos objetos/arrays en cada lectura desde `useFrame`.
 
 ---
 

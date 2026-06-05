@@ -11,7 +11,7 @@
  */
 
 import { createContext, useContext, useEffect, useRef, ReactNode, useCallback, useState } from 'react'
-import { ThetaOrchestrator } from '../theia'
+import { ThetaOrchestrator, ENABLE_THETA_ORCHESTRATOR } from '../theia'
 import { useAudioCapture, AudioMetrics } from '../hooks/useAudioCapture'
 import { useAudioStore, selectTrinityAudioActions } from '../stores/audioStore'
 import { useSeleneStore, LogEntryType, selectTrinitySeleneActions } from '../stores/seleneStore'
@@ -621,7 +621,11 @@ export function TrinityProvider({ children }: TrinityProviderProps) {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // 🎬 WAVE 4860: ThetaOrchestrator lifecycle — mirrors power state
+  // 🛠️ WAVE 5033: Guard temprano — si Theta está killswitcheado, NO instanciar
+  // ni crear OffscreenCanvas (evita fantasma GPU ~8 MB).
   useEffect(() => {
+    if (!ENABLE_THETA_ORCHESTRATOR) return
+
     if (powerState === 'ONLINE' && !thetaRef.current) {
       const theta = new ThetaOrchestrator()
       thetaRef.current = theta

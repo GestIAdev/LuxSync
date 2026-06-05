@@ -27,7 +27,7 @@ export {
   type ThetaStateReportPayload,
 } from './protocol'
 
-export { ThetaOrchestrator, getThetaOrchestrator, type ThetaOrchestratorConfig } from './ThetaOrchestrator'
+export { ThetaOrchestrator, getThetaOrchestrator, ENABLE_THETA_ORCHESTRATOR, type ThetaOrchestratorConfig } from './ThetaOrchestrator'
 
 // 🎬 WAVE 4864 — Phase 3 (Output Window) + Phase 4 (FSM + Crossfade)
 export {

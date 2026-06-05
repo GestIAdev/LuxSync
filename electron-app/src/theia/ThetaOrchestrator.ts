@@ -84,7 +84,7 @@ const DEFAULT_CONFIG: ThetaOrchestratorConfig = {
 
 // WAVE 4933.1 - THETA KILLSWITCH
 // Emergency global shutdown: disables worker spawn, heartbeat, and phoenix loop.
-const ENABLE_THETA_ORCHESTRATOR = false
+export const ENABLE_THETA_ORCHESTRATOR = false
 
 // ─────────────────────────────────────────────────────────────────────────
 // IPC bridge — el preload expone window.lux.theia.getFrameContextSAB()

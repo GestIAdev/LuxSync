@@ -213,6 +213,8 @@ export class NodeResolver implements INodeResolver {
   private _resolveFrameIndex = 0
   // 🛠️ WAVE 5034: Pre-allocated IKResult scratch — zero alloc en hot path.
   private readonly _ikResultScratch: import('../../../engine/movement/InverseKinematicsEngine').IKResult = { pan: 0, tilt: 0, reachable: false, antiFlipApplied: false }
+  // 🛠️ WAVE 5034: Pre-allocated kinetic clamp scratch — zero alloc en hot path.
+  private readonly _kineticClampScratch: { pan: number; tilt: number } = { pan: 0, tilt: 0 }
 
   // ── Scratch RGB — reutilizado en hot path sin alloc ──────────────────
   // Mutable in-place, pasado al ColorTranslator por referencia.
@@ -1239,9 +1241,9 @@ export class NodeResolver implements INodeResolver {
     let safeTilt = sanitizeDmxByte(ikResult.tilt)
     const sm = this._safetyMiddleware
     if (sm) {
-      const clamped = sm.clampKineticVelocity(node.nodeId, safePan, safeTilt)
-      safePan  = sm.applyAirbag(clamped.pan, true)
-      safeTilt = sm.applyAirbag(clamped.tilt, false)
+      sm.clampKineticVelocityInto(this._kineticClampScratch, node.nodeId, safePan, safeTilt)
+      safePan  = sm.applyAirbag(this._kineticClampScratch.pan, true)
+      safeTilt = sm.applyAirbag(this._kineticClampScratch.tilt, false)
     }
 
     // WAVE 4616: Pre-Vis rescue — siempre actualizar currentPosition con el

@@ -170,6 +170,12 @@ export class AetherSafetyMiddleware {
   // ═════════════════════════════════════════════════════════════════════════
 
   clampKineticVelocity(nodeId: NodeId, panDMX: number, tiltDMX: number): { pan: number; tilt: number } {
+    const out = { pan: 0, tilt: 0 }
+    this.clampKineticVelocityInto(out, nodeId, panDMX, tiltDMX)
+    return out
+  }
+
+  clampKineticVelocityInto(out: { pan: number; tilt: number }, nodeId: NodeId, panDMX: number, tiltDMX: number): void {
     let state = this._kineticState.get(nodeId)
     if (!state) { state = new Float32Array(KS_SLOTS); this._kineticState.set(nodeId, state) }
 
@@ -178,13 +184,15 @@ export class AetherSafetyMiddleware {
     if (state[KS_INIT] === 0) {
       state[KS_LAST_PAN] = panDMX; state[KS_LAST_TILT] = tiltDMX
       state[KS_LAST_TIME] = nowMs; state[KS_INIT] = 1
-      return { pan: panDMX, tilt: tiltDMX }
+      out.pan = panDMX; out.tilt = tiltDMX
+      return
     }
 
     const dtMs = nowMs - state[KS_LAST_TIME]
     if (dtMs <= 0 || dtMs > TELEPORT_THRESHOLD_MS) {
       state[KS_LAST_PAN] = panDMX; state[KS_LAST_TILT] = tiltDMX; state[KS_LAST_TIME] = nowMs
-      return { pan: panDMX, tilt: tiltDMX }
+      out.pan = panDMX; out.tilt = tiltDMX
+      return
     }
 
     const dtSec = dtMs * 0.001
@@ -204,10 +212,8 @@ export class AetherSafetyMiddleware {
     const rT = state[KS_LAST_TILT] + dT
     state[KS_LAST_PAN] = rP; state[KS_LAST_TILT] = rT; state[KS_LAST_TIME] = nowMs
 
-    return {
-      pan:  rP < 0 ? 0 : rP > 255 ? 255 : Math.round(rP),
-      tilt: rT < 0 ? 0 : rT > 255 ? 255 : Math.round(rT),
-    }
+    out.pan  = rP < 0 ? 0 : rP > 255 ? 255 : Math.round(rP)
+    out.tilt = rT < 0 ? 0 : rT > 255 ? 255 : Math.round(rT)
   }
 
   clampKineticSingleAxis(nodeId: NodeId, isPan: boolean, dmxValue: number): number {

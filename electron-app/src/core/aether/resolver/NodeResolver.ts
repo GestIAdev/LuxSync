@@ -235,6 +235,9 @@ export class NodeResolver implements INodeResolver {
   // 🛠️ WAVE 5034: Cache del profile wrapper { colorEngine: { mixing, colorWheel } }
   // para eliminar la creación de objeto literal cada frame por nodo wheel.
   private readonly _wheelProfileCache = new Map<HalColorWheelDefinition, { colorEngine: { mixing: string; colorWheel: HalColorWheelDefinition } }>()
+  // 🛠️ WAVE 5034: Pre-allocated profile objects para RGBW y CMY — zero alloc per frame.
+  private readonly _rgbwProfile = Object.freeze({ colorEngine: { mixing: 'rgbw' as const } })
+  private readonly _cmyProfile  = Object.freeze({ colorEngine: { mixing: 'cmy'  as const } })
 
   // ── Buffers por universo ───────────────────────────────────────────────
   // Map<universe (1-based), Uint8Array(512)>
@@ -1436,9 +1439,7 @@ export class NodeResolver implements INodeResolver {
 
       // ── RGBW ────────────────────────────────────────────────────────
       case 'rgbw': {
-        const result = getColorTranslator().translate(this._rgbScratch, {
-          colorEngine: { mixing: 'rgbw' },
-        })
+        const result = getColorTranslator().translate(this._rgbScratch, this._rgbwProfile)
         const rgbw = result.rgbw
         if (!rgbw) {
           // Fallback: sin datos RGBW, pass-through RGB
@@ -1455,9 +1456,7 @@ export class NodeResolver implements INodeResolver {
 
       // ── CMY ─────────────────────────────────────────────────────────
       case 'cmy': {
-        const result = getColorTranslator().translate(this._rgbScratch, {
-          colorEngine: { mixing: 'cmy' },
-        })
+        const result = getColorTranslator().translate(this._rgbScratch, this._cmyProfile)
         const cmy = result.cmy
         if (!cmy) {
           s[CH_RED] = safeR; s[CH_GREEN] = safeG; s[CH_BLUE] = safeB

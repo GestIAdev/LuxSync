@@ -221,19 +221,24 @@ export function predict(pattern: SeleneMusicalPattern): MusicalPrediction {
   // Actualizar historial si cambió de sección
   updateHistory(pattern)
   
+  // 🌊 WAVE 5016: FLUID TIMING — alimentar el anclaje del PLL
+  updateBpmHistory(pattern.bpm)
+  
   // Buscar patrones de progresión que matcheen
   const matchedPattern = findMatchingPattern()
   
   if (matchedPattern) {
-    // Calcular timing basado en BPM
-    const beatsToEvent = estimateBeatsToEvent(pattern, matchedPattern)
-    const msPerBeat = 60000 / pattern.bpm
-    const estimatedTimeMs = beatsToEvent * msPerBeat
+    // 🌊 WAVE 5016: FLUID TIMING ENGINE — el tiempo es orgánico, no un número mágico.
+    // Deriva el ETA del evento desde la aceleración de energía, el tiempo en sección
+    // y el anclaje de fase del PLL en vez de un lookup fijo de 4/8 beats.
+    const { beats: beatsToEvent, ms: estimatedTimeMs } = estimateTimeToEvent(pattern, matchedPattern)
     
-    // Ajustar probabilidad por contexto
-    const adjustedProbability = adjustProbabilityByContext(
+    // 📈 WAVE 5016: ORGANIC CONFIDENCE — la confianza refleja el estado real del
+    // motor sensorial (lock del PLL, histéresis de sección, alineación de energía).
+    const adjustedProbability = computeOrganicConfidence(
       matchedPattern.probability,
-      pattern
+      pattern,
+      matchedPattern
     )
     
     const prediction: MusicalPrediction = {
@@ -299,6 +304,7 @@ export function resetPredictionEngine(): void {
   sectionHistory = []
   lastPrediction = null
   energyHistory = [] // 🔮 WAVE 1169: Reset energy history too
+  bpmHistory = []    // 🌊 WAVE 5016: Reset PLL lock history
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -366,55 +372,166 @@ function matchesTrigger(trigger: SectionClassification[]): boolean {
   return true
 }
 
-function estimateBeatsToEvent(
-  pattern: SeleneMusicalPattern,
-  matchedPattern: ProgressionPattern
-): number {
-  // Estimación basada en tipo de predicción
-  switch (matchedPattern.predictionType) {
-    case 'drop_incoming':
-      // Drops suelen venir en 4-8 beats
-      return pattern.isBuilding ? 4 : 8
-    
-    case 'buildup_starting':
-      // Buildups empiezan en 2-4 beats
-      return 4
-    
-    case 'breakdown_imminent':
-      // Breakdowns en 8-16 beats
-      return 8
-    
-    case 'transition_beat':
-      // Transiciones en 4 beats
-      return 4
-    
-    default:
-      return 8
+// ═══════════════════════════════════════════════════════════════════════════
+// 🌊 WAVE 5016: FLUID TIMING ENGINE + 📈 ORGANIC CONFIDENCE
+// ═══════════════════════════════════════════════════════════════════════════
+// "Adiós a los números mágicos. El tiempo y la certeza son orgánicos."
+//
+// El legacy `estimateBeatsToEvent` devolvía enteros fijos (4/8 beats) y
+// `adjustProbabilityByContext` multiplicaba constantes hardcodeadas. Si el DJ
+// adelantaba un drop, el reloj interno seguía contando desde un número mágico.
+//
+// Ahora el ETA se DERIVA de:
+//   1. Aceleración de energía (velocity)   → subida violenta = drop más cerca
+//   2. Tiempo real en la sección actual     → buildup largo = resolución inminente
+//   3. Tensión emocional                    → tensión alta = release inminente
+//   4. Anclaje de fase del PLL (beatPhase)   → el ETA se cuantiza a la rejilla de beats
+//
+// Y la confianza se DERIVA de:
+//   1. Lock del PLL (estabilidad de BPM)     → BPM inestable = la confianza colapsa
+//   2. Histéresis de sección (dwell)         → sección persistente = transición más segura
+//   3. Alineación de energía                 → velocity confirma el relato build/drop
+//   4. Sincopación                           → ritmo impredecible baja la certeza
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** 🌊 WAVE 5016: Historial de BPM para estimar el lock del PLL */
+const MAX_BPM_HISTORY = 24
+let bpmHistory: number[] = []
+
+function updateBpmHistory(bpm: number): void {
+  if (bpm > 0 && Number.isFinite(bpm)) {
+    bpmHistory.push(bpm)
+    if (bpmHistory.length > MAX_BPM_HISTORY) {
+      bpmHistory.shift()
+    }
   }
 }
 
-function adjustProbabilityByContext(
-  baseProbability: number,
-  pattern: SeleneMusicalPattern
-): number {
-  let adjusted = baseProbability
+/**
+ * 🌊 WAVE 5016: Estimación del lock del PLL (0-1).
+ * 1 = BPM sólido como roca (rejilla de beats fiable).
+ * 0 = BPM caótico (cualquier predicción temporal es una conjetura).
+ * Se basa en el coeficiente de variación del historial de BPM.
+ */
+function estimatePllLock(): number {
+  if (bpmHistory.length < 6) return 0.4 // datos insuficientes → confianza baja-moderada
   
-  // Si la energía está subiendo, aumentar probabilidad de predicción
-  if (pattern.isBuilding) {
-    adjusted *= 1.1
+  const mean = bpmHistory.reduce((a, b) => a + b, 0) / bpmHistory.length
+  if (mean <= 0) return 0
+  
+  const variance = bpmHistory.reduce((s, b) => s + (b - mean) ** 2, 0) / bpmHistory.length
+  const cv = Math.sqrt(variance) / mean // coeficiente de variación (jitter relativo)
+  
+  // cv=0 → lock perfecto; cv>=0.05 (5% de jitter) → efectivamente sin enganche
+  return Math.max(0, Math.min(1, 1 - cv / 0.05))
+}
+
+/** 🌊 WAVE 5016: ms transcurridos en la sección actual (más reciente del historial) */
+function timeInCurrentSectionMs(now: number): number {
+  if (sectionHistory.length === 0) return 0
+  return Math.max(0, now - sectionHistory[sectionHistory.length - 1].timestamp)
+}
+
+/**
+ * 🌊 WAVE 5016: FLUID TIMING — deriva el tiempo hasta el evento de forma orgánica.
+ * Reemplaza el lookup fijo de 4/8 beats por una física de aceleración + dwell + fase.
+ */
+function estimateTimeToEvent(
+  pattern: SeleneMusicalPattern,
+  matchedPattern: ProgressionPattern
+): { beats: number; ms: number } {
+  const safeBpm = (pattern.bpm > 0 && Number.isFinite(pattern.bpm)) ? pattern.bpm : 120
+  const msPerBeat = 60000 / safeBpm
+  
+  const velocity = calculateEnergyVelocity()                       // delta de energía por frame
+  const dwellBeats = timeInCurrentSectionMs(pattern.timestamp) / msPerBeat
+  
+  // Factor de velocidad: 0 = subida atmosférica/lenta, 1 = aceleración violenta
+  // (velocity por frame típicamente 0..0.02)
+  const velocityFactor = Math.max(0, Math.min(1, velocity / 0.02))
+  
+  // Baseline de beats por tipo de predicción (punto de partida, no destino fijo)
+  let baseBeats: number
+  switch (matchedPattern.predictionType) {
+    case 'drop_incoming':      baseBeats = 8; break
+    case 'buildup_starting':   baseBeats = 6; break
+    case 'breakdown_imminent': baseBeats = 8; break
+    case 'transition_beat':    baseBeats = 4; break
+    default:                   baseBeats = 8; break
   }
   
-  // Si la tensión es alta, aumentar probabilidad
+  // 🌊 FLUID 1: La aceleración violenta acerca el evento (hasta -75%)
+  let beats = baseBeats * (1 - velocityFactor * 0.75)
+  
+  // 🌊 FLUID 2: Cuanto más tiempo llevamos en la sección, más cerca la resolución.
+  // Un buildup que ya lleva 8+ beats está a punto de romper → comprimir hacia 1 beat.
+  if (dwellBeats > 8) {
+    const dwellPull = Math.min(1, (dwellBeats - 8) / 16) // 0 a 8 beats, 1 a 24 beats
+    beats *= (1 - dwellPull * 0.6)
+  }
+  
+  // 🌊 FLUID 3: Squeeze por tensión — tensión emocional alta = release inminente
   if (pattern.emotionalTension > 0.7) {
-    adjusted *= 1.05
+    beats *= 0.8
   }
   
-  // Si hay mucha sincopación, puede ser menos predecible
+  // Clamp a un rango musical sano [1, 16]
+  beats = Math.max(1, Math.min(16, beats))
+  
+  // 🌊 FLUID 4: ANCLAJE DE FASE DEL PLL — cuantiza el ETA a la rejilla de beats.
+  // Tiempo hasta el próximo límite de beat usando la fase actual + beats enteros.
+  const beatPhase = Math.max(0, Math.min(1, pattern.beatPhase ?? 0))
+  const msToNextBeat = (1 - beatPhase) * msPerBeat
+  const wholeBeats = Math.max(0, Math.round(beats) - 1)
+  const ms = msToNextBeat + wholeBeats * msPerBeat
+  
+  return { beats: Math.round(beats), ms }
+}
+
+/**
+ * 📈 WAVE 5016: ORGANIC CONFIDENCE — la confianza es un reflejo del estado sensorial.
+ * Reemplaza los multiplicadores hardcodeados por un cálculo verdaderamente reactivo.
+ */
+function computeOrganicConfidence(
+  baseProbability: number,
+  pattern: SeleneMusicalPattern,
+  matchedPattern: ProgressionPattern
+): number {
+  const safeBpm = (pattern.bpm > 0 && Number.isFinite(pattern.bpm)) ? pattern.bpm : 120
+  const msPerBeat = 60000 / safeBpm
+  
+  const pllLock = estimatePllLock()
+  const dwellBeats = timeInCurrentSectionMs(pattern.timestamp) / msPerBeat
+  const velocity = calculateEnergyVelocity()
+  const velocityFactor = Math.max(0, Math.min(1, velocity / 0.02))
+  
+  let confidence = baseProbability
+  
+  // 📈 ORGANIC 1: COLAPSO POR PLL — si la rejilla de beats es inestable, CUALQUIER
+  // predicción basada en tiempo es una conjetura. La confianza cae a un suelo del
+  // 55% de la base cuando el PLL está suelto, y llega al 100% cuando está enganchado.
+  confidence *= (0.55 + 0.45 * pllLock)
+  
+  // 📈 ORGANIC 2: HISTÉRESIS DE SECCIÓN — cuanto más persiste una sección, más
+  // segura se vuelve su transición eventual. Suma hasta +0.15.
+  const hysteresisBoost = Math.min(1, dwellBeats / 16) * 0.15
+  confidence += hysteresisBoost
+  
+  // 📈 ORGANIC 3: ALINEACIÓN DE ENERGÍA — para predicciones de build/drop, una
+  // velocity creciente confirma el relato. Suma hasta +0.12.
+  const isEnergeticType = matchedPattern.predictionType === 'drop_incoming'
+    || matchedPattern.predictionType === 'buildup_starting'
+    || matchedPattern.predictionType === 'energy_spike'
+  if (isEnergeticType && pattern.isBuilding) {
+    confidence += velocityFactor * 0.12
+  }
+  
+  // 📉 ORGANIC 4: CAOS POR SINCOPACIÓN — un ritmo impredecible baja la certeza.
   if (pattern.syncopation > 0.7) {
-    adjusted *= 0.95
+    confidence *= 0.95
   }
   
-  return Math.min(1, Math.max(0, adjusted))
+  return Math.max(0, Math.min(1, confidence))
 }
 
 function buildReasoning(

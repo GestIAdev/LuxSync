@@ -512,11 +512,21 @@ export class SeleneTitanConscious extends EventEmitter {
     }
     
     // ─────────────────────────────────────────────────────────────────────
-    // 0.5 🔮 CASSANDRA'S SOVEREIGN CLOCK (WAVE 5011)
+    // 0.5 🔮 CASSANDRA'S SOVEREIGN CLOCK (WAVE 5011) + 🪟 GLASS BREAK SENSOR (WAVE 5016)
     // Fast path: si Cassandra tiene un efecto pre-bufferizado cuyo executeAt
     // ha llegado, lo disparamos AHORA — sin pasar por HuntEngine, Fuzzy,
     // ni ningún gate energético. Esta es la voluntad del Oráculo y es LEY.
-    // Ventana de ejecución: [predictedEventAt, predictedEventAt + 500ms]
+    // Ventana de ejecución soberana: [predictedEventAt, predictedEventAt + 500ms]
+    //
+    // 🪟 WAVE 5016 — DROP COLLISION (GLASS BREAK):
+    // Cassandra era esclava de su propio reloj. Si faltaba 1s para el disparo
+    // pre-bufferizado pero el DJ adelantaba el drop (la energía/Z-score explota
+    // AHORA), el sistema se quedaba sordo esperando a su countdown.
+    // El Glass Break detecta ese impacto masivo inmediato: si hay un sello
+    // temporal en cuenta regresiva (timeToEvent > 0) y el motor sensorial
+    // reporta un Z-Score anómalo con energía real alta, Selene ROMPE EL CRISTAL:
+    // aborta la cuenta atrás, dispara el efecto retenido al instante y limpia
+    // el buffer.
     // ─────────────────────────────────────────────────────────────────────
     {
       const bufferStatus = dreamEngineIntegrator.getPreBufferStatus()
@@ -525,17 +535,42 @@ export class SeleneTitanConscious extends EventEmitter {
         const timeToEvent = bufferStatus.predictedEventAt - nowSovereign
         const SOVEREIGN_WINDOW_MS = 500
 
-        if (timeToEvent <= 0 && timeToEvent >= -SOVEREIGN_WINDOW_MS) {
-          // ✅ Dentro de la ventana soberana — ejecutar inmediatamente
+        // 🪟 GLASS BREAK SENSOR — impacto masivo inmediato durante la cuenta regresiva.
+        // Z-Score >= 2.5 = anomalía (el drop ENTRÓ), confirmado por energía real alta.
+        // Solo válido con la memoria caliente (Z-Scores fiables) y el buffer aún contando.
+        const GLASS_BREAK_Z = 2.5
+        const currentZScore = this.contextualMemory.getEnergyZScore()
+        const glassBreak =
+          timeToEvent > 0 &&
+          this.contextualMemory.isWarmedUp &&
+          currentZScore >= GLASS_BREAK_Z &&
+          titanState.rawEnergy > 0.55
+
+        const withinSovereignWindow = timeToEvent <= 0 && timeToEvent >= -SOVEREIGN_WINDOW_MS
+
+        if (withinSovereignWindow || glassBreak) {
+          // ✅ Ventana soberana cumplida — o 🪟 el cristal se rompió (drop adelantado)
           const candidate = dreamEngineIntegrator.getPreBufferedCandidate()
           dreamEngineIntegrator.clearPreBuffer()
 
           if (candidate) {
-            console.log(
-              `[SeleneTitanConscious] 🔮👑 CASSANDRA SOVEREIGN CLOCK: firing "${candidate.effect}" ` +
-              `| overdue=${Math.abs(timeToEvent)}ms | confidence=${candidate.confidence.toFixed(2)} ` +
-              `| bypassing HuntEngine + Fuzzy + EnergyOverride`
-            )
+            if (glassBreak) {
+              console.log(
+                `[SeleneTitanConscious] 🪟💥 CASSANDRA GLASS BREAK: firing "${candidate.effect}" ` +
+                `| drop landed EARLY (Z=${currentZScore.toFixed(2)} ≥ ${GLASS_BREAK_Z}, E=${titanState.rawEnergy.toFixed(2)}) ` +
+                `| ${timeToEvent}ms remained on the clock — countdown ABORTED`
+              )
+            } else {
+              console.log(
+                `[SeleneTitanConscious] 🔮👑 CASSANDRA SOVEREIGN CLOCK: firing "${candidate.effect}" ` +
+                `| overdue=${Math.abs(timeToEvent)}ms | confidence=${candidate.confidence.toFixed(2)} ` +
+                `| bypassing HuntEngine + Fuzzy + EnergyOverride`
+              )
+            }
+
+            const reason = glassBreak
+              ? `🪟💥 CASSANDRA GLASS BREAK (WAVE 5016): drop collision Z=${currentZScore.toFixed(2)}`
+              : '🔮👑 CASSANDRA SOVEREIGN CLOCK (WAVE 5011)'
 
             const sovereignOutput: ConsciousnessOutput = {
               ...createEmptyOutput(),
@@ -545,7 +580,7 @@ export class SeleneTitanConscious extends EventEmitter {
                 intensity: candidate.intensity,
                 zones: (candidate.zones.length > 0 ? candidate.zones : ['all']) as any,
                 confidence: Math.max(candidate.confidence, 0.85),
-                reason: '🔮👑 CASSANDRA SOVEREIGN CLOCK (WAVE 5011)',
+                reason,
               },
               timestamp: nowSovereign,
               source: 'hunt',

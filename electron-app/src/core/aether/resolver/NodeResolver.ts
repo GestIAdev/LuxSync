@@ -228,6 +228,9 @@ export class NodeResolver implements INodeResolver {
   // La conversión slots[] → colors[] solo ocurre una vez por rueda mecánica
   // durante la vida del show (las ruedas son patch-time, no cambian a 44Hz).
   private readonly _wheelLegacyCache = new WeakMap<ColorWheelDefinition, HalColorWheelDefinition>()
+  // 🛠️ WAVE 5034: Cache del profile wrapper { colorEngine: { mixing, colorWheel } }
+  // para eliminar la creación de objeto literal cada frame por nodo wheel.
+  private readonly _wheelProfileCache = new Map<HalColorWheelDefinition, { colorEngine: { mixing: string; colorWheel: HalColorWheelDefinition } }>()
 
   // ── Buffers por universo ───────────────────────────────────────────────
   // Map<universe (1-based), Uint8Array(512)>
@@ -1476,9 +1479,12 @@ export class NodeResolver implements INodeResolver {
         // Convertir ColorWheelDefinition del Aether (slots[]) al formato
         // del ColorTranslator HAL (colors[]) sin alloc persistente.
         const legacyWheel = this._aetherWheelToLegacy(aetherWheel)
-        const result = getColorTranslator().translate(this._rgbScratch, {
-          colorEngine: { mixing: 'wheel', colorWheel: legacyWheel },
-        })
+        let wheelProfile = this._wheelProfileCache.get(legacyWheel)
+        if (!wheelProfile) {
+          wheelProfile = { colorEngine: { mixing: 'wheel', colorWheel: legacyWheel } }
+          this._wheelProfileCache.set(legacyWheel, wheelProfile)
+        }
+        const result = getColorTranslator().translate(this._rgbScratch, wheelProfile)
 
         // colorWheelDmx está en escala 0-255 — normalizar a 0-1 para el pipeline
         const wheelDmxRaw  = result.colorWheelDmx ?? 0
@@ -1502,7 +1508,7 @@ export class NodeResolver implements INodeResolver {
             // Pasarlo otra vez por el translator para obtener el DMX de rueda correcto.
             const heldResult = getColorTranslator().translate(
               qState.lastAllowedColor,
-              { colorEngine: { mixing: 'wheel', colorWheel: legacyWheel } },
+              wheelProfile,
             )
             wheelDmxNorm = (heldResult.colorWheelDmx ?? 0) / 255
           }

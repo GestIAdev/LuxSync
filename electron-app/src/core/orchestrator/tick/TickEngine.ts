@@ -34,6 +34,7 @@ export class TickEngine {
   private _cachedHotFrame: any = {}
   private _cachedHotFrameFixtures: any[] = []
   private _cachedChronosSet = new Set<string>()
+  private _cachedTruthFixtures: any[] = []
 
   get brain() { return this.ctx.brain }
   get engine() { return this.ctx.engine }
@@ -1163,6 +1164,67 @@ export class TickEngine {
     if (this.onBroadcast && shouldBroadcastFullTruth) {
       const currentVibe = this.engine.getCurrentVibe()
       
+      // 🛠️ WAVE 5032: Mutate _cachedTruthFixtures in-place instead of .map()
+      const _tfCount = fixtureStates.length
+      for (let _tvi = 0; _tvi < _tfCount; _tvi++) {
+        const _f = fixtureStates[_tvi]
+        const _orig = this.fixtures[_tvi]
+        const _realId = _orig?.id || ''
+        let _tvf = this._cachedTruthFixtures[_tvi]
+        if (!_tvf) {
+          _tvf = {
+            id: '', name: '', type: '', zone: '', dmxAddress: 0, universe: 0,
+            dimmer: 0, intensity: 0, color: { r: 0, g: 0, b: 0 },
+            pan: 0, tilt: 0, zoom: 0, focus: 0, white: 0, amber: 0,
+            physicalPan: 0, physicalTilt: 0, panVelocity: 0, tiltVelocity: 0,
+            online: true, active: false, profileId: '',
+          }
+          this._cachedTruthFixtures[_tvi] = _tvf
+        }
+        const _mappedZone = ZONE_MAP[_f.zone] || _f.zone || 'center'
+        let _broadcastDimmer: number
+        if (chronosPlaying) {
+          _broadcastDimmer = _f.dimmer
+        } else {
+          const _peakDimmer = this.peakHoldMap.get(_realId) ?? _f.dimmer
+          _broadcastDimmer = Math.max(_f.dimmer, _peakDimmer)
+          this.peakHoldMap.set(_realId, 0)
+        }
+        _tvf.id = _realId
+        _tvf.name = _f.name
+        _tvf.type = _f.type
+        _tvf.zone = _mappedZone
+        _tvf.dmxAddress = _f.dmxAddress
+        _tvf.universe = _f.universe
+        _tvf.dimmer = _broadcastDimmer / 255
+        _tvf.intensity = _broadcastDimmer / 255
+        _tvf.color.r = Math.round(_f.r)
+        _tvf.color.g = Math.round(_f.g)
+        _tvf.color.b = Math.round(_f.b)
+        _tvf.pan = _f.pan / 255
+        _tvf.tilt = _f.tilt / 255
+        _tvf.zoom = _f.zoom
+        _tvf.focus = _f.focus
+        _tvf.white = _f.white ?? 0
+        _tvf.amber = _f.amber ?? 0
+        _tvf.physicalPan = (_f.physicalPan ?? _f.pan) / 255
+        _tvf.physicalTilt = (_f.physicalTilt ?? _f.tilt) / 255
+        _tvf.panVelocity = _f.panVelocity ?? 0
+        _tvf.tiltVelocity = _f.tiltVelocity ?? 0
+        _tvf.online = true
+        _tvf.active = _f.dimmer > 0
+        _tvf.profileId = _orig?.profileId || (_f as any).profileId || _orig?.id || _realId
+      }
+      if (this._cachedTruthFixtures.length > _tfCount) {
+        this._cachedTruthFixtures.length = _tfCount
+      }
+
+      // 🛠️ WAVE 5032: Count active fixtures with for loop instead of .reduce()
+      let _activeCount = 0
+      for (let _aci = 0; _aci < fixtureStates.length; _aci++) {
+        if (fixtureStates[_aci].dimmer > 0) _activeCount++
+      }
+
       // Build a valid SeleneTruth structure
       const truth: SeleneTruth = {
         system: {
@@ -1275,70 +1337,9 @@ export class TickEngine {
             port: null
           },
           dmxOutput: DMX_OUTPUT_ZEROS as number[],
-          fixturesActive: fixtureStates.reduce((count, f) => count + (f.dimmer > 0 ? 1 : 0), 0),
+          fixturesActive: _activeCount,
           fixturesTotal: fixtureStates.length,
-          // Map HAL FixtureState to Protocol FixtureState
-          // WAVE 256.3: Normalize DMX values (0-255) to frontend values (0-1)
-          // WAVE 256.7: Map zone names for StageSimulator2 compatibility
-          fixtures: fixtureStates.map((f, i) => {
-            // \ud83d\udd27 WAVE 700.9.4: Map HAL zones to StageSimulator2 zones
-            // \u26a1 WAVE 3050: ZONE_MAP is now a module-level constant (was per-fixture per-frame)
-            const mappedZone = ZONE_MAP[f.zone] || f.zone || 'center'
-            
-            // ðŸ©¸ WAVE 380: Use REAL fixture ID from this.fixtures, not generated index
-            // This is critical for runtimeStateMap matching in StageSimulator2
-            const originalFixture = this.fixtures[i]
-            const realId = originalFixture?.id || `fix_${i}`
-            
-            // âš¡ WAVE 2464: PEAK HOLD â€” Usa el pico acumulado en el frame skipeado.
-            // Si el fixture brillÃ³ al mÃ¡ximo en el frame que el throttle saltÃ³, aquÃ­
-            // mandamos ese pico al canvas. DespuÃ©s de leerlo: reset a 0 para el ciclo.
-            // ðŸ‘» WAVE 2540.7: Skip peak hold during Chronos â€” every frame is broadcast,
-            // no skipped frames means no peaks to accumulate.
-            let broadcastDimmer: number
-            if (chronosPlaying) {
-              broadcastDimmer = f.dimmer
-            } else {
-              const peakDimmer = this.peakHoldMap.get(realId) ?? f.dimmer
-              broadcastDimmer = Math.max(f.dimmer, peakDimmer)
-              this.peakHoldMap.set(realId, 0)  // Reset peak tras broadcast
-            }
-
-            return {
-              id: realId,
-              name: f.name,
-              type: f.type,
-              zone: mappedZone,
-              dmxAddress: f.dmxAddress,
-              universe: f.universe,
-              dimmer: broadcastDimmer / 255,    // Normalize 0-255 â†’ 0-1 (con peak hold)
-              intensity: broadcastDimmer / 255, // Normalize 0-255 â†’ 0-1 (con peak hold)
-              color: { 
-                r: Math.round(f.r),             // Keep 0-255 for RGB
-                g: Math.round(f.g), 
-                b: Math.round(f.b) 
-              },
-              pan: f.pan / 255,                 // Normalize 0-255 â†’ 0-1
-              tilt: f.tilt / 255,               // Normalize 0-255 â†’ 0-1
-              // ðŸ” WAVE 339: Optics (from HAL/FixtureMapper)
-              zoom: f.zoom,                     // 0-255 DMX
-              focus: f.focus,                   // 0-255 DMX
-              // âš’ï¸ WAVE 2030.22g: Extended LED channels
-              white: f.white ?? 0,              // 0-255 DMX
-              amber: f.amber ?? 0,              // 0-255 DMX
-              // ðŸŽ›ï¸ WAVE 339: Physics (interpolated positions from FixturePhysicsDriver)
-              physicalPan: (f.physicalPan ?? f.pan) / 255,   // Normalize 0-255 â†’ 0-1
-              physicalTilt: (f.physicalTilt ?? f.tilt) / 255, // Normalize 0-255 â†’ 0-1
-              panVelocity: f.panVelocity ?? 0,  // DMX/s (raw)
-              tiltVelocity: f.tiltVelocity ?? 0, // DMX/s (raw)
-              online: true,
-              active: f.dimmer > 0,
-              // ðŸ”¥ WAVE 2084.6: THE PHANTOM DATA LINK â€” Robust profileId cascade
-              // Priority: originalFixture.profileId > fixtureState.profileId > originalFixture.id
-              // NEVER let profileId be undefined â€” the ExtrasSection IPC depends on it
-              profileId: originalFixture?.profileId || (f as any).profileId || originalFixture?.id || realId
-            }
-          })
+          fixtures: this._cachedTruthFixtures
         },
         timestamp: now // âš¡ WAVE 3050: unified timestamp
       }

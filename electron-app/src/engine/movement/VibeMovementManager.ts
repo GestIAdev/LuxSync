@@ -372,9 +372,10 @@ const STEREO_CONFIG: Record<string, StereoConfig> = {
 type PatternFunction = (
   phase: number,
   audio: AudioContext,
+  outPos: { x: number; y: number },
   index?: number,
   total?: number
-) => { x: number; y: number }
+) => void
 
 const PATTERNS: Record<GoldenPattern, PatternFunction> = {
   
@@ -384,14 +385,12 @@ const PATTERNS: Record<GoldenPattern, PatternFunction> = {
   // 🔧 WAVE 2221 MENDOZA: Añadido Y sinusoidal. Sin offset hardcodeado.
   // 🌊 WAVE 4703 M3: Añadido detuning armónico sutil (3er parcial a 3%) para
   //   romper la periodicidad perfecta sin perder la identidad del barrido.
-  scan_x: (phase, audio, index = 0, total = 1) => {
+  scan_x: (phase, audio, outPos, index = 0, total = 1) => {
     const fixtureOffset = (index / Math.max(total, 1)) * Math.PI * 0.5
     // Detuning orgánico: 3er armónico al 3% — apenas perceptible pero elimina la rigidez
     const detuneX = Math.sin((phase + fixtureOffset) * 3) * 0.03
-    return {
-      x: Math.sin(phase + fixtureOffset) + detuneX,
-      y: Math.sin((phase + fixtureOffset) * 2) * 0.45,
-    }
+    outPos.x = Math.sin(phase + fixtureOffset) + detuneX
+    outPos.y = Math.sin((phase + fixtureOffset) * 2) * 0.45
   },
   
   // SQUARE: Movimiento cuadrado con interpolación lineal entre esquinas
@@ -399,7 +398,7 @@ const PATTERNS: Record<GoldenPattern, PatternFunction> = {
   // 🌊 WAVE 4703 M3: Las esquinas tienen un micro-wobble senoidal (±2%) que
   //   hace que el fixture no llegue exactamente al vértice, sino que lo roce
   //   con un leve desvío — como un robot con personalidad.
-  square: (phase, audio) => {
+  square: (phase, audio, outPos) => {
     const corners = [
       { x: 1, y: 1 },
       { x: 1, y: -1 },
@@ -415,10 +414,8 @@ const PATTERNS: Record<GoldenPattern, PatternFunction> = {
     const to = corners[nextCorner]
     // Micro-wobble: desvío senoidal de baja frecuencia en cada arista
     const wobble = Math.sin(phase * 7.3) * 0.02
-    return {
-      x: from.x + (to.x - from.x) * t + wobble,
-      y: from.y + (to.y - from.y) * t + wobble * 0.5,
-    }
+    outPos.x = from.x + (to.x - from.x) * t + wobble
+    outPos.y = from.y + (to.y - from.y) * t + wobble * 0.5
   },
   
   // DIAMOND: Rombo con interpolación lineal entre vértices cardinales
@@ -426,7 +423,7 @@ const PATTERNS: Record<GoldenPattern, PatternFunction> = {
   //   FIX: Mismo método que square — 4 vértices cardinales con interpolación
   //   lineal a velocidad constante. Vértices: Top(0,1)→Right(1,0)→Bot(0,-1)→Left(-1,0).
   //   Es square rotado 45°: las aristas son diagonales, no horizontales.
-  diamond: (phase, audio) => {
+  diamond: (phase, audio, outPos) => {
     const vertices = [
       { x:  0, y:  1 },  // Top
       { x:  1, y:  0 },  // Right
@@ -440,17 +437,15 @@ const PATTERNS: Record<GoldenPattern, PatternFunction> = {
 
     const from = vertices[currentVertex]
     const to = vertices[nextVertex]
-    return {
-      x: from.x + (to.x - from.x) * t,
-      y: from.y + (to.y - from.y) * t,
-    }
+    outPos.x = from.x + (to.x - from.x) * t
+    outPos.y = from.y + (to.y - from.y) * t
   },
   
   // BOTSTEP (TECHNO): Robótico, pero con amortiguación matemática (SmoothStep)
   // 🔧 WAVE 2088.7: THE PHYSICS UNCHAINING — Target lineal puro.
   // 8 posiciones golden-ratio con transición suavizada por SmoothStep.
   // El carácter "robótico" lo dará el PhysicsDriver al frenar en cada posición.
-  botstep: (phase, audio) => {
+  botstep: (phase, audio, outPos) => {
     const phi = 1.618033988749
     const totalSteps = 8
     const normalizedPhase = (phase / (Math.PI * 2)) * totalSteps
@@ -467,20 +462,17 @@ const PATTERNS: Record<GoldenPattern, PatternFunction> = {
     const toX = Math.sin(nextStep * phi * Math.PI) * 0.65
     const toY = Math.cos(nextStep * phi * phi * Math.PI) * 0.65
 
-    return {
-      x: fromX + (toX - fromX) * t,
-      y: fromY + (toY - fromY) * t,
-    }
+    outPos.x = fromX + (toX - fromX) * t
+    outPos.y = fromY + (toY - fromY) * t
   },
 
   // DARKSPIN: órbita elíptica con pulso de radio y contra-rotación vertical.
   // Diseñado para conservar identidad "oscura" sin entrar en jitter ni picos.
-  darkspin: (phase, audio, index = 0, total = 1) => {
+  darkspin: (phase, audio, outPos, index = 0, total = 1) => {
     const fixtureOffset = (index / Math.max(total, 1)) * (Math.PI / 2)
     const radiusPulse = 0.70 + 0.20 * Math.sin(phase * 0.5)
-    const x = Math.sin(phase + fixtureOffset) * radiusPulse
-    const y = Math.cos((phase + fixtureOffset) * 1.5) * 0.62
-    return { x, y }
+    outPos.x = Math.sin(phase + fixtureOffset) * radiusPulse
+    outPos.y = Math.cos((phase + fixtureOffset) * 1.5) * 0.62
   },
   
   // LATINO PATTERNS - Fluid / Hips / Curvas Sensuales
@@ -489,28 +481,22 @@ const PATTERNS: Record<GoldenPattern, PatternFunction> = {
   // 🔧 WAVE 2088.7: THE PHYSICS UNCHAINING — Y-axis 0.6 → 0.75
   // X ya toca ±1. Y sube a 0.75 para que el 8 sea más pronunciado
   // sin perder la proporción Lissajous (ratio 1:0.75 sigue siendo elegante).
-  figure8: (phase, audio) => {
-    return {
-      x: Math.sin(phase),
-      y: Math.sin(phase * 2) * 0.75,
-    }
+  figure8: (phase, audio, outPos) => {
+    outPos.x = Math.sin(phase)
+    outPos.y = Math.sin(phase * 2) * 0.75
   },
   
   // WAVE_Y: Auténtico barrido en forma de "U" (cruzando la pista elegantemente)
-  wave_y: (phase, audio) => {
-    return {
-      x: Math.sin(phase) * 0.85,
-      y: Math.sin(phase * 2) * 0.40, // Doble frecuencia en Y crea la curva
-    }
+  wave_y: (phase, audio, outPos) => {
+    outPos.x = Math.sin(phase) * 0.85
+    outPos.y = Math.sin(phase * 2) * 0.40 // Doble frecuencia en Y crea la curva
   },
   
   // BALLYHOO: El clásico e icónico "8" (Infinito) perfecto
-  ballyhoo: (phase, audio, index = 0, total = 1) => {
+  ballyhoo: (phase, audio, outPos, index = 0, total = 1) => {
     const r = 0.75 + 0.25 * Math.cos(phase * 2)
-    return {
-      x: Math.sin(phase) * r,     // Frecuencia 1:1 con la fase base
-      y: Math.cos(phase * 2) * r, // Frecuencia x2 en tilt = forma de 8
-    }
+    outPos.x = Math.sin(phase) * r     // Frecuencia 1:1 con la fase base
+    outPos.y = Math.cos(phase * 2) * r // Frecuencia x2 en tilt = forma de 8
   },
 
   // ─────────────────────────────────────────────────────────────────────
@@ -518,12 +504,10 @@ const PATTERNS: Record<GoldenPattern, PatternFunction> = {
   // ─────────────────────────────────────────────────────────────────────
 
   // CADERA_LIBRE: Movimiento amplio, sensual y orgánico
-  cadera_libre: (phase, audio, index = 0, total = 1) => {
+  cadera_libre: (phase, audio, outPos, index = 0, total = 1) => {
     const drift = Math.sin(phase * 0.137) * 0.18
-    return {
-      x: Math.sin(phase) * 0.90, // Frecuencia normal (no x3) para evitar epilepsia
-      y: Math.cos(phase * 2 + drift) * 0.65, // El coseno desfasado crea el contoneo
-    }
+    outPos.x = Math.sin(phase) * 0.90 // Frecuencia normal (no x3) para evitar epilepsia
+    outPos.y = Math.cos(phase * 2 + drift) * 0.65 // El coseno desfasado crea el contoneo
   },
 
   // ESPIRAL_CONGA: Hélice tridimensional con modulación de elevación
@@ -531,75 +515,64 @@ const PATTERNS: Record<GoldenPattern, PatternFunction> = {
   // la elevación/bajada del bombo en la conga. El índice de fixture añade
   // un offset de π/3 para que el ensemble forme una ola escalonada.
   // El multiplicador de radio (0.7 + 0.3*sin) hace que la espiral "respire".
-  espiral_conga: (phase, audio, index = 0, total = 1) => {
+  espiral_conga: (phase, audio, outPos, index = 0, total = 1) => {
     const fixturePhase = phase + (index / Math.max(total, 1)) * (Math.PI / 3)
     // WAVE 4740: Radio mínimo elevado 0.40 → 0.50 — anillo constante y dinámico.
     // El foco NUNCA colapsa al centro/suelo: r ∈ [0.50, 1.00] garantizado.
     const r = 0.75 + 0.25 * Math.sin(phase * 0.25)
     // Y combina arco de hélice (sin 1x) con acento de conga (sin 3x)
-    return {
-      x: Math.cos(fixturePhase) * r,
-      y: Math.sin(fixturePhase) * 0.60 + Math.sin(fixturePhase * 3) * 0.18,
-    }
+    outPos.x = Math.cos(fixturePhase) * r
+    outPos.y = Math.sin(fixturePhase) * 0.60 + Math.sin(fixturePhase * 3) * 0.18
   },
   
   // POP-ROCK PATTERNS - Stadium / Symmetry / Majestuosidad
   
   // CIRCLE_BIG: El rey de los estadios
-  circle_big: (phase, audio, index = 0, total = 1) => {
+  circle_big: (phase, audio, outPos, index = 0, total = 1) => {
     const fixtureOffset = (index / Math.max(total, 1)) * Math.PI * 2
-    return {
-      x: Math.sin(phase + fixtureOffset),
-      y: Math.cos(phase + fixtureOffset) * 0.75,
-    }
+    outPos.x = Math.sin(phase + fixtureOffset)
+    outPos.y = Math.cos(phase + fixtureOffset) * 0.75
   },
   
   // CANCAN: Piernas de bailarina (X fijo, Y arriba/abajo)
-  cancan: (phase, audio, index = 0, total = 1) => {
+  cancan: (phase, audio, outPos, index = 0, total = 1) => {
     const fixtureOffset = (index / Math.max(total, 1)) * Math.PI
-    return {
-      x: Math.sin(phase * 0.25) * 0.15,
-      y: Math.sin(phase + fixtureOffset),
-    }
+    outPos.x = Math.sin(phase * 0.25) * 0.15
+    outPos.y = Math.sin(phase + fixtureOffset)
   },
   
   // DUAL_SWEEP: Barrido en U majestuoso
-  dual_sweep: (phase, audio) => {
+  dual_sweep: (phase, audio, outPos) => {
     const x = Math.sin(phase)
-    const y = (x * x) - 0.3
-    return { x, y }
+    outPos.x = x
+    outPos.y = (x * x) - 0.3
   },
   
   // CHILL PATTERNS - Organic / Ambient / Respiracion
   
   // DRIFT: Movimiento browniano lento
-  drift: (phase, audio) => {
+  drift: (phase, audio, outPos) => {
     const phi = 1.618033988749
     const sqrt2 = Math.SQRT2
     const sqrt3 = Math.sqrt(3)
-    const x = Math.sin(phase * phi) * 0.4 + 
-              Math.sin(phase * sqrt2) * 0.25 + 
-              Math.sin(phase * sqrt3) * 0.15
-    const y = Math.cos(phase * phi * 0.7) * 0.35 + 
-              Math.cos(phase * sqrt2 * 0.8) * 0.2 + 
-              Math.cos(phase * sqrt3 * 0.9) * 0.12
-    return { x, y }
+    outPos.x = Math.sin(phase * phi) * 0.4 + 
+               Math.sin(phase * sqrt2) * 0.25 + 
+               Math.sin(phase * sqrt3) * 0.15
+    outPos.y = Math.cos(phase * phi * 0.7) * 0.35 + 
+               Math.cos(phase * sqrt2 * 0.8) * 0.2 + 
+               Math.cos(phase * sqrt3 * 0.9) * 0.12
   },
   
   // SWAY: Pendulo muy suave (solo X)
-  sway: (phase, audio) => {
-    return {
-      x: Math.sin(phase) * 0.6,
-      y: 0,
-    }
+  sway: (phase, audio, outPos) => {
+    outPos.x = Math.sin(phase) * 0.6
+    outPos.y = 0
   },
   
   // BREATH: La luz respira (solo Y sutil)
-  breath: (phase, audio) => {
-    return {
-      x: 0,
-      y: Math.sin(phase) * 0.35,
-    }
+  breath: (phase, audio, outPos) => {
+    outPos.x = 0
+    outPos.y = Math.sin(phase) * 0.35
   },
 
   // ═══════════════════════════════════════════════════
@@ -607,38 +580,32 @@ const PATTERNS: Record<GoldenPattern, PatternFunction> = {
   // ═══════════════════════════════════════════════════
 
   // SLOW_PAN: El faro del fondo — barrido horizontal puro, 32 beats
-  slow_pan: (phase, _audio) => {
+  slow_pan: (phase, _audio, outPos) => {
     // Sin(phase) puro: el moving head barre 180° en 8 compases
     // Sin componente Y — movimiento hipnótico lateral
-    return {
-      x: Math.sin(phase),
-      y: 0,
-    }
+    outPos.x = Math.sin(phase)
+    outPos.y = 0
   },
 
   // TILT_NOD: Cabeceo meditativo — solo vertical, 16 beats
-  tilt_nod: (phase, _audio) => {
+  tilt_nod: (phase, _audio, outPos) => {
     // Amplitud 0.6 para no ser agresivo — es un asentimiento, no un headbang
-    return {
-      x: 0,
-      y: Math.sin(phase) * 0.6,
-    }
+    outPos.x = 0
+    outPos.y = Math.sin(phase) * 0.6
   },
 
   // FIGURE_OF_4: Figure8 contenido — mismo espíritu, menos territorio
-  figure_of_4: (phase, _audio) => {
+  figure_of_4: (phase, _audio, outPos) => {
     // x = sin(phase) * 0.5: la mitad del recorrido horizontal
     // y = sin(2*phase) * 0.3: doble frecuencia vertical, amplitud contenida
     // El resultado es un 8 compacto que ocupa el centro del escenario
-    return {
-      x: Math.sin(phase) * 0.5,
-      y: Math.sin(2 * phase) * 0.3,
-    }
+    outPos.x = Math.sin(phase) * 0.5
+    outPos.y = Math.sin(2 * phase) * 0.3
   },
 
   // CHASE_POSITION: 4 posiciones cardinales con interpolación lineal
   // 🔧 WAVE 2088.7: THE PHYSICS UNCHAINING — Target lineal puro.
-  chase_position: (phase, _audio) => {
+  chase_position: (phase, _audio, outPos) => {
     const positions: Array<{ x: number; y: number }> = [
       { x: -0.7, y: 0 },     // Izquierda
       { x: 0, y: 0.7 },      // Arriba
@@ -653,10 +620,8 @@ const PATTERNS: Record<GoldenPattern, PatternFunction> = {
     
     const from = positions[currentStep]
     const to = positions[nextStep]
-    return {
-      x: from.x + (to.x - from.x) * t,
-      y: from.y + (to.y - from.y) * t,
-    }
+    outPos.x = from.x + (to.x - from.x) * t
+    outPos.y = from.y + (to.y - from.y) * t
   },
 }
 
@@ -666,8 +631,9 @@ export class VibeMovementManager {
   private time: number = 0
   private lastUpdate: number = Date.now()
   private frameCount: number = 0
-  // ═══════════════════════════════════════════════════════════════════════
-  // WAVE 4741: SCHEDULER STATE — Desacoplado cycleBeats / phraseDuration
+  // 🛠️ WAVE 5032: mutable caches for object pooling in pattern generation
+  private _tempRawPos = { x: 0, y: 0 }
+  private _tempFromRawPos = { x: 0, y: 0 }
   // ─────────────────────────────────────────────────────────────────────
   // Reemplaza phaseAccumulator+barCount+lastBeatCount como fuente de verdad.
   // schedulerState.phase avanza a (2π/cycleBeats)*beatsThisFrame (velocidad pura).
@@ -1024,7 +990,8 @@ export class VibeMovementManager {
       return this.createHomeIntent('breath')
     }
     
-    const rawPosition = patternFn(phase, audio, fixtureIndex, totalFixtures)
+    patternFn(phase, audio, this._tempRawPos, fixtureIndex, totalFixtures)
+    const rawPosition = this._tempRawPos
     
     // THE GEARBOX - Dynamic Amplitude Scaling
     // 🔥 WAVE 2088.10: Use smoothedBPM for stable gearbox calculations
@@ -1126,7 +1093,9 @@ export class VibeMovementManager {
         this.kineticTransition.progressBeats * fromPhasePerBeat + phaseOffset
       const fromPatternFn = PATTERNS[this.kineticTransition.fromPattern]
       if (fromPatternFn) {
-        const fromRaw = fromPatternFn(fromPhase, audio, fixtureIndex, totalFixtures)
+        // Usar object pooling para crossfade
+        fromPatternFn(fromPhase, audio, this._tempFromRawPos, fixtureIndex, totalFixtures)
+        const fromRaw = this._tempFromRawPos
         const fromPosition = {
           x: Math.max(-1, Math.min(1, fromRaw.x * finalPanAmplitude)),
           y: Math.max(-1, Math.min(1, (fromRaw.y * finalTiltAmplitude) + tiltOffset)),

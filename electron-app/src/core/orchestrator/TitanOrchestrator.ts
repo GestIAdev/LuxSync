@@ -76,8 +76,7 @@ import { PixelMapAetherAdapter } from '../aether/canvas/PixelMapAetherAdapter'
 import { AetherSafetyMiddleware } from '../aether/egress/AetherSafetyMiddleware'
 // WAVE 4559: THE MIRROR â€” Projecta estado Aether â†’ FixtureState[] legacy para la UI
 import { AetherUIProjector } from '../aether/resolver/AetherUIProjector'
-//  WAVE 4867: TheiaVideoRenderer â€” twin-output bridge (THETA thumb SAB â†’ AetherCanvas)
-import { TheiaVideoRenderer } from '../aether/canvas/renderers/TheiaVideoRenderer'
+//  WAVE 5033: TheiaVideoRenderer import REMOVED â€” exorcised from codebase.
 // WAVE 4869: SeleneTheiaBridge â€” Observer cognitivo Selene â†’ ThetaOrchestrator
 import { type SeleneTheiaBridge } from '../../theia/SeleneTheiaBridge'
 //  WAVE 4594: THE AETHER AWAKENING â€” NodeExtractionPipeline for fixtureâ†’NodeGraph injection
@@ -343,8 +342,7 @@ export class TitanOrchestrator {
   private readonly _aetherCanvasManager = new AetherCanvasManager()
   private readonly _pixelMapAdapter = new PixelMapAetherAdapter({ targetLayer: 'effect' })
   //  WAVE 4952: _plasmaRenderers map REMOVED â€” test-pattern poltergeist amputated.
-  //  WAVE 4867: TheiaVideoRenderer â€” null hasta que se llame attachTheiaRenderer()
-  private _theiaVideoRenderer: TheiaVideoRenderer | null = null
+  //  WAVE 5033: _theiaVideoRenderer REMOVED â€” no callers to attachTheiaRenderer, safe exorcism.
   //  WAVE 4869: SeleneTheiaBridge â€” null hasta que se llame attachSeleneTheiaBridge()
   private _seleneThetaBridge: SeleneTheiaBridge | null = null
   private readonly _timelineEngine = timelineEngine
@@ -626,7 +624,6 @@ export class TitanOrchestrator {
       get _hephaestusAetherAdapter() { return self._hephaestusAetherAdapter },
       get _aetherCanvasManager() { return self._aetherCanvasManager },
       get _pixelMapAdapter() { return self._pixelMapAdapter },
-      get _theiaVideoRenderer() { return self._theiaVideoRenderer },
       get _physicsPostProcessor() { return self._physicsPostProcessor },
       get _outputEnabled() { return self._outputEnabled },
       get _aetherSafety() { return self._aetherSafety },
@@ -725,27 +722,8 @@ export class TitanOrchestrator {
     this._licenseTier = tier
   }
 
-  //  WAVE 4867: Theia Twin-Output Bridge 
-
-  /**
-   * Conecta el renderer de vÃ­deo de Theia al pipeline de Pixel Mapping.
-   *
-   * Llamar desde el renderer (TheiaEngineView / ThetaOrchestrator) despuÃ©s de
-   * que el ThetaOrchestrator haya iniciado y el SAB estÃ© listo:
-   *
-   *   const thumbSAB = getThetaOrchestrator().getThumbPixelSAB()
-   *   getTitanOrchestrator().attachTheiaRenderer('theia:active', thumbSAB)
-   *
-   * La llamada es idempotente: si ya existe un renderer para el mismo canvasId,
-   * lo reemplaza (util para reconnect).
-   */
-    attachTheiaRenderer(canvasId: string, thumbPixelSAB: SharedArrayBuffer, opts: { intensity?: number; alphaToDimmer?: boolean } = {}): void { this.theiaBridgeManager.attachTheiaRenderer(canvasId, thumbPixelSAB, opts) }
-
-  /**
-   * Desconecta el renderer de vÃ­deo de Theia. El canvas queda a negro y el
-   * PixelMapAetherAdapter deja de emitir intents para ese canvasId.
-   */
-    detachTheiaRenderer(): void { this.theiaBridgeManager.detachTheiaRenderer() }
+  //  WAVE 5033: attachTheiaRenderer / detachTheiaRenderer REMOVED â€”
+  //  no callers, TheiaVideoRenderer field exorcised. Revive if Theia returns.
 
   //  WAVE 4869: SeleneTheiaBridge 
 

@@ -61,7 +61,6 @@ export class TickEngine {
   get _hephaestusAetherAdapter() { return this.ctx._hephaestusAetherAdapter }
   get _aetherCanvasManager() { return this.ctx._aetherCanvasManager }
   get _pixelMapAdapter() { return this.ctx._pixelMapAdapter }
-  get _theiaVideoRenderer() { return this.ctx._theiaVideoRenderer }
   get _physicsPostProcessor() { return this.ctx._physicsPostProcessor }
   get _aetherSafety() { return this.ctx._aetherSafety }
   get _forgeFrameCtx() { return this.ctx._forgeFrameCtx }
@@ -987,11 +986,8 @@ export class TickEngine {
 
       // ðŸ‘» WAVE 4952: PlasmaRenderer tick loop REMOVED (test-pattern poltergeist
       // amputated in the renderHook above â€” no plasma renderers are ever created).
-      // ðŸŽ¬ WAVE 4867: Tick TheiaVideoRenderer â€” copia el thumb SAB al back buffer de
-      // 'theia:active' si hay frame nuevo, sin allocaciones extra.
-      if (this._theiaVideoRenderer !== null) {
-        this._theiaVideoRenderer.tick()
-      }
+      // ðŸŽ¬ WAVE 4867: TheiaVideoRenderer tick REMOVED â€” no callers to attachTheiaRenderer,
+      // field is always null. Safe to strip from hot path.
       this._pixelMapAdapter.ingest(aetherArbiter, this._aetherCanvasManager)
 
       // 3. El Arbiter unifica todas las capas â†’ ArbitratedNodeMap

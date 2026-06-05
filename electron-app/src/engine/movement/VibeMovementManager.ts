@@ -634,6 +634,9 @@ export class VibeMovementManager {
   // 🛠️ WAVE 5032: mutable caches for object pooling in pattern generation
   private _tempRawPos = { x: 0, y: 0 }
   private _tempFromRawPos = { x: 0, y: 0 }
+  private _tempPos = { x: 0, y: 0 }
+  private _tempFromPos = { x: 0, y: 0 }
+  private _tempFinalPos = { x: 0, y: 0 }
   // ─────────────────────────────────────────────────────────────────────
   // Reemplaza phaseAccumulator+barCount+lastBeatCount como fuente de verdad.
   // schedulerState.phase avanza a (2π/cycleBeats)*beatsThisFrame (velocidad pura).
@@ -1053,10 +1056,9 @@ export class VibeMovementManager {
       : mountOrientation === 'totem'
         ? -0.45
         : (TILT_OFFSET_BY_VIBE[vibeId] ?? 0)
-    const position = {
-      x: Math.max(-1, Math.min(1, rawPosition.x * finalPanAmplitude)),
-      y: Math.max(-1, Math.min(1, (rawPosition.y * finalTiltAmplitude) + tiltOffset)),
-    }
+    const position = this._tempPos
+    position.x = Math.max(-1, Math.min(1, rawPosition.x * finalPanAmplitude))
+    position.y = Math.max(-1, Math.min(1, (rawPosition.y * finalTiltAmplitude) + tiltOffset))
     if (isCeilingMount) {
       // WAVE 4932.5: clamp bilateral. Limitar tanto cresta (upper) como valle (lower)
       // dentro de la semiesfera inferior segura.
@@ -1096,10 +1098,9 @@ export class VibeMovementManager {
         // Usar object pooling para crossfade
         fromPatternFn(fromPhase, audio, this._tempFromRawPos, fixtureIndex, totalFixtures)
         const fromRaw = this._tempFromRawPos
-        const fromPosition = {
-          x: Math.max(-1, Math.min(1, fromRaw.x * finalPanAmplitude)),
-          y: Math.max(-1, Math.min(1, (fromRaw.y * finalTiltAmplitude) + tiltOffset)),
-        }
+        const fromPosition = this._tempFromPos
+        fromPosition.x = Math.max(-1, Math.min(1, fromRaw.x * finalPanAmplitude))
+        fromPosition.y = Math.max(-1, Math.min(1, (fromRaw.y * finalTiltAmplitude) + tiltOffset))
         if (isCeilingMount) {
           if (fromPosition.y > -TILT_CEILING) fromPosition.y = -TILT_CEILING
           else if (fromPosition.y < -TILT_FLOOR_LIMIT) fromPosition.y = -TILT_FLOOR_LIMIT
@@ -1109,10 +1110,9 @@ export class VibeMovementManager {
         // Smoothstep ease-in-out: t² × (3 − 2t)
         const t = Math.min(1.0, this.kineticTransition.progressBeats / this.kineticTransition.totalBeats)
         crossfadeSmoothT = t * t * (3 - 2 * t)
-        finalPosition = {
-          x: fromPosition.x + (position.x - fromPosition.x) * crossfadeSmoothT,
-          y: fromPosition.y + (position.y - fromPosition.y) * crossfadeSmoothT,
-        }
+        finalPosition = this._tempFinalPos
+        finalPosition.x = fromPosition.x + (position.x - fromPosition.x) * crossfadeSmoothT
+        finalPosition.y = fromPosition.y + (position.y - fromPosition.y) * crossfadeSmoothT
         if (isCeilingMount) {
           if (finalPosition.y > -TILT_CEILING) finalPosition.y = -TILT_CEILING
           else if (finalPosition.y < -TILT_FLOOR_LIMIT) finalPosition.y = -TILT_FLOOR_LIMIT
@@ -1124,7 +1124,8 @@ export class VibeMovementManager {
 
     // 🎭 WAVE 2086.1: Save lastPosition ONE per frame (para GHOST PROTOCOL)
     if (!isSameFrame) {
-      this.lastPosition = finalPosition
+      this.lastPosition.x = finalPosition.x
+      this.lastPosition.y = finalPosition.y
     }
     
     // ═══════════════════════════════════════════════════════════════════════
@@ -1144,7 +1145,9 @@ export class VibeMovementManager {
     // SYNC (idle): Sin cambio
     // ═══════════════════════════════════════════════════════════════════════
     const stereoConfig = STEREO_CONFIG[vibeId] || STEREO_CONFIG['idle']
-    let stereoPosition = { ...finalPosition }
+    const stereoPosition = this._tempFinalPos
+    stereoPosition.x = finalPosition.x
+    stereoPosition.y = finalPosition.y
 
     if (stereoConfig.type === 'mirror' && totalFixtures > 1) {
       // 🪞 MIRROR: El efecto espejo se gestiona EXCLUSIVAMENTE mediante lrPhaseOffset.

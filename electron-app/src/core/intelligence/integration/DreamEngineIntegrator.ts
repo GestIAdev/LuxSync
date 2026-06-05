@@ -28,6 +28,9 @@ import { AudienceSafetyContextBuilder } from '../dream/AudienceSafetyContext'
 // 🎭 WAVE 920: MOOD INTEGRATION
 import { MoodController } from '../../mood/MoodController'
 
+// ⚡ WAVE 5020: DIVINE LEAK FIX (Sniper Route)
+import { getDynamicEffectRegistry } from '../../arsenal/DynamicEffectRegistry'
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES - Interfaces de datos para el pipeline
 // ═══════════════════════════════════════════════════════════════════════════
@@ -343,6 +346,28 @@ export class DreamEngineIntegrator {
           dreamRecommendation: `Intensity gate: ${decision.effect.intensity.toFixed(2)} < 0.30 minimum`,
         }
       }
+
+      // ⚡ WAVE 5020: DIVINE LEAK FIX (Sniper Route)
+      // Block divine effects at the root if Z-score is too low.
+      const registryEntry = getDynamicEffectRegistry().getEntry(decision.effect.effect)
+      if (registryEntry?.simMeta.isDivineCandidate) {
+        const vibeId = context.pattern.vibe || ''
+        const isTechnoVibe = vibeId === 'techno-club' || vibeId === 'hard-techno' || vibeId.includes('techno') || false
+        const isLatinoVibe = vibeId.includes('latino') || vibeId.includes('latina') || vibeId.includes('dembow') || false
+        const DIVINE_THRESHOLD = 3.5
+        const effectiveDivineThreshold = isTechnoVibe ? 2.5 : isLatinoVibe ? 2.2 : DIVINE_THRESHOLD
+        
+        const currentZ = context.zScore ?? 0
+        if (currentZ < effectiveDivineThreshold) {
+          console.log(`[INTEGRATOR 🛡️] DENIED: Divine effect ${decision.effect.effect} requires Z >= ${effectiveDivineThreshold} (current=${currentZ.toFixed(2)}σ)`)
+          return {
+            ...decision,
+            approved: false,
+            dreamRecommendation: `Divine gate: Z=${currentZ.toFixed(2)}σ < ${effectiveDivineThreshold}`,
+          }
+        }
+      }
+
       console.log(
         `[INTEGRATOR] ✅ APPROVED: ${decision.effect.effect} @ ${decision.effect.intensity.toFixed(2)} | ` +
         `ethics=${decision.ethicalVerdict?.ethicalScore?.toFixed(3) ?? '?'} | ` +

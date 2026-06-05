@@ -13,8 +13,8 @@
       "fiesta-latina"
     ],
     "vibeCompat": [
-      "latin",
-      "electronic"
+      "fiesta-latina",
+      "techno-club"
     ],
     "zones": [
       "intense",
@@ -120,8 +120,8 @@
       },
       "textureAffinity": "universal",
       "compatibleVibes": [
-        "latin",
-        "electronic"
+        "latino-organic",
+        "techno-dark"
       ],
       "validSections": [
         "drop",
@@ -173,5 +173,5 @@
       "communityTrusted": true
     }
   },
-  "checksum": "sha256:7aba197ce67f1c5f527f60c2879d0db97b86fed2616b82fef276c9881f198db6"
+  "checksum": "sha256:c099929d48e4e0f173bef6be25413062e419cd695f8a363e04363e83a148c3a9"
 }

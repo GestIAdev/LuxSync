@@ -12,7 +12,7 @@
       "sweep"
     ],
     "vibeCompat": [
-      "latin"
+      "fiesta-latina"
     ],
     "spatialZones": [
       "movers-left",
@@ -31,7 +31,7 @@
       },
       "textureAffinity": "clean",
       "compatibleVibes": [
-        "latin"
+        "latino-organic"
       ],
       "validSections": [
         "intro",

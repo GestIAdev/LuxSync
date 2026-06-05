@@ -22,6 +22,8 @@ import { effectBiasTracker } from '../dream/EffectBiasTracker';
 import { AudienceSafetyContextBuilder } from '../dream/AudienceSafetyContext';
 // 🎭 WAVE 920: MOOD INTEGRATION
 import { MoodController } from '../../mood/MoodController';
+// ⚡ WAVE 5020: DIVINE LEAK FIX (Sniper Route)
+import { getDynamicEffectRegistry } from '../../arsenal/DynamicEffectRegistry';
 // ═══════════════════════════════════════════════════════════════════════════
 // DREAM ENGINE INTEGRATOR
 // ═══════════════════════════════════════════════════════════════════════════
@@ -136,7 +138,7 @@ export class DreamEngineIntegrator {
         }
         // ═════════════════════════════════════════════════════════════════════
         // 🔮 WAVE 4913: TEMPORAL SEAL GATE
-        // Si CASSANDRA sellá un pre-buffer, recommendation === 'modify'.
+        // Si CASSANDRA selló un pre-buffer, recommendation === 'modify'.
         // Cortocircuitar ANTES de ethics para que el sello sea real (no residual).
         // De lo contrario, un Z-score alto podría hacer pasar ethics y disparar
         // el efecto prematuramente, vaciando el pre-buffer antes de la sección.
@@ -158,6 +160,39 @@ export class DreamEngineIntegrator {
                 fallbackUsed: false,
                 alternatives: []
             };
+        }
+        // ═════════════════════════════════════════════════════════════════════
+        // 🔮 WAVE 5011: CASSANDRA PRE-BUFFER GUARD
+        // Si hay un pre-buffer activo (el simulador no lo limpió porque timeToEvent
+        // era > 1500ms), el pipeline ejecuta normalmente y puede aprobar un efecto
+        // DIFERENTE al pre-bufferizado, robándole el slot al Oráculo.
+        // SOLUCIÓN: Si el pre-buffer existe y aún no expiró, bloquear aprobaciones
+        // de efectos distintos. El Sovereign Clock en process() disparará el efecto
+        // correcto cuando el reloj llegue a cero.
+        // ═════════════════════════════════════════════════════════════════════
+        {
+            const activeBuffer = effectDreamSimulator.getPreBufferStatus();
+            if (activeBuffer && !isFastPath) {
+                const nowGuard = Date.now();
+                const bufferAge = nowGuard - activeBuffer.bufferedAt;
+                const isBufferExpired = bufferAge > 5000; // PRE_BUFFER_MAX_AGE_MS
+                if (!isBufferExpired) {
+                    console.log(`[INTEGRATOR] 🔮🛡️ PRE-BUFFER GUARD: blocking normal approval — ` +
+                        `"${activeBuffer.effectId}" sealed, ${Math.ceil((activeBuffer.predictedEventAt - nowGuard) / 1000)}s remaining`);
+                    return {
+                        approved: false,
+                        effect: null,
+                        dreamTime,
+                        filterTime: 0,
+                        totalTime: Date.now() - pipelineStartTime,
+                        dreamRecommendation: `pre-buffer-guard: awaiting "${activeBuffer.effectId}"`,
+                        ethicalVerdict: null,
+                        circuitHealthy: true,
+                        fallbackUsed: false,
+                        alternatives: []
+                    };
+                }
+            }
         }
         // ═════════════════════════════════════════════════════════════════════
         // STEP 3: FILTER (Conscience evalúa ética)
@@ -204,6 +239,25 @@ export class DreamEngineIntegrator {
                     approved: false,
                     dreamRecommendation: `Intensity gate: ${decision.effect.intensity.toFixed(2)} < 0.30 minimum`,
                 };
+            }
+            // ⚡ WAVE 5020: DIVINE LEAK FIX (Sniper Route)
+            // Block divine effects at the root if Z-score is too low.
+            const registryEntry = getDynamicEffectRegistry().getEntry(decision.effect.effect);
+            if (registryEntry?.simMeta.isDivineCandidate) {
+                const vibeId = context.pattern.vibe || '';
+                const isTechnoVibe = vibeId === 'techno-club' || vibeId === 'hard-techno' || vibeId.includes('techno') || false;
+                const isLatinoVibe = vibeId.includes('latino') || vibeId.includes('latina') || vibeId.includes('dembow') || false;
+                const DIVINE_THRESHOLD = 3.5;
+                const effectiveDivineThreshold = isTechnoVibe ? 2.5 : isLatinoVibe ? 2.2 : DIVINE_THRESHOLD;
+                const currentZ = context.zScore ?? 0;
+                if (currentZ < effectiveDivineThreshold) {
+                    console.log(`[INTEGRATOR 🛡️] DENIED: Divine effect ${decision.effect.effect} requires Z >= ${effectiveDivineThreshold} (current=${currentZ.toFixed(2)}σ)`);
+                    return {
+                        ...decision,
+                        approved: false,
+                        dreamRecommendation: `Divine gate: Z=${currentZ.toFixed(2)}σ < ${effectiveDivineThreshold}`,
+                    };
+                }
             }
             console.log(`[INTEGRATOR] ✅ APPROVED: ${decision.effect.effect} @ ${decision.effect.intensity.toFixed(2)} | ` +
                 `ethics=${decision.ethicalVerdict?.ethicalScore?.toFixed(3) ?? '?'} | ` +
@@ -483,6 +537,21 @@ export class DreamEngineIntegrator {
         if (this.executionHistory.length > this.maxHistorySize) {
             this.executionHistory.shift();
         }
+    }
+    // ═══════════════════════════════════════════════════════════════════
+    // 🔮 WAVE 5011: CASSANDRA'S SOVEREIGN CLOCK — Pre-buffer proxy API
+    // ═══════════════════════════════════════════════════════════════════
+    /** @see EffectDreamSimulator.getPreBufferStatus */
+    getPreBufferStatus() {
+        return effectDreamSimulator.getPreBufferStatus();
+    }
+    /** @see EffectDreamSimulator.getPreBufferedCandidate */
+    getPreBufferedCandidate() {
+        return effectDreamSimulator.getPreBufferedCandidate();
+    }
+    /** @see EffectDreamSimulator.clearPreBuffer */
+    clearPreBuffer() {
+        effectDreamSimulator.clearPreBuffer();
     }
 }
 // ═════════════════════════════════════════════════════════════════════════

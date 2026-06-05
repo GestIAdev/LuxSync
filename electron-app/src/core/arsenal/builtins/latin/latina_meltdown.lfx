@@ -12,7 +12,7 @@
       "fiesta-latina"
     ],
     "vibeCompat": [
-      "latin"
+      "fiesta-latina"
     ],
     "zones": [
       "intense",
@@ -169,7 +169,7 @@
       },
       "textureAffinity": "universal",
       "compatibleVibes": [
-        "latin"
+        "latino-organic"
       ],
       "validSections": [
         "drop",
@@ -197,7 +197,7 @@
       "cooldownMs": 4500,
       "isStrobe": true,
       "isDivineCandidate": true,
-      "isHeavyCandidate": true,
+      "isHeavyCandidate": false,
       "zScoreGuards": {
         "requireRising": false,
         "minimumZ": null,
@@ -221,5 +221,5 @@
       "communityTrusted": true
     }
   },
-  "checksum": "sha256:2e36843fb5b42314b1b0f178b68af3bbb9e5fd903f749b5bde2b917f2ce47c6a"
+  "checksum": "sha256:b8eef72aa6d34eb9c0ecf59f659bc0a05a35fec3245646ee9ba56ca740fde26d"
 }

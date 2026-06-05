@@ -344,6 +344,111 @@ export class SeleneTitanConscious extends EventEmitter {
             return this.lastOutput;
         }
         // ─────────────────────────────────────────────────────────────────────
+        // 0.5 🔮 CASSANDRA'S SOVEREIGN CLOCK (WAVE 5011) + 🪟 GLASS BREAK SENSOR (WAVE 5016)
+        // Fast path: si Cassandra tiene un efecto pre-bufferizado cuyo executeAt
+        // ha llegado, lo disparamos AHORA — sin pasar por HuntEngine, Fuzzy,
+        // ni ningún gate energético. Esta es la voluntad del Oráculo y es LEY.
+        // Ventana de ejecución soberana: [predictedEventAt, predictedEventAt + 500ms]
+        //
+        // 🪟 WAVE 5016 — DROP COLLISION (GLASS BREAK):
+        // Cassandra era esclava de su propio reloj. Si faltaba 1s para el disparo
+        // pre-bufferizado pero el DJ adelantaba el drop (la energía/Z-score explota
+        // AHORA), el sistema se quedaba sordo esperando a su countdown.
+        // El Glass Break detecta ese impacto masivo inmediato: si hay un sello
+        // temporal en cuenta regresiva (timeToEvent > 0) y el motor sensorial
+        // reporta un Z-Score anómalo con energía real alta, Selene ROMPE EL CRISTAL:
+        // aborta la cuenta atrás, dispara el efecto retenido al instante y limpia
+        // el buffer.
+        // ─────────────────────────────────────────────────────────────────────
+        {
+            const bufferStatus = dreamEngineIntegrator.getPreBufferStatus();
+            if (bufferStatus) {
+                const nowSovereign = Date.now();
+                const timeToEvent = bufferStatus.predictedEventAt - nowSovereign;
+                const SOVEREIGN_WINDOW_MS = 500;
+                // 🪟 GLASS BREAK SENSOR — impacto masivo inmediato durante la cuenta regresiva.
+                // Z-Score >= 2.5 = anomalía (el drop ENTRÓ), confirmado por energía real alta.
+                // Solo válido con la memoria caliente (Z-Scores fiables) y el buffer aún contando.
+                const GLASS_BREAK_Z = 2.5;
+                const currentZScore = this.contextualMemory.getEnergyZScore();
+                const glassBreak = timeToEvent > 0 &&
+                    this.contextualMemory.isWarmedUp &&
+                    currentZScore >= GLASS_BREAK_Z &&
+                    titanState.rawEnergy > 0.55;
+                const withinSovereignWindow = timeToEvent <= 0 && timeToEvent >= -SOVEREIGN_WINDOW_MS;
+                if (withinSovereignWindow || glassBreak) {
+                    // ✅ Ventana soberana cumplida — o 🪟 el cristal se rompió (drop adelantado)
+                    const candidate = dreamEngineIntegrator.getPreBufferedCandidate();
+                    dreamEngineIntegrator.clearPreBuffer();
+                    if (candidate) {
+                        // ═══════════════════════════════════════════════════════════════
+                        // 🛡️ WAVE 5020: DIVINE LEAK FIX B — Re-evaluate Z-score before
+                        // firing a divine pre-buffer. Cassandra's prediction was made
+                        // seconds ago; the musical landscape may have collapsed since.
+                        // If the effect is isDivineCandidate and the current Z-score
+                        // no longer meets the vibe's effectiveDivineThreshold, abort.
+                        // ═══════════════════════════════════════════════════════════════
+                        let divineAborted = false;
+                        const registryEntry = getDynamicEffectRegistry().getEntry(candidate.effect);
+                        if (registryEntry?.simMeta.isDivineCandidate) {
+                            const vibes = registryEntry.compatibleVibes;
+                            const isTechno = vibes.some((v) => v.includes('techno'));
+                            const isLatino = vibes.some((v) => v.includes('latino') || v.includes('latina') || v.includes('dembow'));
+                            const effectiveThreshold = isTechno ? 2.5 : isLatino ? 2.0 : 3.5;
+                            if (currentZScore < effectiveThreshold) {
+                                console.log(`[Sovereign Clock 🛡️] DIVINE ABORTED: "${candidate.effect}" ` +
+                                    `Z=${currentZScore.toFixed(2)}σ < ${effectiveThreshold} → buffer cleared, effect suppressed`);
+                                divineAborted = true;
+                            }
+                        }
+                        if (!divineAborted) {
+                            if (glassBreak) {
+                                console.log(`[SeleneTitanConscious] 🪟💥 CASSANDRA GLASS BREAK: firing "${candidate.effect}" ` +
+                                    `| drop landed EARLY (Z=${currentZScore.toFixed(2)} ≥ ${GLASS_BREAK_Z}, E=${titanState.rawEnergy.toFixed(2)}) ` +
+                                    `| ${timeToEvent}ms remained on the clock — countdown ABORTED`);
+                            }
+                            else {
+                                console.log(`[SeleneTitanConscious] 🔮👑 CASSANDRA SOVEREIGN CLOCK: firing "${candidate.effect}" ` +
+                                    `| overdue=${Math.abs(timeToEvent)}ms | confidence=${candidate.confidence.toFixed(2)} ` +
+                                    `| bypassing HuntEngine + Fuzzy + EnergyOverride`);
+                            }
+                            const reason = glassBreak
+                                ? `🪟💥 CASSANDRA GLASS BREAK (WAVE 5016): drop collision Z=${currentZScore.toFixed(2)}`
+                                : '🔮👑 CASSANDRA SOVEREIGN CLOCK (WAVE 5011)';
+                            const sovereignOutput = {
+                                ...createEmptyOutput(),
+                                confidence: Math.max(candidate.confidence, 0.85),
+                                effectDecision: {
+                                    effectType: candidate.effect,
+                                    intensity: candidate.intensity,
+                                    zones: (candidate.zones.length > 0 ? candidate.zones : ['all']),
+                                    confidence: Math.max(candidate.confidence, 0.85),
+                                    reason,
+                                },
+                                timestamp: nowSovereign,
+                                source: 'hunt',
+                            };
+                            // Registrar en historial para cooldowns y estadísticas
+                            this.lastGlobalEffectTimestamp = nowSovereign;
+                            this.lastEffectTimestamp = nowSovereign;
+                            this.lastEffectType = candidate.effect;
+                            this.effectHistory.push({ type: candidate.effect, timestamp: nowSovereign });
+                            if (this.effectHistory.length > 20)
+                                this.effectHistory.shift();
+                            this.lastOutput = sovereignOutput;
+                            return sovereignOutput;
+                        } // end if (!divineAborted)
+                    }
+                }
+                else if (timeToEvent < -SOVEREIGN_WINDOW_MS) {
+                    // ⚰️ Ventana expirada — limpiar silenciosamente
+                    console.log(`[SeleneTitanConscious] 🔮💀 CASSANDRA SILENT CLEAR: "${bufferStatus.effectId}" ` +
+                        `expired ${Math.abs(timeToEvent + SOVEREIGN_WINDOW_MS)}ms ago`);
+                    dreamEngineIntegrator.clearPreBuffer();
+                }
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────────
         // 1. ⚡ ENERGY OVERRIDE CHECK (PRIMERO SIEMPRE)
         // "En los drops, la física manda"
         // ─────────────────────────────────────────────────────────────────────
@@ -728,6 +833,13 @@ export class SeleneTitanConscious extends EventEmitter {
             const isDropUrgent = prediction.type === 'drop_incoming'
                 && prediction.estimatedTimeMs < 800
                 && prediction.probability > 0.80;
+            // 🩸 WAVE 5018: SOVEREIGN EXCEPTION — Cassandra must pre-buffer drops
+            // even during globalCooldown. If the oracle predicts a drop incoming
+            // (any timeframe), the pipeline runs to arm the pre-buffer.
+            // The Glass Break + Sovereign Clock handle execution timing.
+            const isDropIncoming = prediction
+                && (prediction.type === 'drop_incoming' || prediction.type === 'transition_beat')
+                && prediction.estimatedTimeMs > 0;
             const baseCooldownMs = pattern.vibeId === 'fiesta-latina'
                 ? this.LATINA_GLOBAL_EFFECT_COOLDOWN_MS
                 : this.GLOBAL_EFFECT_COOLDOWN_MS;
@@ -743,7 +855,7 @@ export class SeleneTitanConscious extends EventEmitter {
             if (timeSinceLastEffect < JUST_FIRED_SHIELD_MS) {
                 dreamIntegrationData = this.lastDreamIntegrationResult; // Hard block — ni drops pasan
             }
-            else if (timeSinceLastEffect < globalCooldownMs && !isDropUrgent) {
+            else if (timeSinceLastEffect < globalCooldownMs && !isDropUrgent && !isDropIncoming) {
                 // 🩸 WAVE 2104.1: DIAGNOSTIC — Ver cuánto bloquea el global cooldown
                 if (this.stats.framesProcessed % 15 === 0) {
                     console.log(`[GLOBAL_COOLDOWN] ⏸️ Cached: ${Math.ceil((globalCooldownMs - timeSinceLastEffect) / 1000)}s left | vibe=${pattern.vibeId} lastEffect=${this.lastEffectType ?? 'none'}`);

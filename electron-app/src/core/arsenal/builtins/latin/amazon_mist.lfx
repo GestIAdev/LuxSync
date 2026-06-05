@@ -13,8 +13,8 @@
       "fiesta-latina"
     ],
     "vibeCompat": [
-      "latin",
-      "ambient"
+      "fiesta-latina",
+      "chill-lounge"
     ],
     "zones": [
       "silence",
@@ -120,8 +120,8 @@
       },
       "textureAffinity": "clean",
       "compatibleVibes": [
-        "latin",
-        "ambient"
+        "latino-organic",
+        "chill-lounge"
       ],
       "validSections": [
         "intro",
@@ -174,5 +174,5 @@
       "communityTrusted": true
     }
   },
-  "checksum": "sha256:54b3ce4442c11f0787cbc208b1aec6859442af817d549770d756a133ceaa28df"
+  "checksum": "sha256:b26a18a17e954d99107b1a068cd68917234fcaf848f99127e532154cd29963ee"
 }

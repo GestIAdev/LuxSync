@@ -372,8 +372,8 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
   // 🐘 WAVE 5001: Calibración Latino Montecarlo
   // Los redobles bajan temporalmente al ~50%. 0.60 ahogaba drops legítimos.
   // 0.48 permite el clímax tras el redoble sin habilitar silencios (< 30%).
-  const ABSOLUTE_ENERGY_GATE_RATIO = 0.48
-  const ABSOLUTE_ENERGY_GATE_FALLBACK = 0.40
+  const ABSOLUTE_ENERGY_GATE_RATIO = 0.60
+  const ABSOLUTE_ENERGY_GATE_FALLBACK = 0.50
   const rawEnergy = energyContext?.absolute ?? pattern.rawEnergy ?? 0
   const maxHistoric = (energyMaxHistoric ?? 0) > 0 ? energyMaxHistoric! : null
   const absoluteGateThreshold = maxHistoric !== null
@@ -449,12 +449,13 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
   //   El tramo 0.65–0.84 ya NO fuerza ningún strike — deja al resto de prioridades
   //   evaluar si corresponde o no. Más musical, menos mecánico.
   // ═══════════════════════════════════════════════════════════════════════
-  const DIVINE_ENERGY_GATE = 0.72  // 🔬 WAVE 2494: 0.85→0.72 — rawEnergy necesita gate más bajo para sincronizar con Z-score
+  const DIVINE_ENERGY_GATE = 0.80  // 🔬 WAVE 2494: 0.85→0.72 — rawEnergy necesita gate más bajo para sincronizar con Z-score
   
   // 🔒 WAVE 1177: Si hay dictador activo, no intentar DIVINE
   // (El efecto activo tiene "la palabra", no le interrumpimos)
   const isTechnoVibe = (pattern.vibeId as string) === 'techno-club' || (pattern.vibeId as string) === 'hard-techno' || (pattern.vibeId as string)?.includes('techno') || false
-  const effectiveDivineThreshold = isTechnoVibe ? 2.5 : DIVINE_THRESHOLD
+  const isLatinoVibe = (pattern.vibeId as string)?.includes('latino') || (pattern.vibeId as string)?.includes('latina') || (pattern.vibeId as string)?.includes('dembow') || false
+  const effectiveDivineThreshold = isTechnoVibe ? 2.5 : isLatinoVibe ? 2.2 : DIVINE_THRESHOLD
 
   if (activeDictator) {
     // No loggear nada - silencio total para evitar spam
@@ -481,7 +482,7 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
         // 🌴 WAVE 4865: Bloqueado por Spectral Gate — candado opera en silencio salvo intención real
         const lowBand = pattern.bassPresenceSustained ?? pattern.bassPresence ?? 0
         const midBand = pattern.midPresence ?? 0
-        const kickThreshold = (maxHistoric ?? 0) * 0.75
+        const kickThreshold = (maxHistoric ?? 0) * 0.80
         const hasHeavyKick = lowBand >= kickThreshold
         console.log(
           `[DecisionMaker 🌴] DIVINE BLOCKED (SpectralGate): ${!hasHeavyKick ? 'Low-Band Insufficient' : 'Vocals Eclipse Beat'} | ` +
@@ -558,6 +559,21 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
     //   Should have waited for the drop 3.9s later.
     // ═══════════════════════════════════════════════════════════════════
     const proposedEffect = dreamIntegration.effect.effect
+    // ═══════════════════════════════════════════════════════════════════
+    // 🛡️ WAVE 5020: DIVINE LEAK FIX A — Divine effects must pass Z-gate
+    // ═══════════════════════════════════════════════════════════════════
+    // ROOT CAUSE: DNA Priority 0 retornaba 'strike' INCONDICIONALMENTE.
+    // Un latina_meltdown (isDivineCandidate=true) aprobado por DNA durante
+    // un valle energético (Z=-1.1σ) se disparaba como strike normal,
+    // evadiendo completamente el effectiveDivineThreshold.
+    //
+    // FIX: Si el efecto es isDivineCandidate Y currentZ no alcanza el
+    // effectiveDivineThreshold del vibe, bloquear y hacer fall through.
+    // El efecto NO se pierde — si el Z sube después, el bloque DIVINE
+    // (más arriba) lo capturará por la vía correcta.
+    // ═══════════════════════════════════════════════════════════════════
+    const isDivineEffect = getDynamicEffectRegistry().getEntry(proposedEffect)?.simMeta.isDivineCandidate ?? false
+    const divineLeakBlocked = isDivineEffect && currentZ < effectiveDivineThreshold
     // ⚡ WAVE 4843: COGNITIVE BRIDGE — isEffectAllowedInSection() lee validSections del .lfx
     // Si la sección actual no está en el array validSections del efecto → demote.
     // Esto reemplaza el HEAVY_ARSENAL_EFFECTS hardcodeado: los propios .lfx declaran
@@ -569,6 +585,12 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
       //   `section=${section}, Z=${currentZ.toFixed(2)}σ → validSections: [${getDynamicEffectRegistry().getEntry(proposedEffect)?.validSections.join(', ') ?? 'none'}]`
       // )
       // Fall through — el buildup handler (más abajo) se encargará con efectos suaves
+    } else if (divineLeakBlocked) {
+      console.log(
+        `[DecisionMaker 🛡️] DIVINE LEAK BLOCKED: "${proposedEffect}" is divine ` +
+        `but Z=${currentZ.toFixed(2)}σ < ${effectiveDivineThreshold} → falling through`
+      )
+      // Fall through — el bloque DIVINE (más arriba) disparará cuando Z escale
     } else {
       return 'strike'  // DNA aprobó → strike con efecto de DNA
     }
@@ -651,7 +673,7 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
   // 🔥 WAVE 811: Usar worthiness (0-1) en lugar de shouldStrike (boolean)
   // Prioridad 1: Momento digno detectado por HuntEngine
   // 🛡️ WAVE 2203: Same buildup wall applies — Hunt can't sneak heavy arsenal through
-  const WORTHINESS_THRESHOLD = 0.65  // Umbral para considerar "digno de efecto"
+  const WORTHINESS_THRESHOLD = 0.70  // Umbral para considerar "digno de efecto"
   if (huntDecision.worthiness >= WORTHINESS_THRESHOLD && huntDecision.confidence > 0.50) {
     if (fuzzyBlockedByBuildup) {
       console.log(
@@ -1083,7 +1105,8 @@ function generateDropPreparationDecision(
       const isLatinoVibe = vibeId === 'fiesta-latina' || (vibeId as string)?.includes('latina') || false
       const isTechnoVibeForDrop = vibeId === 'techno-club' || (vibeId as string) === 'hard-techno' || (vibeId as string)?.includes('techno') || false
       // 🔪 WAVE 5000: Bajar umbral latino de 1.2 a 0.85
-      let antiFakeThreshold = isLatinoVibe ? 0.85 : 0.5
+      // 🩸 WAVE 5018-B: Subir a 1.1 — ignorar repuntes de percusión latina
+      let antiFakeThreshold = isLatinoVibe ? 1.1 : 0.5
       
       if (isTechnoVibeForDrop) {
         const lowBandDrop = inputs.pattern.bassPresenceSustained ?? inputs.pattern.bassPresence ?? 0

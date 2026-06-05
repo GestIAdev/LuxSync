@@ -133,8 +133,14 @@ const DMX_MAX = 255
  * Cuando el target está directamente arriba/abajo del fixture (dx≈0, dz≈0),
  * el ángulo de pan es indeterminado. Por debajo de este umbral, se preserva
  * el último pan conocido.
+ *
+ * WAVE 5022: ampliado de 1mm → 50mm. La zona de 1mm era demasiado estrecha:
+ * deltas irregulares del Fluid Timing Engine (WAVE 5016) hacían que el target
+ * suavizado oscilara alrededor del umbral de 1mm, causando latigazos de pan.
+ * 5cm es suficientemente grande para absorber el jitter temporal pero
+ * imperceptible en un escenario de 5-10m.
  */
-const GIMBAL_LOCK_EPSILON = 0.001  // 1mm
+const GIMBAL_LOCK_EPSILON = 0.05  // 50mm — WAVE 5022: zona de singularidad blindada
 
 /**
  * Margen de seguridad en DMX units para pan.
@@ -242,14 +248,22 @@ export function solve(
     panDeg = Math.atan2(local.x, -local.z) * RAD_TO_DEG
   }
 
-  // WAVE 4990: Límite inferior de seguridad para horizontalDist.
-  // Cuando el target cae exactamente en la vertical del fixture (dx=0, dz=0),
-  // horizontalDist = 0 → atan2(0, -local.y) = 0° → haz horizontal (techo).
-  // El épsilon de 1mm (= GIMBAL_LOCK_EPSILON) previene el colapso:
-  // tiltDeg ≈ atan2(0.001, -local.y) ≈ 0° para focos en suelo (local.y < 0)
-  // pero ≈ 90° para focos en techo (local.y > 0, -local.y < 0) → correcto.
-  const safeHorizontalDist = Math.max(GIMBAL_LOCK_EPSILON, horizontalDist)
-  const tiltDeg = Math.atan2(safeHorizontalDist, -local.y) * RAD_TO_DEG  // WAVE 4898: 0° = suelo (alineado con visualizador)
+  // WAVE 5022: Tilt en zona de singularidad — ángulo de reposo vertical correcto.
+  // WAVE 4990 usaba atan2(epsilon, -local.y) que para ceiling (local.y < 0 → -local.y > 0)
+  // producía atan2(0.001, +5) ≈ 0° = horizontal. INCORRECTO.
+  // Fix definitivo: cuando isGimbalLock, el tilt debe ser el ángulo que apunta
+  // directamente hacia el target, que al estar en la vertical es 90° (straight down).
+  // Para ceiling mount: target está DEBAJO → tiltDeg = 90° (haz perpendicular al suelo).
+  // Para floor/totem: target está ENCIMA → tiltDeg = 90° (haz hacia arriba).
+  // En ambos casos la solución de singularidad correcta es apuntar a 90° y congelar pan.
+  let tiltDeg: number
+  if (isGimbalLock) {
+    // En singularidad: apuntar verticalmente puro (90°) — sin latigazo, sin horizontal.
+    // 90° en nuestro sistema = haz apuntando al suelo (para ceiling) o techo (para floor).
+    tiltDeg = 90
+  } else {
+    tiltDeg = Math.atan2(horizontalDist, -local.y) * RAD_TO_DEG  // WAVE 4898: 0° = suelo
+  }
 
   // WAVE 4892 — Telemetría temporal (gated). Cerrar diagnóstico del rombo.
   if (DEBUG_IK) {

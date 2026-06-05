@@ -251,6 +251,42 @@ export class EffectDreamSimulator {
             confidence: primaryEffect.confidence * 0.8
         }));
     }
+    // ═══════════════════════════════════════════════════════════════════
+    // 🔮 WAVE 5011: CASSANDRA'S SOVEREIGN CLOCK — Pre-buffer introspection API
+    // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * Returns the current Cassandra pre-buffer status for sovereign fast path checks.
+     * null = no active pre-buffer.
+     */
+    getPreBufferStatus() {
+        if (!this.preBuffer)
+            return null;
+        return {
+            effectId: this.preBuffer.effect.effect,
+            predictedEventAt: this.preBuffer.predictedEventAt,
+            bufferedAt: this.preBuffer.bufferedAt,
+        };
+    }
+    /**
+     * Returns the full pre-buffered effect candidate (needed to build the sovereign output).
+     * null = no active pre-buffer.
+     */
+    getPreBufferedCandidate() {
+        if (!this.preBuffer)
+            return null;
+        return {
+            effect: this.preBuffer.effect.effect,
+            intensity: this.preBuffer.effect.intensity,
+            zones: this.preBuffer.effect.zones ?? [],
+            confidence: this.preBuffer.effect.confidence,
+        };
+    }
+    /**
+     * Clears the Cassandra pre-buffer (called after sovereign fast path consumes it).
+     */
+    clearPreBuffer() {
+        this.preBuffer = null;
+    }
     // ═══════════════════════════════════════════════════════════════
     // PRIVATE: CANDIDATE GENERATION
     // ═══════════════════════════════════════════════════════════════
@@ -396,7 +432,46 @@ export class EffectDreamSimulator {
             return []; // No generar candidatos - la música está muriendo
         }
         const zoneSource = context.energyZone ? 'SeleneTitanConscious' : 'local-fallback';
-        const zoneFilteredEffects = this.filterByZone(vibeAllowedEffects, energyZone);
+        // ═══════════════════════════════════════════════════════════════════════════
+        // 🔮 WAVE 5014: THE ORACLE'S VISION — Projected Zone & Z-Guard Relaxation
+        // ═══════════════════════════════════════════════════════════════════════════
+        // ROOT CAUSE (WAVE 5013-ALPHA forensics):
+        //   generateCandidates() evaluaba filterByZone y zScoreGuards usando la
+        //   energía y Z-Score del frame ACTUAL, incluso cuando Cassandra simulaba
+        //   un Drop que ocurriría en 3 segundos. Durante un buildup (zona 'active',
+        //   aggression max 0.80), todos los efectos pesados (A>0.80) eran descartados
+        //   ANTES de que sus Z-Guards fueran evaluados. Resultado: solo void_mist y
+        //   abyssal_rise sobrevivían → arsenal nuclear invisible para Cassandra.
+        //
+        // FIX: Si la predicción es un evento futuro garantizado (drop_predicted,
+        //   buildup_starting) con timeToEventMs > 0, usar una zona proyectada
+        //   que refleje las condiciones DEL EVENTO, no del frame actual.
+        //   También relajar minimumZ y minimumEnergy porque en el momento del drop
+        //   la señal habrá explosionado — no tiene sentido bloquear el arsenal hoy
+        //   por culpa de un Z-Score de buildup tranquilo.
+        // ═══════════════════════════════════════════════════════════════════════════
+        const predType = prediction.predictionType ?? 'none';
+        const timeToEvent = (Number.isFinite(prediction.timeToEventMs) && prediction.timeToEventMs > 0)
+            ? prediction.timeToEventMs : 0;
+        const isFutureHeavyEvent = (predType === 'drop_incoming' ||
+            predType === 'energy_spike') && timeToEvent > 0;
+        const isFutureBuildup = predType === 'buildup_starting' && timeToEvent > 0;
+        // Zona proyectada: la que habrá en el momento del evento, no la actual.
+        // drop/energy_spike → peak; buildup → intense; cualquier otro → zona actual.
+        const projectedZone = isFutureHeavyEvent ? 'peak'
+            : isFutureBuildup ? 'intense'
+                : energyZone;
+        // Relajar guards predictivos: si el evento está garantizado, el Z y la energía
+        // del frame actual son irrelevantes — subirán cuando el drop rompa.
+        // Solo se relaja si la predicción es de alta confianza (> 0.55).
+        const relaxGuardsForFuture = (isFutureHeavyEvent || isFutureBuildup)
+            && prediction.confidence > 0.55;
+        if (projectedZone !== energyZone) {
+            console.log(`[DREAM_SIMULATOR] 🔮 ORACLE VISION: zone override ${energyZone} → ${projectedZone} ` +
+                `(pred=${predType} timeToEvent=${timeToEvent}ms conf=${prediction.confidence.toFixed(2)})` +
+                (relaxGuardsForFuture ? ' | Z-guards RELAXED' : ''));
+        }
+        const zoneFilteredEffects = this.filterByZone(vibeAllowedEffects, projectedZone);
         // 🎯 WAVE 4865: Muestreo sin reemplazo por effect id.
         // Evita clones en ranking cuando múltiples aliases/vías aportan el mismo efecto.
         const seenEffectIds = new Set();
@@ -426,19 +501,21 @@ export class EffectDreamSimulator {
             }
             // ═══════════════════════════════════════════════════════════════════════════
             // ⚡ WAVE 4843: COGNITIVE BRIDGE — STROBE Z-GUARD + ZSCORE GUARDS
+            // 🔮 WAVE 5014: Guards relajados para predicciones futuras garantizadas
             // ═══════════════════════════════════════════════════════════════════════════
             // WAVE 1179/1180 usaban una lista hardcodeada STROBE_EFFECTS y un nombre
             // hardcodeado ('gatling_raid'). Ambos destruidos en WAVE 4843.
             //
             // NUEVO COMPORTAMIENTO (lee directamente del .lfx):
             //   1. Si entry.simMeta.isStrobe === true y zScore <= 0 → skip
-            //      (los efectos strobe se auto-declaran strobe en su JSON)
+            //      EXCEPCIÓN (WAVE 5014): Si es predicción futura garantizada (relaxGuardsForFuture)
+            //      el strobe guard se omite — el Z subirá cuando el drop rompa.
             //
             //   2. Si entry.simMeta.zScoreGuards.minimumZ existe y zScore < minimumZ → skip
-            //      (cualquier efecto puede declarar su guard mínimo de Z-Score)
+            //      EXCEPCIÓN (WAVE 5014): Omitido si relaxGuardsForFuture.
             //
             //   3. Si entry.simMeta.zScoreGuards.minimumEnergy existe y energy < minimumEnergy → skip
-            //      (idem para energía)
+            //      EXCEPCIÓN (WAVE 5014): Omitido si relaxGuardsForFuture.
             //
             // Esto convierte los guards en metadatos del efecto, no del motor.
             // ═══════════════════════════════════════════════════════════════════════════
@@ -448,15 +525,18 @@ export class EffectDreamSimulator {
                 const { isStrobe, zScoreGuards } = entry.simMeta;
                 const { energy } = context;
                 // Guard 1: Strobe en energía descendente
-                if (isStrobe && zScore <= 0) {
+                // 🔮 WAVE 5014: Solo se aplica si NO es una predicción futura garantizada
+                if (isStrobe && zScore <= 0 && !relaxGuardsForFuture) {
                     continue;
                 }
                 // Guard 2: minimumZ declarado en el .lfx
-                if (zScoreGuards.minimumZ !== null && zScore < zScoreGuards.minimumZ) {
+                // 🔮 WAVE 5014: Omitido en predicciones futuras — el Z subirá en el evento
+                if (!relaxGuardsForFuture && zScoreGuards.minimumZ !== null && zScore < zScoreGuards.minimumZ) {
                     continue;
                 }
                 // Guard 3: minimumEnergy declarado en el .lfx
-                if (zScoreGuards.minimumEnergy !== null && energy < zScoreGuards.minimumEnergy) {
+                // 🔮 WAVE 5014: Omitido en predicciones futuras — la energía subirá en el evento
+                if (!relaxGuardsForFuture && zScoreGuards.minimumEnergy !== null && energy < zScoreGuards.minimumEnergy) {
                     continue;
                 }
                 // Guard 4: Hardware Compatibility — fixtureTargeting vs active manifest
@@ -481,8 +561,8 @@ export class EffectDreamSimulator {
                 intensity,
                 zones: ['all'], // Simplificado para Phase 1
                 reasoning: isSuggestedByOracle
-                    ? `🔮 CASSANDRA: Oracle suggested | vibe=${state.vibe} zone=${energyZone}`
-                    : `🧬 DNA Dream: vibe=${state.vibe} zone=${energyZone}`,
+                    ? `🔮 CASSANDRA: Oracle suggested | vibe=${state.vibe} zone=${projectedZone}${projectedZone !== energyZone ? ` (actual:${energyZone})` : ''}`
+                    : `🧬 DNA Dream: vibe=${state.vibe} zone=${projectedZone}${projectedZone !== energyZone ? ` (actual:${energyZone})` : ''}`,
                 confidence: finalConfidence
             });
         }
@@ -497,8 +577,11 @@ export class EffectDreamSimulator {
         // ⏳ WAVE 5009 FIX 4: THE MINIMAL RESCUE
         // Si todos los efectos fueron bloqueados por guards (como pasa en Techno Minimal
         // donde Z-Score es muy bajo < 1.0 pero la zona es Peak/Intense).
+        // 🔮 WAVE 5014: Si la projectedZone amplió el pool pero todos siguen bloqueados,
+        //   el Rescue parte desde todos los efectos del vibe (no solo los filtrados por zona)
+        //   para garantizar candidatos en cualquier escenario predictivo.
         if (candidates.length === 0 && zoneFilteredEffects.length > 0) {
-            console.log(`[DREAM_SIMULATOR] ⚠️ All effects blocked by Z-guards! (Z=${zScore.toFixed(2)}). Attempting Minimal Rescue...`);
+            console.log(`[DREAM_SIMULATOR] ⚠️ All effects blocked by Z-guards! (Z=${zScore.toFixed(2)} projectedZone=${projectedZone}). Attempting Minimal Rescue...`);
             const registry = getDynamicEffectRegistry();
             for (const effect of zoneFilteredEffects) {
                 if (moodController.isEffectBlocked(effect))
@@ -508,8 +591,8 @@ export class EffectDreamSimulator {
                     continue;
                 if (!this._isTargetingAvailable(entry.execHints.fixtureTargeting, activeZoneSet))
                     continue;
-                // Mantenemos strobe block si Z <= 0, pero ignoramos minimumZ y minimumEnergy
-                if (entry.simMeta.isStrobe && zScore <= 0)
+                // Strobe guard: solo bloquear si Z <= 0 Y no es predicción futura garantizada
+                if (entry.simMeta.isStrobe && zScore <= 0 && !relaxGuardsForFuture)
                     continue;
                 const intensity = this.calculateIntensity(prediction.predictedEnergy, effect);
                 const isSuggestedByOracle = prediction.suggestedEffects?.some(suggested => effect.includes(suggested) || suggested.includes(effect)) ?? false;
@@ -518,7 +601,7 @@ export class EffectDreamSimulator {
                     effect,
                     intensity,
                     zones: ['all'],
-                    reasoning: `⚠️ MINIMAL RESCUE (Guards bypassed) | vibe=${state.vibe}`,
+                    reasoning: `⚠️ MINIMAL RESCUE (Guards bypassed) | vibe=${state.vibe} projectedZone=${projectedZone}`,
                     confidence: finalConfidence
                 });
             }

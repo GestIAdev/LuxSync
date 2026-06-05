@@ -61,6 +61,9 @@ export const VIBE_ALIAS_MAP: Record<string, VibeId> = {
   'hiphop': 'pop-rock',
   'latin': 'fiesta-latina',
   'fiesta': 'fiesta-latina',
+  // 🩸 WAVE 5018-C: Directiva → Registry bridge aliases
+  'latino-organic': 'fiesta-latina',
+  'techno-dark': 'techno-club',
   // Latin sub-genres → fiesta-latina
   'salsa': 'fiesta-latina',
   'cumbia': 'fiesta-latina',

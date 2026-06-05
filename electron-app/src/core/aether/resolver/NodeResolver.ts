@@ -55,7 +55,7 @@ import { getHarmonicQuantizer } from '../../../hal/translation/HarmonicQuantizer
 // El adaptador _aetherWheelToLegacy convierte entre ellos sin alloc en hot path.
 import type { ColorWheelDefinition as HalColorWheelDefinition } from '../../../hal/translation/FixtureProfiles'
 import type { IDeviceCalibration } from '../device'
-import { solve, buildProfile } from '../../../engine/movement/InverseKinematicsEngine'
+import { solve, solveInto, buildProfile } from '../../../engine/movement/InverseKinematicsEngine'
 import type { IKFixtureProfile } from '../../../engine/movement/InverseKinematicsEngine'
 // WAVE 4548.6: Forge Node Evaluator bypass
 import type { CompiledForgeGraph, ForgeFrameContext } from '../../forge/compiler/types'
@@ -211,6 +211,8 @@ export class NodeResolver implements INodeResolver {
   private readonly _ikReachability = new Map<NodeId, boolean>()
   private readonly _ikLastWarnFrame = new Map<NodeId, number>()
   private _resolveFrameIndex = 0
+  // 🛠️ WAVE 5034: Pre-allocated IKResult scratch — zero alloc en hot path.
+  private readonly _ikResultScratch: import('../../../engine/movement/InverseKinematicsEngine').IKResult = { pan: 0, tilt: 0, reachable: false, antiFlipApplied: false }
 
   // ── Scratch RGB — reutilizado en hot path sin alloc ──────────────────
   // Mutable in-place, pasado al ColorTranslator por referencia.
@@ -1217,7 +1219,8 @@ export class NodeResolver implements INodeResolver {
     const profile      = this._getOrBuildIKProfile(node, calibration)
     const currentPanDMX = node.currentPosition.pan * 255
 
-    const ikResult = solve(profile, { x: tx, y: ty, z: tz }, currentPanDMX)
+    solveInto(this._ikResultScratch, profile, { x: tx, y: ty, z: tz }, currentPanDMX)
+    const ikResult = this._ikResultScratch
     const reachable = ikResult.reachable !== false
     this._ikReachability.set(node.nodeId, reachable)
 

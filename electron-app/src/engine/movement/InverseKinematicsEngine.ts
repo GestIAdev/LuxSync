@@ -211,12 +211,25 @@ export function solve(
   target: Target3D,
   currentPanDMX: number | null = null
 ): IKResult {
-  // ── PASO 1: Vector fixture → target en coordenadas de escenario ──
+  const out: IKResult = { pan: 0, tilt: 0, reachable: false, antiFlipApplied: false }
+  solveInto(out, fixture, target, currentPanDMX)
+  return out
+}
+
+/**
+ * 🛠️ WAVE 5034: Zero-alloc variant — mutates `out` in-place.
+ * Elimina la creación de un nuevo IKResult cada frame en el hot path.
+ */
+export function solveInto(
+  out: IKResult,
+  fixture: IKFixtureProfile,
+  target: Target3D,
+  currentPanDMX: number | null = null
+): void {
   const dx = target.x - fixture.position.x
   const dy = target.y - fixture.position.y
   const dz = target.z - fixture.position.z
 
-  // ── PASO 2: Transformar al frame local del fixture ──
   const mountAngles = MOUNT_ANGLES[fixture.orientation.installation] ?? MOUNT_ANGLES['ceiling']
   
   const totalPitchRad = (mountAngles.pitch + fixture.orientation.rotation.pitch) * DEG_TO_RAD
@@ -225,47 +238,27 @@ export function solve(
 
   const local = rotateToLocalFrame(dx, dy, dz, totalPitchRad, totalYawRad, totalRollRad)
 
-  // ── PASO 3: Detección de Gimbal Lock ──
   const horizontalDist = Math.sqrt(local.x * local.x + local.z * local.z)
   const isGimbalLock = horizontalDist < GIMBAL_LOCK_EPSILON
 
-  // ── PASO 4: Calcular ángulos en el frame local ──
-  // Pan = rotación horizontal. atan2(local.x, local.z) → 0° = frente del fixture.
-  //   Telemetría WAVE 4901: fixture izq (local.x>0) → panDeg>0 → DMX>127.5 → converge al centro ✓
-  //   La negación de WAVE 4902 fue revertida — invierte la convergencia (confirmado por hardware).
-  // Tilt = elevación vertical. atan2(horizontalDist, -local.y) → 0° = suelo bajo el fixture (WAVE 4898).
   let panDeg: number
   if (isGimbalLock) {
-    // Target directamente arriba/abajo del fixture → pan indeterminado.
-    // Usar el pan actual para evitar giros erráticos.
     if (currentPanDMX !== null) {
-      // Convertir pan DMX actual a grados relativos al centro mecánico
       panDeg = dmxToDegrees(currentPanDMX, fixture.limits.panRangeDeg)
     } else {
-      panDeg = 0  // Default: mirar al frente
+      panDeg = 0
     }
   } else {
     panDeg = Math.atan2(local.x, -local.z) * RAD_TO_DEG
   }
 
-  // WAVE 5022: Tilt en zona de singularidad — ángulo de reposo vertical correcto.
-  // WAVE 4990 usaba atan2(epsilon, -local.y) que para ceiling (local.y < 0 → -local.y > 0)
-  // producía atan2(0.001, +5) ≈ 0° = horizontal. INCORRECTO.
-  // Fix definitivo: cuando isGimbalLock, el tilt debe ser el ángulo que apunta
-  // directamente hacia el target, que al estar en la vertical es 90° (straight down).
-  // Para ceiling mount: target está DEBAJO → tiltDeg = 90° (haz perpendicular al suelo).
-  // Para floor/totem: target está ENCIMA → tiltDeg = 90° (haz hacia arriba).
-  // En ambos casos la solución de singularidad correcta es apuntar a 90° y congelar pan.
   let tiltDeg: number
   if (isGimbalLock) {
-    // En singularidad: apuntar verticalmente puro (90°) — sin latigazo, sin horizontal.
-    // 90° en nuestro sistema = haz apuntando al suelo (para ceiling) o techo (para floor).
     tiltDeg = 90
   } else {
-    tiltDeg = Math.atan2(horizontalDist, -local.y) * RAD_TO_DEG  // WAVE 4898: 0° = suelo
+    tiltDeg = Math.atan2(horizontalDist, -local.y) * RAD_TO_DEG
   }
 
-  // WAVE 4892 — Telemetría temporal (gated). Cerrar diagnóstico del rombo.
   if (DEBUG_IK) {
     // eslint-disable-next-line no-console
     console.log('[IK]', JSON.stringify({
@@ -278,20 +271,15 @@ export function solve(
     }))
   }
 
-  // ── PASO 5: Aplicar calibración en grados (ANTES de mapear a DMX) ──
   let calibratedPanDeg  = panDeg  + fixture.calibration.panOffset
   let calibratedTiltDeg = tiltDeg + fixture.calibration.tiltOffset
 
-  // ── PASO 6: Mapear grados → DMX ──
   const panRange  = fixture.limits.panRangeDeg  || DEFAULT_PAN_RANGE_DEG
   const tiltRange = fixture.limits.tiltRangeDeg || DEFAULT_TILT_RANGE_DEG
 
-  // Centro mecánico del rango = mitad del rango total.
-  // panDeg=0 (frente) → centro mecánico → DMX 127.5
   let panDMXRaw  = ((calibratedPanDeg  + panRange  / 2) / panRange)  * DMX_MAX
   let tiltDMXRaw = ((calibratedTiltDeg + tiltRange / 2) / tiltRange) * DMX_MAX
 
-  // ── PASO 7: Anti-flip — Shortest path para pan (evitar giro de 540°) ──
   let antiFlipApplied = false
   if (currentPanDMX !== null && !isGimbalLock) {
     const resolved = resolveShortestPanPath(panDMXRaw, currentPanDMX, panRange)
@@ -299,28 +287,25 @@ export function solve(
     antiFlipApplied = resolved.flipped
   }
 
-  // ── PASO 8: Aplicar inversión de ejes ──
   let panDMX  = fixture.calibration.panInvert  ? (DMX_MAX - panDMXRaw)  : panDMXRaw
   let tiltDMX = fixture.calibration.tiltInvert ? (DMX_MAX - tiltDMXRaw) : tiltDMXRaw
 
-  // ── PASO 9: Evaluar reachability (ANTES del clamp, para saber si se truncó) ──
   const panInRange  = panDMXRaw  >= -PAN_SAFETY_MARGIN && panDMXRaw  <= DMX_MAX + PAN_SAFETY_MARGIN
   const tiltInRange = tiltDMXRaw >= -PAN_SAFETY_MARGIN && tiltDMXRaw <= DMX_MAX + PAN_SAFETY_MARGIN
-  const reachable = panInRange && tiltInRange
 
-  // ── PASO 10: Tilt limits (seguridad — se aplica SIEMPRE) ──
   if (fixture.limits.tiltLimits) {
     tiltDMX = Math.max(fixture.limits.tiltLimits.min, Math.min(fixture.limits.tiltLimits.max, tiltDMX))
   }
 
-  // ── PASO 11: Pan safety margin ──
   panDMX = Math.max(PAN_SAFETY_MARGIN, Math.min(DMX_MAX - PAN_SAFETY_MARGIN, panDMX))
 
-  // ── PASO 12: Final clamp (nadie sale de 0-255) ──
   panDMX  = Math.max(0, Math.min(DMX_MAX, Math.round(panDMX)))
   tiltDMX = Math.max(0, Math.min(DMX_MAX, Math.round(tiltDMX)))
 
-  return { pan: panDMX, tilt: tiltDMX, reachable, antiFlipApplied }
+  out.pan = panDMX
+  out.tilt = tiltDMX
+  out.reachable = panInRange && tiltInRange
+  out.antiFlipApplied = antiFlipApplied
 }
 
 /**

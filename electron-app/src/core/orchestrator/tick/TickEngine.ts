@@ -23,6 +23,9 @@ const ZONE_MAP: Readonly<Record<string, string>> = {
 }
 const DMX_OUTPUT_ZEROS: readonly number[] = Object.freeze(new Array(512).fill(0))
 
+// 🛠️ WAVE 5034: Module-level constant to eliminate per-frame Set allocation
+const OMNI_SOURCES_STALENESS = new Set(['virtual-wire', 'usb-directlink', 'osc-nexus'])
+
 export class TickEngine {
   private static readonly TRUTH_BROADCAST_DIVIDER = 6
   private static readonly HOT_FRAME_DIVIDER = 1
@@ -135,7 +138,6 @@ export class TickEngine {
     const now = Date.now()
     const matrixStatusForStaleness = this.trinity?.getAudioMatrix()?.getStatus()
     const activeSourceForStaleness = matrixStatusForStaleness?.activeSource ?? null
-    const OMNI_SOURCES_STALENESS = new Set(['virtual-wire', 'usb-directlink', 'osc-nexus'])
     const isOmniForStaleness = activeSourceForStaleness ? OMNI_SOURCES_STALENESS.has(activeSourceForStaleness) : false
     const effectiveStalenessThreshold = isOmniForStaleness ? 2000 : this.audioPipeline.AUDIO_STALENESS_THRESHOLD_MS
     if (this.audioPipeline.hasRealAudio && (now - this.audioPipeline.lastAudioTimestamp) > effectiveStalenessThreshold) {

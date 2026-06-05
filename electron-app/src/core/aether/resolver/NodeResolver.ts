@@ -244,6 +244,9 @@ export class NodeResolver implements INodeResolver {
   private readonly _packetPool: MutableDMXPacket[] = []
   // Map<universe, MutableDMXPacket> — solo los paquetes del frame actual
   private readonly _framePackets = new Map<number, MutableDMXPacket>()
+  // 🛠️ WAVE 5034: Pre-allocated return array — zero alloc en hot path.
+  // Se muta in-place cada frame en lugar de Array.from().
+  private readonly _packetArray: IDMXPacket[] = []
 
   // ── Smart Blackout (WAVE 4656.1) ────────────────────────────────────
   // Máscara por universo de canales de intensidad que deben ir a 0
@@ -546,8 +549,13 @@ export class NodeResolver implements INodeResolver {
       this._framePackets.set(universe, packet)
     }
 
-    // Retornar como Array readonly (sin new Array — reutiliza la misma ref)
-    return Array.from(this._framePackets.values()) as readonly IDMXPacket[]
+    // Mutar array pre-allocado in-place — zero alloc.
+    const out = this._packetArray
+    out.length = 0
+    for (const p of this._framePackets.values()) {
+      out.push(p)
+    }
+    return out as readonly IDMXPacket[]
   }
 
   /**

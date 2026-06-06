@@ -95,15 +95,19 @@ export class TickEngine {
   constructor(ctx: any) { this.ctx = ctx }
 
   async tick(): Promise<void> {
+    // ⏱️ WAVE 5037: CHRONOS-ALERT — perf profiling del tick loop.
+    // Si el tiempo de ejecución supera ~15ms, el Event Loop se ahoga y
+    // el frame scheduler empieza a saltar frames → parpadeo / stutter.
+    const _tickStart = performance.now()
 
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // ðŸ”’ WAVE 2211: STAMPEDE GUARD (now in FrameScheduler._onInterval())
     // The FrameScheduler skips ticks if the previous async processFrame()
-    // is still running. Contract preserved â€” guard moved to the scheduler.
+    // is still running. Contract preserved — guard moved to the scheduler.
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     if (!this.brain || !this.engine || !this.hal) return
-    
+
     this.frameCount++
 
     // ðŸŽ¬ WAVE 4860: Advance the master SAB clock so ThetaWorker can read tickId
@@ -1390,6 +1394,20 @@ export class TickEngine {
         ]
       })
     }
-  
+
+    // ⏱️ WAVE 5037: CHRONOS-ALERT — reportar si el tick bloqueó el Event Loop.
+    const _tickDelta = performance.now() - _tickStart
+    if (_tickDelta > 15) {
+      console.error(
+        `[CHRONOS-ALERT] ⏱️ Tick bloqueó el Event Loop durante ${_tickDelta.toFixed(2)}ms ` +
+        `(frame=${this.frameCount})`
+      )
+    } else if (_tickDelta > 8 && this.frameCount % 44 === 0) {
+      // Throttled warning for sub-lethal but concerning times (~1Hz)
+      console.warn(
+        `[CHRONOS-ALERT] ⚠️ Tick lento: ${_tickDelta.toFixed(2)}ms ` +
+        `(frame=${this.frameCount})`
+      )
+    }
   }
 }

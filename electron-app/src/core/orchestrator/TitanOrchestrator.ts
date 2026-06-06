@@ -182,6 +182,12 @@ export interface TitanConfig {
  * TitanOrchestrator - Simple orchestration of Brain -> Engine -> HAL
  */
 export class TitanOrchestrator {
+  // 👻 WAVE 5037: GHOST-HUNTER — ID único de instancia para detectar clones.
+  // Si este log aparece más de una vez sin reiniciar la app, hay fugas de
+  // componentes y múltiples orquestadores están emitiendo DMX simultáneamente.
+  public readonly _instanceId = `titan-${Math.random().toString(36).slice(2, 8)}`
+  private _startCount = 0
+
   private brain: TrinityBrain | null = null
   private engine: TitanEngine | null = null
   private hal: HardwareAbstraction | null = null
@@ -566,6 +572,7 @@ export class TitanOrchestrator {
   }
 
   constructor(config: TitanConfig = {}) {
+    console.warn(`[GHOST-HUNTER] 👻 Instanciando TitanOrchestrator. ID: ${this._instanceId}`)
     this.config = {
       debug: false,
       // WAVE 255: Force IDLE on startup - system starts in blackout
@@ -743,7 +750,14 @@ export class TitanOrchestrator {
   /**
    * Start the main loop
    */
-    start(): void { this.lifecycleManager.start() }
+    start(): void {
+    this._startCount++
+    console.warn(`[GHOST-HUNTER] ▶️ TitanOrchestrator.start() llamado. ID: ${this._instanceId} | startCount: ${this._startCount}`)
+    if (this._startCount > 1) {
+      console.error(`[GHOST-HUNTER] 🔴 ALERTA DE CLON: start() invocado ${this._startCount} veces en la misma instancia. Posible fuga de lifecycle.`)
+    }
+    this.lifecycleManager.start()
+  }
 
   /**
    * Stop the main loop.
@@ -1096,8 +1110,12 @@ export function getTitanOrchestrator(): TitanOrchestrator {
 /**
  * WAVE 380: Register an existing instance as the singleton
  * Call this from main.ts after creating the orchestrator
+ * 👻 WAVE 5037: GHOST-HUNTER — log para detectar registros múltiples.
  */
 export function registerTitanOrchestrator(instance: TitanOrchestrator): void {
+  if (orchestratorInstance) {
+    console.error(`[GHOST-HUNTER] registerTitanOrchestrator() llamado CON INSTANCIA PREVIA. ID previo: ${orchestratorInstance._instanceId}. Nuevo ID: ${instance._instanceId}. FUGA DETECTADA.`)
+  }
   if (orchestratorInstance && orchestratorInstance !== instance) {
     console.warn('[TitanOrchestrator] âš ï¸ Replacing existing singleton instance')
   }

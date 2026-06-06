@@ -44,11 +44,6 @@ export class OpenDMXStrategy implements DMXSendStrategy {
   // Evita saturar el pipe con mensajes identicos a 30Hz cuando la escena es estática.
   private lastSentHash: number = 0
 
-  // 🛠️ WAVE 5034: Pre-allocated IPC payload — zero alloc en hot path.
-  // child.send() serializa el objeto, no lo muta → reusable frame a frame.
-  private readonly _ipcChannels = new Array<number>(513)
-  private readonly _ipcPayload = { type: 'UPDATE_BUFFER' as const, channels: this._ipcChannels }
-
   /**
    * 🧹 WAVE 3080: PURGA DE SHOW — enviar RESET_BUFFER al child process.
    * Llamado por HAL en setFixtures() / show-load para limpiar estado residual.
@@ -197,13 +192,13 @@ export class OpenDMXStrategy implements DMXSendStrategy {
     if (hash === this.lastSentHash) return  // Buffer idéntico — skip IPC
     this.lastSentHash = hash
 
-    // Mutar array pre-allocado in-place — zero alloc.
-    const channels = this._ipcChannels
+    // Enviar los canales como array plano de numeros.
+    const channels = new Array(len)
     for (let i = 0; i < len; i++) {
       channels[i] = buffer[i]
     }
 
-    this.child.send(this._ipcPayload)
+    this.child.send({ type: 'UPDATE_BUFFER', channels })
   }
 
   /**

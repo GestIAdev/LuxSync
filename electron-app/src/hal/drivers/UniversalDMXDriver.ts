@@ -787,7 +787,7 @@ export class UniversalDMXDriver extends EventEmitter {
     // ─── Driver-managed universes (EnttecPro): enviar con port ──────────
     for (const [universe, port] of this.ports) {
       const buffer = this.universeBuffers.get(universe)
-      if (port.isOpen && buffer) {
+      if (port && port.isOpen && buffer) {
         const strategy = this.strategies.get(universe) ?? this.defaultStrategy
         promises.push(strategy.send(port, buffer, universe, (msg) => this.log(msg)))
       }
@@ -802,9 +802,23 @@ export class UniversalDMXDriver extends EventEmitter {
       }
     }
 
-    await Promise.all(promises)
-    this.isTransmitting = false // 🚦 Cable libre, listos para el siguiente frame
-    return true
+    // 🚦 WAVE 5033.2: SAFETY TIMEOUT — si un callback serial se cuelga,
+    // Promise.all nunca resuelve y el semáforo queda atascado para siempre.
+    // 500ms es generoso (un frame DMX tarda ~23ms); si pasa, forzamos reset.
+    const SAFETY_MS = 500
+    const safetyTimeout = new Promise<void>((_, reject) => {
+      setTimeout(() => reject(new Error(`sendAll timeout (${SAFETY_MS}ms)`)), SAFETY_MS)
+    })
+
+    try {
+      await Promise.race([Promise.all(promises), safetyTimeout])
+      return true
+    } catch (err) {
+      this.log(`⚠️ sendAll error: ${err instanceof Error ? err.message : String(err)}`)
+      return false
+    } finally {
+      this.isTransmitting = false // 🚦 Cable libre SIEMPRE, incluso si hay excepción
+    }
   }
 
   /**

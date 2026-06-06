@@ -121,9 +121,6 @@ export class UniversalDMXDriver extends EventEmitter {
   // 🫀 CARDIOGRAMA: callback para escalar warning spikes al capa superior (Orchestrator)
   public onWarning: ((msg: string) => void) | null = null
 
-  // 🛠️ WAVE 5034: Pre-allocated promises array — zero alloc en sendAll().
-  private readonly _sendPromises: Promise<void>[] = []
-
   constructor(config: Partial<UniversalDMXConfig> = {}) {
     super()
     
@@ -785,8 +782,7 @@ export class UniversalDMXDriver extends EventEmitter {
     if (!hasDriverPorts && !hasSelfManaged) return false
 
     this.isTransmitting = true
-    const promises = this._sendPromises
-    promises.length = 0
+    const promises: Promise<void>[] = []
 
     // ─── Driver-managed universes (EnttecPro): enviar con port ──────────
     for (const [universe, port] of this.ports) {

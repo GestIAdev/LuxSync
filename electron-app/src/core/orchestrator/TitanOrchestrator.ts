@@ -756,7 +756,6 @@ export class TitanOrchestrator {
     if (this._startCount > 1) {
       console.error(`[GHOST-HUNTER] 🔴 ALERTA DE CLON: start() invocado ${this._startCount} veces en la misma instancia. Posible fuga de lifecycle.`)
     }
-    this.isRunning = true
     this.lifecycleManager.start()
   }
 
@@ -774,10 +773,7 @@ export class TitanOrchestrator {
    *   3. Espera 30ms para que el chip FTDI drene los bytes al cable RS-485
    *   4. clearInterval + isRunning = false
    */
-    async stop(): Promise<void> {
-    this.isRunning = false
-    await this.lifecycleManager.stop()
-  }
+    async stop(): Promise<void> { await this.lifecycleManager.stop() }
 
   /**
    * Process a single frame of the Brain -> Engine -> HAL pipeline

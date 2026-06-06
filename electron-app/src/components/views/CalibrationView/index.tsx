@@ -29,7 +29,7 @@
  * @version 1135.0.0
  */
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react'
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { useSelectionStore } from '../../../stores/selectionStore'
 import { useStageStore } from '../../../stores/stageStore'
 import './CalibrationView.css'
@@ -139,6 +139,7 @@ const CalibrationView: React.FC = () => {
   const updateFixture = useStageStore(state => state.updateFixture)
   const selectedIds = useSelectionStore(state => state.selectedIds)
   const selectFixture = useSelectionStore(state => state.select)
+  const deselectAll = useSelectionStore(state => state.deselectAll)
   
   // ═══════════════════════════════════════════════════════════════════════
   // LOCAL STATE
@@ -160,6 +161,7 @@ const CalibrationView: React.FC = () => {
   
   // 🔥 WAVE 1135.2: Save feedback state
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // ═══════════════════════════════════════════════════════════════════════
   // COMPUTED VALUES
@@ -188,8 +190,18 @@ const CalibrationView: React.FC = () => {
     const first = allFixtures[0]
     if (!first?.id) return
 
-    console.log(`[CalibrationLab] 🎯 Auto-selecting fixture for calibration: ${first.id} (${first.name ?? 'unnamed'})`)
-    selectFixture(first.id, 'replace')
+    let cancelled = false
+    const timer = setTimeout(() => {
+      if (!cancelled) {
+        console.log(`[CalibrationLab] 🎯 Auto-selecting fixture for calibration: ${first.id} (${first.name ?? 'unnamed'})`)
+        selectFixture(first.id, 'replace')
+      }
+    }, 0)
+
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
   }, [activeFixtureId, allFixtures, selectFixture])
   
   const activeFixture = useMemo(() => {
@@ -256,6 +268,21 @@ const CalibrationView: React.FC = () => {
   
   const dmxBaseAddress = activeFixture?.address || 1
   const universe = activeFixture?.universe ?? 0
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🧹 WAVE 5035: GLOBAL CLEANUP — deselect all fixtures when leaving CalibrationView
+  // ═══════════════════════════════════════════════════════════════════════
+
+  useEffect(() => {
+    return () => {
+      deselectAll()
+      if (saveStatusTimerRef.current) {
+        clearTimeout(saveStatusTimerRef.current)
+        saveStatusTimerRef.current = null
+      }
+      console.log('[CalibrationLab] 🧹 View unmount — selection cleared, timers killed')
+    }
+  }, [deselectAll])
 
   // ═══════════════════════════════════════════════════════════════════════
   // 🎯 WAVE 377 + 1219: CALIBRATION MODE (COLD DMX PATH)
@@ -534,7 +561,8 @@ const CalibrationView: React.FC = () => {
   const handleSaveOffsets = useCallback(async () => {
     if (!activeFixtureId) {
       setSaveStatus('error')
-      setTimeout(() => setSaveStatus('idle'), 2000)
+      if (saveStatusTimerRef.current) clearTimeout(saveStatusTimerRef.current)
+      saveStatusTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2000)
       return
     }
     
@@ -556,11 +584,13 @@ const CalibrationView: React.FC = () => {
       })
       
       setSaveStatus('saved')
-      setTimeout(() => setSaveStatus('idle'), 2000)
+      if (saveStatusTimerRef.current) clearTimeout(saveStatusTimerRef.current)
+      saveStatusTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2000)
     } catch (err) {
       console.error('[CalibrationLab] Failed to save calibration:', err)
       setSaveStatus('error')
-      setTimeout(() => setSaveStatus('idle'), 2000)
+      if (saveStatusTimerRef.current) clearTimeout(saveStatusTimerRef.current)
+      saveStatusTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2000)
     }
   }, [activeFixtureId, updateFixture, panOffset, tiltOffset, panInvert, tiltInvert])
   

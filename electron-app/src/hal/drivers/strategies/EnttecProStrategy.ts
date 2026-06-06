@@ -36,10 +36,6 @@ export class EnttecProStrategy implements DMXSendStrategy {
   readonly name = 'Enttec Pro (Label 6 / 0xA9)'
   readonly selfManaged = false
 
-  // 🛠️ WAVE 5034: Pre-allocated packet buffer — 518 bytes (513 + 5 header/footer)
-  // Elimina new Uint8Array() en el hot path a 44Hz.
-  private readonly _packetBuf = new Uint8Array(518)
-
   async send(
     port: SerialPortInstance | null,
     buffer: Buffer,
@@ -51,8 +47,13 @@ export class EnttecProStrategy implements DMXSendStrategy {
       return
     }
 
+    // 🛡️ WAVE 5037: Cada llamada a send() necesita SU PROPIO packet buffer.
+    // sendAll() despacha múltiples universos concurrentemente vía Promise.all.
+    // Un buffer compartido (pre-alloc) provoca que un universo sobreescriba
+    // los datos de otro antes de que port.write() copie al kernel → parpadeo.
+    // 518 bytes × 30Hz = ~15KB/s — alloc trivial comparado con frame corrupto.
     const dataLen = buffer.length
-    const packet = this._packetBuf
+    const packet = new Uint8Array(dataLen + 5)
     const label = ENTTEC_LABEL[universe] ?? ENTTEC_LABEL_FALLBACK
 
     packet[0] = 0x7E        // Start Code

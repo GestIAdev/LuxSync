@@ -1224,5 +1224,18 @@ declare global {
   }
 }
 
+// ═══════════════════════════════════════════════════════════
+// WAVE 6005 v2: GLASS BRIDGE API (Espejo Fluido)
+// ═══════════════════════════════════════════════════════════
+declare global {
+  interface Window {
+    glass: {
+      connect: () => Promise<{ maxFixtures: number; floatsPerFix: number }>
+      onFrame: (callback: (view: Float32Array) => void) => () => void
+      ackFrame: () => void
+    }
+  }
+}
+
 // Required to make this file a module for declare global to work
 export {}

@@ -41,7 +41,7 @@ const DEFAULT_CONFIG = {
 };
 // WAVE 4933.1 - THETA KILLSWITCH
 // Emergency global shutdown: disables worker spawn, heartbeat, and phoenix loop.
-const ENABLE_THETA_ORCHESTRATOR = false;
+export const ENABLE_THETA_ORCHESTRATOR = false;
 function getBridge() {
     // Acceso defensivo — el preload puede no haber expuesto el namespace en
     // configuraciones legacy.

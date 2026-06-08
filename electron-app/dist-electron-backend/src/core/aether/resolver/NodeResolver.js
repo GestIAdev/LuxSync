@@ -44,7 +44,7 @@
 import { NodeFamily } from '../types';
 import { getColorTranslator } from '../../../hal/translation/ColorTranslator';
 import { getHarmonicQuantizer } from '../../../hal/translation/HarmonicQuantizer';
-import { solve, buildProfile } from '../../../engine/movement/InverseKinematicsEngine';
+import { solveInto, buildProfile } from '../../../engine/movement/InverseKinematicsEngine';
 import { DEFAULT_FORGE_FRAME_CONTEXT } from '../../forge/compiler/types';
 import { ForgeNodeEvaluator } from '../../forge/evaluator/ForgeNodeEvaluator';
 // ── Canales de posición para calibración ────────────────────────────────
@@ -156,6 +156,10 @@ export class NodeResolver {
         this._ikReachability = new Map();
         this._ikLastWarnFrame = new Map();
         this._resolveFrameIndex = 0;
+        // 🛠️ WAVE 5034: Pre-allocated IKResult scratch — zero alloc en hot path.
+        this._ikResultScratch = { pan: 0, tilt: 0, reachable: false, antiFlipApplied: false };
+        // 🛠️ WAVE 5034: Pre-allocated kinetic clamp scratch — zero alloc en hot path.
+        this._kineticClampScratch = { pan: 0, tilt: 0 };
         // ── Scratch RGB — reutilizado en hot path sin alloc ──────────────────
         // Mutable in-place, pasado al ColorTranslator por referencia.
         // INVARIANTE: solo válido durante _translateColor(); no exponer.
@@ -170,6 +174,12 @@ export class NodeResolver {
         // La conversión slots[] → colors[] solo ocurre una vez por rueda mecánica
         // durante la vida del show (las ruedas son patch-time, no cambian a 44Hz).
         this._wheelLegacyCache = new WeakMap();
+        // 🛠️ WAVE 5034: Cache del profile wrapper { colorEngine: { mixing, colorWheel } }
+        // para eliminar la creación de objeto literal cada frame por nodo wheel.
+        this._wheelProfileCache = new Map();
+        // 🛠️ WAVE 5034: Pre-allocated profile objects para RGBW y CMY — zero alloc per frame.
+        this._rgbwProfile = Object.freeze({ colorEngine: { mixing: 'rgbw' } });
+        this._cmyProfile = Object.freeze({ colorEngine: { mixing: 'cmy' } });
         // ── Buffers por universo ───────────────────────────────────────────────
         // Map<universe (1-based), Uint8Array(512)>
         // Pre-allocated en registerDevice(), re-usado frame a frame.
@@ -183,6 +193,9 @@ export class NodeResolver {
         this._packetPool = [];
         // Map<universe, MutableDMXPacket> — solo los paquetes del frame actual
         this._framePackets = new Map();
+        // 🛠️ WAVE 5034: Pre-allocated return array — zero alloc en hot path.
+        // Se muta in-place cada frame en lugar de Array.from().
+        this._packetArray = [];
         // ── Smart Blackout (WAVE 4656.1) ────────────────────────────────────
         // Máscara por universo de canales de intensidad que deben ir a 0
         // durante blackout blando (sin tocar pan/tilt/speed/rotation).
@@ -450,8 +463,13 @@ export class NodeResolver {
             }
             this._framePackets.set(universe, packet);
         }
-        // Retornar como Array readonly (sin new Array — reutiliza la misma ref)
-        return Array.from(this._framePackets.values());
+        // Mutar array pre-allocado in-place — zero alloc.
+        const out = this._packetArray;
+        out.length = 0;
+        for (const p of this._framePackets.values()) {
+            out.push(p);
+        }
+        return out;
     }
     /**
      * 🔥 WAVE 4720: Pre-computa el mapa de inyección de ignición para un device.
@@ -1034,7 +1052,8 @@ export class NodeResolver {
         }
         const profile = this._getOrBuildIKProfile(node, calibration);
         const currentPanDMX = node.currentPosition.pan * 255;
-        const ikResult = solve(profile, { x: tx, y: ty, z: tz }, currentPanDMX);
+        solveInto(this._ikResultScratch, profile, { x: tx, y: ty, z: tz }, currentPanDMX);
+        const ikResult = this._ikResultScratch;
         const reachable = ikResult.reachable !== false;
         this._ikReachability.set(node.nodeId, reachable);
         if (!reachable) {
@@ -1049,9 +1068,9 @@ export class NodeResolver {
         let safeTilt = sanitizeDmxByte(ikResult.tilt);
         const sm = this._safetyMiddleware;
         if (sm) {
-            const clamped = sm.clampKineticVelocity(node.nodeId, safePan, safeTilt);
-            safePan = sm.applyAirbag(clamped.pan, true);
-            safeTilt = sm.applyAirbag(clamped.tilt, false);
+            sm.clampKineticVelocityInto(this._kineticClampScratch, node.nodeId, safePan, safeTilt);
+            safePan = sm.applyAirbag(this._kineticClampScratch.pan, true);
+            safeTilt = sm.applyAirbag(this._kineticClampScratch.tilt, false);
         }
         // WAVE 4616: Pre-Vis rescue — siempre actualizar currentPosition con el
         // resultado matemático real, aunque la salida física esté desarmada.
@@ -1201,9 +1220,7 @@ export class NodeResolver {
                 return s;
             // ── RGBW ────────────────────────────────────────────────────────
             case 'rgbw': {
-                const result = getColorTranslator().translate(this._rgbScratch, {
-                    colorEngine: { mixing: 'rgbw' },
-                });
+                const result = getColorTranslator().translate(this._rgbScratch, this._rgbwProfile);
                 const rgbw = result.rgbw;
                 if (!rgbw) {
                     // Fallback: sin datos RGBW, pass-through RGB
@@ -1223,9 +1240,7 @@ export class NodeResolver {
             }
             // ── CMY ─────────────────────────────────────────────────────────
             case 'cmy': {
-                const result = getColorTranslator().translate(this._rgbScratch, {
-                    colorEngine: { mixing: 'cmy' },
-                });
+                const result = getColorTranslator().translate(this._rgbScratch, this._cmyProfile);
                 const cmy = result.cmy;
                 if (!cmy) {
                     s[CH_RED] = safeR;
@@ -1258,9 +1273,12 @@ export class NodeResolver {
                 // Convertir ColorWheelDefinition del Aether (slots[]) al formato
                 // del ColorTranslator HAL (colors[]) sin alloc persistente.
                 const legacyWheel = this._aetherWheelToLegacy(aetherWheel);
-                const result = getColorTranslator().translate(this._rgbScratch, {
-                    colorEngine: { mixing: 'wheel', colorWheel: legacyWheel },
-                });
+                let wheelProfile = this._wheelProfileCache.get(legacyWheel);
+                if (!wheelProfile) {
+                    wheelProfile = { colorEngine: { mixing: 'wheel', colorWheel: legacyWheel } };
+                    this._wheelProfileCache.set(legacyWheel, wheelProfile);
+                }
+                const result = getColorTranslator().translate(this._rgbScratch, wheelProfile);
                 // colorWheelDmx está en escala 0-255 — normalizar a 0-1 para el pipeline
                 const wheelDmxRaw = result.colorWheelDmx ?? 0;
                 let wheelDmxNorm = wheelDmxRaw / 255;
@@ -1274,7 +1292,7 @@ export class NodeResolver {
                     if (qState?.lastAllowedColor) {
                         // El lastAllowedColor está en {r,g,b} 0-255.
                         // Pasarlo otra vez por el translator para obtener el DMX de rueda correcto.
-                        const heldResult = getColorTranslator().translate(qState.lastAllowedColor, { colorEngine: { mixing: 'wheel', colorWheel: legacyWheel } });
+                        const heldResult = getColorTranslator().translate(qState.lastAllowedColor, wheelProfile);
                         wheelDmxNorm = (heldResult.colorWheelDmx ?? 0) / 255;
                     }
                     // Si no hay lastAllowedColor, mantenemos el valor ya calculado

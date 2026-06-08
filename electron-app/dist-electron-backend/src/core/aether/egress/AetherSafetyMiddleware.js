@@ -147,6 +147,11 @@ export class AetherSafetyMiddleware {
     // FASE 1: INTRA-RESOLVE — Kinetic Velocity Clamp
     // ═════════════════════════════════════════════════════════════════════════
     clampKineticVelocity(nodeId, panDMX, tiltDMX) {
+        const out = { pan: 0, tilt: 0 };
+        this.clampKineticVelocityInto(out, nodeId, panDMX, tiltDMX);
+        return out;
+    }
+    clampKineticVelocityInto(out, nodeId, panDMX, tiltDMX) {
         let state = this._kineticState.get(nodeId);
         if (!state) {
             state = new Float32Array(KS_SLOTS);
@@ -158,14 +163,18 @@ export class AetherSafetyMiddleware {
             state[KS_LAST_TILT] = tiltDMX;
             state[KS_LAST_TIME] = nowMs;
             state[KS_INIT] = 1;
-            return { pan: panDMX, tilt: tiltDMX };
+            out.pan = panDMX;
+            out.tilt = tiltDMX;
+            return;
         }
         const dtMs = nowMs - state[KS_LAST_TIME];
         if (dtMs <= 0 || dtMs > TELEPORT_THRESHOLD_MS) {
             state[KS_LAST_PAN] = panDMX;
             state[KS_LAST_TILT] = tiltDMX;
             state[KS_LAST_TIME] = nowMs;
-            return { pan: panDMX, tilt: tiltDMX };
+            out.pan = panDMX;
+            out.tilt = tiltDMX;
+            return;
         }
         const dtSec = dtMs * 0.001;
         const lim = VIBE_REV_LIMITS[this._vibeId];
@@ -194,10 +203,8 @@ export class AetherSafetyMiddleware {
         state[KS_LAST_PAN] = rP;
         state[KS_LAST_TILT] = rT;
         state[KS_LAST_TIME] = nowMs;
-        return {
-            pan: rP < 0 ? 0 : rP > 255 ? 255 : Math.round(rP),
-            tilt: rT < 0 ? 0 : rT > 255 ? 255 : Math.round(rT),
-        };
+        out.pan = rP < 0 ? 0 : rP > 255 ? 255 : Math.round(rP);
+        out.tilt = rT < 0 ? 0 : rT > 255 ? 255 : Math.round(rT);
     }
     clampKineticSingleAxis(nodeId, isPan, dmxValue) {
         let state = this._kineticState.get(nodeId);

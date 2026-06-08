@@ -6,7 +6,6 @@ import { fixtureMatchesZone as zoneMapperMatch } from '../../zones/ZoneMapper';
 import { getHephaestusRuntime } from '../IPCHandlers';
 import { getEffectManager } from '../../effects/EffectManager';
 import { aetherKineticEngine } from '../../aether/AetherKineticEngine';
-import { vibeMovementManager } from '../../../engine/movement/VibeMovementManager';
 import { NodeFamily } from '../../aether';
 import { createDefaultCognitive } from '../../protocol/SeleneProtocol';
 const ZONE_MAP = {
@@ -18,6 +17,8 @@ const ZONE_MAP = {
     'LASER': 'effects', 'UV': 'effects',
 };
 const DMX_OUTPUT_ZEROS = Object.freeze(new Array(512).fill(0));
+// 🛠️ WAVE 5034: Module-level constant to eliminate per-frame Set allocation
+const OMNI_SOURCES_STALENESS = new Set(['virtual-wire', 'usb-directlink', 'osc-nexus']);
 export class TickEngine {
     get brain() { return this.ctx.brain; }
     get engine() { return this.ctx.engine; }
@@ -27,8 +28,8 @@ export class TickEngine {
     get fixtures() { return this.ctx.fixtures; }
     get onHotFrame() { return this.ctx.onHotFrame; }
     get onBroadcast() { return this.ctx.onBroadcast; }
-    get _outputEnabled() { return this.ctx._outputEnabled; }
     get _aetherHasDevices() { return this.ctx._aetherHasDevices; }
+    get _outputEnabled() { return this.ctx._outputEnabled; }
     get _aetherArbiter() { return this.ctx._aetherArbiter; }
     get _aetherResolver() { return this.ctx._aetherResolver; }
     get _colorAdapter() { return this.ctx._colorAdapter; }
@@ -41,7 +42,6 @@ export class TickEngine {
     get _hephaestusAetherAdapter() { return this.ctx._hephaestusAetherAdapter; }
     get _aetherCanvasManager() { return this.ctx._aetherCanvasManager; }
     get _pixelMapAdapter() { return this.ctx._pixelMapAdapter; }
-    get _theiaVideoRenderer() { return this.ctx._theiaVideoRenderer; }
     get _physicsPostProcessor() { return this.ctx._physicsPostProcessor; }
     get _aetherSafety() { return this.ctx._aetherSafety; }
     get _forgeFrameCtx() { return this.ctx._forgeFrameCtx; }
@@ -76,13 +76,23 @@ export class TickEngine {
         this.frameCount = 0;
         this.warlogHeartbeatFrame = 0;
         this._lastLoggedEngine = '';
+        // ðŸ› ï¸ WAVE 5032: Pre-allocated mutable caches to eliminate .map() / {} / [] in hot path
+        this._cachedFixtureStates = [];
+        this._cachedHotFrame = {};
+        this._cachedHotFrameFixtures = [];
+        this._cachedChronosSet = new Set();
+        this._cachedTruthFixtures = [];
         this.ctx = ctx;
     }
     async tick() {
+        // ⏱️ WAVE 5037: CHRONOS-ALERT — perf profiling del tick loop.
+        // Si el tiempo de ejecución supera ~15ms, el Event Loop se ahoga y
+        // el frame scheduler empieza a saltar frames → parpadeo / stutter.
+        const _tickStart = performance.now();
         // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         // ðŸ”’ WAVE 2211: STAMPEDE GUARD (now in FrameScheduler._onInterval())
         // The FrameScheduler skips ticks if the previous async processFrame()
-        // is still running. Contract preserved â€” guard moved to the scheduler.
+        // is still running. Contract preserved — guard moved to the scheduler.
         // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         if (!this.brain || !this.engine || !this.hal)
             return;
@@ -113,7 +123,6 @@ export class TickEngine {
         const now = Date.now();
         const matrixStatusForStaleness = this.trinity?.getAudioMatrix()?.getStatus();
         const activeSourceForStaleness = matrixStatusForStaleness?.activeSource ?? null;
-        const OMNI_SOURCES_STALENESS = new Set(['virtual-wire', 'usb-directlink', 'osc-nexus']);
         const isOmniForStaleness = activeSourceForStaleness ? OMNI_SOURCES_STALENESS.has(activeSourceForStaleness) : false;
         const effectiveStalenessThreshold = isOmniForStaleness ? 2000 : this.audioPipeline.AUDIO_STALENESS_THRESHOLD_MS;
         if (this.audioPipeline.hasRealAudio && (now - this.audioPipeline.lastAudioTimestamp) > effectiveStalenessThreshold) {
@@ -367,7 +376,16 @@ export class TickEngine {
         const effectOutput = effectManager.getCombinedOutput();
         // Chronos protection: fixtures being painted by Chronos are off-limits
         const playbackFrame = this._timelineEngine.getLastPlaybackFrame();
-        const chronosFixtureIds = new Set((playbackFrame?.targets ?? []).map((t) => t.fixtureId));
+        const chronosTargets = playbackFrame?.targets;
+        if (chronosTargets && chronosTargets.length > 0) {
+            this._cachedChronosSet.clear();
+            for (let _ct = 0; _ct < chronosTargets.length; _ct++) {
+                const _cid = chronosTargets[_ct].fixtureId;
+                if (typeof _cid === 'string')
+                    this._cachedChronosSet.add(_cid);
+            }
+        }
+        const chronosFixtureIds = this._cachedChronosSet;
         // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         // ðŸ”Ž FORENSIC TRACE (CP2): Aether â†’ HAL handoff snapshot
         // Enabled via env: LUXSYNC_TRACE_DMX=1 (optional LUXSYNC_TRACE_DMX_EVERY)
@@ -411,25 +429,46 @@ export class TickEngine {
         // AetherUIProjector.project() lo rellena con la verdad Aether cada frame.
         // hal.renderFromTarget() ya NO se llama: Aether es el productor exclusivo.
         // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-        const fixtureStates = this.fixtures.map((fix) => ({
-            dmxAddress: fix.dmxAddress,
-            universe: fix.universe,
-            name: fix.name,
-            zone: fix.zone ?? 'center',
-            type: fix.type ?? 'generic',
-            isVirtual: fix.isVirtual,
-            dimmer: 0,
-            r: 0, g: 0, b: 0,
-            pan: 128,
-            tilt: 128,
-            zoom: 128,
-            focus: 128,
-            channels: fix.channels,
-            profileId: fix.profileId,
-            fixtureId: fix.id,
-            hasColorWheel: fix.hasColorWheel,
-            hasColorMixing: fix.hasColorMixing,
-        }));
+        // ðŸ› ï¸ WAVE 5032: Reuse _cachedFixtureStates â€” grow array if needed, mutate in-place
+        const fixtureCount = this.fixtures.length;
+        for (let _fi = 0; _fi < fixtureCount; _fi++) {
+            const fix = this.fixtures[_fi];
+            let state = this._cachedFixtureStates[_fi];
+            if (!state) {
+                state = {
+                    dmxAddress: 0, universe: 0, name: '', zone: 'center', type: 'generic',
+                    isVirtual: false, dimmer: 0, r: 0, g: 0, b: 0,
+                    pan: 128, tilt: 128, zoom: 128, focus: 128,
+                    channels: null, profileId: '', fixtureId: '',
+                    hasColorWheel: false, hasColorMixing: false,
+                };
+                this._cachedFixtureStates[_fi] = state;
+            }
+            state.dmxAddress = fix.dmxAddress;
+            state.universe = fix.universe;
+            state.name = fix.name;
+            state.zone = fix.zone ?? 'center';
+            state.type = fix.type ?? 'generic';
+            state.isVirtual = fix.isVirtual;
+            state.dimmer = 0;
+            state.r = 0;
+            state.g = 0;
+            state.b = 0;
+            state.pan = 128;
+            state.tilt = 128;
+            state.zoom = 128;
+            state.focus = 128;
+            state.channels = fix.channels;
+            state.profileId = fix.profileId;
+            state.fixtureId = fix.id;
+            state.hasColorWheel = fix.hasColorWheel;
+            state.hasColorMixing = fix.hasColorMixing;
+        }
+        // Trim excess if fixtures shrunk
+        if (this._cachedFixtureStates.length > fixtureCount) {
+            this._cachedFixtureStates.length = fixtureCount;
+        }
+        const fixtureStates = this._cachedFixtureStates;
         // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         // ï¿½ WAVE 2662: POST-HAL MUTATION ELIMINATED
         //
@@ -457,13 +496,22 @@ export class TickEngine {
         // ðŸŽ›ï¸ WAVE 1198.8: De 120 a 240 frames para reducir spam
         const shouldLogToTactical = this.frameCount % 240 === 0;
         if (shouldLogToTactical && this.audioPipeline.hasRealAudio) {
-            const avgDimmer = fixtureStates.length > 0
-                ? fixtureStates.reduce((sum, f) => sum + f.dimmer, 0) / fixtureStates.length
-                : 0;
-            const movers = fixtureStates.filter(f => f.zone.includes('MOVING'));
-            const avgMover = movers.length > 0 ? movers.reduce((s, f) => s + f.dimmer, 0) / movers.length : 0;
-            const frontPars = fixtureStates.filter(f => f.zone === 'FRONT_PARS');
-            const avgFront = frontPars.length > 0 ? frontPars.reduce((s, f) => s + f.dimmer, 0) / frontPars.length : 0;
+            let _dimSum = 0, _movSum = 0, _movCount = 0, _frontSum = 0, _frontCount = 0;
+            for (let _ti = 0; _ti < fixtureStates.length; _ti++) {
+                const _tf = fixtureStates[_ti];
+                _dimSum += _tf.dimmer;
+                if (_tf.zone.includes('MOVING')) {
+                    _movSum += _tf.dimmer;
+                    _movCount++;
+                }
+                if (_tf.zone === 'FRONT_PARS') {
+                    _frontSum += _tf.dimmer;
+                    _frontCount++;
+                }
+            }
+            const avgDimmer = fixtureStates.length > 0 ? _dimSum / fixtureStates.length : 0;
+            const avgMover = _movCount > 0 ? _movSum / _movCount : 0;
+            const avgFront = _frontCount > 0 ? _frontSum / _frontCount : 0;
             // Send to Tactical Log
             this.log('Visual', `ðŸŽ¨ P:${intent.palette.primary.hex || '#???'} | Front:${avgFront.toFixed(0)} Mover:${avgMover.toFixed(0)}`, {
                 bass, mid, high, energy,
@@ -680,7 +728,9 @@ export class TickEngine {
         if (!chronosPlaying) {
             for (let _pi = 0; _pi < fixtureStates.length; _pi++) {
                 const _f = fixtureStates[_pi];
-                const _id = this.fixtures[_pi]?.id || `fix_${_pi}`;
+                const _id = this.fixtures[_pi]?.id;
+                if (!_id)
+                    continue;
                 const _prev = this.peakHoldMap.get(_id) ?? 0;
                 if (_f.dimmer > _prev)
                     this.peakHoldMap.set(_id, _f.dimmer);
@@ -692,48 +742,48 @@ export class TickEngine {
             }
             // WAVE 3403: Snapshot AudioMatrix status once per hot-frame (avoid double getStatus())
             const matrixStatus = this.trinity?.getAudioMatrix()?.getStatus();
-            const hotFrame = {
-                frameNumber: this.frameCount,
-                timestamp: now, // âš¡ WAVE 3050: unified timestamp
-                onBeat: engineAudioMetrics.isBeat,
-                beatConfidence: engineAudioMetrics.beatConfidence,
-                bpm: engineAudioMetrics.bpm,
-                // ðŸŽµ WAVE 3250: UNLEASH THE SPECTRUM â€” Audio bands en hot-frame (44Hz)
-                // Antes: bass/mid/high/energy solo viajaban en selene:truth (~7Hz).
-                // AudioSpectrumTitan leÃ­a el MISMO valor 8-9 frames seguidos â†’ escalones.
-                // Ahora viajan a 44Hz â€” el smoothstep del frontend interpola a 60fps.
-                bass,
-                mid,
-                high,
-                energy,
-                // WAVE 3403: AudioMatrix telemetry piggybacked on hot-frame (zero extra IPC)
-                ringBufferFillLevel: matrixStatus?.ringBufferFillLevel ?? 0,
-                activeAudioSource: matrixStatus?.activeSource ?? null,
-                // WAVE 5025: Patrón activo L0 (VMM) para sincronizar PatternArsenal en el frontend.
-                // El L2 manual tiene prioridad: si hay override manual en el VMM, llega aquí también.
-                activeKineticPattern: vibeMovementManager.getCurrentPatternName(),
-                fixtures: fixtureStates.map((f, i) => {
-                    const originalFixture = this.fixtures[i];
-                    const realId = originalFixture?.id || `fix_${i}`;
-                    return {
-                        id: realId,
-                        dimmer: f.dimmer / 255,
-                        r: Math.round(f.r),
-                        g: Math.round(f.g),
-                        b: Math.round(f.b),
-                        white: Math.round(f.white ?? 0),
-                        amber: Math.round(f.amber ?? 0),
-                        pan: f.pan / 255,
-                        tilt: f.tilt / 255,
-                        zoom: f.zoom,
-                        focus: f.focus,
-                        physicalPan: (f.physicalPan ?? f.pan) / 255,
-                        physicalTilt: (f.physicalTilt ?? f.tilt) / 255,
-                        panVelocity: f.panVelocity ?? 0,
-                        tiltVelocity: f.tiltVelocity ?? 0,
-                    };
-                })
-            };
+            // ðŸ› ï¸ WAVE 5032: Mutate _cachedHotFrameFixtures in-place instead of .map()
+            const _hfCount = fixtureStates.length;
+            for (let _hi = 0; _hi < _hfCount; _hi++) {
+                const _hf = fixtureStates[_hi];
+                const _orig = this.fixtures[_hi];
+                let _hff = this._cachedHotFrameFixtures[_hi];
+                if (!_hff) {
+                    _hff = { id: '', dimmer: 0, r: 0, g: 0, b: 0, white: 0, amber: 0, pan: 0, tilt: 0, zoom: 0, focus: 0, physicalPan: 0, physicalTilt: 0, panVelocity: 0, tiltVelocity: 0 };
+                    this._cachedHotFrameFixtures[_hi] = _hff;
+                }
+                _hff.id = _orig?.id || '';
+                _hff.dimmer = _hf.dimmer / 255;
+                _hff.r = Math.round(_hf.r);
+                _hff.g = Math.round(_hf.g);
+                _hff.b = Math.round(_hf.b);
+                _hff.white = Math.round(_hf.white ?? 0);
+                _hff.amber = Math.round(_hf.amber ?? 0);
+                _hff.pan = _hf.pan / 255;
+                _hff.tilt = _hf.tilt / 255;
+                _hff.zoom = _hf.zoom;
+                _hff.focus = _hf.focus;
+                _hff.physicalPan = (_hf.physicalPan ?? _hf.pan) / 255;
+                _hff.physicalTilt = (_hf.physicalTilt ?? _hf.tilt) / 255;
+                _hff.panVelocity = _hf.panVelocity ?? 0;
+                _hff.tiltVelocity = _hf.tiltVelocity ?? 0;
+            }
+            if (this._cachedHotFrameFixtures.length > _hfCount) {
+                this._cachedHotFrameFixtures.length = _hfCount;
+            }
+            const hotFrame = this._cachedHotFrame;
+            hotFrame.frameNumber = this.frameCount;
+            hotFrame.timestamp = now;
+            hotFrame.onBeat = engineAudioMetrics.isBeat;
+            hotFrame.beatConfidence = engineAudioMetrics.beatConfidence;
+            hotFrame.bpm = engineAudioMetrics.bpm;
+            hotFrame.bass = bass;
+            hotFrame.mid = mid;
+            hotFrame.high = high;
+            hotFrame.energy = energy;
+            hotFrame.ringBufferFillLevel = matrixStatus?.ringBufferFillLevel ?? 0;
+            hotFrame.activeAudioSource = matrixStatus?.activeSource ?? null;
+            hotFrame.fixtures = this._cachedHotFrameFixtures;
             this.onHotFrame(hotFrame);
         };
         // â”€â”€ HOT FRAME â€” Every HOT_FRAME_DIVIDER ticks (44Hz) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -848,14 +898,6 @@ export class TickEngine {
                 beamAdapter.process(this._aetherGraph.getView(NodeFamily.BEAM), ctx, this._aetherBus);
                 // ðŸŒ«ï¸ WAVE 3516.4: Atmosphere â€” elementos (fog, haze, fan, spark, pyro)
                 atmosphereAdapter.process(this._aetherGraph.getView(NodeFamily.ATMOSPHERE), ctx, this._aetherBus);
-                // 🛠️ WAVE 5030: DIAG — Check if L0 adapters actually produced intents.
-                if (this.frameCount % 88 === 0) {
-                    const kineticView = this._aetherGraph.getView(NodeFamily.KINETIC);
-                    const colorView = this._aetherGraph.getView(NodeFamily.COLOR);
-                    console.log(`[L0-DEBUG PIPELINE] _aetherBus.count=${this._aetherBus.count} | ` +
-                        `kineticNodes=${kineticView.length} colorNodes=${colorView.length} | ` +
-                        `aetherHasDevices=${this._aetherHasDevices}`);
-                }
                 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
                 // ðŸš€ WAVE 4524.3: L3 â€” Selene-Aether Adapter (Puente Cognitivo)
                 // Consume el output de Selene (effectDecision, colorDecision, physicsModifier)
@@ -889,28 +931,13 @@ export class TickEngine {
                 }
                 // ðŸ‘» WAVE 4952: PlasmaRenderer tick loop REMOVED (test-pattern poltergeist
                 // amputated in the renderHook above â€” no plasma renderers are ever created).
-                // ðŸŽ¬ WAVE 4867: Tick TheiaVideoRenderer â€” copia el thumb SAB al back buffer de
-                // 'theia:active' si hay frame nuevo, sin allocaciones extra.
-                if (this._theiaVideoRenderer !== null) {
-                    this._theiaVideoRenderer.tick();
-                }
+                // ðŸŽ¬ WAVE 4867: TheiaVideoRenderer tick REMOVED â€” no callers to attachTheiaRenderer,
+                // field is always null. Safe to strip from hot path.
                 this._pixelMapAdapter.ingest(aetherArbiter, this._aetherCanvasManager);
                 // 3. El Arbiter unifica todas las capas â†’ ArbitratedNodeMap
                 aetherArbiter.setSystemIntents(this._aetherBus);
                 aetherArbiter.setEffectIntents(this._effectBus.getAll());
                 const arbitrated = aetherArbiter.arbitrate();
-                // 🛠️ WAVE 5030: DIAG — Did arbitration produce any results?
-                if (this.frameCount % 88 === 0) {
-                    let kineticSample = 'N/A';
-                    for (const [nodeId, record] of arbitrated) {
-                        if (nodeId.includes(':kinetic')) {
-                            kineticSample = `pan=${record['pan']?.toFixed(2) ?? 'N/A'} tilt=${record['tilt']?.toFixed(2) ?? 'N/A'}`;
-                            break;
-                        }
-                    }
-                    console.log(`[L0-DEBUG PIPELINE] arbitrated.size=${arbitrated.size} | ` +
-                        `kineticSample=${kineticSample}`);
-                }
                 // 3.5. âš™ï¸ WAVE 4518.1: Physics Post-Processor â€” aplica inercia a nodos KINETIC
                 // WOODSTOCK: deltaMs viene del FrameScheduler (performance.now()-based), NUNCA Date.now()
                 this._physicsPostProcessor.process(arbitrated, this._aetherGraph, this._aetherCtx.deltaMs, this._aetherCtx.vibe.name);
@@ -1023,13 +1050,6 @@ export class TickEngine {
                         }
                     }
                     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-                    // 🛠️ WAVE 5030: DIAG — Check if NodeResolver produced actual DMX data.
-                    if (this.frameCount % 88 === 0 && universe === 1) {
-                        let byteSum = 0;
-                        for (let _bi = 0; _bi < egressBuf.length; _bi++)
-                            byteSum += egressBuf[_bi];
-                        console.log(`[L0-DEBUG PIPELINE] Universe ${universe} egress sum=${byteSum}`);
-                    }
                     this.hal.sendUniverseRaw(universe, egressBuf);
                     // ðŸ”¬ WAVE 4681: Log de supervivencia cada 300 frames (~5s a 44Hz)
                     if (this.frameCount % 300 === 0) {
@@ -1062,6 +1082,67 @@ export class TickEngine {
         // â”€â”€ FULL TRUTH â€” Every TRUTH_BROADCAST_DIVIDER ticks (~7Hz) â”€â”€â”€â”€â”€â”€â”€â”€
         if (this.onBroadcast && shouldBroadcastFullTruth) {
             const currentVibe = this.engine.getCurrentVibe();
+            // 🛠️ WAVE 5032: Mutate _cachedTruthFixtures in-place instead of .map()
+            const _tfCount = fixtureStates.length;
+            for (let _tvi = 0; _tvi < _tfCount; _tvi++) {
+                const _f = fixtureStates[_tvi];
+                const _orig = this.fixtures[_tvi];
+                const _realId = _orig?.id || '';
+                let _tvf = this._cachedTruthFixtures[_tvi];
+                if (!_tvf) {
+                    _tvf = {
+                        id: '', name: '', type: '', zone: '', dmxAddress: 0, universe: 0,
+                        dimmer: 0, intensity: 0, color: { r: 0, g: 0, b: 0 },
+                        pan: 0, tilt: 0, zoom: 0, focus: 0, white: 0, amber: 0,
+                        physicalPan: 0, physicalTilt: 0, panVelocity: 0, tiltVelocity: 0,
+                        online: true, active: false, profileId: '',
+                    };
+                    this._cachedTruthFixtures[_tvi] = _tvf;
+                }
+                const _mappedZone = ZONE_MAP[_f.zone] || _f.zone || 'center';
+                let _broadcastDimmer;
+                if (chronosPlaying) {
+                    _broadcastDimmer = _f.dimmer;
+                }
+                else {
+                    const _peakDimmer = this.peakHoldMap.get(_realId) ?? _f.dimmer;
+                    _broadcastDimmer = Math.max(_f.dimmer, _peakDimmer);
+                    this.peakHoldMap.set(_realId, 0);
+                }
+                _tvf.id = _realId;
+                _tvf.name = _f.name;
+                _tvf.type = _f.type;
+                _tvf.zone = _mappedZone;
+                _tvf.dmxAddress = _f.dmxAddress;
+                _tvf.universe = _f.universe;
+                _tvf.dimmer = _broadcastDimmer / 255;
+                _tvf.intensity = _broadcastDimmer / 255;
+                _tvf.color.r = Math.round(_f.r);
+                _tvf.color.g = Math.round(_f.g);
+                _tvf.color.b = Math.round(_f.b);
+                _tvf.pan = _f.pan / 255;
+                _tvf.tilt = _f.tilt / 255;
+                _tvf.zoom = _f.zoom;
+                _tvf.focus = _f.focus;
+                _tvf.white = _f.white ?? 0;
+                _tvf.amber = _f.amber ?? 0;
+                _tvf.physicalPan = (_f.physicalPan ?? _f.pan) / 255;
+                _tvf.physicalTilt = (_f.physicalTilt ?? _f.tilt) / 255;
+                _tvf.panVelocity = _f.panVelocity ?? 0;
+                _tvf.tiltVelocity = _f.tiltVelocity ?? 0;
+                _tvf.online = true;
+                _tvf.active = _f.dimmer > 0;
+                _tvf.profileId = _orig?.profileId || _f.profileId || _orig?.id || _realId;
+            }
+            if (this._cachedTruthFixtures.length > _tfCount) {
+                this._cachedTruthFixtures.length = _tfCount;
+            }
+            // 🛠️ WAVE 5032: Count active fixtures with for loop instead of .reduce()
+            let _activeCount = 0;
+            for (let _aci = 0; _aci < fixtureStates.length; _aci++) {
+                if (fixtureStates[_aci].dimmer > 0)
+                    _activeCount++;
+            }
             // Build a valid SeleneTruth structure
             const truth = {
                 system: {
@@ -1174,68 +1255,9 @@ export class TickEngine {
                         port: null
                     },
                     dmxOutput: DMX_OUTPUT_ZEROS,
-                    fixturesActive: fixtureStates.reduce((count, f) => count + (f.dimmer > 0 ? 1 : 0), 0),
+                    fixturesActive: _activeCount,
                     fixturesTotal: fixtureStates.length,
-                    // Map HAL FixtureState to Protocol FixtureState
-                    // WAVE 256.3: Normalize DMX values (0-255) to frontend values (0-1)
-                    // WAVE 256.7: Map zone names for StageSimulator2 compatibility
-                    fixtures: fixtureStates.map((f, i) => {
-                        // \ud83d\udd27 WAVE 700.9.4: Map HAL zones to StageSimulator2 zones
-                        // \u26a1 WAVE 3050: ZONE_MAP is now a module-level constant (was per-fixture per-frame)
-                        const mappedZone = ZONE_MAP[f.zone] || f.zone || 'center';
-                        // ðŸ©¸ WAVE 380: Use REAL fixture ID from this.fixtures, not generated index
-                        // This is critical for runtimeStateMap matching in StageSimulator2
-                        const originalFixture = this.fixtures[i];
-                        const realId = originalFixture?.id || `fix_${i}`;
-                        // âš¡ WAVE 2464: PEAK HOLD â€” Usa el pico acumulado en el frame skipeado.
-                        // Si el fixture brillÃ³ al mÃ¡ximo en el frame que el throttle saltÃ³, aquÃ­
-                        // mandamos ese pico al canvas. DespuÃ©s de leerlo: reset a 0 para el ciclo.
-                        // ðŸ‘» WAVE 2540.7: Skip peak hold during Chronos â€” every frame is broadcast,
-                        // no skipped frames means no peaks to accumulate.
-                        let broadcastDimmer;
-                        if (chronosPlaying) {
-                            broadcastDimmer = f.dimmer;
-                        }
-                        else {
-                            const peakDimmer = this.peakHoldMap.get(realId) ?? f.dimmer;
-                            broadcastDimmer = Math.max(f.dimmer, peakDimmer);
-                            this.peakHoldMap.set(realId, 0); // Reset peak tras broadcast
-                        }
-                        return {
-                            id: realId,
-                            name: f.name,
-                            type: f.type,
-                            zone: mappedZone,
-                            dmxAddress: f.dmxAddress,
-                            universe: f.universe,
-                            dimmer: broadcastDimmer / 255, // Normalize 0-255 â†’ 0-1 (con peak hold)
-                            intensity: broadcastDimmer / 255, // Normalize 0-255 â†’ 0-1 (con peak hold)
-                            color: {
-                                r: Math.round(f.r), // Keep 0-255 for RGB
-                                g: Math.round(f.g),
-                                b: Math.round(f.b)
-                            },
-                            pan: f.pan / 255, // Normalize 0-255 â†’ 0-1
-                            tilt: f.tilt / 255, // Normalize 0-255 â†’ 0-1
-                            // ðŸ” WAVE 339: Optics (from HAL/FixtureMapper)
-                            zoom: f.zoom, // 0-255 DMX
-                            focus: f.focus, // 0-255 DMX
-                            // âš’ï¸ WAVE 2030.22g: Extended LED channels
-                            white: f.white ?? 0, // 0-255 DMX
-                            amber: f.amber ?? 0, // 0-255 DMX
-                            // ðŸŽ›ï¸ WAVE 339: Physics (interpolated positions from FixturePhysicsDriver)
-                            physicalPan: (f.physicalPan ?? f.pan) / 255, // Normalize 0-255 â†’ 0-1
-                            physicalTilt: (f.physicalTilt ?? f.tilt) / 255, // Normalize 0-255 â†’ 0-1
-                            panVelocity: f.panVelocity ?? 0, // DMX/s (raw)
-                            tiltVelocity: f.tiltVelocity ?? 0, // DMX/s (raw)
-                            online: true,
-                            active: f.dimmer > 0,
-                            // ðŸ”¥ WAVE 2084.6: THE PHANTOM DATA LINK â€” Robust profileId cascade
-                            // Priority: originalFixture.profileId > fixtureState.profileId > originalFixture.id
-                            // NEVER let profileId be undefined â€” the ExtrasSection IPC depends on it
-                            profileId: originalFixture?.profileId || f.profileId || originalFixture?.id || realId
-                        };
-                    })
+                    fixtures: this._cachedTruthFixtures
                 },
                 timestamp: now // âš¡ WAVE 3050: unified timestamp
             };
@@ -1278,6 +1300,17 @@ export class TickEngine {
                     this.audioPipeline.syncSmoother.currentSmoothed.spectralCentroid ?? 0,
                 ]
             });
+        }
+        // ⏱️ WAVE 5037: CHRONOS-ALERT — reportar si el tick bloqueó el Event Loop.
+        const _tickDelta = performance.now() - _tickStart;
+        if (_tickDelta > 15) {
+            console.error(`[CHRONOS-ALERT] ⏱️ Tick bloqueó el Event Loop durante ${_tickDelta.toFixed(2)}ms ` +
+                `(frame=${this.frameCount})`);
+        }
+        else if (_tickDelta > 8 && this.frameCount % 44 === 0) {
+            // Throttled warning for sub-lethal but concerning times (~1Hz)
+            console.warn(`[CHRONOS-ALERT] ⚠️ Tick lento: ${_tickDelta.toFixed(2)}ms ` +
+                `(frame=${this.frameCount})`);
         }
     }
 }

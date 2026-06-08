@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'" />
+  <title>WAVE-6005-SPIKE-2 — Glass Bridge Renderer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0a0a0f;
+      color: #e0e0e0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      user-select: none;
+    }
+    .panel {
+      background: #14141f;
+      border: 1px solid #2a2a3a;
+      border-radius: 12px;
+      padding: 32px 40px;
+      text-align: center;
+      min-width: 320px;
+    }
+    .panel h1 {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #6a6a8a;
+      margin-bottom: 24px;
+    }
+    .metric {
+      margin-bottom: 16px;
+    }
+    .metric .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #5a5a7a;
+      margin-bottom: 4px;
+    }
+    .metric .value {
+      font-size: 36px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: #c0e0ff;
+    }
+    .metric .value.fps {
+      color: #60f0a0;
+    }
+    .status {
+      margin-top: 20px;
+      font-size: 11px;
+      color: #4a4a6a;
+    }
+    .status.connected { color: #60f0a0; }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <h1>Glass Bridge — SPIKE 2</h1>
+    <div class="metric">
+      <div class="label">Tick del Main</div>
+      <div class="value" id="tick">—</div>
+    </div>
+    <div class="metric">
+      <div class="label">Valor Dimmer (SAB[1])</div>
+      <div class="value" id="dimmer">—</div>
+    </div>
+    <div class="metric">
+      <div class="label">Lecturas por Segundo (FPS)</div>
+      <div class="value fps" id="fps">—</div>
+    </div>
+    <div class="status" id="status">Esperando SAB...</div>
+  </div>
+
+  <script>
+    var elTick   = document.getElementById('tick')
+    var elDimmer = document.getElementById('dimmer')
+    var elFps    = document.getElementById('fps')
+    var elStatus = document.getElementById('status')
+
+    var view = null
+    var rafCount = 0
+    var fpsLastTime = performance.now()
+    var fpsLastCount = 0
+
+    function updateDOM(tickVal, dimmerVal, fpsVal) {
+      elTick.textContent   = tickVal
+      elDimmer.textContent = dimmerVal
+      elFps.textContent    = fpsVal
+    }
+
+    function rafLoop(now) {
+      rafCount++
+      var t = Atomics.load(view, 0)
+      var d = Atomics.load(view, 1)
+
+      if (now - fpsLastTime >= 1000) {
+        var elapsed = (now - fpsLastTime) / 1000
+        var fps = Math.round((rafCount - fpsLastCount) / elapsed)
+        fpsLastTime = now
+        fpsLastCount = rafCount
+        updateDOM(t, d, fps)
+      } else {
+        updateDOM(t, d, elFps.textContent)
+      }
+      requestAnimationFrame(rafLoop)
+    }
+
+    if (window.electronAPI) {
+      window.electronAPI.onGlassBridgeInit(function(sab) {
+        view = new Int32Array(sab)
+        elStatus.textContent = 'SAB recibido — ' +
+          (navigator.hardwareConcurrency || '?') + ' cores, zero-copy activo'
+        elStatus.classList.add('connected')
+        console.log('[RENDERER] SAB recibido:', sab.byteLength, 'bytes')
+        requestAnimationFrame(rafLoop)
+      })
+    } else {
+      elStatus.textContent = 'electronAPI no disponible'
+    }
+  </script>
+</body>
+</html>

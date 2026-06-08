@@ -1,74 +1,51 @@
-Informe Forense WAVE 5041 — SLOW MEMORY LEAK DIAGNOSTIC
-TAREA 1: Auditoría de Acumuladores de Datos
-Se auditó el backend completo (255 archivos TS con estructuras mutables). El resultado: la base de código tiene disciplina de acotación universal en el hot-path y en telemetría. Casi todos los arrays, Maps y Sets que acumulan datos tienen un mecanismo de recorte o limpieza explícito.
+Informe Forense WAVE 5043 — MICROTASK FLOOD & IPC BACKPRESSURE
+TAREA 1: Suscripciones Reactivas (Zustand) — Renderizado en vacío
+Componente	Suscripción	Hallazgo
+CommandDeck.tsx	setInterval(fetchStatus, 250)	NO escucha selene:truth. Hace polling IPC aether:getControlState cada 250ms. La resolución del Promise genera un microtask que actualiza estado local + controlStore + effectsStore. React 18 batcha las setState y flushea un re-render del árbol completo del deck (4 re-renders/s en reposo). @/electron-app/src/components/commandDeck/CommandDeck.tsx:55-99
+GrandMasterSlider.tsx	Ninguna (props)	Presentacional, sin React.memo. Se re-renderiza forzosamente cada vez que CommandDeck lo hace. @/electron-app/src/components/commandDeck/GrandMasterSlider.tsx:21
+VibeSelectorCompact.tsx	useVibeStore + usePowerStore	Baja frecuencia (solo cambia por interacción). No genera re-renders en reposo.
+MoodToggle.tsx	MoodController.subscribe()	Baja frecuencia. No genera re-renders en reposo.
+NeuralCommandView.tsx	useTruthSystem()	useTruthSystem usa useShallow(selectSystem). selectSystem retorna el objeto system completo. Como truthStore reemplaza el objeto raíz en cada setTruth, system es una referencia nueva y system.frameNumber / system.timestamp cambian siempre → useShallow detecta delta → re-render en cada truthStore update. @/electron-app/src/hooks/useSeleneTruth.ts:341-343, @/electron-app/src/stores/truthStore.ts:122
+ChromaticCoreComplete.tsx	useTruthContext()	Idem: selectContext retorna objeto context nuevo con timestamp cambiante. Re-render en cada truth update.
+ConsciousnessView.tsx	useTruthAI()	Idem con selectAI sobre consciousness.ai.
+TacticalCanvas.tsx	useFixtureData() → useHardware()	useHardware usa useShallow(selectHardware). hardware.fixtures es un array nuevo (.map() del backend) en cada truth → re-render y recálculo de useMemo en useFixtureData. @/electron-app/src/components/hyperion/views/tactical/useFixtureData.ts:107
+"vibecompat"	—	No existe módulo ni componente con ese nombre en el frontend. Probablemente se refiere a VibeSelectorCompact, que es inocuo en reposo.
+Conclusión TAREA 1: El "renderizado en vacío" no viene de escuchar selene:truth completo con selectores atómicos malos, sino de selectores que retornan objetos compuestos (system, context, hardware) cuyas referencias cambian en cada truthStore update. useShallow compara clave por clave, pero primitivas como frameNumber y timestamp mutan siempre, forzando re-render. CommandDeck añade 4 re-renders/s propios por su polling.
 
-Estructuras auditadas con límite confirmado
-Módulo	Estructura	Mecanismo de acotación
-src/core/intelligence/EnergyLogger.ts:84	buffer: string[]	Flush a disco cada 100 entries o 5s (buffer = [])
-src/core/intelligence/dream/EffectBiasTracker.ts:119	history	maxHistorySize = 200 con .shift()
-src/core/intelligence/think/PredictionEngine.ts:304	sectionHistory	MAX_HISTORY con .shift()
-src/core/intelligence/think/PredictionEngine.ts:398	bpmHistory	MAX_BPM_HISTORY = 24 con .shift()
-src/core/orchestrator/metrics/SyncSmoother.ts:183	syncopationHistory	SYNC_HISTORY_SIZE con .shift()
-src/core/intelligence/SeleneTitanConscious.ts:318	effectHistory	> 20 con .shift()
-src/core/intelligence/SeleneTitanConscious.ts:739	spectralHistory	MAX_HISTORY = 10 con .shift()
-src/stores/logStore.ts:41	logs	maxLogs = 200 con .slice(0, maxLogs)
-src/core/engine/TimelineEngine.ts:151	frameAccumulator	.clear() en cada tick
-src/core/aether/NodeArbiter.ts:260	_result, _opaqueNodeChannels, _opaquePlaybackChannels, _l3DominatedChannels	.clear() en arbitrate()
-src/core/orchestrator/tick/TickEngine.ts:56	_hephOutputPool	arr.length = 0 cada frame
-src/workers/TrinityBridge.ts:400	phaseHistory, syncHistory	historySize = 32 con .shift()
-Candidato menor de fuga lenta
-TickEngine.peakHoldMap (src/core/orchestrator/tick/TickEngine.ts:745-1197): Es un Map<string, number> que actualiza y resetea el pico de dimmer por fixture ID cada frame. Nunca ejecuta .delete() cuando un fixture desaparece del show. Si se cargan múltiples shows sin reiniciar el proceso, las claves antiguas permanecen. Cada entrada es un número primitivo; la fuga es microscópica (cientos de bytes por show cambiado). No explica pausas de GC.
-Conclusión TAREA 1
-No se detectó ninguna estructura de datos que crezca infinitamente o sin control. El hot-path de 44 Hz está efectivamente zero-alloc, y los paths de telemetría/análisis tienen acotadores explícitos.
+TAREA 2: El Embudo de Deserialización (selene:truth)
+Paso	Frecuencia	Hallazgo
+Emisión (main)	~7.2Hz manual / 44Hz Chronos	BroadcastManager.emitFullTruth crea un objeto SeleneTruth completo (con .map() sobre todos los fixtures) cada TRUTH_BROADCAST_DIVIDER = 6 ticks. @/electron-app/src/core/orchestrator/tick/BroadcastManager.ts:126-292
+Hot-frame (main)	22Hz manual / 44Hz Chronos	emitHotFrame también crea objetos nuevos con .map(fixtureStates => ...) cada HOT_FRAME_DIVIDER = 2 ticks. @/electron-app/src/core/orchestrator/tick/BroadcastManager.ts:69-121
+Serialización IPC (main)	Igual que emisión	mainWindow.webContents.send('selene:truth', truth) ejecuta V8 Structured Clone síncrono en el hilo principal. El código tiene una sonda que alerta si tarda >5ms: @/electron-app/src/electron/main.ts:594-602
+Recepción (renderer)	Igual que emisión	window.lux.onTruthUpdate recibe el objeto deserializado masivo.
+Throttle Zustand	Cada 6 mensajes IPC	TRUTH_THROTTLE_INTERVAL = 6 en useSeleneTruth.ts. En manual: ~1.2Hz. En Chronos (44Hz IPC): ~7.3Hz. El throttle es por conteo, no por tiempo; en modo Chronos la UI recibe updates ~7x más rápido de lo esperado. @/electron-app/src/hooks/useSeleneTruth.ts:80-81
+Deserialización implícita	Cada mensaje IPC	Cada selene:truth que llega al renderer fuerza a V8 a deserializar y asignar nuevo heap para todo el árbol (fixture arrays, objetos anidados). Aunque el throttle de Zustand reduce React re-renders, el GC del renderer sigue recibiendo ~7 objetos masivos por segundo que deben ser recolectados.
+Conclusión TAREA 2: La UI no está forzando un "parseo completo del universo a 44Hz", pero sí recibe selene:truth a ~7.2Hz y selene:hot-frame a 22Hz. El cuello de botella real es que el main process serializa objetos gigantes síncronamente dentro del tick loop, y el throttle del renderer es insuficiente en modo Chronos.
 
-TAREA 2: Auditoría de Resolución de Promesas (Driver DMX)
-UniversalDMXDriver.sendAll()
-src/hal/drivers/UniversalDMXDriver.ts:795-839
-Declara array local promises, lo vacía (promises.length = 0), empuja las promesas de cada strategy, y hace await Promise.all(promises).
-El bloque try/finally garantiza que isTransmitting = false y _writeLock = false siempre se liberen.
-No hay promesas huérfanas. Cada await espera a que todas las strategies resuelvan.
-OpenDMXStrategy.send()
-src/hal/drivers/strategies/OpenDMXStrategy.ts:181-207
-Realiza dirty-check (hash djb2). Si cambió, muta _ipcChannels in-place y llama this.child.send(_ipcPayload).
-Retorna Promise<void> que resuelve inmediatamente. No hay callbacks pendientes del puerto serial en esta estrategia (el child process los maneja en su propio event loop).
-EnttecProStrategy.send()
-src/hal/drivers/strategies/EnttecProStrategy.ts:39-87
-Crea un new Promise<void> que resuelve en dos caminos disjuntos:
-port.write() callback → port.drain() → resolve().
-Timeout de seguridad (DRAIN_TIMEOUT_MS) → resolve().
-Toda promesa creada siempre resuelve. No hay leaks de callbacks en el puerto serial.
-OpenDMXStrategy.destroy()
-src/hal/drivers/strategies/OpenDMXStrategy.ts:212-249
-Instala un listener this.child?.on('message', handler) y un setTimeout. En el path feliz (DISCONNECTED), el handler se remueve (removeListener) y resuelve. En el path de timeout (SIGKILL forzado), la promesa resuelve pero el listener no se remueve explícitamente. Sin embargo, this.child = null se asigna inmediatamente después, y el proceso hijo es terminado por el OS. En la práctica, el objeto ChildProcess y sus listeners se liberan cuando el proceso muere.
-Conclusión TAREA 2
-No hay evidencia de acumulación de promesas ni callbacks huérfanos en el ciclo de vida del driver DMX. El semáforo isTransmitting + try/finally previene overlapping, y todas las promesas generadas tienen paths de resolución garantizados.
+TAREA 3: Verificación del "Falso Aislamiento" del Worker UI
+Worker / Hilo	Rol	Aislamiento real
+hyperion-render.worker	Web Worker para Canvas 2D táctico	Solo aísla el pintado de canvas. El hilo principal del renderer sigue corriendo el pump RAF a 60fps (clear Map + pack Float32Array + postMessage), React, R3F y todas las suscripciones Zustand. @/electron-app/src/components/hyperion/views/tactical/TacticalCanvas.tsx:99
+React / Zustand / R3F	UI completa	Corren en el hilo principal del renderer. No hay worker dedicado a React.
+TrinityOrchestrator (Alpha)	Hilo principal del main process	Gestiona Beta/Gamma (worker_threads) para audio y lighting, pero el broadcast IPC y la recepción de mensajes del renderer corren en el hilo principal. @/electron-app/src/workers/TrinityOrchestrator.ts:1-16
+IPC inbound (main)	lux:audio-buffer + lux:audio-frame	~120 handlers/segundo en ipcMain.on dentro del hilo principal. @/electron-app/src/core/orchestrator/IPCHandlers.ts:524-562
+Conclusión TAREA 3: El "Worker UI" no existe como tal. El único worker del renderer solo dibuja; React sigue en el hilo principal. En el main process, los Node.js worker threads (Beta/Gamma) computan audio/lighting, pero Alpha (hilo principal) hace toda la serialización/deserialización IPC. No hay backpressure que cruce de renderer a main a nivel de V8 compartido (son procesos OS separados), pero sí hay bloqueo del hilo principal del main process por la serialización síncrona de webContents.send y la alta tasa de handlers entrantes.
 
-TAREA 3: El Fantasma Olvidado (Energy Lab)
-Ubicación
-EnergyLogger.ts (261 líneas).
-Arquitectura
-Singleton global export const EnergyLogger = new EnergyLoggerClass().
-Buffer interno de 100 líneas CSV en RAM. Flush automático a disco cada 5s o al llenarse.
-Escribe en ./logs/energy_lab_[timestamp].csv vía fs.createWriteStream.
-Supervivencia
-Es importado estáticamente por dos módulos centrales:
-src/core/intelligence/EnergyConsciousnessEngine.ts:27
-src/core/intelligence/SeleneTitanConscious.ts:126
-En SeleneTitanConscious.ts:140 existe la guardia:
+Cuello de botón exacto en las microtasks (renderer)
+El bloqueo de 38ms en la cola de microtasks se produce cuando:
 
-
-typescript
-const DEBUG_ENERGY = false  // WAVE 2098: Calibration complete, lab closed
-Las llamadas a EnergyLogger.initialize() y EnergyLogger.log() están protegidas por if (DEBUG_ENERGY) e if (EnergyLogger.isEnabled()).
-Veredicto
-El Energy Lab está DORMIDO en producción. Gracias a DEBUG_ENERGY = false, no inicializa el stream ni escribe al buffer. El objeto singleton existe en memoria (creado al importar el módulo), pero su estado interno (enabled = false, buffer = []) es trivial.
-No es causa de fuga de memoria ni de pausas GC. Pero sí es código muerto anclado en imports estáticos de módulos core que nunca se refactorizaron para eliminarlo.
-Resumen Ejecutivo
-TAREA	Hallazgo	Riesgo de Fuga / GC Pause
-1 — Acumuladores	100% de arrays/maps auditados en hot-path y telemetría tienen límites explícitos (shift/slice/clear).	Nulo. No hay estructuras sin techo.
-1 — Fuga menor	TickEngine.peakHoldMap nunca hace .delete() de fixtures removidos.	Despreciable (bytes por fixture, no explica pausas de 30s).
-2 — Promesas DMX	Todas las promesas de sendAll(), OpenDMXStrategy.send(), EnttecProStrategy.send() resuelven garantizadamente. Semáforo anti-overlap con try/finally.	Nulo.
-3 — Energy Lab	Singleton importado estáticamente pero inactivo (DEBUG_ENERGY = false). No escribe a disco ni acumula buffer en producción.	Nulo (código muerto, no leak).
-Hipótesis consolidada: Tras auditar estructuras de datos, promesas y el logger fantasma, no se encontró evidencia de un memory leak lento ni de acumulación de objetos fuera del hot-path que justifique pausas periódicas del Garbage Collector cada ~30 segundos. El heap permanece estable; las únicas estructuras con crecimiento teórico (peakHoldMap, maps de registro en AetherSafetyMiddleware) están acotadas por el número de fixtures del show y no crecen con el tiempo de ejecución.
-
-Nota forense (solo diagnóstico): Si el parpadeo persiste con pares estáticos y el Event Loop está descartado, el foco debe volver a la causa primaria identificada en WAVE 5040 (rotación de patrones cinéticos del VMM + crossfade cada phraseDuration beats ≈ 30s) o investigar pausas a nivel de proceso hijo (OpenDMX Worker) o OS/driver de puerto serial, ya que el heap del proceso principal está limpio.
+CommandDeck resuelve su polling cada 250ms (microtask de Promise).
+En ese microtask, llama setArbiterStatus + setOutputEnabled + setBlackout.
+React 18 (automatic batching) acumula estas actualizaciones y las flushea dentro del mismo microtask.
+Si en ese instante coincide una actualización de truthStore (desde useSeleneTruth en otro microtask/macrotask), React batcha TODO en un único paso de render.
+El paso de render incluye:
+Re-render de CommandDeck + hijos no memoizados.
+Re-render de TacticalCanvas (si useHardware detectó delta).
+Re-render de paneles UI (NeuralCommandView, ChromaticCoreComplete, etc.) si truthStore cambió.
+Si el árbol de componentes afectados es grande, el render phase dura 38ms, ocupando la microtask queue y bloqueando cualquier otra microtask pendiente (incluyendo posibles callbacks de IPC).
+Veredicto ejecutivo
+Síntoma	Causa raíz real	Ubicación
+Microtasks 38ms en renderer	React 18 batching + re-render simultáneo de CommandDeck (polling) + paneles UI (truthStore object selectors)	@/electron-app/src/components/commandDeck/CommandDeck.tsx:64-99, @/electron-app/src/hooks/useSeleneTruth.ts:341-343
+DMX flicker / jitter	Serialización síncrona masiva (webContents.send) + 120 handlers IPC entrantes/s en el hilo principal del main process	@/electron-app/src/electron/main.ts:594-602, @/electron-app/src/core/orchestrator/IPCHandlers.ts:524-562
+Falso aislamiento	No existe worker aislado para React ni para serialización IPC. Trinity workers computan, pero Alpha hace todo el I/O.	@/electron-app/src/workers/TrinityOrchestrator.ts:1-16
+truthStore throttle insuficiente en Chronos	TRUTH_THROTTLE_INTERVAL = 6 por mensaje. A 44Hz IPC → ~7.3Hz updates a React, no ~5fps.	@/electron-app/src/hooks/useSeleneTruth.ts:80-81
+Nota: No se encontró componente "vibecompat". Si existe en otro módulo, no está bajo src/components ni src/stores.

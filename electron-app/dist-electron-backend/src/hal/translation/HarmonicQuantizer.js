@@ -157,7 +157,13 @@ export class HarmonicQuantizer {
         if (elapsed >= harmonicPeriodMs) {
             // GATE ABIERTO → permitir cambio
             state.lastColorChangeTime = now;
-            state.lastAllowedColor = { ...newColor };
+            // 🛠️ WAVE 5034: Mutate in-place instead of spread — zero alloc.
+            if (!state.lastAllowedColor) {
+                state.lastAllowedColor = { r: 0, g: 0, b: 0 };
+            }
+            state.lastAllowedColor.r = newColor.r;
+            state.lastAllowedColor.g = newColor.g;
+            state.lastAllowedColor.b = newColor.b;
             return {
                 colorAllowed: true,
                 harmonicPeriodMs,

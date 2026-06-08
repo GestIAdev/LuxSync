@@ -38,6 +38,10 @@ export class OpenDMXStrategy {
         // Dirty tracking: solo enviar IPC cuando el buffer realmente cambió.
         // Evita saturar el pipe con mensajes identicos a 30Hz cuando la escena es estática.
         this.lastSentHash = 0;
+        // 🛠️ WAVE 5034: Pre-allocated IPC payload — zero alloc en hot path.
+        // child.send() serializa el objeto, no lo muta → reusable frame a frame.
+        this._ipcChannels = new Array(513);
+        this._ipcPayload = { type: 'UPDATE_BUFFER', channels: this._ipcChannels };
     }
     /**
      * 🧹 WAVE 3080: PURGA DE SHOW — enviar RESET_BUFFER al child process.
@@ -172,12 +176,12 @@ export class OpenDMXStrategy {
         if (hash === this.lastSentHash)
             return; // Buffer idéntico — skip IPC
         this.lastSentHash = hash;
-        // Enviar los canales como array plano de numeros.
-        const channels = new Array(len);
+        // Mutar array pre-allocado in-place — zero alloc.
+        const channels = this._ipcChannels;
         for (let i = 0; i < len; i++) {
             channels[i] = buffer[i];
         }
-        this.child.send({ type: 'UPDATE_BUFFER', channels });
+        this.child.send(this._ipcPayload);
     }
     /**
      * Termina el child process y libera recursos.

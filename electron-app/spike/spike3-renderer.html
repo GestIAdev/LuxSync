@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>SPIKE 3 — Glass Bridge Privileged</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,sans-serif;background:#0a0a0f;color:#e0e0e0;display:flex;align-items:center;justify-content:center;height:100vh;user-select:none}
+.panel{background:#14141f;border:1px solid #2a2a3a;border-radius:12px;padding:32px 40px;text-align:center;min-width:360px}
+h1{font-size:14px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#6a6a8a;margin-bottom:24px}
+.metric{margin-bottom:16px}
+.metric .label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#5a5a7a;margin-bottom:4px}
+.metric .value{font-size:36px;font-weight:700;font-variant-numeric:tabular-nums;color:#c0e0ff}
+.metric .value.fps{color:#60f0a0}
+.metric .value.isolated{color:#ffd700}
+.status{margin-top:20px;font-size:11px;color:#4a4a6a}
+.status.ok{color:#60f0a0}
+</style>
+</head>
+<body>
+<div class="panel">
+<h1>Glass Bridge — SPIKE 3 (Privileged)</h1>
+<div class="metric">
+<div class="label">crossOriginIsolated</div>
+<div class="value isolated" id="coi">—</div>
+</div>
+<div class="metric">
+<div class="label">Tick del Main</div>
+<div class="value" id="tick">—</div>
+</div>
+<div class="metric">
+<div class="label">Dimmer (SAB[1])</div>
+<div class="value" id="dimmer">—</div>
+</div>
+<div class="metric">
+<div class="label">Lecturas / Segundo</div>
+<div class="value fps" id="fps">—</div>
+</div>
+<div class="status" id="status">Esperando SAB...</div>
+</div>
+<script>
+var elCOI    = document.getElementById('coi')
+var elTick   = document.getElementById('tick')
+var elDimmer = document.getElementById('dimmer')
+var elFps    = document.getElementById('fps')
+var elStatus = document.getElementById('status')
+
+elCOI.textContent = String(window.crossOriginIsolated)
+if (window.crossOriginIsolated) elCOI.style.color = '#60f0a0'
+
+var view = null
+var rafCount = 0
+var fpsLastTime = performance.now()
+var fpsLastCount = 0
+
+function updateDOM(t, d, fps) {
+  elTick.textContent   = t
+  elDimmer.textContent = d
+  elFps.textContent    = fps
+}
+
+function rafLoop(now) {
+  rafCount++
+  var t = Atomics.load(view, 0)
+  var d = Atomics.load(view, 1)
+  if (now - fpsLastTime >= 1000) {
+    var fps = Math.round((rafCount - fpsLastCount) / ((now - fpsLastTime) / 1000))
+    fpsLastTime = now
+    fpsLastCount = rafCount
+    updateDOM(t, d, fps)
+  } else {
+    updateDOM(t, d, elFps.textContent)
+  }
+  requestAnimationFrame(rafLoop)
+}
+
+if (window.electronAPI) {
+  window.electronAPI.onGlassBridgeInit(function(sab) {
+    view = new Int32Array(sab)
+    elStatus.textContent = 'SAB recibido — zero-copy activo'
+    elStatus.classList.add('ok')
+    console.log('[RENDERER] SAB recibido:', sab.byteLength, 'bytes')
+    requestAnimationFrame(rafLoop)
+  })
+} else {
+  elStatus.textContent = 'electronAPI no disponible'
+}
+</script>
+</body>
+</html>

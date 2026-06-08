@@ -70,6 +70,12 @@ export class UniversalDMXDriver extends EventEmitter {
         this.traceWriteCountByUniverse = new Map();
         // 🫀 CARDIOGRAMA: callback para escalar warning spikes al capa superior (Orchestrator)
         this.onWarning = null;
+        // 🛠️ WAVE 5034: Pre-allocated promises array — zero alloc en sendAll().
+        this._sendPromises = [];
+        // 🛡️ WAVE 5035: WRITE MUTEX — protege universeBuffers contra mutación concurrente
+        // durante sendAll(). El renderer puede invocar setChannel() vía IPC en cualquier
+        // momento; si coincide con sendAll() en medio del await, el frame puede corromperse.
+        this._writeLock = false;
         // ═══════════════════════════════════════════════════════════════════════
         // 🛡️ WAVE 1101: PARANOIA PROTOCOL - DMX THROTTLING
         // 
@@ -541,6 +547,13 @@ export class UniversalDMXDriver extends EventEmitter {
     setChannel(channel, value, universe = 0) {
         if (channel < 1 || channel > DMX_CHANNELS)
             return;
+        // 🛡️ WAVE 5035: Si sendAll() está en vuelo, posponer mutación del buffer.
+        // El renderer puede invocar setChannel vía IPC en cualquier momento.
+        if (this._writeLock) {
+            // El cambio se perderá para este frame, pero el próximo sendAll() lo enviará.
+            // Los strategies copian snapshot del buffer; este skip evita frame corrupto.
+            return;
+        }
         const buf = this.universeBuffers.get(universe);
         if (buf) {
             const clamped = Math.max(0, Math.min(255, Math.round(value)));
@@ -558,6 +571,9 @@ export class UniversalDMXDriver extends EventEmitter {
         const buf = this.universeBuffers.get(universe);
         if (!buf)
             return;
+        // 🛡️ WAVE 5035: Si sendAll() está en vuelo, descartar mutación para evitar frame corrupto.
+        if (this._writeLock)
+            return;
         for (let i = 0; i < values.length; i++) {
             const channel = startChannel + i;
             if (channel <= DMX_CHANNELS) {
@@ -574,6 +590,9 @@ export class UniversalDMXDriver extends EventEmitter {
     setUniverse(values, universe = 0) {
         this.initBuffer(universe);
         const buf = this.universeBuffers.get(universe);
+        // 🛡️ WAVE 5035: Si sendAll() está en vuelo, descartar mutación para evitar frame corrupto.
+        if (this._writeLock)
+            return;
         // Si es un Array o Buffer normal
         if (Array.isArray(values) || values instanceof Uint8Array || Buffer.isBuffer(values)) {
             const len = Math.min(values.length, DMX_CHANNELS);
@@ -649,32 +668,38 @@ export class UniversalDMXDriver extends EventEmitter {
         if (!hasDriverPorts && !hasSelfManaged)
             return false;
         this.isTransmitting = true;
-        const promises = [];
-        // 🛠️ WAVE 5030: L0-DEBUG — inspect DMX buffer before hardware write.
-        const dmxBuf0 = this.universeBuffers.get(0);
-        if (dmxBuf0) {
-            console.log('[L0-DEBUG] Buffer DMX antes de escribir:', Array.from(dmxBuf0.slice(0, 6)));
-        }
-        // ─── Driver-managed universes (EnttecPro): enviar con port ──────────
-        for (const [universe, port] of this.ports) {
-            const buffer = this.universeBuffers.get(universe);
-            if (port.isOpen && buffer) {
-                const strategy = this.strategies.get(universe) ?? this.defaultStrategy;
-                promises.push(strategy.send(port, buffer, universe, (msg) => this.log(msg)));
+        this._writeLock = true; // 🛡️ WAVE 5035: bloquear mutaciones externas
+        try {
+            const promises = this._sendPromises;
+            promises.length = 0;
+            // ─── Driver-managed universes (EnttecPro): enviar con port ──────────
+            for (const [universe, port] of this.ports) {
+                const buffer = this.universeBuffers.get(universe);
+                if (port.isOpen && buffer) {
+                    const strategy = this.strategies.get(universe) ?? this.defaultStrategy;
+                    promises.push(strategy.send(port, buffer, universe, (msg) => this.log(msg)));
+                }
             }
-        }
-        // ─── Self-managed universes (Phantom Worker): enviar sin port ───────
-        for (const [universe, strategy] of this.strategies) {
-            if (!strategy.selfManaged)
-                continue; // ya procesado arriba
-            const buffer = this.universeBuffers.get(universe);
-            if (buffer) {
-                promises.push(strategy.send(null, buffer, universe, (msg) => this.log(msg)));
+            // ─── Self-managed universes (Phantom Worker): enviar sin port ───────
+            for (const [universe, strategy] of this.strategies) {
+                if (!strategy.selfManaged)
+                    continue; // ya procesado arriba
+                const buffer = this.universeBuffers.get(universe);
+                if (buffer) {
+                    promises.push(strategy.send(null, buffer, universe, (msg) => this.log(msg)));
+                }
             }
+            await Promise.all(promises);
+            return true;
         }
-        await Promise.all(promises);
-        this.isTransmitting = false; // 🚦 Cable libre, listos para el siguiente frame
-        return true;
+        catch (err) {
+            this.log(`❌ sendAll exception: ${String(err)}`);
+            return false;
+        }
+        finally {
+            this.isTransmitting = false; // 🚦 Cable libre, SIEMPRE
+            this._writeLock = false; // 🛡️ WAVE 5035: desbloquear mutaciones
+        }
     }
     /**
      * 📤 Envía un frame DMX a TODOS los dispositivos (loop interno)

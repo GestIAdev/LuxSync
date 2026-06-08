@@ -36,6 +36,11 @@ export class EnttecProStrategy {
             log(`❌ [Univ ${universe}] EnttecPro requires a driver-managed port`);
             return;
         }
+        // 🛡️ WAVE 5037: Cada llamada a send() necesita SU PROPIO packet buffer.
+        // sendAll() despacha múltiples universos concurrentemente vía Promise.all.
+        // Un buffer compartido (pre-alloc) provoca que un universo sobreescriba
+        // los datos de otro antes de que port.write() copie al kernel → parpadeo.
+        // 518 bytes × 30Hz = ~15KB/s — alloc trivial comparado con frame corrupto.
         const dataLen = buffer.length;
         const packet = new Uint8Array(dataLen + 5);
         const label = ENTTEC_LABEL[universe] ?? ENTTEC_LABEL_FALLBACK;
@@ -44,7 +49,7 @@ export class EnttecProStrategy {
         packet[2] = dataLen & 0xFF; // Length LSB
         packet[3] = (dataLen >> 8) & 0xFF; // Length MSB
         packet.set(buffer, 4); // Payload (start code DMX + 512 canales)
-        packet[packet.length - 1] = 0xE7; // End Code
+        packet[dataLen + 4] = 0xE7; // End Code
         return new Promise((resolve) => {
             port.write(packet, (err) => {
                 if (err) {

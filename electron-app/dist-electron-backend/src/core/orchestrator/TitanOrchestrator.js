@@ -165,6 +165,11 @@ export class TitanOrchestrator {
         return obj;
     }
     constructor(config = {}) {
+        // 👻 WAVE 5037: GHOST-HUNTER — ID único de instancia para detectar clones.
+        // Si este log aparece más de una vez sin reiniciar la app, hay fugas de
+        // componentes y múltiples orquestadores están emitiendo DMX simultáneamente.
+        this._instanceId = `titan-${Math.random().toString(36).slice(2, 8)}`;
+        this._startCount = 0;
         this.brain = null;
         this.engine = null;
         this.hal = null;
@@ -267,8 +272,7 @@ export class TitanOrchestrator {
         this._aetherCanvasManager = new AetherCanvasManager();
         this._pixelMapAdapter = new PixelMapAetherAdapter({ targetLayer: 'effect' });
         //  WAVE 4952: _plasmaRenderers map REMOVED â€” test-pattern poltergeist amputated.
-        //  WAVE 4867: TheiaVideoRenderer â€” null hasta que se llame attachTheiaRenderer()
-        this._theiaVideoRenderer = null;
+        //  WAVE 5033: _theiaVideoRenderer REMOVED â€” no callers to attachTheiaRenderer, safe exorcism.
         //  WAVE 4869: SeleneTheiaBridge â€” null hasta que se llame attachSeleneTheiaBridge()
         this._seleneThetaBridge = null;
         this._timelineEngine = timelineEngine;
@@ -368,6 +372,7 @@ export class TitanOrchestrator {
          */
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         this.onLog = null;
+        console.warn(`[GHOST-HUNTER] 👻 Instanciando TitanOrchestrator. ID: ${this._instanceId}`);
         this.config = {
             debug: false,
             // WAVE 255: Force IDLE on startup - system starts in blackout
@@ -416,7 +421,6 @@ export class TitanOrchestrator {
             get _hephaestusAetherAdapter() { return self._hephaestusAetherAdapter; },
             get _aetherCanvasManager() { return self._aetherCanvasManager; },
             get _pixelMapAdapter() { return self._pixelMapAdapter; },
-            get _theiaVideoRenderer() { return self._theiaVideoRenderer; },
             get _physicsPostProcessor() { return self._physicsPostProcessor; },
             get _outputEnabled() { return self._outputEnabled; },
             get _aetherSafety() { return self._aetherSafety; },
@@ -509,25 +513,8 @@ export class TitanOrchestrator {
     setLicenseTier(tier) {
         this._licenseTier = tier;
     }
-    //  WAVE 4867: Theia Twin-Output Bridge 
-    /**
-     * Conecta el renderer de vÃ­deo de Theia al pipeline de Pixel Mapping.
-     *
-     * Llamar desde el renderer (TheiaEngineView / ThetaOrchestrator) despuÃ©s de
-     * que el ThetaOrchestrator haya iniciado y el SAB estÃ© listo:
-     *
-     *   const thumbSAB = getThetaOrchestrator().getThumbPixelSAB()
-     *   getTitanOrchestrator().attachTheiaRenderer('theia:active', thumbSAB)
-     *
-     * La llamada es idempotente: si ya existe un renderer para el mismo canvasId,
-     * lo reemplaza (util para reconnect).
-     */
-    attachTheiaRenderer(canvasId, thumbPixelSAB, opts = {}) { this.theiaBridgeManager.attachTheiaRenderer(canvasId, thumbPixelSAB, opts); }
-    /**
-     * Desconecta el renderer de vÃ­deo de Theia. El canvas queda a negro y el
-     * PixelMapAetherAdapter deja de emitir intents para ese canvasId.
-     */
-    detachTheiaRenderer() { this.theiaBridgeManager.detachTheiaRenderer(); }
+    //  WAVE 5033: attachTheiaRenderer / detachTheiaRenderer REMOVED â€”
+    //  no callers, TheiaVideoRenderer field exorcised. Revive if Theia returns.
     //  WAVE 4869: SeleneTheiaBridge 
     /**
      * Conecta el SeleneTheiaBridge al pipeline de processFrame().
@@ -542,7 +529,14 @@ export class TitanOrchestrator {
     /**
      * Start the main loop
      */
-    start() { this.lifecycleManager.start(); }
+    start() {
+        this._startCount++;
+        console.warn(`[GHOST-HUNTER] ▶️ TitanOrchestrator.start() llamado. ID: ${this._instanceId} | startCount: ${this._startCount}`);
+        if (this._startCount > 1) {
+            console.error(`[GHOST-HUNTER] 🔴 ALERTA DE CLON: start() invocado ${this._startCount} veces en la misma instancia. Posible fuga de lifecycle.`);
+        }
+        this.lifecycleManager.start();
+    }
     /**
      * Stop the main loop.
      *
@@ -853,8 +847,12 @@ export function getTitanOrchestrator() {
 /**
  * WAVE 380: Register an existing instance as the singleton
  * Call this from main.ts after creating the orchestrator
+ * 👻 WAVE 5037: GHOST-HUNTER — log para detectar registros múltiples.
  */
 export function registerTitanOrchestrator(instance) {
+    if (orchestratorInstance) {
+        console.error(`[GHOST-HUNTER] registerTitanOrchestrator() llamado CON INSTANCIA PREVIA. ID previo: ${orchestratorInstance._instanceId}. Nuevo ID: ${instance._instanceId}. FUGA DETECTADA.`);
+    }
     if (orchestratorInstance && orchestratorInstance !== instance) {
         console.warn('[TitanOrchestrator] âš ï¸ Replacing existing singleton instance');
     }

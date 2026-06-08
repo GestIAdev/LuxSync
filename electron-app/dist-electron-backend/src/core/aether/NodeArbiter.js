@@ -212,6 +212,8 @@ export class NodeArbiter {
          * Se muta in-place en `arbitrate()` — zero new Map() en hot path.
          */
         this._result = new Map();
+        /** 🛠️ WAVE 5034: Scratch array para getManualOverrideNodeIds — zero alloc. */
+        this._manualOverrideNodeIdsScratch = [];
         /**
          * Pool de Records reutilizables — evita `{} ` en el hot path.
          * Crece hasta el número máximo de nodos activos simultáneamente
@@ -638,25 +640,6 @@ export class NodeArbiter {
         // L0 no había escrito 'tilt', enviando el mover al techo en ceiling mounts.
         if (this._releaseStates.size > 0) {
             this._applyReleaseFades();
-        }
-        // 🛠️ WAVE 5030: L0-DEBUG — trace whether automatic layer survives arbitration.
-        // Log every ~2s (at 44Hz → frame % 88). Check a kinetic node sample for pan/tilt.
-        if (this._photonTracerFrame % 88 === 0) {
-            const l0HasBus = this._systemBus !== null;
-            const l0Count = l0HasBus ? this._systemBus.count : 0;
-            const l2Active = this._manualOverrides.size > 0 || this._manualChannelLocks.size > 0;
-            // Sample first kinetic node in result to see if pan/tilt survived
-            let kineticSample = null;
-            for (const [nodeId, record] of this._result) {
-                if (nodeId.includes(':kinetic') && ('pan' in record || 'tilt' in record)) {
-                    kineticSample = `pan=${record['pan']?.toFixed(2) ?? 'N/A'} tilt=${record['tilt']?.toFixed(2) ?? 'N/A'}`;
-                    break;
-                }
-            }
-            console.log(`[L0-DEBUG] Prioridad: ${l2Active ? 'manual' : 'auto'} | ` +
-                `¿Pasa L0?: ${l0Count > 0 && !l2Active ? 'SI' : (l0Count > 0 ? 'L0-presente-pero-L2-bloquea' : 'L0-muerto')} | ` +
-                `L0-intents=${l0Count} | L2-locks=${this._manualChannelLocks.size} | ` +
-                `sample=${kineticSample ?? 'N/A'}`);
         }
         return this._result;
     }
@@ -1088,7 +1071,12 @@ export class NodeArbiter {
      * Útil para debug/telemetría.
      */
     getManualOverrideNodeIds() {
-        return [...this._manualOverrides.keys()];
+        const out = this._manualOverrideNodeIdsScratch;
+        out.length = 0;
+        for (const key of this._manualOverrides.keys()) {
+            out.push(key);
+        }
+        return out;
     }
     // ── Inhibit Limit API (WAVE 4531) ─────────────────────────────────────────────────────
     /**

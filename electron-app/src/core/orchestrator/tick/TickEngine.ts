@@ -750,57 +750,9 @@ export class TickEngine {
     }
 
     const emitHotFrame = () => {
-      if (!this.onHotFrame || (!chronosPlaying && this.frameCount % TickEngine.HOT_FRAME_DIVIDER !== 0)) {
-        return
-      }
-
-      // WAVE 3403: Snapshot AudioMatrix status once per hot-frame (avoid double getStatus())
-      const matrixStatus = this.trinity?.getAudioMatrix()?.getStatus()
-
-      // ðŸ› ï¸ WAVE 5032: Mutate _cachedHotFrameFixtures in-place instead of .map()
-      const _hfCount = fixtureStates.length
-      for (let _hi = 0; _hi < _hfCount; _hi++) {
-        const _hf = fixtureStates[_hi]
-        const _orig = this.fixtures[_hi]
-        let _hff = this._cachedHotFrameFixtures[_hi]
-        if (!_hff) {
-          _hff = { id: '', dimmer: 0, r: 0, g: 0, b: 0, white: 0, amber: 0, pan: 0, tilt: 0, zoom: 0, focus: 0, physicalPan: 0, physicalTilt: 0, panVelocity: 0, tiltVelocity: 0 }
-          this._cachedHotFrameFixtures[_hi] = _hff
-        }
-        _hff.id = _orig?.id || ''
-        _hff.dimmer = _hf.dimmer / 255
-        _hff.r = Math.round(_hf.r)
-        _hff.g = Math.round(_hf.g)
-        _hff.b = Math.round(_hf.b)
-        _hff.white = Math.round(_hf.white ?? 0)
-        _hff.amber = Math.round(_hf.amber ?? 0)
-        _hff.pan = _hf.pan / 255
-        _hff.tilt = _hf.tilt / 255
-        _hff.zoom = _hf.zoom
-        _hff.focus = _hf.focus
-        _hff.physicalPan = (_hf.physicalPan ?? _hf.pan) / 255
-        _hff.physicalTilt = (_hf.physicalTilt ?? _hf.tilt) / 255
-        _hff.panVelocity = _hf.panVelocity ?? 0
-        _hff.tiltVelocity = _hf.tiltVelocity ?? 0
-      }
-      if (this._cachedHotFrameFixtures.length > _hfCount) {
-        this._cachedHotFrameFixtures.length = _hfCount
-      }
-
-      const hotFrame = this._cachedHotFrame
-      hotFrame.frameNumber = this.frameCount
-      hotFrame.timestamp = now
-      hotFrame.onBeat = engineAudioMetrics.isBeat
-      hotFrame.beatConfidence = engineAudioMetrics.beatConfidence
-      hotFrame.bpm = engineAudioMetrics.bpm
-      hotFrame.bass = bass
-      hotFrame.mid = mid
-      hotFrame.high = high
-      hotFrame.energy = energy
-      hotFrame.ringBufferFillLevel = matrixStatus?.ringBufferFillLevel ?? 0
-      hotFrame.activeAudioSource = matrixStatus?.activeSource ?? null
-      hotFrame.fixtures = this._cachedHotFrameFixtures
-      this.onHotFrame(hotFrame)
+      // 💀 WAVE 6005 v2 Phase 5: LA PURGA
+      // El JSON estructurado asesino de 44Hz ha sido erradicado.
+      // La UI ahora lee de GlassBridge (BufferPool) y el HW de Phantom Worker (SAB).
     }
 
     // â”€â”€ HOT FRAME â€” Every HOT_FRAME_DIVIDER ticks (44Hz) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -1136,25 +1088,28 @@ export class TickEngine {
         }
         // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-        this.hal.sendUniverseRaw(universe, egressBuf)
+        // 💀 WAVE 6005 v2 Phase 5: LA PURGA
+        // Se apaga el Egress Legacy hacia UniversalDMXDriver.
+        // El Phantom Worker de la Fase 2 ahora lee directamente del SAB.
+        // this.hal.sendUniverseRaw(universe, egressBuf)
 
-        // ðŸ”¬ WAVE 4681: Log de supervivencia cada 300 frames (~5s a 44Hz)
+        // 🔬 WAVE 4681: Log de supervivencia comentado en la purga
+        /*
         if (this.frameCount % 300 === 0) {
           let byteSum = 0
           for (let _bi = 0; _bi < egressBuf.length; _bi++) byteSum += egressBuf[_bi]
           console.log(
-            `[Egress ðŸ“¤] Universe ${universe} â†’ HAL. ` +
+            `[Egress 📥] Universe ${universe} → HAL. ` +
             `Suma bytes: ${byteSum} | ` +
             `outputEnabled: ${outputEnabled} | ` +
             `blackout: ${blackoutActive}`,
           )
         }
+        */
       }
 
-      // ðŸš€ WAVE 4681: Flush â€” empuja todos los buffers de universo al worker DMX
-      // via UPDATE_BUFFER IPC (sendAll). Sin esto, setUniverse() escribe en buffer
-      // pero el worker nunca recibe datos â†’ "no data yet" perpetuo.
-      this.hal.flushAetherEgress()
+      // 🚀 WAVE 4681: Flush — comentado por la purga
+      // this.hal.flushAetherEgress()
 
       // ðŸ›‚ WAVE 4557: Safety telemetry (~1Hz)
       if (this.frameCount % 44 === 0) {

@@ -17,6 +17,7 @@ import { EventRouter, getEventRouter } from './EventRouter'
 import { getTrinity, TrinityOrchestrator } from '../../workers/TrinityOrchestrator'
 //  WAVE 1153: THE PACEMAKER - Real Beat Detection
 import { BeatDetector } from '../../engine/audio/BeatDetector'
+import { BufferPoolManager } from '../aether/glass/BufferPoolManager'
 
 //  WAVE 2030.4: Hephaestus types
 import type { HephAutomationClip } from '../hephaestus/types'
@@ -182,6 +183,8 @@ export interface TitanConfig {
  * TitanOrchestrator - Simple orchestration of Brain -> Engine -> HAL
  */
 export class TitanOrchestrator {
+  public glassPool: BufferPoolManager | null = null
+
   // 👻 WAVE 5037: GHOST-HUNTER — ID único de instancia para detectar clones.
   // Si este log aparece más de una vez sin reiniciar la app, hay fugas de
   // componentes y múltiples orquestadores están emitiendo DMX simultáneamente.

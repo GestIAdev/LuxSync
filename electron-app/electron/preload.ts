@@ -6,6 +6,7 @@
  * V2.1: Añadido desktopCapturer para audio del sistema (via IPC)
  */
 
+import './glassPreload'
 import { contextBridge, ipcRenderer } from 'electron'
 
 // ============================================================================

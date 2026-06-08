@@ -19,6 +19,8 @@
 import { app, BrowserWindow, ipcMain, desktopCapturer, dialog, clipboard, session } from 'electron'
 import path from 'path'
 import fs from 'fs'
+import { MessageChannelMain } from 'electron'
+import { BufferPoolManager } from '../src/core/aether/glass/BufferPoolManager'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🛡️ WAVE 2489: THE OBSIDIAN VAULT — V8 Bytecode License Validator
@@ -79,6 +81,7 @@ import { setupPlaybackIPCHandlers, cleanupPlaybackIPC } from './ipc/PlaybackIPCH
 let mainWindow: BrowserWindow | null = null
 let effectsEngine: EffectsEngine | null = null
 let titanOrchestrator: TitanOrchestrator | null = null
+export const glassPoolManager = new BufferPoolManager()
 
 const fixturePhysicsDriver = new FixturePhysicsDriver()
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
@@ -421,6 +424,13 @@ function createWindow(): void {
       event.preventDefault()
     }
   })
+
+  mainWindow.webContents.on('did-finish-load', () => {
+    if (!mainWindow) return
+    const { port1, port2 } = new MessageChannelMain()
+    glassPoolManager.attach(port1)
+    mainWindow.webContents.postMessage('glass:port', null, [port2])
+  })
     // Broadcast fixtures if loaded
     if (patchedFixtures.length > 0 && mainWindow) {
       mainWindow.webContents.send('lux:fixtures-loaded', patchedFixtures)
@@ -524,6 +534,8 @@ async function initTitan(): Promise<void> {
     debug: isDev,
     dmxDriver: compositeDriver
   })
+
+  titanOrchestrator.glassPool = glassPoolManager
 
   // 🔒 WAVE 2490: Inject license tier into TitanOrchestrator
   titanOrchestrator.setLicenseTier(currentLicenseTier)

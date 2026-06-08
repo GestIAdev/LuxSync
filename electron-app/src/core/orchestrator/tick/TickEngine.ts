@@ -11,6 +11,7 @@ import { getEffectManager } from '../../effects/EffectManager'
 import { aetherKineticEngine } from '../../aether/AetherKineticEngine'
 import { NodeFamily } from '../../aether'
 import type { AudioMetrics, MusicalContext, VibeProfile } from '../../aether'
+import { FIX_DATA_FLOATS } from '../../aether/glass/layout'
 import { SeleneTruth, createDefaultCognitive } from '../../protocol/SeleneProtocol'
 
 const ZONE_MAP: Readonly<Record<string, string>> = {
@@ -38,6 +39,7 @@ export class TickEngine {
   private _cachedHotFrameFixtures: any[] = []
   private _cachedChronosSet = new Set<string>()
   private _cachedTruthFixtures: any[] = []
+  private _glassView = new Float32Array(FIX_DATA_FLOATS)
 
   get brain() { return this.ctx.brain }
   get engine() { return this.ctx.engine }
@@ -1062,6 +1064,11 @@ export class TickEngine {
       const blackoutActive = aetherArbiter.isBlackoutActive()
       this._aetherUIProjector.project(fixtureStates, this._aetherGraph, arbitrated, blackoutActive, this._aetherCtx.deltaMs)
       emitHotFrame()
+
+      if (this.ctx.glassPool) {
+        this.ctx.glassPool.pushFrame(this._glassView)
+      }
+
       // FASE 2: POST-RESOLVE EGRESS â€” Throttle + virtual skip + send
       // WAVE 4656: Output gate final en orquestador (source of truth Aether).
       // WAVE 4681: Keepalive â€” siempre iteramos registeredUniverses para mantener

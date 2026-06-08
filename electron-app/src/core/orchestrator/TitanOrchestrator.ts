@@ -210,6 +210,7 @@ export class TitanOrchestrator {
   private isInitialized = false
   private isRunning = false
   private cardiogramaInterval: NodeJS.Timeout | null = null
+  private _glassTelemetryInterval: NodeJS.Timeout | null = null
   private frameCount = 0
   
   // WAVE 4959: Extracted managers
@@ -760,6 +761,14 @@ export class TitanOrchestrator {
       console.error(`[GHOST-HUNTER] 🔴 ALERTA DE CLON: start() invocado ${this._startCount} veces en la misma instancia. Posible fuga de lifecycle.`)
     }
     this.lifecycleManager.start()
+
+    if (this._glassTelemetryInterval) clearInterval(this._glassTelemetryInterval)
+    this._glassTelemetryInterval = setInterval(() => {
+      if (this.glassPool) {
+        const m = this.glassPool.getMetrics()
+        console.log(`[GlassBridge] 🏓 Ping-Pong Status: Sent: ${m.framesSent} | Dropped: ${m.framesDropped} | In-Flight: ${m.inFlight} | PoolFree: ${m.poolFree}`)
+      }
+    }, 2000)
   }
 
   /**
@@ -776,7 +785,13 @@ export class TitanOrchestrator {
    *   3. Espera 30ms para que el chip FTDI drene los bytes al cable RS-485
    *   4. clearInterval + isRunning = false
    */
-    async stop(): Promise<void> { await this.lifecycleManager.stop() }
+    async stop(): Promise<void> {
+    if (this._glassTelemetryInterval) {
+      clearInterval(this._glassTelemetryInterval)
+      this._glassTelemetryInterval = null
+    }
+    await this.lifecycleManager.stop()
+  }
 
   /**
    * Process a single frame of the Brain -> Engine -> HAL pipeline

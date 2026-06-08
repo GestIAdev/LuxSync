@@ -144,7 +144,8 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
 
   // 🛡️ WAVE 4573 Phase 2: GRACE PERIOD — ~500ms tolerance on null transient state
   const nullFrameCountRef = useRef(0)
-  const lastValidStateRef = useRef<{ dimmer: number; pan: number; tilt: number } | null>(null)
+  // 🛠️ WAVE 5033: Pre-allocated state scratch — mutated in-place inside useFrame (zero alloc)
+  const lastValidStateRef = useRef({ dimmer: 0, pan: 0.5, tilt: 0.5 })
   const NULL_GRACE_FRAMES = 30  // ~500ms at 60fps
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -228,7 +229,7 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
     // This covers boot transients and vibe transitions — avoids flickering beams.
     if (!fixtureState) {
       nullFrameCountRef.current++
-      if (nullFrameCountRef.current > NULL_GRACE_FRAMES || lastValidStateRef.current === null) {
+      if (nullFrameCountRef.current > NULL_GRACE_FRAMES) {
         if (beamMeshRef.current) beamMeshRef.current.visible = false
         if (lensMaterialRef.current) lensMaterialRef.current.color.setScalar(0)
         return
@@ -236,15 +237,15 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
       // Within grace period: fall through with last known values
     } else {
       nullFrameCountRef.current = 0
-      lastValidStateRef.current = {
-        dimmer: fixtureState.dimmer ?? 0,
-        pan: fixtureState.physicalPan ?? fixtureState.pan ?? 0.5,
-        tilt: fixtureState.physicalTilt ?? fixtureState.tilt ?? 0.5,
-      }
+      // 🛠️ WAVE 5033: Mutate pre-allocated scratch in-place (zero alloc)
+      const ls = lastValidStateRef.current
+      ls.dimmer = fixtureState.dimmer ?? 0
+      ls.pan    = fixtureState.physicalPan ?? fixtureState.pan ?? 0.5
+      ls.tilt   = fixtureState.physicalTilt ?? fixtureState.tilt ?? 0.5
     }
 
     // Use live state or grace-period fallback
-    const stateSource = fixtureState ?? lastValidStateRef.current!
+    const stateSource = fixtureState ?? lastValidStateRef.current
     let livePan = stateSource.physicalPan ?? (stateSource as any).pan ?? 0.5
     let liveTilt = stateSource.physicalTilt ?? (stateSource as any).tilt ?? 0.5
     const liveIntensity = stateSource.dimmer ?? 0

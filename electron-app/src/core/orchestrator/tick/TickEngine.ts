@@ -11,7 +11,9 @@ import { getEffectManager } from '../../effects/EffectManager'
 import { aetherKineticEngine } from '../../aether/AetherKineticEngine'
 import { NodeFamily } from '../../aether'
 import type { AudioMetrics, MusicalContext, VibeProfile } from '../../aether'
-import { FIX_DATA_FLOATS } from '../../aether/glass/layout'
+import { FIX_DATA_FLOATS, CHANNELS_PER_UNI, MAX_UNIVERSES } from '../../aether/glass/layout'
+import { DmxUniverseWriter } from '../../aether/glass/DmxSabHandlers'
+import { getDmxSab } from '../../aether/glass/GlassMemory'
 import { SeleneTruth, createDefaultCognitive } from '../../protocol/SeleneProtocol'
 
 const ZONE_MAP: Readonly<Record<string, string>> = {
@@ -40,6 +42,8 @@ export class TickEngine {
   private _cachedChronosSet = new Set<string>()
   private _cachedTruthFixtures: any[] = []
   private _glassView = new Float32Array(FIX_DATA_FLOATS)
+  private dmxWriter = new DmxUniverseWriter(getDmxSab())
+  private _universeSnapshots = new Map<number, Uint8Array>()
 
   get brain() { return this.ctx.brain }
   get engine() { return this.ctx.engine }
@@ -749,18 +753,12 @@ export class TickEngine {
       }
     }
 
-    const emitHotFrame = () => {
-      // 💀 WAVE 6005 v2 Phase 5: LA PURGA
-      // El JSON estructurado asesino de 44Hz ha sido erradicado.
-      // La UI ahora lee de GlassBridge (BufferPool) y el HW de Phantom Worker (SAB).
-    }
-
     // â”€â”€ HOT FRAME â€” Every HOT_FRAME_DIVIDER ticks (44Hz) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // âš¡ WAVE 3050: Throttled from 44Hz â†’ 22Hz. DMX stays at 44Hz.
     // âš¡ WAVE 4559: Overclock â†’ 44Hz. Strobe y flash sin frame-skip al canvas.
     // âš¡ WAVE 3065: Emitted BEFORE flushToDriver â€” values are real engine output.
     if (!this._aetherHasDevices) {
-      emitHotFrame()
+      // no devices
     }
 
     // âš¡ WAVE-4592: flushToDriver() ELIMINADO â€” la Aduana y el send DMX
@@ -1015,10 +1013,40 @@ export class TickEngine {
       // la UI con el apagÃ³n real del DMX (zero desfase visual).
       const blackoutActive = aetherArbiter.isBlackoutActive()
       this._aetherUIProjector.project(fixtureStates, this._aetherGraph, arbitrated, blackoutActive, this._aetherCtx.deltaMs)
-      emitHotFrame()
+
+      // WAVE 6010 PATCH 3: Rellenar _glassView con estado real de fixtures
+      const view = this._glassView
+      // Offset de 10 floats para la Cabecera Global de Telemetría (WAVE-6018)
+      for (let fi = 0; fi < fixtureStates.length && fi < 2047; fi++) {
+        const fs = fixtureStates[fi]
+        const off = 10 + fi * 16
+        view[off + 0]  = fs.r ?? 0
+        view[off + 1]  = fs.g ?? 0
+        view[off + 2]  = fs.b ?? 0
+        view[off + 3]  = fs.w ?? 0
+        view[off + 4]  = fs.a ?? 0
+        view[off + 5]  = fs.dimmer ?? 0
+        view[off + 6]  = fs.pan ?? 0
+        view[off + 7]  = fs.tilt ?? 0
+        view[off + 8]  = fs.physPan ?? 0
+        view[off + 9]  = fs.physTilt ?? 0
+        view[off + 10] = fs.zoom ?? 0
+        view[off + 11] = fs.focus ?? 0
+        view[off + 12] = fs.panVel ?? 0
+        view[off + 13] = fs.tiltVel ?? 0
+        view[off + 14] = fs.strobe ?? 0
+        view[off + 15] = (fs.dimmer > 0 ? 1 : 0) | (blackoutActive ? 2 : 0)
+      }
+
+      // Cabecera Global de Telemetría (Índices 0-4)
+      view[0] = engineAudioMetrics.bass || 0
+      view[1] = engineAudioMetrics.mid || 0
+      view[2] = engineAudioMetrics.high || 0
+      view[3] = engineAudioMetrics.energy || 0
+      view[4] = engineAudioMetrics.isBeat ? 1.0 : 0.0
 
       if (this.ctx.glassPool) {
-        this.ctx.glassPool.pushFrame(this._glassView)
+        this.ctx.glassPool.pushFrame(view)
       }
 
       // FASE 2: POST-RESOLVE EGRESS â€” Throttle + virtual skip + send
@@ -1088,28 +1116,29 @@ export class TickEngine {
         }
         // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-        // 💀 WAVE 6005 v2 Phase 5: LA PURGA
-        // Se apaga el Egress Legacy hacia UniversalDMXDriver.
-        // El Phantom Worker de la Fase 2 ahora lee directamente del SAB.
-        // this.hal.sendUniverseRaw(universe, egressBuf)
-
-        // 🔬 WAVE 4681: Log de supervivencia comentado en la purga
-        /*
-        if (this.frameCount % 300 === 0) {
-          let byteSum = 0
-          for (let _bi = 0; _bi < egressBuf.length; _bi++) byteSum += egressBuf[_bi]
-          console.log(
-            `[Egress 📥] Universe ${universe} → HAL. ` +
-            `Suma bytes: ${byteSum} | ` +
-            `outputEnabled: ${outputEnabled} | ` +
-            `blackout: ${blackoutActive}`,
-          )
-        }
-        */
+        // WAVE 6010 PATCH 2b: Egress SAB — escribir universo al writer en vez de HAL legacy
+        const uniArr = new Uint8Array(CHANNELS_PER_UNI)
+        uniArr.set(egressBuf.subarray(0, CHANNELS_PER_UNI))
+        this._universeSnapshots.set(universe, uniArr)
       }
 
-      // 🚀 WAVE 4681: Flush — comentado por la purga
-      // this.hal.flushAetherEgress()
+      // WAVE 6013 PATCH 2: commitFrame atómico al SAB con Universo 0 forzado
+      const uniList: Uint8Array[] = []
+      let dirtyMask = BigInt(0)
+
+      const universesToProcess = new Set<number>(aetherResolver.registeredUniverses as number[])
+      universesToProcess.add(0)
+
+      for (const universe of universesToProcess) {
+        const buf = this._universeSnapshots.get(universe)
+        if (buf) {
+          uniList[universe] = buf
+          dirtyMask |= BigInt(1) << BigInt(universe)
+        }
+      }
+      if (uniList.length > 0) {
+        this.dmxWriter.commitFrame(this.frameCount, uniList, dirtyMask)
+      }
 
       // ðŸ›‚ WAVE 4557: Safety telemetry (~1Hz)
       if (this.frameCount % 44 === 0) {

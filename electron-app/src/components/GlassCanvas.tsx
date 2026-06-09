@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react'
+import { getTransientTruth } from '../stores/transientStore'
+import { useTruthStore } from '../stores/truthStore'
 
 const CANVAS_W = 800
 const CANVAS_H = 200
@@ -8,15 +10,70 @@ export default function GlassCanvas() {
   const latestView = useRef<Float32Array | null>(null)
   const rafId = useRef<number>(0)
 
+  const isSubscribedRef = useRef(false)
+
   useEffect(() => {
-    if (!window.glass) {
-      console.warn('[GlassCanvas] window.glass no disponible')
-      return
+    let _glassFrameCount = 0
+    let unsubscribe: (() => void) | null = null
+
+    const connect = () => {
+      if (!window.glass || isSubscribedRef.current) return
+
+      unsubscribe = window.glass.onFrame((view) => {
+        _glassFrameCount++
+        latestView.current = view
+      
+      // 🩸 WAVE-6018: Inyectar telemetria directamente en transientStore (44Hz, zero React cost)
+      const transient = getTransientTruth()
+      if (!transient || !view || view.length === 0) return
+      
+      // 1. Cabecera de Audio (Indices 0-4)
+      if (transient.sensory?.audio) {
+        transient.sensory.audio.bass = view[0]
+        transient.sensory.audio.mid = view[1]
+        transient.sensory.audio.high = view[2]
+        transient.sensory.audio.energy = view[3]
+      }
+      if (transient.sensory?.beat) {
+        transient.sensory.beat.onBeat = view[4] > 0.5
+      }
+      
+      // 2. Fixtures (desde offset 10)
+      const fixtures = useTruthStore.getState().truth?.hardware?.fixtures
+      if (fixtures && fixtures.length > 0) {
+        if (!transient.hardware) (transient as any).hardware = { fixtures: [] }
+        
+        const map = new Map()
+        for (let i = 0; i < fixtures.length; i++) {
+          const off = 10 + i * 16
+          const id = fixtures[i]?.id
+          if (!id) continue
+          
+          map.set(id, {
+            id: id,
+            color: { r: view[off], g: view[off+1], b: view[off+2] },
+            intensity: view[off+5] / 255,
+            physicalPan: view[off+8] / 255,
+            physicalTilt: view[off+9] / 255,
+            zoom: view[off+10],
+            focus: view[off+11],
+            panVelocity: view[off+12],
+            tiltVelocity: view[off+13]
+          })
+        }
+        
+        transient.hardware.fixtures = Array.from(map.values()) as any
+      }
+    })
+
+      isSubscribedRef.current = true
     }
 
-    const unsubscribe = window.glass.onFrame((view) => {
-      latestView.current = view
-    })
+    if (window.glass) {
+      connect()
+    } else {
+      window.addEventListener('glass:ready', connect)
+    }
 
     const loop = () => {
       const canvas = canvasRef.current
@@ -67,8 +124,11 @@ export default function GlassCanvas() {
     rafId.current = requestAnimationFrame(loop)
 
     return () => {
-      unsubscribe()
+      if (unsubscribe) unsubscribe()
+      window.removeEventListener('glass:ready', connect)
       cancelAnimationFrame(rafId.current)
+      // CRÍTICO: Permitir re-suscripción tras remounts de React (StrictMode, HMR, etc.)
+      isSubscribedRef.current = false
     }
   }, [])
 
@@ -78,9 +138,7 @@ export default function GlassCanvas() {
       width={CANVAS_W}
       height={CANVAS_H}
       style={{
-        border: '1px solid #222',
-        borderRadius: 6,
-        display: 'block',
+        display: 'none',
       }}
     />
   )

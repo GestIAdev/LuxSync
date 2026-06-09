@@ -21,7 +21,7 @@ ipcRenderer.on('glass:port', (event) => {
     // Si ya teníamos un buffer sin consumir (Renderer ocupado/lento), 
     // lo devolvemos inmediatamente (Frame Drop Intencional frontend).
     if (_pending && _port) {
-      _port.postMessage({ type: 'ack', buffer: _pending }, [_pending])
+      _port.postMessage({ type: 'ack', buffer: _pending })
     }
 
     _pending = data.buffer
@@ -42,6 +42,9 @@ ipcRenderer.on('glass:port', (event) => {
   
   // CRÍTICO: Iniciar escucha explícita
   _port.start()
+
+  // WAVE-6018: Notificar a React que el tubo está listo
+  window.dispatchEvent(new CustomEvent('glass:ready'))
 })
 
 // 3. Exponer la API en window.glass
@@ -71,7 +74,7 @@ contextBridge.exposeInMainWorld('glass', {
   ackFrame: (): void => {
     if (_pending && _port) {
       // Transferencia de propiedad (ownership) de vuelta al Main Process.
-      _port.postMessage({ type: 'ack', buffer: _pending }, [_pending])
+      _port.postMessage({ type: 'ack', buffer: _pending })
       _pending = null
     }
   }

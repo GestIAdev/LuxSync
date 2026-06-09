@@ -12,6 +12,7 @@
 import { useEffect } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import MainLayout from './components/layout/MainLayout'
+import GlassCanvas from './components/GlassCanvas' 
 import { TrinityProvider } from './providers/TrinityProvider'
 import { TitanSyncBridge } from './core/sync'
 import { useMidiLearn } from './hooks/useMidiLearn' // 🎹 WAVE 2047: MIDI Input Runtime
@@ -108,7 +109,8 @@ function AppContent() {
     <>
       {/* 🌉 WAVE 377: Invisible Sync Bridge - stageStore → Backend */}
       <TitanSyncBridge />
-
+      <GlassCanvas />
+      
       {/* 🎯 WAVE 2049: MainLayout now includes TitleBar with NetIndicator + MidiLearnOverlay */}
       <MainLayout />
     </>

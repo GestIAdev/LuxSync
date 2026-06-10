@@ -50,7 +50,8 @@ export class PhantomWorkerManager {
         }
         // WAVE 2098: Boot silence
         // 👻 WAVE 2005.3: Phantom Worker — ventanita de Chronos, show:true intencional
-        this.phantomWindow = new BrowserWindow({
+        const BW = BrowserWindow;
+        this.phantomWindow = new BW({
             show: true,
             width: 400,
             height: 300,

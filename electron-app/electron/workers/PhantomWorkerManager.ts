@@ -91,7 +91,8 @@ export class PhantomWorkerManager {
     // WAVE 2098: Boot silence
     
     // 👻 WAVE 2005.3: Phantom Worker — ventanita de Chronos, show:true intencional
-    this.phantomWindow = new BrowserWindow({
+    const BW = BrowserWindow as any
+    this.phantomWindow = new BW({
       show: true,
       width: 400,
       height: 300,
@@ -101,10 +102,10 @@ export class PhantomWorkerManager {
         // Enable web audio
         webSecurity: true,
       },
-    })
+    });
     
     // Handle phantom crashes gracefully
-    this.phantomWindow.webContents.on('crashed', () => {
+    (this.phantomWindow.webContents as any).on('crashed', () => {
       console.error('[PhantomWorker] 💀 Phantom crashed! Restarting...')
       this.handlePhantomCrash()
     })

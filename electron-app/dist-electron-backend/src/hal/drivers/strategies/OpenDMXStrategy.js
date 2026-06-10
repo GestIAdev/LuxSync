@@ -1,5 +1,5 @@
 /**
- * WAVE 6019: OPEN DMX STRATEGY — Worker Launcher
+ * WAVE 6019.1: OPEN DMX STRATEGY — Main Process Micro-Blocking
  *
  * Para interfaces SIN microcontrolador (cables tontos):
  * - Enttec Open DMX USB
@@ -7,136 +7,160 @@
  * - IMC UD 7S / Tornado (chip FTDI puro)
  * - Cualquier cable USB-Serial con chip FTDI/CH340/PL2303
  *
- * ARQUITECTURA (worker_thread + SAB):
+ * ARQUITECTURA (Main Process + SAB):
  *
- *   WAVE 6019: Esta clase ya NO instancia SerialPort ni DmxUniverseReader.
- *   Su único trabajo es lanzar el openDmxWorker (worker_thread) con el SAB
- *   como workerData y gestionar su ciclo de vida.
+ *   WAVE 6019.1: SerialPort vive en el Main Process. Lee del SAB
+ *   directamente via DmxUniverseReader. El BREAK/MAB se ejecuta
+ *   con micro-bloqueo (spinWaitNs) en el hilo principal.
  *
  *   Flujo de datos:
- *   TickEngine ──(SAB write @44Hz)──→ openDmxWorker ──(SAB read @33Hz)──→ SerialPort
- *   El worker corre en un thread dedicado. El BREAK/MAB vive en el worker.
+ *   TickEngine ──(SAB write @44Hz)──→ OpenDMXStrategy ──(SAB read @33Hz)──→ SerialPort
+ *
+ *   ¿Por qué Main Process y no worker_thread?
+ *   serialport usa uv_poll_t internamente, que no es seguro en worker_threads
+ *   de Electron. El callback de uv_poll_t llama a node::MakeCallback, que
+ *   puede fallar con "HandleScope" bajo carga real. En Main Process,
+ *   node_bindings.cc de Electron maneja correctamente el locking V8+Chromium.
  *
  * El UniversalDMXDriver no crea SerialPort para esta estrategia (selfManaged=true).
  */
-import * as path from 'path';
-import { Worker } from 'worker_threads';
+import { SerialPort } from 'serialport';
+import { DmxUniverseReader } from '../../../core/aether/glass/DmxSabHandlers';
+import { CHANNELS_PER_UNI } from '../../../core/aether/glass/layout';
 import { getDmxSab } from '../../../core/aether/glass/GlassMemory';
 const DMX_OUTPUT_HZ = 33;
+const BREAK_BAUD = 76923;
+const DMX_BAUD = 250000;
+const BREAK_HOLD_NS = 160000n;
+const MAB_NS = 20000n;
+const spinWaitNs = (nanoseconds) => {
+    const start = process.hrtime.bigint();
+    while (process.hrtime.bigint() - start < nanoseconds) { }
+};
 export class OpenDMXStrategy {
     constructor() {
-        this.name = 'Open DMX SAB Worker (WAVE 6019)';
+        this.name = 'Open DMX Main Process (WAVE 6019.1)';
         this.selfManaged = true;
-        this.worker = null;
+        this.port = null;
+        this.reader = null;
+        this.loopTimer = null;
+        this.lastFrameId = -1;
+        this.universe = 0;
+        this.dmxBuffer = Buffer.alloc(513, 0);
+        this.isSending = false;
+        this.isRunning = false;
     }
     resetBuffer(log) {
-        // Señalizar al worker que resetee su frame ID (re-lectura del SAB)
-        if (this.worker) {
-            this.worker.postMessage({ type: 'RESET_BUFFER' });
-        }
-        else {
-            log('[OpenDMX] resetBuffer: worker no activo');
-        }
+        this.lastFrameId = -1;
+        log('[OpenDMX] resetBuffer: lastFrameId reseteado — forzando re-lectura del SAB');
     }
     async connect(portPath, universe, log) {
-        if (this.worker) {
-            log('[OpenDMX] Worker ya existe — destruyendo instancia anterior');
+        if (this.port || this.loopTimer) {
+            log('[OpenDMX] Conexion previa detectada — destruyendo...');
             await this.destroy(log);
         }
         const sab = getDmxSab();
-        // Resolución de ruta del worker compilado.
-        // En producción: openDmxWorker.js (compilado por Vite/tsup).
-        // En desarrollo con tsx/ts-node: cambia extensión a .ts si __filename termina en .ts.
-        const ext = __filename.endsWith('.ts') ? '.ts' : '.js';
-        const workerPath = path.join(__dirname, `../../workers/openDmxWorker${ext}`);
-        log(`[OpenDMX] Spawning worker_thread: ${workerPath}`);
-        log(`[OpenDMX] SAB: ${sab.byteLength}b | puerto: ${portPath} | universo: ${universe} | ${DMX_OUTPUT_HZ}Hz`);
-        return new Promise((resolve) => {
-            const bootTimeout = setTimeout(() => {
-                log(`[OpenDMX] Worker TIMEOUT (10s) — serialport no abrió ${portPath}`);
-                resolve(false);
-            }, 10000);
-            try {
-                this.worker = new Worker(workerPath, {
-                    workerData: {
-                        sab,
-                        portPath,
-                        universe,
-                        hz: DMX_OUTPUT_HZ,
-                    },
-                });
+        this.reader = new DmxUniverseReader(sab);
+        this.universe = universe;
+        this.lastFrameId = -1;
+        log(`[OpenDMX] Abriendo ${portPath} (universo ${universe}, ${DMX_OUTPUT_HZ}Hz)`);
+        try {
+            this.port = new SerialPort({ path: portPath, baudRate: DMX_BAUD });
+        }
+        catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            log(`[OpenDMX] ERROR al abrir SerialPort: ${msg}`);
+            return false;
+        }
+        this.startOutputLoop(log);
+        log(`[OpenDMX] Puerto abierto — loop activo @${DMX_OUTPUT_HZ}Hz`);
+        return true;
+    }
+    startOutputLoop(log) {
+        this.isSending = false;
+        this.isRunning = true;
+        this.loopTimer = null;
+        const tick = () => this.runTick(log);
+        setTimeout(tick, 0);
+    }
+    runTick(log) {
+        if (!this.isRunning || !this.port?.isOpen || !this.reader)
+            return;
+        if (this.isSending) {
+            setTimeout(() => this.runTick(log), 5);
+            return;
+        }
+        const frame = this.reader.readCoherent(this.lastFrameId);
+        if (frame) {
+            this.lastFrameId = frame.frameId;
+            const offset = this.universe * CHANNELS_PER_UNI;
+            const uniData = frame.data.subarray(offset, offset + CHANNELS_PER_UNI);
+            this.dmxBuffer[0] = 0x00;
+            for (let i = 0; i < CHANNELS_PER_UNI; i++) {
+                this.dmxBuffer[i + 1] = uniData[i];
             }
-            catch (spawnErr) {
-                clearTimeout(bootTimeout);
-                const msg = spawnErr instanceof Error ? spawnErr.message : String(spawnErr);
-                log(`[OpenDMX] ERROR al crear Worker: ${msg}`);
-                this.worker = null;
-                resolve(false);
+        }
+        this.isSending = true;
+        this.sendFrame(log);
+    }
+    sendFrame(log) {
+        const port = this.port;
+        if (!port?.isOpen) {
+            this.isSending = false;
+            return;
+        }
+        port.update({ baudRate: BREAK_BAUD }, (err) => {
+            if (err) {
+                log(`[OpenDMX] ERROR BREAK update: ${err.message}`);
+                this.isSending = false;
                 return;
             }
-            this.worker.on('message', (msg) => {
-                switch (msg.type) {
-                    case 'READY':
-                        clearTimeout(bootTimeout);
-                        log(`[OpenDMX] Worker READY — loop activo @${DMX_OUTPUT_HZ}Hz`);
-                        resolve(true);
-                        break;
-                    case 'ERROR':
-                        clearTimeout(bootTimeout);
-                        log(`[OpenDMX] Worker ERROR: ${msg.message ?? '(sin mensaje)'}`);
-                        resolve(false);
-                        break;
-                    case 'DISCONNECTED':
-                        log('[OpenDMX] Worker DISCONNECTED');
-                        break;
-                    case 'LOG':
-                        log(msg.message ?? '');
-                        break;
-                    case 'WARN':
-                        log(`[WARN] ${msg.message ?? ''}`);
-                        break;
-                    case 'CONNECTED':
-                        log(`[OpenDMX] Puerto abierto — esperando READY...`);
-                        break;
-                    default:
-                        break;
+            if (!this.isRunning) {
+                this.isSending = false;
+                return;
+            }
+            port.write(Buffer.from([0x00]));
+            spinWaitNs(BREAK_HOLD_NS);
+            port.update({ baudRate: DMX_BAUD }, (err) => {
+                if (err) {
+                    log(`[OpenDMX] ERROR MAB update: ${err.message}`);
+                    this.isSending = false;
+                    return;
                 }
-            });
-            this.worker.on('error', (err) => {
-                clearTimeout(bootTimeout);
-                log(`[OpenDMX] Worker thread ERROR: ${err.message}`);
-                this.worker = null;
-                resolve(false);
-            });
-            this.worker.on('exit', (code) => {
-                if (code !== 0) {
-                    log(`[OpenDMX] Worker salió con código ${code}`);
+                if (!this.isRunning) {
+                    this.isSending = false;
+                    return;
                 }
-                this.worker = null;
+                spinWaitNs(MAB_NS);
+                port.write(this.dmxBuffer, (writeErr) => {
+                    if (writeErr)
+                        log(`[OpenDMX] ERROR payload: ${writeErr.message}`);
+                    this.isSending = false;
+                    if (this.isRunning)
+                        setTimeout(() => this.runTick(log), 25);
+                });
             });
         });
     }
     async send(_port, _buffer, _universe, _log) {
-        // No-op: el worker lee directamente del SAB.
+        // No-op: el loop interno lee directamente del SAB.
         // TickEngine ya escribió en el SAB via DmxUniverseWriter.commitFrame().
     }
     async destroy(log) {
-        if (!this.worker)
-            return;
-        log('[OpenDMX] Enviando DISCONNECT al worker...');
-        this.worker.postMessage({ type: 'DISCONNECT' });
-        await new Promise((resolve) => {
-            const forceKill = setTimeout(() => {
-                log('[OpenDMX] Worker no respondió en 3s — terminando forzosamente');
-                this.worker?.terminate();
-                resolve();
-            }, 3000);
-            this.worker.once('exit', () => {
-                clearTimeout(forceKill);
-                resolve();
-            });
-        });
-        this.worker = null;
-        log('[OpenDMX] Worker terminado');
+        this.isRunning = false;
+        this.isSending = false;
+        if (this.port) {
+            try {
+                this.port.close();
+            }
+            catch (err) {
+                const msg = err instanceof Error ? err.message : String(err);
+                log(`[OpenDMX] ERROR al cerrar puerto: ${msg}`);
+            }
+            this.port = null;
+        }
+        this.reader = null;
+        this.lastFrameId = -1;
+        log('[OpenDMX] Estrategia destruida');
     }
 }

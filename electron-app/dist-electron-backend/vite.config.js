@@ -73,33 +73,16 @@ export default defineConfig({
                     },
                 },
             },
-            // 👻 WAVE 2021.1: DMX Phantom Worker — bit-banging aislado del Event Loop
+            // WAVE 6019: DMX SAB Worker — worker_thread con SharedArrayBuffer
             {
-                entry: 'src/hal/drivers/strategies/openDmxWorker.ts',
+                entry: 'src/hal/workers/openDmxWorker.ts',
                 vite: {
                     build: {
                         outDir: 'dist-electron',
                         lib: {
-                            entry: 'src/hal/drivers/strategies/openDmxWorker.ts',
+                            entry: 'src/hal/workers/openDmxWorker.ts',
                             formats: ['cjs'],
                             fileName: () => 'openDmxWorker.js',
-                        },
-                        rollupOptions: {
-                            external: [...nodeBuiltins, 'serialport'],
-                        },
-                    },
-                },
-            },
-            // WAVE 6010 PATCH 2c: DMX Phantom Worker V2 — worker_threads con SAB
-            {
-                entry: 'src/hal/drivers/strategies/dmxPhantomWorker.ts',
-                vite: {
-                    build: {
-                        outDir: 'dist-electron',
-                        lib: {
-                            entry: 'src/hal/drivers/strategies/dmxPhantomWorker.ts',
-                            formats: ['cjs'],
-                            fileName: () => 'dmxPhantomWorker.js',
                         },
                         rollupOptions: {
                             external: [...nodeBuiltins, 'serialport'],

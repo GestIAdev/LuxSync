@@ -52,10 +52,12 @@ export class OpenDMXStrategy implements DMXSendStrategy {
     const sab = getDmxSab()
 
     // Resolución de ruta del worker compilado.
-    // En producción: openDmxWorker.js (compilado por Vite/tsup).
-    // En desarrollo con tsx/ts-node: cambia extensión a .ts si __filename termina en .ts.
-    const ext  = __filename.endsWith('.ts') ? '.ts' : '.js'
-    const workerPath = path.join(__dirname, `../../workers/openDmxWorker${ext}`)
+    // DEV (tsx/ts-node): __dirname = .../drivers/strategies/ → ../../workers/openDmxWorker.ts
+    // PROD (Vite bundle): __dirname = dist-electron/ → ./openDmxWorker.js (flat output)
+    const isDev = __filename.endsWith('.ts')
+    const workerPath = isDev
+      ? path.join(__dirname, '../../workers/openDmxWorker.ts')
+      : path.join(__dirname, 'openDmxWorker.js')
 
     log(`[OpenDMX] Spawning worker_thread: ${workerPath}`)
     log(`[OpenDMX] SAB: ${sab.byteLength}b | puerto: ${portPath} | universo: ${universe} | ${DMX_OUTPUT_HZ}Hz`)

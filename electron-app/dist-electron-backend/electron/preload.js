@@ -5,6 +5,7 @@
  * V2.0: Añadido window.lux para comunicación con Selene Lux Core
  * V2.1: Añadido desktopCapturer para audio del sistema (via IPC)
  */
+import './glassPreload';
 import { contextBridge, ipcRenderer } from 'electron';
 // API expuesta al renderer de forma segura
 const api = {

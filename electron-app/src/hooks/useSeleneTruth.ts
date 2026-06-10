@@ -26,6 +26,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useTruthStore } from '../stores/truthStore'
 import { useAudioStore } from '../stores/audioStore'
+import { useStageStore } from '../stores/stageStore'
 import { injectTransientTruth, injectHotFrame } from '../stores/transientStore'
 import type { SeleneTruth } from '../core/protocol/SeleneProtocol'
 
@@ -69,7 +70,7 @@ export function useSeleneTruth(options: UseSeleneTruthOptions = {}) {
   const lastLogRef = useRef(Date.now())
   
   // ═══════════════════════════════════════════════════════════════════════
-  // 🔥 WAVE 2236: THROTTLE REFS — Decouple physics from React
+  // 🔥 WAVE 2236: THE DECOUPLING
   //
   // BEFORE: setTruth(data) + audioStore.updateMetrics() called EVERY frame
   //   = 60 Zustand set() per second = 600-900 React re-renders/sec
@@ -78,7 +79,7 @@ export function useSeleneTruth(options: UseSeleneTruthOptions = {}) {
   //   This preserves UI responsiveness while R3F reads physics from transient.
   // ═══════════════════════════════════════════════════════════════════════
   const truthThrottleCountRef = useRef(0)
-  const TRUTH_THROTTLE_INTERVAL = 6  // Every 6th frame ≈ 5fps out of 30fps IPC
+  const TRUTH_THROTTLE_INTERVAL = 1  // WAVE-6018: Cambiado de 6 a 1. main.ts ya aplica throttle a ~2Hz, no hay necesidad de re-throttlear aquí (causaba lag de 36 segundos).
   
   useEffect(() => {
     // Verificar que window.lux existe (preload cargado)
@@ -90,6 +91,8 @@ export function useSeleneTruth(options: UseSeleneTruthOptions = {}) {
     
     // Suscribirse al canal de la verdad (TITAN 2.0)
     const removeListener = window.lux.onTruthUpdate((data: SeleneTruth) => {
+      // 🩸 WAVE-6018 SONDA: Truth recibido del backend
+      console.log(`[useSeleneTruth 🩸] TRUTH received. frameCountRef=${frameCountRef.current} system.frameNumber=${data.system?.frameNumber}`)
       // WAVE 380: Debug fixture IDs arriving from backend
       frameCountRef.current++
       if (frameCountRef.current % 300 === 0) { // Every ~5s
@@ -124,6 +127,16 @@ export function useSeleneTruth(options: UseSeleneTruthOptions = {}) {
         
         // Zustand truthStore — structural data for UI
         setTruth(data)
+        
+        // 🛡️ WAVE 6018: Sincronización de Censo (Defensa contra shows fantasma)
+        const stageStoreState = useStageStore.getState()
+        const stageFixtures = stageStoreState.fixtures || []
+        const truthFixtures = data.hardware?.fixtures || []
+        
+        // Si la cantidad de focos no coincide, forzamos re-hidratación inmediata
+        if (stageFixtures.length !== truthFixtures.length) {
+          stageStoreState.syncFixturesFromTruth(truthFixtures)
+        }
         
         // Zustand audioStore — metrics for UI displays
         const beat = data.sensory?.beat

@@ -298,3 +298,11 @@ export function createDmxSab() {
 export function createFixtureSab() {
     return new SharedArrayBuffer(FIX_SAB_BYTES);
 }
+// WAVE 6010 PATCH 2a: Singleton canónico del DMX_UNIVERSE_SAB compartido
+// entre DmxUniverseWriter (TickEngine) y dmxPhantomWorker (worker_thread).
+let _dmxSab = null;
+export function getDmxSab() {
+    if (!_dmxSab)
+        _dmxSab = createDmxSab();
+    return _dmxSab;
+}

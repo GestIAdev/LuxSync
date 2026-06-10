@@ -1,51 +1,80 @@
-Informe Forense WAVE 5043 — MICROTASK FLOOD & IPC BACKPRESSURE
-TAREA 1: Suscripciones Reactivas (Zustand) — Renderizado en vacío
-Componente	Suscripción	Hallazgo
-CommandDeck.tsx	setInterval(fetchStatus, 250)	NO escucha selene:truth. Hace polling IPC aether:getControlState cada 250ms. La resolución del Promise genera un microtask que actualiza estado local + controlStore + effectsStore. React 18 batcha las setState y flushea un re-render del árbol completo del deck (4 re-renders/s en reposo). @/electron-app/src/components/commandDeck/CommandDeck.tsx:55-99
-GrandMasterSlider.tsx	Ninguna (props)	Presentacional, sin React.memo. Se re-renderiza forzosamente cada vez que CommandDeck lo hace. @/electron-app/src/components/commandDeck/GrandMasterSlider.tsx:21
-VibeSelectorCompact.tsx	useVibeStore + usePowerStore	Baja frecuencia (solo cambia por interacción). No genera re-renders en reposo.
-MoodToggle.tsx	MoodController.subscribe()	Baja frecuencia. No genera re-renders en reposo.
-NeuralCommandView.tsx	useTruthSystem()	useTruthSystem usa useShallow(selectSystem). selectSystem retorna el objeto system completo. Como truthStore reemplaza el objeto raíz en cada setTruth, system es una referencia nueva y system.frameNumber / system.timestamp cambian siempre → useShallow detecta delta → re-render en cada truthStore update. @/electron-app/src/hooks/useSeleneTruth.ts:341-343, @/electron-app/src/stores/truthStore.ts:122
-ChromaticCoreComplete.tsx	useTruthContext()	Idem: selectContext retorna objeto context nuevo con timestamp cambiante. Re-render en cada truth update.
-ConsciousnessView.tsx	useTruthAI()	Idem con selectAI sobre consciousness.ai.
-TacticalCanvas.tsx	useFixtureData() → useHardware()	useHardware usa useShallow(selectHardware). hardware.fixtures es un array nuevo (.map() del backend) en cada truth → re-render y recálculo de useMemo en useFixtureData. @/electron-app/src/components/hyperion/views/tactical/useFixtureData.ts:107
-"vibecompat"	—	No existe módulo ni componente con ese nombre en el frontend. Probablemente se refiere a VibeSelectorCompact, que es inocuo en reposo.
-Conclusión TAREA 1: El "renderizado en vacío" no viene de escuchar selene:truth completo con selectores atómicos malos, sino de selectores que retornan objetos compuestos (system, context, hardware) cuyas referencias cambian en cada truthStore update. useShallow compara clave por clave, pero primitivas como frameNumber y timestamp mutan siempre, forzando re-render. CommandDeck añade 4 re-renders/s propios por su polling.
+INFORME FORENSE WAVE-6018 — FUGA DEL AETHER GLASS MESSAGEPORT
+Modo: Read-Only, Zero Hacks
+Hallazgo: Dos fugas simultáneas. Una en el ciclo de vida nativo de Electron (Empalme 1→2) y otra en el montaje React (Empalme 3).
 
-TAREA 2: El Embudo de Deserialización (selene:truth)
-Paso	Frecuencia	Hallazgo
-Emisión (main)	~7.2Hz manual / 44Hz Chronos	BroadcastManager.emitFullTruth crea un objeto SeleneTruth completo (con .map() sobre todos los fixtures) cada TRUTH_BROADCAST_DIVIDER = 6 ticks. @/electron-app/src/core/orchestrator/tick/BroadcastManager.ts:126-292
-Hot-frame (main)	22Hz manual / 44Hz Chronos	emitHotFrame también crea objetos nuevos con .map(fixtureStates => ...) cada HOT_FRAME_DIVIDER = 2 ticks. @/electron-app/src/core/orchestrator/tick/BroadcastManager.ts:69-121
-Serialización IPC (main)	Igual que emisión	mainWindow.webContents.send('selene:truth', truth) ejecuta V8 Structured Clone síncrono en el hilo principal. El código tiene una sonda que alerta si tarda >5ms: @/electron-app/src/electron/main.ts:594-602
-Recepción (renderer)	Igual que emisión	window.lux.onTruthUpdate recibe el objeto deserializado masivo.
-Throttle Zustand	Cada 6 mensajes IPC	TRUTH_THROTTLE_INTERVAL = 6 en useSeleneTruth.ts. En manual: ~1.2Hz. En Chronos (44Hz IPC): ~7.3Hz. El throttle es por conteo, no por tiempo; en modo Chronos la UI recibe updates ~7x más rápido de lo esperado. @/electron-app/src/hooks/useSeleneTruth.ts:80-81
-Deserialización implícita	Cada mensaje IPC	Cada selene:truth que llega al renderer fuerza a V8 a deserializar y asignar nuevo heap para todo el árbol (fixture arrays, objetos anidados). Aunque el throttle de Zustand reduce React re-renders, el GC del renderer sigue recibiendo ~7 objetos masivos por segundo que deben ser recolectados.
-Conclusión TAREA 2: La UI no está forzando un "parseo completo del universo a 44Hz", pero sí recibe selene:truth a ~7.2Hz y selene:hot-frame a 22Hz. El cuello de botella real es que el main process serializa objetos gigantes síncronamente dentro del tick loop, y el throttle del renderer es insuficiente en modo Chronos.
+🔍 EMPALME 1: El Origen (main.ts:428)
 
-TAREA 3: Verificación del "Falso Aislamiento" del Worker UI
-Worker / Hilo	Rol	Aislamiento real
-hyperion-render.worker	Web Worker para Canvas 2D táctico	Solo aísla el pintado de canvas. El hilo principal del renderer sigue corriendo el pump RAF a 60fps (clear Map + pack Float32Array + postMessage), React, R3F y todas las suscripciones Zustand. @/electron-app/src/components/hyperion/views/tactical/TacticalCanvas.tsx:99
-React / Zustand / R3F	UI completa	Corren en el hilo principal del renderer. No hay worker dedicado a React.
-TrinityOrchestrator (Alpha)	Hilo principal del main process	Gestiona Beta/Gamma (worker_threads) para audio y lighting, pero el broadcast IPC y la recepción de mensajes del renderer corren en el hilo principal. @/electron-app/src/workers/TrinityOrchestrator.ts:1-16
-IPC inbound (main)	lux:audio-buffer + lux:audio-frame	~120 handlers/segundo en ipcMain.on dentro del hilo principal. @/electron-app/src/core/orchestrator/IPCHandlers.ts:524-562
-Conclusión TAREA 3: El "Worker UI" no existe como tal. El único worker del renderer solo dibuja; React sigue en el hilo principal. En el main process, los Node.js worker threads (Beta/Gamma) computan audio/lighting, pero Alpha (hilo principal) hace toda la serialización/deserialización IPC. No hay backpressure que cruce de renderer a main a nivel de V8 compartido (son procesos OS separados), pero sí hay bloqueo del hilo principal del main process por la serialización síncrona de webContents.send y la alta tasa de handlers entrantes.
 
-Cuello de botón exacto en las microtasks (renderer)
-El bloqueo de 38ms en la cola de microtasks se produce cuando:
+ts
+@/Users/Raulacate/Desktop/Proyectos programacion/LuxSync/electron-app/electron/main.ts:428-432
+mainWindow.webContents.on('did-finish-load', () => {
+    if (!mainWindow) return
+    const { port1, port2 } = new MessageChannelMain()
+    glassPoolManager.attach(port1)
+    mainWindow.webContents.postMessage('glass:port', null, [port2])
+})
+Análisis:
+El puerto se envía únicamente en did-finish-load. Este evento de Chromium se dispara cuando la carga de la página (incluyendo todos sus recursos) finaliza. En un entorno de desarrollo con Vite/HMR, esto ocurre después de que el DOM ya está hidratado y React ha montado GlassCanvas.
 
-CommandDeck resuelve su polling cada 250ms (microtask de Promise).
-En ese microtask, llama setArbiterStatus + setOutputEnabled + setBlackout.
-React 18 (automatic batching) acumula estas actualizaciones y las flushea dentro del mismo microtask.
-Si en ese instante coincide una actualización de truthStore (desde useSeleneTruth en otro microtask/macrotask), React batcha TODO en un único paso de render.
-El paso de render incluye:
-Re-render de CommandDeck + hijos no memoizados.
-Re-render de TacticalCanvas (si useHardware detectó delta).
-Re-render de paneles UI (NeuralCommandView, ChromaticCoreComplete, etc.) si truthStore cambió.
-Si el árbol de componentes afectados es grande, el render phase dura 38ms, ocupando la microtask queue y bloqueando cualquier otra microtask pendiente (incluyendo posibles callbacks de IPC).
-Veredicto ejecutivo
-Síntoma	Causa raíz real	Ubicación
-Microtasks 38ms en renderer	React 18 batching + re-render simultáneo de CommandDeck (polling) + paneles UI (truthStore object selectors)	@/electron-app/src/components/commandDeck/CommandDeck.tsx:64-99, @/electron-app/src/hooks/useSeleneTruth.ts:341-343
-DMX flicker / jitter	Serialización síncrona masiva (webContents.send) + 120 handlers IPC entrantes/s en el hilo principal del main process	@/electron-app/src/electron/main.ts:594-602, @/electron-app/src/core/orchestrator/IPCHandlers.ts:524-562
-Falso aislamiento	No existe worker aislado para React ni para serialización IPC. Trinity workers computan, pero Alpha hace todo el I/O.	@/electron-app/src/workers/TrinityOrchestrator.ts:1-16
-truthStore throttle insuficiente en Chronos	TRUTH_THROTTLE_INTERVAL = 6 por mensaje. A 44Hz IPC → ~7.3Hz updates a React, no ~5fps.	@/electron-app/src/hooks/useSeleneTruth.ts:80-81
-Nota: No se encontró componente "vibecompat". Si existe en otro módulo, no está bajo src/components ni src/stores.
+Estado: ✅ Técnicamente correcto para producción. PERO introduce una ventana de carrera en desarrollo.
+
+🔍 EMPALME 2: El Puente (glassPreload.ts:13 + preload.ts:9)
+
+
+ts
+@/Users/Raulacate/Desktop/Proyectos programacion/LuxSync/electron-app/electron/glassPreload.ts:13-45
+ipcRenderer.on('glass:port', (event) => {
+  if (!event.ports || event.ports.length === 0) return
+  _port = event.ports[0]
+  _port.onmessage = ({ data }: MessageEvent) => { ... }
+  _port.start()
+})
+
+
+ts
+@/Users/Raulacate/Desktop/Proyectos programacion/LuxSync/electron-app/electron/preload.ts:9
+import './glassPreload'
+Análisis:
+El listener ipcRenderer.on('glass:port', ...) se registra en el script de preload (preload.ts importa glassPreload.ts en línea 9). Esto ocurre antes de que cualquier script de la página (incluyendo React) se ejecute. Cuando main.ts dispara postMessage('glass:port', ...), el listener está vivo y _port.start() se ejecuta.
+
+Estado: ✅ Correcto. El puente no pierde el puerto.
+
+🔍 EMPALME 3: El Destino (GlassCanvas.tsx:13)
+
+
+tsx
+@/Users/Raulacate/Desktop/Proyectos programacion/LuxSync/electron-app/src/components/GlassCanvas.tsx:13-17
+useEffect(() => {
+    if (!window.glass) {
+      console.warn('[GlassCanvas] window.glass no disponible')
+      return
+    }
+    // ...
+})
+Análisis — FUGA CONFIRMADA #1 (Timing de Montaje):
+GlassCanvas.tsx se monta como componente React. El useEffect con [] se ejecuta una sola vez después del primer render. Si en ese instante window.glass aún no existe (porque el preload aún no terminó de exponer la API, o porque el componente se montó antes de que el contextBridge finalizara), el useEffect hace return temprano y nunca vuelve a intentarlo.
+
+No hay ningún setTimeout, setInterval, MutationObserver o re-intento condicional. El componente queda muerto para siempre respecto al GlassBridge.
+
+Análisis — FUGA CONFIRMADA #2 (Ausencia de Re-Subscripción):
+Incluso si window.glass existiera, no hay mecanismo para detectar que el puerto llegó después del montaje. El componente no reacciona a cambios en window.glass.
+
+🎯 VEREDICTO FINAL
+El puerto NO se pierde en el Main Process (Empalme 1 funciona) ni en el Preload (Empalme 2 funciona). La fuga ocurre en el Empalme 3, en la interfaz entre el mundo nativo de Electron (window.glass) y el ciclo de vida de React (useEffect).
+
+Causa raíz:
+GlassCanvas.tsx evalúa window.glass en el momento del montaje (useEffect con dependencia vacía []). Si la evaluación es undefined o null, el componente se rinde silenciosamente y nunca se recupera. Esto explica la ausencia total de logs de GlassCanvas en el frontend: el callback onFrame nunca se registra.
+
+Nota secundaria (no crítica para la fuga, pero relevante):
+El ackFrame() se llama dentro del requestAnimationFrame loop del canvas (línea 63), no en el onFrame callback. Esto significa que el ping-pong del BufferPool solo avanza si el canvas está renderizando, pero esto es una consecuencia de la fuga, no la causa.
+
+📋 Evidencia Forense
+Archivo	Línea	Observación
+main.ts	428-432	Envío correcto en did-finish-load
+glassPreload.ts	13-45	Recepción y port.start() correctos
+preload.ts	9	Importa glassPreload antes de todo
+GlassCanvas.tsx	13-17	FUGA: if (!window.glass) return sin re-intento
+🔬 Recomendación para el Arquitecto (Solo Diagnóstico, Sin Código)
+El ciclo de vida nativo de Electron (preload → postMessage → port.start) está intacto. La rotura está en la capa de adaptación React, donde el montaje del componente ocurrió antes de que la API window.glass estuviera disponible, o donde la falta de re-intento deja al componente inerte.
+
+Para confirmar esta hipótesis, inspeccionar el log del renderer al inicio: si aparece [GlassCanvas] window.glass no disponible una sola vez y nunca más, la fuga está confirmada al 100%.

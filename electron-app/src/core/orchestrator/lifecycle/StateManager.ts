@@ -13,7 +13,7 @@ export class StateManager {
   mode: 'auto' | 'manual' = 'auto'
   useBrain = true
   consciousnessEnabled = true
-  _outputEnabled = false
+  _outputEnabled = true
   _licenseTier: 'DJ_FOUNDER' | 'FULL_SUITE' = 'FULL_SUITE'
   inputGain = 1.0
   currentLiquidLayout: '4.1' | '7.1' = '4.1'

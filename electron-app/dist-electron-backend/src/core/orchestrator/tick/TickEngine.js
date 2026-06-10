@@ -7,6 +7,9 @@ import { getHephaestusRuntime } from '../IPCHandlers';
 import { getEffectManager } from '../../effects/EffectManager';
 import { aetherKineticEngine } from '../../aether/AetherKineticEngine';
 import { NodeFamily } from '../../aether';
+import { FIX_DATA_FLOATS, CHANNELS_PER_UNI } from '../../aether/glass/layout';
+import { DmxUniverseWriter } from '../../aether/glass/DmxSabHandlers';
+import { getDmxSab } from '../../aether/glass/GlassMemory';
 import { createDefaultCognitive } from '../../protocol/SeleneProtocol';
 const ZONE_MAP = {
     'FRONT_PARS': 'front', 'BACK_PARS': 'back', 'LEFT_PARS': 'left', 'RIGHT_PARS': 'right',
@@ -82,6 +85,9 @@ export class TickEngine {
         this._cachedHotFrameFixtures = [];
         this._cachedChronosSet = new Set();
         this._cachedTruthFixtures = [];
+        this._glassView = new Float32Array(FIX_DATA_FLOATS);
+        this.dmxWriter = new DmxUniverseWriter(getDmxSab());
+        this._universeSnapshots = new Map();
         this.ctx = ctx;
     }
     async tick() {
@@ -736,62 +742,12 @@ export class TickEngine {
                     this.peakHoldMap.set(_id, _f.dimmer);
             }
         }
-        const emitHotFrame = () => {
-            if (!this.onHotFrame || (!chronosPlaying && this.frameCount % TickEngine.HOT_FRAME_DIVIDER !== 0)) {
-                return;
-            }
-            // WAVE 3403: Snapshot AudioMatrix status once per hot-frame (avoid double getStatus())
-            const matrixStatus = this.trinity?.getAudioMatrix()?.getStatus();
-            // ðŸ› ï¸ WAVE 5032: Mutate _cachedHotFrameFixtures in-place instead of .map()
-            const _hfCount = fixtureStates.length;
-            for (let _hi = 0; _hi < _hfCount; _hi++) {
-                const _hf = fixtureStates[_hi];
-                const _orig = this.fixtures[_hi];
-                let _hff = this._cachedHotFrameFixtures[_hi];
-                if (!_hff) {
-                    _hff = { id: '', dimmer: 0, r: 0, g: 0, b: 0, white: 0, amber: 0, pan: 0, tilt: 0, zoom: 0, focus: 0, physicalPan: 0, physicalTilt: 0, panVelocity: 0, tiltVelocity: 0 };
-                    this._cachedHotFrameFixtures[_hi] = _hff;
-                }
-                _hff.id = _orig?.id || '';
-                _hff.dimmer = _hf.dimmer / 255;
-                _hff.r = Math.round(_hf.r);
-                _hff.g = Math.round(_hf.g);
-                _hff.b = Math.round(_hf.b);
-                _hff.white = Math.round(_hf.white ?? 0);
-                _hff.amber = Math.round(_hf.amber ?? 0);
-                _hff.pan = _hf.pan / 255;
-                _hff.tilt = _hf.tilt / 255;
-                _hff.zoom = _hf.zoom;
-                _hff.focus = _hf.focus;
-                _hff.physicalPan = (_hf.physicalPan ?? _hf.pan) / 255;
-                _hff.physicalTilt = (_hf.physicalTilt ?? _hf.tilt) / 255;
-                _hff.panVelocity = _hf.panVelocity ?? 0;
-                _hff.tiltVelocity = _hf.tiltVelocity ?? 0;
-            }
-            if (this._cachedHotFrameFixtures.length > _hfCount) {
-                this._cachedHotFrameFixtures.length = _hfCount;
-            }
-            const hotFrame = this._cachedHotFrame;
-            hotFrame.frameNumber = this.frameCount;
-            hotFrame.timestamp = now;
-            hotFrame.onBeat = engineAudioMetrics.isBeat;
-            hotFrame.beatConfidence = engineAudioMetrics.beatConfidence;
-            hotFrame.bpm = engineAudioMetrics.bpm;
-            hotFrame.bass = bass;
-            hotFrame.mid = mid;
-            hotFrame.high = high;
-            hotFrame.energy = energy;
-            hotFrame.ringBufferFillLevel = matrixStatus?.ringBufferFillLevel ?? 0;
-            hotFrame.activeAudioSource = matrixStatus?.activeSource ?? null;
-            hotFrame.fixtures = this._cachedHotFrameFixtures;
-            this.onHotFrame(hotFrame);
-        };
         // â”€â”€ HOT FRAME â€” Every HOT_FRAME_DIVIDER ticks (44Hz) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // âš¡ WAVE 3050: Throttled from 44Hz â†’ 22Hz. DMX stays at 44Hz.
         // âš¡ WAVE 4559: Overclock â†’ 44Hz. Strobe y flash sin frame-skip al canvas.
         // âš¡ WAVE 3065: Emitted BEFORE flushToDriver â€” values are real engine output.
         if (!this._aetherHasDevices) {
-            emitHotFrame();
+            // no devices
         }
         // âš¡ WAVE-4592: flushToDriver() ELIMINADO â€” la Aduana y el send DMX
         // son responsabilidad exclusiva del bloque Aether (aetherSafety + sendUniverseRaw).
@@ -985,7 +941,38 @@ export class TickEngine {
                 // la UI con el apagÃ³n real del DMX (zero desfase visual).
                 const blackoutActive = aetherArbiter.isBlackoutActive();
                 this._aetherUIProjector.project(fixtureStates, this._aetherGraph, arbitrated, blackoutActive, this._aetherCtx.deltaMs);
-                emitHotFrame();
+                // WAVE 6010 PATCH 3: Rellenar _glassView con estado real de fixtures
+                const view = this._glassView;
+                // Offset de 10 floats para la Cabecera Global de Telemetría (WAVE-6018)
+                for (let fi = 0; fi < fixtureStates.length && fi < 2047; fi++) {
+                    const fs = fixtureStates[fi];
+                    const off = 10 + fi * 16;
+                    view[off + 0] = fs.r ?? 0;
+                    view[off + 1] = fs.g ?? 0;
+                    view[off + 2] = fs.b ?? 0;
+                    view[off + 3] = fs.w ?? 0;
+                    view[off + 4] = fs.a ?? 0;
+                    view[off + 5] = fs.dimmer ?? 0;
+                    view[off + 6] = fs.pan ?? 0;
+                    view[off + 7] = fs.tilt ?? 0;
+                    view[off + 8] = fs.physicalPan ?? fs.pan ?? 128;
+                    view[off + 9] = fs.physicalTilt ?? fs.tilt ?? 128;
+                    view[off + 10] = fs.zoom ?? 0;
+                    view[off + 11] = fs.focus ?? 0;
+                    view[off + 12] = fs.panVel ?? 0;
+                    view[off + 13] = fs.tiltVel ?? 0;
+                    view[off + 14] = fs.strobe ?? 0;
+                    view[off + 15] = (fs.dimmer > 0 ? 1 : 0) | (blackoutActive ? 2 : 0);
+                }
+                // Cabecera Global de Telemetría (Índices 0-4)
+                view[0] = engineAudioMetrics.bass || 0;
+                view[1] = engineAudioMetrics.mid || 0;
+                view[2] = engineAudioMetrics.high || 0;
+                view[3] = engineAudioMetrics.energy || 0;
+                view[4] = engineAudioMetrics.isBeat ? 1.0 : 0.0;
+                if (this.ctx.glassPool) {
+                    this.ctx.glassPool.pushFrame(view);
+                }
                 // FASE 2: POST-RESOLVE EGRESS â€” Throttle + virtual skip + send
                 // WAVE 4656: Output gate final en orquestador (source of truth Aether).
                 // WAVE 4681: Keepalive â€” siempre iteramos registeredUniverses para mantener
@@ -1001,8 +988,10 @@ export class TickEngine {
                     if (!aetherSafety.shouldSendUniverse(universe))
                         continue;
                     const rawBuf = aetherResolver.getUniverseBuffer(universe);
-                    if (!rawBuf)
+                    if (!rawBuf) {
+                        console.warn(`[TickEngine 🚨] Universe ${universe} buffer missing — NodeResolver failed to allocate or register it.`);
                         continue;
+                    }
                     // WAVE 4633-OMEGA: Smart blackout semÃ¡ntico.
                     // Solo canales de emisiÃ³n (dimmer/color) van a 0. Pan/tilt/speed conservan
                     // sus valores para proteger la mecÃ¡nica de los movers.
@@ -1050,22 +1039,26 @@ export class TickEngine {
                         }
                     }
                     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-                    this.hal.sendUniverseRaw(universe, egressBuf);
-                    // ðŸ”¬ WAVE 4681: Log de supervivencia cada 300 frames (~5s a 44Hz)
-                    if (this.frameCount % 300 === 0) {
-                        let byteSum = 0;
-                        for (let _bi = 0; _bi < egressBuf.length; _bi++)
-                            byteSum += egressBuf[_bi];
-                        console.log(`[Egress ðŸ“¤] Universe ${universe} â†’ HAL. ` +
-                            `Suma bytes: ${byteSum} | ` +
-                            `outputEnabled: ${outputEnabled} | ` +
-                            `blackout: ${blackoutActive}`);
+                    // WAVE 6010 PATCH 2b: Egress SAB — escribir universo al writer en vez de HAL legacy
+                    const uniArr = new Uint8Array(CHANNELS_PER_UNI);
+                    uniArr.set(egressBuf.subarray(0, CHANNELS_PER_UNI));
+                    this._universeSnapshots.set(universe, uniArr);
+                }
+                // WAVE 6013 PATCH 2: commitFrame atómico al SAB con Universo 0 forzado
+                const uniList = [];
+                let dirtyMask = BigInt(0);
+                const universesToProcess = new Set(aetherResolver.registeredUniverses);
+                universesToProcess.add(0);
+                for (const universe of universesToProcess) {
+                    const buf = this._universeSnapshots.get(universe);
+                    if (buf) {
+                        uniList[universe] = buf;
+                        dirtyMask |= BigInt(1) << BigInt(universe);
                     }
                 }
-                // ðŸš€ WAVE 4681: Flush â€” empuja todos los buffers de universo al worker DMX
-                // via UPDATE_BUFFER IPC (sendAll). Sin esto, setUniverse() escribe en buffer
-                // pero el worker nunca recibe datos â†’ "no data yet" perpetuo.
-                this.hal.flushAetherEgress();
+                if (uniList.length > 0) {
+                    this.dmxWriter.commitFrame(this.frameCount, uniList, dirtyMask);
+                }
                 // ðŸ›‚ WAVE 4557: Safety telemetry (~1Hz)
                 if (this.frameCount % 44 === 0) {
                     const tel = aetherSafety.consumeTelemetry();

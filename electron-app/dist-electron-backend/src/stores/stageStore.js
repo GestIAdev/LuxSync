@@ -504,6 +504,20 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
             get()._setDirty();
         }
     },
+    syncFixturesFromTruth: (truthFixtures) => {
+        const { showFile } = get();
+        if (showFile) {
+            showFile.fixtures = truthFixtures.map(f => ({
+                ...f,
+                id: f.id,
+                name: f.name || 'Backend Fixture',
+                position: f.position || { x: 0, y: 0, z: 0 }
+            }));
+            set({ fixtures: [...showFile.fixtures] });
+            get()._syncDerivedState();
+            console.log(`[stageStore] 🔄 Censo Sincronizado desde el Backend: ahora hay ${truthFixtures.length} fixtures.`);
+        }
+    },
     // ═══════════════════════════════════════════════════════════════════════
     // GROUP ACTIONS
     // ═══════════════════════════════════════════════════════════════════════

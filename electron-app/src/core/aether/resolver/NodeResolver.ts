@@ -863,7 +863,10 @@ export class NodeResolver implements INodeResolver {
     if (!device) return
 
     const buf = this._universeBuffers.get(device.universe)
-    if (!buf) return   // universe no registrado — ignorar silenciosamente
+    if (!buf) {
+      console.warn(`[NodeResolver 🚨] _writeNode: universe ${device.universe} not registered for device ${device.deviceId}`)
+      return   // universe no registrado — ignorar silenciosamente
+    }
 
     // WAVE 4680 → WAVE 4822: Blind Mode — compuerta selectiva por L2 manual.
     //

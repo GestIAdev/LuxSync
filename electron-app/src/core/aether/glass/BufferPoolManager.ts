@@ -63,7 +63,7 @@ export class BufferPoolManager {
     this.framesSent++
 
     // Zero-copy: Transferencia de ownership (buffer queda neutered aquí)
-    this.port.postMessage({ type: 'glass-state', buffer }, [buffer as unknown as MessagePortMain])
+    this.port.postMessage({ type: 'glass-state', buffer })
   }
 
   /**

@@ -165,6 +165,7 @@ export class TitanOrchestrator {
         return obj;
     }
     constructor(config = {}) {
+        this.glassPool = null;
         // 👻 WAVE 5037: GHOST-HUNTER — ID único de instancia para detectar clones.
         // Si este log aparece más de una vez sin reiniciar la app, hay fugas de
         // componentes y múltiples orquestadores están emitiendo DMX simultáneamente.
@@ -184,6 +185,7 @@ export class TitanOrchestrator {
         this.isInitialized = false;
         this.isRunning = false;
         this.cardiogramaInterval = null;
+        this._glassTelemetryInterval = null;
         this.frameCount = 0;
         // WAVE 4959: Extracted managers
         this.logManager = new TacticalLogManager();
@@ -362,6 +364,7 @@ export class TitanOrchestrator {
         // RESET: tras cada broadcast, se reinicia a 0 para el siguiente ciclo.
         this.peakHoldMap = new Map(); // fixtureId â†’ peak dimmer (0-255)
         // WAVE 4590: Output gate canonical state para AetherSafety (independiente del arbiter clÃ¡sico)
+        // WAVE 6015 PARCHE 2: _outputEnabled=false en boot. Cold Start Protocol — user must arm.
         this._outputEnabled = false;
         //  WAVE 4835 â€” DMX BYPASS: Golden Nuke Lock
         // Key: deviceId, Value: { universe, dmxAddress }
@@ -444,6 +447,7 @@ export class TitanOrchestrator {
             _licenseTier: this._licenseTier,
             lastConsciousnessOutput: this.lastConsciousnessOutput,
             mode: this.mode, inputGain: this.inputGain, useBrain: this.useBrain,
+            get glassPool() { return self.glassPool; },
             log: (category, message, data) => this.log(category, message, data),
         });
         const lifecycleCtx = Object.assign(this.createMutableProxy('brain', 'engine', 'hal', 'trinity', 'audioPipeline', 'oscProvider', 'virtualWireProvider', 'usbDirectLinkProvider', 'isInitialized', 'isRunning', 'config', 'scheduler', 'cardiogramaInterval', 'fixtures', 'beatDetector'), {
@@ -536,6 +540,14 @@ export class TitanOrchestrator {
             console.error(`[GHOST-HUNTER] 🔴 ALERTA DE CLON: start() invocado ${this._startCount} veces en la misma instancia. Posible fuga de lifecycle.`);
         }
         this.lifecycleManager.start();
+        if (this._glassTelemetryInterval)
+            clearInterval(this._glassTelemetryInterval);
+        this._glassTelemetryInterval = setInterval(() => {
+            if (this.glassPool) {
+                const m = this.glassPool.getMetrics();
+                console.log(`[GlassBridge] 🏓 Ping-Pong Status: Sent: ${m.framesSent} | Dropped: ${m.framesDropped} | In-Flight: ${m.inFlight} | PoolFree: ${m.poolFree}`);
+            }
+        }, 2000);
     }
     /**
      * Stop the main loop.
@@ -551,7 +563,13 @@ export class TitanOrchestrator {
      *   3. Espera 30ms para que el chip FTDI drene los bytes al cable RS-485
      *   4. clearInterval + isRunning = false
      */
-    async stop() { await this.lifecycleManager.stop(); }
+    async stop() {
+        if (this._glassTelemetryInterval) {
+            clearInterval(this._glassTelemetryInterval);
+            this._glassTelemetryInterval = null;
+        }
+        await this.lifecycleManager.stop();
+    }
     /**
      * Process a single frame of the Brain -> Engine -> HAL pipeline
      * PROCESAR FRAME: El latido del universo
@@ -755,6 +773,9 @@ export class TitanOrchestrator {
     setOutputEnabled(enabled) {
         const nextEnabled = !!enabled;
         this._outputEnabled = nextEnabled;
+        // WAVE 6015 PARCHE 2: Force immediate Smart Gate re-evaluation.
+        // Without this, AetherSafetyMiddleware lags 1 frame behind the toggle.
+        this._aetherSafety.setOutputEnabled(nextEnabled);
     }
     /**
      * WAVE 4590: Read current output gate state consumed by AetherSafety.

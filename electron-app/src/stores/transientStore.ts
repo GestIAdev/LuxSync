@@ -301,7 +301,16 @@ export function getAudioMatrixTelemetry() {
  * 🗺️ WAVE 3250: O(1) via Map index en vez de Array.find()
  */
 export function getTransientFixture(fixtureId: string) {
-  return fixtureIndex.get(fixtureId) ?? null
+  const fromIndex = fixtureIndex.get(fixtureId)
+  if (fromIndex) return fromIndex
+  // 🛡️ WAVE 6018 PARCHE 2: Fallback defensivo — buscar en array actual si fixtureIndex está desincronizado
+  const fixtures = transientRef.current?.hardware?.fixtures
+  if (fixtures) {
+    for (let i = 0; i < fixtures.length; i++) {
+      if (fixtures[i]?.id === fixtureId) return fixtures[i]
+    }
+  }
+  return null
 }
 
 /**

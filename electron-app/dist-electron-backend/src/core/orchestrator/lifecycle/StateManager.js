@@ -13,7 +13,7 @@ export class StateManager {
         this.mode = 'auto';
         this.useBrain = true;
         this.consciousnessEnabled = true;
-        this._outputEnabled = false;
+        this._outputEnabled = true;
         this._licenseTier = 'FULL_SUITE';
         this.inputGain = 1.0;
         this.currentLiquidLayout = '4.1';

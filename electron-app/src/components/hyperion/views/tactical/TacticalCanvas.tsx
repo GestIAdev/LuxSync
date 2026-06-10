@@ -627,62 +627,77 @@ export const TacticalCanvas = memo(function TacticalCanvas({
     let frameNumber = 0
     let rafId = 0
 
+    let skipCounter = 0
+
     const pump = () => {
+      skipCounter++
+
       const currentFixtures = fixturesRef.current
       if (currentFixtures.length === 0) {
         rafId = requestAnimationFrame(pump)
         return
       }
 
-      // Read transient truth — reutilizamos el mismo Map (clear + fill, 0 GC)
-      const transientTruth = getTransientTruth()
-      const transientFixtures = transientTruth?.hardware?.fixtures
-      let transientMap: Map<string, any> | null = null
-      if (transientFixtures && Array.isArray(transientFixtures)) {
-        transientMapRef.current.clear()
-        for (const f of transientFixtures) {
-          if (f?.id) transientMapRef.current.set(f.id, f)
+      // 🛠️ WAVE 6018 PARCHE 3: THROTTLE ELIMINADO — 44Hz nativos sin skip.
+      // GlassBridge ya entrega datos a 44Hz; el worker empaqueta en todos los frames.
+      const shouldPack = true
+
+      if (shouldPack) {
+        // Read transient truth — reutilizamos el mismo Map (clear + fill, 0 GC)
+        const transientTruth = getTransientTruth()
+        const transientFixtures = transientTruth?.hardware?.fixtures
+        let transientMap: Map<string, any> | null = null
+        if (transientFixtures && Array.isArray(transientFixtures)) {
+          transientMapRef.current.clear()
+          for (const f of transientFixtures) {
+            if (f?.id) transientMapRef.current.set(f.id, f)
+          }
+          transientMap = transientMapRef.current
         }
-        transientMap = transientMapRef.current
+
+        // Pack frame data
+        const controlState = useControlStore.getState()
+        const overrides = useOverrideStore.getState().overrides
+        // 🛠️ WAVE 5033: Pre-allocated buffer — grows to max fixture count, then reused
+        const neededSize = currentFixtures.length * FLOATS_PER_FIXTURE
+        let buffer = frameBufferRef.current
+        if (!buffer || buffer.length < neededSize) {
+          buffer = new Float32Array(neededSize)
+          frameBufferRef.current = buffer
+        }
+        packFrameDataInto(buffer, currentFixtures, transientMap, controlState, overrides)
+
+        frameNumber++
+
+        // Mailbox latest-only: keep only freshest frame while worker is busy.
+        // 🛠️ WAVE 5033: Mutate pre-allocated msg template in-place (zero alloc)
+        const msg = msgTemplateRef.current
+        msg.frameNumber = frameNumber
+        msg.timestamp = performance.now()
+        msg.fixtureCount = currentFixtures.length
+        msg.frameData = buffer
+
+        if (mailboxRef.current) {
+          runtimeCountersRef.current.framesDropped++
+        }
+
+        mailboxRef.current = msg
+        // 🛠️ WAVE 5033: No transfer — buffer is reused next frame (zero alloc)
+        mailboxTransferRef.current = undefined
       }
 
-      // Beat detection (rising edge)
+      // Beat detection (rising edge) — corre en TODOS los frames
       const audioState = useAudioStore.getState()
       const currentOnBeat = audioState.onBeat
       const isNewBeat = currentOnBeat && !lastOnBeatRef.current
       lastOnBeatRef.current = currentOnBeat
 
-      // Pack frame data
-      const controlState = useControlStore.getState()
-      const overrides = useOverrideStore.getState().overrides
-      // 🛠️ WAVE 5033: Pre-allocated buffer — grows to max fixture count, then reused
-      const neededSize = currentFixtures.length * FLOATS_PER_FIXTURE
-      let buffer = frameBufferRef.current
-      if (!buffer || buffer.length < neededSize) {
-        buffer = new Float32Array(neededSize)
-        frameBufferRef.current = buffer
-      }
-      packFrameDataInto(buffer, currentFixtures, transientMap, controlState, overrides)
-
-      frameNumber++
-
-      // Mailbox latest-only: keep only freshest frame while worker is busy.
-      // 🛠️ WAVE 5033: Mutate pre-allocated msg template in-place (zero alloc)
-      const msg = msgTemplateRef.current
-      msg.frameNumber = frameNumber
-      msg.timestamp = performance.now()
-      msg.onBeat = isNewBeat
-      msg.beatIntensity = isNewBeat ? 1.0 : 0
-      msg.fixtureCount = currentFixtures.length
-      msg.frameData = buffer
-
-      if (mailboxRef.current) {
-        runtimeCountersRef.current.framesDropped++
+      // Actualizar beat en el msg template (todos los frames)
+      if (msgTemplateRef.current) {
+        msgTemplateRef.current.onBeat = isNewBeat
+        msgTemplateRef.current.beatIntensity = isNewBeat ? 1.0 : 0
       }
 
-      mailboxRef.current = msg
-      // 🛠️ WAVE 5033: No transfer — buffer is reused next frame (zero alloc)
-      mailboxTransferRef.current = undefined
       flushFrameMailbox()
       publishRuntimeMetrics()
 

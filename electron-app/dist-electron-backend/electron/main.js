@@ -18,6 +18,8 @@
 import { app, BrowserWindow, ipcMain, desktopCapturer, dialog, clipboard, session } from 'electron';
 import path from 'path';
 import fs from 'fs';
+import { MessageChannelMain } from 'electron';
+import { BufferPoolManager } from '../src/core/aether/glass/BufferPoolManager';
 // ═══════════════════════════════════════════════════════════════════════════
 // 🛡️ WAVE 2489: THE OBSIDIAN VAULT — V8 Bytecode License Validator
 // bytenode registra el handler para .jsc ANTES de cualquier require()
@@ -65,6 +67,7 @@ import { setupPlaybackIPCHandlers, cleanupPlaybackIPC } from './ipc/PlaybackIPCH
 let mainWindow = null;
 let effectsEngine = null;
 let titanOrchestrator = null;
+export const glassPoolManager = new BufferPoolManager();
 const fixturePhysicsDriver = new FixturePhysicsDriver();
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 // ═══════════════════════════════════════════════════════════════════════════
@@ -320,6 +323,13 @@ function createWindow() {
                 event.preventDefault();
             }
         });
+        mainWindow.webContents.on('did-finish-load', () => {
+            if (!mainWindow)
+                return;
+            const { port1, port2 } = new MessageChannelMain();
+            glassPoolManager.attach(port1);
+            mainWindow.webContents.postMessage('glass:port', null, [port2]);
+        });
         // Broadcast fixtures if loaded
         if (patchedFixtures.length > 0 && mainWindow) {
             mainWindow.webContents.send('lux:fixtures-loaded', patchedFixtures);
@@ -415,6 +425,7 @@ async function initTitan() {
         debug: isDev,
         dmxDriver: compositeDriver
     });
+    titanOrchestrator.glassPool = glassPoolManager;
     // 🔒 WAVE 2490: Inject license tier into TitanOrchestrator
     titanOrchestrator.setLicenseTier(currentLicenseTier);
     // WAVE 380: Register as singleton so IPC handlers can access the same instance
@@ -469,93 +480,28 @@ async function initTitan() {
     await titanOrchestrator.init();
     // WAVE 255.5: Connect broadcast callback to send fixture states to frontend
     // 🛡️ WAVE 2005.1: Added try-catch for "Render frame disposed" errors
+    // 🩸 WAVE-6017: selene:truth RESURRECTED at ~2Hz (was ~7Hz).
+    // Only structural metadata + gate state.
+    let _lastTruthFrame = 0;
     titanOrchestrator.setBroadcastCallback((truth) => {
+        _lastTruthFrame++;
+        // 🩸 WAVE-6018: Capado estricto a ~1Hz para no asfixiar la UI
+        if (_lastTruthFrame % 44 !== 0)
+            return;
         try {
-            if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
-                const _t0 = performance.now();
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                // Forzar el estado del hardware para el Cold Start
+                truth.hardware.dmx.outputEnabled = titanOrchestrator.isOutputEnabled();
+                // Enviar el objeto COMPLETO para pasar la validación del truthStore
+                console.log(`[main.ts 🩸] IPC SEND selene:truth. _lastTruthFrame=${_lastTruthFrame}`);
                 mainWindow.webContents.send('selene:truth', truth);
-                const _dt = performance.now() - _t0;
-                if (_dt > 5) {
-                    console.warn(`[IPC PROBE] 🐢 selene:truth BLOCK ${_dt.toFixed(1)}ms`);
-                }
-                // ⚡ WAVE 4704-RESTORE: Resucitar lux:state-update (legacy masterArbiter canal).
-                // TrinityProvider.handleStateUpdate escucha este canal para actualizar audioStore,
-                // seleneStore (brain metrics), dmxStore (fixture values) y luxsyncStore (effects).
-                // El canal fue cortado al eliminar masterArbiter en WAVE 4704; se restaura aquí
-                // construyendo SeleneStateUpdate desde la SeleneTruth ya disponible (~7Hz).
-                // Zero-alloc: no se crean objetos extra más allá del literal de proyección.
-                const beat = truth?.sensory?.beat;
-                const audio = truth?.sensory?.audio;
-                const consciousness = truth?.consciousness;
-                const intentPalette = truth?.intent?.palette;
-                const hw = truth?.hardware;
-                const stateUpdate = {
-                    beat: beat ? {
-                        bpm: beat.bpm ?? 0,
-                        onBeat: beat.onBeat ?? false,
-                        beatPhase: beat.beatPhase ?? 0,
-                        confidence: beat.confidence ?? 0,
-                        energy: audio?.energy ?? 0,
-                    } : undefined,
-                    brain: consciousness ? {
-                        mode: (consciousness.vibe?.active ?? 'selene'),
-                        confidence: beat?.confidence ?? 0,
-                        beautyScore: consciousness.ai?.beautyScore ?? 0,
-                        energy: audio?.energy ?? 0,
-                        mood: consciousness.mood ?? 'neutral',
-                        section: truth?.context?.section?.type ?? 'unknown',
-                    } : undefined,
-                    palette: intentPalette ? {
-                        name: intentPalette?.name ?? 'procedural',
-                        source: (intentPalette?.source ?? 'procedural'),
-                    } : undefined,
-                    fixtures: hw?.fixtures?.map((f) => ({
-                        dmxAddress: f.dmxAddress ?? 0,
-                        r: Math.round((f.color?.r ?? 0)),
-                        g: Math.round((f.color?.g ?? 0)),
-                        b: Math.round((f.color?.b ?? 0)),
-                        dimmer: Math.round((f.dimmer ?? 0) * 255),
-                        pan: Math.round((f.pan ?? 0.5) * 255),
-                        tilt: Math.round((f.tilt ?? 0.5) * 255),
-                    })),
-                    effects: {
-                        blackout: truth?.blackout ?? false,
-                        strobe: false,
-                        blinder: false,
-                        police: false,
-                        rainbow: false,
-                        beam: false,
-                        prism: false,
-                    },
-                    frameId: truth?.system?.frameNumber ?? 0,
-                    timestamp: truth?.system?.timestamp ?? Date.now(),
-                };
-                mainWindow.webContents.send('lux:state-update', stateUpdate);
             }
         }
-        catch (err) {
-            // Silently ignore - the renderer is being destroyed (e.g., during heavy audio loading)
-            // This is not a critical error, just a timing issue
-        }
+        catch (err) { /* renderer destroyed, ignore */ }
     });
-    // ⚡ WAVE 2510: Hot Frame callback — high-frequency fixture data at 44Hz
-    // Separate channel from selene:truth (which stays at ~7Hz for full SeleneTruth)
-    // Hot frames carry ONLY fixture dynamic data (color, intensity, pan/tilt, beat)
-    titanOrchestrator.setHotFrameCallback((hotFrame) => {
-        try {
-            if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
-                const _t0 = performance.now();
-                mainWindow.webContents.send('selene:hot-frame', hotFrame);
-                const _dt = performance.now() - _t0;
-                if (_dt > 5) {
-                    console.warn(`[IPC PROBE] 🐢 selene:hot-frame BLOCK ${_dt.toFixed(1)}ms`);
-                }
-            }
-        }
-        catch {
-            // Silently ignore - renderer being destroyed
-        }
-    });
+    // 🛑 WAVE 6015 PARCHE 1: selene:hot-frame ERADICATED.
+    // GlassBridge (BufferPoolManager) is the sole high-frequency visual data channel.
+    // No more 44Hz IPC spam to the renderer.
     // WAVE 257: Connect log callback for Tactical Log
     // 🛡️ WAVE 2005.1: Added try-catch for "Render frame disposed" errors
     titanOrchestrator.setLogCallback((entry) => {

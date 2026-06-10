@@ -90,6 +90,23 @@ export default defineConfig({
                     },
                 },
             },
+            // WAVE 6010 PATCH 2c: DMX Phantom Worker V2 — worker_threads con SAB
+            {
+                entry: 'src/hal/drivers/strategies/dmxPhantomWorker.ts',
+                vite: {
+                    build: {
+                        outDir: 'dist-electron',
+                        lib: {
+                            entry: 'src/hal/drivers/strategies/dmxPhantomWorker.ts',
+                            formats: ['cjs'],
+                            fileName: () => 'dmxPhantomWorker.js',
+                        },
+                        rollupOptions: {
+                            external: [...nodeBuiltins, 'serialport'],
+                        },
+                    },
+                },
+            },
             // 👻 WAVE 2541.3: GodEarFFT standalone CJS — requerido por phantomWorker.html
             // El phantom tiene nodeIntegration:true y usa require(), pero Vite bundlea
             // GodEarFFT dentro del renderer. Este entry lo saca como módulo CJS independiente.

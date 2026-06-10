@@ -516,7 +516,7 @@ export class TickEngine {
       this._cachedFixtureStates.length = fixtureCount
     }
     const fixtureStates = this._cachedFixtureStates
-    
+
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // ï¿½ WAVE 2662: POST-HAL MUTATION ELIMINATED
     //
@@ -1028,8 +1028,8 @@ export class TickEngine {
         view[off + 5]  = fs.dimmer ?? 0
         view[off + 6]  = fs.pan ?? 0
         view[off + 7]  = fs.tilt ?? 0
-        view[off + 8]  = fs.physPan ?? 0
-        view[off + 9]  = fs.physTilt ?? 0
+        view[off + 8]  = (fs as any).physicalPan ?? (fs as any).pan ?? 128
+        view[off + 9]  = (fs as any).physicalTilt ?? (fs as any).tilt ?? 128
         view[off + 10] = fs.zoom ?? 0
         view[off + 11] = fs.focus ?? 0
         view[off + 12] = fs.panVel ?? 0
@@ -1064,7 +1064,10 @@ export class TickEngine {
         // ðŸ›‚ WAVE 4557: shouldSendUniverse checks virtual-only + throttle
         if (!aetherSafety.shouldSendUniverse(universe)) continue
         const rawBuf = aetherResolver.getUniverseBuffer(universe)
-        if (!rawBuf) continue
+        if (!rawBuf) {
+          console.warn(`[TickEngine 🚨] Universe ${universe} buffer missing — NodeResolver failed to allocate or register it.`)
+          continue
+        }
 
         // WAVE 4633-OMEGA: Smart blackout semÃ¡ntico.
         // Solo canales de emisiÃ³n (dimmer/color) van a 0. Pan/tilt/speed conservan

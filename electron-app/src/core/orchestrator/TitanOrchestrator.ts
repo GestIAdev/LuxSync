@@ -553,6 +553,7 @@ export class TitanOrchestrator {
   // RESET: tras cada broadcast, se reinicia a 0 para el siguiente ciclo.
   private peakHoldMap: Map<string, number> = new Map()  // fixtureId â†’ peak dimmer (0-255)
   // WAVE 4590: Output gate canonical state para AetherSafety (independiente del arbiter clÃ¡sico)
+  // WAVE 6015 PARCHE 2: _outputEnabled=false en boot. Cold Start Protocol — user must arm.
   private _outputEnabled = false
 
   //  WAVE 4835 â€” DMX BYPASS: Golden Nuke Lock
@@ -658,6 +659,7 @@ export class TitanOrchestrator {
       _licenseTier: this._licenseTier,
       lastConsciousnessOutput: this.lastConsciousnessOutput,
       mode: this.mode, inputGain: this.inputGain, useBrain: this.useBrain,
+      get glassPool() { return self.glassPool },
       log: (category: string, message: string, data?: Record<string, unknown>) => this.log(category, message, data),
     })
     const lifecycleCtx: SystemLifecycleContext = Object.assign(
@@ -1028,6 +1030,9 @@ export class TitanOrchestrator {
   setOutputEnabled(enabled: boolean): void {
     const nextEnabled = !!enabled
     this._outputEnabled = nextEnabled
+    // WAVE 6015 PARCHE 2: Force immediate Smart Gate re-evaluation.
+    // Without this, AetherSafetyMiddleware lags 1 frame behind the toggle.
+    this._aetherSafety.setOutputEnabled(nextEnabled)
   }
 
   /**

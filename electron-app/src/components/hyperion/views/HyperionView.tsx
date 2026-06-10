@@ -90,7 +90,7 @@ function usePersistedState<T>(key: string, defaultValue: T): [T, (value: T) => v
 // COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
 
-export function HyperionView({
+const HyperionView = React.memo(function HyperionView({
   onViewModeChange,
   initialViewMode = '2D',
   initialQualityMode = 'HQ',
@@ -440,11 +440,14 @@ export function HyperionView({
       </div>
     </div>
   )
-}
+})
 
 // ═══════════════════════════════════════════════════════════════════════════
 // BACKWARD COMPATIBILITY — Alias para imports legacy
 // ═══════════════════════════════════════════════════════════════════════════
+
+/** Named export for barrel imports */
+export { HyperionView }
 
 /** @deprecated Use HyperionView instead */
 export const StageViewDual = HyperionView

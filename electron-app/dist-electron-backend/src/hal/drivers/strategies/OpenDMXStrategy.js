@@ -1,5 +1,5 @@
 /**
- * WAVE 2021.5: OPEN DMX STRATEGY — Phantom Process Proxy (child_process.fork)
+ * WAVE 6012: OPEN DMX STRATEGY — SerialPort nativo en Main Process
  *
  * Para interfaces SIN microcontrolador (cables tontos):
  * - Enttec Open DMX USB
@@ -7,272 +7,185 @@
  * - IMC UD 7S / Tornado (chip FTDI puro)
  * - Cualquier cable USB-Serial con chip FTDI/CH340/PL2303
  *
- * ARQUITECTURA (child_process EN VEZ DE worker_threads):
+ * ARQUITECTURA (Main Process Direct I/O):
  *
- *   Electron 28 + worker_threads + native addons (serialport) = CRASH.
- *   El addon nativo bindings.node se carga en ambos V8 isolates (main + worker)
- *   dentro del MISMO PROCESO. Comparten estado C++ global. Cuando V8 GC del
- *   main recorre weak references del addon mientras el worker ejecuta callbacks
- *   nativos -> Fatal error: HandleScope::HandleScope (node_bindings.cc:159).
+ *   WAVE 6012 ORACLE DIAG: serialport NO puede vivir en worker_threads dentro
+ *   de Electron. El addon nativo bindings.node compite por el V8 Isolate lock
+ *   con Chromium (node_bindings.cc:159). La solucion es reubicar SerialPort
+ *   en el Main Process, donde node_bindings.cc coordina correctamente los
+ *   event loops de Node.js y Chromium.
  *
- *   child_process.fork() crea un PROCESO Node.js separado con su propio:
- *   - V8 heap
- *   - V8 GC
- *   - libuv event loop
- *   - addon nativo address space
- *   CERO contencion entre isolates. CERO HandleScope crashes.
- *
- *   El IPC usa un pipe del OS (~15KB/s para DMX a 30Hz). Trivial.
+ *   Flujo de datos:
+ *   TickEngine ──(SAB write @44Hz)──→ DmxUniverseReader ──→ SerialPort.write()
+ *   Todo en el Main Process. Cero worker_threads. Cero child_process.
  *
  * El UniversalDMXDriver no crea SerialPort para esta estrategia (selfManaged=true).
  */
-import { fork } from 'child_process';
-import * as path from 'path';
-import * as fs from 'fs';
+import { SerialPort } from 'serialport';
+import { DmxUniverseReader } from '../../../core/aether/glass/DmxSabHandlers';
+import { getDmxSab } from '../../../core/aether/glass/GlassMemory';
+const DMX_OUTPUT_HZ = 30;
+const DMX_OUTPUT_MS = Math.round(1000 / DMX_OUTPUT_HZ);
 export class OpenDMXStrategy {
     constructor() {
-        this.name = 'Open DMX (Phantom Worker)';
+        this.name = 'Open DMX (Main Process Direct)';
         this.selfManaged = true;
-        this.child = null;
-        this.workerReady = false;
-        // Dirty tracking: solo enviar IPC cuando el buffer realmente cambió.
-        // Evita saturar el pipe con mensajes identicos a 30Hz cuando la escena es estática.
-        this.lastSentHash = 0;
-        // 🛠️ WAVE 5034: Pre-allocated IPC payload — zero alloc en hot path.
-        // child.send() serializa el objeto, no lo muta → reusable frame a frame.
-        this._ipcChannels = new Array(513);
-        this._ipcPayload = { type: 'UPDATE_BUFFER', channels: this._ipcChannels };
+        this.port = null;
+        this.reader = null;
+        this.lastFrameId = -1;
+        this.outputTimer = null;
+        this._probeTick = 0;
+        this._probeLog = null;
     }
-    /**
-     * 🧹 WAVE 3080: PURGA DE SHOW — enviar RESET_BUFFER al child process.
-     * Llamado por HAL en setFixtures() / show-load para limpiar estado residual.
-     * Garantiza que ningún canal del show anterior quede activo en el nuevo show.
-     */
-    resetBuffer(log) {
-        if (!this.child || !this.workerReady)
-            return;
-        this.lastSentHash = 0; // forzar re-envío completo en el siguiente frame
-        this.child.send({ type: 'RESET_BUFFER' });
-        log('[OpenDMX] 🧹 RESET_BUFFER enviado — buffer DMX purgado a cero');
+    resetBuffer(_log) {
+        // No-op: el outputLoop lee del SAB, no hay buffer residual que purgar
     }
-    /**
-     * Lanza el child process y le ordena conectar al puerto serial.
-     * WAVE 2021.5: fork() en vez de new Worker() — V8 isolate separado por proceso.
-     */
     async connect(portPath, universe, log) {
         try {
-            const workerPath = this.resolveWorkerPath();
-            log(`[Univ ${universe}] Spawning DMX Phantom Process -> ${workerPath}`);
-            // fork() crea un proceso Node.js hijo con IPC channel automatico.
-            // El child tiene process.send() y process.on('message') disponibles.
-            // El addon nativo serialport se carga SOLO en el child — cero conflicto.
-            this.child = fork(workerPath, [], {
-                stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
+            const sab = getDmxSab();
+            this.reader = new DmxUniverseReader(sab);
+            log(`[Univ ${universe}] Opening DMX port directly in Main Process: ${portPath}`);
+            this.port = new SerialPort({
+                path: portPath,
+                baudRate: 250000,
+                dataBits: 8,
+                stopBits: 2,
+                parity: 'none',
             });
-            // Relay de logs del child al log del driver
-            this.child.on('message', (msg) => {
-                switch (msg.type) {
-                    case 'LOG':
-                        if (msg.message) {
-                            // CARDIOGRAMA + WAVE 3170 messages bypass the debug gate — always visible
-                            if (msg.message.includes('CARDIOGRAMA') || msg.message.includes('WAVE 3170 TRAP')) {
-                                console.warn(msg.message);
-                            }
-                            else {
-                                log(msg.message);
-                            }
-                        }
-                        break;
-                    case 'CONNECTED':
-                        if (!msg.success) {
-                            this.workerReady = false;
-                            log(`[Univ ${universe}] DMX Process connect failed: ${msg.error}`);
-                        }
-                        else {
-                            log(`[Univ ${universe}] DMX Process port open -- waiting for READY signal...`);
-                        }
-                        break;
-                    case 'READY':
-                        this.workerReady = true;
-                        log(`[Univ ${universe}] DMX Process READY -- output loop active`);
-                        break;
-                    case 'DISCONNECTED':
-                        this.workerReady = false;
-                        log(`[Univ ${universe}] DMX Process disconnected`);
-                        break;
-                    case 'ERROR':
-                        log(`[Univ ${universe}] DMX Process error: ${msg.error}`);
-                        break;
-                }
-            });
-            this.child.on('error', (err) => {
-                log(`[Univ ${universe}] DMX child process error: ${err.message}`);
-                this.workerReady = false;
-            });
-            this.child.on('exit', (code) => {
-                if (code !== 0 && code !== null) {
-                    log(`[Univ ${universe}] DMX child process exited with code ${code}`);
-                }
-                this.child = null;
-                this.workerReady = false;
-            });
-            // Ordenar al child que conecte y esperar READY
             const connected = await new Promise((resolve) => {
                 const timeout = setTimeout(() => {
-                    log(`[Univ ${universe}] DMX Process READY timeout (8s)`);
+                    log(`[Univ ${universe}] DMX port open timeout (8s)`);
                     resolve(false);
                 }, 8000);
-                const handler = (msg) => {
-                    if (msg.type === 'CONNECTED' && msg.success === false) {
-                        clearTimeout(timeout);
-                        this.child?.removeListener('message', handler);
-                        resolve(false);
-                    }
-                    else if (msg.type === 'READY') {
-                        clearTimeout(timeout);
-                        this.child?.removeListener('message', handler);
-                        resolve(true);
-                    }
-                };
-                this.child.on('message', handler);
-                // 🔥 WAVE 2100: Adaptive Pacing — 30Hz conservador para cables tontos (FTDI/CH340).
-                // Tornado spec: 33fps max. 30Hz da margen de seguridad.
-                // WAVE 4942: FORCE BAUD BREAK MODE (CH340 FIX).
-                // Forzamos breakMode='baudrate' para garantizar BREAK falso universal
-                // (baud trick) y evitar interfaces que ignoran port.set({brk:true}).
-                this.child.send({ type: 'CONNECT', portPath, refreshRate: 30, breakMode: 'baudrate' });
+                this.port.on('open', () => {
+                    clearTimeout(timeout);
+                    log(`[Univ ${universe}] DMX port OPEN — starting output loop @ ${DMX_OUTPUT_HZ}Hz`);
+                    this.startOutputLoop(log, universe);
+                    resolve(true);
+                });
+                this.port.on('error', (err) => {
+                    clearTimeout(timeout);
+                    log(`[Univ ${universe}] DMX port error: ${err.message}`);
+                    resolve(false);
+                });
             });
-            this.workerReady = connected;
             if (connected) {
-                log(`[Univ ${universe}] DMX Phantom Process fully operational`);
+                log(`[Univ ${universe}] DMX Main Process Direct fully operational`);
+                // WAVE 6018 TELEMETRY: listener persistente de errores post-conexión
+                this.port.on('error', (err) => {
+                    log(`[Univ ${universe}] DMX port RUNTIME error: ${err.message}`);
+                });
             }
             return connected;
         }
         catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
-            log(`[Univ ${universe}] Failed to spawn DMX Process: ${msg}`);
+            log(`[Univ ${universe}] Failed to open DMX port: ${msg}`);
             return false;
         }
     }
-    /**
-     * Envia buffer al child process para actualizar su estado interno.
-     * El child ya tiene su propio output loop -- solo necesita el buffer fresco.
-     * NO usa el port del driver (selfManaged=true, port es null).
-     *
-     * DIRTY CHECK: Solo envia IPC cuando el buffer realmente cambio.
-     * El child process sigue enviando el ultimo buffer conocido en su loop.
-     * Si la escena es estatica, cero IPC overhead.
-     */
-    async send(_port, buffer, _universe, _log) {
-        if (!this.child || !this.workerReady)
-            return;
-        // Hash rápido para detectar cambios: djb2 sobre los primeros 513 bytes.
-        // No necesita ser criptográfico — solo detectar si algo cambió.
-        const len = Math.min(buffer.length, 513);
-        let hash = 5381;
-        for (let i = 0; i < len; i++) {
-            hash = ((hash << 5) + hash + buffer[i]) | 0;
-        }
-        if (hash === this.lastSentHash)
-            return; // Buffer idéntico — skip IPC
-        this.lastSentHash = hash;
-        // Mutar array pre-allocado in-place — zero alloc.
-        const channels = this._ipcChannels;
-        for (let i = 0; i < len; i++) {
-            channels[i] = buffer[i];
-        }
-        this.child.send(this._ipcPayload);
+    async send(_port, _buffer, _universe, _log) {
+        // No-op: outputLoop lee directamente del SAB via DmxUniverseReader.
+        // TickEngine escribe en el SAB con DmxUniverseWriter.commitFrame() cada tick.
     }
-    /**
-     * Termina el child process y libera recursos.
-     */
     async destroy(log) {
-        if (!this.child)
+        this.stopOutputLoop();
+        if (!this.port)
             return;
-        log('Terminating DMX Phantom Process...');
-        // Pedir desconexion limpia primero
-        this.child.send({ type: 'DISCONNECT' });
-        // Dar 2s para cerrar limpiamente, luego SIGKILL forzado
+        log('Closing DMX port...');
         await new Promise((resolve) => {
             const timeout = setTimeout(() => {
-                try {
-                    // 🔥 WAVE 2100: ZOMBI KILL — SIGKILL force kill
-                    // En Windows, kill() sin señal envía SIGTERM que el spinWait ignora.
-                    // Con 'SIGKILL' el OS mata el proceso incondicionalmente.
-                    this.child?.kill('SIGKILL');
-                }
-                catch {
-                    // Child ya muerto
-                }
+                log('DMX port close timeout — forcing cleanup');
                 resolve();
             }, 2000);
-            const handler = (msg) => {
-                if (msg.type === 'DISCONNECTED') {
-                    clearTimeout(timeout);
-                    this.child?.removeListener('message', handler);
-                    try {
-                        this.child?.kill('SIGKILL');
-                    }
-                    catch {
-                        // ya muerto
-                    }
-                    resolve();
-                }
-            };
-            this.child?.on('message', handler);
+            this.port.close((err) => {
+                clearTimeout(timeout);
+                if (err)
+                    log(`DMX port close error: ${err.message}`);
+                resolve();
+            });
         });
-        this.child = null;
-        this.workerReady = false;
-        // 🧹 WAVE 3080: Reset hash — forzar re-envío del primer frame en la próxima conexión.
-        // Sin esto, si el nuevo show tiene el mismo checksum que el show anterior
-        // (e.g., todos los canales en 0), el dirty-check saltaría el primer UPDATE_BUFFER.
-        this.lastSentHash = 0;
-        log('DMX Phantom Process terminated');
+        this.port = null;
+        this.reader = null;
+        this.lastFrameId = -1;
+        log('DMX port closed');
     }
-    /**
-     * Resuelve la ruta al script JS compilado del worker.
-     *
-     * Vite compila openDmxWorker.ts -> dist-electron/openDmxWorker.js
-     * (igual que senses.js y mind.js -- mismo outDir).
-     *
-     * En ASAR, los archivos .asar son opaque y child_process.fork() NO puede
-     * cargar JS desde dentro del paquete. Electron exige archivos en
-     * app.asar.unpacked/ o en resourcesPath.
-     *
-     * Orden de busqueda:
-     *   1. Dev: dist-electron/openDmxWorker.js (desde raiz del proyecto)
-     *   2. Prod-unpacked: <exe dir>/resources/app.asar.unpacked/dist-electron/openDmxWorker.js
-     *   3. Prod-resources: <exe dir>/resources/dist-electron/openDmxWorker.js
-     *   4. __dirname fallback (si el worker esta junto a la estrategia compilada)
-     */
-    resolveWorkerPath() {
-        const candidates = [];
-        // -- Dev --
-        const fromDirname = path.join(__dirname, 'openDmxWorker.js');
-        candidates.push(fromDirname);
-        // Subir hasta encontrar dist-electron en el path (Vite compila aqui)
-        const distElectronFromRoot = path.resolve(__dirname, '../../../../dist-electron/openDmxWorker.js');
-        candidates.push(distElectronFromRoot);
-        // -- Produccion ASAR.unpacked --
-        const exeDir = path.dirname(process.execPath);
-        candidates.push(path.join(exeDir, 'resources', 'app.asar.unpacked', 'dist-electron', 'openDmxWorker.js'));
-        // -- Produccion: resourcesPath --
-        const resourcesPath = process.resourcesPath;
-        if (resourcesPath) {
-            candidates.push(path.join(resourcesPath, 'dist-electron', 'openDmxWorker.js'));
-            candidates.push(path.join(resourcesPath, 'app.asar.unpacked', 'dist-electron', 'openDmxWorker.js'));
-        }
-        for (const candidate of candidates) {
-            try {
-                if (fs.existsSync(candidate))
-                    return candidate;
+    startOutputLoop(log, universe) {
+        if (this.outputTimer)
+            return;
+        this._probeLog = log;
+        this.outputTimer = setInterval(() => {
+            if (!this.reader || !this.port?.isOpen)
+                return;
+            const frame = this.reader.readCoherent(this.lastFrameId);
+            if (frame) {
+                this.lastFrameId = frame.frameId;
+                const dmxData = frame.data.subarray(0, 512);
+                const dmxPacket = Buffer.alloc(513);
+                dmxPacket[0] = 0x00; // DMX Start Code
+                Buffer.from(new Uint8Array(dmxData)).copy(dmxPacket, 1);
+                // ── WAVE 6018 TELEMETRY SAMPLER ──
+                this._probeTick++;
+                const doSample = this._probeTick % 60 === 0; // ~2 segundos @30Hz
+                if (doSample) {
+                    let maxVal = 0;
+                    let maxIdx = -1;
+                    for (let i = 0; i < 512; i++) {
+                        if (dmxData[i] > maxVal) {
+                            maxVal = dmxData[i];
+                            maxIdx = i;
+                        }
+                    }
+                    log(`[OpenDMX 🩺] frameId=${frame.frameId} maxVal=${maxVal}@ch${maxIdx + 1} ` +
+                        `ch1-6=[${dmxPacket[1]},${dmxPacket[2]},${dmxPacket[3]},${dmxPacket[4]},${dmxPacket[5]},${dmxPacket[6]}] ` +
+                        `ch${maxIdx + 1}=${maxIdx >= 0 ? dmxPacket[maxIdx + 1] : 'N/A'}`);
+                }
+                // ── Bit-banging BREAK manual para DMX512 (WAVE 2021.1) ──
+                // Para cables FTDI/CH340 puros, necesitamos generar el señal BREAK
+                // bajando la línea de TX antes de mandar los datos.
+                this.port.set({ brk: true }, (errSetBrk) => {
+                    if (errSetBrk) {
+                        if (this._probeLog)
+                            this._probeLog(`[OpenDMX 🚨] Set break error: ${errSetBrk.message}`);
+                        return;
+                    }
+                    // Esperar mínimo 88µs para el DMX Break (usamos 1ms que es seguro)
+                    setTimeout(() => {
+                        this.port?.set({ brk: false }, (errClearBrk) => {
+                            if (errClearBrk) {
+                                if (this._probeLog)
+                                    this._probeLog(`[OpenDMX 🚨] Clear break error: ${errClearBrk.message}`);
+                                return;
+                            }
+                            // MAB (Mark After Break) - mínimo 8µs, un setTimeout de 1ms cumple de sobra
+                            setTimeout(() => {
+                                // 1. Crear el paquete estándar DMX512 (1 byte Start Code + 512 canales)
+                                const dmx513 = Buffer.alloc(513);
+                                // 2. Byte 0 se queda en 0x00 automáticamente por el alloc (Start Code)
+                                // 3. Copiar los canales calculados a partir del índice 1
+                                // NOTA: dmxData (que sale de frame.data) ya son solo 512 bytes de canales
+                                Buffer.from(new Uint8Array(dmxData)).copy(dmx513, 1);
+                                // 4. Enviar el paquete corregido al puerto serie
+                                this.port?.write(dmx513, (errWrite) => {
+                                    if (errWrite && this._probeLog) {
+                                        this._probeLog(`[OpenDMX 🚨] Serial write error: ${errWrite.message}`);
+                                    }
+                                });
+                                if (this.port?.drain) {
+                                    this.port.drain();
+                                }
+                            }, 1); // 1ms MAB
+                        });
+                    }, 1); // 1ms BREAK
+                });
             }
-            catch {
-                continue;
-            }
+        }, DMX_OUTPUT_MS);
+        log(`[Univ ${universe}] Output loop started @ ${DMX_OUTPUT_HZ}Hz (${DMX_OUTPUT_MS}ms interval)`);
+    }
+    stopOutputLoop() {
+        if (this.outputTimer) {
+            clearInterval(this.outputTimer);
+            this.outputTimer = null;
         }
-        throw new Error(`Cannot find openDmxWorker.js. Searched:\n${candidates.join('\n')}\n` +
-            `Make sure Vite compiled the worker AND it is not packed inside ASAR.\n` +
-            `In electron-builder config add: "asarUnpack": ["dist-electron/openDmxWorker.js"]`);
     }
 }

@@ -33,7 +33,14 @@ export class DmxUniverseWriter {
 
     // 2. Volcar datos binarios (zero-allocation)
     for (let u = 0; u < universes.length; u++) {
-      this.u8.set(universes[u], u * CHANNELS_PER_UNI)
+      const uBuf = universes[u]
+      const offset = u * CHANNELS_PER_UNI
+      if (uBuf) {
+        this.u8.set(uBuf, offset)
+      } else {
+        // Rellenar con ceros si el universo no existe pero está en el loop
+        this.u8.fill(0, offset, offset + CHANNELS_PER_UNI)
+      }
     }
 
     // 3. Actualizar metadata del header

@@ -161,6 +161,9 @@ interface StageStoreActions {
    */
   reconcileFixturesWithProfile: (updatedProfile: any, previousProfileId?: string) => void
   
+  /** 🔄 WAVE 6018: Sync fixtures directly from backend truth (defensa contra shows fantasma) */
+  syncFixturesFromTruth: (truthFixtures: any[]) => void
+  
   // ═══════════════════════════════════════════════════════════════════════
   // GROUP ACTIONS
   // ═══════════════════════════════════════════════════════════════════════
@@ -750,6 +753,22 @@ export const useStageStore = create<StageStore>()(
         console.log(`[StageStore] 🔄 WAVE 2183.5: Hot-Reloaded ${updatedCount} fixtures with profile: ${updatedProfile.name}${migrationNote} (name+model+profileId+channels+capabilities synced)`)
         get()._syncDerivedState()
         get()._setDirty()
+      }
+    },
+    
+    syncFixturesFromTruth: (truthFixtures) => {
+      const { showFile } = get()
+      if (showFile) {
+        showFile.fixtures = truthFixtures.map(f => ({
+          ...f,
+          id: f.id,
+          name: f.name || 'Backend Fixture',
+          position: f.position || { x:0, y:0, z:0 }
+        })) as any
+        
+        set({ fixtures: [...showFile.fixtures] })
+        get()._syncDerivedState()
+        console.log(`[stageStore] 🔄 Censo Sincronizado desde el Backend: ahora hay ${truthFixtures.length} fixtures.`)
       }
     },
     

@@ -84,9 +84,7 @@ export class HardwareAbstraction {
         this._el1140LastLog = 0; // WAVE-DIAG: EL1140 diagnostic throttle
         // 🔬 WAVE 3040: COLOR CHANGE DETECTOR — color anterior por fixture
         this._colorSnapshot = new Map(); // fixtureId → último RGB enviado
-        // WAVE 4656: Estado de compuerta Aether (inyectado por TitanOrchestrator).
-        this._aetherOutputEnabled = false;
-        this._aetherBlackoutActive = false;
+        // WAVE 6019: Campos de compuerta Aether eliminados — el gate vive en AetherSafetyMiddleware.
         // 🏎️ WAVE 2074.2: Real deltaTime measurement for physics
         this.lastPhysicsFrameTime = 0;
         // (BPM fields declared above — WAVE 2720)
@@ -1391,57 +1389,9 @@ export class HardwareAbstraction {
     flushToDriver(states) {
         this.sendToDriver(states);
     }
-    /**
-     * WAVE 3505.4: AETHER MATRIX — Envío directo de universo DMX desde el NodeResolver.
-     *
-     * Bypass del pipeline legacy (renderFromTarget → fixtureStates → Aduana).
-     * Solo pasa por el gate de conexión del driver.
-     * El NodeResolver ya aplicó calibración, transferCurves y clamping.
-     *
-     * @param universe — Número de universo (1-based)
-     * @param data — Uint8Array(512) pre-allocated del NodeResolver
-     * @returns true si el envío fue exitoso
-     */
-    sendUniverseRaw(universe, data) {
-        if (!this.driver.isConnected)
-            return false;
-        const previousBuffer = this._lastUniverseBuffers.get(universe);
-        if (previousBuffer && previousBuffer.length === data.length) {
-            let identical = true;
-            for (let i = 0; i < data.length; i++) {
-                if (previousBuffer[i] !== data[i]) {
-                    identical = false;
-                    break;
-                }
-            }
-            if (identical)
-                return true;
-        }
-        const sent = this.driver.sendUniverse(universe, data);
-        if (sent) {
-            this._lastUniverseBuffers.set(universe, new Uint8Array(data));
-        }
-        return sent;
-    }
-    /**
-     * WAVE 4681: Flush Aether egress — llama driver.sendAll() para empujar todos los
-     * buffers de universo escritos en este frame al worker DMX via UPDATE_BUFFER IPC.
-     * DEBE llamarse UNA VEZ al final del egress loop de TitanOrchestrator, después de
-     * todos los sendUniverseRaw() del frame. Sin esto, setUniverse() escribe en buffer
-     * pero el worker nunca recibe el UPDATE_BUFFER → "no data yet".
-     */
-    flushAetherEgress() {
-        if (this.driver.sendAll) {
-            void this.driver.sendAll();
-        }
-    }
-    /**
-     * WAVE 4656: Estado de salida canónico del pipeline Aether.
-     */
-    setAetherOutputGateState(outputEnabled, blackoutActive) {
-        this._aetherOutputEnabled = !!outputEnabled;
-        this._aetherBlackoutActive = !!blackoutActive;
-    }
+    // WAVE 6019: sendUniverseRaw, flushAetherEgress, setAetherOutputGateState ELIMINADOS.
+    // El TickEngine solo escribe en el SAB. Los drivers leen a su propio ritmo.
+    // El HAL ahora es un gestor de conexiones, no un transportador de datos.
     /** @deprecated Usar applyPhysicsOnly() + flushToDriver() por separado.
      * Mantenido para retrocompatibilidad con rutas legacy si las hay. */
     sendStatesWithPhysics(states) {
@@ -1473,7 +1423,7 @@ export class HardwareAbstraction {
         // This is the ONLY place DMX gets filtered. The Arbiter is now pure brain.
         // Physics always runs. The Aduana is the sole gate.
         // ═══════════════════════════════════════════════════════════════════════════
-        const outputEnabled = this._aetherOutputEnabled;
+        const outputEnabled = true; // WAVE 6019: siempre LIVE; el gate vive en AetherSafetyMiddleware
         // 🔬 WAVE 2960 v3: PRE-ADUANA SNAPSHOT — captura dimmer ANTES de que la Aduana lo modifique.
         // Así sabemos si el dimmer=0 viene del Arbiter o lo impone la Aduana.
         // Solo frame 181 y cada 5 segundos (rate-limit por clave 'pre-aduana:fid').
@@ -1520,8 +1470,8 @@ export class HardwareAbstraction {
         // que cada fixture llega con un valor sospechoso. Cero spam en consola.
         if (this.framesRendered > 180) {
             try {
-                const outputIsEnabled = this._aetherOutputEnabled;
-                const globalBlackout = this._aetherBlackoutActive;
+                const outputIsEnabled = true; // WAVE 6019: siempre LIVE
+                const globalBlackout = false; // WAVE 6019: blackout manejado en AetherSafetyMiddleware
                 // 🔬 WAVE 2960 v3: ADUANA TRAP — loguear SIEMPRE (con o sin outputEnabled)
                 // cuando un fixture tiene dimmer=0 post-Aduana. Así capturamos si el problema
                 // es la Aduana (ARMED) o algo más profundo (LIVE pero con ceros).

@@ -973,16 +973,8 @@ export class TickEngine {
                 if (this.ctx.glassPool) {
                     this.ctx.glassPool.pushFrame(view);
                 }
-                // FASE 2: POST-RESOLVE EGRESS â€” Throttle + virtual skip + send
-                // WAVE 4656: Output gate final en orquestador (source of truth Aether).
-                // WAVE 4681: Keepalive â€” siempre iteramos registeredUniverses para mantener
-                // el link DMX vivo. NodeResolver ya tiene los buffers correctos:
-                //   - outputEnabled=true  â†’ valores reales del engine
-                //   - outputEnabled=false â†’ KINETIC/manual pasan; IMPACT/COLOR/BEAM/ATMO = 0
-                // El hardware NECESITA recibir el paquete (aunque sea todo ceros) para no
-                // reportar "no data yet". El Smart Gate (WAVE 4680) vive en _writeNode.
-                const outputEnabled = this._outputEnabled;
-                this.hal.setAetherOutputGateState(outputEnabled, blackoutActive);
+                // WAVE 6019: FASE 2 ELIMINADA — el HAL ya no recibe datos del TickEngine.
+                // Los drivers leen del SAB a su propio ritmo. TickEngine solo hace commitFrame().
                 for (const universe of aetherResolver.registeredUniverses) {
                     // ðŸ›‚ WAVE 4557: shouldSendUniverse checks virtual-only + throttle
                     if (!aetherSafety.shouldSendUniverse(universe))

@@ -25,6 +25,8 @@
  */
 import * as dgram from 'dgram';
 import { EventEmitter } from 'events';
+import { DmxUniverseReader } from '../../core/aether/glass/DmxSabHandlers';
+import { DMX_HEADER_I32, CHANNELS_PER_UNI } from '../../core/aether/glass/layout';
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTES ART-NET
 // ─────────────────────────────────────────────────────────────────────────────
@@ -56,6 +58,11 @@ export class ArtNetDriver extends EventEmitter {
         this.sendLatencies = [];
         this.lastFrameTime = 0;
         this.artPollTimer = null; // WAVE 2525: ArtPoll
+        // ── WAVE 6019: SAB Follower ───────────────────────────────────────────
+        this._sabReader = null;
+        this._sabFollowTimer = null;
+        this._sabLastFrameId = -1;
+        this._sabHdr = null;
         this.config = {
             // 🎯 WAVE 153.7: Default a IP del nodo IMC Pro H1 (no broadcast!)
             ip: config.ip ?? '10.0.0.10',
@@ -148,6 +155,8 @@ export class ArtNetDriver extends EventEmitter {
      * Cerrar socket
      */
     async stop() {
+        // WAVE 6019: Detener SAB follower antes de cerrar socket
+        this.detachSab();
         // Detener ArtPoll timer
         if (this.artPollTimer) {
             clearInterval(this.artPollTimer);
@@ -163,6 +172,62 @@ export class ArtNetDriver extends EventEmitter {
                 });
             });
         }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+    // WAVE 6019: SAB FOLLOWER (Pull Architecture)
+    // ─────────────────────────────────────────────────────────────────────────
+    /**
+     * WAVE 6019: Conectar al DMX_UNIVERSE_SAB como fuente de datos.
+     * El driver leera el SAB a followHz Hz, extrayendo todos los universos
+     * activos (segun dirtyMask) y enviando paquetes UDP para cada uno.
+     *
+     * @param sab       SharedArrayBuffer del TickEngine (getDmxSab())
+     * @param universes Lista explicita de universos a seguir (ej. [0, 1, 2])
+     * @param followHz  Cadencia de lectura (default: 40)
+     */
+    attachSab(sab, universes, followHz = 40) {
+        if (this._sabFollowTimer)
+            this.detachSab();
+        this._sabReader = new DmxUniverseReader(sab);
+        this._sabHdr = new Int32Array(sab, 0, DMX_HEADER_I32);
+        const intervalMs = Math.round(1000 / followHz);
+        this._sabFollowTimer = setInterval(() => {
+            if (!this._sabReader || !this.socket || this.state !== 'ready')
+                return;
+            const frame = this._sabReader.readCoherent(this._sabLastFrameId);
+            if (!frame)
+                return;
+            this._sabLastFrameId = frame.frameId;
+            // Extraer dirtyMask del header SAB para saltar universos sin cambios
+            const maskLo = BigInt(this._sabHdr[2 /* DmxHdr.UNIVERSE_MASK */]);
+            const maskHi = BigInt(this._sabHdr[3 /* DmxHdr.UNIVERSE_MASK_HI */]);
+            const dirty64 = (maskHi << BigInt(32)) | maskLo;
+            for (const universeNum of universes) {
+                // Optimizacion: solo enviar si este universo cambio en este frame
+                if (((dirty64 >> BigInt(universeNum)) & BigInt(1)) === BigInt(0))
+                    continue;
+                const offset = universeNum * CHANNELS_PER_UNI;
+                const uniData = frame.data.subarray(offset, offset + CHANNELS_PER_UNI);
+                // Actualizar buffer interno del driver y enviar
+                this.setBuffer(Buffer.from(uniData), universeNum);
+            }
+            // sendAll() aplica su propio rate limiting interno (minSendInterval)
+            void this.sendAll();
+        }, intervalMs);
+        this.log(`[ArtNet 🛰️] SAB follower attached: universes=[${universes}] @${followHz}Hz`);
+    }
+    /**
+     * WAVE 6019: Desconectar del SAB. Detiene el setInterval de lectura.
+     */
+    detachSab() {
+        if (this._sabFollowTimer) {
+            clearInterval(this._sabFollowTimer);
+            this._sabFollowTimer = null;
+        }
+        this._sabReader = null;
+        this._sabHdr = null;
+        this._sabLastFrameId = -1;
+        this.log('[ArtNet 🛰️] SAB follower detached');
     }
     // ─────────────────────────────────────────────────────────────────────────
     // DMX OUTPUT

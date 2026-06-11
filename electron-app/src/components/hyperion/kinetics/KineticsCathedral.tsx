@@ -141,6 +141,12 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
   const handleUnlockKinetics = useCallback(() => {
     // WAVE 4868: unlock de Cathedral debe ser estrictamente cinético.
     // Limpia solo KINETIC + motor cinético + estado UI asociado.
+    // WAVE 6019.6 FIX: purgar targets espaciales ANTES de releaseKinetics
+    // para que ProgrammerAetherBridge no re-inyecte targetX/Y/Z zombis
+    // en el frame siguiente al Unlock.
+    if (selectedIds.length > 0) {
+      useProgrammerStore.getState().clearSpatialTargets(selectedIds)
+    }
     // 1) NodeArbiter L2 (solo dominio KINETIC)
     useProgrammerStore.getState().releaseKinetics()
     if (selectedIds.length > 0) {

@@ -69,10 +69,14 @@ function hasNonPositionKineticManual(fixtureIds: string[]): boolean {
 
 /**
  * Convierte el PatternType de movementStore al string que espera el backend:
- * 'none' o 'static' → 'hold'  |  pattern real → pass-through
+ * 'none' → 'hold'    (freeze — conserva posición al deseleccionar patrón)
+ * 'static' → 'hold'  (freeze intencional del operador)
+ * pattern real → pass-through
  */
 function toEnginePattern(p: string): string {
-  return (p === 'none' || p === 'static') ? 'hold' : p
+  if (p === 'none') return 'hold'
+  if (p === 'static') return 'hold'
+  return p
 }
 
 /**
@@ -552,7 +556,7 @@ class KineticsBridgeClass {
     // usar updateKineticScalars (scalars-only, fase NO se reinicia).
     // Solo se hace setManualPattern completo cuando cambia patrón o selección.
     const fixtureKey = fixtureIds.slice().sort().join(',')
-    const isStop = enginePattern === 'hold'
+    const isStop = enginePattern === 'hold' || enginePattern === 'release' || enginePattern === 'idle'
     const samePatternAndFixtures =
       !isStop &&
       enginePattern === this._lastPatternSent &&

@@ -392,6 +392,7 @@ export class NodeExtractionPipeline {
           fixtureDef,
           fixtureGraph,
           resolvedPosition,
+          resolvedOrientation,
         )
       : this._sanitizeOverlappingChannels(
           resolvedDeviceId,
@@ -530,11 +531,12 @@ export class NodeExtractionPipeline {
    * (e.g. Tungsten: kinetic + golden-master + petal-l/c/r + wash + wash-color + beam-color).
    */
   private _buildNodesFromForgeGraph(
-    deviceId:   DeviceId,
+    deviceId:     DeviceId,
     fallbackZone: ZoneId,
-    fixtureDef: Readonly<FixtureDefinition>,
-    graph:      IForgeNodeGraph,
-    position?:  Position3D,
+    fixtureDef:   Readonly<FixtureDefinition>,
+    graph:        IForgeNodeGraph,
+    position?:    Position3D,
+    orientation?: string,
   ): ICapabilityNode[] {
     // 1. Recopilar todos los output_dmx nodes
     type OutputNode = IForgeNode & { config: IOutputDmxConfig }
@@ -590,7 +592,7 @@ export class NodeExtractionPipeline {
         group.nodes.map(n => this._normalizeChannelType(n.config.channelType)),
       )
       const node = this._buildForgeGroupNode(
-        nodeId, group.zone, fixtureDef, channels, typeSet, position,
+        nodeId, group.zone, fixtureDef, channels, typeSet, position, orientation,
       )
       if (node) {
         // WAVE 4738: inyectar label custom en profileMeta → sobrevive roundtrip JSON.
@@ -662,12 +664,13 @@ export class NodeExtractionPipeline {
    * Motor de decisión: familia determinada por mayoría de tipos presentes.
    */
   private _buildForgeGroupNode(
-    nodeId:     NodeId,
-    zoneId:     ZoneId,
-    fixtureDef: Readonly<FixtureDefinition>,
-    channels:   INodeChannelDef[],
-    typeSet:    Set<string>,
-    position?:  Position3D,
+    nodeId:       NodeId,
+    zoneId:       ZoneId,
+    fixtureDef:   Readonly<FixtureDefinition>,
+    channels:     INodeChannelDef[],
+    typeSet:      Set<string>,
+    position?:    Position3D,
+    orientation?: string,
   ): IColorNodeData | IImpactNodeData | IKineticNodeData | IBeamNodeData | IAtmosphereNodeData | null {
     const deviceId = nodeId.split(':')[0] as DeviceId
 
@@ -752,6 +755,15 @@ export class NodeExtractionPipeline {
         stereoTotal:       1,
         state:             new Float64Array(4),
         ...(position !== undefined && { position }),
+        // WAVE 6019.4 FIX: ikOrientation debe hidratarse también en la ruta Forge Graph.
+        // Sin esto, los nodos KINETIC creados desde nodeGraph llegan sin orientación
+        // al VMM → offset de floor en fixtures ceiling → haz al techo.
+        ...(orientation !== undefined && {
+          ikOrientation: {
+            installation: orientation as InstallationOrientation,
+            rotation:     { pitch: 0, yaw: 0, roll: 0 },
+          } satisfies IKOrientation,
+        }),
       } satisfies IKineticNodeData
     }
 

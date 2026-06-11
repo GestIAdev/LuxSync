@@ -416,23 +416,57 @@ export function registerAetherIPCHandlers(): void {
       try {
         const arbiter = getTitanOrchestrator().getAetherArbiter()
 
-        // WAVE 4712 MULTITRACK: pattern: null|'hold'|'static' ahora elimina
-        // SOLO las pistas de los fixtureIds dados. El resto del Map sigue
-        // ejecutándose intacto (otros focos no se ven afectados).
-        if (pattern === null || pattern === 'static' || pattern === 'hold') {
+        // ═══════════════════════════════════════════════════════════════
+        // WAVE 6019.5 — HANDOFF L2→L0: SEPARACIÓN RELEASE vs HOLD
+        //
+        // 'release'|'idle'|null → PURGA DESTRUCTIVA PURA (Unlock real).
+        //   NO rescata estado del motor. NO secuestra L2.
+        //   El motor automático L0 retoma el control inmediatamente.
+        //
+        // 'hold'|'static' → FREEZE INTENCIONAL (Fix C preservado).
+        //   Migra motor→manual para congelar fixtures en su última
+        //   posición espacial. El operador quiere mantener la escena.
+        // ═══════════════════════════════════════════════════════════════
+        if (pattern === 'release' || pattern === 'idle' || pattern === null) {
           const removeNodeIds = fixtureIds.map(id => `${id}:kinetic`)
           aetherKineticEngine.removeNodes(removeNodeIds, arbiter)
-          // [WAVE 4937.1] EXPLICIT ARBITER CACHE PURGE ON UNLOCK
-          // Si el patrón es null|'hold'|'static' y no hay coordenadas de ancla,
-          // es un Unlock total. Limpiar _manualOverrides para evitar Ghost Anchors
-          // congelados en L2. El frontend envía 'hold' tras setActivePattern('none')
-          // en el flujo de unlock, por lo que el backend debe tratarlo igual que null.
-          if (anchorPan === undefined && anchorTilt === undefined) {
+          for (const id of fixtureIds) {
+            arbiter.clearManualOverride(`${id}:kinetic`)
+          }
+          if (!aetherKineticEngine.isActive()) {
+            vibeMovementManager.setManualPattern(null)
+            vibeMovementManager.setManualSpeed(null)
+            vibeMovementManager.setManualAmplitude(null)
+            vibeMovementManager.setKineticFanOffsets({})
+          }
+          return { success: true }
+        }
+
+        if (pattern === 'hold' || pattern === 'static') {
+          const removeNodeIds = fixtureIds.map(id => `${id}:kinetic`)
+
+          // WAVE 6019.4 FIX — HOLD STATE PRESERVATION
+          // Migrar el estado IK activo (_motorKineticOverrides) a
+          // _manualOverrides para que NodeArbiter._applyRelativeOffsetFusion
+          // detecte isHoldState y congele los fixtures en su última posición.
+          let motorStateMigrated = false
+          for (const nodeId of removeNodeIds) {
+            const motor = arbiter.getMotorKineticOverride(nodeId)
+            if (motor && Number.isFinite(motor['pan_base']) && Number.isFinite(motor['tilt_base'])) {
+              arbiter.setManualOverride(nodeId, {
+                pan_base: motor['pan_base'],
+                tilt_base: motor['tilt_base'],
+              })
+              motorStateMigrated = true
+            }
+          }
+
+          aetherKineticEngine.removeNodes(removeNodeIds, arbiter)
+          if (!motorStateMigrated && anchorPan === undefined && anchorTilt === undefined) {
             for (const id of fixtureIds) {
               arbiter.clearManualOverride(`${id}:kinetic`)
             }
           }
-          // VMM: silenciar solo si el motor ya no tiene pistas (paridad legacy).
           if (!aetherKineticEngine.isActive()) {
             vibeMovementManager.setManualPattern(null)
             vibeMovementManager.setManualSpeed(null)

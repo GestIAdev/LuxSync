@@ -252,7 +252,7 @@ export class NodeExtractionPipeline {
             console.log(`[NodeExtractionPipeline] 🔧 WAVE 4735.7: V2 path — _buildNodesFromForgeGraph for ${String(resolvedDeviceId)} with ${fixtureGraph.nodes.length} output_dmx nodes`);
         }
         const nodes = hasForgeGraph
-            ? this._buildNodesFromForgeGraph(resolvedDeviceId, resolvedZone, fixtureDef, fixtureGraph, resolvedPosition)
+            ? this._buildNodesFromForgeGraph(resolvedDeviceId, resolvedZone, fixtureDef, fixtureGraph, resolvedPosition, resolvedOrientation)
             : this._sanitizeOverlappingChannels(resolvedDeviceId, this._buildAllNodes(resolvedDeviceId, resolvedZone, fixtureDef, topology, resolvedPosition, resolvedOrientation));
         const calibration = this._buildCalibration(fixtureDef, v2CalibOverride);
         return {
@@ -366,7 +366,7 @@ export class NodeExtractionPipeline {
      * Reemplaza _buildAllNodes para fixtures con topología multi-cell
      * (e.g. Tungsten: kinetic + golden-master + petal-l/c/r + wash + wash-color + beam-color).
      */
-    _buildNodesFromForgeGraph(deviceId, fallbackZone, fixtureDef, graph, position) {
+    _buildNodesFromForgeGraph(deviceId, fallbackZone, fixtureDef, graph, position, orientation) {
         const outputNodes = graph.nodes.filter((n) => n.type === 'output_dmx' && n.config.nodeType === 'output_dmx');
         if (outputNodes.length === 0)
             return [];
@@ -407,7 +407,7 @@ export class NodeExtractionPipeline {
             const nodeId = `${deviceId}:${suffix}`;
             const channels = this._mapForgeNodes(group.nodes.map(n => n.config), legacyDefaultByOffset);
             const typeSet = new Set(group.nodes.map(n => this._normalizeChannelType(n.config.channelType)));
-            const node = this._buildForgeGroupNode(nodeId, group.zone, fixtureDef, channels, typeSet, position);
+            const node = this._buildForgeGroupNode(nodeId, group.zone, fixtureDef, channels, typeSet, position, orientation);
             if (node) {
                 // WAVE 4738: inyectar label custom en profileMeta → sobrevive roundtrip JSON.
                 nodes.push(group.customLabel
@@ -471,7 +471,7 @@ export class NodeExtractionPipeline {
      * Construye el ICapabilityNode correcto según los tipos de canal del grupo.
      * Motor de decisión: familia determinada por mayoría de tipos presentes.
      */
-    _buildForgeGroupNode(nodeId, zoneId, fixtureDef, channels, typeSet, position) {
+    _buildForgeGroupNode(nodeId, zoneId, fixtureDef, channels, typeSet, position, orientation) {
         const deviceId = nodeId.split(':')[0];
         // COLOR: hay al menos un canal de mezcla cromática.
         // WAVE 4737 WASH FIX: grupos mixtos (color + dimmer) también van a COLOR.
@@ -550,6 +550,15 @@ export class NodeExtractionPipeline {
                 stereoTotal: 1,
                 state: new Float64Array(4),
                 ...(position !== undefined && { position }),
+                // WAVE 6019.4 FIX: ikOrientation debe hidratarse también en la ruta Forge Graph.
+                // Sin esto, los nodos KINETIC creados desde nodeGraph llegan sin orientación
+                // al VMM → offset de floor en fixtures ceiling → haz al techo.
+                ...(orientation !== undefined && {
+                    ikOrientation: {
+                        installation: orientation,
+                        rotation: { pitch: 0, yaw: 0, roll: 0 },
+                    },
+                }),
             };
         }
         // BEAM: has beam-shaping channels

@@ -122,14 +122,14 @@ export class OpenDMXStrategy implements DMXSendStrategy {
   }
 
   private runTick(log: (msg: string) => void): void {
-    const sniff = (msg: string) => this.sniff(log, msg)
-    sniff('runTick: START')
-    if (!this.isRunning) { sniff('runTick: !isRunning'); return }
-    if (!this.port?.isOpen) { sniff('runTick: !port.isOpen, retrying...'); setTimeout(() => this.runTick(log), 25); return }
-    if (!this.reader) { sniff('runTick: !reader, retrying...'); setTimeout(() => this.runTick(log), 25); return }
-    if (this.isSending) { sniff('runTick: isSending (waiting)'); setTimeout(() => this.runTick(log), 5); return }
+    // const sniff = (msg: string) => this.sniff(log, msg)
+    // sniff('runTick: START')
+    if (!this.isRunning) { /* sniff('runTick: !isRunning') */ return }
+    if (!this.port?.isOpen) { /* sniff('runTick: !port.isOpen, retrying...') */ setTimeout(() => this.runTick(log), 25); return }
+    if (!this.reader) { /* sniff('runTick: !reader, retrying...') */ setTimeout(() => this.runTick(log), 25); return }
+    if (this.isSending) { /* sniff('runTick: isSending (waiting)') */ setTimeout(() => this.runTick(log), 5); return }
 
-    sniff('runTick: Reading SAB')
+    // sniff('runTick: Reading SAB')
     const frame = this.reader.readCoherent(this.lastFrameId)
     if (frame) {
       this.lastFrameId = frame.frameId
@@ -140,57 +140,57 @@ export class OpenDMXStrategy implements DMXSendStrategy {
       for (let i = 0; i < CHANNELS_PER_UNI; i++) {
         this.dmxBuffer[i + 1] = uniData[i]
       }
-      sniff(`runTick: SAB Fresh Frame ${frame.frameId} processed.`)
+      // sniff(`runTick: SAB Fresh Frame ${frame.frameId} processed.`)
     } else {
-      sniff('runTick: SAB No new frame, reusing old buffer.')
+      // sniff('runTick: SAB No new frame, reusing old buffer.')
     }
 
     this.isSending = true
-    this.logPayload(log)
-    sniff('runTick: Calling sendFrame')
+    // this.logPayload(log)
+    // sniff('runTick: Calling sendFrame')
     this.sendFrame(log)
   }
 
   private sendFrame(log: (msg: string) => void): void {
-    const sniff = (msg: string) => this.sniff(log, msg)
-    sniff('sendFrame: START')
+    // const sniff = (msg: string) => this.sniff(log, msg)
+    // sniff('sendFrame: START')
     const port = this.port
-    if (!port?.isOpen) { sniff('sendFrame: !port.isOpen'); this.isSending = false; return }
+    if (!port?.isOpen) { /* sniff('sendFrame: !port.isOpen') */ this.isSending = false; return }
 
-    sniff('sendFrame: Calling port.update for BREAK_BAUD')
+    // sniff('sendFrame: Calling port.update for BREAK_BAUD')
     port.update({ baudRate: BREAK_BAUD }, (err) => {
       if (err) {
         log(`[OpenDMX] ERROR BREAK update: ${err.message}`)
         this.isSending = false
         return
       }
-      if (!this.isRunning) { sniff('sendFrame: !isRunning in BREAK callback'); this.isSending = false; return }
+      if (!this.isRunning) { /* sniff('sendFrame: !isRunning in BREAK callback') */ this.isSending = false; return }
 
-      sniff('sendFrame: BREAK_BAUD updated, writing 0x00')
+      // sniff('sendFrame: BREAK_BAUD updated, writing 0x00')
       port.write(Buffer.from([0x00]), (writeErr1) => {
         if (writeErr1) {
           log(`[OpenDMX] ERROR BREAK write: ${writeErr1.message}`)
         }
         spinWaitNs(BREAK_HOLD_NS)
 
-        sniff('sendFrame: Calling port.update for DMX_BAUD')
+        // sniff('sendFrame: Calling port.update for DMX_BAUD')
         port.update({ baudRate: DMX_BAUD }, (err) => {
         if (err) {
           log(`[OpenDMX] ERROR MAB update: ${err.message}`)
           this.isSending = false
           return
         }
-        if (!this.isRunning) { sniff('sendFrame: !isRunning in MAB callback'); this.isSending = false; return }
+        if (!this.isRunning) { /* sniff('sendFrame: !isRunning in MAB callback') */ this.isSending = false; return }
 
-        sniff('sendFrame: DMX_BAUD updated, spinning for MAB')
+        // sniff('sendFrame: DMX_BAUD updated, spinning for MAB')
         spinWaitNs(MAB_NS)
 
-        sniff('sendFrame: Writing DMX payload')
+        // sniff('sendFrame: Writing DMX payload')
         port.write(this.dmxBuffer, (writeErr) => {
           if (writeErr) log(`[OpenDMX] ERROR payload: ${writeErr.message}`)
 
           this.isSending = false
-          sniff('sendFrame: Payload written, scheduling next tick')
+          // sniff('sendFrame: Payload written, scheduling next tick')
           if (this.isRunning) setTimeout(() => this.runTick(log), 25)
         })
       })

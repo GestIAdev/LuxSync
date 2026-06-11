@@ -207,9 +207,13 @@ export class KineticAdapter extends BaseSystem<IKineticNodeData> implements IAet
       // ─── FIX WAVE 4938: L2 SUPREMACY SPATIAL GATE ───
       const fixtureId = node.nodeId.split(':')[0] // Sacamos el ID puro
       const arbiter = aetherKineticEngine.arbiter
+      const manual = arbiter ? arbiter.getManualOverride(node.nodeId) : undefined
+      const hasSpatialTarget = manual && (manual['targetX'] !== undefined || manual['targetY'] !== undefined || manual['targetZ'] !== undefined)
+      
       if (
         aetherKineticEngine.hasNode(node.nodeId) ||
-        (arbiter && arbiter.getMotorKineticOverride(`${fixtureId}:kinetic`) !== undefined)
+        (arbiter && arbiter.getMotorKineticOverride(`${fixtureId}:kinetic`) !== undefined) ||
+        hasSpatialTarget
       ) {
         return // L2 SUPREMACY: El VMM clásico se calla.
       }
@@ -235,12 +239,26 @@ export class KineticAdapter extends BaseSystem<IKineticNodeData> implements IAet
       // 🎭 WAVE 4717.2: L2 fan phase offset — suma el desfase calculado por el bridge
       // según el orden de selección del usuario (determinista, cero alloc).
       // WAVE 4988 Paso 1: Topología declarativa por zoneId.
-      // Reemplaza la lógica physicalPosition.x + deadzone (WAVE 4986) que rompía
-      // la simetría al agrupar focos derechos centrados con los izquierdos.
-      // La clasificación L/R ahora es determinista: cualquier zona cuyo nombre
-      // contiene 'right' (front-right, back-right, side-right…) recibe π.
-      // El resto (left, center, undefined) recibe 0. Sin coordenadas X, sin ruido.
-      const lrPhaseOffset = (node.zoneId && typeof node.zoneId === 'string' && node.zoneId.includes('right')) ? Math.PI : 0
+      // WAVE 6019.4 FIX — ZONA NEUTRAL (EPSILON):
+      // La clasificación L/R por zoneId.includes('right') rompe la simetría
+      // en focos cercanos a X=0: un foco central clasificado como 'right'
+      // recibe fase π mientras su gemelo 'left' recibe 0 → patrones divergen.
+      // Usamos la posición física real con una zona neutral de ±0.5m:
+      //   |x| ≤ 0.5  → fase 0 (centro, sincronizado)
+      //   x > 0.5    → fase π (derecha)
+      //   x < -0.5   → fase 0 (izquierda)
+      // Fallback a zoneId si no hay posición física (compat legacy).
+      const posX = node.physicalPosition?.x ?? node.position?.x
+      let lrPhaseOffset = 0
+      if (posX !== undefined && Number.isFinite(posX)) {
+        if (posX > 0.5) {
+          lrPhaseOffset = Math.PI
+        }
+        // |x| ≤ 0.5 → 0 (zona neutral)
+        // x < -0.5 → 0 (izquierda)
+      } else {
+        lrPhaseOffset = (node.zoneId && typeof node.zoneId === 'string' && node.zoneId.includes('right')) ? Math.PI : 0
+      }
       const l2PhaseOffset = this._vmm._l2PhaseOverrides[node.nodeId] ?? 0
       // 🌪️ WAVE 4708 T3: caos global del slider — desfase determinista por fixture.
       // Se extrae fixtureId puro (sin :kinetic) para que el hash coincida con el
@@ -270,6 +288,12 @@ export class KineticAdapter extends BaseSystem<IKineticNodeData> implements IAet
         this._valuesDict['tilt_offset'] = clamp(tilt * 2 - 1, -1, 1)
         this._valuesDict['speed'] = 0.05
       } else {
+        // WAVE 6019.4: node.ikOrientation puede ser undefined si el pipeline
+        // de hidratación (NodeExtractionPipeline) no pobló el campo.
+        // El VMM normaliza el valor en generateIntent, pero pasar undefined
+        // aquí causa que el VMM use offset de floor en fixtures ceiling →
+        // el NodeResolver invierte el DMX y el haz apunta al techo.
+        const mountOrientation = node.ikOrientation?.installation
         const intent = this._vmm.generateIntent(
           vibeId,
           va,
@@ -277,7 +301,7 @@ export class KineticAdapter extends BaseSystem<IKineticNodeData> implements IAet
           node.stereoTotal,
           node.maxPanSpeed,
           phaseOffset,
-          node.ikOrientation?.installation,
+          mountOrientation,
         )
 
         // ── WAVE 4914 RELATIVE OFFSET ROUTING ────────────────────────────

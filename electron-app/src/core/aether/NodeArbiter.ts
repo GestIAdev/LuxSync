@@ -365,8 +365,16 @@ export class NodeArbiter implements INodeArbiter {
       for (const key in channels) {
         const v = (channels as Record<string, number>)[key]
         if (typeof v === 'number' && Number.isFinite(v)) {
-          snapshot[key] = v
-          durationByChannel[key] = SLOW_RELEASE_CHANNELS.has(key) ? RELEASE_MS_SLOW : RELEASE_MS_FAST
+          // WAVE 6019.5 FIX: Normalizar keys cinéticas para que el
+          // Release Fader pueda hacer blend con los canales que L0 escribe.
+          // _manualOverrides guarda 'pan_base'/'tilt_base' (anchor de órbita)
+          // pero L0 emite 'pan'/'tilt'. Sin normalización, l0Value siempre
+          // es undefined y el fade nunca se ejecuta para kinetic.
+          let snapshotKey = key
+          if (key === 'pan_base') snapshotKey = 'pan'
+          if (key === 'tilt_base') snapshotKey = 'tilt'
+          snapshot[snapshotKey] = v
+          durationByChannel[snapshotKey] = SLOW_RELEASE_CHANNELS.has(key) ? RELEASE_MS_SLOW : RELEASE_MS_FAST
         }
       }
       if (Object.keys(snapshot).length > 0) {
@@ -1280,6 +1288,13 @@ export class NodeArbiter implements INodeArbiter {
     const now = performance.now()
     for (const [nodeId, rel] of this._releaseStates) {
       let record = this._result.get(nodeId)
+      // WAVE 6019.5 FIX: Si el nodo no está en _result (L0 aún no emitió),
+      // crear un registro vacío para que el fade no aborte. Sin esto, el
+      // nodo desaparece del output y el resolver envía DMX 0 → techo.
+      if (!record) {
+        record = {}
+        this._result.set(nodeId, record)
+      }
 
       let fadeCompleted = true
       for (const key in rel.channels) {
@@ -1292,11 +1307,10 @@ export class NodeArbiter implements INodeArbiter {
         if (fadeWeight <= 0) continue
 
         const releaseValue = rel.channels[key]
-        // WAVE 4984 Paso 1b: Si el record no existe (nodo sin output L0 este frame),
-        // no crear un record vacío y degradar hacia 0. Saltar este canal.
-        // Degradar a 0 en tilt = apuntar al techo en ceiling mounts. Ignorar es más seguro.
-        if (!record) continue
-        const l0Value = record[key]
+        // WAVE 6019.5 FIX: Si L0 aún no escribió este canal, usar el valor
+        // del snapshot como fallback. Esto congela el foco en su última
+        // posición conocida en lugar de degradar a 0 (techo).
+        const l0Value = record[key] ?? releaseValue
         if (l0Value !== undefined && Number.isFinite(l0Value)) {
           // Blend: snapshot del manual → valor L0 ya fusionado + clampeado
           let blended = releaseValue * fadeWeight + l0Value * (1.0 - fadeWeight)
@@ -1305,8 +1319,6 @@ export class NodeArbiter implements INodeArbiter {
           if (key === 'tilt') blended = Math.max(TILT_ARBITER_MIN, Math.min(blended, TILT_ARBITER_MAX))
           record[key] = blended
         }
-        // Si l0Value es undefined (L0 no escribió este canal), no actuamos.
-        // El valor que dejó _applyRelativeOffsetFusion (si lo dejó) ya es correcto.
       }
 
       if (fadeCompleted) {

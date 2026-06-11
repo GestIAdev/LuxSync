@@ -758,6 +758,9 @@ export class VibeMovementManager {
     if (pattern === null || pattern === 'static') {
       // Liberar a Selene
       this.manualPatternOverride = null
+      this.schedulerState.sceneBeatsElapsed = 0 // Reiniciamos el reloj de la frase
+      // Forzamos al motor a arrancar la onda desde una fase = 0
+      this.schedulerState.phase = 0
       console.log(`[CHOREO] Pattern → AI control (Selene)`)
       return
     }
@@ -1049,12 +1052,20 @@ export class VibeMovementManager {
     // convierte en DMX alto = físicamente apunta al suelo (audiencia). Correcto.
     // El clamp para ceiling es Math.min(y, -TILT_CEILING): asegura que el lado positivo
     // nunca llega al resolver (lo que tras la inversión sería apuntar al techo).
-    const isCeilingMount = mountOrientation === 'ceiling'
-      || mountOrientation === 'truss-front'
-      || mountOrientation === 'truss-back'
+    //
+    // WAVE 6019.4 FIX — CEILING MOUNT FALLBACK:
+    // node.ikOrientation puede llegar undefined si NodeExtractionPipeline no
+    // hidrató el campo (regresión Aether Glass). Normalizamos a lowercase y
+    // tratamos undefined como floor (el caller debe garantizar ikOrientation).
+    // Sin esta normalización, 'CEILING' != 'ceiling' y el VMM aplica offset
+    // de floor que el NodeResolver luego invierte → haz al techo.
+    const effectiveMount = (mountOrientation ?? 'floor').toLowerCase().trim()
+    const isCeilingMount = effectiveMount === 'ceiling'
+      || effectiveMount === 'truss-front'
+      || effectiveMount === 'truss-back'
     const tiltOffset = isCeilingMount
       ? TILT_OFFSET_CEILING
-      : mountOrientation === 'totem'
+      : effectiveMount === 'totem'
         ? -0.45
         : (TILT_OFFSET_BY_VIBE[vibeId] ?? 0)
     const position = this._tempPos

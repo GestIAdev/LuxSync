@@ -106,6 +106,13 @@ const L3_GAG_TRIGGER_FAMILIES = new Set<string>(['impact', 'color'])
 const SLOW_RELEASE_CHANNELS = new Set<string>(['pan', 'tilt', 'zoom', 'focus', 'rotation'])
 const RELEASE_MS_FAST = 200
 const RELEASE_MS_SLOW = 1000
+
+// WAVE 6019.6 FIX — CORTAFUEGOS DE ENVENENAMIENTO IK:
+// Las coordenadas espaciales (targetX/Y/Z) NO pueden interpolarse
+// como ángulos DMX en el Release Fader. Si entran al snapshot,
+// el NodeResolver mantiene la ruta IK activa durante el fade-out
+// y los focos colapsan al techo (singularidad en X=0 para centrales).
+const IK_POISON_KEYS = new Set(['targetX', 'targetY', 'targetZ', 'focusX', 'focusY', 'focusZ'])
 const PHOTON_TRACER_EVERY_FRAMES = 20
 
 // ── WAVE 4914: Relative Offset Routing ────────────────────────────────
@@ -363,6 +370,11 @@ export class NodeArbiter implements INodeArbiter {
       const snapshot: Record<string, number> = {}
       const durationByChannel: Record<string, number> = {}
       for (const key in channels) {
+        // WAVE 6019.6 CORTAFUEGOS: Las coordenadas IK no son ángulos.
+        // Interpolarlas hacia 0 fuerza la ruta IK en NodeResolver
+        // durante todo el fade, colapsando los focos al techo.
+        if (IK_POISON_KEYS.has(key)) continue
+
         const v = (channels as Record<string, number>)[key]
         if (typeof v === 'number' && Number.isFinite(v)) {
           // WAVE 6019.5 FIX: Normalizar keys cinéticas para que el
@@ -374,7 +386,9 @@ export class NodeArbiter implements INodeArbiter {
           if (key === 'pan_base') snapshotKey = 'pan'
           if (key === 'tilt_base') snapshotKey = 'tilt'
           snapshot[snapshotKey] = v
-          durationByChannel[snapshotKey] = SLOW_RELEASE_CHANNELS.has(key) ? RELEASE_MS_SLOW : RELEASE_MS_FAST
+          // WAVE 6019.6: usar snapshotKey (normalizado) en lugar de key
+          // para que pan_base→pan y tilt_base→tilt hereden RELEASE_MS_SLOW.
+          durationByChannel[snapshotKey] = SLOW_RELEASE_CHANNELS.has(snapshotKey) ? RELEASE_MS_SLOW : RELEASE_MS_FAST
         }
       }
       if (Object.keys(snapshot).length > 0) {

@@ -304,6 +304,9 @@ interface ProgrammerActions {
    */
   releaseKinetics: () => void
 
+  /** Limpia solo targetX/Y/Z para los fixtures dados (ej. al salir de modo espacial) */
+  clearSpatialTargets: (fixtureIds: string[]) => void
+
   /** El bridge llama esto tras hacer flush de las dirty families */
   consumeDirty: () => void
 
@@ -875,6 +878,24 @@ export const useProgrammerStore = create<ProgrammerState & ProgrammerActions>()(
             pan: null,
             tilt: null,
             speed: null,
+            targetX: null,
+            targetY: null,
+            targetZ: null,
+          })
+        }
+        const dirty = new Set(state.dirtyFamilies)
+        dirty.add('KINETIC')
+        return { fixtureOverrides: next, dirtyFamilies: dirty }
+      })
+    },
+
+    clearSpatialTargets: (fixtureIds) => {
+      set(state => {
+        const next = new Map(state.fixtureOverrides)
+        for (const id of fixtureIds) {
+          const ov = next.get(id)
+          if (ov) next.set(id, {
+            ...ov,
             targetX: null,
             targetY: null,
             targetZ: null,

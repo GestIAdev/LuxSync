@@ -545,6 +545,14 @@ class KineticsBridgeClass {
   ): Promise<void> {
     const fixtureIds = getSelectedIds()
     if (fixtureIds.length === 0) return
+
+    // WAVE 6019.6 FIX: Si el operador acaba de salir del modo espacial,
+    // los targetX/Y/Z residuales en programmerStore harían que
+    // ProgrammerAetherBridge siga inyectándolos como manual overrides,
+    // forzando la ruta IK (NodeResolver) o silenciando L0 (KineticAdapter).
+    // Los limpiamos ANTES de que el backend reciba el nuevo patrón.
+    useProgrammerStore.getState().clearSpatialTargets(fixtureIds)
+
     // WAVE 4719: GUARD SUICIDA ELIMINADO.
     // El patron y la posicion base son ortogonales — el operador DEBE poder
     // activar un patron mientras tiene una posicion base del Radar.

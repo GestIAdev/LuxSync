@@ -480,6 +480,11 @@ export function registerAetherIPCHandlers(): void {
           // sin pasar por AKE → removeNodes los ignora. Debemos exorcizarlos aquí.
           for (const nodeId of removeNodeIds) {
             arbiter.clearMotorKineticOverride(nodeId)
+            // WAVE 6020.13: Purgar escala de distancia espacial. Si persiste,
+            // _applyRelativeOffsetFusion multiplica los offsets L0 por un factor
+            // grande (ej. 2.0 para fixtures cercanos al target), amplificando el
+            // movimiento post-Unlock y disparando el Airbag.
+            arbiter.clearSpatialDistanceScale(nodeId)
           }
           const physicsPP = orchestrator.getPhysicsPostProcessor()
           for (const id of fixtureIds) {

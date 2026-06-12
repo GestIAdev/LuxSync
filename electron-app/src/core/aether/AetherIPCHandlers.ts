@@ -474,6 +474,13 @@ export function registerAetherIPCHandlers(): void {
           }
 
           aetherKineticEngine.removeNodes(removeNodeIds, arbiter)
+          // WAVE 6020.12: Purgar motor overrides huérfanos de applySpatialTarget.
+          // removeNodes solo limpia los nodos que estaban en _nodeConfigs del AKE.
+          // Los spatial targets escriben directo al arbiter vía setMotorKineticOverride
+          // sin pasar por AKE → removeNodes los ignora. Debemos exorcizarlos aquí.
+          for (const nodeId of removeNodeIds) {
+            arbiter.clearMotorKineticOverride(nodeId)
+          }
           const physicsPP = orchestrator.getPhysicsPostProcessor()
           for (const id of fixtureIds) {
             const nodeId = `${id}:kinetic`

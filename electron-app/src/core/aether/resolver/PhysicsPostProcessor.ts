@@ -179,6 +179,23 @@ export interface IPhysicsPostProcessor {
    * la inercia espacial proporcionalmente al espacio real.
    */
   setStageBounds(width: number, height: number, depth: number): void
+
+  /**
+   * WAVE 6020 SALVA-SHOWS: Exorciza el estado 3D de un nodo.
+   * Borra la bandera de inicialización 3D y resetea posición/velocidad
+   * a defaults neutros. Llamar al hacer Unlock espacial para evitar
+   * que el próximo target 3D arranque desde coordenadas zombis.
+   */
+  resetSpatialState(nodeId: NodeId): void
+
+  /**
+   * WAVE 6020.6: Siembra el estado clásico de física (pan/tilt pos + vel=0)
+   * desde el snapshot del fade. Llamar justo después de inyectar el snapshot
+   * de Unlock para que el PhysicsPostProcessor arranque desde la posición
+   * correcta (delta=0) en lugar de interpolar desde el estado stale previo
+   * al modo espacial, lo que causaba que el fixture saltara a ceiling.
+   */
+  seedClassicState(nodeId: NodeId, pan: number, tilt: number): void
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -535,6 +552,41 @@ export class PhysicsPostProcessor implements IPhysicsPostProcessor {
       state[SLOT_X3D_VEL]  = 0
       state[SLOT_Y3D_VEL]  = 0
       state[SLOT_Z3D_VEL]  = 0
+    }
+  }
+
+  /**
+   * WAVE 6020 SALVA-SHOWS: Exorciza el estado 3D de un nodo.
+   * Borra la bandera de inicialización 3D y resetea posición/velocidad
+   * a defaults neutros. Llamar al hacer Unlock espacial para evitar
+   * que el próximo target 3D arranque desde coordenadas zombis.
+   */
+  resetSpatialState(nodeId: NodeId): void {
+    this._3dInitialized.delete(nodeId)
+    const state = this._states.get(nodeId)
+    if (state) {
+      state[SLOT_X3D_POS] = DEFAULT_3D_X
+      state[SLOT_Y3D_POS] = DEFAULT_3D_Y
+      state[SLOT_Z3D_POS] = DEFAULT_3D_Z
+      state[SLOT_X3D_VEL] = 0
+      state[SLOT_Y3D_VEL] = 0
+      state[SLOT_Z3D_VEL] = 0
+      console.log(`[ZOMBIE-DIAG] resetSpatialState ${nodeId}: 3D state exorcized`)
+    }
+  }
+
+  /**
+   * WAVE 6020.6: Siembra el estado clásico de física desde el snapshot.
+   * Fija SLOT_PAN/TILT_POS al valor del snapshot y anula velocidad.
+   * Con esto el PPP parte de delta=0 → no interpola → el fixture no se mueve.
+   */
+  seedClassicState(nodeId: NodeId, pan: number, tilt: number): void {
+    const state = this._states.get(nodeId)
+    if (state) {
+      state[SLOT_PAN_POS]  = pan
+      state[SLOT_TILT_POS] = tilt
+      state[SLOT_PAN_VEL]  = 0
+      state[SLOT_TILT_VEL] = 0
     }
   }
 

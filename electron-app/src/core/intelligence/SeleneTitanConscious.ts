@@ -309,6 +309,8 @@ export class SeleneTitanConscious extends EventEmitter {
   private lastEffectTimestamp: number = 0
   private lastEffectType: string | null = null
   private energyTrend: 'rising' | 'stable' | 'falling' = 'stable'
+  // 🩸 WAVE 6040: REGLA DEL VALLE — energía mínima desde último disparo
+  private minEnergySinceLastEffect: number = 1.0
   private energyHistory: number[] = []
   
   // 🔋 WAVE 931: Motor de Consciencia Energética
@@ -503,6 +505,8 @@ export class SeleneTitanConscious extends EventEmitter {
   async process(titanState: TitanStabilizedState): Promise<ConsciousnessOutput> {
     this.state.framesProcessed++
     this.stats.framesProcessed++
+    // 🩸 WAVE 6040: REGLA DEL VALLE — rastrear valle de energía post-disparo
+    this.minEnergySinceLastEffect = Math.min(this.minEnergySinceLastEffect, titanState.rawEnergy)
     
     // ─────────────────────────────────────────────────────────────────────
     // 0. CHECK: ¿Está habilitada la consciencia?
@@ -538,7 +542,10 @@ export class SeleneTitanConscious extends EventEmitter {
         // 🪟 GLASS BREAK SENSOR — impacto masivo inmediato durante la cuenta regresiva.
         // Z-Score >= 2.5 = anomalía (el drop ENTRÓ), confirmado por energía real alta.
         // Solo válido con la memoria caliente (Z-Scores fiables) y el buffer aún contando.
-        const GLASS_BREAK_Z = 2.5
+        // 🩸 WAVE 6040: REGLA DEL VALLE — si no ha habido un valle real desde el último
+        // disparo, endurecer el Z-threshold para evitar falsos drops en autotune sostenido.
+        const valleyBreath = this.minEnergySinceLastEffect <= 0.45
+        const GLASS_BREAK_Z = valleyBreath ? 2.5 : 3.5
         const currentZScore = this.contextualMemory.getEnergyZScore()
         const glassBreak =
           timeToEvent > 0 &&
@@ -613,6 +620,7 @@ export class SeleneTitanConscious extends EventEmitter {
             // Registrar en historial para cooldowns y estadísticas
             this.lastGlobalEffectTimestamp = nowSovereign
             this.lastEffectTimestamp = nowSovereign
+            this.minEnergySinceLastEffect = 1.0  // 🩸 WAVE 6040: Reset valley tracker
             this.lastEffectType = candidate.effect
             this.effectHistory.push({ type: candidate.effect, timestamp: nowSovereign })
             if (this.effectHistory.length > 20) this.effectHistory.shift()
@@ -1010,6 +1018,7 @@ export class SeleneTitanConscious extends EventEmitter {
       huntScore: huntDecision.confidence,
       beauty: beautyAnalysis.totalBeauty,
       energyContext: energyContext,  // 🔋 WAVE 932: Inyectar contexto energético
+      minEnergySinceLastEffect: this.minEnergySinceLastEffect,  // 🩸 WAVE 6040: Valley tracker
     })
     
     // ═══════════════════════════════════════════════════════════════════════
@@ -1544,6 +1553,7 @@ export class SeleneTitanConscious extends EventEmitter {
     if (finalEffectDecision) {
       this.lastEffectTimestamp = Date.now()
       this.lastGlobalEffectTimestamp = Date.now()  // 🩸 WAVE 2101.4: Global cooldown tracker
+      this.minEnergySinceLastEffect = 1.0  // 🩸 WAVE 6040: Reset valley tracker
       this.lastEffectType = finalEffectDecision.effectType
       
       // ⚡ WAVE 2093.2: Invalidar Dream cache para forzar diversidad

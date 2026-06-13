@@ -156,13 +156,11 @@ export class BeamAdapter extends BaseSystem {
         // FOCUS: más movimiento + más energía → suaviza el foco (profundidad)
         //   focus=0 → sharp; focus=1 → soft (difuso)
         const targetFocus = BaseSystem.clamp01(movementSpeed * 0.4 + energy * 0.3);
-        // GOBO_ROTATION: velocidad continua sincronizada con beatPhase
-        //   Ciclo de 0→1 → 0 siguiendo el beat (no mecánico, sin hold)
-        const goboRotation = BaseSystem.clamp01(beatPhase * beamExpress);
-        // PRISM_ROTATION: más lento que gobo, modulado por energía
-        const prismRotation = BaseSystem.clamp01((1 - beatPhase) * 0.6 * energy);
-        // Decisión de prisma: ON si dropImminent Y beamExpress supera threshold
-        const wantPrism = dropImminent && beamExpress >= PRISM_EXPRESSIVENESS_THRESHOLD;
+        // WAVE 6055: L0 NO toca gobos ni prismas bajo ninguna circunstancia.
+        // Las ruedas ópticas son dominio exclusivo del operador (L2) o Hephaestus (L3+).
+        const goboRotation = 0;
+        const prismRotation = 0;
+        const wantPrism = false;
         // ── Iteración de nodos ────────────────────────────────────────────────
         view.forEach((node) => {
             const nodeId = node.nodeId;
@@ -183,46 +181,10 @@ export class BeamAdapter extends BaseSystem {
             let focus = targetFocus;
             if (!node.hasFocus)
                 focus = 0;
-            // ── GOBO — Mechanical Hold Guard ──────────────────────────────────
-            let goboValue = 0;
-            if (node.hasGobo) {
-                const lastGoboMs = this._goboLastChangeMs.get(nodeId);
-                const goboHeld = (nowMs - lastGoboMs) < GOBO_HOLD_MS;
-                const currentIdx = this._currentGoboIndex.get(nodeId);
-                if (!goboHeld && beamExpress > 0.3) {
-                    // Calcular nuevo índice basado en sectionElapsedMs
-                    const newIdx = Math.floor(sectionElapsedMs / GOBO_SECTION_INTERVAL_MS) % GOBO_COUNT;
-                    if (newIdx !== currentIdx) {
-                        // Cambio de gobo permitido — registrar tiempo
-                        this._goboLastChangeMs.set(nodeId, nowMs);
-                        this._currentGoboIndex.set(nodeId, newIdx);
-                        goboValue = newIdx / (GOBO_COUNT - 1); // Normalizado 0-1
-                    }
-                    else {
-                        goboValue = currentIdx / (GOBO_COUNT - 1);
-                    }
-                }
-                else {
-                    // En hold o poca expressiveness — mantener índice actual
-                    goboValue = currentIdx / (GOBO_COUNT - 1);
-                }
-            }
-            // ── PRISM — Mechanical Hold Guard ─────────────────────────────────
-            let prismValue = 0;
-            if (node.hasPrism) {
-                const lastPrismMs = this._prismLastChangeMs.get(nodeId);
-                const prismHeld = (nowMs - lastPrismMs) < PRISM_HOLD_MS;
-                const isPrismActive = this._prismActive.get(nodeId);
-                if (!prismHeld && wantPrism !== isPrismActive) {
-                    // Cambio de estado permitido — registrar tiempo
-                    this._prismLastChangeMs.set(nodeId, nowMs);
-                    this._prismActive.set(nodeId, wantPrism);
-                    prismValue = wantPrism ? 1.0 : 0.0;
-                }
-                else {
-                    prismValue = isPrismActive ? 1.0 : 0.0;
-                }
-            }
+            // WAVE 6055: L0 NO toca gobos. Siempre abierta (0 = posición 0 = open).
+            const goboValue = 0;
+            // WAVE 6055: L0 NO toca prismas. Siempre off (0).
+            const prismValue = 0;
             // ── CONSTRUIR INTENT ───────────────────────────────────────────────
             this._intentScratch.nodeId = nodeId;
             // Solo escribir los canales que el nodo declara tener

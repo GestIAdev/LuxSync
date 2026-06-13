@@ -57,8 +57,8 @@ export const LATINO_PROFILE = {
         name: 'Front R (Kick Latino)',
         gateOn: 0.18, // WAVE 2199: 0.48 hysteresis → aquí gate de envelope
         boost: 2.5, // WAVE 2199: FRONT_PAR_GAIN=2.0 + vitamina
-        crushExponent: 0.8, // Más suave que techno (0.6) — menos compresión
-        decayBase: 0.08, // Más largo que techno (0.04) — kick gordo, no needle
+        crushExponent: 1.2, // WAVE 6050: impacto más consistente entre beats fuertes y débiles
+        decayBase: 0.60, // WAVE 6050: inercia térmica para suavizar la caída
         decayRange: 0.08,
         maxIntensity: 0.80,
         squelchBase: 0.03,
@@ -75,9 +75,9 @@ export const LATINO_PROFILE = {
     //   ghostCap 0.00->0.04: hilo tenue de sustain para que el ritmo sea fluido
     envelopeVocal: {
         name: 'Mover R (La Dama — Brillo)',
-        gateOn: 0.15, // WAVE 3492: 0.28->0.15 — trompetas/güira reales pasan
-        boost: 4.0, // WAVE 2195: protocolo Schwarzenegger
-        crushExponent: 1.5, // WAVE 3492: 3.5->1.5 — La Dama canta, no solo ataca
+        gateOn: 0.02, // WAVE 6050: casi abierto permanentemente
+        boost: 12.0, // WAVE 6050: Terminator Boost al máximo
+        crushExponent: 0.60, // WAVE 6050: más cóncava aún, valores bajos explotan a altos
         decayBase: 0.72, // WAVE 3494: 0.80->0.72 — más contraste sin perder fluidez
         decayRange: 0.05,
         maxIntensity: 0.85,
@@ -85,7 +85,10 @@ export const LATINO_PROFILE = {
         squelchSlope: 0.15,
         ghostCap: 0.04, // WAVE 3492: 0.00->0.04 — hilo de sustain rítmico
         gateMargin: 0.01,
-        riseRate: 0.20, // WAVE 3494: 0.20->0.14 — rampa más lenta, mata tembleque residual
+        attackSlopeMin: -0.05, // WAVE 6050: seda el Velocity Gate, señales lentas pasan
+        sustainedFlatVelocityMax: 0.50, // WAVE 6050: umbral absurdo, nunca considera "plano"
+        sustainedSquelchStartFrames: 9999 // WAVE 6050: nunca penaliza notas sostenidas
+        // WAVE 6050: riseRate ELIMINADO — comportamiento instantáneo como Techno strict-split
     },
     // Back R — El Látigo del Dembow (Snare/Hi-hat — WAVE 2199/2200)
     // WAVE 2200: BACK_PAR_GATE=0.45, BACK_PAR_GAIN=5.0, BACK_PAR_DECAY=0.25
@@ -97,7 +100,7 @@ export const LATINO_PROFILE = {
     //              La caja del reggaeton RESPIRA más que el snare techno.
     envelopeSnare: {
         name: 'Back R (TAcka del Dembow)',
-        gateOn: 0.28,
+        gateOn: 0.40, // WAVE 6050: endurecimiento bastante del gate para Back R
         boost: 3.5,
         crushExponent: 1.0,
         decayBase: 0.72,
@@ -119,7 +122,7 @@ export const LATINO_PROFILE = {
     //   que generaba el mural de voz.
     envelopeHighMid: {
         name: 'Back L (Latigazo Percusivo)',
-        gateOn: 0.35, // Conservado: solo percusión real
+        gateOn: 0.50, // WAVE 6050: endurecimiento bastante del gate para Back L
         boost: 3.0,
         crushExponent: 2.0,
         decayBase: 0.14, // WAVE 3491: GUILLOTINA snap violento
@@ -142,9 +145,9 @@ export const LATINO_PROFILE = {
     //   ghostCap 0.00->0.06: suelo ligerisimo para que no muera entre notas de pad.
     envelopeTreble: {
         name: 'Mover L (El Galán — Melodía & Conga)',
-        gateOn: 0.18, // WAVE 3492: 0.25->0.18 — deja pasar melodias reales
-        boost: 4.2,
-        crushExponent: 1.8, // WAVE 3492: 3.5->1.8 — picos melódicos no aplastados
+        gateOn: 0.02, // WAVE 6050: casi abierto permanentemente
+        boost: 12.0, // WAVE 6050: Terminator Boost al máximo
+        crushExponent: 0.60, // WAVE 6050: más cóncava aún, valores bajos explotan a altos
         decayBase: 0.72, // WAVE 3494: 0.70->0.62 — contraste real entre notas
         decayRange: 0.05,
         maxIntensity: 0.85,
@@ -152,7 +155,10 @@ export const LATINO_PROFILE = {
         squelchSlope: 0.15,
         ghostCap: 0.06, // WAVE 3492: 0.00->0.06 — suelo ligerisimo entre notas
         gateMargin: 0.01,
-        riseRate: 0.08, // WAVE 3494: 0.18->0.12 — rampa más lenta, tembleque residual eliminado
+        attackSlopeMin: -0.05, // WAVE 6050: seda el Velocity Gate, señales lentas pasan
+        sustainedFlatVelocityMax: 0.50, // WAVE 6050: umbral absurdo, nunca considera "plano"
+        sustainedSquelchStartFrames: 9999 // WAVE 6050: nunca penaliza notas sostenidas
+        // WAVE 6050: riseRate ELIMINADO — comportamiento instantáneo como Techno strict-split
     },
     // ═══════════════════════════════════════════════════════════════
     // BACK R: SCHWARZENEGGER → TRANSIENT SHAPER (trebleDelta×4)
@@ -168,7 +174,7 @@ export const LATINO_PROFILE = {
     // La Dama en latino caza trompetas, güira, platillos, siseos.
     // bassSubtract bajo porque el bajo latino no contamina agudos tanto.
     // ═══════════════════════════════════════════════════════════════
-    bassSubtractBase: 0.45, // WAVE 3492: 0.85->0.45 — 0.85 era tan agresivo que mataba senales medias
+    bassSubtractBase: 0.25, // WAVE 6050: relajamos filtro de graves para que medios-graves de cumbia/dembow alimenten La Dama
     bassSubtractRange: 0.20,
     // ═══════════════════════════════════════════════════════════════
     // BACK L (Tumbao): Cross-filter coefficients
@@ -199,15 +205,15 @@ export const LATINO_PROFILE = {
     // Mid moderado restaurado para cazar melodías (mid 0.35-0.55 en trompetas latino).
     // La purga vocal la hace percMidSubtract=1.5 en el transient shaper (Back R),
     // no el weight del cross-filter. El Galán puede tener mid SIN contaminar Back.
-    moverLHighMidWeight: 0.50, // WAVE 3492: 0.80->0.50 — highMid importante pero no exclusivo
-    moverLTrebleWeight: 0.20, // Algo de treble para arpegios agudos
-    moverLMidWeight: 0.40, // WAVE 3492: 0.00->0.40 — recupera melodias (acordeón, trompeta)
+    moverLHighMidWeight: 2.50, // WAVE 6050: Turbomegaboost — más del doble de vitamina
+    moverLTrebleWeight: 1.50, // WAVE 6050: que la percusión abra el shutter
+    moverLMidWeight: 1.50, // WAVE 6050: inyección directa de señal cruda
     moverLTonalThreshold: 0.45, // WAVE 2434: Monte Carlo winner
     // ═══════════════════════════════════════════════════════════════
     // MOVER R ("La Dama"): Resta de treble para sibilantes
     // En latino La Dama QUIERE treble — menos resta que techno.
     // ═══════════════════════════════════════════════════════════════
-    moverRTrebleSub: 0.45, // WAVE 2459 S3: 0.10→0.45 — La Dama ignora mid/voz del Galán. Solo treble puro.
+    moverRTrebleSub: 0.15, // WAVE 6050: le restamos menos agudos, La Dama brilla más con percusión ligera
     // ═══════════════════════════════════════════════════════════════
     // SIDECHAIN GUILLOTINE — MUCHO MÁS SUAVE
     // El patrón 3-3-2 latino no es 4×4 rígido. Un sidechain agresivo
@@ -281,7 +287,7 @@ export const LATINO_PROFILE = {
     // ═══════════════════════════════════════════════════════════════
     overrides41: {
         // ── ANTI-AUTOTUNE: Matar falsos latigazos en Back R ──────────
-        percMidSubtract: 3.0, // WAVE 4692: aislamiento agresivo contra voz aguda distorsionada
+        percMidSubtract: 4.0, // WAVE 6050: aniquilación total del sangrado de voces y sintes en 4.1
         percGate: 0.085, // WAVE 4692: solo pasan transientes percusivos claros
         percBoost: 2.8, // WAVE 4692: reduce picos falsos de consonantes
         percExponent: 1.35, // WAVE 4692: curva más dura para rechazar micro-ataques vocales
@@ -292,23 +298,30 @@ export const LATINO_PROFILE = {
         // percusion highMid real rompe el umbral.
         backLMidWeight: 0.00,
         backLLowMidWeight: 0.00,
-        // ── WAVE 3493: riseRate en overrides41 (alineado con base) ─────────
+        // ── WAVE 6050: overrides41 de movers alineados con base (Turbomegaboost + Anestesia) ─────────
         envelopeTreble: {
-            gateOn: 0.18, // WAVE 3492: igual que base
+            gateOn: 0.02, // WAVE 6050: casi abierto permanentemente
             squelchBase: 0.12, // WAVE 3492: igual que base
-            boost: 4.10,
+            boost: 12.0, // WAVE 6050: Terminator Boost al máximo
+            crushExponent: 0.60, // WAVE 6050: curva convexa — infla valores bajos al instante
             decayBase: 0.72, // WAVE 4945: transferimos inercia viscosa al mover
             ghostCap: 0.06,
-            riseRate: 0.12, // WAVE 3494: alineado con base
+            attackSlopeMin: -0.05, // WAVE 6050: seda el Velocity Gate
+            sustainedFlatVelocityMax: 0.50, // WAVE 6050: umbral absurdo
+            sustainedSquelchStartFrames: 9999, // WAVE 6050: nunca penaliza
+            // WAVE 6050: riseRate ELIMINADO — comportamiento instantáneo como Techno
         },
-        // ── WAVE 3493: La Dama override con riseRate ─────────────────
         envelopeVocal: {
-            gateOn: 0.15, // WAVE 3492: trompetas/güira pasan
+            gateOn: 0.02, // WAVE 6050: casi abierto permanentemente
             squelchBase: 0.08, // WAVE 3492: piso moderado
-            boost: 4.60,
+            boost: 12.0, // WAVE 6050: Terminator Boost al máximo
+            crushExponent: 0.60, // WAVE 6050: curva convexa — infla valores bajos al instante
             decayBase: 0.72, // WAVE 3494: alineado con base
             ghostCap: 0.04,
-            riseRate: 0.14, // WAVE 3494: alineado con base
+            attackSlopeMin: -0.05, // WAVE 6050: seda el Velocity Gate
+            sustainedFlatVelocityMax: 0.50, // WAVE 6050: umbral absurdo
+            sustainedSquelchStartFrames: 9999, // WAVE 6050: nunca penaliza
+            // WAVE 6050: riseRate ELIMINADO — comportamiento instantáneo como Techno
         },
         // ── TONAL GATE — DESACTIVADO: el mid es melodía, no ruido ────
         moverLTonalThreshold: 0.99, // WAVE 2460/2461: desactivado para latino
@@ -317,12 +330,12 @@ export const LATINO_PROFILE = {
         // Estrategia: gate alto + staccato + squelch dinámico por sustain.
         envelopeHighMid: {
             decayBase: 0.10, // Negro rápido tras cada flash.
-            gateOn: 0.30, // Muro base alto para filtrar sustain vocal.
+            gateOn: 0.55, // WAVE 6050: endurecimiento extremo, solo percusión real rompe
             attackSlopeMin: 0.03, // Solo pasa transiente real (no meseta).
             adaptiveNoiseAlpha: 0.70, // La media alcanza la nota sostenida en pocos frames.
             sustainedSquelchStartFrames: 3, // ~68ms @44Hz antes de endurecer el squelch.
             sustainedSquelchRisePerFrame: 0.12,
-            sustainedSquelchMaxBoost: 0.60, // Nota larga = blackout progresivo.
+            sustainedSquelchMaxBoost: 0.85, // WAVE 6050: asfixia el autotune sostenido antes de que abra el gate
             sustainedFlatVelocityMax: 0.007, // Meseta vocal/autotune detectada por velocidad plana.
             boost: 2.20, // Si rompe el muro, el pico debe explotar.
         },
@@ -345,8 +358,8 @@ export const LATINO_PROFILE = {
         // ── S1: SNARE STACCATO — Back R el TAcka cae a negro ────────
         // WAVE 2459: decayBase 0.45→0.22 — el TAcka es un disparo, no un reverb.
         envelopeSnare: {
-            gateOn: 0.52,
-            squelchBase: 0.40,
+            gateOn: 0.55, // WAVE 6050: endurecimiento extremo, solo golpes brutos pasan
+            squelchBase: 0.45, // WAVE 6050: asfixia cualquier ruido de fondo que logre pasar el gate
             decayBase: 0.45,
             decayRange: 0.10,
             ghostCap: 0.01,

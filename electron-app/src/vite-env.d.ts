@@ -823,6 +823,12 @@ declare global {
       }>
 
       /**
+       * WAVE 6020 FIX: Purga destructiva de coordenadas IK en la capa BASE.
+       * Fire-and-forget: no espera respuesta del backend.
+       */
+      purgeBaseSpatial: (fixtureIds: string[]) => void
+
+      /**
        * WAVE 4712: Hidratación silenciosa per-node.
        * Devuelve un snapshot por fixtureId con su pattern/speed/amplitude/fan
        * y el anchor radar (pan/tilt en [0,1]). La UI los agrega para detectar

@@ -163,6 +163,12 @@ function fuzzify(input) {
     };
     // === SECTION ===
     const section = fuzzifySection(input.sectionType);
+    // === VALLEY PENALTY ===
+    // 🩸 WAVE 6040: Si la energía nunca bajó por debajo de 0.45 desde el último disparo,
+    // penalizar severamente las reglas de strike para evitar spam en autotune sostenido.
+    const valleyPenalty = (input.minEnergySinceLastEffect !== undefined && input.minEnergySinceLastEffect > 0.45)
+        ? 0.15
+        : 1.0;
     // === HARSHNESS ===
     const harshness = {
         low: leftTrapezoid(input.harshness, 0.3, 0.3),
@@ -179,6 +185,7 @@ function fuzzify(input) {
         energyZone,
         huntScore: input.huntScore,
         beauty: input.beauty,
+        valleyPenalty,
     };
 }
 /**
@@ -337,9 +344,9 @@ const FUZZY_RULES = [
         // Notable z-score + high energy = something big is happening, section label be damned
         // z-score notable peaks at ~0.8 in typical techno, energy.high at ~0.7
         // Product: 0.56 * weight 0.75 = 0.42 — combined with other activations pushes past 0.45
-        antecedent: (i) => i.zScore.notable * i.energy.high * i.energyZone.highZone,
+        antecedent: (i) => i.zScore.notable * i.energy.high * i.energyZone.highZone * i.valleyPenalty,
         consequent: 'strike',
-        weight: 0.75,
+        weight: 0.75, // WAVE 6040: penalizado por valleyPenalty si no ha habido valle
     },
     // 🩸 WAVE 2108→2110: STRIKE RULES — Resurrected + Rebalanced + Z-Smoothed
     // WAVE 2108: Created Pure_Energy_Strike and Energy_Building_Strike with MAX 2 factors.
@@ -363,10 +370,10 @@ const FUZZY_RULES = [
         //   E=0.72, Z=0.3σ → gate=0.15 → 0.007 × weight = 0.005 → no chance (correct ✗)
         antecedent: (i) => {
             const zGate = Math.min(1, i.zScore.notable + i.zScore.epic * 0.5);
-            return i.energy.high * i.energyZone.highZone * zGate * 0.55;
+            return i.energy.high * i.energyZone.highZone * zGate * 0.55 * i.valleyPenalty;
         },
         consequent: 'strike',
-        weight: 0.70, // 🩸 WAVE 2110: 0.65→0.70. Needs slightly more weight with smoothed gate.
+        weight: 0.70, // WAVE 6040: penalizado por valleyPenalty si no ha habido valle  // 🩸 WAVE 2110: 0.65→0.70. Needs slightly more weight with smoothed gate.
     },
     {
         name: 'Energy_Building_Strike',
@@ -375,9 +382,9 @@ const FUZZY_RULES = [
         //   not just because section=buildup and energy barely passed 0.50.
         //   Old: 0.58 × 1.0 × 0.65 = 0.377. New: 0.58 × 1.0 × 0.8 × 0.70 = 0.325
         //   In low energy (E=0.45, highZone=0.1): 0.0 × 1.0 × 0.1 × 0.70 = 0.0 (correct)
-        antecedent: (i) => i.energy.high * Math.max(i.section.building, i.section.peak) * i.energyZone.highZone * 0.70,
+        antecedent: (i) => i.energy.high * Math.max(i.section.building, i.section.peak) * i.energyZone.highZone * 0.70 * i.valleyPenalty,
         consequent: 'strike',
-        weight: 0.70, // 🩸 WAVE 2110: 0.65→0.70. Compensates the highZone gate.
+        weight: 0.70, // WAVE 6040: penalizado por valleyPenalty si no ha habido valle  // 🩸 WAVE 2110: 0.65→0.70. Compensates the highZone gate.
     },
     // ═══════════════════════════════════════════════════════════════════════
     // PREPARE - Anticipación, algo viene

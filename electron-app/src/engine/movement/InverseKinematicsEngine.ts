@@ -238,26 +238,19 @@ export function solveInto(
 
   const local = rotateToLocalFrame(dx, dy, dz, totalPitchRad, totalYawRad, totalRollRad)
 
-  const horizontalDist = Math.sqrt(local.x * local.x + local.z * local.z)
-  const isGimbalLock = horizontalDist < GIMBAL_LOCK_EPSILON
+  let horizontalDist = Math.sqrt(local.x * local.x + local.z * local.z)
 
-  let panDeg: number
-  if (isGimbalLock) {
-    if (currentPanDMX !== null) {
-      panDeg = dmxToDegrees(currentPanDMX, fixture.limits.panRangeDeg)
-    } else {
-      panDeg = 0
-    }
-  } else {
-    panDeg = Math.atan2(local.x, -local.z) * RAD_TO_DEG
+  // WAVE 6020 DEFLECTOR: Si el target cruza demasiado cerca del eje Y del
+  // fixture, empujamos artificialmente hacia adelante (Z local) para evitar
+  // que horizontalDist caiga a 0. Esto previene el Pan Flip de 180° y el
+  // tilt incorrecto sin alterar la fórmula trigonométrica base.
+  if (horizontalDist < GIMBAL_LOCK_EPSILON) {
+    local.z -= GIMBAL_LOCK_EPSILON
+    horizontalDist = Math.sqrt(local.x * local.x + local.z * local.z)
   }
 
-  let tiltDeg: number
-  if (isGimbalLock) {
-    tiltDeg = 90
-  } else {
-    tiltDeg = Math.atan2(horizontalDist, -local.y) * RAD_TO_DEG
-  }
+  const panDeg = Math.atan2(local.x, -local.z) * RAD_TO_DEG
+  const tiltDeg = Math.atan2(horizontalDist, -local.y) * RAD_TO_DEG
 
   if (DEBUG_IK) {
     // eslint-disable-next-line no-console
@@ -281,7 +274,7 @@ export function solveInto(
   let tiltDMXRaw = ((calibratedTiltDeg + tiltRange / 2) / tiltRange) * DMX_MAX
 
   let antiFlipApplied = false
-  if (currentPanDMX !== null && !isGimbalLock) {
+  if (currentPanDMX !== null) {
     const resolved = resolveShortestPanPath(panDMXRaw, currentPanDMX, panRange)
     panDMXRaw = resolved.dmx
     antiFlipApplied = resolved.flipped

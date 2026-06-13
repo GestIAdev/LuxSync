@@ -294,7 +294,9 @@ export abstract class LiquidEngineBase {
     // }
 
     // Entradas rítmicas crudas filtradas ANTES de los envelopes de percusión.
-    const rawSnare = bands.highMid * tonalSquelch
+    // WAVE 6050: resta de graves directa — corta resonancia del bombo en medios
+    const bassLeakage = bands.lowMid * 1.5 // detecta resonancia del bombo en medios
+    const rawSnare = Math.max(0, bands.highMid * tonalSquelch - bassLeakage)
     const rawHat = bands.treble * tonalSquelch
 
     // ═══════════════════════════════════════════════════════════════════

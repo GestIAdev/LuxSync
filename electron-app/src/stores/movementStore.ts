@@ -80,6 +80,9 @@ interface MovementState {
 
   /** Fixtures con MANUAL OVERRIDE activo (bloquea reemplazo visual por telemetría entrante) */
   manualOverrideFixtureIds: ReadonlySet<string>
+
+  /** WAVE 6020: Flag de protección contra doble disparo durante Unlock */
+  _isUnlocking: boolean
 }
 
 interface MovementActions {
@@ -109,6 +112,9 @@ interface MovementActions {
 
   // UI
   setIsCalibrating: (v: boolean) => void
+
+  /** WAVE 6020: Activa/desactiva el escudo anti-doble-disparo durante Unlock */
+  setIsUnlocking: (v: boolean) => void
 
   /** Marca fixtures como bloqueados por motor superior */
   setLockedFixtures: (ids: ReadonlySet<string>) => void
@@ -168,6 +174,7 @@ const DEFAULTS: MovementState = {
   isCalibrating: false,
   lockedFixtureIds: new Set(),
   manualOverrideFixtureIds: new Set(),
+  _isUnlocking: false,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -197,6 +204,9 @@ export const useMovementStore = create<MovementState & MovementActions>()(subscr
   reseed: () => set({ chaosSeed: generateSeed() }),
 
   setIsCalibrating: (isCalibrating) => set({ isCalibrating }),
+
+  /** WAVE 6020: Activa/desactiva el escudo anti-doble-disparo durante Unlock */
+  setIsUnlocking: (_isUnlocking: boolean) => set({ _isUnlocking }),
 
   setLockedFixtures: (lockedFixtureIds) => set({ lockedFixtureIds }),
 

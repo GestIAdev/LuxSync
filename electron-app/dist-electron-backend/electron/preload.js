@@ -927,6 +927,13 @@ const luxApi = {
          */
         getKineticNodeStates: (fixtureIds) => ipcRenderer.invoke('lux:aether:getKineticNodeStates', fixtureIds),
         /**
+         * WAVE 6020 FIX: Purga destructiva de coordenadas IK en la capa BASE.
+         * Fire-and-forget: no espera respuesta del backend.
+         */
+        purgeBaseSpatial: (fixtureIds) => {
+            ipcRenderer.send('lux:aether:purgeBaseSpatial', fixtureIds);
+        },
+        /**
          * E11b WAVE 4717.2: Set L2 phase offsets para fan distribute.
          * WAVE 4700: No-op legacy — el fan se pasa directamente en setManualPattern.
          * Canal mantenido para no romper llamadas desde KineticsBridge legacy.

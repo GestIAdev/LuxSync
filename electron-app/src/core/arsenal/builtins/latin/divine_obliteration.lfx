@@ -1,0 +1,96 @@
+{
+  "$schema": "luxsync.lfx/3.0",
+  "clip": {
+    "id": "divine_obliteration",
+    "name": "Divine Obliteration",
+    "author": "LuxSync Factory",
+    "category": "composite",
+    "tags": ["strobe", "divine", "nuke", "white"],
+    "vibeCompat": ["techno", "fiesta-latina"],
+    "durationMs": 3000,
+    "effectType": "heph_custom",
+    "cognitiveDNA": {
+      "genome": { "aggression": 1.0, "chaos": 1.0, "organicity": 0.0 },
+      "textureAffinity": "clean",
+      "compatibleVibes": ["techno", "fiesta-latina"],
+      "validSections": ["drop"],
+      "energyZone": { "min": "intense", "max": "peak" },
+      "aggressionRange": { "min": 0.8, "max": 1.0 },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": { "base": 0.9, "energyMultiplier": 2.0, "vibeBonus": 0.5 },
+      "gpuCost": 0.8,
+      "fatigueImpact": 0.95,
+      "minDurationMs": 3000,
+      "cooldownMs": 20000,
+      "isStrobe": true,
+      "isDivineCandidate": true,
+      "isHeavyCandidate": true,
+      "zScoreGuards": { "requireRising": true, "minimumZ": 2.2, "minimumEnergy": 0.8 }
+    },
+    "tracks": [
+      {
+        "id": "nuke-movers-blackout",
+        "paramId": "intensity",
+        "zones": ["all-movers"],
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "defaultValue": 0,
+          "keyframes": [
+            { "timeMs": 0, "value": 0, "interpolation": "hold" },
+            { "timeMs": 3000, "value": 0, "interpolation": "hold" }
+          ]
+        }
+      },
+      {
+        "id": "nuke-pars-color",
+        "paramId": "color",
+        "zones": ["all-pars"],
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "defaultValue": { "h": 0, "s": 0, "l": 100 },
+          "keyframes": [
+            { "timeMs": 0, "value": { "h": 0, "s": 0, "l": 100 }, "interpolation": "hold" }
+          ]
+        }
+      },
+      {
+        "id": "nuke-pars-strobe",
+        "paramId": "strobeRate",
+        "zones": ["all-pars"],
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "strobeRate",
+          "valueType": "number",
+          "defaultValue": 0,
+          "keyframes": [
+            { "timeMs": 0, "value": 1, "interpolation": "hold" },
+            { "timeMs": 2000, "value": 1, "interpolation": "bezier", "bezierHandles": [0.5, 0, 0.5, 1] },
+            { "timeMs": 3000, "value": 0, "interpolation": "hold" }
+          ]
+        }
+      },
+      {
+        "id": "nuke-pars-intensity",
+        "paramId": "intensity",
+        "zones": ["all-pars"],
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "defaultValue": 0,
+          "keyframes": [
+            { "timeMs": 0, "value": 1, "interpolation": "hold" },
+            { "timeMs": 2000, "value": 1, "interpolation": "bezier", "bezierHandles": [0.8, 0, 0.8, 1] },
+            { "timeMs": 3000, "value": 0, "interpolation": "hold" }
+          ]
+        }
+      }
+    ]
+  }
+}

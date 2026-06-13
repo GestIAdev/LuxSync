@@ -890,6 +890,7 @@ export const useProgrammerStore = create<ProgrammerState & ProgrammerActions>()(
     },
 
     clearSpatialTargets: (fixtureIds) => {
+      console.log('[ZOMBIE-DIAG] clearSpatialTargets called for:', fixtureIds)
       set(state => {
         const next = new Map(state.fixtureOverrides)
         for (const id of fixtureIds) {
@@ -901,9 +902,27 @@ export const useProgrammerStore = create<ProgrammerState & ProgrammerActions>()(
             targetZ: null,
           })
         }
+        // WAVE 6020 SALVA-SHOWS: Exorcizar cellOverrides de React.
+        // Si no purgamos cellOverrides, ProgrammerAetherBridge sigue
+        // leyendo targetX/Y/Z zombis del mapa cell→kinetic.
+        const nextCell = new Map(state.cellOverrides)
+        for (const id of fixtureIds) {
+          const kineticKey = `${id}:kinetic` as CellKey
+          const cell = nextCell.get(kineticKey)
+          if (cell) {
+            const clean = { ...cell }
+            delete (clean as any).targetX
+            delete (clean as any).targetY
+            delete (clean as any).targetZ
+            delete (clean as any).focusX
+            delete (clean as any).focusY
+            delete (clean as any).focusZ
+            nextCell.set(kineticKey as CellKey, clean)
+          }
+        }
         const dirty = new Set(state.dirtyFamilies)
         dirty.add('KINETIC')
-        return { fixtureOverrides: next, dirtyFamilies: dirty }
+        return { fixtureOverrides: next, cellOverrides: nextCell, dirtyFamilies: dirty }
       })
     },
 
@@ -1086,18 +1105,23 @@ export const useProgrammerStore = create<ProgrammerState & ProgrammerActions>()(
     },
 
     releaseKinetics: () => {
+      console.log('[ZOMBIE-DIAG] releaseKinetics ENTER')
       set(state => {
         // ── CELL LAYER: limpia overrides KINETIC
         const nextCellOverrides = new Map(state.cellOverrides)
         const nextDirtyCells = new Set(state.dirtyCells)
         const nextClears = new Set(state.pendingClearNodeIds)
+        let clearedCellCount = 0
         for (const [key, ov] of state.cellOverrides) {
           if (ov.payload.family === NodeFamily.KINETIC) {
+            console.log(`[ZOMBIE-DIAG] releaseKinetics clearing cell key=${key} nodeIds=[${ov.nodeIds.join(',')}]`)
             for (const nid of ov.nodeIds) nextClears.add(nid)
             nextCellOverrides.delete(key)
             nextDirtyCells.delete(key)
+            clearedCellCount++
           }
         }
+        console.log(`[ZOMBIE-DIAG] releaseKinetics cleared ${clearedCellCount} kinetic cells. pendingClearNodeIds=${nextClears.size}`)
 
         // ── LEGACY LAYER: limpia pan/tilt/speed/targetXYZ + extras phantom kinetic
         const KINETIC_PHANTOM = new Set(['rotation', 'speed'])

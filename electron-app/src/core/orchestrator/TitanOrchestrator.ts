@@ -451,6 +451,23 @@ export class TitanOrchestrator {
   }
 
   /**
+   * WAVE 6020 SALVA-SHOWS: Expone el PhysicsPostProcessor para que
+   * AetherIPCHandlers pueda exorcizar el estado 3D en Unlock espacial.
+   */
+  public getPhysicsPostProcessor(): PhysicsPostProcessor {
+    return this._physicsPostProcessor
+  }
+
+  /**
+   * WAVE 6020 SALVA-SHOWS: Expone el NodeGraph para que los IPC handlers
+   * puedan leer estado actual de los nodos (currentPosition) al preparar
+   * snapshots limpios de release fade.
+   */
+  public getAetherNodeGraph(): NodeGraph {
+    return this._aetherGraph
+  }
+
+  /**
    * WAVE 4699.2 M2: Resuelve los nodeIds del Tungsten para el Golden Nuke.
    * Busca el/los fixtures cuya definiciÃ³n tenga name === 'Tungsten',
    * luego devuelve un mapa de sufijo â†’ nodeId para cada nodo de flash.

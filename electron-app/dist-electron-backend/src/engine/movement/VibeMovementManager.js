@@ -69,7 +69,7 @@ const VIBE_CONFIG = {
         panScale: 0.92,
         tiltScale: 0.60,
         baseFrequency: 0.15,
-        patterns: ['scan_x', 'square', 'diamond', 'botstep', 'darkspin'],
+        patterns: ['scan_x', 'square', 'diamond', 'botstep', 'darkspin', 'laser_grid', 'industrial_pendulum'],
         homeOnSilence: false,
     },
     // LATINO: Curvas, fluidez, caderas — CATEDRAL sensual
@@ -134,6 +134,8 @@ const PATTERN_PERIOD = {
     diamond: 16, // 🏛️ 8→16. 4 compases: rombo amplio con tiempo de llegada
     botstep: 16, // 🏛️ 8→16. 4 compases: posiciones con peso, no nervio
     darkspin: 24, // 🏛️ 12→24. 6 compases: órbita oscura lenta y densa
+    laser_grid: 16, // 🌊 WAVE 6030.7: 4 compases: snap rápido, hold en nodo
+    industrial_pendulum: 32, // 🌊 WAVE 6030.7: 8 compases: amortiguamiento completo
     // LATINO — fluido, sensual, cadera — arcos épicos
     figure8: 32, // 🏛️ 16→32. 8 compases: el infinito respira profundo
     wave_y: 16, // 🏛️ 8→16. 4 compases: ola con masa, no espuma
@@ -170,8 +172,10 @@ const PATTERN_CONFIG = {
     scan_x: { cycleBeats: 16, phraseDuration: 64, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 16, transitionBeats: 2 },
     square: { cycleBeats: 16, phraseDuration: 64, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 16, transitionBeats: 2 },
     diamond: { cycleBeats: 16, phraseDuration: 64, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 16, transitionBeats: 2 },
-    botstep: { cycleBeats: 8, phraseDuration: 32, safeHarborPhase: Math.PI, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 8, transitionBeats: 1 },
+    botstep: { cycleBeats: 16, phraseDuration: 64, safeHarborPhase: Math.PI, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 16, transitionBeats: 2 },
     darkspin: { cycleBeats: 24, phraseDuration: 96, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 24, transitionBeats: 4 },
+    laser_grid: { cycleBeats: 12, phraseDuration: 48, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 12, transitionBeats: 2 },
+    industrial_pendulum: { cycleBeats: 16, phraseDuration: 64, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 16, transitionBeats: 3 },
     // ── LATINO — fluido, sensual, cadencia relajada (CALIBRACIÓN DE FÁBRICA) ──
     // cycleBeats 12-20 → 1 revolución en 6-10 compases a 100 BPM = meditativo
     figure8: { cycleBeats: 16, phraseDuration: 64, safeHarborPhase: 0, safeHarborWindow: Math.PI / 4, hardDeadlineExtra: 16, transitionBeats: 2 },
@@ -214,7 +218,7 @@ const PATTERNS = {
         // Detuning orgánico: 3er armónico al 3% — apenas perceptible pero elimina la rigidez
         const detuneX = Math.sin((phase + fixtureOffset) * 3) * 0.03;
         outPos.x = Math.sin(phase + fixtureOffset) + detuneX;
-        outPos.y = Math.sin((phase + fixtureOffset) * 2) * 0.45;
+        outPos.y = Math.sin((phase + fixtureOffset) * 2) * 0.75;
     },
     // SQUARE: Movimiento cuadrado con interpolación lineal entre esquinas
     // 🔧 WAVE 2088.7: THE PHYSICS UNCHAINING — Target lineal puro.
@@ -260,26 +264,74 @@ const PATTERNS = {
         outPos.x = from.x + (to.x - from.x) * t;
         outPos.y = from.y + (to.y - from.y) * t;
     },
-    // BOTSTEP (TECHNO): Robótico, pero con amortiguación matemática (SmoothStep)
-    // 🔧 WAVE 2088.7: THE PHYSICS UNCHAINING — Target lineal puro.
-    // 8 posiciones golden-ratio con transición suavizada por SmoothStep.
-    // El carácter "robótico" lo dará el PhysicsDriver al frenar en cada posición.
+    // BOTSTEP (TECHNO): 4 cuadrantes golden-ratio — robo con peso, no latigazo
+    // �️ WAVE 6030.2: 8 pasos → 4 cuadrantes. cycleBeats 8→16 (ver PATTERN_CONFIG).
+    // Ease-in-out cúbico (derivada máx 1.5×) reemplaza SmoothStep (derivada máx 1.5×
+    // pero comprimido en 1/8 de ciclo vs 1/4 aquí). A 130 BPM, cycleBeats=16:
+    //   tiempo por paso = 16/4 × (60/130) = ~1.85 s → vel. pico ≈ 280 DMX/s < 400 cap.
+    // Amplitud 0.55: saltos visibles sin teleport. El PhysicsDriver aporta el "peso".
     botstep: (phase, audio, outPos) => {
         const phi = 1.618033988749;
-        const totalSteps = 8;
+        const totalSteps = 4;
         const normalizedPhase = (phase / (Math.PI * 2)) * totalSteps;
         const currentStep = Math.floor(normalizedPhase) % totalSteps;
         const nextStep = (currentStep + 1) % totalSteps;
-        // t original era lineal. Inyectamos SmoothStep para frenar latigazos:
+        // Ease-in-out cúbico: derivada máx = 1.5× en t=0.5, igual que smoothstep,
+        // pero al tener 4 pasos (no 8) la ventana temporal es el doble → vel. pico mitad.
         let t = normalizedPhase - Math.floor(normalizedPhase);
-        t = t * t * (3 - 2 * t); // La magia que salva los motores
-        // Reducimos la amplitud de 0.9 a 0.65 para que los saltos sean más cortos
-        const fromX = Math.sin(currentStep * phi * Math.PI) * 0.65;
-        const fromY = Math.cos(currentStep * phi * phi * Math.PI) * 0.65;
-        const toX = Math.sin(nextStep * phi * Math.PI) * 0.65;
-        const toY = Math.cos(nextStep * phi * phi * Math.PI) * 0.65;
+        t = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        const fromX = Math.sin(currentStep * phi * Math.PI) * 0.55;
+        const fromY = Math.cos(currentStep * phi * phi * Math.PI) * 0.55;
+        const toX = Math.sin(nextStep * phi * Math.PI) * 0.55;
+        const toY = Math.cos(nextStep * phi * phi * Math.PI) * 0.55;
         outPos.x = fromX + (toX - fromX) * t;
         outPos.y = fromY + (toY - fromY) * t;
+    },
+    // LASER_GRID: Escáner láser — snap entre 6 nodos de cuadrícula invisible
+    // 🌊 WAVE 6030.7: El fixture recorre 6 puntos distribuidos en una elipse a 120°.
+    // Easing ultra-rápido: ease-in cubic (t³) comprime el 90% del recorrido en el
+    // primer 46% del intervalo → llegada instantánea + hold en el nodo.
+    // Micro-dither ±1.5% sobre el nodo activo simula el "nervio" de un láser real.
+    laser_grid: (phase, audio, outPos, index = 0, total = 1) => {
+        const totalNodes = 6;
+        const normalizedPhase = (phase / (Math.PI * 2)) * totalNodes;
+        const currentNode = Math.floor(normalizedPhase) % totalNodes;
+        const nextNode = (currentNode + 1) % totalNodes;
+        // Ease-in cúbico: pico de velocidad al inicio, hold largo en el nodo
+        let t = normalizedPhase - Math.floor(normalizedPhase);
+        t = t * t * t; // t³ — llega rápido, espera
+        // 6 nodos distribuidos en elipse (pan ±0.90, tilt ±0.65)
+        const nodes = [
+            { x: 0.90, y: 0.60 }, // arriba-der
+            { x: 0.00, y: 0.80 }, // arriba-centro
+            { x: -0.90, y: 0.60 }, // arriba-izq
+            { x: -0.90, y: -0.60 }, // abajo-izq
+            { x: 0.00, y: -0.80 }, // abajo-centro
+            { x: 0.90, y: -0.60 }, // abajo-der
+        ];
+        const from = nodes[currentNode];
+        const to = nodes[nextNode];
+        // Micro-dither: el láser "tiembla" sobre el nodo (no durante el viaje)
+        const holdFraction = 1 - t; // mayor cuando está llegando al nodo
+        const dither = (Math.sin(phase * 47.3 + index) * 0.015) * holdFraction;
+        outPos.x = from.x + (to.x - from.x) * t + dither;
+        outPos.y = from.y + (to.y - from.y) * t + dither * 0.6;
+    },
+    // INDUSTRIAL_PENDULUM: Péndulo pesado con amortiguamiento exponencial
+    // 🌊 WAVE 6030.7: Oscilación muy ancha en X (amplitud 0.95) con amortiguamiento
+    // e^(-φ/π) que parte desde amplitud máxima y se extingue hacia el centro.
+    // Al llegar al centro se reinicia automáticamente (fase mod 2π).
+    // Y tiene una modulación muy leve (0.15) de baja frecuencia que aporta
+    // "masa" visual — como si el péndulo tuviera peso físico real.
+    industrial_pendulum: (phase, audio, outPos, index = 0, total = 1) => {
+        const fixtureOffset = (index / Math.max(total, 1)) * (Math.PI * 0.5); // offset entre fixtures
+        const localPhase = (phase + fixtureOffset) % (Math.PI * 2);
+        // Amortiguamiento: empieza en amplitud máxima, decae a ~14% al final del ciclo
+        const decay = Math.exp(-localPhase / Math.PI);
+        // Pan: oscilación ancha amortiguada (como un péndulo de Foucault pesado)
+        outPos.x = Math.sin(localPhase * 2) * decay * 0.95;
+        // Tilt: modulación de baja frecuencia — el peso del péndulo tira hacia abajo
+        outPos.y = -Math.abs(Math.sin(localPhase)) * 0.35 * decay + Math.cos(localPhase * 0.5) * 0.12;
     },
     // DARKSPIN: órbita elíptica con pulso de radio y contra-rotación vertical.
     // Diseñado para conservar identidad "oscura" sin entrar en jitter ni picos.
@@ -290,47 +342,68 @@ const PATTERNS = {
         outPos.y = Math.cos((phase + fixtureOffset) * 1.5) * 0.62;
     },
     // LATINO PATTERNS - Fluid / Hips / Curvas Sensuales
-    // FIGURE8: El clasico infinito (Lissajous 1:2)
-    // 🔧 WAVE 2088.7: THE PHYSICS UNCHAINING — Y-axis 0.6 → 0.75
-    // X ya toca ±1. Y sube a 0.75 para que el 8 sea más pronunciado
-    // sin perder la proporción Lissajous (ratio 1:0.75 sigue siendo elegante).
+    // FIGURE8: Lemniscata de Bernoulli — caderas de cumbia reales
+    // 🌊 WAVE 6030.5: Reemplaza Lissajous 1:2 por lemniscata paramétrica.
+    // x = sin(t) / (1+sin²(t))  →  pan barre ±1 con cintura pinched
+    // y = sin(t)·cos(t) / (1+sin²(t)) * 1.4  →  tilt con cruce suave en centro
+    // A diferencia del Lissajous, la tangente en el cruce es HORIZONTAL:
+    // el fixture pasa por el centro rozando, no clavando una aguja vertical.
     figure8: (phase, audio, outPos) => {
-        outPos.x = Math.sin(phase);
-        outPos.y = Math.sin(phase * 2) * 0.75;
+        const sinT = Math.sin(phase);
+        const cosT = Math.cos(phase);
+        const denom = 1 + sinT * sinT;
+        outPos.x = cosT / denom;
+        outPos.y = (sinT * cosT / denom) * 1.6;
     },
     // WAVE_Y: Auténtico barrido en forma de "U" (cruzando la pista elegantemente)
     wave_y: (phase, audio, outPos) => {
         outPos.x = Math.sin(phase) * 0.85;
-        outPos.y = Math.sin(phase * 2) * 0.40; // Doble frecuencia en Y crea la curva
+        outPos.y = Math.sin(phase * 2) * 0.70; // Doble frecuencia en Y crea la curva
     },
-    // BALLYHOO: El clásico e icónico "8" (Infinito) perfecto
+    // BALLYHOO: Trefoil knot — nudo trifolio con asimetría visual propia
+    // 🌊 WAVE 6030.1: Reemplaza el Lissajous genérico por un nudo trifolio proyectado.
+    // El nudo trifolio tiene 3 lóbulos: el fixture traza un lóbulo grande (arriba)
+    // y dos lóbulos pequeños (abajo-izq, abajo-der), creando una figura ASIMÉTRICA
+    // inconfundible que no se parece ni al circle ni al figure8.
+    // x = sin(t) · (0.8 + 0.2·cos(3t))  →  pan con "rebote" cada 3er armónico
+    // y = sin(2t)·0.5 + cos(t)·0.25    →  tilt asimétrico: lóbulo superior dominante
     ballyhoo: (phase, audio, outPos, index = 0, total = 1) => {
-        const r = 0.75 + 0.25 * Math.cos(phase * 2);
-        outPos.x = Math.sin(phase) * r; // Frecuencia 1:1 con la fase base
-        outPos.y = Math.cos(phase * 2) * r; // Frecuencia x2 en tilt = forma de 8
+        const fixtureOffset = (index / Math.max(total, 1)) * (Math.PI * 0.4);
+        const t = phase + fixtureOffset;
+        outPos.x = Math.sin(t) * (0.8 + 0.2 * Math.cos(t * 3));
+        outPos.y = Math.sin(t * 2) * 0.50 + Math.cos(t) * 0.28;
     },
     // ─────────────────────────────────────────────────────────────────────
     // 🌊 WAVE 4703: NUEVOS PATRONES LATINOS — La Expansión del Alma
     // ─────────────────────────────────────────────────────────────────────
-    // CADERA_LIBRE: Movimiento amplio, sensual y orgánico
+    // CADERA_LIBRE: Swing asimétrico — la cadera que empuja más a la derecha
+    // 🌊 WAVE 6030.3: Reemplaza el coseno simétrico por un "swing" latino real.
+    // Swing: sin(t) + 0.38·sin(t)·|sin(t)|  →  onda sesgada, más tiempo en +x que en -x.
+    //   (|sin| convierte la sinusoide en una onda tipo "diente de ballena" suavizado)
+    // Drift: 0.40 rad (23°) — perceptible, el 8 se tuerce visiblemente de ciclo a ciclo.
+    // Tilt: término cuadrático sin²(t)·0.30 eleva la posición media → el foco
+    //   apunta levemente hacia arriba en los picos y cae en los valles (contoneo vertical).
     cadera_libre: (phase, audio, outPos, index = 0, total = 1) => {
-        const drift = Math.sin(phase * 0.137) * 0.18;
-        outPos.x = Math.sin(phase) * 0.90; // Frecuencia normal (no x3) para evitar epilepsia
-        outPos.y = Math.cos(phase * 2 + drift) * 0.65; // El coseno desfasado crea el contoneo
+        const drift = Math.sin(phase * 0.25) * 0.40;
+        const swing = Math.sin(phase) + 0.38 * Math.sin(phase) * Math.abs(Math.sin(phase));
+        outPos.x = swing * 0.82;
+        outPos.y = Math.cos(phase * 2 + drift) * 0.62 + Math.pow(Math.sin(phase), 2) * 0.28;
     },
-    // ESPIRAL_CONGA: Hélice tridimensional con modulación de elevación
-    // Combina un barrido circular creciente con un arco de tilt que simula
-    // la elevación/bajada del bombo en la conga. El índice de fixture añade
-    // un offset de π/3 para que el ensemble forme una ola escalonada.
-    // El multiplicador de radio (0.7 + 0.3*sin) hace que la espiral "respire".
+    // ESPIRAL_CONGA: Espiral logarítmica respirante + acento de bombo
+    // 🌊 WAVE 6030.4: Espiral que CRECE y DECRECE monótonamente dentro de cada vuelta,
+    // como una concha de nautilus que se abre y cierra.
+    // Radio: 0.40 + 0.55·|sin(phase·0.5)|  →  crece de 0.40 a 0.95 y vuelve (suave, sin sierra).
+    // Acento de conga: Math.max(0, sin(2·localPhase))·0.35  →  pulsa 2 veces por vuelta,
+    //   SOLO en la semiciclo positiva (rectificado) = golpe de bombo, no ruido simétrico.
+    // El offset π/3 entre fixtures crea una ola escalonada en el ensemble.
     espiral_conga: (phase, audio, outPos, index = 0, total = 1) => {
         const fixturePhase = phase + (index / Math.max(total, 1)) * (Math.PI / 3);
-        // WAVE 4740: Radio mínimo elevado 0.40 → 0.50 — anillo constante y dinámico.
-        // El foco NUNCA colapsa al centro/suelo: r ∈ [0.50, 1.00] garantizado.
-        const r = 0.75 + 0.25 * Math.sin(phase * 0.25);
-        // Y combina arco de hélice (sin 1x) con acento de conga (sin 3x)
+        // Espiral respirante: radio 0.40→0.95→0.40 por vuelta (sin sierra, solo seno abs)
+        const r = 0.40 + 0.55 * Math.abs(Math.sin(phase * 0.5));
+        // Acento rectificado: golpe de conga 2 veces por ciclo, asimétrico (solo cresta positiva)
+        const congaAccent = Math.max(0, Math.sin(fixturePhase * 2)) * 0.35;
         outPos.x = Math.cos(fixturePhase) * r;
-        outPos.y = Math.sin(fixturePhase) * 0.60 + Math.sin(fixturePhase * 3) * 0.18;
+        outPos.y = Math.sin(fixturePhase) * 0.55 + congaAccent;
     },
     // POP-ROCK PATTERNS - Stadium / Symmetry / Majestuosidad
     // CIRCLE_BIG: El rey de los estadios
@@ -789,6 +862,11 @@ export class VibeMovementManager {
         else {
             position.y = Math.min(position.y, TILT_CEILING);
         }
+        // WAVE 6020.9 SURVIVAL LOG: Confirm VMM ceiling decision and clamped output
+        // 🩸 WAVE 6040: Silenciado — logs de supervivencia ya no necesarios en producción
+        // if (Math.random() < 0.001) {
+        //   console.log(`[WAVE-6020.9-SURVIVAL] VMM: mount=${effectiveMount} isCeiling=${isCeilingMount} tiltOffset=${tiltOffset.toFixed(3)} rawY=${rawPosition.y.toFixed(3)} outY=${position.y.toFixed(3)}`)
+        // }
         // WAVE 4741 ASALTO 2: KINETIC CROSSFADE
         // Guard defensivo: si el fromPattern ya no existe en este vibe (edge case de cambio
         // de vibe rápido), matar el crossfade antes de calcular nada.

@@ -30,6 +30,8 @@ import { aetherKineticEngine } from './AetherKineticEngine';
 // CALIBRATION STATE — Global tracker para fixtures en modo calibración
 // ─────────────────────────────────────────────────────────────────────────────
 const _calibrationModeFixtures = new Set();
+// WAVE 6020 FIX: Claves IK que NUNCA deben sobrevivir en merges aditivos
+const IK_POISON_KEYS = new Set(['targetX', 'targetY', 'targetZ', 'focusX', 'focusY', 'focusZ']);
 // ─────────────────────────────────────────────────────────────────────────────
 // REGISTRATION
 // ─────────────────────────────────────────────────────────────────────────────
@@ -54,6 +56,12 @@ export function registerAetherIPCHandlers() {
             const arbiter = getTitanOrchestrator().getAetherArbiter();
             for (const { nodeId, channels } of payloads) {
                 if (typeof nodeId === 'string' && nodeId.length > 0 && channels && typeof channels === 'object') {
+                    // WAVE 6020.8 DIAG: Log base anchor values — IK-space contamination check
+                    const ch = channels;
+                    if ('pan_base' in ch || 'tilt_base' in ch) {
+                        const hasFade = arbiter.hasReleaseFade(nodeId);
+                        console.log(`[ZOMBIE-DIAG] setManualOverrides ${nodeId}: pan_base=${ch['pan_base']?.toFixed(4)} tilt_base=${ch['tilt_base']?.toFixed(4)} hasFade=${hasFade}`);
+                    }
                     arbiter.setManualOverride(nodeId, channels);
                 }
             }
@@ -130,8 +138,12 @@ export function registerAetherIPCHandlers() {
      * sin arbiter (stop() sin argumento) y quedan overrides huérfanos.
      */
     ipcMain.handle('lux:aether:clearAllMotorKineticOverrides', () => {
+        console.log('[ZOMBIE-DIAG] IPC clearAllMotorKineticOverrides called');
         try {
-            getTitanOrchestrator().getAetherArbiter().clearAllMotorKineticOverrides();
+            const arbiter = getTitanOrchestrator().getAetherArbiter();
+            const preCount = arbiter._motorKineticOverrides?.size ?? 'unknown';
+            arbiter.clearAllMotorKineticOverrides();
+            console.log(`[ZOMBIE-DIAG] clearAllMotorKineticOverrides: ${preCount} entries cleared`);
             return { success: true };
         }
         catch (err) {
@@ -326,12 +338,20 @@ export function registerAetherIPCHandlers() {
      * el L0 queda en home (0.5) y el orbit math del Arbiter pasa pan_base sin suma.
      */
     ipcMain.handle('lux:aether:setManualPattern', (_event, { fixtureIds, pattern, speed, amplitude, fan, anchorPan, anchorTilt }) => {
-        console.log('[SONDA L2-IPC] Payload recibido:', { fixtureIds: fixtureIds?.length, pattern, speed, amplitude, fan, anchorPan, anchorTilt });
+        console.log('[ZOMBIE-DIAG] 🔥 setManualPattern ENTER. Payload:', { fixtureIds: fixtureIds?.length, pattern, speed, amplitude, fan, anchorPan, anchorTilt });
+        const arbiter = getTitanOrchestrator().getAetherArbiter();
+        const diagNodeIds = fixtureIds.map(id => `${id}:kinetic`);
+        for (const nodeId of diagNodeIds) {
+            const manual = arbiter.getManualOverride(nodeId);
+            const motor = arbiter.getMotorKineticOverride(nodeId);
+            if (manual || motor) {
+                console.log(`[ZOMBIE-DIAG] Pre-op state ${nodeId}: manualKeys=[${manual ? Object.keys(manual).join(',') : 'none'}] motorKeys=[${motor ? Object.keys(motor).join(',') : 'none'}]`);
+            }
+        }
         if (!Array.isArray(fixtureIds) || fixtureIds.length === 0) {
             return { success: false, error: 'fixtureIds must be a non-empty array' };
         }
         try {
-            const arbiter = getTitanOrchestrator().getAetherArbiter();
             // ═══════════════════════════════════════════════════════════════
             // WAVE 6019.5 — HANDOFF L2→L0: SEPARACIÓN RELEASE vs HOLD
             //
@@ -344,10 +364,97 @@ export function registerAetherIPCHandlers() {
             //   posición espacial. El operador quiere mantener la escena.
             // ═══════════════════════════════════════════════════════════════
             if (pattern === 'release' || pattern === 'idle' || pattern === null) {
+                console.log('[ZOMBIE-DIAG] → Branch RELEASE/NULL (restoring fade + clean snapshot)');
+                const orchestrator = getTitanOrchestrator();
+                const nodeGraph = orchestrator.getAetherNodeGraph();
                 const removeNodeIds = fixtureIds.map(id => `${id}:kinetic`);
+                // WAVE 6020.5 FIX: Capturar estado IK ANTES de removeNodes.
+                // currentPosition.tilt tiene semántica distinta según la ruta:
+                //   · Ruta IK  (_writeNodeIK): guarda DMX_físico/255 — el IKEngine
+                //     calcula los ángulos sin inversión. Para que el fade clásico
+                //     mantenga la misma posición física, hay que aplicar 1−value
+                //     (NodeResolver invertirá el resultado con 255−dmxValue).
+                //   · Ruta clásica (VMM/L0): guarda el valor pre-inversión del
+                //     Arbiter. NodeResolver lo invierte solo al emitir. Si aplicamos
+                //     1−value encima, habrá doble inversión → fixture al lado opuesto.
+                // Solución: solo invertir si el nodo tenía motor kinetic override activo
+                // (= estaba en modo IK). removeNodes lo limpiará enseguida, así que
+                // hay que capturarlo AQUÍ antes de llamarlo.
+                const ikActiveNodes = new Set();
+                for (const nodeId of removeNodeIds) {
+                    if (arbiter.getMotorKineticOverride(nodeId)) {
+                        ikActiveNodes.add(nodeId);
+                    }
+                }
                 aetherKineticEngine.removeNodes(removeNodeIds, arbiter);
+                // WAVE 6020.12: Purgar motor overrides huérfanos de applySpatialTarget.
+                // removeNodes solo limpia los nodos que estaban en _nodeConfigs del AKE.
+                // Los spatial targets escriben directo al arbiter vía setMotorKineticOverride
+                // sin pasar por AKE → removeNodes los ignora. Debemos exorcizarlos aquí.
+                for (const nodeId of removeNodeIds) {
+                    arbiter.clearMotorKineticOverride(nodeId);
+                    // WAVE 6020.13: Purgar escala de distancia espacial. Si persiste,
+                    // _applyRelativeOffsetFusion multiplica los offsets L0 por un factor
+                    // grande (ej. 2.0 para fixtures cercanos al target), amplificando el
+                    // movimiento post-Unlock y disparando el Airbag.
+                    arbiter.clearSpatialDistanceScale(nodeId);
+                }
+                const physicsPP = orchestrator.getPhysicsPostProcessor();
                 for (const id of fixtureIds) {
-                    arbiter.clearManualOverride(`${id}:kinetic`);
+                    const nodeId = `${id}:kinetic`;
+                    const kineticNode = nodeGraph.getNodeData(nodeId);
+                    if (kineticNode?.currentPosition) {
+                        let safePan = kineticNode.currentPosition.pan;
+                        let safeTilt = kineticNode.currentPosition.tilt;
+                        // Detectar si NodeResolver aplica 255-dmxValue en ruta clásica
+                        // (misma lógica que _shouldInvertClassicKineticAxes).
+                        const device = nodeGraph.getDevice(kineticNode.deviceId);
+                        const deviceOrientation = device?.orientation?.toLowerCase().trim();
+                        const installation = kineticNode.ikOrientation?.installation;
+                        const pitch = kineticNode.ikOrientation?.rotation?.pitch;
+                        const isClassicInverted = (deviceOrientation?.includes('ceiling') || deviceOrientation?.startsWith('truss')) ||
+                            (installation === 'ceiling' || installation === 'truss-front' || installation === 'truss-back') ||
+                            (Number.isFinite(pitch) && Math.abs(Math.abs(pitch) - 180) < 0.001);
+                        // Solo aplicar traducción IK→Clásico si el fixture venía de modo IK.
+                        // En modo VMM clásico NO hay que invertir: NodeResolver ya lo hace.
+                        const wasInIKMode = ikActiveNodes.has(nodeId);
+                        if (isClassicInverted && wasInIKMode) {
+                            safeTilt = 1.0 - safeTilt;
+                        }
+                        if (Number.isFinite(safePan) && Number.isFinite(safeTilt)) {
+                            arbiter.setManualOverride(nodeId, { pan: safePan, tilt: safeTilt });
+                            // WAVE 6020.6 FIX: Sembrar el estado de física del PPP con el
+                            // snapshot. Sin esto, PhysicsPostProcessor sobreescribe
+                            // entry['pan/tilt'] con state[SLOT_PAN/TILT_POS] stale (0.5,
+                            // congelado desde antes del modo espacial), ignorando el snapshot
+                            // correcto que _applyReleaseFades inyecta. Con seed=snapshot,
+                            // delta PPP = 0 → no interpola → fixture permanece en posición.
+                            physicsPP.seedClassicState(nodeId, safePan, safeTilt);
+                            console.log(`[ZOMBIE-DIAG] Safe snapshot seeded ${nodeId}: pan=${safePan.toFixed(4)} tilt=${safeTilt.toFixed(4)} (classicInv=${isClassicInverted} wasIK=${wasInIKMode})`);
+                        }
+                    }
+                    arbiter.clearManualOverride(nodeId);
+                    // WAVE 6020.10 ATOMIC IK PURGE: Purgar claves IK del nodo BASE
+                    // DESPUÉS de capturar el snapshot y ANTES de que cualquier frame corra.
+                    // Esto elimina la race condition de purgeBaseSpatial (IPC async) que
+                    // ejecutaba ANTES de este handler y sobreescribía currentPosition.tilt
+                    // via ruta clásica (ceiling: 255-127=128, 128/255≈0.5020) antes del snapshot.
+                    // WAVE 6020.11: Ampliado a :kinetic — Ruta IK Fantasma erradicada.
+                    const targetNodes = [id, `${id}:kinetic`];
+                    for (const nodeId of targetNodes) {
+                        const manualOverride = arbiter.getManualOverride(nodeId);
+                        if (manualOverride) {
+                            for (const key of IK_POISON_KEYS) {
+                                delete manualOverride[key];
+                            }
+                        }
+                    }
+                    physicsPP.resetSpatialState(`${id}:kinetic`);
+                }
+                for (const nodeId of removeNodeIds) {
+                    const manual = arbiter.getManualOverride(nodeId);
+                    const motor = arbiter.getMotorKineticOverride(nodeId);
+                    console.log(`[ZOMBIE-DIAG] Post-RELEASE ${nodeId}: manual=${manual ? 'EXISTS:' + Object.keys(manual).join(',') : 'CLEARED'} motor=${motor ? 'EXISTS:' + Object.keys(motor).join(',') : 'CLEARED'}`);
                 }
                 if (!aetherKineticEngine.isActive()) {
                     vibeMovementManager.setManualPattern(null);
@@ -355,10 +462,23 @@ export function registerAetherIPCHandlers() {
                     vibeMovementManager.setManualAmplitude(null);
                     vibeMovementManager.setKineticFanOffsets({});
                 }
+                console.log('[ZOMBIE-DIAG] ✅ RELEASE branch complete');
                 return { success: true };
             }
             if (pattern === 'hold' || pattern === 'static') {
+                console.log('[ZOMBIE-DIAG] → Branch HOLD (freeze intentional)');
                 const removeNodeIds = fixtureIds.map(id => `${id}:kinetic`);
+                // WAVE 6020 FIX: Purge veneno IK de _manualOverrides ANTES del merge aditivo.
+                // Si targetX/Y/Z sobrevivieron de un spatial target previo, el merge
+                // in-place de setManualOverride las preservaría → zombie state permanente.
+                for (const nodeId of removeNodeIds) {
+                    const manual = arbiter.getManualOverride(nodeId);
+                    if (manual) {
+                        for (const key of IK_POISON_KEYS) {
+                            delete manual[key];
+                        }
+                    }
+                }
                 // WAVE 6019.4 FIX — HOLD STATE PRESERVATION
                 // Migrar el estado IK activo (_motorKineticOverrides) a
                 // _manualOverrides para que NodeArbiter._applyRelativeOffsetFusion
@@ -380,12 +500,18 @@ export function registerAetherIPCHandlers() {
                         arbiter.clearManualOverride(`${id}:kinetic`);
                     }
                 }
+                for (const nodeId of removeNodeIds) {
+                    const manual = arbiter.getManualOverride(nodeId);
+                    const motor = arbiter.getMotorKineticOverride(nodeId);
+                    console.log(`[ZOMBIE-DIAG] Post-HOLD ${nodeId}: manual=${manual ? 'EXISTS:' + Object.keys(manual).join(',') : 'CLEARED'} motor=${motor ? 'EXISTS:' + Object.keys(motor).join(',') : 'CLEARED'}`);
+                }
                 if (!aetherKineticEngine.isActive()) {
                     vibeMovementManager.setManualPattern(null);
                     vibeMovementManager.setManualSpeed(null);
                     vibeMovementManager.setManualAmplitude(null);
                     vibeMovementManager.setKineticFanOffsets({});
                 }
+                console.log('[ZOMBIE-DIAG] ✅ HOLD branch complete');
                 return { success: true };
             }
             // Normalizar speed/amplitude de rango UI [0–100] a [0, 1]
@@ -469,14 +595,24 @@ export function registerAetherIPCHandlers() {
                 // Solo escribir el anchor en _manualOverrides cuando tenemos un valor real.
                 // Si resolvedAnchor es null (ej. nodo con IK activo en motor pero sin pan_base
                 // en manual), no tocar — el engine IK escribirá el anchor en el siguiente tick.
-                const prev = manual ?? {};
+                // WAVE 6020 OPUS FIX: Filtrar veneno IK del spread prev.
+                // El merge aditivo de setManualOverride preserva targetX/Y/Z
+                // si los re-escribimos con ...prev. Construir safePrev excluyendo
+                // las coordenadas IK para que no se propaguen al nuevo estado.
+                const safePrev = {};
+                if (manual) {
+                    for (const key in manual) {
+                        if (!IK_POISON_KEYS.has(key))
+                            safePrev[key] = manual[key];
+                    }
+                }
                 const anchorWrite = {};
                 if (resolvedAnchorPan !== null)
                     anchorWrite['pan_base'] = resolvedAnchorPan;
                 if (resolvedAnchorTilt !== null)
                     anchorWrite['tilt_base'] = resolvedAnchorTilt;
                 if (Object.keys(anchorWrite).length > 0) {
-                    arbiter.setManualOverride(nodeId, { ...prev, ...anchorWrite });
+                    arbiter.setManualOverride(nodeId, { ...safePrev, ...anchorWrite });
                 }
                 if (livePan !== null)
                     radarPreservedCount++; // "vivo" cuenta como radar-preserved en logs
@@ -716,6 +852,7 @@ export function registerAetherIPCHandlers() {
                     pan_base: panNorm,
                     tilt_base: tiltNorm,
                 });
+                console.log(`[ZOMBIE-DIAG] applySpatialTarget wrote motor override ${id}: pan_base=${panNorm.toFixed(4)} tilt_base=${tiltNorm.toFixed(4)}`);
                 serialized[id] = ikResult;
             }
             return { success: true, results: serialized };

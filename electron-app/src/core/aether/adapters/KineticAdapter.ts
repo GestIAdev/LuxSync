@@ -239,23 +239,18 @@ export class KineticAdapter extends BaseSystem<IKineticNodeData> implements IAet
       // 🎭 WAVE 4717.2: L2 fan phase offset — suma el desfase calculado por el bridge
       // según el orden de selección del usuario (determinista, cero alloc).
       // WAVE 4988 Paso 1: Topología declarativa por zoneId.
-      // WAVE 6019.4 FIX — ZONA NEUTRAL (EPSILON):
-      // La clasificación L/R por zoneId.includes('right') rompe la simetría
-      // en focos cercanos a X=0: un foco central clasificado como 'right'
-      // recibe fase π mientras su gemelo 'left' recibe 0 → patrones divergen.
-      // Usamos la posición física real con una zona neutral de ±0.5m:
-      //   |x| ≤ 0.5  → fase 0 (centro, sincronizado)
-      //   x > 0.5    → fase π (derecha)
-      //   x < -0.5   → fase 0 (izquierda)
+      // WAVE 6020.10 FIX — ZONA NEUTRAL DESTRUIDA:
+      // La zona neutral |x| ≤ 0.5 secuestraba focos centrales (+0.25)
+      // forzándolos a phase=0 (izquierda), provocando trayectorias extremas
+      // que disparaban el Airbag del AetherAduana.
+      // Ahora la clasificación es estrictamente binaria por eje X:
+      //   posX >= 0 → phase π (derecha estricta, incluye centro y +0.25)
+      //   posX < 0  → phase 0 (izquierda estricta)
       // Fallback a zoneId si no hay posición física (compat legacy).
       const posX = node.physicalPosition?.x ?? node.position?.x
       let lrPhaseOffset = 0
       if (posX !== undefined && Number.isFinite(posX)) {
-        if (posX > 0.5) {
-          lrPhaseOffset = Math.PI
-        }
-        // |x| ≤ 0.5 → 0 (zona neutral)
-        // x < -0.5 → 0 (izquierda)
+        lrPhaseOffset = posX >= 0 ? Math.PI : 0
       } else {
         lrPhaseOffset = (node.zoneId && typeof node.zoneId === 'string' && node.zoneId.includes('right')) ? Math.PI : 0
       }

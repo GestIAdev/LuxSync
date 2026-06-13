@@ -139,18 +139,35 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
   }, [setRadarModeOverride])
 
   const handleUnlockKinetics = useCallback(() => {
+    // 🔬 WAVE 6020 DIAG: Logging completo del Unlock
+    console.log('[ZOMBIE-DIAG] 🚨 UNLOCK STARTED. selectedIds:', selectedIds)
+    const preStore = useProgrammerStore.getState()
+    const preOverrides = Array.from(preStore.fixtureOverrides.entries())
+      .filter(([_, v]) => (v as any).targetX !== null || (v as any).targetY !== null || (v as any).targetZ !== null)
+    const preCellOverrides = Array.from(preStore.cellOverrides.entries())
+      .filter(([_, v]) => (v as any).targetX !== undefined || (v as any).targetY !== undefined || (v as any).targetZ !== undefined)
+    console.log('[ZOMBIE-DIAG] Pre-Unlock fixtureOverrides con spatial:', preOverrides.map(([id, v]) => ({ id, targetX: (v as any).targetX, targetY: (v as any).targetY, targetZ: (v as any).targetZ })))
+    console.log('[ZOMBIE-DIAG] Pre-Unlock cellOverrides con spatial:', preCellOverrides.map(([id, v]) => ({ id, targetX: (v as any).targetX, targetY: (v as any).targetY, targetZ: (v as any).targetZ })))
+
     // WAVE 4868: unlock de Cathedral debe ser estrictamente cinético.
     // Limpia solo KINETIC + motor cinético + estado UI asociado.
     // WAVE 6019.6 FIX: purgar targets espaciales ANTES de releaseKinetics
     // para que ProgrammerAetherBridge no re-inyecte targetX/Y/Z zombis
     // en el frame siguiente al Unlock.
     if (selectedIds.length > 0) {
+      console.log('[ZOMBIE-DIAG] Step 1: clearSpatialTargets')
       useProgrammerStore.getState().clearSpatialTargets(selectedIds)
+      // WAVE 6020.10: purgeBaseSpatial eliminado — la purga IK de nodo base
+      // ahora ocurre de forma atómica dentro de setManualPattern RELEASE/NULL
+      // (AetherIPCHandlers.ts), garantizando que el snapshot se capture ANTES
+      // de borrar targetX/Y/Z y evitando la race condition que causaba tilt=0.5.
     }
     // 1) NodeArbiter L2 (solo dominio KINETIC)
+    console.log('[ZOMBIE-DIAG] Step 2: releaseKinetics')
     useProgrammerStore.getState().releaseKinetics()
     if (selectedIds.length > 0) {
       // 2) Motor L2 + VMM legacy + KineticEngine
+      console.log('[ZOMBIE-DIAG] Step 3: IPC setManualPattern(null)')
       void window.lux?.aether?.setManualPattern({
         fixtureIds: selectedIds,
         pattern: null,
@@ -158,21 +175,32 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
         amplitude: 50,
       })
       // 3) VMM: limpiar phase offsets del fan residuales
+      console.log('[ZOMBIE-DIAG] Step 4: IPC setKineticFanOffsets({})')
       void window.lux?.aether?.setKineticFanOffsets({})
     }
     // 4) Safety net: barrer Dual-Map global del motor por si quedaron huérfanos
+    console.log('[ZOMBIE-DIAG] Step 5: IPC clearAllMotorKineticOverrides')
     void window.lux?.aether?.clearAllMotorKineticOverrides?.()
     // 5) UI: resetear patrón y dinámicas que NO disparan flush
     //    (pattern/speed/amplitude no son leídas por la subscripción classic).
+    // WAVE 6020: Escudo anti-doble-disparo. setActivePattern('none')
+    // dispara _flushPattern('hold') que competiría con el RELEASE anterior.
+    console.log('[ZOMBIE-DIAG] Step 6: setActivePattern(none) → ESCUDO _isUnlocking ON')
     const ms = useMovementStore.getState()
+    ms.setIsUnlocking(true)
     ms.setActivePattern('none')
     ms.setPatternSpeed(50)
+    setTimeout(() => {
+      useMovementStore.getState().setIsUnlocking(false)
+      console.log('[ZOMBIE-DIAG] _isUnlocking shield OFF (50ms)')
+    }, 50)
     ms.setPatternAmplitude(50)
     // 6) WAVE 4709 T2 — RESET RADAR UI silencioso:
     //    devuelve pan/tilt/fan/chaos a defaults SIN dispar un flush a L2.
     //    Si los reseteáramos directamente, la subscripción classic del bridge
     //    grabaría el "centro" como nuevo lock manual y la IA (L0) quedaría
     //    bloqueada de retomar el control hasta el próximo click del operador.
+    console.log('[ZOMBIE-DIAG] Step 7: resetRadarSilent')
     KineticsBridge.resetRadarSilent()
     // 7) EXORCISMO: limpiar Sets zombificados
     ms.setManualOverrideForFixtures(selectedIds, false)
@@ -180,6 +208,7 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
     // 8) WAVE 4882: resetear paradigma de radar al estado neutro
     ms.setRadarModeOverride(null)
     setViewMode('individual')
+    console.log('[ZOMBIE-DIAG] ✅ UNLOCK SEQUENCE COMPLETE')
   }, [selectedIds])
 
   // ─────────────────────────────────────────────────────────────────────────

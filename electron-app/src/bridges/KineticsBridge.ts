@@ -543,6 +543,15 @@ class KineticsBridgeClass {
     patternAmplitude: number,
     fanValue: number,
   ): Promise<void> {
+    // WAVE 6020: Escudo anti-doble-disparo durante Unlock.
+    // Si el operador acaba de pulsar Unlock, setActivePattern('none')
+    // intentaría enviar 'hold' inmediatamente después del RELEASE.
+    // Este escudo neutraliza la race condition por 50ms.
+    if (useMovementStore.getState()._isUnlocking) {
+      console.log('[ZOMBIE-DIAG] _flushPattern ABORTED — _isUnlocking shield active')
+      return
+    }
+
     const fixtureIds = getSelectedIds()
     if (fixtureIds.length === 0) return
 
@@ -552,6 +561,15 @@ class KineticsBridgeClass {
     // forzando la ruta IK (NodeResolver) o silenciando L0 (KineticAdapter).
     // Los limpiamos ANTES de que el backend reciba el nuevo patrón.
     useProgrammerStore.getState().clearSpatialTargets(fixtureIds)
+
+    // WAVE 6020 OPUS FIX: Decapitar el temporizador espacial.
+    // Si hay un _flushSpatial pendiente (debounce 20ms), cancelarlo
+    // para que no re-inyecte _motorKineticOverrides huérfanos después
+    // de que el backend procese el nuevo patrón.
+    if (this._spatialFlushTimeout !== null) {
+      clearTimeout(this._spatialFlushTimeout)
+      this._spatialFlushTimeout = null
+    }
 
     // WAVE 4719: GUARD SUICIDA ELIMINADO.
     // El patron y la posicion base son ortogonales — el operador DEBE poder
@@ -607,6 +625,7 @@ class KineticsBridgeClass {
     // no tiene información fresca y respeta la memoria existente en L2.
     // Cuando el operador SÍ mueve el radar, _flushClassic escribe pan_base/tilt_base
     // en _manualOverrides vía setManualOverrides — esa es la ruta correcta para el anchor.
+    console.log('[ZOMBIE-DIAG] _flushPattern payload:', { enginePattern, fixtureIds: fixtureIds.length, isStop, samePatternAndFixtures, activePattern })
     console.log('[SONDA L2-FRONT] Enviando patrón:', enginePattern, 'Fixtures:', fixtureIds.length, '(anchor delegado al backend)')
     try {
       await window.lux?.aether?.setManualPattern({
@@ -649,6 +668,17 @@ class KineticsBridgeClass {
     fanMode: string,
     fanAmplitude: number,
   ): Promise<void> {
+    console.log('[ZOMBIE-DIAG] _flushSpatial ENTER. target:', target, 'fixtureIds:', fixtureIds.length)
+    // WAVE 6020 OPUS FIX: Guard de seguridad. Si el frontend ya no está
+    // en modo espacial (el operador hizo Unlock o cambió a clásico),
+    // este timer es un stale debounce — abortar para no re-inyectar
+    // _motorKineticOverrides huérfanos.
+    const { radarModeOverride } = useMovementStore.getState()
+    if (radarModeOverride !== 'spatial') {
+      console.log('[ZOMBIE-DIAG] _flushSpatial ABORTED — radarModeOverride is', radarModeOverride)
+      return
+    }
+
     // WAVE 4884 Fase 2A: leer posiciones reales desde stageStore y empaquetarlas
     // en el payload del IPC. El backend usaba (orchestrator as any).fixtures que
     // podría tener posiciones {0,0,0} si el sync setFixtures no ocurrió con

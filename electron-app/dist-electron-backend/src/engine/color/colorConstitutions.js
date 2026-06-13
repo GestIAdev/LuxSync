@@ -302,35 +302,37 @@ export const ROCK_CONSTITUTION = {
     },
 };
 // ═══════════════════════════════════════════════════════════════════════════
-// 🌊 CONSTITUCIÓN CHILL-LOUNGE: "El Abismo Oceánico" (WAVE 4755)
+// 🌊 CONSTITUCIÓN CHILL-LOUNGE: "El Abismo Oceánico" (WAVE 6055)
 // ═══════════════════════════════════════════════════════════════════════════
 /**
- * WAVE 4755: LA LEY DEL ABISMO — Constitución Cromática del Chillout.
+ * WAVE 6055 — OPERACIÓN OCÉANO: Paleta Abisal.
  *
- * En el reino del Chill, el calor es herejía. Solo la bioluminiscencia vive.
- * El espectro cálido y agresivo está TERMINANTEMENTE PROHIBIDO.
+ * La Zona Alga (verde) ha sido fulminada. El océano no conoce el verde lima.
+ * Solo el abismo cian-azul y los destellos de bioluminiscencia magenta.
  *
  * ════════════════════════════════════════════════════════════
- * ZONAS PROHIBIDAS (La Zona Incandescente):
- *   🔴 330° → 360°/0° → 70°: Rojo / Naranja / Amarillo puro
- *   Cruza el 0° → se define como rango dual:
- *     [[330, 360], [0, 70]]  ← dos entradas para cubrir el cruce
+ * ZONAS PROHIBIDAS (La Zona Incandescente + La Zona Alga):
+ *   🔴 330° → 360°/0° → 180°: Todo el espectro cálido + verde
+ *     [330, 360] = Rojo agresivo / Coral
+ *     [0,   180] = Naranja / Amarillo / Lima / Verde — FULMINADOS
+ *   Elastic Rotation empuja infractores hacia 180° (Cian) como suelo.
  *
- * ZONAS PERMITIDAS (El Espectro Bioluminiscente):
- *   🌿 ZONA ALGA:       70° -  135° (Verde Lima → Verde Esmeralda)
- *   🌊 ZONA CORAL:     135° -  200° (Turquesa → Cian)
- *   🐋 ZONA ABISAL:    200° -  260° (Azul Profundo → Índigo)
- *   🪼 ZONA MEDUSA:    260° -  330° (Violeta → Magenta Frío)
+ * ZONAS PERMITIDAS (El Espectro Abisal):
+ *   🐋 ZONA ABISAL:    180° - 260° (Cian → Azul Profundo → Índigo)
+ *                       80° de arco = columna vertebral cromática del chill.
+ *   🪼 BIOLUMINISCENCIA: 290° - 320° (Magenta Frío → Magenta Vibrante)
+ *                       30° de ventana — ráfagas ocasionales de medusa.
+ *                       Accionado principalmente como color de acento
+ *                       (accentBehavior: 'breathing').
  * ════════════════════════════════════════════════════════════
  *
  * REGLA DE ESTRATEGIA:
  *   forceStrategy: 'analogous' es CONSTITUCIONAL y NO puede ser overrideado
- *   por el StrategyArbiter. En el océano no hay contrastes complementarios.
+ *   por el StrategyArbiter. En el abismo no hay contrastes complementarios.
  *   TitanEngine.ts respeta este flag cuando vibeId === 'chill-lounge'.
  *
  * REGLA DE TRANSICIÓN:
- *   minDuration: 20000ms (20 segundos). Las paletas mutan como corrientes
- *   submarinas — imperceptibles en tiempo real, pero transformadoras.
+ *   minDuration: 20000ms (20 segundos). Las corrientes marinas no se apuran.
  */
 export const CHILL_CONSTITUTION = {
     // ── ESTRATEGIA ANÁLOGA CONSTITUCIONAL ──────────────────────────────────
@@ -344,16 +346,18 @@ export const CHILL_CONSTITUTION = {
     atmosphericTemp: 8500,
     thermalGravityStrength: 0.18,
     // ── LA LEY DEL ABISMO: ZONAS PROHIBIDAS ────────────────────────────────
-    // El rango cálido cruza el 0° → necesita dos entradas para cubrirlo:
-    //   [330, 360] = Rojo cálido / Coral agresivo
-    //   [0,   70]  = Naranja / Amarillo / Lima caliente
-    // Elastic Rotation (paso 20°) expulsa infractores hacia Verde/Cian.
-    forbiddenHueRanges: [[330, 360], [0, 70]],
+    // [330, 360] = Rojo agresivo / Coral
+    // [0,   180] = Naranja / Amarillo / Verde Lima / Verde — ZONA ALGA FULMINADA
+    // Elastic Rotation (paso 20°) empuja infractores hacia 180° (Cian).
+    forbiddenHueRanges: [[330, 360], [0, 180]],
     elasticRotation: 20,
-    // ── ESPECTRO PERMITIDO: 260° DE UNIVERSO BIOLUMINISCENTE ───────────────
-    // [70, 330] = Verde Esmeralda → Violeta → Magenta Frío
-    // 260° de arco = infinita diversidad orgánica sin un solo tono caliente.
-    allowedHueRanges: [[70, 330]],
+    // ── ESPECTRO ABISAL: CIAN → AZUL PROFUNDO + BIOLUMINISCENCIA ───────────
+    // [180, 260] = Cian → Azul Profundo → Índigo (columna cromática principal)
+    // [290, 320] = Magenta Frío → Magenta Vibrante (destellos de medusa)
+    // El motor de color distribuirá ~73% del tiempo en [180,260] y ~27% en
+    // [290,320] por simple proporción de arco. El acento breathing reforzará
+    // las ráfagas magenta como bioluminiscencia puntual.
+    allowedHueRanges: [[180, 260], [290, 320]],
     // ── SATURACIÓN RESPIRATORIA ────────────────────────────────────────────
     // [50, 85]: Piso 50 = bioluminiscencia siempre visible (no lavado).
     //           Techo 85 = evitar plástico neón de saturación 100.

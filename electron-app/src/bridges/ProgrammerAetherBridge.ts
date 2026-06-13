@@ -137,6 +137,7 @@ function extractKinetic(ov: ProgrammerOverrides | undefined, hasActivePattern: b
     ch['targetX'] = ov.targetX!
     ch['targetY'] = ov.targetY!
     ch['targetZ'] = ov.targetZ!
+    console.log(`[ZOMBIE-DIAG] extractKinetic LEGACY EMITIÓ SPATIAL: targetX=${ov.targetX} targetY=${ov.targetY} targetZ=${ov.targetZ}`)
   } else if (!hasActivePattern) {
     // Sin patrón activo → canales absolutos LTP normales
     if (ov.pan  !== null) ch['pan']  = ov.pan
@@ -307,6 +308,7 @@ function extractCellKinetic(data: KineticCellPayload, hasActivePattern: boolean)
     ch['targetX'] = data.targetX!
     ch['targetY'] = data.targetY!
     ch['targetZ'] = data.targetZ!
+    console.log(`[ZOMBIE-DIAG] extractCellKinetic EMITIÓ SPATIAL: targetX=${data.targetX} targetY=${data.targetY} targetZ=${data.targetZ}`)
   } else if (!hasActivePattern) {
     if (data.pan  !== undefined) ch['pan']  = data.pan
     if (data.tilt !== undefined) ch['tilt'] = data.tilt
@@ -563,6 +565,12 @@ class ProgrammerAetherBridgeClass {
 
     if (finalSetPayloads.length > 0) {
       // 🔬 WAVE 4735.6 BRIDGE DIAG: exact payload about to be sent via IPC
+      const spatialPayloads = finalSetPayloads.filter(p =>
+        Object.keys(p.channels).some(k => ['targetX','targetY','targetZ','focusX','focusY','focusZ'].includes(k))
+      )
+      if (spatialPayloads.length > 0) {
+        console.log(`[ZOMBIE-DIAG] 🚨 Bridge sending SPATIAL payloads: ${spatialPayloads.map(p => `{nodeId:${p.nodeId}, ch:[${Object.keys(p.channels).join(',')}]}`).join(' | ')}`)
+      }
       console.log(
         `[BridgeDiag 🌉 SEND] setPayloads=${finalSetPayloads.length} ` +
         `samples:` +

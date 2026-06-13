@@ -1,87 +1,142 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * WAVE 4750: ChillAmbientEngine — SISTEMA DE MAREAS (Multi-LFO Oceánico)
+ * WAVE 6055: ChillAmbientEngine — OPERACIÓN OCÉANO (SIN SALTOS)
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * Motor de modulación glacial para chill — dueño autónomo de dimmer y morph.
+ * Motor continuo para chill. Cero EMA. Cero estado acumulado.
+ * Base de tiempo absoluta: performance.now() / 1000 — función pura de t.
  *
- * FILOSOFÍA:
- *   Las ondas senoidales de intensidad bypasseaban L2 manual. FULMINADAS.
- *   Ahora: Solo morphFactor (control de decay en LiquidEngine) — nada de dimmer.
- *   Tu control L2 de faders manual RESPETADO por HTP.
+ * ARQUITECTURA (WAVE 6055 — OPERACIÓN OCÉANO):
  *
- * ARQUITECTURA (WAVE 4750 — SISTEMA DE MAREAS):
- *   - Desconectado del audio. No lee bandas espectrales.
- *   - 3 osciladores LFO ultra-lentos (120s, 180s, 240s).
- *     Ventana glacial: pulso principal aproximado cada ~60s.
- *   - Combinación ponderada: LFO1×0.50 + LFO2×0.30 + LFO3×0.20.
- *   - Suavizado EMA (α=0.008 @ 60fps ≈ τ≈2s) para transiciones fluidas.
- *   - morphFactor ∈ [0.25, 0.75] — rango más profundo que el 0.30-0.70 previo.
- *   - **CHANGE WAVE 4709**: Removidas ondas por zona (frontL, frontR, backL, backR).
- *   - Intensidades vienen del LiquidEngine normal → HTP aplica correctamente a L2.
+ *   1. MORPH GLOBAL (El Pulso del Océano)
+ *      Superposición de 2 senos: ciclo de 60s (rápido) y 120s (lento).
+ *      morphFactor ∈ [0.20, 0.80] — suelo 0.20 para evitar blackout.
+ *      Sin EMA: los senos son continuos por definición, no necesitan post-proceso.
  *
- * RESULTADO:
- *   - Pares OBEDECEN tu fader manual de dimmer.
- *   - Luz ambiental "respira" de forma orgánica, nunca mecánica.
- *   - Sin beat-sync que ignora L2.
+ *   2. LA OLA (Offsets Zonales de Intensidad)
+ *      Ola que cruza la sala: frontL → frontR → backL → backR.
+ *      Formula: zone = BASE + AMP × sin(t/vel + phaseOffset)
+ *      Período base: 60 segundos. Paso de fase: 0.5 rad entre zonas.
+ *      Intensidad zonal ∈ [BASE−AMP, BASE+AMP] = [0.10, 0.60].
+ *      Enrutado a liquidStereoOverrides en SeleneLux (chill path).
  *
- * USAGE:
- *   import { chillAmbientEngine } from './ChillAmbientEngine'
- *   const frame = chillAmbientEngine.tick()
- *   // frame.morphFactor en [0.25, 0.75]
- *   // (frontL, backL, etc. ELIMINADAS — usan LiquidEngine normal)
+ *   3. GLACIAR MOVERS (Lissajous Ultra-lento)
+ *      Pan:  sin(t / 45) → período 2π×45 ≈ 283s (4.7 min)
+ *      Tilt: cos(t / 60) → período 2π×60 ≈ 377s (6.3 min)
+ *      Ratio Lissajous: 60/45 = 4/3 → figura en 8 elongada, nunca diagonal plana.
+ *      Mover R: offset +2/3 ciclo en pan, +1/2 ciclo en tilt.
+ *      Beams se cruzan en el aire lentamente y sin simetría perfecta.
+ *      Salida normalizada [0, 1] para buildMechanicsBypassIntent (WAVE 1046).
+ *      Enrutado a deepFieldMechanics en SeleneLux (chill path).
+ *
+ * ROUTING COMPLETO:
+ *   morphFactor  → LiquidEngine71.morphFactorOverride  (SeleneLux)
+ *   dimmer       → dimmerOverride                       (SeleneLux)
+ *   frontL/R     → liquidStereoOverrides.frontL/R       (SeleneLux, post-liquid)
+ *   backL/R      → liquidStereoOverrides.backL/R        (SeleneLux, post-liquid)
+ *   moverL/R     → deepFieldMechanics                   (SeleneLux)
+ *                  → buildMechanicsBypassIntent          (MovementGenerators)
+ *                  → NodeArbiter @layer 'selene' (L0)
+ *   L2 OPERADOR MANUAL: siempre domina sobre L0 (NodeArbiter WAVE 4829).
  *
  * @module hal/physics/ChillAmbientEngine
- * @version WAVE 4750 — SISTEMA DE MAREAS
- * @author PunkOpus
+ * @version WAVE 6055 — OPERACIÓN OCÉANO
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * Períodos PRIMOS de los 3 osciladores LFO (segundos).
- * Primos entre sí → MCM = 31 × 47 × 73 ≈ 106.421s ≈ 29.5 horas.
- * El patrón combinado no se repite dentro de una noche completa de show.
- */
-const LFO1_PERIOD_S = 120.0  // La Corriente Profunda
-const LFO2_PERIOD_S = 180.0  // La Marea Alta
-const LFO3_PERIOD_S = 240.0  // El Glaciar
+const TWO_PI = 2 * Math.PI
 
-/**
- * Pesos de combinación de los 3 LFOs.
- * Deben sumar 1.0 para mantener el rango [0,1] de la suma ponderada.
- */
-const LFO1_WEIGHT = 0.50
-const LFO2_WEIGHT = 0.30
-const LFO3_WEIGHT = 0.20
+// ── 1. MORPH GLOBAL ────────────────────────────────────────────────────────
+/** Período del seno rápido (s) — pulso principal del océano */
+const MORPH_FAST_PERIOD_S = 60.0
+/** Período del seno lento (s) — respiración profunda */
+const MORPH_SLOW_PERIOD_S = 120.0
+/** Peso del seno rápido en la suma ponderada */
+const MORPH_FAST_WEIGHT   = 0.60
+/** Peso del seno lento en la suma ponderada */
+const MORPH_SLOW_WEIGHT   = 0.40
+/** Piso del dimmer — evita blackout total en el valle del seno */
+const MORPH_FLOOR         = 0.20
+/** Rango dinámico sobre el piso */
+const MORPH_RANGE         = 0.60  // → morphFactor ∈ [0.20, 0.80]
 
+// ── 2. LA OLA — Offsets Zonales ────────────────────────────────────────────
+/** Período de la ola (s) — tiempo en que la ola cruza la sala de front a back */
+const TIDE_PERIOD_S        = 60.0
 /**
- * Factor EMA para suavizado del morphFactor.
- * α = 0.008 @ 60fps → τ ≈ 1000 / (60 × 0.008) ≈ 2.1 segundos.
- * Elimina saltos bruscos en transiciones vibe o reinicio del engine.
+ * Velocidad de fase: v = T / (2π) → sin(t / v) tiene período exactamente T.
+ * v ≈ 9.55 s/rad → sin(t / 9.55) cruza un ciclo completo en 60 segundos.
  */
-const EMA_ALPHA = 0.008
+const TIDE_VELOCITY        = TIDE_PERIOD_S / TWO_PI
+/** Intensidad base de cada zona: siempre visible, nunca en negro */
+const WAVE_BASE            = 0.35
+/** Amplitud de la ola sobre la base → zona ∈ [0.10, 0.60] */
+const WAVE_AMPLITUDE       = 0.25
+/** Offsets de fase por zona (rad) — La Ola va de front izq. a back der. */
+const WAVE_PHASE_FRONT_L   = 0.0
+const WAVE_PHASE_FRONT_R   = 0.5
+const WAVE_PHASE_BACK_L    = 1.0
+const WAVE_PHASE_BACK_R    = 1.2
 
+// ── 3. GLACIAR MOVERS — Lissajous ─────────────────────────────────────────
 /**
- * Rango de salida del morphFactor y dimmer glacial.
- * 0..1 para respiración completa (ciclo de 0% a 100%).
+ * Constante de tiempo del pan (s).
+ * sin(t / 45) → período = 2π × 45 ≈ 283 s (4.7 minutos por ciclo completo).
  */
-const MORPH_MIN = 0.0
-const MORPH_RANGE = 1.0
+const MOVER_PAN_TAU        = 45.0
+/**
+ * Constante de tiempo del tilt (s).
+ * cos(t / 60) → período = 2π × 60 ≈ 377 s (6.3 minutos por ciclo completo).
+ * Ratio pan/tilt = 60/45 = 4/3 → Lissajous 4:3, figura en 8 elongada.
+ */
+const MOVER_TILT_TAU       = 60.0
+/**
+ * Offset de fase del mover R respecto al mover L (rad).
+ * TWO_PI × 0.667 ≈ 4.19 rad → los beams se cruzan en el aire dos veces
+ * por ciclo pero nunca son imagen especular exacta (evita la simetría aburrida).
+ */
+const MOVER_R_PAN_OFFSET   = TWO_PI * 0.667
+/** Offset tilt del mover R: π rad → media vuelta de desfase en tilt */
+const MOVER_R_TILT_OFFSET  = TWO_PI * 0.500
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Salida de un tick del ChillAmbientEngine */
+/** Posición de un mover normalizada a [0, 1] para buildMechanicsBypassIntent */
+export interface ChillMoverPosition {
+  /** Pan normalizado [0, 1]. 0 = máx. izquierda, 0.5 = centro, 1 = máx. derecha */
+  readonly pan: number
+  /** Tilt normalizado [0, 1]. 0 = máx. arriba, 0.5 = centro, 1 = máx. abajo */
+  readonly tilt: number
+}
+
+/** Salida completa de un tick del ChillAmbientEngine — WAVE 6055 */
 export interface ChillAmbientFrame {
-  /** morphFactor para LiquidEngine71.morphFactorOverride — en [0, 1] */
+  // ── Morph global ────────────────────────────────────────────────────────
+  /** [0.20, 0.80] → LiquidEngine71.morphFactorOverride */
   readonly morphFactor: number
-  /** Dimmer maestro de chill (0..1), derivado del mismo morph suavizado. */
+  /** [0.20, 0.80] → dimmerOverride (derivado del morph, con suelo anti-blackout) */
   readonly dimmer: number
-  /** Timestamp de este frame (ms) — para debug y telemetría */
+  // ── La Ola — intensidades zonales con fase desfasada ─────────────────────
+  /** [0.10, 0.60] → liquidStereoOverrides.frontL */
+  readonly frontL: number
+  /** [0.10, 0.60] → liquidStereoOverrides.frontR */
+  readonly frontR: number
+  /** [0.10, 0.60] → liquidStereoOverrides.backL */
+  readonly backL: number
+  /** [0.10, 0.60] → liquidStereoOverrides.backR */
+  readonly backR: number
+  // ── Glaciar Movers — Lissajous ultra-lento ───────────────────────────────
+  /** Pan/tilt [0, 1] del mover izquierdo → deepFieldMechanics.moverL */
+  readonly moverL: ChillMoverPosition
+  /** Pan/tilt [0, 1] del mover derecho → deepFieldMechanics.moverR */
+  readonly moverR: ChillMoverPosition
+  // ── Debug ────────────────────────────────────────────────────────────────
+  /** Timestamp de este frame (ms) — para telemetría */
   readonly _ts: number
 }
 
@@ -90,50 +145,69 @@ export interface ChillAmbientFrame {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Motor de morphFactor para chill — 100% determinista, 0% FFT, 0% azar.
- * WAVE 4750: 3 osciladores LFO con períodos primos + suavizado EMA.
- * Solo genera morphFactor para modular envelopes en LiquidEngine71.
+ * WAVE 6055 — Operación Océano.
+ * Motor 100% continuo para chill. Cero estado acumulado. Cero EMA.
+ * Cada tick es función pura de performance.now() — reproducible para el mismo t.
  */
 export class ChillAmbientEngine {
 
   /**
-  * Estado suavizado del morphFactor/dimmer (EMA).
-  * Inicializado al centro para evitar saltos al arrancar.
-   */
-  private _smoothedMorph: number = 0.50
-
-  /**
-   * Genera un frame con morphFactor basado en el sistema de mareas Multi-LFO.
-   * Llamar una vez por frame de render (60fps → ~16ms).
-   * Idempotente para el mismo t: si se llama dos veces en el mismo ms, retorna lo mismo.
+   * Genera un frame completo: morph global, La Ola zonal, y Glaciar Movers.
+   * Llamar una vez por frame (44–60 Hz). Idempotente para el mismo ms.
    */
   tick(): ChillAmbientFrame {
     const tMs = performance.now()
-    const tSec = tMs / 1000
-    const TWO_PI = 2 * Math.PI
+    const t   = tMs / 1000  // base de tiempo continua en segundos
 
-    // ── SISTEMA DE MAREAS: 3 LFOs con períodos primos ────────────────────────
-    // Cada LFO produce [0, 1]. La suma ponderada también da [0, 1].
-    const lfo1 = (Math.sin((TWO_PI * tSec) / LFO1_PERIOD_S) + 1) / 2  // La Corriente Profunda
-    const lfo2 = (Math.sin((TWO_PI * tSec) / LFO2_PERIOD_S) + 1) / 2  // La Marea Alta
-    const lfo3 = (Math.sin((TWO_PI * tSec) / LFO3_PERIOD_S) + 1) / 2  // El Glaciar
+    // ── 1. MORPH GLOBAL — 2 senos directos, sin EMA ─────────────────────────
+    // Cada seno en [0, 1]; suma ponderada en [0, 1]; mapeada a [FLOOR, FLOOR+RANGE].
+    const morph1      = (Math.sin((TWO_PI * t) / MORPH_FAST_PERIOD_S) + 1) / 2
+    const morph2      = (Math.sin((TWO_PI * t) / MORPH_SLOW_PERIOD_S) + 1) / 2
+    const combined    = morph1 * MORPH_FAST_WEIGHT + morph2 * MORPH_SLOW_WEIGHT
+    const morphFactor = MORPH_FLOOR + combined * MORPH_RANGE
 
-    // Suma ponderada normalizada → [0, 1]
-    const combined = lfo1 * LFO1_WEIGHT + lfo2 * LFO2_WEIGHT + lfo3 * LFO3_WEIGHT
+    // ── 2. LA OLA — offsets de fase por zona ─────────────────────────────────
+    // wavePh = t / TIDE_VELOCITY avanza a razón de 1 rad cada ~9.55s.
+    // La ola empieza en frontL y llega a backR con 1.2 rad de desfase total
+    // ≈ ~11.5 segundos de retraso de borde a borde de la sala.
+    const wavePh = t / TIDE_VELOCITY
+    const frontL = WAVE_BASE + WAVE_AMPLITUDE * Math.sin(wavePh + WAVE_PHASE_FRONT_L)
+    const frontR = WAVE_BASE + WAVE_AMPLITUDE * Math.sin(wavePh + WAVE_PHASE_FRONT_R)
+    const backL  = WAVE_BASE + WAVE_AMPLITUDE * Math.sin(wavePh + WAVE_PHASE_BACK_L)
+    const backR  = WAVE_BASE + WAVE_AMPLITUDE * Math.sin(wavePh + WAVE_PHASE_BACK_R)
 
-    // Mapear a rango de salida → [MORPH_MIN, MORPH_MIN + MORPH_RANGE]
-    const morphTarget = MORPH_MIN + combined * MORPH_RANGE
+    // ── 3. GLACIAR MOVERS — Lissajous ultra-lento ────────────────────────────
+    // sin/cos en [-1, 1] → normalizar a [0, 1] para mechanics bypass.
+    // Normalización: normalized = (raw + 1) / 2
+    const panL_raw  = Math.sin(t / MOVER_PAN_TAU)
+    const tiltL_raw = Math.cos(t / MOVER_TILT_TAU)
+    const panR_raw  = Math.sin(t / MOVER_PAN_TAU  + MOVER_R_PAN_OFFSET)
+    const tiltR_raw = Math.cos(t / MOVER_TILT_TAU + MOVER_R_TILT_OFFSET)
 
-    // ── EMA suavizador — elimina saltos en la transición chill→otro vibe ──────
-    this._smoothedMorph += (morphTarget - this._smoothedMorph) * EMA_ALPHA
-    const morphFactor = this._smoothedMorph
+    const moverL: ChillMoverPosition = {
+      pan:  (panL_raw  + 1) / 2,
+      tilt: (tiltL_raw + 1) / 2,
+    }
+    const moverR: ChillMoverPosition = {
+      pan:  (panR_raw  + 1) / 2,
+      tilt: (tiltR_raw + 1) / 2,
+    }
 
-    return { morphFactor, dimmer: morphFactor, _ts: tMs }
+    return {
+      morphFactor,
+      dimmer: morphFactor,
+      frontL, frontR, backL, backR,
+      moverL, moverR,
+      _ts: tMs,
+    }
   }
 
-  /** Resetea el estado EMA al centro del rango (útil en tests o cambio brusco de vibe). */
+  /**
+   * No-op. WAVE 6055 es stateless — no hay EMA que resetear.
+   * Mantenido por compatibilidad con la API de WAVE 4750.
+   */
   reset(): void {
-    this._smoothedMorph = 0.50
+    // Stateless por diseño — performance.now() es la única fuente de verdad.
   }
 }
 

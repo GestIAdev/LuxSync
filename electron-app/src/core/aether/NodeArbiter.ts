@@ -327,6 +327,8 @@ export class NodeArbiter implements INodeArbiter {
 
   setManualOverride(nodeId: NodeId, channels: Readonly<Record<string, number>>): void {
     const existing = this._manualOverrides.get(nodeId)
+    const incomingKeys = Object.keys(channels)
+    const hasSpatial = incomingKeys.some(k => IK_POISON_KEYS.has(k))
     if (existing !== undefined) {
       // Merge in-place: los canales entrantes actualizan los existentes sin borrar otros.
       // Garantiza que KineticsBridge (anchor pan_base/tilt_base) y ProgrammerAetherBridge
@@ -335,12 +337,22 @@ export class NodeArbiter implements INodeArbiter {
       for (const key in channels) {
         mutable[key] = (channels as Record<string, number>)[key]
       }
+      if (hasSpatial || IK_POISON_KEYS.has(incomingKeys[0] || '')) {
+        console.log(`[ZOMBIE-DIAG] setManualOverride MERGE ${nodeId}: incoming=[${incomingKeys.join(',')}] postKeys=[${Object.keys(mutable).join(',')}]`)
+      }
     } else {
       this._manualOverrides.set(nodeId, channels)
+      if (hasSpatial) {
+        console.log(`[ZOMBIE-DIAG] setManualOverride NEW ${nodeId}: keys=[${incomingKeys.join(',')}]`)
+      }
     }
-    // WAVE 4828: Cancel release fade si está en progreso para este nodo
-    // para evitar conflicto con el nuevo override
-    this._releaseStates.delete(nodeId)
+    // WAVE 4828: Cancel release fade si el override entrante escribe pan/tilt directamente.
+    // WAVE 6020.7 FIX: NO cancelar si solo llegan pan_base/tilt_base (bridge VMM).
+    // Un override de base no debe interrumpir el fade de posición del Unlock.
+    const cancelsFade = incomingKeys.some(k => k === 'pan' || k === 'tilt')
+    if (cancelsFade) {
+      this._releaseStates.delete(nodeId)
+    }
   }
 
   /**
@@ -363,40 +375,54 @@ export class NodeArbiter implements INodeArbiter {
     this._seleneOverrideMoverShield = active
   }
 
-  clearManualOverride(nodeId: NodeId, _releaseMs?: number): void {
+  clearManualOverride(nodeId: NodeId, releaseMs?: number): void {
     const channels = this._manualOverrides.get(nodeId)
     if (channels) {
-      // Capturar snapshot para el fade de retorno
-      const snapshot: Record<string, number> = {}
-      const durationByChannel: Record<string, number> = {}
-      for (const key in channels) {
-        // WAVE 6019.6 CORTAFUEGOS: Las coordenadas IK no son ángulos.
-        // Interpolarlas hacia 0 fuerza la ruta IK en NodeResolver
-        // durante todo el fade, colapsando los focos al techo.
-        if (IK_POISON_KEYS.has(key)) continue
-
-        const v = (channels as Record<string, number>)[key]
-        if (typeof v === 'number' && Number.isFinite(v)) {
-          // WAVE 6019.5 FIX: Normalizar keys cinéticas para que el
-          // Release Fader pueda hacer blend con los canales que L0 escribe.
-          // _manualOverrides guarda 'pan_base'/'tilt_base' (anchor de órbita)
-          // pero L0 emite 'pan'/'tilt'. Sin normalización, l0Value siempre
-          // es undefined y el fade nunca se ejecuta para kinetic.
-          let snapshotKey = key
-          if (key === 'pan_base') snapshotKey = 'pan'
-          if (key === 'tilt_base') snapshotKey = 'tilt'
-          snapshot[snapshotKey] = v
-          // WAVE 6019.6: usar snapshotKey (normalizado) en lugar de key
-          // para que pan_base→pan y tilt_base→tilt hereden RELEASE_MS_SLOW.
-          durationByChannel[snapshotKey] = SLOW_RELEASE_CHANNELS.has(snapshotKey) ? RELEASE_MS_SLOW : RELEASE_MS_FAST
-        }
+      const allKeys = Object.keys(channels)
+      const poisonKeys = allKeys.filter(k => IK_POISON_KEYS.has(k))
+      if (poisonKeys.length > 0) {
+        console.log(`[ZOMBIE-DIAG] clearManualOverride ${nodeId}: DELETING node that had POISON keys=[${poisonKeys.join(',')}] allKeys=[${allKeys.join(',')}]`)
       }
-      if (Object.keys(snapshot).length > 0) {
-        this._releaseStates.set(nodeId, {
-          channels: snapshot,
-          startedAtMs: performance.now(),
-          durationByChannel,
-        })
+      // WAVE 6020 FIX: releaseMs === 0 salta el fade snapshot.
+      // Usado por purgas destructivas (Unlock espacial) donde el operador
+      // quiere liberar inmediatamente a L0 sin interpolar contra un patrón
+      // automático recién nacido que tira el foco al techo.
+      const skipFade = releaseMs === 0
+
+      if (!skipFade) {
+        // Capturar snapshot para el fade de retorno
+        const snapshot: Record<string, number> = {}
+        const durationByChannel: Record<string, number> = {}
+        for (const key in channels) {
+          // WAVE 6019.6 CORTAFUEGOS: Las coordenadas IK no son ángulos.
+          // Interpolarlas hacia 0 fuerza la ruta IK en NodeResolver
+          // durante todo el fade, colapsando los focos al techo.
+          if (IK_POISON_KEYS.has(key)) continue
+
+          const v = (channels as Record<string, number>)[key]
+          if (typeof v === 'number' && Number.isFinite(v)) {
+            // WAVE 6019.5 FIX: Normalizar keys cinéticas para que el
+            // Release Fader pueda hacer blend con los canales que L0 escribe.
+            // _manualOverrides guarda 'pan_base'/'tilt_base' (anchor de órbita)
+            // pero L0 emite 'pan'/'tilt'. Sin normalización, l0Value siempre
+            // es undefined y el fade nunca se ejecuta para kinetic.
+            let snapshotKey = key
+            if (key === 'pan_base') snapshotKey = 'pan'
+            if (key === 'tilt_base') snapshotKey = 'tilt'
+            snapshot[snapshotKey] = v
+            // WAVE 6019.6: usar snapshotKey (normalizado) en lugar de key
+            // para que pan_base→pan y tilt_base→tilt hereden RELEASE_MS_SLOW.
+            durationByChannel[snapshotKey] = SLOW_RELEASE_CHANNELS.has(snapshotKey) ? RELEASE_MS_SLOW : RELEASE_MS_FAST
+          }
+        }
+        if (Object.keys(snapshot).length > 0) {
+          this._releaseStates.set(nodeId, {
+            channels: snapshot,
+            startedAtMs: performance.now(),
+            durationByChannel,
+          })
+          console.log(`[WAVE-6020.9-SURVIVAL] clearManualOverride ${nodeId}: snapshotKeys=[${Object.keys(snapshot).join(',')}] pan=${snapshot['pan']?.toFixed(4) ?? 'N/A'} tilt=${snapshot['tilt']?.toFixed(4) ?? 'N/A'}`)
+        }
       }
     }
     this._manualOverrides.delete(nodeId)
@@ -446,6 +472,11 @@ export class NodeArbiter implements INodeArbiter {
    */
   getManualOverride(nodeId: NodeId): Readonly<Record<string, number>> | undefined {
     return this._manualOverrides.get(nodeId)
+  }
+
+  /** WAVE 6020.8: Indica si hay un fade de retorno activo para este nodeId. */
+  hasReleaseFade(nodeId: NodeId): boolean {
+    return this._releaseStates.has(nodeId)
   }
 
   setEffectIntents(intents: readonly INodeIntent[]): void {
@@ -1081,6 +1112,17 @@ export class NodeArbiter implements INodeArbiter {
         continue
       }
 
+      // WAVE 6020.3 FIX: L0 FREEZE durante release fade.
+      // Si este nodo está soltando un override (release fade en progreso),
+      // L0 NO escribe pan/tilt. El fade interpola snapshot → snapshot
+      // (posición congelada), evitando que el patrón VMM arrastre al
+      // fixture durante el fade-out post-Unlock.
+      if (layer === 'system' && this._releaseStates.has(intent.nodeId)) {
+        if (channel === 'pan' || channel === 'tilt') {
+          continue
+        }
+      }
+
       const incoming = values[channel]
       if (!isFiniteChannelValue(incoming)) {
         continue
@@ -1324,12 +1366,22 @@ export class NodeArbiter implements INodeArbiter {
         // WAVE 6019.5 FIX: Si L0 aún no escribió este canal, usar el valor
         // del snapshot como fallback. Esto congela el foco en su última
         // posición conocida en lugar de degradar a 0 (techo).
-        const l0Value = record[key] ?? releaseValue
+        // WAVE 6020.4: Para pan/tilt, IGNORAR completamente cualquier valor
+        // L0 previo en _result (del frame anterior al fade). El gate L0 freeze
+        // (WAVE 6020.3) bloquea nuevas escrituras, pero el valor que ya
+        // existía en _result seguiría arrastrando al fixture. Forzando
+        // l0Value = releaseValue, el fade es estático: snapshot → snapshot.
+        const l0Value = (key === 'pan' || key === 'tilt')
+          ? releaseValue
+          : (record[key] ?? releaseValue)
         if (l0Value !== undefined && Number.isFinite(l0Value)) {
           // Blend: snapshot del manual → valor L0 ya fusionado + clampeado
           let blended = releaseValue * fadeWeight + l0Value * (1.0 - fadeWeight)
           // WAVE 4988 Paso 2: Guardia dual — el blend no puede salir del rango físico
           // del tilt en ningún sentido (ni suelo ni techo).
+          // WAVE 6020.3: El L0 ya no escribe pan/tilt durante release fade
+          // (gate en _applyIntent), así que l0Value === releaseValue y el
+          // fixture permanece congelado en la posición del snapshot.
           if (key === 'tilt') blended = Math.max(TILT_ARBITER_MIN, Math.min(blended, TILT_ARBITER_MAX))
           record[key] = blended
         }
@@ -1337,6 +1389,25 @@ export class NodeArbiter implements INodeArbiter {
 
       if (fadeCompleted) {
         this._releaseStates.delete(nodeId)
+        console.log(`[WAVE-6020.9-SURVIVAL] Fade COMPLETED for ${nodeId} — purge code executing`)
+        // WAVE 6020.8: Purgar pan_base/tilt_base del manual override al terminar el fade.
+        // Si setManualOverrides inyectó valores desde espacio IK (ej. tilt_base=0.698
+        // para un ceiling fixture), la fusión post-fade oscila alrededor de ese base
+        // incorrecto → mitad del ciclo VMM apunta al techo.
+        // Borrando estas keys, la fusión cae al default 0.5 y el offset ceiling
+        // (TILT_OFFSET_CEILING=-0.325) centra el patrón en la semiesfera inferior.
+        const manual = this._manualOverrides.get(nodeId)
+        if (manual) {
+          const mutable = manual as Record<string, number>
+          const hadPanBase = 'pan_base' in mutable
+          const hadTiltBase = 'tilt_base' in mutable
+          if (hadPanBase) delete mutable['pan_base']
+          if (hadTiltBase) delete mutable['tilt_base']
+          console.log(`[WAVE-6020.9-SURVIVAL] Purged manual for ${nodeId}: hadPanBase=${hadPanBase} hadTiltBase=${hadTiltBase} keysLeft=${Object.keys(mutable).length}`)
+          if (Object.keys(mutable).length === 0) {
+            this._manualOverrides.delete(nodeId)
+          }
+        }
       }
     }
   }

@@ -976,6 +976,11 @@ export class NodeResolver implements INodeResolver {
     if (node.family === NodeFamily.KINETIC) {
       const kineticNode = node as IKineticNodeData
       const hasSpatialTarget = channelValues[CH_TARGET_X] !== undefined
+      // WAVE 6020.9 SURVIVAL LOG: Confirm which path the resolver takes
+      // 🩸 WAVE 6040: Silenciado — logs de supervivencia ya no necesarios en producción
+      // if (Math.random() < 0.001) {
+      //   console.log(`[WAVE-6020.9-SURVIVAL] NodeResolver ${node.nodeId}: hasSpatialTarget=${hasSpatialTarget} targetX=${channelValues[CH_TARGET_X] ?? 'undefined'} isContinuous=${kineticNode.isContinuous} → ${!kineticNode.isContinuous && hasSpatialTarget ? 'IK-PATH' : 'CLASSIC-PATH'}`)
+      // }
       if (!kineticNode.isContinuous && hasSpatialTarget) {
         this._writeNodeIK(kineticNode, channelValues, baseAddr, buf, calibration, !nodeBlocked)
         return

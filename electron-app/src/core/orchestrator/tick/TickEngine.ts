@@ -884,6 +884,30 @@ export class TickEngine {
         ctx,
         this._aetherBus,
       )
+      // WAVE 6055: MECHANICS BYPASS — ChillAmbientEngine Lissajous override.
+      // intent.movement.mechanicsL/R llevan pan/tilt [0,1] del ChillAmbientEngine.
+      // Se inyectan como intents absolutos pan/tilt con priority 50 (> L0=10).
+      // Aplasta el LFO de hielo del KineticAdapter para chill vibe.
+      if (intent.movement?.mechanicsL && intent.movement?.mechanicsR) {
+        const _mechL = intent.movement.mechanicsL
+        const _mechR = intent.movement.mechanicsR
+        this._aetherGraph.getView(NodeFamily.KINETIC).forEach((node: any) => {
+          if (node.isContinuous) return
+          const _posX = node.physicalPosition?.x ?? node.position?.x ?? 0
+          const _mech = (_posX < 0) ? _mechL : _mechR
+          this._aetherBus.push({
+            nodeId: node.nodeId,
+            values: {
+              pan:  Math.max(0, Math.min(1, _mech.pan)),
+              tilt: Math.max(0, Math.min(1, _mech.tilt)),
+            },
+            priority: 50,
+            confidence: 1.0,
+            source: 'selene-bypass',
+            mergeStrategy: 'LTP',
+          } as any)
+        })
+      }
       // ðŸ”¦ WAVE 3516.4: Beam â€” Ã³pticas (gobos, prismas, zoom, focus)
       beamAdapter.process(
         this._aetherGraph.getView(NodeFamily.BEAM),

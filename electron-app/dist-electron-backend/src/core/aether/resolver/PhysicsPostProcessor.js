@@ -411,6 +411,39 @@ export class PhysicsPostProcessor {
             state[SLOT_Z3D_VEL] = 0;
         }
     }
+    /**
+     * WAVE 6020 SALVA-SHOWS: Exorciza el estado 3D de un nodo.
+     * Borra la bandera de inicialización 3D y resetea posición/velocidad
+     * a defaults neutros. Llamar al hacer Unlock espacial para evitar
+     * que el próximo target 3D arranque desde coordenadas zombis.
+     */
+    resetSpatialState(nodeId) {
+        this._3dInitialized.delete(nodeId);
+        const state = this._states.get(nodeId);
+        if (state) {
+            state[SLOT_X3D_POS] = DEFAULT_3D_X;
+            state[SLOT_Y3D_POS] = DEFAULT_3D_Y;
+            state[SLOT_Z3D_POS] = DEFAULT_3D_Z;
+            state[SLOT_X3D_VEL] = 0;
+            state[SLOT_Y3D_VEL] = 0;
+            state[SLOT_Z3D_VEL] = 0;
+            console.log(`[ZOMBIE-DIAG] resetSpatialState ${nodeId}: 3D state exorcized`);
+        }
+    }
+    /**
+     * WAVE 6020.6: Siembra el estado clásico de física desde el snapshot.
+     * Fija SLOT_PAN/TILT_POS al valor del snapshot y anula velocidad.
+     * Con esto el PPP parte de delta=0 → no interpola → el fixture no se mueve.
+     */
+    seedClassicState(nodeId, pan, tilt) {
+        const state = this._states.get(nodeId);
+        if (state) {
+            state[SLOT_PAN_POS] = pan;
+            state[SLOT_TILT_POS] = tilt;
+            state[SLOT_PAN_VEL] = 0;
+            state[SLOT_TILT_VEL] = 0;
+        }
+    }
     // ═════════════════════════════════════════════════════════════════════════
     // PRIVATE — Modos de física
     // ═════════════════════════════════════════════════════════════════════════

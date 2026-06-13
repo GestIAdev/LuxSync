@@ -254,16 +254,18 @@ export class SeleneLux {
                 ultraAir: safe(audioMetrics.ultraAir),
             };
             // ═══════════════════════════════════════════════════════════════════
-            // 🌊 WAVE 4750: CHILL MORPH — SISTEMA DE MAREAS (Multi-LFO Oceánico).
-            // ChillAmbientEngine genera morphFactor vía 3 osciladores de períodos
-            // primos (31s, 47s, 73s) + suavizado EMA. Patrón cuasi-infinito que
-            // nunca se repite. Rango [0.25, 0.75] — más contraste que el 0.30-0.70
-            // de WAVE 4709. La onda senoidal inline de 30s ha sido fulminada.
+            // 🌊 WAVE 6055: OPERACIÓN OCÉANO — Cero EMA. Tiempo continuo.
+            // ChillAmbientEngine ahora produce: morphFactor + La Ola (frontL/R,
+            // backL/R) + Glaciar Movers (moverL/R). La Ola se inyecta sobre
+            // liquidStereoOverrides post-applyBands. Los movers van a
+            // deepFieldMechanics → buildMechanicsBypassIntent (WAVE 1046).
+            // L2 operador manual sigue dominando (NodeArbiter WAVE 4829).
             // ═══════════════════════════════════════════════════════════════════
             let chillMorphFactor = undefined;
+            let chillFrame = undefined;
             if (vibeNormalized.includes('chill') || vibeNormalized.includes('lounge') ||
                 vibeNormalized.includes('ambient') || vibeNormalized.includes('jazz')) {
-                const chillFrame = chillAmbientEngine.tick();
+                chillFrame = chillAmbientEngine.tick();
                 chillMorphFactor = chillFrame.morphFactor;
                 dimmerOverride = chillFrame.dimmer;
             }
@@ -309,6 +311,23 @@ export class SeleneLux {
                 moverL: safe(liquidResult.moverLeftIntensity),
                 moverR: safe(liquidResult.moverRightIntensity),
             };
+            // 🌊 WAVE 6055: LA OLA + GLACIAR MOVERS — chill path
+            // Override zone intensities with phase-offset waves from ChillAmbientEngine.
+            // deepFieldMechanics wires Lissajous coordinates to buildMechanicsBypassIntent.
+            if (isChill && chillFrame) {
+                this.liquidStereoOverrides = {
+                    frontL: safe(chillFrame.frontL),
+                    frontR: safe(chillFrame.frontR),
+                    backL: safe(chillFrame.backL),
+                    backR: safe(chillFrame.backR),
+                    moverL: safe(liquidResult.moverLeftIntensity),
+                    moverR: safe(liquidResult.moverRightIntensity),
+                };
+                this.deepFieldMechanics = {
+                    moverL: { pan: chillFrame.moverL.pan, tilt: chillFrame.moverL.tilt, intensity: safe(liquidResult.moverLeftIntensity) },
+                    moverR: { pan: chillFrame.moverR.pan, tilt: chillFrame.moverR.tilt, intensity: safe(liquidResult.moverRightIntensity) },
+                };
+            }
             // Legacy compat — para que el AGC TRUST block no rompa
             this.technoOverrides = {
                 front: liquidResult.frontParIntensity,

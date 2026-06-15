@@ -1137,11 +1137,15 @@ export class NodeExtractionPipeline {
     // panOffset y tiltOffset son ángulos en GRADOS para el IK engine.
     // Mapear homePosition.pan=127 como tiltOffset=127° provocaría que el fixture
     // apuntara 127° fuera del vertical en reposo — el bug de "mirando al frente".
+    const capDimmerMin = fixtureDef.capabilities?.dimmerMin
+
     const fromPhysics: IDeviceCalibration = {
       ...(p?.invertPan  !== undefined && { invertPan:  p.invertPan }),
       ...(p?.invertTilt !== undefined && { invertTilt: p.invertTilt }),
       ...(p?.tiltLimits?.min !== undefined && { tiltLimitMin: p.tiltLimits.min }),
       ...(p?.tiltLimits?.max !== undefined && { tiltLimitMax: p.tiltLimits.max }),
+      // WAVE 1135.3: Dead-zone floor — propagado desde capabilities del perfil
+      ...(capDimmerMin !== undefined && capDimmerMin > 0 && { dimmerMin: capDimmerMin }),
     }
 
     // ── Override del show (FixtureV2.calibration — CalibrationLab) ───────

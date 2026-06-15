@@ -13,14 +13,12 @@ export default function GlassCanvas() {
   const isSubscribedRef = useRef(false)
 
   useEffect(() => {
-    let _glassFrameCount = 0
     let unsubscribe: (() => void) | null = null
 
     const connect = () => {
       if (!window.glass || isSubscribedRef.current) return
 
       unsubscribe = window.glass.onFrame((view) => {
-        _glassFrameCount++
         latestView.current = view
       
       // 🩸 WAVE-6018: Inyectar telemetria directamente en transientStore (44Hz, zero React cost)

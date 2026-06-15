@@ -61,7 +61,7 @@
       },
       {
         "id": "nuke-pars-strobe",
-        "paramId": "strobeRate",
+        "paramId": "strobe",
         "zones": ["all-pars"],
         "blendMode": "replace",
         "curve": {

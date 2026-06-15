@@ -3,7 +3,7 @@
   "version": "2.1.0",
   "clip": {
     "id": "machete_spark",
-    "name": "Machete Spark",
+    "name": "Machete Spark (Doble Golpe)",
     "author": "LuxSync-Migrator-v3 / WAVE 4848",
     "category": "physical",
     "tags": [
@@ -42,29 +42,39 @@
           {
             "timeMs": 30,
             "value": 1,
-            "interpolation": "linear",
-            "bezierHandles": [
-              0,
-              0,
-              1,
-              1
-            ]
+            "interpolation": "hold"
           },
           {
-            "timeMs": 130,
+            "timeMs": 100,
+            "value": 1,
+            "interpolation": "linear",
+            "bezierHandles": [0, 0, 1, 1]
+          },
+          {
+            "timeMs": 200,
+            "value": 0,
+            "interpolation": "hold"
+          },
+          {
+            "timeMs": 300,
+            "value": 0,
+            "interpolation": "linear"
+          },
+          {
+            "timeMs": 330,
             "value": 1,
             "interpolation": "hold"
           },
           {
+            "timeMs": 400,
+            "value": 1,
+            "interpolation": "linear",
+            "bezierHandles": [0, 0, 1, 1]
+          },
+          {
             "timeMs": 1200,
             "value": 0,
-            "interpolation": "linear",
-            "bezierHandles": [
-              0,
-              0,
-              1,
-              1
-            ]
+            "interpolation": "hold"
           }
         ],
         "mode": "absolute"
@@ -77,26 +87,17 @@
           360
         ],
         "defaultValue": {
-          "h": 50,
+          "h": 46,
           "s": 100,
-          "l": 80
+          "l": 60
         },
         "keyframes": [
           {
             "timeMs": 0,
             "value": {
-              "h": 50,
+              "h": 46,
               "s": 100,
-              "l": 80
-            },
-            "interpolation": "linear"
-          },
-          {
-            "timeMs": 1200,
-            "value": {
-              "h": 40,
-              "s": 100,
-              "l": 65
+              "l": 60
             },
             "interpolation": "hold"
           }
@@ -105,17 +106,17 @@
       }
     },
     "staticParams": {
-      "dominantColorH": 50,
+      "dominantColorH": 46,
       "dominantColorS": 100,
-      "dominantColorL": 80,
+      "dominantColorL": 60,
       "isOneShot": false,
       "legacyMixBus": "global",
       "bpmRef": 128
     },
     "cognitiveDNA": {
       "genome": {
-        "aggression": 0.68,
-        "chaos": 0.3,
+        "aggression": 0.85,
+        "chaos": 0.4,
         "organicity": 0.1
       },
       "textureAffinity": "universal",
@@ -134,7 +135,7 @@
       },
       "aggressionRange": {
         "min": 0,
-        "max": 0.8300000000000001
+        "max": 0.83
       },
       "spatialBehavior": "static"
     },
@@ -145,7 +146,7 @@
         "vibeBonus": 0.05
       },
       "gpuCost": 0.3,
-      "fatigueImpact": 0.06,
+      "fatigueImpact": 0.08,
       "minDurationMs": 1000,
       "cooldownMs": 3000,
       "isStrobe": false,
@@ -174,5 +175,5 @@
       "communityTrusted": true
     }
   },
-  "checksum": "sha256:0ac04d34ae1c35f953762f0cb3436573e600d15b9abc53c63faee7b65e906bfb"
+  "checksum": "sha256:custom_machete_spark_double"
 }

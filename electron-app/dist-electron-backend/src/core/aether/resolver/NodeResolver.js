@@ -1445,9 +1445,18 @@ export class NodeResolver {
             }
             return v;
         }
-        // ── Dimmer scale ─────────────────────────────────────────────────────
-        if (channelType === DIMMER_CHANNEL && calibration.dimmerScale !== undefined) {
-            return Math.round(dmxValue * calibration.dimmerScale);
+        // ── Dimmer scale + dead-zone floor ───────────────────────────────────
+        if (channelType === DIMMER_CHANNEL) {
+            let v = dmxValue;
+            if (calibration.dimmerScale !== undefined) {
+                v = Math.round(v * calibration.dimmerScale);
+            }
+            // WAVE 1135.3: Dead-zone floor — eleva valores no-cero por debajo del mínimo
+            // real de encendido. 0 intencional (apagado) nunca se eleva.
+            if (calibration.dimmerMin !== undefined && v > 0 && v < calibration.dimmerMin) {
+                v = calibration.dimmerMin;
+            }
+            return v;
         }
         return dmxValue;
     }

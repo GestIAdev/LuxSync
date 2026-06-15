@@ -746,8 +746,45 @@ export class TickEngine {
         // âš¡ WAVE 3050: Throttled from 44Hz â†’ 22Hz. DMX stays at 44Hz.
         // âš¡ WAVE 4559: Overclock â†’ 44Hz. Strobe y flash sin frame-skip al canvas.
         // âš¡ WAVE 3065: Emitted BEFORE flushToDriver â€” values are real engine output.
-        if (!this._aetherHasDevices) {
-            // no devices
+        // 🛡️ WAVE-6060: Reactivado como fallback cuando GlassBridge no levanta.
+        if (this.onHotFrame && this.frameCount % TickEngine.HOT_FRAME_DIVIDER === 0) {
+            const _hfCount = fixtureStates.length;
+            for (let _hfi = 0; _hfi < _hfCount; _hfi++) {
+                const _f = fixtureStates[_hfi];
+                const _orig = this.fixtures[_hfi];
+                let _hff = this._cachedHotFrameFixtures[_hfi];
+                if (!_hff) {
+                    _hff = { id: '', dimmer: 0, pan: 0, tilt: 0, zoom: 0, focus: 0, white: 0, amber: 0, r: 0, g: 0, b: 0, physicalPan: 0, physicalTilt: 0, panVelocity: 0, tiltVelocity: 0 };
+                    this._cachedHotFrameFixtures[_hfi] = _hff;
+                }
+                _hff.id = _orig?.id || '';
+                _hff.dimmer = _f.dimmer / 255;
+                _hff.pan = _f.pan / 255;
+                _hff.tilt = _f.tilt / 255;
+                _hff.zoom = _f.zoom;
+                _hff.focus = _f.focus;
+                _hff.white = _f.white ?? 0;
+                _hff.amber = _f.amber ?? 0;
+                _hff.r = Math.round(_f.r);
+                _hff.g = Math.round(_f.g);
+                _hff.b = Math.round(_f.b);
+                _hff.physicalPan = (_f.physicalPan ?? _f.pan) / 255;
+                _hff.physicalTilt = (_f.physicalTilt ?? _f.tilt) / 255;
+                _hff.panVelocity = _f.panVelocity ?? 0;
+                _hff.tiltVelocity = _f.tiltVelocity ?? 0;
+            }
+            if (this._cachedHotFrameFixtures.length > _hfCount) {
+                this._cachedHotFrameFixtures.length = _hfCount;
+            }
+            this._cachedHotFrame.fixtures = this._cachedHotFrameFixtures;
+            this._cachedHotFrame.onBeat = beatState.onBeat;
+            this._cachedHotFrame.beatConfidence = engineAudioMetrics.beatConfidence;
+            this._cachedHotFrame.bpm = engineAudioMetrics.bpm;
+            this._cachedHotFrame.bass = bass;
+            this._cachedHotFrame.mid = mid;
+            this._cachedHotFrame.high = high;
+            this._cachedHotFrame.energy = energy;
+            this.onHotFrame(this._cachedHotFrame);
         }
         // âš¡ WAVE-4592: flushToDriver() ELIMINADO â€” la Aduana y el send DMX
         // son responsabilidad exclusiva del bloque Aether (aetherSafety + sendUniverseRaw).
@@ -763,6 +800,7 @@ export class TickEngine {
         // Zero-alloc: los buffers Uint8Array son propiedad del NodeResolver.
         // Se envÃ­an al driver por referencia directa (zero-copy al hardware).
         // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+        let blackoutActive = false;
         if (this._aetherHasDevices && this.hal) {
             const aetherArbiter = this._aetherArbiter;
             const aetherResolver = this._aetherResolver;
@@ -964,40 +1002,8 @@ export class TickEngine {
                 // WAVE 4612: `arbitrated` se pasa para leer dimmers reales del mapa post-arbitraje.
                 // ðŸš¨ WAVE 4634: blackoutActive se lee ANTES de project() para sincronizar
                 // la UI con el apagÃ³n real del DMX (zero desfase visual).
-                const blackoutActive = aetherArbiter.isBlackoutActive();
+                blackoutActive = aetherArbiter.isBlackoutActive();
                 this._aetherUIProjector.project(fixtureStates, this._aetherGraph, arbitrated, blackoutActive, this._aetherCtx.deltaMs);
-                // WAVE 6010 PATCH 3: Rellenar _glassView con estado real de fixtures
-                const view = this._glassView;
-                // Offset de 10 floats para la Cabecera Global de Telemetría (WAVE-6018)
-                for (let fi = 0; fi < fixtureStates.length && fi < 2047; fi++) {
-                    const fs = fixtureStates[fi];
-                    const off = 10 + fi * 16;
-                    view[off + 0] = fs.r ?? 0;
-                    view[off + 1] = fs.g ?? 0;
-                    view[off + 2] = fs.b ?? 0;
-                    view[off + 3] = fs.w ?? 0;
-                    view[off + 4] = fs.a ?? 0;
-                    view[off + 5] = fs.dimmer ?? 0;
-                    view[off + 6] = fs.pan ?? 0;
-                    view[off + 7] = fs.tilt ?? 0;
-                    view[off + 8] = fs.physicalPan ?? fs.pan ?? 128;
-                    view[off + 9] = fs.physicalTilt ?? fs.tilt ?? 128;
-                    view[off + 10] = fs.zoom ?? 0;
-                    view[off + 11] = fs.focus ?? 0;
-                    view[off + 12] = fs.panVel ?? 0;
-                    view[off + 13] = fs.tiltVel ?? 0;
-                    view[off + 14] = fs.strobe ?? 0;
-                    view[off + 15] = (fs.dimmer > 0 ? 1 : 0) | (blackoutActive ? 2 : 0);
-                }
-                // Cabecera Global de Telemetría (Índices 0-4)
-                view[0] = engineAudioMetrics.bass || 0;
-                view[1] = engineAudioMetrics.mid || 0;
-                view[2] = engineAudioMetrics.high || 0;
-                view[3] = engineAudioMetrics.energy || 0;
-                view[4] = engineAudioMetrics.isBeat ? 1.0 : 0.0;
-                if (this.ctx.glassPool) {
-                    this.ctx.glassPool.pushFrame(view);
-                }
                 // WAVE 6019: FASE 2 ELIMINADA — el HAL ya no recibe datos del TickEngine.
                 // Los drivers leen del SAB a su propio ritmo. TickEngine solo hace commitFrame().
                 for (const universe of aetherResolver.registeredUniverses) {
@@ -1088,6 +1094,36 @@ export class TickEngine {
         }
         // ðŸ§¹ WAVE 2227 + WAVE 3065: El visual gate fue eliminado en WAVE 2227.
         // WAVE 3065 refuerza esto: la Aduana DMX (flushToDriver) es el ÃšNICO gate.
+        // 🩸 WAVE-6060: GlassBridge SIEMPRE emite, incluso sin dispositivos Aether.
+        const view = this._glassView;
+        for (let fi = 0; fi < fixtureStates.length && fi < 2047; fi++) {
+            const fs = fixtureStates[fi];
+            const off = 10 + fi * 16;
+            view[off + 0] = fs.r ?? 0;
+            view[off + 1] = fs.g ?? 0;
+            view[off + 2] = fs.b ?? 0;
+            view[off + 3] = fs.w ?? 0;
+            view[off + 4] = fs.a ?? 0;
+            view[off + 5] = fs.dimmer ?? 0;
+            view[off + 6] = fs.pan ?? 0;
+            view[off + 7] = fs.tilt ?? 0;
+            view[off + 8] = fs.physicalPan ?? fs.pan ?? 128;
+            view[off + 9] = fs.physicalTilt ?? fs.tilt ?? 128;
+            view[off + 10] = fs.zoom ?? 0;
+            view[off + 11] = fs.focus ?? 0;
+            view[off + 12] = fs.panVel ?? 0;
+            view[off + 13] = fs.tiltVel ?? 0;
+            view[off + 14] = fs.strobe ?? 0;
+            view[off + 15] = (fs.dimmer > 0 ? 1 : 0) | (blackoutActive ? 2 : 0);
+        }
+        view[0] = engineAudioMetrics.bass || 0;
+        view[1] = engineAudioMetrics.mid || 0;
+        view[2] = engineAudioMetrics.high || 0;
+        view[3] = engineAudioMetrics.energy || 0;
+        view[4] = engineAudioMetrics.isBeat ? 1.0 : 0.0;
+        if (this.ctx.glassPool) {
+            this.ctx.glassPool.pushFrame(view);
+        }
         // El broadcast UI siempre recibe los valores reales del engine.
         // â”€â”€ FULL TRUTH â€” Every TRUTH_BROADCAST_DIVIDER ticks (~7Hz) â”€â”€â”€â”€â”€â”€â”€â”€
         if (this.onBroadcast && shouldBroadcastFullTruth) {
@@ -1324,5 +1360,6 @@ export class TickEngine {
         }
     }
 }
-TickEngine.TRUTH_BROADCAST_DIVIDER = 6;
+// 🩸 WAVE-6060: 44Hz / 4 = ~11Hz para UI fluida
+TickEngine.TRUTH_BROADCAST_DIVIDER = 4;
 TickEngine.HOT_FRAME_DIVIDER = 1;

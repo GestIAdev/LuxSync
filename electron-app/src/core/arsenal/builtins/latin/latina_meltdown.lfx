@@ -22,52 +22,22 @@
     "priority": 95,
     "durationMs": 3000,
     "effectType": "heph_custom",
-    "curves": {
+"curves": {
       "intensity": {
         "paramId": "intensity",
         "valueType": "number",
-        "range": [
-          0,
-          1
-        ],
+        "range": [0, 1],
         "defaultValue": 0,
         "keyframes": [
           {
             "timeMs": 0,
-            "value": 0,
-            "interpolation": "linear"
-          },
-          {
-            "timeMs": 60,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 120,
-            "value": 1,
-            "interpolation": "linear",
-            "bezierHandles": [
-              0,
-              0,
-              1,
-              1
-            ]
-          },
-          {
-            "timeMs": 860,
             "value": 1,
             "interpolation": "hold"
           },
           {
             "timeMs": 3000,
-            "value": 0,
-            "interpolation": "linear",
-            "bezierHandles": [
-              0,
-              0,
-              1,
-              1
-            ]
+            "value": 1,
+            "interpolation": "hold"
           }
         ],
         "mode": "absolute"
@@ -75,40 +45,19 @@
       "color": {
         "paramId": "color",
         "valueType": "color",
-        "range": [
-          0,
-          360
-        ],
+        "range": [0, 360],
         "defaultValue": {
-          "h": 0,
+          "h": 42,
           "s": 100,
-          "l": 60
+          "l": 50
         },
         "keyframes": [
           {
             "timeMs": 0,
             "value": {
-              "h": 0,
+              "h": 42,
               "s": 100,
-              "l": 60
-            },
-            "interpolation": "linear"
-          },
-          {
-            "timeMs": 1500,
-            "value": {
-              "h": 60,
-              "s": 100,
-              "l": 60
-            },
-            "interpolation": "linear"
-          },
-          {
-            "timeMs": 3000,
-            "value": {
-              "h": 0,
-              "s": 100,
-              "l": 55
+              "l": 50
             },
             "interpolation": "hold"
           }
@@ -116,37 +65,14 @@
         "mode": "absolute"
       },
       "strobe": {
-        "paramId": "strobeRate",
+        "paramId": "strobe",
         "valueType": "number",
-        "range": [
-          0,
-          1
-        ],
-        "defaultValue": 0,
+        "range": [0, 1],
+        "defaultValue": 1,
         "keyframes": [
           {
             "timeMs": 0,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 120,
-            "value": 0.9,
-            "interpolation": "linear"
-          },
-          {
-            "timeMs": 860,
-            "value": 0.9,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 1200,
-            "value": 0,
-            "interpolation": "linear"
-          },
-          {
-            "timeMs": 3000,
-            "value": 0,
+            "value": 1,
             "interpolation": "hold"
           }
         ],

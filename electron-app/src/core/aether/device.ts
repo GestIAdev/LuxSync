@@ -73,6 +73,13 @@ export interface IDeviceCalibration {
    * el brillo percibido entre fixtures de distinta potencia.
    */
   readonly dimmerScale?: number
+  /**
+   * WAVE 1135.3: Dead-zone floor del dimmer en DMX (0-255).
+   * Valor mínimo en el que el dimmer realmente enciende la lámpara.
+   * Si el valor calculado es > 0 pero < dimmerMin, se eleva a dimmerMin.
+   * Si el valor es exactamente 0 (apagado intencional), se deja en 0.
+   */
+  readonly dimmerMin?: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

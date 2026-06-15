@@ -95,7 +95,7 @@
         "mode": "absolute"
       },
       "strobe": {
-        "paramId": "strobeRate",
+        "paramId": "strobe",
         "valueType": "number",
         "range": [
           0,
@@ -190,7 +190,7 @@
       "fixtureTargeting": "pars"
     },
     "safetyDeclaration": {
-      "maxStrobeFreqHz": 3,
+      "maxStrobeFreqHz": 15,
       "containsRapidFlash": false,
       "communityTrusted": true
     }

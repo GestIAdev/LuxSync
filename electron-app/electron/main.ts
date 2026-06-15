@@ -603,27 +603,30 @@ async function initTitan(): Promise<void> {
   
   // WAVE 255.5: Connect broadcast callback to send fixture states to frontend
   // 🛡️ WAVE 2005.1: Added try-catch for "Render frame disposed" errors
-  // 🩸 WAVE-6017: selene:truth RESURRECTED at ~2Hz (was ~7Hz).
-  // Only structural metadata + gate state.
-  let _lastTruthFrame = 0
+  // 🩸 WAVE-6060: TickEngine.TRUTH_BROADCAST_DIVIDER=4 controla la tasa (~11Hz).
+  // Throttle eliminado del callback — una sola fuente de verdad.
   titanOrchestrator.setBroadcastCallback((truth) => {
-    _lastTruthFrame++
-    // 🩸 WAVE-6018: Capado estricto a ~1Hz para no asfixiar la UI
-    if (_lastTruthFrame % 44 !== 0) return
     try {
       if (mainWindow && !mainWindow.isDestroyed()) {
-        // Forzar el estado del hardware para el Cold Start
         truth.hardware.dmx.outputEnabled = titanOrchestrator.isOutputEnabled()
-        // Enviar el objeto COMPLETO para pasar la validación del truthStore
-        console.log(`[main.ts 🩸] IPC SEND selene:truth. _lastTruthFrame=${_lastTruthFrame}`)
         mainWindow.webContents.send('selene:truth', truth)
       }
     } catch (err) { /* renderer destroyed, ignore */ }
   })
 
-  // 🛑 WAVE 6015 PARCHE 1: selene:hot-frame ERADICATED.
-  // GlassBridge (BufferPoolManager) is the sole high-frequency visual data channel.
-  // No more 44Hz IPC spam to the renderer.
+  // �️ WAVE-6060 FALLBACK: selene:hot-frame como paracaídas si GlassBridge no levanta.
+  let _lastHotFrame = 0
+  titanOrchestrator.setHotFrameCallback((hotFrame) => {
+    _lastHotFrame++
+    try {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        const glassActive = glassPoolManager.getMetrics().framesSent > 0
+        if (!glassActive) {
+          mainWindow.webContents.send('selene:hot-frame', hotFrame)
+        }
+      }
+    } catch (err) { /* ignore */ }
+  })
 
   // WAVE 257: Connect log callback for Tactical Log
   // 🛡️ WAVE 2005.1: Added try-catch for "Render frame disposed" errors

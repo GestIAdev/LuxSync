@@ -96,7 +96,7 @@ export interface TacticalCanvasProps {
 // worker correctly for Electron's renderer process with this pattern.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import RenderWorkerConstructor from '../../../../workers/hyperion-render.worker?worker'
+import RenderWorkerConstructor from '../../../../workers/hyperion-render.worker?worker&inline'
 
 interface RulerTick {
   value: number

@@ -91,8 +91,10 @@ export function useSeleneTruth(options: UseSeleneTruthOptions = {}) {
     
     // Suscribirse al canal de la verdad (TITAN 2.0)
     const removeListener = window.lux.onTruthUpdate((data: SeleneTruth) => {
-      // 🩸 WAVE-6018 SONDA: Truth recibido del backend
-      console.log(`[useSeleneTruth 🩸] TRUTH received. frameCountRef=${frameCountRef.current} system.frameNumber=${data.system?.frameNumber}`)
+      // 🩸 WAVE-6060: Silenciado — solo loggear cada ~5s para debug
+      if (frameCountRef.current % 60 === 0) {
+        console.log(`[useSeleneTruth 🩸] TRUTH received. frameCountRef=${frameCountRef.current} system.frameNumber=${data.system?.frameNumber}`)
+      }
       // WAVE 380: Debug fixture IDs arriving from backend
       frameCountRef.current++
       if (frameCountRef.current % 300 === 0) { // Every ~5s

@@ -569,7 +569,7 @@ const Sidebar: React.FC = () => {
       {/* ═══ HEADER (Imagen completa con texto integrado) ═══ */}
       <div className="sidebar-header" style={{ padding: '20px', display: 'flex', justifyContent: 'center' }}>
         <img 
-          src="../public/interpreted_vector_logo.png" 
+          src="interpreted_vector_logo.png" 
           alt="Selene Lux Core" 
           style={{ width: '100%', maxWidth: '220px', height: 'auto', objectFit: 'contain' }} 
         />

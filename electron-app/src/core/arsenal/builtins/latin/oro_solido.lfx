@@ -21,7 +21,7 @@
     ],
     "mixBus": "global",
     "priority": 98,
-    "durationMs": 2000,
+    "durationMs": 3500,
     "effectType": "heph_custom",
     "curves": {
       "intensity": {
@@ -39,8 +39,8 @@
             "interpolation": "linear"
           },
           {
-            "timeMs": 1,
-            "value": 1,
+            "timeMs": 800,
+            "value": 0.5,
             "interpolation": "linear",
             "bezierHandles": [
               0,
@@ -50,13 +50,13 @@
             ]
           },
           {
-            "timeMs": 600,
+            "timeMs": 1000,
             "value": 1,
             "interpolation": "hold"
           },
           {
-            "timeMs": 2000,
-            "value": 0,
+            "timeMs": 1800,
+            "value": 1,
             "interpolation": "linear",
             "bezierHandles": [
               0,
@@ -64,6 +64,11 @@
               1,
               1
             ]
+          },
+          {
+            "timeMs": 3500,
+            "value": 0,
+            "interpolation": "hold"
           }
         ],
         "mode": "absolute"
@@ -88,15 +93,6 @@
               "s": 100,
               "l": 58
             },
-            "interpolation": "linear"
-          },
-          {
-            "timeMs": 2000,
-            "value": {
-              "h": 28,
-              "s": 100,
-              "l": 50
-            },
             "interpolation": "hold"
           }
         ],
@@ -110,14 +106,14 @@
       "isOneShot": false,
       "legacyMixBus": "global",
       "bpmRef": 128,
-      "latchMs": 600,
-      "decayMs": 1400
+      "latchMs": 800,
+      "decayMs": 1700
     },
     "cognitiveDNA": {
       "genome": {
         "aggression": 0.98,
         "chaos": 0.3,
-        "organicity": 0.1
+        "organicity": 0.3
       },
       "textureAffinity": "universal",
       "compatibleVibes": [
@@ -145,8 +141,8 @@
       },
       "gpuCost": 0.3,
       "fatigueImpact": 0.06,
-      "minDurationMs": 1000,
-      "cooldownMs": 3000,
+      "minDurationMs": 3500,
+      "cooldownMs": 5000,
       "isStrobe": false,
       "isDivineCandidate": false,
       "isHeavyCandidate": true,
@@ -173,5 +169,5 @@
       "communityTrusted": true
     }
   },
-  "checksum": "sha256:009490930cc7294b823ac161bdc38b084c7cb776990b5f5730d1cf6a00c38739"
+  "checksum": "sha256:custom_oro_solido_rebuild"
 }

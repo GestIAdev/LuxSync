@@ -31,6 +31,7 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { useShallow } from 'zustand/shallow'
+import { useSelectionStore } from './selectionStore'
 import {
   ShowFileV2,
   FixtureV2,
@@ -478,7 +479,18 @@ export const useStageStore = create<StageStore>()(
         stage: null,
         visuals: null,
       })
+
+      // 🔥 WAVE-V4 FIX: Purgar selección residual para evitar asignaciones corruptas
+      useSelectionStore.getState().deselectAll()
+
       get()._syncDerivedState()
+
+      // 🔥 WAVE-V4 EXORCISMO BILATERAL: Forzar al backend a tragar el show vacío
+      const lux = (window as any).lux
+      if (lux?.aether?.setFixtures) {
+        lux.aether.setFixtures([], null)
+          .catch((err: any) => console.warn('[newShow] Backend sync failed:', err))
+      }
     },
     
     saveShow: async () => {

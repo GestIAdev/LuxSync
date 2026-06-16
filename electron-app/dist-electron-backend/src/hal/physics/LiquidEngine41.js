@@ -28,12 +28,13 @@ export class LiquidEngine41 extends LiquidEngineBase {
         super(profile, '4.1');
     }
     routeZones(frame) {
-        const { frontRight, backRight, moverLeft, moverRight, strobeActive, strobeIntensity, acidMode, noiseMode, floorIntensity, ambientIntensity, airIntensity, } = frame;
-        // WAVE 4691: En 4.1 los PARs son SIEMPRE rítmicos.
-        // Front = envKick, Back = envSnare. Voces/synths quedan confinados en movers.
-        // `layout41Strategy` sigue afectando la síntesis upstream en LiquidEngineBase.
-        const frontPar = frontRight;
-        const backPar = backRight;
+        const { frontLeft, frontRight, backLeft, backRight, moverLeft, moverRight, strobeActive, strobeIntensity, acidMode, noiseMode, floorIntensity, ambientIntensity, airIntensity, } = frame;
+        // WAVE 4691 + FIX: routeZones respeta layout41Strategy del perfil activo.
+        // strict-split (techno): Front = kick puro, Back = snare puro.
+        // default (latino/pop/etc.): Front = max(subBass, kick), Back = max(snare, highMid).
+        const isStrict = this.profile.layout41Strategy === 'strict-split';
+        const frontPar = isStrict ? frontRight : Math.max(frontLeft, frontRight);
+        const backPar = isStrict ? backRight : Math.max(backLeft, backRight);
         const outMoverL = moverLeft;
         const outMoverR = moverRight;
         // ── [LAB-DATA] front/back — Telemetría táctica para calibración 4.1 (SILENCIADO)

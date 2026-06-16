@@ -82,11 +82,13 @@ const syncToBackend = async (
   fixtureList: any[],
   stageBounds: { width?: number; height?: number; depth?: number } | null | undefined,
   lastSyncedHashRef: React.MutableRefObject<string>,
+  currentHash: string,
 ) => {
   const lux = (window as any).lux
   
   if (!lux?.aether?.setFixtures) {
-    console.warn('[TitanSyncBridge] ⚠️ Lost connection to Backend during sync!')
+    // F3: Hash NOT committed — IPC unavailable. Next store change will retry automatically.
+    console.warn('[TitanSyncBridge] ⚠️ Lost connection to Backend during sync! Hash NOT committed — will retry.')
     return
   }
   
@@ -131,24 +133,20 @@ const syncToBackend = async (
     // 📡 WAVE 2770: THE BLACK BOX — Store Sync Monitor
     // Log every setFixtures invocation with fixture count, hash, and timestamp.
     // This reveals if TitanSyncBridge re-fires and wipes state unexpectedly.
-    const syncHash = generateSyncHash(arbiterFixtures, stageBounds)
     console.log(
-      `[📡 SYNC_BRIDGE] setFixtures FIRED: ${arbiterFixtures.length} fixtures | Hash: ${syncHash.slice(0, 16)}… | Time: ${new Date().toISOString()}`
+      `[📡 SYNC_BRIDGE] setFixtures FIRED: ${arbiterFixtures.length} fixtures | Hash: ${currentHash.slice(0, 16)}… | Time: ${new Date().toISOString()}`
     )
 
     const result = await lux.aether.setFixtures({ fixtures: arbiterFixtures, stageBounds })
-    if (result?.liquidLayout === '4.1' || result?.liquidLayout === '7.1') {
-      const currentLayout = useControlStore.getState().liquidLayout
-      if (currentLayout !== result.liquidLayout) {
-        useControlStore.getState().setLiquidLayout(result.liquidLayout)
-      }
-    }
-    // 🔧 WAVE 406: Log de éxito visual
-    console.log(`[TitanSyncBridge] ✅ SYNC OK: ${result?.fixtureCount || arbiterFixtures.length} fixtures active.`)
+    // 🌊 WAVE 6060: Removed backend-driven layout override.
+    // liquidLayout is a USER PREFERENCE, not dictated by fixture count.
+    // F3: Hash committed ONLY after successful IPC — enables automatic retry on failure.
+    lastSyncedHashRef.current = currentHash
+    console.log(`[TitanSyncBridge] ✅ SYNC OK: ${result?.fixtureCount || arbiterFixtures.length} fixtures active. Hash committed.`)
   } catch (err) {
     console.error('[TitanSyncBridge] ❌ SYNC FAILED:', err)
-    // 🔧 WAVE 406: Invalidar hash para reintentar en siguiente cambio
-    lastSyncedHashRef.current = ''
+    // F3: Hash NOT committed on failure — next store change will retry automatically.
+    // (lastSyncedHashRef.current intentionally left unchanged so subscriber sees diff)
   }
 }
 
@@ -222,9 +220,10 @@ export const TitanSyncBridge: React.FC = () => {
           // 🔧 WAVE 406: Debounce reducido (mejor respuesta)
           debounceTimeoutRef.current = setTimeout(() => {
             if (!isMounted) return
-            lastSyncedHashRef.current = currentHash
+            // F3: Hash is committed INSIDE syncToBackend, only after successful IPC.
+            // Do NOT set lastSyncedHashRef.current here — that was the Hash Lock Bug.
             console.log(`[TitanSyncBridge] 🔄 Syncing ${fixtures.length} fixtures...`)
-            syncToBackend(fixtures, stage, lastSyncedHashRef)
+            syncToBackend(fixtures, stage, lastSyncedHashRef, currentHash)
           }, SYNC_DEBOUNCE_MS) // WAVE 406: 200ms (era 500ms)
         },
         { fireImmediately: true } // Sync on mount if fixtures already exist

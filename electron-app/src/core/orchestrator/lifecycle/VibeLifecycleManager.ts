@@ -53,10 +53,12 @@ export class VibeLifecycleManager {
       console.log(`[TitanOrchestrator] 🎛️ WAVE 338: Movement physics updated for vibe`)
     }
 
-    if (this.trinity) {
-      this.trinity.resetPacemaker()
-      console.log(`[TitanOrchestrator] 🧨 WAVE 2140: Pacemaker reset triggered by vibe change → ${normalizedVibeId}`)
-    }
+    // ❌ AMNESIA PROTOCOL EXTIRPADO (WAVE 2140 → FUEGO BLANCO)
+    // El cambio de Vibe muta la representación visual (colores, perfiles de
+    // envelope, asignación de zonas) pero la línea temporal de la música es
+    // continua. Resetear el Pacemaker aquí mataba el kickLocked de strict-split
+    // (Techno) al borrar stableBpm, confidence y totalKicks, forzando
+    // kickSignal = 0 y frontPar apagado hasta que el tracker re-lock.
 
     this.engine.setActiveProfile(normalizedVibeId)
     console.log(`[TitanOrchestrator] 🧹 WAVE 3230: Clean Slate for vibe ${normalizedVibeId}`)

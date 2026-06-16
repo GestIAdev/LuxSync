@@ -22,6 +22,7 @@ import { useSeleneTruth } from './hooks/useSeleneTruth'
 import { setupStageStoreListeners } from './stores/stageStore'
 import { initializeLogIPC } from './stores/logStore' // 📜 WAVE 1198: THE WARLOG HEARTBEAT
 import { useLicenseStore } from './stores/licenseStore' // 🔒 WAVE 2490: THE TIER SEPARATION PROTOCOL
+import { useControlStore } from './stores/controlStore' // 🌊 WAVE 2432: Omni-Liquid Layout
 import { initStadiumLoadoutIfEmpty, patchMissingStadiumBindings } from './keyforge/stadiumLoadout' // ⌨ WAVE 4800-F
 import { initArsenalCatalog } from './midi/MidiActionRegistry' // ⚡ WAVE 4914: Live effect catalog
 import './styles/globals.css'
@@ -62,6 +63,13 @@ function AppContent() {
 
     // 🔌 WAVE 438: Setup stageStore IPC listeners
     const unsubscribeStageListeners = setupStageStoreListeners()
+    
+    // 🌊 WAVE 6060: Sync persisted Omni-Liquid layout to engine at boot
+    // SeleneLux defaults to '4.1' internally, but controlStore may have '7.1' persisted.
+    const persistedLayout = useControlStore.getState().liquidLayout
+    if (persistedLayout && (window as any).lux?.setLiquidLayout) {
+      (window as any).lux.setLiquidLayout(persistedLayout).catch(() => {})
+    }
     
     // 🧹 WAVE 63.7: Single clean log
     console.log('[Selene UI] 🚀 System Ready')

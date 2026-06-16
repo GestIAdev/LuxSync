@@ -100,7 +100,7 @@ export const TECHNO_PROFILE = {
     //              maxI 1.0→0.85 — liberar headroom para latino (groove continuo)
     envelopeHighMid: {
         name: 'Back L (Mid Synths)',
-        gateOn: 0.22, // WAVE 3492: 0.15->0.22 — gate más selectivo, synth buildups no pasan
+        gateOn: 0.18, // WAVE 6060: 0.22->0.18 — gate más permisivo, evitar canal muerto
         boost: 1.5,
         crushExponent: 2.5, // WAVE 3492: 2.0->2.5 — más no lineal, picos percusivos si, masa no
         decayBase: 0.28, // WAVE 3492: 0.65->0.28 — synths no se quedan pegados
@@ -144,7 +144,7 @@ export const TECHNO_PROFILE = {
     // Señal efectiva buscada: mid*1.0 - bass*0.7 (sustracción híbrida purificada).
     // Esto deja pasar la base armónica de synths sin comer el pico percutivo del kick.
     // ═══════════════════════════════════════════════════════════════
-    backLLowMidWeight: 0.0, // WAVE 2430: original no usaba lowMid
+    backLLowMidWeight: 0.35, // WAVE 6060: 0.0->0.35 — lowMid refuerzo para synths/pads vivos
     backLMidWeight: 1.0, // WAVE 3464: MID como alimento principal del Back L
     backLTrebleSub: 0.0, // WAVE 2430: original no restaba treble
     backLBassSub: 0.7, // WAVE 3464: ghost subtraction del bombo (rango solicitado 0.6-0.8)

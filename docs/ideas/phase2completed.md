@@ -1,160 +1,127 @@
-¡Implementación completada y compilación limpia de TS comprobada! Código preparado para el entorno C++ bajo el patrón Seqlock con garantía lock-free y zero-allocation.
+REPORTE FORENSE: FUGA DE ESTADO EN STAGE CONSTRUCTOR 2D
+1. La Falsa Hoja en Blanco (NEW SHOW)
+El newShow SÍ ejecuta la limpieza, pero es inmediatamente deshecho por un broadcast asíncrono del backend.
 
-Se ha inyectado el código en la base local y se generó el commit feat(aether): implement DmxUniverse SAB handlers and phantom worker loop (WAVE-6005 v2 Phase 2).
+@c:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\stores\stageStore.ts:466-482
 
-A continuación las dos piezas clave tal como fueron insertadas:
-
-PIEZA 1: DmxSabHandlers.ts
 
 
 typescript
-import {
-  CHANNELS_PER_UNI,
-  DMX_DATA_BYTES,
-  DMX_HEADER_BYTES,
-  DMX_HEADER_I32,
-  DmxHdr
-} from './layout'
+newShow: (name) => {
+  const show = createEmptyShowFile(name)
+  set({
+    showFile: show,
+    showFilePath: null,   // ← clave: path = null
+    isDirty: true,
+    fixtures: [],         // ← explícitamente vacío
+    groups: [],
+    scenes: [],
+    stage: null,
+    visuals: null,
+  })
+  get()._syncDerivedState()
+}
+El store se purga correctamente. El problema NO está en newShow. El problema es que selene:truth (el broadcast del backend a ~11 Hz) sigue llegando con fixtures del show anterior, y useSeleneTruth los inyecta de vuelta.
+
+2. Hidratación Zombie (onMount / Persistencia)
+No hay persistencia Zustand (persist middleware) en stageStore. La fuente de la hidratación zombie es el canal IPC selene:truth.
+
+@c:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\hooks\useSeleneTruth.ts:133-141
+
+
+
+typescript
+// 🛡️ WAVE 6018: Sincronización de Censo (Defensa contra shows fantasma)
+const stageStoreState = useStageStore.getState()
+const stageFixtures = stageStoreState.fixtures || []
+const truthFixtures = data.hardware?.fixtures || []
  
-/**
- * Escritor del DMX_UNIVERSE_SAB.
- * Vive en el Main Process (Node.js).
- * Único escritor; múltiples lectores permitidos.
- */
-export class DmxUniverseWriter {
-  private readonly i32: Int32Array
-  private readonly u8: Uint8Array
- 
-  constructor(sab: SharedArrayBuffer) {
-    this.i32 = new Int32Array(sab, 0, DMX_HEADER_I32)
-    this.u8 = new Uint8Array(sab, DMX_HEADER_BYTES, DMX_DATA_BYTES)
+// Si la cantidad de focos no coincide, forzamos re-hidratación inmediata
+if (stageFixtures.length !== truthFixtures.length) {
+  stageStoreState.syncFixturesFromTruth(truthFixtures)
+}
+Diagnóstico: Esta "defensa" es el agresor. Cuando el usuario crea un show nuevo:
+
+newShow() → fixtures: [], showFilePath: null
+El backend (titanOrchestrator) aún tiene los fixtures del show anterior en patchedFixtures (o fixtures de test cargados en arranque)
+Llega selene:truth con data.hardware.fixtures.length > 0
+stageFixtures.length (0) !== truthFixtures.length (N) → dispara syncFixturesFromTruth
+stageStore.ts:759-772 sobreescribe showFile.fixtures con los datos del backend:
+
+
+typescript
+syncFixturesFromTruth: (truthFixtures) => {
+  const { showFile } = get()
+  if (showFile) {            // ← pasa porque newShow acaba de crear showFile
+    showFile.fixtures = truthFixtures.map(f => ({ ...f, ... }))
+    set({ fixtures: [...showFile.fixtures] })
+    get()._syncDerivedState()
   }
+}
+Los fixtures fantasma son los que el backend nunca limpió. Además, selectionStore conserva los selectedIds del show anterior (nunca se limpian en newShow), lo que explica por qué "las asignaciones de zona fallan": el constructor intenta operar sobre IDs seleccionados que ya no existen (o que reaparecieron fantasmas con zonas inconsistentes).
+
+3. Fix Recomendado (El Exorcismo)
+Tres cortes quirúrgicos:
+
+A) Blindar useSeleneTruth.ts — no hidratar desde backend cuando el show es nuevo (sin path)
+El frontend es la fuente de verdad para shows sin guardar. Solo sincronizar si hay un show cargado desde disco.
+
+@c:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\hooks\useSeleneTruth.ts:138-141
+
+
+
+typescript
+// 🔥 WAVE-V4 FIX: El backend NO es fuente de verdad para shows nuevos sin guardar.
+// Si showFilePath === null, el usuario está editando un show fresco; ignorar census del backend.
+if (stageStoreState.showFilePath && stageFixtures.length !== truthFixtures.length) {
+  stageStoreState.syncFixturesFromTruth(truthFixtures)
+}
+B) Purgar selectionStore en newShow — evitar IDs zombies
+@c:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\stores\stageStore.ts:466-482
+
+
+
+typescript
+import { useSelectionStore } from './selectionStore'
  
-  /**
-   * Escribe de forma atómica (seqlock) un frame DMX en la memoria compartida.
-   *
-   * @param frameId Identificador monotónico del frame.
-   * @param universes Array de Uint8Array con los universos a volcar.
-   * @param dirtyMask Máscara de 64 bits indicando qué universos cambiaron.
-   */
-  public commitFrame(frameId: number, universes: Uint8Array[], dirtyMask: bigint): void {
-    // 1. Iniciar escritura: incrementar SEQLOCK a impar
-    Atomics.add(this.i32, DmxHdr.SEQLOCK, 1)
- 
-    // 2. Volcar datos binarios (zero-allocation)
-    for (let u = 0; u < universes.length; u++) {
-      this.u8.set(universes[u], u * CHANNELS_PER_UNI)
+newShow: (name) => {
+  const show = createEmptyShowFile(name)
+  set({
+    showFile: show,
+    showFilePath: null,
+    isDirty: true,
+    isLoading: false,
+    lastError: null,
+    fixtures: [],
+    groups: [],
+    scenes: [],
+    stage: null,
+    visuals: null,
+  })
+  get()._syncDerivedState()
+  // 🔥 WAVE-V4 FIX: Limpiar selección para que no queden IDs zombies del show anterior
+  useSelectionStore.getState().deselectAll()
+}
+C) (Opcional pero recomendado) Delay en StageConstructorView para estabilizar
+@c:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\components\views\StageConstructorView.tsx:636-645
+
+
+
+typescript
+const StageConstructorView: React.FC = () => {
+  const showFile = useStageStore(state => state.showFile)
+  const newShow = useStageStore(state => state.newShow)
+  
+  useEffect(() => {
+    if (!showFile) {
+      // 🔥 WAVE-V4 FIX: Dar tiempo a que selene:truth se estabilice antes de crear
+      const timer = setTimeout(() => {
+        // Re-verificar: si entre tanto llegó un show por IPC, no pisarlo
+        if (!useStageStore.getState().showFile) {
+          newShow('Untitled Stage')
+        }
+      }, 100)
+      return () => clearTimeout(timer)
     }
- 
-    // 3. Actualizar metadata del header
-    this.i32[DmxHdr.FRAME_ID] = frameId
-    this.i32[DmxHdr.UNIVERSE_MASK] = Number(dirtyMask & BigInt(0xffffffff))
-    this.i32[DmxHdr.UNIVERSE_MASK_HI] = Number(dirtyMask >> BigInt(32))
- 
-    // 4. Finalizar escritura: incrementar SEQLOCK a par
-    Atomics.add(this.i32, DmxHdr.SEQLOCK, 1)
- 
-    // 5. Despertar a los workers que estén bloqueados esperando
-    Atomics.notify(this.i32, DmxHdr.SEQLOCK)
-  }
-}
- 
-/**
- * Lector del DMX_UNIVERSE_SAB.
- * Vive en el DMX Phantom Worker (worker_thread).
- */
-export class DmxUniverseReader {
-  private readonly i32: Int32Array
-  private readonly u8: Uint8Array
-  private readonly scratch = new Uint8Array(DMX_DATA_BYTES)
- 
-  constructor(sab: SharedArrayBuffer) {
-    this.i32 = new Int32Array(sab, 0, DMX_HEADER_I32)
-    this.u8 = new Uint8Array(sab, DMX_HEADER_BYTES, DMX_DATA_BYTES)
-  }
- 
-  /**
-   * Lee un frame completo garantizando coherencia (evita el tearing).
-   * Usa un scratch buffer interno preasignado (zero-allocation).
-   * Devuelve null si no hay un frame nuevo.
-   */
-  public readCoherent(lastFrameId: number): { frameId: number; data: Uint8Array } | null {
-    let s1: number = 0
-    let s2: number = -1
- 
-    do {
-      s1 = Atomics.load(this.i32, DmxHdr.SEQLOCK)
- 
-      // Si es impar, el Main Process está escribiendo. Reintentamos.
-      if ((s1 & 1) !== 0) {
-        s2 = -1 // Garantiza que s1 !== s2 para repetir el bucle
-        continue
-      }
- 
-      const frameId = this.i32[DmxHdr.FRAME_ID]
-      
-      // Si el frame no ha cambiado, no copiamos nada.
-      if (frameId === lastFrameId) return null
- 
-      // Tomamos el snapshot atómico de los 25.600 bytes en el buffer scratch
-      this.scratch.set(this.u8)
- 
-      s2 = Atomics.load(this.i32, DmxHdr.SEQLOCK)
- 
-      // Si el seqlock cambió durante nuestra lectura, hubo una re-escritura simultánea (tearing).
-      // El do-while se repite.
-    } while (s1 !== s2)
- 
-    return { frameId: this.i32[DmxHdr.FRAME_ID], data: this.scratch }
-  }
-}
-PIEZA 2: dmxPhantomWorker.ts
-
-
-typescript
-import { parentPort, workerData } from 'node:worker_threads'
-import { DmxUniverseReader } from '../../../core/aether/glass/DmxSabHandlers'
- 
-// 1. Recibir el DMX_UNIVERSE_SAB a través de workerData
-const sab = workerData?.sab as SharedArrayBuffer
- 
-if (!sab || !(sab instanceof SharedArrayBuffer)) {
-  throw new Error('[DMX Phantom Worker] DMX_UNIVERSE_SAB no proporcionado o inválido.')
-}
- 
-// 2. Instanciar el lector lock-free
-const reader = new DmxUniverseReader(sab)
- 
-let lastFrameId = -1
- 
-// Helper mock simulando la escritura de hardware nativo
-function mockSerialportWrite(_frameId: number, _dataLength: number): void {
-  // TODO: Inyectar el binding nativo de serialport.write aquí.
-  // Ej: serialport.write(data) 
-}
- 
-// 3. Establecer el bucle de salida
-function outputLoop(): void {
-  // Lectura coherente (zero-allocation) vía Seqlock
-  const frame = reader.readCoherent(lastFrameId)
- 
-  if (frame) {
-    lastFrameId = frame.frameId
-    
-    // Simula escritura al driver/hardware (aislado del tick de Node)
-    mockSerialportWrite(frame.frameId, frame.data.length)
-  }
- 
-  // Spin-wait muy ligero usando temporizadores nativos de Node.js
-  setImmediate(outputLoop)
-}
- 
-// Arrancar motor
-outputLoop()
- 
-// Manejar mensajes del parent
-parentPort?.on('message', (msg) => {
-  if (msg === 'STOP') {
-    process.exit(0)
-  }
-})
+  }, [showFile, newShow])
+Resumen ejecutivo: El newShow limpia el estado, pero useSeleneTruth (línea 139) lo deshace al recibir fixtures del backend. La "defensa contra shows fantasma" (WAVE 6018) es precisamente el origen del fantasma cuando el show es nuevo. El fix A es suficiente para cerrar el bug; B y C son blindaje adicional.

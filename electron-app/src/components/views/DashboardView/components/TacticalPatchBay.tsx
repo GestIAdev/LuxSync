@@ -149,7 +149,7 @@ export const TacticalPatchBay: React.FC = () => {
                 <input
                   type="number"
                   className="patch-address-input"
-                  value={fixture.address}
+                  value={fixture.address ?? 1}
                   onChange={(e) => handleAddressChange(fixture.id, parseInt(e.target.value) || 1)}
                   min={1}
                   max={512}

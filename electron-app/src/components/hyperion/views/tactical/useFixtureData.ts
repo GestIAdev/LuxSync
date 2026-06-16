@@ -249,12 +249,33 @@ export function useFixtureData(): TacticalFixture[] {
           // Side-mounted: fixed X, spread Y
           fixture.x = layout.fixedX
           fixture.y = distributeVertically(localIdx, count, layout.y)
+        } else if (layout.stereo) {
+          // 🔥 WAVE-SPLIT-BRAIN FIX: Usar position.x si existe en lugar de paridad ciega
+          const pos = stageFixture?.position
+          const hasRealPosition = pos && !(pos.x === 0 && pos.y === 3 && pos.z === 0)
+
+          const isLeft = hasRealPosition
+            ? pos.x < 0
+            : localIdx % 2 === 0
+
+          const range = isLeft ? layout.stereo.leftRange : layout.stereo.rightRange
+          const totalPerSide = Math.ceil(count / 2)
+          const halfIndex = isLeft ? Math.floor(localIdx / 2) : Math.floor((localIdx - 1) / 2)
+          fixture.x = distributeInRange(halfIndex, totalPerSide, range[0], range[1])
+          fixture.y = layout.y
+
+          // 🚦 WAVE 2042.16: TRAFFIC CONTROL - Type-based Y offset
+          if (fixture.type === 'moving') {
+            fixture.y -= 0.06
+          } else if (fixture.type === 'par' || fixture.type === 'wash') {
+            fixture.y += 0.06
+          }
         } else {
           // Horizontal row: distribute X, fixed Y
           const [xMin, xMax] = layout.xRange
           fixture.x = distributeInRange(localIdx, count, xMin, xMax)
           fixture.y = layout.y
-          
+
           // 🚦 WAVE 2042.16: TRAFFIC CONTROL - Type-based Y offset
           if (fixture.type === 'moving') {
             fixture.y -= 0.06

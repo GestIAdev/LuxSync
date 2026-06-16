@@ -30,6 +30,7 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { useShallow } from 'zustand/shallow';
+import { useSelectionStore } from './selectionStore';
 import { createEmptyShowFile, createFixtureGroup, normalizeZone, validateShowFileDeep, snapPosition, clampToCrystalBox, } from '../core/stage/ShowFileV2';
 import { autoMigrate } from '../core/stage/ShowFileMigrator';
 // ═══════════════════════════════════════════════════════════════════════════
@@ -258,7 +259,15 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
             stage: null,
             visuals: null,
         });
+        // 🔥 WAVE-V4 FIX: Purgar selección residual para evitar asignaciones corruptas
+        useSelectionStore.getState().deselectAll();
         get()._syncDerivedState();
+        // 🔥 WAVE-V4 EXORCISMO BILATERAL: Forzar al backend a tragar el show vacío
+        const lux = window.lux;
+        if (lux?.aether?.setFixtures) {
+            lux.aether.setFixtures([], null)
+                .catch((err) => console.warn('[newShow] Backend sync failed:', err));
+        }
     },
     saveShow: async () => {
         // 🔥 WAVE 1007.5 FIX: ALWAYS get fresh state, never trust closure
@@ -752,6 +761,7 @@ export async function initializeStageStore() {
     initialized = true;
     return true;
 }
+let _stageListenersInitialized = false;
 /**
  * Subscribe to stage:loaded events from the main process
  * This allows the main process to push shows to the renderer
@@ -759,6 +769,11 @@ export async function initializeStageStore() {
 export function setupStageStoreListeners() {
     if (!isElectron)
         return () => { };
+    if (_stageListenersInitialized) {
+        console.log('[stageStore] ⚡ Listeners already initialized, skipping duplicate setup');
+        return () => { };
+    }
+    _stageListenersInitialized = true;
     const lux = window.lux;
     if (!lux?.stage?.onLoaded)
         return () => { };
@@ -796,7 +811,10 @@ export function setupStageStoreListeners() {
             console.error('[stageStore] ❌ Failed to load active show at startup:', err);
         });
     }
-    return unsubscribe;
+    return () => {
+        unsubscribe();
+        _stageListenersInitialized = false;
+    };
 }
 // ═══════════════════════════════════════════════════════════════════════════
 // 🔒 WAVE 2100: BEFOREUNLOAD — Clear file lock on window close

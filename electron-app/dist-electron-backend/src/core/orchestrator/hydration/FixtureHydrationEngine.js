@@ -211,16 +211,10 @@ export class FixtureHydrationEngine {
             ctx.aetherPipeline = new NodeExtractionPipeline();
         }
         const pipeline = ctx.aetherPipeline;
-        const existingIds = [...ctx.aetherGraph.getDeviceIds()];
-        for (const deviceId of existingIds) {
-            ctx.aetherGraph.unregisterDevice(deviceId);
-        }
-        ctx.aetherHasDevices = false;
-        let registered = 0;
+        const staged = [];
         for (const fixture of fixtures) {
-            if (!fixture.id) {
+            if (!fixture.id)
                 continue;
-            }
             try {
                 let definition = ctx.profileResolver.resolveFixtureDefinitionForAether(fixture);
                 if (fixture.forgeGraph && definition) {
@@ -229,9 +223,8 @@ export class FixtureHydrationEngine {
                 }
                 if (!definition || definition.channels.length === 0) {
                     const profileId = ctx.profileResolver.resolveFixtureProfileId(fixture);
-                    if (!profileId && !fixture.profileId && !fixture.id) {
+                    if (!profileId && !fixture.profileId && !fixture.id)
                         continue;
-                    }
                     const minimalDimmerChannel = {
                         index: 1,
                         name: 'Dimmer',
@@ -254,16 +247,29 @@ export class FixtureHydrationEngine {
                 const fixtureV2 = ctx.profileResolver.buildFixtureV2ForAether(fixture, definition);
                 const deviceDef = pipeline.extract(definition, fixtureV2);
                 const forgeGraph = fixture.forgeGraph ?? undefined;
-                this.registerAetherDevice(deviceDef, forgeGraph);
-                registered++;
-                const nodeIds = deviceDef.nodes.map(n => `${String(n.nodeId)}(${n.family})`).join(', ');
-                console.log(`[FixtureHydrationEngine] ✅ WAVE 4674: Fixture "${fixture.id}" (${fixture.type ?? '?'}) ` +
-                    `→ Aether @ dmx:${deviceDef.dmxAddress}/u${deviceDef.universe} | nodes: [${nodeIds}]`);
+                staged.push({ deviceDef, forgeGraph });
             }
             catch (err) {
                 console.warn(`[FixtureHydrationEngine] ⚡ WAVE 4594: Aether sync SKIPPED fixture "${fixture.id}" ` +
                     `(type="${fixture.type ?? '?'}", name="${fixture.name ?? '?'}"):`, err);
             }
+        }
+        // Phase 2 — Atomic swap: unregister ALL old devices then immediately register
+        // ALL new ones. The window where the graph is empty is now as short as possible
+        // (two tight synchronous loops). TickEngine cannot observe this gap because the
+        // _isHydrating flag from F2 blocks tick() for the entire setFixtures call.
+        const existingIds = [...ctx.aetherGraph.getDeviceIds()];
+        for (const deviceId of existingIds) {
+            ctx.aetherGraph.unregisterDevice(deviceId);
+        }
+        ctx.aetherHasDevices = false;
+        let registered = 0;
+        for (const { deviceDef, forgeGraph } of staged) {
+            this.registerAetherDevice(deviceDef, forgeGraph);
+            registered++;
+            const nodeIds = deviceDef.nodes.map(n => `${String(n.nodeId)}(${n.family})`).join(', ');
+            console.log(`[FixtureHydrationEngine] ✅ WAVE 4674: Fixture "${deviceDef.deviceId}" ` +
+                `→ Aether @ dmx:${deviceDef.dmxAddress}/u${deviceDef.universe} | nodes: [${nodeIds}]`);
         }
         ctx.zoneNodeRouter = new ZoneNodeRouter(ctx.aetherGraph);
         ctx.seleneAetherAdapter = new SeleneAetherAdapter(ctx.zoneNodeRouter);

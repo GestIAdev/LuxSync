@@ -56,6 +56,7 @@ export class TickEngine {
   get onBroadcast() { return this.ctx.onBroadcast }
   get _aetherHasDevices() { return this.ctx._aetherHasDevices }
   get _outputEnabled() { return this.ctx._outputEnabled }
+  get _isHydrating() { return this.ctx._isHydrating }
   get _aetherArbiter() { return this.ctx._aetherArbiter }
   get _aetherResolver() { return this.ctx._aetherResolver }
   get _colorAdapter() { return this.ctx._colorAdapter }
@@ -114,6 +115,11 @@ export class TickEngine {
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     if (!this.brain || !this.engine || !this.hal) return
+
+    // F2: HYDRATION LOCK GUARD — skip tick while setFixtures rebuilds the Aether graph.
+    // Prevents the engine from reading a partially-constructed device graph or
+    // emitting DMX to addresses that no longer exist in the new show.
+    if (this._isHydrating) return
 
     this.frameCount++
 

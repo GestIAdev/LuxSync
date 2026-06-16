@@ -1560,7 +1560,7 @@ export const VisualPatcher: React.FC = () => {
                           ? `0 0 12px ${COLORS.state.dangerDim}` 
                           : 'none'
                       }} 
-                      value={selectedFixture.address}
+                      value={selectedFixture.address ?? ''}
                       onChange={(e) => handleAddressChange(e.target.value)}
                       onFocus={(e) => {
                         if (!collisionInfo.hasCollision) {

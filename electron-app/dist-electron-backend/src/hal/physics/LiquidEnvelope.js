@@ -29,17 +29,12 @@ export class LiquidEnvelope {
         this.config = config;
         this.state = LiquidEnvelope.freshState();
     }
-    static freshState() {
-        return {
-            intensity: 0,
-            avgSignal: 0,
-            avgSignalPeak: 0,
-            lastFireTime: 0,
-            lastSignal: 0,
-            wasAttacking: false,
-            sustainedFrames: 0,
-            sustainedSquelchBoost: 0,
-        };
+    /** WAVE 6020: HOT-SWAP — actualiza config sin matar el estado interno.
+     *  El avgSignal, avgSignalPeak y lastFireTime se preservan para evitar
+     *  el 'cold-start' que rompe el groove durante 30-60 frames tras swap.
+     */
+    setConfig(config) {
+        this.config = config;
     }
     // ─────────────────────────────────────────────────────────────────────
     // PUBLIC API
@@ -195,18 +190,39 @@ export class LiquidEnvelope {
             s.intensity = Math.max(s.intensity, ghostPower);
         }
         // ═══════════════════════════════════════════════════════════════════
-        // 10. SMOOTH FADE — Anti-guillotine low-end filter
-        //    Herencia: WAVE 2383 (quadratic fade below 0.08)
+        // 10. LA SINGULARIDAD FOTÓNICA (Weber-Fechner + Thermal Mass)
+        //    WAVE V4: Conversión de Audio Lineal a Presión Óptica Exponencial
         // ═══════════════════════════════════════════════════════════════════
-        const fadeZone = 0.08;
-        const fadeFactor = s.intensity >= fadeZone
-            ? 1.0
-            : Math.pow(s.intensity / fadeZone, 2);
-        const faded = Math.min(c.maxIntensity, s.intensity * fadeFactor);
-        // WAVE 2990: GHOST CAP FLOOR ELIMINATED.
-        // The artificial dimmer floor (ghostCap * max(morph, 0.1)) prevented DMX 0.
-        // If audio energy is zero, output must be zero. No residual glow.
+        // A) Curva Perceptual Gamma (El ojo ve logarítmico, emitimos exponencial)
+        const OPTICAL_GAMMA = 2.4;
+        let photometricPressure = Math.pow(s.intensity, OPTICAL_GAMMA);
+        // B) Efecto de "Masa Térmica" (El Paracaídas de Tungsteno)
+        // Inflamos asintóticamente la cola cuando la presión baja del 12% para evitar 
+        // el corte abrupto de los dimmers físicos de baja resolución.
+        const THERMAL_ZONE = 0.12;
+        if (photometricPressure > 0 && photometricPressure < THERMAL_ZONE) {
+            const thermalBoost = 1.0 + (1.0 - (photometricPressure / THERMAL_ZONE)) * 0.45;
+            photometricPressure *= thermalBoost;
+        }
+        // C) Suelo Cuántico (Noise Gate Fotónico)
+        // Matamos los voltajes residuales que no producen luz real.
+        if (photometricPressure < 0.005) {
+            photometricPressure = 0;
+        }
+        const faded = Math.min(c.maxIntensity, photometricPressure);
         return faded;
+    }
+    static freshState() {
+        return {
+            intensity: 0,
+            avgSignal: 0,
+            avgSignalPeak: 0,
+            lastFireTime: 0,
+            lastSignal: 0,
+            wasAttacking: false,
+            sustainedFrames: 0,
+            sustainedSquelchBoost: 0,
+        };
     }
     /** Resetea todo el estado interno a valores iniciales */
     reset() {

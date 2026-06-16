@@ -1067,12 +1067,20 @@ export async function initializeStageStore(): Promise<boolean> {
   return true
 }
 
+let _stageListenersInitialized = false
+
 /**
  * Subscribe to stage:loaded events from the main process
  * This allows the main process to push shows to the renderer
  */
 export function setupStageStoreListeners(): () => void {
   if (!isElectron) return () => {}
+  
+  if (_stageListenersInitialized) {
+    console.log('[stageStore] ⚡ Listeners already initialized, skipping duplicate setup')
+    return () => {}
+  }
+  _stageListenersInitialized = true
   
   const lux = (window as any).lux
   if (!lux?.stage?.onLoaded) return () => {}
@@ -1121,7 +1129,10 @@ export function setupStageStoreListeners(): () => void {
     })
   }
   
-  return unsubscribe
+  return () => {
+    unsubscribe()
+    _stageListenersInitialized = false
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

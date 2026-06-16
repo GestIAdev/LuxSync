@@ -307,8 +307,9 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
     } = frame
 
     // ── 4.1 COMPACTION ──────────────────────────────────────────────
-    const frontPar = frontRight
-    const backPar  = backRight
+    const isStrict = this.profile.layout41Strategy === 'strict-split'
+    const frontPar = isStrict ? frontRight : Math.max(frontLeft, frontRight)
+    const backPar  = isStrict ? backRight  : Math.max(backLeft, backRight)
 
     // ── SIDECHAIN DETECTION (replicar lógica del Base para telemetría) ──
     const p = this.profile

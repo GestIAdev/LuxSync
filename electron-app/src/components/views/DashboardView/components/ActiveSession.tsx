@@ -60,6 +60,7 @@ export const ActiveSession: React.FC = () => {
   }, [showFile, fixtures])
   
   const handleLoadShow = useCallback(async () => {
+    if (isLoading) return
     setIsLoading(true)
     try {
       // WAVE 438: Use proper window.lux.stage.openDialog API

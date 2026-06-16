@@ -122,15 +122,15 @@ export const LATINO_PROFILE = {
     //   que generaba el mural de voz.
     envelopeHighMid: {
         name: 'Back L (Latigazo Percusivo)',
-        gateOn: 0.50, // WAVE 6050: endurecimiento bastante del gate para Back L
+        gateOn: 0.18, // WAVE 6060: 0.50->0.18 — resucitar Back L, permitir señal real
         boost: 3.0,
         crushExponent: 2.0,
-        decayBase: 0.14, // WAVE 3491: GUILLOTINA snap violento
+        decayBase: 0.30, // WAVE 6060: 0.14->0.30 — snap menos violento, canal respira
         decayRange: 0.03,
         maxIntensity: 0.95,
-        squelchBase: 0.38, // Conservado: anti-barro
+        squelchBase: 0.20, // WAVE 6060: 0.38->0.20 — piso razonable, no asfixia
         squelchSlope: 0.10,
-        ghostCap: 0.00, // Negro absoluto
+        ghostCap: 0.04, // WAVE 6060: 0.00->0.04 — suelo mínimo entre notas
         gateMargin: 0.005,
         attackSlopeMin: 0.02, // WAVE 4693: voces suben más lento; el snare/hat pasa por ataque real
     },
@@ -191,8 +191,8 @@ export const LATINO_PROFILE = {
     // El truco -0.50 (sumar treble) generaba que voces+treble continuo colaran al Back.
     // Con highMid directo como input principal (backLHighMidWeight futuro)
     // y el gateOn 0.35 ya estricto, el canal es puramente percutivo.
-    backLLowMidWeight: 0.22,
-    backLMidWeight: 0.10,
+    backLLowMidWeight: 0.40, // WAVE 6060: 0.22->0.40 — refuerzo lowMid para romper gate
+    backLMidWeight: 0.55, // WAVE 6060: 0.10->0.55 — mid como alimento principal
     backLTrebleSub: 0.28, // WAVE 4693: más limpieza de voz sostenida, sin matar el golpe real
     backLBassSub: 0.0,
     // ═══════════════════════════════════════════════════════════════

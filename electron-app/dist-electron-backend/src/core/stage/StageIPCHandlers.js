@@ -23,6 +23,29 @@
 import { ipcMain, dialog } from 'electron';
 import { stagePersistence } from './StagePersistence';
 import path from 'path';
+import { getTitanOrchestrator } from '../orchestrator/TitanOrchestrator';
+// ── F1: HYDRATION LOCK ────────────────────────────────────────────────────
+// Hydrates TitanOrchestrator directly from a parsed ShowFileV2 BEFORE
+// the renderer receives the broadcast. Cuts the round-trip dependency:
+// Backend no longer waits for the renderer to echo fixtures back via IPC.
+function hydrateBackendFromShow(showFile) {
+    try {
+        const orchestrator = getTitanOrchestrator();
+        const fixtures = showFile.fixtures.map(f => ({
+            ...f,
+            dmxAddress: f.dmxAddress || f.address,
+            isVirtual: f.isVirtual ?? false,
+        }));
+        const stageBounds = showFile.stage
+            ? { width: showFile.stage.width, height: showFile.stage.height, depth: showFile.stage.depth }
+            : undefined;
+        orchestrator.setFixtures(fixtures, stageBounds);
+        console.log(`[StageIPC] ✅ F1 HYDRATION: ${fixtures.length} fixtures injected directly into backend`);
+    }
+    catch (err) {
+        console.error('[StageIPC] ❌ F1 HYDRATION FAILED:', err);
+    }
+}
 // ═══════════════════════════════════════════════════════════════════════════
 // SETUP FUNCTION
 // ═══════════════════════════════════════════════════════════════════════════
@@ -41,6 +64,8 @@ export function setupStageIPCHandlers(getMainWindow) {
         console.log('[StageIPC] Load show:', filePath || '(active)');
         const result = await stagePersistence.loadShow(filePath);
         if (result.success && result.showFile) {
+            // F1: Hydrate backend BEFORE notifying renderer — eliminates round-trip race
+            hydrateBackendFromShow(result.showFile);
             // Broadcast loaded show to renderer
             const mainWindow = getMainWindow();
             if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
@@ -66,6 +91,8 @@ export function setupStageIPCHandlers(getMainWindow) {
         console.log('[StageIPC] Load active show');
         const result = await stagePersistence.loadShow();
         if (result.success && result.showFile) {
+            // F1: Hydrate backend BEFORE notifying renderer
+            hydrateBackendFromShow(result.showFile);
             const mainWindow = getMainWindow();
             if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
                 try {
@@ -170,6 +197,8 @@ export function setupStageIPCHandlers(getMainWindow) {
         // Load the selected file
         const loadResult = await stagePersistence.loadShow(filePath);
         if (loadResult.success && loadResult.showFile) {
+            // F1: Hydrate backend BEFORE notifying renderer
+            hydrateBackendFromShow(loadResult.showFile);
             // Broadcast to renderer
             if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
                 try {

@@ -607,7 +607,7 @@ async function initTitan(): Promise<void> {
   // Throttle eliminado del callback — una sola fuente de verdad.
   titanOrchestrator.setBroadcastCallback((truth) => {
     try {
-      if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
         truth.hardware.dmx.outputEnabled = titanOrchestrator.isOutputEnabled()
         mainWindow.webContents.send('selene:truth', truth)
       }
@@ -619,7 +619,7 @@ async function initTitan(): Promise<void> {
   titanOrchestrator.setHotFrameCallback((hotFrame) => {
     _lastHotFrame++
     try {
-      if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
         const glassActive = glassPoolManager.getMetrics().framesSent > 0
         if (!glassActive) {
           mainWindow.webContents.send('selene:hot-frame', hotFrame)

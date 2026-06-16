@@ -6,22 +6,12 @@ import { contextBridge, ipcRenderer } from 'electron';
 let _port = null;
 let _pending = null;
 const _listeners = new Set();
-console.log('[GlassPreload] 🚀 Módulo cargado — esperando glass:port...');
 // 1. Escuchar la llegada del MessagePort desde el Main Process
 ipcRenderer.on('glass:port', (event) => {
-    console.log('[GlassPreload] 📨 glass:port recibido. ports.length:', event.ports?.length ?? 0);
-    if (!event.ports || event.ports.length === 0) {
-        console.error('[GlassPreload] ❌ glass:port sin puertos — MessageChannel no transferido!');
+    if (!event.ports || event.ports.length === 0)
         return;
-    }
     _port = event.ports[0];
-    console.log('[GlassPreload] ✅ _port asignado. Iniciando...');
-    let _msgCount = 0;
     _port.onmessage = ({ data }) => {
-        if (_msgCount < 3) {
-            _msgCount++;
-            console.log(`[GlassPreload] 📦 Mensaje #${_msgCount} en port: type=${data?.type}, hasBuffer=${!!data?.buffer}`);
-        }
         if (data?.type !== 'glass-state')
             return;
         // Si ya teníamos un buffer sin consumir (Renderer ocupado/lento), 

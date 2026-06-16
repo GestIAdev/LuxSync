@@ -221,6 +221,10 @@ export class TitanOrchestrator {
         // WAVE 252: Real fixtures from ConfigManager (no more mocks)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         this.fixtures = [];
+        // F2: HYDRATION LOCK — blocks TickEngine.tick() while setFixtures rebuilds the Aether graph.
+        // true  → hydration in progress, tick() returns immediately (no DMX output).
+        // false → normal operation.
+        this._isHydrating = false;
         // WAVE 2490: THE TIER SEPARATION PROTOCOL â€” Hephaestus gate
         this._licenseTier = 'FULL_SUITE';
         // WAVE 254: Control state
@@ -441,6 +445,7 @@ export class TitanOrchestrator {
             get _pixelMapAdapter() { return self._pixelMapAdapter; },
             get _physicsPostProcessor() { return self._physicsPostProcessor; },
             get _outputEnabled() { return self._outputEnabled; },
+            get _isHydrating() { return self._isHydrating; },
             get _aetherSafety() { return self._aetherSafety; },
             get _forgeFrameCtx() { return self._forgeFrameCtx; },
             get _forgeAudioBands() { return self._forgeAudioBands; },
@@ -771,16 +776,24 @@ export class TitanOrchestrator {
      */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setFixtures(fixtures, stageBounds) {
-        // WAVE 4968 FIX: Directly update this.fixtures before delegating to hydrationEngine.
-        // The hydrationCtx proxy setter should also update this, but we ensure it here
-        // to prevent stale fixture IDs in the truth broadcast.
-        this.fixtures = fixtures.map(f => ({
-            ...f,
-            dmxAddress: f.dmxAddress || f.address,
-            isVirtual: f.isVirtual ?? false,
-        }));
-        console.log(`[TitanOrchestrator] setFixtures: ${this.fixtures.length} fixtures | IDs: ${this.fixtures.slice(0, 3).map((f) => f.id).join(', ')}...`);
-        return this.hydrationEngine.setFixtures(this.fixtures, stageBounds);
+        // F2: HYDRATION LOCK — pause TickEngine while rebuilding Aether graph
+        this._isHydrating = true;
+        try {
+            // WAVE 4968 FIX: Directly update this.fixtures before delegating to hydrationEngine.
+            // The hydrationCtx proxy setter should also update this, but we ensure it here
+            // to prevent stale fixture IDs in the truth broadcast.
+            this.fixtures = fixtures.map(f => ({
+                ...f,
+                dmxAddress: f.dmxAddress || f.address,
+                isVirtual: f.isVirtual ?? false,
+            }));
+            console.log(`[TitanOrchestrator] setFixtures: ${this.fixtures.length} fixtures | IDs: ${this.fixtures.slice(0, 3).map((f) => f.id).join(', ')}...`);
+            return this.hydrationEngine.setFixtures(this.fixtures, stageBounds);
+        }
+        finally {
+            // Always unlock — even if hydrationEngine throws, TickEngine must recover
+            this._isHydrating = false;
+        }
     }
     /**
      * WAVE 4590: Output gate canonical state for Aether pipeline.

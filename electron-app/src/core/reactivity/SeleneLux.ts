@@ -55,7 +55,7 @@ import {
   PROFILE_REGISTRY,
   DEFAULT_LIQUID_PROFILE,
   // 🌊 WAVE 2434: TELEMETRY ENGINE — swap in/out de liquidEngine41
-  latinoEngine41Telemetry,
+  omniEngine41Telemetry,
 } from '../../hal/physics';
 import type { LiquidEngineBase } from '../../hal/physics/LiquidEngineBase'
 
@@ -485,7 +485,7 @@ export class SeleneLux {
     const profile = PROFILE_REGISTRY[normalizedKey] ?? DEFAULT_LIQUID_PROFILE;
     liquidEngine41.setProfile(profile);
     liquidEngine71.setProfile(profile);
-    latinoEngine41Telemetry.setProfile(profile);
+    omniEngine41Telemetry.setProfile(profile);
     this._activeProfileId = profile.id;
     console.log(`[SeleneLux 🌊] Profile hot-swapped: ${normalizedKey} → ${profile.id} (${profile.name})`);  
   }
@@ -625,7 +625,7 @@ export class SeleneLux {
       };
       
       // 🌊 WAVE 2432: THE SWITCH BIFURCADO — 4.1 o 7.1, sin legacy
-      // 🌊 WAVE 2434: TELEMETRY HOOK — si telemetry activo en 4.1, usa latinoEngine41Telemetry
+      // 🌊 WAVE 2434: TELEMETRY HOOK — si telemetry activo en 4.1, usa omniEngine41Telemetry
       // 🌊 WAVE 2470 HOTFIX V4: Chill SIEMPRE usa liquidEngine71, sin importar liquidLayout.
       // LiquidEngine41 no tiene oscilladores primos (isChill branch) — usa envelopes de
       // transientes que en chill silencioso quedan en 0 → PARs apagados, sin pulso.
@@ -635,14 +635,20 @@ export class SeleneLux {
                       vibeNormalized.includes('ambient') || vibeNormalized.includes('jazz')
       const liquidEngine = (this.liquidLayout === '7.1' || isChill)
         ? liquidEngine71
-        : (latinoEngine41Telemetry.isTelemetryEnabled() ? latinoEngine41Telemetry : liquidEngine41);
+        : (omniEngine41Telemetry.isTelemetryEnabled() ? omniEngine41Telemetry : liquidEngine41);
       this._lastActiveLiquidEngine = liquidEngine
       // 🩺 WAVE 4655-DIAG: log engine switch (once per change, not every frame)
-      const engineName = liquidEngine === liquidEngine71 ? '71' : (liquidEngine === latinoEngine41Telemetry ? '41T' : '41');
+      const engineName = liquidEngine === liquidEngine71 ? '71' : (liquidEngine === omniEngine41Telemetry ? '41T' : '41');
       if (engineName !== this._lastLoggedEngine) {
         console.log(`[SeleneLux 🌊] ENGINE: ${engineName} | layout=${this.liquidLayout} | vibe=${vibeContext.activeVibe} | chill=${isChill}`);
         this._lastLoggedEngine = engineName;
       }
+      // 🩺 WAVE 4655-DIAG-V2: Si telemetry está activo pero el motor real es otro
+      // (ej. layout 7.1), forzamos una pasada de captura en 4.1 para no perder datos.
+      if (liquidEngine !== omniEngine41Telemetry && omniEngine41Telemetry.isTelemetryEnabled()) {
+        omniEngine41Telemetry.applyBands(liquidInput);
+      }
+
       const liquidResult = liquidEngine.applyBands(liquidInput);
       
       isStrobeActive = liquidResult.strobeActive;

@@ -1,52 +1,182 @@
-Informe Forense WAVE 5039 — READ-ONLY AUDIT
-TAREA 1: Rastreo de selene:truth
-¿Qué es este módulo? selene:truth no es un módulo; es el canal IPC principal ('selene:truth') por el cual el main process emite el estado completo del sistema (SeleneTruth) al renderer. Se define en electron/main.ts:598 dentro del callback registrado con titanOrchestrator.setBroadcastCallback().
+AUDITORÍA COMPLETA — Aether Glass UI Bypass
+Estado: MAPEO + PUNTOS DE CORTE IDENTIFICADOS (sin ejecución de código)
+1. RESUMEN EJECUTIVO
+El Aether Glass YA EXISTE y FUNCIONA a 44Hz. El problema no es la ausencia de infraestructura, sino que los renderizadores Canvas 2D/3D no la consumen. En su lugar, siguen alimentándose de un pipeline IPC → Store → React → Worker que introduce latencia, throttling y desync.
 
-¿Es un remanente de UI antigua? No. Es el backbone vivo de la UI. La arquitectura actual (WAVE 2510) lo mantiene como broadcast de estado completo a ~7 Hz, complementado por selene:hot-frame a 44 Hz para datos dinámicos de fixtures. La store truthStore (src/stores/truthStore.ts:292) y useSeleneTruth.ts dependen exclusivamente de este canal.
+GlassBridge: Main Process → BufferPoolManager → MessagePort → glassPreload.ts → window.glass.onFrame() → GlassCanvas.tsx → transientStore
+TacticalCanvas (2D): Ignora el Glass. Se alimenta de truthStore (~7Hz vía IPC selene:truth) → useFixtureData() → postMessage al Web Worker
+Visualizer (3D): Ignora el Glass. Se alimenta de truthStore y stageStore vía hooks reactivos
+2. ARQUITECTURA ACTUAL DEL DATA FLOW
 
-¿Por qué bloquea IPC 7.2 ms? El log [IPC PROBE] 🐢 selene:truth BLOCK 7.2ms mide performance.now() alrededor de mainWindow.webContents.send('selene:truth', truth). El objeto truth es una instancia de SeleneTruth (SeleneProtocol.ts), que arrastra fixtures, consciousness, context, hardware y datos sensoriales completos. La serialización de este objeto grande en el IPC bridge de Chromium consume ese tiempo síncrono. No es starvation del event loop de Node, pero es un micro-bloqueo serializado en el hilo principal por cada emisión.
 
-¿Sigue emitiendo durante el tick a 44 Hz? Sí. En TickEngine.ts:1170, this.onBroadcast(truth) se invoca dentro de tick(). La guarda shouldBroadcastFullTruth (TickEngine.ts:737) usa TRUTH_BROADCAST_DIVIDER = 6, por lo que normalmente emite cada 6 frames (~7.3 Hz). PERO si chronosPlaying es true, la guarda se salta y emite en cada frame (44 Hz), amplificando el costo de serialización IPC.
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           MAIN PROCESS (Node.js)                             │
+│  TickEngine.tick() @44Hz                                                     │
+│  ├── _glassView (Float32Array) ──► BufferPoolManager.pushFrame() ──► Renderer│
+│  │   (líneas 1189-1218 TickEngine.ts)                                        │
+│  ├── onHotFrame() ──► TitanOrchestrator ──► IPC 'selene:truth' @44Hz        │
+│  │   (líneas 763-808 TickEngine.ts)                                          │
+│  └── onBroadcast() ──► Full SeleneTruth ──► IPC @ ~7Hz (divider=6)          │
+│      (líneas 1222-1407 TickEngine.ts)                                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                         ┌────────────┴────────────┐
+                         ▼                         ▼
+              ┌────────────────────┐      ┌────────────────────┐
+              │  GLASS BRIDGE      │      │  IPC ZUSTAND       │
+              │  (MessagePort)     │      │  (selene:truth)    │
+              │  44Hz, zero-copy   │      │  ~7Hz, serialized  │
+              └────────┬───────────┘      └────────┬───────────┘
+                       │                             │
+                       ▼                             ▼
+              ┌────────────────────┐      ┌────────────────────┐
+              │  glassPreload.ts   │      │  useSeleneTruth.ts │
+              │  window.glass      │      │  truthStore (Zustand)│
+              │  .onFrame()        │      │  .setTruth() @~2Hz │
+              └────────┬───────────┘      └────────┬───────────┘
+                       │                             │
+                       ▼                             ▼
+              ┌────────────────────┐      ┌────────────────────┐
+              │  GlassCanvas.tsx   │      │  useHardware()     │
+              │  (hidden, debug)   │      │  useFixtureData()  │
+              │  transientStore    │      │  useFixture3DData()│
+              │  injectTransient() │      │  React re-renders  │
+              └────────────────────┘      └────────┬───────────┘
+                                                   │
+                              ┌────────────────────┼────────────────────┐
+                              ▼                    ▼                    ▼
+                    ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+                    │ TacticalCanvas  │  │  Render Worker  │  │ Visualizer3D    │
+                    │ (2D Tactical)   │  │ (hyperion-render│  │ (R3F / useFrame)│
+                    │ useFixtureData()│  │ .worker.ts)     │  │ useFixture3DData│
+                    │ packFrameData() │  │ postMessage     │  │ transientStore  │
+                    │ ──► postMessage │  │ Float32Array    │  │ (no lo usa!)    │
+                    └─────────────────┘  └─────────────────┘  └─────────────────┘
+3. PUNTOS DE CORTE EXACTOS (dónde cortar el cable IPC/Store)
+🔴 CORTE 1 — TacticalCanvas.tsx: El Data Pump al Worker
+Archivo: @/components/hyperion/views/tactical/TacticalCanvas.tsx
 
-TAREA 2: Auditoría del Buffer DMX — "Suma bytes: 638"
-Ubicación del log:
+Problema: El componente recibe fixtures desde useFixtureData() (que lee truthStore @ ~7Hz), los empaqueta en Float32Array vía packFrameDataInto(), y los envía al Web Worker vía postMessage. Esto es doble trabajo: el Glass ya tiene los datos en un Float32Array listo a 44Hz.
 
-TickEngine.ts:1138
-HardwareDispatcher.ts:88
-Matemática real:
+Líneas a cortar:
+
+L269: const fixtures = useFixtureData() — obtiene datos reactivos de stores
+L131-183: función packFrameDataInto() — empaqueta manualmente datos que ya vienen empaquetados del Glass
+Todo el frameBufferRef (L243), msgTemplateRef (L245), transientMapRef (L240)
+Todo el sistema de mailboxRef, flushFrameMailbox, runtimeCountersRef (frame drop tracking del worker)
+El useEffect del data pump (a partir de L400 aproximadamente donde se envían frames)
+Reemplazo: El Worker debe recibir los datos directamente del Glass. Opciones:
+
+Opción A (recomendada): El Worker recibe el MessagePort del Glass al inicializarse (INIT message con port transferido). El Worker lee window.glass.onFrame equivalente interno.
+Opción B: El main thread lee window.glass.onFrame y reenvía al Worker (menos ideal, añade un hop).
+🔴 CORTE 2 — hyperion-render.worker.ts: Fuente de datos
+Archivo: @/workers/hyperion-render.worker.ts
+
+Problema: El worker recibe frames dinámicos vía mensajes FRAME (L113-122 de hyperion-render.types.ts). Estos mensajes contienen Float32Array generados por el main thread a partir de stores reactivos. El worker desempaqueta (L178-194) y hace smoothing (L196-213).
+
+Líneas a modificar:
+
+L83-86: currentFrameData, currentFrameNumber, currentTimestamp, currentFixtureCount — estado de frame que llega por mensaje
+L178-194: Bloque de unpack del Float32Array
+Handler de mensajes FRAME (buscar en la parte inferior del archivo, no mostrada en el snippet pero debe existir)
+Reemplazo: El worker debe recibir un MessagePort transferido desde glassPreload.ts o desde el main process. El worker crearía un onmessage handler que reciba glass-state directamente, eliminando la necesidad de mensajes FRAME por completo.
+
+🟡 CORTE 3 — useFixtureData.ts: Dependencia de truthStore para datos dinámicos
+Archivo: @/components/hyperion/views/tactical/useFixtureData.ts
+
+Problema: Este hook lee useHardware() (L107) que suscribe a truthStore vía Zustand. Los datos dinámicos (intensidad, RGB, pan/tilt) cambian a 44Hz pero React solo recibe actualizaciones throlleadas a ~7Hz. Esto causa desync visual.
+
+Líneas a cortar:
+
+L107: const hardware = useHardware() — para datos de alta frecuencia
+L126-135: runtimeStateMap construido a partir de hardware?.fixtures
+Preservar: El hook sigue siendo útil para:
+
+stageFixtures (estructural: zona, modelo, posición 3D)
+stageDimensions (ancho/depth del escenario)
+Layout 2D de zona (ZONE_LAYOUT_2D)
+overrides (L2 manual del programador)
+Reemplazo: Los datos dinámicos deben venir del transientStore (que ya se alimenta del Glass vía GlassCanvas.tsx). El hook useFixtureData debería fusionar:
+
+Estructura: stageStore.fixtures
+Dinámica: transientStore.hardware.fixtures (actualizado a 44Hz, zero React cost)
+Overrides: overrideStore
+🟡 CORTE 4 — useFixture3DData.ts: Dependencia de truthStore
+Archivo: @/components/hyperion/views/visualizer/useFixture3DData.ts
+
+Problema: Este hook ya fue parcialmente "decoupled" en WAVE 2236 (comentario L125-138) para evitar re-renders. Sin embargo, el comentario dice que getTransientFixture() se lee "at build time" (one-time snapshot), lo cual es insuficiente para 44Hz. La data dinámica debe leerse en useFrame() de R3F, no en un hook de React.
+
+Líneas a revisar:
+
+L117-122: Suscripciones a useStageStore, useSelectionStore, useOverrideStore
+L140-144: Debug code
+Todo el bloque donde se construye Fixture3DData[]
+Reemplazo: Separar claramente:
+
+Estructura ( React/Zustand): posición, modelo, zona, selección → useFixture3DData sigue sirviendo
+Dinámica (R3F useFrame @ 60fps): leer transientStore directamente dentro del loop de renderizado 3D, sin pasar por React
+🟡 CORTE 5 — useFixtureRender.ts: Hook reactivo por fixture
+Archivo: @/hooks/useFixtureRender.ts
+
+Problema: Este hook individual por fixture (useFixtureRender(truthData, fixtureId)) suscribe a useTruthStore (L213) para leer hardwareFixtures. Es usado por componentes 3D que necesitan datos en tiempo real. Cada fixture = 1 suscripción Zustand = explosión de re-renders.
+
+Líneas a cortar:
+
+L203-219: Resolución de truthData vía useTruthStore
+L222-230: Lecturas de useControlStore
+L257-263: Visual smoothing "La Mentira Piadosa" (ya no necesaria si se lee del Glass a 44Hz nativo)
+Reemplazo: Los componentes individuales deben leer del transientStore directamente, que ya contiene los datos del Glass sin causar re-renders de React.
+
+4. COMPONENTES DEL GLASS QUE YA FUNCIONAN (NO TOCAR)
+Componente	Rol	Estado
+TickEngine.ts:1189-1218	Escribe _glassView con fixture states	✅ Funciona a 44Hz
+BufferPoolManager.ts	Pool ping-pong de ArrayBuffers	✅ Funciona
+glassPreload.ts	Expone window.glass API	✅ Funciona
+GlassCanvas.tsx	Recibe Glass y alimenta transientStore	✅ Funciona (pero es hidden)
+transientStore.ts	Mutable ref con datos a 44Hz	✅ Funciona
+5. MAPEO DE REEMPLAZO PROPUESTO
+
+
+BEFORE (IPCPATH):
+TickEngine ──► onHotFrame/onBroadcast ──► IPC ──► truthStore ──► useFixtureData()
+    ──► packFrameDataInto() ──► postMessage ──► Worker ──► render()
+ 
+AFTER (GLASSPATH):
+TickEngine ──► _glassView ──► BufferPoolManager ──► MessagePort ──► glassPreload
+    ──► window.glass.onFrame ──► [TacticalCanvas lee y reenvía al Worker]
+    ──► Worker render() lee Float32Array directo del Glass
+6. ARCHIVOS INVOLUCRADOS EN LA OPERACIÓN
+Archivo	Acción	Complejidad
+TacticalCanvas.tsx	Eliminar data pump, reemplazar por Glass reader	Media
+hyperion-render.worker.ts	Recibir MessagePort del Glass, eliminar handler FRAME	Alta
+hyperion-render.types.ts	Eliminar WorkerMsgFrame o deprecar	Baja
+useFixtureData.ts	Separar estructura (Zustand) de dinámica (transientStore)	Media
+useFixture3DData.ts	Mover lectura dinámica a useFrame() de R3F	Media
+useFixtureRender.ts	Deprecar o migrar a transientStore	Baja
+GlassCanvas.tsx	Exponer/visualizar (ya funciona, puede ampliarse)	Baja
+7. CONSIDERACIONES TÉCNICAS
+¿Cómo pasa el MessagePort al Web Worker?
+Los MessagePort son transferibles. En TacticalCanvas.tsx, al inicializar el worker (createRenderWorker()), se puede transferir el port:
 
 
 
 typescript
-let byteSum = 0
-for (let _bi = 0; _bi < egressBuf.length; _bi++) byteSum += egressBuf[_bi]
-Veredicto: no hay anomalía de tamaño. El nombre del log es confuso: "Suma bytes" no es la longitud del buffer, es la suma aritmética de los valores de cada byte.
+const channel = new MessageChannel()
+worker.postMessage({ type: 'GLASS_PORT', port: channel.port2 }, [channel.port2])
+// channel.port1 se conecta a glassPreload.ts o se reenvía desde el main
+Alternativamente, glassPreload.ts puede exponer un método para "suscribir" workers.
 
-egressBuf proviene de aetherResolver.getUniverseBuffer(universe) (NodeResolver.ts:359), que retorna un Uint8Array(512) según su propio JSDoc.
-Un universo DMX tiene 512 canales útiles (más start code). Si la mayoría de los canales están en 0 y solo unos pocos fixtures emiten valores bajos (p. ej. 4 movers con RGB tenue ~160 en total por fixture), la suma de 638 es matemáticamente esperable.
-No se concatenan universos ni metadatos IPC al buffer que va al puerto serie. El buffer que se suma es el array de valores DMX puros del universo. El log simplemente refleja un escenario de baja intensidad lumínica.
-TAREA 3: Confirmación de la Hipótesis "Split-Brain UI"
-Ciclo de vida en TrinityProvider.tsx:
+¿Qué pasa con los overrides del Programmer?
+El Glass contiene los datos post-arbitraje (L1086 de TickEngine: _aetherUIProjector.project(...)). Esto significa que los overrides L2 del programador YA están aplicados en el Glass. No hay pérdida de funcionalidad.
 
-Llamada a start() siempre, sin importar el estado: En TrinityProvider.tsx:293-314, startTrinity() hace:
-
-
-typescript
-const current = await window.lux.getState()
-if (!current) {
-  window.lux.start()      // ← Primera llamada
-} else {
-  window.lux.start()      // ← SEGUNDA llamada, aunque ya corra
-}
-El backend (SystemLifecycleManager.start()) tiene guarda if (this.ctx.isRunning) return, por lo que la segunda invocación es un no-op funcional. PERO TitanOrchestrator.start() incrementa _startCount antes de delegar al lifecycle manager, generando el log [GHOST-HUNTER] startCount: 2. Esto explica la alerta sin necesidad de clones reales.
-Cleanup en unmount: Existe un useEffect de cleanup explícito (TrinityProvider.tsx:617-621) que llama stopTrinity() al desmontar el provider. stopTrinity() a su vez invoca unsubscribeRef.current() y window.lux.stop().
-Flags de protección:
-_hasInitializedHandshake (variable global, línea 437) previene doble handshake.
-_hasSubscribedToFixtures (variable global, línea 508) previene doble suscripción al canal de fixtures.
-hasStartedRef (useRef) previene doble arranque por cambios de powerState.
-Conclusión: No hay evidencia de un split-brain real (workers huérfanos, múltiples orquestadores o listeners acumulados). Sin embargo, el patrón en startTrinity() donde se ignora explícitamente el estado de getState() y se re-invoca start() de todos modos genera:
-
-El falso positivo startCount: 2 en Ghost-Hunter.
-Una re-suscripción innecesaria de listeners onStateUpdate, onModeChange y onTelemetryUpdate en cada remontaje (aunque unsubscribeRef sobreescribe la referencia anterior, sin acumulación real de listeners).
-En React Strict Mode, el ciclo montaje-desmontaje-remontaje ejecutará start() → stop() → start(), lo cual es funcionalmente seguro pero ruidoso en los logs.
-Hipótesis confirmada parcialmente: No hay brain split de instancias, pero sí hay una fuga lógica de lifecycle donde el frontend nunca confía en el estado del backend para decidir si llamar start().
+¿Qué pasa con la selección/hit testing?
+Scaffold (id, zona, posición, tipo): Sigue viniendo de stageStore → inmutable entre frames
+Dinámica (color, intensidad, pan/tilt): Viene del Glass
+Selección/hit test: El worker sigue manejándolo internamente con su propio estado (selectedIds, hoveredId)
+8. PRÓXIMOS PASOS RECOMENDADOS
+Fase 1: Modificar hyperion-render.worker.ts para aceptar un MessagePort transferido y leer frames del Glass directamente, eliminando la dependencia de mensajes FRAME.
+Fase 2: Modificar TacticalCanvas.tsx para eliminar el data pump (packFrameDataInto, frameBufferRef, etc.) y transferir el MessagePort al worker durante la inicialización.
+Fase 3: Actualizar useFixtureData.ts para leer datos dinámicos del transientStore en lugar de truthStore.
+Fase 4: Actualizar useFixture3DData.ts para que los componentes R3F lean transientStore dentro de useFrame().
+Fase 5: Relegar truthStore / IPC selene:truth a metadatos únicamente (BPM, vibe, genre, estado del sistema).
+¿Ejecuto la Fase 1 (modificación del worker para recibir Glass) o prefieres que profundice en algún punto específico del mapeo?

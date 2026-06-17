@@ -163,6 +163,19 @@ export interface WorkerMsgHibernate {
   sleep: boolean
 }
 
+/**
+ * GLASS BYPASS (Fases 1-2): Transfer Aether Glass MessagePort to worker.
+ * After receiving this, the worker reads frames directly from the port
+ * at 44Hz, bypassing the IPC → React → postMessage chain entirely.
+ * 
+ * Main thread packs Glass Float32Array (16f/fixture) → Worker 10f/fixture
+ * and posts through the port. Worker renders from latest received frame.
+ */
+export interface WorkerMsgGlassPort {
+  type: 'GLASS_PORT'
+  port: MessagePort
+}
+
 export type WorkerInboundMessage =
   | WorkerMsgInit
   | WorkerMsgResize
@@ -173,6 +186,7 @@ export type WorkerInboundMessage =
   | WorkerMsgOptions
   | WorkerMsgShutdown
   | WorkerMsgHibernate
+  | WorkerMsgGlassPort
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MESSAGES: Worker → Main Thread

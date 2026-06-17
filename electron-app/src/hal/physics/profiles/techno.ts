@@ -26,15 +26,16 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   // ═══════════════════════════════════════════════════════════════
 
   // Front L — El Océano de Subgraves (WAVE 2437: Monte Carlo co-optimizado con envelopeKick)
-  // gateOn 0.12→0.0656 — responde a subgraves más débiles, groove más lleno.
+  // HARDEN FRONT PARS: gateOn 0.0656→0.15 — solo subgraves reales, no ruido de fondo.
+  // crushExponent 2.4156→1.0 — respuesta lineal, no amplifica pads ambientales.
   // boost 3.5→2.7 — menos agresivo, equilibrio con fR a maxI=1.0.
   // maxIntensity 0.70→0.529 — fL cede protagonismo al kick (fR=1.0).
   // squelchBase 0.04→0.0613 — squelch ligeramente más alto para limpiar el piso.
   envelopeSubBass: {
     name: 'Front L (SubBass Groove)',
-    gateOn: 0.0656,
+    gateOn: 0.15,
     boost: 2.7054,
-    crushExponent: 2.4156,
+    crushExponent: 1.0,
     decayBase: 0.2218,
     decayRange: 0.166,
     maxIntensity: 0.5291,
@@ -45,20 +46,20 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   },
 
   // Front R — El Francotirador (WAVE 2437: Monte Carlo 15k iter, fitness=756, 100% kick, 0 FP)
-  // decayBase 0.04→0.0077 — el killer fix: decay ultrarrápido, fR muere entre kicks.
-  // decayRange 0.10→0.0329 — rango estrecho, comportamiento uniforme.
-  // gateOn 0.15→0.1098 — gate más bajo, captura kicks débiles sin abrir en basura.
+  // KICK STABILIZATION: gateOn 0.22 — solo impactos fuertes, mata pads/voces.
+  // crushExponent 1.2→1.0 — respuesta 100% lineal, sin curvas de aplanamiento.
+  // decayBase 0.0077→0.08 — release mínimo anti-parpadeo de 1-frame.
+  // boost 3.3013→2.5 — evita que el multiplicador lineal dispare el piso de ruido.
   // maxIntensity 0.85→1.0 — hits al máximo, contraste máximo con el silencio.
   // squelchSlope 0.10→0.0 — sin squelch dinámico, el gate fijo es suficiente.
-  // boost 3.0→3.3 — leve compensación por gate más bajo.
   envelopeKick: {
     name: 'Front R (Kick Sniper)',
-    gateOn: 0.1098,
-    boost: 3.3013,
-    crushExponent: 0.4877,
-    decayBase: 0.0077,
+    gateOn: 0.22,
+    boost: 2.5,
+    crushExponent: 1.0,
+    decayBase: 0.08,
     decayRange: 0.0329,
-    maxIntensity: 0.80,   // WAVE 2439.2 Cap de Dimmer — headroom para el slap del Snare
+    maxIntensity: 1.0,    // WAVE 4656: 0.80→1.0 — gamma ^2.4 aplastaba 0.80→0.585. Kick al techo real.
     squelchBase: 0.0388,
     squelchSlope: 0.0,
     ghostCap: 0.00,

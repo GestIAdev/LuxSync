@@ -1,42 +1,34 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * WAVE 2434: LATINO 4.1 TELEMETRY INJECTOR
+ * WAVE 2434: OMNI-41 TELEMETRY INJECTOR (WAS LATINO-41)
  * WAVE 2457: ENVELOPE-DRIVEN MOVERS — El Galán + La Dama activos
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * Inyecta un logger frame-a-frame (20fps) sobre LiquidEngine41 con
- * LATINO_PROFILE activo. La telemetría se emite por consola en formato
- * parseable para el script Monte Carlo de Wave 2434.
+ * CUALQUIER PERFIL activo (Techno, Latino, etc.). La telemetría se emite
+ * por consola en formato parseable para el script Monte Carlo de Wave 2434.
  *
- * WAVE 2457: El motor ahora recibe moverLeft/moverRight calculados por el
- * sistema de envolventes parametrizado del LATINO_PROFILE (no WAVE 911):
- *   Mover L = El Galán: envTreble.process(highMid×0.80 + treble×0.20, morph)
- *               gate: 0.14 (override41), boost: 4.5 (override41)
- *               tonal gate: flatness < 0.60 (anti-autotune, override41)
- *   Mover R = La Dama: envVocal.process(mid - bass×subtractFactor - treble×0.10, morph)
- *               gate: 0.15, boost: 4.0
- *
- * ACTIVACIÓN: Desde SeleneLux.ts llama latinoEngine41Telemetry.setTelemetryEnabled(true).
+ * ACTIVACIÓN: Desde SeleneLux.ts llama omniEngine41Telemetry.setTelemetryEnabled(true).
  * El motor se autoinyecta en el switch bifurcado de WAVE 2432 cuando telemetry está activo.
  *
  * FORMATO DE LOG:
- *   [LATINO-41] sB:{subBass} mid:{mid} hMid:{highMid} tr:{treble} |
+ *   [PROFILE-41] sB:{subBass} mid:{mid} hMid:{highMid} tr:{treble} |
  *               morph:{morphFactor} tDelta:{trebleDelta} |
  *               fPar:{frontPar} bPar:{backPar} mL:{moverL} mR:{moverR} |
  *               sc:{sidechainFired} scDepth:{duckingApplied}
  *
  * @module hal/physics/LiquidEngine41Telemetry
- * @version WAVE 2457 — EL GALAN + LA DAMA VIVOS
+ * @version WAVE 2457 — OMNI-41: PERFIL-AGNÓSTICO
  */
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { LiquidEngineBase } from './LiquidEngineBase';
-import { LATINO_PROFILE } from './profiles/latino';
+import { DEFAULT_LIQUID_PROFILE } from './profiles';
 // ═══════════════════════════════════════════════════════════════════════════
 // TELEMETRY ENGINE
 // ═══════════════════════════════════════════════════════════════════════════
 export class LiquidEngine41Telemetry extends LiquidEngineBase {
-    constructor(profile = LATINO_PROFILE) {
+    constructor(profile = DEFAULT_LIQUID_PROFILE) {
         super(profile, '4.1');
         this._telemetryEnabled = false;
         this._frameCount = 0;
@@ -148,15 +140,17 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
         const dir = dirname(resolvedPath);
         if (!existsSync(dir))
             mkdirSync(dir, { recursive: true });
+        const profileTag = this.profile.id.toUpperCase().replace(/-/g, '');
         // Construir el contenido completo en memoria (el buffer ya tiene todos los frames)
         const lines = [
-            `# LATINO-41 TELEMETRY — ${new Date().toISOString()}`,
+            `# ${profileTag}-41 TELEMETRY — ${new Date().toISOString()}`,
             `# Frames capturados: ${this._buffer.length}`,
-            `# Formato: [LATINO-41] bandas | morph/kick | frontProbe | backProbe | out`,
+            `# Profile: ${this.profile.name} (${this.profile.id})`,
+            `# Formato: [${profileTag}-41] bandas | morph/kick | frontProbe | backProbe | out`,
             '',
         ];
         for (const r of this._buffer) {
-            lines.push(`[LATINO-41]` +
+            lines.push(`[${profileTag}-41]` +
                 ` sB:${r.subBass.toFixed(3)}` +
                 ` mid:${r.mid.toFixed(3)}` +
                 ` hMid:${r.highMid.toFixed(3)}` +
@@ -193,7 +187,13 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
         }
         writeFileSync(resolvedPath, lines.join('\n'), 'utf-8');
         // Calibración activa: emitir por console.error para bypass del Gate A.
-        console.error(`[LATINO-41 TELEMETRY] ${this._buffer.length} frames exportados → ${resolvedPath}`);
+        const frameCount = this._buffer.length;
+        if (frameCount === 0) {
+            console.error(`[${profileTag}-41 TELEMETRY] ⚠️ BUFFER VACÍO — 0 frames exportados → ${resolvedPath} (¿motor 7.1 activo o sin audio?)`);
+        }
+        else {
+            console.error(`[${profileTag}-41 TELEMETRY] ${frameCount} frames exportados → ${resolvedPath}`);
+        }
         return this._buffer.length;
     }
     routeZones(frame) {
@@ -220,8 +220,12 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
         const percRaw = trebleDelta * 4.0;
         // ── TELEMETRY RECORD ─────────────────────────────────────────────
         if (this._telemetryEnabled) {
-            const kickLocked = this.profile.layout41Strategy === 'strict-split' && !frame.isKick;
-            const kickRaw = kickLocked ? 0 : (frame.isKickEdge ? bands.bass : 0);
+            // DIAG: confirmar en consola que estamos capturando (solo 1 de cada 44 frames ~1s)
+            if (this._buffer.length === 0 && this._frameCount === 0) {
+                console.error(`[OMNI-41 TELEMETRY] CAPTURA INICIADA — profile=${this.profile.id}`);
+            }
+            // OMNI-41: kickRaw usa la misma lógica que LiquidEngineBase (ZERO-LATENCY KICK)
+            const kickRaw = frame.isKick ? bands.bass : 0;
             const snareInput = frame.snareAttack;
             const highMidInput = Math.max(0, bands.lowMid * p.backLLowMidWeight + bands.mid * p.backLMidWeight
                 - bands.treble * p.backLTrebleSub - bands.bass * p.backLBassSub);
@@ -272,11 +276,11 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
                 this._buffer[this._bufferHead] = record;
                 this._bufferHead = (this._bufferHead + 1) % LiquidEngine41Telemetry.BUFFER_SIZE;
             }
-            // [LATINO-41] WAVE 2459: Telemetría activa — 4 zonas para calibración en sala.
+            // [PROFILE-41] WAVE 2459: Telemetría activa — 4 zonas para calibración en sala.
             // Formato legible: frontPar, backPar, moverL, moverR + señales crudas de diagnóstico.
             // Desactivar con setTelemetryEnabled(false) antes de producción estable.
             // console.error(
-            //   `[MATH AUDIT][LATINO-41]` +
+            //   `[MATH AUDIT][${profileTag}-41]` +
             ` sB:${bands.subBass.toFixed(3)}` +
                 ` mid:${bands.mid.toFixed(3)}` +
                 ` hMid:${bands.highMid.toFixed(3)}` +
@@ -349,11 +353,13 @@ LiquidEngine41Telemetry.BUFFER_SIZE = 600;
 // ═══════════════════════════════════════════════════════════════════════════
 // WAVE 2460: Telemetría siempre activa en desarrollo — se desactiva manualmente
 // con window.luxDebug.telemetry.stop() o IPC 'telemetry:lt41:stop' antes de producción.
-export const latinoEngine41Telemetry = new LiquidEngine41Telemetry();
-latinoEngine41Telemetry.setTelemetryEnabled(true);
+export const omniEngine41Telemetry = new LiquidEngine41Telemetry();
+omniEngine41Telemetry.setTelemetryEnabled(true);
+/** Alias backward-compatible — apunta al mismo singleton */
+export const latinoEngine41Telemetry = omniEngine41Telemetry;
 // ── WAVE 2434: IPC bridge expuesto en preload.ts → window.luxDebug.telemetry ──
 // Llamar desde DevTools del renderer:
-//   await window.luxDebug.telemetry.export()   → vuelca docs/logs/latinocalib41.md
+//   await window.luxDebug.telemetry.export()   → vuelca docs/logs/PROFILEcalib41.md
 //   await window.luxDebug.telemetry.stop()     → detiene captura
 //   await window.luxDebug.telemetry.flush()    → limpia el buffer
 // Las IPC channels son: 'telemetry:lt41:export', 'telemetry:lt41:stop', 'telemetry:lt41:flush'

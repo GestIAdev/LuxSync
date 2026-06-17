@@ -101,6 +101,9 @@ export class LiquidEngineBase {
         this._kickIntervalMs = 0;
         // Kick Veto state
         this._kickVetoFrames = 0;
+        // ZERO-LATENCY TRANSIENT DETECTOR state (WAVE 4655)
+        // Energía del frame anterior para calcular el delta de aceleración del bombo.
+        this._prevBassEnergy = 0;
         // Transient Shaper state (WAVE 2427 → WAVE 2446)
         this.lastTreble = 0;
         this.lastHighMid = 0;
@@ -332,10 +335,14 @@ export class LiquidEngineBase {
         // ═══════════════════════════════════════════════════════════════════
         // 5. KICK DETECTION + VETO
         // ═══════════════════════════════════════════════════════════════════
-        // ZERO-LATENCY KICK: Detección puramente local — sin dependencia del
-        // Pacemaker asíncrono. El kick se deriva de la energía de bass en el
-        // hilo principal a 44Hz, eliminando latencia visual en strict-split.
-        const isKick = bands.bass > p.envelopeKick.gateOn;
+        // ZERO-LATENCY TRANSIENT DETECTOR (WAVE 4655)
+        // Reemplaza la detección estática de volumen por un detector de aceleración.
+        // Un bombo real = volumen mínimo (gate) + ataque brusco repentino (delta > umbral).
+        // Esto evita que sub-bajos rodantes (Techno) mantengan isKick=1 en perpetuidad.
+        const currentBassEnergy = bands.bass;
+        const bassDelta = currentBassEnergy - this._prevBassEnergy;
+        this._prevBassEnergy = currentBassEnergy;
+        const isKick = currentBassEnergy > p.envelopeKick.gateOn && bassDelta > 0.06;
         if (isKick && this._lastKickTime > 0) {
             this._kickIntervalMs = now - this._lastKickTime;
         }
@@ -356,7 +363,7 @@ export class LiquidEngineBase {
         // --- FRONT R: Kick edge detection (El Francotirador) ---
         // kickLocked eliminado — ahora todos los perfiles usan detección local
         // a 44Hz. Sin veto asíncrono del Pacemaker.
-        const kickSignal = isKickEdge ? bands.bass : 0;
+        const kickSignal = isKick ? currentBassEnergy : 0;
         let frontRight = this.envKick.process(kickSignal, morphFactor, now, isBreakdown);
         // --- BACK R (El Látigo): WAVE 2449 MORPHOLOGIC CENTROID SHIELD ---
         // WAVE 2441 Monte Carlo: fitness=6260 | 0 leaks | coefs verificados en 616 frames reales.

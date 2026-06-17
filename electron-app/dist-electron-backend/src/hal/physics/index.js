@@ -48,5 +48,5 @@ export { LiquidEngineBase } from './LiquidEngineBase';
 export { LiquidEngine71, liquidEngine71 } from './LiquidEngine71';
 export { LiquidEngine41, liquidEngine41 } from './LiquidEngine41';
 // 🌊 WAVE 2434: TELEMETRY ENGINE — Drop-in replacement de liquidEngine41 para captura de datos
-export { LiquidEngine41Telemetry, latinoEngine41Telemetry } from './LiquidEngine41Telemetry';
+export { LiquidEngine41Telemetry, omniEngine41Telemetry, latinoEngine41Telemetry } from './LiquidEngine41Telemetry';
 export { TECHNO_PROFILE, LATINO_PROFILE, POPROCK_PROFILE, PROFILE_REGISTRY, DEFAULT_LIQUID_PROFILE } from './profiles';

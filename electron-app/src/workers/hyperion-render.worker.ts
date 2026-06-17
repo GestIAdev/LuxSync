@@ -36,6 +36,7 @@ import {
   type WorkerOutboundMessage,
   type WorkerFixtureScaffold,
   type WorkerFixtureFrame,
+  type WorkerMsgGlassPort,
 } from './hyperion-render.types'
 
 import {
@@ -96,6 +97,9 @@ let hoveredId: string | null = null
 let lassoBounds: { startX: number; startY: number; endX: number; endY: number } | null = null
 let isLassoActive = false
 let lassoStart: { x: number; y: number } | null = null
+
+// ── Glass Bridge port (GLASS BYPASS Fase 1) ───────────────────────────────
+let glassPort: MessagePort | null = null
 
 // ── Physics memory (exponential smoothing) ────────────────────────────────
 const physicsStore = new Map<string, { pan: number; tilt: number; zoom: number }>()
@@ -569,6 +573,36 @@ self.onmessage = (e: MessageEvent<WorkerInboundMessage>) => {
       break
     }
 
+    case 'GLASS_PORT': {
+      // ═════════════════════════════════════════════════════════════════════════
+      // GLASS BYPASS Fase 1: worker reads hot frames directly from the port
+      // that TacticalCanvas feeds from window.glass.onFrame (Aether Glass SAB).
+      // Replaces the FRAME postMessage path from the React data pump.
+      // ═════════════════════════════════════════════════════════════════════════
+      const typedMsg = msg as unknown as WorkerMsgGlassPort
+      if (glassPort) {
+        glassPort.close()
+      }
+      glassPort = typedMsg.port
+      glassPort.onmessage = (e: MessageEvent) => {
+        const { frameData, fixtureCount, onBeat } = e.data as {
+          frameData: Float32Array
+          fixtureCount: number
+          onBeat: boolean
+        }
+        currentFrameData = frameData
+        currentFixtureCount = fixtureCount
+        currentFrameNumber++
+        currentTimestamp = performance.now()
+        if (onBeat && !lastOnBeat) {
+          beatVisualEnvelope = 1.0
+        }
+        lastOnBeat = onBeat
+      }
+      glassPort.start()
+      break
+    }
+
     case 'SHUTDOWN': {
       isRunning = false
       isHibernating = false
@@ -577,6 +611,10 @@ self.onmessage = (e: MessageEvent<WorkerInboundMessage>) => {
       canvas = null
       physicsStore.clear()
       prevIntensity.clear()
+      if (glassPort) {
+        glassPort.close()
+        glassPort = null
+      }
       break
     }
   }

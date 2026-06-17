@@ -29,14 +29,9 @@ import React, {
   useMemo,
   memo 
 } from 'react'
-import { useAudioStore } from '../../../../stores/audioStore'
 import { useSelectionStore } from '../../../../stores/selectionStore'
 import { useStageStore, selectStageDimensions } from '../../../../stores/stageStore'
 import { useFixtureData } from './useFixtureData'
-import { getTransientTruth } from '../../../../stores/transientStore'
-import { calculateFixtureRenderValues } from '../../../../hooks/useFixtureRender'
-import { useControlStore, selectCinemaControl } from '../../../../stores/controlStore'
-import { useOverrideStore } from '../../../../stores/overrideStore'
 import {
   getCanvasMousePosition,
 } from './HitTestEngine'
@@ -52,22 +47,8 @@ import type {
   WorkerInboundMessage,
   WorkerOutboundMessage,
   WorkerFixtureScaffold,
-  WorkerMsgFrame,
 } from '../../../../workers/hyperion-render.types'
 import './TacticalCanvas.css'
-
-const HYPERION_RUNTIME_METRICS_EVENT = 'hyperion:runtime-metrics'
-
-interface HyperionRuntimeMetricsPayload {
-  queueDepth: number
-  workerBusy: boolean
-  framesSent: number
-  framesAcked: number
-  framesDropped: number
-  ackHz: number
-  dropRatePct: number
-  timestamp: number
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -121,64 +102,43 @@ function createRenderWorker(): Worker {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// FRAME DATA PACKING — Main thread → Worker (Transferrable)
+// GLASS FRAME PACKING — Aether Glass → Worker 10-float layout
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Glass buffer layout (from layout.ts FixField + TickEngine header)
+// Header floats [0..9]: bass, mid, high, energy, isBeat, reserved×5
+// Fixture block i starts at: GLASS_HEADER_FLOATS + i * GLASS_FLOATS_PER_FIX
+const GLASS_HEADER_FLOATS = 10
+const GLASS_FLOATS_PER_FIX = 16
+const GF_R = 0, GF_G = 1, GF_B = 2
+const GF_DIMMER = 5
+const GF_PHYS_PAN = 8, GF_PHYS_TILT = 9
+const GF_ZOOM = 10, GF_FOCUS = 11
+const GF_PAN_VEL = 12, GF_TILT_VEL = 13
+
 /**
- * Pack fixture frame data into Float32Array for zero-copy transfer.
- * Called every frame in the data pump (~44Hz from hot-frame or ~12.5Hz fallback).
+ * Translate Aether Glass Float32Array (16 floats/fixture, raw DMX scale)
+ * into the Worker's 10-float packed buffer (normalizes intensity/pan/tilt to 0-1).
+ * Zero-allocation — writes into pre-allocated destBuffer.
  */
-function packFrameDataInto(
-  buffer: Float32Array,
-  fixtures: any[],
-  transientMap: Map<string, any> | null,
-  controlState: ReturnType<typeof useControlStore.getState>,
-  overrides: Map<string, any>,
+function packGlassFrameInto(
+  destBuffer: Float32Array,
+  glassView: Float32Array,
+  fixtureCount: number,
 ): void {
-  const fixtureCount = fixtures.length
-  const cinema = selectCinemaControl(controlState)
-
   for (let i = 0; i < fixtureCount; i++) {
-    const id = fixtures[i].id as string
-    const transientState = transientMap?.get(id)
-    const offset = i * FLOATS_PER_FIXTURE
-
-    if (transientState) {
-      const fixtureOverride = overrides.get(id)
-      const renderData = calculateFixtureRenderValues(
-        transientState,
-        cinema.globalMode,
-        cinema.flowParams,
-        cinema.activePaletteId,
-        cinema.globalIntensity,
-        cinema.globalSaturation,
-        i,
-        fixtureOverride?.values,
-        fixtureOverride?.mask,
-        cinema.targetPalette,
-        cinema.transitionProgress
-      )
-
-      const rawInt = renderData.intensity ?? 0
-      const normInt = !Number.isFinite(rawInt) ? 0 : rawInt > 1.0 ? rawInt / 255 : rawInt
-
-      buffer[offset + FIXTURE_FIELD.R] = Number.isFinite(renderData.color.r) ? renderData.color.r : 0
-      buffer[offset + FIXTURE_FIELD.G] = Number.isFinite(renderData.color.g) ? renderData.color.g : 0
-      buffer[offset + FIXTURE_FIELD.B] = Number.isFinite(renderData.color.b) ? renderData.color.b : 0
-      buffer[offset + FIXTURE_FIELD.INTENSITY] = Math.max(0, Math.min(1, normInt))
-      buffer[offset + FIXTURE_FIELD.PHYSICAL_PAN] = Number.isFinite(renderData.physicalPan) ? renderData.physicalPan : 0.5
-      buffer[offset + FIXTURE_FIELD.PHYSICAL_TILT] = Number.isFinite(renderData.physicalTilt) ? renderData.physicalTilt : 0.5
-      buffer[offset + FIXTURE_FIELD.ZOOM] = Number.isFinite(renderData.zoom) ? renderData.zoom : 127
-      buffer[offset + FIXTURE_FIELD.FOCUS] = Number.isFinite(renderData.focus) ? renderData.focus : 127
-      buffer[offset + FIXTURE_FIELD.PAN_VELOCITY] = Number.isFinite(renderData.panVelocity) ? renderData.panVelocity : 0
-      buffer[offset + FIXTURE_FIELD.TILT_VELOCITY] = Number.isFinite(renderData.tiltVelocity) ? renderData.tiltVelocity : 0
-    } else {
-      // No transient data — zero fill (fixture appears dark)
-      buffer[offset + FIXTURE_FIELD.PHYSICAL_PAN] = 0.5
-      buffer[offset + FIXTURE_FIELD.PHYSICAL_TILT] = 0.5
-      buffer[offset + FIXTURE_FIELD.ZOOM] = 127
-      buffer[offset + FIXTURE_FIELD.FOCUS] = 127
-    }
+    const gOff = GLASS_HEADER_FLOATS + i * GLASS_FLOATS_PER_FIX
+    const wOff = i * FLOATS_PER_FIXTURE
+    destBuffer[wOff + FIXTURE_FIELD.R]             = glassView[gOff + GF_R]
+    destBuffer[wOff + FIXTURE_FIELD.G]             = glassView[gOff + GF_G]
+    destBuffer[wOff + FIXTURE_FIELD.B]             = glassView[gOff + GF_B]
+    destBuffer[wOff + FIXTURE_FIELD.INTENSITY]     = glassView[gOff + GF_DIMMER] / 255
+    destBuffer[wOff + FIXTURE_FIELD.PHYSICAL_PAN]  = glassView[gOff + GF_PHYS_PAN] / 255
+    destBuffer[wOff + FIXTURE_FIELD.PHYSICAL_TILT] = glassView[gOff + GF_PHYS_TILT] / 255
+    destBuffer[wOff + FIXTURE_FIELD.ZOOM]          = glassView[gOff + GF_ZOOM]
+    destBuffer[wOff + FIXTURE_FIELD.FOCUS]         = glassView[gOff + GF_FOCUS]
+    destBuffer[wOff + FIXTURE_FIELD.PAN_VELOCITY]  = glassView[gOff + GF_PAN_VEL]
+    destBuffer[wOff + FIXTURE_FIELD.TILT_VELOCITY] = glassView[gOff + GF_TILT_VEL]
   }
 }
 
@@ -214,18 +174,6 @@ export const TacticalCanvas = memo(function TacticalCanvas({
   // unmounted in production). The worker lives for the entire session lifetime.
   const observerRef = useRef<ResizeObserver | null>(null)
   const isTransferredRef = useRef(false)
-  const isWorkerBusyRef = useRef(false)
-  const mailboxRef = useRef<WorkerInboundMessage | null>(null)
-  const mailboxTransferRef = useRef<Transferable[] | undefined>(undefined)
-  const isFramePipelineReadyRef = useRef(false)
-  const runtimeCountersRef = useRef({
-    framesSent: 0,
-    framesAcked: 0,
-    framesDropped: 0,
-    lastAckAt: 0,
-    ackHz: 0,
-    lastPublishAt: 0,
-  })
   const metricsRef = useRef<RenderMetrics>({
     fps: 60,
     frameTime: 0,
@@ -233,16 +181,8 @@ export const TacticalCanvas = memo(function TacticalCanvas({
     lastRenderTime: 0,
   })
 
-  // ── Beat envelope detection (main thread → worker via FRAME msg) ──────
-  const lastOnBeatRef = useRef(false)
-
-  // ── Persistent transient map — reutilizado cada frame, cero allocations ──
-  const transientMapRef = useRef<Map<string, any>>(new Map())
-
-  // 🛠️ WAVE 5033: Pre-allocated frame buffer — grows to maxFixtureCount, then reused
+  // Pre-allocated Glass→Worker translation buffer — grows to maxFixtureCount, then reused
   const frameBufferRef = useRef<Float32Array | null>(null)
-  // 🛠️ WAVE 5033: Pre-allocated FRAME msg template — mutated in-place
-  const msgTemplateRef = useRef<WorkerMsgFrame>({ type: 'FRAME', frameNumber: 0, timestamp: 0, onBeat: false, beatIntensity: 0, fixtureCount: 0, frameData: new Float32Array(0) })
 
   // ── State ───────────────────────────────────────────────────────────────
   
@@ -303,56 +243,6 @@ export const TacticalCanvas = memo(function TacticalCanvas({
     }
   }, [])
 
-  const publishRuntimeMetrics = useCallback((force = false) => {
-    if (typeof window === 'undefined') return
-
-    const now = performance.now()
-    const counters = runtimeCountersRef.current
-    if (!force && now - counters.lastPublishAt < 250) {
-      return
-    }
-    counters.lastPublishAt = now
-
-    const attempted = counters.framesSent + counters.framesDropped
-    const dropRatePct = attempted > 0 ? (counters.framesDropped / attempted) * 100 : 0
-    const queueDepth = mailboxRef.current ? 1 : 0
-
-    const payload: HyperionRuntimeMetricsPayload = {
-      queueDepth,
-      workerBusy: isWorkerBusyRef.current,
-      framesSent: counters.framesSent,
-      framesAcked: counters.framesAcked,
-      framesDropped: counters.framesDropped,
-      ackHz: counters.ackHz,
-      dropRatePct,
-      timestamp: Date.now(),
-    }
-
-    window.dispatchEvent(new CustomEvent(HYPERION_RUNTIME_METRICS_EVENT, { detail: payload }))
-  }, [])
-
-  const flushFrameMailbox = useCallback(() => {
-    const w = workerRef.current
-    const pending = mailboxRef.current
-    if (!w || !pending || !isFramePipelineReadyRef.current || isWorkerBusyRef.current) {
-      return
-    }
-
-    isWorkerBusyRef.current = true
-    mailboxRef.current = null
-    const transfer = mailboxTransferRef.current
-    mailboxTransferRef.current = undefined
-
-    if (transfer && transfer.length > 0) {
-      w.postMessage(pending, transfer)
-    } else {
-      w.postMessage(pending)
-    }
-
-    runtimeCountersRef.current.framesSent++
-    publishRuntimeMetrics()
-  }, [publishRuntimeMetrics])
-
   // ── Worker Init & Canvas Transfer ─────────────────────────────────────
   useEffect(() => {
     const container = containerRef.current
@@ -392,31 +282,7 @@ export const TacticalCanvas = memo(function TacticalCanvas({
       const msg = e.data
       switch (msg.type) {
         case 'READY':
-          isFramePipelineReadyRef.current = true
-          isWorkerBusyRef.current = false
           setIsReady(true)
-          flushFrameMailbox()
-          break
-
-        case 'FRAME_ACK':
-          {
-            const counters = runtimeCountersRef.current
-            const now = performance.now()
-            if (counters.lastAckAt > 0) {
-              const dt = now - counters.lastAckAt
-              if (dt > 0) {
-                const instantAckHz = 1000 / dt
-                counters.ackHz = counters.ackHz === 0
-                  ? instantAckHz
-                  : counters.ackHz * 0.8 + instantAckHz * 0.2
-              }
-            }
-            counters.lastAckAt = now
-            counters.framesAcked++
-          }
-          isWorkerBusyRef.current = false
-          flushFrameMailbox()
-          publishRuntimeMetrics()
           break
 
         case 'HIT_TEST': {
@@ -538,17 +404,6 @@ export const TacticalCanvas = memo(function TacticalCanvas({
       } catch {}
       observerRef.current = null
 
-      isFramePipelineReadyRef.current = false
-      isWorkerBusyRef.current = false
-      mailboxRef.current = null
-      mailboxTransferRef.current = undefined
-      runtimeCountersRef.current.framesSent = 0
-      runtimeCountersRef.current.framesAcked = 0
-      runtimeCountersRef.current.framesDropped = 0
-      runtimeCountersRef.current.ackHz = 0
-      runtimeCountersRef.current.lastAckAt = 0
-      publishRuntimeMetrics(true)
-
       const activeWorker = workerRef.current
       if (activeWorker) {
         try {
@@ -613,103 +468,61 @@ export const TacticalCanvas = memo(function TacticalCanvas({
   }, [isVisible, isReady, postToWorker])
 
   // ═══════════════════════════════════════════════════════════════════════
-  // DATA PUMP — Feed fixture frame data to worker at IPC rate
+  // GLASS PIPELINE — Connect Aether Glass directly to worker (GLASS BYPASS Fase 2)
   // ═══════════════════════════════════════════════════════════════════════
-  // This runs on a RAF loop on main thread but does NO rendering.
-  // It reads transientStore + controlStore + overrideStore,
-  // packs into Float32Array, and transfers to worker.
-  // When Phase 2 hot-frame is active, this will be replaced by
-  // direct hot-frame → worker forwarding in useSeleneTruth.
+  // Replaces the old RAF data pump (React/IPC chain) with a direct subscription
+  // to window.glass.onFrame (Aether Glass SAB). Translation from Glass 16-float
+  // layout → Worker 10-float layout happens here on the main thread, then the
+  // packed buffer is forwarded to the worker via a dedicated MessageChannel port.
 
   useEffect(() => {
-    if (!isReady || !isVisible) return
+    if (!isReady) return
+    const worker = workerRef.current
+    if (!worker) return
 
-    let frameNumber = 0
-    let rafId = 0
+    // Create a dedicated MessageChannel: port2 lives in the worker, port1 here.
+    const channel = new MessageChannel()
+    worker.postMessage({ type: 'GLASS_PORT', port: channel.port2 }, [channel.port2])
 
-    let skipCounter = 0
+    // Pre-allocated Glass→Worker translation buffer (reused every frame, zero GC)
+    let glassUnsub: (() => void) | null = null
 
-    const pump = () => {
-      skipCounter++
+    const startGlassPipeline = () => {
+      const g = (window as any).glass
+      if (!g) return
+      glassUnsub = g.onFrame((view: Float32Array) => {
+        const count = fixturesRef.current.length
+        if (count === 0) return
 
-      const currentFixtures = fixturesRef.current
-      if (currentFixtures.length === 0) {
-        rafId = requestAnimationFrame(pump)
-        return
-      }
-
-      // 🛠️ WAVE 6018 PARCHE 3: THROTTLE ELIMINADO — 44Hz nativos sin skip.
-      // GlassBridge ya entrega datos a 44Hz; el worker empaqueta en todos los frames.
-      const shouldPack = true
-
-      if (shouldPack) {
-        // Read transient truth — reutilizamos el mismo Map (clear + fill, 0 GC)
-        const transientTruth = getTransientTruth()
-        const transientFixtures = transientTruth?.hardware?.fixtures
-        let transientMap: Map<string, any> | null = null
-        if (transientFixtures && Array.isArray(transientFixtures)) {
-          transientMapRef.current.clear()
-          for (const f of transientFixtures) {
-            if (f?.id) transientMapRef.current.set(f.id, f)
-          }
-          transientMap = transientMapRef.current
+        // Resize buffer only when fixture count grows (zero-alloc on hot-path)
+        const needed = count * FLOATS_PER_FIXTURE
+        let buf = frameBufferRef.current
+        if (!buf || buf.length < needed) {
+          buf = new Float32Array(needed)
+          frameBufferRef.current = buf
         }
 
-        // Pack frame data
-        const controlState = useControlStore.getState()
-        const overrides = useOverrideStore.getState().overrides
-        // 🛠️ WAVE 5033: Pre-allocated buffer — grows to max fixture count, then reused
-        const neededSize = currentFixtures.length * FLOATS_PER_FIXTURE
-        let buffer = frameBufferRef.current
-        if (!buffer || buffer.length < neededSize) {
-          buffer = new Float32Array(neededSize)
-          frameBufferRef.current = buffer
-        }
-        packFrameDataInto(buffer, currentFixtures, transientMap, controlState, overrides)
+        // Translate Glass 16-float layout → Worker 10-float layout
+        packGlassFrameInto(buf, view, count)
+        const onBeat = view.length > 4 && view[4] > 0.5
 
-        frameNumber++
-
-        // Mailbox latest-only: keep only freshest frame while worker is busy.
-        // 🛠️ WAVE 5033: Mutate pre-allocated msg template in-place (zero alloc)
-        const msg = msgTemplateRef.current
-        msg.frameNumber = frameNumber
-        msg.timestamp = performance.now()
-        msg.fixtureCount = currentFixtures.length
-        msg.frameData = buffer
-
-        if (mailboxRef.current) {
-          runtimeCountersRef.current.framesDropped++
-        }
-
-        mailboxRef.current = msg
-        // 🛠️ WAVE 5033: No transfer — buffer is reused next frame (zero alloc)
-        mailboxTransferRef.current = undefined
-      }
-
-      // Beat detection (rising edge) — corre en TODOS los frames
-      const audioState = useAudioStore.getState()
-      const currentOnBeat = audioState.onBeat
-      const isNewBeat = currentOnBeat && !lastOnBeatRef.current
-      lastOnBeatRef.current = currentOnBeat
-
-      // Actualizar beat en el msg template (todos los frames)
-      if (msgTemplateRef.current) {
-        msgTemplateRef.current.onBeat = isNewBeat
-        msgTemplateRef.current.beatIntensity = isNewBeat ? 1.0 : 0
-      }
-
-      flushFrameMailbox()
-      publishRuntimeMetrics()
-
-      rafId = requestAnimationFrame(pump)
+        // Forward to worker via dedicated port (structured clone ≈ 4KB @ 44Hz = trivial)
+        channel.port1.postMessage({ frameData: buf, fixtureCount: count, onBeat })
+      })
     }
 
-    rafId = requestAnimationFrame(pump)
+    if ((window as any).glass) {
+      startGlassPipeline()
+    } else {
+      window.addEventListener('glass:ready', startGlassPipeline, { once: true })
+    }
 
     return () => {
-      if (rafId) cancelAnimationFrame(rafId)
+      glassUnsub?.()
+      window.removeEventListener('glass:ready', startGlassPipeline)
+      channel.port1.close()
     }
-  }, [isReady, isVisible, flushFrameMailbox, publishRuntimeMetrics])
+  }, [isReady])
 
   // ── Mouse Handlers (DOM → Worker) ─────────────────────────────────────
   

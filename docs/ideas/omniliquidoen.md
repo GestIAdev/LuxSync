@@ -40,7 +40,7 @@ export interface ProcessedFrame {
   recoveryFactor: number
   isBreakdown: boolean
   isVetoed: boolean
-  isKick: boolean        // Señal cruda del IntervalBPMTracker — fonte del candado
+  isKick: boolean        // Kick detectado localmente (bass > envelopeKick.gateOn) — ZERO-LATENCY
   isKickEdge: boolean
   acidMode: boolean
   noiseMode: boolean
@@ -222,24 +222,60 @@ export abstract class LiquidEngineBase {
   }
 
   // ─────────────────────────────────────────────────────────────────────
-  // 🌊 WAVE 2435: HOT-SWAP PROFILE — Cambio de género sin destruir instancia
+  // 🌊 WAVE 2435 + WAVE 6020: HOT-SWAP PROFILE — Cambio de género sin destruir instancia
   // ─────────────────────────────────────────────────────────────────────
+
+  /**
+   * WAVE 6020: Limpia TODOS los estados persistentes del motor.
+   * Usar cuando se requiere un arranque frío garantizado (ej. cambio de layout).
+   * El hot-swap de perfil del mismo layout NO llama esto — preserva el groove.
+   */
+  resetState(): void {
+    this.avgMidProfiler = 0.0
+    this.lastSilenceTime = 0
+    this.inSilence = false
+    this._strobeActive = false
+    this.strobeStartTime = 0
+    this._lastKickTime = 0
+    this._kickIntervalMs = 0
+    this._kickVetoFrames = 0
+    this.lastTreble = 0
+    this.lastHighMid = 0
+    this.lastMid = 0
+    this._ambientEMA = 0
+    this._airEMA = 0
+    this._vocalSustainEMA = 0
+    this.lastFrame = null
+    this.lastResult = null
+    this.envSubBass.reset()
+    this.envKick.reset()
+    this.envVocal.reset()
+    this.envSnare.reset()
+    this.envHighMid.reset()
+    this.envTreble.reset()
+  }
 
   /**
    * Inyecta un nuevo perfil de género al motor en caliente.
    * La fusión con overrides41 ocurre aquí si el layout es 4.1.
-   * Recrea las 6 envelopes con la configuración efectiva.
-   * El estado interno (avgMid, silence, etc.) se preserva — el motor no "salta".
+   *
+   * WAVE 6020 FIX: En lugar de recrear las envelopes (que mata avgSignal
+   * y provoca un cold-start de ~60 frames), actualiza la config inline
+   * vía setConfig(). El estado interno (avgSignal, lastFireTime, etc.)
+   * se preserva, garantizando continuidad del groove.
+   *
+   * Los estados persistentes del motor (kick timing, transient deltas,
+   * EMAs) NO se tocan porque son agnósticos al perfil.
    */
   setProfile(profile: ILiquidProfile): void {
     const effective = this.layout === '4.1' ? fuseProfileFor41(profile) : profile
     this.profile = effective
-    this.envSubBass = new LiquidEnvelope(effective.envelopeSubBass)
-    this.envKick = new LiquidEnvelope(effective.envelopeKick)
-    this.envVocal = new LiquidEnvelope(effective.envelopeVocal)
-    this.envSnare = new LiquidEnvelope(effective.envelopeSnare)
-    this.envHighMid = new LiquidEnvelope(effective.envelopeHighMid)
-    this.envTreble = new LiquidEnvelope(effective.envelopeTreble)
+    this.envSubBass.setConfig(effective.envelopeSubBass)
+    this.envKick.setConfig(effective.envelopeKick)
+    this.envVocal.setConfig(effective.envelopeVocal)
+    this.envSnare.setConfig(effective.envelopeSnare)
+    this.envHighMid.setConfig(effective.envelopeHighMid)
+    this.envTreble.setConfig(effective.envelopeTreble)
   }
 
   // ─────────────────────────────────────────────────────────────────────
@@ -404,7 +440,10 @@ export abstract class LiquidEngineBase {
     // ═══════════════════════════════════════════════════════════════════
     // 5. KICK DETECTION + VETO
     // ═══════════════════════════════════════════════════════════════════
-    const isKick = input.isKick ?? false
+    // ZERO-LATENCY KICK: Detección puramente local — sin dependencia del
+    // Pacemaker asíncrono. El kick se deriva de la energía de bass en el
+    // hilo principal a 44Hz, eliminando latencia visual en strict-split.
+    const isKick = bands.bass > p.envelopeKick.gateOn
     if (isKick && this._lastKickTime > 0) {
       this._kickIntervalMs = now - this._lastKickTime
     }
@@ -425,11 +464,9 @@ export abstract class LiquidEngineBase {
     let frontLeft = this.envSubBass.process(bands.subBass, morphFactor, now, isBreakdown)
 
     // --- FRONT R: Kick edge detection (El Francotirador) ---
-    // WAVE 2439.2: Candado del Metrónomo — en strict-split, el IntervalBPMTracker
-    // es la única fuente de verdad. Si !isKick, energia = 0, sin excepciones.
-    // En modo default la energía cruda del isKickEdge puede seguir disparando.
-    const kickLocked = this.profile.layout41Strategy === 'strict-split' && !isKick
-    const kickSignal = kickLocked ? 0 : (isKickEdge ? bands.bass : 0)
+    // kickLocked eliminado — ahora todos los perfiles usan detección local
+    // a 44Hz. Sin veto asíncrono del Pacemaker.
+    const kickSignal = isKick ? bands.bass : 0
     let frontRight = this.envKick.process(kickSignal, morphFactor, now, isBreakdown)
 
     // --- BACK R (El Látigo): WAVE 2449 MORPHOLOGIC CENTROID SHIELD ---

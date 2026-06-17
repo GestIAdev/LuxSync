@@ -127,9 +127,6 @@ export function useSeleneTruth(options: UseSeleneTruthOptions = {}) {
       if (truthThrottleCountRef.current >= TRUTH_THROTTLE_INTERVAL) {
         truthThrottleCountRef.current = 0
         
-        // Zustand truthStore — structural data for UI
-        setTruth(data)
-        
         // 🛡️ WAVE 6018: Sincronización de Censo (Defensa contra shows fantasma)
         const stageStoreState = useStageStore.getState()
         const stageFixtures = stageStoreState.fixtures || []
@@ -139,6 +136,22 @@ export function useSeleneTruth(options: UseSeleneTruthOptions = {}) {
         if (stageFixtures.length !== truthFixtures.length) {
           stageStoreState.syncFixturesFromTruth(truthFixtures)
         }
+
+        // GLASS BYPASS (Fase 5): Strip per-fixture physics before writing to truthStore.
+        // transientStore (PATH 1 above) already holds the full fixture array at 44Hz.
+        // Passing the raw array into Zustand causes React re-renders on every IPC frame
+        // for every component subscribed to selectHardware/useHardware.
+        // truthStore only needs metadata: BPM, vibe, genre, section, system status.
+        const metadataTruth: typeof data = {
+          ...data,
+          hardware: {
+            ...data.hardware,
+            fixtures: [],   // transientStore owns live fixture physics
+            dmxOutput: [],  // 512-byte array not needed in UI
+          },
+        }
+        // Zustand truthStore — metadata only (structural/contextual data for UI panels)
+        setTruth(metadataTruth)
         
         // Zustand audioStore — metrics for UI displays
         const beat = data.sensory?.beat

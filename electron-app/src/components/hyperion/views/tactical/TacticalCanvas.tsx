@@ -43,6 +43,7 @@ import type {
 import { DEFAULT_TACTICAL_OPTIONS } from './types'
 import { type CanonicalZone } from '../../shared/ZoneLayoutEngine'
 import { FLOATS_PER_FIXTURE, FIXTURE_FIELD } from '../../../../workers/hyperion-render.types'
+import { getTransientFixture } from '../../../../stores/transientStore'
 import type {
   WorkerInboundMessage,
   WorkerOutboundMessage,
@@ -292,18 +293,22 @@ export const TacticalCanvas = memo(function TacticalCanvas({
               if (msg.fixtureId) {
                 const fixture = fixturesRef.current.find(f => f.id === msg.fixtureId)
                 if (fixture) {
+                  // Read live physics from transientStore (zero-cost imperative read)
+                  const liveState = getTransientFixture(fixture.id)
                   tooltipRef.current.onFixtureEnter(fixture.id, {
                     id: fixture.id,
                     name: fixture.id,
                     type: fixture.type === 'moving' ? 'moving-head' as const : fixture.type as any,
                     zone: fixture.zone,
                     dmxAddress: 1,
-                    intensity: fixture.intensity,
-                    color: { r: fixture.r, g: fixture.g, b: fixture.b },
-                    pan: fixture.physicalPan,
-                    tilt: fixture.physicalTilt,
-                    zoom: fixture.zoom / 255,
-                    focus: fixture.focus / 255,
+                    intensity: liveState ? Math.min(1, liveState.dimmer / 255) : fixture.intensity,
+                    color: liveState?.color
+                      ? { r: liveState.color.r, g: liveState.color.g, b: liveState.color.b }
+                      : { r: fixture.r, g: fixture.g, b: fixture.b },
+                    pan: liveState?.physicalPan ?? fixture.physicalPan,
+                    tilt: liveState?.physicalTilt ?? fixture.physicalTilt,
+                    zoom: (liveState?.zoom ?? fixture.zoom) / 255,
+                    focus: (liveState?.focus ?? fixture.focus) / 255,
                     selected: useSelectionStore.getState().selectedIds.has(fixture.id),
                     hasOverride: false,
                   }, { x: msg.mouseX, y: msg.mouseY })

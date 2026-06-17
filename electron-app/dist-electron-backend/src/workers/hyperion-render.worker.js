@@ -64,6 +64,8 @@ let hoveredId = null;
 let lassoBounds = null;
 let isLassoActive = false;
 let lassoStart = null;
+// ── Glass Bridge port (GLASS BYPASS Fase 1) ───────────────────────────────
+let glassPort = null;
 // ── Physics memory (exponential smoothing) ────────────────────────────────
 const physicsStore = new Map();
 // ═══════════════════════════════════════════════════════════════════════════
@@ -481,6 +483,31 @@ self.onmessage = (e) => {
             }
             break;
         }
+        case 'GLASS_PORT': {
+            // ═════════════════════════════════════════════════════════════════════════
+            // GLASS BYPASS Fase 1: worker reads hot frames directly from the port
+            // that TacticalCanvas feeds from window.glass.onFrame (Aether Glass SAB).
+            // Replaces the FRAME postMessage path from the React data pump.
+            // ═════════════════════════════════════════════════════════════════════════
+            const typedMsg = msg;
+            if (glassPort) {
+                glassPort.close();
+            }
+            glassPort = typedMsg.port;
+            glassPort.onmessage = (e) => {
+                const { frameData, fixtureCount, onBeat } = e.data;
+                currentFrameData = frameData;
+                currentFixtureCount = fixtureCount;
+                currentFrameNumber++;
+                currentTimestamp = performance.now();
+                if (onBeat && !lastOnBeat) {
+                    beatVisualEnvelope = 1.0;
+                }
+                lastOnBeat = onBeat;
+            };
+            glassPort.start();
+            break;
+        }
         case 'SHUTDOWN': {
             isRunning = false;
             isHibernating = false;
@@ -490,6 +517,10 @@ self.onmessage = (e) => {
             canvas = null;
             physicsStore.clear();
             prevIntensity.clear();
+            if (glassPort) {
+                glassPort.close();
+                glassPort = null;
+            }
             break;
         }
     }

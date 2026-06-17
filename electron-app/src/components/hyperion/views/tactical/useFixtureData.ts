@@ -9,12 +9,8 @@
  */
 
 import { useMemo } from 'react'
-import { useShallow } from 'zustand/react/shallow'
-import { useHardware } from '../../../../stores/truthStore'
 import { useStageStore } from '../../../../stores/stageStore'
-import { useControlStore, selectCinemaControl } from '../../../../stores/controlStore'
-import { useOverrideStore, selectOverrides } from '../../../../stores/overrideStore'
-import { calculateFixtureRenderValues } from '../../../../hooks/useFixtureRender'
+import { getTransientFixture } from '../../../../stores/transientStore'
 import { 
   normalizeZone, 
   ZONE_LAYOUT_2D,
@@ -96,43 +92,18 @@ function distributeVertically(
  * Hook that provides TacticalFixture[] for canvas rendering.
  * 
  * Data sources:
- * - stageStore: Fixture definitions (id, zone, model)
- * - truthStore: Live DMX values (intensity, color, position)
- * - controlStore: Global mode, palettes, transitions
- * - overrideStore: Per-fixture manual overrides
+ * - stageStore: Fixture definitions (id, zone, model) — reactive (structural changes only)
+ * - transientStore: Live DMX values (intensity, color, position) — non-reactive snapshot
+ *
+ * GLASS BYPASS (Fase 3): Removed truthStore/controlStore/overrideStore subscriptions.
+ * Physics data is served directly by Aether Glass → packGlassFrameInto → worker RAF.
+ * The snapshot here is used only for tooltip and initial scaffold values.
  */
 export function useFixtureData(): TacticalFixture[] {
-  // ── Store Subscriptions ─────────────────────────────────────────────────
+  // ── Store Subscriptions (structural only) ───────────────────────────────
   
-  const hardware = useHardware() // 🛡️ WAVE 2042.12: React 19 stable hook
   const stageFixtures = useStageStore(state => state.fixtures)
   const stageDimensions = useStageStore(state => state.stage)
-  
-  // 🛡️ WAVE 2042.13.8: Consolidated selector with useShallow
-  const {
-    globalMode,
-    flowParams,
-    activePaletteId,
-    globalIntensity,
-    globalSaturation,
-    targetPalette,
-    transitionProgress,
-  } = useControlStore(useShallow(selectCinemaControl))
-  
-  const overrides = useOverrideStore(selectOverrides)
-
-  // ── Runtime State Map ───────────────────────────────────────────────────
-  
-  const runtimeStateMap = useMemo(() => {
-    const map = new Map<string, any>()
-    const backendFixtures = hardware?.fixtures || []
-    if (Array.isArray(backendFixtures)) {
-      backendFixtures.forEach(f => {
-        if (f?.id) map.set(f.id, f)
-      })
-    }
-    return map
-  }, [hardware?.fixtures])
 
   // ── Transform to TacticalFixture[] ──────────────────────────────────────
   
@@ -147,64 +118,38 @@ export function useFixtureData(): TacticalFixture[] {
       const fixture = fixtureArray[index]
       if (!fixture) continue
 
-      const runtimeState = runtimeStateMap.get(fixture.id)
       const fixtureId = fixture.id || `fixture-${fixture.address}`
-      const fixtureOverride = overrides.get(fixtureId)
 
       // Normalize zone using the canonical normalizer
-      const rawZone = runtimeState?.zone || fixture.zone || ''
+      const rawZone = fixture.zone || ''
       const zone = normalizeZone(rawZone)
       const type = classifyFixtureType(zone, fixture.model)
 
-      // Get render values from the render pipeline
-      const renderData = calculateFixtureRenderValues(
-        runtimeState || fixture,
-        globalMode,
-        flowParams,
-        activePaletteId,
-        globalIntensity,
-        globalSaturation,
-        index,
-        fixtureOverride?.values,
-        fixtureOverride?.mask,
-        targetPalette,
-        transitionProgress
-      )
-
-      // Normalize intensity
-      const rawIntensity = renderData.intensity ?? 0
-      const normalizedIntensity = !Number.isFinite(rawIntensity)
-        ? 0
-        : rawIntensity > 1.0
-          ? rawIntensity / 255
-          : rawIntensity
-      const safeIntensity = Math.max(0, Math.min(1, normalizedIntensity))
-
-      // Extract gobo/prism from runtime
-      const truthSource = runtimeState || fixture
-      const gobo = truthSource?.gobo ?? 0
-      const prism = truthSource?.prism ?? 0
+      // Non-reactive physics snapshot from transientStore.
+      // Glass → packGlassFrameInto → worker RAF provides live rendering.
+      // This snapshot is used only for tooltip display and scaffold init.
+      const ts = getTransientFixture(fixtureId)
+      const gobo  = ts?.gobo  ?? (fixture as any).gobo  ?? 0
+      const prism = ts?.prism ?? (fixture as any).prism ?? 0
 
       classified.push({
         id: fixtureId,
         x: 0,  // Will be computed in layout pass
         y: 0,
-        // NaN guard for color values
-        r: Number.isFinite(renderData.color.r) ? renderData.color.r : 0,
-        g: Number.isFinite(renderData.color.g) ? renderData.color.g : 0,
-        b: Number.isFinite(renderData.color.b) ? renderData.color.b : 0,
-        intensity: safeIntensity,
+        r: ts?.color?.r ?? 0,
+        g: ts?.color?.g ?? 0,
+        b: ts?.color?.b ?? 0,
+        intensity: Math.min(1, (ts?.dimmer ?? 0) / 255),
         type,
         zone,
-        // NaN guard for physics
-        physicalPan: Number.isFinite(renderData.physicalPan) ? renderData.physicalPan : 0.5,
-        physicalTilt: Number.isFinite(renderData.physicalTilt) ? renderData.physicalTilt : 0.5,
-        zoom: Number.isFinite(renderData.zoom) ? renderData.zoom : 127,
-        focus: Number.isFinite(renderData.focus) ? renderData.focus : 127,
+        physicalPan:  ts?.physicalPan  ?? 0.5,
+        physicalTilt: ts?.physicalTilt ?? 0.5,
+        zoom:  ts?.zoom  ?? 127,
+        focus: ts?.focus ?? 127,
         gobo,
         prism,
-        panVelocity: Number.isFinite(renderData.panVelocity) ? renderData.panVelocity : 0,
-        tiltVelocity: Number.isFinite(renderData.tiltVelocity) ? renderData.tiltVelocity : 0,
+        panVelocity:  ts?.panVelocity  ?? 0,
+        tiltVelocity: ts?.tiltVelocity ?? 0,
       })
     }
 
@@ -290,14 +235,5 @@ export function useFixtureData(): TacticalFixture[] {
   }, [
     stageFixtures,
     stageDimensions,
-    runtimeStateMap,
-    overrides,
-    globalMode,
-    flowParams,
-    activePaletteId,
-    globalIntensity,
-    globalSaturation,
-    targetPalette,
-    transitionProgress,
   ])
 }

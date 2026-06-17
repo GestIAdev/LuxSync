@@ -28,7 +28,14 @@ export class VibeLifecycleManager {
 
   // ── Reference injectors (called from TitanOrchestrator.init) ────────────
 
-  setEngine(e: TitanEngine | null): void { this.engine = e }
+  setEngine(e: TitanEngine | null): void {
+    this.engine = e
+    // WAVE 2439.5: Apply pending layout sync — AppCommander may have called
+    // setLiquidLayout() before engine was injected (boot race condition).
+    if (e) {
+      e.setLiquidLayout(this.state.currentLiquidLayout)
+    }
+  }
   setTrinity(t: TrinityOrchestrator | null): void { this.trinity = t }
   setHal(h: HardwareAbstraction | null): void { this.hal = h }
 

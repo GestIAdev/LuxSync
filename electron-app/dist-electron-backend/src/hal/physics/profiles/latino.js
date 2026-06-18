@@ -122,15 +122,15 @@ export const LATINO_PROFILE = {
     //   que generaba el mural de voz.
     envelopeHighMid: {
         name: 'Back L (Latigazo Percusivo)',
-        gateOn: 0.18, // WAVE 6060: 0.50->0.18 — resucitar Back L, permitir señal real
+        gateOn: 0.50, // WAVE 6050: endurecimiento bastante del gate para Back L
         boost: 3.0,
         crushExponent: 2.0,
-        decayBase: 0.30, // WAVE 6060: 0.14->0.30 — snap menos violento, canal respira
+        decayBase: 0.14, // WAVE 3491: GUILLOTINA snap violento
         decayRange: 0.03,
         maxIntensity: 0.95,
-        squelchBase: 0.20, // WAVE 6060: 0.38->0.20 — piso razonable, no asfixia
+        squelchBase: 0.38, // Conservado: anti-barro
         squelchSlope: 0.10,
-        ghostCap: 0.04, // WAVE 6060: 0.00->0.04 — suelo mínimo entre notas
+        ghostCap: 0.00, // Negro absoluto
         gateMargin: 0.005,
         attackSlopeMin: 0.02, // WAVE 4693: voces suben más lento; el snare/hat pasa por ataque real
     },
@@ -191,8 +191,8 @@ export const LATINO_PROFILE = {
     // El truco -0.50 (sumar treble) generaba que voces+treble continuo colaran al Back.
     // Con highMid directo como input principal (backLHighMidWeight futuro)
     // y el gateOn 0.35 ya estricto, el canal es puramente percutivo.
-    backLLowMidWeight: 0.40, // WAVE 6060: 0.22->0.40 — refuerzo lowMid para romper gate
-    backLMidWeight: 0.55, // WAVE 6060: 0.10->0.55 — mid como alimento principal
+    backLLowMidWeight: 0.22,
+    backLMidWeight: 0.10,
     backLTrebleSub: 0.28, // WAVE 4693: más limpieza de voz sostenida, sin matar el golpe real
     backLBassSub: 0.0,
     // ═══════════════════════════════════════════════════════════════
@@ -350,10 +350,12 @@ export const LATINO_PROFILE = {
             decayBase: 0.50, // WAVE 2461: staccato latino real
             gateOn: 0.22, // WAVE 2462: 0.15→0.22 — bloquea bajo melódico continuo
             boost: 1.25, // WAVE 3436: VW entrega picos masivos, preservar dinámica
+            maxIntensity: 0.80,
         },
         // ── KICK STACCATO ─────────────────────────────────────────────
         envelopeKick: {
             decayBase: 0.10,
+            maxIntensity: 0.80,
         },
         // ── S1: SNARE STACCATO — Back R el TAcka cae a negro ────────
         // WAVE 2459: decayBase 0.45→0.22 — el TAcka es un disparo, no un reverb.

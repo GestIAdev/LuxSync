@@ -372,48 +372,51 @@ const HyperionView = React.memo(function HyperionView({
           {/* Canvas Container — Both canvases ALWAYS mounted, CSS-switched
            * ═══════════════════════════════════════════════════════════════════
            * WAVE 2515: CANVAS LIFECYCLE PERSISTENCE
-           * 
+           *
            * transferControlToOffscreen() is IRREVERSIBLE. If React unmounts
            * the <canvas> node, the OffscreenCanvas context in the worker dies
            * permanently (Context Lost). Same with R3F's WebGLRenderer.
-           * 
+           *
            * FIX: Both canvases live forever. visibility:hidden + position:absolute
            * hides the inactive one without destroying the DOM node. Each canvas
            * receives an isVisible prop to pause its render loop (Hibernation Protocol).
+           *
+           * WAVE 6061 FIX: Canvases mount even when isEmpty=true. This eliminates
+           * the race where TacticalCanvas mounts AFTER a show is loaded and the
+           * worker's currentFixtureCount stays at 0 because the glass pipeline
+           * callback was never registered during the 0-fixture bootstrap phase.
            * ═══════════════════════════════════════════════════════════════════ */}
-          {!isEmpty && (
-            <>
-              {/* ── Canvas 2D (siempre montado, CSS-oculto en 3D) ── */}
-              <div
-                className="hyperion-canvas-container"
-                style={viewMode !== '2D'
-                  ? { visibility: 'hidden', pointerEvents: 'none' }
-                  : undefined}
-              >
-                <TacticalCanvas 
-                  quality={qualityMode}
-                  showGrid={true}
-                  showZoneLabels={false}
-                  isVisible={viewMode === '2D'}
-                />
-              </div>
-              {/* ── Canvas 3D (siempre montado, CSS-oculto en 2D) ── */}
-              <div
-                className="hyperion-canvas-container"
-                style={viewMode !== '3D'
-                  ? { visibility: 'hidden', pointerEvents: 'none' }
-                  : undefined}
-              >
-                <VisualizerCanvas
-                  quality={qualityMode}
-                  showFloorGrid={true}
-                  showTruss={true}
-                  showBeams={true}
-                  isVisible={viewMode === '3D'}
-                />
-              </div>
-            </>
-          )}
+          <>
+            {/* ── Canvas 2D (siempre montado, CSS-oculto en 3D) ── */}
+            <div
+              className="hyperion-canvas-container"
+              style={viewMode !== '2D'
+                ? { visibility: 'hidden', pointerEvents: 'none' }
+                : undefined}
+            >
+              <TacticalCanvas
+                quality={qualityMode}
+                showGrid={true}
+                showZoneLabels={false}
+                isVisible={viewMode === '2D'}
+              />
+            </div>
+            {/* ── Canvas 3D (siempre montado, CSS-oculto en 2D) ── */}
+            <div
+              className="hyperion-canvas-container"
+              style={viewMode !== '3D'
+                ? { visibility: 'hidden', pointerEvents: 'none' }
+                : undefined}
+            >
+              <VisualizerCanvas
+                quality={qualityMode}
+                showFloorGrid={true}
+                showTruss={true}
+                showBeams={true}
+                isVisible={viewMode === '3D'}
+              />
+            </div>
+          </>
 
           {/* Mode Badge */}
           <div className="hyperion-mode-badge">

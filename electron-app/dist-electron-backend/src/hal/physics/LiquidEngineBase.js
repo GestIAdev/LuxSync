@@ -99,6 +99,11 @@ export class LiquidEngineBase {
         // Kick edge detection state
         this._lastKickTime = 0;
         this._kickIntervalMs = 0;
+        // WAVE 2439.8: Naked Delta — estado para filtrar aceleración pura del bombo
+        this._prevBassEnergy = 0;
+        // WAVE 2439.9: Frame Hold — extiende el pulso del bombo ~110ms para hardware DMX
+        // Un único fotograma (22ms) es indigerible para dimmers/LEDs físicos.
+        this._kickHoldCounter = 0;
         // Kick Veto state
         this._kickVetoFrames = 0;
         // Transient Shaper state (WAVE 2427 → WAVE 2446)
@@ -133,58 +138,23 @@ export class LiquidEngineBase {
         this.envTreble = new LiquidEnvelope(effective.envelopeTreble);
     }
     // ─────────────────────────────────────────────────────────────────────
-    // 🌊 WAVE 2435 + WAVE 6020: HOT-SWAP PROFILE — Cambio de género sin destruir instancia
+    // 🌊 WAVE 2435: HOT-SWAP PROFILE — Cambio de género sin destruir instancia
     // ─────────────────────────────────────────────────────────────────────
-    /**
-     * WAVE 6020: Limpia TODOS los estados persistentes del motor.
-     * Usar cuando se requiere un arranque frío garantizado (ej. cambio de layout).
-     * El hot-swap de perfil del mismo layout NO llama esto — preserva el groove.
-     */
-    resetState() {
-        this.avgMidProfiler = 0.0;
-        this.lastSilenceTime = 0;
-        this.inSilence = false;
-        this._strobeActive = false;
-        this.strobeStartTime = 0;
-        this._lastKickTime = 0;
-        this._kickIntervalMs = 0;
-        this._kickVetoFrames = 0;
-        this.lastTreble = 0;
-        this.lastHighMid = 0;
-        this.lastMid = 0;
-        this._ambientEMA = 0;
-        this._airEMA = 0;
-        this._vocalSustainEMA = 0;
-        this.lastFrame = null;
-        this.lastResult = null;
-        this.envSubBass.reset();
-        this.envKick.reset();
-        this.envVocal.reset();
-        this.envSnare.reset();
-        this.envHighMid.reset();
-        this.envTreble.reset();
-    }
     /**
      * Inyecta un nuevo perfil de género al motor en caliente.
      * La fusión con overrides41 ocurre aquí si el layout es 4.1.
-     *
-     * WAVE 6020 FIX: En lugar de recrear las envelopes (que mata avgSignal
-     * y provoca un cold-start de ~60 frames), actualiza la config inline
-     * vía setConfig(). El estado interno (avgSignal, lastFireTime, etc.)
-     * se preserva, garantizando continuidad del groove.
-     *
-     * Los estados persistentes del motor (kick timing, transient deltas,
-     * EMAs) NO se tocan porque son agnósticos al perfil.
+     * Recrea las 6 envelopes con la configuración efectiva.
+     * El estado interno (avgMid, silence, etc.) se preserva — el motor no "salta".
      */
     setProfile(profile) {
         const effective = this.layout === '4.1' ? fuseProfileFor41(profile) : profile;
         this.profile = effective;
-        this.envSubBass.setConfig(effective.envelopeSubBass);
-        this.envKick.setConfig(effective.envelopeKick);
-        this.envVocal.setConfig(effective.envelopeVocal);
-        this.envSnare.setConfig(effective.envelopeSnare);
-        this.envHighMid.setConfig(effective.envelopeHighMid);
-        this.envTreble.setConfig(effective.envelopeTreble);
+        this.envSubBass = new LiquidEnvelope(effective.envelopeSubBass);
+        this.envKick = new LiquidEnvelope(effective.envelopeKick);
+        this.envVocal = new LiquidEnvelope(effective.envelopeVocal);
+        this.envSnare = new LiquidEnvelope(effective.envelopeSnare);
+        this.envHighMid = new LiquidEnvelope(effective.envelopeHighMid);
+        this.envTreble = new LiquidEnvelope(effective.envelopeTreble);
     }
     // ─────────────────────────────────────────────────────────────────────
     // PUBLIC API
@@ -332,10 +302,23 @@ export class LiquidEngineBase {
         // ═══════════════════════════════════════════════════════════════════
         // 5. KICK DETECTION + VETO
         // ═══════════════════════════════════════════════════════════════════
-        // ZERO-LATENCY KICK: Detección puramente local — sin dependencia del
-        // Pacemaker asíncrono. El kick se deriva de la energía de bass en el
-        // hilo principal a 44Hz, eliminando latencia visual en strict-split.
-        const isKick = bands.bass > p.envelopeKick.gateOn;
+        // WAVE 2439.8: Naked Delta — filtro de aceleración pura sin time-locks.
+        // El sinte oscila con deltas de ~0.01. El bombo salta violentamente (>0.05).
+        // Esto decapita el sustain del sintetizador y aisla transitorios verticales.
+        const currentBassEnergy = bands.bass;
+        const bassDelta = currentBassEnergy - this._prevBassEnergy;
+        this._prevBassEnergy = currentBassEnergy;
+        // Naked Delta: detecta el transitorio vertical (salto > 0.05 entre frames)
+        const isTransient = currentBassEnergy > p.envelopeKick.gateOn && bassDelta > 0.05;
+        // WAVE 2439.9: Frame Hold — 5 frames (~113ms) de ancho de pulso mínimo DMX.
+        // isTransient dispara el hold; isKick se mantiene true durante el hold completo.
+        // Sin Date.now() — conteo de frames puro a 44Hz.
+        if (isTransient) {
+            this._kickHoldCounter = 5;
+        }
+        const isKick = this._kickHoldCounter > 0;
+        if (this._kickHoldCounter > 0)
+            this._kickHoldCounter--;
         if (isKick && this._lastKickTime > 0) {
             this._kickIntervalMs = now - this._lastKickTime;
         }
@@ -353,10 +336,10 @@ export class LiquidEngineBase {
         // ═══════════════════════════════════════════════════════════════════
         // --- FRONT L: SubBass continuo (El Océano) ---
         let frontLeft = this.envSubBass.process(bands.subBass, morphFactor, now, isBreakdown);
-        // --- FRONT R: Kick edge detection (El Francotirador) ---
-        // kickLocked eliminado — ahora todos los perfiles usan detección local
-        // a 44Hz. Sin veto asíncrono del Pacemaker.
-        const kickSignal = isKick ? bands.bass : 0;
+        // --- FRONT R: Kick Naked Delta (El Francotirador) ---
+        // WAVE 2439.8: kickSignal alimentado solo por transitorios verticales (delta > 0.05).
+        // El envelope con su decayBase ultrarrápido y maxIntensity dará forma al impulso.
+        const kickSignal = isKick ? currentBassEnergy : 0;
         let frontRight = this.envKick.process(kickSignal, morphFactor, now, isBreakdown);
         // --- BACK R (El Látigo): WAVE 2449 MORPHOLOGIC CENTROID SHIELD ---
         // WAVE 2441 Monte Carlo: fitness=6260 | 0 leaks | coefs verificados en 616 frames reales.

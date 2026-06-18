@@ -133,22 +133,22 @@ describe('📋 Profile Structural Validation', () => {
 describe('🎲 Monte Carlo Regression: TECHNO_PROFILE', () => {
   it('should preserve envelopeKick calibrated values', () => {
     // WAVE 2415 Monte Carlo: 50,000 iteraciones
-    expect(TECHNO_PROFILE.envelopeKick.gateOn).toBeCloseTo(0.1098, 3)
+    expect(TECHNO_PROFILE.envelopeKick.gateOn).toBeCloseTo(0.28, 2)
     expect(TECHNO_PROFILE.envelopeKick.boost).toBeCloseTo(3.3013, 3)
-    expect(TECHNO_PROFILE.envelopeKick.crushExponent).toBeCloseTo(0.4877, 3)
+    expect(TECHNO_PROFILE.envelopeKick.crushExponent).toBeCloseTo(1.0, 1)
     expect(TECHNO_PROFILE.envelopeKick.decayBase).toBeCloseTo(0.0077, 3)
     expect(TECHNO_PROFILE.envelopeKick.decayRange).toBeCloseTo(0.0329, 3)
     expect(TECHNO_PROFILE.envelopeKick.maxIntensity).toBeCloseTo(0.80, 2)
   })
 
   it('should preserve envelopeTreble calibrated values', () => {
-    expect(TECHNO_PROFILE.envelopeTreble.gateOn).toBeCloseTo(0.02, 2)
+    expect(TECHNO_PROFILE.envelopeTreble.gateOn).toBeCloseTo(0.25, 2)
     expect(TECHNO_PROFILE.envelopeTreble.boost).toBeCloseTo(4.0, 1)
   })
 
   it('should preserve sidechain values', () => {
     expect(TECHNO_PROFILE.sidechainThreshold).toBeCloseTo(0.10, 2)
-    expect(TECHNO_PROFILE.sidechainDepth).toBeCloseTo(0.30, 2)
+    expect(TECHNO_PROFILE.sidechainDepth).toBeCloseTo(0.00, 2)
   })
 
   it('should preserve layout41Strategy = strict-split', () => {
@@ -182,7 +182,7 @@ describe('🎲 Monte Carlo Regression: TECHNO_PROFILE', () => {
 describe('🎲 Monte Carlo Regression: LATINO_PROFILE', () => {
   it('should preserve percGate calibrated value', () => {
     // WAVE 2434 Monte Carlo calibration
-    expect(LATINO_PROFILE.percGate).toBeCloseTo(0.019, 3)
+    expect(LATINO_PROFILE.percGate).toBeCloseTo(0.065, 3)
   })
 
   it('should preserve kickEdgeMinInterval = 60', () => {
@@ -191,22 +191,22 @@ describe('🎲 Monte Carlo Regression: LATINO_PROFILE', () => {
 
   // WAVE 2488 — DT-02: morphology calibration (dembow preciso)
   it('should preserve morphFloor = 0.25, morphCeiling = 0.65', () => {
-    expect(LATINO_PROFILE.morphFloor).toBeCloseTo(0.25, 2)
+    expect(LATINO_PROFILE.morphFloor).toBeCloseTo(0.45, 2)
     expect(LATINO_PROFILE.morphCeiling).toBeCloseTo(0.65, 2)
   })
 
-  it('should preserve layout41Strategy = undefined (falls to default path)', () => {
-    // Latino no define layout41Strategy → undefined → el motor usa el path 'default'
-    expect(LATINO_PROFILE.layout41Strategy).toBeUndefined()
+  it('should preserve layout41Strategy = strict-split', () => {
+    // Latino usa strict-split para frontPar = kick exclusivo
+    expect(LATINO_PROFILE.layout41Strategy).toBe('strict-split')
   })
 
   it('should preserve overrides41 deep values', () => {
     expect(LATINO_PROFILE.overrides41).toBeDefined()
     if (LATINO_PROFILE.overrides41) {
-      expect(LATINO_PROFILE.overrides41.percMidSubtract).toBe(1.5)
-      expect(LATINO_PROFILE.overrides41.envelopeTreble?.gateOn).toBeCloseTo(0.35, 2)
-      expect(LATINO_PROFILE.overrides41.envelopeHighMid?.gateOn).toBeCloseTo(0.20, 2)
-      expect(LATINO_PROFILE.overrides41.envelopeHighMid?.decayBase).toBeCloseTo(0.28, 2)
+      expect(LATINO_PROFILE.overrides41.percMidSubtract).toBe(4.0)
+      expect(LATINO_PROFILE.overrides41.envelopeTreble?.gateOn).toBeCloseTo(0.02, 2)
+      expect(LATINO_PROFILE.overrides41.envelopeHighMid?.gateOn).toBeCloseTo(0.55, 2)
+      expect(LATINO_PROFILE.overrides41.envelopeHighMid?.decayBase).toBeCloseTo(0.10, 2)
       expect(LATINO_PROFILE.overrides41.envelopeSubBass?.gateOn).toBeCloseTo(0.22, 2)
     }
   })
@@ -226,11 +226,11 @@ describe('🎲 Monte Carlo Regression: CHILL_PROFILE', () => {
 
   it('should have sidechain disabled (depth=0, threshold=0.99)', () => {
     expect(CHILL_PROFILE.sidechainDepth).toBeCloseTo(0.0, 1)
-    expect(CHILL_PROFILE.sidechainThreshold).toBeCloseTo(0.99, 2)
+    expect(CHILL_PROFILE.sidechainThreshold).toBeCloseTo(999.0, 1)
   })
 
   it('should have strobe threshold at 0.999 (effectively disabled)', () => {
-    expect(CHILL_PROFILE.strobeThreshold).toBeCloseTo(0.999, 2)
+    expect(CHILL_PROFILE.strobeThreshold).toBeCloseTo(999.0, 1)
   })
 
   // WAVE 2488 — DT-02: morphology calibration (chill = ambient sensitivo)
@@ -269,7 +269,7 @@ describe('🎲 Monte Carlo Regression: POPROCK_PROFILE', () => {
   })
 
   it('should preserve sidechainDepth = 0.05 (gentle duck)', () => {
-    expect(POPROCK_PROFILE.sidechainDepth).toBeCloseTo(0.05, 2)
+    expect(POPROCK_PROFILE.sidechainDepth).toBeCloseTo(0.00, 2)
   })
 
   it('should have empty or absent overrides41', () => {

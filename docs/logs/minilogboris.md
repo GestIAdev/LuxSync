@@ -1,362 +1,417 @@
-🥁 INTERVAL BPM] KICK #1518 bpm=182 conf=0.00 energy=0.1455 avg=0.0313 ratio=4.64 delta=0.1455 history=8/8 bpmBuf=[185,92,185,179,185,86,173,185]
-[F] P:0.75 R:0.19 Gate:0.69 KickP:0.000 OUT:0.24 | [B] M:0.33 T:0.16 SnP:0.33 OUT:0.00 | [M] Morph:0.33
-[F] P:0.73 R:0.25 Gate:0.69 KickP:0.000 OUT:0.16 | [B] M:0.28 T:0.13 SnP:0.27 OUT:0.00 | [M] Morph:0.32
-[F] P:0.67 R:0.28 Gate:0.69 KickP:0.000 OUT:0.10 | [B] M:0.23 T:0.09 SnP:0.19 OUT:0.00 | [M] Morph:0.31
-[F] P:0.70 R:0.27 Gate:0.69 KickP:0.014 OUT:0.00 | [B] M:0.20 T:0.07 SnP:0.15 OUT:0.00 | [M] Morph:0.30
-[F] P:0.80 R:0.22 Gate:0.69 KickP:0.471 OUT:0.68 | [B] M:0.43 T:0.30 SnP:0.61 OUT:0.13 | [M] Morph:0.31
-[F] P:0.82 R:0.19 Gate:0.70 KickP:0.000 OUT:0.45 | [B] M:0.43 T:0.32 SnP:0.66 OUT:0.26 | [M] Morph:0.31
-[F] P:0.84 R:0.17 Gate:0.70 KickP:0.717 OUT:1.00 | [B] M:0.41 T:0.30 SnP:0.63 OUT:0.20 | [M] Morph:0.31
-[F] P:0.86 R:0.16 Gate:0.70 KickP:0.000 OUT:0.66 | [B] M:0.41 T:0.29 SnP:0.61 OUT:0.14 | [M] Morph:0.31
-[F] P:0.85 R:0.15 Gate:0.71 KickP:0.000 OUT:0.44 | [B] M:0.35 T:0.24 SnP:0.50 OUT:0.01 | [M] Morph:0.30
-[F] P:0.86 R:0.16 Gate:0.71 KickP:0.000 OUT:0.29 | [B] M:0.48 T:0.24 SnP:0.51 OUT:0.02 | [M] Morph:0.32
-[F] P:0.80 R:0.17 Gate:0.71 KickP:0.000 OUT:0.19 | [B] M:0.46 T:0.22 SnP:0.47 OUT:0.01 | [M] Morph:0.34
-[F] P:0.78 R:0.23 Gate:0.71 KickP:0.000 OUT:0.13 | [B] M:0.44 T:0.20 SnP:0.44 OUT:0.00 | [M] Morph:0.34
-[F] P:0.71 R:0.22 Gate:0.71 KickP:0.000 OUT:0.09 | [B] M:0.37 T:0.15 SnP:0.32 OUT:0.00 | [M] Morph:0.33
-[F] P:0.70 R:0.22 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.33 T:0.12 SnP:0.26 OUT:0.00 | [M] Morph:0.33
-[F] P:0.77 R:0.19 Gate:0.71 KickP:0.189 OUT:0.28 | [B] M:0.43 T:0.30 SnP:0.61 OUT:0.15 | [M] Morph:0.33
-[F] P:0.81 R:0.17 Gate:0.72 KickP:0.356 OUT:0.52 | [B] M:0.46 T:0.34 SnP:0.72 OUT:0.55 | [M] Morph:0.34
-[TitanOrchestrator] 🎧 WORKER BPM=121 conf=0.29 | PLL=FREEWHEEL [mem=121@-0f] phase=0.00 sync=1.00 | beat #1518
-[F] P:0.82 R:0.16 Gate:0.72 KickP:0.000 OUT:0.35 | [B] M:0.44 T:0.32 SnP:0.67 OUT:0.32 | [M] Morph:0.34
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=air
-[F] P:0.84 R:0.16 Gate:0.72 KickP:0.555 OUT:0.82 | [B] M:0.46 T:0.31 SnP:0.66 OUT:0.27 | [M] Morph:0.35
-[F] P:0.86 R:0.15 Gate:0.73 KickP:0.000 OUT:0.55 | [B] M:0.41 T:0.26 SnP:0.56 OUT:0.06 | [M] Morph:0.35
-[INTERVAL] F29620 bpm=121 raw=182 conf=0.000 kick=false phase=0.97 needle=0.0000 bassFlux=0.0158 midFlux=0.0000 centroid=182Hz kicks=1518
-[F] P:0.85 R:0.15 Gate:0.73 KickP:0.000 OUT:0.37 | [B] M:0.40 T:0.24 SnP:0.52 OUT:0.03 | [M] Morph:0.35
-[F] P:0.82 R:0.18 Gate:0.73 KickP:0.000 OUT:0.25 | [B] M:0.36 T:0.21 SnP:0.44 OUT:0.00 | [M] Morph:0.34
-[F] P:0.77 R:0.21 Gate:0.73 KickP:0.000 OUT:0.16 | [B] M:0.31 T:0.18 SnP:0.37 OUT:0.00 | [M] Morph:0.34
-[F] P:0.68 R:0.16 Gate:0.73 KickP:0.000 OUT:0.11 | [B] M:0.26 T:0.13 SnP:0.27 OUT:0.00 | [M] Morph:0.33
-[F] P:0.66 R:0.13 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.25 T:0.12 SnP:0.24 OUT:0.00 | [M] Morph:0.32
-[F] P:0.73 R:0.11 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.27 SnP:0.53 OUT:0.04 | [M] Morph:0.31
-[F] P:0.75 R:0.10 Gate:0.73 KickP:0.032 OUT:0.00 | [B] M:0.43 T:0.33 SnP:0.67 OUT:0.30 | [M] Morph:0.32
-[F] P:0.77 R:0.10 Gate:0.73 KickP:0.106 OUT:0.15 | [B] M:0.40 T:0.30 SnP:0.62 OUT:0.16 | [M] Morph:0.31
-[F] P:0.78 R:0.09 Gate:0.73 KickP:0.000 OUT:0.10 | [B] M:0.41 T:0.29 SnP:0.60 OUT:0.12 | [M] Morph:0.31
-[F] P:0.79 R:0.09 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.35 T:0.24 SnP:0.49 OUT:0.01 | [M] Morph:0.31
-[F] P:0.81 R:0.09 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.23 SnP:0.48 OUT:0.01 | [M] Morph:0.31
-[F] P:0.75 R:0.10 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.48 T:0.22 SnP:0.48 OUT:0.01 | [M] Morph:0.34
-[F] P:0.72 R:0.09 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.46 T:0.21 SnP:0.45 OUT:0.00 | [M] Morph:0.34
-[F] P:0.63 R:0.07 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.15 SnP:0.33 OUT:0.00 | [M] Morph:0.34
-[F] P:0.63 R:0.06 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.33 T:0.11 SnP:0.25 OUT:0.00 | [M] Morph:0.34
-[F] P:0.71 R:0.05 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.26 SnP:0.53 OUT:0.04 | [M] Morph:0.33
-[F] P:0.75 R:0.06 Gate:0.73 KickP:0.029 OUT:0.00 | [B] M:0.43 T:0.29 SnP:0.61 OUT:0.16 | [M] Morph:0.33
-[F] P:0.81 R:0.08 Gate:0.73 KickP:0.312 OUT:0.46 | [B] M:0.39 T:0.28 SnP:0.59 OUT:0.12 | [M] Morph:0.33
-[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=DARK dom=58% B/D/N=127/247/54
-[DRIFT RADAR] In: 'dark' -> Act: 'dark' | Drift: -30° | BaseHue: 300° | FinalHue: 255°
-[F] P:0.82 R:0.09 Gate:0.73 KickP:0.000 OUT:0.30 | [B] M:0.41 T:0.28 SnP:0.59 OUT:0.11 | [M] Morph:0.33
-[CHOREO] techno-club | botstep [MIRROR F0/2] | Bar:379 | Pan:-28 Tilt:-24 | sBPM:121 phase:242°
-[CHOREO] techno-club | botstep [MIRROR F1/2] | Bar:379 | Pan:28 Tilt:-24 | sBPM:121 phase:242°
-[F] P:0.81 R:0.10 Gate:0.73 KickP:0.000 OUT:0.20 | [B] M:0.38 T:0.25 SnP:0.52 OUT:0.03 | [M] Morph:0.33
-[F] P:0.82 R:0.10 Gate:0.74 KickP:0.000 OUT:0.13 | [B] M:0.38 T:0.25 SnP:0.52 OUT:0.03 | [M] Morph:0.33
-[F] P:0.77 R:0.09 Gate:0.74 KickP:0.000 OUT:0.09 | [B] M:0.33 T:0.22 SnP:0.45 OUT:0.00 | [M] Morph:0.32
-[F] P:0.74 R:0.09 Gate:0.74 KickP:0.000 OUT:0.00 | [B] M:0.31 T:0.20 SnP:0.41 OUT:0.00 | [M] Morph:0.31
-[F] P:0.64 R:0.08 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.29 T:0.15 SnP:0.30 OUT:0.00 | [M] Morph:0.31
-[F] P:0.60 R:0.06 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.25 T:0.11 SnP:0.23 OUT:0.00 | [M] Morph:0.30
-[IPC 📡] audioBuffer #29638 | titan.running=true | size=8192
-[F] P:0.64 R:0.05 Gate:0.73 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.27 SnP:0.54 OUT:0.04 | [M] Morph:0.30
-[F] P:0.68 R:0.07 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.49 T:0.35 SnP:0.73 OUT:0.61 | [M] Morph:0.33
-[INTERVAL] F29640 bpm=121 raw=182 conf=0.000 kick=false phase=0.79 needle=0.0000 bassFlux=0.0065 midFlux=0.0034 centroid=1446Hz kicks=1518
-[BETA 🎵] Key Detected: C minor (Confidence: 0.95)
-[GAMMA 🎵] Frame 29640: bpm=121, energy=0.49
-[F] P:0.66 R:0.07 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.46 T:0.33 SnP:0.70 OUT:0.44 | [M] Morph:0.34
-[F] P:0.64 R:0.07 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.46 T:0.31 SnP:0.67 OUT:0.33 | [M] Morph:0.35
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.963 (Rock target: >0.7)
-   Flatness:    0.032 (Tonal<0.3, Noise>0.7)
-   Centroid:    921Hz (Bright>2000, Dark<1200)
-   CrestFactor: 17.61 (Dynamics)
-   Rolloff:     818Hz (85% energy)
-   Latency:     0.85ms
-   UltraAir:    0.006 (NEW: 16-22kHz sizzle)
-[AGC 🎚️] Gain: 0.66x | In: 0.549 → Out: 0.361 | Peak: 0.757 | ✅ ACTIVE
-[F] P:0.66 R:0.06 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.27 SnP:0.57 OUT:0.08 | [M] Morph:0.34
-[F] P:0.65 R:0.06 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.48 T:0.28 SnP:0.60 OUT:0.13 | [M] Morph:0.36
-[F] P:0.66 R:0.06 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.52 T:0.30 SnP:0.67 OUT:0.32 | [M] Morph:0.39
-[F] P:0.63 R:0.06 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.50 T:0.28 SnP:0.65 OUT:0.28 | [M] Morph:0.40
-[F] P:0.55 R:0.04 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.45 T:0.24 SnP:0.55 OUT:0.06 | [M] Morph:0.40
-[F] P:0.53 R:0.03 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.22 SnP:0.49 OUT:0.02 | [M] Morph:0.40
-[F] P:0.49 R:0.03 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.23 SnP:0.52 OUT:0.03 | [M] Morph:0.40
-[F] P:0.56 R:0.02 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.49 T:0.33 SnP:0.73 OUT:0.64 | [M] Morph:0.41
-[F] P:0.56 R:0.03 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.45 T:0.31 SnP:0.69 OUT:0.43 | [M] Morph:0.41
-[F] P:0.55 R:0.03 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.47 T:0.30 SnP:0.68 OUT:0.39 | [M] Morph:0.41
-[F] P:0.55 R:0.03 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.47 T:0.27 SnP:0.61 OUT:0.17 | [M] Morph:0.42
-[F] P:0.52 R:0.03 Gate:0.66 KickP:0.000 OUT:0.00 | [B] M:0.44 T:0.24 SnP:0.55 OUT:0.07 | [M] Morph:0.42
-[F] P:0.59 R:0.03 Gate:0.66 KickP:0.000 OUT:0.00 | [B] M:0.46 T:0.29 SnP:0.65 OUT:0.28 | [M] Morph:0.42
-[SimpleSectionTracker] 📍 buildup → breakdown | bassR=0.56 wE=0.09 ΔE=-0.167 kick=false
-[F] P:0.54 R:0.02 Gate:0.65 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.26 SnP:0.58 OUT:0.11 | [M] Morph:0.41
-[F] P:0.47 R:0.02 Gate:0.64 KickP:0.000 OUT:0.00 | [B] M:0.50 T:0.24 SnP:0.57 OUT:0.09 | [M] Morph:0.43
-[F] P:0.45 R:0.01 Gate:0.64 KickP:0.000 OUT:0.00 | [B] M:0.51 T:0.25 SnP:0.58 OUT:0.12 | [M] Morph:0.44
-[F] P:0.45 R:0.02 Gate:0.63 KickP:0.000 OUT:0.00 | [B] M:0.53 T:0.31 SnP:0.76 OUT:0.81 | [M] Morph:0.46
-[F] P:0.52 R:0.02 Gate:0.62 KickP:0.000 OUT:0.00 | [B] M:0.57 T:0.35 SnP:0.87 OUT:1.74 | [M] Morph:0.49
-[F] P:0.53 R:0.03 Gate:0.62 KickP:0.000 OUT:0.00 | [B] M:0.56 T:0.34 SnP:0.85 OUT:1.54 | [M] Morph:0.51
-[F] P:0.51 R:0.03 Gate:0.61 KickP:0.000 OUT:0.00 | [B] M:0.58 T:0.33 SnP:0.86 OUT:1.62 | [M] Morph:0.54
-[F] P:0.51 R:0.03 Gate:0.61 KickP:0.000 OUT:0.00 | [B] M:0.56 T:0.29 SnP:0.76 OUT:0.79 | [M] Morph:0.56
-[F] P:0.49 R:0.03 Gate:0.61 KickP:0.000 OUT:0.00 | [B] M:0.54 T:0.27 SnP:0.71 OUT:0.53 | [M] Morph:0.57
-[F] P:0.61 R:0.04 Gate:0.61 KickP:0.000 OUT:0.00 | [B] M:0.57 T:0.26 SnP:0.71 OUT:0.52 | [M] Morph:0.58
-[F] P:0.58 R:0.04 Gate:0.61 KickP:0.000 OUT:0.00 | [B] M:0.54 T:0.25 SnP:0.68 OUT:0.41 | [M] Morph:0.58
-[F] P:0.53 R:0.03 Gate:0.60 KickP:0.000 OUT:0.00 | [B] M:0.51 T:0.24 SnP:0.64 OUT:0.26 | [M] Morph:0.58
-[INTERVAL] F29660 bpm=121 raw=182 conf=0.000 kick=false phase=0.61 needle=0.0000 bassFlux=0.0017 midFlux=0.0000 centroid=2573Hz kicks=1518
-[F] P:0.51 R:0.03 Gate:0.60 KickP:0.000 OUT:0.00 | [B] M:0.49 T:0.22 SnP:0.58 OUT:0.13 | [M] Morph:0.58
-[F] P:0.44 R:0.02 Gate:0.59 KickP:0.000 OUT:0.00 | [B] M:0.45 T:0.21 SnP:0.55 OUT:0.09 | [M] Morph:0.58
-[F] P:0.47 R:0.02 Gate:0.59 KickP:0.000 OUT:0.00 | [B] M:0.48 T:0.33 SnP:0.84 OUT:1.40 | [M] Morph:0.57
-[TitanOrchestrator] 🎧 WORKER BPM=121 conf=0.29 | PLL=FREEWHEEL [mem=121@-0f] phase=0.00 sync=1.00 | beat #1518
-[F] P:0.46 R:0.02 Gate:0.58 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.33 SnP:0.84 OUT:1.39 | [M] Morph:0.57
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=air
-[TitanOrchestrator] 📡 audioBuffer received: 2048 samples, rms=0.3910
-[F] P:0.46 R:0.02 Gate:0.58 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.32 SnP:0.81 OUT:1.15 | [M] Morph:0.56
-[F] P:0.51 R:0.01 Gate:0.57 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.29 SnP:0.73 OUT:0.63 | [M] Morph:0.56
-[F] P:0.51 R:0.02 Gate:0.57 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.25 SnP:0.63 OUT:0.23 | [M] Morph:0.55
-[F] P:0.72 R:0.05 Gate:0.58 KickP:0.811 OUT:1.00 | [B] M:0.40 T:0.23 SnP:0.56 OUT:0.09 | [M] Morph:0.55
-[F] P:0.76 R:0.08 Gate:0.58 KickP:1.000 OUT:1.00 | [B] M:0.38 T:0.19 SnP:0.47 OUT:0.02 | [M] Morph:0.54
-[🥁 INTERVAL BPM] KICK #1519 bpm=182 conf=0.00 energy=0.1503 avg=0.0103 ratio=14.63 delta=0.0540 history=8/8 bpmBuf=[185,92,185,179,185,86,173,185]
-[F] P:0.74 R:0.21 Gate:0.58 KickP:0.000 OUT:0.71 | [B] M:0.32 T:0.14 SnP:0.34 OUT:0.00 | [M] Morph:0.53
-[F] P:0.73 R:0.31 Gate:0.59 KickP:0.000 OUT:0.50 | [B] M:0.30 T:0.12 SnP:0.30 OUT:0.00 | [M] Morph:0.52
-[F] P:0.70 R:0.39 Gate:0.59 KickP:0.000 OUT:0.35 | [B] M:0.26 T:0.09 SnP:0.22 OUT:0.00 | [M] Morph:0.51
-[F] P:0.76 R:0.37 Gate:0.59 KickP:1.000 OUT:1.00 | [B] M:0.40 T:0.26 SnP:0.59 OUT:0.13 | [M] Morph:0.50
-[F] P:0.79 R:0.30 Gate:0.60 KickP:1.000 OUT:1.00 | [B] M:0.40 T:0.29 SnP:0.69 OUT:0.43 | [M] Morph:0.50
-[IPC 📡] audioBuffer #29670 | titan.running=true | size=8192
-[F] P:0.80 R:0.28 Gate:0.60 KickP:0.000 OUT:0.70 | [B] M:0.42 T:0.29 SnP:0.68 OUT:0.39 | [M] Morph:0.49
-[F] P:0.80 R:0.26 Gate:0.61 KickP:0.000 OUT:0.49 | [B] M:0.38 T:0.25 SnP:0.58 OUT:0.12 | [M] Morph:0.49
-[F] P:0.80 R:0.25 Gate:0.61 KickP:0.000 OUT:0.34 | [B] M:0.36 T:0.23 SnP:0.53 OUT:0.05 | [M] Morph:0.48
-[F] P:0.84 R:0.25 Gate:0.62 KickP:1.000 OUT:1.00 | [B] M:0.50 T:0.22 SnP:0.52 OUT:0.04 | [M] Morph:0.48
-[F] P:0.82 R:0.27 Gate:0.62 KickP:0.000 OUT:0.70 | [B] M:0.49 T:0.21 SnP:0.50 OUT:0.03 | [M] Morph:0.48
-[F] P:0.75 R:0.28 Gate:0.62 KickP:0.000 OUT:0.48 | [B] M:0.41 T:0.15 SnP:0.37 OUT:0.00 | [M] Morph:0.48
-[F] P:0.72 R:0.31 Gate:0.63 KickP:0.000 OUT:0.34 | [B] M:0.37 T:0.12 SnP:0.29 OUT:0.00 | [M] Morph:0.47
-[F] P:0.68 R:0.32 Gate:0.63 KickP:0.000 OUT:0.23 | [B] M:0.31 T:0.08 SnP:0.20 OUT:0.00 | [M] Morph:0.46
-[F] P:0.68 R:0.27 Gate:0.63 KickP:0.000 OUT:0.16 | [B] M:0.37 T:0.23 SnP:0.53 OUT:0.05 | [M] Morph:0.46
-[F] P:0.71 R:0.23 Gate:0.63 KickP:0.299 OUT:0.47 | [B] M:0.38 T:0.30 SnP:0.68 OUT:0.40 | [M] Morph:0.45
-[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=DARK dom=54% B/D/N=119/227/75
-[DRIFT RADAR] In: 'dark' -> Act: 'dark' | Drift: -30° | BaseHue: 300° | FinalHue: 255°
-[F] P:0.71 R:0.20 Gate:0.63 KickP:0.000 OUT:0.32 | [B] M:0.38 T:0.29 SnP:0.67 OUT:0.34 | [M] Morph:0.45
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(38%) | Safety:✅OK
-[CHOREO] techno-club | botstep [MIRROR F0/2] | Bar:379 | Pan:95 Tilt:59 | sBPM:121 phase:137°
-[CHOREO] techno-club | botstep [MIRROR F1/2] | Bar:379 | Pan:-95 Tilt:59 | sBPM:121 phase:137°
-[F] P:0.73 R:0.19 Gate:0.63 KickP:0.000 OUT:0.22 | [B] M:0.48 T:0.26 SnP:0.61 OUT:0.17 | [M] Morph:0.45
-[F] P:0.75 R:0.17 Gate:0.64 KickP:0.000 OUT:0.15 | [B] M:0.46 T:0.24 SnP:0.57 OUT:0.10 | [M] Morph:0.45
-[INTERVAL] F29680 bpm=121 raw=182 conf=0.000 kick=false phase=0.97 needle=0.0434 bassFlux=0.0434 midFlux=0.0000 centroid=472Hz kicks=1519
-[F] P:0.82 R:0.17 Gate:0.64 KickP:1.000 OUT:1.00 | [B] M:0.42 T:0.20 SnP:0.46 OUT:0.01 | [M] Morph:0.44
-[F] P:0.81 R:0.17 Gate:0.65 KickP:0.000 OUT:0.69 | [B] M:0.39 T:0.18 SnP:0.41 OUT:0.00 | [M] Morph:0.44
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.998 (Rock target: >0.7)
-   Flatness:    0.000 (Tonal<0.3, Noise>0.7)
-   Centroid:    77Hz (Bright>2000, Dark<1200)
-   CrestFactor: 24.43 (Dynamics)
-   Rolloff:     75Hz (85% energy)
-   Latency:     0.88ms
-   UltraAir:    0.001 (NEW: 16-22kHz sizzle)
-[🥁 INTERVAL BPM] KICK #1520 bpm=183 conf=0.00 energy=0.1188 avg=0.0224 ratio=5.29 delta=0.0754 history=8/8 bpmBuf=[185,92,185,179,185,182,86,185]
-[F] P:0.75 R:0.26 Gate:0.65 KickP:0.000 OUT:0.47 | [B] M:0.33 T:0.13 SnP:0.31 OUT:0.00 | [M] Morph:0.43
-[F] P:0.72 R:0.28 Gate:0.65 KickP:0.000 OUT:0.32 | [B] M:0.34 T:0.11 SnP:0.25 OUT:0.00 | [M] Morph:0.43
-[F] P:0.68 R:0.28 Gate:0.65 KickP:0.000 OUT:0.22 | [B] M:0.32 T:0.10 SnP:0.22 OUT:0.00 | [M] Morph:0.42
-[F] P:0.69 R:0.28 Gate:0.65 KickP:0.000 OUT:0.15 | [B] M:0.42 T:0.26 SnP:0.57 OUT:0.09 | [M] Morph:0.42
-[F] P:0.71 R:0.23 Gate:0.65 KickP:0.000 OUT:0.10 | [B] M:0.39 T:0.32 SnP:0.71 OUT:0.52 | [M] Morph:0.41
-[F] P:0.71 R:0.19 Gate:0.66 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.31 SnP:0.68 OUT:0.37 | [M] Morph:0.41
-[F] P:0.72 R:0.17 Gate:0.66 KickP:0.459 OUT:0.70 | [B] M:0.41 T:0.26 SnP:0.58 OUT:0.11 | [M] Morph:0.40
-[F] P:0.72 R:0.16 Gate:0.66 KickP:0.000 OUT:0.48 | [B] M:0.41 T:0.24 SnP:0.54 OUT:0.05 | [M] Morph:0.40
-[F] P:0.76 R:0.17 Gate:0.66 KickP:0.457 OUT:0.70 | [B] M:0.47 T:0.20 SnP:0.45 OUT:0.01 | [M] Morph:0.41
-[🥁 INTERVAL BPM] KICK #1521 bpm=184 conf=0.00 energy=0.1227 avg=0.0291 ratio=4.22 delta=0.0867 history=8/8 bpmBuf=[185,92,185,179,185,182,183,185]
-[F] P:0.75 R:0.26 Gate:0.66 KickP:0.000 OUT:0.47 | [B] M:0.47 T:0.20 SnP:0.45 OUT:0.01 | [M] Morph:0.41
-[F] P:0.72 R:0.33 Gate:0.66 KickP:0.000 OUT:0.32 | [B] M:0.41 T:0.16 SnP:0.36 OUT:0.00 | [M] Morph:0.41
-[F] P:0.71 R:0.37 Gate:0.67 KickP:0.000 OUT:0.22 | [B] M:0.39 T:0.14 SnP:0.32 OUT:0.00 | [M] Morph:0.40
-[F] P:0.68 R:0.38 Gate:0.67 KickP:0.000 OUT:0.15 | [B] M:0.33 T:0.10 SnP:0.22 OUT:0.00 | [M] Morph:0.39
-[F] P:0.67 R:0.33 Gate:0.67 KickP:0.000 OUT:0.10 | [B] M:0.43 T:0.27 SnP:0.58 OUT:0.10 | [M] Morph:0.39
-[F] P:0.65 R:0.26 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.29 SnP:0.65 OUT:0.25 | [M] Morph:0.39
-[F] P:0.64 R:0.21 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.27 SnP:0.61 OUT:0.16 | [M] Morph:0.39
-[F] P:0.64 R:0.18 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.25 SnP:0.57 OUT:0.08 | [M] Morph:0.39
-[F] P:0.63 R:0.16 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.23 SnP:0.50 OUT:0.02 | [M] Morph:0.38
-[F] P:0.71 R:0.14 Gate:0.67 KickP:0.139 OUT:0.21 | [B] M:0.38 T:0.18 SnP:0.40 OUT:0.00 | [M] Morph:0.38
-[F] P:0.74 R:0.13 Gate:0.67 KickP:0.268 OUT:0.40 | [B] M:0.37 T:0.15 SnP:0.33 OUT:0.00 | [M] Morph:0.38
-[🥁 INTERVAL BPM] KICK #1522 bpm=183 conf=0.00 energy=0.2410 avg=0.0252 ratio=9.57 delta=0.2410 history=8/8 bpmBuf=[161,92,185,179,185,182,183,185]
-[F] P:0.70 R:0.24 Gate:0.67 KickP:0.000 OUT:0.27 | [B] M:0.32 T:0.10 SnP:0.23 OUT:0.00 | [M] Morph:0.37
-[F] P:0.67 R:0.31 Gate:0.67 KickP:0.000 OUT:0.18 | [B] M:0.28 T:0.08 SnP:0.18 OUT:0.00 | [M] Morph:0.36
-[F] P:0.64 R:0.31 Gate:0.67 KickP:0.000 OUT:0.12 | [B] M:0.25 T:0.06 SnP:0.13 OUT:0.00 | [M] Morph:0.35
-[F] P:0.68 R:0.32 Gate:0.67 KickP:0.009 OUT:0.08 | [B] M:0.43 T:0.30 SnP:0.62 OUT:0.16 | [M] Morph:0.35
-[F] P:0.71 R:0.25 Gate:0.67 KickP:0.114 OUT:0.17 | [B] M:0.46 T:0.35 SnP:0.74 OUT:0.63 | [M] Morph:0.36
-[INTERVAL] F29700 bpm=122 raw=183 conf=0.000 kick=false phase=0.57 needle=0.0454 bassFlux=0.0454 midFlux=0.0287 centroid=1361Hz kicks=1522
-[BETA 🎵] Key Detected: C minor (Confidence: 0.95)
-[GAMMA 🎵] Frame 29700: bpm=121, energy=0.40
-[F] P:0.70 R:0.20 Gate:0.67 KickP:0.000 OUT:0.11 | [B] M:0.44 T:0.34 SnP:0.72 OUT:0.53 | [M] Morph:0.36
-[BETA 📡] AUDIO_BUFFER #29700 | size=2048
-[AGC 🎚️] Gain: 0.68x | In: 0.734 → Out: 0.501 | Peak: 0.753 | ✅ ACTIVE
-[SimpleSectionTracker] 📊 section=breakdown | bassR=1.62/1.4 wE=0.36/0.75 kick=false cool=false
-[F] P:0.74 R:0.16 Gate:0.67 KickP:0.219 OUT:0.33 | [B] M:0.41 T:0.28 SnP:0.60 OUT:0.14 | [M] Morph:0.35
-[F] P:0.73 R:0.14 Gate:0.68 KickP:0.000 OUT:0.22 | [B] M:0.39 T:0.26 SnP:0.56 OUT:0.07 | [M] Morph:0.35
-[F] P:0.72 R:0.15 Gate:0.68 KickP:0.000 OUT:0.15 | [B] M:0.43 T:0.22 SnP:0.47 OUT:0.01 | [M] Morph:0.35
-[IPC 📡] audioBuffer #29703 | titan.running=true | size=8192
-[F] P:0.78 R:0.23 Gate:0.68 KickP:0.443 OUT:0.66 | [B] M:0.49 T:0.22 SnP:0.49 OUT:0.02 | [M] Morph:0.37
-[F] P:0.73 R:0.29 Gate:0.68 KickP:0.000 OUT:0.45 | [B] M:0.44 T:0.18 SnP:0.40 OUT:0.00 | [M] Morph:0.37
-[F] P:0.73 R:0.33 Gate:0.68 KickP:0.000 OUT:0.30 | [B] M:0.44 T:0.18 SnP:0.41 OUT:0.00 | [M] Morph:0.37
-[F] P:0.69 R:0.35 Gate:0.68 KickP:0.000 OUT:0.20 | [B] M:0.39 T:0.14 SnP:0.32 OUT:0.00 | [M] Morph:0.36
-[F] P:0.67 R:0.30 Gate:0.68 KickP:0.000 OUT:0.14 | [B] M:0.41 T:0.23 SnP:0.49 OUT:0.02 | [M] Morph:0.36
-[TitanOrchestrator] 🎧 WORKER BPM=121 conf=0.29 | PLL=FREEWHEEL [mem=121@-0f] phase=0.00 sync=1.00 | beat #1522
-[TitanEngine 🧠] Stabilization: Key=A# Emotion=DARK Strategy=complementary Temp=5411K
-[F] P:0.71 R:0.24 Gate:0.68 KickP:0.073 OUT:0.11 | [B] M:0.46 T:0.34 SnP:0.75 OUT:0.70 | [M] Morph:0.37
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=air
-[F] P:0.71 R:0.19 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.44 T:0.33 SnP:0.73 OUT:0.61 | [M] Morph:0.37
-[F] P:0.67 R:0.16 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.50 T:0.28 SnP:0.62 OUT:0.19 | [M] Morph:0.39
-[F] P:0.65 R:0.15 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.47 T:0.24 SnP:0.55 OUT:0.06 | [M] Morph:0.39
-[F] P:0.70 R:0.14 Gate:0.68 KickP:0.015 OUT:0.00 | [B] M:0.43 T:0.19 SnP:0.44 OUT:0.00 | [M] Morph:0.39
-[F] P:0.70 R:0.11 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.16 SnP:0.36 OUT:0.00 | [M] Morph:0.39
-[🥁 INTERVAL BPM] KICK #1523 bpm=183 conf=0.00 energy=0.2620 avg=0.0374 ratio=7.00 delta=0.2620 history=8/8 bpmBuf=[161,92,185,179,185,182,183,185]
-[F] P:0.66 R:0.21 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.31 T:0.11 SnP:0.25 OUT:0.00 | [M] Morph:0.38
-[F] P:0.63 R:0.24 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.34 T:0.09 SnP:0.21 OUT:0.00 | [M] Morph:0.38
-[F] P:0.62 R:0.25 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.35 T:0.07 SnP:0.17 OUT:0.00 | [M] Morph:0.37
-[F] P:0.65 R:0.23 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.20 SnP:0.43 OUT:0.00 | [M] Morph:0.37
-[F] P:0.67 R:0.18 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.45 T:0.33 SnP:0.71 OUT:0.51 | [M] Morph:0.37
-[F] P:0.63 R:0.13 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.33 SnP:0.71 OUT:0.50 | [M] Morph:0.37
-[F] P:0.60 R:0.10 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.29 SnP:0.63 OUT:0.19 | [M] Morph:0.37
-[F] P:0.61 R:0.10 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.27 SnP:0.58 OUT:0.10 | [M] Morph:0.36
-[F] P:0.63 R:0.10 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.45 T:0.22 SnP:0.49 OUT:0.02 | [M] Morph:0.36
-[F] P:0.69 R:0.11 Gate:0.67 KickP:0.018 OUT:0.00 | [B] M:0.48 T:0.22 SnP:0.48 OUT:0.01 | [M] Morph:0.38
-[🥁 INTERVAL BPM] KICK #1524 bpm=181 conf=0.00 energy=0.2393 avg=0.0408 ratio=5.87 delta=0.2393 history=8/8 bpmBuf=[161,92,161,179,185,182,183,185]
-[F] P:0.66 R:0.20 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.18 SnP:0.40 OUT:0.00 | [M] Morph:0.37
-[F] P:0.65 R:0.26 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.17 SnP:0.37 OUT:0.00 | [M] Morph:0.37
-[F] P:0.61 R:0.31 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.33 T:0.11 SnP:0.24 OUT:0.00 | [M] Morph:0.37
-[INTERVAL] F29720 bpm=121 raw=181 conf=0.000 kick=false phase=0.28 needle=0.0000 bassFlux=0.0000 midFlux=0.0000 centroid=151Hz kicks=1524
-[F] P:0.61 R:0.32 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.27 SnP:0.58 OUT:0.10 | [M] Morph:0.36
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.807 (Rock target: >0.7)
-   Flatness:    0.216 (Tonal<0.3, Noise>0.7)
-   Centroid:    6428Hz (Bright>2000, Dark<1200)
-   CrestFactor: 4.98 (Dynamics)
-   Rolloff:     11143Hz (85% energy)
-   Latency:     1.06ms
-   UltraAir:    0.015 (NEW: 16-22kHz sizzle)
-[F] P:0.69 R:0.26 Gate:0.67 KickP:0.036 OUT:0.00 | [B] M:0.45 T:0.35 SnP:0.76 OUT:0.77 | [M] Morph:0.36
-[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=DARK dom=55% B/D/N=120/232/73
-[DRIFT RADAR] In: 'dark' -> Act: 'dark' | Drift: -30° | BaseHue: 300° | FinalHue: 255°
-[F] P:0.69 R:0.22 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.34 SnP:0.74 OUT:0.67 | [M] Morph:0.36
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(38%) | Safety:✅OK
-[CHOREO] techno-club | botstep [MIRROR F0/2] | Bar:381 | Pan:-134 Tilt:4 | sBPM:121 phase:31°
-[CHOREO] techno-club | botstep [MIRROR F1/2] | Bar:381 | Pan:134 Tilt:4 | sBPM:121 phase:31°
-[F] P:0.65 R:0.20 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.30 SnP:0.65 OUT:0.26 | [M] Morph:0.36
-[F] P:0.65 R:0.18 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.28 SnP:0.59 OUT:0.11 | [M] Morph:0.36
-[F] P:0.62 R:0.16 Gate:0.67 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.24 SnP:0.52 OUT:0.03 | [M] Morph:0.36
-[🥁 INTERVAL BPM] KICK #1525 bpm=183 conf=0.00 energy=0.1691 avg=0.0359 ratio=4.71 delta=0.1691 history=8/8 bpmBuf=[161,92,161,185,185,182,183,185]
-[F] P:0.74 R:0.20 Gate:0.67 KickP:0.227 OUT:0.34 | [B] M:0.39 T:0.21 SnP:0.45 OUT:0.00 | [M] Morph:0.36
-[F] P:0.72 R:0.24 Gate:0.67 KickP:0.000 OUT:0.23 | [B] M:0.32 T:0.15 SnP:0.33 OUT:0.00 | [M] Morph:0.35
-[F] P:0.71 R:0.29 Gate:0.67 KickP:0.000 OUT:0.15 | [B] M:0.31 T:0.14 SnP:0.30 OUT:0.00 | [M] Morph:0.34
-[F] P:0.68 R:0.34 Gate:0.67 KickP:0.000 OUT:0.10 | [B] M:0.25 T:0.09 SnP:0.20 OUT:0.00 | [M] Morph:0.33
-[Harmony 🎵] Key Change (fallback): C → G
-[F] P:0.69 R:0.36 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.27 T:0.14 SnP:0.28 OUT:0.00 | [M] Morph:0.33
-[F] P:0.77 R:0.30 Gate:0.68 KickP:0.361 OUT:0.53 | [B] M:0.46 T:0.35 SnP:0.72 OUT:0.56 | [M] Morph:0.34
-[F] P:0.78 R:0.25 Gate:0.68 KickP:0.000 OUT:0.35 | [B] M:0.44 T:0.34 SnP:0.71 OUT:0.51 | [M] Morph:0.34
-[F] P:0.78 R:0.22 Gate:0.68 KickP:0.000 OUT:0.24 | [B] M:0.44 T:0.33 SnP:0.70 OUT:0.44 | [M] Morph:0.34
-[F] P:0.80 R:0.18 Gate:0.69 KickP:0.000 OUT:0.16 | [B] M:0.41 T:0.29 SnP:0.62 OUT:0.17 | [M] Morph:0.34
-[F] P:0.80 R:0.20 Gate:0.69 KickP:0.000 OUT:0.11 | [B] M:0.39 T:0.27 SnP:0.57 OUT:0.08 | [M] Morph:0.34
-[SimpleSectionTracker] 📍 breakdown → buildup | bassR=1.10 wE=0.72 ΔE=0.034 kick=false
-[F] P:0.80 R:0.21 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.45 T:0.24 SnP:0.51 OUT:0.02 | [M] Morph:0.34
-[F] P:0.77 R:0.22 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.21 SnP:0.45 OUT:0.00 | [M] Morph:0.34
-[F] P:0.75 R:0.26 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.19 SnP:0.41 OUT:0.00 | [M] Morph:0.34
-[IPC 📡] audioBuffer #29734 | titan.running=true | size=8192
-[F] P:0.70 R:0.27 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.33 T:0.14 SnP:0.29 OUT:0.00 | [M] Morph:0.33
-[F] P:0.68 R:0.28 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.32 T:0.12 SnP:0.25 OUT:0.00 | [M] Morph:0.33
-[F] P:0.72 R:0.24 Gate:0.70 KickP:0.043 OUT:0.00 | [B] M:0.44 T:0.34 SnP:0.69 OUT:0.40 | [M] Morph:0.33
-[F] P:0.72 R:0.20 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.33 SnP:0.68 OUT:0.35 | [M] Morph:0.33
-[F] P:0.72 R:0.16 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.41 T:0.29 SnP:0.62 OUT:0.17 | [M] Morph:0.33
-[F] P:0.73 R:0.16 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.44 T:0.28 SnP:0.60 OUT:0.12 | [M] Morph:0.33
-[F] P:0.73 R:0.16 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.22 SnP:0.48 OUT:0.01 | [M] Morph:0.33
-[F] P:0.77 R:0.14 Gate:0.70 KickP:0.230 OUT:0.34 | [B] M:0.38 T:0.20 SnP:0.43 OUT:0.00 | [M] Morph:0.33
-[INTERVAL] F29740 bpm=122 raw=183 conf=0.000 kick=false phase=0.12 needle=0.1304 bassFlux=0.1304 midFlux=0.0000 centroid=84Hz kicks=1525
-[F] P:0.74 R:0.22 Gate:0.70 KickP:0.000 OUT:0.22 | [B] M:0.33 T:0.17 SnP:0.35 OUT:0.00 | [M] Morph:0.32
-[F] P:0.72 R:0.29 Gate:0.70 KickP:0.000 OUT:0.15 | [B] M:0.31 T:0.15 SnP:0.31 OUT:0.00 | [M] Morph:0.32
-[F] P:0.67 R:0.28 Gate:0.70 KickP:0.000 OUT:0.10 | [B] M:0.35 T:0.11 SnP:0.23 OUT:0.00 | [M] Morph:0.31
-[F] P:0.66 R:0.26 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.34 T:0.10 SnP:0.20 OUT:0.00 | [M] Morph:0.31
-[F] P:0.71 R:0.24 Gate:0.70 KickP:0.010 OUT:0.00 | [B] M:0.46 T:0.34 SnP:0.70 OUT:0.44 | [M] Morph:0.32
-[F] P:0.73 R:0.19 Gate:0.70 KickP:0.075 OUT:0.11 | [B] M:0.44 T:0.34 SnP:0.72 OUT:0.53 | [M] Morph:0.32
-[F] P:0.73 R:0.16 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.30 SnP:0.63 OUT:0.19 | [M] Morph:0.32
-[F] P:0.74 R:0.15 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.28 SnP:0.59 OUT:0.11 | [M] Morph:0.32
-[F] P:0.76 R:0.14 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.26 SnP:0.55 OUT:0.05 | [M] Morph:0.32
-[F] P:0.79 R:0.15 Gate:0.71 KickP:0.299 OUT:0.44 | [B] M:0.44 T:0.23 SnP:0.47 OUT:0.01 | [M] Morph:0.32
-[🥁 INTERVAL BPM] KICK #1526 bpm=172 conf=0.00 energy=0.1506 avg=0.0306 ratio=4.93 delta=0.1075 history=8/8 bpmBuf=[161,92,161,185,59,182,183,185]
-[F] P:0.78 R:0.27 Gate:0.71 KickP:0.000 OUT:0.29 | [B] M:0.46 T:0.21 SnP:0.46 OUT:0.00 | [M] Morph:0.34
-[F] P:0.74 R:0.29 Gate:0.71 KickP:0.000 OUT:0.19 | [B] M:0.42 T:0.18 SnP:0.39 OUT:0.00 | [M] Morph:0.34
-[F] P:0.70 R:0.31 Gate:0.71 KickP:0.000 OUT:0.13 | [B] M:0.36 T:0.14 SnP:0.29 OUT:0.00 | [M] Morph:0.33
-[F] P:0.68 R:0.30 Gate:0.71 KickP:0.000 OUT:0.09 | [B] M:0.34 T:0.12 SnP:0.26 OUT:0.00 | [M] Morph:0.33
-[TitanOrchestrator] 🎧 WORKER BPM=121 conf=0.29 | PLL=FREEWHEEL [mem=121@-0f] phase=0.00 sync=1.00 | beat #1526
-[TitanEngine 🧠] Stabilization: Key=A# Emotion=DARK Strategy=complementary Temp=5516K
-[F] P:0.69 R:0.26 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.46 T:0.32 SnP:0.65 OUT:0.25 | [M] Morph:0.34
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=air
-[F] P:0.72 R:0.20 Gate:0.71 KickP:0.008 OUT:0.00 | [B] M:0.46 T:0.32 SnP:0.68 OUT:0.36 | [M] Morph:0.35
-[Harmony 🎵] Key Change (fallback): G → B
-[F] P:0.73 R:0.19 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.30 SnP:0.63 OUT:0.20 | [M] Morph:0.35
-[F] P:0.73 R:0.18 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.28 SnP:0.58 OUT:0.10 | [M] Morph:0.35
-[F] P:0.70 R:0.15 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.22 SnP:0.48 OUT:0.01 | [M] Morph:0.34
-[F] P:0.78 R:0.13 Gate:0.71 KickP:0.203 OUT:0.30 | [B] M:0.38 T:0.21 SnP:0.45 OUT:0.00 | [M] Morph:0.34
-[F] P:0.76 R:0.12 Gate:0.72 KickP:0.000 OUT:0.20 | [B] M:0.34 T:0.16 SnP:0.34 OUT:0.00 | [M] Morph:0.34
-[🥁 INTERVAL BPM] KICK #1527 bpm=167 conf=0.00 energy=0.2303 avg=0.0274 ratio=8.41 delta=0.2303 history=8/8 bpmBuf=[161,92,161,185,172,161,183,185]
-[F] P:0.74 R:0.25 Gate:0.72 KickP:0.000 OUT:0.13 | [B] M:0.32 T:0.14 SnP:0.30 OUT:0.00 | [M] Morph:0.33
-[F] P:0.70 R:0.28 Gate:0.72 KickP:0.000 OUT:0.09 | [B] M:0.27 T:0.11 SnP:0.23 OUT:0.00 | [M] Morph:0.32
-[F] P:0.64 R:0.30 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.24 T:0.07 SnP:0.15 OUT:0.00 | [M] Morph:0.31
-[F] P:0.70 R:0.24 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.46 T:0.34 SnP:0.70 OUT:0.42 | [M] Morph:0.32
-[F] P:0.71 R:0.20 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.45 T:0.34 SnP:0.71 OUT:0.50 | [M] Morph:0.33
-[F] P:0.68 R:0.15 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.31 SnP:0.66 OUT:0.28 | [M] Morph:0.33
-[INTERVAL] F29760 bpm=125 raw=167 conf=0.000 kick=false phase=0.65 needle=0.0000 bassFlux=0.0124 midFlux=0.0000 centroid=704Hz kicks=1527
-[BETA 🎵] Key Detected: B minor (Confidence: 0.95)
-[GAMMA 🎵] Frame 29760: bpm=121, energy=0.38
-[F] P:0.71 R:0.12 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.28 SnP:0.59 OUT:0.12 | [M] Morph:0.33
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.990 (Rock target: >0.7)
-   Flatness:    0.007 (Tonal<0.3, Noise>0.7)
-   Centroid:    406Hz (Bright>2000, Dark<1200)
-   CrestFactor: 16.93 (Dynamics)
-   Rolloff:     452Hz (85% energy)
-   Latency:     0.89ms
-   UltraAir:    0.002 (NEW: 16-22kHz sizzle)
-[AGC 🎚️] Gain: 0.69x | In: 0.451 → Out: 0.312 | Peak: 0.722 | ✅ ACTIVE
-[F] P:0.70 R:0.12 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.26 SnP:0.55 OUT:0.05 | [M] Morph:0.33
-[F] P:0.77 R:0.12 Gate:0.72 KickP:0.149 OUT:0.22 | [B] M:0.43 T:0.23 SnP:0.48 OUT:0.01 | [M] Morph:0.33
-[F] P:0.76 R:0.16 Gate:0.72 KickP:0.000 OUT:0.15 | [B] M:0.48 T:0.22 SnP:0.47 OUT:0.01 | [M] Morph:0.35
-[F] P:0.74 R:0.18 Gate:0.72 KickP:0.000 OUT:0.10 | [B] M:0.45 T:0.20 SnP:0.44 OUT:0.00 | [M] Morph:0.35
-[F] P:0.72 R:0.25 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.18 SnP:0.40 OUT:0.00 | [M] Morph:0.35
-[F] P:0.69 R:0.25 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.14 SnP:0.31 OUT:0.00 | [M] Morph:0.35
-[F] P:0.66 R:0.26 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.44 T:0.34 SnP:0.72 OUT:0.52 | [M] Morph:0.35
-[IPC 📡] audioBuffer #29766 | titan.running=true | size=8192
-[ARBITER 🎭] In: mood='dreamy' mode='minor' → instant=NEUTRAL stable=DARK dom=54% B/D/N=124/228/72
-[DRIFT RADAR] In: 'dark' -> Act: 'dark' | Drift: -30° | BaseHue: 300° | FinalHue: 255°
-[F] P:0.69 R:0.20 Gate:0.72 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.35 SnP:0.74 OUT:0.66 | [M] Morph:0.35
-[CHOREO] techno-club | botstep [MIRROR F0/2] | Bar:381 | Pan:-168 Tilt:40 | sBPM:121 phase:285°
-[CHOREO] techno-club | botstep [MIRROR F1/2] | Bar:381 | Pan:168 Tilt:40 | sBPM:121 phase:285°
-[F] P:0.68 R:0.19 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.31 SnP:0.67 OUT:0.31 | [M] Morph:0.35
-[F] P:0.66 R:0.16 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.44 T:0.30 SnP:0.64 OUT:0.24 | [M] Morph:0.35
-[F] P:0.62 R:0.14 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.44 T:0.25 SnP:0.54 OUT:0.04 | [M] Morph:0.35
-[F] P:0.62 R:0.12 Gate:0.71 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.21 SnP:0.47 OUT:0.01 | [M] Morph:0.35
-[F] P:0.74 R:0.11 Gate:0.71 KickP:0.092 OUT:0.14 | [B] M:0.36 T:0.17 SnP:0.36 OUT:0.00 | [M] Morph:0.35
-[🥁 INTERVAL BPM] KICK #1528 bpm=161 conf=0.00 energy=0.1626 avg=0.0303 ratio=5.36 delta=0.1626 history=8/8 bpmBuf=[161,92,161,185,172,161,86,185]
-[F] P:0.70 R:0.20 Gate:0.71 KickP:0.000 OUT:0.09 | [B] M:0.31 T:0.13 SnP:0.28 OUT:0.00 | [M] Morph:0.34
-[F] P:0.64 R:0.21 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.30 T:0.10 SnP:0.22 OUT:0.00 | [M] Morph:0.33
-[F] P:0.61 R:0.21 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.30 T:0.08 SnP:0.18 OUT:0.00 | [M] Morph:0.33
-[F] P:0.62 R:0.20 Gate:0.70 KickP:0.000 OUT:0.00 | [B] M:0.42 T:0.26 SnP:0.54 OUT:0.05 | [M] Morph:0.33
-[F] P:0.62 R:0.16 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.40 T:0.32 SnP:0.66 OUT:0.28 | [M] Morph:0.32
-[F] P:0.59 R:0.13 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.36 T:0.31 SnP:0.64 OUT:0.23 | [M] Morph:0.32
-[F] P:0.61 R:0.10 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.29 SnP:0.59 OUT:0.11 | [M] Morph:0.32
-[F] P:0.64 R:0.08 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.38 T:0.27 SnP:0.56 OUT:0.06 | [M] Morph:0.32
-[F] P:0.72 R:0.07 Gate:0.69 KickP:0.073 OUT:0.11 | [B] M:0.43 T:0.24 SnP:0.51 OUT:0.02 | [M] Morph:0.32
-[F] P:0.73 R:0.09 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.45 T:0.22 SnP:0.47 OUT:0.01 | [M] Morph:0.33
-[🥁 INTERVAL BPM] KICK #1529 bpm=161 conf=0.00 energy=0.2215 avg=0.0357 ratio=6.20 delta=0.1639 history=8/8 bpmBuf=[161,92,161,185,172,161,86,185]
-[F] P:0.71 R:0.22 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.43 T:0.20 SnP:0.44 OUT:0.00 | [M] Morph:0.33
-[F] P:0.66 R:0.24 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.35 T:0.14 SnP:0.30 OUT:0.00 | [M] Morph:0.32
-[F] P:0.65 R:0.26 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.33 T:0.12 SnP:0.26 OUT:0.00 | [M] Morph:0.32
-[INTERVAL] F29780 bpm=121 raw=161 conf=0.000 kick=false phase=0.37 needle=0.0000 bassFlux=0.0000 midFlux=0.0004 centroid=2305Hz kicks=1529
-[SimpleSectionTracker] 📍 buildup → breakdown | bassR=0.65 wE=0.13 ΔE=-0.143 kick=false
-[F] P:0.61 R:0.21 Gate:0.69 KickP:0.000 OUT:0.00 | [B] M:0.35 T:0.23 SnP:0.47 OUT:0.01 | [M] Morph:0.31
-[F] P:0.64 R:0.18 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.29 SnP:0.59 OUT:0.11 | [M] Morph:0.31
-[F] P:0.64 R:0.15 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.31 SnP:0.63 OUT:0.19 | [M] Morph:0.31
-[F] P:0.63 R:0.13 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.39 T:0.30 SnP:0.61 OUT:0.14 | [M] Morph:0.31
-[F] P:0.62 R:0.11 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.25 SnP:0.53 OUT:0.03 | [M] Morph:0.30
-[F] P:0.62 R:0.11 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.37 T:0.24 SnP:0.50 OUT:0.02 | [M] Morph:0.30
-[F] P:0.73 R:0.09 Gate:0.68 KickP:0.155 OUT:0.22 | [B] M:0.34 T:0.19 SnP:0.39 OUT:0.00 | [M] Morph:0.30
-[🥁 INTERVAL BPM] KICK #1530 bpm=161 conf=0.00 energy=0.2583 avg=0.0355 ratio=7.27 delta=0.2583 history=8/8 bpmBuf=[161,92,161,185,172,161,86,185]
-[F] P:0.72 R:0.22 Gate:0.68 KickP:0.000 OUT:0.15 | [B] M:0.32 T:0.17 SnP:0.35 OUT:0.00 | [M] Morph:0.29
-[F] P:0.68 R:0.26 Gate:0.68 KickP:0.000 OUT:0.10 | [B] M:0.27 T:0.13 SnP:0.26 OUT:0.00 | [M] Morph:0.29
-[F] P:0.66 R:0.29 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.23 T:0.10 SnP:0.19 OUT:0.00 | [M] Morph:0.28
-[F] P:0.67 R:0.29 Gate:0.68 KickP:0.000 OUT:0.00 | [B] M:0.26 T:0.15 SnP:0.29 OUT:0.00 | [M] Morph:0.27
-[F] P:0.76 R:0.23 Gate:0.68 KickP:0.281 OUT:0.40 | [B] M:0.38 T:0.26 SnP:0.51 OUT:0.02 | [M] Morph:0.27
-[F] P:0.80 R:0.21 Gate:0.69 KickP:0.509 OUT:0.72 | [B] M:0.38 T:0.29 SnP:0.57 OUT:0.07 | [M] Morph:0.27
-[F] P:0.81 R:0.19 Gate:0.69 KickP:0.000 OUT:0.47 | [B] M:0.40 T:0.28 SnP:0.57 OUT:0.07 | [M] Morph:0.27
-[F] P:0.81 R:0.17 Gate:0.69 KickP:0.000 OUT:0.31 | [B] M:0.35 T:0.24 SnP:0.48 OUT:0.01 | [M] Morph:0.26
-[F] P:0.82 R:0.17 Gate:0.69 KickP:0.000 OUT:0.20 | [B] M:0.43 T:0.23 SnP:0.45 OUT:0.00 | [M] Morph:0.27
-[F] P:0.85 R:0.17 Gate:0.70 KickP:0.763 OUT:1.00 | [B] M:0.49 T:0.24 SnP:0.48 OUT:0.01 | [M] Morph:0.30
-[F] P:0.80 R:0.27 Gate:0.70 KickP:0.000 OUT:0.66 | [B] M:0.46 T:0.21 SnP:0.44 OUT:0.00 | [M] Morph:0.32
-[F] P:0.76 R:0.28 Gate:0.70 KickP:0.000 OUT:0.44 | [B] M:0.41 T:0.18 SnP:0.38 OUT:0.00 | [M] Morph:0.32
-[F] P:0.70 R:0.26 Gate:0.70 KickP:0.000 OUT:0.29 | [B] M:0.34 T:0.13 SnP:0.27 OUT:0.00 | [M] Morph:0.31
-[TitanOrchestrator] 🎧 WORKER BPM=121 conf=0.29 | PLL=FREEWHEEL [mem=121@-0f] phase=0.00 sync=1.00 | beat #1530
-[TitanEngine 🧠] Stabilization: Key=A# Emotion=DAR
+utBR:0.000 outML:0.720 outMR:1.000
+[FRONT-TEL] bass:0.609 dBass:-0.040 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.519 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.720 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.720 outMR:1.000
+[FRONT-TEL] bass:0.615 dBass:0.006 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.524 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.601 inMR:0.876 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.601 outMR:0.876
+[FRONT-TEL] bass:0.615 dBass:0.006 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.524 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.601 inMR:0.876 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.601 outMR:0.876
+[FRONT-TEL] bass:0.615 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.528 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.601 inMR:0.876 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.601 outMR:0.876
+[FRONT-TEL] bass:0.615 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.528 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.601 inMR:0.876 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.601 outMR:0.876
+[FRONT-TEL] bass:0.661 dBass:0.046 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.549 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:1.000 inML:0.706 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:1.000 outBR:1.000 outML:0.706 outMR:1.000
+[FRONT-TEL] bass:0.661 dBass:0.046 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.549 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:1.000 inML:0.706 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:1.000 outML:0.706 outMR:1.000
+[FRONT-TEL] bass:0.725 dBass:0.063 kickSig:0.725 | isK:1 isKE:1 veto:0 | morph:0.577 gateOn:0.360 | inFL:0.000 inFR:1.000 inBL:0.000 inBR:0.060 inML:0.731 inMR:1.000 | outFL:1.000 outFR:1.000 outBL:0.060 outBR:0.060 outML:0.731 outMR:1.000
+[FRONT-TEL] bass:0.725 dBass:0.063 kickSig:0.725 | isK:1 isKE:1 veto:0 | morph:0.577 gateOn:0.360 | inFL:0.000 inFR:1.000 inBL:0.000 inBR:0.060 inML:0.731 inMR:1.000 | outFL:0.000 outFR:1.000 outBL:0.000 outBR:0.060 outML:0.731 outMR:1.000
+[FRONT-TEL] bass:0.774 dBass:0.050 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.594 gateOn:0.360 | inFL:0.000 inFR:0.163 inBL:0.000 inBR:0.000 inML:0.626 inMR:0.878 | outFL:0.163 outFR:0.163 outBL:0.000 outBR:0.000 outML:0.626 outMR:0.878
+[FRONT-TEL] bass:0.774 dBass:0.050 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.594 gateOn:0.360 | inFL:0.000 inFR:0.163 inBL:0.000 inBR:0.000 inML:0.626 inMR:0.878 | outFL:0.000 outFR:0.163 outBL:0.000 outBR:0.000 outML:0.626 outMR:0.878
+[FRONT-TEL] bass:0.813 dBass:0.039 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.594 gateOn:0.360 | inFL:0.217 inFR:0.036 inBL:0.000 inBR:0.000 inML:0.469 inMR:0.575 | outFL:0.036 outFR:0.036 outBL:0.000 outBR:0.000 outML:0.469 outMR:0.575
+[FRONT-TEL] bass:0.813 dBass:0.039 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.594 gateOn:0.360 | inFL:0.217 inFR:0.036 inBL:0.000 inBR:0.000 inML:0.469 inMR:0.575 | outFL:0.217 outFR:0.036 outBL:0.000 outBR:0.000 outML:0.469 outMR:0.575
+[FRONT-TEL] bass:0.928 dBass:0.115 kickSig:0.928 | isK:1 isKE:0 veto:0 | morph:0.628 gateOn:0.360 | inFL:0.217 inFR:1.000 inBL:0.000 inBR:1.000 inML:0.643 inMR:1.000 | outFL:1.000 outFR:1.000 outBL:1.000 outBR:1.000 outML:0.643 outMR:1.000
+[FRONT-TEL] bass:0.928 dBass:0.115 kickSig:0.928 | isK:1 isKE:1 veto:0 | morph:0.628 gateOn:0.360 | inFL:0.217 inFR:1.000 inBL:0.000 inBR:1.000 inML:0.643 inMR:1.000 | outFL:0.217 outFR:1.000 outBL:0.000 outBR:1.000 outML:0.643 outMR:1.000
+[FRONT-TEL] bass:1.000 dBass:0.072 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.646 gateOn:0.360 | inFL:0.217 inFR:0.164 inBL:0.000 inBR:0.073 inML:0.493 inMR:1.000 | outFL:0.164 outFR:0.164 outBL:0.073 outBR:0.073 outML:0.493 outMR:1.000
+[FRONT-TEL] bass:1.000 dBass:0.072 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.646 gateOn:0.360 | inFL:0.217 inFR:0.164 inBL:0.000 inBR:0.073 inML:0.493 inMR:1.000 | outFL:0.217 outFR:0.164 outBL:0.000 outBR:0.073 outML:0.493 outMR:1.000
+[GlassBridge] 🏓 Ping-Pong Status: Sent: 2577 | Dropped: 61 | In-Flight: 1 | PoolFree: 2
+[TitanOrchestrator] ðŸŽ§ WORKER BPM=122 conf=0.88 | PLL=FREEWHEEL [mem=122@-0f] phase=0.00 sync=0.54 | beat #102 | bass=0.9156 sab=0.215 | ðŸ”¬in_peak=0.61740 in_rms=0.36423
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.662 gateOn:0.360 | inFL:0.217 inFR:0.037 inBL:0.000 inBR:0.005 inML:0.493 inMR:1.000 | outFL:0.037 outFR:0.037 outBL:0.005 outBR:0.005 outML:0.493 outMR:1.000
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.662 gateOn:0.360 | inFL:0.217 inFR:0.037 inBL:0.000 inBR:0.005 inML:0.493 inMR:1.000 | outFL:0.217 outFR:0.037 outBL:0.000 outBR:0.005 outML:0.493 outMR:1.000
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:22% FR:4% BL:0% BR:1%
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.659 gateOn:0.360 | inFL:0.217 inFR:0.006 inBL:0.000 inBR:0.000 inML:0.216 inMR:0.852 | outFL:0.006 outFR:0.006 outBL:0.000 outBR:0.000 outML:0.216 outMR:0.852
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.659 gateOn:0.360 | inFL:0.217 inFR:0.006 inBL:0.000 inBR:0.000 inML:0.216 inMR:0.852 | outFL:0.217 outFR:0.006 outBL:0.000 outBR:0.000 outML:0.216 outMR:0.852
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.651 gateOn:0.360 | inFL:0.217 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.127 inMR:0.664 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.127 outMR:0.664
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.651 gateOn:0.360 | inFL:0.217 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.127 inMR:0.664 | outFL:0.217 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.127 outMR:0.664
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.645 gateOn:0.360 | inFL:0.021 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.164 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.164 outMR:1.000
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.645 gateOn:0.360 | inFL:0.021 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.164 inMR:1.000 | outFL:0.021 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.164 outMR:1.000
+[FRONT-TEL] bass:0.985 dBass:-0.015 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.642 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.217 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.217 outMR:1.000
+[FRONT-TEL] bass:0.985 dBass:-0.015 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.642 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.217 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.217 outMR:1.000
+[FRONT-TEL] bass:0.933 dBass:-0.052 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.642 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.390 inMR:0.743 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.390 outMR:0.743
+[FRONT-TEL] bass:0.933 dBass:-0.052 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.642 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.390 inMR:0.743 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.390 outMR:0.743
+[FRONT-TEL] bass:0.933 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.641 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.390 inMR:0.743 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.390 outMR:0.743
+[FRONT-TEL] bass:0.933 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.641 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.390 inMR:0.743 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.390 outMR:0.743
+[FRONT-TEL] bass:0.915 dBass:-0.018 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.641 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.413 inMR:0.533 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.413 outMR:0.533
+[FRONT-TEL] bass:0.915 dBass:-0.018 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.641 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.413 inMR:0.533 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.413 outMR:0.533
+[FRONT-TEL] bass:0.897 dBass:-0.018 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.651 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:1.000 inML:0.535 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:1.000 outBR:1.000 outML:0.535 outMR:1.000
+[FRONT-TEL] bass:0.897 dBass:-0.018 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.651 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:1.000 inML:0.535 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:1.000 outML:0.535 outMR:1.000
+[FRONT-TEL] bass:0.885 dBass:-0.013 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.669 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.077 inML:0.629 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.077 outBR:0.077 outML:0.629 outMR:1.000
+[FRONT-TEL] bass:0.885 dBass:-0.013 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.669 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.077 inML:0.629 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.077 outML:0.629 outMR:1.000
+[FRONT-TEL] bass:0.885 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.685 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.006 inML:0.629 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.006 outBR:0.006 outML:0.629 outMR:1.000
+[FRONT-TEL] bass:0.885 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.685 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.006 inML:0.629 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.006 outML:0.629 outMR:1.000
+[FRONT-TEL] bass:0.885 dBass:0.001 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.692 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.576 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.576 outMR:1.000
+[FRONT-TEL] bass:0.885 dBass:0.001 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.692 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.576 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.576 outMR:1.000
+[FRONT-TEL] bass:0.876 dBass:-0.009 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.690 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.412 inMR:0.883 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.412 outMR:0.883
+[FRONT-TEL] bass:0.876 dBass:-0.009 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.690 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.412 inMR:0.883 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.412 outMR:0.883
+[FRONT-TEL] bass:0.884 dBass:0.008 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.686 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.300 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.300 outMR:1.000
+[FRONT-TEL] bass:0.884 dBass:0.008 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.686 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.300 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.300 outMR:1.000
+[FRONT-TEL] bass:0.888 dBass:0.004 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.681 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.214 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.214 outMR:1.000
+[FRONT-TEL] bass:0.888 dBass:0.004 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.681 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.214 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.214 outMR:1.000
+[FRONT-TEL] bass:0.886 dBass:-0.002 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.673 gateOn:0.360 | inFL:0.037 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.137 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.137 outMR:1.000
+[FRONT-TEL] bass:0.886 dBass:-0.002 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.673 gateOn:0.360 | inFL:0.037 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.137 inMR:1.000 | outFL:0.037 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.137 outMR:1.000
+[FRONT-TEL] bass:0.886 dBass:-0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.664 gateOn:0.360 | inFL:0.208 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.090 inMR:0.634 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.090 outMR:0.634
+[FRONT-TEL] bass:0.886 dBass:-0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.664 gateOn:0.360 | inFL:0.208 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.090 inMR:0.634 | outFL:0.208 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.090 outMR:0.634
+[FRONT-TEL] bass:0.938 dBass:0.052 kickSig:0.938 | isK:1 isKE:1 veto:0 | morph:0.660 gateOn:0.360 | inFL:0.217 inFR:1.000 inBL:0.000 inBR:0.000 inML:0.254 inMR:0.769 | outFL:1.000 outFR:1.000 outBL:0.000 outBR:0.000 outML:0.254 outMR:0.769
+[FRONT-TEL] bass:0.938 dBass:0.052 kickSig:0.938 | isK:1 isKE:1 veto:0 | morph:0.660 gateOn:0.360 | inFL:0.217 inFR:1.000 inBL:0.000 inBR:0.000 inML:0.254 inMR:0.769 | outFL:0.217 outFR:1.000 outBL:0.000 outBR:0.000 outML:0.254 outMR:0.769
+[FRONT-TEL] bass:1.000 dBass:0.062 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.654 gateOn:0.360 | inFL:0.217 inFR:0.165 inBL:0.000 inBR:0.000 inML:0.165 inMR:0.805 | outFL:0.165 outFR:0.165 outBL:0.000 outBR:0.000 outML:0.165 outMR:0.805
+[FRONT-TEL] bass:1.000 dBass:0.062 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.654 gateOn:0.360 | inFL:0.217 inFR:0.165 inBL:0.000 inBR:0.000 inML:0.165 inMR:0.805 | outFL:0.217 outFR:0.165 outBL:0.000 outBR:0.000 outML:0.165 outMR:0.805
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.643 gateOn:0.360 | inFL:0.217 inFR:0.036 inBL:0.000 inBR:0.000 inML:0.066 inMR:0.560 | outFL:0.036 outFR:0.036 outBL:0.000 outBR:0.000 outML:0.066 outMR:0.560
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.643 gateOn:0.360 | inFL:0.217 inFR:0.036 inBL:0.000 inBR:0.000 inML:0.066 inMR:0.560 | outFL:0.217 outFR:0.036 outBL:0.000 outBR:0.000 outML:0.066 outMR:0.560
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.633 gateOn:0.360 | inFL:0.217 inFR:0.006 inBL:0.000 inBR:0.000 inML:0.066 inMR:0.560 | outFL:0.006 outFR:0.006 outBL:0.000 outBR:0.000 outML:0.066 outMR:0.560
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.633 gateOn:0.360 | inFL:0.217 inFR:0.006 inBL:0.000 inBR:0.000 inML:0.066 inMR:0.560 | outFL:0.217 outFR:0.006 outBL:0.000 outBR:0.000 outML:0.066 outMR:0.560
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.619 gateOn:0.360 | inFL:0.217 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.009 inMR:0.315 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.009 outMR:0.315
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.619 gateOn:0.360 | inFL:0.217 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.009 inMR:0.315 | outFL:0.217 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.009 outMR:0.315
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.604 gateOn:0.360 | inFL:0.217 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.001 inMR:0.600 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.001 outMR:0.600
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.604 gateOn:0.360 | inFL:0.217 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.001 inMR:0.600 | outFL:0.217 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.001 outMR:0.600
+[FRONT-TEL] bass:0.996 dBass:-0.004 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.592 gateOn:0.360 | inFL:0.020 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.030 inMR:0.912 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.030 outMR:0.912
+[FRONT-TEL] bass:0.996 dBass:-0.004 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.592 gateOn:0.360 | inFL:0.020 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.030 inMR:0.912 | outFL:0.020 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.030 outMR:0.912
+[FRONT-TEL] bass:0.894 dBass:-0.102 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.580 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.040 inMR:0.870 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.040 outMR:0.870
+[FRONT-TEL] bass:0.894 dBass:-0.102 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.580 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.040 inMR:0.870 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.040 outMR:0.870
+[FRONT-TEL] bass:0.833 dBass:-0.061 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.568 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.024 inMR:0.559 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.024 outMR:0.559
+[FRONT-TEL] bass:0.833 dBass:-0.061 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.568 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.024 inMR:0.559 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.024 outMR:0.559
+[FRONT-TEL] bass:0.833 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.556 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.024 inMR:0.559 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.024 outMR:0.559
+[FRONT-TEL] bass:0.833 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.556 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.024 inMR:0.559 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.024 outMR:0.559
+[FRONT-TEL] bass:0.792 dBass:-0.041 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.547 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.059 inMR:0.988 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.059 outMR:0.988
+[FRONT-TEL] bass:0.792 dBass:-0.041 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.547 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.059 inMR:0.988 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.059 outMR:0.988
+[FRONT-TEL] bass:0.754 dBass:-0.039 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.540 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.088 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.088 outMR:1.000
+[FRONT-TEL] bass:0.754 dBass:-0.039 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.540 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.088 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.088 outMR:1.000
+[FRONT-TEL] bass:0.703 dBass:-0.050 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.530 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.050 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.050 outMR:1.000
+[FRONT-TEL] bass:0.703 dBass:-0.050 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.530 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.050 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.050 outMR:1.000
+[FRONT-TEL] bass:0.703 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.521 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.050 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.050 outMR:1.000
+[FRONT-TEL] bass:0.703 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.521 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.050 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.050 outMR:1.000
+[FRONT-TEL] bass:0.649 dBass:-0.054 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.508 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.008 inMR:0.996 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.008 outMR:0.996
+[FRONT-TEL] bass:0.649 dBass:-0.054 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.508 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.008 inMR:0.996 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.008 outMR:0.996
+[FRONT-TEL] bass:0.653 dBass:0.003 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.502 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.159 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.159 outMR:1.000
+[FRONT-TEL] bass:0.653 dBass:0.003 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.502 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.159 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.159 outMR:1.000
+[FRONT-TEL] bass:0.715 dBass:0.062 kickSig:0.715 | isK:1 isKE:1 veto:0 | morph:0.500 gateOn:0.360 | inFL:0.000 inFR:1.000 inBL:0.000 inBR:0.000 inML:0.328 inMR:1.000 | outFL:1.000 outFR:1.000 outBL:0.000 outBR:0.000 outML:0.328 outMR:1.000
+[FRONT-TEL] bass:0.715 dBass:0.062 kickSig:0.715 | isK:1 isKE:1 veto:0 | morph:0.500 gateOn:0.360 | inFL:0.000 inFR:1.000 inBL:0.000 inBR:0.000 inML:0.328 inMR:1.000 | outFL:0.000 outFR:1.000 outBL:0.000 outBR:0.000 outML:0.328 outMR:1.000
+[FRONT-TEL] bass:0.772 dBass:0.057 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.498 gateOn:0.360 | inFL:0.000 inFR:0.160 inBL:0.000 inBR:0.000 inML:0.319 inMR:0.948 | outFL:0.160 outFR:0.160 outBL:0.000 outBR:0.000 outML:0.319 outMR:0.948
+[FRONT-TEL] bass:0.772 dBass:0.057 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.498 gateOn:0.360 | inFL:0.000 inFR:0.160 inBL:0.000 inBR:0.000 inML:0.319 inMR:0.948 | outFL:0.000 outFR:0.160 outBL:0.000 outBR:0.000 outML:0.319 outMR:0.948
+[FRONT-TEL] bass:0.815 dBass:0.043 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.494 gateOn:0.360 | inFL:0.000 inFR:0.035 inBL:0.000 inBR:0.000 inML:0.152 inMR:0.631 | outFL:0.035 outFR:0.035 outBL:0.000 outBR:0.000 outML:0.152 outMR:0.631
+[FRONT-TEL] bass:0.815 dBass:0.043 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.494 gateOn:0.360 | inFL:0.000 inFR:0.035 inBL:0.000 inBR:0.000 inML:0.152 inMR:0.631 | outFL:0.000 outFR:0.035 outBL:0.000 outBR:0.000 outML:0.152 outMR:0.631
+[FRONT-TEL] bass:0.815 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.490 gateOn:0.360 | inFL:0.000 inFR:0.006 inBL:0.000 inBR:0.000 inML:0.152 inMR:0.631 | outFL:0.006 outFR:0.006 outBL:0.000 outBR:0.000 outML:0.152 outMR:0.631
+[FRONT-TEL] bass:0.815 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.490 gateOn:0.360 | inFL:0.000 inFR:0.006 inBL:0.000 inBR:0.000 inML:0.152 inMR:0.631 | outFL:0.000 outFR:0.006 outBL:0.000 outBR:0.000 outML:0.152 outMR:0.631
+[FRONT-TEL] bass:0.922 dBass:0.107 kickSig:0.922 | isK:1 isKE:1 veto:0 | morph:0.513 gateOn:0.360 | inFL:0.217 inFR:1.000 inBL:0.000 inBR:1.000 inML:0.434 inMR:1.000 | outFL:1.000 outFR:1.000 outBL:1.000 outBR:1.000 outML:0.434 outMR:1.000
+[FRONT-TEL] bass:0.922 dBass:0.107 kickSig:0.922 | isK:1 isKE:1 veto:0 | morph:0.513 gateOn:0.360 | inFL:0.217 inFR:1.000 inBL:0.000 inBR:1.000 inML:0.434 inMR:1.000 | outFL:0.217 outFR:1.000 outBL:0.000 outBR:1.000 outML:0.434 outMR:1.000
+[FRONT-TEL] bass:1.000 dBass:0.078 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.532 gateOn:0.360 | inFL:0.217 inFR:0.161 inBL:0.000 inBR:0.053 inML:0.369 inMR:1.000 | outFL:0.161 outFR:0.161 outBL:0.053 outBR:0.053 outML:0.369 outMR:1.000
+[FRONT-TEL] bass:1.000 dBass:0.078 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.532 gateOn:0.360 | inFL:0.217 inFR:0.161 inBL:0.000 inBR:0.053 inML:0.369 inMR:1.000 | outFL:0.217 outFR:0.161 outBL:0.000 outBR:0.053 outML:0.369 outMR:1.000
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.530 gateOn:0.360 | inFL:0.217 inFR:0.035 inBL:0.000 inBR:0.000 inML:0.186 inMR:0.909 | outFL:0.035 outFR:0.035 outBL:0.000 outBR:0.000 outML:0.186 outMR:0.909
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.530 gateOn:0.360 | inFL:0.217 inFR:0.035 inBL:0.000 inBR:0.000 inML:0.186 inMR:0.909 | outFL:0.217 outFR:0.035 outBL:0.000 outBR:0.000 outML:0.186 outMR:0.909
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.528 gateOn:0.360 | inFL:0.217 inFR:0.006 inBL:0.000 inBR:0.000 inML:0.186 inMR:0.909 | outFL:0.006 outFR:0.006 outBL:0.000 outBR:0.000 outML:0.186 outMR:0.909
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.528 gateOn:0.360 | inFL:0.217 inFR:0.006 inBL:0.000 inBR:0.000 inML:0.186 inMR:0.909 | outFL:0.217 outFR:0.006 outBL:0.000 outBR:0.000 outML:0.186 outMR:0.909
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.522 gateOn:0.360 | inFL:0.217 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.097 inMR:0.599 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.097 outMR:0.599
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.522 gateOn:0.360 | inFL:0.217 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.097 inMR:0.599 | outFL:0.217 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.097 outMR:0.599
+[CHOREO] techno-club | #1:square [MIRROR ×2] | scene:62b | Pan:50 Tilt:20 | sBPM:121 phase:325°
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.516 gateOn:0.360 | inFL:0.217 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.115 inMR:0.973 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.115 outMR:0.973
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.516 gateOn:0.360 | inFL:0.217 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.115 inMR:0.973 | outFL:0.217 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.115 outMR:0.973
+[FRONT-TEL] bass:0.995 dBass:-0.005 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.514 gateOn:0.360 | inFL:0.018 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.174 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.174 outMR:1.000
+[FRONT-TEL] bass:0.995 dBass:-0.005 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.514 gateOn:0.360 | inFL:0.018 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.174 inMR:1.000 | outFL:0.018 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.174 outMR:1.000
+[FRONT-TEL] bass:0.920 dBass:-0.076 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.511 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.163 inMR:0.878 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.163 outMR:0.878
+[FRONT-TEL] bass:0.920 dBass:-0.076 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.511 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.163 inMR:0.878 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.163 outMR:0.878
+[FRONT-TEL] bass:0.873 dBass:-0.046 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.505 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.098 inMR:0.556 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.098 outMR:0.556
+[FRONT-TEL] bass:0.873 dBass:-0.046 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.505 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.098 inMR:0.556 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.098 outMR:0.556
+[FRONT-TEL] bass:0.850 dBass:-0.024 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.503 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.218 inMR:0.980 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.218 outMR:0.980
+[FRONT-TEL] bass:0.850 dBass:-0.024 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.503 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.218 inMR:0.980 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.218 outMR:0.980
+[FRONT-TEL] bass:0.847 dBass:-0.003 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.518 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.462 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.462 outMR:1.000
+[FRONT-TEL] bass:0.847 dBass:-0.003 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.518 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.462 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.462 outMR:1.000
+[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=BRIGHT dom=85% B/D/N=466/42/42
+[FRONT-TEL] bass:0.859 dBass:0.012 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.552 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.612 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.612 outMR:1.000
+[FRONT-TEL] bass:0.859 dBass:0.012 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.552 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.612 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.612 outMR:1.000
+[FRONT-TEL] bass:0.874 dBass:0.014 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.566 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.482 inMR:0.936 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.482 outMR:0.936
+[FRONT-TEL] bass:0.874 dBass:0.014 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.566 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.482 inMR:0.936 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.482 outMR:0.936
+[FRONT-TEL] bass:0.881 dBass:0.007 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.569 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.404 inMR:0.981 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.404 outMR:0.981
+[FRONT-TEL] bass:0.881 dBass:0.007 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.569 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.404 inMR:0.981 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.404 outMR:0.981
+[FRONT-TEL] bass:0.881 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.571 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.404 inMR:0.981 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.404 outMR:0.981
+[FRONT-TEL] bass:0.881 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.571 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.404 inMR:0.981 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.404 outMR:0.981
+[FRONT-TEL] bass:0.874 dBass:-0.007 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.590 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.545 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.545 outMR:1.000
+[FRONT-TEL] bass:0.874 dBass:-0.007 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.590 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.545 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.545 outMR:1.000
+[FRONT-TEL] bass:0.869 dBass:-0.005 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.613 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.603 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.603 outMR:1.000
+[FRONT-TEL] bass:0.869 dBass:-0.005 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.613 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.603 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.603 outMR:1.000
+[FRONT-TEL] bass:0.865 dBass:-0.004 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.613 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.443 inMR:0.794 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.443 outMR:0.794
+[FRONT-TEL] bass:0.865 dBass:-0.004 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.613 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.443 inMR:0.794 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.443 outMR:0.794
+[FRONT-TEL] bass:0.879 dBass:0.013 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.613 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.438 inMR:0.698 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.438 outMR:0.698
+[FRONT-TEL] bass:0.879 dBass:0.013 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.613 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.438 inMR:0.698 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.438 outMR:0.698
+[FRONT-TEL] bass:0.967 dBass:0.088 kickSig:0.967 | isK:1 isKE:1 veto:0 | morph:0.638 gateOn:0.360 | inFL:0.217 inFR:1.000 inBL:0.000 inBR:0.000 inML:0.560 inMR:0.926 | outFL:1.000 outFR:1.000 outBL:0.000 outBR:0.000 outML:0.560 outMR:0.926
+[FRONT-TEL] bass:0.967 dBass:0.088 kickSig:0.967 | isK:1 isKE:1 veto:0 | morph:0.638 gateOn:0.360 | inFL:0.217 inFR:1.000 inBL:0.000 inBR:0.000 inML:0.560 inMR:0.926 | outFL:0.217 outFR:1.000 outBL:0.000 outBR:0.000 outML:0.560 outMR:0.926
+[FRONT-TEL] bass:1.000 dBass:0.033 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.634 gateOn:0.360 | inFL:0.217 inFR:0.164 inBL:0.000 inBR:0.000 inML:0.188 inMR:0.778 | outFL:0.164 outFR:0.164 outBL:0.000 outBR:0.000 outML:0.188 outMR:0.778
+[FRONT-TEL] bass:1.000 dBass:0.033 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.634 gateOn:0.360 | inFL:0.217 inFR:0.164 inBL:0.000 inBR:0.000 inML:0.188 inMR:0.778 | outFL:0.217 outFR:0.164 outBL:0.000 outBR:0.000 outML:0.188 outMR:0.778
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.625 gateOn:0.360 | inFL:0.217 inFR:0.036 inBL:0.000 inBR:0.000 inML:0.100 inMR:0.496 | outFL:0.036 outFR:0.036 outBL:0.000 outBR:0.000 outML:0.100 outMR:0.496
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.625 gateOn:0.360 | inFL:0.217 inFR:0.036 inBL:0.000 inBR:0.000 inML:0.100 inMR:0.496 | outFL:0.217 outFR:0.036 outBL:0.000 outBR:0.000 outML:0.100 outMR:0.496
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.614 gateOn:0.360 | inFL:0.217 inFR:0.006 inBL:0.000 inBR:0.000 inML:0.045 inMR:0.302 | outFL:0.006 outFR:0.006 outBL:0.000 outBR:0.000 outML:0.045 outMR:0.302
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.614 gateOn:0.360 | inFL:0.217 inFR:0.006 inBL:0.000 inBR:0.000 inML:0.045 inMR:0.302 | outFL:0.217 outFR:0.006 outBL:0.000 outBR:0.000 outML:0.045 outMR:0.302
+[TitanOrchestrator] ðŸŽ§ WORKER BPM=121 conf=0.85 | PLL=FREEWHEEL [mem=121@-0f] phase=0.00 sync=0.48 | beat #104 | bass=0.8462 sab=0.108 | ðŸ”¬in_peak=0.48756 in_rms=0.15657
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.606 gateOn:0.360 | inFL:0.217 inFR:0.000 inBL:0.000 inBR:1.000 inML:0.101 inMR:0.816 | outFL:0.000 outFR:0.000 outBL:1.000 outBR:1.000 outML:0.101 outMR:0.816
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.606 gateOn:0.360 | inFL:0.217 inFR:0.000 inBL:0.000 inBR:1.000 inML:0.101 inMR:0.816 | outFL:0.217 outFR:0.000 outBL:0.000 outBR:1.000 outML:0.101 outMR:0.816
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:22% FR:0% BL:0% BR:100%
+[FRONT-TEL] bass:0.942 dBass:-0.058 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.603 gateOn:0.360 | inFL:0.020 inFR:0.000 inBL:0.000 inBR:1.000 inML:0.227 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:1.000 outBR:1.000 outML:0.227 outMR:1.000
+[FRONT-TEL] bass:0.942 dBass:-0.058 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.603 gateOn:0.360 | inFL:0.020 inFR:0.000 inBL:0.000 inBR:1.000 inML:0.227 inMR:1.000 | outFL:0.020 outFR:0.000 outBL:0.000 outBR:1.000 outML:0.227 outMR:1.000
+[FRONT-TEL] bass:0.942 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.600 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.065 inML:0.227 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.065 outBR:0.065 outML:0.227 outMR:1.000
+[FRONT-TEL] bass:0.942 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.600 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.065 inML:0.227 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.065 outML:0.227 outMR:1.000
+[FRONT-TEL] bass:0.805 dBass:-0.137 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.600 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.466 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.466 outMR:1.000
+[FRONT-TEL] bass:0.805 dBass:-0.137 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.600 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.466 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.466 outMR:1.000
+[FRONT-TEL] bass:0.744 dBass:-0.061 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.598 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.410 inMR:0.810 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.410 outMR:0.810
+[FRONT-TEL] bass:0.744 dBass:-0.061 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.598 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.410 inMR:0.810 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.410 outMR:0.810
+[FRONT-TEL] bass:0.722 dBass:-0.022 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.595 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.419 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.419 outMR:1.000
+[FRONT-TEL] bass:0.722 dBass:-0.022 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.595 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.419 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.419 outMR:1.000
+[FRONT-TEL] bass:0.744 dBass:0.022 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.594 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.497 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.497 outMR:1.000
+[FRONT-TEL] bass:0.744 dBass:0.022 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.594 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.497 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.497 outMR:1.000
+[FRONT-TEL] bass:0.771 dBass:0.027 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.594 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.483 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.483 outMR:1.000
+[FRONT-TEL] bass:0.771 dBass:0.027 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.594 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.483 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.483 outMR:1.000
+[FRONT-TEL] bass:0.788 dBass:0.017 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.590 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.272 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.272 outMR:1.000
+[FRONT-TEL] bass:0.788 dBass:0.017 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.590 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.272 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.272 outMR:1.000
+[FRONT-TEL] bass:0.792 dBass:0.003 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.586 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.274 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.274 outMR:1.000
+[FRONT-TEL] bass:0.792 dBass:0.003 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.586 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.274 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.274 outMR:1.000
+[FRONT-TEL] bass:0.792 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.583 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.274 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.274 outMR:1.000
+[FRONT-TEL] bass:0.792 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.583 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.274 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.274 outMR:1.000
+[FRONT-TEL] bass:0.804 dBass:0.012 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.582 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.449 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.449 outMR:1.000
+[FRONT-TEL] bass:0.804 dBass:0.012 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.582 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.449 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.449 outMR:1.000
+[SCHED] 🌊 square → diamond | harbor:true deadline:false | phase:1°
+[FRONT-TEL] bass:0.810 dBass:0.006 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.603 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.626 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.626 outMR:1.000
+[FRONT-TEL] bass:0.810 dBass:0.006 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.603 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.626 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.626 outMR:1.000
+[FRONT-TEL] bass:0.815 dBass:0.004 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.609 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.535 inMR:0.971 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.535 outMR:0.971
+[FRONT-TEL] bass:0.815 dBass:0.004 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.609 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.535 inMR:0.971 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.535 outMR:0.971
+[FRONT-TEL] bass:0.837 dBass:0.022 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.613 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.499 inMR:0.823 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.499 outMR:0.823
+[FRONT-TEL] bass:0.837 dBass:0.022 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.613 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.499 inMR:0.823 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.499 outMR:0.823
+[FRONT-TEL] bass:0.949 dBass:0.113 kickSig:0.949 | isK:1 isKE:1 veto:0 | morph:0.648 gateOn:0.360 | inFL:0.217 inFR:1.000 inBL:0.000 inBR:0.000 inML:0.658 inMR:1.000 | outFL:1.000 outFR:1.000 outBL:0.000 outBR:0.000 outML:0.658 outMR:1.000
+[FRONT-TEL] bass:0.949 dBass:0.113 kickSig:0.949 | isK:1 isKE:1 veto:0 | morph:0.648 gateOn:0.360 | inFL:0.217 inFR:1.000 inBL:0.000 inBR:0.000 inML:0.658 inMR:1.000 | outFL:0.217 outFR:1.000 outBL:0.000 outBR:0.000 outML:0.658 outMR:1.000
+[FRONT-TEL] bass:1.000 dBass:0.051 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.665 gateOn:0.360 | inFL:0.217 inFR:0.165 inBL:0.000 inBR:0.000 inML:0.510 inMR:1.000 | outFL:0.165 outFR:0.165 outBL:0.000 outBR:0.000 outML:0.510 outMR:1.000
+[FRONT-TEL] bass:1.000 dBass:0.051 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.665 gateOn:0.360 | inFL:0.217 inFR:0.165 inBL:0.000 inBR:0.000 inML:0.510 inMR:1.000 | outFL:0.217 outFR:0.165 outBL:0.000 outBR:0.000 outML:0.510 outMR:1.000
+[GlassBridge] 🏓 Ping-Pong Status: Sent: 2652 | Dropped: 63 | In-Flight: 1 | PoolFree: 2
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.680 gateOn:0.360 | inFL:0.217 inFR:0.037 inBL:0.000 inBR:0.000 inML:0.510 inMR:1.000 | outFL:0.037 outFR:0.037 outBL:0.000 outBR:0.000 outML:0.510 outMR:1.000
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.680 gateOn:0.360 | inFL:0.217 inFR:0.037 inBL:0.000 inBR:0.000 inML:0.510 inMR:1.000 | outFL:0.217 outFR:0.037 outBL:0.000 outBR:0.000 outML:0.510 outMR:1.000
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.677 gateOn:0.360 | inFL:0.217 inFR:0.006 inBL:0.000 inBR:0.000 inML:0.253 inMR:0.862 | outFL:0.006 outFR:0.006 outBL:0.000 outBR:0.000 outML:0.253 outMR:0.862
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.677 gateOn:0.360 | inFL:0.217 inFR:0.006 inBL:0.000 inBR:0.000 inML:0.253 inMR:0.862 | outFL:0.217 outFR:0.006 outBL:0.000 outBR:0.000 outML:0.253 outMR:0.862
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.670 gateOn:0.360 | inFL:0.217 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.146 inMR:0.682 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.146 outMR:0.682
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.670 gateOn:0.360 | inFL:0.217 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.146 inMR:0.682 | outFL:0.217 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.146 outMR:0.682
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.661 gateOn:0.360 | inFL:0.021 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.096 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.096 outMR:1.000
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.661 gateOn:0.360 | inFL:0.021 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.096 inMR:1.000 | outFL:0.021 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.096 outMR:1.000
+[FRONT-TEL] bass:0.884 dBass:-0.116 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.649 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.053 inMR:0.981 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.053 outMR:0.981
+[FRONT-TEL] bass:0.884 dBass:-0.116 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.649 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.053 inMR:0.981 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.053 outMR:0.981
+[FRONT-TEL] bass:0.811 dBass:-0.073 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.636 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.026 inMR:0.691 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.026 outMR:0.691
+[FRONT-TEL] bass:0.811 dBass:-0.073 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.636 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.026 inMR:0.691 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.026 outMR:0.691
+[FRONT-TEL] bass:0.811 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.623 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.026 inMR:0.691 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.026 outMR:0.691
+[FRONT-TEL] bass:0.811 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.623 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.026 inMR:0.691 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.026 outMR:0.691
+[FRONT-TEL] bass:0.778 dBass:-0.033 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.611 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.040 inMR:0.844 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.040 outMR:0.844
+[FRONT-TEL] bass:0.778 dBass:-0.033 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.611 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.040 inMR:0.844 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.040 outMR:0.844
+[VirtualWire] 📡 SAB feed — cb#6500 | frames=441 | peak=0.3546 | ch=2
+[FRONT-TEL] bass:0.761 dBass:-0.017 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.603 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:1.000 inML:0.114 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:1.000 outBR:1.000 outML:0.114 outMR:1.000
+[FRONT-TEL] bass:0.761 dBass:-0.017 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.603 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:1.000 inML:0.114 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:1.000 outML:0.114 outMR:1.000
+[FRONT-TEL] bass:0.746 dBass:-0.015 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.597 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.064 inML:0.196 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.064 outBR:0.064 outML:0.196 outMR:1.000
+[FRONT-TEL] bass:0.746 dBass:-0.015 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.597 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.064 inML:0.196 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.064 outML:0.196 outMR:1.000
+[FRONT-TEL] bass:0.746 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.591 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.196 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.196 outMR:1.000
+[FRONT-TEL] bass:0.746 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.591 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.196 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.196 outMR:1.000
+[FRONT-TEL] bass:0.732 dBass:-0.014 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.583 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.135 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.135 outMR:1.000
+[FRONT-TEL] bass:0.732 dBass:-0.014 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.583 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.135 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.135 outMR:1.000
+[FRONT-TEL] bass:0.716 dBass:-0.016 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.573 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.058 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.058 outMR:1.000
+[FRONT-TEL] bass:0.716 dBass:-0.016 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.573 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.058 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.058 outMR:1.000
+[FRONT-TEL] bass:0.739 dBass:0.023 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.568 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.222 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.222 outMR:1.000
+[FRONT-TEL] bass:0.739 dBass:0.023 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.568 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.222 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.222 outMR:1.000
+[FRONT-TEL] bass:0.774 dBass:0.035 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.566 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.364 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.364 outMR:1.000
+[FRONT-TEL] bass:0.774 dBass:0.035 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.566 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.364 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.364 outMR:1.000
+[FRONT-TEL] bass:0.795 dBass:0.021 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.564 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.364 inMR:0.900 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.364 outMR:0.900
+[FRONT-TEL] bass:0.795 dBass:0.021 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.564 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.364 inMR:0.900 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.364 outMR:0.900
+[FRONT-TEL] bass:0.820 dBass:0.026 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.561 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.243 inMR:0.564 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.243 outMR:0.564
+[FRONT-TEL] bass:0.820 dBass:0.026 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.561 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.243 inMR:0.564 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.243 outMR:0.564
+[FRONT-TEL] bass:0.948 dBass:0.128 kickSig:0.948 | isK:1 isKE:1 veto:0 | morph:0.569 gateOn:0.360 | inFL:0.217 inFR:1.000 inBL:0.000 inBR:1.000 inML:0.386 inMR:0.843 | outFL:1.000 outFR:1.000 outBL:1.000 outBR:1.000 outML:0.386 outMR:0.843
+[FRONT-TEL] bass:0.948 dBass:0.128 kickSig:0.948 | isK:1 isKE:1 veto:0 | morph:0.569 gateOn:0.360 | inFL:0.217 inFR:1.000 inBL:0.000 inBR:1.000 inML:0.386 inMR:0.843 | outFL:0.217 outFR:1.000 outBL:0.000 outBR:1.000 outML:0.386 outMR:0.843
+[FRONT-TEL] bass:1.000 dBass:0.052 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.564 gateOn:0.360 | inFL:0.217 inFR:0.162 inBL:0.000 inBR:0.058 inML:0.132 inMR:0.746 | outFL:0.162 outFR:0.162 outBL:0.058 outBR:0.058 outML:0.132 outMR:0.746
+[FRONT-TEL] bass:1.000 dBass:0.052 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.564 gateOn:0.360 | inFL:0.217 inFR:0.162 inBL:0.000 inBR:0.058 inML:0.132 inMR:0.746 | outFL:0.217 outFR:0.162 outBL:0.000 outBR:0.058 outML:0.132 outMR:0.746
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.558 gateOn:0.360 | inFL:0.217 inFR:0.035 inBL:0.000 inBR:0.000 inML:0.132 inMR:0.746 | outFL:0.035 outFR:0.035 outBL:0.000 outBR:0.000 outML:0.132 outMR:0.746
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.558 gateOn:0.360 | inFL:0.217 inFR:0.035 inBL:0.000 inBR:0.000 inML:0.132 inMR:0.746 | outFL:0.217 outFR:0.035 outBL:0.000 outBR:0.000 outML:0.132 outMR:0.746
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.549 gateOn:0.360 | inFL:0.217 inFR:0.006 inBL:0.000 inBR:0.000 inML:0.051 inMR:0.436 | outFL:0.006 outFR:0.006 outBL:0.000 outBR:0.000 outML:0.051 outMR:0.436
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.549 gateOn:0.360 | inFL:0.217 inFR:0.006 inBL:0.000 inBR:0.000 inML:0.051 inMR:0.436 | outFL:0.217 outFR:0.006 outBL:0.000 outBR:0.000 outML:0.051 outMR:0.436
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.536 gateOn:0.360 | inFL:0.217 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.014 inMR:0.371 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.014 outMR:0.371
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.536 gateOn:0.360 | inFL:0.217 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.014 inMR:0.371 | outFL:0.217 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.014 outMR:0.371
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.525 gateOn:0.360 | inFL:0.018 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.018 inMR:0.860 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.018 outMR:0.860
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.525 gateOn:0.360 | inFL:0.018 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.018 inMR:0.860 | outFL:0.018 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.018 outMR:0.860
+[CHOREO] techno-club | #2:diamond [XF→diamond] [MIRROR ×2] | scene:1b | Pan:123 Tilt:3 | sBPM:121 phase:34°
+[FRONT-TEL] bass:0.942 dBass:-0.058 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.514 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.022 inMR:0.998 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.022 outMR:0.998
+[FRONT-TEL] bass:0.942 dBass:-0.058 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.514 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.022 inMR:0.998 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.022 outMR:0.998
+[FRONT-TEL] bass:0.942 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.503 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.022 inMR:0.998 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.022 outMR:0.998
+[FRONT-TEL] bass:0.942 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.503 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.022 inMR:0.998 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.022 outMR:0.998
+[FRONT-TEL] bass:0.865 dBass:-0.077 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.491 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.010 inMR:0.727 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.010 outMR:0.727
+[FRONT-TEL] bass:0.865 dBass:-0.077 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.491 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.010 inMR:0.727 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.010 outMR:0.727
+[FRONT-TEL] bass:0.833 dBass:-0.033 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.478 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.000 inMR:0.520 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.000 outMR:0.520
+[FRONT-TEL] bass:0.833 dBass:-0.033 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.478 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.000 inMR:0.520 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.000 outMR:0.520
+[FRONT-TEL] bass:0.815 dBass:-0.018 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.469 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:1.000 inML:0.030 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:1.000 outBR:1.000 outML:0.030 outMR:1.000
+[FRONT-TEL] bass:0.815 dBass:-0.018 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.469 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:1.000 inML:0.030 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:1.000 outML:0.030 outMR:1.000
+[FRONT-TEL] bass:0.792 dBass:-0.022 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.460 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.041 inML:0.039 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.041 outBR:0.041 outML:0.039 outMR:1.000
+[FRONT-TEL] bass:0.792 dBass:-0.022 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.460 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.041 inML:0.039 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.041 outML:0.039 outMR:1.000
+[FRONT-TEL] bass:0.759 dBass:-0.034 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.449 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.015 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.015 outMR:1.000
+[FRONT-TEL] bass:0.759 dBass:-0.034 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.449 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.015 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.015 outMR:1.000
+[FRONT-TEL] bass:0.759 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.439 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.015 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.015 outMR:1.000
+[FRONT-TEL] bass:0.759 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.439 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.015 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.015 outMR:1.000
+[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=BRIGHT dom=87% B/D/N=483/33/37
+[FRONT-TEL] bass:0.718 dBass:-0.041 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.428 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.000 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.000 outMR:1.000
+[FRONT-TEL] bass:0.718 dBass:-0.041 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.428 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.000 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.000 outMR:1.000
+[FRONT-TEL] bass:0.752 dBass:0.034 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.425 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:1.000 inML:0.177 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:1.000 outBR:1.000 outML:0.177 outMR:1.000
+[FRONT-TEL] bass:0.752 dBass:0.034 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.425 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:1.000 inML:0.177 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:1.000 outML:0.177 outMR:1.000
+[SCHED] ✅ Crossfade complete → diamond
+[FRONT-TEL] bass:0.783 dBass:0.030 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.438 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.038 inML:0.405 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.038 outBR:0.038 outML:0.405 outMR:1.000
+[FRONT-TEL] bass:0.783 dBass:0.030 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.438 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.038 inML:0.405 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.038 outML:0.405 outMR:1.000
+[FRONT-TEL] bass:0.813 dBass:0.031 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.452 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.402 inMR:0.840 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.402 outMR:0.840
+[FRONT-TEL] bass:0.813 dBass:0.031 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.452 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.402 inMR:0.840 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.402 outMR:0.840
+[FRONT-TEL] bass:0.813 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.464 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.402 inMR:0.840 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.402 outMR:0.840
+[FRONT-TEL] bass:0.813 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.464 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.402 inMR:0.840 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.402 outMR:0.840
+[FRONT-TEL] bass:0.840 dBass:0.027 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.464 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.296 inMR:0.537 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.296 outMR:0.537
+[FRONT-TEL] bass:0.840 dBass:0.027 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.464 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.296 inMR:0.537 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.296 outMR:0.537
+[FRONT-TEL] bass:0.936 dBass:0.096 kickSig:0.936 | isK:1 isKE:1 veto:0 | morph:0.501 gateOn:0.360 | inFL:0.217 inFR:1.000 inBL:0.000 inBR:1.000 inML:0.507 inMR:0.921 | outFL:1.000 outFR:1.000 outBL:1.000 outBR:1.000 outML:0.507 outMR:0.921
+[FRONT-TEL] bass:0.936 dBass:0.096 kickSig:0.936 | isK:1 isKE:1 veto:0 | morph:0.501 gateOn:0.360 | inFL:0.217 inFR:1.000 inBL:0.000 inBR:1.000 inML:0.507 inMR:0.921 | outFL:0.217 outFR:1.000 outBL:0.000 outBR:1.000 outML:0.507 outMR:0.921
+[FRONT-TEL] bass:1.000 dBass:0.064 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.529 gateOn:0.360 | inFL:0.217 inFR:0.161 inBL:0.000 inBR:0.052 inML:0.422 inMR:1.000 | outFL:0.161 outFR:0.161 outBL:0.052 outBR:0.052 outML:0.422 outMR:1.000
+[FRONT-TEL] bass:1.000 dBass:0.064 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.529 gateOn:0.360 | inFL:0.217 inFR:0.161 inBL:0.000 inBR:0.052 inML:0.422 inMR:1.000 | outFL:0.217 outFR:0.161 outBL:0.000 outBR:0.052 outML:0.422 outMR:1.000
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.528 gateOn:0.360 | inFL:0.217 inFR:0.035 inBL:0.000 inBR:0.000 inML:0.209 inMR:0.873 | outFL:0.035 outFR:0.035 outBL:0.000 outBR:0.000 outML:0.209 outMR:0.873
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.528 gateOn:0.360 | inFL:0.217 inFR:0.035 inBL:0.000 inBR:0.000 inML:0.209 inMR:0.873 | outFL:0.217 outFR:0.035 outBL:0.000 outBR:0.000 outML:0.209 outMR:0.873
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.523 gateOn:0.360 | inFL:0.217 inFR:0.006 inBL:0.000 inBR:0.000 inML:0.111 inMR:0.563 | outFL:0.006 outFR:0.006 outBL:0.000 outBR:0.000 outML:0.111 outMR:0.563
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.523 gateOn:0.360 | inFL:0.217 inFR:0.006 inBL:0.000 inBR:0.000 inML:0.111 inMR:0.563 | outFL:0.217 outFR:0.006 outBL:0.000 outBR:0.000 outML:0.111 outMR:0.563
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.517 gateOn:0.360 | inFL:0.217 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.111 inMR:0.563 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.111 outMR:0.563
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.517 gateOn:0.360 | inFL:0.217 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.111 inMR:0.563 | outFL:0.217 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.111 outMR:0.563
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.511 gateOn:0.360 | inFL:0.018 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.102 inMR:0.918 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.102 outMR:0.918
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.511 gateOn:0.360 | inFL:0.018 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.102 inMR:0.918 | outFL:0.018 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.102 outMR:0.918
+[TitanOrchestrator] ðŸŽ§ WORKER BPM=121 conf=0.88 | PLL=FREEWHEEL [mem=121@-0f] phase=0.00 sync=0.50 | beat #107 | bass=0.4722 sab=0.108 | ðŸ”¬in_peak=0.42728 in_rms=0.15151
+[FRONT-TEL] bass:0.984 dBass:-0.016 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.510 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.197 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.197 outMR:1.000
+[FRONT-TEL] bass:0.984 dBass:-0.016 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.510 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.197 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.197 outMR:1.000
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:0%
+[FRONT-TEL] bass:0.912 dBass:-0.072 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.509 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.256 inMR:0.740 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.256 outMR:0.740
+[FRONT-TEL] bass:0.912 dBass:-0.072 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.509 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.256 inMR:0.740 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.256 outMR:0.740
+[FRONT-TEL] bass:0.912 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.508 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.256 inMR:0.740 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.256 outMR:0.740
+[FRONT-TEL] bass:0.912 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.508 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.256 inMR:0.740 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.256 outMR:0.740
+[FRONT-TEL] bass:0.867 dBass:-0.045 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.505 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.145 inMR:0.471 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.145 outMR:0.471
+[FRONT-TEL] bass:0.867 dBass:-0.045 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.505 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.145 inMR:0.471 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.145 outMR:0.471
+[FRONT-TEL] bass:0.847 dBass:-0.019 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.504 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:1.000 inML:0.311 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:1.000 outBR:1.000 outML:0.311 outMR:1.000
+[FRONT-TEL] bass:0.847 dBass:-0.019 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.504 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:1.000 inML:0.311 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:1.000 outML:0.311 outMR:1.000
+[FRONT-TEL] bass:0.823 dBass:-0.024 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.513 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.049 inML:0.433 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.049 outBR:0.049 outML:0.433 outMR:1.000
+[FRONT-TEL] bass:0.823 dBass:-0.024 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.513 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.049 inML:0.433 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.049 outML:0.433 outMR:1.000
+[FRONT-TEL] bass:0.815 dBass:-0.008 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.513 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.347 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.347 outMR:1.000
+[FRONT-TEL] bass:0.815 dBass:-0.008 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.513 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.347 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.347 outMR:1.000
+[FRONT-TEL] bass:0.822 dBass:0.006 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.510 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.212 inMR:0.980 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.212 outMR:0.980
+[FRONT-TEL] bass:0.822 dBass:0.006 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.510 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.212 inMR:0.980 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.212 outMR:0.980
+[FRONT-TEL] bass:0.822 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.507 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.212 inMR:0.980 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.212 outMR:0.980
+[FRONT-TEL] bass:0.822 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.507 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.212 inMR:0.980 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.212 outMR:0.980
+[FRONT-TEL] bass:0.828 dBass:0.007 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.504 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.189 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.189 outMR:1.000
+[FRONT-TEL] bass:0.828 dBass:0.007 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.504 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.189 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.189 outMR:1.000
+[FRONT-TEL] bass:0.844 dBass:0.016 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.499 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.132 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.132 outMR:1.000
+[FRONT-TEL] bass:0.844 dBass:0.016 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.499 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.132 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.132 outMR:1.000
+[FRONT-TEL] bass:0.854 dBass:0.009 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.493 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.090 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.090 outMR:1.000
+[FRONT-TEL] bass:0.854 dBass:0.009 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.493 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.090 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.090 outMR:1.000
+[FRONT-TEL] bass:0.854 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.487 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.090 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.090 outMR:1.000
+[FRONT-TEL] bass:0.854 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.487 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.090 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.090 outMR:1.000
+[FRONT-TEL] bass:0.856 dBass:0.003 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.478 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.049 inMR:0.672 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.049 outMR:0.672
+[FRONT-TEL] bass:0.856 dBass:0.003 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.478 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.049 inMR:0.672 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.049 outMR:0.672
+[FRONT-TEL] bass:0.910 dBass:0.054 kickSig:0.910 | isK:1 isKE:1 veto:0 | morph:0.476 gateOn:0.360 | inFL:0.217 inFR:1.000 inBL:0.000 inBR:0.000 inML:0.165 inMR:0.805 | outFL:1.000 outFR:1.000 outBL:0.000 outBR:0.000 outML:0.165 outMR:0.805
+[FRONT-TEL] bass:0.910 dBass:0.054 kickSig:0.910 | isK:1 isKE:1 veto:0 | morph:0.476 gateOn:0.360 | inFL:0.217 inFR:1.000 inBL:0.000 inBR:0.000 inML:0.165 inMR:0.805 | outFL:0.217 outFR:1.000 outBL:0.000 outBR:0.000 outML:0.165 outMR:0.805
+[FRONT-TEL] bass:1.000 dBass:0.090 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.471 gateOn:0.360 | inFL:0.217 inFR:0.160 inBL:0.000 inBR:0.000 inML:0.116 inMR:0.868 | outFL:0.160 outFR:0.160 outBL:0.000 outBR:0.000 outML:0.116 outMR:0.868
+[FRONT-TEL] bass:1.000 dBass:0.090 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.471 gateOn:0.360 | inFL:0.217 inFR:0.160 inBL:0.000 inBR:0.000 inML:0.116 inMR:0.868 | outFL:0.217 outFR:0.160 outBL:0.000 outBR:0.000 outML:0.116 outMR:0.868
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.463 gateOn:0.360 | inFL:0.217 inFR:0.034 inBL:0.000 inBR:0.000 inML:0.044 inMR:0.616 | outFL:0.034 outFR:0.034 outBL:0.000 outBR:0.000 outML:0.044 outMR:0.616
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.463 gateOn:0.360 | inFL:0.217 inFR:0.034 inBL:0.000 inBR:0.000 inML:0.044 inMR:0.616 | outFL:0.217 outFR:0.034 outBL:0.000 outBR:0.000 outML:0.044 outMR:0.616
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.454 gateOn:0.360 | inFL:0.217 inFR:0.006 inBL:0.000 inBR:0.000 inML:0.044 inMR:0.616 | outFL:0.006 outFR:0.006 outBL:0.000 outBR:0.000 outML:0.044 outMR:0.616
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.454 gateOn:0.360 | inFL:0.217 inFR:0.006 inBL:0.000 inBR:0.000 inML:0.044 inMR:0.616 | outFL:0.217 outFR:0.006 outBL:0.000 outBR:0.000 outML:0.044 outMR:0.616
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.445 gateOn:0.360 | inFL:0.217 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.023 inMR:0.350 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.023 outMR:0.350
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.445 gateOn:0.360 | inFL:0.217 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.023 inMR:0.350 | outFL:0.217 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.023 outMR:0.350
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.434 gateOn:0.360 | inFL:0.217 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.011 inMR:0.780 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.011 outMR:0.780
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.434 gateOn:0.360 | inFL:0.217 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.011 inMR:0.780 | outFL:0.217 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.011 outMR:0.780
+[FRONT-TEL] bass:0.954 dBass:-0.046 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.423 gateOn:0.360 | inFL:0.016 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.000 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.000 outMR:1.000
+[FRONT-TEL] bass:0.954 dBass:-0.046 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.423 gateOn:0.360 | inFL:0.016 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.000 inMR:1.000 | outFL:0.016 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.000 outMR:1.000
+[FRONT-TEL] bass:0.821 dBass:-0.133 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.410 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.000 inMR:0.819 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.000 outMR:0.819
+[FRONT-TEL] bass:0.821 dBass:-0.133 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.410 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.000 inMR:0.819 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.000 outMR:0.819
+[FRONT-TEL] bass:0.764 dBass:-0.057 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.397 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.000 inMR:0.518 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.000 outMR:0.518
+[FRONT-TEL] bass:0.764 dBass:-0.057 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.397 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.000 inMR:0.518 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.000 outMR:0.518
+[FRONT-TEL] bass:0.764 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.383 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.000 inMR:0.518 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.000 outMR:0.518
+[FRONT-TEL] bass:0.764 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.383 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.000 inMR:0.518 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.000 outMR:0.518
+[FRONT-TEL] bass:0.748 dBass:-0.016 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.376 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:1.000 inML:0.033 inMR:0.966 | outFL:0.000 outFR:0.000 outBL:1.000 outBR:1.000 outML:0.033 outMR:0.966
+[FRONT-TEL] bass:0.748 dBass:-0.016 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.376 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:1.000 inML:0.033 inMR:0.966 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:1.000 outML:0.033 outMR:0.966
+[FRONT-TEL] bass:0.773 dBass:0.025 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.374 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:1.000 inML:0.178 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:1.000 outBR:1.000 outML:0.178 outMR:1.000
+[FRONT-TEL] bass:0.773 dBass:0.025 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.374 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:1.000 inML:0.178 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:1.000 outML:0.178 outMR:1.000
+[FRONT-TEL] bass:0.796 dBass:0.023 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.374 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.029 inML:0.246 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.029 outBR:0.029 outML:0.246 outMR:1.000
+[FRONT-TEL] bass:0.796 dBass:0.023 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.374 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.029 inML:0.246 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.029 outML:0.246 outMR:1.000
+[FRONT-TEL] bass:0.819 dBass:0.023 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.373 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.166 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.166 outMR:1.000
+[FRONT-TEL] bass:0.819 dBass:0.023 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.373 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.166 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.166 outMR:1.000
+[FRONT-TEL] bass:0.833 dBass:0.013 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.370 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.108 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.108 outMR:1.000
+[FRONT-TEL] bass:0.833 dBass:0.013 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.370 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.108 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.108 outMR:1.000
+[FRONT-TEL] bass:0.850 dBass:0.018 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.367 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.097 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.097 outMR:1.000
+[FRONT-TEL] bass:0.850 dBass:0.018 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.367 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.097 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.097 outMR:1.000
+[FRONT-TEL] bass:0.856 dBass:0.005 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.362 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.076 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.076 outMR:1.000
+[FRONT-TEL] bass:0.856 dBass:0.005 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.362 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.076 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.076 outMR:1.000
+[FRONT-TEL] bass:0.856 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.358 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.076 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.076 outMR:1.000
+[FRONT-TEL] bass:0.856 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.358 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.076 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.076 outMR:1.000
+[FRONT-TEL] bass:0.862 dBass:0.006 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.351 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.031 inMR:0.697 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.031 outMR:0.697
+[FRONT-TEL] bass:0.862 dBass:0.006 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.351 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.031 inMR:0.697 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.031 outMR:0.697
+[FRONT-TEL] bass:0.901 dBass:0.039 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.360 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:1.000 inML:0.202 inMR:0.943 | outFL:0.000 outFR:0.000 outBL:1.000 outBR:1.000 outML:0.202 outMR:0.943
+[FRONT-TEL] bass:0.901 dBass:0.039 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.360 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:1.000 inML:0.202 inMR:0.943 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:1.000 outML:0.202 outMR:0.943
+[FRONT-TEL] bass:0.994 dBass:0.093 kickSig:0.994 | isK:1 isKE:1 veto:0 | morph:0.397 gateOn:0.360 | inFL:0.217 inFR:1.000 inBL:0.000 inBR:0.032 inML:0.335 inMR:1.000 | outFL:1.000 outFR:1.000 outBL:0.032 outBR:0.032 outML:0.335 outMR:1.000
+[FRONT-TEL] bass:0.994 dBass:0.093 kickSig:0.994 | isK:1 isKE:1 veto:0 | morph:0.397 gateOn:0.360 | inFL:0.217 inFR:1.000 inBL:0.000 inBR:0.032 inML:0.335 inMR:1.000 | outFL:0.217 outFR:1.000 outBL:0.000 outBR:0.032 outML:0.335 outMR:1.000
+[CHOREO] techno-club | #2:diamond [MIRROR ×2] | scene:4b | Pan:243 Tilt:-55 | sBPM:120 phase:97°
+[GlassBridge] 🏓 Ping-Pong Status: Sent: 2727 | Dropped: 66 | In-Flight: 0 | PoolFree: 3
+[FRONT-TEL] bass:1.000 dBass:0.006 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.414 gateOn:0.360 | inFL:0.217 inFR:0.158 inBL:0.000 inBR:0.000 inML:0.223 inMR:1.000 | outFL:0.158 outFR:0.158 outBL:0.000 outBR:0.000 outML:0.223 outMR:1.000
+[FRONT-TEL] bass:1.000 dBass:0.006 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.414 gateOn:0.360 | inFL:0.217 inFR:0.158 inBL:0.000 inBR:0.000 inML:0.223 inMR:1.000 | outFL:0.217 outFR:0.158 outBL:0.000 outBR:0.000 outML:0.223 outMR:1.000
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.412 gateOn:0.360 | inFL:0.217 inFR:0.034 inBL:0.000 inBR:0.000 inML:0.139 inMR:0.751 | outFL:0.034 outFR:0.034 outBL:0.000 outBR:0.000 outML:0.139 outMR:0.751
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.412 gateOn:0.360 | inFL:0.217 inFR:0.034 inBL:0.000 inBR:0.000 inML:0.139 inMR:0.751 | outFL:0.217 outFR:0.034 outBL:0.000 outBR:0.000 outML:0.139 outMR:0.751
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.410 gateOn:0.360 | inFL:0.217 inFR:0.006 inBL:0.000 inBR:0.000 inML:0.139 inMR:0.751 | outFL:0.006 outFR:0.006 outBL:0.000 outBR:0.000 outML:0.139 outMR:0.751
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.410 gateOn:0.360 | inFL:0.217 inFR:0.006 inBL:0.000 inBR:0.000 inML:0.139 inMR:0.751 | outFL:0.217 outFR:0.006 outBL:0.000 outBR:0.000 outML:0.139 outMR:0.751
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.404 gateOn:0.360 | inFL:0.217 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.076 inMR:0.860 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.076 outMR:0.860
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.404 gateOn:0.360 | inFL:0.217 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.076 inMR:0.860 | outFL:0.217 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.076 outMR:0.860
+[FRONT-TEL] bass:0.998 dBass:-0.002 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.397 gateOn:0.360 | inFL:0.015 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.043 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.043 outMR:1.000
+[FRONT-TEL] bass:0.998 dBass:-0.002 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.397 gateOn:0.360 | inFL:0.015 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.043 inMR:1.000 | outFL:0.015 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.043 outMR:1.000
+[FRONT-TEL] bass:0.892 dBass:-0.107 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.389 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.031 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.031 outMR:1.000
+[FRONT-TEL] bass:0.892 dBass:-0.107 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.389 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.031 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.031 outMR:1.000
+[FRONT-TEL] bass:0.844 dBass:-0.048 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.381 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.028 inMR:0.727 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.028 outMR:0.727
+[FRONT-TEL] bass:0.844 dBass:-0.048 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.381 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.028 inMR:0.727 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.028 outMR:0.727
+[FRONT-TEL] bass:0.832 dBass:-0.012 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.375 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.065 inMR:0.754 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.065 outMR:0.754
+[FRONT-TEL] bass:0.832 dBass:-0.012 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.375 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.065 inMR:0.754 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.065 outMR:0.754
+[FRONT-TEL] bass:0.807 dBass:-0.025 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.375 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:1.000 inML:0.208 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:1.000 outBR:1.000 outML:0.208 outMR:1.000
+[FRONT-TEL] bass:0.807 dBass:-0.025 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.375 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:1.000 inML:0.208 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:1.000 outML:0.208 outMR:1.000
+[FRONT-TEL] bass:0.807 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.374 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.029 inML:0.208 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.029 outBR:0.029 outML:0.208 outMR:1.000
+[FRONT-TEL] bass:0.807 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.374 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.029 inML:0.208 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.029 outML:0.208 outMR:1.000
+[FRONT-TEL] bass:0.796 dBass:-0.011 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.400 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.432 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.432 outMR:1.000
+[FRONT-TEL] bass:0.796 dBass:-0.011 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.400 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.432 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.432 outMR:1.000
+[FRONT-TEL] bass:0.793 dBass:-0.003 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.446 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.626 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.626 outMR:1.000
+[FRONT-TEL] bass:0.793 dBass:-0.003 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.446 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.626 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.626 outMR:1.000
+[FRONT-TEL] bass:0.794 dBass:0.001 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.501 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.762 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.762 outMR:1.000
+[FRONT-TEL] bass:0.794 dBass:0.001 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.501 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.762 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.762 outMR:1.000
+[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=BRIGHT dom=88% B/D/N=488/30/35
+[FRONT-TEL] bass:0.795 dBass:0.001 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.557 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.842 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.842 outMR:1.000
+[FRONT-TEL] bass:0.795 dBass:0.001 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.557 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.842 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.842 outMR:1.000
+[FRONT-TEL] bass:0.794 dBass:-0.001 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.608 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.870 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.870 outMR:1.000
+[FRONT-TEL] bass:0.794 dBass:-0.001 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.608 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.870 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.870 outMR:1.000
+[FRONT-TEL] bass:0.794 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.652 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.870 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.870 outMR:1.000
+[FRONT-TEL] bass:0.794 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.652 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.870 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.870 outMR:1.000
+[FRONT-TEL] bass:0.802 dBass:0.008 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.695 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.923 inMR:0.835 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.923 outMR:0.835
+[FRONT-TEL] bass:0.802 dBass:0.008 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.695 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.923 inMR:0.835 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.923 outMR:0.835
+[FRONT-TEL] bass:0.824 dBass:0.022 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.737 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.943 inMR:0.694 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.943 outMR:0.694
+[FRONT-TEL] bass:0.824 dBass:0.022 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.737 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.943 inMR:0.694 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.943 outMR:0.694
+[FRONT-TEL] bass:0.971 dBass:0.147 kickSig:0.971 | isK:1 isKE:1 veto:0 | morph:0.753 gateOn:0.360 | inFL:0.217 inFR:1.000 inBL:0.000 inBR:1.000 inML:0.629 inMR:0.879 | outFL:1.000 outFR:1.000 outBL:1.000 outBR:1.000 outML:0.629 outMR:0.879
+[FRONT-TEL] bass:0.971 dBass:0.147 kickSig:0.971 | isK:1 isKE:1 veto:0 | morph:0.753 gateOn:0.360 | inFL:0.217 inFR:1.000 inBL:0.000 inBR:1.000 inML:0.629 inMR:0.879 | outFL:0.217 outFR:1.000 outBL:0.000 outBR:1.000 outML:0.629 outMR:0.879
+[FRONT-TEL] bass:1.000 dBass:0.029 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.748 gateOn:0.360 | inFL:0.217 inFR:0.167 inBL:0.000 inBR:0.092 inML:0.214 inMR:0.716 | outFL:0.167 outFR:0.167 outBL:0.092 outBR:0.092 outML:0.214 outMR:0.716
+[FRONT-TEL] bass:1.000 dBass:0.029 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.748 gateOn:0.360 | inFL:0.217 inFR:0.167 inBL:0.000 inBR:0.092 inML:0.214 inMR:0.716 | outFL:0.217 outFR:0.167 outBL:0.000 outBR:0.092 outML:0.214 outMR:0.716
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.740 gateOn:0.360 | inFL:0.217 inFR:0.038 inBL:0.000 inBR:0.009 inML:0.151 inMR:0.431 | outFL:0.038 outFR:0.038 outBL:0.009 outBR:0.009 outML:0.151 outMR:0.431
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.740 gateOn:0.360 | inFL:0.217 inFR:0.038 inBL:0.000 inBR:0.009 inML:0.151 inMR:0.431 | outFL:0.217 outFR:0.038 outBL:0.000 outBR:0.009 outML:0.151 outMR:0.431
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.730 gateOn:0.360 | inFL:0.217 inFR:0.007 inBL:0.000 inBR:0.000 inML:0.127 inMR:0.344 | outFL:0.007 outFR:0.007 outBL:0.000 outBR:0.000 outML:0.127 outMR:0.344
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.730 gateOn:0.360 | inFL:0.217 inFR:0.007 inBL:0.000 inBR:0.000 inML:0.127 inMR:0.344 | outFL:0.217 outFR:0.007 outBL:0.000 outBR:0.000 outML:0.127 outMR:0.344
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.721 gateOn:0.360 | inFL:0.217 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.127 inMR:0.344 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.127 outMR:0.344
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.721 gateOn:0.360 | inFL:0.217 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.127 inMR:0.344 | outFL:0.217 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.127 outMR:0.344
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.712 gateOn:0.360 | inFL:0.023 inFR:0.000 inBL:0.000 inBR:1.000 inML:0.117 inMR:0.827 | outFL:0.000 outFR:0.000 outBL:1.000 outBR:1.000 outML:0.117 outMR:0.827
+[FRONT-TEL] bass:1.000 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.712 gateOn:0.360 | inFL:0.023 inFR:0.000 inBL:0.000 inBR:1.000 inML:0.117 inMR:0.827 | outFL:0.023 outFR:0.000 outBL:0.000 outBR:1.000 outML:0.117 outMR:0.827
+[FRONT-TEL] bass:0.945 dBass:-0.055 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.702 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.083 inML:0.102 inMR:0.985 | outFL:0.000 outFR:0.000 outBL:0.083 outBR:0.083 outML:0.102 outMR:0.985
+[FRONT-TEL] bass:0.945 dBass:-0.055 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.702 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.083 inML:0.102 inMR:0.985 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.083 outML:0.102 outMR:0.985
+[TitanOrchestrator] ðŸŽ§ WORKER BPM=120 conf=0.88 | PLL=FREEWHEEL [mem=120@-0f] phase=0.00 sync=0.45 | beat #110 | bass=0.3091 sab=0.108 | ðŸ”¬in_peak=0.28580 in_rms=0.12666
+[FRONT-TEL] bass:0.864 dBass:-0.081 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.692 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.007 inML:0.095 inMR:0.688 | outFL:0.000 outFR:0.000 outBL:0.007 outBR:0.007 outML:0.095 outMR:0.688
+[FRONT-TEL] bass:0.864 dBass:-0.081 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.692 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.007 inML:0.095 inMR:0.688 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.007 outML:0.095 outMR:0.688
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:1%
+[FRONT-TEL] bass:0.822 dBass:-0.042 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.682 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.096 inMR:0.468 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.096 outMR:0.468
+[FRONT-TEL] bass:0.822 dBass:-0.042 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.682 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.096 inMR:0.468 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.096 outMR:0.468
+[FRONT-TEL] bass:0.792 dBass:-0.030 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.675 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:1.000 inML:0.222 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:1.000 outBR:1.000 outML:0.222 outMR:1.000
+[FRONT-TEL] bass:0.792 dBass:-0.030 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.675 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:1.000 inML:0.222 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:1.000 outML:0.222 outMR:1.000
+[FRONT-TEL] bass:0.763 dBass:-0.029 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.669 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.077 inML:0.281 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.077 outBR:0.077 outML:0.281 outMR:1.000
+[FRONT-TEL] bass:0.763 dBass:-0.029 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.669 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.077 inML:0.281 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.077 outML:0.281 outMR:1.000
+[FRONT-TEL] bass:0.733 dBass:-0.030 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.663 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.006 inML:0.272 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.006 outBR:0.006 outML:0.272 outMR:1.000
+[FRONT-TEL] bass:0.733 dBass:-0.030 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.663 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.006 inML:0.272 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.006 outML:0.272 outMR:1.000
+[FRONT-TEL] bass:0.733 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.657 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.272 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.272 outMR:1.000
+[FRONT-TEL] bass:0.733 dBass:0.000 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.657 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.272 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.272 outMR:1.000
+[FRONT-TEL] bass:0.716 dBass:-0.017 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.650 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.254 inMR:0.863 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.254 outMR:0.863
+[FRONT-TEL] bass:0.716 dBass:-0.017 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.650 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.254 inMR:0.863 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.254 outMR:0.863
+[FRONT-TEL] bass:0.754 dBass:0.038 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.648 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.455 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.455 outMR:1.000
+[FRONT-TEL] bass:0.754 dBass:0.038 kickSig:0.000 | isK:0 isKE:0 veto:0 | morph:0.648 gateOn:0.360 | inFL:0.000 inFR:0.000 inBL:0.000 inBR:0.000 inML:0.455 inMR:1.000 | outFL:0.000 outFR:0.000 outBL:0.000 outBR:0.000 outML:0.455 outMR:1.000
+[FRONT-TEL] bass:0.810 dBass:0.056 kickSig:0.810 | isK:1 isKE:1 veto:0 | morph:0.648 gateOn:0.360 | inFL:0.000 inFR:1.000 inBL:0.000 inBR:0.000 inML:0.545 inMR:1.000 | outFL:1.000 outFR:1.000 outBL:0.000 outBR:0.000 outML:0.545 outMR:1.000
+[FRONT-TEL] bass:0.810 dBass:0.056 kickSig:0.810 | isK:1 isKE:1 veto:0 | morph:0.648 gateOn:0.360 | inFL:0.000 inFR:1.000 inBL:0.000 inBR:0.000 inML:0.545 inMR:1.000 | outFL:0.000 outFR:1.000 outBL:0.000 outBR:0.000 outML:0.545 outMR:1.000
+[FRONT-TEL] bass:0.837 dBass:0.027 kickSig:0.00

@@ -497,9 +497,11 @@ export const TacticalCanvas = memo(function TacticalCanvas({
       if (!g) return
       glassUnsub = g.onFrame((view: Float32Array) => {
         const count = fixturesRef.current.length
-        if (count === 0) return
 
-        // Resize buffer only when fixture count grows (zero-alloc on hot-path)
+        // WAVE 6061 FIX: Always post to worker, even with count===0.
+        // If we return early, the worker's currentFixtureCount stays stale
+        // (e.g. at 0 from bootstrap). When fixtures load later, the canvas
+        // stays blank because Math.min(scaffoldFixtures.length, 0) = 0.
         const needed = count * FLOATS_PER_FIXTURE
         let buf = frameBufferRef.current
         if (!buf || buf.length < needed) {
@@ -507,8 +509,10 @@ export const TacticalCanvas = memo(function TacticalCanvas({
           frameBufferRef.current = buf
         }
 
-        // Translate Glass 16-float layout → Worker 10-float layout
-        packGlassFrameInto(buf, view, count)
+        if (count > 0) {
+          // Translate Glass 16-float layout → Worker 10-float layout
+          packGlassFrameInto(buf, view, count)
+        }
         const onBeat = view.length > 4 && view[4] > 0.5
 
         // Forward to worker via dedicated port (structured clone ≈ 4KB @ 44Hz = trivial)

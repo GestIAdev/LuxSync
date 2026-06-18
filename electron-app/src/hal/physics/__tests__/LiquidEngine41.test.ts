@@ -76,18 +76,16 @@ describe('⚡ LiquidEngine41', () => {
       expect(result.frontLeftIntensity).toBe(result.frontRightIntensity)
     })
 
-    it('should NOT fire frontPar if isKick=false in strict-split (candado del Metrónomo)', () => {
-      // Sin isKick, el kickSignal es 0 — estricta separación
+    it('should NOT fire frontPar if no kick detected in strict-split (candado del Metrónomo)', () => {
+      // Bass constante por debajo del gateOn de Techno (0.28) → kick detector no dispara
       engine.applyBands(makeInput(silentBands()))
       vi.advanceTimersByTime(50)
-      engine.applyBands(makeInput(kickBands(0.50)))
+      const lowBass = { ...silentBands(), bass: 0.20 }
+      engine.applyBands(makeInput(lowBass))
       vi.advanceTimersByTime(50)
-      // Bass fuerte PERO sin isKick → frontPar debe ser mínimo/cero
-      const result = engine.applyBands(makeInput(kickBands(0.95)))
+      const result = engine.applyBands(makeInput(lowBass))
 
-      // El frontPar en strict-split solo depende de envKick
-      // Si kickSignal=0 (kickLocked), envKick recibe 0 → decay del hit anterior
-      // En frío (sin hit anterior), frontPar debería ser 0 o muy bajo
+      // Sin detección de kick, envKick recibe 0 → frontPar mínimo
       expect(result.frontParIntensity).toBeLessThan(0.1)
     })
 
@@ -125,48 +123,45 @@ describe('⚡ LiquidEngine41', () => {
     })
   })
 
-  describe('strict-split: Movers — WAVE 911 (El Melodista / El Terminator)', () => {
-    it('should route moverLeft from WAVE 911 mid-bass formula', () => {
-      // WAVE 911: rawMoverL = max(0, mid - bass * 0.50)
-      // Gate = 0.06, Boost = 12.0
+  describe('strict-split: Movers — Envelope Cross-Filter (WAVE 6064)', () => {
+    it('should route moverLeft from envelope cross-filter', () => {
+      // Techno: gateOn=0.25, moverLMidWeight=0.4, moverLHighMidWeight=1.0
       engine.applyBands(makeInput(silentBands()))
       vi.advanceTimersByTime(50)
-      // Mid dominante, bass bajo → rawMoverL alto
       const result = engine.applyBands(makeInput({
-        ...silentBands(), mid: 0.40, bass: 0.10, // rawL = 0.40 - 0.05 = 0.35
+        ...silentBands(), mid: 0.80, highMid: 0.30, // rawL = 0.80*0.4 + 0.30*1.0 = 0.62 > gate 0.25
       }))
-      // Con gate=0.06 y boost=12.0, señal 0.35 debería producir output
       expect(result.moverLeftIntensity).toBeGreaterThan(0)
     })
 
-    it('should route moverRight from WAVE 911 treble', () => {
-      // WAVE 911: rawMoverR = treble, Gate = 0.18, Boost = 9.0
+    it('should route moverRight from envelope cross-filter', () => {
+      // Techno: gateOn=0.25, bassSubtractBase=0.65, moverRTrebleSub=0.3
       engine.applyBands(makeInput(silentBands()))
       vi.advanceTimersByTime(50)
       const result = engine.applyBands(makeInput({
-        ...silentBands(), treble: 0.50, // > gate 0.18
+        ...silentBands(), mid: 0.60, // cleanMid = 0.60 > gate 0.25
       }))
       expect(result.moverRightIntensity).toBeGreaterThan(0)
     })
 
-    it('should duck movers on isKick in strict-split (inline sidechain)', () => {
+    it('should duck movers on isKick (inline sidechain universal)', () => {
       // Build mover baseline first
       for (let i = 0; i < 10; i++) {
         vi.advanceTimersByTime(50)
-        engine.applyBands(makeInput({ ...silentBands(), mid: 0.50, treble: 0.40 }))
+        engine.applyBands(makeInput({ ...silentBands(), mid: 0.80, highMid: 0.30 }))
       }
       vi.advanceTimersByTime(50)
-      const withoutKick = engine.applyBands(makeInput({ ...silentBands(), mid: 0.50, treble: 0.40 }))
+      const withoutKick = engine.applyBands(makeInput({ ...silentBands(), mid: 0.80, highMid: 0.30 }))
 
       // Reset and test with isKick
       engine.reset()
       for (let i = 0; i < 10; i++) {
         vi.advanceTimersByTime(50)
-        engine.applyBands(makeInput({ ...silentBands(), mid: 0.50, treble: 0.40 }))
+        engine.applyBands(makeInput({ ...silentBands(), mid: 0.80, highMid: 0.30 }))
       }
       vi.advanceTimersByTime(50)
       const withKick = engine.applyBands(makeInput(
-        { ...silentBands(), mid: 0.50, treble: 0.40, bass: 0.80 },
+        { ...silentBands(), mid: 0.80, highMid: 0.30, bass: 0.80 },
         { isKick: true },
       ))
 
@@ -182,8 +177,8 @@ describe('⚡ LiquidEngine41', () => {
   // DEFAULT MODE (Latino / PopRock / Chill en 4.1)
   // ═══════════════════════════════════════════════════════════════════════
 
-  describe('default: frontPar = max(subBass, kick)', () => {
-    it('should use max(frontLeft, frontRight) for frontPar', () => {
+  describe('strict-split: frontPar = frontRight (kick exclusive)', () => {
+    it('should route frontPar from frontRight only for Latino', () => {
       const eng = new LiquidEngine41(LATINO_PROFILE)
 
       eng.applyBands(makeInput(silentBands()))
@@ -192,9 +187,7 @@ describe('⚡ LiquidEngine41', () => {
       vi.advanceTimersByTime(50)
       const result = eng.applyBands(makeInput(kickBands(0.85), { isKick: true }))
 
-      expect(result.frontParIntensity).toBe(
-        Math.max(result.frontLeftIntensity, result.frontRightIntensity),
-      )
+      expect(result.frontParIntensity).toBe(result.frontRightIntensity)
     })
 
     it('should use max(backLeft, backRight) for backPar', () => {
@@ -370,13 +363,13 @@ describe('⚡ LiquidEngine41', () => {
       expect(result.backParIntensity).not.toBeNaN()
     })
 
-    it('should switch strategy from strict-split to default on profile swap', () => {
+    it('should switch strategy while preserving strict-split behavior', () => {
       // Techno uses strict-split
       expect(engine.profile.layout41Strategy).toBe('strict-split')
 
-      // Swap to Latino (doesn't define layout41Strategy → undefined → falls to default)
+      // Swap to Latino (also strict-split — both share frontPar = kick)
       engine.setProfile(LATINO_PROFILE)
-      expect(engine.profile.layout41Strategy).toBeUndefined()
+      expect(engine.profile.layout41Strategy).toBe('strict-split')
     })
   })
 
@@ -387,14 +380,14 @@ describe('⚡ LiquidEngine41', () => {
   describe('overrides41 fusion', () => {
     it('should apply latino overrides41.percMidSubtract correctly', () => {
       const eng = new LiquidEngine41(LATINO_PROFILE)
-      // El override de percMidSubtract en 4.1 es 1.5 (vs 0.6 base)
-      expect(eng.profile.percMidSubtract).toBe(1.5)
+      // El override de percMidSubtract en 4.1 es 4.0 (vs 2.0 base)
+      expect(eng.profile.percMidSubtract).toBe(4.0)
     })
 
     it('should apply latino overrides41.envelopeHighMid.gateOn correctly', () => {
       const eng = new LiquidEngine41(LATINO_PROFILE)
-      // Override: gateOn = 0.20 (vs base 0.04)
-      expect(eng.profile.envelopeHighMid.gateOn).toBe(0.20)
+      // Override: gateOn = 0.55 (vs base 0.50)
+      expect(eng.profile.envelopeHighMid.gateOn).toBe(0.55)
     })
 
     it('should preserve base values when override is absent', () => {

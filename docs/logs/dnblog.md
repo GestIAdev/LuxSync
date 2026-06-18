@@ -1,765 +1,133 @@
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.69 mid=0.43 energy=0.30
-[AGC TRUST ⚡TECHNO] IN[0.44, 0.26, 0.09] -> 💡 OUT[Front:0.56, Back:0.00, Mover:0.31]
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.12 | Master=0.12
-[TitanOrchestrator] Frame 9210: Vibe=techno-club, Fixtures=10
-[BETA 🎵] Key Detected: F minor (Confidence: 0.32)
-[GAMMA 🎵] Frame 3300: bpm=111, energy=0.15
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 111bpm | Section: buildup | Energy: 15% | Mood: neutral | Memory: 0.0s ago
-[BETA 📡] AUDIO_BUFFER #3300 | size=2048
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 135° → 158°
-[IPC 📡] audioBuffer #3305 | titan.running=true | size=8192
-[AGC TRUST ⚡TECHNO] IN[0.48, 0.27, 0.14] -> 💡 OUT[Front:0.61, Back:0.00, Mover:0.38]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.16 | Master=0.16
-[TitanEngine] Frame 9240: { vibe: 'techno-club', energy: '0.16', intensity: '0.16' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=F minor | Genre=ELECTRONIC/electronic_4x4 | BPM=108 | Energy=31%
-[TitanOrchestrator] Frame 9240: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.43 mid=0.28 energy=0.15
-[IPC 📡] audioBuffer #3323 | titan.running=true | size=8192
-[AGC TRUST ⚡TECHNO] IN[0.48, 0.29, 0.13] -> 💡 OUT[Front:0.61, Back:0.04, Mover:0.36]
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.15 | Master=0.15
-[TitanOrchestrator] Frame 9270: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.43 mid=0.29 energy=0.14
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 21° → 69°
-[HAL] 🔧 Render #9283 | Active: 10/10 | Time: 0.03ms
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 108bpm | Section: buildup | Energy: 71% | Mood: neutral | Memory: 0.0s ago
-[StrategyArbiter] 🎨 STRATEGY SHIFT: analogous → triadic (avgSync=0.60, section=buildup, override=none) [COMMITTED for 240 frames]
-[Titan] 🫁 Heartbeat #9300: Audio flowing? true | Last Packet: 1ms ago
-[AGC TRUST ⚡TECHNO] IN[0.61, 0.28, 0.13] -> 💡 OUT[Front:0.75, Back:0.01, Mover:0.36]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.16 | Master=0.16
-[TitanEngine] Frame 9300: { vibe: 'techno-club', energy: '0.16', intensity: '0.16' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=F unknown | Genre=ELECTRONIC/electronic_4x4 | BPM=111 | Energy=34%
-[TitanOrchestrator] Frame 9300: Vibe=techno-club, Fixtures=10
-[HAL] 🔧 Render #9310 | Active: 10/10 | Time: 0.04ms
-[IPC 📡] audioBuffer #3341 | titan.running=true | size=8192
-[AGC TRUST ⚡TECHNO] IN[0.47, 0.35, 0.18] -> 💡 OUT[Front:0.60, Back:0.23, Mover:0.46]
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.21 | Master=0.21
-[TitanOrchestrator] Frame 9330: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.65 mid=0.37 energy=0.23
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 278° → 270°
-[HAL] 🔧 Render #9345 | Active: 10/10 | Time: 0.02ms
-[Harmony 🎵] Key Change (fallback): F → A
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 135° → 158°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 278° → 270°
-[COLOR_AUDIT] 🎨 {"vibe":"techno-club","key":"A","strategy":"triadic","reason":"vibe_optimal","temp":4500,"mood":"neutral","hue":158,"sat":90,"light":45,"energy":80}
-[AGC TRUST ⚡TECHNO] IN[0.72, 0.39, 0.26] -> 💡 OUT[Front:0.85, Back:0.31, Mover:0.61]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.28 | Master=0.28
-[TitanEngine] Frame 9360: { vibe: 'techno-club', energy: '0.28', intensity: '0.28' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=A minor | Genre=ELECTRONIC/electronic_4x4 | BPM=138 | Energy=80%
-[TitanOrchestrator] Frame 9360: Vibe=techno-club, Fixtures=10
-[IPC 📡] audioBuffer #3359 | titan.running=true | size=8192
-[ALPHA 📡] feedAudioBuffer #3360 | beta.ready=true | circuit=closed | failures=0
-[BETA 🥁] BPM UPDATED: 135 (raw=130, conf=0.54)
-[BETA 🎵] Key Detected: A minor (Confidence: 0.36)
-[GAMMA 🎵] Frame 3360: bpm=135, energy=0.31
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 135bpm | Section: buildup | Energy: 31% | Mood: dreamy | Memory: 0.0s ago
-[AGC TRUST ⚡TECHNO] IN[0.54, 0.29, 0.11] -> 💡 OUT[Front:0.68, Back:0.06, Mover:0.34]
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.15 | Master=0.15
-[TitanOrchestrator] Frame 9390: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.68 mid=0.40 energy=0.26
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.74 mid=0.41 energy=0.28
-[IPC 📡] audioBuffer #3377 | titan.running=true | size=8192
-[AGC TRUST ⚡TECHNO] IN[0.56, 0.31, 0.13] -> 💡 OUT[Front:0.69, Back:0.11, Mover:0.38]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.16 | Master=0.16
-[TitanEngine] Frame 9420: { vibe: 'techno-club', energy: '0.16', intensity: '0.16' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=A minor | Genre=ELECTRONIC/electronic_4x4 | BPM=130 | Energy=30%
-[TitanOrchestrator] Frame 9420: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.66 mid=0.40 energy=0.24
-[HAL] 🔧 Render #9428 | Active: 10/10 | Time: 0.02ms
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 135° → 158°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 21° → 69°
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 130bpm | Section: buildup | Energy: 48% | Mood: neutral | Memory: 0.0s ago
-[Titan] 🫁 Heartbeat #9450: Audio flowing? true | Last Packet: 32ms ago
-[AGC TRUST ⚡TECHNO] IN[0.61, 0.38, 0.20] -> 💡 OUT[Front:0.75, Back:0.28, Mover:0.50]
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.23 | Master=0.23
-[TitanOrchestrator] Frame 9450: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.58 mid=0.32 energy=0.18
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.53 mid=0.27 energy=0.14
-[IPC 📡] audioBuffer #3395 | titan.running=true | size=8192
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 170° → 185°
-[AGC TRUST ⚡TECHNO] IN[0.56, 0.41, 0.21] -> 💡 OUT[Front:0.69, Back:0.35, Mover:0.53]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.24 | Master=0.24
-[TitanEngine] Frame 9480: { vibe: 'techno-club', energy: '0.24', intensity: '0.24' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=A unknown | Genre=ELECTRONIC/electronic_4x4 | BPM=130 | Energy=37%
-[TitanOrchestrator] Frame 9480: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.56 mid=0.42 energy=0.25
-[Harmony 🎵] Key Change (fallback): A → F
-[AGC TRUST ⚡TECHNO] IN[0.68, 0.42, 0.24] -> 💡 OUT[Front:0.82, Back:0.38, Mover:0.56]
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.27 | Master=0.27
-[TitanOrchestrator] Frame 9510: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.70 mid=0.43 energy=0.31
-[IPC 📡] audioBuffer #3413 | titan.running=true | size=8192
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 278° → 270°
-[HAL] 🔧 Render #9529 | Active: 10/10 | Time: 0.05ms
-[BETA 🎵] Key Detected: F unknown (Confidence: 0.37)
-[GAMMA 🎵] Frame 3420: bpm=130, energy=0.35
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 130bpm | Section: verse | Energy: 35% | Mood: neutral | Memory: 0.0s ago
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=triadic Temp=4598K
-[COLOR_AUDIT] 🎨 {"vibe":"techno-club","key":"F","strategy":"triadic","reason":"vibe_optimal","temp":4500,"mood":"neutral","hue":158,"sat":90,"light":45,"energy":20}
-[AGC TRUST ⚡TECHNO] IN[0.63, 0.40, 0.21] -> 💡 OUT[Front:0.77, Back:0.34, Mover:0.51]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.25 | Master=0.25
-[TitanEngine] Frame 9540: { vibe: 'techno-club', energy: '0.25', intensity: '0.25' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=F unknown | Genre=ELECTRONIC/electronic_4x4 | BPM=130 | Energy=20%
-[TitanOrchestrator] Frame 9540: Vibe=techno-club, Fixtures=10
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 170° → 185°
-[IPC 📡] audioBuffer #3431 | titan.running=true | size=8192
-[AGC TRUST ⚡TECHNO] IN[0.63, 0.29, 0.19] -> 💡 OUT[Front:0.77, Back:0.06, Mover:0.48]
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.21 | Master=0.21
-[TitanOrchestrator] Frame 9570: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.61 mid=0.29 energy=0.22
-[Titan] 🫁 Heartbeat #9600: Audio flowing? true | Last Packet: 11ms ago
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=triadic Temp=4600K
-[AGC TRUST ⚡TECHNO] IN[0.60, 0.35, 0.23] -> 💡 OUT[Front:0.74, Back:0.22, Mover:0.57]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.25 | Master=0.25
-[TitanEngine] Frame 9600: { vibe: 'techno-club', energy: '0.25', intensity: '0.25' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=F minor | Genre=ELECTRONIC/electronic_4x4 | BPM=153 | Energy=50%
-[TitanOrchestrator] Frame 9600: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.60 mid=0.38 energy=0.24
-[TitanOrchestrator] 📡 audioBuffer received: 2048 samples, rms=0.2598
-[IPC 📡] audioBuffer #3449 | titan.running=true | size=8192
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 141bpm | Section: verse | Energy: 50% | Mood: neutral | Memory: 0.0s ago
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 170° → 185°
-[AGC TRUST ⚡TECHNO] IN[0.56, 0.30, 0.14] -> 💡 OUT[Front:0.69, Back:0.09, Mover:0.40]
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.17 | Master=0.17
-[TitanOrchestrator] Frame 9630: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.71 mid=0.40 energy=0.24
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 278° → 270°
-[AGC TRUST ⚡TECHNO] IN[0.65, 0.40, 0.18] -> 💡 OUT[Front:0.79, Back:0.33, Mover:0.48]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.22 | Master=0.22
-[TitanEngine] Frame 9660: { vibe: 'techno-club', energy: '0.22', intensity: '0.22' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=F minor | Genre=ELECTRONIC/electronic_4x4 | BPM=125 | Energy=52%
-[TitanOrchestrator] Frame 9660: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.62 mid=0.40 energy=0.23
-[IPC 📡] audioBuffer #3467 | titan.running=true | size=8192
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 170° → 185°
-[AGC TRUST ⚡TECHNO] IN[0.52, 0.39, 0.23] -> 💡 OUT[Front:0.66, Back:0.31, Mover:0.55]
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.26 | Master=0.26
-[TitanOrchestrator] Frame 9690: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.53 mid=0.38 energy=0.24
-[ALPHA 📡] feedAudioBuffer #3480 | beta.ready=true | circuit=closed | failures=0
-[BETA 🥁] BPM UPDATED: 128 (raw=128, conf=0.52)
-[BETA 🎵] Key Detected: F minor (Confidence: 0.39)
-[GAMMA 🎵] Frame 3480: bpm=128, energy=0.41
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 128bpm | Section: verse | Energy: 41% | Mood: neutral | Memory: 0.0s ago
-[IPC 📡] audioBuffer #3485 | titan.running=true | size=8192
-[AGC TRUST ⚡TECHNO] IN[0.66, 0.39, 0.22] -> 💡 OUT[Front:0.80, Back:0.31, Mover:0.55]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.25 | Master=0.25
-[TitanEngine] Frame 9720: { vibe: 'techno-club', energy: '0.25', intensity: '0.25' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=F minor | Genre=ELECTRONIC/electronic_4x4 | BPM=122 | Energy=57%
-[TitanOrchestrator] Frame 9720: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.66 mid=0.39 energy=0.26
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 21° → 69°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 170° → 185°
-[Titan] 🫁 Heartbeat #9750: Audio flowing? true | Last Packet: 23ms ago
-[AGC TRUST ⚡TECHNO] IN[0.48, 0.41, 0.27] -> 💡 OUT[Front:0.61, Back:0.35, Mover:0.63]
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.29 | Master=0.29
-[TitanOrchestrator] Frame 9750: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.47 mid=0.39 energy=0.28
-[IPC 📡] audioBuffer #3503 | titan.running=true | size=8192
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 278° → 270°
-[HAL] 🔧 Render #9768 | Active: 10/10 | Time: 0.03ms
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 109bpm | Section: verse | Energy: 57% | Mood: neutral | Memory: 0.0s ago
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 21° → 69°
-[AGC TRUST ⚡TECHNO] IN[0.67, 0.41, 0.27] -> 💡 OUT[Front:0.81, Back:0.36, Mover:0.63]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.29 | Master=0.29
-[TitanEngine] Frame 9780: { vibe: 'techno-club', energy: '0.29', intensity: '0.29' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=F minor | Genre=ELECTRONIC/electronic_4x4 | BPM=109 | Energy=57%
-[TitanOrchestrator] Frame 9780: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.62 mid=0.39 energy=0.29
-[AGC TRUST ⚡TECHNO] IN[0.48, 0.28, 0.13] -> 💡 OUT[Front:0.62, Back:0.01, Mover:0.38]
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.16 | Master=0.16
-[TitanOrchestrator] Frame 9810: Vibe=techno-club, Fixtures=10
-[IPC 📡] audioBuffer #3521 | titan.running=true | size=8192
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 135° → 158°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 21° → 69°
-[AGC TRUST ⚡TECHNO] IN[0.49, 0.37, 0.25] -> 💡 OUT[Front:0.63, Back:0.26, Mover:0.60]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.27 | Master=0.27
-[TitanEngine] Frame 9840: { vibe: 'techno-club', energy: '0.27', intensity: '0.27' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=F minor | Genre=ELECTRONIC/electronic_4x4 | BPM=109 | Energy=36%
-[TitanOrchestrator] Frame 9840: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.50 mid=0.36 energy=0.26
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 21° → 69°
-[IPC 📡] audioBuffer #3539 | titan.running=true | size=8192
-[BETA 🎵] Key Detected: F minor (Confidence: 0.41)
-[GAMMA 🎵] Frame 3540: bpm=109, energy=0.41
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 109bpm | Section: verse | Energy: 41% | Mood: dreamy | Memory: 0.0s ago
-[AGC TRUST ⚡TECHNO] IN[0.53, 0.30, 0.11] -> 💡 OUT[Front:0.66, Back:0.09, Mover:0.34]
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.15 | Master=0.15
-[TitanOrchestrator] Frame 9870: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.70 mid=0.40 energy=0.24
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 135° → 158°
-[Titan] 🫁 Heartbeat #9900: Audio flowing? true | Last Packet: 12ms ago
-[AGC TRUST ⚡TECHNO] IN[0.39, 0.34, 0.17] -> 💡 OUT[Front:0.51, Back:0.19, Mover:0.45]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.20 | Master=0.20
-[TitanEngine] Frame 9900: { vibe: 'techno-club', energy: '0.20', intensity: '0.20' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=F minor | Genre=ELECTRONIC/electronic_4x4 | BPM=109 | Energy=29%
-[TitanOrchestrator] Frame 9900: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.36 mid=0.32 energy=0.18
-[IPC 📡] audioBuffer #3557 | titan.running=true | size=8192
-[HAL] 🔧 Render #9919 | Active: 10/10 | Time: 0.03ms
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 278° → 270°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 21° → 69°
-[AGC TRUST ⚡TECHNO] IN[0.48, 0.33, 0.17] -> 💡 OUT[Front:0.61, Back:0.17, Mover:0.44]
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.19 | Master=0.19
-[TitanOrchestrator] Frame 9930: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.43 mid=0.33 energy=0.19
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 135° → 158°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 135° → 158°
-[HAL] 🔧 Render #9949 | Active: 10/10 | Time: 0.06ms
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 109bpm | Section: verse | Energy: 53% | Mood: neutral | Memory: 0.0s ago
-[AGC TRUST ⚡TECHNO] IN[0.54, 0.37, 0.19] -> 💡 OUT[Front:0.67, Back:0.25, Mover:0.48]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.22 | Master=0.22
-[TitanEngine] Frame 9960: { vibe: 'techno-club', energy: '0.22', intensity: '0.22' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=F minor | Genre=ELECTRONIC/electronic_4x4 | BPM=109 | Energy=44%
-[TitanOrchestrator] Frame 9960: Vibe=techno-club, Fixtures=10
-[IPC 📡] audioBuffer #3575 | titan.running=true | size=8192
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 170° → 185°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 135° → 158°
-[AGC TRUST ⚡TECHNO] IN[0.51, 0.30, 0.12] -> 💡 OUT[Front:0.64, Back:0.07, Mover:0.34]
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.15 | Master=0.15
-[TitanOrchestrator] Frame 9990: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.44 mid=0.29 energy=0.14
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 278° → 270°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 21° → 69°
-[IPC 📡] audioBuffer #3593 | titan.running=true | size=8192
-[AGC TRUST ⚡TECHNO] IN[0.46, 0.29, 0.13] -> 💡 OUT[Front:0.59, Back:0.05, Mover:0.38]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.16 | Master=0.16
-[TitanEngine] Frame 10020: { vibe: 'techno-club', energy: '0.16', intensity: '0.16' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=F minor | Genre=ELECTRONIC/electronic_4x4 | BPM=186 | Energy=31%
-[TitanOrchestrator] Frame 10020: Vibe=techno-club, Fixtures=10
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 135° → 158°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 170° → 185°
-[ALPHA 📡] feedAudioBuffer #3600 | beta.ready=true | circuit=closed | failures=0
-[BETA 🥁] BPM UPDATED: 186 (raw=186, conf=0.59)
-[BETA 🎵] Key Detected: F minor (Confidence: 0.39)
-[GAMMA 🎵] Frame 3600: bpm=186, energy=0.18
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 186bpm | Section: verse | Energy: 18% | Mood: neutral | Memory: 0.0s ago
-[BETA 📡] AUDIO_BUFFER #3600 | size=2048
-[Titan] 🫁 Heartbeat #10050: Audio flowing? true | Last Packet: 18ms ago
-[AGC TRUST ⚡TECHNO] IN[0.48, 0.26, 0.23] -> 💡 OUT[Front:0.61, Back:0.00, Mover:0.56]
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.23 | Master=0.23
-[TitanOrchestrator] Frame 10050: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.43 mid=0.28 energy=0.21
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 170° → 185°
-[IPC 📡] audioBuffer #3611 | titan.running=true | size=8192
-[AGC TRUST ⚡TECHNO] IN[0.72, 0.43, 0.26] -> 💡 OUT[Front:0.85, Back:0.39, Mover:0.61]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046daf | Energy=0.29 | Master=0.29
-[TitanEngine] Frame 10080: { vibe: 'techno-club', energy: '0.29', intensity: '0.29' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=F minor | Genre=ELECTRONIC/electronic_4x4 | BPM=186 | Energy=88%
-[TitanOrchestrator] Frame 10080: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.69 mid=0.42 energy=0.32
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 170° → 185°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 278° → 270°
-[AGC TRUST ⚡TECHNO] IN[0.50, 0.36, 0.18] -> 💡 OUT[Front:0.63, Back:0.24, Mover:0.48]
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.21 | Master=0.21
-[TitanOrchestrator] Frame 10110: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.66 mid=0.39 energy=0.25
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 170° → 185°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 21° → 69°
-[IPC 📡] audioBuffer #3629 | titan.running=true | size=8192
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 186bpm | Section: verse | Energy: 23% | Mood: neutral | Memory: 0.0s ago
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 170° → 185°
-[AGC TRUST ⚡TECHNO] IN[0.56, 0.38, 0.26] -> 💡 OUT[Front:0.69, Back:0.28, Mover:0.63]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.28 | Master=0.28
-[TitanEngine] Frame 10140: { vibe: 'techno-club', energy: '0.28', intensity: '0.28' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=F minor | Genre=ELECTRONIC/electronic_4x4 | BPM=186 | Energy=50%
-[TitanOrchestrator] Frame 10140: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.51 mid=0.36 energy=0.25
-[AGC TRUST ⚡TECHNO] IN[0.50, 0.33, 0.16] -> 💡 OUT[Front:0.64, Back:0.16, Mover:0.43]
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.19 | Master=0.19
-[TitanOrchestrator] Frame 10170: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.45 mid=0.33 energy=0.17
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.41 mid=0.34 energy=0.16
-[IPC 📡] audioBuffer #3647 | titan.running=true | size=8192
-[HAL] 🔧 Render #10178 | Active: 10/10 | Time: 0.04ms
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 135° → 158°
-[HAL] 🔧 Render #10199 | Active: 10/10 | Time: 0.05ms
-[Titan] 🫁 Heartbeat #10200: Audio flowing? true | Last Packet: 0ms ago
-[COLOR_AUDIT] 🎨 {"vibe":"techno-club","key":"F","strategy":"complementary","reason":"vibe_optimal","temp":4500,"mood":"euphoric","hue":158,"sat":90,"light":45,"energy":68}
-[AGC TRUST ⚡TECHNO] IN[0.64, 0.45, 0.18] -> 💡 OUT[Front:0.78, Back:0.43, Mover:0.46]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0cdb8f S=#046daf | Energy=0.22 | Master=0.22
-[TitanEngine] Frame 10200: { vibe: 'techno-club', energy: '0.22', intensity: '0.22' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=F minor | Genre=ELECTRONIC/electronic_4x4 | BPM=186 | Energy=68%
-[TitanOrchestrator] Frame 10200: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 📡 audioBuffer received: 2048 samples, rms=0.7464
-[BETA 🎵] Key Detected: F minor (Confidence: 0.38)
-[GAMMA 🎵] Frame 3660: bpm=179, energy=0.64
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 179bpm | Section: verse | Energy: 64% | Mood: euphoric | Memory: 0.0s ago
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 170° → 185°
-[IPC 📡] audioBuffer #3665 | titan.running=true | size=8192
-[AGC TRUST ⚡TECHNO] IN[0.69, 0.47, 0.29] -> 💡 OUT[Front:0.83, Back:0.49, Mover:0.69]
-[TitanEngine] 🎨 Palette: P=#0cdd91 S=#056fb1 | Energy=0.33 | Master=0.33
-[TitanOrchestrator] Frame 10230: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.64 mid=0.46 energy=0.31
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 135° → 158°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 21° → 69°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 21° → 69°
-[HAL] 🔧 Render #10259 | Active: 10/10 | Time: 0.02ms
-[AGC TRUST ⚡TECHNO] IN[0.75, 0.48, 0.25] -> 💡 OUT[Front:0.85, Back:0.51, Mover:0.59]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0cdf92 S=#0570b4 | Energy=0.29 | Master=0.29
-[TitanEngine] Frame 10260: { vibe: 'techno-club', energy: '0.29', intensity: '0.29' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=F minor | Genre=ELECTRONIC/electronic_4x4 | BPM=195 | Energy=94%
-[TitanOrchestrator] Frame 10260: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.70 mid=0.46 energy=0.29
-[IPC 📡] audioBuffer #3683 | titan.running=true | size=8192
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 21° → 69°
-[AGC TRUST ⚡TECHNO] IN[0.64, 0.39, 0.19] -> 💡 OUT[Front:0.78, Back:0.32, Mover:0.49]
-[TitanEngine] 🎨 Palette: P=#0ce193 S=#0571b5 | Energy=0.23 | Master=0.23
-[TitanOrchestrator] Frame 10290: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.70 mid=0.36 energy=0.19
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 135° → 158°
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 195bpm | Section: verse | Energy: 41% | Mood: neutral | Memory: 0.0s ago
-[AGC TRUST ⚡TECHNO] IN[0.44, 0.30, 0.20] -> 💡 OUT[Front:0.57, Back:0.09, Mover:0.52]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0ce193 S=#0571b5 | Energy=0.22 | Master=0.22
-[TitanEngine] Frame 10320: { vibe: 'techno-club', energy: '0.22', intensity: '0.22' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=F minor | Genre=ELECTRONIC/electronic_4x4 | BPM=195 | Energy=19%
-[TitanOrchestrator] Frame 10320: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.46 mid=0.33 energy=0.22
-[StrategyArbiter] 🛡️ BREAKDOWN OVERRIDE: Forcing ANALOGOUS for visual relaxation
-[StrategyArbiter] 🎨 STRATEGY SHIFT: triadic → analogous (avgSync=0.62, section=breakdown, override=breakdown) [COMMITTED for 240 frames]
-[IPC 📡] audioBuffer #3701 | titan.running=true | size=8192
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 278° → 270°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 135° → 158°
-[Titan] 🫁 Heartbeat #10350: Audio flowing? true | Last Packet: 1ms ago
-[AGC TRUST ⚡TECHNO] IN[0.57, 0.35, 0.26] -> 💡 OUT[Front:0.71, Back:0.23, Mover:0.63]
-[TitanEngine] 🎨 Palette: P=#0cdf92 S=#0570b3 | Energy=0.28 | Master=0.28
-[TitanOrchestrator] Frame 10350: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.50 mid=0.31 energy=0.25
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 135° → 158°
-[IPC 📡] audioBuffer #3719 | titan.running=true | size=8192
-[COLOR_AUDIT] 🎨 {"vibe":"techno-club","key":"F","strategy":"triadic","reason":"vibe_optimal","temp":4500,"mood":"dreamy","hue":158,"sat":90,"light":46,"energy":12}
-[AGC TRUST ⚡TECHNO] IN[0.73, 0.43, 0.25] -> 💡 OUT[Front:0.85, Back:0.41, Mover:0.58]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0cdd90 S=#056eb1 | Energy=0.28 | Master=0.28
-[TitanEngine] Frame 10380: { vibe: 'techno-club', energy: '0.28', intensity: '0.28' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=F minor | Genre=ELECTRONIC/electronic_4x4 | BPM=195 | Energy=12%
-[TitanOrchestrator] Frame 10380: Vibe=techno-club, Fixtures=10
-[ALPHA 📡] feedAudioBuffer #3720 | beta.ready=true | circuit=closed | failures=0
-[BETA 🎵] Key Detected: F minor (Confidence: 0.38)
-[GAMMA 🎵] Frame 3720: bpm=195, energy=0.69
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 195bpm | Section: breakdown | Energy: 69% | Mood: dreamy | Memory: 0.0s ago
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.70 mid=0.43 energy=0.31
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 135° → 158°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 278° → 270°
-[AGC TRUST ⚡TECHNO] IN[0.65, 0.40, 0.16] -> 💡 OUT[Front:0.79, Back:0.34, Mover:0.43]
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.20 | Master=0.20
-[TitanOrchestrator] Frame 10410: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.59 mid=0.39 energy=0.21
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 278° → 270°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 170° → 185°
-[IPC 📡] audioBuffer #3737 | titan.running=true | size=8192
-[AGC TRUST ⚡TECHNO] IN[0.75, 0.47, 0.18] -> 💡 OUT[Front:0.85, Back:0.48, Mover:0.48]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.23 | Master=0.23
-[TitanEngine] Frame 10440: { vibe: 'techno-club', energy: '0.23', intensity: '0.23' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=F minor | Genre=ELECTRONIC/electronic_4x4 | BPM=195 | Energy=58%
-[TitanOrchestrator] Frame 10440: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.72 mid=0.43 energy=0.20
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 135° → 158°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 170° → 185°
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 195bpm | Section: buildup | Energy: 51% | Mood: neutral | Memory: 0.0s ago
-[AGC TRUST ⚡TECHNO] IN[0.50, 0.39, 0.29] -> 💡 OUT[Front:0.63, Back:0.31, Mover:0.68]
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.31 | Master=0.31
-[TitanOrchestrator] Frame 10470: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.49 mid=0.38 energy=0.31
-[IPC 📡] audioBuffer #3755 | titan.running=true | size=8192
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 338° → 317°
-[HAL] 🔧 Render #10490 | Active: 10/10 | Time: 0.03ms
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 21° → 69°
-[Titan] 🫁 Heartbeat #10500: Audio flowing? true | Last Packet: 11ms ago
-[COLOR_AUDIT] 🎨 {"vibe":"techno-club","key":"F","strategy":"complementary","reason":"vibe_optimal","temp":4500,"mood":"neutral","hue":158,"sat":90,"light":45,"energy":34}
-[AGC TRUST ⚡TECHNO] IN[0.76, 0.48, 0.24] -> 💡 OUT[Front:0.85, Back:0.51, Mover:0.57]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.28 | Master=0.28
-[TitanEngine] Frame 10500: { vibe: 'techno-club', energy: '0.28', intensity: '0.28' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=F minor | Genre=ELECTRONIC/electronic_4x4 | BPM=195 | Energy=34%
-[TitanOrchestrator] Frame 10500: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 📡 audioBuffer received: 2048 samples, rms=0.8840
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.74 mid=0.48 energy=0.32
-[HAL] 🔧 Render #10527 | Active: 10/10 | Time: 0.04ms
-[IPC 📡] audioBuffer #3773 | titan.running=true | size=8192
-[AGC TRUST ⚡TECHNO] IN[0.72, 0.45, 0.20] -> 💡 OUT[Front:0.85, Back:0.44, Mover:0.51]
-[TitanEngine] 🎨 Palette: P=#0cdc90 S=#056eb0 | Energy=0.25 | Master=0.25
-[TitanOrchestrator] Frame 10530: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.75 mid=0.40 energy=0.21
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 338° → 317°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 21° → 69°
-[HAL] 🔧 Render #10542 | Active: 10/10 | Time: 0.03ms
-[BETA 🎵] Key Detected: F minor (Confidence: 0.35)
-[GAMMA 🎵] Frame 3780: bpm=197, energy=0.29
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 197bpm | Section: buildup | Energy: 29% | Mood: neutral | Memory: 0.0s ago
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 135° → 158°
-[AGC TRUST ⚡TECHNO] IN[0.56, 0.42, 0.21] -> 💡 OUT[Front:0.70, Back:0.38, Mover:0.54]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0cde91 S=#056fb2 | Energy=0.25 | Master=0.25
-[TitanEngine] Frame 10560: { vibe: 'techno-club', energy: '0.25', intensity: '0.25' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=F minor | Genre=ELECTRONIC/electronic_4x4 | BPM=195 | Energy=42%
-[TitanOrchestrator] Frame 10560: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.60 mid=0.42 energy=0.25
-[IPC 📡] audioBuffer #3791 | titan.running=true | size=8192
-[AGC TRUST ⚡TECHNO] IN[0.54, 0.38, 0.24] -> 💡 OUT[Front:0.67, Back:0.28, Mover:0.58]
-[TitanEngine] 🎨 Palette: P=#0cde91 S=#056fb2 | Energy=0.26 | Master=0.26
-[TitanOrchestrator] Frame 10590: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.49 mid=0.35 energy=0.22
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 135° → 158°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 278° → 270°
-[COLOR_AUDIT] 🎨 {"vibe":"techno-club","key":"F","strategy":"triadic","reason":"vibe_optimal","temp":4500,"mood":"neutral","hue":158,"sat":90,"light":46,"energy":35}
-[AGC TRUST ⚡TECHNO] IN[0.42, 0.26, 0.09] -> 💡 OUT[Front:0.55, Back:0.00, Mover:0.29]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0cdd91 S=#056fb1 | Energy=0.12 | Master=0.12
-[TitanEngine] Frame 10620: { vibe: 'techno-club', energy: '0.12', intensity: '0.12' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=F minor | Genre=ELECTRONIC/electronic_4x4 | BPM=195 | Energy=35%
-[TitanOrchestrator] Frame 10620: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.44 mid=0.37 energy=0.20
-[IPC 📡] audioBuffer #3809 | titan.running=true | size=8192
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 195bpm | Section: buildup | Energy: 63% | Mood: neutral | Memory: 0.0s ago
-[Titan] 🫁 Heartbeat #10650: Audio flowing? true | Last Packet: 20ms ago
-[AGC TRUST ⚡TECHNO] IN[0.45, 0.27, 0.14] -> 💡 OUT[Front:0.57, Back:0.00, Mover:0.40]
-[TitanEngine] 🎨 Palette: P=#0cdc90 S=#056eb0 | Energy=0.16 | Master=0.16
-[TitanOrchestrator] Frame 10650: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.41 mid=0.26 energy=0.15
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 170° → 185°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 21° → 69°
-[IPC 📡] audioBuffer #3827 | titan.running=true | size=8192
-[AGC TRUST ⚡TECHNO] IN[0.51, 0.22, 0.11] -> 💡 OUT[Front:0.64, Back:0.00, Mover:0.34]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.14 | Master=0.14
-[TitanEngine] Frame 10680: { vibe: 'techno-club', energy: '0.14', intensity: '0.14' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=F minor | Genre=ELECTRONIC/electronic_4x4 | BPM=195 | Energy=17%
-[TitanOrchestrator] Frame 10680: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.43 mid=0.22 energy=0.13
-[Harmony ⚠️] Freq 9432Hz fuera de rango musical
-[ALPHA 📡] feedAudioBuffer #3840 | beta.ready=true | circuit=closed | failures=0
-[BETA 🎵] Key Detected: F minor (Confidence: 0.36)
-[GAMMA 🎵] Frame 3840: bpm=195, energy=0.70
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 195bpm | Section: buildup | Energy: 70% | Mood: neutral | Memory: 0.0s ago
-[Harmony 🎵] Key Change (fallback): F → A
-[AGC TRUST ⚡TECHNO] IN[0.61, 0.32, 0.16] -> 💡 OUT[Front:0.75, Back:0.15, Mover:0.43]
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.19 | Master=0.19
-[TitanOrchestrator] Frame 10710: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.54 mid=0.30 energy=0.18
-[IPC 📡] audioBuffer #3845 | titan.running=true | size=8192
-[COLOR_AUDIT] 🎨 {"vibe":"techno-club","key":"A","strategy":"triadic","reason":"vibe_optimal","temp":4500,"mood":"neutral","hue":158,"sat":90,"light":45,"energy":62}
-[AGC TRUST ⚡TECHNO] IN[0.49, 0.40, 0.18] -> 💡 OUT[Front:0.62, Back:0.32, Mover:0.47]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.22 | Master=0.22
-[TitanEngine] Frame 10740: { vibe: 'techno-club', energy: '0.22', intensity: '0.22' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=A minor | Genre=ELECTRONIC/electronic_4x4 | BPM=184 | Energy=62%
-[TitanOrchestrator] Frame 10740: Vibe=techno-club, Fixtures=10
-[AGC TRUST ⚡TECHNO] IN[0.56, 0.35, 0.19] -> 💡 OUT[Front:0.69, Back:0.21, Mover:0.47]
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.22 | Master=0.22
-[TitanOrchestrator] Frame 10770: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.70 mid=0.41 energy=0.26
-[IPC 📡] audioBuffer #3863 | titan.running=true | size=8192
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 159bpm | Section: buildup | Energy: 47% | Mood: neutral | Memory: 0.0s ago
-[Titan] 🫁 Heartbeat #10800: Audio flowing? true | Last Packet: 23ms ago
-[COLOR_AUDIT] 🎨 {"vibe":"techno-club","key":"A","strategy":"complementary","reason":"vibe_optimal","temp":4500,"mood":"neutral","hue":158,"sat":90,"light":45,"energy":48}
-[AGC TRUST ⚡TECHNO] IN[0.65, 0.32, 0.12] -> 💡 OUT[Front:0.80, Back:0.14, Mover:0.35]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.15 | Master=0.15
-[TitanEngine] Frame 10800: { vibe: 'techno-club', energy: '0.15', intensity: '0.15' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=A minor | Genre=ELECTRONIC/electronic_4x4 | BPM=161 | Energy=48%
-[TitanOrchestrator] Frame 10800: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.58 mid=0.32 energy=0.14
-[IPC 📡] audioBuffer #3881 | titan.running=true | size=8192
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 135° → 158°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 135° → 158°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 135° → 158°
-[AGC TRUST ⚡TECHNO] IN[0.51, 0.39, 0.17] -> 💡 OUT[Front:0.64, Back:0.31, Mover:0.45]
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.21 | Master=0.21
-[TitanOrchestrator] Frame 10830: Vibe=techno-club, Fixtures=10
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 338° → 317°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 170° → 185°
-[AGC TRUST ⚡TECHNO] IN[0.55, 0.35, 0.25] -> 💡 OUT[Front:0.69, Back:0.22, Mover:0.60]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0cdb8f S=#046daf | Energy=0.27 | Master=0.27
-[TitanEngine] Frame 10860: { vibe: 'techno-club', energy: '0.27', intensity: '0.27' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=A minor | Genre=ELECTRONIC/electronic_4x4 | BPM=185 | Energy=36%
-[TitanOrchestrator] Frame 10860: Vibe=techno-club, Fixtures=10
-[StrategyArbiter] 🛡️ BREAKDOWN OVERRIDE: Forcing ANALOGOUS for visual relaxation
-[IPC 📡] audioBuffer #3899 | titan.running=true | size=8192
-[BETA 🎵] Key Detected: A minor (Confidence: 0.35)
-[GAMMA 🎵] Frame 3900: bpm=186, energy=0.39
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 186bpm | Section: buildup | Energy: 39% | Mood: neutral | Memory: 0.0s ago
-[BETA 📡] AUDIO_BUFFER #3900 | size=2048
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 21° → 69°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 135° → 158°
-[AGC TRUST ⚡TECHNO] IN[0.69, 0.43, 0.26] -> 💡 OUT[Front:0.83, Back:0.39, Mover:0.61]
-[TitanEngine] 🎨 Palette: P=#0cdb90 S=#046eaf | Energy=0.29 | Master=0.29
-[TitanOrchestrator] Frame 10890: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.65 mid=0.40 energy=0.30
-[Harmony 🎵] Key Change: A → F (21% dominance)
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4604K
-[COLOR_AUDIT] 🎨 {"vibe":"techno-club","key":"F","strategy":"complementary","reason":"vibe_optimal","temp":4500,"mood":"dreamy","hue":158,"sat":90,"light":45,"energy":13}
-[AGC TRUST ⚡TECHNO] IN[0.38, 0.27, 0.15] -> 💡 OUT[Front:0.51, Back:0.00, Mover:0.41]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0cdb8f S=#046daf | Energy=0.17 | Master=0.17
-[TitanEngine] Frame 10920: { vibe: 'techno-club', energy: '0.17', intensity: '0.17' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=F minor | Genre=ELECTRONIC/electronic_4x4 | BPM=186 | Energy=13%
-[TitanOrchestrator] Frame 10920: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.32 mid=0.26 energy=0.15
-[IPC 📡] audioBuffer #3917 | titan.running=true | size=8192
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 338° → 317°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 135° → 158°
-[Titan] 🫁 Heartbeat #10950: Audio flowing? true | Last Packet: 22ms ago
-[AGC TRUST ⚡TECHNO] IN[0.58, 0.41, 0.22] -> 💡 OUT[Front:0.72, Back:0.36, Mover:0.55]
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.25 | Master=0.25
-[TitanOrchestrator] Frame 10950: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.76 mid=0.39 energy=0.23
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 278° → 270°
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 186bpm | Section: breakdown | Energy: 11% | Mood: dreamy | Memory: 0.0s ago
-[HAL] 🔧 Render #10968 | Active: 3/10 | Time: 0.04ms
-[IPC 📡] audioBuffer #3935 | titan.running=true | size=8192
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4604K
-[AGC TRUST ⚡TECHNO] IN[0.40, 0.13, 0.01] -> 💡 OUT[Front:0.53, Back:0.00, Mover:0.00]
-[TitanEngine] Frame 10980: { vibe: 'techno-club', energy: '0.03', intensity: '0.03' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=F minor | Genre=ELECTRONIC/electronic_4x4 | BPM=186 | Energy=7%
-[TitanOrchestrator] Frame 10980: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.43 mid=0.13 energy=0.03
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 21° → 69°
-[AGC TRUST ⚡TECHNO] IN[0.46, 0.26, 0.02] -> 💡 OUT[Front:0.59, Back:0.00, Mover:0.00]
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.06 | Master=0.06
-[TitanOrchestrator] Frame 11010: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.44 mid=0.29 energy=0.07
-[IPC 📡] audioBuffer #3953 | titan.running=true | size=8192
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4604K
-[COLOR_AUDIT] 🎨 {"vibe":"techno-club","key":"F","strategy":"triadic","reason":"vibe_optimal","temp":4500,"mood":"neutral","hue":158,"sat":90,"light":45,"energy":58}
-[AGC TRUST ⚡TECHNO] IN[0.42, 0.29, 0.02] -> 💡 OUT[Front:0.55, Back:0.05, Mover:0.00]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#0bda8f S=#046dae | Energy=0.07 | Master=0.07
-[TitanEngine] Frame 11040: { vibe: 'techno-club', energy: '0.07', intensity: '0.07' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=F minor | Genre=ELECTRONIC/electronic_4x4 | BPM=186 | Energy=58%
-[TitanOrchestrator] Frame 11040: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.40 mid=0.31 energy=0.07
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 135° → 158°
-[ALPHA 📡] feedAudioBuffer #3960 | beta.ready=true | circuit=closed | failures=0
-[BETA 🎵] Key Detected: F minor (Confidence: 0.35)
-[GAMMA 🎵] Frame 3960: bpm=186, energy=0.57
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 186bpm | Section: breakdown | Energy: 57% | Mood: neutral | Memory: 0.0s ago
-[KeyStabilizer] 🎵 KEY CHANGE: F → A (after 180 frames, 12 total changes)
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 255° → 252°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 255° → 252°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 255° → 252°
-[AGC TRUST ⚡TECHNO] IN[0.38, 0.38, 0.08] -> 💡 OUT[Front:0.50, Back:0.29, Mover:0.29]
-[TitanEngine] 🎨 Palette: P=#340bda S=#04ae42 | Energy=0.13 | Master=0.13
-[TitanOrchestrator] Frame 11070: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.46 mid=0.36 energy=0.11
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 144° → 165°
-[IPC 📡] audioBuffer #3971 | titan.running=true | size=8192
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 130° → 154°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 130° → 154°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 114° → 142°
-[HAL] 🔧 Render #11098 | Active: 6/10 | Time: 0.03ms
-[Titan] 🫁 Heartbeat #11100: Audio flowing? true | Last Packet: 2ms ago
-[TitanEngine 🧠] Stabilization: Key=A Emotion=NEUTRAL Strategy=analogous Temp=5005K
-[COLOR_AUDIT] 🎨 {"vibe":"techno-club","key":"F","strategy":"complementary","reason":"vibe_optimal","temp":5800,"mood":"neutral","hue":252,"sat":90,"light":45,"energy":54}
-[AGC TRUST ⚡TECHNO] IN[0.33, 0.32, 0.05] -> 💡 OUT[Front:0.45, Back:0.14, Mover:0.00]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#340bda S=#04ae42 | Energy=0.09 | Master=0.09
-[TitanEngine] Frame 11100: { vibe: 'techno-club', energy: '0.09', intensity: '0.09' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=F minor | Genre=ELECTRONIC/electronic_4x4 | BPM=189 | Energy=54%
-[TitanOrchestrator] Frame 11100: Vibe=techno-club, Fixtures=10
-[Harmony 🎵] Key Change (fallback): F → B
-[IPC 📡] audioBuffer #3989 | titan.running=true | size=8192
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 144° → 165°
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 200bpm | Section: buildup | Energy: 57% | Mood: neutral | Memory: 0.0s ago
-[AGC TRUST ⚡TECHNO] IN[0.41, 0.26, 0.01] -> 💡 OUT[Front:0.53, Back:0.00, Mover:0.00]
-[TitanEngine] 🎨 Palette: P=#340bda S=#04ae42 | Energy=0.06 | Master=0.06
-[TitanOrchestrator] Frame 11130: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.39 mid=0.25 energy=0.05
-[TitanEngine 🧠] Stabilization: Key=A Emotion=NEUTRAL Strategy=analogous Temp=5005K
-[COLOR_AUDIT] 🎨 {"vibe":"techno-club","key":"B","strategy":"complementary","reason":"vibe_optimal","temp":5800,"mood":"neutral","hue":252,"sat":90,"light":45,"energy":18}
-[AGC TRUST ⚡TECHNO] IN[0.45, 0.21, 0.14] -> 💡 OUT[Front:0.58, Back:0.00, Mover:0.38]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#340bda S=#04ae42 | Energy=0.15 | Master=0.15
-[TitanEngine] Frame 11160: { vibe: 'techno-club', energy: '0.15', intensity: '0.15' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=B minor | Genre=ELECTRONIC/electronic_4x4 | BPM=200 | Energy=18%
-[TitanOrchestrator] Frame 11160: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.46 mid=0.20 energy=0.16
-[StrategyArbiter] 🛡️ BREAKDOWN OVERRIDE: Forcing ANALOGOUS for visual relaxation
-[IPC 📡] audioBuffer #4007 | titan.running=true | size=8192
-[AGC TRUST ⚡TECHNO] IN[0.60, 0.29, 0.08] -> 💡 OUT[Front:0.74, Back:0.06, Mover:0.25]
-[TitanEngine] 🎨 Palette: P=#340bda S=#04ae42 | Energy=0.12 | Master=0.12
-[TitanOrchestrator] Frame 11190: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.57 mid=0.32 energy=0.13
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 144° → 165°
-[BETA 🎵] Key Detected: B minor (Confidence: 0.32)
-[GAMMA 🎵] Frame 4020: bpm=200, energy=0.30
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 200bpm | Section: breakdown | Energy: 30% | Mood: dreamy | Memory: 0.0s ago
-[HAL] 🔧 Render #11217 | Active: 6/10 | Time: 0.02ms
-[TitanEngine 🧠] Stabilization: Key=A Emotion=NEUTRAL Strategy=analogous Temp=5005K
-[COLOR_AUDIT] 🎨 {"vibe":"techno-club","key":"B","strategy":"triadic","reason":"vibe_optimal","temp":5800,"mood":"dreamy","hue":252,"sat":90,"light":45,"energy":29}
-[AGC TRUST ⚡TECHNO] IN[0.53, 0.28, 0.02] -> 💡 OUT[Front:0.66, Back:0.00, Mover:0.00]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#340bda S=#04ae42 | Energy=0.06 | Master=0.06
-[TitanEngine] Frame 11220: { vibe: 'techno-club', energy: '0.06', intensity: '0.06' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=B minor | Genre=ELECTRONIC/electronic_4x4 | BPM=200 | Energy=29%
-[TitanOrchestrator] Frame 11220: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.50 mid=0.29 energy=0.07
-[Harmony 🎵] Key Change (fallback): B → C#
-[IPC 📡] audioBuffer #4025 | titan.running=true | size=8192
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 12° → 62°
-[HAL] 🔧 Render #11242 | Active: 3/10 | Time: 0.02ms
-[Titan] 🫁 Heartbeat #11250: Audio flowing? true | Last Packet: 20ms ago
-[AGC TRUST ⚡TECHNO] IN[0.36, 0.18, 0.00] -> 💡 OUT[Front:0.48, Back:0.00, Mover:0.00]
-[TitanOrchestrator] Frame 11250: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.42 mid=0.14 energy=0.03
-[IPC 📡] audioBuffer #4043 | titan.running=true | size=8192
-[TitanEngine 🧠] Stabilization: Key=A Emotion=NEUTRAL Strategy=analogous Temp=5005K
-[COLOR_AUDIT] 🎨 {"vibe":"techno-club","key":"C#","strategy":"triadic","reason":"vibe_optimal","temp":5800,"mood":"dreamy","hue":252,"sat":90,"light":45,"energy":57}
-[AGC TRUST ⚡TECHNO] IN[0.50, 0.28, 0.02] -> 💡 OUT[Front:0.63, Back:0.00, Mover:0.00]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#340bda S=#04ae42 | Energy=0.07 | Master=0.07
-[TitanEngine] Frame 11280: { vibe: 'techno-club', energy: '0.07', intensity: '0.07' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=C# minor | Genre=ELECTRONIC/electronic_4x4 | BPM=200 | Energy=57%
-[TitanOrchestrator] Frame 11280: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.49 mid=0.29 energy=0.07
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 200bpm | Section: breakdown | Energy: 79% | Mood: dreamy | Memory: 0.0s ago
-[AGC TRUST ⚡TECHNO] IN[0.59, 0.31, 0.02] -> 💡 OUT[Front:0.73, Back:0.11, Mover:0.00]
-[TitanEngine] 🎨 Palette: P=#340bda S=#04ae42 | Energy=0.07 | Master=0.07
-[TitanOrchestrator] Frame 11310: Vibe=techno-club, Fixtures=10
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 255° → 252°
-[IPC 📡] audioBuffer #4061 | titan.running=true | size=8192
-[TitanEngine 🧠] Stabilization: Key=A Emotion=NEUTRAL Strategy=analogous Temp=5005K
-[COLOR_AUDIT] 🎨 {"vibe":"techno-club","key":"C#","strategy":"complementary","reason":"vibe_optimal","temp":5800,"mood":"neutral","hue":252,"sat":90,"light":45,"energy":66}
-[AGC TRUST ⚡TECHNO] IN[0.52, 0.40, 0.05] -> 💡 OUT[Front:0.65, Back:0.34, Mover:0.00]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#340bda S=#04ae42 | Energy=0.11 | Master=0.11
-[TitanEngine] Frame 11340: { vibe: 'techno-club', energy: '0.11', intensity: '0.11' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=C# minor | Genre=ELECTRONIC/electronic_4x4 | BPM=200 | Energy=66%
-[TitanOrchestrator] Frame 11340: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.65 mid=0.41 energy=0.13
-[StrategyArbiter] 🎨 STRATEGY SHIFT: analogous → complementary (avgSync=0.70, section=buildup, override=none) [COMMITTED for 240 frames]
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 255° → 252°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 144° → 165°
-[Harmony 🎵] Key Change (fallback): C# → B
-[AGC TRUST ⚡TECHNO] IN[0.42, 0.38, 0.04] -> 💡 OUT[Front:0.55, Back:0.30, Mover:0.00]
-[TitanEngine] 🎨 Palette: P=#340bda S=#04ae42 | Energy=0.10 | Master=0.10
-[TitanOrchestrator] Frame 11370: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.48 mid=0.41 energy=0.11
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 130° → 154°
-[IPC 📡] audioBuffer #4079 | titan.running=true | size=8192
-[ALPHA 📡] feedAudioBuffer #4080 | beta.ready=true | circuit=closed | failures=0
-[BETA 🥁] BPM UPDATED: 200 (raw=200, conf=0.88)
-[BETA 🎵] Key Detected: B minor (Confidence: 0.30)
-[GAMMA 🎵] Frame 4080: bpm=200, energy=0.71
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 200bpm | Section: buildup | Energy: 71% | Mood: neutral | Memory: 0.0s ago
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 114° → 142°
-[Titan] 🫁 Heartbeat #11400: Audio flowing? true | Last Packet: 35ms ago
-[TitanEngine 🧠] Stabilization: Key=A Emotion=NEUTRAL Strategy=complementary Temp=5002K
-[COLOR_AUDIT] 🎨 {"vibe":"techno-club","key":"B","strategy":"complementary","reason":"vibe_optimal","temp":5800,"mood":"neutral","hue":252,"sat":90,"light":45,"energy":55}
-[AGC TRUST ⚡TECHNO] IN[0.68, 0.44, 0.09] -> 💡 OUT[Front:0.82, Back:0.42, Mover:0.28]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=earth
-[TitanEngine] 🎨 Palette: P=#340bda S=#04ae42 | Energy=0.15 | Master=0.15
-[TitanEngine] Frame 11400: { vibe: 'techno-club', energy: '0.15', intensity: '0.15' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=B unknown | Genre=ELECTRONIC/electronic_4x4 | BPM=200 | Energy=55%
-[TitanOrchestrator] Frame 11400: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.65 mid=0.42 energy=0.14
-[TitanOrchestrator] 📡 audioBuffer received: 2048 samples, rms=0.7212
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 144° → 165°
-[IPC 📡] audioBuffer #4097 | titan.running=true | size=8192
-[KeyStabilizer] 🎵 KEY CHANGE: A → B (after 180 frames, 13 total changes)
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 161° → 178°
-[AGC TRUST ⚡TECHNO] IN[0.46, 0.44, 0.07] -> 💡 OUT[Front:0.52, Back:0.41, Mover:0.26]
-[TitanEngine] 🎨 Palette: P=#d70cdc S=#05b0ac | Energy=0.13 | Master=0.13
-[TitanOrchestrator] Frame 11430: Vibe=techno-club, Fixtures=10
-[AGC TRUST ⚡TECHNO] IN[0.47, 0.51, 0.21] -> 💡 OUT[Front:0.54, Back:0.57, Mover:0.53]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=water
-[TitanEngine] 🎨 Palette: P=#d80cdd S=#05b1ad | Energy=0.26 | Master=0.26
-[TitanEngine] Frame 11460: { vibe: 'techno-club', energy: '0.26', intensity: '0.26' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=B unknown | Genre=ELECTRONIC/electronic_4x4 | BPM=200 | Energy=47%
-[TitanOrchestrator] Frame 11460: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.51 mid=0.49 energy=0.26
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 200bpm | Section: buildup | Energy: 34% | Mood: neutral | Memory: 0.0s ago
-[Harmony 🎵] Key Change (fallback): B → A
-[IPC 📡] audioBuffer #4115 | titan.running=true | size=8192
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 315° → 299°
-[AGC TRUST ⚡TECHNO] IN[0.57, 0.51, 0.25] -> 💡 OUT[Front:0.63, Back:0.57, Mover:0.61]
-[TitanEngine] 🎨 Palette: P=#d80cdd S=#05b1ac | Energy=0.30 | Master=0.30
-[TitanOrchestrator] Frame 11490: Vibe=techno-club, Fixtures=10
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 224° → 227°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 161° → 178°
-[COLOR_AUDIT] 🎨 {"vibe":"techno-club","key":"A","strategy":"triadic","reason":"vibe_optimal","temp":5670,"mood":"neutral","hue":299,"sat":90,"light":45,"energy":47}
-[AGC TRUST ⚡TECHNO] IN[0.36, 0.36, 0.12] -> 💡 OUT[Front:0.43, Back:0.24, Mover:0.35]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=water
-[TitanEngine] 🎨 Palette: P=#d70cdc S=#05b0ac | Energy=0.16 | Master=0.16
-[TitanEngine] Frame 11520: { vibe: 'techno-club', energy: '0.16', intensity: '0.16' }
-[HAL] 🔧 Render #11520 | Active: 10/10 | Time: 0.03ms
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=A unknown | Genre=ELECTRONIC/electronic_4x4 | BPM=200 | Energy=47%
-[TitanOrchestrator] Frame 11520: Vibe=techno-club, Fixtures=10
-[IPC 📡] audioBuffer #4133 | titan.running=true | size=8192
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 224° → 227°
-[BETA 🎵] Key Detected: A unknown (Confidence: 0.30)
-[GAMMA 🎵] Frame 4140: bpm=200, energy=0.23
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 200bpm | Section: buildup | Energy: 23% | Mood: dreamy | Memory: 0.0s ago
-[Titan] 🫁 Heartbeat #11550: Audio flowing? true | Last Packet: 1ms ago
-[AGC TRUST ⚡TECHNO] IN[0.30, 0.33, 0.10] -> 💡 OUT[Front:0.36, Back:0.17, Mover:0.31]
-[TitanEngine] 🎨 Palette: P=#d60cdb S=#04afab | Energy=0.14 | Master=0.14
-[TitanOrchestrator] Frame 11550: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.33 mid=0.34 energy=0.14
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 224° → 227°
-[Harmony 🎵] Key Change (fallback): A → B
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 130° → 154°
-[HAL] 🔧 Render #11563 | Active: 10/10 | Time: 0.03ms
-[IPC 📡] audioBuffer #4151 | titan.running=true | size=8192
-[COLOR_AUDIT] 🎨 {"vibe":"techno-club","key":"B","strategy":"triadic","reason":"vibe_optimal","temp":5670,"mood":"dreamy","hue":299,"sat":90,"light":45,"energy":20}
-[AGC TRUST ⚡TECHNO] IN[0.34, 0.31, 0.04] -> 💡 OUT[Front:0.41, Back:0.10, Mover:0.00]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=water
-[TitanEngine] 🎨 Palette: P=#d50bda S=#04aea9 | Energy=0.08 | Master=0.08
-[TitanEngine] Frame 11580: { vibe: 'techno-club', energy: '0.08', intensity: '0.08' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=B unknown | Genre=ELECTRONIC/electronic_4x4 | BPM=200 | Energy=20%
-[TitanOrchestrator] Frame 11580: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.38 mid=0.31 energy=0.08
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 315° → 299°
-[StrategyArbiter] 🛡️ BREAKDOWN OVERRIDE: Forcing ANALOGOUS for visual relaxation
-[StrategyArbiter] 🎨 STRATEGY SHIFT: complementary → analogous (avgSync=0.69, section=breakdown, override=breakdown) [COMMITTED for 240 frames]
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 161° → 178°
-[HAL] 🔧 Render #11606 | Active: 10/10 | Time: 0.03ms
-[AGC TRUST ⚡TECHNO] IN[0.33, 0.35, 0.08] -> 💡 OUT[Front:0.40, Back:0.22, Mover:0.27]
-[TitanEngine] 🎨 Palette: P=#d50bda S=#04aea9 | Energy=0.12 | Master=0.12
-[TitanOrchestrator] Frame 11610: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.33 mid=0.39 energy=0.12
-[Harmony 🎵] Key Change (fallback): B → F
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 119° → 145°
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 161° → 178°
-[IPC 📡] audioBuffer #4169 | titan.running=true | size=8192
-[Brain] 🧠 LOBOTOMY Context: ELECTRONIC/electronic_4x4 @ 200bpm | Section: breakdown | Energy: 58% | Mood: neutral | Memory: 0.0s ago
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 191° → 202°
-[COLOR_AUDIT] 🎨 {"vibe":"techno-club","key":"F","strategy":"complementary","reason":"vibe_optimal","temp":5670,"mood":"neutral","hue":299,"sat":90,"light":45,"energy":95}
-[AGC TRUST ⚡TECHNO] IN[0.68, 0.47, 0.28] -> 💡 OUT[Front:0.73, Back:0.47, Mover:0.66]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=water
-[TitanEngine] 🎨 Palette: P=#d50bda S=#04aea9 | Energy=0.31 | Master=0.31
-[TitanEngine] Frame 11640: { vibe: 'techno-club', energy: '0.31', intensity: '0.31' }
-[Titan] 🌉 SYNAPTIC BRIDGE: Key=F unknown | Genre=ELECTRONIC/electronic_4x4 | BPM=200 | Energy=95%
-[TitanOrchestrator] Frame 11640: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.63 mid=0.45 energy=0.32
-[ThermalGravity] 🌡️ VibeTemp=9500K | Pole=240° | Force=22% | Hue: 315° → 299°
-[AGC TRUST ⚡TECHNO] IN[0.70, 0.40, 0.23] -> 💡 OUT[Front:0.75, Back:0.34, Mover:0.57]
-[TitanEngine] 🎨 Palette: P=#d50bda S=#04aea9 | Energy=0.26 | Master=0.26
-[TitanOrchestrator] Frame 11670: Vibe=techno-club, Fixtures=10
-[TitanOrchestrator] 👂 Audio metrics stored: bass=0.66 mid=0.37 energy=0.23
-[IPC 📡] audioBuffer #4187 | titan.running=true | size=8192
-[HAL] 🔧 Render #11684 | Active: 10/10 | Time: 0.05ms
-[Titan] 🫁 Heartbeat #11700: Audio flowing? true | Last Packet: 13ms ago
-[COLOR_AUDIT] 🎨 {"vibe":"techno-club","key":"F","strategy":"triadic","reason":"vibe_optimal","temp":5670,"mood":"neutral","hue":299,"sat":90,"light":45,"energy":38}
-[AGC TRUST ⚡TECHNO] IN[0.70, 0.37, 0.21] -> 💡 OUT[Front:0.76, Back:0.27, Mover:0.53]
-[TitanEngine ⚡] NervousSystem: Physics=techno Strobe=false Element=water
-[TitanEngine] 🎨 Palette: P=#d50bda S=#04aea9 | Energy=0.24 | Master=0.24
+[FRONT-TEL] sB:0.725 bass:1.000 mid:0.334 hM:0.244 tr:0.236 | isK:0 isKE:0 kickSig:0.000 | morph:0.227 brk:1 strict:1 | fL_in:0.725 fL_gate:0.485 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.529 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.842 bass:1.000 mid:0.338 hM:0.198 tr:0.210 | isK:0 isKE:0 kickSig:0.000 | morph:0.225 brk:1 strict:1 | fL_in:0.842 fL_gate:0.493 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.529 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.937 bass:1.000 mid:0.301 hM:0.149 tr:0.166 | isK:0 isKE:0 kickSig:0.000 | morph:0.220 brk:1 strict:1 | fL_in:0.937 fL_gate:0.503 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.529 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.870 bass:0.993 mid:0.256 hM:0.105 tr:0.120 | isK:0 isKE:0 kickSig:0.000 | morph:0.214 brk:1 strict:1 | fL_in:0.870 fL_gate:0.511 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.136 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.730 bass:0.855 mid:0.282 hM:0.152 tr:0.171 | isK:0 isKE:0 kickSig:0.000 | morph:0.209 brk:1 strict:1 | fL_in:0.730 fL_gate:0.516 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.007 outFR:0.000 outPar:0.000
+[SCHED] ✅ Crossfade complete → square
+[FRONT-TEL] sB:0.667 bass:0.865 mid:0.338 hM:0.197 tr:0.276 | isK:0 isKE:0 kickSig:0.000 | morph:0.206 brk:1 strict:1 | fL_in:0.667 fL_gate:0.519 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.647 bass:0.865 mid:0.338 hM:0.211 tr:0.276 | isK:0 isKE:0 kickSig:0.000 | morph:0.204 brk:1 strict:1 | fL_in:0.647 fL_gate:0.522 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.736 bass:0.931 mid:0.307 hM:0.157 tr:0.261 | isK:1 isKE:1 kickSig:0.931 | morph:0.200 brk:1 strict:1 | fL_in:0.736 fL_gate:0.527 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.931 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.685 bass:0.889 mid:0.266 hM:0.104 tr:0.174 | isK:1 isKE:0 kickSig:0.889 | morph:0.195 brk:1 strict:1 | fL_in:0.685 fL_gate:0.531 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.889 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.134 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.545 bass:0.786 mid:0.301 hM:0.121 tr:0.152 | isK:1 isKE:0 kickSig:0.786 | morph:0.191 brk:1 strict:1 | fL_in:0.545 fL_gate:0.532 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.786 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.006 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.429 bass:0.769 mid:0.360 hM:0.147 tr:0.157 | isK:1 isKE:0 kickSig:0.769 | morph:0.190 brk:1 strict:1 | fL_in:0.429 fL_gate:0.523 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.769 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.609 bass:0.860 mid:0.326 hM:0.156 tr:0.152 | isK:1 isKE:0 kickSig:0.860 | morph:0.187 brk:0 strict:1 | fL_in:0.609 fL_gate:0.525 fL_sq:0.020 fL_pow:0.601 fL_ign:1 | fR_in:0.860 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.667 bass:0.860 mid:0.326 hM:0.159 tr:0.152 | isK:1 isKE:0 kickSig:0.860 | morph:0.185 brk:1 strict:1 | fL_in:0.667 fL_gate:0.529 fL_sq:0.020 fL_pow:0.690 fL_ign:1 | fR_in:0.860 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.648 bass:0.839 mid:0.298 hM:0.163 tr:0.147 | isK:0 isKE:0 kickSig:0.000 | morph:0.181 brk:1 strict:1 | fL_in:0.648 fL_gate:0.532 fL_sq:0.020 fL_pow:0.556 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.133 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.488 bass:0.782 mid:0.389 hM:0.269 tr:0.167 | isK:0 isKE:0 kickSig:0.000 | morph:0.187 brk:1 strict:1 | fL_in:0.488 fL_gate:0.530 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.006 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.447 bass:0.902 mid:0.416 hM:0.206 tr:0.140 | isK:1 isKE:0 kickSig:0.902 | morph:0.203 brk:1 strict:1 | fL_in:0.447 fL_gate:0.523 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.902 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.000 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.434 bass:0.902 mid:0.416 hM:0.185 tr:0.140 | isK:1 isKE:0 kickSig:0.902 | morph:0.216 brk:1 strict:1 | fL_in:0.434 fL_gate:0.516 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.902 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.000 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.498 bass:0.992 mid:0.388 hM:0.139 tr:0.105 | isK:1 isKE:0 kickSig:0.992 | morph:0.217 brk:1 strict:1 | fL_in:0.498 fL_gate:0.516 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.992 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.000 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.626 bass:1.000 mid:0.362 hM:0.104 tr:0.071 | isK:1 isKE:0 kickSig:1.000 | morph:0.215 brk:1 strict:1 | fL_in:0.626 fL_gate:0.519 fL_sq:0.020 fL_pow:0.506 fL_ign:1 | fR_in:1.000 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.766 bass:1.000 mid:0.365 hM:0.097 tr:0.085 | isK:1 isKE:0 kickSig:1.000 | morph:0.214 brk:1 strict:1 | fL_in:0.766 fL_gate:0.525 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.853 bass:1.000 mid:0.393 hM:0.135 tr:0.120 | isK:1 isKE:0 kickSig:1.000 | morph:0.217 brk:1 strict:1 | fL_in:0.853 fL_gate:0.532 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.881 bass:1.000 mid:0.393 hM:0.147 tr:0.120 | isK:0 isKE:0 kickSig:0.000 | morph:0.220 brk:1 strict:1 | fL_in:0.881 fL_gate:0.539 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.529 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.879 bass:1.000 mid:0.396 hM:0.170 tr:0.138 | isK:0 isKE:0 kickSig:0.000 | morph:0.223 brk:1 strict:1 | fL_in:0.879 fL_gate:0.547 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.137 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.739 bass:0.888 mid:0.369 hM:0.160 tr:0.141 | isK:0 isKE:0 kickSig:0.000 | morph:0.222 brk:1 strict:1 | fL_in:0.739 fL_gate:0.551 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.007 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.630 bass:0.831 mid:0.470 hM:0.276 tr:0.293 | isK:0 isKE:0 kickSig:0.000 | morph:0.252 brk:1 strict:1 | fL_in:0.630 fL_gate:0.553 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.566 bass:0.823 mid:0.503 hM:0.286 tr:0.346 | isK:0 isKE:0 kickSig:0.000 | morph:0.291 brk:1 strict:1 | fL_in:0.566 fL_gate:0.554 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.649 bass:0.864 mid:0.468 hM:0.227 tr:0.270 | isK:0 isKE:0 kickSig:0.000 | morph:0.310 brk:1 strict:1 | fL_in:0.649 fL_gate:0.556 fL_sq:0.020 fL_pow:0.451 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.529 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.675 bass:0.864 mid:0.468 hM:0.208 tr:0.270 | isK:0 isKE:0 kickSig:0.000 | morph:0.327 brk:1 strict:1 | fL_in:0.675 fL_gate:0.559 fL_sq:0.020 fL_pow:0.600 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.529 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.606 bass:0.814 mid:0.428 hM:0.172 tr:0.210 | isK:0 isKE:0 kickSig:0.000 | morph:0.327 brk:1 strict:1 | fL_in:0.606 fL_gate:0.561 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.146 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.464 bass:0.721 mid:0.443 hM:0.166 tr:0.178 | isK:0 isKE:0 kickSig:0.000 | morph:0.331 brk:1 strict:1 | fL_in:0.464 fL_gate:0.553 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.010 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.428 bass:0.740 mid:0.470 hM:0.160 tr:0.158 | isK:0 isKE:0 kickSig:0.000 | morph:0.345 brk:1 strict:1 | fL_in:0.428 fL_gate:0.541 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.561 bass:0.806 mid:0.450 hM:0.131 tr:0.113 | isK:1 isKE:1 kickSig:0.806 | morph:0.349 brk:1 strict:1 | fL_in:0.561 fL_gate:0.542 fL_sq:0.020 fL_pow:0.067 fL_ign:1 | fR_in:0.806 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.267 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.491 bass:0.732 mid:0.419 hM:0.117 tr:0.085 | isK:1 isKE:0 kickSig:0.732 | morph:0.348 brk:1 strict:1 | fL_in:0.491 fL_gate:0.540 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.732 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.065 outFR:0.001 outPar:0.001
+[FRONT-TEL] sB:0.469 bass:0.732 mid:0.419 hM:0.113 tr:0.085 | isK:1 isKE:0 kickSig:0.732 | morph:0.347 brk:1 strict:1 | fL_in:0.469 fL_gate:0.535 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.732 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.001 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.337 bass:0.799 mid:0.515 hM:0.287 tr:0.182 | isK:1 isKE:0 kickSig:0.799 | morph:0.376 brk:1 strict:1 | fL_in:0.337 fL_gate:0.514 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.799 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.000 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.371 bass:0.907 mid:0.507 hM:0.290 tr:0.217 | isK:1 isKE:0 kickSig:0.907 | morph:0.397 brk:1 strict:1 | fL_in:0.371 fL_gate:0.501 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.907 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.000 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.465 bass:0.977 mid:0.491 hM:0.304 tr:0.250 | isK:1 isKE:0 kickSig:0.977 | morph:0.409 brk:1 strict:1 | fL_in:0.465 fL_gate:0.500 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.977 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.000 outFR:0.800 outPar:0.800
+[CHOREO] techno-club | #1:square [MIRROR ×2] | scene:4b | Pan:261 Tilt:-135 | sBPM:135 phase:89°
+[FRONT-TEL] sB:0.661 bass:1.000 mid:0.441 hM:0.249 tr:0.231 | isK:0 isKE:0 kickSig:0.000 | morph:0.408 brk:1 strict:1 | fL_in:0.661 fL_gate:0.504 fL_sq:0.020 fL_pow:0.901 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.529 outFR:0.001 outPar:0.001
+[FRONT-TEL] sB:0.797 bass:1.000 mid:0.409 hM:0.198 tr:0.206 | isK:0 isKE:0 kickSig:0.000 | morph:0.405 brk:1 strict:1 | fL_in:0.797 fL_gate:0.510 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.529 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.904 bass:1.000 mid:0.363 hM:0.140 tr:0.155 | isK:0 isKE:0 kickSig:0.000 | morph:0.400 brk:1 strict:1 | fL_in:0.904 fL_gate:0.519 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.529 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.836 bass:0.987 mid:0.315 hM:0.101 tr:0.109 | isK:0 isKE:0 kickSig:0.000 | morph:0.393 brk:1 strict:1 | fL_in:0.836 fL_gate:0.525 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.152 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.814 bass:0.987 mid:0.315 hM:0.088 tr:0.109 | isK:0 isKE:0 kickSig:0.000 | morph:0.386 brk:1 strict:1 | fL_in:0.814 fL_gate:0.532 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.013 outFR:0.000 outPar:0.000
+[TitanOrchestrator] ðŸŽ§ WORKER BPM=135 conf=0.37 | PLL=FREEWHEEL [mem=135@-0f] phase=0.00 sync=0.41 | beat #713 | bass=0.2694 sab=0.000 | ðŸ”¬in_peak=0.45204 in_rms=0.14288
+[FRONT-TEL] sB:0.702 bass:0.845 mid:0.294 hM:0.072 tr:0.081 | isK:0 isKE:0 kickSig:0.000 | morph:0.378 brk:1 strict:1 | fL_in:0.702 fL_gate:0.536 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:0%
+[FRONT-TEL] sB:0.659 bass:0.827 mid:0.351 hM:0.139 tr:0.238 | isK:0 isKE:0 kickSig:0.000 | morph:0.373 brk:1 strict:1 | fL_in:0.659 fL_gate:0.539 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.634 bass:0.835 mid:0.341 hM:0.127 tr:0.256 | isK:0 isKE:0 kickSig:0.000 | morph:0.367 brk:1 strict:1 | fL_in:0.634 fL_gate:0.541 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.582 bass:0.790 mid:0.326 hM:0.097 tr:0.176 | isK:0 isKE:0 kickSig:0.000 | morph:0.361 brk:1 strict:1 | fL_in:0.582 fL_gate:0.543 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.439 bass:0.685 mid:0.338 hM:0.139 tr:0.153 | isK:0 isKE:0 kickSig:0.000 | morph:0.356 brk:1 strict:1 | fL_in:0.439 fL_gate:0.534 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.353 bass:0.710 mid:0.413 hM:0.221 tr:0.170 | isK:0 isKE:0 kickSig:0.000 | morph:0.355 brk:1 strict:1 | fL_in:0.353 fL_gate:0.515 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.325 bass:0.710 mid:0.413 hM:0.247 tr:0.170 | isK:0 isKE:0 kickSig:0.000 | morph:0.353 brk:1 strict:1 | fL_in:0.325 fL_gate:0.496 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.554 bass:0.846 mid:0.382 hM:0.180 tr:0.143 | isK:1 isKE:1 kickSig:0.846 | morph:0.350 brk:1 strict:1 | fL_in:0.554 fL_gate:0.498 fL_sq:0.020 fL_pow:0.255 fL_ign:1 | fR_in:0.846 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.662 bass:0.894 mid:0.336 hM:0.130 tr:0.106 | isK:1 isKE:0 kickSig:0.894 | morph:0.345 brk:1 strict:1 | fL_in:0.662 fL_gate:0.502 fL_sq:0.020 fL_pow:0.898 fL_ign:1 | fR_in:0.894 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.568 bass:0.827 mid:0.367 hM:0.193 tr:0.114 | isK:1 isKE:0 kickSig:0.827 | morph:0.341 brk:1 strict:1 | fL_in:0.568 fL_gate:0.504 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.827 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.147 outFR:0.001 outPar:0.001
+[FRONT-TEL] sB:0.416 bass:0.888 mid:0.460 hM:0.309 tr:0.161 | isK:1 isKE:0 kickSig:0.888 | morph:0.350 brk:1 strict:1 | fL_in:0.416 fL_gate:0.497 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.888 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.011 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.465 bass:0.987 mid:0.359 hM:0.191 tr:0.121 | isK:1 isKE:0 kickSig:0.987 | morph:0.346 brk:1 strict:1 | fL_in:0.465 fL_gate:0.496 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.987 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.000 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.480 bass:0.987 mid:0.359 hM:0.153 tr:0.121 | isK:1 isKE:0 kickSig:0.987 | morph:0.342 brk:1 strict:1 | fL_in:0.480 fL_gate:0.496 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.987 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.000 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.551 bass:1.000 mid:0.309 hM:0.099 tr:0.083 | isK:0 isKE:0 kickSig:0.000 | morph:0.336 brk:1 strict:1 | fL_in:0.551 fL_gate:0.498 fL_sq:0.020 fL_pow:0.233 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.529 outFR:0.001 outPar:0.001
+[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=BRIGHT dom=89% B/D/N=483/44/16
+[FRONT-TEL] sB:0.742 bass:1.000 mid:0.298 hM:0.095 tr:0.084 | isK:0 isKE:0 kickSig:0.000 | morph:0.329 brk:1 strict:1 | fL_in:0.742 fL_gate:0.504 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.529 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.863 bass:1.000 mid:0.310 hM:0.092 tr:0.107 | isK:0 isKE:0 kickSig:0.000 | morph:0.323 brk:1 strict:1 | fL_in:0.863 fL_gate:0.511 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.529 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.929 bass:1.000 mid:0.291 hM:0.077 tr:0.106 | isK:0 isKE:0 kickSig:0.000 | morph:0.316 brk:1 strict:1 | fL_in:0.929 fL_gate:0.520 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.529 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.950 bass:1.000 mid:0.291 hM:0.072 tr:0.106 | isK:0 isKE:0 kickSig:0.000 | morph:0.309 brk:1 strict:1 | fL_in:0.950 fL_gate:0.529 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.529 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.892 bass:1.000 mid:0.271 hM:0.062 tr:0.092 | isK:0 isKE:0 kickSig:0.000 | morph:0.301 brk:1 strict:1 | fL_in:0.892 fL_gate:0.537 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.144 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.754 bass:0.890 mid:0.343 hM:0.180 tr:0.215 | isK:0 isKE:0 kickSig:0.000 | morph:0.298 brk:1 strict:1 | fL_in:0.754 fL_gate:0.542 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.009 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.690 bass:0.884 mid:0.382 hM:0.215 tr:0.297 | isK:0 isKE:0 kickSig:0.000 | morph:0.296 brk:1 strict:1 | fL_in:0.690 fL_gate:0.546 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.747 bass:0.925 mid:0.346 hM:0.189 tr:0.245 | isK:0 isKE:0 kickSig:0.000 | morph:0.292 brk:1 strict:1 | fL_in:0.747 fL_gate:0.550 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.529 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.627 bass:0.838 mid:0.317 hM:0.156 tr:0.191 | isK:0 isKE:0 kickSig:0.000 | morph:0.287 brk:1 strict:1 | fL_in:0.627 fL_gate:0.552 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.143 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.471 bass:0.768 mid:0.364 hM:0.176 tr:0.213 | isK:0 isKE:0 kickSig:0.000 | morph:0.284 brk:1 strict:1 | fL_in:0.471 fL_gate:0.546 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.009 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.421 bass:0.768 mid:0.364 hM:0.182 tr:0.213 | isK:0 isKE:0 kickSig:0.000 | morph:0.282 brk:1 strict:1 | fL_in:0.421 fL_gate:0.535 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.428 bass:0.781 mid:0.373 hM:0.187 tr:0.240 | isK:0 isKE:0 kickSig:0.000 | morph:0.280 brk:1 strict:1 | fL_in:0.428 fL_gate:0.525 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.536 bass:0.811 mid:0.341 hM:0.179 tr:0.230 | isK:0 isKE:0 kickSig:0.000 | morph:0.276 brk:1 strict:1 | fL_in:0.536 fL_gate:0.526 fL_sq:0.020 fL_pow:0.030 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.114 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.483 bass:0.735 mid:0.324 hM:0.171 tr:0.204 | isK:0 isKE:0 kickSig:0.000 | morph:0.272 brk:1 strict:1 | fL_in:0.483 fL_gate:0.524 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.004 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.331 bass:0.820 mid:0.452 hM:0.315 tr:0.263 | isK:1 isKE:1 kickSig:0.820 | morph:0.288 brk:1 strict:1 | fL_in:0.331 fL_gate:0.504 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.820 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.000 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.347 bass:0.917 mid:0.426 hM:0.313 tr:0.279 | isK:1 isKE:0 kickSig:0.917 | morph:0.292 brk:1 strict:1 | fL_in:0.347 fL_gate:0.489 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.917 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.000 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.352 bass:0.917 mid:0.426 hM:0.312 tr:0.279 | isK:1 isKE:0 kickSig:0.917 | morph:0.296 brk:1 strict:1 | fL_in:0.352 fL_gate:0.476 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.917 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.000 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.434 bass:0.993 mid:0.409 hM:0.330 tr:0.304 | isK:1 isKE:0 kickSig:0.993 | morph:0.295 brk:1 strict:1 | fL_in:0.434 fL_gate:0.474 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.993 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.000 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.630 bass:1.000 mid:0.360 hM:0.273 tr:0.275 | isK:1 isKE:0 kickSig:1.000 | morph:0.292 brk:1 strict:1 | fL_in:0.630 fL_gate:0.478 fL_sq:0.020 fL_pow:0.816 fL_ign:1 | fR_in:1.000 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[GlassBridge] 🏓 Ping-Pong Status: Sent: 19088 | Dropped: 43 | In-Flight: 0 | PoolFree: 3
+[FRONT-TEL] sB:0.775 bass:1.000 mid:0.336 hM:0.222 tr:0.239 | isK:1 isKE:0 kickSig:1.000 | morph:0.288 brk:1 strict:1 | fL_in:0.775 fL_gate:0.485 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.887 bass:1.000 mid:0.314 hM:0.163 tr:0.184 | isK:0 isKE:0 kickSig:0.000 | morph:0.283 brk:1 strict:1 | fL_in:0.887 fL_gate:0.493 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.529 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.901 bass:1.000 mid:0.285 hM:0.117 tr:0.135 | isK:0 isKE:0 kickSig:0.000 | morph:0.277 brk:1 strict:1 | fL_in:0.901 fL_gate:0.502 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.529 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.774 bass:0.915 mid:0.303 hM:0.144 tr:0.160 | isK:0 isKE:0 kickSig:0.000 | morph:0.271 brk:1 strict:1 | fL_in:0.774 fL_gate:0.508 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.141 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.625 bass:0.861 mid:0.399 hM:0.246 tr:0.304 | isK:0 isKE:0 kickSig:0.000 | morph:0.271 brk:1 strict:1 | fL_in:0.625 fL_gate:0.511 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.008 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.675 bass:0.894 mid:0.338 hM:0.178 tr:0.279 | isK:0 isKE:0 kickSig:0.000 | morph:0.267 brk:1 strict:1 | fL_in:0.675 fL_gate:0.515 fL_sq:0.020 fL_pow:0.859 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.529 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.691 bass:0.894 mid:0.338 hM:0.156 tr:0.279 | isK:0 isKE:0 kickSig:0.000 | morph:0.264 brk:1 strict:1 | fL_in:0.691 fL_gate:0.519 fL_sq:0.020 fL_pow:0.935 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.529 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.688 bass:0.882 mid:0.282 hM:0.105 tr:0.193 | isK:0 isKE:0 kickSig:0.000 | morph:0.258 brk:1 strict:1 | fL_in:0.688 fL_gate:0.523 fL_sq:0.020 fL_pow:0.888 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.140 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.572 bass:0.788 mid:0.245 hM:0.077 tr:0.130 | isK:0 isKE:0 kickSig:0.000 | morph:0.250 brk:1 strict:1 | fL_in:0.572 fL_gate:0.524 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.008 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.416 bass:0.754 mid:0.337 hM:0.118 tr:0.145 | isK:0 isKE:0 kickSig:0.000 | morph:0.247 brk:1 strict:1 | fL_in:0.416 fL_gate:0.515 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.541 bass:0.820 mid:0.326 hM:0.139 tr:0.144 | isK:1 isKE:1 kickSig:0.820 | morph:0.243 brk:1 strict:1 | fL_in:0.541 fL_gate:0.516 fL_sq:0.020 fL_pow:0.089 fL_ign:1 | fR_in:0.820 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.335 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.616 bass:0.840 mid:0.303 hM:0.136 tr:0.133 | isK:1 isKE:0 kickSig:0.840 | morph:0.238 brk:1 strict:1 | fL_in:0.616 fL_gate:0.519 fL_sq:0.020 fL_pow:0.463 fL_ign:1 | fR_in:0.840 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.641 bass:0.840 mid:0.303 hM:0.135 tr:0.133 | isK:1 isKE:0 kickSig:0.840 | morph:0.234 brk:1 strict:1 | fL_in:0.641 fL_gate:0.522 fL_sq:0.020 fL_pow:0.586 fL_ign:1 | fR_in:0.840 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.520 bass:0.742 mid:0.327 hM:0.161 tr:0.131 | isK:1 isKE:0 kickSig:0.742 | morph:0.230 brk:1 strict:1 | fL_in:0.520 fL_gate:0.522 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.742 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.138 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.393 bass:0.859 mid:0.357 hM:0.195 tr:0.142 | isK:1 isKE:0 kickSig:0.859 | morph:0.229 brk:1 strict:1 | fL_in:0.393 fL_gate:0.510 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.859 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.007 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.472 bass:0.969 mid:0.281 hM:0.124 tr:0.107 | isK:1 isKE:0 kickSig:0.969 | morph:0.223 brk:1 strict:1 | fL_in:0.472 fL_gate:0.509 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.969 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.000 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.522 bass:1.000 mid:0.240 hM:0.084 tr:0.075 | isK:0 isKE:0 kickSig:0.000 | morph:0.216 brk:1 strict:1 | fL_in:0.522 fL_gate:0.510 fL_sq:0.020 fL_pow:0.035 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.129 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.711 bass:1.000 mid:0.225 hM:0.070 tr:0.071 | isK:0 isKE:0 kickSig:0.000 | morph:0.207 brk:0 strict:1 | fL_in:0.711 fL_gate:0.514 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.529 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.772 bass:1.000 mid:0.225 hM:0.066 tr:0.071 | isK:0 isKE:0 kickSig:0.000 | morph:0.200 brk:1 strict:1 | fL_in:0.772 fL_gate:0.520 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.529 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.868 bass:1.000 mid:0.277 hM:0.112 tr:0.114 | isK:0 isKE:0 kickSig:0.000 | morph:0.194 brk:1 strict:1 | fL_in:0.868 fL_gate:0.528 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.529 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.935 bass:1.000 mid:0.301 hM:0.162 tr:0.139 | isK:0 isKE:0 kickSig:0.000 | morph:0.191 brk:1 strict:1 | fL_in:0.935 fL_gate:0.536 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.529 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.859 bass:0.967 mid:0.315 hM:0.170 tr:0.143 | isK:0 isKE:0 kickSig:0.000 | morph:0.187 brk:1 strict:1 | fL_in:0.859 fL_gate:0.543 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.134 outFR:0.000 outPar:0.000
+[CHOREO] techno-club | #1:square [MIRROR ×2] | scene:7b | Pan:-201 Tilt:-135 | sBPM:135 phase:169°
+[FRONT-TEL] sB:0.714 bass:0.853 mid:0.396 hM:0.268 tr:0.273 | isK:0 isKE:0 kickSig:0.000 | morph:0.195 brk:1 strict:1 | fL_in:0.714 fL_gate:0.547 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.006 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.667 bass:0.853 mid:0.396 hM:0.300 tr:0.273 | isK:0 isKE:0 kickSig:0.000 | morph:0.202 brk:1 strict:1 | fL_in:0.667 fL_gate:0.550 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.561 bass:0.822 mid:0.472 hM:0.344 tr:0.379 | isK:0 isKE:0 kickSig:0.000 | morph:0.236 brk:1 strict:1 | fL_in:0.561 fL_gate:0.551 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.656 bass:0.880 mid:0.418 hM:0.277 tr:0.337 | isK:1 isKE:1 kickSig:0.880 | morph:0.245 brk:1 strict:1 | fL_in:0.656 fL_gate:0.554 fL_sq:0.020 fL_pow:0.492 fL_ign:1 | fR_in:0.880 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.665 bass:0.871 mid:0.362 hM:0.211 tr:0.259 | isK:1 isKE:0 kickSig:0.871 | morph:0.243 brk:1 strict:1 | fL_in:0.665 fL_gate:0.557 fL_sq:0.020 fL_pow:0.526 fL_ign:1 | fR_in:0.871 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.000 outPar:0.000
+[TitanOrchestrator] ðŸŽ§ WORKER BPM=135 conf=0.37 | PLL=FREEWHEEL [mem=135@-0f] phase=0.00 sync=0.45 | beat #718 | bass=0.1833 sab=0.108 | ðŸ”¬in_peak=0.45369 in_rms=0.16111
+[FRONT-TEL] sB:0.507 bass:0.755 mid:0.369 hM:0.180 tr:0.210 | isK:1 isKE:0 kickSig:0.755 | morph:0.242 brk:1 strict:1 | fL_in:0.507 fL_gate:0.554 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.755 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.139 outFR:0.000 outPar:0.000
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:0%
+[FRONT-TEL] sB:0.427 bass:0.765 mid:0.406 hM:0.166 tr:0.193 | isK:1 isKE:0 kickSig:0.765 | morph:0.246 brk:1 strict:1 | fL_in:0.427 fL_gate:0.542 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.765 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.008 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.625 bass:0.863 mid:0.349 hM:0.111 tr:0.131 | isK:1 isKE:0 kickSig:0.863 | morph:0.243 brk:0 strict:1 | fL_in:0.625 fL_gate:0.545 fL_sq:0.020 fL_pow:0.593 fL_ign:1 | fR_in:0.863 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.689 bass:0.863 mid:0.349 hM:0.093 tr:0.131 | isK:1 isKE:0 kickSig:0.863 | morph:0.241 brk:1 strict:1 | fL_in:0.689 fL_gate:0.548 fL_sq:0.020 fL_pow:0.722 fL_ign:1 | fR_in:0.863 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.633 bass:0.822 mid:0.300 hM:0.081 tr:0.094 | isK:0 isKE:0 kickSig:0.000 | morph:0.236 brk:1 strict:1 | fL_in:0.633 fL_gate:0.550 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.138 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.460 bass:0.849 mid:0.433 hM:0.270 tr:0.183 | isK:0 isKE:0 kickSig:0.000 | morph:0.250 brk:1 strict:1 | fL_in:0.460 fL_gate:0.543 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.008 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.448 bass:0.931 mid:0.415 hM:0.276 tr:0.216 | isK:1 isKE:0 kickSig:0.931 | morph:0.256 brk:1 strict:1 | fL_in:0.448 fL_gate:0.535 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.931 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.000 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.530 bass:0.999 mid:0.392 hM:0.309 tr:0.261 | isK:1 isKE:0 kickSig:0.999 | morph:0.255 brk:1 strict:1 | fL_in:0.530 fL_gate:0.535 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.999 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.000 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.580 bass:1.000 mid:0.368 hM:0.294 tr:0.267 | isK:1 isKE:0 kickSig:1.000 | morph:0.254 brk:1 strict:1 | fL_in:0.580 fL_gate:0.537 fL_sq:0.020 fL_pow:0.173 fL_ign:1 | fR_in:1.000 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.597 bass:1.000 mid:0.368 hM:0.289 tr:0.267 | isK:1 isKE:0 kickSig:1.000 | morph:0.252 brk:1 strict:1 | fL_in:0.597 fL_gate:0.539 fL_sq:0.020 fL_pow:0.245 fL_ign:1 | fR_in:1.000 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.740 bass:1.000 mid:0.339 hM:0.232 tr:0.236 | isK:1 isKE:0 kickSig:1.000 | morph:0.249 brk:1 strict:1 | fL_in:0.740 fL_gate:0.543 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.865 bass:1.000 mid:0.304 hM:0.165 tr:0.187 | isK:1 isKE:0 kickSig:1.000 | morph:0.244 brk:1 strict:1 | fL_in:0.865 fL_gate:0.550 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.885 bass:1.000 mid:0.284 hM:0.110 tr:0.133 | isK:0 isKE:0 kickSig:0.000 | morph:0.238 brk:1 strict:1 | fL_in:0.885 fL_gate:0.558 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.529 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.892 bass:1.000 mid:0.284 hM:0.093 tr:0.133 | isK:0 isKE:0 kickSig:0.000 | morph:0.233 brk:1 strict:1 | fL_in:0.892 fL_gate:0.565 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.529 outFR:0.000 outPar:0.000
+[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=BRIGHT dom=89% B/D/N=483/46/15
+[FRONT-TEL] sB:0.740 bass:0.879 mid:0.257 hM:0.077 tr:0.133 | isK:0 isKE:0 kickSig:0.000 | morph:0.226 brk:1 strict:1 | fL_in:0.740 fL_gate:0.569 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.137 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.665 bass:0.838 mid:0.308 hM:0.139 tr:0.283 | isK:0 isKE:0 kickSig:0.000 | morph:0.222 brk:1 strict:1 | fL_in:0.665 fL_gate:0.571 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.000 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.007 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.708 bass:0.899 mid:0.304 hM:0.132 tr:0.298 | isK:1 isKE:1 kickSig:0.899 | morph:0.218 brk:1 strict:1 | fL_in:0.708 fL_gate:0.575 fL_sq:0.020 fL_pow:0.670 fL_ign:1 | fR_in:0.899 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.768 bass:0.945 mid:0.291 hM:0.099 tr:0.231 | isK:1 isKE:0 kickSig:0.945 | morph:0.213 brk:1 strict:1 | fL_in:0.768 fL_gate:0.579 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.945 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.673 bass:0.880 mid:0.262 hM:0.077 tr:0.160 | isK:1 isKE:0 kickSig:0.880 | morph:0.207 brk:1 strict:1 | fL_in:0.673 fL_gate:0.582 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.880 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.136 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.520 bass:0.790 mid:0.346 hM:0.190 tr:0.163 | isK:1 isKE:0 kickSig:0.790 | morph:0.205 brk:0 strict:1 | fL_in:0.520 fL_gate:0.578 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.790 fR_gate:0.301 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.007 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.470 bass:0.790 mid:0.346 hM:0.226 tr:0.163 | isK:1 isKE:0 kickSig:0.790 | morph:0.203 brk:1 strict:1 | fL_in:0.470 fL_gate:0.568 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.790 fR_gate:0.301 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.000 outFR:0.800 outPar:0.800

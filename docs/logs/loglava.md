@@ -1,992 +1,171 @@
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:31 | sBPM:92 phase:120°
-[BETA 🎵] Key Detected: D minor (Confidence: 0.81)
-[PROBE-1 BETA ✅ BPM OK] frame=1800 | bpm=92 | conf=0.276 | onBeat=false
-[GAMMA 🎵] Frame 1800: bpm=92, energy=0.16
-[BETA 📡] AUDIO_BUFFER #1800 | size=2048
-[AGC 🎚️] Gain: 0.70x | In: 0.364 → Out: 0.253 | Peak: 0.703 | ✅ ACTIVE
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.638 (Rock target: >0.7)
-   Flatness:    0.478 (Tonal<0.3, Noise>0.7)
-   Centroid:    8478Hz (Bright>2000, Dark<1200)
-   CrestFactor: 4.09 (Dynamics)
-   Rolloff:     18109Hz (85% energy)
-   Latency:     0.42ms
-   UltraAir:    0.003 (NEW: 16-22kHz sizzle)
-[🥁 SIEVE] chose L55→55.47 (93bpm) corr=0.313 globalMax=0.313 threshold=0.235
-[🥁 GODEAR BPM] 92bpm (raw=93) conf=0.313 samples=130 frameDur=46.4ms virtualDur=11.61ms lagRange=[27,74] energy=0.0000
-[SimpleSectionTracker] 📊 section=buildup | bassR=0.79/1.4 wE=0.06/0.75 kick=false cool=false
-[Harmony ⚠️] Freq 43Hz fuera de rango musical
-[SimpleSectionTracker] 📍 buildup → breakdown | bassR=0.67 wE=0.05 ΔE=-0.136 kick=false
-[HAL] ⚠️ Driver not connected, dropping frames
-[IPC 📡] audioBuffer #1815 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=92 conf=0.29 | PLL=FREEWHEEL phase=0.00 sync=0.20 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:10 | sBPM:92 phase:164°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:10 | sBPM:92 phase:164°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.16 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-17 | sBPM:92 phase:209°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-17 | sBPM:92 phase:209°
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.702 (Rock target: >0.7)
-   Flatness:    0.371 (Tonal<0.3, Noise>0.7)
-   Centroid:    6958Hz (Bright>2000, Dark<1200)
-   CrestFactor: 4.43 (Dynamics)
-   Rolloff:     17356Hz (85% energy)
-   Latency:     0.43ms
-   UltraAir:    0.006 (NEW: 16-22kHz sizzle)
-[HAL] ⚠️ Driver not connected, dropping frames
-[IPC 📡] audioBuffer #1846 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.02 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-34 | sBPM:92 phase:253°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-34 | sBPM:92 phase:253°
-[BETA 🎵] Key Detected: D minor (Confidence: 0.78)
-[PROBE-1 BETA ✅ BPM OK] frame=1860 | bpm=185 | conf=0.303 | onBeat=false
-[GAMMA 🎵] Frame 1860: bpm=185, energy=0.10
-[AGC 🎚️] Gain: 0.70x | In: 0.111 → Out: 0.078 | Peak: 0.698 | ✅ ACTIVE
-[TitanOrchestrator] � WORKER BPM=185 conf=0.28 | PLL=FREEWHEEL phase=0.00 sync=0.31 | beat #0
-[StrategyArbiter] 🔄 Running... frame=6000 | current=analogous | commitment=0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-19 | sBPM:180 phase:328°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-19 | sBPM:180 phase:328°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[TitanOrchestrator] 📡 audioBuffer received: 2048 samples, rms=0.2343
-[HAL] ⚠️ Driver not connected, dropping frames
-[IPC 📡] audioBuffer #1875 | titan.running=true | size=8192
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.659 (Rock target: >0.7)
-   Flatness:    0.419 (Tonal<0.3, Noise>0.7)
-   Centroid:    6988Hz (Bright>2000, Dark<1200)
-   CrestFactor: 3.94 (Dynamics)
-   Rolloff:     17388Hz (85% energy)
-   Latency:     0.54ms
-   UltraAir:    0.007 (NEW: 16-22kHz sizzle)
-[Harmony 🎵] Key Change (fallback): D → C
-[TitanOrchestrator] � WORKER BPM=185 conf=0.25 | PLL=FREEWHEEL phase=0.00 sync=0.24 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:32 | sBPM:185 phase:62°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:32 | sBPM:185 phase:62°
-[IPC 📡] audioBuffer #1905 | titan.running=true | size=8192
-[Harmony ⚠️] Freq 43Hz fuera de rango musical
-[HAL] ⚠️ Driver not connected, dropping frames
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.03 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:7 | sBPM:185 phase:169°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:7 | sBPM:185 phase:169°
-[BETA 🎵] Key Detected: C minor (Confidence: 0.79)
-[PROBE-1 BETA ✅ BPM OK] frame=1920 | bpm=185 | conf=0.260 | onBeat=false
-[GAMMA 🎵] Frame 1920: bpm=185, energy=0.07
-[AGC 🎚️] Gain: 0.84x | In: 0.093 → Out: 0.078 | Peak: 0.582 | ✅ ACTIVE
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.728 (Rock target: >0.7)
-   Flatness:    0.325 (Tonal<0.3, Noise>0.7)
-   Centroid:    7419Hz (Bright>2000, Dark<1200)
-   CrestFactor: 4.45 (Dynamics)
-   Rolloff:     18099Hz (85% energy)
-   Latency:     0.29ms
-   UltraAir:    0.001 (NEW: 16-22kHz sizzle)
-[🥁 SIEVE] chose L55→55.20 (94bpm) corr=0.283 globalMax=0.283 threshold=0.213
-[🥁 OCTAVE BLOCK] 185→94 BPM (3/8 scans)
-[🥁 GODEAR BPM] 185bpm (raw=94) conf=0.283 samples=130 frameDur=46.4ms virtualDur=11.61ms lagRange=[27,74] energy=0.0089
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[IPC 📡] audioBuffer #1933 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=185 conf=0.26 | PLL=FREEWHEEL phase=0.00 sync=0.29 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-35 | sBPM:185 phase:260°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-35 | sBPM:185 phase:260°
-[HAL] ⚠️ Driver not connected, dropping frames
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.47 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-15 | sBPM:143 phase:335°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-15 | sBPM:143 phase:335°
-[IPC 📡] audioBuffer #1958 | titan.running=true | size=8192
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.707 (Rock target: >0.7)
-   Flatness:    0.364 (Tonal<0.3, Noise>0.7)
-   Centroid:    6423Hz (Bright>2000, Dark<1200)
-   CrestFactor: 4.48 (Dynamics)
-   Rolloff:     15730Hz (85% energy)
-   Latency:     0.63ms
-   UltraAir:    0.000 (NEW: 16-22kHz sizzle)
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.06 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:20 | sBPM:102 phase:35°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:20 | sBPM:102 phase:35°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[TitanOrchestrator] 📡 audioBuffer received: 2048 samples, rms=0.0960
-[HAL] ⚠️ Driver not connected, dropping frames
-[TitanOrchestrator] � WORKER BPM=143 conf=0.27 | PLL=FREEWHEEL phase=0.00 sync=0.07 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:36 | sBPM:130 phase:84°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:36 | sBPM:130 phase:84°
-[IPC 📡] audioBuffer #1980 | titan.running=true | size=8192
-[BETA 🎵] Key Detected: C minor (Confidence: 0.80)
-[PROBE-1 BETA ✅ BPM OK] frame=1980 | bpm=143 | conf=0.268 | onBeat=false
-[GAMMA 🎵] Frame 1980: bpm=143, energy=0.05
-[AGC 🎚️] Gain: 1.01x | In: 0.047 → Out: 0.047 | Peak: 0.486 | ✅ ACTIVE
-[HAL] ⚠️ Driver not connected, dropping frames
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.18 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:17 | sBPM:109 phase:151°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:17 | sBPM:109 phase:151°
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.798 (Rock target: >0.7)
-   Flatness:    0.343 (Tonal<0.3, Noise>0.7)
-   Centroid:    7366Hz (Bright>2000, Dark<1200)
-   CrestFactor: 6.61 (Dynamics)
-   Rolloff:     17959Hz (85% energy)
-   Latency:     0.32ms
-   UltraAir:    0.000 (NEW: 16-22kHz sizzle)
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[IPC 📡] audioBuffer #2011 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.21 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-16 | sBPM:81 phase:206°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-16 | sBPM:81 phase:206°
-[HAL] ⚠️ Driver not connected, dropping frames
-[BETA 🎵] Key Detected: C minor (Confidence: 0.80)
-[PROBE-1 BETA ✅ BPM OK] frame=2040 | bpm=75 | conf=0.282 | onBeat=false
-[GAMMA 🎵] Frame 2040: bpm=75, energy=0.11
-[IPC 📡] audioBuffer #2041 | titan.running=true | size=8192
-[AGC 🎚️] Gain: 1.21x | In: 0.111 → Out: 0.134 | Peak: 0.406 | ✅ ACTIVE
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.834 (Rock target: >0.7)
-   Flatness:    0.268 (Tonal<0.3, Noise>0.7)
-   Centroid:    7562Hz (Bright>2000, Dark<1200)
-   CrestFactor: 7.00 (Dynamics)
-   Rolloff:     18131Hz (85% energy)
-   Latency:     0.35ms
-   UltraAir:    0.002 (NEW: 16-22kHz sizzle)
-[🥁 SIEVE] chose L69→68.83 (75bpm) corr=0.141 globalMax=0.141 threshold=0.105
-[🥁 GODEAR BPM] 75bpm (raw=75) conf=0.141 samples=130 frameDur=46.4ms virtualDur=11.61ms lagRange=[27,74] energy=0.0062
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.30 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-34 | sBPM:75 phase:250°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-34 | sBPM:75 phase:250°
-[TitanOrchestrator] � WORKER BPM=75 conf=0.28 | PLL=FREEWHEEL phase=0.00 sync=0.35 | beat #0
-[StrategyArbiter] 🔄 Running... frame=6600 | current=analogous | commitment=0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-34 | sBPM:75 phase:290°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-34 | sBPM:75 phase:290°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[HAL] ⚠️ Driver not connected, dropping frames
-[IPC 📡] audioBuffer #2071 | titan.running=true | size=8192
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.751 (Rock target: >0.7)
-   Flatness:    0.352 (Tonal<0.3, Noise>0.7)
-   Centroid:    6727Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.21 (Dynamics)
-   Rolloff:     16441Hz (85% energy)
-   Latency:     0.51ms
-   UltraAir:    0.013 (NEW: 16-22kHz sizzle)
-[TitanOrchestrator] � WORKER BPM=112 conf=0.25 | PLL=FREEWHEEL phase=0.00 sync=0.32 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-14 | sBPM:100 phase:337°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-14 | sBPM:100 phase:337°
-[IPC 📡] audioBuffer #2099 | titan.running=true | size=8192
-[HAL] ⚠️ Driver not connected, dropping frames
-[BETA 🎵] Key Detected: C minor (Confidence: 0.82)
-[PROBE-1 BETA ✅ BPM OK] frame=2100 | bpm=113 | conf=0.265 | onBeat=false
-[GAMMA 🎵] Frame 2100: bpm=113, energy=0.52
-[BETA 📡] AUDIO_BUFFER #2100 | size=2048
-[AGC 🎚️] Gain: 1.44x | In: 0.344 → Out: 0.454 | Peak: 0.344 | ✅ ACTIVE
-[SimpleSectionTracker] 📊 section=breakdown | bassR=2.85/1.4 wE=0.53/0.75 kick=false cool=false
-[TitanOrchestrator] � WORKER BPM=158 conf=0.27 | PLL=FREEWHEEL phase=0.00 sync=0.25 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(32%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:21 | sBPM:115 phase:36°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:21 | sBPM:115 phase:36°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.15 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:35 | sBPM:158 phase:105°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:35 | sBPM:158 phase:105°
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.766 (Rock target: >0.7)
-   Flatness:    0.358 (Tonal<0.3, Noise>0.7)
-   Centroid:    7090Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.55 (Dynamics)
-   Rolloff:     17582Hz (85% energy)
-   Latency:     0.33ms
-   UltraAir:    0.025 (NEW: 16-22kHz sizzle)
-[IPC 📡] audioBuffer #2125 | titan.running=true | size=8192
-[HAL] ⚠️ Driver not connected, dropping frames
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-1 | sBPM:160 phase:181°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-1 | sBPM:160 phase:181°
-[SimpleSectionTracker] 📍 breakdown → buildup | bassR=1.14 wE=0.43 ΔE=0.043 kick=false
-[IPC 📡] audioBuffer #2153 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.02 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-36 | sBPM:167 phase:264°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-36 | sBPM:167 phase:264°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[HAL] ⚠️ Driver not connected, dropping frames
-[BETA 🎵] Key Detected: C minor (Confidence: 0.85)
-[PROBE-1 BETA ✅ BPM OK] frame=2160 | bpm=170 | conf=0.296 | onBeat=false
-[GAMMA 🎵] Frame 2160: bpm=170, energy=0.34
-[AGC 🎚️] Gain: 0.72x | In: 0.427 → Out: 0.308 | Peak: 0.687 | ✅ ACTIVE
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.749 (Rock target: >0.7)
-   Flatness:    0.353 (Tonal<0.3, Noise>0.7)
-   Centroid:    6619Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.20 (Dynamics)
-   Rolloff:     15956Hz (85% energy)
-   Latency:     0.43ms
-   UltraAir:    0.021 (NEW: 16-22kHz sizzle)
-[🥁 SIEVE] chose L28→28.28 (183bpm) corr=0.242 globalMax=0.242 threshold=0.181
-[🥁 GODEAR BPM] 174bpm (raw=183) conf=0.242 samples=130 frameDur=46.4ms virtualDur=11.61ms lagRange=[27,74] energy=0.0380
-[TitanOrchestrator] � WORKER BPM=177 conf=0.28 | PLL=FREEWHEEL phase=0.00 sync=0.30 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-6 | sBPM:176 phase:350°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-6 | sBPM:176 phase:350°
-[IPC 📡] audioBuffer #2182 | titan.running=true | size=8192
-[HAL] ⚠️ Driver not connected, dropping frames
-[TitanOrchestrator] � WORKER BPM=98 conf=0.29 | PLL=FREEWHEEL phase=0.00 sync=0.18 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:29 | sBPM:102 phase:54°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:29 | sBPM:102 phase:54°
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.673 (Rock target: >0.7)
-   Flatness:    0.410 (Tonal<0.3, Noise>0.7)
-   Centroid:    7025Hz (Bright>2000, Dark<1200)
-   CrestFactor: 4.28 (Dynamics)
-   Rolloff:     17485Hz (85% energy)
-   Latency:     0.52ms
-   UltraAir:    0.027 (NEW: 16-22kHz sizzle)
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[IPC 📡] audioBuffer #2209 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.02 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(33%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:35 | sBPM:98 phase:99°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:35 | sBPM:98 phase:99°
-[HAL] ⚠️ Driver not connected, dropping frames
-[BETA 🎵] Key Detected: C minor (Confidence: 0.83)
-[PROBE-1 BETA ✅ BPM OK] frame=2220 | bpm=98 | conf=0.274 | onBeat=false
-[GAMMA 🎵] Frame 2220: bpm=98, energy=0.69
-[AGC 🎚️] Gain: 0.75x | In: 0.630 → Out: 0.471 | Peak: 0.678 | ✅ ACTIVE
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(36%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:21 | sBPM:98 phase:145°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:21 | sBPM:98 phase:145°
-[IPC 📡] audioBuffer #2240 | titan.running=true | size=8192
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.725 (Rock target: >0.7)
-   Flatness:    0.392 (Tonal<0.3, Noise>0.7)
-   Centroid:    6925Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.15 (Dynamics)
-   Rolloff:     17345Hz (85% energy)
-   Latency:     0.50ms
-   UltraAir:    0.020 (NEW: 16-22kHz sizzle)
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #0
-[StrategyArbiter] 🔄 Running... frame=7200 | current=analogous | commitment=0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-7 | sBPM:98 phase:192°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-7 | sBPM:98 phase:192°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[TitanOrchestrator] 📡 audioBuffer received: 2048 samples, rms=0.3960
-[HAL] ⚠️ Driver not connected, dropping frames
-[SimpleSectionTracker] 📍 buildup → breakdown | bassR=0.69 wE=0.22 ΔE=-0.147 kick=false
-[IPC 📡] audioBuffer #2271 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=98 conf=0.27 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-32 | sBPM:98 phase:245°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-32 | sBPM:98 phase:245°
-[BETA 🎵] Key Detected: C minor (Confidence: 0.81)
-[PROBE-1 BETA ✅ BPM OK] frame=2280 | bpm=98 | conf=0.274 | onBeat=false
-[GAMMA 🎵] Frame 2280: bpm=98, energy=0.22
-[AGC 🎚️] Gain: 0.79x | In: 0.216 → Out: 0.171 | Peak: 0.618 | ✅ ACTIVE
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.714 (Rock target: >0.7)
-   Flatness:    0.372 (Tonal<0.3, Noise>0.7)
-   Centroid:    6633Hz (Bright>2000, Dark<1200)
-   CrestFactor: 4.72 (Dynamics)
-   Rolloff:     16721Hz (85% energy)
-   Latency:     0.46ms
-   UltraAir:    0.010 (NEW: 16-22kHz sizzle)
-[🥁 SIEVE] chose L67→67.46 (77bpm) corr=0.150 globalMax=0.150 threshold=0.113
-[🥁 GODEAR BPM] 76bpm (raw=77) conf=0.150 samples=130 frameDur=46.4ms virtualDur=11.61ms lagRange=[27,74] energy=0.0062
-[HAL] ⚠️ Driver not connected, dropping frames
-[TitanOrchestrator] � WORKER BPM=98 conf=0.27 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-33 | sBPM:98 phase:293°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-33 | sBPM:98 phase:293°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[IPC 📡] audioBuffer #2300 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-13 | sBPM:98 phase:339°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-13 | sBPM:98 phase:339°
-[HAL] ⚠️ Driver not connected, dropping frames
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.736 (Rock target: >0.7)
-   Flatness:    0.349 (Tonal<0.3, Noise>0.7)
-   Centroid:    7088Hz (Bright>2000, Dark<1200)
-   CrestFactor: 4.92 (Dynamics)
-   Rolloff:     17636Hz (85% energy)
-   Latency:     0.57ms
-   UltraAir:    0.025 (NEW: 16-22kHz sizzle)
-[TitanOrchestrator] � WORKER BPM=98 conf=0.27 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(34%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:14 | sBPM:98 phase:23°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:14 | sBPM:98 phase:23°
-[IPC 📡] audioBuffer #2328 | titan.running=true | size=8192
-[BETA 🎵] Key Detected: C minor (Confidence: 0.83)
-[PROBE-1 BETA ✅ BPM OK] frame=2340 | bpm=117 | conf=0.259 | onBeat=false
-[GAMMA 🎵] Frame 2340: bpm=117, energy=0.55
-[AGC 🎚️] Gain: 0.63x | In: 0.663 → Out: 0.416 | Peak: 0.792 | ✅ ACTIVE
-[TitanOrchestrator] � WORKER BPM=117 conf=0.26 | PLL=FREEWHEEL phase=0.00 sync=0.16 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4562K
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(32%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:36 | sBPM:115 phase:84°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:36 | sBPM:115 phase:84°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[HAL] ⚠️ Driver not connected, dropping frames
-[IPC 📡] audioBuffer #2360 | titan.running=true | size=8192
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.791 (Rock target: >0.7)
-   Flatness:    0.331 (Tonal<0.3, Noise>0.7)
-   Centroid:    7550Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.77 (Dynamics)
-   Rolloff:     18239Hz (85% energy)
-   Latency:     0.55ms
-   UltraAir:    0.027 (NEW: 16-22kHz sizzle)
-[TitanOrchestrator] � WORKER BPM=117 conf=0.26 | PLL=FREEWHEEL phase=0.00 sync=0.26 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4562K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:20 | sBPM:117 phase:145°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:20 | sBPM:117 phase:145°
-[SimpleSectionTracker] 📍 breakdown → buildup | bassR=1.14 wE=0.46 ΔE=0.061 kick=false
-[HAL] ⚠️ Driver not connected, dropping frames
-[TitanOrchestrator] � WORKER BPM=84 conf=0.27 | PLL=FREEWHEEL phase=0.00 sync=0.10 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4562K
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(36%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-8 | sBPM:87 phase:192°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-8 | sBPM:87 phase:192°
-[IPC 📡] audioBuffer #2391 | titan.running=true | size=8192
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[BETA 🎵] Key Detected: C minor (Confidence: 0.85)
-[PROBE-1 BETA ✅ BPM OK] frame=2400 | bpm=84 | conf=0.269 | onBeat=false
-[GAMMA 🎵] Frame 2400: bpm=84, energy=0.35
-[BETA 📡] AUDIO_BUFFER #2400 | size=2048
-[AGC 🎚️] Gain: 0.74x | In: 0.338 → Out: 0.250 | Peak: 0.661 | ✅ ACTIVE
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.789 (Rock target: >0.7)
-   Flatness:    0.355 (Tonal<0.3, Noise>0.7)
-   Centroid:    6727Hz (Bright>2000, Dark<1200)
-   CrestFactor: 7.55 (Dynamics)
-   Rolloff:     17183Hz (85% energy)
-   Latency:     0.34ms
-   UltraAir:    0.011 (NEW: 16-22kHz sizzle)
-[🥁 SIEVE] chose L64→64.04 (81bpm) corr=0.220 globalMax=0.220 threshold=0.165
-[🥁 GODEAR BPM] 82bpm (raw=81) conf=0.220 samples=130 frameDur=46.4ms virtualDur=11.61ms lagRange=[27,74] energy=0.0000
-[SimpleSectionTracker] 📊 section=buildup | bassR=0.63/1.4 wE=0.23/0.75 kick=false cool=false
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4562K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-30 | sBPM:84 phase:237°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-30 | sBPM:84 phase:237°
-[HAL] ⚠️ Driver not connected, dropping frames
-[SimpleSectionTracker] 📍 buildup → breakdown | bassR=0.48 wE=0.21 ΔE=-0.254 kick=false
-[IPC 📡] audioBuffer #2419 | titan.running=true | size=8192
-[Harmony 🎵] Key Change (fallback): C → F
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4560K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-35 | sBPM:84 phase:284°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-35 | sBPM:84 phase:284°
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.707 (Rock target: >0.7)
-   Flatness:    0.396 (Tonal<0.3, Noise>0.7)
-   Centroid:    7253Hz (Bright>2000, Dark<1200)
-   CrestFactor: 4.75 (Dynamics)
-   Rolloff:     17733Hz (85% energy)
-   Latency:     0.26ms
-   UltraAir:    0.015 (NEW: 16-22kHz sizzle)
-[TitanOrchestrator] � WORKER BPM=84 conf=0.27 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #0
-[StrategyArbiter] 🔄 Running... frame=7800 | current=analogous | commitment=0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4559K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-21 | sBPM:84 phase:325°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-21 | sBPM:84 phase:325°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[HAL] ⚠️ Driver not connected, dropping frames
-[IPC 📡] audioBuffer #2447 | titan.running=true | size=8192
-[BETA 🎵] Key Detected: F minor (Confidence: 0.85)
-[PROBE-1 BETA ✅ BPM OK] frame=2460 | bpm=84 | conf=0.269 | onBeat=false
-[GAMMA 🎵] Frame 2460: bpm=84, energy=0.45
-[AGC 🎚️] Gain: 0.89x | In: 0.315 → Out: 0.279 | Peak: 0.552 | ✅ ACTIVE
-[TitanOrchestrator] � WORKER BPM=84 conf=0.27 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4560K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:4 | sBPM:84 phase:6°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:4 | sBPM:84 phase:6°
-[IPC 📡] audioBuffer #2477 | titan.running=true | size=8192
-[HAL] ⚠️ Driver not connected, dropping frames
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.630 (Rock target: >0.7)
-   Flatness:    0.404 (Tonal<0.3, Noise>0.7)
-   Centroid:    7642Hz (Bright>2000, Dark<1200)
-   CrestFactor: 3.24 (Dynamics)
-   Rolloff:     18196Hz (85% energy)
-   Latency:     0.61ms
-   UltraAir:    0.013 (NEW: 16-22kHz sizzle)
-[TitanOrchestrator] � WORKER BPM=84 conf=0.27 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4560K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:27 | sBPM:84 phase:48°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:27 | sBPM:84 phase:48°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[TitanOrchestrator] � WORKER BPM=84 conf=0.27 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4560K
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(32%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:36 | sBPM:84 phase:92°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:36 | sBPM:84 phase:92°
-[IPC 📡] audioBuffer #2506 | titan.running=true | size=8192
-[SimpleSectionTracker] 📍 breakdown → buildup | bassR=1.14 wE=0.44 ΔE=0.054 kick=false
-[HAL] ⚠️ Driver not connected, dropping frames
-[BETA 🎵] Key Detected: F minor (Confidence: 0.84)
-[PROBE-1 BETA ✅ BPM OK] frame=2520 | bpm=84 | conf=0.269 | onBeat=false
-[GAMMA 🎵] Frame 2520: bpm=84, energy=0.46
-[AGC 🎚️] Gain: 1.01x | In: 0.455 → Out: 0.460 | Peak: 0.484 | ✅ ACTIVE
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.796 (Rock target: >0.7)
-   Flatness:    0.340 (Tonal<0.3, Noise>0.7)
-   Centroid:    6926Hz (Bright>2000, Dark<1200)
-   CrestFactor: 6.01 (Dynamics)
-   Rolloff:     17388Hz (85% energy)
-   Latency:     0.35ms
-   UltraAir:    0.024 (NEW: 16-22kHz sizzle)
-[🥁 SIEVE] chose L48→47.86 (108bpm) corr=0.065 globalMax=0.065 threshold=0.049
-[🥁 GODEAR BPM] 107bpm (raw=108) conf=0.065 samples=130 frameDur=46.4ms virtualDur=11.61ms lagRange=[27,74] energy=0.0000
-[TitanOrchestrator] � WORKER BPM=84 conf=0.27 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4561K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:26 | sBPM:84 phase:133°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:26 | sBPM:84 phase:133°
-[Harmony 🎵] Key Change (fallback): F → G
-[IPC 📡] audioBuffer #2536 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=84 conf=0.27 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:5 | sBPM:84 phase:171°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:5 | sBPM:84 phase:171°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[HAL] ⚠️ Driver not connected, dropping frames
-[TitanOrchestrator] � WORKER BPM=84 conf=0.27 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-18 | sBPM:84 phase:210°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-18 | sBPM:84 phase:210°
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.706 (Rock target: >0.7)
-   Flatness:    0.371 (Tonal<0.3, Noise>0.7)
-   Centroid:    6642Hz (Bright>2000, Dark<1200)
-   CrestFactor: 4.57 (Dynamics)
-   Rolloff:     16979Hz (85% energy)
-   Latency:     0.57ms
-   UltraAir:    0.022 (NEW: 16-22kHz sizzle)
-[IPC 📡] audioBuffer #2565 | titan.running=true | size=8192
-[HAL] ⚠️ Driver not connected, dropping frames
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-34 | sBPM:84 phase:252°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-34 | sBPM:84 phase:252°
-[BETA 🎵] Key Detected: G minor (Confidence: 0.76)
-[PROBE-1 BETA ✅ BPM OK] frame=2580 | bpm=84 | conf=0.269 | onBeat=false
-[GAMMA 🎵] Frame 2580: bpm=84, energy=0.35
-[AGC 🎚️] Gain: 0.95x | In: 0.246 → Out: 0.233 | Peak: 0.546 | ✅ ACTIVE
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[IPC 📡] audioBuffer #2594 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=84 conf=0.27 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-33 | sBPM:84 phase:292°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-33 | sBPM:84 phase:292°
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.723 (Rock target: >0.7)
-   Flatness:    0.397 (Tonal<0.3, Noise>0.7)
-   Centroid:    7153Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.10 (Dynamics)
-   Rolloff:     17528Hz (85% energy)
-   Latency:     0.38ms
-   UltraAir:    0.016 (NEW: 16-22kHz sizzle)
-[HAL] ⚠️ Driver not connected, dropping frames
-[SimpleSectionTracker] 📍 buildup → breakdown | bassR=0.69 wE=0.22 ΔE=-0.114 kick=false
-[Harmony 🎵] Key Change (fallback): G → C
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(32%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-16 | sBPM:84 phase:333°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-16 | sBPM:84 phase:333°
-[IPC 📡] audioBuffer #2624 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #0
-[StrategyArbiter] 🔄 Running... frame=8400 | current=analogous | commitment=0
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:8 | sBPM:84 phase:13°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:8 | sBPM:84 phase:13°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[TitanOrchestrator] 📡 audioBuffer received: 2048 samples, rms=0.1751
-[HAL] ⚠️ Driver not connected, dropping frames
-[BETA 🎵] Key Detected: C minor (Confidence: 0.74)
-[PROBE-1 BETA ✅ BPM OK] frame=2640 | bpm=84 | conf=0.269 | onBeat=false
-[GAMMA 🎵] Frame 2640: bpm=84, energy=0.34
-[AGC 🎚️] Gain: 1.07x | In: 0.186 → Out: 0.199 | Peak: 0.456 | ✅ ACTIVE
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.725 (Rock target: >0.7)
-   Flatness:    0.380 (Tonal<0.3, Noise>0.7)
-   Centroid:    6909Hz (Bright>2000, Dark<1200)
-   CrestFactor: 4.97 (Dynamics)
-   Rolloff:     17463Hz (85% energy)
-   Latency:     0.36ms
-   UltraAir:    0.011 (NEW: 16-22kHz sizzle)
-[🥁 SIEVE] chose L57→57.06 (91bpm) corr=0.115 globalMax=0.115 threshold=0.086
-[🥁 GODEAR BPM] 93bpm (raw=91) conf=0.115 samples=130 frameDur=46.4ms virtualDur=11.61ms lagRange=[27,74] energy=0.0000
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:29 | sBPM:84 phase:54°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:29 | sBPM:84 phase:54°
-[IPC 📡] audioBuffer #2653 | titan.running=true | size=8192
-[HAL] ⚠️ Driver not connected, dropping frames
-[Harmony 🎵] Key Change (fallback): C → G
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.01 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:34 | sBPM:115 phase:106°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:34 | sBPM:115 phase:106°
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.811 (Rock target: >0.7)
-   Flatness:    0.317 (Tonal<0.3, Noise>0.7)
-   Centroid:    7341Hz (Bright>2000, Dark<1200)
-   CrestFactor: 6.67 (Dynamics)
-   Rolloff:     17948Hz (85% energy)
-   Latency:     0.38ms
-   UltraAir:    0.021 (NEW: 16-22kHz sizzle)
-[IPC 📡] audioBuffer #2683 | titan.running=true | size=8192
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.03 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4533K
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(31%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-3 | sBPM:157 phase:185°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-3 | sBPM:157 phase:185°
-[BETA 🎵] Key Detected: G minor (Confidence: 0.77)
-[PROBE-1 BETA ✅ BPM OK] frame=2700 | bpm=154 | conf=0.297 | onBeat=false
-[GAMMA 🎵] Frame 2700: bpm=154, energy=0.41
-[BETA 📡] AUDIO_BUFFER #2700 | size=2048
-[AGC 🎚️] Gain: 0.62x | In: 0.679 → Out: 0.419 | Peak: 0.806 | ✅ ACTIVE
-[SimpleSectionTracker] 📊 section=breakdown | bassR=3.14/1.4 wE=0.46/0.75 kick=false cool=false
-[HAL] ⚠️ Driver not connected, dropping frames
-[IPC 📡] audioBuffer #2713 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=152 conf=0.26 | PLL=FREEWHEEL phase=0.00 sync=0.20 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4534K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-36 | sBPM:152 phase:266°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-36 | sBPM:152 phase:266°
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.771 (Rock target: >0.7)
-   Flatness:    0.346 (Tonal<0.3, Noise>0.7)
-   Centroid:    7863Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.52 (Dynamics)
-   Rolloff:     18260Hz (85% energy)
-   Latency:     0.34ms
-   UltraAir:    0.019 (NEW: 16-22kHz sizzle)
-[Harmony 🎵] Key Change (fallback): G → D
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.16 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4533K
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(32%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-10 | sBPM:126 phase:343°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-10 | sBPM:126 phase:343°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[TitanOrchestrator] 📡 audioBuffer received: 2048 samples, rms=0.6172
-[HAL] ⚠️ Driver not connected, dropping frames
-[IPC 📡] audioBuffer #2742 | titan.running=true | size=8192
-[Harmony ⚠️] Freq 43Hz fuera de rango musical
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.41 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4533K
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(33%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:22 | sBPM:101 phase:37°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:22 | sBPM:101 phase:37°
-[BETA 🎵] Key Detected: D minor (Confidence: 0.80)
-[PROBE-1 BETA ✅ BPM OK] frame=2760 | bpm=100 | conf=0.267 | onBeat=false
-[GAMMA 🎵] Frame 2760: bpm=100, energy=0.39
-[AGC 🎚️] Gain: 0.64x | In: 0.544 → Out: 0.347 | Peak: 0.777 | ✅ ACTIVE
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.703 (Rock target: >0.7)
-   Flatness:    0.418 (Tonal<0.3, Noise>0.7)
-   Centroid:    7954Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.00 (Dynamics)
-   Rolloff:     17991Hz (85% energy)
-   Latency:     0.44ms
-   UltraAir:    0.025 (NEW: 16-22kHz sizzle)
-[🥁 SIEVE] chose L52→51.91 (100bpm) corr=0.172 globalMax=0.172 threshold=0.129
-[🥁 GODEAR BPM] 100bpm (raw=100) conf=0.172 samples=130 frameDur=46.4ms virtualDur=11.61ms lagRange=[27,74] energy=0.0277
-[SimpleSectionTracker] 📍 breakdown → buildup | bassR=1.11 wE=0.53 ΔE=0.037 kick=false
-[HAL] ⚠️ Driver not connected, dropping frames
-[IPC 📡] audioBuffer #2772 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.36 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4533K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:36 | sBPM:100 phase:88°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:36 | sBPM:100 phase:88°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.53 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4533K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:21 | sBPM:100 phase:144°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:21 | sBPM:100 phase:144°
-[IPC 📡] audioBuffer #2801 | titan.running=true | size=8192
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.606 (Rock target: >0.7)
-   Flatness:    0.505 (Tonal<0.3, Noise>0.7)
-   Centroid:    8561Hz (Bright>2000, Dark<1200)
-   CrestFactor: 3.77 (Dynamics)
-   Rolloff:     17819Hz (85% energy)
-   Latency:     0.56ms
-   UltraAir:    0.021 (NEW: 16-22kHz sizzle)
-[HAL] ⚠️ Driver not connected, dropping frames
-[Harmony 🎵] Key Change (fallback): D → A
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.60 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4534K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-12 | sBPM:100 phase:199°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-12 | sBPM:100 phase:199°
-[BETA 🎵] Key Detected: A minor (Confidence: 0.81)
-[PROBE-1 BETA ✅ BPM OK] frame=2820 | bpm=100 | conf=0.267 | onBeat=false
-[GAMMA 🎵] Frame 2820: bpm=100, energy=0.38
-[AGC 🎚️] Gain: 0.65x | In: 0.614 → Out: 0.397 | Peak: 0.758 | ✅ ACTIVE
-[IPC 📡] audioBuffer #2828 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=100 conf=0.27 | PLL=FREEWHEEL phase=0.00 sync=0.49 | beat #0
-[StrategyArbiter] 🔄 Running... frame=9000 | current=analogous | commitment=0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4534K
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(33%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-33 | sBPM:100 phase:248°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-33 | sBPM:100 phase:248°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[TitanOrchestrator] 📡 audioBuffer received: 2048 samples, rms=0.5684
-[HAL] ⚠️ Driver not connected, dropping frames
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.597 (Rock target: >0.7)
-   Flatness:    0.496 (Tonal<0.3, Noise>0.7)
-   Centroid:    8671Hz (Bright>2000, Dark<1200)
-   CrestFactor: 3.45 (Dynamics)
-   Rolloff:     18023Hz (85% energy)
-   Latency:     0.44ms
-   UltraAir:    0.023 (NEW: 16-22kHz sizzle)
-[TitanOrchestrator] � WORKER BPM=100 conf=0.27 | PLL=FREEWHEEL phase=0.00 sync=0.58 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4535K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-33 | sBPM:100 phase:294°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-33 | sBPM:100 phase:294°
-[IPC 📡] audioBuffer #2853 | titan.running=true | size=8192
-[Harmony 🎵] Key Change (fallback): A → F
-[HAL] ⚠️ Driver not connected, dropping frames
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.44 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4535K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-7 | sBPM:100 phase:349°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-7 | sBPM:100 phase:349°
-[BETA 🎵] Key Detected: F minor (Confidence: 0.82)
-[PROBE-1 BETA ✅ BPM OK] frame=2880 | bpm=100 | conf=0.252 | onBeat=false
-[GAMMA 🎵] Frame 2880: bpm=100, energy=0.27
-[AGC 🎚️] Gain: 0.65x | In: 0.459 → Out: 0.298 | Peak: 0.755 | ✅ ACTIVE
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.645 (Rock target: >0.7)
-   Flatness:    0.475 (Tonal<0.3, Noise>0.7)
-   Centroid:    8679Hz (Bright>2000, Dark<1200)
-   CrestFactor: 4.17 (Dynamics)
-   Rolloff:     18357Hz (85% energy)
-   Latency:     0.39ms
-   UltraAir:    0.012 (NEW: 16-22kHz sizzle)
-[🥁 SIEVE] chose L52→51.91 (100bpm) corr=0.266 globalMax=0.266 threshold=0.199
-[🥁 GODEAR BPM] 100bpm (raw=100) conf=0.266 samples=130 frameDur=46.4ms virtualDur=11.61ms lagRange=[27,74] energy=0.0000
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[IPC 📡] audioBuffer #2883 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.34 | beat #0
-[TitanEngine 🧠] Stabilization: Key=F Emotion=NEUTRAL Strategy=analogous Temp=4600K
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:22 | sBPM:100 phase:39°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:22 | sBPM:100 phase:39°
-[HAL] ⚠️ Driver not connected, dropping frames
-[TitanOrchestrator] � WORKER BPM=100 conf=0.27 | PLL=FREEWHEEL phase=0.00 sync=0.33 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:36 | sBPM:100 phase:86°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:36 | sBPM:100 phase:86°
-[IPC 📡] audioBuffer #2913 | titan.running=true | size=8192
-[SimpleSectionTracker] 📍 buildup → breakdown | bassR=0.68 wE=0.18 ΔE=-0.112 kick=false
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.832 (Rock target: >0.7)
-   Flatness:    0.266 (Tonal<0.3, Noise>0.7)
-   Centroid:    7510Hz (Bright>2000, Dark<1200)
-   CrestFactor: 6.91 (Dynamics)
-   Rolloff:     17980Hz (85% energy)
-   Latency:     0.35ms
-   UltraAir:    0.009 (NEW: 16-22kHz sizzle)
-[Harmony ⚠️] Freq 6869Hz fuera de rango musical
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.13 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(31%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:23 | sBPM:118 phase:139°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:23 | sBPM:118 phase:139°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[HAL] ⚠️ Driver not connected, dropping frames
-[BETA 🎵] Key Detected: F minor (Confidence: 0.82)
-[PROBE-1 BETA ✅ BPM OK] frame=2940 | bpm=180 | conf=0.251 | onBeat=false
-[GAMMA 🎵] Frame 2940: bpm=180, energy=0.29
-[AGC 🎚️] Gain: 0.69x | In: 0.436 → Out: 0.300 | Peak: 0.740 | ✅ ACTIVE
-[IPC 📡] audioBuffer #2942 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=180 conf=0.26 | PLL=FREEWHEEL phase=0.00 sync=0.29 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-23 | sBPM:177 phase:220°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-23 | sBPM:177 phase:220°
-[HAL] ⚠️ Driver not connected, dropping frames
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.618 (Rock target: >0.7)
-   Flatness:    0.457 (Tonal<0.3, Noise>0.7)
-   Centroid:    8093Hz (Bright>2000, Dark<1200)
-   CrestFactor: 3.58 (Dynamics)
-   Rolloff:     18023Hz (85% energy)
-   Latency:     0.36ms
-   UltraAir:    0.018 (NEW: 16-22kHz sizzle)
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.14 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-30 | sBPM:180 phase:304°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-30 | sBPM:180 phase:304°
-[IPC 📡] audioBuffer #2971 | titan.running=true | size=8192
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.16 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:16 | sBPM:181 phase:26°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:16 | sBPM:181 phase:26°
-[HAL] ⚠️ Driver not connected, dropping frames
-[IPC 📡] audioBuffer #2999 | titan.running=true | size=8192
-[BETA 🎵] Key Detected: F minor (Confidence: 0.83)
-[PROBE-1 BETA ✅ BPM OK] frame=3000 | bpm=181 | conf=0.396 | onBeat=false
-[GAMMA 🎵] Frame 3000: bpm=181, energy=0.30
-[BETA 📡] AUDIO_BUFFER #3000 | size=2048
-[AGC 🎚️] Gain: 0.66x | In: 0.531 → Out: 0.349 | Peak: 0.744 | ✅ ACTIVE
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.773 (Rock target: >0.7)
-   Flatness:    0.383 (Tonal<0.3, Noise>0.7)
-   Centroid:    8076Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.90 (Dynamics)
-   Rolloff:     18303Hz (85% energy)
-   Latency:     0.33ms
-   UltraAir:    0.018 (NEW: 16-22kHz sizzle)
-[🥁 SIEVE] chose L28→28.16 (184bpm) corr=0.406 globalMax=0.406 threshold=0.304
-[🥁 GODEAR BPM] 181bpm (raw=184) conf=0.406 samples=130 frameDur=46.4ms virtualDur=11.61ms lagRange=[27,74] energy=0.0111
-[SimpleSectionTracker] 📊 section=breakdown | bassR=0.95/1.4 wE=0.28/0.75 kick=false cool=false
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.11 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:31 | sBPM:181 phase:119°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:31 | sBPM:181 phase:119°
-[TitanOrchestrator] � WORKER BPM=181 conf=0.42 | PLL=FREEWHEEL phase=0.00 sync=0.18 | beat #0
-[StrategyArbiter] 🔄 Running... frame=9600 | current=analogous | commitment=0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(33%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-23 | sBPM:181 phase:221°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-23 | sBPM:181 phase:221°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[HAL] ⚠️ Driver not connected, dropping frames
-[IPC 📡] audioBuffer #3029 | titan.running=true | size=8192
-[SimpleSectionTracker] 📍 breakdown → buildup | bassR=1.09 wE=0.56 ΔE=0.035 kick=false
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.674 (Rock target: >0.7)
-   Flatness:    0.429 (Tonal<0.3, Noise>0.7)
-   Centroid:    7835Hz (Bright>2000, Dark<1200)
-   CrestFactor: 4.35 (Dynamics)
-   Rolloff:     17776Hz (85% energy)
-   Latency:     0.41ms
-   UltraAir:    0.022 (NEW: 16-22kHz sizzle)
-[TitanOrchestrator] � WORKER BPM=184 conf=0.44 | PLL=FREEWHEEL phase=0.00 sync=0.26 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-29 | sBPM:183 phase:306°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-29 | sBPM:183 phase:306°
-[HAL] ⚠️ Driver not connected, dropping frames
-[IPC 📡] audioBuffer #3059 | titan.running=true | size=8192
-[BETA 🎵] Key Detected: F minor (Confidence: 0.83)
-[PROBE-1 BETA ✅ BPM OK] frame=3060 | bpm=185 | conf=0.368 | onBeat=false
-[GAMMA 🎵] Frame 3060: bpm=185, energy=0.25
-[AGC 🎚️] Gain: 0.69x | In: 0.648 → Out: 0.445 | Peak: 0.714 | ✅ ACTIVE
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.24 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:22 | sBPM:185 phase:38°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:22 | sBPM:185 phase:38°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[SimpleSectionTracker] 📍 buildup → breakdown | bassR=0.64 wE=0.14 ΔE=-0.103 kick=false
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.610 (Rock target: >0.7)
-   Flatness:    0.484 (Tonal<0.3, Noise>0.7)
-   Centroid:    7940Hz (Bright>2000, Dark<1200)
-   CrestFactor: 3.63 (Dynamics)
-   Rolloff:     17571Hz (85% energy)
-   Latency:     0.38ms
-   UltraAir:    0.027 (NEW: 16-22kHz sizzle)
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.00 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:25 | sBPM:185 phase:137°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:25 | sBPM:185 phase:137°
-[IPC 📡] audioBuffer #3089 | titan.running=true | size=8192
-[HAL] ⚠️ Driver not connected, dropping frames
-[TitanOrchestrator] � WORKER BPM=99 conf=0.28 | PLL=FREEWHEEL phase=0.00 sync=0.03 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-22 | sBPM:119 phase:218°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-22 | sBPM:119 phase:218°
-[IPC 📡] audioBuffer #3118 | titan.running=true | size=8192
-[BETA 🎵] Key Detected: F minor (Confidence: 0.82)
-[PROBE-1 BETA ✅ BPM OK] frame=3120 | bpm=99 | conf=0.277 | onBeat=false
-[GAMMA 🎵] Frame 3120: bpm=99, energy=0.39
-[AGC 🎚️] Gain: 0.66x | In: 0.519 → Out: 0.344 | Peak: 0.740 | ✅ ACTIVE
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.605 (Rock target: >0.7)
-   Flatness:    0.481 (Tonal<0.3, Noise>0.7)
-   Centroid:    8855Hz (Bright>2000, Dark<1200)
-   CrestFactor: 3.43 (Dynamics)
-   Rolloff:     18572Hz (85% energy)
-   Latency:     0.40ms
-   UltraAir:    0.028 (NEW: 16-22kHz sizzle)
-[🥁 SIEVE] chose L48→48.04 (108bpm) corr=0.167 globalMax=0.167 threshold=0.125
-[🥁 GODEAR BPM] 99bpm (raw=108) conf=0.167 samples=130 frameDur=46.4ms virtualDur=11.61ms lagRange=[27,74] energy=0.0000
-[TitanOrchestrator] � WORKER BPM=99 conf=0.28 | PLL=FREEWHEEL phase=0.00 sync=0.35 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-36 | sBPM:100 phase:269°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-36 | sBPM:100 phase:269°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[HAL] ⚠️ Driver not connected, dropping frames
-[SimpleSectionTracker] 📍 breakdown → buildup | bassR=1.06 wE=0.47 ΔE=0.065 kick=false
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.38 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(36%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-22 | sBPM:99 phase:321°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-22 | sBPM:99 phase:321°
-[IPC 📡] audioBuffer #3148 | titan.running=true | size=8192
-[HAL] ⚠️ Driver not connected, dropping frames
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.40 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(34%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:5 | sBPM:99 phase:8°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:5 | sBPM:99 phase:8°
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.625 (Rock target: >0.7)
-   Flatness:    0.475 (Tonal<0.3, Noise>0.7)
-   Centroid:    9137Hz (Bright>2000, Dark<1200)
-   CrestFactor: 3.82 (Dynamics)
-   Rolloff:     18852Hz (85% energy)
-   Latency:     0.54ms
-   UltraAir:    0.020 (NEW: 16-22kHz sizzle)
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[IPC 📡] audioBuffer #3177 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.22 | beat #0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(30%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:35 | sBPM:176 phase:78°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:35 | sBPM:176 phase:78°
-[BETA 🎵] Key Detected: F minor (Confidence: 0.82)
-[PROBE-1 BETA ✅ BPM OK] frame=3180 | bpm=187 | conf=0.353 | onBeat=false
-[GAMMA 🎵] Frame 3180: bpm=187, energy=0.33
-[AGC 🎚️] Gain: 0.67x | In: 0.612 → Out: 0.410 | Peak: 0.730 | ✅ ACTIVE
-[HAL] ⚠️ Driver not connected, dropping frames
-[Harmony 🎵] Key Change (fallback): F → C
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.18 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:3 | sBPM:167 phase:175°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:3 | sBPM:167 phase:175°
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.731 (Rock target: >0.7)
-   Flatness:    0.435 (Tonal<0.3, Noise>0.7)
-   Centroid:    7969Hz (Bright>2000, Dark<1200)
-   CrestFactor: 5.63 (Dynamics)
-   Rolloff:     17937Hz (85% energy)
-   Latency:     0.26ms
-   UltraAir:    0.031 (NEW: 16-22kHz sizzle)
-[IPC 📡] audioBuffer #3207 | titan.running=true | size=8192
-[TitanOrchestrator] � WORKER BPM=100 conf=0.33 | PLL=FREEWHEEL phase=0.00 sync=0.19 | beat #0
-[StrategyArbiter] 🔄 Running... frame=10200 | current=analogous | commitment=0
-[SeleneLux 🟢🎨 PHOTON WEAVER] Laser:standby(0%) | Washer:breathing_wall(33%) | Safety:✅OK
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-32 | sBPM:103 phase:243°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-32 | sBPM:103 phase:243°
-[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | 0 fixtures forced to BLACKOUT | Press GO to enable DMX
-[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)
-[HAL] ⚠️ Driver not connected, dropping frames
-[Harmony ⚠️] Freq 43Hz fuera de rango musical
-[IPC 📡] audioBuffer #3237 | titan.running=true | size=8192
-[BETA 🎵] Key Detected: C minor (Confidence: 0.82)
-[PROBE-1 BETA ✅ BPM OK] frame=3240 | bpm=100 | conf=0.344 | onBeat=false
-[GAMMA 🎵] Frame 3240: bpm=100, energy=0.43
-[AGC 🎚️] Gain: 0.70x | In: 0.315 → Out: 0.220 | Peak: 0.700 | ✅ ACTIVE
-[GOD EAR 🩻] SHADOW MODE TELEMETRY:
-   Clarity:     0.823 (Rock target: >0.7)
-   Flatness:    0.290 (Tonal<0.3, Noise>0.7)
-   Centroid:    7830Hz (Bright>2000, Dark<1200)
-   CrestFactor: 6.51 (Dynamics)
-   Rolloff:     18217Hz (85% energy)
-   Latency:     0.43ms
-   UltraAir:    0.012 (NEW: 16-22kHz sizzle)
-[🥁 SIEVE] chose L53→52.71 (98bpm) corr=0.301 globalMax=0.301 threshold=0.226
-[🥁 GODEAR BPM] 100bpm (raw=98) conf=0.301 samples=130 frameDur=46.4ms virtualDur=11.61ms lagRange=[27,74] energy=0.0000
-[TitanOrchestrator] � WORKER BPM=0 conf=0.00 | PLL=FREEWHEEL phase=0.00 sync=0.08 | beat #0
-[TitanEngine ⚡] NervousSystem: Physics=none Strobe=false Element=earth
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-32 | sBPM:100 phase:295°
-[CHOREO] idle | breath | Bar:0 | Pan:0 Tilt:-32 | sBPM:100 phase:295°
-[Harmony ⚠️] Freq 54Hz fuera de rango musical
+[FRONT-TEL] sB:0.001 bass:0.384 mid:0.434 hM:0.102 tr:0.004 | isK:1 isKE:0 kickSig:0.384 | morph:0.262 brk:1 strict:1 | fL_in:0.001 fL_gate:0.095 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.384 fR_gate:0.450 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.002 bass:0.371 mid:0.458 hM:0.142 tr:0.019 | isK:1 isKE:0 kickSig:0.371 | morph:0.282 brk:1 strict:1 | fL_in:0.002 fL_gate:0.094 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.371 fR_gate:0.443 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.002 bass:0.384 mid:0.556 hM:0.226 tr:0.048 | isK:1 isKE:0 kickSig:0.384 | morph:0.335 brk:1 strict:1 | fL_in:0.002 fL_gate:0.093 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.384 fR_gate:0.438 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.001 bass:0.365 mid:0.592 hM:0.224 tr:0.045 | isK:1 isKE:0 kickSig:0.365 | morph:0.395 brk:1 strict:1 | fL_in:0.001 fL_gate:0.092 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.365 fR_gate:0.432 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.001 bass:0.371 mid:0.603 hM:0.188 tr:0.036 | isK:1 isKE:0 kickSig:0.371 | morph:0.449 brk:1 strict:1 | fL_in:0.001 fL_gate:0.091 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.371 fR_gate:0.427 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.001 bass:0.371 mid:0.603 hM:0.177 tr:0.036 | isK:1 isKE:0 kickSig:0.371 | morph:0.495 brk:1 strict:1 | fL_in:0.001 fL_gate:0.090 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.371 fR_gate:0.423 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.004 bass:0.436 mid:0.631 hM:0.268 tr:0.105 | isK:1 isKE:0 kickSig:0.436 | morph:0.545 brk:1 strict:1 | fL_in:0.004 fL_gate:0.089 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.436 fR_gate:0.424 fR_sq:0.039 fR_pow:0.194 fR_ign:1 | outFL:0.000 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.002 bass:0.348 mid:0.611 hM:0.301 tr:0.125 | isK:1 isKE:0 kickSig:0.348 | morph:0.580 brk:1 strict:1 | fL_in:0.002 fL_gate:0.088 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.348 fR_gate:0.417 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.002 outPar:0.002
+[FRONT-TEL] sB:0.002 bass:0.289 mid:0.578 hM:0.278 tr:0.105 | isK:1 isKE:0 kickSig:0.289 | morph:0.597 brk:1 strict:1 | fL_in:0.002 fL_gate:0.087 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.289 fR_gate:0.404 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.001 bass:0.276 mid:0.531 hM:0.224 tr:0.074 | isK:1 isKE:0 kickSig:0.276 | morph:0.597 brk:1 strict:1 | fL_in:0.001 fL_gate:0.086 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.276 fR_gate:0.392 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.001 bass:0.276 mid:0.531 hM:0.207 tr:0.074 | isK:1 isKE:0 kickSig:0.276 | morph:0.597 brk:1 strict:1 | fL_in:0.001 fL_gate:0.086 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.276 fR_gate:0.380 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.001 bass:0.273 mid:0.495 hM:0.222 tr:0.094 | isK:1 isKE:0 kickSig:0.273 | morph:0.594 brk:1 strict:1 | fL_in:0.001 fL_gate:0.085 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.273 fR_gate:0.370 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.003 bass:0.281 mid:0.558 hM:0.306 tr:0.139 | isK:1 isKE:0 kickSig:0.281 | morph:0.602 brk:1 strict:1 | fL_in:0.003 fL_gate:0.084 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.281 fR_gate:0.362 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.002 bass:0.271 mid:0.587 hM:0.317 tr:0.124 | isK:1 isKE:0 kickSig:0.271 | morph:0.619 brk:1 strict:1 | fL_in:0.002 fL_gate:0.083 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.271 fR_gate:0.354 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.001 bass:0.260 mid:0.596 hM:0.284 tr:0.096 | isK:1 isKE:0 kickSig:0.260 | morph:0.638 brk:1 strict:1 | fL_in:0.001 fL_gate:0.082 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.260 fR_gate:0.345 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.001 bass:0.260 mid:0.596 hM:0.274 tr:0.096 | isK:1 isKE:0 kickSig:0.260 | morph:0.653 brk:1 strict:1 | fL_in:0.001 fL_gate:0.082 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.260 fR_gate:0.337 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.002 bass:0.274 mid:0.608 hM:0.330 tr:0.162 | isK:1 isKE:0 kickSig:0.274 | morph:0.671 brk:1 strict:1 | fL_in:0.002 fL_gate:0.081 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.274 fR_gate:0.332 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.002 bass:0.257 mid:0.611 hM:0.372 tr:0.191 | isK:1 isKE:0 kickSig:0.257 | morph:0.687 brk:1 strict:1 | fL_in:0.002 fL_gate:0.080 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.257 fR_gate:0.326 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.001 bass:0.256 mid:0.608 hM:0.362 tr:0.173 | isK:1 isKE:0 kickSig:0.256 | morph:0.699 brk:1 strict:1 | fL_in:0.001 fL_gate:0.079 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.256 fR_gate:0.324 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.001 bass:0.279 mid:0.599 hM:0.316 tr:0.126 | isK:1 isKE:0 kickSig:0.279 | morph:0.707 brk:1 strict:1 | fL_in:0.001 fL_gate:0.078 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.279 fR_gate:0.323 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[TitanOrchestrator] ðŸŽ§ WORKER BPM=120 conf=0.63 | PLL=FREEWHEEL [mem=120@-0f] phase=0.00 sync=0.52 | beat #57 | bass=0.0309 sab=0.000 | ðŸ”¬in_peak=0.30737 in_rms=0.06598
+[FRONT-TEL] sB:0.001 bass:0.279 mid:0.599 hM:0.301 tr:0.126 | isK:1 isKE:0 kickSig:0.279 | morph:0.713 brk:1 strict:1 | fL_in:0.001 fL_gate:0.078 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.279 fR_gate:0.322 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:0%
+[CHOREO] techno-club | #1:square [MIRROR ×2] | scene:4b | Pan:239 Tilt:-134 | sBPM:120 phase:96°
+[FRONT-TEL] sB:0.001 bass:0.279 mid:0.585 hM:0.298 tr:0.143 | isK:1 isKE:0 kickSig:0.279 | morph:0.713 brk:1 strict:1 | fL_in:0.001 fL_gate:0.077 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.279 fR_gate:0.321 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.002 bass:0.292 mid:0.619 hM:0.371 tr:0.198 | isK:1 isKE:0 kickSig:0.292 | morph:0.725 brk:1 strict:1 | fL_in:0.002 fL_gate:0.076 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.292 fR_gate:0.320 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.002 bass:0.310 mid:0.628 hM:0.394 tr:0.187 | isK:1 isKE:0 kickSig:0.310 | morph:0.739 brk:1 strict:1 | fL_in:0.002 fL_gate:0.076 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.310 fR_gate:0.319 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.002 bass:0.325 mid:0.613 hM:0.354 tr:0.147 | isK:1 isKE:0 kickSig:0.325 | morph:0.746 brk:1 strict:1 | fL_in:0.002 fL_gate:0.075 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.325 fR_gate:0.319 fR_sq:0.039 fR_pow:0.175 fR_ign:1 | outFL:0.000 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.068 bass:0.593 mid:0.710 hM:0.417 tr:0.164 | isK:1 isKE:0 kickSig:0.593 | morph:0.788 brk:0 strict:1 | fL_in:0.068 fL_gate:0.074 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.593 fR_gate:0.321 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.000 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.089 bass:0.593 mid:0.710 hM:0.437 tr:0.164 | isK:1 isKE:0 kickSig:0.593 | morph:0.823 brk:1 strict:1 | fL_in:0.089 fL_gate:0.074 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.593 fR_gate:0.326 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.000 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.426 bass:0.820 mid:0.636 hM:0.327 tr:0.123 | isK:1 isKE:0 kickSig:0.820 | morph:0.826 brk:1 strict:1 | fL_in:0.426 fL_gate:0.073 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.820 fR_gate:0.337 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.721 bass:0.984 mid:0.524 hM:0.218 tr:0.084 | isK:1 isKE:0 kickSig:0.984 | morph:0.820 brk:1 strict:1 | fL_in:0.721 fL_gate:0.094 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.984 fR_gate:0.350 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.887 bass:1.000 mid:0.415 hM:0.143 tr:0.057 | isK:1 isKE:0 kickSig:1.000 | morph:0.810 brk:1 strict:1 | fL_in:0.887 fL_gate:0.094 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.363 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.970 bass:1.000 mid:0.389 hM:0.143 tr:0.054 | isK:1 isKE:0 kickSig:1.000 | morph:0.798 brk:0 strict:1 | fL_in:0.970 fL_gate:0.094 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.377 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.996 bass:1.000 mid:0.389 hM:0.143 tr:0.054 | isK:1 isKE:0 kickSig:1.000 | morph:0.786 brk:1 strict:1 | fL_in:0.996 fL_gate:0.110 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.390 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.937 bass:1.000 mid:0.478 hM:0.179 tr:0.053 | isK:1 isKE:0 kickSig:1.000 | morph:0.779 brk:1 strict:1 | fL_in:0.937 fL_gate:0.127 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:1.000 fR_gate:0.402 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.186 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.713 bass:1.000 mid:0.520 hM:0.209 tr:0.065 | isK:1 isKE:0 kickSig:1.000 | morph:0.775 brk:1 strict:1 | fL_in:0.713 fL_gate:0.139 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:1.000 fR_gate:0.415 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.043 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.602 bass:1.000 mid:0.493 hM:0.167 tr:0.056 | isK:1 isKE:0 kickSig:1.000 | morph:0.769 brk:0 strict:1 | fL_in:0.602 fL_gate:0.149 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:1.000 fR_gate:0.427 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.003 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.650 bass:1.000 mid:0.549 hM:0.305 tr:0.230 | isK:1 isKE:0 kickSig:1.000 | morph:0.766 brk:0 strict:1 | fL_in:0.650 fL_gate:0.160 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.439 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.811 bass:1.000 mid:0.525 hM:0.259 tr:0.285 | isK:1 isKE:0 kickSig:1.000 | morph:0.762 brk:0 strict:1 | fL_in:0.811 fL_gate:0.174 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.450 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.866 bass:1.000 mid:0.475 hM:0.162 tr:0.202 | isK:1 isKE:0 kickSig:1.000 | morph:0.756 brk:0 strict:1 | fL_in:0.866 fL_gate:0.188 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.462 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.883 bass:1.000 mid:0.475 hM:0.131 tr:0.202 | isK:1 isKE:0 kickSig:1.000 | morph:0.749 brk:0 strict:1 | fL_in:0.883 fL_gate:0.202 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.473 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.919 bass:1.000 mid:0.387 hM:0.081 tr:0.134 | isK:1 isKE:0 kickSig:1.000 | morph:0.739 brk:0 strict:1 | fL_in:0.919 fL_gate:0.217 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.484 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.934 bass:1.000 mid:0.362 hM:0.124 tr:0.116 | isK:1 isKE:0 kickSig:1.000 | morph:0.727 brk:0 strict:1 | fL_in:0.934 fL_gate:0.232 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.495 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.898 bass:1.000 mid:0.371 hM:0.165 tr:0.105 | isK:1 isKE:0 kickSig:1.000 | morph:0.716 brk:0 strict:1 | fL_in:0.898 fL_gate:0.246 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:1.000 fR_gate:0.505 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.180 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.880 bass:1.000 mid:0.286 hM:0.106 tr:0.071 | isK:1 isKE:0 kickSig:1.000 | morph:0.701 brk:1 strict:1 | fL_in:0.880 fL_gate:0.259 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:1.000 fR_gate:0.515 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.035 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.874 bass:1.000 mid:0.286 hM:0.087 tr:0.071 | isK:1 isKE:0 kickSig:1.000 | morph:0.686 brk:0 strict:1 | fL_in:0.874 fL_gate:0.272 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:1.000 fR_gate:0.526 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.002 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.859 bass:1.000 mid:0.233 hM:0.072 tr:0.057 | isK:1 isKE:0 kickSig:1.000 | morph:0.669 brk:0 strict:1 | fL_in:0.859 fL_gate:0.285 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:1.000 fR_gate:0.535 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.002 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.752 bass:1.000 mid:0.467 hM:0.322 tr:0.179 | isK:1 isKE:0 kickSig:1.000 | morph:0.664 brk:0 strict:1 | fL_in:0.752 fL_gate:0.294 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:1.000 fR_gate:0.545 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.002 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.739 bass:1.000 mid:0.550 hM:0.450 tr:0.298 | isK:1 isKE:0 kickSig:1.000 | morph:0.663 brk:0 strict:1 | fL_in:0.739 fL_gate:0.304 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:1.000 fR_gate:0.555 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.002 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.832 bass:1.000 mid:0.569 hM:0.483 tr:0.366 | isK:1 isKE:0 kickSig:1.000 | morph:0.665 brk:0 strict:1 | fL_in:0.832 fL_gate:0.315 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.564 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.862 bass:1.000 mid:0.569 hM:0.494 tr:0.366 | isK:1 isKE:0 kickSig:1.000 | morph:0.666 brk:0 strict:1 | fL_in:0.862 fL_gate:0.327 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.573 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=BRIGHT dom=49% B/D/N=239/209/42
+[FRONT-TEL] sB:0.904 bass:1.000 mid:0.472 hM:0.374 tr:0.302 | isK:1 isKE:0 kickSig:1.000 | morph:0.661 brk:0 strict:1 | fL_in:0.904 fL_gate:0.339 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.582 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.843 bass:0.970 mid:0.390 hM:0.274 tr:0.211 | isK:1 isKE:0 kickSig:0.970 | morph:0.653 brk:0 strict:1 | fL_in:0.843 fL_gate:0.349 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.970 fR_gate:0.590 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.175 outFR:0.002 outPar:0.002
+[FRONT-TEL] sB:0.708 bass:0.852 mid:0.380 hM:0.248 tr:0.161 | isK:1 isKE:0 kickSig:0.852 | morph:0.644 brk:0 strict:1 | fL_in:0.708 fL_gate:0.357 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.852 fR_gate:0.596 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.030 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.502 bass:0.661 mid:0.267 hM:0.150 tr:0.107 | isK:1 isKE:0 kickSig:0.661 | morph:0.629 brk:0 strict:1 | fL_in:0.502 fL_gate:0.361 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.661 fR_gate:0.598 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.002 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.436 bass:0.661 mid:0.267 hM:0.118 tr:0.107 | isK:1 isKE:0 kickSig:0.661 | morph:0.615 brk:0 strict:1 | fL_in:0.436 fL_gate:0.363 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.661 fR_gate:0.599 fR_sq:0.039 fR_pow:0.760 fR_ign:1 | outFL:0.002 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.284 bass:0.480 mid:0.181 hM:0.071 tr:0.071 | isK:1 isKE:0 kickSig:0.480 | morph:0.597 brk:0 strict:1 | fL_in:0.284 fL_gate:0.357 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.480 fR_gate:0.588 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.002 outPar:0.002
+[FRONT-TEL] sB:0.282 bass:0.540 mid:0.330 hM:0.242 tr:0.245 | isK:1 isKE:0 kickSig:0.540 | morph:0.586 brk:0 strict:1 | fL_in:0.282 fL_gate:0.351 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.540 fR_gate:0.584 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.457 bass:0.643 mid:0.314 hM:0.222 tr:0.297 | isK:1 isKE:0 kickSig:0.643 | morph:0.575 brk:0 strict:1 | fL_in:0.457 fL_gate:0.354 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.643 fR_gate:0.586 fR_sq:0.039 fR_pow:0.712 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[VirtualWire] 📡 SAB feed — cb#3000 | frames=441 | peak=0.2579 | ch=2
+[FRONT-TEL] sB:0.544 bass:0.709 mid:0.249 hM:0.139 tr:0.209 | isK:1 isKE:0 kickSig:0.709 | morph:0.561 brk:0 strict:1 | fL_in:0.544 fL_gate:0.358 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.709 fR_gate:0.589 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.597 bass:0.757 mid:0.198 hM:0.086 tr:0.141 | isK:1 isKE:0 kickSig:0.757 | morph:0.545 brk:0 strict:1 | fL_in:0.597 fL_gate:0.364 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.757 fR_gate:0.593 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.645 bass:0.793 mid:0.155 hM:0.054 tr:0.093 | isK:1 isKE:0 kickSig:0.793 | morph:0.527 brk:0 strict:1 | fL_in:0.645 fL_gate:0.370 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.793 fR_gate:0.597 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.660 bass:0.826 mid:0.316 hM:0.169 tr:0.106 | isK:1 isKE:0 kickSig:0.826 | morph:0.517 brk:0 strict:1 | fL_in:0.660 fL_gate:0.376 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.826 fR_gate:0.602 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.616 bass:0.859 mid:0.409 hM:0.164 tr:0.081 | isK:1 isKE:0 kickSig:0.859 | morph:0.512 brk:0 strict:1 | fL_in:0.616 fL_gate:0.382 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.859 fR_gate:0.608 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.162 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.625 bass:0.901 mid:0.419 hM:0.114 tr:0.055 | isK:1 isKE:0 kickSig:0.901 | morph:0.508 brk:0 strict:1 | fL_in:0.625 fL_gate:0.387 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.901 fR_gate:0.614 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.627 bass:0.901 mid:0.419 hM:0.097 tr:0.055 | isK:1 isKE:0 kickSig:0.901 | morph:0.503 brk:0 strict:1 | fL_in:0.627 fL_gate:0.392 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.901 fR_gate:0.620 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.635 bass:0.933 mid:0.405 hM:0.121 tr:0.054 | isK:1 isKE:0 kickSig:0.933 | morph:0.499 brk:0 strict:1 | fL_in:0.635 fL_gate:0.398 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.933 fR_gate:0.627 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[GlassBridge] 🏓 Ping-Pong Status: Sent: 1340 | Dropped: 33 | In-Flight: 1 | PoolFree: 2
+[FRONT-TEL] sB:0.564 bass:1.000 mid:0.498 hM:0.252 tr:0.087 | isK:1 isKE:0 kickSig:1.000 | morph:0.499 brk:0 strict:1 | fL_in:0.564 fL_gate:0.402 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:1.000 fR_gate:0.635 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.161 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.730 bass:1.000 mid:0.419 hM:0.172 tr:0.063 | isK:1 isKE:0 kickSig:1.000 | morph:0.495 brk:0 strict:1 | fL_in:0.730 fL_gate:0.409 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.642 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.784 bass:1.000 mid:0.419 hM:0.146 tr:0.063 | isK:1 isKE:0 kickSig:1.000 | morph:0.491 brk:0 strict:1 | fL_in:0.784 fL_gate:0.417 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.650 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.903 bass:1.000 mid:0.329 hM:0.094 tr:0.044 | isK:1 isKE:0 kickSig:1.000 | morph:0.482 brk:0 strict:1 | fL_in:0.903 fL_gate:0.427 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.657 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.915 bass:1.000 mid:0.245 hM:0.060 tr:0.031 | isK:1 isKE:0 kickSig:1.000 | morph:0.470 brk:0 strict:1 | fL_in:0.915 fL_gate:0.438 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.665 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.856 bass:1.000 mid:0.318 hM:0.159 tr:0.056 | isK:1 isKE:0 kickSig:1.000 | morph:0.461 brk:0 strict:1 | fL_in:0.856 fL_gate:0.446 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:1.000 fR_gate:0.672 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.158 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.736 bass:0.958 mid:0.273 hM:0.128 tr:0.046 | isK:1 isKE:0 kickSig:0.958 | morph:0.451 brk:0 strict:1 | fL_in:0.736 fL_gate:0.453 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.958 fR_gate:0.678 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.016 outFR:0.001 outPar:0.001
+[FRONT-TEL] sB:0.550 bass:0.871 mid:0.215 hM:0.079 tr:0.032 | isK:1 isKE:0 kickSig:0.871 | morph:0.438 brk:0 strict:1 | fL_in:0.550 fL_gate:0.455 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.871 fR_gate:0.682 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.001 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.490 bass:0.871 mid:0.215 hM:0.063 tr:0.032 | isK:1 isKE:0 kickSig:0.871 | morph:0.425 brk:0 strict:1 | fL_in:0.490 fL_gate:0.457 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.871 fR_gate:0.686 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.001 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.496 bass:0.849 mid:0.204 hM:0.090 tr:0.071 | isK:1 isKE:0 kickSig:0.849 | morph:0.411 brk:0 strict:1 | fL_in:0.496 fL_gate:0.458 fL_sq:0.020 fL_pow:0.063 fL_ign:1 | fR_in:0.849 fR_gate:0.690 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.262 outFR:0.001 outPar:0.001
+[FRONT-TEL] sB:0.523 bass:0.867 mid:0.353 hM:0.218 tr:0.246 | isK:1 isKE:0 kickSig:0.867 | morph:0.406 brk:0 strict:1 | fL_in:0.523 fL_gate:0.460 fL_sq:0.020 fL_pow:0.232 fL_ign:1 | fR_in:0.867 fR_gate:0.694 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.582 bass:0.879 mid:0.365 hM:0.173 tr:0.240 | isK:1 isKE:0 kickSig:0.879 | morph:0.401 brk:0 strict:1 | fL_in:0.582 fL_gate:0.463 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.879 fR_gate:0.698 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.601 bass:0.879 mid:0.365 hM:0.158 tr:0.240 | isK:1 isKE:0 kickSig:0.879 | morph:0.396 brk:0 strict:1 | fL_in:0.601 fL_gate:0.466 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.879 fR_gate:0.702 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.616 bass:0.902 mid:0.302 hM:0.099 tr:0.162 | isK:1 isKE:0 kickSig:0.902 | morph:0.388 brk:0 strict:1 | fL_in:0.616 fL_gate:0.470 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.902 fR_gate:0.707 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.631 bass:0.924 mid:0.250 hM:0.063 tr:0.108 | isK:1 isKE:0 kickSig:0.924 | morph:0.378 brk:0 strict:1 | fL_in:0.631 fL_gate:0.474 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.924 fR_gate:0.711 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[TitanOrchestrator] ðŸŽ§ WORKER BPM=120 conf=0.73 | PLL=FREEWHEEL [mem=120@-0f] phase=0.00 sync=0.44 | beat #61 | bass=0.4754 sab=0.054 | ðŸ”¬in_peak=0.32298 in_rms=0.16078
+[FRONT-TEL] sB:0.623 bass:0.919 mid:0.323 hM:0.191 tr:0.118 | isK:1 isKE:0 kickSig:0.919 | morph:0.372 brk:0 strict:1 | fL_in:0.623 fL_gate:0.477 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.919 fR_gate:0.716 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.150 outFR:0.001 outPar:0.001
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:15% FR:0% BL:0% BR:0%
+[CHOREO] techno-club | #1:square [MIRROR ×2] | scene:7b | Pan:-173 Tilt:-135 | sBPM:120 phase:164°
+[FRONT-TEL] sB:0.605 bass:0.907 mid:0.307 hM:0.167 tr:0.091 | isK:1 isKE:0 kickSig:0.907 | morph:0.364 brk:0 strict:1 | fL_in:0.605 fL_gate:0.480 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.907 fR_gate:0.720 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.012 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.613 bass:0.907 mid:0.242 hM:0.104 tr:0.061 | isK:1 isKE:0 kickSig:0.907 | morph:0.354 brk:0 strict:1 | fL_in:0.613 fL_gate:0.484 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.907 fR_gate:0.724 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.616 bass:0.907 mid:0.242 hM:0.083 tr:0.061 | isK:1 isKE:0 kickSig:0.907 | morph:0.344 brk:0 strict:1 | fL_in:0.616 fL_gate:0.487 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.907 fR_gate:0.729 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.609 bass:0.897 mid:0.285 hM:0.148 tr:0.082 | isK:1 isKE:0 kickSig:0.897 | morph:0.337 brk:0 strict:1 | fL_in:0.609 fL_gate:0.490 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.897 fR_gate:0.732 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.147 outFR:0.001 outPar:0.001
+[FRONT-TEL] sB:0.477 bass:0.939 mid:0.499 hM:0.386 tr:0.200 | isK:1 isKE:0 kickSig:0.939 | morph:0.361 brk:0 strict:1 | fL_in:0.477 fL_gate:0.490 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.939 fR_gate:0.737 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.011 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.633 bass:1.000 mid:0.551 hM:0.476 tr:0.319 | isK:1 isKE:0 kickSig:1.000 | morph:0.401 brk:0 strict:1 | fL_in:0.633 fL_gate:0.494 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.743 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.768 bass:1.000 mid:0.553 hM:0.481 tr:0.359 | isK:1 isKE:0 kickSig:1.000 | morph:0.436 brk:0 strict:1 | fL_in:0.768 fL_gate:0.500 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.748 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.848 bass:1.000 mid:0.420 hM:0.324 tr:0.269 | isK:1 isKE:0 kickSig:1.000 | morph:0.433 brk:0 strict:1 | fL_in:0.848 fL_gate:0.507 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.754 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.780 bass:0.942 mid:0.418 hM:0.231 tr:0.188 | isK:1 isKE:0 kickSig:0.942 | morph:0.430 brk:0 strict:1 | fL_in:0.780 fL_gate:0.513 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.942 fR_gate:0.758 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.155 outFR:0.001 outPar:0.001
+[FRONT-TEL] sB:0.759 bass:0.942 mid:0.418 hM:0.201 tr:0.188 | isK:1 isKE:0 kickSig:0.942 | morph:0.428 brk:0 strict:1 | fL_in:0.759 fL_gate:0.519 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.942 fR_gate:0.762 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.015 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.630 bass:0.884 mid:0.484 hM:0.155 tr:0.132 | isK:1 isKE:0 kickSig:0.884 | morph:0.433 brk:0 strict:1 | fL_in:0.630 fL_gate:0.521 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.884 fR_gate:0.765 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.001 outFR:0.001 outPar:0.001
+[FRONT-TEL] sB:0.473 bass:0.834 mid:0.503 hM:0.107 tr:0.088 | isK:1 isKE:0 kickSig:0.834 | morph:0.444 brk:0 strict:1 | fL_in:0.473 fL_gate:0.519 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.834 fR_gate:0.767 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.381 bass:0.838 mid:0.486 hM:0.119 tr:0.112 | isK:1 isKE:0 kickSig:0.838 | morph:0.447 brk:0 strict:1 | fL_in:0.381 fL_gate:0.506 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.838 fR_gate:0.768 fR_sq:0.039 fR_pow:0.744 fR_ign:1 | outFL:0.000 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.441 bass:0.891 mid:0.500 hM:0.247 tr:0.274 | isK:1 isKE:0 kickSig:0.891 | morph:0.455 brk:0 strict:1 | fL_in:0.441 fL_gate:0.502 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.891 fR_gate:0.771 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.000 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.460 bass:0.891 mid:0.500 hM:0.289 tr:0.274 | isK:1 isKE:0 kickSig:0.891 | morph:0.462 brk:0 strict:1 | fL_in:0.460 fL_gate:0.500 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.891 fR_gate:0.774 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.000 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.557 bass:0.923 mid:0.422 hM:0.204 tr:0.266 | isK:1 isKE:0 kickSig:0.923 | morph:0.459 brk:0 strict:1 | fL_in:0.557 fL_gate:0.502 fL_sq:0.020 fL_pow:0.178 fL_ign:1 | fR_in:0.923 fR_gate:0.778 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.616 bass:0.946 mid:0.371 hM:0.124 tr:0.180 | isK:1 isKE:0 kickSig:0.946 | morph:0.453 brk:0 strict:1 | fL_in:0.616 fL_gate:0.505 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.946 fR_gate:0.781 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.666 bass:0.965 mid:0.346 hM:0.075 tr:0.119 | isK:1 isKE:0 kickSig:0.965 | morph:0.447 brk:0 strict:1 | fL_in:0.666 fL_gate:0.508 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.965 fR_gate:0.785 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.685 bass:0.987 mid:0.379 hM:0.074 tr:0.095 | isK:1 isKE:0 kickSig:0.987 | morph:0.442 brk:0 strict:1 | fL_in:0.685 fL_gate:0.513 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.987 fR_gate:0.790 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.691 bass:0.987 mid:0.379 hM:0.074 tr:0.095 | isK:1 isKE:0 kickSig:0.987 | morph:0.437 brk:0 strict:1 | fL_in:0.691 fL_gate:0.517 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.987 fR_gate:0.794 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.689 bass:1.000 mid:0.419 hM:0.062 tr:0.070 | isK:1 isKE:0 kickSig:1.000 | morph:0.434 brk:0 strict:1 | fL_in:0.689 fL_gate:0.521 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.799 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.155 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.697 bass:1.000 mid:0.468 hM:0.050 tr:0.048 | isK:1 isKE:0 kickSig:1.000 | morph:0.434 brk:0 strict:1 | fL_in:0.697 fL_gate:0.525 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.803 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.695 bass:1.000 mid:0.559 hM:0.103 tr:0.052 | isK:1 isKE:0 kickSig:1.000 | morph:0.466 brk:0 strict:1 | fL_in:0.695 fL_gate:0.529 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.808 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.158 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.555 bass:1.000 mid:0.632 hM:0.239 tr:0.084 | isK:1 isKE:0 kickSig:1.000 | morph:0.520 brk:0 strict:1 | fL_in:0.555 fL_gate:0.530 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:1.000 fR_gate:0.812 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.018 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.723 bass:1.000 mid:0.517 hM:0.171 tr:0.062 | isK:1 isKE:0 kickSig:1.000 | morph:0.524 brk:0 strict:1 | fL_in:0.723 fL_gate:0.534 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.816 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.777 bass:1.000 mid:0.517 hM:0.149 tr:0.062 | isK:1 isKE:0 kickSig:1.000 | morph:0.526 brk:0 strict:1 | fL_in:0.777 fL_gate:0.540 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.820 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.888 bass:1.000 mid:0.412 hM:0.098 tr:0.044 | isK:1 isKE:0 kickSig:1.000 | morph:0.522 brk:0 strict:1 | fL_in:0.888 fL_gate:0.547 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.824 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.928 bass:1.000 mid:0.331 hM:0.062 tr:0.030 | isK:1 isKE:0 kickSig:1.000 | morph:0.513 brk:0 strict:1 | fL_in:0.928 fL_gate:0.555 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.828 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=BRIGHT dom=52% B/D/N=251/198/38
+[FRONT-TEL] sB:0.847 bass:1.000 mid:0.266 hM:0.043 tr:0.024 | isK:1 isKE:0 kickSig:1.000 | morph:0.501 brk:0 strict:1 | fL_in:0.847 fL_gate:0.562 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:1.000 fR_gate:0.832 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.161 outFR:0.001 outPar:0.001
+[FRONT-TEL] sB:0.722 bass:0.896 mid:0.211 hM:0.033 tr:0.023 | isK:1 isKE:0 kickSig:0.896 | morph:0.486 brk:0 strict:1 | fL_in:0.722 fL_gate:0.566 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.896 fR_gate:0.834 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.018 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.682 bass:0.896 mid:0.211 hM:0.029 tr:0.023 | isK:1 isKE:0 kickSig:0.896 | morph:0.472 brk:0 strict:1 | fL_in:0.682 fL_gate:0.569 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.896 fR_gate:0.835 fR_sq:0.039 fR_pow:0.695 fR_ign:1 | outFL:0.001 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.528 bass:0.801 mid:0.181 hM:0.021 tr:0.016 | isK:1 isKE:0 kickSig:0.801 | morph:0.457 brk:0 strict:1 | fL_in:0.528 fL_gate:0.567 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.801 fR_gate:0.834 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.001 outPar:0.001
+[FRONT-TEL] sB:0.503 bass:0.776 mid:0.194 hM:0.071 tr:0.063 | isK:1 isKE:0 kickSig:0.776 | morph:0.442 brk:0 strict:1 | fL_in:0.503 fL_gate:0.563 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.776 fR_gate:0.829 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.523 bass:0.799 mid:0.310 hM:0.209 tr:0.247 | isK:1 isKE:0 kickSig:0.799 | morph:0.434 brk:0 strict:1 | fL_in:0.523 fL_gate:0.562 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.799 fR_gate:0.828 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.583 bass:0.799 mid:0.266 hM:0.161 tr:0.243 | isK:1 isKE:0 kickSig:0.799 | morph:0.423 brk:0 strict:1 | fL_in:0.583 fL_gate:0.563 fL_sq:0.020 fL_pow:0.012 fL_ign:0 | fR_in:0.799 fR_gate:0.827 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.602 bass:0.799 mid:0.266 hM:0.146 tr:0.243 | isK:1 isKE:0 kickSig:0.799 | morph:0.413 brk:0 strict:1 | fL_in:0.602 fL_gate:0.564 fL_sq:0.020 fL_pow:0.060 fL_ign:1 | fR_in:0.799 fR_gate:0.826 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.250 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.610 bass:0.808 mid:0.215 hM:0.090 tr:0.165 | isK:1 isKE:0 kickSig:0.808 | morph:0.401 brk:0 strict:1 | fL_in:0.610 fL_gate:0.565 fL_sq:0.020 fL_pow:0.091 fL_ign:1 | fR_in:0.808 fR_gate:0.827 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.376 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.621 bass:0.815 mid:0.162 hM:0.055 tr:0.109 | isK:1 isKE:0 kickSig:0.815 | morph:0.386 brk:0 strict:1 | fL_in:0.621 fL_gate:0.567 fL_sq:0.020 fL_pow:0.146 fL_ign:1 | fR_in:0.815 fR_gate:0.827 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.529 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.628 bass:0.851 mid:0.333 hM:0.137 tr:0.100 | isK:1 isKE:0 kickSig:0.851 | morph:0.380 brk:0 strict:1 | fL_in:0.628 fL_gate:0.569 fL_sq:0.020 fL_pow:0.187 fL_ign:1 | fR_in:0.851 fR_gate:0.828 fR_sq:0.039 fR_pow:0.341 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.611 bass:0.880 mid:0.411 hM:0.131 tr:0.081 | isK:1 isKE:0 kickSig:0.880 | morph:0.378 brk:0 strict:1 | fL_in:0.611 fL_gate:0.570 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.880 fR_gate:0.829 fR_sq:0.039 fR_pow:0.580 fR_ign:1 | outFL:0.151 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.625 bass:0.912 mid:0.431 hM:0.093 tr:0.057 | isK:1 isKE:0 kickSig:0.912 | morph:0.377 brk:0 strict:1 | fL_in:0.625 fL_gate:0.572 fL_sq:0.020 fL_pow:0.137 fL_ign:1 | fR_in:0.912 fR_gate:0.831 fR_sq:0.039 fR_pow:0.796 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.629 bass:0.912 mid:0.431 hM:0.081 tr:0.057 | isK:1 isKE:0 kickSig:0.912 | morph:0.376 brk:0 strict:1 | fL_in:0.629 fL_gate:0.574 fL_sq:0.020 fL_pow:0.156 fL_ign:1 | fR_in:0.912 fR_gate:0.833 fR_sq:0.039 fR_pow:0.782 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.643 bass:0.930 mid:0.452 hM:0.141 tr:0.081 | isK:1 isKE:0 kickSig:0.930 | morph:0.376 brk:0 strict:1 | fL_in:0.643 fL_gate:0.576 fL_sq:0.020 fL_pow:0.260 fL_ign:1 | fR_in:0.930 fR_gate:0.836 fR_sq:0.039 fR_pow:0.885 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.503 bass:0.967 mid:0.603 hM:0.369 tr:0.198 | isK:1 isKE:0 kickSig:0.967 | morph:0.434 brk:0 strict:1 | fL_in:0.503 fL_gate:0.570 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.967 fR_gate:0.839 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.155 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.644 bass:1.000 mid:0.620 hM:0.464 tr:0.318 | isK:1 isKE:0 kickSig:1.000 | morph:0.489 brk:0 strict:1 | fL_in:0.644 fL_gate:0.573 fL_sq:0.020 fL_pow:0.369 fL_ign:1 | fR_in:1.000 fR_gate:0.842 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.690 bass:1.000 mid:0.620 hM:0.494 tr:0.318 | isK:1 isKE:0 kickSig:1.000 | morph:0.535 brk:0 strict:1 | fL_in:0.690 fL_gate:0.575 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.846 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.801 bass:1.000 mid:0.567 hM:0.449 tr:0.325 | isK:1 isKE:0 kickSig:1.000 | morph:0.555 brk:0 strict:1 | fL_in:0.801 fL_gate:0.581 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.849 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.847 bass:1.000 mid:0.397 hM:0.278 tr:0.227 | isK:1 isKE:0 kickSig:1.000 | morph:0.549 brk:0 strict:1 | fL_in:0.847 fL_gate:0.586 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.853 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.779 bass:0.918 mid:0.287 hM:0.194 tr:0.163 | isK:1 isKE:0 kickSig:0.918 | morph:0.538 brk:0 strict:1 | fL_in:0.779 fL_gate:0.591 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.918 fR_gate:0.855 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.165 outFR:0.001 outPar:0.001
+[FRONT-TEL] sB:0.617 bass:0.769 mid:0.201 hM:0.127 tr:0.115 | isK:1 isKE:0 kickSig:0.769 | morph:0.522 brk:0 strict:1 | fL_in:0.617 fL_gate:0.592 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.769 fR_gate:0.847 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.020 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.413 bass:0.574 mid:0.134 hM:0.075 tr:0.076 | isK:1 isKE:0 kickSig:0.574 | morph:0.503 brk:0 strict:1 | fL_in:0.413 fL_gate:0.574 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.574 fR_gate:0.817 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.001 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.348 bass:0.574 mid:0.134 hM:0.058 tr:0.076 | isK:1 isKE:0 kickSig:0.574 | morph:0.485 brk:0 strict:1 | fL_in:0.348 fL_gate:0.550 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.574 fR_gate:0.790 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.230 bass:0.449 mid:0.145 hM:0.084 tr:0.109 | isK:1 isKE:0 kickSig:0.449 | morph:0.467 brk:0 strict:1 | fL_in:0.230 fL_gate:0.515 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.449 fR_gate:0.752 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.312 bass:0.586 mid:0.323 hM:0.204 tr:0.284 | isK:1 isKE:0 kickSig:0.586 | morph:0.459 brk:0 strict:1 | fL_in:0.312 fL_gate:0.494 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.586 fR_gate:0.734 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.458 bass:0.726 mid:0.391 hM:0.158 tr:0.268 | isK:1 isKE:0 kickSig:0.726 | morph:0.455 brk:0 strict:1 | fL_in:0.458 fL_gate:0.493 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.726 fR_gate:0.735 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[CHOREO] techno-club | #1:square [MIRROR ×2] | scene:10b | Pan:-245 Tilt:-43 | sBPM:120 phase:228°
+[FRONT-TEL] sB:0.523 bass:0.827 mid:0.395 hM:0.101 tr:0.182 | isK:1 isKE:0 kickSig:0.827 | morph:0.450 brk:0 strict:1 | fL_in:0.523 fL_gate:0.495 fL_sq:0.020 fL_pow:0.032 fL_ign:1 | fR_in:0.827 fR_gate:0.737 fR_sq:0.039 fR_pow:0.885 fR_ign:1 | outFL:0.136 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.599 bass:0.909 mid:0.385 hM:0.063 tr:0.120 | isK:1 isKE:0 kickSig:0.909 | morph:0.445 brk:0 strict:1 | fL_in:0.599 fL_gate:0.497 fL_sq:0.020 fL_pow:0.839 fL_ign:1 | fR_in:0.909 fR_gate:0.741 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.656 bass:0.965 mid:0.353 hM:0.080 tr:0.091 | isK:1 isKE:0 kickSig:0.965 | morph:0.439 brk:0 strict:1 | fL_in:0.656 fL_gate:0.501 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:0.965 fR_gate:0.746 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.681 bass:1.000 mid:0.322 hM:0.100 tr:0.076 | isK:1 isKE:0 kickSig:1.000 | morph:0.432 brk:0 strict:1 | fL_in:0.681 fL_gate:0.505 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.751 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[TitanOrchestrator] ðŸŽ§ WORKER BPM=120 conf=0.75 | PLL=FREEWHEEL [mem=120@-0f] phase=0.00 sync=0.45 | beat #64 | bass=0.5977 sab=0.215 | ðŸ”¬in_peak=0.41901 in_rms=0.20318
+[FRONT-TEL] sB:0.689 bass:1.000 mid:0.322 hM:0.107 tr:0.076 | isK:1 isKE:0 kickSig:1.000 | morph:0.424 brk:0 strict:1 | fL_in:0.689 fL_gate:0.509 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.757 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:53% FR:80% BL:0% BR:0%
+[FRONT-TEL] sB:0.698 bass:1.000 mid:0.266 hM:0.066 tr:0.051 | isK:1 isKE:0 kickSig:1.000 | morph:0.414 brk:0 strict:1 | fL_in:0.698 fL_gate:0.514 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.762 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.712 bass:1.000 mid:0.288 hM:0.119 tr:0.054 | isK:1 isKE:0 kickSig:1.000 | morph:0.405 brk:0 strict:1 | fL_in:0.712 fL_gate:0.518 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.767 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[GlassBridge] 🏓 Ping-Pong Status: Sent: 1418 | Dropped: 33 | In-Flight: 2 | PoolFree: 1
+[FRONT-TEL] sB:0.673 bass:1.000 mid:0.438 hM:0.273 tr:0.090 | isK:1 isKE:0 kickSig:1.000 | morph:0.404 brk:0 strict:1 | fL_in:0.673 fL_gate:0.522 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:1.000 fR_gate:0.772 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.153 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.810 bass:1.000 mid:0.306 hM:0.168 tr:0.064 | isK:1 isKE:0 kickSig:1.000 | morph:0.396 brk:0 strict:1 | fL_in:0.810 fL_gate:0.528 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.777 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.854 bass:1.000 mid:0.306 hM:0.134 tr:0.064 | isK:1 isKE:0 kickSig:1.000 | morph:0.388 brk:0 strict:1 | fL_in:0.854 fL_gate:0.535 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.782 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.945 bass:1.000 mid:0.211 hM:0.083 tr:0.045 | isK:1 isKE:0 kickSig:1.000 | morph:0.376 brk:0 strict:1 | fL_in:0.945 fL_gate:0.544 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.787 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.970 bass:1.000 mid:0.143 hM:0.050 tr:0.031 | isK:1 isKE:0 kickSig:1.000 | morph:0.361 brk:0 strict:1 | fL_in:0.970 fL_gate:0.553 fL_sq:0.020 fL_pow:1.000 fL_ign:1 | fR_in:1.000 fR_gate:0.792 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.902 bass:1.000 mid:0.143 hM:0.045 tr:0.027 | isK:1 isKE:0 kickSig:1.000 | morph:0.346 brk:0 strict:1 | fL_in:0.902 fL_gate:0.561 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:1.000 fR_gate:0.796 fR_sq:0.039 fR_pow:1.000 fR_ign:1 | outFL:0.148 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.771 bass:0.965 mid:0.250 hM:0.059 tr:0.034 | isK:1 isKE:0 kickSig:0.965 | morph:0.336 brk:0 strict:1 | fL_in:0.771 fL_gate:0.566 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.965 fR_gate:0.800 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.011 outFR:0.001 outPar:0.001
+[FRONT-TEL] sB:0.539 bass:0.859 mid:0.278 hM:0.042 tr:0.023 | isK:1 isKE:0 kickSig:0.859 | morph:0.328 brk:0 strict:1 | fL_in:0.539 fL_gate:0.566 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.859 fR_gate:0.802 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.464 bass:0.859 mid:0.278 hM:0.037 tr:0.023 | isK:1 isKE:0 kickSig:0.859 | morph:0.321 brk:0 strict:1 | fL_in:0.464 fL_gate:0.557 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.859 fR_gate:0.803 fR_sq:0.039 fR_pow:0.598 fR_ign:1 | outFL:0.000 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.390 bass:0.832 mid:0.295 hM:0.074 tr:0.076 | isK:1 isKE:0 kickSig:0.832 | morph:0.314 brk:0 strict:1 | fL_in:0.390 fL_gate:0.540 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.832 fR_gate:0.804 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.444 bass:0.824 mid:0.406 hM:0.224 tr:0.274 | isK:1 isKE:0 kickSig:0.824 | morph:0.313 brk:0 strict:1 | fL_in:0.444 fL_gate:0.532 fL_sq:0.020 fL_pow:0.000 fL_ign:0 | fR_in:0.824 fR_gate:0.805 fR_sq:0.039 fR_pow:0.000 fR_ign:0 | outFL:0.000 outFR:0.000 outPar:0.000
+[FRONT-TEL] sB:0.541 bass:0.853 mid:0.346 hM:0.172 tr:0.267 | isK:1 isKE:0 kickSig:0.853 | morph:0.309 brk:0 strict:1 | fL_in:0.541 fL_gate:0.533 fL_sq:0.020 fL_pow:0.001 fL_ign:0 | fR_in:0.853 fR_gate:0.806 fR_sq:0.039 fR_pow:0.525 fR_ign:1 | outFL:0.000 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.586 bass:0.856 mid:0.266 hM:0.105 tr:0.181 | isK:1 isKE:0 kickSig:0.856 | morph:0.301 brk:0 strict:1 | fL_in:0.586 fL_gate:0.535 fL_sq:0.020 fL_pow:0.108 fL_ign:1 | fR_in:0.856 fR_gate:0.808 fR_sq:0.039 fR_pow:0.531 fR_ign:1 | outFL:0.421 outFR:0.800 outPar:0.800
+[FRONT-TEL] sB:0.600 bass:0.856 mid:0.266 hM:0.084 tr:0.181 | isK:1 isKE:0 kickSig:0.856 | morph:0.293 brk:0 strict:1 | fL_in:0.600 fL_gate:0.536 fL_sq:0.020 fL_pow:0.188 fL_ign:1 | fR_in:0.856 fR_gate:0.809 fR_sq:0.039 fR_pow:0.517 fR_ign:1 | outFL:0.529 outFR:0.800 outPar:0.800

@@ -40,7 +40,7 @@ export interface ProcessedFrame {
   recoveryFactor: number
   isBreakdown: boolean
   isVetoed: boolean
-  isKick: boolean        // WAVE 2439.6: Detección local 44Hz (bass > gateOn) — zero-latency
+  isKick: boolean        // Señal cruda del IntervalBPMTracker — fonte del candado
   isKickEdge: boolean
   acidMode: boolean
   noiseMode: boolean
@@ -180,13 +180,6 @@ export abstract class LiquidEngineBase {
   // Kick edge detection state
   private _lastKickTime = 0
   private _kickIntervalMs = 0
-
-  // WAVE 2439.8: Naked Delta — estado para filtrar aceleración pura del bombo
-  private _prevBassEnergy: number = 0
-
-  // WAVE 2439.9: Frame Hold — extiende el pulso del bombo ~110ms para hardware DMX
-  // Un único fotograma (22ms) es indigerible para dimmers/LEDs físicos.
-  private _kickHoldCounter: number = 0
 
   // Kick Veto state
   private _kickVetoFrames = 0
@@ -411,39 +404,7 @@ export abstract class LiquidEngineBase {
     // ═══════════════════════════════════════════════════════════════════
     // 5. KICK DETECTION + VETO
     // ═══════════════════════════════════════════════════════════════════
-    // WAVE 2439.8: Naked Delta — filtro de aceleración pura sin time-locks.
-    // El sinte oscila con deltas de ~0.01. El bombo salta violentamente (>0.05).
-    // Esto decapita el sustain del sintetizador y aisla transitorios verticales.
-
-    // DESCONTAMINACIÓN EXACTA: Revertimos la inyección de WAVE 3421
-    // Le quitamos el 40% de lowMid para aislar el grave original (0-250Hz)
-    const pureBassEnergy = Math.max(0, bands.bass - (bands.lowMid * 0.40))
-    const bassDelta = pureBassEnergy - this._prevBassEnergy
-    this._prevBassEnergy = pureBassEnergy
-
-    // WAVE 2439.10: Reload Lock + Shielded Delta
-    // RELOAD LOCK: Solo evaluamos impacto si el hold está inactivo.
-    // Esto impide que el pumping del sidechain extienda o reinicie el contador.
-    // ADAPTIVE DELTA: Curva inversa de compresión sobre señal purificada.
-    // Bass 1.0 → delta 0.040 | Bass 0.5 → delta 0.080. Evita falsos positivos en build-ups.
-    let isImpact = false
-    if (this._kickHoldCounter === 0) {
-      // Curva dinámica para emular headroom real:
-      // pureBass a 1.0 -> exige delta de 0.040
-      // pureBass a 0.5 -> exige delta de 0.080
-      const dynamicDelta = 0.120 - (pureBassEnergy * 0.080)
-
-      // Evaluamos con pureBassEnergy — voces y cajas ya fueron anuladas
-      isImpact = pureBassEnergy > p.envelopeKick.gateOn && bassDelta > dynamicDelta
-
-      if (isImpact) {
-        this._kickHoldCounter = 6
-      }
-    }
-
-    const isKick = this._kickHoldCounter > 0
-    if (this._kickHoldCounter > 0) this._kickHoldCounter--
-
+    const isKick = input.isKick ?? false
     if (isKick && this._lastKickTime > 0) {
       this._kickIntervalMs = now - this._lastKickTime
     }
@@ -463,10 +424,12 @@ export abstract class LiquidEngineBase {
     // --- FRONT L: SubBass continuo (El Océano) ---
     let frontLeft = this.envSubBass.process(bands.subBass, morphFactor, now, isBreakdown)
 
-    // --- FRONT R: Kick Naked Delta (El Francotirador) ---
-    // WAVE 2439.8: kickSignal alimentado solo por transitorios verticales (delta > 0.05).
-    // El envelope con su decayBase ultrarrápido y maxIntensity dará forma al impulso.
-    const kickSignal = isKick ? pureBassEnergy : 0
+    // --- FRONT R: Kick edge detection (El Francotirador) ---
+    // WAVE 2439.2: Candado del Metrónomo — en strict-split, el IntervalBPMTracker
+    // es la única fuente de verdad. Si !isKick, energia = 0, sin excepciones.
+    // En modo default la energía cruda del isKickEdge puede seguir disparando.
+    const kickLocked = this.profile.layout41Strategy === 'strict-split' && !isKick
+    const kickSignal = kickLocked ? 0 : (isKickEdge ? bands.bass : 0)
     let frontRight = this.envKick.process(kickSignal, morphFactor, now, isBreakdown)
 
     // --- BACK R (El Látigo): WAVE 2449 MORPHOLOGIC CENTROID SHIELD ---
@@ -569,35 +532,76 @@ export abstract class LiquidEngineBase {
     let moverLeft: number
     let moverRight: number
 
-    // --- ENVELOPE CROSS-FILTER — Motor Parametrizado por Perfil (WAVE 2457) ---
-    // WAVE 6064: Desacoplado de layout41Strategy. Todos los perfiles usan envelopes.
-    // El layout solo decide enrutamiento espacial (frontPar/backPar), no física.
+    if (p.layout41Strategy === 'strict-split') {
+      // --- WAVE 911 LEGACY → WAVE 2541.3 RECALIBRATION ---
+      // Exclusivo para techno industrial en modo strict-split.
+      //
+      // WAVE 2541.3: RATIO-BASED SEPARATOR
+      // The old formula `mid - bass*0.50` was calibrated for raw RMS values
+      // (0.01-0.05 range). With WAVE 2541.1 peak normalization (0-1 range),
+      // bass=1.0 → bass*0.50=0.50 annihilates mid in most frames.
+      //
+      // New approach: ratio-based attenuation.
+      // When bass dominates (bass > mid), attenuate mid proportionally
+      // but NEVER kill it below a floor. The synth mid component is real —
+      // it just coexists with kick energy in the 500-2000Hz range.
+      //
+      // MOVER L = EL OSCURO (500-2000Hz: mid tonal del synth)
+      //   bassRatio: how much bass dominates over mid (0=no bass, 1=equal, >1=bass dominant)
+      //   attenuation: 1.0 when bass is low, decays to FLOOR when bass is very high
+      //   rawMoverL retains mid presence even during kick hits
+      //
+      // MOVER R = EL TERMINATOR (2kHz - 20kHz: treble puro)
+      //   No change needed — treble is independently normalized.
 
-    // MOVER L: cross-filter tonal (El Galan / Melodista / segun perfil)
-    //   input = max(0, highMid×mH + treble×tW + mid×mW)
-    //   Gate tonal: si flatness >= moverLTonalThreshold → ruido, cortar
-    const moverLRaw = Math.max(0,
-      bands.highMid * p.moverLHighMidWeight +
-      bands.treble  * p.moverLTrebleWeight  +
-      bands.mid     * p.moverLMidWeight
-    )
-    const isTonal = flatness < p.moverLTonalThreshold ? 1.0 : 0.0
-    const moverLInput = moverLRaw * isTonal
-    moverLeft = this.envTreble.process(moverLInput, morphFactor, now, isBreakdown)
+      const calculateMover = (signal: number, gate: number, boost: number): number => {
+        if (signal < gate) return 0.0
+        const gated = (signal - gate) / (1.0 - gate)
+        return Math.min(1.0, Math.max(0, Math.pow(gated, 1.2) * boost))
+      }
 
-    // MOVER R: cleanMid con bass-subtractor adaptativo (La Dama / Terminator vocal)
-    //   subtractFactor = base - morphFactor × range
-    //   cleanMid = max(0, mid - bass × subtractFactor)
-    //   crossInput = max(0, cleanMid - treble × moverRTrebleSub)
-    const subtractFactor = p.bassSubtractBase - morphFactor * p.bassSubtractRange
-    const cleanMid = Math.max(0, bands.mid - bands.bass * subtractFactor)
-    const moverRInput = Math.max(0, cleanMid - bands.treble * p.moverRTrebleSub)
-    moverRight = this.envVocal.process(moverRInput, morphFactor, now, isBreakdown)
+      // Ratio-based bass separator: mid keeps a floor even when bass dominates
+      const BASS_ATTENUATION_FACTOR = 0.60  // How much bass can reduce mid (0=none, 1=full kill)
+      const MID_FLOOR = 0.08                // Minimum mid that always survives
+      const bassRatio = bands.bass > 0.001 ? Math.min(2.0, bands.bass / Math.max(0.001, bands.mid)) : 0
+      const bassAttenuation = 1.0 - Math.min(BASS_ATTENUATION_FACTOR, bassRatio * 0.30)
+      const rawMoverL = Math.max(MID_FLOOR, bands.mid * bassAttenuation)
+      const rawMoverR = bands.treble
 
-    // Sidechain del kick inline — universal (WAVE 2439)
-    if (isKick) {
-      moverLeft  *= (1.0 - p.sidechainDepth)
-      moverRight *= (1.0 - p.sidechainDepth)
+      // Gates/boosts recalibrated for 0-1 normalized range (WAVE 2541.3)
+      moverLeft  = calculateMover(rawMoverL, 0.10, 3.0)
+      moverRight = calculateMover(rawMoverR, 0.10, 3.0)
+
+      // Sidechain del kick inline (strict-split: guillotina directa)
+      if (isKick) {
+        moverLeft  *= (1.0 - p.sidechainDepth)
+        moverRight *= (1.0 - p.sidechainDepth)
+      }
+
+    } else {
+      // --- ENVELOPE CROSS-FILTER — Motor Parametrizado por Perfil (WAVE 2457) ---
+      // Latino, Pop-Rock, Chill, etc. usan su ADN definido en ILiquidProfile.
+
+      // MOVER L: cross-filter tonal (El Galan / Melodista / segun perfil)
+      //   input = max(0, highMid×mH + treble×tW + mid×mW)
+      //   Gate tonal: si flatness >= moverLTonalThreshold → ruido, cortar
+      const moverLRaw = Math.max(0,
+        bands.highMid * p.moverLHighMidWeight +
+        bands.treble  * p.moverLTrebleWeight  +
+        bands.mid     * p.moverLMidWeight
+      )
+      const isTonal = flatness < p.moverLTonalThreshold ? 1.0 : 0.0
+      const moverLInput = moverLRaw * isTonal
+      moverLeft = this.envTreble.process(moverLInput, morphFactor, now, isBreakdown)
+
+      // MOVER R: cleanMid con bass-subtractor adaptativo (La Dama / Terminator vocal)
+      //   subtractFactor = base - morphFactor × range
+      //   cleanMid = max(0, mid - bass × subtractFactor)
+      //   crossInput = max(0, cleanMid - treble × moverRTrebleSub)
+      const subtractFactor = p.bassSubtractBase - morphFactor * p.bassSubtractRange
+      const cleanMid = Math.max(0, bands.mid - bands.bass * subtractFactor)
+      const moverRInput = Math.max(0, cleanMid - bands.treble * p.moverRTrebleSub)
+      moverRight = this.envVocal.process(moverRInput, morphFactor, now, isBreakdown)
     }
 
     // --- BACK L (El Coro): WAVE 2417 RESURRECTION → WAVE 2430 PARAMETRIZADO ---
@@ -610,17 +614,30 @@ export abstract class LiquidEngineBase {
     )
     let backLeft = this.envHighMid.process(midSynthInput, morphFactor, now, isBreakdown)
 
-    // moverLeft y moverRight calculados por envelopes cross-filter arriba
+    // moverLeft y moverRight ya calculados arriba (WAVE 911 legacy block)
 
     // ═══════════════════════════════════════════════════════════════════
-    // 7. APOCALYPSE MODE (universal)
+    // 7. SIDECHAIN GUILLOTINE
     // ═══════════════════════════════════════════════════════════════════
-    const isApocalypse = harshness > p.apocalypseHarshness && flatness > p.apocalypseFlatness
-    if (isApocalypse) {
-      const chaosEnergy = Math.max(bands.mid, bands.treble)
-      backRight = Math.max(backRight, chaosEnergy)
-      moverLeft = Math.max(moverLeft, chaosEnergy)
-      moverRight = Math.max(moverRight, chaosEnergy)
+    // ═══════════════════════════════════════════════════════════════════
+    // 7. SIDECHAIN GUILLOTINE
+    // ═══════════════════════════════════════════════════════════════════
+    // strict-split ya aplico sidechain inline en el bloque WAVE 911 arriba.
+    // Para otros perfiles, la Guillotina general actua aqui.
+    const frontMax = Math.max(frontLeft, frontRight)
+
+    if (p.layout41Strategy !== 'strict-split' && frontMax > p.sidechainThreshold) {
+      const ducking = 1.0 - frontMax * p.sidechainDepth
+      moverLeft *= ducking
+      moverRight *= ducking
+    } else if (p.layout41Strategy !== 'strict-split') {
+      const isApocalypse = harshness > p.apocalypseHarshness && flatness > p.apocalypseFlatness
+      if (isApocalypse) {
+        const chaosEnergy = Math.max(bands.mid, bands.treble)
+        backRight = Math.max(backRight, chaosEnergy)
+        moverLeft = Math.max(moverLeft, chaosEnergy)
+        moverRight = Math.max(moverRight, chaosEnergy)
+      }
     }
 
     // ═══════════════════════════════════════════════════════════════════

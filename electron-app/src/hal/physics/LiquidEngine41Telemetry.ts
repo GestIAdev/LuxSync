@@ -108,6 +108,7 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
   private static readonly BUFFER_SIZE = 600
   private _buffer: Omni41TelemetryRecord[] = []
   private _bufferHead = 0
+  private _subBassProbe: LiquidEnvelopeProbeState = LiquidEngine41Telemetry.freshProbeState()
   private _kickProbe: LiquidEnvelopeProbeState = LiquidEngine41Telemetry.freshProbeState()
   private _snareProbe: LiquidEnvelopeProbeState = LiquidEngine41Telemetry.freshProbeState()
   private _highMidProbe: LiquidEnvelopeProbeState = LiquidEngine41Telemetry.freshProbeState()
@@ -211,6 +212,7 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
     this._buffer = []
     this._bufferHead = 0
     this._frameCount = 0
+    this._subBassProbe = LiquidEngine41Telemetry.freshProbeState()
     this._kickProbe = LiquidEngine41Telemetry.freshProbeState()
     this._snareProbe = LiquidEngine41Telemetry.freshProbeState()
     this._highMidProbe = LiquidEngine41Telemetry.freshProbeState()
@@ -416,45 +418,46 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
         this._bufferHead = (this._bufferHead + 1) % LiquidEngine41Telemetry.BUFFER_SIZE
       }
 
-      // [PROFILE-41] WAVE 2459: Telemetría activa — 4 zonas para calibración en sala.
-      // Formato legible: frontPar, backPar, moverL, moverR + señales crudas de diagnóstico.
-      // Desactivar con setTelemetryEnabled(false) antes de producción estable.
-      // console.error(
-      //   `[MATH AUDIT][${profileTag}-41]` +
+      // ── FRONT-ONLY LIVE TELEMETRY ─────────────────────────────────────
+      // WAVE 2439.8: Telemetría en vivo SOLO para Front L/R a 44Hz.
+      // Objetivo: diagnosticar por qué Front R se enciende con "cualquier cosa"
+      // y por qué el morph abre las puertas de par en par.
+      const subBassProbe = this.evaluateEnvelopeProbe(
+        bands.subBass,
+        p.envelopeSubBass,
+        morphFactor,
+        frame.now,
+        frame.isBreakdown,
+        this._subBassProbe,
+      )
+
+      console.log(
+        `[FRONT-TEL]` +
         ` sB:${bands.subBass.toFixed(3)}` +
+        ` bass:${bands.bass.toFixed(3)}` +
         ` mid:${bands.mid.toFixed(3)}` +
-        ` hMid:${bands.highMid.toFixed(3)}` +
+        ` hM:${bands.highMid.toFixed(3)}` +
         ` tr:${bands.treble.toFixed(3)}` +
+        ` | isK:${frame.isKick ? 1 : 0}` +
+        ` isKE:${frame.isKickEdge ? 1 : 0}` +
+        ` kickSig:${kickRaw.toFixed(3)}` +
         ` | morph:${morphFactor.toFixed(3)}` +
-        ` tDelta:${trebleDelta.toFixed(4)}` +
-        ` percRaw:${percRaw.toFixed(3)}` +
-        ` kickRaw:${kickRaw.toFixed(3)}` +
-        ` isKick:${frame.isKick ? 1 : 0}` +
-        ` isKEdge:${frame.isKickEdge ? 1 : 0}` +
-        ` | kGate:${kickProbe.dynamicGate.toFixed(3)}` +
-        ` kSq:${kickProbe.squelch.toFixed(3)}` +
-        ` kPow:${kickProbe.kickPower.toFixed(3)}` +
-        ` kPass:${kickProbe.gatePassed ? 1 : 0}` +
-        ` kIgn:${kickProbe.ignited ? 1 : 0}` +
-        ` | snIn:${snareInput.toFixed(3)}` +
-        ` snGate:${snareProbe.dynamicGate.toFixed(3)}` +
-        ` snSq:${snareProbe.squelch.toFixed(3)}` +
-        ` snPow:${snareProbe.kickPower.toFixed(3)}` +
-        ` snPass:${snareProbe.gatePassed ? 1 : 0}` +
-        ` snIgn:${snareProbe.ignited ? 1 : 0}` +
-        ` hmIn:${highMidInput.toFixed(3)}` +
-        ` hmGate:${highMidProbe.dynamicGate.toFixed(3)}` +
-        ` hmSq:${highMidProbe.squelch.toFixed(3)}` +
-        ` hmPow:${highMidProbe.kickPower.toFixed(3)}` +
-        ` hmPass:${highMidProbe.gatePassed ? 1 : 0}` +
-        ` hmIgn:${highMidProbe.ignited ? 1 : 0}` +
-        ` | fPar:${frontPar.toFixed(3)}` +
-        ` bPar:${backPar.toFixed(3)}` +
-        ` mL:${mL.toFixed(3)}` +
-        ` mR:${mR.toFixed(3)}` +
-        ` | sc:${sidechainFired ? 1 : 0}` +
-        ` scDuck:${duckingApplied.toFixed(3)}`
-      // )
+        ` brk:${frame.isBreakdown ? 1 : 0}` +
+        ` strict:${isStrict ? 1 : 0}` +
+        ` | fL_in:${bands.subBass.toFixed(3)}` +
+        ` fL_gate:${subBassProbe.dynamicGate.toFixed(3)}` +
+        ` fL_sq:${subBassProbe.squelch.toFixed(3)}` +
+        ` fL_pow:${subBassProbe.kickPower.toFixed(3)}` +
+        ` fL_ign:${subBassProbe.ignited ? 1 : 0}` +
+        ` | fR_in:${kickRaw.toFixed(3)}` +
+        ` fR_gate:${kickProbe.dynamicGate.toFixed(3)}` +
+        ` fR_sq:${kickProbe.squelch.toFixed(3)}` +
+        ` fR_pow:${kickProbe.kickPower.toFixed(3)}` +
+        ` fR_ign:${kickProbe.ignited ? 1 : 0}` +
+        ` | outFL:${frontLeft.toFixed(3)}` +
+        ` outFR:${frontRight.toFixed(3)}` +
+        ` outPar:${frontPar.toFixed(3)}`
+      )
 
       this._frameCount++
     }

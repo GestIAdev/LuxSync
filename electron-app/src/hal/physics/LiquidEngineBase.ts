@@ -181,6 +181,13 @@ export abstract class LiquidEngineBase {
   private _lastKickTime = 0
   private _kickIntervalMs = 0
 
+  // WAVE 2439.8: Naked Delta — estado para filtrar aceleración pura del bombo
+  private _prevBassEnergy: number = 0
+
+  // WAVE 2439.9: Frame Hold — extiende el pulso del bombo ~110ms para hardware DMX
+  // Un único fotograma (22ms) es indigerible para dimmers/LEDs físicos.
+  private _kickHoldCounter: number = 0
+
   // Kick Veto state
   private _kickVetoFrames = 0
 
@@ -404,10 +411,39 @@ export abstract class LiquidEngineBase {
     // ═══════════════════════════════════════════════════════════════════
     // 5. KICK DETECTION + VETO
     // ═══════════════════════════════════════════════════════════════════
-    // WAVE 2439.6: Detección local pura a 44Hz — elimina latencia del Pacemaker.
-    // input.isKick del Worker a ~20fps con jitter causaba desync en strict-split.
-    // Evaluamos directamente la energía de bass contra el gate del perfil.
-    const isKick = bands.bass > p.envelopeKick.gateOn
+    // WAVE 2439.8: Naked Delta — filtro de aceleración pura sin time-locks.
+    // El sinte oscila con deltas de ~0.01. El bombo salta violentamente (>0.05).
+    // Esto decapita el sustain del sintetizador y aisla transitorios verticales.
+
+    // DESCONTAMINACIÓN EXACTA: Revertimos la inyección de WAVE 3421
+    // Le quitamos el 40% de lowMid para aislar el grave original (0-250Hz)
+    const pureBassEnergy = Math.max(0, bands.bass - (bands.lowMid * 0.40))
+    const bassDelta = pureBassEnergy - this._prevBassEnergy
+    this._prevBassEnergy = pureBassEnergy
+
+    // WAVE 2439.10: Reload Lock + Shielded Delta
+    // RELOAD LOCK: Solo evaluamos impacto si el hold está inactivo.
+    // Esto impide que el pumping del sidechain extienda o reinicie el contador.
+    // ADAPTIVE DELTA: Curva inversa de compresión sobre señal purificada.
+    // Bass 1.0 → delta 0.040 | Bass 0.5 → delta 0.080. Evita falsos positivos en build-ups.
+    let isImpact = false
+    if (this._kickHoldCounter === 0) {
+      // Curva dinámica para emular headroom real:
+      // pureBass a 1.0 -> exige delta de 0.040
+      // pureBass a 0.5 -> exige delta de 0.080
+      const dynamicDelta = 0.120 - (pureBassEnergy * 0.080)
+
+      // Evaluamos con pureBassEnergy — voces y cajas ya fueron anuladas
+      isImpact = pureBassEnergy > p.envelopeKick.gateOn && bassDelta > dynamicDelta
+
+      if (isImpact) {
+        this._kickHoldCounter = 6
+      }
+    }
+
+    const isKick = this._kickHoldCounter > 0
+    if (this._kickHoldCounter > 0) this._kickHoldCounter--
+
     if (isKick && this._lastKickTime > 0) {
       this._kickIntervalMs = now - this._lastKickTime
     }
@@ -427,12 +463,10 @@ export abstract class LiquidEngineBase {
     // --- FRONT L: SubBass continuo (El Océano) ---
     let frontLeft = this.envSubBass.process(bands.subBass, morphFactor, now, isBreakdown)
 
-    // --- FRONT R: Kick edge detection (El Francotirador) ---
-    // WAVE 2439.7: isKickEdge → isKick — el edge detector se atraganta en techno
-    // con graves saturados continuos (isKickEdge = 0 permanentemente). Usamos
-    // isKick (energía bruta > gateOn) para alimentar el envelope; el propio
-    // envelope con su decayBase y maxIntensity dará forma al impulso.
-    const kickSignal = isKick ? bands.bass : 0
+    // --- FRONT R: Kick Naked Delta (El Francotirador) ---
+    // WAVE 2439.8: kickSignal alimentado solo por transitorios verticales (delta > 0.05).
+    // El envelope con su decayBase ultrarrápido y maxIntensity dará forma al impulso.
+    const kickSignal = isKick ? pureBassEnergy : 0
     let frontRight = this.envKick.process(kickSignal, morphFactor, now, isBreakdown)
 
     // --- BACK R (El Látigo): WAVE 2449 MORPHOLOGIC CENTROID SHIELD ---

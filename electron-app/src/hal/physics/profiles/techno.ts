@@ -26,14 +26,13 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   // ═══════════════════════════════════════════════════════════════
 
   // Front L — El Océano de Subgraves (WAVE 2437: Monte Carlo co-optimizado con envelopeKick)
-  // HARDEN FRONT PARS: gateOn 0.0656→0.15 — solo subgraves reales, no ruido de fondo.
-  // crushExponent 2.4156→1.0 — respuesta lineal, no amplifica pads ambientales.
+  // gateOn 0.12→0.0656 — responde a subgraves más débiles, groove más lleno.
   // boost 3.5→2.7 — menos agresivo, equilibrio con fR a maxI=1.0.
   // maxIntensity 0.70→0.529 — fL cede protagonismo al kick (fR=1.0).
   // squelchBase 0.04→0.0613 — squelch ligeramente más alto para limpiar el piso.
   envelopeSubBass: {
     name: 'Front L (SubBass Groove)',
-    gateOn: 0.15,
+    gateOn: 0.08,
     boost: 2.7054,
     crushExponent: 1.0,
     decayBase: 0.2218,
@@ -46,20 +45,20 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   },
 
   // Front R — El Francotirador (WAVE 2437: Monte Carlo 15k iter, fitness=756, 100% kick, 0 FP)
-  // KICK STABILIZATION: gateOn 0.22 — solo impactos fuertes, mata pads/voces.
-  // crushExponent 1.2→1.0 — respuesta 100% lineal, sin curvas de aplanamiento.
-  // decayBase 0.0077→0.08 — release mínimo anti-parpadeo de 1-frame.
-  // boost 3.3013→2.5 — evita que el multiplicador lineal dispare el piso de ruido.
+  // decayBase 0.04→0.0077 — el killer fix: decay ultrarrápido, fR muere entre kicks.
+  // decayRange 0.10→0.0329 — rango estrecho, comportamiento uniforme.
+  // gateOn 0.15→0.1098 — gate más bajo, captura kicks débiles sin abrir en basura.
   // maxIntensity 0.85→1.0 — hits al máximo, contraste máximo con el silencio.
   // squelchSlope 0.10→0.0 — sin squelch dinámico, el gate fijo es suficiente.
+  // boost 3.0→3.3 — leve compensación por gate más bajo.
   envelopeKick: {
     name: 'Front R (Kick Sniper)',
-    gateOn: 0.22,
-    boost: 2.5,
+    gateOn: 0.28,
+    boost: 3.3013,
     crushExponent: 1.0,
-    decayBase: 0.08,
+    decayBase: 0.0077,
     decayRange: 0.0329,
-    maxIntensity: 1.0,    // WAVE 4656: 0.80→1.0 — gamma ^2.4 aplastaba 0.80→0.585. Kick al techo real.
+    maxIntensity: 0.80,   // WAVE 2439.2 Cap de Dimmer — headroom para el slap del Snare
     squelchBase: 0.0388,
     squelchSlope: 0.0,
     ghostCap: 0.00,
@@ -110,7 +109,7 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   //              maxI 1.0→0.85 — liberar headroom para latino (groove continuo)
   envelopeHighMid: {
     name: 'Back L (Mid Synths)',
-    gateOn: 0.18,   // WAVE 6060: 0.22->0.18 — gate más permisivo, evitar canal muerto
+    gateOn: 0.22,   // WAVE 3492: 0.15->0.22 — gate más selectivo, synth buildups no pasan
     boost: 1.5,
     crushExponent: 2.5,    // WAVE 3492: 2.0->2.5 — más no lineal, picos percusivos si, masa no
     decayBase: 0.28,       // WAVE 3492: 0.65->0.28 — synths no se quedan pegados
@@ -161,7 +160,7 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   // Esto deja pasar la base armónica de synths sin comer el pico percutivo del kick.
   // ═══════════════════════════════════════════════════════════════
 
-  backLLowMidWeight: 0.35,   // WAVE 6060: 0.0->0.35 — lowMid refuerzo para synths/pads vivos
+  backLLowMidWeight: 0.0,   // WAVE 2430: original no usaba lowMid
   backLMidWeight: 1.0,      // WAVE 3464: MID como alimento principal del Back L
   backLTrebleSub: 0.0,      // WAVE 2430: original no restaba treble
   backLBassSub: 0.7,        // WAVE 3464: ghost subtraction del bombo (rango solicitado 0.6-0.8)
@@ -236,3 +235,4 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   ambientAttackMs: 30,
   ambientReleaseMs: 120,
 }
+

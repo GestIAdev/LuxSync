@@ -1,238 +1,249 @@
-/**
- * ═══════════════════════════════════════════════════════════════════════════
- * WAVE 2411: TECHNO INDUSTRIAL PROFILE
- * ═══════════════════════════════════════════════════════════════════════════
- *
- * Extraído 1:1 del motor LiquidStereoPhysics WAVE 2408M+2408N.
- * Cada valor está documentado con la WAVE de origen y el test de referencia.
- *
- * Perfil de referencia: Boris Brejcha, Charlotte de Witte, Amelie Lens.
- * Calibrado con Monte Carlo (WAVE 2407b) + logs de producción real.
- *
- * ESTE PERFIL ES EL DEFAULT. El singleton global lo usa si no se pasa nada.
- *
- * @module hal/physics/profiles/techno
- * @version WAVE 2411 — THE ARCHITECTURE FORGE
- */
-
-import type { ILiquidProfile } from './ILiquidProfile'
-
-export const TECHNO_PROFILE: ILiquidProfile = {
-  id: 'techno-industrial',
-  name: 'Techno Industrial',
-
-  // ═══════════════════════════════════════════════════════════════
-  // ENVELOPE CONFIGS — Valores exactos de LiquidStereoPhysics pre-2411
-  // ═══════════════════════════════════════════════════════════════
-
-  // Front L — El Océano de Subgraves (WAVE 2437: Monte Carlo co-optimizado con envelopeKick)
-  // gateOn 0.12→0.0656 — responde a subgraves más débiles, groove más lleno.
-  // boost 3.5→2.7 — menos agresivo, equilibrio con fR a maxI=1.0.
-  // maxIntensity 0.70→0.529 — fL cede protagonismo al kick (fR=1.0).
-  // squelchBase 0.04→0.0613 — squelch ligeramente más alto para limpiar el piso.
-  envelopeSubBass: {
-    name: 'Front L (SubBass Groove)',
-    gateOn: 0.0656,
-    boost: 2.7054,
-    crushExponent: 2.4156,
-    decayBase: 0.2218,
-    decayRange: 0.166,
-    maxIntensity: 0.5291,
-    squelchBase: 0.0613,
-    squelchSlope: 0.5788,
-    ghostCap: 0.0357,
-    gateMargin: 0.0288,
-  },
-
-  // Front R — El Francotirador (WAVE 2437: Monte Carlo 15k iter, fitness=756, 100% kick, 0 FP)
-  // decayBase 0.04→0.0077 — el killer fix: decay ultrarrápido, fR muere entre kicks.
-  // decayRange 0.10→0.0329 — rango estrecho, comportamiento uniforme.
-  // gateOn 0.15→0.1098 — gate más bajo, captura kicks débiles sin abrir en basura.
-  // maxIntensity 0.85→1.0 — hits al máximo, contraste máximo con el silencio.
-  // squelchSlope 0.10→0.0 — sin squelch dinámico, el gate fijo es suficiente.
-  // boost 3.0→3.3 — leve compensación por gate más bajo.
-  envelopeKick: {
-    name: 'Front R (Kick Sniper)',
-    gateOn: 0.1098,
-    boost: 3.3013,
-    crushExponent: 0.4877,
-    decayBase: 0.0077,
-    decayRange: 0.0329,
-    maxIntensity: 0.80,   // WAVE 2439.2 Cap de Dimmer — headroom para el slap del Snare
-    squelchBase: 0.0388,
-    squelchSlope: 0.0,
-    ghostCap: 0.00,
-    gateMargin: 0.0213,
-  },
-
-  // Mover R — El Coro / Voces (WAVE 2419 MONTE CARLO RIGHT HEMISPHERE)
-  // WAVE 3491: Bozal de Mover — solo picos afilados de synth/arpegio pasan.
-  envelopeVocal: {
-    name: 'Mover R (Vocal & Synth Wash)',
-    gateOn: 0.25,          // WAVE 3491: 0.01→0.25 — mínimo obligatorio Bozal
-    boost: 1.5,
-    crushExponent: 3.5,    // WAVE 3491: Bozal — aplasta colchón de graves/medios
-    decayBase: 0.70,
-    decayRange: 0.05,
-    maxIntensity: 0.80,
-    squelchBase: 0.30,     // WAVE 3491: 0.02→0.30 — piso estricto
-    squelchSlope: 0.10,
-    ghostCap: 0.00,
-    gateMargin: 0.01,
-  },
-
-  // Back R — El Látigo / Percussion Slap (WAVE 2427 TRANSIENT SHAPER)
-  // rawRight = trebleDelta×4: el ruido de fondo tiene delta≈0 (señal continua), los transitories arrancan.
-  // gateOn 0.15: cualquier salto brusco del treble lo activa
-  // gateOff 0.02: apagado inmediato tras el impacto
-  // WAVE 3311: gateOn 0.05→0.18 + boost 3.0→2.5 + percGate 0.01→0.06
-  //   Demasiado back-par con cualquier fuente (voces, fondo). Gate insuficiente.
-  //   Subimos gate+percGate para requerir un hit de percusión real.
-  envelopeSnare: {
-    name: 'Back R (Percussion Slap)',
-    gateOn: 0.35,   // WAVE 3460: aislamiento extremo para conservar caja y aniquilar hihat/reverb media
-    boost: 1.0,     // WAVE 3457: cap anti-spike para evitar estrobo por hits marginales
-    crushExponent: 1.0,
-    decayBase: 0.05,
-    decayRange: 0.40,      // WAVE 2451: INTOCABLE — morfología líquida de los Back Pars preservada
-    maxIntensity: 1.0,     // WAVE 2439.5: 0.80→1.0 — el Látigo sin cap
-    squelchBase: 0.52,     // WAVE 3460: piso estricto para filtrar ruido fino y cola de reverb
-    squelchSlope: 0.10,
-    ghostCap: 0.00,
-    gateMargin: 0.01,
-  },
-
-  // Back L — Mid Synths / Atmósfera (WAVE 2417: MONTE CARLO RESURRECTION)
-  // gateOn 0.10→0.02 (señal ~0.14 pasa), boost 4.5→5.0, decay 0.60→0.75 (colchón)
-  // crush 1.2→1.0 (lineal), decayRange 0.15→0.03 (morph sutil)
-  // WAVE 2436.2: decay 0.75→0.60 — teclados/pads techno: cortantes, no colchón.
-  //              maxI 1.0→0.85 — liberar headroom para latino (groove continuo)
-  envelopeHighMid: {
-    name: 'Back L (Mid Synths)',
-    gateOn: 0.22,   // WAVE 3492: 0.15->0.22 — gate más selectivo, synth buildups no pasan
-    boost: 1.5,
-    crushExponent: 2.5,    // WAVE 3492: 2.0->2.5 — más no lineal, picos percusivos si, masa no
-    decayBase: 0.28,       // WAVE 3492: 0.65->0.28 — synths no se quedan pegados
-    decayRange: 0.25,      // WAVE 3492: 0.35->0.25 — morph menos determinante para la caída
-    maxIntensity: 0.85,
-    squelchBase: 0.25,     // WAVE 3492: 0.18->0.25 — piso más estricto anti-masa continua
-    squelchSlope: 0.10,
-    ghostCap: 0.00,        // WAVE 3492: 0.05->0.00 — negro entre golpes
-    gateMargin: 0.005,
-  },
-
-  // Mover L — Melodías tonales (WAVE 2417: MONTE CARLO RESURRECTION)
-  // WAVE 3491: Bozal de Mover — arpegios agudos pasan, colchón de graves NO.
-  envelopeTreble: {
-    name: 'Mover L (Tonal Melodies)',
-    gateOn: 0.25,          // WAVE 3491: 0.02→0.25 — mínimo obligatorio Bozal
-    boost: 4.0,
-    crushExponent: 3.5,    // WAVE 3491: Bozal — solo picos afilados de arpegio
-    decayBase: 0.78,
-    decayRange: 0.03,
-    maxIntensity: 1.0,
-    squelchBase: 0.30,     // WAVE 3491: 0.02→0.30 — piso estricto
-    squelchSlope: 0.10,
-    ghostCap: 0.00,        // WAVE 3491: 0.04→0.00 — negro absoluto entre arpegios
-    gateMargin: 0.005,
-  },
-
-  // ═══════════════════════════════════════════════════════════════
-  // BACK R: SCHWARZENEGGER (WAVE 2408M)
-  // ═══════════════════════════════════════════════════════════════
-
-  percMidSubtract: 1.0,   // WAVE 2424: Escudo Absoluto — relación 1:1, ningún sinte puede engañar al Látigo
-  percGate: 0.06,          // WAVE 3311: 0.01→0.06 — transient shaper filtra variaciones de treble pequeñas (voces)
-  percBoost: 5.0,          // WAVE 2419: 8.0→5.0
-  percExponent: 0.5,       // WAVE 2419: 1.2→0.5 (raíz cuadrada, suaviza transitorio)
-
-  // ═══════════════════════════════════════════════════════════════
-  // MOVER R (VOCES): BASS SUBTRACTOR (WAVE 2408g)
-  // ═══════════════════════════════════════════════════════════════
-
-  bassSubtractBase: 0.65,
-  bassSubtractRange: 0.45,
-
-  // ═══════════════════════════════════════════════════════════════
-  // BACK L (MID SYNTHS): Ghost Mids Reform (WAVE 3464)
-  // Objetivo: alimentar Back L con cuerpo melódico (MID) y purgar fuga de bombo.
-  // Señal efectiva buscada: mid*1.0 - bass*0.7 (sustracción híbrida purificada).
-  // Esto deja pasar la base armónica de synths sin comer el pico percutivo del kick.
-  // ═══════════════════════════════════════════════════════════════
-
-  backLLowMidWeight: 0.0,   // WAVE 2430: original no usaba lowMid
-  backLMidWeight: 1.0,      // WAVE 3464: MID como alimento principal del Back L
-  backLTrebleSub: 0.0,      // WAVE 2430: original no restaba treble
-  backLBassSub: 0.7,        // WAVE 3464: ghost subtraction del bombo (rango solicitado 0.6-0.8)
-
-  // ═══════════════════════════════════════════════════════════════
-  // MOVER L (MELODÍAS): Cross-filter + tonal gate (WAVE 2411 → 2430)
-  // Original hardcodeado: mid×0.4 + highMid×1.0 - bass×0.1
-  // Nuevo: highMid×moverLHighMidWeight + treble×moverLTrebleWeight - bass×0.1
-  // Para Techno: highMid×1.0 + treble×0.0 (mid×0.4 se mueve a highMid)
-  // ═══════════════════════════════════════════════════════════════
-
-  moverLHighMidWeight: 1.0,   // WAVE 2430: original = highMid×1.0
-  moverLTrebleWeight: 0.0,    // WAVE 2430: original no usaba treble directo aquí
-  moverLMidWeight: 0.4,       // WAVE 2430: original = mid×0.4
-  moverLTonalThreshold: 0.40,
-
-  // ═══════════════════════════════════════════════════════════════
-  // MOVER R (VOCES): resta de treble para sibilantes
-  // ═══════════════════════════════════════════════════════════════
-
-  moverRTrebleSub: 0.3,
-
-  // ═══════════════════════════════════════════════════════════════
-  // SIDECHAIN GUILLOTINE
-  // ═══════════════════════════════════════════════════════════════
-
-  sidechainThreshold: 0.1,
-  sidechainDepth: 0.00,  // WAVE 3457: sidechain exterminado globalmente
-  snareSidechainDepth: 0.15,  // WAVE 2420: 0.80→0.15 (liberamos Mover R — la guillotina era fratricida)
-
-  // WAVE 2438 — valores legacy, ya no usados en strict-split pero se conservan
-  // para compatibilidad con el path 'default' si se cambia la estrategia.
-  frontKickSidechainThreshold: 0.2,
-  auraCapBase: 0.25,
-  auraCapExponent: 2,
-
-  // WAVE 2439 — METRÓNOMO/LIENZO: enrutamiento estricto para Techno 4.1.
-  // Front=kick, Back=snare, Movers=todo el muro atmosférico.
-  layout41Strategy: 'strict-split' as const,
-
-  // ═══════════════════════════════════════════════════════════════
-  // STROBE (God Mode exacto)
-  // ═══════════════════════════════════════════════════════════════
-
-  strobeThreshold: 0.80,
-  strobeDuration: 30,
-  strobeNoiseDiscount: 0.80,
-
-  // ═══════════════════════════════════════════════════════════════
-  // MODES
-  // ═══════════════════════════════════════════════════════════════
-
-  harshnessAcidThreshold: 0.60,
-  flatnessNoiseThreshold: 0.70,
-  apocalypseHarshness: 0.55,
-  apocalypseFlatness: 0.55,
-
-  // ═══════════════════════════════════════════════════════════════
-  // KICK DETECTION
-  // ═══════════════════════════════════════════════════════════════
-
-  // WAVE 2488 — DT-02: MORPHOLOGY UNCHAINED
-  // Techno industrial: energía media-alta, rango estándar
-  morphFloor: 0.30,      // avgMid mínimo para arrancar el morph (30%)
-  morphCeiling: 0.70,    // avgMid máximo = morph pleno (70%)
-
-  kickEdgeMinInterval: 80,
-  kickVetoFrames: 0,    // WAVE 2419: 5→0 (veto ON 48% del tiempo, asfixiaba Mover R)
-
-  // WAVE 4826.5: La Guillotina Techno — Ambient ultra-reactivo y cortante
-  // Attack 30ms: dispara instantáneo con el bombo. Release 120ms: corte brutal entre kicks.
-  ambientAttackMs: 30,
-  ambientReleaseMs: 120,
-}
-
+[BACK-TEL] sB:0.332 bass:0.754 mid:0.752 hM:0.475 tr:0.175 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.526 bL_gate:0.421 bL_sq:0.350 bL_pow:0.000 bL_ign:0 | bR_in:0.748 bR_gate:0.487 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.450 outPar:0.450
+[BACK-TEL] sB:0.328 bass:0.754 mid:0.752 hM:0.454 tr:0.175 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.526 bL_gate:0.423 bL_sq:0.350 bL_pow:1.000 bL_ign:1 | bR_in:0.716 bR_gate:0.492 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.203 outPar:0.203
+[BACK-TEL] sB:0.347 bass:0.779 mid:0.696 hM:0.400 tr:0.131 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.488 bL_gate:0.425 bL_sq:0.350 bL_pow:0.000 bL_ign:0 | bR_in:0.437 bR_gate:0.487 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.091 outPar:0.091
+[BACK-TEL] sB:0.374 bass:0.802 mid:0.721 hM:0.483 tr:0.193 | isK:0 isKE:0 percRaw:0.249 | morph:1.000 brk:0 strict:1 | bL_in:0.505 bL_gate:0.427 bL_sq:0.350 bL_pow:1.000 bL_ign:1 | bR_in:0.808 bR_gate:0.493 bR_sq:0.100 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.338 bass:0.889 mid:0.753 hM:0.586 tr:0.221 | isK:1 isKE:1 percRaw:0.110 | morph:1.000 brk:0 strict:1 | bL_in:0.527 bL_gate:0.429 bL_sq:0.350 bL_pow:1.000 bL_ign:1 | bR_in:1.000 bR_gate:0.504 bR_sq:0.100 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.327 bass:0.889 mid:0.753 hM:0.618 tr:0.221 | isK:1 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.527 bL_gate:0.431 bL_sq:0.350 bL_pow:1.000 bL_ign:1 | bR_in:1.000 bR_gate:0.514 bR_sq:0.100 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.546 bass:0.990 mid:0.752 hM:0.630 tr:0.201 | isK:1 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.527 bL_gate:0.433 bL_sq:0.350 bL_pow:1.000 bL_ign:1 | bR_in:1.000 bR_gate:0.524 bR_sq:0.100 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.789 bass:1.000 mid:0.672 hM:0.532 tr:0.157 | isK:1 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.471 bL_gate:0.434 bL_sq:0.350 bL_pow:0.000 bL_ign:0 | bR_in:0.676 bR_gate:0.527 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.450 outPar:0.450
+[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=BRIGHT dom=90% B/D/N=517/21/37
+[BACK-TEL] sB:0.925 bass:1.000 mid:0.549 hM:0.393 tr:0.124 | isK:1 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.384 bL_gate:0.428 bL_sq:0.350 bL_pow:0.000 bL_ign:0 | bR_in:0.323 bR_gate:0.504 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.203 outPar:0.203
+[BACK-TEL] sB:0.969 bass:1.000 mid:0.558 hM:0.419 tr:0.174 | isK:1 isKE:0 percRaw:0.197 | morph:1.000 brk:0 strict:1 | bL_in:0.391 bL_gate:0.424 bL_sq:0.350 bL_pow:0.000 bL_ign:0 | bR_in:0.487 bR_gate:0.503 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.091 outPar:0.091
+[BACK-TEL] sB:0.718 bass:0.908 mid:0.617 hM:0.489 tr:0.151 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.432 bL_gate:0.425 bL_sq:0.350 bL_pow:0.033 bL_ign:0 | bR_in:0.545 bR_gate:0.504 bR_sq:0.100 bR_pow:0.589 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.500 bass:0.764 mid:0.620 hM:0.470 tr:0.124 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.434 bL_gate:0.425 bL_sq:0.350 bL_pow:0.047 bL_ign:0 | bR_in:0.434 bR_gate:0.497 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.450 outPar:0.450
+[BACK-TEL] sB:0.430 bass:0.764 mid:0.620 hM:0.464 tr:0.124 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.434 bL_gate:0.425 bL_sq:0.350 bL_pow:0.044 bL_ign:0 | bR_in:0.429 bR_gate:0.490 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.203 outPar:0.203
+[BACK-TEL] sB:0.336 bass:0.703 mid:0.551 hM:0.384 tr:0.150 | isK:0 isKE:0 percRaw:0.104 | morph:1.000 brk:0 strict:1 | bL_in:0.386 bL_gate:0.421 bL_sq:0.350 bL_pow:0.000 bL_ign:0 | bR_in:0.382 bR_gate:0.478 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.091 outPar:0.091
+[BACK-TEL] sB:0.319 bass:0.715 mid:0.661 hM:0.513 tr:0.240 | isK:0 isKE:0 percRaw:0.357 | morph:1.000 brk:0 strict:1 | bL_in:0.463 bL_gate:0.422 bL_sq:0.350 bL_pow:0.446 bL_ign:1 | bR_in:0.975 bR_gate:0.488 bR_sq:0.100 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.321 bass:0.754 mid:0.700 hM:0.532 tr:0.228 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.490 bL_gate:0.423 bL_sq:0.350 bL_pow:0.924 bL_ign:1 | bR_in:1.000 bR_gate:0.499 bR_sq:0.100 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.333 bass:0.787 mid:0.646 hM:0.440 tr:0.196 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.452 bL_gate:0.424 bL_sq:0.350 bL_pow:0.000 bL_ign:0 | bR_in:0.668 bR_gate:0.502 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.450 outPar:0.450
+[BACK-TEL] sB:0.337 bass:0.787 mid:0.646 hM:0.411 tr:0.196 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.452 bL_gate:0.425 bL_sq:0.350 bL_pow:0.243 bL_ign:0 | bR_in:0.624 bR_gate:0.505 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.203 outPar:0.203
+[BACK-TEL] sB:0.344 bass:0.798 mid:0.558 hM:0.339 tr:0.172 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.391 bL_gate:0.421 bL_sq:0.350 bL_pow:0.000 bL_ign:0 | bR_in:0.391 bR_gate:0.492 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.091 outPar:0.091
+[BACK-TEL] sB:0.382 bass:0.820 mid:0.638 hM:0.400 tr:0.196 | isK:0 isKE:0 percRaw:0.096 | morph:1.000 brk:0 strict:1 | bL_in:0.447 bL_gate:0.422 bL_sq:0.350 bL_pow:0.213 bL_ign:0 | bR_in:0.602 bR_gate:0.495 bR_sq:0.100 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.366 bass:0.841 mid:0.684 hM:0.452 tr:0.165 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.479 bL_gate:0.423 bL_sq:0.350 bL_pow:0.706 bL_ign:1 | bR_in:0.612 bR_gate:0.497 bR_sq:0.100 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.374 bass:0.861 mid:0.664 hM:0.431 tr:0.133 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.465 bL_gate:0.424 bL_sq:0.350 bL_pow:0.440 bL_ign:1 | bR_in:0.455 bR_gate:0.494 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.450 outPar:0.450
+[BACK-TEL] sB:0.377 bass:0.861 mid:0.664 hM:0.424 tr:0.133 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.465 bL_gate:0.425 bL_sq:0.350 bL_pow:0.425 bL_ign:1 | bR_in:0.448 bR_gate:0.489 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.203 outPar:0.203
+[BACK-TEL] sB:0.372 bass:0.842 mid:0.710 hM:0.490 tr:0.206 | isK:0 isKE:0 percRaw:0.295 | morph:1.000 brk:0 strict:1 | bL_in:0.497 bL_gate:0.427 bL_sq:0.350 bL_pow:1.000 bL_ign:1 | bR_in:0.861 bR_gate:0.497 bR_sq:0.100 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.354 bass:0.916 mid:0.689 hM:0.510 tr:0.193 | isK:1 isKE:1 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.482 bL_gate:0.428 bL_sq:0.350 bL_pow:0.691 bL_ign:1 | bR_in:0.816 bR_gate:0.504 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.450 outPar:0.450
+[BACK-TEL] sB:0.481 bass:1.000 mid:0.717 hM:0.583 tr:0.174 | isK:1 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.502 bL_gate:0.429 bL_sq:0.350 bL_pow:1.000 bL_ign:1 | bR_in:0.872 bR_gate:0.511 bR_sq:0.100 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.752 bass:1.000 mid:0.623 hM:0.470 tr:0.132 | isK:1 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.436 bL_gate:0.430 bL_sq:0.350 bL_pow:0.000 bL_ign:0 | bR_in:0.462 bR_gate:0.506 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.450 outPar:0.450
+[BACK-TEL] sB:0.839 bass:1.000 mid:0.623 hM:0.433 tr:0.132 | isK:1 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.436 bL_gate:0.430 bL_sq:0.350 bL_pow:0.026 bL_ign:0 | bR_in:0.426 bR_gate:0.498 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.203 outPar:0.203
+[BACK-TEL] sB:0.953 bass:1.000 mid:0.516 hM:0.328 tr:0.107 | isK:1 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.361 bL_gate:0.422 bL_sq:0.350 bL_pow:0.000 bL_ign:0 | bR_in:0.218 bR_gate:0.466 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.091 outPar:0.091
+[BACK-TEL] sB:0.956 bass:1.000 mid:0.543 hM:0.352 tr:0.140 | isK:1 isKE:0 percRaw:0.132 | morph:0.999 brk:0 strict:1 | bL_in:0.380 bL_gate:0.418 bL_sq:0.350 bL_pow:0.000 bL_ign:0 | bR_in:0.322 bR_gate:0.450 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.011 outPar:0.011
+[BACK-TEL] sB:0.714 bass:0.903 mid:0.587 hM:0.394 tr:0.122 | isK:0 isKE:0 percRaw:0.000 | morph:0.994 brk:0 strict:1 | bL_in:0.411 bL_gate:0.417 bL_sq:0.351 bL_pow:0.000 bL_ign:0 | bR_in:0.338 bR_gate:0.437 bR_sq:0.101 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.001 outPar:0.001
+[BACK-TEL] sB:0.494 bass:0.770 mid:0.551 hM:0.338 tr:0.098 | isK:0 isKE:0 percRaw:0.000 | morph:0.986 brk:0 strict:1 | bL_in:0.385 bL_gate:0.414 bL_sq:0.351 bL_pow:0.000 bL_ign:0 | bR_in:0.220 bR_gate:0.413 bR_sq:0.101 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.399 bass:0.712 mid:0.590 hM:0.406 tr:0.173 | isK:0 isKE:0 percRaw:0.298 | morph:0.981 brk:0 strict:1 | bL_in:0.413 bL_gate:0.414 bL_sq:0.352 bL_pow:0.000 bL_ign:0 | bR_in:0.498 bR_gate:0.414 bR_sq:0.102 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.369 bass:0.696 mid:0.712 hM:0.542 tr:0.227 | isK:0 isKE:0 percRaw:0.214 | morph:0.988 brk:0 strict:1 | bL_in:0.498 bL_gate:0.416 bL_sq:0.351 bL_pow:1.000 bL_ign:1 | bR_in:1.000 bR_gate:0.426 bR_sq:0.101 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.343 bass:0.735 mid:0.722 hM:0.533 tr:0.219 | isK:0 isKE:0 percRaw:0.000 | morph:0.998 brk:0 strict:1 | bL_in:0.506 bL_gate:0.418 bL_sq:0.350 bL_pow:1.000 bL_ign:1 | bR_in:1.000 bR_gate:0.438 bR_sq:0.100 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.335 bass:0.735 mid:0.722 hM:0.530 tr:0.219 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.506 bL_gate:0.420 bL_sq:0.350 bL_pow:1.000 bL_ign:1 | bR_in:1.000 bR_gate:0.449 bR_sq:0.100 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.341 bass:0.779 mid:0.638 hM:0.424 tr:0.187 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.447 bL_gate:0.420 bL_sq:0.350 bL_pow:0.000 bL_ign:0 | bR_in:0.608 bR_gate:0.453 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.450 outPar:0.450
+[BACK-TEL] sB:0.361 bass:0.814 mid:0.591 hM:0.367 tr:0.186 | isK:0 isKE:0 percRaw:0.000 | morph:0.998 brk:0 strict:1 | bL_in:0.413 bL_gate:0.420 bL_sq:0.350 bL_pow:0.000 bL_ign:0 | bR_in:0.483 bR_gate:0.454 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.202 outPar:0.202
+[BACK-TEL] sB:0.362 bass:0.822 mid:0.681 hM:0.447 tr:0.193 | isK:0 isKE:0 percRaw:0.030 | morph:0.997 brk:0 strict:1 | bL_in:0.477 bL_gate:0.421 bL_sq:0.350 bL_pow:0.703 bL_ign:1 | bR_in:0.706 bR_gate:0.459 bR_sq:0.100 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.338 bass:0.819 mid:0.745 hM:0.498 tr:0.171 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.522 bL_gate:0.424 bL_sq:0.350 bL_pow:1.000 bL_ign:1 | bR_in:0.762 bR_gate:0.465 bR_sq:0.100 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.339 bass:0.851 mid:0.735 hM:0.442 tr:0.137 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.515 bL_gate:0.425 bL_sq:0.350 bL_pow:1.000 bL_ign:1 | bR_in:0.535 bR_gate:0.467 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.450 outPar:0.450
+[BACK-TEL] sB:0.351 bass:0.867 mid:0.692 hM:0.406 tr:0.151 | isK:0 isKE:0 percRaw:0.055 | morph:1.000 brk:0 strict:1 | bL_in:0.484 bL_gate:0.427 bL_sq:0.350 bL_pow:0.000 bL_ign:0 | bR_in:0.509 bR_gate:0.468 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.203 outPar:0.203
+[CHOREO] techno-club | #5:laser_grid [MIRROR ×2] | scene:17b | Pan:-218 Tilt:-27 | sBPM:120 phase:160°
+[BACK-TEL] sB:0.355 bass:0.867 mid:0.692 hM:0.395 tr:0.151 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.484 bL_gate:0.428 bL_sq:0.350 bL_pow:0.723 bL_ign:1 | bR_in:0.494 bR_gate:0.468 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.091 outPar:0.091
+[BACK-TEL] sB:0.313 bass:0.852 mid:0.730 hM:0.501 tr:0.217 | isK:0 isKE:0 percRaw:0.265 | morph:1.000 brk:0 strict:1 | bL_in:0.511 bL_gate:0.430 bL_sq:0.350 bL_pow:1.000 bL_ign:1 | bR_in:0.954 bR_gate:0.478 bR_sq:0.100 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.539 bass:0.963 mid:0.755 hM:0.570 tr:0.199 | isK:1 isKE:1 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.528 bL_gate:0.432 bL_sq:0.350 bL_pow:1.000 bL_ign:1 | bR_in:1.000 bR_gate:0.489 bR_sq:0.100 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.785 bass:1.000 mid:0.655 hM:0.457 tr:0.152 | isK:1 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.458 bL_gate:0.432 bL_sq:0.350 bL_pow:0.000 bL_ign:0 | bR_in:0.547 bR_gate:0.490 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.450 outPar:0.450
+[BACK-TEL] sB:0.923 bass:1.000 mid:0.543 hM:0.338 tr:0.112 | isK:1 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.380 bL_gate:0.427 bL_sq:0.350 bL_pow:0.000 bL_ign:0 | bR_in:0.246 bR_gate:0.462 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.203 outPar:0.203
+[BACK-TEL] sB:0.982 bass:1.000 mid:0.506 hM:0.325 tr:0.157 | isK:1 isKE:0 percRaw:0.180 | morph:1.000 brk:0 strict:1 | bL_in:0.354 bL_gate:0.419 bL_sq:0.350 bL_pow:0.000 bL_ign:0 | bR_in:0.309 bR_gate:0.445 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.091 outPar:0.091
+[BACK-TEL] sB:0.792 bass:0.972 mid:0.584 hM:0.429 tr:0.146 | isK:1 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.409 bL_gate:0.418 bL_sq:0.350 bL_pow:0.000 bL_ign:0 | bR_in:0.438 bR_gate:0.445 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.011 outPar:0.011
+[BACK-TEL] sB:0.580 bass:0.843 mid:0.593 hM:0.431 tr:0.121 | isK:1 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.415 bL_gate:0.418 bL_sq:0.350 bL_pow:0.000 bL_ign:0 | bR_in:0.372 bR_gate:0.437 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.001 outPar:0.001
+[BACK-TEL] sB:0.513 bass:0.843 mid:0.593 hM:0.431 tr:0.121 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.415 bL_gate:0.418 bL_sq:0.350 bL_pow:0.000 bL_ign:0 | bR_in:0.372 bR_gate:0.431 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.377 bass:0.738 mid:0.520 hM:0.323 tr:0.105 | isK:0 isKE:0 percRaw:0.000 | morph:0.998 brk:0 strict:1 | bL_in:0.364 bL_gate:0.412 bL_sq:0.350 bL_pow:0.000 bL_ign:0 | bR_in:0.212 bR_gate:0.406 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[TitanOrchestrator] ðŸŽ§ WORKER BPM=120 conf=0.75 | PLL=FREEWHEEL [mem=120@-0f] phase=0.00 sync=0.43 | beat #289 | bass=0.1497 sab=0.000 | ðŸ”¬in_peak=0.43294 in_rms=0.14773
+[BACK-TEL] sB:0.331 bass:0.708 mid:0.589 hM:0.409 tr:0.214 | isK:0 isKE:0 percRaw:0.434 | morph:0.993 brk:0 strict:1 | bL_in:0.412 bL_gate:0.412 bL_sq:0.351 bL_pow:0.000 bL_ign:0 | bR_in:0.617 bR_gate:0.410 bR_sq:0.101 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:100%
+[BACK-TEL] sB:0.318 bass:0.711 mid:0.696 hM:0.523 tr:0.247 | isK:0 isKE:0 percRaw:0.135 | morph:0.993 brk:0 strict:1 | bL_in:0.487 bL_gate:0.414 bL_sq:0.351 bL_pow:1.000 bL_ign:1 | bR_in:1.000 bR_gate:0.422 bR_sq:0.101 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.302 bass:0.749 mid:0.753 hM:0.593 tr:0.236 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.527 bL_gate:0.416 bL_sq:0.350 bL_pow:1.000 bL_ign:1 | bR_in:1.000 bR_gate:0.434 bR_sq:0.100 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.326 bass:0.798 mid:0.667 hM:0.470 tr:0.199 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.467 bL_gate:0.417 bL_sq:0.350 bL_pow:0.000 bL_ign:0 | bR_in:0.750 bR_gate:0.441 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.450 outPar:0.450
+[BACK-TEL] sB:0.368 bass:0.822 mid:0.675 hM:0.433 tr:0.247 | isK:0 isKE:0 percRaw:0.191 | morph:1.000 brk:0 strict:1 | bL_in:0.472 bL_gate:0.419 bL_sq:0.350 bL_pow:0.674 bL_ign:1 | bR_in:0.866 bR_gate:0.449 bR_sq:0.100 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.381 bass:0.822 mid:0.675 hM:0.420 tr:0.247 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.472 bL_gate:0.420 bL_sq:0.350 bL_pow:0.652 bL_ign:1 | bR_in:0.841 bR_gate:0.457 bR_sq:0.100 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:0.450 outPar:0.450
+[BACK-TEL] sB:0.388 bass:0.836 mid:0.747 hM:0.449 tr:0.229 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.523 bL_gate:0.422 bL_sq:0.350 bL_pow:1.000 bL_ign:1 | bR_in:0.924 bR_gate:0.467 bR_sq:0.100 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.368 bass:0.858 mid:0.742 hM:0.415 tr:0.189 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.519 bL_gate:0.424 bL_sq:0.350 bL_pow:1.000 bL_ign:1 | bR_in:0.699 bR_gate:0.472 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.450 outPar:0.450
+[BACK-TEL] sB:0.377 bass:0.887 mid:0.700 hM:0.355 tr:0.163 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.490 bL_gate:0.425 bL_sq:0.350 bL_pow:0.000 bL_ign:0 | bR_in:0.488 bR_gate:0.472 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.203 outPar:0.203
+[BACK-TEL] sB:0.404 bass:0.909 mid:0.655 hM:0.355 tr:0.149 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.458 bL_gate:0.426 bL_sq:0.350 bL_pow:0.000 bL_ign:0 | bR_in:0.414 bR_gate:0.466 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.091 outPar:0.091
+[BACK-TEL] sB:0.350 bass:0.807 mid:0.705 hM:0.533 tr:0.184 | isK:0 isKE:0 percRaw:0.141 | morph:1.000 brk:0 strict:1 | bL_in:0.493 bL_gate:0.428 bL_sq:0.350 bL_pow:0.910 bL_ign:1 | bR_in:0.829 bR_gate:0.474 bR_sq:0.100 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.333 bass:0.807 mid:0.705 hM:0.590 tr:0.184 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.493 bL_gate:0.429 bL_sq:0.350 bL_pow:0.881 bL_ign:1 | bR_in:0.918 bR_gate:0.483 bR_sq:0.100 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.200 bass:0.589 mid:0.658 hM:0.542 tr:0.160 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.460 bL_gate:0.430 bL_sq:0.350 bL_pow:0.000 bL_ign:0 | bR_in:0.683 bR_gate:0.487 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.450 outPar:0.450
+[BACK-TEL] sB:0.113 bass:0.458 mid:0.530 hM:0.396 tr:0.118 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.371 bL_gate:0.423 bL_sq:0.350 bL_pow:0.000 bL_ign:0 | bR_in:0.297 bR_gate:0.465 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.203 outPar:0.203
+[BACK-TEL] sB:0.064 bass:0.362 mid:0.462 hM:0.345 tr:0.098 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:1 strict:1 | bL_in:0.323 bL_gate:0.412 bL_sq:0.350 bL_pow:0.000 bL_ign:0 | bR_in:0.187 bR_gate:0.433 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.091 outPar:0.091
+[BACK-TEL] sB:0.037 bass:0.290 mid:0.602 hM:0.540 tr:0.142 | isK:0 isKE:0 percRaw:0.177 | morph:1.000 brk:1 strict:1 | bL_in:0.421 bL_gate:0.412 bL_sq:0.350 bL_pow:0.018 bL_ign:0 | bR_in:0.555 bR_gate:0.436 bR_sq:0.100 bR_pow:0.914 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[ARBITER 🎭] In: mood='melancholic' mode='minor' → instant=DARK stable=BRIGHT dom=90% B/D/N=518/29/27
+[BACK-TEL] sB:0.022 bass:0.237 mid:0.644 hM:0.556 tr:0.130 | isK:0 isKE:0 percRaw:0.000 | morph:1.000 brk:1 strict:1 | bL_in:0.451 bL_gate:0.413 bL_sq:0.350 bL_pow:0.155 bL_ign:0 | bR_in:0.560 bR_gate:0.439 bR_sq:0.100 bR_pow:0.936 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[VirtualWire] 📡 SAB feed — cb#19000 | frames=441 | peak=0.3261 | ch=2
+[BACK-TEL] sB:0.013 bass:0.187 mid:0.582 hM:0.453 tr:0.103 | isK:0 isKE:0 percRaw:0.000 | morph:0.994 brk:1 strict:1 | bL_in:0.408 bL_gate:0.413 bL_sq:0.351 bL_pow:0.000 bL_ign:0 | bR_in:0.326 bR_gate:0.426 bR_sq:0.101 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.448 outPar:0.448
+[BACK-TEL] sB:0.008 bass:0.146 mid:0.538 hM:0.416 tr:0.091 | isK:0 isKE:0 percRaw:0.000 | morph:0.986 brk:1 strict:1 | bL_in:0.376 bL_gate:0.409 bL_sq:0.351 bL_pow:0.000 bL_ign:0 | bR_in:0.243 bR_gate:0.406 bR_sq:0.101 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.199 outPar:0.199
+[BACK-TEL] sB:0.006 bass:0.146 mid:0.538 hM:0.404 tr:0.091 | isK:0 isKE:0 percRaw:0.000 | morph:0.978 brk:1 strict:1 | bL_in:0.376 bL_gate:0.406 bL_sq:0.352 bL_pow:0.000 bL_ign:0 | bR_in:0.236 bR_gate:0.386 bR_sq:0.102 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.088 outPar:0.088
+[BACK-TEL] sB:0.004 bass:0.148 mid:0.672 hM:0.557 tr:0.130 | isK:0 isKE:0 percRaw:0.160 | morph:0.977 brk:1 strict:1 | bL_in:0.470 bL_gate:0.407 bL_sq:0.352 bL_pow:0.330 bL_ign:0 | bR_in:0.586 bR_gate:0.391 bR_sq:0.102 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.004 bass:0.148 mid:0.742 hM:0.603 tr:0.138 | isK:0 isKE:0 percRaw:0.029 | morph:0.996 brk:1 strict:1 | bL_in:0.519 bL_gate:0.410 bL_sq:0.350 bL_pow:0.770 bL_ign:1 | bR_in:0.739 bR_gate:0.398 bR_sq:0.100 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.003 bass:0.132 mid:0.636 hM:0.445 tr:0.105 | isK:0 isKE:0 percRaw:0.000 | morph:0.993 brk:1 strict:1 | bL_in:0.445 bL_gate:0.410 bL_sq:0.351 bL_pow:0.000 bL_ign:0 | bR_in:0.358 bR_gate:0.394 bR_sq:0.101 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.447 outPar:0.447
+[BACK-TEL] sB:0.002 bass:0.124 mid:0.548 hM:0.362 tr:0.088 | isK:0 isKE:0 percRaw:0.000 | morph:0.986 brk:1 strict:1 | bL_in:0.384 bL_gate:0.408 bL_sq:0.351 bL_pow:0.000 bL_ign:0 | bR_in:0.209 bR_gate:0.373 bR_sq:0.101 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.199 outPar:0.199
+[GlassBridge] 🏓 Ping-Pong Status: Sent: 7377 | Dropped: 41 | In-Flight: 0 | PoolFree: 3
+[BACK-TEL] sB:0.002 bass:0.166 mid:0.649 hM:0.513 tr:0.136 | isK:0 isKE:0 percRaw:0.193 | morph:0.984 brk:1 strict:1 | bL_in:0.455 bL_gate:0.409 bL_sq:0.352 bL_pow:0.204 bL_ign:0 | bR_in:0.545 bR_gate:0.377 bR_sq:0.102 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.002 bass:0.184 mid:0.677 hM:0.513 tr:0.139 | isK:0 isKE:0 percRaw:0.012 | morph:0.983 brk:1 strict:1 | bL_in:0.474 bL_gate:0.410 bL_sq:0.352 bL_pow:0.335 bL_ign:0 | bR_in:0.580 bR_gate:0.381 bR_sq:0.102 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.002 bass:0.184 mid:0.677 hM:0.513 tr:0.139 | isK:0 isKE:0 percRaw:0.000 | morph:0.982 brk:1 strict:1 | bL_in:0.474 bL_gate:0.412 bL_sq:0.352 bL_pow:0.324 bL_ign:0 | bR_in:0.580 bR_gate:0.385 bR_sq:0.102 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:0.443 outPar:0.443
+[BACK-TEL] sB:0.002 bass:0.164 mid:0.552 hM:0.366 tr:0.104 | isK:0 isKE:0 percRaw:0.000 | morph:0.975 brk:1 strict:1 | bL_in:0.387 bL_gate:0.409 bL_sq:0.353 bL_pow:0.000 bL_ign:0 | bR_in:0.252 bR_gate:0.370 bR_sq:0.103 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.195 outPar:0.195
+[BACK-TEL] sB:0.002 bass:0.136 mid:0.526 hM:0.379 tr:0.093 | isK:0 isKE:0 percRaw:0.000 | morph:0.967 brk:1 strict:1 | bL_in:0.368 bL_gate:0.405 bL_sq:0.353 bL_pow:0.000 bL_ign:0 | bR_in:0.223 bR_gate:0.360 bR_sq:0.103 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.085 outPar:0.085
+[BACK-TEL] sB:0.003 bass:0.160 mid:0.669 hM:0.605 tr:0.139 | isK:0 isKE:0 percRaw:0.184 | morph:0.966 brk:1 strict:1 | bL_in:0.468 bL_gate:0.406 bL_sq:0.353 bL_pow:0.317 bL_ign:0 | bR_in:0.677 bR_gate:0.361 bR_sq:0.103 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.003 bass:0.170 mid:0.713 hM:0.662 tr:0.153 | isK:0 isKE:0 percRaw:0.053 | morph:0.976 brk:1 strict:1 | bL_in:0.499 bL_gate:0.408 bL_sq:0.352 bL_pow:0.574 bL_ign:1 | bR_in:0.866 bR_gate:0.371 bR_sq:0.102 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.002 bass:0.143 mid:0.607 hM:0.488 tr:0.118 | isK:0 isKE:0 percRaw:0.000 | morph:0.972 brk:1 strict:1 | bL_in:0.425 bL_gate:0.409 bL_sq:0.353 bL_pow:0.000 bL_ign:0 | bR_in:0.418 bR_gate:0.372 bR_sq:0.103 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.439 outPar:0.439
+[BACK-TEL] sB:0.002 bass:0.107 mid:0.544 hM:0.448 tr:0.106 | isK:0 isKE:0 percRaw:0.000 | morph:0.964 brk:1 strict:1 | bL_in:0.381 bL_gate:0.406 bL_sq:0.354 bL_pow:0.000 bL_ign:0 | bR_in:0.309 bR_gate:0.366 bR_sq:0.104 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.191 outPar:0.191
+[BACK-TEL] sB:0.002 bass:0.107 mid:0.544 hM:0.436 tr:0.106 | isK:0 isKE:0 percRaw:0.000 | morph:0.957 brk:1 strict:1 | bL_in:0.381 bL_gate:0.403 bL_sq:0.354 bL_pow:0.000 bL_ign:0 | bR_in:0.300 bR_gate:0.360 bR_sq:0.104 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.083 outPar:0.083
+[BACK-TEL] sB:0.001 bass:0.098 mid:0.613 hM:0.552 tr:0.130 | isK:0 isKE:0 percRaw:0.097 | morph:0.954 brk:1 strict:1 | bL_in:0.429 bL_gate:0.404 bL_sq:0.355 bL_pow:0.080 bL_ign:0 | bR_in:0.527 bR_gate:0.363 bR_sq:0.105 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.001 bass:0.105 mid:0.690 hM:0.634 tr:0.139 | isK:0 isKE:0 percRaw:0.036 | morph:0.957 brk:1 strict:1 | bL_in:0.483 bL_gate:0.406 bL_sq:0.354 bL_pow:0.438 bL_ign:1 | bR_in:0.730 bR_gate:0.370 bR_sq:0.104 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.001 bass:0.096 mid:0.640 hM:0.561 tr:0.116 | isK:0 isKE:0 percRaw:0.000 | morph:0.955 brk:1 strict:1 | bL_in:0.448 bL_gate:0.407 bL_sq:0.355 bL_pow:0.000 bL_ign:0 | bR_in:0.502 bR_gate:0.373 bR_sq:0.105 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.432 outPar:0.432
+[BACK-TEL] sB:0.001 bass:0.085 mid:0.531 hM:0.429 tr:0.089 | isK:0 isKE:0 percRaw:0.000 | morph:0.947 brk:1 strict:1 | bL_in:0.372 bL_gate:0.403 bL_sq:0.355 bL_pow:0.000 bL_ign:0 | bR_in:0.244 bR_gate:0.360 bR_sq:0.105 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.185 outPar:0.185
+[BACK-TEL] sB:0.001 bass:0.108 mid:0.618 hM:0.547 tr:0.117 | isK:0 isKE:0 percRaw:0.112 | morph:0.944 brk:1 strict:1 | bL_in:0.432 bL_gate:0.404 bL_sq:0.356 bL_pow:0.097 bL_ign:0 | bR_in:0.475 bR_gate:0.361 bR_sq:0.106 bR_pow:0.851 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.001 bass:0.118 mid:0.603 hM:0.493 tr:0.107 | isK:0 isKE:0 percRaw:0.000 | morph:0.940 brk:1 strict:1 | bL_in:0.422 bL_gate:0.404 bL_sq:0.356 bL_pow:0.047 bL_ign:0 | bR_in:0.381 bR_gate:0.362 bR_sq:0.106 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.426 outPar:0.426
+[BACK-TEL] sB:0.000 bass:0.114 mid:0.533 hM:0.387 tr:0.085 | isK:0 isKE:0 percRaw:0.000 | morph:0.933 brk:1 strict:1 | bL_in:0.373 bL_gate:0.401 bL_sq:0.357 bL_pow:0.000 bL_ign:0 | bR_in:0.209 bR_gate:0.360 bR_sq:0.107 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.180 outPar:0.180
+[BACK-TEL] sB:0.000 bass:0.098 mid:0.447 hM:0.300 tr:0.067 | isK:0 isKE:0 percRaw:0.000 | morph:0.922 brk:1 strict:1 | bL_in:0.313 bL_gate:0.391 bL_sq:0.358 bL_pow:0.000 bL_ign:0 | bR_in:0.107 bR_gate:0.360 bR_sq:0.108 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.067 outPar:0.067
+[BACK-TEL] sB:0.001 bass:0.131 mid:0.604 hM:0.529 tr:0.110 | isK:0 isKE:0 percRaw:0.174 | morph:0.919 brk:1 strict:1 | bL_in:0.423 bL_gate:0.392 bL_sq:0.358 bL_pow:0.106 bL_ign:0 | bR_in:0.423 bR_gate:0.360 bR_sq:0.108 bR_pow:0.456 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.001 bass:0.155 mid:0.658 hM:0.564 tr:0.116 | isK:0 isKE:0 percRaw:0.023 | morph:0.918 brk:1 strict:1 | bL_in:0.461 bL_gate:0.393 bL_sq:0.358 bL_pow:0.343 bL_ign:0 | bR_in:0.516 bR_gate:0.360 bR_sq:0.108 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.001 bass:0.155 mid:0.658 hM:0.576 tr:0.116 | isK:0 isKE:0 percRaw:0.000 | morph:0.918 brk:1 strict:1 | bL_in:0.461 bL_gate:0.395 bL_sq:0.358 bL_pow:0.332 bL_ign:0 | bR_in:0.527 bR_gate:0.360 bR_sq:0.108 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.000 bass:0.131 mid:0.565 hM:0.431 tr:0.089 | isK:0 isKE:0 percRaw:0.000 | morph:0.913 brk:1 strict:1 | bL_in:0.396 bL_gate:0.395 bL_sq:0.359 bL_pow:0.000 bL_ign:0 | bR_in:0.260 bR_gate:0.360 bR_sq:0.109 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.415 outPar:0.415
+[BACK-TEL] sB:0.000 bass:0.104 mid:0.477 hM:0.348 tr:0.071 | isK:0 isKE:0 percRaw:0.000 | morph:0.903 brk:1 strict:1 | bL_in:0.334 bL_gate:0.388 bL_sq:0.360 bL_pow:0.000 bL_ign:0 | bR_in:0.141 bR_gate:0.360 bR_sq:0.110 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.171 outPar:0.171
+[BACK-TEL] sB:0.000 bass:0.138 mid:0.585 hM:0.510 tr:0.100 | isK:0 isKE:0 percRaw:0.119 | morph:0.900 brk:1 strict:1 | bL_in:0.410 bL_gate:0.389 bL_sq:0.360 bL_pow:0.056 bL_ign:0 | bR_in:0.359 bR_gate:0.360 bR_sq:0.110 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.054 outPar:0.054
+[BACK-TEL] sB:0.001 bass:0.135 mid:0.613 hM:0.493 tr:0.096 | isK:0 isKE:0 percRaw:0.000 | morph:0.897 brk:1 strict:1 | bL_in:0.429 bL_gate:0.390 bL_sq:0.360 bL_pow:0.149 bL_ign:0 | bR_in:0.349 bR_gate:0.360 bR_sq:0.110 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.004 outPar:0.004
+[CHOREO] techno-club | #5:laser_grid [MIRROR ×2] | scene:20b | Pan:6 Tilt:-109 | sBPM:120 phase:255°
+[BACK-TEL] sB:0.000 bass:0.112 mid:0.518 hM:0.370 tr:0.074 | isK:0 isKE:0 percRaw:0.000 | morph:0.890 brk:1 strict:1 | bL_in:0.362 bL_gate:0.387 bL_sq:0.361 bL_pow:0.000 bL_ign:0 | bR_in:0.169 bR_gate:0.360 bR_sq:0.111 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.000 bass:0.094 mid:0.453 hM:0.324 tr:0.064 | isK:0 isKE:0 percRaw:0.000 | morph:0.880 brk:1 strict:1 | bL_in:0.317 bL_gate:0.379 bL_sq:0.362 bL_pow:0.000 bL_ign:0 | bR_in:0.112 bR_gate:0.360 bR_sq:0.112 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.000 bass:0.131 mid:0.519 hM:0.408 tr:0.084 | isK:0 isKE:0 percRaw:0.082 | morph:0.873 brk:1 strict:1 | bL_in:0.364 bL_gate:0.378 bL_sq:0.363 bL_pow:0.000 bL_ign:0 | bR_in:0.214 bR_gate:0.360 bR_sq:0.113 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.000 bass:0.195 mid:0.563 hM:0.409 tr:0.086 | isK:0 isKE:0 percRaw:0.008 | morph:0.869 brk:1 strict:1 | bL_in:0.394 bL_gate:0.378 bL_sq:0.363 bL_pow:0.034 bL_ign:0 | bR_in:0.238 bR_gate:0.360 bR_sq:0.113 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.000 bass:0.195 mid:0.563 hM:0.410 tr:0.086 | isK:0 isKE:0 percRaw:0.000 | morph:0.865 brk:1 strict:1 | bL_in:0.394 bL_gate:0.379 bL_sq:0.364 bL_pow:0.033 bL_ign:0 | bR_in:0.239 bR_gate:0.360 bR_sq:0.114 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.000 bass:0.170 mid:0.468 hM:0.307 tr:0.065 | isK:0 isKE:0 percRaw:0.000 | morph:0.856 brk:1 strict:1 | bL_in:0.328 bL_gate:0.373 bL_sq:0.364 bL_pow:0.000 bL_ign:0 | bR_in:0.111 bR_gate:0.360 bR_sq:0.114 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.000 bass:0.143 mid:0.458 hM:0.336 tr:0.064 | isK:0 isKE:0 percRaw:0.000 | morph:0.847 brk:1 strict:1 | bL_in:0.321 bL_gate:0.367 bL_sq:0.365 bL_pow:0.000 bL_ign:0 | bR_in:0.119 bR_gate:0.360 bR_sq:0.115 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.001 bass:0.246 mid:0.617 hM:0.541 tr:0.106 | isK:0 isKE:0 percRaw:0.167 | morph:0.846 brk:1 strict:1 | bL_in:0.432 bL_gate:0.369 bL_sq:0.365 bL_pow:0.289 bL_ign:0 | bR_in:0.425 bR_gate:0.360 bR_sq:0.115 bR_pow:0.442 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.002 bass:0.344 mid:0.688 hM:0.594 tr:0.116 | isK:0 isKE:0 percRaw:0.040 | morph:0.864 brk:1 strict:1 | bL_in:0.481 bL_gate:0.371 bL_sq:0.364 bL_pow:0.694 bL_ign:1 | bR_in:0.569 bR_gate:0.360 bR_sq:0.114 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.001 bass:0.357 mid:0.593 hM:0.447 tr:0.087 | isK:0 isKE:0 percRaw:0.000 | morph:0.861 brk:1 strict:1 | bL_in:0.415 bL_gate:0.372 bL_sq:0.364 bL_pow:0.000 bL_ign:0 | bR_in:0.277 bR_gate:0.360 bR_sq:0.114 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.395 outPar:0.395
+[BACK-TEL] sB:0.001 bass:0.307 mid:0.501 hM:0.353 tr:0.070 | isK:0 isKE:0 percRaw:0.000 | morph:0.854 brk:1 strict:1 | bL_in:0.351 bL_gate:0.370 bL_sq:0.365 bL_pow:0.000 bL_ign:0 | bR_in:0.149 bR_gate:0.360 bR_sq:0.115 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.155 outPar:0.155
+[TitanOrchestrator] ðŸŽ§ WORKER BPM=120 conf=0.70 | PLL=FREEWHEEL [mem=120@-0f] phase=0.00 sync=0.49 | beat #289 | bass=0.0226 sab=0.161 | ðŸ”¬in_peak=0.26198 in_rms=0.07074
+[BACK-TEL] sB:0.001 bass:0.307 mid:0.501 hM:0.323 tr:0.070 | isK:0 isKE:0 percRaw:0.000 | morph:0.847 brk:1 strict:1 | bL_in:0.351 bL_gate:0.368 bL_sq:0.365 bL_pow:0.000 bL_ign:0 | bR_in:0.136 bR_gate:0.360 bR_sq:0.115 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.034 outPar:0.034
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:0% FR:0% BL:0% BR:3%
+[BACK-TEL] sB:0.001 bass:0.293 mid:0.520 hM:0.373 tr:0.076 | isK:0 isKE:0 percRaw:0.022 | morph:0.841 brk:1 strict:1 | bL_in:0.364 bL_gate:0.368 bL_sq:0.366 bL_pow:0.000 bL_ign:0 | bR_in:0.176 bR_gate:0.360 bR_sq:0.116 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.002 outPar:0.002
+[BACK-TEL] sB:0.001 bass:0.297 mid:0.544 hM:0.370 tr:0.075 | isK:0 isKE:0 percRaw:0.000 | morph:0.837 brk:1 strict:1 | bL_in:0.381 bL_gate:0.369 bL_sq:0.366 bL_pow:0.022 bL_ign:0 | bR_in:0.181 bR_gate:0.360 bR_sq:0.116 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.000 bass:0.262 mid:0.492 hM:0.301 tr:0.060 | isK:0 isKE:0 percRaw:0.000 | morph:0.830 brk:1 strict:1 | bL_in:0.344 bL_gate:0.366 bL_sq:0.367 bL_pow:0.000 bL_ign:0 | bR_in:0.106 bR_gate:0.360 bR_sq:0.117 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.000 bass:0.225 mid:0.435 hM:0.266 tr:0.052 | isK:0 isKE:0 percRaw:0.000 | morph:0.820 brk:1 strict:1 | bL_in:0.305 bL_gate:0.360 bL_sq:0.368 bL_pow:0.000 bL_ign:0 | bR_in:0.072 bR_gate:0.360 bR_sq:0.118 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.000 bass:0.217 mid:0.543 hM:0.389 tr:0.081 | isK:0 isKE:0 percRaw:0.116 | morph:0.815 brk:1 strict:1 | bL_in:0.380 bL_gate:0.360 bL_sq:0.368 bL_pow:0.047 bL_ign:0 | bR_in:0.205 bR_gate:0.360 bR_sq:0.118 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.001 bass:0.218 mid:0.632 hM:0.482 tr:0.092 | isK:0 isKE:0 percRaw:0.045 | morph:0.818 brk:0 strict:1 | bL_in:0.443 bL_gate:0.362 bL_sq:0.368 bL_pow:0.960 bL_ign:1 | bR_in:0.338 bR_gate:0.360 bR_sq:0.118 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.001 bass:0.218 mid:0.632 hM:0.512 tr:0.092 | isK:0 isKE:0 percRaw:0.000 | morph:0.820 brk:1 strict:1 | bL_in:0.443 bL_gate:0.364 bL_sq:0.368 bL_pow:0.399 bL_ign:1 | bR_in:0.359 bR_gate:0.360 bR_sq:0.118 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.001 bass:0.202 mid:0.543 hM:0.379 tr:0.071 | isK:0 isKE:0 percRaw:0.000 | morph:0.815 brk:1 strict:1 | bL_in:0.380 bL_gate:0.364 bL_sq:0.368 bL_pow:0.000 bL_ign:0 | bR_in:0.175 bR_gate:0.360 bR_sq:0.118 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.000 bass:0.190 mid:0.456 hM:0.308 tr:0.057 | isK:0 isKE:0 percRaw:0.000 | morph:0.807 brk:1 strict:1 | bL_in:0.319 bL_gate:0.359 bL_sq:0.369 bL_pow:0.000 bL_ign:0 | bR_in:0.096 bR_gate:0.360 bR_sq:0.119 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.001 bass:0.176 mid:0.539 hM:0.434 tr:0.078 | isK:0 isKE:0 percRaw:0.083 | morph:0.803 brk:1 strict:1 | bL_in:0.377 bL_gate:0.360 bL_sq:0.370 bL_pow:0.037 bL_ign:0 | bR_in:0.218 bR_gate:0.360 bR_sq:0.120 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.001 bass:0.227 mid:0.602 hM:0.465 tr:0.083 | isK:0 isKE:0 percRaw:0.021 | morph:0.802 brk:1 strict:1 | bL_in:0.421 bL_gate:0.361 bL_sq:0.370 bL_pow:0.257 bL_ign:0 | bR_in:0.279 bR_gate:0.360 bR_sq:0.120 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.001 bass:0.228 mid:0.535 hM:0.353 tr:0.066 | isK:0 isKE:0 percRaw:0.000 | morph:0.797 brk:0 strict:1 | bL_in:0.375 bL_gate:0.361 bL_sq:0.370 bL_pow:0.000 bL_ign:0 | bR_in:0.149 bR_gate:0.360 bR_sq:0.120 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.000 bass:0.228 mid:0.535 hM:0.317 tr:0.066 | isK:0 isKE:0 percRaw:0.000 | morph:0.793 brk:1 strict:1 | bL_in:0.375 bL_gate:0.362 bL_sq:0.371 bL_pow:0.023 bL_ign:0 | bR_in:0.134 bR_gate:0.360 bR_sq:0.121 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.001 bass:0.178 mid:0.455 hM:0.261 tr:0.052 | isK:0 isKE:0 percRaw:0.000 | morph:0.785 brk:1 strict:1 | bL_in:0.318 bL_gate:0.357 bL_sq:0.371 bL_pow:0.000 bL_ign:0 | bR_in:0.074 bR_gate:0.360 bR_sq:0.121 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.001 bass:0.162 mid:0.498 hM:0.376 tr:0.065 | isK:0 isKE:0 percRaw:0.052 | morph:0.779 brk:1 strict:1 | bL_in:0.349 bL_gate:0.357 bL_sq:0.372 bL_pow:0.000 bL_ign:0 | bR_in:0.146 bR_gate:0.360 bR_sq:0.122 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[ARBITER 🎭] In: mood='euphoric' mode='minor' → instant=BRIGHT stable=BRIGHT dom=78% B/D/N=426/81/36
+[BACK-TEL] sB:0.001 bass:0.272 mid:0.618 hM:0.529 tr:0.091 | isK:0 isKE:0 percRaw:0.104 | morph:0.782 brk:1 strict:1 | bL_in:0.433 bL_gate:0.358 bL_sq:0.372 bL_pow:0.352 bL_ign:0 | bR_in:0.357 bR_gate:0.360 bR_sq:0.122 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.001 bass:0.340 mid:0.607 hM:0.489 tr:0.082 | isK:0 isKE:0 percRaw:0.000 | morph:0.781 brk:1 strict:1 | bL_in:0.425 bL_gate:0.360 bL_sq:0.372 bL_pow:0.285 bL_ign:0 | bR_in:0.293 bR_gate:0.360 bR_sq:0.122 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.001 bass:0.335 mid:0.503 hM:0.365 tr:0.064 | isK:0 isKE:0 percRaw:0.000 | morph:0.776 brk:1 strict:1 | bL_in:0.352 bL_gate:0.359 bL_sq:0.372 bL_pow:0.000 bL_ign:0 | bR_in:0.141 bR_gate:0.360 bR_sq:0.122 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.001 bass:0.290 mid:0.506 hM:0.381 tr:0.067 | isK:0 isKE:0 percRaw:0.013 | morph:0.771 brk:1 strict:1 | bL_in:0.354 bL_gate:0.359 bL_sq:0.373 bL_pow:0.000 bL_ign:0 | bR_in:0.156 bR_gate:0.360 bR_sq:0.123 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.001 bass:0.317 mid:0.529 hM:0.369 tr:0.067 | isK:0 isKE:0 percRaw:0.000 | morph:0.767 brk:1 strict:1 | bL_in:0.370 bL_gate:0.360 bL_sq:0.373 bL_pow:0.016 bL_ign:0 | bR_in:0.156 bR_gate:0.360 bR_sq:0.123 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.001 bass:0.317 mid:0.529 hM:0.365 tr:0.067 | isK:0 isKE:0 percRaw:0.000 | morph:0.763 brk:1 strict:1 | bL_in:0.370 bL_gate:0.360 bL_sq:0.374 bL_pow:0.016 bL_ign:0 | bR_in:0.154 bR_gate:0.360 bR_sq:0.124 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.001 bass:0.297 mid:0.504 hM:0.318 tr:0.056 | isK:0 isKE:0 percRaw:0.000 | morph:0.758 brk:1 strict:1 | bL_in:0.353 bL_gate:0.360 bL_sq:0.374 bL_pow:0.000 bL_ign:0 | bR_in:0.109 bR_gate:0.360 bR_sq:0.124 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.003 bass:0.282 mid:0.511 hM:0.320 tr:0.099 | isK:0 isKE:0 percRaw:0.170 | morph:0.753 brk:1 strict:1 | bL_in:0.358 bL_gate:0.360 bL_sq:0.375 bL_pow:0.000 bL_ign:0 | bR_in:0.194 bR_gate:0.360 bR_sq:0.125 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.035 bass:0.576 mid:0.626 hM:0.417 tr:0.210 | isK:1 isKE:1 percRaw:0.445 | morph:0.763 brk:0 strict:1 | bL_in:0.438 bL_gate:0.362 bL_sq:0.374 bL_pow:0.829 bL_ign:1 | bR_in:0.660 bR_gate:0.360 bR_sq:0.124 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.206 bass:0.784 mid:0.589 hM:0.429 tr:0.249 | isK:1 isKE:0 percRaw:0.154 | morph:0.762 brk:0 strict:1 | bL_in:0.413 bL_gate:0.363 bL_sq:0.374 bL_pow:0.419 bL_ign:1 | bR_in:0.755 bR_gate:0.360 bR_sq:0.124 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.509 bass:0.945 mid:0.566 hM:0.434 tr:0.274 | isK:1 isKE:0 percRaw:0.101 | morph:0.760 brk:0 strict:1 | bL_in:0.396 bL_gate:0.363 bL_sq:0.374 bL_pow:0.000 bL_ign:0 | bR_in:0.809 bR_gate:0.360 bR_sq:0.124 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.606 bass:0.945 mid:0.566 hM:0.436 tr:0.274 | isK:1 isKE:0 percRaw:0.000 | morph:0.758 brk:0 strict:1 | bL_in:0.396 bL_gate:0.364 bL_sq:0.374 bL_pow:0.208 bL_ign:0 | bR_in:0.812 bR_gate:0.360 bR_sq:0.124 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.809 bass:1.000 mid:0.549 hM:0.435 tr:0.286 | isK:1 isKE:0 percRaw:0.047 | morph:0.755 brk:0 strict:1 | bL_in:0.384 bL_gate:0.365 bL_sq:0.374 bL_pow:0.000 bL_ign:0 | bR_in:0.820 bR_gate:0.360 bR_sq:0.124 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.915 bass:1.000 mid:0.552 hM:0.459 tr:0.309 | isK:1 isKE:0 percRaw:0.091 | morph:0.753 brk:0 strict:1 | bL_in:0.386 bL_gate:0.365 bL_sq:0.375 bL_pow:0.107 bL_ign:0 | bR_in:0.938 bR_gate:0.360 bR_sq:0.125 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.717 bass:0.939 mid:0.588 hM:0.474 tr:0.315 | isK:0 isKE:0 percRaw:0.025 | morph:0.752 brk:0 strict:1 | bL_in:0.412 bL_gate:0.366 bL_sq:0.375 bL_pow:0.357 bL_ign:0 | bR_in:1.000 bR_gate:0.360 bR_sq:0.125 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.523 bass:0.837 mid:0.626 hM:0.502 tr:0.321 | isK:0 isKE:0 percRaw:0.023 | morph:0.761 brk:0 strict:1 | bL_in:0.438 bL_gate:0.368 bL_sq:0.374 bL_pow:0.716 bL_ign:1 | bR_in:1.000 bR_gate:0.360 bR_sq:0.124 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.460 bass:0.837 mid:0.626 hM:0.511 tr:0.321 | isK:0 isKE:0 percRaw:0.000 | morph:0.769 brk:0 strict:1 | bL_in:0.438 bL_gate:0.369 bL_sq:0.373 bL_pow:0.700 bL_ign:1 | bR_in:1.000 bR_gate:0.360 bR_sq:0.123 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.363 bass:0.785 mid:0.646 hM:0.518 tr:0.321 | isK:0 isKE:0 percRaw:0.000 | morph:0.784 brk:0 strict:1 | bL_in:0.452 bL_gate:0.371 bL_sq:0.372 bL_pow:0.929 bL_ign:1 | bR_in:1.000 bR_gate:0.360 bR_sq:0.122 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.350 bass:0.787 mid:0.664 hM:0.532 tr:0.368 | isK:0 isKE:0 percRaw:0.188 | morph:0.803 brk:0 strict:1 | bL_in:0.465 bL_gate:0.373 bL_sq:0.370 bL_pow:1.000 bL_ign:1 | bR_in:1.000 bR_gate:0.360 bR_sq:0.120 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.342 bass:0.807 mid:0.693 hM:0.559 tr:0.357 | isK:0 isKE:0 percRaw:0.000 | morph:0.830 brk:0 strict:1 | bL_in:0.485 bL_gate:0.375 bL_sq:0.367 bL_pow:1.000 bL_ign:1 | bR_in:1.000 bR_gate:0.360 bR_sq:0.117 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.359 bass:0.835 mid:0.703 hM:0.551 tr:0.333 | isK:0 isKE:0 percRaw:0.000 | morph:0.856 brk:0 strict:1 | bL_in:0.492 bL_gate:0.378 bL_sq:0.364 bL_pow:1.000 bL_ign:1 | bR_in:1.000 bR_gate:0.360 bR_sq:0.114 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.364 bass:0.835 mid:0.703 hM:0.548 tr:0.333 | isK:0 isKE:0 percRaw:0.000 | morph:0.879 brk:0 strict:1 | bL_in:0.492 bL_gate:0.380 bL_sq:0.362 bL_pow:1.000 bL_ign:1 | bR_in:1.000 bR_gate:0.360 bR_sq:0.112 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.376 bass:0.856 mid:0.702 hM:0.540 tr:0.319 | isK:0 isKE:0 percRaw:0.000 | morph:0.898 brk:0 strict:1 | bL_in:0.492 bL_gate:0.383 bL_sq:0.360 bL_pow:1.000 bL_ign:1 | bR_in:1.000 bR_gate:0.366 bR_sq:0.110 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[GlassBridge] 🏓 Ping-Pong Status: Sent: 7452 | Dropped: 41 | In-Flight: 0 | PoolFree: 3
+[BACK-TEL] sB:0.398 bass:0.860 mid:0.715 hM:0.542 tr:0.336 | isK:0 isKE:0 percRaw:0.068 | morph:0.919 brk:0 strict:1 | bL_in:0.501 bL_gate:0.385 bL_sq:0.358 bL_pow:1.000 bL_ign:1 | bR_in:1.000 bR_gate:0.379 bR_sq:0.108 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.401 bass:0.879 mid:0.714 hM:0.507 tr:0.316 | isK:0 isKE:0 percRaw:0.000 | morph:0.936 brk:0 strict:1 | bL_in:0.499 bL_gate:0.387 bL_sq:0.356 bL_pow:1.000 bL_ign:1 | bR_in:1.000 bR_gate:0.391 bR_sq:0.106 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.403 bass:0.895 mid:0.713 hM:0.488 tr:0.294 | isK:0 isKE:0 percRaw:0.000 | morph:0.951 brk:0 strict:1 | bL_in:0.499 bL_gate:0.390 bL_sq:0.355 bL_pow:1.000 bL_ign:1 | bR_in:1.000 bR_gate:0.404 bR_sq:0.105 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.403 bass:0.895 mid:0.713 hM:0.482 tr:0.294 | isK:0 isKE:0 percRaw:0.000 | morph:0.963 brk:0 strict:1 | bL_in:0.499 bL_gate:0.392 bL_sq:0.354 bL_pow:1.000 bL_ign:1 | bR_in:1.000 bR_gate:0.416 bR_sq:0.104 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.408 bass:0.906 mid:0.709 hM:0.495 tr:0.274 | isK:0 isKE:0 percRaw:0.000 | morph:0.972 brk:0 strict:1 | bL_in:0.496 bL_gate:0.394 bL_sq:0.353 bL_pow:1.000 bL_ign:1 | bR_in:1.000 bR_gate:0.428 bR_sq:0.103 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.390 bass:0.911 mid:0.746 hM:0.554 tr:0.326 | isK:0 isKE:0 percRaw:0.207 | morph:0.993 brk:0 strict:1 | bL_in:0.522 bL_gate:0.397 bL_sq:0.351 bL_pow:1.000 bL_ign:1 | bR_in:1.000 bR_gate:0.439 bR_sq:0.101 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.510 bass:1.000 mid:0.732 hM:0.574 tr:0.296 | isK:1 isKE:1 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.512 bL_gate:0.399 bL_sq:0.350 bL_pow:1.000 bL_ign:1 | bR_in:1.000 bR_gate:0.451 bR_sq:0.100 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.756 bass:1.000 mid:0.659 hM:0.494 tr:0.267 | isK:1 isKE:0 percRaw:0.000 | morph:1.000 brk:0 strict:1 | bL_in:0.462 bL_gate:0.401 bL_sq:0.350 bL_pow:0.000 bL_ign:0 | bR_in:1.000 bR_gate:0.462 bR_sq:0.100 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.906 bass:1.000 mid:0.547 hM:0.384 tr:0.245 | isK:1 isKE:0 percRaw:0.000 | morph:0.996 brk:0 strict:1 | bL_in:0.383 bL_gate:0.399 bL_sq:0.350 bL_pow:0.000 bL_ign:0 | bR_in:0.619 bR_gate:0.465 bR_sq:0.100 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.449 outPar:0.449
+[BACK-TEL] sB:0.977 bass:1.000 mid:0.504 hM:0.346 tr:0.276 | isK:1 isKE:0 percRaw:0.120 | morph:0.987 brk:0 strict:1 | bL_in:0.353 bL_gate:0.394 bL_sq:0.351 bL_pow:0.000 bL_ign:0 | bR_in:0.576 bR_gate:0.468 bR_sq:0.101 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.199 outPar:0.199
+[CHOREO] techno-club | #5:laser_grid [MIRROR ×2] | scene:24b | Pan:222 Tilt:-42 | sBPM:120 phase:349°
+[BACK-TEL] sB:0.814 bass:0.972 mid:0.481 hM:0.334 tr:0.266 | isK:1 isKE:0 percRaw:0.000 | morph:0.976 brk:0 strict:1 | bL_in:0.337 bL_gate:0.388 bL_sq:0.352 bL_pow:0.000 bL_ign:0 | bR_in:0.514 bR_gate:0.469 bR_sq:0.102 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.088 outPar:0.088
+[BACK-TEL] sB:0.603 bass:0.820 mid:0.471 hM:0.323 tr:0.253 | isK:1 isKE:0 percRaw:0.000 | morph:0.965 brk:0 strict:1 | bL_in:0.330 bL_gate:0.382 bL_sq:0.354 bL_pow:0.000 bL_ign:0 | bR_in:0.463 bR_gate:0.469 bR_sq:0.104 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.009 outPar:0.009
+[BACK-TEL] sB:0.536 bass:0.820 mid:0.471 hM:0.319 tr:0.253 | isK:0 isKE:0 percRaw:0.000 | morph:0.954 brk:0 strict:1 | bL_in:0.330 bL_gate:0.376 bL_sq:0.355 bL_pow:0.000 bL_ign:0 | bR_in:0.457 bR_gate:0.469 bR_sq:0.105 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.001 outPar:0.001
+[BACK-TEL] sB:0.400 bass:0.725 mid:0.452 hM:0.307 tr:0.238 | isK:0 isKE:0 percRaw:0.000 | morph:0.943 brk:0 strict:1 | bL_in:0.316 bL_gate:0.369 bL_sq:0.356 bL_pow:0.000 bL_ign:0 | bR_in:0.395 bR_gate:0.461 bR_sq:0.106 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.362 bass:0.709 mid:0.509 hM:0.349 tr:0.308 | isK:0 isKE:0 percRaw:0.280 | morph:0.934 brk:0 strict:1 | bL_in:0.356 bL_gate:0.368 bL_sq:0.357 bL_pow:0.000 bL_ign:0 | bR_in:0.656 bR_gate:0.465 bR_sq:0.107 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.360 bass:0.741 mid:0.535 hM:0.338 tr:0.307 | isK:0 isKE:0 percRaw:0.000 | morph:0.927 brk:0 strict:1 | bL_in:0.375 bL_gate:0.369 bL_sq:0.357 bL_pow:0.022 bL_ign:0 | bR_in:0.666 bR_gate:0.469 bR_sq:0.107 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.359 bass:0.741 mid:0.535 hM:0.334 tr:0.307 | isK:0 isKE:0 percRaw:0.000 | morph:0.921 brk:0 strict:1 | bL_in:0.375 bL_gate:0.369 bL_sq:0.358 bL_pow:0.020 bL_ign:0 | bR_in:0.659 bR_gate:0.473 bR_sq:0.108 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.418 outPar:0.418
+[BACK-TEL] sB:0.370 bass:0.787 mid:0.534 hM:0.321 tr:0.277 | isK:0 isKE:0 percRaw:0.000 | morph:0.914 brk:0 strict:1 | bL_in:0.374 bL_gate:0.369 bL_sq:0.359 bL_pow:0.015 bL_ign:0 | bR_in:0.569 bR_gate:0.475 bR_sq:0.109 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.174 outPar:0.174
+[BACK-TEL] sB:0.373 bass:0.811 mid:0.500 hM:0.302 tr:0.251 | isK:0 isKE:0 percRaw:0.000 | morph:0.906 brk:0 strict:1 | bL_in:0.350 bL_gate:0.367 bL_sq:0.359 bL_pow:0.000 bL_ign:0 | bR_in:0.456 bR_gate:0.474 bR_sq:0.109 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.057 outPar:0.057
+[BACK-TEL] sB:0.396 bass:0.830 mid:0.516 hM:0.285 tr:0.284 | isK:0 isKE:0 percRaw:0.131 | morph:0.898 brk:0 strict:1 | bL_in:0.362 bL_gate:0.367 bL_sq:0.360 bL_pow:0.000 bL_ign:0 | bR_in:0.501 bR_gate:0.475 bR_sq:0.110 bR_pow:0.327 bR_ign:1 | outBL:0.000 outBR:0.627 outPar:0.627
+[BACK-TEL] sB:0.412 bass:0.841 mid:0.533 hM:0.255 tr:0.261 | isK:0 isKE:0 percRaw:0.000 | morph:0.892 brk:0 strict:1 | bL_in:0.373 bL_gate:0.368 bL_sq:0.361 bL_pow:0.018 bL_ign:0 | bR_in:0.425 bR_gate:0.470 bR_sq:0.111 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.255 outPar:0.255
+[TitanOrchestrator] ðŸŽ§ WORKER BPM=120 conf=0.75 | PLL=FREEWHEEL [mem=120@-0f] phase=0.00 sync=0.50 | beat #291 | bass=0.2668 sab=0.054 | ðŸ”¬in_peak=0.30956 in_rms=0.11482
+[BACK-TEL] sB:0.408 bass:0.851 mid:0.509 hM:0.242 tr:0.225 | isK:0 isKE:0 percRaw:0.000 | morph:0.885 brk:0 strict:1 | bL_in:0.356 bL_gate:0.367 bL_sq:0.362 bL_pow:0.000 bL_ign:0 | bR_in:0.332 bR_gate:0.455 bR_sq:0.112 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.103 outPar:0.103
+[TitanEngine 🌊 LIQUID 7-ZONE] FL:20% FR:0% BL:0% BR:10%
+[BACK-TEL] sB:0.406 bass:0.851 mid:0.509 hM:0.238 tr:0.225 | isK:0 isKE:0 percRaw:0.000 | morph:0.877 brk:0 strict:1 | bL_in:0.356 bL_gate:0.366 bL_sq:0.362 bL_pow:0.000 bL_ign:0 | bR_in:0.327 bR_gate:0.441 bR_sq:0.112 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.011 outPar:0.011
+[BACK-TEL] sB:0.413 bass:0.863 mid:0.478 hM:0.227 tr:0.199 | isK:0 isKE:0 percRaw:0.000 | morph:0.869 brk:0 strict:1 | bL_in:0.335 bL_gate:0.363 bL_sq:0.363 bL_pow:0.000 bL_ign:0 | bR_in:0.259 bR_gate:0.420 bR_sq:0.113 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.001 outPar:0.001
+[BACK-TEL] sB:0.423 bass:0.878 mid:0.579 hM:0.359 tr:0.253 | isK:0 isKE:0 percRaw:0.217 | morph:0.865 brk:0 strict:1 | bL_in:0.405 bL_gate:0.364 bL_sq:0.363 bL_pow:0.368 bL_ign:1 | bR_in:0.631 bR_gate:0.425 bR_sq:0.113 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.400 bass:0.947 mid:0.526 hM:0.313 tr:0.231 | isK:1 isKE:1 percRaw:0.000 | morph:0.859 brk:0 strict:1 | bL_in:0.368 bL_gate:0.364 bL_sq:0.364 bL_pow:0.000 bL_ign:0 | bR_in:0.457 bR_gate:0.425 bR_sq:0.114 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.394 outPar:0.394
+[BACK-TEL] sB:0.704 bass:1.000 mid:0.438 hM:0.264 tr:0.201 | isK:1 isKE:0 percRaw:0.000 | morph:0.849 brk:0 strict:1 | bL_in:0.307 bL_gate:0.358 bL_sq:0.365 bL_pow:0.000 bL_ign:0 | bR_in:0.280 bR_gate:0.409 bR_sq:0.115 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.153 outPar:0.153
+[BACK-TEL] sB:0.877 bass:1.000 mid:0.394 hM:0.242 tr:0.184 | isK:1 isKE:0 percRaw:0.000 | morph:0.837 brk:0 strict:1 | bL_in:0.276 bL_gate:0.355 bL_sq:0.366 bL_pow:0.000 bL_ign:0 | bR_in:0.210 bR_gate:0.386 bR_sq:0.116 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.032 outPar:0.032
+[BACK-TEL] sB:0.966 bass:1.000 mid:0.378 hM:0.240 tr:0.210 | isK:1 isKE:0 percRaw:0.106 | morph:0.824 brk:0 strict:1 | bL_in:0.264 bL_gate:0.355 bL_sq:0.368 bL_pow:0.000 bL_ign:0 | bR_in:0.228 bR_gate:0.369 bR_sq:0.118 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.002 outPar:0.002
+[BACK-TEL] sB:0.795 bass:0.945 mid:0.372 hM:0.231 tr:0.189 | isK:1 isKE:0 percRaw:0.000 | morph:0.811 brk:0 strict:1 | bL_in:0.260 bL_gate:0.355 bL_sq:0.369 bL_pow:0.000 bL_ign:0 | bR_in:0.195 bR_gate:0.360 bR_sq:0.119 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.553 bass:0.808 mid:0.365 hM:0.223 tr:0.170 | isK:1 isKE:0 percRaw:0.000 | morph:0.798 brk:0 strict:1 | bL_in:0.255 bL_gate:0.355 bL_sq:0.370 bL_pow:0.000 bL_ign:0 | bR_in:0.166 bR_gate:0.360 bR_sq:0.120 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.421 bass:0.741 mid:0.361 hM:0.218 tr:0.155 | isK:0 isKE:0 percRaw:0.000 | morph:0.785 brk:0 strict:1 | bL_in:0.252 bL_gate:0.355 bL_sq:0.371 bL_pow:0.000 bL_ign:0 | bR_in:0.146 bR_gate:0.360 bR_sq:0.121 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.377 bass:0.725 mid:0.435 hM:0.266 tr:0.244 | isK:0 isKE:0 percRaw:0.357 | morph:0.776 brk:0 strict:1 | bL_in:0.305 bL_gate:0.355 bL_sq:0.372 bL_pow:0.000 bL_ign:0 | bR_in:0.339 bR_gate:0.360 bR_sq:0.122 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.363 bass:0.725 mid:0.435 hM:0.282 tr:0.244 | isK:0 isKE:0 percRaw:0.000 | morph:0.767 brk:0 strict:1 | bL_in:0.305 bL_gate:0.355 bL_sq:0.373 bL_pow:0.000 bL_ign:0 | bR_in:0.358 bR_gate:0.360 bR_sq:0.123 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.358 bass:0.734 mid:0.491 hM:0.281 tr:0.265 | isK:0 isKE:0 percRaw:0.085 | morph:0.762 brk:0 strict:1 | bL_in:0.344 bL_gate:0.355 bL_sq:0.374 bL_pow:0.000 bL_ign:0 | bR_in:0.439 bR_gate:0.360 bR_sq:0.124 bR_pow:0.911 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.356 bass:0.772 mid:0.488 hM:0.251 tr:0.233 | isK:0 isKE:0 percRaw:0.000 | morph:0.756 brk:0 strict:1 | bL_in:0.341 bL_gate:0.355 bL_sq:0.374 bL_pow:0.000 bL_ign:0 | bR_in:0.341 bR_gate:0.360 bR_sq:0.124 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.352 outPar:0.352
+[BACK-TEL] sB:0.369 bass:0.810 mid:0.461 hM:0.220 tr:0.201 | isK:0 isKE:0 percRaw:0.000 | morph:0.749 brk:0 strict:1 | bL_in:0.323 bL_gate:0.355 bL_sq:0.375 bL_pow:0.000 bL_ign:0 | bR_in:0.245 bR_gate:0.360 bR_sq:0.125 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.123 outPar:0.123
+[ARBITER 🎭] In: mood='neutral' mode='unknown' → instant=NEUTRAL stable=BRIGHT dom=74% B/D/N=391/96/42
+[BACK-TEL] sB:0.371 bass:0.829 mid:0.540 hM:0.220 tr:0.238 | isK:0 isKE:0 percRaw:0.149 | morph:0.746 brk:0 strict:1 | bL_in:0.378 bL_gate:0.355 bL_sq:0.375 bL_pow:0.120 bL_ign:0 | bR_in:0.339 bR_gate:0.360 bR_sq:0.125 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.012 outPar:0.012
+[BACK-TEL] sB:0.371 bass:0.829 mid:0.540 hM:0.220 tr:0.238 | isK:0 isKE:0 percRaw:0.000 | morph:0.743 brk:0 strict:1 | bL_in:0.378 bL_gate:0.355 bL_sq:0.376 bL_pow:0.119 bL_ign:0 | bR_in:0.339 bR_gate:0.360 bR_sq:0.126 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.001 outPar:0.001
+[BACK-TEL] sB:0.346 bass:0.845 mid:0.612 hM:0.195 tr:0.196 | isK:0 isKE:0 percRaw:0.000 | morph:0.749 brk:0 strict:1 | bL_in:0.429 bL_gate:0.355 bL_sq:0.375 bL_pow:0.761 bL_ign:1 | bR_in:0.282 bR_gate:0.360 bR_sq:0.125 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.359 bass:0.873 mid:0.642 hM:0.180 tr:0.159 | isK:0 isKE:0 percRaw:0.000 | morph:0.765 brk:0 strict:1 | bL_in:0.450 bL_gate:0.355 bL_sq:0.374 bL_pow:1.000 bL_ign:1 | bR_in:0.221 bR_gate:0.360 bR_sq:0.124 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.380 bass:0.893 mid:0.585 hM:0.185 tr:0.138 | isK:0 isKE:0 percRaw:0.000 | morph:0.764 brk:0 strict:1 | bL_in:0.409 bL_gate:0.355 bL_sq:0.374 bL_pow:0.000 bL_ign:0 | bR_in:0.180 bR_gate:0.360 bR_sq:0.124 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.368 bass:0.895 mid:0.656 hM:0.384 tr:0.221 | isK:0 isKE:0 percRaw:0.333 | morph:0.783 brk:0 strict:1 | bL_in:0.460 bL_gate:0.355 bL_sq:0.372 bL_pow:1.000 bL_ign:1 | bR_in:0.669 bR_gate:0.360 bR_sq:0.122 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.361 bass:0.954 mid:0.678 hM:0.469 tr:0.236 | isK:1 isKE:1 percRaw:0.058 | morph:0.807 brk:0 strict:1 | bL_in:0.475 bL_gate:0.355 bL_sq:0.369 bL_pow:1.000 bL_ign:1 | bR_in:0.902 bR_gate:0.360 bR_sq:0.119 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.359 bass:0.954 mid:0.678 hM:0.497 tr:0.236 | isK:1 isKE:0 percRaw:0.000 | morph:0.828 brk:0 strict:1 | bL_in:0.475 bL_gate:0.355 bL_sq:0.367 bL_pow:1.000 bL_ign:1 | bR_in:0.954 bR_gate:0.360 bR_sq:0.117 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.662 bass:1.000 mid:0.608 hM:0.437 tr:0.197 | isK:1 isKE:0 percRaw:0.000 | morph:0.827 brk:0 strict:1 | bL_in:0.426 bL_gate:0.355 bL_sq:0.367 bL_pow:0.000 bL_ign:0 | bR_in:0.626 bR_gate:0.360 bR_sq:0.117 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.381 outPar:0.381
+[BACK-TEL] sB:0.854 bass:1.000 mid:0.488 hM:0.320 tr:0.159 | isK:1 isKE:0 percRaw:0.000 | morph:0.819 brk:0 strict:1 | bL_in:0.341 bL_gate:0.355 bL_sq:0.368 bL_pow:0.000 bL_ign:0 | bR_in:0.298 bR_gate:0.360 bR_sq:0.118 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.144 outPar:0.144
+[BACK-TEL] sB:0.945 bass:1.000 mid:0.420 hM:0.257 tr:0.209 | isK:1 isKE:0 percRaw:0.199 | morph:0.809 brk:0 strict:1 | bL_in:0.294 bL_gate:0.355 bL_sq:0.369 bL_pow:0.000 bL_ign:0 | bR_in:0.271 bR_gate:0.360 bR_sq:0.119 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.024 outPar:0.024
+[BACK-TEL] sB:0.887 bass:1.000 mid:0.375 hM:0.207 tr:0.189 | isK:1 isKE:0 percRaw:0.000 | morph:0.797 brk:0 strict:1 | bL_in:0.262 bL_gate:0.355 bL_sq:0.370 bL_pow:0.000 bL_ign:0 | bR_in:0.176 bR_gate:0.360 bR_sq:0.120 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.001 outPar:0.001
+[BACK-TEL] sB:0.599 bass:0.853 mid:0.370 hM:0.175 tr:0.152 | isK:0 isKE:0 percRaw:0.000 | morph:0.784 brk:0 strict:1 | bL_in:0.259 bL_gate:0.355 bL_sq:0.372 bL_pow:0.000 bL_ign:0 | bR_in:0.118 bR_gate:0.360 bR_sq:0.122 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.426 bass:0.748 mid:0.367 hM:0.151 tr:0.126 | isK:0 isKE:0 percRaw:0.000 | morph:0.772 brk:0 strict:1 | bL_in:0.257 bL_gate:0.355 bL_sq:0.373 bL_pow:0.000 bL_ign:0 | bR_in:0.084 bR_gate:0.360 bR_sq:0.123 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.371 bass:0.748 mid:0.367 hM:0.143 tr:0.126 | isK:0 isKE:0 percRaw:0.000 | morph:0.760 brk:0 strict:1 | bL_in:0.257 bL_gate:0.355 bL_sq:0.374 bL_pow:0.000 bL_ign:0 | bR_in:0.080 bR_gate:0.360 bR_sq:0.124 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.338 bass:0.719 mid:0.422 hM:0.247 tr:0.244 | isK:0 isKE:0 percRaw:0.471 | morph:0.751 brk:0 strict:1 | bL_in:0.295 bL_gate:0.355 bL_sq:0.375 bL_pow:0.000 bL_ign:0 | bR_in:0.306 bR_gate:0.360 bR_sq:0.125 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.345 bass:0.754 mid:0.491 hM:0.244 tr:0.258 | isK:0 isKE:0 percRaw:0.054 | morph:0.745 brk:0 strict:1 | bL_in:0.343 bL_gate:0.355 bL_sq:0.375 bL_pow:0.000 bL_ign:0 | bR_in:0.370 bR_gate:0.360 bR_sq:0.125 bR_pow:0.095 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.359 bass:0.798 mid:0.508 hM:0.219 tr:0.237 | isK:0 isKE:0 percRaw:0.000 | morph:0.741 brk:0 strict:1 | bL_in:0.355 bL_gate:0.355 bL_sq:0.376 bL_pow:0.000 bL_ign:0 | bR_in:0.316 bR_gate:0.360 bR_sq:0.126 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.363 bass:0.798 mid:0.508 hM:0.211 tr:0.237 | isK:0 isKE:0 percRaw:0.000 | morph:0.736 brk:0 strict:1 | bL_in:0.355 bL_gate:0.355 bL_sq:0.376 bL_pow:0.000 bL_ign:0 | bR_in:0.304 bR_gate:0.360 bR_sq:0.126 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.385 bass:0.828 mid:0.453 hM:0.187 tr:0.204 | isK:0 isKE:0 percRaw:0.000 | morph:0.729 brk:0 strict:1 | bL_in:0.317 bL_gate:0.355 bL_sq:0.377 bL_pow:0.000 bL_ign:0 | bR_in:0.207 bR_gate:0.360 bR_sq:0.127 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.393 bass:0.821 mid:0.500 hM:0.194 tr:0.252 | isK:0 isKE:0 percRaw:0.191 | morph:0.725 brk:0 strict:1 | bL_in:0.350 bL_gate:0.355 bL_sq:0.378 bL_pow:0.000 bL_ign:0 | bR_in:0.294 bR_gate:0.360 bR_sq:0.128 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.396 bass:0.840 mid:0.599 hM:0.167 tr:0.197 | isK:0 isKE:0 percRaw:0.000 | morph:0.728 brk:0 strict:1 | bL_in:0.419 bL_gate:0.355 bL_sq:0.377 bL_pow:0.598 bL_ign:1 | bR_in:0.237 bR_gate:0.360 bR_sq:0.127 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.388 bass:0.854 mid:0.582 hM:0.145 tr:0.149 | isK:0 isKE:0 percRaw:0.000 | morph:0.728 brk:0 strict:1 | bL_in:0.408 bL_gate:0.355 bL_sq:0.377 bL_pow:0.433 bL_ign:1 | bR_in:0.151 bR_gate:0.360 bR_sq:0.127 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.386 bass:0.862 mid:0.504 hM:0.128 tr:0.118 | isK:0 isKE:0 percRaw:0.000 | morph:0.723 brk:0 strict:1 | bL_in:0.353 bL_gate:0.355 bL_sq:0.378 bL_pow:0.000 bL_ign:0 | bR_in:0.091 bR_gate:0.360 bR_sq:0.128 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.385 bass:0.862 mid:0.504 hM:0.123 tr:0.118 | isK:0 isKE:0 percRaw:0.000 | morph:0.719 brk:0 strict:1 | bL_in:0.353 bL_gate:0.355 bL_sq:0.378 bL_pow:0.000 bL_ign:0 | bR_in:0.087 bR_gate:0.360 bR_sq:0.128 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.393 bass:0.875 mid:0.600 hM:0.312 tr:0.200 | isK:0 isKE:0 percRaw:0.330 | morph:0.724 brk:0 strict:1 | bL_in:0.420 bL_gate:0.355 bL_sq:0.378 bL_pow:0.600 bL_ign:1 | bR_in:0.450 bR_gate:0.360 bR_sq:0.128 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.383 bass:0.943 mid:0.567 hM:0.311 tr:0.191 | isK:1 isKE:1 percRaw:0.000 | morph:0.722 brk:0 strict:1 | bL_in:0.397 bL_gate:0.355 bL_sq:0.378 bL_pow:0.299 bL_ign:0 | bR_in:0.404 bR_gate:0.360 bR_sq:0.128 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.339 outPar:0.339
+[BACK-TEL] sB:0.686 bass:1.000 mid:0.454 hM:0.233 tr:0.147 | isK:1 isKE:0 percRaw:0.000 | morph:0.716 brk:0 strict:1 | bL_in:0.318 bL_gate:0.355 bL_sq:0.378 bL_pow:0.000 bL_ign:0 | bR_in:0.187 bR_gate:0.360 bR_sq:0.128 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.114 outPar:0.114
+[BACK-TEL] sB:0.867 bass:1.000 mid:0.362 hM:0.172 tr:0.120 | isK:1 isKE:0 percRaw:0.000 | morph:0.704 brk:0 strict:1 | bL_in:0.253 bL_gate:0.355 bL_sq:0.380 bL_pow:0.000 bL_ign:0 | bR_in:0.090 bR_gate:0.360 bR_sq:0.130 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.008 outPar:0.008
+[BACK-TEL] sB:0.966 bass:1.000 mid:0.317 hM:0.150 tr:0.159 | isK:1 isKE:0 percRaw:0.158 | morph:0.691 brk:0 strict:1 | bL_in:0.222 bL_gate:0.355 bL_sq:0.381 bL_pow:0.000 bL_ign:0 | bR_in:0.091 bR_gate:0.360 bR_sq:0.131 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.998 bass:1.000 mid:0.317 hM:0.143 tr:0.159 | isK:1 isKE:0 percRaw:0.000 | morph:0.678 brk:0 strict:1 | bL_in:0.222 bL_gate:0.355 bL_sq:0.382 bL_pow:0.000 bL_ign:0 | bR_in:0.086 bR_gate:0.360 bR_sq:0.132 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.812 bass:0.941 mid:0.312 hM:0.126 tr:0.133 | isK:1 isKE:0 percRaw:0.000 | morph:0.665 brk:0 strict:1 | bL_in:0.218 bL_gate:0.355 bL_sq:0.383 bL_pow:0.000 bL_ign:0 | bR_in:0.063 bR_gate:0.360 bR_sq:0.133 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.565 bass:0.798 mid:0.309 hM:0.112 tr:0.106 | isK:0 isKE:0 percRaw:0.000 | morph:0.652 brk:0 strict:1 | bL_in:0.216 bL_gate:0.355 bL_sq:0.385 bL_pow:0.000 bL_ign:0 | bR_in:0.044 bR_gate:0.360 bR_sq:0.135 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[CHOREO] techno-club | #5:laser_grid [MIRROR ×2] | scene:27b | Pan:-16 Tilt:17 | sBPM:120 phase:84°
+[BACK-TEL] sB:0.415 bass:0.716 mid:0.293 hM:0.105 tr:0.088 | isK:0 isKE:0 percRaw:0.000 | morph:0.639 brk:0 strict:1 | bL_in:0.205 bL_gate:0.355 bL_sq:0.386 bL_pow:0.000 bL_ign:0 | bR_in:0.032 bR_gate:0.360 bR_sq:0.136 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.370 bass:0.708 mid:0.413 hM:0.263 tr:0.203 | isK:0 isKE:0 percRaw:0.462 | morph:0.632 brk:0 strict:1 | bL_in:0.289 bL_gate:0.355 bL_sq:0.387 bL_pow:0.000 bL_ign:0 | bR_in:0.265 bR_gate:0.360 bR_sq:0.137 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.000 outPar:0.000
+[BACK-TEL] sB:0.350 bass:0.737 mid:0.521 hM:0.357 tr:0.226 | isK:0 isKE:0 percRaw:0.093 | morph:0.630 brk:0 strict:1 | bL_in:0.365 bL_gate:0.355 bL_sq:0.387 bL_pow:0.026 bL_ign:0 | bR_in:0.505 bR_gate:0.360 bR_sq:0.137 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.354 bass:0.778 mid:0.582 hM:0.366 tr:0.208 | isK:0 isKE:0 percRaw:0.000 | morph:0.641 brk:0 strict:1 | bL_in:0.407 bL_gate:0.355 bL_sq:0.386 bL_pow:0.382 bL_ign:0 | bR_in:0.532 bR_gate:0.360 bR_sq:0.136 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.360 bass:0.798 mid:0.533 hM:0.286 tr:0.177 | isK:0 isKE:0 percRaw:0.000 | morph:0.640 brk:0 strict:1 | bL_in:0.373 bL_gate:0.355 bL_sq:0.386 bL_pow:0.000 bL_ign:0 | bR_in:0.324 bR_gate:0.360 bR_sq:0.136 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.306 outPar:0.306
+[BACK-TEL] sB:0.363 bass:0.798 mid:0.533 hM:0.260 tr:0.177 | isK:0 isKE:0 percRaw:0.000 | morph:0.639 brk:0 strict:1 | bL_in:0.373 bL_gate:0.355 bL_sq:0.386 bL_pow:0.070 bL_ign:0 | bR_in:0.295 bR_gate:0.360 bR_sq:0.136 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.094 outPar:0.094
+[GlassBridge] 🏓 Ping-Pong Status: Sent: 7528 | Dropped: 41 | In-Flight: 0 | PoolFree: 3
+[BACK-TEL] sB:0.373 bass:0.797 mid:0.579 hM:0.301 tr:0.226 | isK:0 isKE:0 percRaw:0.195 | morph:0.648 brk:0 strict:1 | bL_in:0.405 bL_gate:0.355 bL_sq:0.385 bL_pow:0.362 bL_ign:0 | bR_in:0.472 bR_gate:0.360 bR_sq:0.135 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.390 bass:0.817 mid:0.631 hM:0.346 tr:0.203 | isK:0 isKE:0 percRaw:0.000 | morph:0.675 brk:0 strict:1 | bL_in:0.442 bL_gate:0.355 bL_sq:0.383 bL_pow:0.902 bL_ign:1 | bR_in:0.532 bR_gate:0.360 bR_sq:0.133 bR_pow:1.000 bR_ign:1 | outBL:0.000 outBR:1.000 outPar:1.000
+[BACK-TEL] sB:0.391 bass:0.847 mid:0.644 hM:0.349 tr:0.157 | isK:0 isKE:0 percRaw:0.000 | morph:0.703 brk:0 strict:1 | bL_in:0.451 bL_gate:0.355 bL_sq:0.380 bL_pow:1.000 bL_ign:1 | bR_in:0.424 bR_gate:0.360 bR_sq:0.130 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.331 outPar:0.331
+[BACK-TEL] sB:0.408 bass:0.865 mid:0.557 hM:0.282 tr:0.127 | isK:0 isKE:0 percRaw:0.000 | morph:0.702 brk:1 strict:1 | bL_in:0.390 bL_gate:0.355 bL_sq:0.380 bL_pow:0.000 bL_ign:0 | bR_in:0.239 bR_gate:0.360 bR_sq:0.130 bR_pow:0.000 bR_ign:0 | outBL:0.000 outBR:0.110 outPar:0.110

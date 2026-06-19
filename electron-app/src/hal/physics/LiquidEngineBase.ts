@@ -188,6 +188,12 @@ export abstract class LiquidEngineBase {
   // Un único fotograma (22ms) es indigerible para dimmers/LEDs físicos.
   private _kickHoldCounter: number = 0
 
+  // WAVE 6070: Frame Hold para snare — extiende el pulso de la caja ~90ms para hardware DMX
+  private _snareHoldCounter: number = 0
+
+  // WAVE 6070.2: Debounce Anti-Jitter — cooldown de 80ms para evitar re-triggers del mismo clap
+  private _lastSnareTime: number = 0
+
   // Kick Veto state
   private _kickVetoFrames = 0
 
@@ -491,38 +497,30 @@ export abstract class LiquidEngineBase {
     this.lastHighMid = currentHighMid
     this.lastMid     = currentMid
 
-    // 1. Detector de Bofetadas — Transient Shaper Full-Spectrum
-    // trebleDelta: hi-hats, crashes, platillos.
-    // highMidDelta: rimshot, clap grave, caja minimal.
-    // midDelta: snare gordo 808-style, caja con cuerpo, snare acústico.
-    // WAVE 2451: midDelta peso morfológico por centroide.
-    //   En Anyma (cent > 1500Hz) los synths mid son los "percutores" — midDelta×1.5.
-    //   En techno industrial (cent < 500Hz = bombo puro) — midDelta×0.8 como antes.
-    // WAVE 4812 M3: ANTI-VOCAL GATE en midDelta.
-    //   Si _vocalSustainEMA es alta (vocal sostenida activa) Y midDelta es bajo
-    //   (no hay transiente real), penalizar el peso de mid en el transient shaper.
-    //   vocalPenalty: 0 cuando la EMA es baja (sin vocales), hasta 0.75 cuando
-    //   la EMA es alta y midDelta es menor que la EMA (energía sostenida, no percutiva).
-    //   Un snare REAL tiene delta >> EMA — no se ve penalizado.
-    const MIN_DELTA = 0.020
-    const midCentWeight = Math.min(1.0, (input.spectralCentroid ?? 0) / 1500)
-    const vocalPenalty = Math.min(0.75, this._vocalSustainEMA * Math.max(0, 1.0 - midDelta / Math.max(0.001, this._vocalSustainEMA)))
-    const midDeltaGated = midDelta * (1.0 - vocalPenalty)
-    const impactDelta = trebleDelta + (highMidDelta * 1.5) + (midDeltaGated * (0.8 + 0.7 * midCentWeight))
-    const cleanDelta = Math.max(0, impactDelta - MIN_DELTA)
-    const baseSnare = cleanDelta * 2.0
-    const clapBonus = baseSnare * harshness * 2.0
-    let hybridSnare = baseSnare + clapBonus
+    // WAVE 6070: FUSIÓN HÍBRIDA — Transient Shaper (Tiempo) * Espectro Tolerante
+    // 1. ESPECTRO TOLERANTE: Sumamos los agudos en lugar de multiplicarlos.
+    // Así un clap con mucho harshness pero poco treble sobrevive.
+    const rawSpike = highMidDelta + trebleDelta
+    const snareSpectrum = bands.mid * (bands.treble + harshness)
 
-    // WAVE 4826.3 — RESCATE DEL GÜIRO: Mover a impactSignal con umbrales realistas
-    // (Removido de aquí; ver línea ~480-610 donde se calcula backRight)
+    // rawSpike es el transitorio temporal calculado previamente
+    const rawSnareCalc = (rawSpike * snareSpectrum * 9.5) > 0.22 // Multiplicador a 9.5, umbral a 0.22 — captura redobles secundarios sin falsos positivos de sintes
 
-    // WAVE 4826.3 — ANTI-VOCAL GATE en hybridSnare (Back R)
-    // Permitir pasar si es un impacto fuerte, o si la voz no es dominante.
-    // Snares reales tienen trebleDelta alto o hybridSnare alto → pasan.
-    if (trebleDelta < vocalPenalty * 0.35 && hybridSnare < 0.6) {
-      hybridSnare *= 0.15  // Más estricto que 0.2, menos que 0.1
+    // WAVE 6070.2: Debounce Anti-Jitter — 45ms permite fusas a 130 BPM (1 impacto = 1 disparo)
+    const isSnareImpact = rawSnareCalc && (now - this._lastSnareTime > 45)
+
+    if (isSnareImpact && this._snareHoldCounter === 0) {
+      this._snareHoldCounter = 4 // ~90ms de retención para que el DMX respire
+      this._lastSnareTime = now
     }
+
+    const percRaw = this._snareHoldCounter > 0 ? 1.0 : 0.0
+
+    if (this._snareHoldCounter > 0) {
+      this._snareHoldCounter--
+    }
+
+    let hybridSnare = percRaw
 
     // 2. THE MORPHOLOGIC CENTROID SHIELD (WAVE 2449)
     // El bombo puede coexistir con synths en techno melódico (Anyma) porque el bombo
@@ -600,15 +598,21 @@ export abstract class LiquidEngineBase {
       moverRight *= (1.0 - p.sidechainDepth)
     }
 
+    // WAVE 4812 M3: BACK L VOCAL GATE — vocalPenalty reubicado desde transient shaper legacy.
+    // OPERACIÓN: Bypass para techno — no hay vocales dominantes, los sintes activan falsamente este mute.
+    const isTechnoProfile = this.profile.id === 'techno-industrial'
+    const vocalPenalty = isTechnoProfile ? 0 : Math.min(0.75, this._vocalSustainEMA * Math.max(0, 1.0 - midDelta / Math.max(0.001, this._vocalSustainEMA)))
     // --- BACK L (El Coro): WAVE 2417 RESURRECTION → WAVE 2430 PARAMETRIZADO ---
     // WAVE 4812 M3: BACK L VOCAL GATE — vocalPenalty suprime el componente mid
     // cuando hay vocal sostenida. El lowMid se conserva (instrumentos de armonia,
     // sintetizadores de cuerpo) pero el mid puro se atenúa junto con las vocales.
+    // DMZ ACÚSTICA: sustracción espectral del bombo en medios antes de envHighMid
+    const cleanMidL = Math.max(0, bands.mid - (bands.bass * 0.65))
     const midSynthInput = Math.max(0,
-      bands.lowMid * p.backLLowMidWeight + bands.mid * p.backLMidWeight * (1.0 - vocalPenalty * 0.80)
+      bands.lowMid * p.backLLowMidWeight + cleanMidL * p.backLMidWeight * (1.0 - vocalPenalty * 0.80)
       - bands.treble * p.backLTrebleSub - bands.bass * p.backLBassSub
     )
-    let backLeft = this.envHighMid.process(midSynthInput, morphFactor, now, isBreakdown)
+    let backLeft = Math.min(1.0, this.envHighMid.process(midSynthInput, morphFactor, now, isBreakdown) * 1.45) // OPERACIÓN: Gain 1.45x para cruzar el umbral hacia 1.0 en pico de sinte
 
     // moverLeft y moverRight calculados por envelopes cross-filter arriba
 

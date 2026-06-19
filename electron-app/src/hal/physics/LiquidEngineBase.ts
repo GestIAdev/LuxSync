@@ -501,10 +501,10 @@ export abstract class LiquidEngineBase {
     // 1. ESPECTRO TOLERANTE: Sumamos los agudos en lugar de multiplicarlos.
     // Así un clap con mucho harshness pero poco treble sobrevive.
     const rawSpike = highMidDelta + trebleDelta
-    const snareSpectrum = bands.mid * (bands.treble + harshness)
+    const snareSpectrum = bands.mid * ((bands.treble * 0.5) + harshness) // Anti-HiHat: treble puro a la mitad, harshness de cajas/claps intacto
 
     // rawSpike es el transitorio temporal calculado previamente
-    const rawSnareCalc = (rawSpike * snareSpectrum * 9.5) > 0.22 // Multiplicador a 9.5, umbral a 0.22 — captura redobles secundarios sin falsos positivos de sintes
+    const rawSnareCalc = (rawSpike * snareSpectrum * 10.0) > 0.19 // Anti-Compresión: ×10.0 + umbral 0.19 atrapa snares aplastados por mastering del drop
 
     // WAVE 6070.2: Debounce Anti-Jitter — 45ms permite fusas a 130 BPM (1 impacto = 1 disparo)
     const isSnareImpact = rawSnareCalc && (now - this._lastSnareTime > 45)
@@ -607,7 +607,7 @@ export abstract class LiquidEngineBase {
     // cuando hay vocal sostenida. El lowMid se conserva (instrumentos de armonia,
     // sintetizadores de cuerpo) pero el mid puro se atenúa junto con las vocales.
     // DMZ ACÚSTICA: sustracción espectral del bombo en medios antes de envHighMid
-    const cleanMidL = Math.max(0, bands.mid - (bands.bass * 0.65))
+    const cleanMidL = Math.max(0, bands.mid - (bands.bass * 0.55)) // DMZ SUAVIZADA: 0.55 devuelve el tacón/ataque a los pads sin dejar pasar el bombo
     const midSynthInput = Math.max(0,
       bands.lowMid * p.backLLowMidWeight + cleanMidL * p.backLMidWeight * (1.0 - vocalPenalty * 0.80)
       - bands.treble * p.backLTrebleSub - bands.bass * p.backLBassSub

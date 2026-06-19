@@ -131,13 +131,13 @@ export const LATINO_PROFILE: ILiquidProfile = {
   //   que generaba el mural de voz.
   envelopeHighMid: {
     name: 'Back L (Latigazo Percusivo)',
-    gateOn: 0.50,          // WAVE 6050: endurecimiento bastante del gate para Back L
+    gateOn: 0.35,          // REVIVIR 7.1: gate dinámico, deja pasar congas/palmas/claves
     boost: 3.0,
     crushExponent: 2.0,
     decayBase: 0.14,       // WAVE 3491: GUILLOTINA snap violento
     decayRange: 0.03,
     maxIntensity: 0.95,
-    squelchBase: 0.38,     // Conservado: anti-barro
+    squelchBase: 0.20,      // REVIVIR 7.1: deja pasar colas de conga, no asesino
     squelchSlope: 0.10,
     ghostCap: 0.00,        // Negro absoluto
     gateMargin: 0.005,
@@ -207,8 +207,8 @@ export const LATINO_PROFILE: ILiquidProfile = {
   // El truco -0.50 (sumar treble) generaba que voces+treble continuo colaran al Back.
   // Con highMid directo como input principal (backLHighMidWeight futuro)
   // y el gateOn 0.35 ya estricto, el canal es puramente percutivo.
-  backLLowMidWeight: 0.22,
-  backLMidWeight: 0.10,
+  backLLowMidWeight: 0.35,   // REVIVIR 7.1: fuerte en congas/timbales graves
+  backLMidWeight: 0.15,      // REVIVIR 7.1: suficiente para atrapar palmas/claves
   backLTrebleSub: 0.28,      // WAVE 4693: más limpieza de voz sostenida, sin matar el golpe real
   backLBassSub: 0.0,
 

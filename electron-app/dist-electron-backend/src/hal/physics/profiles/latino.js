@@ -41,11 +41,11 @@ export const LATINO_PROFILE = {
         name: 'Front L (TÚN del Dembow)',
         gateOn: 0.15,
         boost: 2.5,
-        crushExponent: 2.0,
+        crushExponent: 1.0,
         decayBase: 0.50, // WAVE 2461: 0.88→0.50 — staccato latino real
         decayRange: 0.08,
         maxIntensity: 0.80,
-        squelchBase: 0.03,
+        squelchBase: 0.18, // WAVE 6065: 0.12→0.18 — squelch más agresivo anti-voz en front L
         squelchSlope: 0.50,
         ghostCap: 0.00,
         gateMargin: 0.01,
@@ -57,11 +57,11 @@ export const LATINO_PROFILE = {
         name: 'Front R (Kick Latino)',
         gateOn: 0.18, // WAVE 2199: 0.48 hysteresis → aquí gate de envelope
         boost: 2.5, // WAVE 2199: FRONT_PAR_GAIN=2.0 + vitamina
-        crushExponent: 1.2, // WAVE 6050: impacto más consistente entre beats fuertes y débiles
+        crushExponent: 1.0, // LINEAL: elimina jitter exponencial en front latino
         decayBase: 0.60, // WAVE 6050: inercia térmica para suavizar la caída
         decayRange: 0.08,
         maxIntensity: 0.80,
-        squelchBase: 0.03,
+        squelchBase: 0.10, // WAVE 6065: 0.03→0.10 — blinda front R contra sangrado vocal
         squelchSlope: 0.10,
         ghostCap: 0.00,
         gateMargin: 0.01,
@@ -122,13 +122,13 @@ export const LATINO_PROFILE = {
     //   que generaba el mural de voz.
     envelopeHighMid: {
         name: 'Back L (Latigazo Percusivo)',
-        gateOn: 0.50, // WAVE 6050: endurecimiento bastante del gate para Back L
+        gateOn: 0.20, // REVIVIR 7.1: gate dinámico, deja pasar congas/palmas/claves
         boost: 3.0,
         crushExponent: 2.0,
         decayBase: 0.14, // WAVE 3491: GUILLOTINA snap violento
         decayRange: 0.03,
         maxIntensity: 0.95,
-        squelchBase: 0.38, // Conservado: anti-barro
+        squelchBase: 0.20, // REVIVIR 7.1: deja pasar colas de conga, no asesino
         squelchSlope: 0.10,
         ghostCap: 0.00, // Negro absoluto
         gateMargin: 0.005,
@@ -191,8 +191,8 @@ export const LATINO_PROFILE = {
     // El truco -0.50 (sumar treble) generaba que voces+treble continuo colaran al Back.
     // Con highMid directo como input principal (backLHighMidWeight futuro)
     // y el gateOn 0.35 ya estricto, el canal es puramente percutivo.
-    backLLowMidWeight: 0.22,
-    backLMidWeight: 0.10,
+    backLLowMidWeight: 0.45, // REVIVIR 7.1: fuerte en congas/timbales graves
+    backLMidWeight: 0.15, // REVIVIR 7.1: suficiente para atrapar palmas/claves
     backLTrebleSub: 0.28, // WAVE 4693: más limpieza de voz sostenida, sin matar el golpe real
     backLBassSub: 0.0,
     // ═══════════════════════════════════════════════════════════════
@@ -226,6 +226,9 @@ export const LATINO_PROFILE = {
     frontKickSidechainThreshold: 0, // 0 = off
     auraCapBase: 0, // 0 = off (subBass tiene rienda suelta)
     auraCapExponent: 0,
+    // WAVE 2439 — LATINO STRICT-SPLIT: Front Par = 100% Kick (Front R)
+    // El dembow es percutivo; el bajo melódico no merece el foco frontal.
+    layout41Strategy: 'strict-split',
     // ═══════════════════════════════════════════════════════════════
     // STROBE — Menos agresivo en latino (es fiesta, no industrial)
     // ═══════════════════════════════════════════════════════════════
@@ -296,8 +299,9 @@ export const LATINO_PROFILE = {
         // continuo de voces/sinths colara al Back L. Con +0.20 convencional
         // y el gateOn=0.35 + squelchBase=0.38 de la GUILLOTINA, solo
         // percusion highMid real rompe el umbral.
-        backLMidWeight: 0.00,
-        backLLowMidWeight: 0.00,
+        backLMidWeight: 0.15,
+        backLLowMidWeight: 0.45,
+        backLTrebleSub: 0.0, // WAVE 6069: PUERTAS ABIERTAS — atmósfera continua, respira todo
         // ── WAVE 6050: overrides41 de movers alineados con base (Turbomegaboost + Anestesia) ─────────
         envelopeTreble: {
             gateOn: 0.02, // WAVE 6050: casi abierto permanentemente
@@ -329,15 +333,19 @@ export const LATINO_PROFILE = {
         // Las voces de reggaetón viven aquí. Autotune = nota sostenida/plana.
         // Estrategia: gate alto + staccato + squelch dinámico por sustain.
         envelopeHighMid: {
-            decayBase: 0.10, // Negro rápido tras cada flash.
-            gateOn: 0.55, // WAVE 6050: endurecimiento extremo, solo percusión real rompe
+            decayBase: 0.85, // WAVE 6069: caída ultra-lenta, wash de melaza real
+            crushExponent: 1.0, // WAVE 6066: linealidad pura, elimina picos erráticos
+            gateOn: 0.02, // WAVE 6069: puertas abiertas, todo pasa, atmósfera continua
             attackSlopeMin: 0.03, // Solo pasa transiente real (no meseta).
-            adaptiveNoiseAlpha: 0.70, // La media alcanza la nota sostenida en pocos frames.
+            adaptiveNoiseAlpha: 0.40, // WAVE 6065: gate más lento — no persigue tan rápido la señal sostenida
             sustainedSquelchStartFrames: 3, // ~68ms @44Hz antes de endurecer el squelch.
             sustainedSquelchRisePerFrame: 0.12,
-            sustainedSquelchMaxBoost: 0.85, // WAVE 6050: asfixia el autotune sostenido antes de que abra el gate
+            sustainedSquelchMaxBoost: 0.45, // WAVE 6065: relajado — permite repetición de congas sin asfixia
             sustainedFlatVelocityMax: 0.007, // Meseta vocal/autotune detectada por velocidad plana.
-            boost: 2.20, // Si rompe el muro, el pico debe explotar.
+            squelchSlope: 0.0, // WAVE 6069: sin filtro de ruido, señal cruda
+            boost: 1.2, // WAVE 6069: empuje suave, no ciega al estar siempre abierto
+            maxIntensity: 1.00, // WAVE 6065: permite picos completos hasta 1.0
+            squelchBase: 0.15, // WAVE 6066: piso relajado para textura melaza
         },
         // ── FRONT SubBass — WAVE 2462: gate anti-bajo-continuo ───────
         // Log real: sB = 0.08-0.30. Entre golpes de bombo: sB = 0.13-0.19 (bajo
@@ -350,11 +358,15 @@ export const LATINO_PROFILE = {
             decayBase: 0.50, // WAVE 2461: staccato latino real
             gateOn: 0.22, // WAVE 2462: 0.15→0.22 — bloquea bajo melódico continuo
             boost: 1.25, // WAVE 3436: VW entrega picos masivos, preservar dinámica
+            crushExponent: 1.0, // LINEAL: blinda techo fotométrico
+            squelchBase: 0.18, // WAVE 6065: 0.12→0.18 — squelch más agresivo anti-voz en front L
             maxIntensity: 0.80,
         },
         // ── KICK STACCATO ─────────────────────────────────────────────
         envelopeKick: {
             decayBase: 0.10,
+            crushExponent: 1.0, // LINEAL: blinda techo fotométrico
+            squelchBase: 0.10, // WAVE 6065: blinda front R contra sangrado vocal
             maxIntensity: 0.80,
         },
         // ── S1: SNARE STACCATO — Back R el TAcka cae a negro ────────

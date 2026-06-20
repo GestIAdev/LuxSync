@@ -104,6 +104,10 @@ export class LiquidEngineBase {
         // WAVE 2439.9: Frame Hold — extiende el pulso del bombo ~110ms para hardware DMX
         // Un único fotograma (22ms) es indigerible para dimmers/LEDs físicos.
         this._kickHoldCounter = 0;
+        // WAVE 6070: Frame Hold para snare — extiende el pulso de la caja ~90ms para hardware DMX
+        this._snareHoldCounter = 0;
+        // WAVE 6070.2: Debounce Anti-Jitter — cooldown de 80ms para evitar re-triggers del mismo clap
+        this._lastSnareTime = 0;
         // Kick Veto state
         this._kickVetoFrames = 0;
         // Transient Shaper state (WAVE 2427 → WAVE 2446)
@@ -305,16 +309,27 @@ export class LiquidEngineBase {
         // WAVE 2439.8: Naked Delta — filtro de aceleración pura sin time-locks.
         // El sinte oscila con deltas de ~0.01. El bombo salta violentamente (>0.05).
         // Esto decapita el sustain del sintetizador y aisla transitorios verticales.
-        const currentBassEnergy = bands.bass;
-        const bassDelta = currentBassEnergy - this._prevBassEnergy;
-        this._prevBassEnergy = currentBassEnergy;
-        // Naked Delta: detecta el transitorio vertical (salto > 0.05 entre frames)
-        const isTransient = currentBassEnergy > p.envelopeKick.gateOn && bassDelta > 0.05;
-        // WAVE 2439.9: Frame Hold — 5 frames (~113ms) de ancho de pulso mínimo DMX.
-        // isTransient dispara el hold; isKick se mantiene true durante el hold completo.
-        // Sin Date.now() — conteo de frames puro a 44Hz.
-        if (isTransient) {
-            this._kickHoldCounter = 5;
+        // DESCONTAMINACIÓN EXACTA: Revertimos la inyección de WAVE 3421
+        // Le quitamos el 40% de lowMid para aislar el grave original (0-250Hz)
+        const pureBassEnergy = Math.max(0, bands.bass - (bands.lowMid * 0.40));
+        const bassDelta = pureBassEnergy - this._prevBassEnergy;
+        this._prevBassEnergy = pureBassEnergy;
+        // WAVE 2439.10: Reload Lock + Shielded Delta
+        // RELOAD LOCK: Solo evaluamos impacto si el hold está inactivo.
+        // Esto impide que el pumping del sidechain extienda o reinicie el contador.
+        // ADAPTIVE DELTA: Curva inversa de compresión sobre señal purificada.
+        // Bass 1.0 → delta 0.040 | Bass 0.5 → delta 0.080. Evita falsos positivos en build-ups.
+        let isImpact = false;
+        if (this._kickHoldCounter === 0) {
+            // Curva dinámica para emular headroom real:
+            // pureBass a 1.0 -> exige delta de 0.040
+            // pureBass a 0.5 -> exige delta de 0.080
+            const dynamicDelta = 0.120 - (pureBassEnergy * 0.080);
+            // Evaluamos con pureBassEnergy — voces y cajas ya fueron anuladas
+            isImpact = pureBassEnergy > p.envelopeKick.gateOn && bassDelta > dynamicDelta;
+            if (isImpact) {
+                this._kickHoldCounter = 6;
+            }
         }
         const isKick = this._kickHoldCounter > 0;
         if (this._kickHoldCounter > 0)
@@ -339,7 +354,7 @@ export class LiquidEngineBase {
         // --- FRONT R: Kick Naked Delta (El Francotirador) ---
         // WAVE 2439.8: kickSignal alimentado solo por transitorios verticales (delta > 0.05).
         // El envelope con su decayBase ultrarrápido y maxIntensity dará forma al impulso.
-        const kickSignal = isKick ? currentBassEnergy : 0;
+        const kickSignal = isKick ? pureBassEnergy : 0;
         let frontRight = this.envKick.process(kickSignal, morphFactor, now, isBreakdown);
         // --- BACK R (El Látigo): WAVE 2449 MORPHOLOGIC CENTROID SHIELD ---
         // WAVE 2441 Monte Carlo: fitness=6260 | 0 leaks | coefs verificados en 616 frames reales.
@@ -362,36 +377,24 @@ export class LiquidEngineBase {
         this.lastTreble = currentTreble;
         this.lastHighMid = currentHighMid;
         this.lastMid = currentMid;
-        // 1. Detector de Bofetadas — Transient Shaper Full-Spectrum
-        // trebleDelta: hi-hats, crashes, platillos.
-        // highMidDelta: rimshot, clap grave, caja minimal.
-        // midDelta: snare gordo 808-style, caja con cuerpo, snare acústico.
-        // WAVE 2451: midDelta peso morfológico por centroide.
-        //   En Anyma (cent > 1500Hz) los synths mid son los "percutores" — midDelta×1.5.
-        //   En techno industrial (cent < 500Hz = bombo puro) — midDelta×0.8 como antes.
-        // WAVE 4812 M3: ANTI-VOCAL GATE en midDelta.
-        //   Si _vocalSustainEMA es alta (vocal sostenida activa) Y midDelta es bajo
-        //   (no hay transiente real), penalizar el peso de mid en el transient shaper.
-        //   vocalPenalty: 0 cuando la EMA es baja (sin vocales), hasta 0.75 cuando
-        //   la EMA es alta y midDelta es menor que la EMA (energía sostenida, no percutiva).
-        //   Un snare REAL tiene delta >> EMA — no se ve penalizado.
-        const MIN_DELTA = 0.020;
-        const midCentWeight = Math.min(1.0, (input.spectralCentroid ?? 0) / 1500);
-        const vocalPenalty = Math.min(0.75, this._vocalSustainEMA * Math.max(0, 1.0 - midDelta / Math.max(0.001, this._vocalSustainEMA)));
-        const midDeltaGated = midDelta * (1.0 - vocalPenalty);
-        const impactDelta = trebleDelta + (highMidDelta * 1.5) + (midDeltaGated * (0.8 + 0.7 * midCentWeight));
-        const cleanDelta = Math.max(0, impactDelta - MIN_DELTA);
-        const baseSnare = cleanDelta * 2.0;
-        const clapBonus = baseSnare * harshness * 2.0;
-        let hybridSnare = baseSnare + clapBonus;
-        // WAVE 4826.3 — RESCATE DEL GÜIRO: Mover a impactSignal con umbrales realistas
-        // (Removido de aquí; ver línea ~480-610 donde se calcula backRight)
-        // WAVE 4826.3 — ANTI-VOCAL GATE en hybridSnare (Back R)
-        // Permitir pasar si es un impacto fuerte, o si la voz no es dominante.
-        // Snares reales tienen trebleDelta alto o hybridSnare alto → pasan.
-        if (trebleDelta < vocalPenalty * 0.35 && hybridSnare < 0.6) {
-            hybridSnare *= 0.15; // Más estricto que 0.2, menos que 0.1
+        // WAVE 6070: FUSIÓN HÍBRIDA — Transient Shaper (Tiempo) * Espectro Tolerante
+        // 1. ESPECTRO TOLERANTE: Sumamos los agudos en lugar de multiplicarlos.
+        // Así un clap con mucho harshness pero poco treble sobrevive.
+        const rawSpike = highMidDelta + trebleDelta;
+        const snareSpectrum = bands.mid * ((bands.treble * 0.5) + harshness); // Anti-HiHat: treble puro a la mitad, harshness de cajas/claps intacto
+        // rawSpike es el transitorio temporal calculado previamente
+        const rawSnareCalc = (rawSpike * snareSpectrum * 10.0) > 0.19; // Anti-Compresión: ×10.0 + umbral 0.19 atrapa snares aplastados por mastering del drop
+        // WAVE 6070.2: Debounce Anti-Jitter — 45ms permite fusas a 130 BPM (1 impacto = 1 disparo)
+        const isSnareImpact = rawSnareCalc && (now - this._lastSnareTime > 45);
+        if (isSnareImpact && this._snareHoldCounter === 0) {
+            this._snareHoldCounter = 4; // ~90ms de retención para que el DMX respire
+            this._lastSnareTime = now;
         }
+        const percRaw = this._snareHoldCounter > 0 ? 1.0 : 0.0;
+        if (this._snareHoldCounter > 0) {
+            this._snareHoldCounter--;
+        }
+        let hybridSnare = percRaw;
         // 2. THE MORPHOLOGIC CENTROID SHIELD (WAVE 2449)
         // El bombo puede coexistir con synths en techno melódico (Anyma) porque el bombo
         // es el instrumento melódico — mismo centroide, indistinguibles con frecuencia fija.
@@ -433,100 +436,56 @@ export class LiquidEngineBase {
         // fisica propia sin tocar una sola linea del motor.
         let moverLeft;
         let moverRight;
-        if (p.layout41Strategy === 'strict-split') {
-            // --- WAVE 911 LEGACY → WAVE 2541.3 RECALIBRATION ---
-            // Exclusivo para techno industrial en modo strict-split.
-            //
-            // WAVE 2541.3: RATIO-BASED SEPARATOR
-            // The old formula `mid - bass*0.50` was calibrated for raw RMS values
-            // (0.01-0.05 range). With WAVE 2541.1 peak normalization (0-1 range),
-            // bass=1.0 → bass*0.50=0.50 annihilates mid in most frames.
-            //
-            // New approach: ratio-based attenuation.
-            // When bass dominates (bass > mid), attenuate mid proportionally
-            // but NEVER kill it below a floor. The synth mid component is real —
-            // it just coexists with kick energy in the 500-2000Hz range.
-            //
-            // MOVER L = EL OSCURO (500-2000Hz: mid tonal del synth)
-            //   bassRatio: how much bass dominates over mid (0=no bass, 1=equal, >1=bass dominant)
-            //   attenuation: 1.0 when bass is low, decays to FLOOR when bass is very high
-            //   rawMoverL retains mid presence even during kick hits
-            //
-            // MOVER R = EL TERMINATOR (2kHz - 20kHz: treble puro)
-            //   No change needed — treble is independently normalized.
-            const calculateMover = (signal, gate, boost) => {
-                if (signal < gate)
-                    return 0.0;
-                const gated = (signal - gate) / (1.0 - gate);
-                return Math.min(1.0, Math.max(0, Math.pow(gated, 1.2) * boost));
-            };
-            // Ratio-based bass separator: mid keeps a floor even when bass dominates
-            const BASS_ATTENUATION_FACTOR = 0.60; // How much bass can reduce mid (0=none, 1=full kill)
-            const MID_FLOOR = 0.08; // Minimum mid that always survives
-            const bassRatio = bands.bass > 0.001 ? Math.min(2.0, bands.bass / Math.max(0.001, bands.mid)) : 0;
-            const bassAttenuation = 1.0 - Math.min(BASS_ATTENUATION_FACTOR, bassRatio * 0.30);
-            const rawMoverL = Math.max(MID_FLOOR, bands.mid * bassAttenuation);
-            const rawMoverR = bands.treble;
-            // Gates/boosts recalibrated for 0-1 normalized range (WAVE 2541.3)
-            moverLeft = calculateMover(rawMoverL, 0.10, 3.0);
-            moverRight = calculateMover(rawMoverR, 0.10, 3.0);
-            // Sidechain del kick inline (strict-split: guillotina directa)
-            if (isKick) {
-                moverLeft *= (1.0 - p.sidechainDepth);
-                moverRight *= (1.0 - p.sidechainDepth);
-            }
+        // --- ENVELOPE CROSS-FILTER — Motor Parametrizado por Perfil (WAVE 2457) ---
+        // WAVE 6064: Desacoplado de layout41Strategy. Todos los perfiles usan envelopes.
+        // El layout solo decide enrutamiento espacial (frontPar/backPar), no física.
+        // MOVER L: cross-filter tonal (El Galan / Melodista / segun perfil)
+        //   input = max(0, highMid×mH + treble×tW + mid×mW)
+        //   Gate tonal: si flatness >= moverLTonalThreshold → ruido, cortar
+        const moverLRaw = Math.max(0, bands.highMid * p.moverLHighMidWeight +
+            bands.treble * p.moverLTrebleWeight +
+            bands.mid * p.moverLMidWeight);
+        const isTonal = flatness < p.moverLTonalThreshold ? 1.0 : 0.0;
+        const moverLInput = moverLRaw * isTonal;
+        moverLeft = this.envTreble.process(moverLInput, morphFactor, now, isBreakdown);
+        // MOVER R: cleanMid con bass-subtractor adaptativo (La Dama / Terminator vocal)
+        //   subtractFactor = base - morphFactor × range
+        //   cleanMid = max(0, mid - bass × subtractFactor)
+        //   crossInput = max(0, cleanMid - treble × moverRTrebleSub)
+        const subtractFactor = p.bassSubtractBase - morphFactor * p.bassSubtractRange;
+        const cleanMid = Math.max(0, bands.mid - bands.bass * subtractFactor);
+        const moverRInput = Math.max(0, cleanMid - bands.treble * p.moverRTrebleSub);
+        moverRight = this.envVocal.process(moverRInput, morphFactor, now, isBreakdown);
+        // Sidechain del kick inline — universal (WAVE 2439)
+        if (isKick) {
+            moverLeft *= (1.0 - p.sidechainDepth);
+            moverRight *= (1.0 - p.sidechainDepth);
         }
-        else {
-            // --- ENVELOPE CROSS-FILTER — Motor Parametrizado por Perfil (WAVE 2457) ---
-            // Latino, Pop-Rock, Chill, etc. usan su ADN definido en ILiquidProfile.
-            // MOVER L: cross-filter tonal (El Galan / Melodista / segun perfil)
-            //   input = max(0, highMid×mH + treble×tW + mid×mW)
-            //   Gate tonal: si flatness >= moverLTonalThreshold → ruido, cortar
-            const moverLRaw = Math.max(0, bands.highMid * p.moverLHighMidWeight +
-                bands.treble * p.moverLTrebleWeight +
-                bands.mid * p.moverLMidWeight);
-            const isTonal = flatness < p.moverLTonalThreshold ? 1.0 : 0.0;
-            const moverLInput = moverLRaw * isTonal;
-            moverLeft = this.envTreble.process(moverLInput, morphFactor, now, isBreakdown);
-            // MOVER R: cleanMid con bass-subtractor adaptativo (La Dama / Terminator vocal)
-            //   subtractFactor = base - morphFactor × range
-            //   cleanMid = max(0, mid - bass × subtractFactor)
-            //   crossInput = max(0, cleanMid - treble × moverRTrebleSub)
-            const subtractFactor = p.bassSubtractBase - morphFactor * p.bassSubtractRange;
-            const cleanMid = Math.max(0, bands.mid - bands.bass * subtractFactor);
-            const moverRInput = Math.max(0, cleanMid - bands.treble * p.moverRTrebleSub);
-            moverRight = this.envVocal.process(moverRInput, morphFactor, now, isBreakdown);
-        }
+        // WAVE 4812 M3: BACK L VOCAL GATE — vocalPenalty reubicado desde transient shaper legacy.
+        // OPERACIÓN: Bypass para techno — no hay vocales dominantes, los sintes activan falsamente este mute.
+        const isTechnoProfile = this.profile.id === 'techno-industrial';
+        const vocalPenalty = isTechnoProfile ? 0 : Math.min(0.75, this._vocalSustainEMA * Math.max(0, 1.0 - midDelta / Math.max(0.001, this._vocalSustainEMA)));
         // --- BACK L (El Coro): WAVE 2417 RESURRECTION → WAVE 2430 PARAMETRIZADO ---
         // WAVE 4812 M3: BACK L VOCAL GATE — vocalPenalty suprime el componente mid
         // cuando hay vocal sostenida. El lowMid se conserva (instrumentos de armonia,
         // sintetizadores de cuerpo) pero el mid puro se atenúa junto con las vocales.
-        const midSynthInput = Math.max(0, bands.lowMid * p.backLLowMidWeight + bands.mid * p.backLMidWeight * (1.0 - vocalPenalty * 0.80)
+        // DMZ ACÚSTICA: sustracción espectral del bombo en medios antes de envHighMid
+        const dmzFactor = isTechnoProfile ? 0.55 : 0.30; // WAVE 6065: DMZ adaptativa — techno bombo seco (0.55), latino bombo con cuerpo (0.30)
+        const cleanMidL = Math.max(0, bands.mid - (bands.bass * dmzFactor));
+        const midSynthInput = Math.max(0, bands.lowMid * p.backLLowMidWeight + cleanMidL * p.backLMidWeight * (1.0 - vocalPenalty * 0.80)
             - bands.treble * p.backLTrebleSub - bands.bass * p.backLBassSub);
-        let backLeft = this.envHighMid.process(midSynthInput, morphFactor, now, isBreakdown);
-        // moverLeft y moverRight ya calculados arriba (WAVE 911 legacy block)
+        const backLeftGain = isTechnoProfile ? 1.45 : 1.75; // WAVE 6065: gain adaptativo — latino necesita más empuje para llegar a 1.0
+        let backLeft = Math.min(1.0, this.envHighMid.process(midSynthInput, morphFactor, now, isBreakdown) * backLeftGain); // OPERACIÓN: Gain para cruzar el umbral hacia 1.0 en pico
+        // moverLeft y moverRight calculados por envelopes cross-filter arriba
         // ═══════════════════════════════════════════════════════════════════
-        // 7. SIDECHAIN GUILLOTINE
+        // 7. APOCALYPSE MODE (universal)
         // ═══════════════════════════════════════════════════════════════════
-        // ═══════════════════════════════════════════════════════════════════
-        // 7. SIDECHAIN GUILLOTINE
-        // ═══════════════════════════════════════════════════════════════════
-        // strict-split ya aplico sidechain inline en el bloque WAVE 911 arriba.
-        // Para otros perfiles, la Guillotina general actua aqui.
-        const frontMax = Math.max(frontLeft, frontRight);
-        if (p.layout41Strategy !== 'strict-split' && frontMax > p.sidechainThreshold) {
-            const ducking = 1.0 - frontMax * p.sidechainDepth;
-            moverLeft *= ducking;
-            moverRight *= ducking;
-        }
-        else if (p.layout41Strategy !== 'strict-split') {
-            const isApocalypse = harshness > p.apocalypseHarshness && flatness > p.apocalypseFlatness;
-            if (isApocalypse) {
-                const chaosEnergy = Math.max(bands.mid, bands.treble);
-                backRight = Math.max(backRight, chaosEnergy);
-                moverLeft = Math.max(moverLeft, chaosEnergy);
-                moverRight = Math.max(moverRight, chaosEnergy);
-            }
+        const isApocalypse = harshness > p.apocalypseHarshness && flatness > p.apocalypseFlatness;
+        if (isApocalypse) {
+            const chaosEnergy = Math.max(bands.mid, bands.treble);
+            backRight = Math.max(backRight, chaosEnergy);
+            moverLeft = Math.max(moverLeft, chaosEnergy);
+            moverRight = Math.max(moverRight, chaosEnergy);
         }
         // ═══════════════════════════════════════════════════════════════════
         // 8. STROBE

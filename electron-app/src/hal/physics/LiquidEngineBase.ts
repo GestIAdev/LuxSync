@@ -607,12 +607,14 @@ export abstract class LiquidEngineBase {
     // cuando hay vocal sostenida. El lowMid se conserva (instrumentos de armonia,
     // sintetizadores de cuerpo) pero el mid puro se atenúa junto con las vocales.
     // DMZ ACÚSTICA: sustracción espectral del bombo en medios antes de envHighMid
-    const cleanMidL = Math.max(0, bands.mid - (bands.bass * 0.55)) // DMZ SUAVIZADA: 0.55 devuelve el tacón/ataque a los pads sin dejar pasar el bombo
+    const dmzFactor = isTechnoProfile ? 0.55 : 0.30 // WAVE 6065: DMZ adaptativa — techno bombo seco (0.55), latino bombo con cuerpo (0.30)
+    const cleanMidL = Math.max(0, bands.mid - (bands.bass * dmzFactor))
     const midSynthInput = Math.max(0,
       bands.lowMid * p.backLLowMidWeight + cleanMidL * p.backLMidWeight * (1.0 - vocalPenalty * 0.80)
       - bands.treble * p.backLTrebleSub - bands.bass * p.backLBassSub
     )
-    let backLeft = Math.min(1.0, this.envHighMid.process(midSynthInput, morphFactor, now, isBreakdown) * 1.45) // OPERACIÓN: Gain 1.45x para cruzar el umbral hacia 1.0 en pico de sinte
+    const backLeftGain = isTechnoProfile ? 1.45 : 1.75 // WAVE 6065: gain adaptativo — latino necesita más empuje para llegar a 1.0
+    let backLeft = Math.min(1.0, this.envHighMid.process(midSynthInput, morphFactor, now, isBreakdown) * backLeftGain) // OPERACIÓN: Gain para cruzar el umbral hacia 1.0 en pico
 
     // moverLeft y moverRight calculados por envelopes cross-filter arriba
 

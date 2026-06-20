@@ -131,7 +131,7 @@ export const LATINO_PROFILE: ILiquidProfile = {
   //   que generaba el mural de voz.
   envelopeHighMid: {
     name: 'Back L (Latigazo Percusivo)',
-    gateOn: 0.35,          // REVIVIR 7.1: gate dinámico, deja pasar congas/palmas/claves
+    gateOn: 0.20,          // REVIVIR 7.1: gate dinámico, deja pasar congas/palmas/claves
     boost: 3.0,
     crushExponent: 2.0,
     decayBase: 0.14,       // WAVE 3491: GUILLOTINA snap violento
@@ -207,7 +207,7 @@ export const LATINO_PROFILE: ILiquidProfile = {
   // El truco -0.50 (sumar treble) generaba que voces+treble continuo colaran al Back.
   // Con highMid directo como input principal (backLHighMidWeight futuro)
   // y el gateOn 0.35 ya estricto, el canal es puramente percutivo.
-  backLLowMidWeight: 0.35,   // REVIVIR 7.1: fuerte en congas/timbales graves
+  backLLowMidWeight: 0.45,   // REVIVIR 7.1: fuerte en congas/timbales graves
   backLMidWeight: 0.15,      // REVIVIR 7.1: suficiente para atrapar palmas/claves
   backLTrebleSub: 0.28,      // WAVE 4693: más limpieza de voz sostenida, sin matar el golpe real
   backLBassSub: 0.0,
@@ -328,13 +328,17 @@ export const LATINO_PROFILE: ILiquidProfile = {
     percBoost: 2.8,        // WAVE 4692: reduce picos falsos de consonantes
     percExponent: 1.35,    // WAVE 4692: curva más dura para rechazar micro-ataques vocales
 
-    // ── BACK L: WAVE 3492 — trebleSub restaurado a positivo ─────
-    // El truco -0.50 (sumaba treble al canal) generaba que el treble
-    // continuo de voces/sinths colara al Back L. Con +0.20 convencional
-    // y el gateOn=0.35 + squelchBase=0.38 de la GUILLOTINA, solo
-    // percusion highMid real rompe el umbral.
-    backLMidWeight: 0.00,
-    backLLowMidWeight: 0.00,
+    // ── WAVE 6070: TRASVASE DE MEDIOS ─────────────────────────────
+    // El backLeft se moría de hambre porque highMid no tenía suficiente
+    // punch rítmico para romper attackSlopeMin=0.03. Solución: inyectar
+    // carne de la banda mid (pianos, metales, congas, melodías) para que
+    // el canal respire con el cuerpo instrumental, no solo con highMid.
+    // backLTrebleSub=-0.8 inyecta agudos (güira, campana) sin quemar.
+    // Las compuertas del envelopeHighMid se restauran a valores funcionales
+    // para que el tsunami de señal no sature a 1.000 constante.
+    backLMidWeight: 0.50,     // WAVE 6071: inyección moderada, evita clipping de entrada >1.0
+    backLLowMidWeight: 0.45,
+    backLTrebleSub: -0.8,      // WAVE 6070: conservar inyección de agudos, no quemar
 
     // ── WAVE 6050: overrides41 de movers alineados con base (Turbomegaboost + Anestesia) ─────────
     envelopeTreble: {
@@ -366,19 +370,27 @@ export const LATINO_PROFILE: ILiquidProfile = {
     // ── TONAL GATE — DESACTIVADO: el mid es melodía, no ruido ────
     moverLTonalThreshold: 0.99,  // WAVE 2460/2461: desactivado para latino
 
-// ── BACK HighMid — WAVE 4780: EXTIRPACIÓN DE AUTOTUNE ────────
-    // Las voces de reggaetón viven aquí. Autotune = nota sostenida/plana.
-    // Estrategia: gate alto + staccato + squelch dinámico por sustain.
+// ── WAVE 6071: LOBOTOMÍA AL FILTRO DE RUIDO ─────────────────
+    // La telemetría muestra bL_gate escalando de 0.75 → 0.88 aunque gateOn=0.18.
+    // El adaptiveNoiseAlpha y el sustainedSquelchMaxBoost levantaban el umbral
+    // ante señal sostenida, asfixiando al canal izquierdo. Los eliminamos.
+    // Ahora gateOn: 0.18 es LEY ESTÁTICA. La señal de entrada ronda 0.600-0.800
+    // (con backLMidWeight=0.50) y el canal ondula fluidamente con el mid.
     envelopeHighMid: {
-      decayBase: 0.10,                 // Negro rápido tras cada flash.
-      gateOn: 0.55,                     // WAVE 6050: endurecimiento extremo, solo percusión real rompe
-      attackSlopeMin: 0.03,            // Solo pasa transiente real (no meseta).
-      adaptiveNoiseAlpha: 0.70,        // La media alcanza la nota sostenida en pocos frames.
-      sustainedSquelchStartFrames: 3,  // ~68ms @44Hz antes de endurecer el squelch.
-      sustainedSquelchRisePerFrame: 0.12,
-      sustainedSquelchMaxBoost: 0.85,   // WAVE 6050: asfixia el autotune sostenido antes de que abra el gate
-      sustainedFlatVelocityMax: 0.007, // Meseta vocal/autotune detectada por velocidad plana.
-      boost: 2.20,                     // Si rompe el muro, el pico debe explotar.
+      gateOn: 0.18,                     // WAVE 6071: umbral estático, el motor deja de "perseguir"
+      squelchBase: 0.18,                // WAVE 6070: piso funcional contra ruido residual
+      squelchSlope: 0.08,               // WAVE 6070: limpieza dinámica del piso
+      boost: 2.2,                       // WAVE 6070: empuje moderado, ondula sin cegar
+      decayBase: 0.75,                  // WAVE 6070: caída lenta, manto de melaza
+      decayRange: 0.03,
+      crushExponent: 1.5,               // WAVE 6070: compresión moderada
+      maxIntensity: 0.95,               // WAVE 6070: techo para evitar clipping lógico
+      ghostCap: 0.04,                   // WAVE 6070: hilo de sustain entre golpes de mid
+      attackSlopeMin: 0.03,             // Motor intacto: solo transientes reales abren compuerta
+      sustainedSquelchStartFrames: 9999, // WAVE 6071: nunca penaliza notas sostenidas
+      sustainedFlatVelocityMax: 0.50,   // WAVE 6071: umbral absurdo, no detecta "plano"
+      adaptiveNoiseAlpha: 0.0,          // WAVE 6071: LOBOTOMÍA — apagada adaptación de ruido
+      sustainedSquelchMaxBoost: 0.0,    // WAVE 6071: LOBOTOMÍA — sin escalada de squelch
     },
 
     // ── FRONT SubBass — WAVE 2462: gate anti-bajo-continuo ───────

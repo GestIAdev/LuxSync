@@ -283,7 +283,13 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
             // Objetivo: diagnosticar por qué Front R se enciende con "cualquier cosa"
             // y por qué el morph abre las puertas de par en par.
             const subBassProbe = this.evaluateEnvelopeProbe(bands.subBass, p.envelopeSubBass, morphFactor, frame.now, frame.isBreakdown, this._subBassProbe);
-            console.log(`[FRONT-TEL]` +
+            // 🔇 FRONT-TEL silenciado — ahora solo BACK-TEL para calibración de backs
+            // console.log(
+            //   `[FRONT-TEL]` +
+            //   ` sB:${bands.subBass.toFixed(3)}` +
+            //   ...
+            // )
+            console.log(`[BACK-TEL]` +
                 ` sB:${bands.subBass.toFixed(3)}` +
                 ` bass:${bands.bass.toFixed(3)}` +
                 ` mid:${bands.mid.toFixed(3)}` +
@@ -291,23 +297,23 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
                 ` tr:${bands.treble.toFixed(3)}` +
                 ` | isK:${frame.isKick ? 1 : 0}` +
                 ` isKE:${frame.isKickEdge ? 1 : 0}` +
-                ` kickSig:${kickRaw.toFixed(3)}` +
+                ` percRaw:${percRaw.toFixed(3)}` +
                 ` | morph:${morphFactor.toFixed(3)}` +
                 ` brk:${frame.isBreakdown ? 1 : 0}` +
                 ` strict:${isStrict ? 1 : 0}` +
-                ` | fL_in:${bands.subBass.toFixed(3)}` +
-                ` fL_gate:${subBassProbe.dynamicGate.toFixed(3)}` +
-                ` fL_sq:${subBassProbe.squelch.toFixed(3)}` +
-                ` fL_pow:${subBassProbe.kickPower.toFixed(3)}` +
-                ` fL_ign:${subBassProbe.ignited ? 1 : 0}` +
-                ` | fR_in:${kickRaw.toFixed(3)}` +
-                ` fR_gate:${kickProbe.dynamicGate.toFixed(3)}` +
-                ` fR_sq:${kickProbe.squelch.toFixed(3)}` +
-                ` fR_pow:${kickProbe.kickPower.toFixed(3)}` +
-                ` fR_ign:${kickProbe.ignited ? 1 : 0}` +
-                ` | outFL:${frontLeft.toFixed(3)}` +
-                ` outFR:${frontRight.toFixed(3)}` +
-                ` outPar:${frontPar.toFixed(3)}`);
+                ` | bL_in:${highMidInput.toFixed(3)}` +
+                ` bL_gate:${highMidProbe.dynamicGate.toFixed(3)}` +
+                ` bL_sq:${highMidProbe.squelch.toFixed(3)}` +
+                ` bL_pow:${highMidProbe.kickPower.toFixed(3)}` +
+                ` bL_ign:${highMidProbe.ignited ? 1 : 0}` +
+                ` | bR_in:${snareInput.toFixed(3)}` +
+                ` bR_gate:${snareProbe.dynamicGate.toFixed(3)}` +
+                ` bR_sq:${snareProbe.squelch.toFixed(3)}` +
+                ` bR_pow:${snareProbe.kickPower.toFixed(3)}` +
+                ` bR_ign:${snareProbe.ignited ? 1 : 0}` +
+                ` | outBL:${backLeft.toFixed(3)}` +
+                ` outBR:${backRight.toFixed(3)}` +
+                ` outPar:${backPar.toFixed(3)}`);
             this._frameCount++;
         }
         return {

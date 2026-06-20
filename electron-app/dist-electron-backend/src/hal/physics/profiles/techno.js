@@ -88,7 +88,7 @@ export const TECHNO_PROFILE = {
         decayBase: 0.05,
         decayRange: 0.40, // WAVE 2451: INTOCABLE — morfología líquida de los Back Pars preservada
         maxIntensity: 1.0, // WAVE 2439.5: 0.80→1.0 — el Látigo sin cap
-        squelchBase: 0.52, // WAVE 3460: piso estricto para filtrar ruido fino y cola de reverb
+        squelchBase: 0.20, // WAVE 6066: 0.52→0.20 — limpieza se hará matemáticamente pre-envelope
         squelchSlope: 0.10,
         ghostCap: 0.00,
         gateMargin: 0.01,
@@ -100,13 +100,13 @@ export const TECHNO_PROFILE = {
     //              maxI 1.0→0.85 — liberar headroom para latino (groove continuo)
     envelopeHighMid: {
         name: 'Back L (Mid Synths)',
-        gateOn: 0.22, // WAVE 3492: 0.15->0.22 — gate más selectivo, synth buildups no pasan
+        gateOn: 0.15, // OPERACIÓN: Luz Líquida — baja la compuerta para capturar colas de voces
         boost: 1.5,
-        crushExponent: 2.5, // WAVE 3492: 2.0->2.5 — más no lineal, picos percusivos si, masa no
-        decayBase: 0.28, // WAVE 3492: 0.65->0.28 — synths no se quedan pegados
+        crushExponent: 1.0, // OPERACIÓN: Linealidad pura para suavizar el pulso atmosférico
+        decayBase: 0.62, // OPERACIÓN: Onda de sierra — caída curva pronunciada para respirar entre acordes
         decayRange: 0.25, // WAVE 3492: 0.35->0.25 — morph menos determinante para la caída
         maxIntensity: 0.85,
-        squelchBase: 0.25, // WAVE 3492: 0.18->0.25 — piso más estricto anti-masa continua
+        squelchBase: 0.25, // OPERACIÓN: Mantiene a raya el barro de los graves
         squelchSlope: 0.10,
         ghostCap: 0.00, // WAVE 3492: 0.05->0.00 — negro entre golpes
         gateMargin: 0.005,
@@ -145,9 +145,9 @@ export const TECHNO_PROFILE = {
     // Esto deja pasar la base armónica de synths sin comer el pico percutivo del kick.
     // ═══════════════════════════════════════════════════════════════
     backLLowMidWeight: 0.0, // WAVE 2430: original no usaba lowMid
-    backLMidWeight: 1.0, // WAVE 3464: MID como alimento principal del Back L
+    backLMidWeight: 0.85, // OPERACIÓN: Devolvemos el cuerpo del sinte — potencia sin asfixia
     backLTrebleSub: 0.0, // WAVE 2430: original no restaba treble
-    backLBassSub: 0.7, // WAVE 3464: ghost subtraction del bombo (rango solicitado 0.6-0.8)
+    backLBassSub: 0.0, // OPERACIÓN: Aislamiento estricto del bajo (0.0) para evitar fuga de bombo
     // ═══════════════════════════════════════════════════════════════
     // MOVER L (MELODÍAS): Cross-filter + tonal gate (WAVE 2411 → 2430)
     // Original hardcodeado: mid×0.4 + highMid×1.0 - bass×0.1

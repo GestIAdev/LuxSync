@@ -624,7 +624,7 @@ export class NodeExtractionPipeline {
             nodes.push(this._buildColorNode(deviceId, zoneId, fixtureDef, group, position));
         }
         if (topology.impactChannels.length > 0) {
-            nodes.push(this._buildImpactNode(deviceId, zoneId, topology.impactChannels, position));
+            nodes.push(this._buildImpactNode(deviceId, zoneId, fixtureDef, topology.impactChannels, position));
         }
         if (topology.kineticChannels.length > 0) {
             nodes.push(this._buildKineticNode(deviceId, zoneId, fixtureDef, topology.kineticChannels, position, orientation));
@@ -709,7 +709,7 @@ export class NodeExtractionPipeline {
         };
     }
     // ── IMPACT NODE ───────────────────────────────────────────────────────────
-    _buildImpactNode(deviceId, zoneId, impactChs, position) {
+    _buildImpactNode(deviceId, zoneId, fixtureDef, impactChs, position) {
         const nodeId = `${deviceId}:impact`;
         // Blueprint 3506 §1.5: dimmer → role 'primary'; shutter/strobe → role 'percussion'.
         // Si hay dimmer, el nodo principal es de dimmer (primary).
@@ -721,7 +721,7 @@ export class NodeExtractionPipeline {
             deviceId,
             zoneId,
             role: hasDimmer ? 'primary' : 'percussion',
-            channels: this._mapChannels(impactChs),
+            channels: this._mapChannels(impactChs, false, fixtureDef.capabilities),
             constraints: IMPACT_CONSTRAINTS,
             transferCurve: IMPACT_TRANSFER_CURVE,
             bandMix: IMPACT_BAND_MIX,
@@ -876,10 +876,27 @@ export class NodeExtractionPipeline {
      * Convierte FixtureChannel[] a INodeChannelDef[].
      * @param kinetic — Si true, usa 128 como default para pan/tilt (centro).
      */
-    _mapChannels(channels, kinetic = false) {
+    _mapChannels(channels, kinetic = false, capabilities) {
         return channels.map(ch => {
+            const chType = this._normalizeChannelType(ch.type);
+            // 🎛️ DMX Personality: propagar desde fixture.capabilities a INodeChannelDef.
+            // Pre-cargado en patch-time — zero-alloc en hot path (NodeResolver._writeNode).
+            let dmxPersonality;
+            if (capabilities) {
+                if (chType === 'dimmer' && capabilities.dimmerMin !== undefined) {
+                    dmxPersonality = { minDimmer: capabilities.dimmerMin };
+                }
+                else if (chType === 'strobe' && capabilities.strobePersonality) {
+                    const sp = capabilities.strobePersonality;
+                    dmxPersonality = {
+                        strobeOpenValue: sp.strobeOpenValue,
+                        strobeRangeMin: sp.strobeRangeMin,
+                        strobeRangeMax: sp.strobeRangeMax,
+                    };
+                }
+            }
             const mapped = {
-                type: this._normalizeChannelType(ch.type),
+                type: chType,
                 // 🔧 WAVE 4735.7: FixtureChannel.index is 1-based (DMX channel 1,2,3...).
                 // dmxOffset must be 0-based (offset within fixture).
                 dmxOffset: ch.index - 1,
@@ -895,6 +912,7 @@ export class NodeExtractionPipeline {
                         ...(dep.targetChannelIndex !== undefined && { targetDmxOffset: dep.targetChannelIndex }),
                     })),
                 }),
+                ...(dmxPersonality !== undefined && { dmxPersonality }),
             };
             return mapped;
         });

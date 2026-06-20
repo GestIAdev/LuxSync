@@ -940,6 +940,31 @@ export class NodeResolver {
             }
             // Clamp final de seguridad
             dmxValue = sanitizeDmxByte(dmxValue);
+            // 🎛️ DMX PERSONALITY REMAPPER — última milla para hardware mecánico.
+            // Zero-alloc: lee dmxPersonality pre-cargado en patch-time desde el fixture JSON.
+            // Solo activa si el canal declara personality — el resto pasa sin overhead.
+            const pers = chDef.dmxPersonality;
+            if (pers) {
+                if (chDef.type === DIMMER_CHANNEL && pers.minDimmer !== undefined) {
+                    // Obturador mecánico: si hay intent (>0), elevar al mínimo físico.
+                    // Si intent es exactamente 0.0, forzar 0 (blackout limpio).
+                    if (rawNormalized > 0 && dmxValue < pers.minDimmer) {
+                        dmxValue = pers.minDimmer;
+                    }
+                }
+                else if (chDef.type === STROBE_CHANNEL &&
+                    pers.strobeOpenValue !== undefined &&
+                    pers.strobeRangeMin !== undefined &&
+                    pers.strobeRangeMax !== undefined) {
+                    // Estrobo no estándar: intent=0 → apertura total; intent>0 → rango físico.
+                    if (rawNormalized <= 0) {
+                        dmxValue = pers.strobeOpenValue;
+                    }
+                    else {
+                        dmxValue = Math.floor(pers.strobeRangeMin + rawNormalized * (pers.strobeRangeMax - pers.strobeRangeMin));
+                    }
+                }
+            }
             if (nodeBlocked)
                 continue;
             // 🛂 WAVE 4735.3 FORENSIC: NaN sentinel defense-in-depth.

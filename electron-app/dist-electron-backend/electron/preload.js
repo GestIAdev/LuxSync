@@ -955,6 +955,11 @@ const luxApi = {
          */
         releaseSpatialTarget: (args) => ipcRenderer.invoke('lux:aether:releaseSpatialTarget', args),
         /**
+         * WAVE 5020: Selection Kill — inhibit 0.0 solo en nodos :impact de los fixtures indicados.
+         * Pan/Tilt siguen vivos. Toggle latch desde el dispatcher.
+         */
+        setSelInhibit: (fixtureIds, active) => ipcRenderer.invoke('lux:aether:setSelInhibit', { fixtureIds, active }),
+        /**
          * WAVE 4652: Set blackout global — NodeArbiter L4.
          * Canal canónico post WAVE 4702.
          */

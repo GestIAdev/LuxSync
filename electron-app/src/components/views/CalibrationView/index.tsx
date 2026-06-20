@@ -32,6 +32,7 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { useSelectionStore } from '../../../stores/selectionStore'
 import { useStageStore } from '../../../stores/stageStore'
+import { useKeyMapStore } from '../../../stores/keyMapStore'
 import './CalibrationView.css'
 
 // Icons
@@ -613,7 +614,11 @@ const CalibrationView: React.FC = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if typing in input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-      
+
+      // Defer ALL calibration keys to KeyForge when armed.
+      // The operator may have mapped WASD, B, F, 1-9, etc. for show control.
+      if (useKeyMapStore.getState().isArmed) return
+
       switch (e.key.toLowerCase()) {
         // Movement
         case 'w': case 'arrowup':    handleQuickPosition('up'); break

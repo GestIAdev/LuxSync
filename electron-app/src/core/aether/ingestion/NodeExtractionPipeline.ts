@@ -838,7 +838,7 @@ export class NodeExtractionPipeline {
       nodes.push(this._buildColorNode(deviceId, zoneId, fixtureDef, group, position))
     }
     if (topology.impactChannels.length > 0) {
-      nodes.push(this._buildImpactNode(deviceId, zoneId, topology.impactChannels, position))
+      nodes.push(this._buildImpactNode(deviceId, zoneId, fixtureDef, topology.impactChannels, position))
     }
     if (topology.kineticChannels.length > 0) {
       nodes.push(this._buildKineticNode(deviceId, zoneId, fixtureDef, topology.kineticChannels, position, orientation))
@@ -963,6 +963,7 @@ export class NodeExtractionPipeline {
   private _buildImpactNode(
     deviceId:  DeviceId,
     zoneId:    ZoneId,
+    fixtureDef: Readonly<FixtureDefinition>,
     impactChs: readonly FixtureChannel[],
     position?: Position3D,
   ): IImpactNodeData {
@@ -979,7 +980,7 @@ export class NodeExtractionPipeline {
       deviceId,
       zoneId,
       role:          hasDimmer ? 'primary' : 'percussion',
-      channels:      this._mapChannels(impactChs),
+      channels:      this._mapChannels(impactChs, false, fixtureDef.capabilities),
       constraints:   IMPACT_CONSTRAINTS,
       transferCurve: IMPACT_TRANSFER_CURVE,
       bandMix:       IMPACT_BAND_MIX,
@@ -1179,10 +1180,27 @@ export class NodeExtractionPipeline {
   private _mapChannels(
     channels: readonly FixtureChannel[],
     kinetic = false,
+    capabilities?: FixtureDefinition['capabilities'],
   ): INodeChannelDef[] {
     return channels.map(ch => {
+      const chType = this._normalizeChannelType(ch.type)
+      // 🎛️ DMX Personality: propagar desde fixture.capabilities a INodeChannelDef.
+      // Pre-cargado en patch-time — zero-alloc en hot path (NodeResolver._writeNode).
+      let dmxPersonality: INodeChannelDef['dmxPersonality'] | undefined
+      if (capabilities) {
+        if (chType === 'dimmer' && capabilities.dimmerMin !== undefined) {
+          dmxPersonality = { minDimmer: capabilities.dimmerMin }
+        } else if (chType === 'strobe' && capabilities.strobePersonality) {
+          const sp = capabilities.strobePersonality
+          dmxPersonality = {
+            strobeOpenValue: sp.strobeOpenValue,
+            strobeRangeMin:  sp.strobeRangeMin,
+            strobeRangeMax:  sp.strobeRangeMax,
+          }
+        }
+      }
       const mapped: INodeChannelDef = {
-        type:         this._normalizeChannelType(ch.type) as AetherChannelType,
+        type:         chType as AetherChannelType,
         // 🔧 WAVE 4735.7: FixtureChannel.index is 1-based (DMX channel 1,2,3...).
         // dmxOffset must be 0-based (offset within fixture).
         dmxOffset:    ch.index - 1,
@@ -1198,6 +1216,7 @@ export class NodeExtractionPipeline {
             ...(dep.targetChannelIndex !== undefined && { targetDmxOffset: dep.targetChannelIndex }),
           })),
         }),
+        ...(dmxPersonality !== undefined && { dmxPersonality }),
       }
       return mapped
     })

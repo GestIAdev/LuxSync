@@ -13,6 +13,7 @@
  */
 
 import { useEffect } from 'react'
+import { useKeyMapStore } from '../stores/keyMapStore'
 import { useTheiaEditorStore } from '../stores/useTheiaEditorStore'
 import { getThetaOrchestrator } from '../theia'
 
@@ -32,6 +33,9 @@ export function useAuthoringShortcuts(): void {
           target.isContentEditable
         )
       ) return
+
+      // Defer Space to KeyForge when armed.
+      if (useKeyMapStore.getState().isArmed) return
 
       // [Space] — Play / Pause global, redundante pero útil cuando el
       // trimmer no está montado o no tiene foco.

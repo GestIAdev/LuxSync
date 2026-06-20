@@ -61,6 +61,8 @@ interface LuxBridgeAetherSubset {
     value?: number
     release?: boolean
   }) => Promise<unknown> | void
+  // WAVE 5020: Selection Kill — inhibit selectivo por fixture
+  setSelInhibit?: (fixtureIds: string[], active: boolean) => Promise<{ success?: boolean }>
 }
 
 interface LuxBridgeSubset {
@@ -86,6 +88,7 @@ function getLuxBridge(): LuxBridgeSubset | null {
 
 const KEYFORGE_NATIVE_PREFIXES: readonly string[] = [
   'sel-',   // selection ops (sel-group-1, sel-all, sel-invert…)
+  'grp-',   // WAVE 5021: group-target ops (grp-1-blackout, grp-2-clear…)
   'kin-',   // kinetic ops (kin-pan-left, kin-tilt-up, kin-home…)
   'cue-',   // cue transport (cue-go, cue-prev, cue-next…)
   'ui-',    // UI ops (ui-toggle-live-hud, ui-cycle-tab…)
@@ -180,6 +183,31 @@ function dispatchSelAction(actionId: string): boolean {
     return true
   }
 
+  // sel-blackout : WAVE 5020 — Selection Kill contextual / panic global.
+  // Si hay selección → inhibit 0.0 en esos fixtures (latch toggle).
+  // Si NO hay selección → PANIC: blackout global (Safety Rule).
+  if (sub === 'blackout') {
+    const selectedIds = Array.from(selStore.selectedIds)
+    if (selectedIds.length === 0) {
+      // PANIC MODE — comportamiento idéntico a arb-blackout
+      const currentBlackout = useEffectsStore.getState().blackout
+      const targetBlackout = !currentBlackout
+      getLuxBridge()?.aether?.setBlackout?.(targetBlackout).then((result) => {
+        if (result?.success) {
+          useEffectsStore.getState().setBlackout(result.blackoutActive ?? targetBlackout)
+        }
+      }).catch(() => {})
+      console.log('[KeyForge] 🚨 sel-blackout PANIC — no selection, firing global blackout')
+    } else {
+      // SELECTION KILL — toggle latch sobre los fixtures seleccionados
+      const action = selStore.toggleMute(selectedIds)
+      const active = action === 'muted'
+      getLuxBridge()?.aether?.setSelInhibit?.(selectedIds, active).catch(() => {})
+      console.log(`[KeyForge] 🔇 sel-blackout ${action.toUpperCase()} — ${selectedIds.length} fixture(s)`)
+    }
+    return true
+  }
+
   // sel-assign-group-N : RTS-style group assignment.
   // Current selection → assigned to group N (create if not exists, replace if exists).
   // Ctrl+1..9 in the `cmd` layer triggers this.
@@ -208,6 +236,69 @@ function dispatchSelAction(actionId: string): boolean {
   }
 
   console.warn(`[KeyForge] ⚠️ Unknown sel-* sub-action: ${actionId}`)
+  return false
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GRP-* HANDLER — Group Targeted Actions (WAVE 5021)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Dispatch a `grp-*` action against a SAVED group WITHOUT modifying the
+ * current visual selection.
+ *
+ * Supported sub-actions:
+ *   grp-N-blackout → toggle inhibit on ALL fixtures in group N (latch)
+ *
+ * This is the KEY to the Freestyler-style macro workflow:
+ *   1. Select fixtures → Ctrl+1 (sel-assign-group-1) to save
+ *   2. Map 'A' → grp-1-blackout
+ *   3. Map 'S' → grp-2-blackout
+ *   4. Press A/S any time — group toggles independently of UI selection.
+ */
+function dispatchGrpAction(actionId: string): boolean {
+  const match = actionId.match(/^grp-(\d+)-(.+)$/)
+  if (!match) {
+    console.warn(`[KeyForge] ⚠️ Unknown grp-* format: ${actionId}`)
+    return false
+  }
+  const groupIndex = parseInt(match[1], 10)
+  const sub = match[2]
+  const fixtureIds = getGroupFixtureIds(groupIndex)
+
+  if (fixtureIds.length === 0) {
+    console.log(`[KeyForge] grp-${groupIndex}-${sub}: group empty or not found.`)
+    return true
+  }
+
+  if (sub === 'blackout') {
+    const selStore = useSelectionStore.getState()
+    // Toggle latch: reutiliza la misma lógica de mutedFixtureIds
+    const action = selStore.toggleMute(fixtureIds)
+    const active = action === 'muted'
+
+    const bridge = getLuxBridge()?.aether
+    if (bridge?.setSelInhibit) {
+      bridge.setSelInhibit(fixtureIds, active)
+        .then((res) => {
+          if (!res?.success) {
+            console.warn(`[KeyForge] ⚠️ grp-${groupIndex}-blackout setSelInhibit failed:`, res)
+          } else {
+            console.log(`[KeyForge] 🔇 grp-${groupIndex}-blackout setSelInhibit OK (${fixtureIds.length} fixtures)`)
+          }
+        })
+        .catch((err) => {
+          console.error(`[KeyForge] ❌ grp-${groupIndex}-blackout setSelInhibit threw:`, err)
+        })
+    } else {
+      console.warn(`[KeyForge] ⚠️ setSelInhibit unavailable on lux bridge — blackout will not reach DMX`)
+    }
+
+    console.log(`[KeyForge] 🔇 grp-${groupIndex}-blackout ${action.toUpperCase()} — ${fixtureIds.length} fixture(s): [${fixtureIds.join(', ')}]`)
+    return true
+  }
+
+  console.warn(`[KeyForge] ⚠️ Unknown grp-* sub-action: ${actionId}`)
   return false
 }
 
@@ -494,6 +585,12 @@ export function dispatchAction(actionId: string, payload: ActionPayload): boolea
   if (actionId.startsWith('sel-')) {
     if (payload.phase === 'release') return true
     return dispatchSelAction(actionId)
+  }
+
+  // ── grp-* → Group Targeted Actions (WAVE 5021) ──
+  if (actionId.startsWith('grp-')) {
+    if (payload.phase === 'release') return true
+    return dispatchGrpAction(actionId)
   }
 
   // ── kin-* → Movement Store ──

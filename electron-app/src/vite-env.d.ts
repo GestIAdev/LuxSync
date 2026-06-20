@@ -919,6 +919,12 @@ declare global {
       fireTungstenNuke: (args: { target: string; release?: boolean; value?: number }) => Promise<{ success: boolean; error?: string }>
 
       /**
+       * WAVE 5020: Selection Kill — inhibit 0.0 selectivo por fixtureIds.
+       * Pan/Tilt/Kinetic siguen vivos. Latch toggle manejado por el dispatcher.
+       */
+      setSelInhibit: (fixtureIds: string[], active: boolean) => Promise<{ success: boolean; error?: string }>
+
+      /**
        * WAVE 4652: Set blackout global — NodeArbiter L4.
        */
       setBlackout: (active: boolean) => Promise<{ success: boolean; blackoutActive?: boolean; error?: string }>

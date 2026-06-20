@@ -35,6 +35,13 @@ export interface SelectionState {
   
   /** IDs de fixtures seleccionados */
   selectedIds: Set<string>
+
+  /**
+   * WAVE 5020: IDs de fixtures bajo Selection Kill (inhibit selectivo).
+   * Alimenta el feedback visual MAGENTA en el TacticalCanvas.
+   * Sincronizado por dispatchSelAction al toggle sel-blackout.
+   */
+  mutedFixtureIds: Set<string>
   
   /** Fixture bajo el cursor (hover) */
   hoveredId: string | null
@@ -95,7 +102,18 @@ export interface SelectionState {
    * Invertir selección (seleccionar no-seleccionados)
    */
   invertSelection: (allIds: string[]) => void
-  
+
+  /**
+   * WAVE 5020: Aplica o libera el inhibit de intensidad en un conjunto de fixtures.
+   * Si todos los IDs ya están muteados → los libera (toggle latch).
+   * Si alguno NO está muteado → mutea todos.
+   * @returns 'muted' | 'released'
+   */
+  toggleMute: (ids: string[]) => 'muted' | 'released'
+
+  /** WAVE 5020: Libera TODOS los inhibits (reset de pánico o show clean) */
+  clearAllMutes: () => void
+
   // ═══════════════════════════════════════════════════════════════════════
   // COMPUTED HELPERS
   // ═══════════════════════════════════════════════════════════════════════
@@ -111,6 +129,9 @@ export interface SelectionState {
   
   /** Array de IDs seleccionados */
   getSelectedArray: () => string[]
+
+  /** WAVE 5020: ¿Está este fixture bajo inhibit selectivo? */
+  isMuted: (id: string) => boolean
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -124,6 +145,7 @@ export const useSelectionStore = create<SelectionState>()(
     // ═══════════════════════════════════════════════════════════════════════
     
     selectedIds: new Set<string>(),
+    mutedFixtureIds: new Set<string>(),
     hoveredId: null,
     lastSelectedId: null,
     selectionSource: 'click',
@@ -251,7 +273,25 @@ export const useSelectionStore = create<SelectionState>()(
         return { selectedIds: newSet }
       })
     },
-    
+
+    toggleMute: (ids) => {
+      const current = get().mutedFixtureIds
+      const allMuted = ids.length > 0 && ids.every(id => current.has(id))
+      if (allMuted) {
+        const next = new Set(current)
+        ids.forEach(id => next.delete(id))
+        set({ mutedFixtureIds: next })
+        return 'released'
+      } else {
+        const next = new Set(current)
+        ids.forEach(id => next.add(id))
+        set({ mutedFixtureIds: next })
+        return 'muted'
+      }
+    },
+
+    clearAllMutes: () => set({ mutedFixtureIds: new Set<string>() }),
+
     // ═══════════════════════════════════════════════════════════════════════
     // COMPUTED HELPERS
     // ═══════════════════════════════════════════════════════════════════════
@@ -260,6 +300,7 @@ export const useSelectionStore = create<SelectionState>()(
     hasSelection: () => get().selectedIds.size > 0,
     getSelectedCount: () => get().selectedIds.size,
     getSelectedArray: () => [...get().selectedIds],
+    isMuted: (id) => get().mutedFixtureIds.has(id),
   }))
 )
 

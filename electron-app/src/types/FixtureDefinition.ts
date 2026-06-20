@@ -268,6 +268,13 @@ export interface FixtureDefinition {
     hasMacro?: boolean;
     // 🔥 WAVE 1135.3: Dead Zone floor — valor DMX mínimo donde el dimmer realmente enciende
     dimmerMin?: number;
+    // 🎛️ Strobe Personality — para obturadores mecánicos no estándar (ej: Big Dipper 7R).
+    // intent=0.0 → strobeOpenValue (luz continua). intent>0 → rango [strobeRangeMin, strobeRangeMax].
+    strobePersonality?: {
+      strobeOpenValue: number;
+      strobeRangeMin: number;
+      strobeRangeMax: number;
+    };
   };
 }
 

@@ -108,6 +108,28 @@ export interface INodeChannelDef {
     /** WAVE 4722: Offset DMX 0-based del canal master. Precedencia sobre targetChannelType. */
     readonly targetDmxOffset?: number
   }[]
+  /**
+   * 🎛️ DMX Personality — reglas de serialización de última milla para hardware
+   * con obturadores mecánicos o estrobo no estándar (ej: Big Dipper 7R).
+   *
+   * Para canal `dimmer`:
+   *   `minDimmer` — valor DMX mínimo cuando el intent > 0 (evita cuchillas a la mitad).
+   *   Si intent == 0.0 → se escribe 0 igualmente.
+   *
+   * Para canal `strobe`:
+   *   `strobeOpenValue`  — valor DMX para luz continua (intent == 0.0). Ej: 255
+   *   `strobeRangeMin`   — límite inferior del rango físico de estrobo. Ej: 4
+   *   `strobeRangeMax`   — límite superior del rango físico de estrobo. Ej: 207
+   *
+   * Todos los campos son opcionales — canales sin personality usan el path estándar.
+   * Pre-leída en patch-time (NodeGraphBuilder). Zero-alloc en hot path (NodeResolver).
+   */
+  readonly dmxPersonality?: {
+    readonly minDimmer?: number
+    readonly strobeOpenValue?: number
+    readonly strobeRangeMin?: number
+    readonly strobeRangeMax?: number
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

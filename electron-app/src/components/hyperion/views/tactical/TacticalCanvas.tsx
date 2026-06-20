@@ -194,6 +194,7 @@ export const TacticalCanvas = memo(function TacticalCanvas({
   // ── Store Subscriptions ─────────────────────────────────────────────────
   
   const selectedIds = useSelectionStore(state => state.selectedIds)
+  const mutedFixtureIds = useSelectionStore(state => state.mutedFixtureIds)
   const select = useSelectionStore(state => state.select)
   const selectMultiple = useSelectionStore(state => state.selectMultiple)
   const toggleSelection = useSelectionStore(state => state.toggleSelection)
@@ -455,8 +456,9 @@ export const TacticalCanvas = memo(function TacticalCanvas({
       selectedIds: Array.from(selectedIds),
       hoveredId: hoveredFixtureId,
       lassoBounds: null,
+      mutedFixtureIds: Array.from(mutedFixtureIds),
     })
-  }, [selectedIds, hoveredFixtureId, isReady, postToWorker])
+  }, [selectedIds, mutedFixtureIds, hoveredFixtureId, isReady, postToWorker])
 
   // ── Send options changes to worker ────────────────────────────────────
   useEffect(() => {

@@ -23,6 +23,7 @@ export const useSelectionStore = create()(subscribeWithSelector((set, get) => ({
     // INITIAL STATE
     // ═══════════════════════════════════════════════════════════════════════
     selectedIds: new Set(),
+    mutedFixtureIds: new Set(),
     hoveredId: null,
     lastSelectedId: null,
     selectionSource: 'click',
@@ -137,6 +138,23 @@ export const useSelectionStore = create()(subscribeWithSelector((set, get) => ({
             return { selectedIds: newSet };
         });
     },
+    toggleMute: (ids) => {
+        const current = get().mutedFixtureIds;
+        const allMuted = ids.length > 0 && ids.every(id => current.has(id));
+        if (allMuted) {
+            const next = new Set(current);
+            ids.forEach(id => next.delete(id));
+            set({ mutedFixtureIds: next });
+            return 'released';
+        }
+        else {
+            const next = new Set(current);
+            ids.forEach(id => next.add(id));
+            set({ mutedFixtureIds: next });
+            return 'muted';
+        }
+    },
+    clearAllMutes: () => set({ mutedFixtureIds: new Set() }),
     // ═══════════════════════════════════════════════════════════════════════
     // COMPUTED HELPERS
     // ═══════════════════════════════════════════════════════════════════════
@@ -144,6 +162,7 @@ export const useSelectionStore = create()(subscribeWithSelector((set, get) => ({
     hasSelection: () => get().selectedIds.size > 0,
     getSelectedCount: () => get().selectedIds.size,
     getSelectedArray: () => [...get().selectedIds],
+    isMuted: (id) => get().mutedFixtureIds.has(id),
 })));
 // ═══════════════════════════════════════════════════════════════════════════
 // SELECTORS (Optimized for React rerenders)

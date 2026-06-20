@@ -228,6 +228,8 @@ const ARBITER_CONTROLS: MidiActionMeta[] = [
   { id: 'arb-blackout',      label: 'Arbiter Blackout',    category: 'button', group: 'arbiter' },
   { id: 'arb-grand-master',  label: 'Arbiter Grand Master', category: 'fader',  group: 'arbiter' },
   { id: 'arb-kill-effects',  label: 'Kill All Effects',    category: 'button', group: 'arbiter' },
+  // WAVE 5020: Selection Kill — blackout contextual (sel) o global (panic sin selección)
+  { id: 'sel-blackout',      label: 'Selection Kill / Panic Blackout', category: 'button', group: 'arbiter' },
 ]
 
 // 🌊 WAVE 4699.2: TUNGSTEN GOLDEN NUKE — NanoPAD2 mappings
@@ -243,6 +245,21 @@ const TUNGSTEN_CONTROLS: MidiActionMeta[] = [
   { id: 'tung-petal-l',   label: 'Petal Left Burst',     category: 'button', group: 'arbiter' },
   { id: 'tung-petal-c',   label: 'Petal Center Burst',   category: 'button', group: 'arbiter' },
   { id: 'tung-petal-r',   label: 'Petal Right Burst',    category: 'button', group: 'arbiter' },
+]
+
+// 🌊 WAVE 5021: GROUP MACROS — Freestyler-style fixture groups via KeyForge
+// grp-N-blackout toggles inhibit on ALL fixtures in saved group N, independently
+// of the current UI selection. Use sel-assign-group-N to save, then map these.
+const GROUP_CONTROLS: MidiActionMeta[] = [
+  { id: 'grp-1-blackout', label: 'Group 1 Blackout', category: 'button', group: 'arbiter' },
+  { id: 'grp-2-blackout', label: 'Group 2 Blackout', category: 'button', group: 'arbiter' },
+  { id: 'grp-3-blackout', label: 'Group 3 Blackout', category: 'button', group: 'arbiter' },
+  { id: 'grp-4-blackout', label: 'Group 4 Blackout', category: 'button', group: 'arbiter' },
+  { id: 'grp-5-blackout', label: 'Group 5 Blackout', category: 'button', group: 'arbiter' },
+  { id: 'grp-6-blackout', label: 'Group 6 Blackout', category: 'button', group: 'arbiter' },
+  { id: 'grp-7-blackout', label: 'Group 7 Blackout', category: 'button', group: 'arbiter' },
+  { id: 'grp-8-blackout', label: 'Group 8 Blackout', category: 'button', group: 'arbiter' },
+  { id: 'grp-9-blackout', label: 'Group 9 Blackout', category: 'button', group: 'arbiter' },
 ]
 
 
@@ -285,6 +302,7 @@ export function getAllActions(): MidiActionMeta[] {
     ...VIBE_CONTROLS,
     ...ARBITER_CONTROLS,
     ...TUNGSTEN_CONTROLS,
+    ...GROUP_CONTROLS,
   ]
 }
 
@@ -315,7 +333,12 @@ export function getVibeActions(): MidiActionMeta[] {
 
 /** Arbiter override controls */
 export function getArbiterActions(): MidiActionMeta[] {
-  return ARBITER_CONTROLS
+  return [...ARBITER_CONTROLS, ...GROUP_CONTROLS]
+}
+
+/** WAVE 5021: Group macro controls (grp-N-blackout) */
+export function getGroupActions(): MidiActionMeta[] {
+  return GROUP_CONTROLS
 }
 
 /** Find action metadata by ID */

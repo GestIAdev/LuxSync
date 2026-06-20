@@ -77,7 +77,20 @@ const STADIUM_BINDINGS: readonly KeyBinding[] = [
   { layer: 'base', key: 'H', actionId: 'arb-freeze-frame',   behavior: { kind: 'toggle' } },
   { layer: 'base', key: 'N', actionId: 'fx-oro_solido',      behavior: { kind: 'tap'  } },
   { layer: 'base', key: 'B', actionId: 'tung-petal-l',       behavior: { kind: 'charge', thresholdMs: 600, chargedActionId: 'tung-nuke-all' } },
-  { layer: 'base', key: 'D', actionId: 'arb-blackout',       behavior: { kind: 'hold' } },
+
+  // ── GROUP BLACKOUTS: A S D F Z X → grp-1..6-blackout ─────────────────────
+  // A/S/D/F/Z/X = 6 teclas naturales de la mano izquierda.
+  // Cada una hace toggle latch de inhibit de intensidad sobre un grupo guardado.
+  // Flujo: (1) seleccionar fixtures → Ctrl+N (sel-assign-group-N) → guardar grupo.
+  //        (2) pulsar A/S/D/F/Z/X en directo → inhibit toggle instantáneo.
+  // NB: D tenia arb-blackout (eliminado — Space ya lo cubre).
+  //     F es fx-strobe_storm (mantenido arriba). grp-4 se puede mapear manualmente a F
+  //     desde la UI de KeyForge si el operador lo prefiere.
+  { layer: 'base', key: 'A', actionId: 'grp-1-blackout', behavior: { kind: 'tap' } },
+  { layer: 'base', key: 'S', actionId: 'grp-2-blackout', behavior: { kind: 'tap' } },
+  { layer: 'base', key: 'D', actionId: 'grp-3-blackout', behavior: { kind: 'tap' } },
+  { layer: 'base', key: 'Z', actionId: 'grp-4-blackout', behavior: { kind: 'tap' } },
+  { layer: 'base', key: 'X', actionId: 'grp-5-blackout', behavior: { kind: 'tap' } },
 
   // ── GRAND MASTER NUDGE ───────────────────────────────────────────────────
   { layer: 'base', key: 'Q', actionId: 'ctrl-intensity', behavior: { kind: 'repeat', periodMs: 80 } },
@@ -194,6 +207,22 @@ export function initStadiumLoadoutIfEmpty(): void {
 }
 
 /**
+ * Stadium slot migrations: when a default slot changes its canonical actionId
+ * (e.g. base::D moved from arb-blackout → grp-3-blackout), we must force the
+ * update so existing user stores don't silently keep the old action.
+ *
+ * Format: { slot, oldActionId, newActionId }
+ * Applied BEFORE the missing-slot patch. Only migrates if the slot STILL holds
+ * the exact old stadium value (not a user-custom action).
+ */
+const STADIUM_MIGRATIONS: readonly { slot: string; oldActionId: string; newActionId: string }[] = [
+  // WAVE 5020: Group blackout keys — D moved from arb-blackout to grp-3-blackout.
+  { slot: 'base::D', oldActionId: 'arb-blackout',    newActionId: 'grp-3-blackout' },
+  // A and S had no binding in old stadium; nothing to migrate, patch adds them.
+  // Z and X had no binding in old stadium; patch adds them.
+]
+
+/**
  * WAVE 4914: Migration patch — inject any MISSING stadium defaults into an
  * existing store WITHOUT touching slots the user has already customized.
  *
@@ -211,11 +240,27 @@ export function initStadiumLoadoutIfEmpty(): void {
  */
 export function patchMissingStadiumBindings(): void {
   const state = useKeyMapStore.getState()
-  const currentBindings = state.bindings
+  let currentBindings = state.bindings
   const currentChords   = state.chords
 
   let patchedBindings = 0
   let patchedChords   = 0
+
+  // ── Step 0: Apply slot migrations ────────────────────────────────────────
+  for (const migration of STADIUM_MIGRATIONS) {
+    const existing = currentBindings[migration.slot]
+    if (existing !== undefined && existing.actionId === migration.oldActionId) {
+      const idx = migration.slot.indexOf('::')
+      const layer = migration.slot.slice(0, idx) as import('./types').LayerId
+      const key   = migration.slot.slice(idx + 2) as import('./types').KeyCode
+      state.unbindKey(layer, key)
+      currentBindings = useKeyMapStore.getState().bindings
+      console.log(
+        `[KeyForge] 🔄 Migration: ${migration.slot} ${migration.oldActionId} → ${migration.newActionId}`,
+      )
+      patchedBindings++
+    }
+  }
 
   for (const binding of STADIUM_BINDINGS) {
     const slot = bindingKey(binding.layer, binding.key)

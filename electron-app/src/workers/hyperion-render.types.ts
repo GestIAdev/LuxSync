@@ -127,6 +127,8 @@ export interface WorkerMsgSelection {
   selectedIds: string[]
   hoveredId: string | null
   lassoBounds: { startX: number; startY: number; endX: number; endY: number } | null
+  /** WAVE 5020: Fixtures bajo Selection Kill (inhibit) — feedback magenta */
+  mutedFixtureIds: string[]
 }
 
 /** Mouse event forwarded for hit testing */

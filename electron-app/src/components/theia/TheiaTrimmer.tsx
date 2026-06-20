@@ -16,6 +16,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTheiaEditorStore } from '../../stores/useTheiaEditorStore'
+import { useKeyMapStore } from '../../stores/keyMapStore'
 import { getThetaOrchestrator } from '../../theia'
 import {
   PlayIcon,
@@ -203,6 +204,10 @@ const TheiaTrimmer: React.FC = () => {
       if (!draftAtom) return
       const target = e.target as HTMLElement | null
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return
+
+      // Defer to KeyForge when armed — the operator may have mapped I/O/Space.
+      if (useKeyMapStore.getState().isArmed) return
+
       if (e.key === 'i' || e.key === 'I') {
         e.preventDefault()
         handleSnapToPlayhead('in')

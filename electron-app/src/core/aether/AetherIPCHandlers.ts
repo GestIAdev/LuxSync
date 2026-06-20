@@ -31,6 +31,7 @@ import { vibeMovementManager } from '../../engine/movement/VibeMovementManager'
 import { aetherKineticEngine } from './AetherKineticEngine'
 import type { NativeKineticPattern } from './AetherKineticEngine'
 import type { IKineticNodeData } from './capability-node'
+import { NodeFamily } from './types'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -283,6 +284,41 @@ export function registerAetherIPCHandlers(): void {
 
   // ── G1/G2: Blackout + GrandMaster globales (WAVE 4702) ─────────────────────
   // Atacan NodeArbiter (pipeline Aether). masterArbiter extinto — WAVE 4702.
+
+  /**
+   * WAVE 5020: G0 — Selection Kill (inhibit selectivo).
+   * Aplica o libera un inhibit 0.0 solo en los nodos :impact de los fixtures indicados.
+   * Pan/Tilt/Kinetic siguen vivos — los movers mantienen posición exacta durante el kill.
+   * Payload: { fixtureIds: string[], active: boolean }
+   * Devuelve: { success }
+   */
+  ipcMain.handle(
+    'lux:aether:setSelInhibit',
+    (_event, { fixtureIds, active }: { fixtureIds: string[]; active: boolean }) => {
+      try {
+        const orchestrator = getTitanOrchestrator()
+        const arbiter = orchestrator.getAetherArbiter()
+        const nodeGraph = orchestrator.getAetherNodeGraph()
+        for (const fixtureId of fixtureIds) {
+          const nodeIds = nodeGraph.getDeviceNodes(fixtureId as import('./types').DeviceId)
+          for (const nodeId of nodeIds) {
+            const node = nodeGraph.getNodeData(nodeId)
+            if (node && node.family === NodeFamily.IMPACT) {
+              if (active) {
+                arbiter.setInhibitLimit(nodeId, 0)
+              } else {
+                arbiter.clearInhibitLimit(nodeId)
+              }
+            }
+          }
+        }
+        return { success: true }
+      } catch (err) {
+        console.error('[AetherIPC] setSelInhibit error:', err)
+        return { success: false, error: String(err) }
+      }
+    }
+  )
 
   /**
    * G1: Set blackout global.

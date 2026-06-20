@@ -19,6 +19,7 @@ import { CommandDeck } from '../commandDeck'
 import TitleBar from './TitleBar'
 import { useEffectsStore, selectBlackout } from '../../stores'
 import { useNavigationStore, selectMainLayoutNav } from '../../stores/navigationStore'
+import { useKeyMapStore } from '../../stores/keyMapStore'
 import { useShallow } from 'zustand/shallow'
 import './MainLayout.css'
 
@@ -53,14 +54,22 @@ const MainLayout: React.FC = () => {
       // Don't trigger if typing in input/textarea
       const target = e.target as HTMLElement
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
-      
-      // F11 or Z toggles Zen Mode
-      if (e.key === 'F11' || e.key === 'z' || e.key === 'Z') {
+
+      // F11 always toggles Zen Mode (OS-level key, never mappable)
+      if (e.key === 'F11') {
+        e.preventDefault()
+        toggleZenMode()
+        return
+      }
+
+      // Z toggles Zen Mode ONLY when KeyForge is DISARMED.
+      // When armed, Z is free for the operator to map as they wish.
+      if ((e.key === 'z' || e.key === 'Z') && !useKeyMapStore.getState().isArmed) {
         e.preventDefault()
         toggleZenMode()
       }
     }
-    
+
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [toggleZenMode])

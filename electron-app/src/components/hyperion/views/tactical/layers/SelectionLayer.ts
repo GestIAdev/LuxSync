@@ -24,6 +24,10 @@ const SELECTION_CONFIG = {
   HOVER_RADIUS: 1.5,
   /** Hover ring line width */
   HOVER_WIDTH: 1.5,
+  /** Muted (inhibit) ring radius multiplier */
+  MUTE_RADIUS: 2.1,
+  /** Muted (inhibit) ring line width */
+  MUTE_WIDTH: 2,
   /** Lasso fill alpha */
   LASSO_FILL_ALPHA: 0.08,
   /** Lasso stroke alpha */
@@ -52,6 +56,8 @@ export function renderSelectionLayer(
   options: {
     /** Set of selected fixture IDs */
     selectedIds: Set<string>
+    /** WAVE 5020: Set of muted (inhibit) fixture IDs */
+    mutedFixtureIds: Set<string>
     /** Currently hovered fixture ID */
     hoveredId: string | null
     /** Lasso bounds (if active) */
@@ -60,8 +66,8 @@ export function renderSelectionLayer(
     animationPhase?: number
   }
 ): void {
-  const { selectedIds, hoveredId, lassoBounds, animationPhase = 0 } = options
-  const { RING_RADIUS, RING_WIDTH, HOVER_RADIUS, HOVER_WIDTH, BRACKET_SIZE, BRACKET_WIDTH } = SELECTION_CONFIG
+  const { selectedIds, mutedFixtureIds, hoveredId, lassoBounds, animationPhase = 0 } = options
+  const { RING_RADIUS, RING_WIDTH, HOVER_RADIUS, HOVER_WIDTH, MUTE_RADIUS, MUTE_WIDTH, BRACKET_SIZE, BRACKET_WIDTH } = SELECTION_CONFIG
 
   // ── HOVER RING ──────────────────────────────────────────────────────────
   
@@ -80,6 +86,26 @@ export function renderSelectionLayer(
       ctx.stroke()
       ctx.setLineDash([])
     }
+  }
+
+  // ── MUTED RINGS (WAVE 5020: Selection Kill feedback) ────────────────────
+  // Rendered BEFORE selection rings so selected+muted fixtures stack correctly.
+
+  for (const fixture of fixtures) {
+    if (!mutedFixtureIds.has(fixture.id)) continue
+
+    const fx = fixture.x * width
+    const fy = fixture.y * height
+    const muteRadius = baseRadius * MUTE_RADIUS
+
+    // Magenta muted ring — dashed to distinguish from solid selection ring
+    ctx.beginPath()
+    ctx.arc(fx, fy, muteRadius, 0, Math.PI * 2)
+    ctx.strokeStyle = HYPERION.neon.magenta
+    ctx.lineWidth = MUTE_WIDTH
+    ctx.setLineDash([3, 3])
+    ctx.stroke()
+    ctx.setLineDash([])
   }
 
   // ── SELECTION RINGS ─────────────────────────────────────────────────────

@@ -23,6 +23,7 @@
 import { useEffect, useCallback, useRef } from 'react'
 import { useStageStore } from '../../../stores/stageStore'
 import { useSelectionStore } from '../../../stores/selectionStore'
+import { useKeyMapStore } from '../../../stores/keyMapStore'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -161,7 +162,16 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers = {}): void {
     
     const key = event.key
     const isCtrlOrCmd = event.ctrlKey || event.metaKey
-    
+
+    // If KeyForge is armed, skip bare mappable keys (V, B) so the operator
+    // can freely map them. Editing shortcuts (Ctrl+G, Ctrl+A, Escape, Delete)
+    // are still allowed because they use modifiers / are universal.
+    const isBareMappable = !isCtrlOrCmd && !event.shiftKey && !event.altKey
+      && (key.toLowerCase() === 'v' || key.toLowerCase() === 'b')
+    if (isBareMappable && useKeyMapStore.getState().isArmed) {
+      return
+    }
+
     // 1-9 group selection is now handled exclusively by KeyForge (KeyActionDispatcher).
     // Removed from here to eliminate the dual-listener conflict (WAVE 4913).
 

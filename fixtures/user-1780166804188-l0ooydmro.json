@@ -1,0 +1,491 @@
+{
+  "id": "user-1780166804188-l0ooydmro",
+  "name": "LB230N 7R (User Copy)",
+  "manufacturer": "Big Dipper",
+  "channelCount": 22,
+  "type": "moving-head",
+  "channels": [
+    {
+      "index": 0,
+      "name": "Color Wheel",
+      "type": "color_wheel",
+      "is16bit": false,
+      "defaultValue": 0
+    },
+    {
+      "index": 1,
+      "name": "Strobe",
+      "type": "strobe",
+      "defaultValue": 255,
+      "is16bit": false
+    },
+    {
+      "index": 2,
+      "name": "Dimmer",
+      "type": "dimmer",
+      "defaultValue": 255,
+      "is16bit": false,
+      "ignitionDeps": [
+        {
+          "channelType": "strobe",
+          "requiredValue": 255
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "name": "Gobo",
+      "type": "gobo",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 4,
+      "name": "Prism",
+      "type": "prism",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 5,
+      "name": "Prism Rot",
+      "type": "prism_rotation",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 6,
+      "name": "effects",
+      "type": "custom",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 7,
+      "name": "Frost",
+      "type": "frost",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 8,
+      "name": "Focus",
+      "type": "focus",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 9,
+      "name": "Pan",
+      "type": "pan",
+      "defaultValue": 127,
+      "is16bit": false
+    },
+    {
+      "index": 10,
+      "name": "Pan Fine",
+      "type": "pan_fine",
+      "defaultValue": 0,
+      "is16bit": true
+    },
+    {
+      "index": 11,
+      "name": "Tilt",
+      "type": "tilt",
+      "defaultValue": 127,
+      "is16bit": false
+    },
+    {
+      "index": 12,
+      "name": "Tilt Fine",
+      "type": "tilt_fine",
+      "defaultValue": 0,
+      "is16bit": true
+    },
+    {
+      "index": 13,
+      "name": "Control",
+      "type": "control",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 14,
+      "name": "",
+      "type": "unknown",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 15,
+      "name": "",
+      "type": "unknown",
+      "defaultValue": 0,
+      "is16bit": false
+    }
+  ],
+  "confidence": 0.98,
+  "detectionMethod": "channels",
+  "hasMovementChannels": true,
+  "has16bitMovement": true,
+  "hasColorMixing": true,
+  "hasColorWheel": true,
+  "physics": {
+    "motorType": "stepper-cheap",
+    "maxAcceleration": 900,
+    "maxVelocity": 300,
+    "safetyCap": true,
+    "orientation": "wall-left",
+    "invertPan": false,
+    "invertTilt": false,
+    "swapPanTilt": false,
+    "homePosition": {
+      "pan": 127,
+      "tilt": 127
+    },
+    "tiltLimits": {
+      "min": 5,
+      "max": 250
+    }
+  },
+  "capabilities": {
+    "colorEngine": "wheel",
+    "hasPan": true,
+    "hasTilt": true,
+    "hasColorMixing": false,
+    "hasColorWheel": true,
+    "hasGobo": true,
+    "hasPrism": true,
+    "hasStrobe": true,
+    "hasDimmer": true,
+    "colorWheel": {
+      "colors": [
+        {
+          "dmx": 0,
+          "name": "White",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 255
+          },
+          "_key": "4d4f4164-f379-4b4a-8296-2b097c397761"
+        },
+        {
+          "dmx": 11,
+          "name": "Red",
+          "rgb": {
+            "r": 255,
+            "g": 0,
+            "b": 0
+          },
+          "_key": "222e08a5-8b82-47f4-97cc-89395659e97d"
+        },
+        {
+          "dmx": 21,
+          "name": "Yellow",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 0
+          },
+          "_key": "5446f25f-e96f-4b9b-8999-a5c991cd623c"
+        },
+        {
+          "dmx": 31,
+          "name": "Magenta",
+          "rgb": {
+            "r": 255,
+            "g": 0,
+            "b": 255
+          },
+          "_key": "3f0bde67-d329-4255-989a-af5011f40bef"
+        },
+        {
+          "dmx": 41,
+          "name": "Green",
+          "rgb": {
+            "r": 0,
+            "g": 255,
+            "b": 0
+          },
+          "_key": "d4ce596f-8772-49ba-9a02-d912ad87c39d"
+        },
+        {
+          "dmx": 51,
+          "name": "Blue",
+          "rgb": {
+            "r": 0,
+            "g": 0,
+            "b": 255
+          },
+          "_key": "47095f24-f699-4281-ac75-a5a3572af5c7"
+        },
+        {
+          "dmx": 61,
+          "name": "White",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 255
+          },
+          "_key": "a22e6535-3c78-414c-9d67-e7956a80c3ef"
+        },
+        {
+          "dmx": 71,
+          "name": "CTB (Cool)",
+          "rgb": {
+            "r": 200,
+            "g": 220,
+            "b": 255
+          },
+          "_key": "f63498b5-1fca-4127-8faa-24e8d4ec22dc"
+        },
+        {
+          "dmx": 81,
+          "name": "CTO (Warm)",
+          "rgb": {
+            "r": 255,
+            "g": 200,
+            "b": 150
+          },
+          "_key": "73895253-a700-487a-a575-8c58dc319ffa"
+        },
+        {
+          "dmx": 91,
+          "name": "Orange",
+          "rgb": {
+            "r": 255,
+            "g": 128,
+            "b": 0
+          },
+          "_key": "b25ec743-2107-499e-b6b5-1d90bc3a25f6"
+        },
+        {
+          "dmx": 101,
+          "name": "UV",
+          "rgb": {
+            "r": 170,
+            "g": 0,
+            "b": 255
+          },
+          "_key": "d4639bdb-98f0-447c-885b-edb07eec28a2"
+        },
+        {
+          "dmx": 111,
+          "name": "Cyan",
+          "rgb": {
+            "r": 0,
+            "g": 255,
+            "b": 255
+          },
+          "_key": "6a7cee7a-002c-494c-97a8-34f140ba0b00"
+        },
+        {
+          "dmx": 121,
+          "name": "CTO (Warm)",
+          "rgb": {
+            "r": 255,
+            "g": 200,
+            "b": 150
+          },
+          "_key": "698a8dbb-1178-4c59-ac29-87d5b11dff5a"
+        },
+        {
+          "dmx": 131,
+          "name": "Yellow",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 0
+          },
+          "_key": "7e9065f3-5a87-45d7-9559-b7857e12d89d"
+        },
+        {
+          "dmx": 141,
+          "name": "Magenta",
+          "rgb": {
+            "r": 255,
+            "g": 0,
+            "b": 255
+          },
+          "_key": "4f9183f5-72f2-4090-9bb9-4403d35c76c2"
+        }
+      ],
+      "allowsContinuousSpin": false,
+      "minChangeTimeMs": 450
+    },
+    "dimmerMin": 200,
+    "strobePersonality": {
+      "strobeOpenValue": 255,
+      "strobeRangeMin": 4,
+      "strobeRangeMax": 207
+    }
+  },
+  "nodeGraph": {
+    "version": "1.0.0",
+    "nodes": [],
+    "edges": [],
+    "meta": {
+      "createdAt": "2026-05-30T18:44:31.210Z",
+      "generatorWave": "WAVE-4548.2",
+      "autoMigrated": false,
+      "dmxFootprint": 22
+    }
+  },
+  "savedAt": "2026-05-30T23:28:39.813Z",
+  "wheels": {
+    "colors": [
+      {
+        "dmx": 0,
+        "name": "White",
+        "rgb": {
+          "r": 255,
+          "g": 255,
+          "b": 255
+        },
+        "_key": "4d4f4164-f379-4b4a-8296-2b097c397761"
+      },
+      {
+        "dmx": 11,
+        "name": "Red",
+        "rgb": {
+          "r": 255,
+          "g": 0,
+          "b": 0
+        },
+        "_key": "222e08a5-8b82-47f4-97cc-89395659e97d"
+      },
+      {
+        "dmx": 21,
+        "name": "Yellow",
+        "rgb": {
+          "r": 255,
+          "g": 255,
+          "b": 0
+        },
+        "_key": "5446f25f-e96f-4b9b-8999-a5c991cd623c"
+      },
+      {
+        "dmx": 31,
+        "name": "Magenta",
+        "rgb": {
+          "r": 255,
+          "g": 0,
+          "b": 255
+        },
+        "_key": "3f0bde67-d329-4255-989a-af5011f40bef"
+      },
+      {
+        "dmx": 41,
+        "name": "Green",
+        "rgb": {
+          "r": 0,
+          "g": 255,
+          "b": 0
+        },
+        "_key": "d4ce596f-8772-49ba-9a02-d912ad87c39d"
+      },
+      {
+        "dmx": 51,
+        "name": "Blue",
+        "rgb": {
+          "r": 0,
+          "g": 0,
+          "b": 255
+        },
+        "_key": "47095f24-f699-4281-ac75-a5a3572af5c7"
+      },
+      {
+        "dmx": 61,
+        "name": "White",
+        "rgb": {
+          "r": 255,
+          "g": 255,
+          "b": 255
+        },
+        "_key": "a22e6535-3c78-414c-9d67-e7956a80c3ef"
+      },
+      {
+        "dmx": 71,
+        "name": "CTB (Cool)",
+        "rgb": {
+          "r": 200,
+          "g": 220,
+          "b": 255
+        },
+        "_key": "f63498b5-1fca-4127-8faa-24e8d4ec22dc"
+      },
+      {
+        "dmx": 81,
+        "name": "CTO (Warm)",
+        "rgb": {
+          "r": 255,
+          "g": 200,
+          "b": 150
+        },
+        "_key": "73895253-a700-487a-a575-8c58dc319ffa"
+      },
+      {
+        "dmx": 91,
+        "name": "Orange",
+        "rgb": {
+          "r": 255,
+          "g": 128,
+          "b": 0
+        },
+        "_key": "b25ec743-2107-499e-b6b5-1d90bc3a25f6"
+      },
+      {
+        "dmx": 101,
+        "name": "UV",
+        "rgb": {
+          "r": 170,
+          "g": 0,
+          "b": 255
+        },
+        "_key": "d4639bdb-98f0-447c-885b-edb07eec28a2"
+      },
+      {
+        "dmx": 111,
+        "name": "Cyan",
+        "rgb": {
+          "r": 0,
+          "g": 255,
+          "b": 255
+        },
+        "_key": "6a7cee7a-002c-494c-97a8-34f140ba0b00"
+      },
+      {
+        "dmx": 121,
+        "name": "CTO (Warm)",
+        "rgb": {
+          "r": 255,
+          "g": 200,
+          "b": 150
+        },
+        "_key": "698a8dbb-1178-4c59-ac29-87d5b11dff5a"
+      },
+      {
+        "dmx": 131,
+        "name": "Yellow",
+        "rgb": {
+          "r": 255,
+          "g": 255,
+          "b": 0
+        },
+        "_key": "7e9065f3-5a87-45d7-9559-b7857e12d89d"
+      },
+      {
+        "dmx": 141,
+        "name": "Magenta",
+        "rgb": {
+          "r": 255,
+          "g": 0,
+          "b": 255
+        },
+        "_key": "4f9183f5-72f2-4090-9bb9-4403d35c76c2"
+      }
+    ]
+  },
+  "source": "user"
+}

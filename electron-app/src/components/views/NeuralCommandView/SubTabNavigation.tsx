@@ -12,6 +12,7 @@
  */
 
 import React, { useEffect, useCallback, memo } from 'react'
+import { useKeyMapStore } from '../../../stores/keyMapStore'
 // 🧠 WAVE 1195: Custom LuxIcons instead of emojis
 import { 
   SpectrumBarsIcon,   // SENSORY 🎛️
@@ -85,7 +86,10 @@ export const SubTabNavigation: React.FC<SubTabNavigationProps> = memo(({
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
       return
     }
-    
+
+    // Defer to KeyForge when armed — the operator may have mapped 1/2/3.
+    if (useKeyMapStore.getState().isArmed) return
+
     // Map shortcuts to tabs
     if (e.key === '1') onTabChange('sensory')
     if (e.key === '2') onTabChange('consciousness')

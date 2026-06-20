@@ -93,6 +93,7 @@ const BEAT_VISUAL_DECAY = 0.88 // per frame @ 60fps → ~130ms visible
 
 // ── Selection state ───────────────────────────────────────────────────────
 let selectedIds: Set<string> = new Set()
+let mutedFixtureIds: Set<string> = new Set()
 let hoveredId: string | null = null
 let lassoBounds: { startX: number; startY: number; endX: number; endY: number } | null = null
 let isLassoActive = false
@@ -287,6 +288,7 @@ function render(timestamp: number): void {
   // LAYER 4: SELECTION
   renderSelectionLayer(ctx as unknown as CanvasRenderingContext2D, canvasWidth, canvasHeight, smoothedFixtures, baseRadius, {
     selectedIds,
+    mutedFixtureIds,
     hoveredId,
     lassoBounds,
     animationPhase: (timestamp % 1000) / 1000,
@@ -535,11 +537,21 @@ self.onmessage = (e: MessageEvent<WorkerInboundMessage>) => {
 
     case 'SELECTION': {
       selectedIds = new Set(msg.selectedIds)
+      mutedFixtureIds = new Set(msg.mutedFixtureIds)
       hoveredId = msg.hoveredId
       // Lasso bounds are managed by the worker during mouse events
       // but can be externally set if needed
       if (msg.lassoBounds) {
         lassoBounds = msg.lassoBounds
+      }
+      // DEBUG: log which muted IDs are present in the fixture scaffold
+      if (mutedFixtureIds.size > 0) {
+        const fixtureIdSet = new Set(scaffoldFixtures.map((f: import('./hyperion-render.types').WorkerFixtureScaffold) => f.id))
+        const matched = [...mutedFixtureIds].filter(id => fixtureIdSet.has(id))
+        const missing = [...mutedFixtureIds].filter(id => !fixtureIdSet.has(id))
+        console.log(
+          `[Worker] muted=${mutedFixtureIds.size}, matched=${matched.length}, missing=[${missing.join(',')}]`
+        )
       }
       break
     }

@@ -280,15 +280,22 @@ const ActionPalette: React.FC<ActionPaletteProps> = ({
               const isArmed = pendingMappingAction === action.id && isLearnModeActive
 
               return (
-                <button
+                <div
                   key={action.id}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                   draggable
                   onDragStart={(e) => {
                     e.dataTransfer.setData('text/plain', action.id)
                     e.dataTransfer.effectAllowed = 'copy'
                   }}
                   onClick={() => onLearnAction(action.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      onLearnAction(action.id)
+                    }
+                  }}
                   title={`${action.label}\n• Click → Arm for Learn mode\n• Drag → Drop on a key to bind`}
                   style={{
                     width: '100%',
@@ -303,6 +310,7 @@ const ActionPalette: React.FC<ActionPaletteProps> = ({
                     gap: '12px',
                     cursor: 'grab',
                     textAlign: 'left',
+                    outline: 'none',
                   }}
                 >
                   <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
@@ -365,7 +373,7 @@ const ActionPalette: React.FC<ActionPaletteProps> = ({
                       {isArmed ? '⚡ Armed' : 'Learn'}
                     </button>
                   </div>
-                </button>
+                </div>
               )
             })}
             </div>

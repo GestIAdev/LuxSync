@@ -538,6 +538,7 @@ const KeyForgeView: React.FC = () => {
     clearLastMappingWarning,
     unbindKey,
     clearLayer,
+    clearAll,
     exportCurrentAsLoadout,
     importLoadout,
     resetToStadiumDefaults,
@@ -810,6 +811,29 @@ const KeyForgeView: React.FC = () => {
               }}
             >
               ↓ IMPORT
+            </button>
+
+            <button
+              onClick={() => {
+                if (window.confirm('¿Borrar TODOS los bindings y chords? Esta acción no se puede deshacer.')) {
+                  clearAll()
+                }
+              }}
+              title='Clear ALL bindings (blank slate)'
+              style={{
+                fontSize: '10px',
+                fontFamily: 'monospace',
+                letterSpacing: '0.08em',
+                color: '#fbbf24',
+                background: '#1a1500',
+                border: '1px solid #fbbf2450',
+                borderRadius: '4px',
+                padding: '3px 10px',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              ✕ CLEAR
             </button>
 
             <button

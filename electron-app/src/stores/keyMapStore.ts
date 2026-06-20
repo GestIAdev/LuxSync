@@ -285,14 +285,18 @@ export const useKeyMapStore = create<KeyMapState>()(
         const storageKey = bindingKey(layer, parsed.key)
         const current = get().bindings[storageKey]
 
+        // If slot is occupied by a DIFFERENT action, force-unbind it first.
+        // setMapping is the UI remapping path — the user explicitly wants to overwrite.
         if (current !== undefined && (
           current.actionId !== actionId
           || !sameRequiredMods(current.requiredMods, parsed.requiredMods)
         )) {
-          const warning = `[KeyForge] Collision rejected: ${formatKeyCombo(parsed.key, parsed.requiredMods)} is already bound to ${current.actionId}`
-          console.warn(warning)
-          set({ lastMappingWarning: warning })
-          return false
+          const nextBindings: Record<string, KeyBinding> = { ...get().bindings }
+          delete nextBindings[storageKey]
+          set({ bindings: nextBindings })
+          console.log(
+            `[KeyForge] ♻️ setMapping: freed ${layer}::${parsed.key} from ${current.actionId} → reassigning to ${actionId}`,
+          )
         }
 
         get().bindKey({

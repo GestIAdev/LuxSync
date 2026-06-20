@@ -482,7 +482,7 @@ export class HephaestusRuntime {
                     else {
                         fixtureTimeMs = Math.min(localElapsedMs, durationMs);
                     }
-                    this._emitTrackSample(track, fp.fixtureId, fixtureTimeMs, evaluator, paramName, intensity, isCustomThisClip, clipId);
+                    this._emitTrackSample(track, fp.fixtureId, fixtureTimeMs, evaluator, paramName, intensity, isCustomThisClip, clipId, track.zones);
                 }
                 continue;
             }
@@ -491,7 +491,7 @@ export class HephaestusRuntime {
             if (fixtureIds.length === 0)
                 continue;
             for (let fi = 0; fi < fixtureIds.length; fi++) {
-                this._emitTrackSample(track, fixtureIds[fi], baseClipTimeMs, evaluator, paramName, intensity, isCustomThisClip, clipId);
+                this._emitTrackSample(track, fixtureIds[fi], baseClipTimeMs, evaluator, paramName, intensity, isCustomThisClip, clipId, track.zones);
             }
         }
     }
@@ -502,7 +502,7 @@ export class HephaestusRuntime {
      * `tickWithPhase` y `tickLegacy`. La pista ya trae cacheado `valueType`
      * para evitar el lookup `curve.valueType` en hot-path.
      */
-    _emitTrackSample(track, fixtureId, timeMs, evaluator, paramName, intensity, isCustomThisClip, clipId) {
+    _emitTrackSample(track, fixtureId, timeMs, evaluator, paramName, intensity, isCustomThisClip, clipId, trackZones) {
         if (track.valueType === 'color') {
             const hsl = evaluator.getColorValue(paramName, timeMs);
             // Intensity modula lightness — preserva hue/sat (HSL standard heph: 0-100)
@@ -511,7 +511,7 @@ export class HephaestusRuntime {
             this._normRgbBuf.r = rgb.r / 255;
             this._normRgbBuf.g = rgb.g / 255;
             this._normRgbBuf.b = rgb.b / 255;
-            this.writeOutput(fixtureId, 'all', paramName, 0, rgb, undefined, 0, this._normRgbBuf, isCustomThisClip, clipId);
+            this.writeOutput(fixtureId, 'all', paramName, 0, rgb, undefined, 0, this._normRgbBuf, isCustomThisClip, clipId, trackZones);
         }
         else {
             const rawValue = evaluator.getValue(paramName, timeMs);
@@ -520,7 +520,7 @@ export class HephaestusRuntime {
             const fine = (paramName === 'pan' || paramName === 'tilt')
                 ? scaleToDMX16(withIntensity).fine
                 : undefined;
-            this.writeOutput(fixtureId, 'all', paramName, scaledValue, undefined, fine, withIntensity, undefined, isCustomThisClip, clipId);
+            this.writeOutput(fixtureId, 'all', paramName, scaledValue, undefined, fine, withIntensity, undefined, isCustomThisClip, clipId, trackZones);
         }
     }
     /**
@@ -550,6 +550,7 @@ export class HephaestusRuntime {
                 normalizedRgb: { r: 0, g: 0, b: 0 },
                 isCustomClip: false,
                 clipId: undefined,
+                trackZones: undefined,
             };
         }
         this.outputCapacity = newCapacity;
@@ -559,7 +560,7 @@ export class HephaestusRuntime {
      * Mutates in-place — zero allocation in the hot path.
      * Auto-grows if capacity estimate was wrong (rare).
      */
-    writeOutput(fixtureId, zone, parameter, value, rgb, fine, normalizedValue, normalizedRgb, isCustomClip, clipId) {
+    writeOutput(fixtureId, zone, parameter, value, rgb, fine, normalizedValue, normalizedRgb, isCustomClip, clipId, trackZones) {
         // Auto-grow if needed (rare — only if capacity estimate was wrong)
         if (this.outputCursor >= this.outputCapacity) {
             this.ensureOutputCapacity(this.outputCursor + 64);
@@ -573,6 +574,7 @@ export class HephaestusRuntime {
         out.normalizedValue = normalizedValue ?? 0;
         out.isCustomClip = isCustomClip ?? false;
         out.clipId = clipId;
+        out.trackZones = trackZones;
         // 🩹 WAVE 4995: Protect Memory Reference
         // Only copy color values if the track actually provides them.
         // Do not destroy the pre-allocated references when processing non-color params.
@@ -674,6 +676,11 @@ export class HephaestusRuntime {
             for (let i = 0; i < clip.tracks.length; i++) {
                 const t = clip.tracks[i];
                 const fixtureIds = resolveZonesToFixtures(t.zones);
+                // 🧩 DIAGNÓSTICO COMPOUND FIXTURE (temporal)
+                const hasTungsten = fixtureIds.some(id => id === 'fixture-1781916704143');
+                if (hasTungsten) {
+                    console.log(`[HephaestusRuntime._buildResolvedTracks] 🧩 track=${t.id} param=${t.paramId} zones=[${(t.zones ?? []).join(',')}] | Tungsten EN fixtureIds (${fixtureIds.length} total)`);
+                }
                 // ⚒️ WAVE 4859: `phaseConfig` es el shorthand canónico directo en el
                 // track (formato nativo .lfx). `selector.phase` es la variante via
                 // FixtureSelector (legado). Se da prioridad a `phaseConfig` y se usa
@@ -682,7 +689,7 @@ export class HephaestusRuntime {
                 if (trackPhase != null && topLevelPhaseConfig == null) {
                     topLevelPhaseConfig = trackPhase;
                 }
-                tracks.push(this._buildResolvedTrack(t.id, t.paramId, t.curve, t.blendMode, fixtureIds, trackPhase, durationMs));
+                tracks.push(this._buildResolvedTrack(t.id, t.paramId, t.curve, t.blendMode, fixtureIds, trackPhase, durationMs, t.zones));
             }
         }
         else {
@@ -709,7 +716,7 @@ export class HephaestusRuntime {
      * Crea un `CurveEvaluator` con UNA sola curva (Map de tamaño 1) y, si hay
      * `phaseConfig + fixtureIds`, calcula la distribución de fase per-fixture.
      */
-    _buildResolvedTrack(id, paramId, curve, blendMode, fixtureIds, phaseConfig, durationMs) {
+    _buildResolvedTrack(id, paramId, curve, blendMode, fixtureIds, phaseConfig, durationMs, zones) {
         const singleCurveMap = new Map([[paramId, curve]]);
         const evaluator = new CurveEvaluator(singleCurveMap, durationMs);
         let fixturePhases = null;
@@ -724,6 +731,7 @@ export class HephaestusRuntime {
             fixtureIds,
             fixturePhases,
             blendMode: blendMode ?? _defaultBlendModeFor(paramId),
+            zones,
         };
     }
     /**

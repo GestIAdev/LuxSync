@@ -88,6 +88,10 @@
       {
         "from": "dist-electron/phantomWorker.html",
         "to": "phantomWorker.html"
+      },
+      {
+        "from": "src/core/arsenal/builtins",
+        "to": "builtins"
       }
     ],
     "win": {

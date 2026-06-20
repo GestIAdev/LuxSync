@@ -229,16 +229,41 @@ export function resolveZone(zone, fixtures) {
         return fixtures.filter(f => f.enabled !== false &&
             (isLeft ? (f.position?.x ?? 0) < 0 : (f.position?.x ?? 0) >= 0)).map(f => f.id);
     }
-    // Composite zones (string match + WAVE 4951 dynamic fallback)
+    // Composite zones (string match + WAVE 4951 dynamic fallback + compound fixture channel zones)
     const compositeTargets = COMPOSITE_ZONES[z];
     if (compositeTargets) {
-        return fixtures.filter(f => f.enabled !== false &&
-            (compositeTargets.includes(normalizeZone(f.zone)) ||
-                DYNAMIC_COMPOSITE_RESOLVERS[z]?.(f) === true)).map(f => f.id);
+        return fixtures.filter(f => {
+            if (f.enabled === false)
+                return false;
+            if (compositeTargets.includes(normalizeZone(f.zone)))
+                return true;
+            if (DYNAMIC_COMPOSITE_RESOLVERS[z]?.(f) === true)
+                return true;
+            // 🧩 COMPOUND FIXTURE: check internal channel zones
+            if (f.channelZones && f.channelZones.length > 0) {
+                for (let i = 0; i < f.channelZones.length; i++) {
+                    if (compositeTargets.includes(normalizeZone(f.channelZones[i])))
+                        return true;
+                }
+            }
+            return false;
+        }).map(f => f.id);
     }
-    // Direct canonical match
-    return fixtures.filter(f => f.enabled !== false &&
-        normalizeZone(f.zone) === z).map(f => f.id);
+    // Direct canonical match + compound fixture channel-zone fallback
+    return fixtures.filter(f => {
+        if (f.enabled === false)
+            return false;
+        if (normalizeZone(f.zone) === z)
+            return true;
+        // 🧩 COMPOUND FIXTURE: parent zone doesn't match — check internal channel zones
+        if (f.channelZones && f.channelZones.length > 0) {
+            for (let i = 0; i < f.channelZones.length; i++) {
+                if (normalizeZone(f.channelZones[i]) === z)
+                    return true;
+            }
+        }
+        return false;
+    }).map(f => f.id);
 }
 /**
  * Resolve an array of zone tags to fixture IDs using the two-tier
@@ -312,11 +337,24 @@ export function resolveZoneTags(tags, fixtures) {
                 }
                 continue;
             }
-            // Direct canonical match
+            // Direct canonical match (parent zone) + compound fixture channel-zone fallback
             for (const f of enabledFixtures) {
-                if (!poolIds.has(f.id) && normalizeZone(f.zone) === t) {
+                if (poolIds.has(f.id))
+                    continue;
+                if (normalizeZone(f.zone) === t) {
                     poolIds.add(f.id);
                     pool.push(f);
+                    continue;
+                }
+                // 🧩 COMPOUND FIXTURE: check internal channel zones
+                if (f.channelZones && f.channelZones.length > 0) {
+                    for (let ci = 0; ci < f.channelZones.length; ci++) {
+                        if (normalizeZone(f.channelZones[ci]) === t) {
+                            poolIds.add(f.id);
+                            pool.push(f);
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -329,6 +367,11 @@ export function resolveZoneTags(tags, fixtures) {
         else if (mod === 'all-right') {
             pool = pool.filter(f => (f.position?.x ?? 0) >= 0);
         }
+    }
+    // 🧩 DIAGNÓSTICO COMPOUND FIXTURE (temporal — remover después de verificación)
+    const compoundInPool = pool.find(f => f.channelZones && f.channelZones.length > 0);
+    if (compoundInPool) {
+        console.log(`[ZoneMapper.resolveZoneTags] 🧩 compound fixture=${compoundInPool.id} EN POOL para tags=[${tags.join(',')}] | channelZones=[${(compoundInPool.channelZones ?? []).join(',')}]`);
     }
     return pool.map(f => f.id);
 }
@@ -373,7 +416,18 @@ export function fixtureMatchesZone(fixtureZone, targetZone, positionX, fixture) 
         return false;
     }
     // Direct canonical match
-    return fz === tz;
+    if (fz === tz)
+        return true;
+    // 🧩 COMPOUND FIXTURE: parent zone doesn't match — check internal channel zones.
+    // A compound fixture (e.g. Tungsten with zone='unassigned') can still respond
+    // to a target zone if at least one of its internal channels is assigned to it.
+    if (fixture?.channelZones && fixture.channelZones.length > 0) {
+        for (let i = 0; i < fixture.channelZones.length; i++) {
+            if (normalizeZone(fixture.channelZones[i]) === tz)
+                return true;
+        }
+    }
+    return false;
 }
 /**
  * Get all active (non-unassigned) canonical zones from a fixture inventory.

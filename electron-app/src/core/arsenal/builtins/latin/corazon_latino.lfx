@@ -237,7 +237,8 @@
         "id": "heat-movers-color",
         "paramId": "color",
         "zones": [
-          "all-movers"
+          "all-movers",
+          "air"
         ],
         "blendMode": "replace",
         "curve": {
@@ -265,7 +266,8 @@
         "id": "heat-movers-intensity",
         "paramId": "intensity",
         "zones": [
-          "all-movers"
+          "all-movers",
+          "air"
         ],
         "blendMode": "replace",
         "curve": {

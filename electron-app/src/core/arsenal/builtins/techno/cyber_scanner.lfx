@@ -65,7 +65,8 @@
         "id": "scanner-intensity-kitt",
         "paramId": "intensity",
         "zones": [
-          "all-movers"
+          "all-movers",
+          "air"
         ],
         "blendMode": "replace",
         "phaseConfig": {
@@ -79,16 +80,56 @@
           "valueType": "number",
           "defaultValue": 0,
           "keyframes": [
-            { "timeMs": 0, "value": 0, "interpolation": "hold" },
-            { "timeMs": 40, "value": 1, "interpolation": "linear" },
-            { "timeMs": 540, "value": 0, "interpolation": "linear" }, 
-            { "timeMs": 980, "value": 0, "interpolation": "hold" },
-            { "timeMs": 1120, "value": 1, "interpolation": "linear" },
-            { "timeMs": 1620, "value": 0, "interpolation": "linear" }, 
-            { "timeMs": 1960, "value": 0, "interpolation": "hold" },
-            { "timeMs": 2100, "value": 1, "interpolation": "linear" },
-            { "timeMs": 2600, "value": 0, "interpolation": "linear" }, 
-            { "timeMs": 3000, "value": 0, "interpolation": "hold" }
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 40,
+              "value": 1,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 540,
+              "value": 0,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 980,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1120,
+              "value": 1,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 1620,
+              "value": 0,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 1960,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 2100,
+              "value": 1,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2600,
+              "value": 0,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 3000,
+              "value": 0,
+              "interpolation": "hold"
+            }
           ]
         }
       },
@@ -96,7 +137,8 @@
         "id": "scanner-color",
         "paramId": "color",
         "zones": [
-          "all-movers"
+          "all-movers",
+          "air"
         ],
         "blendMode": "replace",
         "curve": {
@@ -124,7 +166,9 @@
         "id": "scanner-blackout-pars",
         "paramId": "intensity",
         "zones": [
-          "all-pars"
+          "all-pars",
+          "ambient",
+          "flash"
         ],
         "blendMode": "replace",
         "curve": {

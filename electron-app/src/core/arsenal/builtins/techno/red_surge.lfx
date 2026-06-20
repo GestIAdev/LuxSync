@@ -66,7 +66,9 @@
         "id": "par-strobe-escalate",
         "paramId": "strobeRate",
         "zones": [
-          "all-pars"
+          "all-pars",
+          "ambient",
+          "flash"
         ],
         "curve": {
           "paramId": "strobeRate",
@@ -96,7 +98,9 @@
         "id": "par-red-ignition",
         "paramId": "color",
         "zones": [
-          "all-pars"
+          "all-pars",
+          "ambient",
+          "flash"
         ],
         "curve": {
           "paramId": "color",
@@ -142,7 +146,9 @@
         "id": "par-intensity",
         "paramId": "intensity",
         "zones": [
-          "all-pars"
+          "all-pars",
+          "ambient",
+          "flash"
         ],
         "blendMode": "replace",
         "curve": {
@@ -162,7 +168,8 @@
         "id": "movers-blackout",
         "paramId": "intensity",
         "zones": [
-          "all-movers"
+          "all-movers",
+          "air"
         ],
         "blendMode": "replace",
         "curve": {

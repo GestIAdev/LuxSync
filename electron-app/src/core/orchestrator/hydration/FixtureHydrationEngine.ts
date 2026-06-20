@@ -313,8 +313,11 @@ export class FixtureHydrationEngine {
       try {
         let definition = ctx.profileResolver.resolveFixtureDefinitionForAether(fixture)
 
-        if ((fixture as any).forgeGraph && definition) {
-          (definition as any).nodeGraph = (fixture as any).forgeGraph
+        // 🧩 COMPOUND FIXTURE: ensure internal channel graph reaches NodeExtractionPipeline.
+        // The fixture may declare its wiring via forgeGraph (frontend) or nodeGraph (profile JSON).
+        const fixtureGraph = (fixture as any).forgeGraph ?? (fixture as any).nodeGraph
+        if (fixtureGraph && definition) {
+          (definition as any).nodeGraph = fixtureGraph
           console.log(`[FixtureHydrationEngine] 🔧 WAVE 4735.7: V2 bridge — injected forgeGraph → nodeGraph for fixture "${fixture.id}"`)
         }
 
@@ -337,6 +340,7 @@ export class FixtureHydrationEngine {
             physics: fixture.physics,
             capabilities: fixture.capabilities,
             wheels: fixture.wheels,
+            nodeGraph: fixtureGraph, // 🧩 COMPOUND FIXTURE: preserve internal channel graph
           } as FixtureDefinition
           console.warn(
             `[FixtureHydrationEngine] ⚡ WAVE 4610-B: Fixture "${fixture.id}" sin perfil resuelto — inyectando definición mínima (dimmer)`,
@@ -345,7 +349,7 @@ export class FixtureHydrationEngine {
 
         const fixtureV2 = ctx.profileResolver.buildFixtureV2ForAether(fixture, definition)
         const deviceDef = pipeline.extract(definition, fixtureV2)
-        const forgeGraph: IForgeNodeGraph | undefined = fixture.forgeGraph ?? undefined
+        const forgeGraph: IForgeNodeGraph | undefined = fixture.forgeGraph ?? (fixture as any).nodeGraph ?? undefined
         staged.push({ deviceDef, forgeGraph })
       } catch (err) {
         console.warn(
@@ -374,6 +378,13 @@ export class FixtureHydrationEngine {
         `[FixtureHydrationEngine] ✅ WAVE 4674: Fixture "${deviceDef.deviceId}" ` +
         `→ Aether @ dmx:${deviceDef.dmxAddress}/u${deviceDef.universe} | nodes: [${nodeIds}]`,
       )
+
+      // 🧩 DIAGNÓSTICO COMPOUND FIXTURE: verificar zonas del Tungsten tras registro
+      const devId = String(deviceDef.deviceId)
+      if (devId === 'fixture-1781916704143') {
+        const zones = deviceDef.nodes.map(n => `${n.nodeId}→${(n as any).zoneId ?? '?'}`).join(', ')
+        console.log(`[FixtureHydrationEngine] 🧩 Tungsten compound zones: [${zones}]`)
+      }
     }
 
     ctx.zoneNodeRouter = new ZoneNodeRouter(ctx.aetherGraph)

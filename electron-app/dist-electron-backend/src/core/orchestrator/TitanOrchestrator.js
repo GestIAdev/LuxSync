@@ -850,14 +850,39 @@ export class TitanOrchestrator {
      * resolution (all-movers, all-pars via capability, not just zone tags).
      */
     getFixturesForZoneMapping() {
-        return this.fixtures.map((f) => ({
-            id: f.id,
-            zone: f.zone || '',
-            position: f.position,
-            enabled: f.enabled !== false,
-            type: this.profileResolver.normalizeFixtureType(f.type),
-            capabilities: f.capabilities,
-        }));
+        return this.fixtures.map((f) => {
+            // 🧩 COMPOUND FIXTURE SUPPORT: derive channel-level zones from NodeGraph.
+            // For fixtures whose parent zone is 'unassigned' (or any zone), each
+            // ICapabilityNode carries its own zoneId from the Forge declaration
+            // (e.g. aetherZone: 'ambient', 'flash', 'air'). We collect the unique
+            // set so ZoneMapper can match compound fixtures to their internal zones.
+            let channelZones;
+            const deviceNodes = this._aetherGraph.getDeviceNodes(f.id);
+            if (deviceNodes.length > 0) {
+                const zoneSet = new Set();
+                for (let i = 0; i < deviceNodes.length; i++) {
+                    const node = this._aetherGraph.getNodeData(deviceNodes[i]);
+                    if (node?.zoneId)
+                        zoneSet.add(String(node.zoneId));
+                }
+                if (zoneSet.size > 0)
+                    channelZones = Object.freeze(Array.from(zoneSet));
+            }
+            const result = {
+                id: f.id,
+                zone: f.zone || '',
+                position: f.position,
+                enabled: f.enabled !== false,
+                type: this.profileResolver.normalizeFixtureType(f.type),
+                capabilities: f.capabilities,
+                channelZones,
+            };
+            // 🧩 DIAGNÓSTICO COMPOUND FIXTURE (temporal — remover después de verificación)
+            if (channelZones && channelZones.length > 0) {
+                console.log(`[TitanOrchestrator.getFixturesForZoneMapping] 🧩 fixtureId=${f.id} | zone=${result.zone} | type=${result.type} | channelZones=[${channelZones.join(',')}] | deviceNodeCount=${deviceNodes.length}`);
+            }
+            return result;
+        });
     }
     /**
      * WAVE 4703: Zone ID â†’ fixture IDs resolution â€” replaces masterArbiter.getFixtureIdsByZone().

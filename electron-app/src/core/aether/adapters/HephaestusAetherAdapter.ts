@@ -100,25 +100,69 @@ export class HephaestusAetherAdapter {
       // Defaults to 'absolute' for clips without a registry entry (legacy behaviour).
       const behavior = this._resolveSpatialBehavior(output.clipId)
 
-      // Find the node for this fixture that belongs to the target family.
+      // 🧩 COMPOUND FIXTURE ROUTING: collect all nodes of this family, then route
+      // zone-aware for compound fixtures (N nodes/family) or direct for simple (1 node/family).
       let _foundNode = false
+      const familyNodeIds: NodeId[] = []
       for (let j = 0; j < nodeIds.length; j++) {
-        const nodeId = nodeIds[j]
-        const nodeData = this._graph.getNodeData(nodeId)
-        if (!nodeData || nodeData.family !== family) continue
+        const nd = this._graph.getNodeData(nodeIds[j])
+        if (nd && nd.family === family) familyNodeIds.push(nodeIds[j])
+      }
 
-        // 🩹 WAVE 4995: Retrieve intent from map or acquire new
+      if (familyNodeIds.length === 1) {
+        // Simple fixture: always route to the single family node (backward compat).
+        const nodeId = familyNodeIds[0]
         let intent = this._frameIntentMap.get(nodeId)
         if (!intent) {
           intent = this._acquireIntent(nodeId)
           this._frameIntentMap.set(nodeId, intent)
           this._frameIntents.push(intent as INodeIntent)
         }
-        
         _populateValues(intent.values, param, output, behavior)
         _foundNode = true
-        // Only one node per family per fixture — stop searching
-        break
+      } else if (familyNodeIds.length > 1) {
+        // Compound fixture: multiple nodes of the same family.
+        // Try zone-aware routing: match node.zoneId against track zones.
+        const trackZones = output.trackZones
+        if (trackZones && trackZones.length > 0) {
+          for (let j = 0; j < familyNodeIds.length; j++) {
+            const nodeId = familyNodeIds[j]
+            const nd = this._graph.getNodeData(nodeId)!
+            const nodeZone = (nd as any).zoneId as string | undefined
+            if (nodeZone && _nodeZoneInTrackZones(nodeZone, trackZones)) {
+              let intent = this._frameIntentMap.get(nodeId)
+              if (!intent) {
+                intent = this._acquireIntent(nodeId)
+                this._frameIntentMap.set(nodeId, intent)
+                this._frameIntents.push(intent as INodeIntent)
+              }
+              _populateValues(intent.values, param, output, behavior)
+              _foundNode = true
+            }
+          }
+        }
+        // Fallback: no zone info or no zone match.
+        // 🧩 WAVE 5017: v2.1 compound fallback — avoid flash-node flood on clips
+        // without trackZones. If the clip is NOT a strobe clip, skip flash nodes.
+        if (!_foundNode) {
+          const isStrobeClip = output.clipId
+            ? (this._registry.getEntry(output.clipId)?.simMeta?.isStrobe ?? false)
+            : false
+          for (let j = 0; j < familyNodeIds.length; j++) {
+            const nodeId = familyNodeIds[j]
+            const nd = this._graph.getNodeData(nodeId)!
+            const nodeZone = (nd as any).zoneId as string | undefined
+            if (!isStrobeClip && nodeZone === 'flash') continue
+            let intent = this._frameIntentMap.get(nodeId)
+            if (!intent) {
+              intent = this._acquireIntent(nodeId)
+              this._frameIntentMap.set(nodeId, intent)
+              this._frameIntents.push(intent as INodeIntent)
+            }
+            _populateValues(intent.values, param, output, behavior)
+            _foundNode = true
+          }
+        }
       }
 
       // ⚡ WAVE 4917: COLOR-ONLY BRIGHTNESS FALLBACK
@@ -346,4 +390,18 @@ function _populateValues(
 function _toOffset(v: number): number {
   const o = 2 * v - 1
   return o < -1 ? -1 : o > 1 ? 1 : o
+}
+
+/**
+ * 🧩 COMPOUND ROUTING: checks if a node's canonical zoneId matches any of the
+ * track's source zones. Only canonical zones (ambient, flash, air, ...) are
+ * used here — composite zones like 'all-pars' do NOT appear as node zoneIds
+ * so no expansion is needed.
+ */
+function _nodeZoneInTrackZones(nodeZone: string, trackZones: readonly string[]): boolean {
+  const nz = nodeZone.toLowerCase().trim()
+  for (let i = 0; i < trackZones.length; i++) {
+    if (trackZones[i].toLowerCase().trim() === nz) return true
+  }
+  return false
 }

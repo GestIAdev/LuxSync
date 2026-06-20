@@ -64,7 +64,8 @@
         "id": "titans-mover-color",
         "paramId": "color",
         "zones": [
-          "all-movers"
+          "all-movers",
+          "air"
         ],
         "blendMode": "replace",
         "curve": {
@@ -101,7 +102,8 @@
         "id": "titans-mover-intensity",
         "paramId": "intensity",
         "zones": [
-          "all-movers"
+          "all-movers",
+          "air"
         ],
         "blendMode": "replace",
         "curve": {
@@ -137,7 +139,9 @@
         "id": "titans-pars-strobe",
         "paramId": "strobeRate",
         "zones": [
-          "all-pars"
+          "all-pars",
+          "ambient",
+          "flash"
         ],
         "blendMode": "replace",
         "curve": {
@@ -162,7 +166,9 @@
         "id": "titans-pars-intensity",
         "paramId": "intensity",
         "zones": [
-          "all-pars"
+          "all-pars",
+          "ambient",
+          "flash"
         ],
         "blendMode": "replace",
         "curve": {

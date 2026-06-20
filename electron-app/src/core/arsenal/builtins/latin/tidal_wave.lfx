@@ -5,22 +5,59 @@
     "name": "Tidal Wave (Golden Bounce)",
     "author": "LuxSync Factory",
     "category": "composite",
-    "tags": ["wave", "gold", "latino", "sweep", "ambient"],
-    "vibeCompat": ["fiesta-latina"],
-    "spatialZones": ["movers-left", "front", "floor", "ambient", "air", "back", "movers-right"],
+    "tags": [
+      "wave",
+      "gold",
+      "latino",
+      "sweep",
+      "ambient"
+    ],
+    "vibeCompat": [
+      "fiesta-latina"
+    ],
+    "spatialZones": [
+      "movers-left",
+      "front",
+      "floor",
+      "ambient",
+      "air",
+      "back",
+      "movers-right"
+    ],
     "durationMs": 6000,
     "effectType": "heph_custom",
     "cognitiveDNA": {
-      "genome": { "aggression": 0.55, "chaos": 0.5, "organicity": 0.40 },
+      "genome": {
+        "aggression": 0.55,
+        "chaos": 0.5,
+        "organicity": 0.4
+      },
       "textureAffinity": "clean",
-      "compatibleVibes": ["latino-organic"],
-      "validSections": ["intro", "breakdown", "active", "outro"],
-      "energyZone": { "min": "gentle", "max": "active" },
-      "aggressionRange": { "min": 0.3, "max": 0.7 },
+      "compatibleVibes": [
+        "latino-organic"
+      ],
+      "validSections": [
+        "intro",
+        "breakdown",
+        "active",
+        "outro"
+      ],
+      "energyZone": {
+        "min": "gentle",
+        "max": "active"
+      },
+      "aggressionRange": {
+        "min": 0.3,
+        "max": 0.7
+      },
       "spatialBehavior": "absolute"
     },
     "simulationMeta": {
-      "beautyWeights": { "base": 0.75, "energyMultiplier": 1.05, "vibeBonus": 0.1 },
+      "beautyWeights": {
+        "base": 0.75,
+        "energyMultiplier": 1.05,
+        "vibeBonus": 0.1
+      },
       "gpuCost": 0.45,
       "fatigueImpact": 0.05,
       "minDurationMs": 6000,
@@ -28,92 +65,277 @@
       "isStrobe": false,
       "isDivineCandidate": false,
       "isHeavyCandidate": false,
-      "zScoreGuards": { "requireRising": false, "minimumZ": null, "minimumEnergy": null }
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": null,
+        "minimumEnergy": null
+      }
     },
     "tracks": [
       {
         "id": "wave-gold-master",
         "paramId": "color",
-        "zones": ["all-pars", "all-movers", "ambient", "air"],
+        "zones": [
+          "all-pars",
+          "all-movers",
+          "ambient",
+          "air",
+          "flash"
+        ],
         "blendMode": "replace",
         "curve": {
           "paramId": "color",
           "valueType": "color",
-          "defaultValue": { "h": 42, "s": 100, "l": 50 },
+          "defaultValue": {
+            "h": 42,
+            "s": 100,
+            "l": 50
+          },
           "keyframes": [
-            { "timeMs": 0, "value": { "h": 42, "s": 100, "l": 50 }, "interpolation": "hold" }
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 42,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            }
           ]
         }
       },
       {
         "id": "wave-left",
         "paramId": "intensity",
-        "zones": ["movers-left"],
+        "zones": [
+          "movers-left"
+        ],
         "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
           "defaultValue": 0,
           "keyframes": [
-            { "timeMs": 0, "value": 1.0, "interpolation": "bezier", "bezierHandles": [0.5, 0, 0.5, 1] },
-            { "timeMs": 1000, "value": 0, "interpolation": "hold" },
-            { "timeMs": 5000, "value": 0, "interpolation": "bezier", "bezierHandles": [0.5, 0, 0.5, 1] },
-            { "timeMs": 6000, "value": 1.0, "interpolation": "hold" }
+            {
+              "timeMs": 0,
+              "value": 1,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 1000,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 5000,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 6000,
+              "value": 1,
+              "interpolation": "hold"
+            }
           ]
         }
       },
       {
         "id": "wave-front-floor",
         "paramId": "intensity",
-        "zones": ["front", "floor"],
+        "zones": [
+          "front",
+          "floor"
+        ],
         "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
           "defaultValue": 0,
           "keyframes": [
-            { "timeMs": 0, "value": 0, "interpolation": "bezier", "bezierHandles": [0.5, 0, 0.5, 1] },
-            { "timeMs": 1000, "value": 1.0, "interpolation": "bezier", "bezierHandles": [0.5, 0, 0.5, 1] },
-            { "timeMs": 2000, "value": 0, "interpolation": "hold" },
-            { "timeMs": 4000, "value": 0, "interpolation": "bezier", "bezierHandles": [0.5, 0, 0.5, 1] },
-            { "timeMs": 5000, "value": 1.0, "interpolation": "bezier", "bezierHandles": [0.5, 0, 0.5, 1] },
-            { "timeMs": 6000, "value": 0, "interpolation": "hold" }
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 1000,
+              "value": 1,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 2000,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 4000,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 5000,
+              "value": 1,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 6000,
+              "value": 0,
+              "interpolation": "hold"
+            }
           ]
         }
       },
       {
         "id": "wave-ambient-air",
         "paramId": "intensity",
-        "zones": ["ambient", "air"],
+        "zones": [
+          "ambient",
+          "air"
+        ],
         "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
           "defaultValue": 0,
           "keyframes": [
-            { "timeMs": 0, "value": 0, "interpolation": "hold" },
-            { "timeMs": 1000, "value": 0, "interpolation": "bezier", "bezierHandles": [0.5, 0, 0.5, 1] },
-            { "timeMs": 2000, "value": 1.0, "interpolation": "bezier", "bezierHandles": [0.5, 0, 0.5, 1] },
-            { "timeMs": 3000, "value": 0, "interpolation": "bezier", "bezierHandles": [0.5, 0, 0.5, 1] },
-            { "timeMs": 4000, "value": 1.0, "interpolation": "bezier", "bezierHandles": [0.5, 0, 0.5, 1] },
-            { "timeMs": 5000, "value": 0, "interpolation": "hold" }
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1000,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 2000,
+              "value": 1,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 3000,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 4000,
+              "value": 1,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 5000,
+              "value": 0,
+              "interpolation": "hold"
+            }
           ]
         }
       },
       {
         "id": "wave-back-right",
         "paramId": "intensity",
-        "zones": ["back", "movers-right"],
+        "zones": [
+          "back",
+          "movers-right"
+        ],
         "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
           "defaultValue": 0,
           "keyframes": [
-            { "timeMs": 0, "value": 0, "interpolation": "hold" },
-            { "timeMs": 2000, "value": 0, "interpolation": "bezier", "bezierHandles": [0.5, 0, 0.5, 1] },
-            { "timeMs": 3000, "value": 1.0, "interpolation": "bezier", "bezierHandles": [0.5, 0, 0.5, 1] },
-            { "timeMs": 4000, "value": 0, "interpolation": "hold" }
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 2000,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 3000,
+              "value": 1,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 4000,
+              "value": 0,
+              "interpolation": "hold"
+            }
           ]
         }
       }

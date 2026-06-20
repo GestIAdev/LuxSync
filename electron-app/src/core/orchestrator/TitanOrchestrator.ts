@@ -1114,15 +1114,41 @@ export class TitanOrchestrator {
    * ðŸŒŠ WAVE 4951: Includes fixture type + capabilities for dynamic composite zone
    * resolution (all-movers, all-pars via capability, not just zone tags).
    */
-  getFixturesForZoneMapping(): Array<{ id: string; zone: string; position?: { x: number }; enabled?: boolean; type?: string; capabilities?: { hasMovementChannels?: boolean } }> {
-    return this.fixtures.map((f: any) => ({
-      id: f.id as string,
-      zone: (f.zone as string) || '',
-      position: f.position as { x: number } | undefined,
-      enabled: (f as any).enabled !== false,
-      type: this.profileResolver.normalizeFixtureType(f.type),
-      capabilities: f.capabilities,
-    }))
+  getFixturesForZoneMapping(): Array<{ id: string; zone: string; position?: { x: number }; enabled?: boolean; type?: string; capabilities?: { hasMovementChannels?: boolean }; channelZones?: readonly string[] }> {
+    return this.fixtures.map((f: any) => {
+      // 🧩 COMPOUND FIXTURE SUPPORT: derive channel-level zones from NodeGraph.
+      // For fixtures whose parent zone is 'unassigned' (or any zone), each
+      // ICapabilityNode carries its own zoneId from the Forge declaration
+      // (e.g. aetherZone: 'ambient', 'flash', 'air'). We collect the unique
+      // set so ZoneMapper can match compound fixtures to their internal zones.
+      let channelZones: readonly string[] | undefined
+      const deviceNodes = this._aetherGraph.getDeviceNodes(f.id as string)
+      if (deviceNodes.length > 0) {
+        const zoneSet = new Set<string>()
+        for (let i = 0; i < deviceNodes.length; i++) {
+          const node = this._aetherGraph.getNodeData(deviceNodes[i])
+          if (node?.zoneId) zoneSet.add(String(node.zoneId))
+        }
+        if (zoneSet.size > 0) channelZones = Object.freeze(Array.from(zoneSet))
+      }
+
+      const result = {
+        id: f.id as string,
+        zone: (f.zone as string) || '',
+        position: f.position as { x: number } | undefined,
+        enabled: (f as any).enabled !== false,
+        type: this.profileResolver.normalizeFixtureType(f.type),
+        capabilities: f.capabilities,
+        channelZones,
+      }
+
+      // 🧩 DIAGNÓSTICO COMPOUND FIXTURE (temporal — remover después de verificación)
+      if (channelZones && channelZones.length > 0) {
+        console.log(`[TitanOrchestrator.getFixturesForZoneMapping] 🧩 fixtureId=${f.id} | zone=${result.zone} | type=${result.type} | channelZones=[${channelZones.join(',')}] | deviceNodeCount=${deviceNodes.length}`)
+      }
+
+      return result
+    })
   }
 
   /**

@@ -667,7 +667,7 @@
           "channelName": "Stainning dimmer",
           "cellLabel": "Wash Color",
           "defaultDmxValue": 0,
-          "aetherNodeId": "wash-color",
+          "aetherNodeId": "wash-impact",
           "aetherZone": "ambient"
         },
         "uiPosition": {
@@ -725,7 +725,7 @@
           "channelName": "Stainning strobe",
           "cellLabel": "Wash Color",
           "defaultDmxValue": 0,
-          "aetherNodeId": "wash-color",
+          "aetherNodeId": "wash-impact",
           "aetherZone": "ambient"
         },
         "uiPosition": {

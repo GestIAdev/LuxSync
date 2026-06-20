@@ -415,6 +415,9 @@ export class NodeExtractionPipeline {
                     : node);
             }
         }
+        // 🧩 DIAGNÓSTICO COMPOUND FIXTURE: log zone assignments for this device
+        const zoneMap = nodes.map(n => `${n.nodeId}→${n.zoneId ?? '?'}`).join(', ');
+        console.log(`[NodeExtractionPipeline._buildNodesFromForgeGraph] 🧩 device=${String(deviceId)} | zones: [${zoneMap}]`);
         return nodes;
     }
     /**

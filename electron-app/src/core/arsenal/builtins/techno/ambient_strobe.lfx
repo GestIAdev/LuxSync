@@ -1,7 +1,7 @@
 {
   "$schema": "luxsync.lfx/3.0",
   "clip": {
-    "id": "ambient_strobe_atomic",
+    "id": "ambient_strobe",
     "name": "Ambient Strobe — Royal Atomic (15Hz)",
     "author": "LuxSync Factory / Reforged",
     "category": "composite",
@@ -51,17 +51,18 @@
         "paramId": "strobeRate",
         "zones": [
           "all-pars",
-          "flash"
+          "flash",
+          "ambient"
         ],
         "blendMode": "replace",
         "curve": {
           "paramId": "strobeRate",
           "valueType": "number",
-          "defaultValue": 1.0,
+          "defaultValue": 1,
           "keyframes": [
             {
               "timeMs": 0,
-              "value": 1.0,
+              "value": 1,
               "interpolation": "hold"
             },
             {
@@ -77,7 +78,8 @@
         "paramId": "color",
         "zones": [
           "all-pars",
-          "ambient"
+          "ambient",
+          
         ],
         "blendMode": "replace",
         "curve": {

@@ -69,7 +69,9 @@
         "id": "abyss-intensity",
         "paramId": "intensity",
         "zones": [
-          "all-pars"
+          "all-pars",
+          "ambient"
+        
         ],
         "curve": {
           "paramId": "intensity",
@@ -100,7 +102,9 @@
         "id": "abyss-color",
         "paramId": "color",
         "zones": [
-          "all-pars"
+          "all-pars",
+          "ambient"
+        
         ],
         "curve": {
           "paramId": "color",
@@ -137,7 +141,8 @@
         "id": "abyss-strobe",
         "paramId": "strobeRate",
         "zones": [
-          "all-movers"
+          "all-movers",
+          "air"
         ],
         "curve": {
           "paramId": "strobeRate",
@@ -162,7 +167,9 @@
         "id": "abyss-par-ministrobe",
         "paramId": "strobeRate",
         "zones": [
-          "all-pars"
+          "all-pars",
+          "ambient"
+          
         ],
         "curve": {
           "paramId": "strobeRate",

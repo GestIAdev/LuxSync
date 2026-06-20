@@ -441,7 +441,7 @@ async function initTitan() {
     // ════════════════════════════════════════════════════════════
     try {
         const _builtinPath = app.isPackaged
-            ? path.join(process.resourcesPath, 'app.asar.unpacked', 'src', 'core', 'arsenal', 'builtins')
+            ? path.join(process.resourcesPath, 'builtins')
             : path.join(__dirname, '..', 'src', 'core', 'arsenal', 'builtins');
         // Auto-discover todas las carpetas de vibes dentro de /builtins/
         const _vibeDirectories = [];

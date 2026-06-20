@@ -232,7 +232,8 @@
         "id": "movers-blackout",
         "paramId": "intensity",
         "zones": [
-          "all-movers"
+          "all-movers",
+          "air"
         ],
         "blendMode": "replace",
         "curve": {

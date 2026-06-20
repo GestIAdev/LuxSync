@@ -157,6 +157,8 @@ interface ResolvedTrack {
    * cuando se introduzca blending real per-paramId.
    */
   blendMode: BlendMode
+  /** Source track zone tags — passed to HephaestusAetherAdapter for compound fixture routing. */
+  zones?: readonly string[]
 }
 
 /** Active clip being executed */
@@ -235,6 +237,8 @@ export interface HephFixtureOutput {
   // 🏛️ WAVE 2483: ID of the source clip (for spatialBehavior lookup in DynamicEffectRegistry).
   // Optional + lazy: legacy code paths that don't stamp it remain valid.
   clipId?: string
+  // 🧩 COMPOUND ROUTING: source track zone tags for zone-aware node routing in HephaestusAetherAdapter.
+  trackZones?: readonly string[]
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -711,6 +715,7 @@ export class HephaestusRuntime {
             intensity,
             isCustomThisClip,
             clipId,
+            track.zones,
           )
         }
         continue
@@ -729,6 +734,7 @@ export class HephaestusRuntime {
           intensity,
           isCustomThisClip,
           clipId,
+          track.zones,
         )
       }
     }
@@ -750,6 +756,7 @@ export class HephaestusRuntime {
     intensity: number,
     isCustomThisClip: boolean,
     clipId: string,
+    trackZones: readonly string[] | undefined,
   ): void {
     if (track.valueType === 'color') {
       const hsl = evaluator.getColorValue(paramName, timeMs)
@@ -759,7 +766,7 @@ export class HephaestusRuntime {
       this._normRgbBuf.r = rgb.r / 255
       this._normRgbBuf.g = rgb.g / 255
       this._normRgbBuf.b = rgb.b / 255
-      this.writeOutput(fixtureId, 'all', paramName, 0, rgb, undefined, 0, this._normRgbBuf, isCustomThisClip, clipId)
+      this.writeOutput(fixtureId, 'all', paramName, 0, rgb, undefined, 0, this._normRgbBuf, isCustomThisClip, clipId, trackZones)
     } else {
       const rawValue = evaluator.getValue(paramName, timeMs)
       const withIntensity = rawValue * intensity
@@ -767,7 +774,7 @@ export class HephaestusRuntime {
       const fine = (paramName === 'pan' || paramName === 'tilt')
         ? scaleToDMX16(withIntensity).fine
         : undefined
-      this.writeOutput(fixtureId, 'all', paramName, scaledValue, undefined, fine, withIntensity, undefined, isCustomThisClip, clipId)
+      this.writeOutput(fixtureId, 'all', paramName, scaledValue, undefined, fine, withIntensity, undefined, isCustomThisClip, clipId, trackZones)
     }
   }
 
@@ -815,6 +822,7 @@ export class HephaestusRuntime {
         normalizedRgb: { r: 0, g: 0, b: 0 },
         isCustomClip: false,
         clipId: undefined,
+        trackZones: undefined,
       }
     }
     this.outputCapacity = newCapacity
@@ -835,7 +843,8 @@ export class HephaestusRuntime {
     normalizedValue?: number,
     normalizedRgb?: { r: number; g: number; b: number },
     isCustomClip?: boolean,
-    clipId?: string
+    clipId?: string,
+    trackZones?: readonly string[]
   ): void {
     // Auto-grow if needed (rare — only if capacity estimate was wrong)
     if (this.outputCursor >= this.outputCapacity) {
@@ -851,6 +860,7 @@ export class HephaestusRuntime {
     out.normalizedValue = normalizedValue ?? 0
     out.isCustomClip = isCustomClip ?? false
     out.clipId = clipId
+    out.trackZones = trackZones
     // 🩹 WAVE 4995: Protect Memory Reference
     // Only copy color values if the track actually provides them.
     // Do not destroy the pre-allocated references when processing non-color params.
@@ -960,6 +970,11 @@ export class HephaestusRuntime {
       for (let i = 0; i < clip.tracks.length; i++) {
         const t = clip.tracks[i]
         const fixtureIds = resolveZonesToFixtures(t.zones as readonly string[])
+        // 🧩 DIAGNÓSTICO COMPOUND FIXTURE (temporal)
+        const hasTungsten = fixtureIds.some(id => id === 'fixture-1781916704143')
+        if (hasTungsten) {
+          console.log(`[HephaestusRuntime._buildResolvedTracks] 🧩 track=${t.id} param=${t.paramId} zones=[${(t.zones ?? []).join(',')}] | Tungsten EN fixtureIds (${fixtureIds.length} total)`)
+        }
         // ⚒️ WAVE 4859: `phaseConfig` es el shorthand canónico directo en el
         // track (formato nativo .lfx). `selector.phase` es la variante via
         // FixtureSelector (legado). Se da prioridad a `phaseConfig` y se usa
@@ -971,7 +986,7 @@ export class HephaestusRuntime {
         if (trackPhase != null && topLevelPhaseConfig == null) {
           topLevelPhaseConfig = trackPhase
         }
-        tracks.push(this._buildResolvedTrack(t.id, t.paramId, t.curve, t.blendMode, fixtureIds, trackPhase, durationMs))
+        tracks.push(this._buildResolvedTrack(t.id, t.paramId, t.curve, t.blendMode, fixtureIds, trackPhase, durationMs, t.zones))
       }
     } else {
       // ── V2.1 → V3 IN-MEMORY MIGRATION ─────────────────────────────────
@@ -1018,6 +1033,7 @@ export class HephaestusRuntime {
     fixtureIds: string[],
     phaseConfig: PhaseConfig | null,
     durationMs: number,
+    zones?: readonly string[],
   ): ResolvedTrack {
     const singleCurveMap = new Map<HephParamId, HephCurve>([[paramId, curve]])
     const evaluator = new CurveEvaluator(singleCurveMap, durationMs)
@@ -1035,6 +1051,7 @@ export class HephaestusRuntime {
       fixtureIds,
       fixturePhases,
       blendMode: blendMode ?? _defaultBlendModeFor(paramId),
+      zones,
     }
   }
 

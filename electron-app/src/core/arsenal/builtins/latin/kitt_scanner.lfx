@@ -5,21 +5,47 @@
     "name": "K.I.T.T. Scanner",
     "author": "LuxSync Factory",
     "category": "composite",
-    "tags": ["scan", "red", "techno", "fast"],
-    "vibeCompat": ["techno"],
+    "tags": [
+      "scan",
+      "red",
+      "techno",
+      "fast"
+    ],
+    "vibeCompat": [
+      "techno"
+    ],
     "durationMs": 1600,
     "effectType": "heph_custom",
     "cognitiveDNA": {
-      "genome": { "aggression": 0.7, "chaos": 0.2, "organicity": 0.1 },
+      "genome": {
+        "aggression": 0.7,
+        "chaos": 0.2,
+        "organicity": 0.1
+      },
       "textureAffinity": "clean",
-      "compatibleVibes": ["techno"],
-      "validSections": ["active", "intense"],
-      "energyZone": { "min": "active", "max": "intense" },
-      "aggressionRange": { "min": 0.5, "max": 0.9 },
+      "compatibleVibes": [
+        "techno"
+      ],
+      "validSections": [
+        "active",
+        "intense"
+      ],
+      "energyZone": {
+        "min": "active",
+        "max": "intense"
+      },
+      "aggressionRange": {
+        "min": 0.5,
+        "max": 0.9
+      },
       "spatialBehavior": "dynamic"
     },
     "simulationMeta": {
-      "beautyWeights": { "base": 0.7, "energyMultiplier": 1.0, "vibeBonus": 0.1 },
+      "beautyWeights": {
+        "base": 0.7,
+        "energyMultiplier": 1,
+        "vibeBonus": 0.1
+      },
       "gpuCost": 0.2,
       "fatigueImpact": 0.3,
       "minDurationMs": 1600,
@@ -27,74 +53,211 @@
       "isStrobe": false,
       "isDivineCandidate": false,
       "isHeavyCandidate": false,
-      "zScoreGuards": { "requireRising": false, "minimumZ": null, "minimumEnergy": null }
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": null,
+        "minimumEnergy": null
+      }
     },
     "tracks": [
       {
         "id": "kitt-color",
         "paramId": "color",
-        "zones": ["all-movers", "all-pars"],
+        "zones": [
+          "all-movers",
+          "all-pars",
+          "ambient",
+          "flash",
+          "air"
+        ],
         "blendMode": "replace",
         "curve": {
           "paramId": "color",
           "valueType": "color",
-          "defaultValue": { "h": 0, "s": 100, "l": 50 },
+          "defaultValue": {
+            "h": 0,
+            "s": 100,
+            "l": 50
+          },
           "keyframes": [
-            { "timeMs": 0, "value": { "h": 0, "s": 100, "l": 50 }, "interpolation": "hold" }
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 0,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            }
           ]
         }
       },
       {
         "id": "kitt-left",
         "paramId": "intensity",
-        "zones": ["movers-left"],
+        "zones": [
+          "movers-left"
+        ],
         "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
           "defaultValue": 0,
           "keyframes": [
-            { "timeMs": 0, "value": 1, "interpolation": "bezier", "bezierHandles": [0.5, 0, 0.5, 1] },
-            { "timeMs": 300, "value": 0, "interpolation": "hold" },
-            { "timeMs": 1300, "value": 0, "interpolation": "bezier", "bezierHandles": [0.5, 0, 0.5, 1] },
-            { "timeMs": 1600, "value": 1, "interpolation": "hold" }
+            {
+              "timeMs": 0,
+              "value": 1,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 300,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1300,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 1600,
+              "value": 1,
+              "interpolation": "hold"
+            }
           ]
         }
       },
       {
         "id": "kitt-front",
         "paramId": "intensity",
-        "zones": ["front", "back"],
+        "zones": [
+          "front",
+          "back"
+        ],
         "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
           "defaultValue": 0,
           "keyframes": [
-            { "timeMs": 0, "value": 0, "interpolation": "hold" },
-            { "timeMs": 200, "value": 0, "interpolation": "bezier", "bezierHandles": [0.5, 0, 0.5, 1] },
-            { "timeMs": 500, "value": 1, "interpolation": "bezier", "bezierHandles": [0.5, 0, 0.5, 1] },
-            { "timeMs": 800, "value": 0, "interpolation": "hold" },
-            { "timeMs": 1000, "value": 0, "interpolation": "bezier", "bezierHandles": [0.5, 0, 0.5, 1] },
-            { "timeMs": 1300, "value": 1, "interpolation": "bezier", "bezierHandles": [0.5, 0, 0.5, 1] },
-            { "timeMs": 1600, "value": 0, "interpolation": "hold" }
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 200,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 500,
+              "value": 1,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 800,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1000,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 1300,
+              "value": 1,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 1600,
+              "value": 0,
+              "interpolation": "hold"
+            }
           ]
         }
       },
       {
         "id": "kitt-right",
         "paramId": "intensity",
-        "zones": ["movers-right"],
+        "zones": [
+          "movers-right"
+        ],
         "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
           "defaultValue": 0,
           "keyframes": [
-            { "timeMs": 0, "value": 0, "interpolation": "hold" },
-            { "timeMs": 500, "value": 0, "interpolation": "bezier", "bezierHandles": [0.5, 0, 0.5, 1] },
-            { "timeMs": 800, "value": 1, "interpolation": "bezier", "bezierHandles": [0.5, 0, 0.5, 1] },
-            { "timeMs": 1100, "value": 0, "interpolation": "hold" }
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 500,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 800,
+              "value": 1,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 1100,
+              "value": 0,
+              "interpolation": "hold"
+            }
           ]
         }
       }

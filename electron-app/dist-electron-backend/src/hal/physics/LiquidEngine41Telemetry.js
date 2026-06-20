@@ -289,31 +289,34 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
             //   ` sB:${bands.subBass.toFixed(3)}` +
             //   ...
             // )
-            console.log(`[BACK-TEL]` +
-                ` sB:${bands.subBass.toFixed(3)}` +
-                ` bass:${bands.bass.toFixed(3)}` +
-                ` mid:${bands.mid.toFixed(3)}` +
-                ` hM:${bands.highMid.toFixed(3)}` +
-                ` tr:${bands.treble.toFixed(3)}` +
-                ` | isK:${frame.isKick ? 1 : 0}` +
-                ` isKE:${frame.isKickEdge ? 1 : 0}` +
-                ` percRaw:${percRaw.toFixed(3)}` +
-                ` | morph:${morphFactor.toFixed(3)}` +
-                ` brk:${frame.isBreakdown ? 1 : 0}` +
-                ` strict:${isStrict ? 1 : 0}` +
-                ` | bL_in:${highMidInput.toFixed(3)}` +
-                ` bL_gate:${highMidProbe.dynamicGate.toFixed(3)}` +
-                ` bL_sq:${highMidProbe.squelch.toFixed(3)}` +
-                ` bL_pow:${highMidProbe.kickPower.toFixed(3)}` +
-                ` bL_ign:${highMidProbe.ignited ? 1 : 0}` +
-                ` | bR_in:${snareInput.toFixed(3)}` +
-                ` bR_gate:${snareProbe.dynamicGate.toFixed(3)}` +
-                ` bR_sq:${snareProbe.squelch.toFixed(3)}` +
-                ` bR_pow:${snareProbe.kickPower.toFixed(3)}` +
-                ` bR_ign:${snareProbe.ignited ? 1 : 0}` +
-                ` | outBL:${backLeft.toFixed(3)}` +
-                ` outBR:${backRight.toFixed(3)}` +
-                ` outPar:${backPar.toFixed(3)}`);
+            // 🔇 BACK-TEL silenciado — calibración de backs completada
+            // console.log(
+            //   `[BACK-TEL]` +
+            //   ` sB:${bands.subBass.toFixed(3)}` +
+            //   ` bass:${bands.bass.toFixed(3)}` +
+            //   ` mid:${bands.mid.toFixed(3)}` +
+            //   ` hM:${bands.highMid.toFixed(3)}` +
+            //   ` tr:${bands.treble.toFixed(3)}` +
+            //   ` | isK:${frame.isKick ? 1 : 0}` +
+            //   ` isKE:${frame.isKickEdge ? 1 : 0}` +
+            //   ` percRaw:${percRaw.toFixed(3)}` +
+            //   ` | morph:${morphFactor.toFixed(3)}` +
+            //   ` brk:${frame.isBreakdown ? 1 : 0}` +
+            //   ` strict:${isStrict ? 1 : 0}` +
+            //   ` | bL_in:${highMidInput.toFixed(3)}` +
+            //   ` bL_gate:${highMidProbe.dynamicGate.toFixed(3)}` +
+            //   ` bL_sq:${highMidProbe.squelch.toFixed(3)}` +
+            //   ` bL_pow:${highMidProbe.kickPower.toFixed(3)}` +
+            //   ` bL_ign:${highMidProbe.ignited ? 1 : 0}` +
+            //   ` | bR_in:${snareInput.toFixed(3)}` +
+            //   ` bR_gate:${snareProbe.dynamicGate.toFixed(3)}` +
+            //   ` bR_sq:${snareProbe.squelch.toFixed(3)}` +
+            //   ` bR_pow:${snareProbe.kickPower.toFixed(3)}` +
+            //   ` bR_ign:${snareProbe.ignited ? 1 : 0}` +
+            //   ` | outBL:${backLeft.toFixed(3)}` +
+            //   ` outBR:${backRight.toFixed(3)}` +
+            //   ` outPar:${backPar.toFixed(3)}`
+            // )
             this._frameCount++;
         }
         return {

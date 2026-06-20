@@ -24,7 +24,6 @@ import { useMovementStore } from '../../../stores/movementStore'
 import { useSelectionStore } from '../../../stores/selectionStore'
 import { useStageStore } from '../../../stores/stageStore'
 import { useProgrammerStore } from '../../../stores/programmerStore'
-import { useHardware } from '../../../stores/truthStore'
 import { useKineticHydrationStore } from '../../../stores/kineticHydrationStore'
 import { useAdiabaticRadarMode } from '../../../hooks/useAdiabaticRadarMode'
 
@@ -81,7 +80,6 @@ export const KinRadarViewport: React.FC = () => {
   const selectedIds = useSelectionStore(useShallow(s => Array.from(s.selectedIds)))
   const stageFixtures = useStageStore(s => s.fixtures)
   const stageFromStore = useStageStore(s => s.stage)
-  const hardware = useHardware()
 
   const {
     fanValue,
@@ -116,15 +114,12 @@ export const KinRadarViewport: React.FC = () => {
 
   // ── Derived: clasificar fixtures seleccionados ────────────────────────────
   const { movingHeadIds, staticIds, stageForPad } = useMemo(() => {
-    const hwFixtures = hardware?.fixtures ?? []
     const moving: string[] = []
     const statics: string[] = []
 
     for (const id of selectedIds) {
-      const hf = hwFixtures.find((x: { id: string }) => x.id === id)
-        ?? stageFixtures.find(f => f.id === id)
-      const moving_ = isMovingHead(hf?.type ?? '')
-      if (moving_) moving.push(id)
+      const f = stageFixtures.find(x => x.id === id)
+      if (isMovingHead(f?.type ?? '')) moving.push(id)
       else statics.push(id)
     }
 
@@ -133,7 +128,7 @@ export const KinRadarViewport: React.FC = () => {
     }
 
     return { movingHeadIds: moving, staticIds: statics, stageForPad: stage }
-  }, [selectedIds, hardware?.fixtures, stageFixtures, stageFromStore])
+  }, [selectedIds, stageFixtures, stageFromStore])
 
   const radarMode = useAdiabaticRadarMode(selectedIds, stageFixtures, radarModeOverride)
   const radarKey = resolveRadarComponent(selectedIds.length, movingHeadIds.length, radarModeOverride)

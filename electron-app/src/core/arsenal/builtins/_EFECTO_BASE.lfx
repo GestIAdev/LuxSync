@@ -22,7 +22,7 @@
         "REGLA 4: Para MAXIMIZAR un impacto Strobe, incluye SIEMPRE un track con intensity=0 y blendMode=replace en 'all-movers' (Blackout táctico).",
         "REGLA 5 (VIBES): vibeCompat SOLO puede contener 'techno' o 'latin'. Prohibido inventar géneros.",
         "REGLA 6 (ENERGÍA): energyZone min/max DEBEN ser escalones de The Ladder: silence, valley, ambient, gentle, active, intense, peak.",
-        "REGLA 7 (DIVINE ARSENAL): Si isDivineCandidate=true, ENTONCES cooldownMs > 15000, fatigueImpact > 0.8 y zScoreGuards.minimumZ >= 4.0."
+        "REGLA 7 (DIVINE ARSENAL): Si isDivineCandidate=true, ENTONCES cooldownMs > 15000, fatigueImpact > 0.8 y zScoreGuards.minimumZ >= 2.20."
       ]
     },
     "tracks": [

@@ -34,6 +34,7 @@ export class TickEngine {
     get _aetherHasDevices() { return this.ctx._aetherHasDevices; }
     get _outputEnabled() { return this.ctx._outputEnabled; }
     get _isHydrating() { return this.ctx._isHydrating; }
+    get _showGeneration() { return this.ctx._showGeneration; }
     get _aetherArbiter() { return this.ctx._aetherArbiter; }
     get _aetherResolver() { return this.ctx._aetherResolver; }
     get _colorAdapter() { return this.ctx._colorAdapter; }
@@ -108,6 +109,11 @@ export class TickEngine {
         // emitting DMX to addresses that no longer exist in the new show.
         if (this._isHydrating)
             return;
+        // PARCHE 4: Capturar generación del show al inicio del tick.
+        // Si setFixtures() se ejecuta durante el await de engine.update(),
+        // el grafo Aether y el Arbiter serán de una generación distinta —
+        // abortar el tick para evitar emitir DMX con intents obsoletos.
+        const _tickShowGeneration = this._showGeneration;
         this.frameCount++;
         // ðŸŽ¬ WAVE 4860: Advance the master SAB clock so ThetaWorker can read tickId
         // lock-free, zero IPC overhead â€” written directly into SharedArrayBuffer
@@ -384,6 +390,12 @@ export class TickEngine {
         // ðŸª“ WAVE 4592 â†’ WAVE 4703: AETHER PIPELINE ONLY
         // ArbitrationDirector (masterArbiter) is extinct. Aether is the single source of truth.
         // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+        // PARCHE 4: Post-await stale graph guard.
+        // Si setFixtures() corrio durante el await anterior, el grafo Aether
+        // fue reconstruido y el Arbiter fue purgado. Abortar este tick para
+        // evitar emitir DMX con intents de la generacion anterior.
+        if (this._showGeneration !== _tickShowGeneration)
+            return;
         const effectManager = getEffectManager();
         const effectOutput = effectManager.getCombinedOutput();
         // Chronos protection: fixtures being painted by Chronos are off-limits

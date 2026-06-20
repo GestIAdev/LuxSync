@@ -310,7 +310,7 @@
           "channelType": "rotation",
           "dmxOffset": 1,
           "channelName": "X infinite",
-          "cellLabel": "Posición",
+          "cellLabel": "Rotación",
           "defaultDmxValue": 0,
           "continuousRotation": true,
           "aetherNodeId": "kinetic-22",
@@ -322,7 +322,7 @@
         },
         "label": "CH2: X infinite",
         "profileMeta": {
-          "customLabel": "Posición"
+          "customLabel": "Rotación"
         }
       },
       {

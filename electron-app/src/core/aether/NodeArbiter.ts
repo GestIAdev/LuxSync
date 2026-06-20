@@ -1258,6 +1258,28 @@ export class NodeArbiter implements INodeArbiter {
   }
 
   /**
+   * PARCHE 4 — ARMED LOCK: Purga completa de estado obsoleto al cargar un show.
+   *
+   * Llamado por TitanOrchestrator.setFixtures() DESPUÉS de que el grafo Aether
+   * ha sido reconstruido. En ese momento todos los nodeIds del show anterior
+   * son inválidos: _manualOverrides, _moverShieldNodeIds e _inhibitLimits
+   * pueden contener refs a nodos que ya no existen, causando escrituras a
+   * canales huérfanos o bloqueos fantasma en el siguiente arbitrate().
+   *
+   * NO borra _effectIntents, _hephaestusIntents ni _playbackIntents porque
+   * esos arrays son sobreescritos cada frame por el pipeline.
+   * NO toca _grandMaster ni _blackout — son state del operador, no del show.
+   */
+  purgeForShow(): void {
+    this._manualOverrides.clear()
+    this._motorKineticOverrides.clear()
+    this._releaseStates.clear()
+    this._moverShieldNodeIds.clear()
+    this._inhibitLimits.clear()
+    console.log('[NodeArbiter] 🧹 purgeForShow: stale L2 node refs cleared for new show')
+  }
+
+  /**
    * WAVE 4529: Lista los nodeIds que tienen overrides manuales activos.
    * Útil para debug/telemetría.
    */

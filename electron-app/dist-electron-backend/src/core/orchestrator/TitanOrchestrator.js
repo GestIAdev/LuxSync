@@ -225,6 +225,10 @@ export class TitanOrchestrator {
         // true  → hydration in progress, tick() returns immediately (no DMX output).
         // false → normal operation.
         this._isHydrating = false;
+        // PARCHE 4: Contador de generación de show. Incrementado en cada setFixtures.
+        // TickEngine captura este valor al inicio del tick; si cambia tras el await,
+        // el tick aborta porque el grafo Aether es de otra generación.
+        this._showGeneration = 0;
         // WAVE 2490: THE TIER SEPARATION PROTOCOL â€” Hephaestus gate
         this._licenseTier = 'FULL_SUITE';
         // WAVE 254: Control state
@@ -446,6 +450,7 @@ export class TitanOrchestrator {
             get _physicsPostProcessor() { return self._physicsPostProcessor; },
             get _outputEnabled() { return self._outputEnabled; },
             get _isHydrating() { return self._isHydrating; },
+            get _showGeneration() { return self._showGeneration; },
             get _aetherSafety() { return self._aetherSafety; },
             get _forgeFrameCtx() { return self._forgeFrameCtx; },
             get _forgeAudioBands() { return self._forgeAudioBands; },
@@ -778,6 +783,9 @@ export class TitanOrchestrator {
     setFixtures(fixtures, stageBounds) {
         // F2: HYDRATION LOCK — pause TickEngine while rebuilding Aether graph
         this._isHydrating = true;
+        // PARCHE 4: Marcar nueva generación ANTES de reconstruir el grafo.
+        // TickEngine puede comparar su snapshot contra este valor post-await.
+        this._showGeneration++;
         try {
             // WAVE 4968 FIX: Directly update this.fixtures before delegating to hydrationEngine.
             // The hydrationCtx proxy setter should also update this, but we ensure it here
@@ -788,7 +796,12 @@ export class TitanOrchestrator {
                 isVirtual: f.isVirtual ?? false,
             }));
             console.log(`[TitanOrchestrator] setFixtures: ${this.fixtures.length} fixtures | IDs: ${this.fixtures.slice(0, 3).map((f) => f.id).join(', ')}...`);
-            return this.hydrationEngine.setFixtures(this.fixtures, stageBounds);
+            const layout = this.hydrationEngine.setFixtures(this.fixtures, stageBounds);
+            // PARCHE 4: Purgar todos los node refs obsoletos del Arbiter ahora que el
+            // grafo está reconstruido. Elimina _manualOverrides, _moverShieldNodeIds,
+            // _inhibitLimits y overrides cinemáticos de la generación anterior.
+            this._aetherArbiter?.purgeForShow();
+            return layout;
         }
         finally {
             // Always unlock — even if hydrationEngine throws, TickEngine must recover

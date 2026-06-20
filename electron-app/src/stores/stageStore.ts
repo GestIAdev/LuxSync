@@ -54,6 +54,7 @@ import {
   clampToCrystalBox,
 } from '../core/stage/ShowFileV2'
 import { autoMigrate, parseLegacyScenes } from '../core/stage/ShowFileMigrator'
+import { ensureSystemGroups } from '../core/stage/DefaultGroupsService'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -353,11 +354,18 @@ export const useStageStore = create<StageStore>()(
         showFile.stage.gridSize = 0.25
       }
 
+      // PARCHE 2: Regenerar grupos de sistema en cada carga de show.
+      // Garantiza que KeyForge siempre encuentre group-zone-*, group-type-*, group-all
+      // independientemente de si el show es V2 nativo o migrado.
+      const mergedGroups = ensureSystemGroups(showFile.fixtures, showFile.groups)
+      // Escribir de vuelta al showFile para que saveShow persista los grupos sistema
+      showFile.groups = mergedGroups
+
       // 🔥 WAVE 1042.2: Create NEW array reference for Zustand shallow comparison
       // Without this, React components with shallow selectors won't re-render
       set({
         fixtures: [...showFile.fixtures],
-        groups: showFile.groups,
+        groups: [...mergedGroups],
         scenes: showFile.scenes,
         stage: showFile.stage,
         visuals: showFile.visuals,
@@ -369,10 +377,11 @@ export const useStageStore = create<StageStore>()(
     // ═══════════════════════════════════════════════════════════════════════
     
     loadShowFile: async (filePath) => {
-      // 🛡️ WAVE 4576 M1: Flush derived state before load — prevents sum bug
-      // Old fixtures must not survive into the new show's lifecycle
-      set({ isLoading: true, lastError: null, fileLockWarning: null,
-        fixtures: [], groups: [], scenes: [], stage: null, visuals: null })
+      // PARCHE 1: No purgar arrays derivados ANTES de la promesa.
+      // El flash de fixtures:[] vacío durante la ventana asíncrona rompe la
+      // Kinetic Catedral en prod (sin latencia de Dev que lo enmascare).
+      // Solo marcamos isLoading — la limpieza ocurre atómicamente al recibir datos.
+      set({ isLoading: true, lastError: null, fileLockWarning: null })
       
       try {
         // ═══════════════════════════════════════════════════════════════════
@@ -432,12 +441,16 @@ export const useStageStore = create<StageStore>()(
           const result = await stageAPI.load(filePath)
           
           if (result.success && result.showFile) {
+            // PARCHE 1+3: Flush atómico — vaciar arrays derivados cuando YA tenemos datos nuevos.
             set({
               showFile: result.showFile,
               showFilePath: filePath || 'active',
               isLoading: false,
-              isDirty: false
+              isDirty: false,
+              fixtures: [], groups: [], scenes: [], stage: null, visuals: null,
             })
+            // PARCHE 3: Limpiar selección residual del show anterior
+            useSelectionStore.getState().deselectAll()
             get()._syncDerivedState()
             console.log('[stageStore] ✅ Loaded show via IPC:', result.showFile.name)
             return true
@@ -602,6 +615,16 @@ export const useStageStore = create<StageStore>()(
       showFile.fixtures.push(fixture)
       get()._syncDerivedState()
       get()._setDirty()
+
+      // PARCHE 3: Sincronizar nuevas fixtures con el backend inmediatamente.
+      // Sin esto, TitanOrchestrator desconoce las fixtures añadidas via constructor
+      // y hardware?.fixtures no las contiene → KinRadarViewport las clasifica como estáticas.
+      const lux = (window as any).lux
+      if (lux?.aether?.setFixtures) {
+        const allFixtures = get().fixtures
+        lux.aether.setFixtures(allFixtures, null)
+          .catch((err: any) => console.warn('[addFixture] Backend sync failed:', err))
+      }
     },
     
     removeFixture: (id) => {
@@ -1104,12 +1127,17 @@ export function setupStageStoreListeners(): () => void {
     
     // 🔥 WAVE 1218 FIX: Use the actual filePath from backend, not hardcoded 'active'!
     // This ensures saves go back to the original file
+    // PARCHE 1+3: Flush atómico — vaciar arrays al mismo tiempo que escribimos
+    // los nuevos datos, sin ventana de arrays vacíos observable por React.
     useStageStore.setState({
       showFile: data.showFile,
       showFilePath: data.filePath || 'active',
       isLoading: false,
-      isDirty: false
+      isDirty: false,
+      fixtures: [], groups: [], scenes: [], stage: null, visuals: null,
     })
+    // PARCHE 3: Resetear selección al cambiar de show
+    useSelectionStore.getState().deselectAll()
     useStageStore.getState()._syncDerivedState()
   })
 

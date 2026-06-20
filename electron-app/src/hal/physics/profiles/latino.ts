@@ -83,8 +83,8 @@ export const LATINO_PROFILE: ILiquidProfile = {
   envelopeVocal: {
     name: 'Mover R (La Dama — Brillo)',
     gateOn: 0.02,           // WAVE 6050: casi abierto permanentemente
-    boost: 12.0,            // WAVE 6050: Terminator Boost al máximo
-    crushExponent: 0.60,   // WAVE 6050: más cóncava aún, valores bajos explotan a altos
+    boost: 5.0,             // WAVE 6100: reducido para evitar saturación de siseos vocales
+    crushExponent: 1.0,    // WAVE 6100: lineal — elimina inflado de susurros en estrobo
     decayBase: 0.72,       // WAVE 3494: 0.80->0.72 — más contraste sin perder fluidez
     decayRange: 0.05,
     maxIntensity: 0.85,
@@ -291,8 +291,8 @@ export const LATINO_PROFILE: ILiquidProfile = {
   // WAVE 4686: Ambient viscosity — Latino fiesta
   // Elástico musical: el tumbao respira entre golpes del dembow
   // 🌊 WAVE 4826.1: Release 600→280ms — decay rápido para Tungsten en Ambient, cortes suaves sin negro abrupto
-  ambientAttackMs: 200,
-  ambientReleaseMs: 280,
+  ambientAttackMs: 65,
+  ambientReleaseMs: 135,
 
   // ═══════════════════════════════════════════════════════════════
   // WAVE 2436: OVERRIDES 4.1 — Anti-Autotune + Compactación max()
@@ -357,8 +357,8 @@ export const LATINO_PROFILE: ILiquidProfile = {
     envelopeVocal: {
       gateOn: 0.02,        // WAVE 6050: casi abierto permanentemente
       squelchBase: 0.08,   // WAVE 3492: piso moderado
-      boost: 12.0,         // WAVE 6050: Terminator Boost al máximo
-      crushExponent: 0.60,   // WAVE 6050: curva convexa — infla valores bajos al instante
+      boost: 5.0,          // WAVE 6100: reducido para evitar saturación de siseos vocales
+      crushExponent: 1.0,  // WAVE 6100: lineal — elimina inflado de susurros en estrobo
       decayBase: 0.72,     // WAVE 3494: alineado con base
       ghostCap: 0.04,
       attackSlopeMin: -0.05,     // WAVE 6050: seda el Velocity Gate

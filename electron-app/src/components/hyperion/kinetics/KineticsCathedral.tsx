@@ -21,7 +21,7 @@ import { useShallow } from 'zustand/shallow'
 import { useMovementStore } from '../../../stores/movementStore'
 import { useSelectionStore } from '../../../stores/selectionStore'
 import { useProgrammerStore } from '../../../stores/programmerStore'
-import { useHardware } from '../../../stores/truthStore'
+import { useStageStore } from '../../../stores/stageStore'
 import { KineticsBridge } from '../../../bridges/KineticsBridge'
 import { useKineticHydrationStore } from '../../../stores/kineticHydrationStore'
 
@@ -40,7 +40,7 @@ interface KineticsCathedralProps {
 export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose }) => {
   // ── Stores ─────────────────────────────────────────────────────────────
   const selectedIds = useSelectionStore(useShallow(s => Array.from(s.selectedIds)))
-  const hardware = useHardware()
+  const stageFixtures = useStageStore(s => s.fixtures)
 
   // ── movementStore: SOLO el cathedralTab (UI local) y el seed (no se hidrata desde L2) ─
   const { cathedralTab, chaosSeed } = useMovementStore(useShallow(s => ({
@@ -84,13 +84,12 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
 
   // ── Check if selected fixtures are moving heads ────────────────────────
   const hasMovingHeads = useMemo(() => {
-    const fixtures = hardware?.fixtures ?? []
     return selectedIds.some(id => {
-      const f = fixtures.find((x: { id: string }) => x.id === id)
+      const f = stageFixtures.find(x => x.id === id)
       const t = (f?.type ?? '').toLowerCase()
       return t.includes('moving') || t.includes('spot') || t.includes('beam') || t.includes('wash')
     })
-  }, [selectedIds, hardware?.fixtures])
+  }, [selectedIds, stageFixtures])
 
   // WAVE 4701: La hidratación de Kinetics viene 100% desde Aether L2
   // en TheProgrammer (getL2State + getManualKineticState).

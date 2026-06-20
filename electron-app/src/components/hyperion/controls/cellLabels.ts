@@ -32,7 +32,7 @@ export const WELL_KNOWN_LABELS: Readonly<Record<string, string>> = Object.freeze
   // Roles canónicos
   'wash':           'Wash',
   'beam':           'Rayo',
-  'kinetic':        'Posición',
+  'kinetic':        'Rotation',
   'impact':         'Master',
   'color':          'Color',
   'atmosphere':     'Ambiente',

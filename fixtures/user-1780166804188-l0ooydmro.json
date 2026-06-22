@@ -1,9 +1,16 @@
 {
   "id": "user-1780166804188-l0ooydmro",
-  "name": "LB230N 7R (User Copy)",
+  "name": "LB230N 7R (Reforged Mux)",
   "manufacturer": "Big Dipper",
   "channelCount": 22,
   "type": "moving-head",
+  "dimmerMin": 200,
+  "strobePersonality": {
+    "shutterClosed": 0,
+    "strobeMin": 10,
+    "strobeMax": 195,
+    "shutterOpen": 255
+  },
   "channels": [
     {
       "index": 0,
@@ -17,7 +24,8 @@
       "name": "Strobe",
       "type": "strobe",
       "defaultValue": 255,
-      "is16bit": false
+      "is16bit": false,
+      "ignitionDeps": []
     },
     {
       "index": 2,
@@ -25,12 +33,7 @@
       "type": "dimmer",
       "defaultValue": 255,
       "is16bit": false,
-      "ignitionDeps": [
-        {
-          "channelType": "strobe",
-          "requiredValue": 255
-        }
-      ]
+      "ignitionDeps": []
     },
     {
       "index": 3,

@@ -297,6 +297,10 @@ export class NodeArbiter {
         if (cancelsFade) {
             this._releaseStates.delete(nodeId);
         }
+        // 🩸 WAVE 6040-DIAG: trace ALL kinetic overrides arriving at L2
+        if (nodeId.includes(':kinetic') && (incomingKeys.some(k => k === 'pan' || k === 'tilt' || k === 'pan_base' || k === 'tilt_base'))) {
+            console.log(`[ZOMBIE-DIAG] setManualOverride KINETIC ${nodeId}: keys=[${incomingKeys.join(',')}] existing=${existing ? 'YES' : 'NO'}`);
+        }
     }
     /**
      * WAVE 4670: Inyecta el set de nodos COLOR de movers con rueda física.
@@ -323,6 +327,10 @@ export class NodeArbiter {
             const poisonKeys = allKeys.filter(k => IK_POISON_KEYS.has(k));
             if (poisonKeys.length > 0) {
                 console.log(`[ZOMBIE-DIAG] clearManualOverride ${nodeId}: DELETING node that had POISON keys=[${poisonKeys.join(',')}] allKeys=[${allKeys.join(',')}]`);
+            }
+            // 🩸 WAVE 6040-DIAG: trace classic kinetic clears
+            if (nodeId.includes(':kinetic') && (allKeys.some(k => k === 'pan' || k === 'tilt'))) {
+                console.log(`[ZOMBIE-DIAG] 🔥 clearManualOverride KINETIC CLASSIC ${nodeId}: keys=[${allKeys.join(',')}] releaseMs=${releaseMs ?? 'default'}`);
             }
             // WAVE 6020 FIX: releaseMs === 0 salta el fade snapshot.
             // Usado por purgas destructivas (Unlock espacial) donde el operador

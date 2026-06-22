@@ -225,6 +225,12 @@ export class NodeResolver {
         // Built once in _precomputeIgnitionMap(); iterated O(2-4) times per frame in resolve().
         // ZERO ALLOC in hot path — all arrays created at patch time.
         this._ignitionMap = new Map();
+        // 🌑 WAVE 4685.1: DarkSpin buffer sweep — pre-computed wheel device entries.
+        // Built at patch time in _precomputeWheelDeviceEntry().
+        // Iterated zero-alloc in hot path — no new arrays, no spreads.
+        this._wheelDeviceEntries = [];
+        // Last known color_wheel DMX byte per device (mutated in-place, zero-alloc).
+        this._lastWheelBytes = new Map();
         this._graph = graph;
         // Pre-establecer la forma del scratchpad para que V8 use hidden class fija.
         // NaN = sentinel (no escrito). Los valores reales se asignan en _translateColor().
@@ -255,6 +261,7 @@ export class NodeResolver {
     registerDevice(deviceId) {
         this._ignitionMap.delete(deviceId); // limpiar si re-patch
         this._precomputeIgnitionMap(deviceId);
+        this._precomputeWheelDeviceEntry(deviceId);
     }
     /**
      * WAVE 4522.4: Inyectar contexto musical antes de cada resolve().
@@ -440,7 +447,12 @@ export class NodeResolver {
         for (const [deviceId, mergedValues] of this._forgeAccumValues) {
             this._writeForgeDevice(deviceId, mergedValues);
         }
-        // 🌊 WAVE 4685: DarkSpin cross-node sweep.
+        // � WAVE 4685.1: DarkSpin buffer-level sweep — LEY FÍSICA DE ÚLTIMA MILLA.
+        // Detecta cambios de color_wheel directamente desde el buffer DMX final,
+        // sin depender del origen de la señal (L0-L4). Marca nodos COLOR como
+        // "in transit" para que el cross-node sweep aplique el blackout de dimmer.
+        this._applyDarkSpinBufferSweep();
+        // �🌊 WAVE 4685: DarkSpin cross-node sweep.
         // DarkSpin state lives on COLOR nodes, but dimmer lives on IMPACT nodes.
         // After all nodes are written, zero IMPACT dimmer/shutter for any device
         // whose COLOR node is in wheel transit. This covers both manual fader
@@ -527,6 +539,59 @@ export class NodeResolver {
             this._ignitionMap.set(deviceId, injections);
             console.log(`[NodeResolver] 🔥 WAVE 4720: ${injections.length} ignition injection(s) ` +
                 `pre-computed for device ${String(deviceId)}`);
+        }
+    }
+    /**
+     * 🌑 WAVE 4685.1: Pre-computa la entrada de barrido DarkSpin para un device.
+     *
+     * Busca el nodo COLOR del device con rueda mecánica elegible y registra
+     * el offset absoluto del canal color_wheel en el buffer del universo.
+     *
+     * PATCH TIME — cero alloc en hot path.
+     */
+    _precomputeWheelDeviceEntry(deviceId) {
+        const device = this._graph.getDevice(deviceId);
+        if (!device)
+            return;
+        const nodeIds = this._graph.getDeviceNodes(deviceId);
+        if (!nodeIds || nodeIds.length === 0)
+            return;
+        const baseAddr = device.dmxAddress - 1;
+        for (let ni = 0; ni < nodeIds.length; ni++) {
+            const node = this._graph.getNodeData(nodeIds[ni]);
+            if (!node || node.family !== NodeFamily.COLOR)
+                continue;
+            const colorNode = node;
+            if (!this._isDarkSpinEligibleColorNode(colorNode))
+                continue;
+            for (let ci = 0; ci < node.channels.length; ci++) {
+                const chDef = node.channels[ci];
+                if (chDef.type !== CH_COLOR_WHEEL)
+                    continue;
+                const wheelBufIdx = baseAddr + chDef.dmxOffset;
+                if (wheelBufIdx < 0 || wheelBufIdx >= DMX_UNIVERSE_SIZE)
+                    continue;
+                const minTransitionMs = colorNode.colorWheel?.minTransitionMs ?? 0;
+                // Remove existing entry for this device (re-patch safety)
+                for (let ei = 0; ei < this._wheelDeviceEntries.length; ei++) {
+                    if (this._wheelDeviceEntries[ei].deviceId === deviceId) {
+                        this._wheelDeviceEntries.splice(ei, 1);
+                        break;
+                    }
+                }
+                this._wheelDeviceEntries.push({
+                    deviceId,
+                    colorNodeId: nodeIds[ni],
+                    universe: device.universe,
+                    wheelBufIdx,
+                    minTransitionMs,
+                });
+                // Initialize last known byte
+                if (!this._lastWheelBytes.has(deviceId)) {
+                    this._lastWheelBytes.set(deviceId, 0);
+                }
+                return; // One entry per device is sufficient
+            }
         }
     }
     /**
@@ -841,6 +906,15 @@ export class NodeResolver {
                 this._writeNodeIK(kineticNode, channelValues, baseAddr, buf, calibration, !nodeBlocked);
                 return;
             }
+            // 🩸 WAVE 6040-DIAG: Diagnostic log para tracear el bug "movers no responden al radar cuando hay color"
+            if (this._resolveFrameIndex % 44 === 0) {
+                const panVal = channelValues['pan'];
+                const tiltVal = channelValues['tilt'];
+                const hasPanTilt = panVal !== undefined || tiltVal !== undefined;
+                if (hasPanTilt) {
+                    console.log(`[KINETIC-DIAG] ${node.nodeId}: CLASSIC-PATH | pan=${panVal?.toFixed(3) ?? 'N/A'} tilt=${tiltVal?.toFixed(3) ?? 'N/A'} nodeBlocked=${nodeBlocked} gateOpen=${!this._safetyMiddleware || this._safetyMiddleware.isOutputEnabled()}`);
+                }
+            }
             invertClassicKineticAxes = this._shouldInvertClassicKineticAxes(device.orientation, kineticNode);
             // isContinuous (fan/mirrorball) o sin targetX → classic path
         }
@@ -977,6 +1051,10 @@ export class NodeResolver {
                     `Source: ${rawSource} | node=${String(node.nodeId)} | device=${String(device.deviceId)}`);
             }
             buf[bufIdx] = safeDmxValue;
+            // 🩸 WAVE 6040-DIAG: Classic kinetic path — log pan/tilt writes
+            if (node.family === NodeFamily.KINETIC && (chDef.type === PAN_COARSE || chDef.type === TILT_COARSE) && this._resolveFrameIndex % 44 === 0) {
+                console.log(`[KINETIC-DIAG] ${node.nodeId}: CLASSIC-WRITE ${chDef.type}=${safeDmxValue} rawSource=${rawSource} nodeBlocked=${nodeBlocked}`);
+            }
             // Telemetría legacy removida.
             // Canales 16-bit: escribir byte fine (LSB) en el slot siguiente
             if (chDef.is16bit) {
@@ -994,7 +1072,47 @@ export class NodeResolver {
         }
     }
     /**
-     * 🌊 WAVE 4685: Cross-node DarkSpin sweep.
+     * � WAVE 4685.1: DarkSpin buffer-level sweep — LEY FÍSICA DE ÚLTIMA MILLA.
+     *
+     * Lee el byte DMX final del canal color_wheel desde el buffer del universo
+     * y lo compara con el frame anterior. Si cambió, activa el estado de tránsito
+     * DarkSpin para ese nodo COLOR, independientemente del origen de la señal
+     * (L0, L1, L2, L3, L4 — todos son detectados aquí).
+     *
+     * Debe ejecutarse ANTES de _applyDarkSpinCrossNodeSweep() para que el
+     * cross-node sweep pueda encontrar los nodos recién marcados como "in transit"
+     * y aplicar el blackout de dimmer/shutter en los nodos IMPACT.
+     *
+     * ZERO-ALLOC: itera sobre _wheelDeviceEntries[] pre-computado en patch-time.
+     * _lastWheelBytes se muta in-place sin crear nuevos objetos.
+     */
+    _applyDarkSpinBufferSweep() {
+        const sm = this._safetyMiddleware;
+        if (!sm)
+            return;
+        const entries = this._wheelDeviceEntries;
+        const len = entries.length;
+        if (len === 0)
+            return;
+        for (let i = 0; i < len; i++) {
+            const entry = entries[i];
+            const buf = this._universeBuffers.get(entry.universe);
+            if (!buf)
+                continue;
+            const currentByte = buf[entry.wheelBufIdx];
+            const lastByte = this._lastWheelBytes.get(entry.deviceId) ?? 0;
+            if (currentByte !== lastByte && entry.minTransitionMs > 0) {
+                // Wheel byte changed — trigger DarkSpin transit state.
+                // checkDarkSpin handles: new transit start, active transit blackout,
+                // transit completion, and fail-safe timeout.
+                sm.checkDarkSpin(entry.colorNodeId, currentByte, entry.minTransitionMs);
+            }
+            // Update last known byte in-place (zero-alloc)
+            this._lastWheelBytes.set(entry.deviceId, currentByte);
+        }
+    }
+    /**
+     * �� WAVE 4685: Cross-node DarkSpin sweep.
      * Scans devices with COLOR nodes in active wheel transit and zeroes
      * dimmer/shutter on their IMPACT nodes. Must run AFTER all _writeNode()
      * calls so the actual wheel DMX has been evaluated and checkDarkSpin
@@ -1074,8 +1192,13 @@ export class NodeResolver {
      */
     _writeNodeIK(node, channelValues, baseAddr, buf, calibration, nodeWriteEnabled) {
         const txRaw = channelValues[CH_TARGET_X];
-        if (!Number.isFinite(txRaw))
+        if (!Number.isFinite(txRaw)) {
+            // 🩸 WAVE 6040-DIAG: Early return diagnostic
+            if (this._resolveFrameIndex % 44 === 0) {
+                console.log(`[KINETIC-DIAG] ${node.nodeId}: IK-PATH ABORTED — targetX not finite (value=${txRaw})`);
+            }
             return;
+        }
         const tx = txRaw;
         const ty = sanitizeNormalizedValue(channelValues[CH_TARGET_Y], 1.5);
         const tz = sanitizeNormalizedValue(channelValues[CH_TARGET_Z], 2.0);
@@ -1131,6 +1254,10 @@ export class NodeResolver {
                     buf[fineIdx] = 0; // IKEngine produce resolución 8-bit; fine byte = 0
                 }
             }
+        }
+        // 🩸 WAVE 6040-DIAG: Confirm IK path actually wrote to buffer
+        if (this._resolveFrameIndex % 44 === 0) {
+            console.log(`[KINETIC-DIAG] ${node.nodeId}: IK-PATH WRITTEN pan=${safePan} tilt=${safeTilt} enabled=${nodeWriteEnabled}`);
         }
     }
     /**

@@ -874,10 +874,10 @@ export class TitanEngine extends EventEmitter {
         };
         
         // Log de debug para ver 7-zone en acción
-        if (this.state.frameCount % 60 === 0) {
-          const tag = nervousOutput.physicsApplied === 'liquid-stereo' ? '🌊 LIQUID' : '🌊 CHILL';
-          console.log(`[TitanEngine ${tag} 7-ZONE] FL:${(frontL*100).toFixed(0)}% FR:${(frontR*100).toFixed(0)}% BL:${(backL*100).toFixed(0)}% BR:${(backR*100).toFixed(0)}%`)
-        }
+        // if (this.state.frameCount % 60 === 0) {
+        //   const tag = nervousOutput.physicsApplied === 'liquid-stereo' ? '🌊 LIQUID' : '🌊 CHILL';
+        //   console.log(`[TitanEngine ${tag} 7-ZONE] FL:${(frontL*100).toFixed(0)}% FR:${(frontR*100).toFixed(0)}% BL:${(backL*100).toFixed(0)}% BR:${(backR*100).toFixed(0)}%`)
+        // }
       } else {
         // LEGACY MODE: Mono front/back + stereo movers
         zones = {

@@ -24,6 +24,7 @@ import React, { Suspense, lazy, useState, useCallback, useEffect, useRef } from 
 import { useShallow } from 'zustand/react/shallow'
 import { useStageStore } from '../../stores/stageStore'
 import { useSelectionStore } from '../../stores/selectionStore'
+import { useControlStore } from '../../stores/controlStore'
 import { useNavigationStore, selectStageConstructorNav } from '../../stores/navigationStore'
 import { Box, Layers, Move3D, Save, FolderOpen, Plus, Trash2, Magnet, MousePointer2, BoxSelect, Users, Map, Wrench, RefreshCcw, Upload, ChevronRight, ChevronDown, FilePlus, Pencil, LayoutGrid, Box as Box3D } from 'lucide-react'
 import { lazy as lazyComponent } from 'react'
@@ -664,6 +665,9 @@ const StageConstructorView: React.FC = () => {
   const updateFixture = useStageStore(state => state.updateFixture)
   const updateFixturePhysics = useStageStore(state => state.updateFixturePhysics)
   const fixtures = useStageStore(state => state.fixtures)
+  
+  // 🛡️ WAVE 6070: System-arm guard — editing while armed causes fixture pile-up
+  const systemArmed = useControlStore(state => state.systemArmed)
 
   // 🧱 WAVE 4538: Voxel view toggles
   const [showCrystalBox, setShowCrystalBox] = useState(true)
@@ -751,6 +755,17 @@ const StageConstructorView: React.FC = () => {
               <Suspense fallback={<Loading3DFallback />}>
                 <StageCanvas2D />
               </Suspense>
+            )}
+            
+            {/* 🛡️ WAVE 6070: ARMED OVERLAY — editing while system is running causes fixture pile-up */}
+            {systemArmed && (
+              <div className="constructor-armed-overlay">
+                <div className="armed-overlay-content">
+                  <span className="armed-icon">⚡</span>
+                  <h3>System Armed</h3>
+                  <p>Disarm the system to edit or create a show.</p>
+                </div>
+              </div>
             )}
           </div>
           

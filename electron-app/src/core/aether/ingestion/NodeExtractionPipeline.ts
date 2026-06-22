@@ -419,6 +419,7 @@ export class NodeExtractionPipeline {
       ...(isVirtual              !== undefined && { isVirtual }),
       ...(resolvedOrientation   !== undefined && { orientation: resolvedOrientation }),
       ...(resolvedIsPlaced      !== undefined && { isPlaced: resolvedIsPlaced }),
+      ...(fixtureDef.dmxGovernors !== undefined && { dmxGovernors: fixtureDef.dmxGovernors }),
     } satisfies IDeviceDefinition
   }
 

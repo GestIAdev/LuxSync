@@ -53,6 +53,25 @@ const _calibrationModeFixtures = new Set<string>()
 // WAVE 6020 FIX: Claves IK que NUNCA deben sobrevivir en merges aditivos
 const IK_POISON_KEYS = new Set(['targetX', 'targetY', 'targetZ', 'focusX', 'focusY', 'focusZ'])
 
+// ── WAVE 6040.5 FIX: Resolución dinámica de sufijo cinético para fixtures Forge Graph.
+// Los fixtures legacy usan :kinetic; los fixtures Forge Graph usan :kinetic-N.
+// Esta función traduce el nodeId canónico al real antes de tocar el arbiter.
+function resolveKineticNodeId(nodeId: string): string {
+  if (!nodeId.endsWith(':kinetic')) return nodeId
+  const orchestrator = getTitanOrchestrator()
+  const graph = orchestrator.getAetherNodeGraph()
+  if (graph.getNodeData(nodeId) != null) return nodeId
+  const prefix = nodeId.slice(0, -8)
+  const deviceNodes = graph.getDeviceNodes?.(prefix as any)
+  if (!deviceNodes) return nodeId
+  for (const nid of deviceNodes) {
+    if (nid.startsWith(prefix) && graph.getNodeData(nid)?.family === NodeFamily.KINETIC) {
+      return nid
+    }
+  }
+  return nodeId
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // REGISTRATION
 // ─────────────────────────────────────────────────────────────────────────────
@@ -82,13 +101,14 @@ export function registerAetherIPCHandlers(): void {
         const arbiter = getTitanOrchestrator().getAetherArbiter()
         for (const { nodeId, channels } of payloads) {
           if (typeof nodeId === 'string' && nodeId.length > 0 && channels && typeof channels === 'object') {
+            const resolvedNodeId = resolveKineticNodeId(nodeId)
             // WAVE 6020.8 DIAG: Log base anchor values — IK-space contamination check
             const ch = channels as Record<string, number>
             if ('pan_base' in ch || 'tilt_base' in ch) {
-              const hasFade = arbiter.hasReleaseFade(nodeId)
-              console.log(`[ZOMBIE-DIAG] setManualOverrides ${nodeId}: pan_base=${ch['pan_base']?.toFixed(4)} tilt_base=${ch['tilt_base']?.toFixed(4)} hasFade=${hasFade}`)
+              const hasFade = arbiter.hasReleaseFade(resolvedNodeId)
+              console.log(`[ZOMBIE-DIAG] setManualOverrides ${resolvedNodeId}: pan_base=${ch['pan_base']?.toFixed(4)} tilt_base=${ch['tilt_base']?.toFixed(4)} hasFade=${hasFade}`)
             }
-            arbiter.setManualOverride(nodeId, channels)
+            arbiter.setManualOverride(resolvedNodeId, channels)
           }
         }
         // 🔬 WAVE 4735.6 DIAG: confirmar que _manualOverrides tiene las entradas
@@ -116,9 +136,13 @@ export function registerAetherIPCHandlers(): void {
 
       try {
         const arbiter = getTitanOrchestrator().getAetherArbiter()
+        const kineticClears = nodeIds.filter(id => typeof id === 'string' && id.includes(':kinetic'))
+        if (kineticClears.length > 0) {
+          console.log(`[ZOMBIE-DIAG] 🔥 AetherIPC clearManualOverrides KINETIC: ${kineticClears.join(', ')} | total=${nodeIds.length}`)
+        }
         for (const nodeId of nodeIds) {
           if (typeof nodeId === 'string') {
-            arbiter.clearManualOverride(nodeId)
+            arbiter.clearManualOverride(resolveKineticNodeId(nodeId))
           }
         }
         return { success: true }
@@ -460,7 +484,7 @@ export function registerAetherIPCHandlers(): void {
     }) => {
       console.log('[ZOMBIE-DIAG] 🔥 setManualPattern ENTER. Payload:', { fixtureIds: fixtureIds?.length, pattern, speed, amplitude, fan, anchorPan, anchorTilt })
       const arbiter = getTitanOrchestrator().getAetherArbiter()
-      const diagNodeIds = fixtureIds.map(id => `${id}:kinetic`)
+      const diagNodeIds = fixtureIds.map(id => resolveKineticNodeId(`${id}:kinetic`))
       for (const nodeId of diagNodeIds) {
         const manual = arbiter.getManualOverride(nodeId)
         const motor = arbiter.getMotorKineticOverride(nodeId)
@@ -488,7 +512,7 @@ export function registerAetherIPCHandlers(): void {
           console.log('[ZOMBIE-DIAG] → Branch RELEASE/NULL (restoring fade + clean snapshot)')
           const orchestrator = getTitanOrchestrator()
           const nodeGraph = orchestrator.getAetherNodeGraph()
-          const removeNodeIds = fixtureIds.map(id => `${id}:kinetic`)
+          const removeNodeIds = fixtureIds.map(id => resolveKineticNodeId(`${id}:kinetic`))
 
           // WAVE 6020.5 FIX: Capturar estado IK ANTES de removeNodes.
           // currentPosition.tilt tiene semántica distinta según la ruta:
@@ -524,7 +548,7 @@ export function registerAetherIPCHandlers(): void {
           }
           const physicsPP = orchestrator.getPhysicsPostProcessor()
           for (const id of fixtureIds) {
-            const nodeId = `${id}:kinetic`
+            const nodeId = resolveKineticNodeId(`${id}:kinetic`)
             const kineticNode = nodeGraph.getNodeData(nodeId) as IKineticNodeData | undefined
             if (kineticNode?.currentPosition) {
               let safePan  = kineticNode.currentPosition.pan
@@ -567,7 +591,7 @@ export function registerAetherIPCHandlers(): void {
             // ejecutaba ANTES de este handler y sobreescribía currentPosition.tilt
             // via ruta clásica (ceiling: 255-127=128, 128/255≈0.5020) antes del snapshot.
             // WAVE 6020.11: Ampliado a :kinetic — Ruta IK Fantasma erradicada.
-            const targetNodes = [id, `${id}:kinetic`]
+            const targetNodes = [id, resolveKineticNodeId(`${id}:kinetic`)]
             for (const nodeId of targetNodes) {
               const manualOverride = arbiter.getManualOverride(nodeId)
               if (manualOverride) {
@@ -576,7 +600,7 @@ export function registerAetherIPCHandlers(): void {
                 }
               }
             }
-            physicsPP.resetSpatialState(`${id}:kinetic`)
+            physicsPP.resetSpatialState(resolveKineticNodeId(`${id}:kinetic`))
           }
           for (const nodeId of removeNodeIds) {
             const manual = arbiter.getManualOverride(nodeId)
@@ -595,7 +619,7 @@ export function registerAetherIPCHandlers(): void {
 
         if (pattern === 'hold' || pattern === 'static') {
           console.log('[ZOMBIE-DIAG] → Branch HOLD (freeze intentional)')
-          const removeNodeIds = fixtureIds.map(id => `${id}:kinetic`)
+          const removeNodeIds = fixtureIds.map(id => resolveKineticNodeId(`${id}:kinetic`))
 
           // WAVE 6020 FIX: Purge veneno IK de _manualOverrides ANTES del merge aditivo.
           // Si targetX/Y/Z sobrevivieron de un spatial target previo, el merge
@@ -628,7 +652,7 @@ export function registerAetherIPCHandlers(): void {
           aetherKineticEngine.removeNodes(removeNodeIds, arbiter)
           if (!motorStateMigrated && anchorPan === undefined && anchorTilt === undefined) {
             for (const id of fixtureIds) {
-              arbiter.clearManualOverride(`${id}:kinetic`)
+              arbiter.clearManualOverride(resolveKineticNodeId(`${id}:kinetic`))
             }
           }
           for (const nodeId of removeNodeIds) {
@@ -657,7 +681,7 @@ export function registerAetherIPCHandlers(): void {
         arbiter.setRelativeOffsetAmplitude(amplitudeNorm * 2)
 
         // Construir nodeIds en formato Aether: `${fixtureId}:kinetic`
-        const nodeIds = fixtureIds.map(id => `${id}:kinetic`)
+        const nodeIds = fixtureIds.map(id => resolveKineticNodeId(`${id}:kinetic`))
 
         // Mapear nombre de patrón UI → NativeKineticPattern
         const nativePattern = mapToNativePattern(pattern)
@@ -808,7 +832,7 @@ export function registerAetherIPCHandlers(): void {
 
         let nodeIds: string[]
         if (Array.isArray(payload?.fixtureIds) && payload.fixtureIds.length > 0) {
-          nodeIds = payload.fixtureIds.map(id => `${id}:kinetic`)
+          nodeIds = payload.fixtureIds.map(id => resolveKineticNodeId(`${id}:kinetic`))
         } else {
           // Compat: sin nodeIds, aplica a todos los nodos activos del motor.
           nodeIds = aetherKineticEngine.getState().nodeIds
@@ -841,7 +865,7 @@ export function registerAetherIPCHandlers(): void {
       try {
         const arbiter = getTitanOrchestrator().getAetherArbiter()
         const states  = fixtureIds.map(id =>
-          aetherKineticEngine.getNodeState(`${id}:kinetic`, arbiter)
+          aetherKineticEngine.getNodeState(resolveKineticNodeId(`${id}:kinetic`), arbiter)
         )
         return { success: true, states }
       } catch (err) {
@@ -997,7 +1021,7 @@ export function registerAetherIPCHandlers(): void {
           validIds.push(id)
 
           // ── currentPanDMX desde L2: pan_base está en 0..1, DMX en 0..255 ──
-          const l2 = arbiter.getManualOverride(`${id}:kinetic`)
+          const l2 = arbiter.getManualOverride(resolveKineticNodeId(`${id}:kinetic`))
           const panBase = l2 && Number.isFinite(l2['pan_base']) ? l2['pan_base'] : undefined
           if (panBase !== undefined) {
             const clamped = panBase < 0 ? 0 : panBase > 1 ? 1 : panBase
@@ -1022,11 +1046,11 @@ export function registerAetherIPCHandlers(): void {
           const distance = Math.sqrt(dx * dx + dy * dy + dz * dz)
           if (!Number.isFinite(distance) || distance < 1e-6) {
             // Fixture prácticamente encima del target — máximo arco órbital.
-            arbiter.setSpatialDistanceScale(`${id}:kinetic`, 2.0)
+            arbiter.setSpatialDistanceScale(resolveKineticNodeId(`${id}:kinetic`), 2.0)
             continue
           }
           const scale = D_REF / distance
-          arbiter.setSpatialDistanceScale(`${id}:kinetic`, scale)
+          arbiter.setSpatialDistanceScale(resolveKineticNodeId(`${id}:kinetic`), scale)
         }
 
         const results = solveGroupWithFan(
@@ -1060,7 +1084,7 @@ export function registerAetherIPCHandlers(): void {
           // el anchor del radar clásico y NO se traducen a pan/tilt (ver NodeArbiter.ts:532).
           // setMotorKineticOverride escribe en _motorKineticOverrides — bloque L2-MOTOR
           // que aplica DESPUÉS del Grand Master con supremacía absoluta sobre pan/tilt.
-          arbiter.setMotorKineticOverride(`${id}:kinetic`, {
+          arbiter.setMotorKineticOverride(resolveKineticNodeId(`${id}:kinetic`), {
             pan_base:  panNorm,
             tilt_base: tiltNorm,
           })
@@ -1091,7 +1115,7 @@ export function registerAetherIPCHandlers(): void {
       try {
         const arbiter = getTitanOrchestrator().getAetherArbiter()
         for (const id of fixtureIds) {
-          const nodeId = `${id}:kinetic`
+          const nodeId = resolveKineticNodeId(`${id}:kinetic`)
           // WAVE 4980: Anti-jitter release fade.
           // Leemos la posición IK actual (_motorKineticOverrides) y la
           // inyectamos como pan/tilt absolutos en _manualOverrides ANTES de
@@ -1355,7 +1379,7 @@ export function registerAetherIPCHandlers(): void {
           const arbiter = getTitanOrchestrator().getAetherArbiter()
           arbiter.clearManualOverride(`${fixtureId}:color`)
           arbiter.clearManualOverride(`${fixtureId}:impact`)
-          arbiter.clearManualOverride(`${fixtureId}:kinetic`)
+          arbiter.clearManualOverride(resolveKineticNodeId(`${fixtureId}:kinetic`))
         } catch (clearErr) {
           console.warn(`[CalibrationIPC] Safety-net clear failed for ${fixtureId}:`, clearErr)
         }

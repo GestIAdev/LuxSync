@@ -582,6 +582,11 @@ class ProgrammerAetherBridgeClass {
     }
 
     if (finalClearNodeIds.length > 0) {
+      // 🩸 WAVE 6040-DIAG: trace accidental kinetic clears
+      const kineticClears = finalClearNodeIds.filter(id => id.includes(':kinetic'))
+      if (kineticClears.length > 0) {
+        console.log(`[ZOMBIE-DIAG] 🚨 Bridge CLEARING KINETIC nodes: ${kineticClears.join(', ')} | allClears=[${finalClearNodeIds.join(', ')}]`)
+      }
       requests.push(aether.clearManualOverrides(finalClearNodeIds))
     }
 

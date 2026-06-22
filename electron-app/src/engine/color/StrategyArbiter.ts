@@ -211,9 +211,9 @@ export class StrategyArbiter {
     this.frameCount++;
     
     // � WAVE 1209 DEBUG: Log SIEMPRE para confirmar que se ejecuta
-    if (this.frameCount % 600 === 0) {  // Cada 10 segundos
-      console.log(`[StrategyArbiter] 🔄 Running... frame=${this.frameCount} | current=${this.stableStrategy} | commitment=${this.strategyCommitmentFrames}`);
-    }
+    // if (this.frameCount % 600 === 0) {  // Cada 10 segundos
+    //   console.log(`[StrategyArbiter] 🔄 Running... frame=${this.frameCount} | current=${this.stableStrategy} | commitment=${this.strategyCommitmentFrames}`);
+    // }
     
     // �🔒 WAVE 1208.6: Decrementar strategy commitment timer
     if (this.strategyCommitmentFrames > 0) {

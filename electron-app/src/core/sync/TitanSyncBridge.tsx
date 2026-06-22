@@ -138,8 +138,16 @@ const syncToBackend = async (
     )
 
     const result = await lux.aether.setFixtures({ fixtures: arbiterFixtures, stageBounds })
-    // 🌊 WAVE 6060: Removed backend-driven layout override.
-    // liquidLayout is a USER PREFERENCE, not dictated by fixture count.
+    // 🌊 WAVE 2432 SYNC: Si el backend detectó un layout distinto, alinear el controlStore.
+    // Esto evita que el botón 4.1/7.1 del Hyperion topbar muestre un valor desfasado
+    // del motor real (especialmente tras la hidratación inicial de fixtures).
+    if (result?.liquidLayout) {
+      const currentLayout = useControlStore.getState().liquidLayout
+      if (currentLayout !== result.liquidLayout) {
+        useControlStore.getState().setLiquidLayout(result.liquidLayout)
+        console.log(`[TitanSyncBridge] 🌊 Layout sync: ${currentLayout} → ${result.liquidLayout}`)
+      }
+    }
     // F3: Hash committed ONLY after successful IPC — enables automatic retry on failure.
     lastSyncedHashRef.current = currentHash
     console.log(`[TitanSyncBridge] ✅ SYNC OK: ${result?.fixtureCount || arbiterFixtures.length} fixtures active. Hash committed.`)

@@ -517,6 +517,9 @@ class KineticsBridgeClass {
       }
     })
 
+    // 🩸 WAVE 6040-DIAG: trace radar classic flush
+    console.log(`[ZOMBIE-DIAG] _flushClassic sending ${payloads.length} payloads:`, payloads.map(p => `${p.nodeId}=[${Object.entries(p.channels).map(([k,v])=>`${k}:${(v as number).toFixed(3)}`).join(',')}]`).join(' | '))
+
     try {
       await window.lux?.aether?.setManualOverrides(payloads)
     } catch (err) {

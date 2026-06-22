@@ -83,6 +83,64 @@ export interface IDeviceCalibration {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// DMX GOVERNOR ENGINE — Reglas declarativas de última milla
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Tipo de intención semántica para el matching de reglas de gobernador.
+ * 'fallback' es un comodín — hace match con cualquier tipo de canal.
+ */
+export type GovernorIntentType = 'shutter' | 'strobe' | 'intensity' | 'fallback'
+
+/**
+ * Condición de activación de una regla de gobernador.
+ * Todos los campos presentes deben cumplirse simultáneamente (semántica AND).
+ */
+export interface IGovernorCondition {
+  /** Tipo semántico de canal a interceptar. 'fallback' hace match con cualquiera. */
+  readonly intentType: GovernorIntentType
+  /** Valor normalizado mínimo (inclusive). Ausente = sin límite inferior. */
+  readonly min?: number
+  /** Valor normalizado máximo (exclusivo). Ausente = sin límite superior. */
+  readonly max?: number
+}
+
+/**
+ * Transformación física aplicada cuando la condición de la regla hace match.
+ * forceByte tiene precedencia sobre mapToRange. clampMin se aplica al final.
+ */
+export interface IGovernorAction {
+  /** Sobreescribir con un byte DMX fijo [0-255]. Máxima precedencia. */
+  readonly forceByte?: number
+  /** Re-mapear el input normalizado [0,1] al rango DMX físico [min, max]. */
+  readonly mapToRange?: readonly [number, number]
+  /** Si el byte calculado es > 0 pero < clampMin, elevarlo a clampMin. */
+  readonly clampMin?: number
+}
+
+/**
+ * Regla declarativa única: condición → transformación física.
+ * La primera regla del array que hace match gana (short-circuit).
+ */
+export interface IGovernorRule {
+  readonly when: IGovernorCondition
+  readonly then: IGovernorAction
+}
+
+/**
+ * Gobernador DMX: vincula un conjunto ordenado de reglas a un canal físico concreto.
+ * channelIndex es 0-based, relativo a la dmxAddress base del device.
+ * Si existen múltiples gobernadores para el mismo channelIndex,
+ * solo se evalúa el primero (first-match wins).
+ */
+export interface IDMXGovernor {
+  /** Offset DMX 0-based relativo a la dirección base del device. */
+  readonly channelIndex: number
+  /** Reglas evaluadas en orden. Primera regla con match gana. */
+  readonly rules: readonly IGovernorRule[]
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // DEVICE DEFINITION — Lo que La Forja produce
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -152,4 +210,10 @@ export interface IDeviceDefinition {
    * El SpatialRegistrar omite la inyección de coordenadas IK cuando es false.
    */
   readonly isPlaced?: boolean
+  /**
+   * 🏛️ DMX GOVERNOR ENGINE: Reglas declarativas de última milla.
+   * Evaluadas por canal en _writeNode() tras todos los transforms de
+   * seguridad/calibración/personality. Zero-allocation — congeladas en patch time.
+   */
+  readonly dmxGovernors?: readonly IDMXGovernor[]
 }

@@ -20,10 +20,10 @@ const SELECTION_CONFIG = {
     HOVER_RADIUS: 1.5,
     /** Hover ring line width */
     HOVER_WIDTH: 1.5,
-    /** Muted (inhibit) ring radius multiplier — must exceed PAR_GLOW (5.0) */
-    MUTE_RADIUS: 6.5,
+    /** Muted (inhibit) ring radius multiplier */
+    MUTE_RADIUS: 2.1,
     /** Muted (inhibit) ring line width */
-    MUTE_WIDTH: 3,
+    MUTE_WIDTH: 2,
     /** Lasso fill alpha */
     LASSO_FILL_ALPHA: 0.08,
     /** Lasso stroke alpha */

@@ -1,3 +1,5 @@
+import type { IDMXGovernor } from '../core/aether/device'
+
 // ═══════════════════════════════════════════════════════════════════════════
 // WAVE 2084: UNIVERSAL CHANNEL DNA
 // Soporta desde movers clásicos hasta ingenios alienígenas (fans, lasers, FX)
@@ -276,6 +278,9 @@ export interface FixtureDefinition {
       strobeRangeMax: number;
     };
   };
+  // 🏛️ DMX GOVERNOR ENGINE: Reglas declarativas de última milla por canal físico.
+  // Evaluadas en NodeResolver._writeNode() tras calibración y personality.
+  dmxGovernors?: IDMXGovernor[];
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

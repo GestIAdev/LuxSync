@@ -100,7 +100,6 @@ import { UniversalAssetBrowser } from '../../shared/AssetBrowser'
 import type { LibraryAsset } from '../../../stores/assetAdapters'
 import { 
   PhysicsProfile, 
-  DEFAULT_PHYSICS_PROFILES,
   FixtureV2,
   MotorType
 } from '../../../core/stage/ShowFileV2'
@@ -241,7 +240,7 @@ interface FunctionDef {
   is16bit?: boolean
 }
 
-const FUNCTION_PALETTE: Record<string, FunctionDef[]> = {
+export const FUNCTION_PALETTE: Record<string, FunctionDef[]> = {
   'INTENSITY': [
     { type: 'dimmer',  label: 'Dimmer',  color: '#ffffff', icon: <Sun size={13} /> },
     { type: 'shutter', label: 'Shutter', color: '#a0a0a0', icon: <Aperture size={13} /> },
@@ -455,7 +454,7 @@ const COLOR_ENGINE_OPTIONS: { value: ColorEngineType; label: string; description
 /**
  * Maps a ChannelType to its visual category for THE GLOW
  */
-function getChannelCategory(type: ChannelType): string {
+export function getChannelCategory(type: ChannelType): string {
   // Intensity category
   if (['dimmer', 'shutter', 'strobe'].includes(type)) return 'intensity'
   // Color category
@@ -472,7 +471,7 @@ function getChannelCategory(type: ChannelType): string {
 /**
  * Gets the color for a channel category - THE GLOW palette
  */
-function getCategoryColor(category: string): string {
+export function getCategoryColor(category: string): string {
   return CATEGORY_COLORS[category.toUpperCase()] || ''
 }
 
@@ -567,24 +566,24 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   // STATE
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   
-  const [fixture, setFixture] = useState<FixtureDefinition>(FixtureFactory.createEmpty())
+  const fixtureRef = useRef<FixtureDefinition>(FixtureFactory.createEmpty())
 
   // â”€â”€ WAVE 4732-A: Forge Hybrid Builder State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [forgeState, forgeDispatch] = useReducer(forgeReducer, undefined, makeInitialForgeState)
 
-  const [physics, setPhysics] = useState<PhysicsProfile>(DEFAULT_PHYSICS_PROFILES['stepper-quality'])
-  const [totalChannels, setTotalChannels] = useState<number>(8)
+  const channels     = forgeState.channels
+  const cells        = forgeState.cells
+  const dmxGovernors = forgeState.dmxGovernors
+  const physics      = forgeState.physics
+  const wheels       = forgeState.wheels
   const [activeTab, setActiveTab] = useState<ForgeTabId>('library')  // WAVE 1112: Start at library
   const [forgeEditMode, setForgeEditMode] = useState<ForgeEditMode>('simple') // WAVE 4548.8c
 
   // WAVE 4548.8c: read the current forge graph to gate Simple Mode
   const forgeGraph = useForgeGraphStore(s => s.graph)
   const simpleModeCompatible = isSimpleCompatible(forgeGraph)
-  const [colorEngine, setColorEngine] = useState<ColorEngineType>('rgb')
-  const [wheelColors, setWheelColors] = useState<WheelColor[]>([])
   
   // ðŸ”§ WAVE 2100: Configurable wheel motor speed
-  const [wheelMinChangeTimeMs, setWheelMinChangeTimeMs] = useState<number>(500)
   
   // WAVE 1112: Current editing source tracking
   const [editingSource, setEditingSource] = useState<'system' | 'user' | 'new'>('new')
@@ -697,69 +696,18 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   const loadFixtureIntoEditor = useCallback((def: FixtureDefinition) => {
     // WAVE 4831 DIAG: detectar llamadas inesperadas post-save
     console.trace('[Forge 4831] 📥 loadFixtureIntoEditor called for:', def.name)
-    setFixture(def)
+    fixtureRef.current = def
     hydrateForgeGraph(def)
-    setTotalChannels(def.channels.length)
-
-    // â”€â”€ WAVE 4732-A: Hydrate the Hybrid Builder State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     forgeDispatch({ type: 'HYDRATE_FROM_FIXTURE', fixture: def })
-
-    // Load color engine from capabilities
-    if (def.capabilities?.colorEngine) {
-      setColorEngine(def.capabilities.colorEngine)
-    }
-
-    // Load wheel colors from wheels or capabilities.colorWheel
-    if (def.wheels?.colors) {
-      setWheelColors(def.wheels.colors)
-    } else if (def.capabilities?.colorWheel?.colors) {
-      setWheelColors(def.capabilities.colorWheel.colors)
-    } else {
-      setWheelColors([])
-    }
-    
-    // ðŸ”§ WAVE 2100: Load minChangeTimeMs from colorWheel config
-    const savedMinChangeTimeMs = def.capabilities?.colorWheel?.minChangeTimeMs
-    if (savedMinChangeTimeMs && savedMinChangeTimeMs > 0) {
-      setWheelMinChangeTimeMs(savedMinChangeTimeMs)
-    } else {
-      setWheelMinChangeTimeMs(500) // Industry default
-    }
-    
-    // Load physics if available - WAVE 1116.3 FIX: Use ACTUAL saved values
-    if (def.physics) {
-      // Use the physics object directly from JSON, not a default profile
-      console.log(`[ForgeEmbedded] ðŸ“¦ Loading physics from JSON:`, def.physics)
-      
-      // Map old motor types to valid MotorType
-      const rawMotorType = def.physics.motorType || 'stepper-quality'
-      const validMotorTypes: MotorType[] = ['servo-pro', 'stepper-quality', 'stepper-cheap', 'unknown']
-      const motorType: MotorType = validMotorTypes.includes(rawMotorType as MotorType) 
-        ? (rawMotorType as MotorType) 
-        : 'stepper-quality'
-      
-      setPhysics({
-        motorType,
-        maxAcceleration: def.physics.maxAcceleration ?? 2000,
-        maxVelocity: def.physics.maxVelocity ?? 500,
-        safetyCap: Boolean(def.physics.safetyCap ?? true),
-        orientation: def.physics.orientation || 'floor',
-        invertPan: def.physics.invertPan ?? false,
-        invertTilt: def.physics.invertTilt ?? false,
-        swapPanTilt: def.physics.swapPanTilt ?? false,
-        homePosition: def.physics.homePosition || { pan: 127, tilt: 127 },
-        tiltLimits: def.physics.tiltLimits || { min: 0, max: 270 },
-      })
-    }
-  }, [hydrateForgeGraph])
+  }, [hydrateForgeGraph, forgeDispatch])
 
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // VALIDATION
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   
   useEffect(() => {
-    const hasName = !!fixture.name?.trim()
-    const hasChannels = fixture.channels.some(ch => ch.type !== 'unknown')
+    const hasName = !!forgeState.meta.name?.trim()
+    const hasChannels = forgeState.channels.some(ch => ch.type !== 'unknown')
     
     if (!hasName) {
       setValidationMessage('Model name required')
@@ -771,34 +719,13 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
       setValidationMessage('Ready to save')
       setIsFormValid(true)
     }
-  }, [fixture])
+  }, [forgeState.meta.name, forgeState.channels])
 
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // CHANNEL MANAGEMENT
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   
-  // Generate empty channels when totalChannels changes
-  useEffect(() => {
-    setFixture(prev => {
-      const currentCount = prev.channels.length
-      if (currentCount === totalChannels) return prev
-      
-      if (currentCount < totalChannels) {
-        // Add new empty channels
-        const newChannels: FixtureChannel[] = Array.from({ length: totalChannels - currentCount }, (_, i) => ({
-          index: currentCount + i,
-          name: '',
-          type: 'unknown' as ChannelType,
-          defaultValue: 0,
-          is16bit: false
-        }))
-        return { ...prev, channels: [...prev.channels, ...newChannels] }
-      } else {
-        // Remove extra channels
-        return { ...prev, channels: prev.channels.slice(0, totalChannels) }
-      }
-    })
-  }, [totalChannels])
+
 
   // ═══════════════════════════════════════════════════════════════════════════
   // WAVE 4742: SYNC fixture.channels → forgeState.channels when Aether Cells exist
@@ -807,57 +734,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   // re-triggers → new CHANNEL_REPLACE → ∞. We access forgeState.channels via ref
   // to read the current value without subscribing to it as a reactive dependency.
   // ═══════════════════════════════════════════════════════════════════════════
-  const forgeChannelsRef = useRef(forgeState.channels)
-  forgeChannelsRef.current = forgeState.channels
 
-  useEffect(() => {
-    // Only sync if Aether Cells exist (hybrid mode is active)
-    if (forgeState.cells.length === 0) return
-
-    const currentForgeChannels = forgeChannelsRef.current
-
-    if (currentForgeChannels.length !== fixture.channels.length) {
-      forgeDispatch({
-        type: 'META_SET_CHANNEL_COUNT',
-        channelCount: fixture.channels.length,
-      })
-      return
-    }
-
-    // Sync completo: evita que compileForgeState use deps stale.
-    fixture.channels.forEach((fixtureChannel, idx) => {
-      const forgeChannelCurrent = currentForgeChannels[idx]
-
-      const fixtureDeps = fixtureChannel.ignitionDeps ?? []
-      const forgeDeps = forgeChannelCurrent?.ignitionDeps ?? []
-      const sameDeps =
-        fixtureDeps.length === forgeDeps.length &&
-        fixtureDeps.every((dep, i) => {
-          const current = forgeDeps[i]
-          return !!current
-            && dep.channelType === current.channelType
-            && dep.requiredValue === current.requiredValue
-            && dep.targetChannelIndex === current.targetChannelIndex
-            && dep.mode === current.mode
-        })
-
-      const sameChannel = !!forgeChannelCurrent
-        && forgeChannelCurrent.type === fixtureChannel.type
-        && forgeChannelCurrent.name === fixtureChannel.name
-        && forgeChannelCurrent.defaultValue === fixtureChannel.defaultValue
-        && !!forgeChannelCurrent.is16bit === !!fixtureChannel.is16bit
-        && !!forgeChannelCurrent.continuousRotation === !!fixtureChannel.continuousRotation
-        && sameDeps
-
-      if (!sameChannel) {
-        forgeDispatch({
-          type: 'CHANNEL_REPLACE',
-          idx,
-          channel: deepClone(fixtureChannel),
-        })
-      }
-    })
-  }, [fixture.channels, forgeState.cells.length, forgeDispatch])
 
   // Drag handlers
   const handleDragStart = (e: DragEvent<HTMLDivElement>, funcType: ChannelType, funcLabel: string) => {
@@ -880,34 +757,24 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
     e.preventDefault()
     const channelType = e.dataTransfer.getData('channelType') as ChannelType
     const channelLabel = e.dataTransfer.getData('channelLabel')
-    
-    setFixture(prev => {
-      const newChannels = [...prev.channels]
-      newChannels[slotIndex] = {
-        ...newChannels[slotIndex],
+    forgeDispatch({
+      type: 'CHANNEL_REPLACE',
+      idx: slotIndex,
+      channel: {
+        ...forgeState.channels[slotIndex],
+        index: slotIndex,
         type: channelType,
         name: channelLabel,
         defaultValue: getSmartDefaultValue(channelType),
-        is16bit: channelType.includes('fine')
-      }
-      return { ...prev, channels: newChannels }
+        is16bit: channelType.includes('fine'),
+      },
     })
-    
+    forgeDispatch({ type: 'SYNC_RACK_TO_CELLS', channelIdx: slotIndex })
     setDragOverSlot(null)
   }
 
   const clearChannel = (index: number) => {
-    setFixture(prev => {
-      const newChannels = [...prev.channels]
-      newChannels[index] = {
-        index,
-        name: '',
-        type: 'unknown' as ChannelType,
-        defaultValue: 0,
-        is16bit: false
-      }
-      return { ...prev, channels: newChannels }
-    })
+    forgeDispatch({ type: 'CHANNEL_CLEAR', idx: index })
   }
 
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -916,62 +783,27 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
 
   /** Inmutablemente reemplaza el array `ignitionDeps` del canal `idx`. */
   const updateChannelIgnitionDeps = useCallback((idx: number, deps: IgnitionDependency[]) => {
-    setFixture(prev => {
-      const newChannels = [...prev.channels]
-      const current = newChannels[idx]
-      if (!current) return prev
-      // Si el array queda vacÃ­o, eliminar la propiedad para mantener
-      // el JSON limpio en perfiles sin dependencias.
-      if (deps.length === 0) {
-        const { ignitionDeps: _omit, ...rest } = current
-        newChannels[idx] = rest
-      } else {
-        newChannels[idx] = { ...current, ignitionDeps: deps }
-      }
-      return { ...prev, channels: newChannels }
-    })
-  }, [])
+    const current = forgeState.channels[idx]
+    if (!current) return
+    const channel: FixtureChannel = deps.length === 0
+      ? { ...current, ignitionDeps: undefined }
+      : { ...current, ignitionDeps: deps }
+    forgeDispatch({ type: 'CHANNEL_REPLACE', idx, channel })
+  }, [forgeState.channels, forgeDispatch])
 
   const addIgnitionDep = useCallback((idx: number, dep: IgnitionDependency) => {
-    setFixture(prev => {
-      const current = prev.channels[idx]
-      if (!current) return prev
-      const existing = current.ignitionDeps ?? []
-      const newDeps: IgnitionDependency[] = [...existing, dep]
-      const newChannels = [...prev.channels]
-      newChannels[idx] = { ...current, ignitionDeps: newDeps }
-      return { ...prev, channels: newChannels }
-    })
-  }, [])
+    forgeDispatch({ type: 'IGNITION_ADD', idx, dep })
+  }, [forgeDispatch])
 
   const removeIgnitionDep = useCallback((idx: number, depIndex: number) => {
-    setFixture(prev => {
-      const current = prev.channels[idx]
-      if (!current || !current.ignitionDeps) return prev
-      const newDeps = current.ignitionDeps.filter((_, i) => i !== depIndex)
-      const newChannels = [...prev.channels]
-      if (newDeps.length === 0) {
-        const { ignitionDeps: _omit, ...rest } = current
-        newChannels[idx] = rest
-      } else {
-        newChannels[idx] = { ...current, ignitionDeps: newDeps }
-      }
-      return { ...prev, channels: newChannels }
-    })
-  }, [])
+    forgeDispatch({ type: 'IGNITION_REMOVE', idx, depIdx: depIndex })
+  }, [forgeDispatch])
 
   const updateIgnitionDep = useCallback((idx: number, depIndex: number, patch: Partial<IgnitionDependency>) => {
-    setFixture(prev => {
-      const current = prev.channels[idx]
-      if (!current || !current.ignitionDeps) return prev
-      const newDeps = current.ignitionDeps.map((d, i) =>
-        i === depIndex ? { ...d, ...patch } : d
-      )
-      const newChannels = [...prev.channels]
-      newChannels[idx] = { ...current, ignitionDeps: newDeps }
-      return { ...prev, channels: newChannels }
-    })
-  }, [])
+    forgeDispatch({ type: 'IGNITION_UPDATE', idx, depIdx: depIndex, patch })
+  }, [forgeDispatch])
+
+
 
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // HANDLERS - WAVE 1112: Save to Library
@@ -980,65 +812,60 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   /**
    * Build the complete FixtureDefinition with wheels included
    */
-  const buildCompleteFixture = useCallback((sourceFixture?: FixtureDefinition): FixtureDefinition => {
-    const fixtureForBuild = sourceFixture ?? fixture
-
-    const fixtureWithGraph = fixtureForBuild as FixtureDefinition & {
+  const buildCompleteFixture = useCallback((state: IForgeBuilderState = forgeState): FixtureDefinition => {
+    const baseFixture = fixtureRef.current
+    const syncedChannels = state.channels as FixtureChannel[]
+    const forgeGraphLocal = forgeGraph
+    const fixtureWithGraph = baseFixture as FixtureDefinition & {
       nodeGraph?: typeof forgeGraph
     }
-    const currentChannels = fixtureForBuild.channels
     const hasPersistedNodeGraph = !!fixtureWithGraph.nodeGraph
-    const hasLiveGraph = !!forgeGraph
+    const hasLiveGraph = !!forgeGraphLocal
     const shouldPersistNodeGraph = hasPersistedNodeGraph || hasLiveGraph
 
-    // Forge source-of-truth: siempre priorizar el graph vivo del canvas al guardar.
     let graphSnapshot = hasLiveGraph
-      ? deepClone(forgeGraph)
+      ? deepClone(forgeGraphLocal)
       : (hasPersistedNodeGraph ? deepClone(fixtureWithGraph.nodeGraph) : undefined)
 
-    // WAVE 4830 — THE FRONTEND LIAR FIX:
-    // currentChannels (Channel Rack) es la única fuente de verdad para channels[].
-    // syncGraphOutputsWithChannels actualiza los nodos output_dmx del grafo para que
-    // el JSON persistido refleje el estado del Rack — pero NO se re-deriva channels
-    // desde el grafo. Re-derivar via toChannels(graphSnapshot) restauraba ignitionDeps
-    // ya eliminadas porque los nodos del canvas tienen config stale hasta el próximo
-    // loadGraph. El grafo es solo para la topología visual — el Rack manda en DMX.
     if (graphSnapshot) {
-      graphSnapshot = syncGraphOutputsWithChannels(graphSnapshot, currentChannels)
+      graphSnapshot = syncGraphOutputsWithChannels(graphSnapshot, syncedChannels)
     }
-    const syncedChannels = currentChannels
 
     const hasRed = syncedChannels.some(ch => ch.type === 'red')
     const hasGreen = syncedChannels.some(ch => ch.type === 'green')
     const hasBlue = syncedChannels.some(ch => ch.type === 'blue')
     const hasRgbColorMixing = hasRed && hasGreen && hasBlue
 
+    const statePhysics = state.physics
+    const stateWheels = state.wheels
+    const colorEngine = (stateWheels?.colorEngine ?? (state.capabilities?.colorEngine as ColorEngineType) ?? 'rgb')
+    const wheelColors = stateWheels?.colors ?? []
+    const wheelMinChangeTimeMs = stateWheels?.minChangeTimeMs ?? 500
+
     const builtFixture = {
-      ...fixtureForBuild,
+      ...baseFixture,
+      name: state.meta.name || baseFixture.name,
+      manufacturer: state.meta.manufacturer || baseFixture.manufacturer,
+      type: state.meta.type || baseFixture.type,
       channels: syncedChannels,
-      // WAVE 1116.4: Include PHYSICS at root level for JSON export!
-      // ðŸ›¡ï¸ WAVE 2093.2 (CW-AUDIT-4): invertPan/Tilt frozen to false in physics.
-      // The actual invert values live in fixture.calibration (set by CalibrationView).
-      physics: {
-        motorType: physics.motorType as any,  // Cast needed: ShowFileV2 vs FixtureDefinition types differ
-        maxAcceleration: physics.maxAcceleration,
-        maxVelocity: physics.maxVelocity,
-        safetyCap: physics.safetyCap,
-        orientation: physics.orientation,
-        invertPan: false,   // ðŸ›¡ï¸ CW-AUDIT-4: Frozen â€” calibration is master
-        invertTilt: false,  // ðŸ›¡ï¸ CW-AUDIT-4: Frozen â€” calibration is master
-        swapPanTilt: physics.swapPanTilt,
-        homePosition: { ...physics.homePosition },
-        tiltLimits: { ...physics.tiltLimits },
-      },
-      // WAVE 1112: Include wheels at root level for JSON export
-      wheels: wheelColors.length > 0 ? { colors: wheelColors } : undefined,
-      // Also keep in capabilities for HAL compatibility
+      physics: statePhysics ? {
+        motorType: statePhysics.motorType as any,
+        maxAcceleration: statePhysics.maxAcceleration,
+        maxVelocity: statePhysics.maxVelocity,
+        safetyCap: statePhysics.safetyCap,
+        orientation: statePhysics.orientation,
+        invertPan: false,
+        invertTilt: false,
+        swapPanTilt: statePhysics.swapPanTilt,
+        homePosition: { ...statePhysics.homePosition },
+        tiltLimits: { ...statePhysics.tiltLimits },
+      } : baseFixture.physics,
+      wheels: (wheelColors as WheelColor[]).length > 0 ? { colors: wheelColors as WheelColor[] } : undefined,
       capabilities: {
-        ...fixtureForBuild.capabilities,
+        ...baseFixture.capabilities,
         colorEngine,
-        colorWheel: wheelColors.length > 0 ? {
-          colors: wheelColors,
+        colorWheel: (wheelColors as WheelColor[]).length > 0 ? {
+          colors: wheelColors as WheelColor[],
           allowsContinuousSpin: false,
           minChangeTimeMs: wheelMinChangeTimeMs,
         } : undefined,
@@ -1057,35 +884,27 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
       builtFixture.nodeGraph = graphSnapshot
     }
 
-    // ── WAVE 4732-C: Si hay células Aether definidas, el compilador
-    //    genera el nodeGraph sobreescribiendo cualquier grafo previo.
-    //    Las células son la fuente de verdad para la topología del grafo.
-    if (forgeState.cells.length > 0) {
-      const compileResult = compileForgeState(forgeState)
-      if (compileResult.ok) {
-        // WAVE 4872 — GHOST IN THE JSON FIX:
-        // NO sobrescribir builtFixture.channels desde compileResult.fixture.channels.
-        // compileResult puede estar basado en forgeState que lleva 1 tick de retraso
-        // respecto al React state (Channel Rack), resucitando ignitionDeps eliminadas.
-        // El Rack manda en channels[]; las células solo aportan nodeGraph.
-        // Aplicamos resolveChannelDeps sobre los channels Rack-truthed para enriquecer
-        // targetChannelIndex sin reintroducir deps que el usuario ya eliminó.
-        builtFixture.nodeGraph = compileResult.fixture.nodeGraph
-        builtFixture.channels = (builtFixture.channels as FixtureChannel[]).map(ch =>
-          resolveChannelDeps(ch, builtFixture.channels as FixtureChannel[])
-        ) as FixtureChannel[]
-        if (compileResult.warnings.length > 0) {
-          console.warn('[Forge 4732-C] Compile warnings:', compileResult.warnings)
+    if (state.cells.length > 0) {
+      try {
+        const compileResult = compileForgeState(state)
+        if (compileResult.ok) {
+          builtFixture.nodeGraph = compileResult.fixture.nodeGraph
+          builtFixture.channels = (builtFixture.channels as FixtureChannel[]).map(ch =>
+            resolveChannelDeps(ch, builtFixture.channels as FixtureChannel[])
+          ) as FixtureChannel[]
+          if (compileResult.warnings.length > 0) {
+            console.warn('[Forge 4732-C] Compile warnings:', compileResult.warnings)
+          }
+        } else {
+          console.error('[Forge 4732-C] Blocking compile errors:', compileResult.errors)
         }
-      } else {
-        console.error('[Forge 4732-C] Blocking compile errors:', compileResult.errors)
-        // Blocking errors will surface to the user in 4732-E (toast layer).
-        // Por ahora, no abortamos el save — el grafo anterior prevalece.
+      } catch (err) {
+        console.error('[Forge buildCompleteFixture] PANIC — compileForgeState threw:', err)
       }
     }
 
     return builtFixture
-  }, [fixture, physics, wheelColors, colorEngine, wheelMinChangeTimeMs, forgeGraph, forgeState])
+  }, [forgeState, forgeGraph])
   
   const handleSave = useCallback(async () => {
     if (!isFormValid) return
@@ -1104,13 +923,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
       }
     }
     
-    const currentChannels = deepClone(fixture.channels)
-    const fixtureSnapshot: FixtureDefinition = {
-      ...fixture,
-      channels: currentChannels,
-    }
-
-    const completeFixture = deepClone(buildCompleteFixture(fixtureSnapshot))
+    const completeFixture = deepClone(buildCompleteFixture(forgeState))
 
     // WAVE 4831 DIAG: Trazar channels que viajan al IPC — detectar ignitionDeps stale
     console.log('[Forge 4831] 🔍 Pre-save channels:', completeFixture.channels.map((ch: any) => ({
@@ -1145,7 +958,8 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
       
       const result = await saveUserFixture(clonedFixture)
       if (result.success) {
-        setFixture(clonedFixture)
+        fixtureRef.current = clonedFixture
+        forgeDispatch({ type: 'META_SET_NAME', name: clonedName })
         markForgeGraphClean()
         setEditingSource('user')
         setOriginalFixtureId(clonedFixture.id)
@@ -1205,8 +1019,8 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
     console.log('[ForgeEmbedded] ðŸ”¨ Saved fixture:', completeFixture.name, '| ID:', completeFixture.id)
     
     // Also call the prop callback for any external handlers
-    onSave(completeFixture, physics)
-  }, [fixture, fixture.channels, physics, isFormValid, onSave, buildCompleteFixture, editingSource, originalFixtureId, saveUserFixture, reconcileFixturesWithProfile, markForgeGraphClean])
+    onSave(completeFixture, forgeState.physics as any)
+  }, [forgeState, isFormValid, onSave, buildCompleteFixture, editingSource, originalFixtureId, saveUserFixture, reconcileFixturesWithProfile, markForgeGraphClean, forgeDispatch])
 
   const handleExportJSON = useCallback(() => {
     const completeFixture = deepClone(buildCompleteFixture())
@@ -1232,16 +1046,13 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   
   const handleNewFromScratch = useCallback(() => {
     const emptyFixture = FixtureFactory.createEmpty()
-    setFixture(emptyFixture)
+    fixtureRef.current = emptyFixture
     hydrateForgeGraph(emptyFixture)
-    setTotalChannels(8)
-    setWheelColors([])
-    setColorEngine('rgb')
-    setPhysics(DEFAULT_PHYSICS_PROFILES['stepper-quality'])
+    forgeDispatch({ type: 'HYDRATE_FROM_FIXTURE', fixture: emptyFixture })
     setEditingSource('new')
     setOriginalFixtureId(null)
     setActiveTab('general')
-  }, [hydrateForgeGraph])
+  }, [hydrateForgeGraph, forgeDispatch])
 
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // RENDER
@@ -1270,7 +1081,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
         {/* WAVE 4732.2 PASO 1: Fixture name — absolute center of header */}
         <div className="forge-fixture-name" aria-label="Editing fixture">
           <span className="forge-fixture-name__text">
-            {fixture.name || 'Untitled Fixture'}
+            {forgeState.meta.name || 'Untitled Fixture'}
           </span>
         </div>
 
@@ -1359,8 +1170,8 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                   <input
                     type="text"
                     placeholder="ADJ, Chauvet, Martin..."
-                    value={fixture.manufacturer || ''}
-                    onChange={(e) => setFixture(prev => ({ ...prev, manufacturer: e.target.value }))}
+                    value={forgeState.meta.manufacturer || ''}
+                    onChange={(e) => forgeDispatch({ type: 'META_SET_MANUFACTURER', manufacturer: e.target.value })}
                   />
                 </div>
                 
@@ -1373,8 +1184,8 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                     <input
                       type="text"
                       placeholder="Vizi Beam 5RX"
-                      value={fixture.name || ''}
-                      onChange={(e) => setFixture(prev => ({ ...prev, name: e.target.value }))}
+                      value={forgeState.meta.name || ''}
+                      onChange={(e) => forgeDispatch({ type: 'META_SET_NAME', name: e.target.value })}
                     />
                   </div>
 
@@ -1384,10 +1195,10 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                       type="number"
                       min="1"
                       max="512"
-                      value={totalChannels}
+                      value={forgeState.meta.channelCount}
                       onChange={(e) => {
                         const val = parseInt(e.target.value)
-                        if (!isNaN(val)) setTotalChannels(Math.min(512, Math.max(1, val)))
+                        if (!isNaN(val)) forgeDispatch({ type: 'META_SET_CHANNEL_COUNT', channelCount: Math.min(512, Math.max(1, val)) })
                       }}
                       style={{ textAlign: 'center', fontFamily: "'JetBrains Mono', monospace" }}
                     />
@@ -1405,9 +1216,9 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                 {FIXTURE_TYPES.map(typeConfig => (
                   <button
                     key={typeConfig.value}
-                    className={`type-selector-btn ${fixture.type === typeConfig.value ? 'active' : ''}`}
+                    className={`type-selector-btn ${forgeState.meta.type === typeConfig.value ? 'active' : ''}`}
                     style={{ '--type-color': typeConfig.color } as React.CSSProperties}
-                    onClick={() => setFixture(prev => ({ ...prev, type: typeConfig.value }))}
+                    onClick={() => forgeDispatch({ type: 'META_SET_TYPE', fixtureType: typeConfig.value })}
                     title={typeConfig.label}
                   >
                     <span className="type-icon">{typeConfig.icon}</span>
@@ -1428,7 +1239,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
               </div>
               
               {(() => {
-                const caps = deriveCapabilitiesUnified(fixture)
+                const caps = deriveCapabilitiesUnified(buildCompleteFixture(forgeState))
                 return (
                   <div className="capabilities-matrix">
                     {CAPABILITY_BADGES.map(badge => {
@@ -1469,9 +1280,9 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                 {COLOR_ENGINE_OPTIONS.map(engineConfig => (
                   <button
                     key={engineConfig.value}
-                    className={`type-selector-btn ${colorEngine === engineConfig.value ? 'active' : ''}`}
+                    className={`type-selector-btn ${(forgeState.wheels?.colorEngine ?? 'rgb') === engineConfig.value ? 'active' : ''}`}
                     style={{ '--type-color': '#f59e0b' } as React.CSSProperties}
-                    onClick={() => setColorEngine(engineConfig.value)}
+                    onClick={() => forgeDispatch({ type: 'WHEELS_SET_ENGINE', engine: engineConfig.value })}
                     title={engineConfig.description}
                   >
                     <span className="type-icon">{engineConfig.icon}</span>
@@ -1490,12 +1301,12 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                   <div className="engine-badge" title="Motor Type">
                     <span className="engine-icon">âš™ï¸</span>
                     <span className="engine-label">MOTOR</span>
-                    <span className="engine-value">{fixture.physics?.motorType?.toUpperCase() || 'â€”'}</span>
+                    <span className="engine-value">{forgeState.physics?.motorType?.toUpperCase() || 'â€”'}</span>
                   </div>
                   <div className="engine-badge" title="Max Acceleration (Â°/sÂ²)">
                     <span className="engine-icon">âš¡</span>
                     <span className="engine-label">ACCEL</span>
-                    <span className="engine-value">{fixture.physics?.maxAcceleration || 'â€”'}</span>
+                    <span className="engine-value">{forgeState.physics?.maxAcceleration || 'â€”'}</span>
                   </div>
                 </div>
               </div>
@@ -1508,11 +1319,11 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
               <div className="cockpit-section-header">
                 <Server size={16} />
                 <span>DMX RIBBON</span>
-                <span className="ribbon-count">{fixture.channels.length} channels</span>
+                <span className="ribbon-count">{channels.length} channels</span>
               </div>
               
               <div className="dmx-ribbon-track">
-                {fixture.channels.map((channel, idx) => {
+                {channels.map((channel, idx) => {
                   const category = getChannelCategory(channel.type)
                   const color = getCategoryColor(category)
                   return (
@@ -1527,7 +1338,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                     </div>
                   )
                 })}
-                {fixture.channels.length === 0 && (
+                {channels.length === 0 && (
                   <div className="dmx-ribbon-empty">
                     No channels defined — Add in Channel Rack tab
                   </div>
@@ -1581,11 +1392,11 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                 <span>Default</span>
                 <span></span>
               </div>
-              {fixture.channels.map((channel, idx) => {
+              {channels.map((channel, idx) => {
                 const category = getChannelCategory(channel.type)
                 const categoryColor = getCategoryColor(category)
                 // ðŸ”¥ WAVE 4718: Disponibilidad de canales target para el selector
-                const availableTargetTypes = fixture.channels
+                const availableTargetTypes = channels
                   .filter(ch => ch.type !== 'unknown' && ch.type !== channel.type)
                   .map(ch => ch.type)
                   // dedupe preservando orden
@@ -1615,13 +1426,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                               className="channel-name-input"
                               placeholder={channel.type.toUpperCase()}
                               value={channel.name || ''}
-                              onChange={(e) => {
-                                setFixture(prev => {
-                                  const newChannels = [...prev.channels]
-                                  newChannels[idx] = { ...newChannels[idx], name: e.target.value }
-                                  return { ...prev, channels: newChannels }
-                                })
-                              }}
+                              onChange={(e) => forgeDispatch({ type: 'CHANNEL_REPLACE', idx, channel: { ...channels[idx], name: e.target.value } })}
                               onClick={(e) => e.stopPropagation()}
                               style={{
                                 background: 'rgba(0,0,0,0.2)',
@@ -1651,14 +1456,8 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                         min={0}
                         max={255}
                         title="Dead Zone: Minimum activation value"
-                        value={fixture.capabilities?.dimmerMin ?? 0}
-                        onChange={(e) => {
-                          const val = Math.max(0, Math.min(255, parseInt(e.target.value) || 0))
-                          setFixture(prev => ({
-                            ...prev,
-                            capabilities: { ...prev.capabilities, dimmerMin: val }
-                          }))
-                        }}
+                        value={(forgeState.capabilities?.dimmerMin as number) ?? 0}
+                        onChange={(e) => forgeDispatch({ type: 'CAPABILITY_SET', key: 'dimmerMin', value: Math.max(0, Math.min(255, parseInt(e.target.value) || 0)) })}
                       />
                     ) : (
                       /* Placeholder vacÃ­o para mantener el Grid intacto en los demÃ¡s canales */
@@ -1672,14 +1471,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                       min={0}
                       max={255}
                       value={channel.defaultValue || 0}
-                      onChange={(e) => {
-                        const val = Math.max(0, Math.min(255, parseInt(e.target.value) || 0))
-                        setFixture(prev => {
-                          const newChannels = [...prev.channels]
-                          newChannels[idx] = { ...newChannels[idx], defaultValue: val }
-                          return { ...prev, channels: newChannels }
-                        })
-                      }}
+                      onChange={(e) => forgeDispatch({ type: 'CHANNEL_REPLACE', idx, channel: { ...channels[idx], defaultValue: Math.max(0, Math.min(255, parseInt(e.target.value) || 0)) } })}
                     />
                     {channel.type !== 'unknown' && (
                       <>
@@ -1882,7 +1674,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
               <div className="rack-preview">
                 <Suspense fallback={<div className="preview-loading">Loading...</div>}>
                   <FixturePreview3D
-                    fixtureType={fixture.type || 'Moving Head'}
+                    fixtureType={forgeState.meta.type || 'Moving Head'}
                     pan={previewPan}
                     tilt={previewTilt}
                     dimmer={previewDimmer}
@@ -1918,14 +1710,14 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
         {activeTab === 'wheelsmith' && (
           <div className="forge-wheelsmith-panel">
             <WheelSmithEmbedded
-              colors={wheelColors}
-              onColorsChange={setWheelColors}
-              hasColorWheelChannel={fixture.channels.some(ch => ch.type === 'color_wheel')}
+              colors={(wheels?.colors ?? []) as WheelColor[]}
+              onColorsChange={(newColors) => forgeDispatch({ type: 'WHEELS_SET_COLORS', colors: newColors })}
+              hasColorWheelChannel={channels.some(ch => ch.type === 'color_wheel')}
               onNavigateToRack={() => setActiveTab('channels')}
               fixtureId={originalFixtureId}
-              channelIndex={fixture.channels.findIndex(ch => ch.type === 'color_wheel')}
-              minChangeTimeMs={wheelMinChangeTimeMs}
-              onMinChangeTimeMsChange={setWheelMinChangeTimeMs}
+              channelIndex={channels.findIndex(ch => ch.type === 'color_wheel')}
+              minChangeTimeMs={wheels?.minChangeTimeMs ?? 500}
+              onMinChangeTimeMsChange={(ms) => forgeDispatch({ type: 'WHEELS_SET_MIN_CHANGE', ms })}
             />
           </div>
         )}
@@ -1934,8 +1726,8 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
         {activeTab === 'physics' && (
           <div className="forge-physics-panel">
             <PhysicsTuner
-              physics={physics}
-              onChange={setPhysics}
+              physics={physics as any}
+              onChange={(p) => forgeDispatch({ type: 'PHYSICS_SET', physics: p as any })}
               onStressTest={setIsStressTesting}
               isStressTesting={isStressTesting}
             />
@@ -1948,7 +1740,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
             <div className="export-preview">
               <h3>JSON Preview</h3>
               <pre className="json-preview">
-                {JSON.stringify(fixture, null, 2)}
+                {JSON.stringify(buildCompleteFixture(forgeState), null, 2)}
               </pre>
             </div>
             <div className="export-actions">
@@ -1957,7 +1749,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                 <span>Download JSON</span>
               </button>
               <button className="export-btn copy" onClick={() => {
-                navigator.clipboard.writeText(JSON.stringify(fixture, null, 2))
+                navigator.clipboard.writeText(JSON.stringify(buildCompleteFixture(forgeState), null, 2))
               }}>
                 <Copy size={20} />
                 <span>Copy to Clipboard</span>
@@ -2063,7 +1855,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
 // HELPERS
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-function getSmartDefaultValue(type: ChannelType): number {
+export function getSmartDefaultValue(type: ChannelType): number {
   switch (type) {
     case 'dimmer': return 255
     case 'shutter': return 255

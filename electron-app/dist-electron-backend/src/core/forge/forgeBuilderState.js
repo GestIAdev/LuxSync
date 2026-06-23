@@ -42,7 +42,10 @@ export function makeInitialForgeState() {
         },
         channels: [],
         cells: [],
+        dmxGovernors: [],
         capabilities: {},
+        physics: null,
+        wheels: null,
         dirty: false,
     };
 }
@@ -254,6 +257,105 @@ export function forgeReducer(state, action) {
             });
             return { ...state, cells, dirty: true };
         }
+        // ── GOVERNOR (DMX last-mile rules) ───────────────────────────────────
+        case 'GOVERNOR_SET_ALL':
+            return { ...state, dmxGovernors: action.governors, dirty: true };
+        case 'GOVERNOR_ADD':
+            return {
+                ...state,
+                dmxGovernors: [...state.dmxGovernors, action.governor],
+                dirty: true,
+            };
+        case 'GOVERNOR_UPDATE': {
+            const govIdx = state.dmxGovernors.findIndex(g => g.channelIndex === action.channelIndex);
+            if (govIdx === -1)
+                return state;
+            return {
+                ...state,
+                dmxGovernors: state.dmxGovernors.map((g, i) => i === govIdx ? action.governor : g),
+                dirty: true,
+            };
+        }
+        case 'GOVERNOR_REMOVE':
+            return {
+                ...state,
+                dmxGovernors: state.dmxGovernors.filter(g => g.channelIndex !== action.channelIndex),
+                dirty: true,
+            };
+        // ── CAPABILITY ─────────────────────────────────────────────────────────────
+        case 'CAPABILITY_SET':
+            return {
+                ...state,
+                capabilities: { ...state.capabilities, [action.key]: action.value },
+                dirty: true,
+            };
+        case 'CAPABILITY_MERGE':
+            return {
+                ...state,
+                capabilities: { ...state.capabilities, ...action.patch },
+                dirty: true,
+            };
+        // ── PHYSICS ───────────────────────────────────────────────────────────────
+        case 'PHYSICS_SET':
+            return { ...state, physics: action.physics, dirty: true };
+        // ── WHEELS ───────────────────────────────────────────────────────────────
+        case 'WHEELS_SET':
+            return { ...state, wheels: action.wheels, dirty: true };
+        case 'WHEELS_SET_COLORS': {
+            const wBase = state.wheels ?? { colors: [], colorEngine: 'rgb', minChangeTimeMs: 500 };
+            return { ...state, wheels: { ...wBase, colors: action.colors }, dirty: true };
+        }
+        case 'WHEELS_SET_ENGINE': {
+            const wBase = state.wheels ?? { colors: [], colorEngine: 'rgb', minChangeTimeMs: 500 };
+            return { ...state, wheels: { ...wBase, colorEngine: action.engine }, dirty: true };
+        }
+        case 'WHEELS_SET_MIN_CHANGE': {
+            const wBase = state.wheels ?? { colors: [], colorEngine: 'rgb', minChangeTimeMs: 500 };
+            return { ...state, wheels: { ...wBase, minChangeTimeMs: action.ms }, dirty: true };
+        }
+        // ── SYNC — bidireccional (reemplaza useEffect WAVE 4742) ──────────────────
+        case 'SYNC_RACK_TO_CELLS': {
+            const { channelIdx } = action;
+            const ch = state.channels[channelIdx];
+            if (!ch)
+                return state;
+            let nextCells = state.cells;
+            let changed = false;
+            for (const cell of state.cells) {
+                if (!cell.channelIndices.includes(channelIdx))
+                    continue;
+                const admission = canAdmit(ch.type, cell.family);
+                if (admission.ok === false) {
+                    emitWarning({
+                        cellId: cell.cellId,
+                        channelIdx,
+                        reason: `Type change invalidated attachment: ${admission.reason}`,
+                    });
+                    nextCells = nextCells.map(c => c.cellId === cell.cellId
+                        ? { ...c, channelIndices: c.channelIndices.filter(i => i !== channelIdx) }
+                        : c);
+                    changed = true;
+                }
+            }
+            return changed ? { ...state, cells: nextCells, dirty: true } : state;
+        }
+        case 'SYNC_CELLS_TO_RACK': {
+            const { cellId } = action;
+            const cell = state.cells.find(c => c.cellId === cellId);
+            if (!cell || cell.channelIndices.length === 0)
+                return state;
+            const maxIdx = Math.max(...cell.channelIndices);
+            if (maxIdx < state.channels.length)
+                return state;
+            const needed = maxIdx + 1;
+            const extended = resizeChannels(state.channels, needed);
+            return {
+                ...state,
+                channels: extended,
+                meta: { ...state.meta, channelCount: needed },
+                dirty: true,
+            };
+        }
         // ── LIFECYCLE ────────────────────────────────────────────────────────
         case 'HYDRATE_FROM_FIXTURE': {
             const { fixture } = action;
@@ -266,8 +368,11 @@ export function forgeReducer(state, action) {
                     channelCount: fixture.channels.length,
                 },
                 channels: hydrateChannels(fixture),
-                cells: hydrateCells(fixture),
+                cells: hydrateAetherCells(fixture),
+                dmxGovernors: fixture.dmxGovernors ?? [],
                 capabilities: fixture.capabilities ?? {},
+                physics: hydratePhysics(fixture),
+                wheels: hydrateWheels(fixture),
                 dirty: false,
             };
         }
@@ -381,4 +486,65 @@ function formatCellLabel(cellId) {
     return cellId
         .replace(/-/g, ' ')
         .replace(/\b\w/g, c => c.toUpperCase());
+}
+// ── hydrateAetherCells — Route A (aetherCells JSON) → Route B (legacy nodeGraph) ─
+/**
+ * WAVE FORGE CONVERGENCE:
+ * Ruta A — lee el snapshot `aetherCells` guardado en el JSON.
+ *           Restaura layout visual exacto (uiPosition preservada).
+ * Ruta B — fallback legacy: reconstruye células desde nodeGraph.output_dmx.
+ *           Solo activo para fixtures guardados ANTES de esta WAVE.
+ */
+function hydrateAetherCells(fixture) {
+    const raw = fixture;
+    const saved = raw.aetherCells;
+    if (Array.isArray(saved) && saved.length > 0) {
+        return saved.map((snap, i) => ({
+            cellId: snap.cellId,
+            family: parseNodeFamily(snap.family),
+            label: snap.label,
+            role: snap.role,
+            channelIndices: [...snap.channelIndices],
+            aetherZone: snap.aetherZone,
+            uiPosition: snap.uiPosition ?? { x: 0, y: i * 140 },
+        }));
+    }
+    return hydrateCells(fixture);
+}
+function parseNodeFamily(raw) {
+    const up = raw.toUpperCase();
+    if (up in NodeFamily)
+        return NodeFamily[up];
+    return NodeFamily.ATMOSPHERE;
+}
+// ── hydratePhysics — desde fixture.physics ────────────────────────────────
+function hydratePhysics(fixture) {
+    const p = fixture.physics;
+    if (!p)
+        return null;
+    return {
+        motorType: p.motorType ?? 'stepper',
+        maxAcceleration: p.maxAcceleration ?? 2000,
+        maxVelocity: p.maxVelocity ?? 500,
+        safetyCap: Boolean(p.safetyCap ?? true),
+        orientation: (p.orientation ?? 'floor'),
+        invertPan: p.invertPan ?? false,
+        invertTilt: p.invertTilt ?? false,
+        swapPanTilt: p.swapPanTilt ?? false,
+        homePosition: p.homePosition ?? { pan: 127, tilt: 127 },
+        tiltLimits: p.tiltLimits ?? { min: 0, max: 270 },
+    };
+}
+// ── hydrateWheels — desde fixture.wheels + capabilities ───────────────────
+function hydrateWheels(fixture) {
+    const colors = fixture.wheels?.colors ??
+        fixture.capabilities?.colorWheel?.colors ??
+        [];
+    if (colors.length === 0)
+        return null;
+    return {
+        colors,
+        colorEngine: (fixture.capabilities?.colorEngine ?? 'rgb'),
+        minChangeTimeMs: fixture.capabilities?.colorWheel?.minChangeTimeMs ?? 500,
+    };
 }

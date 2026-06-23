@@ -21,9 +21,16 @@ import type { IDMXGovernor, GovernorIntentType } from '../device'
  * Canales no presentes resuelven a 'fallback' (solo reglas wildcard los interceptan).
  */
 const CHANNEL_TO_INTENT: Record<string, GovernorIntentType> = {
-  dimmer:  'intensity',
-  strobe:  'strobe',
-  shutter: 'shutter',
+  dimmer:            'intensity',
+  strobe:            'strobe',
+  shutter:           'shutter',
+  prism:             'prism',
+  'prism-rotation':  'prism-rotation',
+  gobo:              'gobo',
+  'gobo-rotation':   'gobo',
+  frost:             'frost',
+  zoom:              'zoom',
+  focus:             'focus',
 }
 
 /**

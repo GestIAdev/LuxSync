@@ -90,7 +90,17 @@ export interface IDeviceCalibration {
  * Tipo de intención semántica para el matching de reglas de gobernador.
  * 'fallback' es un comodín — hace match con cualquier tipo de canal.
  */
-export type GovernorIntentType = 'shutter' | 'strobe' | 'intensity' | 'fallback'
+export type GovernorIntentType =
+  | 'shutter'
+  | 'strobe'
+  | 'intensity'
+  | 'prism'
+  | 'prism-rotation'
+  | 'gobo'
+  | 'frost'
+  | 'zoom'
+  | 'focus'
+  | 'fallback'
 
 /**
  * Condición de activación de una regla de gobernador.

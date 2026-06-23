@@ -41,6 +41,7 @@
  * @module core/aether/resolver/NodeResolver
  * @version WAVE 4522.4
  */
+import { applyDMXGovernors } from './DMXGovernorEvaluator';
 import { NodeFamily } from '../types';
 import { getColorTranslator } from '../../../hal/translation/ColorTranslator';
 import { getHarmonicQuantizer } from '../../../hal/translation/HarmonicQuantizer';
@@ -911,9 +912,11 @@ export class NodeResolver {
                 const panVal = channelValues['pan'];
                 const tiltVal = channelValues['tilt'];
                 const hasPanTilt = panVal !== undefined || tiltVal !== undefined;
-                if (hasPanTilt) {
-                    console.log(`[KINETIC-DIAG] ${node.nodeId}: CLASSIC-PATH | pan=${panVal?.toFixed(3) ?? 'N/A'} tilt=${tiltVal?.toFixed(3) ?? 'N/A'} nodeBlocked=${nodeBlocked} gateOpen=${!this._safetyMiddleware || this._safetyMiddleware.isOutputEnabled()}`);
-                }
+                // if (hasPanTilt) {
+                //   console.log(
+                //     `[KINETIC-DIAG] ${node.nodeId}: CLASSIC-PATH | pan=${panVal?.toFixed(3) ?? 'N/A'} tilt=${tiltVal?.toFixed(3) ?? 'N/A'} nodeBlocked=${nodeBlocked} gateOpen=${!this._safetyMiddleware || this._safetyMiddleware.isOutputEnabled()}`
+                //   )
+                // }
             }
             invertClassicKineticAxes = this._shouldInvertClassicKineticAxes(device.orientation, kineticNode);
             // isContinuous (fan/mirrorball) o sin targetX → classic path
@@ -1052,9 +1055,9 @@ export class NodeResolver {
             }
             buf[bufIdx] = safeDmxValue;
             // 🩸 WAVE 6040-DIAG: Classic kinetic path — log pan/tilt writes
-            if (node.family === NodeFamily.KINETIC && (chDef.type === PAN_COARSE || chDef.type === TILT_COARSE) && this._resolveFrameIndex % 44 === 0) {
-                console.log(`[KINETIC-DIAG] ${node.nodeId}: CLASSIC-WRITE ${chDef.type}=${safeDmxValue} rawSource=${rawSource} nodeBlocked=${nodeBlocked}`);
-            }
+            // if (node.family === NodeFamily.KINETIC && (chDef.type === PAN_COARSE || chDef.type === TILT_COARSE) && this._resolveFrameIndex % 44 === 0) {
+            //   console.log(`[KINETIC-DIAG] ${node.nodeId}: CLASSIC-WRITE ${chDef.type}=${safeDmxValue} rawSource=${rawSource} nodeBlocked=${nodeBlocked}`)
+            // }
             // Telemetría legacy removida.
             // Canales 16-bit: escribir byte fine (LSB) en el slot siguiente
             if (chDef.is16bit) {
@@ -1069,6 +1072,18 @@ export class NodeResolver {
                     buf[bufIdx] = sanitizeDmxByte((safeRaw16 >> 8) & 0xFF);
                 }
             }
+            // 🏛️ DMX GOVERNOR ENGINE — evaluación declarativa de última milla. Zero-alloc.
+            const _govs = device.dmxGovernors;
+            let finalByte = safeDmxValue;
+            if (_govs !== undefined && _govs.length > 0) {
+                finalByte = sanitizeDmxByte(applyDMXGovernors(_govs, chDef.dmxOffset, chDef.type, rawNormalized, safeDmxValue));
+                // 🚨 EL SONAR DEL GOBERNADOR (Loguea SOLO si altera el byte físico)
+                // Usamos Math.random() < 0.02 para que a 44Hz solo escupa el log aprox 1 vez por segundo y no congele la terminal.
+                if (finalByte !== safeDmxValue && Math.random() < 0.02) {
+                    console.log(`[Governor MUX 🏛️] Intercept: ${device.deviceId} (CH:${chDef.dmxOffset}|${chDef.type}) | Math: ${safeDmxValue} ──► CLAMP: ${finalByte}`);
+                }
+            }
+            buf[bufIdx] = finalByte;
         }
     }
     /**
@@ -1194,9 +1209,9 @@ export class NodeResolver {
         const txRaw = channelValues[CH_TARGET_X];
         if (!Number.isFinite(txRaw)) {
             // 🩸 WAVE 6040-DIAG: Early return diagnostic
-            if (this._resolveFrameIndex % 44 === 0) {
-                console.log(`[KINETIC-DIAG] ${node.nodeId}: IK-PATH ABORTED — targetX not finite (value=${txRaw})`);
-            }
+            // if (this._resolveFrameIndex % 44 === 0) {
+            //   console.log(`[KINETIC-DIAG] ${node.nodeId}: IK-PATH ABORTED — targetX not finite (value=${txRaw})`)
+            // }
             return;
         }
         const tx = txRaw;
@@ -1256,9 +1271,9 @@ export class NodeResolver {
             }
         }
         // 🩸 WAVE 6040-DIAG: Confirm IK path actually wrote to buffer
-        if (this._resolveFrameIndex % 44 === 0) {
-            console.log(`[KINETIC-DIAG] ${node.nodeId}: IK-PATH WRITTEN pan=${safePan} tilt=${safeTilt} enabled=${nodeWriteEnabled}`);
-        }
+        // if (this._resolveFrameIndex % 44 === 0) {
+        //   console.log(`[KINETIC-DIAG] ${node.nodeId}: IK-PATH WRITTEN pan=${safePan} tilt=${safeTilt} enabled=${nodeWriteEnabled}`)
+        // }
     }
     /**
      * WAVE 4547.1: Telemetría de alcance IK para futura visualización Ghost Ray.

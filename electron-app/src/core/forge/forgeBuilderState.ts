@@ -23,7 +23,10 @@ import type {
   FixtureType,
   IgnitionDependency,
   FixtureDefinition,
+  WheelColor,
+  ColorEngineType,
 } from '../../types/FixtureDefinition'
+import type { IDMXGovernor } from '../aether/device'
 import { NodeFamily } from '../aether/types'
 import type { NodeRole } from '../aether/types'
 import { canAdmit } from './cellTypeAdmittance'
@@ -61,19 +64,71 @@ export interface IForgeCellBuilder {
   readonly uiPosition?:    { readonly x: number; readonly y: number }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// PHYSICS & WHEELS — sub-states absorbidos desde los useState de la UI
+// (WAVE FORGE CONVERGENCE: fuente única de verdad)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface IForgePhysics {
+  readonly motorType:       string
+  readonly maxAcceleration: number
+  readonly maxVelocity:     number
+  readonly safetyCap:       boolean
+  readonly orientation:     string
+  readonly invertPan:       boolean
+  readonly invertTilt:      boolean
+  readonly swapPanTilt:     boolean
+  readonly homePosition:    { readonly pan: number; readonly tilt: number }
+  readonly tiltLimits:      { readonly min: number; readonly max: number }
+}
+
+export interface IForgeWheels {
+  readonly colors:          readonly WheelColor[]
+  readonly colorEngine:     ColorEngineType
+  readonly minChangeTimeMs: number
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AETHER CELL SNAPSHOT — Contrato serializable para persistencia JSON total
+// Nota: se promoverá a types/FixtureDefinition.ts en Fase 1.1 del Blueprint.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Snapshot crudo de una IForgeCellBuilder tal como se persiste en el JSON
+ * bajo la clave raíz `aetherCells`. Permite rehidratación exacta del editor
+ * visual — incluida la posición en el lienzo (uiPosition) — sin heurística.
+ */
+export interface IAetherCellSnapshot {
+  readonly cellId:         string
+  readonly family:         string
+  readonly label:          string
+  readonly role:           string
+  readonly channelIndices: readonly number[]
+  readonly aetherZone?:    string
+  readonly uiPosition?:    { readonly x: number; readonly y: number }
+}
+
 /**
  * Estado completo de la Forja mientras está abierta.
  * Dos pestañas, UN solo state. Reducer único.
+ * WAVE FORGE CONVERGENCE: fuente ÚNICA de verdad para channels, cells,
+ * governors, physics y wheels.
  */
 export interface IForgeBuilderState {
-  readonly meta:         IForgeFixtureMeta
+  readonly meta:           IForgeFixtureMeta
   /** Driver de Tab DMX Layout: array de canales ordenado por index (0-based). */
-  readonly channels:     readonly FixtureChannel[]
+  readonly channels:       readonly FixtureChannel[]
   /** Driver de Tab Aether Modules: array de células lógicas. */
-  readonly cells:        readonly IForgeCellBuilder[]
-  readonly capabilities: Readonly<Record<string, unknown>>
+  readonly cells:          readonly IForgeCellBuilder[]
+  /** Reglas de última milla — DMX Governor Engine. */
+  readonly dmxGovernors:   readonly IDMXGovernor[]
+  readonly capabilities:   Readonly<Record<string, unknown>>
+  /** Física del motor — absorbida desde el useState de la UI. */
+  readonly physics:        IForgePhysics | null
+  /** Rueda de color — absorbida desde el useState de la UI. */
+  readonly wheels:         IForgeWheels | null
   /** true si el state difiere del último Save (muestra "•" en el título). */
-  readonly dirty:        boolean
+  readonly dirty:          boolean
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -141,7 +196,60 @@ export type LifecycleAction =
   | { type: 'MARK_CLEAN' }
   | { type: 'RESET' }
 
-export type ForgeAction = DmxAction | CellAction | MetaAction | LifecycleAction
+// Governor rules — DMX last-mile engine
+export type GovernorAction =
+  | { type: 'GOVERNOR_SET_ALL'; governors: readonly IDMXGovernor[] }
+  | { type: 'GOVERNOR_ADD';     governor: IDMXGovernor }
+  | { type: 'GOVERNOR_UPDATE';  channelIndex: number; governor: IDMXGovernor }
+  | { type: 'GOVERNOR_REMOVE';  channelIndex: number }
+
+// Capabilities (patch explícito — sin spread ciego desde compileForgeState)
+export type CapabilityAction =
+  | { type: 'CAPABILITY_SET';   key: string; value: unknown }
+  | { type: 'CAPABILITY_MERGE'; patch: Record<string, unknown> }
+
+// Physics
+export type PhysicsAction =
+  | { type: 'PHYSICS_SET'; physics: IForgePhysics | null }
+
+// Wheels
+export type WheelsAction =
+  | { type: 'WHEELS_SET';            wheels: IForgeWheels | null }
+  | { type: 'WHEELS_SET_COLORS';     colors: readonly WheelColor[] }
+  | { type: 'WHEELS_SET_ENGINE';     engine: ColorEngineType }
+  | { type: 'WHEELS_SET_MIN_CHANGE'; ms: number }
+
+// Sincronización bidireccional (reemplaza el useEffect de WAVE 4742)
+export type SyncAction =
+  | {
+      /**
+       * Validación post-edición de canal: re-chequea admittance de todas las
+       * células que contienen `channelIdx`. Si el nuevo tipo no es admisible,
+       * desvincula + emite warning.
+       */
+      type: 'SYNC_RACK_TO_CELLS'
+      channelIdx: number
+    }
+  | {
+      /**
+       * Garantía de coherencia de índices: si una célula declara channelIndices
+       * fuera del rango actual de channels[], amplía channels[] con placeholders
+       * sin sobrescribir entradas existentes ni sus propiedades físicas.
+       */
+      type: 'SYNC_CELLS_TO_RACK'
+      cellId: string
+    }
+
+export type ForgeAction =
+  | DmxAction
+  | CellAction
+  | MetaAction
+  | GovernorAction
+  | CapabilityAction
+  | PhysicsAction
+  | WheelsAction
+  | SyncAction
+  | LifecycleAction
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INITIAL STATE & ID GENERATION
@@ -157,7 +265,10 @@ export function makeInitialForgeState(): IForgeBuilderState {
     },
     channels:     [],
     cells:        [],
+    dmxGovernors: [],
     capabilities: {},
+    physics:      null,
+    wheels:       null,
     dirty:        false,
   }
 }
@@ -404,6 +515,115 @@ export function forgeReducer(
       return { ...state, cells, dirty: true }
     }
 
+    // ── GOVERNOR (DMX last-mile rules) ───────────────────────────────────
+    case 'GOVERNOR_SET_ALL':
+      return { ...state, dmxGovernors: action.governors, dirty: true }
+
+    case 'GOVERNOR_ADD':
+      return {
+        ...state,
+        dmxGovernors: [...state.dmxGovernors, action.governor],
+        dirty:        true,
+      }
+
+    case 'GOVERNOR_UPDATE': {
+      const govIdx = state.dmxGovernors.findIndex(g => g.channelIndex === action.channelIndex)
+      if (govIdx === -1) return state
+      return {
+        ...state,
+        dmxGovernors: state.dmxGovernors.map((g, i) => i === govIdx ? action.governor : g),
+        dirty:        true,
+      }
+    }
+
+    case 'GOVERNOR_REMOVE':
+      return {
+        ...state,
+        dmxGovernors: state.dmxGovernors.filter(g => g.channelIndex !== action.channelIndex),
+        dirty:        true,
+      }
+
+    // ── CAPABILITY ─────────────────────────────────────────────────────────────
+    case 'CAPABILITY_SET':
+      return {
+        ...state,
+        capabilities: { ...state.capabilities, [action.key]: action.value },
+        dirty:        true,
+      }
+
+    case 'CAPABILITY_MERGE':
+      return {
+        ...state,
+        capabilities: { ...state.capabilities, ...action.patch },
+        dirty:        true,
+      }
+
+    // ── PHYSICS ───────────────────────────────────────────────────────────────
+    case 'PHYSICS_SET':
+      return { ...state, physics: action.physics, dirty: true }
+
+    // ── WHEELS ───────────────────────────────────────────────────────────────
+    case 'WHEELS_SET':
+      return { ...state, wheels: action.wheels, dirty: true }
+
+    case 'WHEELS_SET_COLORS': {
+      const wBase = state.wheels ?? { colors: [] as readonly WheelColor[], colorEngine: 'rgb' as ColorEngineType, minChangeTimeMs: 500 }
+      return { ...state, wheels: { ...wBase, colors: action.colors }, dirty: true }
+    }
+
+    case 'WHEELS_SET_ENGINE': {
+      const wBase = state.wheels ?? { colors: [] as readonly WheelColor[], colorEngine: 'rgb' as ColorEngineType, minChangeTimeMs: 500 }
+      return { ...state, wheels: { ...wBase, colorEngine: action.engine }, dirty: true }
+    }
+
+    case 'WHEELS_SET_MIN_CHANGE': {
+      const wBase = state.wheels ?? { colors: [] as readonly WheelColor[], colorEngine: 'rgb' as ColorEngineType, minChangeTimeMs: 500 }
+      return { ...state, wheels: { ...wBase, minChangeTimeMs: action.ms }, dirty: true }
+    }
+
+    // ── SYNC — bidireccional (reemplaza useEffect WAVE 4742) ──────────────────
+    case 'SYNC_RACK_TO_CELLS': {
+      const { channelIdx } = action
+      const ch = state.channels[channelIdx]
+      if (!ch) return state
+      let nextCells = state.cells
+      let changed   = false
+      for (const cell of state.cells) {
+        if (!cell.channelIndices.includes(channelIdx)) continue
+        const admission = canAdmit(ch.type, cell.family)
+        if (admission.ok === false) {
+          emitWarning({
+            cellId:     cell.cellId,
+            channelIdx,
+            reason:     `Type change invalidated attachment: ${admission.reason}`,
+          })
+          nextCells = nextCells.map(c =>
+            c.cellId === cell.cellId
+              ? { ...c, channelIndices: c.channelIndices.filter(i => i !== channelIdx) }
+              : c,
+          )
+          changed = true
+        }
+      }
+      return changed ? { ...state, cells: nextCells, dirty: true } : state
+    }
+
+    case 'SYNC_CELLS_TO_RACK': {
+      const { cellId } = action
+      const cell = state.cells.find(c => c.cellId === cellId)
+      if (!cell || cell.channelIndices.length === 0) return state
+      const maxIdx = Math.max(...cell.channelIndices)
+      if (maxIdx < state.channels.length) return state
+      const needed   = maxIdx + 1
+      const extended = resizeChannels(state.channels, needed)
+      return {
+        ...state,
+        channels: extended,
+        meta:     { ...state.meta, channelCount: needed },
+        dirty:    true,
+      }
+    }
+
     // ── LIFECYCLE ────────────────────────────────────────────────────────
     case 'HYDRATE_FROM_FIXTURE': {
       const { fixture } = action
@@ -416,8 +636,11 @@ export function forgeReducer(
           channelCount: fixture.channels.length,
         },
         channels:     hydrateChannels(fixture),
-        cells:        hydrateCells(fixture),
+        cells:        hydrateAetherCells(fixture),
+        dmxGovernors: fixture.dmxGovernors ?? [],
         capabilities: (fixture.capabilities as unknown as Record<string, unknown>) ?? {},
+        physics:      hydratePhysics(fixture),
+        wheels:       hydrateWheels(fixture),
         dirty:        false,
       }
     }
@@ -555,4 +778,72 @@ function formatCellLabel(cellId: string): string {
   return cellId
     .replace(/-/g, ' ')
     .replace(/\b\w/g, c => c.toUpperCase())
+}
+
+// ── hydrateAetherCells — Route A (aetherCells JSON) → Route B (legacy nodeGraph) ─
+
+/**
+ * WAVE FORGE CONVERGENCE:
+ * Ruta A — lee el snapshot `aetherCells` guardado en el JSON.
+ *           Restaura layout visual exacto (uiPosition preservada).
+ * Ruta B — fallback legacy: reconstruye células desde nodeGraph.output_dmx.
+ *           Solo activo para fixtures guardados ANTES de esta WAVE.
+ */
+function hydrateAetherCells(fixture: FixtureDefinition): readonly IForgeCellBuilder[] {
+  const raw   = fixture as unknown as Record<string, unknown>
+  const saved = raw.aetherCells as IAetherCellSnapshot[] | undefined
+
+  if (Array.isArray(saved) && saved.length > 0) {
+    return saved.map((snap, i) => ({
+      cellId:         snap.cellId,
+      family:         parseNodeFamily(snap.family),
+      label:          snap.label,
+      role:           snap.role as NodeRole,
+      channelIndices: [...snap.channelIndices],
+      aetherZone:     snap.aetherZone,
+      uiPosition:     snap.uiPosition ?? { x: 0, y: i * 140 },
+    }))
+  }
+
+  return hydrateCells(fixture)
+}
+
+function parseNodeFamily(raw: string): NodeFamily {
+  const up = raw.toUpperCase() as keyof typeof NodeFamily
+  if (up in NodeFamily) return NodeFamily[up]
+  return NodeFamily.ATMOSPHERE
+}
+
+// ── hydratePhysics — desde fixture.physics ────────────────────────────────
+
+function hydratePhysics(fixture: FixtureDefinition): IForgePhysics | null {
+  const p = fixture.physics
+  if (!p) return null
+  return {
+    motorType:       p.motorType        ?? 'stepper',
+    maxAcceleration: p.maxAcceleration  ?? 2000,
+    maxVelocity:     p.maxVelocity      ?? 500,
+    safetyCap:       Boolean(p.safetyCap ?? true),
+    orientation:     (p.orientation     ?? 'floor') as string,
+    invertPan:       p.invertPan        ?? false,
+    invertTilt:      p.invertTilt       ?? false,
+    swapPanTilt:     p.swapPanTilt      ?? false,
+    homePosition:    p.homePosition     ?? { pan: 127, tilt: 127 },
+    tiltLimits:      p.tiltLimits       ?? { min: 0, max: 270 },
+  }
+}
+
+// ── hydrateWheels — desde fixture.wheels + capabilities ───────────────────
+
+function hydrateWheels(fixture: FixtureDefinition): IForgeWheels | null {
+  const colors =
+    fixture.wheels?.colors ??
+    fixture.capabilities?.colorWheel?.colors ??
+    []
+  if (colors.length === 0) return null
+  return {
+    colors,
+    colorEngine:     (fixture.capabilities?.colorEngine ?? 'rgb') as ColorEngineType,
+    minChangeTimeMs: fixture.capabilities?.colorWheel?.minChangeTimeMs ?? 500,
+  }
 }

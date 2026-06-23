@@ -1233,12 +1233,7 @@ export class NodeResolver implements INodeResolver {
           `Source: ${rawSource} | node=${String(node.nodeId)} | device=${String(device.deviceId)}`,
         )
       }
-      // 🏛️ DMX GOVERNOR ENGINE — evaluación declarativa de última milla. Zero-alloc.
-      const _govs = device.dmxGovernors
-      const finalByte = (_govs !== undefined && _govs.length > 0)
-        ? sanitizeDmxByte(applyDMXGovernors(_govs, chDef.dmxOffset, chDef.type, rawNormalized, safeDmxValue))
-        : safeDmxValue
-      buf[bufIdx] = finalByte
+      buf[bufIdx] = safeDmxValue
 
       // 🩸 WAVE 6040-DIAG: Classic kinetic path — log pan/tilt writes
       // if (node.family === NodeFamily.KINETIC && (chDef.type === PAN_COARSE || chDef.type === TILT_COARSE) && this._resolveFrameIndex % 44 === 0) {
@@ -1260,6 +1255,21 @@ export class NodeResolver implements INodeResolver {
           buf[bufIdx] = sanitizeDmxByte((safeRaw16 >> 8) & 0xFF)
         }
       }
+
+      // 🏛️ DMX GOVERNOR ENGINE — evaluación declarativa de última milla. Zero-alloc.
+      const _govs = device.dmxGovernors
+      let finalByte = safeDmxValue
+
+      if (_govs !== undefined && _govs.length > 0) {
+        finalByte = sanitizeDmxByte(applyDMXGovernors(_govs, chDef.dmxOffset, chDef.type, rawNormalized, safeDmxValue))
+
+        // 🚨 EL SONAR DEL GOBERNADOR (Loguea SOLO si altera el byte físico)
+        // Usamos Math.random() < 0.02 para que a 44Hz solo escupa el log aprox 1 vez por segundo y no congele la terminal.
+        if (finalByte !== safeDmxValue && Math.random() < 0.02) {
+          console.log(`[Governor MUX 🏛️] Intercept: ${device.deviceId} (CH:${chDef.dmxOffset}|${chDef.type}) | Math: ${safeDmxValue} ──► CLAMP: ${finalByte}`)
+        }
+      }
+      buf[bufIdx] = finalByte
     }
   }
 

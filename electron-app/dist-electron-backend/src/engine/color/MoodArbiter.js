@@ -150,9 +150,9 @@ export class MoodArbiter {
         //   this.lastLogFrame = this.frameCount;
         // }
         // 📡 WAVE 2204.2: ARBITER INPUT RADAR — cada 60 frames confirma qué llega
-        if (this.frameCount % 60 === 0) {
-            console.log(`[ARBITER 🎭] In: mood='${input.mood}' mode='${input.mode}' → instant=${instantEmotion} stable=${this.stableEmotion} dom=${(maxDominance * 100).toFixed(0)}% B/D/N=${votes.bright.toFixed(0)}/${votes.dark.toFixed(0)}/${votes.neutral.toFixed(0)}`);
-        }
+        // if (this.frameCount % 60 === 0) {
+        //   console.log(`[ARBITER 🎭] In: mood='${input.mood}' mode='${input.mode}' → instant=${instantEmotion} stable=${this.stableEmotion} dom=${(maxDominance * 100).toFixed(0)}% B/D/N=${votes.bright.toFixed(0)}/${votes.dark.toFixed(0)}/${votes.neutral.toFixed(0)}`);
+        // }
         return {
             stableEmotion: this.stableEmotion,
             instantEmotion,

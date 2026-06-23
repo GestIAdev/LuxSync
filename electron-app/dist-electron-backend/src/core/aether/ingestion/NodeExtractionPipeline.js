@@ -267,7 +267,13 @@ export class NodeExtractionPipeline {
             ...(isVirtual !== undefined && { isVirtual }),
             ...(resolvedOrientation !== undefined && { orientation: resolvedOrientation }),
             ...(resolvedIsPlaced !== undefined && { isPlaced: resolvedIsPlaced }),
+            ...(fixtureDef.dmxGovernors !== undefined && { dmxGovernors: fixtureDef.dmxGovernors }),
         };
+        // 🏛️ Ping A: Prueba de Carga — chivato de hidratación del GovernorEngine
+        const _govs = fixtureDef.dmxGovernors ?? [];
+        if (_govs.length > 0) {
+            console.log(`[GovernorEngine 🏛️] ADUANA ARMADA para ${resolvedDeviceId}: ${_govs.length} gobernadores en posición.`);
+        }
     }
     // ─────────────────────────────────────────────────────────────────────────
     // PHASE 1 — TOPOLOGY ANALYSIS

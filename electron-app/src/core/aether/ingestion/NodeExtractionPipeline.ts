@@ -407,6 +407,12 @@ export class NodeExtractionPipeline {
         )
     const calibration = this._buildCalibration(fixtureDef, v2CalibOverride)
 
+    // 🏛️ Ping A: Prueba de Carga — chivato de hidratación del GovernorEngine
+    const _govs = fixtureDef.dmxGovernors ?? []
+    if (_govs.length > 0) {
+      console.log(`[GovernorEngine 🏛️] ADUANA ARMADA para ${resolvedDeviceId}: ${_govs.length} gobernadores en posición.`)
+    }
+
     return {
       deviceId:     resolvedDeviceId,
       name:         fixtureDef.name,

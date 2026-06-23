@@ -878,9 +878,9 @@ export class TitanOrchestrator {
                 channelZones,
             };
             // 🧩 DIAGNÓSTICO COMPOUND FIXTURE (temporal — remover después de verificación)
-            if (channelZones && channelZones.length > 0) {
-                console.log(`[TitanOrchestrator.getFixturesForZoneMapping] 🧩 fixtureId=${f.id} | zone=${result.zone} | type=${result.type} | channelZones=[${channelZones.join(',')}] | deviceNodeCount=${deviceNodes.length}`);
-            }
+            // if (channelZones && channelZones.length > 0) {
+            //   console.log(`[TitanOrchestrator.getFixturesForZoneMapping] 🧩 fixtureId=${f.id} | zone=${result.zone} | type=${result.type} | channelZones=[${channelZones.join(',')}] | deviceNodeCount=${deviceNodes.length}`)
+            // }
             return result;
         });
     }

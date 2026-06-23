@@ -9,7 +9,7 @@
  *   - `channels`: el mundo físico DMX (1 entry por canal, indexed por dmxOffset).
  *   - `cells`:    el mundo lógico Aether (ICapabilityNode builders, N canales c/u).
  *
- * Las warnings emitidas por el reducer fluyen a través de `drainForgeWarnings()`
+ * Las warnings emitidas por el reducer fluyen a través de [drainForgeWarnings()](cci:1://file:///c:/Users/Raulacate/Desktop/Proyectos%20programacion/LuxSync/electron-app/src/core/forge/forgeBuilderState.ts:107:0-112:1)
  * (side-channel intencional — el reducer permanece puro respecto al state React).
  *
  * @module core/forge/forgeBuilderState

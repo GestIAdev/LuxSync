@@ -3,7 +3,7 @@
  * ⚙️  FORGE HYBRID COMPILER — WAVE 4732-C
  *
  * Función pura, sincrónica y sin side-effects.
- * Transforma `IForgeBuilderState` → `FixtureDefinitionV2` lista para disco.
+ * Transforma [IForgeBuilderState](cci:2://file:///c:/Users/Raulacate/Desktop/Proyectos%20programacion/LuxSync/electron-app/src/core/forge/forgeBuilderState.ts:77:0-92:1) → [FixtureDefinitionV2](cci:2://file:///c:/Users/Raulacate/Desktop/Proyectos%20programacion/LuxSync/electron-app/src/core/forge/types.ts:412:0-419:1) lista para disco.
  *
  * FASES INTERNAS:
  *   A — Validación estática (errores bloqueantes + warnings)
@@ -376,7 +376,7 @@ function buildFixtureId(manufacturer: string, name: string): string {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Compila un `IForgeBuilderState` en un `FixtureDefinitionV2` listo para disco.
+ * Compila un [IForgeBuilderState](cci:2://file:///c:/Users/Raulacate/Desktop/Proyectos%20programacion/LuxSync/electron-app/src/core/forge/forgeBuilderState.ts:77:0-92:1) en un [FixtureDefinitionV2](cci:2://file:///c:/Users/Raulacate/Desktop/Proyectos%20programacion/LuxSync/electron-app/src/core/forge/types.ts:412:0-419:1) listo para disco.
  *
  * @param state - Estado completo de la Forja
  * @returns CompileResult — ok:true con fixture + warnings, o ok:false con errores

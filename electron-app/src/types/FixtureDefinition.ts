@@ -1,10 +1,11 @@
-import type { IDMXGovernor } from '../core/aether/device'
+import type { InstallationOrientation } from '../core/stage/ShowFileV2'
+import type { IForgeNodeGraph } from '../core/forge/types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // WAVE 2084: UNIVERSAL CHANNEL DNA
 // Soporta desde movers clásicos hasta ingenios alienígenas (fans, lasers, FX)
 // ═══════════════════════════════════════════════════════════════════════════
-export type ChannelType = 
+export type ChannelType =
   // INTENSITY
   | 'dimmer'
   | 'strobe'
@@ -48,7 +49,7 @@ export type ChannelType =
 // WAVE 1120: STRICT FIXTURE TYPE ENUM
 // "Moving-head, Scanner, Par, Bar, Strobe, Effect, Laser, Generic"
 // ═══════════════════════════════════════════════════════════════════════════
-export type FixtureType = 
+export type FixtureType =
   | 'moving-head'
   | 'scanner'
   | 'par'
@@ -99,20 +100,20 @@ export interface DerivedCapabilities {
  */
 export function deriveCapabilities(channels: FixtureChannel[]): DerivedCapabilities {
   const types = new Set(channels.map(ch => ch.type))
-  
+
   // RGB detection
   const hasRGB = types.has('red') && types.has('green') && types.has('blue')
   const hasWhite = types.has('white')
-  
+
   // CMY detection
   const hasCMY = types.has('cyan') && types.has('magenta') && types.has('yellow')
-  
+
   // Determine color mixing type
   let colorMixingType: 'rgb' | 'cmy' | 'rgbw' | 'none' = 'none'
   if (hasCMY) colorMixingType = 'cmy'
   else if (hasRGB && hasWhite) colorMixingType = 'rgbw'
   else if (hasRGB) colorMixingType = 'rgb'
-  
+
   return {
     hasPanTilt: types.has('pan') || types.has('tilt'),
     hasColorMixing: hasRGB || hasCMY,
@@ -195,9 +196,6 @@ export interface FixtureChannel {
   ignitionDeps?: IgnitionDependency[];
 }
 
-// WAVE 390.6: Import InstallationOrientation from ShowFileV2 for type consistency
-import type { InstallationOrientation } from '../core/stage/ShowFileV2'
-
 // 🎨 WAVE 1002: Color Engine types for HAL translation
 export type ColorEngineType = 'rgb' | 'rgbw' | 'cmy' | 'wheel' | 'hybrid' | 'none';
 
@@ -213,7 +211,8 @@ export interface WheelColor {
   hasTexture?: boolean
 }
 
-// 🎨 WAVE 1006: Color Wheel Definition (compatible with HAL's FixtureProfiles.ts)
+// 🎨 WAVE 1006: Color Wheel Definition (compatible con HAL's FixtureProfiles.ts)
+// Legacy: se mantiene para JSONs pre-Blueprint. El nuevo contrato usa IForgeWheels.
 export interface ColorWheelDefinition {
   /** Lista de colores disponibles en orden de rueda */
   colors: WheelColor[]
@@ -225,100 +224,164 @@ export interface ColorWheelDefinition {
   minChangeTimeMs?: number
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// DMX GOVERNOR ENGINE — Tipos de reglas de última milla
+// ═══════════════════════════════════════════════════════════════════════════
+
+export type GovernorIntentType =
+  | 'shutter'
+  | 'strobe'
+  | 'intensity'
+  | 'prism'
+  | 'prism-rotation'
+  | 'gobo'
+  | 'frost'
+  | 'zoom'
+  | 'focus'
+  | 'fallback';
+
+export interface IGovernorRule {
+  readonly when: {
+    readonly intentType: GovernorIntentType
+    readonly min?: number
+    readonly max?: number
+  }
+  readonly then: {
+    readonly forceByte?: number
+    readonly mapToRange?: readonly [number, number]
+    readonly clampMin?: number
+  }
+}
+
+export interface IDMXGovernor {
+  /** Offset DMX 0-based relativo a la dirección base del device. */
+  readonly channelIndex: number
+  /** Descripción humana opcional para la UI. */
+  readonly description?: string
+  /** Reglas evaluadas en orden. Primera regla con match gana. */
+  readonly rules: readonly IGovernorRule[]
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PHYSICS — Motor, aceleración y límites mecánicos
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface IForgePhysics {
+  readonly motorType: 'servo' | 'stepper' | 'brushless' | 'servo-pro' | 'stepper-pro'
+  readonly maxAcceleration: number
+  readonly maxVelocity?: number
+  readonly safetyCap: number | boolean
+  readonly orientation?: InstallationOrientation
+  readonly invertPan?: boolean
+  readonly invertTilt?: boolean
+  readonly swapPanTilt?: boolean
+  readonly homePosition?: { readonly pan: number; readonly tilt: number }
+  readonly tiltLimits?: { readonly min: number; readonly max: number }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WHEELS — Rueda de color y motor de mezcla
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface IForgeWheels {
+  readonly colors: WheelColor[]
+  readonly colorEngine: ColorEngineType
+  readonly minChangeTimeMs?: number
+  readonly allowsContinuousSpin?: boolean
+  readonly spinStartDmx?: number
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AETHER CELL SNAPSHOT — Layout visual puro para persistencia 1:1
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface IAetherCellSnapshot {
+  readonly id: string
+  readonly label: string
+  readonly family: string
+  readonly zone?: string
+  readonly channelIndices: readonly number[]
+  readonly layout?: { readonly x: number; readonly y: number }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FIXTURE DEFINITION — Contrato raíz unificado (Trinity Contract)
+// ═══════════════════════════════════════════════════════════════════════════
+
 export interface FixtureDefinition {
+  // ── Identidad ─────────────────────────────────────────────────────────
   id: string;
   name: string;
   manufacturer: string;
   type: FixtureType;  // WAVE 1120: Strict enum instead of free string
+
+  // ── Canales físicos ───────────────────────────────────────────────────
   channels: FixtureChannel[];
-  
-  // 🎡 WAVE 1112: THE WHEELSMITH - Root level wheel colors for JSON export
-  wheels?: {
-    colors: WheelColor[];
-  };
-  
-  // WAVE 388 + 390.5: Extended metadata for persistence
-  physics?: {
-    motorType: 'servo' | 'stepper' | 'brushless' | 'servo-pro' | 'stepper-pro';
-    maxAcceleration: number;
-    maxVelocity?: number;
-    safetyCap: number | boolean;
-    // WAVE 390.6: Use proper InstallationOrientation type
-    orientation?: InstallationOrientation;
-    invertPan?: boolean;
-    invertTilt?: boolean;
-    swapPanTilt?: boolean;
-    homePosition?: { pan: number; tilt: number };
-    tiltLimits?: { min: number; max: number };
-  };
-  capabilities?: {
-    hasPan?: boolean;
-    hasTilt?: boolean;
-    hasColorMixing?: boolean;
-    hasColorWheel?: boolean;
-    hasGobo?: boolean;
-    hasPrism?: boolean;
-    hasStrobe?: boolean;
-    hasDimmer?: boolean;
-    // 🎨 WAVE 1002: Explicit color engine type (overrides auto-detection)
-    colorEngine?: ColorEngineType;
-    // 🎨 WAVE 1006: THE WHEELSMITH - Mapa físico de la rueda de colores
-    colorWheel?: ColorWheelDefinition;
-    // 🔥 WAVE 2084: INGENIOS capabilities
-    hasRotation?: boolean;
-    hasCustomChannels?: boolean;
-    hasMacro?: boolean;
-    // 🔥 WAVE 1135.3: Dead Zone floor — valor DMX mínimo donde el dimmer realmente enciende
-    dimmerMin?: number;
-    // 🎛️ Strobe Personality — para obturadores mecánicos no estándar (ej: Big Dipper 7R).
-    // intent=0.0 → strobeOpenValue (luz continua). intent>0 → rango [strobeRangeMin, strobeRangeMax].
-    strobePersonality?: {
-      strobeOpenValue: number;
-      strobeRangeMin: number;
-      strobeRangeMax: number;
-    };
-  };
-  // 🏛️ DMX GOVERNOR ENGINE: Reglas declarativas de última milla por canal físico.
-  // Evaluadas en NodeResolver._writeNode() tras calibración y personality.
+
+  // ── Capabilities (estrictamente derivadas) ─────────────────────────
+  // DOGMA 4: capabilities es output, nunca input manual.
+  capabilities: DerivedCapabilities;
+
+  // ── Rueda de color (unificado) ─────────────────────────────────────
+  // Incluye colorEngine y minChangeTimeMs; antes dispersos en capabilities.
+  wheels?: IForgeWheels | null;
+
+  // ── Física del motor ─────────────────────────────────────────────────
+  physics?: IForgePhysics | null;
+
+  // ── Gobernadores DMX (última milla) ─────────────────────────────────
   dmxGovernors?: IDMXGovernor[];
+
+  // ── Snapshot de células Aether (layout visual) ─────────────────────
+  aetherCells?: IAetherCellSnapshot[];
+
+  // ── Grafo de nodos compilado (fuente de verdad Aether) ─────────────
+  nodeGraph?: IForgeNodeGraph | null;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// WAVE 4548.3: UNIFIED CAPABILITIES — NodeGraph-first, channels[] fallback
+// WAVE 4548.3: UNIFIED CAPABILITIES — Canales + wheels + physics
 // ═══════════════════════════════════════════════════════════════════════════
 
-import type { IForgeNodeGraph, IOutputDmxConfig } from '../core/forge/types'
-
 /**
- * Unified capability derivation that checks nodeGraph first.
+ * Unified capability derivation.
  *
- * If the fixture has a nodeGraph, capabilities are derived from the
- * output_dmx nodes' channelType. Otherwise falls back to the legacy
- * channels[] scan via deriveCapabilities().
+ * DOGMA 4: capabilities se deduce estrictamente de channels, wheels y physics.
+ * No acepta overrides manuales.
  *
- * @param fixture — Any fixture (FixtureDefinition or FixtureDefinitionV2)
+ * @param channels — Canales físicos DMX
+ * @param wheels   — Rueda de color y motor de mezcla
+ * @param physics  — Física del motor (puede influir en detection futura)
  */
 export function deriveCapabilitiesUnified(
-  fixture: FixtureDefinition & { nodeGraph?: IForgeNodeGraph },
+  channels: readonly FixtureChannel[],
+  wheels?: IForgeWheels | null,
+  physics?: IForgePhysics | null,
 ): DerivedCapabilities {
-  const graph = fixture.nodeGraph
-  if (graph && graph.nodes.length > 0) {
-    // Extract output_dmx nodes and build synthetic FixtureChannel[] for the existing engine
-    const outputNodes = graph.nodes.filter(n => n.type === 'output_dmx')
-    const syntheticChannels: FixtureChannel[] = outputNodes.map((n) => {
-      const cfg = n.config as IOutputDmxConfig
-      return {
-        index: cfg.dmxOffset,
-        name: cfg.channelName || cfg.channelType,
-        type: cfg.channelType,
-        defaultValue: cfg.defaultDmxValue,
-        is16bit: cfg.is16bit ?? false,
-        continuousRotation: cfg.continuousRotation,
-        customName: cfg.channelName,
+  const base = deriveCapabilities([...channels])
+
+  let colorMixingType: 'rgb' | 'cmy' | 'rgbw' | 'none' = base.colorMixingType
+  let hasColorWheel = base.hasColorWheel
+
+  if (wheels) {
+    if (wheels.colors.length > 0) {
+      hasColorWheel = true
+    }
+    if (wheels.colorEngine === 'wheel') {
+      colorMixingType = 'none'
+    } else if (wheels.colorEngine === 'rgb' || wheels.colorEngine === 'cmy' || wheels.colorEngine === 'rgbw') {
+      if (colorMixingType === 'none') {
+        colorMixingType = wheels.colorEngine
       }
-    })
-    return deriveCapabilities(syntheticChannels)
+    }
   }
-  // Fallback: legacy channels[] scan
-  return deriveCapabilities(fixture.channels)
+
+  // physics se reserva para future capabilities (ej. tilt range limits, etc.)
+  void physics
+
+  return {
+    ...base,
+    hasColorWheel,
+    colorMixingType,
+  }
 }

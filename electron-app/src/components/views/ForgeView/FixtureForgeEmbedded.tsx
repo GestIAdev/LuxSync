@@ -22,7 +22,7 @@
  * @version 1121.0.0
  */
 
-import React, { useState, useCallback, useEffect, useReducer, useRef, DragEvent, Suspense, type ReactNode } from 'react'
+import React, { useState, useCallback, useEffect, useReducer, useRef, type ReactNode } from 'react'
 // â”€â”€ WAVE 4732-A: Forge Hybrid Builder State â”€â”€
 import {
   forgeReducer,
@@ -65,9 +65,6 @@ import {
   Cog,
   Settings,
   Settings2,
-  ChevronDown,
-  ChevronUp,
-  Trash2,
   Copy,
   AlertTriangle,
   Check,
@@ -93,7 +90,6 @@ import {
   Code2,
 } from 'lucide-react'
 // WAVE 1117: Moved to shared components (modal folder deleted)
-import { FixturePreview3D } from '../../shared/PhysicsTuner/FixturePreview3D'
 import { PhysicsTuner } from '../../shared/PhysicsTuner/PhysicsTuner'
 import { WheelSmithEmbedded } from './WheelSmithEmbedded'
 import { UniversalAssetBrowser } from '../../shared/AssetBrowser'
@@ -113,7 +109,7 @@ import { useNavigationStore, selectFixtureForgeNav } from '../../../stores/navig
 import { useForgeGraphStore } from '../../../stores/forgeGraphStore'
 // WAVE 4548.8c: Inspector + Mode Switcher
 import { NodeInspector } from './inspector/NodeInspector'
-import { ForgeModeSwitcher, SimpleModeLockBanner, isSimpleCompatible, type ForgeEditMode } from './canvas/ForgeModeSwitcher'
+import { ForgeModeSwitcher, isSimpleCompatible, type ForgeEditMode } from './canvas/ForgeModeSwitcher'
 // WAVE 1117: Recovered CSS from deleted modal (contains PhysicsTuner styles)
 import './FixtureForge.css'
 import './FixtureForgeEmbedded.css'  // Standalone styles for embedded mode
@@ -125,6 +121,7 @@ const NodeCanvas = React.lazy(() => import('./canvas/NodeCanvas'))
 
 // â”€â”€ WAVE 4548.10: Pack as Ingenio modal â”€â”€
 import { PackIngenioModal } from './canvas/PackIngenioModal'
+import ForgeChannelRackTab from './tabs/ForgeChannelRackTab'
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // TYPES - WAVE 1112: Added 'library' tab
@@ -589,23 +586,13 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   const [editingSource, setEditingSource] = useState<'system' | 'user' | 'new'>('new')
   const [originalFixtureId, setOriginalFixtureId] = useState<string | null>(null)
   
-  // Preview controls
-  const [showPreview, setShowPreview] = useState(true)
-  const [previewPan, setPreviewPan] = useState(127)
-  const [previewTilt, setPreviewTilt] = useState(127)
-  const [previewDimmer, setPreviewDimmer] = useState(200)
-  const [previewColor, setPreviewColor] = useState({ r: 255, g: 255, b: 255 })
+  // Physics stress testing toggle
   const [isStressTesting, setIsStressTesting] = useState(false)
   
   // UI state
-  const [dragOverSlot, setDragOverSlot] = useState<number | null>(null)
   const [validationMessage, setValidationMessage] = useState('')
   const [isFormValid, setIsFormValid] = useState(false)
-  const [expandedFoundry, setExpandedFoundry] = useState<string | null>('POSITION')
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
-  // ðŸ”¥ WAVE 4718: Ignition Dependencies â€” Ã­ndice de canal cuyo panel estÃ¡ desplegado.
-  const [expandedIgnitionIdx, setExpandedIgnitionIdx] = useState<number | null>(null)
-
   const createBlankForgeGraph = useCallback((dmxFootprint: number) => {
     return NodeGraphBuilder.fromChannels([], {
       autoMigrated: false,
@@ -720,90 +707,6 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
       setIsFormValid(true)
     }
   }, [forgeState.meta.name, forgeState.channels])
-
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-  // CHANNEL MANAGEMENT
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-  
-
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // WAVE 4742: SYNC fixture.channels → forgeState.channels when Aether Cells exist
-  // WAVE 4830 FIX: Removed forgeState.channels from dep array — it caused an infinite
-  // render loop: CHANNEL_REPLACE dispatch creates a new array reference → effect
-  // re-triggers → new CHANNEL_REPLACE → ∞. We access forgeState.channels via ref
-  // to read the current value without subscribing to it as a reactive dependency.
-  // ═══════════════════════════════════════════════════════════════════════════
-
-
-  // Drag handlers
-  const handleDragStart = (e: DragEvent<HTMLDivElement>, funcType: ChannelType, funcLabel: string) => {
-    e.dataTransfer.setData('channelType', funcType)
-    e.dataTransfer.setData('channelLabel', funcLabel)
-    e.dataTransfer.effectAllowed = 'copy'
-  }
-
-  const handleDragOver = (e: DragEvent<HTMLDivElement>, slotIndex: number) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'copy'
-    setDragOverSlot(slotIndex)
-  }
-
-  const handleDragLeave = () => {
-    setDragOverSlot(null)
-  }
-
-  const handleDrop = (e: DragEvent<HTMLDivElement>, slotIndex: number) => {
-    e.preventDefault()
-    const channelType = e.dataTransfer.getData('channelType') as ChannelType
-    const channelLabel = e.dataTransfer.getData('channelLabel')
-    forgeDispatch({
-      type: 'CHANNEL_REPLACE',
-      idx: slotIndex,
-      channel: {
-        ...forgeState.channels[slotIndex],
-        index: slotIndex,
-        type: channelType,
-        name: channelLabel,
-        defaultValue: getSmartDefaultValue(channelType),
-        is16bit: channelType.includes('fine'),
-      },
-    })
-    forgeDispatch({ type: 'SYNC_RACK_TO_CELLS', channelIdx: slotIndex })
-    setDragOverSlot(null)
-  }
-
-  const clearChannel = (index: number) => {
-    forgeDispatch({ type: 'CHANNEL_CLEAR', idx: index })
-  }
-
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-  // ðŸ”¥ WAVE 4718: IGNITION DEPENDENCIES â€” handlers
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-  /** Inmutablemente reemplaza el array `ignitionDeps` del canal `idx`. */
-  const updateChannelIgnitionDeps = useCallback((idx: number, deps: IgnitionDependency[]) => {
-    const current = forgeState.channels[idx]
-    if (!current) return
-    const channel: FixtureChannel = deps.length === 0
-      ? { ...current, ignitionDeps: undefined }
-      : { ...current, ignitionDeps: deps }
-    forgeDispatch({ type: 'CHANNEL_REPLACE', idx, channel })
-  }, [forgeState.channels, forgeDispatch])
-
-  const addIgnitionDep = useCallback((idx: number, dep: IgnitionDependency) => {
-    forgeDispatch({ type: 'IGNITION_ADD', idx, dep })
-  }, [forgeDispatch])
-
-  const removeIgnitionDep = useCallback((idx: number, depIndex: number) => {
-    forgeDispatch({ type: 'IGNITION_REMOVE', idx, depIdx: depIndex })
-  }, [forgeDispatch])
-
-  const updateIgnitionDep = useCallback((idx: number, depIndex: number, patch: Partial<IgnitionDependency>) => {
-    forgeDispatch({ type: 'IGNITION_UPDATE', idx, depIdx: depIndex, patch })
-  }, [forgeDispatch])
-
-
 
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // HANDLERS - WAVE 1112: Save to Library
@@ -1350,355 +1253,15 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
 
         {/* CHANNEL RACK TAB */}
         {activeTab === 'channels' && (
-          <div className="forge-channels-layout">
-            {/* Function Palette - Left Sidebar */}
-            <aside className="function-foundry">
-              <h3>Drag Functions</h3>
-              {Object.entries(FUNCTION_PALETTE).map(([category, functions]) => (
-                <div key={category} className="function-category">
-                  <div 
-                    className="category-header"
-                    onClick={() => setExpandedFoundry(expandedFoundry === category ? null : category)}
-                  >
-                    <span>{category}</span>
-                    {expandedFoundry === category ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                  </div>
-                  {expandedFoundry === category && (
-                    <div className="function-list">
-                      {functions.map(func => (
-                        <div
-                          key={func.type}
-                          className="function-chip"
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, func.type, func.label)}
-                          style={{ '--func-color': func.color } as React.CSSProperties}
-                        >
-                          <span className="func-icon">{func.icon}</span>
-                          <span className="func-label">{func.label}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </aside>
-            
-            {/* Channel Rack - Center */}
-            <div className="channel-rack">
-              <div className="rack-header">
-                <span>Channel</span>
-                <span>Function</span>
-                <span style={{ fontSize: '10px', color: '#22d3ee', textAlign: 'center' }}>MIN</span>
-                <span>Default</span>
-                <span></span>
-              </div>
-              {channels.map((channel, idx) => {
-                const category = getChannelCategory(channel.type)
-                const categoryColor = getCategoryColor(category)
-                // ðŸ”¥ WAVE 4718: Disponibilidad de canales target para el selector
-                const availableTargetTypes = channels
-                  .filter(ch => ch.type !== 'unknown' && ch.type !== channel.type)
-                  .map(ch => ch.type)
-                  // dedupe preservando orden
-                  .filter((t, i, arr) => arr.indexOf(t) === i)
-                const depsCount = channel.ignitionDeps?.length ?? 0
-                const isIgnitionExpanded = expandedIgnitionIdx === idx
-                return (
-                  <React.Fragment key={idx}>
-                  <div 
-                    className={`channel-slot ${channel.type !== 'unknown' ? 'assigned' : ''} ${dragOverSlot === idx ? 'drag-over' : ''} ${category ? `category-${category}` : ''}`}
-                    style={categoryColor ? { 
-                      '--slot-category-color': categoryColor 
-                    } as React.CSSProperties : undefined}
-                    onDragOver={(e) => handleDragOver(e, idx)}
-                    onDragLeave={handleDragLeave}
-                    onDrop={(e) => handleDrop(e, idx)}
-                  >
-                    <span className="channel-number">{idx + 1}</span>
-                    <div className="channel-function">
-                      {channel.type !== 'unknown' ? (
-                        // ðŸ”¥ WAVE 2084.3: Phantom channels get an editable name input
-                        (() => {
-                          const isEditable = ['custom', 'macro', 'rotation', 'speed', 'control'].includes(channel.type)
-                          return isEditable ? (
-                            <input
-                              type="text"
-                              className="channel-name-input"
-                              placeholder={channel.type.toUpperCase()}
-                              value={channel.name || ''}
-                              onChange={(e) => forgeDispatch({ type: 'CHANNEL_REPLACE', idx, channel: { ...channels[idx], name: e.target.value } })}
-                              onClick={(e) => e.stopPropagation()}
-                              style={{
-                                background: 'rgba(0,0,0,0.2)',
-                                border: `1px solid ${categoryColor ? categoryColor + '55' : 'rgba(255,255,255,0.12)'}`,
-                                color: categoryColor || 'inherit',
-                                padding: '2px 6px',
-                                borderRadius: '4px',
-                                width: '120px',
-                                fontFamily: 'inherit',
-                                fontSize: '11px',
-                                outline: 'none',
-                              }}
-                            />
-                          ) : (
-                            <span className="channel-name">{channel.name || channel.type}</span>
-                          )
-                        })()
-                      ) : (
-                        <span className="channel-empty">Drop function here</span>
-                      )}
-                    </div>
-                    {/* ï¿½ï¸ NUEVA COLUMNA REAL: MIN VALUE (Solo para dimmer por ahora) */}
-                    {channel.type === 'dimmer' ? (
-                      <input
-                        type="number"
-                        className="channel-default"
-                        min={0}
-                        max={255}
-                        title="Dead Zone: Minimum activation value"
-                        value={(forgeState.capabilities?.dimmerMin as number) ?? 0}
-                        onChange={(e) => forgeDispatch({ type: 'CAPABILITY_SET', key: 'dimmerMin', value: Math.max(0, Math.min(255, parseInt(e.target.value) || 0)) })}
-                      />
-                    ) : (
-                      /* Placeholder vacÃ­o para mantener el Grid intacto en los demÃ¡s canales */
-                      <div className="channel-min-placeholder"></div>
-                    )}
-
-                    {/* ðŸŽ¯ COLUMNA DEFAULT ORIGINAL */}
-                    <input
-                      type="number"
-                      className="channel-default"
-                      min={0}
-                      max={255}
-                      value={channel.defaultValue || 0}
-                      onChange={(e) => forgeDispatch({ type: 'CHANNEL_REPLACE', idx, channel: { ...channels[idx], defaultValue: Math.max(0, Math.min(255, parseInt(e.target.value) || 0)) } })}
-                    />
-                    {channel.type !== 'unknown' && (
-                      <>
-                        {/* ðŸ”¥ WAVE 4718: IGNITION DEPS toggle button */}
-                        <button
-                          className={`channel-ignition-btn ${depsCount > 0 ? 'has-deps' : ''} ${isIgnitionExpanded ? 'expanded' : ''}`}
-                          onClick={() => setExpandedIgnitionIdx(isIgnitionExpanded ? null : idx)}
-                          title={depsCount > 0
-                            ? `Ignition Dependencies (${depsCount})`
-                            : 'Add Ignition Dependency'}
-                          style={{
-                            background: depsCount > 0 ? 'rgba(245, 158, 11, 0.2)' : 'transparent',
-                            border: `1px solid ${depsCount > 0 ? 'rgba(245, 158, 11, 0.6)' : 'rgba(255,255,255,0.12)'}`,
-                            color: depsCount > 0 ? '#f59e0b' : 'rgba(255,255,255,0.5)',
-                            borderRadius: '4px',
-                            padding: '4px 6px',
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '3px',
-                            fontSize: '10px',
-                            fontFamily: 'inherit',
-                          }}
-                        >
-                          <Zap size={12} />
-                          {depsCount > 0 && <span>{depsCount}</span>}
-                        </button>
-                        <button
-                          className="channel-clear"
-                          onClick={() => clearChannel(idx)}
-                          title="Clear channel"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </>
-                    )}
-                  </div>
-
-                  {/* ðŸ”¥ WAVE 4718: IGNITION DEPS panel (full-width row beneath the slot) */}
-                  {isIgnitionExpanded && channel.type !== 'unknown' && (
-                    <div
-                      className="ignition-deps-panel"
-                      style={{
-                        gridColumn: '1 / -1',
-                        background: 'rgba(245, 158, 11, 0.05)',
-                        border: '1px solid rgba(245, 158, 11, 0.25)',
-                        borderRadius: '6px',
-                        padding: '10px 12px',
-                        margin: '2px 0 6px 0',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '8px',
-                      }}
-                    >
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        color: '#f59e0b',
-                        fontSize: '11px',
-                        fontWeight: 600,
-                        letterSpacing: '0.04em',
-                      }}>
-                        <Zap size={12} />
-                        <span>IGNITION DEPENDENCIES</span>
-                        <span style={{ color: 'rgba(255,255,255,0.35)', fontWeight: 400, fontSize: '10px' }}>
-                          â€” channel "{channel.name || channel.type}" requires:
-                        </span>
-                      </div>
-
-                      {(channel.ignitionDeps ?? []).length === 0 && (
-                        <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: '11px', fontStyle: 'italic' }}>
-                          No dependencies yet. This channel emits with no prerequisites.
-                        </div>
-                      )}
-
-                      {(channel.ignitionDeps ?? []).map((dep, depIdx) => (
-                        <div
-                          key={depIdx}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            background: 'rgba(0,0,0,0.25)',
-                            border: '1px solid rgba(245, 158, 11, 0.2)',
-                            borderRadius: '4px',
-                            padding: '6px 8px',
-                          }}
-                        >
-                          <span style={{ color: '#f59e0b', fontSize: '11px', fontFamily: "'JetBrains Mono', monospace" }}>
-                            âš¡
-                          </span>
-                          <select
-                            value={dep.channelType}
-                            onChange={(e) => updateIgnitionDep(idx, depIdx, { channelType: e.target.value as ChannelType })}
-                            style={{
-                              background: 'rgba(0,0,0,0.4)',
-                              border: '1px solid rgba(255,255,255,0.15)',
-                              color: '#fff',
-                              padding: '4px 6px',
-                              borderRadius: '3px',
-                              fontFamily: 'inherit',
-                              fontSize: '11px',
-                              minWidth: '120px',
-                            }}
-                          >
-                            {/* Si el target actual no estÃ¡ en la lista (ej. canal renombrado), inyectarlo */}
-                            {!availableTargetTypes.includes(dep.channelType) && (
-                              <option value={dep.channelType}>{dep.channelType} (missing)</option>
-                            )}
-                            {availableTargetTypes.map(t => (
-                              <option key={t} value={t}>{t}</option>
-                            ))}
-                          </select>
-                          <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px' }}>â†’</span>
-                          <input
-                            type="number"
-                            min={0}
-                            max={255}
-                            value={dep.requiredValue}
-                            onChange={(e) => {
-                              const val = Math.max(0, Math.min(255, parseInt(e.target.value) || 0))
-                              updateIgnitionDep(idx, depIdx, { requiredValue: val })
-                            }}
-                            style={{
-                              background: 'rgba(0,0,0,0.4)',
-                              border: '1px solid rgba(255,255,255,0.15)',
-                              color: '#fff',
-                              padding: '4px 6px',
-                              borderRadius: '3px',
-                              fontFamily: "'JetBrains Mono', monospace",
-                              fontSize: '11px',
-                              width: '60px',
-                              textAlign: 'center',
-                            }}
-                          />
-                          <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '10px' }}>DMX</span>
-                          <button
-                            onClick={() => removeIgnitionDep(idx, depIdx)}
-                            title="Remove dependency"
-                            style={{
-                              marginLeft: 'auto',
-                              background: 'transparent',
-                              border: '1px solid rgba(239, 68, 68, 0.3)',
-                              color: '#ef4444',
-                              borderRadius: '3px',
-                              padding: '3px 5px',
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                            }}
-                          >
-                            <XIcon size={12} />
-                          </button>
-                        </div>
-                      ))}
-
-                      <button
-                        onClick={() => {
-                          // Default: primer target disponible que no estÃ© ya usado
-                          const used = new Set((channel.ignitionDeps ?? []).map(d => d.channelType))
-                          const firstFree = availableTargetTypes.find(t => !used.has(t)) ?? availableTargetTypes[0]
-                          if (!firstFree) return
-                          // Default requiredValue: 255 para shutter, 0 para otros (heurÃ­stica segura)
-                          const requiredValue = firstFree === 'shutter' ? 255 : 255
-                          addIgnitionDep(idx, { channelType: firstFree, requiredValue })
-                        }}
-                        disabled={availableTargetTypes.length === 0}
-                        title={availableTargetTypes.length === 0
-                          ? 'No other channels to depend on'
-                          : 'Add a new ignition dependency'}
-                        style={{
-                          alignSelf: 'flex-start',
-                          background: 'rgba(245, 158, 11, 0.15)',
-                          border: '1px solid rgba(245, 158, 11, 0.4)',
-                          color: '#f59e0b',
-                          borderRadius: '4px',
-                          padding: '6px 10px',
-                          cursor: availableTargetTypes.length === 0 ? 'not-allowed' : 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          opacity: availableTargetTypes.length === 0 ? 0.4 : 1,
-                        }}
-                      >
-                        <Plus size={12} />
-                        <span>Add Dependency</span>
-                      </button>
-                    </div>
-                  )}
-                  </React.Fragment>
-                )
-              })}
-            </div>
-            
-            {/* Preview - Right */}
-            {showPreview && (
-              <div className="rack-preview">
-                <Suspense fallback={<div className="preview-loading">Loading...</div>}>
-                  <FixturePreview3D
-                    fixtureType={forgeState.meta.type || 'Moving Head'}
-                    pan={previewPan}
-                    tilt={previewTilt}
-                    dimmer={previewDimmer}
-                    color={previewColor}
-                    strobeActive={false}
-                    showBeam={true}
-                    isStressTesting={isStressTesting}
-                  />
-                </Suspense>
-              </div>
-            )}
-
-            {/* WAVE 4548.14: Read-only overlay (fuera del flujo del grid) */}
-            {!isSimpleCompatible(forgeGraph) && (
-              <div className="forge-channels-overlay" role="alert" aria-live="polite">
-                <SimpleModeLockBanner
-                  onJumpToCanvas={() => {
-                    setForgeEditMode('advanced')
-                    setActiveTab('nodegraph')
-                  }}
-                />
-              </div>
-            )}
-          </div>
+          <ForgeChannelRackTab
+            channels={channels as FixtureChannel[]}
+            capabilities={forgeState.capabilities}
+            dispatch={forgeDispatch}
+            fixtureType={forgeState.meta.type}
+            forgeGraph={forgeGraph}
+            isStressTesting={isStressTesting}
+            onNavigateToNodeGraph={() => setActiveTab('nodegraph')}
+          />
         )}
 
         {/* NODE GRAPH TAB â€” WAVE 4548.8b / 4548.10 */}

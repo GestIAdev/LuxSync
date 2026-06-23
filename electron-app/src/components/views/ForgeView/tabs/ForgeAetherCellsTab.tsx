@@ -18,7 +18,7 @@ import { canAdmit } from '../../../../core/forge/cellTypeAdmittance'
 import { type FixtureChannel, type ChannelType } from '../../../../types/FixtureDefinition'
 
 export interface ForgeAetherCellsTabProps {
-  cells: IForgeCellBuilder[]
+  cells: readonly IForgeCellBuilder[]
   channels: readonly FixtureChannel[]
   dispatch: React.Dispatch<ForgeAction>
 }

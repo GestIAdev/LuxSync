@@ -1,8 +1,8 @@
 ﻿/**
- * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
- * ðŸ”¨ FIXTURE FORGE EMBEDDED - WAVE 1112: FUNCTIONAL CLOSURE & LIBRARY MANAGER
+ * 
+ * FIXTURE FORGE EMBEDDED - WAVE 1112: FUNCTIONAL CLOSURE & LIBRARY MANAGER
  * "The Blacksmith's Workshop" - Full-screen Fixture Editor (no modal overlay)
- * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ * 
  * 
  * This component wraps the original FixtureForge but renders it embedded
  * in the main content area instead of as a modal overlay.
@@ -14,7 +14,7 @@
  * - English labels (WAVE 1110 localization)
  * - LIBRARY tab for fixture browsing (WAVE 1112)
  * 
- * ðŸ”¥ WAVE 1121: COLOR ENGINE SELECTOR RESTORED
+ * WAVE 1121: COLOR ENGINE SELECTOR RESTORED
  * - Added COLOR ENGINE selector grid below FIXTURE CLASS
  * - CSS override in FixtureForgeEmbedded.css with !important
  * 
@@ -23,7 +23,9 @@
  */
 
 import React, { useState, useCallback, useEffect, useReducer, useRef, type ReactNode } from 'react'
-// â”€â”€ WAVE 4732-A: Forge Hybrid Builder State â”€â”€
+
+//WAVE 4732-A: Forge Hybrid Builder State
+
 import {
   forgeReducer,
   makeInitialForgeState,
@@ -31,7 +33,9 @@ import {
   type IForgeBuilderState,
   type ForgeAction,
 } from '../../../core/forge/forgeBuilderState'
-// â”€â”€ WAVE 4732-C: Compilador â”€â”€
+
+// WAVE 4732-C: Compilador 
+
 import { compileForgeState, resolveChannelDeps } from '../../../core/forge/compileForgeState'
 import './FixtureForgeEmbedded.css'
 import { 
@@ -72,7 +76,9 @@ import {
   Droplet,
   Code2,
 } from 'lucide-react'
+
 // WAVE 1117: Moved to shared components (modal folder deleted)
+
 import { PhysicsTuner } from '../../shared/PhysicsTuner/PhysicsTuner'
 import { WheelSmithEmbedded } from './WheelSmithEmbedded'
 import { UniversalAssetBrowser } from '../../shared/AssetBrowser'
@@ -90,26 +96,31 @@ import { useShallow } from 'zustand/react/shallow'
 import { useLibraryStore, selectFixtureForge } from '../../../stores/libraryStore'
 import { useNavigationStore, selectFixtureForgeNav } from '../../../stores/navigationStore'
 import { useForgeGraphStore } from '../../../stores/forgeGraphStore'
+
 // WAVE 4548.8c: Inspector + Mode Switcher
+
 import { NodeInspector } from './inspector/NodeInspector'
 import { ForgeModeSwitcher, isSimpleCompatible, type ForgeEditMode } from './canvas/ForgeModeSwitcher'
+
 // WAVE 1117: Recovered CSS from deleted modal (contains PhysicsTuner styles)
+
 import './FixtureForge.css'
 import './FixtureForgeEmbedded.css'  // Standalone styles for embedded mode
 
-// â”€â”€ WAVE 4548.8b: NODE GRAPH UI (lazy-loaded â€” solo se carga en /forge) â”€â”€
+// WAVE 4548.8b: NODE GRAPH UI (lazy-loaded  solo se carga en /forge) 
+
 const ForgeCanvasLayout = React.lazy(() => import('./canvas/ForgeCanvasLayout'))
 const NodePalette = React.lazy(() => import('./canvas/NodePalette'))
 const NodeCanvas = React.lazy(() => import('./canvas/NodeCanvas'))
 
-// â”€â”€ WAVE 4548.10: Pack as Ingenio modal â”€â”€
+// WAVE 4548.10: Pack as Ingenio modal 
 import { PackIngenioModal } from './canvas/PackIngenioModal'
 import ForgeChannelRackTab from './tabs/ForgeChannelRackTab'
 import ForgeAetherCellsTab from './tabs/ForgeAetherCellsTab'
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
 // TYPES - WAVE 1112: Added 'library' tab
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
 
 type ForgeTabId = 'library' | 'general' | 'nodegraph' | 'channels' | 'wheelsmith' | 'physics' | 'export'
              | 'dmx-layout' | 'aether'
@@ -124,27 +135,29 @@ interface FixtureForgeEmbeddedProps {
   existingDefinition?: FixtureDefinition | null
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
 // CONSTANTS - English labels (WAVE 1112: LIBRARY tab added)
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
 
 const TAB_CONFIG: { id: ForgeTabId; label: string; icon: React.ReactNode }[] = [
   { id: 'library',    label: 'LIBRARY',       icon: <BookOpen size={16} /> },
   { id: 'general',    label: 'GENERAL',       icon: <Settings size={16} /> },
   { id: 'nodegraph',  label: 'NODE GRAPH',    icon: <Share2 size={16} /> },
   { id: 'channels',   label: 'CHANNEL RACK',  icon: <Server size={16} /> },
-  // â”€â”€ WAVE 4732-A: Hybrid Forge tabs â”€â”€
+
+  // WAVE 4732-A: Hybrid Forge tabs
+
   { id: 'dmx-layout', label: 'DMX LAYOUT',    icon: <Zap size={16} /> },
   { id: 'aether',     label: 'AETHER CELLS',  icon: <Cpu size={16} /> },
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // 
   { id: 'wheelsmith', label: 'WHEELSMITH',    icon: <Palette size={16} /> },
   { id: 'physics',    label: 'PHYSICS ENGINE',icon: <Cog size={16} /> },
   { id: 'export',     label: 'EXPORT',        icon: <Download size={16} /> },
 ]
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
 // FUNCTION CATEGORY COLORS - WAVE 1111: THE GLOW
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
 
 const CATEGORY_COLORS: Record<string, string> = {
   INTENSITY: '#a0a0a0',   // White/Gray
@@ -165,15 +178,19 @@ function syncGraphOutputsWithChannels(graph: any, channels: FixtureChannel[]): a
   }
 
   const resolveChannelForOffset = (offset: number): FixtureChannel | undefined => {
+
     // Prefer exact 0-based match.
+
     const exact = channelByIndex.get(offset)
     if (exact) return exact
 
     // Legacy fallback for 1-based channel indexes.
+
     const shifted = channelByIndexMinus1.get(offset)
     if (shifted) return shifted
 
     // Last fallback by array position.
+
     return channels[offset]
   }
 
@@ -253,7 +270,9 @@ export const FUNCTION_PALETTE: Record<string, FunctionDef[]> = {
     { type: 'macro',   label: 'Macro',   color: '#00ff44', icon: <Settings2 size={13} /> },
     { type: 'control', label: 'Control', color: '#00ff44', icon: <Settings size={13} /> },
   ],
+
   // WAVE 2084: INGENIOS -- Non-conventional device channels
+
   'INGENIOS': [
     { type: 'rotation',       label: 'Rotation',  color: '#ff6b35', icon: <RotateCw size={13} /> },
     { type: 'custom',         label: 'Custom',    color: '#b967ff', icon: <Code2 size={13} /> },
@@ -266,10 +285,11 @@ export const FUNCTION_PALETTE: Record<string, FunctionDef[]> = {
   ],
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
 // WAVE 1120: FIXTURE TYPE CONFIG - Visual Type Selector
 // "Cyberpunk Industrial" icons for each fixture class
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
+
 interface FixtureTypeConfig {
   value: FixtureType
   label: string
@@ -338,7 +358,7 @@ const FIXTURE_TYPES: FixtureTypeConfig[] = [
     color: '#71717a',
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/></svg>
   },
-  // ðŸ”¥ WAVE 2084: INGENIOS â€” Tipos para dispositivos no convencionales
+  //  WAVE 2084: INGENIOS  Tipos para dispositivos no convencionales
   { 
     value: 'fan', 
     label: 'Fan', 
@@ -365,10 +385,11 @@ const FIXTURE_TYPES: FixtureTypeConfig[] = [
   },
 ]
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
 // WAVE 1120: CAPABILITY BADGES CONFIG
 // Auto-generated badges based on channel analysis
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
+
 interface CapabilityBadge {
   key: keyof DerivedCapabilities
   label: string
@@ -428,13 +449,14 @@ const COLOR_ENGINE_OPTIONS: { value: ColorEngineType; label: string; description
   },
 ]
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
 // HELPERS - WAVE 1111: Channel Category Detection
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
 
 /**
  * Maps a ChannelType to its visual category for THE GLOW
  */
+
 export function getChannelCategory(type: ChannelType): string {
   // Intensity category
   if (['dimmer', 'shutter', 'strobe'].includes(type)) return 'intensity'
@@ -463,11 +485,12 @@ function deepClone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// NODE GRAPH TAB â€” WAVE 4548.10
+// 
+// NODE GRAPH TAB WAVE 4548.10
 // Subcomponent aislado para que los hooks de clearGraph/selectedNodeIds no
-// contaminan el Ã¡rbol de renderizado del componente padre en otras pestaÃ±as.
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// contaminan el arbol de renderizado del componente padre en otras pestañas.
+// 
+
 const NodeGraphTab: React.FC = () => {
   const selectedNodeIds  = useForgeGraphStore((s) => s.selectedNodeIds)
   const clearGraph       = useForgeGraphStore((s) => s.clearGraph)
@@ -481,7 +504,9 @@ const NodeGraphTab: React.FC = () => {
 
   return (
     <div className="forge-nodegraph-panel">
-      {/* Floating action bar â€” Pack + Clear */}
+
+      {/* Floating action bar  Pack + Clear */}
+
       <div className="forge-nodegraph-actions">
         {selectedNodeIds.size > 0 && (
           <button
@@ -516,19 +541,20 @@ const NodeGraphTab: React.FC = () => {
   )
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
 // COMPONENT
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
 
 export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   onSave,
   editingFixture,
   existingDefinition
 }) => {
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+  // 
   // STORES - WAVE 1113: Updated to async library store
-  // ðŸ›¡ï¸ WAVE 2042.13.9: useShallow for stable references
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // WAVE 2042.13.9: useShallow for stable references
+  // 
   
   const { 
     saveUserFixture, 
@@ -543,13 +569,14 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   const forgeGraphDirty = useForgeGraphStore((s) => s.isDirty)
   const markForgeGraphClean = useForgeGraphStore((s) => s.markClean)
   
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // 
   // STATE
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // 
   
   const fixtureRef = useRef<FixtureDefinition>(FixtureFactory.createEmpty())
 
-  // â”€â”€ WAVE 4732-A: Forge Hybrid Builder State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //  WAVE 4732-A: Forge Hybrid Builder State 
+
   const [forgeState, forgeDispatch] = useReducer(forgeReducer, undefined, makeInitialForgeState)
 
   const channels     = forgeState.channels
@@ -561,19 +588,23 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   const [forgeEditMode, setForgeEditMode] = useState<ForgeEditMode>('simple') // WAVE 4548.8c
 
   // WAVE 4548.8c: read the current forge graph to gate Simple Mode
+
   const forgeGraph = useForgeGraphStore(s => s.graph)
   const simpleModeCompatible = isSimpleCompatible(forgeGraph)
   
-  // ðŸ”§ WAVE 2100: Configurable wheel motor speed
+ 
   
   // WAVE 1112: Current editing source tracking
+
   const [editingSource, setEditingSource] = useState<'system' | 'user' | 'new'>('new')
   const [originalFixtureId, setOriginalFixtureId] = useState<string | null>(null)
   
   // Physics stress testing toggle
+
   const [isStressTesting, setIsStressTesting] = useState(false)
   
   // UI state
+
   const [validationMessage, setValidationMessage] = useState('')
   const [isFormValid, setIsFormValid] = useState(false)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
@@ -596,11 +627,10 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
     loadForgeGraph(graph, def.id || 'unsaved-fixture', !fixtureWithGraph.nodeGraph)
   }, [createBlankForgeGraph, loadForgeGraph])
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-  // WAVE 1112: Load fixture from navigation target
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+  // 
   // WAVE 1113: Load library from disk on mount
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // 
   
   useEffect(() => {
     console.log('[ForgeEmbedded] ðŸ“‚ Loading library from disk...')
@@ -628,6 +658,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   }, [unloadForgeGraph])
 
   // WAVE 4548.8d: Mode toggle controls real tab routing
+
   const handleForgeModeChange = useCallback((mode: ForgeEditMode) => {
     if (mode === 'advanced') {
       setForgeEditMode('advanced')
@@ -642,11 +673,13 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
     }
 
     // Si el grafo no es compatible con SIMPLE, mantener ADVANCED
+
     setForgeEditMode('advanced')
     setActiveTab('nodegraph')
   }, [simpleModeCompatible])
 
   // WAVE 4548.8d: Reverse sync when user clicks tabs directly
+
   const handleTabClick = useCallback((tabId: ForgeTabId) => {
     setActiveTab(tabId)
 
@@ -660,21 +693,23 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
     }
   }, [simpleModeCompatible])
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // 
   // WAVE 1112: Load fixture into editor
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // 
   
   const loadFixtureIntoEditor = useCallback((def: FixtureDefinition) => {
+
     // WAVE 4831 DIAG: detectar llamadas inesperadas post-save
+
     console.trace('[Forge 4831] 📥 loadFixtureIntoEditor called for:', def.name)
     fixtureRef.current = def
     hydrateForgeGraph(def)
     forgeDispatch({ type: 'HYDRATE_FROM_FIXTURE', fixture: def })
   }, [hydrateForgeGraph, forgeDispatch])
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // 
   // VALIDATION
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // 
   
   useEffect(() => {
     const hasName = !!forgeState.meta.name?.trim()
@@ -692,13 +727,14 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
     }
   }, [forgeState.meta.name, forgeState.channels])
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // 
   // HANDLERS - WAVE 1112: Save to Library
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // 
   
   /**
    * Build the complete FixtureDefinition with wheels included
    */
+
   const buildCompleteFixture = useCallback((state: IForgeBuilderState = forgeState): FixtureDefinition => {
     const baseFixture = fixtureRef.current
     const syncedChannels = state.channels as FixtureChannel[]
@@ -799,6 +835,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
     // WAVE 4732.3 PASO 3: Pre-check compile errors BEFORE touching the save pipeline.
     // If the forge has cells but they're invalid (empty cells, type mismatch, etc.),
     // block the save and surface the first error in the status badge.
+
     if (forgeState.cells.length > 0) {
       const preCheck = compileForgeState(forgeState)
       if (!preCheck.ok) {
@@ -813,6 +850,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
     const completeFixture = deepClone(buildCompleteFixture(forgeState))
 
     // WAVE 4831 DIAG: Trazar channels que viajan al IPC — detectar ignitionDeps stale
+
     console.log('[Forge 4831] 🔍 Pre-save channels:', completeFixture.channels.map((ch: any) => ({
       idx: ch.index,
       type: ch.type,
@@ -826,16 +864,21 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
       })) ?? [],
     })))
     
-    // ðŸ”¥ WAVE 2183.5: Track the PREVIOUS profileId for reconciliation migration
+    // WAVE 2183.5: Track the PREVIOUS profileId for reconciliation migration
     // When systemâ†’user clone happens, fixtures in the show still point to the old system ID.
+
     let previousProfileId: string | undefined
     
     // WAVE 1114 FIX: Handle system vs user vs new correctly
+
     if (editingSource === 'system') {
-      // ðŸ”¥ WAVE 2183.5: Capture the system profileId BEFORE cloning
+
+      //  WAVE 2183.5: Capture the system profileId BEFORE cloning
+
       previousProfileId = completeFixture.id
       
       // System fixture: Clone with new ID + "(User Copy)" suffix
+
       const clonedName = `${completeFixture.name} (User Copy)`
       const clonedFixture = {
         ...completeFixture,
@@ -853,7 +896,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
         setSaveMessage('Saved as User Copy')
         setTimeout(() => setSaveMessage(null), 3000)
         
-        // ðŸ”¥ WAVE 2183.5: Reconcile using the CLONED fixture (with new user ID)
+        //  WAVE 2183.5: Reconcile using the CLONED fixture (with new user ID)
         // AND pass previousProfileId so stage fixtures pointing to the old system
         // ID get their profileId migrated to the new user ID.
         reconcileFixturesWithProfile(clonedFixture, previousProfileId)
@@ -920,9 +963,9 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
     URL.revokeObjectURL(url)
   }, [buildCompleteFixture])
   
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // 
   // WAVE 1112: Library Tab Handlers
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // 
   
   const handleSelectFromLibrary = useCallback((selectedFixture: FixtureDefinition) => {
     loadFixtureIntoEditor(selectedFixture)
@@ -941,9 +984,9 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
     setActiveTab('general')
   }, [hydrateForgeGraph, forgeDispatch])
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // 
   // RENDER
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // 
   
   // WAVE 4732.2: Status badge computation
   const _saveError = saveMessage?.startsWith('Save failed') || saveMessage?.startsWith('Update failed')
@@ -998,9 +1041,9 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
         </div>
       </header>
       
-      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+ 
       {/* TABS - WAVE 1112: Added LIBRARY tab */}
-      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+
       <nav className="forge-tabs embedded">
         {TAB_CONFIG.map(tab => (
           <button
@@ -1012,7 +1055,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
             <span>{tab.label}</span>
           </button>
         ))}
-        {/* WAVE 4548.8c: Mode toggle â€” only visible on nodegraph / channels tabs */}
+        {/* WAVE 4548.8c: Mode toggle  only visible on nodegraph / channels tabs */}
         {(activeTab === 'nodegraph' || activeTab === 'channels') && (
           <ForgeModeSwitcher
             mode={forgeEditMode}
@@ -1022,9 +1065,9 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
         )}
       </nav>
 
-      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+
       {/* MAIN CONTENT */}
-      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+      
       <div className="forge-main-content embedded">
         
         {/* LIBRARY TAB â€” WAVE 4549.2: Universal Asset Browser */}
@@ -1042,9 +1085,11 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
         {/* GENERAL TAB - WAVE 1120: THE COCKPIT OVERHAUL */}
         {activeTab === 'general' && (
           <div className="forge-general-panel cockpit-layout">
-            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+            
+            {/* 
                 SECTION A: IDENTITY & CLASSIFICATION (LEFT COLUMN)
-                â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+                 */}
+
             <div className="cockpit-identity">
               <div className="cockpit-section-header">
                 <Factory size={16} />
@@ -1062,8 +1107,8 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                   />
                 </div>
                 
-                {/* ðŸ”¥ HOTFIX WAVE 2070.1: RestauraciÃ³n del Selector de Canales
-                    El input de totalChannels se perdiÃ³ durante la migraciÃ³n al diseÃ±o Cockpit.
+                {/* HOTFIX WAVE 2070.1: Restauracion del Selector de Canales
+                    El input de totalChannels se perdiÃ³ durante la migracion al diseño Cockpit.
                     Se incrusta junto a Model Name en un flex row para no romper el layout. */}
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <div className="cockpit-input-group" style={{ flex: 1 }}>
@@ -1115,9 +1160,10 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
               </div>
             </div>
             
-            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+            {/* 
                 SECTION B: CAPABILITIES MATRIX (CENTER - AUTO-GENERATED)
-                â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+                 */}
+
             <div className="cockpit-capabilities">
               <div className="cockpit-section-header">
                 <Sliders size={16} />
@@ -1155,9 +1201,10 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                 )
               })()}
 
-              {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-                  ðŸ”¥ WAVE 1122.3: COLOR ENGINE MUDADO AL CENTRO (Donde hay espacio)
-                  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+              {/* 
+                  WAVE 1122.3: COLOR ENGINE MUDADO AL CENTRO (Donde hay espacio)
+                 */}
+                 
               <div className="cockpit-section-header" style={{ marginTop: '32px' }}>
                 <Palette size={16} />
                 <span>COLOR ENGINE</span>
@@ -1199,9 +1246,10 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
               </div>
             </div>
             
-            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+            {/* 
                 SECTION C: DMX RIBBON (BOTTOM - VISUAL FOOTPRINT)
-                â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+                */}
+
             <div className="cockpit-dmx-ribbon">
               <div className="cockpit-section-header">
                 <Server size={16} />
@@ -1248,7 +1296,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
           />
         )}
 
-        {/* NODE GRAPH TAB â€” WAVE 4548.8b / 4548.10 */}
+        {/* NODE GRAPH TAB  WAVE 4548.8b / 4548.10 */}
         {activeTab === 'nodegraph' && (
           <NodeGraphTab />
         )}
@@ -1305,8 +1353,8 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
           </div>
         )}
 
-        {/* â”€â”€ WAVE 4732-A: DMX LAYOUT TAB (mundo fÃ­sico) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            Renderiza `forgeState.channels` â€” la tabla de canales con tipos,
+        {/* WAVE 4732-A: DMX LAYOUT TAB 
+            Renderiza `forgeState.channels` la tabla de canales con tipos,
             defaults e ignitionDeps. El fix completo del selector de deps
             (Bug B1) llega en la fase 4732-B. */}
         {activeTab === 'dmx-layout' && (
@@ -1382,8 +1430,8 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
           </div>
         )}
 
-        {/* â”€â”€ WAVE 4732-A: AETHER CELLS TAB (mundo lÃ³gico) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            Renderiza `forgeState.cells` â€” las cajas de cÃ©lulas Aether.
+        {/*  WAVE 4732-A: AETHER CELLS TAB 
+            Renderiza `forgeState.cells`  las cajas de cÃ©lulas Aether.
             El DnD (4732-D) y el compilador (4732-E) llegan en fases siguientes.
             Scaffolding base: split screen Unassigned | Cells. */}
         {activeTab === 'aether' && (
@@ -1398,9 +1446,8 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   )
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // HELPERS
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
 
 export function getSmartDefaultValue(type: ChannelType): number {
   switch (type) {
@@ -1414,5 +1461,5 @@ export function getSmartDefaultValue(type: ChannelType): number {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
 export default FixtureForgeEmbedded

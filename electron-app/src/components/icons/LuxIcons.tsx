@@ -848,6 +848,33 @@ export const DreamCloudIcon: React.FC<IconProps> = ({
 )
 
 /**
+ * 🛡️ SHIELD - Escudo base de protección
+ * Para: Governor triggers / DMX safety shields
+ */
+export const ShieldIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Escudo */}
+    <path 
+      d="M12 3L4 7V12C4 16.4 7.4 20.4 12 21C16.6 20.4 20 16.4 20 12V7L12 3Z" 
+      stroke={color} 
+      strokeWidth="1.5" 
+      fill="none"
+    />
+  </svg>
+)
+
+/**
  * 🛡️ SHIELD CHECK - Escudo con verificación ética
  * Para: ConsciousnessHUD Ethics
  */
@@ -2684,6 +2711,7 @@ export default {
   // WAVE 1167: Neural Command Center icons
   BrainNeural: BrainNeuralIcon,
   DreamCloud: DreamCloudIcon,
+  Shield: ShieldIcon,
   ShieldCheck: ShieldCheckIcon,
   CatStalk: CatStalkIcon,
   LightningStrike: LightningStrikeIcon,

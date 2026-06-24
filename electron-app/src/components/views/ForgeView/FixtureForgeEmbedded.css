@@ -223,6 +223,12 @@
   filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.5));
 }
 
+.forge-tabs.embedded .forge-tab.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /* MAIN CONTENT - Embedded mode */
 /* ═══════════════════════════════════════════════════════════════════════════ */
@@ -493,7 +499,7 @@
 
 .rack-header {
   display: grid;
-  grid-template-columns: 60px 1fr 60px 80px 40px;
+  grid-template-columns: 60px 1fr 80px 140px 40px;
   gap: 8px;
   padding: 12px 16px;
   background: rgba(0, 0, 0, 0.3);
@@ -505,9 +511,9 @@
   text-transform: uppercase;
 }
 
-.channel-slot {
+.channel-row {
   display: grid;
-  grid-template-columns: 60px 1fr 60px 80px 40px;
+  grid-template-columns: 60px 1fr 80px 140px 40px;
   gap: 8px;
   align-items: center;
   padding: 8px 16px;
@@ -517,16 +523,16 @@
   border-left: 4px solid transparent;
 }
 
-.channel-slot:hover {
+.channel-row:hover {
   background: rgba(255, 255, 255, 0.02);
 }
 
-.channel-slot.drag-over {
+.channel-row.drag-over {
   background: rgba(34, 211, 238, 0.1);
   border-color: rgba(34, 211, 238, 0.3);
 }
 
-.channel-slot.assigned {
+.channel-row.assigned {
   background: rgba(34, 211, 238, 0.03);
 }
 
@@ -534,48 +540,48 @@
 /* WAVE 1111: THE GLOW - Category Color Coding */
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
-.channel-slot.category-intensity {
+.channel-row.category-intensity {
   border-left: 4px solid var(--slot-category-color, #a0a0a0);
   background: rgba(160, 160, 160, 0.05);
 }
 
-.channel-slot.category-intensity .channel-name {
+.channel-row.category-intensity .channel-name {
   color: #e0e0e0;
 }
 
-.channel-slot.category-color {
+.channel-row.category-color {
   border-left: 4px solid var(--slot-category-color, #ef4444);
   background: rgba(239, 68, 68, 0.05);
 }
 
-.channel-slot.category-color .channel-name {
+.channel-row.category-color .channel-name {
   color: #ef4444;
 }
 
-.channel-slot.category-position {
+.channel-row.category-position {
   border-left: 4px solid var(--slot-category-color, #22d3ee);
   background: rgba(34, 211, 238, 0.05);
 }
 
-.channel-slot.category-position .channel-name {
+.channel-row.category-position .channel-name {
   color: #22d3ee;
 }
 
-.channel-slot.category-beam {
+.channel-row.category-beam {
   border-left: 4px solid var(--slot-category-color, #f59e0b);
   background: rgba(245, 158, 11, 0.05);
 }
 
-.channel-slot.category-beam .channel-name {
+.channel-row.category-beam .channel-name {
   color: #f59e0b;
 }
 
-.channel-slot.category-control {
+.channel-row.category-control {
   border-left: 4px solid var(--slot-category-color, #a855f7);
   background: rgba(168, 85, 247, 0.05);
 }
 
-.channel-slot.category-control .channel-name {
+.channel-row.category-control .channel-name {
   color: #a855f7;
 }
 
@@ -585,11 +591,6 @@
   font-weight: 700;
   color: rgba(255, 255, 255, 0.5);
   text-align: center;
-}
-
-/* 🔥 WAVE 1135.3: Placeholder para mantener Grid intacto en no-dimmers */
-.channel-min-placeholder {
-  /* Vacío — solo mantiene el espacio del Grid */
 }
 
 .channel-function {
@@ -617,6 +618,18 @@
   font-size: 12px;
   font-family: 'JetBrains Mono', monospace;
   text-align: center;
+}
+
+.btn-governor-inline {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  justify-content: center;
+}
+
+.btn-governor-inline.governor-active {
+  opacity: 1;
 }
 
 .channel-clear {
@@ -963,4 +976,60 @@
   40% { transform: translateX(5px); }
   60% { transform: translateX(-4px); }
   80% { transform: translateX(4px); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* GOVERNOR INLINE DRAWER — Channel shield accordion inside normal DOM flow */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.channel-slot-wrapper {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.governor-inline-drawer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px 8px 48px;
+  background: rgba(255, 183, 3, 0.08); /* Tonito Malbec/Gold sutil */
+  border-left: 3px solid #ffb703;
+  font-size: 12px;
+  color: #a0aec0;
+  animation: slideDownDrawer 0.15s ease-out;
+}
+
+.governor-inline-drawer b {
+  color: #ffb703;
+  letter-spacing: 0.5px;
+}
+
+.governor-inline-drawer input[type="number"] {
+  width: 65px;
+  height: 24px;
+  background: #0f172a;
+  border: 1px solid #ffb703;
+  color: #ffb703;
+  font-weight: bold;
+  text-align: center;
+  border-radius: 4px;
+}
+
+.btn-drawer-kill {
+  background: transparent;
+  color: #ef4444;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  margin-left: auto;
+}
+
+.btn-drawer-kill:hover {
+  text-decoration: underline;
+}
+
+@keyframes slideDownDrawer {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }

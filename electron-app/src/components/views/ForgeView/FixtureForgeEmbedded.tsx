@@ -85,7 +85,8 @@ import type { LibraryAsset } from '../../../stores/assetAdapters'
 import { 
   PhysicsProfile, 
   FixtureV2,
-  MotorType
+  MotorType,
+  DEFAULT_PHYSICS_PROFILES
 } from '../../../core/stage/ShowFileV2'
 import { FixtureDefinition, ChannelType, FixtureChannel, ColorEngineType, WheelColor, FixtureType, IgnitionDependency } from '../../../types/FixtureDefinition'
 import { NodeGraphBuilder } from '../../../core/forge/NodeGraphBuilder'
@@ -101,7 +102,6 @@ import { useForgeGraphStore } from '../../../stores/forgeGraphStore'
 // WAVE 4548.8c: Inspector + Mode Switcher
 
 import { NodeInspector } from './inspector/NodeInspector'
-import { ForgeModeSwitcher, isSimpleCompatible, type ForgeEditMode } from './canvas/ForgeModeSwitcher'
 
 // WAVE 1117: Recovered CSS from deleted modal (contains PhysicsTuner styles)
 
@@ -143,16 +143,12 @@ interface FixtureForgeEmbeddedProps {
 const TAB_CONFIG: { id: ForgeTabId; label: string; icon: React.ReactNode }[] = [
   { id: 'library',    label: 'LIBRARY',       icon: <BookOpen size={16} /> },
   { id: 'general',    label: 'GENERAL',       icon: <Settings size={16} /> },
-  { id: 'nodegraph',  label: 'NODE GRAPH',    icon: <Share2 size={16} /> },
   { id: 'channels',   label: 'CHANNEL RACK',  icon: <Server size={16} /> },
-
-  // WAVE 4732-A: Hybrid Forge tabs
-
-  { id: 'dmx-layout', label: 'DMX LAYOUT',    icon: <Zap size={16} /> },
   { id: 'aether',     label: 'AETHER CELLS',  icon: <Cpu size={16} /> },
-  // 
   { id: 'wheelsmith', label: 'WHEELSMITH',    icon: <Palette size={16} /> },
   { id: 'physics',    label: 'PHYSICS ENGINE',icon: <Cog size={16} /> },
+  { id: 'nodegraph',  label: 'NODE GRAPH',    icon: <Share2 size={16} /> },
+  { id: 'dmx-layout', label: 'DMX LAYOUT',    icon: <Zap size={16} /> },
   { id: 'export',     label: 'EXPORT',        icon: <Download size={16} /> },
 ]
 
@@ -382,12 +378,8 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   const physics      = forgeState.physics
   const wheels       = forgeState.wheels
   const [activeTab, setActiveTab] = useState<ForgeTabId>('library')  // WAVE 1112: Start at library
-  const [forgeEditMode, setForgeEditMode] = useState<ForgeEditMode>('simple') // WAVE 4548.8c
-
-  // WAVE 4548.8c: read the current forge graph to gate Simple Mode
 
   const forgeGraph = useForgeGraphStore(s => s.graph)
-  const simpleModeCompatible = isSimpleCompatible(forgeGraph)
   
  
   
@@ -454,41 +446,9 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
     }
   }, [unloadForgeGraph])
 
-  // WAVE 4548.8d: Mode toggle controls real tab routing
-
-  const handleForgeModeChange = useCallback((mode: ForgeEditMode) => {
-    if (mode === 'advanced') {
-      setForgeEditMode('advanced')
-      setActiveTab('nodegraph')
-      return
-    }
-
-    if (simpleModeCompatible) {
-      setForgeEditMode('simple')
-      setActiveTab('channels')
-      return
-    }
-
-    // Si el grafo no es compatible con SIMPLE, mantener ADVANCED
-
-    setForgeEditMode('advanced')
-    setActiveTab('nodegraph')
-  }, [simpleModeCompatible])
-
-  // WAVE 4548.8d: Reverse sync when user clicks tabs directly
-
   const handleTabClick = useCallback((tabId: ForgeTabId) => {
     setActiveTab(tabId)
-
-    if (tabId === 'nodegraph') {
-      setForgeEditMode('advanced')
-      return
-    }
-
-    if (tabId === 'channels' && simpleModeCompatible) {
-      setForgeEditMode('simple')
-    }
-  }, [simpleModeCompatible])
+  }, [])
 
   // 
   // WAVE 1112: Load fixture into editor
@@ -791,6 +751,9 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   const badgeIcon = (badgeClass === 'error' || badgeClass === 'invalid') ? <AlertTriangle size={11} /> : <Check size={11} />
   const badgeText = saveMessage ?? validationMessage
 
+  const hasValidChannels = channels.some(c => c.type !== 'unknown')
+  const hasValidCells = cells.length > 0
+
   return (
     <div className="forge-embedded">
       {/* HEADER - WAVE 1112/4732.2: Fixture title centered + status badge */}
@@ -842,24 +805,22 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
       {/* TABS - WAVE 1112: Added LIBRARY tab */}
 
       <nav className="forge-tabs embedded">
-        {TAB_CONFIG.map(tab => (
-          <button
-            key={tab.id}
-            className={`forge-tab ${activeTab === tab.id ? 'active' : ''}`}
-            onClick={() => handleTabClick(tab.id)}
-          >
-            {tab.icon}
-            <span>{tab.label}</span>
-          </button>
-        ))}
-        {/* WAVE 4548.8c: Mode toggle  only visible on nodegraph / channels tabs */}
-        {(activeTab === 'nodegraph' || activeTab === 'channels') && (
-          <ForgeModeSwitcher
-            mode={forgeEditMode}
-            graph={forgeGraph}
-            onModeChange={handleForgeModeChange}
-          />
-        )}
+        {TAB_CONFIG.map(tab => {
+          const isDisabled =
+            (tab.id === 'aether' && !hasValidChannels) ||
+            (tab.id === 'nodegraph' && !hasValidCells)
+          return (
+            <button
+              key={tab.id}
+              className={`forge-tab ${activeTab === tab.id ? 'active' : ''} ${isDisabled ? 'disabled' : ''}`}
+              onClick={() => handleTabClick(tab.id)}
+              disabled={isDisabled}
+            >
+              {tab.icon}
+              <span>{tab.label}</span>
+            </button>
+          )
+        })}
       </nav>
 
 
@@ -901,6 +862,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
             forgeGraph={forgeGraph}
             isStressTesting={isStressTesting}
             onNavigateToNodeGraph={() => setActiveTab('nodegraph')}
+            dmxGovernors={forgeState.dmxGovernors}
           />
         )}
 
@@ -929,7 +891,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
         {activeTab === 'physics' && (
           <div className="forge-physics-panel">
             <PhysicsTuner
-              physics={physics as any}
+              physics={(physics ?? DEFAULT_PHYSICS_PROFILES['unknown']) as any}
               onChange={(p) => forgeDispatch({ type: 'PHYSICS_SET', physics: p as any })}
               onStressTest={setIsStressTesting}
               isStressTesting={isStressTesting}

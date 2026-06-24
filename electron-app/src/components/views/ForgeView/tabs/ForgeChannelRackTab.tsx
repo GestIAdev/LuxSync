@@ -1,15 +1,13 @@
-import React, { useState, useCallback, DragEvent, Suspense } from 'react'
+import React, { useState, DragEvent, Suspense } from 'react'
 import {
-  ChevronDown,
-  ChevronUp,
-  Zap,
-  Trash2,
-  Plus,
-  X as XIcon,
-} from 'lucide-react'
+  ChevronDownIcon,
+  ChevronUpIcon,
+  TrashIcon,
+  ShieldIcon,
+} from '../../../icons/LuxIcons'
 import { FixturePreview3D } from '../../../shared/PhysicsTuner/FixturePreview3D'
-import { SimpleModeLockBanner, isSimpleCompatible, type ForgeEditMode } from '../canvas/ForgeModeSwitcher'
-import type { FixtureChannel, ChannelType, IgnitionDependency, FixtureType } from '../../../../types/FixtureDefinition'
+import { SimpleModeLockBanner, isSimpleCompatible } from '../canvas/ForgeModeSwitcher'
+import type { FixtureChannel, ChannelType, FixtureType, IDMXGovernor } from '../../../../types/FixtureDefinition'
 import type { ForgeAction } from '../../../../core/forge/forgeBuilderState'
 import { FUNCTION_PALETTE, getChannelCategory, getCategoryColor, getSmartDefaultValue } from '../FixtureForgeEmbedded'
 
@@ -25,6 +23,7 @@ export interface ForgeChannelRackTabProps {
   forgeGraph: any
   isStressTesting: boolean
   onNavigateToNodeGraph: () => void
+  dmxGovernors: readonly IDMXGovernor[]
 }
 
 // ────────────────────────────────────────────────────────────────────────────────
@@ -33,12 +32,12 @@ export interface ForgeChannelRackTabProps {
 
 const ForgeChannelRackTab: React.FC<ForgeChannelRackTabProps> = ({
   channels,
-  capabilities,
   dispatch,
   fixtureType,
   forgeGraph,
   isStressTesting,
   onNavigateToNodeGraph,
+  dmxGovernors,
 }) => {
   // ── Preview controls ──────────────────────────────────────────────────────
   const [showPreview, setShowPreview] = useState(true)
@@ -50,7 +49,7 @@ const ForgeChannelRackTab: React.FC<ForgeChannelRackTabProps> = ({
   // ── UI state ───────────────────────────────────────────────────────────────
   const [dragOverSlot, setDragOverSlot] = useState<number | null>(null)
   const [expandedFoundry, setExpandedFoundry] = useState<string | null>('POSITION')
-  const [expandedIgnitionIdx, setExpandedIgnitionIdx] = useState<number | null>(null)
+  const [editingGovIdx, setEditingGovIdx] = useState<number | null>(null)
 
   // ── Drag handlers ─────────────────────────────────────────────────────────
   const handleDragStart = (e: DragEvent<HTMLDivElement>, funcType: ChannelType, funcLabel: string) => {
@@ -93,19 +92,6 @@ const ForgeChannelRackTab: React.FC<ForgeChannelRackTabProps> = ({
     dispatch({ type: 'CHANNEL_CLEAR', idx: index })
   }
 
-  // ── Ignition deps handlers ────────────────────────────────────────────────
-  const addIgnitionDep = useCallback((idx: number, dep: IgnitionDependency) => {
-    dispatch({ type: 'IGNITION_ADD', idx, dep })
-  }, [dispatch])
-
-  const removeIgnitionDep = useCallback((idx: number, depIndex: number) => {
-    dispatch({ type: 'IGNITION_REMOVE', idx, depIdx: depIndex })
-  }, [dispatch])
-
-  const updateIgnitionDep = useCallback((idx: number, depIndex: number, patch: Partial<IgnitionDependency>) => {
-    dispatch({ type: 'IGNITION_UPDATE', idx, depIdx: depIndex, patch })
-  }, [dispatch])
-
   // ──────────────────────────────────────────────────────────────────────────
   // RENDER
   // ──────────────────────────────────────────────────────────────────────────
@@ -121,7 +107,7 @@ const ForgeChannelRackTab: React.FC<ForgeChannelRackTabProps> = ({
               onClick={() => setExpandedFoundry(expandedFoundry === category ? null : category)}
             >
               <span>{category}</span>
-              {expandedFoundry === category ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              {expandedFoundry === category ? <ChevronUpIcon size={14} /> : <ChevronDownIcon size={14} />}
             </div>
             {expandedFoundry === category && (
               <div className="function-list">
@@ -148,273 +134,145 @@ const ForgeChannelRackTab: React.FC<ForgeChannelRackTabProps> = ({
         <div className="rack-header">
           <span>Channel</span>
           <span>Function</span>
-          <span style={{ fontSize: '10px', color: '#22d3ee', textAlign: 'center' }}>MIN</span>
           <span>Default</span>
+          <span>Governor</span>
           <span></span>
         </div>
         {channels.map((channel, idx) => {
           const category = getChannelCategory(channel.type)
           const categoryColor = getCategoryColor(category)
-          const availableTargetTypes = channels
-            .filter(ch => ch.type !== 'unknown' && ch.type !== channel.type)
-            .map(ch => ch.type)
-            .filter((t, i, arr) => arr.indexOf(t) === i)
-          const depsCount = channel.ignitionDeps?.length ?? 0
-          const isIgnitionExpanded = expandedIgnitionIdx === idx
+          const activeGov = dmxGovernors.find(g => g.channelIndex === idx)
           return (
-            <React.Fragment key={idx}>
-            <div
-              className={`channel-slot ${channel.type !== 'unknown' ? 'assigned' : ''} ${dragOverSlot === idx ? 'drag-over' : ''} ${category ? `category-${category}` : ''}`}
-              style={categoryColor ? {
-                '--slot-category-color': categoryColor
-              } as React.CSSProperties : undefined}
-              onDragOver={(e) => handleDragOver(e, idx)}
-              onDragLeave={handleDragLeave}
-              onDrop={(e) => handleDrop(e, idx)}
-            >
-              <span className="channel-number">{idx + 1}</span>
-              <div className="channel-function">
-                {channel.type !== 'unknown' ? (
-                  (() => {
-                    const isEditable = ['custom', 'macro', 'rotation', 'speed', 'control'].includes(channel.type)
-                    return isEditable ? (
-                      <input
-                        type="text"
-                        className="channel-name-input"
-                        placeholder={channel.type.toUpperCase()}
-                        value={channel.name || ''}
-                        onChange={(e) => dispatch({ type: 'CHANNEL_REPLACE', idx, channel: { ...channels[idx], name: e.target.value } })}
-                        onClick={(e) => e.stopPropagation()}
-                        style={{
-                          background: 'rgba(0,0,0,0.2)',
-                          border: `1px solid ${categoryColor ? categoryColor + '55' : 'rgba(255,255,255,0.12)'}`,
-                          color: categoryColor || 'inherit',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          width: '120px',
-                          fontFamily: 'inherit',
-                          fontSize: '11px',
-                          outline: 'none',
-                        }}
-                      />
-                    ) : (
-                      <span className="channel-name">{channel.name || channel.type}</span>
-                    )
-                  })()
-                ) : (
-                  <span className="channel-empty">Drop function here</span>
-                )}
-              </div>
-              {channel.type === 'dimmer' ? (
+            <div key={idx} className="channel-slot-wrapper">
+              <div
+                className={`channel-row ${channel.type !== 'unknown' ? 'assigned' : ''} ${dragOverSlot === idx ? 'drag-over' : ''} ${category ? `category-${category}` : ''}`}
+                style={categoryColor ? {
+                  '--slot-category-color': categoryColor
+                } as React.CSSProperties : undefined}
+                onDragOver={(e) => handleDragOver(e, idx)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, idx)}
+              >
+                <span className="channel-number">{idx + 1}</span>
+                <div className="channel-function">
+                  {channel.type !== 'unknown' ? (
+                    (() => {
+                      const isEditable = ['custom', 'macro', 'rotation', 'speed', 'control'].includes(channel.type)
+                      return isEditable ? (
+                        <input
+                          type="text"
+                          className="channel-name-input"
+                          placeholder={channel.type.toUpperCase()}
+                          value={channel.name || ''}
+                          onChange={(e) => dispatch({ type: 'CHANNEL_REPLACE', idx, channel: { ...channels[idx], name: e.target.value } })}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            background: 'rgba(0,0,0,0.2)',
+                            border: `1px solid ${categoryColor ? categoryColor + '55' : 'rgba(255,255,255,0.12)'}`,
+                            color: categoryColor || 'inherit',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            width: '120px',
+                            fontFamily: 'inherit',
+                            fontSize: '11px',
+                            outline: 'none',
+                          }}
+                        />
+                      ) : (
+                        <span className="channel-name">{channel.name || channel.type}</span>
+                      )
+                    })()
+                  ) : (
+                    <span className="channel-empty">Drop function here</span>
+                  )}
+                </div>
+
                 <input
                   type="number"
                   className="channel-default"
                   min={0}
                   max={255}
-                  title="Dead Zone: Minimum activation value"
-                  value={(capabilities.dimmerMin as number) ?? 0}
-                  onChange={(e) => dispatch({ type: 'CAPABILITY_SET', key: 'dimmerMin', value: Math.max(0, Math.min(255, parseInt(e.target.value) || 0)) })}
+                  value={channel.defaultValue || 0}
+                  onChange={(e) => dispatch({ type: 'CHANNEL_REPLACE', idx, channel: { ...channels[idx], defaultValue: Math.max(0, Math.min(255, parseInt(e.target.value) || 0)) } })}
                 />
-              ) : (
-                <div className="channel-min-placeholder"></div>
-              )}
-
-              <input
-                type="number"
-                className="channel-default"
-                min={0}
-                max={255}
-                value={channel.defaultValue || 0}
-                onChange={(e) => dispatch({ type: 'CHANNEL_REPLACE', idx, channel: { ...channels[idx], defaultValue: Math.max(0, Math.min(255, parseInt(e.target.value) || 0)) } })}
-              />
-              {channel.type !== 'unknown' && (
-                <>
-                  <button
-                    className={`channel-ignition-btn ${depsCount > 0 ? 'has-deps' : ''} ${isIgnitionExpanded ? 'expanded' : ''}`}
-                    onClick={() => setExpandedIgnitionIdx(isIgnitionExpanded ? null : idx)}
-                    title={depsCount > 0
-                      ? `Ignition Dependencies (${depsCount})`
-                      : 'Add Ignition Dependency'}
-                    style={{
-                      background: depsCount > 0 ? 'rgba(245, 158, 11, 0.2)' : 'transparent',
-                      border: `1px solid ${depsCount > 0 ? 'rgba(245, 158, 11, 0.6)' : 'rgba(255,255,255,0.12)'}`,
-                      color: depsCount > 0 ? '#f59e0b' : 'rgba(255,255,255,0.5)',
-                      borderRadius: '4px',
-                      padding: '4px 6px',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '3px',
-                      fontSize: '10px',
-                      fontFamily: 'inherit',
-                    }}
-                  >
-                    <Zap size={12} />
-                    {depsCount > 0 && <span>{depsCount}</span>}
-                  </button>
-                  <button
-                    className="channel-clear"
-                    onClick={() => clearChannel(idx)}
-                    title="Clear channel"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </>
-              )}
-            </div>
-
-            {/* Ignition Deps panel (full-width row beneath the slot) */}
-            {isIgnitionExpanded && channel.type !== 'unknown' && (
-              <div
-                className="ignition-deps-panel"
-                style={{
-                  gridColumn: '1 / -1',
-                  background: 'rgba(245, 158, 11, 0.05)',
-                  border: '1px solid rgba(245, 158, 11, 0.25)',
-                  borderRadius: '6px',
-                  padding: '10px 12px',
-                  margin: '2px 0 6px 0',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                }}
-              >
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  color: '#f59e0b',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  letterSpacing: '0.04em',
-                }}>
-                  <Zap size={12} />
-                  <span>IGNITION DEPENDENCIES</span>
-                  <span style={{ color: 'rgba(255,255,255,0.35)', fontWeight: 400, fontSize: '10px' }}>
-                    — channel "{channel.name || channel.type}" requires:
-                  </span>
-                </div>
-
-                {(channel.ignitionDeps ?? []).length === 0 && (
-                  <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: '11px', fontStyle: 'italic' }}>
-                    No dependencies yet. This channel emits with no prerequisites.
-                  </div>
-                )}
-
-                {(channel.ignitionDeps ?? []).map((dep, depIdx) => (
-                  <div
-                    key={depIdx}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      background: 'rgba(0,0,0,0.25)',
-                      border: '1px solid rgba(245, 158, 11, 0.2)',
-                      borderRadius: '4px',
-                      padding: '6px 8px',
-                    }}
-                  >
-                    <span style={{ color: '#f59e0b', fontSize: '11px', fontFamily: "'JetBrains Mono', monospace" }}>
-                      ⚡
-                    </span>
-                    <select
-                      value={dep.channelType}
-                      onChange={(e) => updateIgnitionDep(idx, depIdx, { channelType: e.target.value as ChannelType })}
-                      style={{
-                        background: 'rgba(0,0,0,0.4)',
-                        border: '1px solid rgba(255,255,255,0.15)',
-                        color: '#fff',
-                        padding: '4px 6px',
-                        borderRadius: '3px',
-                        fontFamily: 'inherit',
-                        fontSize: '11px',
-                        minWidth: '120px',
-                      }}
-                    >
-                      {!availableTargetTypes.includes(dep.channelType) && (
-                        <option value={dep.channelType}>{dep.channelType} (missing)</option>
-                      )}
-                      {availableTargetTypes.map(t => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
-                    </select>
-                    <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px' }}>→</span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={255}
-                      value={dep.requiredValue}
-                      onChange={(e) => {
-                        const val = Math.max(0, Math.min(255, parseInt(e.target.value) || 0))
-                        updateIgnitionDep(idx, depIdx, { requiredValue: val })
-                      }}
-                      style={{
-                        background: 'rgba(0,0,0,0.4)',
-                        border: '1px solid rgba(255,255,255,0.15)',
-                        color: '#fff',
-                        padding: '4px 6px',
-                        borderRadius: '3px',
-                        fontFamily: "'JetBrains Mono', monospace",
-                        fontSize: '11px',
-                        width: '60px',
-                        textAlign: 'center',
-                      }}
-                    />
-                    <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '10px' }}>DMX</span>
+                {channel.type !== 'unknown' && (
+                  <>
                     <button
-                      onClick={() => removeIgnitionDep(idx, depIdx)}
-                      title="Remove dependency"
+                      className={`btn-governor-inline ${activeGov ? 'governor-active' : ''}`}
+                      onClick={() => setEditingGovIdx(editingGovIdx === idx ? null : idx)}
+                      title={activeGov ? `Governor: ${activeGov.rules[0]?.then.forceByte}` : 'Governor OFF'}
                       style={{
-                        marginLeft: 'auto',
-                        background: 'transparent',
-                        border: '1px solid rgba(239, 68, 68, 0.3)',
-                        color: '#ef4444',
-                        borderRadius: '3px',
-                        padding: '3px 5px',
+                        background: activeGov ? 'rgba(245, 158, 11, 0.2)' : 'transparent',
+                        border: `1px solid ${activeGov ? 'rgba(245, 158, 11, 0.8)' : 'rgba(255,255,255,0.12)'}`,
+                        color: activeGov ? '#fbbf24' : 'rgba(255,255,255,0.5)',
+                        borderRadius: '4px',
+                        padding: '4px 8px',
                         cursor: 'pointer',
                         display: 'inline-flex',
                         alignItems: 'center',
+                        gap: '4px',
+                        fontSize: '10px',
+                        fontWeight: 600,
+                        fontFamily: 'inherit',
+                        opacity: activeGov ? 1 : 0.6,
                       }}
                     >
-                      <XIcon size={12} />
+                      <ShieldIcon size={12} color={activeGov ? '#fbbf24' : 'rgba(255,255,255,0.5)'} />
+                      <span>{activeGov ? `Governor: ${activeGov.rules[0]?.then.forceByte}` : 'Governor OFF'}</span>
                     </button>
-                  </div>
-                ))}
-
-                <button
-                  onClick={() => {
-                    const used = new Set((channel.ignitionDeps ?? []).map(d => d.channelType))
-                    const firstFree = availableTargetTypes.find(t => !used.has(t)) ?? availableTargetTypes[0]
-                    if (!firstFree) return
-                    const requiredValue = firstFree === 'shutter' ? 255 : 255
-                    addIgnitionDep(idx, { channelType: firstFree, requiredValue })
-                  }}
-                  disabled={availableTargetTypes.length === 0}
-                  title={availableTargetTypes.length === 0
-                    ? 'No other channels to depend on'
-                    : 'Add a new ignition dependency'}
-                  style={{
-                    alignSelf: 'flex-start',
-                    background: 'rgba(245, 158, 11, 0.15)',
-                    border: '1px solid rgba(245, 158, 11, 0.4)',
-                    color: '#f59e0b',
-                    borderRadius: '4px',
-                    padding: '6px 10px',
-                    cursor: availableTargetTypes.length === 0 ? 'not-allowed' : 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    opacity: availableTargetTypes.length === 0 ? 0.4 : 1,
-                  }}
-                >
-                  <Plus size={12} />
-                  <span>Add Dependency</span>
-                </button>
+                    <button
+                      className="channel-clear"
+                      onClick={() => clearChannel(idx)}
+                      title="Clear channel"
+                    >
+                      <TrashIcon size={14} />
+                    </button>
+                  </>
+                )}
               </div>
-            )}
-            </React.Fragment>
+
+              {editingGovIdx === idx && (
+                <div className="governor-inline-drawer">
+                  <span className="drawer-arrow">└──►</span>
+                  <span className="drawer-hint">
+                    When Selene requests extreme <b>{channel.type.toUpperCase()}</b> ──► Lock byte to:
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="255"
+                    autoFocus
+                    defaultValue={
+                      dmxGovernors.find(g => g.channelIndex === idx)?.rules[0]?.then.forceByte ?? 255
+                    }
+                    onChange={(e) => {
+                      const safeByte = Math.min(255, Math.max(0, parseInt(e.target.value) || 0))
+                      dispatch({
+                        type: 'GOVERNOR_SET_FOR_CHANNEL',
+                        channelIndex: idx,
+                        governor: {
+                          channelIndex: idx,
+                          description: `${channel.type.toUpperCase()} safety limit`,
+                          rules: [{
+                            when: { intentType: 'fallback', min: 0.85 },
+                            then: { forceByte: safeByte }
+                          }]
+                        }
+                      })
+                    }}
+                  />
+                  <button
+                    className="btn-drawer-kill"
+                    onClick={() => {
+                      dispatch({ type: 'GOVERNOR_SET_FOR_CHANNEL', channelIndex: idx, governor: null })
+                      setEditingGovIdx(null)
+                    }}
+                  >
+                    ✕ Remove
+                  </button>
+                </div>
+              )}
+            </div>
           )
         })}
       </div>

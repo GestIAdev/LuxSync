@@ -20,7 +20,7 @@
  * @version WAVE 4732-C
  * ═══════════════════════════════════════════════════════════════════════════
  */
-import { deriveCapabilities } from '../../types/FixtureDefinition';
+import { deriveCapabilitiesUnified } from '../../types/FixtureDefinition';
 import { canAdmit } from './cellTypeAdmittance';
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTES INTERNAS
@@ -307,7 +307,7 @@ export function compileForgeState(state) {
     // ── Fase C: NodeGraph ─────────────────────────────────────────────────
     const nodeGraph = compileNodeGraph(state, resolvedChannels);
     // ── Fase D: Ensamblaje ────────────────────────────────────────────────
-    const derived = deriveCapabilities(resolvedChannels);
+    const capabilities = deriveCapabilitiesUnified(resolvedChannels, state.wheels, state.physics);
     const fixture = {
         id: buildFixtureId(state.meta.manufacturer, state.meta.name),
         name: state.meta.name,
@@ -315,19 +315,73 @@ export function compileForgeState(state) {
         type: state.meta.type,
         channels: resolvedChannels, // array legacy — compatibilidad
         nodeGraph, // ← fuente de verdad V2
-        capabilities: {
-            hasPan: derived.hasPanTilt,
-            hasTilt: derived.hasPanTilt,
-            hasColorMixing: derived.hasColorMixing,
-            hasColorWheel: derived.hasColorWheel,
-            hasGobo: derived.hasGobos,
-            hasPrism: derived.hasPrism,
-            hasStrobe: derived.hasShutter,
-            hasDimmer: derived.hasDimmer,
-            hasRotation: derived.hasRotation,
-            hasCustomChannels: derived.hasCustomChannels,
-            hasMacro: derived.hasMacro,
-        },
+        capabilities,
     };
     return { ok: true, fixture, warnings };
+}
+// ═══════════════════════════════════════════════════════════════════════════
+// ENTRY POINT PÚBLICO — ENSAMBLAJE COMPLETO (TRINITY CONTRACT)
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Función pura. Transforma IForgeBuilderState → FixtureDefinition lista para disco.
+ *
+ * GARANTÍAS:
+ *   - Nunca lanza. Si compileForgeState falla, retorna fixture sin nodeGraph
+ *     (el bloque anti-pánico loguea y degrada).
+ *   - capabilities se genera vía deriveCapabilitiesUnified() — DOGMA 4.
+ *   - aetherCells snapshot siempre se incluye si cells.length > 0 — DOGMA 1.
+ *   - dmxGovernors se copia directamente del state — DOGMA 2.
+ */
+export function buildCompleteFixture(state) {
+    // ── 1. Resolver IgnitionDeps ─────────────────────────────────────────
+    const resolvedChannels = state.channels.map(ch => resolveChannelDeps(ch, state.channels));
+    // ── 2. Compilar NodeGraph (con anti-pánico) ──────────────────────────
+    let nodeGraph;
+    let compileWarnings = [];
+    if (state.cells.length > 0) {
+        try {
+            const result = compileForgeState(state);
+            if (result.ok === false) {
+                console.error('[buildCompleteFixture] Compile errors (degraded):', result.errors);
+            }
+            else {
+                nodeGraph = result.fixture.nodeGraph;
+                compileWarnings = result.warnings;
+            }
+        }
+        catch (err) {
+            console.error('[buildCompleteFixture] PANIC — compileForgeState threw:', err);
+        }
+    }
+    if (compileWarnings.length > 0) {
+        console.warn('[buildCompleteFixture] Compile warnings:', compileWarnings);
+    }
+    // ── 3. Snapshot de células Aether (DOGMA 1) ──────────────────────────
+    const aetherCells = state.cells.length > 0
+        ? state.cells.map(cell => ({
+            id: cell.cellId,
+            family: String(cell.family),
+            label: cell.label,
+            zone: cell.aetherZone,
+            channelIndices: [...cell.channelIndices],
+            layout: cell.uiPosition ? { ...cell.uiPosition } : undefined,
+        }))
+        : undefined;
+    // ── 4. Ensamblaje final ──────────────────────────────────────────────
+    const fixture = {
+        id: buildFixtureId(state.meta.manufacturer, state.meta.name),
+        name: state.meta.name,
+        manufacturer: state.meta.manufacturer,
+        type: state.meta.type,
+        channels: resolvedChannels,
+        wheels: state.wheels,
+        physics: state.physics,
+        capabilities: deriveCapabilitiesUnified(state.channels, state.wheels, state.physics),
+        dmxGovernors: state.dmxGovernors.length > 0 ? [...state.dmxGovernors] : undefined,
+        aetherCells,
+    };
+    if (nodeGraph) {
+        fixture.nodeGraph = nodeGraph;
+    }
+    return fixture;
 }

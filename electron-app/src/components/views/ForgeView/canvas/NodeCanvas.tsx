@@ -44,8 +44,8 @@ import {
   type Connection,
   type OnNodesChange,
   type OnEdgesChange,
-  type NodeMouseHandler,
   type OnConnect,
+  type OnNodeDrag,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
@@ -145,7 +145,7 @@ const NodeCanvasInner: React.FC<{ readOnly?: boolean }> = ({ readOnly = false })
   )
 
   // ── Drag stop → persistir posición final en el store ────────────────────
-  const onNodeDragStop: NodeMouseHandler = useCallback(
+  const onNodeDragStop: OnNodeDrag<XYNode> = useCallback(
     (_event, node) => {
       if (readOnly) return
       moveNode(node.id, node.position.x, node.position.y)

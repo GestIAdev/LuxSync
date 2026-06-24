@@ -484,6 +484,8 @@ export class FXTParser {
                         // 🔧 WAVE 4735.11: Preserve V2 Forge graph data from JSON
                         nodeGraph: jsonFixture.nodeGraph,
                         forgeGraph: jsonFixture.forgeGraph,
+                        // 🏛️ WAVE 4742: Preserve DMX Governor Engine rules
+                        dmxGovernors: jsonFixture.dmxGovernors,
                     };
                     fixtures.push(fixture);
                     if (this.debug) {

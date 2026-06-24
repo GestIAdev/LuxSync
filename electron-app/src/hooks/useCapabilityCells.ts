@@ -42,6 +42,7 @@ import {
 import type { ICapabilityNode } from '../core/aether/capability-node'
 import type { FixtureV2 } from '../core/stage/ShowFileV2'
 import type { FixtureDefinition, FixtureChannel, FixtureType } from '../types/FixtureDefinition'
+import { deriveCapabilitiesUnified } from '../types/FixtureDefinition'
 import { NodeExtractionPipeline } from '../core/aether/ingestion/NodeExtractionPipeline'
 import { WELL_KNOWN_LABELS } from '../components/hyperion/controls/cellLabels'
 
@@ -127,7 +128,7 @@ function synthesizeFixtureDefinition(stageFix: FixtureV2): FixtureDefinition {
     manufacturer: 'Generic',
     type: fixtureType,
     channels,
-    capabilities: {},
+    capabilities: deriveCapabilitiesUnified(channels),
   }
 }
 

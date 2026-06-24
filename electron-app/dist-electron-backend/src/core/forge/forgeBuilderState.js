@@ -113,8 +113,31 @@ export function forgeReducer(state, action) {
                 channels: patchChannel(state.channels, action.idx, {
                     type: 'unknown', name: '', defaultValue: 0, is16bit: false, ignitionDeps: [],
                 }),
+                dmxGovernors: state.dmxGovernors.filter(g => g.channelIndex !== action.idx),
                 dirty: true,
             };
+        case 'CHANNEL_DELETE': {
+            const idx = action.idx;
+            if (idx < 0 || idx >= state.channels.length)
+                return state;
+            return {
+                ...state,
+                channels: state.channels.filter((_, i) => i !== idx),
+                cells: state.cells.map(c => ({
+                    ...c,
+                    channelIndices: c.channelIndices
+                        .filter(i => i !== idx)
+                        .map(i => (i > idx ? i - 1 : i)),
+                })),
+                dmxGovernors: state.dmxGovernors
+                    .filter(g => g.channelIndex !== idx)
+                    .map(g => g.channelIndex > idx
+                    ? { ...g, channelIndex: g.channelIndex - 1 }
+                    : g),
+                meta: { ...state.meta, channelCount: Math.max(1, state.channels.length - 1) },
+                dirty: true,
+            };
+        }
         case 'IGNITION_ADD': {
             const ch = state.channels[action.idx];
             if (!ch)
@@ -218,7 +241,8 @@ export function forgeReducer(state, action) {
                 }
                 return c;
             });
-            return { ...state, cells, dirty: true };
+            const expanded = expandChannelsToMaxIndex(state, [...cells.flatMap(c => c.channelIndices), channelIdx]);
+            return { ...expanded, cells, dirty: true };
         }
         case 'CELL_DETACH_CHANNEL': {
             const { cellId, channelIdx } = action;
@@ -255,7 +279,8 @@ export function forgeReducer(state, action) {
                 }
                 return c;
             });
-            return { ...state, cells, dirty: true };
+            const expanded = expandChannelsToMaxIndex(state, cells.flatMap(c => c.channelIndices));
+            return { ...expanded, cells, dirty: true };
         }
         // ── GOVERNOR (DMX last-mile rules) ───────────────────────────────────
         case 'GOVERNOR_SET_ALL':
@@ -282,6 +307,21 @@ export function forgeReducer(state, action) {
                 dmxGovernors: state.dmxGovernors.filter(g => g.channelIndex !== action.channelIndex),
                 dirty: true,
             };
+        case 'GOVERNOR_SET_FOR_CHANNEL': {
+            const { channelIndex, governor } = action;
+            if (governor === null) {
+                return {
+                    ...state,
+                    dmxGovernors: state.dmxGovernors.filter(g => g.channelIndex !== channelIndex),
+                    dirty: true,
+                };
+            }
+            const idx = state.dmxGovernors.findIndex(g => g.channelIndex === channelIndex);
+            const next = idx === -1
+                ? [...state.dmxGovernors, governor]
+                : state.dmxGovernors.map((g, i) => (i === idx ? governor : g));
+            return { ...state, dmxGovernors: next, dirty: true };
+        }
         // ── CAPABILITY ─────────────────────────────────────────────────────────────
         case 'CAPABILITY_SET':
             return {
@@ -303,7 +343,7 @@ export function forgeReducer(state, action) {
             return { ...state, wheels: action.wheels, dirty: true };
         case 'WHEELS_SET_COLORS': {
             const wBase = state.wheels ?? { colors: [], colorEngine: 'rgb', minChangeTimeMs: 500 };
-            return { ...state, wheels: { ...wBase, colors: action.colors }, dirty: true };
+            return { ...state, wheels: { ...wBase, colors: [...action.colors] }, dirty: true };
         }
         case 'WHEELS_SET_ENGINE': {
             const wBase = state.wheels ?? { colors: [], colorEngine: 'rgb', minChangeTimeMs: 500 };
@@ -340,21 +380,10 @@ export function forgeReducer(state, action) {
             return changed ? { ...state, cells: nextCells, dirty: true } : state;
         }
         case 'SYNC_CELLS_TO_RACK': {
-            const { cellId } = action;
-            const cell = state.cells.find(c => c.cellId === cellId);
-            if (!cell || cell.channelIndices.length === 0)
+            const allIndices = state.cells.flatMap(c => [...c.channelIndices]);
+            if (allIndices.length === 0)
                 return state;
-            const maxIdx = Math.max(...cell.channelIndices);
-            if (maxIdx < state.channels.length)
-                return state;
-            const needed = maxIdx + 1;
-            const extended = resizeChannels(state.channels, needed);
-            return {
-                ...state,
-                channels: extended,
-                meta: { ...state.meta, channelCount: needed },
-                dirty: true,
-            };
+            return expandChannelsToMaxIndex({ ...state, dirty: true }, allIndices);
         }
         // ── LIFECYCLE ────────────────────────────────────────────────────────
         case 'HYDRATE_FROM_FIXTURE': {
@@ -398,6 +427,28 @@ function resizeChannels(channels, count) {
         result.push(channels[i] ?? { index: i, name: '', type: 'unknown', defaultValue: 0, is16bit: false });
     }
     return result;
+}
+function expandChannelsToMaxIndex(state, indices) {
+    if (indices.length === 0)
+        return state;
+    const maxIdx = Math.max(...indices);
+    if (maxIdx < state.channels.length)
+        return state;
+    const next = [...state.channels];
+    for (let i = next.length; i <= maxIdx; i++) {
+        next.push({
+            index: i,
+            name: `Auto-allocated ${i}`,
+            type: 'custom',
+            defaultValue: 0,
+            is16bit: false,
+        });
+    }
+    return {
+        ...state,
+        channels: next,
+        meta: { ...state.meta, channelCount: next.length },
+    };
 }
 function defaultLabelFor(family) {
     const labels = {
@@ -487,6 +538,16 @@ function formatCellLabel(cellId) {
         .replace(/-/g, ' ')
         .replace(/\b\w/g, c => c.toUpperCase());
 }
+function inferRoleFromFamily(family) {
+    const f = family.toLowerCase();
+    if (f.includes('pixel'))
+        return 'pixel';
+    if (f.includes('wash') || f.includes('ambient'))
+        return 'ambient';
+    if (f.includes('beam') || f.includes('gobo'))
+        return 'decoration';
+    return 'primary';
+}
 // ── hydrateAetherCells — Route A (aetherCells JSON) → Route B (legacy nodeGraph) ─
 /**
  * WAVE FORGE CONVERGENCE:
@@ -500,13 +561,13 @@ function hydrateAetherCells(fixture) {
     const saved = raw.aetherCells;
     if (Array.isArray(saved) && saved.length > 0) {
         return saved.map((snap, i) => ({
-            cellId: snap.cellId,
+            cellId: snap.id,
             family: parseNodeFamily(snap.family),
             label: snap.label,
-            role: snap.role,
+            role: inferRoleFromFamily(snap.family),
             channelIndices: [...snap.channelIndices],
-            aetherZone: snap.aetherZone,
-            uiPosition: snap.uiPosition ?? { x: 0, y: i * 140 },
+            aetherZone: snap.zone,
+            uiPosition: snap.layout ?? { x: 0, y: i * 140 },
         }));
     }
     return hydrateCells(fixture);
@@ -523,11 +584,11 @@ function hydratePhysics(fixture) {
     if (!p)
         return null;
     return {
-        motorType: p.motorType ?? 'stepper',
+        motorType: (p.motorType ?? 'stepper'),
         maxAcceleration: p.maxAcceleration ?? 2000,
         maxVelocity: p.maxVelocity ?? 500,
         safetyCap: Boolean(p.safetyCap ?? true),
-        orientation: (p.orientation ?? 'floor'),
+        orientation: p.orientation ?? 'floor',
         invertPan: p.invertPan ?? false,
         invertTilt: p.invertTilt ?? false,
         swapPanTilt: p.swapPanTilt ?? false,
@@ -537,14 +598,15 @@ function hydratePhysics(fixture) {
 }
 // ── hydrateWheels — desde fixture.wheels + capabilities ───────────────────
 function hydrateWheels(fixture) {
-    const colors = fixture.wheels?.colors ??
-        fixture.capabilities?.colorWheel?.colors ??
-        [];
+    const raw = fixture;
+    const legacyCaps = (raw.capabilities ?? {});
+    const legacyColorWheel = legacyCaps.colorWheel;
+    const colors = fixture.wheels?.colors ?? legacyColorWheel?.colors ?? [];
     if (colors.length === 0)
         return null;
     return {
-        colors,
-        colorEngine: (fixture.capabilities?.colorEngine ?? 'rgb'),
-        minChangeTimeMs: fixture.capabilities?.colorWheel?.minChangeTimeMs ?? 500,
+        colors: [...colors],
+        colorEngine: fixture.wheels?.colorEngine ?? legacyCaps.colorEngine ?? 'rgb',
+        minChangeTimeMs: fixture.wheels?.minChangeTimeMs ?? legacyColorWheel?.minChangeTimeMs ?? 500,
     };
 }

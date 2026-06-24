@@ -44,8 +44,8 @@ export function useLoadAssetLibrary(): { isLoading: boolean; lastError: string |
             if (f.filePath) userFilePaths.set(f.id, f.filePath)
           })
           ingestFixtures(
-            fixtureResult.systemFixtures as FixtureDefinition[],
-            fixtureResult.userFixtures as FixtureDefinition[],
+            fixtureResult.systemFixtures as unknown as FixtureDefinition[],
+            fixtureResult.userFixtures as unknown as FixtureDefinition[],
             systemFilePaths,
             userFilePaths,
           )

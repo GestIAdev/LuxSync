@@ -1149,15 +1149,11 @@ export class NodeExtractionPipeline {
     // panOffset y tiltOffset son ángulos en GRADOS para el IK engine.
     // Mapear homePosition.pan=127 como tiltOffset=127° provocaría que el fixture
     // apuntara 127° fuera del vertical en reposo — el bug de "mirando al frente".
-    const capDimmerMin = fixtureDef.capabilities?.dimmerMin
-
     const fromPhysics: IDeviceCalibration = {
       ...(p?.invertPan  !== undefined && { invertPan:  p.invertPan }),
       ...(p?.invertTilt !== undefined && { invertTilt: p.invertTilt }),
       ...(p?.tiltLimits?.min !== undefined && { tiltLimitMin: p.tiltLimits.min }),
       ...(p?.tiltLimits?.max !== undefined && { tiltLimitMax: p.tiltLimits.max }),
-      // WAVE 1135.3: Dead-zone floor — propagado desde capabilities del perfil
-      ...(capDimmerMin !== undefined && capDimmerMin > 0 && { dimmerMin: capDimmerMin }),
     }
 
     // ── Override del show (FixtureV2.calibration — CalibrationLab) ───────
@@ -1191,21 +1187,10 @@ export class NodeExtractionPipeline {
   ): INodeChannelDef[] {
     return channels.map(ch => {
       const chType = this._normalizeChannelType(ch.type)
-      // 🎛️ DMX Personality: propagar desde fixture.capabilities a INodeChannelDef.
-      // Pre-cargado en patch-time — zero-alloc en hot path (NodeResolver._writeNode).
-      let dmxPersonality: INodeChannelDef['dmxPersonality'] | undefined
-      if (capabilities) {
-        if (chType === 'dimmer' && capabilities.dimmerMin !== undefined) {
-          dmxPersonality = { minDimmer: capabilities.dimmerMin }
-        } else if (chType === 'strobe' && capabilities.strobePersonality) {
-          const sp = capabilities.strobePersonality
-          dmxPersonality = {
-            strobeOpenValue: sp.strobeOpenValue,
-            strobeRangeMin:  sp.strobeRangeMin,
-            strobeRangeMax:  sp.strobeRangeMax,
-          }
-        }
-      }
+      // 🎛️ DMX Personality: Trinity contract no longer stores minDimmer/strobePersonality
+      // in DerivedCapabilities. These values must now be provided via DMX Governors or
+      // channel-level configuration if needed in the future.
+      const dmxPersonality: INodeChannelDef['dmxPersonality'] | undefined = undefined
       const mapped: INodeChannelDef = {
         type:         chType as AetherChannelType,
         // 🔧 WAVE 4735.7: FixtureChannel.index is 1-based (DMX channel 1,2,3...).
@@ -1270,8 +1255,8 @@ export class NodeExtractionPipeline {
   }
 
   private _buildColorWheelDef(fixtureDef: Readonly<FixtureDefinition>): ColorWheelDefinition | undefined {
-    const wh = fixtureDef.capabilities?.colorWheel
-    if (!wh) return undefined
+    const wh = fixtureDef.wheels
+    if (!wh || wh.colors.length === 0) return undefined
 
     return {
       name:            fixtureDef.name + ' Color Wheel',

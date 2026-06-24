@@ -442,11 +442,11 @@ export function buildCompleteFixture(state: IForgeBuilderState): FixtureDefiniti
   if (state.cells.length > 0) {
     try {
       const result = compileForgeState(state)
-      if (result.ok) {
+      if (result.ok === false) {
+        console.error('[buildCompleteFixture] Compile errors (degraded):', result.errors)
+      } else {
         nodeGraph = result.fixture.nodeGraph
         compileWarnings = result.warnings
-      } else {
-        console.error('[buildCompleteFixture] Compile errors (degraded):', result.errors)
       }
     } catch (err) {
       console.error('[buildCompleteFixture] PANIC — compileForgeState threw:', err)

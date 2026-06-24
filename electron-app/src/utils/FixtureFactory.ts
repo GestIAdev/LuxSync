@@ -1,4 +1,5 @@
 import { FixtureDefinition, ChannelType } from '../types/FixtureDefinition';
+import { deriveCapabilitiesUnified } from '../types/FixtureDefinition';
 
 export class FixtureFactory {
   /**
@@ -16,7 +17,8 @@ export class FixtureFactory {
       name: '',
       manufacturer: '',
       type: 'moving-head',
-      channels: []
+      channels: [],
+      capabilities: deriveCapabilitiesUnified([]),
     };
   }
 
@@ -98,6 +100,7 @@ export class FixtureFactory {
       'focus': 'Focus',
       'zoom': 'Zoom',
       'frost': 'Frost',
+      'iris': 'Iris',
       'speed': 'Speed',
       'macro': 'Macro',
       'control': 'Control',

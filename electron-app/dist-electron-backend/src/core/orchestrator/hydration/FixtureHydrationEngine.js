@@ -249,6 +249,14 @@ export class FixtureHydrationEngine {
                     console.warn(`[FixtureHydrationEngine] ⚡ WAVE 4610-B: Fixture "${fixture.id}" sin perfil resuelto — inyectando definición mínima (dimmer)`);
                 }
                 const fixtureV2 = ctx.profileResolver.buildFixtureV2ForAether(fixture, definition);
+                // 🏛️ Ping A-DIAG: Verificar si dmxGovernors sobrevive al profile resolver
+                const _govs = definition.dmxGovernors;
+                if (Array.isArray(_govs) && _govs.length > 0) {
+                    console.log(`[GovernorEngine DIAG] 🏛️ dmxGovernors presente en "${fixture.id}": ${_govs.length} reglas`);
+                }
+                else if (fixture.dmxGovernors) {
+                    console.log(`[GovernorEngine DIAG] ⚠️ dmxGovernors en fixture pero NO en definition para "${fixture.id}"`);
+                }
                 const deviceDef = pipeline.extract(definition, fixtureV2);
                 const forgeGraph = fixture.forgeGraph ?? fixture.nodeGraph ?? undefined;
                 staged.push({ deviceDef, forgeGraph });

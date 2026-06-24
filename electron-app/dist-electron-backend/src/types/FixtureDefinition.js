@@ -43,34 +43,41 @@ export function deriveCapabilities(channels) {
             .map(ch => ch.customName),
     };
 }
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 4548.3: UNIFIED CAPABILITIES — Canales + wheels + physics
+// ═══════════════════════════════════════════════════════════════════════════
 /**
- * Unified capability derivation that checks nodeGraph first.
+ * Unified capability derivation.
  *
- * If the fixture has a nodeGraph, capabilities are derived from the
- * output_dmx nodes' channelType. Otherwise falls back to the legacy
- * channels[] scan via deriveCapabilities().
+ * DOGMA 4: capabilities se deduce estrictamente de channels, wheels y physics.
+ * No acepta overrides manuales.
  *
- * @param fixture — Any fixture (FixtureDefinition or FixtureDefinitionV2)
+ * @param channels — Canales físicos DMX
+ * @param wheels   — Rueda de color y motor de mezcla
+ * @param physics  — Física del motor (puede influir en detection futura)
  */
-export function deriveCapabilitiesUnified(fixture) {
-    const graph = fixture.nodeGraph;
-    if (graph && graph.nodes.length > 0) {
-        // Extract output_dmx nodes and build synthetic FixtureChannel[] for the existing engine
-        const outputNodes = graph.nodes.filter(n => n.type === 'output_dmx');
-        const syntheticChannels = outputNodes.map((n) => {
-            const cfg = n.config;
-            return {
-                index: cfg.dmxOffset,
-                name: cfg.channelName || cfg.channelType,
-                type: cfg.channelType,
-                defaultValue: cfg.defaultDmxValue,
-                is16bit: cfg.is16bit ?? false,
-                continuousRotation: cfg.continuousRotation,
-                customName: cfg.channelName,
-            };
-        });
-        return deriveCapabilities(syntheticChannels);
+export function deriveCapabilitiesUnified(channels, wheels, physics) {
+    const base = deriveCapabilities([...channels]);
+    let colorMixingType = base.colorMixingType;
+    let hasColorWheel = base.hasColorWheel;
+    if (wheels) {
+        if (wheels.colors.length > 0) {
+            hasColorWheel = true;
+        }
+        if (wheels.colorEngine === 'wheel') {
+            colorMixingType = 'none';
+        }
+        else if (wheels.colorEngine === 'rgb' || wheels.colorEngine === 'cmy' || wheels.colorEngine === 'rgbw') {
+            if (colorMixingType === 'none') {
+                colorMixingType = wheels.colorEngine;
+            }
+        }
     }
-    // Fallback: legacy channels[] scan
-    return deriveCapabilities(fixture.channels);
+    // physics se reserva para future capabilities (ej. tilt range limits, etc.)
+    void physics;
+    return {
+        ...base,
+        hasColorWheel,
+        colorMixingType,
+    };
 }

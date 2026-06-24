@@ -297,7 +297,12 @@ export function ForgeGeneralTab({
         </div>
 
         {(() => {
-          const caps = deriveCapabilitiesUnified(buildCompleteFixture())
+          const previewFixture = buildCompleteFixture()
+          const caps = deriveCapabilitiesUnified(
+            previewFixture.channels,
+            previewFixture.wheels,
+            previewFixture.physics,
+          )
           return (
             <div className="capabilities-matrix">
               {CAPABILITY_BADGES.map(badge => {

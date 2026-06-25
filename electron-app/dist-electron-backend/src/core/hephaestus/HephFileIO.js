@@ -18,8 +18,8 @@
 import { app } from 'electron';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import * as crypto from 'crypto';
-import { serializeHephClip, deserializeHephClip } from './types';
+import { serializeHephClip } from './types';
+import { getHephaestusClipIndex } from './HephaestusClipIndex';
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -84,27 +84,34 @@ class HephFileIO {
      * @throws Error if serialization or write fails
      */
     async saveClip(clip) {
-        const effectsPath = await this.getEffectsPath();
-        // Ensure clip has an ID
-        const clipId = clip.id || this.generateId();
-        const clipWithId = { ...clip, id: clipId };
-        // Serialize the clip (Map → Record)
-        const serialized = serializeHephClip(clipWithId);
-        // Generate checksum for integrity
-        const clipJson = JSON.stringify(serialized);
-        const checksum = crypto.createHash('sha256').update(clipJson).digest('hex');
-        // Build the LFX file
-        const lfxFile = {
-            $schema: SCHEMA_VERSION,
-            version: FORMAT_VERSION,
-            clip: serialized,
-            checksum,
-        };
-        // Write to disk
-        const filename = this.sanitizeFilename(clipWithId.name) + LFX_EXTENSION;
-        const filePath = path.join(effectsPath, filename);
-        await fs.writeFile(filePath, JSON.stringify(lfxFile, null, 2), 'utf-8');
-        console.log(`[HephFileIO] Saved clip "${clipWithId.name}" to ${filePath}`);
+        await this.getEffectsPath();
+        const isV3 = 'tracks' in clip && clip.schemaVersion === '3.0';
+        let filePayload;
+        if (isV3) {
+            filePayload = {
+                $schema: 'luxsync.lfx/3.0',
+                version: '1.0.0',
+                clip: clip,
+                checksum: ''
+            };
+        }
+        else {
+            // Ruta legacy V2
+            const serialized = serializeHephClip(clip);
+            filePayload = {
+                $schema: 'hephaestus/v2.1',
+                version: '1.0.0',
+                clip: serialized,
+                checksum: ''
+            };
+        }
+        const fileName = `${clip.id}.lfx`;
+        const filePath = path.join(this.effectsPath, fileName);
+        // Escribimos a disco
+        await fs.writeFile(filePath, JSON.stringify(filePayload, null, 2), 'utf-8');
+        // Actualizamos el índice en memoria O(1) inmediatamente
+        const index = getHephaestusClipIndex();
+        await index.upsert(filePath, 'user');
         return filePath;
     }
     // ═══════════════════════════════════════════════════════════════════════
@@ -118,43 +125,14 @@ class HephFileIO {
      * @throws Error if file not found or corrupted
      */
     async loadClip(idOrPath) {
-        const effectsPath = await this.getEffectsPath();
-        // Determine file path
-        let filePath;
-        if (path.isAbsolute(idOrPath)) {
-            filePath = idOrPath;
+        const index = getHephaestusClipIndex();
+        // Soporta búsqueda por ID o por Path absoluto
+        const isAbsolute = idOrPath.includes('/') || idOrPath.includes('\\');
+        const loaded = isAbsolute ? index.getByPath(idOrPath) : index.getById(idOrPath);
+        if (!loaded) {
+            throw new Error(`[HephFileIO] Clip no encontrado en el índice: ${idOrPath}`);
         }
-        else {
-            // Search by ID in all .lfx files
-            const files = await fs.readdir(effectsPath);
-            const lfxFiles = files.filter(f => f.endsWith(LFX_EXTENSION));
-            for (const file of lfxFiles) {
-                const fullPath = path.join(effectsPath, file);
-                const content = await fs.readFile(fullPath, 'utf-8');
-                const lfx = JSON.parse(content);
-                if (lfx.clip.id === idOrPath) {
-                    filePath = fullPath;
-                    break;
-                }
-            }
-            if (!filePath) {
-                throw new Error(`Clip not found: ${idOrPath}`);
-            }
-        }
-        // Read file
-        const content = await fs.readFile(filePath, 'utf-8');
-        const lfxFile = JSON.parse(content);
-        // Verify checksum
-        const clipJson = JSON.stringify(lfxFile.clip);
-        const computedChecksum = crypto.createHash('sha256').update(clipJson).digest('hex');
-        if (computedChecksum !== lfxFile.checksum) {
-            console.warn(`[HephFileIO] Checksum mismatch for ${filePath}. File may be corrupted.`);
-            // Continue anyway - don't block user from their data
-        }
-        // Deserialize (Record → Map)
-        const clip = deserializeHephClip(lfxFile.clip);
-        console.log(`[HephFileIO] Loaded clip "${clip.name}" from ${filePath}`);
-        return clip;
+        return loaded.clip;
     }
     // ═══════════════════════════════════════════════════════════════════════
     // LIST
@@ -166,39 +144,9 @@ class HephFileIO {
      * @returns Array of clip metadata, sorted by modification date (newest first)
      */
     async listClips() {
-        const effectsPath = await this.getEffectsPath();
-        const files = await fs.readdir(effectsPath);
-        const lfxFiles = files.filter(f => f.endsWith(LFX_EXTENSION));
-        const metadataList = [];
-        for (const file of lfxFiles) {
-            const filePath = path.join(effectsPath, file);
-            try {
-                const content = await fs.readFile(filePath, 'utf-8');
-                const lfx = JSON.parse(content);
-                const clip = lfx.clip;
-                const stats = await fs.stat(filePath);
-                metadataList.push({
-                    id: clip.id,
-                    name: clip.name,
-                    author: clip.author,
-                    category: clip.category,
-                    tags: clip.tags,
-                    durationMs: clip.durationMs,
-                    effectType: clip.effectType,
-                    paramCount: Object.keys(clip.curves).length,
-                    filePath,
-                    modifiedAt: stats.mtimeMs,
-                });
-            }
-            catch (error) {
-                console.error(`[HephFileIO] Failed to read ${filePath}:`, error);
-                // Skip corrupted files
-            }
-        }
-        // Sort by modification date (newest first)
-        metadataList.sort((a, b) => b.modifiedAt - a.modifiedAt);
-        console.log(`[HephFileIO] Listed ${metadataList.length} clips`);
-        return metadataList;
+        const index = getHephaestusClipIndex();
+        // Devuelve la metadata directamente desde la memoria y la ordena por fecha
+        return index.getAllMetadata().sort((a, b) => b.modifiedAt - a.modifiedAt);
     }
     // ═══════════════════════════════════════════════════════════════════════
     // DELETE

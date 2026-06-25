@@ -35,6 +35,7 @@ import {
   type SpatialBehavior,
 } from './lfxTypes'
 import type { HephCurve } from '../hephaestus/types'
+import { getHephaestusClipIndex } from '../hephaestus/HephaestusClipIndex'
 
 // ─── CONFIGURACIÓN ──────────────────────────────────────────────────────────
 
@@ -114,44 +115,36 @@ export class LfxFileLoader {
   /** Carga un único `.lfx` (útil para hot-reload o ingesta drag-and-drop). */
   public async loadFile(filePath: string, source: EffectSource): Promise<boolean> {
     try {
-      const stats = await fs.stat(filePath)
-      if (!stats.isFile()) return false
-      if (source === 'user' && stats.size > USER_SAFETY_POLICY.MAX_FILE_SIZE_BYTES) {
-        console.warn(
-          `[LfxFileLoader ⚠️] G2 fail: file too large (${stats.size}B) at ${filePath}`,
-        )
-        return false
-      }
+      const index = getHephaestusClipIndex();
+      const loadSource = source === 'builtin' ? 'builtin' : 'user';
 
-      const raw = await fs.readFile(filePath, 'utf-8')
+      // El índice hace el fs.readFile, valida y guarda en RAM (O(1) para el futuro)
+      const loaded = await index.upsert(filePath, loadSource);
+      if (!loaded) return false;
 
-      // Peek del schema para routing: V2.1 legacy vs V3 nativo
-      let schemaHint: string | null = null
-      try {
-        const peeked = JSON.parse(raw) as Record<string, unknown>
-        schemaHint = typeof peeked?.$schema === 'string' ? peeked.$schema : null
-      } catch { /* JSON inválido — el parser lo reportará */ }
-
-      const opts: RegisterOptions = {
+      const opts = {
         filePath,
         isBuiltin: source === 'builtin',
-        keepSource: false,
-      }
+        keepSource: false
+      };
 
-      if (schemaHint === 'luxsync.lfx/3.0') {
-        const v3 = this._parseAndValidateV3(raw, filePath, source)
-        if (!v3) return false
-        const entry = this._registry.registerEffectV3(v3, opts)
-        return entry !== null
-      }
+      // Alimentamos el DynamicEffectRegistry con el clip ya purificado en memoria.
+      // El índice devuelve el clip interno (HephAutomationClip | HephAutomationClipV3),
+      // pero registerEffect/registerEffectV3 esperan el wrapper LfxClipV2/LFXFileV3.
+      const entry = loaded.schemaVersion === 'luxsync.lfx/3.0'
+        ? this._registry.registerEffectV3(
+            { $schema: 'luxsync.lfx/3.0', clip: loaded.clip as any, checksum: '' } as any,
+            opts,
+          )
+        : this._registry.registerEffect(
+            { $schema: 'hephaestus/v2.1', version: '1.0.0', clip: loaded.clip as any, checksum: '' } as any,
+            opts,
+          );
 
-      const result = this._parseAndValidate(raw, filePath, source)
-      if (!result) return false
-      const entry = this._registry.registerEffect(result, opts)
-      return entry !== null
+      return entry !== null;
     } catch (err) {
-      console.warn(`[LfxFileLoader ⚠️] read/parse failed for ${filePath}:`, err)
-      return false
+      console.error(`[LfxFileLoader] Error delegando carga de ${filePath} al Índice:`, err);
+      return false;
     }
   }
 

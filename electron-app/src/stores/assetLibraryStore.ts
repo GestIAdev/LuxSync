@@ -19,9 +19,11 @@
 import { create } from 'zustand'
 import type { FixtureDefinition } from '../types/FixtureDefinition'
 import type { IIngenioDefinition } from '../core/forge/ingenio/types'
+import type { HephClipMetadata } from '../core/hephaestus/HephFileIO'
 import {
   fixtureToAsset,
   ingenioToAsset,
+  hephClipToAsset,
   matchesSearch,
 } from './assetAdapters'
 import type {
@@ -97,6 +99,8 @@ export interface AssetLibraryState {
   fixtures: LibraryAsset[]
   /** All ingenio assets (system + user) */
   ingenios: LibraryAsset[]
+  /** All Hephaestus effect assets */
+  effects: LibraryAsset[]
   /** Loading state */
   isLoading: boolean
   /** Last error message */
@@ -139,6 +143,9 @@ export interface AssetLibraryState {
     systemIngenios: IIngenioDefinition[],
     userIngenios: IIngenioDefinition[],
   ) => void
+
+  /** Carga efectos Hephaestus desde el índice en memoria */
+  ingestEffects: (effects: HephClipMetadata[]) => void
 
   /** Limpia todo el store */
   clear: () => void
@@ -184,6 +191,7 @@ export const useAssetLibraryStore = create<AssetLibraryState>((set, get) => ({
   // ── Initial State ────────────────────────────────────
   fixtures: [],
   ingenios: [],
+  effects: [],
   isLoading: false,
   lastError: null,
   favoriteIds: loadFavorites(),
@@ -238,10 +246,19 @@ export const useAssetLibraryStore = create<AssetLibraryState>((set, get) => ({
     set({ ingenios: [...systemAssets, ...userAssets] })
   },
 
+  ingestEffects: (effectsMeta) => {
+    const favIds = get().favoriteIds
+    const effectAssets = effectsMeta.map(meta =>
+      hephClipToAsset(meta, favIds.has(meta.id)),
+    )
+    set({ effects: effectAssets })
+  },
+
   clear: () => {
     set({
       fixtures: [],
       ingenios: [],
+      effects: [],
       isLoading: false,
       lastError: null,
     })
@@ -250,7 +267,7 @@ export const useAssetLibraryStore = create<AssetLibraryState>((set, get) => ({
   // ── Favorites ─────────────────────────────────────────
 
   toggleFavorite: (assetId: string) => {
-    const { favoriteIds, fixtures, ingenios } = get()
+    const { favoriteIds, fixtures, ingenios, effects } = get()
     const newFavs = new Set(favoriteIds)
 
     if (newFavs.has(assetId)) {
@@ -268,11 +285,15 @@ export const useAssetLibraryStore = create<AssetLibraryState>((set, get) => ({
     const updatedIngenios = ingenios.map(i =>
       i.id === assetId ? { ...i, isFavorite: newFavs.has(assetId) } : i
     )
+    const updatedEffects = effects.map(e =>
+      e.id === assetId ? { ...e, isFavorite: newFavs.has(assetId) } : e
+    )
 
     set({
       favoriteIds: newFavs,
       fixtures: updatedFixtures,
       ingenios: updatedIngenios,
+      effects: updatedEffects,
     })
   },
 
@@ -322,6 +343,7 @@ export const useAssetLibraryStore = create<AssetLibraryState>((set, get) => ({
     const {
       fixtures,
       ingenios,
+      effects,
       assetTypeFilter,
       sourceFilter,
       searchQuery,
@@ -340,8 +362,11 @@ export const useAssetLibraryStore = create<AssetLibraryState>((set, get) => ({
       case 'ingenio':
         pool = ingenios
         break
+      case 'effect':
+        pool = effects
+        break
       default:
-        pool = [...fixtures, ...ingenios]
+        pool = [...fixtures, ...ingenios, ...effects]
     }
 
     // 2. Filter by source
@@ -376,7 +401,7 @@ export const useAssetLibraryStore = create<AssetLibraryState>((set, get) => ({
   },
 
   getAvailableTags: (): Map<string, number> => {
-    const { fixtures, ingenios, assetTypeFilter } = get()
+    const { fixtures, ingenios, effects, assetTypeFilter } = get()
 
     let pool: LibraryAsset[]
     switch (assetTypeFilter) {
@@ -386,8 +411,11 @@ export const useAssetLibraryStore = create<AssetLibraryState>((set, get) => ({
       case 'ingenio':
         pool = ingenios
         break
+      case 'effect':
+        pool = effects
+        break
       default:
-        pool = [...fixtures, ...ingenios]
+        pool = [...fixtures, ...ingenios, ...effects]
     }
 
     const tagCounts = new Map<string, number>()
@@ -401,8 +429,8 @@ export const useAssetLibraryStore = create<AssetLibraryState>((set, get) => ({
   },
 
   getTotalCount: (): number => {
-    const { fixtures, ingenios } = get()
-    return fixtures.length + ingenios.length
+    const { fixtures, ingenios, effects } = get()
+    return fixtures.length + ingenios.length + effects.length
   },
 }))
 
@@ -442,6 +470,7 @@ export const selectAssetBrowserData = (state: AssetLibraryState) => ({
   lastError: state.lastError,
   ingestFixtures: state.ingestFixtures,
   ingestIngenios: state.ingestIngenios,
+  ingestEffects: state.ingestEffects,
   getFilteredAssets: state.getFilteredAssets,
   getTotalCount: state.getTotalCount,
   toggleFavorite: state.toggleFavorite,

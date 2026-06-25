@@ -21,6 +21,7 @@ import * as path from 'path';
 import { createHash } from 'crypto';
 import { getDynamicEffectRegistry, } from './DynamicEffectRegistry';
 import { isSeleneEligible, } from './lfxTypes';
+import { getHephaestusClipIndex } from '../hephaestus/HephaestusClipIndex';
 /** Política de safety aplicada a archivos `user`. */
 const USER_SAFETY_POLICY = Object.freeze({
     /** Aggression máxima permitida en clips de comunidad. */
@@ -69,41 +70,25 @@ export class LfxFileLoader {
     /** Carga un único `.lfx` (útil para hot-reload o ingesta drag-and-drop). */
     async loadFile(filePath, source) {
         try {
-            const stats = await fs.stat(filePath);
-            if (!stats.isFile())
+            const index = getHephaestusClipIndex();
+            const loadSource = source === 'builtin' ? 'builtin' : 'user';
+            // El índice hace el fs.readFile, valida y guarda en RAM (O(1) para el futuro)
+            const loaded = await index.upsert(filePath, loadSource);
+            if (!loaded)
                 return false;
-            if (source === 'user' && stats.size > USER_SAFETY_POLICY.MAX_FILE_SIZE_BYTES) {
-                console.warn(`[LfxFileLoader ⚠️] G2 fail: file too large (${stats.size}B) at ${filePath}`);
-                return false;
-            }
-            const raw = await fs.readFile(filePath, 'utf-8');
-            // Peek del schema para routing: V2.1 legacy vs V3 nativo
-            let schemaHint = null;
-            try {
-                const peeked = JSON.parse(raw);
-                schemaHint = typeof peeked?.$schema === 'string' ? peeked.$schema : null;
-            }
-            catch { /* JSON inválido — el parser lo reportará */ }
             const opts = {
                 filePath,
                 isBuiltin: source === 'builtin',
-                keepSource: false,
+                keepSource: false
             };
-            if (schemaHint === 'luxsync.lfx/3.0') {
-                const v3 = this._parseAndValidateV3(raw, filePath, source);
-                if (!v3)
-                    return false;
-                const entry = this._registry.registerEffectV3(v3, opts);
-                return entry !== null;
-            }
-            const result = this._parseAndValidate(raw, filePath, source);
-            if (!result)
-                return false;
-            const entry = this._registry.registerEffect(result, opts);
+            // Alimentamos el DynamicEffectRegistry con el clip ya purificado en memoria
+            const entry = loaded.schemaVersion === 'luxsync.lfx/3.0'
+                ? this._registry.registerEffectV3(loaded.clip, opts)
+                : this._registry.registerEffect(loaded.clip, opts);
             return entry !== null;
         }
         catch (err) {
-            console.warn(`[LfxFileLoader ⚠️] read/parse failed for ${filePath}:`, err);
+            console.error(`[LfxFileLoader] Error delegando carga de ${filePath} al Índice:`, err);
             return false;
         }
     }

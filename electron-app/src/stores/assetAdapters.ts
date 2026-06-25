@@ -12,13 +12,14 @@
 
 import type { FixtureDefinition, FixtureChannel } from '../types/FixtureDefinition'
 import type { IIngenioDefinition, IngenioCategory } from '../core/forge/ingenio/types'
+import type { HephClipMetadata } from '../core/hephaestus/HephFileIO'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SHARED TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 
 /** Tipos de asset que el browser puede mostrar */
-export type AssetType = 'fixture' | 'ingenio'
+export type AssetType = 'fixture' | 'ingenio' | 'effect'
 
 /** Fuente del asset */
 export type AssetSource = 'system' | 'user'
@@ -57,7 +58,7 @@ export interface LibraryAsset {
   /** ¿Es favorito? (persisted via localStorage) */
   readonly isFavorite: boolean
   /** Referencia al objeto original completo */
-  readonly _raw: FixtureDefinition | IIngenioDefinition
+  readonly _raw: FixtureDefinition | IIngenioDefinition | HephClipMetadata
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -267,6 +268,36 @@ export function ingenioToAsset(
     updatedAt: new Date(ingenio.meta.updatedAt).getTime(),
     isFavorite,
     _raw: ingenio,
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HEPH CLIP → ASSET ADAPTER
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Convierte un HephClipMetadata a un LibraryAsset unificado.
+ */
+export function hephClipToAsset(
+  clip: HephClipMetadata,
+  isFavorite: boolean = false,
+): LibraryAsset {
+  return {
+    id: clip.id,
+    type: 'effect',
+    source: 'user',
+    name: clip.name,
+    creator: clip.author || 'LuxSync',
+    subtype: clip.effectType,
+    tags: [...(clip.tags || [])],
+    summary: `${clip.paramCount} params • ${clip.durationMs}ms`,
+    icon: '✨',
+    accentColor: '#bf5af2',
+    filePath: clip.filePath,
+    itemCount: clip.paramCount,
+    updatedAt: clip.modifiedAt,
+    isFavorite,
+    _raw: clip,
   }
 }
 

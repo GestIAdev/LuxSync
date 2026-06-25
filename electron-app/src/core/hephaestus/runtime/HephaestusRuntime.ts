@@ -47,6 +47,7 @@ import type {
 } from '../types'
 import type { EffectZone } from '../../effects/types'
 import { deserializeHephClip, type HephAutomationClipSerialized } from '../types'
+import { getHephaestusClipIndex } from '../HephaestusClipIndex'
 import { CurveEvaluator } from '../CurveEvaluator'
 import { PhaseDistributor } from './PhaseDistributor'
 import { resolveZoneTags } from '../../zones/ZoneMapper'
@@ -292,132 +293,16 @@ export class HephaestusRuntime {
    * Returns the parsed clip (v2 o v3) o null si falla.
    */
   loadClip(filePath: string): HephAutomationClip | HephAutomationClipV3 | null {
-    // Check cache first
-    if (this.clipCache.has(filePath)) {
-      return this.clipCache.get(filePath)!
+    const index = getHephaestusClipIndex();
+    const loaded = index.getByPath(filePath);
+    if (!loaded) {
+      console.error(`[HephRuntime] ❌ Clip not in index: ${filePath}`);
+      return null;
     }
-    
-    try {
-      // Read file
-      if (!fs.existsSync(filePath)) {
-        console.error(`[HephRuntime] ❌ File not found: ${filePath}`)
-        return null
-      }
-      
-      const content = fs.readFileSync(filePath, 'utf-8')
-      
-      // Validate content is not empty
-      if (!content || content.trim().length === 0) {
-        console.error(`[HephRuntime] ❌ Empty file: ${filePath}`)
-        return null
-      }
-      
-      // Parse JSON
-      let parsed: any
-      try {
-        parsed = JSON.parse(content)
-      } catch (parseErr) {
-        console.error(`[HephRuntime] ❌ Invalid JSON in ${filePath}:`, parseErr)
-        return null
-      }
-      
-      // ⚒️ WAVE 2030.20 / 🧬 WAVE 4856: UNWRAP FILE FORMAT (v2.1 + v3.0).
-      //
-      // Schemas aceptados:
-      //   - 'luxsync.lfx/3.0' → wrapper V3 con `clip: { tracks: HephTrack[] }`.
-      //   - 'hephaestus/v2.1' → wrapper V2.1 con `clip: { curves: {...} }`.
-      //   - Sin wrapper        → objeto plano legacy con `curves`.
-      //
-      // Para V3, el cargador devuelve un `HephAutomationClipV3` tal cual; el
-      // Runtime lo procesa nativamente en `play()/playFromClip()`. Para V2.1,
-      // se deserializa al `HephAutomationClip` legacy y la migración a tracks
-      // sucede en `_buildResolvedTracks()` justo antes de ejecutar.
-      //
-      // El cache (`clipCache`) almacena el formato CARGADO (v2 o v3) — es
-      // tipo unión. La conversión a tracks ejecutables es per-instancia.
-      const schema = parsed?.$schema
-      let clip: HephAutomationClip | HephAutomationClipV3 | null = null
-
-      if (schema === 'luxsync.lfx/3.0' && parsed?.clip && typeof parsed.clip === 'object') {
-        // ── V3 PATH ──────────────────────────────────────────────────────
-        const v3 = parsed.clip as HephAutomationClipV3
-        if (!Array.isArray(v3.tracks) || v3.tracks.length === 0) {
-          console.error(`[HephRuntime] ❌ V3 clip in ${filePath} has no tracks[]`)
-          return null
-        }
-        for (const t of v3.tracks) {
-          if (!t || typeof t !== 'object' || !t.curve || !Array.isArray(t.curve.keyframes)) {
-            console.error(`[HephRuntime] ❌ Invalid V3 track in ${filePath}: missing curve/keyframes`)
-            return null
-          }
-          if (!Array.isArray(t.zones) || t.zones.length === 0) {
-            console.error(`[HephRuntime] ❌ Invalid V3 track in ${filePath}: track '${t.id}' has no zones`)
-            return null
-          }
-        }
-        clip = v3
-      } else {
-        // ── V2.1 PATH (legacy curves Record) ─────────────────────────────
-        let serialized: HephAutomationClipSerialized
-        if (parsed?.clip && typeof parsed.clip === 'object') {
-          serialized = parsed.clip
-        } else if (parsed?.curves && typeof parsed.curves === 'object') {
-          serialized = parsed
-        } else {
-          console.error(`[HephRuntime] ❌ Invalid clip structure in ${filePath}: no V3 tracks[] and no V2 curves{}`)
-          return null
-        }
-
-        if (!serialized || typeof serialized !== 'object') {
-          console.error(`[HephRuntime] ❌ Invalid clip structure in ${filePath}: not an object`)
-          return null
-        }
-        if (!serialized.curves || typeof serialized.curves !== 'object') {
-          console.error(`[HephRuntime] ❌ Invalid clip structure in ${filePath}: missing or invalid curves`)
-          return null
-        }
-
-        // Validar estructura de cada curva (keyframes array obligatorio)
-        for (const [paramId, curve] of Object.entries(serialized.curves)) {
-          if (!curve || typeof curve !== 'object') {
-            console.error(`[HephRuntime] ❌ Invalid curve '${paramId}' in ${filePath}: not an object`)
-            return null
-          }
-          const hephCurve = curve as any
-          if (!Array.isArray(hephCurve.keyframes)) {
-            console.error(`[HephRuntime] ❌ Invalid curve '${paramId}' in ${filePath}: keyframes is not an array`)
-            return null
-          }
-          if (hephCurve.keyframes.length === 0) {
-            console.warn(`[HephRuntime] ⚠️ Curve '${paramId}' in ${filePath} has no keyframes (will be ignored)`)
-          }
-        }
-
-        const v2 = deserializeHephClip(serialized)
-        if (!v2 || !v2.curves || v2.curves.size === 0) {
-          console.error(`[HephRuntime] ❌ Deserialization failed or empty curves in ${filePath}`)
-          return null
-        }
-        clip = v2
-      }
-
-      if (!clip) return null
-
-      // Cache it (union: v2 o v3)
-      this.clipCache.set(filePath, clip)
-
-      if (this.debug) {
-        const desc = _isV3Clip(clip)
-          ? `V3: ${clip.tracks.length} tracks`
-          : `V2: ${clip.curves.size} curves`
-        console.log(`[HephRuntime] 📁 Loaded: ${path.basename(filePath)} (${desc}, ${clip.durationMs}ms)`)
-      }
-
-      return clip
-    } catch (err) {
-      console.error(`[HephRuntime] ❌ Failed to load ${filePath}:`, err)
-      return null
+    if (!this.clipCache.has(filePath)) {
+      this.clipCache.set(filePath, loaded.clip);
     }
+    return this.clipCache.get(filePath)!;
   }
   
   /**

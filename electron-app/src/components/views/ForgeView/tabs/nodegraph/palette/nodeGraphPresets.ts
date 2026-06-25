@@ -339,27 +339,27 @@ function buildAmbientAurora(): IForgeNodeGraph {
 export const CUYO_ARSENAL: readonly NodeGraphPreset[] = [
   {
     id: 'carpenter-brut', name: 'Carpenter Brut Strobe', genre: 'Synthwave', icon: '🌆',
-    accent: '#ff2d9b', description: 'Kick-gated square strobe modulado por RMS. Brutal y retro.',
+    accent: '#ff2d9b', description: 'Kick-gated square strobe modulated by RMS. Brutal and retro.',
     build: buildCarpenterBrut,
   },
   {
     id: 'techno-pump', name: 'Techno Pump', genre: 'Techno', icon: '🔊',
-    accent: '#00f3ff', description: 'Sidechain sawtooth invertido con punch exponencial. El bombo respira.',
+    accent: '#00f3ff', description: 'Inverted sawtooth sidechain with exponential punch. The kick breathes.',
     build: buildTechnoPump,
   },
   {
     id: 'dub-breath', name: 'Dub Reggae Breath', genre: 'Dub', icon: '🌿',
-    accent: '#39ff14', description: 'Bassline suavizado + marea triangular. Oleaje cálido y orgánico.',
+    accent: '#39ff14', description: 'Smoothed bassline + triangular tide. Warm and organic swell.',
     build: buildDubBreath,
   },
   {
     id: 'dnb-ripper', name: 'Drum & Bass Ripper', genre: 'DnB', icon: '⚡',
-    accent: '#ffb800', description: 'Hi-hats disparan caos random_hold con contraste scurve. Frenético.',
+    accent: '#ffb800', description: 'Hi-hats trigger random_hold chaos with scurve contrast. Frenetic.',
     build: buildDnbRipper,
   },
   {
     id: 'ambient-aurora', name: 'Ambient Aurora', genre: 'Ambient', icon: '🌌',
-    accent: '#bf5af2', description: 'Tres senos desfasados en free-clock. Shimmer tipo aurora boreal.',
+    accent: '#bf5af2', description: 'Three out-of-phase sines on a free clock. Northern lights shimmer.',
     build: buildAmbientAurora,
   },
-] as const
+] as const;

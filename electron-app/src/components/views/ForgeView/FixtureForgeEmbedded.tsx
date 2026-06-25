@@ -100,24 +100,13 @@ import { useLibraryStore, selectFixtureForge } from '../../../stores/libraryStor
 import { useNavigationStore, selectFixtureForgeNav } from '../../../stores/navigationStore'
 import { useForgeGraphStore } from '../../../stores/forgeGraphStore'
 
-// WAVE 4548.8c: Inspector + Mode Switcher
-
-import { NodeInspector } from './inspector/NodeInspector'
-
 // WAVE 1117: Recovered CSS from deleted modal (contains PhysicsTuner styles)
 
 import './FixtureForge.css'
 import './FixtureForgeEmbedded.css'  // Standalone styles for embedded mode
 
-// WAVE 4548.8b: NODE GRAPH UI (lazy-loaded  solo se carga en /forge) 
-
-const ForgeCanvasLayout = React.lazy(() => import('./canvas/ForgeCanvasLayout'))
-const NodePalette = React.lazy(() => import('./canvas/NodePalette'))
-const NodeCanvas = React.lazy(() => import('./canvas/NodeCanvas'))
-
-// WAVE 4548.10: Pack as Ingenio modal 
-import { PackIngenioModal } from './canvas/PackIngenioModal'
 import ForgeChannelRackTab from './tabs/ForgeChannelRackTab'
+import NodeGraphTab from './tabs/nodegraph/NodeGraphTab'
 import ForgeAetherCellsTab from './tabs/ForgeAetherCellsTab'
 
 // 
@@ -277,62 +266,6 @@ function deepClone<T>(value: T): T {
     return structuredClone(value)
   }
   return JSON.parse(JSON.stringify(value)) as T
-}
-
-// 
-// NODE GRAPH TAB WAVE 4548.10
-// Subcomponent aislado para que los hooks de clearGraph/selectedNodeIds no
-// contaminan el arbol de renderizado del componente padre en otras pestañas.
-// 
-
-const NodeGraphTab: React.FC = () => {
-  const selectedNodeIds  = useForgeGraphStore((s) => s.selectedNodeIds)
-  const clearGraph       = useForgeGraphStore((s) => s.clearGraph)
-  const [showPackModal, setShowPackModal] = React.useState(false)
-
-  const handleClear = () => {
-    if (window.confirm('Clear the canvas? This action removes all nodes and edges.')) {
-      clearGraph()
-    }
-  }
-
-  return (
-    <div className="forge-nodegraph-panel">
-
-      {/* Floating action bar  Pack + Clear */}
-
-      <div className="forge-nodegraph-actions">
-        {selectedNodeIds.size > 0 && (
-          <button
-            className="forge-nodegraph-btn forge-nodegraph-btn--pack"
-            onClick={() => setShowPackModal(true)}
-            title="Pack selection as reusable Ingenio"
-          >
-            Pack as Ingenio ({selectedNodeIds.size})
-          </button>
-        )}
-        <button
-          className="forge-nodegraph-btn forge-nodegraph-btn--clear"
-          onClick={handleClear}
-          title="Clear canvas"
-        >
-          Clear Canvas
-        </button>
-      </div>
-
-      <React.Suspense fallback={<div className="forge-canvas-loading">Loading canvasâ€¦</div>}>
-        <ForgeCanvasLayout
-          palette={<NodePalette />}
-          canvas={<NodeCanvas />}
-          inspector={<NodeInspector />}
-        />
-      </React.Suspense>
-
-      {showPackModal && (
-        <PackIngenioModal onClose={() => setShowPackModal(false)} />
-      )}
-    </div>
-  )
 }
 
 // 

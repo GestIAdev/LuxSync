@@ -298,6 +298,41 @@ export interface ICompoundIngenioConfig {
   }
 }
 
+export interface IInputBeatConfig {
+  readonly nodeType: 'input_beat'
+  readonly mode: 'pulse' | 'gate'
+  readonly pulseDurationMs?: number
+}
+
+export interface IInputBpmConfig {
+  readonly nodeType: 'input_bpm'
+  readonly outputMode: 'raw' | 'normalized'
+  readonly rangeBpm?: readonly [number, number]
+}
+
+export interface IInputEnergyConfig {
+  readonly nodeType: 'input_energy'
+  readonly source: 'rms' | 'peak'
+  readonly smoothingMs?: number
+}
+
+export interface IInputTimeConfig {
+  readonly nodeType: 'input_time'
+  readonly mode: 'seconds' | 'frames' | 'ramp'
+}
+
+export interface IProcInvertConfig {
+  readonly nodeType: 'proc_invert'
+}
+
+export interface ILogicAndConfig {
+  readonly nodeType: 'logic_and'
+}
+
+export interface ILogicOrConfig {
+  readonly nodeType: 'logic_or'
+}
+
 export interface IEmptyConfig {
   readonly nodeType: 'empty'
 }
@@ -310,6 +345,10 @@ export type IForgeNodeConfig =
   | IInputDmxConfig
   | IInputAudioBandConfig
   | IInputConstantConfig
+  | IInputBeatConfig
+  | IInputBpmConfig
+  | IInputEnergyConfig
+  | IInputTimeConfig
   | IProcLfoConfig
   | IProcSmoothConfig
   | IProcMapRangeConfig
@@ -318,10 +357,13 @@ export type IForgeNodeConfig =
   | IProcDelayConfig
   | IProcMergeConfig
   | IProcCurveConfig
+  | IProcInvertConfig
   | ILogicGateConfig
   | ILogicThresholdConfig
   | ILogicCounterConfig
   | ILogicSwitchConfig
+  | ILogicAndConfig
+  | ILogicOrConfig
   | IOutputDmxConfig
   | ICompoundIngenioConfig
   | IEmptyConfig

@@ -29,6 +29,12 @@ import { LogicThresholdConfigPanel } from './panels/LogicThresholdConfigPanel'
 import { LogicCounterConfigPanel } from './panels/LogicCounterConfigPanel'
 import { LogicSwitchConfigPanel } from './panels/LogicSwitchConfigPanel'
 import { CompoundIngenioConfigPanel } from './panels/CompoundIngenioConfigPanel'
+import {
+  InputBeatFallbackPanel,
+  InputBpmFallbackPanel,
+  InputEnergyFallbackPanel,
+  InputTimeFallbackPanel,
+} from './panels/GenericConfigFallbackPanel'
 
 // ── Tipo del prop que todos los paneles de config aceptan ────────────────
 
@@ -49,6 +55,10 @@ export const CONFIG_PANEL_MAP: Partial<Record<ForgeNodeType, AnyConfigPanel>> = 
   input_dmx:          InputDmxConfigPanel,
   input_audio_band:   InputAudioBandConfigPanel,
   input_constant:     InputConstantConfigPanel,
+  input_beat:         InputBeatFallbackPanel,
+  input_bpm:          InputBpmFallbackPanel,
+  input_energy:       InputEnergyFallbackPanel,
+  input_time:         InputTimeFallbackPanel,
   // ── PROCESS ─────────────────────────────────────────────────────────────
   proc_lfo:           LfoConfigPanel,
   proc_smooth:        SmoothConfigPanel,

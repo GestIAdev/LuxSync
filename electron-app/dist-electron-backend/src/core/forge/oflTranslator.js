@@ -54,7 +54,7 @@ const COLOR_INTENSITY_MAP = {
 };
 // ── Type translation (OFL capability → ChannelType) ────────────────────────
 function translateChannelType(chName, def) {
-    const primary = def?.capability ?? def?.capabilities?.[0];
+    const primary = def?.capability ?? def?.capabilities?.find((c) => c?.type !== 'NoFunction') ?? def?.capabilities?.[0];
     const oflType = primary?.type;
     const lower = chName.toLowerCase();
     switch (oflType) {

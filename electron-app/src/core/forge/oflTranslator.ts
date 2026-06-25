@@ -69,7 +69,7 @@ const COLOR_INTENSITY_MAP: Record<string, ChannelType> = {
 // ── Type translation (OFL capability → ChannelType) ────────────────────────
 
 function translateChannelType(chName: string, def: any): ChannelType {
-  const primary = def?.capability ?? def?.capabilities?.[0]
+  const primary = def?.capability ?? def?.capabilities?.find((c: any) => c?.type !== 'NoFunction') ?? def?.capabilities?.[0]
   const oflType: string | undefined = primary?.type
   const lower = chName.toLowerCase()
 

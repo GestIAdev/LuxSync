@@ -104,7 +104,20 @@ function createInputBeatNode(id: ForgeNodeId, position: { x: number; y: number }
     uiPosition: position,
     inputs: [],
     outputs: [outPort('output', 'beat', 'boolean')],
-    config: { nodeType: 'input_constant', value: 0 },
+    config: { nodeType: 'input_beat', mode: 'pulse', pulseDurationMs: 50 },
+  }
+}
+
+function createInputBpmNode(id: ForgeNodeId, position: { x: number; y: number }): IForgeNode {
+  return {
+    id,
+    type: 'input_bpm',
+    category: 'input',
+    label: 'BPM',
+    uiPosition: position,
+    inputs: [],
+    outputs: [outPort('output', 'bpm', 'normalized')],
+    config: { nodeType: 'input_bpm', outputMode: 'normalized' },
   }
 }
 
@@ -130,7 +143,20 @@ function createInputEnergyNode(id: ForgeNodeId, position: { x: number; y: number
     uiPosition: position,
     inputs: [],
     outputs: [outPort('output', 'rms', 'normalized')],
-    config: { nodeType: 'input_constant', value: 0 },
+    config: { nodeType: 'input_energy', source: 'rms', smoothingMs: 100 },
+  }
+}
+
+function createInputTimeNode(id: ForgeNodeId, position: { x: number; y: number }): IForgeNode {
+  return {
+    id,
+    type: 'input_time',
+    category: 'input',
+    label: 'Time',
+    uiPosition: position,
+    inputs: [],
+    outputs: [outPort('output', 'time', 'normalized')],
+    config: { nodeType: 'input_time', mode: 'seconds' },
   }
 }
 
@@ -231,7 +257,49 @@ function createProcInvertNode(id: ForgeNodeId, position: { x: number; y: number 
     uiPosition: position,
     inputs: [inPort('input', 'input', 'normalized', 0)],
     outputs: [outPort('output', 'output', 'normalized')],
-    config: { nodeType: 'empty' },
+    config: { nodeType: 'proc_invert' },
+  }
+}
+
+function createProcDelayNode(id: ForgeNodeId, position: { x: number; y: number }): IForgeNode {
+  return {
+    id,
+    type: 'proc_delay',
+    category: 'process',
+    label: 'Delay',
+    uiPosition: position,
+    inputs: [inPort('input', 'input', 'normalized', 0)],
+    outputs: [outPort('output', 'output', 'normalized')],
+    config: { nodeType: 'proc_delay', delayFrames: 1 },
+  }
+}
+
+function createProcMergeNode(id: ForgeNodeId, position: { x: number; y: number }): IForgeNode {
+  return {
+    id,
+    type: 'proc_merge',
+    category: 'process',
+    label: 'Merge',
+    uiPosition: position,
+    inputs: [
+      inPort('a', 'A', 'normalized', 0),
+      inPort('b', 'B', 'normalized', 0),
+    ],
+    outputs: [outPort('output', 'output', 'normalized')],
+    config: { nodeType: 'proc_merge', strategy: 'max' },
+  }
+}
+
+function createProcCurveNode(id: ForgeNodeId, position: { x: number; y: number }): IForgeNode {
+  return {
+    id,
+    type: 'proc_curve',
+    category: 'process',
+    label: 'Curve',
+    uiPosition: position,
+    inputs: [inPort('input', 'input', 'normalized', 0)],
+    outputs: [outPort('output', 'output', 'normalized')],
+    config: { nodeType: 'proc_curve', curveType: 'exponential' },
   }
 }
 
@@ -280,7 +348,39 @@ function createLogicGateNode(id: ForgeNodeId, position: { x: number; y: number }
       inPort('gate', 'gate', 'boolean', 0),
     ],
     outputs: [outPort('output', 'output', 'normalized')],
-    config: { nodeType: 'empty' },
+    config: { nodeType: 'logic_gate', threshold: 0.5 },
+  }
+}
+
+function createLogicAndNode(id: ForgeNodeId, position: { x: number; y: number }): IForgeNode {
+  return {
+    id,
+    type: 'logic_and',
+    category: 'logic',
+    label: 'AND',
+    uiPosition: position,
+    inputs: [
+      inPort('a', 'A', 'boolean', 0),
+      inPort('b', 'B', 'boolean', 0),
+    ],
+    outputs: [outPort('output', 'and', 'boolean')],
+    config: { nodeType: 'logic_and' },
+  }
+}
+
+function createLogicOrNode(id: ForgeNodeId, position: { x: number; y: number }): IForgeNode {
+  return {
+    id,
+    type: 'logic_or',
+    category: 'logic',
+    label: 'OR',
+    uiPosition: position,
+    inputs: [
+      inPort('a', 'A', 'boolean', 0),
+      inPort('b', 'B', 'boolean', 0),
+    ],
+    outputs: [outPort('output', 'or', 'boolean')],
+    config: { nodeType: 'logic_or' },
   }
 }
 
@@ -355,12 +455,28 @@ export const FORGE_PALETTE: Record<ForgeNodeCategory, PaletteEntry[]> = {
       createNode: createInputBeatNode,
     },
     {
+      type: 'input_bpm',
+      category: 'input',
+      label: 'BPM',
+      description: 'Emite el BPM actual como valor normalizado o raw',
+      icon: '♩',
+      createNode: createInputBpmNode,
+    },
+    {
       type: 'input_energy',
       category: 'input',
       label: 'Audio Energy',
-      description: 'Energía global RMS del audio',
+      description: 'Energía global RMS o peak del audio',
       icon: '⚡',
       createNode: createInputEnergyNode,
+    },
+    {
+      type: 'input_time',
+      category: 'input',
+      label: 'Time',
+      description: 'Tiempo transcurrido (segundos, frames o rampa)',
+      icon: '⏱',
+      createNode: createInputTimeNode,
     },
     {
       type: 'input_constant',
@@ -420,6 +536,30 @@ export const FORGE_PALETTE: Record<ForgeNodeCategory, PaletteEntry[]> = {
       icon: '↕',
       createNode: createProcInvertNode,
     },
+    {
+      type: 'proc_delay',
+      category: 'process',
+      label: 'Delay',
+      description: 'Retardo temporal en frames (ring buffer)',
+      icon: '⏳',
+      createNode: createProcDelayNode,
+    },
+    {
+      type: 'proc_merge',
+      category: 'process',
+      label: 'Merge',
+      description: 'Combina N inputs con estrategia (max, min, avg, sum)',
+      icon: '⊕',
+      createNode: createProcMergeNode,
+    },
+    {
+      type: 'proc_curve',
+      category: 'process',
+      label: 'Curve',
+      description: 'Aplica curva de transferencia (exp, log, scurve, gamma)',
+      icon: '∿',
+      createNode: createProcCurveNode,
+    },
   ],
   logic: [
     {
@@ -453,6 +593,22 @@ export const FORGE_PALETTE: Record<ForgeNodeCategory, PaletteEntry[]> = {
       description: 'Selecciona entre input A o B según selector',
       icon: '🔀',
       createNode: createLogicSwitchNode,
+    },
+    {
+      type: 'logic_and',
+      category: 'logic',
+      label: 'AND',
+      description: 'Ambos inputs > 0.5 → 1.0',
+      icon: '∧',
+      createNode: createLogicAndNode,
+    },
+    {
+      type: 'logic_or',
+      category: 'logic',
+      label: 'OR',
+      description: 'Algún input > 0.5 → 1.0',
+      icon: '∨',
+      createNode: createLogicOrNode,
     },
   ],
   output: [

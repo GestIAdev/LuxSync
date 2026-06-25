@@ -27,6 +27,7 @@ import type { IForgeNodeConfig, IForgeNode, ForgeNodeType } from '../../../../co
 import { getCategoryColor } from '../nodes/nodeColors'
 import { getNodeIcon } from '../nodes/nodeIcons'
 import { getConfigPanel } from './configPanelRegistry'
+import { GenericConfigFallbackPanel } from './panels/GenericConfigFallbackPanel'
 import './NodeInspector.css'
 
 const DEBOUNCE_MS = 300
@@ -73,30 +74,7 @@ const InspectorPortList: React.FC<{ node: IForgeNode }> = ({ node }) => {
   )
 }
 
-const GenericConfigFallbackPanel: React.FC<{ config: IForgeNodeConfig }> = ({ config }) => {
-  const entries = Object.entries(config ?? {})
-
-  return (
-    <div className="ni-generic-config">
-      <p className="ni-generic-config__notice">
-        No dedicated panel yet for this node type. Showing raw config snapshot.
-      </p>
-
-      {entries.length === 0 ? (
-        <p className="ni-generic-config__empty">This node has no config fields.</p>
-      ) : (
-        <div className="ni-generic-config__list">
-          {entries.map(([key, value]) => (
-            <div className="ni-generic-config__row" key={key}>
-              <span className="ni-generic-config__key">{key}</span>
-              <span className="ni-generic-config__value">{String(value)}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
+// GenericConfigFallbackPanel moved to ./panels/GenericConfigFallbackPanel.tsx
 
 // ═══════════════════════════════════════════════════════════════════════════
 // NODE INSPECTOR INNER (tiene acceso al nodo)

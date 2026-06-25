@@ -238,6 +238,17 @@ export const useForgeGraphStore = create<ForgeGraphState>((set, get) => ({
     const alreadyExists = graph.edges.some((e) => e.id === edge.id)
     if (alreadyExists) return
 
+    // Asegurar que targetPort no esté ya ocupado por otro cable
+    const isTargetOccupied = graph.edges.some(
+      (e) => e.targetNode === edge.targetNode && e.targetPort === edge.targetPort
+    )
+    if (isTargetOccupied) {
+      console.warn(
+        `[NodeGraph] Enlace rechazado: El puerto de entrada '${edge.targetPort}' ya tiene un cable conectado.`
+      )
+      return
+    }
+
     set({
       graph: {
         ...graph,

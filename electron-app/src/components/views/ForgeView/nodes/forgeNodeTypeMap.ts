@@ -33,6 +33,10 @@ import type {
   IInputDmxConfig,
   IInputAudioBandConfig,
   IInputConstantConfig,
+  IInputBeatConfig,
+  IInputBpmConfig,
+  IInputEnergyConfig,
+  IInputTimeConfig,
   IOutputDmxConfig,
   ICompoundIngenioConfig,
 } from '../../../../core/forge/types'
@@ -152,6 +156,31 @@ function buildConfigPreview(node: IForgeNode): string {
     case 'input_constant': {
       const c = config as IInputConstantConfig
       return `value: ${c.value.toFixed(3)}`
+    }
+    case 'input_beat': {
+      const c = config as IInputBeatConfig
+      return `mode: ${c.mode}`
+    }
+    case 'input_bpm': {
+      const c = config as IInputBpmConfig
+      return `out: ${c.outputMode}`
+    }
+    case 'input_energy': {
+      const c = config as IInputEnergyConfig
+      return `src: ${c.source}`
+    }
+    case 'input_time': {
+      const c = config as IInputTimeConfig
+      return `mode: ${c.mode}`
+    }
+    case 'proc_invert': {
+      return `invert (1.0 - in)`
+    }
+    case 'logic_and': {
+      return `A AND B`
+    }
+    case 'logic_or': {
+      return `A OR B`
     }
     case 'output_dmx': {
       const c = config as IOutputDmxConfig

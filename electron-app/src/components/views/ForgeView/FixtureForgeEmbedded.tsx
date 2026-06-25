@@ -44,7 +44,6 @@ import {
   Save, 
   Download,
   Share2,
-  Upload,
   Eye,
   EyeOff,
   Cpu,
@@ -90,6 +89,8 @@ import {
 } from '../../../core/stage/ShowFileV2'
 import { FixtureDefinition, ChannelType, FixtureChannel, ColorEngineType, WheelColor, FixtureType, IgnitionDependency } from '../../../types/FixtureDefinition'
 import { NodeGraphBuilder } from '../../../core/forge/NodeGraphBuilder'
+import { translateOflFixture } from '../../../core/forge/oflTranslator'
+import { UploadIcon } from '../../icons/LuxIcons'
 import { FixtureFactory } from '../../../utils/FixtureFactory'
 import ForgeGeneralTab from './tabs/ForgeGeneralTab'
 export { getChannelCategory, getCategoryColor } from './tabs/ForgeGeneralTab'
@@ -397,6 +398,30 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   const [validationMessage, setValidationMessage] = useState('')
   const [isFormValid, setIsFormValid] = useState(false)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+
+  const handleOflFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = async (event) => {
+      try {
+        const rawJson = JSON.parse(event.target?.result as string)
+        const translatedFixture = translateOflFixture(rawJson)
+
+        forgeDispatch({ type: 'HYDRATE_FROM_FIXTURE', fixture: translatedFixture })
+        setActiveTab('channels')
+
+        console.log(`[OFL Ingesta ⚡] Genoma '${translatedFixture.name}' traducido e hidratado con éxito.`)
+      } catch (err) {
+        console.error('[OFL Ingesta ❌] Fallo al traducir el genoma OFL:', err)
+      } finally {
+        if (fileInputRef.current) fileInputRef.current.value = ''
+      }
+    }
+    reader.readAsText(file)
+  }
   const createBlankForgeGraph = useCallback((dmxFootprint: number) => {
     return NodeGraphBuilder.fromChannels([], {
       autoMigrated: false,
@@ -528,6 +553,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
       manufacturer: state.meta.manufacturer || baseFixture.manufacturer,
       type: state.meta.type || baseFixture.type,
       channels: syncedChannels,
+      dmxGovernors: state.dmxGovernors.length > 0 ? [...state.dmxGovernors] : baseFixture.dmxGovernors ?? [],
       physics: statePhysics ? {
         motorType: statePhysics.motorType as any,
         maxAcceleration: statePhysics.maxAcceleration,
@@ -781,13 +807,20 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
             {badgeIcon}
             <span>{badgeText}</span>
           </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            onChange={handleOflFileChange}
+            style={{ display: 'none' }}
+          />
           <button
-            className="forge-action-btn export"
-            onClick={handleExportJSON}
-            title="Export JSON"
+            className="forge-action-btn btn-import-ofl"
+            onClick={() => fileInputRef.current?.click()}
+            title="Ingestar genoma comunitario de Open Fixture Library"
           >
-            <Download size={18} />
-            <span>Export</span>
+            <UploadIcon size={18} className="icon-cyan" />
+            <span>Import OFL</span>
           </button>
           <button
             className="forge-action-btn save"

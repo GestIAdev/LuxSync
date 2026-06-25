@@ -20,6 +20,8 @@ export type {
   HephKeyframe,
   HephCurve,
   HephAutomationClip,
+  HephAutomationClipV3,
+  HephTrack,
   HephParamSnapshot,
   HephAutomationClipSerialized,
 } from './types'
@@ -29,6 +31,7 @@ export {
   isHSL,
   isNumericValue,
   serializeHephClip,
+  serializeHephClipV3,
   deserializeHephClip,
   inferHephCategory,
 } from './types'

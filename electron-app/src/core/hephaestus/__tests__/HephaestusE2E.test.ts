@@ -27,8 +27,8 @@ import { describe, test, expect, beforeEach } from 'vitest'
 import { HephaestusRuntime, scaleToDMX, scaleToDMX16, hslToRgb } from '../runtime/HephaestusRuntime'
 import type { HephFixtureOutput } from '../runtime/HephaestusRuntime'
 import { CurveEvaluator } from '../CurveEvaluator'
-import type { HephAutomationClip, HephCurve, HephParamId, HSL } from '../types'
-import type { EffectZone } from '../../effects/types'
+import type { HephAutomationClipV3, HephTrack, HephCurve, HephParamId, HSL, ZoneTarget } from '../types'
+import type { EffectCategory } from '../../effects/types'
 import { FixturePhysicsDriver } from '../../../engine/movement/FixturePhysicsDriver'
 import type { FixtureState } from '../../../hal/mapping/FixtureMapper'
 
@@ -43,8 +43,8 @@ import type { FixtureState } from '../../../hal/mapping/FixtureMapper'
  * Crea una curva numérica con valor constante (un solo keyframe).
  * Útil para parametrizar un canal a un valor fijo durante todo el clip.
  */
-function constantCurve(paramId: HephParamId, value: number): [HephParamId, HephCurve] {
-  return [paramId, {
+function constantCurve(paramId: HephParamId, value: number): HephCurve {
+  return {
     paramId,
     valueType: 'number',
     range: [0, 1],
@@ -53,7 +53,7 @@ function constantCurve(paramId: HephParamId, value: number): [HephParamId, HephC
     keyframes: [
       { timeMs: 0, value, interpolation: 'hold' },
     ],
-  }]
+  }
 }
 
 /**
@@ -64,8 +64,8 @@ function linearCurve(
   v0: number,
   v1: number,
   durationMs: number = 1000
-): [HephParamId, HephCurve] {
-  return [paramId, {
+): HephCurve {
+  return {
     paramId,
     valueType: 'number',
     range: [0, 1],
@@ -75,7 +75,7 @@ function linearCurve(
       { timeMs: 0, value: v0, interpolation: 'linear' },
       { timeMs: durationMs, value: v1, interpolation: 'linear' },
     ],
-  }]
+  }
 }
 
 /**
@@ -86,8 +86,8 @@ function stepCurve(
   paramId: HephParamId,
   targetValue: number,
   durationMs: number = 1000
-): [HephParamId, HephCurve] {
-  return [paramId, {
+): HephCurve {
+  return {
     paramId,
     valueType: 'number',
     range: [0, 1],
@@ -97,14 +97,14 @@ function stepCurve(
       { timeMs: 0, value: targetValue, interpolation: 'hold' },
       { timeMs: durationMs, value: targetValue, interpolation: 'hold' },
     ],
-  }]
+  }
 }
 
 /**
  * Crea una curva de color constante (HSL).
  */
-function constantColorCurve(h: number, s: number, l: number): [HephParamId, HephCurve] {
-  return ['color', {
+function constantColorCurve(h: number, s: number, l: number): HephCurve {
+  return {
     paramId: 'color',
     valueType: 'color',
     range: [0, 360],
@@ -113,34 +113,61 @@ function constantColorCurve(h: number, s: number, l: number): [HephParamId, Heph
     keyframes: [
       { timeMs: 0, value: { h, s, l } as HSL, interpolation: 'hold' },
     ],
-  }]
+  }
 }
 
 /**
- * Construye un HephAutomationClip in-memory desde un set de curvas.
+ * Envuelve una HephCurve en un HephTrack V3.
+ */
+function wrapCurveInTrack(curve: HephCurve, zones: ZoneTarget[] = ['all']): HephTrack {
+  return {
+    id: crypto.randomUUID(),
+    paramId: curve.paramId,
+    zones,
+    curve,
+  }
+}
+
+/**
+ * Construye un HephAutomationClipV3 in-memory desde un set de tracks.
  * Ningún filesystem involucrado — clip puro y determinista.
  */
 function forgeClip(
   name: string,
-  curves: [HephParamId, HephCurve][],
+  tracks: HephTrack[],
   durationMs: number = 1000,
-  zones: EffectZone[] = ['all']
-): HephAutomationClip {
+  spatialZones: ZoneTarget[] = ['all']
+): HephAutomationClipV3 {
   return {
     id: `gauntlet-${name}-${Date.now()}`,
     name,
     author: 'TheGauntlet',
-    category: 'physical',
+    category: 'physical' as EffectCategory,
     tags: ['e2e', 'gauntlet'],
     vibeCompat: [],
-    zones,
+    spatialZones,
     mixBus: 'htp',
     priority: 50,
     durationMs,
     effectType: 'heph_custom',
-    curves: new Map(curves),
+    tracks,
     staticParams: {},
+    schemaVersion: '3.0',
   }
+}
+
+/**
+ * Extrae un Map<HephParamId, HephCurve> desde los tracks de un clip V3.
+ * Adaptador temporal para CurveEvaluator (que aún espera un Map V2).
+ */
+function tracksToCurveMap(tracks: HephTrack[]): Map<HephParamId, HephCurve> {
+  const map = new Map<HephParamId, HephCurve>()
+  for (const t of tracks) {
+    if (!map.has(t.paramId)) {
+      map.set(t.paramId, t.curve)
+    }
+  }
+  return map
 }
 
 /**
@@ -304,10 +331,11 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
     
     test('Intensity 1.0 → Dimmer 255 (HTP)', () => {
       const clip = forgeClip('rainbow-intensity', [
-        constantCurve('intensity', 1.0),
+        wrapCurveInTrack(constantCurve('intensity', 1.0)),
       ])
       
-      const evaluator = new CurveEvaluator(clip.curves, clip.durationMs)
+      const curveMap = tracksToCurveMap(clip.tracks)
+      const evaluator = new CurveEvaluator(curveMap, clip.durationMs)
       const rawValue = evaluator.getValue('intensity', 500)
       
       // CurveEvaluator returns raw 0-1
@@ -320,10 +348,11 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
 
     test('Color {h:0, s:100, l:50} → RGB (255, 0, 0) — Pure Red', () => {
       const clip = forgeClip('rainbow-color', [
-        constantColorCurve(0, 100, 50),
+        wrapCurveInTrack(constantColorCurve(0, 100, 50)),
       ])
       
-      const evaluator = new CurveEvaluator(clip.curves, clip.durationMs)
+      const curveMap = tracksToCurveMap(clip.tracks)
+      const evaluator = new CurveEvaluator(curveMap, clip.durationMs)
       const hsl = evaluator.getColorValue('color', 500)
       
       // Verify HSL evaluation
@@ -340,10 +369,11 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
 
     test('White 1.0 → DMX 255 (LTP)', () => {
       const clip = forgeClip('rainbow-white', [
-        constantCurve('white', 1.0),
+        wrapCurveInTrack(constantCurve('white', 1.0)),
       ])
       
-      const evaluator = new CurveEvaluator(clip.curves, clip.durationMs)
+      const curveMap = tracksToCurveMap(clip.tracks)
+      const evaluator = new CurveEvaluator(curveMap, clip.durationMs)
       const rawValue = evaluator.getValue('white', 500)
       const dmxValue = scaleToDMX('white', rawValue)
       
@@ -353,10 +383,11 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
 
     test('Amber 1.0 → DMX 255 (LTP)', () => {
       const clip = forgeClip('rainbow-amber', [
-        constantCurve('amber', 1.0),
+        wrapCurveInTrack(constantCurve('amber', 1.0)),
       ])
       
-      const evaluator = new CurveEvaluator(clip.curves, clip.durationMs)
+      const curveMap = tracksToCurveMap(clip.tracks)
+      const evaluator = new CurveEvaluator(curveMap, clip.durationMs)
       const rawValue = evaluator.getValue('amber', 500)
       const dmxValue = scaleToDMX('amber', rawValue)
       
@@ -366,10 +397,11 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
 
     test('Strobe 0.5 → DMX 127-128 range', () => {
       const clip = forgeClip('rainbow-strobe', [
-        constantCurve('strobe', 0.5),
+        wrapCurveInTrack(constantCurve('strobe', 0.5)),
       ])
       
-      const evaluator = new CurveEvaluator(clip.curves, clip.durationMs)
+      const curveMap = tracksToCurveMap(clip.tracks)
+      const evaluator = new CurveEvaluator(curveMap, clip.durationMs)
       const rawValue = evaluator.getValue('strobe', 500)
       const dmxValue = scaleToDMX('strobe', rawValue)
       
@@ -382,20 +414,23 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
     test('🥊 FULL GAUNTLET: All 5 params through complete pipeline → FixtureState', () => {
       // THE FULL CLIP: All channels at once
       const clip = forgeClip('el-arcoiris-completo', [
-        constantCurve('intensity', 1.0),
-        constantColorCurve(0, 100, 50),   // Pure red
-        constantCurve('white', 1.0),
-        constantCurve('amber', 1.0),
-        constantCurve('strobe', 0.5),
+        wrapCurveInTrack(constantCurve('intensity', 1.0)),
+        wrapCurveInTrack(constantColorCurve(0, 100, 50)),   // Pure red
+        wrapCurveInTrack(constantCurve('white', 1.0)),
+        wrapCurveInTrack(constantCurve('amber', 1.0)),
+        wrapCurveInTrack(constantCurve('strobe', 0.5)),
       ], 2000)
 
       // STEP 1: Feed clip into a Runtime-equivalent tick
       // We manually simulate what HephaestusRuntime.tick() does
-      const evaluator = new CurveEvaluator(clip.curves, clip.durationMs)
+      const curveMap = tracksToCurveMap(clip.tracks)
+      const evaluator = new CurveEvaluator(curveMap, clip.durationMs)
       const outputs: HephFixtureOutput[] = []
       const clipTimeMs = 500  // Mid-clip
 
-      for (const [paramName, curve] of clip.curves) {
+      for (const track of clip.tracks) {
+        const paramName = track.paramId
+        const curve = track.curve
         if (curve.valueType === 'color') {
           const hsl = evaluator.getColorValue(paramName, clipTimeMs)
           const rgb = hslToRgb(hsl.h, hsl.s / 100, hsl.l / 100)
@@ -405,7 +440,7 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
             parameter: paramName,
             value: 0,
             rgb,
-            source: 'hephaestus-runtime',
+            source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
           })
         } else {
           const rawValue = evaluator.getValue(paramName, clipTimeMs)
@@ -415,7 +450,7 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
             zone: 'all',
             parameter: paramName,
             value: dmxValue,
-            source: 'hephaestus-runtime',
+            source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
           })
         }
       }
@@ -557,10 +592,11 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
     test('Check A (Intent): HephaestusRuntime should output PAN = 255', () => {
       // Square wave clip: PAN jumps from 0 to 1.0 instantly
       const clip = forgeClip('physics-pan-step', [
-        stepCurve('pan', 1.0, 1000),
+        wrapCurveInTrack(stepCurve('pan', 1.0, 1000)),
       ], 1000)
 
-      const evaluator = new CurveEvaluator(clip.curves, clip.durationMs)
+      const curveMap = tracksToCurveMap(clip.tracks)
+      const evaluator = new CurveEvaluator(curveMap, clip.durationMs)
       
       // At any time during the clip, pan should be 1.0
       const rawValue = evaluator.getValue('pan', 100)
@@ -668,10 +704,11 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
 
       // Hephaestus clip with Pan = 0.8
       const clip = forgeClip('zombie-pan', [
-        constantCurve('pan', 0.8),
+        wrapCurveInTrack(constantCurve('pan', 0.8)),
       ], 2000)
 
-      const evaluator = new CurveEvaluator(clip.curves, clip.durationMs)
+      const curveMap = tracksToCurveMap(clip.tracks)
+      const evaluator = new CurveEvaluator(curveMap, clip.durationMs)
       const rawPan = evaluator.getValue('pan', 500)
       const hephPanDMX = scaleToDMX('pan', rawPan)
 
@@ -681,7 +718,7 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
         zone: 'all',
         parameter: 'pan',
         value: hephPanDMX,
-        source: 'hephaestus-runtime',
+        source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
       }]
 
       // MERGE: Hephaestus takes over
@@ -706,7 +743,7 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
         zone: 'all',
         parameter: 'pan',
         value: 204,
-        source: 'hephaestus-runtime',
+        source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
       }]
 
       const withHeph = applyHephaestusMerge([vibeState], hephOutputs)
@@ -729,7 +766,7 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
         zone: 'all',
         parameter: 'intensity',
         value: 200,
-        source: 'hephaestus-runtime',
+        source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
       }]
 
       const merged = applyHephaestusMerge([vibeState], hephOutputs)
@@ -744,7 +781,7 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
         zone: 'all',
         parameter: 'intensity',
         value: 50,
-        source: 'hephaestus-runtime',
+        source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
       }]
 
       const merged = applyHephaestusMerge([vibeState], hephOutputs)
@@ -759,7 +796,7 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
         zone: 'all',
         parameter: 'strobe',
         value: 80,
-        source: 'hephaestus-runtime',
+        source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
       }]
 
       const merged = applyHephaestusMerge([vibeState], hephOutputs)
@@ -774,7 +811,7 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
         zone: 'all',
         parameter: 'strobe',
         value: 200,
-        source: 'hephaestus-runtime',
+        source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
       }]
 
       const merged = applyHephaestusMerge([vibeState], hephOutputs)
@@ -790,7 +827,7 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
         parameter: 'color',
         value: 0,
         rgb: { r: 255, g: 0, b: 0 },
-        source: 'hephaestus-runtime',
+        source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
       }]
 
       const merged = applyHephaestusMerge([vibeState], hephOutputs)
@@ -809,7 +846,7 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
         zone: 'front',
         parameter: 'intensity',
         value: 255,
-        source: 'hephaestus-runtime',
+        source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
       }]
 
       const merged = applyHephaestusMerge([frontFixture, backFixture], hephOutputs)
@@ -828,10 +865,11 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
     
     test('Linear 0→1 over 1000ms: values at 0%, 25%, 50%, 75%, 100%', () => {
       const clip = forgeClip('timing-linear', [
-        linearCurve('intensity', 0, 1, 1000),
+        wrapCurveInTrack(linearCurve('intensity', 0, 1, 1000)),
       ], 1000)
 
-      const evaluator = new CurveEvaluator(clip.curves, clip.durationMs)
+      const curveMap = tracksToCurveMap(clip.tracks)
+      const evaluator = new CurveEvaluator(curveMap, clip.durationMs)
       
       expect(evaluator.getValue('intensity', 0)).toBeCloseTo(0, 2)
       expect(evaluator.getValue('intensity', 250)).toBeCloseTo(0.25, 2)
@@ -857,8 +895,6 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
       ])
 
       const evaluator = new CurveEvaluator(curves, 1000)
-
-      // Before second keyframe: should hold at 0.3
       expect(evaluator.getValue('intensity', 0)).toBeCloseTo(0.3, 2)
       expect(evaluator.getValue('intensity', 250)).toBeCloseTo(0.3, 2)
       expect(evaluator.getValue('intensity', 499)).toBeCloseTo(0.3, 2)
@@ -870,10 +906,11 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
 
     test('Edge case: time before first keyframe returns first value', () => {
       const clip = forgeClip('timing-edge-start', [
-        linearCurve('intensity', 0.5, 1.0, 1000),
+        wrapCurveInTrack(linearCurve('intensity', 0.5, 1.0, 1000)),
       ], 1000)
 
-      const evaluator = new CurveEvaluator(clip.curves, clip.durationMs)
+      const curveMap = tracksToCurveMap(clip.tracks)
+      const evaluator = new CurveEvaluator(curveMap, clip.durationMs)
       
       // Before the clip starts, should clamp to first keyframe value
       expect(evaluator.getValue('intensity', -100)).toBeCloseTo(0.5, 2)
@@ -881,10 +918,11 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
 
     test('Edge case: time after last keyframe returns last value', () => {
       const clip = forgeClip('timing-edge-end', [
-        linearCurve('intensity', 0, 0.75, 1000),
+        wrapCurveInTrack(linearCurve('intensity', 0, 0.75, 1000)),
       ], 1000)
 
-      const evaluator = new CurveEvaluator(clip.curves, clip.durationMs)
+      const curveMap = tracksToCurveMap(clip.tracks)
+      const evaluator = new CurveEvaluator(curveMap, clip.durationMs)
       
       // After clip ends, should clamp to last keyframe value
       expect(evaluator.getValue('intensity', 2000)).toBeCloseTo(0.75, 2)
@@ -902,10 +940,11 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
 
     test('Intensity ramp 0→1 over 1000ms produces monotonically increasing DMX', () => {
       const clip = forgeClip('full-ramp', [
-        linearCurve('intensity', 0, 1, 1000),
+        wrapCurveInTrack(linearCurve('intensity', 0, 1, 1000)),
       ], 1000)
 
-      const evaluator = new CurveEvaluator(clip.curves, clip.durationMs)
+      const curveMap = tracksToCurveMap(clip.tracks)
+      const evaluator = new CurveEvaluator(curveMap, clip.durationMs)
       const dmxValues: number[] = []
 
       // 10 frames over 1000ms = one frame every 100ms
@@ -933,19 +972,21 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
 
     test('Multi-param 10-frame: White + Amber + Dimmer all ramp together', () => {
       const clip = forgeClip('triple-ramp', [
-        linearCurve('intensity', 0, 1, 1000),
-        linearCurve('white', 0, 1, 1000),
-        linearCurve('amber', 0, 1, 1000),
+        wrapCurveInTrack(linearCurve('intensity', 0, 1, 1000)),
+        wrapCurveInTrack(linearCurve('white', 0, 1, 1000)),
+        wrapCurveInTrack(linearCurve('amber', 0, 1, 1000)),
       ], 1000)
 
-      const evaluator = new CurveEvaluator(clip.curves, clip.durationMs)
+      const curveMap = tracksToCurveMap(clip.tracks)
+      const evaluator = new CurveEvaluator(curveMap, clip.durationMs)
       const allStates: FixtureState[] = []
 
       for (let frame = 0; frame < 10; frame++) {
         const timeMs = frame * 100
         const outputs: HephFixtureOutput[] = []
 
-        for (const [paramName] of clip.curves) {
+        for (const track of clip.tracks) {
+          const paramName = track.paramId
           const raw = evaluator.getValue(paramName, timeMs)
           const dmx = scaleToDMX(paramName, raw)
           outputs.push({
@@ -953,7 +994,7 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
             zone: 'all',
             parameter: paramName,
             value: dmx,
-            source: 'hephaestus-runtime',
+            source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
           })
         }
 
@@ -1048,7 +1089,7 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
         parameter: 'pan',
         value: 128,   // coarse
         fine: 125,    // fine byte
-        source: 'hephaestus-runtime',
+        source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
       }]
 
       const baseStates = [createBaseFixtureState()]
@@ -1090,9 +1131,10 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
 
     test('Zoom 0.75 → DMX 191 through full pipeline', () => {
       const clip = forgeClip('ext-zoom', [
-        constantCurve('zoom', 0.75),
+        wrapCurveInTrack(constantCurve('zoom', 0.75)),
       ])
-      const evaluator = new CurveEvaluator(clip.curves, clip.durationMs)
+      const curveMap = tracksToCurveMap(clip.tracks)
+      const evaluator = new CurveEvaluator(curveMap, clip.durationMs)
       const raw = evaluator.getValue('zoom', 500)
       const dmx = scaleToDMX('zoom', raw)
 
@@ -1105,7 +1147,7 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
         zone: 'all',
         parameter: 'zoom',
         value: dmx,
-        source: 'hephaestus-runtime',
+        source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
       }]
       const merged = applyHephaestusMerge([createBaseFixtureState()], hephOutputs)
       expect(merged[0].zoom).toBe(191)
@@ -1113,9 +1155,10 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
 
     test('Focus 0.5 → DMX 128 through full pipeline', () => {
       const clip = forgeClip('ext-focus', [
-        constantCurve('focus', 0.5),
+        wrapCurveInTrack(constantCurve('focus', 0.5)),
       ])
-      const evaluator = new CurveEvaluator(clip.curves, clip.durationMs)
+      const curveMap = tracksToCurveMap(clip.tracks)
+      const evaluator = new CurveEvaluator(curveMap, clip.durationMs)
       const raw = evaluator.getValue('focus', 500)
       const dmx = scaleToDMX('focus', raw)
 
@@ -1126,7 +1169,7 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
         zone: 'all',
         parameter: 'focus',
         value: dmx,
-        source: 'hephaestus-runtime',
+        source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
       }]
       const merged = applyHephaestusMerge([createBaseFixtureState()], hephOutputs)
       expect(merged[0].focus).toBe(128)
@@ -1141,7 +1184,7 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
         zone: 'all',
         parameter: 'iris',
         value: dmx,
-        source: 'hephaestus-runtime',
+        source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
       }]
       const merged = applyHephaestusMerge([createBaseFixtureState()], hephOutputs)
       expect((merged[0] as any).iris).toBe(255)
@@ -1156,7 +1199,7 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
         zone: 'all',
         parameter: 'gobo1',
         value: dmx,
-        source: 'hephaestus-runtime',
+        source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
       }]
       const merged = applyHephaestusMerge([createBaseFixtureState()], hephOutputs)
       expect(merged[0].gobo).toBe(77)
@@ -1171,7 +1214,7 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
         zone: 'all',
         parameter: 'gobo2',
         value: dmx,
-        source: 'hephaestus-runtime',
+        source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
       }]
       const merged = applyHephaestusMerge([createBaseFixtureState()], hephOutputs)
       expect((merged[0] as any).gobo2).toBe(153)
@@ -1186,7 +1229,7 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
         zone: 'all',
         parameter: 'prism',
         value: dmx,
-        source: 'hephaestus-runtime',
+        source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
       }]
       const merged = applyHephaestusMerge([createBaseFixtureState()], hephOutputs)
       expect(merged[0].prism).toBe(128)
@@ -1194,24 +1237,27 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
 
     test('🥊 FULL PRO GAUNTLET: All 6 extended params + original 5 in one clip', () => {
       const clip = forgeClip('el-pro-completo', [
-        constantCurve('intensity', 1.0),
-        constantColorCurve(120, 100, 50),   // Pure green
-        constantCurve('white', 0.8),
-        constantCurve('amber', 0.6),
-        constantCurve('strobe', 0.25),
-        constantCurve('zoom', 0.75),
-        constantCurve('focus', 0.5),
-        constantCurve('iris', 0.9),
-        constantCurve('gobo1', 0.3),
-        constantCurve('gobo2', 0.6),
-        constantCurve('prism', 0.4),
+        wrapCurveInTrack(constantCurve('intensity', 1.0)),
+        wrapCurveInTrack(constantColorCurve(120, 100, 50)),   // Pure green
+        wrapCurveInTrack(constantCurve('white', 0.8)),
+        wrapCurveInTrack(constantCurve('amber', 0.6)),
+        wrapCurveInTrack(constantCurve('strobe', 0.25)),
+        wrapCurveInTrack(constantCurve('zoom', 0.75)),
+        wrapCurveInTrack(constantCurve('focus', 0.5)),
+        wrapCurveInTrack(constantCurve('iris', 0.9)),
+        wrapCurveInTrack(constantCurve('gobo1', 0.3)),
+        wrapCurveInTrack(constantCurve('gobo2', 0.6)),
+        wrapCurveInTrack(constantCurve('prism', 0.4)),
       ], 2000)
 
-      const evaluator = new CurveEvaluator(clip.curves, clip.durationMs)
+      const curveMap = tracksToCurveMap(clip.tracks)
+      const evaluator = new CurveEvaluator(curveMap, clip.durationMs)
       const outputs: HephFixtureOutput[] = []
       const clipTimeMs = 500
 
-      for (const [paramName, curve] of clip.curves) {
+      for (const track of clip.tracks) {
+        const paramName = track.paramId
+        const curve = track.curve
         if (curve.valueType === 'color') {
           const hsl = evaluator.getColorValue(paramName, clipTimeMs)
           const rgb = hslToRgb(hsl.h, hsl.s / 100, hsl.l / 100)
@@ -1221,7 +1267,7 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
             parameter: paramName,
             value: 0,
             rgb,
-            source: 'hephaestus-runtime',
+            source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
           })
         } else {
           const rawValue = evaluator.getValue(paramName, clipTimeMs)
@@ -1231,7 +1277,7 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
             zone: 'all',
             parameter: paramName,
             value: dmxValue,
-            source: 'hephaestus-runtime',
+            source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
           })
         }
       }
@@ -1411,7 +1457,7 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
         zone: 'all',
         parameter: 'intensity',
         value: dmx,
-        source: 'hephaestus-runtime',
+        source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
       }]
       const merged = applyHephaestusMerge([createBaseFixtureState()], hephOutputs)
       expect(merged[0].dimmer).toBe(191)
@@ -1436,16 +1482,16 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
     test('Clip Color + Clip Posición = ambos presentes en merge', () => {
       // CLIP A: Solo color (pure red)
       const clipColor = forgeClip('multiclip-color', [
-        constantColorCurve(0, 100, 50),
+        wrapCurveInTrack(constantColorCurve(0, 100, 50)),
       ], 2000)
 
       // CLIP B: Solo posición (pan=0.8)
       const clipPosition = forgeClip('multiclip-position', [
-        constantCurve('pan', 0.8),
+        wrapCurveInTrack(constantCurve('pan', 0.8)),
       ], 2000)
 
-      const evalColor = new CurveEvaluator(clipColor.curves, clipColor.durationMs)
-      const evalPos = new CurveEvaluator(clipPosition.curves, clipPosition.durationMs)
+      const evalColor = new CurveEvaluator(tracksToCurveMap(clipColor.tracks), clipColor.durationMs)
+      const evalPos = new CurveEvaluator(tracksToCurveMap(clipPosition.tracks), clipPosition.durationMs)
 
       // Evaluate both at t=500ms
       const allOutputs: HephFixtureOutput[] = []
@@ -1459,7 +1505,7 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
         parameter: 'color',
         value: 0,
         rgb,
-        source: 'hephaestus-runtime',
+        source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
       })
 
       // Position clip outputs
@@ -1472,7 +1518,7 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
         parameter: 'pan',
         value: panCoarse,
         fine: panFine,
-        source: 'hephaestus-runtime',
+        source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
       })
 
       // MERGE both into one fixture state
@@ -1495,15 +1541,15 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
     test('Two intensity clips → HTP picks the higher one', () => {
       // Clip A: intensity=0.5 (DMX 128)
       const clipA = forgeClip('multi-int-A', [
-        constantCurve('intensity', 0.5),
+        wrapCurveInTrack(constantCurve('intensity', 0.5)),
       ], 2000)
       // Clip B: intensity=0.8 (DMX 204)
       const clipB = forgeClip('multi-int-B', [
-        constantCurve('intensity', 0.8),
+        wrapCurveInTrack(constantCurve('intensity', 0.8)),
       ], 2000)
 
-      const evalA = new CurveEvaluator(clipA.curves, clipA.durationMs)
-      const evalB = new CurveEvaluator(clipB.curves, clipB.durationMs)
+      const evalA = new CurveEvaluator(tracksToCurveMap(clipA.tracks), clipA.durationMs)
+      const evalB = new CurveEvaluator(tracksToCurveMap(clipB.tracks), clipB.durationMs)
 
       const allOutputs: HephFixtureOutput[] = [
         {
@@ -1511,14 +1557,14 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
           zone: 'all',
           parameter: 'intensity',
           value: scaleToDMX('intensity', evalA.getValue('intensity', 500)),
-          source: 'hephaestus-runtime',
+          source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
         },
         {
           fixtureId: 'zone:all',
           zone: 'all',
           parameter: 'intensity',
           value: scaleToDMX('intensity', evalB.getValue('intensity', 500)),
-          source: 'hephaestus-runtime',
+          source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
         },
       ]
 
@@ -1535,14 +1581,14 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
           zone: 'all',
           parameter: 'strobe',
           value: scaleToDMX('strobe', 0.3),  // 77
-          source: 'hephaestus-runtime',
+          source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
         },
         {
           fixtureId: 'zone:all',
           zone: 'all',
           parameter: 'strobe',
           value: scaleToDMX('strobe', 0.4),  // 102
-          source: 'hephaestus-runtime',
+          source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
         },
       ]
 
@@ -1561,7 +1607,7 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
           parameter: 'color',
           value: 0,
           rgb: { r: 0, g: 0, b: 255 },
-          source: 'hephaestus-runtime',
+          source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
         },
         // White: 200
         {
@@ -1569,7 +1615,7 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
           zone: 'all',
           parameter: 'white',
           value: 200,
-          source: 'hephaestus-runtime',
+          source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
         },
         // Intensity: 180
         {
@@ -1577,7 +1623,7 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
           zone: 'all',
           parameter: 'intensity',
           value: 180,
-          source: 'hephaestus-runtime',
+          source: 'hephaestus-runtime', normalizedValue: 0, isCustomClip: true,
         },
       ]
 

@@ -25,7 +25,7 @@ import type {
   HephAutomationClipV3,
   HephAutomationClipSerialized 
 } from './types'
-import { serializeHephClip, deserializeHephClip } from './types'
+import { serializeHephClip, serializeHephClipV3, deserializeHephClip } from './types'
 import { getHephaestusClipIndex } from './HephaestusClipIndex'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -166,7 +166,7 @@ class HephFileIO {
       filePayload = {
         $schema: 'luxsync.lfx/3.0',
         version: '1.0.0',
-        clip: clip,
+        clip: serializeHephClipV3(clip as HephAutomationClipV3),
         checksum: ''
       };
     } else {

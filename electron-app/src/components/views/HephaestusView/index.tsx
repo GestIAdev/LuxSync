@@ -41,7 +41,7 @@ import { SafetyStrip } from './safety/SafetyStrip'
 import { DnaRail, DEFAULT_COGNITIVE_DNA, DEFAULT_SIMULATION_META } from './dna/DnaRail'
 import type { CognitiveDNA, SimulationMeta, SpatialBehavior } from '../../../core/arsenal/lfxTypes'
 import { useHephPreview } from './useHephPreview'
-import { useTemporalStore } from './useTemporalStore'
+import { useHephaestusEditorStore } from '../../../core/hephaestus/store/useHephaestusEditorStore'
 import { useStageStore, selectFixtures } from '../../../stores/stageStore'
 import { HephLogoIcon } from '../../icons/LuxIcons'
 import type { 
@@ -49,13 +49,16 @@ import type {
   HephParamId, 
   HephInterpolation, 
   HephCurveMode, 
+  HephAutomationClipV3,
   HephAutomationClip,
   HephAutomationClipSerialized,
   HephKeyframe,
+  HephTrack,
+  ZoneTarget,
   PhaseConfig 
 } from '../../../core/hephaestus/types'
 import type { EffectZone } from '../../../core/effects/types'
-import { serializeHephClip, deserializeHephClip } from '../../../core/hephaestus/types'
+import { serializeHephClip, serializeHephClipV3, deserializeHephClip } from '../../../core/hephaestus/types'
 // ⚒️ WAVE 2044: Navigation store for Chronos → Hephaestus bridge (THE HANDOFF)
 import { useNavigationStore } from '../../../stores/navigationStore'
 // ⚒️ WAVE 2044.3: Audio store for BPM injection (SYNAPSE REPAIR)
@@ -76,6 +79,51 @@ function getPlotValue(value: number | { h: number; s: number; l: number }, value
     return value.h / 360
   }
   return value as number
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ⚒️ WAVE 7000: V2 → V3 ADAPTER (transitional — TODO: replace with proper migrator)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Converts a legacy V2 HephAutomationClip (curves: Map) to V3 (tracks: []).
+ * Each V2 curve becomes a single track with zones from clip.zones.
+ */
+function v2ToV3Clip(v2: HephAutomationClip): HephAutomationClipV3 {
+  const tracks: HephTrack[] = []
+  const spatialZones: ZoneTarget[] = (v2.zones as unknown as ZoneTarget[]).length > 0
+    ? v2.zones as unknown as ZoneTarget[]
+    : ['all']
+
+  for (const [paramId, curve] of v2.curves) {
+    tracks.push({
+      id: `legacy-${paramId}-${v2.id}`,
+      paramId,
+      zones: spatialZones,
+      curve,
+      blendMode: paramId === 'intensity' ? 'max' : 'replace',
+      phaseConfig: v2.selector?.phase as unknown as HephTrack['phaseConfig'],
+    })
+  }
+
+  return {
+    id: v2.id,
+    name: v2.name,
+    author: v2.author,
+    category: v2.category,
+    tags: v2.tags,
+    vibeCompat: v2.vibeCompat,
+    spatialZones,
+    mixBus: v2.mixBus,
+    priority: v2.priority,
+    durationMs: v2.durationMs,
+    effectType: v2.effectType,
+    tracks,
+    staticParams: v2.staticParams,
+    cognitiveDNA: v2.cognitiveDNA,
+    simulationMeta: v2.simulationMeta,
+    schemaVersion: '3.0',
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -107,13 +155,37 @@ const HEPH_DRAG_MIME = 'application/luxsync-heph'
 // ═══════════════════════════════════════════════════════════════════════════
 
 const HephaestusView: React.FC = () => {
-  // ── WAVE 2043: Temporal Store (Undo/Redo) ──
-  const { state: temporal, actions: temporalActions } = useTemporalStore(createDummyClip)
-  const clip = temporal.clip
-  const setClip = temporalActions.setClip
+  // ── WAVE 7000: V3 Native Editor Store ──
+  const clip = useHephaestusEditorStore(state => state.clip)
+  const activeTrackId = useHephaestusEditorStore(state => state.selection.activeTrackId)
+  const selectTrack = useHephaestusEditorStore(state => state.selectTrack)
+  const undo = useHephaestusEditorStore(state => state.undo)
+  const redo = useHephaestusEditorStore(state => state.redo)
+  const undoStackLen = useHephaestusEditorStore(state => state._undoStack.length)
+  const redoStackLen = useHephaestusEditorStore(state => state._redoStack.length)
+  const viewport = useHephaestusEditorStore(state => state.viewport)
+  const setViewport = useHephaestusEditorStore(state => state.setViewport)
+  const loadClip = useHephaestusEditorStore(state => state.loadClip)
+  const storeIsDirty = useHephaestusEditorStore(state => state.isDirty)
+
+  // TODO: Migrar a actions V3 — setClip is a V2 generic updater, replace with specific store actions
+  const setClip = useCallback((updater: (prev: HephAutomationClipV3) => HephAutomationClipV3) => {
+    const currentClip = useHephaestusEditorStore.getState().clip
+    if (!currentClip) return
+    const nextClip = updater(currentClip)
+    useHephaestusEditorStore.setState({ clip: nextClip, isDirty: true })
+  }, [])
+
+  // TODO: Migrar a actions V3 — temporalActions shim: snapshot() is automatic in V3 via mutate()
+  const temporalActions = {
+    snapshot: () => { /* no-op: V3 auto-snapshots via mutate() */ },
+    undo,
+    redo,
+    resetWithClip: (newClip: HephAutomationClipV3) => loadClip(newClip),
+    setViewport,
+  }
 
   // ── State ──
-  const [activeParam, setActiveParam] = useState<HephParamId>('intensity')
   const [selectedKeyframeIdx, setSelectedKeyframeIdx] = useState<number | null>(null)
   /** ⚒️ WAVE 2043: Multi-selection set for batch operations */
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set())
@@ -157,7 +229,8 @@ const HephaestusView: React.FC = () => {
   // ── WAVE 4811: DNA Designer Rail ──
   const [showDna, setShowDna] = useState(false)
   const stageFixtures = useStageStore(selectFixtures)
-  const preview = useHephPreview(clip, stageFixtures)
+  // TODO: Migrar useHephPreview to accept HephAutomationClipV3
+  const preview = useHephPreview(clip as unknown as HephAutomationClip, stageFixtures)
 
   // ── WAVE 2213: Load Show desde Hephaestus ──
   const showFile = useStageStore(state => state.showFile)
@@ -192,22 +265,55 @@ const HephaestusView: React.FC = () => {
     bezierHandles?: [number, number, number, number]
   }>>([])
 
-  // ── Derived ──
-  const activeCurve = useMemo(
-    () => clip.curves.get(activeParam) ?? null,
-    [clip, activeParam]
-  )
+  // ── Derived (V3: based on clip.tracks) ──
+  const activeCurve = useMemo(() => {
+    if (!clip || !activeTrackId) return null
+    const track = clip.tracks.find(t => t.id === activeTrackId)
+    return track ? track.curve : null
+  }, [clip, activeTrackId])
 
-  const paramIds = useMemo<HephParamId[]>(
-    () => Array.from(clip.curves.keys()) as HephParamId[],
-    [clip]
-  )
+  const paramIds = useMemo<HephParamId[]>(() => {
+    if (!clip) return []
+    return Array.from(new Set(clip.tracks.map(t => t.paramId)))
+  }, [clip])
 
   // ── Available params for add dropdown (WAVE 2030.8) ──
-  const availableParams = useMemo<HephParamId[]>(
-    () => ALL_PARAM_IDS.filter((p: HephParamId) => !clip.curves.has(p)),
-    [clip]
-  )
+  const availableParams = useMemo<HephParamId[]>(() => {
+    if (!clip) return ALL_PARAM_IDS
+    const used = new Set(clip.tracks.map(t => t.paramId))
+    return ALL_PARAM_IDS.filter(p => !used.has(p))
+  }, [clip])
+
+  // ── Derived activeParam from active track (V3 compatibility shim) ──
+  const activeParam = useMemo<HephParamId | null>(() => {
+    if (!clip || !activeTrackId) return null
+    const track = clip.tracks.find(t => t.id === activeTrackId)
+    return track ? track.paramId : null
+  }, [clip, activeTrackId])
+
+  // TODO: Migrar a actions V3 — setActiveParam should use selectTrack(trackId) directly
+  const setActiveParam = useCallback((paramId: HephParamId) => {
+    const currentClip = useHephaestusEditorStore.getState().clip
+    if (!currentClip) return
+    const track = currentClip.tracks.find(t => t.paramId === paramId)
+    if (track) selectTrack(track.id)
+  }, [selectTrack])
+
+  // ── Derived activePhaseConfig from active track (V3: phase is per-track) ──
+  const activePhaseConfig = useMemo(() => {
+    if (!clip || !activeTrackId) return null
+    const track = clip.tracks.find(t => t.id === activeTrackId)
+    return track?.phaseConfig ?? null
+  }, [clip, activeTrackId])
+
+  // TODO: Migrar a actions V3 — temporal shim for render section (undo/redo buttons)
+  const temporal = {
+    canUndo: undoStackLen > 0,
+    canRedo: redoStackLen > 0,
+    undoDepth: undoStackLen,
+    redoDepth: redoStackLen,
+    viewport,
+  }
 
   // ── Group available params by category (WAVE 2030.9) ──
   const groupedAvailableParams = useMemo(() => {
@@ -348,8 +454,7 @@ const HephaestusView: React.FC = () => {
 
     setIsSaving(true)
     try {
-      // Serialize the clip (Map → Record)
-      const serialized = serializeHephClip(clip)
+      const serialized = serializeHephClipV3(clip)
       const result = await window.luxsync.hephaestus.save(serialized)
       
       if (result.success) {
@@ -362,7 +467,7 @@ const HephaestusView: React.FC = () => {
         // ⚒️ WAVE 2044: HOT-RELOAD — Notify Chronos that a clip was updated.
         // Chronos listens for this event and reloads any FXClip whose
         // hephClip.id matches, updating its embedded Diamond Data in-place.
-        const serializedForEvent = serializeHephClip(clip)
+        const serializedForEvent = serializeHephClipV3(clip)
         window.dispatchEvent(new CustomEvent('luxsync:heph-clip-saved', {
           detail: {
             clipId: clip.id,
@@ -404,8 +509,7 @@ const HephaestusView: React.FC = () => {
       // Add "(Copy)" suffix to name
       clonedClip.name = `${clip.name} (Copy)`
       
-      // Serialize and save
-      const serialized = serializeHephClip(clonedClip)
+      const serialized = serializeHephClipV3(clonedClip)
       const result = await window.luxsync.hephaestus.save(serialized)
       
       if (result.success) {
@@ -440,17 +544,19 @@ const HephaestusView: React.FC = () => {
       const result = await window.luxsync.hephaestus.load(clipId)
       
       if (result.success && result.clip) {
-        // Deserialize (Record → Map)
-        const loadedClip = deserializeHephClip(result.clip as HephAutomationClipSerialized)
-        temporalActions.resetWithClip(loadedClip)
+        // TODO: Migrar deserializeHephClip to V3 — currently deserializes V2 then converts
+        const v2Clip = deserializeHephClip(result.clip as HephAutomationClipSerialized)
+        const v3Clip = v2ToV3Clip(v2Clip)
+        temporalActions.resetWithClip(v3Clip)
         setIsDirty(false)
         setSelectedKeyframeIdx(null)
         
-        // Set first param as active
-        const firstParam = Array.from(loadedClip.curves.keys())[0]
-        if (firstParam) setActiveParam(firstParam)
+        // Select first track
+        if (v3Clip.tracks.length > 0) {
+          selectTrack(v3Clip.tracks[0].id)
+        }
         
-        console.log(`[Hephaestus] Loaded clip: ${loadedClip.name}`)
+        console.log(`[Hephaestus] Loaded clip: ${v3Clip.name}`)
       } else {
         console.error('[Hephaestus] Load failed:', result.error)
       }
@@ -530,16 +636,21 @@ const HephaestusView: React.FC = () => {
   }, [])
 
   // WAVE 2030.8: Create clip from modal and save immediately
-  const handleCreateClip = useCallback(async (newClip: HephAutomationClip) => {
+  // TODO: Migrar NewClipModal to produce V3 clips directly
+  const handleCreateClip = useCallback(async (newClipV2: HephAutomationClip) => {
+    const newClip = v2ToV3Clip(newClipV2)
     temporalActions.resetWithClip(newClip)
-    setActiveParam('intensity')  // Default to intensity
+    // Select intensity track if it exists, else first track
+    const intensityTrack = newClip.tracks.find(t => t.paramId === 'intensity')
+    if (intensityTrack) selectTrack(intensityTrack.id)
+    else if (newClip.tracks.length > 0) selectTrack(newClip.tracks[0].id)
     setSelectedKeyframeIdx(null)
     setIsDirty(true)
     
     // Auto-save immediately
     if (window.luxsync?.hephaestus?.save) {
       try {
-        const serialized = serializeHephClip(newClip)
+        const serialized = serializeHephClipV3(newClip)
         const result = await window.luxsync.hephaestus.save(serialized)
         if (result.success) {
           console.log(`[Hephaestus] Created & saved new clip: ${newClip.name}`)
@@ -554,27 +665,30 @@ const HephaestusView: React.FC = () => {
   }, [loadLibrary])
 
   // WAVE 2030.13: Zone targeting handler
+  // TODO: Migrar a actions V3 — zones are now spatialZones in V3
   const handleZonesChange = useCallback((zones: EffectZone[]) => {
     temporalActions.snapshot()
     setClip(prev => ({
       ...prev,
-      zones
+      spatialZones: zones as readonly ZoneTarget[]
     }))
     setIsDirty(true)
   }, [temporalActions])
 
   // ⚒️ WAVE 2403: Phase Distribution config handler
+  // TODO: Migrar a actions V3 — phase config is now per-track in V3 (track.phaseConfig)
   const handlePhaseConfigChange = useCallback((phaseConfig: PhaseConfig) => {
+    if (!activeTrackId) return
     temporalActions.snapshot()
-    setClip(prev => ({
-      ...prev,
-      selector: {
-        ...(prev.selector ?? { target: 'all' }),
-        phase: phaseConfig,
-      },
-    }))
+    setClip(prev => {
+      const trackIdx = prev.tracks.findIndex(t => t.id === activeTrackId)
+      if (trackIdx === -1) return prev
+      const newTracks = [...prev.tracks]
+      newTracks[trackIdx] = { ...newTracks[trackIdx], phaseConfig: phaseConfig as unknown as import('../../../core/hephaestus/phase/PhaseConfigPro').PhaseConfigPro }
+      return { ...prev, tracks: newTracks }
+    })
     setIsDirty(true)
-  }, [temporalActions])
+  }, [temporalActions, activeTrackId])
 
   // ═══════════════════════════════════════════════════════════════════════
   // WAVE 2030.6 — Category Toggle & Drag-and-Drop
@@ -649,13 +763,16 @@ const HephaestusView: React.FC = () => {
   // CALLBACKS — Curve Mutations (immutable updates)
   // ═══════════════════════════════════════════════════════════════════════
 
-  const updateCurve = useCallback((paramId: HephParamId, updater: (curve: HephCurve) => HephCurve) => {
-    setClip((prev: HephAutomationClip): HephAutomationClip => {
-      const newCurves = new Map<HephParamId, HephCurve>(prev.curves)
-      const existing = newCurves.get(paramId)
-      if (!existing) return prev
-      newCurves.set(paramId, updater(existing))
-      return { ...prev, curves: newCurves }
+  // TODO: Migrar a actions V3 — updateCurve should use store mutate() with track-based updates
+  const updateCurve = useCallback((paramId: HephParamId | null, updater: (curve: HephCurve) => HephCurve) => {
+    if (!paramId) return
+    setClip((prev: HephAutomationClipV3): HephAutomationClipV3 => {
+      const trackIdx = prev.tracks.findIndex(t => t.paramId === paramId)
+      if (trackIdx === -1) return prev
+      const existing = prev.tracks[trackIdx].curve
+      const newTracks = [...prev.tracks]
+      newTracks[trackIdx] = { ...newTracks[trackIdx], curve: updater(existing) }
+      return { ...prev, tracks: newTracks }
     })
     setIsDirty(true)
   }, [])
@@ -665,7 +782,8 @@ const HephaestusView: React.FC = () => {
    * Captura snapshot ANTES de mutar. Usar para acciones destructivas
    * que NO son drag continuo (add, delete, interpolation, template, etc.)
    */
-  const updateCurveWithSnapshot = useCallback((paramId: HephParamId, updater: (curve: HephCurve) => HephCurve) => {
+  const updateCurveWithSnapshot = useCallback((paramId: HephParamId | null, updater: (curve: HephCurve) => HephCurve) => {
+    if (!paramId) return
     temporalActions.snapshot()
     updateCurve(paramId, updater)
   }, [temporalActions, updateCurve])
@@ -773,17 +891,16 @@ const HephaestusView: React.FC = () => {
     temporalActions.snapshot()
     // Capture original positions of ALL selected keyframes
     const origins = new Map<number, { timeMs: number; value: number | { h: number; s: number; l: number } }>()
-    const curve = clip.curves.get(activeParam)
-    if (curve) {
+    if (activeCurve) {
       for (const idx of selectedIndices) {
-        const kf = curve.keyframes[idx]
+        const kf = activeCurve.keyframes[idx]
         if (kf) {
           origins.set(idx, { timeMs: kf.timeMs, value: kf.value })
         }
       }
     }
     batchOriginRef.current = origins
-  }, [temporalActions, clip, activeParam, selectedIndices])
+  }, [temporalActions, activeCurve, selectedIndices])
 
   /**
    * ⚒️ WAVE 2043.2: BATCH KEYFRAME MOVE — applies delta from drag origin to ALL selected.
@@ -1083,11 +1200,12 @@ const HephaestusView: React.FC = () => {
   // WAVE 2030.8 — Parameter Add/Remove
   // ═══════════════════════════════════════════════════════════════════════
 
+  // TODO: Migrar a actions V3 — should use store.addTrack() instead of setClip
   const handleAddParam = useCallback((paramId: HephParamId) => {
     temporalActions.snapshot()
-    setClip((prev: HephAutomationClip): HephAutomationClip => {
+    setClip((prev: HephAutomationClipV3): HephAutomationClipV3 => {
       // Don't add if already exists
-      if (prev.curves.has(paramId)) return prev
+      if (prev.tracks.some(t => t.paramId === paramId)) return prev
       
       // Create new curve with sensible defaults
       const isColor = paramId === 'color'
@@ -1103,9 +1221,15 @@ const HephaestusView: React.FC = () => {
         mode: 'absolute'
       }
       
-      const newCurves = new Map(prev.curves)
-      newCurves.set(paramId, newCurve)
-      return { ...prev, curves: newCurves }
+      const newTrack: HephTrack = {
+        id: crypto.randomUUID(),
+        paramId,
+        zones: prev.spatialZones.length > 0 ? [...prev.spatialZones] : ['all'],
+        curve: newCurve,
+        blendMode: paramId === 'intensity' ? 'max' : 'replace',
+      }
+      
+      return { ...prev, tracks: [...prev.tracks, newTrack] }
     })
     setActiveParam(paramId)
     setShowAddParamDropdown(false)
@@ -1113,29 +1237,29 @@ const HephaestusView: React.FC = () => {
     console.log(`[Hephaestus] Added parameter: ${paramId}`)
   }, [])
 
+  // TODO: Migrar a actions V3 — should use store.removeTrack() instead of setClip
   const handleRemoveParam = useCallback((paramId: HephParamId) => {
     temporalActions.snapshot()
-    setClip((prev: HephAutomationClip): HephAutomationClip => {
+    setClip((prev: HephAutomationClipV3): HephAutomationClipV3 => {
       // ⚒️ WAVE 2040.20: HIGHLANDER FIX — 0 params is a valid state.
-      // An empty clip is a blank canvas, not a corrupted state.
-      if (!prev.curves.has(paramId)) return prev
+      if (!prev.tracks.some(t => t.paramId === paramId)) return prev
       
-      const newCurves = new Map(prev.curves)
-      newCurves.delete(paramId)
-      return { ...prev, curves: newCurves }
+      return { ...prev, tracks: prev.tracks.filter(t => t.paramId !== paramId) }
     })
     
     // If removing active param, switch to another (or null)
     if (activeParam === paramId) {
-      const remaining = Array.from(clip.curves.keys()).filter(p => p !== paramId)
+      const remaining = paramIds.filter(p => p !== paramId)
       if (remaining.length > 0) {
         setActiveParam(remaining[0] as HephParamId)
+      } else {
+        selectTrack(null)
       }
     }
     setSelectedKeyframeIdx(null)
     setIsDirty(true)
     console.log(`[Hephaestus] Removed parameter: ${paramId}`)
-  }, [activeParam, clip.curves])
+  }, [activeParam, paramIds, selectTrack])
 
   // ═══════════════════════════════════════════════════════════════════════
   // WAVE 2030.8 — Template & Bezier Preset Application
@@ -1178,13 +1302,12 @@ const HephaestusView: React.FC = () => {
   const handleApplyShapeToSelection = useCallback((shapeId: string) => {
     if (selectedIndices.size < 2) return
 
-    const curve = clip.curves.get(activeParam)
-    if (!curve) return
+    if (!activeCurve) return
 
     // Compute time window from selected keyframes
     const selectedKfs = Array.from(selectedIndices)
-      .filter(i => i >= 0 && i < curve.keyframes.length)
-      .map(i => curve.keyframes[i])
+      .filter(i => i >= 0 && i < activeCurve.keyframes.length)
+      .map(i => activeCurve.keyframes[i])
 
     if (selectedKfs.length < 2) return
 
@@ -1194,7 +1317,7 @@ const HephaestusView: React.FC = () => {
     if (endTimeMs <= startTimeMs) return
 
     // Value window: use the curve's full range for maximum expression
-    const [rangeMin, rangeMax] = curve.range
+    const [rangeMin, rangeMax] = activeCurve.range
 
     // Generate shape keyframes mapped into the selection window
     const shapeKeyframes = generateShapeInWindow(
@@ -1220,17 +1343,14 @@ const HephaestusView: React.FC = () => {
       return { ...curveData, keyframes: merged }
     })
 
-    // Select the new shape keyframes
-    // After merge, find indices of keyframes with times matching shapeKeyframes
-    const newCurve = clip.curves.get(activeParam)
-    if (newCurve) {
-      // Defer selection update — the curve will be updated on next render
+    // Select the new shape keyframes — deferred to next render
+    if (activeCurve) {
       setTimeout(() => {
-        const updatedCurve = clip.curves.get(activeParam)
-        if (!updatedCurve) return
+        const currentTrack = useHephaestusEditorStore.getState().clip?.tracks.find(t => t.id === activeTrackId)
+        if (!currentTrack) return
         const newSelection = new Set<number>()
         for (const shapeKf of shapeKeyframes) {
-          const idx = updatedCurve.keyframes.findIndex(kf => kf.timeMs === shapeKf.timeMs)
+          const idx = currentTrack.curve.keyframes.findIndex(kf => kf.timeMs === shapeKf.timeMs)
           if (idx >= 0) newSelection.add(idx)
         }
         setSelectedIndices(newSelection)
@@ -1239,7 +1359,7 @@ const HephaestusView: React.FC = () => {
 
     setSelectedKeyframeIdx(null)
     console.log(`[Hephaestus] ⚒️ Applied shape "${shapeId}" to ${selectedKfs.length} keyframes [${startTimeMs}ms → ${endTimeMs}ms]`)
-  }, [activeParam, clip.curves, selectedIndices, updateCurveWithSnapshot])
+  }, [activeParam, activeCurve, activeTrackId, selectedIndices, updateCurveWithSnapshot])
 
   // ═══════════════════════════════════════════════════════════════════════
   // WAVE 2030.26 — Editable Header (Name & Duration)
@@ -1438,7 +1558,7 @@ const HephaestusView: React.FC = () => {
           
           {/* WAVE 2030.13: Zone Selector */}
           <ZoneSelector
-            selectedZones={clip.zones}
+            selectedZones={clip.spatialZones as unknown as EffectZone[]}
             onZonesChange={handleZonesChange}
             disabled={isSaving}
           />
@@ -1446,10 +1566,10 @@ const HephaestusView: React.FC = () => {
           {/* 🛡️ WAVE 4811: Safety Strip G1-G7 */}
           <span className="heph-header__divider">│</span>
           <SafetyStrip
-            clip={clip}
+            clip={clip as unknown as HephAutomationClip}
             onClipPatch={(patch) => {
               temporalActions.snapshot()
-              setClip(prev => ({ ...prev, ...patch }))
+              setClip(prev => ({ ...prev, ...patch } as HephAutomationClipV3))
               setIsDirty(true)
             }}
           />
@@ -1671,16 +1791,19 @@ const HephaestusView: React.FC = () => {
                 <span className="heph-param-sidebar__empty-hint">Click + to add automation</span>
               </div>
             ) : (
-              paramIds.map(paramId => (
+              paramIds.map(paramId => {
+                const track = clip.tracks.find(t => t.paramId === paramId)
+                return (
                 <ParameterLane
                   key={paramId}
                   paramId={paramId}
-                  curve={clip.curves.get(paramId)!}
+                  curve={track!.curve}
                   isActive={paramId === activeParam}
                   onClick={() => setActiveParam(paramId)}
                   onRemove={handleRemoveParam}
                 />
-              ))
+                )
+              })
             )}
           </div>
           
@@ -1735,16 +1858,16 @@ const HephaestusView: React.FC = () => {
           {/* ⚡ WAVE 2403.1: Phase Engine Toggle Button + Floating HUD */}
           <div className="heph-phase-trigger" ref={phasePanelRef}>
             <button
-              className={`heph-phase-trigger__btn ${showPhasePanel ? 'heph-phase-trigger__btn--open' : ''} ${(clip.selector?.phase?.spread ?? 0) > 0 ? 'heph-phase-trigger__btn--active' : ''}`}
+              className={`heph-phase-trigger__btn ${showPhasePanel ? 'heph-phase-trigger__btn--open' : ''} ${((activePhaseConfig?.spreadDeg ?? 0) / 1440) > 0 ? 'heph-phase-trigger__btn--active' : ''}`}
               onClick={() => setShowPhasePanel(!showPhasePanel)}
               type="button"
               title="Phase Distribution Engine"
             >
               <span className="heph-phase-trigger__icon">🌊</span>
               <span className="heph-phase-trigger__label">PHASE ENGINE</span>
-              {(clip.selector?.phase?.spread ?? 0) > 0 && (
+              {((activePhaseConfig?.spreadDeg ?? 0) / 1440) > 0 && (
                 <span className="heph-phase-trigger__badge">
-                  {Math.round((clip.selector?.phase?.spread ?? 0) * 100)}%
+                  {Math.round(((activePhaseConfig?.spreadDeg ?? 0) / 1440) * 100)}%
                 </span>
               )}
             </button>
@@ -1753,9 +1876,9 @@ const HephaestusView: React.FC = () => {
             {showPhasePanel && (
               <div className="heph-phase-float">
                 <PhaseControls
-                  config={clip.selector?.phase ?? null}
+                  config={activePhaseConfig as unknown as PhaseConfig | null}
                   onChange={handlePhaseConfigChange}
-                  fixtureCount={clip.zones.length}
+                  fixtureCount={clip.spatialZones.length}
                   disabled={isSaving}
                   spatialBehavior={clip.cognitiveDNA?.spatialBehavior}
                   onSpatialBehaviorChange={(sb: SpatialBehavior) => {

@@ -17,8 +17,8 @@
 
 import { ipcMain } from 'electron'
 import { hephFileIO } from './HephFileIO'
-import type { HephAutomationClipSerialized } from './types'
-import { deserializeHephClip, serializeHephClip } from './types'
+import type { HephAutomationClipSerialized, HephAutomationClipV3 } from './types'
+import { deserializeHephClip, serializeHephClip, serializeHephClipV3 } from './types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SETUP FUNCTION
@@ -40,14 +40,24 @@ export function setupHephIPCHandlers(): void {
    * @param clipData - Serialized clip data (Record, not Map)
    * @returns { success, filePath, error }
    */
-  ipcMain.handle('heph:save', async (_event, clipData: HephAutomationClipSerialized) => {
+  ipcMain.handle('heph:save', async (_event, clipData: HephAutomationClipSerialized | HephAutomationClipV3) => {
     console.log('[HephIPC] Save clip:', clipData.name)
     
     try {
-      // Deserialize for internal processing (Record → Map)
-      const clip = deserializeHephClip(clipData)
+      // V3 detection: schemaVersion '3.0' + tracks array → pass directly
+      const isV3 = (clipData as HephAutomationClipV3).schemaVersion === '3.0' && Array.isArray((clipData as HephAutomationClipV3).tracks)
       
-      // Save to disk
+      if (isV3) {
+        const filePath = await hephFileIO.saveClip(clipData as HephAutomationClipV3)
+        return {
+          success: true,
+          filePath,
+          id: (clipData as HephAutomationClipV3).id,
+        }
+      }
+      
+      // V2 legacy path: deserialize (Record → Map) then save
+      const clip = deserializeHephClip(clipData as HephAutomationClipSerialized)
       const filePath = await hephFileIO.saveClip(clip)
       
       return {

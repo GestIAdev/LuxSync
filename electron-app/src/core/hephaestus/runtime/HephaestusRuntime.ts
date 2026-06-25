@@ -45,6 +45,7 @@ import type {
   FixturePhase,
   PhaseConfig,
 } from '../types'
+import type { PhaseConfigPro } from '../phase/PhaseConfigPro'
 import type { EffectZone } from '../../effects/types'
 import { deserializeHephClip, type HephAutomationClipSerialized } from '../types'
 import { getHephaestusClipIndex } from '../HephaestusClipIndex'
@@ -945,10 +946,22 @@ export class HephaestusRuntime {
    * Devuelve null si no hay configuración significativa (spread 0 incluido).
    */
   private _extractPhaseConfig(
-    phase: PhaseConfig | undefined,
+    phase: PhaseConfig | PhaseConfigPro | undefined,
     legacySpread: number | undefined,
   ): PhaseConfig | null {
     if (phase) {
+      // PhaseConfigPro (V3) → normalize to PhaseConfig (V2) for runtime
+      if ('spreadDeg' in phase) {
+        const pro = phase as PhaseConfigPro
+        const normalizedSpread = pro.spreadDeg / 1440
+        if (normalizedSpread <= 0) return null
+        return {
+          spread: normalizedSpread,
+          symmetry: pro.symmetry as 'linear' | 'mirror' | 'center-out',
+          wings: pro.wings,
+          direction: pro.direction,
+        }
+      }
       return phase.spread > 0 ? phase : null
     }
     if (legacySpread != null && legacySpread > 0) {

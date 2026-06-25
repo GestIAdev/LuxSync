@@ -512,7 +512,7 @@ export interface HephTrack {
    * exactamente un ciclo después que el primero. El offset se resta al
    * tiempo del clip → `localElapsedMs = max(0, clipTime - fixtureOffsetMs)`.
    */
-  phaseConfig?: PhaseConfig
+  phaseConfig?: import('./phase/PhaseConfigPro').PhaseConfigPro
 }
 
 /**
@@ -724,6 +724,69 @@ export function deserializeHephClip(serialized: HephAutomationClipSerialized): H
     cognitiveDNA: serialized.cognitiveDNA,   // WAVE 4811: Restore from IPC
     simulationMeta: serialized.simulationMeta, // WAVE 4811: Restore from IPC
   }
+}
+
+/**
+ * ⚒️ WAVE 7002 — Serializador nativo V3.
+ *
+ * Toma el estado inmaculado del Store (Immer) y devuelve un objeto
+ * JSON-ready limpio, descartando cualquier variable efímera de la UI.
+ * Deep clone de tracks, curves, keyframes y nested objects.
+ */
+export function serializeHephClipV3(clip: HephAutomationClipV3): HephAutomationClipV3 {
+  const cleanTracks: HephTrack[] = clip.tracks.map(track => ({
+    id: track.id,
+    paramId: track.paramId,
+    zones: [...track.zones],
+    curve: {
+      paramId: track.curve.paramId,
+      valueType: track.curve.valueType,
+      range: [...track.curve.range] as [number, number],
+      defaultValue: typeof track.curve.defaultValue === 'object' && track.curve.defaultValue !== null
+        ? { ...(track.curve.defaultValue as HSL) }
+        : track.curve.defaultValue,
+      keyframes: track.curve.keyframes.map(kf => ({
+        timeMs: kf.timeMs,
+        value: typeof kf.value === 'object' && kf.value !== null
+          ? { ...(kf.value as HSL) }
+          : kf.value,
+        interpolation: kf.interpolation,
+        bezierHandles: kf.bezierHandles ? [...kf.bezierHandles] as [number, number, number, number] : undefined,
+        audioBinding: kf.audioBinding ? {
+          source: kf.audioBinding.source,
+          inputRange: [...kf.audioBinding.inputRange] as [number, number],
+          outputRange: [...kf.audioBinding.outputRange] as [number, number],
+          smoothing: kf.audioBinding.smoothing,
+        } : undefined,
+      })),
+      mode: track.curve.mode,
+    },
+    dimmerScale: track.dimmerScale,
+    colorOverride: track.colorOverride ? { ...track.colorOverride } : undefined,
+    blendMode: track.blendMode,
+    cell: track.cell,
+    selector: track.selector ? JSON.parse(JSON.stringify(track.selector)) : undefined,
+    phaseConfig: track.phaseConfig ? { ...track.phaseConfig } : undefined,
+  }));
+
+  return {
+    id: clip.id,
+    name: clip.name,
+    author: clip.author,
+    category: clip.category,
+    tags: [...clip.tags],
+    vibeCompat: [...clip.vibeCompat],
+    spatialZones: [...clip.spatialZones],
+    mixBus: clip.mixBus,
+    priority: clip.priority,
+    durationMs: clip.durationMs,
+    effectType: clip.effectType,
+    tracks: cleanTracks,
+    staticParams: JSON.parse(JSON.stringify(clip.staticParams)),
+    cognitiveDNA: clip.cognitiveDNA ? JSON.parse(JSON.stringify(clip.cognitiveDNA)) : undefined,
+    simulationMeta: clip.simulationMeta ? JSON.parse(JSON.stringify(clip.simulationMeta)) : undefined,
+    schemaVersion: '3.0',
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

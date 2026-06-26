@@ -44,21 +44,20 @@ import { useHephPreview } from './useHephPreview'
 import { useHephaestusEditorStore } from '../../../core/hephaestus/store/useHephaestusEditorStore'
 import { useStageStore, selectFixtures } from '../../../stores/stageStore'
 import { HephLogoIcon } from '../../icons/LuxIcons'
-import type { 
-  HephCurve, 
-  HephParamId, 
-  HephInterpolation, 
-  HephCurveMode, 
+import type {
+  HephCurve,
+  HephParamId,
+  HephInterpolation,
+  HephCurveMode,
   HephAutomationClipV3,
   HephAutomationClip,
-  HephAutomationClipSerialized,
   HephKeyframe,
   HephTrack,
   ZoneTarget,
-  PhaseConfig 
+  PhaseConfig
 } from '../../../core/hephaestus/types'
 import type { EffectZone } from '../../../core/effects/types'
-import { serializeHephClip, serializeHephClipV3, deserializeHephClip } from '../../../core/hephaestus/types'
+import { serializeHephClip } from '../../../core/hephaestus/types'
 // ⚒️ WAVE 2044: Navigation store for Chronos → Hephaestus bridge (THE HANDOFF)
 import { useNavigationStore } from '../../../stores/navigationStore'
 // ⚒️ WAVE 2044.3: Audio store for BPM injection (SYNAPSE REPAIR)
@@ -79,51 +78,6 @@ function getPlotValue(value: number | { h: number; s: number; l: number }, value
     return value.h / 360
   }
   return value as number
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// ⚒️ WAVE 7000: V2 → V3 ADAPTER (transitional — TODO: replace with proper migrator)
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Converts a legacy V2 HephAutomationClip (curves: Map) to V3 (tracks: []).
- * Each V2 curve becomes a single track with zones from clip.zones.
- */
-function v2ToV3Clip(v2: HephAutomationClip): HephAutomationClipV3 {
-  const tracks: HephTrack[] = []
-  const spatialZones: ZoneTarget[] = (v2.zones as unknown as ZoneTarget[]).length > 0
-    ? v2.zones as unknown as ZoneTarget[]
-    : ['all']
-
-  for (const [paramId, curve] of v2.curves) {
-    tracks.push({
-      id: `legacy-${paramId}-${v2.id}`,
-      paramId,
-      zones: spatialZones,
-      curve,
-      blendMode: paramId === 'intensity' ? 'max' : 'replace',
-      phaseConfig: v2.selector?.phase as unknown as HephTrack['phaseConfig'],
-    })
-  }
-
-  return {
-    id: v2.id,
-    name: v2.name,
-    author: v2.author,
-    category: v2.category,
-    tags: v2.tags,
-    vibeCompat: v2.vibeCompat,
-    spatialZones,
-    mixBus: v2.mixBus,
-    priority: v2.priority,
-    durationMs: v2.durationMs,
-    effectType: v2.effectType,
-    tracks,
-    staticParams: v2.staticParams,
-    cognitiveDNA: v2.cognitiveDNA,
-    simulationMeta: v2.simulationMeta,
-    schemaVersion: '3.0',
-  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -238,10 +192,10 @@ const HephaestusView: React.FC = () => {
   /**
    * ⚒️ WAVE 2040.17: DIAMOND CACHE
    * Pre-cached serialized clips for zero-latency D&D to Chronos.
-   * Key: filePath, Value: HephAutomationClipSerialized
+   * Key: filePath, Value: HephAutomationClipV3
    * Populated in background after library loads.
    */
-  const clipCacheRef = useRef<Map<string, HephAutomationClipSerialized>>(new Map())
+  const clipCacheRef = useRef<Map<string, HephAutomationClipV3>>(new Map())
 
   /**
    * ⚒️ WAVE 2043.2: Batch Move Origin Snapshot
@@ -425,7 +379,7 @@ const HephaestusView: React.FC = () => {
               try {
                 const loadResult = await window.luxsync.hephaestus.load(item.filePath)
                 if (loadResult.success && loadResult.clip) {
-                  clipCacheRef.current.set(item.filePath, loadResult.clip as HephAutomationClipSerialized)
+                  clipCacheRef.current.set(item.filePath, loadResult.clip as HephAutomationClipV3)
                 }
               } catch (e) {
                 console.warn(`[Hephaestus] 💎 Cache miss for ${item.name}:`, e)
@@ -453,7 +407,7 @@ const HephaestusView: React.FC = () => {
 
     setIsSaving(true)
     try {
-      const serialized = serializeHephClipV3(clip)
+      const serialized = serializeHephClip(clip)
       const result = await window.luxsync.hephaestus.save(serialized)
       
       if (result.success) {
@@ -466,7 +420,7 @@ const HephaestusView: React.FC = () => {
         // ⚒️ WAVE 2044: HOT-RELOAD — Notify Chronos that a clip was updated.
         // Chronos listens for this event and reloads any FXClip whose
         // hephClip.id matches, updating its embedded Diamond Data in-place.
-        const serializedForEvent = serializeHephClipV3(clip)
+        const serializedForEvent = serializeHephClip(clip)
         window.dispatchEvent(new CustomEvent('luxsync:heph-clip-saved', {
           detail: {
             clipId: clip.id,
@@ -508,7 +462,7 @@ const HephaestusView: React.FC = () => {
       // Add "(Copy)" suffix to name
       clonedClip.name = `${clip.name} (Copy)`
       
-      const serialized = serializeHephClipV3(clonedClip)
+      const serialized = serializeHephClip(clonedClip)
       const result = await window.luxsync.hephaestus.save(serialized)
       
       if (result.success) {
@@ -543,9 +497,7 @@ const HephaestusView: React.FC = () => {
       const result = await window.luxsync.hephaestus.load(clipId)
       
       if (result.success && result.clip) {
-        // TODO: Migrar deserializeHephClip to V3 — currently deserializes V2 then converts
-        const v2Clip = deserializeHephClip(result.clip as HephAutomationClipSerialized)
-        const v3Clip = v2ToV3Clip(v2Clip)
+        const v3Clip = result.clip as HephAutomationClipV3
         temporalActions.resetWithClip(v3Clip)
         setIsDirty(false)
         setSelectedKeyframeIdx(null)
@@ -635,9 +587,7 @@ const HephaestusView: React.FC = () => {
   }, [])
 
   // WAVE 2030.8: Create clip from modal and save immediately
-  // TODO: Migrar NewClipModal to produce V3 clips directly
-  const handleCreateClip = useCallback(async (newClipV2: HephAutomationClip) => {
-    const newClip = v2ToV3Clip(newClipV2)
+  const handleCreateClip = useCallback(async (newClip: HephAutomationClip) => {
     temporalActions.resetWithClip(newClip)
     // Select intensity track if it exists, else first track
     const intensityTrack = newClip.tracks.find(t => t.paramId === 'intensity')
@@ -649,7 +599,7 @@ const HephaestusView: React.FC = () => {
     // Auto-save immediately
     if (window.luxsync?.hephaestus?.save) {
       try {
-        const serialized = serializeHephClipV3(newClip)
+        const serialized = serializeHephClip(newClip)
         const result = await window.luxsync.hephaestus.save(serialized)
         if (result.success) {
           console.log(`[Hephaestus] Created & saved new clip: ${newClip.name}`)
@@ -736,7 +686,7 @@ const HephaestusView: React.FC = () => {
       category: cachedClip?.category || libraryItem.category,
       mixBus: cachedClip?.mixBus,
       effectType: cachedClip?.effectType || libraryItem.effectType,
-      zones: cachedClip?.zones,
+      zones: cachedClip?.spatialZones,
       priority: cachedClip?.priority,
     }
     
@@ -751,8 +701,8 @@ const HephaestusView: React.FC = () => {
     e.dataTransfer.effectAllowed = 'copy'
     
     if (cachedClip) {
-      const curveCount = Object.keys(cachedClip.curves).length
-      console.log(`[Hephaestus] 💎 Diamond drag: ${libraryItem.name} [${curveCount} curves, mixBus=${cachedClip.mixBus}]`)
+      const curveCount = cachedClip.tracks.length
+      console.log(`[Hephaestus] 💎 Diamond drag: ${libraryItem.name} [${curveCount} tracks, mixBus=${cachedClip.mixBus}]`)
     } else {
       console.warn(`[Hephaestus] ⚠️ Drag without Diamond data (cache miss): ${libraryItem.name}`)
     }

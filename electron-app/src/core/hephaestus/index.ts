@@ -23,7 +23,6 @@ export type {
   HephAutomationClipV3,
   HephTrack,
   HephParamSnapshot,
-  HephAutomationClipSerialized,
 } from './types'
 
 export {
@@ -31,8 +30,6 @@ export {
   isHSL,
   isNumericValue,
   serializeHephClip,
-  serializeHephClipV3,
-  deserializeHephClip,
   inferHephCategory,
 } from './types'
 

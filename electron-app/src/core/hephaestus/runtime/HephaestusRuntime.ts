@@ -36,7 +36,6 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import type {
-  HephAutomationClip,
   HephAutomationClipV3,
   HephCurve,
   HephParamId,
@@ -47,58 +46,23 @@ import type {
 } from '../types'
 import { resolvePro, type PhaseConfigPro } from '../phase/PhaseConfigPro'
 import type { EffectZone } from '../../effects/types'
-import { deserializeHephClip, type HephAutomationClipSerialized } from '../types'
 import { getHephaestusClipIndex } from '../HephaestusClipIndex'
 import { CurveEvaluator } from '../CurveEvaluator'
 import { resolveZoneTags } from '../../zones/ZoneMapper'
 import { getTitanOrchestrator } from '../../orchestrator/TitanOrchestrator'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🧬 WAVE 4856 — V3 SCHEMA HELPERS (module-private, type-narrowing)
+// 🧬 WAVE 4856 — V3 SCHEMA HELPERS (module-private)
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Discrimina V3 (`tracks: HephTrack[]`) de V2 (`curves: Map<paramId, HephCurve>`).
- * Usar como type-guard — narrows TS al subtipo correspondiente.
- */
-function _isV3Clip(
-  clip: HephAutomationClip | HephAutomationClipV3,
-): clip is HephAutomationClipV3 {
-  return Array.isArray((clip as HephAutomationClipV3).tracks)
-}
-
-/**
- * Default `BlendMode` por parámetro — utilizado durante la migración v2→v3
- * cuando el clip legado no declara estrategia de fusión. Se alinea con la
- * semántica histórica que el motor expone:
+ * Default `BlendMode` por parámetro — cuando el track no declara
+ * estrategia de fusión. Se alinea con la semántica histórica:
  *   - `intensity`         → 'max' (HTP — highest takes precedence).
  *   - `color` / `pan` / `tilt` y demás → 'replace' (LTP — last write wins).
  */
 function _defaultBlendModeFor(paramId: HephParamId): BlendMode {
   return paramId === 'intensity' ? 'max' : 'replace'
-}
-
-/**
- * Blend mode derivado para clips v2.1 durante migración in-memory.
- *
- * V2.1 no declaraba blend por track: solo un `mixBus` global de clip.
- * Si ignoramos ese campo, `intensity` cae siempre en HTP (`max`) y se
- * reintroduce bleed de L0 en efectos ambientes. Esta función restaura
- * intención de autor para clips legacy.
- */
-function _v2BlendModeFor(paramId: HephParamId, mixBus: unknown): BlendMode {
-  const bus = typeof mixBus === 'string' ? mixBus.trim().toLowerCase() : ''
-
-  if (bus === 'htp' || bus === 'max') {
-    return paramId === 'intensity' ? 'max' : 'replace'
-  }
-
-  if (bus === 'ambient' || bus === 'accent' || bus === 'add') {
-    return paramId === 'intensity' ? 'add' : 'replace'
-  }
-
-  // global/override/replace/unknown → LTP seguro.
-  return 'replace'
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -171,11 +135,10 @@ interface ActiveHephClip {
   filePath: string
 
   /**
-   * Clip original tras carga/migración. Sólo se usa para logging y stats —
-   * el hot-path consume exclusivamente `tracks[]`. Puede ser v2 (legado en
-   * disco) o v3 (canónico WAVE 4856+).
+   * Clip original tras carga. Sólo se usa para logging y stats —
+   * el hot-path consume exclusivamente `tracks[]`.
    */
-  clip: HephAutomationClip | HephAutomationClipV3
+  clip: HephAutomationClipV3
 
   /**
    * 🧬 WAVE 4856: Pistas resueltas — la unidad ejecutable real.
@@ -266,10 +229,10 @@ export interface HephRuntimeStats {
 export class HephaestusRuntime {
   /**
    * Cache de clips cargados (filePath → clip parseado).
-   * 🧬 WAVE 4856: Tipo unión v2/v3 — el formato en disco se preserva tal cual
-   * y la migración a tracks ejecutables ocurre per-instancia en `play()`.
+   * 🧬 WAVE 4856: Clip V3 canónico — la migración a tracks ejecutables
+   * ocurre per-instancia en `play()`.
    */
-  private clipCache: Map<string, HephAutomationClip | HephAutomationClipV3> = new Map()
+  private clipCache: Map<string, HephAutomationClipV3> = new Map()
   
   /** Currently active clips being executed */
   private activeClips: Map<string, ActiveHephClip> = new Map()
@@ -289,10 +252,10 @@ export class HephaestusRuntime {
   // ─────────────────────────────────────────────────────────────────────────
   
   /**
-   * Load and cache a .lfx file. Acepta esquemas v2.1 y v3.0 (WAVE 4856).
-   * Returns the parsed clip (v2 o v3) o null si falla.
+   * Load and cache a .lfx file (V3 schema).
+   * Returns the parsed clip o null si falla.
    */
-  loadClip(filePath: string): HephAutomationClip | HephAutomationClipV3 | null {
+  loadClip(filePath: string): HephAutomationClipV3 | null {
     const index = getHephaestusClipIndex();
     const loaded = index.getByPath(filePath);
     if (!loaded) {
@@ -355,7 +318,7 @@ export class HephaestusRuntime {
     const now = Date.now()
     const durationMs = options.durationOverrideMs ?? clip.durationMs
 
-    // 🧬 WAVE 4856: Construir tracks resueltos (v3 nativo o migración v2 → v3).
+    // 🧬 WAVE 4856: Construir tracks resueltos.
     const { tracks, phaseConfig } = this._buildResolvedTracks(
       clip,
       durationMs,
@@ -403,11 +366,11 @@ export class HephaestusRuntime {
    * 
    * ⚒️ WAVE 2400: Now resolves PhaseDistributor if clip has phase config.
    * 
-   * @param clip Pre-deserialized HephAutomationClip with Map<> curves
+   * @param clip Pre-deserialized HephAutomationClipV3
    * @param options Playback options
    * @returns Instance ID for tracking
    */
-  playFromClip(clip: HephAutomationClip | HephAutomationClipV3, options: {
+  playFromClip(clip: HephAutomationClipV3, options: {
     intensity?: number
     durationOverrideMs?: number
     loop?: boolean
@@ -418,7 +381,7 @@ export class HephaestusRuntime {
     const now = Date.now()
     const durationMs = options.durationOverrideMs ?? clip.durationMs
 
-    // 🧬 WAVE 4856: V3 nativo o migración v2 → v3 in-memory.
+    // 🧬 WAVE 4856: Construir tracks resueltos.
     const { tracks, phaseConfig } = this._buildResolvedTracks(
       clip,
       durationMs,
@@ -446,7 +409,7 @@ export class HephaestusRuntime {
     if (this.debug) {
       const anyPhases = tracks.some(t => t.fixturePhases !== null)
       const phaseInfo = anyPhases ? ` [PHASE: ${phaseConfig?.symmetry}]` : ''
-      const sourceCount = _isV3Clip(clip) ? `${clip.tracks.length} v3-tracks` : `${clip.curves.size} v2-curves`
+      const sourceCount = `${clip.tracks.length} tracks`
       console.log(`[HephRuntime] ▶️💎 DIAMOND PLAY: ${clip.name} (${activeClip.durationMs}ms, ${sourceCount} → ${tracks.length} resolved)${phaseInfo} ID=${instanceId}`)
     }
 
@@ -802,25 +765,18 @@ export class HephaestusRuntime {
   // ─────────────────────────────────────────────────────────────────────────
 
   /**
-   * 🧬 WAVE 4856 — Construye los `ResolvedTrack[]` ejecutables de un clip.
-   *
-   * Acepta tanto `HephAutomationClipV3` (canónico) como `HephAutomationClip`
-   * (v2.1 legado). Para v2 sintetiza UN track por entrada de `clip.curves`
-   * usando `clip.zones` como destino común — la equivalencia semántica con
-   * el comportamiento previo es 1:1.
+   * 🧬 WAVE 4856 — Construye los `ResolvedTrack[]` ejecutables de un clip V3.
    *
    * Ruteo espacial AISLADO: cada track resuelve sus propios `zones` via
    * `resolveZoneTags` (AND-intersección). Si la intersección resulta vacía,
    * la pista queda silenciada (sin fallback global) — el autor puede
    * declarar zonas inexistentes y el sistema lo respeta sin máscaras.
    *
-   * Distribución de fase per-track:
-   *   - V3: cada `track.selector?.phase` se evalúa independientemente.
-   *   - V2: el `clip.selector?.phase` original se hereda a TODAS las pistas
-   *     migradas (preserva semántica histórica).
+   * Distribución de fase per-track: cada `track.selector?.phase` se evalúa
+   * independientemente.
    */
   private _buildResolvedTracks(
-    clip: HephAutomationClip | HephAutomationClipV3,
+    clip: HephAutomationClipV3,
     durationMs: number,
     externalFixtureIds?: string[],
   ): { tracks: ResolvedTrack[]; phaseConfig: PhaseConfigPro | null } {
@@ -850,56 +806,27 @@ export class HephaestusRuntime {
       return [...allFixtureIds]
     }
 
-    if (_isV3Clip(clip)) {
-      // ── V3 NATIVO ─────────────────────────────────────────────────────
-      for (let i = 0; i < clip.tracks.length; i++) {
-        const t = clip.tracks[i]
-        const fixtureIds = resolveZonesToFixtures(t.zones as readonly string[])
-        // 🧩 DIAGNÓSTICO COMPOUND FIXTURE (temporal)
-        const hasTungsten = fixtureIds.some(id => id === 'fixture-1781916704143')
-        if (hasTungsten) {
-          console.log(`[HephaestusRuntime._buildResolvedTracks] 🧩 track=${t.id} param=${t.paramId} zones=[${(t.zones ?? []).join(',')}] | Tungsten EN fixtureIds (${fixtureIds.length} total)`)
-        }
-        // ⚒️ WAVE 4859: `phaseConfig` es el shorthand canónico directo en el
-        // track (formato nativo .lfx). `selector.phase` es la variante via
-        // FixtureSelector (legado). Se da prioridad a `phaseConfig` y se usa
-        // `selector.phase` / `selector.phaseSpread` como fallback.
-        const trackPhase = this._extractPhaseConfig(
-          t.phaseConfig ?? t.selector?.phase,
-          t.selector?.phaseSpread,
-        )
-        if (trackPhase != null && topLevelPhaseConfig == null) {
-          topLevelPhaseConfig = trackPhase
-        }
-        tracks.push(this._buildResolvedTrack(t.id, t.paramId, t.curve, t.blendMode, fixtureIds, trackPhase, durationMs, t.zones))
+    // ── V3 NATIVO ─────────────────────────────────────────────────────
+    for (let i = 0; i < clip.tracks.length; i++) {
+      const t = clip.tracks[i]
+      const fixtureIds = resolveZonesToFixtures(t.zones as readonly string[])
+      // 🧩 DIAGNÓSTICO COMPOUND FIXTURE (temporal)
+      const hasTungsten = fixtureIds.some(id => id === 'fixture-1781916704143')
+      if (hasTungsten) {
+        console.log(`[HephaestusRuntime._buildResolvedTracks] 🧩 track=${t.id} param=${t.paramId} zones=[${(t.zones ?? []).join(',')}] | Tungsten EN fixtureIds (${fixtureIds.length} total)`)
       }
-    } else {
-      // ── V2.1 → V3 IN-MEMORY MIGRATION ─────────────────────────────────
-      // Una entrada por (paramId, curve) en el Map legado, hereda la zona
-      // global del clip y el `selector.phase` clip-level (si existe).
-      const clipPhase = this._extractPhaseConfig(
-        clip.selector?.phase,
-        clip.selector?.phaseSpread,
+      // ⚒️ WAVE 4859: `phaseConfig` es el shorthand canónico directo en el
+      // track (formato nativo .lfx). `selector.phase` es la variante via
+      // FixtureSelector (legado). Se da prioridad a `phaseConfig` y se usa
+      // `selector.phase` / `selector.phaseSpread` como fallback.
+      const trackPhase = this._extractPhaseConfig(
+        t.phaseConfig ?? t.selector?.phase,
+        t.selector?.phaseSpread,
       )
-      topLevelPhaseConfig = clipPhase
-      // 🔧 WAVE 4914 FIX: En V2.1, el campo `zones[]` era un energy label
-      // ('intense', 'peak', 'active'…) — no un fixture zone tag. Si la
-      // resolución devuelve array vacío, fallback a todos los fixtures del rig
-      // para preservar el comportamiento pre-WAVE 4856 donde V2.1 siempre
-      // iluminaba el rig completo.
-      const _rawZoneIds = resolveZonesToFixtures(clip.zones as readonly string[])
-      const sharedFixtureIds = _rawZoneIds.length > 0 ? _rawZoneIds : [...allFixtureIds]
-      for (const [paramId, curve] of clip.curves) {
-        tracks.push(this._buildResolvedTrack(
-          `legacy:${paramId}`,
-          paramId,
-          curve,
-          _v2BlendModeFor(paramId, clip.mixBus),
-          sharedFixtureIds,
-          clipPhase,
-          durationMs,
-        ))
+      if (trackPhase != null && topLevelPhaseConfig == null) {
+        topLevelPhaseConfig = trackPhase
       }
+      tracks.push(this._buildResolvedTrack(t.id, t.paramId, t.curve, t.blendMode, fixtureIds, trackPhase, durationMs, t.zones))
     }
 
     return { tracks, phaseConfig: topLevelPhaseConfig }

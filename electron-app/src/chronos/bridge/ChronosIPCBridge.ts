@@ -24,7 +24,7 @@
 
 import { getChronosInjector, type StageCommand } from '../core/ChronosInjector'
 import { mapChronosFXToBaseEffect, getFXInfo } from '../core/FXMapper'
-import type { HephAutomationClipSerialized } from '../../core/hephaestus/types'
+import type { HephAutomationClipV3 } from '../../core/hephaestus/types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -117,7 +117,7 @@ async function handleFXTrigger(command: StageCommand): Promise<void> {
     console.log(`[ChronosBridge] ⚒️💎 HEPH DIAMOND: inline curves @ ${(intensity * 100).toFixed(0)}%`)
     
     try {
-      const hephCurvesSerialized = command.hephCurves as HephAutomationClipSerialized
+      const hephCurvesSerialized = command.hephCurves as HephAutomationClipV3
       const result = await (window as any).lux.chronos?.triggerFX?.(
         'heph-custom', intensity, durationMs, hephCurvesSerialized
       ) || { success: false }
@@ -160,12 +160,12 @@ async function handleFXTrigger(command: StageCommand): Promise<void> {
   const effectId = mapChronosFXToBaseEffect(fxType, bridgeState.currentVibeId || undefined)
   const fxInfo = getFXInfo(fxType, bridgeState.currentVibeId || undefined)
   
-  // ⚒️ WAVE 2040.17: hephCurves already arrives as HephAutomationClipSerialized (Record<>)
+  // ⚒️ WAVE 2040.17: hephCurves arrives as HephAutomationClipV3
   // No serialization needed — the Diamond Data flows through directly
-  const hephCurvesSerialized: HephAutomationClipSerialized | undefined = command.hephCurves || undefined
+  const hephCurvesSerialized: HephAutomationClipV3 | undefined = command.hephCurves || undefined
   if (hephCurvesSerialized) {
-    const curveCount = Object.keys(hephCurvesSerialized.curves).length
-    console.log(`[ChronosBridge] ⚒️💎 HEPHAESTUS Diamond: ${curveCount} curves`)
+    const trackCount = hephCurvesSerialized.tracks?.length || 0
+    console.log(`[ChronosBridge] ⚒️💎 HEPHAESTUS Diamond: ${trackCount} tracks`)
   }
   
   const hephTag = hephCurvesSerialized ? ' ⚒️[HEPH]' : ''

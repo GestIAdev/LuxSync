@@ -847,16 +847,20 @@ export class TimelineEngine {
   // ═══════════════════════════════════════════════════════════════════════
 
   private processHephClip(clip: FXClip, localTimeMs: number): void {
-    const curves = (clip as any).hephClip.curves as Record<string, {
-      keyframes: Array<{ timeMs: number; value: number; interpolation?: string }>
-    }>
+    const tracks = clip.hephClip?.tracks
+    if (!tracks || tracks.length === 0) return
 
     const controls: Record<string, number> = {}
     const channels: string[] = []
 
-    for (const [paramId, curve] of Object.entries(curves)) {
+    for (const track of tracks) {
+      const paramId = track.paramId as string
+      const curve = track.curve
       if (!curve.keyframes || curve.keyframes.length === 0) continue
-      const value = this.interpolateHephKeyframes(curve.keyframes, localTimeMs)
+      const value = this.interpolateHephKeyframes(
+        curve.keyframes as Array<{ timeMs: number; value: number; interpolation?: string }>,
+        localTimeMs
+      )
 
       switch (paramId) {
         case 'intensity':

@@ -73,7 +73,8 @@ export class HephParameterOverlay {
   private readonly durationMs: number
 
   constructor(clip: HephAutomationClip) {
-    this.evaluator = new CurveEvaluator(clip.curves, clip.durationMs)
+    const curvesMap = new Map(clip.tracks.map(t => [t.paramId, t.curve]))
+    this.evaluator = new CurveEvaluator(curvesMap, clip.durationMs)
     this.durationMs = clip.durationMs
   }
 

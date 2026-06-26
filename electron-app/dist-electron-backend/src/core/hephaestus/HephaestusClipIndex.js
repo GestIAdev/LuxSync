@@ -12,34 +12,13 @@
  * @module core/hephaestus/HephaestusClipIndex
  */
 import * as fs from 'fs/promises';
-import { deserializeHephClip } from './types';
 // ═══════════════════════════════════════════════════════════════════════════
 // INTERNAL HELPERS
 // ═══════════════════════════════════════════════════════════════════════════
 /**
- * Discriminador de tipo en runtime para distinguir V2 (curves: Map) de V3 (tracks: []).
- */
-function _isV3(clip) {
-    return clip.tracks !== undefined;
-}
-/**
- * Construye un objeto HephClipMetadata a partir de un clip V2 o V3.
+ * Construye un objeto HephClipMetadata a partir de un clip V3.
  */
 function _buildMetadata(clip, filePath, modifiedAt) {
-    if (_isV3(clip)) {
-        return {
-            id: clip.id,
-            name: clip.name,
-            author: clip.author,
-            category: clip.category,
-            tags: [...clip.tags],
-            durationMs: clip.durationMs,
-            effectType: clip.effectType,
-            paramCount: clip.tracks.length,
-            filePath,
-            modifiedAt,
-        };
-    }
     return {
         id: clip.id,
         name: clip.name,
@@ -48,7 +27,7 @@ function _buildMetadata(clip, filePath, modifiedAt) {
         tags: [...clip.tags],
         durationMs: clip.durationMs,
         effectType: clip.effectType,
-        paramCount: clip.curves.size,
+        paramCount: clip.tracks.length,
         filePath,
         modifiedAt,
     };
@@ -126,40 +105,8 @@ class HephaestusClipIndex {
                 schemaVersion = 'luxsync.lfx/3.0';
             }
             else {
-                // ── V2.1 PATH (legacy curves Record) ──────────────────────────────
-                let serialized = null;
-                if (parsed?.clip && typeof parsed.clip === 'object') {
-                    serialized = parsed.clip;
-                }
-                else if (parsed?.curves && typeof parsed.curves === 'object') {
-                    serialized = parsed;
-                }
-                else {
-                    console.error(`[HephClipIndex] ❌ Invalid clip structure in ${filePath}: no V3 tracks[] and no V2 curves{}`);
-                    return null;
-                }
-                if (!serialized.curves || typeof serialized.curves !== 'object') {
-                    console.error(`[HephClipIndex] ❌ Invalid clip structure in ${filePath}: missing or invalid curves`);
-                    return null;
-                }
-                for (const [paramId, curve] of Object.entries(serialized.curves)) {
-                    if (!curve || typeof curve !== 'object') {
-                        console.error(`[HephClipIndex] ❌ Invalid curve '${paramId}' in ${filePath}: not an object`);
-                        return null;
-                    }
-                    const hephCurve = curve;
-                    if (!Array.isArray(hephCurve.keyframes)) {
-                        console.error(`[HephClipIndex] ❌ Invalid curve '${paramId}' in ${filePath}: keyframes is not an array`);
-                        return null;
-                    }
-                }
-                const v2 = deserializeHephClip(serialized);
-                if (!v2 || !v2.curves || v2.curves.size === 0) {
-                    console.error(`[HephClipIndex] ❌ Deserialization failed or empty curves in ${filePath}`);
-                    return null;
-                }
-                clip = v2;
-                schemaVersion = schema === 'hephaestus/v2.1' ? 'hephaestus/v2.1' : 'hephaestus/v1';
+                console.error(`[HephClipIndex] ❌ Invalid clip structure in ${filePath}: expected V3 schema 'luxsync.lfx/3.0' with tracks[]`);
+                return null;
             }
             if (!clip)
                 return null;

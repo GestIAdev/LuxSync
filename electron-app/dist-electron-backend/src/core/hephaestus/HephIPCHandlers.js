@@ -16,7 +16,7 @@
  */
 import { ipcMain } from 'electron';
 import { hephFileIO } from './HephFileIO';
-import { deserializeHephClip, serializeHephClip } from './types';
+import { serializeHephClip } from './types';
 // ═══════════════════════════════════════════════════════════════════════════
 // SETUP FUNCTION
 // ═══════════════════════════════════════════════════════════════════════════
@@ -37,23 +37,11 @@ export function setupHephIPCHandlers() {
     ipcMain.handle('heph:save', async (_event, clipData) => {
         console.log('[HephIPC] Save clip:', clipData.name);
         try {
-            // V3 detection: schemaVersion '3.0' + tracks array → pass directly
-            const isV3 = clipData.schemaVersion === '3.0' && Array.isArray(clipData.tracks);
-            if (isV3) {
-                const filePath = await hephFileIO.saveClip(clipData);
-                return {
-                    success: true,
-                    filePath,
-                    id: clipData.id,
-                };
-            }
-            // V2 legacy path: deserialize (Record → Map) then save
-            const clip = deserializeHephClip(clipData);
-            const filePath = await hephFileIO.saveClip(clip);
+            const filePath = await hephFileIO.saveClip(clipData);
             return {
                 success: true,
                 filePath,
-                id: clip.id,
+                id: clipData.id,
             };
         }
         catch (error) {
@@ -77,7 +65,7 @@ export function setupHephIPCHandlers() {
         console.log('[HephIPC] Load clip:', idOrPath);
         try {
             const clip = await hephFileIO.loadClip(idOrPath);
-            // Serialize for IPC transport (Map → Record)
+            // Serialize for IPC transport (deep clone)
             const serialized = serializeHephClip(clip);
             return {
                 success: true,

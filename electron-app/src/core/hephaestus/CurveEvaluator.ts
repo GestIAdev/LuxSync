@@ -69,7 +69,9 @@ const NEWTON_EPSILON = 1e-7
  * 
  * USO:
  * ```typescript
- * const evaluator = new CurveEvaluator(clip.curves, clip.durationMs)
+ * // V3: convert tracks array to Map for CurveEvaluator
+ * const curvesMap = new Map(clip.tracks.map(t => [t.paramId, t.curve]))
+ * const evaluator = new CurveEvaluator(curvesMap, clip.durationMs)
  * 
  * // En cada frame:
  * const intensity = evaluator.getValue('intensity', currentTimeMs)

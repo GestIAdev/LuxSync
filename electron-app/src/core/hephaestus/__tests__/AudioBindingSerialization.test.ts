@@ -9,19 +9,21 @@
 
 import { describe, test, expect } from 'vitest'
 import type { 
-  HephAutomationClip, 
+  HephAutomationClipV3, 
   HephCurve, 
   HephKeyframe,
   HephAudioBinding,
   HephParamId,
+  HephTrack,
+  ZoneTarget,
 } from '../types'
-import { serializeHephClip, deserializeHephClip } from '../types'
+import { serializeHephClip } from '../types'
 
 describe('WAVE 2030.14: Audio Binding Serialization', () => {
   /**
    * Creates a minimal clip with audio binding for testing.
    */
-  function createTestClipWithAudioBinding(): HephAutomationClip {
+  function createTestClipWithAudioBinding(): HephAutomationClipV3 {
     const audioBinding: HephAudioBinding = {
       source: 'bass',
       inputRange: [0.2, 0.8],
@@ -56,8 +58,12 @@ describe('WAVE 2030.14: Audio Binding Serialization', () => {
       mode: 'additive',
     }
 
-    const curves = new Map<HephParamId, HephCurve>()
-    curves.set('intensity' as HephParamId, curve)
+    const track: HephTrack = {
+      id: 'track-intensity',
+      paramId: 'intensity' as HephParamId,
+      zones: ['all'] as readonly ZoneTarget[],
+      curve,
+    }
 
     return {
       id: 'test-clip-audio-binding',
@@ -66,30 +72,31 @@ describe('WAVE 2030.14: Audio Binding Serialization', () => {
       category: 'physical' as import('../../effects/types').EffectCategory,
       tags: ['test', 'audio-reactive'],
       vibeCompat: ['high-energy'],
-      zones: ['movers-left', 'movers-right'] as import('../../effects/types').EffectZone[],
+      spatialZones: ['movers-left', 'movers-right'] as readonly ZoneTarget[],
       mixBus: 'htp',
       priority: 5,
       durationMs: 2000,
       effectType: 'pulse',
-      curves,
+      tracks: [track],
       staticParams: {},
+      schemaVersion: '3.0',
     }
   }
 
-  test('should preserve audioBinding through serialize → deserialize cycle', () => {
+  test('should preserve audioBinding through serialize cycle', () => {
     // ═══ ARRANGE ═══
     const originalClip = createTestClipWithAudioBinding()
 
     // ═══ ACT ═══
-    const serialized = serializeHephClip(originalClip)
-    const restored = deserializeHephClip(serialized)
+    const restored = serializeHephClip(originalClip)
 
     // ═══ ASSERT ═══
-    const restoredCurve = restored.curves.get('intensity' as HephParamId)
-    expect(restoredCurve).toBeDefined()
+    const intensityTrack = restored.tracks.find(t => t.paramId === 'intensity' as HephParamId)
+    expect(intensityTrack).toBeDefined()
+    const restoredCurve = intensityTrack!.curve
 
     // Keyframe with audio binding
-    const kfWithBinding = restoredCurve!.keyframes[1]
+    const kfWithBinding = restoredCurve.keyframes[1]
     expect(kfWithBinding.audioBinding).toBeDefined()
     expect(kfWithBinding.audioBinding!.source).toBe('bass')
     expect(kfWithBinding.audioBinding!.inputRange).toEqual([0.2, 0.8])
@@ -97,11 +104,11 @@ describe('WAVE 2030.14: Audio Binding Serialization', () => {
     expect(kfWithBinding.audioBinding!.smoothing).toBe(0.15)
 
     // Keyframe without audio binding
-    const kfWithoutBinding = restoredCurve!.keyframes[2]
+    const kfWithoutBinding = restoredCurve.keyframes[2]
     expect(kfWithoutBinding.audioBinding).toBeUndefined()
 
     // Also check mode persists
-    expect(restoredCurve!.mode).toBe('additive')
+    expect(restoredCurve.mode).toBe('additive')
   })
 
   test('should handle all audio source types', () => {
@@ -116,43 +123,41 @@ describe('WAVE 2030.14: Audio Binding Serialization', () => {
       }
 
       const clip = createTestClipWithAudioBinding()
-      const curve = clip.curves.get('intensity' as HephParamId)!
-      curve.keyframes[1].audioBinding = binding
+      const track = clip.tracks.find(t => t.paramId === 'intensity' as HephParamId)!
+      track.curve.keyframes[1].audioBinding = binding
 
-      const serialized = serializeHephClip(clip)
-      const restored = deserializeHephClip(serialized)
+      const restored = serializeHephClip(clip)
 
-      const restoredBinding = restored.curves.get('intensity' as HephParamId)!.keyframes[1].audioBinding
+      const restoredTrack = restored.tracks.find(t => t.paramId === 'intensity' as HephParamId)!
+      const restoredBinding = restoredTrack.curve.keyframes[1].audioBinding
       expect(restoredBinding?.source).toBe(source)
     }
   })
 
-  test('should preserve zones array through serialization', () => {
+  test('should preserve spatialZones array through serialization', () => {
     const clip = createTestClipWithAudioBinding()
     
-    const serialized = serializeHephClip(clip)
-    const restored = deserializeHephClip(serialized)
+    const restored = serializeHephClip(clip)
 
-    expect(restored.zones).toEqual(['movers-left', 'movers-right'])
+    expect(restored.spatialZones).toEqual(['movers-left', 'movers-right'])
   })
 
-  test('should handle empty zones (meaning ALL zones)', () => {
+  test('should handle empty spatialZones (meaning ALL zones)', () => {
     const clip = createTestClipWithAudioBinding()
-    clip.zones = []
+    clip.spatialZones = []
 
-    const serialized = serializeHephClip(clip)
-    const restored = deserializeHephClip(serialized)
+    const restored = serializeHephClip(clip)
 
-    expect(restored.zones).toEqual([])
+    expect(restored.spatialZones).toEqual([])
   })
 
   test('should preserve bezierHandles alongside audioBinding', () => {
     const clip = createTestClipWithAudioBinding()
     
-    const serialized = serializeHephClip(clip)
-    const restored = deserializeHephClip(serialized)
+    const restored = serializeHephClip(clip)
 
-    const kf = restored.curves.get('intensity' as HephParamId)!.keyframes[1]
+    const track = restored.tracks.find(t => t.paramId === 'intensity' as HephParamId)!
+    const kf = track.curve.keyframes[1]
     expect(kf.bezierHandles).toEqual([0.42, 0, 0.58, 1])
     expect(kf.audioBinding).toBeDefined()
   })

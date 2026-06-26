@@ -76,70 +76,17 @@ export function isHSL(value) {
 export function isNumericValue(value) {
     return typeof value === 'number';
 }
+// ═══════════════════════════════════════════════════════════════════════════
+// SERIALIZATION (IPC-safe)
+// ═══════════════════════════════════════════════════════════════════════════
 /**
- * Serializa un HephAutomationClip para transporte IPC.
- * Convierte Map → Record.
- */
-export function serializeHephClip(clip) {
-    const curvesRecord = {};
-    for (const [paramId, curve] of clip.curves) {
-        curvesRecord[paramId] = curve;
-    }
-    return {
-        id: clip.id,
-        name: clip.name,
-        author: clip.author,
-        category: clip.category,
-        tags: clip.tags,
-        vibeCompat: clip.vibeCompat,
-        zones: clip.zones,
-        mixBus: clip.mixBus,
-        priority: clip.priority,
-        durationMs: clip.durationMs,
-        effectType: clip.effectType,
-        curves: curvesRecord,
-        staticParams: clip.staticParams,
-        selector: clip.selector, // ⚡ WAVE 2403: Pass-through (POJO, JSON-safe)
-        cognitiveDNA: clip.cognitiveDNA, // WAVE 4811: Pass-through
-        simulationMeta: clip.simulationMeta, // WAVE 4811: Pass-through
-    };
-}
-/**
- * Deserializa un HephAutomationClipSerialized de vuelta a HephAutomationClip.
- * Convierte Record → Map.
- */
-export function deserializeHephClip(serialized) {
-    const curvesMap = new Map();
-    for (const [paramId, curve] of Object.entries(serialized.curves)) {
-        curvesMap.set(paramId, curve);
-    }
-    return {
-        id: serialized.id,
-        name: serialized.name,
-        author: serialized.author,
-        category: serialized.category,
-        tags: serialized.tags,
-        vibeCompat: serialized.vibeCompat,
-        zones: serialized.zones,
-        mixBus: serialized.mixBus,
-        priority: serialized.priority,
-        durationMs: serialized.durationMs,
-        effectType: serialized.effectType,
-        curves: curvesMap,
-        staticParams: serialized.staticParams,
-        selector: serialized.selector, // ⚡ WAVE 2403: Restore selector from IPC
-        cognitiveDNA: serialized.cognitiveDNA, // WAVE 4811: Restore from IPC
-        simulationMeta: serialized.simulationMeta, // WAVE 4811: Restore from IPC
-    };
-}
-/**
- * ⚒️ WAVE 7002 — Serializador nativo V3.
+ * ⚒️ WAVE 7003 — Serializador canónico V3.
  *
  * Toma el estado inmaculado del Store (Immer) y devuelve un objeto
  * JSON-ready limpio, descartando cualquier variable efímera de la UI.
  * Deep clone de tracks, curves, keyframes y nested objects.
  */
-export function serializeHephClipV3(clip) {
+export function serializeHephClip(clip) {
     const cleanTracks = clip.tracks.map(track => ({
         id: track.id,
         paramId: track.paramId,
@@ -215,7 +162,7 @@ const OPTICS_PARAMS = ['zoom', 'focus', 'iris', 'gobo1', 'gobo2', 'prism'];
  * @returns EffectCategory inferida desde las curvas
  */
 export function inferHephCategory(clip) {
-    const paramIds = Array.from(clip.curves.keys());
+    const paramIds = clip.tracks.map(t => t.paramId);
     const touchesPhysical = paramIds.some(p => PHYSICAL_PARAMS.includes(p));
     const touchesColor = paramIds.some(p => COLOR_PARAMS.includes(p));
     const touchesMovement = paramIds.some(p => MOVEMENT_PARAMS.includes(p));

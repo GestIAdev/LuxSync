@@ -205,10 +205,10 @@ export interface SafetyDeclaration {
 // ─── CLIP COMPLETO V2.1 (sobreviviente a IPC) ───────────────────────────────
 
 /**
- * `.lfx v2.1.0` — formato serializable (Record en lugar de Map para JSON).
+ * `.lfx v3.0` — formato serializable nativo (tracks array, sin Map<>).
  *
- * Los campos legacy de `HephAutomationClipSerialized` se conservan para
- * mantener retrocompatibilidad. Los bloques nuevos (`cognitiveDNA`,
+ * Los campos de `HephAutomationClipV3` son la base.
+ * Los bloques nuevos (`cognitiveDNA`,
  * `simulationMeta`, `executionHints`, `safetyDeclaration`) son OPCIONALES:
  *   - Si están presentes → el clip es visible para Selene IA (Infinite Arsenal).
  *   - Si están ausentes  → el clip es "Hephaestus puro" (solo Chronos).

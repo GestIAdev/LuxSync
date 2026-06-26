@@ -239,7 +239,7 @@ const HephClipContent: React.FC<{ clip: FXClip; width: number; height: number }>
    * ⚒️ WAVE 2040.18: ONLY render curve if hephClip exists (Diamond Data present).
    * If no Diamond Data, show icon pattern instead (like Core FX).
    */
-  const hasRealCurves = clip.hephClip && Object.keys(clip.hephClip.curves || {}).length > 0
+  const hasRealCurves = clip.hephClip && clip.hephClip.tracks.length > 0
   
   const curvePath = React.useMemo(() => {
     if (!hasRealCurves || width < 40) return null

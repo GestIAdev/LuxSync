@@ -155,7 +155,7 @@ export function createFXClip(fxType, startMs, durationMs, trackId, effectId // W
  * ⚒️ WAVE 2030.17 → WAVE 2040.17: THE DIAMOND BRIDGE
  * Create a Hephaestus Custom FX Clip from .lfx drag
  *
- * WAVE 2040.17: Now accepts full hephClip data (serialized),
+ * WAVE 2040.17: Now accepts full hephClip V3 data,
  * mixBus, zones, priority. Color is derived from mixBus.
  * Keyframes are generated as a visual summary of the intensity curve.
  */
@@ -187,7 +187,7 @@ export const MIXBUS_CLIP_COLORS = {
  */
 const VISUAL_PRIORITY_CURVE_KEYS = ['intensity', 'tilt', 'pan', 'color', 'white', 'zoom', 'focus'];
 export function extractVisualKeyframes(hephClip, durationMs) {
-    if (!hephClip?.curves) {
+    if (!hephClip?.tracks || hephClip.tracks.length === 0) {
         // Fallback: generic 3-point envelope
         return [
             { offsetMs: 0, value: 0, easing: 'ease-in' },
@@ -195,8 +195,8 @@ export function extractVisualKeyframes(hephClip, durationMs) {
             { offsetMs: durationMs, value: 0, easing: 'linear' },
         ];
     }
-    const curveKeys = Object.keys(hephClip.curves);
-    if (curveKeys.length === 0) {
+    const trackParamIds = hephClip.tracks.map(t => t.paramId);
+    if (trackParamIds.length === 0) {
         return [
             { offsetMs: 0, value: 0, easing: 'ease-in' },
             { offsetMs: durationMs / 2, value: 1, easing: 'ease-out' },
@@ -204,18 +204,15 @@ export function extractVisualKeyframes(hephClip, durationMs) {
         ];
     }
     // ⚒️ WAVE 2040.21: Pick the PRIORITY curve — the most visually meaningful
-    let selectedKey;
+    let selectedTrack = hephClip.tracks[0];
     for (const priorityKey of VISUAL_PRIORITY_CURVE_KEYS) {
-        if (curveKeys.includes(priorityKey)) {
-            selectedKey = priorityKey;
+        const track = hephClip.tracks.find(t => t.paramId === priorityKey);
+        if (track) {
+            selectedTrack = track;
             break;
         }
     }
-    // If no priority key matched, take the first available curve
-    if (!selectedKey) {
-        selectedKey = curveKeys[0];
-    }
-    const selectedCurve = hephClip.curves[selectedKey];
+    const selectedCurve = selectedTrack.curve;
     if (!selectedCurve?.keyframes || selectedCurve.keyframes.length === 0) {
         return [
             { offsetMs: 0, value: 0, easing: 'ease-in' },
@@ -258,13 +255,13 @@ const COLOR_KEYWORDS = ['color', 'rgb', 'hue', 'wash', 'rainbow', 'chromatic', '
 const ACCENT_KEYWORDS = ['gobo', 'prism', 'zoom', 'focus', 'iris', 'optic', 'beam', 'spot'];
 const GLOBAL_KEYWORDS = ['strobe', 'flash', 'blinder', 'bump', 'pulse', 'dim', 'blackout', 'intensity'];
 function inferMixBusFromCurves(hephClip, name, effectType) {
-    // ── PASS 1: Explicit mixBus in serialized data (new .lfx files)
+    // ── PASS 1: Explicit mixBus in clip data (new .lfx files)
     if (hephClip?.mixBus) {
         return hephClip.mixBus;
     }
-    // ── PASS 2: Curve analysis (most reliable for legacy files)
-    if (hephClip?.curves) {
-        const curveKeys = Object.keys(hephClip.curves);
+    // ── PASS 2: Track analysis (most reliable for legacy files)
+    if (hephClip?.tracks) {
+        const curveKeys = hephClip.tracks.map(t => t.paramId);
         const hasMovement = curveKeys.some(k => MOVEMENT_CURVE_KEYS.includes(k));
         const hasColor = curveKeys.some(k => COLOR_CURVE_KEYS.includes(k));
         const hasOptics = curveKeys.some(k => OPTICS_CURVE_KEYS.includes(k));
@@ -302,9 +299,9 @@ function inferMixBusFromCurves(hephClip, name, effectType) {
     // ── PASS 4: Safe default — global bus (intensity/dimmer routing)
     return 'global';
 }
-export function createHephFXClip(name, filePath, startMs, durationMs, trackId, effectType = 'custom', hephClipSerialized, mixBus, zones, priority) {
+export function createHephFXClip(name, filePath, startMs, durationMs, trackId, effectType = 'custom', hephClipData, mixBus, zones, priority) {
     // ⚒️ WAVE 2040.19: SHERLOCK MODE — Auto-infer mixBus for legacy clips
-    const resolvedMixBus = mixBus || inferMixBusFromCurves(hephClipSerialized, name, effectType);
+    const resolvedMixBus = mixBus || inferMixBusFromCurves(hephClipData, name, effectType);
     const color = MIXBUS_CLIP_COLORS[resolvedMixBus] || HEPH_EMBER_COLOR;
     // 🐛 WAVE 2040.19: Log inference result
     console.log(`[createHephFXClip] 🔍 "${name}": mixBus=${mixBus || 'INFERRED→' + resolvedMixBus} → color=${color}`);
@@ -329,14 +326,14 @@ export function createHephFXClip(name, filePath, startMs, durationMs, trackId, e
         endMs: startMs + durationMs,
         trackId,
         color,
-        keyframes: extractVisualKeyframes(hephClipSerialized, durationMs),
+        keyframes: extractVisualKeyframes(hephClipData, durationMs),
         params: { effectType },
         selected: false,
         locked: false,
         // ⚒️ HEPHAESTUS MARKERS — WAVE 2040.17 + 2040.19: Full Diamond Data
         hephFilePath: portableFilePath,
         isHephCustom: true,
-        hephClip: hephClipSerialized,
+        hephClip: hephClipData,
         mixBus: resolvedMixBus, // ⚒️ WAVE 2040.19: Always resolved (explicit or inferred)
         zones,
         priority,

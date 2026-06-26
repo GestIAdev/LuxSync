@@ -17,8 +17,8 @@
 
 import { ipcMain } from 'electron'
 import { hephFileIO } from './HephFileIO'
-import type { HephAutomationClipSerialized, HephAutomationClipV3 } from './types'
-import { deserializeHephClip, serializeHephClip, serializeHephClipV3 } from './types'
+import type { HephAutomationClipV3 } from './types'
+import { serializeHephClip } from './types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SETUP FUNCTION
@@ -40,30 +40,15 @@ export function setupHephIPCHandlers(): void {
    * @param clipData - Serialized clip data (Record, not Map)
    * @returns { success, filePath, error }
    */
-  ipcMain.handle('heph:save', async (_event, clipData: HephAutomationClipSerialized | HephAutomationClipV3) => {
+  ipcMain.handle('heph:save', async (_event, clipData: HephAutomationClipV3) => {
     console.log('[HephIPC] Save clip:', clipData.name)
     
     try {
-      // V3 detection: schemaVersion '3.0' + tracks array → pass directly
-      const isV3 = (clipData as HephAutomationClipV3).schemaVersion === '3.0' && Array.isArray((clipData as HephAutomationClipV3).tracks)
-      
-      if (isV3) {
-        const filePath = await hephFileIO.saveClip(clipData as HephAutomationClipV3)
-        return {
-          success: true,
-          filePath,
-          id: (clipData as HephAutomationClipV3).id,
-        }
-      }
-      
-      // V2 legacy path: deserialize (Record → Map) then save
-      const clip = deserializeHephClip(clipData as HephAutomationClipSerialized)
-      const filePath = await hephFileIO.saveClip(clip)
-      
+      const filePath = await hephFileIO.saveClip(clipData)
       return {
         success: true,
         filePath,
-        id: clip.id,
+        id: clipData.id,
       }
     } catch (error) {
       console.error('[HephIPC] Save failed:', error)
@@ -90,7 +75,7 @@ export function setupHephIPCHandlers(): void {
     try {
       const clip = await hephFileIO.loadClip(idOrPath)
       
-      // Serialize for IPC transport (Map → Record)
+      // Serialize for IPC transport (deep clone)
       const serialized = serializeHephClip(clip)
       
       return {

@@ -677,10 +677,14 @@ export class TimelineEngine {
     // ⚒️ HEPHAESTUS CUSTOM CLIPS
     // ═══════════════════════════════════════════════════════════════════════
     processHephClip(clip, localTimeMs) {
-        const curves = clip.hephClip.curves;
+        const tracks = clip.hephClip?.tracks;
+        if (!tracks || tracks.length === 0)
+            return;
         const controls = {};
         const channels = [];
-        for (const [paramId, curve] of Object.entries(curves)) {
+        for (const track of tracks) {
+            const paramId = track.paramId;
+            const curve = track.curve;
             if (!curve.keyframes || curve.keyframes.length === 0)
                 continue;
             const value = this.interpolateHephKeyframes(curve.keyframes, localTimeMs);

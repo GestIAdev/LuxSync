@@ -67,7 +67,22 @@ export const useHephaestusEditorStore = create()(immer((set, get) => {
     };
     return {
         // ── ESTADO INICIAL ──
-        clip: null, // Se inyectará con loadClip
+        clip: {
+            id: 'empty',
+            name: 'Untitled',
+            author: '',
+            category: 'composite',
+            tags: [],
+            vibeCompat: [],
+            spatialZones: ['all'],
+            mixBus: 'global',
+            priority: 0,
+            durationMs: 1000,
+            effectType: 'custom',
+            tracks: [],
+            staticParams: {},
+            schemaVersion: '3.0',
+        },
         selection: { activeTrackId: null, selectedKeyframeIndices: new Set(), playheadMs: 0 },
         viewport: { zoom: 1, scrollX: 0, laneHeight: 120 },
         isDirty: false,

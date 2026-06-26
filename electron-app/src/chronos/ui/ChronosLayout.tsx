@@ -70,7 +70,7 @@ import type { LuxProject } from '../core/ChronosProject'
 import type { AnalysisData } from '../core/types'
 import type { DragPayload, TimelineClip, FXClip } from '../core/TimelineClip'
 import { toFXType, toVibeType, extractVisualKeyframes } from '../core/TimelineClip'
-import type { HephAutomationClipSerialized } from '../../core/hephaestus/types'
+import type { HephAutomationClipV3 } from '../../core/hephaestus/types'
 // 🔧 WAVE 2044: Navigation store for Hephaestus routing
 import { useNavigationStore } from '../../stores/navigationStore'
 // 🎵 WAVE 2044.5: BPM UNITY — Sync Chronos BPM to global audioStore
@@ -464,7 +464,7 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
     const handleHephClipSaved = (e: Event) => {
       const { clipId, clip: updatedClipSerialized } = (e as CustomEvent<{
         clipId: string
-        clip: HephAutomationClipSerialized
+        clip: HephAutomationClipV3
       }>).detail
       
       console.log(`[ChronosLayout] ⚒️ HOT-RELOAD: Received heph-clip-saved → ${clipId}`)

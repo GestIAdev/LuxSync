@@ -9,7 +9,6 @@
  * @module IPCHandlers
  */
 import { ipcMain } from 'electron';
-import { deserializeHephClip } from '../hephaestus/types';
 import { HephaestusRuntime } from '../hephaestus/runtime/HephaestusRuntime';
 // ðŸ“¡ WAVE 2048: Art-Net Network Discovery
 import { getArtNetDiscovery } from '../../hal/drivers/ArtNetDiscovery';
@@ -197,9 +196,9 @@ function setupSeleneLuxHandlers(deps) {
      * âš’ï¸ WAVE 2040.22: Heph Diamond clips bypass EffectManager â†’ go to Runtime
      */
     ipcMain.handle('chronos:triggerFX', (_event, config) => {
-        // âš’ï¸ WAVE 2030.4: Deserialize hephCurves if present (Record â†’ Map)
-        const hephClip = config.hephCurves ? deserializeHephClip(config.hephCurves) : undefined;
-        const hephTag = hephClip ? ` âš’ï¸[HEPH: ${hephClip.curves.size} curves]` : '';
+        // âš’ï¸ WAVE 2030.4: hephCurves is now V3 native (no deserialization needed)
+        const hephClip = config.hephCurves;
+        const hephTag = hephClip ? ` âš’ï¸[HEPH: ${hephClip.tracks.length} tracks]` : '';
         console.log(`[Chronosâ†’Stage] ðŸ§¨ FX TRIGGER: ${config.effectId} @ ${(config.intensity * 100).toFixed(0)}%${hephTag}`);
         // âš’ï¸ WAVE 2040.22: DIAMOND PATH â€” Heph custom clips bypass EffectManager entirely.
         // EffectManager has no factory for 'heph-custom' (and shouldn't â€” it's not a Core FX).
@@ -211,7 +210,7 @@ function setupSeleneLuxHandlers(deps) {
                 durationOverrideMs: config.durationMs,
                 loop: false,
             });
-            console.log(`[Chronosâ†’Stage] âš’ï¸ðŸ’Ž DIAMOND RUNTIME: ${instanceId} (${hephClip.curves.size} curves)`);
+            console.log(`[Chronosâ†’Stage] âš’ï¸ðŸ’Ž DIAMOND RUNTIME: ${instanceId} (${hephClip.tracks.length} tracks)`);
             return { success: true, instanceId };
         }
         if (titanOrchestrator) {

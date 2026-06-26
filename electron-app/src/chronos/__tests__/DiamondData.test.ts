@@ -7,7 +7,7 @@
  *   Mock Heph Clip → createHephFXClip → serializeProject → deserializeProject → Assert
  * 
  * OBJECTIVES:
- * 1. Generate complex HephAutomationClipSerialized in memory (curves, mixBus, zones)
+ * 1. Generate complex HephAutomationClipV3 in memory (tracks, mixBus, spatialZones)
  * 2. Simulate Drop: Execute createHephFXClip with that payload
  * 3. Simulate Save: Execute serializeProject and get JSON
  * 4. Simulate Load: Execute deserializeProject with that JSON
@@ -25,7 +25,7 @@
 import { describe, test, expect } from 'vitest'
 import { createHephFXClip, MIXBUS_CLIP_COLORS } from '../core/TimelineClip'
 import { createEmptyProject, serializeProject, deserializeProject } from '../core/ChronosProject'
-import type { HephAutomationClipSerialized, HephCurve } from '../../core/hephaestus/types'
+import type { HephAutomationClipV3, HephCurve, HephTrack, ZoneTarget } from '../../core/hephaestus/types'
 import type { FXClip } from '../core/TimelineClip'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -33,62 +33,77 @@ import type { FXClip } from '../core/TimelineClip'
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Create a test intensity curve: 0 → 1 → 0 envelope
+ * Create a test intensity track: 0 → 1 → 0 envelope
  */
-function createIntensityCurve(durationMs: number): HephCurve {
+function createIntensityTrack(durationMs: number): HephTrack {
   return {
+    id: 'track-intensity',
     paramId: 'intensity',
-    valueType: 'number',
-    range: [0, 1],
-    defaultValue: 0,
-    mode: 'absolute',
-    keyframes: [
-      { timeMs: 0, value: 0, interpolation: 'linear' },
-      { timeMs: durationMs / 2, value: 1, interpolation: 'linear' },
-      { timeMs: durationMs, value: 0, interpolation: 'hold' },
-    ],
+    zones: ['all'] as readonly ZoneTarget[],
+    curve: {
+      paramId: 'intensity',
+      valueType: 'number',
+      range: [0, 1],
+      defaultValue: 0,
+      mode: 'absolute',
+      keyframes: [
+        { timeMs: 0, value: 0, interpolation: 'linear' },
+        { timeMs: durationMs / 2, value: 1, interpolation: 'linear' },
+        { timeMs: durationMs, value: 0, interpolation: 'hold' },
+      ],
+    },
   }
 }
 
 /**
- * Create a test tilt curve: pan/tilt movement sweep
+ * Create a test tilt track: pan/tilt movement sweep
  */
-function createTiltCurve(durationMs: number): HephCurve {
+function createTiltTrack(durationMs: number): HephTrack {
   return {
+    id: 'track-tilt',
     paramId: 'tilt',
-    valueType: 'number',
-    range: [0, 1],
-    defaultValue: 0.5,
-    mode: 'absolute',
-    keyframes: [
-      { timeMs: 0, value: 0, interpolation: 'bezier', bezierHandles: [0.33, 0, 0.66, 1] },
-      { timeMs: durationMs, value: 1, interpolation: 'hold' },
-    ],
+    zones: ['all'] as readonly ZoneTarget[],
+    curve: {
+      paramId: 'tilt',
+      valueType: 'number',
+      range: [0, 1],
+      defaultValue: 0.5,
+      mode: 'absolute',
+      keyframes: [
+        { timeMs: 0, value: 0, interpolation: 'bezier', bezierHandles: [0.33, 0, 0.66, 1] },
+        { timeMs: durationMs, value: 1, interpolation: 'hold' },
+      ],
+    },
   }
 }
 
 /**
- * Create a test color curve: HSL rainbow sweep
+ * Create a test color track: HSL rainbow sweep
  */
-function createColorCurve(durationMs: number): HephCurve {
+function createColorTrack(durationMs: number): HephTrack {
   return {
+    id: 'track-color',
     paramId: 'color',
-    valueType: 'color',
-    range: [0, 1],
-    defaultValue: { h: 0, s: 100, l: 50 },
-    mode: 'absolute',
-    keyframes: [
-      { timeMs: 0, value: { h: 0, s: 100, l: 50 }, interpolation: 'linear' },
-      { timeMs: durationMs / 2, value: { h: 180, s: 100, l: 50 }, interpolation: 'linear' },
-      { timeMs: durationMs, value: { h: 360, s: 100, l: 50 }, interpolation: 'hold' },
-    ],
+    zones: ['all'] as readonly ZoneTarget[],
+    curve: {
+      paramId: 'color',
+      valueType: 'color',
+      range: [0, 1],
+      defaultValue: { h: 0, s: 100, l: 50 },
+      mode: 'absolute',
+      keyframes: [
+        { timeMs: 0, value: { h: 0, s: 100, l: 50 }, interpolation: 'linear' },
+        { timeMs: durationMs / 2, value: { h: 180, s: 100, l: 50 }, interpolation: 'linear' },
+        { timeMs: durationMs, value: { h: 360, s: 100, l: 50 }, interpolation: 'hold' },
+      ],
+    },
   }
 }
 
 /**
- * Create a mock HephAutomationClipSerialized with all Diamond Data fields
+ * Create a mock HephAutomationClipV3 with all Diamond Data fields
  */
-function createMockHephClip(durationMs: number): HephAutomationClipSerialized {
+function createMockHephClip(durationMs: number): HephAutomationClipV3 {
   return {
     id: 'test-heph-clip-001',
     name: 'Solar Sweep Test',
@@ -96,20 +111,21 @@ function createMockHephClip(durationMs: number): HephAutomationClipSerialized {
     category: 'movement',
     tags: ['sweep', 'intensity', 'color'],
     vibeCompat: ['techno-club', 'fiesta-latina'],
-    zones: ['front', 'back'],
+    spatialZones: ['front', 'back'] as readonly ZoneTarget[],
     mixBus: 'htp',
     priority: 5,
     durationMs,
     effectType: 'heph_custom',
-    curves: {
-      intensity: createIntensityCurve(durationMs),
-      tilt: createTiltCurve(durationMs),
-      color: createColorCurve(durationMs),
-    },
+    tracks: [
+      createIntensityTrack(durationMs),
+      createTiltTrack(durationMs),
+      createColorTrack(durationMs),
+    ],
     staticParams: {
       gobo1: 1,
       prism: 0,
     },
+    schemaVersion: '3.0',
   }
 }
 
@@ -147,12 +163,15 @@ describe('💎 Diamond Data Pipeline Integrity', () => {
     expect(clip.hephClip?.id).toBe('test-heph-clip-001')
     expect(clip.hephClip?.name).toBe('Solar Sweep Test')
     
-    // Assert: Curves preserved
-    expect(clip.hephClip?.curves).toBeDefined()
-    expect(Object.keys(clip.hephClip!.curves).length).toBe(3)
-    expect(clip.hephClip?.curves.intensity).toBeDefined()
-    expect(clip.hephClip?.curves.tilt).toBeDefined()
-    expect(clip.hephClip?.curves.color).toBeDefined()
+    // Assert: Tracks preserved
+    expect(clip.hephClip?.tracks).toBeDefined()
+    expect(clip.hephClip!.tracks.length).toBe(3)
+    const intensityTrack = clip.hephClip!.tracks.find(t => t.paramId === 'intensity')
+    expect(intensityTrack).toBeDefined()
+    const tiltTrack = clip.hephClip!.tracks.find(t => t.paramId === 'tilt')
+    expect(tiltTrack).toBeDefined()
+    const colorTrack = clip.hephClip!.tracks.find(t => t.paramId === 'color')
+    expect(colorTrack).toBeDefined()
     
     // Assert: MixBus routing
     expect(clip.mixBus).toBe('htp')
@@ -208,7 +227,7 @@ describe('💎 Diamond Data Pipeline Integrity', () => {
     
     const serializedClip = parsed.timeline.clips[0]
     expect(serializedClip.hephClip).toBeDefined()
-    expect(serializedClip.hephClip.curves).toBeDefined()
+    expect(serializedClip.hephClip.tracks).toBeDefined()
     expect(serializedClip.mixBus).toBe('htp')
   })
   
@@ -256,26 +275,26 @@ describe('💎 Diamond Data Pipeline Integrity', () => {
     expect(loadedClip.hephClip?.id).toBe('test-heph-clip-001')
     expect(loadedClip.hephClip?.name).toBe('Solar Sweep Test')
     
-    // Assert: Curves preserved with exact keyframe data
-    expect(loadedClip.hephClip?.curves).toBeDefined()
-    expect(Object.keys(loadedClip.hephClip!.curves).length).toBe(3)
+    // Assert: Tracks preserved with exact keyframe data
+    expect(loadedClip.hephClip?.tracks).toBeDefined()
+    expect(loadedClip.hephClip!.tracks.length).toBe(3)
     
-    const intensityCurve = loadedClip.hephClip!.curves.intensity
-    expect(intensityCurve).toBeDefined()
-    expect(intensityCurve.keyframes.length).toBe(3)
-    expect(intensityCurve.keyframes[0].value).toBe(0)
-    expect(intensityCurve.keyframes[1].value).toBe(1)
-    expect(intensityCurve.keyframes[2].value).toBe(0)
+    const intensityTrack = loadedClip.hephClip!.tracks.find(t => t.paramId === 'intensity')
+    expect(intensityTrack).toBeDefined()
+    expect(intensityTrack!.curve.keyframes.length).toBe(3)
+    expect(intensityTrack!.curve.keyframes[0].value).toBe(0)
+    expect(intensityTrack!.curve.keyframes[1].value).toBe(1)
+    expect(intensityTrack!.curve.keyframes[2].value).toBe(0)
     
-    const tiltCurve = loadedClip.hephClip!.curves.tilt
-    expect(tiltCurve).toBeDefined()
-    expect(tiltCurve.keyframes.length).toBe(2)
-    expect(tiltCurve.keyframes[0].interpolation).toBe('bezier')
+    const tiltTrack = loadedClip.hephClip!.tracks.find(t => t.paramId === 'tilt')
+    expect(tiltTrack).toBeDefined()
+    expect(tiltTrack!.curve.keyframes.length).toBe(2)
+    expect(tiltTrack!.curve.keyframes[0].interpolation).toBe('bezier')
     
-    const colorCurve = loadedClip.hephClip!.curves.color
-    expect(colorCurve).toBeDefined()
-    expect(colorCurve.keyframes.length).toBe(3)
-    expect(colorCurve.keyframes[0].value).toEqual({ h: 0, s: 100, l: 50 })
+    const colorTrack = loadedClip.hephClip!.tracks.find(t => t.paramId === 'color')
+    expect(colorTrack).toBeDefined()
+    expect(colorTrack!.curve.keyframes.length).toBe(3)
+    expect(colorTrack!.curve.keyframes[0].value).toEqual({ h: 0, s: 100, l: 50 })
     
     // Assert: MixBus routing preserved
     expect(loadedClip.mixBus).toBe('htp')
@@ -374,22 +393,23 @@ describe('💎 Diamond Data Pipeline Integrity', () => {
     expect(ac.color).toBe(MIXBUS_CLIP_COLORS['accent']) // Blue
   })
   
-  test('🔹 STEP 5: Heph clip without curves (edge case)', () => {
+  test('🔹 STEP 5: Heph clip without tracks (edge case)', () => {
     const durationMs = 1000
-    const mockHeph: HephAutomationClipSerialized = {
+    const mockHeph: HephAutomationClipV3 = {
       id: 'test-no-curves',
       name: 'Empty Clip',
       author: 'Test',
       category: 'physical',
       tags: [],
       vibeCompat: [],
-      zones: [],
+      spatialZones: [] as readonly ZoneTarget[],
       mixBus: 'global',
       priority: 1,
       durationMs,
       effectType: 'heph_custom',
-      curves: {}, // No curves!
+      tracks: [], // No tracks!
       staticParams: {},
+      schemaVersion: '3.0',
     }
     
     const clip = createHephFXClip(
@@ -407,7 +427,7 @@ describe('💎 Diamond Data Pipeline Integrity', () => {
     
     // Should still create valid clip
     expect(clip.hephClip).toBeDefined()
-    expect(Object.keys(clip.hephClip!.curves).length).toBe(0)
+    expect(clip.hephClip!.tracks.length).toBe(0)
     
     // Should have generic 3-point envelope keyframes (fallback)
     expect(clip.keyframes.length).toBe(3)
@@ -424,7 +444,7 @@ describe('💎 Diamond Data Pipeline Integrity', () => {
     expect(loaded).toBeDefined()
     const loadedClip = loaded!.timeline.clips[0] as FXClip
     expect(loadedClip.hephClip).toBeDefined()
-    expect(Object.keys(loadedClip.hephClip!.curves).length).toBe(0)
+    expect(loadedClip.hephClip!.tracks.length).toBe(0)
   })
 })
 

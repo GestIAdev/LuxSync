@@ -706,7 +706,7 @@ export class TitanOrchestrator {
             return;
         }
         const sourceLabel = config.source === 'chronos' ? 'CHRONOS' : 'Manual';
-        const hephTag = config.hephCurves ? ` âš’ï¸[HEPH: ${config.hephCurves.curves.size}]` : '';
+        const hephTag = config.hephCurves ? ` âš’ï¸[HEPH: ${config.hephCurves.tracks.length}]` : '';
         console.log(`[TitanOrchestrator] ðŸ§¨ ${sourceLabel} STRIKE: ${config.effect} @ ${config.intensity.toFixed(2)}${hephTag}`);
         this.log('Effect', `ðŸ§¨ ${sourceLabel} Strike: ${config.effect}`, { intensity: config.intensity });
         // Delegar al TitanEngine

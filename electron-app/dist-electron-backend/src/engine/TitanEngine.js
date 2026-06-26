@@ -1256,7 +1256,7 @@ export class TitanEngine extends EventEmitter {
      */
     forceStrikeNextFrame(config) {
         this.manualStrikePending = config;
-        const hephTag = config.hephCurves ? ` ⚒️[HEPH: ${config.hephCurves.curves.size}]` : '';
+        const hephTag = config.hephCurves ? ` ⚒️[HEPH: ${config.hephCurves.tracks.length}]` : '';
         console.log(`[TitanEngine] 🧨 ${config.source === 'chronos' ? 'CHRONOS' : 'Manual'} strike queued: ${config.effect} @ ${config.intensity.toFixed(2)}${hephTag}`);
     }
     /**

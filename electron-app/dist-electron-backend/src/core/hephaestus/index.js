@@ -10,7 +10,7 @@
  * @module core/hephaestus
  * @version WAVE 2030.5
  */
-export { BEZIER_PRESETS, isHSL, isNumericValue, serializeHephClip, serializeHephClipV3, deserializeHephClip, inferHephCategory, } from './types';
+export { BEZIER_PRESETS, isHSL, isNumericValue, serializeHephClip, inferHephCategory, } from './types';
 // ── Engine ──────────────────────────────────────────────────────────────
 export { CurveEvaluator } from './CurveEvaluator';
 // ── Overlay ─────────────────────────────────────────────────────────────

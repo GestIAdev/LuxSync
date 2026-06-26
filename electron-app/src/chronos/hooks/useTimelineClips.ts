@@ -245,7 +245,7 @@ export function useTimelineClips(options: UseTimelineClipsOptions): UseTimelineC
         )
         addClip(clip)
         selectClip(clip.id)
-        console.log(`[useTimelineClips] ⚒️💎 Created Hephaestus Diamond clip: ${clip.label} [mixBus=${payload.mixBus || 'none'}, curves=${payload.hephClipSerialized ? Object.keys(payload.hephClipSerialized.curves).length : 0}]`)
+        console.log(`[useTimelineClips] ⚒️💎 Created Hephaestus Diamond clip: ${clip.label} [mixBus=${payload.mixBus || 'none'}, tracks=${payload.hephClipSerialized?.tracks?.length ?? 0}]`)
         return clip
       }
       

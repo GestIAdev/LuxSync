@@ -14,8 +14,8 @@
 import type {
   HephAutomationClip,
   HephCurve,
-  HephParamId,
   HephKeyframe,
+  HephTrack,
 } from '../../../core/hephaestus/types'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -118,12 +118,13 @@ export function createDummyClip(): HephAutomationClip {
     mode: 'absolute',
   }
 
-  // ── Build curves Map ──
-  const curves = new Map<HephParamId, HephCurve>()
-  curves.set('intensity', intensityCurve)
-  curves.set('speed', speedCurve)
-  curves.set('strobe', strobeCurve)
-  curves.set('pan', panCurve)
+  // ── Build V3 tracks array ──
+  const tracks: HephTrack[] = [
+    { id: 'track-intensity', paramId: 'intensity', zones: ['all'], curve: intensityCurve },
+    { id: 'track-speed', paramId: 'speed', zones: ['all'], curve: speedCurve },
+    { id: 'track-strobe', paramId: 'strobe', zones: ['all'], curve: strobeCurve },
+    { id: 'track-pan', paramId: 'pan', zones: ['all'], curve: panCurve },
+  ]
 
   return {
     id: 'demo-clip-001',
@@ -132,12 +133,13 @@ export function createDummyClip(): HephAutomationClip {
     category: 'physical',
     tags: ['demo', 'sine', 'test'],
     vibeCompat: [],
-    zones: ['all'],
+    spatialZones: ['all'],
     mixBus: 'htp',
     priority: 50,
     durationMs,
     effectType: 'heph_custom',
-    curves,
+    tracks,
     staticParams: {},
+    schemaVersion: '3.0',
   }
 }

@@ -179,7 +179,7 @@ function extractHephEffects(clips: TimelineClip[]): HephEffectSummary[] {
       name: fx.label,
       effectType: typeof fx.params?.effectType === 'string' ? fx.params.effectType : 'heph-custom',
       mixBus: fx.mixBus,
-      curveCount: fx.hephClip ? Object.keys(fx.hephClip.curves || {}).length : 0,
+      curveCount: fx.hephClip ? fx.hephClip.tracks.length : 0,
     })
   }
 
@@ -358,12 +358,12 @@ export function validateProject(project: LuxProject): { valid: boolean; errors: 
     if (clip.type === 'fx') {
       const fx = clip as FXClip
       if (fx.isHephCustom && !fx.hephClip) {
-        warnings.push(`Clip ${i} "${fx.label}": Hephaestus custom clip but missing hephClip curves (legacy or broken D&D)`)
+        warnings.push(`Clip ${i} "${fx.label}": Hephaestus custom clip but missing hephClip tracks (legacy or broken D&D)`)
       }
       if (fx.isHephCustom && fx.hephClip) {
-        const curveCount = Object.keys(fx.hephClip.curves || {}).length
-        if (curveCount === 0) {
-          errors.push(`Clip ${i} "${fx.label}": Hephaestus clip has 0 curves — empty automation data`)
+        const trackCount = fx.hephClip.tracks.length
+        if (trackCount === 0) {
+          errors.push(`Clip ${i} "${fx.label}": Hephaestus clip has 0 tracks — empty automation data`)
         }
       }
       if (fx.isHephCustom && !fx.mixBus) {

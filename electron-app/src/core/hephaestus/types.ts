@@ -322,106 +322,12 @@ export interface HephCurve {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * ⚒️ HEPHAESTUS AUTOMATION CLIP
- * 
- * Un FXClip evolucionado. Contiene MÚLTIPLES curvas
- * (una por parámetro automatizado).
- * 
- * Es lo que se guarda en el archivo .lfx y lo que
- * Chronos coloca en el timeline.
+ * ⚒️ HEPHAESTUS AUTOMATION CLIP — Canonical alias (WAVE 7003)
+ *
+ * V2 purged. All .lfx files are V3 native. This alias ensures
+ * every import of `HephAutomationClip` enforces V3 structure.
  */
-export interface HephAutomationClip {
-  /** ID único del clip */
-  id: string
-
-  /** Nombre legible para UI */
-  name: string
-
-  /** Autor del clip */
-  author: string
-
-  /** Categoría del efecto */
-  category: EffectCategory
-
-  /** Tags para búsqueda/filtrado */
-  tags: string[]
-
-  /** Compatibilidad de vibes (vacío = todas) */
-  vibeCompat: string[]
-
-  /** Zonas objetivo del efecto */
-  zones: EffectZone[]
-
-  /**
-   * 🎯 WAVE 2040.25 FASE 3: FixtureSelector avanzado (opcional)
-   * 
-   * Si está presente, REEMPLAZA el targeting por `zones`.
-   * Permite filtros tipo grandMA3: parity (even/odd), indexRange, stereoSide (L/R).
-   * 
-   * Si NO está presente (undefined), usa el targeting legacy por `zones`.
-   * 
-   * EJEMPLO:
-   * ```
-   * selector: {
-   *   target: 'movers-left',
-   *   parity: 'even',
-   *   indexRange: '1-3'
-   * }
-   * // → Primeros 3 movers izquierdos pares
-   * ```
-   */
-  selector?: import('../stage/ShowFileV2').FixtureSelector
-
-  /** Mix bus: routing de mezcla para tracks FX del timeline
-   * 
-   * WAVE 2040.9a: TYPE UNIFICATION
-   * Los 4 valores completos del MixBus — antes solo 'htp' | 'global'.
-   * Esto permite que clips de Hephaestus lleguen a los 4 tracks FX.
-   * 
-   * 'global'  → FX1: Takeover total (strobes, blinders, meltdowns)
-   * 'htp'     → FX2: High-priority transitional (sweeps, chases)
-   * 'ambient' → FX3: Atmósferas de fondo (mists, rain, breath)
-   * 'accent'  → FX4: Acentos cortos (sparks, hits, punchy)
-   */
-  mixBus: 'global' | 'htp' | 'ambient' | 'accent'
-
-  /** Prioridad del efecto (0-100) */
-  priority: number
-
-  /** Duración total del clip en ms */
-  durationMs: number
-
-  /**
-   * El tipo de efecto BASE que este clip automatiza.
-   * 
-   * Si es un effectType existente (e.g., 'acid_sweep'),
-   * Hephaestus modula sus parámetros internos via overlay.
-   * 
-   * Si es 'heph_custom', Hephaestus genera el output
-   * directamente desde las curvas (bypass effect class).
-   */
-  effectType: string
-
-  /**
-   * LAS CURVAS — El corazón de Hephaestus
-   * 
-   * Map de paramId → curva de automatización.
-   * Solo se incluyen parámetros que tienen keyframes.
-   * Parámetros no incluidos usan el valor por defecto del efecto.
-   */
-  curves: Map<HephParamId, HephCurve>
-
-  /**
-   * Parámetros estáticos (no automatizados).
-   * Para valores que no cambian durante el efecto.
-   * Equivalente al `params` actual de FXClip.
-   */
-  staticParams: Record<string, number | string | boolean>
-
-  // ── WAVE 4811: Cognitive DNA (optional — .lfx v2.1 compatible clips) ──
-  cognitiveDNA?: import('../arsenal/lfxTypes').CognitiveDNA
-  simulationMeta?: import('../arsenal/lfxTypes').SimulationMeta
-}
+export type HephAutomationClip = HephAutomationClipV3
 
 // ═══════════════════════════════════════════════════════════════════════════
 // V3 MULTICELLULAR TYPES — WAVE 4848
@@ -637,103 +543,13 @@ export function isNumericValue(value: number | HSL): value is number {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Versión serializable de HephAutomationClip para IPC.
- * 
- * El problema: `Map<>` no se serializa correctamente en IPC de Electron.
- * Se convierte a `{}` vacío al pasar por JSON.stringify/parse.
- * 
- * Esta interface usa `Record<>` en lugar de `Map<>` para que
- * el clip pueda viajar seguro entre renderer y main process.
- */
-export interface HephAutomationClipSerialized {
-  id: string
-  name: string
-  author: string
-  category: string
-  tags: string[]
-  vibeCompat: string[]
-  zones: string[]
-  mixBus: 'global' | 'htp' | 'ambient' | 'accent'  // WAVE 2040.9a: Full MixBus spectrum
-  priority: number
-  durationMs: number
-  effectType: string
-  curves: Record<string, HephCurve>  // ← Record, no Map
-  staticParams: Record<string, number | string | boolean>
-  /** ⚡ WAVE 2403: FixtureSelector survives IPC — PhaseConfig is a POJO, JSON-safe */
-  selector?: import('../stage/ShowFileV2').FixtureSelector
-  // ── WAVE 4811: Cognitive DNA (POJO — JSON-safe for IPC) ──
-  cognitiveDNA?: import('../arsenal/lfxTypes').CognitiveDNA
-  simulationMeta?: import('../arsenal/lfxTypes').SimulationMeta
-}
-
-/**
- * Serializa un HephAutomationClip para transporte IPC.
- * Convierte Map → Record.
- */
-export function serializeHephClip(clip: HephAutomationClip): HephAutomationClipSerialized {
-  const curvesRecord: Record<string, HephCurve> = {}
-  for (const [paramId, curve] of clip.curves) {
-    curvesRecord[paramId] = curve
-  }
-  
-  return {
-    id: clip.id,
-    name: clip.name,
-    author: clip.author,
-    category: clip.category,
-    tags: clip.tags,
-    vibeCompat: clip.vibeCompat,
-    zones: clip.zones as string[],
-    mixBus: clip.mixBus,
-    priority: clip.priority,
-    durationMs: clip.durationMs,
-    effectType: clip.effectType,
-    curves: curvesRecord,
-    staticParams: clip.staticParams,
-    selector: clip.selector,  // ⚡ WAVE 2403: Pass-through (POJO, JSON-safe)
-    cognitiveDNA: clip.cognitiveDNA,  // WAVE 4811: Pass-through
-    simulationMeta: clip.simulationMeta,  // WAVE 4811: Pass-through
-  }
-}
-
-/**
- * Deserializa un HephAutomationClipSerialized de vuelta a HephAutomationClip.
- * Convierte Record → Map.
- */
-export function deserializeHephClip(serialized: HephAutomationClipSerialized): HephAutomationClip {
-  const curvesMap = new Map<HephParamId, HephCurve>()
-  for (const [paramId, curve] of Object.entries(serialized.curves)) {
-    curvesMap.set(paramId as HephParamId, curve)
-  }
-  
-  return {
-    id: serialized.id,
-    name: serialized.name,
-    author: serialized.author,
-    category: serialized.category as import('../effects/types').EffectCategory,
-    tags: serialized.tags,
-    vibeCompat: serialized.vibeCompat,
-    zones: serialized.zones as import('../effects/types').EffectZone[],
-    mixBus: serialized.mixBus,
-    priority: serialized.priority,
-    durationMs: serialized.durationMs,
-    effectType: serialized.effectType,
-    curves: curvesMap,
-    staticParams: serialized.staticParams,
-    selector: serialized.selector,  // ⚡ WAVE 2403: Restore selector from IPC
-    cognitiveDNA: serialized.cognitiveDNA,   // WAVE 4811: Restore from IPC
-    simulationMeta: serialized.simulationMeta, // WAVE 4811: Restore from IPC
-  }
-}
-
-/**
- * ⚒️ WAVE 7002 — Serializador nativo V3.
+ * ⚒️ WAVE 7003 — Serializador canónico V3.
  *
  * Toma el estado inmaculado del Store (Immer) y devuelve un objeto
  * JSON-ready limpio, descartando cualquier variable efímera de la UI.
  * Deep clone de tracks, curves, keyframes y nested objects.
  */
-export function serializeHephClipV3(clip: HephAutomationClipV3): HephAutomationClipV3 {
+export function serializeHephClip(clip: HephAutomationClipV3): HephAutomationClipV3 {
   const cleanTracks: HephTrack[] = clip.tracks.map(track => ({
     id: track.id,
     paramId: track.paramId,
@@ -813,7 +629,7 @@ const OPTICS_PARAMS: HephParamId[] = ['zoom', 'focus', 'iris', 'gobo1', 'gobo2',
  * @returns EffectCategory inferida desde las curvas
  */
 export function inferHephCategory(clip: HephAutomationClip): import('../effects/types').EffectCategory {
-  const paramIds = Array.from(clip.curves.keys())
+  const paramIds = clip.tracks.map(t => t.paramId)
   
   const touchesPhysical = paramIds.some(p => PHYSICAL_PARAMS.includes(p))
   const touchesColor = paramIds.some(p => COLOR_PARAMS.includes(p))

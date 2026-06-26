@@ -4,12 +4,12 @@
  * Persistence layer for .lfx (LuxSync FX) automation clips
  * 
  * Storage: userData/effects/*.lfx
- * Format: JSON (HephAutomationClipSerialized)
+ * Format: JSON (HephAutomationClipV3)
  * 
  * The .lfx format is a JSON file containing:
- * - $schema: 'hephaestus/v1' (for future migration)
+ * - $schema: 'luxsync.lfx/3.0'
  * - version: '1.0.0'
- * - clip: HephAutomationClipSerialized
+ * - clip: HephAutomationClipV3
  * - checksum: SHA-256 hash for integrity
  * 
  * @module core/hephaestus/HephFileIO
@@ -20,12 +20,12 @@ import { app } from 'electron'
 import * as fs from 'fs/promises'
 import * as path from 'path'
 import * as crypto from 'crypto'
-import type { 
-  HephAutomationClip, 
+import type {
+  HephAutomationClip,
   HephAutomationClipV3,
-  HephAutomationClipSerialized 
 } from './types'
-import { serializeHephClip, serializeHephClipV3, deserializeHephClip } from './types'
+// HephAutomationClip is now an alias for HephAutomationClipV3
+import { serializeHephClip } from './types'
 import { getHephaestusClipIndex } from './HephaestusClipIndex'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -52,7 +52,7 @@ interface LFXFile {
   version: typeof FORMAT_VERSION
   
   /** The serialized clip data */
-  clip: HephAutomationClipSerialized
+  clip: HephAutomationClipV3
   
   /** SHA-256 checksum of the clip JSON for integrity */
   checksum: string
@@ -155,30 +155,15 @@ class HephFileIO {
    * @returns The file path where the clip was saved
    * @throws Error if serialization or write fails
    */
-  async saveClip(clip: HephAutomationClip | HephAutomationClipV3): Promise<string> {
+  async saveClip(clip: HephAutomationClipV3): Promise<string> {
     await this.getEffectsPath()
 
-    const isV3 = 'tracks' in clip && (clip as HephAutomationClipV3).schemaVersion === '3.0';
-
-    let filePayload: any;
-
-    if (isV3) {
-      filePayload = {
-        $schema: 'luxsync.lfx/3.0',
-        version: '1.0.0',
-        clip: serializeHephClipV3(clip as HephAutomationClipV3),
-        checksum: ''
-      };
-    } else {
-      // Ruta legacy V2
-      const serialized = serializeHephClip(clip as HephAutomationClip);
-      filePayload = {
-        $schema: 'hephaestus/v2.1',
-        version: '1.0.0',
-        clip: serialized,
-        checksum: ''
-      };
-    }
+    const filePayload = {
+      $schema: 'luxsync.lfx/3.0',
+      version: '1.0.0',
+      clip: serializeHephClip(clip),
+      checksum: ''
+    };
 
     const fileName = `${clip.id}.lfx`;
     const filePath = path.join(this.effectsPath!, fileName);
@@ -204,7 +189,7 @@ class HephFileIO {
    * @returns The loaded clip
    * @throws Error if file not found or corrupted
    */
-  async loadClip(idOrPath: string): Promise<HephAutomationClip> {
+  async loadClip(idOrPath: string): Promise<HephAutomationClipV3> {
     const index = getHephaestusClipIndex();
     // Soporta búsqueda por ID o por Path absoluto
     const isAbsolute = idOrPath.includes('/') || idOrPath.includes('\\');
@@ -213,7 +198,7 @@ class HephFileIO {
     if (!loaded) {
       throw new Error(`[HephFileIO] Clip no encontrado en el índice: ${idOrPath}`);
     }
-    return loaded.clip as HephAutomationClip;
+    return loaded.clip as HephAutomationClipV3;
   }
   
   // ═══════════════════════════════════════════════════════════════════════

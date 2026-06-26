@@ -12,7 +12,7 @@
  * @version WAVE 2006 / WAVE 2030.4 (Hephaestus Integration)
  */
 
-import type { HephAutomationClip, HephAutomationClipSerialized } from '../../core/hephaestus/types'
+import type { HephAutomationClipV3 } from '../../core/hephaestus/types'
 import { getEffectById } from './EffectRegistry'  // WAVE 2040.21b: Registry lookup for Core FX colors
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -165,18 +165,18 @@ export interface FXClip extends BaseClip {
   params: Record<string, number | string | boolean>
   
   /**
-   * ⚒️ WAVE 2040.17: DIAMOND DATA — Deep copy of Hephaestus automation curves
-   * 
-   * Stored as HephAutomationClipSerialized (Record<>, NOT Map<>)
-   * so it survives JSON.stringify without data loss.
-   * 
-   * Contains the COMPLETE automation data: all curves, zones, mixBus,
+   * ⚒️ WAVE 2040.17: DIAMOND DATA — Deep copy of Hephaestus automation clip.
+   *
+   * V3 clip stored directly — survives JSON.stringify natively
+   * (tracks is an array, no Map<> to serialize).
+   *
+   * Contains the COMPLETE automation data: all tracks, spatialZones, mixBus,
    * priority, staticParams. The .lux file is self-contained.
    * The reproductor reads directly from this — no .lfx dependency.
-   * 
+   *
    * Opcional: clips legacy/Arsenal sin hephClip funcionan normalmente.
    */
-  hephClip?: HephAutomationClipSerialized
+  hephClip?: HephAutomationClipV3
   
   /**
    * ⚒️ WAVE 2030.17: THE BRIDGE
@@ -353,7 +353,7 @@ export function createFXClip(
  * ⚒️ WAVE 2030.17 → WAVE 2040.17: THE DIAMOND BRIDGE
  * Create a Hephaestus Custom FX Clip from .lfx drag
  * 
- * WAVE 2040.17: Now accepts full hephClip data (serialized),
+ * WAVE 2040.17: Now accepts full hephClip V3 data,
  * mixBus, zones, priority. Color is derived from mixBus.
  * Keyframes are generated as a visual summary of the intensity curve.
  */
@@ -388,10 +388,10 @@ export const MIXBUS_CLIP_COLORS: Record<string, string> = {
 const VISUAL_PRIORITY_CURVE_KEYS = ['intensity', 'tilt', 'pan', 'color', 'white', 'zoom', 'focus']
 
 export function extractVisualKeyframes(
-  hephClip: HephAutomationClipSerialized | undefined,
+  hephClip: HephAutomationClipV3 | undefined,
   durationMs: number
 ): FXKeyframe[] {
-  if (!hephClip?.curves) {
+  if (!hephClip?.tracks || hephClip.tracks.length === 0) {
     // Fallback: generic 3-point envelope
     return [
       { offsetMs: 0, value: 0, easing: 'ease-in' },
@@ -400,8 +400,8 @@ export function extractVisualKeyframes(
     ]
   }
 
-  const curveKeys = Object.keys(hephClip.curves)
-  if (curveKeys.length === 0) {
+  const trackParamIds = hephClip.tracks.map(t => t.paramId)
+  if (trackParamIds.length === 0) {
     return [
       { offsetMs: 0, value: 0, easing: 'ease-in' },
       { offsetMs: durationMs / 2, value: 1, easing: 'ease-out' },
@@ -410,19 +410,16 @@ export function extractVisualKeyframes(
   }
 
   // ⚒️ WAVE 2040.21: Pick the PRIORITY curve — the most visually meaningful
-  let selectedKey: string | undefined
+  let selectedTrack = hephClip.tracks[0]
   for (const priorityKey of VISUAL_PRIORITY_CURVE_KEYS) {
-    if (curveKeys.includes(priorityKey)) {
-      selectedKey = priorityKey
+    const track = hephClip.tracks.find(t => t.paramId === priorityKey)
+    if (track) {
+      selectedTrack = track
       break
     }
   }
-  // If no priority key matched, take the first available curve
-  if (!selectedKey) {
-    selectedKey = curveKeys[0]
-  }
 
-  const selectedCurve = hephClip.curves[selectedKey]
+  const selectedCurve = selectedTrack.curve
   if (!selectedCurve?.keyframes || selectedCurve.keyframes.length === 0) {
     return [
       { offsetMs: 0, value: 0, easing: 'ease-in' },
@@ -459,14 +456,14 @@ export function extractVisualKeyframes(
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * ⚒️ WAVE 2040.19: Infer MixBus from serialized clip data.
+ * ⚒️ WAVE 2040.19: Infer MixBus from clip data.
  * 
  * For legacy .lfx files created before the mixBus field existed,
  * we analyze the clip's curves, name, category, and effectType
  * to deterministically infer the correct MixBus routing.
  * 
  * PRIORITY ORDER (most specific → least specific):
- * 1. hephClipSerialized.mixBus — explicit field (new files)
+ * 1. hephClip.mixBus — explicit field (new files)
  * 2. Curve analysis — what parameters does the clip automate?
  * 3. Name/category keyword matching — fallback heuristic
  * 4. 'global' — safe default (intensity/dimmer routing)
@@ -488,18 +485,18 @@ const ACCENT_KEYWORDS = ['gobo', 'prism', 'zoom', 'focus', 'iris', 'optic', 'bea
 const GLOBAL_KEYWORDS = ['strobe', 'flash', 'blinder', 'bump', 'pulse', 'dim', 'blackout', 'intensity']
 
 function inferMixBusFromCurves(
-  hephClip: HephAutomationClipSerialized | undefined,
+  hephClip: HephAutomationClipV3 | undefined,
   name: string,
   effectType: string,
 ): MixBusType {
-  // ── PASS 1: Explicit mixBus in serialized data (new .lfx files)
+  // ── PASS 1: Explicit mixBus in clip data (new .lfx files)
   if (hephClip?.mixBus) {
     return hephClip.mixBus
   }
 
-  // ── PASS 2: Curve analysis (most reliable for legacy files)
-  if (hephClip?.curves) {
-    const curveKeys = Object.keys(hephClip.curves)
+  // ── PASS 2: Track analysis (most reliable for legacy files)
+  if (hephClip?.tracks) {
+    const curveKeys = hephClip.tracks.map(t => t.paramId)
     
     const hasMovement = curveKeys.some(k => MOVEMENT_CURVE_KEYS.includes(k))
     const hasColor = curveKeys.some(k => COLOR_CURVE_KEYS.includes(k))
@@ -544,13 +541,13 @@ export function createHephFXClip(
   durationMs: number,
   trackId: string,
   effectType: string = 'custom',
-  hephClipSerialized?: HephAutomationClipSerialized,
+  hephClipData?: HephAutomationClipV3,
   mixBus?: 'global' | 'htp' | 'ambient' | 'accent',
   zones?: string[],
   priority?: number,
 ): FXClip {
   // ⚒️ WAVE 2040.19: SHERLOCK MODE — Auto-infer mixBus for legacy clips
-  const resolvedMixBus: MixBusType = mixBus || inferMixBusFromCurves(hephClipSerialized, name, effectType)
+  const resolvedMixBus: MixBusType = mixBus || inferMixBusFromCurves(hephClipData, name, effectType)
   const color = MIXBUS_CLIP_COLORS[resolvedMixBus] || HEPH_EMBER_COLOR
 
   // 🐛 WAVE 2040.19: Log inference result
@@ -581,14 +578,14 @@ export function createHephFXClip(
     endMs: startMs + durationMs,
     trackId,
     color,
-    keyframes: extractVisualKeyframes(hephClipSerialized, durationMs),
+    keyframes: extractVisualKeyframes(hephClipData, durationMs),
     params: { effectType },
     selected: false,
     locked: false,
     // ⚒️ HEPHAESTUS MARKERS — WAVE 2040.17 + 2040.19: Full Diamond Data
     hephFilePath: portableFilePath,
     isHephCustom: true,
-    hephClip: hephClipSerialized,
+    hephClip: hephClipData,
     mixBus: resolvedMixBus,  // ⚒️ WAVE 2040.19: Always resolved (explicit or inferred)
     zones,
     priority,
@@ -679,11 +676,11 @@ export interface DragPayload {
   // ── WAVE 2040.17: Diamond Data — Full Hephaestus payload ──
 
   /**
-   * Complete serialized HephAutomationClip (Record<>, not Map<>).
+   * Complete HephAutomationClipV3 data.
    * Carried in the drag payload for zero-latency deep copy on drop.
    * Typical .lfx files are <50KB — DataTransfer handles this fine.
    */
-  hephClipSerialized?: HephAutomationClipSerialized
+  hephClipSerialized?: HephAutomationClipV3
 
   /** MixBus routing from the Hephaestus clip */
   mixBus?: 'global' | 'htp' | 'ambient' | 'accent'

@@ -15,25 +15,22 @@
 import * as fs from 'fs/promises'
 import * as path from 'path'
 import type {
-  HephAutomationClip,
   HephAutomationClipV3,
-  HephAutomationClipSerialized,
 } from './types'
-import { deserializeHephClip } from './types'
 import type { HephClipMetadata } from './HephFileIO'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 
-export type HephSchemaVersion = 'hephaestus/v1' | 'hephaestus/v2.1' | 'luxsync.lfx/3.0'
+export type HephSchemaVersion = 'luxsync.lfx/3.0'
 
 export interface LoadedClip {
   id: string
   filePath: string
   schemaVersion: HephSchemaVersion
   metadata: HephClipMetadata
-  clip: HephAutomationClip | HephAutomationClipV3
+  clip: HephAutomationClipV3
   modifiedAt: number
   source: 'builtin' | 'user'
 }
@@ -43,34 +40,13 @@ export interface LoadedClip {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Discriminador de tipo en runtime para distinguir V2 (curves: Map) de V3 (tracks: []).
- */
-function _isV3(clip: HephAutomationClip | HephAutomationClipV3): clip is HephAutomationClipV3 {
-  return (clip as HephAutomationClipV3).tracks !== undefined
-}
-
-/**
- * Construye un objeto HephClipMetadata a partir de un clip V2 o V3.
+ * Construye un objeto HephClipMetadata a partir de un clip V3.
  */
 function _buildMetadata(
-  clip: HephAutomationClip | HephAutomationClipV3,
+  clip: HephAutomationClipV3,
   filePath: string,
   modifiedAt: number,
 ): HephClipMetadata {
-  if (_isV3(clip)) {
-    return {
-      id: clip.id,
-      name: clip.name,
-      author: clip.author,
-      category: clip.category,
-      tags: [...clip.tags],
-      durationMs: clip.durationMs,
-      effectType: clip.effectType,
-      paramCount: clip.tracks.length,
-      filePath,
-      modifiedAt,
-    }
-  }
   return {
     id: clip.id,
     name: clip.name,
@@ -79,7 +55,7 @@ function _buildMetadata(
     tags: [...clip.tags],
     durationMs: clip.durationMs,
     effectType: clip.effectType,
-    paramCount: clip.curves.size,
+    paramCount: clip.tracks.length,
     filePath,
     modifiedAt,
   }
@@ -147,7 +123,7 @@ class HephaestusClipIndex {
       const parsed = JSON.parse(raw) as Record<string, unknown>
       const schema = parsed?.$schema as string | undefined
 
-      let clip: HephAutomationClip | HephAutomationClipV3 | null = null
+      let clip: HephAutomationClipV3 | null = null
       let schemaVersion: HephSchemaVersion
 
       // ── V3 PATH ────────────────────────────────────────────────────────
@@ -170,42 +146,8 @@ class HephaestusClipIndex {
         clip = v3
         schemaVersion = 'luxsync.lfx/3.0'
       } else {
-        // ── V2.1 PATH (legacy curves Record) ──────────────────────────────
-        let serialized: HephAutomationClipSerialized | null = null
-
-        if (parsed?.clip && typeof parsed.clip === 'object') {
-          serialized = parsed.clip as HephAutomationClipSerialized
-        } else if (parsed?.curves && typeof parsed.curves === 'object') {
-          serialized = parsed as unknown as HephAutomationClipSerialized
-        } else {
-          console.error(`[HephClipIndex] ❌ Invalid clip structure in ${filePath}: no V3 tracks[] and no V2 curves{}`)
-          return null
-        }
-
-        if (!serialized.curves || typeof serialized.curves !== 'object') {
-          console.error(`[HephClipIndex] ❌ Invalid clip structure in ${filePath}: missing or invalid curves`)
-          return null
-        }
-
-        for (const [paramId, curve] of Object.entries(serialized.curves)) {
-          if (!curve || typeof curve !== 'object') {
-            console.error(`[HephClipIndex] ❌ Invalid curve '${paramId}' in ${filePath}: not an object`)
-            return null
-          }
-          const hephCurve = curve as { keyframes?: unknown }
-          if (!Array.isArray(hephCurve.keyframes)) {
-            console.error(`[HephClipIndex] ❌ Invalid curve '${paramId}' in ${filePath}: keyframes is not an array`)
-            return null
-          }
-        }
-
-        const v2 = deserializeHephClip(serialized)
-        if (!v2 || !v2.curves || v2.curves.size === 0) {
-          console.error(`[HephClipIndex] ❌ Deserialization failed or empty curves in ${filePath}`)
-          return null
-        }
-        clip = v2
-        schemaVersion = schema === 'hephaestus/v2.1' ? 'hephaestus/v2.1' : 'hephaestus/v1'
+        console.error(`[HephClipIndex] ❌ Invalid clip structure in ${filePath}: expected V3 schema 'luxsync.lfx/3.0' with tracks[]`)
+        return null
       }
 
       if (!clip) return null

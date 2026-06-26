@@ -4,12 +4,12 @@
  * Persistence layer for .lfx (LuxSync FX) automation clips
  *
  * Storage: userData/effects/*.lfx
- * Format: JSON (HephAutomationClipSerialized)
+ * Format: JSON (HephAutomationClipV3)
  *
  * The .lfx format is a JSON file containing:
- * - $schema: 'hephaestus/v1' (for future migration)
+ * - $schema: 'luxsync.lfx/3.0'
  * - version: '1.0.0'
- * - clip: HephAutomationClipSerialized
+ * - clip: HephAutomationClipV3
  * - checksum: SHA-256 hash for integrity
  *
  * @module core/hephaestus/HephFileIO
@@ -18,7 +18,8 @@
 import { app } from 'electron';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { serializeHephClip, serializeHephClipV3 } from './types';
+// HephAutomationClip is now an alias for HephAutomationClipV3
+import { serializeHephClip } from './types';
 import { getHephaestusClipIndex } from './HephaestusClipIndex';
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -85,26 +86,12 @@ class HephFileIO {
      */
     async saveClip(clip) {
         await this.getEffectsPath();
-        const isV3 = 'tracks' in clip && clip.schemaVersion === '3.0';
-        let filePayload;
-        if (isV3) {
-            filePayload = {
-                $schema: 'luxsync.lfx/3.0',
-                version: '1.0.0',
-                clip: serializeHephClipV3(clip),
-                checksum: ''
-            };
-        }
-        else {
-            // Ruta legacy V2
-            const serialized = serializeHephClip(clip);
-            filePayload = {
-                $schema: 'hephaestus/v2.1',
-                version: '1.0.0',
-                clip: serialized,
-                checksum: ''
-            };
-        }
+        const filePayload = {
+            $schema: 'luxsync.lfx/3.0',
+            version: '1.0.0',
+            clip: serializeHephClip(clip),
+            checksum: ''
+        };
         const fileName = `${clip.id}.lfx`;
         const filePath = path.join(this.effectsPath, fileName);
         // Escribimos a disco

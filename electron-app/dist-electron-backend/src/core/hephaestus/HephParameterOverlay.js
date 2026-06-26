@@ -63,7 +63,8 @@ const MAX_STROBE_HZ = 18;
  */
 export class HephParameterOverlay {
     constructor(clip) {
-        this.evaluator = new CurveEvaluator(clip.curves, clip.durationMs);
+        const curvesMap = new Map(clip.tracks.map(t => [t.paramId, t.curve]));
+        this.evaluator = new CurveEvaluator(curvesMap, clip.durationMs);
         this.durationMs = clip.durationMs;
     }
     /**

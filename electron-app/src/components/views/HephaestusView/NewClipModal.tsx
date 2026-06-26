@@ -30,7 +30,7 @@
 
 import React, { useState, useCallback, useEffect, useRef, memo } from 'react'
 import { createPortal } from 'react-dom'
-import type { HephAutomationClip, HephCurve, HephParamId } from '../../../core/hephaestus/types'
+import type { HephAutomationClip, HephCurve, HephParamId, HephTrack, ZoneTarget } from '../../../core/hephaestus/types'
 import type { EffectCategory, EffectZone } from '../../../core/effects/types'
 import { SmartZoneSelector } from './SmartZoneSelector'
 import { 
@@ -193,10 +193,12 @@ export const NewClipModal: React.FC<NewClipModalProps> = memo(({
     const id = `heph_${timestamp}_${randomSuffix}`
 
     const defaultParams = DEFAULT_PARAMS_BY_CATEGORY[category]
-    const curves = new Map<HephParamId, HephCurve>()
-    for (const paramId of defaultParams) {
-      curves.set(paramId, createDefaultCurve(paramId, durationMs))
-    }
+    const tracks: HephTrack[] = defaultParams.map(paramId => ({
+      id: `track-${paramId}-${id}`,
+      paramId,
+      zones: (zones.length > 0 ? zones : ['all']) as readonly ZoneTarget[],
+      curve: createDefaultCurve(paramId, durationMs),
+    }))
 
     const newClip: HephAutomationClip = {
       id,
@@ -205,13 +207,14 @@ export const NewClipModal: React.FC<NewClipModalProps> = memo(({
       category,
       tags: [],
       vibeCompat: [],
-      zones: zones.length > 0 ? zones : ['all'],
+      spatialZones: (zones.length > 0 ? zones : ['all']) as readonly ZoneTarget[],
       mixBus,
       priority: 50,
       durationMs,
       effectType: 'heph_custom',
-      curves,
+      tracks,
       staticParams: {},
+      schemaVersion: '3.0',
     }
 
     onCreate(newClip)

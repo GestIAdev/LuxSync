@@ -19,7 +19,7 @@
 import React, { useState, useEffect, useCallback, useMemo, memo, useRef } from 'react'
 import type { DragPayload } from '../../core/TimelineClip'
 import { serializeDragPayload } from '../../core/TimelineClip'
-import type { HephAutomationClipSerialized } from '../../../core/hephaestus/types'
+import type { HephAutomationClipV3 } from '../../../core/hephaestus/types'
 import './CustomFXDock.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -90,7 +90,7 @@ function inferBusNeon(clip: HephClipMetadata): string {
 interface CustomFXPadProps {
   clip: HephClipMetadata
   /** ⚒️ WAVE 2040.18: Pre-cached serialized clip for Diamond Data D&D */
-  cachedClip?: HephAutomationClipSerialized
+  cachedClip?: HephAutomationClipV3
   isRecording: boolean
   onDragStart?: (payload: DragPayload) => void
   onDragEnd?: () => void
@@ -120,7 +120,7 @@ const CustomFXPad: React.FC<CustomFXPadProps> = memo(({
       hephClipSerialized: cachedClip,
       mixBus: cachedClip?.mixBus as DragPayload['mixBus'],
       effectType: cachedClip?.effectType || clip.effectType,
-      zones: cachedClip?.zones,
+      zones: cachedClip?.spatialZones as string[] | undefined,
       priority: cachedClip?.priority,
     }
     
@@ -148,8 +148,8 @@ const CustomFXPad: React.FC<CustomFXPadProps> = memo(({
     
     // Debug
     if (cachedClip) {
-      const curveCount = Object.keys(cachedClip.curves || {}).length
-      console.log(`[CustomFXDock] 💎 Diamond drag: ${clip.name} [${curveCount} curves, mixBus=${cachedClip.mixBus || 'none'}]`)
+      const trackCount = cachedClip.tracks?.length || 0
+      console.log(`[CustomFXDock] 💎 Diamond drag: ${clip.name} [${trackCount} tracks, mixBus=${cachedClip.mixBus || 'none'}]`)
     } else {
       console.warn(`[CustomFXDock] ⚠️ Drag without Diamond data: ${clip.name}`)
     }
@@ -231,7 +231,7 @@ export const CustomFXDock: React.FC<CustomFXDockProps> = memo(({
    * ⚒️ WAVE 2040.18: DIAMOND CACHE — Pre-cached serialized clips
    * Mirrors the pattern from HephaestusView for zero-latency D&D.
    */
-  const clipCacheRef = useRef<Map<string, HephAutomationClipSerialized>>(new Map())
+  const clipCacheRef = useRef<Map<string, HephAutomationClipV3>>(new Map())
   
   // Load clips from Hephaestus on mount
   useEffect(() => {
@@ -255,7 +255,7 @@ export const CustomFXDock: React.FC<CustomFXDockProps> = memo(({
                 try {
                   const loadResult = await window.luxsync.hephaestus.load(item.filePath)
                   if (loadResult.success && loadResult.clip) {
-                    clipCacheRef.current.set(item.filePath, loadResult.clip as HephAutomationClipSerialized)
+                    clipCacheRef.current.set(item.filePath, loadResult.clip as HephAutomationClipV3)
                   }
                 } catch (e) {
                   console.warn(`[CustomFXDock] 💎 Cache miss for ${item.name}:`, e)

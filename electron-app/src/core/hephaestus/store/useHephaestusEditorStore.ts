@@ -220,7 +220,17 @@ export const useHephaestusEditorStore = create<HephaestusEditorStore>()(
     _redoStack: [],
 
     // ── CLIP-LEVEL ──
-    loadClip: (clip) => set({ clip, isDirty: false, _undoStack: [], _redoStack: [] }),
+    loadClip: (clip) => {
+      const firstTrackId = clip?.tracks?.[0]?.id ?? null
+      set((state) => {
+        state.clip = clip as any
+        state.isDirty = false
+        state.selection.activeTrackId = firstTrackId
+        state.selection.selectedKeyframeIndices = new Set()
+        state._undoStack = []
+        state._redoStack = []
+      })
+    },
 
     renameClip: (name) =>
       mutate('Rename clip', draft => { draft.name = name }),

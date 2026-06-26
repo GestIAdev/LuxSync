@@ -40,6 +40,34 @@ export interface LoadedClip {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
+ * Normaliza un clip V3 en memoria para garantizar que todas las curvas
+ * tengan `range` y `mode` — campos requeridos por HephCurve pero que
+ * algunos archivos .lfx factory no incluyen.
+ *
+ * También asegura arrays a nivel clip (tags, vibeCompat, spatialZones).
+ *
+ * Mutates in-place. Safe to call on already-complete clips (no-op).
+ */
+function _normalizeClipCurves(clip: HephAutomationClipV3): void {
+  if (!Array.isArray(clip.tags)) clip.tags = []
+  if (!Array.isArray(clip.vibeCompat)) clip.vibeCompat = []
+  if (!Array.isArray(clip.spatialZones)) clip.spatialZones = []
+  if (!clip.staticParams) clip.staticParams = {}
+
+  for (const track of clip.tracks) {
+    const c = track.curve
+    if (!c) continue
+
+    if (!Array.isArray(c.range) || c.range.length !== 2) {
+      c.range = c.valueType === 'color' ? [0, 360] : [0, 1]
+    }
+    if (!c.mode) {
+      c.mode = 'absolute'
+    }
+  }
+}
+
+/**
  * Construye un objeto HephClipMetadata a partir de un clip V3.
  */
 function _buildMetadata(
@@ -151,6 +179,9 @@ class HephaestusClipIndex {
       }
 
       if (!clip) return null
+
+      // ── Normalize: ensure all curves have range and mode ────────────────
+      _normalizeClipCurves(clip)
 
       // ── Stat for modifiedAt ──────────────────────────────────────────────
       let modifiedAt = Date.now()

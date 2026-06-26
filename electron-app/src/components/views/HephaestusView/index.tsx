@@ -53,8 +53,7 @@ import type {
   HephAutomationClip,
   HephKeyframe,
   HephTrack,
-  ZoneTarget,
-  PhaseConfig
+  ZoneTarget
 } from '../../../core/hephaestus/types'
 import type { EffectZone } from '../../../core/effects/types'
 import { serializeHephClip } from '../../../core/hephaestus/types'
@@ -162,6 +161,9 @@ const HephaestusView: React.FC = () => {
   const [showNewClipModal, setShowNewClipModal] = useState(false)
   const [showAddParamDropdown, setShowAddParamDropdown] = useState(false)
   const [showPhasePanel, setShowPhasePanel] = useState(false)
+
+  // ── WAVE 7006: Tab Routing State ──
+  const [activeTab, setActiveTab] = useState<'sculpt' | 'lab'>('sculpt')
 
   // ── WAVE 2030.26: Editable Header State ──
   const [isEditingName, setIsEditingName] = useState(false)
@@ -502,10 +504,7 @@ const HephaestusView: React.FC = () => {
         setIsDirty(false)
         setSelectedKeyframeIdx(null)
         
-        // Select first track
-        if (v3Clip.tracks.length > 0) {
-          selectTrack(v3Clip.tracks[0].id)
-        }
+        // WAVE 7001: loadClip now atomically selects first track — no manual selectTrack needed
         
         console.log(`[Hephaestus] Loaded clip: ${v3Clip.name}`)
       } else {
@@ -624,20 +623,12 @@ const HephaestusView: React.FC = () => {
     setIsDirty(true)
   }, [temporalActions])
 
-  // ⚒️ WAVE 2403: Phase Distribution config handler
-  // TODO: Migrar a actions V3 — phase config is now per-track in V3 (track.phaseConfig)
-  const handlePhaseConfigChange = useCallback((phaseConfig: PhaseConfig) => {
+  // ⚒️ WAVE 7001: Phase Distribution — recipe-based via updatePhaseInTrack
+  const updatePhaseInTrack = useHephaestusEditorStore(state => state.updatePhaseInTrack)
+  const handlePhaseChange = useCallback((recipe: (draft: import('../../../core/hephaestus/phase/PhaseConfigPro').PhaseConfigPro) => void) => {
     if (!activeTrackId) return
-    temporalActions.snapshot()
-    setClip(prev => {
-      const trackIdx = prev.tracks.findIndex(t => t.id === activeTrackId)
-      if (trackIdx === -1) return prev
-      const newTracks = [...prev.tracks]
-      newTracks[trackIdx] = { ...newTracks[trackIdx], phaseConfig: phaseConfig as unknown as import('../../../core/hephaestus/phase/PhaseConfigPro').PhaseConfigPro }
-      return { ...prev, tracks: newTracks }
-    })
-    setIsDirty(true)
-  }, [temporalActions, activeTrackId])
+    updatePhaseInTrack(activeTrackId, recipe)
+  }, [updatePhaseInTrack, activeTrackId])
 
   // ═══════════════════════════════════════════════════════════════════════
   // WAVE 2030.6 — Category Toggle & Drag-and-Drop
@@ -1450,7 +1441,7 @@ const HephaestusView: React.FC = () => {
           <h1 className="heph-header__title">HEPHAESTUS</h1>
           <span className="heph-header__subtitle">STUDIO</span>
         </div>
-        <div className="heph-header__center">
+        <div className="heph-header__center" style={{ minWidth: 0, overflow: 'hidden' }}>
           {/* WAVE 2030.26: Editable clip name */}
           {isEditingName ? (
             <input
@@ -1529,7 +1520,47 @@ const HephaestusView: React.FC = () => {
               <span className="heph-header__save-message">{saveMessage}</span>
             </>
           )}
+
         </div>
+        {/* ══ WAVE 7006: Tab Switcher (direct child of header to prevent overflow) ══ */}
+        <nav className="heph-tab-switcher" style={{ display: 'flex', gap: '0', flexShrink: 0, margin: '0 8px' }}>
+          <button
+            type="button"
+            onClick={() => setActiveTab('sculpt')}
+            style={{
+              padding: '6px 16px',
+              border: 'none',
+              borderBottom: activeTab === 'sculpt' ? '2px solid #ff6600' : '2px solid transparent',
+              borderRadius: '0',
+              background: 'transparent',
+              color: activeTab === 'sculpt' ? '#fff' : '#888',
+              cursor: 'pointer',
+              fontSize: '11px',
+              fontWeight: 700,
+              letterSpacing: '0.08em',
+            }}
+          >
+            ✏️ FORGE
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('lab')}
+            style={{
+              padding: '6px 16px',
+              border: 'none',
+              borderBottom: activeTab === 'lab' ? '2px solid #ff6600' : '2px solid transparent',
+              borderRadius: '0',
+              background: 'transparent',
+              color: activeTab === 'lab' ? '#fff' : '#888',
+              cursor: 'pointer',
+              fontSize: '11px',
+              fontWeight: 700,
+              letterSpacing: '0.08em',
+            }}
+          >
+            📐 LABORATORY
+          </button>
+        </nav>
         <div className="heph-header__right">
           {/* ⚒️ WAVE 2043: Undo/Redo buttons */}
           <button
@@ -1618,6 +1649,7 @@ const HephaestusView: React.FC = () => {
 
       {/* ═══ MAIN WORKSPACE ═══ */}
       <div className="heph-workspace">
+        {activeTab === 'sculpt' && (<>
         {/* ── Library Panel (collapsible) - WAVE 2030.6 ── */}
         {showLibrary && (
           <div className="heph-library">
@@ -1804,45 +1836,6 @@ const HephaestusView: React.FC = () => {
             </div>
           )}
 
-          {/* ⚡ WAVE 2403.1: Phase Engine Toggle Button + Floating HUD */}
-          <div className="heph-phase-trigger" ref={phasePanelRef}>
-            <button
-              className={`heph-phase-trigger__btn ${showPhasePanel ? 'heph-phase-trigger__btn--open' : ''} ${((activePhaseConfig?.spreadDeg ?? 0) / 1440) > 0 ? 'heph-phase-trigger__btn--active' : ''}`}
-              onClick={() => setShowPhasePanel(!showPhasePanel)}
-              type="button"
-              title="Phase Distribution Engine"
-            >
-              <span className="heph-phase-trigger__icon">🌊</span>
-              <span className="heph-phase-trigger__label">PHASE ENGINE</span>
-              {((activePhaseConfig?.spreadDeg ?? 0) / 1440) > 0 && (
-                <span className="heph-phase-trigger__badge">
-                  {Math.round(((activePhaseConfig?.spreadDeg ?? 0) / 1440) * 100)}%
-                </span>
-              )}
-            </button>
-
-            {/* ── Floating Panel ── */}
-            {showPhasePanel && (
-              <div className="heph-phase-float">
-                <PhaseControls
-                  config={activePhaseConfig as unknown as PhaseConfig | null}
-                  onChange={handlePhaseConfigChange}
-                  fixtureCount={clip.spatialZones.length}
-                  disabled={isSaving}
-                  spatialBehavior={clip.cognitiveDNA?.spatialBehavior}
-                  onSpatialBehaviorChange={(sb: SpatialBehavior) => {
-                    if (!clip.cognitiveDNA) return
-                    temporalActions.snapshot()
-                    setClip(prev => ({
-                      ...prev,
-                      cognitiveDNA: { ...prev.cognitiveDNA!, spatialBehavior: sb },
-                    }))
-                    setIsDirty(true)
-                  }}
-                />
-              </div>
-            )}
-          </div>
         </div>
 
         {/* ── Curve Editor + Radar (main area) ── */}
@@ -1883,32 +1876,57 @@ const HephaestusView: React.FC = () => {
             )}
           </div>
 
-          {/* ── Radar Preview (WAVE 2030.25) ── */}
-          {showRadar && (
-            <div className="heph-canvas-area__radar">
-              <div className="heph-canvas-area__radar-header">
-                <span className="heph-canvas-area__radar-title">🛰 RADAR PREVIEW</span>
-                <button
-                  className="heph-canvas-area__radar-toggle"
-                  onClick={() => setShowRadar(false)}
-                  title="Hide Radar"
-                >
-                  ✕
-                </button>
-              </div>
-              <div className="heph-canvas-area__radar-content">
-                <HephRadar
-                  preview={preview}
-                  durationMs={clip.durationMs}
-                  onPlay={preview.play}
-                  onPause={preview.pause}
-                  onStop={preview.stop}
-                  onSeek={preview.seek}
-                />
-              </div>
-            </div>
-          )}
         </div>
+        </>)}
+
+        {activeTab === 'lab' && (<>
+        {/* ── Phase Distribution Engine ── */}
+        <div style={{ padding: '16px', overflow: 'auto', maxWidth: '340px', flexShrink: 0 }}>
+          <div style={{ marginBottom: '12px', fontSize: '12px', fontWeight: 700, color: '#64c8ff', letterSpacing: '0.1em' }}>
+            🌊 PHASE DISTRIBUTION ENGINE
+          </div>
+          <PhaseControls
+            config={activePhaseConfig as import('../../../core/hephaestus/phase/PhaseConfigPro').PhaseConfigPro | null}
+            onPhaseChange={handlePhaseChange}
+            disabled={isSaving}
+            spatialBehavior={clip.cognitiveDNA?.spatialBehavior}
+            onSpatialBehaviorChange={(sb: SpatialBehavior) => {
+              if (!clip.cognitiveDNA) return
+              temporalActions.snapshot()
+              setClip(prev => ({
+                ...prev,
+                cognitiveDNA: { ...prev.cognitiveDNA!, spatialBehavior: sb },
+              }))
+              setIsDirty(true)
+            }}
+          />
+        </div>
+
+        {/* ── Radar Preview ── */}
+        {showRadar && (
+          <div className="heph-canvas-area__radar" style={{ flex: '1 1 auto', minWidth: 0, overflow: 'hidden' }}>
+            <div className="heph-canvas-area__radar-header">
+              <span className="heph-canvas-area__radar-title">🛰 RADAR PREVIEW</span>
+              <button
+                className="heph-canvas-area__radar-toggle"
+                onClick={() => setShowRadar(false)}
+                title="Hide Radar"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="heph-canvas-area__radar-content">
+              <HephRadar
+                preview={preview}
+                durationMs={clip.durationMs}
+                onPlay={preview.play}
+                onPause={preview.pause}
+                onStop={preview.stop}
+                onSeek={preview.seek}
+              />
+            </div>
+          </div>
+        )}
 
         {/* ── WAVE 4811: DNA Designer Rail (right rail) ── */}
         {showDna && (
@@ -1936,9 +1954,11 @@ const HephaestusView: React.FC = () => {
             }}
           />
         )}
+        </>)}
       </div>
 
       {/* ═══ TOOLBAR ═══ */}
+      {activeTab === 'sculpt' && (
       <HephaestusToolbar
         activeCurve={activeCurve}
         selectedKeyframeIdx={selectedKeyframeIdx}
@@ -1948,6 +1968,7 @@ const HephaestusView: React.FC = () => {
         onApplyBezierPreset={handleApplyBezierPreset}
         onApplyTemplate={handleApplyTemplate}
       />
+      )}
 
       {/* ═══ NEW CLIP MODAL - WAVE 2030.8 ═══ */}
       <NewClipModal

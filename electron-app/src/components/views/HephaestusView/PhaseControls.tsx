@@ -1,27 +1,28 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * ⚒️ PHASE CONTROLS — WAVE 2403: THE PHASER UI
+ * ⚒️ PHASE CONTROLS — WAVE 7001: PHASE CONFIG PRO UI
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * Panel de control para la distribución de fase de Hephaestus.
- * Two-way binding: mover estos controles actualiza el PhaseConfig
- * del clip actual → re-render del preview en tiempo real.
+ * Panel de control para la distribución de fase de Hephaestus V3.
+ * Two-way binding via updatePhaseInTrack recipe pattern.
  *
- * CONTROLES:
- * 1. Spread Slider:    0% — 100% (config.spread)
- * 2. Symmetry Buttons: linear | mirror | center-out
- * 3. Wings Input:      1 — N (integer)
- * 4. Direction Toggle: Forward (+1) | Reverse (-1)
+ * CONTROLES (PhaseConfigPro):
+ * 1. Spread:    spreadDeg (0—1440º slider)
+ * 2. Symmetry:  linear | mirror | center-out
+ * 3. Wings:     1—8 (integer, frequency multiplier)
+ * 4. Blocks:    1—16 (integer, MAtricks-style grouping)
+ * 5. Shuffle:   0—1 (float) + shuffleSeed (integer)
+ * 6. Direction: +1 | -1
  *
  * DESIGN: Cyberpunk Industrial — consistent with HephaestusView.css
  *
  * @module views/HephaestusView/PhaseControls
- * @version WAVE 2403
+ * @version WAVE 7001
  */
 
 import React, { useCallback } from 'react'
-import type { PhaseConfig, PhaseSymmetryMode, PhaseDirection } from '../../../core/hephaestus/types'
-import { DEFAULT_PHASE_CONFIG } from '../../../core/hephaestus/types'
+import type { PhaseConfigPro, PhaseSymmetryMode } from '../../../core/hephaestus/phase/PhaseConfigPro'
+import { DEFAULT_PHASE_CONFIG_PRO } from '../../../core/hephaestus/phase/PhaseConfigPro'
 import type { SpatialBehavior } from '../../../core/arsenal/lfxTypes'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -30,11 +31,9 @@ import type { SpatialBehavior } from '../../../core/arsenal/lfxTypes'
 
 interface PhaseControlsProps {
   /** Current phase configuration (null = use defaults) */
-  config: PhaseConfig | null
-  /** Callback when config changes — triggers preview re-render */
-  onChange: (config: PhaseConfig) => void
-  /** Number of active zones/fixtures (for wings max limit) */
-  fixtureCount: number
+  config: PhaseConfigPro | null
+  /** Recipe-based updater: calls updatePhaseInTrack(trackId, recipe) */
+  onPhaseChange: (recipe: (draft: PhaseConfigPro) => void) => void
   /** Whether controls are disabled (e.g. during save) */
   disabled?: boolean
   // ── WAVE 4811: Spatial Behavior ──
@@ -73,39 +72,55 @@ const SPATIAL_OPTIONS: Array<{ value: SpatialBehavior; label: string; hint: stri
 
 export const PhaseControls: React.FC<PhaseControlsProps> = ({
   config,
-  onChange,
-  fixtureCount,
+  onPhaseChange,
   disabled = false,
   spatialBehavior,
   onSpatialBehaviorChange,
 }) => {
-  const active = config ?? DEFAULT_PHASE_CONFIG
+  const active = config ?? DEFAULT_PHASE_CONFIG_PRO
 
-  // ── Individual field updaters ──────────────────────────────────────
+  // ── Individual field updaters (recipe-based) ───────────────────────
 
   const handleSpreadChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const spread = parseFloat(e.target.value)
-    onChange({ ...active, spread })
-  }, [active, onChange])
+    const spreadDeg = parseFloat(e.target.value)
+    onPhaseChange(draft => { draft.spreadDeg = spreadDeg })
+  }, [onPhaseChange])
 
   const handleSymmetryChange = useCallback((symmetry: PhaseSymmetryMode) => {
-    onChange({ ...active, symmetry })
-  }, [active, onChange])
+    onPhaseChange(draft => { draft.symmetry = symmetry })
+  }, [onPhaseChange])
 
   const handleWingsChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = parseInt(e.target.value, 10)
-    const wings = Math.max(1, Math.min(isNaN(raw) ? 1 : raw, fixtureCount || 1))
-    onChange({ ...active, wings })
-  }, [active, onChange, fixtureCount])
+    const wings = Math.max(1, Math.min(isNaN(raw) ? 1 : raw, 8))
+    onPhaseChange(draft => { draft.wings = wings })
+  }, [onPhaseChange])
+
+  const handleBlocksChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = parseInt(e.target.value, 10)
+    const blocks = Math.max(1, Math.min(isNaN(raw) ? 1 : raw, 16))
+    onPhaseChange(draft => { draft.blocks = blocks })
+  }, [onPhaseChange])
+
+  const handleShuffleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const shuffle = parseFloat(e.target.value)
+    onPhaseChange(draft => { draft.shuffle = shuffle })
+  }, [onPhaseChange])
+
+  const handleShuffleSeedChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = parseInt(e.target.value, 10)
+    const seed = isNaN(raw) ? 1 : Math.max(1, raw)
+    onPhaseChange(draft => { draft.shuffleSeed = seed })
+  }, [onPhaseChange])
 
   const handleDirectionToggle = useCallback(() => {
-    const direction: PhaseDirection = active.direction === 1 ? -1 : 1
-    onChange({ ...active, direction })
-  }, [active, onChange])
+    const direction: 1 | -1 = active.direction === 1 ? -1 : 1
+    onPhaseChange(draft => { draft.direction = direction })
+  }, [active.direction, onPhaseChange])
 
   // ── Computed display values ────────────────────────────────────────
-  const spreadPercent = Math.round(active.spread * 100)
-  const isActive = active.spread > 0
+  const spreadPercent = Math.round((active.spreadDeg / 1440) * 100)
+  const isActive = active.spreadDeg > 0
 
   return (
     <div className={`heph-phase ${isActive ? 'heph-phase--active' : ''} ${disabled ? 'heph-phase--disabled' : ''}`}>
@@ -142,7 +157,7 @@ export const PhaseControls: React.FC<PhaseControlsProps> = ({
         </div>
       )}
 
-      {/* ── Spread Slider ── */}
+      {/* ── Spread Slider (0—1440º) ── */}
       <div className="heph-phase__row">
         <label className="heph-phase__label">SPREAD</label>
         <div className="heph-phase__slider-wrap">
@@ -150,13 +165,13 @@ export const PhaseControls: React.FC<PhaseControlsProps> = ({
             type="range"
             className="heph-phase__slider"
             min={0}
-            max={1}
-            step={0.01}
-            value={active.spread}
+            max={1440}
+            step={1}
+            value={active.spreadDeg}
             onChange={handleSpreadChange}
             disabled={disabled}
           />
-          <span className="heph-phase__value">{spreadPercent}%</span>
+          <span className="heph-phase__value">{active.spreadDeg}º</span>
         </div>
       </div>
 
@@ -180,7 +195,7 @@ export const PhaseControls: React.FC<PhaseControlsProps> = ({
         </div>
       </div>
 
-      {/* ── Wings Input ── */}
+      {/* ── Wings Input (1—8) ── */}
       <div className="heph-phase__row">
         <label className="heph-phase__label">WINGS</label>
         <div className="heph-phase__wings-wrap">
@@ -188,14 +203,64 @@ export const PhaseControls: React.FC<PhaseControlsProps> = ({
             type="number"
             className="heph-phase__wings-input"
             min={1}
-            max={Math.max(1, fixtureCount)}
+            max={8}
             value={active.wings}
             onChange={handleWingsChange}
             disabled={disabled}
           />
           <span className="heph-phase__wings-hint">
-            {active.wings === 1 ? 'No split' : `${active.wings} groups`}
+            {active.wings === 1 ? 'Single sweep' : `${active.wings}× freq`}
           </span>
+        </div>
+      </div>
+
+      {/* ── Blocks Input (1—16, MAtricks) ── */}
+      <div className="heph-phase__row">
+        <label className="heph-phase__label">BLOCKS</label>
+        <div className="heph-phase__wings-wrap">
+          <input
+            type="number"
+            className="heph-phase__wings-input"
+            min={1}
+            max={16}
+            value={active.blocks}
+            onChange={handleBlocksChange}
+            disabled={disabled}
+          />
+          <span className="heph-phase__wings-hint">
+            {active.blocks === 1 ? 'Individual' : `Groups of ${active.blocks}`}
+          </span>
+        </div>
+      </div>
+
+      {/* ── Shuffle Slider (0—1) + Seed ── */}
+      <div className="heph-phase__row">
+        <label className="heph-phase__label">SHUFFLE</label>
+        <div className="heph-phase__slider-wrap">
+          <input
+            type="range"
+            className="heph-phase__slider"
+            min={0}
+            max={1}
+            step={0.01}
+            value={active.shuffle}
+            onChange={handleShuffleChange}
+            disabled={disabled}
+          />
+          <span className="heph-phase__value">{Math.round(active.shuffle * 100)}%</span>
+        </div>
+      </div>
+      <div className="heph-phase__row">
+        <label className="heph-phase__label">SEED</label>
+        <div className="heph-phase__wings-wrap">
+          <input
+            type="number"
+            className="heph-phase__wings-input"
+            min={1}
+            value={active.shuffleSeed}
+            onChange={handleShuffleSeedChange}
+            disabled={disabled}
+          />
         </div>
       </div>
 

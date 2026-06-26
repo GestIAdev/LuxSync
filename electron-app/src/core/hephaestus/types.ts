@@ -557,7 +557,9 @@ export function serializeHephClip(clip: HephAutomationClipV3): HephAutomationCli
     curve: {
       paramId: track.curve.paramId,
       valueType: track.curve.valueType,
-      range: [...track.curve.range] as [number, number],
+      range: Array.isArray(track.curve.range) && track.curve.range.length === 2
+        ? [...track.curve.range] as [number, number]
+        : (track.curve.valueType === 'color' ? [0, 360] : [0, 1]) as [number, number],
       defaultValue: typeof track.curve.defaultValue === 'object' && track.curve.defaultValue !== null
         ? { ...(track.curve.defaultValue as HSL) }
         : track.curve.defaultValue,
@@ -575,7 +577,7 @@ export function serializeHephClip(clip: HephAutomationClipV3): HephAutomationCli
           smoothing: kf.audioBinding.smoothing,
         } : undefined,
       })),
-      mode: track.curve.mode,
+      mode: track.curve.mode ?? 'absolute',
     },
     dimmerScale: track.dimmerScale,
     colorOverride: track.colorOverride ? { ...track.colorOverride } : undefined,
@@ -590,15 +592,15 @@ export function serializeHephClip(clip: HephAutomationClipV3): HephAutomationCli
     name: clip.name,
     author: clip.author,
     category: clip.category,
-    tags: [...clip.tags],
-    vibeCompat: [...clip.vibeCompat],
-    spatialZones: [...clip.spatialZones],
+    tags: Array.isArray(clip.tags) ? [...clip.tags] : [],
+    vibeCompat: Array.isArray(clip.vibeCompat) ? [...clip.vibeCompat] : [],
+    spatialZones: Array.isArray(clip.spatialZones) ? [...clip.spatialZones] : [],
     mixBus: clip.mixBus,
     priority: clip.priority,
     durationMs: clip.durationMs,
     effectType: clip.effectType,
     tracks: cleanTracks,
-    staticParams: JSON.parse(JSON.stringify(clip.staticParams)),
+    staticParams: clip.staticParams ? JSON.parse(JSON.stringify(clip.staticParams)) : {},
     cognitiveDNA: clip.cognitiveDNA ? JSON.parse(JSON.stringify(clip.cognitiveDNA)) : undefined,
     simulationMeta: clip.simulationMeta ? JSON.parse(JSON.stringify(clip.simulationMeta)) : undefined,
     schemaVersion: '3.0',

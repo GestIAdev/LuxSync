@@ -81,10 +81,12 @@ export class LfxFileLoader {
                 isBuiltin: source === 'builtin',
                 keepSource: false
             };
-            // Alimentamos el DynamicEffectRegistry con el clip ya purificado en memoria
+            // Alimentamos el DynamicEffectRegistry con el clip ya purificado en memoria.
+            // El índice devuelve el clip interno (HephAutomationClip | HephAutomationClipV3),
+            // pero registerEffect/registerEffectV3 esperan el wrapper LfxClipV2/LFXFileV3.
             const entry = loaded.schemaVersion === 'luxsync.lfx/3.0'
-                ? this._registry.registerEffectV3(loaded.clip, opts)
-                : this._registry.registerEffect(loaded.clip, opts);
+                ? this._registry.registerEffectV3({ $schema: 'luxsync.lfx/3.0', clip: loaded.clip, checksum: '' }, opts)
+                : this._registry.registerEffect({ $schema: 'hephaestus/v2.1', version: '1.0.0', clip: loaded.clip, checksum: '' }, opts);
             return entry !== null;
         }
         catch (err) {

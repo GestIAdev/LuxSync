@@ -45,12 +45,11 @@ import type {
   FixturePhase,
   PhaseConfig,
 } from '../types'
-import type { PhaseConfigPro } from '../phase/PhaseConfigPro'
+import { resolvePro, type PhaseConfigPro } from '../phase/PhaseConfigPro'
 import type { EffectZone } from '../../effects/types'
 import { deserializeHephClip, type HephAutomationClipSerialized } from '../types'
 import { getHephaestusClipIndex } from '../HephaestusClipIndex'
 import { CurveEvaluator } from '../CurveEvaluator'
-import { PhaseDistributor } from './PhaseDistributor'
 import { resolveZoneTags } from '../../zones/ZoneMapper'
 import { getTitanOrchestrator } from '../../orchestrator/TitanOrchestrator'
 
@@ -200,7 +199,7 @@ interface ActiveHephClip {
    * Phase config a nivel CLIP (cuando aplica). Sólo informativo / debug —
    * la fase efectiva por pista vive ya en `tracks[i].fixturePhases`.
    */
-  phaseConfig: PhaseConfig | null
+  phaseConfig: PhaseConfigPro | null
 }
 
 /** 
@@ -824,9 +823,9 @@ export class HephaestusRuntime {
     clip: HephAutomationClip | HephAutomationClipV3,
     durationMs: number,
     externalFixtureIds?: string[],
-  ): { tracks: ResolvedTrack[]; phaseConfig: PhaseConfig | null } {
+  ): { tracks: ResolvedTrack[]; phaseConfig: PhaseConfigPro | null } {
     const tracks: ResolvedTrack[] = []
-    let topLevelPhaseConfig: PhaseConfig | null = null
+    let topLevelPhaseConfig: PhaseConfigPro | null = null
 
     // ── Resolución del inventario de fixtures (compartido entre tracks) ──
     // Las zonas se resuelven contra el inventario actual del Orchestrator.
@@ -917,7 +916,7 @@ export class HephaestusRuntime {
     curve: HephCurve,
     blendMode: BlendMode | undefined,
     fixtureIds: string[],
-    phaseConfig: PhaseConfig | null,
+    phaseConfig: PhaseConfigPro | null,
     durationMs: number,
     zones?: readonly string[],
   ): ResolvedTrack {
@@ -925,8 +924,8 @@ export class HephaestusRuntime {
     const evaluator = new CurveEvaluator(singleCurveMap, durationMs)
 
     let fixturePhases: FixturePhase[] | null = null
-    if (phaseConfig && phaseConfig.spread > 0 && fixtureIds.length > 0) {
-      fixturePhases = PhaseDistributor.resolve(fixtureIds, phaseConfig, durationMs)
+    if (phaseConfig && phaseConfig.spreadDeg > 0 && fixtureIds.length > 0) {
+      fixturePhases = resolvePro(fixtureIds, phaseConfig, durationMs)
     }
 
     return {
@@ -942,30 +941,53 @@ export class HephaestusRuntime {
   }
 
   /**
-   * 🧬 WAVE 4856 — Normaliza el origen de `PhaseConfig` (full vs legacy spread).
-   * Devuelve null si no hay configuración significativa (spread 0 incluido).
+   * 🧬 WAVE 7003 — Inverted: upgrades any phase config to PhaseConfigPro.
+   * V2 `spread` (0-1) → `spreadDeg` (×1440). V3 `spreadDeg` passed through.
+   * Returns null if no significant phase config.
    */
   private _extractPhaseConfig(
     phase: PhaseConfig | PhaseConfigPro | undefined,
     legacySpread: number | undefined,
-  ): PhaseConfig | null {
+  ): PhaseConfigPro | null {
     if (phase) {
-      // PhaseConfigPro (V3) → normalize to PhaseConfig (V2) for runtime
       if ('spreadDeg' in phase) {
         const pro = phase as PhaseConfigPro
-        const normalizedSpread = pro.spreadDeg / 1440
-        if (normalizedSpread <= 0) return null
+        if (pro.spreadDeg <= 0) return null
         return {
-          spread: normalizedSpread,
-          symmetry: pro.symmetry as 'linear' | 'mirror' | 'center-out',
-          wings: pro.wings,
-          direction: pro.direction,
+          spreadDeg: pro.spreadDeg,
+          symmetry: pro.symmetry ?? 'linear',
+          wings: pro.wings ?? 1,
+          blocks: pro.blocks ?? 1,
+          shuffle: pro.shuffle ?? 0,
+          shuffleSeed: pro.shuffleSeed ?? 1,
+          direction: pro.direction ?? 1,
         }
       }
-      return phase.spread > 0 ? phase : null
+      // V2 PhaseConfig → upgrade to PRO
+      if ('spread' in phase) {
+        const v2 = phase as PhaseConfig
+        if (v2.spread <= 0) return null
+        return {
+          spreadDeg: v2.spread * 1440,
+          symmetry: v2.symmetry ?? 'linear',
+          wings: v2.wings ?? 1,
+          blocks: 1,
+          shuffle: 0,
+          shuffleSeed: 1,
+          direction: v2.direction ?? 1,
+        }
+      }
     }
     if (legacySpread != null && legacySpread > 0) {
-      return { spread: legacySpread, symmetry: 'linear', wings: 1, direction: 1 }
+      return {
+        spreadDeg: legacySpread * 1440,
+        symmetry: 'linear',
+        wings: 1,
+        blocks: 1,
+        shuffle: 0,
+        shuffleSeed: 1,
+        direction: 1,
+      }
     }
     return null
   }

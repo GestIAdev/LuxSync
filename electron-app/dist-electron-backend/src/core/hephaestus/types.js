@@ -132,6 +132,67 @@ export function deserializeHephClip(serialized) {
         simulationMeta: serialized.simulationMeta, // WAVE 4811: Restore from IPC
     };
 }
+/**
+ * ⚒️ WAVE 7002 — Serializador nativo V3.
+ *
+ * Toma el estado inmaculado del Store (Immer) y devuelve un objeto
+ * JSON-ready limpio, descartando cualquier variable efímera de la UI.
+ * Deep clone de tracks, curves, keyframes y nested objects.
+ */
+export function serializeHephClipV3(clip) {
+    const cleanTracks = clip.tracks.map(track => ({
+        id: track.id,
+        paramId: track.paramId,
+        zones: [...track.zones],
+        curve: {
+            paramId: track.curve.paramId,
+            valueType: track.curve.valueType,
+            range: [...track.curve.range],
+            defaultValue: typeof track.curve.defaultValue === 'object' && track.curve.defaultValue !== null
+                ? { ...track.curve.defaultValue }
+                : track.curve.defaultValue,
+            keyframes: track.curve.keyframes.map(kf => ({
+                timeMs: kf.timeMs,
+                value: typeof kf.value === 'object' && kf.value !== null
+                    ? { ...kf.value }
+                    : kf.value,
+                interpolation: kf.interpolation,
+                bezierHandles: kf.bezierHandles ? [...kf.bezierHandles] : undefined,
+                audioBinding: kf.audioBinding ? {
+                    source: kf.audioBinding.source,
+                    inputRange: [...kf.audioBinding.inputRange],
+                    outputRange: [...kf.audioBinding.outputRange],
+                    smoothing: kf.audioBinding.smoothing,
+                } : undefined,
+            })),
+            mode: track.curve.mode,
+        },
+        dimmerScale: track.dimmerScale,
+        colorOverride: track.colorOverride ? { ...track.colorOverride } : undefined,
+        blendMode: track.blendMode,
+        cell: track.cell,
+        selector: track.selector ? JSON.parse(JSON.stringify(track.selector)) : undefined,
+        phaseConfig: track.phaseConfig ? { ...track.phaseConfig } : undefined,
+    }));
+    return {
+        id: clip.id,
+        name: clip.name,
+        author: clip.author,
+        category: clip.category,
+        tags: [...clip.tags],
+        vibeCompat: [...clip.vibeCompat],
+        spatialZones: [...clip.spatialZones],
+        mixBus: clip.mixBus,
+        priority: clip.priority,
+        durationMs: clip.durationMs,
+        effectType: clip.effectType,
+        tracks: cleanTracks,
+        staticParams: JSON.parse(JSON.stringify(clip.staticParams)),
+        cognitiveDNA: clip.cognitiveDNA ? JSON.parse(JSON.stringify(clip.cognitiveDNA)) : undefined,
+        simulationMeta: clip.simulationMeta ? JSON.parse(JSON.stringify(clip.simulationMeta)) : undefined,
+        schemaVersion: '3.0',
+    };
+}
 // ═══════════════════════════════════════════════════════════════════════════
 // CATEGORY INFERENCE - WAVE 2040.9a
 // ═══════════════════════════════════════════════════════════════════════════

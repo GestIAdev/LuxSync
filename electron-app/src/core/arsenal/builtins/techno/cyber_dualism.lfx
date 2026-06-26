@@ -1,6 +1,5 @@
 {
-  "$schema": "hephaestus/v2.1",
-  "version": "2.1.0",
+  "$schema": "luxsync.lfx/3.0",
   "clip": {
     "id": "cyber_dualism",
     "name": "Cyber Dualism",
@@ -16,7 +15,7 @@
       "techno",
       "minimal"
     ],
-    "zones": [
+    "spatialZones": [
       "active",
       "intense"
     ],
@@ -24,113 +23,140 @@
     "priority": 78,
     "durationMs": 3000,
     "effectType": "heph_custom",
-    "curves": {
-      "intensity": {
+    "tracks": [
+      {
+        "id": "883bca85-e7dd-4b15-8da5-c3ccb3e37a8c",
         "paramId": "intensity",
-        "valueType": "number",
-        "range": [
-          0,
-          1
+        "zones": [
+          "active",
+          "intense"
         ],
-        "defaultValue": 0,
-        "keyframes": [
-          {
-            "timeMs": 0,
-            "value": 0,
-            "interpolation": "linear"
-          },
-          {
-            "timeMs": 1,
-            "value": 1,
-            "interpolation": "linear",
-            "bezierHandles": [
-              0,
-              0,
-              1,
-              1
-            ]
-          },
-          {
-            "timeMs": 2999,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 3000,
-            "value": 0,
-            "interpolation": "linear",
-            "bezierHandles": [
-              0,
-              0,
-              1,
-              1
-            ]
-          }
-        ],
-        "mode": "absolute"
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 1,
+              "value": 1,
+              "interpolation": "linear",
+              "bezierHandles": [
+                0,
+                0,
+                1,
+                1
+              ]
+            },
+            {
+              "timeMs": 2999,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 3000,
+              "value": 0,
+              "interpolation": "linear",
+              "bezierHandles": [
+                0,
+                0,
+                1,
+                1
+              ]
+            }
+          ],
+          "mode": "absolute"
+        }
       },
-      "color": {
+      {
+        "id": "59097805-a751-4a72-b9f3-c8569abd0e37",
         "paramId": "color",
-        "valueType": "color",
-        "range": [
-          0,
-          360
+        "zones": [
+          "active",
+          "intense"
         ],
-        "defaultValue": {
-          "h": 180,
-          "s": 100,
-          "l": 70
-        },
-        "keyframes": [
-          {
-            "timeMs": 0,
-            "value": {
-              "h": 180,
-              "s": 100,
-              "l": 70
-            },
-            "interpolation": "linear"
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
+          "defaultValue": {
+            "h": 180,
+            "s": 100,
+            "l": 70
           },
-          {
-            "timeMs": 3000,
-            "value": {
-              "h": 300,
-              "s": 100,
-              "l": 70
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 180,
+                "s": 100,
+                "l": 70
+              },
+              "interpolation": "linear"
             },
-            "interpolation": "hold"
-          }
-        ],
-        "mode": "absolute"
+            {
+              "timeMs": 3000,
+              "value": {
+                "h": 300,
+                "s": 100,
+                "l": 70
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        }
       },
-      "strobe": {
+      {
+        "id": "63c35e84-b645-4549-9345-f2bb12359820",
         "paramId": "strobe",
-        "valueType": "number",
-        "range": [
-          0,
-          1
+        "zones": [
+          "active",
+          "intense"
         ],
-        "defaultValue": 0,
-        "keyframes": [
-          {
-            "timeMs": 0,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 0,
-            "value": 0.8,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 3000,
-            "value": 0,
-            "interpolation": "hold"
-          }
-        ],
-        "mode": "absolute"
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "strobe",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 0,
+              "value": 0.8,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 3000,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        }
       }
-    },
+    ],
     "staticParams": {
       "dominantColorH": 180,
       "dominantColorS": 100,
@@ -185,23 +211,6 @@
         "minimumZ": 2,
         "minimumEnergy": null
       }
-    },
-    "executionHints": {
-      "overlayMode": "absolute",
-      "phaseConfig": {
-        "spread": 0,
-        "symmetry": "linear",
-        "wings": 1,
-        "direction": 1
-      },
-      "intensityScaling": "energyDriven",
-      "fixtureTargeting": "movers"
-    },
-    "safetyDeclaration": {
-      "maxStrobeFreqHz": 15,
-      "containsRapidFlash": true,
-      "communityTrusted": true
     }
-  },
-  "checksum": "sha256:271a2642e64cc7486d6bf9618ac238b72488ecb5c5978f2c3950e57100fb7676"
+  }
 }

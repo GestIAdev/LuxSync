@@ -1,6 +1,5 @@
 {
-  "$schema": "hephaestus/v2.1",
-  "version": "2.1.0",
+  "$schema": "luxsync.lfx/3.0",
   "clip": {
     "id": "amazon_mist",
     "name": "Amazon Mist",
@@ -16,7 +15,7 @@
       "fiesta-latina",
       "chill-lounge"
     ],
-    "zones": [
+    "spatialZones": [
       "silence",
       "valley"
     ],
@@ -24,86 +23,104 @@
     "priority": 12,
     "durationMs": 4000,
     "effectType": "heph_custom",
-    "curves": {
-      "intensity": {
+    "tracks": [
+      {
+        "id": "7d48a4b5-ed3e-4904-861a-98a3d75404d8",
         "paramId": "intensity",
-        "valueType": "number",
-        "range": [
-          0,
-          1
+        "zones": [
+          "silence",
+          "valley"
         ],
-        "defaultValue": 0.05,
-        "keyframes": [
-          {
-            "timeMs": 0,
-            "value": 0.05,
-            "interpolation": "linear"
-          },
-          {
-            "timeMs": 1500,
-            "value": 0.25,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.42,
-              0,
-              0.58,
-              1
-            ]
-          },
-          {
-            "timeMs": 2500,
-            "value": 0.25,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 4000,
-            "value": 0.05,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.42,
-              0,
-              0.58,
-              1
-            ]
-          }
-        ],
-        "mode": "absolute"
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0.05,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0.05,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 1500,
+              "value": 0.25,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.42,
+                0,
+                0.58,
+                1
+              ]
+            },
+            {
+              "timeMs": 2500,
+              "value": 0.25,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 4000,
+              "value": 0.05,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.42,
+                0,
+                0.58,
+                1
+              ]
+            }
+          ],
+          "mode": "absolute"
+        }
       },
-      "color": {
+      {
+        "id": "ab83e142-eae1-4c29-af82-e7f0479ff086",
         "paramId": "color",
-        "valueType": "color",
-        "range": [
-          0,
-          360
+        "zones": [
+          "silence",
+          "valley"
         ],
-        "defaultValue": {
-          "h": 160,
-          "s": 60,
-          "l": 35
-        },
-        "keyframes": [
-          {
-            "timeMs": 0,
-            "value": {
-              "h": 160,
-              "s": 60,
-              "l": 35
-            },
-            "interpolation": "linear"
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
+          "defaultValue": {
+            "h": 160,
+            "s": 60,
+            "l": 35
           },
-          {
-            "timeMs": 4000,
-            "value": {
-              "h": 180,
-              "s": 50,
-              "l": 40
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 160,
+                "s": 60,
+                "l": 35
+              },
+              "interpolation": "linear"
             },
-            "interpolation": "hold"
-          }
-        ],
-        "mode": "absolute"
+            {
+              "timeMs": 4000,
+              "value": {
+                "h": 180,
+                "s": 50,
+                "l": 40
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        }
       }
-    },
+    ],
     "staticParams": {
       "dominantColorH": 160,
       "dominantColorS": 60,
@@ -156,23 +173,6 @@
         "minimumZ": null,
         "minimumEnergy": null
       }
-    },
-    "executionHints": {
-      "overlayMode": "relative",
-      "phaseConfig": {
-        "spread": 0,
-        "symmetry": "linear",
-        "wings": 1,
-        "direction": 1
-      },
-      "intensityScaling": "energyDriven",
-      "fixtureTargeting": "pars"
-    },
-    "safetyDeclaration": {
-      "maxStrobeFreqHz": 0,
-      "containsRapidFlash": false,
-      "communityTrusted": true
     }
-  },
-  "checksum": "sha256:b26a18a17e954d99107b1a068cd68917234fcaf848f99127e532154cd29963ee"
+  }
 }

@@ -37,9 +37,18 @@ export function setupHephIPCHandlers() {
     ipcMain.handle('heph:save', async (_event, clipData) => {
         console.log('[HephIPC] Save clip:', clipData.name);
         try {
-            // Deserialize for internal processing (Record → Map)
+            // V3 detection: schemaVersion '3.0' + tracks array → pass directly
+            const isV3 = clipData.schemaVersion === '3.0' && Array.isArray(clipData.tracks);
+            if (isV3) {
+                const filePath = await hephFileIO.saveClip(clipData);
+                return {
+                    success: true,
+                    filePath,
+                    id: clipData.id,
+                };
+            }
+            // V2 legacy path: deserialize (Record → Map) then save
             const clip = deserializeHephClip(clipData);
-            // Save to disk
             const filePath = await hephFileIO.saveClip(clip);
             return {
                 success: true,

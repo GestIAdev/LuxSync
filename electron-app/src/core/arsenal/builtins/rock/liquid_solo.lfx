@@ -1,6 +1,5 @@
 {
-  "$schema": "hephaestus/v2.1",
-  "version": "2.1.0",
+  "$schema": "luxsync.lfx/3.0",
   "clip": {
     "id": "liquid_solo",
     "name": "Liquid Solo",
@@ -16,7 +15,7 @@
       "rock",
       "pop-rock"
     ],
-    "zones": [
+    "spatialZones": [
       "gentle",
       "active"
     ],
@@ -24,77 +23,95 @@
     "priority": 60,
     "durationMs": 3500,
     "effectType": "heph_custom",
-    "curves": {
-      "intensity": {
+    "tracks": [
+      {
+        "id": "de2eb1e3-fa56-4b58-b8c9-b9b12c170645",
         "paramId": "intensity",
-        "valueType": "number",
-        "range": [
-          0,
-          1
+        "zones": [
+          "gentle",
+          "active"
         ],
-        "defaultValue": 0.1,
-        "keyframes": [
-          {
-            "timeMs": 0,
-            "value": 0.1,
-            "interpolation": "linear"
-          },
-          {
-            "timeMs": 400,
-            "value": 0.75,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.42,
-              0,
-              0.58,
-              1
-            ]
-          },
-          {
-            "timeMs": 2600,
-            "value": 0.75,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 3500,
-            "value": 0.1,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.42,
-              0,
-              0.58,
-              1
-            ]
-          }
-        ],
-        "mode": "absolute"
-      },
-      "color": {
-        "paramId": "color",
-        "valueType": "color",
-        "range": [
-          0,
-          360
-        ],
-        "defaultValue": {
-          "h": 40,
-          "s": 20,
-          "l": 90
-        },
-        "keyframes": [
-          {
-            "timeMs": 0,
-            "value": {
-              "h": 40,
-              "s": 20,
-              "l": 90
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0.1,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0.1,
+              "interpolation": "linear"
             },
-            "interpolation": "hold"
-          }
+            {
+              "timeMs": 400,
+              "value": 0.75,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.42,
+                0,
+                0.58,
+                1
+              ]
+            },
+            {
+              "timeMs": 2600,
+              "value": 0.75,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 3500,
+              "value": 0.1,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.42,
+                0,
+                0.58,
+                1
+              ]
+            }
+          ],
+          "mode": "absolute"
+        }
+      },
+      {
+        "id": "41a6d267-eb41-4da7-86fe-b5e2bf76a213",
+        "paramId": "color",
+        "zones": [
+          "gentle",
+          "active"
         ],
-        "mode": "absolute"
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
+          "defaultValue": {
+            "h": 40,
+            "s": 20,
+            "l": 90
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 40,
+                "s": 20,
+                "l": 90
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        }
       }
-    },
+    ],
     "staticParams": {
       "dominantColorH": 40,
       "dominantColorS": 20,
@@ -147,23 +164,6 @@
         "minimumZ": null,
         "minimumEnergy": null
       }
-    },
-    "executionHints": {
-      "overlayMode": "relative",
-      "phaseConfig": {
-        "spread": 0,
-        "symmetry": "linear",
-        "wings": 1,
-        "direction": 1
-      },
-      "intensityScaling": "energyDriven",
-      "fixtureTargeting": "all"
-    },
-    "safetyDeclaration": {
-      "maxStrobeFreqHz": 0,
-      "containsRapidFlash": false,
-      "communityTrusted": true
     }
-  },
-  "checksum": "sha256:771b75eb34a600e2d4643733005f31a5093d3a3fde7aa5d5dd2ab8b0363d2449"
+  }
 }

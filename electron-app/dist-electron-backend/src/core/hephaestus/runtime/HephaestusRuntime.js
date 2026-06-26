@@ -33,9 +33,9 @@
  * @version WAVE 2030.18
  */
 import * as path from 'path';
+import { resolvePro } from '../phase/PhaseConfigPro';
 import { getHephaestusClipIndex } from '../HephaestusClipIndex';
 import { CurveEvaluator } from '../CurveEvaluator';
-import { PhaseDistributor } from './PhaseDistributor';
 import { resolveZoneTags } from '../../zones/ZoneMapper';
 import { getTitanOrchestrator } from '../../orchestrator/TitanOrchestrator';
 // ═══════════════════════════════════════════════════════════════════════════
@@ -610,8 +610,8 @@ export class HephaestusRuntime {
         const singleCurveMap = new Map([[paramId, curve]]);
         const evaluator = new CurveEvaluator(singleCurveMap, durationMs);
         let fixturePhases = null;
-        if (phaseConfig && phaseConfig.spread > 0 && fixtureIds.length > 0) {
-            fixturePhases = PhaseDistributor.resolve(fixtureIds, phaseConfig, durationMs);
+        if (phaseConfig && phaseConfig.spreadDeg > 0 && fixtureIds.length > 0) {
+            fixturePhases = resolvePro(fixtureIds, phaseConfig, durationMs);
         }
         return {
             id,
@@ -625,15 +625,52 @@ export class HephaestusRuntime {
         };
     }
     /**
-     * 🧬 WAVE 4856 — Normaliza el origen de `PhaseConfig` (full vs legacy spread).
-     * Devuelve null si no hay configuración significativa (spread 0 incluido).
+     * 🧬 WAVE 7003 — Inverted: upgrades any phase config to PhaseConfigPro.
+     * V2 `spread` (0-1) → `spreadDeg` (×1440). V3 `spreadDeg` passed through.
+     * Returns null if no significant phase config.
      */
     _extractPhaseConfig(phase, legacySpread) {
         if (phase) {
-            return phase.spread > 0 ? phase : null;
+            if ('spreadDeg' in phase) {
+                const pro = phase;
+                if (pro.spreadDeg <= 0)
+                    return null;
+                return {
+                    spreadDeg: pro.spreadDeg,
+                    symmetry: pro.symmetry ?? 'linear',
+                    wings: pro.wings ?? 1,
+                    blocks: pro.blocks ?? 1,
+                    shuffle: pro.shuffle ?? 0,
+                    shuffleSeed: pro.shuffleSeed ?? 1,
+                    direction: pro.direction ?? 1,
+                };
+            }
+            // V2 PhaseConfig → upgrade to PRO
+            if ('spread' in phase) {
+                const v2 = phase;
+                if (v2.spread <= 0)
+                    return null;
+                return {
+                    spreadDeg: v2.spread * 1440,
+                    symmetry: v2.symmetry ?? 'linear',
+                    wings: v2.wings ?? 1,
+                    blocks: 1,
+                    shuffle: 0,
+                    shuffleSeed: 1,
+                    direction: v2.direction ?? 1,
+                };
+            }
         }
         if (legacySpread != null && legacySpread > 0) {
-            return { spread: legacySpread, symmetry: 'linear', wings: 1, direction: 1 };
+            return {
+                spreadDeg: legacySpread * 1440,
+                symmetry: 'linear',
+                wings: 1,
+                blocks: 1,
+                shuffle: 0,
+                shuffleSeed: 1,
+                direction: 1,
+            };
         }
         return null;
     }

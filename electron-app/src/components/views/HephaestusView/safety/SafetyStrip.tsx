@@ -6,7 +6,7 @@
  */
 
 import React, { useMemo, useState, useEffect, useRef } from 'react'
-import type { HephAutomationClip } from '../../../../core/hephaestus/types'
+import type { HephAutomationClipV3 } from '../../../../core/hephaestus/types'
 import { evaluateGates, autoFixGate } from './gateEvaluators'
 import type { GateResult, GateId, GateStatus } from './gateEvaluators'
 import './SafetyStrip.css'
@@ -14,8 +14,8 @@ import './SafetyStrip.css'
 // ─── PROPS ──────────────────────────────────────────────────────────────────
 
 interface SafetyStripProps {
-  clip: HephAutomationClip
-  onClipPatch: (patch: Partial<HephAutomationClip>) => void
+  clip: HephAutomationClipV3
+  onClipPatch: (patch: Partial<HephAutomationClipV3>) => void
 }
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────

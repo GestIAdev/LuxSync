@@ -229,8 +229,7 @@ const HephaestusView: React.FC = () => {
   // ── WAVE 4811: DNA Designer Rail ──
   const [showDna, setShowDna] = useState(false)
   const stageFixtures = useStageStore(selectFixtures)
-  // TODO: Migrar useHephPreview to accept HephAutomationClipV3
-  const preview = useHephPreview(clip as unknown as HephAutomationClip, stageFixtures)
+  const preview = useHephPreview(clip, stageFixtures)
 
   // ── WAVE 2213: Load Show desde Hephaestus ──
   const showFile = useStageStore(state => state.showFile)
@@ -1566,7 +1565,7 @@ const HephaestusView: React.FC = () => {
           {/* 🛡️ WAVE 4811: Safety Strip G1-G7 */}
           <span className="heph-header__divider">│</span>
           <SafetyStrip
-            clip={clip as unknown as HephAutomationClip}
+            clip={clip}
             onClipPatch={(patch) => {
               temporalActions.snapshot()
               setClip(prev => ({ ...prev, ...patch } as HephAutomationClipV3))

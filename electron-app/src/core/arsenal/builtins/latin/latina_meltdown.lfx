@@ -1,6 +1,5 @@
 {
-  "$schema": "hephaestus/v2.1",
-  "version": "2.1.0",
+  "$schema": "luxsync.lfx/3.0",
   "clip": {
     "id": "latina_meltdown",
     "name": "Latina Meltdown",
@@ -14,7 +13,7 @@
     "vibeCompat": [
       "fiesta-latina"
     ],
-    "zones": [
+    "spatialZones": [
       "intense",
       "peak"
     ],
@@ -22,63 +21,99 @@
     "priority": 95,
     "durationMs": 3000,
     "effectType": "heph_custom",
-"curves": {
-      "intensity": {
+    "tracks": [
+      {
+        "id": "8a2f97e2-a936-4d5c-904a-bc3b9c8517d9",
         "paramId": "intensity",
-        "valueType": "number",
-        "range": [0, 1],
-        "defaultValue": 0,
-        "keyframes": [
-          {
-            "timeMs": 0,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 3000,
-            "value": 1,
-            "interpolation": "hold"
-          }
+        "zones": [
+          "intense",
+          "peak"
         ],
-        "mode": "absolute"
-      },
-      "color": {
-        "paramId": "color",
-        "valueType": "color",
-        "range": [0, 360],
-        "defaultValue": {
-          "h": 42,
-          "s": 100,
-          "l": 50
-        },
-        "keyframes": [
-          {
-            "timeMs": 0,
-            "value": {
-              "h": 42,
-              "s": 100,
-              "l": 50
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 1,
+              "interpolation": "hold"
             },
-            "interpolation": "hold"
-          }
-        ],
-        "mode": "absolute"
+            {
+              "timeMs": 3000,
+              "value": 1,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        }
       },
-      "strobe": {
-        "paramId": "strobe",
-        "valueType": "number",
-        "range": [0, 1],
-        "defaultValue": 1,
-        "keyframes": [
-          {
-            "timeMs": 0,
-            "value": 1,
-            "interpolation": "hold"
-          }
+      {
+        "id": "fdaffbb6-b400-4761-8415-76290ca5c8a6",
+        "paramId": "color",
+        "zones": [
+          "intense",
+          "peak"
         ],
-        "mode": "absolute"
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
+          "defaultValue": {
+            "h": 42,
+            "s": 100,
+            "l": 50
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 42,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        }
+      },
+      {
+        "id": "4f80cac4-dff9-4abd-9b03-416124f01709",
+        "paramId": "strobe",
+        "zones": [
+          "intense",
+          "peak"
+        ],
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "strobe",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 1,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 1,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        }
       }
-    },
+    ],
     "staticParams": {
       "dominantColorH": 0,
       "dominantColorS": 100,
@@ -129,23 +164,6 @@
         "minimumZ": null,
         "minimumEnergy": 0.7
       }
-    },
-    "executionHints": {
-      "overlayMode": "absolute",
-      "phaseConfig": {
-        "spread": 0,
-        "symmetry": "linear",
-        "wings": 1,
-        "direction": 1
-      },
-      "intensityScaling": "energyDriven",
-      "fixtureTargeting": "all"
-    },
-    "safetyDeclaration": {
-      "maxStrobeFreqHz": 5,
-      "containsRapidFlash": true,
-      "communityTrusted": true
     }
-  },
-  "checksum": "sha256:b8eef72aa6d34eb9c0ecf59f659bc0a05a35fec3245646ee9ba56ca740fde26d"
+  }
 }

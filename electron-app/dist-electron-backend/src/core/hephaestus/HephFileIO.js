@@ -18,7 +18,7 @@
 import { app } from 'electron';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { serializeHephClip } from './types';
+import { serializeHephClip, serializeHephClipV3 } from './types';
 import { getHephaestusClipIndex } from './HephaestusClipIndex';
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -91,7 +91,7 @@ class HephFileIO {
             filePayload = {
                 $schema: 'luxsync.lfx/3.0',
                 version: '1.0.0',
-                clip: clip,
+                clip: serializeHephClipV3(clip),
                 checksum: ''
             };
         }

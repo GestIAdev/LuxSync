@@ -1,6 +1,5 @@
 {
-  "$schema": "hephaestus/v2.1",
-  "version": "2.1.0",
+  "$schema": "luxsync.lfx/3.0",
   "clip": {
     "id": "machete_spark",
     "name": "Machete Spark (Doble Golpe)",
@@ -16,7 +15,7 @@
       "latin",
       "salsa"
     ],
-    "zones": [
+    "spatialZones": [
       "gentle",
       "active"
     ],
@@ -24,87 +23,115 @@
     "priority": 68,
     "durationMs": 1200,
     "effectType": "heph_custom",
-    "curves": {
-      "intensity": {
+    "tracks": [
+      {
+        "id": "ffb2679c-e33e-4229-aa41-0bea452c0a13",
         "paramId": "intensity",
-        "valueType": "number",
-        "range": [
-          0,
-          1
+        "zones": [
+          "gentle",
+          "active"
         ],
-        "defaultValue": 0,
-        "keyframes": [
-          {
-            "timeMs": 0,
-            "value": 0,
-            "interpolation": "linear"
-          },
-          {
-            "timeMs": 30,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 100,
-            "value": 1,
-            "interpolation": "linear",
-            "bezierHandles": [0, 0, 1, 1]
-          },
-          {
-            "timeMs": 200,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 300,
-            "value": 0,
-            "interpolation": "linear"
-          },
-          {
-            "timeMs": 330,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 400,
-            "value": 1,
-            "interpolation": "linear",
-            "bezierHandles": [0, 0, 1, 1]
-          },
-          {
-            "timeMs": 1200,
-            "value": 0,
-            "interpolation": "hold"
-          }
-        ],
-        "mode": "absolute"
-      },
-      "color": {
-        "paramId": "color",
-        "valueType": "color",
-        "range": [
-          0,
-          360
-        ],
-        "defaultValue": {
-          "h": 46,
-          "s": 100,
-          "l": 60
-        },
-        "keyframes": [
-          {
-            "timeMs": 0,
-            "value": {
-              "h": 46,
-              "s": 100,
-              "l": 60
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "linear"
             },
-            "interpolation": "hold"
-          }
+            {
+              "timeMs": 30,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 100,
+              "value": 1,
+              "interpolation": "linear",
+              "bezierHandles": [
+                0,
+                0,
+                1,
+                1
+              ]
+            },
+            {
+              "timeMs": 200,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 300,
+              "value": 0,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 330,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 400,
+              "value": 1,
+              "interpolation": "linear",
+              "bezierHandles": [
+                0,
+                0,
+                1,
+                1
+              ]
+            },
+            {
+              "timeMs": 1200,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        }
+      },
+      {
+        "id": "b88325bf-96f8-4432-916d-5c57b5569f73",
+        "paramId": "color",
+        "zones": [
+          "gentle",
+          "active"
         ],
-        "mode": "absolute"
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
+          "defaultValue": {
+            "h": 46,
+            "s": 100,
+            "l": 60
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 46,
+                "s": 100,
+                "l": 60
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        }
       }
-    },
+    ],
     "staticParams": {
       "dominantColorH": 46,
       "dominantColorS": 100,
@@ -157,23 +184,6 @@
         "minimumZ": null,
         "minimumEnergy": null
       }
-    },
-    "executionHints": {
-      "overlayMode": "absolute",
-      "phaseConfig": {
-        "spread": 0,
-        "symmetry": "linear",
-        "wings": 1,
-        "direction": 1
-      },
-      "intensityScaling": "energyDriven",
-      "fixtureTargeting": "pars"
-    },
-    "safetyDeclaration": {
-      "maxStrobeFreqHz": 0,
-      "containsRapidFlash": false,
-      "communityTrusted": true
     }
-  },
-  "checksum": "sha256:custom_machete_spark_double"
+  }
 }

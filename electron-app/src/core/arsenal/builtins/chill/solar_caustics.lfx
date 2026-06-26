@@ -1,6 +1,5 @@
 {
-  "$schema": "hephaestus/v2.1",
-  "version": "2.1.0",
+  "$schema": "luxsync.lfx/3.0",
   "clip": {
     "id": "solar_caustics",
     "name": "Solar Caustics",
@@ -13,176 +12,200 @@
     "vibeCompat": [
       "chill-lounge"
     ],
-    "zones": [
+    "spatialZones": [
       "silence"
     ],
     "mixBus": "ambient",
     "priority": 30,
     "durationMs": 10000,
     "effectType": "heph_custom",
-    "curves": {
-      "intensity": {
+    "tracks": [
+      {
+        "id": "1fe3e853-b2d2-4dc2-8eb4-b527cce75893",
         "paramId": "intensity",
-        "valueType": "number",
-        "range": [
-          0,
-          1
+        "zones": [
+          "silence"
         ],
-        "defaultValue": 0,
-        "keyframes": [
-          {
-            "timeMs": 0,
-            "value": 0,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              0,
-              0.67,
-              1
-            ]
-          },
-          {
-            "timeMs": 5000,
-            "value": 1,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              1,
-              0.67,
-              0
-            ]
-          },
-          {
-            "timeMs": 10000,
-            "value": 0,
-            "interpolation": "hold"
-          }
-        ],
-        "mode": "absolute"
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.33,
+                0,
+                0.67,
+                1
+              ]
+            },
+            {
+              "timeMs": 5000,
+              "value": 1,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.33,
+                1,
+                0.67,
+                0
+              ]
+            },
+            {
+              "timeMs": 10000,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        }
       },
-      "pan": {
+      {
+        "id": "74d0a6e3-df58-4041-8578-8a6e0b001fa0",
         "paramId": "pan",
-        "valueType": "number",
-        "range": [
-          -1,
-          1
+        "zones": [
+          "silence"
         ],
-        "defaultValue": 0,
-        "keyframes": [
-          {
-            "timeMs": 0,
-            "value": 0,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              0,
-              0.67,
-              1
-            ]
-          },
-          {
-            "timeMs": 2500,
-            "value": 0.4,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              1,
-              0.67,
-              0
-            ]
-          },
-          {
-            "timeMs": 5000,
-            "value": 0,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              0,
-              0.67,
-              -1
-            ]
-          },
-          {
-            "timeMs": 7500,
-            "value": -0.4,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              -1,
-              0.67,
-              0
-            ]
-          },
-          {
-            "timeMs": 10000,
-            "value": 0,
-            "interpolation": "hold"
-          }
-        ],
-        "mode": "additive"
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "pan",
+          "valueType": "number",
+          "range": [
+            -1,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.33,
+                0,
+                0.67,
+                1
+              ]
+            },
+            {
+              "timeMs": 2500,
+              "value": 0.4,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.33,
+                1,
+                0.67,
+                0
+              ]
+            },
+            {
+              "timeMs": 5000,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.33,
+                0,
+                0.67,
+                -1
+              ]
+            },
+            {
+              "timeMs": 7500,
+              "value": -0.4,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.33,
+                -1,
+                0.67,
+                0
+              ]
+            },
+            {
+              "timeMs": 10000,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "additive"
+        }
       },
-      "tilt": {
+      {
+        "id": "f6b959b9-5d41-45d7-8c01-52a4a8c36332",
         "paramId": "tilt",
-        "valueType": "number",
-        "range": [
-          -1,
-          1
+        "zones": [
+          "silence"
         ],
-        "defaultValue": 0,
-        "keyframes": [
-          {
-            "timeMs": 0,
-            "value": 0,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              0,
-              0.67,
-              1
-            ]
-          },
-          {
-            "timeMs": 2500,
-            "value": 0.25,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              1,
-              0.67,
-              0
-            ]
-          },
-          {
-            "timeMs": 5000,
-            "value": 0,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              0,
-              0.67,
-              -1
-            ]
-          },
-          {
-            "timeMs": 7500,
-            "value": -0.25,
-            "interpolation": "bezier",
-            "bezierHandles": [
-              0.33,
-              -1,
-              0.67,
-              0
-            ]
-          },
-          {
-            "timeMs": 10000,
-            "value": 0,
-            "interpolation": "hold"
-          }
-        ],
-        "mode": "additive"
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "tilt",
+          "valueType": "number",
+          "range": [
+            -1,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.33,
+                0,
+                0.67,
+                1
+              ]
+            },
+            {
+              "timeMs": 2500,
+              "value": 0.25,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.33,
+                1,
+                0.67,
+                0
+              ]
+            },
+            {
+              "timeMs": 5000,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.33,
+                0,
+                0.67,
+                -1
+              ]
+            },
+            {
+              "timeMs": 7500,
+              "value": -0.25,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.33,
+                -1,
+                0.67,
+                0
+              ]
+            },
+            {
+              "timeMs": 10000,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "additive"
+        }
       }
-    },
+    ],
     "staticParams": {
       "dominantColorH": 195,
       "dominantColorS": 80,
@@ -236,23 +259,6 @@
         "minimumZ": null,
         "minimumEnergy": null
       }
-    },
-    "executionHints": {
-      "overlayMode": "absolute",
-      "phaseConfig": {
-        "spread": 0.5,
-        "symmetry": "linear",
-        "wings": 1,
-        "direction": 1
-      },
-      "intensityScaling": "energyDriven",
-      "fixtureTargeting": "movers"
-    },
-    "safetyDeclaration": {
-      "maxStrobeFreqHz": 0,
-      "containsRapidFlash": false,
-      "communityTrusted": true
     }
-  },
-  "checksum": "sha256:f37941ed30fff98976d662b21eefdb81b9341b0eca102d3fe247cecdcfd6c5c7"
+  }
 }

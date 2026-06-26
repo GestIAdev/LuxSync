@@ -1,6 +1,5 @@
 {
-  "$schema": "hephaestus/v2.1",
-  "version": "2.1.0",
+  "$schema": "luxsync.lfx/3.0",
   "clip": {
     "id": "industrial_strobe",
     "name": "Industrial Strobe",
@@ -17,7 +16,7 @@
       "industrial",
       "metal"
     ],
-    "zones": [
+    "spatialZones": [
       "intense",
       "peak"
     ],
@@ -25,109 +24,136 @@
     "priority": 95,
     "durationMs": 415,
     "effectType": "heph_custom",
-    "curves": {
-      "intensity": {
+    "tracks": [
+      {
+        "id": "cd2e6ed5-b3f0-4863-b964-6a488794f1ab",
         "paramId": "intensity",
-        "valueType": "number",
-        "range": [
-          0,
-          1
+        "zones": [
+          "intense",
+          "peak"
         ],
-        "defaultValue": 0,
-        "keyframes": [
-          {
-            "timeMs": 0,
-            "value": 0,
-            "interpolation": "linear"
-          },
-          {
-            "timeMs": 20.75,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 21.75,
-            "value": 1,
-            "interpolation": "linear",
-            "bezierHandles": [
-              0,
-              0,
-              1,
-              1
-            ]
-          },
-          {
-            "timeMs": 81.75,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 415,
-            "value": 0,
-            "interpolation": "linear",
-            "bezierHandles": [
-              0,
-              0,
-              1,
-              1
-            ]
-          }
-        ],
-        "mode": "absolute"
-      },
-      "color": {
-        "paramId": "color",
-        "valueType": "color",
-        "range": [
-          0,
-          360
-        ],
-        "defaultValue": {
-          "h": 0,
-          "s": 0,
-          "l": 100
-        },
-        "keyframes": [
-          {
-            "timeMs": 0,
-            "value": {
-              "h": 0,
-              "s": 0,
-              "l": 100
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "linear"
             },
-            "interpolation": "hold"
-          }
-        ],
-        "mode": "absolute"
+            {
+              "timeMs": 20.75,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 21.75,
+              "value": 1,
+              "interpolation": "linear",
+              "bezierHandles": [
+                0,
+                0,
+                1,
+                1
+              ]
+            },
+            {
+              "timeMs": 81.75,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 415,
+              "value": 0,
+              "interpolation": "linear",
+              "bezierHandles": [
+                0,
+                0,
+                1,
+                1
+              ]
+            }
+          ],
+          "mode": "absolute"
+        }
       },
-      "strobe": {
+      {
+        "id": "21843b44-65cc-4ad0-94c0-749bf7edb78b",
+        "paramId": "color",
+        "zones": [
+          "intense",
+          "peak"
+        ],
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
+          "defaultValue": {
+            "h": 0,
+            "s": 0,
+            "l": 100
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 0,
+                "s": 0,
+                "l": 100
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        }
+      },
+      {
+        "id": "1357554c-af7f-466d-b0dc-9a916c9ee5c9",
         "paramId": "strobeRate",
-        "valueType": "number",
-        "range": [
-          0,
-          1
+        "zones": [
+          "intense",
+          "peak"
         ],
-        "defaultValue": 0,
-        "keyframes": [
-          {
-            "timeMs": 0,
-            "value": 0,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 80,
-            "value": 1,
-            "interpolation": "hold"
-          },
-          {
-            "timeMs": 415,
-            "value": 0,
-            "interpolation": "hold"
-          }
-        ],
-        "mode": "absolute"
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "strobeRate",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 80,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 415,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        }
       }
-    },
+    ],
     "staticParams": {
       "dominantColorH": 0,
       "dominantColorS": 0,
@@ -184,23 +210,6 @@
         "minimumZ": 2,
         "minimumEnergy": 0.7
       }
-    },
-    "executionHints": {
-      "overlayMode": "absolute",
-      "phaseConfig": {
-        "spread": 0,
-        "symmetry": "linear",
-        "wings": 1,
-        "direction": 1
-      },
-      "intensityScaling": "energyDriven",
-      "fixtureTargeting": "all"
-    },
-    "safetyDeclaration": {
-      "maxStrobeFreqHz": 10,
-      "containsRapidFlash": true,
-      "communityTrusted": true
     }
-  },
-  "checksum": "sha256:ab5d9a449ff29be8c64d7f8870ba771470f8ef84a198110f735851b34dc2cc81"
+  }
 }

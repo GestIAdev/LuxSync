@@ -5,7 +5,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-import type { HephAutomationClip } from '../../../../core/hephaestus/types'
+import type { HephAutomationClipV3 } from '../../../../core/hephaestus/types'
 import type { CognitiveDNA, SimulationMeta } from '../../../../core/arsenal/lfxTypes'
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
@@ -24,7 +24,7 @@ export interface GateResult {
 // ─── INDIVIDUAL EVALUATORS ──────────────────────────────────────────────────
 
 /** G1: Clip structure valid — id, name, durationMs > 0. */
-function evalG1(clip: HephAutomationClip): GateResult {
+function evalG1(clip: HephAutomationClipV3): GateResult {
   const pass =
     clip.id.trim().length > 0 &&
     clip.name.trim().length > 0 &&
@@ -104,19 +104,19 @@ function evalG4(dna: CognitiveDNA | undefined): GateResult {
 }
 
 /** G5: At least one curve with at least 2 keyframes. */
-function evalG5(clip: HephAutomationClip): GateResult {
-  if (clip.curves.size === 0) {
+function evalG5(clip: HephAutomationClipV3): GateResult {
+  if (clip.tracks.length === 0) {
     return {
       id: 'G5',
       status: 'fail',
       label: 'CURVES',
-      description: 'No parameter curves — add at least one with ≥2 keyframes',
+      description: 'No parameter tracks — add at least one with ≥2 keyframes',
       autoFixable: false,
     }
   }
   let richCurves = 0
-  for (const curve of clip.curves.values()) {
-    if (curve.keyframes.length >= 2) richCurves++
+  for (const track of clip.tracks) {
+    if (track.curve.keyframes.length >= 2) richCurves++
   }
   const pass = richCurves >= 1
   return {
@@ -124,8 +124,8 @@ function evalG5(clip: HephAutomationClip): GateResult {
     status: pass ? 'pass' : 'warn',
     label: 'CURVES',
     description: pass
-      ? `${richCurves}/${clip.curves.size} curve(s) with ≥2 keyframes`
-      : 'All curves have <2 keyframes — clip will output nothing',
+      ? `${richCurves}/${clip.tracks.length} track(s) with ≥2 keyframes`
+      : 'All tracks have <2 keyframes — clip will output nothing',
     autoFixable: false,
   }
 }
@@ -134,7 +134,7 @@ function evalG5(clip: HephAutomationClip): GateResult {
  * G6: Strobe declaration consistent with intensity curve.
  * If isStrobe=true, intensity must have ≥4 keyframes (pulse pattern proxy).
  */
-function evalG6(clip: HephAutomationClip, simMeta: SimulationMeta | undefined): GateResult {
+function evalG6(clip: HephAutomationClipV3, simMeta: SimulationMeta | undefined): GateResult {
   if (!simMeta) {
     return {
       id: 'G6',
@@ -153,21 +153,21 @@ function evalG6(clip: HephAutomationClip, simMeta: SimulationMeta | undefined): 
       autoFixable: false,
     }
   }
-  const intensityCurve = clip.curves.get('intensity')
-  const hasStrobicPattern = !!intensityCurve && intensityCurve.keyframes.length >= 4
+  const intensityTrack = clip.tracks.find(t => t.paramId === 'intensity')
+  const hasStrobicPattern = !!intensityTrack && intensityTrack.curve.keyframes.length >= 4
   return {
     id: 'G6',
     status: hasStrobicPattern ? 'pass' : 'warn',
     label: 'STROBE',
     description: hasStrobicPattern
-      ? `Strobe declared — intensity has ${intensityCurve!.keyframes.length} keyframes`
+      ? `Strobe declared — intensity has ${intensityTrack!.curve.keyframes.length} keyframes`
       : 'Strobe declared but intensity curve has <4 keyframes — verify strobe pattern',
     autoFixable: false,
   }
 }
 
 /** G7: spatialBehavior coherent with presence of pan/tilt curves. */
-function evalG7(clip: HephAutomationClip, dna: CognitiveDNA | undefined): GateResult {
+function evalG7(clip: HephAutomationClipV3, dna: CognitiveDNA | undefined): GateResult {
   if (!dna) {
     return {
       id: 'G7',
@@ -178,8 +178,8 @@ function evalG7(clip: HephAutomationClip, dna: CognitiveDNA | undefined): GateRe
     }
   }
   const { spatialBehavior } = dna
-  const hasPan = clip.curves.has('pan')
-  const hasTilt = clip.curves.has('tilt')
+  const hasPan = clip.tracks.some(t => t.paramId === 'pan')
+  const hasTilt = clip.tracks.some(t => t.paramId === 'tilt')
   const hasMovement = hasPan || hasTilt
 
   if (spatialBehavior === 'static') {
@@ -218,7 +218,7 @@ function evalG7(clip: HephAutomationClip, dna: CognitiveDNA | undefined): GateRe
 // ─── MAIN EXPORT ────────────────────────────────────────────────────────────
 
 /** Evaluate all 7 safety gates. Pure — no mutations. */
-export function evaluateGates(clip: HephAutomationClip): GateResult[] {
+export function evaluateGates(clip: HephAutomationClipV3): GateResult[] {
   return [
     evalG1(clip),
     evalG2(),
@@ -233,8 +233,8 @@ export function evaluateGates(clip: HephAutomationClip): GateResult[] {
 /** Auto-fix a specific gate in-place. Returns a partial clip update (or empty if not fixable). */
 export function autoFixGate(
   gateId: GateId,
-  clip: HephAutomationClip,
-): Partial<HephAutomationClip> {
+  clip: HephAutomationClipV3,
+): Partial<HephAutomationClipV3> {
   if (gateId === 'G3' && clip.cognitiveDNA) {
     const dna = clip.cognitiveDNA
     return {

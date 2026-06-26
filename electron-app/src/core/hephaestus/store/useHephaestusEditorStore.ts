@@ -197,7 +197,22 @@ export const useHephaestusEditorStore = create<HephaestusEditorStore>()(
 
   return {
     // ── ESTADO INICIAL ──
-    clip: null as any, // Se inyectará con loadClip
+    clip: {
+      id: 'empty',
+      name: 'Untitled',
+      author: '',
+      category: 'composite' as const,
+      tags: [],
+      vibeCompat: [],
+      spatialZones: ['all' as const],
+      mixBus: 'global' as const,
+      priority: 0,
+      durationMs: 1000,
+      effectType: 'custom',
+      tracks: [],
+      staticParams: {},
+      schemaVersion: '3.0',
+    } as HephAutomationClipV3,
     selection: { activeTrackId: null, selectedKeyframeIndices: new Set(), playheadMs: 0 },
     viewport: { zoom: 1, scrollX: 0, laneHeight: 120 },
     isDirty: false,

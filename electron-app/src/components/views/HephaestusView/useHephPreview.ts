@@ -19,9 +19,8 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
 import { CurveEvaluator } from '../../../core/hephaestus/CurveEvaluator'
 import { scaleToDMX, scaleToDMX16, hslToRgb } from '../../../core/hephaestus/runtime/HephUtils'
-import { PhaseDistributor } from '../../../core/hephaestus/runtime/PhaseDistributor'
-import type { HephAutomationClip, HephParamId, PhaseConfig, FixturePhase } from '../../../core/hephaestus/types'
-import { DEFAULT_PHASE_CONFIG } from '../../../core/hephaestus/types'
+import { resolvePro, type PhaseConfigPro } from '../../../core/hephaestus/phase/PhaseConfigPro'
+import type { HephAutomationClipV3, HephTrack, HephParamId, HephCurve, FixturePhase } from '../../../core/hephaestus/types'
 import type { EffectZone } from '../../../core/effects/types'
 import type { FixtureV2 } from '../../../core/stage/ShowFileV2'
 import { resolveZoneTags } from '../../../core/zones/ZoneMapper'
@@ -138,8 +137,27 @@ const ZONE_RADAR_POSITIONS: Record<string, { label: string; x: number; y: number
 // EVALUATOR — Pure math, no Runtime dependency
 // ═══════════════════════════════════════════════════════════════════════════
 
+/** Build a V2-style curves Map from V3 tracks for CurveEvaluator. */
+function tracksToCurveMap(tracks: readonly HephTrack[]): Map<HephParamId, HephCurve> {
+  const map = new Map<HephParamId, HephCurve>()
+  for (const t of tracks) {
+    if (!map.has(t.paramId)) {
+      map.set(t.paramId, t.curve)
+    }
+  }
+  return map
+}
+
+/** Find the first track with a non-trivial phaseConfig. */
+function findPhaseConfig(tracks: readonly HephTrack[]): PhaseConfigPro | null {
+  for (const t of tracks) {
+    if (t.phaseConfig && t.phaseConfig.spreadDeg > 0) return t.phaseConfig
+  }
+  return null
+}
+
 function evaluateClipFrame(
-  clip: HephAutomationClip,
+  clip: HephAutomationClipV3,
   evaluator: CurveEvaluator,
   timeMs: number,
 ): PreviewFixtureState {
@@ -150,28 +168,49 @@ function evaluateClipFrame(
   let white = 0, amber = 0, strobe = 0
   let zoom = 128, focus = 128
 
-  for (const [paramId, curve] of clip.curves) {
+  for (const track of clip.tracks) {
+    const paramId = track.paramId
+    const curve = track.curve
+
     if (curve.valueType === 'color') {
+      // colorOverride supplants curve evaluation
+      if (track.colorOverride) {
+        const hsl = track.colorOverride
+        if (typeof hsl.h === 'number' && Number.isFinite(hsl.h) &&
+            typeof hsl.s === 'number' && Number.isFinite(hsl.s) &&
+            typeof hsl.l === 'number' && Number.isFinite(hsl.l)) {
+          const intensityTrack = clip.tracks.find(t => t.paramId === 'intensity')
+          let intensityMod = 1.0
+          if (intensityTrack) {
+            intensityMod = evaluator.getValue('intensity', timeMs)
+          }
+          const modulatedL = (hsl.l / 100) * intensityMod
+          const rgb = hslToRgb(hsl.h, hsl.s / 100, modulatedL)
+          r = Number.isFinite(rgb.r) ? rgb.r : 0
+          g = Number.isFinite(rgb.g) ? rgb.g : 0
+          b = Number.isFinite(rgb.b) ? rgb.b : 0
+        }
+        continue
+      }
+
       const hsl = evaluator.getColorValue(paramId, timeMs)
-      
+
       // ⚒️ WAVE 2040.22c: DEFENSIVE GUARDS AGAINST NaN/undefined/null HSL VALUES
-      // If any HSL component is invalid, skip color evaluation (use default black)
       if (!hsl || typeof hsl.h !== 'number' || typeof hsl.s !== 'number' || typeof hsl.l !== 'number' ||
           !Number.isFinite(hsl.h) || !Number.isFinite(hsl.s) || !Number.isFinite(hsl.l)) {
         console.warn('[useHephPreview] Invalid HSL from evaluator:', hsl, 'paramId:', paramId)
-        continue  // Skip this color curve, leave RGB at 0
+        continue
       }
-      
+
       // Apply intensity modulation to lightness (consistent with Runtime)
-      const intensityCurve = clip.curves.get('intensity')
+      const intensityTrack = clip.tracks.find(t => t.paramId === 'intensity')
       let intensityMod = 1.0
-      if (intensityCurve) {
+      if (intensityTrack) {
         intensityMod = evaluator.getValue('intensity', timeMs)
       }
       const modulatedL = (hsl.l / 100) * intensityMod
       const rgb = hslToRgb(hsl.h, hsl.s / 100, modulatedL)
-      
-      // ⚒️ WAVE 2040.22c: FINAL NaN GUARD (defense in depth)
+
       r = Number.isFinite(rgb.r) ? rgb.r : 0
       g = Number.isFinite(rgb.g) ? rgb.g : 0
       b = Number.isFinite(rgb.b) ? rgb.b : 0
@@ -230,7 +269,7 @@ function evaluateClipFrame(
 // HOOK
 // ═══════════════════════════════════════════════════════════════════════════
 
-export function useHephPreview(clip: HephAutomationClip, stageFixtures: FixtureV2[] = []): HephPreviewState & {
+export function useHephPreview(clip: HephAutomationClipV3 | null, stageFixtures: FixtureV2[] = []): HephPreviewState & {
   play: () => void
   pause: () => void
   stop: () => void
@@ -257,10 +296,12 @@ export function useHephPreview(clip: HephAutomationClip, stageFixtures: FixtureV
     stageFixturesRef.current = stageFixtures
   }, [stageFixtures])
 
-  // Rebuild evaluator when clip curves change
+  // Rebuild evaluator when clip tracks change
   useEffect(() => {
+    if (!clip || !clip.tracks) return
     clipRef.current = clip
-    evaluatorRef.current = new CurveEvaluator(clip.curves, clip.durationMs)
+    const curveMap = tracksToCurveMap(clip.tracks)
+    evaluatorRef.current = new CurveEvaluator(curveMap, clip.durationMs)
     // Re-evaluate current frame with new curves (live editing feedback)
     if (!isPlayingRef.current) {
       const ev = evaluatorRef.current
@@ -268,7 +309,7 @@ export function useHephPreview(clip: HephAutomationClip, stageFixtures: FixtureV
       const fixtures = resolveFixtures(clip, ev, t)
       setState(prev => ({ ...prev, fixtures }))
     }
-  }, [clip, clip.curves, clip.durationMs])
+  }, [clip, clip?.tracks, clip?.durationMs])
 
   /**
    * Resolve fixtures based on clip zones + REAL show patch + PhaseDistributor.
@@ -283,15 +324,17 @@ export function useHephPreview(clip: HephAutomationClip, stageFixtures: FixtureV
    * - Fallback: if no stage fixtures loaded, use zone-based single dots
    */
   const resolveFixtures = useCallback(
-    (c: HephAutomationClip, ev: CurveEvaluator, timeMs: number): PreviewFixtureState[] => {
+    (c: HephAutomationClipV3, ev: CurveEvaluator, timeMs: number): PreviewFixtureState[] => {
+      const zones = c.spatialZones as readonly string[]
+
       // ── CASE 1: 'all' selected → Single fixture at center ──
-      if (c.zones.includes('all' as EffectZone)) {
+      if (zones.includes('all')) {
         const f = evaluateClipFrame(c, ev, timeMs)
         return [f]
       }
 
       // ── CASE 2: No zones selected → Fallback ──
-      if (c.zones.length === 0) {
+      if (zones.length === 0) {
         const f = evaluateClipFrame(c, ev, timeMs)
         return [f]
       }
@@ -308,7 +351,7 @@ export function useHephPreview(clip: HephAutomationClip, stageFixtures: FixtureV
       }))
 
       // Resolve real fixture IDs via centralized ZoneMapper
-      const resolvedIds = resolveZoneTags(c.zones.map(String), zoneMappable)
+      const resolvedIds = resolveZoneTags(zones.map(String), zoneMappable)
       const resolvedIdSet = new Set(resolvedIds)
 
       // Build targetPool from resolved IDs, preserving zone info for radar display
@@ -321,9 +364,9 @@ export function useHephPreview(clip: HephAutomationClip, stageFixtures: FixtureV
 
       // If no real fixtures matched, create virtual fallback dots per zone
       if (targetPool.length === 0) {
-        for (const zoneId of c.zones) {
+        for (const zoneId of zones) {
           const zoneStr = String(zoneId)
-          targetPool.push({ id: `zone-${zoneStr}`, name: zoneStr, zone: zoneId })
+          targetPool.push({ id: `zone-${zoneStr}`, name: zoneStr, zone: zoneId as EffectZone })
         }
       }
 
@@ -349,19 +392,20 @@ export function useHephPreview(clip: HephAutomationClip, stageFixtures: FixtureV
         }]
       }
 
-      // ── WAVE 2403.2: Phase distribution over REAL fixture IDs ──
-      const phaseConfig: PhaseConfig = c.selector?.phase ?? DEFAULT_PHASE_CONFIG
+      // ── WAVE 7003: Phase distribution via resolvePro ──
+      const phaseConfig = findPhaseConfig(c.tracks)
       const fixtureIds = resolvedFixtures.map(rf => rf.id)
-      const fixturePhases: FixturePhase[] = PhaseDistributor.resolve(
-        fixtureIds,
-        phaseConfig,
-        c.durationMs
-      )
+      let fixturePhases: FixturePhase[] | null = null
+      if (phaseConfig) {
+        fixturePhases = resolvePro(fixtureIds, phaseConfig, c.durationMs)
+      }
 
       // Build lookup: fixtureId → phaseOffsetMs
       const phaseByFixture = new Map<string, number>()
-      for (const fp of fixturePhases) {
-        phaseByFixture.set(fp.fixtureId, fp.phaseOffsetMs)
+      if (fixturePhases) {
+        for (const fp of fixturePhases) {
+          phaseByFixture.set(fp.fixtureId, fp.phaseOffsetMs)
+        }
       }
 
       // ── Build radar layout: horizontal distribution for wave visualization ──
@@ -374,7 +418,8 @@ export function useHephPreview(clip: HephAutomationClip, stageFixtures: FixtureV
       for (let i = 0; i < totalFixtures; i++) {
         const rf = resolvedFixtures[i]
         const phaseOffset = phaseByFixture.get(rf.id) ?? 0
-        const offsetTime = Math.max(0, timeMs + phaseOffset)
+        // MA3 model: subtract offset (fixture starts later)
+        const offsetTime = Math.max(0, timeMs - phaseOffset)
         const f = evaluateClipFrame(c, ev, offsetTime)
 
         // Horizontal distribution: evenly spaced across X axis
@@ -409,13 +454,15 @@ export function useHephPreview(clip: HephAutomationClip, stageFixtures: FixtureV
   // ── Animation Loop ──
   const tick = useCallback((timestamp: number) => {
     if (!isPlayingRef.current) return
+    const c = clipRef.current
+    if (!c) return
 
     const elapsed = timestamp - startRealTimeRef.current
     let clipTimeMs = startClipTimeRef.current + elapsed
 
     // Loop
-    if (clipTimeMs >= clipRef.current.durationMs) {
-      clipTimeMs = clipTimeMs % clipRef.current.durationMs
+    if (clipTimeMs >= c.durationMs) {
+      clipTimeMs = clipTimeMs % c.durationMs
       startRealTimeRef.current = timestamp
       startClipTimeRef.current = 0
     }
@@ -423,11 +470,11 @@ export function useHephPreview(clip: HephAutomationClip, stageFixtures: FixtureV
     const ev = evaluatorRef.current
     if (!ev) return
 
-    const fixtures = resolveFixtures(clipRef.current, ev, clipTimeMs)
+    const fixtures = resolveFixtures(c, ev, clipTimeMs)
 
     setState(prev => ({
       playheadMs: clipTimeMs,
-      progress: clipTimeMs / clipRef.current.durationMs,
+      progress: clipTimeMs / c.durationMs,
       isPlaying: true,
       fixtures,
       frameCount: prev.frameCount + 1,
@@ -439,10 +486,13 @@ export function useHephPreview(clip: HephAutomationClip, stageFixtures: FixtureV
   // ── Controls ──
   const play = useCallback(() => {
     if (isPlayingRef.current) return
+    const c = clipRef.current
+    if (!c) return
     isPlayingRef.current = true
 
     // Rebuild evaluator fresh
-    evaluatorRef.current = new CurveEvaluator(clipRef.current.curves, clipRef.current.durationMs)
+    const curveMap = tracksToCurveMap(c.tracks)
+    evaluatorRef.current = new CurveEvaluator(curveMap, c.durationMs)
     startRealTimeRef.current = performance.now()
     startClipTimeRef.current = state.playheadMs
 
@@ -460,8 +510,9 @@ export function useHephPreview(clip: HephAutomationClip, stageFixtures: FixtureV
     isPlayingRef.current = false
     cancelAnimationFrame(rafRef.current)
 
+    const c = clipRef.current
     const ev = evaluatorRef.current
-    const fixtures = ev ? resolveFixtures(clipRef.current, ev, 0) : []
+    const fixtures = (c && ev) ? resolveFixtures(c, ev, 0) : []
 
     setState({
       playheadMs: 0,
@@ -473,9 +524,11 @@ export function useHephPreview(clip: HephAutomationClip, stageFixtures: FixtureV
   }, [resolveFixtures])
 
   const seek = useCallback((ms: number) => {
-    const clamped = Math.max(0, Math.min(clipRef.current.durationMs, ms))
+    const c = clipRef.current
+    if (!c) return
+    const clamped = Math.max(0, Math.min(c.durationMs, ms))
     const ev = evaluatorRef.current
-    const fixtures = ev ? resolveFixtures(clipRef.current, ev, clamped) : []
+    const fixtures = ev ? resolveFixtures(c, ev, clamped) : []
 
     if (isPlayingRef.current) {
       startRealTimeRef.current = performance.now()
@@ -485,7 +538,7 @@ export function useHephPreview(clip: HephAutomationClip, stageFixtures: FixtureV
     setState(prev => ({
       ...prev,
       playheadMs: clamped,
-      progress: clamped / clipRef.current.durationMs,
+      progress: clamped / c.durationMs,
       fixtures,
     }))
   }, [resolveFixtures])

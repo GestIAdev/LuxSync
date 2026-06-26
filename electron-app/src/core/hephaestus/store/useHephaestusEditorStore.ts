@@ -22,7 +22,7 @@ import type { CognitiveDNA } from '../../arsenal/lfxTypes'
 
 enablePatches()
 
-const HISTORY_LIMIT = 100
+const HISTORY_LIMIT = 200
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SELECTION & VIEWPORT (efímero — NO entra al historial)
@@ -75,6 +75,9 @@ export interface HephaestusEditorState {
   // ── Historial (Command Pattern) ──
   _undoStack: HistoryFrame[]
   _redoStack: HistoryFrame[]
+
+  // ── Drag batching (efímero) ──
+  _dragSnapshot: HephAutomationClipV3 | null
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -123,6 +126,12 @@ export interface HephaestusEditorActions {
   redo: () => void
   canUndo: () => boolean
   canRedo: () => boolean
+  mutate: (label: string, recipe: (draft: HephAutomationClipV3) => void) => void
+
+  // ═══ DRAG BATCHING ═══
+  beginDragSnapshot: () => void
+  endDragSnapshot: (label?: string) => void
+  replaceClipTransient: (nextClip: HephAutomationClipV3) => void
 
   // ═══ DERIVED (selectors helper) ═══
   getActiveTrack: () => HephTrack | null
@@ -218,6 +227,10 @@ export const useHephaestusEditorStore = create<HephaestusEditorStore>()(
     isDirty: false,
     _undoStack: [],
     _redoStack: [],
+    _dragSnapshot: null,
+
+    // ── INTERNAL ──
+    mutate,
 
     // ── CLIP-LEVEL ──
     loadClip: (clip) => {
@@ -229,6 +242,7 @@ export const useHephaestusEditorStore = create<HephaestusEditorStore>()(
         state.selection.selectedKeyframeIndices = new Set()
         state._undoStack = []
         state._redoStack = []
+        state._dragSnapshot = null
       })
     },
 
@@ -433,6 +447,34 @@ export const useHephaestusEditorStore = create<HephaestusEditorStore>()(
 
     canUndo: () => get()._undoStack.length > 0,
     canRedo: () => get()._redoStack.length > 0,
+
+    // ── DRAG BATCHING ──
+    beginDragSnapshot: () =>
+      set(state => { state._dragSnapshot = state.clip }),
+
+    endDragSnapshot: (label = 'Drag') => {
+      const { _dragSnapshot, clip } = get()
+      if (!_dragSnapshot) return
+      const [, redoPatches, undoPatches] = (produceWithPatches as any)(
+        _dragSnapshot, (draft: any) => { Object.assign(draft, clip) },
+      ) as [HephAutomationClipV3, Patch[], Patch[]]
+      if (redoPatches.length === 0) {
+        set(state => { state._dragSnapshot = null })
+        return
+      }
+      set(state => {
+        state._undoStack.push({ undo: undoPatches, redo: redoPatches, label })
+        if (state._undoStack.length > HISTORY_LIMIT) state._undoStack.shift()
+        state._redoStack.length = 0
+        state._dragSnapshot = null
+      })
+    },
+
+    replaceClipTransient: (nextClip) =>
+      set(state => {
+        state.clip = nextClip as any
+        state.isDirty = true
+      }),
 
     // ── DERIVED ──
     getActiveTrack: () => {

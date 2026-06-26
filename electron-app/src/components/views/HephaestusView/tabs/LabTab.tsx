@@ -64,10 +64,12 @@ export const LabTab: React.FC<LabTabProps> = ({ temporalActions, isSaving = fals
 
   // ── setClip shim ──
   const setClip = useCallback((updater: (prev: HephAutomationClipV3) => HephAutomationClipV3) => {
-    const currentClip = useHephaestusEditorStore.getState().clip
+    const { mutate, clip: currentClip } = useHephaestusEditorStore.getState()
     if (!currentClip) return
-    const nextClip = updater(currentClip)
-    useHephaestusEditorStore.setState({ clip: nextClip, isDirty: true })
+    mutate('Edit clip', (draft) => {
+      const next = updater(draft as HephAutomationClipV3)
+      Object.assign(draft, next)
+    })
   }, [])
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -126,19 +128,21 @@ export const LabTab: React.FC<LabTabProps> = ({ temporalActions, isSaving = fals
       className="heph-lab-workspace"
       style={{
         display: 'flex',
+        flexDirection: 'row',
         flex: 1,
         width: '100%',
         height: '100%',
         overflow: 'hidden',
-        gap: '16px',
-        padding: '16px',
+        gap: '4px',
+        padding: '4px',
+        background: '#0d0d0d',
         boxSizing: 'border-box',
       }}
     >
-      {/* ── Bastidor de Fase Izquierdo (Ancho inmutable) ── */}
+      {/* ── Bastidor de Fase Izquierdo ── */}
       <div
         className="heph-lab-sidebar"
-        style={{ width: '340px', flexShrink: 0, height: '100%', overflowY: 'auto' }}
+        style={{ width: '340px', flexShrink: 0, height: '100%', overflowY: 'auto', borderRight: '1px solid #1c1c1c' }}
       >
         <div style={{ marginBottom: '12px', fontSize: '12px', fontWeight: 700, color: '#64c8ff', letterSpacing: '0.1em' }}>
           🌊 PHASE DISTRIBUTION ENGINE
@@ -152,29 +156,12 @@ export const LabTab: React.FC<LabTabProps> = ({ temporalActions, isSaving = fals
         />
       </div>
 
-      {/* ── Escenario Central (minWidth: 0 salva al Canvas) ── */}
+      {/* ── Escenario Central Radar ── */}
       <div
         className="heph-lab-stage"
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          flex: 1,
-          minWidth: 0,
-          height: '100%',
-          gap: '12px',
-          overflow: 'hidden',
-        }}
+        style={{ display: 'flex', flex: 1, minWidth: 0, height: '100%', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}
       >
-        <div
-          className="heph-radar-cage"
-          style={{
-            flex: 1,
-            minHeight: 0,
-            width: '100%',
-            position: 'relative',
-            display: 'flex',
-          }}
-        >
+        <div style={{ width: '100%', height: '100%', display: 'flex' }}>
           <HephRadar
             preview={preview}
             durationMs={clip?.durationMs ?? 1000}
@@ -186,10 +173,10 @@ export const LabTab: React.FC<LabTabProps> = ({ temporalActions, isSaving = fals
         </div>
       </div>
 
-      {/* ── DNA Rail Derecho (Ancho inmutable) ── */}
+      {/* ── Bastidor ADN Derecho (Ensanchado a 310px) ── */}
       <div
         className="heph-lab-dna-rail"
-        style={{ width: '260px', flexShrink: 0, height: '100%', overflowY: 'auto' }}
+        style={{ width: '310px', flexShrink: 0, height: '100%', overflowY: 'auto', borderLeft: '1px solid #1c1c1c' }}
       >
         <DnaRail
           dna={clip?.cognitiveDNA}

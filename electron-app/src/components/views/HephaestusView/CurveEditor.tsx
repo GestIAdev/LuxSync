@@ -63,6 +63,9 @@ interface CurveEditorProps {
    *  The parent captures a temporal snapshot BEFORE the continuous mutation starts. */
   onDragStart?: () => void
 
+  /** Called when a drag operation ends (mouseUp). Parent commits the batched undo entry. */
+  onDragEnd?: () => void
+
   /** ⚒️ WAVE 2043: Set of selected keyframe indices for multi-selection */
   selectedIndices?: Set<number>
 
@@ -242,6 +245,7 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
   onKeyframeSelect,
   onAudioBindingChange,
   onDragStart,
+  onDragEnd,
   selectedIndices = new Set<number>(),
   onMultiSelect,
   onBatchKeyframeMove,
@@ -852,6 +856,7 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
       ghostKeyframePositionsRef.current = []
 
       setDrag(null)
+      onDragEnd?.()
     }
 
     window.addEventListener('mousemove', handleMouseMove)
@@ -860,7 +865,7 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
       window.removeEventListener('mousemove', handleMouseMove)
       window.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [drag, plotW, plotH, visibleDurationMs, rangeSpan, rangeMin, rangeMax, durationMs, curve.keyframes, toX, toY, onKeyframeMove, onBezierHandleMove, getSVGPoint, onMultiSelect, onKeyframeSelect, onBatchKeyframeMove, selectedIndices, snapEnabled, findNearestBeatGrid, onScrub, fromX])
+  }, [drag, plotW, plotH, visibleDurationMs, rangeSpan, rangeMin, rangeMax, durationMs, curve.keyframes, toX, toY, onKeyframeMove, onBezierHandleMove, getSVGPoint, onMultiSelect, onKeyframeSelect, onBatchKeyframeMove, selectedIndices, snapEnabled, findNearestBeatGrid, onScrub, fromX, onDragEnd])
 
   // ── Wheel: Zoom ──
   const handleWheel = useCallback((e: React.WheelEvent) => {
@@ -1275,6 +1280,7 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
                 strokeWidth="2"
                 className={keyframeClass}
                 onMouseDown={(e) => handleKeyframeMouseDown(e, i)}
+                onClick={(e) => { e.stopPropagation() }}
                 onDoubleClick={(e) => {
                   e.stopPropagation()
                   handleKeyframeDoubleClick(i, kf.value)

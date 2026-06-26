@@ -9,7 +9,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { produceWithPatches, enablePatches, applyPatches } from 'immer';
 enablePatches();
-const HISTORY_LIMIT = 100;
+const HISTORY_LIMIT = 200;
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -88,8 +88,22 @@ export const useHephaestusEditorStore = create()(immer((set, get) => {
         isDirty: false,
         _undoStack: [],
         _redoStack: [],
+        _dragSnapshot: null,
+        // ── INTERNAL ──
+        mutate,
         // ── CLIP-LEVEL ──
-        loadClip: (clip) => set({ clip, isDirty: false, _undoStack: [], _redoStack: [] }),
+        loadClip: (clip) => {
+            const firstTrackId = clip?.tracks?.[0]?.id ?? null;
+            set((state) => {
+                state.clip = clip;
+                state.isDirty = false;
+                state.selection.activeTrackId = firstTrackId;
+                state.selection.selectedKeyframeIndices = new Set();
+                state._undoStack = [];
+                state._redoStack = [];
+                state._dragSnapshot = null;
+            });
+        },
         renameClip: (name) => mutate('Rename clip', draft => { draft.name = name; }),
         setDuration: (durationMs) => mutate('Set duration', draft => { draft.durationMs = durationMs; }),
         setMixBus: (bus) => mutate('Set mix bus', draft => { draft.mixBus = bus; }),
@@ -258,6 +272,29 @@ export const useHephaestusEditorStore = create()(immer((set, get) => {
         }),
         canUndo: () => get()._undoStack.length > 0,
         canRedo: () => get()._redoStack.length > 0,
+        // ── DRAG BATCHING ──
+        beginDragSnapshot: () => set(state => { state._dragSnapshot = state.clip; }),
+        endDragSnapshot: (label = 'Drag') => {
+            const { _dragSnapshot, clip } = get();
+            if (!_dragSnapshot)
+                return;
+            const [, redoPatches, undoPatches] = produceWithPatches(_dragSnapshot, (draft) => { Object.assign(draft, clip); });
+            if (redoPatches.length === 0) {
+                set(state => { state._dragSnapshot = null; });
+                return;
+            }
+            set(state => {
+                state._undoStack.push({ undo: undoPatches, redo: redoPatches, label });
+                if (state._undoStack.length > HISTORY_LIMIT)
+                    state._undoStack.shift();
+                state._redoStack.length = 0;
+                state._dragSnapshot = null;
+            });
+        },
+        replaceClipTransient: (nextClip) => set(state => {
+            state.clip = nextClip;
+            state.isDirty = true;
+        }),
         // ── DERIVED ──
         getActiveTrack: () => {
             const { clip, selection } = get();

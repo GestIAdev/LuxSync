@@ -88,6 +88,7 @@ function drawFixtureDot(
   w: number,
   h: number,
   radius: number,
+  frameCount: number,
 ) {
   // ── 1. BASE: Posición física en la sala (radarX/radarY, zona y layout espacial) ──
   // WAVE 2403.2: radarX/radarY = distribución normalizada 0-1 del fixture en el venue
@@ -105,7 +106,7 @@ function drawFixtureDot(
   // Strobe: 0 = no strobe (full on), >0 = flashing.
   // For preview, simulate gate: strobe>0 blinks. We use a simple threshold.
   const strobeGate = fixture.strobe > 0
-    ? (Math.sin(Date.now() * (fixture.strobe / 255) * 0.06) > 0 ? 1 : 0.1)
+    ? (Math.sin(frameCount * (fixture.strobe / 255) * 0.3) > 0 ? 1 : 0.1)
     : 1
   const alpha = dimmerAlpha * strobeGate
 
@@ -329,71 +330,79 @@ export const HephRadar: React.FC<HephRadarProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const rafRef = useRef<number>(0)
+  const frameCounterRef = useRef<number>(0)
+  const previewRef = useRef(preview)
+  const durationRef = useRef(durationMs)
 
-  // ── Render Loop ──
+  previewRef.current = preview
+  durationRef.current = durationMs
+
+  // ── Render Loop (rAF continuo, DPR canónico) ──
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    const container = containerRef.current
-    if (!container) return
-
-    // Size to container (minus transport controls)
-    const rect = container.getBoundingClientRect()
-    const w = Math.floor(rect.width)
-    const h = Math.floor(rect.height - 36) // Reserve 36px for transport bar
-    if (w <= 0 || h <= 0) return
-
-    const dpr = window.devicePixelRatio || 1
-    canvas.width = w * dpr
-    canvas.height = h * dpr
-    canvas.style.width = `${w}px`
-    canvas.style.height = `${h}px`
-    ctx.scale(dpr, dpr)
-
-    // Clear
-    ctx.fillStyle = BG_COLOR
-    ctx.fillRect(0, 0, w, h)
-
-    // Grid
-    drawGrid(ctx, w, h)
-
-    // Fixtures
-    const fixtures = preview.fixtures
-    const radius = fixtures.length > 1 ? DOT_RADIUS_MULTI : DOT_RADIUS_SINGLE
-
-    for (const fixture of fixtures) {
-      drawFixtureDot(ctx, fixture, w, h, radius)
-    }
-
-    // Readouts (use first fixture for numeric display)
-    if (fixtures.length > 0) {
-      drawReadouts(ctx, fixtures[0], w, h, preview.progress, preview.playheadMs, durationMs)
-    }
-
-    // Progress bar
-    drawProgressBar(ctx, w, h, preview.progress)
-  }, [preview, durationMs])
-
-  // ── Resize Observer ──
-  useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
-
-    const observer = new ResizeObserver(() => {
-      // Trigger re-render by updating a dummy state? No — the preview state
-      // changes frequently enough via rAF. On static resize, we just need
-      // to invalidate canvas once.
+    const render = () => {
       const canvas = canvasRef.current
-      if (canvas) {
-        canvas.dispatchEvent(new Event('resize'))
-      }
-    })
+      if (!canvas) return
+      const container = containerRef.current
+      if (!container) return
 
-    observer.observe(container)
-    return () => observer.disconnect()
+      const rect = container.getBoundingClientRect()
+      const w = Math.floor(rect.width)
+      const h = Math.floor(rect.height - 36)
+      if (w <= 0 || h <= 0) {
+        rafRef.current = requestAnimationFrame(render)
+        return
+      }
+
+      const dpr = window.devicePixelRatio || 1
+      canvas.width = w * dpr
+      canvas.height = h * dpr
+      canvas.style.width = `${w}px`
+      canvas.style.height = `${h}px`
+
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        rafRef.current = requestAnimationFrame(render)
+        return
+      }
+
+      ctx.save()
+      ctx.scale(dpr, dpr)
+
+      const pv = previewRef.current
+      const dur = durationRef.current
+      const fc = frameCounterRef.current
+
+      // Clear
+      ctx.fillStyle = BG_COLOR
+      ctx.fillRect(0, 0, w, h)
+
+      // Grid
+      drawGrid(ctx, w, h)
+
+      // Fixtures
+      const fixtures = pv.fixtures
+      const radius = fixtures.length > 1 ? DOT_RADIUS_MULTI : DOT_RADIUS_SINGLE
+
+      for (const fixture of fixtures) {
+        drawFixtureDot(ctx, fixture, w, h, radius, fc)
+      }
+
+      // Readouts (use first fixture for numeric display)
+      if (fixtures.length > 0) {
+        drawReadouts(ctx, fixtures[0], w, h, pv.progress, pv.playheadMs, dur)
+      }
+
+      // Progress bar
+      drawProgressBar(ctx, w, h, pv.progress)
+
+      ctx.restore()
+      frameCounterRef.current++
+      rafRef.current = requestAnimationFrame(render)
+    }
+
+    rafRef.current = requestAnimationFrame(render)
+    return () => cancelAnimationFrame(rafRef.current)
   }, [])
 
   // ── Click to seek on progress bar area ──

@@ -112,108 +112,134 @@ export const HephaestusToolbar: React.FC<HephaestusToolbarProps> = ({
   }, {} as Record<string, typeof CURVE_TEMPLATES>)
 
   return (
-    <div className="heph-toolbar">
-      {/* ── Interpolation Type ── */}
-      <div className="heph-toolbar__group">
-        <span className="heph-toolbar__group-label">INTERPOLATION</span>
-        <div className="heph-toolbar__buttons">
-          {INTERP_OPTIONS.map(opt => (
-            <button
-              key={opt.id}
-              className={`heph-toolbar__btn ${selectedKf?.interpolation === opt.id ? 'active' : ''}`}
-              onClick={() => handleInterpClick(opt.id)}
-              disabled={selectedKeyframeIdx === null}
-              title={opt.label}
-            >
-              <span className="heph-toolbar__btn-icon">{opt.icon}</span>
-              <span className="heph-toolbar__btn-label">{opt.label}</span>
-            </button>
-          ))}
+    <div className="heph-toolbar" style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      height: '48px',
+      flexShrink: 0,
+      width: '100%',
+      padding: '0 20px',
+      background: '#141414',
+      borderBottom: '1px solid #222222',
+      boxSizing: 'border-box',
+      overflowX: 'auto',
+      userSelect: 'none',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+
+        {/* GRUPO 1: Micro-Interpolación */}
+        <div className="heph-toolbar__group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ color: '#666', fontSize: '10px', fontWeight: 800, letterSpacing: '0.1em' }}>INTERPOLATION</span>
+          <div style={{ display: 'flex', gap: '2px', background: '#0a0a0a', padding: '2px', borderRadius: '4px', border: '1px solid #222' }}>
+            {INTERP_OPTIONS.map(opt => (
+              <button
+                key={opt.id}
+                className={`heph-toolbar__btn ${selectedKf?.interpolation === opt.id ? 'active' : ''}`}
+                onClick={() => handleInterpClick(opt.id)}
+                disabled={selectedKeyframeIdx === null}
+                title={opt.label}
+                style={selectedKf?.interpolation === opt.id
+                  ? { background: '#ff6600', color: '#ffffff', fontWeight: 'bold', border: '1px solid #ff6600', boxShadow: '0 0 4px rgba(255,102,0,0.4)', borderRadius: '3px', padding: '2px 8px', cursor: 'pointer' }
+                  : { background: 'transparent', color: '#999', border: '1px solid transparent', borderRadius: '3px', padding: '2px 8px', cursor: 'pointer' }}
+              >
+                <span className="heph-toolbar__btn-icon">{opt.icon}</span>
+                <span className="heph-toolbar__btn-label">{opt.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* ── Divider ── */}
-      <div className="heph-toolbar__divider" />
+        <span style={{ color: '#262626' }}>│</span>
 
-      {/* ── Bezier Presets ── */}
-      <div className="heph-toolbar__group">
-        <span className="heph-toolbar__group-label">BEZIER</span>
-        <select
-          className="heph-toolbar__select"
-          disabled={selectedKeyframeIdx === null || selectedKf?.interpolation !== 'bezier'}
-          value=""
-          onChange={handleBezierPresetChange}
-        >
-          <option value="">Preset...</option>
-          {Object.keys(BEZIER_PRESETS).map(name => (
-            <option key={name} value={name}>{name}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* ── Divider ── */}
-      <div className="heph-toolbar__divider" />
-
-      {/* ── Curve Templates - WAVE 2030.8 ── */}
-      <div className="heph-toolbar__group">
-        <span className="heph-toolbar__group-label">TEMPLATE</span>
-        <select
-          className="heph-toolbar__select heph-toolbar__select--template"
-          disabled={!activeCurve}
-          value=""
-          onChange={handleTemplateChange}
-        >
-          <option value="">Apply shape...</option>
-          {Object.entries(groupedTemplates).map(([category, templates]) => (
-            <optgroup key={category} label={`${getCategoryIcon(category)} ${category.toUpperCase()}`}>
-              {templates.map(t => (
-                <option key={t.id} value={t.id}>
-                  {t.icon} {t.name}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
-      </div>
-
-      {/* ── Divider ── */}
-      <div className="heph-toolbar__divider" />
-
-      {/* ── Curve Mode ── */}
-      <div className="heph-toolbar__group">
-        <span className="heph-toolbar__group-label">MODE</span>
-        <div className="heph-toolbar__buttons">
-          {MODE_OPTIONS.map(opt => (
-            <button
-              key={opt.id}
-              className={`heph-toolbar__btn ${activeCurve?.mode === opt.id ? 'active' : ''}`}
-              onClick={() => onModeChange(opt.id)}
-              disabled={!activeCurve}
-              title={opt.desc}
-            >
-              <span className="heph-toolbar__btn-label">{opt.label}</span>
-            </button>
-          ))}
+        {/* GRUPO 2: Presets Bézier */}
+        <div className="heph-toolbar__group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ color: '#666', fontSize: '10px', fontWeight: 800, letterSpacing: '0.1em' }}>BEZIER</span>
+          <select
+            className="heph-toolbar__select"
+            disabled={selectedKeyframeIdx === null || selectedKf?.interpolation !== 'bezier'}
+            value=""
+            onChange={handleBezierPresetChange}
+            style={{ background: '#141414', color: '#ffffff', border: '1px solid #555', padding: '4px 8px', borderRadius: '3px' }}
+          >
+            <option value="">Preset...</option>
+            {Object.keys(BEZIER_PRESETS).map(name => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
         </div>
+
+        <span style={{ color: '#262626' }}>│</span>
+
+        {/* GRUPO 3: Macro Shapes */}
+        <div className="heph-toolbar__group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ color: '#666', fontSize: '10px', fontWeight: 800, letterSpacing: '0.1em' }}>MACRO</span>
+          <select
+            className="heph-toolbar__select heph-toolbar__select--template"
+            disabled={!activeCurve}
+            value=""
+            onChange={handleTemplateChange}
+            style={{ background: '#141414', color: '#ffffff', border: '1px solid #555', padding: '4px 8px', borderRadius: '3px' }}
+          >
+            <option value="">Apply shape...</option>
+            {Object.entries(groupedTemplates).map(([category, templates]) => (
+              <optgroup key={category} label={`${getCategoryIcon(category)} ${category.toUpperCase()}`}>
+                {templates.map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.icon} {t.name}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </div>
+
+        <span style={{ color: '#262626' }}>│</span>
+
+        {/* GRUPO 4: Modos */}
+        <div className="heph-toolbar__group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ color: '#666', fontSize: '10px', fontWeight: 800, letterSpacing: '0.1em' }}>MODE</span>
+          <div style={{ display: 'flex', gap: '2px', background: '#0a0a0a', padding: '2px', borderRadius: '4px', border: '1px solid #222' }}>
+            {MODE_OPTIONS.map(opt => (
+              <button
+                key={opt.id}
+                className={`heph-toolbar__btn ${activeCurve?.mode === opt.id ? 'active' : ''}`}
+                onClick={() => onModeChange(opt.id)}
+                disabled={!activeCurve}
+                title={opt.desc}
+                style={activeCurve?.mode === opt.id
+                  ? { background: '#ff6600', color: '#ffffff', fontWeight: 'bold', border: '1px solid #ff6600', boxShadow: '0 0 4px rgba(255,102,0,0.4)', borderRadius: '3px', padding: '2px 8px', cursor: 'pointer' }
+                  : { background: 'transparent', color: '#999', border: '1px solid transparent', borderRadius: '3px', padding: '2px 8px', cursor: 'pointer' }}
+              >
+                <span className="heph-toolbar__btn-label">{opt.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
       </div>
 
-      {/* ── Keyframe Info ── */}
-      <div className="heph-toolbar__spacer" />
-      <div className="heph-toolbar__info">
-        {selectedKf ? (
-          <>
-            <span className="heph-toolbar__info-item">
-              T: {selectedKf.timeMs}ms
+      {/* GHOST HINT + Keyframe Info */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexShrink: 0 }}>
+        <div className="heph-toolbar__info">
+          {selectedKf ? (
+            <>
+              <span className="heph-toolbar__info-item" style={{ color: '#888', fontSize: '11px' }}>
+                T: {selectedKf.timeMs}ms
+              </span>
+              <span className="heph-toolbar__info-item" style={{ color: '#888', fontSize: '11px', marginLeft: '8px' }}>
+                V: {typeof selectedKf.value === 'number' ? selectedKf.value.toFixed(3) : 'HSL'}
+              </span>
+            </>
+          ) : (
+            <span className="heph-toolbar__info-hint" style={{ color: '#444', fontSize: '11px', fontStyle: 'italic' }}>
+              Select a keyframe to edit
             </span>
-            <span className="heph-toolbar__info-item">
-              V: {typeof selectedKf.value === 'number' ? selectedKf.value.toFixed(3) : 'HSL'}
-            </span>
-          </>
-        ) : (
-          <span className="heph-toolbar__info-hint">
-            Select a keyframe to edit
-          </span>
-        )}
+          )}
+        </div>
+        <div className="heph-toolbar__hint" style={{ color: '#444', fontSize: '11px', fontStyle: 'italic', whiteSpace: 'nowrap' }}>
+          💡 Double-click on grid to add keyframe
+        </div>
       </div>
     </div>
   )

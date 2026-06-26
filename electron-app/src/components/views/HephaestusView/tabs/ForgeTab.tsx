@@ -87,12 +87,13 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
   const undoStackLen = useHephaestusEditorStore(state => state._undoStack.length)
   const redoStackLen = useHephaestusEditorStore(state => state._redoStack.length)
 
-  // ── setClip shim (same pattern as index.tsx) ──
   const setClip = useCallback((updater: (prev: HephAutomationClipV3) => HephAutomationClipV3) => {
-    const currentClip = useHephaestusEditorStore.getState().clip
+    const { mutate, clip: currentClip } = useHephaestusEditorStore.getState()
     if (!currentClip) return
-    const nextClip = updater(currentClip)
-    useHephaestusEditorStore.setState({ clip: nextClip, isDirty: true })
+    mutate('Edit clip', (draft) => {
+      const next = updater(draft as HephAutomationClipV3)
+      Object.assign(draft, next)
+    })
   }, [])
 
   // ── Local UI State ──
@@ -361,14 +362,24 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
 
   const updateCurve = useCallback((paramId: HephParamId | null, updater: (curve: HephCurve) => HephCurve) => {
     if (!paramId) return
-    setClip((prev: HephAutomationClipV3): HephAutomationClipV3 => {
+    const store = useHephaestusEditorStore.getState()
+    const isDragging = store._dragSnapshot !== null
+    const buildNext = (prev: HephAutomationClipV3): HephAutomationClipV3 => {
       const trackIdx = prev.tracks.findIndex(t => t.paramId === paramId)
       if (trackIdx === -1) return prev
       const existing = prev.tracks[trackIdx].curve
       const newTracks = [...prev.tracks]
       newTracks[trackIdx] = { ...newTracks[trackIdx], curve: updater(existing) }
       return { ...prev, tracks: newTracks }
-    })
+    }
+    if (isDragging) {
+      store.replaceClipTransient(buildNext(store.clip))
+    } else {
+      store.mutate('Edit curve', (draft) => {
+        const next = buildNext(draft as HephAutomationClipV3)
+        Object.assign(draft, next)
+      })
+    }
   }, [])
 
   const updateCurveWithSnapshot = useCallback((paramId: HephParamId | null, updater: (curve: HephCurve) => HephCurve) => {
@@ -457,7 +468,7 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
   }, [activeParam, updateCurve, selectedIndices, clip.durationMs])
 
   const handleDragStartWithSnapshot = useCallback(() => {
-    temporalActions.snapshot()
+    useHephaestusEditorStore.getState().beginDragSnapshot()
     const origins = new Map<number, { timeMs: number; value: number | { h: number; s: number; l: number } }>()
     if (activeCurve) {
       for (const idx of selectedIndices) {
@@ -468,7 +479,7 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
       }
     }
     batchOriginRef.current = origins
-  }, [temporalActions, activeCurve, selectedIndices])
+  }, [activeCurve, selectedIndices])
 
   const handleBatchKeyframeMove = useCallback((deltaTimeMs: number, deltaValue: number) => {
     const origins = batchOriginRef.current
@@ -896,140 +907,147 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
   // ═══════════════════════════════════════════════════════════════════════
 
   return (
-    <div className="heph-forge-tab">
-      {/* 👑 TOOLBAR — Elevated to top (WAVE 7010: Presets coronando la vista) */}
-      <HephaestusToolbar
-        activeCurve={activeCurve}
-        selectedKeyframeIdx={selectedKeyframeIdx}
-        clipDurationMs={clip.durationMs}
-        onInterpolationChange={handleInterpolationChange}
-        onModeChange={handleModeChange}
-        onApplyBezierPreset={handleApplyBezierPreset}
-        onApplyTemplate={handleApplyTemplate}
-      />
+    <div className="heph-forge-tab" style={{ display: 'flex', flexDirection: 'column', flex: 1, height: '100%', width: '100%', overflow: 'hidden' }}>
 
-      {/* ── Three-column body ── */}
-      <div className="heph-forge-body">
+      {/* 1. CORONA HORIZONTAL: Toolbar abarcando el 100% */}
+      <div className="heph-forge-topbar" style={{ flex: '0 0 auto', width: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderBottom: '1px solid #222', background: '#141414' }}>
+        <HephaestusToolbar
+          activeCurve={activeCurve}
+          selectedKeyframeIdx={selectedKeyframeIdx}
+          clipDurationMs={clip.durationMs}
+          onInterpolationChange={handleInterpolationChange}
+          onModeChange={handleModeChange}
+          onApplyBezierPreset={handleApplyBezierPreset}
+          onApplyTemplate={handleApplyTemplate}
+        />
+      </div>
+
+      {/* 2. CUERPO DE 3 COLUMNAS EN FILA (row) */}
+      <div className="heph-forge-columns" style={{ display: 'flex', flexDirection: 'row', flex: 1, minHeight: 0, width: '100%', overflow: 'hidden' }}>
+
         {/* ── Library Panel (collapsible) ── */}
         {showAssetBrowser && (
-          <div className="heph-library">
-            <div className="heph-library__header">
-              <span className="heph-library__title">📚 LIBRARY</span>
-              {isLoadingLibrary && <span className="heph-library__loading">⏳</span>}
-            </div>
+          <aside style={{ width: '220px', flexShrink: 0, height: '100%', overflowX: 'hidden', overflowY: 'auto', borderRight: '1px solid #262626', boxSizing: 'border-box' }}>
+            <div className="heph-library">
+              <div className="heph-library__header">
+                <span className="heph-library__title">📚 LIBRARY</span>
+                {isLoadingLibrary && <span className="heph-library__loading">⏳</span>}
+              </div>
 
-            <div className="heph-library__search">
-              <input
-                type="text"
-                className="heph-library__search-input"
-                placeholder="🔍 Search clips..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              {searchQuery && (
-                <button
-                  className="heph-library__search-clear"
-                  onClick={() => setSearchQuery('')}
-                >
-                  ✕
-                </button>
-              )}
-            </div>
+              <div className="heph-library__search">
+                <input
+                  type="text"
+                  className="heph-library__search-input"
+                  placeholder="🔍 Search clips..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                {searchQuery && (
+                  <button
+                    className="heph-library__search-clear"
+                    onClick={() => setSearchQuery('')}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
 
-            <div className="heph-library__list">
-              {groupedLibrary.size === 0 ? (
-                <div className="heph-library__empty">
-                  {isLoadingLibrary
-                    ? 'Loading...'
-                    : searchQuery
-                      ? 'No matches found'
-                      : 'No clips saved yet'
-                  }
-                </div>
-              ) : (
-                Array.from(groupedLibrary.entries()).map(([category, items]) => (
-                  <div key={category} className="heph-library__category">
-                    <div
-                      className="heph-library__category-header"
-                      onClick={() => handleCategoryToggle(category)}
-                    >
-                      <span className="heph-library__category-icon">
-                        {getCategoryIcon(category)}
-                      </span>
-                      <span className="heph-library__category-name">
-                        {category.toUpperCase()}
-                      </span>
-                      <span className="heph-library__category-count">
-                        ({items.length})
-                      </span>
-                      <span className="heph-library__category-chevron">
-                        {expandedCategories.has(category) ? '▼' : '▶'}
-                      </span>
-                    </div>
+              <div className="heph-library__list">
+                {groupedLibrary.size === 0 ? (
+                  <div className="heph-library__empty">
+                    {isLoadingLibrary
+                      ? 'Loading...'
+                      : searchQuery
+                        ? 'No matches found'
+                        : 'No clips saved yet'
+                    }
+                  </div>
+                ) : (
+                  Array.from(groupedLibrary.entries()).map(([category, items]) => (
+                    <div key={category} className="heph-library__category">
+                      <div
+                        className="heph-library__category-header"
+                        onClick={() => handleCategoryToggle(category)}
+                      >
+                        <span className="heph-library__category-icon">
+                          {getCategoryIcon(category)}
+                        </span>
+                        <span className="heph-library__category-name">
+                          {category.toUpperCase()}
+                        </span>
+                        <span className="heph-library__category-count">
+                          ({items.length})
+                        </span>
+                        <span className="heph-library__category-chevron">
+                          {expandedCategories.has(category) ? '▼' : '▶'}
+                        </span>
+                      </div>
 
-                    {expandedCategories.has(category) && (
-                      <div className="heph-library__category-items">
-                        {items.map(item => (
-                          <div
-                            key={item.id}
-                            className={`heph-library__item ${item.id === clip.id ? 'heph-library__item--active' : ''}`}
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, item)}
-                          >
+                      {expandedCategories.has(category) && (
+                        <div className="heph-library__category-items">
+                          {items.map(item => (
                             <div
-                              className="heph-library__item-info"
-                              onClick={() => handleLoad(item.id)}
+                              key={item.id}
+                              className={`heph-library__item ${item.id === clip.id ? 'heph-library__item--active' : ''}`}
+                              draggable
+                              onDragStart={(e) => handleDragStart(e, item)}
                             >
-                              <span className="heph-library__item-icon">
-                                {getCategoryIcon(item.category)}
-                              </span>
-                              <div className="heph-library__item-details">
-                                <span className="heph-library__item-name">{item.name}</span>
-                                <span className="heph-library__item-meta">
-                                  {item.paramCount} params • {(item.durationMs / 1000).toFixed(1)}s
+                              <div
+                                className="heph-library__item-info"
+                                onClick={() => handleLoad(item.id)}
+                              >
+                                <span className="heph-library__item-icon">
+                                  {getCategoryIcon(item.category)}
+                                </span>
+                                <div className="heph-library__item-details">
+                                  <span className="heph-library__item-name">{item.name}</span>
+                                  <span className="heph-library__item-meta">
+                                    {item.paramCount} params • {(item.durationMs / 1000).toFixed(1)}s
+                                  </span>
+                                </div>
+                                <span className="heph-library__item-drag-hint" title="Drag to Timeline">
+                                  ⋮⋮
                                 </span>
                               </div>
-                              <span className="heph-library__item-drag-hint" title="Drag to Timeline">
-                                ⋮⋮
-                              </span>
+                              <button
+                                className="heph-library__item-delete"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDelete(item.id)
+                                }}
+                                title="Delete"
+                              >
+                                🗑️
+                              </button>
                             </div>
-                            <button
-                              className="heph-library__item-delete"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleDelete(item.id)
-                              }}
-                              title="Delete"
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))
-              )}
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
-          </div>
+          </aside>
         )}
 
-        {/* ── Parameter Lanes (left sidebar) ── */}
-        <div className="heph-param-sidebar">
-          <div className="heph-param-sidebar__header">
-            <span className="heph-param-sidebar__title">PARAMETERS</span>
-          </div>
-          <div className="heph-param-sidebar__lanes">
-            {paramIds.length === 0 ? (
-              <div className="heph-param-sidebar__empty">
-                <span className="heph-param-sidebar__empty-icon">⚒️</span>
-                <span className="heph-param-sidebar__empty-text">No parameters</span>
-                <span className="heph-param-sidebar__empty-hint">Click + to add automation</span>
-              </div>
-            ) : (
-              paramIds.map(paramId => {
-                const track = clip.tracks.find(t => t.paramId === paramId)
-                return (
+        {/* ── Parameter Lanes ── */}
+        <aside style={{ width: '220px', flexShrink: 0, height: '100%', overflowX: 'hidden', overflowY: 'auto', borderRight: '1px solid #262626', boxSizing: 'border-box' }}>
+          <div className="heph-param-sidebar" style={{ boxSizing: 'border-box', width: '100%', padding: '8px 12px' }}>
+            <div className="heph-param-sidebar__header">
+              <span className="heph-param-sidebar__title">PARAMETERS</span>
+            </div>
+            <div className="heph-param-sidebar__lanes">
+              {paramIds.length === 0 ? (
+                <div className="heph-param-sidebar__empty">
+                  <span className="heph-param-sidebar__empty-icon">⚒️</span>
+                  <span className="heph-param-sidebar__empty-text">No parameters</span>
+                  <span className="heph-param-sidebar__empty-hint">Click + to add automation</span>
+                </div>
+              ) : (
+                paramIds.map(paramId => {
+                  const track = clip.tracks.find(t => t.paramId === paramId)
+                  return (
                   <ParameterLane
                     key={paramId}
                     paramId={paramId}
@@ -1038,96 +1056,97 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
                     onClick={() => setActiveParam(paramId)}
                     onRemove={handleRemoveParam}
                   />
-                )
-              })
-            )}
-          </div>
-
-          {availableParams.length > 0 && (
-            <div className="heph-add-param" ref={addParamRef}>
-              <button
-                className="heph-add-param__btn"
-                onClick={() => setShowAddParamDropdown(!showAddParamDropdown)}
-                type="button"
-              >
-                <span>+</span>
-                <span>ADD</span>
-              </button>
-
-              {showAddParamDropdown && (
-                <div className="heph-add-param__popover">
-                  <div className="heph-add-param__popover-header">
-                    ADD PARAMETER
-                  </div>
-                  <div className="heph-add-param__popover-body">
-                    {Array.from(groupedAvailableParams.entries()).map(([category, params]) => (
-                      <div key={category} className="heph-add-param__group">
-                        <div className="heph-add-param__group-label">
-                          {PARAM_CATEGORIES[category].icon} {PARAM_CATEGORIES[category].label}
-                        </div>
-                        <div className="heph-add-param__group-items">
-                          {params.map(paramId => {
-                            const meta = PARAM_META[paramId]
-                            return (
-                              <button
-                                key={paramId}
-                                className="heph-add-param__chip"
-                                onClick={() => handleAddParam(paramId)}
-                                type="button"
-                                style={{ '--chip-color': meta.color } as React.CSSProperties}
-                              >
-                                <span className="heph-add-param__chip-icon">{meta.icon}</span>
-                                {meta.label}
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                  )
+                })
               )}
             </div>
-          )}
-        </div>
 
-        {/* ── Curve Editor (main canvas area) ── */}
-        <div className="heph-canvas-area">
-          <div className="heph-canvas-area__editor">
-            {activeCurve ? (
-              <CurveEditor
-                curve={activeCurve}
-                durationMs={clip.durationMs}
-                selectedKeyframeIdx={selectedKeyframeIdx}
-                playheadMs={playheadMs}
-                bpm={liveBpm}
-                onKeyframeAdd={handleKeyframeAdd}
-                onKeyframeMove={handleKeyframeMove}
-                onKeyframeDelete={handleKeyframeDelete}
-                onInterpolationChange={handleInterpolationChange}
-                onBezierHandleMove={handleBezierHandleMove}
-                onKeyframeSelect={handleKeyframeSelect}
-                onAudioBindingChange={handleAudioBindingChange}
-                onDragStart={handleDragStartWithSnapshot}
-                selectedIndices={selectedIndices}
-                onMultiSelect={handleMultiSelect}
-                onBatchKeyframeMove={handleBatchKeyframeMove}
-                onScrub={setPlayheadMs}
-                onCopyKeyframes={handleCopyKeyframes}
-                onPasteAtTime={handlePasteAtTime}
-                hasClipboard={clipboardRef.current.length > 0}
-                initialViewport={{ zoom: viewport.zoom, scrollX: viewport.scrollX }}
-                onViewportChange={handleViewportChange}
-                onApplyShapeToSelection={handleApplyShapeToSelection}
-                onBatchAudioBind={handleBatchAudioBind}
-              />
-            ) : (
-              <div className="heph-no-curve">
-                <span>No curve selected</span>
+            {availableParams.length > 0 && (
+              <div className="heph-add-param" ref={addParamRef}>
+                <button
+                  className="heph-add-param__btn"
+                  onClick={() => setShowAddParamDropdown(!showAddParamDropdown)}
+                  type="button"
+                >
+                  <span>+</span>
+                  <span>ADD</span>
+                </button>
+
+                {showAddParamDropdown && (
+                  <div className="heph-add-param__popover">
+                    <div className="heph-add-param__popover-header">
+                      ADD PARAMETER
+                    </div>
+                    <div className="heph-add-param__popover-body">
+                      {Array.from(groupedAvailableParams.entries()).map(([category, params]) => (
+                        <div key={category} className="heph-add-param__group">
+                          <div className="heph-add-param__group-label">
+                            {PARAM_CATEGORIES[category].icon} {PARAM_CATEGORIES[category].label}
+                          </div>
+                          <div className="heph-add-param__group-items">
+                            {params.map(paramId => {
+                              const meta = PARAM_META[paramId]
+                              return (
+                                <button
+                                  key={paramId}
+                                  className="heph-add-param__chip"
+                                  onClick={() => handleAddParam(paramId)}
+                                  type="button"
+                                  style={{ '--chip-color': meta.color } as React.CSSProperties}
+                                >
+                                  <span className="heph-add-param__chip-icon">{meta.icon}</span>
+                                  {meta.label}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
-        </div>
+        </aside>
+
+        {/* ── Curve Editor (main canvas) ── */}
+        <main style={{ display: 'flex', flex: 1, height: '100%', minWidth: 0, position: 'relative' }}>
+          {activeCurve ? (
+            <CurveEditor
+              curve={activeCurve}
+              durationMs={clip.durationMs}
+              selectedKeyframeIdx={selectedKeyframeIdx}
+              playheadMs={playheadMs}
+              bpm={liveBpm}
+              onKeyframeAdd={handleKeyframeAdd}
+              onKeyframeMove={handleKeyframeMove}
+              onKeyframeDelete={handleKeyframeDelete}
+              onInterpolationChange={handleInterpolationChange}
+              onBezierHandleMove={handleBezierHandleMove}
+              onKeyframeSelect={handleKeyframeSelect}
+              onAudioBindingChange={handleAudioBindingChange}
+              onDragStart={handleDragStartWithSnapshot}
+              onDragEnd={() => useHephaestusEditorStore.getState().endDragSnapshot('Drag keyframe')}
+              selectedIndices={selectedIndices}
+              onMultiSelect={handleMultiSelect}
+              onBatchKeyframeMove={handleBatchKeyframeMove}
+              onScrub={setPlayheadMs}
+              onCopyKeyframes={handleCopyKeyframes}
+              onPasteAtTime={handlePasteAtTime}
+              hasClipboard={clipboardRef.current.length > 0}
+              initialViewport={{ zoom: viewport.zoom, scrollX: viewport.scrollX }}
+              onViewportChange={handleViewportChange}
+              onApplyShapeToSelection={handleApplyShapeToSelection}
+              onBatchAudioBind={handleBatchAudioBind}
+            />
+          ) : (
+            <div className="heph-no-curve" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span>No curve selected</span>
+            </div>
+          )}
+        </main>
+
       </div>
     </div>
   )

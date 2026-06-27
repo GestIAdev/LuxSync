@@ -258,7 +258,9 @@ function evaluateClipFrame(
   }
 
   // ── WAVE 7024: Connect simulationMeta.isStrobe to the strobe channel ──
-  const metaStrobe = clip.simulationMeta?.isStrobe ? 200 : 0
+  // If the clip declares isStrobe but has no strobe track, inject 255 (full strobe).
+  // If a strobe track exists, its evaluated value takes priority.
+  const metaStrobe = clip.simulationMeta?.isStrobe && strobe === 0 ? 255 : 0
   const finalStrobe = Math.max(strobe, metaStrobe)
 
   return {

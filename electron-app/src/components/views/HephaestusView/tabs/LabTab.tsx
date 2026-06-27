@@ -1,7 +1,7 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * ⚒️ LAB TAB — WAVE 7011: DAW LAYOUT TIER 3B
- * Laboratory workspace: PhaseControls + HephRadar + DnaRail
+ * Laboratory workspace: PhaseControls + QuantumSpectrometer + DnaRail
  *
  * Architecture (Camisa de Fuerza Flexbox):
  * ┌──────────────────┬──────────────────────────────┬────────────────┐

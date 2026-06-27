@@ -254,7 +254,7 @@ export const PhaseControls: React.FC<PhaseControlsProps> = ({
                 ...segBtnBase,
                 borderRadius: '4px',
                 ...(active.symmetry === mode.id
-                  ? { background: 'rgba(255,102,0,0.12)', borderColor: '#ff6600', color: '#ff6b2b', boxShadow: '0 0 6px rgba(255,102,0,0.2)' }
+                  ? { background: 'rgba(255,102,0,0.12)', border: '1px solid #ff6600', color: '#ff6b2b', boxShadow: '0 0 6px rgba(255,102,0,0.2)' }
                   : {}),
               }}
             >
@@ -295,8 +295,8 @@ export const PhaseControls: React.FC<PhaseControlsProps> = ({
               style={{
                 ...dirBtnBase,
                 ...(active.direction === 1
-                  ? { color: '#ff6b2b', borderColor: 'rgba(255,102,0,0.4)', background: 'rgba(255,102,0,0.06)' }
-                  : { color: '#00e5ff', borderColor: 'rgba(0,229,255,0.4)', background: 'rgba(0,229,255,0.06)' }),
+                  ? { color: '#ff6b2b', border: '1px solid rgba(255,102,0,0.4)', background: 'rgba(255,102,0,0.06)' }
+                  : { color: '#00e5ff', border: '1px solid rgba(0,229,255,0.4)', background: 'rgba(0,229,255,0.06)' }),
               }}
             >
               <span style={{ fontSize: '14px' }}>{active.direction === 1 ? '→' : '←'}</span>
@@ -419,7 +419,7 @@ export const PhaseControls: React.FC<PhaseControlsProps> = ({
                   borderRadius: '4px',
                   flex: '1 1 calc(50% - 2px)',
                   ...(spatialBehavior === opt.value
-                    ? { background: 'rgba(0,230,118,0.1)', borderColor: '#00e676', color: '#00e676', boxShadow: '0 0 6px rgba(0,230,118,0.15)' }
+                    ? { background: 'rgba(0,230,118,0.1)', border: '1px solid #00e676', color: '#00e676', boxShadow: '0 0 6px rgba(0,230,118,0.15)' }
                     : {}),
                 }}
               >

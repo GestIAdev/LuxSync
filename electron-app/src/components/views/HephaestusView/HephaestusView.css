@@ -1005,21 +1005,15 @@
   font-size: 10px;
 }
 
-/* WAVE 2030.26: Compact Popover — replaces tall dropdown */
+/* WAVE 2030.26: Compact Popover — fixed positioning to escape overflow containers */
 .heph-add-param__popover {
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  right: 0;
-  margin-bottom: 6px;
   background: #1a1a1f;
   border: 1px solid rgba(255, 107, 43, 0.35);
   border-radius: 6px;
-  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.6),
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6),
               0 0 1px rgba(255, 107, 43, 0.4);
-  z-index: 100;
+  z-index: 10000;
   overflow: hidden;
-  max-height: 280px;
   overflow-y: auto;
 }
 
@@ -1809,99 +1803,6 @@
     width: 100%;
     min-width: 0;
   }
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
- * ⚒️ WAVE 2030.25: HEPHAESTUS RADAR — Standalone Preview
- * Dark forge aesthetic with ember/orange accents
- * ═══════════════════════════════════════════════════════════════════════════ */
-
-.heph-radar {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  height: 100%;
-  min-height: 200px;
-  background: #08080d;
-  border: 1px solid rgba(255, 107, 43, 0.12);
-  border-radius: 6px;
-  overflow: hidden;
-  position: relative;
-}
-
-.heph-radar__canvas {
-  flex: 1;
-  display: block;
-  width: 100%;
-  cursor: default;
-  image-rendering: pixelated;
-}
-
-/* ── Transport Bar ── */
-
-.heph-radar__transport {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 36px;
-  padding: 0 10px;
-  background: linear-gradient(180deg, rgba(255, 107, 43, 0.04) 0%, rgba(0, 0, 0, 0.4) 100%);
-  border-top: 1px solid rgba(255, 107, 43, 0.1);
-  flex-shrink: 0;
-}
-
-.heph-radar__btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  background: rgba(255, 107, 43, 0.08);
-  border: 1px solid rgba(255, 107, 43, 0.2);
-  border-radius: 4px;
-  color: #ff6b2b;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  padding: 0;
-}
-
-.heph-radar__btn:hover {
-  background: rgba(255, 107, 43, 0.18);
-  border-color: rgba(255, 107, 43, 0.4);
-  box-shadow: 0 0 8px rgba(255, 107, 43, 0.3);
-}
-
-.heph-radar__btn:active {
-  transform: scale(0.92);
-}
-
-.heph-radar__status {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-left: auto;
-  font-family: var(--font-mono, monospace);
-  font-size: 10px;
-  letter-spacing: 1px;
-}
-
-.heph-radar__live {
-  color: #ef4444;
-  animation: heph-radar-pulse 1s ease-in-out infinite;
-}
-
-.heph-radar__paused {
-  color: rgba(255, 255, 255, 0.3);
-}
-
-.heph-radar__frame {
-  color: rgba(255, 255, 255, 0.2);
-}
-
-@keyframes heph-radar-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
 }
 
 /* ── Radar Panel Layout in HephView ── */

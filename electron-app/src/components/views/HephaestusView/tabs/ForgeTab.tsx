@@ -103,6 +103,8 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const [showAddParamDropdown, setShowAddParamDropdown] = useState(false)
+  const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({})
+  const [clipboardCount, setClipboardCount] = useState(0)
 
   // ── Library State ──
   const [library, setLibrary] = useState<LibraryClip[]>([])
@@ -417,14 +419,23 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
     })
   }, [activeParam, updateCurveWithSnapshot])
 
-  const handleKeyframeMove = useCallback((index: number, timeMs: number, value: number) => {
+  const handleKeyframeMove = useCallback((index: number, timeMs: number, value: number | { h: number; s: number; l: number }) => {
     updateCurve(activeParam, curve => {
       const newKfs = [...curve.keyframes]
       const existing = newKfs[index]
 
+      // Color picker passes an HSL object directly — use it as-is
+      if (curve.valueType === 'color' && typeof value === 'object' && 'h' in value) {
+        newKfs[index] = { ...newKfs[index], timeMs, value }
+        newKfs.sort((a, b) => a.timeMs - b.timeMs)
+        return { ...curve, keyframes: newKfs }
+      }
+
+      const numericValue = value as number
+
       if (selectedIndices.size > 1 && selectedIndices.has(index)) {
         const deltaTimeMs = timeMs - existing.timeMs
-        const deltaValue = value - getPlotValue(existing.value, curve.valueType)
+        const deltaValue = numericValue - getPlotValue(existing.value, curve.valueType)
 
         for (const selIdx of selectedIndices) {
           if (selIdx < 0 || selIdx >= newKfs.length) continue
@@ -434,8 +445,8 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
           let kfValue: number | { h: number; s: number; l: number }
           if (curve.valueType === 'color') {
             const origPlot = getPlotValue(kf.value, curve.valueType)
-            const newPlot = origPlot + deltaValue
-            const hue = Math.max(0, Math.min(newPlot * 360, 360))
+            const newPlot = Math.max(0, Math.min(origPlot + deltaValue, 1))
+            const hue = Math.round(newPlot * 360)
             const origHSL = typeof kf.value === 'object' && 'h' in kf.value
               ? kf.value
               : (typeof curve.defaultValue === 'object' ? curve.defaultValue as { h: number; s: number; l: number } : { h: 0, s: 100, l: 50 })
@@ -452,9 +463,10 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
         return { ...curve, keyframes: newKfs }
       }
 
-      let kfValue: number | { h: number; s: number; l: number } = value
+      let kfValue: number | { h: number; s: number; l: number } = numericValue
       if (curve.valueType === 'color') {
-        const hue = Math.max(0, Math.min(value * 360, 360))
+        // value is 0-1 normalized hue (from fromY/getPlotValue space)
+        const hue = Math.round(Math.max(0, Math.min(numericValue * 360, 360)))
         const origHSL = existing && typeof existing.value === 'object' && 'h' in existing.value
           ? existing.value
           : (typeof curve.defaultValue === 'object' ? curve.defaultValue as { h: number; s: number; l: number } : { h: 0, s: 100, l: 50 })
@@ -610,6 +622,7 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
       interpolation: kf.interpolation,
       bezierHandles: kf.bezierHandles,
     }))
+    setClipboardCount(clipboardRef.current.length)
   }, [selectedIndices, activeCurve])
 
   const handlePasteKeyframes = useCallback(() => {
@@ -1065,7 +1078,33 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
               <div className="heph-add-param" ref={addParamRef}>
                 <button
                   className="heph-add-param__btn"
-                  onClick={() => setShowAddParamDropdown(!showAddParamDropdown)}
+                  onClick={() => {
+                    if (!showAddParamDropdown && addParamRef.current) {
+                      const rect = addParamRef.current.getBoundingClientRect()
+                      const spaceAbove = rect.top
+                      const spaceBelow = window.innerHeight - rect.bottom
+                      const POPOVER_MAX = 280
+                      const dropUp = spaceAbove > POPOVER_MAX || spaceAbove >= spaceBelow
+                      if (dropUp) {
+                        setPopoverStyle({
+                          position: 'fixed',
+                          left: rect.left,
+                          right: window.innerWidth - rect.right,
+                          bottom: window.innerHeight - rect.top + 6,
+                          maxHeight: Math.min(POPOVER_MAX, spaceAbove - 6),
+                        })
+                      } else {
+                        setPopoverStyle({
+                          position: 'fixed',
+                          left: rect.left,
+                          right: window.innerWidth - rect.right,
+                          top: rect.bottom + 6,
+                          maxHeight: Math.min(POPOVER_MAX, spaceBelow - 6),
+                        })
+                      }
+                    }
+                    setShowAddParamDropdown(!showAddParamDropdown)
+                  }}
                   type="button"
                 >
                   <span>+</span>
@@ -1073,7 +1112,7 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
                 </button>
 
                 {showAddParamDropdown && (
-                  <div className="heph-add-param__popover">
+                  <div className="heph-add-param__popover" style={popoverStyle}>
                     <div className="heph-add-param__popover-header">
                       ADD PARAMETER
                     </div>
@@ -1134,7 +1173,7 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
               onScrub={setPlayheadMs}
               onCopyKeyframes={handleCopyKeyframes}
               onPasteAtTime={handlePasteAtTime}
-              hasClipboard={clipboardRef.current.length > 0}
+              hasClipboard={clipboardCount > 0}
               initialViewport={{ zoom: viewport.zoom, scrollX: viewport.scrollX }}
               onViewportChange={handleViewportChange}
               onApplyShapeToSelection={handleApplyShapeToSelection}

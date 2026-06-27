@@ -52,7 +52,7 @@ interface CurveEditorProps {
   selectedKeyframeIdx: number | null
   playheadMs?: number
   onKeyframeAdd: (timeMs: number, value: number) => void
-  onKeyframeMove: (index: number, timeMs: number, value: number) => void
+  onKeyframeMove: (index: number, timeMs: number, value: number | { h: number; s: number; l: number }) => void
   onKeyframeDelete: (index: number) => void
   onInterpolationChange: (index: number, interpolation: HephInterpolation) => void
   onBezierHandleMove: (index: number, handles: [number, number, number, number]) => void
@@ -395,11 +395,12 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
   }, [visibleStartMs, visibleDurationMs, plotW])
 
   // WAVE 2030.11: Color-aware inverse Y transform
+  // For color curves, returns normalized 0-1 (hue/360) to match getPlotValue space.
+  // handleKeyframeAdd/Move in ForgeTab multiply by 360 to get actual hue.
   const fromY = useCallback((py: number) => {
     const normalized = 1 - (py - PADDING.top) / plotH
     if (isColorCurve) {
-      // Denormalize: 0-1 → 0-360 (hue only, S/L unchanged)
-      return normalized * 360
+      return Math.max(0, Math.min(normalized, 1))
     }
     return rangeMin + normalized * rangeSpan
   }, [plotH, rangeMin, rangeSpan, isColorCurve])
@@ -528,9 +529,11 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
     e.preventDefault()
     const pt = getSVGPoint(e)
     const timeMs = Math.max(0, Math.min(fromX(pt.x), durationMs))
-    const value = Math.max(rangeMin, Math.min(fromY(pt.y), rangeMax))
+    const addRangeMin = isColorCurve ? 0 : rangeMin
+    const addRangeMax = isColorCurve ? 1 : rangeMax
+    const value = Math.max(addRangeMin, Math.min(fromY(pt.y), addRangeMax))
     onKeyframeAdd(Math.round(timeMs), parseFloat(value.toFixed(4)))
-  }, [getSVGPoint, fromX, fromY, durationMs, rangeMin, rangeMax, onKeyframeAdd])
+  }, [getSVGPoint, fromX, fromY, durationMs, rangeMin, rangeMax, onKeyframeAdd, isColorCurve])
 
   // ── Click on empty space: Deselect ──
   // NOTE: Keyframes call e.stopPropagation(), so clicks that reach the SVG
@@ -580,6 +583,7 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
       if (selectedIndices.size > 1 && selectedIndices.has(index)) {
         setContextMenu({ x: e.clientX, y: e.clientY, keyframeIndex: index, menuType: 'multi-selection' })
       } else {
+        onKeyframeSelect(index)
         setContextMenu({ x: e.clientX, y: e.clientY, keyframeIndex: index, menuType: 'keyframe' })
       }
       return
@@ -724,9 +728,14 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
 
       if (drag.type === 'keyframe') {
         const deltaXMs = ((pt.x - drag.startX) / plotW) * visibleDurationMs
-        const deltaYVal = -((pt.y - drag.startY) / plotH) * rangeSpan
+        // For color curves, work in 0-1 space (matching getPlotValue).
+        // For numeric curves, use the curve's range.
+        const dragRangeSpan = isColorCurve ? 1 : rangeSpan
+        const dragRangeMin = isColorCurve ? 0 : rangeMin
+        const dragRangeMax = isColorCurve ? 1 : rangeMax
+        const deltaYVal = -((pt.y - drag.startY) / plotH) * dragRangeSpan
         let newTimeMs = Math.max(0, Math.min(drag.startTimeMs + deltaXMs, durationMs))
-        const newValue = Math.max(rangeMin, Math.min(drag.startValue + deltaYVal, rangeMax))
+        const newValue = Math.max(dragRangeMin, Math.min(drag.startValue + deltaYVal, dragRangeMax))
 
         // ⚒️ WAVE 2043.4: MAGNETO — Snap to beat grid (unless Shift is held)
         let didSnap = false
@@ -865,7 +874,7 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
       window.removeEventListener('mousemove', handleMouseMove)
       window.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [drag, plotW, plotH, visibleDurationMs, rangeSpan, rangeMin, rangeMax, durationMs, curve.keyframes, toX, toY, onKeyframeMove, onBezierHandleMove, getSVGPoint, onMultiSelect, onKeyframeSelect, onBatchKeyframeMove, selectedIndices, snapEnabled, findNearestBeatGrid, onScrub, fromX, onDragEnd])
+  }, [drag, plotW, plotH, visibleDurationMs, rangeSpan, rangeMin, rangeMax, durationMs, curve.keyframes, toX, toY, onKeyframeMove, onBezierHandleMove, getSVGPoint, onMultiSelect, onKeyframeSelect, onBatchKeyframeMove, selectedIndices, snapEnabled, findNearestBeatGrid, onScrub, fromX, onDragEnd, isColorCurve])
 
   // ── Wheel: Zoom ──
   const handleWheel = useCallback((e: React.WheelEvent) => {
@@ -958,7 +967,7 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
   const handleColorChange = useCallback((hex: string) => {
     if (!colorPickerOpen) return
     const hsl = hexToHSL(hex)
-    onKeyframeMove(colorPickerOpen.keyframeIdx, curve.keyframes[colorPickerOpen.keyframeIdx].timeMs, hsl as any)
+    onKeyframeMove(colorPickerOpen.keyframeIdx, curve.keyframes[colorPickerOpen.keyframeIdx].timeMs, hsl)
     setColorPickerOpen({ keyframeIdx: colorPickerOpen.keyframeIdx, hsl })
   }, [colorPickerOpen, hexToHSL, onKeyframeMove, curve.keyframes])
 

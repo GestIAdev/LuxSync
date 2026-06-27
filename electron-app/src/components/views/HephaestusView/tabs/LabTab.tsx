@@ -19,9 +19,9 @@
  * @module views/HephaestusView/tabs/LabTab
  */
 
-import React, { useMemo, useCallback } from 'react'
+import React, { useMemo, useCallback, useState } from 'react'
 import { PhaseControls } from '../PhaseControls'
-import { HephRadar } from '../HephRadar'
+import { QuantumSpectrometer } from '../QuantumSpectrometer'
 import { DnaRail, DEFAULT_COGNITIVE_DNA, DEFAULT_SIMULATION_META } from '../dna/DnaRail'
 import type { TemporalActions } from '../types/HephaestusShared'
 import { useHephaestusEditorStore } from '../../../../core/hephaestus/store/useHephaestusEditorStore'
@@ -61,6 +61,9 @@ export const LabTab: React.FC<LabTabProps> = ({ temporalActions, isSaving = fals
 
   // ── Preview hook ──
   const preview = useHephPreview(clip, stageFixtures)
+
+  // ── Quantum Spectrometer selection state ──
+  const [selectedFixtureId, setSelectedFixtureId] = useState<string | null>(null)
 
   // ── setClip shim ──
   const setClip = useCallback((updater: (prev: HephAutomationClipV3) => HephAutomationClipV3) => {
@@ -162,9 +165,11 @@ export const LabTab: React.FC<LabTabProps> = ({ temporalActions, isSaving = fals
         style={{ display: 'flex', flex: 1, minWidth: 0, height: '100%', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}
       >
         <div style={{ width: '100%', height: '100%', display: 'flex' }}>
-          <HephRadar
+          <QuantumSpectrometer
             preview={preview}
             durationMs={clip?.durationMs ?? 1000}
+            selectedFixtureId={selectedFixtureId}
+            onSelectFixture={setSelectedFixtureId}
             onPlay={preview.play}
             onPause={preview.pause}
             onStop={preview.stop}

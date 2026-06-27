@@ -1,23 +1,14 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * ⚒️ PHASE CONTROLS — WAVE 7001: PHASE CONFIG PRO UI
+ * ⚒️ PHASE CONTROLS — WAVE 7021: EURORACK PHASE CHASSIS
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * Panel de control para la distribución de fase de Hephaestus V3.
- * Two-way binding via updatePhaseInTrack recipe pattern.
- *
- * CONTROLES (PhaseConfigPro):
- * 1. Spread:    spreadDeg (0—1440º slider)
- * 2. Symmetry:  linear | mirror | center-out
- * 3. Wings:     1—8 (integer, frequency multiplier)
- * 4. Blocks:    1—16 (integer, MAtricks-style grouping)
- * 5. Shuffle:   0—1 (float) + shuffleSeed (integer)
- * 6. Direction: +1 | -1
- *
- * DESIGN: Cyberpunk Industrial — consistent with HephaestusView.css
+ * Sintetizador modular estilo Eurorack para distribución de fase.
+ * 4 faceplates: Wave Shaper, Block Matrix, Chaos Engine, Spatial Behavior.
+ * Props y conexiones idénticas a WAVE 7001.
  *
  * @module views/HephaestusView/PhaseControls
- * @version WAVE 7001
+ * @version WAVE 7021
  */
 
 import React, { useCallback } from 'react'
@@ -30,41 +21,125 @@ import type { SpatialBehavior } from '../../../core/arsenal/lfxTypes'
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface PhaseControlsProps {
-  /** Current phase configuration (null = use defaults) */
   config: PhaseConfigPro | null
-  /** Recipe-based updater: calls updatePhaseInTrack(trackId, recipe) */
   onPhaseChange: (recipe: (draft: PhaseConfigPro) => void) => void
-  /** Whether controls are disabled (e.g. during save) */
   disabled?: boolean
-  // ── WAVE 4811: Spatial Behavior ──
-  /** Current spatialBehavior from cognitiveDNA (undefined = no DNA yet) */
   spatialBehavior?: SpatialBehavior
-  /** Callback when spatialBehavior changes */
   onSpatialBehaviorChange?: (sb: SpatialBehavior) => void
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SYMMETRY META
+// CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
 
-const SYMMETRY_MODES: Array<{
-  id: PhaseSymmetryMode
-  label: string
-  icon: string
-  hint: string
-}> = [
-  { id: 'linear',     label: 'LINEAR',     icon: '📐', hint: 'Wave chase — sequential offset' },
-  { id: 'mirror',     label: 'MIRROR',     icon: '🪞', hint: 'Fold from edges — breathing effect' },
-  { id: 'center-out', label: 'CENTER',     icon: '🎯', hint: 'Pulse from center — radial expansion' },
+const SYMMETRY_MODES: Array<{ id: PhaseSymmetryMode; label: string; icon: string; hint: string }> = [
+  { id: 'linear',     label: 'LIN',     icon: '📐', hint: 'Wave chase — sequential offset' },
+  { id: 'mirror',     label: 'MIRR',    icon: '🪞', hint: 'Fold from edges — breathing effect' },
+  { id: 'center-out', label: 'CTR',     icon: '🎯', hint: 'Pulse from center — radial expansion' },
 ]
 
-// WAVE 4811: Spatial behavior options
 const SPATIAL_OPTIONS: Array<{ value: SpatialBehavior; label: string; hint: string }> = [
-  { value: 'static',          label: 'STATIC',     hint: 'No pan/tilt. Only dimmer/color/optics.' },
-  { value: 'absolute',        label: 'ABSOLUTE',   hint: 'Clip controls pan/tilt directly (DMX absolute).' },
-  { value: 'relative_offset', label: 'RELATIVE',   hint: 'Emits pan_offset/tilt_offset ∈ [-1,+1] over IK anchor.' },
-  { value: 'spatial',         label: 'SPATIAL 3D', hint: 'Reserved: emits 3D target trajectory (future).' },
+  { value: 'static',          label: 'STATIC',  hint: 'No pan/tilt. Only dimmer/color/optics.' },
+  { value: 'absolute',        label: 'ABS',     hint: 'Clip controls pan/tilt directly (DMX absolute).' },
+  { value: 'relative_offset', label: 'REL',     hint: 'Emits pan_offset/tilt_offset ∈ [-1,+1] over IK anchor.' },
+  { value: 'spatial',         label: '3D',      hint: 'Reserved: emits 3D target trajectory (future).' },
 ]
+
+// ── Shared inline styles ──
+
+const moduleBase: React.CSSProperties = {
+  background: '#121212',
+  border: '1px solid #222',
+  borderRadius: '6px',
+  padding: '12px',
+  boxSizing: 'border-box',
+  position: 'relative',
+  overflow: 'hidden',
+}
+
+const moduleTitle: React.CSSProperties = {
+  fontSize: '10px',
+  fontWeight: 700,
+  letterSpacing: '0.12em',
+  color: 'rgba(255,255,255,0.5)',
+  marginBottom: '10px',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '6px',
+}
+
+const divider: React.CSSProperties = {
+  height: '1px',
+  background: '#2a2a2a',
+  margin: '8px 0',
+}
+
+const rowLabel: React.CSSProperties = {
+  fontSize: '9px',
+  fontWeight: 600,
+  letterSpacing: '0.1em',
+  color: 'rgba(255,255,255,0.35)',
+  textTransform: 'uppercase',
+  marginBottom: '4px',
+}
+
+const sliderStyle: React.CSSProperties = {
+  width: '100%',
+  height: '4px',
+  appearance: 'none',
+  background: '#2a2a2a',
+  borderRadius: '2px',
+  outline: 'none',
+  cursor: 'pointer',
+}
+
+const numInputStyle: React.CSSProperties = {
+  width: '48px',
+  background: '#0a0a0a',
+  border: '1px solid #2a2a2a',
+  borderRadius: '4px',
+  color: '#ff6b2b',
+  fontSize: '13px',
+  fontWeight: 700,
+  textAlign: 'center',
+  padding: '4px 2px',
+  outline: 'none',
+}
+
+const segBtnBase: React.CSSProperties = {
+  flex: 1,
+  padding: '6px 4px',
+  border: '1px solid #2a2a2a',
+  background: '#0a0a0a',
+  color: 'rgba(255,255,255,0.4)',
+  fontSize: '9px',
+  fontWeight: 700,
+  letterSpacing: '0.08em',
+  cursor: 'pointer',
+  transition: 'all 0.12s ease',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: '2px',
+}
+
+const dirBtnBase: React.CSSProperties = {
+  flex: 1,
+  padding: '6px 4px',
+  border: '1px solid #2a2a2a',
+  borderRadius: '4px',
+  background: '#0a0a0a',
+  color: 'rgba(255,255,255,0.4)',
+  fontSize: '9px',
+  fontWeight: 700,
+  letterSpacing: '0.08em',
+  cursor: 'pointer',
+  transition: 'all 0.12s ease',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: '4px',
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // COMPONENT
@@ -79,11 +154,8 @@ export const PhaseControls: React.FC<PhaseControlsProps> = ({
 }) => {
   const active = config ?? DEFAULT_PHASE_CONFIG_PRO
 
-  // ── Individual field updaters (recipe-based) ───────────────────────
-
   const handleSpreadChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const spreadDeg = parseFloat(e.target.value)
-    onPhaseChange(draft => { draft.spreadDeg = spreadDeg })
+    onPhaseChange(draft => { draft.spreadDeg = parseFloat(e.target.value) })
   }, [onPhaseChange])
 
   const handleSymmetryChange = useCallback((symmetry: PhaseSymmetryMode) => {
@@ -92,25 +164,21 @@ export const PhaseControls: React.FC<PhaseControlsProps> = ({
 
   const handleWingsChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = parseInt(e.target.value, 10)
-    const wings = Math.max(1, Math.min(isNaN(raw) ? 1 : raw, 8))
-    onPhaseChange(draft => { draft.wings = wings })
+    onPhaseChange(draft => { draft.wings = Math.max(1, Math.min(isNaN(raw) ? 1 : raw, 8)) })
   }, [onPhaseChange])
 
   const handleBlocksChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = parseInt(e.target.value, 10)
-    const blocks = Math.max(1, Math.min(isNaN(raw) ? 1 : raw, 16))
-    onPhaseChange(draft => { draft.blocks = blocks })
+    onPhaseChange(draft => { draft.blocks = Math.max(1, Math.min(isNaN(raw) ? 1 : raw, 16)) })
   }, [onPhaseChange])
 
   const handleShuffleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const shuffle = parseFloat(e.target.value)
-    onPhaseChange(draft => { draft.shuffle = shuffle })
+    onPhaseChange(draft => { draft.shuffle = parseFloat(e.target.value) })
   }, [onPhaseChange])
 
   const handleShuffleSeedChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = parseInt(e.target.value, 10)
-    const seed = isNaN(raw) ? 1 : Math.max(1, raw)
-    onPhaseChange(draft => { draft.shuffleSeed = seed })
+    onPhaseChange(draft => { draft.shuffleSeed = isNaN(raw) ? 1 : Math.max(1, raw) })
   }, [onPhaseChange])
 
   const handleDirectionToggle = useCallback(() => {
@@ -118,52 +186,30 @@ export const PhaseControls: React.FC<PhaseControlsProps> = ({
     onPhaseChange(draft => { draft.direction = direction })
   }, [active.direction, onPhaseChange])
 
-  // ── Computed display values ────────────────────────────────────────
-  const spreadPercent = Math.round((active.spreadDeg / 1440) * 100)
+  const handleSeedRandomize = useCallback(() => {
+    onPhaseChange(draft => { draft.shuffleSeed = Math.floor(Math.random() * 8999) + 1000 })
+  }, [onPhaseChange])
+
+  const spreadPercent = Math.round((active.spreadDeg / 360) * 100)
   const isActive = active.spreadDeg > 0
 
   return (
-    <div className={`heph-phase ${isActive ? 'heph-phase--active' : ''} ${disabled ? 'heph-phase--disabled' : ''}`}>
-      {/* ── Header ── */}
-      <div className="heph-phase__header">
-        <span className="heph-phase__icon">🌊</span>
-        <span className="heph-phase__title">PHASE DISTRIBUTION</span>
-        {isActive && (
-          <span className="heph-phase__badge">{spreadPercent}%</span>
-        )}
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
-      {/* ── WAVE 4811: Spatial Behavior (if DNA available) ── */}
-      {onSpatialBehaviorChange && (
-        <div className="heph-phase__section heph-phase__section--spatial">
-          <div className="heph-phase__section-header">SPATIAL BEHAVIOR</div>
-          <div className="heph-phase__spatial-grid">
-            {SPATIAL_OPTIONS.map(opt => (
-              <button
-                key={opt.value}
-                className={`heph-phase__spatial-btn ${spatialBehavior === opt.value ? 'heph-phase__spatial-btn--active' : ''}`}
-                onClick={() => onSpatialBehaviorChange(opt.value)}
-                title={opt.hint}
-                disabled={disabled}
-                type="button"
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-          <p className="heph-phase__spatial-hint">
-            {SPATIAL_OPTIONS.find(o => o.value === (spatialBehavior ?? 'absolute'))?.hint ?? ''}
-          </p>
+      {/* ═══ MÓDULO 1: WAVE SHAPER ═══ */}
+      <div style={{ ...moduleBase, borderTop: '2px solid #ff6600' }}>
+        <div style={moduleTitle}>
+          <span style={{ color: '#ff6600' }}>▣</span>
+          WAVE SHAPER
+          <span style={{ marginLeft: 'auto', color: 'rgba(255,255,255,0.2)', fontSize: '8px' }}>Balística</span>
         </div>
-      )}
 
-      {/* ── Spread Slider (0—1440º) ── */}
-      <div className="heph-phase__row">
-        <label className="heph-phase__label">SPREAD</label>
-        <div className="heph-phase__slider-wrap">
+        {/* Spread */}
+        <div style={rowLabel}>SPREAD</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <input
             type="range"
-            className="heph-phase__slider"
+            style={sliderStyle}
             min={0}
             max={1440}
             step={1}
@@ -171,75 +217,139 @@ export const PhaseControls: React.FC<PhaseControlsProps> = ({
             onChange={handleSpreadChange}
             disabled={disabled}
           />
-          <span className="heph-phase__value">{active.spreadDeg}º</span>
+          <span style={{ fontSize: '11px', fontWeight: 700, color: '#ff6b2b', minWidth: '42px', textAlign: 'right' }}>
+            {active.spreadDeg}º
+          </span>
         </div>
-      </div>
+        {isActive && (
+          <div style={{ marginTop: '4px' }}>
+            <span style={{
+              display: 'inline-block',
+              fontSize: '8px',
+              fontWeight: 700,
+              color: '#ff6600',
+              background: 'rgba(255,102,0,0.1)',
+              border: '1px solid rgba(255,102,0,0.3)',
+              borderRadius: '3px',
+              padding: '1px 6px',
+            }}>
+              {spreadPercent}% CYCLE
+            </span>
+          </div>
+        )}
 
-      {/* ── Symmetry Buttons ── */}
-      <div className="heph-phase__row">
-        <label className="heph-phase__label">SYMMETRY</label>
-        <div className="heph-phase__btn-group">
+        <div style={divider} />
+
+        {/* Symmetry */}
+        <div style={rowLabel}>SYMMETRY</div>
+        <div style={{ display: 'flex', gap: '4px' }}>
           {SYMMETRY_MODES.map(mode => (
             <button
               key={mode.id}
-              className={`heph-phase__sym-btn ${active.symmetry === mode.id ? 'heph-phase__sym-btn--active' : ''}`}
-              onClick={() => handleSymmetryChange(mode.id)}
+              type="button"
               title={mode.hint}
               disabled={disabled}
-              type="button"
+              onClick={() => handleSymmetryChange(mode.id)}
+              style={{
+                ...segBtnBase,
+                borderRadius: '4px',
+                ...(active.symmetry === mode.id
+                  ? { background: 'rgba(255,102,0,0.12)', borderColor: '#ff6600', color: '#ff6b2b', boxShadow: '0 0 6px rgba(255,102,0,0.2)' }
+                  : {}),
+              }}
             >
-              <span className="heph-phase__sym-icon">{mode.icon}</span>
-              <span className="heph-phase__sym-label">{mode.label}</span>
+              <span style={{ fontSize: '12px' }}>{mode.icon}</span>
+              <span>{mode.label}</span>
             </button>
           ))}
         </div>
-      </div>
 
-      {/* ── Wings Input (1—8) ── */}
-      <div className="heph-phase__row">
-        <label className="heph-phase__label">WINGS</label>
-        <div className="heph-phase__wings-wrap">
-          <input
-            type="number"
-            className="heph-phase__wings-input"
-            min={1}
-            max={8}
-            value={active.wings}
-            onChange={handleWingsChange}
-            disabled={disabled}
-          />
-          <span className="heph-phase__wings-hint">
-            {active.wings === 1 ? 'Single sweep' : `${active.wings}× freq`}
-          </span>
+        <div style={divider} />
+
+        {/* Wings + Direction */}
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
+          <div style={{ flex: 1 }}>
+            <div style={rowLabel}>WINGS</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <input
+                type="number"
+                style={numInputStyle}
+                min={1}
+                max={8}
+                value={active.wings}
+                onChange={handleWingsChange}
+                disabled={disabled}
+              />
+              <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.3)' }}>
+                {active.wings === 1 ? 'single' : `${active.wings}× freq`}
+              </span>
+            </div>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={rowLabel}>DIRECTION</div>
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={handleDirectionToggle}
+              title={active.direction === 1 ? 'Forward: fixture 0 first' : 'Reverse: fixture N first'}
+              style={{
+                ...dirBtnBase,
+                ...(active.direction === 1
+                  ? { color: '#ff6b2b', borderColor: 'rgba(255,102,0,0.4)', background: 'rgba(255,102,0,0.06)' }
+                  : { color: '#00e5ff', borderColor: 'rgba(0,229,255,0.4)', background: 'rgba(0,229,255,0.06)' }),
+              }}
+            >
+              <span style={{ fontSize: '14px' }}>{active.direction === 1 ? '→' : '←'}</span>
+              <span>{active.direction === 1 ? 'FWD' : 'REV'}</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* ── Blocks Input (1—16, MAtricks) ── */}
-      <div className="heph-phase__row">
-        <label className="heph-phase__label">BLOCKS</label>
-        <div className="heph-phase__wings-wrap">
+      {/* ═══ MÓDULO 2: BLOCK MATRIX ═══ */}
+      <div style={{ ...moduleBase, borderTop: '2px solid #00e5ff' }}>
+        <div style={moduleTitle}>
+          <span style={{ color: '#00e5ff' }}>▣</span>
+          BLOCK MATRIX
+          <span style={{ marginLeft: 'auto', color: 'rgba(255,255,255,0.2)', fontSize: '8px' }}>MAtricks</span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={rowLabel}>(</div>
           <input
             type="number"
-            className="heph-phase__wings-input"
+            style={{ ...numInputStyle, width: '56px', color: '#00e5ff' }}
             min={1}
             max={16}
             value={active.blocks}
             onChange={handleBlocksChange}
             disabled={disabled}
           />
-          <span className="heph-phase__wings-hint">
-            {active.blocks === 1 ? 'Individual' : `Groups of ${active.blocks}`}
-          </span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)' }}>
+              {active.blocks === 1 ? 'Individual fixtures' : `Groups of ${active.blocks}`}
+            </div>
+            <div style={{ fontSize: '8px', fontStyle: 'italic', color: 'rgba(255,255,255,0.2)', marginTop: '2px' }}>
+              MAtricks Column Grouping
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ── Shuffle Slider (0—1) + Seed ── */}
-      <div className="heph-phase__row">
-        <label className="heph-phase__label">SHUFFLE</label>
-        <div className="heph-phase__slider-wrap">
+      {/* ═══ MÓDULO 3: CHAOS ENGINE ═══ */}
+      <div style={{ ...moduleBase, borderTop: '2px solid #ff1744' }}>
+        <div style={moduleTitle}>
+          <span style={{ color: '#ff1744' }}>▣</span>
+          CHAOS ENGINE
+          <span style={{ marginLeft: 'auto', color: 'rgba(255,255,255,0.2)', fontSize: '8px' }}>Entropía</span>
+        </div>
+
+        {/* Shuffle */}
+        <div style={rowLabel}>SHUFFLE</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <input
             type="range"
-            className="heph-phase__slider"
+            style={sliderStyle}
             min={0}
             max={1}
             step={0.01}
@@ -247,41 +357,88 @@ export const PhaseControls: React.FC<PhaseControlsProps> = ({
             onChange={handleShuffleChange}
             disabled={disabled}
           />
-          <span className="heph-phase__value">{Math.round(active.shuffle * 100)}%</span>
+          <span style={{ fontSize: '11px', fontWeight: 700, color: '#ff1744', minWidth: '34px', textAlign: 'right' }}>
+            {Math.round(active.shuffle * 100)}%
+          </span>
         </div>
-      </div>
-      <div className="heph-phase__row">
-        <label className="heph-phase__label">SEED</label>
-        <div className="heph-phase__wings-wrap">
-          <input
-            type="number"
-            className="heph-phase__wings-input"
-            min={1}
-            value={active.shuffleSeed}
-            onChange={handleShuffleSeedChange}
+
+        <div style={divider} />
+
+        {/* Seed + Dice */}
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
+          <div style={{ flex: 1 }}>
+            <div style={rowLabel}>SEED</div>
+            <input
+              type="number"
+              style={{ ...numInputStyle, width: '72px', color: '#ff1744' }}
+              min={1}
+              value={active.shuffleSeed}
+              onChange={handleShuffleSeedChange}
+              disabled={disabled}
+            />
+          </div>
+          <button
+            type="button"
+            title="Randomize Seed"
             disabled={disabled}
-          />
+            onClick={handleSeedRandomize}
+            style={{
+              padding: '5px 10px',
+              border: '1px solid #2a2a2a',
+              borderRadius: '4px',
+              background: '#0a0a0a',
+              cursor: 'pointer',
+              fontSize: '14px',
+              transition: 'all 0.12s ease',
+            }}
+          >
+            🎲
+          </button>
         </div>
       </div>
 
-      {/* ── Direction Toggle ── */}
-      <div className="heph-phase__row">
-        <label className="heph-phase__label">DIRECTION</label>
-        <button
-          className={`heph-phase__dir-btn ${active.direction === -1 ? 'heph-phase__dir-btn--reverse' : ''}`}
-          onClick={handleDirectionToggle}
-          title={active.direction === 1 ? 'Forward: fixture 0 first' : 'Reverse: fixture N first'}
-          disabled={disabled}
-          type="button"
-        >
-          <span className="heph-phase__dir-arrow">
-            {active.direction === 1 ? '→' : '←'}
-          </span>
-          <span className="heph-phase__dir-label">
-            {active.direction === 1 ? 'FORWARD' : 'REVERSE'}
-          </span>
-        </button>
-      </div>
+      {/* ═══ MÓDULO 4: SPATIAL BEHAVIOR ═══ */}
+      {onSpatialBehaviorChange && (
+        <div style={{ ...moduleBase, borderTop: '2px solid #00e676' }}>
+          <div style={moduleTitle}>
+            <span style={{ color: '#00e676' }}>▣</span>
+            SPATIAL BEHAVIOR
+            <span style={{ marginLeft: 'auto', color: 'rgba(255,255,255,0.2)', fontSize: '8px' }}>ADN</span>
+          </div>
+
+          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+            {SPATIAL_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                title={opt.hint}
+                disabled={disabled}
+                onClick={() => onSpatialBehaviorChange(opt.value)}
+                style={{
+                  ...segBtnBase,
+                  borderRadius: '4px',
+                  flex: '1 1 calc(50% - 2px)',
+                  ...(spatialBehavior === opt.value
+                    ? { background: 'rgba(0,230,118,0.1)', borderColor: '#00e676', color: '#00e676', boxShadow: '0 0 6px rgba(0,230,118,0.15)' }
+                    : {}),
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <p style={{
+            marginTop: '8px',
+            fontSize: '8px',
+            fontStyle: 'italic',
+            color: 'rgba(255,255,255,0.25)',
+            lineHeight: '1.3',
+            margin: '8px 0 0 0',
+          }}>
+            {SPATIAL_OPTIONS.find(o => o.value === (spatialBehavior ?? 'absolute'))?.hint ?? ''}
+          </p>
+        </div>
+      )}
     </div>
   )
 }

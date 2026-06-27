@@ -61,6 +61,8 @@ export interface PreviewFixtureState {
   strobe: number
   zoom: number
   focus: number
+  /** Desfase temporal real en ms asignado por resolvePro */
+  phaseOffsetMs: number
 }
 
 export interface HephPreviewState {
@@ -74,6 +76,8 @@ export interface HephPreviewState {
   fixtures: PreviewFixtureState[]
   /** Frame counter */
   frameCount: number
+  /** Ring buffer of last 60 frames for oscilloscope */
+  history: Array<{ timeMs: number; val: number }>
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -253,6 +257,10 @@ function evaluateClipFrame(
     }
   }
 
+  // ── WAVE 7024: Connect simulationMeta.isStrobe to the strobe channel ──
+  const metaStrobe = clip.simulationMeta?.isStrobe ? 200 : 0
+  const finalStrobe = Math.max(strobe, metaStrobe)
+
   return {
     zone: 'all' as const,
     fixtureId: 'preview-all',
@@ -261,7 +269,8 @@ function evaluateClipFrame(
     radarY: 0.5,
     dimmer, r, g, b,
     pan, panFine, tilt, tiltFine,
-    white, amber, strobe, zoom, focus,
+    white, amber, strobe: finalStrobe, zoom, focus,
+    phaseOffsetMs: 0,
   }
 }
 
@@ -281,6 +290,7 @@ export function useHephPreview(clip: HephAutomationClipV3 | null, stageFixtures:
     isPlaying: false,
     fixtures: [],
     frameCount: 0,
+    history: [],
   })
 
   const rafRef = useRef<number>(0)
@@ -290,6 +300,7 @@ export function useHephPreview(clip: HephAutomationClipV3 | null, stageFixtures:
   const clipRef = useRef(clip)
   const stageFixturesRef = useRef(stageFixtures)
   const evaluatorRef = useRef<CurveEvaluator | null>(null)
+  const historyBufferRef = useRef<Array<{ timeMs: number; val: number }>>([])
 
   // Keep stageFixtures ref current
   useEffect(() => {
@@ -325,82 +336,67 @@ export function useHephPreview(clip: HephAutomationClipV3 | null, stageFixtures:
    */
   const resolveFixtures = useCallback(
     (c: HephAutomationClipV3, ev: CurveEvaluator, timeMs: number): PreviewFixtureState[] => {
-      const zones = c.spatialZones as readonly string[]
+      // ── WAVE 7024-B: Cuarentena Semántica — Exorcismo de Energy Vibe Tags ──
+      const FORBIDDEN_ENERGY_TAGS = [
+        'silent', 'valley', 'ambient', 'gentle', 'active', 'intense', 'peak',
+        'sil', 'val', 'amb', 'gen', 'act', 'int', 'pea',
+      ]
+      const rawZones = (c.spatialZones || []) as readonly string[]
+      const cleanSpatialZones = rawZones.filter(z => !FORBIDDEN_ENERGY_TAGS.includes(z.toLowerCase()))
+      const isUniversal = cleanSpatialZones.length === 0 || cleanSpatialZones.includes('all')
 
-      // ── CASE 1: 'all' selected → Single fixture at center ──
-      if (zones.includes('all')) {
-        const f = evaluateClipFrame(c, ev, timeMs)
-        return [f]
-      }
-
-      // ── CASE 2: No zones selected → Fallback ──
-      if (zones.length === 0) {
-        const f = evaluateClipFrame(c, ev, timeMs)
-        return [f]
-      }
-
-      // ── WAVE 2543.4: Zone resolution delegated to ZoneMapper (Single Source of Truth) ──
+      // ── WAVE 7024-B: Prioridad Absoluta de Stage Real ──
       const currentStageFixtures = stageFixturesRef.current
+      const hasRealStage = currentStageFixtures && currentStageFixtures.length > 0
 
-      // Build ZoneMappable projections from stage fixtures
-      const zoneMappable = currentStageFixtures.map(sf => ({
-        id: sf.id,
-        zone: sf.zone,
-        enabled: sf.enabled,
-        position: sf.position ? { x: sf.position.x } : undefined,
-      }))
+      // Build targetPool — stage fixtures always win
+      type PoolEntry = { id: string; name: string; zone: EffectZone; position?: { x: number; y: number; z: number } }
+      let targetPool: PoolEntry[] = []
 
-      // Resolve real fixture IDs via centralized ZoneMapper
-      const resolvedIds = resolveZoneTags(zones.map(String), zoneMappable)
-      const resolvedIdSet = new Set(resolvedIds)
+      if (isUniversal) {
+        // Universal zone: use ALL stage fixtures, or 16 virtual if empty
+        if (hasRealStage) {
+          for (const sf of currentStageFixtures) {
+            targetPool.push({ id: sf.id, name: sf.name, zone: sf.zone as EffectZone, position: sf.position })
+          }
+        } else {
+          for (let i = 0; i < 16; i++) {
+            targetPool.push({ id: `preview-virtual-${i}`, name: `V${i}`, zone: 'all' as EffectZone })
+          }
+        }
+      } else {
+        // Specific zones: resolve via ZoneMapper
+        const zoneMappable = currentStageFixtures.map(sf => ({
+          id: sf.id,
+          zone: sf.zone,
+          enabled: sf.enabled,
+          position: sf.position ? { x: sf.position.x } : undefined,
+        }))
+        const resolvedIds = resolveZoneTags(cleanSpatialZones.map(String), zoneMappable)
+        const resolvedIdSet = new Set(resolvedIds)
 
-      // Build targetPool from resolved IDs, preserving zone info for radar display
-      let targetPool: Array<{ id: string; name: string; zone: EffectZone }> = []
-      for (const sf of currentStageFixtures) {
-        if (resolvedIdSet.has(sf.id)) {
-          targetPool.push({ id: sf.id, name: sf.name, zone: sf.zone as EffectZone })
+        for (const sf of currentStageFixtures) {
+          if (resolvedIdSet.has(sf.id)) {
+            targetPool.push({ id: sf.id, name: sf.name, zone: sf.zone as EffectZone, position: sf.position })
+          }
+        }
+
+        // If no real fixtures matched, generate 16 virtual fixtures (never return 1)
+        if (targetPool.length === 0) {
+          for (let i = 0; i < 16; i++) {
+            targetPool.push({ id: `preview-virtual-${i}`, name: `V${i}`, zone: 'all' as EffectZone })
+          }
         }
       }
 
-      // If no real fixtures matched, create virtual fallback dots per zone
-      if (targetPool.length === 0) {
-        for (const zoneId of zones) {
-          const zoneStr = String(zoneId)
-          targetPool.push({ id: `zone-${zoneStr}`, name: zoneStr, zone: zoneId as EffectZone })
-        }
-      }
-
-      // ── Step 4: If pool is empty, fall back to virtual dots per zone ──
-      if (targetPool.length === 0) {
-        const f = evaluateClipFrame(c, ev, timeMs)
-        return [f]
-      }
-
-      const resolvedFixtures = targetPool
-
-      // ── CASE 3: Still only 1 fixture? Skip phase distribution ──
-      if (resolvedFixtures.length <= 1) {
-        const f = evaluateClipFrame(c, ev, timeMs)
-        const pos = ZONE_RADAR_POSITIONS[String(resolvedFixtures[0]?.zone)] ?? { x: 0.5, y: 0.5 }
-        return [{
-          ...f,
-          fixtureId: resolvedFixtures[0]?.id ?? 'solo',
-          zone: resolvedFixtures[0]?.zone ?? 'all',
-          label: resolvedFixtures[0]?.name?.substring(0, 8).toUpperCase() ?? 'ALL',
-          radarX: pos.x,
-          radarY: pos.y,
-        }]
-      }
-
-      // ── WAVE 7003: Phase distribution via resolvePro ──
+      // ── Phase distribution via resolvePro ──
       const phaseConfig = findPhaseConfig(c.tracks)
-      const fixtureIds = resolvedFixtures.map(rf => rf.id)
+      const fixtureIds = targetPool.map(rf => rf.id)
       let fixturePhases: FixturePhase[] | null = null
       if (phaseConfig) {
         fixturePhases = resolvePro(fixtureIds, phaseConfig, c.durationMs)
       }
 
-      // Build lookup: fixtureId → phaseOffsetMs
       const phaseByFixture = new Map<string, number>()
       if (fixturePhases) {
         for (const fp of fixturePhases) {
@@ -408,33 +404,48 @@ export function useHephPreview(clip: HephAutomationClipV3 | null, stageFixtures:
         }
       }
 
-      // ── Build radar layout: horizontal distribution for wave visualization ──
-      const totalFixtures = resolvedFixtures.length
-      const MARGIN = 0.08  // 8% margin from edges
+      // ── Build radar layout ──
+      const totalFixtures = targetPool.length
+      const MARGIN = 0.06
       const usableWidth = 1 - (MARGIN * 2)
+
+      // Compute min/max X for real position normalization
+      let minX = Infinity, maxX = -Infinity
+      if (hasRealStage) {
+        for (const rf of targetPool) {
+          if (rf.position && typeof rf.position.x === 'number') {
+            minX = Math.min(minX, rf.position.x)
+            maxX = Math.max(maxX, rf.position.x)
+          }
+        }
+      }
+      const stageWidth = maxX - minX
+      const normalizeStageX = (x: number): number => {
+        if (stageWidth <= 0.001) return 0.5
+        return MARGIN + ((x - minX) / stageWidth) * usableWidth
+      }
 
       const fixtures: PreviewFixtureState[] = []
 
       for (let i = 0; i < totalFixtures; i++) {
-        const rf = resolvedFixtures[i]
+        const rf = targetPool[i]
         const phaseOffset = phaseByFixture.get(rf.id) ?? 0
-        // MA3 model: subtract offset (fixture starts later)
         const offsetTime = Math.max(0, timeMs - phaseOffset)
         const f = evaluateClipFrame(c, ev, offsetTime)
 
-        // Horizontal distribution: evenly spaced across X axis
-        const radarX = totalFixtures === 1
-          ? 0.5
-          : MARGIN + (i / (totalFixtures - 1)) * usableWidth
+        // Horizontal distribution: real position if available, else linear
+        const radarX = hasRealStage && rf.position && typeof rf.position.x === 'number'
+          ? normalizeStageX(rf.position.x)
+          : totalFixtures === 1
+            ? 0.5
+            : MARGIN + (i / (totalFixtures - 1 || 1)) * usableWidth
 
-        // Vertical: use zone base position for Y, so different zones stack vertically
+        // Vertical: use zone base position for Y if zone-based, else 0.5
         const zonePos = ZONE_RADAR_POSITIONS[String(rf.zone)]
         const radarY = zonePos?.y ?? 0.5
 
-        // Label: show short fixture name (max 6 chars) + index
-        const shortName = rf.name.length > 6
-          ? rf.name.substring(0, 6)
-          : rf.name
+        // Label: real fixture name, max 6 chars
+        const shortName = (rf.name || rf.id || 'FIX').slice(0, 6)
 
         fixtures.push({
           ...f,
@@ -443,6 +454,7 @@ export function useHephPreview(clip: HephAutomationClipV3 | null, stageFixtures:
           label: shortName.toUpperCase(),
           radarX,
           radarY,
+          phaseOffsetMs: phaseOffset,
         })
       }
 
@@ -472,12 +484,19 @@ export function useHephPreview(clip: HephAutomationClipV3 | null, stageFixtures:
 
     const fixtures = resolveFixtures(c, ev, clipTimeMs)
 
+    // ── WAVE 7024: Ring buffer — push canonical val from fixture 0 ──
+    const canonicalVal = fixtures.length > 0 ? fixtures[0].dimmer : 0
+    const hist = historyBufferRef.current
+    hist.push({ timeMs: clipTimeMs, val: canonicalVal })
+    if (hist.length > 60) hist.shift()
+
     setState(prev => ({
       playheadMs: clipTimeMs,
       progress: clipTimeMs / c.durationMs,
       isPlaying: true,
       fixtures,
       frameCount: prev.frameCount + 1,
+      history: [...hist],
     }))
 
     rafRef.current = requestAnimationFrame(tick)
@@ -514,12 +533,15 @@ export function useHephPreview(clip: HephAutomationClipV3 | null, stageFixtures:
     const ev = evaluatorRef.current
     const fixtures = (c && ev) ? resolveFixtures(c, ev, 0) : []
 
+    historyBufferRef.current = []
+
     setState({
       playheadMs: 0,
       progress: 0,
       isPlaying: false,
       fixtures,
       frameCount: 0,
+      history: [],
     })
   }, [resolveFixtures])
 
@@ -535,11 +557,18 @@ export function useHephPreview(clip: HephAutomationClipV3 | null, stageFixtures:
       startClipTimeRef.current = clamped
     }
 
+    // ── WAVE 7024: Push to history on seek too ──
+    const canonicalVal = fixtures.length > 0 ? fixtures[0].dimmer : 0
+    const hist = historyBufferRef.current
+    hist.push({ timeMs: clamped, val: canonicalVal })
+    if (hist.length > 60) hist.shift()
+
     setState(prev => ({
       ...prev,
       playheadMs: clamped,
       progress: clamped / c.durationMs,
       fixtures,
+      history: [...hist],
     }))
   }, [resolveFixtures])
 

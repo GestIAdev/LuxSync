@@ -16,7 +16,7 @@
  * @version WAVE 2030.25
  */
 
-import React, { useRef, useEffect, useCallback } from 'react'
+import React, { useRef, useEffect, useCallback, useState } from 'react'
 import type { PreviewFixtureState, HephPreviewState } from './useHephPreview'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -153,9 +153,10 @@ function drawFixtureDot(
   ctx.lineWidth = radius * 0.4
   ctx.stroke()
 
-  // ── 3. X e Y del target: Glow, Core Dot y Label se dibujan donde apunta el haz ──
-  const x = targetX
-  const y = targetY
+  // ── 3. Dot position: baseX/baseY (physical fixture position) ──
+  // The beam shows where the haz points; the dot stays at the fixture's spatial location
+  const x = baseX
+  const y = baseY
 
   // ── GLOW (outer) ──
   const glowRadius = radius * 2.5
@@ -334,9 +335,12 @@ export const HephRadar: React.FC<HephRadarProps> = ({
   const frameCounterRef = useRef<number>(0)
   const previewRef = useRef(preview)
   const durationRef = useRef(durationMs)
+  const [selectedFixtureId, setSelectedFixtureId] = useState<string | null>(null)
+  const selectedFixtureIdRef = useRef<string | null>(null)
 
   previewRef.current = preview
   durationRef.current = durationMs
+  selectedFixtureIdRef.current = selectedFixtureId
 
   // ── Render Loop (rAF continuo, DPR canónico) ──
   useEffect(() => {
@@ -383,14 +387,31 @@ export const HephRadar: React.FC<HephRadarProps> = ({
       // Fixtures
       const fixtures = pv.fixtures
       const radius = fixtures.length > 1 ? DOT_RADIUS_MULTI : DOT_RADIUS_SINGLE
+      const selId = selectedFixtureIdRef.current
 
       for (const fixture of fixtures) {
         drawFixtureDot(ctx, fixture, w, h, radius, fc)
+
+        // ── Selection ring (laser sight) ──
+        if (fixture.fixtureId === selId) {
+          const sx = fixture.radarX * w
+          const sy = fixture.radarY * h
+          ctx.save()
+          ctx.strokeStyle = '#ff6600'
+          ctx.lineWidth = 2
+          ctx.shadowColor = '#ff6600'
+          ctx.shadowBlur = 8
+          ctx.beginPath()
+          ctx.arc(sx, sy, radius + 5, 0, Math.PI * 2)
+          ctx.stroke()
+          ctx.restore()
+        }
       }
 
-      // Readouts (use first fixture for numeric display)
-      if (fixtures.length > 0) {
-        drawReadouts(ctx, fixtures[0], w, h, pv.progress, pv.playheadMs, dur)
+      // Readouts — use selected fixture or fallback to first
+      const activeReadout = fixtures.find(f => f.fixtureId === selId) ?? fixtures[0]
+      if (activeReadout) {
+        drawReadouts(ctx, activeReadout, w, h, pv.progress, pv.playheadMs, dur)
       }
 
       // Progress bar
@@ -405,19 +426,42 @@ export const HephRadar: React.FC<HephRadarProps> = ({
     return () => cancelAnimationFrame(rafRef.current)
   }, [])
 
-  // ── Click to seek on progress bar area ──
-  const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+  // ── Click: fixture hit-test + seek fallback ──
+  const handleCanvasMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current
     if (!canvas) return
     const rect = canvas.getBoundingClientRect()
-    const clickY = e.clientY - rect.top
+    const mx = e.clientX - rect.left
+    const my = e.clientY - rect.top
     const h = rect.height
 
-    // Only respond to clicks in the bottom 12px (progress bar zone)
-    if (clickY >= h - 12) {
-      const clickX = e.clientX - rect.left
-      const ratio = Math.max(0, Math.min(1, clickX / rect.width))
+    // Seek zone: bottom 12px
+    if (my >= h - 12) {
+      const ratio = Math.max(0, Math.min(1, mx / rect.width))
       onSeek(ratio * durationMs)
+      return
+    }
+
+    // Hit-test: find closest fixture dot
+    const fixtures = previewRef.current.fixtures
+    const radius = fixtures.length > 1 ? DOT_RADIUS_MULTI : DOT_RADIUS_SINGLE
+    let hit: string | null = null
+    let hitDist = Infinity
+
+    for (const fixture of fixtures) {
+      const fx = fixture.radarX * rect.width
+      const fy = fixture.radarY * rect.height
+      const dist = Math.hypot(mx - fx, my - fy)
+      if (dist < radius + 6 && dist < hitDist) {
+ hitDist = dist
+        hit = fixture.fixtureId
+      }
+    }
+
+    if (hit) {
+      setSelectedFixtureId(hit)
+    } else {
+      setSelectedFixtureId(null)
     }
   }, [durationMs, onSeek])
 
@@ -426,7 +470,7 @@ export const HephRadar: React.FC<HephRadarProps> = ({
       <canvas
         ref={canvasRef}
         className="heph-radar__canvas"
-        onClick={handleCanvasClick}
+        onMouseDown={handleCanvasMouseDown}
       />
       <div className="heph-radar__transport">
         <button
@@ -454,6 +498,40 @@ export const HephRadar: React.FC<HephRadarProps> = ({
           </span>
         </div>
       </div>
+      {/* ── Inspection telemetry panel ── */}
+      {(() => {
+        const sel = preview.fixtures.find(f => f.fixtureId === selectedFixtureId) ?? preview.fixtures[0]
+        if (!sel) return null
+        const phaseOffset = sel.fixtureId !== preview.fixtures[0]?.fixtureId
+          ? `${((sel.pan / 255) * 360).toFixed(0)}º`
+          : '0º'
+        return (
+          <div style={{
+            position: 'absolute',
+            bottom: '40px',
+            right: '8px',
+            background: 'rgba(8, 8, 13, 0.85)',
+            border: '1px solid #2a2a2a',
+            borderRadius: '4px',
+            padding: '6px 8px',
+            fontSize: '9px',
+            fontFamily: 'monospace',
+            color: 'rgba(255, 255, 255, 0.6)',
+            pointerEvents: 'none',
+            zIndex: 10,
+            minWidth: '120px',
+          }}>
+            <div style={{ color: '#ff6600', fontWeight: 700, marginBottom: '4px', letterSpacing: '0.08em' }}>
+              {sel.fixtureId.toUpperCase()}
+            </div>
+            <div>ID: <span style={{ color: '#ff6b2b' }}>{sel.label}</span></div>
+            <div>DIM: <span style={{ color: '#ff6b2b' }}>{sel.dimmer}</span></div>
+            <div>X: <span style={{ color: '#ff6b2b' }}>{(sel.radarX * 100).toFixed(1)}</span> Y: <span style={{ color: '#ff6b2b' }}>{(sel.radarY * 100).toFixed(1)}</span></div>
+            <div>PAN: <span style={{ color: '#ff6b2b' }}>{sel.pan}</span> TILT: <span style={{ color: '#ff6b2b' }}>{sel.tilt}</span></div>
+            <div>PHASE: <span style={{ color: '#ff6b2b' }}>{phaseOffset}</span></div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

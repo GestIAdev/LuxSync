@@ -76,8 +76,7 @@ export const LabTab: React.FC<LabTabProps> = ({ temporalActions, isSaving = fals
     const { mutate, clip: currentClip } = useHephaestusEditorStore.getState()
     if (!currentClip) return
     mutate('Edit clip', (draft) => {
-      const next = updater(draft as HephAutomationClipV3)
-      Object.assign(draft, next)
+      return updater(draft as HephAutomationClipV3)
     })
   }, [])
 
@@ -142,31 +141,27 @@ export const LabTab: React.FC<LabTabProps> = ({ temporalActions, isSaving = fals
 
   const handleSpatialBehaviorChange = useCallback((sb: SpatialBehavior) => {
     if (!clip?.cognitiveDNA) return
-    temporalActions.snapshot()
     setClip(prev => ({
       ...prev,
       cognitiveDNA: { ...prev.cognitiveDNA!, spatialBehavior: sb },
     }))
-  }, [clip?.cognitiveDNA, temporalActions, setClip])
+  }, [clip?.cognitiveDNA, setClip])
 
   const handleDnaChange = useCallback((dna: CognitiveDNA) => {
-    temporalActions.snapshot()
     setClip(prev => ({ ...prev, cognitiveDNA: dna }))
-  }, [temporalActions, setClip])
+  }, [setClip])
 
   const handleSimMetaChange = useCallback((meta: SimulationMeta) => {
-    temporalActions.snapshot()
     setClip(prev => ({ ...prev, simulationMeta: meta }))
-  }, [temporalActions, setClip])
+  }, [setClip])
 
   const handleEnableDna = useCallback(() => {
-    temporalActions.snapshot()
     setClip(prev => ({
       ...prev,
       cognitiveDNA: DEFAULT_COGNITIVE_DNA,
       simulationMeta: DEFAULT_SIMULATION_META,
     }))
-  }, [temporalActions, setClip])
+  }, [setClip])
 
   // ═══════════════════════════════════════════════════════════════════════
   // RENDER — Camisa de Fuerza Flexbox

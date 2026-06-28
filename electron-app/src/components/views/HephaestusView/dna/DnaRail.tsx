@@ -37,30 +37,8 @@ import {
 } from '../../../../core/arsenal/inferArchetypes'
 import './DnaRail.css'
 
-// ─── LEGACY COMPATIBILITY EXPORTS (consumed by index.tsx) ───────────────────
-
-export const DEFAULT_COGNITIVE_DNA: CognitiveDNA = {
-  genome: { aggression: 0.5, chaos: 0.5, organicity: 0.5 },
-  textureAffinity: 'universal',
-  compatibleVibes: [],
-  validSections: [],
-  energyZone: { min: 'ambient', max: 'peak' },
-  aggressionRange: { min: 0, max: 1 },
-  spatialBehavior: 'absolute',
-  ikCompatibility: undefined,
-}
-
-export const DEFAULT_SIMULATION_META: SimulationMeta = {
-  beautyWeights: { base: 0.5, energyMultiplier: 1.0, vibeBonus: 0.0 },
-  gpuCost: 0.3,
-  fatigueImpact: 0.06,
-  minDurationMs: 1000,
-  cooldownMs: 7000,
-  isStrobe: false,
-  isDivineCandidate: false,
-  isHeavyCandidate: false,
-  zScoreGuards: { requireRising: false, minimumZ: null, minimumEnergy: null },
-}
+// ─── RE-EXPORTS from shared defaults (single source of truth) ──────────────
+export { DEFAULT_COGNITIVE_DNA, DEFAULT_SIMULATION_META } from '../../../../core/hephaestus/defaults'
 
 // ─── ARCHETYPE CATALOG UI ───────────────────────────────────────────────────
 

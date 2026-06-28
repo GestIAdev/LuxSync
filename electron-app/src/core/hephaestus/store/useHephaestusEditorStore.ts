@@ -20,6 +20,7 @@ import type {
 import type { PhaseConfigPro } from '../phase/PhaseConfigPro'
 import { bakeOverrides, type PhaseOverride, type PhaseOverrideMap } from '../phase/PhaseOverride'
 import type { CognitiveDNA } from '../../arsenal/lfxTypes'
+import { DEFAULT_COGNITIVE_DNA } from '../defaults'
 
 enablePatches()
 
@@ -419,11 +420,7 @@ export const useHephaestusEditorStore = create<HephaestusEditorStore>()(
     setCognitiveDNA: (recipe) =>
       mutate('Set cognitive DNA', draft => {
         if (!draft.cognitiveDNA) {
-          draft.cognitiveDNA = {
-            genome: { tempoRange: [0, 0], energyZone: 'balanced', density: 0.5, dynamics: 'flat' },
-            textureAffinity: { strobe: 0, chase: 0, wash: 0, beam: 0, pixel: 0 },
-            compatibleVibes: [],
-          } as unknown as CognitiveDNA
+          draft.cognitiveDNA = { ...DEFAULT_COGNITIVE_DNA } as CognitiveDNA
         }
         recipe(draft.cognitiveDNA as NonNullable<HephAutomationClipV3['cognitiveDNA']>)
       }),
@@ -431,11 +428,7 @@ export const useHephaestusEditorStore = create<HephaestusEditorStore>()(
     enableDNA: () =>
       mutate('Enable DNA', draft => {
         if (!draft.cognitiveDNA) {
-          draft.cognitiveDNA = {
-            genome: { tempoRange: [0, 0], energyZone: 'balanced', density: 0.5, dynamics: 'flat' },
-            textureAffinity: { strobe: 0, chase: 0, wash: 0, beam: 0, pixel: 0 },
-            compatibleVibes: [],
-          } as unknown as CognitiveDNA
+          draft.cognitiveDNA = { ...DEFAULT_COGNITIVE_DNA } as CognitiveDNA
         }
       }),
 
@@ -491,7 +484,7 @@ export const useHephaestusEditorStore = create<HephaestusEditorStore>()(
       const { _dragSnapshot, clip } = get()
       if (!_dragSnapshot) return
       const [, redoPatches, undoPatches] = (produceWithPatches as any)(
-        _dragSnapshot, (draft: any) => { Object.assign(draft, clip) },
+        _dragSnapshot, () => clip,
       ) as [HephAutomationClipV3, Patch[], Patch[]]
       if (redoPatches.length === 0) {
         set(state => { state._dragSnapshot = null })

@@ -52,20 +52,30 @@ const NODE_HIT_RADIUS = 12
 const Y_MARGIN_RATIO = 0.1
 const TRANSPORT_HEIGHT = 36
 
-// ── P2#2: Zero-alloc pre-allocated buffers ───────────────────────────────
-// Reused across frames to avoid GC pressure at 44Hz.
+// ── P2-C: Per-instance buffers (were module-level globals) ────────────────
 const MAX_FIXTURES = 512
 const ARIADNE_SEGMENTS = 16
 const MAX_SAMPLES = (MAX_FIXTURES - 1) * ARIADNE_SEGMENTS + 1
 
-const _nodePositions: NodePosition[] = Array.from({ length: MAX_FIXTURES }, () => ({
-  x: 0, y: 0, fixture: null as unknown as PreviewFixtureState,
-}))
-let _nodePositionsCount = 0
+interface SpectrometerBuffers {
+  nodePositions: NodePosition[]
+  nodePositionsCount: number
+  sampleX: Float64Array
+  sampleY: Float64Array
+  sampleCount: number
+}
 
-const _sampleX = new Float64Array(MAX_SAMPLES)
-const _sampleY = new Float64Array(MAX_SAMPLES)
-let _sampleCount = 0
+function createBuffers(): SpectrometerBuffers {
+  return {
+    nodePositions: Array.from({ length: MAX_FIXTURES }, () => ({
+      x: 0, y: 0, fixture: null as unknown as PreviewFixtureState,
+    })),
+    nodePositionsCount: 0,
+    sampleX: new Float64Array(MAX_SAMPLES),
+    sampleY: new Float64Array(MAX_SAMPLES),
+    sampleCount: 0,
+  }
+}
 
 // ── P2#2: shadowBlur only for small rigs (≤ SHADOW_BLUR_THRESHOLD) ──────
 const SHADOW_BLUR_THRESHOLD = 60
@@ -83,20 +93,21 @@ interface NodePosition {
 type ScopeType = 'DIMMER' | 'PAN' | 'TILT'
 
 function computeNodePositions(
+  buf: SpectrometerBuffers,
   fixtures: readonly PreviewFixtureState[],
   w: number,
   h: number,
   activeScope: ScopeType,
 ): readonly NodePosition[] {
   const count = Math.min(fixtures.length, MAX_FIXTURES)
-  if (count === 0) { _nodePositionsCount = 0; return _nodePositions }
+  if (count === 0) { buf.nodePositionsCount = 0; return buf.nodePositions }
   const spacing = w / (count + 1)
   const yMargin = h * Y_MARGIN_RATIO
   const usableH = h - yMargin * 2
 
   for (let i = 0; i < count; i++) {
     const fixture = fixtures[i]
-    const np = _nodePositions[i]
+    const np = buf.nodePositions[i]
     np.x = spacing * (i + 1)
     let val = 0
     if (activeScope === 'DIMMER') val = fixture.dimmer
@@ -106,8 +117,8 @@ function computeNodePositions(
     np.y = yMargin + (1 - valNorm) * usableH
     np.fixture = fixture
   }
-  _nodePositionsCount = count
-  return _nodePositions as readonly NodePosition[]
+  buf.nodePositionsCount = count
+  return buf.nodePositions as readonly NodePosition[]
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -126,9 +137,9 @@ function strobeGate(strobe: number, frameCount: number): number {
 }
 
 // Global strobe flash: returns intensity 0-1 if any fixture is strobing this frame
-function computeGlobalStrobeFlash(positions: readonly NodePosition[], frameCount: number): number {
+function computeGlobalStrobeFlash(buf: SpectrometerBuffers, positions: readonly NodePosition[], frameCount: number): number {
   let maxFlash = 0
-  for (let i = 0; i < _nodePositionsCount; i++) {
+  for (let i = 0; i < buf.nodePositionsCount; i++) {
     const pos = positions[i]
     if (pos.fixture.strobe <= 0) continue
     const gate = strobeGate(pos.fixture.strobe, frameCount)
@@ -162,6 +173,7 @@ function catmullRom(
 }
 
 function drawAriadneThread(
+  buf: SpectrometerBuffers,
   ctx: CanvasRenderingContext2D,
   positions: readonly NodePosition[],
   w: number,
@@ -169,8 +181,8 @@ function drawAriadneThread(
   frameCount: number,
   strobeFlash: number,
 ) {
-  if (_nodePositionsCount < 2) {
-    if (_nodePositionsCount === 1) {
+  if (buf.nodePositionsCount < 2) {
+    if (buf.nodePositionsCount === 1) {
       const p = positions[0]
       ctx.fillStyle = WAVE_COLOR
       ctx.beginPath()
@@ -187,23 +199,23 @@ function drawAriadneThread(
   const clampY = (rawY: number) => Math.max(yCeil, Math.min(rawY, yFloor))
 
   let si = 0
-  for (let i = 0; i < _nodePositionsCount - 1; i++) {
+  for (let i = 0; i < buf.nodePositionsCount - 1; i++) {
     const p0 = positions[Math.max(0, i - 1)]
     const p1 = positions[i]
     const p2 = positions[i + 1]
-    const p3 = positions[Math.min(_nodePositionsCount - 1, i + 2)]
+    const p3 = positions[Math.min(buf.nodePositionsCount - 1, i + 2)]
 
     for (let j = 0; j < SEGMENTS; j++) {
       const t = j / SEGMENTS
-      _sampleX[si] = catmullRom(p0.x, p1.x, p2.x, p3.x, t)
-      _sampleY[si] = clampY(catmullRom(p0.y, p1.y, p2.y, p3.y, t))
+      buf.sampleX[si] = catmullRom(p0.x, p1.x, p2.x, p3.x, t)
+      buf.sampleY[si] = clampY(catmullRom(p0.y, p1.y, p2.y, p3.y, t))
       si++
     }
   }
-  _sampleX[si] = positions[_nodePositionsCount - 1].x
-  _sampleY[si] = clampY(positions[_nodePositionsCount - 1].y)
+  buf.sampleX[si] = positions[buf.nodePositionsCount - 1].x
+  buf.sampleY[si] = clampY(positions[buf.nodePositionsCount - 1].y)
   si++
-  _sampleCount = si
+  buf.sampleCount = si
 
   // ── Strobe-driven wave flash: boost brightness when strobing ──
   const flashBoost = 1 + strobeFlash * 1.5
@@ -211,11 +223,11 @@ function drawAriadneThread(
   // ── Fill membrane (energy under the wave) ──
   const yBaseline = yFloor
   ctx.beginPath()
-  ctx.moveTo(_sampleX[0], yBaseline)
-  for (let s = 0; s < _sampleCount; s++) {
-    ctx.lineTo(_sampleX[s], _sampleY[s])
+  ctx.moveTo(buf.sampleX[0], yBaseline)
+  for (let s = 0; s < buf.sampleCount; s++) {
+    ctx.lineTo(buf.sampleX[s], buf.sampleY[s])
   }
-  ctx.lineTo(_sampleX[_sampleCount - 1], yBaseline)
+  ctx.lineTo(buf.sampleX[buf.sampleCount - 1], yBaseline)
   ctx.closePath()
   const fillGrad = ctx.createLinearGradient(0, 0, 0, yBaseline)
   fillGrad.addColorStop(0, WAVE_FILL_TOP)
@@ -231,9 +243,9 @@ function drawAriadneThread(
   ctx.strokeStyle = WAVE_GLOW
   ctx.lineWidth = 6 + strobeFlash * 4
   ctx.beginPath()
-  ctx.moveTo(_sampleX[0], _sampleY[0])
-  for (let s = 0; s < _sampleCount; s++) {
-    ctx.lineTo(_sampleX[s], _sampleY[s])
+  ctx.moveTo(buf.sampleX[0], buf.sampleY[0])
+  for (let s = 0; s < buf.sampleCount; s++) {
+    ctx.lineTo(buf.sampleX[s], buf.sampleY[s])
   }
   ctx.stroke()
   ctx.restore()
@@ -244,9 +256,9 @@ function drawAriadneThread(
   ctx.lineJoin = 'round'
   ctx.lineCap = 'round'
   ctx.beginPath()
-  ctx.moveTo(_sampleX[0], _sampleY[0])
-  for (let s = 0; s < _sampleCount; s++) {
-    ctx.lineTo(_sampleX[s], _sampleY[s])
+  ctx.moveTo(buf.sampleX[0], buf.sampleY[0])
+  for (let s = 0; s < buf.sampleCount; s++) {
+    ctx.lineTo(buf.sampleX[s], buf.sampleY[s])
   }
   ctx.stroke()
 }
@@ -291,14 +303,15 @@ function drawMathGrid(ctx: CanvasRenderingContext2D, w: number, h: number) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 function drawFixtureNodes(
+  buf: SpectrometerBuffers,
   ctx: CanvasRenderingContext2D,
   positions: readonly NodePosition[],
   frameCount: number,
 ) {
   // ── P2#2: Adaptive shadowBlur — only for small rigs to avoid GPU bottleneck ──
-  const useShadow = _nodePositionsCount <= SHADOW_BLUR_THRESHOLD
+  const useShadow = buf.nodePositionsCount <= SHADOW_BLUR_THRESHOLD
 
-  for (let i = 0; i < _nodePositionsCount; i++) {
+  for (let i = 0; i < buf.nodePositionsCount; i++) {
     const pos = positions[i]
     const f = pos.fixture
     const gate = strobeGate(f.strobe, frameCount)
@@ -376,6 +389,7 @@ function drawFixtureNodes(
 // ═══════════════════════════════════════════════════════════════════════════
 
 function drawTargetLock(
+  buf: SpectrometerBuffers,
   ctx: CanvasRenderingContext2D,
   positions: readonly NodePosition[],
   selectedFixtureId: string | null,
@@ -383,7 +397,7 @@ function drawTargetLock(
 ) {
   if (!selectedFixtureId) return
   let pos: NodePosition | null = null
-  for (let i = 0; i < _nodePositionsCount; i++) {
+  for (let i = 0; i < buf.nodePositionsCount; i++) {
     if (positions[i].fixture.fixtureId === selectedFixtureId) {
       pos = positions[i]
       break
@@ -417,6 +431,7 @@ function drawTargetLock(
 // ═══════════════════════════════════════════════════════════════════════════
 
 function drawHUD(
+  buf: SpectrometerBuffers,
   ctx: CanvasRenderingContext2D,
   positions: readonly NodePosition[],
   selectedFixtureId: string | null,
@@ -430,20 +445,20 @@ function drawHUD(
   // ── Top-right: Phase signature ──
   ctx.textAlign = 'right'
   ctx.fillStyle = READOUT_LABEL
-  const fc = _nodePositionsCount
+  const fc = buf.nodePositionsCount
   ctx.fillText(`NODES: ${fc}`, w - pad, pad)
 
   // ── Bottom-left: Ballistic readout for selected fixture ──
   let selPos: NodePosition | undefined
   if (selectedFixtureId) {
-    for (let i = 0; i < _nodePositionsCount; i++) {
+    for (let i = 0; i < buf.nodePositionsCount; i++) {
       if (positions[i].fixture.fixtureId === selectedFixtureId) {
         selPos = positions[i]
         break
       }
     }
   }
-  if (!selPos && _nodePositionsCount > 0) selPos = positions[0]
+  if (!selPos && buf.nodePositionsCount > 0) selPos = positions[0]
 
   if (selPos) {
     const f = selPos.fixture
@@ -578,6 +593,7 @@ export const QuantumSpectrometer: React.FC<QuantumSpectrometerProps> = ({
   const rafRef = useRef<number>(0)
   const lastFrameTimeRef = useRef<number>(0)
   const frameCounterRef = useRef<number>(0)
+  const buffersRef = useRef<SpectrometerBuffers>(createBuffers())
 
   const [activeScope, setActiveScope] = useState<ScopeType>('DIMMER')
   const scopeRef = useRef(activeScope)
@@ -652,11 +668,13 @@ export const QuantumSpectrometer: React.FC<QuantumSpectrometerProps> = ({
       ctx.fillStyle = vignette
       ctx.fillRect(0, 0, w, h)
 
+      const buf = buffersRef.current
+
       // ── Compute spatial positions ──
-      const positions = computeNodePositions(pv.fixtures, w, h, scopeRef.current)
+      const positions = computeNodePositions(buf, pv.fixtures, w, h, scopeRef.current)
 
       // ── Compute global strobe flash intensity for this frame ──
-      const strobeFlash = computeGlobalStrobeFlash(positions, fc)
+      const strobeFlash = computeGlobalStrobeFlash(buf, positions, fc)
 
       // ── L0: Math Grid ──
       drawMathGrid(ctx, w, h)
@@ -665,16 +683,16 @@ export const QuantumSpectrometer: React.FC<QuantumSpectrometerProps> = ({
       drawSpectrumField(ctx, w, h, phaseRef.current ?? null, fc)
 
       // ── L1: Ariadne Thread (strobe-reactive) ──
-      drawAriadneThread(ctx, positions, w, h, fc, strobeFlash)
+      drawAriadneThread(buf, ctx, positions, w, h, fc, strobeFlash)
 
       // ── L2: Fixture Nodes ──
-      drawFixtureNodes(ctx, positions, fc)
+      drawFixtureNodes(buf, ctx, positions, fc)
 
       // ── L3: Target Lock ──
-      drawTargetLock(ctx, positions, selId, fc)
+      drawTargetLock(buf, ctx, positions, selId, fc)
 
       // ── L4: HUD ──
-      drawHUD(ctx, positions, selId, pv, w, h, dur)
+      drawHUD(buf, ctx, positions, selId, pv, w, h, dur)
 
       ctx.restore()
       frameCounterRef.current++
@@ -704,13 +722,14 @@ export const QuantumSpectrometer: React.FC<QuantumSpectrometerProps> = ({
     }
 
     // Hit-test against computed positions
+    const buf = buffersRef.current
     const fixtures = previewDataRef.current.fixtures
-    const positions = computeNodePositions(fixtures, w, h, scopeRef.current)
+    const positions = computeNodePositions(buf, fixtures, w, h, scopeRef.current)
 
     let hit: string | null = null
     let hitDist = Infinity
 
-    for (let i = 0; i < _nodePositionsCount; i++) {
+    for (let i = 0; i < buf.nodePositionsCount; i++) {
       const pos = positions[i]
       const dist = Math.hypot(mx - pos.x, my - pos.y)
       if (dist < NODE_HIT_RADIUS && dist < hitDist) {

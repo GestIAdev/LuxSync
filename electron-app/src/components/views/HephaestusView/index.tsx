@@ -56,8 +56,7 @@ const HephaestusView: React.FC = () => {
     const { mutate, clip: currentClip } = useHephaestusEditorStore.getState()
     if (!currentClip) return
     mutate('Edit clip', (draft) => {
-      const next = updater(draft as HephAutomationClipV3)
-      Object.assign(draft, next)
+      return updater(draft as HephAutomationClipV3)
     })
   }, [])
 
@@ -318,13 +317,12 @@ const HephaestusView: React.FC = () => {
 
   // WAVE 2030.13: Zone targeting handler
   const handleZonesChange = useCallback((zones: EffectZone[]) => {
-    temporalActions.snapshot()
     setClip(prev => ({
       ...prev,
       spatialZones: zones as readonly ZoneTarget[]
     }))
     setIsDirty(true)
-  }, [temporalActions])
+  }, [])
 
   // ═══════════════════════════════════════════════════════════════════════
   // WAVE 2030.26 — Editable Header (Name & Duration)
@@ -339,12 +337,11 @@ const HephaestusView: React.FC = () => {
   const commitEditName = useCallback(() => {
     const trimmed = editNameValue.trim()
     if (trimmed.length > 0 && trimmed !== clip.name) {
-      temporalActions.snapshot()
       setClip(prev => ({ ...prev, name: trimmed }))
       setIsDirty(true)
     }
     setIsEditingName(false)
-  }, [editNameValue, clip.name, temporalActions])
+  }, [editNameValue, clip.name])
 
   const startEditDuration = useCallback(() => {
     setEditDurationValue(String(clip.durationMs / 1000))
@@ -357,13 +354,12 @@ const HephaestusView: React.FC = () => {
     if (!isNaN(parsed) && parsed >= 0.1) {
       const newMs = Math.round(parsed * 1000)
       if (newMs !== clip.durationMs) {
-        temporalActions.snapshot()
         setClip(prev => ({ ...prev, durationMs: newMs }))
         setIsDirty(true)
       }
     }
     setIsEditingDuration(false)
-  }, [editDurationValue, clip.durationMs, temporalActions])
+  }, [editDurationValue, clip.durationMs])
 
   // ═══════════════════════════════════════════════════════════════════════
   // RENDER — 3-Tier DAW Shell
@@ -491,7 +487,6 @@ const HephaestusView: React.FC = () => {
           <SafetyStrip
             clip={clip}
             onClipPatch={(patch) => {
-              temporalActions.snapshot()
               setClip(prev => ({ ...prev, ...patch } as HephAutomationClipV3))
               setIsDirty(true)
             }}

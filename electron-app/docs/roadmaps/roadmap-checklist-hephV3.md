@@ -34,23 +34,23 @@
 ## LOTE 2 — Limpieza de deuda técnica (P2)
 
 ### P2-A: Limpiar snapshot fantasma
-- [ ] Eliminar `temporalActions.snapshot()` (no-op) de `index.tsx`
-- [ ] Eliminar todas las llamadas a `temporalActions.snapshot()` en LabTab, ForgeTab, index.tsx
-- [ ] `tsc --noEmit` limpio
+- [x] Eliminar `temporalActions.snapshot()` (no-op) de `index.tsx`
+- [x] Eliminar todas las llamadas a `temporalActions.snapshot()` en LabTab, ForgeTab, index.tsx
+- [x] `tsc --noEmit` limpio
 
 ### P2-B: Unificar default cognitiveDNA
-- [ ] Crear `DEFAULT_COGNITIVE_DNA` único en `DnaRail.tsx` (o archivo shared)
-- [ ] Importar desde ahí en `useHephaestusEditorStore.ts` y `NewClipModal.tsx`
-- [ ] Eliminar `as unknown as CognitiveDNA` casts en el store
-- [ ] `tsc --noEmit` limpio
+- [x] Crear `DEFAULT_COGNITIVE_DNA` único en `defaults.ts` (shared module)
+- [x] Importar desde ahí en `useHephaestusEditorStore.ts` y `NewClipModal.tsx`
+- [x] Eliminar `as unknown as CognitiveDNA` casts en el store
+- [x] `tsc --noEmit` limpio
 
 ### P2-C: Buffers globales QuantumSpectrometer → useRef
-- [ ] Mover `_nodePositions`, `_sampleX/Y`, `_nodePositionsCount` a `useRef` por instancia
-- [ ] `tsc --noEmit` limpio
+- [x] Mover `_nodePositions`, `_sampleX/Y`, `_nodePositionsCount` a `useRef` por instancia
+- [x] `tsc --noEmit` limpio
 
 ### P2-D: Anti-patrón Immer en setClip
-- [ ] Reemplazar `Object.assign(draft, updater(draft))` con mutación directa del draft
-- [ ] `tsc --noEmit` limpio
+- [x] Reemplazar `Object.assign(draft, updater(draft))` con `return updater(draft)` (Immer soporta return de nuevo estado)
+- [x] `tsc --noEmit` limpio
 
 ---
 
@@ -110,3 +110,38 @@
 - Cierra §3.3 de la auditoría: Hephaestus ahora implementa phase real, no delay disfrazado
 
 **tsc --noEmit: 0 errores en los 3 fixes.**
+
+### Lote 2 — 2026-06-28
+
+**P2-A: Snapshot fantasma eliminado**
+- 12 llamadas a `temporalActions.snapshot()` eliminadas de index.tsx, LabTab.tsx, ForgeTab.tsx
+- `snapshot()` era un no-op: V3 auto-snapshots via `mutate()` en el store
+- `updateCurveWithSnapshot` simplificado a solo `updateCurve` (el store ya hace `mutate('Edit curve', ...)`)
+- Dependencias de useCallback limpiadas (removida `temporalActions` de arrays donde ya no se usa)
+- `temporalActions` se conserva solo para `undo()`, `redo()`, `resetWithClip()`
+
+**P2-B: CognitiveDNA unificado**
+- Creado `src/core/hephaestus/defaults.ts` — única fuente de verdad para `DEFAULT_COGNITIVE_DNA` y `DEFAULT_SIMULATION_META`
+- `DnaRail.tsx` ahora re-exporta desde `defaults.ts` (backward compat con index.tsx)
+- `NewClipModal.tsx` importa desde `defaults.ts` (eliminada duplicación local)
+- `useHephaestusEditorStore.ts`: eliminados los 2 `as unknown as CognitiveDNA` casts con shape incorrecto (usaba `tempoRange`, `energyZone: 'balanced'`, `density` — ninguno existe en la interfaz real)
+- Store ahora usa `{ ...DEFAULT_COGNITIVE_DNA } as CognitiveDNA` (spread del freeze, shape correcta)
+
+**P2-C: Buffers QuantumSpectrometer → useRef**
+- Eliminados 5 globales module-level: `_nodePositions`, `_nodePositionsCount`, `_sampleX`, `_sampleY`, `_sampleCount`
+- Creado `SpectrometerBuffers` interface + `createBuffers()` factory
+- `buffersRef = useRef<SpectrometerBuffers>(createBuffers())` — una instancia por componente
+- 7 funciones actualizadas para recibir `buf: SpectrometerBuffers` como primer parámetro
+- Call sites del render loop y hit-testing actualizados
+- Cierra riesgo de shared-state corruption si múltiples Spectrometers coexisten
+
+**P2-D: Anti-patrón Immer corregido**
+- 4 instancias de `Object.assign(draft, next)` reemplazadas con `return updater(draft)` en:
+  - `index.tsx` setClip
+  - `LabTab.tsx` setClip
+  - `ForgeTab.tsx` setClip + updateCurve
+  - `useHephaestusEditorStore.ts` endDragSnapshot
+- Immer soporta retornar un nuevo estado del recipe — esto preserva structural sharing correctamente
+- `Object.assign` escribía todas las propiedades del nuevo objeto sobre el draft, incluyendo las no cambiadas, rompiendo el tracking de Immer
+
+**tsc --noEmit: 0 errores en los 4 fixes.**

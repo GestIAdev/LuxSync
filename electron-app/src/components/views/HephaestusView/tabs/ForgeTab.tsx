@@ -117,8 +117,7 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
     const { mutate, clip: currentClip } = useHephaestusEditorStore.getState()
     if (!currentClip) return
     mutate('Edit clip', (draft) => {
-      const next = updater(draft as HephAutomationClipV3)
-      Object.assign(draft, next)
+      return updater(draft as HephAutomationClipV3)
     })
   }, [])
 
@@ -377,17 +376,15 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
       store.replaceClipTransient(buildNext(store.clip))
     } else {
       store.mutate('Edit curve', (draft) => {
-        const next = buildNext(draft as HephAutomationClipV3)
-        Object.assign(draft, next)
+        return buildNext(draft as HephAutomationClipV3)
       })
     }
   }, [])
 
   const updateCurveWithSnapshot = useCallback((paramId: HephParamId | null, updater: (curve: HephCurve) => HephCurve) => {
     if (!paramId) return
-    temporalActions.snapshot()
     updateCurve(paramId, updater)
-  }, [temporalActions, updateCurve])
+  }, [updateCurve])
 
   const handleKeyframeAdd = useCallback((timeMs: number, value: number) => {
     updateCurveWithSnapshot(activeParam, curve => {
@@ -630,8 +627,6 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
     const baseTimeMs = playheadMs
     const clipboardData = clipboardRef.current
 
-    temporalActions.snapshot()
-
     const newKeyframeIndices: number[] = []
 
     updateCurve(activeParam, curve => {
@@ -675,15 +670,13 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
     if (newKeyframeIndices.length > 0) {
       setSelectedKeyframeIdx(newKeyframeIndices[newKeyframeIndices.length - 1])
     }
-  }, [activeCurve, playheadMs, activeParam, updateCurve, temporalActions, clip.durationMs])
+  }, [activeCurve, playheadMs, activeParam, updateCurve, clip.durationMs])
 
   const handlePasteAtTime = useCallback((targetTimeMs: number) => {
     if (clipboardRef.current.length === 0 || !activeCurve) return
 
     const baseTimeMs = targetTimeMs
     const clipboardData = clipboardRef.current
-
-    temporalActions.snapshot()
 
     const newKeyframeIndices: number[] = []
 
@@ -730,7 +723,7 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
     }
 
     setPlayheadMs(targetTimeMs)
-  }, [activeCurve, activeParam, updateCurve, temporalActions, clip.durationMs])
+  }, [activeCurve, activeParam, updateCurve, clip.durationMs])
 
   const handleModeChange = useCallback((mode: HephCurveMode) => {
     updateCurveWithSnapshot(activeParam, curve => ({ ...curve, mode }))
@@ -783,7 +776,6 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
   // ═══════════════════════════════════════════════════════════════════════
 
   const handleAddParam = useCallback((paramId: HephParamId) => {
-    temporalActions.snapshot()
     setClip((prev: HephAutomationClipV3): HephAutomationClipV3 => {
       if (prev.tracks.some(t => t.paramId === paramId)) return prev
 
@@ -812,10 +804,9 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
     })
     setActiveParam(paramId)
     setShowAddParamDropdown(false)
-  }, [temporalActions, setActiveParam])
+  }, [setActiveParam])
 
   const handleRemoveParam = useCallback((paramId: HephParamId) => {
-    temporalActions.snapshot()
     setClip((prev: HephAutomationClipV3): HephAutomationClipV3 => {
       if (!prev.tracks.some(t => t.paramId === paramId)) return prev
       return { ...prev, tracks: prev.tracks.filter(t => t.paramId !== paramId) }
@@ -830,7 +821,7 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
       }
     }
     setSelectedKeyframeIdx(null)
-  }, [temporalActions, activeParam, paramIds, selectTrack, setActiveParam])
+  }, [activeParam, paramIds, selectTrack, setActiveParam])
 
   // ═══════════════════════════════════════════════════════════════════════
   // TEMPLATE & BEZIER PRESETS

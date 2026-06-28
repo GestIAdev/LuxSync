@@ -9,6 +9,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { produceWithPatches, enablePatches, applyPatches } from 'immer';
 import { bakeOverrides } from '../phase/PhaseOverride';
+import { DEFAULT_COGNITIVE_DNA } from '../defaults';
 enablePatches();
 const HISTORY_LIMIT = 200;
 // ═══════════════════════════════════════════════════════════════════════════
@@ -249,21 +250,13 @@ export const useHephaestusEditorStore = create()(immer((set, get) => {
         // ── DNA / SimMeta ──
         setCognitiveDNA: (recipe) => mutate('Set cognitive DNA', draft => {
             if (!draft.cognitiveDNA) {
-                draft.cognitiveDNA = {
-                    genome: { tempoRange: [0, 0], energyZone: 'balanced', density: 0.5, dynamics: 'flat' },
-                    textureAffinity: { strobe: 0, chase: 0, wash: 0, beam: 0, pixel: 0 },
-                    compatibleVibes: [],
-                };
+                draft.cognitiveDNA = { ...DEFAULT_COGNITIVE_DNA };
             }
             recipe(draft.cognitiveDNA);
         }),
         enableDNA: () => mutate('Enable DNA', draft => {
             if (!draft.cognitiveDNA) {
-                draft.cognitiveDNA = {
-                    genome: { tempoRange: [0, 0], energyZone: 'balanced', density: 0.5, dynamics: 'flat' },
-                    textureAffinity: { strobe: 0, chase: 0, wash: 0, beam: 0, pixel: 0 },
-                    compatibleVibes: [],
-                };
+                draft.cognitiveDNA = { ...DEFAULT_COGNITIVE_DNA };
             }
         }),
         // ── SELECTION (efímero — NO historial) ──
@@ -307,7 +300,7 @@ export const useHephaestusEditorStore = create()(immer((set, get) => {
             const { _dragSnapshot, clip } = get();
             if (!_dragSnapshot)
                 return;
-            const [, redoPatches, undoPatches] = produceWithPatches(_dragSnapshot, (draft) => { Object.assign(draft, clip); });
+            const [, redoPatches, undoPatches] = produceWithPatches(_dragSnapshot, () => clip);
             if (redoPatches.length === 0) {
                 set(state => { state._dragSnapshot = null; });
                 return;

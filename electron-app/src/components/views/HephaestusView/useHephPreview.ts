@@ -18,11 +18,12 @@
 
 import { useRef, useState, useCallback, useEffect } from 'react'
 import { CurveEvaluator } from '../../../core/hephaestus/CurveEvaluator'
-import { scaleToDMX, scaleToDMX16, hslToRgb } from '../../../core/hephaestus/runtime/HephUtils'
+import { scaleToDMX, scaleToDMX16 } from '../../../core/hephaestus/runtime/HephUtils'
 import { type PhaseConfigPro, type FixturePhase } from '../../../core/hephaestus/phase/PhaseConfigPro'
 import { resolveWithOverrides, type PhaseOverrideMap } from '../../../core/hephaestus/phase/PhaseOverride'
-import { defaultBlendMode, blendNumeric, blendRgb, buildTrackEvaluators } from '../../../core/hephaestus/HephSharedMath'
-import type { HephAutomationClipV3, HephTrack, HephParamId } from '../../../core/hephaestus/types'
+import { buildTrackEvaluators } from '../../../core/hephaestus/HephSharedMath'
+import { evaluateFixtureParams } from '../../../core/hephaestus/HephEvaluationKernel'
+import type { HephAutomationClipV3, HephTrack } from '../../../core/hephaestus/types'
 import type { EffectZone } from '../../../core/effects/types'
 import type { FixtureV2 } from '../../../core/stage/ShowFileV2'
 import { resolveZoneTags } from '../../../core/zones/ZoneMapper'
@@ -169,11 +170,12 @@ function findPhaseConfig(tracks: readonly HephTrack[]): { config: PhaseConfigPro
 }
 
 /**
- * 🧬 WAVE 7035: Evaluate a single fixture's state from its applicable tracks.
+ * 🧬 WAVE 7035 + AUDIT P0-B: Evaluate a single fixture's state from its applicable tracks.
  *
- * Each track is evaluated with its OWN CurveEvaluator (per-track, not shared).
- * When multiple tracks of the same paramId target this fixture, blendMode is
- * applied (max/replace/add/multiply) — matching the runtime's fusion logic.
+ * Delegates to HephEvaluationKernel (single source of truth shared with
+ * HephaestusRuntime). The kernel handles track evaluation, intensity
+ * modulation, and blend-mode fusion. This function scales the kernel's
+ * normalized output to DMX format for the preview UI.
  */
 function evaluateFixtureFrame(
   clip: HephAutomationClipV3,
@@ -181,85 +183,18 @@ function evaluateFixtureFrame(
   applicableTracks: readonly HephTrack[],
   timeMs: number,
 ): PreviewFixtureState {
-  const rawNumeric = new Map<HephParamId, number>()
-  let cr = 0, cg = 0, cb = 0
-  let hasColor = false
-
-  for (const track of applicableTracks) {
-    const paramId = track.paramId
-    const evaluator = trackEvaluators.get(track.id)
-    if (!evaluator) continue
-
-    if (track.curve.valueType === 'color') {
-      let rgb: { r: number; g: number; b: number }
-
-      if (track.colorOverride) {
-        const hsl = track.colorOverride
-        if (typeof hsl.h !== 'number' || !Number.isFinite(hsl.h) ||
-            typeof hsl.s !== 'number' || !Number.isFinite(hsl.s) ||
-            typeof hsl.l !== 'number' || !Number.isFinite(hsl.l)) {
-          continue
-        }
-        const intensityTrack = applicableTracks.find(t => t.paramId === 'intensity')
-        let intensityMod = 1.0
-        if (intensityTrack) {
-          const intEv = trackEvaluators.get(intensityTrack.id)
-          if (intEv) intensityMod = intEv.getValue('intensity', timeMs)
-        }
-        const modulatedL = (hsl.l / 100) * intensityMod
-        const tmp = hslToRgb(hsl.h, hsl.s / 100, modulatedL)
-        rgb = { r: tmp.r, g: tmp.g, b: tmp.b }
-      } else {
-        const hsl = evaluator.getColorValue(paramId, timeMs)
-        if (!hsl || typeof hsl.h !== 'number' || typeof hsl.s !== 'number' || typeof hsl.l !== 'number' ||
-            !Number.isFinite(hsl.h) || !Number.isFinite(hsl.s) || !Number.isFinite(hsl.l)) {
-          continue
-        }
-        const intensityTrack = applicableTracks.find(t => t.paramId === 'intensity')
-        let intensityMod = 1.0
-        if (intensityTrack) {
-          const intEv = trackEvaluators.get(intensityTrack.id)
-          if (intEv) intensityMod = intEv.getValue('intensity', timeMs)
-        }
-        const modulatedL = (hsl.l / 100) * intensityMod
-        const tmp = hslToRgb(hsl.h, hsl.s / 100, modulatedL)
-        rgb = { r: tmp.r, g: tmp.g, b: tmp.b }
-      }
-
-      if (!Number.isFinite(rgb.r)) rgb.r = 0
-      if (!Number.isFinite(rgb.g)) rgb.g = 0
-      if (!Number.isFinite(rgb.b)) rgb.b = 0
-
-      if (hasColor) {
-        const mode = track.blendMode ?? 'replace'
-        const [nr, ng, nb] = blendRgb(cr, cg, cb, rgb.r, rgb.g, rgb.b, mode)
-        cr = nr; cg = ng; cb = nb
-      } else {
-        cr = rgb.r; cg = rgb.g; cb = rgb.b
-        hasColor = true
-      }
-      continue
-    }
-
-    const raw = evaluator.getValue(paramId, timeMs)
-    if (rawNumeric.has(paramId)) {
-      const existing = rawNumeric.get(paramId)!
-      const mode = track.blendMode ?? defaultBlendMode(paramId)
-      rawNumeric.set(paramId, blendNumeric(existing, raw, mode))
-    } else {
-      rawNumeric.set(paramId, raw)
-    }
-  }
+  const result = evaluateFixtureParams(clip, trackEvaluators, applicableTracks, timeMs, 1.0)
+  const n = result.numeric
 
   // ── Scale to DMX ──
-  const dimmer = scaleToDMX('intensity', rawNumeric.get('intensity') ?? 0)
-  const pan16 = scaleToDMX16(rawNumeric.get('pan') ?? 0.5)
-  const tilt16 = scaleToDMX16(rawNumeric.get('tilt') ?? 0.5)
-  const white = scaleToDMX('white', rawNumeric.get('white') ?? 0)
-  const amber = scaleToDMX('amber', rawNumeric.get('amber') ?? 0)
-  const strobe = scaleToDMX('strobe', rawNumeric.get('strobe') ?? 0)
-  const zoom = scaleToDMX('zoom', rawNumeric.get('zoom') ?? 0.5)
-  const focus = scaleToDMX('focus', rawNumeric.get('focus') ?? 0.5)
+  const dimmer = scaleToDMX('intensity', n.get('intensity') ?? 0)
+  const pan16 = scaleToDMX16(n.get('pan') ?? 0.5)
+  const tilt16 = scaleToDMX16(n.get('tilt') ?? 0.5)
+  const white = scaleToDMX('white', n.get('white') ?? 0)
+  const amber = scaleToDMX('amber', n.get('amber') ?? 0)
+  const strobe = scaleToDMX('strobe', n.get('strobe') ?? 0)
+  const zoom = scaleToDMX('zoom', n.get('zoom') ?? 0.5)
+  const focus = scaleToDMX('focus', n.get('focus') ?? 0.5)
 
   // ── WAVE 7024: Connect simulationMeta.isStrobe to the strobe channel ──
   const metaStrobe = clip.simulationMeta?.isStrobe && strobe === 0 ? 255 : 0
@@ -271,7 +206,7 @@ function evaluateFixtureFrame(
     label: 'ALL',
     radarX: 0.5,
     radarY: 0.5,
-    dimmer, r: cr, g: cg, b: cb,
+    dimmer, r: result.r, g: result.g, b: result.b,
     pan: pan16.coarse, panFine: pan16.fine,
     tilt: tilt16.coarse, tiltFine: tilt16.fine,
     white, amber, strobe: finalStrobe, zoom, focus,

@@ -57,12 +57,12 @@
 ## LOTE 3 — Kernel único de evaluación (P0-B)
 
 ### P0-B: Extraer HephEvaluationKernel
-- [ ] Crear `HephEvaluationKernel.ts` — función pura que evalúa un clip a instante t
-- [ ] Que consuma `HephSharedMath` (blendNumeric, blendRgb) para fusión
-- [ ] `useHephPreview` consume el kernel (simulando merge del Arbiter)
-- [ ] `HephaestusRuntime` consume el kernel (emitiendo tracks al Arbiter)
-- [ ] WYSIWYG garantizado: mismo código, mismo output
-- [ ] `tsc --noEmit` limpio
+- [x] Crear `HephEvaluationKernel.ts` — función pura que evalúa un clip a instante t
+- [x] Que consuma `HephSharedMath` (blendNumeric, blendRgb) para fusión
+- [x] `useHephPreview` consume el kernel (simulando merge del Arbiter)
+- [x] `HephaestusRuntime` consume el kernel (emitiendo tracks al Arbiter)
+- [x] WYSIWYG garantizado: mismo código, mismo output
+- [x] `tsc --noEmit` limpio
 
 ---
 
@@ -145,3 +145,18 @@
 - `Object.assign` escribía todas las propiedades del nuevo objeto sobre el draft, incluyendo las no cambiadas, rompiendo el tracking de Immer
 
 **tsc --noEmit: 0 errores en los 4 fixes.**
+
+### Lote 3 — 2026-06-28
+
+**P0-B: Kernel único de evaluación — HephEvaluationKernel**
+- Creado `src/core/hephaestus/HephEvaluationKernel.ts` — función pura `evaluateFixtureParams()` que evalúa todos los tracks aplicables a un fixture en un instante t
+- El kernel consume `HephSharedMath` (blendNumeric, blendRgb, defaultBlendMode) — única ruta de fusión
+- `useHephPreview.evaluateFixtureFrame()` ahora delega al kernel: elimina 80 líneas de lógica duplicada (evaluación color, intensity modulation, blend switch)
+- `HephaestusRuntime._blendOutput()` reemplazado switch-case custom por llamadas a `blendNumeric`/`blendRgb` de HephSharedMath — misma función que el preview
+- `HephaestusRuntime._emitTrackSample()` ahora respeta `colorOverride` (antes ignorado — divergence WYSIWYG corregida)
+- `ResolvedTrack` extendido con `colorOverride?: HSL` — propagado desde `clip.tracks[i].colorOverride` via `_buildResolvedTrack`
+- Intensity modulation unificada: kernel usa `intensityTrackValue * clipIntensity` (mismo patrón que runtime)
+- NaN guards idénticos en ambos paths (misma función `evaluateColorTrack` interna del kernel)
+- Cierra §1.2 de la auditoría: "un solo HephEvaluationKernel puro consumido por ambos"
+
+**tsc --noEmit: 0 errores.**

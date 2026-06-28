@@ -230,3 +230,89 @@ El activo intelectual (el motor de curvas, la paridad MAtricks, el concepto Sele
 ---
 
 *Fin del informe. — PUNKOPUS. Defendido el dinero. El resto es vuestro.*
+
+---
+---
+
+# RE-AUDITORÍA — POST-REMEDIACIÓN
+
+**Fecha:** 2026-06-28
+**Disparador:** `docs/roadmaps/roadmap-checklist-hephV3.md` — el equipo reporta P0+P1+P2 cerrados.
+**Método:** No me fío de checklists. Verifiqué cada fix en el código fuente + `tsc --noEmit`. Lo que sigue es lo que el COMPILADOR y el CÓDIGO dicen, no lo que el roadmap promete.
+
+> Prometí ser la mitad de estricto si todo estaba arreglado. Casi todo lo está. Bajo el látigo a media asta — pero sigo cobrando por encontrar lo que se rompió al arreglar.
+
+## R.1 Verificación forense de los fixes
+
+| Fix | Reclamado | Verificado en código | Estado |
+|---|---|---|---|
+| **P0-A** Matar `PhaseDistributor` legacy | Eliminado | `find` confirma: `PhaseDistributor.ts` y su test NO existen. Cero referencias de *código* en `src/`. Único motor de fase vivo: `PhaseConfigPro`. | ✅ **CERRADO** |
+| **P0-B** Kernel único de evaluación | Creado + consumido por ambos | `HephEvaluationKernel.ts` existe, es puro (sin fs/React/Arbiter). `useHephPreview` lo llama (`evaluateFixtureParams`, línea 186). Runtime comparte `blendNumeric`/`blendRgb` y replica `colorOverride`. | ⚠️ **CERRADO CON MATIZ** (ver R.2) |
+| **P0-C** Genoma consumido por Selene | Verificado manual | Código real: `DecisionMaker.calculateRelevance({aggression,chaos,organicity})`, `EffectDreamSimulator` con distancia euclidiana DNA + zone aggression limits, `entry.dna.*` consumido en todo el pipeline. **El genoma NO es decorativo.** | ✅ **CONFIRMADO** |
+| **P1-A** Fase con wrap continuo | Preview + runtime | Preview línea 410: `((timeMs+offset)%dur+dur)%dur`. Runtime línea 560: idéntico bajo `isLoop`, clamp en one-shot. | ✅ **CERRADO** (ver matiz R.3) |
+| **P1-B** Gate render Spectrometer | Skip idle, 12Hz, ResizeObserver, vignette cache | Todo verificado: `dirtyRef` gate (664), `FPS_IDLE_MS=1000/12` (655), `ResizeObserver` (634), `vignetteRef` cache (710-717). | ✅ **CERRADO — EXCELENTE** |
+| **P2-A** Snapshot fantasma | Eliminado | Cero ocurrencias de `temporalActions.snapshot` en la vista. | ✅ |
+| **P2-B** Default DNA único | `defaults.ts` | `DEFAULT_COGNITIVE_DNA`/`DEFAULT_SIMULATION_META` centralizados y `Object.freeze`. Casts `as unknown` eliminados. | ✅ |
+| **P2-C** Buffers globales → ref | `SpectrometerBuffers` por instancia | `buffersRef = useRef(createBuffers())`, 7 funciones reciben `buf`. Cero globales module-level. | ✅ |
+| **P2-D** Anti-patrón Immer | `return updater(draft)` | Cero `Object.assign(draft,...)` en la vista. | ✅ |
+| **P2-E** Clamp `spreadDeg` | [0,1440] en el motor | `PhaseConfigPro.ts:106` `Math.max(0, Math.min(1440, config.spreadDeg))`. | ✅ |
+| **Compilación** | `tsc` limpio | `npx tsc --noEmit` → **exit 0**. Confirmado por mí, no por el roadmap. | ✅ |
+
+**Diez de once verde sólido. Uno verde con asterisco. Cero mentiras en el checklist** — algo poco común y que anoto a favor del equipo en la due diligence.
+
+## R.2 El matiz honesto de P0-B (lo que se rompió/quedó)
+
+El runtime **NO llama literalmente** a `evaluateFixtureParams`. Comparte las primitivas de fusión (`blendNumeric`/`blendRgb` de `HephSharedMath`) y replicó la lógica `colorOverride`, pero **emite track-por-track al `NodeArbiter`** y deja la fusión final aguas abajo (LTP + el merge de intents de WAVE 4995).
+
+**Lo bueno:** el RIESGO real que señalé —*matemática de fusión divergente*— está **cerrado**. Ambos caminos usan la MISMA función de blend y el MISMO tratamiento de `colorOverride`. El preview ya no inventa su propia aritmética. Eso era el 80% del pecado.
+
+**El residuo (nuevo hallazgo, surgido del fix):** para modos de blend **no conmutativos** (`replace`, `subtract`), el ORDEN importa. El preview funde `applicableTracks` en orden de array, dentro de la app. El runtime emite y deja que el Arbiter consolide según orden de emisión + LTP. **Si dos tracks comparten `paramId` sobre el mismo fixture con modo `replace`, el resultado del preview puede diferir del DMX final por orden de aplicación.** Para `max`/`add` (conmutativos) es irrelevante. Es un caso borde, pero existe.
+
+**Veredicto P0-B:** suficiente para firmar. El "kernel único" es real para el preview y para la *matemática*; la *topología de fusión* sigue siendo de dos puntos. Recomendación P2 (no bloqueante): que el preview simule el orden de consolidación del Arbiter, o que el Arbiter exponga el orden canónico. No frena el cheque.
+
+## R.3 Hallazgos nuevos menores (el "daño colateral" típico de remediar)
+
+1. **Wrap incondicional en preview vs gated en runtime** (`useHephPreview.ts:410`). El preview SIEMPRE envuelve (`phaseOffset > 0 ? wrap : timeMs`), sin distinguir one-shot. El runtime sí gatea con `isLoop`. Para un clip one-shot, preview muestra fase envuelta y runtime clampa. Como el preview es loop-perpetuo por diseño, el impacto visual es nulo en la práctica, pero es una asimetría conceptual con el runtime. *Cosmético/P3.*
+2. **Comentarios zombis** (`useHephPreview.ts:278-283`, `HephaestusRuntime.ts:307,375`) aún citan `PhaseDistributor.resolve()` que ya no existe. El checklist dijo limpiar comentarios solo en `types.ts`; estos tres quedaron. Mentira documental residual. *P3 — pero límpienlo antes de enseñar el código a un due-diligence técnico externo; un auditor de productora lee comentarios.*
+3. **`defaults.ts`** usa `energyZone: {...} as {min:'ambient';max:'peak'}` — cast cosmético que typechecka pero huele. Trivial.
+
+Ninguno de los tres compromete dinero. Los listo porque me pagan por listarlos.
+
+## R.4 Selene + Hephaestus como dúo comerciable
+
+Consulté el camino cognitivo real (no la auditoría vieja de Selene, que está obsoleta como avisó el equipo). El código actual confirma:
+
+- **El genoma A/C/O se consume** en la selección (`DecisionMaker`, `HuntEngine`, `EffectDreamSimulator`). Un `.lfx` con `aggression=0.9` compite distinto que uno con `0.2` ante el mismo input. **El "arsenal infinito por el usuario" es real, no marketing.**
+- **Cassandra** (predicción pura, sin heurística) es la pieza que convierte esto en producto de demo: un motor que ANTICIPA el drop y pre-buffea el efecto cognitivamente elegido es exactamente el tipo de "wow" que una productora no ha visto en una MA3 — porque MA3, por doctrina, **no tiene capa cognitiva**. Ese es vuestro foso defensivo.
+- La simbiosis es legítima: Hephaestus aporta el **cuerpo** (curvas, fase MAtricks-parity, multicell), Selene/Cassandra aportan el **cerebro** (selección por genoma + predicción). Es una categoría que MA3 no juega.
+
+**Aviso de veterano para la reunión con las productoras argentinas:** vuestra única bala tiene dos consecuencias, ridículo o triunfo. El triunfo NO se juega en la matemática —esa ya la ganasteis—. Se juega en **una sola cosa: que el WYSIWYG no os traicione en vivo delante de ellos.** El residuo de R.2 (orden de blend no conmutativo) es justo el tipo de detalle que, en un show grande con tracks superpuestos, produce "en mi laptop se veía distinto". Cerrad ese P2 ANTES de la demo aunque no sea bloqueante para la adquisición. Es barato y os quita el único escenario de ridículo que veo.
+
+## R.5 PIONEER SCORE ACTUALIZADO
+
+| | Antes | Ahora |
+|---|---|---|
+| Núcleo matemático | 97 | 97 |
+| Modelo de datos V3 | 90 | 90 |
+| Motor de fase | 91 | **95** (motor único + wrap continuo + clamp) |
+| Integridad pipeline / WYSIWYG | 70 | **89** (math de blend unificada + colorOverride; -orden no conmutativo) |
+| Simbiosis IA | 82 | **90** (genoma probado en consumo real) |
+| Rendimiento Canvas 44Hz | 80 | **94** (gate idle + ResizeObserver + vignette cache + buffers por instancia) |
+| Robustez / edge cases | 90 | 92 |
+| UX / estructura | 84 | 86 |
+
+### **PIONEER SCORE: 93.5 / 100** — *subida de +5.0 (desde 88.5)*
+
+> Hace tres meses dije que la matemática estaba para ganar y la arquitectura para perder la confianza. **El equipo invirtió la segunda mitad de esa frase.** Mataron el doble motor de fase, unificaron la matemática de fusión, probaron que el genoma se consume y arreglaron el Spectrometer hasta dejarlo elegante. Y lo hicieron con `tsc` limpio y sin mentir en el reporte.
+
+### Recomendación de adquisición — ACTUALIZADA
+
+**ADQUISICIÓN APROBADA.** Se levantan los gates P0. El earn-out técnico queda satisfecho.
+
+- **P0-A / P0-B / P0-C — CERRADOS.** Firma desbloqueada.
+- **P1-A / P1-B — CERRADOS.**
+- **Única condición pre-DEMO (no pre-firma):** cerrar el residuo de orden de blend no conmutativo (R.2) para blindar el WYSIWYG en vivo. Es lo único entre vosotros y un triunfo limpio frente a las productoras.
+
+Esto ya compite con un Phaser de grandMA3 en matemática y lo supera en capa cognitiva. A 93.5 no os compro un prototipo: os compro un competidor. Ahora id a esa reunión y no dejéis que un `replace` mal ordenado os robe el show.
+
+*Fin de la re-auditoría. — PUNKOPUS. Esta vez, enhorabuena. (Media sonrisa. No más.)*

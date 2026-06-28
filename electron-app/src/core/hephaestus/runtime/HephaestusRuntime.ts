@@ -304,8 +304,8 @@ export class HephaestusRuntime {
    * ▶️ Trigger a .lfx clip
    * Loads the file (cached), starts execution
    * 
-   * ⚒️ WAVE 2400: Now resolves PhaseDistributor if clip has phase config.
-   * 
+   * ⚒️ WAVE 2400: Now applies phase config (PhaseConfigPro) if clip has one.
+   *
    * @param filePath Path to .lfx file
    * @param options Playback options
    * @returns Instance ID for tracking, or null if failed
@@ -372,8 +372,8 @@ export class HephaestusRuntime {
    * inline via the Chronos timeline (serialized in the FXClip, deserialized 
    * by IPCHandlers). This is the DIAMOND PATH for Hephaestus clips.
    * 
-   * ⚒️ WAVE 2400: Now resolves PhaseDistributor if clip has phase config.
-   * 
+   * ⚒️ WAVE 2400: Now applies phase config (PhaseConfigPro) if clip has one.
+   *
    * @param clip Pre-deserialized HephAutomationClipV3
    * @param options Playback options
    * @returns Instance ID for tracking

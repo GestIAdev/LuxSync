@@ -184,3 +184,18 @@
 **Resultado:** Selene ahora usa `clip.name` del contenido del `.lfx` como nombre canonical en toda la cadena — desde el DreamSimulator hasta los logs y eventos de telemetría. El `effectType` (ID/filename sin extensión) se preserva para lookups internos, pero `effectName` es el nombre humano que se muestra al operador.
 
 **tsc --noEmit: 0 errores.**
+
+### Auditoría Opus R.2 + R.3 — 2026-06-28
+
+**R.3.2: Comentarios zombis eliminados**
+- `useHephPreview.ts:277-283`: "PhaseDistributor" → "phase config (PhaseConfigPro) / computeOffsetPro()"
+- `HephaestusRuntime.ts:307`: "resolves PhaseDistributor" → "applies phase config (PhaseConfigPro)"
+- `HephaestusRuntime.ts:375`: mismo fix en `playFromClip` docblock
+- `grep PhaseDistributor` en `src/` → 0 resultados
+
+**R.2 residual: Orden de blends no conmutativos (replace/subtract)**
+- **Root cause:** El kernel acumulaba TODOS los color tracks en un solo `(cr, cg, cb)` sin distinguir `paramId`, mientras el runtime keya por `fixtureId:paramId` via `_blendMap`. Para diferentes `paramId` de color, el kernel mezclaba lo que el runtime mantenía separado.
+- **Fix:** `HephEvaluationKernel.evaluateFixtureParams()` ahora usa `colorMap: Map<HephParamId, {r,g,b}>` — keya color por `paramId` (paridad estructural con `_blendMap`). El color final se resuelve via LTP (`lastColorParam` — último paramId escrito gana), mirroring `NodeArbiter` consolidation.
+- **Order guarantee documentado:** docstring del kernel ahora explica que `applicableTracks` se itera en orden de `clip.tracks` (mismo que `tickActive()`), y para modes no conmutativos el último track gana — igual que `_blendMap` + Arbiter LTP.
+
+**tsc --noEmit: 0 errores.**

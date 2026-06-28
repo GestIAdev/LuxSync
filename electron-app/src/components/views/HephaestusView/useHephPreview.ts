@@ -275,12 +275,12 @@ export function useHephPreview(clip: HephAutomationClipV3 | null, stageFixtures:
   }, [clip, clip?.tracks, clip?.durationMs])
 
   /**
-   * Resolve fixtures based on clip zones + REAL show patch + PhaseDistributor.
+   * Resolve fixtures based on clip zones + REAL show patch + phase config.
    * 
    * ⚒️ WAVE 2403.2: OPERATION RADAR AWAKENING
    * Expands zones → real fixture IDs from the show patch.
    * Each fixture gets its own radar dot, horizontally distributed for wave viz.
-   * PhaseDistributor receives the REAL fixture IDs (N > 1 per zone).
+   * Phase offsets are computed via computeOffsetPro() from PhaseConfigPro.
    * 
    * - 'all' or empty → 1 big fixture (center of radar, no phase)
    * - Specific zones → Lookup real fixtures from stageStore, distribute phase

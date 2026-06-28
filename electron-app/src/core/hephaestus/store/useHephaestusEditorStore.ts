@@ -272,7 +272,9 @@ export const useHephaestusEditorStore = create<HephaestusEditorStore>()(
           }
         }
       }
-      const firstTrackId = clip?.tracks?.[0]?.id ?? null
+      // Auto-select first track with non-trivial phase config, else first track
+      const phaseTrack = clip?.tracks?.find(t => t.phaseConfig && t.phaseConfig.spreadDeg > 0)
+      const firstTrackId = phaseTrack?.id ?? clip?.tracks?.[0]?.id ?? null
       set((state) => {
         state.clip = clip as any
         state.isDirty = false

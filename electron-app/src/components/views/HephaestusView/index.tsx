@@ -368,7 +368,7 @@ const HephaestusView: React.FC = () => {
   return (
     <div className="heph-view">
       {/* ══ TIER 1: GLOBAL I/O BAR ══ */}
-      <header className="heph-global-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '40px', padding: '0 16px', background: 'transparent', borderBottom: '1px solid rgba(255, 107, 43, 0.1)', userSelect: 'none' }}>
+      <header className="heph-global-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '40px', padding: '0 16px', background: 'transparent', borderBottom: '1px solid rgba(255, 107, 43, 0.1)', userSelect: 'none', position: 'relative', zIndex: 1000 }}>
 
         {/* BLOQUE IZQUIERDO: Identity + Tab Rail */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -417,7 +417,7 @@ const HephaestusView: React.FC = () => {
         </div>
 
         {/* BLOQUE CENTRAL: Active File Metadata */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12px', color: '#888', minWidth: 0, overflow: 'hidden', flex: '1 1 0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12px', color: '#888', minWidth: 0, flex: '1 1 0' }}>
           {isEditingName ? (
             <input
               ref={nameInputRef}

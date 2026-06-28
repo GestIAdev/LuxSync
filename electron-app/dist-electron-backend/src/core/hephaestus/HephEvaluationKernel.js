@@ -90,7 +90,7 @@ function evaluateColorTrack(track, evaluator, timeMs, intensityMod) {
  * @param clipIntensity Clip-level intensity multiplier (0-1, default 1.0)
  * @returns Blended fixture parameters
  */
-export function evaluateFixtureParams(clip, trackEvaluators, applicableTracks, timeMs, clipIntensity = 1.0) {
+export function evaluateFixtureParams(clip, trackEvaluators, applicableTracks, timeMs, clipIntensity = 1.0, perTrackTimeMs) {
     const numeric = new Map();
     // 🧬 AUDIT R.2 FIX: Color tracks are keyed by paramId — same as the
     // runtime's _blendMap (fixtureId:paramName). This ensures that:
@@ -109,6 +109,7 @@ export function evaluateFixtureParams(clip, trackEvaluators, applicableTracks, t
         const evaluator = trackEvaluators.get(track.id);
         if (!evaluator)
             continue;
+        const t = perTrackTimeMs?.get(track.id) ?? timeMs;
         if (track.curve.valueType === 'color') {
             // Resolve intensity modulation: intensity track value × clipIntensity
             if (cachedIntensityMod === null) {
@@ -117,11 +118,11 @@ export function evaluateFixtureParams(clip, trackEvaluators, applicableTracks, t
                 if (intensityTrack) {
                     const intEv = trackEvaluators.get(intensityTrack.id);
                     if (intEv)
-                        intensityVal = intEv.getValue('intensity', timeMs);
+                        intensityVal = intEv.getValue('intensity', perTrackTimeMs?.get(intensityTrack.id) ?? timeMs);
                 }
                 cachedIntensityMod = intensityVal * clipIntensity;
             }
-            const rgb = evaluateColorTrack(track, evaluator, timeMs, cachedIntensityMod);
+            const rgb = evaluateColorTrack(track, evaluator, t, cachedIntensityMod);
             if (!rgb)
                 continue;
             const existing = colorMap.get(paramId);
@@ -139,7 +140,7 @@ export function evaluateFixtureParams(clip, trackEvaluators, applicableTracks, t
             continue;
         }
         // Numeric track
-        const raw = evaluator.getValue(paramId, timeMs);
+        const raw = evaluator.getValue(paramId, t);
         const adjusted = raw * clipIntensity;
         if (numeric.has(paramId)) {
             const existing = numeric.get(paramId);

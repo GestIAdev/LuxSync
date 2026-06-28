@@ -1,0 +1,332 @@
+{
+  "$schema": "luxsync.lfx/3.0",
+  "version": "1.0.0",
+  "clip": {
+    "id": "heph_1782609140553_bto9fn",
+    "name": "DEFiNITIVETEST",
+    "author": "LuxSync User",
+    "category": "composite",
+    "tags": [],
+    "vibeCompat": [],
+    "spatialZones": [
+      "all"
+    ],
+    "mixBus": "global",
+    "priority": 50,
+    "durationMs": 8000,
+    "effectType": "custom",
+    "tracks": [
+      {
+        "id": "track-intensity-heph_1782609140553_bto9fn",
+        "paramId": "intensity",
+        "zones": [
+          "all"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 1,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 8000,
+              "value": 1,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "dimmerScale": 1,
+        "blendMode": "max",
+        "phaseConfig": {
+          "spreadDeg": 0,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
+        }
+      },
+      {
+        "id": "track-color-heph_1782609140553_bto9fn",
+        "paramId": "color",
+        "zones": [
+          "all"
+        ],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
+          "defaultValue": {
+            "h": 0,
+            "s": 100,
+            "l": 50
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 0,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 7938,
+              "value": {
+                "h": 210,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "dimmerScale": 1,
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spreadDeg": 0,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
+        }
+      },
+      {
+        "id": "track-pan-heph_1782609140553_bto9fn",
+        "paramId": "pan",
+        "zones": [
+          "all"
+        ],
+        "curve": {
+          "paramId": "pan",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 8000,
+              "value": 1,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "dimmerScale": 1,
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spreadDeg": 0,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
+        }
+      },
+      {
+        "id": "track-tilt-heph_1782609140553_bto9fn",
+        "paramId": "tilt",
+        "zones": [
+          "all"
+        ],
+        "curve": {
+          "paramId": "tilt",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 8000,
+              "value": 1,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "dimmerScale": 1,
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spreadDeg": 0,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
+        }
+      },
+      {
+        "id": "302aa8c7-0e6d-4b87-86da-75999c9573b4",
+        "paramId": "strobe",
+        "zones": [
+          "all"
+        ],
+        "curve": {
+          "paramId": "strobe",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 2250,
+              "value": 0.9957,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 5317,
+              "value": 0.5279,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 7310,
+              "value": 0.5279,
+              "interpolation": "linear"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spreadDeg": 1440,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
+        },
+        "phaseOverrides": {
+          "fixture-1778098900942": {
+            "mode": "absolute",
+            "offsetMs": 0
+          },
+          "fixture-1778098937109": {
+            "mode": "absolute",
+            "offsetMs": 777.7777777777778
+          },
+          "fixture-1778098942165": {
+            "mode": "absolute",
+            "offsetMs": 777.7777777777778
+          },
+          "fixture-1778098981365": {
+            "mode": "absolute",
+            "offsetMs": 1555.5555555555557
+          },
+          "fixture-1778098987590": {
+            "mode": "absolute",
+            "offsetMs": 1555.5555555555557
+          },
+          "fixture-1778098998853": {
+            "mode": "absolute",
+            "offsetMs": 2333.333333333333
+          },
+          "fixture-1778099003797": {
+            "mode": "absolute",
+            "offsetMs": 2333.333333333333
+          },
+          "fixture-1778099032397": {
+            "mode": "absolute",
+            "offsetMs": 3111.1111111111113
+          },
+          "fixture-1778099037840": {
+            "mode": "absolute",
+            "offsetMs": 3111.1111111111113
+          },
+          "fixture-1778364482160": {
+            "mode": "absolute",
+            "offsetMs": 3888.8888888888887
+          }
+        }
+      }
+    ],
+    "staticParams": {},
+    "cognitiveDNA": {
+      "genome": {
+        "aggression": 0.21,
+        "chaos": 0.2,
+        "organicity": 0.67
+      },
+      "textureAffinity": "universal",
+      "compatibleVibes": [
+        "fiesta-latina"
+      ],
+      "validSections": [],
+      "energyZone": {
+        "min": "valley",
+        "max": "ambient"
+      },
+      "aggressionRange": {
+        "min": 0.21,
+        "max": 0.21
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.5,
+        "energyMultiplier": 1,
+        "vibeBonus": 0
+      },
+      "gpuCost": 0.3,
+      "fatigueImpact": 0.06,
+      "minDurationMs": 1000,
+      "cooldownMs": 7000,
+      "isStrobe": false,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": false,
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": null,
+        "minimumEnergy": null
+      }
+    },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 25,
+      "containsRapidFlash": true,
+      "communityTrusted": false
+    },
+    "schemaVersion": "3.0"
+  },
+  "checksum": "sha256:35c20a9671a2a34028fa1be3ad0121d0434cabfc128515c010f020bb50ad2ad6"
+}

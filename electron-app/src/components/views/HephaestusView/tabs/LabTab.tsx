@@ -57,6 +57,7 @@ export const LabTab: React.FC<LabTabProps> = ({ temporalActions, isSaving = fals
   // ── Store (canonical state) ──
   const clip = useHephaestusEditorStore(state => state.clip)
   const activeTrackId = useHephaestusEditorStore(state => state.selection.activeTrackId)
+  const selectTrack = useHephaestusEditorStore(state => state.selectTrack)
   const updatePhaseInTrack = useHephaestusEditorStore(state => state.updatePhaseInTrack)
   const updatePhaseOverride = useHephaestusEditorStore(state => state.updatePhaseOverride)
   const clearPhaseOverrides = useHephaestusEditorStore(state => state.clearPhaseOverrides)
@@ -186,27 +187,69 @@ export const LabTab: React.FC<LabTabProps> = ({ temporalActions, isSaving = fals
       {/* ── Bastidor de Fase Izquierdo ── */}
       <div
         className="heph-lab-sidebar"
-        style={{ width: '340px', flexShrink: 0, height: '100%', overflowY: 'auto', borderRight: '1px solid rgba(255, 107, 43, 0.1)', display: 'flex', flexDirection: 'column', padding: '4px', boxSizing: 'border-box' }}
+        style={{ width: '340px', flexShrink: 0, height: '100%', overflow: 'hidden', borderRight: '1px solid rgba(255, 107, 43, 0.1)', display: 'flex', flexDirection: 'column', padding: '4px', boxSizing: 'border-box' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', fontSize: '12px', fontWeight: 700, color: 'rgba(255, 107, 43, 0.6)', letterSpacing: '0.1em', flexShrink: 0 }}>
           <WaveformIcon size={16} color="rgba(255, 107, 43, 0.6)" />
           PHASE DISTRIBUTION ENGINE
         </div>
-        <PhaseControls
-          config={activePhaseConfig}
-          onPhaseChange={handlePhaseChange}
-          disabled={isSaving}
-          spatialBehavior={clip?.cognitiveDNA?.spatialBehavior}
-          onSpatialBehaviorChange={handleSpatialBehaviorChange}
-          fixtureIds={phaseFixtureIds}
-          durationMs={clip?.durationMs}
-          phaseOverrides={activePhaseOverrides}
-          selectedFixtureId={selectedFixtureId}
-          onSelectFixture={setSelectedFixtureId}
-          onUpdatePhaseOverride={handleUpdatePhaseOverride}
-          onBakePhaseOverrides={handleBakePhaseOverrides}
-          onClearPhaseOverrides={handleClearPhaseOverrides}
-        />
+
+        {/* Track selector — lets user pick which track's phase config to edit */}
+        <div style={{ marginBottom: '6px', flexShrink: 0, height: '38px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+          <label style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(255, 107, 43, 0.4)', letterSpacing: '0.12em', display: 'block', marginBottom: '2px', fontFamily: '"Rajdhani", "Eurostile", sans-serif', lineHeight: '11px' }}>ACTIVE TRACK</label>
+          <select
+            value={activeTrackId ?? ''}
+            onChange={(e) => selectTrack(e.target.value || null)}
+            disabled={isSaving}
+            style={{
+              width: '100%',
+              height: '24px',
+              background: 'rgba(0,0,0,0.5)',
+              color: '#FF6B2B',
+              border: '1px solid rgba(255, 107, 43, 0.25)',
+              borderRadius: '4px',
+              padding: '0 24px 0 8px',
+              fontSize: '11px',
+              fontFamily: '"Rajdhani", "Eurostile", "Orbitron", sans-serif',
+              fontWeight: 600,
+              letterSpacing: '0.06em',
+              cursor: 'pointer',
+              boxSizing: 'border-box',
+              lineHeight: '22px',
+              outline: 'none',
+              appearance: 'none',
+              WebkitAppearance: 'none',
+              MozAppearance: 'none',
+              backgroundImage: 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'10\' height=\'6\' viewBox=\'0 0 10 6\'><path d=\'M1 1l4 4 4-4\' stroke=\'%23FF6B2B\' stroke-width=\'1.5\' fill=\'none\' opacity=\'0.6\'/></svg>")',
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 8px center',
+            }}
+          >
+            {clip?.tracks.map(t => (
+              <option key={t.id} value={t.id} style={{ background: '#0a0a0f', color: '#FF6B2B', fontSize: '11px', fontFamily: '"Rajdhani", sans-serif' }}>
+                {t.paramId.toUpperCase()}
+              </option>
+            )) ?? <option value="">No tracks</option>}
+          </select>
+        </div>
+
+        <div className="heph-lab-phase-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+          <PhaseControls
+            config={activePhaseConfig}
+            onPhaseChange={handlePhaseChange}
+            disabled={isSaving}
+            spatialBehavior={clip?.cognitiveDNA?.spatialBehavior}
+            onSpatialBehaviorChange={handleSpatialBehaviorChange}
+            fixtureIds={phaseFixtureIds}
+            durationMs={clip?.durationMs}
+            phaseOverrides={activePhaseOverrides}
+            selectedFixtureId={selectedFixtureId}
+            onSelectFixture={setSelectedFixtureId}
+            onUpdatePhaseOverride={handleUpdatePhaseOverride}
+            onBakePhaseOverrides={handleBakePhaseOverrides}
+            onClearPhaseOverrides={handleClearPhaseOverrides}
+          />
+        </div>
       </div>
 
       {/* ── Escenario Central Radar ── */}
@@ -226,6 +269,9 @@ export const LabTab: React.FC<LabTabProps> = ({ temporalActions, isSaving = fals
             onStop={preview.stop}
             onSeek={preview.seek}
             phaseConfig={activePhaseConfig}
+            tracks={clip?.tracks}
+            activeTrackId={activeTrackId}
+            onSelectTrack={selectTrack}
           />
         </div>
       </div>

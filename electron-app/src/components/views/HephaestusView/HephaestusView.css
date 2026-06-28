@@ -2353,3 +2353,12 @@
   margin: 0;
   line-height: 1.4;
 }
+
+/* ── Hide scrollbar on phase controls container (nanobug: 4-6px overflow) ── */
+.heph-lab-phase-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.heph-lab-phase-scroll::-webkit-scrollbar {
+  display: none;
+}

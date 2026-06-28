@@ -266,24 +266,6 @@ export const PhaseControls: React.FC<PhaseControlsProps> = ({
             {active.spreadDeg}º
           </span>
         </div>
-        {isActive && (
-          <div style={{ marginTop: '4px' }}>
-            <span style={{
-              display: 'inline-block',
-              fontSize: '8px',
-              fontWeight: 700,
-              color: NEON.shaper,
-              background: 'rgba(255, 107, 43, 0.08)',
-              border: `1px solid rgba(255, 107, 43, 0.3)`,
-              borderRadius: '3px',
-              padding: '1px 6px',
-              textShadow: `0 0 6px ${NEON.shaper}60`,
-            }}>
-              {spreadPercent}% CYCLE
-            </span>
-          </div>
-        )}
-
         <div style={divider} />
 
         {/* Symmetry */}
@@ -312,7 +294,7 @@ export const PhaseControls: React.FC<PhaseControlsProps> = ({
 
         <div style={divider} />
 
-        {/* Wings + Direction */}
+        {/* Wings + Direction + Cycle badge */}
         <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
           <div style={{ flex: 1 }}>
             <div style={rowLabel}>WINGS</div>
@@ -349,6 +331,24 @@ export const PhaseControls: React.FC<PhaseControlsProps> = ({
               <span>{active.direction === 1 ? 'FWD' : 'REV'}</span>
             </button>
           </div>
+          {isActive && (
+            <div style={{ flexShrink: 0, paddingBottom: '2px' }}>
+              <span style={{
+                display: 'inline-block',
+                fontSize: '8px',
+                fontWeight: 700,
+                color: NEON.shaper,
+                background: 'rgba(255, 107, 43, 0.08)',
+                border: `1px solid rgba(255, 107, 43, 0.3)`,
+                borderRadius: '3px',
+                padding: '2px 6px',
+                textShadow: `0 0 6px ${NEON.shaper}60`,
+                whiteSpace: 'nowrap',
+              }}>
+                {spreadPercent}% CYCLE
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

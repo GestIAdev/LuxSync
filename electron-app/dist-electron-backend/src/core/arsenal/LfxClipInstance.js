@@ -137,6 +137,18 @@ function isUserArchetype(x) {
 function isCompatibleVibe(x) {
     return typeof x === 'string' && COMPATIBLE_VIBES.includes(x);
 }
+/** Mapeo inverso público: `'techno-club' → 'techno-dark'`, etc. */
+export function reverseVibeBridge(value) {
+    if (typeof value !== 'string')
+        return null;
+    if (isCompatibleVibe(value))
+        return value;
+    for (const [alias, real] of Object.entries(VIBE_BRIDGE)) {
+        if (real === value)
+            return alias;
+    }
+    return null;
+}
 function isEnergyZone(x) {
     return typeof x === 'string' && ENERGY_ZONES.includes(x);
 }
@@ -458,15 +470,7 @@ export class LfxClipInstance {
     }
     /** Mapeo inverso `'techno-club' → 'techno-dark'`, etc. */
     static _reverseVibeBridge(value) {
-        if (typeof value !== 'string')
-            return null;
-        if (isCompatibleVibe(value))
-            return value;
-        for (const [alias, real] of Object.entries(VIBE_BRIDGE)) {
-            if (real === value)
-                return alias;
-        }
-        return null;
+        return reverseVibeBridge(value);
     }
     /**
      * Heurística simple para reconstruir `userArchetype` desde un .lfx legacy.

@@ -19,8 +19,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
 import { CurveEvaluator } from '../../../core/hephaestus/CurveEvaluator'
 import { scaleToDMX, scaleToDMX16 } from '../../../core/hephaestus/runtime/HephUtils'
-import { type PhaseConfigPro, type FixturePhase } from '../../../core/hephaestus/phase/PhaseConfigPro'
-import { resolveWithOverrides, type PhaseOverrideMap } from '../../../core/hephaestus/phase/PhaseOverride'
+import { resolveWithOverrides } from '../../../core/hephaestus/phase/PhaseOverride'
 import { buildTrackEvaluators } from '../../../core/hephaestus/HephSharedMath'
 import { evaluateFixtureParams } from '../../../core/hephaestus/HephEvaluationKernel'
 import type { HephAutomationClipV3, HephTrack } from '../../../core/hephaestus/types'
@@ -159,16 +158,6 @@ const ZONE_RADAR_POSITIONS: Record<string, { label: string; x: number; y: number
 // EVALUATOR — Pure math, no Runtime dependency
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Find the first track with a non-trivial phaseConfig. Returns config + overrides. */
-function findPhaseConfig(tracks: readonly HephTrack[]): { config: PhaseConfigPro; overrides?: PhaseOverrideMap } | null {
-  for (const t of tracks) {
-    if (t.phaseConfig && t.phaseConfig.spreadDeg > 0) {
-      return { config: t.phaseConfig, overrides: t.phaseOverrides }
-    }
-  }
-  return null
-}
-
 /**
  * 🧬 WAVE 7035 + AUDIT P0-B: Evaluate a single fixture's state from its applicable tracks.
  *
@@ -182,8 +171,9 @@ function evaluateFixtureFrame(
   trackEvaluators: Map<string, CurveEvaluator>,
   applicableTracks: readonly HephTrack[],
   timeMs: number,
+  perTrackTimeMs?: Map<string, number>,
 ): PreviewFixtureState {
-  const result = evaluateFixtureParams(clip, trackEvaluators, applicableTracks, timeMs, 1.0)
+  const result = evaluateFixtureParams(clip, trackEvaluators, applicableTracks, timeMs, 1.0, perTrackTimeMs)
   const n = result.numeric
 
   // ── Scale to DMX ──
@@ -366,18 +356,24 @@ export function useHephPreview(clip: HephAutomationClipV3 | null, stageFixtures:
         }
       }
 
-      // ── Phase distribution via resolvePro + overrides ──
-      const phaseResult = findPhaseConfig(c.tracks)
+      // ── Phase distribution: per-track resolution (WAVE 7036) ──
+      // Each track with spreadDeg > 0 gets its own phase offset map.
+      // This matches HephaestusRuntime's per-track fixturePhases handling.
       const fixtureIds = targetPool.map(rf => rf.id)
-      let fixturePhases: FixturePhase[] | null = null
-      if (phaseResult) {
-        fixturePhases = resolveWithOverrides(fixtureIds, phaseResult.config, phaseResult.overrides, c.durationMs)
-      }
-
-      const phaseByFixture = new Map<string, number>()
-      if (fixturePhases) {
-        for (const fp of fixturePhases) {
-          phaseByFixture.set(fp.fixtureId, fp.phaseOffsetMs)
+      const trackPhaseByFixture = new Map<string, Map<string, number>>()
+      let displayPhaseByFixture = new Map<string, number>()
+      for (const track of c.tracks) {
+        if (track.phaseConfig && track.phaseConfig.spreadDeg > 0) {
+          const phases = resolveWithOverrides(fixtureIds, track.phaseConfig, track.phaseOverrides, c.durationMs)
+          const m = new Map<string, number>()
+          for (const fp of phases) {
+            m.set(fp.fixtureId, fp.phaseOffsetMs)
+            // Use the first track with phase config for display purposes
+            if (!displayPhaseByFixture.has(fp.fixtureId)) {
+              displayPhaseByFixture.set(fp.fixtureId, fp.phaseOffsetMs)
+            }
+          }
+          trackPhaseByFixture.set(track.id, m)
         }
       }
 
@@ -406,17 +402,28 @@ export function useHephPreview(clip: HephAutomationClipV3 | null, stageFixtures:
 
       for (let i = 0; i < totalFixtures; i++) {
         const rf = targetPool[i]
-        const phaseOffset = phaseByFixture.get(rf.id) ?? 0
-        const offsetTime = phaseOffset > 0
-          ? ((timeMs + phaseOffset) % c.durationMs + c.durationMs) % c.durationMs
-          : timeMs
+        const displayPhaseOffset = displayPhaseByFixture.get(rf.id) ?? 0
 
         // 🧬 WAVE 7035: Find applicable tracks for this fixture (per-track zone resolution)
         const applicableTracks = c.tracks.filter(t => {
           const fs = trackFixtureSets.get(t.id)
           return fs && fs.has(rf.id)
         })
-        const f = evaluateFixtureFrame(c, trackEvaluators, applicableTracks, offsetTime)
+
+        // 🧬 WAVE 7036: Per-track phase offsets — each track can have its own
+        // spreadDeg/blocks/shuffle config. Build a per-track time map so the
+        // evaluation kernel can evaluate each track at its correct phase time.
+        const perTrackTimeMs = new Map<string, number>()
+        for (const track of applicableTracks) {
+          const phaseMap = trackPhaseByFixture.get(track.id)
+          const phaseOffset = phaseMap?.get(rf.id) ?? 0
+          const offsetTime = phaseOffset > 0
+            ? ((timeMs + phaseOffset) % c.durationMs + c.durationMs) % c.durationMs
+            : timeMs
+          perTrackTimeMs.set(track.id, offsetTime)
+        }
+
+        const f = evaluateFixtureFrame(c, trackEvaluators, applicableTracks, timeMs, perTrackTimeMs)
 
         // Horizontal distribution: real position if available, else linear
         const radarX = hasRealStage && rf.position && typeof rf.position.x === 'number'
@@ -439,7 +446,7 @@ export function useHephPreview(clip: HephAutomationClipV3 | null, stageFixtures:
           label: shortName.toUpperCase(),
           radarX,
           radarY,
-          phaseOffsetMs: phaseOffset,
+          phaseOffsetMs: displayPhaseOffset,
         })
       }
 

@@ -229,6 +229,16 @@ function isCompatibleVibe(x: unknown): x is CompatibleVibe {
   return typeof x === 'string' && (COMPATIBLE_VIBES as readonly string[]).includes(x)
 }
 
+/** Mapeo inverso público: `'techno-club' → 'techno-dark'`, etc. */
+export function reverseVibeBridge(value: unknown): CompatibleVibe | null {
+  if (typeof value !== 'string') return null
+  if (isCompatibleVibe(value)) return value
+  for (const [alias, real] of Object.entries(VIBE_BRIDGE)) {
+    if (real === value) return alias as CompatibleVibe
+  }
+  return null
+}
+
 function isEnergyZone(x: unknown): x is EnergyZoneId {
   return typeof x === 'string' && (ENERGY_ZONES as readonly string[]).includes(x)
 }
@@ -662,12 +672,7 @@ export class LfxClipInstance {
 
   /** Mapeo inverso `'techno-club' → 'techno-dark'`, etc. */
   private static _reverseVibeBridge(value: unknown): CompatibleVibe | null {
-    if (typeof value !== 'string') return null
-    if (isCompatibleVibe(value)) return value
-    for (const [alias, real] of Object.entries(VIBE_BRIDGE)) {
-      if (real === value) return alias as CompatibleVibe
-    }
-    return null
+    return reverseVibeBridge(value)
   }
 
   /**

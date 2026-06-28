@@ -29,6 +29,7 @@ import {
   type EnergyZoneId,
   type CompatibleVibe,
   type AcoTriad,
+  reverseVibeBridge,
 } from '../../../../core/arsenal/LfxClipInstance'
 import { validateClip, type LinterWarning } from '../../../../core/arsenal/GatekeeperLinter'
 import {
@@ -228,6 +229,13 @@ export const DnaRail: React.FC<DnaRailProps> = ({
       vibes: [],
       maxStrobeFreqHz: 0,
     }
+    // Reverse-map compatibleVibes from bridged (Selene) → directive (CompatibleVibe)
+    const rawVibes = Array.isArray(dna.compatibleVibes) ? dna.compatibleVibes : []
+    const reversedVibes: CompatibleVibe[] = []
+    for (const v of rawVibes) {
+      const r = reverseVibeBridge(v)
+      if (r && !reversedVibes.includes(r)) reversedVibes.push(r)
+    }
     return {
       archetype: 'utility',
       aco: { ...dna.genome },
@@ -239,10 +247,49 @@ export const DnaRail: React.FC<DnaRailProps> = ({
           Math.min(ENERGY_ZONES.length, hi + 1),
         ) as EnergyZoneId[]
       })(),
-      vibes: [],
+      vibes: reversedVibes,
       maxStrobeFreqHz: 0,
     }
   })
+
+  // ── Sync form state when a new clip is loaded (dna prop identity changes) ──
+  const dnaIdRef = useRef(dna)
+  const isSyncingFromDna = useRef(false)
+  useEffect(() => {
+    if (dnaIdRef.current === dna) return
+    dnaIdRef.current = dna
+    isSyncingFromDna.current = true
+    if (!dna) {
+      setForm({
+        archetype: 'utility',
+        aco: { aggression: 0.5, chaos: 0.5, organicity: 0.5 },
+        zones: ['ambient', 'gentle', 'active'],
+        vibes: [],
+        maxStrobeFreqHz: 0,
+      })
+      return
+    }
+    const rawVibes = Array.isArray(dna.compatibleVibes) ? dna.compatibleVibes : []
+    const reversedVibes: CompatibleVibe[] = []
+    for (const v of rawVibes) {
+      const r = reverseVibeBridge(v)
+      if (r && !reversedVibes.includes(r)) reversedVibes.push(r)
+    }
+    setForm({
+      archetype: 'utility',
+      aco: { ...dna.genome },
+      zones: (() => {
+        const lo = ENERGY_ZONES.indexOf(dna.energyZone.min)
+        const hi = ENERGY_ZONES.indexOf(dna.energyZone.max)
+        return ENERGY_ZONES.slice(
+          Math.max(0, lo),
+          Math.min(ENERGY_ZONES.length, hi + 1),
+        ) as EnergyZoneId[]
+      })(),
+      vibes: reversedVibes,
+      maxStrobeFreqHz: 0,
+    })
+  }, [dna])
 
   // ── Derive LfxClipInstance + lint on every form change ──
   const instance = useMemo(
@@ -268,8 +315,12 @@ export const DnaRail: React.FC<DnaRailProps> = ({
   // ── ACO bias bounds for current archetype (for slider shading) ──
   const bias = useMemo(() => ARCHETYPE_BIAS_MAP[form.archetype], [form.archetype])
 
-  // ── Propagate to parent whenever form changes ──
+  // ── Propagate to parent whenever form changes (user-initiated only) ──
   useEffect(() => {
+    if (isSyncingFromDna.current) {
+      isSyncingFromDna.current = false
+      return
+    }
     if (!dna) return
     const reality = instance.toCognitiveDNA()
     onDnaChange({

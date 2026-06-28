@@ -128,6 +128,7 @@ export function evaluateFixtureParams(
   applicableTracks: readonly HephTrack[],
   timeMs: number,
   clipIntensity: number = 1.0,
+  perTrackTimeMs?: Map<string, number>,
 ): FixtureEvalResult {
   const numeric = new Map<HephParamId, number>()
 
@@ -149,6 +150,7 @@ export function evaluateFixtureParams(
     const paramId = track.paramId
     const evaluator = trackEvaluators.get(track.id)
     if (!evaluator) continue
+    const t = perTrackTimeMs?.get(track.id) ?? timeMs
 
     if (track.curve.valueType === 'color') {
       // Resolve intensity modulation: intensity track value × clipIntensity
@@ -157,12 +159,12 @@ export function evaluateFixtureParams(
         let intensityVal = 1.0
         if (intensityTrack) {
           const intEv = trackEvaluators.get(intensityTrack.id)
-          if (intEv) intensityVal = intEv.getValue('intensity', timeMs)
+          if (intEv) intensityVal = intEv.getValue('intensity', perTrackTimeMs?.get(intensityTrack.id) ?? timeMs)
         }
         cachedIntensityMod = intensityVal * clipIntensity
       }
 
-      const rgb = evaluateColorTrack(track, evaluator, timeMs, cachedIntensityMod)
+      const rgb = evaluateColorTrack(track, evaluator, t, cachedIntensityMod)
       if (!rgb) continue
 
       const existing = colorMap.get(paramId)
@@ -178,7 +180,7 @@ export function evaluateFixtureParams(
     }
 
     // Numeric track
-    const raw = evaluator.getValue(paramId, timeMs)
+    const raw = evaluator.getValue(paramId, t)
     const adjusted = raw * clipIntensity
 
     if (numeric.has(paramId)) {

@@ -91,7 +91,34 @@ interface NodePosition {
   fixture: PreviewFixtureState
 }
 
-type ScopeType = 'DIMMER' | 'PAN' | 'TILT'
+type ScopeType = 'DIMMER' | 'STROBE' | 'PAN' | 'TILT' | 'ZOOM' | 'FOCUS' | 'WHITE' | 'AMBER' | 'COLOR'
+
+const SCOPE_LABELS: Record<ScopeType, string> = {
+  DIMMER: 'INTENSITY',
+  STROBE: 'STROBE',
+  PAN: 'PAN',
+  TILT: 'TILT',
+  ZOOM: 'ZOOM',
+  FOCUS: 'FOCUS',
+  WHITE: 'WHITE',
+  AMBER: 'AMBER',
+  COLOR: 'COLOR',
+}
+
+function getScopeValue(fixture: PreviewFixtureState, scope: ScopeType): number {
+  switch (scope) {
+    case 'DIMMER': return fixture.dimmer
+    case 'STROBE': return fixture.strobe
+    case 'PAN': return fixture.pan
+    case 'TILT': return fixture.tilt
+    case 'ZOOM': return fixture.zoom
+    case 'FOCUS': return fixture.focus
+    case 'WHITE': return fixture.white
+    case 'AMBER': return fixture.amber
+    case 'COLOR': return (fixture.r + fixture.g + fixture.b) / 3
+    default: return fixture.dimmer
+  }
+}
 
 function computeNodePositions(
   buf: SpectrometerBuffers,
@@ -110,10 +137,7 @@ function computeNodePositions(
     const fixture = fixtures[i]
     const np = buf.nodePositions[i]
     np.x = spacing * (i + 1)
-    let val = 0
-    if (activeScope === 'DIMMER') val = fixture.dimmer
-    else if (activeScope === 'PAN') val = fixture.pan
-    else if (activeScope === 'TILT') val = fixture.tilt
+    const val = getScopeValue(fixture, activeScope)
     const valNorm = val / 255
     np.y = yMargin + (1 - valNorm) * usableH
     np.fixture = fixture
@@ -129,8 +153,10 @@ function computeNodePositions(
 // Returns 1 (flash on) or 0 (flash off). Binary square wave — psycho strobe.
 function strobeGate(strobe: number, frameCount: number): number {
   if (strobe <= 0) return 1
-  // Map 0-255 to 1-25 Hz. At 44fps, frameCount increments ~44/s.
-  const hz = (strobe / 255) * 25
+  // Map 0-255 to 0.5-15 Hz. Capped at 15 Hz because at 44fps render,
+  // 15Hz = 2.93 frames/cycle — the practical max before aliasing.
+  // Values above ~135 (≈8Hz) already look identical to 254 (≈15Hz) without this cap.
+  const hz = (strobe / 255) * 15
   const periodFrames = 44 / hz // frames per full cycle
   const phase = (frameCount % periodFrames) / periodFrames
   // 50% duty cycle — hard on/off
@@ -575,6 +601,9 @@ interface QuantumSpectrometerProps {
   onStop: () => void
   onSeek: (ms: number) => void
   phaseConfig?: PhaseConfigPro | null
+  tracks?: readonly { id: string; paramId: string }[]
+  activeTrackId?: string | null
+  onSelectTrack?: (id: string | null) => void
 }
 
 export const QuantumSpectrometer: React.FC<QuantumSpectrometerProps> = ({
@@ -588,6 +617,9 @@ export const QuantumSpectrometer: React.FC<QuantumSpectrometerProps> = ({
   onStop,
   onSeek,
   phaseConfig,
+  tracks,
+  activeTrackId,
+  onSelectTrack,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -616,6 +648,27 @@ export const QuantumSpectrometer: React.FC<QuantumSpectrometerProps> = ({
 
   const phaseRef = useRef(phaseConfig)
   phaseRef.current = phaseConfig
+
+  // ── Sync scope with active track's paramId ──
+  const PARAM_TO_SCOPE: Record<string, ScopeType> = {
+    intensity: 'DIMMER',
+    strobe: 'STROBE',
+    strobeRate: 'STROBE',
+    pan: 'PAN',
+    tilt: 'TILT',
+    zoom: 'ZOOM',
+    focus: 'FOCUS',
+    white: 'WHITE',
+    amber: 'AMBER',
+    color: 'COLOR',
+  }
+  useEffect(() => {
+    if (!activeTrackId || !tracks) return
+    const track = tracks.find(t => t.id === activeTrackId)
+    if (!track) return
+    const scope = PARAM_TO_SCOPE[track.paramId]
+    if (scope) setActiveScope(scope)
+  }, [activeTrackId, tracks])
 
   // Ref mirrors for the hot loop (avoid stale closures without re-subscribing)
   const durationRef = useRef(durationMs)
@@ -792,24 +845,68 @@ export const QuantumSpectrometer: React.FC<QuantumSpectrometerProps> = ({
 
   return (
     <div className="quantum-spectrometer" ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-      <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 10 }}>
-        <button
-          onClick={() => setActiveScope(s => s === 'DIMMER' ? 'PAN' : s === 'PAN' ? 'TILT' : 'DIMMER')}
-          style={{
-            background: 'rgba(14, 15, 22, 0.85)',
-            backdropFilter: 'blur(8px)',
-            border: '1px solid rgba(255, 107, 43, 0.25)',
-            color: '#FF6B2B',
-            fontFamily: '"Rajdhani", "Eurostile", sans-serif',
-            fontSize: '10px',
-            padding: '4px 8px',
-            cursor: 'pointer',
-            borderRadius: '4px',
-            letterSpacing: '0.12em',
-          }}
-        >
-          SCOPE: {activeScope} ◂
-        </button>
+      <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 10, display: 'flex', gap: '6px', alignItems: 'center' }}>
+        {tracks && onSelectTrack ? (
+          <select
+            value={activeTrackId ?? ''}
+            onChange={(e) => onSelectTrack(e.target.value || null)}
+            style={{
+              background: 'rgba(14, 15, 22, 0.85)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255, 107, 43, 0.25)',
+              color: '#FF6B2B',
+              fontFamily: '"Rajdhani", "Eurostile", "Orbitron", sans-serif',
+              fontSize: '10px',
+              fontWeight: 600,
+              height: '24px',
+              padding: '0 24px 0 8px',
+              cursor: 'pointer',
+              borderRadius: '4px',
+              letterSpacing: '0.1em',
+              lineHeight: '22px',
+              outline: 'none',
+              appearance: 'none',
+              WebkitAppearance: 'none',
+              MozAppearance: 'none',
+              backgroundImage: 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'10\' height=\'6\' viewBox=\'0 0 10 6\'><path d=\'M1 1l4 4 4-4\' stroke=\'%23FF6B2B\' stroke-width=\'1.5\' fill=\'none\' opacity=\'0.6\'/></svg>")',
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 6px center',
+            }}
+          >
+            {tracks.map(t => (
+              <option key={t.id} value={t.id} style={{ background: '#0a0a0f', color: '#FF6B2B' }}>
+                {t.paramId.toUpperCase()}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <button
+            onClick={() => setActiveScope(s => s === 'DIMMER' ? 'PAN' : s === 'PAN' ? 'TILT' : 'DIMMER')}
+            style={{
+              background: 'rgba(14, 15, 22, 0.85)',
+              backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255, 107, 43, 0.25)',
+              color: '#FF6B2B',
+              fontFamily: '"Rajdhani", "Eurostile", sans-serif',
+              fontSize: '10px',
+              padding: '4px 8px',
+              cursor: 'pointer',
+              borderRadius: '4px',
+              letterSpacing: '0.12em',
+            }}
+          >
+            SCOPE: {SCOPE_LABELS[activeScope]} ◂
+          </button>
+        )}
+        <span style={{
+          fontSize: '9px',
+          color: 'rgba(255, 107, 43, 0.4)',
+          fontFamily: '"Rajdhani", sans-serif',
+          letterSpacing: '0.1em',
+        }}>
+          {SCOPE_LABELS[activeScope]}
+        </span>
       </div>
       <canvas
         ref={canvasRef}

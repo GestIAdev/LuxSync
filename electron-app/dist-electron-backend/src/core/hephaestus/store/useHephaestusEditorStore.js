@@ -8,6 +8,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { produceWithPatches, enablePatches, applyPatches } from 'immer';
+import { bakeOverrides } from '../phase/PhaseOverride';
 enablePatches();
 const HISTORY_LIMIT = 200;
 // ═══════════════════════════════════════════════════════════════════════════
@@ -216,6 +217,34 @@ export const useHephaestusEditorStore = create()(immer((set, get) => {
             const track = draft.tracks.find(t => t.id === trackId);
             if (track)
                 track.phaseConfig = undefined;
+        }),
+        // ── PHASE OVERRIDES (per-fixture) ──
+        updatePhaseOverride: (trackId, fixtureId, override) => mutate('Edit phase override', draft => {
+            const track = draft.tracks.find(t => t.id === trackId);
+            if (!track)
+                return;
+            if (!track.phaseOverrides)
+                track.phaseOverrides = {};
+            if (override === null) {
+                delete track.phaseOverrides[fixtureId];
+                if (Object.keys(track.phaseOverrides).length === 0) {
+                    track.phaseOverrides = undefined;
+                }
+            }
+            else {
+                track.phaseOverrides[fixtureId] = override;
+            }
+        }),
+        clearPhaseOverrides: (trackId) => mutate('Clear phase overrides', draft => {
+            const track = draft.tracks.find(t => t.id === trackId);
+            if (track)
+                track.phaseOverrides = undefined;
+        }),
+        bakePhaseOverrides: (trackId, fixtureIds, config, durationMs) => mutate('Bake phase overrides', draft => {
+            const track = draft.tracks.find(t => t.id === trackId);
+            if (!track)
+                return;
+            track.phaseOverrides = bakeOverrides(fixtureIds, config, durationMs);
         }),
         // ── DNA / SimMeta ──
         setCognitiveDNA: (recipe) => mutate('Set cognitive DNA', draft => {

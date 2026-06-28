@@ -578,6 +578,12 @@ async function initTitan(): Promise<void> {
       _vibeDirectories.push({ absolutePath: _builtinPath, source: 'builtin' })
     }
 
+    // ⚒️ WAVE 7033: USER CLIPS — userData/effects/ debe escanearse en boot
+    // Sin esto, los clips guardados por HephFileIO.saveClip() se escriben a
+    // userData/effects/ pero nunca entran al HephaestusClipIndex tras un reload.
+    const _userEffectsPath = path.join(app.getPath('userData'), 'effects')
+    _vibeDirectories.push({ absolutePath: _userEffectsPath, source: 'user' })
+
     const _lfxLoader = new LfxFileLoader(getDynamicEffectRegistry())
     const _arsenalReport = await _lfxLoader.loadAll(_vibeDirectories)
 

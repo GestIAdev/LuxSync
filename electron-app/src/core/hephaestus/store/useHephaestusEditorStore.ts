@@ -18,6 +18,7 @@ import type {
   ZoneTarget,
 } from '../types'
 import type { PhaseConfigPro } from '../phase/PhaseConfigPro'
+import { bakeOverrides, type PhaseOverride, type PhaseOverrideMap } from '../phase/PhaseOverride'
 import type { CognitiveDNA } from '../../arsenal/lfxTypes'
 
 enablePatches()
@@ -110,6 +111,11 @@ export interface HephaestusEditorActions {
   // ═══ PHASE (per-track) ═══
   updatePhaseInTrack: (trackId: string, recipe: (phase: PhaseConfigPro) => void) => void
   clearPhaseInTrack: (trackId: string) => void
+
+  // ═══ PHASE OVERRIDES (per-fixture) ═══
+  updatePhaseOverride: (trackId: string, fixtureId: string, override: PhaseOverride | null) => void
+  clearPhaseOverrides: (trackId: string) => void
+  bakePhaseOverrides: (trackId: string, fixtureIds: string[], config: PhaseConfigPro, durationMs: number) => void
 
   // ═══ DNA / SimMeta (clip-level) ═══
   setCognitiveDNA: (recipe: (dna: NonNullable<HephAutomationClipV3['cognitiveDNA']>) => void) => void
@@ -378,6 +384,35 @@ export const useHephaestusEditorStore = create<HephaestusEditorStore>()(
       mutate('Clear phase', draft => {
         const track = draft.tracks.find(t => t.id === trackId)
         if (track) track.phaseConfig = undefined
+      }),
+
+    // ── PHASE OVERRIDES (per-fixture) ──
+    updatePhaseOverride: (trackId, fixtureId, override) =>
+      mutate('Edit phase override', draft => {
+        const track = draft.tracks.find(t => t.id === trackId)
+        if (!track) return
+        if (!track.phaseOverrides) track.phaseOverrides = {}
+        if (override === null) {
+          delete track.phaseOverrides[fixtureId]
+          if (Object.keys(track.phaseOverrides).length === 0) {
+            track.phaseOverrides = undefined
+          }
+        } else {
+          track.phaseOverrides[fixtureId] = override
+        }
+      }),
+
+    clearPhaseOverrides: (trackId) =>
+      mutate('Clear phase overrides', draft => {
+        const track = draft.tracks.find(t => t.id === trackId)
+        if (track) track.phaseOverrides = undefined
+      }),
+
+    bakePhaseOverrides: (trackId, fixtureIds, config, durationMs) =>
+      mutate('Bake phase overrides', draft => {
+        const track = draft.tracks.find(t => t.id === trackId)
+        if (!track) return
+        track.phaseOverrides = bakeOverrides(fixtureIds, config, durationMs)
       }),
 
     // ── DNA / SimMeta ──

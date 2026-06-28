@@ -122,6 +122,7 @@ export function serializeHephClip(clip) {
         cell: track.cell,
         selector: track.selector ? JSON.parse(JSON.stringify(track.selector)) : undefined,
         phaseConfig: track.phaseConfig ? { ...track.phaseConfig } : undefined,
+        phaseOverrides: track.phaseOverrides ? JSON.parse(JSON.stringify(track.phaseOverrides)) : undefined,
     }));
     return {
         id: clip.id,
@@ -139,6 +140,7 @@ export function serializeHephClip(clip) {
         staticParams: clip.staticParams ? JSON.parse(JSON.stringify(clip.staticParams)) : {},
         cognitiveDNA: clip.cognitiveDNA ? JSON.parse(JSON.stringify(clip.cognitiveDNA)) : undefined,
         simulationMeta: clip.simulationMeta ? JSON.parse(JSON.stringify(clip.simulationMeta)) : undefined,
+        safetyDeclaration: clip.safetyDeclaration ? JSON.parse(JSON.stringify(clip.safetyDeclaration)) : undefined,
         schemaVersion: '3.0',
     };
 }

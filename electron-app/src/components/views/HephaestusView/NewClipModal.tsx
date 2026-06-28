@@ -30,8 +30,10 @@
 
 import React, { useState, useCallback, useEffect, useRef, memo } from 'react'
 import { createPortal } from 'react-dom'
-import type { HephAutomationClip, HephCurve, HephParamId, HephTrack, ZoneTarget } from '../../../core/hephaestus/types'
+import type { HephAutomationClip, HephCurve, HephParamId, HephTrack, ZoneTarget, BlendMode } from '../../../core/hephaestus/types'
 import type { EffectCategory, EffectZone } from '../../../core/effects/types'
+import type { CognitiveDNA, SimulationMeta } from '../../../core/arsenal/lfxTypes'
+import { DEFAULT_PHASE_CONFIG_PRO } from '../../../core/hephaestus/phase/PhaseConfigPro'
 import { SmartZoneSelector } from './SmartZoneSelector'
 import { 
   IntensityIcon, 
@@ -77,7 +79,7 @@ function createDefaultCurve(paramId: HephParamId, durationMs: number): HephCurve
   return {
     paramId,
     valueType: isColor ? 'color' : 'number',
-    range: [0, 1] as [number, number],
+    range: isColor ? [0, 360] as [number, number] : [0, 1] as [number, number],
     defaultValue: isColor ? { h: 0, s: 100, l: 50 } : 0,
     keyframes: [
       { 
@@ -93,6 +95,49 @@ function createDefaultCurve(paramId: HephParamId, durationMs: number): HephCurve
     ],
     mode: 'absolute',
   }
+}
+
+const DEFAULT_BLEND_MODE_BY_PARAM: Record<HephParamId, BlendMode> = {
+  intensity: 'max',
+  color: 'replace',
+  white: 'max',
+  amber: 'replace',
+  speed: 'replace',
+  pan: 'replace',
+  tilt: 'replace',
+  zoom: 'replace',
+  focus: 'replace',
+  iris: 'replace',
+  gobo1: 'replace',
+  gobo2: 'replace',
+  prism: 'replace',
+  strobe: 'max',
+  strobeRate: 'max',
+  globalComp: 'replace',
+  width: 'replace',
+  direction: 'replace',
+}
+
+const DEFAULT_COGNITIVE_DNA: CognitiveDNA = {
+  genome: { aggression: 0.5, chaos: 0.5, organicity: 0.5 },
+  textureAffinity: 'universal',
+  compatibleVibes: [],
+  validSections: [],
+  energyZone: { min: 'ambient', max: 'peak' },
+  aggressionRange: { min: 0, max: 1 },
+  spatialBehavior: 'absolute',
+}
+
+const DEFAULT_SIMULATION_META: SimulationMeta = {
+  beautyWeights: { base: 0.5, energyMultiplier: 1.0, vibeBonus: 0.0 },
+  gpuCost: 0.3,
+  fatigueImpact: 0.06,
+  minDurationMs: 1000,
+  cooldownMs: 7000,
+  isStrobe: false,
+  isDivineCandidate: false,
+  isHeavyCandidate: false,
+  zScoreGuards: { requireRising: false, minimumZ: null, minimumEnergy: null },
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -152,7 +197,7 @@ export const NewClipModal: React.FC<NewClipModalProps> = memo(({
   const [durationMs, setDurationMs] = useState(4000)
   const [category, setCategory] = useState<EffectCategory>('physical')
   const [mixBus, setMixBus] = useState<HephMixBus>('htp')
-  const [zones, setZones] = useState<EffectZone[]>([])
+  const [zones, setZones] = useState<ZoneTarget[]>([])
   const nameRef = useRef<HTMLInputElement>(null)
 
   // Reset form every time modal opens
@@ -193,11 +238,15 @@ export const NewClipModal: React.FC<NewClipModalProps> = memo(({
     const id = `heph_${timestamp}_${randomSuffix}`
 
     const defaultParams = DEFAULT_PARAMS_BY_CATEGORY[category]
+    const resolvedZones: ZoneTarget[] = zones.length > 0 ? zones : ['all']
     const tracks: HephTrack[] = defaultParams.map(paramId => ({
       id: `track-${paramId}-${id}`,
       paramId,
-      zones: (zones.length > 0 ? zones : ['all']) as readonly ZoneTarget[],
+      zones: resolvedZones as readonly ZoneTarget[],
       curve: createDefaultCurve(paramId, durationMs),
+      dimmerScale: 1,
+      blendMode: DEFAULT_BLEND_MODE_BY_PARAM[paramId] ?? 'replace',
+      phaseConfig: { ...DEFAULT_PHASE_CONFIG_PRO },
     }))
 
     const newClip: HephAutomationClip = {
@@ -207,13 +256,15 @@ export const NewClipModal: React.FC<NewClipModalProps> = memo(({
       category,
       tags: [],
       vibeCompat: [],
-      spatialZones: (zones.length > 0 ? zones : ['all']) as readonly ZoneTarget[],
+      spatialZones: resolvedZones as readonly ZoneTarget[],
       mixBus,
       priority: 50,
       durationMs,
-      effectType: 'heph_custom',
+      effectType: 'custom',
       tracks,
       staticParams: {},
+      cognitiveDNA: { ...DEFAULT_COGNITIVE_DNA },
+      simulationMeta: { ...DEFAULT_SIMULATION_META },
       schemaVersion: '3.0',
     }
 
@@ -354,9 +405,9 @@ export const NewClipModal: React.FC<NewClipModalProps> = memo(({
               </div>
             </div>
 
-            {/* Routing — MixBus with neon colors */}
+            {/* Mix Bus — V3 execution bus with neon colors */}
             <div className="heph-bunker__field">
-              <label className="heph-bunker__label">ROUTING</label>
+              <label className="heph-bunker__label">MIX BUS</label>
               <div className="heph-bunker__route-grid">
                 {MIXBUS_OPTIONS.map((bus) => (
                   <button
@@ -386,8 +437,8 @@ export const NewClipModal: React.FC<NewClipModalProps> = memo(({
           <div className="heph-bunker__right">
             <label className="heph-bunker__label">TARGET ZONES</label>
             <SmartZoneSelector
-              selectedZones={zones}
-              onZonesChange={setZones}
+              selectedZones={zones as EffectZone[]}
+              onZonesChange={(z) => setZones(z as ZoneTarget[])}
             />
           </div>
         </div>

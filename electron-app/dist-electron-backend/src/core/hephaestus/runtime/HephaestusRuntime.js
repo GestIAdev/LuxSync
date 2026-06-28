@@ -33,23 +33,12 @@
  * @version WAVE 2030.18
  */
 import * as path from 'path';
-import { resolvePro } from '../phase/PhaseConfigPro';
+import { resolveWithOverrides } from '../phase/PhaseOverride';
 import { getHephaestusClipIndex } from '../HephaestusClipIndex';
 import { CurveEvaluator } from '../CurveEvaluator';
+import { defaultBlendMode as _defaultBlendModeFor } from '../HephSharedMath';
 import { resolveZoneTags } from '../../zones/ZoneMapper';
 import { getTitanOrchestrator } from '../../orchestrator/TitanOrchestrator';
-// ═══════════════════════════════════════════════════════════════════════════
-// 🧬 WAVE 4856 — V3 SCHEMA HELPERS (module-private)
-// ═══════════════════════════════════════════════════════════════════════════
-/**
- * Default `BlendMode` por parámetro — cuando el track no declara
- * estrategia de fusión. Se alinea con la semántica histórica:
- *   - `intensity`         → 'max' (HTP — highest takes precedence).
- *   - `color` / `pan` / `tilt` y demás → 'replace' (LTP — last write wins).
- */
-function _defaultBlendModeFor(paramId) {
-    return paramId === 'intensity' ? 'max' : 'replace';
-}
 // ═══════════════════════════════════════════════════════════════════════════
 // 🔥 WAVE 2495: Pure utilities re-exported from HephUtils.ts
 // Extracted so renderer code can import them without dragging in the
@@ -78,6 +67,13 @@ export class HephaestusRuntime {
         this.lastTickMs = 0;
         /** Debug mode */
         this.debug = true;
+        /**
+         * 🧬 WAVE 7035: Blend map for intra-clip blendMode fusion.
+         * Key: `${fixtureId}:${paramName}` → Value: index into outputBuffer.
+         * Cleared per-clip in tickActive(). Enables max/replace/add/multiply
+         * blending when multiple tracks of the same paramId target the same fixture.
+         */
+        this._blendMap = new Map();
         // ─────────────────────────────────────────────────────────────────────────
         // ⚒️ WAVE 2400: ZERO-ALLOCATION OUTPUT BUFFER
         // ─────────────────────────────────────────────────────────────────────────
@@ -321,6 +317,7 @@ export class HephaestusRuntime {
         const intensity = active.intensity;
         const durationMs = active.durationMs;
         const isLoop = active.loop;
+        this._blendMap.clear();
         for (let ti = 0; ti < active.tracks.length; ti++) {
             const track = active.tracks[ti];
             const paramName = track.paramId;
@@ -366,15 +363,21 @@ export class HephaestusRuntime {
      * para evitar el lookup `curve.valueType` en hot-path.
      */
     _emitTrackSample(track, fixtureId, timeMs, evaluator, paramName, intensity, isCustomThisClip, clipId, trackZones) {
+        const blendKey = fixtureId + ':' + paramName;
+        const existingIdx = this._blendMap.get(blendKey);
         if (track.valueType === 'color') {
             const hsl = evaluator.getColorValue(paramName, timeMs);
-            // Intensity modula lightness — preserva hue/sat (HSL standard heph: 0-100)
             const modulatedL = (hsl.l / 100) * intensity;
             const rgb = hslToRgb(hsl.h, hsl.s / 100, modulatedL);
             this._normRgbBuf.r = rgb.r / 255;
             this._normRgbBuf.g = rgb.g / 255;
             this._normRgbBuf.b = rgb.b / 255;
+            if (existingIdx !== undefined) {
+                this._blendOutput(this.outputBuffer[existingIdx], track.blendMode, 0, rgb, undefined, 0, this._normRgbBuf);
+                return;
+            }
             this.writeOutput(fixtureId, 'all', paramName, 0, rgb, undefined, 0, this._normRgbBuf, isCustomThisClip, clipId, trackZones);
+            this._blendMap.set(blendKey, this.outputCursor - 1);
         }
         else {
             const rawValue = evaluator.getValue(paramName, timeMs);
@@ -383,7 +386,83 @@ export class HephaestusRuntime {
             const fine = (paramName === 'pan' || paramName === 'tilt')
                 ? scaleToDMX16(withIntensity).fine
                 : undefined;
+            if (existingIdx !== undefined) {
+                this._blendOutput(this.outputBuffer[existingIdx], track.blendMode, scaledValue, undefined, fine, withIntensity, undefined);
+                return;
+            }
             this.writeOutput(fixtureId, 'all', paramName, scaledValue, undefined, fine, withIntensity, undefined, isCustomThisClip, clipId, trackZones);
+            this._blendMap.set(blendKey, this.outputCursor - 1);
+        }
+    }
+    /**
+     * 🧬 WAVE 7035: Apply blendMode fusion in-place on an existing output entry.
+     * Called when a second track targets the same (fixtureId, paramId) as a
+     * previous track within the same clip.
+     */
+    _blendOutput(existing, mode, newValue, newRgb, newFine, newNormalized, newNormalizedRgb) {
+        switch (mode) {
+            case 'max':
+                existing.value = Math.max(existing.value, newValue);
+                if (existing.rgb && newRgb) {
+                    existing.rgb.r = Math.max(existing.rgb.r, newRgb.r);
+                    existing.rgb.g = Math.max(existing.rgb.g, newRgb.g);
+                    existing.rgb.b = Math.max(existing.rgb.b, newRgb.b);
+                }
+                if (existing.normalizedRgb && newNormalizedRgb) {
+                    existing.normalizedRgb.r = Math.max(existing.normalizedRgb.r, newNormalizedRgb.r);
+                    existing.normalizedRgb.g = Math.max(existing.normalizedRgb.g, newNormalizedRgb.g);
+                    existing.normalizedRgb.b = Math.max(existing.normalizedRgb.b, newNormalizedRgb.b);
+                }
+                if (newNormalized !== undefined)
+                    existing.normalizedValue = Math.max(existing.normalizedValue, newNormalized);
+                break;
+            case 'replace':
+                existing.value = newValue;
+                if (newRgb && existing.rgb) {
+                    existing.rgb.r = newRgb.r;
+                    existing.rgb.g = newRgb.g;
+                    existing.rgb.b = newRgb.b;
+                }
+                if (newFine !== undefined)
+                    existing.fine = newFine;
+                if (newNormalized !== undefined)
+                    existing.normalizedValue = newNormalized;
+                if (newNormalizedRgb && existing.normalizedRgb) {
+                    existing.normalizedRgb.r = newNormalizedRgb.r;
+                    existing.normalizedRgb.g = newNormalizedRgb.g;
+                    existing.normalizedRgb.b = newNormalizedRgb.b;
+                }
+                break;
+            case 'add':
+                existing.value = Math.min(255, existing.value + newValue);
+                if (existing.rgb && newRgb) {
+                    existing.rgb.r = Math.min(255, existing.rgb.r + newRgb.r);
+                    existing.rgb.g = Math.min(255, existing.rgb.g + newRgb.g);
+                    existing.rgb.b = Math.min(255, existing.rgb.b + newRgb.b);
+                }
+                if (existing.normalizedRgb && newNormalizedRgb) {
+                    existing.normalizedRgb.r = Math.min(1, existing.normalizedRgb.r + newNormalizedRgb.r);
+                    existing.normalizedRgb.g = Math.min(1, existing.normalizedRgb.g + newNormalizedRgb.g);
+                    existing.normalizedRgb.b = Math.min(1, existing.normalizedRgb.b + newNormalizedRgb.b);
+                }
+                if (newNormalized !== undefined)
+                    existing.normalizedValue = Math.min(1, existing.normalizedValue + newNormalized);
+                break;
+            case 'multiply':
+                existing.value = (existing.value * newValue) / 255;
+                if (existing.rgb && newRgb) {
+                    existing.rgb.r = (existing.rgb.r * newRgb.r) / 255;
+                    existing.rgb.g = (existing.rgb.g * newRgb.g) / 255;
+                    existing.rgb.b = (existing.rgb.b * newRgb.b) / 255;
+                }
+                if (existing.normalizedRgb && newNormalizedRgb) {
+                    existing.normalizedRgb.r = existing.normalizedRgb.r * newNormalizedRgb.r;
+                    existing.normalizedRgb.g = existing.normalizedRgb.g * newNormalizedRgb.g;
+                    existing.normalizedRgb.b = existing.normalizedRgb.b * newNormalizedRgb.b;
+                }
+                if (newNormalized !== undefined)
+                    existing.normalizedValue = existing.normalizedValue * newNormalized;
+                break;
         }
     }
     /**
@@ -531,11 +610,6 @@ export class HephaestusRuntime {
         for (let i = 0; i < clip.tracks.length; i++) {
             const t = clip.tracks[i];
             const fixtureIds = resolveZonesToFixtures(t.zones);
-            // 🧩 DIAGNÓSTICO COMPOUND FIXTURE (temporal)
-            const hasTungsten = fixtureIds.some(id => id === 'fixture-1781916704143');
-            if (hasTungsten) {
-                console.log(`[HephaestusRuntime._buildResolvedTracks] 🧩 track=${t.id} param=${t.paramId} zones=[${(t.zones ?? []).join(',')}] | Tungsten EN fixtureIds (${fixtureIds.length} total)`);
-            }
             // ⚒️ WAVE 4859: `phaseConfig` es el shorthand canónico directo en el
             // track (formato nativo .lfx). `selector.phase` es la variante via
             // FixtureSelector (legado). Se da prioridad a `phaseConfig` y se usa
@@ -544,7 +618,7 @@ export class HephaestusRuntime {
             if (trackPhase != null && topLevelPhaseConfig == null) {
                 topLevelPhaseConfig = trackPhase;
             }
-            tracks.push(this._buildResolvedTrack(t.id, t.paramId, t.curve, t.blendMode, fixtureIds, trackPhase, durationMs, t.zones));
+            tracks.push(this._buildResolvedTrack(t.id, t.paramId, t.curve, t.blendMode, fixtureIds, trackPhase, durationMs, t.zones, t.phaseOverrides));
         }
         return { tracks, phaseConfig: topLevelPhaseConfig };
     }
@@ -553,12 +627,12 @@ export class HephaestusRuntime {
      * Crea un `CurveEvaluator` con UNA sola curva (Map de tamaño 1) y, si hay
      * `phaseConfig + fixtureIds`, calcula la distribución de fase per-fixture.
      */
-    _buildResolvedTrack(id, paramId, curve, blendMode, fixtureIds, phaseConfig, durationMs, zones) {
+    _buildResolvedTrack(id, paramId, curve, blendMode, fixtureIds, phaseConfig, durationMs, zones, phaseOverrides) {
         const singleCurveMap = new Map([[paramId, curve]]);
         const evaluator = new CurveEvaluator(singleCurveMap, durationMs);
         let fixturePhases = null;
         if (phaseConfig && phaseConfig.spreadDeg > 0 && fixtureIds.length > 0) {
-            fixturePhases = resolvePro(fixtureIds, phaseConfig, durationMs);
+            fixturePhases = resolveWithOverrides(fixtureIds, phaseConfig, phaseOverrides, durationMs);
         }
         return {
             id,

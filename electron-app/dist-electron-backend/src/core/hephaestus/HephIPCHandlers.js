@@ -17,6 +17,9 @@
 import { ipcMain } from 'electron';
 import { hephFileIO } from './HephFileIO';
 import { serializeHephClip } from './types';
+import { LfxFileLoader } from '../arsenal/LfxFileLoader';
+import { getDynamicEffectRegistry } from '../arsenal/DynamicEffectRegistry';
+import { getHephaestusClipIndex } from './HephaestusClipIndex';
 // ═══════════════════════════════════════════════════════════════════════════
 // SETUP FUNCTION
 // ═══════════════════════════════════════════════════════════════════════════
@@ -34,10 +37,20 @@ export function setupHephIPCHandlers() {
      * @param clipData - Serialized clip data (Record, not Map)
      * @returns { success, filePath, error }
      */
+    // ⚒️ WAVE 7034: Shared LfxFileLoader instance for hot-registration
+    const _lfxLoader = new LfxFileLoader(getDynamicEffectRegistry());
     ipcMain.handle('heph:save', async (_event, clipData) => {
         console.log('[HephIPC] Save clip:', clipData.name);
         try {
             const filePath = await hephFileIO.saveClip(clipData);
+            // ⚒️ WAVE 7034: Hot-register in DynamicEffectRegistry so Selene IA
+            // can see the clip immediately without requiring a restart.
+            // If the clip has no cognitiveDNA, registerEffectV3 returns null
+            // silently (by design) — Hephaestus-only clips stay invisible to Selene.
+            const registered = await _lfxLoader.loadFile(filePath, 'user');
+            if (registered) {
+                console.log(`[HephIPC] ⚡ Hot-registered "${clipData.name}" in arsenal for Selene`);
+            }
             return {
                 success: true,
                 filePath,
@@ -118,7 +131,22 @@ export function setupHephIPCHandlers() {
     ipcMain.handle('heph:delete', async (_event, idOrPath) => {
         console.log('[HephIPC] Delete clip:', idOrPath);
         try {
+            // Resolve the clip ID before deleting (needed for arsenal unregister)
+            const index = getHephaestusClipIndex();
+            let clipId;
+            if (idOrPath.includes('/') || idOrPath.includes('\\')) {
+                clipId = index.getByPath(idOrPath)?.id;
+            }
+            else {
+                clipId = idOrPath;
+            }
             const deleted = await hephFileIO.deleteClip(idOrPath);
+            // ⚒️ WAVE 7034: Unregister from DynamicEffectRegistry so Selene
+            // stops seeing the deleted clip immediately.
+            if (deleted && clipId) {
+                getDynamicEffectRegistry().unregisterEffect(clipId);
+                console.log(`[HephIPC] 🗑️ Unregistered "${clipId}" from arsenal`);
+            }
             return {
                 success: true,
                 deleted,

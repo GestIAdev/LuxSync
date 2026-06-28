@@ -18,9 +18,8 @@
  * @version WAVE 7024
  */
 
-import React, { useRef, useEffect, useCallback, useState } from 'react'
-import type { PreviewFixtureState, HephPreviewState, HephPreviewData } from './useHephPreview'
-import type { PhaseConfigPro } from '../../../core/hephaestus/phase/PhaseConfigPro'
+import React, { useRef, useEffect, useCallback } from 'react'
+import type { PreviewFixtureState, HephPreviewState } from './useHephPreview'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS — Phosphor Noir Palette
@@ -52,24 +51,6 @@ const NODE_HIT_RADIUS = 12
 const Y_MARGIN_RATIO = 0.1
 const TRANSPORT_HEIGHT = 36
 
-// ── P2#2: Zero-alloc pre-allocated buffers ───────────────────────────────
-// Reused across frames to avoid GC pressure at 44Hz.
-const MAX_FIXTURES = 512
-const ARIADNE_SEGMENTS = 16
-const MAX_SAMPLES = (MAX_FIXTURES - 1) * ARIADNE_SEGMENTS + 1
-
-const _nodePositions: NodePosition[] = Array.from({ length: MAX_FIXTURES }, () => ({
-  x: 0, y: 0, fixture: null as unknown as PreviewFixtureState,
-}))
-let _nodePositionsCount = 0
-
-const _sampleX = new Float64Array(MAX_SAMPLES)
-const _sampleY = new Float64Array(MAX_SAMPLES)
-let _sampleCount = 0
-
-// ── P2#2: shadowBlur only for small rigs (≤ SHADOW_BLUR_THRESHOLD) ──────
-const SHADOW_BLUR_THRESHOLD = 60
-
 // ═══════════════════════════════════════════════════════════════════════════
 // SPATIAL MATH — Pure functions for fixture positioning
 // ═══════════════════════════════════════════════════════════════════════════
@@ -80,63 +61,32 @@ interface NodePosition {
   fixture: PreviewFixtureState
 }
 
-type ScopeType = 'DIMMER' | 'PAN' | 'TILT'
-
 function computeNodePositions(
   fixtures: readonly PreviewFixtureState[],
   w: number,
   h: number,
-  activeScope: ScopeType,
-): readonly NodePosition[] {
-  const count = Math.min(fixtures.length, MAX_FIXTURES)
-  if (count === 0) { _nodePositionsCount = 0; return _nodePositions }
-  const spacing = w / (count + 1)
+): NodePosition[] {
+  if (fixtures.length === 0) return []
+  const spacing = w / (fixtures.length + 1)
   const yMargin = h * Y_MARGIN_RATIO
   const usableH = h - yMargin * 2
 
-  for (let i = 0; i < count; i++) {
-    const fixture = fixtures[i]
-    const np = _nodePositions[i]
-    np.x = spacing * (i + 1)
-    let val = 0
-    if (activeScope === 'DIMMER') val = fixture.dimmer
-    else if (activeScope === 'PAN') val = fixture.pan
-    else if (activeScope === 'TILT') val = fixture.tilt
-    const valNorm = val / 255
-    np.y = yMargin + (1 - valNorm) * usableH
-    np.fixture = fixture
-  }
-  _nodePositionsCount = count
-  return _nodePositions as readonly NodePosition[]
+  return fixtures.map((fixture, i) => {
+    const x = spacing * (i + 1)
+    const dimmerNorm = fixture.dimmer / 255
+    const y = yMargin + (1 - dimmerNorm) * usableH
+    return { x, y, fixture }
+  })
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // STROBE GATE — Deterministic, frame-counter driven
 // ═══════════════════════════════════════════════════════════════════════════
 
-// Returns 1 (flash on) or 0 (flash off). Binary square wave — psycho strobe.
 function strobeGate(strobe: number, frameCount: number): number {
   if (strobe <= 0) return 1
-  // Map 0-255 to 1-25 Hz. At 44fps, frameCount increments ~44/s.
-  const hz = (strobe / 255) * 25
-  const periodFrames = 44 / hz // frames per full cycle
-  const phase = (frameCount % periodFrames) / periodFrames
-  // 50% duty cycle — hard on/off
-  return phase < 0.5 ? 1 : 0
-}
-
-// Global strobe flash: returns intensity 0-1 if any fixture is strobing this frame
-function computeGlobalStrobeFlash(positions: readonly NodePosition[], frameCount: number): number {
-  let maxFlash = 0
-  for (let i = 0; i < _nodePositionsCount; i++) {
-    const pos = positions[i]
-    if (pos.fixture.strobe <= 0) continue
-    const gate = strobeGate(pos.fixture.strobe, frameCount)
-    if (gate > 0) {
-      maxFlash = Math.max(maxFlash, pos.fixture.dimmer / 255)
-    }
-  }
-  return maxFlash
+  const freq = (strobe / 255) * 0.3
+  return Math.sin(frameCount * freq) > 0 ? 1 : 0.1
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -166,11 +116,9 @@ function drawAriadneThread(
   positions: readonly NodePosition[],
   w: number,
   h: number,
-  frameCount: number,
-  strobeFlash: number,
 ) {
-  if (_nodePositionsCount < 2) {
-    if (_nodePositionsCount === 1) {
+  if (positions.length < 2) {
+    if (positions.length === 1) {
       const p = positions[0]
       ctx.fillStyle = WAVE_COLOR
       ctx.beginPath()
@@ -180,73 +128,64 @@ function drawAriadneThread(
     return
   }
 
-  // ── P2#2: Write into pre-allocated Float64Arrays (zero-alloc) ────────
-  const SEGMENTS = ARIADNE_SEGMENTS
-  const yFloor = h * (1 - Y_MARGIN_RATIO)
-  const yCeil = h * Y_MARGIN_RATIO
-  const clampY = (rawY: number) => Math.max(yCeil, Math.min(rawY, yFloor))
+  // Build spline sample points
+  const pts = positions.map(p => ({ x: p.x, y: p.y }))
+  const samples: Array<{ x: number; y: number }> = []
+  const SEGMENTS = 16
 
-  let si = 0
-  for (let i = 0; i < _nodePositionsCount - 1; i++) {
-    const p0 = positions[Math.max(0, i - 1)]
-    const p1 = positions[i]
-    const p2 = positions[i + 1]
-    const p3 = positions[Math.min(_nodePositionsCount - 1, i + 2)]
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[Math.max(0, i - 1)]
+    const p1 = pts[i]
+    const p2 = pts[i + 1]
+    const p3 = pts[Math.min(pts.length - 1, i + 2)]
 
     for (let j = 0; j < SEGMENTS; j++) {
       const t = j / SEGMENTS
-      _sampleX[si] = catmullRom(p0.x, p1.x, p2.x, p3.x, t)
-      _sampleY[si] = clampY(catmullRom(p0.y, p1.y, p2.y, p3.y, t))
-      si++
+      samples.push({
+        x: catmullRom(p0.x, p1.x, p2.x, p3.x, t),
+        y: catmullRom(p0.y, p1.y, p2.y, p3.y, t),
+      })
     }
   }
-  _sampleX[si] = positions[_nodePositionsCount - 1].x
-  _sampleY[si] = clampY(positions[_nodePositionsCount - 1].y)
-  si++
-  _sampleCount = si
-
-  // ── Strobe-driven wave flash: boost brightness when strobing ──
-  const flashBoost = 1 + strobeFlash * 1.5
+  samples.push({ x: pts[pts.length - 1].x, y: pts[pts.length - 1].y })
 
   // ── Fill membrane (energy under the wave) ──
-  const yBaseline = yFloor
+  const yBaseline = h * (1 - Y_MARGIN_RATIO)
   ctx.beginPath()
-  ctx.moveTo(_sampleX[0], yBaseline)
-  for (let s = 0; s < _sampleCount; s++) {
-    ctx.lineTo(_sampleX[s], _sampleY[s])
+  ctx.moveTo(samples[0].x, yBaseline)
+  for (const s of samples) {
+    ctx.lineTo(s.x, s.y)
   }
-  ctx.lineTo(_sampleX[_sampleCount - 1], yBaseline)
+  ctx.lineTo(samples[samples.length - 1].x, yBaseline)
   ctx.closePath()
   const fillGrad = ctx.createLinearGradient(0, 0, 0, yBaseline)
   fillGrad.addColorStop(0, WAVE_FILL_TOP)
   fillGrad.addColorStop(1, WAVE_FILL_BOTTOM)
   ctx.fillStyle = fillGrad
-  ctx.globalAlpha = Math.min(1, flashBoost)
   ctx.fill()
-  ctx.globalAlpha = 1
 
   // ── Glow underlay (wide soft) ──
   ctx.save()
   ctx.globalCompositeOperation = 'lighter'
   ctx.strokeStyle = WAVE_GLOW
-  ctx.lineWidth = 6 + strobeFlash * 4
+  ctx.lineWidth = 6
   ctx.beginPath()
-  ctx.moveTo(_sampleX[0], _sampleY[0])
-  for (let s = 0; s < _sampleCount; s++) {
-    ctx.lineTo(_sampleX[s], _sampleY[s])
+  ctx.moveTo(samples[0].x, samples[0].y)
+  for (const s of samples) {
+    ctx.lineTo(s.x, s.y)
   }
   ctx.stroke()
   ctx.restore()
 
   // ── Crisp core line ──
   ctx.strokeStyle = WAVE_COLOR
-  ctx.lineWidth = 2 + strobeFlash * 2
+  ctx.lineWidth = 2
   ctx.lineJoin = 'round'
   ctx.lineCap = 'round'
   ctx.beginPath()
-  ctx.moveTo(_sampleX[0], _sampleY[0])
-  for (let s = 0; s < _sampleCount; s++) {
-    ctx.lineTo(_sampleX[s], _sampleY[s])
+  ctx.moveTo(samples[0].x, samples[0].y)
+  for (const s of samples) {
+    ctx.lineTo(s.x, s.y)
   }
   ctx.stroke()
 }
@@ -295,16 +234,11 @@ function drawFixtureNodes(
   positions: readonly NodePosition[],
   frameCount: number,
 ) {
-  // ── P2#2: Adaptive shadowBlur — only for small rigs to avoid GPU bottleneck ──
-  const useShadow = _nodePositionsCount <= SHADOW_BLUR_THRESHOLD
-
-  for (let i = 0; i < _nodePositionsCount; i++) {
-    const pos = positions[i]
+  for (const pos of positions) {
     const f = pos.fixture
     const gate = strobeGate(f.strobe, frameCount)
     const dimmerAlpha = f.dimmer / 255
-    // Binary strobe: full brightness when on, near-zero when off
-    const alpha = f.strobe > 0 ? dimmerAlpha * gate : dimmerAlpha
+    const alpha = dimmerAlpha * gate
 
     let r = isNaN(f.r) ? 0 : f.r
     let g = isNaN(f.g) ? 0 : f.g
@@ -336,26 +270,13 @@ function drawFixtureNodes(
     // ── Glow halo ──
     ctx.save()
     ctx.globalCompositeOperation = 'lighter'
-    if (useShadow) {
-      ctx.shadowBlur = 15 + (f.strobe > 0 && gate > 0 ? 25 : 0)
-      ctx.shadowColor = colorStr
-    }
+    ctx.shadowBlur = 15
+    ctx.shadowColor = colorStr
     ctx.fillStyle = `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${alpha * 0.5})`
     ctx.beginPath()
     ctx.arc(pos.x, pos.y, NODE_RADIUS * 2, 0, Math.PI * 2)
     ctx.fill()
     ctx.restore()
-
-    // ── Strobe flash burst: brightness pulse on strobe-on frames (preserves color) ──
-    if (f.strobe > 0 && gate > 0) {
-      ctx.save()
-      ctx.globalCompositeOperation = 'lighter'
-      ctx.fillStyle = `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${dimmerAlpha * 0.5})`
-      ctx.beginPath()
-      ctx.arc(pos.x, pos.y, NODE_RADIUS * 3, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.restore()
-    }
 
     // ── Core node ──
     ctx.fillStyle = `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${alpha})`
@@ -382,13 +303,7 @@ function drawTargetLock(
   frameCount: number,
 ) {
   if (!selectedFixtureId) return
-  let pos: NodePosition | null = null
-  for (let i = 0; i < _nodePositionsCount; i++) {
-    if (positions[i].fixture.fixtureId === selectedFixtureId) {
-      pos = positions[i]
-      break
-    }
-  }
+  const pos = positions.find(p => p.fixture.fixtureId === selectedFixtureId)
   if (!pos) return
 
   const pulse = 1 + Math.sin(frameCount * 0.15) * 0.15
@@ -420,30 +335,30 @@ function drawHUD(
   ctx: CanvasRenderingContext2D,
   positions: readonly NodePosition[],
   selectedFixtureId: string | null,
-  preview: HephPreviewData,
+  preview: HephPreviewState,
   w: number,
   h: number,
   durationMs: number,
 ) {
   const pad = 10
 
+  // ── Top-left: Scope label ──
+  ctx.font = HEADER_FONT
+  ctx.textBaseline = 'top'
+  ctx.textAlign = 'left'
+  ctx.fillStyle = 'rgba(255, 107, 43, 0.5)'
+  ctx.fillText('SCOPE: DIMMER', pad, pad)
+
   // ── Top-right: Phase signature ──
   ctx.textAlign = 'right'
   ctx.fillStyle = READOUT_LABEL
-  const fc = _nodePositionsCount
+  const fc = preview.fixtures.length
   ctx.fillText(`NODES: ${fc}`, w - pad, pad)
 
   // ── Bottom-left: Ballistic readout for selected fixture ──
-  let selPos: NodePosition | undefined
-  if (selectedFixtureId) {
-    for (let i = 0; i < _nodePositionsCount; i++) {
-      if (positions[i].fixture.fixtureId === selectedFixtureId) {
-        selPos = positions[i]
-        break
-      }
-    }
-  }
-  if (!selPos && _nodePositionsCount > 0) selPos = positions[0]
+  const selPos = selectedFixtureId
+    ? positions.find(p => p.fixture.fixtureId === selectedFixtureId)
+    : positions[0]
 
   if (selPos) {
     const f = selPos.fixture
@@ -506,51 +421,11 @@ function drawHUD(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// LAYER 1 — SPECTRUM FIELD (WAVE 7029: Harmonic Spectrum)
-// ═══════════════════════════════════════════════════════════════════════════
-
-function drawSpectrumField(ctx: CanvasRenderingContext2D, w: number, h: number, phaseConfig: PhaseConfigPro | null, frameCount: number) {
-  if (!phaseConfig) return;
-  const BARS = 64;
-  const barWidth = w / BARS;
-  const { wings = 1, shuffle = 0, blocks = 1, symmetry = 'linear' } = phaseConfig;
-
-  ctx.fillStyle = 'rgba(124, 77, 255, 0.12)';
-
-  for (let i = 0; i < BARS; i++) {
-    // Normalizar U de 0 a 1 (espacio de PhaseConfigPro)
-    const u = i / (BARS - 1);
-
-    // Aplicar simetría — misma matemática que applySymmetry() en PhaseConfigPro
-    let s = u;
-    if (symmetry === 'mirror') s = 1 - Math.abs(2 * u - 1);       // pico al centro
-    else if (symmetry === 'center-out') s = Math.abs(2 * u - 1);   // valle al centro
-
-    // Cuantización por bloques
-    if (blocks > 1) {
-      s = Math.floor(s * (16 / blocks)) / (16 / blocks);
-    }
-
-    // Mapear s (0..1) a nx (-1..1) para el cálculo armónico
-    const nx = s * 2 - 1;
-
-    let energy = Math.pow(Math.cos(nx * Math.PI * wings), 4);
-
-    const noise = (Math.sin(i * 12.9898 + frameCount * 0.1) * 43758.5453) % 1;
-    energy = energy * (1 - shuffle) + Math.abs(noise) * shuffle;
-
-    const barHeight = energy * (h * 0.4);
-    ctx.fillRect(i * barWidth, h - barHeight, barWidth - 1, barHeight);
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
 // COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface QuantumSpectrometerProps {
   preview: HephPreviewState
-  previewDataRef: React.RefObject<HephPreviewData>
   durationMs: number
   selectedFixtureId: string | null
   onSelectFixture: (id: string | null) => void
@@ -558,12 +433,10 @@ interface QuantumSpectrometerProps {
   onPause: () => void
   onStop: () => void
   onSeek: (ms: number) => void
-  phaseConfig?: PhaseConfigPro | null
 }
 
 export const QuantumSpectrometer: React.FC<QuantumSpectrometerProps> = ({
   preview,
-  previewDataRef,
   durationMs,
   selectedFixtureId,
   onSelectFixture,
@@ -571,7 +444,6 @@ export const QuantumSpectrometer: React.FC<QuantumSpectrometerProps> = ({
   onPause,
   onStop,
   onSeek,
-  phaseConfig,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -579,17 +451,12 @@ export const QuantumSpectrometer: React.FC<QuantumSpectrometerProps> = ({
   const lastFrameTimeRef = useRef<number>(0)
   const frameCounterRef = useRef<number>(0)
 
-  const [activeScope, setActiveScope] = useState<ScopeType>('DIMMER')
-  const scopeRef = useRef(activeScope)
-  scopeRef.current = activeScope
-
-  const phaseRef = useRef(phaseConfig)
-  phaseRef.current = phaseConfig
-
   // Ref mirrors for the hot loop (avoid stale closures without re-subscribing)
+  const previewRef = useRef(preview)
   const durationRef = useRef(durationMs)
   const selectedRef = useRef(selectedFixtureId)
 
+  previewRef.current = preview
   durationRef.current = durationMs
   selectedRef.current = selectedFixtureId
 
@@ -636,7 +503,7 @@ export const QuantumSpectrometer: React.FC<QuantumSpectrometerProps> = ({
       ctx.save()
       ctx.scale(dpr, dpr)
 
-      const pv = previewDataRef.current
+      const pv = previewRef.current
       const dur = durationRef.current
       const selId = selectedRef.current
       const fc = frameCounterRef.current
@@ -653,19 +520,13 @@ export const QuantumSpectrometer: React.FC<QuantumSpectrometerProps> = ({
       ctx.fillRect(0, 0, w, h)
 
       // ── Compute spatial positions ──
-      const positions = computeNodePositions(pv.fixtures, w, h, scopeRef.current)
-
-      // ── Compute global strobe flash intensity for this frame ──
-      const strobeFlash = computeGlobalStrobeFlash(positions, fc)
+      const positions = computeNodePositions(pv.fixtures, w, h)
 
       // ── L0: Math Grid ──
       drawMathGrid(ctx, w, h)
 
-      // ── L0.5: Spectrum Field (harmonic fingerprint) ──
-      drawSpectrumField(ctx, w, h, phaseRef.current ?? null, fc)
-
-      // ── L1: Ariadne Thread (strobe-reactive) ──
-      drawAriadneThread(ctx, positions, w, h, fc, strobeFlash)
+      // ── L1: Ariadne Thread ──
+      drawAriadneThread(ctx, positions, w, h)
 
       // ── L2: Fixture Nodes ──
       drawFixtureNodes(ctx, positions, fc)
@@ -704,14 +565,13 @@ export const QuantumSpectrometer: React.FC<QuantumSpectrometerProps> = ({
     }
 
     // Hit-test against computed positions
-    const fixtures = previewDataRef.current.fixtures
-    const positions = computeNodePositions(fixtures, w, h, scopeRef.current)
+    const fixtures = previewRef.current.fixtures
+    const positions = computeNodePositions(fixtures, w, h)
 
     let hit: string | null = null
     let hitDist = Infinity
 
-    for (let i = 0; i < _nodePositionsCount; i++) {
-      const pos = positions[i]
+    for (const pos of positions) {
       const dist = Math.hypot(mx - pos.x, my - pos.y)
       if (dist < NODE_HIT_RADIUS && dist < hitDist) {
         hitDist = dist
@@ -723,26 +583,7 @@ export const QuantumSpectrometer: React.FC<QuantumSpectrometerProps> = ({
   }, [onSeek, onSelectFixture])
 
   return (
-    <div className="quantum-spectrometer" ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-      <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 10 }}>
-        <button
-          onClick={() => setActiveScope(s => s === 'DIMMER' ? 'PAN' : s === 'PAN' ? 'TILT' : 'DIMMER')}
-          style={{
-            background: 'rgba(14, 15, 22, 0.85)',
-            backdropFilter: 'blur(8px)',
-            border: '1px solid rgba(255, 107, 43, 0.25)',
-            color: '#FF6B2B',
-            fontFamily: '"Rajdhani", "Eurostile", sans-serif',
-            fontSize: '10px',
-            padding: '4px 8px',
-            cursor: 'pointer',
-            borderRadius: '4px',
-            letterSpacing: '0.12em',
-          }}
-        >
-          SCOPE: {activeScope} ◂
-        </button>
-      </div>
+    <div className="quantum-spectrometer" ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
       <canvas
         ref={canvasRef}
         className="quantum-spectrometer__canvas"

@@ -22,6 +22,7 @@ import { useHephaestusEditorStore } from '../../../core/hephaestus/store/useHeph
 import { useStageStore, selectFixtures } from '../../../stores/stageStore'
 import { useNavigationStore } from '../../../stores/navigationStore'
 import { useAudioStore } from '../../../stores/audioStore'
+import { useHephLibrary } from './hooks/useHephLibrary'
 import { HephLogoIcon } from '../../icons/LuxIcons'
 import type {
   HephAutomationClipV3,
@@ -35,19 +36,6 @@ import './HephaestusView.css'
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
-
-interface LibraryClip {
-  id: string
-  name: string
-  author: string
-  category: string
-  tags?: string[]  // WAVE 2030.9: Include tags for heph category
-  durationMs: number
-  paramCount: number
-  modifiedAt: number
-  filePath: string
-  effectType?: string  // WAVE 2040.17: Base effect type from .lfx
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // COMPONENT
@@ -83,8 +71,6 @@ const HephaestusView: React.FC = () => {
   }
 
   // ── Shell State (I/O only) ──
-  const [library, setLibrary] = useState<LibraryClip[]>([])
-  const [isLoadingLibrary, setIsLoadingLibrary] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
   const [showLibrary, setShowLibrary] = useState(true)
@@ -118,10 +104,10 @@ const HephaestusView: React.FC = () => {
   }
 
   /**
-   * ⚒️ WAVE 2040.17: DIAMOND CACHE
-   * Pre-cached serialized clips for zero-latency D&D to Chronos.
+   * ⚒️ WAVE 7031: Library loading delegated to useHephLibrary singleton hook.
+   * No more local clipCacheRef or loadLibrary.
    */
-  const clipCacheRef = useRef<Map<string, HephAutomationClipV3>>(new Map())
+  const { refreshMetadata } = useHephLibrary()
 
   // ═══════════════════════════════════════════════════════════════════════
   // EFFECTS — Navigation Bridge + Library Load
@@ -150,51 +136,8 @@ const HephaestusView: React.FC = () => {
   }, [saveMessage])
 
   // ═══════════════════════════════════════════════════════════════════════
-  // FILE I/O — WAVE 2030.5
+  // FILE I/O — WAVE 2030.5 / WAVE 7031: Library via useHephLibrary
   // ═══════════════════════════════════════════════════════════════════════
-
-  const loadLibrary = useCallback(async () => {
-    if (!window.luxsync?.hephaestus?.list) {
-      console.warn('[Hephaestus] IPC not available, using demo mode')
-      return
-    }
-
-    setIsLoadingLibrary(true)
-    try {
-      const result = await window.luxsync.hephaestus.list()
-      if (result.success && result.clips) {
-        const loadedClips = result.clips as LibraryClip[]
-        setLibrary(loadedClips)
-        console.log(`[Hephaestus] Loaded ${loadedClips.length} clips from library`)
-
-        if (window.luxsync?.hephaestus?.load) {
-          for (const item of loadedClips) {
-            if (!clipCacheRef.current.has(item.filePath)) {
-              try {
-                const loadResult = await window.luxsync.hephaestus.load(item.filePath)
-                if (loadResult.success && loadResult.clip) {
-                  clipCacheRef.current.set(item.filePath, loadResult.clip as HephAutomationClipV3)
-                }
-              } catch (e) {
-                console.warn(`[Hephaestus] 💎 Cache miss for ${item.name}:`, e)
-              }
-            }
-          }
-          console.log(`[Hephaestus] 💎 Diamond cache loaded: ${clipCacheRef.current.size} clips`)
-        }
-      } else if (result.error) {
-        console.error('[Hephaestus] Failed to load library:', result.error)
-      }
-    } catch (error) {
-      console.error('[Hephaestus] Library load error:', error)
-    } finally {
-      setIsLoadingLibrary(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    loadLibrary()
-  }, [])
 
   const handleSave = useCallback(async () => {
     if (!window.luxsync?.hephaestus?.save) {
@@ -212,7 +155,7 @@ const HephaestusView: React.FC = () => {
         console.log(`[Hephaestus] Saved clip to ${result.filePath}`)
         setSaveMessage('✅ Saved!')
         setIsDirty(false)
-        await loadLibrary()
+        await refreshMetadata()
 
         const serializedForEvent = serializeHephClip(clip)
         window.dispatchEvent(new CustomEvent('luxsync:heph-clip-saved', {
@@ -232,7 +175,7 @@ const HephaestusView: React.FC = () => {
     } finally {
       setIsSaving(false)
     }
-  }, [clip, loadLibrary])
+  }, [clip, refreshMetadata])
 
   const handleSaveAs = useCallback(async () => {
     if (!window.luxsync?.hephaestus?.save) {
@@ -255,9 +198,8 @@ const HephaestusView: React.FC = () => {
         setSaveMessage('✅ Copy saved!')
         temporalActions.resetWithClip(clonedClip)
         setIsDirty(false)
-        await loadLibrary()
+        await refreshMetadata()
       } else {
-        console.error('[Hephaestus] Save As failed:', result.error)
         setSaveMessage(`❌ ${result.error}`)
       }
     } catch (error) {
@@ -266,7 +208,7 @@ const HephaestusView: React.FC = () => {
     } finally {
       setIsSaving(false)
     }
-  }, [clip, temporalActions, loadLibrary])
+  }, [clip, temporalActions, refreshMetadata])
 
   const handleLoad = useCallback(async (clipId: string) => {
     if (!window.luxsync?.hephaestus?.load) {
@@ -317,12 +259,12 @@ const HephaestusView: React.FC = () => {
       const result = await window.luxsync.hephaestus.delete(clipId)
       if (result.success && result.deleted) {
         console.log(`[Hephaestus] Deleted clip: ${clipId}`)
-        await loadLibrary()
+        await refreshMetadata()
       }
     } catch (error) {
       console.error('[Hephaestus] Delete error:', error)
     }
-  }, [loadLibrary])
+  }, [refreshMetadata])
 
   const handleNew = useCallback(() => {
     setShowNewClipModal(true)
@@ -366,13 +308,13 @@ const HephaestusView: React.FC = () => {
           console.log(`[Hephaestus] Created & saved new clip: ${newClip.name}`)
           setSaveMessage('✅ Created!')
           setIsDirty(false)
-          await loadLibrary()
+          await refreshMetadata()
         }
       } catch (error) {
         console.error('[Hephaestus] Failed to save new clip:', error)
       }
     }
-  }, [loadLibrary])
+  }, [refreshMetadata])
 
   // WAVE 2030.13: Zone targeting handler
   const handleZonesChange = useCallback((zones: EffectZone[]) => {
@@ -430,7 +372,7 @@ const HephaestusView: React.FC = () => {
   return (
     <div className="heph-view">
       {/* ══ TIER 1: GLOBAL I/O BAR ══ */}
-      <header className="heph-global-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '40px', padding: '0 16px', background: 'rgba(17, 17, 17, 0.75)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid #222', userSelect: 'none' }}>
+      <header className="heph-global-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '40px', padding: '0 16px', background: 'transparent', borderBottom: '1px solid rgba(255, 107, 43, 0.1)', userSelect: 'none' }}>
 
         {/* BLOQUE IZQUIERDO: Identity + Tab Rail */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -438,7 +380,7 @@ const HephaestusView: React.FC = () => {
             <HephLogoIcon size={20} className="heph-header__icon" />
             <span style={{ fontSize: '13px', fontWeight: 800, letterSpacing: '0.05em', color: '#eee' }}>HEPHAESTUS</span>
           </div>
-          <nav className="heph-tab-rail" style={{ display: 'flex', gap: '4px', background: '#1a1a1a', padding: '2px', borderRadius: '4px' }}>
+          <nav className="heph-tab-rail" style={{ display: 'flex', gap: '4px', background: 'rgba(255, 255, 255, 0.03)', padding: '2px', borderRadius: '4px' }}>
             <button
               type="button"
               onClick={() => setActiveTab('sculpt')}

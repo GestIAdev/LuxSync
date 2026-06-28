@@ -27,6 +27,18 @@ import { getCategoryIcon, generateShapeInWindow } from '../curveTemplates'
 import type { TemporalActions } from '../types/HephaestusShared'
 import { useHephaestusEditorStore } from '../../../../core/hephaestus/store/useHephaestusEditorStore'
 import { useAudioStore } from '../../../../stores/audioStore'
+import { useHephLibrary, type LibraryClip } from '../hooks/useHephLibrary'
+import {
+  IntensityIcon,
+  ColorIcon,
+  PositionIcon,
+  FocusIcon,
+  BeamIcon,
+  StrobeIcon,
+  ScenesIcon,
+  TrashIcon,
+  type IconProps,
+} from '../../../icons/LuxIcons'
 import type {
   HephCurve,
   HephParamId,
@@ -42,20 +54,34 @@ import type {
 // TYPES & CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
 
-interface LibraryClip {
+const HEPH_DRAG_MIME = 'application/luxsync-heph'
+
+interface LibraryFilter {
   id: string
-  name: string
-  author: string
-  category: string
-  tags?: string[]
-  durationMs: number
-  paramCount: number
-  modifiedAt: number
-  filePath: string
-  effectType?: string
+  label: string
+  Icon: React.FC<IconProps>
 }
 
-const HEPH_DRAG_MIME = 'application/luxsync-heph'
+const LIBRARY_FILTERS: readonly LibraryFilter[] = [
+  { id: 'physical',   label: 'Physical (dimmer/strobe)',  Icon: IntensityIcon },
+  { id: 'color',      label: 'Color',                     Icon: ColorIcon },
+  { id: 'movement',   label: 'Movement (pan/tilt)',       Icon: PositionIcon },
+  { id: 'optics',     label: 'Optics (zoom/focus/gobo)',  Icon: FocusIcon },
+  { id: 'composite',  label: 'Composite (multi-param)',   Icon: BeamIcon },
+]
+
+const CATEGORY_ICON_MAP: Record<string, React.FC<IconProps>> = {
+  physical:  IntensityIcon,
+  color:     ColorIcon,
+  movement:  PositionIcon,
+  optics:    FocusIcon,
+  composite: BeamIcon,
+}
+
+function getLuxCategoryIcon(category: string): React.ReactNode {
+  const Cmp = CATEGORY_ICON_MAP[category] ?? StrobeIcon
+  return <Cmp size={14} color="rgba(255, 107, 43, 0.6)" />
+}
 
 interface ForgeTabProps {
   temporalActions: TemporalActions
@@ -102,17 +128,16 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
   const [playheadMs, setPlayheadMs] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
+  const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set())
   const [showAddParamDropdown, setShowAddParamDropdown] = useState(false)
   const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({})
   const [clipboardCount, setClipboardCount] = useState(0)
 
-  // ── Library State ──
-  const [library, setLibrary] = useState<LibraryClip[]>([])
-  const [isLoadingLibrary, setIsLoadingLibrary] = useState(false)
+  // ── Library (singleton hook — WAVE 7031) ──
+  const { loadedClips: library, isLoading: isLoadingLibrary, refreshMetadata, getCachedClip } = useHephLibrary()
 
   // ── Refs ──
   const addParamRef = useRef<HTMLDivElement>(null)
-  const clipCacheRef = useRef<Map<string, HephAutomationClipV3>>(new Map())
   const batchOriginRef = useRef<Map<number, { timeMs: number; value: number | { h: number; s: number; l: number } }>>(new Map())
   const clipboardRef = useRef<Array<{
     relativeTimeMs: number
@@ -172,14 +197,20 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
   }, [availableParams])
 
   const filteredLibrary = useMemo(() => {
-    if (!searchQuery.trim()) return library
-    const q = searchQuery.toLowerCase()
-    return library.filter(item =>
-      item.name.toLowerCase().includes(q) ||
-      item.category.toLowerCase().includes(q) ||
-      item.author.toLowerCase().includes(q)
-    )
-  }, [library, searchQuery])
+    let result = library
+    if (activeFilters.size > 0) {
+      result = result.filter(item => activeFilters.has(item.category))
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      result = result.filter(item =>
+        item.name.toLowerCase().includes(q) ||
+        item.category.toLowerCase().includes(q) ||
+        item.author.toLowerCase().includes(q)
+      )
+    }
+    return result
+  }, [library, searchQuery, activeFilters])
 
   const groupedLibrary = useMemo(() => {
     const groups = new Map<string, LibraryClip[]>()
@@ -205,11 +236,6 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
     }
   }, [searchQuery, groupedLibrary])
 
-  // Load library on mount
-  useEffect(() => {
-    loadLibrary()
-  }, [])
-
   // Click-outside dismiss for Add Param popover
   useEffect(() => {
     if (!showAddParamDropdown) return
@@ -230,45 +256,6 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
   // ═══════════════════════════════════════════════════════════════════════
   // LIBRARY I/O
   // ═══════════════════════════════════════════════════════════════════════
-
-  const loadLibrary = useCallback(async () => {
-    if (!window.luxsync?.hephaestus?.list) {
-      console.warn('[ForgeTab] IPC not available, using demo mode')
-      return
-    }
-
-    setIsLoadingLibrary(true)
-    try {
-      const result = await window.luxsync.hephaestus.list()
-      if (result.success && result.clips) {
-        const loadedClips = result.clips as LibraryClip[]
-        setLibrary(loadedClips)
-        console.log(`[ForgeTab] Loaded ${loadedClips.length} clips from library`)
-
-        if (window.luxsync?.hephaestus?.load) {
-          for (const item of loadedClips) {
-            if (!clipCacheRef.current.has(item.filePath)) {
-              try {
-                const loadResult = await window.luxsync.hephaestus.load(item.filePath)
-                if (loadResult.success && loadResult.clip) {
-                  clipCacheRef.current.set(item.filePath, loadResult.clip as HephAutomationClipV3)
-                }
-              } catch (e) {
-                console.warn(`[ForgeTab] Cache miss for ${item.name}:`, e)
-              }
-            }
-          }
-          console.log(`[ForgeTab] Diamond cache loaded: ${clipCacheRef.current.size} clips`)
-        }
-      } else if (result.error) {
-        console.error('[ForgeTab] Failed to load library:', result.error)
-      }
-    } catch (error) {
-      console.error('[ForgeTab] Library load error:', error)
-    } finally {
-      setIsLoadingLibrary(false)
-    }
-  }, [])
 
   const handleLoad = useCallback(async (clipId: string) => {
     if (!window.luxsync?.hephaestus?.load) {
@@ -303,12 +290,12 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
       const result = await window.luxsync.hephaestus.delete(clipId)
       if (result.success && result.deleted) {
         console.log(`[ForgeTab] Deleted clip: ${clipId}`)
-        await loadLibrary()
+        await refreshMetadata()
       }
     } catch (error) {
       console.error('[ForgeTab] Delete error:', error)
     }
-  }, [loadLibrary])
+  }, [refreshMetadata])
 
   // ═══════════════════════════════════════════════════════════════════════
   // LIBRARY INTERACTION
@@ -326,8 +313,20 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
     })
   }, [])
 
+  const handleFilterToggle = useCallback((category: string) => {
+    setActiveFilters(prev => {
+      const next = new Set(prev)
+      if (next.has(category)) {
+        next.delete(category)
+      } else {
+        next.add(category)
+      }
+      return next
+    })
+  }, [])
+
   const handleDragStart = useCallback((e: React.DragEvent, libraryItem: LibraryClip) => {
-    const cachedClip = clipCacheRef.current.get(libraryItem.filePath)
+    const cachedClip = getCachedClip(libraryItem.filePath)
 
     if (cachedClip) {
       console.log(`[ForgeTab] Diamond drag: ${libraryItem.name} [${cachedClip.tracks.length} tracks]`)
@@ -923,7 +922,7 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
     <div className="heph-forge-tab" style={{ display: 'flex', flexDirection: 'column', flex: 1, height: '100%', width: '100%', overflow: 'hidden' }}>
 
       {/* 1. CORONA HORIZONTAL: Toolbar abarcando el 100% */}
-      <div className="heph-forge-topbar" style={{ flex: '0 0 auto', width: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderBottom: '1px solid #222', background: '#141414' }}>
+      <div className="heph-forge-topbar" style={{ flex: '0 0 auto', width: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderBottom: '1px solid rgba(255, 107, 43, 0.1)', background: 'transparent' }}>
         <HephaestusToolbar
           activeCurve={activeCurve}
           selectedKeyframeIdx={selectedKeyframeIdx}
@@ -940,11 +939,36 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
 
         {/* ── Library Panel (collapsible) ── */}
         {showAssetBrowser && (
-          <aside style={{ width: '220px', flexShrink: 0, height: '100%', overflowX: 'hidden', overflowY: 'auto', borderRight: '1px solid #262626', boxSizing: 'border-box' }}>
+          <aside style={{ width: '220px', flexShrink: 0, height: '100%', overflowX: 'hidden', overflowY: 'auto', borderRight: '1px solid rgba(255, 107, 43, 0.1)', boxSizing: 'border-box' }}>
             <div className="heph-library">
               <div className="heph-library__header">
-                <span className="heph-library__title">📚 LIBRARY</span>
+                <span className="heph-library__title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <ScenesIcon size={14} color="rgba(255, 107, 43, 0.6)" />
+                  LIBRARY
+                </span>
                 {isLoadingLibrary && <span className="heph-library__loading">⏳</span>}
+              </div>
+
+              <div className="heph-library__filters">
+                {LIBRARY_FILTERS.map(f => (
+                  <button
+                    key={f.id}
+                    className={`heph-library__filter-btn ${activeFilters.has(f.id) ? 'heph-library__filter-btn--active' : ''}`}
+                    onClick={() => handleFilterToggle(f.id)}
+                    title={f.label}
+                  >
+                    <f.Icon size={14} color={activeFilters.has(f.id) ? '#ff6b2b' : 'rgba(255, 255, 255, 0.4)'} />
+                  </button>
+                ))}
+                {activeFilters.size > 0 && (
+                  <button
+                    className="heph-library__filter-clear"
+                    onClick={() => setActiveFilters(new Set())}
+                    title="Clear filters"
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
 
               <div className="heph-library__search">
@@ -983,7 +1007,7 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
                         onClick={() => handleCategoryToggle(category)}
                       >
                         <span className="heph-library__category-icon">
-                          {getCategoryIcon(category)}
+                          {getLuxCategoryIcon(category)}
                         </span>
                         <span className="heph-library__category-name">
                           {category.toUpperCase()}
@@ -1010,7 +1034,7 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
                                 onClick={() => handleLoad(item.id)}
                               >
                                 <span className="heph-library__item-icon">
-                                  {getCategoryIcon(item.category)}
+                                  {getLuxCategoryIcon(item.category)}
                                 </span>
                                 <div className="heph-library__item-details">
                                   <span className="heph-library__item-name">{item.name}</span>
@@ -1030,7 +1054,7 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
                                 }}
                                 title="Delete"
                               >
-                                🗑️
+                                <TrashIcon size={14} color="rgba(255, 255, 255, 0.3)" />
                               </button>
                             </div>
                           ))}
@@ -1045,7 +1069,7 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
         )}
 
         {/* ── Parameter Lanes ── */}
-        <aside style={{ width: '220px', flexShrink: 0, height: '100%', overflowX: 'hidden', overflowY: 'auto', borderRight: '1px solid #262626', boxSizing: 'border-box' }}>
+        <aside style={{ width: '220px', flexShrink: 0, height: '100%', overflowX: 'hidden', overflowY: 'auto', borderRight: '1px solid rgba(255, 107, 43, 0.1)', boxSizing: 'border-box' }}>
           <div className="heph-param-sidebar" style={{ boxSizing: 'border-box', width: '100%', padding: '8px 12px' }}>
             <div className="heph-param-sidebar__header">
               <span className="heph-param-sidebar__title">PARAMETERS</span>

@@ -24,6 +24,7 @@ import type {
   HephAutomationClip,
   HephAutomationClipV3,
 } from './types'
+import type { SafetyDeclaration } from '../arsenal/lfxTypes'
 // HephAutomationClip is now an alias for HephAutomationClipV3
 import { serializeHephClip } from './types'
 import { getHephaestusClipIndex } from './HephaestusClipIndex'
@@ -158,11 +159,31 @@ class HephFileIO {
   async saveClip(clip: HephAutomationClipV3): Promise<string> {
     await this.getEffectsPath()
 
+    // ── Auto-generate safetyDeclaration if missing ──────────────────────
+    // G6 requires a declaration when strobe tracks are present.
+    // If the author didn't set one, infer it from the track structure.
+    if (!clip.safetyDeclaration) {
+      const hasStrobeTrack = clip.tracks.some(t => t.paramId === 'strobe')
+      const isStrobe = clip.simulationMeta?.isStrobe ?? false
+      if (hasStrobeTrack || isStrobe) {
+        const autoDecl: SafetyDeclaration = Object.freeze({
+          maxStrobeFreqHz: 25,
+          containsRapidFlash: true,
+          communityTrusted: false,
+        })
+        clip = { ...clip, safetyDeclaration: autoDecl }
+      }
+    }
+
+    const serializedClip = serializeHephClip(clip)
+    const canonical = JSON.stringify(serializedClip)
+    const hash = crypto.createHash('sha256').update(canonical).digest('hex')
+
     const filePayload = {
       $schema: 'luxsync.lfx/3.0',
       version: '1.0.0',
-      clip: serializeHephClip(clip),
-      checksum: ''
+      clip: serializedClip,
+      checksum: `sha256:${hash}`
     };
 
     const fileName = `${clip.id}.lfx`;
@@ -261,6 +282,16 @@ class HephFileIO {
     
     await fs.unlink(filePath)
     console.log(`[HephFileIO] Deleted clip: ${filePath}`)
+
+    // Remove from in-memory index so heph:list stops returning it
+    const index = getHephaestusClipIndex()
+    if (path.isAbsolute(idOrPath)) {
+      const loaded = index.getByPath(idOrPath)
+      if (loaded) index.remove(loaded.id)
+    } else {
+      index.remove(idOrPath)
+    }
+
     return true
   }
   

@@ -169,6 +169,11 @@ export class LfxFileLoader {
             return null;
         }
         // ── G2: Checksum integrity ─────────────────────────────────────────────
+        // Mandatory for builtin/marketplace; optional for user effects.
+        if (source !== 'user' && (!validated.checksum || validated.checksum.length === 0)) {
+            console.warn(`[LfxFileLoader ⚠️] G2 fail: missing checksum for builtin/marketplace at ${filePath}`);
+            return null;
+        }
         if (!_validateChecksum(validated, raw, filePath)) {
             console.warn(`[LfxFileLoader ⚠️] G2 fail: checksum mismatch at ${filePath}`);
             return null;
@@ -324,27 +329,51 @@ export class LfxFileLoader {
                 return null;
             }
         }
-        // ── G2: Checksum opcional ─────────────────────────────────────────────
-        // ⚡ WAVE 5020.5: G2 BYPASSED — Desactivado temporalmente para desarrollo ágil.
-        const checksum = typeof wrapper.checksum === 'string' ? wrapper.checksum : '';
-        // Gate desactivado: se ignora el hash hasta producción.
-        void checksum;
-        /*
-        if (checksum.length > 0) {
-          try {
-            const canonical = JSON.stringify(clip)
-            const hash = createHash('sha256').update(canonical).digest('hex')
-            const declared = checksum.startsWith('sha256:') ? checksum.slice(7) : checksum
-            if (hash !== declared) {
-              console.warn(`[LfxFileLoader ⚠️] V3 G2 fail: checksum mismatch at ${filePath}`)
-              return null
+        // ── G6: Strobe-rate consistency (V3 tracks-based) ─────────────────────
+        const safetyDecl = clip.safetyDeclaration;
+        const v3Tracks = clip.tracks;
+        const hasStrobeTrack = v3Tracks.some(t => t.paramId === 'strobe');
+        if (safetyDecl) {
+            if (safetyDecl.maxStrobeFreqHz > 0 && !hasStrobeTrack && !v3Tracks.some(t => t.paramId === 'intensity')) {
+                console.warn(`[LfxFileLoader ⚠️] V3 G6 fail: strobe declared but no strobe/intensity track at ${filePath}`);
+                return null;
             }
-          } catch {
-            console.warn(`[LfxFileLoader ⚠️] V3 G2 fail: checksum compute error at ${filePath}`)
-            return null
-          }
+            if (safetyDecl.maxStrobeFreqHz === 0 && hasStrobeTrack) {
+                console.warn(`[LfxFileLoader ⚠️] V3 G6 fail: strobe track present but declared 0Hz at ${filePath}`);
+                return null;
+            }
         }
-        */
+        // ── USER policy: strobe freq cap (V3) ─────────────────────────────────
+        if (source === 'user') {
+            const declaredHz = safetyDecl?.maxStrobeFreqHz ?? 0;
+            if (declaredHz > USER_SAFETY_POLICY.MAX_STROBE_HZ) {
+                console.warn(`[LfxFileLoader ⚠️] V3 USER policy: strobeFreq=${declaredHz}Hz > ` +
+                    `${USER_SAFETY_POLICY.MAX_STROBE_HZ}Hz at ${filePath} — rejected`);
+                return null;
+            }
+        }
+        // ── G2: Checksum integrity ─────────────────────────────────────────────
+        // Mandatory for builtin/marketplace; optional for user effects.
+        const checksum = typeof wrapper.checksum === 'string' ? wrapper.checksum : '';
+        if (checksum.length === 0 && source !== 'user') {
+            console.warn(`[LfxFileLoader ⚠️] V3 G2 fail: missing checksum for builtin/marketplace at ${filePath}`);
+            return null;
+        }
+        if (checksum.length > 0) {
+            try {
+                const canonical = JSON.stringify(clip);
+                const hash = createHash('sha256').update(canonical).digest('hex');
+                const declared = checksum.startsWith('sha256:') ? checksum.slice(7) : checksum;
+                if (hash !== declared) {
+                    console.warn(`[LfxFileLoader ⚠️] V3 G2 fail: checksum mismatch at ${filePath}`);
+                    return null;
+                }
+            }
+            catch {
+                console.warn(`[LfxFileLoader ⚠️] V3 G2 fail: checksum compute error at ${filePath}`);
+                return null;
+            }
+        }
         // ── Ensamblar LFXFileV3 tipado ────────────────────────────────────────
         const v3File = {
             $schema: 'luxsync.lfx/3.0',
@@ -361,6 +390,7 @@ export class LfxFileLoader {
                 tracks: clip.tracks,
                 cognitiveDNA: clip.cognitiveDNA || undefined,
                 simulationMeta: clip.simulationMeta || undefined,
+                safetyDeclaration: clip.safetyDeclaration || undefined,
                 schemaVersion: '3.0',
                 staticParams: clip.staticParams ?? {},
                 spatialZones: clip.spatialZones ?? [],
@@ -421,10 +451,6 @@ function _isStructurallyValid(clip) {
  * los user no necesariamente).
  */
 function _validateChecksum(clip, _raw, _filePath) {
-    // ⚡ WAVE 5020.5: G2 BYPASSED — Desactivado temporalmente para desarrollo ágil.
-    // El gate vuelve a activarse en producción (quitar este early-return).
-    return true;
-    // eslint-disable-next-line no-unreachable
     if (!clip.checksum || clip.checksum.length === 0)
         return true;
     try {

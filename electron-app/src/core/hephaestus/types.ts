@@ -419,6 +419,15 @@ export interface HephTrack {
    * tiempo del clip → `localElapsedMs = max(0, clipTime - fixtureOffsetMs)`.
    */
   phaseConfig?: import('./phase/PhaseConfigPro').PhaseConfigPro
+
+  /**
+   * ⚒️ Phase Canvas — Overrides manuales de fase per-fixture.
+   *
+   * Key = fixtureId, Value = PhaseOverride (delta o absolute).
+   * Vacío o ausente → comportamiento algorítmico puro (default).
+   * Aplicado DESPUÉS de resolvePro() — no modifica el algoritmo base.
+   */
+  phaseOverrides?: import('./phase/PhaseOverride').PhaseOverrideMap
 }
 
 /**
@@ -474,6 +483,7 @@ export interface HephAutomationClipV3 {
   // ── Cognitivo (opcional — solo clips Selene-visibles) ──
   cognitiveDNA?: import('../arsenal/lfxTypes').CognitiveDNA
   simulationMeta?: import('../arsenal/lfxTypes').SimulationMeta
+  safetyDeclaration?: import('../arsenal/lfxTypes').SafetyDeclaration
 
   /** Discriminador para LfxFileLoader. Literal exacto '3.0'. */
   schemaVersion: '3.0'
@@ -585,6 +595,7 @@ export function serializeHephClip(clip: HephAutomationClipV3): HephAutomationCli
     cell: track.cell,
     selector: track.selector ? JSON.parse(JSON.stringify(track.selector)) : undefined,
     phaseConfig: track.phaseConfig ? { ...track.phaseConfig } : undefined,
+    phaseOverrides: track.phaseOverrides ? JSON.parse(JSON.stringify(track.phaseOverrides)) : undefined,
   }));
 
   return {
@@ -603,6 +614,7 @@ export function serializeHephClip(clip: HephAutomationClipV3): HephAutomationCli
     staticParams: clip.staticParams ? JSON.parse(JSON.stringify(clip.staticParams)) : {},
     cognitiveDNA: clip.cognitiveDNA ? JSON.parse(JSON.stringify(clip.cognitiveDNA)) : undefined,
     simulationMeta: clip.simulationMeta ? JSON.parse(JSON.stringify(clip.simulationMeta)) : undefined,
+    safetyDeclaration: clip.safetyDeclaration ? JSON.parse(JSON.stringify(clip.safetyDeclaration)) : undefined,
     schemaVersion: '3.0',
   };
 }

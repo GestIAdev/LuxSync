@@ -68,6 +68,7 @@ const FLOAT_PASSTHROUGH_PARAMS = new Set([
  * Engine params: 0-1 passthrough (clamped).
  */
 export function scaleToDMX(paramId: string, rawValue: number): number {
+  if (!Number.isFinite(rawValue)) return 0
   const clamped = Math.max(0, Math.min(1, rawValue))
 
   if (DMX_16BIT_PARAMS.has(paramId)) {
@@ -95,6 +96,7 @@ export function scaleToDMX(paramId: string, rawValue: number): number {
  *   0.5019 → val16=32893 → coarse=128, fine=125
  */
 export function scaleToDMX16(rawValue: number): { coarse: number; fine: number } {
+  if (!Number.isFinite(rawValue)) return { coarse: 0, fine: 0 }
   const clamped = Math.max(0, Math.min(1, rawValue))
   const val16 = Math.round(clamped * 65535)
   return {

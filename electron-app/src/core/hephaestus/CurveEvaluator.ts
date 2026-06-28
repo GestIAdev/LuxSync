@@ -181,9 +181,18 @@ export class CurveEvaluator {
     const t = this.clampTime(timeMs)
 
     // ── Edge cases ──────────────────────────────────────────────────────
-    if (kfs.length === 1) return kfs[0].value as number
-    if (t <= kfs[0].timeMs) return kfs[0].value as number
-    if (t >= kfs[kfs.length - 1].timeMs) return kfs[kfs.length - 1].value as number
+    if (kfs.length === 1) {
+      const v = kfs[0].value as number
+      return Number.isFinite(v) ? v : 0
+    }
+    if (t <= kfs[0].timeMs) {
+      const v = kfs[0].value as number
+      return Number.isFinite(v) ? v : 0
+    }
+    if (t >= kfs[kfs.length - 1].timeMs) {
+      const v = kfs[kfs.length - 1].value as number
+      return Number.isFinite(v) ? v : 0
+    }
 
     // ── Encontrar segmento activo ───────────────────────────────────────
     const segIdx = this.findSegment(paramId, t, kfs)
@@ -192,18 +201,23 @@ export class CurveEvaluator {
 
     // ── Calcular progreso dentro del segmento ───────────────────────────
     const segDuration = kf1.timeMs - kf0.timeMs
-    if (segDuration <= 0) return kf0.value as number
+    if (segDuration <= 0) {
+      const v = kf0.value as number
+      return Number.isFinite(v) ? v : 0
+    }
 
     const segProgress = (t - kf0.timeMs) / segDuration
 
     // ── Interpolar ──────────────────────────────────────────────────────
-    return this.interpolateNumber(
+    const resultadoFinal = this.interpolateNumber(
       kf0.value as number,
       kf1.value as number,
       segProgress,
       kf0.interpolation,
       kf0.bezierHandles
     )
+    if (!Number.isFinite(resultadoFinal)) return 0
+    return resultadoFinal
   }
 
   /**
@@ -583,14 +597,23 @@ export class CurveEvaluator {
     if (t <= 0) return 0
     if (t >= 1) return 1
 
-    // ── Newton-Raphson para encontrar u donde BezierX(u) = t ──────────
+    // ── Monotonía guard: si los handles X se cruzan (cx1 > cx2),
+    // la curva X no es monótona → Newton-Raphson puede converger a la rama equivocada.
+    // Clamp cx2 >= cx1 para garantizar monotonía en X.
+    if (cx1 > cx2) cx2 = cx1
+
+    // ── Newton-Bisection hybrid para encontrar u donde BezierX(u) = t ────
     //
     // BezierX(u) = 3(1-u)²·u·cx1 + 3(1-u)·u²·cx2 + u³
     //            = 3·mu²·u·cx1 + 3·mu·u²·cx2 + u³
     //
     // BezierX'(u) = 3·mu²·cx1 + 6·mu·u·(cx2-cx1) + 3·u²·(1-cx2)
     //
+    // Strategy: Newton when it converges, bisection fallback when it doesn't.
+    // Maintains a bracket [lo, hi] that always contains the root.
     let u = t // Initial guess: identidad (funciona bien para curvas suaves)
+    let lo = 0
+    let hi = 1
 
     for (let i = 0; i < NEWTON_ITERATIONS; i++) {
       const u2 = u * u
@@ -604,13 +627,27 @@ export class CurveEvaluator {
       // X'(u) — derivada: nos dice la pendiente para Newton-Raphson
       const dx = 3 * mu2 * cx1 + 6 * mu * u * (cx2 - cx1) + 3 * u2 * (1 - cx2)
 
-      // Si la derivada es casi 0, la curva es casi plana aquí.
-      // No podemos dividir → salimos con la mejor aproximación.
-      if (Math.abs(dx) < NEWTON_EPSILON) break
+      const err = x - t
 
-      // Newton step: u_new = u - f(u)/f'(u)
-      // donde f(u) = BezierX(u) - t
-      u -= (x - t) / dx
+      // Early-exit por convergencia: si el error es negligible, no iterar más
+      if (Math.abs(err) < NEWTON_EPSILON) break
+
+      // Actualizar bracket: si x < t, el root está a la derecha; si no, a la izquierda
+      if (err < 0) { lo = u } else { hi = u }
+
+      if (Math.abs(dx) < NEWTON_EPSILON) {
+        // Derivada ≈ 0 → Newton no puede avanzar. Bisección fallback.
+        u = (lo + hi) * 0.5
+      } else {
+        // Newton step: u_new = u - f(u)/f'(u)
+        const uNewton = u - err / dx
+        // Si Newton salta fuera del bracket, no es fiable → bisección
+        if (uNewton < lo || uNewton > hi) {
+          u = (lo + hi) * 0.5
+        } else {
+          u = uNewton
+        }
+      }
 
       // Clamp para estabilidad numérica
       u = Math.max(0, Math.min(1, u))

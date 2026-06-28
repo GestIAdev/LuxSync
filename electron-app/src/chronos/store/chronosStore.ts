@@ -1,3 +1,5 @@
+// PHASE 4 RECONSTRUCTION TARGET — Store uses V1 ChronosProject/createDefaultProject.
+// Must migrate to ChronosProjectV2 + createDefaultProjectV2 + HephAutomationClipV3 clips.
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🕰️ CHRONOS STORE - THE REACTIVE STATE

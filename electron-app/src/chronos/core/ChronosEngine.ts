@@ -1,3 +1,5 @@
+// PHASE 4 DEMOLITION TARGET — V1 path (generateContext, ClipBoundaryIndex) will be removed.
+// Only V2 path (generateContextV2, ClipBoundaryIndexV2) will remain.
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🕰️ CHRONOS ENGINE - THE BEATING HEART

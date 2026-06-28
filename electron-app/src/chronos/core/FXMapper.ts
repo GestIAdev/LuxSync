@@ -1,3 +1,5 @@
+// @deprecated DEMOLITION TARGET — Entire file will be deleted in Phase 2.
+// In V3, HephAutomationClipV3.effectType is the direct ID. No mapping needed.
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🎯 FX MAPPER - WAVE 2019: THE PULSE

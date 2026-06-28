@@ -448,6 +448,8 @@ export interface HephAutomationClipV3 {
   spatialZones: readonly ZoneTarget[]
 
   // ── Ejecución ──
+  // @deprecated DEMOLITION TARGET — mixBus will be removed in Phase 1.
+  // Blend semantics come from HephTrack.blendMode ('max' | 'replace' | 'add' | 'multiply').
   mixBus: 'global' | 'htp' | 'ambient' | 'accent'
   priority: number
   durationMs: number

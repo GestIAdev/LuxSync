@@ -1,3 +1,6 @@
+// TEMPORARY BRIDGE — This file is migration code for converting V1 projects to V2.
+// It will be removed in Phase 7 once all .lux files in the wild are V2/V3.
+// Not a permanent part of the V3 architecture.
 /**
  * CHRONOS MIGRATION — V1 to V2
  *

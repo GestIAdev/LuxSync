@@ -1,3 +1,6 @@
+// @deprecated DEMOLITION TARGET — mixBus, inferMixBusFromCurves(), MIXBUS_CLIP_COLORS
+// will be removed in Phase 1. FXClip.hephClip (V3) is the truth.
+// zones come from hephClip.spatialZones / hephClip.tracks[].zones.
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🎬 TIMELINE CLIP - WAVE 2006: THE INTERACTIVE CANVAS

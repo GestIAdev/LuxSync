@@ -54,8 +54,11 @@ export type HexColor = string
 // 📦 CHRONOS PROJECT (ROOT DOCUMENT)
 // ═══════════════════════════════════════════════════════════════════════════
 
+// @deprecated DEMOLITION TARGET — V1 runtime model. Replaced by ChronosProjectV2.
+// This entire interface and all V1 types below it (TrackType, TimelineTrack, ClipType,
+// ClipData unions, createDefaultProject, createDefaultTrack) will be removed in Phase 7.
 /**
- * 📦 CHRONOS PROJECT
+ * 📦 CHRONOS PROJECT (V1 — OBSOLETE)
  * 
  * Raíz del documento. Representa un proyecto de timeline completo.
  * Equivale a un archivo .chronos en disco.
@@ -158,6 +161,7 @@ export type ChronosOverrideMode = 'whisper' | 'full'
 // 🎼 TIMELINE TRACKS
 // ═══════════════════════════════════════════════════════════════════════════
 
+// @deprecated DEMOLITION TARGET — V1 track type enum. V2 uses explicit zones, not track types.
 /**
  * Tipos de track disponibles
  */
@@ -171,8 +175,9 @@ export type TrackType =
   | 'automation'  // Automation genérica de parámetros
   | 'marker'      // Track de markers (solo lectura)
 
+// @deprecated DEMOLITION TARGET — V1 track. Replaced by TimelineTrackV2 with targetZone.
 /**
- * 🎼 TIMELINE TRACK
+ * 🎼 TIMELINE TRACK (V1 — OBSOLETE)
  * 
  * Una capa paralela de contenido en el timeline.
  * Contiene clips del mismo tipo.
@@ -227,6 +232,7 @@ export interface TimelineTrack {
 // 🧱 TIMELINE CLIPS (BLOQUES SEMÁNTICOS)
 // ═══════════════════════════════════════════════════════════════════════════
 
+// @deprecated DEMOLITION TARGET — V1 clip type enum. V3 clips reference HephAutomationClipV3.
 /**
  * Tipos de clip disponibles
  */
@@ -931,6 +937,7 @@ export function generateChronosId(): ChronosId {
 // Monotonic counter used by fallback path
 let generateChronosIdCounter = 0
 
+// @deprecated DEMOLITION TARGET — V1 factory. Use createDefaultProjectV2 instead.
 /**
  * Crea un proyecto vacío por defecto
  */
@@ -967,6 +974,7 @@ export function createDefaultProject(name: string = 'Untitled'): ChronosProject 
   }
 }
 
+// @deprecated DEMOLITION TARGET — V1 track factory. Use createTrackV2 instead.
 /**
  * Crea una track vacía
  */
@@ -1074,6 +1082,9 @@ export function createAutomationLane(
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🔥 WAVE 2547: TIMELINE V2 — INFINITE EXPLICIT TRACKS
+// BASE FOR V3 RECONSTRUCTION — TimelineTrackV2.targetZone is correct.
+// Clips (TimelineClip + ClipType + ClipData) below are still V1 and will be
+// replaced with HephAutomationClipV3 references in Phase 4.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import type { CanonicalZone } from '../../core/stage/ShowFileV2'

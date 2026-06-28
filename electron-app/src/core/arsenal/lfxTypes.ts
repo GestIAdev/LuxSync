@@ -202,6 +202,8 @@ export interface SafetyDeclaration {
   readonly communityTrusted: boolean
 }
 
+// @deprecated DEMOLITION TARGET — V2.1 wrapper. Replaced by LFXFileV3 (luxsync.lfx/3.0).
+// Phase 3 will remove this type, DynamicEffectRegistry.registerEffect(), and _buildEntry().
 // ─── CLIP COMPLETO V2.1 (sobreviviente a IPC) ───────────────────────────────
 
 /**

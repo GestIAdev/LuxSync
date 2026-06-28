@@ -1,3 +1,5 @@
+// PHASE 4 UPDATE TARGET — luxToChronos() produces V1 ChronosProject; must produce V2.
+// The .lux format already contains HephAutomationClipV3 via FXClip.hephClip.
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 💾 CHRONOS STORE - WAVE 2014: THE MEMORY CORE

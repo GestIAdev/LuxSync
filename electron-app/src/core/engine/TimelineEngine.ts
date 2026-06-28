@@ -1,3 +1,6 @@
+// PHASE 5 RECONSTRUCTION TARGET — Uses LuxProject flat clips + EFFECT_FACTORIES + mixBus.
+// Must delegate to HephaestusRuntime for V3 clips. blendMode from HephTrack.blendMode.
+// EFFECT_FACTORIES and hardcoded effect instantiation will be removed.
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🎬 TIMELINE ENGINE - WAVE 2053.1: THE ENGINE ROOM

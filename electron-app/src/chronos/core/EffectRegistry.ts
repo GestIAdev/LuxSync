@@ -1,3 +1,7 @@
+// @deprecated DEMOLITION TARGET — Entire file will be deleted in Phase 2.
+// These 45+ hardcoded effects are legacy pre-Hephaestus. The real arsenal is
+// DynamicEffectRegistry fed by .lfx V3 clips via LfxFileLoader.
+// mixBus, inferMixBus(), getEffectTrackId() — all obsolete in V3.
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🎨 EFFECT REGISTRY - WAVE 2040.21: THE CORE PRESET REVAMP

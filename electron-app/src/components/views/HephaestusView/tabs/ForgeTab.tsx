@@ -343,7 +343,6 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
       name: libraryItem.name,
       hephClipSerialized: cachedClip || undefined,
       category: cachedClip?.category || libraryItem.category,
-      mixBus: cachedClip?.mixBus,
       effectType: cachedClip?.effectType || libraryItem.effectType,
       zones: cachedClip?.spatialZones,
       priority: cachedClip?.priority,

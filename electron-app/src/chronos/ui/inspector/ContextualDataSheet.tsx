@@ -21,6 +21,7 @@
 
 import React, { useMemo, useCallback, memo } from 'react'
 import type { TimelineClip, FXClip, VibeClip } from '../../core/TimelineClip'
+import { getClipMixBus } from '../../core/TimelineClip'
 import {
   ClockIcon,
   ZapIcon,
@@ -88,14 +89,15 @@ const getCategoryLabel = (clip: TimelineClip): string => {
 const getMixBusLabel = (clip: TimelineClip): string | null => {
   if (clip.type !== 'fx') return null
   const fx = clip as FXClip
-  if (!fx.mixBus) return null
+  if (!fx.hephClip?.mixBus) return null
   const labels: Record<string, string> = {
     global: '🔴 GLOBAL',
     htp: '🟡 HTP',
     ambient: '🟢 AMBIENT',
     accent: '🔵 ACCENT',
   }
-  return labels[fx.mixBus] || fx.mixBus.toUpperCase()
+  const mb = getClipMixBus(fx)
+  return labels[mb] || mb.toUpperCase()
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

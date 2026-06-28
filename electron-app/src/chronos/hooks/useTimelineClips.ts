@@ -239,13 +239,12 @@ export function useTimelineClips(options: UseTimelineClipsOptions): UseTimelineC
           payload.subType,
           // WAVE 2040.17: Full Diamond Data from DragPayload
           payload.hephClipSerialized,
-          payload.mixBus,
           payload.zones,
           payload.priority,
         )
         addClip(clip)
         selectClip(clip.id)
-        console.log(`[useTimelineClips] ⚒️💎 Created Hephaestus Diamond clip: ${clip.label} [mixBus=${payload.mixBus || 'none'}, tracks=${payload.hephClipSerialized?.tracks?.length ?? 0}]`)
+        console.log(`[useTimelineClips] ⚒️💎 Created Hephaestus Diamond clip: ${clip.label} [mixBus=${payload.hephClipSerialized?.mixBus || 'none'}, tracks=${payload.hephClipSerialized?.tracks?.length ?? 0}]`)
         return clip
       }
       

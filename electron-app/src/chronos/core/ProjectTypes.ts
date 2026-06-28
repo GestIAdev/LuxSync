@@ -123,6 +123,7 @@ export {
   VIBE_COLORS,
   FX_COLORS,
   MIXBUS_CLIP_COLORS,
+  getClipMixBus,
   getVibeColor,
   toFXType,
   toVibeType,

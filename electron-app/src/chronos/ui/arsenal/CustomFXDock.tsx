@@ -118,7 +118,6 @@ const CustomFXPad: React.FC<CustomFXPadProps> = memo(({
       name: clip.name,
       // WAVE 2040.18: Diamond Data from cache
       hephClipSerialized: cachedClip,
-      mixBus: cachedClip?.mixBus as DragPayload['mixBus'],
       effectType: cachedClip?.effectType || clip.effectType,
       zones: cachedClip?.spatialZones as string[] | undefined,
       priority: cachedClip?.priority,

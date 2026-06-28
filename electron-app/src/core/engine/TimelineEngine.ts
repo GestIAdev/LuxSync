@@ -476,10 +476,8 @@ export class TimelineEngine {
     const effect = state.effect!
 
     // 🎛️ WAVE 2066.1 / WAVE 4859: effect mixBus is canonical authority.
-    // Clips viejos pueden traer mixBus heredado (htp/global) que rompe la
-    // semántica actual al recargar proyectos antiguos. Para evitar poltergeist,
-    // primero manda el mixBus de la clase del efecto y recién después el clip.
-    const effectMixBus = (effect as any).mixBus ?? clip.mixBus ?? 'htp'
+    // FASE 1: clip.mixBus removed — V3 canonical source is clip.hephClip?.mixBus.
+    const effectMixBus = (effect as any).mixBus ?? clip.hephClip?.mixBus ?? 'htp'
     const blendMode: 'HTP' | 'LTP' | 'ADD' = effectMixBus === 'global' ? 'LTP' : 'HTP'
 
     // Trigger on first activation
@@ -930,12 +928,10 @@ export class TimelineEngine {
 
     if (channels.length === 0) return
 
-    // 🎛️ WAVE 4859: Hephaestus payload manda por encima del clip serializado.
-    // En recargas de proyectos viejos, clip.mixBus puede venir contaminado
-    // (htp/ambient) aunque el builtin actual ya sea global/override.
+    // 🎛️ WAVE 4859: Hephaestus payload is the canonical source.
+    // FASE 1: clip.mixBus removed — V3 canonical source is clip.hephClip?.mixBus.
     const hephMixBus = (clip as any).hephClip?.mixBus
-    const timelineMixBus = clip.mixBus
-    const resolvedMixBus = hephMixBus ?? timelineMixBus ?? 'global'
+    const resolvedMixBus = hephMixBus ?? 'global'
     const blendMode = this.resolveBlendModeFromMixBus(resolvedMixBus)
 
     const fixtureIds = this.resolveFixtureIds(clip)

@@ -22,6 +22,7 @@
  */
 
 import type { TimelineClip, FXClip } from './TimelineClip'
+import { getClipMixBus } from './TimelineClip'
 import type { ChronosProject as RuntimeProject } from './types'
 import { generateChronosId } from './types'
 import { normalizeTagsToCanonical } from '../../core/zones/ZoneMapper'
@@ -178,7 +179,7 @@ function extractHephEffects(clips: TimelineClip[]): HephEffectSummary[] {
       fileName,
       name: fx.label,
       effectType: typeof fx.params?.effectType === 'string' ? fx.params.effectType : 'heph-custom',
-      mixBus: fx.mixBus,
+      mixBus: getClipMixBus(fx),
       curveCount: fx.hephClip ? fx.hephClip.tracks.length : 0,
     })
   }
@@ -366,7 +367,7 @@ export function validateProject(project: LuxProject): { valid: boolean; errors: 
           errors.push(`Clip ${i} "${fx.label}": Hephaestus clip has 0 tracks — empty automation data`)
         }
       }
-      if (fx.isHephCustom && !fx.mixBus) {
+      if (fx.isHephCustom && !fx.hephClip?.mixBus) {
         warnings.push(`Clip ${i} "${fx.label}": Hephaestus clip missing mixBus routing`)
       }
     }

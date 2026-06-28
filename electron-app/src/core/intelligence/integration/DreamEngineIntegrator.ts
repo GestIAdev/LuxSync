@@ -714,7 +714,7 @@ export class DreamEngineIntegrator {
   }
 
   /** @see EffectDreamSimulator.getPreBufferedCandidate */
-  public getPreBufferedCandidate(): { effect: string; intensity: number; zones: string[]; confidence: number } | null {
+  public getPreBufferedCandidate(): { effect: string; effectName?: string; intensity: number; zones: string[]; confidence: number } | null {
     return effectDreamSimulator.getPreBufferedCandidate()
   }
 

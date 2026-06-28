@@ -874,6 +874,7 @@ function generateDivineStrikeDecision(
   // 🎲 WAVE 2494: Arsenal completo rankeado → Repository elige el primero disponible
   output.effectDecision = {
     effectType: suggestedEffect,
+    effectName: getDynamicEffectRegistry().getEntry(suggestedEffect)?.name,
     intensity: 1.0,  // DIVINE = máxima intensidad
     zones: ['all'],  // DIVINE afecta todo
     reason: `🌩️ DIVINE: Z=${(zScore ?? 0).toFixed(2)}σ > ${DIVINE_THRESHOLD} | Ranked: ${rankedArsenal.join(' > ')} | Full arsenal: ${arsenal.join(', ')}`,
@@ -939,6 +940,7 @@ function generateStrikeDecision(
     output.debugInfo.reasoning = `🧬 DNA BRAIN: ${dreamIntegration.dreamRecommendation}`
     output.effectDecision = {
       effectType: dnaEffect.effect,
+      effectName: dnaEffect.effectName,
       intensity: dnaEffect.intensity,
       zones: dnaEffect.zones as ('all' | 'front' | 'back' | 'movers' | 'pars' | 'movers_left' | 'movers_right')[],
       reason: `🧬 DNA: ${dreamIntegration.dreamRecommendation} | Ethics: ${dreamIntegration.ethicalVerdict?.ethicalScore.toFixed(2)}`,
@@ -1141,6 +1143,7 @@ function generateDropPreparationDecision(
         } else {
           output.effectDecision = {
             effectType: suggestedEffect,
+            effectName: getDynamicEffectRegistry().getEntry(suggestedEffect)?.name,
             intensity: 0.8 + prediction.probability * 0.2,  // 0.94-1.0 según probabilidad
             zones: ['all'],
             reason: `🔴 DROP: prob=${prediction.probability.toFixed(2)} | winner=${suggestedEffect} | full arsenal=${dropArsenal.join(', ')}`,

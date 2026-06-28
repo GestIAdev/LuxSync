@@ -147,7 +147,10 @@ export interface ConsciousnessMovementDecision {
 export interface ConsciousnessEffectDecision {
   /** Tipo de efecto a disparar (e.g., 'solar_flare', 'strobe_burst') */
   effectType: string
-  
+
+  /** Nombre humano legible del clip .lfx (e.g., 'Acid Sweep Through Mars') */
+  effectName?: string
+
   /** Intensidad del efecto (0-1) */
   intensity: number
   

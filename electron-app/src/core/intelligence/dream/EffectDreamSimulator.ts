@@ -66,6 +66,7 @@ interface SelenePalette {
 
 export interface EffectCandidate {
   effect: string                    // 'industrial_strobe', 'acid_sweep', etc.
+  effectName?: string               // Human-readable clip.name from .lfx (e.g., 'Acid Sweep Through Mars')
   intensity: number                 // 0-1
   zones: string[]                   // ['all'], ['movers'], etc.
   reasoning: string                 // Why this effect?
@@ -306,7 +307,7 @@ export class EffectDreamSimulator {
           oracleProbability,
         }
         
-        console.log(`[DREAM_SIMULATOR] 🔮📦 CASSANDRA PRE-BUFFER: "${bestScenario.effect.effect}" stored for ${predictionType} in ~${(timeToEvent / 1000).toFixed(1)}s (${(oracleProbability * 100).toFixed(0)}% confidence)`)
+        console.log(`[DREAM_SIMULATOR] 🔮📦 CASSANDRA PRE-BUFFER: "${bestScenario.effect.effectName ?? bestScenario.effect.effect}" stored for ${predictionType} in ~${(timeToEvent / 1000).toFixed(1)}s (${(oracleProbability * 100).toFixed(0)}% confidence)`)
       }
     }
     
@@ -320,7 +321,7 @@ export class EffectDreamSimulator {
     
     // 🧹 WAVE 1015: Solo logear si slow (>5ms) o si hay problema
     if (simulationTimeMs > 5 && bestScenario) {
-      console.log(`[DREAM_SIMULATOR] 🎯 ${bestScenario.effect.effect} (${simulationTimeMs}ms)`)
+      console.log(`[DREAM_SIMULATOR] 🎯 ${bestScenario.effect.effectName ?? bestScenario.effect.effect} (${simulationTimeMs}ms)`)
     }
     
     // ═══════════════════════════════════════════════════════════════
@@ -447,6 +448,7 @@ export class EffectDreamSimulator {
       .filter(e => e.id !== primaryEffect.effect)
       .map(e => ({
         effect: e.id,
+        effectName: e.name,
         intensity: primaryEffect.intensity * 0.9,
         zones: primaryEffect.zones,
         reasoning: `Alternative to ${primaryEffect.effect} (same vibe)`,
@@ -475,10 +477,11 @@ export class EffectDreamSimulator {
    * Returns the full pre-buffered effect candidate (needed to build the sovereign output).
    * null = no active pre-buffer.
    */
-  public getPreBufferedCandidate(): { effect: string; intensity: number; zones: string[]; confidence: number } | null {
+  public getPreBufferedCandidate(): { effect: string; effectName?: string; intensity: number; zones: string[]; confidence: number } | null {
     if (!this.preBuffer) return null
     return {
       effect: this.preBuffer.effect.effect,
+      effectName: this.preBuffer.effect.effectName,
       intensity: this.preBuffer.effect.intensity,
       zones: this.preBuffer.effect.zones ?? [],
       confidence: this.preBuffer.effect.confidence,
@@ -803,6 +806,7 @@ export class EffectDreamSimulator {
       
       candidates.push({
         effect,
+        effectName: entry?.name,
         intensity,
         zones: ['all'], // Simplificado para Phase 1
         reasoning: isSuggestedByOracle 

@@ -171,3 +171,16 @@
 - **isPlayingRef:** ref espejo de `preview.isPlaying` — el render loop lee el ref sin re-suscribirse.
 
 **tsc --noEmit: 0 errores.**
+
+### TODO menor — 2026-06-28
+
+**Selene debe leer `clip.name` del .lfx, no el filename**
+- **`ConsciousnessOutput.ts`:** Añadido `effectName?: string` a `ConsciousnessEffectDecision` — propaga el nombre humano legible del clip (e.g., "Acid Sweep Through Mars") desde el `.lfx`.
+- **`EffectDreamSimulator.ts`:** Añadido `effectName?: string` a `EffectCandidate`. `generateCandidates()` ahora puebla `effectName` desde `RegistryEntry.name` (que viene de `clip.name` del `.lfx`). `exploreAlternatives()` también propaga `e.name`. `getPreBufferedCandidate()` retorna `effectName`. Logs actualizados para mostrar `effectName ?? effect` (fallback al ID si no hay nombre).
+- **`DreamEngineIntegrator.ts`:** `getPreBufferedCandidate()` return type actualizado para incluir `effectName`.
+- **`SeleneTitanConscious.ts`:** Sovereign Clock path propaga `candidate.effectName` al `effectDecision`. DIVINE arsenal override propaga `effectName` desde el registry. `contextualEffectSelected` event emite `effectName`. Todos los logs actualizados: Glass Break, Sovereign Clock, Divine Aborted, DNA simulation, DecisionMaker approved.
+- **`DecisionMaker.ts`:** DNA path, DIVINE path y DROP path ahora setean `effectName` desde `RegistryEntry.name` vía `getDynamicEffectRegistry().getEntry(id)?.name`.
+
+**Resultado:** Selene ahora usa `clip.name` del contenido del `.lfx` como nombre canonical en toda la cadena — desde el DreamSimulator hasta los logs y eventos de telemetría. El `effectType` (ID/filename sin extensión) se preserva para lookups internos, pero `effectName` es el nombre humano que se muestra al operador.
+
+**tsc --noEmit: 0 errores.**

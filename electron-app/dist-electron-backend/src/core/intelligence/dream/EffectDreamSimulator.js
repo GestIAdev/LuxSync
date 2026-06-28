@@ -134,7 +134,7 @@ export class EffectDreamSimulator {
                     predictionType,
                     oracleProbability,
                 };
-                console.log(`[DREAM_SIMULATOR] 🔮📦 CASSANDRA PRE-BUFFER: "${bestScenario.effect.effect}" stored for ${predictionType} in ~${(timeToEvent / 1000).toFixed(1)}s (${(oracleProbability * 100).toFixed(0)}% confidence)`);
+                console.log(`[DREAM_SIMULATOR] 🔮📦 CASSANDRA PRE-BUFFER: "${bestScenario.effect.effectName ?? bestScenario.effect.effect}" stored for ${predictionType} in ~${(timeToEvent / 1000).toFixed(1)}s (${(oracleProbability * 100).toFixed(0)}% confidence)`);
             }
         }
         // 5. Generar recomendación
@@ -144,7 +144,7 @@ export class EffectDreamSimulator {
         const simulationTimeMs = Date.now() - startTime;
         // 🧹 WAVE 1015: Solo logear si slow (>5ms) o si hay problema
         if (simulationTimeMs > 5 && bestScenario) {
-            console.log(`[DREAM_SIMULATOR] 🎯 ${bestScenario.effect.effect} (${simulationTimeMs}ms)`);
+            console.log(`[DREAM_SIMULATOR] 🎯 ${bestScenario.effect.effectName ?? bestScenario.effect.effect} (${simulationTimeMs}ms)`);
         }
         // ═══════════════════════════════════════════════════════════════
         // 🔮 WAVE 2200.1: CASSANDRA TEMPORAL SEAL
@@ -245,6 +245,7 @@ export class EffectDreamSimulator {
             .filter(e => e.id !== primaryEffect.effect)
             .map(e => ({
             effect: e.id,
+            effectName: e.name,
             intensity: primaryEffect.intensity * 0.9,
             zones: primaryEffect.zones,
             reasoning: `Alternative to ${primaryEffect.effect} (same vibe)`,
@@ -276,6 +277,7 @@ export class EffectDreamSimulator {
             return null;
         return {
             effect: this.preBuffer.effect.effect,
+            effectName: this.preBuffer.effect.effectName,
             intensity: this.preBuffer.effect.intensity,
             zones: this.preBuffer.effect.zones ?? [],
             confidence: this.preBuffer.effect.confidence,
@@ -558,6 +560,7 @@ export class EffectDreamSimulator {
             const finalConfidence = Math.min(1, baseConfidence + oracleBoost);
             candidates.push({
                 effect,
+                effectName: entry?.name,
                 intensity,
                 zones: ['all'], // Simplificado para Phase 1
                 reasoning: isSuggestedByOracle

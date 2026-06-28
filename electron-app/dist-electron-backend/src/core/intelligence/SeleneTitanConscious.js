@@ -403,19 +403,19 @@ export class SeleneTitanConscious extends EventEmitter {
                             const isLatino = vibes.some((v) => v.includes('latino') || v.includes('latina') || v.includes('dembow'));
                             const effectiveThreshold = isTechno ? 2.5 : isLatino ? 2.0 : 3.5;
                             if (currentZScore < effectiveThreshold) {
-                                console.log(`[Sovereign Clock 🛡️] DIVINE ABORTED: "${candidate.effect}" ` +
+                                console.log(`[Sovereign Clock 🛡️] DIVINE ABORTED: "${candidate.effectName ?? candidate.effect}" ` +
                                     `Z=${currentZScore.toFixed(2)}σ < ${effectiveThreshold} → buffer cleared, effect suppressed`);
                                 divineAborted = true;
                             }
                         }
                         if (!divineAborted) {
                             if (glassBreak) {
-                                console.log(`[SeleneTitanConscious] 🪟💥 CASSANDRA GLASS BREAK: firing "${candidate.effect}" ` +
+                                console.log(`[SeleneTitanConscious] 🪟💥 CASSANDRA GLASS BREAK: firing "${candidate.effectName ?? candidate.effect}" ` +
                                     `| drop landed EARLY (Z=${currentZScore.toFixed(2)} ≥ ${GLASS_BREAK_Z}, E=${titanState.rawEnergy.toFixed(2)}) ` +
                                     `| ${timeToEvent}ms remained on the clock — countdown ABORTED`);
                             }
                             else {
-                                console.log(`[SeleneTitanConscious] 🔮👑 CASSANDRA SOVEREIGN CLOCK: firing "${candidate.effect}" ` +
+                                console.log(`[SeleneTitanConscious] 🔮👑 CASSANDRA SOVEREIGN CLOCK: firing "${candidate.effectName ?? candidate.effect}" ` +
                                     `| overdue=${Math.abs(timeToEvent)}ms | confidence=${candidate.confidence.toFixed(2)} ` +
                                     `| bypassing HuntEngine + Fuzzy + EnergyOverride`);
                             }
@@ -427,6 +427,7 @@ export class SeleneTitanConscious extends EventEmitter {
                                 confidence: Math.max(candidate.confidence, 0.85),
                                 effectDecision: {
                                     effectType: candidate.effect,
+                                    effectName: candidate.effectName,
                                     intensity: candidate.intensity,
                                     zones: (candidate.zones.length > 0 ? candidate.zones : ['all']),
                                     confidence: Math.max(candidate.confidence, 0.85),
@@ -963,7 +964,7 @@ export class SeleneTitanConscious extends EventEmitter {
                         this.lastDreamIntegrationResult = dreamIntegrationData?.approved ? dreamIntegrationData : null;
                         // ⚡ WAVE 2093.3: DNA SIMULATION LOG restaurado (información vital para debug)
                         if (dreamIntegrationData) {
-                            console.log(`[SeleneTitanConscious] 🧬 DNA: ${dreamIntegrationData.approved ? '✅' : '❌'} ${dreamIntegrationData.effect?.effect ?? 'none'} | ` +
+                            console.log(`[SeleneTitanConscious] 🧬 DNA: ${dreamIntegrationData.approved ? '✅' : '❌'} ${dreamIntegrationData.effect?.effectName ?? dreamIntegrationData.effect?.effect ?? 'none'} | ` +
                                 `ethics=${dreamIntegrationData.ethicalVerdict?.ethicalScore?.toFixed(3) ?? 'N/A'} | ` +
                                 `dream=${dreamIntegrationData.dreamTime}ms | ${dreamIntegrationData.dreamRecommendation?.substring(0, 50) ?? ''}`);
                         }
@@ -1051,6 +1052,7 @@ export class SeleneTitanConscious extends EventEmitter {
                 if (availableWeapon) {
                     intent = availableWeapon;
                     output.effectDecision.effectType = availableWeapon;
+                    output.effectDecision.effectName = getDynamicEffectRegistry().getEntry(availableWeapon)?.name;
                     // ═══════════════════════════════════════════════════════════════
                     // 🛡️ WAVE 2200.4: LOG HONESTY — DIVINE vs DROP origin
                     // ═══════════════════════════════════════════════════════════════
@@ -1178,7 +1180,7 @@ export class SeleneTitanConscious extends EventEmitter {
                         `(would have overridden: ethics=${ethicsScore.toFixed(2)} > ${ethicsThreshold})`);
                 }
                 else {
-                    console.log(`[SeleneTitanConscious] �🧠 DECISION MAKER APPROVED: ${intent} | ` +
+                    console.log(`[SeleneTitanConscious] �🧠 DECISION MAKER APPROVED: ${output.effectDecision.effectName ?? intent} | ` +
                         `confidence=${output.effectDecision.confidence?.toFixed(2)} | ${output.effectDecision.reason}`);
                 }
             }
@@ -1250,6 +1252,7 @@ export class SeleneTitanConscious extends EventEmitter {
             output = { ...output, effectDecision: finalEffectDecision };
             this.emit('contextualEffectSelected', {
                 effectType: finalEffectDecision.effectType,
+                effectName: finalEffectDecision.effectName,
                 intensity: finalEffectDecision.intensity,
                 zScore,
                 section: selectorSection,

@@ -68,6 +68,10 @@ function evaluateColorTrack(track, evaluator, timeMs, intensityMod) {
  *   - Multiple tracks with the same paramId → blendMode (max/replace/add/multiply)
  *   - Color tracks: L modulated by intensity track value × clipIntensity
  *   - Numeric tracks: raw × clipIntensity (clipIntensity=1.0 for preview)
+ *   - ORDER GUARANTEE: applicableTracks are iterated in clip.tracks array
+ *     order, matching the runtime's tickActive() iteration. For non-
+ *     commutative modes (replace/subtract), the last track in array order
+ *     wins — same as the runtime's _blendMap + NodeArbiter LTP consolidation.
  *
  * INTENSITY MODULATION (color):
  *   The kernel finds the intensity track (paramId === 'intensity') among
@@ -88,8 +92,16 @@ function evaluateColorTrack(track, evaluator, timeMs, intensityMod) {
  */
 export function evaluateFixtureParams(clip, trackEvaluators, applicableTracks, timeMs, clipIntensity = 1.0) {
     const numeric = new Map();
-    let cr = 0, cg = 0, cb = 0;
-    let hasColor = false;
+    // 🧬 AUDIT R.2 FIX: Color tracks are keyed by paramId — same as the
+    // runtime's _blendMap (fixtureId:paramName). This ensures that:
+    //   1. Two color tracks with the SAME paramId blend in array order
+    //      (matching runtime's _blendOutput sequence).
+    //   2. Two color tracks with DIFFERENT paramIds are kept separate
+    //      (matching runtime's separate outputBuffer entries).
+    // The final color is resolved via LTP (last paramId written wins),
+    // mirroring how the NodeArbiter consolidates multiple color intents.
+    const colorMap = new Map();
+    let lastColorParam = null;
     // Pre-resolve intensity track for color luminance modulation
     let cachedIntensityMod = null;
     for (const track of applicableTracks) {
@@ -112,19 +124,18 @@ export function evaluateFixtureParams(clip, trackEvaluators, applicableTracks, t
             const rgb = evaluateColorTrack(track, evaluator, timeMs, cachedIntensityMod);
             if (!rgb)
                 continue;
-            if (hasColor) {
+            const existing = colorMap.get(paramId);
+            if (existing) {
                 const mode = track.blendMode ?? 'replace';
-                const [nr, ng, nb] = blendRgb(cr, cg, cb, rgb.r, rgb.g, rgb.b, mode);
-                cr = nr;
-                cg = ng;
-                cb = nb;
+                const [nr, ng, nb] = blendRgb(existing.r, existing.g, existing.b, rgb.r, rgb.g, rgb.b, mode);
+                existing.r = nr;
+                existing.g = ng;
+                existing.b = nb;
             }
             else {
-                cr = rgb.r;
-                cg = rgb.g;
-                cb = rgb.b;
-                hasColor = true;
+                colorMap.set(paramId, { r: rgb.r, g: rgb.g, b: rgb.b });
             }
+            lastColorParam = paramId;
             continue;
         }
         // Numeric track
@@ -138,6 +149,16 @@ export function evaluateFixtureParams(clip, trackEvaluators, applicableTracks, t
         else {
             numeric.set(paramId, adjusted);
         }
+    }
+    // Resolve final color via LTP (last paramId written wins, same as NodeArbiter)
+    let cr = 0, cg = 0, cb = 0;
+    let hasColor = false;
+    if (lastColorParam) {
+        const c = colorMap.get(lastColorParam);
+        cr = c.r;
+        cg = c.g;
+        cb = c.b;
+        hasColor = true;
     }
     return { numeric, r: cr, g: cg, b: cb, hasColor };
 }

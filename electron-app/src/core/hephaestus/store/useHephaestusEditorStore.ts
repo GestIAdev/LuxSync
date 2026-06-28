@@ -241,6 +241,37 @@ export const useHephaestusEditorStore = create<HephaestusEditorStore>()(
 
     // ── CLIP-LEVEL ──
     loadClip: (clip) => {
+      // 🧬 HYDRATION FIX: Normalize V2 selector.phase → V3 track.phaseConfig
+      // so the LabTab/PhaseControls can read the phase config without
+      // duplicating the runtime's _extractPhaseConfig fallback logic.
+      if (clip?.tracks) {
+        for (const track of clip.tracks) {
+          if (track.phaseConfig) continue
+          const v2 = track.selector?.phase
+          const legacySpread = track.selector?.phaseSpread
+          if (v2 && v2.spread > 0) {
+            track.phaseConfig = {
+              spreadDeg: v2.spread * 1440,
+              symmetry: v2.symmetry ?? 'linear',
+              wings: v2.wings ?? 1,
+              blocks: 1,
+              shuffle: 0,
+              shuffleSeed: 1,
+              direction: v2.direction ?? 1,
+            }
+          } else if (legacySpread != null && legacySpread > 0) {
+            track.phaseConfig = {
+              spreadDeg: legacySpread * 1440,
+              symmetry: 'linear',
+              wings: 1,
+              blocks: 1,
+              shuffle: 0,
+              shuffleSeed: 1,
+              direction: 1,
+            }
+          }
+        }
+      }
       const firstTrackId = clip?.tracks?.[0]?.id ?? null
       set((state) => {
         state.clip = clip as any

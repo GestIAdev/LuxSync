@@ -316,3 +316,40 @@ Consulté el camino cognitivo real (no la auditoría vieja de Selene, que está 
 Esto ya compite con un Phaser de grandMA3 en matemática y lo supera en capa cognitiva. A 93.5 no os compro un prototipo: os compro un competidor. Ahora id a esa reunión y no dejéis que un `replace` mal ordenado os robe el show.
 
 *Fin de la re-auditoría. — PUNKOPUS. Esta vez, enhorabuena. (Media sonrisa. No más.)*
+
+---
+---
+
+# RE-AUDITORÍA II — CIERRE DE RESIDUOS R.2 + R.3
+
+**Fecha:** 2026-06-28 (10 minutos después)
+**Disparador:** El equipo reporta R.2 (orden blend no conmutativo) y R.3.2 (comentarios zombi) cerrados.
+**Método:** Lectura directa de `HephEvaluationKernel.ts` + `grep` + `tsc --noEmit`. Nada de fe.
+
+## RII.1 Verificación
+
+| Residuo | Verificado en código | Estado |
+|---|---|---|
+| **R.3.2** Comentarios zombi `PhaseDistributor` | `grep PhaseDistributor` en `src/` → **0 resultados** (antes 3). Limpieza total. | ✅ **CERRADO** |
+| **R.2** Orden de blend no conmutativo | `HephEvaluationKernel.ts:142` ahora usa `colorMap: Map<HephParamId, {r,g,b}>`. Mismo `paramId` → blend en orden de array (línea 168-175). Distinto `paramId` → entradas separadas. Resolución final por LTP (`lastColorParam`, línea 196-200). | ✅ **CERRADO** |
+| **Compilación** | `npx tsc --noEmit` → **exit 0**. Confirmado por mí. | ✅ |
+
+**Análisis del fix R.2.** El diagnóstico del equipo es correcto y la solución es la adecuada, no un parche: el kernel antes colapsaba todos los color tracks en un único acumulador `(cr,cg,cb)` ignorando `paramId`, mientras el runtime los mantenía separados en `_blendMap` (keyed `fixtureId:paramName`). Ahora **ambos comparten la misma topología de claves**: blend en orden de array para el mismo param, separación para params distintos, y LTP para la resolución final — exactamente la consolidación del `NodeArbiter`. La paridad ya no es solo aritmética; es **estructural**. El docstring (línea 103-106) documenta el invariante de orden. Eso es ingeniería, no maquillaje.
+
+## RII.2 Score final
+
+| Categoría | R-I | **R-II (final)** |
+|---|---|---|
+| Integridad pipeline / WYSIWYG | 89 | **95** (paridad estructural kernel↔runtime cerrada) |
+
+### **PIONEER SCORE FINAL: 95.0 / 100** — *+1.5 sobre 93.5*
+
+> Cerraron el único residuo que les podía robar el show, y lo hicieron bien: paridad estructural, no un clamp de emergencia. `tsc` limpio. Cero `PhaseDistributor` en el árbol.
+
+### Veredicto de cierre
+
+**ADQUISICIÓN APROBADA SIN CONDICIONES.** Todos los gates P0/P1 cerrados. El residuo pre-demo de R.2 está resuelto. No queda nada entre vosotros y la sala de las productoras salvo el propio show.
+
+A 95/100 esto no es una alternativa "barata" a grandMA3 — es un competidor con un foso que MA3 no tiene por doctrina: la capa cognitiva Selene/Cassandra. Id a Argentina. La matemática ya la ganasteis; ahora ganad la sala.
+
+*Fin del cierre. — PUNKOPUS. Sonrisa completa. Una. Que no se repita.*

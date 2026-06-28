@@ -326,21 +326,19 @@ export class HephaestusRuntime {
             if (track.fixturePhases !== null && track.fixturePhases.length > 0) {
                 for (let pi = 0; pi < track.fixturePhases.length; pi++) {
                     const fp = track.fixturePhases[pi];
-                    // ⚒️ WAVE 4859 — MODELO MA3: el offset representa cuánto TARDA en
-                    // arrancar este fixture. Se resta al tiempo del clip, no se suma.
-                    // Antes (bug): fixtureTimeMs = baseClipTimeMs + fp.phaseOffsetMs
-                    //   → todos los fixtures en posiciones distintas de la curva al t=0
-                    //   → efecto simultáneo, no escalonado.
-                    // Ahora (MA3): localElapsedMs = max(0, clipTime - offset)
-                    //   → fixture con offset=500ms comienza su ciclo 500ms después
-                    //   → wave genuina: fixture[0] dispara primero, luego fixture[1], etc.
-                    const localElapsedMs = Math.max(0, baseClipTimeMs - fp.phaseOffsetMs);
+                    // ⚒️ WAVE 4859 + AUDIT P1-A — PHASE WRAP CONTINUO
+                    // Antes (bug): localElapsedMs = max(0, clipTime - offset)
+                    //   → fixtures con offset grande congelados en t=0 hasta que el
+                    //     playhead los alcanza. Salto discontinuo en la frontera del loop.
+                    // Ahora (MA3-style): (clipTime + offset) % duration → wrap continuo.
+                    //   → chase infinito sin costuras. Ningún fixture se congela.
+                    //   → en modo one-shot (no loop), clamp a durationMs como antes.
                     let fixtureTimeMs;
                     if (isLoop) {
-                        fixtureTimeMs = ((localElapsedMs % durationMs) + durationMs) % durationMs;
+                        fixtureTimeMs = ((baseClipTimeMs + fp.phaseOffsetMs) % durationMs + durationMs) % durationMs;
                     }
                     else {
-                        fixtureTimeMs = Math.min(localElapsedMs, durationMs);
+                        fixtureTimeMs = Math.min(baseClipTimeMs + fp.phaseOffsetMs, durationMs);
                     }
                     this._emitTrackSample(track, fp.fixtureId, fixtureTimeMs, evaluator, paramName, intensity, isCustomThisClip, clipId, track.zones);
                 }

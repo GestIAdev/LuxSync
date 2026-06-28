@@ -19,10 +19,10 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
 import { CurveEvaluator } from '../../../core/hephaestus/CurveEvaluator'
 import { scaleToDMX, scaleToDMX16, hslToRgb } from '../../../core/hephaestus/runtime/HephUtils'
-import { type PhaseConfigPro } from '../../../core/hephaestus/phase/PhaseConfigPro'
+import { type PhaseConfigPro, type FixturePhase } from '../../../core/hephaestus/phase/PhaseConfigPro'
 import { resolveWithOverrides, type PhaseOverrideMap } from '../../../core/hephaestus/phase/PhaseOverride'
 import { defaultBlendMode, blendNumeric, blendRgb, buildTrackEvaluators } from '../../../core/hephaestus/HephSharedMath'
-import type { HephAutomationClipV3, HephTrack, HephParamId, FixturePhase } from '../../../core/hephaestus/types'
+import type { HephAutomationClipV3, HephTrack, HephParamId } from '../../../core/hephaestus/types'
 import type { EffectZone } from '../../../core/effects/types'
 import type { FixtureV2 } from '../../../core/stage/ShowFileV2'
 import { resolveZoneTags } from '../../../core/zones/ZoneMapper'
@@ -472,7 +472,9 @@ export function useHephPreview(clip: HephAutomationClipV3 | null, stageFixtures:
       for (let i = 0; i < totalFixtures; i++) {
         const rf = targetPool[i]
         const phaseOffset = phaseByFixture.get(rf.id) ?? 0
-        const offsetTime = Math.max(0, timeMs - phaseOffset)
+        const offsetTime = phaseOffset > 0
+          ? ((timeMs + phaseOffset) % c.durationMs + c.durationMs) % c.durationMs
+          : timeMs
 
         // 🧬 WAVE 7035: Find applicable tracks for this fixture (per-track zone resolution)
         const applicableTracks = c.tracks.filter(t => {

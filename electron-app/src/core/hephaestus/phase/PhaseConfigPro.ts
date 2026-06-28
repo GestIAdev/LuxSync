@@ -103,6 +103,7 @@ export function computeOffsetPro(
 ): number {
   if (totalFixtures <= 1 || config.spreadDeg === 0) return 0
 
+  const spreadDeg = Math.max(0, Math.min(1440, config.spreadDeg))
   const blocks  = Math.max(1, Math.floor(config.blocks))
   const wings   = Math.max(1, config.wings)
   const shuffle = Math.max(0, Math.min(1, config.shuffle))
@@ -130,7 +131,7 @@ export function computeOffsetPro(
   const d = config.direction === -1 ? 1 - w : w
 
   // ⑦ SPREAD → TIME (grados de ciclo → ms)
-  return d * (config.spreadDeg / 360) * durationMs
+  return d * (spreadDeg / 360) * durationMs
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -29,6 +29,7 @@
  */
 /**
  * ⚒️ WAVE 2400: Default PhaseConfig — sin distribución de fase.
+ * @deprecated V2 legacy — use PhaseConfigPro from './phase/PhaseConfigPro'.
  */
 export const DEFAULT_PHASE_CONFIG = {
     spread: 0,

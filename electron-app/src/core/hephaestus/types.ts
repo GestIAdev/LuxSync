@@ -122,22 +122,8 @@ export interface PhaseConfig {
 }
 
 /**
- * ⚒️ WAVE 2400: Resultado pre-calculado de fase para UNA fixture.
- * Array de estos = lo que PhaseDistributor.resolve() retorna.
- */
-export interface FixturePhase {
-  /** ID de la fixture (resolved desde FixtureSelector) */
-  fixtureId: string
-
-  /** Offset de fase en ms (se SUMA a clipTimeMs) */
-  phaseOffsetMs: number
-
-  /** Índice normalizado 0-1 dentro de su wing (para UI) */
-  normalizedIndex: number
-}
-
-/**
  * ⚒️ WAVE 2400: Default PhaseConfig — sin distribución de fase.
+ * @deprecated V2 legacy — use PhaseConfigPro from './phase/PhaseConfigPro'.
  */
 export const DEFAULT_PHASE_CONFIG: Readonly<PhaseConfig> = {
   spread: 0,
@@ -411,12 +397,12 @@ export interface HephTrack {
    * ⚒️ WAVE 4859 — Distribución de fase grandMA3-style per-fixture.
    *
    * Shorthand directo en el track (alternativa a declarar `selector.phase`).
-   * Cuando presente, el Runtime llama a `PhaseDistributor.resolve()` al
-   * activar el clip y almacena los offsets en `ResolvedTrack.fixturePhases`.
+   * Cuando presente, el Runtime usa `resolveWithOverrides()` (PhaseConfigPro)
+   * al activar el clip y almacena los offsets en `ResolvedTrack.fixturePhases`.
    *
-   * MODELO MA3: `spread: 1.0` = el último fixture empieza su animación
-   * exactamente un ciclo después que el primero. El offset se resta al
-   * tiempo del clip → `localElapsedMs = max(0, clipTime - fixtureOffsetMs)`.
+   * MODELO MA3: `spreadDeg: 360` = el último fixture empieza su animación
+   * exactamente un ciclo después que el primero. El offset se aplica con
+   * wrap continuo → `localElapsedMs = (clipTime + phaseOffset) % durationMs`.
    */
   phaseConfig?: import('./phase/PhaseConfigPro').PhaseConfigPro
 
@@ -665,3 +651,9 @@ export function inferHephCategory(clip: HephAutomationClip): import('../effects/
   // Parámetros genéricos (speed, width, direction, globalComp) sin grupo específico
   return 'physical'
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RE-EXPORTS — PhaseConfigPro is the single source of truth for phase types
+// ═══════════════════════════════════════════════════════════════════════════
+
+export type { FixturePhase } from './phase/PhaseConfigPro'

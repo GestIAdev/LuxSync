@@ -9,23 +9,25 @@
 ## LOTE 1 — Quick wins que cierran secciones enteras
 
 ### P0-A: Matar PhaseDistributor/PhaseConfig legacy
-- [ ] Eliminar `runtime/PhaseDistributor.ts` (archivo muerto, 189 líneas)
-- [ ] Limpiar import de `PhaseConfig` de `HephaestusRuntime.ts`
-- [ ] Actualizar `_extractPhaseConfig` para que solo acepte `PhaseConfigPro | undefined`
-- [ ] Mover `FixturePhase` a `PhaseConfigPro.ts` (ya existe ahí como export)
-- [ ] Limpiar `PhaseConfig` y `DEFAULT_PHASE_CONFIG` de `types.ts` si no hay otros consumidores
-- [ ] Actualizar comentarios en `types.ts` que mienten sobre PhaseDistributor.resolve()
-- [ ] Eliminar o archivar `__tests__/PhaseDistributor.test.ts`
-- [ ] `tsc --noEmit` limpio
+- [x] Eliminar `runtime/PhaseDistributor.ts` (archivo muerto, 189 líneas)
+- [x] Eliminar `__tests__/PhaseDistributor.test.ts`
+- [x] Limpiar import de `FixturePhase` de `HephaestusRuntime.ts` → ahora desde `PhaseConfigPro.ts`
+- [x] `PhaseConfig` se mantiene en `types.ts` solo para V2 compat (lfxTypes.ts, ShowFileV2.ts)
+- [x] `FixturePhase` eliminado de `types.ts`, re-exportado desde `PhaseConfigPro.ts` para backward compat
+- [x] Actualizar comentarios en `types.ts` que mentían sobre PhaseDistributor.resolve()
+- [x] `DEFAULT_PHASE_CONFIG` marcado como `@deprecated`
+- [x] `tsc --noEmit` limpio
+- [ ] `_extractPhaseConfig` aún acepte `PhaseConfig | PhaseConfigPro` como V2 shim — limpiar en Lote 3
 
 ### P2-E: Clamp spreadDeg en computeOffsetPro
-- [ ] Clamp `spreadDeg` a [0, 1440] en `computeOffsetPro` (PhaseConfigPro.ts:98)
-- [ ] `tsc --noEmit` limpio
+- [x] Clamp `spreadDeg` a [0, 1440] en `computeOffsetPro` (PhaseConfigPro.ts:106)
+- [x] `tsc --noEmit` limpio
 
 ### P1-A: Fase con wrap continuo
-- [ ] Cambiar `Math.max(0, timeMs - phaseOffset)` → `(timeMs + phaseOffset) % durationMs` en `useHephPreview`
-- [ ] Verificar que el runtime (`HephaestusRuntime.ts`) usa el mismo wrap
-- [ ] `tsc --noEmit` limpio
+- [x] Preview (`useHephPreview.ts:475`): `Math.max(0, timeMs - phaseOffset)` → `((timeMs + phaseOffset) % durationMs + durationMs) % durationMs`
+- [x] Runtime (`HephaestusRuntime.ts:552`): mismo wrap en modo loop; one-shot usa clamp a `durationMs`
+- [x] Comentarios actualizados en runtime (WAVE 4859 + AUDIT P1-A)
+- [x] `tsc --noEmit` limpio
 
 ---
 
@@ -87,5 +89,24 @@
 
 ## Reporte de Lotes
 
-### Lote 1 — (fecha)
-_Pendiente de ejecución_
+### Lote 1 — 2026-06-28
+
+**P0-A: PhaseDistributor legacy eliminado**
+- Eliminados `PhaseDistributor.ts` (189 líneas) + `PhaseDistributor.test.ts` (350 líneas)
+- `FixturePhase` ahora tiene única fuente de verdad en `PhaseConfigPro.ts`
+- `types.ts` re-exporta `FixturePhase` para backward compat
+- `PhaseConfig` (V2) se mantiene como compat shim para `lfxTypes.ts` y `ShowFileV2.ts`
+- Comentarios mentirosos sobre `PhaseDistributor.resolve()` corregidos
+- Cierra §1.3 de la auditoría: un solo motor de fase vivo
+
+**P2-E: Clamp spreadDeg**
+- `computeOffsetPro` ahora clampa `spreadDeg` a [0, 1440] como defensa en el motor
+- Cierra §3.4 de la auditoría
+
+**P1-A: Phase wrap continuo**
+- Preview y runtime ahora usan `(time + offset) % duration` en modo loop
+- Fixtures con offset grande ya no se congelan en t=0 esperando al playhead
+- No hay salto discontinuo en la frontera del loop → chase infinito sin costuras
+- Cierra §3.3 de la auditoría: Hephaestus ahora implementa phase real, no delay disfrazado
+
+**tsc --noEmit: 0 errores en los 3 fixes.**

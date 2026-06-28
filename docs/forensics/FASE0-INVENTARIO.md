@@ -13,14 +13,14 @@
 | `hephaestus/__tests__/CurveEvaluator.test.ts` | Evaluación de curvas Bézier | ✅ KEEP |
 | `hephaestus/__tests__/HephParameterOverlay.test.ts` | Overlay de parámetros multi-track | ✅ KEEP |
 | `hephaestus/__tests__/HephTranslator.test.ts` | Traducción de clips V3 | ✅ KEEP |
-| `hephaestus/__tests__/HephaestusE2E.test.ts` | E2E: forgeClip → CurveEvaluator → DMX output | ✅ KEEP (pero usa `mixBus: 'htp'` — actualizar en Fase 1) |
+| `hephaestus/__tests__/HephaestusE2E.test.ts` | E2E: forgeClip → CurveEvaluator → DMX output | ✅ KEEP (usa `mixBus: 'htp'` — V3 canonical, sin cambios) |
 
 ### Tests V1/V2 (DEMOLITION TARGETS)
 | Archivo | Qué valida | Acción |
 |---|---|---|
 | `chronos/__tests__/EffectRegistry.test.ts` | EffectRegistry legacy (45 efectos hardcoded) | 🔴 Demoler en Fase 2 |
 | `chronos/__tests__/FXMapper.test.ts` | FXMapper legacy mapping | 🔴 Demoler en Fase 2 |
-| `chronos/__tests__/DiamondData.test.ts` | Serialización round-trip con mixBus, MIXBUS_CLIP_COLORS | 🔴 Demoler mixBus en Fase 1, reconstruir sin mixBus |
+| `chronos/__tests__/DiamondData.test.ts` | Serialización round-trip con mixBus, MIXBUS_CLIP_COLORS | 🔴 Limpiar FXClip.mixBus redundante en Fase 1, usar hephClip.mixBus |
 | `chronos/__tests__/chronosStore.test.ts` | Store Zustand V1 (createDefaultProject, EffectTriggerData) | 🔴 Reconstruir en Fase 4 |
 | `chronos/__tests__/ChronosProject.test.ts` | LuxProject ↔ ChronosProject V1 conversion | 🔴 Reconstruir en Fase 4 |
 | `chronos/__tests__/ProjectTypes.test.ts` | Barrel exports V1, luxToChronos V1 | 🔴 Reconstruir en Fase 4 |
@@ -55,11 +55,11 @@
 ### Arsenal V2.1
 - `lfxTypes.ts` — `LfxClipV2` marcado
 
-### Hephaestus V3
-- `types.ts:451` — `mixBus` field marcado
+### Hephaestus V3 (CANONICAL — NO TOCAR)
+- `types.ts:451` — `mixBus` field **CANÓNICO V3** — inter-clip blend behavior. NO es demolition target.
 
 ### Chronos Core
-- `TimelineClip.ts` — marcado por mixBus/inferMixBusFromCurves
+- `TimelineClip.ts` — `FXClip.mixBus` es duplicado redundante de `hephClip.mixBus`. Limpiar en Fase 1.
 - `ChronosStore.ts` — marcado como PHASE 4 UPDATE TARGET
 - `ChronosEngine.ts` — marcado como PHASE 4 DEMOLITION TARGET (V1 path)
 - `migration.ts` — marcado como TEMPORARY BRIDGE
@@ -68,11 +68,28 @@
 ### Backend
 - `TimelineEngine.ts` — marcado como PHASE 5 RECONSTRUCTION TARGET
 
-## Mapa de Fases
-- **Fase 1:** Eliminar `mixBus` de V3 (HephAutomationClipV3, serializeHephClip, LfxFileLoader, FXClip, TimelineEngine)
-- **Fase 2:** Demoler EffectRegistry + FXMapper (45 efectos hardcoded)
+## Distinción CRÍTICA: Dos conceptos llamados "mixBus"
+
+### 1. V3 `mixBus` en `HephAutomationClipV3` — CANÓNICO, NO TOCAR
+Inter-clip blend behavior cuando efectos se solapan en los mismos fixtures:
+- `global` = LTP (full takeover, FX1)
+- `htp` = HTP (highest takes precedence, FX2 transitional)
+- `ambient` = HTP (atmospheric, FX3)
+- `accent` = HTP (punchy accents, FX4)
+
+Visible en `NewClipModal.tsx` como selector de MIX BUS con colores neón.
+Usado por `TimelineEngine.ts:482-483` para determinar `blendMode: 'HTP' | 'LTP'`.
+
+### 2. Legacy track routing en Chronos — DEMOLITION TARGET
+`global/htp/ambient/accent` como etiquetas de tracks del timeline (forma antigua de separar efectos).
+Presente en `EffectRegistry.ts` (`EffectMeta.mixBus`, `inferMixBus()`), `TimelineTrack` V1.
+Esto se reemplaza por zonas canónicas (`front`, `back`, `movers`, etc.) en V2/V3.
+
+## Mapa de Fases (revisado)
+- **Fase 1:** Limpiar `FXClip.mixBus` redundante → usar `hephClip.mixBus` directamente. Eliminar `inferMixBusFromCurves()`, `MIXBUS_CLIP_COLORS`.
+- **Fase 2:** Demoler EffectRegistry + FXMapper (45 efectos hardcoded + legacy track routing mixBus)
 - **Fase 3:** Demoler V2.1 del Arsenal (LfxClipV2, registerEffect, _buildEntry)
-- **Fase 4:** Reconstruir Chronos runtime sobre V2 (store, engine, clips)
-- **Fase 5:** Reconstruir TimelineEngine backend (HephaestusRuntime delegation)
+- **Fase 4:** Reconstruir Chronos runtime sobre V2 (store, engine, clips con zonas canónicas)
+- **Fase 5:** Reconstruir TimelineEngine backend (HephaestusRuntime delegation, blendMode desde hephClip.mixBus)
 - **Fase 6:** Limpiar UI (ArsenalDock, ClipRenderer, ContextualDataSheet, ChronosRecorder)
 - **Fase 7:** Demoler tipos V1 muertos (ChronosProject, TimelineTrack, TrackType, ClipType, etc.)

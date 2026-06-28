@@ -36,7 +36,7 @@ import * as path from 'path';
 import { resolveWithOverrides } from '../phase/PhaseOverride';
 import { getHephaestusClipIndex } from '../HephaestusClipIndex';
 import { CurveEvaluator } from '../CurveEvaluator';
-import { defaultBlendMode as _defaultBlendModeFor } from '../HephSharedMath';
+import { defaultBlendMode as _defaultBlendModeFor, blendNumeric, blendRgb } from '../HephSharedMath';
 import { resolveZoneTags } from '../../zones/ZoneMapper';
 import { getTitanOrchestrator } from '../../orchestrator/TitanOrchestrator';
 // ═══════════════════════════════════════════════════════════════════════════
@@ -364,9 +364,32 @@ export class HephaestusRuntime {
         const blendKey = fixtureId + ':' + paramName;
         const existingIdx = this._blendMap.get(blendKey);
         if (track.valueType === 'color') {
-            const hsl = evaluator.getColorValue(paramName, timeMs);
+            // 🧬 AUDIT P0-B: Respect colorOverride — same logic as HephEvaluationKernel
+            let hsl;
+            if (track.colorOverride) {
+                const co = track.colorOverride;
+                if (typeof co.h !== 'number' || !Number.isFinite(co.h) ||
+                    typeof co.s !== 'number' || !Number.isFinite(co.s) ||
+                    typeof co.l !== 'number' || !Number.isFinite(co.l)) {
+                    return;
+                }
+                hsl = co;
+            }
+            else {
+                hsl = evaluator.getColorValue(paramName, timeMs);
+                if (!hsl || typeof hsl.h !== 'number' || typeof hsl.s !== 'number' || typeof hsl.l !== 'number' ||
+                    !Number.isFinite(hsl.h) || !Number.isFinite(hsl.s) || !Number.isFinite(hsl.l)) {
+                    return;
+                }
+            }
             const modulatedL = (hsl.l / 100) * intensity;
             const rgb = hslToRgb(hsl.h, hsl.s / 100, modulatedL);
+            if (!Number.isFinite(rgb.r))
+                rgb.r = 0;
+            if (!Number.isFinite(rgb.g))
+                rgb.g = 0;
+            if (!Number.isFinite(rgb.b))
+                rgb.b = 0;
             this._normRgbBuf.r = rgb.r / 255;
             this._normRgbBuf.g = rgb.g / 255;
             this._normRgbBuf.b = rgb.b / 255;
@@ -393,74 +416,32 @@ export class HephaestusRuntime {
         }
     }
     /**
-     * 🧬 WAVE 7035: Apply blendMode fusion in-place on an existing output entry.
+     * 🧬 WAVE 7035 + AUDIT P0-B: Apply blendMode fusion in-place on an existing output entry.
      * Called when a second track targets the same (fixtureId, paramId) as a
      * previous track within the same clip.
+     *
+     * AUDIT FIX: Now delegates to HephSharedMath.blendNumeric/blendRgb — the
+     * SAME functions used by the preview kernel. No more divergent blend logic.
      */
     _blendOutput(existing, mode, newValue, newRgb, newFine, newNormalized, newNormalizedRgb) {
-        switch (mode) {
-            case 'max':
-                existing.value = Math.max(existing.value, newValue);
-                if (existing.rgb && newRgb) {
-                    existing.rgb.r = Math.max(existing.rgb.r, newRgb.r);
-                    existing.rgb.g = Math.max(existing.rgb.g, newRgb.g);
-                    existing.rgb.b = Math.max(existing.rgb.b, newRgb.b);
-                }
-                if (existing.normalizedRgb && newNormalizedRgb) {
-                    existing.normalizedRgb.r = Math.max(existing.normalizedRgb.r, newNormalizedRgb.r);
-                    existing.normalizedRgb.g = Math.max(existing.normalizedRgb.g, newNormalizedRgb.g);
-                    existing.normalizedRgb.b = Math.max(existing.normalizedRgb.b, newNormalizedRgb.b);
-                }
-                if (newNormalized !== undefined)
-                    existing.normalizedValue = Math.max(existing.normalizedValue, newNormalized);
-                break;
-            case 'replace':
-                existing.value = newValue;
-                if (newRgb && existing.rgb) {
-                    existing.rgb.r = newRgb.r;
-                    existing.rgb.g = newRgb.g;
-                    existing.rgb.b = newRgb.b;
-                }
-                if (newFine !== undefined)
-                    existing.fine = newFine;
-                if (newNormalized !== undefined)
-                    existing.normalizedValue = newNormalized;
-                if (newNormalizedRgb && existing.normalizedRgb) {
-                    existing.normalizedRgb.r = newNormalizedRgb.r;
-                    existing.normalizedRgb.g = newNormalizedRgb.g;
-                    existing.normalizedRgb.b = newNormalizedRgb.b;
-                }
-                break;
-            case 'add':
-                existing.value = Math.min(255, existing.value + newValue);
-                if (existing.rgb && newRgb) {
-                    existing.rgb.r = Math.min(255, existing.rgb.r + newRgb.r);
-                    existing.rgb.g = Math.min(255, existing.rgb.g + newRgb.g);
-                    existing.rgb.b = Math.min(255, existing.rgb.b + newRgb.b);
-                }
-                if (existing.normalizedRgb && newNormalizedRgb) {
-                    existing.normalizedRgb.r = Math.min(1, existing.normalizedRgb.r + newNormalizedRgb.r);
-                    existing.normalizedRgb.g = Math.min(1, existing.normalizedRgb.g + newNormalizedRgb.g);
-                    existing.normalizedRgb.b = Math.min(1, existing.normalizedRgb.b + newNormalizedRgb.b);
-                }
-                if (newNormalized !== undefined)
-                    existing.normalizedValue = Math.min(1, existing.normalizedValue + newNormalized);
-                break;
-            case 'multiply':
-                existing.value = (existing.value * newValue) / 255;
-                if (existing.rgb && newRgb) {
-                    existing.rgb.r = (existing.rgb.r * newRgb.r) / 255;
-                    existing.rgb.g = (existing.rgb.g * newRgb.g) / 255;
-                    existing.rgb.b = (existing.rgb.b * newRgb.b) / 255;
-                }
-                if (existing.normalizedRgb && newNormalizedRgb) {
-                    existing.normalizedRgb.r = existing.normalizedRgb.r * newNormalizedRgb.r;
-                    existing.normalizedRgb.g = existing.normalizedRgb.g * newNormalizedRgb.g;
-                    existing.normalizedRgb.b = existing.normalizedRgb.b * newNormalizedRgb.b;
-                }
-                if (newNormalized !== undefined)
-                    existing.normalizedValue = existing.normalizedValue * newNormalized;
-                break;
+        existing.value = blendNumeric(existing.value, newValue, mode);
+        if (newNormalized !== undefined) {
+            existing.normalizedValue = blendNumeric(existing.normalizedValue, newNormalized, mode);
+        }
+        if (newFine !== undefined && mode === 'replace') {
+            existing.fine = newFine;
+        }
+        if (existing.rgb && newRgb) {
+            const [r, g, b] = blendRgb(existing.rgb.r, existing.rgb.g, existing.rgb.b, newRgb.r, newRgb.g, newRgb.b, mode);
+            existing.rgb.r = r;
+            existing.rgb.g = g;
+            existing.rgb.b = b;
+        }
+        if (existing.normalizedRgb && newNormalizedRgb) {
+            const [r, g, b] = blendRgb(existing.normalizedRgb.r * 255, existing.normalizedRgb.g * 255, existing.normalizedRgb.b * 255, newNormalizedRgb.r * 255, newNormalizedRgb.g * 255, newNormalizedRgb.b * 255, mode);
+            existing.normalizedRgb.r = r / 255;
+            existing.normalizedRgb.g = g / 255;
+            existing.normalizedRgb.b = b / 255;
         }
     }
     /**
@@ -616,7 +597,7 @@ export class HephaestusRuntime {
             if (trackPhase != null && topLevelPhaseConfig == null) {
                 topLevelPhaseConfig = trackPhase;
             }
-            tracks.push(this._buildResolvedTrack(t.id, t.paramId, t.curve, t.blendMode, fixtureIds, trackPhase, durationMs, t.zones, t.phaseOverrides));
+            tracks.push(this._buildResolvedTrack(t.id, t.paramId, t.curve, t.blendMode, fixtureIds, trackPhase, durationMs, t.zones, t.phaseOverrides, t.colorOverride));
         }
         return { tracks, phaseConfig: topLevelPhaseConfig };
     }
@@ -625,7 +606,7 @@ export class HephaestusRuntime {
      * Crea un `CurveEvaluator` con UNA sola curva (Map de tamaño 1) y, si hay
      * `phaseConfig + fixtureIds`, calcula la distribución de fase per-fixture.
      */
-    _buildResolvedTrack(id, paramId, curve, blendMode, fixtureIds, phaseConfig, durationMs, zones, phaseOverrides) {
+    _buildResolvedTrack(id, paramId, curve, blendMode, fixtureIds, phaseConfig, durationMs, zones, phaseOverrides, colorOverride) {
         const singleCurveMap = new Map([[paramId, curve]]);
         const evaluator = new CurveEvaluator(singleCurveMap, durationMs);
         let fixturePhases = null;
@@ -641,6 +622,7 @@ export class HephaestusRuntime {
             fixturePhases,
             blendMode: blendMode ?? _defaultBlendModeFor(paramId),
             zones,
+            colorOverride,
         };
     }
     /**

@@ -27,6 +27,7 @@ import type { PhaseConfigPro } from '../../../core/hephaestus/phase/PhaseConfigP
 // ═══════════════════════════════════════════════════════════════════════════
 
 const FPS_44_MS = 1000 / 44
+const FPS_IDLE_MS = 1000 / 12  // ── P1-B: Idle animations at 12 Hz, not 44 Hz
 
 const BG_VOID = '#06070C'
 const BG_SUBSTRATE = '#08080D'
@@ -595,6 +596,20 @@ export const QuantumSpectrometer: React.FC<QuantumSpectrometerProps> = ({
   const frameCounterRef = useRef<number>(0)
   const buffersRef = useRef<SpectrometerBuffers>(createBuffers())
 
+  // ── P1-B: Cached dimensions (ResizeObserver, no getBoundingClientRect per frame)
+  const dimsRef = useRef<{ w: number; h: number }>({ w: 0, h: 0 })
+
+  // ── P1-B: Cached vignette gradient (recreate only on resize)
+  const vignetteRef = useRef<CanvasGradient | null>(null)
+  const vignetteDimsRef = useRef<{ w: number; h: number }>({ w: 0, h: 0 })
+
+  // ── P1-B: Dirty flag — forces a render even when paused (seek, clip change, etc.)
+  const dirtyRef = useRef<boolean>(true)
+
+  // ── P1-B: isPlaying ref for the render loop
+  const isPlayingRef = useRef(preview.isPlaying)
+  isPlayingRef.current = preview.isPlaying
+
   const [activeScope, setActiveScope] = useState<ScopeType>('DIMMER')
   const scopeRef = useRef(activeScope)
   scopeRef.current = activeScope
@@ -609,27 +624,56 @@ export const QuantumSpectrometer: React.FC<QuantumSpectrometerProps> = ({
   durationRef.current = durationMs
   selectedRef.current = selectedFixtureId
 
-  // ── 44Hz Render Loop (Aether Glass Standard) ──
+  // ── P1-B: Mark dirty on state changes (seek, pause, scope switch, selection) ──
+  useEffect(() => { dirtyRef.current = true }, [preview, selectedFixtureId, activeScope, phaseConfig])
+
+  // ── P1-B: ResizeObserver — replaces per-frame getBoundingClientRect ──
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+    const ro = new ResizeObserver(() => {
+      const rect = container.getBoundingClientRect()
+      const w = Math.floor(rect.width)
+      const h = Math.floor(rect.height - TRANSPORT_HEIGHT)
+      if (w > 0 && h > 0 && (w !== dimsRef.current.w || h !== dimsRef.current.h)) {
+        dimsRef.current = { w, h }
+        dirtyRef.current = true  // force redraw on resize
+      }
+    })
+    ro.observe(container)
+    return () => ro.disconnect()
+  }, [])
+
+  // ── P1-B: Gated Render Loop — 44 Hz when playing, 12 Hz when idle ──
   useEffect(() => {
     const render = () => {
       const now = performance.now()
       const elapsed = now - lastFrameTimeRef.current
-      if (elapsed < FPS_44_MS) {
+
+      // ── P1-B: Dynamic throttle — 44 Hz when playing, 12 Hz when idle ──
+      const isPlaying = isPlayingRef.current
+      const minInterval = isPlaying ? FPS_44_MS : FPS_IDLE_MS
+
+      if (elapsed < minInterval) {
         rafRef.current = requestAnimationFrame(render)
         return
       }
-      lastFrameTimeRef.current = now - (elapsed % FPS_44_MS)
+      lastFrameTimeRef.current = now - (elapsed % minInterval)
+
+      // ── P1-B: Skip render entirely if paused and not dirty ──
+      if (!isPlaying && !dirtyRef.current) {
+        rafRef.current = requestAnimationFrame(render)
+        return
+      }
+      dirtyRef.current = false  // consume dirty flag
 
       const canvas = canvasRef.current
-      const container = containerRef.current
-      if (!canvas || !container) {
+      if (!canvas) {
         rafRef.current = requestAnimationFrame(render)
         return
       }
 
-      const rect = container.getBoundingClientRect()
-      const w = Math.floor(rect.width)
-      const h = Math.floor(rect.height - TRANSPORT_HEIGHT)
+      const { w, h } = dimsRef.current
       if (w <= 0 || h <= 0) {
         rafRef.current = requestAnimationFrame(render)
         return
@@ -641,6 +685,7 @@ export const QuantumSpectrometer: React.FC<QuantumSpectrometerProps> = ({
         canvas.height = h * dpr
         canvas.style.width = `${w}px`
         canvas.style.height = `${h}px`
+        dirtyRef.current = true  // canvas was resized, need another paint
       }
 
       const ctx = canvas.getContext('2d')
@@ -661,11 +706,15 @@ export const QuantumSpectrometer: React.FC<QuantumSpectrometerProps> = ({
       ctx.fillStyle = BG_VOID
       ctx.fillRect(0, 0, w, h)
 
-      // Subtle vignette
-      const vignette = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.7)
-      vignette.addColorStop(0, BG_SUBSTRATE)
-      vignette.addColorStop(1, BG_VOID)
-      ctx.fillStyle = vignette
+      // ── P1-B: Cached vignette — recreate only when dimensions change ──
+      if (!vignetteRef.current || vignetteDimsRef.current.w !== w || vignetteDimsRef.current.h !== h) {
+        const vignette = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.7)
+        vignette.addColorStop(0, BG_SUBSTRATE)
+        vignette.addColorStop(1, BG_VOID)
+        vignetteRef.current = vignette
+        vignetteDimsRef.current = { w, h }
+      }
+      ctx.fillStyle = vignetteRef.current
       ctx.fillRect(0, 0, w, h)
 
       const buf = buffersRef.current

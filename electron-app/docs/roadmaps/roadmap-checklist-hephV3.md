@@ -17,7 +17,7 @@
 - [x] Actualizar comentarios en `types.ts` que mentían sobre PhaseDistributor.resolve()
 - [x] `DEFAULT_PHASE_CONFIG` marcado como `@deprecated`
 - [x] `tsc --noEmit` limpio
-- [ ] `_extractPhaseConfig` aún acepte `PhaseConfig | PhaseConfigPro` como V2 shim — limpiar en Lote 3
+- [x] `_extractPhaseConfig` aún acepte `PhaseConfig | PhaseConfigPro` como V2 shim — V2 shim legítimo: `FixtureSelector.phase` en `ShowFileV2.ts` usa `PhaseConfig` (V2). El duck-typing (`'spreadDeg' in phase` vs `'spread' in phase`) es el migrador correcto. No se puede eliminar sin romper carga de shows V2.
 
 ### P2-E: Clamp spreadDeg en computeOffsetPro
 - [x] Clamp `spreadDeg` a [0, 1440] en `computeOffsetPro` (PhaseConfigPro.ts:106)
@@ -79,11 +79,11 @@
 ## LOTE 5 — Gate render Spectrometer (P1-B)
 
 ### P1-B: Gate de render del Spectrometer
-- [ ] Skip RAF render si `!isPlaying && !dirty`
-- [ ] Idle animations a 10-15 Hz, no 44 Hz
-- [ ] Reemplazar `getBoundingClientRect` por frame con `ResizeObserver`
-- [ ] Cachear `createRadialGradient` (no recrear por frame)
-- [ ] `tsc --noEmit` limpio
+- [x] Skip RAF render si `!isPlaying && !dirty`
+- [x] Idle animations a 12 Hz, no 44 Hz
+- [x] Reemplazar `getBoundingClientRect` por frame con `ResizeObserver`
+- [x] Cachear `createRadialGradient` (no recrear por frame)
+- [x] `tsc --noEmit` limpio
 
 ---
 
@@ -158,5 +158,16 @@
 - Intensity modulation unificada: kernel usa `intensityTrackValue * clipIntensity` (mismo patrón que runtime)
 - NaN guards idénticos en ambos paths (misma función `evaluateColorTrack` interna del kernel)
 - Cierra §1.2 de la auditoría: "un solo HephEvaluationKernel puro consumido por ambos"
+
+**tsc --noEmit: 0 errores.**
+
+### Lote 5 — 2026-06-28
+
+**P1-B: Gate de render del Spectrometer — QuantumSpectrometer.tsx**
+- **Skip RAF render si pausado y limpio:** `dirtyRef` flag — el render loop hace early-return si `!isPlaying && !dirty`. Dirty se setea en: ResizeObserver, cambios de `preview`, `selectedFixtureId`, `activeScope`, `phaseConfig`, y resize de canvas.
+- **Idle a 12 Hz:** `FPS_IDLE_MS = 1000/12` — throttle dinámico: 44 Hz cuando `isPlaying`, 12 Hz cuando pausado. Reduce CPU usage en idle ~73%.
+- **ResizeObserver:** `dimsRef` cachea `{ w, h }` — el render loop lee del ref en lugar de llamar `getBoundingClientRect()` cada frame. ResizeObserver actualiza dims y marca dirty.
+- **Vignette cacheado:** `vignetteRef` guarda el `CanvasGradient` — solo se recrea cuando las dimensiones cambian (`vignetteDimsRef`). Antes se llamaba `createRadialGradient` 44 veces/seg.
+- **isPlayingRef:** ref espejo de `preview.isPlaying` — el render loop lee el ref sin re-suscribirse.
 
 **tsc --noEmit: 0 errores.**

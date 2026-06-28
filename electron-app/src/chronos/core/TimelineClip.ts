@@ -1,6 +1,8 @@
-// @deprecated DEMOLITION TARGET — mixBus, inferMixBusFromCurves(), MIXBUS_CLIP_COLORS
-// will be removed in Phase 1. FXClip.hephClip (V3) is the truth.
-// zones come from hephClip.spatialZones / hephClip.tracks[].zones.
+// PHASE 1 CLEANUP TARGET — FXClip.mixBus is a redundant duplicate of hephClip.mixBus.
+// inferMixBusFromCurves() and MIXBUS_CLIP_COLORS are legacy helpers for clips without hephClip.
+// In V3, hephClip.mixBus is the canonical source. FXClip should read from hephClip directly.
+// The LEGACY track routing (global/htp/ambient/accent as track labels in EffectRegistry/chronosStore)
+// is a SEPARATE concept and is DEMOLITION TARGET in Phase 2/4.
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🎬 TIMELINE CLIP - WAVE 2006: THE INTERACTIVE CANVAS

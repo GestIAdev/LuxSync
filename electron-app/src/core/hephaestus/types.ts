@@ -448,8 +448,10 @@ export interface HephAutomationClipV3 {
   spatialZones: readonly ZoneTarget[]
 
   // ── Ejecución ──
-  // @deprecated DEMOLITION TARGET — mixBus will be removed in Phase 1.
-  // Blend semantics come from HephTrack.blendMode ('max' | 'replace' | 'add' | 'multiply').
+  // V3 CANONICAL — Inter-clip blend behavior when effects overlap on same fixtures.
+  // global = LTP (full takeover), htp/ambient/accent = HTP (highest takes precedence).
+  // This is NOT the legacy timeline track routing (global/htp/ambient/accent as track labels).
+  // That legacy routing is DEMOLITION TARGET — this field stays.
   mixBus: 'global' | 'htp' | 'ambient' | 'accent'
   priority: number
   durationMs: number

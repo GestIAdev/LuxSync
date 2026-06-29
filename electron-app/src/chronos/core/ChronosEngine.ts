@@ -31,10 +31,8 @@ import type {
   AutomationLane,
   AutomationPoint,
   AutomationTarget,
-  // WAVE 2550: V2 types
-  ChronosProjectV2,
-  TimelineTrackV2,
 } from './types'
+import type { ChronosProjectV3, LuxTrackV3, LuxClipV3 } from './LuxFileV3'
 import type { TimelineClip, FXClip } from './TimelineClip'
 
 import type { EffectZone } from '../../core/effects/types'
@@ -130,10 +128,10 @@ interface ClipBoundaryEvent {
   type: 'start' | 'end'
 }
 
-// WAVE 2550: V2 variant — same algorithm, TimelineTrackV2
+// WAVE 2550: V2 variant — same algorithm, LuxTrackV3
 interface ClipIndexEntryV2 {
-  clip: TimelineClip
-  track: TimelineTrackV2
+  clip: LuxClipV3
+  track: LuxTrackV3
   startMs: number
   endMs: number
 }
@@ -142,11 +140,11 @@ interface ClipIndexEntryV2 {
 class ClipBoundaryIndexV2 {
   private boundaries: ClipBoundaryEvent[] = []
   private clipEntries: ClipIndexEntryV2[] = []
-  private cachedActiveClips: TimelineClip[] | null = null
+  private cachedActiveClips: LuxClipV3[] | null = null
   private lastQueryTimeMs: number = -1
-  private tracksRef: readonly TimelineTrackV2[] | null = null
+  private tracksRef: readonly LuxTrackV3[] | null = null
 
-  rebuild(tracks: readonly TimelineTrackV2[]): void {
+  rebuild(tracks: readonly LuxTrackV3[]): void {
     this.tracksRef = tracks
     this.boundaries = []
     this.clipEntries = []
@@ -173,12 +171,12 @@ class ClipBoundaryIndexV2 {
     this.clipEntries.sort((a, b) => a.startMs - b.startMs)
   }
 
-  isStale(tracks: readonly TimelineTrackV2[]): boolean {
+  isStale(tracks: readonly LuxTrackV3[]): boolean {
     return this.tracksRef !== tracks
   }
 
   // Returns active clips with their V2 track for routing context
-  queryWithTrack(timeMs: number): Array<{ clip: TimelineClip; track: TimelineTrackV2 }> {
+  queryWithTrack(timeMs: number): Array<{ clip: LuxClipV3; track: LuxTrackV3 }> {
     if (this.cachedActiveClips !== null && !this.hasCrossedBoundary(this.lastQueryTimeMs, timeMs)) {
       // Rebuild pairing from cached clips — O(m) where m = active clips (tiny)
       return this.cachedActiveClips.map(clip => ({
@@ -187,8 +185,8 @@ class ClipBoundaryIndexV2 {
       }))
     }
 
-    const active: Array<{ clip: TimelineClip; track: TimelineTrackV2 }> = []
-    const activeClips: TimelineClip[] = []
+    const active: Array<{ clip: LuxClipV3; track: LuxTrackV3 }> = []
+    const activeClips: LuxClipV3[] = []
 
     for (const entry of this.clipEntries) {
       if (entry.startMs > timeMs) break
@@ -437,7 +435,7 @@ export class ChronosEngine {
   private latencyCompensationMs: TimeMs = 10
   
   /** WAVE 2550: Project V2 (per-track architecture) */
-  private projectV2: ChronosProjectV2 | null = null
+  private projectV2: ChronosProjectV3 | null = null
 
   /** WAVE 2550: Clip boundary index for V2 tracks */
   private clipIndexV2: ClipBoundaryIndexV2 = new ClipBoundaryIndexV2()
@@ -486,13 +484,10 @@ export class ChronosEngine {
    * WAVE 2550: Carga un proyecto V2 (arquitectura per-track).
    * FASE 4: V1 loadProject() demolished — V2 is the only path.
    */
-  public loadProjectV2(project: ChronosProjectV2): void {
+  public loadProjectV2(project: ChronosProjectV3): void {
     this.ensureNotDisposed()
     this.stop()
     this.projectV2 = project
-    this.looping = project.playback.loop
-    this.loopRegion = project.playback.loopRegion
-    this.latencyCompensationMs = project.playback.latencyCompensationMs
     this.currentTimeMs = 0
     this.clipIndexV2.rebuild(project.tracks)
   }
@@ -820,7 +815,7 @@ export class ChronosEngine {
   /**
    * WAVE 2550: Obtiene el proyecto V2 si está cargado
    */
-  public getProjectV2(): ChronosProjectV2 | null {
+  public getProjectV2(): ChronosProjectV3 | null {
     return this.projectV2
   }
   
@@ -1018,7 +1013,7 @@ export class ChronosEngine {
     }
     
     // 📡 WAVE 2501: Tick MIDI Clock Master (outbound) if running
-    const bpm = this.projectV2?.meta.bpm ?? 120
+    const bpm = this.projectV2?.runtimeBpm ?? this.projectV2?.audio?.detectedBpm ?? 120
     this.clockSources.tickMIDIMaster(bpm)
     
     // Handle loop
@@ -1055,7 +1050,7 @@ export class ChronosEngine {
   private generateContextV2(timeMs: TimeMs): ChronosContext {
     const project = this.projectV2!
 
-    const overrideMode = project.playback.overrideMode
+    const overrideMode: ChronosOverrideMode = 'whisper'
 
     // Auto-rebuild if tracks reference changed
     if (this.clipIndexV2.isStale(project.tracks)) {
@@ -1073,8 +1068,8 @@ export class ChronosEngine {
     for (const { clip, track } of activeWithTracks) {
       if (clip.type !== 'fx') continue
 
-      const fxClip = clip as FXClip
-      const progress = this.calculateClipProgress(clip, timeMs)
+      const fxClip = clip as unknown as FXClip
+      const progress = this.calculateClipProgress(clip as unknown as TimelineClip, timeMs)
 
       // WAVE 2550: Zone routing comes from the track, not the clip.
       // track.targetZone === 'global' maps to EffectZone 'all' (all fixtures).
@@ -1111,13 +1106,10 @@ export class ChronosEngine {
 
   private evaluateGlobalAutomationV2(
     timeMs: TimeMs,
-    project: ChronosProjectV2
+    project: ChronosProjectV3
   ): Map<AutomationTarget, number> {
     const values = new Map<AutomationTarget, number>()
-    for (const lane of project.globalAutomation) {
-      if (!lane.enabled) continue
-      values.set(lane.target, evaluateAutomationLane(lane, timeMs))
-    }
+    // WAVE 7100 FASE 3: V3 has no globalAutomation — return empty map
     return values
   }
 

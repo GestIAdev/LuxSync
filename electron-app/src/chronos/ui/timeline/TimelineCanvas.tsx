@@ -35,7 +35,7 @@ import { ZONE_COLORS } from '../../../components/hyperion/shared/ZoneLayoutEngin
 import { isClipZoneCompatible } from '../../../core/zones/ZoneMapper'
 // 🔥 WAVE 2548: Store V2 — tracks explícitas, sin derivación desde fixtures
 import { getChronosStoreV2 } from '../../core/ChronosStore'
-import type { TimelineTrackV2 } from '../../core/types'
+import type { LuxTrackV3 } from '../../core/LuxFileV3'
 // WAVE 2552: Track Management UI overlay
 import { TrackLabelsOverlay } from './TrackLabelsOverlay'
 import './TimelineCanvas.css'
@@ -112,10 +112,10 @@ const STRUCTURAL_TRACKS: Track[] = [
 ]
 
 /**
- * 🔥 WAVE 2548: Convierte TimelineTrackV2 del store al tipo local Track del canvas.
+ * 🔥 WAVE 2548: Convierte LuxTrackV3 del store al tipo local Track del canvas.
  * El canvas es "dumb": sólo renderiza lo que el store tiene. Sin derivación.
  */
-function storeTrackToCanvasTrack(t: TimelineTrackV2): Track {
+function storeTrackToCanvasTrack(t: LuxTrackV3): Track {
   return {
     id: t.id,
     type: 'fx',

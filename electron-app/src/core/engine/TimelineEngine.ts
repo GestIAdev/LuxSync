@@ -22,7 +22,7 @@
  * @module core/engine/TimelineEngine
  */
 
-import type { LuxProject } from '../../chronos/core/ChronosProject'
+import type { ChronosProjectV3 } from '../../chronos/core/LuxFileV3'
 import type { FXClip, VibeClip } from '../../chronos/core/TimelineClip'
 import { getTitanOrchestrator } from '../orchestrator/TitanOrchestrator'
 import { getHephaestusRuntime } from '../orchestrator/IPCHandlers'
@@ -69,7 +69,7 @@ export interface PlaybackFrameSnapshot {
 
 export class TimelineEngine {
   // ── Project state ──
-  private project: LuxProject | null = null
+  private project: ChronosProjectV3 | null = null
   private fxClips: FXClip[] = []
   private vibeClips: VibeClip[] = []
 
@@ -93,14 +93,15 @@ export class TimelineEngine {
   // LOAD PROJECT
   // ═══════════════════════════════════════════════════════════════════════
 
-  loadProject(project: LuxProject): void {
+  loadProject(project: ChronosProjectV3): void {
     this.stop() // Clean previous state
 
     this.project = project
 
     // Separate clips by type
-    this.fxClips = project.timeline.clips.filter(c => c.type === 'fx') as FXClip[]
-    this.vibeClips = project.timeline.clips.filter(c => c.type === 'vibe') as VibeClip[]
+    const allClips = project.tracks.flatMap(t => t.clips)
+    this.fxClips = allClips.filter(c => c.type === 'fx') as unknown as FXClip[]
+    this.vibeClips = allClips.filter(c => c.type === 'vibe') as unknown as VibeClip[]
 
     this.playing = true
     this.lastTickMs = 0

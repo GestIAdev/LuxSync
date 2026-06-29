@@ -2,7 +2,7 @@
  * TRACK LABELS OVERLAY — WAVE 2552
  *
  * HTML overlay posicionado sobre la columna de labels del SVG del timeline.
- * Renderiza controles interactivos por cada TimelineTrackV2:
+ * Renderiza controles interactivos por cada LuxTrackV3:
  *   - Rename (doble-click en el label)
  *   - Mute (M), Solo (S), Lock (L) toggles
  *   - Delete (X)
@@ -14,7 +14,7 @@
  */
 
 import React, { useRef, useState, useCallback, useEffect, memo } from 'react'
-import type { TimelineTrackV2 } from '../../core/types'
+import type { LuxTrackV3 } from '../../core/LuxFileV3'
 import { getChronosStoreV2 } from '../../core/ChronosStore'
 import './TrackLabelsOverlay.css'
 
@@ -23,14 +23,14 @@ import './TrackLabelsOverlay.css'
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface TrackLabelRowProps {
-  track: TimelineTrackV2
+  track: LuxTrackV3
   yOffset: number
   height: number
   totalTracks: number
 }
 
 interface TrackLabelsOverlayProps {
-  tracks: readonly TimelineTrackV2[]
+  tracks: readonly LuxTrackV3[]
   /** Y offsets pre-calculados por el canvas (incluye tracks estructurales) */
   trackYOffsets: number[]
   trackHeights: number[]

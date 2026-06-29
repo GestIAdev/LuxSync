@@ -18,7 +18,9 @@
 
 import React, { useState, useCallback, useRef } from 'react'
 import { useScenePlayer, type PlayerState } from '../../../../hooks/useScenePlayer'
-import { deserializeProject, type LuxProject } from '../../../../chronos/core/ChronosProject'
+import { deserializeProject } from '../../../../chronos/core/ChronosProject'
+import { toChronosProjectV3 } from '../../../../chronos/core/LuxFileV3.factories'
+import type { ChronosProjectV3 } from '../../../../chronos/core/LuxFileV3'
 import {
   ScenesIcon,
   PlayCircleIcon,
@@ -33,7 +35,7 @@ import './SceneBrowser.css'
 
 interface LoadedScene {
   id: string
-  project: LuxProject
+  project: ChronosProjectV3
   audioUrl: string | null
   fileName: string
   /** WAVE 2050.1: Resolved display name (smart title parsing) */
@@ -149,17 +151,18 @@ export const SceneBrowser: React.FC = () => {
   const processFile = useCallback(async (file: File) => {
     try {
       const text = await file.text()
-      const project = deserializeProject(text)
+      const result = await deserializeProject(text)
 
-      if (!project) {
+      if (!result.file) {
         console.error('[SceneBrowser] Invalid .lux file:', file.name)
         return
       }
 
-      // Audio — future: extract from project.audio.path
+      const project = toChronosProjectV3(result.file)
+      // Audio — future: extract from project.audio.relativePath
       let audioUrl: string | null = null
-      if (project.audio?.path) {
-        console.log(`[SceneBrowser] Audio reference: ${project.audio.name}`)
+      if (project.audio?.relativePath) {
+        console.log(`[SceneBrowser] Audio reference: ${project.audio.fileName}`)
       }
 
       const newScene: LoadedScene = {
@@ -178,7 +181,7 @@ export const SceneBrowser: React.FC = () => {
 
       console.log(
         `[SceneBrowser] 🎬 Imported: "${newScene.displayName}" ` +
-        `(${project.timeline.clips.length} clips, ${formatTime(project.meta.durationMs)})`
+        `(${project.tracks.flatMap(t => t.clips).length} clips, ${formatTime(project.meta.durationMs)})`
       )
     } catch (err) {
       console.error('[SceneBrowser] Import failed:', err)
@@ -342,7 +345,7 @@ export const SceneBrowser: React.FC = () => {
               <div className="scene-item-info">
                 <span className="scene-item-name">{scene.displayName}</span>
                 <span className="scene-item-meta">
-                  {scene.project.timeline.clips.length} clips · {formatTime(scene.project.meta.durationMs)}
+                  {scene.project.tracks.flatMap(t => t.clips).length} clips · {formatTime(scene.project.meta.durationMs)}
                 </span>
               </div>
               <button
@@ -489,7 +492,7 @@ function getStateLabel(state: PlayerState): string {
  * Busca el nombre en múltiples rutas del JSON del proyecto.
  * Diferentes versiones de .lux pueden tener el nombre en distintos campos.
  */
-function resolveProjectName(project: LuxProject, fileName: string): string {
+function resolveProjectName(project: ChronosProjectV3, fileName: string): string {
   // Cast through unknown for safe property probing on variant JSON shapes
   const raw = project as unknown as Record<string, unknown>
   const meta = raw.meta as Record<string, unknown> | undefined

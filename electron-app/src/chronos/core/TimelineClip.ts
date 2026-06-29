@@ -101,8 +101,11 @@ export interface BaseClip {
   /** Is clip selected */
   selected?: boolean
   
-  /** Is clip locked (cannot move/resize) */
-  locked?: boolean
+  /**
+   * Is clip locked (cannot move/resize).
+   * WAVE 7100 FASE 3: required (was optional) so TimelineClip is assignable to LuxClipV3.
+   */
+  locked: boolean
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

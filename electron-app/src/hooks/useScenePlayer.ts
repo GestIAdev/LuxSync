@@ -28,7 +28,7 @@
  */
 
 import { useRef, useState, useCallback, useEffect } from 'react'
-import type { LuxProject } from '../chronos/core/ChronosProject'
+import type { ChronosProjectV3 } from '../chronos/core/LuxFileV3'
 import { useStageStore } from '../stores/stageStore'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -41,7 +41,7 @@ export interface ScenePlayerStatus {
   /** Estado actual del player */
   state: PlayerState
   /** Escena cargada */
-  project: LuxProject | null
+  project: ChronosProjectV3 | null
   /** Tiempo actual en ms */
   currentTimeMs: number
   /** Duración total en ms */
@@ -84,7 +84,7 @@ export function useScenePlayer() {
   // ── Refs (no re-render) ──
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const rafRef = useRef<number | null>(null)
-  const projectRef = useRef<LuxProject | null>(null)
+  const projectRef = useRef<ChronosProjectV3 | null>(null)
   const loopRef = useRef(false)
 
   // ── Silent Clock refs (performance.now() based) ──
@@ -96,7 +96,7 @@ export function useScenePlayer() {
   // LOAD SCENE → Backend
   // ═══════════════════════════════════════════════════════════════════════
 
-  const loadScene = useCallback(async (project: LuxProject, audioUrl?: string) => {
+  const loadScene = useCallback(async (project: ChronosProjectV3, audioUrl?: string) => {
     // Stop current playback
     stopPlayback()
 
@@ -172,7 +172,7 @@ export function useScenePlayer() {
 
     console.log(
       `[ScenePlayer] 🎬 Loaded: "${project.meta.name}" ` +
-      `(${Math.round(durationMs / 1000)}s, ${project.timeline.clips.length} clips, ` +
+      `(${Math.round(durationMs / 1000)}s, ${project.tracks.flatMap(t => t.clips).length} clips, ` +
       `audio: ${audioLoaded ? 'YES' : 'SILENT'})`
     )
   }, [])

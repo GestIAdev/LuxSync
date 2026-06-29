@@ -53,8 +53,9 @@ export class TimelineEngine {
         this.stop(); // Clean previous state
         this.project = project;
         // Separate clips by type
-        this.fxClips = project.timeline.clips.filter(c => c.type === 'fx');
-        this.vibeClips = project.timeline.clips.filter(c => c.type === 'vibe');
+        const allClips = project.tracks.flatMap(t => t.clips);
+        this.fxClips = allClips.filter(c => c.type === 'fx');
+        this.vibeClips = allClips.filter(c => c.type === 'vibe');
         this.playing = true;
         this.lastTickMs = 0;
         console.log(`[TimelineEngine] 📀 Loaded "${project.meta.name}" — ${this.fxClips.length} FX clips, ${this.vibeClips.length} Vibe clips`);

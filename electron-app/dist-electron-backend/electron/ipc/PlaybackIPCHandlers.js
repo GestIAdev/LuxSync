@@ -9,7 +9,7 @@
  * playhead position. ALL lighting physics run in the TimelineEngine.
  *
  * CHANNELS:
- *   lux:playback:load   — Load a LuxProject into the engine
+ *   lux:playback:load   — Load a ChronosProjectV3 into the engine
  *   lux:playback:tick   — Send current timeMs (called every frame)
  *   lux:playback:stop   — Stop playback + cleanup
  *   lux:playback:state  — Query engine state

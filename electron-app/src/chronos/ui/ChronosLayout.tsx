@@ -66,7 +66,7 @@ import { getChronosStore } from '../core/ChronosStore'
 // ⚡ WAVE 2015.5: ENGINE IGNITION - Control store for phantom mode
 import { useControlStore, type LivingPaletteId } from '../../stores/controlStore'
 import { useOverrideStore } from '../../stores/overrideStore'
-import type { LuxProject } from '../core/ChronosProject'
+import type { ChronosProjectV3 } from '../core/LuxFileV3'
 import type { AnalysisData } from '../core/types'
 import type { DragPayload, TimelineClip, FXClip } from '../core/TimelineClip'
 import { toVibeType, extractVisualKeyframes } from '../core/TimelineClip'
@@ -691,17 +691,17 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
     const store = getChronosStore()
     
     // 👂 LOAD: Inject data into UI when project is loaded
-    const handleProjectLoaded = (data: { project: LuxProject; path: string }) => {
+    const handleProjectLoaded = (data: { project: ChronosProjectV3; path: string }) => {
       console.log('[ChronosLayout] 📂 Project loaded, syncing UI...')
       
       // Restore clips from loaded project
-      clipState.setClips(data.project.timeline.clips)
-      
+      clipState.setClips(data.project.tracks.flatMap(t => t.clips) as unknown as TimelineClip[])
+
       // Restore audio if path exists and is valid
-      if (data.project.audio?.path && !data.project.audio.path.startsWith('blob:')) {
-        console.log('[ChronosLayout] 🎵 Loading audio:', data.project.audio.path)
-        audioLoader.loadFromPath(data.project.audio.path)
-        setBpm(data.project.audio.bpm)
+      if (data.project.audio?.relativePath && !data.project.audio.relativePath.startsWith('blob:')) {
+        console.log('[ChronosLayout] 🎵 Loading audio:', data.project.audio.relativePath)
+        audioLoader.loadFromPath(data.project.audio.relativePath)
+        setBpm(data.project.audio.detectedBpm)
       }
     }
     

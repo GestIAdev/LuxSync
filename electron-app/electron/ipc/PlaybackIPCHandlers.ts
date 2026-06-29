@@ -9,7 +9,7 @@
  * playhead position. ALL lighting physics run in the TimelineEngine.
  *
  * CHANNELS:
- *   lux:playback:load   — Load a LuxProject into the engine
+ *   lux:playback:load   — Load a ChronosProjectV3 into the engine
  *   lux:playback:tick   — Send current timeMs (called every frame)
  *   lux:playback:stop   — Stop playback + cleanup
  *   lux:playback:state  — Query engine state
@@ -22,7 +22,7 @@ import { ipcMain } from 'electron'
 import { timelineEngine } from '../../src/core/engine/TimelineEngine'
 import { getTitanOrchestrator } from '../../src/core/orchestrator/TitanOrchestrator'
 import { universalDMX } from '../../src/hal/drivers/UniversalDMXDriver'
-import type { LuxProject } from '../../src/chronos/core/ChronosProject'
+import type { ChronosProjectV3 } from '../../src/chronos/core/ChronosProject'
 import type { BrowserWindow } from 'electron'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -60,7 +60,7 @@ export function setupPlaybackIPCHandlers(window?: BrowserWindow): void {
   if (window) mainWindow = window
 
   // ─── LOAD PROJECT ───
-  ipcMain.handle('lux:playback:load', (_event, project: LuxProject) => {
+  ipcMain.handle('lux:playback:load', (_event, project: ChronosProjectV3) => {
     try {
       timelineEngine.loadProject(project)
       return { success: true, state: timelineEngine.getState() }

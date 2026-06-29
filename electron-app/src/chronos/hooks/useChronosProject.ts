@@ -17,7 +17,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { getChronosStore, type SaveResult, type LoadResult, type StoreEventType } from '../core/ChronosStore'
 import type { TimelineClip } from '../core/TimelineClip'
-import type { LuxProject } from '../core/ChronosProject'
+import type { ChronosProjectV3 } from '../core/LuxFileV3'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -47,7 +47,7 @@ export interface ChronosProjectActions {
 }
 
 export interface UseChronosProjectReturn extends ChronosProjectState, ChronosProjectActions {
-  project: LuxProject | null
+  project: ChronosProjectV3 | null
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -62,7 +62,7 @@ export function useChronosProject(): UseChronosProjectReturn {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(store.hasUnsavedChanges)
   const [isLoading, setIsLoading] = useState(false)
   const [lastError, setLastError] = useState<string | null>(null)
-  const [project, setProject] = useState<LuxProject | null>(store.currentProject)
+  const [project, setProject] = useState<ChronosProjectV3 | null>(store.currentProject)
   
   // Track if component is mounted (to avoid state updates after unmount)
   const mountedRef = useRef(true)
@@ -82,7 +82,7 @@ export function useChronosProject(): UseChronosProjectReturn {
       setLastError(null)
     }
     
-    const handleProjectLoaded = (data: { project: LuxProject; path: string }) => {
+    const handleProjectLoaded = (data: { project: ChronosProjectV3; path: string }) => {
       if (!mountedRef.current) return
       setProjectName(store.projectName)
       setHasUnsavedChanges(false)

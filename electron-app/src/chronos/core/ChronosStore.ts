@@ -13,13 +13,19 @@
  */
 
 import {
-  type LuxFileV3 as LuxProject,
-  createEmptyProject,
-  serializeProject,
-  deserializeProject,
-  validateProject,
+  type LuxFileV3,
+  type ChronosProjectV3,
+  type LuxTrackV3,
+  type LuxClipV3,
   LUX_V3_EXTENSION as PROJECT_EXTENSION,
-} from './ChronosProject'
+} from './LuxFileV3'
+import {
+  createEmptyChronosProjectV3,
+  toLuxFileV3,
+  toChronosProjectV3,
+} from './LuxFileV3.factories'
+import { serializeLuxV3, deserializeLuxV3, canonicalStringify } from './LuxFileV3.serializer'
+import { generateChronosId } from './types'
 import type { TimelineClip } from './TimelineClip'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -49,7 +55,7 @@ export interface SaveResult {
 
 export interface LoadResult {
   success: boolean
-  project?: LuxProject
+  project?: ChronosProjectV3
   path?: string
   error?: string
   audioMissing?: boolean
@@ -60,8 +66,8 @@ export interface LoadResult {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export class ChronosStore {
-  /** Current project */
-  private project: LuxProject = createEmptyProject()
+  /** Current project (V3 runtime model) */
+  private project: ChronosProjectV3 = createEmptyChronosProjectV3()
   
   /** Path to current project file (null if not saved) */
   private projectPath: string | null = null
@@ -123,8 +129,53 @@ export class ChronosStore {
   // GETTERS
   // ─────────────────────────────────────────────────────────────────────────
   
-  get currentProject(): LuxProject {
+  get currentProject(): ChronosProjectV3 {
     return this.project
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // WAVE 7100 FASE 3: FLAT-CLIP BRIDGE (V1 store flat model ↔ V3 tracks)
+  // The V1 store keeps a flat clip list. V3 stores clips in tracks[].clips.
+  // We aggregate all track clips on read, and store flat clips in a single
+  // synthetic 'Timeline' track on write. The V2 store owns multi-track editing.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /** Aggregate all clips across tracks as a flat TimelineClip[]. */
+  private _getFlatClips(): TimelineClip[] {
+    return this.project.tracks.flatMap(t => t.clips) as unknown as TimelineClip[]
+  }
+
+  /** Store a flat clip list into a single synthetic timeline track. */
+  private _setFlatClips(clips: TimelineClip[]): void {
+    const luxClips = clips as unknown as LuxClipV3[]
+    const existing = this.project.tracks[0]
+    const track: LuxTrackV3 = existing
+      ? { ...existing, clips: luxClips }
+      : {
+          id: generateChronosId(),
+          targetZone: 'global',
+          visualLabel: 'Timeline',
+          color: '#22d3ee',
+          clips: luxClips,
+          enabled: true,
+          solo: false,
+          locked: false,
+          order: 0,
+          height: 60,
+        }
+    this.project.tracks = [track, ...this.project.tracks.slice(1)]
+  }
+
+  /** Lightweight canonical snapshot for dirty detection (excludes checksum/timestamps). */
+  private _dirtySnapshot(): string {
+    return canonicalStringify({
+      name: this.project.meta.name,
+      durationMs: this.project.meta.durationMs,
+      audio: this.project.audio,
+      tracks: this.project.tracks,
+      markers: this.project.markers,
+      vibeBase: this.project.vibeBase,
+    })
   }
   
   get currentPath(): string | null {
@@ -154,10 +205,10 @@ export class ChronosStore {
    * 🆕 Create new empty project
    */
   newProject(name: string = 'Untitled Project'): void {
-    this.project = createEmptyProject(name)
+    this.project = createEmptyChronosProjectV3(name)
     this.projectPath = null
     this.isDirty = false
-    this.lastSavedJson = serializeProject(this.project)
+    this.lastSavedJson = this._dirtySnapshot()
     
     console.log(`[ChronosStore] 🆕 New project: "${name}"`)
     this.emit('project-new', { project: this.project })
@@ -172,25 +223,26 @@ export class ChronosStore {
     audio: { name: string; path: string; bpm: number; durationMs: number } | null,
     playheadMs: number = 0
   ): void {
-    this.project.timeline.clips = clips
-    this.project.timeline.playheadMs = playheadMs
+    this._setFlatClips(clips)
+    this.project.playheadMs = playheadMs
     
     if (audio) {
       // 🔧 WAVE 2014.5: Never store blob: URLs - they're ephemeral
       const isRealPath = audio.path && !audio.path.startsWith('blob:')
       
       this.project.audio = {
-        name: audio.name,
-        path: isRealPath ? audio.path : '', // Empty if blob, will prompt on save
-        bpm: audio.bpm,
-        offsetMs: 0,
+        fileName: audio.name,
+        relativePath: isRealPath ? audio.path : '', // Empty if blob, will prompt on save
         durationMs: audio.durationMs,
+        offsetMs: 0,
+        detectedBpm: audio.bpm,
+        bpmConfidence: this.project.audio?.bpmConfidence ?? 0,
       }
       this.project.meta.durationMs = audio.durationMs
     }
     
-    // Check if dirty (compare serialized state)
-    const currentJson = serializeProject(this.project)
+    // Check if dirty (compare lightweight canonical snapshot)
+    const currentJson = this._dirtySnapshot()
     if (currentJson !== this.lastSavedJson) {
       if (!this.isDirty) {
         this.isDirty = true
@@ -204,7 +256,7 @@ export class ChronosStore {
    */
   setAudioPath(path: string): void {
     if (this.project.audio) {
-      this.project.audio.path = path
+      this.project.audio.relativePath = path
       console.log(`[ChronosStore] 🎵 Audio path set: ${path}`)
     }
   }
@@ -231,8 +283,8 @@ export class ChronosStore {
     const needsPath = !this.projectPath || forceNewPath
     
     try {
-      // Prepare project data
-      const json = serializeProject(this.project)
+      // Prepare project data — strip runtime state → LuxFileV3 → serialize (+checksum)
+      const json = await serializeLuxV3(toLuxFileV3(this.project))
       
       // Check if we're in Electron environment via luxsync.chronos
       const chronosAPI = (window as any).luxsync?.chronos
@@ -262,14 +314,11 @@ export class ChronosStore {
         }
         
         // Update modified timestamp
-        this.project.meta.modified = Date.now()
-        
-        // Re-serialize with updated name and save
-        const finalJson = serializeProject(this.project)
+        this.project.meta.modifiedAt = new Date().toISOString()
         
         this.projectPath = result.path
         this.isDirty = false
-        this.lastSavedJson = finalJson
+        this.lastSavedJson = this._dirtySnapshot()
         
         console.log(`[ChronosStore] 💾 Saved to: ${result.path}`)
         this.emit('project-saved', { path: result.path, name: fileName })
@@ -303,33 +352,32 @@ export class ChronosStore {
       }
       
       if (result.success && result.json) {
-        const project = deserializeProject(result.json)
-        if (!project) {
+        const des = await deserializeLuxV3(result.json)
+        if (!des.file) {
+          console.warn('[ChronosStore] ❌ Project validation errors:', des.validation.errors)
           return { success: false, error: 'Invalid project file format' }
         }
-        
-        // Validate project — WAVE 2040.17: Extended Diamond validation
-        const validation = validateProject(project)
-        if (!validation.valid) {
-          console.warn('[ChronosStore] ❌ Project validation errors:', validation.errors)
+        if (des.validation.warnings.length > 0) {
+          console.warn('[ChronosStore] ⚠️ Project validation warnings:', des.validation.warnings)
         }
-        if (validation.warnings.length > 0) {
-          console.warn('[ChronosStore] ⚠️ Project validation warnings:', validation.warnings)
+        if (!des.checksumValid) {
+          console.warn('[ChronosStore] ⚠️ Checksum mismatch — loading anyway')
         }
         
+        const project = toChronosProjectV3(des.file)
         this.project = project
         this.projectPath = result.path
         this.isDirty = false
-        this.lastSavedJson = result.json
+        this.lastSavedJson = this._dirtySnapshot()
         
         console.log(`[ChronosStore] 📂 Loaded: ${result.path}`)
         this.emit('project-loaded', { project, path: result.path })
         
         // Check if audio file exists
-        if (project.audio?.path && chronosAPI.checkFileExists) {
-          const audioExists = await chronosAPI.checkFileExists(project.audio.path)
+        if (project.audio?.relativePath && chronosAPI.checkFileExists) {
+          const audioExists = await chronosAPI.checkFileExists(project.audio.relativePath)
           if (!audioExists) {
-            this.emit('audio-missing', { audioPath: project.audio.path })
+            this.emit('audio-missing', { audioPath: project.audio.relativePath })
             return { success: true, project, path: result.path, audioMissing: true }
           }
         }
@@ -383,17 +431,18 @@ export class ChronosStore {
         
         try {
           const json = await file.text()
-          const project = deserializeProject(json)
+          const des = await deserializeLuxV3(json)
           
-          if (!project) {
+          if (!des.file) {
             resolve({ success: false, error: 'Invalid project file' })
             return
           }
           
+          const project = toChronosProjectV3(des.file)
           this.project = project
           this.projectPath = null // Can't get real path in browser
           this.isDirty = false
-          this.lastSavedJson = json
+          this.lastSavedJson = this._dirtySnapshot()
           
           console.log('[ChronosStore] 📂 Loaded from browser file')
           this.emit('project-loaded', { project })
@@ -416,18 +465,15 @@ export class ChronosStore {
    * 📤 Export timeline clips only (for sharing)
    */
   exportClips(): TimelineClip[] {
-    return [...this.project.timeline.clips]
+    return this._getFlatClips()
   }
   
   /**
    * 📥 Import clips into current project
    */
   importClips(clips: TimelineClip[], append: boolean = true): void {
-    if (append) {
-      this.project.timeline.clips.push(...clips)
-    } else {
-      this.project.timeline.clips = clips
-    }
+    const next = append ? [...this._getFlatClips(), ...clips] : clips
+    this._setFlatClips(next)
     this.markDirty()
   }
   
@@ -456,7 +502,7 @@ export class ChronosStore {
    * 🧹 WAVE 2014.5: Set clips directly (for load operations)
    */
   setClips(clips: TimelineClip[]): void {
-    this.project.timeline.clips = clips
+    this._setFlatClips(clips)
     // Don't mark dirty - this is from a load operation
   }
   
@@ -466,8 +512,8 @@ export class ChronosStore {
   getAudioInfo(): { path: string; bpm: number; durationMs: number } | null {
     if (!this.project.audio) return null
     return {
-      path: this.project.audio.path,
-      bpm: this.project.audio.bpm,
+      path: this.project.audio.relativePath,
+      bpm: this.project.audio.detectedBpm,
       durationMs: this.project.audio.durationMs,
     }
   }
@@ -514,7 +560,7 @@ export class ChronosStore {
     }
     
     // Skip if project has no content worth saving
-    if (!this.projectPath && this.project.timeline.clips.length === 0 && !this.project.audio) {
+    if (!this.projectPath && this._getFlatClips().length === 0 && !this.project.audio) {
       return
     }
     
@@ -522,7 +568,7 @@ export class ChronosStore {
     this.emit('auto-save-start')
     
     try {
-      const json = serializeProject(this.project)
+      const json = await serializeLuxV3(toLuxFileV3(this.project))
       const autoSavePath = this.getAutoSavePath()
       
       // Use Electron IPC for file operations
@@ -594,7 +640,7 @@ export class ChronosStore {
       if (result.exists && result.mtime) {
         // Check if auto-save is newer than last manual save
         const autoSaveTime = new Date(result.mtime).getTime()
-        const lastSaveTime = this.project.meta.modified || 0
+        const lastSaveTime = Date.parse(this.project.meta.modifiedAt) || 0
         
         if (autoSaveTime > lastSaveTime) {
           console.log(`[ChronosStore] 🛡️ Recovery available: ${autoSavePath}`)
@@ -626,11 +672,12 @@ export class ChronosStore {
           return { success: false, error: 'No recovery data found' }
         }
         
-        const project = deserializeProject(json)
-        if (!project || !validateProject(project).valid) {
+        const des = await deserializeLuxV3(json)
+        if (!des.file) {
           return { success: false, error: 'Recovery data is corrupted' }
         }
         
+        const project = toChronosProjectV3(des.file)
         this.project = project
         this.isDirty = true // Mark as dirty so user saves properly
         this.emit('project-loaded', { project, path: null, recovered: true })
@@ -649,11 +696,12 @@ export class ChronosStore {
       const result = await chronosAPI.loadAutoSave({ path: autoSavePath })
       
       if (result.success && result.json) {
-        const project = deserializeProject(result.json)
-        if (!project || !validateProject(project).valid) {
+        const des = await deserializeLuxV3(result.json)
+        if (!des.file) {
           return { success: false, error: 'Recovery data is corrupted' }
         }
         
+        const project = toChronosProjectV3(des.file)
         this.project = project
         this.isDirty = true // Mark as dirty so user saves properly
         this.projectPath = autoSavePath.replace(ChronosStore.AUTO_SAVE_SUFFIX, '')
@@ -729,15 +777,11 @@ import type {
   ChronosProjectV3 as ChronosProjectV2,
   LuxTrackV3 as TimelineTrackV2,
   LuxTrackUpdateV3 as TrackUpdateV2,
-  LuxFileV3,
 } from './LuxFileV3'
 import {
   createEmptyChronosProjectV3 as createDefaultProjectV2,
   createTrackV3 as createTrackV2,
-  toChronosProjectV3,
 } from './LuxFileV3.factories'
-import { generateChronosId } from './types'
-import { deserializeLuxV3 } from './LuxFileV3.serializer'
 
 // WAVE 7100 FASE 2: detectProjectVersion DEMOLISHED — V3 uses $schema hard-gate.
 
@@ -1041,12 +1085,12 @@ export class ChronosStoreV2 {
    * Busca el clip en cualquier track, lo mueve actualizando trackId.
    */
   moveClipToTrack(clipId: string, targetTrackId: string): void {
-    let movedClip: import('./TimelineClip').TimelineClip | null = null
+    let movedClip: LuxClipV3 | null = null
 
     const tracks = this.project.tracks.map(t => {
       const idx = t.clips.findIndex(c => c.id === clipId)
       if (idx === -1) return t
-      movedClip = { ...t.clips[idx], trackId: targetTrackId }
+      movedClip = { ...t.clips[idx] }
       return { ...t, clips: t.clips.filter(c => c.id !== clipId) }
     })
 

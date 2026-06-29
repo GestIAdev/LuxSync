@@ -24,9 +24,10 @@
 
 import { describe, test, expect } from 'vitest'
 import { createHephFXClip, MIXBUS_CLIP_COLORS } from '../core/TimelineClip'
-import { createEmptyProject, serializeProject, deserializeProject } from '../core/ChronosProject'
+import { createEmptyChronosProjectV3, serializeProject, deserializeProject, createTrackV3, toLuxFileV3 } from '../core/ChronosProject'
 import type { HephAutomationClipV3, HephCurve, HephTrack, ZoneTarget } from '../../core/hephaestus/types'
 import type { FXClip } from '../core/TimelineClip'
+import type { LuxClipV3, ChronosProjectV3 } from '../core/LuxFileV3'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TEST HELPERS: THE FORGE
@@ -147,7 +148,6 @@ describe('💎 Diamond Data Pipeline Integrity', () => {
       'zone-front',
       'heph_custom',
       mockHeph,
-      'htp',
       ['front', 'back'],
       5
     )
@@ -173,8 +173,8 @@ describe('💎 Diamond Data Pipeline Integrity', () => {
     const colorTrack = clip.hephClip!.tracks.find(t => t.paramId === 'color')
     expect(colorTrack).toBeDefined()
     
-    // Assert: MixBus routing
-    expect(clip.mixBus).toBe('htp')
+    // Assert: MixBus routing (V3: canonical source is hephClip.mixBus)
+    expect(clip.hephClip?.mixBus).toBe('htp')
     expect(clip.color).toBe(MIXBUS_CLIP_COLORS['htp']) // Orange #f59e0b
     
     // Assert: Zones & Priority
@@ -192,7 +192,7 @@ describe('💎 Diamond Data Pipeline Integrity', () => {
     expect(clip.keyframes[2].value).toBe(0) // End at 0
   })
   
-  test('🔹 STEP 2: Project serialization preserves Diamond Data', () => {
+  test('🔹 STEP 2: Project serialization preserves Diamond Data', async () => {
     const durationMs = 4000
     const mockHeph = createMockHephClip(durationMs)
     
@@ -204,17 +204,19 @@ describe('💎 Diamond Data Pipeline Integrity', () => {
       'zone-front',
       'heph_custom',
       mockHeph,
-      'htp',
       ['front', 'back'],
       5
     )
     
-    // Create project with clip
-    const project = createEmptyProject('Diamond Test Project')
-    project.timeline.clips = [clip]
+    // Create project with clip in a track
+    const project = createEmptyChronosProjectV3()
+    project.meta.name = 'Diamond Test Project'
+    const track = createTrackV3('front')
+    track.clips = [clip as unknown as LuxClipV3]
+    project.tracks = [track]
     
-    // Serialize
-    const json = serializeProject(project)
+    // Serialize (async in V3)
+    const json = await serializeProject(toLuxFileV3(project))
     
     // Assert: JSON is valid
     expect(json).toBeDefined()
@@ -222,16 +224,17 @@ describe('💎 Diamond Data Pipeline Integrity', () => {
     
     // Parse back for inspection
     const parsed = JSON.parse(json)
-    expect(parsed.timeline.clips).toBeDefined()
-    expect(parsed.timeline.clips.length).toBe(1)
+    expect(parsed.tracks).toBeDefined()
+    expect(parsed.tracks[0].clips).toBeDefined()
+    expect(parsed.tracks[0].clips.length).toBe(1)
     
-    const serializedClip = parsed.timeline.clips[0]
+    const serializedClip = parsed.tracks[0].clips[0]
     expect(serializedClip.hephClip).toBeDefined()
     expect(serializedClip.hephClip.tracks).toBeDefined()
-    expect(serializedClip.mixBus).toBe('htp')
+    expect(serializedClip.hephClip.mixBus).toBe('htp')
   })
   
-  test('🔹 STEP 3: Project deserialization preserves Diamond Data', () => {
+  test('🔹 STEP 3: Project deserialization preserves Diamond Data', async () => {
     const durationMs = 4000
     const mockHeph = createMockHephClip(durationMs)
     
@@ -243,24 +246,26 @@ describe('💎 Diamond Data Pipeline Integrity', () => {
       'zone-front',
       'heph_custom',
       mockHeph,
-      'htp',
       ['front', 'back'],
       5
     )
     
     // Create → Serialize → Deserialize
-    const project = createEmptyProject('Diamond Test Project')
-    project.timeline.clips = [originalClip]
+    const project = createEmptyChronosProjectV3()
+    project.meta.name = 'Diamond Test Project'
+    const track = createTrackV3('front')
+    track.clips = [originalClip as unknown as LuxClipV3]
+    project.tracks = [track]
     
-    const json = serializeProject(project)
-    const loadedProject = deserializeProject(json)
+    const json = await serializeProject(toLuxFileV3(project))
+    const result = await deserializeProject(json)
     
     // Assert: Project loaded successfully
-    expect(loadedProject).toBeDefined()
-    expect(loadedProject?.timeline.clips).toBeDefined()
-    expect(loadedProject!.timeline.clips.length).toBe(1)
+    expect(result.file).toBeDefined()
+    const allClips = result.file!.tracks.flatMap(t => t.clips)
+    expect(allClips.length).toBe(1)
     
-    const loadedClip = loadedProject!.timeline.clips[0] as FXClip
+    const loadedClip = allClips[0] as unknown as FXClip
     
     // Assert: Clip structure preserved
     expect(loadedClip.type).toBe('fx')
@@ -296,8 +301,8 @@ describe('💎 Diamond Data Pipeline Integrity', () => {
     expect(colorTrack!.curve.keyframes.length).toBe(3)
     expect(colorTrack!.curve.keyframes[0].value).toEqual({ h: 0, s: 100, l: 50 })
     
-    // Assert: MixBus routing preserved
-    expect(loadedClip.mixBus).toBe('htp')
+    // Assert: MixBus routing preserved (V3: canonical source is hephClip.mixBus)
+    expect(loadedClip.hephClip?.mixBus).toBe('htp')
     expect(loadedClip.color).toBe(MIXBUS_CLIP_COLORS['htp'])
     
     // Assert: Zones preserved
@@ -311,7 +316,7 @@ describe('💎 Diamond Data Pipeline Integrity', () => {
     expect(loadedClip.keyframes.length).toBe(3)
   })
   
-  test('🔹 STEP 4: Multiple Heph clips with different mixBus', () => {
+  test('🔹 STEP 4: Multiple Heph clips with different mixBus', async () => {
     const durationMs = 2000
     
     // Create 4 clips, one per mixBus
@@ -323,7 +328,6 @@ describe('💎 Diamond Data Pipeline Integrity', () => {
       'zone-all',
       'heph_custom',
       { ...createMockHephClip(durationMs), mixBus: 'global', name: 'Strobe Storm' },
-      'global',
       [],
       10
     )
@@ -336,7 +340,6 @@ describe('💎 Diamond Data Pipeline Integrity', () => {
       'zone-front',
       'heph_custom',
       { ...createMockHephClip(durationMs), mixBus: 'htp', name: 'Pan Sweep' },
-      'htp',
       [],
       5
     )
@@ -349,7 +352,6 @@ describe('💎 Diamond Data Pipeline Integrity', () => {
       'zone-back',
       'heph_custom',
       { ...createMockHephClip(durationMs), mixBus: 'ambient', name: 'Color Wash' },
-      'ambient',
       [],
       3
     )
@@ -362,38 +364,41 @@ describe('💎 Diamond Data Pipeline Integrity', () => {
       'zone-center',
       'heph_custom',
       { ...createMockHephClip(durationMs), mixBus: 'accent', name: 'Gobo Flash' },
-      'accent',
       [],
       8
     )
     
-    const project = createEmptyProject('Multi MixBus Test')
-    project.timeline.clips = [globalClip, htpClip, ambientClip, accentClip]
+    const project = createEmptyChronosProjectV3()
+    project.meta.name = 'Multi MixBus Test'
+    const track = createTrackV3('front')
+    track.clips = [globalClip, htpClip, ambientClip, accentClip].map(c => c as unknown as LuxClipV3)
+    project.tracks = [track]
     
     // Serialize → Deserialize
-    const json = serializeProject(project)
-    const loadedProject = deserializeProject(json)
+    const json = await serializeProject(toLuxFileV3(project))
+    const result = await deserializeProject(json)
     
-    expect(loadedProject).toBeDefined()
-    expect(loadedProject!.timeline.clips.length).toBe(4)
+    expect(result.file).toBeDefined()
+    const allClips = result.file!.tracks.flatMap(t => t.clips)
+    expect(allClips.length).toBe(4)
     
-    const [g, h, a, ac] = loadedProject!.timeline.clips as FXClip[]
+    const [g, h, a, ac] = allClips as unknown as FXClip[]
     
-    // Assert: Each clip has correct mixBus and color
-    expect(g.mixBus).toBe('global')
+    // Assert: Each clip has correct mixBus (via hephClip) and color
+    expect(g.hephClip?.mixBus).toBe('global')
     expect(g.color).toBe(MIXBUS_CLIP_COLORS['global']) // Red
     
-    expect(h.mixBus).toBe('htp')
+    expect(h.hephClip?.mixBus).toBe('htp')
     expect(h.color).toBe(MIXBUS_CLIP_COLORS['htp']) // Orange
     
-    expect(a.mixBus).toBe('ambient')
+    expect(a.hephClip?.mixBus).toBe('ambient')
     expect(a.color).toBe(MIXBUS_CLIP_COLORS['ambient']) // Green
     
-    expect(ac.mixBus).toBe('accent')
+    expect(ac.hephClip?.mixBus).toBe('accent')
     expect(ac.color).toBe(MIXBUS_CLIP_COLORS['accent']) // Blue
   })
   
-  test('🔹 STEP 5: Heph clip without tracks (edge case)', () => {
+  test('🔹 STEP 5: Heph clip without tracks (edge case)', async () => {
     const durationMs = 1000
     const mockHeph: HephAutomationClipV3 = {
       id: 'test-no-curves',
@@ -420,7 +425,6 @@ describe('💎 Diamond Data Pipeline Integrity', () => {
       'zone-all',
       'heph_custom',
       mockHeph,
-      'global',
       [],
       1
     )
@@ -436,15 +440,19 @@ describe('💎 Diamond Data Pipeline Integrity', () => {
     expect(clip.keyframes[2].value).toBe(0)
     
     // Serialize → Deserialize
-    const project = createEmptyProject('Empty Clip Test')
-    project.timeline.clips = [clip]
-    const json = serializeProject(project)
-    const loaded = deserializeProject(json)
+    // V3 validator rejects hephClips with 0 tracks (by design — empty automation is invalid)
+    const project = createEmptyChronosProjectV3()
+    project.meta.name = 'Empty Clip Test'
+    const track = createTrackV3('front')
+    track.clips = [clip as unknown as LuxClipV3]
+    project.tracks = [track]
+    const json = await serializeProject(toLuxFileV3(project))
+    const result = await deserializeProject(json)
     
-    expect(loaded).toBeDefined()
-    const loadedClip = loaded!.timeline.clips[0] as FXClip
-    expect(loadedClip.hephClip).toBeDefined()
-    expect(loadedClip.hephClip!.tracks.length).toBe(0)
+    // V3 schema: empty hephClip tracks is a validation error
+    expect(result.file).toBeNull()
+    expect(result.validation.valid).toBe(false)
+    expect(result.validation.errors.some(e => e.includes('0 tracks'))).toBe(true)
   })
 })
 

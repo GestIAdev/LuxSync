@@ -36,23 +36,16 @@
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** 
- * 🌍 WAVE 2543.3: Default fallback track ID for live recording.
- * During live recording, effects go to 'zone-all' because
- * the specific zone is decided by the user via drag & drop or editing.
- */
-export const DEFAULT_ZONE_TRACK = 'zone-all'
-
-export type RecordedClipType = 'fx' | 'vibe'
+export type RecordedClipType = 'vibe'
 
 export interface RecordedClip {
   /** Unique ID */
   id: string
   
-  /** Clip type: 'fx' or 'vibe' */
+  /** Clip type */
   clipType: RecordedClipType
   
-  /** Effect ID from registry (for FX) or vibe type (for Vibe) */
+  /** Vibe type ID */
   effectId: string
   
   /** Effect display name */
@@ -330,98 +323,8 @@ export class ChronosRecorder {
   }
   
   // ─────────────────────────────────────────────────────────────────────────
-  // MIXBUS ROUTING - WAVE 2012 (Intelligent Track Assignment)
+  // CLIP RECORDING
   // ─────────────────────────────────────────────────────────────────────────
-  
-  /**
-   * � WAVE 2543.3: Get zone track ID for an effect
-   * During live recording, routes to zone-all (global fallback).
-   * The specific zone gets refined when the user edits/moves the clip.
-   */
-  private getTrackForEffect(effectId: string, timeMs: number, durationMs: number): string {
-    const trackId = DEFAULT_ZONE_TRACK
-    
-    // Check if the default track is available
-    if (!this.isTrackBusy(trackId, timeMs, durationMs)) {
-      console.log(`🌍 [ChronosRecorder] Zone → ${trackId} for "${effectId}"`)
-      return trackId
-    }
-    
-    // Track busy — stack on same track (zone-all can handle multiple clips)
-    console.log(`🌍 [ChronosRecorder] ${trackId} busy, stacking (zone track supports overlap)`)
-    return trackId
-  }
-  
-  /**
-   * 🔍 Check if a track has a clip at the given time
-   */
-  private isTrackBusy(trackId: string, timeMs: number, durationMs: number): boolean {
-    const clipStart = timeMs
-    const clipEnd = timeMs + durationMs
-    
-    return this.state.clips.some(clip => {
-      if (clip.trackId !== trackId) return false
-      const existingStart = clip.startMs
-      const existingEnd = clip.startMs + clip.durationMs
-      
-      // Check for overlap
-      return !(clipEnd <= existingStart || clipStart >= existingEnd)
-    })
-  }
-  
-  // ─────────────────────────────────────────────────────────────────────────
-  // CLIP RECORDING - WAVE 2012
-  // ─────────────────────────────────────────────────────────────────────────
-  
-  /**
-   * 🎯 Record an FX effect at current playhead position
-   * WAVE 2012: MixBus Routing - Auto-assigns based on effect type
-   * 
-   * @param effectId Effect ID from registry
-   * @param displayName Display name for the clip
-   * @param durationMs Duration in ms
-   * @param color Color for rendering
-   * @param icon Icon emoji
-   * @returns The recorded clip, or null if not recording
-   */
-  recordEffect(
-    effectId: string,
-    displayName: string,
-    durationMs: number,
-    color: string,
-    icon: string
-  ): RecordedClip | null {
-    if (!this.state.isRecording) {
-      console.warn('[ChronosRecorder] Cannot record FX - not in recording mode')
-      return null
-    }
-    
-    const startMs = this.snapToGrid(this.state.playheadMs)
-    
-    // 🎹 WAVE 2012: MixBus Routing - get track based on effect type
-    const trackId = this.getTrackForEffect(effectId, startMs, durationMs)
-    
-    const clip: RecordedClip = {
-      id: `rec-fx-${effectId}-${Date.now()}`,
-      clipType: 'fx',
-      effectId,
-      displayName,
-      startMs,
-      durationMs,
-      color,
-      icon,
-      recordedAt: Date.now(),
-      trackId,
-    }
-    
-    this.state.clips.push(clip)
-    this.state.recordCount++
-    
-    console.log(`🔴 [ChronosRecorder] Recorded FX: ${displayName} at ${startMs}ms on ${trackId} (quantized: ${this.state.quantizeEnabled})`)
-    this.emit('clip-added', { clip })
-    
-    return clip
-  }
   
   /**
    * 🎭 Record a Vibe at current playhead position

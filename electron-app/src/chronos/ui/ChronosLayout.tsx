@@ -69,7 +69,7 @@ import { useOverrideStore } from '../../stores/overrideStore'
 import type { LuxProject } from '../core/ChronosProject'
 import type { AnalysisData } from '../core/types'
 import type { DragPayload, TimelineClip, FXClip } from '../core/TimelineClip'
-import { toFXType, toVibeType, extractVisualKeyframes } from '../core/TimelineClip'
+import { toVibeType, extractVisualKeyframes } from '../core/TimelineClip'
 import type { HephAutomationClipV3 } from '../../core/hephaestus/types'
 // 🔧 WAVE 2044: Navigation store for Hephaestus routing
 import { useNavigationStore } from '../../stores/navigationStore'
@@ -739,42 +739,21 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
   useEffect(() => {
     const handleClipRecorded = (data: { clip: RecordedClip }) => {
       const clip = data.clip
-      console.log(`[ChronosLayout] 🎬 Recorded clip received:`, clip.displayName)
+      console.log(`[ChronosLayout] Recorded clip received:`, clip.displayName)
       
-      // Build TimelineClip based on clip type
-      let timelineClip: TimelineClip
-      
-      if (clip.clipType === 'vibe') {
-        timelineClip = {
-          id: clip.id,
-          type: 'vibe',
-          label: clip.displayName,
-          startMs: clip.startMs,
-          endMs: clip.startMs + clip.durationMs,
-          color: clip.color || '#FF6B35',
-          trackId: clip.trackId,
-          locked: false,
-          // WAVE 2040.17 P11: Safe coercion — no more `as any`
-          vibeType: toVibeType(clip.effectId),
-          intensity: 1.0,
-          fadeInMs: 500,
-          fadeOutMs: 500,
-        }
-      } else {
-        timelineClip = {
-          id: clip.id,
-          type: 'fx',
-          label: clip.displayName,
-          startMs: clip.startMs,
-          endMs: clip.startMs + clip.durationMs,
-          color: clip.color || '#00D9FF',
-          trackId: clip.trackId,
-          locked: false,
-          // WAVE 2040.17 P11: Safe coercion — no more `as any`
-          fxType: toFXType(clip.effectId),
-          keyframes: [],
-          params: { intensity: 1.0 },
-        }
+      const timelineClip: TimelineClip = {
+        id: clip.id,
+        type: 'vibe',
+        label: clip.displayName,
+        startMs: clip.startMs,
+        endMs: clip.startMs + clip.durationMs,
+        color: clip.color || '#FF6B35',
+        trackId: clip.trackId,
+        locked: false,
+        vibeType: toVibeType(clip.effectId),
+        intensity: 1.0,
+        fadeInMs: 500,
+        fadeOutMs: 500,
       }
       
       clipState.addClip(timelineClip)

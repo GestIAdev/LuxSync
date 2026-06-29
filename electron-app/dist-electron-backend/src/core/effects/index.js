@@ -12,5 +12,3 @@
  */
 // Effect Manager
 export { EffectManager, getEffectManager, resetEffectManager } from './EffectManager';
-// Effect Library
-export { SolarFlare, createSolarFlare, SOLAR_FLARE_DEFAULT_CONFIG } from './library/fiestalatina/SolarFlare';

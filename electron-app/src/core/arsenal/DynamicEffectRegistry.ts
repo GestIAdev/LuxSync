@@ -19,13 +19,10 @@ import {
   DEFAULT_IK_COMPATIBILITY,
   DEFAULT_SAFETY_DECLARATION,
   DEFAULT_SIMULATION_META,
-  hasCognitiveDNA,
-  isSeleneEligible,
   type CognitiveDNA,
   type ExecutionHints,
   type FrozenGenome,
   type LFXFileV3,
-  type LfxClipV2,
   type PixelExecutionHints,
   type RegistryEntry,
   type SimulationMeta,
@@ -81,52 +78,6 @@ export class DynamicEffectRegistry {
   // ─────────────────────────────────────────────────────────────────────────
   // INGESTA / MUTACIÓN
   // ─────────────────────────────────────────────────────────────────────────
-
-  /**
-   * Registra un `.lfx v2.1` en el registry.
-   *
-   * Validaciones aplicadas (gates G1..G7 del Blueprint V2):
-   *   G1: schema correcto y `effectType === 'heph_custom'`.
-   *   G3: rangos del genoma ∈ [0,1].
-   *   G4: `compatibleVibes` no vacío.
-   *
-   * Gates G2 (checksum), G5 (curve sanity), G6 (strobe consistency), G7
-   * (offset range) corren ANTES de llamar a este método, en el cargador FS.
-   *
-   * @returns la entry congelada si fue aceptada, o `null` si fue rechazada.
-   */
-  public registerEffect(clip: LfxClipV2, options: RegisterOptions = {}): RegistryEntry | null {
-    if (!isSeleneEligible(clip)) {
-      // Clip Hephaestus puro (v1, o v2 sin DNA) → invisible para Selene.
-      // No es error, no es warning — es by-design.
-      return null
-    }
-
-    // Type narrow: hasCognitiveDNA garantiza presencia.
-    if (!hasCognitiveDNA(clip)) return null
-    const dna: CognitiveDNA = clip.clip.cognitiveDNA
-
-    if (!_validateGenomeRanges(dna)) {
-      console.warn(`[DynamicEffectRegistry ⚠️] G3 fail: genome out of range for "${clip.clip.id}"`)
-      return null
-    }
-    if (dna.compatibleVibes.length === 0) {
-      console.warn(`[DynamicEffectRegistry ⚠️] G4 fail: empty compatibleVibes for "${clip.clip.id}"`)
-      return null
-    }
-
-    const entry = _buildEntry(clip, dna, options)
-
-    // Reemplazo idempotente: si ya existía, removerlo de los índices antes.
-    const prev = this._byId.get(entry.id)
-    if (prev) this._removeFromIndices(prev)
-
-    this._byId.set(entry.id, entry)
-    this._appendToIndices(entry)
-    this._rebuildAllEntries()
-
-    return entry
-  }
 
   /**
    * Registra un `.lfx v3.0` nativo en el registry.
@@ -400,83 +351,6 @@ function _buildEntryFromV3(
     isBuiltin: options.isBuiltin ?? false,
     loadedAt: Date.now(),
     source: null,
-  }
-
-  return Object.freeze(entry)
-}
-
-function _buildEntry(
-  clip: LfxClipV2,
-  dna: CognitiveDNA,
-  options: RegisterOptions,
-): RegistryEntry {
-  const c = clip.clip
-
-  const simMeta: SimulationMeta = c.simulationMeta ?? DEFAULT_SIMULATION_META
-  const execHints: ExecutionHints =
-    c.executionHints ?? _DEFAULT_EXECUTION_HINTS
-  const safetyDecl = c.safetyDeclaration ?? DEFAULT_SAFETY_DECLARATION
-  const ikCompat = dna.ikCompatibility ?? DEFAULT_IK_COMPATIBILITY
-
-  // Congelar arrays defensivamente para honrar `readonly` en runtime.
-  const compatibleVibes = Object.freeze([...dna.compatibleVibes])
-  const validSections = Object.freeze([...dna.validSections])
-  const tags = Object.freeze([...c.tags])
-
-  const entry: RegistryEntry = {
-    id: c.id,
-    name: c.name,
-    author: c.author,
-    category: c.category,
-    tags,
-    durationMs: c.durationMs,
-    effectType: c.effectType,
-
-    filePath: options.filePath ?? null,
-    dna: Object.freeze({
-      aggression: dna.genome.aggression,
-      chaos: dna.genome.chaos,
-      organicity: dna.genome.organicity,
-    }),
-    textureAffinity: dna.textureAffinity,
-    compatibleVibes,
-    validSections,
-    energyZone: Object.freeze({ min: dna.energyZone.min, max: dna.energyZone.max }),
-    aggressionRange: Object.freeze({
-      min: dna.aggressionRange.min,
-      max: dna.aggressionRange.max,
-    }),
-    spatialBehavior: dna.spatialBehavior,
-    ikCompatibility: Object.freeze({ ...ikCompat }),
-
-    simMeta: Object.freeze({
-      ...simMeta,
-      beautyWeights: Object.freeze({ ...simMeta.beautyWeights }),
-      zScoreGuards: Object.freeze({ ...simMeta.zScoreGuards }),
-    }) as SimulationMeta,
-    execHints: Object.freeze({
-      ...execHints,
-      phaseConfig: Object.freeze({ ...execHints.phaseConfig }),
-    }) as ExecutionHints,
-    safetyDecl: Object.freeze({ ...safetyDecl }),
-
-    // 🎨 WAVE 4812: Pixel mapping aliases (default 'vector' / null).
-    executionDomain: dna.executionDomain ?? 'vector',
-    pixelHints:
-      dna.pixelHints != null
-        ? (Object.freeze({
-            ...dna.pixelHints,
-            preferredResolution: Object.freeze({ ...dna.pixelHints.preferredResolution }),
-            hybridChannels:
-              dna.pixelHints.hybridChannels != null
-                ? Object.freeze([...dna.pixelHints.hybridChannels])
-                : undefined,
-          }) as PixelExecutionHints)
-        : null,
-
-    isBuiltin: options.isBuiltin ?? false,
-    loadedAt: Date.now(),
-    source: options.keepSource ? clip : null,
   }
 
   return Object.freeze(entry)

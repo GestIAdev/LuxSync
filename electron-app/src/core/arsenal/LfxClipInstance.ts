@@ -19,7 +19,6 @@
 // ════════════════════════════════════════════════════════════════════════════
 
 import type {
-  LfxClipV2,
   CognitiveDNA,
   FrozenGenome,
   EnergyZoneRange,
@@ -567,138 +566,8 @@ export class LfxClipInstance {
     })
   }
 
-  // ─── RETROCOMPATIBILIDAD (fromLegacyLfx) ─────────────────────────────────
-
-  /**
-   * Hidrata un `LfxClipInstance` desde un `.lfx` v1.x (legacy) o v2.1.
-   * Campos ausentes obtienen fallbacks coherentes:
-   *   - `userArchetype`: inferido a partir de tags si existen, si no `utility`.
-   *   - `acoTriad`: tomado de `cognitiveDNA.genome` o NEUTRAL.
-   *   - `energyZones`: derivado de `cognitiveDNA.energyZone` o vacío.
-   *   - `compatibleVibes`: filtrado por whitelist `COMPATIBLE_VIBES`.
-   *   - `maxStrobeFreqHz`: tomado de `safetyDeclaration` o 0.
-   */
-  public static fromLegacyLfx(input: LfxClipV2 | Record<string, unknown>): LfxClipInstance {
-    const safe = (input ?? {}) as Record<string, unknown>
-    const clipBlock =
-      typeof safe['clip'] === 'object' && safe['clip'] !== null
-        ? (safe['clip'] as Record<string, unknown>)
-        : safe
-
-    const id =
-      typeof clipBlock['id'] === 'string' && clipBlock['id'].length > 0
-        ? (clipBlock['id'] as string)
-        : `legacy-${Date.now()}-${Math.floor(Math.random() * 1e6)}`
-
-    const title =
-      typeof clipBlock['name'] === 'string'
-        ? (clipBlock['name'] as string)
-        : typeof clipBlock['title'] === 'string'
-          ? (clipBlock['title'] as string)
-          : 'Untitled Clip'
-
-    const author =
-      typeof clipBlock['author'] === 'string' ? (clipBlock['author'] as string) : 'unknown'
-
-    // Cognitive DNA legacy
-    const dna =
-      typeof clipBlock['cognitiveDNA'] === 'object' && clipBlock['cognitiveDNA'] !== null
-        ? (clipBlock['cognitiveDNA'] as Record<string, unknown>)
-        : null
-
-    const genome =
-      dna && typeof dna['genome'] === 'object' && dna['genome'] !== null
-        ? (dna['genome'] as Record<string, unknown>)
-        : null
-
-    const acoTriad: Partial<AcoTriad> = {
-      aggression: typeof genome?.['aggression'] === 'number' ? (genome['aggression'] as number) : 0.5,
-      chaos: typeof genome?.['chaos'] === 'number' ? (genome['chaos'] as number) : 0.5,
-      organicity: typeof genome?.['organicity'] === 'number' ? (genome['organicity'] as number) : 0.5,
-    }
-
-    // EnergyZones derivadas del rango legacy
-    let energyZones: EnergyZoneId[] = []
-    const ezr =
-      dna && typeof dna['energyZone'] === 'object' && dna['energyZone'] !== null
-        ? (dna['energyZone'] as Record<string, unknown>)
-        : null
-    if (ezr && isEnergyZone(ezr['min']) && isEnergyZone(ezr['max'])) {
-      const i0 = ENERGY_ZONES.indexOf(ezr['min'])
-      const i1 = ENERGY_ZONES.indexOf(ezr['max'])
-      const lo = Math.min(i0, i1)
-      const hi = Math.max(i0, i1)
-      energyZones = ENERGY_ZONES.slice(lo, hi + 1) as EnergyZoneId[]
-    }
-
-    // Vibes (filtrar contra whitelist directiva, ignorar las legacy desconocidas)
-    let compatibleVibes: CompatibleVibe[] = []
-    const rawVibes = dna && Array.isArray(dna['compatibleVibes']) ? dna['compatibleVibes'] : []
-    for (const v of rawVibes as unknown[]) {
-      // mapeo inverso del puente: 'techno-club' → 'techno-dark', etc.
-      const reversed = LfxClipInstance._reverseVibeBridge(v)
-      if (reversed && !compatibleVibes.includes(reversed)) {
-        compatibleVibes.push(reversed)
-      }
-    }
-
-    // Spatial behavior
-    const sb = dna?.['spatialBehavior']
-    const spatialBehavior: SpatialBehavior = isSpatialBehavior(sb) ? sb : 'static'
-
-    // Safety declaration
-    const safety =
-      typeof clipBlock['safetyDeclaration'] === 'object' && clipBlock['safetyDeclaration'] !== null
-        ? (clipBlock['safetyDeclaration'] as Record<string, unknown>)
-        : null
-    const maxStrobeFreqHz =
-      typeof safety?.['maxStrobeFreqHz'] === 'number' ? (safety['maxStrobeFreqHz'] as number) : 0
-
-    // Inferir arquetipo: tags conocidos > simulationMeta flags > utility
-    const userArchetype: UserArchetype = LfxClipInstance._inferArchetypeFromLegacy(clipBlock)
-
-    return new LfxClipInstance({
-      id,
-      title,
-      author,
-      userArchetype,
-      spatialBehavior,
-      maxStrobeFreqHz,
-      compatibleVibes,
-      energyZones,
-      acoTriad,
-    })
-  }
-
-  /** Mapeo inverso `'techno-club' → 'techno-dark'`, etc. */
-  private static _reverseVibeBridge(value: unknown): CompatibleVibe | null {
-    return reverseVibeBridge(value)
-  }
-
-  /**
-   * Heurística simple para reconstruir `userArchetype` desde un .lfx legacy.
-   *  - tags incluyen 'strobe' → 'strobe'
-   *  - simMeta.isStrobe → 'strobe'
-   *  - simMeta.isDivineCandidate → 'divine'
-   *  - simMeta.isHeavyCandidate → 'heavy'
-   *  - tags incluyen 'ambient' → 'ambient'
-   *  - default → 'utility'
-   */
-  private static _inferArchetypeFromLegacy(clipBlock: Record<string, unknown>): UserArchetype {
-    const tags = Array.isArray(clipBlock['tags']) ? (clipBlock['tags'] as unknown[]) : []
-    const tagSet = new Set(tags.filter((t): t is string => typeof t === 'string'))
-
-    const sim =
-      typeof clipBlock['simulationMeta'] === 'object' && clipBlock['simulationMeta'] !== null
-        ? (clipBlock['simulationMeta'] as Record<string, unknown>)
-        : null
-
-    if (tagSet.has('strobe') || sim?.['isStrobe'] === true) return 'strobe'
-    if (sim?.['isDivineCandidate'] === true) return 'divine'
-    if (sim?.['isHeavyCandidate'] === true || tagSet.has('heavy')) return 'heavy'
-    if (tagSet.has('ambient') || tagSet.has('chill')) return 'ambient'
-    return 'utility'
-  }
+  // FASE 3: fromLegacyLfx (V2.1 compat bridge) demolished.
+  // _reverseVibeBridge and _inferArchetypeFromLegacy also removed — no callers.
 
   // ─── INTERNALS ───────────────────────────────────────────────────────────
 

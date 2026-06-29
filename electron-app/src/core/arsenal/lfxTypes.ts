@@ -202,76 +202,12 @@ export interface SafetyDeclaration {
   readonly communityTrusted: boolean
 }
 
-// @deprecated DEMOLITION TARGET — V2.1 wrapper. Replaced by LFXFileV3 (luxsync.lfx/3.0).
-// Phase 3 will remove this type, DynamicEffectRegistry.registerEffect(), and _buildEntry().
-// ─── CLIP COMPLETO V2.1 (sobreviviente a IPC) ───────────────────────────────
-
-/**
- * `.lfx v3.0` — formato serializable nativo (tracks array, sin Map<>).
- *
- * Los campos de `HephAutomationClipV3` son la base.
- * Los bloques nuevos (`cognitiveDNA`,
- * `simulationMeta`, `executionHints`, `safetyDeclaration`) son OPCIONALES:
- *   - Si están presentes → el clip es visible para Selene IA (Infinite Arsenal).
- *   - Si están ausentes  → el clip es "Hephaestus puro" (solo Chronos).
- */
-export interface LfxClipV2 {
-  readonly $schema: 'hephaestus/v2.1'
-  readonly version: string
-
-  readonly clip: {
-    readonly id: string
-    readonly name: string
-    readonly author: string
-    readonly category: string
-    readonly tags: readonly string[]
-    readonly vibeCompat: readonly string[]
-    readonly zones: readonly string[]
-    readonly mixBus: 'global' | 'htp' | 'ambient' | 'accent'
-    readonly priority: number
-    readonly durationMs: number
-    /** `'heph_custom'` para clips que entran en pipeline L3+ del NodeArbiter. */
-    readonly effectType: string
-
-    /**
-     * @deprecated WAVE 4856 — Esquema plano legacy (v2.1).
-     *
-     * Limita a UNA curva por `paramId`, lo que impide ruteo espacial
-     * independiente (ej. dos colores distintos para dos zonas distintas).
-     *
-     * Sustituido por {@link tracks} (`HephTrackV3[]`). El `HephaestusRuntime`
-     * sigue aceptando este campo en clips v2.1: realiza una migración
-     * in-memory a `tracks[]` usando la zona global del clip como destino
-     * común. Para nuevas autorías → emitir `tracks[]` directamente.
-     */
-    readonly curves: Readonly<Record<string, HephCurve>>
-
-    /**
-     * 🧬 WAVE 4856 — V3 multicelular (opcional en el wrapper v2.1).
-     *
-     * Cuando está presente, SUSTITUYE a `curves` para todos los efectos de
-     * runtime. Cada track porta su propio conjunto de zonas, permitiendo N
-     * pistas distintas con el mismo `paramId`. El Loader v2.1 ignora este
-     * campo (usa `curves`); el Runtime lo prioriza si existe.
-     */
-    readonly tracks?: readonly HephTrackV3[]
-
-    readonly staticParams: Readonly<Record<string, number | string | boolean>>
-
-    // ── Bloques cognitivos (opcionales — solo .lfx v2.1) ──
-    readonly cognitiveDNA?: CognitiveDNA
-    readonly simulationMeta?: SimulationMeta
-    readonly executionHints?: ExecutionHints
-    readonly safetyDeclaration?: SafetyDeclaration
-  }
-
-  readonly checksum: string
-}
+// FASE 3: LfxClipV2 demolished — V3 (LFXFileV3) is the only canonical format.
 
 // ─── REGISTRY ENTRY (forma INTERNA del Registry, pre-indexada) ──────────────
 
 /**
- * Snapshot inmutable de un `.lfx v2.1` listo para consumo zero-alloc.
+ * Snapshot inmutable de un `.lfx v3.0` listo para consumo zero-alloc.
  *
  * - NO contiene las curvas completas (solo el path al archivo / referencia).
  *   Las curvas se cargan lazy cuando HephaestusRuntime las necesita.
@@ -322,7 +258,7 @@ export interface RegistryEntry {
    * Es OPCIONAL: si el Registry está corriendo en main process con FS access,
    * será `null` y el runtime cargará desde `filePath` cuando dispare.
    */
-  readonly source: LfxClipV2 | null
+  readonly source: LFXFileV3 | null
 }
 
 // ─── DEFAULTS (para .lfx que omiten campos opcionales) ──────────────────────
@@ -354,20 +290,6 @@ export const DEFAULT_SIMULATION_META: Readonly<SimulationMeta> = Object.freeze({
     minimumEnergy: null,
   }),
 }) as Readonly<SimulationMeta>
-
-// ─── TYPE GUARDS ────────────────────────────────────────────────────────────
-
-/** Type guard de runtime: ¿el clip tiene bloque cognitivo? */
-export function hasCognitiveDNA(
-  clip: LfxClipV2,
-): clip is LfxClipV2 & { readonly clip: { readonly cognitiveDNA: CognitiveDNA } } {
-  return clip.clip.cognitiveDNA != null
-}
-
-/** Type guard: ¿es un clip elegible para Selene IA? */
-export function isSeleneEligible(clip: LfxClipV2): boolean {
-  return clip.clip.effectType === 'heph_custom' && hasCognitiveDNA(clip)
-}
 
 // ─── LFX FILE V3.0 ──────────────────────────────────────────────────────────
 

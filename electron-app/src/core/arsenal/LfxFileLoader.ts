@@ -27,10 +27,8 @@ import {
   type RegisterOptions,
 } from './DynamicEffectRegistry'
 import {
-  isSeleneEligible,
   type CognitiveDNA,
   type LFXFileV3,
-  type LfxClipV2,
   type SafetyDeclaration,
   type SpatialBehavior,
 } from './lfxTypes'
@@ -128,18 +126,11 @@ export class LfxFileLoader {
         keepSource: false
       };
 
-      // Alimentamos el DynamicEffectRegistry con el clip ya purificado en memoria.
-      // El índice devuelve el clip interno (HephAutomationClip | HephAutomationClipV3),
-      // pero registerEffect/registerEffectV3 esperan el wrapper LfxClipV2/LFXFileV3.
-      const entry = loaded.schemaVersion === 'luxsync.lfx/3.0'
-        ? this._registry.registerEffectV3(
-            { $schema: 'luxsync.lfx/3.0', clip: loaded.clip as any, checksum: '' } as any,
-            opts,
-          )
-        : this._registry.registerEffect(
-            { $schema: 'hephaestus/v2.1', version: '1.0.0', clip: loaded.clip as any, checksum: '' } as any,
-            opts,
-          );
+      // FASE 3: V2.1 path demolished — only V3 (luxsync.lfx/3.0) is accepted.
+      const entry = this._registry.registerEffectV3(
+        { $schema: 'luxsync.lfx/3.0', clip: loaded.clip as any, checksum: '' } as any,
+        opts,
+      );
 
       return entry !== null;
     } catch (err) {
@@ -192,97 +183,7 @@ export class LfxFileLoader {
     return Object.freeze({ scanned, accepted, rejected, errors, entries })
   }
 
-  /**
-   * Parsea + valida gates G2/G5/G6/G7 + safety policy.
-   * Retorna el clip listo para registry, o null si fue rechazado.
-   *
-   * GATES (orden de ejecución):
-   *   G2: checksum integrity (si el archivo declara `checksum`).
-   *   G5: curve sanity (curvas no vacías, valores numéricos finitos).
-   *   G6: strobe-rate cross-check (declaración vs. curva intensity).
-   *   G7: relative_offset sanity (rangos válidos).
-   *   USER POLICY: aggression ≤ 0.95, maxStrobeFreqHz ≤ 25.
-   */
-  private _parseAndValidate(
-    raw: string,
-    filePath: string,
-    source: EffectSource,
-  ): LfxClipV2 | null {
-    let parsed: unknown
-    try {
-      parsed = JSON.parse(raw)
-    } catch (err) {
-      console.warn(`[LfxFileLoader ⚠️] JSON parse fail at ${filePath}:`, err)
-      return null
-    }
-
-    const clip = parsed as Partial<LfxClipV2>
-    if (!_isStructurallyValid(clip)) {
-      console.warn(`[LfxFileLoader ⚠️] Schema fail at ${filePath}: missing required fields`)
-      return null
-    }
-
-    // Cast seguro tras structural check — TS narrowing no llega tan profundo.
-    const validated = clip as LfxClipV2
-    if (!isSeleneEligible(validated)) {
-      // Clip Hephaestus puro (v1) — no es Selene-eligible. No es error;
-      // simplemente no entra al Infinite Arsenal. Lo descartamos.
-      return null
-    }
-
-    // ── G2: Checksum integrity ─────────────────────────────────────────────
-    // Mandatory for builtin/marketplace; optional for user effects.
-    if (source !== 'user' && (!validated.checksum || validated.checksum.length === 0)) {
-      console.warn(`[LfxFileLoader ⚠️] G2 fail: missing checksum for builtin/marketplace at ${filePath}`)
-      return null
-    }
-    if (!_validateChecksum(validated, raw, filePath)) {
-      console.warn(`[LfxFileLoader ⚠️] G2 fail: checksum mismatch at ${filePath}`)
-      return null
-    }
-
-    // ── G5: Curve sanity ───────────────────────────────────────────────────
-    if (!_validateCurves(validated.clip.curves)) {
-      console.warn(`[LfxFileLoader ⚠️] G5 fail: curve sanity at ${filePath}`)
-      return null
-    }
-
-    const dna: CognitiveDNA = validated.clip.cognitiveDNA!
-    const safetyDecl: SafetyDeclaration | undefined = validated.clip.safetyDeclaration
-
-    // ── G6: Strobe-rate consistency ────────────────────────────────────────
-    if (safetyDecl && !_validateStrobeDeclaration(validated.clip.curves, safetyDecl)) {
-      console.warn(`[LfxFileLoader ⚠️] G6 fail: strobe declaration mismatch at ${filePath}`)
-      return null
-    }
-
-    // ── G7: relative_offset rangos coherentes ──────────────────────────────
-    if (!_validateSpatialRanges(validated.clip.curves, dna.spatialBehavior)) {
-      console.warn(`[LfxFileLoader ⚠️] G7 fail: spatial range mismatch at ${filePath}`)
-      return null
-    }
-
-    // ── USER POLICY (sólo `/user-effects/`) ────────────────────────────────
-    if (source === 'user') {
-      if (dna.genome.aggression > USER_SAFETY_POLICY.MAX_AGGRESSION) {
-        console.warn(
-          `[LfxFileLoader ⚠️] USER policy: aggression=${dna.genome.aggression} > ` +
-          `${USER_SAFETY_POLICY.MAX_AGGRESSION} at ${filePath} — rejected`,
-        )
-        return null
-      }
-      const declaredHz = safetyDecl?.maxStrobeFreqHz ?? 0
-      if (declaredHz > USER_SAFETY_POLICY.MAX_STROBE_HZ) {
-        console.warn(
-          `[LfxFileLoader ⚠️] USER policy: strobeFreq=${declaredHz}Hz > ` +
-          `${USER_SAFETY_POLICY.MAX_STROBE_HZ}Hz at ${filePath} — rejected`,
-        )
-        return null
-      }
-    }
-
-    return validated
-  }
+  // FASE 3: _parseAndValidate (V2.1) demolished — only _parseAndValidateV3 remains.
 
   /**
    * Parsea + valida un clip `.lfx v3.0` nativo.
@@ -476,52 +377,7 @@ export class LfxFileLoader {
   }
 }
 
-// ─── VALIDADORES PRIVADOS ───────────────────────────────────────────────────
-
-function _isStructurallyValid(clip: Partial<LfxClipV2>): boolean {
-  if (!clip || typeof clip !== 'object') return false
-  if (clip.$schema !== 'hephaestus/v2.1') return false
-  if (typeof clip.version !== 'string') return false
-  if (typeof clip.checksum !== 'string') return false
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const c = clip.clip as any
-  if (!c || typeof c !== 'object') return false
-  if (typeof c.id !== 'string' || c.id.length === 0) return false
-  if (typeof c.name !== 'string') return false
-  if (typeof c.author !== 'string') return false
-  if (typeof c.category !== 'string') return false
-  if (typeof c.mixBus !== 'string') return false
-  if (typeof c.priority !== 'number' || !Number.isFinite(c.priority)) return false
-  if (typeof c.durationMs !== 'number' || !Number.isFinite(c.durationMs) || c.durationMs <= 0) return false
-  if (typeof c.effectType !== 'string') return false
-  if (!c.curves || typeof c.curves !== 'object') return false
-  if (!c.staticParams || typeof c.staticParams !== 'object') return false
-  if (!Array.isArray(c.tags)) return false
-  if (!Array.isArray(c.vibeCompat)) return false
-  if (!Array.isArray(c.zones)) return false
-  return true
-}
-
-/**
- * G2: Si el clip declara un checksum SHA-256 sobre `clip` (sin el campo
- * checksum en sí), recalculamos y comparamos. Si no declara checksum,
- * el gate se considera satisfecho (los builtin firmados deben declararlo;
- * los user no necesariamente).
- */
-function _validateChecksum(clip: LfxClipV2, _raw: string, _filePath: string): boolean {
-  if (!clip.checksum || clip.checksum.length === 0) return true
-  try {
-    const canonical = JSON.stringify(clip.clip)
-    const hash = createHash('sha256').update(canonical).digest('hex')
-    // Los archivos .lfx declaran el formato "sha256:<hex>" — normalizar antes de comparar.
-    const declaredHash = clip.checksum.startsWith('sha256:')
-      ? clip.checksum.slice(7)
-      : clip.checksum
-    return hash === declaredHash
-  } catch {
-    return false
-  }
-}
+// ─── VALIDADORES PRIVADOS (V3 only) ─────────────────────────────────────────
 
 function _validateCurves(curves: Readonly<Record<string, HephCurve>>): boolean {
   const keys = Object.keys(curves)

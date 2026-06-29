@@ -18,6 +18,7 @@ import {
   type LuxTrackV3,
   type LuxClipV3,
   type LuxAnalysisV3,
+  type VibeBaseV3,
   LUX_V3_EXTENSION as PROJECT_EXTENSION,
 } from './LuxFileV3'
 import {
@@ -332,6 +333,31 @@ export class ChronosStore {
    */
   hasEmbeddedAnalysis(): boolean {
     return this.project.analysis !== null && this.project.analysis !== undefined
+  }
+
+  /**
+   * 🌫️ FASE 5: Set the project's vibeBase (whisper).
+   * The whisper is the default vibe that plays when no VibeClip is active.
+   * Uses L0 (automatic photonics) for reactive movement/color.
+   */
+  setVibeBase(vibeId: string, displayName?: string): void {
+    const existing = this.project.vibeBase
+    this.project.vibeBase = {
+      vibeId,
+      displayName: displayName ?? existing?.displayName ?? vibeId,
+      intensity: existing?.intensity ?? 0.5,
+      color: existing?.color ?? '#64748b',
+      icon: existing?.icon ?? '🌙',
+    }
+    this.markDirty()
+    console.log(`[ChronosStore] 🌫️ VibeBase set: ${vibeId} (${this.project.vibeBase.displayName})`)
+  }
+
+  /**
+   * 🌫️ FASE 5: Get the project's current vibeBase (whisper), or null.
+   */
+  getVibeBase(): VibeBaseV3 | null {
+    return this.project.vibeBase
   }
   
   /**

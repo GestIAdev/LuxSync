@@ -220,13 +220,34 @@ export class TitanEngine extends EventEmitter {
      * the silence that comes from having no live audio input.
      */
     setChronosHeatmap(heatmap) {
-        this.chronosHeatmap = heatmap;
         if (heatmap) {
+            // ── FASE 4: NaN DEFENSE — validate heatmap before storing ──
+            if (!Array.isArray(heatmap.energy) || heatmap.energy.length === 0) {
+                console.error('[TitanEngine 👻] PHANTOM BUFFER rejected: empty/invalid energy array');
+                this.chronosHeatmap = null;
+                return;
+            }
+            if (!Number.isFinite(heatmap.resolutionMs) || heatmap.resolutionMs <= 0) {
+                console.error(`[TitanEngine 👻] PHANTOM BUFFER rejected: invalid resolutionMs=${heatmap.resolutionMs}`);
+                this.chronosHeatmap = null;
+                return;
+            }
+            // Spot-check first few frames for NaN/Infinity
+            const sampleLen = Math.min(5, heatmap.energy.length);
+            for (let i = 0; i < sampleLen; i++) {
+                if (!Number.isFinite(heatmap.energy[i])) {
+                    console.error(`[TitanEngine 👻] PHANTOM BUFFER rejected: NaN/Infinity at energy[${i}]`);
+                    this.chronosHeatmap = null;
+                    return;
+                }
+            }
+            this.chronosHeatmap = heatmap;
             const frames = heatmap.energy.length;
             const durationSec = (frames * heatmap.resolutionMs) / 1000;
             console.log(`[TitanEngine 👻] PHANTOM BUFFER loaded: ${frames} frames, ${durationSec.toFixed(1)}s @ ${heatmap.resolutionMs}ms resolution`);
         }
         else {
+            this.chronosHeatmap = null;
             console.log('[TitanEngine 👻] PHANTOM BUFFER cleared');
         }
     }
@@ -284,18 +305,23 @@ export class TitanEngine extends EventEmitter {
             const hm = this.chronosHeatmap;
             const frameIndex = Math.min(Math.floor(this.chronosPlayheadMs / hm.resolutionMs), hm.energy.length - 1);
             if (frameIndex >= 0) {
+                // ── FASE 4: NaN-safe reads from heatmap arrays ──
+                const safe = (arr, idx, fallback = 0) => {
+                    const v = arr?.[idx];
+                    return typeof v === 'number' && Number.isFinite(v) ? v : fallback;
+                };
                 audio = {
                     ...audio,
-                    bass: (hm.bassReal?.[frameIndex] ?? hm.bass[frameIndex]) ?? 0,
-                    mid: hm.mid?.[frameIndex] ?? 0,
-                    high: hm.high[frameIndex] ?? 0,
-                    energy: hm.energy[frameIndex] ?? 0,
-                    subBass: hm.subBass?.[frameIndex] ?? 0,
-                    lowMid: hm.lowMid?.[frameIndex] ?? 0,
-                    highMid: hm.highMid?.[frameIndex] ?? 0,
-                    ultraAir: hm.ultraAir?.[frameIndex] ?? 0,
-                    spectralCentroid: hm.spectralCentroid?.[frameIndex] ?? audio.spectralCentroid,
-                    spectralFlatness: hm.spectralFlatness?.[frameIndex] ?? audio.spectralFlatness,
+                    bass: safe(hm.bassReal, frameIndex, safe(hm.bass, frameIndex, 0)),
+                    mid: safe(hm.mid, frameIndex, 0),
+                    high: safe(hm.high, frameIndex, 0),
+                    energy: safe(hm.energy, frameIndex, 0),
+                    subBass: safe(hm.subBass, frameIndex, 0),
+                    lowMid: safe(hm.lowMid, frameIndex, 0),
+                    highMid: safe(hm.highMid, frameIndex, 0),
+                    ultraAir: safe(hm.ultraAir, frameIndex, 0),
+                    spectralCentroid: safe(hm.spectralCentroid, frameIndex, audio.spectralCentroid),
+                    spectralFlatness: safe(hm.spectralFlatness, frameIndex, audio.spectralFlatness),
                 };
                 // 👻 Also inject into the MusicalContext so EnergyStabilizer sees real energy
                 context = { ...context, energy: hm.energy[frameIndex] ?? 0 };

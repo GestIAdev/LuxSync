@@ -1,6 +1,6 @@
-// PHASE 5 RECONSTRUCTION TARGET — Uses LuxProject flat clips + EFFECT_FACTORIES + mixBus.
-// Must delegate to HephaestusRuntime for V3 clips. blendMode from HephTrack.blendMode.
-// EFFECT_FACTORIES and hardcoded effect instantiation will be removed.
+// FASE 5a: Dead code removed (EFFECT_FACTORIES, processCoreEffect, dispatchEffectOutput,
+// dispatchZoneOverrides, dispatchGlobalOutput, hslToRgb, processLegacyFx, interpolateKeyframes).
+// processHephClip now uses HephTrack.blendMode + HephTrack.zones for routing.
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🎬 TIMELINE ENGINE - WAVE 2053.1: THE ENGINE ROOM
@@ -30,32 +30,15 @@
  * @version WAVE 2053.1
  */
 
-import type { ILightEffect, EffectFrameOutput, EffectZone } from '../effects/types'
 import type { LuxProject } from '../../chronos/core/ChronosProject'
-import type { FXClip, FXKeyframe, VibeClip } from '../../chronos/core/TimelineClip'
-import type { Layer2_Manual } from '../arbiter/types'
+import type { FXClip, VibeClip } from '../../chronos/core/TimelineClip'
+import type { BlendMode } from '../hephaestus/types'
 import { getTitanOrchestrator } from '../orchestrator/TitanOrchestrator'
 import { resolveZoneTags } from '../zones/ZoneMapper'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// LEGACY CORE EFFECTS — DEPRECATED
-// ═══════════════════════════════════════════════════════════════════════════
-// WAVE 4859+: El flujo principal se limita a clips Hephaestus (.lfx) V3/V2.
-// Este engine ya NO importa ni instancia clases de core/effects/library.
-
-// ═══════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
-
-/** State of a running clip effect instance */
-interface ActiveClipState {
-  /** The source FXClip from the .lux file */
-  clip: FXClip
-  /** Live effect instance (null for legacy FX types) */
-  effect: ILightEffect | null
-  /** Was trigger() already called on the effect? */
-  triggered: boolean
-}
 
 /** Engine state for external queries */
 export interface TimelineEngineState {
@@ -90,39 +73,6 @@ export interface PlaybackFrameSnapshot {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// LEGACY FLOW GATE
-// ═══════════════════════════════════════════════════════════════════════════
-
-type EffectFactory = () => ILightEffect
-
-// Deprecated path intentionally left empty so no legacy class can execute.
-const EFFECT_FACTORIES = new Map<string, EffectFactory>()
-
-// ═══════════════════════════════════════════════════════════════════════════
-// HSL → RGB CONVERSION (deterministic, no random)
-// ═══════════════════════════════════════════════════════════════════════════
-
-function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
-  const sN = s / 100
-  const lN = l / 100
-  const c = (1 - Math.abs(2 * lN - 1)) * sN
-  const x = c * (1 - Math.abs((h / 60) % 2 - 1))
-  const m = lN - c / 2
-  let r = 0, g = 0, b = 0
-  if (h < 60)       { r = c; g = x; b = 0 }
-  else if (h < 120) { r = x; g = c; b = 0 }
-  else if (h < 180) { r = 0; g = c; b = x }
-  else if (h < 240) { r = 0; g = x; b = c }
-  else if (h < 300) { r = x; g = 0; b = c }
-  else              { r = c; g = 0; b = x }
-  return {
-    r: Math.round((r + m) * 255),
-    g: Math.round((g + m) * 255),
-    b: Math.round((b + m) * 255),
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
 // 🎬 TIMELINE ENGINE — SINGLETON
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -137,14 +87,8 @@ export class TimelineEngine {
   private lastTickMs = 0
   private _lastPlaybackFrame: PlaybackFrameSnapshot | null = null
 
-  // ── Effect instances (keyed by clip.id) ──
-  private activeClips = new Map<string, ActiveClipState>()
-
   // ── Last active set for cleanup ──
   private previousActiveIds = new Set<string>()
-
-  // Warn once per deprecated fxType to avoid log spam at 44Hz.
-  private warnedDeprecatedFxTypes = new Set<string>()
 
   // ── 🎬 WAVE 2063: Active vibe tracking for Titan handoff ──
   private currentPlaybackVibeId: string | null = null
@@ -251,7 +195,7 @@ export class TimelineEngine {
     for (const clip of this.fxClips) {
       if (timeMs >= clip.startMs && timeMs < clip.endMs) {
         nowActiveIds.add(clip.id)
-        this.processClip(clip, timeMs, deltaMs)  // Uses existing logic
+        this.processClip(clip, timeMs, deltaMs)
       }
     }
 
@@ -361,15 +305,6 @@ export class TimelineEngine {
   // ═══════════════════════════════════════════════════════════════════════
 
   stop(): void {
-    // Abort all active effect instances
-    const abortedCount = this.activeClips.size
-    Array.from(this.activeClips.entries()).forEach(([id, state]) => {
-      if (state.effect) {
-        console.log(`[TimelineEngine] 🧹 Aborting effect: ${state.clip.fxType} (clip: ${id})`)
-        state.effect.abort()
-      }
-    })
-    this.activeClips.clear()
     this.previousActiveIds.clear()
 
     // � WAVE 2069: Clear color latch — no stale colors after stop
@@ -391,7 +326,7 @@ export class TimelineEngine {
     this.fxClips = []
     this.vibeClips = []
 
-    console.log(`[TimelineEngine] ⏹ Stopped — ${abortedCount} effects aborted, arbiter playback cleared`)
+    console.log(`[TimelineEngine] ⏹ Stopped — arbiter playback cleared`)
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -404,7 +339,7 @@ export class TimelineEngine {
       playing: this.playing,
       projectName: this.project?.meta.name ?? null,
       clipCount: this.fxClips.length,
-      activeClipCount: this.activeClips.size,
+      activeClipCount: this.previousActiveIds.size,
       lastTickMs: this.lastTickMs,
     }
   }
@@ -421,430 +356,27 @@ export class TimelineEngine {
   // PRIVATE: PROCESS A SINGLE CLIP
   // ═══════════════════════════════════════════════════════════════════════
 
-  private processClip(clip: FXClip, timeMs: number, deltaMs: number): void {
+  private processClip(clip: FXClip, timeMs: number, _deltaMs: number): void {
     const fxType = clip.fxType as string
     const localTimeMs = timeMs - clip.startMs
-    const clipDurationMs = clip.endMs - clip.startMs
 
-    // ─── HEPHAESTUS CUSTOM CLIPS ───
+    // ─── HEPHAESTUS CUSTOM CLIPS (V3 — the only path) ───
     const hephClip = (clip as any).hephClip
-    const hasHephPayload = hephClip != null && (
-      hephClip?.curves != null ||
-      Array.isArray(hephClip?.tracks)
-    )
+    const hasHephPayload = hephClip != null && Array.isArray(hephClip?.tracks)
     if (fxType === 'heph-custom' && hasHephPayload) {
       this.processHephClip(clip, localTimeMs)
       return
     }
 
     // ─── LEGACY ROUTES DISABLED (WAVE 4859+) ───────────────────────────
-    if (!this.warnedDeprecatedFxTypes.has(fxType)) {
-      this.warnedDeprecatedFxTypes.add(fxType)
-      console.warn(
-        `[TimelineEngine] ⚠️ DEPRECATED route blocked for fxType='${fxType}'. ` +
-        `Only .lfx Hephaestus clips (heph-custom) are supported in the main flow.`
-      )
-    }
+    console.warn(
+      `[TimelineEngine] ⚠️ DEPRECATED route blocked for fxType='${fxType}'. ` +
+      `Only .lfx Hephaestus clips (heph-custom) are supported.`
+    )
   }
 
   // ═══════════════════════════════════════════════════════════════════════
-  // 🔥 CORE EFFECTS — Real procedural classes
-  // ═══════════════════════════════════════════════════════════════════════
-
-  private processCoreEffect(clip: FXClip, localTimeMs: number, deltaMs: number): void {
-    // Get or create active clip state
-    let state = this.activeClips.get(clip.id)
-
-    if (!state) {
-      const factory = EFFECT_FACTORIES.get(clip.fxType as string)
-      if (!factory) {
-        console.error(`[TimelineEngine] ❌ No factory found for effect: ${clip.fxType}`)
-        return
-      }
-
-      const effect = factory()
-      if (!effect) {
-        console.error(`[TimelineEngine] ❌ Factory returned null for effect: ${clip.fxType}`)
-        return
-      }
-
-      console.log(`[TimelineEngine] ✅ Created effect instance: ${clip.fxType} (clip: ${clip.id})`)
-      state = { clip, effect, triggered: false }
-      this.activeClips.set(clip.id, state)
-    }
-
-    const effect = state.effect!
-
-    // 🎛️ WAVE 2066.1 / WAVE 4859: effect mixBus is canonical authority.
-    // FASE 1: clip.mixBus removed — V3 canonical source is clip.hephClip?.mixBus.
-    const effectMixBus = (effect as any).mixBus ?? clip.hephClip?.mixBus ?? 'htp'
-    const blendMode: 'HTP' | 'LTP' | 'ADD' = effectMixBus === 'global' ? 'LTP' : 'HTP'
-
-    // Trigger on first activation
-    if (!state.triggered) {
-      const zones: EffectZone[] = (clip.zones && clip.zones.length > 0)
-        ? clip.zones as EffectZone[]
-        : ['all']
-
-      effect.trigger({
-        effectType: clip.fxType as string,
-        intensity: 1,
-        source: 'chronos',
-        zones,
-        reason: `timeline:${clip.fxType}:${clip.id}`,
-      })
-      state.triggered = true
-    }
-
-    // Tick the effect's internal state machine
-    effect.update(deltaMs)
-
-    // Read procedural output
-    const output = effect.getOutput()
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🔥 WAVE 2063.5: SEAMLESS RE-TRIGGER
-    // 🎯 WAVE 2067: ONESHOT GATE — isOneShot effects fire ONCE and die.
-    // 
-    // If effect finished mid-clip, re-create AND re-trigger in the SAME frame.
-    // This eliminates the 1-frame "dead gap" between effect cycles that caused
-    // the accumulator to go empty and Chronos to send dim=0 RGB(0,0,0).
-    // 
-    // WAVE 2067: OneShot effects (SolarFlare, GatlingRaid, CoreMeltdown, etc.)
-    // are NOT re-triggered. They fire once and the clip goes silent.
-    // This prevents a 700ms SolarFlare from firing 4+ times in a 3s clip.
-    // ═══════════════════════════════════════════════════════════════════════
-    const isOneShot = (effect as any).isOneShot === true
-    
-    if (!output && effect.isFinished()) {
-      // 🎯 WAVE 2067: OneShot → clip is done. No re-trigger, no pre-stage.
-      if (isOneShot) {
-        return // Silence until clip ends. The effect spoke once.
-      }
-
-      const factory = EFFECT_FACTORIES.get(clip.fxType as string)
-      if (factory) {
-        const newEffect = factory()
-        const zones: EffectZone[] = (clip.zones && clip.zones.length > 0)
-          ? clip.zones as EffectZone[]
-          : ['all']
-        newEffect.trigger({
-          effectType: clip.fxType as string,
-          intensity: 1,
-          source: 'chronos',
-          zones,
-          reason: `timeline:${clip.fxType}:${clip.id}:retrigger`,
-        })
-        newEffect.update(deltaMs)
-        state.effect = newEffect
-        state.triggered = true
-
-        const retriggeredOutput = newEffect.getOutput()
-        if (!retriggeredOutput) return
-
-        // 🔥 WAVE 2068: Core FX own their intensity — no keyframe envelope on retrigger either
-        const envelope = 1.0
-        const fixtureIds = this.resolveFixtureIds(clip)
-        // 🚫 WAVE 2900: re-trigger también es IA
-        this.dispatchEffectOutput(retriggeredOutput, envelope, fixtureIds, blendMode, true)
-        return
-      }
-    }
-
-    if (!output) return
-
-    // If the effect finished after getOutput (will be caught next frame by seamless re-trigger)
-    if (effect.isFinished() && !isOneShot) {
-      // Pre-stage re-creation so next frame triggers immediately
-      const factory = EFFECT_FACTORIES.get(clip.fxType as string)
-      if (factory) {
-        state.effect = factory()
-        state.triggered = false
-      }
-    }
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🔥 WAVE 2068: THE DICTATOR'S WRATH — Anti Double-Envelope
-    //
-    // Core FX (ILightEffect instances) have their own ADSR curves.
-    // SolarFlare has attack/sustain/decay. GatlingRaid has burst timing.
-    // DigitalRain has internal flicker dynamics.
-    //
-    // The UI keyframes (Chronos timeline) add ANOTHER envelope on top:
-    // a default 0→1 fade-in over ~1.5s. This strangles the effect:
-    //   effect.intensity(0.9) × keyframeEnvelope(0.1) = 0.09 → pathetic
-    //
-    // FIX: Core FX bypass the keyframe envelope entirely. envelope = 1.0.
-    // The clip dictates WHEN the effect fires, the effect dictates HOW HARD.
-    // Only Hephaestus custom clips (processHephClip) use keyframe envelopes,
-    // because those are manually authored curves by the user.
-    // ═══════════════════════════════════════════════════════════════════════
-    const envelope = 1.0  // Core FX own their intensity. Chronos doesn't touch it.
-
-    // ── Process output → Arbiter ──
-    const fixtureIds = this.resolveFixtureIds(clip)
-    // 🚫 WAVE 2900: Core Effects são IA (SELENE_HUNT/IA_AUTO) — movimento vetado
-    this.dispatchEffectOutput(output, envelope, fixtureIds, blendMode, true)
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════
-  // 🔥 WAVE 2063.5: UNIFIED EFFECT DISPATCH
-  // 
-  // Replaces the old dual-call pattern (dispatchZoneOverrides + dispatchGlobalOutput)
-  // with a single smart dispatcher that avoids the "auto-white overwrite" bug.
-  //
-  // OLD BUG: Effects with zoneOverrides (like SalsaFire) would dispatch colored zones,
-  //          then dispatchGlobalOutput would overwrite them with RGB(255,255,255) via
-  //          auto-white injection because colorOverride=undefined.
-  //
-  // NEW: If zoneOverrides have color → use those exclusively (no global fallback).
-  //      If no zoneOverrides → use global colorOverride/dimmerOverride/auto-white.
-  // ═══════════════════════════════════════════════════════════════════════
-
-  private dispatchEffectOutput(
-    output: EffectFrameOutput,
-    envelope: number,
-    fixtureIds: string[],
-    blendMode: 'HTP' | 'LTP' | 'ADD' = 'HTP',
-    isAI = false  // 🚫 WAVE 2900: true = Core Effect (IA), movimiento vetado
-  ): void {
-    // ═══════════════════════════════════════════════════════════════════
-    // 🎯 WAVE 2067.1: COLOR CABLE CUT
-    //
-    // The effect output has 3 possible "color authority" signals:
-    //   1. zoneOverrides with color/dimmer → ZONE PATH (spatial)
-    //   2. colorOverride / whiteOverride   → GLOBAL PATH (uniform)
-    //   3. None of the above               → FALLBACK (intensity-only)
-    //
-    // OLD BUG: The FALLBACK path sent intensity-only outputs through
-    //   dispatchGlobalOutput, which auto-injects RGB(255,255,255).
-    //   Effects that have zoneOverrides but no color THIS FRAME
-    //   (e.g., between flickers of DigitalRain) got white-washed.
-    //
-    // NEW: If the effect emits zoneOverrides AT ALL, it owns its colors.
-    //   Even frames with only dimmer data in zones go through ZONE PATH.
-    //   Auto-white ONLY fires for truly colorless, zoneless outputs
-    //   (pure dimmer/intensity modulators).
-    // ═══════════════════════════════════════════════════════════════════
-
-    const hasZoneOverrides = output.zoneOverrides && Object.keys(output.zoneOverrides).length > 0
-
-    if (hasZoneOverrides) {
-      // ZONE PATH: Effect has spatial authority — zones are the law.
-      // Even dimmer-only zones must dispatch (DigitalRain blackout zones).
-      this.dispatchZoneOverrides(output, envelope, fixtureIds, blendMode, isAI)
-      // Do NOT call dispatchGlobalOutput — it would overwrite zone colors with auto-white
-    } else if (output.colorOverride || output.dimmerOverride !== undefined || output.whiteOverride !== undefined) {
-      // GLOBAL PATH: Effects with direct color/dimmer overrides
-      this.dispatchGlobalOutput(output, envelope, fixtureIds, blendMode, isAI)
-    } else {
-      // FALLBACK: Pure intensity modulators → global output with auto-white
-      // Only reaches here if: no zoneOverrides, no colorOverride, no whiteOverride, no dimmerOverride
-      // These are truly "colorless" effects that just modulate brightness → white is correct
-      this.dispatchGlobalOutput(output, envelope, fixtureIds, blendMode, isAI)
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════
-  // 🎨 ZONE OVERRIDES → ARBITER (spatial effects like FiberOptics, DigitalRain, GatlingRaid)
-  // ═══════════════════════════════════════════════════════════════════════
-  //
-  // 🎯 WAVE 2067: ZONE-AWARE DISPATCH
-  //
-  // OLD BUG: Every zone override was dispatched to ['*'] (ALL fixtures).
-  //          Result: last zone in the loop overwrote all previous zones.
-  //          DigitalRain: front=Cyan, back=Lime, movers=dim → only movers survived.
-  //          GatlingRaid: front_left=WHITE, back=BLACK → BLACK killed everything.
-  //
-  // NEW: Each zoneId is resolved to its ACTUAL fixture IDs via MasterArbiter.
-  //      'front' → only front fixtures, 'all-movers' → only movers, etc.
-  //      Each zone paints ONLY its own fixtures. No more friendly fire.
-  // ═══════════════════════════════════════════════════════════════════════
-
-  private dispatchZoneOverrides(
-    output: EffectFrameOutput,
-    envelope: number,
-    allowedFixtureIds: string[],
-    blendMode: 'HTP' | 'LTP' | 'ADD' = 'HTP',
-    isAI = false  // 🚫 WAVE 2900: si true, pan/tilt del efecto se ignoran
-  ): void {
-    if (!output.zoneOverrides) return
-
-    // ═══════════════════════════════════════════════════════════════════
-    // 🎯 WAVE 2544.1: THE CHRONOS GHOST EXORCISM
-    //
-    // allowedFixtureIds is the AND-intersection result from resolveFixtureIds(clip).
-    // It already applied ZoneMapper.resolveZoneTags(clip.zones, fixtures) which
-    // enforces Target+Modifier AND-semantics (e.g. ['back','all-right'] → back∩right).
-    //
-    // Effects ignore clip.zones — they emit their own hardcoded zoneOverrides.
-    // Without this gate, a clip restricted to ['back','all-right'] would let
-    // an effect illuminate front, movers, and left-side back fixtures.
-    //
-    // FIX: Intersect each zone's resolved fixtures with allowedFixtureIds.
-    // Only fixtures that pass BOTH the zone key AND the clip permission reach the Arbiter.
-    // If allowedFixtureIds is empty (legacy clip, no zones defined) → no restriction.
-    // ═══════════════════════════════════════════════════════════════════
-    const allowedSet = allowedFixtureIds.length > 0 ? new Set(allowedFixtureIds) : null
-
-    // For each zone override, build controls and dispatch to THAT ZONE's fixtures only
-    for (const [zoneId, zoneData] of Object.entries(output.zoneOverrides)) {
-      const controls: Record<string, number> = {}
-      const channels: string[] = []
-
-      // Zone dimmer × envelope × 255
-      const zoneDimmer = (zoneData as any).dimmer ?? 0
-      controls.dimmer = zoneDimmer * envelope * 255
-      channels.push('dimmer')
-
-      // Zone color (HSL → RGB)
-      const zoneColor = (zoneData as any).color as { h: number; s: number; l: number } | undefined
-      if (zoneColor) {
-        const rgb = hslToRgb(zoneColor.h, zoneColor.s, zoneColor.l)
-        controls.red = rgb.r
-        controls.green = rgb.g
-        controls.blue = rgb.b
-        channels.push('red', 'green', 'blue')
-      } else if ((zoneData as any).white !== undefined) {
-        const w = ((zoneData as any).white as number) * 255
-        controls.red = w
-        controls.green = w
-        controls.blue = w
-        channels.push('red', 'green', 'blue')
-      }
-
-      // Zone movement
-      // 🚫 WAVE 2900: La IA (Core Effects procedurales) tiene prohibido emitir pan/tilt.
-      // Solo clips de usuario (Hephaestus/Legacy) pueden mover fixtures.
-      const zoneMv = (zoneData as any).movement as { pan?: number; tilt?: number } | undefined
-      if (zoneMv && !isAI) {
-        if (zoneMv.pan !== undefined) {
-          controls.pan = zoneMv.pan * 255
-          channels.push('pan')
-        }
-        if (zoneMv.tilt !== undefined) {
-          controls.tilt = zoneMv.tilt * 255
-          channels.push('tilt')
-        }
-        // Auto-inject speed for movement
-        if (!channels.includes('speed')) {
-          controls.speed = 0
-          channels.push('speed')
-        }
-      }
-
-      // Skip if nothing to send (no channels at all)
-      // 🎯 WAVE 2067.1: Do NOT skip dimmer=0 — intentional blackout zones
-      // (e.g., DigitalRain sends dimmer:0 + blendMode:'replace' to darken zones)
-      // Those MUST reach the arbiter to suppress underlying layers.
-      if (channels.length === 0) continue
-
-      // 🎯 WAVE 2067: Resolve zone → actual fixture IDs
-      // Each zone paints ONLY its own fixtures. No more ['*'] massacre.
-      const zoneResolved = getTitanOrchestrator().getFixtureIdsByZone(zoneId)
-
-      // 🎯 WAVE 2544.1: AND-gate — clip permission mask
-      // If the clip has zone restrictions, only pass fixtures that are in BOTH
-      // the zone's fixture list AND the clip's allowed set.
-      const zoneFixtureIds = allowedSet
-        ? zoneResolved.filter(id => allowedSet.has(id))
-        : zoneResolved
-
-      if (zoneFixtureIds.length === 0) continue
-      this.dispatchToArbiter(zoneFixtureIds, controls, { blendMode })
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════
-  // 📤 GLOBAL OUTPUT → ARBITER (colorOverride, dimmerOverride)
-  // ═══════════════════════════════════════════════════════════════════════
-
-  private dispatchGlobalOutput(
-    output: EffectFrameOutput,
-    envelope: number,
-    fixtureIds: string[],
-    blendMode: 'HTP' | 'LTP' | 'ADD' = 'HTP',
-    isAI = false  // 🚫 WAVE 2900: si true, pan/tilt del efecto se ignoran
-  ): void {
-    const controls: Record<string, number> = {}
-    const channels: string[] = []
-
-    // Color: HSL → RGB
-    if (output.colorOverride) {
-      const rgb = hslToRgb(
-        output.colorOverride.h,
-        output.colorOverride.s,
-        output.colorOverride.l
-      )
-      controls.red = rgb.r
-      controls.green = rgb.g
-      controls.blue = rgb.b
-      channels.push('red', 'green', 'blue')
-    } else if (output.whiteOverride !== undefined) {
-      const w = output.whiteOverride * 255
-      controls.red = w
-      controls.green = w
-      controls.blue = w
-      channels.push('red', 'green', 'blue')
-    }
-
-    // Dimmer: effect × envelope × 255
-    const effectDimmer = output.dimmerOverride ?? output.intensity
-    controls.dimmer = effectDimmer * envelope * 255
-    channels.push('dimmer')
-
-    // Strobe: Hz → DMX
-    if (output.strobeRate !== undefined && output.strobeRate > 0) {
-      controls.strobe = Math.min(output.strobeRate / 25 * 255, 255)
-      channels.push('strobe')
-    }
-
-    // Movement
-    // 🚫 WAVE 2900: La IA (Core Effects procedurales) tiene prohibido emitir pan/tilt.
-    if (output.movement && !isAI) {
-      const mv = output.movement as { pan?: number; tilt?: number }
-      if (mv.pan !== undefined) {
-        controls.pan = mv.pan * 255
-        channels.push('pan')
-      }
-      if (mv.tilt !== undefined) {
-        controls.tilt = mv.tilt * 255
-        channels.push('tilt')
-      }
-      if (!channels.includes('speed')) {
-        controls.speed = 0
-        channels.push('speed')
-      }
-    }
-
-    // WAVE 3438: NO inyectar auto-white cuando el output solo tiene canales de
-    // movimiento (pan/tilt/speed). Un clip de movimiento puro no debe contaminar
-    // el color del fixture con blanco — eso congela el color de Selene.
-    const movementOnlyChannels = new Set(['pan', 'tilt', 'speed', 'dimmer'])
-    const hasNonMovementChannels = channels.some(ch => !movementOnlyChannels.has(ch))
-    const isMovementOnlyOutput = !hasNonMovementChannels &&
-      (channels.includes('pan') || channels.includes('tilt'))
-
-    if (!isMovementOnlyOutput &&
-        controls.dimmer > 0 &&
-        controls.red === undefined &&
-        controls.green === undefined &&
-        controls.blue === undefined) {
-      controls.red = 255
-      controls.green = 255
-      controls.blue = 255
-      channels.push('red', 'green', 'blue')
-    }
-
-    // Skip if nothing meaningful
-    if (channels.length === 0) return
-
-    // Dispatch via centralized helper
-    this.dispatchToArbiter(fixtureIds, controls, { blendMode })
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════
-  // ⚒️ HEPHAESTUS CUSTOM CLIPS
+  // ⚒️ HEPHAESTUS CUSTOM CLIPS (V3 — the only path)
   // ═══════════════════════════════════════════════════════════════════════
 
   private processHephClip(clip: FXClip, localTimeMs: number): void {
@@ -928,121 +460,22 @@ export class TimelineEngine {
 
     if (channels.length === 0) return
 
-    // 🎛️ WAVE 4859: Hephaestus payload is the canonical source.
-    // FASE 1: clip.mixBus removed — V3 canonical source is clip.hephClip?.mixBus.
-    const hephMixBus = (clip as any).hephClip?.mixBus
-    const resolvedMixBus = hephMixBus ?? 'global'
-    const blendMode = this.resolveBlendModeFromMixBus(resolvedMixBus)
+    // FASE 5a: blendMode from HephTrack.blendMode (V3 canonical).
+    // Default: 'max' for intensity, 'replace' for others.
+    const hephBlendMode = clip.hephClip?.tracks[0]?.blendMode ?? 'max'
+    const blendMode = this.resolveBlendMode(hephBlendMode)
 
     const fixtureIds = this.resolveFixtureIds(clip)
     this.dispatchToArbiter(fixtureIds, controls, { blendMode })
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
-  // 📼 LEGACY FX TYPES (strobe, blackout, color-wash, etc.)
-  // ═══════════════════════════════════════════════════════════════════════
-
-  private processLegacyFx(clip: FXClip, localTimeMs: number, clipDurationMs: number): void {
-    const intensity = this.interpolateKeyframes(clip.keyframes, localTimeMs)
-    const t = clipDurationMs > 0 ? localTimeMs / clipDurationMs : 0
-    const fxType = clip.fxType as string
-
-    const controls: Record<string, number> = {}
-    const channels: string[] = []
-
-    switch (fxType) {
-      case 'strobe':
-        controls.dimmer = (intensity > 0.5 ? 1 : 0) * 255
-        channels.push('dimmer')
-        break
-
-      case 'blackout':
-        controls.dimmer = 0
-        channels.push('dimmer')
-        break
-
-      case 'color-wash': {
-        const r = typeof clip.params?.red === 'number' ? clip.params.red as number : 255
-        const g = typeof clip.params?.green === 'number' ? clip.params.green as number : 0
-        const b = typeof clip.params?.blue === 'number' ? clip.params.blue as number : 255
-        controls.red = r * intensity
-        controls.green = g * intensity
-        controls.blue = b * intensity
-        controls.dimmer = intensity * 255
-        channels.push('red', 'green', 'blue', 'dimmer')
-        break
-      }
-
-      case 'intensity-ramp':
-      case 'fade':
-      case 'pulse':
-      case 'chase':
-        controls.dimmer = intensity * 255
-        channels.push('dimmer')
-        break
-
-      case 'sweep':
-        controls.pan = t * 255
-        controls.dimmer = intensity * 255
-        channels.push('pan', 'dimmer')
-        break
-
-      default:
-        controls.dimmer = intensity * 255
-        channels.push('dimmer')
-    }
-
-    // WAVE 3438: NO inyectar auto-white si el clip Hephaestus solo mueve
-    // pan/tilt/speed sin especificar color. Un mover en movimiento no debe
-    // recibir blanco por defecto — Selene ya provee el color en Layer 1.
-    const hephMovementOnlyChannels = new Set(['pan', 'tilt', 'speed', 'dimmer'])
-    const hephHasNonMovement = channels.some(ch => !hephMovementOnlyChannels.has(ch))
-    const hephIsMovementOnly = !hephHasNonMovement &&
-      (channels.includes('pan') || channels.includes('tilt'))
-
-    if (!hephIsMovementOnly &&
-        controls.dimmer !== undefined &&
-        controls.dimmer > 0 &&
-        controls.red === undefined &&
-        controls.green === undefined &&
-        controls.blue === undefined) {
-      controls.red = 255
-      controls.green = 255
-      controls.blue = 255
-      if (!channels.includes('red')) channels.push('red')
-      if (!channels.includes('green')) channels.push('green')
-      if (!channels.includes('blue')) channels.push('blue')
-    }
-
-    if (channels.length === 0) return
-
-    // 🎛️ WAVE 2066: Resolve blendMode from legacy fx type
-    // Strobes and blackouts MUST override the vibe (LTP/absolute authority)
-    // Everything else cooperates with the vibe canvas (HTP)
-    const LTP_EFFECTS = new Set(['strobe', 'blackout'])
-    const blendMode: 'HTP' | 'LTP' | 'ADD' = LTP_EFFECTS.has(fxType) ? 'LTP' : 'HTP'
-
-    const fixtureIds = this.resolveFixtureIds(clip)
-    this.dispatchToArbiter(fixtureIds, controls, { blendMode })
-  }
-
-  private resolveBlendModeFromMixBus(mixBus: unknown): 'HTP' | 'LTP' | 'ADD' {
-    const normalized = String(mixBus ?? '').toLowerCase()
-    switch (normalized) {
-      case 'global':
-      case 'override':
-      case 'replace':
-        return 'LTP'
-      case 'ambient':
-      case 'accent':
-      case 'add':
-        return 'ADD'
-      case 'htp':
-      case 'max':
-        return 'HTP'
-      default:
-        // Modo seguro anti-bleed: si el bus no se reconoce, priorizar takeover.
-        return 'LTP'
+  private resolveBlendMode(mode: BlendMode | undefined): 'HTP' | 'LTP' | 'ADD' {
+    switch (mode) {
+      case 'replace': return 'LTP'
+      case 'add': return 'ADD'
+      case 'max': return 'HTP'
+      case 'multiply': return 'LTP'
+      default: return 'HTP'
     }
   }
 
@@ -1249,60 +682,9 @@ export class TimelineEngine {
   // PRIVATE: Clip release / cleanup
   // ═══════════════════════════════════════════════════════════════════════
 
-  private releaseClip(clipId: string): void {
-    const state = this.activeClips.get(clipId)
-    if (state?.effect) {
-      state.effect.abort()
-    }
-    this.activeClips.delete(clipId)
-
-    // 🔥 WAVE 2056: No longer needs to release arbiter overrides
-    // Playback uses setPlaybackFrame() which is completely replaced each tick
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════
-  // PRIVATE: Standard keyframe interpolation (offsetMs based)
-  // ═══════════════════════════════════════════════════════════════════════
-
-  private interpolateKeyframes(keyframes: FXKeyframe[], localTimeMs: number): number {
-    if (!keyframes || keyframes.length === 0) return 1 // Default: full intensity
-
-    // Before first keyframe
-    if (localTimeMs <= keyframes[0].offsetMs) return keyframes[0].value
-
-    // After last keyframe
-    if (localTimeMs >= keyframes[keyframes.length - 1].offsetMs) {
-      return keyframes[keyframes.length - 1].value
-    }
-
-    // Find surrounding keyframes
-    for (let i = 0; i < keyframes.length - 1; i++) {
-      const k1 = keyframes[i]
-      const k2 = keyframes[i + 1]
-
-      if (localTimeMs >= k1.offsetMs && localTimeMs < k2.offsetMs) {
-        const range = k2.offsetMs - k1.offsetMs
-        const t = range > 0 ? (localTimeMs - k1.offsetMs) / range : 0
-
-        switch (k1.easing) {
-          case 'step':
-            return k1.value
-          case 'ease-in':
-            return k1.value + (k2.value - k1.value) * (t * t)
-          case 'ease-out':
-            return k1.value + (k2.value - k1.value) * (1 - (1 - t) * (1 - t))
-          case 'ease-in-out': {
-            const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
-            return k1.value + (k2.value - k1.value) * ease
-          }
-          case 'linear':
-          default:
-            return k1.value + (k2.value - k1.value) * t
-        }
-      }
-    }
-
-    return keyframes[keyframes.length - 1].value
+  private releaseClip(_clipId: string): void {
+    // FASE 5a: No active effect instances to abort — HephaestusRuntime
+    // manages its own clip lifecycle. Frame accumulator is cleared next tick.
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -1347,22 +729,6 @@ export class TimelineEngine {
     return keyframes[keyframes.length - 1].value
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
-  // PRIVATE: Color conversion utilities
-  // ═══════════════════════════════════════════════════════════════════════
-
-  private hexToRgb(hex: string): { r: number; g: number; b: number } {
-    // Remove # if present
-    const cleanHex = hex.replace('#', '')
-    
-    // Parse hex to RGB
-    const bigint = parseInt(cleanHex, 16)
-    const r = (bigint >> 16) & 255
-    const g = (bigint >> 8) & 255
-    const b = bigint & 255
-    
-    return { r, g, b }
-  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

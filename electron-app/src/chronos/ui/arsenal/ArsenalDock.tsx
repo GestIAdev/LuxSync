@@ -34,13 +34,8 @@ import {
   type DragPayload,
   serializeDragPayload 
 } from '../../core/TimelineClip'
-import { 
-  getEffectCategories, 
-  type EffectMeta, 
-  type EffectCategory,
-  type EffectCategoryId,
-  inferMixBus,
-} from '../../core/EffectRegistry'
+// FASE 2: EffectRegistry demolished — legacy core effect grid stubbed.
+// ArsenalDock will be rebuilt in Phase 6 to use HephaestusClipIndex.
 import { getChronosRecorder } from '../../core/ChronosRecorder'
 import { CustomFXDock } from './CustomFXDock'
 import {
@@ -60,17 +55,31 @@ import {
 import type { IconProps } from '../../../components/icons/LuxIcons'
 import './ArsenalDock.css'
 
-// ═══════════════════════════════════════════════════════════════════════════
-// WAVE 2041: VIBE ICON MAP — Custom SVG per category
-// ═══════════════════════════════════════════════════════════════════════════
-
-const VIBE_ICON_MAP: Record<EffectCategoryId, React.FC<IconProps>> = {
-  'fiesta-latina': TrumpetVibeIcon,
-  'techno': RobotVibeIcon,
-  'pop-rock': GuitarVibeIcon,
-  'chill-lounge': LoungeVibeIcon,
-  'universal': ChipFxIcon,
+// FASE 2: Legacy EffectRegistry types stubbed — will be replaced by V3 HephaestusClipIndex in Phase 6
+type EffectCategoryId = string
+interface EffectMeta {
+  id: string
+  displayName: string
+  description: string
+  color: string
+  icon: string
+  zone: string
+  hasStrobe: boolean
+  suggestedDuration: number
 }
+interface EffectCategory {
+  id: EffectCategoryId
+  name: string
+  icon: string
+  color: string
+  effects: EffectMeta[]
+}
+
+const getEffectCategories = (): EffectCategory[] => []
+const inferMixBus = (_effect: EffectMeta): string => 'htp'
+
+// FASE 2: VIBE_ICON_MAP stubbed — legacy categories removed
+const VIBE_ICON_MAP: Record<EffectCategoryId, React.FC<IconProps>> = {}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // WAVE 2041: FX ICON MAPPING — Smart switch by effect properties

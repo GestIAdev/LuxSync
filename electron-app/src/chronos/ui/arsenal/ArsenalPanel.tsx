@@ -28,15 +28,33 @@ import {
   VIBE_COLORS,
   serializeDragPayload 
 } from '../../core/TimelineClip'
-import { 
-  getEffectCategories, 
-  type EffectMeta, 
-  type EffectCategory,
-  getTotalEffectCount,
-} from '../../core/EffectRegistry'
+// FASE 2: EffectRegistry demolished — legacy effect panel stubbed.
+// ArsenalPanel will be rebuilt in Phase 6 to use HephaestusClipIndex.
 import { getChronosRecorder } from '../../core/ChronosRecorder'
 import { Accordion } from '../common/Accordion'
 import './ArsenalPanel.css'
+
+// FASE 2: Legacy EffectRegistry types stubbed
+type EffectMeta = {
+  id: string
+  displayName: string
+  description: string
+  color: string
+  icon: string
+  zone: string
+  hasStrobe: boolean
+  suggestedDuration: number
+}
+type EffectCategory = {
+  id: string
+  name: string
+  icon: string
+  color: string
+  effects: EffectMeta[]
+}
+
+const getEffectCategories = (): EffectCategory[] => []
+const getTotalEffectCount = (): number => 0
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES

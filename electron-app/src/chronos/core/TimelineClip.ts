@@ -14,7 +14,6 @@
  */
 
 import type { HephAutomationClipV3 } from '../../core/hephaestus/types'
-import { getEffectById } from './EffectRegistry'  // WAVE 2040.21b: Registry lookup for Core FX colors
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CLIP TYPES
@@ -303,13 +302,6 @@ export function createFXClip(
 ): FXClip {
   let color = FX_COLORS[fxType] || '#666666'
   let label = fxType.toUpperCase().replace('-', ' ')
-  
-  if (effectId) {
-    const effect = getEffectById(effectId)
-    if (effect) {
-      label = effect.displayName
-    }
-  }
   
   return {
     id: generateClipId(),

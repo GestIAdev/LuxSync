@@ -23,7 +23,6 @@
  */
 
 import { getChronosInjector, type StageCommand } from '../core/ChronosInjector'
-import { mapChronosFXToBaseEffect, getFXInfo } from '../core/FXMapper'
 import type { HephAutomationClipV3 } from '../../core/hephaestus/types'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -156,12 +155,8 @@ async function handleFXTrigger(command: StageCommand): Promise<void> {
     return  // Early return - don't go through FXMapper
   }
   
-  // STANDARD PATH: Map Chronos FX type to BaseEffect ID
-  const effectId = mapChronosFXToBaseEffect(fxType, bridgeState.currentVibeId || undefined)
-  const fxInfo = getFXInfo(fxType, bridgeState.currentVibeId || undefined)
-  
-  // ⚒️ WAVE 2040.17: hephCurves arrives as HephAutomationClipV3
-  // No serialization needed — the Diamond Data flows through directly
+  // STANDARD PATH: fxType passed directly as effectId.
+  // FASE 2: FXMapper demolished — no more legacy mapping. V3 clips use heph path above.
   const hephCurvesSerialized: HephAutomationClipV3 | undefined = command.hephCurves || undefined
   if (hephCurvesSerialized) {
     const trackCount = hephCurvesSerialized.tracks?.length || 0
@@ -169,18 +164,15 @@ async function handleFXTrigger(command: StageCommand): Promise<void> {
   }
   
   const hephTag = hephCurvesSerialized ? ' ⚒️[HEPH]' : ''
-  console.log(`[ChronosBridge] 🧨 FX: ${fxType} → ${effectId}${hephTag}`, 
-    fxInfo.isPassthrough ? '(direct)' : fxInfo.vibeSpecific ? '(vibe-specific)' : '(mapped)')
+  console.log(`[ChronosBridge] 🧨 FX: ${fxType}${hephTag}`)
   
   try {
-    // Try chronos:triggerFX first, fallback to lux:forceStrike
-    // ⚒️ WAVE 2030.4: Include serialized hephCurves in payload
-    const result = await (window as any).lux.chronos?.triggerFX?.(effectId, intensity, durationMs, hephCurvesSerialized)
-      || await (window as any).lux?.forceStrike?.({ effect: effectId, intensity })
+    const result = await (window as any).lux.chronos?.triggerFX?.(fxType, intensity, durationMs, hephCurvesSerialized)
+      || await (window as any).lux?.forceStrike?.({ effect: fxType, intensity })
       || { success: false }
     
     if (result.success) {
-      console.log(`[ChronosBridge] ✅ FX triggered: ${effectId} @ ${(intensity * 100).toFixed(0)}%${hephTag}`)
+      console.log(`[ChronosBridge] ✅ FX triggered: ${fxType} @ ${(intensity * 100).toFixed(0)}%${hephTag}`)
     }
   } catch (err) {
     console.error('[ChronosBridge] ❌ Failed to trigger FX:', err)
@@ -213,12 +205,11 @@ async function handleFXStop(command: StageCommand): Promise<void> {
     return
   }
   
-  const effectId = mapChronosFXToBaseEffect(fxType, bridgeState.currentVibeId || undefined)
-  
+  // FASE 2: FXMapper demolished — pass fxType directly as effectId
   try {
-    const result = await (window as any).lux.chronos?.stopFX?.(effectId) || { success: true }
+    const result = await (window as any).lux.chronos?.stopFX?.(fxType) || { success: true }
     if (result.success) {
-      console.log(`[ChronosBridge] ✅ FX stopped: ${effectId}`)
+      console.log(`[ChronosBridge] ✅ FX stopped: ${fxType}`)
     }
   } catch (err) {
     console.error('[ChronosBridge] ❌ Failed to stop FX:', err)

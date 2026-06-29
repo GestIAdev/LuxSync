@@ -3,25 +3,19 @@
  * 🕰️ CHRONOS TYPES — THE RUNTIME DNA
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * WAVE 2001 → WAVE 2081 (M1 Unification)
+ * FASE 7: V1 types demolished. Only V2 and shared types remain.
  *
- * This file defines ChronosProject and all related types for the
- * IN-MEMORY editing model used by the Chronos editor UI, Zustand store,
- * ChronosEngine, and automation system.
+ * This file defines shared types for the IN-MEMORY editing model used by
+ * the Chronos editor UI, ChronosStoreV2, ChronosEngine, and automation system.
+ *
+ * V2 types: ChronosProjectV2, TimelineTrackV2 (with concrete TimelineClip).
+ * Shared types: Primitives, PlaybackConfig, Automation, Analysis, Context.
  *
  * This is NOT the serialized .lux format. For the file format, see
  * LuxProject in ./ChronosProject.ts.
  * For the architectural map and barrel imports, see ./ProjectTypes.ts.
  *
- * ARCHITECTURE:
- * - ChronosProject: Root runtime document (like an open .als in Ableton)
- * - TimelineTrack: Parallel content layers
- * - TimelineClip<T>: Generic positioned blocks with typed payloads
- * - AutomationLane: Bézier parameter curves
- * - AnalysisData: Pre-computed audio data (waveform, beats, sections)
- *
  * @module chronos/core/types
- * @version 2081.0.0
  */
 // ═══════════════════════════════════════════════════════════════════════════
 // 🏭 FACTORY HELPERS
@@ -47,125 +41,6 @@ export function generateChronosId() {
 }
 // Monotonic counter used by fallback path
 let generateChronosIdCounter = 0;
-// @deprecated DEMOLITION TARGET — V1 factory. Use createDefaultProjectV2 instead.
-/**
- * Crea un proyecto vacío por defecto
- */
-export function createDefaultProject(name = 'Untitled') {
-    const now = new Date().toISOString();
-    return {
-        version: '1.0.0',
-        id: generateChronosId(),
-        meta: {
-            name,
-            description: '',
-            audioPath: null,
-            durationMs: 180000, // 3 minutos default
-            bpm: 120,
-            timeSignature: 4,
-            key: null,
-            createdAt: now,
-            modifiedAt: now,
-            audioHash: null,
-        },
-        playback: {
-            loop: false,
-            loopRegion: null,
-            snapToBeat: true,
-            snapResolution: 'beat',
-            overrideMode: 'whisper',
-            latencyCompensationMs: 10,
-        },
-        analysis: null,
-        tracks: [],
-        globalAutomation: [],
-        markers: [],
-    };
-}
-// @deprecated DEMOLITION TARGET — V1 track factory. Use createTrackV2 instead.
-/**
- * Crea una track vacía
- */
-export function createDefaultTrack(type, name, order = 0) {
-    const trackColors = {
-        audio: '#64748b',
-        vibe: '#8b5cf6',
-        effect: '#22d3ee',
-        intensity: '#f59e0b',
-        zone: '#10b981',
-        color: '#ec4899',
-        automation: '#6366f1',
-        marker: '#94a3b8',
-    };
-    return {
-        id: generateChronosId(),
-        name: name ?? `${type.charAt(0).toUpperCase() + type.slice(1)} Track`,
-        type,
-        enabled: true,
-        solo: false,
-        locked: false,
-        height: type === 'automation' ? 80 : 60,
-        color: trackColors[type],
-        clips: [],
-        automation: [],
-        order,
-    };
-}
-/**
- * Crea un clip de efecto
- */
-export function createEffectClip(trackId, effectId, startMs, durationMs, intensity = 1.0) {
-    return {
-        id: generateChronosId(),
-        trackId,
-        type: 'effect_trigger',
-        startMs,
-        durationMs,
-        data: {
-            type: 'effect_trigger',
-            effectId,
-            intensity,
-            speed: 1.0,
-            zones: [],
-            bpmSync: true,
-            params: {},
-        },
-        easeIn: 'linear',
-        easeOut: 'linear',
-        loop: false,
-        priority: 0,
-        enabled: true,
-        meta: {
-            label: effectId,
-        },
-    };
-}
-/**
- * Crea un punto de automation
- */
-export function createAutomationPoint(timeMs, value, interpolation = 'linear') {
-    return {
-        id: generateChronosId(),
-        timeMs,
-        value,
-        interpolation,
-    };
-}
-/**
- * Crea una lane de automation
- */
-export function createAutomationLane(target, name) {
-    return {
-        id: generateChronosId(),
-        name: name ?? target,
-        target,
-        range: { min: 0, max: 1 },
-        points: [],
-        enabled: true,
-        defaultValue: target.includes('intensity') ? 1.0 : 0.5,
-        color: '#7c4dff',
-    };
-}
 // ─────────────────────────────────────────────────────────────────────────────
 // 🏭 WAVE 2547: V2 FACTORIES
 // ─────────────────────────────────────────────────────────────────────────────

@@ -23,6 +23,7 @@
 import { getClipMixBus } from './TimelineClip';
 import { generateChronosId } from './types';
 import { normalizeTagsToCanonical } from '../../core/zones/ZoneMapper';
+import { CANONICAL_ZONES } from '../../core/zones/ZoneMapper';
 // ═══════════════════════════════════════════════════════════════════════════
 // PROJECT FILE FORMAT (.lux)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -247,47 +248,44 @@ export function validateProject(project) {
     };
 }
 // ═══════════════════════════════════════════════════════════════════════════
-// CONVERSION HELPERS (LuxProject ↔ ChronosProject)
+// 🌉 LUX ↔ CHRONOS V2 CONVERTERS
 // ═══════════════════════════════════════════════════════════════════════════
 //
 // These bridge the two project representations:
 //   LuxProject  = serializable .lux file (flat clip list, portable)
-//   RuntimeProject = in-memory editing model (multi-track, automation, analysis)
+//   ChronosProjectV2 = in-memory editing model (multi-track, automation, analysis)
 //
-// The clip type systems diverge intentionally:
-//   LuxProject uses TimelineClip = VibeClip | FXClip  (concrete, serializable)
-//   RuntimeProject uses TimelineClip<ClipData>  (generic, extensible)
-//
-// Conversion uses `any` at the clip boundary because these are two
-// independent type hierarchies. Runtime safety is guaranteed by the
-// fact that clips always carry their `type` discriminator.
+// FASE 7: V1 intermediate (ChronosProject 1.0.0) demolished.
+// Conversion is now direct: LuxProject ↔ ChronosProjectV2.
 // ═══════════════════════════════════════════════════════════════════════════
+const CANONICAL_ZONE_SET = new Set(CANONICAL_ZONES);
+function normalizeZoneToV2(zone) {
+    if (!zone || zone === '*' || zone === 'all')
+        return 'global';
+    if (CANONICAL_ZONE_SET.has(zone))
+        return zone;
+    console.warn(`[luxToChronosV2] Unknown zone "${zone}" — mapping to 'global'`);
+    return 'global';
+}
 /**
- * Convert a LuxProject (file) into a runtime ChronosProject.
+ * Convert a LuxProject (file) into a ChronosProjectV2 (runtime).
  *
- * 🌍 WAVE 2543.3: Zone-aware track creation.
- * - Clips with zones data → routed to zone-{zone} tracks
- * - Legacy clips (fx1-fx4 trackIds) → routed to zone-all fallback
- * - Non-FX clips (audio, vibe) → dedicated structural tracks
+ * FASE 7: Replaces the old luxToChronos → migrateProjectV1toV2 pipeline.
+ * Direct conversion — no V1 intermediate.
  */
-export function luxToChronos(lux) {
+export function luxToChronosV2(lux) {
     const nowIso = new Date(lux.meta.modified || Date.now()).toISOString();
     const rawClips = lux.timeline?.clips || [];
-    // Group clips by their zone destination
     const zoneTrackMap = new Map();
     const audioTrackId = generateChronosId();
     const audioClips = [];
     for (const c of rawClips) {
         const clip = c;
-        // Non-FX clips go to a generic audio track
         if (clip.type !== 'fx') {
             audioClips.push({ ...clip, trackId: audioTrackId });
             continue;
         }
-        // Determine zone target from clip data
-        // WAVE 2543.4: normalizeTagsToCanonical handles multi-zone arrays
-        // e.g. ['back', 'all-right'] → 'back-right'
-        let zoneKey = 'all'; // fallback for legacy fx1-fx4 clips
+        let zoneKey = 'all';
         if (clip.zones && clip.zones.length > 0) {
             zoneKey = normalizeTagsToCanonical(clip.zones);
         }
@@ -295,64 +293,58 @@ export function luxToChronos(lux) {
         if (!zoneTrackMap.has(trackKey)) {
             zoneTrackMap.set(trackKey, { id: generateChronosId(), clips: [] });
         }
-        const entry = zoneTrackMap.get(trackKey);
-        entry.clips.push({ ...clip, trackId: entry.id });
+        zoneTrackMap.get(trackKey).clips.push({ ...clip, trackId: zoneTrackMap.get(trackKey).id });
     }
-    // Build tracks array
     const tracks = [];
-    // Audio/structural track (if there are non-FX clips)
     if (audioClips.length > 0) {
         tracks.push({
             id: audioTrackId,
-            name: 'Timeline',
-            type: 'audio',
-            enabled: true,
-            solo: false,
-            locked: false,
-            height: 120,
+            targetZone: 'global',
+            visualLabel: 'Timeline',
             color: '#6b7280',
             clips: audioClips,
             automation: [],
+            enabled: true,
+            solo: false,
+            locked: false,
             order: 0,
+            height: 120,
         });
     }
-    // Zone tracks (one per zone destination found in clips)
     let order = tracks.length;
     for (const [trackKey, { id, clips }] of zoneTrackMap) {
         const zoneName = trackKey.replace('zone-', '');
         tracks.push({
             id,
-            name: zoneName === 'all' ? 'ALL' : zoneName.toUpperCase(),
-            type: 'effect',
-            targetZone: zoneName === 'all' ? undefined : zoneName,
-            enabled: true,
-            solo: false,
-            locked: false,
-            height: 60,
+            targetZone: normalizeZoneToV2(zoneName === 'all' ? 'global' : zoneName),
+            visualLabel: zoneName === 'all' ? 'ALL' : zoneName.toUpperCase(),
             color: '#22d3ee',
             clips,
             automation: [],
-            order: order++,
-        });
-    }
-    // If no clips at all, create one empty zone-all track
-    if (tracks.length === 0) {
-        tracks.push({
-            id: generateChronosId(),
-            name: 'ALL',
-            type: 'effect',
             enabled: true,
             solo: false,
             locked: false,
+            order: order++,
             height: 60,
+        });
+    }
+    if (tracks.length === 0) {
+        tracks.push({
+            id: generateChronosId(),
+            targetZone: 'global',
+            visualLabel: 'ALL',
             color: '#22d3ee',
             clips: [],
             automation: [],
+            enabled: true,
+            solo: false,
+            locked: false,
             order: 0,
+            height: 60,
         });
     }
     return {
-        version: '1.0.0',
+        version: '2.0.0',
         id: generateChronosId(),
         meta: {
             name: lux.meta.name || 'Imported Project',
@@ -381,13 +373,12 @@ export function luxToChronos(lux) {
     };
 }
 /**
- * Convert a runtime ChronosProject into a LuxProject for serialization.
+ * Convert a ChronosProjectV2 into a LuxProject for serialization.
  * Flattens all tracks into a single timeline.clips array.
  */
-export function chronosToLux(ch) {
+export function chronosV2ToLux(ch) {
     const metaNow = Date.now();
-    // Flatten all track clips into a single list
-    const clips = (ch.tracks || []).flatMap((t) => t.clips || []);
+    const clips = (ch.tracks || []).flatMap(t => t.clips || []);
     return {
         meta: {
             version: PROJECT_VERSION,
@@ -407,7 +398,7 @@ export function chronosToLux(ch) {
             }
             : null,
         timeline: {
-            clips: clips,
+            clips,
             playheadMs: 0,
             viewportStartMs: 0,
             pixelsPerSecond: 100,

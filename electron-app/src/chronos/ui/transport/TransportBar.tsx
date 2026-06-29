@@ -349,12 +349,14 @@ export const TransportBar: React.FC<TransportBarProps> = memo(({
   useEffect(() => {
     const syncWithBackend = async () => {
       try {
-        const status = await window.lux?.arbiter?.status()
-        if (status?.status?.outputEnabled !== undefined) {
-          setOutputEnabled(status.status.outputEnabled)
-        }
-        if (status && powerState === 'OFFLINE') {
-          setPowerState('ONLINE')
+        const response = await window.lux?.aether?.getControlState?.()
+        if (response) {
+          if (response.outputEnabled !== undefined) {
+            setOutputEnabled(response.outputEnabled)
+          }
+          if (powerState === 'OFFLINE') {
+            setPowerState('ONLINE')
+          }
         }
       } catch { /* Silent — backend might not be ready */ }
     }

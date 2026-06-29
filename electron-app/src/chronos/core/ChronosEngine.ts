@@ -1,5 +1,4 @@
-// PHASE 4 DEMOLITION TARGET — V1 path (generateContext, ClipBoundaryIndex) will be removed.
-// Only V2 path (generateContextV2, ClipBoundaryIndexV2) will remain.
+// FASE 4: V1 path demolished. Only V2 (generateContextV2, ClipBoundaryIndexV2) remains.
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🕰️ CHRONOS ENGINE - THE BEATING HEART
@@ -22,7 +21,6 @@
  */
 
 import type {
-  ChronosProject,
   TimeMs,
   NormalizedValue,
   PlaybackState,
@@ -30,18 +28,11 @@ import type {
   ChronosContext,
   ChronosOverrideMode,
   ChronosActiveEffect,
-  ChronosZoneOverride,
-  ChronosColorOverride,
   TimelineClip,
-  TimelineTrack,
   AutomationLane,
   AutomationPoint,
   AutomationTarget,
   EffectTriggerData,
-  VibeChangeData,
-  IntensityCurveData,
-  ZoneOverrideData,
-  ColorOverrideData,
   // WAVE 2550: V2 types
   ChronosProjectV2,
   TimelineTrackV2,
@@ -120,7 +111,7 @@ function getSortedPoints(points: AutomationPoint[]): AutomationPoint[] {
 // 🚀 WAVE 2500: CLIP BOUNDARY INDEX (P0-2 FIX)
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// PROBLEM: getActiveClips() did a linear scan of ALL tracks × ALL clips
+// PROBLEM: Active clip query did a linear scan of ALL tracks × ALL clips
 // on EVERY frame. With 7 tracks × 200 clips = 1,400 iterations × 60fps.
 //
 // SOLUTION: Pre-computed boundary event index. A sorted array of "events"
@@ -140,14 +131,7 @@ interface ClipBoundaryEvent {
   type: 'start' | 'end'
 }
 
-interface ClipIndexEntry {
-  clip: TimelineClip
-  track: TimelineTrack
-  startMs: number
-  endMs: number
-}
-
-// WAVE 2550: V2 variant — same algorithm, TimelineTrackV2 instead of TimelineTrack
+// WAVE 2550: V2 variant — same algorithm, TimelineTrackV2
 interface ClipIndexEntryV2 {
   clip: TimelineClip
   track: TimelineTrackV2
@@ -155,142 +139,7 @@ interface ClipIndexEntryV2 {
   endMs: number
 }
 
-class ClipBoundaryIndex {
-  /** Sorted boundary events (by timeMs) */
-  private boundaries: ClipBoundaryEvent[] = []
-  /** All clips with precomputed start/end, sorted by startMs */
-  private clipEntries: ClipIndexEntry[] = []
-  /** Cached active clips from last query */
-  private cachedActiveClips: TimelineClip[] | null = null
-  /** Time of last query */
-  private lastQueryTimeMs: number = -1
-  /** Track array reference for staleness detection */
-  private tracksRef: TimelineTrack[] | null = null
-
-  /**
-   * Rebuild the index from project tracks.
-   * Called on loadProject() and when track reference changes.
-   * Cost: O(n log n) where n = total clips across all tracks.
-   */
-  rebuild(tracks: TimelineTrack[]): void {
-    this.tracksRef = tracks
-    this.boundaries = []
-    this.clipEntries = []
-    this.cachedActiveClips = null
-    this.lastQueryTimeMs = -1
-
-    for (let ti = 0; ti < tracks.length; ti++) {
-      const track = tracks[ti]
-      if (!track.enabled) continue
-
-      for (let ci = 0; ci < track.clips.length; ci++) {
-        const clip = track.clips[ci]
-        if (!clip.enabled) continue
-
-        const startMs = clip.startMs
-        const endMs = clip.durationMs === 0
-          ? clip.startMs + 16  // Instantaneous clips get a 16ms window
-          : clip.startMs + clip.durationMs
-
-        this.clipEntries.push({ clip, track, startMs, endMs })
-        this.boundaries.push({ timeMs: startMs, clipId: clip.id, trackIndex: ti, clipIndex: ci, type: 'start' })
-        this.boundaries.push({ timeMs: endMs, clipId: clip.id, trackIndex: ti, clipIndex: ci, type: 'end' })
-      }
-    }
-
-    // Sort boundaries by time (one-time cost)
-    this.boundaries.sort((a, b) => a.timeMs - b.timeMs)
-    // Sort clip entries by startMs for binary search
-    this.clipEntries.sort((a, b) => a.startMs - b.startMs)
-  }
-
-  /**
-   * Check if the index needs rebuild (tracks reference changed).
-   */
-  isStale(tracks: TimelineTrack[]): boolean {
-    return this.tracksRef !== tracks
-  }
-
-  /**
-   * Query active clips at a given time.
-   * Uses boundary crossing detection to avoid recomputation.
-   * 
-   * @returns Active clips sorted by priority (descending)
-   */
-  query(timeMs: number): TimelineClip[] {
-    // Fast path: if no boundaries crossed since last query, return cache
-    if (this.cachedActiveClips !== null && !this.hasCrossedBoundary(this.lastQueryTimeMs, timeMs)) {
-      return this.cachedActiveClips
-    }
-
-    // Boundary was crossed or first query — compute active clips
-    const active: TimelineClip[] = []
-
-    for (const entry of this.clipEntries) {
-      // Early exit: all remaining clips start after timeMs
-      if (entry.startMs > timeMs) break
-
-      // Check if clip is active at this time
-      if (entry.clip.durationMs === 0) {
-        // Instantaneous clip: 16ms window
-        if (Math.abs(timeMs - entry.clip.startMs) < 16) {
-          active.push(entry.clip)
-        }
-      } else if (timeMs >= entry.startMs && timeMs < entry.endMs) {
-        active.push(entry.clip)
-      }
-    }
-
-    // Sort by priority (descending) — typically very small array (3-10 clips)
-    active.sort((a, b) => b.priority - a.priority)
-
-    this.cachedActiveClips = active
-    this.lastQueryTimeMs = timeMs
-    return active
-  }
-
-  /**
-   * Binary search: has any boundary event been crossed between t1 and t2?
-   * Cost: O(log n) where n = number of boundary events
-   */
-  private hasCrossedBoundary(t1: number, t2: number): boolean {
-    if (this.boundaries.length === 0) return false
-    if (t1 === t2) return false
-
-    const lo = Math.min(t1, t2)
-    const hi = Math.max(t1, t2)
-
-    // Binary search for first boundary >= lo
-    let left = 0
-    let right = this.boundaries.length
-
-    while (left < right) {
-      const mid = (left + right) >>> 1
-      if (this.boundaries[mid].timeMs < lo) {
-        left = mid + 1
-      } else {
-        right = mid
-      }
-    }
-
-    // If any boundary exists in (lo, hi], a crossing occurred
-    // We use > lo (exclusive) because at t1=boundary we already computed for that boundary
-    while (left < this.boundaries.length && this.boundaries[left].timeMs <= lo) {
-      left++
-    }
-    return left < this.boundaries.length && this.boundaries[left].timeMs <= hi
-  }
-
-  /**
-   * Invalidate cache (e.g., after seek)
-   */
-  invalidate(): void {
-    this.cachedActiveClips = null
-    this.lastQueryTimeMs = -1
-  }
-}
-
-// WAVE 2550: ClipBoundaryIndexV2 — same O(log n) algorithm, typed for V2 tracks
+// WAVE 2550: ClipBoundaryIndexV2 — O(log n) algorithm, typed for V2 tracks
 class ClipBoundaryIndexV2 {
   private boundaries: ClipBoundaryEvent[] = []
   private clipEntries: ClipIndexEntryV2[] = []
@@ -544,9 +393,6 @@ export class ChronosEngine {
   // PRIVATE STATE
   // ═══════════════════════════════════════════════════════════════════════
   
-  /** Proyecto actual */
-  private project: ChronosProject | null = null
-  
   /** AudioContext para sync de precisión */
   private audioContext: AudioContext | null = null
   
@@ -595,9 +441,6 @@ export class ChronosEngine {
   /** Compensación de latencia (ms) */
   private latencyCompensationMs: TimeMs = 10
   
-  /** WAVE 2500: Clip boundary index for O(log n) active clip queries */
-  private clipIndex: ClipBoundaryIndex = new ClipBoundaryIndex()
-
   /** WAVE 2550: Project V2 (per-track architecture) */
   private projectV2: ChronosProjectV2 | null = null
 
@@ -645,32 +488,13 @@ export class ChronosEngine {
   }
   
   /**
-   * Carga un proyecto
-   */
-  public loadProject(project: ChronosProject): void {
-    this.ensureNotDisposed()
-    
-    this.stop()
-    this.project = project
-    this.looping = project.playback.loop
-    this.loopRegion = project.playback.loopRegion
-    this.latencyCompensationMs = project.playback.latencyCompensationMs
-    this.currentTimeMs = 0
-    
-    // 🚀 WAVE 2500: Build clip boundary index for O(log n) queries
-    this.clipIndex.rebuild(project.tracks)
-  }
-  
-  /**
-   * WAVE 2550: Carga un proyecto V2 (arquitectura per-track)
-   * Si se carga un V2, el engine priorizará generateContextV2() sobre generateContext() V1.
+   * WAVE 2550: Carga un proyecto V2 (arquitectura per-track).
+   * FASE 4: V1 loadProject() demolished — V2 is the only path.
    */
   public loadProjectV2(project: ChronosProjectV2): void {
     this.ensureNotDisposed()
     this.stop()
     this.projectV2 = project
-    // V1 project queda null cuando se trabaja en modo V2
-    this.project = null
     this.looping = project.playback.loop
     this.loopRegion = project.playback.loopRegion
     this.latencyCompensationMs = project.playback.latencyCompensationMs
@@ -684,7 +508,6 @@ export class ChronosEngine {
   public unloadProject(): void {
     this.stop()
     this.unloadAudio()
-    this.project = null
     this.projectV2 = null
     this.currentTimeMs = 0
   }
@@ -840,9 +663,8 @@ export class ChronosEngine {
     this.playbackStartOffset = clampedTime
     this.playbackStartTime = this.audioContext?.currentTime ?? performance.now() / 1000
     
-    // WAVE 2500: Invalidate clip cache on seek (non-monotonic time jump)
-    this.clipIndex.invalidate()
-    this.clipIndexV2.invalidate()  // WAVE 2550
+    // WAVE 2550: Invalidate clip cache on seek (non-monotonic time jump)
+    this.clipIndexV2.invalidate()
     
     if (wasPlaying && this.audioBuffer && this.audioContext && this.gainNode) {
       this.startAudioSource(clampedTime / 1000)
@@ -955,9 +777,8 @@ export class ChronosEngine {
     const duration = this.getDurationMs()
     this.currentTimeMs = Math.max(0, Math.min(timeMs, duration))
     
-    // WAVE 2500: Invalidate clip cache on scrub (non-monotonic time jump)
-    this.clipIndex.invalidate()
-    this.clipIndexV2.invalidate()  // WAVE 2550
+    // WAVE 2550: Invalidate clip cache on scrub (non-monotonic time jump)
+    this.clipIndexV2.invalidate()
     
     // Emitir contexto para preview
     this.emitContext()
@@ -998,15 +819,7 @@ export class ChronosEngine {
     if (this.audioBuffer) {
       return this.audioBuffer.duration * 1000
     }
-    // WAVE 2550: V2 project has the same meta.durationMs field
-    return this.projectV2?.meta.durationMs ?? this.project?.meta.durationMs ?? 0
-  }
-  
-  /**
-   * Obtiene el proyecto actual (V1)
-   */
-  public getProject(): ChronosProject | null {
-    return this.project
+    return this.projectV2?.meta.durationMs ?? 0
   }
 
   /**
@@ -1056,9 +869,8 @@ export class ChronosEngine {
   public async setClockSource(type: ClockSourceType): Promise<void> {
     await this.clockSources.setSource(type)
     
-    // Invalidate clip cache when clock source changes
-    this.clipIndex.invalidate()
-    this.clipIndexV2.invalidate()  // WAVE 2550
+    // WAVE 2550: Invalidate clip cache when clock source changes
+    this.clipIndexV2.invalidate()
   }
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -1073,56 +885,12 @@ export class ChronosEngine {
   public generateContext(): ChronosContext {
     const timeMs = this.currentTimeMs
 
-    // WAVE 2550: V2 path — per-track iteration
+    // FASE 4: V1 path demolished — V2 is the only path.
     if (this.projectV2) {
       return this.generateContextV2(timeMs)
     }
 
-    const project = this.project
-    
-    if (!project) {
-      return this.createEmptyContext(timeMs)
-    }
-    
-    const overrideMode = project.playback.overrideMode
-    
-    // Evaluar todas las tracks y clips activos
-    const activeClips = this.getActiveClips(timeMs)
-    
-    // Procesar clips por tipo
-    const vibeClip = this.findActiveClipOfType(activeClips, 'vibe_change')
-    const intensityClip = this.findActiveClipOfType(activeClips, 'intensity_curve')
-    const zoneClip = this.findActiveClipOfType(activeClips, 'zone_override')
-    const colorClip = this.findActiveClipOfType(activeClips, 'color_override')
-    const effectClips = this.getEffectClips(activeClips, timeMs)
-    
-    // Evaluar automation global
-    const automationValues = this.evaluateGlobalAutomation(timeMs)
-    
-    return {
-      timestamp: timeMs,
-      active: this.playbackState !== 'stopped',
-      overrideMode,
-      
-      vibeOverride: vibeClip 
-        ? this.processVibeClip(vibeClip, timeMs) 
-        : null,
-      
-      intensityOverride: intensityClip 
-        ? (intensityClip.data as IntensityCurveData).value 
-        : automationValues.get('master.intensity') ?? null,
-      
-      zoneOverrides: zoneClip 
-        ? this.processZoneClip(zoneClip) 
-        : null,
-      
-      colorOverride: colorClip 
-        ? this.processColorClip(colorClip) 
-        : null,
-      
-      activeEffects: effectClips,
-      automationValues,
-    }
+    return this.createEmptyContext(timeMs)
   }
   
   /**
@@ -1255,7 +1023,7 @@ export class ChronosEngine {
     }
     
     // 📡 WAVE 2501: Tick MIDI Clock Master (outbound) if running
-    const bpm = this.project?.meta.bpm ?? 120
+    const bpm = this.projectV2?.meta.bpm ?? 120
     this.clockSources.tickMIDIMaster(bpm)
     
     // Handle loop
@@ -1358,53 +1126,6 @@ export class ChronosEngine {
     return values
   }
 
-  /**
-   * WAVE 2500: O(log n) Active Clip Query (V1)
-   */
-  private getActiveClips(timeMs: TimeMs): TimelineClip[] {
-    if (!this.project) return []
-    
-    // Auto-rebuild if tracks reference changed (Zustand immutable updates)
-    if (this.clipIndex.isStale(this.project.tracks)) {
-      this.clipIndex.rebuild(this.project.tracks)
-    }
-    
-    return this.clipIndex.query(timeMs)
-  }
-  
-  private findActiveClipOfType(
-    clips: TimelineClip[], 
-    type: string
-  ): TimelineClip | null {
-    return clips.find(c => c.type === type) ?? null
-  }
-  
-  private getEffectClips(
-    clips: TimelineClip[], 
-    timeMs: TimeMs
-  ): ChronosActiveEffect[] {
-    const effects: ChronosActiveEffect[] = []
-    
-    for (const clip of clips) {
-      if (clip.type !== 'effect_trigger') continue
-      
-      const data = clip.data as EffectTriggerData
-      const progress = this.calculateClipProgress(clip, timeMs)
-      
-      effects.push({
-        effectId: data.effectId,
-        progress,
-        intensity: data.intensity,
-        speed: data.speed,
-        zones: data.zones,
-        params: data.params,
-        sourceClipId: clip.id,
-      })
-    }
-    
-    return effects
-  }
-  
   private calculateClipProgress(clip: TimelineClip, timeMs: TimeMs): NormalizedValue {
     if (clip.durationMs === 0) return 1 // Instantáneo
     
@@ -1417,56 +1138,6 @@ export class ChronosEngine {
     }
     
     return Math.max(0, Math.min(1, progress))
-  }
-  
-  private processVibeClip(clip: TimelineClip, timeMs: TimeMs): {
-    vibeId: string
-    transition: 'cut' | 'fade'
-    progress: NormalizedValue
-  } | null {
-    const data = clip.data as VibeChangeData
-    
-    // Calcular progress de la transición
-    const transitionProgress = data.transition === 'cut' 
-      ? 1 
-      : Math.min(1, (timeMs - clip.startMs) / data.transitionMs)
-    
-    return {
-      vibeId: data.vibeId,
-      transition: data.transition,
-      progress: transitionProgress,
-    }
-  }
-  
-  private processZoneClip(clip: TimelineClip): ChronosZoneOverride {
-    const data = clip.data as ZoneOverrideData
-    return {
-      enabledZones: data.enabledZones,
-      blackoutDisabled: data.blackoutDisabled,
-    }
-  }
-  
-  private processColorClip(clip: TimelineClip): ChronosColorOverride {
-    const data = clip.data as ColorOverrideData
-    return {
-      palette: data.palette,
-      keyLock: data.keyLock,
-    }
-  }
-  
-  private evaluateGlobalAutomation(timeMs: TimeMs): Map<AutomationTarget, number> {
-    const values = new Map<AutomationTarget, number>()
-    
-    if (!this.project) return values
-    
-    for (const lane of this.project.globalAutomation) {
-      if (!lane.enabled) continue
-      
-      const value = evaluateAutomationLane(lane, timeMs)
-      values.set(lane.target, value)
-    }
-    
-    return values
   }
   
   private createEmptyContext(timeMs: TimeMs): ChronosContext {

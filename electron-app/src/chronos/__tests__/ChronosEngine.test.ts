@@ -18,8 +18,6 @@
 
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest'
 import { ChronosEngine } from '../core/ChronosEngine'
-import { createEmptyProject } from '../core/ChronosProject'
-import type { ChronosProject } from '../core/types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🕰️ CHRONOS ENGINE TESTS
@@ -100,7 +98,7 @@ describe('🕰️ ChronosEngine — The Beating Heart', () => {
 
     test('No project loaded initially', () => {
       const engine = ChronosEngine.getInstance()
-      expect(engine.getProject()).toBeNull()
+      expect(engine.getProjectV2()).toBeNull()
     })
   })
 

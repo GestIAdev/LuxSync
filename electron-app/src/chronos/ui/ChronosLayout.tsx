@@ -232,12 +232,13 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
     }
   }, [audioLoader.result])
   
-  // 👻 WAVE 2540.4: THE PHANTOM BUFFER — Send heatmap to backend
-  // When the GodEar Offline analysis completes, send the energyHeatmap
-  // to TitanEngine so it can inject real pre-calculated bands during
-  // timeline playback (instead of silence zeros from lack of live audio).
+  // 👻 WAVE 2540.4: THE PHANTOM BUFFER — Send heatmap to backend + embed analysis
+  // When the GodEar Offline analysis completes:
+  // 1. Send the energyHeatmap to TitanEngine for real-time band injection
+  // 2. Embed the full AnalysisData as LuxAnalysisV3 into the project (FASE 4)
   useEffect(() => {
-    const heatmap = audioLoader.result?.analysisData?.energyHeatmap
+    const analysisData = audioLoader.result?.analysisData
+    const heatmap = analysisData?.energyHeatmap
     if (heatmap) {
       const lux = (window as any).lux
       lux?.chronos?.loadHeatmap?.(heatmap)
@@ -249,6 +250,13 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
         .catch((err: unknown) => {
           console.error('[ChronosLayout 👻] Failed to send heatmap:', err)
         })
+
+      // 🔬 FASE 4: Embed analysis into the project for persistence
+      if (analysisData) {
+        const store = getChronosStore()
+        store.setAnalysisData(analysisData)
+        console.log('[ChronosLayout 🔬] Analysis embedded in project (FASE 4)')
+      }
     } else {
       // No analysis data — clear the heatmap in backend
       const lux = (window as any).lux
@@ -700,8 +708,37 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
       // Restore audio if path exists and is valid
       if (data.project.audio?.relativePath && !data.project.audio.relativePath.startsWith('blob:')) {
         console.log('[ChronosLayout] 🎵 Loading audio:', data.project.audio.relativePath)
-        audioLoader.loadFromPath(data.project.audio.relativePath)
-        setBpm(data.project.audio.detectedBpm)
+
+        // 🔬 FASE 4: If the project has embedded analysis, use it directly.
+        // Skip re-analysis by loading audio without triggering phantom analysis.
+        // The heatmap is sent to TitanEngine from the embedded LuxAnalysisV3.
+        if (data.project.analysis) {
+          console.log('[ChronosLayout] 🔬 Embedded analysis found — using cached data (no re-analysis)')
+          setBpm(data.project.audio.detectedBpm)
+
+          // Load audio for playback only (skip analysis — we have it embedded)
+          audioLoader.loadFromPath(data.project.audio.relativePath, true).then(() => {
+            // After audio loads, inject the embedded heatmap into TitanEngine
+            const embeddedHeatmap = data.project.analysis?.heatmap
+            if (embeddedHeatmap) {
+              const lux = (window as any).lux
+              lux?.chronos?.loadHeatmap?.(embeddedHeatmap)
+                .then((r: any) => {
+                  if (r?.success) {
+                    console.log('[ChronosLayout 👻] Embedded PHANTOM BUFFER sent to backend')
+                  }
+                })
+                .catch((err: unknown) => {
+                  console.error('[ChronosLayout 👻] Failed to send embedded heatmap:', err)
+                })
+            }
+          })
+        } else {
+          // No embedded analysis — load audio and trigger phantom analysis
+          console.log('[ChronosLayout] 🔬 No embedded analysis — will analyze on load')
+          audioLoader.loadFromPath(data.project.audio.relativePath)
+          setBpm(data.project.audio.detectedBpm)
+        }
       }
     }
     

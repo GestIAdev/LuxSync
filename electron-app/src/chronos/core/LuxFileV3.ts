@@ -228,12 +228,72 @@ export interface LuxTransientV3 {
   intensity: number
 }
 
+export interface LuxHeatmapV3 {
+  /** Temporal resolution in ms per sample (typically 50). */
+  resolutionMs: number
+
+  /** Total energy per frame (0-1, peak-normalized). */
+  energy: readonly number[]
+
+  /** Legacy bass: subBass + bass combined (0-1). */
+  bass: readonly number[]
+
+  /** Legacy high: treble + ultraAir combined (0-1). */
+  high: readonly number[]
+
+  /** Spectral flux (normalized 0-1). */
+  flux: readonly number[]
+
+  // ── 7 tactical bands (GodEarFFT, optional) ──
+
+  /** 20-60Hz — sub-bass / kick fundamental. */
+  subBass?: readonly number[]
+
+  /** 60-250Hz — bass / kick body. */
+  bassReal?: readonly number[]
+
+  /** 250-500Hz — low-mid warmth. */
+  lowMid?: readonly number[]
+
+  /** 500-2000Hz — mid / vocal / snare core. */
+  mid?: readonly number[]
+
+  /** 2000-6000Hz — high-mid / presence / attack. */
+  highMid?: readonly number[]
+
+  /** 6000-16000Hz — treble / hi-hats / brightness. */
+  treble?: readonly number[]
+
+  /** 16000-22000Hz — ultra-air / harmonics. */
+  ultraAir?: readonly number[]
+
+  /** Spectral centroid per frame (Hz). */
+  spectralCentroid?: readonly number[]
+
+  /** Spectral flatness per frame (0-1). */
+  spectralFlatness?: readonly number[]
+}
+
+export interface LuxWaveformV3 {
+  /** Samples per second in the downsampled waveform (typically 100). */
+  samplesPerSecond: number
+
+  /** Peak values per sample (0-1). */
+  peaks: readonly number[]
+
+  /** RMS values per sample (0-1). */
+  rms: readonly number[]
+}
+
 export interface LuxAnalysisV3 {
   /** Mean BPM detected by the FFT worker. */
   detectedBpm: number
 
   /** Confidence of the detected BPM (0-1). */
   bpmConfidence: number
+
+  /** Offset of the first detected beat (ms). */
+  firstBeatMs: number
 
   /** Beat grid: timestamps in ms of each beat. */
   beatGrid: readonly number[]
@@ -244,11 +304,11 @@ export interface LuxAnalysisV3 {
   /** Detected transients (kicks, snares, etc.). */
   transients: readonly LuxTransientV3[]
 
-  /** Energy heatmap per segment. */
-  energyHeatmap: readonly number[]
+  /** Full energy heatmap with all tactical bands for TitanEngine injection. */
+  heatmap: LuxHeatmapV3
 
-  /** Downsampled waveform for the UI. */
-  waveform: readonly number[]
+  /** Downsampled waveform for UI display. */
+  waveform: LuxWaveformV3
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

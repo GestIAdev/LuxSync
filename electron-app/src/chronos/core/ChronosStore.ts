@@ -17,16 +17,64 @@ import {
   type ChronosProjectV3,
   type LuxTrackV3,
   type LuxClipV3,
+  type LuxAnalysisV3,
   LUX_V3_EXTENSION as PROJECT_EXTENSION,
 } from './LuxFileV3'
 import {
   createEmptyChronosProjectV3,
   toLuxFileV3,
   toChronosProjectV3,
+  analysisDataToLuxAnalysisV3,
 } from './LuxFileV3.factories'
 import { serializeLuxV3, deserializeLuxV3, canonicalStringify } from './LuxFileV3.serializer'
 import { generateChronosId } from './types'
 import type { TimelineClip } from './TimelineClip'
+import type { AnalysisData } from './types'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PATH UTILITIES (absolute ↔ relative)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Convert an absolute audio path to a path relative to the .lux file directory.
+ * Works with both Windows (\\) and Unix (/) separators.
+ */
+function toRelativePath(luxFilePath: string, absoluteAudioPath: string): string {
+  if (!luxFilePath || !absoluteAudioPath) return absoluteAudioPath
+
+  const luxDir = luxFilePath.substring(0, luxFilePath.lastIndexOf('/') + 1 || luxFilePath.lastIndexOf('\\') + 1)
+  if (!luxDir) return absoluteAudioPath
+
+  // Normalize both to forward slashes for comparison
+  const normLuxDir = luxDir.replace(/\\/g, '/')
+  const normAudio = absoluteAudioPath.replace(/\\/g, '/')
+
+  if (normAudio.startsWith(normLuxDir)) {
+    return normAudio.substring(normLuxDir.length)
+  }
+
+  // If not under the same directory, store as-is (absolute)
+  return absoluteAudioPath
+}
+
+/**
+ * Resolve a relative audio path to an absolute path using the .lux file directory.
+ */
+function resolveAbsolutePath(luxFilePath: string, relativeOrAbsolutePath: string): string {
+  if (!luxFilePath || !relativeOrAbsolutePath) return relativeOrAbsolutePath
+
+  // Already absolute (Windows drive letter or Unix root)
+  if (/^[A-Za-z]:[\\/]/.test(relativeOrAbsolutePath) || relativeOrAbsolutePath.startsWith('/')) {
+    return relativeOrAbsolutePath
+  }
+
+  const sep = luxFilePath.includes('\\') ? '\\' : '/'
+  const lastSep = luxFilePath.lastIndexOf(sep)
+  if (lastSep === -1) return relativeOrAbsolutePath
+
+  const luxDir = luxFilePath.substring(0, lastSep + 1)
+  return luxDir + relativeOrAbsolutePath.replace(/\//g, sep)
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -260,6 +308,31 @@ export class ChronosStore {
       console.log(`[ChronosStore] 🎵 Audio path set: ${path}`)
     }
   }
+
+  /**
+   * 🔬 FASE 4: Embed phantom analysis data into the project.
+   * Converts AnalysisData → LuxAnalysisV3 and stores it in project.analysis.
+   * Also updates audio.detectedBpm and audio.bpmConfidence.
+   */
+  setAnalysisData(analysisData: AnalysisData): void {
+    const lux = analysisDataToLuxAnalysisV3(analysisData)
+    this.project.analysis = lux
+
+    if (this.project.audio) {
+      this.project.audio.detectedBpm = lux.detectedBpm
+      this.project.audio.bpmConfidence = lux.bpmConfidence
+    }
+
+    this.markDirty()
+    console.log(`[ChronosStore] 🔬 Analysis embedded: BPM=${lux.detectedBpm} conf=${lux.bpmConfidence.toFixed(2)} sections=${lux.sections.length} transients=${lux.transients.length}`)
+  }
+
+  /**
+   * 🔬 FASE 4: Check if the project has embedded analysis data.
+   */
+  hasEmbeddedAnalysis(): boolean {
+    return this.project.analysis !== null && this.project.analysis !== undefined
+  }
   
   /**
    * 🔖 Mark project as modified (for external changes)
@@ -283,6 +356,16 @@ export class ChronosStore {
     const needsPath = !this.projectPath || forceNewPath
     
     try {
+      // ── FASE 4: Convert audio path to relative before serializing ──
+      if (this.projectPath && this.project.audio) {
+        const absoluteAudioPath = this.project.audio.relativePath
+        const relativePath = toRelativePath(this.projectPath, absoluteAudioPath)
+        this.project.audio = {
+          ...this.project.audio,
+          relativePath,
+        }
+      }
+      
       // Prepare project data — strip runtime state → LuxFileV3 → serialize (+checksum)
       const json = await serializeLuxV3(toLuxFileV3(this.project))
       
@@ -369,6 +452,13 @@ export class ChronosStore {
         this.projectPath = result.path
         this.isDirty = false
         this.lastSavedJson = this._dirtySnapshot()
+        
+        // ── FASE 4: Resolve relative audio path to absolute ──
+        if (result.path && project.audio?.relativePath) {
+          const absolutePath = resolveAbsolutePath(result.path, project.audio.relativePath)
+          project.audio.relativePath = absolutePath
+          console.log(`[ChronosStore] 🎵 Audio path resolved: ${absolutePath}`)
+        }
         
         console.log(`[ChronosStore] 📂 Loaded: ${result.path}`)
         this.emit('project-loaded', { project, path: result.path })

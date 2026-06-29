@@ -76,7 +76,7 @@ export interface UseAudioLoaderPhantomReturn extends AudioLoaderState {
   loadFile: (file: File) => Promise<AudioLoadResult | null>
   
   /** 🧠 WAVE 2014.5: Load audio from file path (for project load) */
-  loadFromPath: (filePath: string) => Promise<AudioLoadResult | null>
+  loadFromPath: (filePath: string, skipAnalysis?: boolean) => Promise<AudioLoadResult | null>
   
   /** Reset loader state */
   reset: () => void
@@ -324,10 +324,10 @@ export function useAudioLoaderPhantom(): UseAudioLoaderPhantomReturn {
    * 🧠 WAVE 2014.5: Load audio from file path (for project load)
    * Uses file:// URL for playback without copying to memory
    */
-  const loadFromPath = useCallback(async (filePath: string): Promise<AudioLoadResult | null> => {
+  const loadFromPath = useCallback(async (filePath: string, skipAnalysis: boolean = false): Promise<AudioLoadResult | null> => {
     const chronos = getChronosAPI()
     
-    console.log(`[useAudioLoaderPhantom] 📂 Loading from path: ${filePath}`)
+    console.log(`[useAudioLoaderPhantom] 📂 Loading from path: ${filePath}${skipAnalysis ? ' (skip analysis)' : ''}`)
     
     // Check if file exists
     const exists = await chronos?.checkFileExists?.(filePath)
@@ -347,7 +347,7 @@ export function useAudioLoaderPhantom(): UseAudioLoaderPhantomReturn {
       isLoading: true,
       phase: 'analyzing',
       progress: 10,
-      message: 'Loading from disk...',
+      message: skipAnalysis ? 'Loading from disk...' : 'Loading from disk...',
       error: null,
     })
     
@@ -359,17 +359,25 @@ export function useAudioLoaderPhantom(): UseAudioLoaderPhantomReturn {
         throw new Error(fileResponse?.error || 'Failed to read audio file')
       }
       
-      updateState({
-        phase: 'analyzing',
-        progress: 30,
-        message: 'Analyzing audio...',
-      })
-      
-      // Send path directly to phantom for analysis
-      const response = await chronos?.analyzeAudio({ filePath, fileName })
-      
-      if (!response?.success) {
-        throw new Error(response?.error || 'Analysis failed')
+      let analysisData: any = null
+      let durationMs = 0
+
+      if (!skipAnalysis) {
+        updateState({
+          phase: 'analyzing',
+          progress: 30,
+          message: 'Analyzing audio...',
+        })
+        
+        // Send path directly to phantom for analysis
+        const response = await chronos?.analyzeAudio({ filePath, fileName })
+        
+        if (!response?.success) {
+          throw new Error(response?.error || 'Analysis failed')
+        }
+        
+        analysisData = response.data
+        durationMs = response.data?.durationMs || 0
       }
       
       updateState({
@@ -388,8 +396,8 @@ export function useAudioLoaderPhantom(): UseAudioLoaderPhantomReturn {
         blobUrl, // 🎵 Real blob: URL, not file://
         realPath: filePath, // Actual filesystem path for saving
         fileSize: fileResponse.buffer.byteLength,
-        durationMs: response.data?.durationMs || 0,
-        analysisData: response.data,
+        durationMs,
+        analysisData,
       }
       
       updateState({

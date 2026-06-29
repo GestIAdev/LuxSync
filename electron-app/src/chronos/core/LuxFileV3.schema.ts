@@ -228,6 +228,38 @@ export function validateLuxFileV3(data: unknown): LuxValidationResult {
     errors.push('markers is not an array')
   }
 
+  // Analysis (nullable, embedded GodEar FFT)
+  if (data.analysis !== null && data.analysis !== undefined) {
+    if (!isObject(data.analysis)) {
+      warnings.push('analysis is not an object (will be ignored)')
+    } else {
+      const a = data.analysis
+      if (!isFiniteNumber(a.detectedBpm)) {
+        warnings.push('analysis missing detectedBpm')
+      }
+      if (!isFiniteNumber(a.bpmConfidence)) {
+        warnings.push('analysis missing bpmConfidence')
+      }
+      if (!isObject(a.heatmap)) {
+        warnings.push('analysis.heatmap is not an object (TitanEngine injection may fail)')
+      } else {
+        if (!Array.isArray(a.heatmap.energy)) {
+          warnings.push('analysis.heatmap.energy is not an array')
+        }
+        if (!isFiniteNumber(a.heatmap.resolutionMs)) {
+          warnings.push('analysis.heatmap missing resolutionMs')
+        }
+      }
+      if (!isObject(a.waveform)) {
+        warnings.push('analysis.waveform is not an object (UI waveform may fail)')
+      } else {
+        if (!Array.isArray(a.waveform.peaks)) {
+          warnings.push('analysis.waveform.peaks is not an array')
+        }
+      }
+    }
+  }
+
   // Checksum present
   if (!isNonEmptyString(data.checksum)) {
     warnings.push('Missing checksum (integrity cannot be verified)')

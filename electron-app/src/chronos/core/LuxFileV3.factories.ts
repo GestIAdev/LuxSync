@@ -28,7 +28,14 @@ import {
   type LuxTargetZone,
   type LuxMixBus,
   type VibeBaseV3,
+  type LuxAnalysisV3,
+  type LuxHeatmapV3,
+  type LuxWaveformV3,
+  type LuxSectionV3,
+  type LuxTransientV3,
+  type LuxTransientType,
 } from './LuxFileV3'
+import type { AnalysisData, HeatmapData, WaveformData, DetectedSection } from './types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ID GENERATION (deterministic, no Math.random)
@@ -311,5 +318,122 @@ export function createVibeBaseV3(
     intensity: overrides.intensity ?? 0.5,
     color: overrides.color ?? '#64748b',
     icon: overrides.icon ?? '🌙',
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ANALYSIS CONVERTER (AnalysisData → LuxAnalysisV3)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Convert a phantom worker's AnalysisData into an embeddable LuxAnalysisV3
+ * for persistence in the .lux file. All band arrays are preserved so the
+ * TitanEngine can inject real spectral data during playback without re-analysis.
+ */
+export function analysisDataToLuxAnalysisV3(data: AnalysisData): LuxAnalysisV3 {
+  const hm = data.energyHeatmap
+  const heatmap: LuxHeatmapV3 = {
+    resolutionMs: hm.resolutionMs,
+    energy: hm.energy,
+    bass: hm.bass,
+    high: hm.high,
+    flux: hm.flux,
+  }
+  if (hm.subBass) heatmap.subBass = hm.subBass
+  if (hm.bassReal) heatmap.bassReal = hm.bassReal
+  if (hm.lowMid) heatmap.lowMid = hm.lowMid
+  if (hm.mid) heatmap.mid = hm.mid
+  if (hm.highMid) heatmap.highMid = hm.highMid
+  if (hm.treble) heatmap.treble = hm.treble
+  if (hm.ultraAir) heatmap.ultraAir = hm.ultraAir
+  if (hm.spectralCentroid) heatmap.spectralCentroid = hm.spectralCentroid
+  if (hm.spectralFlatness) heatmap.spectralFlatness = hm.spectralFlatness
+
+  const waveform: LuxWaveformV3 = {
+    samplesPerSecond: data.waveform.samplesPerSecond,
+    peaks: data.waveform.peaks,
+    rms: data.waveform.rms,
+  }
+
+  const sections: LuxSectionV3[] = data.sections.map((s: DetectedSection) => ({
+    startMs: s.startMs,
+    endMs: s.endMs,
+    label: s.type,
+    energy: s.avgEnergy,
+  }))
+
+  const transients: LuxTransientV3[] = normalizeTransients(data.transients)
+
+  return {
+    detectedBpm: data.beatGrid.bpm,
+    bpmConfidence: data.beatGrid.confidence,
+    firstBeatMs: data.beatGrid.firstBeatMs,
+    beatGrid: data.beatGrid.beats ?? [],
+    sections,
+    transients,
+    heatmap,
+    waveform,
+  }
+}
+
+/**
+ * Normalize transient data from the phantom worker.
+ * The phantom returns either raw timestamps (number[]) or objects with
+ * { timeMs, strength }. We map both to LuxTransientV3[].
+ */
+function normalizeTransients(raw: unknown): LuxTransientV3[] {
+  if (!Array.isArray(raw)) return []
+  return raw.map((t: unknown): LuxTransientV3 => {
+    if (typeof t === 'number') {
+      return { timeMs: t, type: 'unknown' as LuxTransientType, intensity: 0.5 }
+    }
+    if (t !== null && typeof t === 'object') {
+      const obj = t as { timeMs?: number; strength?: number; intensity?: number; type?: string }
+      return {
+        timeMs: typeof obj.timeMs === 'number' ? obj.timeMs : 0,
+        type: (obj.type as LuxTransientType) ?? 'unknown',
+        intensity: typeof obj.strength === 'number'
+          ? obj.strength
+          : typeof obj.intensity === 'number'
+            ? obj.intensity
+            : 0.5,
+      }
+    }
+    return { timeMs: 0, type: 'unknown', intensity: 0 }
+  })
+}
+
+/**
+ * Reconstruct a HeatmapData from a LuxHeatmapV3 for TitanEngine injection.
+ * This is the reverse of the heatmap portion of analysisDataToLuxAnalysisV3.
+ */
+export function luxHeatmapToHeatmapData(hm: LuxHeatmapV3): HeatmapData {
+  const result: HeatmapData = {
+    resolutionMs: hm.resolutionMs,
+    energy: [...hm.energy],
+    bass: [...hm.bass],
+    high: [...hm.high],
+    flux: [...hm.flux],
+  }
+  if (hm.subBass) result.subBass = [...hm.subBass]
+  if (hm.bassReal) result.bassReal = [...hm.bassReal]
+  if (hm.lowMid) result.lowMid = [...hm.lowMid]
+  if (hm.mid) result.mid = [...hm.mid]
+  if (hm.highMid) result.highMid = [...hm.highMid]
+  if (hm.treble) result.treble = [...hm.treble]
+  if (hm.ultraAir) result.ultraAir = [...hm.ultraAir]
+  if (hm.spectralCentroid) result.spectralCentroid = [...hm.spectralCentroid]
+  if (hm.spectralFlatness) result.spectralFlatness = [...hm.spectralFlatness]
+  return result
+}
+
+/**
+ * Reconstruct a WaveformData from a LuxWaveformV3 for UI display.
+ */
+export function luxWaveformToWaveformData(wf: LuxWaveformV3): WaveformData {
+  return {
+    samplesPerSecond: wf.samplesPerSecond,
+    peaks: [...wf.peaks],
+    rms: [...wf.rms],
   }
 }

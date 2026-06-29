@@ -23,9 +23,11 @@
 
 import type { TimelineClip, FXClip } from './TimelineClip'
 import { getClipMixBus } from './TimelineClip'
-import type { ChronosProject as RuntimeProject } from './types'
-import { generateChronosId } from './types'
+import type { ChronosProjectV2, TimelineTrackV2 } from './types'
+import { createDefaultProjectV2, generateChronosId } from './types'
 import { normalizeTagsToCanonical } from '../../core/zones/ZoneMapper'
+import type { CanonicalZone } from '../../core/stage/ShowFileV2'
+import { CANONICAL_ZONES } from '../../core/zones/ZoneMapper'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PROJECT FILE FORMAT (.lux)
@@ -383,123 +385,114 @@ export function validateProject(project: LuxProject): { valid: boolean; errors: 
 export default LuxProject
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CONVERSION HELPERS (LuxProject ↔ ChronosProject)
+// 🌉 LUX ↔ CHRONOS V2 CONVERTERS
 // ═══════════════════════════════════════════════════════════════════════════
 //
 // These bridge the two project representations:
 //   LuxProject  = serializable .lux file (flat clip list, portable)
-//   RuntimeProject = in-memory editing model (multi-track, automation, analysis)
+//   ChronosProjectV2 = in-memory editing model (multi-track, automation, analysis)
 //
-// The clip type systems diverge intentionally:
-//   LuxProject uses TimelineClip = VibeClip | FXClip  (concrete, serializable)
-//   RuntimeProject uses TimelineClip<ClipData>  (generic, extensible)
-//
-// Conversion uses `any` at the clip boundary because these are two
-// independent type hierarchies. Runtime safety is guaranteed by the
-// fact that clips always carry their `type` discriminator.
+// FASE 7: V1 intermediate (ChronosProject 1.0.0) demolished.
+// Conversion is now direct: LuxProject ↔ ChronosProjectV2.
 // ═══════════════════════════════════════════════════════════════════════════
 
+const CANONICAL_ZONE_SET: ReadonlySet<string> = new Set(CANONICAL_ZONES)
+
+function normalizeZoneToV2(zone: string | null | undefined): CanonicalZone | 'global' {
+  if (!zone || zone === '*' || zone === 'all') return 'global'
+  if (CANONICAL_ZONE_SET.has(zone)) return zone as CanonicalZone
+  console.warn(`[luxToChronosV2] Unknown zone "${zone}" — mapping to 'global'`)
+  return 'global'
+}
+
 /**
- * Convert a LuxProject (file) into a runtime ChronosProject.
- * 
- * 🌍 WAVE 2543.3: Zone-aware track creation.
- * - Clips with zones data → routed to zone-{zone} tracks
- * - Legacy clips (fx1-fx4 trackIds) → routed to zone-all fallback
- * - Non-FX clips (audio, vibe) → dedicated structural tracks
+ * Convert a LuxProject (file) into a ChronosProjectV2 (runtime).
+ *
+ * FASE 7: Replaces the old luxToChronos → migrateProjectV1toV2 pipeline.
+ * Direct conversion — no V1 intermediate.
  */
-export function luxToChronos(lux: LuxProject): RuntimeProject {
+export function luxToChronosV2(lux: LuxProject): ChronosProjectV2 {
   const nowIso = new Date(lux.meta.modified || Date.now()).toISOString()
   const rawClips = lux.timeline?.clips || []
-  
-  // Group clips by their zone destination
-  const zoneTrackMap = new Map<string, { id: string; clips: any[] }>()
+
+  const zoneTrackMap = new Map<string, { id: string; clips: TimelineClip[] }>()
   const audioTrackId = generateChronosId()
-  const audioClips: any[] = []
-  
+  const audioClips: TimelineClip[] = []
+
   for (const c of rawClips) {
-    const clip = c as any
-    
-    // Non-FX clips go to a generic audio track
+    const clip = c as TimelineClip
+
     if (clip.type !== 'fx') {
-      audioClips.push({ ...clip, trackId: audioTrackId })
+      audioClips.push({ ...clip, trackId: audioTrackId } as TimelineClip)
       continue
     }
-    
-    // Determine zone target from clip data
-    // WAVE 2543.4: normalizeTagsToCanonical handles multi-zone arrays
-    // e.g. ['back', 'all-right'] → 'back-right'
-    let zoneKey = 'all' // fallback for legacy fx1-fx4 clips
+
+    let zoneKey = 'all'
     if (clip.zones && clip.zones.length > 0) {
       zoneKey = normalizeTagsToCanonical(clip.zones)
     }
-    
+
     const trackKey = `zone-${zoneKey}`
     if (!zoneTrackMap.has(trackKey)) {
       zoneTrackMap.set(trackKey, { id: generateChronosId(), clips: [] })
     }
-    const entry = zoneTrackMap.get(trackKey)!
-    entry.clips.push({ ...clip, trackId: entry.id })
+    zoneTrackMap.get(trackKey)!.clips.push({ ...clip, trackId: zoneTrackMap.get(trackKey)!.id } as TimelineClip)
   }
-  
-  // Build tracks array
-  const tracks: any[] = []
-  
-  // Audio/structural track (if there are non-FX clips)
+
+  const tracks: TimelineTrackV2[] = []
+
   if (audioClips.length > 0) {
     tracks.push({
       id: audioTrackId,
-      name: 'Timeline',
-      type: 'audio' as const,
-      enabled: true,
-      solo: false,
-      locked: false,
-      height: 120,
+      targetZone: 'global',
+      visualLabel: 'Timeline',
       color: '#6b7280',
       clips: audioClips,
       automation: [],
+      enabled: true,
+      solo: false,
+      locked: false,
       order: 0,
+      height: 120,
     })
   }
-  
-  // Zone tracks (one per zone destination found in clips)
+
   let order = tracks.length
   for (const [trackKey, { id, clips }] of zoneTrackMap) {
     const zoneName = trackKey.replace('zone-', '')
     tracks.push({
       id,
-      name: zoneName === 'all' ? 'ALL' : zoneName.toUpperCase(),
-      type: 'effect' as const,
-      targetZone: zoneName === 'all' ? undefined : zoneName,
-      enabled: true,
-      solo: false,
-      locked: false,
-      height: 60,
+      targetZone: normalizeZoneToV2(zoneName === 'all' ? 'global' : zoneName),
+      visualLabel: zoneName === 'all' ? 'ALL' : zoneName.toUpperCase(),
       color: '#22d3ee',
       clips,
       automation: [],
-      order: order++,
-    })
-  }
-  
-  // If no clips at all, create one empty zone-all track
-  if (tracks.length === 0) {
-    tracks.push({
-      id: generateChronosId(),
-      name: 'ALL',
-      type: 'effect' as const,
       enabled: true,
       solo: false,
       locked: false,
+      order: order++,
       height: 60,
+    })
+  }
+
+  if (tracks.length === 0) {
+    tracks.push({
+      id: generateChronosId(),
+      targetZone: 'global',
+      visualLabel: 'ALL',
       color: '#22d3ee',
       clips: [],
       automation: [],
+      enabled: true,
+      solo: false,
+      locked: false,
       order: 0,
+      height: 60,
     })
   }
 
   return {
-    version: '1.0.0',
+    version: '2.0.0',
     id: generateChronosId(),
     meta: {
       name: lux.meta.name || 'Imported Project',
@@ -529,14 +522,13 @@ export function luxToChronos(lux: LuxProject): RuntimeProject {
 }
 
 /**
- * Convert a runtime ChronosProject into a LuxProject for serialization.
+ * Convert a ChronosProjectV2 into a LuxProject for serialization.
  * Flattens all tracks into a single timeline.clips array.
  */
-export function chronosToLux(ch: RuntimeProject): LuxProject {
+export function chronosV2ToLux(ch: ChronosProjectV2): LuxProject {
   const metaNow = Date.now()
 
-  // Flatten all track clips into a single list
-  const clips: any[] = (ch.tracks || []).flatMap((t: any) => t.clips || [])
+  const clips: TimelineClip[] = (ch.tracks || []).flatMap(t => t.clips || [])
 
   return {
     meta: {
@@ -557,13 +549,13 @@ export function chronosToLux(ch: RuntimeProject): LuxProject {
         }
       : null,
     timeline: {
-      clips: clips as TimelineClip[],
+      clips,
       playheadMs: 0,
       viewportStartMs: 0,
       pixelsPerSecond: 100,
     },
     library: {
-      customEffects: extractHephEffects(clips as TimelineClip[]),
+      customEffects: extractHephEffects(clips),
       presets: [],
     },
   }

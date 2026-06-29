@@ -9,7 +9,7 @@
  *
  * ┌──────────────────────────────────────────────────────────────────────┐
  * │                                                                      │
- * │   LuxProject (.lux file)         ChronosProject (runtime)           │
+ * │   LuxProject (.lux file)         ChronosProjectV2 (runtime)          │
  * │   ════════════════════           ═══════════════════════             │
  * │   • Serialized to disk           • Lives in Zustand store           │
  * │   • Flat clip list               • Multi-track with clips           │
@@ -22,15 +22,15 @@
  * │                                  • GlobalAutomation                 │
  * │                                                                      │
  * │   Used by:                       Used by:                           │
- * │   • ChronosStore (save/load)     • chronosStore (Zustand)           │
+ * │   • ChronosStore (save/load)     • ChronosStoreV2 (state)           │
  * │   • TimelineEngine (playback)    • ChronosEngine (evaluation)       │
  * │   • useScenePlayer (Hyperion)    • ChronosLayout (editing UI)       │
  * │   • PlaybackIPCHandlers          • Automation system                │
  * │   • SceneBrowser                                                    │
  * │                                                                      │
  * │   Conversion:                                                        │
- * │   luxToChronos(lux) → ChronosProject                                │
- * │   chronosToLux(ch) → LuxProject                                     │
+ * │   luxToChronosV2(lux) → ChronosProjectV2                            │
+ * │   chronosV2ToLux(ch) → LuxProject                                   │
  * │                                                                      │
  * └──────────────────────────────────────────────────────────────────────┘
  *
@@ -69,18 +69,16 @@ export {
   serializeProject,
   deserializeProject,
   validateProject,
-  luxToChronos,
-  chronosToLux,
+  luxToChronosV2,
+  chronosV2ToLux,
 } from './ChronosProject'
 
-// ─── Runtime layer (in-memory document) ────────────────────────────────
+// ─── Runtime layer (in-memory document V2) ────────────────────────────
 export type {
-  ChronosProject,
+  ChronosProjectV2,
   ChronosProjectMeta,
   PlaybackConfig,
-  TimelineTrack,
-  TimelineClip,
-  ClipData,
+  TimelineTrackV2,
   AnalysisData,
   AutomationLane,
   AutomationPoint,
@@ -96,11 +94,9 @@ export type {
 
 export {
   generateChronosId,
-  createDefaultProject,
-  createDefaultTrack,
-  createEffectClip,
-  createAutomationPoint,
-  createAutomationLane,
+  createDefaultProjectV2,
+  createTrackV2,
+  generateTrackV2Label,
 } from './types'
 
 // ─── Clip layer (concrete clip types for .lux) ────────────────────────

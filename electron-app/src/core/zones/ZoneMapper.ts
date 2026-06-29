@@ -26,7 +26,7 @@
  *   - MasterArbiter.getFixtureIdsByZone() (DMX routing)
  *   - TitanOrchestrator.fixtureMatchesZone[Stereo]() (Selene live)
  *   - useHephPreview.resolveFixtures()    (Hephaestus radar)
- *   - ChronosProject.luxToChronos()       (track assignment)
+ *   - ChronosProject.luxToChronosV2()     (track assignment)
  *   - TimelineCanvas.generateZoneTracks() (Chronos UI)
  *
  * @module core/zones/ZoneMapper

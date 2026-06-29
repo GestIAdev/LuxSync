@@ -3,25 +3,19 @@
  * 🕰️ CHRONOS TYPES — THE RUNTIME DNA
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * WAVE 2001 → WAVE 2081 (M1 Unification)
+ * FASE 7: V1 types demolished. Only V2 and shared types remain.
  *
- * This file defines ChronosProject and all related types for the
- * IN-MEMORY editing model used by the Chronos editor UI, Zustand store,
- * ChronosEngine, and automation system.
+ * This file defines shared types for the IN-MEMORY editing model used by
+ * the Chronos editor UI, ChronosStoreV2, ChronosEngine, and automation system.
+ *
+ * V2 types: ChronosProjectV2, TimelineTrackV2 (with concrete TimelineClip).
+ * Shared types: Primitives, PlaybackConfig, Automation, Analysis, Context.
  *
  * This is NOT the serialized .lux format. For the file format, see
  * LuxProject in ./ChronosProject.ts.
  * For the architectural map and barrel imports, see ./ProjectTypes.ts.
  *
- * ARCHITECTURE:
- * - ChronosProject: Root runtime document (like an open .als in Ableton)
- * - TimelineTrack: Parallel content layers
- * - TimelineClip<T>: Generic positioned blocks with typed payloads
- * - AutomationLane: Bézier parameter curves
- * - AnalysisData: Pre-computed audio data (waveform, beats, sections)
- *
  * @module chronos/core/types
- * @version 2081.0.0
  */
 
 import type { EffectZone } from '../../core/effects/types'
@@ -51,43 +45,8 @@ export type ChronosId = string
 export type HexColor = string
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 📦 CHRONOS PROJECT (ROOT DOCUMENT)
+// 📦 CHRONOS PROJECT META (SHARED V2)
 // ═══════════════════════════════════════════════════════════════════════════
-
-// @deprecated DEMOLITION TARGET — V1 runtime model. Replaced by ChronosProjectV2.
-// This entire interface and all V1 types below it (TrackType, TimelineTrack, ClipType,
-// ClipData unions, createDefaultProject, createDefaultTrack) will be removed in Phase 7.
-/**
- * 📦 CHRONOS PROJECT (V1 — OBSOLETE)
- * 
- * Raíz del documento. Representa un proyecto de timeline completo.
- * Equivale a un archivo .chronos en disco.
- */
-export interface ChronosProject {
-  /** Versión del formato */
-  readonly version: '1.0.0'
-  
-  /** ID único del proyecto */
-  readonly id: ChronosId
-  
-  /** Metadata del proyecto */
-  meta: ChronosProjectMeta
-  
-  /** Configuración de playback */
-  playback: PlaybackConfig
-  
-  /** Datos de análisis del audio (si hay audio cargado) */
-  analysis: AnalysisData | null
-  
-  /** Tracks del proyecto */
-  tracks: TimelineTrack[]
-  
-  /** Automation lanes globales (master intensity, etc) */
-  globalAutomation: AutomationLane[]
-  
-  /** Markers del usuario */
-  markers: ChronosMarker[]
-}
 
 /**
  * Metadata del proyecto
@@ -158,279 +117,7 @@ export type SnapResolution = 'bar' | 'beat' | 'half-beat' | 'quarter-beat' | 'of
 export type ChronosOverrideMode = 'whisper' | 'full'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🎼 TIMELINE TRACKS
-// ═══════════════════════════════════════════════════════════════════════════
-
-// @deprecated DEMOLITION TARGET — V1 track type enum. V2 uses explicit zones, not track types.
-/**
- * Tipos de track disponibles
- */
-export type TrackType = 
-  | 'audio'       // Track de referencia de audio (solo visualización)
-  | 'vibe'        // Cambios de Vibe (ej: "Techno Club" → "Chill Lounge")
-  | 'effect'      // Disparos de efectos específicos
-  | 'intensity'   // Curva de intensidad global
-  | 'zone'        // Override de zonas
-  | 'color'       // Override de paleta de colores
-  | 'automation'  // Automation genérica de parámetros
-  | 'marker'      // Track de markers (solo lectura)
-
-// @deprecated DEMOLITION TARGET — V1 track. Replaced by TimelineTrackV2 with targetZone.
-/**
- * 🎼 TIMELINE TRACK (V1 — OBSOLETE)
- * 
- * Una capa paralela de contenido en el timeline.
- * Contiene clips del mismo tipo.
- */
-export interface TimelineTrack {
-  /** ID único */
-  readonly id: ChronosId
-
-  /** Nombre visible */
-  name: string
-
-  /** Tipo de track */
-  readonly type: TrackType
-
-  /**
-   * WAVE 2543.2: Diamond Data V2 — Physical routing destination.
-   * Decouples visual identity from DMX target.
-   * - 'all-pars'     → front + back + floor fixtures
-   * - 'all-movers'   → movers-left + movers-right
-   * - 'movers-left'  → left movers only
-   * - '*'            → all fixtures (global/wildcard)
-   * - undefined      → legacy track, engine resolves from clip.zones
-   */
-  targetZone?: string
-
-  /** ¿Track activa? (false = muted) */
-  enabled: boolean
-
-  /** ¿Track en solo? (solo esta track se reproduce) */
-  solo: boolean
-
-  /** ¿Track bloqueada? (no editable) */
-  locked: boolean
-
-  /** Altura de la track en UI (pixels) */
-  height: number
-
-  /** Color de la track (para UI) */
-  color: HexColor
-
-  /** Clips en esta track */
-  clips: TimelineClip[]
-
-  /** Automation lanes asociadas a esta track */
-  automation: AutomationLane[]
-
-  /** Orden de la track (para UI) */
-  order: number
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// 🧱 TIMELINE CLIPS (BLOQUES SEMÁNTICOS)
-// ═══════════════════════════════════════════════════════════════════════════
-
-// @deprecated DEMOLITION TARGET — V1 clip type enum. V3 clips reference HephAutomationClipV3.
-/**
- * Tipos de clip disponibles
- */
-export type ClipType = 
-  | 'vibe_change'
-  | 'effect_trigger'
-  | 'intensity_curve'
-  | 'zone_override'
-  | 'color_override'
-  | 'parameter_lock'
-
-/**
- * 🧱 TIMELINE CLIP (BASE)
- * 
- * Un bloque semántico posicionado en tiempo.
- * El campo `data` contiene el payload específico del tipo.
- */
-export interface TimelineClip<T extends ClipData = ClipData> {
-  /** ID único */
-  readonly id: ChronosId
-  
-  /** ID de la track padre */
-  readonly trackId: ChronosId
-  
-  /** Tipo de clip */
-  readonly type: ClipType
-  
-  /** Timestamp de inicio (ms) */
-  startMs: TimeMs
-  
-  /** Duración (ms) - 0 para eventos instantáneos */
-  durationMs: TimeMs
-  
-  /** Datos específicos del tipo */
-  data: T
-  
-  /** Easing de entrada */
-  easeIn: EasingType
-  
-  /** Easing de salida */
-  easeOut: EasingType
-  
-  /** ¿Es loop? (repite hasta el final del clip) */
-  loop: boolean
-  
-  /** Prioridad (mayor = override) */
-  priority: number
-  
-  /** ¿Clip habilitado? */
-  enabled: boolean
-  
-  /** Metadata visual */
-  meta: ClipMeta
-}
-
-/**
- * Metadata visual del clip
- */
-export interface ClipMeta {
-  /** Etiqueta visible */
-  label: string
-  
-  /** Color del clip (override del color de track) */
-  color?: HexColor
-  
-  /** Notas del usuario */
-  notes?: string
-}
-
-/**
- * Tipos de easing para transiciones
- */
-export type EasingType = 
-  | 'linear'
-  | 'step'
-  | 'ease-in'
-  | 'ease-out'
-  | 'ease-in-out'
-  | 'bezier'
-
-// ═══════════════════════════════════════════════════════════════════════════
-// 📝 CLIP DATA PAYLOADS (POLIMÓRFICOS)
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Unión de todos los tipos de datos de clip
- */
-export type ClipData = 
-  | VibeChangeData
-  | EffectTriggerData
-  | IntensityCurveData
-  | ZoneOverrideData
-  | ColorOverrideData
-  | ParameterLockData
-
-/**
- * Datos para cambio de Vibe
- */
-export interface VibeChangeData {
-  readonly type: 'vibe_change'
-  
-  /** ID del Vibe target */
-  vibeId: string
-  
-  /** Tipo de transición */
-  transition: 'cut' | 'fade'
-  
-  /** Duración de transición (ms) */
-  transitionMs: TimeMs
-}
-
-/**
- * Datos para disparo de efecto
- * 
- * NOTA: `progress` es controlado por Chronos durante playback/scrubbing.
- * En modo live, progress lo calcula el EffectManager basado en elapsedMs.
- * En modo Chronos, progress = (currentTime - startMs) / durationMs.
- */
-export interface EffectTriggerData {
-  readonly type: 'effect_trigger'
-  
-  /** ID del efecto (effectType del EffectManager) */
-  effectId: string
-  
-  /** Intensidad del disparo (0-1) */
-  intensity: NormalizedValue
-  
-  /** Velocidad del efecto (multiplier, 1.0 = normal) */
-  speed: number
-  
-  /** Zonas target (vacío = todas) */
-  zones: EffectZone[]
-  
-  /** ¿BPM sync? */
-  bpmSync: boolean
-  
-  /** Parámetros custom del efecto (override de defaults) */
-  params: Record<string, number | string | boolean>
-}
-
-/**
- * Datos para curva de intensidad
- */
-export interface IntensityCurveData {
-  readonly type: 'intensity_curve'
-  
-  /** Valor de intensidad (0-1) */
-  value: NormalizedValue
-  
-  /** Scope: master o zonas específicas */
-  scope: 'master' | EffectZone[]
-}
-
-/**
- * Datos para override de zonas
- */
-export interface ZoneOverrideData {
-  readonly type: 'zone_override'
-  
-  /** Zonas habilitadas (el resto se apaga) */
-  enabledZones: EffectZone[]
-  
-  /** ¿Blackout de zonas deshabilitadas? */
-  blackoutDisabled: boolean
-}
-
-/**
- * Datos para override de color
- */
-export interface ColorOverrideData {
-  readonly type: 'color_override'
-  
-  /** Paleta override */
-  palette: {
-    primary: HexColor
-    secondary: HexColor
-    accent: HexColor
-  }
-  
-  /** Lock de key musical */
-  keyLock: string | null
-}
-
-/**
- * Datos para lock de parámetro específico
- */
-export interface ParameterLockData {
-  readonly type: 'parameter_lock'
-  
-  /** Ruta del parámetro (ej: "selene.strategy") */
-  parameterPath: string
-  
-  /** Valor a lockear */
-  value: unknown
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// 🎚️ AUTOMATION LANES (CURVAS BÉZIER)
+// ️ AUTOMATION LANES (CURVAS BÉZIER)
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
@@ -879,38 +566,6 @@ export interface ChronosActiveEffect {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🛠️ UTILITY TYPES
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Crea un tipo de clip tipado con su data
- */
-export type TypedClip<T extends ClipType> = TimelineClip<
-  T extends 'vibe_change' ? VibeChangeData :
-  T extends 'effect_trigger' ? EffectTriggerData :
-  T extends 'intensity_curve' ? IntensityCurveData :
-  T extends 'zone_override' ? ZoneOverrideData :
-  T extends 'color_override' ? ColorOverrideData :
-  T extends 'parameter_lock' ? ParameterLockData :
-  never
->
-
-/**
- * Partial update de un clip (para edición)
- */
-export type ClipUpdate = Partial<Omit<TimelineClip, 'id' | 'trackId' | 'type'>>
-
-/**
- * Partial update de una track
- */
-export type TrackUpdate = Partial<Omit<TimelineTrack, 'id' | 'type' | 'clips'>>
-
-/**
- * Partial update de un punto de automation
- */
-export type AutomationPointUpdate = Partial<Omit<AutomationPoint, 'id'>>
-
-// ═══════════════════════════════════════════════════════════════════════════
 // 🏭 FACTORY HELPERS
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -937,157 +592,13 @@ export function generateChronosId(): ChronosId {
 // Monotonic counter used by fallback path
 let generateChronosIdCounter = 0
 
-// @deprecated DEMOLITION TARGET — V1 factory. Use createDefaultProjectV2 instead.
-/**
- * Crea un proyecto vacío por defecto
- */
-export function createDefaultProject(name: string = 'Untitled'): ChronosProject {
-  const now = new Date().toISOString()
-  
-  return {
-    version: '1.0.0',
-    id: generateChronosId(),
-    meta: {
-      name,
-      description: '',
-      audioPath: null,
-      durationMs: 180000, // 3 minutos default
-      bpm: 120,
-      timeSignature: 4,
-      key: null,
-      createdAt: now,
-      modifiedAt: now,
-      audioHash: null,
-    },
-    playback: {
-      loop: false,
-      loopRegion: null,
-      snapToBeat: true,
-      snapResolution: 'beat',
-      overrideMode: 'whisper',
-      latencyCompensationMs: 10,
-    },
-    analysis: null,
-    tracks: [],
-    globalAutomation: [],
-    markers: [],
-  }
-}
-
-// @deprecated DEMOLITION TARGET — V1 track factory. Use createTrackV2 instead.
-/**
- * Crea una track vacía
- */
-export function createDefaultTrack(
-  type: TrackType, 
-  name?: string,
-  order: number = 0
-): TimelineTrack {
-  const trackColors: Record<TrackType, HexColor> = {
-    audio: '#64748b',
-    vibe: '#8b5cf6',
-    effect: '#22d3ee',
-    intensity: '#f59e0b',
-    zone: '#10b981',
-    color: '#ec4899',
-    automation: '#6366f1',
-    marker: '#94a3b8',
-  }
-  
-  return {
-    id: generateChronosId(),
-    name: name ?? `${type.charAt(0).toUpperCase() + type.slice(1)} Track`,
-    type,
-    enabled: true,
-    solo: false,
-    locked: false,
-    height: type === 'automation' ? 80 : 60,
-    color: trackColors[type],
-    clips: [],
-    automation: [],
-    order,
-  }
-}
-
-/**
- * Crea un clip de efecto
- */
-export function createEffectClip(
-  trackId: ChronosId,
-  effectId: string,
-  startMs: TimeMs,
-  durationMs: TimeMs,
-  intensity: NormalizedValue = 1.0
-): TimelineClip<EffectTriggerData> {
-  return {
-    id: generateChronosId(),
-    trackId,
-    type: 'effect_trigger',
-    startMs,
-    durationMs,
-    data: {
-      type: 'effect_trigger',
-      effectId,
-      intensity,
-      speed: 1.0,
-      zones: [],
-      bpmSync: true,
-      params: {},
-    },
-    easeIn: 'linear',
-    easeOut: 'linear',
-    loop: false,
-    priority: 0,
-    enabled: true,
-    meta: {
-      label: effectId,
-    },
-  }
-}
-
-/**
- * Crea un punto de automation
- */
-export function createAutomationPoint(
-  timeMs: TimeMs,
-  value: NormalizedValue,
-  interpolation: InterpolationType = 'linear'
-): AutomationPoint {
-  return {
-    id: generateChronosId(),
-    timeMs,
-    value,
-    interpolation,
-  }
-}
-
-/**
- * Crea una lane de automation
- */
-export function createAutomationLane(
-  target: AutomationTarget,
-  name?: string
-): AutomationLane {
-  return {
-    id: generateChronosId(),
-    name: name ?? target,
-    target,
-    range: { min: 0, max: 1 },
-    points: [],
-    enabled: true,
-    defaultValue: target.includes('intensity') ? 1.0 : 0.5,
-    color: '#7c4dff',
-  }
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 // 🔥 WAVE 2547: TIMELINE V2 — INFINITE EXPLICIT TRACKS
-// BASE FOR V3 RECONSTRUCTION — TimelineTrackV2.targetZone is correct.
-// Clips (TimelineClip + ClipType + ClipData) below are still V1 and will be
-// replaced with HephAutomationClipV3 references in Phase 4.
+// FASE 7: V1 types demolished. Clips use concrete TimelineClip from TimelineClip.ts.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import type { CanonicalZone } from '../../core/stage/ShowFileV2'
+import type { TimelineClip as ConcreteTimelineClip } from './TimelineClip'
 
 /**
  * 🔥 WAVE 2547: Track explícita e independiente.
@@ -1123,7 +634,7 @@ export interface TimelineTrackV2 {
    * Clips en esta track — propiedad exclusiva.
    * Un clip pertenece a exactamente una track.
    */
-  clips: TimelineClip[]
+  clips: ConcreteTimelineClip[]
 
   /** Automation lanes locales a esta track */
   automation: AutomationLane[]

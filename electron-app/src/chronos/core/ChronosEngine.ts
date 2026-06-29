@@ -28,15 +28,14 @@ import type {
   ChronosContext,
   ChronosOverrideMode,
   ChronosActiveEffect,
-  TimelineClip,
   AutomationLane,
   AutomationPoint,
   AutomationTarget,
-  EffectTriggerData,
   // WAVE 2550: V2 types
   ChronosProjectV2,
   TimelineTrackV2,
 } from './types'
+import type { TimelineClip, FXClip } from './TimelineClip'
 
 import type { EffectZone } from '../../core/effects/types'
 import type { ClockSourceType } from './ClockSource'
@@ -160,12 +159,9 @@ class ClipBoundaryIndexV2 {
 
       for (let ci = 0; ci < track.clips.length; ci++) {
         const clip = track.clips[ci]
-        if (!clip.enabled) continue
 
         const startMs = clip.startMs
-        const endMs = clip.durationMs === 0
-          ? clip.startMs + 16
-          : clip.startMs + clip.durationMs
+        const endMs = clip.endMs
 
         this.clipEntries.push({ clip, track, startMs, endMs })
         this.boundaries.push({ timeMs: startMs, clipId: clip.id, trackIndex: ti, clipIndex: ci, type: 'start' })
@@ -197,8 +193,8 @@ class ClipBoundaryIndexV2 {
     for (const entry of this.clipEntries) {
       if (entry.startMs > timeMs) break
 
-      if (entry.clip.durationMs === 0) {
-        if (Math.abs(timeMs - entry.clip.startMs) < 16) {
+      if (entry.startMs === entry.endMs) {
+        if (Math.abs(timeMs - entry.startMs) < 16) {
           active.push({ clip: entry.clip, track: entry.track })
           activeClips.push(entry.clip)
         }
@@ -208,7 +204,6 @@ class ClipBoundaryIndexV2 {
       }
     }
 
-    active.sort((a, b) => b.clip.priority - a.clip.priority)
     this.cachedActiveClips = activeClips
     this.lastQueryTimeMs = timeMs
     return active
@@ -1076,9 +1071,9 @@ export class ChronosEngine {
     const activeEffects: ChronosActiveEffect[] = []
 
     for (const { clip, track } of activeWithTracks) {
-      if (clip.type !== 'effect_trigger') continue
+      if (clip.type !== 'fx') continue
 
-      const data = clip.data as EffectTriggerData
+      const fxClip = clip as FXClip
       const progress = this.calculateClipProgress(clip, timeMs)
 
       // WAVE 2550: Zone routing comes from the track, not the clip.
@@ -1087,13 +1082,13 @@ export class ChronosEngine {
         track.targetZone === 'global' ? 'all' : track.targetZone
 
       activeEffects.push({
-        effectId: data.effectId,
+        effectId: fxClip.fxType,
         progress,
-        intensity: data.intensity,
-        speed: data.speed,
+        intensity: (fxClip.params?.intensity as number) ?? 1.0,
+        speed: (fxClip.params?.speed as number) ?? 1.0,
         // If the clip has explicit zone overrides, merge them; otherwise use track zone.
-        zones: data.zones.length > 0 ? data.zones : [trackZone],
-        params: data.params,
+        zones: fxClip.zones && fxClip.zones.length > 0 ? fxClip.zones as EffectZone[] : [trackZone],
+        params: fxClip.params ?? {},
         sourceClipId: clip.id,
       })
     }
@@ -1127,15 +1122,11 @@ export class ChronosEngine {
   }
 
   private calculateClipProgress(clip: TimelineClip, timeMs: TimeMs): NormalizedValue {
-    if (clip.durationMs === 0) return 1 // Instantáneo
+    const durationMs = clip.endMs - clip.startMs
+    if (durationMs === 0) return 1 // Instantáneo
     
     const elapsed = timeMs - clip.startMs
-    let progress = elapsed / clip.durationMs
-    
-    // Handle loop
-    if (clip.loop && progress > 1) {
-      progress = progress % 1
-    }
+    const progress = elapsed / durationMs
     
     return Math.max(0, Math.min(1, progress))
   }

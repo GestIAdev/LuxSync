@@ -1,21 +1,18 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 📐 WAVE 2081: PROJECT TYPES UNIFICATION TESTS
+ * 📐 FASE 7: PROJECT TYPES V2 TESTS
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * Suite 8: ProjectTypes — Barrel exports, conversion roundtrip, type integrity
- *
  * Tests that:
- * 1. ProjectTypes.ts barrel re-exports everything correctly
- * 2. luxToChronos converts a LuxProject to a valid ChronosProject
- * 3. chronosToLux converts a ChronosProject to a valid LuxProject
+ * 1. ProjectTypes.ts barrel re-exports V2 types and functions correctly
+ * 2. luxToChronosV2 converts a LuxProject to a valid ChronosProjectV2
+ * 3. chronosV2ToLux converts a ChronosProjectV2 to a valid LuxProject
  * 4. Roundtrip preserves essential data (name, audio, duration, clips)
  * 5. Edge cases: no audio, no clips, missing fields
  *
  * AXIOMA ANTI-SIMULACIÓN: Zero Math.random(). All data deterministic.
  *
  * @module chronos/__tests__/ProjectTypes
- * @version WAVE 2081
  */
 
 import { describe, test, expect } from 'vitest'
@@ -29,22 +26,19 @@ import {
   serializeProject,
   deserializeProject,
   validateProject,
-  luxToChronos,
-  chronosToLux,
+  luxToChronosV2,
+  chronosV2ToLux,
   // Runtime layer
   generateChronosId,
-  createDefaultProject,
-  createDefaultTrack,
-  createEffectClip,
-  createAutomationLane,
-  createAutomationPoint,
+  createDefaultProjectV2,
+  createTrackV2,
 } from '../core/ProjectTypes'
 
 // Direct imports for type verification
 import type {
   LuxProject,
-  ChronosProject,
   ProjectMeta,
+  ChronosProjectV2,
   ChronosProjectMeta,
 } from '../core/ProjectTypes'
 
@@ -52,7 +46,7 @@ import type {
 // 📐 TESTS
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('📐 ProjectTypes — M1 Unification', () => {
+describe('📐 ProjectTypes — FASE 7 V2', () => {
 
   // ─────────────────────────────────────────────────────────────────────
   // BARREL EXPORTS
@@ -64,17 +58,14 @@ describe('📐 ProjectTypes — M1 Unification', () => {
       expect(typeof serializeProject).toBe('function')
       expect(typeof deserializeProject).toBe('function')
       expect(typeof validateProject).toBe('function')
-      expect(typeof luxToChronos).toBe('function')
-      expect(typeof chronosToLux).toBe('function')
+      expect(typeof luxToChronosV2).toBe('function')
+      expect(typeof chronosV2ToLux).toBe('function')
     })
 
     test('Runtime layer exports are functions', () => {
       expect(typeof generateChronosId).toBe('function')
-      expect(typeof createDefaultProject).toBe('function')
-      expect(typeof createDefaultTrack).toBe('function')
-      expect(typeof createEffectClip).toBe('function')
-      expect(typeof createAutomationLane).toBe('function')
-      expect(typeof createAutomationPoint).toBe('function')
+      expect(typeof createDefaultProjectV2).toBe('function')
+      expect(typeof createTrackV2).toBe('function')
     })
 
     test('Constants are correct', () => {
@@ -84,16 +75,16 @@ describe('📐 ProjectTypes — M1 Unification', () => {
   })
 
   // ─────────────────────────────────────────────────────────────────────
-  // luxToChronos
+  // luxToChronosV2
   // ─────────────────────────────────────────────────────────────────────
 
-  describe('🔄 luxToChronos', () => {
-    test('Converts empty LuxProject to ChronosProject', () => {
+  describe('🔄 luxToChronosV2', () => {
+    test('Converts empty LuxProject to ChronosProjectV2', () => {
       const lux = createEmptyProject('Test Lux')
-      const ch = luxToChronos(lux)
+      const ch = luxToChronosV2(lux)
 
       // Root shape
-      expect(ch.version).toBe('1.0.0')
+      expect(ch.version).toBe('2.0.0')
       expect(ch.id).toMatch(/^chr_/)
       expect(ch.meta.name).toBe('Test Lux')
       expect(ch.tracks).toHaveLength(1)
@@ -114,7 +105,7 @@ describe('📐 ProjectTypes — M1 Unification', () => {
         checksum: 'abc123',
       }
 
-      const ch = luxToChronos(lux)
+      const ch = luxToChronosV2(lux)
 
       expect(ch.meta.audioPath).toBe('/music/track.mp3')
       expect(ch.meta.bpm).toBe(128)
@@ -123,13 +114,13 @@ describe('📐 ProjectTypes — M1 Unification', () => {
 
     test('Preserves project name', () => {
       const lux = createEmptyProject('My Show')
-      const ch = luxToChronos(lux)
+      const ch = luxToChronosV2(lux)
       expect(ch.meta.name).toBe('My Show')
     })
 
     test('Converts timestamps to ISO strings', () => {
       const lux = createEmptyProject('Time Test')
-      const ch = luxToChronos(lux)
+      const ch = luxToChronosV2(lux)
 
       expect(ch.meta.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/)
       expect(ch.meta.modifiedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/)
@@ -137,7 +128,7 @@ describe('📐 ProjectTypes — M1 Unification', () => {
 
     test('Creates default playback config', () => {
       const lux = createEmptyProject('Playback Test')
-      const ch = luxToChronos(lux)
+      const ch = luxToChronosV2(lux)
 
       expect(ch.playback.loop).toBe(false)
       expect(ch.playback.snapToBeat).toBe(true)
@@ -149,20 +140,20 @@ describe('📐 ProjectTypes — M1 Unification', () => {
       const lux = createEmptyProject('No Audio')
       lux.audio = null
 
-      const ch = luxToChronos(lux)
+      const ch = luxToChronosV2(lux)
       expect(ch.meta.audioPath).toBeNull()
       expect(ch.meta.audioHash).toBeNull()
     })
   })
 
   // ─────────────────────────────────────────────────────────────────────
-  // chronosToLux
+  // chronosV2ToLux
   // ─────────────────────────────────────────────────────────────────────
 
-  describe('🔄 chronosToLux', () => {
-    test('Converts empty ChronosProject to LuxProject', () => {
-      const ch = createDefaultProject('Test Chronos')
-      const lux = chronosToLux(ch)
+  describe('🔄 chronosV2ToLux', () => {
+    test('Converts empty ChronosProjectV2 to LuxProject', () => {
+      const ch = createDefaultProjectV2('Test Chronos')
+      const lux = chronosV2ToLux(ch)
 
       expect(lux.meta.version).toBe(PROJECT_VERSION)
       expect(lux.meta.name).toBe('Test Chronos')
@@ -172,11 +163,11 @@ describe('📐 ProjectTypes — M1 Unification', () => {
     })
 
     test('Preserves audio path into ProjectAudio', () => {
-      const ch = createDefaultProject('Audio Export')
+      const ch = createDefaultProjectV2('Audio Export')
       ch.meta.audioPath = '/music/export.wav'
       ch.meta.bpm = 140
 
-      const lux = chronosToLux(ch)
+      const lux = chronosV2ToLux(ch)
 
       expect(lux.audio).not.toBeNull()
       expect(lux.audio!.path).toBe('/music/export.wav')
@@ -184,16 +175,16 @@ describe('📐 ProjectTypes — M1 Unification', () => {
     })
 
     test('Null audioPath produces null audio', () => {
-      const ch = createDefaultProject('No Audio')
+      const ch = createDefaultProjectV2('No Audio')
       ch.meta.audioPath = null
 
-      const lux = chronosToLux(ch)
+      const lux = chronosV2ToLux(ch)
       expect(lux.audio).toBeNull()
     })
 
     test('Timestamps are numeric (epoch ms)', () => {
-      const ch = createDefaultProject('Timestamp Test')
-      const lux = chronosToLux(ch)
+      const ch = createDefaultProjectV2('Timestamp Test')
+      const lux = chronosV2ToLux(ch)
 
       expect(typeof lux.meta.created).toBe('number')
       expect(typeof lux.meta.modified).toBe('number')
@@ -206,7 +197,7 @@ describe('📐 ProjectTypes — M1 Unification', () => {
   // ─────────────────────────────────────────────────────────────────────
 
   describe('🔁 Roundtrip Integrity', () => {
-    test('LuxProject → ChronosProject → LuxProject preserves name', () => {
+    test('LuxProject → ChronosProjectV2 → LuxProject preserves name', () => {
       const original = createEmptyProject('Roundtrip Test')
       original.audio = {
         name: 'beat.mp3',
@@ -216,21 +207,21 @@ describe('📐 ProjectTypes — M1 Unification', () => {
         durationMs: 180000,
       }
 
-      const chronos = luxToChronos(original)
-      const backToLux = chronosToLux(chronos)
+      const chronos = luxToChronosV2(original)
+      const backToLux = chronosV2ToLux(chronos)
 
       expect(backToLux.meta.name).toBe('Roundtrip Test')
       expect(backToLux.audio!.path).toBe('/audio/beat.mp3')
       expect(backToLux.audio!.bpm).toBe(130)
     })
 
-    test('ChronosProject → LuxProject → ChronosProject preserves name', () => {
-      const original = createDefaultProject('Reverse Roundtrip')
+    test('ChronosProjectV2 → LuxProject → ChronosProjectV2 preserves name', () => {
+      const original = createDefaultProjectV2('Reverse Roundtrip')
       original.meta.audioPath = '/test/audio.wav'
       original.meta.bpm = 145
 
-      const lux = chronosToLux(original)
-      const backToChronos = luxToChronos(lux)
+      const lux = chronosV2ToLux(original)
+      const backToChronos = luxToChronosV2(lux)
 
       expect(backToChronos.meta.name).toBe('Reverse Roundtrip')
       expect(backToChronos.meta.audioPath).toBe('/test/audio.wav')

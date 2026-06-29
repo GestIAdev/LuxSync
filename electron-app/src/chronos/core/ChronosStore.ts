@@ -1,5 +1,4 @@
-// PHASE 4 UPDATE TARGET — luxToChronos() produces V1 ChronosProject; must produce V2.
-// The .lux format already contains HephAutomationClipV3 via FXClip.hephClip.
+// FASE 7: V1 luxToChronos demolished — ChronosStoreV2 uses luxToChronosV2 directly.
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 💾 CHRONOS STORE - WAVE 2014: THE MEMORY CORE
@@ -25,7 +24,6 @@ import {
   deserializeProject,
   validateProject,
   PROJECT_EXTENSION,
-  luxToChronos,
 } from './ChronosProject'
 import type { TimelineClip } from './TimelineClip'
 
@@ -740,7 +738,15 @@ import {
   createTrackV2,
   generateChronosId,
 } from './types'
-import { migrateProjectV1toV2, detectProjectVersion } from './migration'
+import { luxToChronosV2 } from './ChronosProject'
+
+function detectProjectVersion(raw: unknown): '2.0.0' | 'lux' | null {
+  if (!raw || typeof raw !== 'object') return null
+  const obj = raw as Record<string, any>
+  if (obj.version === '2.0.0') return '2.0.0'
+  if (obj.meta?.version && obj.timeline?.clips) return 'lux'
+  return null
+}
 
 /**
  * 🔥 WAVE 2547: Store V2
@@ -862,27 +868,24 @@ export class ChronosStoreV2 {
     const version = detectProjectVersion(raw)
 
     if (version === '2.0.0') {
-      // Direct load — TODO: add schema validation for V2 once settled
       this.project = raw as ChronosProjectV2
       this.emit('project-loaded', { project: this.project })
       console.log(`[ChronosStoreV2] Loaded V2: "${this.project.meta.name}"`)
       return { success: true }
     }
 
-    if (version === '1.0.0') {
+    if (version === 'lux') {
       const lux = deserializeProject(json)
       if (!lux) {
-        return { success: false, error: 'Failed to deserialize V1 project' }
+        return { success: false, error: 'Failed to deserialize .lux project' }
       }
-      const v1 = luxToChronos(lux)
-      const migrated = migrateProjectV1toV2(v1)
-      this.project = migrated
+      this.project = luxToChronosV2(lux)
       this.emit('project-loaded', { project: this.project })
-      console.log(`[ChronosStoreV2] Migrated V1 => V2: "${this.project.meta.name}"`)
+      console.log(`[ChronosStoreV2] Converted .lux => V2: "${this.project.meta.name}"`)
       return { success: true }
     }
 
-    return { success: false, error: `Unknown project version: ${(raw as any)?.version}` }
+    return { success: false, error: `Unknown project format: ${(raw as any)?.version ?? 'no version field'}` }
   }
 
   private async _loadFromBrowserInput(): Promise<{ success: boolean; error?: string }> {
@@ -1030,15 +1033,15 @@ export class ChronosStoreV2 {
    */
   addClip(
     trackId: string,
-    clipData: Omit<import('./types').TimelineClip, 'id' | 'trackId'>
-  ): import('./types').TimelineClip {
+    clipData: Omit<import('./TimelineClip').TimelineClip, 'id' | 'trackId'>
+  ): import('./TimelineClip').TimelineClip {
     const track = this._findTrack(trackId)
     if (!track) throw new Error(`[ChronosStoreV2] addClip: track "${trackId}" not found`)
-    const clip: import('./types').TimelineClip = {
+    const clip: import('./TimelineClip').TimelineClip = {
       ...clipData,
       id: generateChronosId(),
       trackId,
-    }
+    } as import('./TimelineClip').TimelineClip
     this.project.tracks = this.project.tracks.map(t =>
       t.id === trackId ? { ...t, clips: [...t.clips, clip] } : t
     )
@@ -1052,7 +1055,7 @@ export class ChronosStoreV2 {
    * Busca el clip en cualquier track, lo mueve actualizando trackId.
    */
   moveClipToTrack(clipId: string, targetTrackId: string): void {
-    let movedClip: import('./types').TimelineClip | null = null
+    let movedClip: import('./TimelineClip').TimelineClip | null = null
 
     const tracks = this.project.tracks.map(t => {
       const idx = t.clips.findIndex(c => c.id === clipId)

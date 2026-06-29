@@ -41,13 +41,4 @@ export const DEFAULT_SIMULATION_META = Object.freeze({
         minimumEnergy: null,
     }),
 });
-// ─── TYPE GUARDS ────────────────────────────────────────────────────────────
-/** Type guard de runtime: ¿el clip tiene bloque cognitivo? */
-export function hasCognitiveDNA(clip) {
-    return clip.clip.cognitiveDNA != null;
-}
-/** Type guard: ¿es un clip elegible para Selene IA? */
-export function isSeleneEligible(clip) {
-    return clip.clip.effectType === 'heph_custom' && hasCognitiveDNA(clip);
-}
 // `HephTrackV3` se declara arriba como alias de `HephTrack` (WAVE 4856).

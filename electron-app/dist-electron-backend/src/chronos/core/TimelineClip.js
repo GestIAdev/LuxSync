@@ -12,7 +12,6 @@
  * @module chronos/core/TimelineClip
  * @version WAVE 2006 / WAVE 2030.4 (Hephaestus Integration)
  */
-import { getEffectById } from './EffectRegistry'; // WAVE 2040.21b: Registry lookup for Core FX colors
 /**
  * WAVE 2040.17 P6: Set of valid FXType values for runtime validation.
  * Used to safely convert unknown strings (from Recorder, D&D, etc.)
@@ -117,12 +116,6 @@ export function createVibeClip(vibeType, startMs, durationMs, trackId) {
 export function createFXClip(fxType, startMs, durationMs, trackId, effectId) {
     let color = FX_COLORS[fxType] || '#666666';
     let label = fxType.toUpperCase().replace('-', ' ');
-    if (effectId) {
-        const effect = getEffectById(effectId);
-        if (effect) {
-            label = effect.displayName;
-        }
-    }
     return {
         id: generateClipId(),
         type: 'fx',

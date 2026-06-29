@@ -32,11 +32,14 @@
  * @version WAVE 2013.5
  */
 
+import type { HephAutomationClipV3 } from '../../core/hephaestus/types'
+import { MIXBUS_CLIP_COLORS } from './TimelineClip'
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 
-export type RecordedClipType = 'vibe'
+export type RecordedClipType = 'vibe' | 'fx'
 
 export interface RecordedClip {
   /** Unique ID */
@@ -45,7 +48,7 @@ export interface RecordedClip {
   /** Clip type */
   clipType: RecordedClipType
   
-  /** Vibe type ID */
+  /** Vibe type ID or FX effect ID */
   effectId: string
   
   /** Effect display name */
@@ -68,6 +71,16 @@ export interface RecordedClip {
   
   /** Track ID where this clip belongs */
   trackId: string
+  
+  // ── FX-only fields (optional, only for clipType === 'fx') ──
+  /** Diamond Data: embedded HephAutomationClipV3 for self-contained FX */
+  hephClip?: HephAutomationClipV3
+  /** Reference to .lfx file path (optional, for library lookup) */
+  hephFilePath?: string
+  /** Target zones for the FX clip */
+  zones?: string[]
+  /** Blend priority */
+  priority?: number
 }
 
 export interface RecorderState {
@@ -387,6 +400,54 @@ export class ChronosRecorder {
     this.state.activeVibeClipId = clip.id
     
     console.log(`🔴 [ChronosRecorder] Recorded Vibe: ${displayName} at ${startMs}ms (LATCH OPEN)`)
+    this.emit('clip-added', { clip })
+    
+    return clip
+  }
+  
+  /**
+   * ⬡ FASE 6: Record an FX clip at current playhead position.
+   * FX clips have fixed duration (from the .lfx file) and don't grow.
+   * The HephAutomationClipV3 (Diamond Data) is embedded directly.
+   */
+  recordFX(
+    hephClip: HephAutomationClipV3,
+    hephFilePath: string,
+    displayName: string,
+    defaultDurationMs: number,
+    zones?: string[],
+    priority?: number,
+  ): RecordedClip | null {
+    if (!this.state.isRecording) {
+      console.warn('[ChronosRecorder] Cannot record FX - not in recording mode')
+      return null
+    }
+    
+    const startMs = this.snapToGrid(this.state.playheadMs)
+    const mixBus = hephClip.mixBus ?? 'htp'
+    const color = MIXBUS_CLIP_COLORS[mixBus] ?? '#ff6b2b'
+    
+    const clip: RecordedClip = {
+      id: `rec-fx-${hephClip.id}-${Date.now()}`,
+      clipType: 'fx',
+      effectId: hephClip.id,
+      displayName,
+      startMs,
+      durationMs: defaultDurationMs,
+      color,
+      icon: '⬡',
+      recordedAt: Date.now(),
+      trackId: `zone-${zones?.[0] ?? 'all'}`,
+      hephClip,
+      hephFilePath,
+      zones,
+      priority,
+    }
+    
+    this.state.clips.push(clip)
+    this.state.recordCount++
+    
+    console.log(`🔴 [ChronosRecorder] Recorded FX: ${displayName} at ${startMs}ms (${defaultDurationMs}ms, mixBus: ${mixBus})`)
     this.emit('clip-added', { clip })
     
     return clip

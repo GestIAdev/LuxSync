@@ -69,7 +69,7 @@ import { useOverrideStore } from '../../stores/overrideStore'
 import type { ChronosProjectV3 } from '../core/LuxFileV3'
 import type { AnalysisData } from '../core/types'
 import type { DragPayload, TimelineClip, FXClip } from '../core/TimelineClip'
-import { toVibeType, extractVisualKeyframes } from '../core/TimelineClip'
+import { toVibeType, extractVisualKeyframes, createHephFXClip } from '../core/TimelineClip'
 import type { HephAutomationClipV3 } from '../../core/hephaestus/types'
 // 🔧 WAVE 2044: Navigation store for Hephaestus routing
 import { useNavigationStore } from '../../stores/navigationStore'
@@ -776,24 +776,40 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
   useEffect(() => {
     const handleClipRecorded = (data: { clip: RecordedClip }) => {
       const clip = data.clip
-      console.log(`[ChronosLayout] Recorded clip received:`, clip.displayName)
+      console.log(`[ChronosLayout] Recorded clip received:`, clip.displayName, `(${clip.clipType})`)
       
-      const timelineClip: TimelineClip = {
-        id: clip.id,
-        type: 'vibe',
-        label: clip.displayName,
-        startMs: clip.startMs,
-        endMs: clip.startMs + clip.durationMs,
-        color: clip.color || '#FF6B35',
-        trackId: clip.trackId,
-        locked: false,
-        vibeType: toVibeType(clip.effectId),
-        intensity: 1.0,
-        fadeInMs: 500,
-        fadeOutMs: 500,
+      if (clip.clipType === 'fx') {
+        // ⬡ FASE 6: FX clip — create FXClip with embedded Diamond Data
+        const timelineClip: FXClip = createHephFXClip(
+          clip.displayName,
+          clip.hephFilePath ?? '',
+          clip.startMs,
+          clip.durationMs,
+          clip.trackId,
+          clip.hephClip?.effectType ?? 'heph-custom',
+          clip.hephClip,
+          clip.zones,
+          clip.priority,
+        )
+        clipState.addClip(timelineClip as unknown as TimelineClip)
+      } else {
+        // 🎭 Vibe clip — create VibeClip (existing path)
+        const timelineClip: TimelineClip = {
+          id: clip.id,
+          type: 'vibe',
+          label: clip.displayName,
+          startMs: clip.startMs,
+          endMs: clip.startMs + clip.durationMs,
+          color: clip.color || '#FF6B35',
+          trackId: clip.trackId,
+          locked: false,
+          vibeType: toVibeType(clip.effectId),
+          intensity: 1.0,
+          fadeInMs: 500,
+          fadeOutMs: 500,
+        }
+        clipState.addClip(timelineClip)
       }
-      
-      clipState.addClip(timelineClip)
     }
     
     // 🎹 WAVE 2012: Handle clip updates (Latch Mode duration changes)

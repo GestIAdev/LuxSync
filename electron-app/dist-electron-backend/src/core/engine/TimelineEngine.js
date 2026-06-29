@@ -90,8 +90,23 @@ export class TimelineEngine {
                 this.processVibeClip(vibeClip, timeMs);
             }
         }
-        if (!hasActiveVibe && this.currentPlaybackVibeId) {
-            this.currentPlaybackVibeId = null;
+        // ── FASE 5: WHISPER FALLBACK ──
+        // When no VibeClip is active, fall back to the project's vibeBase (whisper).
+        // The whisper uses L0 (automatic photonics) for reactive movement/color.
+        // If no vibeBase is set, fall back to 'idle' (blackout).
+        if (!hasActiveVibe) {
+            const whisperVibeId = this.project?.vibeBase?.vibeId ?? 'idle';
+            if (whisperVibeId !== this.currentPlaybackVibeId) {
+                this.currentPlaybackVibeId = whisperVibeId;
+                try {
+                    const orchestrator = getTitanOrchestrator();
+                    orchestrator.setVibe(whisperVibeId);
+                    console.log(`[TimelineEngine] 🌫️ Whisper fallback → Titan "${whisperVibeId}"`);
+                }
+                catch (err) {
+                    console.warn(`[TimelineEngine] ⚠️ Could not set whisper vibe:`, err);
+                }
+            }
         }
         // ── Build playback frame (targets empty — HephaestusRuntime paints directly) ──
         this._lastPlaybackFrame = {

@@ -20,6 +20,7 @@ import React, { useState, useEffect, useCallback, useMemo, memo, useRef } from '
 import type { DragPayload } from '../../core/TimelineClip'
 import { serializeDragPayload } from '../../core/TimelineClip'
 import type { HephAutomationClipV3 } from '../../../core/hephaestus/types'
+import { getChronosRecorder } from '../../core/ChronosRecorder'
 import './CustomFXDock.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -157,9 +158,22 @@ const CustomFXPad: React.FC<CustomFXPadProps> = memo(({
   }, [clip, cachedClip, neonColor, onDragStart])
   
   const handleClick = useCallback(() => {
-    // TODO: Preview momentáneo del clip
-    onClick?.(clip)
-  }, [clip, onClick])
+    if (isRecording && cachedClip) {
+      // ⬡ FASE 6: REC mode — record the FX clip into the timeline
+      const recorder = getChronosRecorder()
+      recorder.recordFX(
+        cachedClip,
+        clip.filePath,
+        clip.name,
+        clip.durationMs,
+        cachedClip.spatialZones as string[] | undefined,
+        cachedClip.priority,
+      )
+    } else {
+      // EDIT mode: preview momentáneo (TODO futuro)
+      onClick?.(clip)
+    }
+  }, [isRecording, clip, cachedClip, onClick])
   
   return (
     <div

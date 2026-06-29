@@ -1,112 +1,144 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 📐 PROJECT TYPES — THE ARCHITECTURAL CONTRACT
+ * 📐 PROJECT TYPES — THE ARCHITECTURAL CONTRACT (V3)
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * WAVE 2081: M1 UNIFICATION — Clear separation of concerns.
+ * WAVE 7100 FASE 2: V2 barrel demolished. V3-only exports.
  *
- * LuxSync uses TWO project representations by design:
+ * LuxSync now uses ONE project representation with two views:
  *
  * ┌──────────────────────────────────────────────────────────────────────┐
  * │                                                                      │
- * │   LuxProject (.lux file)         ChronosProjectV2 (runtime)          │
+ * │   LuxFileV3 (.lux on disk)       ChronosProjectV3 (runtime)          │
  * │   ════════════════════           ═══════════════════════             │
  * │   • Serialized to disk           • Lives in Zustand store           │
- * │   • Flat clip list               • Multi-track with clips           │
- * │   • ProjectMeta (version,        • ChronosProjectMeta (bpm,         │
- * │     author, timestamps)            key, timeSignature)              │
- * │   • ProjectAudio reference       • PlaybackConfig (loop, snap)      │
- * │   • ProjectLibrary (Heph)        • AnalysisData (GodEar)            │
- * │   • ProjectTimeline (clips,      • AutomationLanes (Bézier)         │
- * │     playhead, viewport)          • ChronosMarkers                   │
- * │                                  • GlobalAutomation                 │
+ * │   • $schema: luxsync.lux/3.0    • = LuxFileV3 + ephemeral state     │
+ * │   • Tracks + clips              • playheadMs, viewportStartMs,      │
+ * │   • Audio portable                pixelsPerSecond, runtimeBpm,      │
+ * │   • Analysis embebido             manualBpmOverride, selectedClips  │
+ * │   • VibeBase (whisper)                                               │
+ * │   • BPM base (FFT)              Conversion: NONE                    │
+ * │   • Safety declaration           toChronosProjectV3(file) → runtime  │
+ * │   • Checksum SHA-256             toLuxFileV3(project) → file        │
  * │                                                                      │
  * │   Used by:                       Used by:                           │
- * │   • ChronosStore (save/load)     • ChronosStoreV2 (state)           │
+ * │   • ChronosStore (save/load)     • ChronosStore (state)             │
  * │   • TimelineEngine (playback)    • ChronosEngine (evaluation)       │
  * │   • useScenePlayer (Hyperion)    • ChronosLayout (editing UI)       │
  * │   • PlaybackIPCHandlers          • Automation system                │
  * │   • SceneBrowser                                                    │
  * │                                                                      │
- * │   Conversion:                                                        │
- * │   luxToChronosV2(lux) → ChronosProjectV2                            │
- * │   chronosV2ToLux(ch) → LuxProject                                   │
- * │                                                                      │
  * └──────────────────────────────────────────────────────────────────────┘
  *
- * WHY TWO TYPES:
- * - LuxProject is the PORTABLE format. It has no runtime dependencies,
- *   no automation state, no analysis cache. It's what gets saved to disk
- *   and what TimelineEngine (main process) reads for playback.
- * - ChronosProject is the RICH runtime model. It has multi-track layout,
- *   Bézier automation, GodEar analysis cache, markers. It's what the
- *   Chronos editor UI manipulates.
- *
- * RULE: Code that READS .lux files imports LuxProject.
- *       Code that EDITS timeline data imports ChronosProject.
- *       Code at the BOUNDARY (save/load) uses the converters.
- *
  * @module chronos/core/ProjectTypes
- * @version WAVE 2081
+ * @version WAVE 7100 FASE 2
  */
 
-// ─── Persistence layer (file format) ───────────────────────────────────
+// ─── V3 file format (persistence layer) ──────────────────────────────
 export type {
-  LuxProject,
-  ProjectMeta,
-  ProjectAudio,
-  ProjectTimeline,
-  ProjectLibrary,
-  HephEffectSummary,
-} from './ChronosProject'
+  LuxFileV3,
+  ChronosProjectV3,
+  LuxMetaV3,
+  LuxAudioV3,
+  LuxTrackV3,
+  LuxClipV3,
+  LuxClipType,
+  LuxMixBus,
+  LuxTargetZone,
+  LuxMarkerV3,
+  LuxMarkerType,
+  LuxSafetyV3,
+  LuxAnalysisV3,
+  LuxSectionV3,
+  LuxTransientV3,
+  LuxTransientType,
+  VibeBaseV3,
+  LuxTrackUpdateV3,
+} from './LuxFileV3'
 
 export {
-  PROJECT_VERSION,
-  PROJECT_EXTENSION,
-  PROJECT_MIME,
-  createEmptyProject,
-  createProjectFromState,
-  serializeProject,
-  deserializeProject,
-  validateProject,
-  luxToChronosV2,
-  chronosV2ToLux,
-} from './ChronosProject'
+  LUX_V3_SCHEMA,
+  LUX_V3_EXTENSION,
+  LUX_V3_MIME,
+  LUX_DEFAULT_BPM,
+} from './LuxFileV3'
 
-// ─── Runtime layer (in-memory document V2) ────────────────────────────
+// ─── V3 factories & bridges ──────────────────────────────────────────
+export {
+  generateLuxId,
+  createEmptyLuxFileV3,
+  createEmptyChronosProjectV3,
+  toChronosProjectV3,
+  toLuxFileV3,
+  createLuxMetaV3,
+  createTrackV3,
+  createVibeClipV3,
+  createFXClipV3,
+  createMarkerV3,
+  createVibeBaseV3,
+  generateTrackLabelV3,
+} from './LuxFileV3.factories'
+
+// ─── V3 serializer ───────────────────────────────────────────────────
+export {
+  serializeLuxV3,
+  deserializeLuxV3,
+  computeLuxChecksum,
+  verifyLuxChecksum,
+  canonicalStringify,
+} from './LuxFileV3.serializer'
+
+// ─── V3 validation ───────────────────────────────────────────────────
+export {
+  validateLuxFileV3,
+  isLuxFileV3,
+  type LuxValidationResult,
+} from './LuxFileV3.schema'
+
+// ─── Shared runtime types (still in types.ts) ────────────────────────
 export type {
-  ChronosProjectV2,
-  ChronosProjectMeta,
-  PlaybackConfig,
-  TimelineTrackV2,
-  AnalysisData,
-  AutomationLane,
-  AutomationPoint,
-  ChronosMarker,
-  ChronosContext,
-  ChronosEngineState,
-  PlaybackState,
-  ChronosId,
   TimeMs,
   NormalizedValue,
+  ChronosId,
   HexColor,
+  PlaybackConfig,
+  SnapResolution,
+  ChronosOverrideMode,
+  AutomationTarget,
+  AutomationLane,
+  AutomationPoint,
+  InterpolationType,
+  BezierHandle,
+  Keyframe,
+  MarkerType,
+  ChronosMarker,
+  AnalysisData,
+  WaveformData,
+  HeatmapData,
+  BeatGridData,
+  DetectedSection,
+  SectionType,
+  PlaybackState,
+  ChronosEngineState,
+  ChronosContext,
+  ChronosVibeOverride,
+  ChronosZoneOverride,
+  ChronosColorOverride,
+  ChronosActiveEffect,
 } from './types'
 
 export {
   generateChronosId,
-  createDefaultProjectV2,
-  createTrackV2,
-  generateTrackV2Label,
 } from './types'
 
-// ─── Clip layer (concrete clip types for .lux) ────────────────────────
+// ─── Clip layer (concrete clip types) ────────────────────────────────
 export type {
   TimelineClip as LuxTimelineClip,
   VibeClip,
   FXClip,
   FXKeyframe,
   BaseClip,
-  ClipType as LuxClipType,
+  ClipType as LuxClipTypeLegacy,
   FXType,
   VibeType,
 } from './TimelineClip'
@@ -124,3 +156,11 @@ export {
   toFXType,
   toVibeType,
 } from './TimelineClip'
+
+// ─── Legacy compat shims (re-export from demolished ChronosProject.ts) ─
+export {
+  createEmptyProject,
+  serializeProject,
+  deserializeProject,
+  validateProject,
+} from './ChronosProject'

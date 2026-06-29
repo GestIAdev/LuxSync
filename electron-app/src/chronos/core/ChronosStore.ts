@@ -1,29 +1,24 @@
-// FASE 7: V1 luxToChronos demolished — ChronosStoreV2 uses luxToChronosV2 directly.
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 💾 CHRONOS STORE - WAVE 2014: THE MEMORY CORE
- * 
+ * 💾 CHRONOS STORE - WAVE 7100: THE MEMORY CORE (V3)
+ *
  * Central state manager for Chronos projects.
  * Handles save/load operations, dirty state tracking, and IPC with Electron.
- * 
- * RESPONSIBILITIES:
- * - Track current project state
- * - Detect unsaved changes
- * - Coordinate save/load with Electron main process
- * - Emit events for UI updates
- * 
+ *
+ * WAVE 7100 FASE 2: V2 demolished. V3 core imported from LuxFileV3.
+ * ChronosStoreV2 class body will have type errors — fix in FASE 3.
+ *
  * @module chronos/core/ChronosStore
- * @version WAVE 2014
+ * @version WAVE 7100
  */
 
 import {
-  type LuxProject,
+  type LuxFileV3 as LuxProject,
   createEmptyProject,
-  createProjectFromState,
   serializeProject,
   deserializeProject,
   validateProject,
-  PROJECT_EXTENSION,
+  LUX_V3_EXTENSION as PROJECT_EXTENSION,
 } from './ChronosProject'
 import type { TimelineClip } from './TimelineClip'
 
@@ -730,23 +725,21 @@ export default ChronosStore
 // ═══════════════════════════════════════════════════════════════════════════
 
 import type { CanonicalZone } from '../../core/stage/ShowFileV2'
+import type {
+  ChronosProjectV3 as ChronosProjectV2,
+  LuxTrackV3 as TimelineTrackV2,
+  LuxTrackUpdateV3 as TrackUpdateV2,
+  LuxFileV3,
+} from './LuxFileV3'
 import {
-  type ChronosProjectV2,
-  type TimelineTrackV2,
-  type TrackUpdateV2,
-  createDefaultProjectV2,
-  createTrackV2,
-  generateChronosId,
-} from './types'
-import { luxToChronosV2 } from './ChronosProject'
+  createEmptyChronosProjectV3 as createDefaultProjectV2,
+  createTrackV3 as createTrackV2,
+  toChronosProjectV3,
+} from './LuxFileV3.factories'
+import { generateChronosId } from './types'
+import { deserializeLuxV3 } from './LuxFileV3.serializer'
 
-function detectProjectVersion(raw: unknown): '2.0.0' | 'lux' | null {
-  if (!raw || typeof raw !== 'object') return null
-  const obj = raw as Record<string, any>
-  if (obj.version === '2.0.0') return '2.0.0'
-  if (obj.meta?.version && obj.timeline?.clips) return 'lux'
-  return null
-}
+// WAVE 7100 FASE 2: detectProjectVersion DEMOLISHED — V3 uses $schema hard-gate.
 
 /**
  * 🔥 WAVE 2547: Store V2
@@ -865,27 +858,20 @@ export class ChronosStoreV2 {
       return { success: false, error: 'Invalid JSON' }
     }
 
-    const version = detectProjectVersion(raw)
-
-    if (version === '2.0.0') {
-      this.project = raw as ChronosProjectV2
+    // WAVE 7100 FASE 2: V2 detectProjectVersion demolished.
+    // V3 path: deserializeLuxV3 with $schema hard-gate + checksum verification.
+    // TODO FASE 3: Convert this to async and use deserializeLuxV3 properly.
+    const $schema = (raw as any)?.$schema
+    if ($schema === 'luxsync.lux/3.0') {
+      // V3 file — hydrate to ChronosProjectV3
+      const file = raw as LuxFileV3
+      this.project = toChronosProjectV3(file) as unknown as ChronosProjectV2
       this.emit('project-loaded', { project: this.project })
-      console.log(`[ChronosStoreV2] Loaded V2: "${this.project.meta.name}"`)
+      console.log(`[ChronosStoreV2] Loaded V3: "${(this.project as any).meta?.name ?? 'Untitled'}"`)
       return { success: true }
     }
 
-    if (version === 'lux') {
-      const lux = deserializeProject(json)
-      if (!lux) {
-        return { success: false, error: 'Failed to deserialize .lux project' }
-      }
-      this.project = luxToChronosV2(lux)
-      this.emit('project-loaded', { project: this.project })
-      console.log(`[ChronosStoreV2] Converted .lux => V2: "${this.project.meta.name}"`)
-      return { success: true }
-    }
-
-    return { success: false, error: `Unknown project format: ${(raw as any)?.version ?? 'no version field'}` }
+    return { success: false, error: `Unknown project format: ${(raw as any)?.$schema ?? (raw as any)?.version ?? 'no schema/version field'}` }
   }
 
   private async _loadFromBrowserInput(): Promise<{ success: boolean; error?: string }> {

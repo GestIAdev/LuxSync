@@ -3,16 +3,16 @@
  * 🕰️ CHRONOS TYPES — THE RUNTIME DNA
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * FASE 7: V1 types demolished. Only V2 and shared types remain.
+ * WAVE 7100 FASE 2: V2 project types demolished. Only shared runtime types remain.
  *
- * This file defines shared types for the IN-MEMORY editing model used by
- * the Chronos editor UI, ChronosStoreV2, ChronosEngine, and automation system.
+ * This file defines SHARED types used by the Chronos editor UI, ChronosEngine,
+ * and automation system. The V3 project schema lives in LuxFileV3.ts.
  *
- * V2 types: ChronosProjectV2, TimelineTrackV2 (with concrete TimelineClip).
  * Shared types: Primitives, PlaybackConfig, Automation, Analysis, Context.
+ * V3 types: See LuxFileV3.ts (LuxFileV3, ChronosProjectV3, LuxTrackV3, etc.)
  *
  * This is NOT the serialized .lux format. For the file format, see
- * LuxProject in ./ChronosProject.ts.
+ * LuxFileV3 in ./LuxFileV3.ts.
  * For the architectural map and barrel imports, see ./ProjectTypes.ts.
  *
  * @module chronos/core/types
@@ -43,45 +43,6 @@ export type ChronosId = string
  * Color en formato hexadecimal
  */
 export type HexColor = string
-
-// ═══════════════════════════════════════════════════════════════════════════
-// 📦 CHRONOS PROJECT META (SHARED V2)
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Metadata del proyecto
- */
-export interface ChronosProjectMeta {
-  /** Nombre visible del proyecto */
-  name: string
-  
-  /** Descripción opcional */
-  description?: string
-  
-  /** Ruta al archivo de audio (relativa o absoluta) */
-  audioPath: string | null
-  
-  /** Duración total del proyecto en ms */
-  durationMs: TimeMs
-  
-  /** BPM del proyecto (detectado o manual) */
-  bpm: number
-  
-  /** Time signature (4 = 4/4, 3 = 3/4) */
-  timeSignature: number
-  
-  /** Key musical (si detectada) */
-  key: string | null
-  
-  /** Fecha de creación (ISO 8601) */
-  createdAt: string
-  
-  /** Fecha de última modificación (ISO 8601) */
-  modifiedAt: string
-  
-  /** Hash del audio para detectar cambios */
-  audioHash: string | null
-}
 
 /**
  * Configuración de playback
@@ -593,202 +554,18 @@ export function generateChronosId(): ChronosId {
 let generateChronosIdCounter = 0
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🔥 WAVE 2547: TIMELINE V2 — INFINITE EXPLICIT TRACKS
-// FASE 7: V1 types demolished. Clips use concrete TimelineClip from TimelineClip.ts.
+// � WAVE 7100 FASE 2: V2 PROJECT TYPES DEMOLISHED
 // ═══════════════════════════════════════════════════════════════════════════
-
-import type { CanonicalZone } from '../../core/stage/ShowFileV2'
-import type { TimelineClip as ConcreteTimelineClip } from './TimelineClip'
-
-/**
- * 🔥 WAVE 2547: Track explícita e independiente.
- *
- * El usuario la crea, la nombra, la rutea. El motor la ejecuta.
- * NO se genera automáticamente desde fixtures.
- * Múltiples tracks pueden apuntar a la MISMA CanonicalZone.
- * El MasterArbiter aplica HTP/LTP entre ellas.
- */
-export interface TimelineTrackV2 {
-  /** UUID v4 — generado al crear la track, inmutable */
-  readonly id: ChronosId
-
-  /**
-   * Zona canónica de ruteo DMX.
-   * Determina qué fixtures reciben los efectos de esta track.
-   * Valor especial 'global' → todas las fixtures (wildcard).
-   * Inmutable: cambiar la zona implica borrar y recrear la track.
-   */
-  readonly targetZone: CanonicalZone | 'global'
-
-  /**
-   * Etiqueta personalizable (UI-only, no afecta ruteo).
-   * Default: ZONE_LABELS[targetZone] sin emoji + " #n" si zona duplicada.
-   * El usuario puede renombrar libremente.
-   */
-  visualLabel: string
-
-  /** Color de la track en la UI. Default: ZONE_COLORS[targetZone]. */
-  color: HexColor
-
-  /**
-   * Clips en esta track — propiedad exclusiva.
-   * Un clip pertenece a exactamente una track.
-   */
-  clips: ConcreteTimelineClip[]
-
-  /** Automation lanes locales a esta track */
-  automation: AutomationLane[]
-
-  /** ¿Track habilitada? (false = muted) */
-  enabled: boolean
-
-  /** ¿Track en solo? */
-  solo: boolean
-
-  /** ¿Track bloqueada? (no editable en UI) */
-  locked: boolean
-
-  /**
-   * Orden visual en la UI (0 = arriba).
-   * Determinista — NO afecta prioridad DMX.
-   */
-  order: number
-
-  /** Altura en pixels para la UI. Default: 36 */
-  height: number
-}
-
-/**
- * 🔥 WAVE 2547: Proyecto Chronos V2.
- *
- * Reemplaza ChronosProject V1. Las tracks son explícitas, creadas
- * por el usuario, persistidas tal cual. NO derivadas de fixtures.
- */
-export interface ChronosProjectV2 {
-  readonly version: '2.0.0'
-  readonly id: ChronosId
-  meta: ChronosProjectMeta
-  playback: PlaybackConfig
-  analysis: AnalysisData | null
-
-  /**
-   * Array plano de tracks del usuario.
-   * Orden visual definido por track.order.
-   * Crear = push. Eliminar = filter. Reordenar = reasignar `order`.
-   * NO derivado de fixtures. NO filtrado por patch.
-   */
-  tracks: TimelineTrackV2[]
-
-  /** Automation lanes globales (master intensity, etc.) */
-  globalAutomation: AutomationLane[]
-
-  /** Markers del usuario */
-  markers: ChronosMarker[]
-}
-
-/**
- * Partial update de una track V2
- */
-export type TrackUpdateV2 = Partial<Omit<TimelineTrackV2, 'id' | 'targetZone' | 'clips'>>
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 🏭 WAVE 2547: V2 FACTORIES
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** Colores por zona para las tracks V2 */
-const TRACK_V2_ZONE_COLORS: Partial<Record<CanonicalZone | 'global', HexColor>> = {
-  'front':        '#ef4444',
-  'back':         '#3b82f6',
-  'floor':        '#22c55e',
-  'movers-left':  '#f59e0b',
-  'movers-right': '#f59e0b',
-  'center':       '#a855f7',
-  'air':          '#06b6d4',
-  'ambient':      '#64748b',
-  'unassigned':   '#475569',
-  'global':       '#e2e8f0',
-}
-
-/**
- * Genera el label visual por defecto para una track V2.
- * Primera track de 'front' → "FRONT". Segunda → "FRONT #2".
- */
-export function generateTrackV2Label(
-  targetZone: CanonicalZone | 'global',
-  existingTracks: readonly TimelineTrackV2[]
-): string {
-  const BASE_LABELS: Record<CanonicalZone | 'global', string> = {
-    'front':        'FRONT',
-    'back':         'BACK',
-    'floor':        'FLOOR',
-    'movers-left':  'MOVER LEFT',
-    'movers-right': 'MOVER RIGHT',
-    'center':       'CENTER',
-    'air':          'AIR',
-    'ambient':      'AMBIENT',
-    'unassigned':   'UNASSIGNED',
-    'global':       'GLOBAL',
-  }
-  const base = BASE_LABELS[targetZone] ?? targetZone.toUpperCase()
-  const count = existingTracks.filter(t => t.targetZone === targetZone).length
-  return count === 0 ? base : `${base} #${count + 1}`
-}
-
-/**
- * Crea una nueva TimelineTrackV2 vacía con valores por defecto.
- */
-export function createTrackV2(
-  targetZone: CanonicalZone | 'global',
-  existingTracks: readonly TimelineTrackV2[],
-  order?: number
-): TimelineTrackV2 {
-  const nextOrder = order ?? existingTracks.length
-  return {
-    id: generateChronosId(),
-    targetZone,
-    visualLabel: generateTrackV2Label(targetZone, existingTracks),
-    color: TRACK_V2_ZONE_COLORS[targetZone] ?? '#64748b',
-    clips: [],
-    automation: [],
-    enabled: true,
-    solo: false,
-    locked: false,
-    order: nextOrder,
-    height: 36,
-  }
-}
-
-/**
- * Crea un ChronosProjectV2 vacío con valores por defecto.
- */
-export function createDefaultProjectV2(name: string = 'Untitled'): ChronosProjectV2 {
-  const now = new Date().toISOString()
-  return {
-    version: '2.0.0',
-    id: generateChronosId(),
-    meta: {
-      name,
-      description: '',
-      audioPath: null,
-      durationMs: 180000,
-      bpm: 120,
-      timeSignature: 4,
-      key: null,
-      createdAt: now,
-      modifiedAt: now,
-      audioHash: null,
-    },
-    playback: {
-      loop: false,
-      loopRegion: null,
-      snapToBeat: true,
-      snapResolution: 'beat',
-      overrideMode: 'whisper',
-      latencyCompensationMs: 10,
-    },
-    analysis: null,
-    tracks: [],
-    globalAutomation: [],
-    markers: [],
-  }
-}
+//
+// ChronosProjectV2, TimelineTrackV2, TrackUpdateV2, ChronosProjectMeta,
+// createDefaultProjectV2, createTrackV2, generateTrackV2Label — ALL REMOVED.
+//
+// V3 replacements live in LuxFileV3.ts:
+//   ChronosProjectV3  ←  ChronosProjectV2
+//   LuxTrackV3        ←  TimelineTrackV2
+//   LuxMetaV3         ←  ChronosProjectMeta
+//   LuxTrackUpdateV3  ←  TrackUpdateV2
+//   createEmptyChronosProjectV3  ←  createDefaultProjectV2
+//   createTrackV3               ←  createTrackV2
+//   generateTrackLabelV3        ←  generateTrackV2Label
+// ═══════════════════════════════════════════════════════════════════════════

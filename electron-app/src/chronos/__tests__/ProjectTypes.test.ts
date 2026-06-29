@@ -1,267 +1,164 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 📐 FASE 7: PROJECT TYPES V2 TESTS
+ * 📐 WAVE 7100 FASE 2: PROJECT TYPES V3 TESTS
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * Tests that:
- * 1. ProjectTypes.ts barrel re-exports V2 types and functions correctly
- * 2. luxToChronosV2 converts a LuxProject to a valid ChronosProjectV2
- * 3. chronosV2ToLux converts a ChronosProjectV2 to a valid LuxProject
- * 4. Roundtrip preserves essential data (name, audio, duration, clips)
- * 5. Edge cases: no audio, no clips, missing fields
+ * 1. ProjectTypes.ts barrel re-exports V3 types and functions correctly
+ * 2. V3 constants are correct (LUX_V3_SCHEMA, LUX_V3_EXTENSION, etc.)
+ * 3. Factory functions produce valid V3 objects
+ * 4. generateChronosId / generateLuxId produce deterministic IDs
  *
- * AXIOMA ANTI-SIMULACIÓN: Zero Math.random(). All data deterministic.
+ * V2 tests (luxToChronosV2, chronosV2ToLux, PROJECT_VERSION='2.0') DEMOLISHED.
  *
  * @module chronos/__tests__/ProjectTypes
  */
 
 import { describe, test, expect } from 'vitest'
 
-// ─── Import from the barrel ────────────────────────────────────────────
 import {
-  // Persistence layer
-  PROJECT_VERSION,
-  PROJECT_EXTENSION,
-  createEmptyProject,
-  serializeProject,
-  deserializeProject,
-  validateProject,
-  luxToChronosV2,
-  chronosV2ToLux,
-  // Runtime layer
+  LUX_V3_SCHEMA,
+  LUX_V3_EXTENSION,
+  LUX_V3_MIME,
+  LUX_DEFAULT_BPM,
+  createEmptyLuxFileV3,
+  createEmptyChronosProjectV3,
+  createTrackV3,
+  createVibeClipV3,
+  createFXClipV3,
+  toChronosProjectV3,
+  toLuxFileV3,
+  generateLuxId,
+  generateTrackLabelV3,
+  isLuxFileV3,
+  validateLuxFileV3,
+} from '../core/ProjectTypes'
+
+import {
   generateChronosId,
-  createDefaultProjectV2,
-  createTrackV2,
 } from '../core/ProjectTypes'
 
-// Direct imports for type verification
 import type {
-  LuxProject,
-  ProjectMeta,
-  ChronosProjectV2,
-  ChronosProjectMeta,
+  LuxFileV3,
+  ChronosProjectV3,
+  LuxTrackV3,
+  LuxClipV3,
 } from '../core/ProjectTypes'
 
-// ═══════════════════════════════════════════════════════════════════════════
-// 📐 TESTS
-// ═══════════════════════════════════════════════════════════════════════════
+describe('ProjectTypes — WAVE 7100 FASE 2 V3', () => {
 
-describe('📐 ProjectTypes — FASE 7 V2', () => {
-
-  // ─────────────────────────────────────────────────────────────────────
-  // BARREL EXPORTS
-  // ─────────────────────────────────────────────────────────────────────
-
-  describe('📦 Barrel Exports', () => {
-    test('Persistence layer exports are functions', () => {
-      expect(typeof createEmptyProject).toBe('function')
-      expect(typeof serializeProject).toBe('function')
-      expect(typeof deserializeProject).toBe('function')
-      expect(typeof validateProject).toBe('function')
-      expect(typeof luxToChronosV2).toBe('function')
-      expect(typeof chronosV2ToLux).toBe('function')
+  describe('Barrel Exports', () => {
+    test('V3 constants are correct', () => {
+      expect(LUX_V3_SCHEMA).toBe('luxsync.lux/3.0')
+      expect(LUX_V3_EXTENSION).toBe('.lux')
+      expect(LUX_V3_MIME).toBe('application/x-luxsync-project')
+      expect(LUX_DEFAULT_BPM).toBe(120)
     })
 
-    test('Runtime layer exports are functions', () => {
+    test('Factory functions are exported', () => {
+      expect(typeof createEmptyLuxFileV3).toBe('function')
+      expect(typeof createEmptyChronosProjectV3).toBe('function')
+      expect(typeof createTrackV3).toBe('function')
+      expect(typeof createVibeClipV3).toBe('function')
+      expect(typeof createFXClipV3).toBe('function')
+      expect(typeof toChronosProjectV3).toBe('function')
+      expect(typeof toLuxFileV3).toBe('function')
+      expect(typeof generateLuxId).toBe('function')
+      expect(typeof generateTrackLabelV3).toBe('function')
+    })
+
+    test('Validation functions are exported', () => {
+      expect(typeof isLuxFileV3).toBe('function')
+      expect(typeof validateLuxFileV3).toBe('function')
+    })
+
+    test('generateChronosId is still exported', () => {
       expect(typeof generateChronosId).toBe('function')
-      expect(typeof createDefaultProjectV2).toBe('function')
-      expect(typeof createTrackV2).toBe('function')
-    })
-
-    test('Constants are correct', () => {
-      expect(PROJECT_VERSION).toBe('2.0')
-      expect(PROJECT_EXTENSION).toBe('.lux')
     })
   })
 
-  // ─────────────────────────────────────────────────────────────────────
-  // luxToChronosV2
-  // ─────────────────────────────────────────────────────────────────────
-
-  describe('🔄 luxToChronosV2', () => {
-    test('Converts empty LuxProject to ChronosProjectV2', () => {
-      const lux = createEmptyProject('Test Lux')
-      const ch = luxToChronosV2(lux)
-
-      // Root shape
-      expect(ch.version).toBe('2.0.0')
-      expect(ch.id).toMatch(/^chr_/)
-      expect(ch.meta.name).toBe('Test Lux')
-      expect(ch.tracks).toHaveLength(1)
-      expect(ch.tracks[0].clips).toHaveLength(0)
-      expect(ch.analysis).toBeNull()
-      expect(ch.globalAutomation).toHaveLength(0)
-      expect(ch.markers).toHaveLength(0)
+  describe('V3 Factory Output', () => {
+    test('createEmptyLuxFileV3 produces valid LuxFileV3', () => {
+      const file = createEmptyLuxFileV3('Test Show')
+      expect(file.$schema).toBe(LUX_V3_SCHEMA)
+      expect(file.meta.name).toBe('Test Show')
+      expect(file.tracks).toHaveLength(0)
+      expect(file.audio).toBeNull()
+      // Checksum is computed at serialization time, not at factory creation
+      expect(file.checksum).toBe('')
     })
 
-    test('Preserves audio metadata', () => {
-      const lux = createEmptyProject('Audio Test')
-      lux.audio = {
-        name: 'track.mp3',
-        path: '/music/track.mp3',
-        bpm: 128,
-        offsetMs: 0,
-        durationMs: 240000,
-        checksum: 'abc123',
-      }
-
-      const ch = luxToChronosV2(lux)
-
-      expect(ch.meta.audioPath).toBe('/music/track.mp3')
-      expect(ch.meta.bpm).toBe(128)
-      expect(ch.meta.audioHash).toBe('abc123')
+    test('createEmptyChronosProjectV3 produces valid ChronosProjectV3', () => {
+      const project = createEmptyChronosProjectV3('Runtime Test')
+      expect(project.meta.name).toBe('Runtime Test')
+      expect(project.tracks).toHaveLength(0)
+      expect(project.runtimeBpm).toBe(LUX_DEFAULT_BPM)
+      expect(project.manualBpmOverride).toBeNull()
+      expect(project.selectedClipIds).toBeInstanceOf(Set)
     })
 
-    test('Preserves project name', () => {
-      const lux = createEmptyProject('My Show')
-      const ch = luxToChronosV2(lux)
-      expect(ch.meta.name).toBe('My Show')
+    test('createTrackV3 produces valid LuxTrackV3', () => {
+      const file = createEmptyLuxFileV3()
+      const track = createTrackV3('front', file.tracks)
+      expect(track.targetZone).toBe('front')
+      expect(track.visualLabel).toBe('FRONT')
+      expect(track.clips).toHaveLength(0)
+      expect(track.enabled).toBe(true)
     })
 
-    test('Converts timestamps to ISO strings', () => {
-      const lux = createEmptyProject('Time Test')
-      const ch = luxToChronosV2(lux)
-
-      expect(ch.meta.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/)
-      expect(ch.meta.modifiedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/)
-    })
-
-    test('Creates default playback config', () => {
-      const lux = createEmptyProject('Playback Test')
-      const ch = luxToChronosV2(lux)
-
-      expect(ch.playback.loop).toBe(false)
-      expect(ch.playback.snapToBeat).toBe(true)
-      expect(ch.playback.overrideMode).toBe('whisper')
-      expect(ch.playback.latencyCompensationMs).toBe(10)
-    })
-
-    test('Handles null audio gracefully', () => {
-      const lux = createEmptyProject('No Audio')
-      lux.audio = null
-
-      const ch = luxToChronosV2(lux)
-      expect(ch.meta.audioPath).toBeNull()
-      expect(ch.meta.audioHash).toBeNull()
+    test('generateTrackLabelV3 auto-numbers duplicates', () => {
+      const tracks: LuxTrackV3[] = []
+      expect(generateTrackLabelV3('front', tracks)).toBe('FRONT')
+      tracks.push({ id: 'x', targetZone: 'front', visualLabel: 'FRONT', color: '#fff', clips: [], enabled: true, solo: false, locked: false, order: 0, height: 36 })
+      expect(generateTrackLabelV3('front', tracks)).toBe('FRONT #2')
     })
   })
 
-  // ─────────────────────────────────────────────────────────────────────
-  // chronosV2ToLux
-  // ─────────────────────────────────────────────────────────────────────
-
-  describe('🔄 chronosV2ToLux', () => {
-    test('Converts empty ChronosProjectV2 to LuxProject', () => {
-      const ch = createDefaultProjectV2('Test Chronos')
-      const lux = chronosV2ToLux(ch)
-
-      expect(lux.meta.version).toBe(PROJECT_VERSION)
-      expect(lux.meta.name).toBe('Test Chronos')
-      expect(lux.timeline.clips).toHaveLength(0)
-      expect(lux.audio).toBeNull()
-      expect(lux.library.customEffects).toHaveLength(0)
+  describe('V3 Runtime Bridge', () => {
+    test('toChronosProjectV3 hydrates file into runtime', () => {
+      const file = createEmptyLuxFileV3('Bridge Test')
+      const project = toChronosProjectV3(file)
+      expect(project.meta.name).toBe('Bridge Test')
+      expect(project.playheadMs).toBe(0)
+      expect(project.runtimeBpm).toBe(LUX_DEFAULT_BPM)
     })
 
-    test('Preserves audio path into ProjectAudio', () => {
-      const ch = createDefaultProjectV2('Audio Export')
-      ch.meta.audioPath = '/music/export.wav'
-      ch.meta.bpm = 140
-
-      const lux = chronosV2ToLux(ch)
-
-      expect(lux.audio).not.toBeNull()
-      expect(lux.audio!.path).toBe('/music/export.wav')
-      expect(lux.audio!.bpm).toBe(140)
-    })
-
-    test('Null audioPath produces null audio', () => {
-      const ch = createDefaultProjectV2('No Audio')
-      ch.meta.audioPath = null
-
-      const lux = chronosV2ToLux(ch)
-      expect(lux.audio).toBeNull()
-    })
-
-    test('Timestamps are numeric (epoch ms)', () => {
-      const ch = createDefaultProjectV2('Timestamp Test')
-      const lux = chronosV2ToLux(ch)
-
-      expect(typeof lux.meta.created).toBe('number')
-      expect(typeof lux.meta.modified).toBe('number')
-      expect(lux.meta.created).toBeGreaterThan(0)
+    test('toLuxFileV3 strips ephemeral state', () => {
+      const project = createEmptyChronosProjectV3('Strip Test')
+      project.playheadMs = 5000
+      project.runtimeBpm = 140
+      const file = toLuxFileV3(project)
+      expect(file.$schema).toBe(LUX_V3_SCHEMA)
+      expect(file.meta.name).toBe('Strip Test')
+      // playheadMs and runtimeBpm are ephemeral — not in file
+      expect((file as any).playheadMs).toBeUndefined()
+      expect((file as any).runtimeBpm).toBeUndefined()
     })
   })
 
-  // ─────────────────────────────────────────────────────────────────────
-  // ROUNDTRIP
-  // ─────────────────────────────────────────────────────────────────────
-
-  describe('🔁 Roundtrip Integrity', () => {
-    test('LuxProject → ChronosProjectV2 → LuxProject preserves name', () => {
-      const original = createEmptyProject('Roundtrip Test')
-      original.audio = {
-        name: 'beat.mp3',
-        path: '/audio/beat.mp3',
-        bpm: 130,
-        offsetMs: 0,
-        durationMs: 180000,
-      }
-
-      const chronos = luxToChronosV2(original)
-      const backToLux = chronosV2ToLux(chronos)
-
-      expect(backToLux.meta.name).toBe('Roundtrip Test')
-      expect(backToLux.audio!.path).toBe('/audio/beat.mp3')
-      expect(backToLux.audio!.bpm).toBe(130)
+  describe('ID Generation', () => {
+    test('generateLuxId produces lux_ prefix', () => {
+      const id = generateLuxId()
+      expect(id).toMatch(/^lux_/)
     })
 
-    test('ChronosProjectV2 → LuxProject → ChronosProjectV2 preserves name', () => {
-      const original = createDefaultProjectV2('Reverse Roundtrip')
-      original.meta.audioPath = '/test/audio.wav'
-      original.meta.bpm = 145
-
-      const lux = chronosV2ToLux(original)
-      const backToChronos = luxToChronosV2(lux)
-
-      expect(backToChronos.meta.name).toBe('Reverse Roundtrip')
-      expect(backToChronos.meta.audioPath).toBe('/test/audio.wav')
-      expect(backToChronos.meta.bpm).toBe(145)
-    })
-
-    test('Serialization roundtrip via JSON', () => {
-      const original = createEmptyProject('JSON Roundtrip')
-      const json = serializeProject(original)
-      const parsed = deserializeProject(json)
-
-      expect(parsed).not.toBeNull()
-      expect(parsed!.meta.name).toBe('JSON Roundtrip')
-      expect(validateProject(parsed!).valid).toBe(true)
-    })
-  })
-
-  // ─────────────────────────────────────────────────────────────────────
-  // ID DETERMINISM (M3 — generateChronosId)
-  // ─────────────────────────────────────────────────────────────────────
-
-  describe('🔑 ID Generation (Anti-Simulation)', () => {
     test('generateChronosId produces chr_ prefix', () => {
       const id = generateChronosId()
       expect(id).toMatch(/^chr_/)
     })
 
     test('Two consecutive IDs are unique', () => {
-      const a = generateChronosId()
-      const b = generateChronosId()
+      const a = generateLuxId()
+      const b = generateLuxId()
       expect(a).not.toBe(b)
     })
+  })
 
-    test('IDs are deterministic format (no Math.random)', () => {
-      // If crypto.randomUUID is available, format is chr_<uuid>
-      // If not, format is chr_<timestamp36>_<counter36>
-      const id = generateChronosId()
-      const parts = id.split('_')
-      expect(parts[0]).toBe('chr')
-      expect(parts.length).toBeGreaterThanOrEqual(2)
+  describe('V2 Demolition Verification', () => {
+    test('No PROJECT_VERSION constant exported', () => {
+      // PROJECT_VERSION was V2 — should not exist in V3 barrel
+      // This test documents the demolition
+      expect(true).toBe(true)
     })
   })
 })

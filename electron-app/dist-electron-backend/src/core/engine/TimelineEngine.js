@@ -1,3 +1,6 @@
+// PHASE 5 RECONSTRUCTION TARGET — Uses LuxProject flat clips + EFFECT_FACTORIES + mixBus.
+// Must delegate to HephaestusRuntime for V3 clips. blendMode from HephTrack.blendMode.
+// EFFECT_FACTORIES and hardcoded effect instantiation will be removed.
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🎬 TIMELINE ENGINE - WAVE 2053.1: THE ENGINE ROOM
@@ -352,10 +355,8 @@ export class TimelineEngine {
         }
         const effect = state.effect;
         // 🎛️ WAVE 2066.1 / WAVE 4859: effect mixBus is canonical authority.
-        // Clips viejos pueden traer mixBus heredado (htp/global) que rompe la
-        // semántica actual al recargar proyectos antiguos. Para evitar poltergeist,
-        // primero manda el mixBus de la clase del efecto y recién después el clip.
-        const effectMixBus = effect.mixBus ?? clip.mixBus ?? 'htp';
+        // FASE 1: clip.mixBus removed — V3 canonical source is clip.hephClip?.mixBus.
+        const effectMixBus = effect.mixBus ?? clip.hephClip?.mixBus ?? 'htp';
         const blendMode = effectMixBus === 'global' ? 'LTP' : 'HTP';
         // Trigger on first activation
         if (!state.triggered) {
@@ -767,12 +768,10 @@ export class TimelineEngine {
         }
         if (channels.length === 0)
             return;
-        // 🎛️ WAVE 4859: Hephaestus payload manda por encima del clip serializado.
-        // En recargas de proyectos viejos, clip.mixBus puede venir contaminado
-        // (htp/ambient) aunque el builtin actual ya sea global/override.
+        // 🎛️ WAVE 4859: Hephaestus payload is the canonical source.
+        // FASE 1: clip.mixBus removed — V3 canonical source is clip.hephClip?.mixBus.
         const hephMixBus = clip.hephClip?.mixBus;
-        const timelineMixBus = clip.mixBus;
-        const resolvedMixBus = hephMixBus ?? timelineMixBus ?? 'global';
+        const resolvedMixBus = hephMixBus ?? 'global';
         const blendMode = this.resolveBlendModeFromMixBus(resolvedMixBus);
         const fixtureIds = this.resolveFixtureIds(clip);
         this.dispatchToArbiter(fixtureIds, controls, { blendMode });

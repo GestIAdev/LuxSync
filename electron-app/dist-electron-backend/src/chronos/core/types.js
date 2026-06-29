@@ -47,6 +47,7 @@ export function generateChronosId() {
 }
 // Monotonic counter used by fallback path
 let generateChronosIdCounter = 0;
+// @deprecated DEMOLITION TARGET — V1 factory. Use createDefaultProjectV2 instead.
 /**
  * Crea un proyecto vacío por defecto
  */
@@ -81,6 +82,7 @@ export function createDefaultProject(name = 'Untitled') {
         markers: [],
     };
 }
+// @deprecated DEMOLITION TARGET — V1 track factory. Use createTrackV2 instead.
 /**
  * Crea una track vacía
  */

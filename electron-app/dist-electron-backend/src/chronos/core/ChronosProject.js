@@ -20,6 +20,7 @@
  * @module chronos/core/ChronosProject
  * @version WAVE 2081
  */
+import { getClipMixBus } from './TimelineClip';
 import { generateChronosId } from './types';
 import { normalizeTagsToCanonical } from '../../core/zones/ZoneMapper';
 // ═══════════════════════════════════════════════════════════════════════════
@@ -66,7 +67,7 @@ function extractHephEffects(clips) {
             fileName,
             name: fx.label,
             effectType: typeof fx.params?.effectType === 'string' ? fx.params.effectType : 'heph-custom',
-            mixBus: fx.mixBus,
+            mixBus: getClipMixBus(fx),
             curveCount: fx.hephClip ? fx.hephClip.tracks.length : 0,
         });
     }
@@ -234,7 +235,7 @@ export function validateProject(project) {
                     errors.push(`Clip ${i} "${fx.label}": Hephaestus clip has 0 tracks — empty automation data`);
                 }
             }
-            if (fx.isHephCustom && !fx.mixBus) {
+            if (fx.isHephCustom && !fx.hephClip?.mixBus) {
                 warnings.push(`Clip ${i} "${fx.label}": Hephaestus clip missing mixBus routing`);
             }
         }

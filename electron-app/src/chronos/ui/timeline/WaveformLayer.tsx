@@ -212,10 +212,16 @@ function getCachedColor(energy: number, bass: number, high: number): string {
 }
 
 /**
- * 🌊 WAVE 7107-B: ARIADNE RIBBON — Tactical Heatmap Renderer
- * Replaces classic waveform bars with a continuous energy heatmap + transient markers.
- * Energy 0.0 = deep blue/dark, 1.0 = fiery red/orange.
- * Transients drawn as bright vertical lines (kicks/drops).
+ * 🌊 WAVE 7107-B v2: ARIADNE RIBBON — 3-Layer Tactical Waveform
+ * 
+ * Layer 0: Energy heatmap background (30% opacity) — a flowing river of color
+ *          Deep blue (silence) → cyan (groove) → orange (intense) → fiery red (peak)
+ * Layer 1: Aurora waveform bars (mirrored, spectral gradient) — the pulse, restored
+ * Layer 2: Transient markers (bright vertical lines with glow) — kicks/drops
+ * 
+ * The heatmap tells you WHAT the energy is doing (the river).
+ * The waveform tells you HOW the audio looks (the pulse).
+ * Transients tell you WHEN the hits land (the spikes).
  */
 function renderWaveform(
   canvas: HTMLCanvasElement,
@@ -229,13 +235,14 @@ function renderWaveform(
   const ctx = canvas.getContext('2d')
   if (!ctx) return
 
-  const { energyHeatmap, transients } = analysisData
+  const { waveform, energyHeatmap, transients } = analysisData
   const { width, height } = canvas
 
   // Clear canvas
   ctx.clearRect(0, 0, width, height)
 
-  // 🛡️ Early exit if no heatmap data
+  // 🛡️ Early exit if no data at all
+  if (!waveform?.peaks || waveform.peaks.length === 0) return
   if (!energyHeatmap?.energy || energyHeatmap.energy.length === 0) return
 
   const visibleWidth = width - leftOffset
@@ -243,60 +250,141 @@ function renderWaveform(
   const visibleDurationMs = visibleWidth / pixelsPerMs
   const actualViewportEnd = viewportStartMs + visibleDurationMs
 
-  // ── (a) CONTINUOUS HEATMAP BACKGROUND ──────────────────────────────
-  // Map energy [0..1] to color: 0.0 = deep blue (#0a0a2e), 1.0 = fiery red (#ff3300)
-  const energyToHeatColor = (e: number): [number, number, number] => {
-    const clamped = Math.min(1, Math.max(0, e))
-    if (clamped < 0.25) {
-      // Deep blue → blue
-      const t = clamped / 0.25
+  // ═══════════════════════════════════════════════════════════════════════
+  // LAYER 0: ENERGY HEATMAP BACKGROUND (30% opacity river)
+  // ═══════════════════════════════════════════════════════════════════════
+  const energyToHeatRGB = (e: number): [number, number, number] => {
+    const c = Math.min(1, Math.max(0, e))
+    if (c < 0.25) {
+      const t = c / 0.25
       return [Math.round(10 + t * 20), Math.round(10 + t * 40), Math.round(46 + t * 80)]
-    } else if (clamped < 0.5) {
-      // Blue → cyan/teal
-      const t = (clamped - 0.25) / 0.25
-      return [Math.round(30 + t * 0), Math.round(50 + t * 130), Math.round(126 + t * 40)]
-    } else if (clamped < 0.75) {
-      // Cyan → orange
-      const t = (clamped - 0.5) / 0.25
+    } else if (c < 0.5) {
+      const t = (c - 0.25) / 0.25
+      return [Math.round(30), Math.round(50 + t * 130), Math.round(126 + t * 40)]
+    } else if (c < 0.75) {
+      const t = (c - 0.5) / 0.25
       return [Math.round(30 + t * 200), Math.round(180 + t * 20), Math.round(166 - t * 120)]
     } else {
-      // Orange → fiery red
-      const t = (clamped - 0.75) / 0.25
+      const t = (c - 0.75) / 0.25
       return [Math.round(230 + t * 25), Math.round(200 - t * 150), Math.round(46 - t * 40)]
     }
   }
 
-  // Draw heatmap as 1px-wide vertical strips for maximum resolution
   const resMs = energyHeatmap.resolutionMs
-  const startIdx = Math.max(0, Math.floor(viewportStartMs / resMs))
-  const endIdx = Math.min(energyHeatmap.energy.length, Math.ceil(actualViewportEnd / resMs))
+  const heatStartIdx = Math.max(0, Math.floor(viewportStartMs / resMs))
+  const heatEndIdx = Math.min(energyHeatmap.energy.length, Math.ceil(actualViewportEnd / resMs))
 
-  if (startIdx < endIdx) {
-    for (let i = startIdx; i < endIdx; i++) {
+  if (heatStartIdx < heatEndIdx) {
+    for (let i = heatStartIdx; i < heatEndIdx; i++) {
       const sampleTimeMs = i * resMs
       const x = leftOffset + ((sampleTimeMs - viewportStartMs) / 1000) * pixelsPerSecond
       if (x < leftOffset || x > width) continue
 
       const energy = energyHeatmap.energy[i] ?? 0
-      const [r, g, b] = energyToHeatColor(energy)
+      const [r, g, b] = energyToHeatRGB(energy)
 
-      // Draw vertical strip
       const stripWidth = Math.max(1, (resMs / 1000) * pixelsPerSecond)
-      ctx.fillStyle = `rgb(${r}, ${g}, ${b})`
+      // 30% opacity — decorative background, not overwhelming
+      ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.30)`
       ctx.fillRect(x, 0, stripWidth, height)
     }
 
-    // Blend overlay for depth — subtle gradient from top/bottom
-    const grad = ctx.createLinearGradient(0, 0, 0, height)
-    grad.addColorStop(0, 'rgba(0, 0, 0, 0.25)')
-    grad.addColorStop(0.5, 'rgba(0, 0, 0, 0)')
-    grad.addColorStop(1, 'rgba(0, 0, 0, 0.25)')
-    ctx.fillStyle = grad
+    // Vignette gradient for depth (darker top/bottom edges)
+    const vGrad = ctx.createLinearGradient(0, 0, 0, height)
+    vGrad.addColorStop(0, 'rgba(0, 0, 0, 0.20)')
+    vGrad.addColorStop(0.5, 'rgba(0, 0, 0, 0)')
+    vGrad.addColorStop(1, 'rgba(0, 0, 0, 0.20)')
+    ctx.fillStyle = vGrad
     ctx.fillRect(leftOffset, 0, visibleWidth, height)
   }
 
-  // ── (b) TRANSIENT MARKERS ──────────────────────────────────────────
-  // Draw bright vertical lines for each transient (kick/drop) in viewport
+  // ═══════════════════════════════════════════════════════════════════════
+  // LAYER 1: AURORA WAVEFORM BARS (mirrored, spectral gradient)
+  // ═══════════════════════════════════════════════════════════════════════
+  const msPerSample = 1000 / waveform.samplesPerSecond
+  const startSample = Math.max(0, Math.floor(viewportStartMs / msPerSample))
+  const endSample = Math.min(waveform.peaks.length, Math.ceil(actualViewportEnd / msPerSample))
+
+  if (startSample < endSample) {
+    const pixelsPerSample = (visibleWidth / visibleDurationMs) * msPerSample
+    const maxBars = 200
+    const numVisibleSamples = endSample - startSample
+    const downsampleFactor = Math.max(1, Math.ceil(numVisibleSamples / maxBars))
+
+    const centerY = height / 2
+    const maxAmplitude = centerY * 0.88
+
+    const barWidthBase = pixelsPerSample * downsampleFactor
+    const barWidth = Math.max(3, barWidthBase - 1)
+    const barGap = Math.max(1, barWidthBase * 0.1)
+
+    ctx.imageSmoothingEnabled = false
+
+    // Aurora spectral gradient for bar fills
+    const spectralGradient = createSpectralGradient(ctx, height, 0.7)
+    ctx.shadowColor = '#d946ef'
+    ctx.shadowBlur = 10
+
+    for (let i = startSample; i < endSample; i += downsampleFactor) {
+      let maxRms = 0
+      let maxPeak = 0
+
+      const rangeEnd = Math.min(i + downsampleFactor, endSample)
+      for (let j = i; j < rangeEnd; j++) {
+        const rms = waveform.rms[j] ?? 0
+        const peak = waveform.peaks[j] ?? 0
+        if (rms > maxRms) maxRms = rms
+        if (peak > maxPeak) maxPeak = peak
+      }
+
+      const sampleTimeMs = i * msPerSample
+      const x = leftOffset + ((sampleTimeMs - viewportStartMs) / 1000) * pixelsPerSecond
+
+      if (x < leftOffset - barWidth || x > width + barWidth) continue
+
+      const peakHeight = maxPeak * maxAmplitude
+      const rmsHeight = maxRms * maxAmplitude
+
+      // Energy for this bar's time position
+      const heatmapIndex = Math.floor((i * msPerSample) / energyHeatmap.resolutionMs)
+      const energy = energyHeatmap.energy[heatmapIndex] ?? 0.3
+
+      // Peak extensions (outer ghost bars, magenta tint)
+      if (peakHeight > rmsHeight + 2) {
+        ctx.fillStyle = `rgba(139, 92, 246, ${0.3 + energy * 0.2})`
+        ctx.fillRect(x, centerY - peakHeight, barWidth - barGap, peakHeight - rmsHeight)
+        ctx.fillRect(x, centerY + rmsHeight, barWidth - barGap, peakHeight - rmsHeight)
+      }
+
+      // RMS core bars (aurora gradient)
+      ctx.fillStyle = spectralGradient
+      ctx.fillRect(x, centerY - rmsHeight, barWidth - barGap, rmsHeight)
+      ctx.fillRect(x, centerY, barWidth - barGap, rmsHeight)
+
+      // Hot center highlight for high-energy moments
+      if (energy > 0.5 && rmsHeight > 5) {
+        const highlightHeight = rmsHeight * 0.3
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.2 + (energy - 0.5) * 0.6})`
+        ctx.fillRect(x, centerY - highlightHeight, barWidth - barGap, highlightHeight * 2)
+      }
+    }
+
+    // Reset shadow
+    ctx.shadowColor = 'transparent'
+    ctx.shadowBlur = 0
+
+    // Aurora center line (pink-white, subtle)
+    ctx.strokeStyle = 'rgba(244, 114, 182, 0.3)'
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.moveTo(leftOffset, centerY)
+    ctx.lineTo(width, centerY)
+    ctx.stroke()
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // LAYER 2: TRANSIENT MARKERS (bright vertical lines with glow)
+  // ═══════════════════════════════════════════════════════════════════════
   if (transients && transients.length > 0) {
     ctx.save()
     ctx.shadowColor = 'rgba(255, 255, 255, 0.8)'
@@ -315,19 +403,10 @@ function renderWaveform(
       ctx.stroke()
     }
 
-    // Reset shadow
     ctx.shadowColor = 'transparent'
     ctx.shadowBlur = 0
     ctx.restore()
   }
-
-  // ── Center line (subtle) ───────────────────────────────────────────
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)'
-  ctx.lineWidth = 1
-  ctx.beginPath()
-  ctx.moveTo(leftOffset, height / 2)
-  ctx.lineTo(width, height / 2)
-  ctx.stroke()
 }
 
 /**

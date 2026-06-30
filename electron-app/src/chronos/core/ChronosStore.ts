@@ -888,11 +888,11 @@ export default ChronosStore
 // 🔥 WAVE 2547: CHRONOS STORE V2 — INFINITE EXPLICIT TRACKS
 // ═══════════════════════════════════════════════════════════════════════════
 
-import type { CanonicalZone } from '../../core/stage/ShowFileV2'
 import type {
   ChronosProjectV3 as ChronosProjectV2,
   LuxTrackV3 as TimelineTrackV2,
   LuxTrackUpdateV3 as TrackUpdateV2,
+  LuxTargetZone,
 } from './LuxFileV3'
 import {
   createEmptyChronosProjectV3 as createDefaultProjectV2,
@@ -1095,7 +1095,7 @@ export class ChronosStoreV2 {
    * Acepta la misma zona infinitas veces — sin límites, sin filtros.
    * Retorna la track recién creada.
    */
-  addTrack(targetZone: CanonicalZone | 'global'): TimelineTrackV2 {
+  addTrack(targetZone: LuxTargetZone): TimelineTrackV2 {
     const track = createTrackV2(targetZone, this.project.tracks)
     this.project.tracks = [...this.project.tracks, track]
     this._touchModified()
@@ -1108,6 +1108,15 @@ export class ChronosStoreV2 {
    * Eliminar track por id. Elimina todos sus clips con ella.
    */
   removeTrack(trackId: string): void {
+    const track = this._findTrack(trackId)
+    if (!track) {
+      console.warn(`[ChronosStoreV2] removeTrack: id "${trackId}" not found`)
+      return
+    }
+    if (track.locked) {
+      console.warn(`[ChronosStoreV2] removeTrack: track "${track.visualLabel}" is locked — cannot delete`)
+      return
+    }
     const before = this.project.tracks.length
     this.project.tracks = this.project.tracks
       .filter(t => t.id !== trackId)

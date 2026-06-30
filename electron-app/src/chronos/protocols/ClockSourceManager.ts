@@ -42,6 +42,7 @@ import { MTCParser } from './MTCParser'
 import { ArtNetTimecodeReceiver } from './ArtNetTimecodeReceiver'
 import { LTCDecoder } from './LTCDecoder'
 import { MIDIClockMaster } from './MIDIClockMaster'
+import { MIDIClockSlave } from './MIDIClockSlave'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -92,6 +93,13 @@ export class ClockSourceManager {
 
   // ── Cleanup handles ──
   private sourceCleanups = new Map<ClockSourceType, (() => void)[]>()
+
+  // ── WAVE 7103: PLL (Phase-Locked Loop) smoothing state ──
+  private pllLastRawTime: TimeMs | null = null
+  private pllSmoothedTime: TimeMs | null = null
+  private pllLastUpdateTime = 0
+  private readonly PLL_ALPHA = 0.05
+  private readonly PLL_MAX_JUMP_MS = 5
 
   // ═══════════════════════════════════════════════════════════════════════
   // LIFECYCLE
@@ -144,7 +152,14 @@ export class ClockSourceManager {
     if (this.activeSourceType === 'internal') return null
 
     const source = this.sources.get(this.activeSourceType)
-    return source?.getTimeMs() ?? null
+    const rawTime = source?.getTimeMs() ?? null
+    if (rawTime === null) {
+      this.pllLastRawTime = null
+      this.pllSmoothedTime = null
+      return null
+    }
+
+    return this.applyPLL(rawTime)
   }
 
   /**
@@ -159,7 +174,7 @@ export class ClockSourceManager {
    */
   getAllSourceInfo(): ClockSourceInfo[] {
     const types: ClockSourceType[] = [
-      'internal', 'midi-clock', 'mtc', 'artnet-tc', 'ltc-smpte',
+      'internal', 'midi-clock', 'midi-clock-slave', 'mtc', 'artnet-tc', 'ltc-smpte',
     ]
 
     return types.map(type => {
@@ -309,6 +324,9 @@ export class ClockSourceManager {
       case 'ltc-smpte':
         source = new LTCDecoder()
         break
+      case 'midi-clock-slave':
+        source = new MIDIClockSlave()
+        break
       default:
         throw new Error(`Unknown clock source type: ${type}`)
     }
@@ -342,5 +360,52 @@ export class ClockSourceManager {
       cleanups.forEach(fn => fn())
       this.sourceCleanups.delete(type)
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // PRIVATE — WAVE 7103: PLL (PHASE-LOCKED LOOP) SMOOTHING
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * Apply a second-order IIR low-pass filter to smooth incoming timecode.
+   *
+   * When external clock sources (MTC, LTC, Art-Net) deliver discrete timestamps,
+   * USB jitter or network latency can cause small jumps. The PLL filter:
+   * 1. Detects jumps > PLL_MAX_JUMP_MS and clamps them to ±5ms
+   * 2. Applies exponential smoothing with α = 0.05
+   * 3. Extrapolates forward using elapsed time since last update
+   *
+   * This ensures ChronosEngine receives a continuous, jitter-free time signal.
+   */
+  private applyPLL(rawTime: TimeMs): TimeMs {
+    const now = performance.now()
+
+    if (this.pllLastRawTime === null || this.pllSmoothedTime === null) {
+      // First reading — initialize
+      this.pllLastRawTime = rawTime
+      this.pllSmoothedTime = rawTime
+      this.pllLastUpdateTime = now
+      return rawTime
+    }
+
+    // Calculate raw delta from last update
+    const rawDelta = rawTime - this.pllLastRawTime
+    this.pllLastRawTime = rawTime
+
+    // Clamp the jump to ±PLL_MAX_JUMP_MS to suppress jitter spikes
+    const clampedDelta = Math.max(-this.PLL_MAX_JUMP_MS, Math.min(this.PLL_MAX_JUMP_MS, rawDelta))
+
+    // Extrapolate the smoothed time forward by elapsed wall-clock time
+    const wallElapsed = now - this.pllLastUpdateTime
+    this.pllLastUpdateTime = now
+
+    // Predict where the smoothed time should be now
+    const predicted = this.pllSmoothedTime + wallElapsed
+
+    // Blend prediction with clamped observation using IIR filter
+    const target = this.pllSmoothedTime + clampedDelta
+    this.pllSmoothedTime = predicted + this.PLL_ALPHA * (target - predicted)
+
+    return this.pllSmoothedTime
   }
 }

@@ -215,17 +215,22 @@ export class ArtNetTimecodeReceiver extends BaseClockSource {
       return
     }
 
-    // Listen to IPC channel from main process
-    const ipcRenderer = (window as any).electronAPI?.ipcRenderer ??
-                        (window as any).lux?.ipc
+    // WAVE 7102: Primary path — luxsync.artnet.onTimecode (preload bridge)
+    const luxsyncAPI = (window as any).luxsync
+    if (luxsyncAPI?.artnet?.onTimecode) {
+      this.ipcCleanup = luxsyncAPI.artnet.onTimecode(
+        (packet: ArtNetTimecodePacket) => this.handlePacket(packet)
+      )
+    } else {
+      // Fallback: raw ipcRenderer
+      const ipcRenderer = (window as any).electronAPI?.ipcRenderer ??
+                          (window as any).electron?.ipcRenderer
 
-    if (!ipcRenderer?.on) {
-      // Fallback: try window.lux.chronos.onArtNetTimecode
-      const chronosAPI = (window as any).lux?.chronos
-      if (chronosAPI?.onArtNetTimecode) {
-        this.ipcCleanup = chronosAPI.onArtNetTimecode(
-          (packet: ArtNetTimecodePacket) => this.handlePacket(packet)
-        )
+      if (ipcRenderer?.on) {
+        const handler = (_event: any, packet: ArtNetTimecodePacket) =>
+          this.handlePacket(packet)
+        ipcRenderer.on('artnet:timecode', handler)
+        this.ipcCleanup = () => ipcRenderer.removeListener('artnet:timecode', handler)
       } else {
         this.emit('error', {
           error: new Error(
@@ -235,19 +240,10 @@ export class ArtNetTimecodeReceiver extends BaseClockSource {
         })
         return
       }
-    } else {
-      const handler = (_event: any, packet: ArtNetTimecodePacket) =>
-        this.handlePacket(packet)
-      ipcRenderer.on('artnet:timecode', handler)
-      this.ipcCleanup = () => ipcRenderer.removeListener('artnet:timecode', handler)
     }
 
-    // Ask main process to start the UDP listener
-    const ipcSend = (window as any).electronAPI?.send ??
-                    (window as any).lux?.ipc?.send
-    if (ipcSend) {
-      ipcSend('artnet:start')
-    }
+    // WAVE 7102: No artnet:start IPC — the Art-Net DMX driver already manages the UDP socket.
+    // Timecode packets are multiplexed on the same socket via opcode routing.
 
     this.connected = false // will become true on first packet
     this.emit('status', { connected: false, quality: 'none', source: 'artnet-tc' })
@@ -260,13 +256,8 @@ export class ArtNetTimecodeReceiver extends BaseClockSource {
       this.ipcCleanup = null
     }
 
-    // Ask main process to stop the UDP listener
-    const ipcSend = typeof window !== 'undefined'
-      ? ((window as any).electronAPI?.send ?? (window as any).lux?.ipc?.send)
-      : undefined
-    if (ipcSend) {
-      ipcSend('artnet:stop')
-    }
+    // WAVE 7102: No artnet:stop IPC — the UDP socket is shared with Art-Net DMX driver.
+    // Only clean up the renderer-side IPC listener.
 
     this.clearTimeout()
     this.connected = false

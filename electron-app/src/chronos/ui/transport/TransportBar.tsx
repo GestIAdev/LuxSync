@@ -21,7 +21,7 @@
  * @version WAVE 2040.4
  */
 
-import React, { useCallback, useEffect, useState, memo } from 'react'
+import React, { useCallback, useEffect, useState, useRef, memo } from 'react'
 import {
   ReactorIcon,
   DataStreamIcon,
@@ -57,6 +57,8 @@ export interface TransportBarProps {
   isPlaying: boolean
   isRecording: boolean
   currentTime: number
+  /** WAVE 7106: Real-time ref for 60fps timecode without React re-renders */
+  currentTimeRef?: React.MutableRefObject<number>
   bpm: number
   onPlay: () => void
   onStop: () => void
@@ -227,6 +229,38 @@ const TransportButton: React.FC<TransportButtonProps> = memo(({
 TransportButton.displayName = 'TransportButton'
 
 // ═══════════════════════════════════════════════════════════════════════════
+// WAVE 7106: TIMECODE DISPLAY — rAF-driven, bypasses React re-renders
+// ═══════════════════════════════════════════════════════════════════════════
+
+const TimecodeDisplay: React.FC<{
+  currentTime: number
+  currentTimeRef?: React.MutableRefObject<number>
+  isPlaying: boolean
+}> = memo(({ currentTime, currentTimeRef, isPlaying }) => {
+  const spanRef = useRef<HTMLSpanElement>(null)
+  const rafRef = useRef<number>(0)
+
+  useEffect(() => {
+    if (!isPlaying || !currentTimeRef || !spanRef.current) return
+
+    const tick = () => {
+      if (spanRef.current) {
+        spanRef.current.textContent = formatTimecode(currentTimeRef.current)
+      }
+      rafRef.current = requestAnimationFrame(tick)
+    }
+    rafRef.current = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [isPlaying, currentTimeRef])
+
+  return (
+    <span ref={spanRef} className="ct-timecode-value">{formatTimecode(currentTime)}</span>
+  )
+})
+
+TimecodeDisplay.displayName = 'TimecodeDisplay'
+
+// ═══════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT: THE MASTER TOOLBAR
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -234,6 +268,7 @@ export const TransportBar: React.FC<TransportBarProps> = memo(({
   isPlaying,
   isRecording,
   currentTime,
+  currentTimeRef,
   bpm,
   onPlay,
   onStop,
@@ -557,7 +592,7 @@ export const TransportBar: React.FC<TransportBarProps> = memo(({
         </div>
 
         <div className="ct-timecode">
-          <span className="ct-timecode-value">{formatTimecode(currentTime)}</span>
+          <TimecodeDisplay currentTime={currentTime} currentTimeRef={currentTimeRef} isPlaying={isPlaying} />
         </div>
 
         <div className="ct-bpm-group">

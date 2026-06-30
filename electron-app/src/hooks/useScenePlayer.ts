@@ -16,7 +16,9 @@
  * THIS HOOK DOES:
  *   ✅ Manage <audio> element (load, play, pause, seek)
  *   ✅ Run requestAnimationFrame clock for UI sync
- *   ✅ Send lux:playback:tick(timeMs) to backend every frame
+ *   ✅ Send lux:playback:tick(timeMs) to backend (internal mode)
+ *   ✅ WAVE 7104: Switch to external mode when ChronosEngine has external clock
+ *   ✅ WAVE 7104: Forward external timecode to Main Process DirectTicker
  *   ✅ Send lux:playback:load(project) on scene load
  *   ✅ Send lux:playback:stop on stop
  *   ✅ Expose progress/state for Hyperion UI (bar, play/pause)
@@ -91,6 +93,8 @@ export function useScenePlayer() {
   const silentModeRef = useRef(false)
   const clockStartRef = useRef(0)
   const clockOffsetRef = useRef(0)
+  // WAVE 7104: Track whether external clock mode is currently active
+  const externalModeActiveRef = useRef(false)
 
   // ═══════════════════════════════════════════════════════════════════════
   // LOAD SCENE → Backend
@@ -219,12 +223,34 @@ export function useScenePlayer() {
       }
     }
 
-    // ── Send tick to backend (fire-and-forget) ──
+    // ── WAVE 7104: Check if ChronosEngine has external clock active ──
+    // When external clock is active, Main Process DirectTicker owns the tick.
+    // Renderer only forwards external time and dispatches visual events.
+    const chronosEngine = (window as any).__chronosEngine
+    const externalTimeMs = chronosEngine?.clockSources?.getExternalTimeMs?.() ?? null
+
     const api = getPlaybackApi()
-    if (api?.tick) {
-      api.tick(currentTimeMs)
+    if (externalTimeMs !== null) {
+      // External clock mode — forward external time to Main Process DirectTicker
+      if (api?.setExternalTime) {
+        api.setExternalTime(externalTimeMs)
+      }
+      // Ensure Main Process is in external mode
+      if (!externalModeActiveRef.current) {
+        externalModeActiveRef.current = true
+        api?.setClockMode?.('external')
+      }
+      // Use external time for UI display
+      currentTimeMs = externalTimeMs
     } else {
-      console.error('[ScenePlayer] ❌ tick() failed — no playback API')
+      // Internal mode — send tick to backend (fire-and-forget)
+      if (externalModeActiveRef.current) {
+        externalModeActiveRef.current = false
+        api?.setClockMode?.('internal')
+      }
+      if (api?.tick) {
+        api.tick(currentTimeMs)
+      }
     }
 
     // ── Update UI status (visual sync only) ──
@@ -263,6 +289,12 @@ export function useScenePlayer() {
     // Start rAF loop
     if (rafRef.current) cancelAnimationFrame(rafRef.current)
     rafRef.current = requestAnimationFrame(tick)
+
+    // WAVE 7104: Set initial clock mode — external if ChronosEngine has external clock
+    const chronosEngine = (window as any).__chronosEngine
+    const hasExternal = chronosEngine?.clockSources?.getExternalTimeMs?.() != null
+    const api = getPlaybackApi()
+    api?.setClockMode?.(hasExternal ? 'external' : 'internal')
 
     setStatus(prev => ({ ...prev, state: 'playing', hasAudio: !silentModeRef.current }))
     console.log(`[ScenePlayer] ▶ Play (${silentModeRef.current ? 'silent' : 'audio'} mode)`)
@@ -306,6 +338,9 @@ export function useScenePlayer() {
 
     // ── Tell backend to stop (clears effects + arbiter) ──
     const api = getPlaybackApi()
+    if (api?.setClockMode) {
+      api.setClockMode('internal')
+    }
     if (api?.stop) {
       api.stop().catch(() => {})
     }

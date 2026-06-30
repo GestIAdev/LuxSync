@@ -36,7 +36,7 @@ export function generateLuxId(prefix = 'lux') {
 // ═══════════════════════════════════════════════════════════════════════════
 // ZONE COLORS
 // ═══════════════════════════════════════════════════════════════════════════
-const TRACK_ZONE_COLORS = {
+export const TRACK_ZONE_COLORS = {
     front: '#ef4444',
     back: '#3b82f6',
     floor: '#22c55e',
@@ -47,6 +47,13 @@ const TRACK_ZONE_COLORS = {
     ambient: '#64748b',
     unassigned: '#475569',
     global: '#e2e8f0',
+    // ── WAVE 7107-B: Selene Energy Zone colors ──
+    peak: '#ff0040',
+    intense: '#ff6b2b',
+    active: '#f59e0b',
+    gentle: '#22d3ee',
+    valley: '#6366f1',
+    silence: '#1e293b',
 };
 function zoneColor(zone) {
     return TRACK_ZONE_COLORS[zone] ?? '#475569';
@@ -78,7 +85,7 @@ export function createLuxMetaV3(name = 'Untitled Show') {
 // ═══════════════════════════════════════════════════════════════════════════
 // TRACK
 // ═══════════════════════════════════════════════════════════════════════════
-const ZONE_BASE_LABELS = {
+export const ZONE_BASE_LABELS = {
     front: 'FRONT',
     back: 'BACK',
     floor: 'FLOOR',
@@ -89,6 +96,13 @@ const ZONE_BASE_LABELS = {
     ambient: 'AMBIENT',
     unassigned: 'UNASSIGNED',
     global: 'GLOBAL',
+    // ── WAVE 7107-B: Selene Energy Zone labels ──
+    peak: 'PEAK',
+    intense: 'INTENSE',
+    active: 'ACTIVE',
+    gentle: 'GENTLE',
+    valley: 'VALLEY',
+    silence: 'SILENCE',
 };
 /**
  * Generate a default visual label. First 'front' → "FRONT", second → "FRONT #2".
@@ -158,13 +172,19 @@ export function createMarkerV3(timeMs, type, label, color) {
  * the real one on save.
  */
 export function createEmptyLuxFileV3(name = 'Untitled Show') {
+    const globalTrack = createTrackV3('global', [], {
+        visualLabel: 'GLOBAL',
+        locked: true,
+        order: 0,
+        height: 36,
+    });
     return {
         $schema: LUX_V3_SCHEMA,
         meta: createLuxMetaV3(name),
         audio: null,
         analysis: null,
         vibeBase: null,
-        tracks: [],
+        tracks: [globalTrack],
         markers: [],
         safety: null,
         checksum: '',

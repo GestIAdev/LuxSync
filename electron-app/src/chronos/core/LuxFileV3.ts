@@ -30,6 +30,7 @@
 
 import type { HephAutomationClipV3 } from '../../core/hephaestus/types'
 import type { CanonicalZone } from '../../core/stage/ShowFileV2'
+import type { EnergyZone } from '../../core/protocol/MusicalContext'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -120,7 +121,7 @@ export interface LuxClipV3 {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /** Special wildcard zone targeting all fixtures. */
-export type LuxTargetZone = CanonicalZone | 'global'
+export type LuxTargetZone = CanonicalZone | 'global' | EnergyZone
 
 /**
  * An explicit, user-created timeline track. Not derived from fixtures.

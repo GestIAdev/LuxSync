@@ -50,14 +50,17 @@ import type { TimeMs } from '../core/types'
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** The 16-bit sync word that marks the end of an LTC frame */
+/** The 16-bit sync word that marks the end of an LTC frame (forward) */
 const LTC_SYNC_WORD = 0b0011111111111101  // 0x3FFD
+
+/** The 16-bit reverse sync word (bit-reversed 0x3FFD = 0xBFFC) */
+const LTC_SYNC_WORD_REVERSE = 0b1011111111111100  // 0xBFFC
 
 /** Number of bits in an LTC frame */
 const LTC_FRAME_BITS = 80
 
 /** Signal timeout */
-const LTC_SIGNAL_TIMEOUT_MS = 1000
+const LTC_SIGNAL_TIMEOUT_MS = 500
 
 /** Worklet processor name */
 const LTC_WORKLET_NAME = 'ltc-decoder-processor'
@@ -91,6 +94,11 @@ class LTCDecoderProcessor extends AudioWorkletProcessor {
     this.avgBitPeriod = 0         // Running average of a full bit period
     this.decoding = false         // Have we locked onto the signal?
     this.frameCount = 0           // Frames decoded since start
+    // ── WAVE 7104: Reverse & shuttle detection ──
+    this.lastFrameTime = 0        // Timestamp of last decoded frame (performance.now)
+    this.nominalBitPeriod = 0     // Expected bit period at 1x speed (samples)
+    this.direction = 1            // 1 = forward, -1 = reverse
+    this.speed = 1.0              // Derived playback speed multiplier
   }
 
   process(inputs, outputs, parameters) {
@@ -208,11 +216,28 @@ class LTCDecoderProcessor extends AudioWorkletProcessor {
       (bits[len - 4] << 3)   | (bits[len - 3] << 2) |
       (bits[len - 2] << 1)   | bits[len - 1]
 
-    if (syncCandidate !== ${LTC_SYNC_WORD}) return
+    // ── WAVE 7104: Bidirectional sync word detection ──
+    let isReverse = false
+    if (syncCandidate === ${LTC_SYNC_WORD}) {
+      isReverse = false
+    } else if (syncCandidate === ${LTC_SYNC_WORD_REVERSE}) {
+      isReverse = true
+    } else {
+      return // No sync word found
+    }
 
-    // We found the sync word! Extract the 80-bit frame
-    const frameBits = bits.slice(len - ${LTC_FRAME_BITS})
-    
+    // We found a sync word! Extract the 80-bit frame
+    let frameBits = bits.slice(len - ${LTC_FRAME_BITS})
+
+    // ── WAVE 7104: Reverse BCD decode ──
+    // When reverse sync is detected, the bits arrive in reverse order.
+    // Reverse the frame bits to decode BCD fields correctly.
+    if (isReverse) {
+      frameBits = frameBits.reverse()
+    }
+
+    this.direction = isReverse ? -1 : 1
+
     // Parse BCD-encoded timecode fields
     const frameUnits = this.bcd(frameBits, 0, 4)    // bits 0-3
     const frameTens  = this.bcd(frameBits, 8, 2)     // bits 8-9
@@ -229,6 +254,19 @@ class LTCDecoderProcessor extends AudioWorkletProcessor {
     const minutes = minTens * 10 + minUnits
     const hours   = hourTens * 10 + hourUnits
 
+    // ── WAVE 7104: Speed derivation from bit period ──
+    // The nominal bit period at 1x speed is established from the first decoded frame.
+    // Speed = nominalBitPeriod / currentAvgBitPeriod
+    // If the tape is playing at 2x, bits arrive twice as fast → avgBitPeriod halves → speed = 2.0
+    if (this.nominalBitPeriod === 0) {
+      this.nominalBitPeriod = this.avgBitPeriod
+      this.speed = 1.0
+    } else if (this.avgBitPeriod > 0) {
+      const rawSpeed = this.nominalBitPeriod / this.avgBitPeriod
+      // Clamp speed to reasonable range [0.1, 100]
+      this.speed = Math.max(0.1, Math.min(100, rawSpeed))
+    }
+
     // Sanity checks
     if (hours < 24 && minutes < 60 && seconds < 60 && frames < 30) {
       this.port.postMessage({
@@ -239,6 +277,8 @@ class LTCDecoderProcessor extends AudioWorkletProcessor {
         frames,
         dropFrame: dropFrame === 1,
         frameNumber: this.frameCount++,
+        direction: this.direction,
+        speed: this.speed,
       })
     }
 
@@ -280,6 +320,10 @@ export class LTCDecoder extends BaseClockSource {
   private currentTimeMs: TimeMs = 0
   private frameRate: SMPTEFrameRate = 25  // User-selectable
   private framesDecoded = 0
+
+  // ── WAVE 7104: Shuttle/reverse state ──
+  private currentDirection: 1 | -1 = 1
+  private currentSpeed = 1.0
 
   // ── Signal timeout ──
   private timeoutHandle: ReturnType<typeof setTimeout> | null = null
@@ -410,6 +454,8 @@ export class LTCDecoder extends BaseClockSource {
     this.clearTimeout()
     this.connected = false
     this.framesDecoded = 0
+    this.currentDirection = 1
+    this.currentSpeed = 1.0
 
     this.emit('status', { connected: false, quality: 'none', source: 'ltc-smpte' })
     console.log('[LTCDecoder] 🔊 Stopped')
@@ -433,6 +479,16 @@ export class LTCDecoder extends BaseClockSource {
     return this.framesDecoded
   }
 
+  /** WAVE 7104: Current playback direction (1 = forward, -1 = reverse) */
+  getDirection(): 1 | -1 {
+    return this.currentDirection
+  }
+
+  /** WAVE 7104: Current derived playback speed multiplier */
+  getSpeed(): number {
+    return this.currentSpeed
+  }
+
   // ═══════════════════════════════════════════════════════════════════════
   // PRIVATE
   // ═══════════════════════════════════════════════════════════════════════
@@ -443,6 +499,8 @@ export class LTCDecoder extends BaseClockSource {
     seconds: number
     frames: number
     dropFrame: boolean
+    direction?: number
+    speed?: number
   }): void {
     const frameRate: SMPTEFrameRate = msg.dropFrame ? 29.97 : this.frameRate
 
@@ -456,17 +514,27 @@ export class LTCDecoder extends BaseClockSource {
     this.currentTimeMs = smpteToMs(this.currentTimecode)
     this.framesDecoded++
 
+    // WAVE 7104: Store direction and speed for shuttle/reverse awareness
+    this.currentDirection = (msg.direction ?? 1) as 1 | -1
+    this.currentSpeed = msg.speed ?? 1.0
+
     if (!this.connected) {
       this.connected = true
+      const dirStr = this.currentDirection === -1 ? ' (REVERSE)' : ''
       console.log(
         `[LTCDecoder] ✅ Locked onto LTC signal: ` +
         `${msg.hours}:${String(msg.minutes).padStart(2, '0')}:` +
         `${String(msg.seconds).padStart(2, '0')}:` +
-        `${String(msg.frames).padStart(2, '0')}`
+        `${String(msg.frames).padStart(2, '0')}${dirStr} @${this.currentSpeed.toFixed(2)}x`
       )
     }
 
-    this.emit('sync', { timeMs: this.currentTimeMs, source: 'ltc-smpte' })
+    this.emit('sync', {
+      timeMs: this.currentTimeMs,
+      source: 'ltc-smpte',
+      direction: this.currentDirection,
+      speed: this.currentSpeed,
+    } as any)
 
     // Signal quality based on decode success rate
     const quality = this.framesDecoded > 10 ? 'stable' : 'weak'

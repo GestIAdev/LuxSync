@@ -104,6 +104,30 @@ const api = {
             ipcRenderer.on('artnet:disconnected', handler);
             return () => ipcRenderer.removeListener('artnet:disconnected', handler);
         },
+        // 📡 WAVE 7102: Art-Net Timecode — OpTimeCode packets forwarded from main process
+        onTimecode: (callback) => {
+            const handler = (_, packet) => callback(packet);
+            ipcRenderer.on('artnet:timecode', handler);
+            return () => ipcRenderer.removeListener('artnet:timecode', handler);
+        },
+    },
+    // ============================================
+    // 🥁 WAVE 7103: MIDI CLOCK MASTER (Main Process Timer)
+    // ============================================
+    midiMaster: {
+        start: (fromZero) => ipcRenderer.send('midi-master:start', { fromZero }),
+        stop: () => ipcRenderer.send('midi-master:stop'),
+        setBpm: (bpm) => ipcRenderer.send('midi-master:set-bpm', { bpm }),
+        onPulse: (callback) => {
+            const handler = (_, midiByte) => callback(midiByte);
+            ipcRenderer.on('midi-master:pulse', handler);
+            return () => ipcRenderer.removeListener('midi-master:pulse', handler);
+        },
+        onTransport: (callback) => {
+            const handler = (_, midiByte) => callback(midiByte);
+            ipcRenderer.on('midi-master:transport', handler);
+            return () => ipcRenderer.removeListener('midi-master:transport', handler);
+        },
     },
     // ============================================
     // � WAVE 2048: ART-NET NETWORK DISCOVERY
@@ -1135,6 +1159,13 @@ const luxApi = {
          * 📊 Query current engine state
          */
         getState: () => ipcRenderer.invoke('lux:playback:state'),
+        // 🥁 WAVE 7104: Direct Ticker — Main Process owns clip execution
+        setClockMode: (mode) => {
+            ipcRenderer.send('lux:playback:set-clock-mode', mode);
+        },
+        setExternalTime: (timeMs) => {
+            ipcRenderer.send('lux:playback:external-time', timeMs);
+        },
     },
     // ─────────────────────────────────────────────────────────────────────────
     // ⌨ WAVE 4805: KEYFORGE — Loadout persistence

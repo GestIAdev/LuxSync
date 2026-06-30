@@ -42,6 +42,9 @@ export interface FreeRunClockState {
 }
 
 export interface UseFreeRunClockReturn extends FreeRunClockState {
+  /** Real-time current time ref — updated at 60fps WITHOUT triggering React re-renders */
+  currentTimeMsRef: React.MutableRefObject<number>
+
   /** Start clock from current position or 0 */
   start: () => void
   
@@ -75,6 +78,7 @@ export function useFreeRunClock(): UseFreeRunClockReturn {
   const clockStartTimeRef = useRef<number>(0)      // performance.now() when started
   const pauseStartTimeRef = useRef<number>(0)      // performance.now() when paused
   const baseTimeOffsetRef = useRef<number>(0)      // Offset for resume after pause
+  const currentTimeMsRef = useRef<number>(0)       // WAVE 7106: Real-time ref — no React re-render
   
   // React state for UI updates
   const [state, setState] = useState<FreeRunClockState>({
@@ -100,13 +104,13 @@ export function useFreeRunClock(): UseFreeRunClockReturn {
         const now = performance.now()
         const elapsed = now - clockStartTimeRef.current + baseTimeOffsetRef.current
         
-        updateState({ currentTimeMs: elapsed })
+        currentTimeMsRef.current = elapsed // WAVE 7106: Update ref (no re-render)
         
         animationFrameRef.current = requestAnimationFrame(tick)
       }
     }
     animationFrameRef.current = requestAnimationFrame(tick)
-  }, [updateState])
+  }, [])
   
   /**
    * Stop tick loop
@@ -213,6 +217,7 @@ export function useFreeRunClock(): UseFreeRunClockReturn {
   const seek = useCallback((timeMs: number) => {
     const clampedTime = Math.max(0, timeMs)
     
+    currentTimeMsRef.current = clampedTime
     if (isRunningRef.current) {
       // If running, update base offset and restart from new position
       const now = performance.now()
@@ -239,6 +244,7 @@ export function useFreeRunClock(): UseFreeRunClockReturn {
   
   return {
     ...state,
+    currentTimeMsRef,
     start,
     pause,
     resume,

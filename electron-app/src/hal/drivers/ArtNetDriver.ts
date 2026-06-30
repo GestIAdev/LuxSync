@@ -193,6 +193,8 @@ export class ArtNetDriver extends EventEmitter {
         if (opcode === 0x2100) {  // ArtPollReply
           this.log(`🟢 ArtPollReply from ${rinfo.address} — node alive`)
           this.emit('node-discovered', { ip: rinfo.address })
+        } else if (opcode === 0x9700) {  // OpTimeCode — WAVE 7102
+          this.emit('timecode', msg)
         }
       })
 

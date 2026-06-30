@@ -53,6 +53,9 @@ export interface StreamingPlaybackState {
 }
 
 export interface UseStreamingPlaybackReturn extends StreamingPlaybackState {
+  /** Real-time current time ref — updated at 60fps WITHOUT triggering React re-renders */
+  currentTimeMsRef: React.MutableRefObject<number>
+
   /** Load audio from Blob URL */
   loadAudio: (blobUrl: string) => void
   
@@ -102,6 +105,7 @@ export function useStreamingPlayback(): UseStreamingPlaybackReturn {
   const animationFrameRef = useRef<number | null>(null)
   const currentBlobUrlRef = useRef<string | null>(null)
   const isPlayingRef = useRef<boolean>(false) // 🎵 Use ref to avoid stale closure
+  const currentTimeMsRef = useRef<number>(0) // WAVE 7106: Real-time ref — no React re-render
   
   const [state, setState] = useState<StreamingPlaybackState>({
     isReady: false,
@@ -140,12 +144,12 @@ export function useStreamingPlayback(): UseStreamingPlaybackReturn {
     const update = () => {
       if (audioRef.current && isPlayingRef.current) {
         const currentTimeMs = audioRef.current.currentTime * 1000
-        updateState({ currentTimeMs })
+        currentTimeMsRef.current = currentTimeMs // WAVE 7106: Update ref (no re-render)
         animationFrameRef.current = requestAnimationFrame(update)
       }
     }
     animationFrameRef.current = requestAnimationFrame(update)
-  }, [updateState])
+  }, [])
   
   /**
    * Stop time update loop
@@ -228,7 +232,7 @@ export function useStreamingPlayback(): UseStreamingPlaybackReturn {
     audio.ontimeupdate = () => {
       // Backup time update for when not using RAF
       if (!animationFrameRef.current) {
-        updateState({ currentTimeMs: audio.currentTime * 1000 })
+        currentTimeMsRef.current = audio.currentTime * 1000
       }
     }
     
@@ -321,6 +325,7 @@ export function useStreamingPlayback(): UseStreamingPlaybackReturn {
     
     const clampedTime = Math.max(0, Math.min(timeMs, state.durationMs))
     audioRef.current.currentTime = clampedTime / 1000
+    currentTimeMsRef.current = clampedTime
     updateState({ currentTimeMs: clampedTime })
     
     console.log(`[StreamingPlayback] ⏭️ Seek to ${(clampedTime / 1000).toFixed(2)}s`)
@@ -388,6 +393,7 @@ export function useStreamingPlayback(): UseStreamingPlaybackReturn {
   
   return {
     ...state,
+    currentTimeMsRef,
     loadAudio,
     unloadAudio,
     togglePlay,

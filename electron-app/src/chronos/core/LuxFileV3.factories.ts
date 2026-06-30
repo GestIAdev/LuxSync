@@ -64,7 +64,7 @@ export function generateLuxId(prefix = 'lux'): string {
 // ZONE COLORS
 // ═══════════════════════════════════════════════════════════════════════════
 
-const TRACK_ZONE_COLORS: Record<string, string> = {
+export const TRACK_ZONE_COLORS: Record<string, string> = {
   front: '#ef4444',
   back: '#3b82f6',
   floor: '#22c55e',
@@ -75,6 +75,13 @@ const TRACK_ZONE_COLORS: Record<string, string> = {
   ambient: '#64748b',
   unassigned: '#475569',
   global: '#e2e8f0',
+  // ── WAVE 7107-B: Selene Energy Zone colors ──
+  peak: '#ff0040',
+  intense: '#ff6b2b',
+  active: '#f59e0b',
+  gentle: '#22d3ee',
+  valley: '#6366f1',
+  silence: '#1e293b',
 }
 
 function zoneColor(zone: LuxTargetZone): string {
@@ -114,7 +121,7 @@ export function createLuxMetaV3(name = 'Untitled Show'): LuxMetaV3 {
 // TRACK
 // ═══════════════════════════════════════════════════════════════════════════
 
-const ZONE_BASE_LABELS: Record<string, string> = {
+export const ZONE_BASE_LABELS: Record<string, string> = {
   front: 'FRONT',
   back: 'BACK',
   floor: 'FLOOR',
@@ -125,6 +132,13 @@ const ZONE_BASE_LABELS: Record<string, string> = {
   ambient: 'AMBIENT',
   unassigned: 'UNASSIGNED',
   global: 'GLOBAL',
+  // ── WAVE 7107-B: Selene Energy Zone labels ──
+  peak: 'PEAK',
+  intense: 'INTENSE',
+  active: 'ACTIVE',
+  gentle: 'GENTLE',
+  valley: 'VALLEY',
+  silence: 'SILENCE',
 }
 
 /**
@@ -240,13 +254,19 @@ export function createMarkerV3(
  * the real one on save.
  */
 export function createEmptyLuxFileV3(name = 'Untitled Show'): LuxFileV3 {
+  const globalTrack = createTrackV3('global', [], {
+    visualLabel: 'GLOBAL',
+    locked: true,
+    order: 0,
+    height: 36,
+  })
   return {
     $schema: LUX_V3_SCHEMA,
     meta: createLuxMetaV3(name),
     audio: null,
     analysis: null,
     vibeBase: null,
-    tracks: [],
+    tracks: [globalTrack],
     markers: [],
     safety: null,
     checksum: '',

@@ -160,6 +160,31 @@ const api = {
       ipcRenderer.on('artnet:disconnected', handler)
       return () => ipcRenderer.removeListener('artnet:disconnected', handler)
     },
+    // 📡 WAVE 7102: Art-Net Timecode — OpTimeCode packets forwarded from main process
+    onTimecode: (callback: (packet: any) => void) => {
+      const handler = (_: Electron.IpcRendererEvent, packet: any) => callback(packet)
+      ipcRenderer.on('artnet:timecode', handler)
+      return () => ipcRenderer.removeListener('artnet:timecode', handler)
+    },
+  },
+
+  // ============================================
+  // 🥁 WAVE 7103: MIDI CLOCK MASTER (Main Process Timer)
+  // ============================================
+  midiMaster: {
+    start: (fromZero: boolean) => ipcRenderer.send('midi-master:start', { fromZero }),
+    stop: () => ipcRenderer.send('midi-master:stop'),
+    setBpm: (bpm: number) => ipcRenderer.send('midi-master:set-bpm', { bpm }),
+    onPulse: (callback: (midiByte: number) => void) => {
+      const handler = (_: Electron.IpcRendererEvent, midiByte: number) => callback(midiByte)
+      ipcRenderer.on('midi-master:pulse', handler)
+      return () => ipcRenderer.removeListener('midi-master:pulse', handler)
+    },
+    onTransport: (callback: (midiByte: number) => void) => {
+      const handler = (_: Electron.IpcRendererEvent, midiByte: number) => callback(midiByte)
+      ipcRenderer.on('midi-master:transport', handler)
+      return () => ipcRenderer.removeListener('midi-master:transport', handler)
+    },
   },
 
   // ============================================
@@ -1615,6 +1640,14 @@ const luxApi = {
      */
     getState: (): Promise<{ loaded: boolean; playing: boolean; projectName: string | null; clipCount: number; activeClipCount: number; lastTickMs: number }> =>
       ipcRenderer.invoke('lux:playback:state'),
+
+    // 🥁 WAVE 7104: Direct Ticker — Main Process owns clip execution
+    setClockMode: (mode: 'internal' | 'external'): void => {
+      ipcRenderer.send('lux:playback:set-clock-mode', mode)
+    },
+    setExternalTime: (timeMs: number): void => {
+      ipcRenderer.send('lux:playback:external-time', timeMs)
+    },
   },
 
   // ─────────────────────────────────────────────────────────────────────────

@@ -578,14 +578,16 @@ export function getTargetCanonicalZones(tags: string[]): CanonicalZone[] {
  */
 export function isClipZoneCompatible(
   clipZones: string[] | undefined,
-  trackTargetZone: CanonicalZone | undefined
+  trackTargetZone: string | undefined
 ): boolean {
   // Global track (no specific zone) accepts everything
   if (!trackTargetZone) return true
   // Clip without zone restriction → compatible with any track
   if (!clipZones || clipZones.length === 0) return true
+  // WAVE 7107-B: Direct string match first (handles energy zones like 'intense', 'peak')
+  if (clipZones.includes(trackTargetZone)) return true
   // Check if the clip's resolved canonical zones include this track's zone
-  return getTargetCanonicalZones(clipZones).includes(trackTargetZone)
+  return getTargetCanonicalZones(clipZones).includes(trackTargetZone as CanonicalZone)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

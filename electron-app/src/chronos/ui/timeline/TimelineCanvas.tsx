@@ -35,7 +35,8 @@ import { ZONE_COLORS } from '../../../components/hyperion/shared/ZoneLayoutEngin
 import { isClipZoneCompatible } from '../../../core/zones/ZoneMapper'
 // 🔥 WAVE 2548: Store V2 — tracks explícitas, sin derivación desde fixtures
 import { getChronosStoreV2 } from '../../core/ChronosStore'
-import type { LuxTrackV3 } from '../../core/LuxFileV3'
+import type { LuxTrackV3, LuxTargetZone } from '../../core/LuxFileV3'
+import { TRACK_ZONE_COLORS, ZONE_BASE_LABELS } from '../../core/LuxFileV3.factories'
 // WAVE 2552: Track Management UI overlay
 import { TrackLabelsOverlay } from './TrackLabelsOverlay'
 import './TimelineCanvas.css'
@@ -46,6 +47,8 @@ import './TimelineCanvas.css'
 
 export interface TimelineCanvasProps {
   currentTime: number          // in milliseconds
+  /** WAVE 7106: Real-time ref for 60fps playhead without React re-renders */
+  currentTimeRef?: React.MutableRefObject<number>
   bpm: number
   isPlaying: boolean
   onSeek: (time: number) => void
@@ -94,8 +97,8 @@ interface Track {
   label: string
   height: number              // pixels
   color: string
-  /** WAVE 2543.3: Physical zone this track targets (fx tracks only) */
-  targetZone?: CanonicalZone
+  /** WAVE 7107-B: Semantic zone (energy descriptor or physical) this track targets */
+  targetZone?: LuxTargetZone
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -521,26 +524,52 @@ GenericTrackRenderer.displayName = 'GenericTrackRenderer'
 
 interface PlayheadProps {
   currentTime: number
+  currentTimeRef?: React.MutableRefObject<number>
   viewport: TimelineViewport
   height: number
+  isPlaying: boolean
 }
 
 const Playhead: React.FC<PlayheadProps> = memo(({
   currentTime,
+  currentTimeRef,
   viewport,
   height,
+  isPlaying,
 }) => {
+  const lineRef = useRef<SVGLineElement>(null)
+  const polygonRef = useRef<SVGPolygonElement>(null)
+  const rafRef = useRef<number>(0)
+  const viewportRef = useRef(viewport)
+  viewportRef.current = viewport
+
   const position = TRACK_LABEL_WIDTH + 
     ((currentTime - viewport.startTime) / 1000) * viewport.pixelsPerSecond
-  
-  // 🔧 WAVE 2040.13: PLAYHEAD ALWAYS VISIBLE (no hardcoded 2000px limit)
-  // SVG viewport will naturally clip if playhead is outside visible area
-  // This fixes: "playhead appears 1s late and disappears 1s early"
-  
+
+  useEffect(() => {
+    if (!isPlaying || !currentTimeRef) return
+
+    const tick = () => {
+      const vp = viewportRef.current
+      const t = currentTimeRef.current
+      const pos = TRACK_LABEL_WIDTH + ((t - vp.startTime) / 1000) * vp.pixelsPerSecond
+      if (lineRef.current) {
+        lineRef.current.setAttribute('x1', String(pos))
+        lineRef.current.setAttribute('x2', String(pos))
+      }
+      if (polygonRef.current) {
+        polygonRef.current.setAttribute('points', `${pos - 6},0 ${pos + 6},0 ${pos},10`)
+      }
+      rafRef.current = requestAnimationFrame(tick)
+    }
+    rafRef.current = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [isPlaying, currentTimeRef])
+
   return (
     <g className="timeline-playhead" style={{ pointerEvents: 'none' }}>
-      {/* Playhead line */}
       <line
+        ref={lineRef}
         x1={position}
         y1={0}
         x2={position}
@@ -549,8 +578,8 @@ const Playhead: React.FC<PlayheadProps> = memo(({
         strokeWidth={2}
         pointerEvents="none"
       />
-      {/* Playhead triangle */}
       <polygon
+        ref={polygonRef}
         points={`${position - 6},0 ${position + 6},0 ${position},10`}
         fill="#ff0055"
         pointerEvents="none"
@@ -567,6 +596,7 @@ Playhead.displayName = 'Playhead'
 
 export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   currentTime,
+  currentTimeRef,
   bpm,
   isPlaying,
   analysisData,
@@ -607,39 +637,37 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   // WAVE 2006: Auto-follow playhead
   const lastUserScrollRef = useRef<number>(0)
   const USER_SCROLL_COOLDOWN = 2000 // Wait 2s after user scrolls before auto-following
-  
+  const autoFollowRafRef = useRef<number>(0)
+
   useEffect(() => {
-    // Only auto-follow when playing and follow is enabled
-    if (!isPlaying || !followEnabled) return
-    
-    // Don't interrupt if user recently scrolled
-    const timeSinceUserScroll = Date.now() - lastUserScrollRef.current
-    if (timeSinceUserScroll < USER_SCROLL_COOLDOWN) return
-    
-    const viewportDuration = viewport.endTime - viewport.startTime
-    const viewportWidth = dimensions.width - TRACK_LABEL_WIDTH
-    
-    // Calculate playhead position in viewport
-    const playheadRelative = currentTime - viewport.startTime
-    const playheadPosition = (playheadRelative / 1000) * viewport.pixelsPerSecond
-    
-    // 🚀 WAVE 2040.15: UNCHAINED SCROLL
-    // Safe zone at 95% - playhead can travel almost to the edge before scroll kicks in
-    const safeZoneEnd = viewportWidth * 0.95
-    
-    // If playhead exits right side of safe zone, scroll so playhead is at 10% from left
-    if (playheadPosition > safeZoneEnd || playheadPosition < 0) {
-      // Position playhead at 10% from left edge (not center)
-      const targetStart = currentTime - viewportDuration * 0.05
-      const newStart = Math.max(0, targetStart)
-      
-      setViewport(prev => ({
-        ...prev,
-        startTime: newStart,
-        endTime: newStart + viewportDuration,
-      }))
+    if (!isPlaying || !followEnabled || !currentTimeRef) return
+
+    const tick = () => {
+      const timeSinceUserScroll = Date.now() - lastUserScrollRef.current
+      if (timeSinceUserScroll >= USER_SCROLL_COOLDOWN) {
+        const vp = viewportRef.current
+        const t = currentTimeRef.current
+        const viewportDuration = vp.endTime - vp.startTime
+        const viewportWidth = dimensions.width - TRACK_LABEL_WIDTH
+        const playheadRelative = t - vp.startTime
+        const playheadPosition = (playheadRelative / 1000) * vp.pixelsPerSecond
+        const safeZoneEnd = viewportWidth * 0.95
+
+        if (playheadPosition > safeZoneEnd || playheadPosition < 0) {
+          const targetStart = t - viewportDuration * 0.05
+          const newStart = Math.max(0, targetStart)
+          setViewport(prev => ({
+            ...prev,
+            startTime: newStart,
+            endTime: newStart + viewportDuration,
+          }))
+        }
+      }
+      autoFollowRafRef.current = requestAnimationFrame(tick)
     }
-  }, [currentTime, isPlaying, followEnabled, viewport.pixelsPerSecond, dimensions.width])
+    autoFollowRafRef.current = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(autoFollowRafRef.current)
+  }, [isPlaying, followEnabled, currentTimeRef, dimensions.width])
   
   // WAVE 2006: Drag state
   const [isDragOver, setIsDragOver] = useState(false)
@@ -814,6 +842,91 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   // Cuando el viewport (dimensions.height) es MAYOR → el elastic llena el espacio → sin scroll.
   // Cuando el viewport es MENOR que las alturas fijas → el SVG mantiene su tamaño → scroll activo.
   const visibleCanvasHeight = Math.max(dimensions.height, totalFixedHeight + 60)
+
+  // ⚡ WAVE 7106: MEMOIZED GRID LINES — no longer rebuilt every frame.
+  // Dependencies are all low-frequency (viewport, bpm, dimensions, drag state).
+  // Zero dependency on currentTime → eliminates 400+ SVG element reconciliation per frame.
+  const gridLines = useMemo(() => {
+    const lines: React.ReactNode[] = []
+    const msPerBeat = 60000 / bpm
+    const msPerBar = msPerBeat * 4
+    const pixelsPerMs = viewport.pixelsPerSecond / 1000
+
+    const showBeats = viewport.pixelsPerSecond > 30
+
+    const firstBar = Math.max(0, Math.floor(viewport.startTime / msPerBar))
+
+    const visibleWidth = dimensions.width - TRACK_LABEL_WIDTH
+    const visibleDurationMs = visibleWidth / pixelsPerMs
+    const viewportEnd = viewport.startTime + visibleDurationMs
+    const lastBar = Math.ceil(viewportEnd / msPerBar) + 1
+
+    const isDragging = draggingClipId !== null || resizingClip !== null
+    const dragClip = draggingClipId
+      ? clips.find(c => c.id === draggingClipId)
+      : resizingClip
+        ? clips.find(c => c.id === resizingClip.id)
+        : null
+    const dragTimeMs = dragClip?.startMs ?? null
+    const dragEndMs = dragClip?.endMs ?? null
+
+    for (let bar = firstBar; bar <= lastBar; bar++) {
+      const barTimeMs = bar * msPerBar
+      const barX = TRACK_LABEL_WIDTH + (barTimeMs - viewport.startTime) * pixelsPerMs
+
+      if (barX >= TRACK_LABEL_WIDTH && barX <= dimensions.width) {
+        const isNearDrag = isDragging && dragTimeMs !== null && (
+          Math.abs(barTimeMs - dragTimeMs) < msPerBeat * 0.5 ||
+          (dragEndMs !== null && Math.abs(barTimeMs - dragEndMs) < msPerBeat * 0.5)
+        )
+
+        lines.push(
+          <line
+            key={`bar-${bar}`}
+            x1={barX}
+            y1={32}
+            x2={barX}
+            y2={visibleCanvasHeight}
+            stroke={isNearDrag ? '#ffffff' : 'rgba(59, 130, 246, 0.35)'}
+            strokeWidth={isNearDrag ? 2 : 1}
+            opacity={isNearDrag ? 0.9 : 1}
+            pointerEvents="none"
+            className={isNearDrag ? 'grid-line-glow' : ''}
+          />
+        )
+      }
+
+      if (showBeats) {
+        for (let beat = 1; beat < 4; beat++) {
+          const beatTimeMs = barTimeMs + (beat * msPerBeat)
+          const beatX = TRACK_LABEL_WIDTH + (beatTimeMs - viewport.startTime) * pixelsPerMs
+
+          if (beatX >= TRACK_LABEL_WIDTH && beatX <= dimensions.width) {
+            const isNearDrag = isDragging && dragTimeMs !== null && (
+              Math.abs(beatTimeMs - dragTimeMs) < msPerBeat * 0.3 ||
+              (dragEndMs !== null && Math.abs(beatTimeMs - dragEndMs) < msPerBeat * 0.3)
+            )
+
+            lines.push(
+              <line
+                key={`beat-${bar}-${beat}`}
+                x1={beatX}
+                y1={32}
+                x2={beatX}
+                y2={visibleCanvasHeight}
+                stroke={isNearDrag ? '#ffffff' : 'rgba(59, 130, 246, 0.12)'}
+                strokeWidth={isNearDrag ? 1.5 : 0.5}
+                opacity={isNearDrag ? 0.8 : 1}
+                pointerEvents="none"
+                className={isNearDrag ? 'grid-line-glow' : ''}
+              />
+            )
+          }
+        }
+      }
+    }
+    return lines
+  }, [viewport, bpm, dimensions.width, visibleCanvasHeight, draggingClipId, resizingClip, clips])
   
   // Zoom handler - Using native event listener to allow preventDefault on wheel
   // React synthetic wheel events are passive by default, which causes the console warning
@@ -1219,105 +1332,8 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
           pointerEvents="none"
         />
         
-        {/* 🎹 WAVE 2015: GOD MODE GRID - Musical Beat Lines across ALL tracks
-            - Bar lines: Bright blue, full opacity
-            - Beat lines: Subtle blue
-            - Highlight: When dragging, nearby beats glow white
-            
-            🔥 WAVE 2040.40: INFINITE HORIZON — Grid fills entire viewport width
-            - Previously: Drew only up to viewport.endTime (12s default = cut short)
-            - Now: Draws to edge of physical screen width, regardless of viewport duration
-        */}
-        {(() => {
-          const lines: React.ReactNode[] = []
-          const msPerBeat = 60000 / bpm
-          const msPerBar = msPerBeat * 4
-          const pixelsPerMs = viewport.pixelsPerSecond / 1000
-          
-          // Show beat subdivisions when zoomed in enough
-          const showBeats = viewport.pixelsPerSecond > 30
-          
-          // Find first bar in viewport
-          const firstBar = Math.max(0, Math.floor(viewport.startTime / msPerBar))
-          
-          // 🔥 WAVE 2040.40: INFINITE HORIZON — Calculate last bar from SCREEN WIDTH
-          // Not from viewport.endTime (which might be shorter than visible area)
-          const visibleWidth = dimensions.width - TRACK_LABEL_WIDTH
-          const visibleDurationMs = visibleWidth / pixelsPerMs
-          const viewportEnd = viewport.startTime + visibleDurationMs
-          const lastBar = Math.ceil(viewportEnd / msPerBar) + 1  // +1 for safety margin
-          
-          // Calculate if we're dragging (for glow effect)
-          const isDragging = draggingClipId !== null || resizingClip !== null
-          const dragClip = draggingClipId 
-            ? clips.find(c => c.id === draggingClipId) 
-            : resizingClip 
-              ? clips.find(c => c.id === resizingClip.id) 
-              : null
-          const dragTimeMs = dragClip?.startMs ?? null
-          const dragEndMs = dragClip?.endMs ?? null
-          
-          for (let bar = firstBar; bar <= lastBar; bar++) {
-            // Bar line
-            const barTimeMs = bar * msPerBar
-            const barX = TRACK_LABEL_WIDTH + (barTimeMs - viewport.startTime) * pixelsPerMs
-            
-            if (barX >= TRACK_LABEL_WIDTH && barX <= dimensions.width) {
-              // 🌟 WAVE 2015: Highlight if clip edge is near this beat
-              const isNearDrag = isDragging && dragTimeMs !== null && (
-                Math.abs(barTimeMs - dragTimeMs) < msPerBeat * 0.5 ||
-                (dragEndMs !== null && Math.abs(barTimeMs - dragEndMs) < msPerBeat * 0.5)
-              )
-              
-              lines.push(
-                <line
-                  key={`bar-${bar}`}
-                  x1={barX}
-                  y1={32} // Start below ruler
-                  x2={barX}
-                  y2={visibleCanvasHeight}
-                  stroke={isNearDrag ? '#ffffff' : 'rgba(59, 130, 246, 0.35)'}
-                  strokeWidth={isNearDrag ? 2 : 1}
-                  opacity={isNearDrag ? 0.9 : 1}
-                  pointerEvents="none"
-                  className={isNearDrag ? 'grid-line-glow' : ''}
-                />
-              )
-            }
-            
-            // Beat lines within this bar
-            if (showBeats) {
-              for (let beat = 1; beat < 4; beat++) {
-                const beatTimeMs = barTimeMs + (beat * msPerBeat)
-                const beatX = TRACK_LABEL_WIDTH + (beatTimeMs - viewport.startTime) * pixelsPerMs
-                
-                if (beatX >= TRACK_LABEL_WIDTH && beatX <= dimensions.width) {
-                  // 🌟 WAVE 2015: Highlight if clip edge is near this beat
-                  const isNearDrag = isDragging && dragTimeMs !== null && (
-                    Math.abs(beatTimeMs - dragTimeMs) < msPerBeat * 0.3 ||
-                    (dragEndMs !== null && Math.abs(beatTimeMs - dragEndMs) < msPerBeat * 0.3)
-                  )
-                  
-                  lines.push(
-                    <line
-                      key={`beat-${bar}-${beat}`}
-                      x1={beatX}
-                      y1={32}
-                      x2={beatX}
-                      y2={visibleCanvasHeight}
-                      stroke={isNearDrag ? '#ffffff' : 'rgba(59, 130, 246, 0.12)'}
-                      strokeWidth={isNearDrag ? 1.5 : 0.5}
-                      opacity={isNearDrag ? 0.8 : 1}
-                      pointerEvents="none"
-                      className={isNearDrag ? 'grid-line-glow' : ''}
-                    />
-                  )
-                }
-              }
-            }
-          }
-          return lines
-        })()}
+        {/* 🎹 WAVE 2015: GOD MODE GRID — ⚡ WAVE 7106: Memoized in component body */}
+        {gridLines}
         
         {/* Render tracks (WAVE 2040.12: Use elastic heights) */}
         {elasticTracks.map((track, index) => {
@@ -1505,8 +1521,10 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
         {/* Playhead */}
         <Playhead
           currentTime={currentTime}
+          currentTimeRef={currentTimeRef}
           viewport={viewport}
           height={visibleCanvasHeight}
+          isPlaying={isPlaying}
         />
         
         {/* Track separator lines (WAVE 2040.12: Use elastic heights) */}
@@ -1617,21 +1635,17 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * 🔥 WAVE 2549: ZONE_CATALOG — catálogo estático completo.
- * Sin filtros. El mismo slot se puede añadir N veces.
+ * 🔥 WAVE 7107-B: SEMANTIC ZONE CATALOG — Selene Energy Zones.
+ * Physical zones (Front/Back/Floor) replaced by energy descriptors.
  */
-const ZONE_CATALOG: Array<{ label: string; zones: Array<CanonicalZone | 'global'> }> = [
+const ZONE_CATALOG: Array<{ label: string; zones: Array<LuxTargetZone> }> = [
   {
     label: 'GLOBAL',
     zones: ['global'],
   },
   {
-    label: 'CORE ZONES',
-    zones: ['front', 'back', 'floor', 'center', 'air', 'ambient'],
-  },
-  {
-    label: 'MOVERS',
-    zones: ['movers-left', 'movers-right'],
+    label: 'SELENE ENERGY ZONES',
+    zones: ['peak', 'intense', 'active', 'gentle', 'valley', 'silence'],
   },
 ]
 
@@ -1673,7 +1687,7 @@ const ZoneTrackFooter = memo(() => {
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [open])
 
-  const handleAddZone = useCallback((zone: CanonicalZone | 'global') => {
+  const handleAddZone = useCallback((zone: LuxTargetZone) => {
     getChronosStoreV2().addTrack(zone)
     setOpen(false)
   }, [])
@@ -1701,10 +1715,10 @@ const ZoneTrackFooter = memo(() => {
               <div className="zone-dropdown-group-label">{group.label}</div>
               {group.zones.map(zone => {
                 const isGlobal = zone === 'global'
-                const color = isGlobal ? '#e2e8f0' : ZONE_COLORS[zone as CanonicalZone]
+                const color = TRACK_ZONE_COLORS[zone] ?? '#475569'
                 const label = isGlobal
-                  ? 'GLOBAL (All Fixtures)'
-                  : ZONE_LABELS[zone as CanonicalZone].replace(/^.+?\s/, '')
+                  ? 'GLOBAL (All Zones)'
+                  : (ZONE_BASE_LABELS[zone] ?? String(zone).toUpperCase())
                 return (
                   <button
                     key={zone}

@@ -34,13 +34,16 @@ export {
   type ArtNetTimecodePacket,
 } from './ArtNetTimecodeReceiver'
 
-// ── Protocol 3: MIDI Clock Master ──
+// ── Protocol 3: MIDI Clock Master (outbound, IPC proxy) ──
 export {
   MIDIClockMaster,
   type MIDIClockMasterState,
   type MIDIClockMasterEvent,
   type MIDIOutputInfo,
 } from './MIDIClockMaster'
+
+// ── Protocol 3b: MIDI Clock Slave (inbound, IClockSource) — WAVE 7103 ──
+export { MIDIClockSlave } from './MIDIClockSlave'
 
 // ── Protocol 4: LTC / SMPTE Audio Decoder ──
 export { LTCDecoder } from './LTCDecoder'

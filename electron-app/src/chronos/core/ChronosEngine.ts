@@ -1074,7 +1074,7 @@ export class ChronosEngine {
       // WAVE 2550: Zone routing comes from the track, not the clip.
       // track.targetZone === 'global' maps to EffectZone 'all' (all fixtures).
       const trackZone: EffectZone =
-        track.targetZone === 'global' ? 'all' : track.targetZone
+        (track.targetZone === 'global' ? 'all' : track.targetZone) as EffectZone
 
       activeEffects.push({
         effectId: fxClip.fxType,

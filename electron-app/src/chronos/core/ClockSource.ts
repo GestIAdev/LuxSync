@@ -32,11 +32,12 @@ import type { TimeMs } from './types'
  * Identifiers for available clock source types.
  */
 export type ClockSourceType =
-  | 'internal'       // AudioContext / performance.now() (default)
-  | 'midi-clock'     // MIDI Clock slave (beat-based, 24 PPQ)
-  | 'mtc'            // MIDI Time Code (position-based, HH:MM:SS:FF)
-  | 'artnet-tc'      // Art-Net Timecode (UDP 6454)
-  | 'ltc-smpte'      // LTC / SMPTE (audio bi-phase mark decode)
+  | 'internal'           // AudioContext / performance.now() (default)
+  | 'midi-clock'         // MIDI Clock master (outbound, 24 PPQ)
+  | 'midi-clock-slave'   // MIDI Clock slave (inbound, 24 PPQ — WAVE 7103)
+  | 'mtc'                // MIDI Time Code (position-based, HH:MM:SS:FF)
+  | 'artnet-tc'          // Art-Net Timecode (UDP 6454)
+  | 'ltc-smpte'          // LTC / SMPTE (audio bi-phase mark decode)
 
 /**
  * SMPTE frame-rate standards

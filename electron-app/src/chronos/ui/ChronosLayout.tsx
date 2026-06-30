@@ -62,7 +62,8 @@ import { getChronosInjector, type StageCommand } from '../core/ChronosInjector'
 // 💾 WAVE 2014: Project persistence (The Memory Core)
 import { useChronosProject } from '../hooks/useChronosProject'
 // 🧠 WAVE 2014.5: Store singleton for event subscriptions
-import { getChronosStore } from '../core/ChronosStore'
+import { getChronosStore, getChronosStoreV2 } from '../core/ChronosStore'
+import type { LuxTargetZone } from '../core/LuxFileV3'
 // ⚡ WAVE 2015.5: ENGINE IGNITION - Control store for phantom mode
 import { useControlStore, type LivingPaletteId } from '../../stores/controlStore'
 import { useOverrideStore } from '../../stores/overrideStore'
@@ -384,20 +385,43 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
     console.log(`🧲 [ChronosLayout] Quantize: ${newState ? 'ON' : 'OFF'}`)
   }, [quantizeEnabled, recorder])
   
-  // 🎬 WAVE 2010: Sync playhead with recorder during playback
+  // 🎬 WAVE 2010 + 7107-A.2: Sync playhead with recorder via rAF (reads ref, not stale state)
   useEffect(() => {
-    if (streaming.isPlaying && isRecording) {
-      recorder.updatePlayhead(streaming.currentTimeMs)
+    if (!isRecording) return
+    const isLive = audioSourceMode === 'live'
+    const isPlaying = isLive ? freeRunClock.isRunning : streaming.isPlaying
+    if (!isPlaying) return
+
+    const timeRef = isLive ? freeRunClock.currentTimeMsRef : streaming.currentTimeMsRef
+    if (!timeRef) return
+
+    let rafId = 0
+    const tick = () => {
+      recorder.updatePlayhead(timeRef.current)
+      rafId = requestAnimationFrame(tick)
     }
-  }, [streaming.currentTimeMs, streaming.isPlaying, isRecording, recorder])
-  
-  // 🚀 WAVE 2013: Tick the injector during playback (sends commands to Stage)
+    rafId = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafId)
+  }, [isRecording, audioSourceMode, streaming.isPlaying, streaming.currentTimeMsRef, freeRunClock.isRunning, freeRunClock.currentTimeMsRef, recorder])
+
+  // 🚀 WAVE 2013 + 7107-A.2: Tick the injector during playback via rAF (reads ref)
   useEffect(() => {
-    if (streaming.isPlaying && !isRecording) {
-      // Only inject during playback (not during recording)
-      injector.tick(clipState.clips, streaming.currentTimeMs)
+    if (isRecording) return // Only inject during playback (not during recording)
+    const isLive = audioSourceMode === 'live'
+    const isPlaying = isLive ? freeRunClock.isRunning : streaming.isPlaying
+    if (!isPlaying) return
+
+    const timeRef = isLive ? freeRunClock.currentTimeMsRef : streaming.currentTimeMsRef
+    if (!timeRef) return
+
+    let rafId = 0
+    const tick = () => {
+      injector.tick(clipState.clips, timeRef.current)
+      rafId = requestAnimationFrame(tick)
     }
-  }, [streaming.currentTimeMs, streaming.isPlaying, isRecording, injector, clipState.clips])
+    rafId = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafId)
+  }, [isRecording, audioSourceMode, streaming.isPlaying, streaming.currentTimeMsRef, freeRunClock.isRunning, freeRunClock.currentTimeMsRef, injector, clipState.clips])
   
   // ⚡ WAVE 2540.6: 60FPS PLAYHEAD PIPELINE
   // The old useEffect depended on streaming.currentTimeMs (React state) which
@@ -777,7 +801,55 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
     const handleClipRecorded = (data: { clip: RecordedClip }) => {
       const clip = data.clip
       console.log(`[ChronosLayout] Recorded clip received:`, clip.displayName, `(${clip.clipType})`)
-      
+
+      // ── WAVE 7107-A.2: DAW TAKE LANE HEURISTIC ──────────────────────
+      // a) 'all' → primaryZone = 'global'
+      // b) Anchor: first zone in array
+      // c) Filter tracks matching primaryZone
+      // d) Find first track without collision (Take Lane)
+      // e) Auto-create new track if all existing tracks collide
+      // f) Assign clip to found or created track
+      const storeV2 = getChronosStoreV2()
+      const zones = clip.zones ?? []
+      const isAllZone = zones.includes('all') || zones.length === 0
+      const primaryZone: LuxTargetZone = isAllZone ? 'global' : ((zones[0] || 'global') as LuxTargetZone)
+
+      const newStart = clip.startMs
+      const newEnd = clip.startMs + clip.durationMs
+
+      // c) Find all tracks for this primaryZone (excluding locked tracks, except global)
+      const candidateTracks = storeV2.tracks.filter(t =>
+        t.targetZone === primaryZone && (!t.locked || primaryZone === 'global')
+      )
+
+      // d) Iterate candidate tracks — find first without collision
+      let resolvedTrackId: string | null = null
+      for (const track of candidateTracks) {
+        const existingClips = clipState.clips.filter(c => c.trackId === track.id)
+        const hasCollision = existingClips.some(c =>
+          newStart < c.endMs && newEnd > c.startMs
+        )
+        if (!hasCollision) {
+          resolvedTrackId = track.id
+          console.log(`[ChronosLayout] WAVE 7107-A.2: Routed to existing track "${track.visualLabel}" (${primaryZone})`)
+          break
+        }
+      }
+
+      // e) Auto-create new track if all candidate tracks have collision
+      if (!resolvedTrackId) {
+        if (primaryZone === 'global') {
+          // GLOBAL track is locked and singleton — just use it even if colliding
+          const globalTrack = storeV2.tracks.find(t => t.targetZone === 'global')
+          resolvedTrackId = globalTrack?.id ?? 'global'
+          console.log(`[ChronosLayout] WAVE 7107-A.2: GLOBAL fallback (collision accepted)`)
+        } else {
+          const newTrack = storeV2.addTrack(primaryZone)
+          resolvedTrackId = newTrack.id
+          console.log(`[ChronosLayout] WAVE 7107-A.2: Auto-created track "${newTrack.visualLabel}" for ${primaryZone} (Take Lane ${candidateTracks.length + 1})`)
+        }
+      }
+
       if (clip.clipType === 'fx') {
         // ⬡ FASE 6: FX clip — create FXClip with embedded Diamond Data
         const timelineClip: FXClip = createHephFXClip(
@@ -785,7 +857,7 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
           clip.hephFilePath ?? '',
           clip.startMs,
           clip.durationMs,
-          clip.trackId,
+          resolvedTrackId,
           clip.hephClip?.effectType ?? 'heph-custom',
           clip.hephClip,
           clip.zones,
@@ -801,7 +873,7 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
           startMs: clip.startMs,
           endMs: clip.startMs + clip.durationMs,
           color: clip.color || '#FF6B35',
-          trackId: clip.trackId,
+          trackId: resolvedTrackId,
           locked: false,
           vibeType: toVibeType(clip.effectId),
           intensity: 1.0,
@@ -841,7 +913,7 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
       recorder.off('clip-updated', handleClipUpdated)
       recorder.off('clip-growing', handleClipGrowing)
     }
-  }, [recorder, clipState])
+  }, [recorder, clipState, clipState.clips])
   
   // 🎬 WAVE 2010: Connect recording toggle to ChronosRecorder
   const handleRecord = useCallback(() => {
@@ -849,16 +921,19 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
     setIsRecording(newState)
     
     if (newState) {
-      // Update playhead position before starting
-      recorder.updatePlayhead(streaming.currentTimeMs)
+      // Update playhead position before starting — use ref for real-time value
+      const currentTime = audioSourceMode === 'live'
+        ? freeRunClock.currentTimeMsRef.current
+        : streaming.currentTimeMsRef.current
+      recorder.updatePlayhead(currentTime)
       recorder.startRecording()
-      console.log('[ChronosLayout] ⏺️ Recording STARTED at', streaming.currentTimeMs, 'ms')
+      console.log('[ChronosLayout] ⏺️ Recording STARTED at', currentTime, 'ms')
     } else {
       // Stop recording and get all recorded clips
       const recordedClips = recorder.stopRecording()
       console.log('[ChronosLayout] ⏹️ Recording STOPPED. Clips:', recordedClips.length)
     }
-  }, [isRecording, recorder, streaming.currentTimeMs])
+  }, [isRecording, recorder, audioSourceMode, streaming.currentTimeMsRef, freeRunClock.currentTimeMsRef])
   
   // 🎵 WAVE 2005.4: Seek uses streaming hook
   const handleSeek = useCallback((timeMs: number) => {
@@ -1137,6 +1212,7 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
         isPlaying={audioSourceMode === 'live' ? freeRunClock.isRunning : streaming.isPlaying}
         isRecording={isRecording}
         currentTime={audioSourceMode === 'live' ? freeRunClock.currentTimeMs : streaming.currentTimeMs}
+        currentTimeRef={audioSourceMode === 'live' ? freeRunClock.currentTimeMsRef : streaming.currentTimeMsRef}
         bpm={bpm}
         onPlay={handlePlay}
         onStop={handleStop}
@@ -1219,8 +1295,8 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
           onBlur={() => setIsTimelineFocused(false)}
           tabIndex={0}
         >
-          {/* Stage Preview — WAVE 2040.32: Grid Row 1 / WAVE 2542: colapsable */}
-          <StagePreview visible={stageVisible} />
+          {/* Stage Preview — WAVE 2040.32: Grid Row 1 / WAVE 2542: colapsable / WAVE 7106: unmount when collapsed */}
+          {isTopPanelOpen && <StagePreview visible={stageVisible} />}
 
           {/* ── WAVE 2542: Barra divisoria colapsable ────────────────── */}
           <button
@@ -1240,6 +1316,7 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
           <div className="chronos-timeline-wrapper chronos-timeline-wrapper--scrollable">
             <TimelineCanvas
               currentTime={audioSourceMode === 'live' ? freeRunClock.currentTimeMs : streaming.currentTimeMs}
+              currentTimeRef={audioSourceMode === 'live' ? freeRunClock.currentTimeMsRef : streaming.currentTimeMsRef}
               bpm={bpm}
               isPlaying={audioSourceMode === 'live' ? freeRunClock.isRunning : streaming.isPlaying}
               onSeek={handleSeek}

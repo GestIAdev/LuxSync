@@ -57,6 +57,10 @@ import { configManager } from '../src/core/config/ConfigManagerV2'
 import { FixturePhysicsDriver } from '../src/engine/movement/FixturePhysicsDriver'
 import { universalDMX, type DMXDevice } from '../src/hal/drivers/UniversalDMXDriver'
 import { artNetDriver } from '../src/hal/drivers/ArtNetDriver'
+// 📡 WAVE 7102: Art-Net Timecode multiplexing on existing UDP 6454 socket
+import { parseArtNetTimecodePacket } from '../src/chronos/protocols/ArtNetTimecodeReceiver'
+// 🥁 WAVE 7103: MIDI Clock Master — high-resolution timer in Main Process
+import { MidiMasterClock } from './midi/MidiMasterClock'
 // 🎨 WAVE 686.10: Import ArtNetDriverAdapter to bridge ArtNet to HAL
 import { createArtNetAdapter } from '../src/hal/drivers/ArtNetDriverAdapter'
 // 🔥 WAVE 2100: CompositeDMXDriver — dual output USB + ArtNet
@@ -85,6 +89,9 @@ export const glassPoolManager = new BufferPoolManager()
 
 const fixturePhysicsDriver = new FixturePhysicsDriver()
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
+
+// 🥁 WAVE 7103: MIDI Master Clock — high-resolution timer in Main Process
+const midiMasterClock = new MidiMasterClock()
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 👁️ WAVE 3290: OJO DEL HURACÁN — White-list Logging (CONCIENCIA SELECTIVA)
@@ -706,6 +713,31 @@ async function initTitan(): Promise<void> {
   })
   artNetDriver.on('disconnected', () => {
     mainWindow?.webContents.send('artnet:disconnected')
+  })
+
+  // 📡 WAVE 7102: Art-Net Timecode multiplexing — forward OpTimeCode packets to renderer
+  artNetDriver.on('timecode', (msg: Buffer) => {
+    const packet = parseArtNetTimecodePacket(new Uint8Array(msg))
+    if (packet) {
+      mainWindow?.webContents.send('artnet:timecode', packet)
+    }
+  })
+
+  // 🥁 WAVE 7103: MIDI Clock Master IPC — high-resolution timer in Main Process
+  midiMasterClock.setPulseCallback((midiByte: number) => {
+    mainWindow?.webContents.send('midi-master:pulse', midiByte)
+  })
+  midiMasterClock.setTransportCallback((midiByte: number) => {
+    mainWindow?.webContents.send('midi-master:transport', midiByte)
+  })
+  ipcMain.on('midi-master:start', (_event, data: { fromZero?: boolean }) => {
+    midiMasterClock.start(data?.fromZero ?? true)
+  })
+  ipcMain.on('midi-master:stop', () => {
+    midiMasterClock.stop()
+  })
+  ipcMain.on('midi-master:set-bpm', (_event, data: { bpm: number }) => {
+    midiMasterClock.setBpm(data.bpm)
   })
 
   // WAVE 2098: Unified boot banner — the ONLY boot output

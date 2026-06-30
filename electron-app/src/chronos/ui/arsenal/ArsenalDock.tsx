@@ -1,26 +1,150 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * ARSENAL DOCK — FASE 6a: .lfx Unification
+ * ARSENAL DOCK — WAVE 7109: PHOSPHOR NOIR / NEON BLOOM
  *
- * Panel horizontal inferior para Chronos.
- * FASE 6a: Legacy core effect grid + vibe cards demolished.
- * .lfx clips from Hephaestus are the ONLY source of truth for effects.
+ * Split layout: VIBE RACK (20%) | FX ARSENAL (80%) | TRIGGER ZONE
+ * Vibes shown as distinct cards. FX clips paginated with multi-zone filters.
  *
- * LAYOUT (200px height fixed):
- * ┌──────────────────────────────────────────────┬─────────────┐
- * │  CUSTOM FX DOCK (.lfx clips from Hephaestus) │   TRIGGER   │
- * │  [Filter tabs] [Grid scroll] [+] NEW         │    ZONE     │
- * │                                              │   (200px)   │
- * │                                              │    ARM      │
- * └──────────────────────────────────────────────┴─────────────┘
+ * LAYOUT (220px height fixed):
+ * ┌──────────┬──────────────────────────────────────┬─────────────┐
+ * │ VIBE     │  FX ARSENAL (CustomFXDock)           │   TRIGGER   │
+ * │ RACK     │  [Search] [Zone Filters] [Paginated] │    ZONE     │
+ * │ (20%)    │  [2 rows × 8-10 pads per page]       │   (200px)   │
+ * └──────────┴──────────────────────────────────────┴─────────────┘
  *
  * @module chronos/ui/arsenal/ArsenalDock
  */
 
-import React, { useCallback, useState, memo } from 'react'
+import React, { useCallback, useState, useMemo, memo } from 'react'
 import type { DragPayload } from '../../core/TimelineClip'
+import { serializeDragPayload } from '../../core/TimelineClip'
 import { CustomFXDock } from './CustomFXDock'
+import { useMidiMapStore } from '../../../stores/midiMapStore'
+import { getAllVibes } from '../../../engine/vibe/profiles/index'
+import type { VibeProfile } from '../../../types/VibeProfile'
 import './ArsenalDock.css'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// VIBE RACK — WAVE 7109: Distinct vibe cards with Neon Bloom
+// ═══════════════════════════════════════════════════════════════════════════
+
+const VIBE_COLORS: Record<string, string> = {
+  'fiesta-latina': '#ff6b35',
+  'techno-club':   '#00f0ff',
+  'chill-lounge':  '#a78bfa',
+  'pop-rock':      '#ff3366',
+  'idle':          '#6b7280',
+}
+
+interface VibeCardProps {
+  vibe: VibeProfile
+  isRecording: boolean
+  isMidiListening: boolean
+  isMidiMapped: boolean
+  onDragStart?: (payload: DragPayload) => void
+  onMidiClick?: (controlId: string) => void
+}
+
+const VibeCard: React.FC<VibeCardProps> = memo(({
+  vibe,
+  isRecording,
+  isMidiListening,
+  isMidiMapped,
+  onDragStart,
+  onMidiClick,
+}) => {
+  const vibeColor = VIBE_COLORS[vibe.id] ?? '#888'
+  const midiControlId = `vibe-${vibe.id}`
+
+  const handleDragStart = useCallback((e: React.DragEvent) => {
+    const payload: DragPayload = {
+      source: 'arsenal',
+      clipType: 'vibe',
+      subType: vibe.id,
+      name: vibe.name,
+      defaultDurationMs: 8000,
+    }
+    const serialized = serializeDragPayload(payload)
+    e.dataTransfer.setData('application/luxsync-clip', serialized)
+    e.dataTransfer.setData('application/luxsync-vibe', serialized)
+    e.dataTransfer.effectAllowed = 'copyMove'
+
+    const ghost = document.createElement('div')
+    ghost.className = 'vibe-drag-ghost'
+    ghost.textContent = vibe.name.toUpperCase()
+    ghost.style.backgroundColor = vibeColor
+    ghost.style.position = 'fixed'
+    ghost.style.top = '-100px'
+    document.body.appendChild(ghost)
+    e.dataTransfer.setDragImage(ghost, 0, 0)
+    setTimeout(() => document.body.removeChild(ghost), 0)
+
+    onDragStart?.(payload)
+  }, [vibe, vibeColor, onDragStart])
+
+  const handleClick = useCallback(() => {
+    if (isRecording) {
+      window.lux?.setVibe?.(vibe.id)
+    } else if (isMidiListening) {
+      onMidiClick?.(midiControlId)
+    }
+  }, [isRecording, isMidiListening, vibe.id, onMidiClick])
+
+  return (
+    <div
+      className={`vibe-card ${isRecording ? 'rec-mode' : ''} ${isMidiListening ? 'midi-listening' : ''} ${isMidiMapped ? 'midi-mapped' : ''}`}
+      draggable={!isRecording}
+      onDragStart={isRecording ? undefined : handleDragStart}
+      onClick={handleClick}
+      data-midi-id={midiControlId}
+      style={{ '--vibe-color': vibeColor } as React.CSSProperties}
+      title={`${vibe.name}\n${vibe.description}`}
+    >
+      {isMidiMapped && <span className="vibe-card-midi-dot" />}
+      <span className="vibe-card-icon">{vibe.icon}</span>
+      <span className="vibe-card-name">{vibe.name}</span>
+    </div>
+  )
+})
+VibeCard.displayName = 'VibeCard'
+
+const VibeRack: React.FC<{
+  isRecording: boolean
+  onDragStart?: (payload: DragPayload) => void
+}> = memo(({ isRecording, onDragStart }) => {
+  const vibes = useMemo(() => getAllVibes().filter(v => v.id !== 'idle'), [])
+  const learnMode = useMidiMapStore(s => s.learnMode)
+  const listeningControl = useMidiMapStore(s => s.listeningControl)
+  const mappings = useMidiMapStore(s => s.mappings)
+  const startListening = useMidiMapStore(s => s.startListening)
+
+  const handleMidiClick = useCallback((controlId: string) => {
+    startListening(controlId)
+  }, [startListening])
+
+  return (
+    <div className="dock-vibe-rack">
+      <div className="vibe-rack-header">
+        <span className="vibe-rack-title">VIBES</span>
+        <span className="vibe-rack-hint">{learnMode ? 'MIDI' : 'DRAG'}</span>
+      </div>
+      <div className="vibe-rack-grid">
+        {vibes.map(vibe => (
+          <VibeCard
+            key={vibe.id}
+            vibe={vibe}
+            isRecording={isRecording}
+            isMidiListening={learnMode && listeningControl === `vibe-${vibe.id}`}
+            isMidiMapped={!!mappings[`vibe-${vibe.id}`]}
+            onDragStart={onDragStart}
+            onMidiClick={handleMidiClick}
+          />
+        ))}
+      </div>
+    </div>
+  )
+})
+VibeRack.displayName = 'VibeRack'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ARM BUTTON
@@ -101,6 +225,11 @@ export const ArsenalDock: React.FC<ArsenalDockProps> = memo(({
 
   return (
     <div className={`arsenal-dock ${effectiveRecording ? 'recording' : ''} ${effectiveArmed ? 'armed' : ''}`}>
+      <VibeRack
+        isRecording={effectiveRecording}
+        onDragStart={onDragStart}
+      />
+
       <CustomFXDock
         isRecording={effectiveRecording}
         onDragStart={onDragStart}

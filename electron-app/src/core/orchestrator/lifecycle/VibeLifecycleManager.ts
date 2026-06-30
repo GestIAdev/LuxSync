@@ -20,6 +20,7 @@ export class VibeLifecycleManager {
   private engine: TitanEngine | null = null
   private trinity: TrinityOrchestrator | null = null
   private hal: HardwareAbstraction | null = null
+  private pendingHeatmap: unknown = null
 
   constructor(
     private readonly state: StateManager,
@@ -34,6 +35,12 @@ export class VibeLifecycleManager {
     // setLiquidLayout() before engine was injected (boot race condition).
     if (e) {
       e.setLiquidLayout(this.state.currentLiquidLayout)
+      // Flush pending heatmap if one was set before engine was ready
+      if (this.pendingHeatmap) {
+        console.log('[VibeLifecycle] Flushing pending heatmap to engine')
+        e.setChronosHeatmap(this.pendingHeatmap as any)
+        this.pendingHeatmap = null
+      }
     }
   }
   setTrinity(t: TrinityOrchestrator | null): void { this.trinity = t }
@@ -99,6 +106,9 @@ export class VibeLifecycleManager {
   setChronosHeatmap(heatmap: unknown): void {
     if (this.engine) {
       this.engine.setChronosHeatmap(heatmap as any)
+    } else {
+      this.pendingHeatmap = heatmap
+      console.log(`[VibeLifecycle] Engine not ready — heatmap cached as pending (energyLen=${(heatmap as any)?.energy?.length ?? 0})`)
     }
   }
 

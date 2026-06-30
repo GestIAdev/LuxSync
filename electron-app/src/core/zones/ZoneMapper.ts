@@ -346,8 +346,10 @@ export function resolveZoneTags(tags: string[], fixtures: readonly ZoneMappableF
     const t = sanitizeZoneTag(tag)
     if (MODIFIER_ZONES.has(t)) {
       modifiers.push(t)
-    } else {
+    } else if (COMPOSITE_ZONES[t] || CANONICAL_ZONES.includes(t as CanonicalZone)) {
       targetTags.push(t)
+    } else {
+      // Non-spatial tag (e.g. energy zones like 'intense', 'peak') — skip, don't filter
     }
   }
 

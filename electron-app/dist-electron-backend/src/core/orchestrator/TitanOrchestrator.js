@@ -648,7 +648,16 @@ export class TitanOrchestrator {
      *  WAVE 2540.5: PLAYHEAD SYNC â€” Forward Chronos playhead to TitanEngine.
      * Called every frame from the frontend during Chronos playback.
      */
-    setChronosPlayhead(timeMs, isPlaying) { this.vibeLifecycleManager.setChronosPlayhead(timeMs, isPlaying); }
+    setChronosPlayhead(timeMs, isPlaying) {
+        this.vibeLifecycleManager.setChronosPlayhead(timeMs, isPlaying);
+        // Auto-arm output when Chronos playback starts — the user is playing a show,
+        // so they expect lights. Without this, the Smart Gate blocks all DMX output
+        // because _outputEnabled defaults to false at boot (WAVE 6015 Cold Start Protocol).
+        if (isPlaying && !this._outputEnabled) {
+            this.setOutputEnabled(true);
+            console.log('[TitanOrchestrator] 🟢 Output auto-armed by Chronos playback');
+        }
+    }
     /**
      * WAVE 254: Set mode (auto/manual)
      */

@@ -449,8 +449,46 @@ export class TitanEngine extends EventEmitter {
     // Log state transitions
     if (isPlaying && !wasActive) {
       console.log(`[TitanEngine 👻] PHANTOM PLAYBACK STARTED @ ${timeMs.toFixed(0)}ms`)
+      if (!this.chronosHeatmap) {
+        console.warn(`[TitanEngine 👻] ⚠️ PHANTOM PLAYBACK STARTED but no heatmap loaded! Call setChronosHeatmap() first. Lights will be dark.`)
+      }
     } else if (!isPlaying && wasActive) {
       console.log(`[TitanEngine 👻] PHANTOM PLAYBACK STOPPED @ ${timeMs.toFixed(0)}ms`)
+    }
+  }
+
+  /**
+   * 👻 WAVE 2540.5: PHANTOM AUDIO BACKFLOW
+   *
+   * Returns the phantom-buffer-overridden audio metrics for the current Chronos
+   * playhead position, or null if Chronos is not actively playing.
+   *
+   * TickEngine calls this AFTER engine.update() to override the zero-valued
+   * engineAudioMetrics (which are zeros because there's no external audio input
+   * during Chronos internal playback). Without this, the Aether pipeline and
+   * _glassView audio header receive zeros, producing no lights in the simulator.
+   */
+  public getPhantomAudioMetrics(): { bass: number; mid: number; high: number; energy: number; subBass: number; lowMid: number; highMid: number; ultraAir: number } | null {
+    if (!this.chronosPlaybackActive || !this.chronosHeatmap || this.chronosPlayheadMs < 0) return null
+    const hm = this.chronosHeatmap
+    const frameIndex = Math.min(
+      Math.floor(this.chronosPlayheadMs / hm.resolutionMs),
+      hm.energy.length - 1,
+    )
+    if (frameIndex < 0) return null
+    const safe = (arr: number[] | undefined, idx: number, fallback: number = 0): number => {
+      const v = arr?.[idx]
+      return typeof v === 'number' && Number.isFinite(v) ? v : fallback
+    }
+    return {
+      bass:     safe(hm.bassReal, frameIndex, safe(hm.bass, frameIndex, 0)),
+      mid:      safe(hm.mid, frameIndex, 0),
+      high:     safe(hm.high, frameIndex, 0),
+      energy:   safe(hm.energy, frameIndex, 0),
+      subBass:  safe(hm.subBass, frameIndex, 0),
+      lowMid:   safe(hm.lowMid, frameIndex, 0),
+      highMid:  safe(hm.highMid, frameIndex, 0),
+      ultraAir: safe(hm.ultraAir, frameIndex, 0),
     }
   }
   

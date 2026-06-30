@@ -337,61 +337,9 @@ El modo Record se complementa con Whisper (`vibeBase`):
 
 ---
 
-## 10. Roadmap de Implementación
 
-### Fase A: Schema V3 + Conversores (sin breaking changes)
 
-1. Definir `LuxFileV3` interface en `ChronosProject.ts`
-2. Implementar `luxV3ToRuntime()` y `runtimeToLuxV3()` conversores
-3. Implementar `computeLuxChecksum()` (SHA-256)
-4. Implementar `detectLuxSchema()` — discriminador `$schema`
-5. Actualizar `ChronosStoreV2._applyLoadedJson()` para detectar V3 vs V2 legacy
-6. Actualizar `ChronosStoreV2.save()` para serializar como V3
-7. **Tests:** round-trip V3 preserva tracks, viewport, analysis
-
-### Fase B: Tracks persistidas (round-trip fiel)
-
-1. `runtimeToLuxV3()` serializa `tracks: TimelineTrackV2[]` tal cual
-2. `luxV3ToRuntime()` carga tracks tal cual, sin inferencia
-3. Mantener `luxToChronosV2()` solo para migración de V2 legacy
-4. **Tests:** crear 3 tracks con labels/zones custom → guardar → cargar → tracks idénticas
-
-### Fase C: Audio portable + Análisis embebido
-
-1. `audio.path` → `audio.relativePath` (relativo al `.lux`)
-2. Resolver path absoluto al cargar (`path.join(luxDir, relativePath)`)
-3. `AnalysisData` se serializa dentro del `.lux`
-4. Al cargar, si `analysis` está presente, se usa directamente
-5. Si no está, se ofrece al usuario "Analizar ahora" (GodEar Offline)
-6. **Tests:** guardar con análisis → cargar → análisis presente y válido
-
-### Fase D: VibeBase (whisper)
-
-1. Añadir `vibeBase: VibeBase | null` a `ChronosProjectV2` y `LuxFileV3`
-2. `TimelineEngine` usa `vibeBase` cuando no hay VibeClip activo
-3. UI: selector de vibe base en el TransportBar o un panel "Show Settings"
-4. **Tests:** show sin VibeClips → vibeBase se aplica al reproducir
-
-### Fase E: Safety + Polish
-
-1. `safetyDeclaration` a nivel show (merge de todos los hephClips)
-2. Timestamps ISO 8601
-3. Eliminar `library` (redundante con hephClips embebidos)
-4. Eliminar `presets: any[]`
-5. Renombrar `ChronosProjectV2` → `ChronosProjectV3` (opcional, alinear con .lfx)
-6. Actualizar `PROJECT_VERSION = '3.0'`
-7. **Tests:** safety declaration válido, timestamps ISO, sin library
-
-### Fase F: Reproductor .lux (post-schema, pre-UI)
-
-1. Reconstruir `SceneBrowser` / reproductor de `.lux` en Hyperion
-2. Cargar `.lux V3` → `TimelineEngine.loadProject()`
-3. Visualización de waveform desde `analysis` embebido
-4. Transporte: play/pause/seek con sync de audio
-5. Modo híbrido: `vibeBase` + VibeClips + FXClips → L0 + HephaestusRuntime
-6. **Tests:** cargar `.lux V3` real → playback → DMX output correcto
-
-### Fase G: Record Mode V3 (grabación en vivo)
+Record Mode V3 (grabación en vivo)
 
 1. Extender `RecordedClipType` a `'vibe' | 'fx'` + campos FX opcionales
 2. Implementar `ChronosRecorder.recordFX()` con Diamond Data embebido

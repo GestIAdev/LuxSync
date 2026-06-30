@@ -318,6 +318,7 @@ function setupSeleneLuxHandlers(deps) {
      * Sends the full heatmap to TitanEngine for offline band lookup during playback.
      */
     ipcMain.handle('chronos:load-heatmap', (_event, heatmap) => {
+        console.log(`[IPC] chronos:load-heatmap received: heatmap=${!!heatmap} energyLen=${heatmap?.energy?.length ?? 0} titanOrchestrator=${!!titanOrchestrator}`);
         if (titanOrchestrator) {
             titanOrchestrator.setChronosHeatmap(heatmap ?? null);
             return { success: true };

@@ -14,6 +14,7 @@ export class VibeLifecycleManager {
         this.engine = null;
         this.trinity = null;
         this.hal = null;
+        this.pendingHeatmap = null;
     }
     // ── Reference injectors (called from TitanOrchestrator.init) ────────────
     setEngine(e) {
@@ -22,6 +23,12 @@ export class VibeLifecycleManager {
         // setLiquidLayout() before engine was injected (boot race condition).
         if (e) {
             e.setLiquidLayout(this.state.currentLiquidLayout);
+            // Flush pending heatmap if one was set before engine was ready
+            if (this.pendingHeatmap) {
+                console.log('[VibeLifecycle] Flushing pending heatmap to engine');
+                e.setChronosHeatmap(this.pendingHeatmap);
+                this.pendingHeatmap = null;
+            }
         }
     }
     setTrinity(t) { this.trinity = t; }
@@ -73,6 +80,10 @@ export class VibeLifecycleManager {
     setChronosHeatmap(heatmap) {
         if (this.engine) {
             this.engine.setChronosHeatmap(heatmap);
+        }
+        else {
+            this.pendingHeatmap = heatmap;
+            console.log(`[VibeLifecycle] Engine not ready — heatmap cached as pending (energyLen=${heatmap?.energy?.length ?? 0})`);
         }
     }
     setChronosPlayhead(timeMs, isPlaying) {

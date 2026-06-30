@@ -88,7 +88,9 @@ export class HephaestusAetherAdapter {
 
       const fixtureId = output.fixtureId
       const nodeIds = this._graph.getDeviceNodes(fixtureId)
-      if (nodeIds.length === 0) continue
+      if (nodeIds.length === 0) {
+        continue
+      }
 
       const param = output.parameter
 
@@ -185,7 +187,61 @@ export class HephaestusAetherAdapter {
       }
     }
 
+    // ── POST-PASS: Ensure dimmer=1.0 on IMPACT nodes when color was written to COLOR nodes.
+    // Color-only clips (no intensity track) leave IMPACT dimmer unset. The L3 LUMINANCE GAG
+    // in NodeArbiter blocks L0 from filling it. We must explicitly set dimmer=1.0 so the
+    // fixture lights up to show the color.
+    this._ensureColorDimmer()
+
     arbiter.setHephaestusIntents(this._frameIntents)
+  }
+
+  /**
+   * Post-pass: for each fixture that has color intents on COLOR nodes but no
+   * dimmer on its IMPACT node, inject dimmer=1.0 so the fixture lights up.
+   * Without this, color-only clips (no intensity track) produce invisible
+   * color because the L3 LUMINANCE GAG blocks L0 from filling dimmer.
+   */
+  private _ensureColorDimmer(): void {
+    // Collect fixture IDs that have color values in COLOR node intents
+    const colorFixtures = new Set<string>()
+    for (let i = 0; i < this._frameIntents.length; i++) {
+      const intent = this._frameIntents[i] as MutableNodeIntent
+      const sep = intent.nodeId.lastIndexOf(':')
+      if (sep <= 0) continue
+      const family = intent.nodeId.slice(sep + 1)
+      if (family !== NodeFamily.COLOR) continue
+      if (intent.values['r'] !== undefined || intent.values['red'] !== undefined) {
+        colorFixtures.add(intent.nodeId.slice(0, sep))
+      }
+    }
+    if (colorFixtures.size === 0) return
+
+    // For each fixture with color, check if IMPACT node has dimmer
+    for (const fixtureId of colorFixtures) {
+      const nodeIds = this._graph.getDeviceNodes(fixtureId)
+      let impactNodeId: NodeId | null = null
+      let impactIntent: MutableNodeIntent | null = null
+      for (let j = 0; j < nodeIds.length; j++) {
+        const nd = this._graph.getNodeData(nodeIds[j])
+        if (nd && nd.family === NodeFamily.IMPACT) {
+          impactNodeId = nodeIds[j]
+          impactIntent = this._frameIntentMap.get(nodeIds[j]) ?? null
+          break
+        }
+      }
+      if (!impactNodeId) continue
+      if (impactIntent) {
+        if (impactIntent.values['dimmer'] === undefined) {
+          impactIntent.values['dimmer'] = 1.0
+        }
+      } else {
+        const newIntent = this._acquireIntent(impactNodeId)
+        newIntent.values['dimmer'] = 1.0
+        this._frameIntentMap.set(impactNodeId, newIntent)
+        this._frameIntents.push(newIntent as INodeIntent)
+      }
+    }
   }
 
   /**

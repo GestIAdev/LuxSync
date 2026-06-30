@@ -117,7 +117,7 @@ function makeArbiterSpy(): INodeArbiter & { capturedHeph: INodeIntent[][] } {
     setManualOverride:   () => undefined,
     clearManualOverride: () => undefined,
     setEffectIntents:    () => undefined,
-    setPlaybackIntents:  () => undefined,
+    setChronosBus:      () => undefined,
     setBlackout:         () => undefined,
     arbitrate:           () => new Map() as any,
   } as unknown as INodeArbiter & { capturedHeph: INodeIntent[][] }

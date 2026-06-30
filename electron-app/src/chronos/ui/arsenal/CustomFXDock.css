@@ -1,47 +1,47 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * ⚒️ CUSTOM FX DOCK STYLES - WAVE 2040.14: PRISMATIC HEPHAESTUS
- * 
- * Glassmorphism dark-glass with NEON retroillumination per MixBus.
- * No more hardcoded ember/orange — each pad glows with its bus identity.
- * Filter tabs: Pill design with colored dot indicator.
- * 
+ * ⚒️ CUSTOM FX DOCK STYLES — WAVE 7109: PHOSPHOR NOIR / NEON BLOOM
+ *
+ * Glassmorphism dark-glass with NEON retroillumination per energy zone.
+ * Paginated grid, search input, multi-zone filters, DNA genome LEDs.
+ *
  * @module chronos/ui/arsenal/CustomFXDock.css
- * @version WAVE 2040.14
  */
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   MAIN CONTAINER - flex: 1 para ocupar todo el espacio disponible
+   MAIN CONTAINER — FX Arsenal (80% width)
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .custom-fx-dock {
-  flex: 1; /* CRITICAL: Crece para llenar el espacio verde completo */
+  flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   height: 100%;
   min-width: 0;
   background: rgba(8, 8, 12, 0.9);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-left: 1px solid rgba(255, 255, 255, 0.06);
-  padding-left: 16px;
+  padding-left: 12px;
+  padding-right: 8px;
   position: relative;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   HEADER - Title + Filter Tabs
+   HEADER — Title + Search + Zone Filters
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .custom-fx-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   width: 100%;
-  padding: 6px 10px 6px 0;
+  padding: 4px 4px 4px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   background: rgba(0, 0, 0, 0.3);
   flex-shrink: 0;
+  flex-wrap: nowrap;
+  overflow: hidden;
 }
 
 .custom-fx-title {
@@ -51,123 +51,233 @@
   color: rgba(168, 85, 247, 0.7);
   letter-spacing: 1px;
   text-shadow: 0 0 8px rgba(168, 85, 247, 0.3);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-/* WAVE 2040.14: Filter pills — dot + text, no SVGs/emojis */
-.custom-fx-tabs {
+/* View Tabs — ALL / FAVS switcher */
+.fx-view-tabs {
   display: flex;
-  gap: 4px;
+  gap: 2px;
+  flex-shrink: 0;
 }
 
-.custom-fx-tab {
+.fx-view-tab {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   padding: 3px 8px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 4px 4px 0 0;
   cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.custom-fx-tab .tab-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--tab-dot, #888);
-  opacity: 0.5;
-  transition: all 0.15s ease;
-}
-
-.custom-fx-tab .tab-label {
   font-family: var(--font-mono, monospace);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.35);
-  letter-spacing: 0.5px;
-  transition: color 0.15s ease;
+  letter-spacing: 1px;
+  transition: all 0.15s ease;
 }
 
-.custom-fx-tab:hover {
+.fx-view-tab:hover {
   background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.55);
 }
 
-.custom-fx-tab:hover .tab-dot {
-  opacity: 0.8;
+.fx-view-tab.active {
+  background: rgba(168, 85, 247, 0.12);
+  border-color: rgba(168, 85, 247, 0.4);
+  color: rgba(168, 85, 247, 0.9);
+  text-shadow: 0 0 6px rgba(168, 85, 247, 0.3);
 }
 
-.custom-fx-tab:hover .tab-label {
-  color: rgba(255, 255, 255, 0.6);
+.fx-view-tab.active svg {
+  filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.4));
 }
 
-.custom-fx-tab.active {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: var(--tab-dot, #888);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--tab-dot, #888) 30%, transparent);
+/* Search Input — Phosphor Noir */
+.fx-search-input {
+  flex: 0 1 140px;
+  min-width: 80px;
+  padding: 3px 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.8);
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  outline: none;
+  transition: all 0.15s ease;
 }
 
-.custom-fx-tab.active .tab-dot {
-  opacity: 1;
-  box-shadow: 0 0 6px var(--tab-dot, #888);
+.fx-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.25);
 }
 
-.custom-fx-tab.active .tab-label {
-  color: var(--tab-dot, #ccc);
-  text-shadow: 0 0 6px color-mix(in srgb, var(--tab-dot, #888) 40%, transparent);
+.fx-search-input:focus {
+  border-color: rgba(168, 85, 247, 0.5);
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.2);
+  background: rgba(0, 0, 0, 0.5);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   SCROLL CONTAINER - Horizontal scroll for pads
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.custom-fx-scroll {
+/* Zone Filter Pills */
+.zone-filters {
+  display: flex;
+  gap: 3px;
   flex: 1;
-  width: 100%; /* CRITICAL: Para ocupar todo el ancho del contenedor padre */
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 8px 8px 8px 0; /* Sin padding-left porque el padre ya tiene margen */
+  overflow: hidden;
 }
 
-/* Custom scrollbar — subtle neutral */
-.custom-fx-scroll::-webkit-scrollbar {
-  height: 4px;
+.zone-filter-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 5px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  opacity: 0.5;
 }
 
-.custom-fx-scroll::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 2px;
+.zone-filter-pill:hover {
+  opacity: 0.8;
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
-.custom-fx-scroll::-webkit-scrollbar-thumb {
-  background: rgba(168, 85, 247, 0.3);
-  border-radius: 2px;
+.zone-filter-pill.active {
+  opacity: 1;
+  background: color-mix(in srgb, var(--zone-color, #888) 15%, rgba(0, 0, 0, 0.3));
+  border-color: var(--zone-color, #888);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--zone-color, #888) 30%, transparent);
 }
 
-.custom-fx-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(168, 85, 247, 0.5);
+.zone-filter-pill.active svg {
+  filter: drop-shadow(0 0 4px var(--zone-color, #888));
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   GRID - 2 rows, horizontal scroll, alineado a la IZQUIERDA
+   FX ARSENAL BODY — Paginated grid + pagination controls
    ═══════════════════════════════════════════════════════════════════════════ */
 
-.custom-fx-grid {
+.fx-arsenal-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-top: 4px;
+}
+
+/* Pagination row: [<] [grid] [>] with lateral arrows */
+.fx-pagination-row {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  min-height: 0;
+}
+
+/* Paginated Grid: 2 rows × 9 pads, NO horizontal scroll */
+.fx-grid-paginated {
+  flex: 1;
   display: grid;
+  grid-template-columns: repeat(9, 1fr);
   grid-template-rows: repeat(2, 1fr);
-  grid-auto-flow: column;
-  grid-auto-columns: 72px;
-  gap: 12px; /* Gap aumentado de 6px a 12px según especificaciones */
-  justify-content: flex-start; /* CRITICAL: Alinea el grid a la izquierda */
-  height: 100%;
-  min-height: 150px;
-  min-width: min-content; /* Para que el grid no colapse */
+  gap: 6px;
+  min-height: 0;
+  padding: 4px 0;
+}
+
+/* Lateral page arrows — large, vertical, flanking the grid */
+.pag-arrow {
+  flex: 0 0 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(168, 85, 247, 0.06);
+  border: 1px solid rgba(168, 85, 247, 0.15);
+  border-radius: 6px;
+  color: rgba(168, 85, 247, 0.5);
+  cursor: pointer;
+  font-family: var(--font-mono, monospace);
+  font-size: 18px;
+  font-weight: 700;
+  transition: all 0.15s ease;
+}
+
+.pag-arrow:hover:not(:disabled) {
+  background: rgba(168, 85, 247, 0.18);
+  color: #a855f7;
+  border-color: rgba(168, 85, 247, 0.4);
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.3);
+}
+
+.pag-arrow:active:not(:disabled) {
+  transform: scale(0.93);
+}
+
+.pag-arrow:disabled {
+  opacity: 0.15;
+  cursor: not-allowed;
+}
+
+/* Pagination info bar — below the grid */
+.fx-pagination {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0 2px 0;
+  flex-shrink: 0;
+}
+
+.pag-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 20px;
+  background: rgba(168, 85, 247, 0.08);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  border-radius: 4px;
+  color: rgba(168, 85, 247, 0.6);
+  cursor: pointer;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  transition: all 0.15s ease;
+}
+
+.pag-btn:hover:not(:disabled) {
+  background: rgba(168, 85, 247, 0.2);
+  color: #a855f7;
+  border-color: rgba(168, 85, 247, 0.4);
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.3);
+}
+
+.pag-btn:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.pag-btn:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+}
+
+.pag-info {
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(168, 85, 247, 0.5);
+  letter-spacing: 1px;
+  white-space: nowrap;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   CUSTOM FX PAD - WAVE 2040.14: Glassmorphism + MixBus neon identity
-   Each pad glows with its bus color via --fx-neon CSS variable
+   CUSTOM FX PAD — WAVE 7109: Neon Bloom with energy zone colors
+   Each pad glows with its primary energy zone color via --fx-neon
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .custom-fx-pad {
@@ -175,36 +285,40 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  width: 72px;
-  height: 72px;
+  gap: 3px;
+  width: 100%;
+  height: 100%;
+  min-height: 60px;
   background: linear-gradient(180deg,
-    rgba(255, 255, 255, 0.05) 0%,
-    rgba(0, 0, 0, 0.4) 100%
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(0, 0, 0, 0.5) 100%
   );
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
-  border-left: 3px solid var(--fx-neon, #a78bfa);
-  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  border-left: 2px solid var(--fx-neon, #a78bfa);
+  border-radius: 6px;
   cursor: grab;
   transition: all 0.15s ease;
   position: relative;
+  overflow: hidden;
+  box-shadow:
+    inset 0 0 8px color-mix(in srgb, var(--fx-neon, #a78bfa) 6%, transparent);
 }
 
 .custom-fx-pad:hover {
   background: linear-gradient(180deg,
-    color-mix(in srgb, var(--fx-neon, #a78bfa) 12%, rgba(255, 255, 255, 0.05)) 0%,
-    color-mix(in srgb, var(--fx-neon, #a78bfa) 8%, rgba(0, 0, 0, 0.4)) 100%
+    color-mix(in srgb, var(--fx-neon, #a78bfa) 15%, rgba(255, 255, 255, 0.05)) 0%,
+    color-mix(in srgb, var(--fx-neon, #a78bfa) 10%, rgba(0, 0, 0, 0.4)) 100%
   );
   border-color: var(--fx-neon, #a78bfa);
   border-left-color: var(--fx-neon, #a78bfa);
   border-top-color: var(--fx-neon, #a78bfa);
   transform: translateY(-1px);
   box-shadow: 
-    0 0 15px color-mix(in srgb, var(--fx-neon, #a78bfa) 40%, transparent),
-    inset 0 0 10px color-mix(in srgb, var(--fx-neon, #a78bfa) 12%, transparent),
+    0 0 18px color-mix(in srgb, var(--fx-neon, #a78bfa) 45%, transparent),
+    inset 0 0 12px color-mix(in srgb, var(--fx-neon, #a78bfa) 15%, transparent),
     0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
@@ -221,7 +335,62 @@
 
 .custom-fx-pad.rec-mode:hover {
   border-color: #E91E63;
-  box-shadow: 0 0 15px rgba(233, 30, 99, 0.3);
+  box-shadow: 0 0 18px rgba(233, 30, 99, 0.35);
+}
+
+/* MIDI Learn states */
+.custom-fx-pad.midi-listening {
+  border-color: rgba(0, 255, 100, 0.5);
+  animation: midi-listen-pulse 1s ease-in-out infinite;
+}
+
+.custom-fx-pad.midi-mapped {
+  border-left-width: 3px;
+}
+
+@keyframes midi-listen-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(0, 255, 100, 0.2); }
+  50% { box-shadow: 0 0 16px rgba(0, 255, 100, 0.4); }
+}
+
+.pad-midi-dot {
+  position: absolute;
+  bottom: 4px;
+  left: 5px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #00ff66;
+  box-shadow: 0 0 6px #00ff66;
+  z-index: 2;
+}
+
+/* DNA Genome LEDs */
+.pad-dna-leds {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+  margin-top: 1px;
+}
+
+.dna-led {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  transition: opacity 0.2s ease;
+}
+
+.dna-led.dna-aggression {
+  color: #ff0055;
+}
+
+.dna-led.dna-chaos {
+  color: #ff6b00;
+}
+
+.dna-led.dna-organicity {
+  color: #00ff99;
 }
 
 .custom-fx-icon {
@@ -254,6 +423,35 @@
   border-radius: 6px;
 }
 
+/* Pad Star Button — Favorite toggle */
+.pad-star-btn {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.3;
+  transition: opacity 0.15s ease;
+  z-index: 2;
+}
+
+.pad-star-btn:hover {
+  opacity: 1 !important;
+}
+
+.pad-star-btn.active {
+  opacity: 0.9;
+}
+
+.pad-star-btn.active svg {
+  filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.5));
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    NEW FX BUTTON - Ghost crystal with violet neon hint
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -284,6 +482,24 @@
 .custom-fx-pad.new-fx-button .custom-fx-name {
   color: rgba(168, 85, 247, 0.6);
   text-shadow: none;
+}
+
+/* WAVE 7109: NewFXButton inside pagination bar */
+.fx-pagination .custom-fx-pad.new-fx-button {
+  width: 28px;
+  height: 20px;
+  min-height: 20px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.fx-pagination .custom-fx-pad.new-fx-button .custom-fx-icon {
+  font-size: 14px;
+}
+
+.fx-pagination .custom-fx-pad.new-fx-button .custom-fx-name {
+  display: none;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

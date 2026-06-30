@@ -2674,6 +2674,122 @@ export const ResetIcon: React.FC<IconProps> = ({
   </svg>
 )
 
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 7109: ENERGY ZONE ICONS — One per zone for Neon Bloom FX Arsenal
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** 💥 PEAK ZONE — Explosive starburst, maximum energy */
+export const PeakZoneIcon: React.FC<IconProps> = ({
+  size = 20,
+  color = 'currentColor',
+  className = ''
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <path d="M12 2L13.5 8.5L20 7L15.5 12L20 17L13.5 15.5L12 22L10.5 15.5L4 17L8.5 12L4 7L10.5 8.5L12 2Z" fill={color} />
+    <circle cx="12" cy="12" r="2" fill="#fff" opacity="0.8" />
+  </svg>
+)
+
+/** 🔥 INTENSE ZONE — Sharp angular flame, high energy */
+export const IntenseZoneIcon: React.FC<IconProps> = ({
+  size = 20,
+  color = 'currentColor',
+  className = ''
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <path d="M12 2L8 8L10 9L6 14L9 15L5 21H19L15 15L18 14L14 9L16 8L12 2Z" fill={color} opacity="0.9" />
+    <path d="M12 6L10 9L12 10L10 13L12 14L10 18" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.5" fill="none" />
+  </svg>
+)
+
+/** ⚡ ACTIVE ZONE — Dynamic motion bars, medium-high energy */
+export const ActiveZoneIcon: React.FC<IconProps> = ({
+  size = 20,
+  color = 'currentColor',
+  className = ''
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <rect x="3" y="10" width="3" height="8" rx="1" fill={color} opacity="0.5" />
+    <rect x="8" y="7" width="3" height="11" rx="1" fill={color} opacity="0.7" />
+    <rect x="13" y="5" width="3" height="13" rx="1" fill={color} opacity="0.85" />
+    <rect x="18" y="9" width="3" height="9" rx="1" fill={color} opacity="0.6" />
+    <path d="M2 6L5 4L9 7L13 3L17 6L22 4" stroke={color} strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.4" />
+  </svg>
+)
+
+/** 🌊 GENTLE ZONE — Soft flowing wave, medium energy */
+export const GentleZoneIcon: React.FC<IconProps> = ({
+  size = 20,
+  color = 'currentColor',
+  className = ''
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <path d="M2 14C4 14 4 10 6 10C8 10 8 14 10 14C12 14 12 10 14 10C16 10 16 14 18 14C20 14 20 10 22 10" stroke={color} strokeWidth="2" strokeLinecap="round" fill="none" />
+    <path d="M2 18C4 18 4 15 6 15C8 15 8 18 10 18C12 18 12 15 14 15C16 15 16 18 18 18C20 18 20 15 22 15" stroke={color} strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.5" />
+  </svg>
+)
+
+/** 🌫️ AMBIENT ZONE — Floating particles/haze, low energy */
+export const AmbientZoneIcon: React.FC<IconProps> = ({
+  size = 20,
+  color = 'currentColor',
+  className = ''
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <circle cx="7" cy="8" r="1.5" fill={color} opacity="0.6" />
+    <circle cx="14" cy="6" r="1" fill={color} opacity="0.4" />
+    <circle cx="17" cy="11" r="1.5" fill={color} opacity="0.7" />
+    <circle cx="10" cy="12" r="1" fill={color} opacity="0.5" />
+    <circle cx="6" cy="15" r="1.2" fill={color} opacity="0.5" />
+    <circle cx="13" cy="16" r="1.5" fill={color} opacity="0.6" />
+    <circle cx="18" cy="17" r="1" fill={color} opacity="0.4" />
+    <path d="M4 20C8 18 12 19 16 18C18 17.5 20 18 22 19" stroke={color} strokeWidth="1" strokeLinecap="round" fill="none" opacity="0.3" />
+  </svg>
+)
+
+/** 🏔️ VALLEY ZONE — V-shaped descent, very low energy */
+export const ValleyZoneIcon: React.FC<IconProps> = ({
+  size = 20,
+  color = 'currentColor',
+  className = ''
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <path d="M2 5L8 13L12 8L16 13L22 5" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    <path d="M2 5L8 13L12 18L16 13L22 5" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.4" />
+    <circle cx="12" cy="18" r="1.5" fill={color} opacity="0.6" />
+  </svg>
+)
+
+/** 🌑 SILENCE ZONE — Circle with minimal dot, void/standby */
+export const SilenceZoneIcon: React.FC<IconProps> = ({
+  size = 20,
+  color = 'currentColor',
+  className = ''
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <circle cx="12" cy="12" r="9" stroke={color} strokeWidth="1.5" fill="none" opacity="0.4" />
+    <circle cx="12" cy="12" r="2" fill={color} opacity="0.6" />
+    <path d="M12 3V5M12 19V21M3 12H5M19 12H21" stroke={color} strokeWidth="1" strokeLinecap="round" opacity="0.3" />
+  </svg>
+)
+
+/** ⭐ STAR — Favorite/marker toggle for FX pads */
+export interface StarIconProps extends IconProps {
+  filled?: boolean
+}
+
+export const StarIcon: React.FC<StarIconProps> = ({
+  size = 14,
+  color = 'currentColor',
+  className = '',
+  filled = false
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? color : 'none'} xmlns="http://www.w3.org/2000/svg" className={className}>
+    <path d="M12 2L14.5 9L22 9.5L16.5 14.5L18.5 22L12 18L5.5 22L7.5 14.5L2 9.5L9.5 9L12 2Z"
+      stroke={color} strokeWidth="1.5" strokeLinejoin="round" />
+  </svg>
+)
+
 export default {
   Intensity: IntensityIcon,
   Color: ColorIcon,
@@ -2795,4 +2911,13 @@ export default {
   ChevronDown: ChevronDownIcon,
   Alert: AlertIcon,
   Reset: ResetIcon,
+  // WAVE 7109: Energy Zone icons
+  PeakZone: PeakZoneIcon,
+  IntenseZone: IntenseZoneIcon,
+  ActiveZone: ActiveZoneIcon,
+  GentleZone: GentleZoneIcon,
+  AmbientZone: AmbientZoneIcon,
+  ValleyZone: ValleyZoneIcon,
+  SilenceZone: SilenceZoneIcon,
+  Star: StarIcon,
 }

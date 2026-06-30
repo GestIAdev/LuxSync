@@ -240,6 +240,7 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
   useEffect(() => {
     const analysisData = audioLoader.result?.analysisData
     const heatmap = analysisData?.energyHeatmap
+    console.log(`[ChronosLayout 👻] Heatmap useEffect fired: analysisData=${!!analysisData} heatmap=${!!heatmap} energyLen=${heatmap?.energy?.length ?? 0}`)
     if (heatmap) {
       const lux = (window as any).lux
       lux?.chronos?.loadHeatmap?.(heatmap)
@@ -258,11 +259,12 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
         store.setAnalysisData(analysisData)
         console.log('[ChronosLayout 🔬] Analysis embedded in project (FASE 4)')
       }
-    } else {
-      // No analysis data — clear the heatmap in backend
-      const lux = (window as any).lux
-      lux?.chronos?.loadHeatmap?.(null)?.catch(() => {})
     }
+    // NOTE: Do NOT clear heatmap when analysisData is null.
+    // When loading a project with embedded analysis, loadFromPath(skipAnalysis=true)
+    // sets analysisData=null, which would trigger this else branch and CLEAR the
+    // heatmap that was just sent by the project-loaded handler (.then() callback).
+    // The heatmap is cleared explicitly in handleCloseAudio instead.
   }, [audioLoader.result?.analysisData])
   
   // 🎵 WAVE 2005.4 + WAVE 2045.2: Transport controls
@@ -744,6 +746,7 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
           audioLoader.loadFromPath(data.project.audio.relativePath, true).then(() => {
             // After audio loads, inject the embedded heatmap into TitanEngine
             const embeddedHeatmap = data.project.analysis?.heatmap
+            console.log(`[ChronosLayout 👻] Embedded heatmap check: analysis=${!!data.project.analysis} heatmap=${!!embeddedHeatmap} energyLen=${embeddedHeatmap?.energy?.length ?? 0}`)
             if (embeddedHeatmap) {
               const lux = (window as any).lux
               lux?.chronos?.loadHeatmap?.(embeddedHeatmap)
@@ -1018,6 +1021,9 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
     streaming.unloadAudio()  // Stop streaming playback
     audioLoader.reset()      // Clear analysis data
     setBpm(120)              // Reset to default
+    // Clear phantom heatmap from TitanEngine
+    const lux = (window as any).lux
+    lux?.chronos?.loadHeatmap?.(null)?.catch(() => {})
   }, [audioLoader, streaming])
   
   // ═══════════════════════════════════════════════════════════════════════

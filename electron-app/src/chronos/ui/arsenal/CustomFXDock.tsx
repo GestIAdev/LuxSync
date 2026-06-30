@@ -1,26 +1,41 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * ⚒️ CUSTOM FX DOCK - WAVE 2030.7: THE ARSENAL MEETS HEPHAESTUS
- * 
- * Panel de efectos personalizados (.lfx) de Hephaestus integrado en Chronos.
- * Los Titanes finalmente se conocen.
- * 
+ * ⚒️ CUSTOM FX DOCK — WAVE 7109: PHOSPHOR NOIR / NEON BLOOM
+ *
+ * FX Arsenal with paginated grid, multi-zone energy filters, search,
+ * DNA genome LEDs, and MIDI Learn integration.
+ *
  * FEATURES:
- * - Mini-tabs por categoría (All, Phys, Col, Mov, Ctrl)
- * - Grid scrollable de clips .lfx
- * - Drag to Timeline (mismo payload que librería)
- * - Click para preview momentáneo
- * - Botón [+] NEW abre Hephaestus
- * 
+ * - Search input for clip name filtering
+ * - Multi-zone energy filters (Peak, Intense, Active, Gentle, Ambient, Valley, Silence)
+ * - Paginated grid: 2 rows × 8-10 pads per page, no horizontal scroll
+ * - DNA genome LEDs (Aggression, Chaos, Organicity) on each pad
+ * - MIDI Learn via data-midi-id attributes
+ * - Drag to Timeline (same payload as library)
+ * - Click for record mode or preview
+ * - [+] NEW button opens Hephaestus
+ *
  * @module chronos/ui/arsenal/CustomFXDock
- * @version WAVE 2030.7
  */
 
 import React, { useState, useEffect, useCallback, useMemo, memo, useRef } from 'react'
 import type { DragPayload } from '../../core/TimelineClip'
 import { serializeDragPayload } from '../../core/TimelineClip'
 import type { HephAutomationClipV3 } from '../../../core/hephaestus/types'
+import type { EnergyZone, CognitiveDNA } from '../../../core/arsenal/lfxTypes'
 import { getChronosRecorder } from '../../core/ChronosRecorder'
+import { useMidiMapStore } from '../../../stores/midiMapStore'
+import { useFxFavoritesStore } from '../../../stores/fxFavoritesStore'
+import {
+  PeakZoneIcon,
+  IntenseZoneIcon,
+  ActiveZoneIcon,
+  GentleZoneIcon,
+  AmbientZoneIcon,
+  ValleyZoneIcon,
+  SilenceZoneIcon,
+  StarIcon,
+} from '../../../components/icons/LuxIcons'
 import './CustomFXDock.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -41,48 +56,79 @@ interface HephClipMetadata {
   modifiedAt: number
 }
 
-/** Filter tabs — WAVE 2040.14: Pill design with colored dots */
-type FilterTab = 'all' | 'physics' | 'color' | 'movement' | 'control'
+// ═══════════════════════════════════════════════════════════════════════════
+// ENERGY ZONE CONFIG — WAVE 7109: Neon Bloom zone colors
+// ═══════════════════════════════════════════════════════════════════════════
 
-const FILTER_TABS: { id: FilterTab; label: string; dotColor: string }[] = [
-  { id: 'all',      label: 'ALL',  dotColor: '#a78bfa' },
-  { id: 'physics',  label: 'PHYS', dotColor: '#ef4444' },
-  { id: 'color',    label: 'COL',  dotColor: '#22d3ee' },
-  { id: 'movement', label: 'MOV',  dotColor: '#f59e0b' },
-  { id: 'control',  label: 'CTRL', dotColor: '#10b981' },
-]
+const ZONE_ORDER: EnergyZone[] = ['peak', 'intense', 'active', 'gentle', 'ambient', 'valley', 'silence']
 
-/**
- * 🎹 WAVE 2040.14: MixBus neon color mapping for Custom FX pads
- * Replaces the hardcoded ember/orange with bus-identity colors.
- */
-const BUS_NEON_MAP: Record<string, string> = {
-  global:   '#ff0055',
-  htp:      '#ff0055',
-  movement: '#f59e0b',
-  ambient:  '#00ff99',
-  accent:   '#3b82f6',
+const ZONE_COLORS: Record<EnergyZone, string> = {
+  peak:    '#ff0055',
+  intense: '#ff6b00',
+  active:  '#ffcc00',
+  gentle:  '#00ffcc',
+  ambient: '#33ddaa',
+  valley:  '#9933ff',
+  silence: '#0044ff',
 }
 
-/** Infer bus color from clip category/tags */
-function inferBusNeon(clip: HephClipMetadata): string {
-  const cat = clip.category.toLowerCase()
-  const tags = clip.tags.map(t => t.toLowerCase())
-  
-  if (cat.includes('move') || cat.includes('chase') || tags.some(t => t.includes('move'))) {
-    return BUS_NEON_MAP.movement
-  }
-  if (cat.includes('color') || clip.effectType === 'color' || tags.some(t => t.includes('color'))) {
-    return BUS_NEON_MAP.ambient
-  }
-  if (cat.includes('control') || tags.some(t => t.includes('control'))) {
-    return BUS_NEON_MAP.accent
-  }
-  // Default: global (physics, strobe, pulse, atmospheric, etc.)
-  return BUS_NEON_MAP.global
+const ZONE_LABELS: Record<EnergyZone, string> = {
+  peak:    'PEAK',
+  intense: 'INTENSE',
+  active:  'ACTIVE',
+  gentle:  'GENTLE',
+  ambient: 'AMBIENT',
+  valley:  'VALLEY',
+  silence: 'SILENCE',
 }
 
-// 🔥 WAVE 2040.14: Category icons removed — replaced by bus-colored neon identity
+const ZONE_ICONS: Record<EnergyZone, React.FC<{ size?: number; color?: string; className?: string }>> = {
+  peak:    PeakZoneIcon,
+  intense: IntenseZoneIcon,
+  active:  ActiveZoneIcon,
+  gentle:  GentleZoneIcon,
+  ambient: AmbientZoneIcon,
+  valley:  ValleyZoneIcon,
+  silence: SilenceZoneIcon,
+}
+
+/** All energy zones in order for range checking */
+const ALL_ZONES: EnergyZone[] = ['silence', 'valley', 'ambient', 'gentle', 'active', 'intense', 'peak']
+
+function getClipPrimaryZone(dna: CognitiveDNA | undefined): EnergyZone {
+  if (!dna) return 'active'
+  const minIdx = ALL_ZONES.indexOf(dna.energyZone.min)
+  const maxIdx = ALL_ZONES.indexOf(dna.energyZone.max)
+  const midIdx = Math.floor((minIdx + maxIdx) / 2)
+  return ALL_ZONES[midIdx] ?? 'active'
+}
+
+/** Check if a clip's energy zone range overlaps with any of the selected zones */
+function clipMatchesZones(dna: CognitiveDNA | undefined, selectedZones: Set<EnergyZone>): boolean {
+  if (!dna || selectedZones.size === 0) return true
+  const minIdx = ALL_ZONES.indexOf(dna.energyZone.min)
+  const maxIdx = ALL_ZONES.indexOf(dna.energyZone.max)
+  for (const zone of selectedZones) {
+    const zoneIdx = ALL_ZONES.indexOf(zone)
+    if (zoneIdx >= minIdx && zoneIdx <= maxIdx) return true
+  }
+  return false
+}
+
+/** Get the primary energy zone color for a clip based on its DNA */
+function getClipZoneColor(dna: CognitiveDNA | undefined): string {
+  if (!dna) return '#a78bfa'
+  const maxIdx = ALL_ZONES.indexOf(dna.energyZone.max)
+  const minIdx = ALL_ZONES.indexOf(dna.energyZone.min)
+  const midIdx = Math.floor((minIdx + maxIdx) / 2)
+  const primaryZone = ALL_ZONES[midIdx] ?? 'active'
+  return ZONE_COLORS[primaryZone] ?? '#a78bfa'
+}
+
+/** Pagination config */
+const PADS_PER_ROW = 9
+const ROWS_PER_PAGE = 2
+const PADS_PER_PAGE = PADS_PER_ROW * ROWS_PER_PAGE
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CUSTOM FX PAD - Individual .lfx clip button
@@ -90,26 +136,44 @@ function inferBusNeon(clip: HephClipMetadata): string {
 
 interface CustomFXPadProps {
   clip: HephClipMetadata
-  /** ⚒️ WAVE 2040.18: Pre-cached serialized clip for Diamond Data D&D */
   cachedClip?: HephAutomationClipV3
   isRecording: boolean
+  isMidiListening: boolean
+  isMidiMapped: boolean
+  isFavorite: boolean
   onDragStart?: (payload: DragPayload) => void
   onDragEnd?: () => void
   onClick?: (clip: HephClipMetadata) => void
+  onMidiClick?: (controlId: string) => void
+  onToggleFavorite?: (filePath: string) => void
 }
 
 const CustomFXPad: React.FC<CustomFXPadProps> = memo(({
   clip,
   cachedClip,
   isRecording,
+  isMidiListening,
+  isMidiMapped,
+  isFavorite,
   onDragStart,
   onDragEnd,
   onClick,
+  onMidiClick,
+  onToggleFavorite,
 }) => {
-  const neonColor = inferBusNeon(clip)
+  const dna = cachedClip?.cognitiveDNA
+  const neonColor = getClipZoneColor(dna)
+  const primaryZone = getClipPrimaryZone(dna)
+  const ZoneIcon = ZONE_ICONS[primaryZone] ?? ActiveZoneIcon
+  const midiControlId = `fx-${clip.id}`
+  const genome = dna?.genome
+
+  const handleStarClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    onToggleFavorite?.(clip.filePath)
+  }, [clip.filePath, onToggleFavorite])
   
   const handleDragStart = useCallback((e: React.DragEvent) => {
-    // ⚒️ WAVE 2040.18: THE DIAMOND BRIDGE — Full payload with curves
     const payload: DragPayload = {
       source: 'hephaestus',
       clipType: 'fx',
@@ -117,25 +181,20 @@ const CustomFXPad: React.FC<CustomFXPadProps> = memo(({
       hephFilePath: clip.filePath,
       defaultDurationMs: clip.durationMs,
       name: clip.name,
-      // WAVE 2040.18: Diamond Data from cache
       hephClipSerialized: cachedClip,
       effectType: cachedClip?.effectType || clip.effectType,
       zones: cachedClip?.spatialZones as string[] | undefined,
       priority: cachedClip?.priority,
     }
     
-    // WAVE 2040.18: Send ALL required MIME types for drag recognition
     const serialized = serializeDragPayload(payload)
-    e.dataTransfer.setData('application/luxsync-fx', serialized)     // FX type (timeline recognition) — PRIMARY
-    e.dataTransfer.setData('application/luxsync-clip', serialized)   // Generic clip fallback
-    e.dataTransfer.setData('application/luxsync-heph', serialized)   // Hephaestus marker
-    // 🧲 WAVE 2545: MAGNETIC DROP — Encode zones in MIME type key for dragover validation
-    // DataTransfer.getData() is blocked during dragover, but types[] is readable
+    e.dataTransfer.setData('application/luxsync-fx', serialized)
+    e.dataTransfer.setData('application/luxsync-clip', serialized)
+    e.dataTransfer.setData('application/luxsync-heph', serialized)
     const zonesStr = payload.zones?.join(',') ?? ''
     e.dataTransfer.setData(`application/luxsync-zones:${zonesStr}`, '')
     e.dataTransfer.effectAllowed = 'copyMove'
     
-    // Drag ghost — WAVE 2040.14: Use neon color instead of emoji
     const ghost = document.createElement('div')
     ghost.className = 'custom-fx-drag-ghost'
     ghost.textContent = `\u25C6 ${clip.name}`
@@ -146,7 +205,6 @@ const CustomFXPad: React.FC<CustomFXPadProps> = memo(({
     e.dataTransfer.setDragImage(ghost, 0, 0)
     setTimeout(() => document.body.removeChild(ghost), 0)
     
-    // Debug
     if (cachedClip) {
       const trackCount = cachedClip.tracks?.length || 0
       console.log(`[CustomFXDock] 💎 Diamond drag: ${clip.name} [${trackCount} tracks, mixBus=${cachedClip.mixBus || 'none'}]`)
@@ -159,7 +217,6 @@ const CustomFXPad: React.FC<CustomFXPadProps> = memo(({
   
   const handleClick = useCallback(() => {
     if (isRecording && cachedClip) {
-      // ⬡ FASE 6: REC mode — record the FX clip into the timeline
       const recorder = getChronosRecorder()
       recorder.recordFX(
         cachedClip,
@@ -169,24 +226,43 @@ const CustomFXPad: React.FC<CustomFXPadProps> = memo(({
         cachedClip.spatialZones as string[] | undefined,
         cachedClip.priority,
       )
+    } else if (isMidiListening) {
+      onMidiClick?.(midiControlId)
     } else {
-      // EDIT mode: preview momentáneo (TODO futuro)
       onClick?.(clip)
     }
-  }, [isRecording, clip, cachedClip, onClick])
+  }, [isRecording, isMidiListening, clip, cachedClip, onClick, onMidiClick, midiControlId])
   
   return (
     <div
-      className={`custom-fx-pad ${isRecording ? 'rec-mode' : ''}`}
+      className={`custom-fx-pad ${isRecording ? 'rec-mode' : ''} ${isMidiListening ? 'midi-listening' : ''} ${isMidiMapped ? 'midi-mapped' : ''}`}
       draggable={!isRecording}
       onDragStart={isRecording ? undefined : handleDragStart}
       onDragEnd={isRecording ? undefined : onDragEnd}
       onClick={handleClick}
+      data-midi-id={midiControlId}
       style={{ '--fx-neon': neonColor } as React.CSSProperties}
       title={`${clip.name} (${clip.author})\n${clip.paramCount} params • ${Math.round(clip.durationMs / 1000)}s`}
     >
-      <span className="custom-fx-icon">{'\u2B22'}</span>
+      {isMidiMapped && <span className="pad-midi-dot" />}
+      <button
+        className={`pad-star-btn ${isFavorite ? 'active' : ''}`}
+        onClick={handleStarClick}
+        title={isFavorite ? 'Remove from FAVS' : 'Add to FAVS'}
+      >
+        <StarIcon size={12} color={isFavorite ? '#fbbf24' : 'rgba(255,255,255,0.25)'} filled={isFavorite} />
+      </button>
+      <span className="custom-fx-icon">
+        <ZoneIcon size={22} color={neonColor} />
+      </span>
       <span className="custom-fx-name">{clip.name}</span>
+      {genome && (
+        <div className="pad-dna-leds">
+          <span className="dna-led dna-aggression" style={{ opacity: genome.aggression }} title={`AGG ${Math.round(genome.aggression * 100)}%`} />
+          <span className="dna-led dna-chaos" style={{ opacity: genome.chaos }} title={`CHS ${Math.round(genome.chaos * 100)}%`} />
+          <span className="dna-led dna-organicity" style={{ opacity: genome.organicity }} title={`ORG ${Math.round(genome.organicity * 100)}%`} />
+        </div>
+      )}
       <span className="custom-fx-params">{clip.paramCount}P</span>
     </div>
   )
@@ -231,6 +307,8 @@ export interface CustomFXDockProps {
   onDragEnd?: () => void
 }
 
+type ArsenalView = 'all' | 'favs'
+
 export const CustomFXDock: React.FC<CustomFXDockProps> = memo(({
   isRecording = false,
   onDragStart,
@@ -238,15 +316,34 @@ export const CustomFXDock: React.FC<CustomFXDockProps> = memo(({
 }) => {
   const [clips, setClips] = useState<HephClipMetadata[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<FilterTab>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedZones, setSelectedZones] = useState<Set<EnergyZone>>(new Set())
+  const [currentPage, setCurrentPage] = useState(0)
+  const [view, setView] = useState<ArsenalView>('all')
   
-  /**
-   * ⚒️ WAVE 2040.18: DIAMOND CACHE — Pre-cached serialized clips
-   * Mirrors the pattern from HephaestusView for zero-latency D&D.
-   */
   const clipCacheRef = useRef<Map<string, HephAutomationClipV3>>(new Map())
   
-  // Load clips from Hephaestus on mount
+  const learnMode = useMidiMapStore(s => s.learnMode)
+  const listeningControl = useMidiMapStore(s => s.listeningControl)
+  const mappings = useMidiMapStore(s => s.mappings)
+  const startListening = useMidiMapStore(s => s.startListening)
+  const favorites = useFxFavoritesStore(s => s.favorites)
+  const toggleFavorite = useFxFavoritesStore(s => s.toggleFavorite)
+  
+  const handleMidiClick = useCallback((controlId: string) => {
+    startListening(controlId)
+  }, [startListening])
+  
+  const toggleZone = useCallback((zone: EnergyZone) => {
+    setSelectedZones(prev => {
+      const next = new Set(prev)
+      if (next.has(zone)) next.delete(zone)
+      else next.add(zone)
+      return next
+    })
+    setCurrentPage(0)
+  }, [])
+  
   useEffect(() => {
     const loadClips = async () => {
       if (!window.luxsync?.hephaestus?.list) {
@@ -261,7 +358,6 @@ export const CustomFXDock: React.FC<CustomFXDockProps> = memo(({
           setClips(result.clips)
           console.log(`[CustomFXDock] Loaded ${result.clips.length} custom FX`)
           
-          // ⚒️ WAVE 2040.18: DIAMOND CACHE — Preload all clips in background
           if (window.luxsync?.hephaestus?.load) {
             for (const item of result.clips as HephClipMetadata[]) {
               if (!clipCacheRef.current.has(item.filePath)) {
@@ -287,86 +383,146 @@ export const CustomFXDock: React.FC<CustomFXDockProps> = memo(({
     
     loadClips()
     
-    // Refresh when Hephaestus saves a new clip
     const handleRefresh = () => loadClips()
     window.addEventListener('luxsync:heph-library-changed', handleRefresh)
     return () => window.removeEventListener('luxsync:heph-library-changed', handleRefresh)
   }, [])
   
-  // Filter clips by active tab
   const filteredClips = useMemo(() => {
-    if (activeTab === 'all') return clips
+    let result = clips
     
-    return clips.filter(clip => {
-      const cat = clip.category.toLowerCase()
-      const tags = clip.tags.map(t => t.toLowerCase())
-      
-      switch (activeTab) {
-        case 'physics':
-          return cat.includes('physic') || tags.some(t => t.includes('physic'))
-        case 'color':
-          return cat.includes('color') || clip.effectType === 'color' || tags.some(t => t.includes('color'))
-        case 'movement':
-          return cat.includes('move') || cat.includes('chase') || tags.some(t => t.includes('move'))
-        case 'control':
-          return cat.includes('control') || tags.some(t => t.includes('control'))
-        default:
-          return true
-      }
-    })
-  }, [clips, activeTab])
+    if (view === 'favs') {
+      result = result.filter(c => favorites.has(c.filePath))
+    }
+    
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim()
+      result = result.filter(c =>
+        c.name.toLowerCase().includes(q) ||
+        c.tags.some(t => t.toLowerCase().includes(q)) ||
+        c.category.toLowerCase().includes(q)
+      )
+    }
+    
+    if (selectedZones.size > 0) {
+      result = result.filter(clip => {
+        const cached = clipCacheRef.current.get(clip.filePath)
+        const dna = cached?.cognitiveDNA
+        if (!dna) return false
+        return clipMatchesZones(dna, selectedZones)
+      })
+    }
+    
+    return result
+  }, [clips, searchQuery, selectedZones, view, favorites])
+  
+  const totalPages = Math.max(1, Math.ceil(filteredClips.length / PADS_PER_PAGE))
+  const safePage = Math.min(currentPage, totalPages - 1)
+  const pageStart = safePage * PADS_PER_PAGE
+  const pageClips = filteredClips.slice(pageStart, pageStart + PADS_PER_PAGE)
+  
+  const goToPrev = useCallback(() => setCurrentPage(p => Math.max(0, p - 1)), [])
+  const goToNext = useCallback(() => setCurrentPage(p => Math.min(totalPages - 1, p + 1)), [totalPages])
   
   return (
     <div className="custom-fx-dock">
-      {/* Header with tabs */}
       <div className="custom-fx-header">
-        <span className="custom-fx-title">CUSTOM FX</span>
-        <div className="custom-fx-tabs">
-          {FILTER_TABS.map(tab => (
-            <button
-              key={tab.id}
-              className={`custom-fx-tab ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab.id)}
-              title={tab.label}
-              style={{ '--tab-dot': tab.dotColor } as React.CSSProperties}
-            >
-              <span className="tab-dot" />
-              <span className="tab-label">{tab.label}</span>
-            </button>
-          ))}
+        <div className="fx-view-tabs">
+          <button
+            className={`fx-view-tab ${view === 'all' ? 'active' : ''}`}
+            onClick={() => { setView('all'); setCurrentPage(0) }}
+          >
+            ALL
+          </button>
+          <button
+            className={`fx-view-tab ${view === 'favs' ? 'active' : ''}`}
+            onClick={() => { setView('favs'); setCurrentPage(0) }}
+          >
+            <StarIcon size={11} color={view === 'favs' ? '#fbbf24' : 'rgba(255,255,255,0.4)'} filled={view === 'favs'} />
+            FAVS
+          </button>
+        </div>
+        
+        <input
+          className="fx-search-input"
+          type="text"
+          placeholder="Search clips..."
+          value={searchQuery}
+          onChange={e => { setSearchQuery(e.target.value); setCurrentPage(0) }}
+        />
+        
+        <div className="zone-filters">
+          {ZONE_ORDER.map(zone => {
+            const ZoneIcon = ZONE_ICONS[zone]
+            return (
+              <button
+                key={zone}
+                className={`zone-filter-pill ${selectedZones.has(zone) ? 'active' : ''}`}
+                onClick={() => toggleZone(zone)}
+                style={{ '--zone-color': ZONE_COLORS[zone] } as React.CSSProperties}
+                title={ZONE_LABELS[zone]}
+              >
+                <ZoneIcon size={11} color={ZONE_COLORS[zone]} />
+              </button>
+            )
+          })}
         </div>
       </div>
       
-      {/* Grid of custom FX */}
-      <div className="custom-fx-scroll">
+      <div className="fx-arsenal-body">
         {isLoading ? (
           <div className="custom-fx-loading">
             <span>⏳</span>
           </div>
         ) : (
-          <div className="custom-fx-grid">
-            {filteredClips.map(clip => (
-              <CustomFXPad
-                key={clip.id}
-                clip={clip}
-                cachedClip={clipCacheRef.current.get(clip.filePath)}
-                isRecording={isRecording}
-                onDragStart={onDragStart}
-                onDragEnd={onDragEnd}
-              />
-            ))}
-            
-            {/* Always show NEW button at the end */}
-            <NewFXButton />
-            
-            {/* Empty state */}
-            {filteredClips.length === 0 && !isLoading && (
-              <div className="custom-fx-empty">
-                <span>No custom FX yet</span>
-                <span>Click + to create</span>
+          <>
+            <div className="fx-pagination-row">
+              <button
+                className="pag-arrow pag-arrow-left"
+                onClick={goToPrev}
+                disabled={safePage === 0}
+                title="Previous page"
+              >
+                {'‹'}
+              </button>
+              <div className="fx-grid-paginated">
+                {pageClips.map(clip => (
+                  <CustomFXPad
+                    key={clip.id}
+                    clip={clip}
+                    cachedClip={clipCacheRef.current.get(clip.filePath)}
+                    isRecording={isRecording}
+                    isMidiListening={learnMode && listeningControl === `fx-${clip.id}`}
+                    isMidiMapped={!!mappings[`fx-${clip.id}`]}
+                    isFavorite={favorites.has(clip.filePath)}
+                    onDragStart={onDragStart}
+                    onDragEnd={onDragEnd}
+                    onMidiClick={handleMidiClick}
+                    onToggleFavorite={toggleFavorite}
+                  />
+                ))}
+                
+                {pageClips.length === 0 && !isLoading && (
+                  <div className="custom-fx-empty">
+                    <span>{view === 'favs' ? 'No favorites yet — star clips to add them here' : 'No clips match filters'}</span>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+              <button
+                className="pag-arrow pag-arrow-right"
+                onClick={goToNext}
+                disabled={safePage >= totalPages - 1}
+                title="Next page"
+              >
+                {'›'}
+              </button>
+            </div>
+            
+            <div className="fx-pagination">
+              <span className="pag-info">PAGE {safePage + 1}/{totalPages}</span>
+              <NewFXButton />
+            </div>
+          </>
         )}
       </div>
     </div>

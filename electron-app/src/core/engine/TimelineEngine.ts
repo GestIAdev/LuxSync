@@ -23,9 +23,12 @@
  */
 
 import type { ChronosProjectV3 } from '../../chronos/core/LuxFileV3'
-import type { FXClip, VibeClip } from '../../chronos/core/TimelineClip'
+import type { FXClip, FXKeyframe, VibeClip } from '../../chronos/core/TimelineClip'
 import { getTitanOrchestrator } from '../orchestrator/TitanOrchestrator'
 import { getHephaestusRuntime } from '../orchestrator/IPCHandlers'
+
+// WAVE 7110-B: Zone-to-fixture resolver — injected by TickEngine.
+export type ZoneFixtureResolver = (zone: string) => readonly string[]
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -72,6 +75,13 @@ export class TimelineEngine {
   private project: ChronosProjectV3 | null = null
   private fxClips: FXClip[] = []
   private vibeClips: VibeClip[] = []
+  private _trackZoneMap = new Map<string, string>()
+
+  // WAVE 7110-B: Zone resolver for target population.
+  private _zoneResolver: ZoneFixtureResolver | null = null
+
+  // WAVE 7110-B: Pre-allocated target buffer (zero-alloc hot path).
+  private _targetBuffer: ChronosFixtureTarget[] = []
 
   // ── Playback state ──
   private playing = false
@@ -97,6 +107,12 @@ export class TimelineEngine {
     this.stop() // Clean previous state
 
     this.project = project
+
+    // Build trackId → targetZone map for zone resolution.
+    this._trackZoneMap.clear()
+    for (const track of project.tracks) {
+      this._trackZoneMap.set(track.id, track.targetZone)
+    }
 
     // Separate clips by type
     const allClips = project.tracks.flatMap(t => t.clips)
@@ -162,9 +178,12 @@ export class TimelineEngine {
       }
     }
 
-    // ── Build playback frame (targets empty — HephaestusRuntime paints directly) ──
+    // ── WAVE 7110-B: Build targets from non-heph-custom FX clips and Vibe clips ──
+    this._targetBuffer.length = 0
+    this._buildTargets(timeMs)
+
     this._lastPlaybackFrame = {
-      targets: [],
+      targets: this._targetBuffer,
       hasActiveVibe,
       vibeId: this.currentPlaybackVibeId,
       tickMs: timeMs,
@@ -201,6 +220,8 @@ export class TimelineEngine {
     this.project = null
     this.fxClips = []
     this.vibeClips = []
+    this._trackZoneMap.clear()
+    this._targetBuffer.length = 0
 
     console.log(`[TimelineEngine] Stopped - all HephaestusRuntime instances cleared`)
   }
@@ -226,6 +247,163 @@ export class TimelineEngine {
 
   get isPlaying(): boolean {
     return this.playing
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // WAVE 7110-B: ZONE RESOLVER — Injected by TickEngine
+  // ═══════════════════════════════════════════════════════════════════════
+
+  setZoneResolver(resolver: ZoneFixtureResolver): void {
+    this._zoneResolver = resolver
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // WAVE 7110-B: TARGET POPULATION — ChronosFixtureTarget generation
+  // ═══════════════════════════════════════════════════════════════════════
+
+  private _buildTargets(timeMs: number): void {
+    if (!this._zoneResolver) return
+
+    // Process non-heph-custom FX clips (automation curves).
+    for (const clip of this.fxClips) {
+      if (timeMs < clip.startMs || timeMs >= clip.endMs) continue
+      if (clip.isHephCustom || clip.hephClip) continue
+
+      const localMs = timeMs - clip.startMs
+      const value = this._evaluateKeyframes(clip.keyframes, localMs)
+      const zone = this._trackZoneMap.get(clip.trackId) ?? 'global'
+      const fixtureIds = this._zoneResolver(zone)
+
+      for (let i = 0; i < fixtureIds.length; i++) {
+        this._targetBuffer.push(this._fxClipToTarget(fixtureIds[i], clip, value))
+      }
+    }
+
+    // Process Vibe clips (dimmer targets from intensity + envelope).
+    for (const vibeClip of this.vibeClips) {
+      if (timeMs < vibeClip.startMs || timeMs >= vibeClip.endMs) continue
+
+      const localMs = timeMs - vibeClip.startMs
+      const durationMs = vibeClip.endMs - vibeClip.startMs
+      let envelope = 1
+      if (localMs < vibeClip.fadeInMs) {
+        envelope = vibeClip.fadeInMs > 0 ? localMs / vibeClip.fadeInMs : 1
+      } else if (localMs > durationMs - vibeClip.fadeOutMs) {
+        envelope = vibeClip.fadeOutMs > 0 ? (durationMs - localMs) / vibeClip.fadeOutMs : 0
+      }
+      if (envelope <= 0) continue
+
+      const dimmer = Math.round(vibeClip.intensity * envelope * 255)
+      const zone = this._trackZoneMap.get(vibeClip.trackId) ?? 'global'
+      const fixtureIds = this._zoneResolver(zone)
+
+      for (let i = 0; i < fixtureIds.length; i++) {
+        this._targetBuffer.push({
+          fixtureId: fixtureIds[i],
+          dimmer,
+          red: 0, green: 0, blue: 0, white: 0,
+          pan: 0, tilt: 0, zoom: 0, speed: 0,
+          colorTouched: false,
+          blendMode: 'HTP',
+        })
+      }
+    }
+  }
+
+  private _evaluateKeyframes(keyframes: FXKeyframe[], localMs: number): number {
+    if (keyframes.length === 0) return 0
+    if (keyframes.length === 1) return keyframes[0].value
+
+    // Find the segment containing localMs.
+    let prev = keyframes[0]
+    let next = keyframes[keyframes.length - 1]
+    for (let i = 0; i < keyframes.length - 1; i++) {
+      if (localMs >= keyframes[i].offsetMs && localMs <= keyframes[i + 1].offsetMs) {
+        prev = keyframes[i]
+        next = keyframes[i + 1]
+        break
+      }
+    }
+
+    if (localMs <= prev.offsetMs) return prev.value
+    if (localMs >= next.offsetMs) return next.value
+
+    const span = next.offsetMs - prev.offsetMs
+    if (span <= 0) return next.value
+
+    const t = (localMs - prev.offsetMs) / span
+    const eased = this._applyEasing(t, prev.easing)
+    return prev.value + (next.value - prev.value) * eased
+  }
+
+  private _applyEasing(t: number, easing: FXKeyframe['easing']): number {
+    switch (easing) {
+      case 'step': return 0
+      case 'ease-in': return t * t
+      case 'ease-out': return 1 - (1 - t) * (1 - t)
+      case 'ease-in-out': return t < 0.5 ? 2 * t * t : 1 - 2 * (1 - t) * (1 - t)
+      default: return t
+    }
+  }
+
+  private _fxClipToTarget(fixtureId: string, clip: FXClip, value: number): ChronosFixtureTarget {
+    const dmx = Math.round(value * 255)
+    const params = clip.params as Record<string, number | string | boolean>
+
+    switch (clip.fxType) {
+      case 'blackout':
+        return {
+          fixtureId, dimmer: 0,
+          red: 0, green: 0, blue: 0, white: 0,
+          pan: 0, tilt: 0, zoom: 0, speed: 0,
+          colorTouched: false, blendMode: 'LTP',
+        }
+      case 'color-wash': {
+        const r = typeof params.r === 'number' ? params.r : 0
+        const g = typeof params.g === 'number' ? params.g : 0
+        const b = typeof params.b === 'number' ? params.b : 0
+        return {
+          fixtureId, dimmer: dmx,
+          red: r, green: g, blue: b, white: 0,
+          pan: 0, tilt: 0, zoom: 0, speed: 0,
+          colorTouched: true, blendMode: 'HTP',
+        }
+      }
+      case 'intensity-ramp':
+      case 'fade':
+      case 'pulse':
+        return {
+          fixtureId, dimmer: dmx,
+          red: 0, green: 0, blue: 0, white: 0,
+          pan: 0, tilt: 0, zoom: 0, speed: 0,
+          colorTouched: false, blendMode: 'HTP',
+        }
+      case 'strobe':
+        return {
+          fixtureId, dimmer: dmx,
+          red: 0, green: 0, blue: 0, white: 0,
+          pan: 0, tilt: 0, zoom: 0, speed: dmx,
+          colorTouched: false, blendMode: 'HTP',
+        }
+      case 'sweep':
+      case 'chase': {
+        const pan = typeof params.pan === 'number' ? params.pan : Math.round(value * 255)
+        const tilt = typeof params.tilt === 'number' ? params.tilt : 0
+        return {
+          fixtureId, dimmer: dmx,
+          red: 0, green: 0, blue: 0, white: 0,
+          pan, tilt, zoom: 0, speed: 0,
+          colorTouched: false, blendMode: 'HTP',
+        }
+      }
+      default:
+        return {
+          fixtureId, dimmer: dmx,
+          red: 0, green: 0, blue: 0, white: 0,
+          pan: 0, tilt: 0, zoom: 0, speed: 0,
+          colorTouched: false, blendMode: 'HTP',
+        }
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════

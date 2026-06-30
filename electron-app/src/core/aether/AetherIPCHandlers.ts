@@ -383,6 +383,24 @@ export function registerAetherIPCHandlers(): void {
   )
 
   /**
+   * Alias for lux:arbiter:setOutputEnabled — preload.ts maps
+   * window.lux.arbiter.setOutputEnabled to this channel.
+   */
+  ipcMain.handle(
+    'lux:arbiter:setOutputEnabled',
+    (_event, { enabled }: { enabled: boolean }) => {
+      try {
+        const orchestrator = getTitanOrchestrator()
+        orchestrator.setOutputEnabled(!!enabled)
+        return { success: true, outputEnabled: orchestrator.isOutputEnabled() }
+      } catch (err) {
+        console.error('[AetherIPC] arbiter:setOutputEnabled error:', err)
+        return { success: false, error: String(err) }
+      }
+    }
+  )
+
+  /**
    * G1c: Read control gate state para hidratación de CommandDeck.
    */
   ipcMain.handle(

@@ -1,20 +1,19 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * ARSENAL DOCK STYLES - WAVE 2040.7: THE NEON INJECTION
- * 
+ * ARSENAL DOCK STYLES — WAVE 7109: PHOSPHOR NOIR / NEON BLOOM
+ *
  * Glassmorphism dark-glass with PURE NEON retroillumination.
  * Text and icons take the vibe color — NO white text.
  * Buttons glow with their vibe's identity. The crystal breathes color.
- * 
+ *
  * LAYOUT:
- * ┌───────────┬─────────────────────────────────────────────┬─────────────┐
- * │  VIBE     │              EFFECT GRID                    │   TRIGGER   │
- * │  ICONS    │  [2 rows × horizontal scroll]               │    ZONE     │
- * │  (120px)  │              80×80 crystal pads             │   (200px)   │
- * └───────────┴─────────────────────────────────────────────┴─────────────┘
- * 
+ * ┌──────────┬──────────────────────────────────────┬─────────────┐
+ * │ VIBE     │  FX ARSENAL (CustomFXDock)           │   TRIGGER   │
+ * │ RACK     │  [Search] [Zone Filters] [Paginated] │    ZONE     │
+ * │ (20%)    │  [2 rows × 9 pads per page]          │   (200px)   │
+ * └──────────┴──────────────────────────────────────┴─────────────┘
+ *
  * @module chronos/ui/arsenal/ArsenalDock.css
- * @version WAVE 2040.7
  */
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -24,7 +23,7 @@
 .arsenal-dock {
   display: flex;
   align-items: stretch;
-  height: 200px;       /* 🔧 WAVE 2040.33: 180→200px, room to breathe */
+  height: 220px;       /* WAVE 7109: 200→220px for pagination bar */
   width: 100%;
   background: rgba(12, 12, 18, 0.75);
   backdrop-filter: blur(20px);
@@ -59,15 +58,64 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   LEFT: VIBE CARDS (280px width, 2×2 Grid - CRYSTAL SHARDS)
-   WAVE 2041: Glassmorphism dark glass with vibe-colored retroillumination
+   LEFT: VIBE RACK — WAVE 7109: Neon Bloom vibe cards with MIDI learn
    ═══════════════════════════════════════════════════════════════════════════ */
 
+.dock-vibe-rack {
+  display: flex;
+  flex-direction: column;
+  width: 180px;
+  min-width: 180px;
+  flex-shrink: 0;
+  background: rgba(8, 8, 12, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.vibe-rack-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgba(0, 0, 0, 0.25);
+  flex-shrink: 0;
+}
+
+.vibe-rack-title {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 10px;
+  font-weight: 800;
+  color: rgba(168, 85, 247, 0.6);
+  letter-spacing: 2px;
+  text-shadow: 0 0 8px rgba(168, 85, 247, 0.3);
+}
+
+.vibe-rack-hint {
+  font-family: var(--font-mono, monospace);
+  font-size: 8px;
+  font-weight: 600;
+  color: rgba(0, 255, 100, 0.5);
+  letter-spacing: 0.5px;
+}
+
+/* Vibe Rack Grid — 5 vibes in a column */
+.vibe-rack-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  padding: 4px;
+  min-height: 0;
+}
+
+/* Legacy vibe cards container (kept for backward compat) */
 .dock-vibes {
   display: flex;
   flex-direction: column;
-  width: 220px;               /* 🔧 WAVE 2040.34: 280→220px compact */
-  min-width: 220px;           /* 🔧 WAVE 2040.34: 280→220px */
+  width: 180px;
+  min-width: 180px;
   flex-shrink: 0;
   background: rgba(8, 8, 12, 0.6);
   backdrop-filter: blur(12px);
@@ -79,7 +127,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 8px;           /* 🔧 WAVE 2040.34: 8px 12px → 4px 8px compact */
+  padding: 4px 8px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   background: rgba(0, 0, 0, 0.25);
 }
@@ -101,14 +149,13 @@
   letter-spacing: 0.5px;
 }
 
-/* 2×2 Grid of Vibe Cards */
 .vibes-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   grid-template-rows: repeat(2, 1fr);
-  gap: 4px;                   /* 🔧 WAVE 2040.34: 6→4px tight */
+  gap: 4px;
   flex: 1;
-  padding: 4px;               /* 🔧 WAVE 2040.34: 8→4px compact */
+  padding: 4px;
 }
 
 /* VIBE CARD — WAVE 2040.7: Neon Crystal Shard
@@ -270,6 +317,38 @@
   font-size: 10px;
   color: #E91E63;
   animation: rec-dot-blink 0.6s ease-in-out infinite;
+}
+
+/* WAVE 7109: MIDI Learn states for vibe cards */
+.vibe-card.midi-listening {
+  border-color: rgba(0, 255, 100, 0.5);
+  animation: vibe-midi-listen-pulse 1s ease-in-out infinite;
+}
+
+.vibe-card.midi-mapped {
+  border-left-width: 3px;
+}
+
+@keyframes vibe-midi-listen-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(0, 255, 100, 0.2); }
+  50% { box-shadow: 0 0 16px rgba(0, 255, 100, 0.4); }
+}
+
+.vibe-card-midi-dot {
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #00ff66;
+  box-shadow: 0 0 6px #00ff66;
+}
+
+/* Vibe card icon — emoji-based for WAVE 7109 */
+.vibe-card .vibe-card-icon {
+  font-size: 18px;
+  line-height: 1;
 }
 
 @keyframes rec-dot-blink {
@@ -893,9 +972,10 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 @media (max-width: 1400px) {
+  .dock-vibe-rack,
   .dock-vibes {
-    width: 240px;
-    min-width: 240px;
+    width: 160px;
+    min-width: 160px;
   }
   
   .vibe-card-icon svg {
@@ -913,9 +993,10 @@
     height: 220px;
   }
   
+  .dock-vibe-rack,
   .dock-vibes {
-    width: 200px;
-    min-width: 200px;
+    width: 140px;
+    min-width: 140px;
   }
   
   .vibe-card-count {
@@ -946,9 +1027,10 @@
     height: 200px;
   }
   
+  .dock-vibe-rack,
   .dock-vibes {
-    width: 160px;
-    min-width: 160px;
+    width: 120px;
+    min-width: 120px;
   }
   
   .vibe-card-name {

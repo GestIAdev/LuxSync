@@ -48,6 +48,10 @@ export class HephaestusAetherAdapter {
         this._frameIntents.length = 0;
         this._spatialCache.clear();
         this._frameIntentMap.clear();
+        // DIAG: count custom clips and node matches
+        let _diagCustom = 0;
+        let _diagNodeMatches = 0;
+        let _diagNoNodes = 0;
         // 🩹 WAVE 4995: Zero-alloc intent consolidation.
         // Instead of emitting multiple disconnected intents for the same nodeId,
         // we accumulate them in _frameIntentMap. The last track to touch a node
@@ -58,10 +62,14 @@ export class HephaestusAetherAdapter {
             // Only heph_custom clips belong in the L3+ Aether path
             if (!output.isCustomClip)
                 continue;
+            _diagCustom++;
             const fixtureId = output.fixtureId;
             const nodeIds = this._graph.getDeviceNodes(fixtureId);
-            if (nodeIds.length === 0)
+            if (nodeIds.length === 0) {
+                _diagNoNodes++;
                 continue;
+            }
+            _diagNodeMatches++;
             const param = output.parameter;
             // Determine target NodeFamily from param name
             const family = _paramFamily(param);
@@ -154,6 +162,15 @@ export class HephaestusAetherAdapter {
                     break;
                 }
             }
+        }
+        // DIAG: log adapter results
+        if (this._diagCounter === undefined)
+            this._diagCounter = 0;
+        this._diagCounter++;
+        if (this._diagCounter % 60 === 0) {
+            console.log(`[HephAetherAdapter DIAG] custom=${_diagCustom} nodeMatches=${_diagNodeMatches} ` +
+                `noNodes=${_diagNoNodes} emitted=${this._frameIntents.length} ` +
+                `intents=[${this._frameIntents.slice(0, 3).map(i => `${i.nodeId}:{${Object.keys(i.values).map(k => `${k}=${i.values[k].toFixed(2)}`).join(',')}}`).join(' | ')}]`);
         }
         arbiter.setHephaestusIntents(this._frameIntents);
     }

@@ -284,7 +284,9 @@ export interface IIntentBus {
  * - L2: Manual overrides  (UI faders, MIDI, OSC)
  * - L3: Effects           (LiveFXEngine)
  * - L4: Blackout          (emergencia — siempre gana)
- * - LP: Playback          (Chronos Timeline — prioridad configurable)
+ *
+ * WAVE 7110-B: LP layer removed. Chronos now injects via _chronosBus
+ * at L1 alongside Selene. Both share the same priority layer.
  *
  * MERGE PER-CHANNEL:
  * Para cada canal de cada nodo, el arbiter selecciona la estrategia:
@@ -354,10 +356,11 @@ export interface INodeArbiter {
   setHephaestusIntents(intents: readonly INodeIntent[]): void
 
   /**
-   * Inyecta intents de playback (capa LP, Chronos Timeline).
-   * @param intents — Intents producidos por IChronosNodeBridge
+   * WAVE 7110-B: Registra el bus de L1 de Chronos.
+   * El bus se limpia y rellena cada frame antes de arbitrate().
+   * Comparte la capa L1 con Selene — misma prioridad.
    */
-  setPlaybackIntents(intents: readonly INodeIntent[]): void
+  setChronosBus(bus: IIntentBus): void
 
   /**
    * Activa o desactiva blackout global (capa L4).

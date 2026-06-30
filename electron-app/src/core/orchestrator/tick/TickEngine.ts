@@ -5,7 +5,7 @@
 
 import type { DeviceId } from '../../aether/types'
 import type { HephFixtureOutput } from '../../hephaestus/runtime/HephaestusRuntime'
-import { fixtureMatchesZone as zoneMapperMatch } from '../../zones/ZoneMapper'
+import { fixtureMatchesZone as zoneMapperMatch, resolveZone, type ZoneMappableFixture } from '../../zones/ZoneMapper'
 import { getHephaestusRuntime } from '../IPCHandlers'
 import { getEffectManager } from '../../effects/EffectManager'
 import { aetherKineticEngine } from '../../aether/AetherKineticEngine'
@@ -423,8 +423,21 @@ export class TickEngine {
     }
 
     // 3. Engine processes context -> produces LightingIntent (ðŸ§¬ DNA Brain now awaited)
+    // WAVE FIX: Override engineAudioMetrics with phantom audio BEFORE engine.update()
+    // so the LiquidEngine processes real audio data and produces non-zero zonal intensities.
+    const _phantomAudioPre = this.engine?.getPhantomAudioMetrics()
+    if (_phantomAudioPre) {
+      engineAudioMetrics.bass = _phantomAudioPre.bass
+      engineAudioMetrics.mid = _phantomAudioPre.mid
+      engineAudioMetrics.high = _phantomAudioPre.high
+      engineAudioMetrics.energy = _phantomAudioPre.energy
+      engineAudioMetrics.subBass = _phantomAudioPre.subBass
+      engineAudioMetrics.lowMid = _phantomAudioPre.lowMid
+      engineAudioMetrics.highMid = _phantomAudioPre.highMid
+    }
+
     const intent = await this.engine.update(context, engineAudioMetrics)
-    
+
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // ðŸª“ WAVE 4592 â†’ WAVE 4703: AETHER PIPELINE ONLY
     // ArbitrationDirector (masterArbiter) is extinct. Aether is the single source of truth.
@@ -602,7 +615,7 @@ export class TickEngine {
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     const hephRuntime = getHephaestusRuntime()
     const hephOutputs = hephRuntime.tick(now) // âš¡ WAVE 3050: unified timestamp
-    
+
     // ðŸ”’ WAVE 2490: THE TIER SEPARATION PROTOCOL â€” Hephaestus DMX Gate
     // DJ_FOUNDER: Hephaestus runtime ticks are silently discarded.
     // The engine runs but its output never reaches fixtures.
@@ -905,6 +918,7 @@ export class TickEngine {
       this._seleneBus.clear()
       // WAVE 4705: limpiar bus L3 de LiveFX en cada frame.
       this._effectBus.clear()
+      // WAVE 7110-B: Chronos L1 bus is cleared inside ChronosAetherAdapter.ingest().
 
       // â”€â”€ WAVE 4655 F1: L0 â€” LiquidAetherAdapter usa el engine activo segÃºn layout UI â”€â”€â”€â”€
       // Corrige split-brain: ya no se hardcodea liquidEngine71, se lee del engine activo.
@@ -1000,7 +1014,10 @@ export class TickEngine {
         this._effectBus,
       )
 
-      // STEP 4.5: Playback LP bridge Chronos -> Aether
+      // STEP 4.5: WAVE 7110-B — Chronos L1 bridge: inject zone resolver + ingest
+      this._timelineEngine.setZoneResolver((zone: string) => {
+        return resolveZone(zone, this.fixtures as readonly ZoneMappableFixture[])
+      })
       this._chronosAetherAdapter.ingest(
         this._timelineEngine,
         ctx.deltaMs,
@@ -1033,6 +1050,8 @@ export class TickEngine {
       // 3. El Arbiter unifica todas las capas â†’ ArbitratedNodeMap
       aetherArbiter.setSystemIntents(this._aetherBus)
       aetherArbiter.setEffectIntents(this._effectBus.getAll())
+      // WAVE 7110-B: Wire Chronos L1 bus (reference assignment, harmless to repeat).
+      aetherArbiter.setChronosBus(this._chronosAetherAdapter.getBus())
       const arbitrated = aetherArbiter.arbitrate()
 
       // 3.5. âš™ï¸ WAVE 4518.1: Physics Post-Processor â€” aplica inercia a nodos KINETIC
@@ -1097,6 +1116,7 @@ export class TickEngine {
       // la UI con el apagÃ³n real del DMX (zero desfase visual).
       blackoutActive = aetherArbiter.isBlackoutActive()
       this._aetherUIProjector.project(fixtureStates, this._aetherGraph, arbitrated, blackoutActive, this._aetherCtx.deltaMs)
+
 
       // WAVE 6019: FASE 2 ELIMINADA — el HAL ya no recibe datos del TickEngine.
       // Los drivers leen del SAB a su propio ritmo. TickEngine solo hace commitFrame().

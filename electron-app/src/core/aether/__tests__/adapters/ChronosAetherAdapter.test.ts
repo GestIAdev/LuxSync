@@ -105,12 +105,23 @@ function makeTimeline(snapshot: PlaybackFrameSnapshot | null, isPlaying = true):
 }
 
 function makeArbiterSpy() {
-  const setPlaybackIntents = vi.fn()
+  // WAVE 7110-B: Adapter now writes to a bus, not setPlaybackIntents.
+  // The arbiter spy is a no-op stub — the adapter's getBus() is the real bus.
   const arbiter = {
-    setPlaybackIntents,
+    setChronosBus: vi.fn(),
   } as unknown as INodeArbiter
 
-  return { arbiter, setPlaybackIntents }
+  return { arbiter }
+}
+
+function getBusIntents(adapter: ChronosAetherAdapter): Array<{ nodeId: NodeId; values: Record<string, number> }> {
+  const bus = adapter.getBus()
+  const result: Array<{ nodeId: NodeId; values: Record<string, number> }> = []
+  for (let i = 0; i < bus.count; i++) {
+    const intent = bus.getAt(i)
+    result.push({ nodeId: intent.nodeId, values: { ...intent.values } })
+  }
+  return result
 }
 
 describe('ChronosAetherAdapter', () => {
@@ -127,23 +138,22 @@ describe('ChronosAetherAdapter', () => {
 
     const { graph, getDeviceNodes } = makeGraphMock(state)
     const adapter = new ChronosAetherAdapter(graph)
-    const { arbiter, setPlaybackIntents } = makeArbiterSpy()
+    const { arbiter } = makeArbiterSpy()
 
     const snapshot = makeSnapshot([makeTarget({ dimmer: 200 })], 1000)
     const timeline = makeTimeline(snapshot, true)
 
     adapter.ingest(timeline, 16, arbiter)
+    const firstIntents = getBusIntents(adapter)
+
     adapter.ingest(timeline, 16, arbiter)
+    const secondIntents = getBusIntents(adapter)
 
-    expect(setPlaybackIntents).toHaveBeenCalledTimes(2)
+    // Cache-and-replay: same tick → same intent data (rebuilt from cache).
     expect(getDeviceNodes).toHaveBeenCalledTimes(1)
-
-    const firstArray = setPlaybackIntents.mock.calls[0][0] as Array<{ nodeId: NodeId; values: Record<string, number> }>
-    const secondArray = setPlaybackIntents.mock.calls[1][0] as Array<{ nodeId: NodeId; values: Record<string, number> }>
-
-    expect(secondArray).toBe(firstArray)
-    expect(secondArray[0]).toBe(firstArray[0])
-    expect(secondArray[0].values).toBe(firstArray[0].values)
+    expect(secondIntents).toHaveLength(firstIntents.length)
+    expect(secondIntents[0].nodeId).toBe(firstIntents[0].nodeId)
+    expect(secondIntents[0].values['dimmer']).toBe(firstIntents[0].values['dimmer'])
   })
 
   test('CASO 2: colorTouched=false omite estrictamente intents COLOR', () => {
@@ -163,7 +173,7 @@ describe('ChronosAetherAdapter', () => {
 
     const { graph } = makeGraphMock(state)
     const adapter = new ChronosAetherAdapter(graph)
-    const { arbiter, setPlaybackIntents } = makeArbiterSpy()
+    const { arbiter } = makeArbiterSpy()
 
     const target = makeTarget({
       colorTouched: false,
@@ -178,7 +188,7 @@ describe('ChronosAetherAdapter', () => {
 
     adapter.ingest(makeTimeline(makeSnapshot([target], 2000), true), 16, arbiter)
 
-    const intents = setPlaybackIntents.mock.calls[0][0] as Array<{ nodeId: NodeId; values: Record<string, number> }>
+    const intents = getBusIntents(adapter)
 
     expect(intents.some((intent) => intent.nodeId === impactNode.nodeId)).toBe(true)
     expect(intents.some((intent) => intent.nodeId === kineticNode.nodeId)).toBe(true)
@@ -199,7 +209,7 @@ describe('ChronosAetherAdapter', () => {
 
     const { graph } = makeGraphMock(state)
     const adapter = new ChronosAetherAdapter(graph)
-    const { arbiter, setPlaybackIntents } = makeArbiterSpy()
+    const { arbiter } = makeArbiterSpy()
 
     const target = makeTarget({
       blendMode: 'LTP',
@@ -212,7 +222,7 @@ describe('ChronosAetherAdapter', () => {
 
     adapter.ingest(makeTimeline(makeSnapshot([target], 3000), true), 16, arbiter)
 
-    const intents = setPlaybackIntents.mock.calls[0][0] as Array<{ nodeId: NodeId; values: Record<string, number> }>
+    const intents = getBusIntents(adapter)
     expect(intents).toHaveLength(1)
     expect(intents[0].nodeId).toBe(impactNode.nodeId)
     expect(intents[0].values['dimmer']).toBe(0)
@@ -223,12 +233,11 @@ describe('ChronosAetherAdapter', () => {
     const state = makeMockGraphState()
     const { graph } = makeGraphMock(state)
     const adapter = new ChronosAetherAdapter(graph)
-    const { arbiter, setPlaybackIntents } = makeArbiterSpy()
+    const { arbiter } = makeArbiterSpy()
 
     adapter.ingest(makeTimeline(makeSnapshot([makeTarget()], 4000), false), 16, arbiter)
 
-    const intents = setPlaybackIntents.mock.calls[0][0] as Array<unknown>
-    expect(Array.isArray(intents)).toBe(true)
+    const intents = getBusIntents(adapter)
     expect(intents).toHaveLength(0)
   })
 
@@ -236,12 +245,11 @@ describe('ChronosAetherAdapter', () => {
     const state = makeMockGraphState()
     const { graph } = makeGraphMock(state)
     const adapter = new ChronosAetherAdapter(graph)
-    const { arbiter, setPlaybackIntents } = makeArbiterSpy()
+    const { arbiter } = makeArbiterSpy()
 
     adapter.ingest(makeTimeline(null, true), 16, arbiter)
 
-    const intents = setPlaybackIntents.mock.calls[0][0] as Array<unknown>
-    expect(Array.isArray(intents)).toBe(true)
+    const intents = getBusIntents(adapter)
     expect(intents).toHaveLength(0)
   })
 
@@ -255,7 +263,7 @@ describe('ChronosAetherAdapter', () => {
 
     const { graph } = makeGraphMock(state)
     const adapter = new ChronosAetherAdapter(graph)
-    const { arbiter, setPlaybackIntents } = makeArbiterSpy()
+    const { arbiter } = makeArbiterSpy()
 
     const newNode: NodeShape = { nodeId: 'fixture-2:impact' as NodeId, family: NodeFamily.IMPACT }
     state.views[NodeFamily.IMPACT].push(newNode)
@@ -271,7 +279,7 @@ describe('ChronosAetherAdapter', () => {
       arbiter,
     )
 
-    let intents = setPlaybackIntents.mock.calls[0][0] as Array<{ nodeId: NodeId }>
+    let intents = getBusIntents(adapter)
     expect(intents.some((intent) => intent.nodeId === newNode.nodeId)).toBe(false)
 
     adapter.rebuildNodeIndex()
@@ -285,7 +293,7 @@ describe('ChronosAetherAdapter', () => {
       arbiter,
     )
 
-    intents = setPlaybackIntents.mock.calls[1][0] as Array<{ nodeId: NodeId }>
+    intents = getBusIntents(adapter)
     expect(intents.some((intent) => intent.nodeId === newNode.nodeId)).toBe(true)
   })
 })

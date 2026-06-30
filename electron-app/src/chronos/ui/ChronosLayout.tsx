@@ -837,16 +837,24 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
       }
 
       // e) Auto-create new track if all candidate tracks have collision
+      //    WAVE 7108: CAP — max 2 tracks per energy zone (primary + #2).
+      //    If both collide → fall back to GLOBAL, do NOT create #3.
       if (!resolvedTrackId) {
         if (primaryZone === 'global') {
           // GLOBAL track is locked and singleton — just use it even if colliding
           const globalTrack = storeV2.tracks.find(t => t.targetZone === 'global')
           resolvedTrackId = globalTrack?.id ?? 'global'
-          console.log(`[ChronosLayout] WAVE 7107-A.2: GLOBAL fallback (collision accepted)`)
-        } else {
+          console.log(`[ChronosLayout] WAVE 7108: GLOBAL fallback (collision accepted)`)
+        } else if (candidateTracks.length < 2) {
+          // Only 0 or 1 tracks exist for this zone → create #2 (the cap)
           const newTrack = storeV2.addTrack(primaryZone)
           resolvedTrackId = newTrack.id
-          console.log(`[ChronosLayout] WAVE 7107-A.2: Auto-created track "${newTrack.visualLabel}" for ${primaryZone} (Take Lane ${candidateTracks.length + 1})`)
+          console.log(`[ChronosLayout] WAVE 7108: Auto-created track "${newTrack.visualLabel}" for ${primaryZone} (Take Lane ${candidateTracks.length + 1})`)
+        } else {
+          // Both primary and #2 collide → GLOBAL fallback, no #3
+          const globalTrack = storeV2.tracks.find(t => t.targetZone === 'global')
+          resolvedTrackId = globalTrack?.id ?? 'global'
+          console.log(`[ChronosLayout] WAVE 7108: Take Lane cap reached for ${primaryZone} → GLOBAL fallback (no #3)`)
         }
       }
 

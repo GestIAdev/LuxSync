@@ -252,21 +252,38 @@ function renderWaveform(
 
   // ═══════════════════════════════════════════════════════════════════════
   // LAYER 0: ENERGY HEATMAP BACKGROUND (30% opacity river)
+  // WAVE 7108: Phosphor Noir palette — cyberpunk clean ramp, no mud
+  //   0.0: #0a0a0f (abyssal blue/black)
+  //   0.4: #00e5ff (neon cyan)
+  //   0.7: #b388ff (UV purple)
+  //   1.0: #ff1744 (neon magenta-red)
   // ═══════════════════════════════════════════════════════════════════════
   const energyToHeatRGB = (e: number): [number, number, number] => {
     const c = Math.min(1, Math.max(0, e))
-    if (c < 0.25) {
-      const t = c / 0.25
-      return [Math.round(10 + t * 20), Math.round(10 + t * 40), Math.round(46 + t * 80)]
-    } else if (c < 0.5) {
-      const t = (c - 0.25) / 0.25
-      return [Math.round(30), Math.round(50 + t * 130), Math.round(126 + t * 40)]
-    } else if (c < 0.75) {
-      const t = (c - 0.5) / 0.25
-      return [Math.round(30 + t * 200), Math.round(180 + t * 20), Math.round(166 - t * 120)]
+    if (c < 0.4) {
+      // Abyssal → Neon Cyan
+      const t = c / 0.4
+      return [
+        Math.round(10 + t * (0 - 10)),         // 10 → 0
+        Math.round(10 + t * (229 - 10)),        // 10 → 229
+        Math.round(15 + t * (255 - 15)),        // 15 → 255
+      ]
+    } else if (c < 0.7) {
+      // Neon Cyan → UV Purple
+      const t = (c - 0.4) / 0.3
+      return [
+        Math.round(0 + t * (179 - 0)),          // 0 → 179
+        Math.round(229 + t * (136 - 229)),      // 229 → 136
+        Math.round(255 + t * (255 - 255)),      // 255 → 255
+      ]
     } else {
-      const t = (c - 0.75) / 0.25
-      return [Math.round(230 + t * 25), Math.round(200 - t * 150), Math.round(46 - t * 40)]
+      // UV Purple → Neon Magenta-Red
+      const t = (c - 0.7) / 0.3
+      return [
+        Math.round(179 + t * (255 - 179)),      // 179 → 255
+        Math.round(136 + t * (23 - 136)),       // 136 → 23
+        Math.round(255 + t * (68 - 255)),       // 255 → 68
+      ]
     }
   }
 

@@ -14,6 +14,7 @@
  * @version V3.0
  */
 import { LUX_V3_SCHEMA, LUX_DEFAULT_BPM, } from './LuxFileV3';
+import { toVibeType, toFXType, extractVisualKeyframes, getVibeColor, MIXBUS_CLIP_COLORS, HEPH_EMBER_COLOR } from './TimelineClip';
 // ═══════════════════════════════════════════════════════════════════════════
 // ID GENERATION (deterministic, no Math.random)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -44,7 +45,7 @@ export const TRACK_ZONE_COLORS = {
     'movers-right': '#f59e0b',
     center: '#a855f7',
     air: '#06b6d4',
-    ambient: '#64748b',
+    ambient: '#33ddaa',
     unassigned: '#475569',
     global: '#e2e8f0',
     // ── WAVE 7107-B: Selene Energy Zone colors ──
@@ -194,6 +195,54 @@ export function createEmptyLuxFileV3(name = 'Untitled Show') {
  * Hydrate a runtime ChronosProjectV3 from a serialized LuxFileV3.
  * Adds ephemeral edit state with sane defaults.
  */
+function luxClipToTimelineClip(clip, trackId) {
+    if (clip.type === 'vibe') {
+        const vibeClip = {
+            id: clip.id,
+            type: 'vibe',
+            vibeType: toVibeType(clip.vibeType),
+            label: clip.label,
+            startMs: clip.startMs,
+            endMs: clip.endMs,
+            trackId,
+            color: clip.color || getVibeColor(clip.vibeType ?? 'idle'),
+            intensity: clip.intensity ?? 1,
+            fadeInMs: clip.fadeInMs ?? 500,
+            fadeOutMs: clip.fadeOutMs ?? 500,
+            selected: false,
+            locked: clip.locked,
+        };
+        return vibeClip;
+    }
+    // FX clip
+    const hephClip = clip.hephClip;
+    const resolvedMixBus = hephClip?.mixBus ?? 'htp';
+    const color = clip.color || MIXBUS_CLIP_COLORS[resolvedMixBus] || HEPH_EMBER_COLOR;
+    const durationMs = clip.endMs - clip.startMs;
+    const fxType = toFXType(hephClip?.effectType === 'heph_custom' || hephClip?.effectType === 'heph-automation' || hephClip?.effectType === 'custom'
+        ? 'heph-custom'
+        : hephClip?.effectType ?? 'heph-custom');
+    const fxClip = {
+        id: clip.id,
+        type: 'fx',
+        fxType,
+        label: clip.label,
+        startMs: clip.startMs,
+        endMs: clip.endMs,
+        trackId,
+        color,
+        keyframes: extractVisualKeyframes(hephClip, durationMs),
+        params: { effectType: hephClip?.effectType ?? 'heph_custom' },
+        selected: false,
+        locked: clip.locked,
+        hephFilePath: clip.hephFilePath,
+        isHephCustom: true,
+        hephClip,
+        zones: clip.zones ? [...clip.zones] : undefined,
+        priority: clip.priority,
+    };
+    return fxClip;
+}
 export function toChronosProjectV3(file) {
     const baseBpm = file.audio?.detectedBpm ?? file.analysis?.detectedBpm ?? LUX_DEFAULT_BPM;
     return {
@@ -202,7 +251,10 @@ export function toChronosProjectV3(file) {
         audio: file.audio ? { ...file.audio } : null,
         analysis: file.analysis ?? null,
         vibeBase: file.vibeBase ? { ...file.vibeBase } : null,
-        tracks: file.tracks.map((t) => ({ ...t, clips: [...t.clips] })),
+        tracks: file.tracks.map((t) => ({
+            ...t,
+            clips: t.clips.map(c => luxClipToTimelineClip(c, c.type === 'vibe' ? 'vibe' : t.id)),
+        })),
         markers: file.markers.map((m) => ({ ...m })),
         safety: file.safety ? { ...file.safety } : null,
         checksum: file.checksum,
@@ -219,6 +271,35 @@ export function toChronosProjectV3(file) {
  * Strip runtime state from a ChronosProjectV3, producing a LuxFileV3 ready to
  * serialize. Checksum is left as-is — the serializer recomputes it.
  */
+function timelineClipToLuxClip(clip) {
+    const base = {
+        id: clip.id,
+        type: clip.type,
+        label: clip.label,
+        startMs: clip.startMs,
+        endMs: clip.endMs,
+        color: clip.color,
+        locked: clip.locked,
+    };
+    if (clip.type === 'vibe') {
+        return {
+            ...base,
+            vibeType: clip.vibeType,
+            intensity: clip.intensity,
+            fadeInMs: clip.fadeInMs,
+            fadeOutMs: clip.fadeOutMs,
+        };
+    }
+    // FX clip — strip runtime-only fields, keep V3-canonical fields
+    return {
+        ...base,
+        hephClip: clip.hephClip,
+        hephFilePath: clip.hephFilePath,
+        zones: clip.zones,
+        priority: clip.priority,
+        mixBus: clip.hephClip?.mixBus,
+    };
+}
 export function toLuxFileV3(project) {
     return {
         $schema: project.$schema,
@@ -226,7 +307,10 @@ export function toLuxFileV3(project) {
         audio: project.audio,
         analysis: project.analysis,
         vibeBase: project.vibeBase,
-        tracks: project.tracks,
+        tracks: project.tracks.map(t => ({
+            ...t,
+            clips: t.clips.map(c => timelineClipToLuxClip(c)),
+        })),
         markers: project.markers,
         safety: project.safety,
         checksum: project.checksum,

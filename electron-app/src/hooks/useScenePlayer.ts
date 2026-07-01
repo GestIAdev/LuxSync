@@ -21,6 +21,7 @@
  *   ✅ WAVE 7104: Forward external timecode to Main Process DirectTicker
  *   ✅ Send lux:playback:load(project) on scene load
  *   ✅ Send lux:playback:stop on stop
+ *   ✅ Send chronos:load-heatmap + chronos:sync-playhead for L0 phantom audio
  *   ✅ Expose progress/state for Hyperion UI (bar, play/pause)
  * 
  * All lighting physics run in TimelineEngine.ts (Main process).
@@ -64,6 +65,10 @@ export interface ScenePlayerStatus {
 
 function getPlaybackApi() {
   return (window as any).lux?.playback
+}
+
+function getChronosApi() {
+  return (window as any).lux?.chronos
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -147,6 +152,17 @@ export function useScenePlayer() {
       }
     } else {
       console.error('[ScenePlayer] ❌ NO PLAYBACK API AVAILABLE — window.lux.playback is undefined!')
+    }
+
+    // ── Send embedded heatmap to TitanEngine for L0 phantom audio ──
+    const chronosApi = getChronosApi()
+    if (chronosApi?.loadHeatmap && project.analysis?.heatmap) {
+      console.log(`[ScenePlayer] 👻 Loading heatmap (${project.analysis.heatmap.energy?.length ?? 0} frames) to TitanEngine...`)
+      chronosApi.loadHeatmap(project.analysis.heatmap).catch((err: unknown) =>
+        console.warn('[ScenePlayer] Heatmap load failed:', err)
+      )
+    } else {
+      console.warn('[ScenePlayer] ⚠️ No heatmap in project — L0 will be dark (no phantom audio)')
     }
 
     // ── Sync fixtures to backend Arbiter (WAVE 2054) ──
@@ -253,6 +269,13 @@ export function useScenePlayer() {
       }
     }
 
+    // ── Sync playhead to TitanEngine for phantom audio lookup ──
+    // Must use the SAME currentTimeMs as tick/setExternalTime above.
+    const chronosApi = getChronosApi()
+    if (chronosApi?.syncPlayhead) {
+      chronosApi.syncPlayhead(currentTimeMs, true)
+    }
+
     // ── Update UI status (visual sync only) ──
     setStatus(prev => ({
       ...prev,
@@ -316,6 +339,12 @@ export function useScenePlayer() {
       rafRef.current = null
     }
 
+    // ── Deactivate phantom audio in TitanEngine ──
+    const chronosApi = getChronosApi()
+    if (chronosApi?.syncPlayhead) {
+      chronosApi.syncPlayhead(clockOffsetRef.current, false)
+    }
+
     setStatus(prev => ({ ...prev, state: 'paused' }))
     console.log('[ScenePlayer] ⏸ Pause')
   }, [])
@@ -345,6 +374,12 @@ export function useScenePlayer() {
       api.stop().catch(() => {})
     }
 
+    // ── Deactivate phantom audio playback in TitanEngine ──
+    const chronosApi = getChronosApi()
+    if (chronosApi?.syncPlayhead) {
+      chronosApi.syncPlayhead(0, false)
+    }
+
     setStatus(prev => ({
       ...prev,
       state: prev.project ? 'loaded' : 'idle',
@@ -366,6 +401,12 @@ export function useScenePlayer() {
     // Reset silent clock to this position
     clockOffsetRef.current = timeMs
     clockStartRef.current = performance.now()
+
+    // ── Update TitanEngine playhead position ──
+    const chronosApi = getChronosApi()
+    if (chronosApi?.syncPlayhead) {
+      chronosApi.syncPlayhead(timeMs, false)
+    }
 
     setStatus(prev => ({
       ...prev,

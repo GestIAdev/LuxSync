@@ -588,8 +588,16 @@ export function isClipZoneCompatible(
   if (!clipZones || clipZones.length === 0) return true
   // WAVE 7107-B: Direct string match first (handles energy zones like 'intense', 'peak')
   if (clipZones.includes(trackTargetZone)) return true
+  // 'all' wildcard is compatible with ANY track (including energy zones)
+  if (clipZones.some(z => z.toLowerCase() === 'all' || z === '*')) return true
   // Check if the clip's resolved canonical zones include this track's zone
-  return getTargetCanonicalZones(clipZones).includes(trackTargetZone as CanonicalZone)
+  // But only if the track's zone is actually a canonical zone
+  if (CANONICAL_ZONES.includes(trackTargetZone as CanonicalZone)) {
+    return getTargetCanonicalZones(clipZones).includes(trackTargetZone as CanonicalZone)
+  }
+  // Track has a non-canonical zone (e.g. energy zone 'intense', 'peak')
+  // and the clip doesn't explicitly mention it or use 'all' — not compatible
+  return false
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

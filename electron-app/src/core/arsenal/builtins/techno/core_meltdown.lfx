@@ -17,8 +17,7 @@
       "metal"
     ],
     "spatialZones": [
-      "intense",
-      "peak"
+      "all"
     ],
     "mixBus": "global",
     "priority": 100,
@@ -29,8 +28,7 @@
         "id": "d0d8cae2-c5c6-4854-a91a-187faf749bbf",
         "paramId": "intensity",
         "zones": [
-          "intense",
-          "peak"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -71,8 +69,7 @@
         "id": "87c7c738-5728-422a-acb6-b87c31b67f76",
         "paramId": "color",
         "zones": [
-          "intense",
-          "peak"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -114,8 +111,7 @@
         "id": "0bbd2f44-f899-4b92-a49d-755328aec832",
         "paramId": "strobeRate",
         "zones": [
-          "intense",
-          "peak"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -201,5 +197,6 @@
         "minimumEnergy": 0.7
       }
     }
-  }
+  },
+  "checksum": "395cd9aba90872769d9e5b3136e816c0543def14d2e018240d1e121fc5b29160"
 }

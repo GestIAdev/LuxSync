@@ -14,9 +14,19 @@
  */
 import { CANONICAL_ZONES } from '../../core/stage/ShowFileV2';
 import { LUX_V3_SCHEMA, } from './LuxFileV3';
+const ENERGY_ZONES = [
+    'silence',
+    'valley',
+    'ambient',
+    'gentle',
+    'active',
+    'intense',
+    'peak',
+];
 const VALID_TARGET_ZONES = new Set([
     ...CANONICAL_ZONES,
     'global',
+    ...ENERGY_ZONES,
 ]);
 const VALID_MIX_BUSES = new Set([
     'global',

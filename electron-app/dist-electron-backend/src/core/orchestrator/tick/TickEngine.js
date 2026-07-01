@@ -2,7 +2,7 @@
  * WAVE 4963 PHASE 8: TICK ENGINE
  * @module TickEngine
  */
-import { fixtureMatchesZone as zoneMapperMatch } from '../../zones/ZoneMapper';
+import { fixtureMatchesZone as zoneMapperMatch, resolveZone } from '../../zones/ZoneMapper';
 import { getHephaestusRuntime } from '../IPCHandlers';
 import { getEffectManager } from '../../effects/EffectManager';
 import { aetherKineticEngine } from '../../aether/AetherKineticEngine';
@@ -398,14 +398,6 @@ export class TickEngine {
             engineAudioMetrics.highMid = _phantomAudioPre.highMid;
         }
         const intent = await this.engine.update(context, engineAudioMetrics);
-        if (this.frameCount % 120 === 0) {
-            const isChronos = this._timelineEngine?.isPlaying ?? false;
-            console.log(`[TickEngine PHANTOM-DIAG] frame=${this.frameCount} chronosPlaying=${isChronos} ` +
-                `phantom=${_phantomAudioPre ? 'YES' : 'NULL'} ` +
-                `E=${engineAudioMetrics.energy.toFixed(3)} B=${engineAudioMetrics.bass.toFixed(3)} ` +
-                `M=${engineAudioMetrics.mid.toFixed(3)} H=${engineAudioMetrics.high.toFixed(3)} ` +
-                `aetherDevices=${this._aetherHasDevices} outputEnabled=${this._outputEnabled}`);
-        }
         // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         // ðŸª“ WAVE 4592 â†’ WAVE 4703: AETHER PIPELINE ONLY
         // ArbitrationDirector (masterArbiter) is extinct. Aether is the single source of truth.
@@ -902,6 +894,7 @@ export class TickEngine {
                 this._seleneBus.clear();
                 // WAVE 4705: limpiar bus L3 de LiveFX en cada frame.
                 this._effectBus.clear();
+                // WAVE 7110-B: Chronos L1 bus is cleared inside ChronosAetherAdapter.ingest().
                 // â”€â”€ WAVE 4655 F1: L0 â€” LiquidAetherAdapter usa el engine activo segÃºn layout UI â”€â”€â”€â”€
                 // Corrige split-brain: ya no se hardcodea liquidEngine71, se lee del engine activo.
                 const _activeEngine = this.engine?.getActiveLiquidEngine();
@@ -968,20 +961,16 @@ export class TickEngine {
                 aetherArbiter.setSeleneOverrideMoverShield(effectOutput?.overrideMoverShield === true);
                 // LiveFX se inyecta en bus L3 dedicado para que domine sobre L2 manual.
                 seleneAetherAdapter.ingest(consciousnessOutput, effectOutput, ctx.deltaMs, this._effectBus);
-                // STEP 4.5: Playback LP bridge Chronos -> Aether
+                // STEP 4.5: WAVE 7110-B — Chronos L1 bridge: inject zone resolver + ingest
+                this._timelineEngine.setZoneResolver((zone) => {
+                    return resolveZone(zone, this.fixtures);
+                });
                 this._chronosAetherAdapter.ingest(this._timelineEngine, ctx.deltaMs, aetherArbiter);
                 // STEP 5: Hephaestus L3+ Diamond Data bridge
                 // Reuses `hephOutputs` from the legacy block above (SINGLE tick per frame).
                 // The adapter only processes fixtures registered in NodeGraph (isCustomClip === true).
                 // Legacy post-HAL block still handles fixtures NOT in NodeGraph (backward compat).
                 if (hephOutputs.length > 0 && this._licenseTier !== 'DJ_FOUNDER') {
-                    // DIAG: log heph outputs before adapter
-                    if (this.frameCount % 60 === 0) {
-                        const customOutputs = hephOutputs.filter(o => o.isCustomClip);
-                        console.log(`[TickEngine HEPH-DIAG] frame=${this.frameCount} hephOutputs=${hephOutputs.length} ` +
-                            `custom=${customOutputs.length} ` +
-                            `params=[${customOutputs.slice(0, 5).map(o => `${o.fixtureId}:${o.parameter}=${o.normalizedValue.toFixed(2)}`).join(', ')}]`);
-                    }
                     this._hephaestusAetherAdapter.ingest(hephOutputs, aetherArbiter);
                 }
                 else {
@@ -1001,6 +990,8 @@ export class TickEngine {
                 // 3. El Arbiter unifica todas las capas â†’ ArbitratedNodeMap
                 aetherArbiter.setSystemIntents(this._aetherBus);
                 aetherArbiter.setEffectIntents(this._effectBus.getAll());
+                // WAVE 7110-B: Wire Chronos L1 bus (reference assignment, harmless to repeat).
+                aetherArbiter.setChronosBus(this._chronosAetherAdapter.getBus());
                 const arbitrated = aetherArbiter.arbitrate();
                 // 3.5. âš™ï¸ WAVE 4518.1: Physics Post-Processor â€” aplica inercia a nodos KINETIC
                 // WOODSTOCK: deltaMs viene del FrameScheduler (performance.now()-based), NUNCA Date.now()
@@ -1049,15 +1040,6 @@ export class TickEngine {
                 // la UI con el apagÃ³n real del DMX (zero desfase visual).
                 blackoutActive = aetherArbiter.isBlackoutActive();
                 this._aetherUIProjector.project(fixtureStates, this._aetherGraph, arbitrated, blackoutActive, this._aetherCtx.deltaMs);
-                if (this.frameCount % 120 === 0) {
-                    const f0 = fixtureStates[0];
-                    const arbSize = arbitrated.size;
-                    const busSize = this._aetherBus.length;
-                    console.log(`[TickEngine PROJECTOR-DIAG] frame=${this.frameCount} ` +
-                        `arbitrated=${arbSize} bus=${busSize} ` +
-                        `f0: dimmer=${f0?.dimmer ?? -1} r=${f0?.r ?? -1} g=${f0?.g ?? -1} b=${f0?.b ?? -1} ` +
-                        `fixtureId=${f0?.fixtureId ?? 'none'}`);
-                }
                 // WAVE 6019: FASE 2 ELIMINADA — el HAL ya no recibe datos del TickEngine.
                 // Los drivers leen del SAB a su propio ritmo. TickEngine solo hace commitFrame().
                 for (const universe of aetherResolver.registeredUniverses) {
@@ -1175,13 +1157,6 @@ export class TickEngine {
         view[2] = engineAudioMetrics.high || 0;
         view[3] = engineAudioMetrics.energy || 0;
         view[4] = engineAudioMetrics.isBeat ? 1.0 : 0.0;
-        if (this.frameCount % 120 === 0) {
-            const f0 = fixtureStates[0];
-            console.log(`[TickEngine GLASS-DIAG] frame=${this.frameCount} ` +
-                `glassView: r=${view[10]} g=${view[11]} b=${view[12]} dimmer=${view[15]} ` +
-                `audio: bass=${view[0].toFixed(2)} mid=${view[1].toFixed(2)} energy=${view[3].toFixed(2)} ` +
-                `fixtureCount=${fixtureStates.length} f0dimmer=${f0?.dimmer ?? -1}`);
-        }
         if (this.ctx.glassPool) {
             this.ctx.glassPool.pushFrame(view);
         }

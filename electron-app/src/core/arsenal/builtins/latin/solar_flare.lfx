@@ -16,8 +16,7 @@
       "techno-club"
     ],
     "spatialZones": [
-      "intense",
-      "peak"
+      "all"
     ],
     "mixBus": "global",
     "priority": 90,
@@ -28,8 +27,7 @@
         "id": "f1084915-733b-4ef3-9611-34829d7ceb98",
         "paramId": "intensity",
         "zones": [
-          "intense",
-          "peak"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -81,8 +79,7 @@
         "id": "8ad489fa-7f5a-43ab-bac6-bec458ba1f70",
         "paramId": "color",
         "zones": [
-          "intense",
-          "peak"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -173,5 +170,6 @@
         "minimumEnergy": 0.7
       }
     }
-  }
+  },
+  "checksum": "b5779070265c324514f32176721d038dc0bca83463ad3c989d5ef425a4bce570"
 }

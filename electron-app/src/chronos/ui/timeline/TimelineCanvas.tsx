@@ -33,8 +33,8 @@ import { CANONICAL_ZONES, ZONE_LABELS } from '../../../core/stage/ShowFileV2'
 import type { CanonicalZone } from '../../../core/stage/ShowFileV2'
 import { ZONE_COLORS } from '../../../components/hyperion/shared/ZoneLayoutEngine'
 import { isClipZoneCompatible } from '../../../core/zones/ZoneMapper'
-// 🔥 WAVE 2548: Store V2 — tracks explícitas, sin derivación desde fixtures
-import { getChronosStoreV2 } from '../../core/ChronosStore'
+// WAVE 7114: Unified store — tracks explícitas, sin derivación desde fixtures
+import { getChronosStore } from '../../core/ChronosStore'
 import type { LuxTrackV3, LuxTargetZone } from '../../core/LuxFileV3'
 import { TRACK_ZONE_COLORS, ZONE_BASE_LABELS } from '../../core/LuxFileV3.factories'
 // WAVE 2552: Track Management UI overlay
@@ -686,10 +686,10 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   // ⚡ WAVE 2045.1.1: HOTFIX "SEPARATION ANXIETY" — Store calculated position during drag
   const cloneTargetTimeRef = useRef<number>(0)
   
-  // 🔥 WAVE 2548: Subscribe al ChronosStoreV2 para re-render cuando cambian las tracks
+  // WAVE 7114: Subscribe al ChronosStore para re-render cuando cambian las tracks
   const [storeVersion, setStoreVersion] = useState(0)
   useEffect(() => {
-    const store = getChronosStoreV2()
+    const store = getChronosStore()
     const onTrackChange = () => setStoreVersion(v => v + 1)
     store.on('track-added', onTrackChange)
     store.on('track-removed', onTrackChange)
@@ -761,11 +761,11 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     }
   }, [])  // Mount once, never re-run
   
-  // 🔥 WAVE 2548: DUMB CANVAS — puro .map() del store V2
+  // WAVE 7114: DUMB CANVAS — puro .map() del store unificado
   // Sin getActiveZonesFromFixtures. Sin generateZoneTracks. Sin fixtures.
   // El store ES la única fuente de verdad para las tracks FX.
   const allTracks = useMemo(() => {
-    const store = getChronosStoreV2()
+    const store = getChronosStore()
     const fxTracks = [...store.tracks]
       .sort((a, b) => a.order - b.order)
       .map(storeTrackToCanvasTrack)
@@ -822,8 +822,8 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
 
   // WAVE 2552: Pre-compute Y offsets and heights for FX tracks (for the HTML overlay)
   const fxTrackOverlayData = useMemo(() => {
-    const storeV2 = getChronosStoreV2()
-    const sortedStoreTracks = [...storeV2.tracks].sort((a, b) => a.order - b.order)
+    const store = getChronosStore()
+    const sortedStoreTracks = [...store.tracks].sort((a, b) => a.order - b.order)
     const yOffsets: number[] = []
     const heights: number[] = []
     for (const storeTk of sortedStoreTracks) {
@@ -1645,7 +1645,7 @@ const ZONE_CATALOG: Array<{ label: string; zones: Array<LuxTargetZone> }> = [
   },
   {
     label: 'SELENE ENERGY ZONES',
-    zones: ['peak', 'intense', 'active', 'gentle', 'valley', 'silence'],
+    zones: ['peak', 'intense', 'active', 'gentle', 'ambient', 'valley', 'silence'],
   },
 ]
 
@@ -1688,7 +1688,7 @@ const ZoneTrackFooter = memo(() => {
   }, [open])
 
   const handleAddZone = useCallback((zone: LuxTargetZone) => {
-    getChronosStoreV2().addTrack(zone)
+    getChronosStore().addTrack(zone)
     setOpen(false)
   }, [])
 

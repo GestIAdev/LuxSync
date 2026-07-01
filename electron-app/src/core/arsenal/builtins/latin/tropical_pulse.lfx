@@ -16,8 +16,7 @@
       "tropical"
     ],
     "spatialZones": [
-      "ambient",
-      "gentle"
+      "all"
     ],
     "mixBus": "override",
     "priority": 48,
@@ -28,8 +27,7 @@
         "id": "28d7f2f9-2c60-4877-bc09-d0194199162d",
         "paramId": "intensity",
         "zones": [
-          "ambient",
-          "gentle"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -81,8 +79,7 @@
         "id": "9a181f60-a51e-4d4e-b2bb-b1b5610c5f92",
         "paramId": "color",
         "zones": [
-          "ambient",
-          "gentle"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -184,5 +181,6 @@
         "minimumEnergy": null
       }
     }
-  }
+  },
+  "checksum": "1842456061891953b29cb19a58c5e640ef07bfc995ebd0cd9eb43d5ccf1c8f5f"
 }

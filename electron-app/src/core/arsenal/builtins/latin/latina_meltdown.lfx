@@ -14,8 +14,7 @@
       "fiesta-latina"
     ],
     "spatialZones": [
-      "intense",
-      "peak"
+      "all"
     ],
     "mixBus": "global",
     "priority": 95,
@@ -26,8 +25,7 @@
         "id": "8a2f97e2-a936-4d5c-904a-bc3b9c8517d9",
         "paramId": "intensity",
         "zones": [
-          "intense",
-          "peak"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -57,8 +55,7 @@
         "id": "fdaffbb6-b400-4761-8415-76290ca5c8a6",
         "paramId": "color",
         "zones": [
-          "intense",
-          "peak"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -91,8 +88,7 @@
         "id": "4f80cac4-dff9-4abd-9b03-416124f01709",
         "paramId": "strobe",
         "zones": [
-          "intense",
-          "peak"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -165,5 +161,6 @@
         "minimumEnergy": 0.7
       }
     }
-  }
+  },
+  "checksum": "3ab162b083ea4c14a0e68c0c8c0a1842b4cf357b8d07e4a51cfa718415c4c42e"
 }

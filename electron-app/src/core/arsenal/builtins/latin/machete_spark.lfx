@@ -16,8 +16,7 @@
       "salsa"
     ],
     "spatialZones": [
-      "gentle",
-      "active"
+      "all"
     ],
     "mixBus": "global",
     "priority": 68,
@@ -28,8 +27,7 @@
         "id": "ffb2679c-e33e-4229-aa41-0bea452c0a13",
         "paramId": "intensity",
         "zones": [
-          "gentle",
-          "active"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -101,8 +99,7 @@
         "id": "b88325bf-96f8-4432-916d-5c57b5569f73",
         "paramId": "color",
         "zones": [
-          "gentle",
-          "active"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -185,5 +182,6 @@
         "minimumEnergy": null
       }
     }
-  }
+  },
+  "checksum": "0bf703b795746f9d734b048cf70f4cf575ea9337d0e3b0f07719b8bb3ed1eddb"
 }

@@ -5,8 +5,7 @@
  * Central state manager for Chronos projects.
  * Handles save/load operations, dirty state tracking, and IPC with Electron.
  *
- * WAVE 7100 FASE 2: V2 demolished. V3 core imported from LuxFileV3.
- * ChronosStoreV2 class body will have type errors — fix in FASE 3.
+ * WAVE 7114: V2 fully demolished and merged into ChronosStore. V3 pure.
  *
  * @module chronos/core/ChronosStore
  * @version WAVE 7100
@@ -16,13 +15,16 @@ import {
   type LuxFileV3,
   type ChronosProjectV3,
   type LuxTrackV3,
+  type LuxTrackUpdateV3,
   type LuxClipV3,
   type LuxAnalysisV3,
   type VibeBaseV3,
+  type LuxTargetZone,
   LUX_V3_EXTENSION as PROJECT_EXTENSION,
 } from './LuxFileV3'
 import {
   createEmptyChronosProjectV3,
+  createTrackV3,
   toLuxFileV3,
   toChronosProjectV3,
   analysisDataToLuxAnalysisV3,
@@ -93,6 +95,18 @@ export type StoreEventType =
   | 'auto-save-complete'
   | 'auto-save-error'
   | 'recovery-available'
+  // WAVE 7114: Track & clip events (merged from V2)
+  | 'track-added'
+  | 'track-removed'
+  | 'track-reordered'
+  | 'track-renamed'
+  | 'track-enabled-changed'
+  | 'track-solo-changed'
+  | 'track-locked-changed'
+  | 'track-updated'
+  | 'clip-added'
+  | 'clip-moved'
+  | 'clip-removed'
 
 type EventCallback = (data: any) => void
 
@@ -182,37 +196,57 @@ export class ChronosStore {
     return this.project
   }
 
+  get tracks(): readonly LuxTrackV3[] {
+    return this.project.tracks
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
-  // WAVE 7100 FASE 3: FLAT-CLIP BRIDGE (V1 store flat model ↔ V3 tracks)
-  // The V1 store keeps a flat clip list. V3 stores clips in tracks[].clips.
-  // We aggregate all track clips on read, and store flat clips in a single
-  // synthetic 'Timeline' track on write. The V2 store owns multi-track editing.
+  // WAVE 7115: FLAT-CLIP BRIDGE — Track-aware distribution
+  // Clips arrive as a flat array with runtime `trackId`. We distribute them
+  // back to their correct tracks by `trackId`, preserving per-track structure.
   // ─────────────────────────────────────────────────────────────────────────
 
   /** Aggregate all clips across tracks as a flat TimelineClip[]. */
   private _getFlatClips(): TimelineClip[] {
-    return this.project.tracks.flatMap(t => t.clips) as unknown as TimelineClip[]
+    return this.project.tracks.flatMap(t =>
+      t.clips.map(c => c as unknown as TimelineClip)
+    ) as unknown as TimelineClip[]
   }
 
-  /** Store a flat clip list into a single synthetic timeline track. */
-  private _setFlatClips(clips: TimelineClip[]): void {
-    const luxClips = clips as unknown as LuxClipV3[]
-    const existing = this.project.tracks[0]
-    const track: LuxTrackV3 = existing
-      ? { ...existing, clips: luxClips }
-      : {
-          id: generateChronosId(),
-          targetZone: 'global',
-          visualLabel: 'Timeline',
-          color: '#22d3ee',
-          clips: luxClips,
-          enabled: true,
-          solo: false,
-          locked: false,
-          order: 0,
-          height: 60,
-        }
-    this.project.tracks = [track, ...this.project.tracks.slice(1)]
+  /**
+   * Distribute a flat clip list to their correct tracks by `trackId`.
+   * Clips whose `trackId` matches a store track go to that track.
+   * Unassigned clips (unknown trackId) go to `tracks[0]`.
+   */
+  private _distributeClips(clips: TimelineClip[]): void {
+    const clipsByTrack = new Map<string, LuxClipV3[]>()
+    for (const clip of clips) {
+      const tid = clip.trackId
+      const arr = clipsByTrack.get(tid) ?? []
+      arr.push(clip as unknown as LuxClipV3)
+      clipsByTrack.set(tid, arr)
+    }
+
+    const trackIds = new Set(this.project.tracks.map(t => t.id))
+    const unassigned: LuxClipV3[] = []
+
+    this.project.tracks = this.project.tracks.map(track => ({
+      ...track,
+      clips: clipsByTrack.get(track.id) ?? [],
+    }))
+
+    for (const [tid, arr] of clipsByTrack) {
+      if (!trackIds.has(tid)) {
+        unassigned.push(...arr)
+      }
+    }
+
+    if (unassigned.length > 0 && this.project.tracks[0]) {
+      this.project.tracks[0] = {
+        ...this.project.tracks[0],
+        clips: [...this.project.tracks[0].clips, ...unassigned],
+      }
+    }
   }
 
   /** Lightweight canonical snapshot for dirty detection (excludes checksum/timestamps). */
@@ -272,7 +306,7 @@ export class ChronosStore {
     audio: { name: string; path: string; bpm: number; durationMs: number } | null,
     playheadMs: number = 0
   ): void {
-    this._setFlatClips(clips)
+    this._distributeClips(clips)
     this.project.playheadMs = playheadMs
     
     if (audio) {
@@ -369,7 +403,191 @@ export class ChronosStore {
       this.emit('project-modified', { isDirty: true })
     }
   }
-  
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // WAVE 7114: TRACK CRUD (merged from ChronosStoreV2)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /** Directly load a project into the store (no file I/O). */
+  loadProject(project: ChronosProjectV3): void {
+    this.project = project
+    this.projectPath = null
+    this.isDirty = false
+    this.lastSavedJson = this._dirtySnapshot()
+    this.emit('project-loaded', { project })
+    console.log(`[ChronosStore] 📂 Project loaded: "${project.meta.name}"`)
+  }
+
+  addTrack(targetZone: LuxTargetZone): LuxTrackV3 {
+    const track = createTrackV3(targetZone, this.project.tracks)
+    this.project.tracks = [...this.project.tracks, track]
+    this._touchModified()
+    this.emit('track-added', { track })
+    console.log(`[ChronosStore] ➕ Track added: "${track.visualLabel}" → ${targetZone}`)
+    return track
+  }
+
+  removeTrack(trackId: string): void {
+    const track = this._findTrack(trackId)
+    if (!track) {
+      console.warn(`[ChronosStore] removeTrack: id "${trackId}" not found`)
+      return
+    }
+    if (track.locked) {
+      console.warn(`[ChronosStore] removeTrack: track "${track.visualLabel}" is locked — cannot delete`)
+      return
+    }
+    const before = this.project.tracks.length
+    this.project.tracks = this.project.tracks
+      .filter(t => t.id !== trackId)
+      .map((t, i) => ({ ...t, order: i }))
+    if (this.project.tracks.length === before) {
+      console.warn(`[ChronosStore] removeTrack: id "${trackId}" not found`)
+      return
+    }
+    this._touchModified()
+    this.emit('track-removed', { trackId })
+  }
+
+  reorderTrack(trackId: string, newOrder: number): void {
+    const tracks = [...this.project.tracks].sort((a, b) => a.order - b.order)
+    const idx = tracks.findIndex(t => t.id === trackId)
+    if (idx === -1) {
+      console.warn(`[ChronosStore] reorderTrack: id "${trackId}" not found`)
+      return
+    }
+    const [moved] = tracks.splice(idx, 1)
+    const clampedOrder = Math.max(0, Math.min(newOrder, tracks.length))
+    tracks.splice(clampedOrder, 0, moved)
+    this.project.tracks = tracks.map((t, i) => ({ ...t, order: i }))
+    this._touchModified()
+    this.emit('track-reordered', { trackId, newOrder: clampedOrder })
+  }
+
+  renameTrack(trackId: string, newLabel: string): void {
+    this._patchTrack(trackId, { visualLabel: newLabel.trim() || trackId })
+    this.emit('track-renamed', { trackId, newLabel })
+  }
+
+  setTrackEnabled(trackId: string, enabled: boolean): void {
+    this._patchTrack(trackId, { enabled })
+    this.emit('track-enabled-changed', { trackId, enabled })
+  }
+
+  setTrackSolo(trackId: string, solo: boolean): void {
+    this._patchTrack(trackId, { solo })
+    this.emit('track-solo-changed', { trackId, solo })
+  }
+
+  setTrackLocked(trackId: string, locked: boolean): void {
+    this._patchTrack(trackId, { locked })
+    this.emit('track-locked-changed', { trackId, locked })
+  }
+
+  updateTrack(trackId: string, patch: LuxTrackUpdateV3): void {
+    this._patchTrack(trackId, patch)
+    this.emit('track-updated', { trackId, patch })
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // WAVE 7114: CLIP CRUD (merged from ChronosStoreV2)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  addClip(
+    trackId: string,
+    clipData: Omit<TimelineClip, 'id' | 'trackId'>
+  ): TimelineClip {
+    const track = this._findTrack(trackId)
+    if (!track) throw new Error(`[ChronosStore] addClip: track "${trackId}" not found`)
+    const clip: TimelineClip = {
+      ...clipData,
+      id: generateChronosId(),
+      trackId,
+    } as TimelineClip
+    this.project.tracks = this.project.tracks.map(t =>
+      t.id === trackId ? { ...t, clips: [...t.clips, clip] } : t
+    )
+    this._touchModified()
+    this.emit('clip-added', { trackId, clip })
+    return clip
+  }
+
+  moveClipToTrack(clipId: string, targetTrackId: string): void {
+    let movedClip: LuxClipV3 | null = null
+
+    const tracks = this.project.tracks.map(t => {
+      const idx = t.clips.findIndex(c => c.id === clipId)
+      if (idx === -1) return t
+      movedClip = { ...t.clips[idx] }
+      return { ...t, clips: t.clips.filter(c => c.id !== clipId) }
+    })
+
+    if (!movedClip) {
+      console.warn(`[ChronosStore] moveClipToTrack: clip "${clipId}" not found`)
+      return
+    }
+
+    const targetExists = tracks.some(t => t.id === targetTrackId)
+    if (!targetExists) {
+      console.warn(`[ChronosStore] moveClipToTrack: target track "${targetTrackId}" not found`)
+      return
+    }
+
+    this.project.tracks = tracks.map(t =>
+      t.id === targetTrackId ? { ...t, clips: [...t.clips, movedClip!] } : t
+    )
+    this._touchModified()
+    this.emit('clip-moved', { clipId, targetTrackId })
+  }
+
+  removeClip(clipId: string): void {
+    let found = false
+    this.project.tracks = this.project.tracks.map(t => {
+      const before = t.clips.length
+      const clips = t.clips.filter(c => c.id !== clipId)
+      if (clips.length < before) found = true
+      return { ...t, clips }
+    })
+    if (!found) {
+      console.warn(`[ChronosStore] removeClip: clip "${clipId}" not found`)
+      return
+    }
+    this._touchModified()
+    this.emit('clip-removed', { clipId })
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // WAVE 7114: INTERNAL HELPERS (merged from ChronosStoreV2)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  private _findTrack(trackId: string): LuxTrackV3 | undefined {
+    return this.project.tracks.find(t => t.id === trackId)
+  }
+
+  private _patchTrack(trackId: string, patch: Partial<LuxTrackV3>): void {
+    let found = false
+    this.project.tracks = this.project.tracks.map(t => {
+      if (t.id !== trackId) return t
+      found = true
+      return { ...t, ...patch }
+    })
+    if (!found) {
+      console.warn(`[ChronosStore] _patchTrack: id "${trackId}" not found`)
+      return
+    }
+    this._touchModified()
+  }
+
+  private _touchModified(): void {
+    this.project = {
+      ...this.project,
+      meta: {
+        ...this.project.meta,
+        modifiedAt: new Date().toISOString(),
+      },
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // FILE OPERATIONS (Renderer side - uses IPC)
   // ─────────────────────────────────────────────────────────────────────────
@@ -589,7 +807,7 @@ export class ChronosStore {
    */
   importClips(clips: TimelineClip[], append: boolean = true): void {
     const next = append ? [...this._getFlatClips(), ...clips] : clips
-    this._setFlatClips(next)
+    this._distributeClips(next)
     this.markDirty()
   }
   
@@ -618,8 +836,24 @@ export class ChronosStore {
    * 🧹 WAVE 2014.5: Set clips directly (for load operations)
    */
   setClips(clips: TimelineClip[]): void {
-    this._setFlatClips(clips)
+    this._distributeClips(clips)
     // Don't mark dirty - this is from a load operation
+  }
+
+  /**
+   * WAVE 7115: Get a single clip by ID with runtime `trackId` injected.
+   * Searches all tracks and injects the owning track's id (or 'vibe' for vibe clips).
+   */
+  getClipById(clipId: string): TimelineClip | undefined {
+    for (const track of this.project.tracks) {
+      const found = track.clips.find(c => c.id === clipId)
+      if (found) {
+        const clip = found as unknown as TimelineClip
+        clip.trackId = clip.type === 'vibe' ? 'vibe' : track.id
+        return clip
+      }
+    }
+    return undefined
   }
   
   /**
@@ -883,423 +1117,3 @@ export function getChronosStore(): ChronosStore {
 }
 
 export default ChronosStore
-
-// ═══════════════════════════════════════════════════════════════════════════
-// 🔥 WAVE 2547: CHRONOS STORE V2 — INFINITE EXPLICIT TRACKS
-// ═══════════════════════════════════════════════════════════════════════════
-
-import type {
-  ChronosProjectV3 as ChronosProjectV2,
-  LuxTrackV3 as TimelineTrackV2,
-  LuxTrackUpdateV3 as TrackUpdateV2,
-  LuxTargetZone,
-} from './LuxFileV3'
-import {
-  createEmptyChronosProjectV3 as createDefaultProjectV2,
-  createTrackV3 as createTrackV2,
-} from './LuxFileV3.factories'
-
-// WAVE 7100 FASE 2: detectProjectVersion DEMOLISHED — V3 uses $schema hard-gate.
-
-/**
- * 🔥 WAVE 2547: Store V2
- *
- * Gestiona un ChronosProjectV2 con tracks explícitas, infinitas y sin
- * derivación desde fixtures. Clase singleton independiente de ChronosStore V1.
- *
- * CRUD completo: addTrack, removeTrack, reorderTrack, renameTrack, clip ops.
- * Emite eventos igual que ChronosStore V1 para integración futura con UI.
- */
-export class ChronosStoreV2 {
-  private project: ChronosProjectV2 = createDefaultProjectV2()
-  private listeners: Map<string, Set<(data: unknown) => void>> = new Map()
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // EVENTS
-  // ─────────────────────────────────────────────────────────────────────────
-
-  on(event: string, callback: (data: unknown) => void): void {
-    if (!this.listeners.has(event)) {
-      this.listeners.set(event, new Set())
-    }
-    this.listeners.get(event)!.add(callback)
-  }
-
-  off(event: string, callback: (data: unknown) => void): void {
-    this.listeners.get(event)?.delete(callback)
-  }
-
-  private emit(event: string, data?: unknown): void {
-    this.listeners.get(event)?.forEach(cb => {
-      try { cb(data) } catch (err) {
-        console.error(`[ChronosStoreV2] Event handler error (${event}):`, err)
-      }
-    })
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // GETTERS
-  // ─────────────────────────────────────────────────────────────────────────
-
-  get currentProject(): ChronosProjectV2 {
-    return this.project
-  }
-
-  get tracks(): readonly TimelineTrackV2[] {
-    return this.project.tracks
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // PROJECT
-  // ─────────────────────────────────────────────────────────────────────────
-
-  loadProject(project: ChronosProjectV2): void {
-    this.project = project
-    this.emit('project-loaded', { project })
-    console.log(`[ChronosStoreV2] 📂 Project loaded: "${project.meta.name}"`)
-  }
-
-  newProject(name: string = 'Untitled'): void {
-    this.project = createDefaultProjectV2(name)
-    this.emit('project-new', { project: this.project })
-    console.log(`[ChronosStoreV2] New project: "${name}"`)
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // LOAD / SAVE (IPC or browser fallback)
-  // ─────────────────────────────────────────────────────────────────────────
-
-  /**
-   * Load a project from disk.
-   * Accepts both V1 (1.0.0) and V2 (2.0.0) formats.
-   * V1 files are transparently migrated via migrateProjectV1toV2().
-   *
-   * Falls back to a browser <input> picker in development (no Electron).
-   */
-  async load(filePath?: string): Promise<{ success: boolean; error?: string }> {
-    try {
-      const chronosAPI = (window as any).luxsync?.chronos
-
-      if (!chronosAPI?.loadProject) {
-        return this._loadFromBrowserInput()
-      }
-
-      const result = await chronosAPI.loadProject({ path: filePath })
-
-      if (result.cancelled) {
-        return { success: false, error: 'Cancelled' }
-      }
-
-      if (!result.success || !result.json) {
-        return { success: false, error: result.error ?? 'Unknown error' }
-      }
-
-      return this._applyLoadedJson(result.json)
-    } catch (err) {
-      console.error('[ChronosStoreV2] Load failed:', err)
-      return { success: false, error: String(err) }
-    }
-  }
-
-  /**
-   * Parse and apply a JSON string to this store.
-   * Handles both V1 and V2 formats transparently.
-   * Exported so tests and drag-drop can reuse it.
-   */
-  applyJson(json: string): { success: boolean; error?: string } {
-    return this._applyLoadedJson(json)
-  }
-
-  private _applyLoadedJson(json: string): { success: boolean; error?: string } {
-    let raw: unknown
-    try {
-      raw = JSON.parse(json)
-    } catch {
-      return { success: false, error: 'Invalid JSON' }
-    }
-
-    // WAVE 7100 FASE 2: V2 detectProjectVersion demolished.
-    // V3 path: deserializeLuxV3 with $schema hard-gate + checksum verification.
-    // TODO FASE 3: Convert this to async and use deserializeLuxV3 properly.
-    const $schema = (raw as any)?.$schema
-    if ($schema === 'luxsync.lux/3.0') {
-      // V3 file — hydrate to ChronosProjectV3
-      const file = raw as LuxFileV3
-      this.project = toChronosProjectV3(file) as unknown as ChronosProjectV2
-      this.emit('project-loaded', { project: this.project })
-      console.log(`[ChronosStoreV2] Loaded V3: "${(this.project as any).meta?.name ?? 'Untitled'}"`)
-      return { success: true }
-    }
-
-    return { success: false, error: `Unknown project format: ${(raw as any)?.$schema ?? (raw as any)?.version ?? 'no schema/version field'}` }
-  }
-
-  private async _loadFromBrowserInput(): Promise<{ success: boolean; error?: string }> {
-    return new Promise(resolve => {
-      const input = document.createElement('input')
-      input.type = 'file'
-      input.accept = PROJECT_EXTENSION
-      input.onchange = async () => {
-        const file = input.files?.[0]
-        if (!file) { resolve({ success: false, error: 'No file selected' }); return }
-        const text = await file.text()
-        resolve(this._applyLoadedJson(text))
-      }
-      input.click()
-    })
-  }
-
-  /**
-   * Save current project to disk via Electron IPC.
-   * Serializes as V2 format (version: '2.0.0').
-   */
-  async save(filePath?: string): Promise<{ success: boolean; path?: string; error?: string }> {
-    try {
-      const json = JSON.stringify(this.project, null, 2)
-      const chronosAPI = (window as any).luxsync?.chronos
-
-      if (!chronosAPI?.saveProject) {
-        return this._saveToBrowserDownload(json)
-      }
-
-      const result = await chronosAPI.saveProject({ path: filePath, json })
-      if (result.success) {
-        console.log(`[ChronosStoreV2] Saved: ${result.path}`)
-      }
-      return result
-    } catch (err) {
-      console.error('[ChronosStoreV2] Save failed:', err)
-      return { success: false, error: String(err) }
-    }
-  }
-
-  private _saveToBrowserDownload(json: string): { success: boolean; path?: string; error?: string } {
-    try {
-      const blob = new Blob([json], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = this.project.meta.name + '.luxv2'
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-      return { success: true, path: a.download }
-    } catch (err) {
-      return { success: false, error: String(err) }
-    }
-  }
-
-  /**
-   * Crear nueva track apuntando a `targetZone`.
-   * Acepta la misma zona infinitas veces — sin límites, sin filtros.
-   * Retorna la track recién creada.
-   */
-  addTrack(targetZone: LuxTargetZone): TimelineTrackV2 {
-    const track = createTrackV2(targetZone, this.project.tracks)
-    this.project.tracks = [...this.project.tracks, track]
-    this._touchModified()
-    this.emit('track-added', { track })
-    console.log(`[ChronosStoreV2] ➕ Track added: "${track.visualLabel}" → ${targetZone}`)
-    return track
-  }
-
-  /**
-   * Eliminar track por id. Elimina todos sus clips con ella.
-   */
-  removeTrack(trackId: string): void {
-    const track = this._findTrack(trackId)
-    if (!track) {
-      console.warn(`[ChronosStoreV2] removeTrack: id "${trackId}" not found`)
-      return
-    }
-    if (track.locked) {
-      console.warn(`[ChronosStoreV2] removeTrack: track "${track.visualLabel}" is locked — cannot delete`)
-      return
-    }
-    const before = this.project.tracks.length
-    this.project.tracks = this.project.tracks
-      .filter(t => t.id !== trackId)
-      .map((t, i) => ({ ...t, order: i })) // renumerar sin huecos
-    if (this.project.tracks.length === before) {
-      console.warn(`[ChronosStoreV2] removeTrack: id "${trackId}" not found`)
-      return
-    }
-    this._touchModified()
-    this.emit('track-removed', { trackId })
-  }
-
-  /**
-   * Mover track a un nuevo orden en la lista.
-   * El resto de tracks se reordena de forma determinista.
-   */
-  reorderTrack(trackId: string, newOrder: number): void {
-    const tracks = [...this.project.tracks].sort((a, b) => a.order - b.order)
-    const idx = tracks.findIndex(t => t.id === trackId)
-    if (idx === -1) {
-      console.warn(`[ChronosStoreV2] reorderTrack: id "${trackId}" not found`)
-      return
-    }
-    const [moved] = tracks.splice(idx, 1)
-    const clampedOrder = Math.max(0, Math.min(newOrder, tracks.length))
-    tracks.splice(clampedOrder, 0, moved)
-    this.project.tracks = tracks.map((t, i) => ({ ...t, order: i }))
-    this._touchModified()
-    this.emit('track-reordered', { trackId, newOrder: clampedOrder })
-  }
-
-  /** Renombrar el label visual de una track */
-  renameTrack(trackId: string, newLabel: string): void {
-    this._patchTrack(trackId, { visualLabel: newLabel.trim() || trackId })
-    this.emit('track-renamed', { trackId, newLabel })
-  }
-
-  /** Toggle mute */
-  setTrackEnabled(trackId: string, enabled: boolean): void {
-    this._patchTrack(trackId, { enabled })
-    this.emit('track-enabled-changed', { trackId, enabled })
-  }
-
-  /** Toggle solo */
-  setTrackSolo(trackId: string, solo: boolean): void {
-    this._patchTrack(trackId, { solo })
-    this.emit('track-solo-changed', { trackId, solo })
-  }
-
-  /** Toggle lock */
-  setTrackLocked(trackId: string, locked: boolean): void {
-    this._patchTrack(trackId, { locked })
-    this.emit('track-locked-changed', { trackId, locked })
-  }
-
-  /** Actualizar múltiples campos de una track en una sola operación */
-  updateTrack(trackId: string, patch: TrackUpdateV2): void {
-    this._patchTrack(trackId, patch)
-    this.emit('track-updated', { trackId, patch })
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // CLIP CRUD
-  // ─────────────────────────────────────────────────────────────────────────
-
-  /**
-   * Añadir un clip a una track.
-   * El clip recibe un id fresco; trackId se fuerza al track destino.
-   */
-  addClip(
-    trackId: string,
-    clipData: Omit<import('./TimelineClip').TimelineClip, 'id' | 'trackId'>
-  ): import('./TimelineClip').TimelineClip {
-    const track = this._findTrack(trackId)
-    if (!track) throw new Error(`[ChronosStoreV2] addClip: track "${trackId}" not found`)
-    const clip: import('./TimelineClip').TimelineClip = {
-      ...clipData,
-      id: generateChronosId(),
-      trackId,
-    } as import('./TimelineClip').TimelineClip
-    this.project.tracks = this.project.tracks.map(t =>
-      t.id === trackId ? { ...t, clips: [...t.clips, clip] } : t
-    )
-    this._touchModified()
-    this.emit('clip-added', { trackId, clip })
-    return clip
-  }
-
-  /**
-   * Mover un clip a otra track.
-   * Busca el clip en cualquier track, lo mueve actualizando trackId.
-   */
-  moveClipToTrack(clipId: string, targetTrackId: string): void {
-    let movedClip: LuxClipV3 | null = null
-
-    const tracks = this.project.tracks.map(t => {
-      const idx = t.clips.findIndex(c => c.id === clipId)
-      if (idx === -1) return t
-      movedClip = { ...t.clips[idx] }
-      return { ...t, clips: t.clips.filter(c => c.id !== clipId) }
-    })
-
-    if (!movedClip) {
-      console.warn(`[ChronosStoreV2] moveClipToTrack: clip "${clipId}" not found`)
-      return
-    }
-
-    const targetExists = tracks.some(t => t.id === targetTrackId)
-    if (!targetExists) {
-      console.warn(`[ChronosStoreV2] moveClipToTrack: target track "${targetTrackId}" not found`)
-      return
-    }
-
-    this.project.tracks = tracks.map(t =>
-      t.id === targetTrackId ? { ...t, clips: [...t.clips, movedClip!] } : t
-    )
-    this._touchModified()
-    this.emit('clip-moved', { clipId, targetTrackId })
-  }
-
-  /** Eliminar un clip por id (busca en todas las tracks) */
-  removeClip(clipId: string): void {
-    let found = false
-    this.project.tracks = this.project.tracks.map(t => {
-      const before = t.clips.length
-      const clips = t.clips.filter(c => c.id !== clipId)
-      if (clips.length < before) found = true
-      return { ...t, clips }
-    })
-    if (!found) {
-      console.warn(`[ChronosStoreV2] removeClip: clip "${clipId}" not found`)
-      return
-    }
-    this._touchModified()
-    this.emit('clip-removed', { clipId })
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // INTERNALS
-  // ─────────────────────────────────────────────────────────────────────────
-
-  private _findTrack(trackId: string): TimelineTrackV2 | undefined {
-    return this.project.tracks.find(t => t.id === trackId)
-  }
-
-  private _patchTrack(trackId: string, patch: Partial<TimelineTrackV2>): void {
-    let found = false
-    this.project.tracks = this.project.tracks.map(t => {
-      if (t.id !== trackId) return t
-      found = true
-      return { ...t, ...patch }
-    })
-    if (!found) {
-      console.warn(`[ChronosStoreV2] _patchTrack: id "${trackId}" not found`)
-      return
-    }
-    this._touchModified()
-  }
-
-  private _touchModified(): void {
-    this.project = {
-      ...this.project,
-      meta: {
-        ...this.project.meta,
-        modifiedAt: new Date().toISOString(),
-      },
-    }
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// SINGLETON V2
-// Anclado en globalThis para sobrevivir recargas HMR de Vite en desarrollo.
-// En producción el módulo se evalúa una vez — comportamiento idéntico.
-// ─────────────────────────────────────────────────────────────────────────
-
-const STORE_V2_KEY = '__luxsync_chronos_store_v2__'
-
-export function getChronosStoreV2(): ChronosStoreV2 {
-  const g = globalThis as Record<string, unknown>
-  if (!(g[STORE_V2_KEY] instanceof ChronosStoreV2)) {
-    g[STORE_V2_KEY] = new ChronosStoreV2()
-    console.log('[ChronosStoreV2] 🔥 Store V2 initialized')
-  }
-  return g[STORE_V2_KEY] as ChronosStoreV2
-}

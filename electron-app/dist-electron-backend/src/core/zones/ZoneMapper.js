@@ -297,8 +297,11 @@ export function resolveZoneTags(tags, fixtures) {
         if (MODIFIER_ZONES.has(t)) {
             modifiers.push(t);
         }
-        else {
+        else if (COMPOSITE_ZONES[t] || CANONICAL_ZONES.includes(t)) {
             targetTags.push(t);
+        }
+        else {
+            // Non-spatial tag (e.g. energy zones like 'intense', 'peak') — skip, don't filter
         }
     }
     // ── Step 2: Build target pool (UNION of all target zones) ──
@@ -520,8 +523,17 @@ export function isClipZoneCompatible(clipZones, trackTargetZone) {
     // WAVE 7107-B: Direct string match first (handles energy zones like 'intense', 'peak')
     if (clipZones.includes(trackTargetZone))
         return true;
+    // 'all' wildcard is compatible with ANY track (including energy zones)
+    if (clipZones.some(z => z.toLowerCase() === 'all' || z === '*'))
+        return true;
     // Check if the clip's resolved canonical zones include this track's zone
-    return getTargetCanonicalZones(clipZones).includes(trackTargetZone);
+    // But only if the track's zone is actually a canonical zone
+    if (CANONICAL_ZONES.includes(trackTargetZone)) {
+        return getTargetCanonicalZones(clipZones).includes(trackTargetZone);
+    }
+    // Track has a non-canonical zone (e.g. energy zone 'intense', 'peak')
+    // and the clip doesn't explicitly mention it or use 'all' — not compatible
+    return false;
 }
 // ═══════════════════════════════════════════════════════════════════════════
 // RE-EXPORTS for convenience

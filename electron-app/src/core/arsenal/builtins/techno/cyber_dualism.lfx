@@ -16,8 +16,7 @@
       "minimal"
     ],
     "spatialZones": [
-      "active",
-      "intense"
+      "all"
     ],
     "mixBus": "global",
     "priority": 78,
@@ -28,8 +27,7 @@
         "id": "883bca85-e7dd-4b15-8da5-c3ccb3e37a8c",
         "paramId": "intensity",
         "zones": [
-          "active",
-          "intense"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -81,8 +79,7 @@
         "id": "59097805-a751-4a72-b9f3-c8569abd0e37",
         "paramId": "color",
         "zones": [
-          "active",
-          "intense"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -124,8 +121,7 @@
         "id": "63c35e84-b645-4549-9345-f2bb12359820",
         "paramId": "strobe",
         "zones": [
-          "active",
-          "intense"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -212,5 +208,6 @@
         "minimumEnergy": null
       }
     }
-  }
+  },
+  "checksum": "6bcff0a1329c4176b61b182b692e9d1876948afd9d7477c023453614d5d9f4e5"
 }

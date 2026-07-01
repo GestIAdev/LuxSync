@@ -34,9 +34,20 @@ export interface LuxValidationResult {
   warnings: string[]
 }
 
+const ENERGY_ZONES: readonly string[] = [
+  'silence',
+  'valley',
+  'ambient',
+  'gentle',
+  'active',
+  'intense',
+  'peak',
+]
+
 const VALID_TARGET_ZONES: ReadonlySet<string> = new Set<string>([
   ...CANONICAL_ZONES,
   'global',
+  ...ENERGY_ZONES,
 ])
 
 const VALID_MIX_BUSES: ReadonlySet<string> = new Set<LuxMixBus>([

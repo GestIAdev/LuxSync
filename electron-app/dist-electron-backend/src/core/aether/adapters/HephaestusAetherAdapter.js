@@ -48,10 +48,6 @@ export class HephaestusAetherAdapter {
         this._frameIntents.length = 0;
         this._spatialCache.clear();
         this._frameIntentMap.clear();
-        // DIAG: count custom clips and node matches
-        let _diagCustom = 0;
-        let _diagNodeMatches = 0;
-        let _diagNoNodes = 0;
         // 🩹 WAVE 4995: Zero-alloc intent consolidation.
         // Instead of emitting multiple disconnected intents for the same nodeId,
         // we accumulate them in _frameIntentMap. The last track to touch a node
@@ -62,14 +58,11 @@ export class HephaestusAetherAdapter {
             // Only heph_custom clips belong in the L3+ Aether path
             if (!output.isCustomClip)
                 continue;
-            _diagCustom++;
             const fixtureId = output.fixtureId;
             const nodeIds = this._graph.getDeviceNodes(fixtureId);
             if (nodeIds.length === 0) {
-                _diagNoNodes++;
                 continue;
             }
-            _diagNodeMatches++;
             const param = output.parameter;
             // Determine target NodeFamily from param name
             const family = _paramFamily(param);
@@ -163,16 +156,63 @@ export class HephaestusAetherAdapter {
                 }
             }
         }
-        // DIAG: log adapter results
-        if (this._diagCounter === undefined)
-            this._diagCounter = 0;
-        this._diagCounter++;
-        if (this._diagCounter % 60 === 0) {
-            console.log(`[HephAetherAdapter DIAG] custom=${_diagCustom} nodeMatches=${_diagNodeMatches} ` +
-                `noNodes=${_diagNoNodes} emitted=${this._frameIntents.length} ` +
-                `intents=[${this._frameIntents.slice(0, 3).map(i => `${i.nodeId}:{${Object.keys(i.values).map(k => `${k}=${i.values[k].toFixed(2)}`).join(',')}}`).join(' | ')}]`);
-        }
+        // ── POST-PASS: Ensure dimmer=1.0 on IMPACT nodes when color was written to COLOR nodes.
+        // Color-only clips (no intensity track) leave IMPACT dimmer unset. The L3 LUMINANCE GAG
+        // in NodeArbiter blocks L0 from filling it. We must explicitly set dimmer=1.0 so the
+        // fixture lights up to show the color.
+        this._ensureColorDimmer();
         arbiter.setHephaestusIntents(this._frameIntents);
+    }
+    /**
+     * Post-pass: for each fixture that has color intents on COLOR nodes but no
+     * dimmer on its IMPACT node, inject dimmer=1.0 so the fixture lights up.
+     * Without this, color-only clips (no intensity track) produce invisible
+     * color because the L3 LUMINANCE GAG blocks L0 from filling dimmer.
+     */
+    _ensureColorDimmer() {
+        // Collect fixture IDs that have color values in COLOR node intents
+        const colorFixtures = new Set();
+        for (let i = 0; i < this._frameIntents.length; i++) {
+            const intent = this._frameIntents[i];
+            const sep = intent.nodeId.lastIndexOf(':');
+            if (sep <= 0)
+                continue;
+            const family = intent.nodeId.slice(sep + 1);
+            if (family !== NodeFamily.COLOR)
+                continue;
+            if (intent.values['r'] !== undefined || intent.values['red'] !== undefined) {
+                colorFixtures.add(intent.nodeId.slice(0, sep));
+            }
+        }
+        if (colorFixtures.size === 0)
+            return;
+        // For each fixture with color, check if IMPACT node has dimmer
+        for (const fixtureId of colorFixtures) {
+            const nodeIds = this._graph.getDeviceNodes(fixtureId);
+            let impactNodeId = null;
+            let impactIntent = null;
+            for (let j = 0; j < nodeIds.length; j++) {
+                const nd = this._graph.getNodeData(nodeIds[j]);
+                if (nd && nd.family === NodeFamily.IMPACT) {
+                    impactNodeId = nodeIds[j];
+                    impactIntent = this._frameIntentMap.get(nodeIds[j]) ?? null;
+                    break;
+                }
+            }
+            if (!impactNodeId)
+                continue;
+            if (impactIntent) {
+                if (impactIntent.values['dimmer'] === undefined) {
+                    impactIntent.values['dimmer'] = 1.0;
+                }
+            }
+            else {
+                const newIntent = this._acquireIntent(impactNodeId);
+                newIntent.values['dimmer'] = 1.0;
+                this._frameIntentMap.set(impactNodeId, newIntent);
+                this._frameIntents.push(newIntent);
+            }
+        }
     }
     /**
      * 🏛️ WAVE 2483: Resolve spatialBehavior for a given clipId.

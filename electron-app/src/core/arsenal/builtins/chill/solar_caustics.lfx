@@ -13,7 +13,7 @@
       "chill-lounge"
     ],
     "spatialZones": [
-      "silence"
+      "all"
     ],
     "mixBus": "ambient",
     "priority": 30,
@@ -24,7 +24,7 @@
         "id": "1fe3e853-b2d2-4dc2-8eb4-b527cce75893",
         "paramId": "intensity",
         "zones": [
-          "silence"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -71,7 +71,7 @@
         "id": "74d0a6e3-df58-4041-8578-8a6e0b001fa0",
         "paramId": "pan",
         "zones": [
-          "silence"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -140,7 +140,7 @@
         "id": "f6b959b9-5d41-45d7-8c01-52a4a8c36332",
         "paramId": "tilt",
         "zones": [
-          "silence"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -260,5 +260,6 @@
         "minimumEnergy": null
       }
     }
-  }
+  },
+  "checksum": "41c5956803a73a559a24d0af6f9b05a330cf496ba7ac5d0427446dcf27ff9107"
 }

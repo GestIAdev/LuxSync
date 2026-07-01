@@ -17,8 +17,7 @@
       "blues"
     ],
     "spatialZones": [
-      "ambient",
-      "gentle"
+      "all"
     ],
     "mixBus": "ambient",
     "priority": 25,
@@ -29,8 +28,7 @@
         "id": "8220df77-85c9-442c-8452-6a3b3563630b",
         "paramId": "intensity",
         "zones": [
-          "ambient",
-          "gentle"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -82,8 +80,7 @@
         "id": "c7a42d25-1b77-4b86-b83b-7e13335a1ba8",
         "paramId": "color",
         "zones": [
-          "ambient",
-          "gentle"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -168,5 +165,6 @@
         "minimumEnergy": null
       }
     }
-  }
+  },
+  "checksum": "0329592603a18678fd8463dcf888c6ab4f533e08d04197935f2f60012185c57e"
 }

@@ -163,10 +163,10 @@ export class TimelineEngine {
     // ── FASE 5: WHISPER FALLBACK ──
     // When no VibeClip is active, fall back to the project's vibeBase (whisper).
     // The whisper uses L0 (automatic photonics) for reactive movement/color.
-    // If no vibeBase is set, fall back to 'idle' (blackout).
+    // If no vibeBase is set, keep the last active vibe (don't reset to idle).
     if (!hasActiveVibe) {
-      const whisperVibeId = this.project?.vibeBase?.vibeId ?? 'idle'
-      if (whisperVibeId !== this.currentPlaybackVibeId) {
+      const whisperVibeId = this.project?.vibeBase?.vibeId ?? null
+      if (whisperVibeId !== null && whisperVibeId !== this.currentPlaybackVibeId) {
         this.currentPlaybackVibeId = whisperVibeId
         try {
           const orchestrator = getTitanOrchestrator()

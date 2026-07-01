@@ -16,8 +16,7 @@
       "pop-rock"
     ],
     "spatialZones": [
-      "intense",
-      "peak"
+      "all"
     ],
     "mixBus": "global",
     "priority": 92,
@@ -28,8 +27,7 @@
         "id": "45d99f42-86f3-4c47-931f-95b93cdaa92f",
         "paramId": "intensity",
         "zones": [
-          "intense",
-          "peak"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -81,8 +79,7 @@
         "id": "98348aec-bd28-47cd-9d6c-5cd0a1ff364a",
         "paramId": "color",
         "zones": [
-          "intense",
-          "peak"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -115,8 +112,7 @@
         "id": "12a1296a-73ab-45a9-9da9-fc3785b0f74a",
         "paramId": "strobeRate",
         "zones": [
-          "intense",
-          "peak"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -200,5 +196,6 @@
         "minimumEnergy": 0.7
       }
     }
-  }
+  },
+  "checksum": "f6b50b1cf9da47ebd6952507a7f82787a5b060e725bfa44db2bd319d7981b7ad"
 }

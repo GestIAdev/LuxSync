@@ -31,8 +31,10 @@
  * - L1: Selene IA overrides
  * - L2: Manual overrides (MIDI, OSC, UI faders)
  * - L3: Effect intents (LiveFXEngine)
- * - LP: Playback intents (Chronos Timeline)
  * - L4: Blackout (state flag; el gate final se aplica en egress)
+ *
+ * WAVE 7110-B: LP layer removed. Chronos now injects via _chronosBus
+ * at L1 alongside Selene. Both share the same priority layer.
  *
  * ZERO-ALLOC EN HOT PATH:
  * - `_result` es un Map pre-existente que se muta in-place cada frame.
@@ -59,7 +61,7 @@ const STRICT_PRIORITY_CHANNELS = new Set(['strobe', 'shutter']);
 // ── WAVE 4752: SMART GATE — bloqueo per-node/per-channel ────────────────────
 // Reemplaza OPAQUE_BLOCKED_CHANNELS_L0_L1 (fixture-wide).
 // El tracking de canales-tocados se hace en _opaqueNodeChannels y
-// _opaquePlaybackChannels, populados en arbitrate() antes de aplicar L0/L1.
+// _opaqueChronosChannels, populados en arbitrate() antes de aplicar L0/L1.
 // No es una lista estática — es un mapa dinámico por canal exacto.
 const MOVER_SHIELD_BLOCKED_CHANNELS = new Set([
     'r', 'g', 'b',
@@ -184,8 +186,12 @@ export class NodeArbiter {
         this._effectIntents = [];
         /** Hephaestus custom clip intents (L3+ — Diamond Data direct curves) */
         this._hephaestusIntents = [];
-        /** Playback intents (LP — Chronos Timeline, prioridad entre L1-L3) */
-        this._playbackIntents = [];
+        /**
+         * WAVE 7110-B: Bus dedicado para Chronos (L1).
+         * Se actualiza cada frame por ChronosAetherAdapter antes de arbitrate().
+         * Comparte la capa L1 con Selene — misma prioridad.
+         */
+        this._chronosBus = null;
         /**
          * WAVE 4752: SMART GATE — Tracking per-node de canales tocados por L2.
          * Key = nodeId, Value = Set de nombres de canal que L2 escribió este frame.
@@ -194,11 +200,11 @@ export class NodeArbiter {
          */
         this._opaqueNodeChannels = new Map();
         /**
-         * WAVE 4752: SMART GATE — Tracking per-node de canales tocados por LP.
-         * Misma semántica que _opaqueNodeChannels pero para Playback Timeline.
+         * WAVE 4752: SMART GATE — Tracking per-node de canales tocados por Chronos L1.
+         * Misma semántica que _opaqueNodeChannels pero para Chronos bus.
          */
-        this._opaquePlaybackChannels = new Map();
-        /** Pool de Sets reutilizables para zero-alloc en _opaqueNodeChannels/LP */
+        this._opaqueChronosChannels = new Map();
+        /** Pool de Sets reutilizables para zero-alloc en _opaqueNodeChannels/Chronos */
         this._channelSetPool = [];
         this._channelSetCursor = 0;
         /**
@@ -428,8 +434,13 @@ export class NodeArbiter {
     setHephaestusIntents(intents) {
         this._hephaestusIntents = intents;
     }
-    setPlaybackIntents(intents) {
-        this._playbackIntents = intents;
+    /**
+     * WAVE 7110-B — Registra el bus de L1 de Chronos.
+     * Llamado una vez durante la inicialización del motor.
+     * El bus se limpia y rellena cada frame antes de arbitrate().
+     */
+    setChronosBus(bus) {
+        this._chronosBus = bus;
     }
     setBlackout(active) {
         this._blackout = active;
@@ -462,14 +473,14 @@ export class NodeArbiter {
         // Limpiar el mapa de resultado anterior
         this._result.clear();
         this._opaqueNodeChannels.clear();
-        this._opaquePlaybackChannels.clear();
+        this._opaqueChronosChannels.clear();
         this._l3DominatedChannels.clear();
-        // WAVE 4752: SMART GATE — pre-computar canales tocados por L2/LP por nodo.
+        // WAVE 4752: SMART GATE — pre-computar canales tocados por L2/Chronos por nodo.
         // Sustituye el fixture-wide opaque mask de WAVE 4775.
-        // L0/L1 solo bloqueados en los canales exactos que L2/LP están escribiendo.
+        // L0/L1 solo bloqueados en los canales exactos que L2/Chronos están escribiendo.
         this._channelSetCursor = 0;
         this._opaqueNodeChannels.clear();
-        this._opaquePlaybackChannels.clear();
+        this._opaqueChronosChannels.clear();
         // WAVE 4829: ABSOLUTE L3 OVERRIDE — limpiar mapa de dominación L3 del frame anterior.
         this._l3DominatedChannels.clear();
         // WAVE 4918.5: limpiar nodos Hephaestus-color silenciadores de L0
@@ -487,18 +498,21 @@ export class NodeArbiter {
                     set.add(key);
             }
         }
-        // LP: registrar canales tocados por nodo
-        for (let i = 0; i < this._playbackIntents.length; i++) {
-            const intent = this._playbackIntents[i];
-            let set = this._opaquePlaybackChannels.get(intent.nodeId);
-            if (!set) {
-                set = this._acquireChannelSet();
-                this._opaquePlaybackChannels.set(intent.nodeId, set);
-            }
-            for (const key in intent.values) {
-                const v = intent.values[key];
-                if (typeof v === 'number' && Number.isFinite(v))
-                    set.add(key);
+        // Chronos L1: registrar canales tocados por nodo
+        if (this._chronosBus !== null) {
+            const chronosCount = this._chronosBus.count;
+            for (let i = 0; i < chronosCount; i++) {
+                const intent = this._chronosBus.getAt(i);
+                let set = this._opaqueChronosChannels.get(intent.nodeId);
+                if (!set) {
+                    set = this._acquireChannelSet();
+                    this._opaqueChronosChannels.set(intent.nodeId, set);
+                }
+                for (const key in intent.values) {
+                    const v = intent.values[key];
+                    if (typeof v === 'number' && Number.isFinite(v))
+                        set.add(key);
+                }
             }
         }
         // WAVE 4713 COMPAT: dimmer fixture tracking sigue activo para bloquear
@@ -546,9 +560,13 @@ export class NodeArbiter {
                 this._applyIntent(this._seleneOverrides[i], 'selene');
             }
         }
-        // LP: Playback (Chronos Timeline) — entre L1 y L3
-        for (let i = 0; i < this._playbackIntents.length; i++) {
-            this._applyIntent(this._playbackIntents[i], 'playback');
+        // L1: Chronos (WAVE 7110-B — fused into L1 alongside Selene)
+        // Same priority layer. Both sources can write; LTP per channel.
+        if (this._chronosBus !== null) {
+            const chronosCount = this._chronosBus.count;
+            for (let i = 0; i < chronosCount; i++) {
+                this._applyIntent(this._chronosBus.getAt(i), 'chronos');
+            }
         }
         // L2: Manual overrides (UI Hold)
         // Se aplican directamente sobre el _result, sin pasar por _applyIntent
@@ -608,21 +626,6 @@ export class NodeArbiter {
         // L3+: Hephaestus custom intents (Diamond Data direct curves)
         for (let i = 0; i < this._hephaestusIntents.length; i++) {
             this._applyIntent(this._hephaestusIntents[i], 'hephaestus');
-        }
-        // 🔬 WAVE-4913 DIAG: log L3+ result ANTES del MANUAL HARD LOCK para confirmar
-        // si el color de Hephaestus está ganando sobre L0 en el mapa arbitrado.
-        if (this._hephaestusIntents.length > 0 && this._photonTracerFrame % 44 === 1) {
-            const firstHeph = this._hephaestusIntents[0];
-            const resultRecord = this._result.get(firstHeph.nodeId);
-            const red = resultRecord?.['red'] ?? resultRecord?.['r'] ?? 'N/A';
-            const green = resultRecord?.['green'] ?? resultRecord?.['g'] ?? 'N/A';
-            const blue = resultRecord?.['blue'] ?? resultRecord?.['b'] ?? 'N/A';
-            const l2Lock = this._manualChannelLocks.has(firstHeph.nodeId);
-            console.log(`[NodeArbiter 🎨 HEPH-RESULT] frame=${this._photonTracerFrame} | ` +
-                `node=${firstHeph.nodeId} | ` +
-                `result red=${red} g=${green} b=${blue} | ` +
-                `L2-lock-will-override=${l2Lock} | ` +
-                `hephIntents=${this._hephaestusIntents.length}`);
         }
         // WAVE 4714: MANUAL HARD LOCK (ley del operador).
         // Reaplica todos los canales manuales L2 (salvo orbit base channels)
@@ -953,12 +956,12 @@ export class NodeArbiter {
             this._result.set(intent.nodeId, record);
         }
         // WAVE 4752: SMART GATE — obtener canales bloqueados para este nodo.
-        // L0/L1 solo bloqueados en canales que L2/LP están tocando EN ESE NODO.
+        // L0/L1 solo bloqueados en canales que L2/Chronos están tocando EN ESE NODO.
         const l2BlockedChannels = (layer === 'system' || layer === 'selene')
             ? this._opaqueNodeChannels.get(intent.nodeId)
             : undefined;
-        const lpBlockedChannels = (layer === 'system' || layer === 'selene')
-            ? this._opaquePlaybackChannels.get(intent.nodeId)
+        const chronosBlockedChannels = (layer === 'system' || layer === 'selene')
+            ? this._opaqueChronosChannels.get(intent.nodeId)
             : undefined;
         // WAVE 4829: ABSOLUTE L3 OVERRIDE — canales dominados por L3 en este frame.
         // L0/L1 no pueden escribir canales que L3 ya reclamó — zero blend.
@@ -988,10 +991,10 @@ export class NodeArbiter {
                 continue;
             }
             // WAVE 4752: SMART GATE — bloqueo per-canal-tocado.
-            // L0/L1 no pueden escribir un canal si L2 o LP lo están escribiendo
-            // en ESTE NODO específico. Canales no tocados por L2/LP fluyen libres.
+            // L0/L1 no pueden escribir un canal si L2 o Chronos lo están escribiendo
+            // en ESTE NODO específico. Canales no tocados por L2/Chronos fluyen libres.
             if ((l2BlockedChannels?.has(channel) === true ||
-                lpBlockedChannels?.has(channel) === true)) {
+                chronosBlockedChannels?.has(channel) === true)) {
                 continue;
             }
             // WAVE 4829: ABSOLUTE L3 OVERRIDE — L3 Supremacy.
@@ -1145,7 +1148,7 @@ export class NodeArbiter {
      * pueden contener refs a nodos que ya no existen, causando escrituras a
      * canales huérfanos o bloqueos fantasma en el siguiente arbitrate().
      *
-     * NO borra _effectIntents, _hephaestusIntents ni _playbackIntents porque
+     * NO borra _effectIntents, _hephaestusIntents ni _chronosBus porque
      * esos arrays son sobreescritos cada frame por el pipeline.
      * NO toca _grandMaster ni _blackout — son state del operador, no del show.
      */
@@ -1213,7 +1216,7 @@ export class NodeArbiter {
         }
         return result;
     }
-    /** Zero-alloc Set pool para _opaqueNodeChannels / _opaquePlaybackChannels */
+    /** Zero-alloc Set pool para _opaqueNodeChannels / _opaqueChronosChannels */
     _acquireChannelSet() {
         if (this._channelSetCursor < this._channelSetPool.length) {
             const s = this._channelSetPool[this._channelSetCursor++];

@@ -62,12 +62,13 @@ import { getChronosInjector, type StageCommand } from '../core/ChronosInjector'
 // 💾 WAVE 2014: Project persistence (The Memory Core)
 import { useChronosProject } from '../hooks/useChronosProject'
 // 🧠 WAVE 2014.5: Store singleton for event subscriptions
-import { getChronosStore, getChronosStoreV2 } from '../core/ChronosStore'
+import { getChronosStore } from '../core/ChronosStore'
 import type { LuxTargetZone } from '../core/LuxFileV3'
 // ⚡ WAVE 2015.5: ENGINE IGNITION - Control store for phantom mode
 import { useControlStore, type LivingPaletteId } from '../../stores/controlStore'
 import { useOverrideStore } from '../../stores/overrideStore'
 import type { ChronosProjectV3 } from '../core/LuxFileV3'
+import { createEmptyChronosProjectV3 } from '../core/LuxFileV3.factories'
 import type { AnalysisData } from '../core/types'
 import type { DragPayload, TimelineClip, FXClip } from '../core/TimelineClip'
 import { toVibeType, extractVisualKeyframes, createHephFXClip } from '../core/TimelineClip'
@@ -137,6 +138,9 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
   const editInHephaestus = useNavigationStore(state => state.editInHephaestus)
   const editInHephaestusWithBpm = useNavigationStore(state => state.editInHephaestusWithBpm)  // WAVE 2044.5
   
+  // 🔧 Skip updateFromSession for a brief window after loading a project (prevents flattening tracks)
+  const skipSyncUntilRef = useRef(0)
+
   // 🧠 WAVE 2017 FIX: Use refs to keep track of current state for unmount cleanup
   // This avoids stale closures in the cleanup function
   const stateRef = useRef({
@@ -703,6 +707,9 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
   // 💾 WAVE 2014: Sync clips to project store for persistence
   // 🎵 WAVE 2019.7: Use realPath for filesystem persistence
   useEffect(() => {
+    if (Date.now() < skipSyncUntilRef.current) {
+      return
+    }
     const audio = audioLoader.result ? {
       name: audioLoader.result.fileName,
       path: audioLoader.result.realPath || audioLoader.result.blobUrl, // Prefer realPath for save
@@ -727,23 +734,40 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
     // 👂 LOAD: Inject data into UI when project is loaded
     const handleProjectLoaded = (data: { project: ChronosProjectV3; path: string }) => {
       console.log('[ChronosLayout] 📂 Project loaded, syncing UI...')
-      
+
+      // Prevent updateFromSession from flattening tracks for 500ms after load
+      skipSyncUntilRef.current = Date.now() + 500
+
       // Restore clips from loaded project
-      clipState.setClips(data.project.tracks.flatMap(t => t.clips) as unknown as TimelineClip[])
+      clipState.setClips(data.project.tracks.flatMap(t => t.clips) as TimelineClip[])
 
       // Restore audio if path exists and is valid
-      if (data.project.audio?.relativePath && !data.project.audio.relativePath.startsWith('blob:')) {
-        console.log('[ChronosLayout] 🎵 Loading audio:', data.project.audio.relativePath)
+      const audioInfo = data.project.audio
+      let audioPath = audioInfo?.relativePath ?? ''
+      
+      // If relativePath is empty but fileName exists, try resolving from .lux directory
+      if (!audioPath && audioInfo?.fileName && data.path) {
+        const lastSlash = Math.max(data.path.lastIndexOf('\\'), data.path.lastIndexOf('/'))
+        const luxDir = lastSlash >= 0 ? data.path.substring(0, lastSlash) : ''
+        const candidate = luxDir ? `${luxDir}\\${audioInfo.fileName}` : audioInfo.fileName
+        audioPath = candidate
+        console.log(`[ChronosLayout] 🔍 Resolved audio from .lux dir: ${candidate}`)
+      }
+
+      console.log(`[ChronosLayout] 🔍 Audio check: audio=${!!audioInfo} relativePath=${audioInfo?.relativePath ?? 'N/A'} resolvedPath=${audioPath || 'N/A'}`)
+      
+      if (audioPath && !audioPath.startsWith('blob:')) {
+        console.log('[ChronosLayout] 🎵 Loading audio:', audioPath)
 
         // 🔬 FASE 4: If the project has embedded analysis, use it directly.
         // Skip re-analysis by loading audio without triggering phantom analysis.
         // The heatmap is sent to TitanEngine from the embedded LuxAnalysisV3.
         if (data.project.analysis) {
           console.log('[ChronosLayout] 🔬 Embedded analysis found — using cached data (no re-analysis)')
-          setBpm(data.project.audio.detectedBpm)
+          setBpm(audioInfo!.detectedBpm)
 
           // Load audio for playback only (skip analysis — we have it embedded)
-          audioLoader.loadFromPath(data.project.audio.relativePath, true).then(() => {
+          audioLoader.loadFromPath(audioPath, true).then(() => {
             // After audio loads, inject the embedded heatmap into TitanEngine
             const embeddedHeatmap = data.project.analysis?.heatmap
             console.log(`[ChronosLayout 👻] Embedded heatmap check: analysis=${!!data.project.analysis} heatmap=${!!embeddedHeatmap} energyLen=${embeddedHeatmap?.energy?.length ?? 0}`)
@@ -763,8 +787,25 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
         } else {
           // No embedded analysis — load audio and trigger phantom analysis
           console.log('[ChronosLayout] 🔬 No embedded analysis — will analyze on load')
-          audioLoader.loadFromPath(data.project.audio.relativePath)
-          setBpm(data.project.audio.detectedBpm)
+          audioLoader.loadFromPath(audioPath)
+          setBpm(audioInfo!.detectedBpm)
+        }
+      } else if (data.project.analysis?.heatmap) {
+        // No audio path but we have embedded heatmap — inject it anyway for vibe rendering
+        console.log('[ChronosLayout] 🔬 No audio path but embedded heatmap found — injecting for vibe rendering')
+        const embeddedHeatmap = data.project.analysis.heatmap
+        const lux = (window as any).lux
+        lux?.chronos?.loadHeatmap?.(embeddedHeatmap)
+          .then((r: any) => {
+            if (r?.success) {
+              console.log('[ChronosLayout 👻] Embedded PHANTOM BUFFER sent to backend (no audio)')
+            }
+          })
+          .catch((err: unknown) => {
+            console.error('[ChronosLayout 👻] Failed to send embedded heatmap:', err)
+          })
+        if (audioInfo) {
+          setBpm(audioInfo.detectedBpm)
         }
       }
     }
@@ -772,6 +813,12 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
     // ✨ NEW: Full cleanup when creating new project
     const handleProjectNew = () => {
       console.log('[ChronosLayout] 🆕 New project, resetting UI...')
+      
+      // Prevent updateFromSession from firing for 500ms after new project
+      skipSyncUntilRef.current = Date.now() + 500
+
+      // Reset unified store with a fresh empty project
+      getChronosStore().loadProject(createEmptyChronosProjectV3())
       
       // Clear all clips
       clipState.setClips([])
@@ -812,7 +859,7 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
       // d) Find first track without collision (Take Lane)
       // e) Auto-create new track if all existing tracks collide
       // f) Assign clip to found or created track
-      const storeV2 = getChronosStoreV2()
+      const store = getChronosStore()
       const zones = clip.zones ?? []
       const isAllZone = zones.includes('all') || zones.length === 0
       const primaryZone: LuxTargetZone = isAllZone ? 'global' : ((zones[0] || 'global') as LuxTargetZone)
@@ -821,7 +868,7 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
       const newEnd = clip.startMs + clip.durationMs
 
       // c) Find all tracks for this primaryZone (excluding locked tracks, except global)
-      const candidateTracks = storeV2.tracks.filter(t =>
+      const candidateTracks = store.tracks.filter(t =>
         t.targetZone === primaryZone && (!t.locked || primaryZone === 'global')
       )
 
@@ -845,17 +892,17 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
       if (!resolvedTrackId) {
         if (primaryZone === 'global') {
           // GLOBAL track is locked and singleton — just use it even if colliding
-          const globalTrack = storeV2.tracks.find(t => t.targetZone === 'global')
+          const globalTrack = store.tracks.find(t => t.targetZone === 'global')
           resolvedTrackId = globalTrack?.id ?? 'global'
           console.log(`[ChronosLayout] WAVE 7108: GLOBAL fallback (collision accepted)`)
         } else if (candidateTracks.length < 2) {
           // Only 0 or 1 tracks exist for this zone → create #2 (the cap)
-          const newTrack = storeV2.addTrack(primaryZone)
+          const newTrack = store.addTrack(primaryZone)
           resolvedTrackId = newTrack.id
           console.log(`[ChronosLayout] WAVE 7108: Auto-created track "${newTrack.visualLabel}" for ${primaryZone} (Take Lane ${candidateTracks.length + 1})`)
         } else {
           // Both primary and #2 collide → GLOBAL fallback, no #3
-          const globalTrack = storeV2.tracks.find(t => t.targetZone === 'global')
+          const globalTrack = store.tracks.find(t => t.targetZone === 'global')
           resolvedTrackId = globalTrack?.id ?? 'global'
           console.log(`[ChronosLayout] WAVE 7108: Take Lane cap reached for ${primaryZone} → GLOBAL fallback (no #3)`)
         }

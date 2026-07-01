@@ -17,8 +17,7 @@
       "electronic"
     ],
     "spatialZones": [
-      "intense",
-      "peak"
+      "all"
     ],
     "mixBus": "global",
     "priority": 90,
@@ -29,8 +28,7 @@
         "id": "5ff8719f-4333-4ce1-a478-d698536e577a",
         "paramId": "intensity",
         "zones": [
-          "intense",
-          "peak"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -87,8 +85,7 @@
         "id": "a1c7e0df-dd98-4de3-8abd-ce3c303e6581",
         "paramId": "strobeRate",
         "zones": [
-          "intense",
-          "peak"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -176,5 +173,6 @@
         "minimumEnergy": 0.7
       }
     }
-  }
+  },
+  "checksum": "3f5f64f2047fa3393093197874047a651655de7bbc147e83063a03dad9142107"
 }

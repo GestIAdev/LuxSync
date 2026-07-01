@@ -8,14 +8,14 @@
  *   - Delete (X)
  *   - Reorder via drag (handle de 3 rayas)
  *
- * Todos los eventos disparan metodos del ChronosStoreV2, sin logica de negocio local.
+ * Todos los eventos disparan metodos del ChronosStore, sin logica de negocio local.
  *
  * @module chronos/ui/timeline/TrackLabelsOverlay
  */
 
 import React, { useRef, useState, useCallback, useEffect, memo } from 'react'
 import type { LuxTrackV3 } from '../../core/LuxFileV3'
-import { getChronosStoreV2 } from '../../core/ChronosStore'
+import { getChronosStore } from '../../core/ChronosStore'
 import './TrackLabelsOverlay.css'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -42,7 +42,7 @@ interface TrackLabelsOverlayProps {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const TrackLabelRow: React.FC<TrackLabelRowProps> = memo(({ track, yOffset, height, totalTracks }) => {
-  const store = getChronosStoreV2()
+  const store = getChronosStore()
 
   const [isRenaming, setIsRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState(track.visualLabel)

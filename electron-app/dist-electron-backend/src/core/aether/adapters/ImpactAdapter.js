@@ -136,22 +136,6 @@ export class ImpactAdapter extends BaseSystem {
         this._intentScratch.priority = INTENT_PRIORITY;
         this._intentScratch.source = IMPACT_SOURCE;
         const globalVibe = vibe.intensity;
-        // DIAG: throttled log to trace dimmer=0 issue
-        if (this._diagCounter === undefined)
-            this._diagCounter = 0;
-        this._diagCounter++;
-        if (this._diagCounter % 120 === 0) {
-            const firstNode = nodes.count > 0 ? nodes.get(0) : null;
-            const zid = firstNode?.zoneId ?? 'NONE';
-            const zInt = selectZoneFromResult(result, zid ?? '');
-            console.log(`[ImpactAdapter DIAG] audio.energy=${audio.energy.toFixed(3)} bass=${audio.bass.toFixed(3)} ` +
-                `vibe=${globalVibe.toFixed(3)} zoneId=${zid} zoneInt=${zInt.toFixed(3)} ` +
-                `liqResult=${liquidResult ? 'PROVIDED' : 'COMPUTED'} ` +
-                `frontL=${result.frontLeftIntensity.toFixed(3)} frontR=${result.frontRightIntensity.toFixed(3)} ` +
-                `moverL=${result.moverLeftIntensity.toFixed(3)} moverR=${result.moverRightIntensity.toFixed(3)} ` +
-                `ambient=${result.ambientIntensity?.toFixed(3) ?? 'N/A'} ` +
-                `nodeCount=${nodes.count}`);
-        }
         // ── 4. Iterar nodos — intensidad zonal uniforme por zona semántica (WAVE 4655 F3)
         nodes.forEach((node, _index) => {
             // ── 4a. Zona semántica → intensidad directa del motor líquido

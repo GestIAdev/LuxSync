@@ -16,8 +16,7 @@
       "industrial"
     ],
     "spatialZones": [
-      "intense",
-      "peak"
+      "all"
     ],
     "mixBus": "global",
     "priority": 93,
@@ -28,8 +27,7 @@
         "id": "797c3667-1fc4-4060-8dd4-2fcff4a6d65c",
         "paramId": "intensity",
         "zones": [
-          "intense",
-          "peak"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -86,8 +84,7 @@
         "id": "3b438e2a-62d5-4abf-8eed-4d7f8f3f1dcb",
         "paramId": "color",
         "zones": [
-          "intense",
-          "peak"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -138,8 +135,7 @@
         "id": "23fc1ac7-9194-4dd9-bd7a-41fd27905275",
         "paramId": "strobeRate",
         "zones": [
-          "intense",
-          "peak"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -226,5 +222,6 @@
         "minimumEnergy": 0.7
       }
     }
-  }
+  },
+  "checksum": "ae48c4ae80d206a5841953747413df859e50e2e815526319b9e3f18ea33e4b5e"
 }

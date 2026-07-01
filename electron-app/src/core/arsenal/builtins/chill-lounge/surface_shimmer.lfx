@@ -13,7 +13,7 @@
       "chill-lounge"
     ],
     "spatialZones": [
-      "silence"
+      "all"
     ],
     "mixBus": "ambient",
     "priority": 30,
@@ -24,7 +24,7 @@
         "id": "3ef4270a-f597-4a35-a2c4-db1b6964fbc1",
         "paramId": "intensity",
         "zones": [
-          "silence"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -122,5 +122,6 @@
         "minimumEnergy": null
       }
     }
-  }
+  },
+  "checksum": "212ea8df10dba2ae7399d74c5936f80cd226d40147425eee9b569c0d68f4cf42"
 }

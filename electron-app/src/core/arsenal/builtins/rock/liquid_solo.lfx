@@ -16,8 +16,7 @@
       "pop-rock"
     ],
     "spatialZones": [
-      "gentle",
-      "active"
+      "all"
     ],
     "mixBus": "override",
     "priority": 60,
@@ -28,8 +27,7 @@
         "id": "de2eb1e3-fa56-4b58-b8c9-b9b12c170645",
         "paramId": "intensity",
         "zones": [
-          "gentle",
-          "active"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -81,8 +79,7 @@
         "id": "41a6d267-eb41-4da7-86fe-b5e2bf76a213",
         "paramId": "color",
         "zones": [
-          "gentle",
-          "active"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -165,5 +162,6 @@
         "minimumEnergy": null
       }
     }
-  }
+  },
+  "checksum": "4d88735f537a0a74f597591e2238536da7f1f03b2c15a0790552fbe44a278536"
 }

@@ -98,7 +98,7 @@ describe('🕰️ ChronosEngine — The Beating Heart', () => {
 
     test('No project loaded initially', () => {
       const engine = ChronosEngine.getInstance()
-      expect(engine.getProjectV2()).toBeNull()
+      expect(engine.getProject()).toBeNull()
     })
   })
 

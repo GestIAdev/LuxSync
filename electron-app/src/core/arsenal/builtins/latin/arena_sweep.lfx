@@ -16,8 +16,7 @@
       "rock-anthem"
     ],
     "spatialZones": [
-      "active",
-      "intense"
+      "all"
     ],
     "mixBus": "global",
     "priority": 75,
@@ -28,8 +27,7 @@
         "id": "0ecc6128-390d-435d-882b-de75e4f28b92",
         "paramId": "intensity",
         "zones": [
-          "active",
-          "intense"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -81,8 +79,7 @@
         "id": "c1b8300e-eba6-4847-a0c6-efc85c0ba8e8",
         "paramId": "color",
         "zones": [
-          "active",
-          "intense"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -174,5 +171,6 @@
         "minimumEnergy": null
       }
     }
-  }
+  },
+  "checksum": "bc77e41d20af1ffb4f3a7ff4842d3406be2d15bd63c380e9b1e7bae4ab2aacf6"
 }

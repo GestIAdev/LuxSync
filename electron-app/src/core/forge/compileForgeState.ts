@@ -42,6 +42,8 @@ import type {
 import { canAdmit } from './cellTypeAdmittance'
 import type { IForgeBuilderState, IForgeCellBuilder } from './forgeBuilderState'
 
+const DMX_UNIVERSE_SIZE = 512
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TIPOS PÚBLICOS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -55,6 +57,7 @@ export type ForgeValidationCode =
   | 'NO_CHANNELS'
   | 'AMBIGUOUS_DEP'
   | 'MISSING_DEP'
+  | 'DMX_FOOTPRINT_OVERFLOW'
 
 export interface ForgeValidationIssue {
   readonly level:      ForgeValidationLevel
@@ -171,6 +174,22 @@ function validateState(
         })
       }
     }
+  }
+
+  // V6: DMX footprint overflow — reject fixtures that exceed 512 channels
+  let maxDmxEnd = 0
+  for (const ch of state.channels) {
+    if (ch.type === 'unknown') continue
+    const offset = ch.index - 1
+    const end = ch.is16bit ? offset + 1 : offset
+    if (end > maxDmxEnd) maxDmxEnd = end
+  }
+  if (maxDmxEnd + 1 > DMX_UNIVERSE_SIZE) {
+    errors.push({
+      level:   'error',
+      code:    'DMX_FOOTPRINT_OVERFLOW',
+      message: `DMX footprint (${maxDmxEnd + 1} channels) excede el límite de ${DMX_UNIVERSE_SIZE} canales del universo. Reduce los canales o usa 8-bit en lugar de 16-bit.`,
+    })
   }
 }
 

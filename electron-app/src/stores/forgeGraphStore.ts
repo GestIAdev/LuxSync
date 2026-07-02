@@ -105,8 +105,20 @@ function makeTimestamp(): string {
 }
 
 function cloneGraph(graph: IForgeNodeGraph): IForgeNodeGraph {
-  // Spread superficial es suficiente — arrays son reemplazados, no mutados
-  return { ...graph }
+  // WAVE 7122.7: Deep clone nodes and edges arrays to prevent shared
+  // array reference mutations. Each node/edge is spread so config and
+  // nested objects are also shallow-copied (sufficient for immutable
+  // update patterns used throughout the store).
+  return {
+    ...graph,
+    nodes: graph.nodes.map(n => ({
+      ...n,
+      config: { ...(n.config as unknown as Record<string, unknown>) } as unknown as typeof n.config,
+      inputs: [...n.inputs],
+      outputs: [...n.outputs],
+    })),
+    edges: graph.edges.map(e => ({ ...e })),
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

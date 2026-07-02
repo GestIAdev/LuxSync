@@ -788,9 +788,29 @@ export class NodeResolver implements INodeResolver {
       this._forgeAccumValues.set(deviceId, record)
     }
 
+    // WAVE 7122.1: Cross-Cell Isolation — prefix channel keys with the cell
+    // suffix extracted from nodeId so that homonymous channels in different
+    // cells (e.g. strobe in golden-master vs wash) don't overwrite each other.
+    //
+    // The ForgeGraphCompiler inputMap uses `${aetherNodeId}:${channelType}` as
+    // the key for cell-owned channels, and bare `${channelType}` for unassigned
+    // (passthrough) channels. We check which form exists in inputMap to decide
+    // whether to prefix.
+    const compiled = this._forgeGraphs.get(deviceId)
+    const colonIdx = nodeId.indexOf(':')
+    const cellSuffix = colonIdx >= 0 ? nodeId.substring(colonIdx + 1) : ''
+
     for (const key in channelValues) {
       const value = channelValues[key]
       if (!Number.isFinite(value)) continue
+
+      if (cellSuffix && compiled) {
+        const prefixedKey = `${cellSuffix}:${key}`
+        if (compiled.inputMap.has(prefixedKey)) {
+          record[prefixedKey] = value
+          continue
+        }
+      }
       record[key] = value
     }
 

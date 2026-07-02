@@ -229,9 +229,17 @@ function makeOutputPort(): IForgePort {
   }
 }
 
-function makeInputDmxNode(ch: FixtureChannel, rowIndex: number): IForgeNode {
+function makeInputDmxNode(
+  ch:           FixtureChannel,
+  rowIndex:     number,
+  aetherNodeId?: string,
+): IForgeNode {
   const nodeId: ForgeNodeId = `in-${ch.type}-${ch.index}`
-  const config: IInputDmxConfig = { nodeType: 'input_dmx', channelKey: ch.type }
+  // WAVE 7122.1: Cross-Cell Isolation — channelKey must be unique per cell.
+  // Without aetherNodeId prefix, two cells with the same channelType (e.g. strobe)
+  // collide in the ForgeGraphCompiler inputMap, causing cross-cell contamination.
+  const channelKey = aetherNodeId ? `${aetherNodeId}:${ch.type}` : ch.type
+  const config: IInputDmxConfig = { nodeType: 'input_dmx', channelKey }
   return {
     id:         nodeId,
     type:       'input_dmx',
@@ -255,7 +263,10 @@ function makeOutputDmxNode(
   const config: IOutputDmxConfig = {
     nodeType:          'output_dmx',
     channelType:        ch.type,
-    dmxOffset:          ch.index,
+    // WAVE 7122.2: DMX Base-0 Enforcement — ch.index is 1-based (DMX channel 1,2,3...).
+    // dmxOffset must be 0-based to match NodeGraphBuilder.fromChannels() and
+    // NodeExtractionPipeline._mapForgeNodes() which both use 0-based offsets.
+    dmxOffset:          ch.index - 1,
     channelName:        ch.name || undefined,
     cellLabel:          cellLabel || undefined,  // WAVE 4742: Persist cell label
     defaultDmxValue:    ch.defaultValue,
@@ -284,7 +295,7 @@ function makeOutputDmxNode(
     outputs:    [],
     config,
     uiPosition: { x: OUTPUT_COL_X, y: ROW_START_Y + rowIndex * ROW_SPACING_Y },
-    label:      `CH${ch.index + 1}: ${ch.name || ch.type}`,
+    label:      `CH${ch.index}: ${ch.name || ch.type}`,
     // WAVE 4743: Persist cell.label en profileMeta.customLabel para JSON roundtrip
     profileMeta: cellLabel ? { customLabel: cellLabel } : undefined,
   }
@@ -333,7 +344,7 @@ function compileNodeGraph(
     const aetherZone   = ownerCell?.aetherZone
     const cellLabel    = ownerCell?.label  // WAVE 4742: Pass cell label for JSON persistence
 
-    const inNode  = makeInputDmxNode(ch, rowIndex)
+    const inNode  = makeInputDmxNode(ch, rowIndex, aetherNodeId)
     const outNode = makeOutputDmxNode(ch, rowIndex, aetherNodeId, aetherZone, cellLabel)
     const edge    = makeEdge(inNode.id, outNode.id, edgeIndex)
 
@@ -343,11 +354,14 @@ function compileNodeGraph(
     edgeIndex++
   }
 
-  // Calcular dmxFootprint
+  // WAVE 7122.2: DMX Base-0 — calculate dmxFootprint using 0-based offsets.
+  // ch.index is 1-based; offset = ch.index - 1. For 16-bit, the fine channel
+  // occupies offset + 1.
   let maxOffset = 0
   for (const ch of resolvedChannels) {
     if (ch.type === 'unknown') continue
-    const end = ch.is16bit ? ch.index + 1 : ch.index
+    const offset = ch.index - 1
+    const end = ch.is16bit ? offset + 1 : offset
     if (end > maxOffset) maxOffset = end
   }
 

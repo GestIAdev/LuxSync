@@ -179,6 +179,10 @@ function syncGraphOutputsWithChannels(graph: any, channels: FixtureChannel[]): a
     const ch = resolveChannelForOffset(cfg.dmxOffset)
     if (!ch) return node
 
+    // WAVE 7122.3: Pro-Graph Reconciliation — merge instead of overwrite.
+    // Preserve graph-extended properties (aetherNodeId, aetherZone, cellLabel,
+    // profileMeta, etc.) that only exist in the manually-edited node graph.
+    // Only sync basic channel properties from the rack.
     return {
       ...node,
       config: {
@@ -195,7 +199,7 @@ function syncGraphOutputsWithChannels(graph: any, channels: FixtureChannel[]): a
               targetChannelIndex: d.targetChannelIndex,
               mode: d.mode,
             }))
-          : undefined,
+          : cfg.ignitionDeps,
       },
     }
   })
@@ -521,9 +525,10 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
 
     if (shouldPersistNodeGraph && graphSnapshot) {
       builtFixture.nodeGraph = graphSnapshot
-    }
-
-    if (state.cells.length > 0) {
+    } else if (state.cells.length > 0) {
+      // WAVE 7122.4: Single compilation — only use compileForgeState as fallback
+      // when there's no live/persisted graph to sync. This eliminates the double
+      // compilation that overwrote manually-edited graphs with auto-generated ones.
       try {
         const compileResult = compileForgeState(state)
         if (compileResult.ok) {

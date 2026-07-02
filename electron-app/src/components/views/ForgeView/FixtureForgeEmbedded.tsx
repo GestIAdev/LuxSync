@@ -244,6 +244,7 @@ export const FUNCTION_PALETTE: Record<string, FunctionDef[]> = {
     { type: 'prism', label: 'Prism', color: '#dd00ff', icon: <Triangle size={13} /> },
     { type: 'focus', label: 'Focus', color: '#00ffcc', icon: <Crosshair size={13} /> },
     { type: 'zoom',  label: 'Zoom',  color: '#00ffcc', icon: <ZoomIn size={13} /> },
+    { type: 'iris',  label: 'Iris',  color: '#00ddaa', icon: <Aperture size={13} /> },
   ],
   'CONTROL': [
     { type: 'speed',   label: 'Speed',   color: '#ffeb3b', icon: <Timer size={13} /> },

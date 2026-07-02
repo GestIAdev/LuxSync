@@ -184,11 +184,23 @@ function validateState(
  * Si hay varios → lo deja como está (el operador debe resolver en la UI).
  */
 function resolveDep(
-  dep:      IgnitionDependency,
-  channels: readonly FixtureChannel[],
-  selfIdx:  number,
+  dep:           IgnitionDependency,
+  channels:      readonly FixtureChannel[],
+  selfIdx:       number,
+  localChannels?: readonly FixtureChannel[],
 ): IgnitionDependency {
   if (dep.targetChannelIndex !== undefined) return dep  // ya tiene índice explícito
+
+  // WAVE 7122.5: Local disambiguation — search within the same cell first.
+  // If exactly one local match exists, auto-resolve without global ambiguity.
+  if (localChannels && localChannels.length > 0) {
+    const localMatches = localChannels.filter(c => c.type === dep.channelType && c.index !== selfIdx)
+    if (localMatches.length === 1) {
+      return { ...dep, targetChannelIndex: localMatches[0].index }
+    }
+  }
+
+  // Fall back to global search across all channels.
   const matches = channels.filter(c => c.type === dep.channelType && c.index !== selfIdx)
   if (matches.length === 1) {
     return { ...dep, targetChannelIndex: matches[0].index }
@@ -196,11 +208,15 @@ function resolveDep(
   return dep
 }
 
-export function resolveChannelDeps(ch: FixtureChannel, channels: readonly FixtureChannel[]): FixtureChannel {
+export function resolveChannelDeps(
+  ch:            FixtureChannel,
+  channels:      readonly FixtureChannel[],
+  localChannels?: readonly FixtureChannel[],
+): FixtureChannel {
   if (!ch.ignitionDeps || ch.ignitionDeps.length === 0) return ch
   return {
     ...ch,
-    ignitionDeps: ch.ignitionDeps.map(d => resolveDep(d, channels, ch.index)),
+    ignitionDeps: ch.ignitionDeps.map(d => resolveDep(d, channels, ch.index, localChannels)),
   }
 }
 
@@ -405,10 +421,21 @@ export function compileForgeState(state: IForgeBuilderState): CompileResult {
     return { ok: false, errors, warnings }
   }
 
-  // ── Fase B: Resolución de deps ────────────────────────────────────────
-  const resolvedChannels: FixtureChannel[] = state.channels.map(ch =>
-    resolveChannelDeps(ch, state.channels)
-  )
+  // ── Fase B: Resolución de deps (con desambiguación local por célula) ─
+  // WAVE 7122.5: Build channel→cell map for local ignition dep resolution.
+  const channelToCellCompile = new Map<number, IForgeCellBuilder>()
+  for (const cell of state.cells) {
+    for (const idx of cell.channelIndices) {
+      channelToCellCompile.set(idx, cell)
+    }
+  }
+  const resolvedChannels: FixtureChannel[] = state.channels.map(ch => {
+    const ownerCell = channelToCellCompile.get(ch.index)
+    const localChannels = ownerCell
+      ? ownerCell.channelIndices.map(idx => state.channels[idx]).filter(Boolean)
+      : undefined
+    return resolveChannelDeps(ch, state.channels, localChannels)
+  })
 
   // ── Fase C: NodeGraph ─────────────────────────────────────────────────
   const nodeGraph = compileNodeGraph(state, resolvedChannels)
@@ -444,10 +471,21 @@ export function compileForgeState(state: IForgeBuilderState): CompileResult {
  *   - dmxGovernors se copia directamente del state — DOGMA 2.
  */
 export function buildCompleteFixture(state: IForgeBuilderState): FixtureDefinition {
-  // ── 1. Resolver IgnitionDeps ─────────────────────────────────────────
-  const resolvedChannels: FixtureChannel[] = state.channels.map(ch =>
-    resolveChannelDeps(ch, state.channels)
-  )
+  // ── 1. Resolver IgnitionDeps (con desambiguación local por célula) ────
+  // WAVE 7122.5: Build channel→cell map for local ignition dep resolution.
+  const channelToCellBuild = new Map<number, IForgeCellBuilder>()
+  for (const cell of state.cells) {
+    for (const idx of cell.channelIndices) {
+      channelToCellBuild.set(idx, cell)
+    }
+  }
+  const resolvedChannels: FixtureChannel[] = state.channels.map(ch => {
+    const ownerCell = channelToCellBuild.get(ch.index)
+    const localChannels = ownerCell
+      ? ownerCell.channelIndices.map(idx => state.channels[idx]).filter(Boolean)
+      : undefined
+    return resolveChannelDeps(ch, state.channels, localChannels)
+  })
 
   // ── 2. Compilar NodeGraph (con anti-pánico) ──────────────────────────
   let nodeGraph: IForgeNodeGraph | undefined

@@ -10,6 +10,7 @@ import { NodeFamily } from '../../aether';
 import { FIX_DATA_FLOATS, CHANNELS_PER_UNI } from '../../aether/glass/layout';
 import { DmxUniverseWriter } from '../../aether/glass/DmxSabHandlers';
 import { getDmxSab } from '../../aether/glass/GlassMemory';
+import { CalibrationSABReader, createCalibrationSAB } from '../../aether/glass/CalibrationSAB';
 import { createDefaultCognitive } from '../../protocol/SeleneProtocol';
 const ZONE_MAP = {
     'FRONT_PARS': 'front', 'BACK_PARS': 'back', 'LEFT_PARS': 'left', 'RIGHT_PARS': 'right',
@@ -91,6 +92,17 @@ export class TickEngine {
         this.dmxWriter = new DmxUniverseWriter(getDmxSab());
         this._universeSnapshots = new Map();
         this.ctx = ctx;
+        this._calibReader = TickEngine._calibReader;
+        TickEngine._instances.add(this);
+    }
+    /** WAVE 7120: Accept a calibration SAB from the renderer (sent via MessagePort). */
+    static setCalibrationSAB(sab) {
+        TickEngine._calibSAB = sab;
+        TickEngine._calibReader = new CalibrationSABReader(sab);
+        // Update all existing instances to use the new reader
+        for (const inst of TickEngine._instances) {
+            inst._calibReader = TickEngine._calibReader;
+        }
     }
     async tick() {
         // ⏱️ WAVE 5037: CHRONOS-ALERT — perf profiling del tick loop.
@@ -987,6 +999,11 @@ export class TickEngine {
                 // ðŸŽ¬ WAVE 4867: TheiaVideoRenderer tick REMOVED â€” no callers to attachTheiaRenderer,
                 // field is always null. Safe to strip from hot path.
                 this._pixelMapAdapter.ingest(aetherArbiter, this._aetherCanvasManager);
+                // WAVE 7120: L3++ Calibration — read SAB before arbitrate()
+                const calibIntents = this._calibReader.readIfNew();
+                if (calibIntents) {
+                    aetherArbiter.setCalibrationIntents(calibIntents);
+                }
                 // 3. El Arbiter unifica todas las capas â†’ ArbitratedNodeMap
                 aetherArbiter.setSystemIntents(this._aetherBus);
                 aetherArbiter.setEffectIntents(this._effectBus.getAll());
@@ -1399,3 +1416,7 @@ export class TickEngine {
 // 🩸 WAVE-6060: 44Hz / 4 = ~11Hz para UI fluida
 TickEngine.TRUTH_BROADCAST_DIVIDER = 4;
 TickEngine.HOT_FRAME_DIVIDER = 1;
+// WAVE 7120: L3++ Calibration SAB — settable from renderer (SAB can't be returned via IPC)
+TickEngine._calibSAB = createCalibrationSAB();
+TickEngine._calibReader = new CalibrationSABReader(TickEngine._calibSAB);
+TickEngine._instances = new Set();

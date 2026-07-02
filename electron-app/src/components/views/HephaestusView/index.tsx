@@ -23,7 +23,9 @@ import { useStageStore, selectFixtures } from '../../../stores/stageStore'
 import { useNavigationStore } from '../../../stores/navigationStore'
 import { useAudioStore } from '../../../stores/audioStore'
 import { useHephLibrary } from './hooks/useHephLibrary'
-import { HephLogoIcon } from '../../icons/LuxIcons'
+import { useLiveCalibration } from './useLiveCalibration'
+import { useHephPreview } from './useHephPreview'
+import { HephLogoIcon, TargetIcon } from '../../icons/LuxIcons'
 import type {
   HephAutomationClipV3,
   HephAutomationClip,
@@ -89,6 +91,16 @@ const HephaestusView: React.FC = () => {
   const showFile = useStageStore(state => state.showFile)
   const stageFixtures = useStageStore(selectFixtures)
   const [isLoadingShow, setIsLoadingShow] = useState(false)
+
+  // ── WAVE 7120: Live Calibration Mode ──
+  // Single source of truth: useHephPreview drives both the UI preview and calibration
+  const preview = useHephPreview(clip, stageFixtures)
+  const { isActive: isCalibrationActive, toggle: toggleCalibration } = useLiveCalibration(
+    clip,
+    stageFixtures,
+    preview.previewDataRef,
+    preview.isPlaying,
+  )
 
   // ── Derived: param count for header display ──
   const paramCount = useMemo(() => clip?.tracks.length ?? 0, [clip])
@@ -565,6 +577,17 @@ const HephaestusView: React.FC = () => {
           >
             📚
           </button>
+          <span style={{ color: '#333' }}>│</span>
+          <button
+            className={`heph-header__btn heph-header__btn--toggle ${isCalibrationActive ? 'heph-header__btn--calib-active' : ''}`}
+            onClick={toggleCalibration}
+            title="Live Calibration Mode (L3++ — overrides all layers except Blackout)"
+          >
+            <TargetIcon size={16} color={isCalibrationActive ? '#fff' : 'currentColor'} />
+            <span className="heph-header__btn-label">
+              {isCalibrationActive ? 'CALIB ON' : 'CALIB'}
+            </span>
+          </button>
         </div>
       </header>
 
@@ -581,6 +604,7 @@ const HephaestusView: React.FC = () => {
           <LabTab
             temporalActions={temporalActions}
             isSaving={isSaving}
+            preview={preview}
           />
         )}
       </div>

@@ -25,9 +25,9 @@ import { QuantumSpectrometer } from '../QuantumSpectrometer'
 import { DnaRail, DEFAULT_COGNITIVE_DNA, DEFAULT_SIMULATION_META } from '../dna/DnaRail'
 import type { TemporalActions } from '../types/HephaestusShared'
 import { useHephaestusEditorStore } from '../../../../core/hephaestus/store/useHephaestusEditorStore'
-import { useHephPreview } from '../useHephPreview'
 import { useStageStore, selectFixtures } from '../../../../stores/stageStore'
 import { WaveformIcon } from '../../../icons/LuxIcons'
+import type { HephPreviewReturn } from '../useHephPreview'
 import type {
   HephAutomationClipV3,
 } from '../../../../core/hephaestus/types'
@@ -47,13 +47,14 @@ import { resolveZoneTags } from '../../../../core/zones/ZoneMapper'
 interface LabTabProps {
   temporalActions: TemporalActions
   isSaving?: boolean
+  preview: HephPreviewReturn
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
 
-export const LabTab: React.FC<LabTabProps> = ({ temporalActions, isSaving = false }) => {
+export const LabTab: React.FC<LabTabProps> = ({ temporalActions, isSaving = false, preview }) => {
   // ── Store (canonical state) ──
   const clip = useHephaestusEditorStore(state => state.clip)
   const activeTrackId = useHephaestusEditorStore(state => state.selection.activeTrackId)
@@ -65,9 +66,6 @@ export const LabTab: React.FC<LabTabProps> = ({ temporalActions, isSaving = fals
 
   // ── Stage fixtures for radar preview ──
   const stageFixtures = useStageStore(selectFixtures)
-
-  // ── Preview hook ──
-  const preview = useHephPreview(clip, stageFixtures)
 
   // ── Quantum Spectrometer selection state ──
   const [selectedFixtureId, setSelectedFixtureId] = useState<string | null>(null)

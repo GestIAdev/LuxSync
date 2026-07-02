@@ -144,7 +144,7 @@ function isFiniteChannelValue(value: number | undefined): value is number {
   return value !== undefined && Number.isFinite(value)
 }
 
-type ArbiterLayer = 'system' | 'selene' | 'chronos' | 'effect' | 'hephaestus'
+type ArbiterLayer = 'system' | 'selene' | 'chronos' | 'effect' | 'hephaestus' | 'calibration'
 
 /**
  * NodeArbiter — Implementación zero-alloc del árbitro multicapa.
@@ -220,6 +220,15 @@ export class NodeArbiter implements INodeArbiter {
 
   /** Hephaestus custom clip intents (L3+ — Diamond Data direct curves) */
   private _hephaestusIntents: readonly INodeIntent[] = []
+
+  /** L3++ Calibration intents (Live Calibration Mode — Hephaestus Canvas direct injection).
+   *  Dominancia absoluta sobre L0/L1/L2/L3/L3+ por orden de escritura LTP.
+   *  No requiere pausar ningún motor — machaca por capa. */
+  private _calibrationIntents: readonly INodeIntent[] = []
+
+  /** Watchdog: auto-clear calibration si no llega un nuevo inject en 500ms. */
+  private _calibrationWatchdog: ReturnType<typeof setTimeout> | null = null
+  private _calibrationLastInjectMs = 0
 
   /**
    * WAVE 7110-B: Bus dedicado para Chronos (L1).
@@ -501,6 +510,28 @@ export class NodeArbiter implements INodeArbiter {
     this._hephaestusIntents = intents
   }
 
+  /** WAVE 7120: L3++ Calibration — inject intents at highest priority pre-Blackout. */
+  setCalibrationIntents(intents: readonly INodeIntent[]): void {
+    this._calibrationIntents = intents
+    this._calibrationLastInjectMs = Date.now()
+    if (this._calibrationWatchdog) clearTimeout(this._calibrationWatchdog)
+    this._calibrationWatchdog = setTimeout(() => {
+      if (Date.now() - this._calibrationLastInjectMs >= 500) {
+        this._calibrationIntents = []
+        console.warn('[NodeArbiter 🎛️ CALIB] Watchdog: auto-clear after 500ms timeout')
+      }
+    }, 600)
+  }
+
+  /** WAVE 7120: Clear calibration bus (toggle OFF). */
+  clearCalibrationIntents(): void {
+    this._calibrationIntents = []
+    if (this._calibrationWatchdog) {
+      clearTimeout(this._calibrationWatchdog)
+      this._calibrationWatchdog = null
+    }
+  }
+
   /**
    * WAVE 7110-B — Registra el bus de L1 de Chronos.
    * Llamado una vez durante la inicialización del motor.
@@ -711,6 +742,13 @@ export class NodeArbiter implements INodeArbiter {
     // L3+: Hephaestus custom intents (Diamond Data direct curves)
     for (let i = 0; i < this._hephaestusIntents.length; i++) {
       this._applyIntent(this._hephaestusIntents[i], 'hephaestus')
+    }
+
+    // L3++: Calibration intents (Live Calibration Mode — Hephaestus Canvas direct injection)
+    // Dominancia absoluta sobre todas las capas inferiores por LTP.
+    // No requiere pausar TimelineEngine ni ningún motor — machaca por orden de escritura.
+    for (let i = 0; i < this._calibrationIntents.length; i++) {
+      this._applyIntent(this._calibrationIntents[i], 'calibration')
     }
 
     // WAVE 4714: MANUAL HARD LOCK (ley del operador).
@@ -1140,11 +1178,11 @@ export class NodeArbiter implements INodeArbiter {
       // L3 SIEMPRE domina los canales que escribe — sin ramas HTP de coexistencia.
       // Los efectos blandos (CumbiaMoon/CorazonLatino) cargan su propio dimmer
       // (peakIntensity/heartIntensity) y no necesitan a L0 como soporte.
-      if (layer === 'effect' || layer === 'hephaestus') {
+      if (layer === 'effect' || layer === 'hephaestus' || layer === 'calibration') {
         this._registerL3Dominance(intent.nodeId, channel)
-        // WAVE 4918.5: Si Hephaestus escribe color a este nodo, marcarlo para
+        // WAVE 4918.5: Si Hephaestus/L3++ escribe color a este nodo, marcarlo para
         // bloquear L0 completamente (silencio total en ese nodo este frame).
-        if (layer === 'hephaestus' && (
+        if ((layer === 'hephaestus' || layer === 'calibration') && (
           channel === 'r' || channel === 'g' || channel === 'b' ||
           channel === 'red' || channel === 'green' || channel === 'blue' ||
           channel === 'colorWheel' || channel === 'color_wheel'
@@ -1160,8 +1198,8 @@ export class NodeArbiter implements INodeArbiter {
           record[channel] = 0
           continue
         }
-        // L3+ (hephaestus) tiene autoridad total sobre todos los canales.
-        if (layer === 'hephaestus') {
+        // L3+ (hephaestus) y L3++ (calibration) tienen autoridad total sobre todos los canales.
+        if (layer === 'hephaestus' || layer === 'calibration') {
           record[channel] = incoming
           continue
         }
@@ -1209,6 +1247,24 @@ export class NodeArbiter implements INodeArbiter {
         if (!isFiniteChannelValue(incoming)) continue
         this._registerL3Dominance(intent.nodeId, channel)
         // WAVE 4918.5: marcar el nodo para silenciar L0 completamente si Hephaestus escribe color
+        if (
+          channel === 'r' || channel === 'g' || channel === 'b' ||
+          channel === 'red' || channel === 'green' || channel === 'blue' ||
+          channel === 'colorWheel' || channel === 'color_wheel'
+        ) {
+          this._l3HephColorNodeIds.add(intent.nodeId)
+        }
+      }
+    }
+
+    // L3++: Calibration — registrar dominancia antes de L0/L1
+    for (let i = 0; i < this._calibrationIntents.length; i++) {
+      const intent = this._calibrationIntents[i]
+      const values = intent.values
+      for (const channel in values) {
+        const incoming = values[channel]
+        if (!isFiniteChannelValue(incoming)) continue
+        this._registerL3Dominance(intent.nodeId, channel)
         if (
           channel === 'r' || channel === 'g' || channel === 'b' ||
           channel === 'red' || channel === 'green' || channel === 'blue' ||
@@ -1284,7 +1340,12 @@ export class NodeArbiter implements INodeArbiter {
     this._releaseStates.clear()
     this._moverShieldNodeIds.clear()
     this._inhibitLimits.clear()
-    console.log('[NodeArbiter] 🧹 purgeForShow: stale L2 node refs cleared for new show')
+    this._calibrationIntents = []
+    if (this._calibrationWatchdog) {
+      clearTimeout(this._calibrationWatchdog)
+      this._calibrationWatchdog = null
+    }
+    console.log('[NodeArbiter] 🧹 purgeForShow: stale L2 node refs + L3++ calibration cleared for new show')
   }
 
   /**

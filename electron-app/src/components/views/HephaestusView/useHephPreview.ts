@@ -182,7 +182,7 @@ function evaluateFixtureFrame(
   const tilt16 = scaleToDMX16(n.get('tilt') ?? 0.5)
   const white = scaleToDMX('white', n.get('white') ?? 0)
   const amber = scaleToDMX('amber', n.get('amber') ?? 0)
-  const strobe = scaleToDMX('strobe', n.get('strobe') ?? 0)
+  const strobe = scaleToDMX('strobe', n.get('strobe') ?? n.get('strobeRate') ?? 0)
   const zoom = scaleToDMX('zoom', n.get('zoom') ?? 0.5)
   const focus = scaleToDMX('focus', n.get('focus') ?? 0.5)
 
@@ -208,13 +208,15 @@ function evaluateFixtureFrame(
 // HOOK
 // ═══════════════════════════════════════════════════════════════════════════
 
-export function useHephPreview(clip: HephAutomationClipV3 | null, stageFixtures: FixtureV2[] = []): HephPreviewState & {
+export type HephPreviewReturn = HephPreviewState & {
   play: () => void
   pause: () => void
   stop: () => void
   seek: (ms: number) => void
   previewDataRef: React.RefObject<HephPreviewData>
-} {
+}
+
+export function useHephPreview(clip: HephAutomationClipV3 | null, stageFixtures: FixtureV2[] = []): HephPreviewReturn {
   const [state, setState] = useState<HephPreviewState>({
     playheadMs: 0,
     progress: 0,
@@ -357,13 +359,14 @@ export function useHephPreview(clip: HephAutomationClipV3 | null, stageFixtures:
       }
 
       // ── Phase distribution: per-track resolution (WAVE 7036) ──
-      // Each track with spreadDeg > 0 gets its own phase offset map.
+      // Apply when spreadDeg > 0 (algorithmic) OR when manual overrides exist.
       // This matches HephaestusRuntime's per-track fixturePhases handling.
       const fixtureIds = targetPool.map(rf => rf.id)
       const trackPhaseByFixture = new Map<string, Map<string, number>>()
       let displayPhaseByFixture = new Map<string, number>()
       for (const track of c.tracks) {
-        if (track.phaseConfig && track.phaseConfig.spreadDeg > 0) {
+        const hasOverrides = track.phaseOverrides && Object.keys(track.phaseOverrides).length > 0
+        if (track.phaseConfig && (track.phaseConfig.spreadDeg > 0 || hasOverrides)) {
           const phases = resolveWithOverrides(fixtureIds, track.phaseConfig, track.phaseOverrides, c.durationMs)
           const m = new Map<string, number>()
           for (const fp of phases) {

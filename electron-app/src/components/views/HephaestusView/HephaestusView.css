@@ -344,6 +344,25 @@
   padding: 6px 10px;
 }
 
+/* 🎛️ WAVE 7120: Live Calibration active state */
+.heph-header__btn--calib-active {
+  background: rgba(232, 65, 24, 0.85);
+  border-color: rgba(232, 65, 24, 1);
+  color: #fff;
+  animation: pulse-calib 1.5s ease infinite;
+  box-shadow: 0 0 10px rgba(232, 65, 24, 0.5);
+}
+
+.heph-header__btn--calib-active:hover {
+  background: rgba(232, 65, 24, 1);
+  box-shadow: 0 0 14px rgba(232, 65, 24, 0.7);
+}
+
+@keyframes pulse-calib {
+  0%, 100% { box-shadow: 0 0 6px 1px rgba(232, 65, 24, 0.4); }
+  50% { box-shadow: 0 0 14px 3px rgba(232, 65, 24, 0.7); }
+}
+
 /* 🔥 WAVE 2213: Load Show button + show name badge */
 .heph-header__load-show {
   display: flex;

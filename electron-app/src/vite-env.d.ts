@@ -207,6 +207,12 @@ declare global {
       generateId: () => Promise<{ id: string }>
     }
 
+    // WAVE 7120: L3++ Live Calibration SAB bridge (SAB lives in preload, renderer sends plain data)
+    initCalibration: () => void
+    writeCalibration: (entries: ReadonlyArray<{ nodeId: string; channels: Array<{ channel: string; value: number }> }>) => void
+    clearCalibration: () => void
+    disableCalibration: () => Promise<{ ok: boolean }>
+
     // App
     minimize: () => void
     maximize: () => void
@@ -352,6 +358,7 @@ declare global {
     }
 
     // �🎭 WAVE 700.5.4: Mood Control
+    // WAVE 7120: L3++ Live Calibration SAB bridge
     mood: {
       setMood: (moodId: 'calm' | 'balanced' | 'punk') => Promise<{ success: boolean; moodId?: string; error?: string }>
       getMood: () => Promise<{ success: boolean; moodId: string; error?: string }>

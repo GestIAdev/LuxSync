@@ -253,7 +253,7 @@ export function toChronosProjectV3(file) {
         vibeBase: file.vibeBase ? { ...file.vibeBase } : null,
         tracks: file.tracks.map((t) => ({
             ...t,
-            clips: t.clips.map(c => luxClipToTimelineClip(c, c.type === 'vibe' ? 'vibe' : t.id)),
+            clips: t.clips.map(c => luxClipToTimelineClip(c, t.id)),
         })),
         markers: file.markers.map((m) => ({ ...m })),
         safety: file.safety ? { ...file.safety } : null,

@@ -18,6 +18,7 @@ import { getArtNetDiscovery } from '../../hal/drivers/ArtNetDiscovery'
 // WAVE 3403: AudioMatrix IPC bridge
 import { getTrinity } from '../../workers/TrinityOrchestrator'
 import type { InputSourceType } from '../audio/OmniInputTypes'
+import { TickEngine } from './tick/TickEngine'
 import { NodeGraphBuilder } from '../forge/NodeGraphBuilder'
 // ðŸ”¥ WAVE 2040.24: FixtureZone viene de la fuente canÃ³nica Ãºnica (ShowFileV2)
 import type { FixtureZone } from '../stage/ShowFileV2'
@@ -122,6 +123,31 @@ export function setupIPCHandlers(deps: IPCDependencies): void {
   setupArtNetHandlers(deps)
   setupAudioMatrixHandlers(deps)
   setupTheiaHandlers()
+  setupCalibrationHandlers()
+}
+
+// =============================================================================
+// ðŸŽ›ï¸ WAVE 7120: L3++ CALIBRATION â€” SAB IPC bridge
+// =============================================================================
+
+function setupCalibrationHandlers(): void {
+  ipcMain.on('hephaestus:calibration:init', () => {
+    console.log('[IPC] calibration:init received')
+  })
+
+  ipcMain.on('hephaestus:calibration:write', (_e, entries: ReadonlyArray<{ nodeId: string; channels: Array<{ channel: string; value: number }> }>) => {
+    TickEngine.writeCalibration(entries)
+  })
+
+  ipcMain.on('hephaestus:calibration:clear', () => {
+    console.log('[IPC] calibration:clear')
+    TickEngine.clearCalibration()
+  })
+
+  ipcMain.handle('hephaestus:calibration:disable', (): { ok: boolean } => {
+    TickEngine.clearCalibration()
+    return { ok: true }
+  })
 }
 
 // =============================================================================

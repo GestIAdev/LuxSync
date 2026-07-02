@@ -356,6 +356,16 @@ export interface INodeArbiter {
   setHephaestusIntents(intents: readonly INodeIntent[]): void
 
   /**
+   * WAVE 7120: L3++ Calibration — inject intents at highest priority pre-Blackout.
+   * Dominancia absoluta sobre L0/L1/L2/L3/L3+ por orden de escritura LTP.
+   * No requiere pausar ningún motor.
+   */
+  setCalibrationIntents(intents: readonly INodeIntent[]): void
+
+  /** WAVE 7120: Clear calibration bus (toggle OFF). */
+  clearCalibrationIntents(): void
+
+  /**
    * WAVE 7110-B: Registra el bus de L1 de Chronos.
    * El bus se limpia y rellena cada frame antes de arbitrate().
    * Comparte la capa L1 con Selene — misma prioridad.

@@ -27,6 +27,7 @@ import { BufferPoolManager } from '../src/core/aether/glass/BufferPoolManager';
 const bytenode = require('bytenode');
 // TITAN 2.0 Core Modules
 import { TitanOrchestrator, setupIPCHandlers, registerTitanOrchestrator } from '../src/core/orchestrator';
+import { TickEngine } from '../src/core/orchestrator/tick/TickEngine';
 // ⚡ WAVE 4529: Aether Programmer IPC Handlers
 import { registerAetherIPCHandlers } from '../src/core/aether/AetherIPCHandlers';
 // Stage Persistence (WAVE 365)
@@ -335,6 +336,19 @@ function createWindow() {
             const { port1, port2 } = new MessageChannelMain();
             glassPoolManager.attach(port1);
             mainWindow.webContents.postMessage('glass:port', null, [port2]);
+            // WAVE 7120: Calibration SAB port — preload sends SAB via MessagePort (structured clone supports SAB)
+            const { port1: calibPort1, port2: calibPort2 } = new MessageChannelMain();
+            calibPort1.on('message', ({ data }) => {
+                if (data instanceof SharedArrayBuffer) {
+                    console.log('[Main] Calibration SAB received via MessagePort, byteLength:', data.byteLength);
+                    TickEngine.setCalibrationSAB(data);
+                }
+                else {
+                    console.warn('[Main] Calibration port received non-SAB:', typeof data);
+                }
+            });
+            calibPort1.start();
+            mainWindow.webContents.postMessage('calibration:port', null, [calibPort2]);
         });
         // Broadcast fixtures if loaded
         if (patchedFixtures.length > 0 && mainWindow) {

@@ -14,6 +14,8 @@ import type { AudioMetrics, MusicalContext, VibeProfile } from '../../aether'
 import { FIX_DATA_FLOATS, CHANNELS_PER_UNI, MAX_UNIVERSES } from '../../aether/glass/layout'
 import { DmxUniverseWriter } from '../../aether/glass/DmxSabHandlers'
 import { getDmxSab } from '../../aether/glass/GlassMemory'
+import type { CalibrationEntry } from '../../aether/glass/CalibrationSAB'
+import type { INodeIntent } from '../../aether/intent-bus'
 import { SeleneTruth, createDefaultCognitive } from '../../protocol/SeleneProtocol'
 
 const ZONE_MAP: Readonly<Record<string, string>> = {
@@ -45,6 +47,10 @@ export class TickEngine {
   private _glassView = new Float32Array(FIX_DATA_FLOATS)
   private dmxWriter = new DmxUniverseWriter(getDmxSab())
   private _universeSnapshots = new Map<number, Uint8Array>()
+
+  // WAVE 7120: L3++ Calibration — plain entries stored directly (no SAB needed, both sides in main)
+  private static _calibEntries: readonly INodeIntent[] = []
+  private static _instances = new Set<TickEngine>()
 
   get brain() { return this.ctx.brain }
   get engine() { return this.ctx.engine }
@@ -101,7 +107,62 @@ export class TickEngine {
   get useBrain() { return this.ctx.useBrain }
 
   log(category: string, message: string, data?: Record<string, unknown>) { this.ctx.log(category, message, data) }
-  constructor(ctx: any) { this.ctx = ctx }
+  constructor(ctx: any) { this.ctx = ctx
+    TickEngine._instances.add(this)
+  }
+
+  /** WAVE 7120: Write calibration entries directly (no SAB — both sides in main process).
+   *  WAVE 7120.1: Compound fixture expansion — expand simple family nodeIds
+   *  (e.g. 'fixtureId:impact') to all real NodeGraph nodeIds of that family
+   *  (e.g. 'fixtureId:impact-20', 'fixtureId:impact-14') for compound fixtures. */
+  static writeCalibration(entries: ReadonlyArray<CalibrationEntry>): void {
+    // Get the first TickEngine instance to access the NodeGraph
+    const instance = TickEngine._instances.values().next().value as TickEngine | undefined
+    const graph = instance?._aetherGraph
+
+    const intents: INodeIntent[] = []
+    for (const entry of entries) {
+      const values: Record<string, number> = {}
+      for (const ch of entry.channels) {
+        values[ch.channel] = ch.value
+      }
+
+      if (graph) {
+        // Try to expand compound fixture: nodeId format is 'fixtureId:family'
+        const sep = entry.nodeId.lastIndexOf(':')
+        if (sep > 0) {
+          const fixtureId = entry.nodeId.slice(0, sep)
+          const family = entry.nodeId.slice(sep + 1)
+          const deviceNodes = graph.getDeviceNodes(fixtureId as import('../../aether/types').DeviceId)
+          if (deviceNodes.length > 0) {
+            // Find all nodes of this family
+            const familyNodeIds: string[] = []
+            const familyUpper = family.toUpperCase()
+            for (const nodeId of deviceNodes) {
+              const nd = graph.getNodeData(nodeId)
+              if (nd && nd.family === familyUpper) familyNodeIds.push(nodeId)
+            }
+            if (familyNodeIds.length > 0) {
+              // Compound fixture: emit one intent per real node
+              for (const nodeId of familyNodeIds) {
+                intents.push({ nodeId, values, priority: 0, confidence: 1, source: 'hephaestus' })
+              }
+              continue
+            }
+          }
+        }
+      }
+
+      // Fallback: use the nodeId as-is (simple fixture or no graph available)
+      intents.push({ nodeId: entry.nodeId, values, priority: 0, confidence: 1, source: 'hephaestus' })
+    }
+    TickEngine._calibEntries = intents
+  }
+
+  /** WAVE 7120: Clear calibration entries. */
+  static clearCalibration(): void {
+    TickEngine._calibEntries = []
+  }
 
   async tick(): Promise<void> {
     // ⏱️ WAVE 5037: CHRONOS-ALERT — perf profiling del tick loop.
@@ -1046,6 +1107,13 @@ export class TickEngine {
       // ðŸŽ¬ WAVE 4867: TheiaVideoRenderer tick REMOVED â€” no callers to attachTheiaRenderer,
       // field is always null. Safe to strip from hot path.
       this._pixelMapAdapter.ingest(aetherArbiter, this._aetherCanvasManager)
+
+      // WAVE 7120: L3++ Calibration — inject entries directly (no SAB)
+      if (TickEngine._calibEntries.length > 0) {
+        aetherArbiter.setCalibrationIntents(TickEngine._calibEntries)
+      } else {
+        aetherArbiter.clearCalibrationIntents()
+      }
 
       // 3. El Arbiter unifica todas las capas â†’ ArbitratedNodeMap
       aetherArbiter.setSystemIntents(this._aetherBus)

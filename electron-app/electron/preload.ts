@@ -55,6 +55,19 @@ export interface SeleneStateUpdate {
 
 // API expuesta al renderer de forma segura
 const api = {
+  // WAVE 7120: L3++ Live Calibration — entries sent via IPC to main (SAB lives in main only)
+  initCalibration: (): void => {
+    ipcRenderer.send('hephaestus:calibration:init')
+  },
+  writeCalibration: (entries: ReadonlyArray<{ nodeId: string; channels: Array<{ channel: string; value: number }> }>): void => {
+    ipcRenderer.send('hephaestus:calibration:write', entries)
+  },
+  clearCalibration: (): void => {
+    ipcRenderer.send('hephaestus:calibration:clear')
+  },
+  disableCalibration: (): Promise<{ ok: boolean }> =>
+    ipcRenderer.invoke('hephaestus:calibration:disable'),
+
   // ============================================
   // APP
   // ============================================

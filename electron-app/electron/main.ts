@@ -437,6 +437,8 @@ function createWindow(): void {
     const { port1, port2 } = new MessageChannelMain()
     glassPoolManager.attach(port1)
     mainWindow.webContents.postMessage('glass:port', null, [port2])
+
+    // WAVE 7120: Calibration SAB is created in setupCalibrationHandlers (IPCHandlers.ts)
   })
     // Broadcast fixtures if loaded
     if (patchedFixtures.length > 0 && mainWindow) {

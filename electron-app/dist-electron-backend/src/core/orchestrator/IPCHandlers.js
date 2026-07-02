@@ -56,6 +56,15 @@ export function setupIPCHandlers(deps) {
     setupArtNetHandlers(deps);
     setupAudioMatrixHandlers(deps);
     setupTheiaHandlers();
+    setupCalibrationHandlers();
+}
+// =============================================================================
+// ðŸŽ›ï¸ WAVE 7120: L3++ CALIBRATION â€” SAB IPC bridge
+// =============================================================================
+function setupCalibrationHandlers() {
+    ipcMain.handle('hephaestus:calibration:disable', () => {
+        return { ok: true };
+    });
 }
 // =============================================================================
 // 🎬 WAVE 4860: THEIA ENGINE — SAB one-shot IPC bridge

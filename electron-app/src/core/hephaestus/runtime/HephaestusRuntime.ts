@@ -928,7 +928,8 @@ export class HephaestusRuntime {
     const evaluator = new CurveEvaluator(singleCurveMap, durationMs)
 
     let fixturePhases: FixturePhase[] | null = null
-    if (phaseConfig && phaseConfig.spreadDeg > 0 && fixtureIds.length > 0) {
+    const hasOverrides = phaseOverrides && Object.keys(phaseOverrides).length > 0
+    if (phaseConfig && (phaseConfig.spreadDeg > 0 || hasOverrides) && fixtureIds.length > 0) {
       fixturePhases = resolveWithOverrides(fixtureIds, phaseConfig, phaseOverrides, durationMs)
     }
 

@@ -33,6 +33,7 @@ import type {
 } from '../../../core/hephaestus/types'
 import type { EffectZone } from '../../../core/effects/types'
 import { serializeHephClip } from '../../../core/hephaestus/types'
+import { evaluateGates } from './safety/gateEvaluators'
 import './HephaestusView.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -105,6 +106,11 @@ const HephaestusView: React.FC = () => {
   // ── Derived: param count for header display ──
   const paramCount = useMemo(() => clip?.tracks.length ?? 0, [clip])
 
+  // ── WAVE 7123: Gate evaluation for save blocking ──
+  const gateResults = useMemo(() => clip ? evaluateGates(clip) : [], [clip])
+  const failingGates = useMemo(() => gateResults.filter(g => g.status === 'fail'), [gateResults])
+  const hasGateFailures = failingGates.length > 0
+
   // ── temporal shim for render section (undo/redo buttons) ──
   const temporal = {
     canUndo: undoStackLen > 0,
@@ -138,10 +144,11 @@ const HephaestusView: React.FC = () => {
     console.log(`[HephaestusView] 🔍 BPM changed → ${liveBpm} (capturedBpm: ${capturedBpm}, targetBpm: ${targetBpm})`)
   }, [liveBpm, capturedBpm, targetBpm])
 
-  // Clear save message after 3 seconds
+  // Clear save message after timeout (6s for gate failures, 3s otherwise)
   useEffect(() => {
     if (saveMessage) {
-      const timer = setTimeout(() => setSaveMessage(null), 3000)
+      const isGateFailure = saveMessage.startsWith('🛡')
+      const timer = setTimeout(() => setSaveMessage(null), isGateFailure ? 6000 : 3000)
       return () => clearTimeout(timer)
     }
   }, [saveMessage])
@@ -154,6 +161,13 @@ const HephaestusView: React.FC = () => {
     if (!window.luxsync?.hephaestus?.save) {
       console.warn('[Hephaestus] IPC not available, cannot save')
       setSaveMessage('⚠️ Save not available (demo mode)')
+      return
+    }
+
+    // WAVE 7123: Block save if any safety gate is failing
+    if (hasGateFailures) {
+      const messages = failingGates.map(g => `${g.id}: ${g.description}`).join(' · ')
+      setSaveMessage(`🛡 ${failingGates.length} gate(s) failing — ${messages}`)
       return
     }
 
@@ -186,12 +200,19 @@ const HephaestusView: React.FC = () => {
     } finally {
       setIsSaving(false)
     }
-  }, [clip, refreshMetadata])
+  }, [clip, refreshMetadata, hasGateFailures, failingGates])
 
   const handleSaveAs = useCallback(async () => {
     if (!window.luxsync?.hephaestus?.save) {
       console.warn('[Hephaestus] IPC not available, cannot save')
       setSaveMessage('⚠️ Save not available (demo mode)')
+      return
+    }
+
+    // WAVE 7123: Block save-as if any safety gate is failing
+    if (hasGateFailures) {
+      const messages = failingGates.map(g => `${g.id}: ${g.description}`).join(' · ')
+      setSaveMessage(`🛡 ${failingGates.length} gate(s) failing — ${messages}`)
       return
     }
 
@@ -219,7 +240,7 @@ const HephaestusView: React.FC = () => {
     } finally {
       setIsSaving(false)
     }
-  }, [clip, temporalActions, refreshMetadata])
+  }, [clip, temporalActions, refreshMetadata, hasGateFailures, failingGates])
 
   const handleLoad = useCallback(async (clipId: string) => {
     if (!window.luxsync?.hephaestus?.load) {
@@ -555,18 +576,18 @@ const HephaestusView: React.FC = () => {
             📄 NEW
           </button>
           <button 
-            className={`heph-header__btn ${isDirty ? 'heph-header__btn--dirty' : ''}`} 
+            className={`heph-header__btn ${isDirty ? 'heph-header__btn--dirty' : ''} ${hasGateFailures ? 'heph-header__btn--gate-blocked' : ''}`} 
             onClick={handleSave}
-            disabled={isSaving}
-            title="Save Clip"
+            disabled={isSaving || hasGateFailures}
+            title={hasGateFailures ? `Blocked: ${failingGates.map(g => g.id).join(', ')} gate(s) failing` : 'Save Clip'}
           >
-            {isSaving ? '💾 SAVING...' : '💾 SAVE'}
+            {isSaving ? '💾 SAVING...' : hasGateFailures ? '🛡 BLOCKED' : '💾 SAVE'}
           </button>
           <button 
-            className="heph-header__btn heph-header__btn--clone" 
+            className={`heph-header__btn heph-header__btn--clone ${hasGateFailures ? 'heph-header__btn--gate-blocked' : ''}`} 
             onClick={handleSaveAs}
-            disabled={isSaving}
-            title="Save As... (Clone with new ID)"
+            disabled={isSaving || hasGateFailures}
+            title={hasGateFailures ? `Blocked: ${failingGates.map(g => g.id).join(', ')} gate(s) failing` : 'Save As... (Clone with new ID)'}
           >
             📑 SAVE AS...
           </button>

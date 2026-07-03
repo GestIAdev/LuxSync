@@ -340,6 +340,20 @@
   animation: pulse-dirty 1.5s ease infinite;
 }
 
+/* WAVE 7123: Save blocked by safety gates */
+.heph-header__btn--gate-blocked {
+  border-color: rgba(248, 113, 113, 0.6);
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.08);
+  cursor: not-allowed;
+  animation: pulse-gate-blocked 2s ease infinite;
+}
+
+@keyframes pulse-gate-blocked {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
 .heph-header__btn--toggle {
   padding: 6px 10px;
 }

@@ -7,6 +7,7 @@
 
 import type { HephAutomationClipV3 } from '../../../../core/hephaestus/types'
 import type { CognitiveDNA, SimulationMeta } from '../../../../core/arsenal/lfxTypes'
+import { ENERGY_ZONES } from '../../../../core/arsenal/LfxClipInstance'
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 
@@ -77,7 +78,12 @@ function evalG3(dna: CognitiveDNA | undefined): GateResult {
   }
 }
 
-/** G4: At least 1 vibe AND 1 section declared. */
+/**
+ * G4: At least 1 vibe AND 1 section declared.
+ * WAVE 7123: Also validates energy zone count for Montecarlo equilibrium.
+ *   - 0 zones → fail (orphan effect)
+ *   - >2 zones → fail (Montecarlo balance violated)
+ */
 function evalG4(dna: CognitiveDNA | undefined): GateResult {
   if (!dna) {
     return {
@@ -90,6 +96,31 @@ function evalG4(dna: CognitiveDNA | undefined): GateResult {
   }
   const hasVibe = dna.compatibleVibes.length >= 1
   const hasSection = dna.validSections.length >= 1
+
+  // WAVE 7123: Energy Zone Gate Clamp
+  const lo = ENERGY_ZONES.indexOf(dna.energyZone.min as typeof ENERGY_ZONES[number])
+  const hi = ENERGY_ZONES.indexOf(dna.energyZone.max as typeof ENERGY_ZONES[number])
+  const zoneSpan = lo >= 0 && hi >= 0 ? hi - lo + 1 : 0
+
+  if (zoneSpan === 0) {
+    return {
+      id: 'G4',
+      status: 'fail',
+      label: 'COMPAT',
+      description: 'Efecto huérfano: Selecciona al menos 1 zona energética',
+      autoFixable: false,
+    }
+  }
+  if (zoneSpan > 2) {
+    return {
+      id: 'G4',
+      status: 'fail',
+      label: 'COMPAT',
+      description: `Equilibrio Montecarlo violado: ${zoneSpan} zonas seleccionadas (máximo 2)`,
+      autoFixable: false,
+    }
+  }
+
   const pass = hasVibe && hasSection
   const warn = hasVibe || hasSection
   return {
@@ -97,7 +128,7 @@ function evalG4(dna: CognitiveDNA | undefined): GateResult {
     status: pass ? 'pass' : warn ? 'warn' : 'fail',
     label: 'COMPAT',
     description: pass
-      ? `${dna.compatibleVibes.length} vibe(s) · ${dna.validSections.length} section(s)`
+      ? `${dna.compatibleVibes.length} vibe(s) · ${dna.validSections.length} section(s) · ${zoneSpan} zone(s)`
       : `Missing: ${!hasVibe ? 'compatible vibes ' : ''}${!hasSection ? 'valid sections' : ''}`.trim(),
     autoFixable: false,
   }

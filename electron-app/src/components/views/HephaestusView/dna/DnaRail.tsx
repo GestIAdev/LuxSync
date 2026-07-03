@@ -375,6 +375,8 @@ export const DnaRail: React.FC<DnaRailProps> = ({
       const next = has
         ? prev.zones.filter(z => z !== zone)
         : [...prev.zones, zone]
+      // WAVE 7123: Montecarlo equilibrium — max 2 energy zones
+      if (!has && next.length > 2) return prev
       return { ...prev, zones: next.length > 0 ? next : prev.zones }
     })
   }, [])

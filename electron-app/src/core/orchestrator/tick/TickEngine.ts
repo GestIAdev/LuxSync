@@ -170,6 +170,10 @@ export class TickEngine {
     // el frame scheduler empieza a saltar frames → parpadeo / stutter.
     const _tickStart = performance.now()
 
+    // WAVE 7124: Forensic phase timers (read-only instrumentation)
+    let _t_ingest_end = 0, _t_arbitrate_start = 0, _t_arbitrate_end = 0
+    let _t_hal_start = 0, _t_hal_end = 0, _t_glass_start = 0, _t_glass_end = 0
+
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // ðŸ”’ WAVE 2211: STAMPEDE GUARD (now in FrameScheduler._onInterval())
     // The FrameScheduler skips ticks if the previous async processFrame()
@@ -909,6 +913,8 @@ export class TickEngine {
     // Zero-alloc: los buffers Uint8Array son propiedad del NodeResolver.
     // Se envÃ­an al driver por referencia directa (zero-copy al hardware).
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    _t_ingest_end = performance.now()
+
     let blackoutActive = false
     if (this._aetherHasDevices && this.hal) {
       const aetherArbiter = this._aetherArbiter
@@ -1120,7 +1126,9 @@ export class TickEngine {
       aetherArbiter.setEffectIntents(this._effectBus.getAll())
       // WAVE 7110-B: Wire Chronos L1 bus (reference assignment, harmless to repeat).
       aetherArbiter.setChronosBus(this._chronosAetherAdapter.getBus())
+      _t_arbitrate_start = performance.now()
       const arbitrated = aetherArbiter.arbitrate()
+      _t_arbitrate_end = performance.now()
 
       // 3.5. âš™ï¸ WAVE 4518.1: Physics Post-Processor â€” aplica inercia a nodos KINETIC
       // WOODSTOCK: deltaMs viene del FrameScheduler (performance.now()-based), NUNCA Date.now()
@@ -1189,6 +1197,7 @@ export class TickEngine {
       // WAVE 6019: FASE 2 ELIMINADA — el HAL ya no recibe datos del TickEngine.
       // Los drivers leen del SAB a su propio ritmo. TickEngine solo hace commitFrame().
 
+      _t_hal_start = performance.now()
       for (const universe of aetherResolver.registeredUniverses) {
         // ðŸ›‚ WAVE 4557: shouldSendUniverse checks virtual-only + throttle
         if (!aetherSafety.shouldSendUniverse(universe)) continue
@@ -1271,16 +1280,12 @@ export class TickEngine {
       if (uniList.length > 0) {
         this.dmxWriter.commitFrame(this.frameCount, uniList, dirtyMask)
       }
+      _t_hal_end = performance.now()
 
       // ðŸ›‚ WAVE 4557: Safety telemetry (~1Hz)
+      // WAVE 7124: AduanaGate log silenced for forensic profiling clarity
       if (this.frameCount % 44 === 0) {
-        const tel = aetherSafety.consumeTelemetry()
-        if (tel.velocityClamps > 0 || tel.airbagHits > 0 || tel.aduanaBlocks > 0 || tel.darkSpinActive > 0) {
-          console.log(
-            `[AetherAduana ðŸ›‚] VelClamp:${tel.velocityClamps} Airbag:${tel.airbagHits} ` +
-            `DarkSpin:${tel.darkSpinActive} AduanaGate:${tel.aduanaBlocks}`,
-          )
-        }
+        aetherSafety.consumeTelemetry()
       }
       }
     }
@@ -1288,6 +1293,7 @@ export class TickEngine {
     // ðŸ§¹ WAVE 2227 + WAVE 3065: El visual gate fue eliminado en WAVE 2227.
     // WAVE 3065 refuerza esto: la Aduana DMX (flushToDriver) es el ÃšNICO gate.
     // 🩸 WAVE-6060: GlassBridge SIEMPRE emite, incluso sin dispositivos Aether.
+    _t_glass_start = performance.now()
     const view = this._glassView
     for (let fi = 0; fi < fixtureStates.length && fi < 2047; fi++) {
       const fs = fixtureStates[fi]
@@ -1317,6 +1323,7 @@ export class TickEngine {
     if (this.ctx.glassPool) {
       this.ctx.glassPool.pushFrame(view)
     }
+    _t_glass_end = performance.now()
 
     // El broadcast UI siempre recibe los valores reales del engine.
 
@@ -1549,18 +1556,19 @@ export class TickEngine {
       })
     }
 
-    // ⏱️ WAVE 5037: CHRONOS-ALERT — reportar si el tick bloqueó el Event Loop.
+    // ⏱️ WAVE 7124: FORENSIC PROFILING — reportar si el tick ahogó el Event Loop.
     const _tickDelta = performance.now() - _tickStart
     if (_tickDelta > 15) {
+      const _t_ingest = (_t_ingest_end - _tickStart).toFixed(1)
+      const _t_arb = (_t_arbitrate_end - _t_arbitrate_start).toFixed(1)
+      const _t_glass = (_t_glass_end - _t_glass_start).toFixed(1)
+      const _t_hal = (_t_hal_end - _t_hal_start).toFixed(1)
       console.error(
-        `[CHRONOS-ALERT] ⏱️ Tick bloqueó el Event Loop durante ${_tickDelta.toFixed(2)}ms ` +
-        `(frame=${this.frameCount})`
-      )
-    } else if (_tickDelta > 8 && this.frameCount % 44 === 0) {
-      // Throttled warning for sub-lethal but concerning times (~1Hz)
-      console.warn(
-        `[CHRONOS-ALERT] ⚠️ Tick lento: ${_tickDelta.toFixed(2)}ms ` +
-        `(frame=${this.frameCount})`
+        `[FORENSE] Tick ahogado (${_tickDelta.toFixed(1)}ms) | ` +
+        `IPC_Read: ${_t_ingest}ms | ` +
+        `Arbitraje: ${_t_arb}ms | ` +
+        `GlassBridge: ${_t_glass}ms | ` +
+        `HAL: ${_t_hal}ms`
       )
     }
   }

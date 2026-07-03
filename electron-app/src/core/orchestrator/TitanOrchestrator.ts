@@ -797,7 +797,10 @@ export class TitanOrchestrator {
     this._glassTelemetryInterval = setInterval(() => {
       if (this.glassPool) {
         const m = this.glassPool.getMetrics()
-        console.log(`[GlassBridge] 🏓 Ping-Pong Status: Sent: ${m.framesSent} | Dropped: ${m.framesDropped} | In-Flight: ${m.inFlight} | PoolFree: ${m.poolFree}`)
+        // WAVE 7124: Ping-Pong log silenced for forensic profiling clarity
+        if (m.framesDropped > 0) {
+          console.warn(`[GlassBridge] 🏓 DROPS: ${m.framesDropped} | In-Flight: ${m.inFlight} | PoolFree: ${m.poolFree}`)
+        }
       }
     }, 2000)
   }

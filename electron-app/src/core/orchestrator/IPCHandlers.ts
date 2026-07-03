@@ -136,7 +136,13 @@ function setupCalibrationHandlers(): void {
   })
 
   ipcMain.on('hephaestus:calibration:write', (_e, entries: ReadonlyArray<{ nodeId: string; channels: Array<{ channel: string; value: number }> }>) => {
+    // WAVE 7124: Forensic IPC timer — measure parse + writeCalibration latency
+    const _ipcStart = performance.now()
     TickEngine.writeCalibration(entries)
+    const _ipcDelta = performance.now() - _ipcStart
+    if (_ipcDelta > 5) {
+      console.warn(`[FORENSE] IPC calibration:write took ${_ipcDelta.toFixed(1)}ms (${entries.length} entries)`)
+    }
   })
 
   ipcMain.on('hephaestus:calibration:clear', () => {

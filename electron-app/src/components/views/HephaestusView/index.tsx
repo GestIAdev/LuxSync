@@ -404,13 +404,19 @@ const HephaestusView: React.FC = () => {
       {/* ══ TIER 1: GLOBAL I/O BAR ══ */}
       <header className="heph-global-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '40px', padding: '0 16px', background: 'transparent', borderBottom: '1px solid rgba(255, 107, 43, 0.1)', userSelect: 'none', position: 'relative', zIndex: 1000 }}>
 
-        {/* BLOQUE IZQUIERDO: Identity */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        {/* BLOQUE IZQUIERDO: Identity + Clip Name */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <div className="heph-logo" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <HephLogoIcon size={20} className="heph-header__icon" />
-            <span style={{ fontSize: '13px', fontWeight: 800, letterSpacing: '0.05em', color: '#eee' }}>HEPHAESTUS</span>
+            <span style={{
+              fontSize: '13px',
+              fontWeight: 800,
+              letterSpacing: '0.12em',
+              color: '#ff8c42',
+              textShadow: '0 0 10px rgba(255, 107, 43, 0.5), 0 0 20px rgba(255, 107, 43, 0.2)',
+            }}>HEPHAESTUS</span>
           </div>
-        </div>
+          <span style={{ color: 'rgba(255, 107, 43, 0.2)' }}>│</span>
 
         {/* BLOQUE CENTRAL: Active File Metadata */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12px', color: '#888', minWidth: 0, flex: '1 1 0' }}>
@@ -493,6 +499,7 @@ const HephaestusView: React.FC = () => {
               <span className="heph-header__save-message">{saveMessage}</span>
             </>
           )}
+        </div>
         </div>
 
         {/* BLOQUE DERECHO: File System + Global State */}

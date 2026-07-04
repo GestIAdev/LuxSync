@@ -404,68 +404,12 @@ const HephaestusView: React.FC = () => {
       {/* ══ TIER 1: GLOBAL I/O BAR ══ */}
       <header className="heph-global-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '40px', padding: '0 16px', background: 'transparent', borderBottom: '1px solid rgba(255, 107, 43, 0.1)', userSelect: 'none', position: 'relative', zIndex: 1000 }}>
 
-        {/* BLOQUE IZQUIERDO: Identity + Tab Rail */}
+        {/* BLOQUE IZQUIERDO: Identity */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div className="heph-logo" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <HephLogoIcon size={20} className="heph-header__icon" />
             <span style={{ fontSize: '13px', fontWeight: 800, letterSpacing: '0.05em', color: '#eee' }}>HEPHAESTUS</span>
           </div>
-          <nav className="heph-tab-rail" style={{ display: 'flex', gap: '4px', background: 'rgba(255, 255, 255, 0.03)', padding: '2px', borderRadius: '4px' }}>
-            <button
-              type="button"
-              onClick={() => setActiveTab('sculpt')}
-              style={{
-                padding: '4px 12px',
-                border: 'none',
-                borderRadius: '3px',
-                background: activeTab === 'sculpt' ? '#ff6600' : 'transparent',
-                color: activeTab === 'sculpt' ? '#fff' : '#888',
-                textShadow: activeTab === 'sculpt' ? '0 0 8px rgba(255,85,0,0.6)' : 'none',
-                cursor: 'pointer',
-                fontSize: '11px',
-                fontWeight: 700,
-                letterSpacing: '0.08em',
-              }}
-            >
-              ✏️ FORGE
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('lab')}
-              style={{
-                padding: '4px 12px',
-                border: 'none',
-                borderRadius: '3px',
-                background: activeTab === 'lab' ? '#ff6600' : 'transparent',
-                color: activeTab === 'lab' ? '#fff' : '#888',
-                textShadow: activeTab === 'lab' ? '0 0 8px rgba(255,85,0,0.6)' : 'none',
-                cursor: 'pointer',
-                fontSize: '11px',
-                fontWeight: 700,
-                letterSpacing: '0.08em',
-              }}
-            >
-              📐 LABORATORY
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('genesis')}
-              style={{
-                padding: '4px 12px',
-                border: 'none',
-                borderRadius: '3px',
-                background: activeTab === 'genesis' ? '#00cc66' : 'transparent',
-                color: activeTab === 'genesis' ? '#fff' : '#888',
-                textShadow: activeTab === 'genesis' ? '0 0 8px rgba(0,204,102,0.6)' : 'none',
-                cursor: 'pointer',
-                fontSize: '11px',
-                fontWeight: 700,
-                letterSpacing: '0.08em',
-              }}
-            >
-              🧬 GENESIS
-            </button>
-          </nav>
         </div>
 
         {/* BLOQUE CENTRAL: Active File Metadata */}
@@ -630,6 +574,88 @@ const HephaestusView: React.FC = () => {
           </button>
         </div>
       </header>
+
+      {/* ══ TIER 2: SUB-NAV BAR (Tab Switcher) ══ */}
+      <nav className="heph-subnav" style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '4px',
+        height: '30px',
+        padding: '0 16px',
+        background: 'rgba(255, 255, 255, 0.02)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+        flexShrink: 0,
+        userSelect: 'none',
+      }}>
+        <div style={{ display: 'flex', gap: '2px', background: 'rgba(255, 255, 255, 0.03)', padding: '2px', borderRadius: '4px' }}>
+          <button
+            type="button"
+            onClick={() => setActiveTab('sculpt')}
+            className="heph-subnav__tab"
+            style={{
+              padding: '3px 14px',
+              border: 'none',
+              borderRadius: '3px',
+              background: activeTab === 'sculpt' ? '#ff6600' : 'transparent',
+              color: activeTab === 'sculpt' ? '#fff' : '#888',
+              textShadow: activeTab === 'sculpt' ? '0 0 8px rgba(255,85,0,0.6)' : 'none',
+              cursor: 'pointer',
+              fontSize: '10px',
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            ✏️ FORGE
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('lab')}
+            className="heph-subnav__tab"
+            style={{
+              padding: '3px 14px',
+              border: 'none',
+              borderRadius: '3px',
+              background: activeTab === 'lab' ? '#ff6600' : 'transparent',
+              color: activeTab === 'lab' ? '#fff' : '#888',
+              textShadow: activeTab === 'lab' ? '0 0 8px rgba(255,85,0,0.6)' : 'none',
+              cursor: 'pointer',
+              fontSize: '10px',
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            📐 LABORATORY
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('genesis')}
+            className="heph-subnav__tab heph-subnav__tab--genesis"
+            style={{
+              padding: '3px 14px',
+              border: 'none',
+              borderRadius: '3px',
+              background: activeTab === 'genesis' ? '#00cc66' : 'transparent',
+              color: activeTab === 'genesis' ? '#fff' : '#888',
+              textShadow: activeTab === 'genesis' ? '0 0 8px rgba(0,204,102,0.6)' : 'none',
+              cursor: 'pointer',
+              fontSize: '10px',
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            🧬 GENESIS
+          </button>
+        </div>
+        <span style={{ flex: 1 }} />
+        <span style={{ fontSize: '9px', color: '#444', letterSpacing: '0.08em' }}>
+          {activeTab === 'sculpt' && 'SCULPT MODE — Curve Editor & Parameter Lanes'}
+          {activeTab === 'lab' && 'LABORATORY — Phase Rack & DNA Profiler'}
+          {activeTab === 'genesis' && 'GENESIS — Genetic Laboratory & Evolution Engine'}
+        </span>
+      </nav>
 
       {/* ══ TIER 3: ACTIVE WORKSPACE HOST ══ */}
       <div className="heph-tier3-host" style={{ display: 'flex', flex: 1, minHeight: 0, width: '100%', overflow: 'hidden' }}>

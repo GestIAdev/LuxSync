@@ -29,6 +29,44 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+ * SUB-NAV BAR (Tier 2 — Tab Switcher)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.heph-subnav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.heph-subnav__tab {
+  padding: 3px 14px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: #888;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  transition: all 0.15s ease;
+}
+
+.heph-subnav__tab:hover {
+  color: #ccc;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.heph-subnav__tab--genesis:hover {
+  color: #66dd99;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
  * HEADER BAR
  * ═══════════════════════════════════════════════════════════════════════════ */
 

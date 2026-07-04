@@ -31,6 +31,9 @@ import {
 } from './operators/GeneticOperators'
 import { prenatalScreening, type ScreeningResult } from './screening/PrenatalScreening'
 import { computeRaritySimple, type RarityOutput } from './loot/RarityEngine'
+import { getHeatmapLogger } from './fitness/HeatmapLogger'
+import { getSpeciationEngine, type SpeciationResult } from './ecology/SpeciationEngine'
+import { getLifecycleManager, type LifecycleResult } from './ecology/LifecycleManager'
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 
@@ -275,6 +278,46 @@ export class ColiseumService {
     )
 
     return results
+  }
+
+  /**
+   * Runs ecological maintenance in geological time (background task).
+   *
+   * Pipeline:
+   *   1. Flush pending HeatmapLogger events → batch insert to context_heatmaps
+   *   2. runSpeciation() → K-means clustering on bezier signatures → species_id assignment
+   *   3. LifecycleManager.runTransitions() → promotions/demotions/culling + Hall of Fame scan
+   *
+   * Designed to be invoked by a background timer every few minutes or on demand.
+   * NEVER call from the 44Hz hot path.
+   */
+  async runEcologicalMaintenance(): Promise<{
+    heatmapFlush: boolean
+    speciation: SpeciationResult
+    lifecycle: LifecycleResult
+  }> {
+    // 1. Flush heatmap logger
+    const logger = getHeatmapLogger()
+    await logger.flush()
+
+    // 2. Run speciation
+    const speciation = getSpeciationEngine().runSpeciation()
+
+    // 3. Run lifecycle transitions
+    const lifecycle = getLifecycleManager().runTransitions()
+
+    console.log(
+      `[Coliseum 🧬] Ecological maintenance complete: ` +
+      `${speciation.speciesCount} species, ` +
+      `${lifecycle.promotions}↑ ${lifecycle.demotions}↓ ${lifecycle.culls}✂️, ` +
+      `${lifecycle.hallOfFameCandidates} HoF candidates`,
+    )
+
+    return {
+      heatmapFlush: true,
+      speciation,
+      lifecycle,
+    }
   }
 }
 

@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// 🧬 WAVE 5000.V3 — Genesis Engine — Barrel Export (Era I + II + III)
+// 🧬 WAVE 5000.V3 — Genesis Engine — Barrel Export (Era I + II + III + IV)
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Era I — Cold Infrastructure
@@ -50,6 +50,16 @@ export type { FitnessUpdate, CustomsEvaluation, HeatmapContext } from './fitness
 
 export { HeatmapLogger, getHeatmapLogger, __resetHeatmapLoggerForTests } from './fitness/HeatmapLogger'
 export type { FireEvent, HeatmapLoggerStats } from './fitness/HeatmapLogger'
+
+// Era IV — Speciation & Lifecycle Transitions
+export { SpeciationEngine, getSpeciationEngine, __resetSpeciationEngineForTests } from './ecology/SpeciationEngine'
+export type { OrganismSignature, SpeciationResult } from './ecology/SpeciationEngine'
+
+export { LifecycleManager, getLifecycleManager, __resetLifecycleManagerForTests } from './ecology/LifecycleManager'
+export type { TransitionRecord, LifecycleResult } from './ecology/LifecycleManager'
+
+export { SpeciesQuotaSelector, getSpeciesQuotaSelector, __resetSpeciesQuotaSelectorForTests } from './ecology/SpeciesQuotaSelector'
+export type { CandidateOrganism, SelectionResult } from './ecology/SpeciesQuotaSelector'
 
 export type {
   RarityTier,

@@ -532,6 +532,27 @@ const api = {
     generateId: (): Promise<{ id: string }> =>
       ipcRenderer.invoke('heph:generateId'),
   },
+
+  // ============================================
+  // 🧬 WAVE 5000.V3 — GENESIS ENGINE (Era V)
+  // IPC bridge for the Genetic Laboratory UI
+  // ============================================
+  genesis: {
+    getOrganisms: (filter?: { rarityTier?: string; status?: string; speciesId?: string; limit?: number }): Promise<{ success: boolean; organisms: unknown[]; error?: string }> =>
+      ipcRenderer.invoke('genesis:getOrganisms', filter),
+    getHallOfFame: (): Promise<{ success: boolean; candidates: unknown[]; error?: string }> =>
+      ipcRenderer.invoke('genesis:getHallOfFame'),
+    getLineageTree: (organismId: string): Promise<{ success: boolean; lineage: unknown[]; error?: string }> =>
+      ipcRenderer.invoke('genesis:getLineageTree', organismId),
+    cullOrganism: (organismId: string): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('genesis:cullOrganism', organismId),
+    canonizeOrganism: (organismId: string, customName: string): Promise<{ success: boolean; blueprintId?: string; customName?: string; error?: string }> =>
+      ipcRenderer.invoke('genesis:canonizeOrganism', organismId, customName),
+    runMaintenance: (): Promise<{ success: boolean; result?: unknown; error?: string }> =>
+      ipcRenderer.invoke('genesis:runMaintenance'),
+    getSpecies: (): Promise<{ success: boolean; species: unknown[]; error?: string }> =>
+      ipcRenderer.invoke('genesis:getSpecies'),
+  },
 }
 
 // ============================================================================

@@ -43,6 +43,9 @@ import { setupKeyForgeIPCHandlers } from '../src/core/keyforge/KeyForgeIPCHandle
 // ⚒️ Hephaestus File I/O (WAVE 2030.5)
 import { setupHephIPCHandlers } from '../src/core/hephaestus'
 
+// 🧬 WAVE 5000.V3: Genesis Engine IPC (Era V)
+import { setupGenesisIPCHandlers } from '../src/core/genesis/genesisIpc'
+
 // 🎬 WAVE 4864: Theia Output Window manager (Phase 3)
 import { setupTheiaWindowManager } from './TheiaWindowManager'
 
@@ -515,6 +518,11 @@ async function initTitan(): Promise<void> {
   // ⚒️ WAVE 2030.5: Initialize Hephaestus File I/O
   // ═══════════════════════════════════════════════════════════════════════════
   setupHephIPCHandlers()
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🧬 WAVE 5000.V3: Initialize Genesis Engine IPC
+  // ═══════════════════════════════════════════════════════════════════════════
+  setupGenesisIPCHandlers()
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 👻 WAVE 2005.3: Initialize Phantom Worker for audio analysis

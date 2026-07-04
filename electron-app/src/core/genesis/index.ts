@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// 🧬 WAVE 5000.V3 — Genesis Engine — Barrel Export (Era I + II + III + IV)
+// 🧬 WAVE 5000.V3 — Genesis Engine — Barrel Export (Era I + II + III + IV + V)
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Era I — Cold Infrastructure
@@ -73,3 +73,7 @@ export type {
   BlueprintInsertPayload,
   IngestionReport,
 } from './types'
+
+// Era V — The Operator's Mirror (IPC + UI)
+export { setupGenesisIPCHandlers } from './genesisIpc'
+export type { OrganismListFilter, OrganismDTO, HallOfFameDTO, LineageNodeDTO } from './genesisIpc'

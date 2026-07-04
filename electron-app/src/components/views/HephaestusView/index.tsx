@@ -17,6 +17,7 @@ import { ZoneSelector } from './ZoneSelector'
 import { SafetyStrip } from './safety/SafetyStrip'
 import { ForgeTab } from './tabs/ForgeTab'
 import { LabTab } from './tabs/LabTab'
+import { GenesisLabView } from './GenesisLab/GenesisLabView'
 import type { TemporalActions, HephViewport } from './types/HephaestusShared'
 import { useHephaestusEditorStore } from '../../../core/hephaestus/store/useHephaestusEditorStore'
 import { useStageStore, selectFixtures } from '../../../stores/stageStore'
@@ -78,7 +79,7 @@ const HephaestusView: React.FC = () => {
   const [showLibrary, setShowLibrary] = useState(true)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
   const [showNewClipModal, setShowNewClipModal] = useState(false)
-  const [activeTab, setActiveTab] = useState<'sculpt' | 'lab'>('sculpt')
+  const [activeTab, setActiveTab] = useState<'sculpt' | 'lab' | 'genesis'>('sculpt')
 
   // ── Editable Header State ──
   const [isEditingName, setIsEditingName] = useState(false)
@@ -446,6 +447,24 @@ const HephaestusView: React.FC = () => {
             >
               📐 LABORATORY
             </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('genesis')}
+              style={{
+                padding: '4px 12px',
+                border: 'none',
+                borderRadius: '3px',
+                background: activeTab === 'genesis' ? '#00cc66' : 'transparent',
+                color: activeTab === 'genesis' ? '#fff' : '#888',
+                textShadow: activeTab === 'genesis' ? '0 0 8px rgba(0,204,102,0.6)' : 'none',
+                cursor: 'pointer',
+                fontSize: '11px',
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+              }}
+            >
+              🧬 GENESIS
+            </button>
           </nav>
         </div>
 
@@ -627,6 +646,10 @@ const HephaestusView: React.FC = () => {
             isSaving={isSaving}
             preview={preview}
           />
+        )}
+
+        {activeTab === 'genesis' && (
+          <GenesisLabView />
         )}
       </div>
 

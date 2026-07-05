@@ -77,3 +77,7 @@ export type {
 // Era V — The Operator's Mirror (IPC + UI)
 export { setupGenesisIPCHandlers } from './genesisIpc'
 export type { OrganismListFilter, OrganismDTO, HallOfFameDTO, LineageNodeDTO } from './genesisIpc'
+
+// Era V Addendum — Procedural Naming Engine
+export { generateOrganismName, COMBINATORIAL_SPACE } from './naming/ProceduralNamer'
+export type { NamingBlueprintContext } from './naming/ProceduralNamer'

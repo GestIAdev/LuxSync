@@ -16,6 +16,7 @@
 import { ipcMain } from 'electron'
 import { getGenesisVault } from './GenesisVaultService'
 import { getColiseumService } from './ColiseumService'
+import { generateOrganismName } from './naming/ProceduralNamer'
 import type { RarityTier, OrganismStatus } from './types'
 
 // ─── TYPES (IPC payload contracts) ──────────────────────────────────────────
@@ -251,6 +252,10 @@ export function setupGenesisIPCHandlers(): void {
           delta_json: string
           rarity_tier: string
           rarity_score: number
+          fitness_score: number
+          generation: number
+          l2_distance_parent: number
+          operator_used: string
           custom_name: string | null
         } | undefined
 
@@ -292,7 +297,46 @@ export function setupGenesisIPCHandlers(): void {
 
         // 3. Create the new blueprint ID from the organism ID
         const newBlueprintId = `canonized:${organismId}`
-        const trimmedName = customName.trim() || `Canonized ${org.rarity_tier}`
+
+        // 3a. Determine the name — use custom name or auto-generate procedurally
+        const trimmedName = customName.trim()
+        let finalName: string
+
+        if (trimmedName.length > 0) {
+          finalName = trimmedName
+        } else {
+          // Auto-generate a punchy procedural name from organism metrics
+          finalName = generateOrganismName({
+            organismId: org.organism_id,
+            blueprintId: org.blueprint_id,
+            parentOrganismId: null,
+            generation: org.generation,
+            customName: null,
+            deltaJson: org.delta_json,
+            bezierSignature: new Float32Array(0),
+            rarityScore: org.rarity_score,
+            rarityTier: org.rarity_tier as RarityTier,
+            l2DistanceParent: org.l2_distance_parent,
+            operatorUsed: org.operator_used as any,
+            neonatalShieldUntil: 0,
+            birthVector: {
+              zScoreAvg3s: 0, lowBandAvg3s: 0, energyPhaseEncoded: 0,
+              vibeHash: 0, sectionEncoded: 0, textureEncoded: 0,
+            },
+            fitnessScore: org.fitness_score,
+            trialsCount: 0, winsCount: 0, vetoesCount: 0, passesCount: 0,
+            status: 'canonized' as OrganismStatus,
+            speciesId: null,
+            bornAt: 0, lastEvaluatedAt: null, lastFiredAt: null,
+            swarmOriginConsole: null,
+          }, {
+            dnaAggression: bp.dna_aggression,
+            dnaChaos: bp.dna_chaos,
+            dnaOrganicity: bp.dna_organicity,
+            textureAffinity: bp.texture_affinity,
+          })
+          console.log(`[GenesisIPC] 🎲 Auto-generated name: "${finalName}" for ${organismId}`)
+        }
 
         // 4. Insert as a new immutable blueprint with source_origin = 'canonized'
         db.prepare(
@@ -315,7 +359,7 @@ export function setupGenesisIPCHandlers(): void {
           )`,
         ).run({
           blueprint_id: newBlueprintId,
-          name: trimmedName,
+          name: finalName,
           author: bp.author,
           category: bp.category,
           dna_aggression: bp.dna_aggression,
@@ -344,17 +388,17 @@ export function setupGenesisIPCHandlers(): void {
           `UPDATE lfx_organisms
            SET status = 'canonized', custom_name = @name
            WHERE organism_id = @id`,
-        ).run({ name: trimmedName, id: organismId })
+        ).run({ name: finalName, id: organismId })
 
         console.log(
-          `[GenesisIPC] 👑 Canonized organism ${organismId} as "${trimmedName}" ` +
+          `[GenesisIPC] 👑 Canonized organism ${organismId} as "${finalName}" ` +
           `(blueprint: ${newBlueprintId})`,
         )
 
         return {
           success: true,
           blueprintId: newBlueprintId,
-          customName: trimmedName,
+          customName: finalName,
         }
       } catch (error) {
         console.error('[GenesisIPC] canonizeOrganism failed:', error)

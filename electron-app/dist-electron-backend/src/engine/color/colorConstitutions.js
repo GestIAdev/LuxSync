@@ -307,23 +307,26 @@ export const ROCK_CONSTITUTION = {
 /**
  * WAVE 6055 — OPERACIÓN OCÉANO: Paleta Abisal.
  *
- * La Zona Alga (verde) ha sido fulminada. El océano no conoce el verde lima.
- * Solo el abismo cian-azul y los destellos de bioluminiscencia magenta.
+ * WAVE 7129.7: La Zona Alga renace — verdes boreales [160, 180] permitidos
+ * para movers y ambient. El océano ártico tiene algas bioluminiscentes.
  *
  * ════════════════════════════════════════════════════════════
- * ZONAS PROHIBIDAS (La Zona Incandescente + La Zona Alga):
- *   🔴 330° → 360°/0° → 180°: Todo el espectro cálido + verde
- *     [330, 360] = Rojo agresivo / Coral
- *     [0,   180] = Naranja / Amarillo / Lima / Verde — FULMINADOS
- *   Elastic Rotation empuja infractores hacia 180° (Cian) como suelo.
+ * ZONAS PROHIBIDAS (La Zona Incandescente):
+ *   🔴 340° → 360°/0° → 150°: Espectro cálido + verdes cálidos
+ *     [340, 360] = Rojo agresivo / Coral
+ *     [0,   150] = Naranja / Amarillo / Lima — FULMINADOS
+ *   Elastic Rotation empuja infractores hacia 150° (Verde Alga) como suelo.
  *
- * ZONAS PERMITIDAS (El Espectro Abisal):
- *   🐋 ZONA ABISAL:    180° - 260° (Cian → Azul Profundo → Índigo)
- *                       80° de arco = columna vertebral cromática del chill.
- *   🪼 BIOLUMINISCENCIA: 290° - 320° (Magenta Frío → Magenta Vibrante)
- *                       30° de ventana — ráfagas ocasionales de medusa.
- *                       Accionado principalmente como color de acento
- *                       (accentBehavior: 'breathing').
+ * ZONAS PERMITIDAS (El Espectro Abisal + Bioluminiscencia):
+ *   🐋 ZONA ABISAL:     160° - 260° (Verde Alga → Cian → Azul Profundo → Índigo)
+ *                        100° de arco = columna vertebral cromática del chill.
+ *   🪼 BIOLUMINISCENCIA: 290° - 330° (Magenta Frío → Rosa Boreal → Magenta Vibrante)
+ *                        40° de ventana — ráfagas de medusa y aurora boreal.
+ *                        Accionado principalmente como color de acento
+ *                        y secondary (movers) vía fibonacciRotationDeg: 100.
+ *   🌿 VERDE ALGA:       160° - 180° (verde abisal boreal)
+ *                        Aparece en ambient (mover R) y secondary cuando
+ *                        el morphFactor empuja al primary hacia 190-260°.
  * ════════════════════════════════════════════════════════════
  *
  * REGLA DE ESTRATEGIA:
@@ -346,31 +349,35 @@ export const CHILL_CONSTITUTION = {
     atmosphericTemp: 8500,
     thermalGravityStrength: 0.18,
     // ── LA LEY DEL ABISMO: ZONAS PROHIBIDAS ────────────────────────────────
-    // [330, 360] = Rojo agresivo / Coral
-    // [0,   180] = Naranja / Amarillo / Verde Lima / Verde — ZONA ALGA FULMINADA
-    // Elastic Rotation (paso 20°) empuja infractores hacia 180° (Cian).
-    forbiddenHueRanges: [[330, 360], [0, 180]],
+    // [340, 360] = Rojo agresivo / Coral
+    // [0,   150] = Naranja / Amarillo / Lima — aún fulminados
+    // Elastic Rotation (paso 20°) empuja infractores hacia 150° (Verde Alga).
+    forbiddenHueRanges: [[340, 360], [0, 150]],
     elasticRotation: 20,
-    // ── ESPECTRO ABISAL: CIAN → AZUL PROFUNDO + BIOLUMINISCENCIA ───────────
-    // [180, 260] = Cian → Azul Profundo → Índigo (columna cromática principal)
-    // [290, 320] = Magenta Frío → Magenta Vibrante (destellos de medusa)
-    // El motor de color distribuirá ~73% del tiempo en [180,260] y ~27% en
-    // [290,320] por simple proporción de arco. El acento breathing reforzará
-    // las ráfagas magenta como bioluminiscencia puntual.
-    allowedHueRanges: [[180, 260], [290, 320]],
+    // ── ESPECTRO ABISAL: VERDE ALGA → CIAN → AZUL + BIOLUMINISCENCIA ────────
+    // [160, 260] = Verde Alga → Cian → Azul Profundo → Índigo (columna principal)
+    // [290, 330] = Magenta Frío → Rosa Boreal → Magenta Vibrante (medusa + aurora)
+    // El motor de color distribuirá ~67% del tiempo en [160,260] y ~33% en
+    // [290,330] por simple proporción de arco.
+    allowedHueRanges: [[160, 260], [290, 330]],
     // ── SATURACIÓN RESPIRATORIA ────────────────────────────────────────────
     // [50, 85]: Piso 50 = bioluminiscencia siempre visible (no lavado).
     //           Techo 85 = evitar plástico neón de saturación 100.
     saturationRange: [50, 85],
     // ── LUMINOSIDAD SUBMARINA ──────────────────────────────────────────────
-    // [30, 60]: Piso 30 = abismo con textura visible.
+    // [15, 60]: Piso 15 = abismo profundo casi negro (WAVE 7129.7).
     //           Techo 60 = evitar blancos cegadores (mandato WAVE 4755).
-    lightnessRange: [30, 60],
+    lightnessRange: [15, 60],
     // ── SIN STROBES (CONSTITUCIONAL) ───────────────────────────────────────
     strobeProhibited: true,
     // ── ACENTO: PULSO BIOLUMINISCENTE ──────────────────────────────────────
     accentBehavior: 'breathing',
     pulseConfig: { duration: 6000, amplitude: 0.12 },
+    // ── ROTACIÓN FIBONACCI: MAGENTA EN MOVERS ──────────────────────────────
+    // WAVE 7129.7: fibonacciRotationDeg: 100 → Secondary (mover L) aterriza
+    // en [290, 330] (magenta/rosa boreal) cuando primary está en [190, 230].
+    // Antes era 222.5° (PHI_ROTATION) que empujaba a verde/amarillo → clampado a cyan.
+    fibonacciRotationDeg: 100,
     // ── TRANSICIONES GLACIARES ─────────────────────────────────────────────
     // WAVE 4755: 20 segundos mínimo. Las corrientes marinas no se apuran.
     // La sección musical (drop, verse) NO impulsa estas transiciones.

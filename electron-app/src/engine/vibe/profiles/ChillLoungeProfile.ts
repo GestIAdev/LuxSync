@@ -1,15 +1,18 @@
 /**
- * 🍸 WAVE 220: CHILL LOUNGE PROFILE
- * 
+ * 🍸 WAVE 7129: CHILL LOUNGE PROFILE — BOREAL OCEAN
+ *
  * Perfil para música relajada: Lounge, Ambient, Jazz.
- * 
+ *
  * FILOSOFÍA:
- * - Colores cálidos y suaves
+ * - Colores fríos oceánicos (Boreal Ocean)
  * - Transiciones lentas y orgánicas
  * - Sin efectos agresivos
- * 
+ *
+ * WAVE 7129.2: Bipolaridad cromática resuelta.
+ * Profile alineado con CHILL_CONSTITUTION (8500K, cyan/blue/magenta).
+ *
  * @layer ENGINE/VIBE/PROFILES
- * @version TITAN 2.0
+ * @version WAVE 7129
  */
 
 import type { VibeProfile } from '../../../types/VibeProfile'
@@ -17,7 +20,7 @@ import type { VibeProfile } from '../../../types/VibeProfile'
 export const VIBE_CHILL_LOUNGE: VibeProfile = {
   id: 'chill-lounge',
   name: 'Chill Lounge',
-  description: 'Warm tones. Slow transitions. Ambient mood.',
+  description: 'Boreal Ocean. Deep blues, cyan, violet. Slow transitions.',
   icon: '🍸',
 
   // ═══════════════════════════════════════════════════════════════
@@ -31,28 +34,29 @@ export const VIBE_CHILL_LOUNGE: VibeProfile = {
 
   color: {
     strategies: ['analogous', 'monochromatic'],
-    
+
     temperature: {
-      min: 2500,
-      max: 4500,
+      min: 7000,
+      max: 10000,
     },
-    
-    // Temperatura muy cálida: luz de velas
-    atmosphericTemp: 2800,
-    
+
+    // WAVE 7129.2: Boreal Ocean — alineado con CHILL_CONSTITUTION (8500K)
+    atmosphericTemp: 8500,
+
     saturation: {
-      min: 0.4,
-      max: 0.7,
+      min: 0.5,
+      max: 0.85,
     },
-    
+
     // WAVE 253: Cambios muy lentos para chill
     maxHueShiftPerSecond: 30,
-    
-    // Bloquear azules fríos
-    forbiddenHueRanges: [[180, 270]],
-    
-    // Permitir: naranjas, rojos, ámbar
-    allowedHueRanges: [[0, 60], [300, 360]],
+
+    // WAVE 7129.2: Espectro abisal — alineado con CHILL_CONSTITUTION
+    // Forbidden: rojos, naranjas, amarillos, verdes cálidos
+    forbiddenHueRanges: [[340, 360], [0, 150]],
+
+    // Allowed: Deep Blue, Boreal Green, Dark Magenta, Violet, Cyan
+    allowedHueRanges: [[160, 260], [290, 330]],
   },
 
   // ═══════════════════════════════════════════════════════════════

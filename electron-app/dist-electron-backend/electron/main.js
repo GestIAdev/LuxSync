@@ -27,7 +27,6 @@ import { BufferPoolManager } from '../src/core/aether/glass/BufferPoolManager';
 const bytenode = require('bytenode');
 // TITAN 2.0 Core Modules
 import { TitanOrchestrator, setupIPCHandlers, registerTitanOrchestrator } from '../src/core/orchestrator';
-import { TickEngine } from '../src/core/orchestrator/tick/TickEngine';
 // ⚡ WAVE 4529: Aether Programmer IPC Handlers
 import { registerAetherIPCHandlers } from '../src/core/aether/AetherIPCHandlers';
 // Stage Persistence (WAVE 365)
@@ -36,6 +35,8 @@ import { stagePersistence, setupStageIPCHandlers } from '../src/core/stage';
 import { setupKeyForgeIPCHandlers } from '../src/core/keyforge/KeyForgeIPCHandlers';
 // ⚒️ Hephaestus File I/O (WAVE 2030.5)
 import { setupHephIPCHandlers } from '../src/core/hephaestus';
+// 🧬 WAVE 5000.V3: Genesis Engine IPC (Era V)
+import { setupGenesisIPCHandlers } from '../src/core/genesis/genesisIpc';
 // 🎬 WAVE 4864: Theia Output Window manager (Phase 3)
 import { setupTheiaWindowManager } from './TheiaWindowManager';
 // ⚡ WAVE 4822: INFINITE ARSENAL — Boot ingestion
@@ -336,19 +337,7 @@ function createWindow() {
             const { port1, port2 } = new MessageChannelMain();
             glassPoolManager.attach(port1);
             mainWindow.webContents.postMessage('glass:port', null, [port2]);
-            // WAVE 7120: Calibration SAB port — preload sends SAB via MessagePort (structured clone supports SAB)
-            const { port1: calibPort1, port2: calibPort2 } = new MessageChannelMain();
-            calibPort1.on('message', ({ data }) => {
-                if (data instanceof SharedArrayBuffer) {
-                    console.log('[Main] Calibration SAB received via MessagePort, byteLength:', data.byteLength);
-                    TickEngine.setCalibrationSAB(data);
-                }
-                else {
-                    console.warn('[Main] Calibration port received non-SAB:', typeof data);
-                }
-            });
-            calibPort1.start();
-            mainWindow.webContents.postMessage('calibration:port', null, [calibPort2]);
+            // WAVE 7120: Calibration SAB is created in setupCalibrationHandlers (IPCHandlers.ts)
         });
         // Broadcast fixtures if loaded
         if (patchedFixtures.length > 0 && mainWindow) {
@@ -420,6 +409,10 @@ async function initTitan() {
     // ⚒️ WAVE 2030.5: Initialize Hephaestus File I/O
     // ═══════════════════════════════════════════════════════════════════════════
     setupHephIPCHandlers();
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🧬 WAVE 5000.V3: Initialize Genesis Engine IPC
+    // ═══════════════════════════════════════════════════════════════════════════
+    setupGenesisIPCHandlers();
     // ═══════════════════════════════════════════════════════════════════════════
     // 👻 WAVE 2005.3: Initialize Phantom Worker for audio analysis
     // ═══════════════════════════════════════════════════════════════════════════

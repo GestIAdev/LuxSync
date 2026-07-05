@@ -1,0 +1,189 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// 🧬 WAVE 5000.V3 — ERA II: Prenatal Screening
+// ═══════════════════════════════════════════════════════════════════════════
+//  Evaluates a mutated clip through the 7 canonical Hephaestus gates (G1-G7)
+//  BEFORE it is born into the database. Non-viable organisms die here —
+//  zero inserts to lfx_organisms.
+//
+//  REGLA DE ORO:
+//    G3 (genome [0,1]) → fail = abort
+//    G4 (>2 energy zones) → fail = abort
+//    G5 (empty curves) → fail = abort
+//    G6 (strobe inconsistent) → fail = abort
+//    G1 (structure) → fail = abort
+//    G2 (checksum) → N/A (not checked prenatally)
+//    G7 (spatial) → warn only (not abort)
+// ═══════════════════════════════════════════════════════════════════════════
+import { ENERGY_ZONES } from '../../arsenal/LfxClipInstance';
+// ─── GATE EVALUATORS (pure, no side effects) ────────────────────────────────
+function evalG1(clip) {
+    const pass = clip.id.trim().length > 0 &&
+        clip.name.trim().length > 0 &&
+        clip.durationMs > 0;
+    return {
+        id: 'G1',
+        status: pass ? 'pass' : 'fail',
+        label: 'SCHEMA',
+        description: pass ? 'Clip structure valid' : 'Missing id, name, or durationMs',
+    };
+}
+function evalG2() {
+    return {
+        id: 'G2',
+        status: 'na',
+        label: 'CHECKSUM',
+        description: 'Not evaluated prenatally — verified on save',
+    };
+}
+function evalG3(dna) {
+    if (!dna) {
+        return { id: 'G3', status: 'na', label: 'GENOME', description: 'No cognitiveDNA' };
+    }
+    const { aggression, chaos, organicity } = dna.genome;
+    const ok = (v) => v >= 0 && v <= 1;
+    const pass = ok(aggression) && ok(chaos) && ok(organicity);
+    return {
+        id: 'G3',
+        status: pass ? 'pass' : 'fail',
+        label: 'GENOME',
+        description: pass
+            ? `A=${aggression.toFixed(2)} C=${chaos.toFixed(2)} O=${organicity.toFixed(2)} — OK`
+            : `Out of [0,1]: A=${aggression} C=${chaos} O=${organicity}`,
+    };
+}
+function evalG4(dna) {
+    if (!dna) {
+        return { id: 'G4', status: 'na', label: 'COMPAT', description: 'No cognitiveDNA' };
+    }
+    const hasVibe = dna.compatibleVibes.length >= 1;
+    const hasSection = dna.validSections.length >= 1;
+    const lo = ENERGY_ZONES.indexOf(dna.energyZone.min);
+    const hi = ENERGY_ZONES.indexOf(dna.energyZone.max);
+    const zoneSpan = lo >= 0 && hi >= 0 ? hi - lo + 1 : 0;
+    if (zoneSpan === 0) {
+        return {
+            id: 'G4',
+            status: 'fail',
+            label: 'COMPAT',
+            description: 'Orphan effect: no energy zones selected',
+        };
+    }
+    if (zoneSpan > 2) {
+        return {
+            id: 'G4',
+            status: 'fail',
+            label: 'COMPAT',
+            description: `Montecarlo violated: ${zoneSpan} zones (max 2)`,
+        };
+    }
+    const pass = hasVibe && hasSection;
+    return {
+        id: 'G4',
+        status: pass ? 'pass' : 'fail',
+        label: 'COMPAT',
+        description: pass
+            ? `${dna.compatibleVibes.length} vibe(s) · ${dna.validSections.length} section(s) · ${zoneSpan} zone(s)`
+            : `Missing: ${!hasVibe ? 'compatible vibes ' : ''}${!hasSection ? 'valid sections' : ''}`.trim(),
+    };
+}
+function evalG5(clip) {
+    if (clip.tracks.length === 0) {
+        return {
+            id: 'G5',
+            status: 'fail',
+            label: 'CURVES',
+            description: 'No parameter tracks',
+        };
+    }
+    let richCurves = 0;
+    for (const track of clip.tracks) {
+        if (track.curve.keyframes.length >= 2)
+            richCurves++;
+    }
+    const pass = richCurves >= 1;
+    return {
+        id: 'G5',
+        status: pass ? 'pass' : 'fail',
+        label: 'CURVES',
+        description: pass
+            ? `${richCurves}/${clip.tracks.length} track(s) with ≥2 keyframes`
+            : 'All tracks have <2 keyframes — clip outputs nothing',
+    };
+}
+function evalG6(clip, simMeta) {
+    if (!simMeta) {
+        return { id: 'G6', status: 'na', label: 'STROBE', description: 'No simulationMeta' };
+    }
+    if (!simMeta.isStrobe) {
+        return { id: 'G6', status: 'pass', label: 'STROBE', description: 'Non-strobe: OK' };
+    }
+    const intensityTrack = clip.tracks.find((t) => t.paramId === 'intensity');
+    const hasStrobicPattern = !!intensityTrack && intensityTrack.curve.keyframes.length >= 4;
+    return {
+        id: 'G6',
+        status: hasStrobicPattern ? 'pass' : 'fail',
+        label: 'STROBE',
+        description: hasStrobicPattern
+            ? `Strobe — intensity has ${intensityTrack.curve.keyframes.length} keyframes`
+            : 'Strobe declared but intensity has <4 keyframes',
+    };
+}
+function evalG7(clip, dna) {
+    if (!dna) {
+        return { id: 'G7', status: 'na', label: 'SPATIAL', description: 'No cognitiveDNA' };
+    }
+    const { spatialBehavior } = dna;
+    const hasPan = clip.tracks.some((t) => t.paramId === 'pan');
+    const hasTilt = clip.tracks.some((t) => t.paramId === 'tilt');
+    const hasMovement = hasPan || hasTilt;
+    if (spatialBehavior === 'static') {
+        return {
+            id: 'G7',
+            status: !hasMovement ? 'pass' : 'warn',
+            label: 'SPATIAL',
+            description: !hasMovement ? 'Static: no pan/tilt — correct' : 'Declared static but has pan/tilt',
+        };
+    }
+    if (spatialBehavior === 'absolute' || spatialBehavior === 'relative_offset') {
+        return {
+            id: 'G7',
+            status: hasMovement ? 'pass' : 'warn',
+            label: 'SPATIAL',
+            description: hasMovement ? `${spatialBehavior}: pan/tilt present` : `${spatialBehavior} but no pan/tilt`,
+        };
+    }
+    return { id: 'G7', status: 'pass', label: 'SPATIAL', description: `Behavior: ${spatialBehavior}` };
+}
+// ─── MAIN EXPORT ────────────────────────────────────────────────────────────
+/**
+ * Runs all 7 gates on a mutated clip. Returns viability verdict.
+ *
+ * ABORT conditions (viable: false):
+ *   G1 fail, G3 fail, G4 fail, G5 fail, G6 fail
+ *
+ * WARN-only (does NOT abort):
+ *   G7 warn
+ */
+export function prenatalScreening(clip) {
+    const dna = clip.cognitiveDNA;
+    const sim = clip.simulationMeta;
+    const gates = [
+        evalG1(clip),
+        evalG2(),
+        evalG3(dna),
+        evalG4(dna),
+        evalG5(clip),
+        evalG6(clip, sim),
+        evalG7(clip, dna),
+    ];
+    // Hard-fail gates: G1, G3, G4, G5, G6
+    const hardFailGates = ['G1', 'G3', 'G4', 'G5', 'G6'];
+    const abortGate = gates.find((g) => hardFailGates.includes(g.id) && g.status === 'fail');
+    return {
+        viable: !abortGate,
+        gates,
+        abortReason: abortGate
+            ? `${abortGate.id} (${abortGate.label}): ${abortGate.description}`
+            : null,
+    };
+}

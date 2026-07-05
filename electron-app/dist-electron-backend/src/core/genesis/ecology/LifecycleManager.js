@@ -1,0 +1,171 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// 🧬 WAVE 5000.V3 — ERA IV: Lifecycle Manager
+// ═══════════════════════════════════════════════════════════════════════════
+//  Manages status transitions evaluated in geological time (background tasks).
+//
+//  Transitions:
+//    alive → champion:   fitness > speciesAvg * (1 + CHAMPION_MARGIN) AND trials >= 5
+//    champion → alive:   fitness < speciesAvg * (1 - DEMOTION_MARGIN)
+//    alive → culled:     trials > neonatalShieldUntil AND survivalRate < CULL_THRESHOLD
+//    Hall of Fame:       LEGENDARY/MYTHIC with trials >= 25 AND survivalRate > 0.85
+//                        (identified via v_hall_of_fame view, status left as-is
+//                         for future UI canonization)
+//
+//  Runs in background. Never in the 44Hz hot path.
+// ═══════════════════════════════════════════════════════════════════════════
+import { getGenesisVault } from '../GenesisVaultService';
+// ─── CONSTANTS ──────────────────────────────────────────────────────────────
+const CHAMPION_MARGIN = 0.30; // must be 30% above species average
+const DEMOTION_MARGIN = 0.20; // falls 20% below species average
+const CULL_THRESHOLD = 0.15; // survival rate below this = cull
+const MIN_TRIALS_FOR_CHAMPION = 5; // need at least 5 trials to be eligible
+const HALL_OF_FAME_TRIALS = 25;
+const HALL_OF_FAME_SURVIVAL = 0.85;
+// ─── LIFECYCLE MANAGER ──────────────────────────────────────────────────────
+export class LifecycleManager {
+    constructor(vault) {
+        this._vault = vault ?? getGenesisVault();
+    }
+    /**
+     * Runs all lifecycle transitions on alive + champion organisms.
+     * Evaluates per-species fitness averages and applies promotions/demotions/culling.
+     */
+    runTransitions() {
+        const db = this._vault._db;
+        if (!db) {
+            throw new Error('[Lifecycle] GenesisVault not initialized');
+        }
+        // 1. Fetch all alive + champion organisms
+        const rows = db.prepare(`SELECT organism_id, species_id, status, fitness_score,
+              trials_count, passes_count, neonatal_shield_until, rarity_tier
+       FROM lfx_organisms
+       WHERE status IN ('alive', 'champion')`).all();
+        if (rows.length === 0) {
+            return { promotions: 0, demotions: 0, culls: 0, hallOfFameCandidates: 0, transitions: [] };
+        }
+        // 2. Compute per-species fitness averages
+        const speciesFitness = new Map();
+        for (const row of rows) {
+            const sid = row.species_id ?? '__unassigned';
+            const entry = speciesFitness.get(sid) ?? { sum: 0, count: 0 };
+            entry.sum += row.fitness_score;
+            entry.count++;
+            speciesFitness.set(sid, entry);
+        }
+        const speciesAvg = new Map();
+        for (const [sid, { sum, count }] of speciesFitness) {
+            speciesAvg.set(sid, count > 0 ? sum / count : 0);
+        }
+        // 3. Evaluate transitions
+        const transitions = [];
+        let promotions = 0;
+        let demotions = 0;
+        let culls = 0;
+        let hallOfFameCandidates = 0;
+        const updateStmt = db.prepare('UPDATE lfx_organisms SET status = @status WHERE organism_id = @id');
+        const toProcess = [];
+        for (const row of rows) {
+            const sid = row.species_id ?? '__unassigned';
+            const avg = speciesAvg.get(sid) ?? 0;
+            const survivalRate = row.trials_count > 0
+                ? row.passes_count / (row.trials_count + 1) // Laplace smoothing
+                : 0;
+            // Hall of Fame check (informational — does not change status)
+            if ((row.rarity_tier === 'LEGENDARY' || row.rarity_tier === 'MYTHIC') &&
+                row.trials_count >= HALL_OF_FAME_TRIALS &&
+                survivalRate > HALL_OF_FAME_SURVIVAL) {
+                hallOfFameCandidates++;
+                // Don't change status — UI will handle canonization
+            }
+            // Culling: shield expired AND survival rate unacceptable
+            if (row.status === 'alive' &&
+                row.trials_count > row.neonatal_shield_until &&
+                survivalRate < CULL_THRESHOLD) {
+                toProcess.push({
+                    id: row.organism_id,
+                    newStatus: 'culled',
+                    reason: `Shield expired (trials=${row.trials_count} > shield=${row.neonatal_shield_until}), survival=${survivalRate.toFixed(3)} < ${CULL_THRESHOLD}`,
+                    fromStatus: row.status,
+                });
+                continue;
+            }
+            // Promotion: alive → champion
+            if (row.status === 'alive' &&
+                row.trials_count >= MIN_TRIALS_FOR_CHAMPION &&
+                row.fitness_score > avg * (1 + CHAMPION_MARGIN) &&
+                row.fitness_score > 0) {
+                toProcess.push({
+                    id: row.organism_id,
+                    newStatus: 'champion',
+                    reason: `Fitness ${row.fitness_score.toFixed(3)} > species avg ${avg.toFixed(3)} × ${(1 + CHAMPION_MARGIN).toFixed(2)} (trials=${row.trials_count})`,
+                    fromStatus: row.status,
+                });
+                continue;
+            }
+            // Demotion: champion → alive
+            if (row.status === 'champion' &&
+                row.fitness_score < avg * (1 - DEMOTION_MARGIN)) {
+                toProcess.push({
+                    id: row.organism_id,
+                    newStatus: 'alive',
+                    reason: `Fitness ${row.fitness_score.toFixed(3)} < species avg ${avg.toFixed(3)} × ${(1 - DEMOTION_MARGIN).toFixed(2)}`,
+                    fromStatus: row.status,
+                });
+                continue;
+            }
+        }
+        // 4. Batch write transitions
+        if (toProcess.length > 0) {
+            const tx = db.transaction(() => {
+                for (const item of toProcess) {
+                    updateStmt.run({ status: item.newStatus, id: item.id });
+                    transitions.push({
+                        organismId: item.id,
+                        fromStatus: item.fromStatus,
+                        toStatus: item.newStatus,
+                        reason: item.reason,
+                    });
+                    if (item.newStatus === 'champion')
+                        promotions++;
+                    else if (item.newStatus === 'alive')
+                        demotions++;
+                    else if (item.newStatus === 'culled')
+                        culls++;
+                }
+            });
+            tx();
+        }
+        console.log(`[Lifecycle 🧬] Transitions: ${promotions}↑ ${demotions}↓ ${culls}✂️ | ` +
+            `Hall of Fame candidates: ${hallOfFameCandidates} | ` +
+            `Total evaluated: ${rows.length}`);
+        return {
+            promotions,
+            demotions,
+            culls,
+            hallOfFameCandidates,
+            transitions,
+        };
+    }
+    /**
+     * Queries the v_hall_of_fame view for organisms ready for canonization.
+     * Returns organism IDs that are LEGENDARY/MYTHIC with high survival.
+     */
+    getHallOfFameCandidates() {
+        const db = this._vault._db;
+        if (!db) {
+            throw new Error('[Lifecycle] GenesisVault not initialized');
+        }
+        const rows = db.prepare(`SELECT organism_id FROM v_hall_of_fame`).all();
+        return rows.map((r) => r.organism_id);
+    }
+}
+// ─── SINGLETON ──────────────────────────────────────────────────────────────
+let _instance = null;
+export function getLifecycleManager() {
+    if (_instance == null)
+        _instance = new LifecycleManager();
+    return _instance;
+}
+export function __resetLifecycleManagerForTests() {
+    _instance = null;
+}

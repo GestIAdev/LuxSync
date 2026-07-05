@@ -127,6 +127,7 @@ export class SeleneLux {
             isFlashActive: false,
             isSolarFlare: false,
             dimmerOverride: null,
+            morphFactor: null,
             forceMovement: false,
             physicsApplied: 'none',
             energyOverrideActive: false, // 🧠 WAVE 450
@@ -194,6 +195,7 @@ export class SeleneLux {
         let isFlashActive = false;
         let isSolarFlare = false;
         let dimmerOverride = null;
+        let morphFactor = null;
         let forceMovement = false;
         let physicsApplied = 'none';
         let outputPalette = { ...inputPalette };
@@ -268,6 +270,7 @@ export class SeleneLux {
                 chillFrame = chillAmbientEngine.tick();
                 chillMorphFactor = chillFrame.morphFactor;
                 dimmerOverride = chillFrame.dimmer;
+                morphFactor = chillFrame.morphFactor;
             }
             const liquidInput = {
                 bands,
@@ -320,17 +323,19 @@ export class SeleneLux {
             // Override zone intensities with phase-offset waves from ChillAmbientEngine.
             // deepFieldMechanics wires Lissajous coordinates to buildMechanicsBypassIntent.
             if (isChill && chillFrame) {
+                // WAVE 7129.1: Movers heredan dimmer del ChillAmbientEngine — cero dependencia del audio.
+                const chillMoverIntensity = safe(chillFrame.dimmer);
                 this.liquidStereoOverrides = {
                     frontL: safe(chillFrame.frontL),
                     frontR: safe(chillFrame.frontR),
                     backL: safe(chillFrame.backL),
                     backR: safe(chillFrame.backR),
-                    moverL: safe(liquidResult.moverLeftIntensity),
-                    moverR: safe(liquidResult.moverRightIntensity),
+                    moverL: chillMoverIntensity,
+                    moverR: chillMoverIntensity,
                 };
                 this.deepFieldMechanics = {
-                    moverL: { pan: chillFrame.moverL.pan, tilt: chillFrame.moverL.tilt, intensity: safe(liquidResult.moverLeftIntensity) },
-                    moverR: { pan: chillFrame.moverR.pan, tilt: chillFrame.moverR.tilt, intensity: safe(liquidResult.moverRightIntensity) },
+                    moverL: { pan: chillFrame.moverL.pan, tilt: chillFrame.moverL.tilt, intensity: chillMoverIntensity },
+                    moverR: { pan: chillFrame.moverR.pan, tilt: chillFrame.moverR.tilt, intensity: chillMoverIntensity },
                 };
             }
             // Legacy compat — para que el AGC TRUST block no rompa
@@ -784,6 +789,7 @@ export class SeleneLux {
             isFlashActive,
             isSolarFlare,
             dimmerOverride,
+            morphFactor,
             forceMovement,
             physicsApplied,
             energyOverrideActive,

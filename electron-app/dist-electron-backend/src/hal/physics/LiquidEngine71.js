@@ -101,78 +101,41 @@ export class LiquidEngine71 extends LiquidEngineBase {
         // ─────────────────────────────────────────────────────────────────
         if (isChill) {
             // ─────────────────────────────────────────────────────────────────
-            // WAVE 2470 HOTFIX V2 — RESTAURACIÓN DE FLUIDOS
+            // WAVE 7129.5 — NEUTRALIZED: ChillAmbientEngine controls all chill
             //
-            // Fix 1: Date.now() garantiza que t avanza en cada frame,
-            //        independientemente del caching del pipeline de audio.
-            //        frame.now puede ser el timestamp del processing — si el
-            //        engine tiene frames cacheados o silencio, t se congela.
+            // El branch isChill anterior (WAVE 2470) generaba osciladores de ~8s
+            // con Date.now() / 1831, 1039, etc. Esos valores eran overrideados
+            // por ChillAmbientEngine en SeleneLux.liquidStereoOverrides (WAVE 6055),
+            // pero filtraban por technoOverrides y otras rutas legacy.
             //
-            // Fix 2: Ondas de interferencia restauradas.
-            //        main + 0.3×harmonic → patrón de batido no periódico.
-            //        Los dos números primos de cada PAR nunca coinciden en fase.
+            // Ahora ChillAmbientEngine (240s tide, 200s/600s morph) controla:
+            //   - Zonas: liquidStereoOverrides override en SeleneLux:670-684
+            //   - Movers: deepFieldMechanics → buildMechanicsBypassIntent
+            //   - Master: dimmerOverride → TitanEngine finalMasterIntensity
             //
-            // Fix 3: breathDepth nunca llega a 0 en el abismo.
-            //        Rango [0.15, 0.35]: abismo respira mínimo, superficie al máximo.
-            //        La presión aplasta las olas pero no las elimina.
-            //
-            // Fix 4: Swap de movers preservado del hotfix v1 (semántica chill):
-            //        frame.moverRight = envVocal → Mover L físico (La Voz del Mar)
-            //        frame.moverLeft  = envTreble → Mover R físico (La Bioluminiscencia)
-            //        El blueprint v2 invertía esto — aquí se corrige.
+            // Este branch retorna valores planos neutrales. Cero osciladores.
             // ─────────────────────────────────────────────────────────────────
-            const t = Date.now(); // siempre avanza, frame a frame, sin dependencia de caché
-            const depthFactor = frame.morphFactor ?? 1.0; // 1.0 = superficie, 0.0 = abismo
-            // Amplitud oceánica expandida: rango completo del DMX disponible.
-            // Superficie: breathDepth=0.92 — olas que tocan el techo (cerca de 1.0)
-            // Abismo:     breathDepth=0.25 — quietud profunda pero perceptible
-            // El hardware real comprime ~0.79x, así que necesitamos generar hasta ~1.0
-            // para que el PAR llegue a su brillo máximo en superficie.
-            const breathDepth = 0.25 + (depthFactor * 0.67);
-            const baseFloor = 0.08; // suelo mínimo visible: siempre hay algo de bioluminiscencia
-            // Normalización perfecta al rango [0, 1]:
-            // (sin(a) + sin(b)*0.3 + 1.3) / 2.6
-            // Demostración: máx = (1.0 + 0.3 + 1.3) / 2.6 = 1.0
-            //               mín = (-1.0 - 0.3 + 1.3) / 2.6 = 0.0
-            // Con baseFloor=0.08 y breathDepth∈[0.25,0.92]:
-            //   Superficie: chillFrontX ∈ [0.08, 1.00] — techo completo del DMX
-            //   Abismo:     chillFrontX ∈ [0.08, 0.33] — calma bioluminiscente
-            // Períodos primos asíncronos garantizan que ningún par de PARs esté en fase.
-            const waveFL = (Math.sin(t / 1831) + Math.sin(t / 1039) * 0.3 + 1.3) / 2.6;
-            const chillFrontL = baseFloor + waveFL * breathDepth;
-            const waveFR = (Math.cos(t / 1511) + Math.sin(t / 1361) * 0.3 + 1.3) / 2.6;
-            const chillFrontR = baseFloor + waveFR * breathDepth;
-            const waveBL = (Math.sin(t / 2003) + Math.sin(t / 1201) * 0.3 + 1.3) / 2.6;
-            const chillBackL = baseFloor + waveBL * breathDepth;
-            const waveBR = (Math.cos(t / 1759) + Math.sin(t / 1069) * 0.3 + 1.3) / 2.6;
-            const chillBackR = baseFloor + waveBR * breathDepth;
-            // Movers: reactivos a la música
-            // frame.moverRight = envVocal  (swap semántico: vocal → L físico = La Voz del Mar)
-            // frame.moverLeft  = envTreble (swap semántico: treble → R físico = La Bioluminiscencia)
-            const chillMoverL = moverRight; // La Voz del Mar
-            const chillMoverR = moverLeft; // La Bioluminiscencia
+            const neutral = 0.5;
             return {
-                frontLeftIntensity: chillFrontL,
-                frontRightIntensity: chillFrontR,
-                backLeftIntensity: chillBackL,
-                backRightIntensity: chillBackR,
-                moverLeftIntensity: chillMoverL,
-                moverRightIntensity: chillMoverR,
-                strobeActive: false, // El océano no hace strobe
+                frontLeftIntensity: neutral,
+                frontRightIntensity: neutral,
+                backLeftIntensity: neutral,
+                backRightIntensity: neutral,
+                moverLeftIntensity: neutral,
+                moverRightIntensity: neutral,
+                strobeActive: false,
                 strobeIntensity: 0,
-                // WAVE 4520.2: chill path — floor=0 (no sub energy), ambient/air from frame
                 floorIntensity: 0,
                 ambientIntensity: ambientIntensity,
-                airIntensity: 0, // No audio-reactive air in chill; haze driven by ambientIntensity
-                // Legacy compat
-                frontParIntensity: Math.max(chillFrontL, chillFrontR),
-                backParIntensity: Math.max(chillBackL, chillBackR),
-                moverIntensityL: chillMoverL,
-                moverIntensityR: chillMoverR,
-                moverIntensity: Math.max(chillMoverL, chillMoverR),
-                moverActive: chillMoverL > 0.1 || chillMoverR > 0.1,
+                airIntensity: 0,
+                frontParIntensity: neutral,
+                backParIntensity: neutral,
+                moverIntensityL: neutral,
+                moverIntensityR: neutral,
+                moverIntensity: neutral,
+                moverActive: false,
                 physicsApplied: 'liquid-stereo',
-                acidMode: false, // El abismo no tiene distorsión
+                acidMode: false,
                 noiseMode: false,
             };
         }

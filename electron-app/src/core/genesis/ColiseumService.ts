@@ -34,6 +34,18 @@ import { computeRaritySimple, type RarityOutput } from './loot/RarityEngine'
 import { getHeatmapLogger } from './fitness/HeatmapLogger'
 import { getSpeciationEngine, type SpeciationResult } from './ecology/SpeciationEngine'
 import { getLifecycleManager, type LifecycleResult } from './ecology/LifecycleManager'
+import { getOrganismMaterializer } from './OrganismMaterializer'
+
+// ─── METABOLIC CONSTANTS (Lamarckian Medium) ───────────────────────────────
+// No arbitrary population caps. Regulation emerges from thermodynamics:
+//   • Entropy: existence costs energy (periodic decay)
+//   • Apoptosis: starvation below threshold → dissolution
+//   • Mitosis: abundance above threshold → cellular division
+const ENTROPY_DECAY = 0.02          // fitness decay per maintenance cycle (~60s)
+const APOPTOSIS_THRESHOLD = 0.10    // below this vitality → culled (starved)
+const MITOSIS_THRESHOLD = 0.85      // above this + trials≥5 → may reproduce
+const MITOSIS_MIN_TRIALS = 5        // stability proof before reproduction
+const MITOSIS_ENERGY_TRANSFER = 0.35  // parent gives 35% of vitality to child
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 
@@ -109,10 +121,10 @@ export class ColiseumService {
   }
 
   /**
-   * Spawns a new organism from a granite ancestor using the specified operator.
+   * Spawns a new organism from a granite ancestor OR a living parent (Lamarckian mitosis).
    *
    * Pipeline:
-   *   1. Fetch ancestor blueprint
+   *   1. Fetch ancestor blueprint (or materialize parent organism)
    *   2. Apply genetic operator (pure function)
    *   3. Run prenatal screening (G1-G7)
    *   4. If viable → estimate rarity, insert to lfx_organisms
@@ -121,12 +133,16 @@ export class ColiseumService {
    * @param parentBlueprintId The granite ancestor's blueprint_id
    * @param operatorType Which genetic operator to apply
    * @param seed Optional deterministic seed for reproducibility
+   * @param parentOrganismId If set, spawn from a living organism (mitosis) instead of granite ancestor
+   * @param birthFitness Optional inherited fitness (from mitosis energy transfer)
    * @returns SpawnResult with viability + organism details
    */
   spawnOrganism(
     parentBlueprintId: string,
     operatorType: MutationOperator,
     seed?: number,
+    parentOrganismId?: string,
+    birthFitness?: number,
   ): SpawnResult {
     // 1. Fetch ancestor
     const blueprint = this._vault.getBlueprint(parentBlueprintId)
@@ -134,7 +150,25 @@ export class ColiseumService {
       throw new Error(`[Coliseum] Blueprint not found: ${parentBlueprintId}`)
     }
 
-    const parentClip = blueprint.clipV3
+    const db = (this._vault as any)._db
+    if (!db) {
+      throw new Error('[Coliseum] GenesisVault not initialized')
+    }
+
+    // 1b. If mitosis: materialize the parent organism's clip instead of granite ancestor
+    let parentClip: HephAutomationClipV3
+    let parentGeneration = 1
+    if (parentOrganismId) {
+      const materialized = getOrganismMaterializer().materialize(parentOrganismId)
+      parentClip = materialized.clip
+      const parentRow = db.prepare(
+        'SELECT generation FROM lfx_organisms WHERE organism_id = ?',
+      ).get(parentOrganismId) as { generation: number } | undefined
+      parentGeneration = (parentRow?.generation ?? 1) + 1
+    } else {
+      parentClip = blueprint.clipV3
+      parentGeneration = 1
+    }
 
     // 2. Apply genetic operator
     const opResult: OperatorResult = applyOperator(parentClip, operatorType, seed)
@@ -182,11 +216,6 @@ export class ColiseumService {
       textureEncoded: 0,
     }
 
-    const db = (this._vault as any)._db
-    if (!db) {
-      throw new Error('[Coliseum] GenesisVault not initialized')
-    }
-
     const insertOrg = db.prepare(
       `INSERT INTO lfx_organisms (
         organism_id, blueprint_id, parent_organism_id, generation,
@@ -211,8 +240,8 @@ export class ColiseumService {
       insertOrg.run({
         organism_id: organismId,
         blueprint_id: parentBlueprintId,
-        parent_organism_id: null, // G1 = direct child of granite ancestor
-        generation: 1,
+        parent_organism_id: parentOrganismId ?? null, // null = G1 from granite ancestor
+        generation: parentGeneration,
         custom_name: null,
         delta_json: JSON.stringify(delta),
         bezier_signature: Buffer.from(bezierSig.buffer),
@@ -222,7 +251,7 @@ export class ColiseumService {
         operator_used: operatorType,
         neonatal_shield_until: rarity.neonatalShield,
         birth_vector_json: JSON.stringify(birthVector),
-        fitness_score: 0.0,
+        fitness_score: birthFitness ?? 0.0,
         trials_count: 0,
         wins_count: 0,
         vetoes_count: 0,
@@ -248,7 +277,7 @@ export class ColiseumService {
       ...baseResult,
       success: true,
       organismId,
-      generation: 1,
+      generation: parentGeneration,
     }
   }
 
@@ -283,41 +312,157 @@ export class ColiseumService {
   /**
    * Runs ecological maintenance in geological time (background task).
    *
-   * Pipeline:
+   * METABOLIC PIPELINE (Lamarckian Medium):
    *   1. Flush pending HeatmapLogger events → batch insert to context_heatmaps
-   *   2. runSpeciation() → K-means clustering on bezier signatures → species_id assignment
-   *   3. LifecycleManager.runTransitions() → promotions/demotions/culling + Hall of Fame scan
+   *   2. Entropy Decay → all alive organisms lose vitality (existence costs energy)
+   *   3. Apoptosis → organisms below starvation threshold dissolve (status='culled')
+   *   4. Speciation → K-means clustering on bezier signatures → species_id assignment
+   *   5. Lifecycle transitions → promotions/demotions/champion culling + HoF scan
+   *   6. Mitosis → high-vitality organisms reproduce (cellular division)
    *
-   * Designed to be invoked by a background timer every few minutes or on demand.
+   * Designed to be invoked by a background timer every 60s or on demand.
    * NEVER call from the 44Hz hot path.
    */
   async runEcologicalMaintenance(): Promise<{
     heatmapFlush: boolean
+    entropyDecayed: number
+    apoptosisCulls: number
     speciation: SpeciationResult
     lifecycle: LifecycleResult
+    mitosisSpawns: number
   }> {
     // 1. Flush heatmap logger
     const logger = getHeatmapLogger()
     await logger.flush()
 
-    // 2. Run speciation
+    const db = (this._vault as any)._db
+    if (!db) {
+      throw new Error('[Coliseum] GenesisVault not initialized')
+    }
+
+    // 2. Entropy Decay — existence consumes energy
+    const entropyDecayed = this._applyEntropyDecay(db)
+
+    // 3. Apoptosis — starvation dissolution
+    const apoptosisCulls = this._apoptosis(db)
+
+    // 4. Run speciation
     const speciation = getSpeciationEngine().runSpeciation()
 
-    // 3. Run lifecycle transitions
+    // 5. Run lifecycle transitions
     const lifecycle = getLifecycleManager().runTransitions()
+
+    // 6. Mitosis — cellular division for thriving organisms
+    const mitosisSpawns = this._mitosis(db)
 
     console.log(
       `[Coliseum 🧬] Ecological maintenance complete: ` +
+      `entropy:${entropyDecayed} ↓, apoptosis:${apoptosisCulls} ✖, ` +
       `${speciation.speciesCount} species, ` +
       `${lifecycle.promotions}↑ ${lifecycle.demotions}↓ ${lifecycle.culls}✂️, ` +
-      `${lifecycle.hallOfFameCandidates} HoF candidates`,
+      `${lifecycle.hallOfFameCandidates} HoF, mitosis:${mitosisSpawns} ⊕`,
     )
 
     return {
       heatmapFlush: true,
+      entropyDecayed,
+      apoptosisCulls,
       speciation,
       lifecycle,
+      mitosisSpawns,
     }
+  }
+
+  // ─── METABOLIC LAWS ───────────────────────────────────────────────────────
+
+  /**
+   * Entropy: Periodic vitality decay for all alive organisms.
+   * The simple act of existing consumes energy. This is the thermodynamic
+   * cost of life — without being chosen by Selene, organisms slowly starve.
+   */
+  private _applyEntropyDecay(db: any): number {
+    const result = db.prepare(
+      `UPDATE lfx_organisms
+       SET fitness_score = MAX(fitness_score - ${ENTROPY_DECAY}, 0.0)
+       WHERE status = 'alive'`,
+    ).run()
+    return result.changes
+  }
+
+  /**
+   * Apoptosis: Organisms whose vitality has decayed below the starvation
+   * threshold are dissolved. The medium eliminated them — not a quota.
+   * They simply couldn't sustain their structure without nourishment.
+   */
+  private _apoptosis(db: any): number {
+    // Only cull those past their neonatal shield (protect the young)
+    const result = db.prepare(
+      `UPDATE lfx_organisms
+       SET status = 'culled'
+       WHERE status = 'alive'
+         AND fitness_score < ${APOPTOSIS_THRESHOLD}
+         AND trials_count > neonatal_shield_until`,
+    ).run()
+    return result.changes
+  }
+
+  /**
+   * Mitosis (Lamarckian Desove): Organisms with surplus vitality reproduce.
+   * Conditions: fitness ≥ MITOSIS_THRESHOLD AND trials ≥ MITOSIS_MIN_TRIALS.
+   * The parent transfers MITOSIS_ENERGY_TRANSFER of its vitality to the child.
+   * No arbitrary cap — only abundance begets abundance.
+   */
+  private _mitosis(db: any): number {
+    const candidates = db.prepare(
+      `SELECT organism_id, blueprint_id, fitness_score, generation
+       FROM lfx_organisms
+       WHERE status = 'alive'
+         AND fitness_score >= ${MITOSIS_THRESHOLD}
+         AND trials_count >= ${MITOSIS_MIN_TRIALS}
+         AND generation < 16`,
+    ).all() as {
+      organism_id: string
+      blueprint_id: string
+      fitness_score: number
+      generation: number
+    }[]
+
+    let spawns = 0
+    const operators: MutationOperator[] = ['point_mutation', 'phase_epigenetics', 'hue_drift']
+
+    for (const parent of candidates) {
+      const operator = operators[Math.floor(Math.random() * operators.length)]
+      const childFitness = parent.fitness_score * MITOSIS_ENERGY_TRANSFER
+
+      try {
+        const result = this.spawnOrganism(
+          parent.blueprint_id,
+          operator,
+          Date.now(),
+          parent.organism_id,   // parent organism → Lamarckian mitosis
+          childFitness,          // inherited vitality
+        )
+
+        if (result.success) {
+          spawns++
+          // Parent transfers energy to child
+          db.prepare(
+            `UPDATE lfx_organisms
+             SET fitness_score = fitness_score * (1 - ${MITOSIS_ENERGY_TRANSFER})
+             WHERE organism_id = ?`,
+          ).run(parent.organism_id)
+
+          console.log(
+            `[Coliseum 🧬] MITOSIS: ${parent.organism_id} → ${result.organismId} ` +
+            `(gen ${parent.generation + 1}, F=${childFitness.toFixed(3)})`,
+          )
+        }
+      } catch (err) {
+        // Spawn failure (screening abort, etc.) — non-fatal
+      }
+    }
+
+    return spawns
   }
 }
 

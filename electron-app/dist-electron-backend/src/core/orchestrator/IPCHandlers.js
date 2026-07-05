@@ -14,6 +14,7 @@ import { HephaestusRuntime } from '../hephaestus/runtime/HephaestusRuntime';
 import { getArtNetDiscovery } from '../../hal/drivers/ArtNetDiscovery';
 // WAVE 3403: AudioMatrix IPC bridge
 import { getTrinity } from '../../workers/TrinityOrchestrator';
+import { TickEngine } from './tick/TickEngine';
 import { NodeGraphBuilder } from '../forge/NodeGraphBuilder';
 // âš’ï¸ WAVE 2030.18: Singleton runtime for .lfx execution
 let hephaestusRuntime = null;
@@ -62,7 +63,24 @@ export function setupIPCHandlers(deps) {
 // ðŸŽ›ï¸ WAVE 7120: L3++ CALIBRATION â€” SAB IPC bridge
 // =============================================================================
 function setupCalibrationHandlers() {
+    ipcMain.on('hephaestus:calibration:init', () => {
+        console.log('[IPC] calibration:init received');
+    });
+    ipcMain.on('hephaestus:calibration:write', (_e, entries) => {
+        // WAVE 7124: Forensic IPC timer — measure parse + writeCalibration latency
+        const _ipcStart = performance.now();
+        TickEngine.writeCalibration(entries);
+        const _ipcDelta = performance.now() - _ipcStart;
+        if (_ipcDelta > 5) {
+            console.warn(`[FORENSE] IPC calibration:write took ${_ipcDelta.toFixed(1)}ms (${entries.length} entries)`);
+        }
+    });
+    ipcMain.on('hephaestus:calibration:clear', () => {
+        console.log('[IPC] calibration:clear');
+        TickEngine.clearCalibration();
+    });
     ipcMain.handle('hephaestus:calibration:disable', () => {
+        TickEngine.clearCalibration();
         return { ok: true };
     });
 }

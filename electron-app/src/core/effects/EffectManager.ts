@@ -59,6 +59,10 @@ import type { ConsciousnessEffectDecision } from '../protocol/ConsciousnessOutpu
 import { VibeManager } from '../../engine/vibe/VibeManager'
 import type { VibeProfile, VibeId } from '../../types/VibeProfile'
 
+// 🧬 WAVE 5000.V3: Genesis metabolic telemetry
+import { getHeatmapLogger } from '../genesis/fitness/HeatmapLogger'
+import { getGenesisVault } from '../genesis/GenesisVaultService'
+
 // ⚰️ WAVE 3450: isOceanicEffectValidForDepth eliminado junto con ChillStereoPhysics.
 
 // 🌊 WAVE 1071: Import ArsenalRepository for cooldown registration
@@ -99,6 +103,15 @@ const CHILL_LOUNGE_BLOCKED_EFFECTS = [
   'sky_saw',
   'arena_sweep',
 ]
+
+// 🧬 WAVE 5000.V3: Helper for context vector encoding
+function hashStr01(s: string): number {
+  let h = 0
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) - h + s.charCodeAt(i)) | 0
+  }
+  return ((h >>> 0) % 10000) / 10000
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🛡️ THE SHIELD - VIBE EFFECT RULES
@@ -494,6 +507,67 @@ export class EffectManager extends EventEmitter {
       selector.registerEffectFired(config.effectType)
     } catch (e) {
       // Fail silently
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🧬 WAVE 5000.V3: METABOLIC TELEMETRY — Feed the ecology
+    // The effectType IS the blueprint_id. When Selene fires it, all alive
+    // organisms descending from that blueprint receive metabolic nourishment.
+    // This is the food chain: DecisionMaker chooses → organisms eat.
+    // ═══════════════════════════════════════════════════════════════════════
+    try {
+      const heatmapLogger = getHeatmapLogger()
+      const vault = getGenesisVault()
+      const db = (vault as any)._db
+      if (db) {
+        const mc = config.musicalContext
+        const now = Date.now()
+
+        // Build a ContextVector6D from available musical context
+        const ctx = {
+          zScoreAvg3s: mc?.zScore ?? 0,
+          lowBandAvg3s: mc?.energy ?? 0,
+          energyPhaseEncoded: mc?.inDrop ? 1 : 0,
+          vibeHash: mc ? hashStr01(mc.vibeId) : hashStr01(vibeId),
+          sectionEncoded: 0,
+          textureEncoded: 0,
+        }
+
+        // Find all alive organisms for this blueprint and feed them
+        const organisms = db.prepare(
+          'SELECT organism_id FROM lfx_organisms WHERE blueprint_id = ? AND status = ?',
+        ).all(config.effectType, 'alive') as { organism_id: string }[]
+
+        for (const org of organisms) {
+          // 1. Record fire event in heatmap (O(1) queue push, zero I/O)
+          heatmapLogger.recordFireEvent(org.organism_id, ctx, {
+            vibeId: mc?.vibeId ?? vibeId,
+            sectionId: 'unknown',
+            energyZone: 'unknown',
+            texture: 'unknown',
+            bpm: mc?.bpm,
+            beatPhase: mc?.beatPhase,
+          })
+
+          // 2. Metabolic reward: increment fitness (vitality) for surviving the show
+          //    The organism proved viable in the live environment.
+          db.prepare(
+            `UPDATE lfx_organisms
+             SET fitness_score = MIN(fitness_score + @reward, 1.0),
+                 trials_count = trials_count + 1,
+                 passes_count = passes_count + 1,
+                 last_fired_at = @now,
+                 last_evaluated_at = @now
+             WHERE organism_id = @id`,
+          ).run({
+            reward: 0.05 * decision.intensity,
+            now,
+            id: org.organism_id,
+          })
+        }
+      }
+    } catch (_) {
+      // Genesis vault not initialized — fail silently
     }
 
     return instanceToken

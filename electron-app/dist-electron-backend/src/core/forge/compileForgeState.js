@@ -22,6 +22,7 @@
  */
 import { deriveCapabilitiesUnified } from '../../types/FixtureDefinition';
 import { canAdmit } from './cellTypeAdmittance';
+const DMX_UNIVERSE_SIZE = 512;
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTES INTERNAS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -118,6 +119,23 @@ function validateState(state, errors, warnings) {
             }
         }
     }
+    // V6: DMX footprint overflow — reject fixtures that exceed 512 channels
+    let maxDmxEnd = 0;
+    for (const ch of state.channels) {
+        if (ch.type === 'unknown')
+            continue;
+        const offset = ch.index - 1;
+        const end = ch.is16bit ? offset + 1 : offset;
+        if (end > maxDmxEnd)
+            maxDmxEnd = end;
+    }
+    if (maxDmxEnd + 1 > DMX_UNIVERSE_SIZE) {
+        errors.push({
+            level: 'error',
+            code: 'DMX_FOOTPRINT_OVERFLOW',
+            message: `DMX footprint (${maxDmxEnd + 1} channels) excede el límite de ${DMX_UNIVERSE_SIZE} canales del universo. Reduce los canales o usa 8-bit en lugar de 16-bit.`,
+        });
+    }
 }
 // ═══════════════════════════════════════════════════════════════════════════
 // FASE B — RESOLUCIÓN DE IGNITION DEPS
@@ -127,21 +145,30 @@ function validateState(state, errors, warnings) {
  * Si solo hay un candidato por `channelType`, auto-resuelve silenciosamente.
  * Si hay varios → lo deja como está (el operador debe resolver en la UI).
  */
-function resolveDep(dep, channels, selfIdx) {
+function resolveDep(dep, channels, selfIdx, localChannels) {
     if (dep.targetChannelIndex !== undefined)
         return dep; // ya tiene índice explícito
+    // WAVE 7122.5: Local disambiguation — search within the same cell first.
+    // If exactly one local match exists, auto-resolve without global ambiguity.
+    if (localChannels && localChannels.length > 0) {
+        const localMatches = localChannels.filter(c => c.type === dep.channelType && c.index !== selfIdx);
+        if (localMatches.length === 1) {
+            return { ...dep, targetChannelIndex: localMatches[0].index };
+        }
+    }
+    // Fall back to global search across all channels.
     const matches = channels.filter(c => c.type === dep.channelType && c.index !== selfIdx);
     if (matches.length === 1) {
         return { ...dep, targetChannelIndex: matches[0].index };
     }
     return dep;
 }
-export function resolveChannelDeps(ch, channels) {
+export function resolveChannelDeps(ch, channels, localChannels) {
     if (!ch.ignitionDeps || ch.ignitionDeps.length === 0)
         return ch;
     return {
         ...ch,
-        ignitionDeps: ch.ignitionDeps.map(d => resolveDep(d, channels, ch.index)),
+        ignitionDeps: ch.ignitionDeps.map(d => resolveDep(d, channels, ch.index, localChannels)),
     };
 }
 // ═══════════════════════════════════════════════════════════════════════════
@@ -166,9 +193,13 @@ function makeOutputPort() {
         defaultValue: 0,
     };
 }
-function makeInputDmxNode(ch, rowIndex) {
+function makeInputDmxNode(ch, rowIndex, aetherNodeId) {
     const nodeId = `in-${ch.type}-${ch.index}`;
-    const config = { nodeType: 'input_dmx', channelKey: ch.type };
+    // WAVE 7122.1: Cross-Cell Isolation — channelKey must be unique per cell.
+    // Without aetherNodeId prefix, two cells with the same channelType (e.g. strobe)
+    // collide in the ForgeGraphCompiler inputMap, causing cross-cell contamination.
+    const channelKey = aetherNodeId ? `${aetherNodeId}:${ch.type}` : ch.type;
+    const config = { nodeType: 'input_dmx', channelKey };
     return {
         id: nodeId,
         type: 'input_dmx',
@@ -185,7 +216,10 @@ function makeOutputDmxNode(ch, rowIndex, aetherNodeId, aetherZone, cellLabel) {
     const config = {
         nodeType: 'output_dmx',
         channelType: ch.type,
-        dmxOffset: ch.index,
+        // WAVE 7122.2: DMX Base-0 Enforcement — ch.index is 1-based (DMX channel 1,2,3...).
+        // dmxOffset must be 0-based to match NodeGraphBuilder.fromChannels() and
+        // NodeExtractionPipeline._mapForgeNodes() which both use 0-based offsets.
+        dmxOffset: ch.index - 1,
         channelName: ch.name || undefined,
         cellLabel: cellLabel || undefined, // WAVE 4742: Persist cell label
         defaultDmxValue: ch.defaultValue,
@@ -214,7 +248,7 @@ function makeOutputDmxNode(ch, rowIndex, aetherNodeId, aetherZone, cellLabel) {
         outputs: [],
         config,
         uiPosition: { x: OUTPUT_COL_X, y: ROW_START_Y + rowIndex * ROW_SPACING_Y },
-        label: `CH${ch.index + 1}: ${ch.name || ch.type}`,
+        label: `CH${ch.index}: ${ch.name || ch.type}`,
         // WAVE 4743: Persist cell.label en profileMeta.customLabel para JSON roundtrip
         profileMeta: cellLabel ? { customLabel: cellLabel } : undefined,
     };
@@ -253,7 +287,7 @@ function compileNodeGraph(state, resolvedChannels) {
         const aetherNodeId = ownerCell?.cellId;
         const aetherZone = ownerCell?.aetherZone;
         const cellLabel = ownerCell?.label; // WAVE 4742: Pass cell label for JSON persistence
-        const inNode = makeInputDmxNode(ch, rowIndex);
+        const inNode = makeInputDmxNode(ch, rowIndex, aetherNodeId);
         const outNode = makeOutputDmxNode(ch, rowIndex, aetherNodeId, aetherZone, cellLabel);
         const edge = makeEdge(inNode.id, outNode.id, edgeIndex);
         nodes.push(inNode, outNode);
@@ -261,12 +295,15 @@ function compileNodeGraph(state, resolvedChannels) {
         rowIndex++;
         edgeIndex++;
     }
-    // Calcular dmxFootprint
+    // WAVE 7122.2: DMX Base-0 — calculate dmxFootprint using 0-based offsets.
+    // ch.index is 1-based; offset = ch.index - 1. For 16-bit, the fine channel
+    // occupies offset + 1.
     let maxOffset = 0;
     for (const ch of resolvedChannels) {
         if (ch.type === 'unknown')
             continue;
-        const end = ch.is16bit ? ch.index + 1 : ch.index;
+        const offset = ch.index - 1;
+        const end = ch.is16bit ? offset + 1 : offset;
         if (end > maxOffset)
             maxOffset = end;
     }
@@ -302,8 +339,21 @@ export function compileForgeState(state) {
     if (errors.length > 0) {
         return { ok: false, errors, warnings };
     }
-    // ── Fase B: Resolución de deps ────────────────────────────────────────
-    const resolvedChannels = state.channels.map(ch => resolveChannelDeps(ch, state.channels));
+    // ── Fase B: Resolución de deps (con desambiguación local por célula) ─
+    // WAVE 7122.5: Build channel→cell map for local ignition dep resolution.
+    const channelToCellCompile = new Map();
+    for (const cell of state.cells) {
+        for (const idx of cell.channelIndices) {
+            channelToCellCompile.set(idx, cell);
+        }
+    }
+    const resolvedChannels = state.channels.map(ch => {
+        const ownerCell = channelToCellCompile.get(ch.index);
+        const localChannels = ownerCell
+            ? ownerCell.channelIndices.map(idx => state.channels[idx]).filter(Boolean)
+            : undefined;
+        return resolveChannelDeps(ch, state.channels, localChannels);
+    });
     // ── Fase C: NodeGraph ─────────────────────────────────────────────────
     const nodeGraph = compileNodeGraph(state, resolvedChannels);
     // ── Fase D: Ensamblaje ────────────────────────────────────────────────
@@ -333,8 +383,21 @@ export function compileForgeState(state) {
  *   - dmxGovernors se copia directamente del state — DOGMA 2.
  */
 export function buildCompleteFixture(state) {
-    // ── 1. Resolver IgnitionDeps ─────────────────────────────────────────
-    const resolvedChannels = state.channels.map(ch => resolveChannelDeps(ch, state.channels));
+    // ── 1. Resolver IgnitionDeps (con desambiguación local por célula) ────
+    // WAVE 7122.5: Build channel→cell map for local ignition dep resolution.
+    const channelToCellBuild = new Map();
+    for (const cell of state.cells) {
+        for (const idx of cell.channelIndices) {
+            channelToCellBuild.set(idx, cell);
+        }
+    }
+    const resolvedChannels = state.channels.map(ch => {
+        const ownerCell = channelToCellBuild.get(ch.index);
+        const localChannels = ownerCell
+            ? ownerCell.channelIndices.map(idx => state.channels[idx]).filter(Boolean)
+            : undefined;
+        return resolveChannelDeps(ch, state.channels, localChannels);
+    });
     // ── 2. Compilar NodeGraph (con anti-pánico) ──────────────────────────
     let nodeGraph;
     let compileWarnings = [];

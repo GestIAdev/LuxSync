@@ -7,45 +7,17 @@
  */
 import './glassPreload';
 import { contextBridge, ipcRenderer } from 'electron';
-import { CalibrationSABWriter } from '../src/core/aether/glass/CalibrationSAB';
-// WAVE 7120: Calibration SAB lives in preload closure — never crosses contextBridge
-let _calibSAB = null;
-let _calibWriter = null;
-let _calibPort = null;
-// Receive calibration MessagePort from main process
-ipcRenderer.on('calibration:port', (event) => {
-    if (!event.ports || event.ports.length === 0)
-        return;
-    _calibPort = event.ports[0];
-    _calibPort.start();
-});
 // API expuesta al renderer de forma segura
 const api = {
-    // WAVE 7120: L3++ Live Calibration SAB bridge
-    // SAB lives in preload (isolated world) — never crosses contextBridge.
-    // Renderer calls writeCalibration(entries) with plain data; preload writes to SAB.
-    // Main process reads the same SAB (sent via ipcRenderer.send structured clone).
+    // WAVE 7120: L3++ Live Calibration — entries sent via IPC to main (SAB lives in main only)
     initCalibration: () => {
-        if (_calibSAB)
-            return;
-        _calibSAB = new SharedArrayBuffer(32800); // CALIB_SAB_BYTE_LENGTH
-        const meta = new Int32Array(_calibSAB, 0, 8);
-        Atomics.store(meta, 0, 0);
-        Atomics.store(meta, 1, 0);
-        Atomics.store(meta, 2, 0);
-        _calibWriter = new CalibrationSABWriter(_calibSAB);
-        // Send SAB to main via MessagePort (HTML structured clone supports SAB)
-        if (_calibPort) {
-            _calibPort.postMessage(_calibSAB);
-        }
+        ipcRenderer.send('hephaestus:calibration:init');
     },
     writeCalibration: (entries) => {
-        if (_calibWriter)
-            _calibWriter.publish(entries);
+        ipcRenderer.send('hephaestus:calibration:write', entries);
     },
     clearCalibration: () => {
-        if (_calibWriter)
-            _calibWriter.clear();
+        ipcRenderer.send('hephaestus:calibration:clear');
     },
     disableCalibration: () => ipcRenderer.invoke('hephaestus:calibration:disable'),
     // ============================================
@@ -425,6 +397,19 @@ const api = {
          * @returns { id }
          */
         generateId: () => ipcRenderer.invoke('heph:generateId'),
+    },
+    // ============================================
+    // 🧬 WAVE 5000.V3 — GENESIS ENGINE (Era V)
+    // IPC bridge for the Genetic Laboratory UI
+    // ============================================
+    genesis: {
+        getOrganisms: (filter) => ipcRenderer.invoke('genesis:getOrganisms', filter),
+        getHallOfFame: () => ipcRenderer.invoke('genesis:getHallOfFame'),
+        getLineageTree: (organismId) => ipcRenderer.invoke('genesis:getLineageTree', organismId),
+        cullOrganism: (organismId) => ipcRenderer.invoke('genesis:cullOrganism', organismId),
+        canonizeOrganism: (organismId, customName) => ipcRenderer.invoke('genesis:canonizeOrganism', organismId, customName),
+        runMaintenance: () => ipcRenderer.invoke('genesis:runMaintenance'),
+        getSpecies: () => ipcRenderer.invoke('genesis:getSpecies'),
     },
 };
 // ============================================================================

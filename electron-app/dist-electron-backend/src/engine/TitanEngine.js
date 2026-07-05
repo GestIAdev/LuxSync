@@ -47,6 +47,8 @@ getHuntStats, getDreamStats, getLastPrediction, } from '../core/intelligence';
 import { getEffectManager, } from '../core/effects';
 // ⚰️ WAVE 3450: ChillStereoPhysics purged — ChillAmbientEngine gestiona la luz directamente.
 // OceanicMusicalContext, calculateChillStereo, DeepFieldOutput archivados.
+// 🌊 WAVE 7129.6: ChillAmbientEngine reactivado para modulación cromática (hue drift).
+import { chillAmbientEngine } from '../hal/physics/ChillAmbientEngine';
 // 🕰️ WAVE 2002: CHRONOS SYNAPTIC BRIDGE - Timeline control injection
 import { getChronosInjector, } from '../chronos/bridge/ChronosInjector';
 // ═══════════════════════════════════════════════════════════════════════════
@@ -551,9 +553,36 @@ export class TitanEngine extends EventEmitter {
                 forceStrategy: mappedStrategy,
             };
         }
-        // ⚰️ WAVE 3450: OCEAN TRANSLATOR retired.
-        // La paleta chill usa SeleneColorEngine estándar sin oceanicModulation.
-        // ChillAmbientEngine gestiona la intensidad de zona directamente.
+        // 🌊 WAVE 7129.6: OCEAN HUE DRIFT — Reactivado con ChillAmbientEngine.morphFactor.
+        // El morphFactor [0.20, 0.80] con períodos 200s/600s genera un drift cromático
+        // lento dentro del espectro abisal [180°, 260°] (cyan → azul profundo).
+        // morphFactor bajo (0.20 = abismo) → hueInfluence 260° (azul profundo/índigo)
+        // morphFactor alto (0.80 = superficie) → hueInfluence 180° (cyan brillante)
+        const isChillVibe = vibeProfile.id.toLowerCase().includes('chill') ||
+            vibeProfile.id.toLowerCase().includes('lounge') ||
+            vibeProfile.id.toLowerCase().includes('ambient') ||
+            vibeProfile.id.toLowerCase().includes('jazz');
+        if (isChillVibe) {
+            const chillFrame = chillAmbientEngine.tick();
+            const mf = chillFrame.morphFactor;
+            // morphFactor bajo (0.20 = abismo) → hueInfluence 260° (azul profundo/índigo)
+            // morphFactor alto (0.80 = superficie) → hueInfluence 160° (verde alga boreal)
+            // El drift cubre TODO el espectro abisal [160, 260] en 200s/600s.
+            const hueInfluence = 260 - ((mf - 0.20) / 0.60) * 100; // [260, 160]
+            constitution = {
+                ...constitution,
+                oceanicModulation: {
+                    enabled: true,
+                    hueInfluence,
+                    hueInfluenceStrength: 0.55,
+                    saturationMod: -8 + mf * 13, // [−6, +2]: más saturado en superficie
+                    lightnessMod: -18 + mf * 23, // [−13, +1]: abismo casi negro, superficie luminosa
+                    breathingFactor: 1.0,
+                    zone: mf < 0.35 ? 'MIDNIGHT' : mf < 0.55 ? 'TWILIGHT' : mf < 0.7 ? 'OCEAN' : 'SHALLOWS',
+                    depth: Math.round((1 - mf) * 6000),
+                },
+            };
+        }
         // 🎨 GENERAR PALETA CON EL FERRARI (ahora con interpolación LERP suave)
         // 🎨 WAVE 2096.1: SeleneColorInterpolator envuelve SeleneColorEngine.generate()
         //    con transiciones suaves, Desaturation Dip (WAVE 67.5), y jitter tolerance (WAVE 70.5)
@@ -863,6 +892,12 @@ export class TitanEngine extends EventEmitter {
         if (effectOutput.hasActiveEffects && effectOutput.dimmerOverride !== undefined) {
             // HTP: Solo aplicar si el efecto es más brillante
             finalMasterIntensity = Math.max(masterIntensity, effectOutput.dimmerOverride);
+        }
+        // 🌊 WAVE 7129.5: Chill dimmerOverride — ChillAmbientEngine.dimmer (200s/600s morph)
+        // reemplaza el masterIntensity audio-reactivo. Los PARs respiran con la marea,
+        // no con el FFT. Sin esto, calculateMasterIntensity(audio.energy) pulsa con la música.
+        if (nervousOutput.dimmerOverride !== null && nervousOutput.dimmerOverride !== undefined) {
+            finalMasterIntensity = nervousOutput.dimmerOverride;
         }
         // 🌊 WAVE 1080: FLUID DYNAMICS - Global Composition con alpha variable
         // El globalComposition (0-1) determina cuánto "pesa" el efecto global

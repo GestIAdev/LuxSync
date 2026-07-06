@@ -62,6 +62,7 @@ import type { VibeProfile, VibeId } from '../../types/VibeProfile'
 // 🧬 WAVE 5000.V3: Genesis metabolic telemetry
 import { getHeatmapLogger } from '../genesis/fitness/HeatmapLogger'
 import { getGenesisVault } from '../genesis/GenesisVaultService'
+import { getColiseumService } from '../genesis/ColiseumService'
 
 // ⚰️ WAVE 3450: isOceanicEffectValidForDepth eliminado junto con ChillStereoPhysics.
 
@@ -497,7 +498,14 @@ export class EffectManager extends EventEmitter {
       ? `Z:${config.musicalContext.zScore.toFixed(1)}`
       : ''
     const sourceTag = config.source ? `[${config.source}]` : ''
-    console.log(`[EffectManager 🔥] ${config.effectType} FIRED ${sourceTag} in ${vibeId} ${shieldStatus} ⚡[HEPH-BRIDGE] | I:${decision.intensity.toFixed(2)} ${zInfo}`)
+
+    // 🧬 WAVE 5000.V3 BAPTISM: Show readable name in fire log.
+    // For mutant organisms, display "ProceduralName [shortId]" instead of bare UUID.
+    const registryEntry = getDynamicEffectRegistry().getEntry(config.effectType)
+    const displayLabel = registryEntry
+      ? `${registryEntry.name} [${config.effectType.substring(0, 13)}]`
+      : config.effectType
+    console.log(`[EffectManager 🔥] ${displayLabel} FIRED ${sourceTag} in ${vibeId} ${shieldStatus} ⚡[HEPH-BRIDGE] | I:${decision.intensity.toFixed(2)} ${zInfo}`)
 
     // ═══════════════════════════════════════════════════════════════════════
     // 🌊 WAVE 1071: COOLDOWN REGISTRATION
@@ -533,10 +541,41 @@ export class EffectManager extends EventEmitter {
           textureEncoded: 0,
         }
 
-        // Find all alive organisms for this blueprint and feed them
+        // 🧬 WAVE 5000.V3 FIX: Nepotism abolished. Only the EXACT organism_id
+        // that was fired in the live arena receives metabolic reward.
+        // If effectType is a blueprint ancestral ID (not a mutated child),
+        // this query returns 0 rows — granite ancestors don't eat.
         const organisms = db.prepare(
-          'SELECT organism_id FROM lfx_organisms WHERE blueprint_id = ? AND status = ?',
-        ).all(config.effectType, 'alive') as { organism_id: string }[]
+          `SELECT organism_id FROM lfx_organisms
+           WHERE organism_id = ? AND status = 'alive'`,
+        ).all(config.effectType) as { organism_id: string }[]
+
+        // 🧬 BIG BANG SPARK: If the blueprint has zero living descendants, spawn
+        // an initial cohort immediately. This ensures that any effect fired in
+        // vivo — even if cold-start seeding missed it — gets its first children.
+        if (organisms.length === 0) {
+          // Verify the blueprint exists before attempting to spawn
+          const bpExists = db.prepare(
+            'SELECT 1 FROM lfx_blueprints WHERE blueprint_id = ?',
+          ).get(config.effectType)
+          if (bpExists) {
+            // Non-blocking: fire-and-forget cohort spawn
+            queueMicrotask(() => {
+              try {
+                const results = getColiseumService().spawnInitialCohort(config.effectType)
+                const viable = results.filter((r) => r.success).length
+                if (viable > 0) {
+                  console.log(
+                    `[EffectManager 🧬] EMERGENCY SPARK: spawned ${viable} organisms ` +
+                    `for "${config.effectType}" (was orphaned)`,
+                  )
+                }
+              } catch (_) {
+                // Spawn failure (screening abort, etc.) — non-fatal
+              }
+            })
+          }
+        }
 
         for (const org of organisms) {
           // 1. Record fire event in heatmap (O(1) queue push, zero I/O)

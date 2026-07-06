@@ -5,7 +5,7 @@
 export { GenesisVaultService, getGenesisVault, __resetGenesisVaultForTests } from './GenesisVaultService';
 export { AncestralIngestor, getAncestralIngestor, __resetAncestralIngestorForTests } from './AncestralIngestor';
 // Era II — The Coliseum Awakens
-export { pointMutation, geneDuplication, phaseEpigenetics, applyOperator, applyDelta, } from './operators/GeneticOperators';
+export { pointMutation, geneDuplication, phaseEpigenetics, temporalStretch, geneSplice, geneDeletion, interpolationDrift, crossover, blendCognitiveDNA, applyOperator, applyDelta, makeFatTailedRng, computeL2DistanceV2, } from './operators/GeneticOperators';
 export { prenatalScreening } from './screening/PrenatalScreening';
 export { OrganismMaterializer, getOrganismMaterializer, __resetOrganismMaterializerForTests } from './OrganismMaterializer';
 export { ColiseumService, getColiseumService, __resetColiseumServiceForTests } from './ColiseumService';
@@ -19,5 +19,7 @@ export { LifecycleManager, getLifecycleManager, __resetLifecycleManagerForTests 
 export { SpeciesQuotaSelector, getSpeciesQuotaSelector, __resetSpeciesQuotaSelectorForTests } from './ecology/SpeciesQuotaSelector';
 // Era V — The Operator's Mirror (IPC + UI)
 export { setupGenesisIPCHandlers } from './genesisIpc';
+// Era VI — The Lamarckian Medium (Geological Loop Ignition)
+export { igniteGenesisEngine, shutdownGenesisEngine } from './GenesisIgnition';
 // Era V Addendum — Procedural Naming Engine
 export { generateOrganismName, COMBINATORIAL_SPACE } from './naming/ProceduralNamer';

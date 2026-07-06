@@ -20,8 +20,10 @@ export type MutationOperator =
   | 'phase_epigenetics'
   | 'gene_duplication'
   | 'gene_deletion'
+  | 'gene_splice'
   | 'crossover'
   | 'temporal_stretch'
+  | 'interpolation_drift'
   | 'context_drift'
   | 'transposition'
 

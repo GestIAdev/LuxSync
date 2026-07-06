@@ -14,10 +14,15 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { ipcMain } from 'electron'
+import { app } from 'electron'
+import * as path from 'path'
+import * as fs from 'fs'
 import { getGenesisVault } from './GenesisVaultService'
 import { getColiseumService } from './ColiseumService'
+import { getOrganismMaterializer } from './OrganismMaterializer'
 import { generateOrganismName } from './naming/ProceduralNamer'
 import type { RarityTier, OrganismStatus } from './types'
+import type { HephAutomationClipV3 } from '../hephaestus/types'
 
 // ─── TYPES (IPC payload contracts) ──────────────────────────────────────────
 
@@ -465,7 +470,112 @@ export function setupGenesisIPCHandlers(): void {
     }
   })
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // genesis:materializeClip — Materialize organism → HephAutomationClipV3
+  // Returns the full clip for loading into the Forge editor canvas.
+  // ═══════════════════════════════════════════════════════════════════════
+  ipcMain.handle('genesis:materializeClip', async (_event, organismId: string) => {
+    try {
+      const materializer = getOrganismMaterializer()
+      const mat = materializer.materialize(organismId)
+      const clip = mat.clip
+
+      // Serialize for IPC — Electron structured clone handles plain objects
+      const clipPOJO = JSON.parse(JSON.stringify(clip)) as HephAutomationClipV3
+
+      console.log(`[GenesisIPC] 🎬 Materialized ${organismId} → "${clipPOJO.name}" (${clipPOJO.tracks.length} tracks)`)
+      return { success: true, clip: clipPOJO }
+    } catch (error) {
+      console.error('[GenesisIPC] materializeClip failed:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      }
+    }
+  })
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // genesis:canonizeToBuiltins — Write clip as .lfx to builtins/ + update status
+  // ═══════════════════════════════════════════════════════════════════════
+  ipcMain.handle(
+    'genesis:canonizeToBuiltins',
+    async (_event, clip: HephAutomationClipV3, organismId: string) => {
+      try {
+        const vault = getGenesisVault()
+        const db = (vault as any)._db
+        if (!db) {
+          return { success: false, error: 'Vault not initialized' }
+        }
+
+        // 1. Determine builtins directory — runtime app data path
+        const builtinsDir = path.join(app.getPath('userData'), 'builtins')
+        if (!fs.existsSync(builtinsDir)) {
+          fs.mkdirSync(builtinsDir, { recursive: true })
+        }
+
+        // 2. Serialize as .lfx (LFXFileV3 wrapper)
+        const lfxContent = JSON.stringify({
+          $schema: 'luxsync.lfx/3.0',
+          clip,
+          checksum: '',
+        }, null, 2)
+
+        const fileName = `${clip.id}.lfx`
+        const filePath = path.join(builtinsDir, fileName)
+        fs.writeFileSync(filePath, lfxContent, 'utf-8')
+
+        // 3. Update organism status to 'canonized'
+        db.prepare(
+          `UPDATE lfx_organisms SET status = 'canonized' WHERE organism_id = ?`,
+        ).run(organismId)
+
+        console.log(
+          `[GenesisIPC] 💾 Canonized to disk: ${organismId} → ${filePath}`,
+        )
+
+        return {
+          success: true,
+          filePath,
+          fileName,
+        }
+      } catch (error) {
+        console.error('[GenesisIPC] canonizeToBuiltins failed:', error)
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        }
+      }
+    },
+  )
+
   console.log('[GenesisIPC 🧬] All genesis channels registered')
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// genesis:purgeEcosystem — Delete all organisms except canonized
+// ═══════════════════════════════════════════════════════════════════════
+ipcMain.handle('genesis:purgeEcosystem', async () => {
+  try {
+    const vault = getGenesisVault()
+    const db = (vault as any)._db
+    if (!db) {
+      return { success: false, error: 'Vault not initialized' }
+    }
+
+    const info = db.prepare(
+      "DELETE FROM lfx_organisms WHERE status != 'canonized'",
+    ).run()
+
+    console.log(`[GenesisIPC 🧬] Purge: ${info.changes} organisms deleted (canonized preserved)`)
+
+    return { success: true, deleted: info.changes }
+  } catch (error) {
+    console.error('[GenesisIPC] purgeEcosystem failed:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
+})
 
 export default setupGenesisIPCHandlers

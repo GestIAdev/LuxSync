@@ -10,6 +10,8 @@
 //  All operators are pure: (clip) → { clip: clone, delta: Operation[] }
 //  The clone is the mutated clip; the delta is the minimal diff to reproduce it.
 // ═══════════════════════════════════════════════════════════════════════════
+import { BEZIER_PRESETS } from '../../hephaestus/types';
+import { ENERGY_ZONES } from '../../arsenal/LfxClipInstance';
 import { DEFAULT_PHASE_CONFIG_PRO } from '../../hephaestus/phase/PhaseConfigPro';
 // ─── DEEP CLONE ─────────────────────────────────────────────────────────────
 function deepClone(obj) {
@@ -41,12 +43,15 @@ export function applyDelta(clip, delta) {
                 cursor[lastKey] = op.value;
                 break;
             case 'add':
-                if (Array.isArray(cursor[lastKey])) {
+                if (lastKey === '-' && Array.isArray(cursor)) {
+                    cursor.push(op.value);
+                }
+                else if (Array.isArray(cursor) && /^\d+$/.test(lastKey)) {
+                    cursor.splice(Number(lastKey), 0, op.value);
+                }
+                else if (Array.isArray(cursor[lastKey])) {
                     ;
                     cursor[lastKey].push(op.value);
-                }
-                else if (lastKey === '-' && Array.isArray(cursor)) {
-                    cursor.push(op.value);
                 }
                 else {
                     cursor[lastKey] = op.value;
@@ -64,26 +69,26 @@ export function applyDelta(clip, delta) {
     }
     return target;
 }
-// ─── L2 DISTANCE HELPER ─────────────────────────────────────────────────────
+// ─── L2 DISTANCE V2 — COMPOSITE MULTI-SPACE (WAVE 6000) ─────────────────────
 /**
- * Computes a normalized L2 distance between parent and child clip
- * based on numeric keyframe values and bezier handles.
- * Returns a value in [0, ∞) — higher = more divergent.
+ * D_curve: RMSE over normalized keyframe values and bezier handles.
+ * Differences are divided by the track's span (range[1] - range[0])
+ * so that pan/tilt channels don't dominate the score.
  */
-function computeL2Distance(parent, child) {
+function computeDCurve(parent, child) {
     let sumSq = 0;
     let count = 0;
-    const parentTracks = parent.tracks;
-    const childTracks = child.tracks;
-    const maxTracks = Math.max(parentTracks.length, childTracks.length);
+    const maxTracks = Math.max(parent.tracks.length, child.tracks.length);
     for (let t = 0; t < maxTracks; t++) {
-        const pt = parentTracks[t];
-        const ct = childTracks[t];
+        const pt = parent.tracks[t];
+        const ct = child.tracks[t];
         if (!pt || !ct) {
-            sumSq += 1.0; // track added/removed = full divergence
+            sumSq += 1.0;
             count++;
             continue;
         }
+        const span = pt.curve.range[1] - pt.curve.range[0];
+        const safeSpan = span !== 0 ? span : 1;
         const pk = pt.curve.keyframes;
         const ck = ct.curve.keyframes;
         const maxKf = Math.max(pk.length, ck.length);
@@ -96,20 +101,101 @@ function computeL2Distance(parent, child) {
                 continue;
             }
             if (typeof pkf.value === 'number' && typeof ckf.value === 'number') {
-                const diff = ckf.value - pkf.value;
-                sumSq += diff * diff;
+                const diffNorm = (ckf.value - pkf.value) / safeSpan;
+                sumSq += diffNorm * diffNorm;
                 count++;
             }
             if (pkf.bezierHandles && ckf.bezierHandles) {
                 for (let b = 0; b < 4; b++) {
                     const diff = ckf.bezierHandles[b] - pkf.bezierHandles[b];
-                    sumSq += diff * diff * 0.25; // bezier weighted lower
+                    sumSq += diff * diff * 0.25;
                     count++;
                 }
             }
         }
     }
     return count > 0 ? Math.sqrt(sumSq / count) : 0;
+}
+/**
+ * D_phase: RMSE over normalized PhaseConfigPro field differences.
+ * Each field is normalized to [0,1] by its canonical range.
+ * Weights reflect visual impact: spreadDeg > wings > shuffle ≈ blocks > direction > symmetry.
+ */
+function computeDPhase(parent, child) {
+    const maxTracks = Math.max(parent.tracks.length, child.tracks.length);
+    let sumSq = 0;
+    let count = 0;
+    const weights = [0.30, 0.25, 0.15, 0.15, 0.10, 0.05];
+    for (let t = 0; t < maxTracks; t++) {
+        const pt = parent.tracks[t];
+        const ct = child.tracks[t];
+        if (!pt || !ct) {
+            sumSq += 0.5;
+            count++;
+            continue;
+        }
+        const pp = pt.phaseConfig ?? DEFAULT_PHASE_CONFIG_PRO;
+        const cp = ct.phaseConfig ?? DEFAULT_PHASE_CONFIG_PRO;
+        const dSpread = Math.abs(cp.spreadDeg - pp.spreadDeg) / 1440;
+        const dWings = Math.abs(cp.wings - pp.wings) / 8;
+        const dShuffle = Math.abs(cp.shuffle - pp.shuffle);
+        const dBlocks = Math.abs(cp.blocks - pp.blocks) / 16;
+        const dDirection = cp.direction !== pp.direction ? 1 : 0;
+        const dSymmetry = cp.symmetry !== pp.symmetry ? 1 : 0;
+        const diffs = [dSpread, dWings, dShuffle, dBlocks, dDirection, dSymmetry];
+        let weightedSumSq = 0;
+        for (let i = 0; i < diffs.length; i++) {
+            weightedSumSq += weights[i] * diffs[i] * diffs[i];
+        }
+        sumSq += weightedSumSq;
+        count++;
+    }
+    return count > 0 ? Math.sqrt(sumSq / count) : 0;
+}
+/**
+ * D_structural: topological distance [0,1] based on track count diff,
+ * average keyframe count diff, and interpolation change ratio.
+ */
+function computeDStructural(parent, child) {
+    const trackCountDiff = Math.abs(child.tracks.length - parent.tracks.length) /
+        Math.max(parent.tracks.length, 1);
+    let keyframeDiffSum = 0;
+    let interpolationChanges = 0;
+    let comparedTracks = 0;
+    const maxT = Math.max(parent.tracks.length, child.tracks.length);
+    for (let t = 0; t < maxT; t++) {
+        const pt = parent.tracks[t];
+        const ct = child.tracks[t];
+        if (!pt || !ct)
+            continue;
+        comparedTracks++;
+        const kfDiff = Math.abs(ct.curve.keyframes.length - pt.curve.keyframes.length);
+        keyframeDiffSum += kfDiff / Math.max(pt.curve.keyframes.length, 1);
+        const minKf = Math.min(pt.curve.keyframes.length, ct.curve.keyframes.length);
+        for (let k = 0; k < minKf; k++) {
+            if (pt.curve.keyframes[k].interpolation !== ct.curve.keyframes[k].interpolation) {
+                interpolationChanges++;
+            }
+        }
+    }
+    const avgKfDiff = comparedTracks > 0 ? keyframeDiffSum / comparedTracks : 0;
+    const interpRatio = comparedTracks > 0
+        ? interpolationChanges / comparedTracks
+        : 0;
+    return Math.max(0, Math.min(1, 0.5 * trackCountDiff + 0.35 * avgKfDiff + 0.15 * interpRatio));
+}
+/**
+ * Composite L2 distance V2 — multi-space weighted average.
+ * L2_total = 0.45 * D_curve + 0.35 * D_phase + 0.20 * D_structural
+ *
+ * Unlike V1, this is NOT blind to phaseConfig changes (D_phase)
+ * and captures structural topology shifts (D_structural).
+ */
+export function computeL2DistanceV2(parent, child) {
+    const dCurve = computeDCurve(parent, child);
+    const dPhase = computeDPhase(parent, child);
+    const dStructural = computeDStructural(parent, child);
+    return 0.45 * dCurve + 0.35 * dPhase + 0.20 * dStructural;
 }
 // ─── RANDOM HELPERS (deterministic via seed) ────────────────────────────────
 function makeRng(seed) {
@@ -122,44 +208,54 @@ function makeRng(seed) {
 function clamp(v, lo, hi) {
     return Math.max(lo, Math.min(hi, v));
 }
+/**
+ * Wraps a base RNG to provide fat-tailed sampling distributions.
+ * Uses Cauchy (for signed magnitudes) and Pareto (for positive magnitudes).
+ */
+export function makeFatTailedRng(baseRng) {
+    const sampleCauchy = (scale, maxAbs) => {
+        const p = baseRng();
+        const pClamped = Math.max(1e-6, Math.min(1 - 1e-6, p));
+        const raw = scale * Math.tan(Math.PI * (pClamped - 0.5));
+        return Math.max(-maxAbs, Math.min(maxAbs, raw));
+    };
+    const samplePareto = (xm, alpha) => {
+        const p = Math.max(0, Math.min(1 - 1e-9, baseRng()));
+        return xm / Math.pow(1 - p, 1 / alpha);
+    };
+    return { sampleCauchy, samplePareto };
+}
 // ═══════════════════════════════════════════════════════════════════════════
 // OPERATOR 1: POINT MUTATION
 // ═══════════════════════════════════════════════════════════════════════════
 /**
- * Modifies 2-8% a single Bézier handle or numeric `value` in a random track.
- * Does not touch color values (HSL) — only numeric keyframes.
+ * Modifies a single numeric `value` (and optionally a bezier handle) in a random track.
+ * WAVE 6000.V2: Magnitude now drawn from truncated Cauchy distribution —
+ * most mutations are small (MICRO/STANDARD), but rare CATACLYSMIC events occur.
  */
 export function pointMutation(parent, seed) {
     const rng = makeRng(seed ?? Date.now());
+    const fatRng = makeFatTailedRng(rng);
     const child = deepClone(parent);
     const delta = [];
-    // Find tracks with numeric keyframes
     const numericTracks = child.tracks
         .map((t, i) => ({ track: t, index: i }))
         .filter((t) => t.track.curve.valueType === 'number' && t.track.curve.keyframes.length > 0);
     if (numericTracks.length === 0) {
-        return {
-            clip: child,
-            delta,
-            operator: 'point_mutation',
-            l2Distance: 0,
-        };
+        return { clip: child, delta, operator: 'point_mutation', l2Distance: 0 };
     }
-    // Pick a random track
     const pick = numericTracks[Math.floor(rng() * numericTracks.length)];
     const track = pick.track;
     const trackIdx = pick.index;
-    // Pick a random keyframe
     const kfIdx = Math.floor(rng() * track.curve.keyframes.length);
     const kf = track.curve.keyframes[kfIdx];
-    // Mutation magnitude: 2-8%
-    const magnitude = 0.02 + rng() * 0.06;
-    const sign = rng() < 0.5 ? -1 : 1;
+    // Fat-tailed magnitude: Cauchy(scale=0.02, maxAbs=0.60)
+    const magnitude = fatRng.sampleCauchy(0.02, 0.60);
     const range = track.curve.range;
     const span = range[1] - range[0];
     if (typeof kf.value === 'number') {
         const oldVal = kf.value;
-        const newVal = clamp(oldVal + sign * magnitude * span, range[0], range[1]);
+        const newVal = clamp(oldVal + magnitude * span, range[0], range[1]);
         kf.value = newVal;
         delta.push({
             op: 'replace',
@@ -171,7 +267,8 @@ export function pointMutation(parent, seed) {
     if (kf.bezierHandles && rng() < 0.5) {
         const handleIdx = Math.floor(rng() * 4);
         const oldHandle = kf.bezierHandles[handleIdx];
-        const newHandle = clamp(oldHandle + sign * magnitude, -2, 2);
+        const handleDelta = fatRng.sampleCauchy(0.03, 0.80);
+        const newHandle = clamp(oldHandle + handleDelta, -2, 2);
         kf.bezierHandles[handleIdx] = newHandle;
         delta.push({
             op: 'replace',
@@ -183,7 +280,7 @@ export function pointMutation(parent, seed) {
         clip: child,
         delta,
         operator: 'point_mutation',
-        l2Distance: computeL2Distance(parent, child),
+        l2Distance: computeL2DistanceV2(parent, child),
     };
 }
 // ═══════════════════════════════════════════════════════════════════════════
@@ -235,43 +332,43 @@ export function geneDuplication(parent, seed) {
         clip: child,
         delta,
         operator: 'gene_duplication',
-        l2Distance: computeL2Distance(parent, child),
+        l2Distance: computeL2DistanceV2(parent, child),
     };
 }
 // ═══════════════════════════════════════════════════════════════════════════
 // OPERATOR 3: PHASE EPIGENETICS
 // ═══════════════════════════════════════════════════════════════════════════
 /**
- * Mutates PhaseConfigPro parameters (spreadDeg, wings, shuffle, blocks, direction)
- * across ALL tracks without touching the curves (keyframes/values).
- * This is purely epigenetic — it changes HOW tracks execute, not WHAT they produce.
+ * Mutates PhaseConfigPro parameters across ALL tracks using fat-tailed distributions.
+ * WAVE 6000.V2: spreadDeg and shuffle use sampleCauchy for signed variance,
+ * wings and blocks use samplePareto for positive scalar jumps.
  */
 export function phaseEpigenetics(parent, seed) {
     const rng = makeRng(seed ?? Date.now());
+    const fatRng = makeFatTailedRng(rng);
     const child = deepClone(parent);
     const delta = [];
     for (let t = 0; t < child.tracks.length; t++) {
         const track = child.tracks[t];
         const existing = track.phaseConfig ?? { ...DEFAULT_PHASE_CONFIG_PRO };
-        // Mutate 1-2 phase parameters per track
         const numMutations = 1 + Math.floor(rng() * 2);
         const newPhase = { ...existing };
         for (let m = 0; m < numMutations; m++) {
             const param = Math.floor(rng() * 5);
             switch (param) {
-                case 0: // spreadDeg
-                    newPhase.spreadDeg = clamp(existing.spreadDeg + (rng() - 0.5) * 120, 0, 1440);
+                case 0: // spreadDeg — Cauchy signed variance
+                    newPhase.spreadDeg = clamp(existing.spreadDeg + fatRng.sampleCauchy(30, 360), 0, 1440);
                     break;
-                case 1: // wings
-                    newPhase.wings = clamp(Math.round(existing.wings + (rng() < 0.5 ? -1 : 1)), 1, 8);
+                case 1: // wings — Pareto positive jump ± direction
+                    newPhase.wings = clamp(Math.round(existing.wings + (rng() < 0.5 ? -1 : 1) * fatRng.samplePareto(0.5, 2)), 1, 8);
                     break;
-                case 2: // shuffle
-                    newPhase.shuffle = clamp(existing.shuffle + (rng() - 0.5) * 0.3, 0, 1);
+                case 2: // shuffle — Cauchy signed variance
+                    newPhase.shuffle = clamp(existing.shuffle + fatRng.sampleCauchy(0.05, 0.50), 0, 1);
                     break;
-                case 3: // blocks
-                    newPhase.blocks = clamp(Math.round(existing.blocks + (rng() < 0.5 ? -1 : 1)), 1, 16);
+                case 3: // blocks — Pareto positive jump ± direction
+                    newPhase.blocks = clamp(Math.round(existing.blocks + (rng() < 0.5 ? -1 : 1) * fatRng.samplePareto(0.5, 2)), 1, 16);
                     break;
-                case 4: // direction
+                case 4: // direction — coin flip
                     newPhase.direction = (rng() < 0.5 ? 1 : -1);
                     break;
             }
@@ -288,12 +385,406 @@ export function phaseEpigenetics(parent, seed) {
         clip: child,
         delta,
         operator: 'phase_epigenetics',
-        l2Distance: computeL2Distance(parent, child),
+        l2Distance: computeL2DistanceV2(parent, child),
+    };
+}
+// ═══════════════════════════════════════════════════════════════════════════
+// OPERATOR 4: TEMPORAL STRETCH
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Compresses or expands the timeMs of all keyframes by a factor derived
+ * from a fat-tailed Cauchy distribution. factor < 1 = speed up, > 1 = slow down.
+ * 70% chance targets a single track, 30% targets the entire clip.
+ */
+export function temporalStretch(parent, seed) {
+    const rng = makeRng(seed ?? Date.now());
+    const fatRng = makeFatTailedRng(rng);
+    const child = deepClone(parent);
+    const delta = [];
+    if (child.tracks.length === 0) {
+        return { clip: child, delta, operator: 'temporal_stretch', l2Distance: 0 };
+    }
+    const factor = fatRng.sampleCauchy(0.15, 0.90) + 1.0;
+    const targetClip = rng() < 0.3;
+    const durationMs = child.durationMs;
+    if (targetClip) {
+        child.durationMs = Math.round(durationMs * factor);
+        delta.push({
+            op: 'replace',
+            path: '/durationMs',
+            value: child.durationMs,
+        });
+    }
+    const trackIndices = targetClip
+        ? child.tracks.map((_, i) => i)
+        : [Math.floor(rng() * child.tracks.length)];
+    for (const t of trackIndices) {
+        const track = child.tracks[t];
+        for (let k = 0; k < track.curve.keyframes.length; k++) {
+            const kf = track.curve.keyframes[k];
+            const newTime = clamp(Math.round(kf.timeMs * factor), 0, child.durationMs);
+            kf.timeMs = newTime;
+            delta.push({
+                op: 'replace',
+                path: `/tracks/${t}/curve/keyframes/${k}/timeMs`,
+                value: newTime,
+            });
+        }
+        track.curve.keyframes.sort((a, b) => a.timeMs - b.timeMs);
+    }
+    return {
+        clip: child,
+        delta,
+        operator: 'temporal_stretch',
+        l2Distance: computeL2DistanceV2(parent, child),
+    };
+}
+// ═══════════════════════════════════════════════════════════════════════════
+// OPERATOR 5: GENE SPLICE
+// ═══════════════════════════════════════════════════════════════════════════
+const BEZIER_PRESET_KEYS = Object.keys(BEZIER_PRESETS);
+/**
+ * Inserts 1-3 new keyframes between two existing ones in a numeric track.
+ * Values are linearly interpolated + Cauchy noise. Emits 'add' ops.
+ */
+export function geneSplice(parent, seed) {
+    const rng = makeRng(seed ?? Date.now());
+    const fatRng = makeFatTailedRng(rng);
+    const child = deepClone(parent);
+    const delta = [];
+    const numericTracks = child.tracks
+        .map((t, i) => ({ track: t, index: i }))
+        .filter((t) => t.track.curve.valueType === 'number' && t.track.curve.keyframes.length >= 2);
+    if (numericTracks.length === 0) {
+        return { clip: child, delta, operator: 'gene_splice', l2Distance: 0 };
+    }
+    const pick = numericTracks[Math.floor(rng() * numericTracks.length)];
+    const track = pick.track;
+    const trackIdx = pick.index;
+    const kfs = track.curve.keyframes;
+    const gapIdx = Math.floor(rng() * (kfs.length - 1));
+    const numInserts = 1 + Math.floor(rng() * 3);
+    const range = track.curve.range;
+    const span = range[1] - range[0];
+    for (let j = 1; j <= numInserts; j++) {
+        const tFraction = j / (numInserts + 1);
+        const kfA = kfs[gapIdx];
+        const kfB = kfs[gapIdx + 1];
+        const baseTime = kfA.timeMs + (kfB.timeMs - kfA.timeMs) * tFraction;
+        const valA = kfA.value;
+        const valB = kfB.value;
+        if (typeof valA !== 'number' || typeof valB !== 'number')
+            break;
+        const baseValue = valA + (valB - valA) * tFraction;
+        const noise = fatRng.sampleCauchy(0.04, 0.50);
+        const newValue = clamp(baseValue + noise * span, range[0], range[1]);
+        const interpRoll = rng();
+        const newInterp = interpRoll < 0.6 ? 'bezier' : interpRoll < 0.9 ? 'linear' : 'hold';
+        const newKf = {
+            timeMs: Math.round(baseTime),
+            value: newValue,
+            interpolation: newInterp,
+        };
+        if (newInterp === 'bezier') {
+            const presetKey = BEZIER_PRESET_KEYS[Math.floor(rng() * BEZIER_PRESET_KEYS.length)];
+            newKf.bezierHandles = [...BEZIER_PRESETS[presetKey]];
+        }
+        // Find insertion index to maintain ascending timeMs
+        let insertIdx = gapIdx + 1;
+        while (insertIdx < kfs.length && kfs[insertIdx].timeMs < newKf.timeMs) {
+            insertIdx++;
+        }
+        kfs.splice(insertIdx, 0, newKf);
+        delta.push({
+            op: 'add',
+            path: `/tracks/${trackIdx}/curve/keyframes/${insertIdx}`,
+            value: newKf,
+        });
+    }
+    return {
+        clip: child,
+        delta,
+        operator: 'gene_splice',
+        l2Distance: computeL2DistanceV2(parent, child),
+    };
+}
+// ═══════════════════════════════════════════════════════════════════════════
+// OPERATOR 6: GENE DELETION
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Removes a keyframe (preserving first/last anchors) or an entire track
+ * (protecting the intensity channel). Emits 'remove' ops.
+ */
+export function geneDeletion(parent, seed) {
+    const rng = makeRng(seed ?? Date.now());
+    const child = deepClone(parent);
+    const delta = [];
+    if (child.tracks.length === 0) {
+        return { clip: child, delta, operator: 'gene_deletion', l2Distance: 0 };
+    }
+    const mode = rng() < 0.7 ? 'keyframe' : 'track';
+    if (mode === 'keyframe') {
+        const eligibleTracks = child.tracks
+            .map((t, i) => ({ track: t, index: i }))
+            .filter((t) => t.track.curve.keyframes.length >= 3);
+        if (eligibleTracks.length === 0) {
+            return { clip: child, delta, operator: 'gene_deletion', l2Distance: 0 };
+        }
+        const pick = eligibleTracks[Math.floor(rng() * eligibleTracks.length)];
+        const track = pick.track;
+        const trackIdx = pick.index;
+        const kfs = track.curve.keyframes;
+        // Exclude first and last keyframe (anchors)
+        const kfIdx = 1 + Math.floor(rng() * (kfs.length - 2));
+        kfs.splice(kfIdx, 1);
+        delta.push({
+            op: 'remove',
+            path: `/tracks/${trackIdx}/curve/keyframes/${kfIdx}`,
+        });
+    }
+    else {
+        if (child.tracks.length < 2) {
+            return { clip: child, delta, operator: 'gene_deletion', l2Distance: 0 };
+        }
+        // Protect intensity: don't delete the only intensity track
+        const intensityTracks = child.tracks.filter((t) => t.paramId === 'intensity');
+        const eligibleTracks = child.tracks
+            .map((t, i) => ({ track: t, index: i }))
+            .filter((t) => intensityTracks.length > 1 || t.track.paramId !== 'intensity');
+        if (eligibleTracks.length === 0) {
+            return { clip: child, delta, operator: 'gene_deletion', l2Distance: 0 };
+        }
+        const pick = eligibleTracks[Math.floor(rng() * eligibleTracks.length)];
+        const trackIdx = pick.index;
+        child.tracks.splice(trackIdx, 1);
+        delta.push({
+            op: 'remove',
+            path: `/tracks/${trackIdx}`,
+        });
+    }
+    return {
+        clip: child,
+        delta,
+        operator: 'gene_deletion',
+        l2Distance: computeL2DistanceV2(parent, child),
+    };
+}
+// ═══════════════════════════════════════════════════════════════════════════
+// OPERATOR 7: INTERPOLATION DRIFT
+// ═══════════════════════════════════════════════════════════════════════════
+const INTERP_TRANSITIONS = {
+    bezier: [['linear', 0.30], ['hold', 0.15], ['bezier', 0.55]],
+    linear: [['bezier', 0.50], ['hold', 0.20], ['linear', 0.30]],
+    hold: [['bezier', 0.40], ['linear', 0.40], ['hold', 0.20]],
+};
+function pickTransition(rng, current) {
+    const transitions = INTERP_TRANSITIONS[current];
+    const roll = rng();
+    let acc = 0;
+    for (const [target, prob] of transitions) {
+        acc += prob;
+        if (roll < acc)
+            return target;
+    }
+    return transitions[transitions.length - 1][0];
+}
+/**
+ * Changes the interpolation type of a random keyframe using a Markov-style
+ * transition matrix. Updates bezierHandles when entering/leaving bezier mode.
+ */
+export function interpolationDrift(parent, seed) {
+    const rng = makeRng(seed ?? Date.now());
+    const fatRng = makeFatTailedRng(rng);
+    const child = deepClone(parent);
+    const delta = [];
+    const eligibleTracks = child.tracks
+        .map((t, i) => ({ track: t, index: i }))
+        .filter((t) => t.track.curve.keyframes.length >= 2);
+    if (eligibleTracks.length === 0) {
+        return { clip: child, delta, operator: 'interpolation_drift', l2Distance: 0 };
+    }
+    const pick = eligibleTracks[Math.floor(rng() * eligibleTracks.length)];
+    const track = pick.track;
+    const trackIdx = pick.index;
+    const kfs = track.curve.keyframes;
+    // Exclude last keyframe (interpolation defines transition TO next)
+    const kfIdx = Math.floor(rng() * (kfs.length - 1));
+    const kf = kfs[kfIdx];
+    const currentInterp = kf.interpolation;
+    // Pick new interpolation, re-roll once if same (avoid no-op)
+    let newInterp = pickTransition(rng, currentInterp);
+    if (newInterp === currentInterp) {
+        newInterp = pickTransition(rng, currentInterp);
+    }
+    if (newInterp === currentInterp) {
+        return { clip: child, delta, operator: 'interpolation_drift', l2Distance: 0 };
+    }
+    kf.interpolation = newInterp;
+    delta.push({
+        op: 'replace',
+        path: `/tracks/${trackIdx}/curve/keyframes/${kfIdx}/interpolation`,
+        value: newInterp,
+    });
+    if (newInterp === 'bezier') {
+        if (kf.bezierHandles) {
+            // Perturb existing handles with Cauchy noise
+            const perturbed = kf.bezierHandles.map((h) => clamp(h + fatRng.sampleCauchy(0.03, 0.50), -2, 2));
+            kf.bezierHandles = perturbed;
+            delta.push({
+                op: 'replace',
+                path: `/tracks/${trackIdx}/curve/keyframes/${kfIdx}/bezierHandles`,
+                value: perturbed,
+            });
+        }
+        else {
+            // Generate random preset
+            const presetKey = BEZIER_PRESET_KEYS[Math.floor(rng() * BEZIER_PRESET_KEYS.length)];
+            const handles = [...BEZIER_PRESETS[presetKey]];
+            kf.bezierHandles = handles;
+            delta.push({
+                op: 'replace',
+                path: `/tracks/${trackIdx}/curve/keyframes/${kfIdx}/bezierHandles`,
+                value: handles,
+            });
+        }
+    }
+    else {
+        // Leaving bezier — remove handles if present
+        if (kf.bezierHandles) {
+            delete kf.bezierHandles;
+            delta.push({
+                op: 'remove',
+                path: `/tracks/${trackIdx}/curve/keyframes/${kfIdx}/bezierHandles`,
+            });
+        }
+    }
+    return {
+        clip: child,
+        delta,
+        operator: 'interpolation_drift',
+        l2Distance: computeL2DistanceV2(parent, child),
+    };
+}
+const DOMAIN_TEMPORAL = new Set(['intensity', 'color', 'strobe', 'strobeRate', 'zoom', 'focus']);
+const DOMAIN_SPATIAL = new Set(['pan', 'tilt']);
+/**
+ * Blends cognitiveDNA from two parents, weighting numeric genome 60/40
+ * toward the dominant parent. Unions lists (compatibleVibes, validSections).
+ * G4 PRE-SCREENING: if unioned energyZone span > 2, collapses to dominant's range.
+ */
+export function blendCognitiveDNA(dnaA, dnaB, dominant) {
+    const dom = dominant === 'A' ? dnaA : dnaB;
+    const sub = dominant === 'A' ? dnaB : dnaA;
+    const genome = {
+        aggression: 0.6 * dom.genome.aggression + 0.4 * sub.genome.aggression,
+        chaos: 0.6 * dom.genome.chaos + 0.4 * sub.genome.chaos,
+        organicity: 0.6 * dom.genome.organicity + 0.4 * sub.genome.organicity,
+    };
+    const textureAffinity = dom.textureAffinity;
+    const spatialBehavior = dom.spatialBehavior;
+    const compatibleVibes = [...new Set([...dnaA.compatibleVibes, ...dnaB.compatibleVibes])];
+    const validSections = [...new Set([...dnaA.validSections, ...dnaB.validSections])];
+    // G4 PRE-SCREENING: check zoneSpan of unioned range
+    const unionMinIdx = Math.min(ENERGY_ZONES.indexOf(dnaA.energyZone.min), ENERGY_ZONES.indexOf(dnaB.energyZone.min));
+    const unionMaxIdx = Math.max(ENERGY_ZONES.indexOf(dnaA.energyZone.max), ENERGY_ZONES.indexOf(dnaB.energyZone.max));
+    const unionSpan = unionMaxIdx - unionMinIdx + 1;
+    const energyZone = unionSpan > 2 ? dom.energyZone : {
+        min: ENERGY_ZONES[Math.max(0, unionMinIdx)],
+        max: ENERGY_ZONES[Math.min(ENERGY_ZONES.length - 1, unionMaxIdx)],
+    };
+    const aggressionRange = {
+        min: Math.min(dnaA.aggressionRange.min, dnaB.aggressionRange.min),
+        max: Math.max(dnaA.aggressionRange.max, dnaB.aggressionRange.max),
+    };
+    return {
+        genome,
+        textureAffinity,
+        compatibleVibes,
+        validSections,
+        energyZone,
+        aggressionRange,
+        spatialBehavior,
+        ikCompatibility: dom.ikCompatibility,
+        executionDomain: dom.executionDomain,
+    };
+}
+/**
+ * Sexual reproduction operator — combines temporal tracks from one parent
+ * with spatial tracks from another, blending cognitiveDNA.
+ *
+ * Delta is a bulk replace of /tracks and /cognitiveDNA on the dominant parent.
+ * L2 = min(distance to A, distance to B) — conservative rule.
+ */
+export function crossover(parentA, parentB, fitnessA, fitnessB, seed) {
+    const rng = makeRng(seed ?? Date.now());
+    const dominant = fitnessA >= fitnessB ? 'A' : 'B';
+    const dominantClip = dominant === 'A' ? parentA : parentB;
+    // Domain inheritance with forced hybridization
+    let inheritTemporalFrom = rng() < 0.5 ? 'A' : 'B';
+    let inheritSpatialFrom = rng() < 0.5 ? 'A' : 'B';
+    // Force re-roll if both from same parent (guarantee hybrid)
+    if (inheritTemporalFrom === inheritSpatialFrom) {
+        inheritSpatialFrom = inheritSpatialFrom === 'A' ? 'B' : 'A';
+    }
+    const temporalDonor = inheritTemporalFrom === 'A' ? parentA : parentB;
+    const spatialDonor = inheritSpatialFrom === 'A' ? parentA : parentB;
+    // Build child tracks: temporal from one, spatial from other
+    const childTracks = [];
+    for (const track of temporalDonor.tracks) {
+        if (DOMAIN_TEMPORAL.has(track.paramId)) {
+            childTracks.push(deepClone(track));
+        }
+    }
+    for (const track of spatialDonor.tracks) {
+        if (DOMAIN_SPATIAL.has(track.paramId)) {
+            childTracks.push(deepClone(track));
+        }
+    }
+    // If no tracks matched (edge case), fall back to dominant parent's tracks
+    if (childTracks.length === 0) {
+        for (const track of dominantClip.tracks) {
+            childTracks.push(deepClone(track));
+        }
+    }
+    // Build child clip from dominant parent as base
+    const child = deepClone(dominantClip);
+    child.tracks = childTracks;
+    child.durationMs = Math.round((parentA.durationMs + parentB.durationMs) / 2);
+    // Union spatialZones
+    const zoneSet = new Set([
+        ...parentA.spatialZones.map(String),
+        ...parentB.spatialZones.map(String),
+    ]);
+    child.spatialZones = [...zoneSet];
+    // Blend cognitiveDNA
+    if (parentA.cognitiveDNA && parentB.cognitiveDNA) {
+        child.cognitiveDNA = blendCognitiveDNA(parentA.cognitiveDNA, parentB.cognitiveDNA, dominant);
+    }
+    // Delta: bulk replace of tracks + cognitiveDNA on dominant parent
+    const delta = [
+        { op: 'replace', path: '/tracks', value: childTracks },
+        { op: 'replace', path: '/durationMs', value: child.durationMs },
+    ];
+    if (child.cognitiveDNA) {
+        delta.push({ op: 'replace', path: '/cognitiveDNA', value: child.cognitiveDNA });
+    }
+    // L2 = min distance to either parent (conservative)
+    const l2A = computeL2DistanceV2(parentA, child);
+    const l2B = computeL2DistanceV2(parentB, child);
+    const l2Distance = Math.min(l2A, l2B);
+    return {
+        clip: child,
+        delta,
+        operator: 'crossover',
+        l2Distance,
+        dominantParent: dominant,
     };
 }
 // ─── DISPATCHER ─────────────────────────────────────────────────────────────
 /**
  * Dispatches to the appropriate operator by name.
+ * Note: 'crossover' requires two parents — use crossover() directly
+ * or ColiseumService.spawnHybrid() for sexual reproduction.
  */
 export function applyOperator(parent, operatorType, seed) {
     switch (operatorType) {
@@ -303,6 +794,22 @@ export function applyOperator(parent, operatorType, seed) {
             return geneDuplication(parent, seed);
         case 'phase_epigenetics':
             return phaseEpigenetics(parent, seed);
+        case 'temporal_stretch':
+            return temporalStretch(parent, seed);
+        case 'gene_splice':
+            return geneSplice(parent, seed);
+        case 'gene_deletion':
+            return geneDeletion(parent, seed);
+        case 'interpolation_drift':
+            return interpolationDrift(parent, seed);
+        case 'crossover':
+            console.warn('[GeneticOperators] crossover requires two parents — use crossover() directly or ColiseumService.spawnHybrid()');
+            return {
+                clip: deepClone(parent),
+                delta: [],
+                operator: 'crossover',
+                l2Distance: 0,
+            };
         default:
             // Unknown operator — return clone with no delta
             return {

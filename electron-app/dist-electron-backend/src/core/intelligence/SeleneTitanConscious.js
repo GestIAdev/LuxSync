@@ -503,7 +503,7 @@ export class SeleneTitanConscious extends EventEmitter {
         this.state.lastPattern = pattern;
         // Log periódico
         if (this.config.debug && this.stats.framesProcessed % 60 === 0) {
-            console.log(`[SeleneTitanConscious] 🐱 Hunt=${this.state.huntPhase} Section=${pattern.section} Conf=${finalOutput.confidence.toFixed(2)}`);
+            // console.log(`[SeleneTitanConscious] 🐱 Hunt=${this.state.huntPhase} Section=${pattern.section} Conf=${finalOutput.confidence.toFixed(2)}`)
         }
         return finalOutput;
     }
@@ -739,7 +739,7 @@ export class SeleneTitanConscious extends EventEmitter {
             // Zone changed
             if (this.framesInLastLoggedZone >= this.ZONE_LOG_THRESHOLD && this.lastLoggedZone !== null) {
                 // Log the LAST zone transition after it was stable
-                console.log(`[SeleneTitanConscious 🔋] Zone transition: ${this.lastLoggedZone} → ${energyContext.zone} (E=${state.rawEnergy.toFixed(2)})`);
+                // console.log(`[SeleneTitanConscious 🔋] Zone transition: ${this.lastLoggedZone} → ${energyContext.zone} (E=${state.rawEnergy.toFixed(2)})`)
             }
             this.lastLoggedZone = energyContext.zone;
             this.framesInLastLoggedZone = 0;
@@ -1298,10 +1298,12 @@ export class SeleneTitanConscious extends EventEmitter {
                 prepare: '🔮',
                 hold: '😴',
             }[this.lastFuzzyDecision.action];
-            console.log(`[SeleneTitanConscious] 🧠 Hunt=${this.state.huntPhase} ` +
-                `Fuzzy=${fuzzyEmoji}${this.lastFuzzyDecision.action} ` +
-                `Z=${zScore.toFixed(1)}σ ` +
-                `Alert=${this.lastDropBridgeResult.alertLevel}`);
+            // console.log(
+            //   `[SeleneTitanConscious] 🧠 Hunt=${this.state.huntPhase} ` +
+            //   `Fuzzy=${fuzzyEmoji}${this.lastFuzzyDecision.action} ` +
+            //   `Z=${zScore.toFixed(1)}σ ` +
+            //   `Alert=${this.lastDropBridgeResult.alertLevel}`
+            // )
         }
         return output;
     }

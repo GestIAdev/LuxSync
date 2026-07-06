@@ -183,8 +183,22 @@ export class AncestralIngestor {
       if (fs.existsSync(resourcesBuiltins)) return resourcesBuiltins
     }
 
-    // In dev, builtins are in the source tree
-    return path.join(__dirname, '..', 'arsenal', 'builtins')
+    // In dev, builtins live in the source tree at src/core/arsenal/builtins.
+    // Vite bundles everything into dist-electron/main.js, so __dirname is
+    // electron-app/dist-electron/. We try several relative paths to cover
+    // both bundled and non-bundled layouts.
+    const candidates = [
+      // Bundled (vite): __dirname = electron-app/dist-electron/
+      path.join(__dirname, '..', 'src', 'core', 'arsenal', 'builtins'),
+      // Non-bundled: __dirname = dist-electron-backend/src/core/genesis/
+      path.join(__dirname, '..', '..', '..', 'src', 'core', 'arsenal', 'builtins'),
+      // Legacy fallback
+      path.join(__dirname, '..', 'arsenal', 'builtins'),
+    ]
+    for (const c of candidates) {
+      if (fs.existsSync(c)) return c
+    }
+    return candidates[0]  // Return best guess even if it doesn't exist (for error msg)
   }
 }
 

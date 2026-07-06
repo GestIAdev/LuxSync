@@ -86,6 +86,7 @@ export interface GenesisStoreState {
   cullOrganism: (organismId: string) => Promise<void>
   canonizeOrganism: (organismId: string, customName: string) => Promise<boolean>
   runMaintenance: () => Promise<void>
+  purgeEcosystem: () => Promise<void>
   setFilterRarityTier: (tier: string | null) => void
   setFilterStatus: (status: string | null) => void
   refreshAll: () => Promise<void>
@@ -251,6 +252,24 @@ export const useGenesisStore = create<GenesisStoreState>((set, get) => ({
         await get().refreshAll()
       } else {
         set({ error: result.error ?? 'Maintenance failed', isLoading: false })
+      }
+    } catch (err) {
+      set({ error: String(err), isLoading: false })
+    }
+  },
+
+  purgeEcosystem: async () => {
+    const api = getGenesisApi()
+    if (!api) return
+
+    set({ isLoading: true, error: null })
+    try {
+      const result = await api.purgeEcosystem()
+      if (result.success) {
+        set({ organisms: [], hallOfFame: [], lineage: [], species: [], selectedOrganismId: null, isLoading: false })
+        console.log('[GenesisStore] ☢️ Ecosystem purged')
+      } else {
+        set({ error: result.error ?? 'Purge failed', isLoading: false })
       }
     } catch (err) {
       set({ error: String(err), isLoading: false })

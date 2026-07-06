@@ -23,6 +23,7 @@ interface LootTrayProps {
   onSelectOrganism: (id: string) => void
   onSetFilterRarityTier: (tier: string | null) => void
   onSetFilterStatus: (status: string | null) => void
+  onPreviewInCanvas?: (organismId: string) => void
 }
 
 export const LootTray: React.FC<LootTrayProps> = ({
@@ -33,6 +34,7 @@ export const LootTray: React.FC<LootTrayProps> = ({
   onSelectOrganism,
   onSetFilterRarityTier,
   onSetFilterStatus,
+  onPreviewInCanvas,
 }) => {
   const sortedOrganisms = useMemo(() => {
     return [...organisms].sort((a, b) => b.fitness_score - a.fitness_score)
@@ -95,6 +97,10 @@ export const LootTray: React.FC<LootTrayProps> = ({
                   </span>
                 </div>
 
+                <div className="loot-card__ancestor">
+                  ⚗️ {org.blueprint_id}
+                </div>
+
                 <div className="loot-card__stats">
                   <span className="loot-card__stat">
                     <span className={`status--${org.status}`}>●</span>
@@ -121,6 +127,19 @@ export const LootTray: React.FC<LootTrayProps> = ({
                     </span>
                   )}
                 </div>
+
+                {onPreviewInCanvas && org.status !== 'culled' && (
+                  <button
+                    type="button"
+                    className="loot-card__preview-btn"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onPreviewInCanvas(org.organism_id)
+                    }}
+                  >
+                    ► PREVIEW IN CANVAS
+                  </button>
+                )}
               </div>
             )
           })}

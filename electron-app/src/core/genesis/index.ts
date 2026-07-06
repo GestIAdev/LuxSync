@@ -11,10 +11,18 @@ export {
   pointMutation,
   geneDuplication,
   phaseEpigenetics,
+  temporalStretch,
+  geneSplice,
+  geneDeletion,
+  interpolationDrift,
+  crossover,
+  blendCognitiveDNA,
   applyOperator,
   applyDelta,
+  makeFatTailedRng,
+  computeL2DistanceV2,
 } from './operators/GeneticOperators'
-export type { JsonPatchOp, OperatorResult } from './operators/GeneticOperators'
+export type { JsonPatchOp, OperatorResult, FatTailedRng, CrossoverResult } from './operators/GeneticOperators'
 
 export { prenatalScreening } from './screening/PrenatalScreening'
 export type { PrenatalGateResult, ScreeningResult, GateId, GateStatus } from './screening/PrenatalScreening'
@@ -23,7 +31,7 @@ export { OrganismMaterializer, getOrganismMaterializer, __resetOrganismMateriali
 export type { MaterializedOrganism } from './OrganismMaterializer'
 
 export { ColiseumService, getColiseumService, __resetColiseumServiceForTests } from './ColiseumService'
-export type { SpawnResult } from './ColiseumService'
+export type { SpawnResult, SpawnHybridResult } from './ColiseumService'
 
 // Era III — Loot System & Passive Fitness
 export {

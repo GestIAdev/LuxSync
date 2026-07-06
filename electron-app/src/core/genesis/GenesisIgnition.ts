@@ -14,6 +14,8 @@
 import { getHeatmapLogger } from './fitness/HeatmapLogger'
 import { getColiseumService } from './ColiseumService'
 import { getGenesisVault } from './GenesisVaultService'
+import { getAncestralIngestor } from './AncestralIngestor'
+import { getDynamicEffectRegistry } from '../arsenal/DynamicEffectRegistry'
 
 const MAINTENANCE_INTERVAL_MS = 60_000  // 60 seconds — geological time
 
@@ -25,8 +27,12 @@ let _ignited = false
  *
  * Call once during application bootstrap (main process, after IPC handlers).
  * Safe to call multiple times — subsequent calls are no-ops.
+ *
+ * BIG BANG FIX: Awaits AncestralIngestor.ingestAll() BEFORE cold-start seeding
+ * to guarantee lfx_blueprints is populated. Without this, the cold-start query
+ * sees an empty table and skips seeding entirely.
  */
-export function igniteGenesisEngine(): void {
+export async function igniteGenesisEngine(): Promise<void> {
   if (_ignited) return
   _ignited = true
 
@@ -37,17 +43,39 @@ export function igniteGenesisEngine(): void {
     console.warn('[GenesisIgnition ⚠️] HeatmapLogger start failed:', err)
   }
 
-  // 2. Cold-start seeding: if any blueprint has zero living descendants, seed it
+  // 2. Ancestral ingestion — populate lfx_blueprints from .lfx catalog BEFORE seeding
+  try {
+    const report = await getAncestralIngestor().ingestAll()
+    console.log(
+      `[GenesisIgnition 🧬] Ancestral ingestion: ${report.inserted} inserted, ` +
+      `${report.skipped} skipped, ${report.errors} errors`,
+    )
+  } catch (err) {
+    console.warn('[GenesisIgnition ⚠️] Ancestral ingestion failed:', err)
+  }
+
+  // 3. Cold-start seeding: if any blueprint has zero living descendants, seed it
   try {
     _seedColdStart()
   } catch (err) {
     console.warn('[GenesisIgnition ⚠️] Cold-start seeding failed:', err)
   }
 
-  // 3. Geological maintenance timer (60s)
+  // 4. Geological maintenance timer (60s) + Arena Gates refresh
   _maintenanceTimer = setInterval(() => {
     getColiseumService()
       .runEcologicalMaintenance()
+      .then(() => {
+        // Arena Gates: inject evolved candidates into the DreamSimulator pool
+        try {
+          const injected = getDynamicEffectRegistry().refreshEvolutionaryCandidates(10)
+          if (injected > 0) {
+            console.log(`[GenesisIgnition 🧬] Arena Gates: ${injected} mutants injected into live pool`)
+          }
+        } catch (err) {
+          console.warn('[GenesisIgnition ⚠️] Arena Gates refresh failed:', err)
+        }
+      })
       .catch((err) => {
         console.warn('[GenesisIgnition ⚠️] Maintenance cycle error:', err)
       })

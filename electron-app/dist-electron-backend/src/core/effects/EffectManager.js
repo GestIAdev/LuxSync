@@ -40,6 +40,10 @@ import { getDynamicEffectRegistry } from '../arsenal/DynamicEffectRegistry';
 import { getSeleneHephBridge } from '../arsenal/SeleneHephBridge';
 // 💚🛡️ WAVE 680: Import VibeManager for THE SHIELD
 import { VibeManager } from '../../engine/vibe/VibeManager';
+// 🧬 WAVE 5000.V3: Genesis metabolic telemetry
+import { getHeatmapLogger } from '../genesis/fitness/HeatmapLogger';
+import { getGenesisVault } from '../genesis/GenesisVaultService';
+import { getColiseumService } from '../genesis/ColiseumService';
 // ⚰️ WAVE 3450: isOceanicEffectValidForDepth eliminado junto con ChillStereoPhysics.
 // 🌊 WAVE 1071: Import ArsenalRepository for cooldown registration
 import { getArsenalRepository } from './ContextualEffectSelector';
@@ -74,6 +78,14 @@ const CHILL_LOUNGE_BLOCKED_EFFECTS = [
     'sky_saw',
     'arena_sweep',
 ];
+// 🧬 WAVE 5000.V3: Helper for context vector encoding
+function hashStr01(s) {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) {
+        h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+    }
+    return ((h >>> 0) % 10000) / 10000;
+}
 /**
  * 🛡️ EFFECT TYPE → VIBE RULES
  *
@@ -363,7 +375,13 @@ export class EffectManager extends EventEmitter {
             ? `Z:${config.musicalContext.zScore.toFixed(1)}`
             : '';
         const sourceTag = config.source ? `[${config.source}]` : '';
-        console.log(`[EffectManager 🔥] ${config.effectType} FIRED ${sourceTag} in ${vibeId} ${shieldStatus} ⚡[HEPH-BRIDGE] | I:${decision.intensity.toFixed(2)} ${zInfo}`);
+        // 🧬 WAVE 5000.V3 BAPTISM: Show readable name in fire log.
+        // For mutant organisms, display "ProceduralName [shortId]" instead of bare UUID.
+        const registryEntry = getDynamicEffectRegistry().getEntry(config.effectType);
+        const displayLabel = registryEntry
+            ? `${registryEntry.name} [${config.effectType.substring(0, 13)}]`
+            : config.effectType;
+        console.log(`[EffectManager 🔥] ${displayLabel} FIRED ${sourceTag} in ${vibeId} ${shieldStatus} ⚡[HEPH-BRIDGE] | I:${decision.intensity.toFixed(2)} ${zInfo}`);
         // ═══════════════════════════════════════════════════════════════════════
         // 🌊 WAVE 1071: COOLDOWN REGISTRATION
         // ═══════════════════════════════════════════════════════════════════════
@@ -373,6 +391,86 @@ export class EffectManager extends EventEmitter {
         }
         catch (e) {
             // Fail silently
+        }
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🧬 WAVE 5000.V3: METABOLIC TELEMETRY — Feed the ecology
+        // The effectType IS the blueprint_id. When Selene fires it, all alive
+        // organisms descending from that blueprint receive metabolic nourishment.
+        // This is the food chain: DecisionMaker chooses → organisms eat.
+        // ═══════════════════════════════════════════════════════════════════════
+        try {
+            const heatmapLogger = getHeatmapLogger();
+            const vault = getGenesisVault();
+            const db = vault._db;
+            if (db) {
+                const mc = config.musicalContext;
+                const now = Date.now();
+                // Build a ContextVector6D from available musical context
+                const ctx = {
+                    zScoreAvg3s: mc?.zScore ?? 0,
+                    lowBandAvg3s: mc?.energy ?? 0,
+                    energyPhaseEncoded: mc?.inDrop ? 1 : 0,
+                    vibeHash: mc ? hashStr01(mc.vibeId) : hashStr01(vibeId),
+                    sectionEncoded: 0,
+                    textureEncoded: 0,
+                };
+                // 🧬 WAVE 5000.V3 FIX: Nepotism abolished. Only the EXACT organism_id
+                // that was fired in the live arena receives metabolic reward.
+                // If effectType is a blueprint ancestral ID (not a mutated child),
+                // this query returns 0 rows — granite ancestors don't eat.
+                const organisms = db.prepare(`SELECT organism_id FROM lfx_organisms
+           WHERE organism_id = ? AND status = 'alive'`).all(config.effectType);
+                // 🧬 BIG BANG SPARK: If the blueprint has zero living descendants, spawn
+                // an initial cohort immediately. This ensures that any effect fired in
+                // vivo — even if cold-start seeding missed it — gets its first children.
+                if (organisms.length === 0) {
+                    // Verify the blueprint exists before attempting to spawn
+                    const bpExists = db.prepare('SELECT 1 FROM lfx_blueprints WHERE blueprint_id = ?').get(config.effectType);
+                    if (bpExists) {
+                        // Non-blocking: fire-and-forget cohort spawn
+                        queueMicrotask(() => {
+                            try {
+                                const results = getColiseumService().spawnInitialCohort(config.effectType);
+                                const viable = results.filter((r) => r.success).length;
+                                if (viable > 0) {
+                                    console.log(`[EffectManager 🧬] EMERGENCY SPARK: spawned ${viable} organisms ` +
+                                        `for "${config.effectType}" (was orphaned)`);
+                                }
+                            }
+                            catch (_) {
+                                // Spawn failure (screening abort, etc.) — non-fatal
+                            }
+                        });
+                    }
+                }
+                for (const org of organisms) {
+                    // 1. Record fire event in heatmap (O(1) queue push, zero I/O)
+                    heatmapLogger.recordFireEvent(org.organism_id, ctx, {
+                        vibeId: mc?.vibeId ?? vibeId,
+                        sectionId: 'unknown',
+                        energyZone: 'unknown',
+                        texture: 'unknown',
+                        bpm: mc?.bpm,
+                        beatPhase: mc?.beatPhase,
+                    });
+                    // 2. Metabolic reward: increment fitness (vitality) for surviving the show
+                    //    The organism proved viable in the live environment.
+                    db.prepare(`UPDATE lfx_organisms
+             SET fitness_score = MIN(fitness_score + @reward, 1.0),
+                 trials_count = trials_count + 1,
+                 passes_count = passes_count + 1,
+                 last_fired_at = @now,
+                 last_evaluated_at = @now
+             WHERE organism_id = @id`).run({
+                        reward: 0.05 * decision.intensity,
+                        now,
+                        id: org.organism_id,
+                    });
+                }
+            }
+        }
+        catch (_) {
+            // Genesis vault not initialized — fail silently
         }
         return instanceToken;
     }

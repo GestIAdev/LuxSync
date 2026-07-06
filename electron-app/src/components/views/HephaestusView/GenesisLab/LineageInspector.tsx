@@ -15,6 +15,7 @@ interface LineageInspectorProps {
   lineage: LineageNode[]
   onPreviewInCanvas: (organismId: string) => void
   onCull: (organismId: string) => void
+  onCanonizeToBuiltins?: (organismId: string) => void
 }
 
 export const LineageInspector: React.FC<LineageInspectorProps> = ({
@@ -22,6 +23,7 @@ export const LineageInspector: React.FC<LineageInspectorProps> = ({
   lineage,
   onPreviewInCanvas,
   onCull,
+  onCanonizeToBuiltins,
 }) => {
   const sortedLineage = useMemo(() => {
     return [...lineage].sort((a, b) => a.depth - b.depth)
@@ -147,6 +149,16 @@ export const LineageInspector: React.FC<LineageInspectorProps> = ({
         >
           ▶ PREVIEW IN CANVAS
         </button>
+        {onCanonizeToBuiltins && (organism.status === 'alive' || organism.status === 'champion') && (
+          <button
+            type="button"
+            className="genesis-lab__btn"
+            style={{ background: 'rgba(255,215,0,0.1)', border: '1px solid rgba(255,215,0,0.3)', color: '#ffd700' }}
+            onClick={() => onCanonizeToBuiltins(organism.organism_id)}
+          >
+            💾 CANONIZE TO DISK
+          </button>
+        )}
         {organism.status === 'alive' || organism.status === 'champion' ? (
           <button
             type="button"

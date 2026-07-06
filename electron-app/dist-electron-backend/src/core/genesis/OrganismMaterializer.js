@@ -14,6 +14,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { getGenesisVault } from './GenesisVaultService';
 import { applyDelta } from './operators/GeneticOperators';
+import { generateOrganismName } from './naming/ProceduralNamer';
 // ─── LRU CACHE (Map-based, bounded) ─────────────────────────────────────────
 const LRU_MAX_SIZE = 256;
 class LruCache {
@@ -95,10 +96,53 @@ export class OrganismMaterializer {
             // Apply delta
             const delta = JSON.parse(org.delta_json);
             const childClip = applyDelta(parentClip, delta);
+            // 🧬 WAVE 5000.V3 FIX: Assign unique identity to the materialized clip.
+            // Without this, the child's clip.id collides with the blueprint ancestor's
+            // id in DynamicEffectRegistry, causing the child to overwrite the parent
+            // instead of coexisting as a competing candidate.
+            childClip.id = organismId;
+            // 🧬 WAVE 5000.V3 FIX: Ensure cognitiveDNA is preserved from the ancestor.
+            // applyDelta deep-clones the parent, so cognitiveDNA should survive — but
+            // if a delta op removed it, we restore it from the parent to guarantee
+            // the clip passes registerEffectV3()'s DNA gate.
+            if (!childClip.cognitiveDNA && parentClip.cognitiveDNA) {
+                childClip.cognitiveDNA = JSON.parse(JSON.stringify(parentClip.cognitiveDNA));
+            }
+            // 🧬 WAVE 5000.V3 BAPTISM: Assign a readable name to the materialized clip.
+            // If the organism has a custom_name (e.g. champion baptized), use it.
+            // Otherwise, generate a procedural name on the fly for arena display.
+            if (org.custom_name) {
+                childClip.name = org.custom_name;
+            }
+            else {
+                childClip.name = generateOrganismName({
+                    organismId: org.organism_id,
+                    blueprintId: org.blueprint_id,
+                    parentOrganismId: org.parent_organism_id,
+                    generation: org.generation,
+                    customName: null,
+                    deltaJson: org.delta_json,
+                    bezierSignature: new Float32Array(0),
+                    rarityScore: org.rarity_score,
+                    rarityTier: org.rarity_tier,
+                    l2DistanceParent: org.l2_distance_parent,
+                    operatorUsed: org.operator_used,
+                    neonatalShieldUntil: org.neonatal_shield_until,
+                    birthVector: { zScoreAvg3s: 0, lowBandAvg3s: 0, energyPhaseEncoded: 0, vibeHash: 0, sectionEncoded: 0, textureEncoded: 0 },
+                    fitnessScore: org.fitness_score,
+                    trialsCount: org.trials_count,
+                    winsCount: 0, vetoesCount: 0, passesCount: org.passes_count,
+                    status: org.status,
+                    speciesId: org.species_id,
+                    bornAt: 0, lastEvaluatedAt: null, lastFiredAt: null,
+                    swarmOriginConsole: null,
+                });
+            }
             const result = {
                 organismId,
                 clip: childClip,
                 materializedAt: Date.now(),
+                parentOrganismIdSecondary: org.parent_organism_id_secondary ?? null,
             };
             this._cache.set(organismId, result);
             return result;
@@ -111,9 +155,14 @@ export class OrganismMaterializer {
                 if (org) {
                     const blueprint = this._vault.getBlueprint(org.blueprint_id);
                     if (blueprint) {
+                        const fallbackClip = JSON.parse(JSON.stringify(blueprint.clipV3));
+                        fallbackClip.id = organismId;
+                        if (org.custom_name) {
+                            fallbackClip.name = org.custom_name;
+                        }
                         const fallback = {
                             organismId,
-                            clip: blueprint.clipV3,
+                            clip: fallbackClip,
                             materializedAt: Date.now(),
                         };
                         this._cache.set(organismId, fallback);
@@ -145,7 +194,12 @@ export class OrganismMaterializer {
         if (!db) {
             throw new Error('GenesisVault not initialized');
         }
-        const row = db.prepare('SELECT organism_id, blueprint_id, parent_organism_id, generation, delta_json, status FROM lfx_organisms WHERE organism_id = ?').get(organismId);
+        const row = db.prepare(`SELECT organism_id, blueprint_id, parent_organism_id,
+              parent_organism_id_secondary, generation,
+              delta_json, status, custom_name, rarity_score, rarity_tier,
+              l2_distance_parent, operator_used, fitness_score, trials_count,
+              passes_count, neonatal_shield_until, species_id
+       FROM lfx_organisms WHERE organism_id = ?`).get(organismId);
         return row ?? null;
     }
 }

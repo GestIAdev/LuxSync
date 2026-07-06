@@ -37,6 +37,8 @@ import { setupKeyForgeIPCHandlers } from '../src/core/keyforge/KeyForgeIPCHandle
 import { setupHephIPCHandlers } from '../src/core/hephaestus';
 // 🧬 WAVE 5000.V3: Genesis Engine IPC (Era V)
 import { setupGenesisIPCHandlers } from '../src/core/genesis/genesisIpc';
+import { getGenesisVault } from '../src/core/genesis/GenesisVaultService';
+import { igniteGenesisEngine, shutdownGenesisEngine } from '../src/core/genesis/GenesisIgnition';
 // 🎬 WAVE 4864: Theia Output Window manager (Phase 3)
 import { setupTheiaWindowManager } from './TheiaWindowManager';
 // ⚡ WAVE 4822: INFINITE ARSENAL — Boot ingestion
@@ -410,9 +412,18 @@ async function initTitan() {
     // ═══════════════════════════════════════════════════════════════════════════
     setupHephIPCHandlers();
     // ═══════════════════════════════════════════════════════════════════════════
-    // 🧬 WAVE 5000.V3: Initialize Genesis Engine IPC
+    // 🧬 WAVE 5000.V3: Initialize Genesis Engine IPC + Ignite Geological Loop
     // ═══════════════════════════════════════════════════════════════════════════
     setupGenesisIPCHandlers();
+    try {
+        getGenesisVault().initialize();
+        igniteGenesisEngine().catch((err) => {
+            console.warn('[Main] ⚠️ Genesis ignition failed (non-fatal):', err);
+        });
+    }
+    catch (err) {
+        console.warn('[Main] ⚠️ Genesis vault init failed (non-fatal):', err);
+    }
     // ═══════════════════════════════════════════════════════════════════════════
     // 👻 WAVE 2005.3: Initialize Phantom Worker for audio analysis
     // ═══════════════════════════════════════════════════════════════════════════
@@ -974,6 +985,11 @@ function doShutdown() {
         cleanupPlaybackIPC();
         // 5. Flush config to disk
         configManager.forceSave();
+        // 6. Shut down Genesis geological loop
+        try {
+            shutdownGenesisEngine();
+        }
+        catch { /* non-fatal */ }
     };
     // app.exit(0) = C++ synchronous kill — bypasses Node event loop entirely
     shutdown().finally(() => app.exit(0));

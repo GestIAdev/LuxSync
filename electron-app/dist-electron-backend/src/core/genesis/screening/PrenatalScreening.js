@@ -117,6 +117,24 @@ function evalG6(clip, simMeta) {
     if (!simMeta.isStrobe) {
         return { id: 'G6', status: 'pass', label: 'STROBE', description: 'Non-strobe: OK' };
     }
+    // 🧬 WAVE 5000.V3 FIX: If the clip has a dedicated STROBE channel track,
+    // a single static keyframe (value in [0,1]) is valid — the fixture's
+    // hardware strobe macro handles the flashing. Only require ≥4 keyframes
+    // when strobe is simulated artificially via intensity (dimmer chaser).
+    const strobeTrack = clip.tracks.find((t) => t.paramId === 'strobe' || t.paramId === 'strobeRate');
+    if (strobeTrack) {
+        const kfs = strobeTrack.curve.keyframes;
+        const validStatic = kfs.length >= 1 && kfs.every((k) => typeof k.value === 'number' && k.value >= 0 && k.value <= 1);
+        return {
+            id: 'G6',
+            status: validStatic ? 'pass' : 'fail',
+            label: 'STROBE',
+            description: validStatic
+                ? `Strobe channel — static value OK (${kfs.length} keyframe(s))`
+                : 'Strobe channel — keyframe value out of range [0,1]',
+        };
+    }
+    // No dedicated strobe track — check if strobe is simulated via intensity chaser
     const intensityTrack = clip.tracks.find((t) => t.paramId === 'intensity');
     const hasStrobicPattern = !!intensityTrack && intensityTrack.curve.keyframes.length >= 4;
     return {
@@ -125,7 +143,7 @@ function evalG6(clip, simMeta) {
         label: 'STROBE',
         description: hasStrobicPattern
             ? `Strobe — intensity has ${intensityTrack.curve.keyframes.length} keyframes`
-            : 'Strobe declared but intensity has <4 keyframes',
+            : 'Strobe declared but no strobe track and intensity has <4 keyframes',
     };
 }
 function evalG7(clip, dna) {

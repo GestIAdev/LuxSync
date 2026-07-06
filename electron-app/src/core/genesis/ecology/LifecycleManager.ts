@@ -16,7 +16,8 @@
 
 import type { GenesisVaultService } from '../GenesisVaultService'
 import { getGenesisVault } from '../GenesisVaultService'
-import type { OrganismStatus } from '../types'
+import type { OrganismStatus, LfxOrganism, RarityTier, MutationOperator } from '../types'
+import { generateOrganismName } from '../naming/ProceduralNamer'
 
 // ─── CONSTANTS ──────────────────────────────────────────────────────────────
 
@@ -38,6 +39,12 @@ interface OrganismRow {
   passes_count: number
   neonatal_shield_until: number
   rarity_tier: string
+  custom_name: string | null
+  blueprint_id: string
+  generation: number
+  rarity_score: number
+  l2_distance_parent: number
+  operator_used: string
 }
 
 export interface TransitionRecord {
@@ -77,7 +84,8 @@ export class LifecycleManager {
     // 1. Fetch all alive + champion organisms
     const rows = db.prepare(
       `SELECT organism_id, species_id, status, fitness_score,
-              trials_count, passes_count, neonatal_shield_until, rarity_tier
+              trials_count, passes_count, neonatal_shield_until, rarity_tier,
+              custom_name, blueprint_id, generation, rarity_score, l2_distance_parent, operator_used
        FROM lfx_organisms
        WHERE status IN ('alive', 'champion')`,
     ).all() as OrganismRow[]
@@ -179,6 +187,10 @@ export class LifecycleManager {
 
     // 4. Batch write transitions
     if (toProcess.length > 0) {
+      const nameStmt = db.prepare(
+        'UPDATE lfx_organisms SET custom_name = ? WHERE organism_id = ?',
+      )
+      const rowMap = new Map(rows.map(r => [r.organism_id, r]))
       const tx = db.transaction(() => {
         for (const item of toProcess) {
           updateStmt.run({ status: item.newStatus, id: item.id })
@@ -189,8 +201,37 @@ export class LifecycleManager {
             reason: item.reason,
           })
 
-          if (item.newStatus === 'champion') promotions++
-          else if (item.newStatus === 'alive') demotions++
+          if (item.newStatus === 'champion') {
+            promotions++
+            // 🧬 WAVE 5000.V3 BAPTISM: Generate procedural name for new champions
+            const row = rowMap.get(item.id)
+            if (row && !row.custom_name) {
+              const name = generateOrganismName({
+                organismId: row.organism_id,
+                blueprintId: row.blueprint_id,
+                parentOrganismId: null,
+                generation: row.generation,
+                customName: null,
+                deltaJson: '',
+                bezierSignature: new Float32Array(0),
+                rarityScore: row.rarity_score,
+                rarityTier: row.rarity_tier as RarityTier,
+                l2DistanceParent: row.l2_distance_parent,
+                operatorUsed: row.operator_used as MutationOperator,
+                neonatalShieldUntil: row.neonatal_shield_until,
+                birthVector: { zScoreAvg3s: 0, lowBandAvg3s: 0, energyPhaseEncoded: 0, vibeHash: 0, sectionEncoded: 0, textureEncoded: 0 },
+                fitnessScore: row.fitness_score,
+                trialsCount: row.trials_count,
+                winsCount: 0, vetoesCount: 0, passesCount: row.passes_count,
+                status: 'champion' as OrganismStatus,
+                speciesId: row.species_id,
+                bornAt: 0, lastEvaluatedAt: null, lastFiredAt: null,
+                swarmOriginConsole: null,
+              })
+              nameStmt.run(name, item.id)
+              console.log(`[Lifecycle 🧬] ✨ Baptism: ${item.id} → "${name}"`)
+            }
+          } else if (item.newStatus === 'alive') demotions++
           else if (item.newStatus === 'culled') culls++
         }
       })

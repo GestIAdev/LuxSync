@@ -1333,7 +1333,8 @@ export class EffectDreamSimulator {
         const rsk = `RSK=${sc.riskLevel.toFixed(2)}`
         const dist = `dist=${sc.dnaDistance.toFixed(2)}`
         const tex = sc.effect.reasoning.includes('TEXTURE') ? '🎨REJECTED' : ''
-        return `  ${i + 1}. ${sc.effect.effect.padEnd(20)} SCORE=${s.score.toFixed(3)} | ${dna} ${div} ${vib} ${rsk} ${dist} ${tex}`
+        const displayName = sc.effect.effectName ?? sc.effect.effect
+        return `  ${i + 1}. ${displayName.padEnd(20)} SCORE=${s.score.toFixed(3)} | ${dna} ${div} ${vib} ${rsk} ${dist} ${tex}`
       }).join('\n')
     )
     

@@ -47,6 +47,7 @@ export const GenesisLabView: React.FC = () => {
   const cullOrganism = useGenesisStore((s) => s.cullOrganism)
   const canonizeOrganism = useGenesisStore((s) => s.canonizeOrganism)
   const runMaintenance = useGenesisStore((s) => s.runMaintenance)
+  const purgeEcosystem = useGenesisStore((s) => s.purgeEcosystem)
   const setFilterRarityTier = useGenesisStore((s) => s.setFilterRarityTier)
   const setFilterStatus = useGenesisStore((s) => s.setFilterStatus)
 
@@ -78,9 +79,41 @@ export const GenesisLabView: React.FC = () => {
     return canonizeOrganism(organismId, customName)
   }, [canonizeOrganism])
 
+  const handleCanonizeToBuiltins = useCallback(async (organismId: string) => {
+    const genesisApi = (window as any).luxsync?.genesis
+    if (!genesisApi?.canonizeToBuiltins) {
+      console.warn('[GenesisLab] genesis.canonizeToBuiltins IPC not available')
+      return
+    }
+
+    try {
+      const matResult = await genesisApi.materializeClip(organismId)
+      if (!matResult.success || !matResult.clip) {
+        console.warn(`[GenesisLab] Cannot canonize — materialization failed: ${matResult.error}`)
+        return
+      }
+
+      const canonResult = await genesisApi.canonizeToBuiltins(matResult.clip, organismId)
+      if (canonResult.success) {
+        console.log(`[GenesisLab] 💾 Canonized to disk: ${canonResult.filePath}`)
+        useGenesisStore.getState().refreshAll()
+      } else {
+        console.warn(`[GenesisLab] Canonization failed: ${canonResult.error}`)
+      }
+    } catch (err) {
+      console.error('[GenesisLab] Canonize to builtins error:', err)
+    }
+  }, [])
+
   const handleMaintenance = useCallback(() => {
     runMaintenance()
   }, [runMaintenance])
+
+  const handlePurge = useCallback(() => {
+    if (window.confirm('☢️ PURGE ECOSYSTEM?\n\nThis will permanently delete ALL organisms except canonized masterpieces. This cannot be undone.')) {
+      purgeEcosystem()
+    }
+  }, [purgeEcosystem])
 
   return (
     <div className="genesis-lab">
@@ -109,6 +142,14 @@ export const GenesisLabView: React.FC = () => {
           >
             {isLoading ? '⏳ RUNNING...' : '🧬 RUN MAINTENANCE'}
           </button>
+          <button
+            type="button"
+            className="genesis-lab__btn genesis-lab__btn--danger"
+            onClick={handlePurge}
+            disabled={isLoading}
+          >
+            ☢️ PURGE
+          </button>
         </div>
       </header>
 
@@ -129,6 +170,7 @@ export const GenesisLabView: React.FC = () => {
             onSelectOrganism={selectOrganism}
             onSetFilterRarityTier={setFilterRarityTier}
             onSetFilterStatus={setFilterStatus}
+            onPreviewInCanvas={handlePreviewInCanvas}
           />
         </div>
 
@@ -139,6 +181,7 @@ export const GenesisLabView: React.FC = () => {
             lineage={lineage}
             onPreviewInCanvas={handlePreviewInCanvas}
             onCull={handleCull}
+            onCanonizeToBuiltins={handleCanonizeToBuiltins}
           />
         </div>
       </div>

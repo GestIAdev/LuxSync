@@ -280,6 +280,38 @@ const HephaestusView: React.FC = () => {
     handleLoad(targetHephClipId)
   }, [targetHephClipId, targetBpm, clearTargetHephClip, handleLoad])
 
+  // 🧬 WAVE 5000.V3: Genesis → Forge bridge — listen for preview requests
+  useEffect(() => {
+    const handleGenesisPreview = async (e: Event) => {
+      const { organismId } = (e as CustomEvent).detail
+      if (!organismId) return
+
+      const genesisApi = (window as any).luxsync?.genesis
+      if (!genesisApi?.materializeClip) {
+        console.warn('[Hephaestus] genesis.materializeClip IPC not available')
+        return
+      }
+
+      try {
+        const result = await genesisApi.materializeClip(organismId)
+        if (!result.success || !result.clip) {
+          console.warn(`[Hephaestus] Materialization failed for ${organismId}:`, result.error)
+          return
+        }
+
+        const clipV3 = result.clip as HephAutomationClipV3
+        loadClip(clipV3)
+        setActiveTab('sculpt')
+        console.log(`[Hephaestus] 🧬 Loaded mutant "${clipV3.name}" into Forge canvas`)
+      } catch (err) {
+        console.error('[Hephaestus] Genesis preview error:', err)
+      }
+    }
+
+    window.addEventListener('luxsync:genesis-preview-organism', handleGenesisPreview)
+    return () => window.removeEventListener('luxsync:genesis-preview-organism', handleGenesisPreview)
+  }, [loadClip])
+
   const handleDelete = useCallback(async (clipId: string) => {
     if (!window.luxsync?.hephaestus?.delete) {
       console.warn('[Hephaestus] IPC not available, cannot delete')

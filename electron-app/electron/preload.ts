@@ -552,6 +552,12 @@ const api = {
       ipcRenderer.invoke('genesis:runMaintenance'),
     getSpecies: (): Promise<{ success: boolean; species: unknown[]; error?: string }> =>
       ipcRenderer.invoke('genesis:getSpecies'),
+    purgeEcosystem: (): Promise<{ success: boolean; deleted?: number; error?: string }> =>
+      ipcRenderer.invoke('genesis:purgeEcosystem'),
+    materializeClip: (organismId: string): Promise<{ success: boolean; clip?: unknown; error?: string }> =>
+      ipcRenderer.invoke('genesis:materializeClip', organismId),
+    canonizeToBuiltins: (clip: unknown, organismId: string): Promise<{ success: boolean; filePath?: string; fileName?: string; error?: string }> =>
+      ipcRenderer.invoke('genesis:canonizeToBuiltins', clip, organismId),
   },
 }
 

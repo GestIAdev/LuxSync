@@ -29,6 +29,8 @@ import {
 } from './lfxTypes'
 import type { HephAutomationClipV3 } from '../hephaestus/types'
 import { VIBE_ALIAS_MAP } from '../../engine/vibe/profiles/index'
+import { getSpeciesQuotaSelector } from '../genesis/ecology/SpeciesQuotaSelector'
+import { getOrganismMaterializer } from '../genesis/OrganismMaterializer'
 
 // ─── OPCIONES DE INGESTA ────────────────────────────────────────────────────
 
@@ -139,6 +141,93 @@ export class DynamicEffectRegistry {
     this._divineByVibe.clear()
     this._heavyByVibe.clear()
     this._allEntries = DynamicEffectRegistry._EMPTY_ENTRIES
+  }
+
+  /**
+   * 🧬 WAVE 5000.V3 — ARENA GATES: Injects evolved organisms into the
+   * DreamSimulator's selection pool.
+   *
+   * Calls SpeciesQuotaSelector.selectCandidates(10) to extract ≤10 elite
+   * representatives across species, materializes each into a full
+   * HephAutomationClipV3 via OrganismMaterializer, wraps it as an LFXFileV3,
+   * and registers it in this registry alongside the base blueprints.
+   *
+   * This is the bridge between the ecological laboratory and the live arena:
+   * only organisms that prove themselves in simulation get injected here.
+   *
+   * @param poolSize Max candidates to inject (default: 10)
+   * @returns Number of candidates successfully injected
+   */
+  public refreshEvolutionaryCandidates(poolSize: number = 10): number {
+    console.log('[ArenaInject 🧬] Fetching candidates from SpeciesQuotaSelector...')
+    try {
+      const selector = getSpeciesQuotaSelector()
+      const materializer = getOrganismMaterializer()
+
+      const result = selector.selectCandidates(poolSize)
+      console.log(
+        `[ArenaInject 🧬] SpeciesQuotaSelector returned ${result.candidates.length} candidates ` +
+        `from pool of ${result.totalPool} (${result.speciesRepresented} species, ` +
+        `${result.explorers} explorers)`,
+      )
+      if (result.candidates.length === 0) {
+        console.warn('[ArenaInject 🧬] ⚠️ Zero candidates returned — no alive/champion organisms in vault')
+        return 0
+      }
+
+      let injected = 0
+      let rejected = 0
+      for (const candidate of result.candidates) {
+        try {
+          const mat = materializer.materialize(candidate.organismId)
+          const clip = mat.clip
+
+          // Build a minimal LFXFileV3 wrapper for registerEffectV3
+          const lfxWrapper = {
+            $schema: 'luxsync.lfx/3.0' as const,
+            clip,
+            checksum: '',
+          }
+
+          const entry = this.registerEffectV3(lfxWrapper, {
+            filePath: null,
+            isBuiltin: false,
+          })
+
+          if (entry) {
+            injected++
+            console.log(
+              `[ArenaInject 🧬] Registered mutant: ${clip.id} ` +
+              `-> Vibe index: [${clip.cognitiveDNA?.compatibleVibes.join(', ')}]`,
+            )
+          } else {
+            rejected++
+            const hasDna = !!clip.cognitiveDNA
+            const vibes = clip.cognitiveDNA?.compatibleVibes ?? []
+            console.warn(
+              `[ArenaInject 🧬] ⚠️ registerEffectV3 REJECTED organism ${candidate.organismId} ` +
+              `(DNA: ${hasDna}, vibes: [${vibes.join(', ')}])`,
+            )
+          }
+        } catch (matErr) {
+          rejected++
+          console.warn(
+            `[ArenaInject 🧬] ⚠️ Materialization failed for ${candidate.organismId}:`,
+            matErr,
+          )
+        }
+      }
+
+      console.log(
+        `[ArenaInject 🧬] Cycle complete: ${injected} injected, ${rejected} rejected ` +
+        `out of ${result.candidates.length} candidates`,
+      )
+
+      return injected
+    } catch (err) {
+      console.error('[ArenaInject 🧬] 💥 FATAL — refreshEvolutionaryCandidates failed:', err)
+      return 0
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────

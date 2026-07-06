@@ -45,6 +45,7 @@ import { setupHephIPCHandlers } from '../src/core/hephaestus'
 
 // 🧬 WAVE 5000.V3: Genesis Engine IPC (Era V)
 import { setupGenesisIPCHandlers } from '../src/core/genesis/genesisIpc'
+import { getGenesisVault } from '../src/core/genesis/GenesisVaultService'
 import { igniteGenesisEngine, shutdownGenesisEngine } from '../src/core/genesis/GenesisIgnition'
 
 // 🎬 WAVE 4864: Theia Output Window manager (Phase 3)
@@ -525,9 +526,12 @@ async function initTitan(): Promise<void> {
   // ═══════════════════════════════════════════════════════════════════════════
   setupGenesisIPCHandlers()
   try {
-    igniteGenesisEngine()
+    getGenesisVault().initialize()
+    igniteGenesisEngine().catch((err) => {
+      console.warn('[Main] ⚠️ Genesis ignition failed (non-fatal):', err)
+    })
   } catch (err) {
-    console.warn('[Main] ⚠️ Genesis ignition failed (non-fatal):', err)
+    console.warn('[Main] ⚠️ Genesis vault init failed (non-fatal):', err)
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

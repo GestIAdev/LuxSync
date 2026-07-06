@@ -70,6 +70,7 @@ import { ZoneNodeRouter } from '../aether/adapters/helpers/zone-node-router'
 import { getSeleneHephBridge } from '../arsenal/SeleneHephBridge'
 import type { ResolvedPixelParams, RenderHook } from '../arsenal/SeleneHephBridge'
 import type { RegistryEntry } from '../arsenal/lfxTypes'
+import { getOrganismMaterializer } from '../genesis/OrganismMaterializer'
 // ðŸŽ¨ WAVE 4812: Aether Canvas â€” Pixel Mapping engine
 import { AetherCanvasManager } from '../aether/canvas/AetherCanvasManager'
 import { PixelMapAetherAdapter } from '../aether/canvas/PixelMapAetherAdapter'
@@ -714,11 +715,28 @@ export class TitanOrchestrator {
     try {
       const bridge = getSeleneHephBridge()
       bridge.setPlayHook((resolved, _entry) => {
-        if (!resolved.filePath) return -1
+        const runtime = getHephaestusRuntime()
+
+        // 🧬 WAVE 5000.V3 FIX: Mutant organisms have filePath=null.
+        // Resolve their materialized clip from OrganismMaterializer and
+        // use playFromClip() (diamond path) instead of play(filePath).
+        if (!resolved.filePath) {
+          try {
+            const materializer = getOrganismMaterializer()
+            const mat = materializer.materialize(resolved.effectId)
+            const instanceId = runtime.playFromClip(mat.clip, {
+              intensity: resolved.intensity,
+              durationOverrideMs: resolved.durationMs,
+            })
+            return instanceId != null ? 1 : -1
+          } catch (err) {
+            console.warn(`[TitanOrchestrator 🧬] Materializer fallback failed for ${resolved.effectId}:`, err)
+            return -1
+          }
+        }
         //  WAVE 4913: import top-level (line 48) â€” la dependencia circular
         // ya estÃ¡ resuelta por el bundler. El require() lazy fallaba en el
         // build empaquetado porque no existe un archivo fÃ­sico ./IPCHandlers.
-        const runtime = getHephaestusRuntime()
         const instanceId = runtime.play(resolved.filePath, {
           intensity: resolved.intensity,
           durationOverrideMs: resolved.durationMs,
@@ -799,7 +817,7 @@ export class TitanOrchestrator {
         const m = this.glassPool.getMetrics()
         // WAVE 7124: Ping-Pong log silenced for forensic profiling clarity
         if (m.framesDropped > 0) {
-          console.warn(`[GlassBridge] 🏓 DROPS: ${m.framesDropped} | In-Flight: ${m.inFlight} | PoolFree: ${m.poolFree}`)
+          // console.warn(`[GlassBridge] 🏓 DROPS: ${m.framesDropped} | In-Flight: ${m.inFlight} | PoolFree: ${m.poolFree}`)
         }
       }
     }, 2000)

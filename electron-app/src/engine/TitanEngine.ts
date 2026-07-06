@@ -690,7 +690,7 @@ export class TitanEngine extends EventEmitter {
     // 🌡️ WAVE 283: Añadido thermalTemperature al log
     if (this.state.frameCount % 60 === 0 && processedContext.energy > 0.05) {
       if (keyOutput.isChanging || moodOutput.emotionChanged || strategyOutput.strategyChanged) {
-        console.log(`[TitanEngine 🧠] Stabilization: Key=${keyOutput.stableKey ?? '?'} Emotion=${moodOutput.stableEmotion} Strategy=${strategyOutput.stableStrategy} Temp=${moodOutput.thermalTemperature.toFixed(0)}K`)
+        // console.log(`[TitanEngine 🧠] Stabilization: Key=${keyOutput.stableKey ?? '?'} Emotion=${moodOutput.stableEmotion} Strategy=${strategyOutput.stableStrategy} Temp=${moodOutput.thermalTemperature.toFixed(0)}K`)
       }
     }
 

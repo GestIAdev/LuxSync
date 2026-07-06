@@ -254,6 +254,18 @@ export class GenesisVaultService {
     // Apply schema (CREATE IF NOT EXISTS — idempotent)
     this._db.exec(SCHEMA_SQL)
 
+    // ─── WAVE 6000.V3 MIGRATION: Add parent_organism_id_secondary ──────────
+    // SQLite doesn't support ADD COLUMN IF NOT EXISTS, so check pragma_table_info
+    const cols = this._db.prepare(
+      "SELECT name FROM pragma_table_info('lfx_organisms') WHERE name = 'parent_organism_id_secondary'",
+    ).get() as { name: string } | undefined
+    if (!cols) {
+      this._db.exec(
+        'ALTER TABLE lfx_organisms ADD COLUMN parent_organism_id_secondary TEXT REFERENCES lfx_organisms(organism_id) ON DELETE SET NULL',
+      )
+      console.log('[GenesisVault 🧬] Migration: added parent_organism_id_secondary column')
+    }
+
     // Prepare static statements
     this._stmts = {
       getBlueprint: this._db.prepare(

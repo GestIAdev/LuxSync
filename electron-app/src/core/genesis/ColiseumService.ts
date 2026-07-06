@@ -26,8 +26,10 @@ import type {
 
 import {
   applyOperator,
+  crossover,
   type JsonPatchOp,
   type OperatorResult,
+  type CrossoverResult,
 } from './operators/GeneticOperators'
 import { prenatalScreening, type ScreeningResult } from './screening/PrenatalScreening'
 import { computeRaritySimple, type RarityOutput } from './loot/RarityEngine'
@@ -59,6 +61,20 @@ export interface SpawnResult {
   l2Distance: number
   screening: ScreeningResult
   customName: null
+  generation: number
+}
+
+export interface SpawnHybridResult {
+  success: boolean
+  organismId: string | null
+  blueprintId: string
+  parentOrganismIdA: string
+  parentOrganismIdB: string
+  dominantParent: 'A' | 'B'
+  rarityTier: RarityTier
+  rarityScore: number
+  l2Distance: number
+  screening: ScreeningResult
   generation: number
 }
 
@@ -278,6 +294,172 @@ export class ColiseumService {
       success: true,
       organismId,
       generation: parentGeneration,
+    }
+  }
+
+  /**
+   * WAVE 6000.V3 — Sexual reproduction via domain crossover.
+   *
+   * Both parents must be living organisms (not granite ancestors).
+   * The hybrid inherits temporal tracks from one parent and spatial tracks
+   * from the other, with blended cognitiveDNA. Dual lineage is recorded:
+   *   parent_organism_id = dominant parent
+   *   parent_organism_id_secondary = other parent
+   *
+   * @param parentOrganismIdA  First parent organism ID
+   * @param parentOrganismIdB  Second parent organism ID (must differ from A)
+   * @param seed               Optional deterministic seed
+   * @returns SpawnHybridResult with viability + organism details
+   */
+  spawnHybrid(
+    parentOrganismIdA: string,
+    parentOrganismIdB: string,
+    seed?: number,
+  ): SpawnHybridResult {
+    if (parentOrganismIdA === parentOrganismIdB) {
+      throw new Error('[Coliseum] Sexual reproduction requires two distinct parents')
+    }
+
+    const db = (this._vault as any)._db
+    if (!db) {
+      throw new Error('[Coliseum] GenesisVault not initialized')
+    }
+
+    // 1. Materialize both parents
+    const matA = getOrganismMaterializer().materialize(parentOrganismIdA)
+    const matB = getOrganismMaterializer().materialize(parentOrganismIdB)
+    const clipA = matA.clip
+    const clipB = matB.clip
+
+    // 1b. Fetch fitness scores for dominance determination
+    const rowA = db.prepare(
+      'SELECT fitness_score, generation, blueprint_id FROM lfx_organisms WHERE organism_id = ?',
+    ).get(parentOrganismIdA) as { fitness_score: number; generation: number; blueprint_id: string } | undefined
+    const rowB = db.prepare(
+      'SELECT fitness_score, generation, blueprint_id FROM lfx_organisms WHERE organism_id = ?',
+    ).get(parentOrganismIdB) as { fitness_score: number; generation: number; blueprint_id: string } | undefined
+
+    if (!rowA || !rowB) {
+      throw new Error('[Coliseum] One or both parent organisms not found')
+    }
+
+    const fitnessA = rowA.fitness_score
+    const fitnessB = rowB.fitness_score
+    const maxGen = Math.max(rowA.generation, rowB.generation)
+    const childGeneration = maxGen + 1
+
+    // 2. Apply crossover operator
+    const xResult: CrossoverResult = crossover(clipA, clipB, fitnessA, fitnessB, seed)
+    const hybridClip = xResult.clip
+    const delta = xResult.delta
+
+    // 3. Prenatal screening
+    const screening = prenatalScreening(hybridClip)
+
+    // 4. Rarity estimation
+    const rarity = estimateRarity(xResult.l2Distance, 'crossover')
+
+    const dominantId = xResult.dominantParent === 'A' ? parentOrganismIdA : parentOrganismIdB
+    const secondaryId = xResult.dominantParent === 'A' ? parentOrganismIdB : parentOrganismIdA
+    const blueprintId = xResult.dominantParent === 'A' ? rowA.blueprint_id : rowB.blueprint_id
+
+    const baseResult: SpawnHybridResult = {
+      success: false,
+      organismId: null,
+      blueprintId,
+      parentOrganismIdA,
+      parentOrganismIdB,
+      dominantParent: xResult.dominantParent,
+      rarityTier: rarity.tier,
+      rarityScore: rarity.score,
+      l2Distance: xResult.l2Distance,
+      screening,
+      generation: childGeneration,
+    }
+
+    // 5. Non-viable → abort
+    if (!screening.viable) {
+      console.warn(
+        `[Coliseum 🧬] Hybrid prenatal abort: ${screening.abortReason}`,
+      )
+      return baseResult
+    }
+
+    // 6. Viable → insert with dual lineage
+    const organismId = generateOrganismId()
+    const bezierSig = computeBezierSignature(hybridClip)
+    const now = Date.now()
+
+    const birthVector: ContextVector6D = {
+      zScoreAvg3s: 0,
+      lowBandAvg3s: 0,
+      energyPhaseEncoded: 0,
+      vibeHash: 0,
+      sectionEncoded: 0,
+      textureEncoded: 0,
+    }
+
+    const insertOrg = db.prepare(
+      `INSERT INTO lfx_organisms (
+        organism_id, blueprint_id, parent_organism_id, parent_organism_id_secondary, generation,
+        custom_name, delta_json, bezier_signature,
+        rarity_score, rarity_tier, l2_distance_parent, operator_used,
+        neonatal_shield_until, birth_vector_json,
+        fitness_score, trials_count, wins_count, vetoes_count, passes_count,
+        status, species_id, born_at, last_evaluated_at, last_fired_at,
+        swarm_origin_console
+      ) VALUES (
+        @organism_id, @blueprint_id, @parent_organism_id, @parent_organism_id_secondary, @generation,
+        @custom_name, @delta_json, @bezier_signature,
+        @rarity_score, @rarity_tier, @l2_distance_parent, @operator_used,
+        @neonatal_shield_until, @birth_vector_json,
+        @fitness_score, @trials_count, @wins_count, @vetoes_count, @passes_count,
+        @status, @species_id, @born_at, @last_evaluated_at, @last_fired_at,
+        @swarm_origin_console
+      )`,
+    )
+
+    const tx = db.transaction(() => {
+      insertOrg.run({
+        organism_id: organismId,
+        blueprint_id: blueprintId,
+        parent_organism_id: dominantId,
+        parent_organism_id_secondary: secondaryId,
+        generation: childGeneration,
+        custom_name: null,
+        delta_json: JSON.stringify(delta),
+        bezier_signature: Buffer.from(bezierSig.buffer),
+        rarity_score: rarity.score,
+        rarity_tier: rarity.tier,
+        l2_distance_parent: xResult.l2Distance,
+        operator_used: 'crossover',
+        neonatal_shield_until: rarity.neonatalShield,
+        birth_vector_json: JSON.stringify(birthVector),
+        fitness_score: 0.0,
+        trials_count: 0,
+        wins_count: 0,
+        vetoes_count: 0,
+        passes_count: 0,
+        status: 'alive',
+        species_id: null,
+        born_at: now,
+        last_evaluated_at: null,
+        last_fired_at: null,
+        swarm_origin_console: null,
+      })
+    })
+
+    tx()
+
+    console.log(
+      `[Coliseum 🧬] Hybrid ${organismId} from ${parentOrganismIdA} × ${parentOrganismIdB} ` +
+      `— ${rarity.tier} (ρ=${rarity.score.toFixed(3)}, L2=${xResult.l2Distance.toFixed(4)})`,
+    )
+
+    return {
+      ...baseResult,
+      success: true,
+      organismId,
     }
   }
 

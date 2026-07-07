@@ -260,6 +260,35 @@ export interface ConsciousnessDebugInfo {
   
   /** Nivel de alerta del Drop Bridge */
   dropBridgeAlert?: 'none' | 'watching' | 'imminent' | 'activated'
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🌊 WAVE 7003.3: LIQUID COGNITION V3 — SHADOW MODE TELEMETRY
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /** Telemetría del núcleo fluídico V3 (solo lectura, no afecta V2) */
+  liquidCognition?: {
+    ignite: boolean
+    confidence: number
+    squelch: number
+    intensity: number
+    epicness: number
+    tension: number
+    viscosity: number
+    vaporPressure: number
+    excitability: number
+    temperature: number
+    impact: number
+    crestFactor: number
+    sensors: {
+      s_DNA: number
+      s_Z: number
+      s_E: number
+      s_V: number
+      s_X: number
+      s_P: number
+      s_B: number
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

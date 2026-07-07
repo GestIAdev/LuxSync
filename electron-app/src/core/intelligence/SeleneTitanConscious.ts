@@ -212,6 +212,16 @@ import {
 import { getEffectManager } from '../effects/EffectManager'
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🌊 WAVE 7003.3: SELENE V3 LIQUID COGNITION — SHADOW MODE
+// ═══════════════════════════════════════════════════════════════════════════
+
+import {
+  LiquidCognitionCore,
+  NEUTRAL_GENOME,
+  type LiquidVerdict,
+} from './liquid/LiquidCognitionCore'
+
+// ═══════════════════════════════════════════════════════════════════════════
 // CONFIGURACIÓN
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -408,6 +418,14 @@ export class SeleneTitanConscious extends EventEmitter {
   // The cached decision was correct FOR THE BUILDUP — but the music moved on.
   // Track last section to detect transitions and nuke the stale cache.
   private _lastSectionForCacheInvalidation: string = ''
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🌊 WAVE 7003.3: LIQUID COGNITION V3 — SHADOW MODE
+  // El núcleo fluídico corre en paralelo (solo lectura) para telemetría.
+  // V2 mantiene autoridad absoluta sobre effectDecision y colorDecision.
+  // ═══════════════════════════════════════════════════════════════════════
+  private _liquidCore: LiquidCognitionCore = new LiquidCognitionCore()
+  private _lastLiquidVerdict: LiquidVerdict | null = null
   
   constructor(config: Partial<SeleneTitanConsciousConfig> = {}) {
     super()
@@ -483,7 +501,11 @@ export class SeleneTitanConscious extends EventEmitter {
     
     // Output inicial
     this.lastOutput = createEmptyOutput()
-    
+
+    // 🌊 WAVE 7003.3: Liquid Cognition V3 — Shadow Mode init
+    this._liquidCore = new LiquidCognitionCore()
+    this._lastLiquidVerdict = null
+
     if (this.config.debug) {
       // WAVE 2098: Boot silence — GENESIS banner removed (debug-only noise)
     }
@@ -682,7 +704,81 @@ export class SeleneTitanConscious extends EventEmitter {
     // 5. 📜 VALIDATE: Asegurar que respeta la Constitución
     // ─────────────────────────────────────────────────────────────────────
     const finalOutput = this.validate(titanState, dreamValidated)
-    
+
+    // ─────────────────────────────────────────────────────────────────────
+    // 🌊 WAVE 7003.3: LIQUID COGNITION V3 — SHADOW MODE
+    // El núcleo fluídico corre en paralelo para telemetría.
+    // V2 mantiene autoridad absoluta — V3 NO modifica effectDecision ni colorDecision.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+      const now = Date.now()
+      const zScore = this.lastMemoryOutput?.stats.energy.zScore ?? 0
+      const energyMax = this.lastMemoryOutput?.stats.energy.max ?? titanState.rawEnergy
+      const beauty = this.currentBeauty?.totalBeauty ?? 0.5
+      const consonance = this.currentConsonance?.totalConsonance ?? 0.7
+
+      // Determinar genoma del efecto candidato (si V2 decidió uno)
+      let effectGenome = NEUTRAL_GENOME
+      if (finalOutput.effectDecision?.effectType) {
+        const entry = getDynamicEffectRegistry().getEntry(finalOutput.effectDecision.effectType)
+        if (entry?.dna) {
+          effectGenome = entry.dna
+        }
+      }
+
+      // Predicción y alineación (simplified para shadow mode)
+      const predProb = this.state.activePrediction?.probability ?? 0
+      const predAlign = this.state.activePrediction ? 0.7 : 0.0
+
+      this._lastLiquidVerdict = this._liquidCore.process({
+        rawEnergy: titanState.rawEnergy,
+        zScore,
+        energyMaxHistoric: energyMax,
+        bassPresence: titanState.bass,
+        midPresence: titanState.mid,
+        harshness: titanState.harshness,
+        spectralFlatness: titanState.spectralFlatness,
+        harmonicDensity: pattern.harmonicDensity,
+        syncopation: pattern.syncopation,
+        rhythmicIntensity: pattern.rhythmicIntensity,
+        predictionProbability: predProb,
+        predictionAlignment: predAlign,
+        totalBeauty: beauty,
+        consonance,
+        effectGenome,
+      }, now)
+
+      // Si V3 ignite Y V2 también disparó → notificar ignición materializada
+      if (this._lastLiquidVerdict.ignite && finalOutput.effectDecision) {
+        this._liquidCore.notifyIgnition(this._lastLiquidVerdict.intensity, now)
+      }
+
+      // Exponer telemetría V3 en debugInfo (sin alterar V2)
+      finalOutput.debugInfo.liquidCognition = {
+        ignite: this._lastLiquidVerdict.ignite,
+        confidence: this._lastLiquidVerdict.confidence,
+        squelch: this._lastLiquidVerdict.squelch,
+        intensity: this._lastLiquidVerdict.intensity,
+        epicness: this._lastLiquidVerdict.epicness,
+        tension: this._lastLiquidVerdict.fluid.tension,
+        viscosity: this._lastLiquidVerdict.fluid.viscosity,
+        vaporPressure: this._lastLiquidVerdict.fluid.vaporPressure,
+        excitability: this._lastLiquidVerdict.fluid.excitability,
+        temperature: this._lastLiquidVerdict.fluid.temperature,
+        impact: this._lastLiquidVerdict.fluid.impact,
+        crestFactor: this._lastLiquidVerdict.fluid.crestFactor,
+        sensors: {
+          s_DNA: this._lastLiquidVerdict.sensors.s_DNA,
+          s_Z: this._lastLiquidVerdict.sensors.s_Z,
+          s_E: this._lastLiquidVerdict.sensors.s_E,
+          s_V: this._lastLiquidVerdict.sensors.s_V,
+          s_X: this._lastLiquidVerdict.sensors.s_X,
+          s_P: this._lastLiquidVerdict.sensors.s_P,
+          s_B: this._lastLiquidVerdict.sensors.s_B,
+        },
+      }
+    }
+
     // ─────────────────────────────────────────────────────────────────────
     // 6. 📊 STATS & OUTPUT
     // ─────────────────────────────────────────────────────────────────────
@@ -691,15 +787,15 @@ export class SeleneTitanConscious extends EventEmitter {
     } else {
       this.stats.decisionsRejected++
     }
-    
+
     this.lastOutput = finalOutput
     this.state.lastPattern = pattern
-    
+
     // Log periódico
     if (this.config.debug && this.stats.framesProcessed % 60 === 0) {
       // console.log(`[SeleneTitanConscious] 🐱 Hunt=${this.state.huntPhase} Section=${pattern.section} Conf=${finalOutput.confidence.toFixed(2)}`)
     }
-    
+
     return finalOutput
   }
   
@@ -1813,14 +1909,18 @@ export class SeleneTitanConscious extends EventEmitter {
       biasesDetected: 0,
     }
     this.lastOutput = createEmptyOutput()
-    
+
     // Resetear sensores (PHASE 2)
     this.currentBeauty = null
     this.currentConsonance = null
     resetPatternHistory()
     resetBeautyHistory()
     resetConsonanceState()
-    
+
+    // 🌊 WAVE 7003.3: Reset Liquid Cognition V3
+    this._liquidCore.reset()
+    this._lastLiquidVerdict = null
+
     // Resetear cognición (PHASE 3)
     resetHuntEngine()
     resetPredictionEngine()

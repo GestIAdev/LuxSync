@@ -1024,6 +1024,11 @@ export class SimpleSectionTracker {
   private activeVibeId: string = 'techno';
   private profile: VibeSectionProfile = DEFAULT_PROFILE;
   
+  // 🔧 WAVE 7003 (F4): Track whether we've ever had a buildup/drop for intro detection
+  private hasHadBuildupOrDrop: boolean = false;
+  // 🔧 WAVE 7003 (F4): Chorus detection — sustained high energy with stable bass
+  private chorusBeatAccumulator: number = 0;
+  
   /**
    * 🎯 WAVE 289.5: Cambiar el vibe activo
    * Llamado cuando TrinityOrchestrator propaga SET_VIBE a BETA
@@ -1095,6 +1100,11 @@ export class SimpleSectionTracker {
     // === DECISIÓN DE SECCIÓN CON PERFILES VIBE-AWARE ===
     let newSection = this.currentSection;
     
+    // 🔧 WAVE 7003 (F4): INTRO — first ~5 seconds with low energy before any buildup/drop
+    // Music just started, energy is low, and we haven't hit a buildup or drop yet.
+    if (!this.hasHadBuildupOrDrop && this.frameCount < 150 && weightedEnergy < 0.30) {
+      newSection = 'intro';
+    }
     // 🎯 WAVE 289.5: DROP con cooldown, duración máxima y kill switch
     const inCooldown = (now - this.lastDropEndTime) < p.dropCooldown;
     const dropDuration = this.currentSection === 'drop' ? (now - this.dropStartTime) : 0;
@@ -1152,11 +1162,13 @@ export class SimpleSectionTracker {
         this.dropStartTime = now;
         this.beatsSinceChange = 0;
         this.framesSinceTransition = 0;
+        this.hasHadBuildupOrDrop = true; // 🔧 WAVE 7003 (F4)
         console.log(`[SimpleSectionTracker] 🔴 DROP ENTER | vibe=${this.activeVibeId} | bassRatio=${bassRatio.toFixed(2)} | energy=${weightedEnergy.toFixed(2)} | bass=${audio.bass.toFixed(2)} | kick=${hasKick}`);
       }
       // BUILDUP: Energía subiendo (only if hysteresis allows)
       else if (hysteresisAllows && energyDelta > p.buildupDeltaThreshold && weightedEnergy > 0.4 && bassRatio < 1.15) {
         newSection = 'buildup';
+        this.hasHadBuildupOrDrop = true; // 🔧 WAVE 7003 (F4)
       }
       // BREAKDOWN: Caída de energía REAL (only if hysteresis allows)
       // 🩸 WAVE 2099: THE BLACK HOLE FIX — breakdown was a trap.
@@ -1174,6 +1186,15 @@ export class SimpleSectionTracker {
       else if (hysteresisAllows && energyDelta < -0.10 && weightedEnergy < p.breakdownEnergyThreshold) {
         newSection = 'breakdown';
         this.beatsSinceChange = 0;
+      }
+      // 🔧 WAVE 7003 (F4): CHORUS — sustained high energy with stable bass, not meeting drop criteria.
+      // Requires: wE > 0.6, bassRatio stable (0.85-1.15), beatsSinceChange > 16.
+      // This is the "groove" section — high energy but no bass spike, so it's not a drop.
+      else if (hysteresisAllows && weightedEnergy > 0.6 && bassRatio > 0.85 && bassRatio < 1.15 && this.beatsSinceChange > 16) {
+        if (this.currentSection !== 'chorus') {
+          this.chorusBeatAccumulator = this.beatsSinceChange;
+        }
+        newSection = 'chorus';
       }
       // VERSE: Estado neutral — recovery from any section that's been stuck
       // 🩸 WAVE 2099: Reduced from 90 to 32 beats.
@@ -1225,6 +1246,8 @@ export class SimpleSectionTracker {
     this.dropStartTime = 0;
     this.lastDropEndTime = 0;
     this.framesSinceTransition = 0; // 🩸 WAVE 2098
+    this.hasHadBuildupOrDrop = false; // 🔧 WAVE 7003 (F4)
+    this.chorusBeatAccumulator = 0; // 🔧 WAVE 7003 (F4)
   }
 }
 

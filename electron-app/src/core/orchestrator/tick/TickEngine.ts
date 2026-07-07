@@ -324,7 +324,7 @@ export class TickEngine {
       // Worker sordo Y memoria expirada â†’ PLL cae al Pacemaker interno (120 default)
       // PunkArchytect doctrine: Worker = OÃ­dos (honesto). Cerebro = Memoria (inerte).
       // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-      if (workerBpm > 0 && workerConfidence > 0.2) {
+      if (workerBpm > 0 && workerConfidence > 0.5) {
         // ðŸ”¥ Worker activo: lock real + actualizar memoria
         this.audioPipeline.beatDetector.setBpm(workerBpm)
         this.audioPipeline.lastStableWorkerBpm = workerBpm
@@ -346,6 +346,9 @@ export class TickEngine {
       if (workerOnBeat) {
         beatState.onBeat = true
         beatState.kickDetected = true
+        // 🔧 WAVE 7002 (F11): Feed real kick timestamp to PLL phase corrector.
+        // This reconnects the PLL to audio evidence — pllLocked can now become true.
+        this.audioPipeline.beatDetector.feedKick(now)
       }
       
       if (this.frameCount % 60 === 0) {
@@ -381,12 +384,14 @@ export class TickEngine {
     const _framesSinceStable = this.frameCount - this.audioPipeline.lastStableWorkerBpmFrame
     const hasFreewheelMemory = this.audioPipeline.lastStableWorkerBpm > 0 && _framesSinceStable <= this.audioPipeline.FREEWHEEL_TIMEOUT_FRAMES
 
-    if (workerBpm > 0 && workerConfidence > 0.2) {
+    if (workerBpm > 0 && workerConfidence > 0.5) {
       // Priority 1: Worker activo
       context.bpm = workerBpm
-      context.beatPhase = beatState.pllLocked
-        ? (beatState.pllPhase ?? beatState.phase)
-        : workerBeatPhase
+      // 🔧 WAVE 7003 (F5): Always prefer PLL phase over worker free-running phase.
+      // The PLL phase uses smoothed BPM and gets phase corrections from feedKick(),
+      // making it more stable than the worker's raw stableBpm free-running phase.
+      // Worker phase only used as last-resort fallback if PLL phase is null.
+      context.beatPhase = beatState.pllPhase ?? workerBeatPhase
       context.syncopation = this.audioPipeline.syncSmoother.estimateSyncopation(context.beatPhase, bass, mid)
     } else if (hasFreewheelMemory) {
       // ðŸ”¥ WAVE 2179: Priority 2 â€” FREEWHEEL MEMORY
@@ -428,6 +433,8 @@ export class TickEngine {
       beatCount: this.audioPipeline.lastAudioData.workerKickCount ?? beatState.beatCount,
       bpm: workerBpm > 0 ? workerBpm : beatState.bpm,
       beatConfidence: workerConfidence > 0 ? workerConfidence : beatState.confidence,
+      // 🔧 WAVE 7002 (F2): Propagate pllLocked to TitanEngine for Cassandra
+      pllLocked: beatState.pllLocked,
       // ðŸŒŠ WAVE 1011.5: MÃ©tricas FFT SUAVIZADAS (WAVE 3504.5: via SyncSmoother)
       harshness: this.audioPipeline.syncSmoother.currentSmoothed.harshness,
       spectralFlatness: this.audioPipeline.syncSmoother.currentSmoothed.spectralFlatness,

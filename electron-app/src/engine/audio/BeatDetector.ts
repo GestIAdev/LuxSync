@@ -947,6 +947,15 @@ export class BeatDetector {
   }
   
   /**
+   * 🔧 WAVE 7002: Feed a real kick timestamp to the PLL phase corrector.
+   * Called by TickEngine when the Worker reports an on-beat detection.
+   * This is the bridge that reconnects the PLL to real audio evidence.
+   */
+  feedKick(timestamp: number): void {
+    this.pllCorrectPhase(timestamp)
+  }
+
+  /**
    * Forzar BPM manualmente (para sync externo o usuario)
    */
   setBpm(bpm: number): void {

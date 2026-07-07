@@ -221,9 +221,6 @@ export function predict(pattern: SeleneMusicalPattern): MusicalPrediction {
   // Actualizar historial si cambió de sección
   updateHistory(pattern)
   
-  // 🌊 WAVE 5016: FLUID TIMING — alimentar el anclaje del PLL
-  updateBpmHistory(pattern.bpm)
-  
   // Buscar patrones de progresión que matcheen
   const matchedPattern = findMatchingPattern()
   
@@ -304,7 +301,6 @@ export function resetPredictionEngine(): void {
   sectionHistory = []
   lastPrediction = null
   energyHistory = [] // 🔮 WAVE 1169: Reset energy history too
-  bpmHistory = []    // 🌊 WAVE 5016: Reset PLL lock history
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -394,37 +390,10 @@ function matchesTrigger(trigger: SectionClassification[]): boolean {
 //   4. Sincopación                           → ritmo impredecible baja la certeza
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** 🌊 WAVE 5016: Historial de BPM para estimar el lock del PLL */
-const MAX_BPM_HISTORY = 24
-let bpmHistory: number[] = []
-
-function updateBpmHistory(bpm: number): void {
-  if (bpm > 0 && Number.isFinite(bpm)) {
-    bpmHistory.push(bpm)
-    if (bpmHistory.length > MAX_BPM_HISTORY) {
-      bpmHistory.shift()
-    }
-  }
-}
-
-/**
- * 🌊 WAVE 5016: Estimación del lock del PLL (0-1).
- * 1 = BPM sólido como roca (rejilla de beats fiable).
- * 0 = BPM caótico (cualquier predicción temporal es una conjetura).
- * Se basa en el coeficiente de variación del historial de BPM.
- */
-function estimatePllLock(): number {
-  if (bpmHistory.length < 6) return 0.4 // datos insuficientes → confianza baja-moderada
-  
-  const mean = bpmHistory.reduce((a, b) => a + b, 0) / bpmHistory.length
-  if (mean <= 0) return 0
-  
-  const variance = bpmHistory.reduce((s, b) => s + (b - mean) ** 2, 0) / bpmHistory.length
-  const cv = Math.sqrt(variance) / mean // coeficiente de variación (jitter relativo)
-  
-  // cv=0 → lock perfecto; cv>=0.05 (5% de jitter) → efectivamente sin enganche
-  return Math.max(0, Math.min(1, 1 - cv / 0.05))
-}
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔧 WAVE 7002 (F10): estimatePllLock() and bpmHistory REMOVED.
+// Cassandra now uses pattern.pllLocked (real PLL state) directly.
+// ═══════════════════════════════════════════════════════════════════════════
 
 /** 🌊 WAVE 5016: ms transcurridos en la sección actual (más reciente del historial) */
 function timeInCurrentSectionMs(now: number): number {
@@ -500,7 +469,8 @@ function computeOrganicConfidence(
   const safeBpm = (pattern.bpm > 0 && Number.isFinite(pattern.bpm)) ? pattern.bpm : 120
   const msPerBeat = 60000 / safeBpm
   
-  const pllLock = estimatePllLock()
+  // 🔧 WAVE 7002 (F10): Use REAL pllLocked from pattern instead of re-derived estimatePllLock()
+  const pllLock = pattern.pllLocked ? 1.0 : (pattern.bpmConfidence > 0.5 ? 0.5 : 0.0)
   const dwellBeats = timeInCurrentSectionMs(pattern.timestamp) / msPerBeat
   const velocity = calculateEnergyVelocity()
   const velocityFactor = Math.max(0, Math.min(1, velocity / 0.02))
@@ -510,6 +480,8 @@ function computeOrganicConfidence(
   // 📈 ORGANIC 1: COLAPSO POR PLL — si la rejilla de beats es inestable, CUALQUIER
   // predicción basada en tiempo es una conjetura. La confianza cae a un suelo del
   // 55% de la base cuando el PLL está suelto, y llega al 100% cuando está enganchado.
+  // 🔧 WAVE 7002 (F10): pllLock ahora viene del estado REAL del PLL (pattern.pllLocked),
+  // no de una re-derivación por CV que invertía la lógica (pacemaker = lock perfecto).
   confidence *= (0.55 + 0.45 * pllLock)
   
   // 📈 ORGANIC 2: HISTÉRESIS DE SECCIÓN — cuanto más persiste una sección, más

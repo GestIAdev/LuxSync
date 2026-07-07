@@ -148,6 +148,16 @@ export interface TitanStabilizedState {
   sectionType: 'intro' | 'verse' | 'chorus' | 'drop' | 'bridge' | 'outro' | 'build' | 'breakdown' | 'unknown'
   
   // ═══════════════════════════════════════════════════════════════════════
+  // 🔧 WAVE 7002 (F2+F3): VERDAD DEL BPM — confianza y lock state
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Confianza del BPM (0-1) — del Worker via TickEngine */
+  bpmConfidence: number
+  
+  /** PLL phase-locked a audio real — true = beats confiables */
+  pllLocked: boolean
+  
+  // ═══════════════════════════════════════════════════════════════════════
   // PALETA ACTUAL (para simulaciones)
   // ═══════════════════════════════════════════════════════════════════════
   
@@ -327,6 +337,16 @@ export interface SeleneMusicalPattern {
   
   /** Distancia normalizada al umbral de drop (0 = en drop, 1 = muy lejos) */
   distanceFromDrop: number
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔧 WAVE 7002 (F2+F3): VERDAD DEL BPM — confianza y lock state
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Confianza del BPM (0-1) — propagada desde TitanStabilizedState */
+  bpmConfidence: number
+  
+  /** PLL phase-locked a audio real — propagado desde TitanStabilizedState */
+  pllLocked: boolean
   
   // ═══════════════════════════════════════════════════════════════════════
   // TIMING

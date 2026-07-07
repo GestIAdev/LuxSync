@@ -218,6 +218,13 @@ export class IntervalBPMTracker {
   // ─── Phase Tracking ───────────────────────────────────────────────
   private lastBeatPhaseTimestamp = 0
 
+  // 🔧 WAVE 7003 (F7): Fold boundary hysteresis — prevent jitter at pocket edges
+  // Remembers the last musical BPM output so we can apply a dead zone
+  // around pocket boundaries. Without this, raw BPM jittering at 135±1
+  // causes toggling between direct pass (135) and fold-down (102),
+  // producing 33 BPM jumps that flash through the physics engine.
+  private lastMusicalBpm = 0
+
   // ─── Frame Duration ───────────────────────────────────────────────
   private readonly frameDurationMs: number
 
@@ -644,8 +651,33 @@ export class IntervalBPMTracker {
     const raw = this.stableBpm
     if (raw === 0) return 0
 
-    // Direct hit — already in the pocket
-    if (raw >= targetMin && raw <= targetMax) return raw
+    // 🔧 WAVE 7003 (F7): HYSTERESIS at pocket boundaries.
+    // If we already have a musical BPM and raw is near a boundary,
+    // require a margin before switching modes. This prevents 33-44 BPM
+    // jumps when raw BPM jitters ±1-2 BPM around the pocket edge.
+    const HYSTERESIS_MARGIN = 5
+    const expandedMin = targetMin - HYSTERESIS_MARGIN
+    const expandedMax = targetMax + HYSTERESIS_MARGIN
+
+    // Direct hit — already in the pocket (with hysteresis expansion)
+    if (raw >= expandedMin && raw <= expandedMax) {
+      // If last output was a fold result and we're still near the boundary,
+      // keep the fold to avoid jitter. Only return raw if we're comfortably
+      // inside the pocket or we haven't folded recently.
+      if (this.lastMusicalBpm > 0 && this.lastMusicalBpm !== raw) {
+        const lastWasInPocket = this.lastMusicalBpm >= targetMin && this.lastMusicalBpm <= targetMax
+        if (lastWasInPocket && raw >= targetMin && raw <= targetMax) {
+          this.lastMusicalBpm = raw
+          return raw
+        }
+        // If last was a fold and we're in the hysteresis zone, keep the fold
+        if (!lastWasInPocket && (raw < targetMin || raw > targetMax)) {
+          return this.lastMusicalBpm
+        }
+      }
+      this.lastMusicalBpm = raw // 🔧 WAVE 7003 (F7)
+      return raw
+    }
 
     // ── FOLDING DOWN (raw too fast) ──────────────────────────────────────
     if (raw > targetMax) {
@@ -658,7 +690,10 @@ export class IntervalBPMTracker {
       ]
       for (const f of folds) {
         const folded = Math.round(f)
-        if (folded >= targetMin && folded <= targetMax) return folded
+        if (folded >= targetMin && folded <= targetMax) {
+          this.lastMusicalBpm = folded // 🔧 WAVE 7003 (F7)
+          return folded
+        }
       }
     }
 
@@ -672,7 +707,10 @@ export class IntervalBPMTracker {
       ]
       for (const f of folds) {
         const folded = Math.round(f)
-        if (folded >= targetMin && folded <= targetMax) return folded
+        if (folded >= targetMin && folded <= targetMax) {
+          this.lastMusicalBpm = folded // 🔧 WAVE 7003 (F7)
+          return folded
+        }
       }
     }
 
@@ -681,7 +719,9 @@ export class IntervalBPMTracker {
     // clamp to the nearest pocket boundary. NEVER return raw BPM to physics.
     // A raw 275 BPM would drive movers at 4.6 Hz oscillation — mechanical death.
     const pocketCenter = (targetMin + targetMax) / 2
-    return raw > pocketCenter ? targetMax : targetMin
+    const clamped = raw > pocketCenter ? targetMax : targetMin
+    this.lastMusicalBpm = clamped
+    return clamped
   }
 
   /** Reset tracker state — AMNESIA PROTOCOL */
@@ -700,5 +740,6 @@ export class IntervalBPMTracker {
     this.stableBpm = 0
     this.currentConfidence = 0
     this.lastBeatPhaseTimestamp = 0
+    this.lastMusicalBpm = 0 // 🔧 WAVE 7003 (F7)
   }
 }

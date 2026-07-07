@@ -148,7 +148,10 @@ export interface EngineAudioMetrics {
   hihatDetected?: boolean
   // ⏱️ WAVE 2305: THE INFALLIBLE METRONOME
   isPLLBeat?: boolean
-  // 💥 WAVE 2347: crestFactor — relación pico/RMS espectral (kick vs rolling bass)
+  // � WAVE 7002 (F2+F3): PLL lock state and BPM confidence for Cassandra
+  beatConfidence?: number
+  pllLocked?: boolean
+  // � WAVE 2347: crestFactor — relación pico/RMS espectral (kick vs rolling bass)
   crestFactor?: number
 }
 
@@ -1072,6 +1075,10 @@ export class TitanEngine extends EventEmitter {
       beatPhase: processedContext.beatPhase,
       syncopation: processedContext.syncopation,
       sectionType: normalizeSectionType(processedContext.section.type),
+      
+      // 🔧 WAVE 7002 (F2+F3): Verdad del BPM — confianza y lock state
+      bpmConfidence: audio.beatConfidence ?? 0,
+      pllLocked: audio.pllLocked ?? false,
       
       // Paleta actual
       currentPalette: selenePalette,

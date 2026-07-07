@@ -143,6 +143,10 @@ export function senseMusicalPattern(state: TitanStabilizedState): SeleneMusicalP
     isDropActive: state.isDropActive,
     distanceFromDrop: calculateDistanceFromDrop(state),
     
+    // 🔧 WAVE 7002 (F2+F3): Verdad del BPM — pasar a Cassandra
+    bpmConfidence: state.bpmConfidence,
+    pllLocked: state.pllLocked,
+    
     // Timestamp
     timestamp: state.timestamp,
   }

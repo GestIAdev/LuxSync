@@ -1,0 +1,318 @@
+/**
+ * SELENE V3 — LIQUID COGNITION
+ * WAVE 7003.1 (Lote 1/4: Cimientos)
+ *
+ * Contenedor puro del vector de estado fluídico Ψ(t).
+ * Mantiene T, μ, V, X, Θ, I, CF, epicness como primitivos.
+ * Zero-alloc en hot path — snapshot pre-asignado y reutilizado.
+ *
+ * Blueprint: SELENE_V3_LIQUID_COGNITION_BLUEPRINT.md §2, §9.2
+ */
+
+import type { ILiquidCognitionProfile } from './ILiquidCognitionProfile'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Contrato de snapshot — lectura inmutable del estado
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface FluidStateSnapshot {
+  /** T(t) — Tensión superficial cognitiva */
+  readonly tension: number
+  /** μ(t) — Viscosidad cognitiva */
+  readonly viscosity: number
+  /** V(t) — Presión de vapor */
+  readonly vaporPressure: number
+  /** X(t) — Excitabilidad (recuperación post-disparo) */
+  readonly excitability: number
+  /** Θ(t) — Temperatura (agitación media reciente) */
+  readonly temperature: number
+  /** I(t) — Impacto normalizado */
+  readonly impact: number
+  /** CF̂(t) — Factor de cresta normalizado */
+  readonly crestFactor: number
+  /** max(0, I−T)/T — Ruptura relativa de la superficie */
+  readonly epicness: number
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Input para actualizar el estado — vista minimal del frame
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Campos necesarios para computar el impacto y la temperatura.
+ * Diseñado como vista minimal para mantener el módulo desacoplado.
+ */
+export interface FluidStateInput {
+  /** Z-Score de energía (de ContextualMemory / RollingStats) */
+  readonly zScore: number
+  /** Energía cruda normalizada (0-1) — rawEnergy */
+  readonly rawEnergy: number
+  /** Máximo histórico de energía en ventana 30s (de RollingStats) */
+  readonly energyMaxHistoric: number
+  /** Presencia de bass (0-1) — para ventana de crest factor */
+  readonly bassPresence: number
+  /** Presencia de mid (0-1) — para ratio anti-voz */
+  readonly midPresence: number
+  /** Densidad armónica (0-1) — para viscosidad */
+  readonly harmonicDensity: number
+  /** Spectral flatness (0-1) — para viscosidad */
+  readonly spectralFlatness: number
+  /** Descriptores ΠMΔG del FluidDescriptorEngine */
+  readonly descriptors: {
+    readonly percussiveness: number
+    readonly melodicity: number
+    readonly dirtiness: number
+    readonly groove: number
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Utilidades
+// ═══════════════════════════════════════════════════════════════════════════
+
+function clamp01(x: number): number {
+  return x < 0 ? 0 : x > 1 ? 1 : x
+}
+
+function clamp(x: number, lo: number, hi: number): number {
+  return x < lo ? lo : x > hi ? hi : x
+}
+
+function sigmoid(x: number): number {
+  return 1 / (1 + Math.exp(-x))
+}
+
+// EMA α para temperatura — vida media ~2s @ 44Hz (más rápida que descriptores)
+const ALPHA_TEMP = 1 - Math.pow(2, -1 / (2.0 * 44.0))
+
+// EMA α para energía RMS (ventana de crest factor ~350ms @ 44Hz ≈ 15 frames)
+const ALPHA_RMS = 1 - Math.pow(2, -1 / 15.4)
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CognitiveFluidState — el vector Ψ(t) vivo
+// ═══════════════════════════════════════════════════════════════════════════
+
+export class CognitiveFluidState {
+  // ── Estado interno Ψ(t) — primitivos, zero-alloc ──
+  private _tension: number
+  private _viscosity: number = 0
+  private _vaporPressure: number = 0
+  private _excitability: number = 1 // Comienza plenamente excitable
+  private _temperature: number = 0
+  private _impact: number = 0
+  private _crestFactor: number = 0
+  private _epicness: number = 0
+
+  // ── Estado auxiliar para dinámicas ──
+  private _rmsEnergy: number = 0
+  private _peakEnergyWindow: number = 0
+  private _timeHigh: number = 0 // Segundos continuos con Ê > 0.70
+  private _timeSinceIgnition: number = 999 // Segundos desde última ignición
+  private _timeSinceImpact: number = 999 // Segundos desde último I > T·0.8
+  private _lastTimestamp: number = 0
+  private _lastIntensity: number = 0
+
+  // ── Snapshot pre-asignado ──
+  private readonly _snapshot: FluidStateSnapshot = {
+    tension: 0,
+    viscosity: 0,
+    vaporPressure: 0,
+    excitability: 1,
+    temperature: 0,
+    impact: 0,
+    crestFactor: 0,
+    epicness: 0,
+  }
+
+  constructor(
+    private readonly profile: ILiquidCognitionProfile,
+  ) {
+    this._tension = profile.T_base
+  }
+
+  /**
+   * Actualiza todo el vector Ψ(t) un frame.
+   * Hot path 44Hz — sin allocs, sin branches de género.
+   *
+   * @param input Métricas del frame
+   * @param now   Timestamp en ms (determinístico, de Date.now() del llamante)
+   */
+  update(input: FluidStateInput, now: number): void {
+    const p = this.profile
+    const dt = this._lastTimestamp > 0 ? Math.min((now - this._lastTimestamp) / 1000, 0.1) : 0
+    this._lastTimestamp = now
+
+    // ─────────────────────────────────────────────────────────
+    // 1. Temperatura Θ(t) — EMA rápida de energía
+    // ─────────────────────────────────────────────────────────
+    this._temperature += ALPHA_TEMP * (input.rawEnergy - this._temperature)
+
+    // ─────────────────────────────────────────────────────────
+    // 2. Energía RMS y pico para Factor de Cresta
+    // ─────────────────────────────────────────────────────────
+    this._rmsEnergy += ALPHA_RMS * (input.rawEnergy - this._rmsEnergy)
+    if (input.rawEnergy > this._peakEnergyWindow) {
+      this._peakEnergyWindow = input.rawEnergy
+    } else {
+      // Decay exponencial del pico (vida media ~350ms)
+      this._peakEnergyWindow *= Math.pow(0.5, dt / 0.35)
+    }
+
+    // CF̂(t) — Factor de cresta normalizado
+    const cfRaw = this._rmsEnergy > 0.001
+      ? this._peakEnergyWindow / this._rmsEnergy
+      : 1.0
+    const cfHat = clamp01((cfRaw - 1) / (p.CF_ref - 1))
+    this._crestFactor = cfHat
+
+    // ─────────────────────────────────────────────────────────
+    // 3. Impacto I(t) = w_z·ẑ + w_cf·CF̂ + w_e·Ê
+    // ─────────────────────────────────────────────────────────
+    const zHat = Math.tanh(input.zScore / p.z_ref)
+    const eHat = input.rawEnergy / Math.max(input.energyMaxHistoric, 0.01)
+    this._impact = clamp01(p.w_z * zHat + p.w_cf * cfHat + p.w_e * eHat)
+
+    // ─────────────────────────────────────────────────────────
+    // 4. Viscosidad μ(t) = clamp01(w_m·M + w_f·flatness + w_h·harmonicDensity − w_p·Π)
+    // ─────────────────────────────────────────────────────────
+    const d = input.descriptors
+    this._viscosity = clamp01(
+      p.w_m * d.melodicity +
+      p.w_f * input.spectralFlatness +
+      p.w_h * input.harmonicDensity -
+      p.w_p * d.percussiveness,
+    )
+
+    // ─────────────────────────────────────────────────────────
+    // 5. Tensión Superficial T(t) — tres fuerzas (§3)
+    // ─────────────────────────────────────────────────────────
+
+    // (a) Endurecimiento por saturación
+    const eHigh = eHat > 0.70 ? 1 : 0
+    this._timeHigh += dt * eHigh
+    const sSat = sigmoid(this._timeHigh / p.tau_sat - 2) // Centrado en 2·τ_sat
+    const dT_rise = p.alpha_rise * Math.max(0, this._impact - this._tension) * sSat * eHigh
+
+    // (b) Evaporación por sequía
+    const wasImpact = this._impact > this._tension * 0.8
+    if (wasImpact) {
+      this._timeSinceImpact = 0
+    } else {
+      this._timeSinceImpact += dt
+    }
+    const lambdaEvap = p.lambda_0 * (1 + p.kappa_d * this._timeSinceImpact / (this._timeSinceImpact + p.D_half))
+    const dT_evap = lambdaEvap * (this._tension - p.T_min)
+
+    // (c) Relajación homeostática
+    // σ̂_E aproximada por la temperatura como proxy de dispersión
+    const tEq = p.T_base + p.kappa_sigma * this._temperature
+    const dT_relax = p.lambda_home * (this._tension - tEq)
+
+    this._tension = clamp(this._tension + dT_rise - dT_evap - dT_relax, p.T_min, p.T_max)
+
+    // ─────────────────────────────────────────────────────────
+    // 6. Presión de Vapor V(t) — sed acumulada (§5)
+    // ─────────────────────────────────────────────────────────
+    this._timeSinceIgnition += dt
+    const noIgnition = this._timeSinceIgnition > 0.1 ? 1 : 0
+    const valleyFactor = 1 - eHat
+    this._vaporPressure = clamp01(
+      this._vaporPressure + p.beta_v * dt * noIgnition * valleyFactor,
+    )
+
+    // ─────────────────────────────────────────────────────────
+    // 7. Excitabilidad X(t) — recuperación post-disparo (§4.2)
+    // ─────────────────────────────────────────────────────────
+    const tauR = p.tau_min + (p.tau_max - p.tau_min) * this._viscosity * (0.5 + this._lastIntensity)
+    const xTarget = 1 - Math.exp(-this._timeSinceIgnition / tauR)
+    // EMA suave para evitar saltos discretos
+    this._excitability += 0.3 * (xTarget - this._excitability)
+    this._excitability = clamp01(this._excitability)
+
+    // ─────────────────────────────────────────────────────────
+    // 8. Epicness — ruptura relativa de la superficie
+    // ─────────────────────────────────────────────────────────
+    this._epicness = this._tension > 0.001
+      ? Math.max(0, (this._impact - this._tension) / this._tension)
+      : 0
+  }
+
+  /**
+   * Notifica que una ignición fue materializada.
+   * Resetea vapor, actualiza refractariedad.
+   */
+  notifyIgnition(intensity: number, now: number): void {
+    const p = this.profile
+    this._vaporPressure *= p.kappa_vreset
+    this._timeSinceIgnition = 0
+    this._lastIntensity = clamp01(intensity)
+    // El tiempo del impacto también se resetea para la evaporación
+    this._timeSinceImpact = 0
+    void now // Timestamp reservado para futura telemetría
+  }
+
+  /**
+   * Devuelve el snapshot del estado sin asignar objetos nuevos.
+   * El objeto retornado es reutilizado entre llamadas — no retener.
+   */
+  getSnapshot(): FluidStateSnapshot {
+    const s = this._snapshot as {
+      tension: number; viscosity: number; vaporPressure: number
+      excitability: number; temperature: number; impact: number
+      crestFactor: number; epicness: number
+    }
+    s.tension = this._tension
+    s.viscosity = this._viscosity
+    s.vaporPressure = this._vaporPressure
+    s.excitability = this._excitability
+    s.temperature = this._temperature
+    s.impact = this._impact
+    s.crestFactor = this._crestFactor
+    s.epicness = this._epicness
+    return this._snapshot
+  }
+
+  // ── Accesores directos sin alloc (para uso interno del módulo liquid) ──
+
+  get tension(): number { return this._tension }
+  get viscosity(): number { return this._viscosity }
+  get vaporPressure(): number { return this._vaporPressure }
+  get excitability(): number { return this._excitability }
+  get temperature(): number { return this._temperature }
+  get impact(): number { return this._impact }
+  get crestFactor(): number { return this._crestFactor }
+  get epicness(): number { return this._epicness }
+
+  reset(): void {
+    const p = this.profile
+    this._tension = p.T_base
+    this._viscosity = 0
+    this._vaporPressure = 0
+    this._excitability = 1
+    this._temperature = 0
+    this._impact =  0
+    this._crestFactor = 0
+    this._epicness = 0
+    this._rmsEnergy = 0
+    this._peakEnergyWindow = 0
+    this._timeHigh = 0
+    this._timeSinceIgnition = 999
+    this._timeSinceImpact = 999
+    this._lastTimestamp = 0
+    this._lastIntensity = 0
+
+    const s = this._snapshot as {
+      tension: number; viscosity: number; vaporPressure: number
+      excitability: number; temperature: number; impact: number
+      crestFactor: number; epicness: number
+    }
+    s.tension = p.T_base
+    s.viscosity = 0
+    s.vaporPressure = 0
+    s.excitability = 1
+    s.temperature = 0
+    s.impact = 0
+    s.crestFactor = 0
+    s.epicness = 0
+  }
+}

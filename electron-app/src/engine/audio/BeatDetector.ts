@@ -172,6 +172,15 @@ const PLL_PROPORTIONAL_GAIN = 0.3
 const PLL_INTEGRAL_GAIN = 0.005
 
 /**
+ * 🔧 WAVE 7002.4 (REC-11): Frequency feedback gain.
+ * When two consecutive kicks arrive, the interval between them gives a
+ * direct frequency measurement. We blend this into pllSmoothedBpm with
+ * a low gain to avoid reacting to single missed-kick intervals, while
+ * still tracking genuine tempo drift over several kicks.
+ */
+const PLL_FREQUENCY_GAIN = 0.15
+
+/**
  * Lookahead time (ms) for anticipatory beat prediction.
  * onBeat fires this many ms BEFORE the predicted beat impact.
  * Compensates Web Audio API + IPC + render latency (~23ms total).
@@ -531,7 +540,26 @@ export class BeatDetector {
       // Apply integral correction to BPM
       // If kicks consistently arrive late → we're too fast → slow down BPM slightly
       const bpmCorrection = this.pllIntegralError * PLL_INTEGRAL_GAIN
-      this.pllSmoothedBpm = this.state.bpm - bpmCorrection
+      
+      // 🔧 WAVE 7002.4 (REC-11): Proper PLL frequency feedback.
+      // Instead of overwriting pllSmoothedBpm from the clustering BPM (state.bpm),
+      // derive frequency from the interval between consecutive kicks and blend
+      // it in with a low gain. This makes the PLL a true frequency-tracking
+      // loop that can detect tempo drift independently of the clustering algorithm.
+      const kickInterval = kickTime - this.pllLastCorrectionTime
+      let frequencyBpm = this.pllSmoothedBpm
+      if (kickInterval > 0 && kickInterval < 3000) {
+        frequencyBpm = 60000 / kickInterval
+        // Reject absurd intervals (missed kicks create 2x or 0.5x intervals)
+        const ratio = frequencyBpm / this.pllSmoothedBpm
+        if (ratio < 0.65 || ratio > 1.55) {
+          frequencyBpm = this.pllSmoothedBpm  // ignore outlier interval
+        }
+      }
+      // Blend: frequency feedback + integral correction, anchored on previous smoothed BPM
+      this.pllSmoothedBpm = this.pllSmoothedBpm
+        + (frequencyBpm - this.pllSmoothedBpm) * PLL_FREQUENCY_GAIN
+        - bpmCorrection
       
       // Clamp BPM to sane range
       this.pllSmoothedBpm = Math.max(this.minBpm, Math.min(this.maxBpm, this.pllSmoothedBpm))
@@ -602,9 +630,12 @@ export class BeatDetector {
     }
     
     // ── Sync PLL BPM to Pacemaker BPM when not locked ──
-    // When the clustering BPM changes and we're not locked, track it
+    // 🔧 WAVE 7002.4 (REC-11): Blend toward clustering BPM instead of hard overwrite.
+    // This preserves the PLL's frequency memory during brief unlock periods
+    // (e.g., breakdowns) and allows it to re-lock faster when kicks resume.
     if (!this.pllIsLocked && this.state.bpm > 0) {
-      this.pllSmoothedBpm = this.state.bpm
+      this.pllSmoothedBpm = this.pllSmoothedBpm
+        + (this.state.bpm - this.pllSmoothedBpm) * 0.1
     }
     
     // ── Anticipatory onBeat with lookahead ──

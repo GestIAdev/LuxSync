@@ -70,9 +70,9 @@ latino [85,105], generic [90,135].
 | ID | Issue | Severity |
 |----|-------|----------|
 | W1 | **Median rounds to integer** — `Math.round()` loses sub-BPM precision (126.3 → 126) | Medium |
-| W2 | **Confidence uses max-min spread**, not std dev or IQR. One outlier in 8 samples tanks confidence to 0 | Medium |
+| W2 | **Confidence uses max-min spread**, not std dev or IQR. One outlier in 8 samples tanks confidence to 0 | Medium | ✅ **FIXED WAVE 7002.4** — IQR-based confidence |
 | W3 | **PEAK_DISCRIMINATOR_RATIO mismatch** — comment says 0.50, code says 0.65 | Low |
-| W4 | **No tempo-change tracking** — outlier rejection (±35%) blocks genuine tempo drift | Medium |
+| W4 | **No tempo-change tracking** — outlier rejection (±35%) blocks genuine tempo drift | Medium | ✅ **FIXED WAVE 7002.4** — Tempo-change detection |
 | W7 | **Beat phase free-runs** — no correction between kicks. Missed kick → phase drifts indefinitely | High |
 
 ### Stage 2: GatedNeedlePipeline + AdaptiveFloorTracker
@@ -124,8 +124,8 @@ latino [85,105], generic [90,135].
 | ID | Issue | Severity | Status |
 |----|-------|----------|--------|
 | T1 | **Confidence gate at 0.2 too low** — spread of 48 BPM passes as "locked" | High | ✅ **FIXED WAVE 7002** — Gate raised to 0.5 |
-| T2 | **`setBpm()` called every frame** — 44×/sec even when BPM unchanged. May cause PLL re-lock jitter | Medium | Open |
-| T3 | **Phase selection is either/or** — `pllLocked ? pllPhase : workerBeatPhase`. No crossfade on transition | Medium | Open |
+| T2 | **`setBpm()` called every frame** — 44×/sec even when BPM unchanged. May cause PLL re-lock jitter | Medium | ✅ **FIXED WAVE 7002.4** — Guard: only call when BPM changes |
+| T3 | **Phase selection is either/or** — `pllLocked ? pllPhase : workerBeatPhase`. No crossfade on transition | Medium | ✅ **FIXED WAVE 7002.4** — 8-frame crossfade |
 
 ### Stage 7: TitanOrchestrator rBPM Injection
 
@@ -430,18 +430,20 @@ musical=134, stay at 134 until raw ≥ 138. Prevents frame-to-frame fold jumps.
 Weight recent samples higher: `weight = Math.exp(-i / 12)` for sample i.
 A spike 20 frames ago has ~19% weight vs current frame's 100%. **Kills P3.**
 
-**REC-9: Replace confidence spread with IQR**
+**~~REC-9: Replace confidence spread with IQR~~** ✅ **DONE WAVE 7002.4**
 In `computeConfidence()`, use interquartile range (Q3-Q1) instead of max-min.
 One outlier no longer tanks confidence. More robust measure of central tendency.
 
-**REC-10: Tempo-change detection**
+**~~REC-10: Tempo-change detection~~** ✅ **DONE WAVE 7002.4**
 Track the median BPM over a longer window (e.g., 32 samples). If the current
 8-sample median deviates >10% from the 32-sample median for >8 consecutive
 kicks, accept it as a genuine tempo change and purge the outlier rejection gate.
+Implemented via rejected-BPM clustering: 4+ consecutive rejections within ±10%
+of their mean trigger a history flush + reseed.
 
 ### 🔵 Advanced
 
-**REC-11: Phase-Locked Loop with frequency feedback**
+**~~REC-11: Phase-Locked Loop with frequency feedback~~** ✅ **DONE WAVE 7002.4**
 Replace the current "setBpm every frame" approach with a proper PLL:
 - **Phase detector:** Compare worker kick timestamp with PLL predicted beat time
 - **Loop filter:** Low-pass filter the phase error → frequency correction
@@ -487,9 +489,9 @@ Eliminates O(n) `shift()` every frame. **Kills SE4.**
 | ~~P1~~ | ~~REC-6: PLL phase correction~~ | ~~3h~~ | ~~High~~ | ✅ **DONE WAVE 7003** |
 | ~~P2~~ | ~~REC-7: Fold boundary hysteresis~~ | ~~1h~~ | ~~Medium~~ | ✅ **DONE WAVE 7003** |
 | ~~P2~~ | ~~REC-8: Exp decay BPM history~~ | ~~30min~~ | ~~Medium~~ | Moot — bpmHistory removed in WAVE 7002 |
-| P2 | REC-9: IQR confidence | 1h | Medium | Open — kills W2 |
-| P2 | REC-10: Tempo-change detection | 3h | Medium | Open — kills W4 |
-| P3 | REC-11: Proper PLL | 8h | High | Open — kills T2, T3 |
+| ~~P2~~ | ~~REC-9: IQR confidence~~ | ~~1h~~ | ~~Medium~~ | ✅ **DONE WAVE 7002.4** |
+| ~~P2~~ | ~~REC-10: Tempo-change detection~~ | ~~3h~~ | ~~Medium~~ | ✅ **DONE WAVE 7002.4** |
+| ~~P3~~ | ~~REC-11: Proper PLL~~ | ~~8h~~ | ~~High~~ | ✅ **DONE WAVE 7002.4** |
 | P3 | REC-12: Autocorrelation validator | 6h | High | Open |
 | P3 | REC-13: Kalman filter | 4h | High | Open |
 | P3 | REC-14: Weber's law confidence | 30min | Low | Moot — estimatePllLock removed |
@@ -816,9 +818,9 @@ F11 was the root cause that amplified F2, F5, and F10. **All three are now resol
 | ~~P1~~ | ~~REC-6: PLL phase correction~~ | ~~3h~~ | ~~High~~ | ✅ **DONE WAVE 7003** (F5) |
 | ~~P2~~ | ~~REC-7: Fold boundary hysteresis~~ | ~~1h~~ | ~~Medium~~ | ✅ **DONE WAVE 7003** (F7) |
 | ~~P2~~ | ~~REC-8: Use fuseRhythm() instead of inline duplicate~~ | ~~30min~~ | ~~Medium~~ | ✅ **DONE WAVE 7003** (F8) — fuseRhythm() removed |
-| P2 | REC-9: IQR confidence | 1h | Medium | Open — kills W2 |
-| P2 | REC-10: Tempo-change detection | 3h | Medium | Open — kills W4 |
-| P3 | REC-11: Proper PLL with frequency feedback | 8h | High | Open — kills T2, T3 |
+| ~~P2~~ | ~~REC-9: IQR confidence~~ | ~~1h~~ | ~~Medium~~ | ✅ **DONE WAVE 7002.4** (W2) |
+| ~~P2~~ | ~~REC-10: Tempo-change detection~~ | ~~3h~~ | ~~Medium~~ | ✅ **DONE WAVE 7002.4** (W4) |
+| ~~P3~~ | ~~REC-11: Proper PLL with frequency feedback~~ | ~~8h~~ | ~~High~~ | ✅ **DONE WAVE 7002.4** (T2, T3) |
 | P3 | REC-12: Autocorrelation validator | 6h | High | Open |
 | P3 | REC-13: Kalman filter | 4h | High | Open |
 | P3 | REC-14: Weber's law confidence | 30min | Low | Moot — estimatePllLock removed |
@@ -826,8 +828,8 @@ F11 was the root cause that amplified F2, F5, and F10. **All three are now resol
 
 ---
 
-*End of BPM Pipeline Audit — WAVE 7001 + 7001.2 + 7001.3 (Extended Forensic) + 7002 (Fix Express) + 7003 (Fix Lote 2)*
+*End of BPM Pipeline Audit — WAVE 7001 + 7001.2 + 7001.3 (Extended Forensic) + 7002 (Fix Express) + 7003 (Fix Lote 2) + 7002.4 (Fix Lote 3)*
 *Generated as supplementary context for SELENE V3: Liquid Cognition blueprint.*
 *12 findings verified across 15 source files.*
-*9 findings fixed: WAVE 7002 (F2, F3, F6, F10, F11) + WAVE 7003 (F4, F5, F7, F8). tsc --noEmit: 0 errors.*
-*3 findings remain: F9 (info only), F12 (info only), + minor open issues (W2, W4, T2/T3).*
+*12 findings fixed: WAVE 7002 (F2, F3, F6, F10, F11) + WAVE 7003 (F4, F5, F7, F8) + WAVE 7002.4 (W2, W4, T2, T3). tsc --noEmit: 0 errors.*
+*0 findings remain open (F1 false alarm, F9/F12 info only, W1/W3/W7 low-priority cosmetic).*

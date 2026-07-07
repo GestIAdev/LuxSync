@@ -218,12 +218,20 @@ export class IntervalBPMTracker {
   // ─── Phase Tracking ───────────────────────────────────────────────
   private lastBeatPhaseTimestamp = 0
 
-  // 🔧 WAVE 7003 (F7): Fold boundary hysteresis — prevent jitter at pocket edges
+  // 🔧 WAVE 7002.4 (F7): Fold boundary hysteresis — prevent jitter at pocket edges
   // Remembers the last musical BPM output so we can apply a dead zone
   // around pocket boundaries. Without this, raw BPM jittering at 135±1
   // causes toggling between direct pass (135) and fold-down (102),
   // producing 33 BPM jumps that flash through the physics engine.
   private lastMusicalBpm = 0
+
+  // 🔧 WAVE 7002.4 (REC-10): Tempo-change detection.
+  // When outlier rejection blocks incoming BPMs, we track the rejected
+  // values. If N consecutive rejections cluster around a new tempo
+  // (within ±10% of each other), we accept the tempo change by
+  // flushing the history buffer and seeding it with the new tempo.
+  private rejectedBpmHistory: number[] = []
+  private readonly TEMPO_CHANGE_THRESHOLD = 4
 
   // ─── Frame Duration ───────────────────────────────────────────────
   private readonly frameDurationMs: number
@@ -409,6 +417,37 @@ export class IntervalBPMTracker {
               const ratio = instantBpm / this.stableBpm
               if (ratio < 0.65 || ratio > 1.55) {
                 acceptBpm = false  // outlier — skip this measurement
+
+                // 🔧 WAVE 7002.4 (REC-10): Tempo-change detection.
+                // Track rejected BPMs. If 4+ consecutive rejections cluster
+                // around a new tempo (within ±10% of their mean), accept the
+                // tempo change: flush history and seed with the new tempo.
+                this.rejectedBpmHistory.push(instantBpm)
+                if (this.rejectedBpmHistory.length >= this.TEMPO_CHANGE_THRESHOLD) {
+                  // Compute mean of rejected BPMs
+                  const meanRejected = this.rejectedBpmHistory.reduce((a, b) => a + b, 0) / this.rejectedBpmHistory.length
+                  // Check if they cluster tightly (±10% of mean)
+                  const allClustered = this.rejectedBpmHistory.every(
+                    v => Math.abs(v - meanRejected) / meanRejected < 0.10
+                  )
+                  if (allClustered && meanRejected > 0) {
+                    // Genuine tempo change — flush and reseed
+                    this.bpmHistory.fill(meanRejected)
+                    this.bpmHistoryPos = 0
+                    this.bpmHistoryCount = BPM_HISTORY_SIZE
+                    this.stableBpm = this.computeMedianBpm()
+                    this.currentConfidence = this.computeConfidence()
+                    this.rejectedBpmHistory = []
+                    console.log(
+                      `[🥁 TEMPO-CHANGE] Detected shift to ${meanRejected.toFixed(0)} BPM ` +
+                      `(was ${this.stableBpm.toFixed(0)}). History flushed.`
+                    )
+                    acceptBpm = true
+                  }
+                }
+              } else {
+                // Accepted measurement — reset rejection tracking
+                this.rejectedBpmHistory = []
               }
             }
 
@@ -555,20 +594,36 @@ export class IntervalBPMTracker {
     const n = this.bpmHistoryCount
     if (n < 3) return 0
 
-    let min = Infinity
-    let max = -Infinity
-
+    // 🔧 WAVE 7002.4 (REC-9): IQR-based confidence instead of max-min spread.
+    // IQR (Q3 - Q1) is robust against single outliers — one wild BPM in 8
+    // samples no longer tanks confidence to 0. The interquartile range
+    // captures the spread of the central 50% of measurements, ignoring
+    // the tails where outliers live.
+    const sorted: number[] = []
     for (let i = 0; i < n; i++) {
-      const bpm = this.bpmHistory[i]
-      if (bpm < min) min = bpm
-      if (bpm > max) max = bpm
+      sorted.push(this.bpmHistory[i])
     }
+    sorted.sort((a, b) => a - b)
 
-    const spread = max - min
-    // Normalize: spread of 0 → conf 1.0, spread of 60+ → conf ~0.0
-    // WAVE 2170: 60 BPM range (was 40) — more tolerant of natural BPM variation
-    const normalizedSpread = spread / 60
-    const confidence = Math.max(0, Math.min(1, 1 - normalizedSpread))
+    // Quartile positions (linear interpolation, same as computeMedianBpm)
+    const q1Idx = (n - 1) * 0.25
+    const q3Idx = (n - 1) * 0.75
+    const q1Lo = Math.floor(q1Idx)
+    const q1Hi = Math.ceil(q1Idx)
+    const q3Lo = Math.floor(q3Idx)
+    const q3Hi = Math.ceil(q3Idx)
+    const q1Frac = q1Idx - q1Lo
+    const q3Frac = q3Idx - q3Lo
+
+    const q1 = sorted[q1Lo] + q1Frac * (sorted[q1Hi] - sorted[q1Lo])
+    const q3 = sorted[q3Lo] + q3Frac * (sorted[q3Hi] - sorted[q3Lo])
+
+    const iqr = q3 - q1
+    // Normalize: IQR of 0 → conf 1.0, IQR of 30+ → conf ~0.0
+    // IQR is typically ~60% of the max-min spread for normal distributions,
+    // so we use 30 BPM normalization (was 60 for max-min).
+    const normalizedIqr = iqr / 30
+    const confidence = Math.max(0, Math.min(1, 1 - normalizedIqr))
 
     return confidence
   }
@@ -741,5 +796,6 @@ export class IntervalBPMTracker {
     this.currentConfidence = 0
     this.lastBeatPhaseTimestamp = 0
     this.lastMusicalBpm = 0 // 🔧 WAVE 7003 (F7)
+    this.rejectedBpmHistory = [] // 🔧 WAVE 7002.4 (REC-10)
   }
 }

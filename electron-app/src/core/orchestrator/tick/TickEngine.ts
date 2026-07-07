@@ -52,6 +52,13 @@ export class TickEngine {
   private static _calibEntries: readonly INodeIntent[] = []
   private static _instances = new Set<TickEngine>()
 
+  // 🔧 WAVE 7002.4 (T3): Phase crossfade — smooth transition between PLL and worker phase.
+  // When pllLocked changes state, crossfade over PHASE_CROSSFADE_FRAMES frames
+  // to avoid instantaneous phase jumps that cause visual discontinuities.
+  private _phaseCrossfadeWeight = 0  // 0 = worker phase, 1 = PLL phase
+  private _prevPllLocked = false
+  private static readonly PHASE_CROSSFADE_FRAMES = 8
+
   get brain() { return this.ctx.brain }
   get engine() { return this.ctx.engine }
   get hal() { return this.ctx.hal }
@@ -326,7 +333,13 @@ export class TickEngine {
       // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
       if (workerBpm > 0 && workerConfidence > 0.5) {
         // ðŸ”¥ Worker activo: lock real + actualizar memoria
-        this.audioPipeline.beatDetector.setBpm(workerBpm)
+        // 🔧 WAVE 7002.4 (T2): Only call setBpm() when BPM actually changes.
+        // Calling setBpm() 44×/sec with the same value caused PLL re-lock
+        // jitter (candidateFrames forced to HYSTERESIS_FRAMES every frame).
+        if (this.audioPipeline.lastSetBpm !== workerBpm) {
+          this.audioPipeline.beatDetector.setBpm(workerBpm)
+          this.audioPipeline.lastSetBpm = workerBpm
+        }
         this.audioPipeline.lastStableWorkerBpm = workerBpm
         this.audioPipeline.lastStableWorkerBpmFrame = this.frameCount
       } else {
@@ -387,11 +400,34 @@ export class TickEngine {
     if (workerBpm > 0 && workerConfidence > 0.5) {
       // Priority 1: Worker activo
       context.bpm = workerBpm
-      // 🔧 WAVE 7003 (F5): Always prefer PLL phase over worker free-running phase.
-      // The PLL phase uses smoothed BPM and gets phase corrections from feedKick(),
-      // making it more stable than the worker's raw stableBpm free-running phase.
-      // Worker phase only used as last-resort fallback if PLL phase is null.
-      context.beatPhase = beatState.pllPhase ?? workerBeatPhase
+      // 🔧 WAVE 7003 (F5) + WAVE 7002.4 (T3): Phase crossfade.
+      // Always prefer PLL phase, but crossfade on lock state transitions
+      // to avoid instantaneous phase jumps that cause visual discontinuities.
+      const pllPhase = beatState.pllPhase
+      if (pllPhase !== undefined && pllPhase !== null) {
+        // Update crossfade weight based on lock state
+        const targetWeight = beatState.pllLocked ? 1 : 0
+        if (beatState.pllLocked !== this._prevPllLocked) {
+          // Lock state changed — start crossfade
+          this._prevPllLocked = beatState.pllLocked
+        }
+        // Ease weight toward target
+        const step = 1 / TickEngine.PHASE_CROSSFADE_FRAMES
+        if (this._phaseCrossfadeWeight < targetWeight) {
+          this._phaseCrossfadeWeight = Math.min(targetWeight, this._phaseCrossfadeWeight + step)
+        } else if (this._phaseCrossfadeWeight > targetWeight) {
+          this._phaseCrossfadeWeight = Math.max(targetWeight, this._phaseCrossfadeWeight - step)
+        }
+        // Crossfade between worker and PLL phase (circular interpolation)
+        const w = this._phaseCrossfadeWeight
+        let diff = pllPhase - workerBeatPhase
+        // Wrap to shortest path
+        if (diff > 0.5) diff -= 1
+        if (diff < -0.5) diff += 1
+        context.beatPhase = (workerBeatPhase + diff * w + 1) % 1
+      } else {
+        context.beatPhase = workerBeatPhase
+      }
       context.syncopation = this.audioPipeline.syncSmoother.estimateSyncopation(context.beatPhase, bass, mid)
     } else if (hasFreewheelMemory) {
       // ðŸ”¥ WAVE 2179: Priority 2 â€” FREEWHEEL MEMORY

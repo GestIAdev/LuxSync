@@ -12,7 +12,8 @@
 //    G6 (strobe inconsistent) → fail = abort
 //    G1 (structure) → fail = abort
 //    G2 (checksum) → N/A (not checked prenatally)
-//    G7 (spatial) → warn only (not abort)
+//    G7 (redundancy / clone) → fail = abort (WAVE 6000.V6)
+//    G7-spatial (spatial behavior) → warn only (not abort)
 // ═══════════════════════════════════════════════════════════════════════════
 
 import type { HephAutomationClipV3 } from '../../hephaestus/types'
@@ -73,7 +74,7 @@ function evalG3(dna: CognitiveDNA | undefined): PrenatalGateResult {
     status: pass ? 'pass' : 'fail',
     label: 'GENOME',
     description: pass
-      ? `A=${aggression.toFixed(2)} C=${chaos.toFixed(2)} O=${organicity.toFixed(2)} — OK`
+      ? `A=${aggression.toFixed(3)} C=${chaos.toFixed(3)} O=${organicity.toFixed(3)} — OK`
       : `Out of [0,1]: A=${aggression} C=${chaos} O=${organicity}`,
   }
 }
@@ -182,7 +183,27 @@ function evalG6(clip: HephAutomationClipV3, simMeta: SimulationMeta | undefined)
   }
 }
 
-function evalG7(clip: HephAutomationClipV3, dna: CognitiveDNA | undefined): PrenatalGateResult {
+function evalG7Redundancy(l2Distance: number | undefined): PrenatalGateResult {
+  if (l2Distance === undefined) {
+    return { id: 'G7', status: 'na', label: 'REDUNDANCY', description: 'L2 distance not provided' }
+  }
+  if (l2Distance < 0.005) {
+    return {
+      id: 'G7',
+      status: 'fail',
+      label: 'REDUNDANCY',
+      description: `Functional clone of ancestor (L2=${l2Distance.toFixed(4)} < 0.005). Mutation lacked structural divergence.`,
+    }
+  }
+  return {
+    id: 'G7',
+    status: 'pass',
+    label: 'REDUNDANCY',
+    description: `L2=${l2Distance.toFixed(4)} — sufficient divergence from ancestor`,
+  }
+}
+
+function evalG7Spatial(clip: HephAutomationClipV3, dna: CognitiveDNA | undefined): PrenatalGateResult {
   if (!dna) {
     return { id: 'G7', status: 'na', label: 'SPATIAL', description: 'No cognitiveDNA' }
   }
@@ -218,12 +239,18 @@ function evalG7(clip: HephAutomationClipV3, dna: CognitiveDNA | undefined): Pren
  * Runs all 7 gates on a mutated clip. Returns viability verdict.
  *
  * ABORT conditions (viable: false):
- *   G1 fail, G3 fail, G4 fail, G5 fail, G6 fail
+ *   G1 fail, G3 fail, G4 fail, G5 fail, G6 fail, G7 fail (redundancy)
  *
  * WARN-only (does NOT abort):
- *   G7 warn
+ *   G7-spatial warn
+ *
+ * @param l2Distance Optional L2 distance from parent. When provided,
+ *   G7 redundancy gate rejects clones with L2 < 0.005.
  */
-export function prenatalScreening(clip: HephAutomationClipV3): ScreeningResult {
+export function prenatalScreening(
+  clip: HephAutomationClipV3,
+  l2Distance?: number,
+): ScreeningResult {
   const dna = clip.cognitiveDNA
   const sim = clip.simulationMeta
 
@@ -234,11 +261,12 @@ export function prenatalScreening(clip: HephAutomationClipV3): ScreeningResult {
     evalG4(dna),
     evalG5(clip),
     evalG6(clip, sim),
-    evalG7(clip, dna),
+    evalG7Redundancy(l2Distance),
+    evalG7Spatial(clip, dna),
   ]
 
-  // Hard-fail gates: G1, G3, G4, G5, G6
-  const hardFailGates: GateId[] = ['G1', 'G3', 'G4', 'G5', 'G6']
+  // Hard-fail gates: G1, G3, G4, G5, G6, G7 (redundancy)
+  const hardFailGates: GateId[] = ['G1', 'G3', 'G4', 'G5', 'G6', 'G7']
   const abortGate = gates.find(
     (g) => hardFailGates.includes(g.id) && g.status === 'fail',
   )

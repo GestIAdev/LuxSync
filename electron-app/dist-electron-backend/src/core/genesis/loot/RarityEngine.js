@@ -9,15 +9,18 @@
 //  novelty    = 1 − max_cosine_similarity(signature, all_alive)  [0 if no population]
 //  operator_w = per-operator weight table
 //
-//  Tier mapping:
-//    COMMON     [0.00, 0.30)   shield = 3
-//    RARE       [0.30, 0.55)   shield = 6
-//    EPIC       [0.55, 0.78)   shield = 10
-//    LEGENDARY  [0.78, 0.92)   shield = 15
-//    MYTHIC     [0.92, 1.00]   shield = 20
+//  Tier mapping (WAVE 6000.V7 recalibrated for DRIFT_MAX=0.55):
+//    COMMON     [0.00, 0.25)   shield = 3
+//    RARE       [0.25, 0.48)   shield = 6
+//    EPIC       [0.48, 0.70)   shield = 10
+//    LEGENDARY  [0.70, 0.88)   shield = 15
+//    MYTHIC     [0.88, 1.00]   shield = 20
 // ═══════════════════════════════════════════════════════════════════════════
 // ─── CONSTANTS ──────────────────────────────────────────────────────────────
-const DRIFT_MAX = 0.35;
+const DRIFT_MAX = 0.55;
+// WAVE 6000.V4: L2 distance below this threshold forces COMMON tier,
+// regardless of novelty score. Prevents rarity inflation from minor mutations.
+const COMMON_FORCE_L2_THRESHOLD = 0.08;
 const OPERATOR_WEIGHTS = Object.freeze({
     point_mutation: 0.15,
     hue_drift: 0.15,
@@ -86,13 +89,13 @@ function computeNovelty(signature, population) {
  * Maps a raw ρ score [0,1] to a RarityTier.
  */
 export function tierFromScore(score) {
-    if (score < 0.30)
+    if (score < 0.25)
         return 'COMMON';
-    if (score < 0.55)
+    if (score < 0.48)
         return 'RARE';
-    if (score < 0.78)
+    if (score < 0.70)
         return 'EPIC';
-    if (score < 0.92)
+    if (score < 0.88)
         return 'LEGENDARY';
     return 'MYTHIC';
 }
@@ -110,7 +113,11 @@ export function computeRarity(input) {
     const novelty = computeNovelty(input.bezierSignature, input.populationSignatures);
     const operatorWeight = OPERATOR_WEIGHTS[input.operator] ?? 0.15;
     const score = clamp01(sigmaNorm * 0.50 + novelty * 0.30 + operatorWeight * 0.20);
-    const tier = tierFromScore(score);
+    // WAVE 6000.V4: Deflation — minor mutations (L2 < 0.08) are always COMMON,
+    // regardless of novelty. RARE+ reserved for meaningful structural divergence.
+    const tier = input.l2Distance < COMMON_FORCE_L2_THRESHOLD
+        ? 'COMMON'
+        : tierFromScore(score);
     const neonatalShield = NEONATAL_SHIELD[tier];
     const rarityBonus = RARITY_BONUS[tier];
     return {

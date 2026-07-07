@@ -318,13 +318,13 @@ export class DNAAnalyzer {
       // Drop detectado → SNAP a alta agresión
       this.smoothedTarget.aggression = Math.max(this.smoothedTarget.aggression, 0.80)
       this.smoothedTarget.organicity = Math.min(this.smoothedTarget.organicity, 0.25)
-      // console.log(`[DNA_ANALYZER] 🔴 DROP SNAP: A=${this.smoothedTarget.aggression.toFixed(2)}, O=${this.smoothedTarget.organicity.toFixed(2)}`)
+      // console.log(`[DNA_ANALYZER] 🔴 DROP SNAP: A=${this.smoothedTarget.aggression.toFixed(3)}, O=${this.smoothedTarget.organicity.toFixed(3)}`)
     }
     if (context.section.type === 'breakdown' && context.section.confidence > 0.7) {
       // Breakdown detectado → SNAP a baja agresión, alta organicidad
       this.smoothedTarget.aggression = Math.min(this.smoothedTarget.aggression, 0.25)
       this.smoothedTarget.organicity = Math.max(this.smoothedTarget.organicity, 0.75)
-      // console.log(`[DNA_ANALYZER] 🌊 BREAKDOWN SNAP: A=${this.smoothedTarget.aggression.toFixed(2)}, O=${this.smoothedTarget.organicity.toFixed(2)}`)
+      // console.log(`[DNA_ANALYZER] 🌊 BREAKDOWN SNAP: A=${this.smoothedTarget.aggression.toFixed(3)}, O=${this.smoothedTarget.organicity.toFixed(3)}`)
     }
     
     return { ...this.smoothedTarget }

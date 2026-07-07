@@ -20,6 +20,8 @@ export {
   applyOperator,
   applyDelta,
   makeFatTailedRng,
+  makeRng,
+  stringToSeed,
   computeL2DistanceV2,
 } from './operators/GeneticOperators'
 export type { JsonPatchOp, OperatorResult, FatTailedRng, CrossoverResult } from './operators/GeneticOperators'
@@ -92,3 +94,6 @@ export { igniteGenesisEngine, shutdownGenesisEngine } from './GenesisIgnition'
 // Era V Addendum — Procedural Naming Engine
 export { generateOrganismName, COMBINATORIAL_SPACE } from './naming/ProceduralNamer'
 export type { NamingBlueprintContext } from './naming/ProceduralNamer'
+
+// WAVE 6000.V5 — Short Military Tags
+export { getOrganismTag } from './naming/OrganismTag'

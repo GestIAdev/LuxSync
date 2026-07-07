@@ -178,7 +178,7 @@ const TheiaDNALab: React.FC = () => {
               >
                 <div className="dna-slider__header">
                   <span className="dna-slider__label">{label}</span>
-                  <span className="dna-slider__value">{val.toFixed(2)}</span>
+                  <span className="dna-slider__value">{val.toFixed(3)}</span>
                 </div>
                 <div className="dna-slider__track">
                   <div className="dna-slider__fill" style={{ width: `${pct}%` }} />
@@ -187,7 +187,7 @@ const TheiaDNALab: React.FC = () => {
                     className="dna-slider__input"
                     min={0}
                     max={1}
-                    step={0.01}
+                    step={0.001}
                     value={val}
                     disabled={isDraftEmpty}
                     onChange={(e) => handleGenomeChange(key, Number(e.target.value))}
@@ -195,6 +195,22 @@ const TheiaDNALab: React.FC = () => {
                     aria-label={label}
                   />
                 </div>
+                <input
+                  type="number"
+                  className="dna-slider__num"
+                  min={0}
+                  max={1}
+                  step={0.001}
+                  value={Number(val.toFixed(3))}
+                  disabled={isDraftEmpty}
+                  onChange={(e) => {
+                    const raw = e.target.value
+                    if (raw === '' || raw === '-') return
+                    const v = Math.max(0, Math.min(1, parseFloat(raw)))
+                    if (!isNaN(v)) handleGenomeChange(key, v)
+                  }}
+                  aria-label={`${label} numeric`}
+                />
               </div>
             )
           })}

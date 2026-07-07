@@ -110,7 +110,7 @@ export class DynamicEffectRegistry {
      * @param poolSize Max candidates to inject (default: 10)
      * @returns Number of candidates successfully injected
      */
-    refreshEvolutionaryCandidates(poolSize = 10) {
+    refreshEvolutionaryCandidates(poolSize = 3) {
         console.log('[ArenaInject 🧬] Fetching candidates from SpeciesQuotaSelector...');
         try {
             const selector = getSpeciesQuotaSelector();

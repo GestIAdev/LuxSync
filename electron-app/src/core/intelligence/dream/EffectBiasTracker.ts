@@ -403,7 +403,7 @@ export class EffectBiasTracker {
         biases.push({
           type: 'intensity_habit',
           severity: 'low',
-          description: `${effect} always used at ~${intensities[0].toFixed(2)} intensity (low variance)`,
+          description: `${effect} always used at ~${intensities[0].toFixed(3)} intensity (low variance)`,
           evidence: { effect, intensities, variance },
           recommendation: `Vary ${effect} intensity based on context.`
         })

@@ -264,12 +264,20 @@ export function computeL2DistanceV2(
 
 // ─── RANDOM HELPERS (deterministic via seed) ────────────────────────────────
 
-function makeRng(seed: number): () => number {
+export function makeRng(seed: number): () => number {
   let s = seed | 0
   return () => {
     s = (s * 1664525 + 1013904223) | 0
     return ((s >>> 0) % 1000000) / 1000000
   }
+}
+
+export function stringToSeed(str: string): number {
+  let h = 0
+  for (let i = 0; i < str.length; i++) {
+    h = ((h << 5) - h + str.charCodeAt(i)) | 0
+  }
+  return h
 }
 
 function clamp(v: number, lo: number, hi: number): number {

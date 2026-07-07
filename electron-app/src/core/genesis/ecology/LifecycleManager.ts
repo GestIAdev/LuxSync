@@ -164,7 +164,7 @@ export class LifecycleManager {
         toProcess.push({
           id: row.organism_id,
           newStatus: 'champion',
-          reason: `Fitness ${row.fitness_score.toFixed(3)} > species avg ${avg.toFixed(3)} × ${(1 + CHAMPION_MARGIN).toFixed(2)} (trials=${row.trials_count})`,
+          reason: `Fitness ${row.fitness_score.toFixed(3)} > species avg ${avg.toFixed(3)} × ${(1 + CHAMPION_MARGIN).toFixed(3)} (trials=${row.trials_count})`,
           fromStatus: row.status,
         })
         continue
@@ -178,7 +178,7 @@ export class LifecycleManager {
         toProcess.push({
           id: row.organism_id,
           newStatus: 'alive',
-          reason: `Fitness ${row.fitness_score.toFixed(3)} < species avg ${avg.toFixed(3)} × ${(1 - DEMOTION_MARGIN).toFixed(2)}`,
+          reason: `Fitness ${row.fitness_score.toFixed(3)} < species avg ${avg.toFixed(3)} × ${(1 - DEMOTION_MARGIN).toFixed(3)}`,
           fromStatus: row.status,
         })
         continue

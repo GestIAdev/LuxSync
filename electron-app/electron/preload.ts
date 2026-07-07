@@ -558,6 +558,10 @@ const api = {
       ipcRenderer.invoke('genesis:materializeClip', organismId),
     canonizeToBuiltins: (clip: unknown, organismId: string): Promise<{ success: boolean; filePath?: string; fileName?: string; error?: string }> =>
       ipcRenderer.invoke('genesis:canonizeToBuiltins', clip, organismId),
+    suggestName: (organismId: string): Promise<{ success: boolean; name?: string; error?: string }> =>
+      ipcRenderer.invoke('genesis:suggestName', organismId),
+    deleteCanonized: (organismId: string): Promise<{ success: boolean; deletedFile?: boolean; error?: string }> =>
+      ipcRenderer.invoke('genesis:deleteCanonized', organismId),
   },
 }
 

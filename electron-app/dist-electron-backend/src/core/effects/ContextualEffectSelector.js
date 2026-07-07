@@ -239,6 +239,8 @@ export class ArsenalRepository {
         this.consecutiveSameEffect = 0;
         // 🌊 WAVE 691: Tracking de cooldowns por tipo de efecto
         this.effectTypeLastFired = new Map();
+        // 🧬 WAVE 6000.V7: Default cooldown for mutant organism IDs not in EFFECT_COOLDOWNS
+        this.DEFAULT_MUTANT_COOLDOWN_MS = 15000;
         this.config = { ...DEFAULT_CONFIG, ...config };
         this.moodController = MoodController.getInstance();
     }
@@ -409,10 +411,14 @@ export class ArsenalRepository {
             }
         }
         // 3. ⏱️ COOLDOWN CHECK - El reloj manda
+        // 🧬 WAVE 6000.V7: Mutant organism IDs (contain ':') get DEFAULT_MUTANT_COOLDOWN_MS
+        //   instead of minCooldownMs (800ms) — prevents 0.8s rapid-fire of evolved effects
         const lastFired = this.effectTypeLastFired.get(effectType);
         if (lastFired) {
-            // Calcular cooldown efectivo
-            let baseCooldown = this.config.effectTypeCooldowns[effectType] || this.config.minCooldownMs;
+            const hasExplicitCooldown = this.config.effectTypeCooldowns[effectType] !== undefined;
+            let baseCooldown = hasExplicitCooldown
+                ? this.config.effectTypeCooldowns[effectType]
+                : (effectType.includes(':') ? this.DEFAULT_MUTANT_COOLDOWN_MS : this.config.minCooldownMs);
             baseCooldown = this.applyVibeCooldownAdjustment(effectType, baseCooldown, vibeId);
             const effectiveCooldown = this.moodController.applyCooldown(baseCooldown);
             const elapsed = Date.now() - lastFired;
@@ -436,6 +442,30 @@ export class ArsenalRepository {
      */
     isAvailable(effectType, vibeId) {
         return this.checkAvailability(effectType, vibeId).available;
+    }
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🧬 WAVE 6000.V7: COOLDOWN SEAL — Expose active cooldowns for Dream pipeline
+    // ═══════════════════════════════════════════════════════════════════════════
+    /**
+     * Returns a Map of effectType → remaining cooldown ms for all effects
+     * currently in cooldown. Used by DreamEngineIntegrator to filter candidates.
+     */
+    getActiveCooldowns(vibeId) {
+        const result = new Map();
+        const now = Date.now();
+        for (const [effectType, lastFired] of this.effectTypeLastFired) {
+            const hasExplicitCooldown = this.config.effectTypeCooldowns[effectType] !== undefined;
+            let baseCooldown = hasExplicitCooldown
+                ? this.config.effectTypeCooldowns[effectType]
+                : (effectType.includes(':') ? this.DEFAULT_MUTANT_COOLDOWN_MS : this.config.minCooldownMs);
+            baseCooldown = this.applyVibeCooldownAdjustment(effectType, baseCooldown, vibeId);
+            const effectiveCooldown = this.moodController.applyCooldown(baseCooldown);
+            const remaining = effectiveCooldown - (now - lastFired);
+            if (remaining > 0) {
+                result.set(effectType, remaining);
+            }
+        }
+        return result;
     }
     /**
      * 🌊 WAVE 691: Verifica si un efecto específico está en cooldown

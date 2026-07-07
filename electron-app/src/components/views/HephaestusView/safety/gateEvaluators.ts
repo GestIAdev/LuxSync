@@ -72,8 +72,8 @@ function evalG3(dna: CognitiveDNA | undefined): GateResult {
     status: pass ? 'pass' : 'fail',
     label: 'GENOME',
     description: pass
-      ? `A=${aggression.toFixed(2)} C=${chaos.toFixed(2)} O=${organicity.toFixed(2)} — OK`
-      : `Out of [0,1]: A=${aggression.toFixed(2)} C=${chaos.toFixed(2)} O=${organicity.toFixed(2)}`,
+      ? `A=${aggression.toFixed(3)} C=${chaos.toFixed(3)} O=${organicity.toFixed(3)} — OK`
+      : `Out of [0,1]: A=${aggression.toFixed(3)} C=${chaos.toFixed(3)} O=${organicity.toFixed(3)}`,
     autoFixable: true,
   }
 }

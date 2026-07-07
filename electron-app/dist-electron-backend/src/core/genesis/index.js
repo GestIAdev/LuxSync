@@ -5,7 +5,7 @@
 export { GenesisVaultService, getGenesisVault, __resetGenesisVaultForTests } from './GenesisVaultService';
 export { AncestralIngestor, getAncestralIngestor, __resetAncestralIngestorForTests } from './AncestralIngestor';
 // Era II — The Coliseum Awakens
-export { pointMutation, geneDuplication, phaseEpigenetics, temporalStretch, geneSplice, geneDeletion, interpolationDrift, crossover, blendCognitiveDNA, applyOperator, applyDelta, makeFatTailedRng, computeL2DistanceV2, } from './operators/GeneticOperators';
+export { pointMutation, geneDuplication, phaseEpigenetics, temporalStretch, geneSplice, geneDeletion, interpolationDrift, crossover, blendCognitiveDNA, applyOperator, applyDelta, makeFatTailedRng, makeRng, stringToSeed, computeL2DistanceV2, } from './operators/GeneticOperators';
 export { prenatalScreening } from './screening/PrenatalScreening';
 export { OrganismMaterializer, getOrganismMaterializer, __resetOrganismMaterializerForTests } from './OrganismMaterializer';
 export { ColiseumService, getColiseumService, __resetColiseumServiceForTests } from './ColiseumService';
@@ -23,3 +23,5 @@ export { setupGenesisIPCHandlers } from './genesisIpc';
 export { igniteGenesisEngine, shutdownGenesisEngine } from './GenesisIgnition';
 // Era V Addendum — Procedural Naming Engine
 export { generateOrganismName, COMBINATORIAL_SPACE } from './naming/ProceduralNamer';
+// WAVE 6000.V5 — Short Military Tags
+export { getOrganismTag } from './naming/OrganismTag';

@@ -340,6 +340,29 @@
   box-shadow: 0 0 10px var(--dna-color, #06b6d4), 0 0 0 2px rgba(255, 255, 255, 0.3);
 }
 
+.dna-slider__num {
+  width: 56px;
+  margin-top: 4px;
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  padding: 2px 4px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+
+.dna-slider__num:focus {
+  border-color: var(--dna-color, #06b6d4);
+}
+
+.dna-slider__num:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* ── Energy Zone tags ── */
 .dna-zone {
   display: flex;

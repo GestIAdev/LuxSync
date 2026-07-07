@@ -24,6 +24,8 @@ import { AudienceSafetyContextBuilder } from '../dream/AudienceSafetyContext';
 import { MoodController } from '../../mood/MoodController';
 // ⚡ WAVE 5020: DIVINE LEAK FIX (Sniper Route)
 import { getDynamicEffectRegistry } from '../../arsenal/DynamicEffectRegistry';
+// 🧬 WAVE 6000.V7: COOLDOWN SEAL — Filter cooldown-locked IDs from Dream candidates
+import { getArsenalRepository } from '../../effects/ContextualEffectSelector';
 // ═══════════════════════════════════════════════════════════════════════════
 // DREAM ENGINE INTEGRATOR
 // ═══════════════════════════════════════════════════════════════════════════
@@ -352,15 +354,25 @@ export class DreamEngineIntegrator {
         // Run dream simulation with timeout protection
         try {
             // Build proper SystemState
+            // 🧬 WAVE 6000.V7: Populate activeCooldowns from the Gatekeeper so the
+            // DreamSimulator can filter cooldown-locked candidates before simulating.
+            const vibeId = context.pattern.vibe;
+            let activeCooldowns;
+            try {
+                activeCooldowns = getArsenalRepository().getActiveCooldowns(vibeId);
+            }
+            catch {
+                activeCooldowns = new Map();
+            }
             const systemState = {
                 currentPalette: { primary: 0, secondary: 0.33, accent: 0.66 }, // Default neutral
                 currentBeauty: context.huntDecision.confidence ?? 0.5,
                 lastEffect: null,
                 lastEffectTime: 0,
-                activeCooldowns: new Map(),
+                activeCooldowns,
                 energy: context.pattern.energy ?? 0.5,
                 tempo: context.pattern.tempo ?? 120,
-                vibe: context.pattern.vibe
+                vibe: vibeId
             };
             // Build proper MusicalPrediction
             // 🧠 WAVE 1173: NEURAL LINK - Pass Oracle prediction to Dreamer

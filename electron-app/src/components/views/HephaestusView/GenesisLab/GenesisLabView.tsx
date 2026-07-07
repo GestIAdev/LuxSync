@@ -95,7 +95,7 @@ export const GenesisLabView: React.FC = () => {
 
       const canonResult = await genesisApi.canonizeToBuiltins(matResult.clip, organismId)
       if (canonResult.success) {
-        console.log(`[GenesisLab] 💾 Canonized to disk: ${canonResult.filePath}`)
+        console.log(`[GenesisLab] 💾 Canonized to disk: ${organismId} → ${canonResult.fileName}`)
         useGenesisStore.getState().refreshAll()
       } else {
         console.warn(`[GenesisLab] Canonization failed: ${canonResult.error}`)
@@ -114,6 +114,30 @@ export const GenesisLabView: React.FC = () => {
       purgeEcosystem()
     }
   }, [purgeEcosystem])
+
+  const handleDeleteCanonized = useCallback(async (organismId: string) => {
+    const genesisApi = (window as any).luxsync?.genesis
+    if (!genesisApi?.deleteCanonized) {
+      console.warn('[GenesisLab] genesis.deleteCanonized IPC not available')
+      return
+    }
+
+    if (!window.confirm('🗑️ DELETE CANONIZED ORGANISM?\n\nThis will permanently remove:\n• The organism from the database\n• The .lfx file from builtins/\n• The blueprint entry\n• The effect from the arsenal\n\nThis cannot be undone.')) {
+      return
+    }
+
+    try {
+      const result = await genesisApi.deleteCanonized(organismId)
+      if (result.success) {
+        console.log(`[GenesisLab] 🗑️ Deleted canonized organism: ${organismId} (file: ${result.deletedFile ? 'yes' : 'no'})`)
+        useGenesisStore.getState().refreshAll()
+      } else {
+        console.warn(`[GenesisLab] Delete failed: ${result.error}`)
+      }
+    } catch (err) {
+      console.error('[GenesisLab] Delete canonized error:', err)
+    }
+  }, [])
 
   return (
     <div className="genesis-lab">
@@ -182,6 +206,7 @@ export const GenesisLabView: React.FC = () => {
             onPreviewInCanvas={handlePreviewInCanvas}
             onCull={handleCull}
             onCanonizeToBuiltins={handleCanonizeToBuiltins}
+            onDeleteCanonized={handleDeleteCanonized}
           />
         </div>
       </div>

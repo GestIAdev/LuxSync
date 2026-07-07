@@ -16,9 +16,13 @@ import { ipcMain } from 'electron';
 import { app } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+import { createHash } from 'crypto';
 import { getGenesisVault } from './GenesisVaultService';
 import { getColiseumService } from './ColiseumService';
 import { getOrganismMaterializer } from './OrganismMaterializer';
+import { getDynamicEffectRegistry } from '../arsenal/DynamicEffectRegistry';
+import { LfxFileLoader } from '../arsenal/LfxFileLoader';
+import { getHephaestusClipIndex } from '../hephaestus/HephaestusClipIndex';
 import { generateOrganismName } from './naming/ProceduralNamer';
 // ─── SETUP ──────────────────────────────────────────────────────────────────
 export function setupGenesisIPCHandlers() {
@@ -152,6 +156,60 @@ export function setupGenesisIPCHandlers() {
         }
     });
     // ═══════════════════════════════════════════════════════════════════════
+    // genesis:suggestName — Procedural baptism suggestion for an organism
+    // ═══════════════════════════════════════════════════════════════════════
+    ipcMain.handle('genesis:suggestName', async (_event, organismId) => {
+        try {
+            const vault = getGenesisVault();
+            const db = vault._db;
+            if (!db) {
+                return { success: false, error: 'Vault not initialized' };
+            }
+            const org = db.prepare(`SELECT * FROM lfx_organisms WHERE organism_id = ?`).get(organismId);
+            if (!org) {
+                return { success: false, error: 'Organism not found' };
+            }
+            const bp = db.prepare('SELECT dna_aggression, dna_chaos, dna_organicity, texture_affinity FROM lfx_blueprints WHERE blueprint_id = ?').get(org.blueprint_id);
+            const name = generateOrganismName({
+                organismId: org.organism_id,
+                blueprintId: org.blueprint_id,
+                parentOrganismId: null,
+                generation: org.generation,
+                customName: null,
+                deltaJson: org.delta_json,
+                bezierSignature: new Float32Array(0),
+                rarityScore: org.rarity_score,
+                rarityTier: org.rarity_tier,
+                l2DistanceParent: org.l2_distance_parent,
+                operatorUsed: org.operator_used,
+                neonatalShieldUntil: 0,
+                birthVector: {
+                    zScoreAvg3s: 0, lowBandAvg3s: 0, energyPhaseEncoded: 0,
+                    vibeHash: 0, sectionEncoded: 0, textureEncoded: 0,
+                },
+                fitnessScore: org.fitness_score,
+                trialsCount: 0, winsCount: 0, vetoesCount: 0, passesCount: 0,
+                status: 'alive',
+                speciesId: null,
+                bornAt: 0, lastEvaluatedAt: null, lastFiredAt: null,
+                swarmOriginConsole: null,
+            }, bp ? {
+                dnaAggression: bp.dna_aggression,
+                dnaChaos: bp.dna_chaos,
+                dnaOrganicity: bp.dna_organicity,
+                textureAffinity: bp.texture_affinity,
+            } : undefined);
+            return { success: true, name };
+        }
+        catch (error) {
+            console.error('[GenesisIPC] suggestName failed:', error);
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Unknown error',
+            };
+        }
+    });
+    // ═══════════════════════════════════════════════════════════════════════
     // genesis:canonizeOrganism — Canonize as immutable blueprint + name
     // ═══════════════════════════════════════════════════════════════════════
     ipcMain.handle('genesis:canonizeOrganism', async (_event, organismId, customName) => {
@@ -212,7 +270,11 @@ export function setupGenesisIPCHandlers() {
                 });
                 console.log(`[GenesisIPC] 🎲 Auto-generated name: "${finalName}" for ${organismId}`);
             }
-            // 4. Insert as a new immutable blueprint with source_origin = 'canonized'
+            // 4. Materialize the organism's mutated clip (apply delta chain to parent)
+            const materializer = getOrganismMaterializer();
+            const mat = materializer.materialize(organismId);
+            const canonizedClipJson = JSON.stringify(mat.clip);
+            // 5. Insert as a new immutable blueprint with source_origin = 'canonized'
             db.prepare(`INSERT OR IGNORE INTO lfx_blueprints (
             blueprint_id, name, author, category, source_origin,
             dna_aggression, dna_chaos, dna_organicity, texture_affinity,
@@ -245,7 +307,7 @@ export function setupGenesisIPCHandlers() {
                 aggression_range_min: bp.aggression_range_min,
                 aggression_range_max: bp.aggression_range_max,
                 spatial_behavior: bp.spatial_behavior,
-                clip_v3_json: bp.clip_v3_json, // The clip is the same; the delta is preserved in the organism
+                clip_v3_json: canonizedClipJson,
                 execution_domain: bp.execution_domain,
                 is_strobe: bp.is_strobe,
                 is_divine_candidate: bp.is_divine_candidate,
@@ -254,7 +316,7 @@ export function setupGenesisIPCHandlers() {
                 schema_version: bp.schema_version,
                 imported_at: Date.now(),
             });
-            // 5. Update organism status to 'canonized' + set custom_name
+            // 6. Update organism status to 'canonized' + set custom_name
             db.prepare(`UPDATE lfx_organisms
            SET status = 'canonized', custom_name = @name
            WHERE organism_id = @id`).run({ name: finalName, id: organismId });
@@ -356,18 +418,78 @@ export function setupGenesisIPCHandlers() {
             if (!fs.existsSync(builtinsDir)) {
                 fs.mkdirSync(builtinsDir, { recursive: true });
             }
-            // 2. Serialize as .lfx (LFXFileV3 wrapper)
+            // 1a. 🧬 WAVE 6000.V7: Procedural baptism — override clip.name with
+            //   a generated name from the organism's metrics + blueprint DNA.
+            //   Also use the baptized name as the .lfx filename (sanitized).
+            const org = db.prepare(`SELECT * FROM lfx_organisms WHERE organism_id = ?`).get(organismId);
+            let baptismName = clip.name || organismId;
+            if (org) {
+                if (org.custom_name) {
+                    baptismName = org.custom_name;
+                }
+                else {
+                    const bp = db.prepare('SELECT dna_aggression, dna_chaos, dna_organicity, texture_affinity FROM lfx_blueprints WHERE blueprint_id = ?').get(org.blueprint_id);
+                    baptismName = generateOrganismName({
+                        organismId: org.organism_id,
+                        blueprintId: org.blueprint_id,
+                        parentOrganismId: null,
+                        generation: org.generation,
+                        customName: null,
+                        deltaJson: org.delta_json,
+                        bezierSignature: new Float32Array(0),
+                        rarityScore: org.rarity_score,
+                        rarityTier: org.rarity_tier,
+                        l2DistanceParent: org.l2_distance_parent,
+                        operatorUsed: org.operator_used,
+                        neonatalShieldUntil: 0,
+                        birthVector: {
+                            zScoreAvg3s: 0, lowBandAvg3s: 0, energyPhaseEncoded: 0,
+                            vibeHash: 0, sectionEncoded: 0, textureEncoded: 0,
+                        },
+                        fitnessScore: org.fitness_score,
+                        trialsCount: 0, winsCount: 0, vetoesCount: 0, passesCount: 0,
+                        status: 'canonized',
+                        speciesId: null,
+                        bornAt: 0, lastEvaluatedAt: null, lastFiredAt: null,
+                        swarmOriginConsole: null,
+                    }, bp ? {
+                        dnaAggression: bp.dna_aggression,
+                        dnaChaos: bp.dna_chaos,
+                        dnaOrganicity: bp.dna_organicity,
+                        textureAffinity: bp.texture_affinity,
+                    } : undefined);
+                    console.log(`[GenesisIPC] 🎲 Baptism name: "${baptismName}" for ${organismId}`);
+                }
+            }
+            // Override clip name with the baptized name
+            clip.name = baptismName;
+            // 2. Serialize as .lfx (LFXFileV3 wrapper) with proper checksum
+            const checksum = createHash('sha256').update(JSON.stringify(clip)).digest('hex');
             const lfxContent = JSON.stringify({
                 $schema: 'luxsync.lfx/3.0',
                 clip,
-                checksum: '',
+                checksum: `sha256:${checksum}`,
             }, null, 2);
-            const fileName = `${clip.id}.lfx`;
+            const safeName = baptismName.replace(/[:<>|"*?/\\]/g, '_');
+            const fileName = `${safeName}.lfx`;
             const filePath = path.join(builtinsDir, fileName);
             fs.writeFileSync(filePath, lfxContent, 'utf-8');
             // 3. Update organism status to 'canonized'
             db.prepare(`UPDATE lfx_organisms SET status = 'canonized' WHERE organism_id = ?`).run(organismId);
-            console.log(`[GenesisIPC] 💾 Canonized to disk: ${organismId} → ${filePath}`);
+            // 4. 🧬 WAVE 6000.V7: Hot-register in HephaestusClipIndex + DynamicEffectRegistry
+            //   so the canonized clip appears immediately in the library and Selene's
+            //   arsenal without requiring a restart.
+            try {
+                const index = getHephaestusClipIndex();
+                await index.upsert(filePath, 'builtin');
+                const loader = new LfxFileLoader(getDynamicEffectRegistry());
+                await loader.loadFile(filePath, 'builtin');
+                console.log(`[GenesisIPC] ⚡ Hot-registered "${baptismName}" in arsenal + library`);
+            }
+            catch (hotRegErr) {
+                console.warn(`[GenesisIPC] ⚠️ Hot-registration failed (non-fatal, will load on next boot):`, hotRegErr);
+            }
+            console.log(`[GenesisIPC] 💾 Canonized to disk: ${organismId} → "${baptismName}" → ${filePath}`);
             return {
                 success: true,
                 filePath,
@@ -396,10 +518,99 @@ ipcMain.handle('genesis:purgeEcosystem', async () => {
         }
         const info = db.prepare("DELETE FROM lfx_organisms WHERE status != 'canonized'").run();
         console.log(`[GenesisIPC 🧬] Purge: ${info.changes} organisms deleted (canonized preserved)`);
+        // ☢️ WAVE 6000.V3 FIX: Clear evolved organisms from the live registry.
+        // refreshEvolutionaryCandidates() injects organisms with filePath=null.
+        // Base blueprint effects from .lfx files have filePath set and are preserved.
+        const registry = getDynamicEffectRegistry();
+        const evolvedIds = registry.getAllEntries()
+            .filter(e => e.filePath === null)
+            .map(e => e.id);
+        for (const id of evolvedIds) {
+            registry.unregisterEffect(id);
+        }
+        if (evolvedIds.length > 0) {
+            console.log(`[GenesisIPC 🧬] Purge: ${evolvedIds.length} evolved entries removed from DynamicEffectRegistry`);
+        }
+        // Clear materializer cache — stale materialized organisms must not survive purge
+        getOrganismMaterializer().clearCache();
         return { success: true, deleted: info.changes };
     }
     catch (error) {
         console.error('[GenesisIPC] purgeEcosystem failed:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error',
+        };
+    }
+});
+// ═══════════════════════════════════════════════════════════════════════════
+// genesis:deleteCanonized — Permanently delete a canonized organism
+// Removes: DB row, .lfx file from builtins/, HephaestusClipIndex entry,
+//          DynamicEffectRegistry entry, and blueprints row if present.
+// ═══════════════════════════════════════════════════════════════════════════
+ipcMain.handle('genesis:deleteCanonized', async (_event, organismId) => {
+    try {
+        const vault = getGenesisVault();
+        const db = vault._db;
+        if (!db) {
+            return { success: false, error: 'Vault not initialized' };
+        }
+        // 1. Verify organism is canonized and get its blueprint_id
+        const org = db.prepare('SELECT organism_id, custom_name, blueprint_id FROM lfx_organisms WHERE organism_id = ? AND status = ?').get(organismId, 'canonized');
+        if (!org) {
+            return { success: false, error: 'Organism not found or not canonized' };
+        }
+        // 2. Determine the .lfx filename — uses custom_name (baptism name) or blueprint_id
+        const builtinsDir = path.join(app.getPath('userData'), 'builtins');
+        const clipId = org.blueprint_id;
+        // Try to find the .lfx file by looking up the clip in the index
+        const index = getHephaestusClipIndex();
+        const loadedClip = index.getById(clipId);
+        let deletedFile = false;
+        if (loadedClip) {
+            // Delete the .lfx file from disk
+            try {
+                fs.unlinkSync(loadedClip.filePath);
+                console.log(`[GenesisIPC] 🗑️ Deleted .lfx file: ${loadedClip.filePath}`);
+                deletedFile = true;
+            }
+            catch (e) {
+                // File may already be gone
+                console.warn(`[GenesisIPC] ⚠️ Could not delete .lfx file: ${loadedClip.filePath}`, e);
+            }
+            // Remove from HephaestusClipIndex
+            index.remove(clipId);
+            // Unregister from DynamicEffectRegistry
+            getDynamicEffectRegistry().unregisterEffect(clipId);
+            console.log(`[GenesisIPC] 🗑️ Unregistered "${clipId}" from arsenal + library`);
+        }
+        else {
+            // Fallback: try to find by sanitized name
+            const nameToUse = org.custom_name ?? clipId;
+            const safeName = nameToUse.replace(/[:<>|"*?/\\]/g, '_');
+            const fallbackPath = path.join(builtinsDir, `${safeName}.lfx`);
+            if (fs.existsSync(fallbackPath)) {
+                try {
+                    fs.unlinkSync(fallbackPath);
+                    console.log(`[GenesisIPC] 🗑️ Deleted .lfx file (fallback): ${fallbackPath}`);
+                    deletedFile = true;
+                }
+                catch (e) {
+                    console.warn(`[GenesisIPC] ⚠️ Could not delete .lfx file (fallback): ${fallbackPath}`, e);
+                }
+            }
+        }
+        // 3. Delete the organism row from the DB
+        //    NOTE: We do NOT delete the lfx_blueprints row — it's the granite ancestor
+        //    and other descendant organisms may reference it via FK CASCADE.
+        //    The canonized artifact is the .lfx file + registry entries (already removed above).
+        db.prepare('DELETE FROM lfx_organisms WHERE organism_id = ?').run(organismId);
+        console.log(`[GenesisIPC] 🗑️ Deleted canonized organism: ${organismId} ` +
+            `(file: ${deletedFile ? 'yes' : 'no'}, DB: yes)`);
+        return { success: true, deletedFile };
+    }
+    catch (error) {
+        console.error('[GenesisIPC] deleteCanonized failed:', error);
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error',

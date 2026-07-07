@@ -44,6 +44,7 @@ import { VibeManager } from '../../engine/vibe/VibeManager';
 import { getHeatmapLogger } from '../genesis/fitness/HeatmapLogger';
 import { getGenesisVault } from '../genesis/GenesisVaultService';
 import { getColiseumService } from '../genesis/ColiseumService';
+import { getOrganismTag } from '../genesis/naming/OrganismTag';
 // ⚰️ WAVE 3450: isOceanicEffectValidForDepth eliminado junto con ChillStereoPhysics.
 // 🌊 WAVE 1071: Import ArsenalRepository for cooldown registration
 import { getArsenalRepository } from './ContextualEffectSelector';
@@ -375,13 +376,27 @@ export class EffectManager extends EventEmitter {
             ? `Z:${config.musicalContext.zScore.toFixed(1)}`
             : '';
         const sourceTag = config.source ? `[${config.source}]` : '';
-        // 🧬 WAVE 5000.V3 BAPTISM: Show readable name in fire log.
-        // For mutant organisms, display "ProceduralName [shortId]" instead of bare UUID.
+        // 🧬 WAVE 6000.V5: Short military tags in fire log instead of UUID.
         const registryEntry = getDynamicEffectRegistry().getEntry(config.effectType);
         const displayLabel = registryEntry
             ? `${registryEntry.name} [${config.effectType.substring(0, 13)}]`
             : config.effectType;
-        console.log(`[EffectManager 🔥] ${displayLabel} FIRED ${sourceTag} in ${vibeId} ${shieldStatus} ⚡[HEPH-BRIDGE] | I:${decision.intensity.toFixed(2)} ${zInfo}`);
+        // Build organism tag for mutant organisms (short military label)
+        const organismTag = (() => {
+            try {
+                const vault = getGenesisVault();
+                const db = vault._db;
+                if (db) {
+                    const org = db.prepare('SELECT organism_id, custom_name, rarity_tier FROM lfx_organisms WHERE organism_id = ?').get(config.effectType);
+                    if (org)
+                        return getOrganismTag(org);
+                }
+            }
+            catch { /* not a genesis organism */ }
+            return null;
+        })();
+        const fireLabel = organismTag ?? displayLabel;
+        console.log(`[EffectManager 🔥] ${fireLabel} FIRED ${sourceTag} in ${vibeId} ${shieldStatus} ⚡[HEPH-BRIDGE] | I:${decision.intensity.toFixed(2)} ${zInfo}`);
         // ═══════════════════════════════════════════════════════════════════════
         // 🌊 WAVE 1071: COOLDOWN REGISTRATION
         // ═══════════════════════════════════════════════════════════════════════

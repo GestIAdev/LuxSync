@@ -5,13 +5,15 @@
 //  Filterable by rarity tier and status.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import React, { useMemo } from 'react'
+import React, { useMemo, useState, useCallback } from 'react'
 import type { GenesisOrganism } from '../../../../stores/useGenesisStore'
+import { getOrganismTag } from '../../../../core/genesis/naming/OrganismTag'
 
 // ─── CONSTANTS ──────────────────────────────────────────────────────────────
 
 const RARITY_TIERS = ['COMMON', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHIC'] as const
 const STATUS_FILTERS = ['alive', 'champion', 'culled', 'canonized'] as const
+const PAGE_SIZE = 12
 
 // ─── COMPONENT ──────────────────────────────────────────────────────────────
 
@@ -39,6 +41,22 @@ export const LootTray: React.FC<LootTrayProps> = ({
   const sortedOrganisms = useMemo(() => {
     return [...organisms].sort((a, b) => b.fitness_score - a.fitness_score)
   }, [organisms])
+
+  // ─── PAGINATION ───────────────────────────────────────────────────────────
+  const [currentPage, setCurrentPage] = useState(0)
+  const totalPages = Math.max(1, Math.ceil(sortedOrganisms.length / PAGE_SIZE))
+  const safePage = Math.min(currentPage, totalPages - 1)
+  const pageStart = safePage * PAGE_SIZE
+  const pageEnd = pageStart + PAGE_SIZE
+  const pagedOrganisms = sortedOrganisms.slice(pageStart, pageEnd)
+
+  const goToPrev = useCallback(() => setCurrentPage((p) => Math.max(0, p - 1)), [])
+  const goToNext = useCallback(() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1)), [totalPages])
+
+  // Reset page when filter results change drastically
+  React.useEffect(() => {
+    if (currentPage > totalPages - 1) setCurrentPage(0)
+  }, [currentPage, totalPages])
 
   return (
     <div className="loot-tray">
@@ -75,12 +93,16 @@ export const LootTray: React.FC<LootTrayProps> = ({
         </div>
       ) : (
         <div className="loot-tray__grid">
-          {sortedOrganisms.map((org) => {
+          {pagedOrganisms.map((org) => {
             const survivalRate = org.trials_count > 0
               ? (org.passes_count / org.trials_count * 100).toFixed(0)
               : '—'
             const isSelected = org.organism_id === selectedOrganismId
-            const displayName = org.custom_name ?? `${org.rarity_tier.toLowerCase()}-${org.organism_id.slice(0, 6)}`
+            const displayName = getOrganismTag({
+              organism_id: org.organism_id,
+              custom_name: org.custom_name,
+              rarity_tier: org.rarity_tier,
+            })
 
             return (
               <div
@@ -107,7 +129,7 @@ export const LootTray: React.FC<LootTrayProps> = ({
                     <span className="loot-card__stat-value">{org.status}</span>
                   </span>
                   <span className="loot-card__stat">
-                    F<span className="loot-card__stat-value">{org.fitness_score.toFixed(2)}</span>
+                    F<span className="loot-card__stat-value">{org.fitness_score.toFixed(3)}</span>
                   </span>
                   <span className="loot-card__stat">
                     S<span className="loot-card__stat-value">{survivalRate}%</span>
@@ -143,6 +165,31 @@ export const LootTray: React.FC<LootTrayProps> = ({
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="loot-tray__pagination">
+          <button
+            type="button"
+            className="loot-tray__page-btn"
+            onClick={goToPrev}
+            disabled={safePage === 0}
+          >
+            ◀ Anterior
+          </button>
+          <span className="loot-tray__page-info">
+            Página {safePage + 1} / {totalPages} ({sortedOrganisms.length} organismos)
+          </span>
+          <button
+            type="button"
+            className="loot-tray__page-btn"
+            onClick={goToNext}
+            disabled={safePage >= totalPages - 1}
+          >
+            Siguiente ▶
+          </button>
         </div>
       )}
     </div>

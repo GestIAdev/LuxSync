@@ -501,6 +501,11 @@ export class EffectDreamSimulator {
                 blockedCount++;
                 continue;
             }
+            // 🧬 WAVE 6000.V7: COOLDOWN SEAL — Skip cooldown-locked effects early
+            //   Avoids wasting CPU simulating candidates that the Gatekeeper will reject.
+            if (state.activeCooldowns.has(effect)) {
+                continue;
+            }
             // ═══════════════════════════════════════════════════════════════════════════
             // ⚡ WAVE 4843: COGNITIVE BRIDGE — STROBE Z-GUARD + ZSCORE GUARDS
             // 🔮 WAVE 5014: Guards relajados para predicciones futuras garantizadas

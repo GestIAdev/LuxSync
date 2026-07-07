@@ -413,6 +413,8 @@ const api = {
         purgeEcosystem: () => ipcRenderer.invoke('genesis:purgeEcosystem'),
         materializeClip: (organismId) => ipcRenderer.invoke('genesis:materializeClip', organismId),
         canonizeToBuiltins: (clip, organismId) => ipcRenderer.invoke('genesis:canonizeToBuiltins', clip, organismId),
+        suggestName: (organismId) => ipcRenderer.invoke('genesis:suggestName', organismId),
+        deleteCanonized: (organismId) => ipcRenderer.invoke('genesis:deleteCanonized', organismId),
     },
 };
 // ============================================================================

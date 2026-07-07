@@ -27,6 +27,8 @@ import type {
 import {
   applyOperator,
   crossover,
+  makeRng,
+  stringToSeed,
   type JsonPatchOp,
   type OperatorResult,
   type CrossoverResult,
@@ -37,6 +39,30 @@ import { getHeatmapLogger } from './fitness/HeatmapLogger'
 import { getSpeciationEngine, type SpeciationResult } from './ecology/SpeciationEngine'
 import { getLifecycleManager, type LifecycleResult } from './ecology/LifecycleManager'
 import { getOrganismMaterializer } from './OrganismMaterializer'
+
+// ─── OPERATOR ROULETTE (Structural Bias) ───────────────────────────────────
+// WAVE 6000.V4: Weighted selection favors structural innovation.
+// Without this, point_mutation dominates and structural operators
+// (gene_splice, gene_deletion) are never selected.
+const OPERATOR_WEIGHTS_ROULETTE: ReadonlyArray<[MutationOperator, number]> = Object.freeze([
+  ['gene_splice',           0.20],
+  ['point_mutation',        0.20],
+  ['temporal_stretch',      0.15],
+  ['gene_deletion',         0.15],
+  ['interpolation_drift',   0.10],
+  ['phase_epigenetics',     0.10],
+  ['gene_duplication',      0.10],
+])
+
+function pickWeightedOperator(rng: () => number): MutationOperator {
+  const r = rng()
+  let acc = 0
+  for (const [op, weight] of OPERATOR_WEIGHTS_ROULETTE) {
+    acc += weight
+    if (r < acc) return op
+  }
+  return OPERATOR_WEIGHTS_ROULETTE[0][0]
+}
 
 // ─── METABOLIC CONSTANTS (Lamarckian Medium) ───────────────────────────────
 // No arbitrary population caps. Regulation emerges from thermodynamics:
@@ -191,8 +217,8 @@ export class ColiseumService {
     const mutatedClip = opResult.clip
     const delta = opResult.delta
 
-    // 3. Prenatal screening
-    const screening = prenatalScreening(mutatedClip)
+    // 3. Prenatal screening (G7 redundancy gate uses L2 distance)
+    const screening = prenatalScreening(mutatedClip, opResult.l2Distance)
 
     // Base result — compute rarity via RarityEngine
     const rarity = estimateRarity(opResult.l2Distance, operatorType)
@@ -353,8 +379,8 @@ export class ColiseumService {
     const hybridClip = xResult.clip
     const delta = xResult.delta
 
-    // 3. Prenatal screening
-    const screening = prenatalScreening(hybridClip)
+    // 3. Prenatal screening (G7 redundancy gate uses L2 distance)
+    const screening = prenatalScreening(hybridClip, xResult.l2Distance)
 
     // 4. Rarity estimation
     const rarity = estimateRarity(xResult.l2Distance, 'crossover')
@@ -465,30 +491,29 @@ export class ColiseumService {
 
   /**
    * Spawns the initial G1 cohort for a blueprint (cold start).
-   * Generates 3 organisms: 1 control clone, 1 point_mutation, 1 phase_epigenetics.
+   * WAVE 6000.V4: Reduced to 1 organism with 40% stochastic gate
+   * to prevent overpopulation and trial dilution.
    */
   spawnInitialCohort(parentBlueprintId: string): readonly SpawnResult[] {
-    const results: SpawnResult[] = []
+    // WAVE 6000.V5: Deterministic PRNG — no Math.random()
+    const rng = makeRng(stringToSeed(`${parentBlueprintId}-${Date.now()}`))
 
-    // 1. Control clone (point_mutation with seed=0, minimal)
-    const r1 = this.spawnOrganism(parentBlueprintId, 'point_mutation', 1)
-    results.push(r1)
+    // Stochastic gate: 40% chance to spawn, 60% chance to skip
+    if (rng() > 0.40) {
+      console.log(`[Coliseum 🧬] Initial cohort for ${parentBlueprintId}: skipped (stochastic gate)`)
+      return []
+    }
 
-    // 2. Point mutation
-    const r2 = this.spawnOrganism(parentBlueprintId, 'point_mutation', Date.now())
-    results.push(r2)
+    const operator = pickWeightedOperator(rng)
+    const r1 = this.spawnOrganism(parentBlueprintId, operator, Date.now())
 
-    // 3. Phase epigenetics or gene duplication
-    const r3 = this.spawnOrganism(parentBlueprintId, 'phase_epigenetics', Date.now())
-    results.push(r3)
-
-    const viable = results.filter((r) => r.success).length
+    const viable = r1.success ? 1 : 0
     console.log(
       `[Coliseum 🧬] Initial cohort for ${parentBlueprintId}: ` +
-      `${viable}/${results.length} viable`,
+      `${viable}/1 viable via ${operator}`,
     )
 
-    return results
+    return [r1]
   }
 
   /**
@@ -610,10 +635,10 @@ export class ColiseumService {
     }[]
 
     let spawns = 0
-    const operators: MutationOperator[] = ['point_mutation', 'phase_epigenetics', 'hue_drift']
 
     for (const parent of candidates) {
-      const operator = operators[Math.floor(Math.random() * operators.length)]
+      const rng = makeRng(stringToSeed(`${parent.organism_id}-${Date.now()}`))
+      const operator = pickWeightedOperator(rng)
       const childFitness = parent.fitness_score * MITOSIS_ENERGY_TRANSFER
 
       try {

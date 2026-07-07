@@ -152,27 +152,27 @@ function makeBiasRule(rawAco: AcoTriad): Rule {
 
     if (bias.aggressionMin !== undefined && aggression < bias.aggressionMin)
       violations.push(
-        `aggression=${aggression.toFixed(2)} < min ${bias.aggressionMin.toFixed(2)}`,
+        `aggression=${aggression.toFixed(3)} < min ${bias.aggressionMin.toFixed(3)}`,
       )
     if (bias.aggressionMax !== undefined && aggression > bias.aggressionMax)
       violations.push(
-        `aggression=${aggression.toFixed(2)} > max ${bias.aggressionMax.toFixed(2)}`,
+        `aggression=${aggression.toFixed(3)} > max ${bias.aggressionMax.toFixed(3)}`,
       )
     if (bias.chaosMin !== undefined && chaos < bias.chaosMin)
       violations.push(
-        `chaos=${chaos.toFixed(2)} < min ${bias.chaosMin.toFixed(2)}`,
+        `chaos=${chaos.toFixed(3)} < min ${bias.chaosMin.toFixed(3)}`,
       )
     if (bias.chaosMax !== undefined && chaos > bias.chaosMax)
       violations.push(
-        `chaos=${chaos.toFixed(2)} > max ${bias.chaosMax.toFixed(2)}`,
+        `chaos=${chaos.toFixed(3)} > max ${bias.chaosMax.toFixed(3)}`,
       )
     if (bias.organicityMin !== undefined && organicity < bias.organicityMin)
       violations.push(
-        `organicity=${organicity.toFixed(2)} < min ${bias.organicityMin.toFixed(2)}`,
+        `organicity=${organicity.toFixed(3)} < min ${bias.organicityMin.toFixed(3)}`,
       )
     if (bias.organicityMax !== undefined && organicity > bias.organicityMax)
       violations.push(
-        `organicity=${organicity.toFixed(2)} > max ${bias.organicityMax.toFixed(2)}`,
+        `organicity=${organicity.toFixed(3)} > max ${bias.organicityMax.toFixed(3)}`,
       )
 
     if (violations.length === 0) return null
@@ -204,8 +204,8 @@ const ruleAmbientAggressionOverflow: Rule = (clip) => {
     severity: 'critical' as WarningSeverity,
     title: 'Ambient archetype with aggressive ACO',
     message:
-      `Archetype is "ambient" but aggression=${clip.acoTriad.aggression.toFixed(2)} ` +
-      `exceeds the hard ceiling ${AMBIENT_AGGRESSION_HARD_CEILING.toFixed(2)}. ` +
+      `Archetype is "ambient" but aggression=${clip.acoTriad.aggression.toFixed(3)} ` +
+      `exceeds the hard ceiling ${AMBIENT_AGGRESSION_HARD_CEILING.toFixed(3)}. ` +
       `Physical engines may overdrive movers and fixtures will receive harsh deltas ` +
       `that contradict the ambient intent.`,
     affectedFields: Object.freeze(['userArchetype', 'acoTriad.aggression'] as const),

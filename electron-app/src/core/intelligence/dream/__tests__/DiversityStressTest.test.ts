@@ -397,7 +397,7 @@ describe('🧪 WAVE 982.5: DIVERSITY STRESS TEST', () => {
         console.log(`\n🎯 Zone "${zone}": ${candidates.length} candidates`)
         candidates.forEach(c => {
           const entry = getDynamicEffectRegistry().getEntry(c)
-          console.log(`   - ${c}: A=${entry?.dna.aggression.toFixed(2)}`)
+          console.log(`   - ${c}: A=${entry?.dna.aggression.toFixed(3)}`)
         })
         
         expect(candidates.length).toBeGreaterThan(0)
@@ -445,9 +445,9 @@ describe('🧪 WAVE 982.5: DIVERSITY STRESS TEST', () => {
         .sort((a, b) => a - b)
       
       console.log('\n📊 Aggression Distribution:')
-      console.log(`   Min: ${aggressionValues[0]?.toFixed(2)}`)
-      console.log(`   Max: ${aggressionValues[aggressionValues.length - 1]?.toFixed(2)}`)
-      console.log(`   Spread: ${(aggressionValues[aggressionValues.length - 1] - aggressionValues[0]).toFixed(2)}`)
+      console.log(`   Min: ${aggressionValues[0]?.toFixed(3)}`)
+      console.log(`   Max: ${aggressionValues[aggressionValues.length - 1]?.toFixed(3)}`)
+      console.log(`   Spread: ${(aggressionValues[aggressionValues.length - 1] - aggressionValues[0]).toFixed(3)}`)
       
       // Should have at least 0.5 spread in aggression
       const spread = aggressionValues[aggressionValues.length - 1] - aggressionValues[0]

@@ -5,14 +5,15 @@
 //
 //  1. Starts the HeatmapLogger flush timer (10s interval)
 //  2. Arranges a 60s background timer for runEcologicalMaintenance()
-//  3. On cold start, seeds any blueprint with zero descendants
+//  3. WAVE 6000.V6: Cold-start seeding PURGED — zero artificial spawns at boot.
+//     The only entry point for spawnInitialCohort is the natural live fire
+//     event in EffectManager.ts.
 //
 //  All timers are .unref()'d — they never keep the process alive.
 //  Zero hot-path impact. Zero UI blocking.
 // ═══════════════════════════════════════════════════════════════════════════
 import { getHeatmapLogger } from './fitness/HeatmapLogger';
 import { getColiseumService } from './ColiseumService';
-import { getGenesisVault } from './GenesisVaultService';
 import { getAncestralIngestor } from './AncestralIngestor';
 import { getDynamicEffectRegistry } from '../arsenal/DynamicEffectRegistry';
 const MAINTENANCE_INTERVAL_MS = 60000; // 60 seconds — geological time
@@ -48,13 +49,10 @@ export async function igniteGenesisEngine() {
     catch (err) {
         console.warn('[GenesisIgnition ⚠️] Ancestral ingestion failed:', err);
     }
-    // 3. Cold-start seeding: if any blueprint has zero living descendants, seed it
-    try {
-        _seedColdStart();
-    }
-    catch (err) {
-        console.warn('[GenesisIgnition ⚠️] Cold-start seeding failed:', err);
-    }
+    // 3. WAVE 6000.V6: Cold-start seeding PURGED.
+    // The ecosystem boots with zero artificial organisms. Spawns happen
+    // exclusively via the natural live-fire event in EffectManager.ts.
+    // (Previous _seedColdStart() call removed — no bureaucratic seeding.)
     // 4. Geological maintenance timer (60s) + Arena Gates refresh
     _maintenanceTimer = setInterval(() => {
         getColiseumService()
@@ -62,7 +60,7 @@ export async function igniteGenesisEngine() {
             .then(() => {
             // Arena Gates: inject evolved candidates into the DreamSimulator pool
             try {
-                const injected = getDynamicEffectRegistry().refreshEvolutionaryCandidates(10);
+                const injected = getDynamicEffectRegistry().refreshEvolutionaryCandidates(3);
                 if (injected > 0) {
                     console.log(`[GenesisIgnition 🧬] Arena Gates: ${injected} mutants injected into live pool`);
                 }
@@ -95,38 +93,12 @@ export function shutdownGenesisEngine() {
     console.log('[GenesisIgnition 🧬] Geological loop stopped.');
 }
 /**
- * Cold-start seeding: for each blueprint with zero living organisms,
- * spawns an initial cohort to seed the medium.
+ * WAVE 6000.V6: Cold-start seeding PURGED.
+ * Kept as a no-op for backward compatibility — does nothing.
+ * The ecosystem must boot with zero artificial spawns. The only entry
+ * point for ColiseumService.spawnInitialCohort() is the natural live-fire
+ * event in EffectManager.ts (BIG BANG SPARK).
  */
 function _seedColdStart() {
-    const vault = getGenesisVault();
-    const db = vault._db;
-    if (!db) {
-        console.warn('[GenesisIgnition ⚠️] Vault not initialized — skipping cold-start seed');
-        return;
-    }
-    // Find blueprints with zero living descendants
-    const barrenBlueprints = db.prepare(`SELECT b.blueprint_id
-     FROM lfx_blueprints b
-     LEFT JOIN lfx_organisms o
-       ON b.blueprint_id = o.blueprint_id AND o.status = 'alive'
-     WHERE o.organism_id IS NULL`).all();
-    if (barrenBlueprints.length === 0) {
-        console.log('[GenesisIgnition 🧬] All blueprints have living descendants — no seeding needed');
-        return;
-    }
-    const coliseum = getColiseumService();
-    let totalSeeded = 0;
-    for (const bp of barrenBlueprints) {
-        try {
-            const results = coliseum.spawnInitialCohort(bp.blueprint_id);
-            const viable = results.filter((r) => r.success).length;
-            totalSeeded += viable;
-        }
-        catch (err) {
-            // Blueprint may not be materializable — skip
-        }
-    }
-    console.log(`[GenesisIgnition 🧬] Cold-start seeding: ${totalSeeded} organisms ` +
-        `from ${barrenBlueprints.length} barren blueprints`);
+    // NO-OP — intentionally purged in WAVE 6000.V6
 }

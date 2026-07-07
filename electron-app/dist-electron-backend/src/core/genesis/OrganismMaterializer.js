@@ -14,7 +14,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { getGenesisVault } from './GenesisVaultService';
 import { applyDelta } from './operators/GeneticOperators';
-import { generateOrganismName } from './naming/ProceduralNamer';
+import { getOrganismTag } from './naming/OrganismTag';
 // ─── LRU CACHE (Map-based, bounded) ─────────────────────────────────────────
 const LRU_MAX_SIZE = 256;
 class LruCache {
@@ -108,34 +108,17 @@ export class OrganismMaterializer {
             if (!childClip.cognitiveDNA && parentClip.cognitiveDNA) {
                 childClip.cognitiveDNA = JSON.parse(JSON.stringify(parentClip.cognitiveDNA));
             }
-            // 🧬 WAVE 5000.V3 BAPTISM: Assign a readable name to the materialized clip.
-            // If the organism has a custom_name (e.g. champion baptized), use it.
-            // Otherwise, generate a procedural name on the fly for arena display.
+            // 🧬 WAVE 6000.V5: Earned names only. No baptism at birth.
+            // If the organism has a custom_name (champion baptized), use it.
+            // Otherwise, use a short military tag (COMMON-e8de) — no procedural name.
             if (org.custom_name) {
                 childClip.name = org.custom_name;
             }
             else {
-                childClip.name = generateOrganismName({
-                    organismId: org.organism_id,
-                    blueprintId: org.blueprint_id,
-                    parentOrganismId: org.parent_organism_id,
-                    generation: org.generation,
-                    customName: null,
-                    deltaJson: org.delta_json,
-                    bezierSignature: new Float32Array(0),
-                    rarityScore: org.rarity_score,
-                    rarityTier: org.rarity_tier,
-                    l2DistanceParent: org.l2_distance_parent,
-                    operatorUsed: org.operator_used,
-                    neonatalShieldUntil: org.neonatal_shield_until,
-                    birthVector: { zScoreAvg3s: 0, lowBandAvg3s: 0, energyPhaseEncoded: 0, vibeHash: 0, sectionEncoded: 0, textureEncoded: 0 },
-                    fitnessScore: org.fitness_score,
-                    trialsCount: org.trials_count,
-                    winsCount: 0, vetoesCount: 0, passesCount: org.passes_count,
-                    status: org.status,
-                    speciesId: org.species_id,
-                    bornAt: 0, lastEvaluatedAt: null, lastFiredAt: null,
-                    swarmOriginConsole: null,
+                childClip.name = getOrganismTag({
+                    organism_id: org.organism_id,
+                    custom_name: org.custom_name,
+                    rarity_tier: org.rarity_tier,
                 });
             }
             const result = {

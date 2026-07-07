@@ -153,9 +153,9 @@ const GenomeCube: React.FC<GenomeCubeProps> = React.memo(
           </div>
         </div>
         <div className="dna-cube3d__values">
-          <span>A <strong>{aggression.toFixed(2)}</strong></span>
-          <span>C <strong>{chaos.toFixed(2)}</strong></span>
-          <span>O <strong>{organicity.toFixed(2)}</strong></span>
+          <span>A <strong>{aggression.toFixed(3)}</strong></span>
+          <span>C <strong>{chaos.toFixed(3)}</strong></span>
+          <span>O <strong>{organicity.toFixed(3)}</strong></span>
         </div>
       </div>
     )
@@ -275,8 +275,8 @@ export const DnaRail: React.FC<DnaRailProps> = ({
       const r = reverseVibeBridge(v)
       if (r && !reversedVibes.includes(r)) reversedVibes.push(r)
     }
-    setForm({
-      archetype: 'utility',
+    setForm(prev => ({
+      archetype: prev.archetype,
       aco: { ...dna.genome },
       zones: (() => {
         const lo = ENERGY_ZONES.indexOf(dna.energyZone.min)
@@ -287,8 +287,8 @@ export const DnaRail: React.FC<DnaRailProps> = ({
         ) as EnergyZoneId[]
       })(),
       vibes: reversedVibes,
-      maxStrobeFreqHz: 0,
-    })
+      maxStrobeFreqHz: prev.maxStrobeFreqHz,
+    }))
   }, [dna])
 
   // ── Derive LfxClipInstance + lint on every form change ──
@@ -361,6 +361,18 @@ export const DnaRail: React.FC<DnaRailProps> = ({
   const handleAco = useCallback((axis: keyof AcoTriad) =>
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const val = parseFloat(e.target.value)
+      setForm(prev => ({
+        ...prev,
+        aco: { ...prev.aco, [axis]: val },
+      }))
+    }, [])
+
+  const handleAcoNumeric = useCallback((axis: keyof AcoTriad) =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const raw = e.target.value
+      if (raw === '' || raw === '-') return
+      const val = Math.max(0, Math.min(1, parseFloat(raw)))
+      if (isNaN(val)) return
       setForm(prev => ({
         ...prev,
         aco: { ...prev.aco, [axis]: val },
@@ -506,14 +518,21 @@ export const DnaRail: React.FC<DnaRailProps> = ({
                     <input
                       type="range"
                       className={`dna-rail__genome-slider ${isLocked ? 'dna-rail__genome-slider--locked' : ''}`}
-                      min={0} max={1} step={0.01}
+                      min={0} max={1} step={0.001}
                       value={form.aco[axis]}
                       onChange={handleAco(axis)}
                       disabled={isLocked}
                     />
                   </div>
                   <div className="dna-rail__genome-right">
-                    <span className="dna-rail__genome-val">{form.aco[axis].toFixed(2)}</span>
+                    <input
+                      type="number"
+                      className="dna-rail__genome-num"
+                      min={0} max={1} step={0.001}
+                      value={Number(form.aco[axis].toFixed(3))}
+                      onChange={handleAcoNumeric(axis)}
+                      disabled={isLocked}
+                    />
                     <span className="dna-rail__genome-label">{label}</span>
                   </div>
                 </div>

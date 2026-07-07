@@ -12,7 +12,8 @@
 //    G6 (strobe inconsistent) → fail = abort
 //    G1 (structure) → fail = abort
 //    G2 (checksum) → N/A (not checked prenatally)
-//    G7 (spatial) → warn only (not abort)
+//    G7 (redundancy / clone) → fail = abort (WAVE 6000.V6)
+//    G7-spatial (spatial behavior) → warn only (not abort)
 // ═══════════════════════════════════════════════════════════════════════════
 import { ENERGY_ZONES } from '../../arsenal/LfxClipInstance';
 // ─── GATE EVALUATORS (pure, no side effects) ────────────────────────────────
@@ -146,7 +147,26 @@ function evalG6(clip, simMeta) {
             : 'Strobe declared but no strobe track and intensity has <4 keyframes',
     };
 }
-function evalG7(clip, dna) {
+function evalG7Redundancy(l2Distance) {
+    if (l2Distance === undefined) {
+        return { id: 'G7', status: 'na', label: 'REDUNDANCY', description: 'L2 distance not provided' };
+    }
+    if (l2Distance < 0.005) {
+        return {
+            id: 'G7',
+            status: 'fail',
+            label: 'REDUNDANCY',
+            description: `Functional clone of ancestor (L2=${l2Distance.toFixed(4)} < 0.005). Mutation lacked structural divergence.`,
+        };
+    }
+    return {
+        id: 'G7',
+        status: 'pass',
+        label: 'REDUNDANCY',
+        description: `L2=${l2Distance.toFixed(4)} — sufficient divergence from ancestor`,
+    };
+}
+function evalG7Spatial(clip, dna) {
     if (!dna) {
         return { id: 'G7', status: 'na', label: 'SPATIAL', description: 'No cognitiveDNA' };
     }
@@ -177,12 +197,15 @@ function evalG7(clip, dna) {
  * Runs all 7 gates on a mutated clip. Returns viability verdict.
  *
  * ABORT conditions (viable: false):
- *   G1 fail, G3 fail, G4 fail, G5 fail, G6 fail
+ *   G1 fail, G3 fail, G4 fail, G5 fail, G6 fail, G7 fail (redundancy)
  *
  * WARN-only (does NOT abort):
- *   G7 warn
+ *   G7-spatial warn
+ *
+ * @param l2Distance Optional L2 distance from parent. When provided,
+ *   G7 redundancy gate rejects clones with L2 < 0.005.
  */
-export function prenatalScreening(clip) {
+export function prenatalScreening(clip, l2Distance) {
     const dna = clip.cognitiveDNA;
     const sim = clip.simulationMeta;
     const gates = [
@@ -192,10 +215,11 @@ export function prenatalScreening(clip) {
         evalG4(dna),
         evalG5(clip),
         evalG6(clip, sim),
-        evalG7(clip, dna),
+        evalG7Redundancy(l2Distance),
+        evalG7Spatial(clip, dna),
     ];
-    // Hard-fail gates: G1, G3, G4, G5, G6
-    const hardFailGates = ['G1', 'G3', 'G4', 'G5', 'G6'];
+    // Hard-fail gates: G1, G3, G4, G5, G6, G7 (redundancy)
+    const hardFailGates = ['G1', 'G3', 'G4', 'G5', 'G6', 'G7'];
     const abortGate = gates.find((g) => hardFailGates.includes(g.id) && g.status === 'fail');
     return {
         viable: !abortGate,

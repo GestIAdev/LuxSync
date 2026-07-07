@@ -611,6 +611,12 @@ async function initTitan(): Promise<void> {
     const _userEffectsPath = path.join(app.getPath('userData'), 'effects')
     _vibeDirectories.push({ absolutePath: _userEffectsPath, source: 'user' })
 
+    // 🧬 WAVE 6000.V7: CANONIZED CLIPS — userData/builtins/ contiene los .lfx
+    // exportados por genesis:canonizeToBuiltins. Sin esto, los efectos canonizados
+    // nunca entran al HephaestusClipIndex ni al DynamicEffectRegistry tras un reload.
+    const _canonizedPath = path.join(app.getPath('userData'), 'builtins')
+    _vibeDirectories.push({ absolutePath: _canonizedPath, source: 'builtin' })
+
     const _lfxLoader = new LfxFileLoader(getDynamicEffectRegistry())
     const _arsenalReport = await _lfxLoader.loadAll(_vibeDirectories)
 

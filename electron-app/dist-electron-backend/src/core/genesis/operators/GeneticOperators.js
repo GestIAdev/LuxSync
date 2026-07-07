@@ -198,12 +198,19 @@ export function computeL2DistanceV2(parent, child) {
     return 0.45 * dCurve + 0.35 * dPhase + 0.20 * dStructural;
 }
 // ─── RANDOM HELPERS (deterministic via seed) ────────────────────────────────
-function makeRng(seed) {
+export function makeRng(seed) {
     let s = seed | 0;
     return () => {
         s = (s * 1664525 + 1013904223) | 0;
         return ((s >>> 0) % 1000000) / 1000000;
     };
+}
+export function stringToSeed(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) {
+        h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+    }
+    return h;
 }
 function clamp(v, lo, hi) {
     return Math.max(lo, Math.min(hi, v));

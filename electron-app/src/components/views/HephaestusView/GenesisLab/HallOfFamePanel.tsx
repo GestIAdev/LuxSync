@@ -24,11 +24,31 @@ export const HallOfFamePanel: React.FC<HallOfFamePanelProps> = ({
   const [canonizingId, setCanonizingId] = useState<string | null>(null)
   const [customName, setCustomName] = useState('')
   const [showModal, setShowModal] = useState(false)
+  const [suggestedName, setSuggestedName] = useState('')
+  const [isLoadingName, setIsLoadingName] = useState(false)
 
-  const handleCanonizeClick = (candidate: HallOfFameCandidate) => {
+  const handleCanonizeClick = async (candidate: HallOfFameCandidate) => {
     setCanonizingId(candidate.organism_id)
     setCustomName(candidate.custom_name ?? '')
     setShowModal(true)
+
+    if (!candidate.custom_name) {
+      setIsLoadingName(true)
+      try {
+        const api = (window as any).luxsync?.genesis
+        if (api?.suggestName) {
+          const result = await api.suggestName(candidate.organism_id)
+          if (result.success && result.name) {
+            setSuggestedName(result.name)
+            setCustomName(result.name)
+          }
+        }
+      } catch {
+        // IPC not available — silent
+      } finally {
+        setIsLoadingName(false)
+      }
+    }
   }
 
   const handleConfirmCanonize = async () => {
@@ -38,6 +58,7 @@ export const HallOfFamePanel: React.FC<HallOfFamePanelProps> = ({
       setShowModal(false)
       setCanonizingId(null)
       setCustomName('')
+      setSuggestedName('')
     }
   }
 
@@ -73,7 +94,7 @@ export const HallOfFamePanel: React.FC<HallOfFamePanelProps> = ({
               >
                 <span className="hof-card__name">{displayName}</span>
                 <span className="hof-card__stats">
-                  {candidate.rarity_tier} · F{candidate.fitness_score.toFixed(2)} · S{survivalRate}% · T{candidate.trials_count}
+                  {candidate.rarity_tier} · F{candidate.fitness_score.toFixed(3)} · S{survivalRate}% · T{candidate.trials_count}
                 </span>
               </div>
               <div className="hof-card__actions">
@@ -102,10 +123,15 @@ export const HallOfFamePanel: React.FC<HallOfFamePanelProps> = ({
               This organism will become an immutable blueprint in the catalog.
               Choose a definitive name for this legendary effect.
             </div>
+            {suggestedName && (
+              <div style={{ fontSize: '10px', color: '#5a9', marginTop: '4px' }}>
+                🎲 Suggested: {suggestedName}
+              </div>
+            )}
             <input
               type="text"
               className="genesis-modal__input"
-              placeholder="Enter legendary name..."
+              placeholder={isLoadingName ? 'Generating name...' : 'Enter legendary name...'}
               value={customName}
               onChange={(e) => setCustomName(e.target.value)}
               autoFocus

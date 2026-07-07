@@ -2790,6 +2790,40 @@ export const StarIcon: React.FC<StarIconProps> = ({
   </svg>
 )
 
+/**
+ * 🌊 LIQUID DROP - Gota de fluido cognitivo
+ * Para: WAR LOG LIQUID filter
+ */
+export const LiquidDropIcon: React.FC<IconProps> = ({
+  size = 20,
+  color = 'currentColor',
+  className = ''
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    <path
+      d="M12 2C12 2 5 10 5 15C5 18.866 8.134 22 12 22C15.866 22 19 18.866 19 15C19 10 12 2 12 2Z"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinejoin="round"
+      fill="none"
+    />
+    <path
+      d="M9 15C9 16.657 10.343 18 12 18"
+      stroke={color}
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      opacity="0.6"
+    />
+  </svg>
+)
+
 export default {
   Intensity: IntensityIcon,
   Color: ColorIcon,
@@ -2920,4 +2954,6 @@ export default {
   ValleyZone: ValleyZoneIcon,
   SilenceZone: SilenceZoneIcon,
   Star: StarIcon,
+  // WAVE 7003.5: Liquid Cognition
+  LiquidDrop: LiquidDropIcon,
 }

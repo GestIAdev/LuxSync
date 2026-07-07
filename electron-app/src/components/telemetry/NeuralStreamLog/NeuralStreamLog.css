@@ -376,3 +376,80 @@
     text-shadow: none;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🌊 WAVE 7003.5: LIQUID COGNITION LIVE HUD
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.war-log__liquid-hud {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: rgba(56, 189, 248, 0.06);
+  border-bottom: 1px solid rgba(56, 189, 248, 0.12);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.war-log__liquid-hud::-webkit-scrollbar {
+  display: none;
+}
+
+.war-log__liquid-hud__label {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.war-log__liquid-hud__metric {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.war-log__liquid-hud__val {
+  color: #38bdf8;
+  font-weight: 600;
+}
+
+.war-log__liquid-hud__val--ignite {
+  color: #fbbf24;
+  text-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
+}
+
+.war-log__liquid-hud__sep {
+  color: rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+}
+
+.war-log__liquid-hud__ignite {
+  margin-left: 4px;
+  padding: 2px 8px;
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 4px;
+  color: #fbbf24;
+  font-weight: 700;
+  font-size: 0.6rem;
+  letter-spacing: 1px;
+  animation: ignite-pulse 1s ease-in-out infinite alternate;
+  flex-shrink: 0;
+}
+
+@keyframes ignite-pulse {
+  from {
+    box-shadow: 0 0 4px rgba(251, 191, 36, 0.2);
+  }
+  to {
+    box-shadow: 0 0 12px rgba(251, 191, 36, 0.4);
+  }
+}
+
+/* Liquid entry hover */
+.war-log__entry--liquid:hover {
+  border-left-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.05);
+}

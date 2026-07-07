@@ -11,6 +11,7 @@
 
 import { memo, useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { useLogStore, selectFilteredLogs } from '../../../stores/logStore'
+import { useTruthStore } from '../../../stores/truthStore'
 import { 
   StreamLogIcon, 
   LiveDotIcon,
@@ -20,6 +21,7 @@ import {
   DreamCloudIcon,
   ShieldCheckIcon,
   LightningStrikeIcon,
+  LiquidDropIcon,
 } from '../../icons/LuxIcons'
 import './NeuralStreamLog.css'
 
@@ -92,6 +94,13 @@ const FILTER_CONFIG: FilterConfig[] = [
     color: '#94a3b8', // Slate
     categories: ['system', 'dmx', 'error', 'info', 'mode', 'startup']
   },
+  { 
+    key: 'liquid', 
+    label: 'LIQUID', 
+    icon: LiquidDropIcon, 
+    color: '#38bdf8', // Sky blue — fluid cognition
+    categories: ['liquid', 'fluid', 'ignite', 'tidal', 'shadow']
+  },
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -101,7 +110,7 @@ const FILTER_CONFIG: FilterConfig[] = [
 interface HumanizedLog {
   message: string
   category: string
-  style: 'cassandra' | 'ethics' | 'divine' | 'dream' | 'system' | 'default'
+  style: 'cassandra' | 'ethics' | 'divine' | 'dream' | 'system' | 'liquid' | 'default'
 }
 
 function humanizeLog(rawCategory: string, rawMessage: string): HumanizedLog {
@@ -263,6 +272,17 @@ function humanizeLog(rawCategory: string, rawMessage: string): HumanizedLog {
     }
   }
   
+  // 🌊 LIQUID / FLUID COGNITION
+  if (catLower.includes('liquid') || catLower.includes('fluid') || 
+      catLower.includes('ignite') || catLower.includes('tidal') ||
+      catLower.includes('shadow')) {
+    return {
+      message: rawMessage,
+      category: 'LIQUID',
+      style: 'liquid'
+    }
+  }
+
   // ⚙️ SYSTEM / DEFAULT
   return {
     message: rawMessage.replace(/\[.*?\]/g, '').trim(),
@@ -295,6 +315,8 @@ function getCategoryStyle(style: HumanizedLog['style']): React.CSSProperties {
       return { color: '#94a3b8' } // Muted gray
     case 'system':
       return { color: '#64748b' }
+    case 'liquid':
+      return { color: '#38bdf8' } // Sky blue — fluid cognition
     default:
       return { color: 'var(--text-secondary)' }
   }
@@ -308,10 +330,20 @@ export const NeuralStreamLog = memo(() => {
   // Store
   const logs = useLogStore(selectFilteredLogs)
   const clearLogs = useLogStore((state) => state.clearLogs)
-  
+  const addLog = useLogStore((state) => state.addLog)
+
+  // 🌊 WAVE 7003.5: Liquid Cognition — subscribe to truthStore for live telemetry
+  const liquidCognition = useTruthStore((state) => state.truth.consciousness.ai?.liquidCognition ?? null)
+
   // Local state
   const [isPaused, setIsPaused] = useState(false)
   const [activeFilter, setActiveFilter] = useState<string>('all')
+
+  // 🌊 WAVE 7003.5: Liquid log generation refs
+  const lastIgniteRef = useRef(false)
+  const lastTidalLogRef = useRef(0)
+  const lastFluidRef = useRef({ tension: 0, viscosity: 0, vaporPressure: 0 })
+  const liquidLogIdRef = useRef(0)
   
   // WAVE 2097.1: Imperative time ref — NO re-renders every second.
   // Timestamps update only when new logs arrive (logs.length changes)
@@ -385,6 +417,55 @@ export const NeuralStreamLog = memo(() => {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
   }, [])
+
+  // 🌊 WAVE 7003.5: Liquid Cognition log generation
+  // Watches truthStore.liquidCognition and generates log entries:
+  // - Ignitions: always logged (high priority)
+  // - Tidal changes: throttled to 1 every 4s when notable shifts occur
+  useEffect(() => {
+    if (!liquidCognition) return
+
+    const now = Date.now()
+    const lc = liquidCognition
+
+    // 1. IGNITION — always log
+    if (lc.ignite && !lastIgniteRef.current) {
+      addLog({
+        id: `liquid-${liquidLogIdRef.current++}`,
+        timestamp: now,
+        category: 'liquid',
+        message: `SHADOW STRIKE: Conf ${lc.confidence.toFixed(2)} >= Squelch ${lc.squelch.toFixed(2)} | Int: ${lc.intensity.toFixed(2)} | Epic: ${lc.epicness.toFixed(2)}`,
+      })
+    }
+    lastIgniteRef.current = lc.ignite
+
+    // 2. TIDAL EVAPORATION — throttled to 1 every 4s, only when not igniting
+    if (!lc.ignite) {
+      const prev = lastFluidRef.current
+      const dT = Math.abs(lc.tension - prev.tension)
+      const dV = Math.abs(lc.vaporPressure - prev.vaporPressure)
+      const dMu = Math.abs(lc.viscosity - prev.viscosity)
+      const hasNotableChange = dT > 0.05 || dV > 0.05 || dMu > 0.05
+      const throttleReady = now - lastTidalLogRef.current > 4000
+
+      if (hasNotableChange && throttleReady) {
+        addLog({
+          id: `liquid-${liquidLogIdRef.current++}`,
+          timestamp: now,
+          category: 'liquid',
+          message: `TIDAL EVAPORATION: T=${lc.tension.toFixed(2)} | Sed V=${lc.vaporPressure.toFixed(2)} | Visc=${lc.viscosity.toFixed(2)} | C=${lc.confidence.toFixed(2)}`,
+        })
+        lastTidalLogRef.current = now
+      }
+    }
+
+    // Update fluid ref for next comparison
+    lastFluidRef.current = {
+      tension: lc.tension,
+      viscosity: lc.viscosity,
+      vaporPressure: lc.vaporPressure,
+    }
+  }, [liquidCognition, addLog])
   
   return (
     <div className="war-log">
@@ -447,6 +528,40 @@ export const NeuralStreamLog = memo(() => {
           })}
         </div>
       </header>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          🌊 WAVE 7003.5: LIQUID COGNITION LIVE HUD
+          Banner con estado fluídico en tiempo real (cuando filtro es ALL o LIQUID)
+          ═══════════════════════════════════════════════════════════════════ */}
+      {liquidCognition && (activeFilter === 'all' || activeFilter === 'liquid') && (
+        <div className="war-log__liquid-hud">
+          <span className="war-log__liquid-hud__label">🌊</span>
+          <span className="war-log__liquid-hud__metric">
+            T: <span className="war-log__liquid-hud__val">{liquidCognition.tension.toFixed(2)}</span>
+          </span>
+          <span className="war-log__liquid-hud__sep">|</span>
+          <span className="war-log__liquid-hud__metric">
+            μ: <span className="war-log__liquid-hud__val">{liquidCognition.viscosity.toFixed(2)}</span>
+          </span>
+          <span className="war-log__liquid-hud__sep">|</span>
+          <span className="war-log__liquid-hud__metric">
+            V: <span className="war-log__liquid-hud__val">{liquidCognition.vaporPressure.toFixed(2)}</span>
+          </span>
+          <span className="war-log__liquid-hud__sep">|</span>
+          <span className="war-log__liquid-hud__metric">
+            Q: <span className="war-log__liquid-hud__val">{liquidCognition.squelch.toFixed(2)}</span>
+          </span>
+          <span className="war-log__liquid-hud__sep">|</span>
+          <span className="war-log__liquid-hud__metric">
+            C: <span className={`war-log__liquid-hud__val${liquidCognition.ignite ? ' war-log__liquid-hud__val--ignite' : ''}`}>
+              {liquidCognition.confidence.toFixed(2)}
+            </span>
+          </span>
+          {liquidCognition.ignite && (
+            <span className="war-log__liquid-hud__ignite">⚡ IGNITE</span>
+          )}
+        </div>
+      )}
       
       {/* ═══════════════════════════════════════════════════════════════════
           LOG STREAM

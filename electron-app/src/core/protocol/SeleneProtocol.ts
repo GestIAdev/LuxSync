@@ -466,6 +466,35 @@ export interface AITelemetry {
   
   /** Prediction history for sparkline (last 60 values) */
   predictionHistory: number[]
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🌊 WAVE 7003.4: LIQUID COGNITION V3 — SHADOW MODE TELEMETRY
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /** Telemetría del núcleo fluídico V3 (null si consciencia offline) */
+  liquidCognition: {
+    ignite: boolean
+    confidence: number
+    squelch: number
+    intensity: number
+    epicness: number
+    tension: number
+    viscosity: number
+    vaporPressure: number
+    excitability: number
+    temperature: number
+    impact: number
+    crestFactor: number
+    sensors: {
+      s_DNA: number
+      s_Z: number
+      s_E: number
+      s_V: number
+      s_X: number
+      s_P: number
+      s_B: number
+    }
+  } | null
 }
 
 /**
@@ -983,7 +1012,9 @@ export function createDefaultCognitive(): CognitiveData {
       },
       consensusScore: 0.33,
       dreamHistory: [],
-      predictionHistory: []
+      predictionHistory: [],
+      // 🌊 WAVE 7003.4: Liquid Cognition default (offline)
+      liquidCognition: null
     }
   }
 }

@@ -220,6 +220,7 @@ import {
   NEUTRAL_GENOME,
   type LiquidVerdict,
 } from './liquid/LiquidCognitionCore'
+import { LiquidTelemetryRecorder } from './liquid/LiquidTelemetryRecorder'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONFIGURACIÓN
@@ -426,6 +427,7 @@ export class SeleneTitanConscious extends EventEmitter {
   // ═══════════════════════════════════════════════════════════════════════
   private _liquidCore: LiquidCognitionCore = new LiquidCognitionCore()
   private _lastLiquidVerdict: LiquidVerdict | null = null
+  private _liquidRecorder: LiquidTelemetryRecorder = new LiquidTelemetryRecorder()
   
   constructor(config: Partial<SeleneTitanConsciousConfig> = {}) {
     super()
@@ -505,6 +507,7 @@ export class SeleneTitanConscious extends EventEmitter {
     // 🌊 WAVE 7003.3: Liquid Cognition V3 — Shadow Mode init
     this._liquidCore = new LiquidCognitionCore()
     this._lastLiquidVerdict = null
+    this._liquidRecorder = new LiquidTelemetryRecorder()
 
     if (this.config.debug) {
       // WAVE 2098: Boot silence — GENESIS banner removed (debug-only noise)
@@ -752,6 +755,9 @@ export class SeleneTitanConscious extends EventEmitter {
       if (this._lastLiquidVerdict.ignite && finalOutput.effectDecision) {
         this._liquidCore.notifyIgnition(this._lastLiquidVerdict.intensity, now)
       }
+
+      // 🌊 WAVE 7003.4: Grabar frame en la Caja Negra (ring buffer zero-alloc)
+      this._liquidRecorder.recordFrame(this._lastLiquidVerdict, now)
 
       // Exponer telemetría V3 en debugInfo (sin alterar V2)
       finalOutput.debugInfo.liquidCognition = {
@@ -1920,6 +1926,7 @@ export class SeleneTitanConscious extends EventEmitter {
     // 🌊 WAVE 7003.3: Reset Liquid Cognition V3
     this._liquidCore.reset()
     this._lastLiquidVerdict = null
+    this._liquidRecorder.reset()
 
     // Resetear cognición (PHASE 3)
     resetHuntEngine()

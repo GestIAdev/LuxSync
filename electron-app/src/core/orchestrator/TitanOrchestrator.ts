@@ -989,6 +989,16 @@ export class TitanOrchestrator {
   }
 
   /**
+   * 🌊 WAVE 7004.2: Dump Liquid Telemetry ring buffer to JSONL.
+   * IPC bridge: frontend DUMP button → 'liquid-telemetry:dump' → this → TitanEngine.
+   * @returns Absolute path to the written .jsonl file, or null if no data.
+   */
+  async dumpLiquidTelemetry(): Promise<string | null> {
+    if (!this.engine) return null
+    return this.engine.dumpLiquidTelemetry()
+  }
+
+  /**
    * WAVE 254: Set input gain for audio
    */
   setInputGain(gain: number): void {

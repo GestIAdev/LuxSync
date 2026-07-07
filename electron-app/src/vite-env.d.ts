@@ -313,7 +313,10 @@ declare global {
     // �📡 WAVE-14: Input Gain control
     setInputGain: (value: number) => Promise<{ success: boolean; inputGain?: number; error?: string }>
     
-    // 🎨 WAVE-14.5: Lab Controls
+    // � WAVE 7004.2: Liquid Telemetry Dump
+    dumpLiquidTelemetry: () => Promise<{ success: boolean; filePath?: string; error?: string }>
+    
+    // �🎨 WAVE-14.5: Lab Controls
     forceMutate: () => Promise<{ success: boolean; error?: string }>
     resetMemory: () => Promise<{ success: boolean; error?: string }>
     

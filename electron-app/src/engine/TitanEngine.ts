@@ -1429,7 +1429,16 @@ export class TitanEngine extends EventEmitter {
   public isConsciousnessEnabled(): boolean {
     return this.selene.isEnabled()
   }
-  
+
+  /**
+   * 🌊 WAVE 7004.2: Dump Liquid Telemetry ring buffer to JSONL file.
+   * Delegates to SeleneTitanConscious._liquidRecorder.dumpToFile().
+   * @returns Absolute path to the written .jsonl file, or null if no data.
+   */
+  public async dumpLiquidTelemetry(): Promise<string | null> {
+    return this.selene.dumpLiquidTelemetry()
+  }
+
   /**
    * 🧬 WAVE 550: Obtiene telemetría de consciencia para el HUD táctico
    * 🔮 WAVE 1168: Expanded with Dream Simulator + Energy Zone + Fuzzy Decision

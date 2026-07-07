@@ -339,6 +339,9 @@ export const NeuralStreamLog = memo(() => {
   const [isPaused, setIsPaused] = useState(false)
   const [activeFilter, setActiveFilter] = useState<string>('all')
 
+  // 🌊 WAVE 7004.2: Liquid telemetry dump state
+  const [dumpStatus, setDumpStatus] = useState<'idle' | 'dumping' | 'success' | 'error'>('idle')
+
   // 🌊 WAVE 7003.5: Liquid log generation refs
   const lastIgniteRef = useRef(false)
   const lastTidalLogRef = useRef(0)
@@ -408,6 +411,26 @@ export const NeuralStreamLog = memo(() => {
     setIsPaused(p => !p)
     isUserScrolling.current = false
   }, [])
+
+  // 🌊 WAVE 7004.2: Dump liquid telemetry to JSONL
+  const handleDumpLiquid = useCallback(async () => {
+    if (dumpStatus === 'dumping') return
+    setDumpStatus('dumping')
+    try {
+      const result = await window.lux.dumpLiquidTelemetry()
+      if (result.success && result.filePath) {
+        console.log(`[WAR LOG] 🌊 Liquid telemetry dumped: ${result.filePath}`)
+        setDumpStatus('success')
+      } else {
+        console.warn('[WAR LOG] Liquid telemetry dump failed:', result.error)
+        setDumpStatus('error')
+      }
+    } catch (err) {
+      console.error('[WAR LOG] Liquid telemetry dump error:', err)
+      setDumpStatus('error')
+    }
+    setTimeout(() => setDumpStatus('idle'), 2000)
+  }, [dumpStatus])
   
   // Resume and scroll to bottom
   const resumeAndScroll = useCallback(() => {
@@ -485,6 +508,14 @@ export const NeuralStreamLog = memo(() => {
           
           {/* Actions */}
           <div className="war-log__actions">
+            <button
+              className={`war-log__btn war-log__btn--dump ${dumpStatus !== 'idle' ? `war-log__btn--dump--${dumpStatus}` : ''}`}
+              onClick={handleDumpLiquid}
+              title="Dump Liquid Telemetry to JSONL"
+              disabled={dumpStatus === 'dumping'}
+            >
+              {dumpStatus === 'dumping' ? '⏳' : dumpStatus === 'success' ? '✓' : dumpStatus === 'error' ? '✕' : '💾'}
+            </button>
             <button
               className="war-log__btn"
               onClick={togglePause}

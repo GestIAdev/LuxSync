@@ -124,6 +124,30 @@ export function setupIPCHandlers(deps: IPCDependencies): void {
   setupAudioMatrixHandlers(deps)
   setupTheiaHandlers()
   setupCalibrationHandlers()
+  setupLiquidTelemetryHandlers(deps)
+}
+
+// =============================================================================
+// 🌊 WAVE 7004.2: LIQUID TELEMETRY DUMP BRIDGE
+// =============================================================================
+
+function setupLiquidTelemetryHandlers(deps: IPCDependencies): void {
+  const { titanOrchestrator } = deps
+
+  ipcMain.handle('liquid-telemetry:dump', async () => {
+    if (!titanOrchestrator) {
+      return { success: false, error: 'TitanOrchestrator not initialized' }
+    }
+    try {
+      const filePath = await titanOrchestrator.dumpLiquidTelemetry()
+      if (filePath) {
+        return { success: true, filePath }
+      }
+      return { success: false, error: 'No telemetry data in buffer' }
+    } catch (err) {
+      return { success: false, error: String(err) }
+    }
+  })
 }
 
 // =============================================================================

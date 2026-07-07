@@ -1950,6 +1950,15 @@ export class SeleneTitanConscious extends EventEmitter {
       console.log('[SeleneTitanConscious] 🔄 Reset complete (PHASES 2-4 + Memory + Fuzzy)')
     }
   }
+
+  /**
+   * 🌊 WAVE 7004.2: Dump Liquid Telemetry ring buffer to JSONL.
+   * Called by TitanEngine.dumpLiquidTelemetry() → IPC → frontend DUMP button.
+   * @returns Absolute path to the written .jsonl file, or null if no data.
+   */
+  public async dumpLiquidTelemetry(): Promise<string | null> {
+    return this._liquidRecorder.dumpToFile()
+  }
   
   // ═══════════════════════════════════════════════════════════════════════
   // 🧠 WAVE 666: API DE MEMORIA CONTEXTUAL

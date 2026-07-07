@@ -11,7 +11,7 @@
 import type { LiquidVerdict } from './LiquidCognitionCore'
 import * as fs from 'fs'
 import * as path from 'path'
-import * as os from 'os'
+import { app } from 'electron'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Constantes
@@ -173,17 +173,16 @@ export class LiquidTelemetryRecorder {
    * Dump del buffer a archivo JSONL en disco.
    * Limpia el buffer después del dump exitoso.
    *
-   * @param subdir Subdirectorio dentro de temp (default: 'luxsync-liquid-telemetry')
    * @returns Ruta del archivo escrito, o null si no hay datos
    */
-  async dumpToFile(subdir: string = 'luxsync-liquid-telemetry'): Promise<string | null> {
+  async dumpToFile(): Promise<string | null> {
     if (this._count === 0) return null
 
     const frames = this._extractFrames()
 
-    // Construir ruta: OS temp dir / subdir / timestamp.jsonl
-    const tmpDir = os.tmpdir()
-    const outDir = path.join(tmpDir, subdir)
+    // Construir ruta: <userData>/LuxSync_Telemetry/liquid_<timestamp>.jsonl
+    const userDataPath = app.getPath('userData')
+    const outDir = path.join(userDataPath, 'LuxSync_Telemetry')
     const fileName = `liquid_${Date.now()}.jsonl`
     const filePath = path.join(outDir, fileName)
 
@@ -195,6 +194,12 @@ export class LiquidTelemetryRecorder {
     const content = lines.join('\n') + '\n'
 
     fs.writeFileSync(filePath, content, 'utf-8')
+
+    // Log prominente con la ruta absoluta exacta
+    console.log(`\n╔══════════════════════════════════════════════════════════╗
+║  🌊 LIQUID TELEMETRY DUMP — ${frames.length} frames written
+║  📂 ${filePath}
+╚══════════════════════════════════════════════════════════╝\n`)
 
     // Limpiar buffer después del dump
     this._head = 0

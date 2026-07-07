@@ -453,3 +453,32 @@
   border-left-color: #38bdf8;
   background: rgba(56, 189, 248, 0.05);
 }
+
+/* 🌊 WAVE 7004.2: Liquid Telemetry Dump Button */
+.war-log__btn--dump {
+  opacity: 0.6;
+  transition: opacity 0.2s, color 0.3s, transform 0.2s;
+}
+.war-log__btn--dump:hover {
+  opacity: 1;
+  color: #38bdf8;
+}
+.war-log__btn--dump--dumping {
+  opacity: 1;
+  color: #fbbf24;
+  animation: dump-spin 1s linear infinite;
+}
+.war-log__btn--dump--success {
+  opacity: 1;
+  color: #22c55e;
+  transform: scale(1.15);
+}
+.war-log__btn--dump--error {
+  opacity: 1;
+  color: #ef4444;
+}
+
+@keyframes dump-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

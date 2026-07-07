@@ -164,7 +164,7 @@ section classification. Produces: `verse`, `buildup`, `drop`, `breakdown`.
 | SE1 | **`Date.now()` for timing** — should use deterministic timestamp | Medium |
 | SE2 | **Never produces 'chorus', 'intro', or 'outro'** — but Cassandra has progression patterns triggering on these. Dead code | High | ✅ **FIXED WAVE 7003** — `intro` and `chorus` now detected |
 | SE3 | **`beatsSinceChange > 32` for verse recovery** — ~48s at fallback rate. Too slow | Medium |
-| SE4 | **`Array.shift()` O(n)** on 64-element array every frame. Should use circular buffer | Low |
+| SE4 | **`Array.shift()` O(n)** on 64-element array every frame. Should use circular buffer | Low | ✅ **FIXED WAVE 7002.4** — Float32Array circular buffer |
 
 ---
 
@@ -471,14 +471,19 @@ sub-integer precision (126.3 instead of 126 — fixes W1). Reset on tempo change
 This provides optimal smoothing with formal confidence intervals, and naturally
 handles tempo changes (the random walk term allows drift).
 
-**REC-14: Weighted confidence using Weber's law**
+**~~REC-14: Weighted confidence using Weber's law~~** ✅ **MOOT**
 Replace `cv / 0.05` with `cv / (0.03 + 0.0003 * bpm)` — just-noticeable
 difference scales with tempo. At 120 BPM: threshold ~4.2%. At 85 BPM: ~3.6%.
 At 175 BPM: ~5.3%. More musically accurate. **Kills P2.**
+Moot: `estimatePllLock()` was removed in WAVE 7002. The CV threshold it used
+is no longer computed. Real `pattern.pllLocked` + `pattern.bpmConfidence` are used instead.
 
-**REC-15: Circular buffer for SectionTracker**
+**~~REC-15: Circular buffer for SectionTracker~~** ✅ **DONE WAVE 7002.4**
 Replace `energyHistory: number[]` with `Float32Array(64)` + index pointer.
 Eliminates O(n) `shift()` every frame. **Kills SE4.**
+Implemented: Float32Array(64) + position pointer + historyCount for both
+energyHistory and bassHistory. Zero-alloc avgRecent/avgOldest methods replace
+slice+reduce. No Array.push or Array.shift in hot path.
 
 ---
 
@@ -499,8 +504,8 @@ Eliminates O(n) `shift()` every frame. **Kills SE4.**
 | ~~P3~~ | ~~REC-11: Proper PLL~~ | ~~8h~~ | ~~High~~ | ✅ **DONE WAVE 7002.4** |
 | ~~P3~~ | ~~REC-12: Autocorrelation validator~~ | ~~6h~~ | ~~High~~ | ✅ **DONE WAVE 7002.4** |
 | ~~P3~~ | ~~REC-13: Kalman filter~~ | ~~4h~~ | ~~High~~ | ✅ **DONE WAVE 7002.4** |
-| P3 | REC-14: Weber's law confidence | 30min | Low | Moot — estimatePllLock removed |
-| P3 | REC-15: Circular buffer sections | 30min | Low | Open — kills SE4 |
+| ~~P3~~ | ~~REC-14: Weber's law confidence~~ | ~~30min~~ | ~~Low~~ | ✅ **MOOT** — estimatePllLock removed |
+| ~~P3~~ | ~~REC-15: Circular buffer sections~~ | ~~30min~~ | ~~Low~~ | ✅ **DONE WAVE 7002.4** — kills SE4 |
 
 ---
 
@@ -828,13 +833,13 @@ F11 was the root cause that amplified F2, F5, and F10. **All three are now resol
 | ~~P3~~ | ~~REC-11: Proper PLL with frequency feedback~~ | ~~8h~~ | ~~High~~ | ✅ **DONE WAVE 7002.4** (T2, T3) |
 | ~~P3~~ | ~~REC-12: Autocorrelation validator~~ | ~~6h~~ | ~~High~~ | ✅ **DONE WAVE 7002.4** |
 | ~~P3~~ | ~~REC-13: Kalman filter~~ | ~~4h~~ | ~~High~~ | ✅ **DONE WAVE 7002.4** |
-| P3 | REC-14: Weber's law confidence | 30min | Low | Moot — estimatePllLock removed |
-| P3 | REC-15: Circular buffer sections | 30min | Low | Open — kills SE4 |
+| ~~P3~~ | ~~REC-14: Weber's law confidence~~ | ~~30min~~ | ~~Low~~ | ✅ **MOOT** — estimatePllLock removed |
+| ~~P3~~ | ~~REC-15: Circular buffer sections~~ | ~~30min~~ | ~~Low~~ | ✅ **DONE WAVE 7002.4** — kills SE4 |
 
 ---
 
-*End of BPM Pipeline Audit — WAVE 7001 + 7001.2 + 7001.3 (Extended Forensic) + 7002 (Fix Express) + 7003 (Fix Lote 2) + 7002.4 (Fix Lotes 3+4)*
+*End of BPM Pipeline Audit — WAVE 7001 + 7001.2 + 7001.3 (Extended Forensic) + 7002 (Fix Express) + 7003 (Fix Lote 2) + 7002.4 (Fix Lotes 3+4+5)*
 *Generated as supplementary context for SELENE V3: Liquid Cognition blueprint.*
-*14 findings verified across 15 source files.*
-*14 findings fixed: WAVE 7002 (F2, F3, F6, F10, F11) + WAVE 7003 (F4, F5, F7, F8) + WAVE 7002.4 (W2, W4, T2, T3, REC-12, REC-13). tsc --noEmit: 0 errors.*
-*0 findings remain open (F1 false alarm, F9/F12 info only, W1/W3/W7 low-priority cosmetic, W1 fixed by Kalman sub-integer precision).*
+*15 findings verified across 15 source files.*
+*15 findings fixed: WAVE 7002 (F2, F3, F6, F10, F11) + WAVE 7003 (F4, F5, F7, F8) + WAVE 7002.4 (W2, W4, T2, T3, REC-12, REC-13, REC-15). tsc --noEmit: 0 errors.*
+*0 findings remain open. REC-14 moot (estimatePllLock removed). All recommendations resolved.*

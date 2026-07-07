@@ -1003,11 +1003,16 @@ VIBE_PROFILES['chill-lounge'] = VIBE_PROFILES['chill'];
 const DEFAULT_PROFILE: VibeSectionProfile = VIBE_PROFILES['techno'];
 
 export class SimpleSectionTracker {
-  private energyHistory: number[] = [];
-  private bassHistory: number[] = [];
+  // 🔧 WAVE 7002.4 (REC-15): Circular buffers replace number[] + shift()
+  // Eliminates O(n) Array.shift() every frame — kills SE4.
+  private energyHistory: Float32Array = new Float32Array(64);
+  private bassHistory: Float32Array = new Float32Array(64);
+  private energyHistoryPos = 0;
+  private bassHistoryPos = 0;
+  private historyCount = 0;
+  private readonly historySize = 64;
   private currentSection: SectionOutput['type'] = 'verse';
   private beatsSinceChange = 0;
-  private readonly historySize = 64;
   
   // 🎯 WAVE 289.5: Estado temporal para DROP management
   private dropStartTime: number = 0;
@@ -1045,12 +1050,13 @@ export class SimpleSectionTracker {
     const now = Date.now();
     const p = this.profile;
     
-    // Acumular historial
-    this.energyHistory.push(audio.volume);
-    this.bassHistory.push(audio.bass);
-    if (this.energyHistory.length > this.historySize) {
-      this.energyHistory.shift();
-      this.bassHistory.shift();
+    // Acumular historial (circular buffer — no shift() needed)
+    this.energyHistory[this.energyHistoryPos] = audio.volume;
+    this.bassHistory[this.bassHistoryPos] = audio.bass;
+    this.energyHistoryPos = (this.energyHistoryPos + 1) % this.historySize;
+    this.bassHistoryPos = (this.bassHistoryPos + 1) % this.historySize;
+    if (this.historyCount < this.historySize) {
+      this.historyCount++;
     }
     
     if (audio.onBeat) {
@@ -1088,11 +1094,11 @@ export class SimpleSectionTracker {
       (audio.treble * p.frequencyWeights.treble);
     const weightedEnergy = Math.max(rawWeightedEnergy, audio.volume * 0.85);
     
-    // Promedios recientes vs históricos
-    const recentEnergy = this.avg(this.energyHistory.slice(-16));
-    const olderEnergy = this.avg(this.energyHistory.slice(0, 32));
-    const recentBass = this.avg(this.bassHistory.slice(-16));
-    const olderBass = this.avg(this.bassHistory.slice(0, 32)) || 0.1;
+    // Promedios recientes vs históricos (circular buffer reads)
+    const recentEnergy = this.avgRecent(16);
+    const olderEnergy = this.avgOldest(32);
+    const recentBass = this.avgRecentBass(16);
+    const olderBass = this.avgOldestBass(32) || 0.1;
     
     const bassRatio = recentBass / olderBass;
     const energyDelta = recentEnergy - olderEnergy;
@@ -1230,17 +1236,72 @@ export class SimpleSectionTracker {
       energy: recentEnergy,
       transitionLikelihood,
       beatsSinceChange: this.beatsSinceChange,
-      confidence: Math.min(1, this.energyHistory.length / 32),
+      confidence: Math.min(1, this.historyCount / 32),
     };
   }
   
+  // 🔧 WAVE 7002.4 (REC-15): Circular buffer avg methods — zero-alloc reads
+  // avgRecent(n): average of the n most recently written entries
+  private avgRecent(n: number): number {
+    if (this.historyCount === 0) return 0
+    const count = Math.min(n, this.historyCount)
+    let sum = 0
+    for (let i = 0; i < count; i++) {
+      const idx = (this.energyHistoryPos - 1 - i + this.historySize * 2) % this.historySize
+      sum += this.energyHistory[idx]
+    }
+    return sum / count
+  }
+
+  // avgOldest(n): average of the n oldest entries in the buffer
+  private avgOldest(n: number): number {
+    if (this.historyCount === 0) return 0
+    const count = Math.min(n, this.historyCount)
+    let sum = 0
+    // Oldest entry is at energyHistoryPos when buffer is full,
+    // or at index 0 when buffer is not yet full.
+    const oldestPos = this.historyCount >= this.historySize ? this.energyHistoryPos : 0
+    for (let i = 0; i < count; i++) {
+      const idx = (oldestPos + i) % this.historySize
+      sum += this.energyHistory[idx]
+    }
+    return sum / count
+  }
+
+  private avgRecentBass(n: number): number {
+    if (this.historyCount === 0) return 0
+    const count = Math.min(n, this.historyCount)
+    let sum = 0
+    for (let i = 0; i < count; i++) {
+      const idx = (this.bassHistoryPos - 1 - i + this.historySize * 2) % this.historySize
+      sum += this.bassHistory[idx]
+    }
+    return sum / count
+  }
+
+  private avgOldestBass(n: number): number {
+    if (this.historyCount === 0) return 0
+    const count = Math.min(n, this.historyCount)
+    let sum = 0
+    const oldestPos = this.historyCount >= this.historySize ? this.bassHistoryPos : 0
+    for (let i = 0; i < count; i++) {
+      const idx = (oldestPos + i) % this.historySize
+      sum += this.bassHistory[idx]
+    }
+    return sum / count
+  }
+
   private avg(arr: number[]): number {
     return arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
   }
   
   reset(): void {
-    this.energyHistory = [];
-    this.bassHistory = [];
+    // 🔧 WAVE 7002.4 (REC-15): Reset circular buffers
+    this.energyHistory.fill(0)
+    this.bassHistory.fill(0)
+    this.energyHistoryPos = 0
+    this.bassHistoryPos = 0
+    this.historyCount = 0
     this.currentSection = 'verse';
     this.beatsSinceChange = 0;
     this.dropStartTime = 0;

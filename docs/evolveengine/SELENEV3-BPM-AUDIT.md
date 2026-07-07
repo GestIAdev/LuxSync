@@ -451,18 +451,23 @@ Replace the current "setBpm every frame" approach with a proper PLL:
 This provides smooth BPM tracking with built-in phase correction. The current
 BeatDetector may already implement parts of this — audit and enhance.
 
-**REC-12: Spectral autocorrelation as secondary validator**
+**~~REC-12: Spectral autocorrelation as secondary validator~~** ✅ **DONE WAVE 7002.4**
 The archived `GodEarBPMTracker` (autocorrelation) could run in parallel as a
 **tempo validator**. If interval-based BPM and autocorrelation BPM agree within
 ±5%, boost confidence to 1.0. If they disagree, use the interval-based value
 but lower confidence. This cross-validation would dramatically improve cold-start
 reliability and tempo-change detection.
+Implemented: 64-sample energy history buffer + O(n²) autocorrelation every 30
+frames. Agreement (±5%) boosts confidence +0.1; disagreement (>10%) lowers -0.15.
 
-**REC-13: Kalman filter for BPM smoothing**
+**~~REC-13: Kalman filter for BPM smoothing~~** ✅ **DONE WAVE 7002.4**
 Replace median smoothing with a 1D Kalman filter:
 - State: BPM estimate + estimate uncertainty
 - Measurement: Each new interval-derived BPM
 - Process model: Constant tempo + small random walk
+Implemented: 1D Kalman running alongside median. Q=0.5 BPM², R scaled by
+(1-confidence). Kalman output used as stableBpm when initialized, providing
+sub-integer precision (126.3 instead of 126 — fixes W1). Reset on tempo change.
 This provides optimal smoothing with formal confidence intervals, and naturally
 handles tempo changes (the random walk term allows drift).
 
@@ -492,8 +497,8 @@ Eliminates O(n) `shift()` every frame. **Kills SE4.**
 | ~~P2~~ | ~~REC-9: IQR confidence~~ | ~~1h~~ | ~~Medium~~ | ✅ **DONE WAVE 7002.4** |
 | ~~P2~~ | ~~REC-10: Tempo-change detection~~ | ~~3h~~ | ~~Medium~~ | ✅ **DONE WAVE 7002.4** |
 | ~~P3~~ | ~~REC-11: Proper PLL~~ | ~~8h~~ | ~~High~~ | ✅ **DONE WAVE 7002.4** |
-| P3 | REC-12: Autocorrelation validator | 6h | High | Open |
-| P3 | REC-13: Kalman filter | 4h | High | Open |
+| ~~P3~~ | ~~REC-12: Autocorrelation validator~~ | ~~6h~~ | ~~High~~ | ✅ **DONE WAVE 7002.4** |
+| ~~P3~~ | ~~REC-13: Kalman filter~~ | ~~4h~~ | ~~High~~ | ✅ **DONE WAVE 7002.4** |
 | P3 | REC-14: Weber's law confidence | 30min | Low | Moot — estimatePllLock removed |
 | P3 | REC-15: Circular buffer sections | 30min | Low | Open — kills SE4 |
 
@@ -821,15 +826,15 @@ F11 was the root cause that amplified F2, F5, and F10. **All three are now resol
 | ~~P2~~ | ~~REC-9: IQR confidence~~ | ~~1h~~ | ~~Medium~~ | ✅ **DONE WAVE 7002.4** (W2) |
 | ~~P2~~ | ~~REC-10: Tempo-change detection~~ | ~~3h~~ | ~~Medium~~ | ✅ **DONE WAVE 7002.4** (W4) |
 | ~~P3~~ | ~~REC-11: Proper PLL with frequency feedback~~ | ~~8h~~ | ~~High~~ | ✅ **DONE WAVE 7002.4** (T2, T3) |
-| P3 | REC-12: Autocorrelation validator | 6h | High | Open |
-| P3 | REC-13: Kalman filter | 4h | High | Open |
+| ~~P3~~ | ~~REC-12: Autocorrelation validator~~ | ~~6h~~ | ~~High~~ | ✅ **DONE WAVE 7002.4** |
+| ~~P3~~ | ~~REC-13: Kalman filter~~ | ~~4h~~ | ~~High~~ | ✅ **DONE WAVE 7002.4** |
 | P3 | REC-14: Weber's law confidence | 30min | Low | Moot — estimatePllLock removed |
 | P3 | REC-15: Circular buffer sections | 30min | Low | Open — kills SE4 |
 
 ---
 
-*End of BPM Pipeline Audit — WAVE 7001 + 7001.2 + 7001.3 (Extended Forensic) + 7002 (Fix Express) + 7003 (Fix Lote 2) + 7002.4 (Fix Lote 3)*
+*End of BPM Pipeline Audit — WAVE 7001 + 7001.2 + 7001.3 (Extended Forensic) + 7002 (Fix Express) + 7003 (Fix Lote 2) + 7002.4 (Fix Lotes 3+4)*
 *Generated as supplementary context for SELENE V3: Liquid Cognition blueprint.*
-*12 findings verified across 15 source files.*
-*12 findings fixed: WAVE 7002 (F2, F3, F6, F10, F11) + WAVE 7003 (F4, F5, F7, F8) + WAVE 7002.4 (W2, W4, T2, T3). tsc --noEmit: 0 errors.*
-*0 findings remain open (F1 false alarm, F9/F12 info only, W1/W3/W7 low-priority cosmetic).*
+*14 findings verified across 15 source files.*
+*14 findings fixed: WAVE 7002 (F2, F3, F6, F10, F11) + WAVE 7003 (F4, F5, F7, F8) + WAVE 7002.4 (W2, W4, T2, T3, REC-12, REC-13). tsc --noEmit: 0 errors.*
+*0 findings remain open (F1 false alarm, F9/F12 info only, W1/W3/W7 low-priority cosmetic, W1 fixed by Kalman sub-integer precision).*

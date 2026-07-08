@@ -227,6 +227,16 @@ import { LiquidTelemetryRecorder } from './liquid/LiquidTelemetryRecorder'
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🌊 WAVE 7004.5: SELENE V3 AUTHORITY CUTOVER
+// ═══════════════════════════════════════════════════════════════════════════
+// V3 Liquid Cognition tiene autoridad sobre SI disparar. El fluido `ignite`
+// es la señal soberana. V2 (DecisionMaker) sigue seleccionando QUÉ efecto,
+// pero no puede vetar el disparo cuando V3 dice ignite.
+// Los mecanismos de seguridad (HARD_COOLDOWN, VisualConscienceEngine)
+// siguen evaluando el candidato — V3 tiene autoridad, no inmunidad.
+const SELENE_V3_AUTHORITY = true
+
+// ═══════════════════════════════════════════════════════════════════════════
 // 🌊 WAVE 1073.4: OCEANIC EFFECTS - NO DNA COOLDOWN OVERRIDE
 // ═══════════════════════════════════════════════════════════════════════════
 // Estos efectos tienen cooldowns especiales gestionados por ChillStereoPhysics.
@@ -421,13 +431,14 @@ export class SeleneTitanConscious extends EventEmitter {
   private _lastSectionForCacheInvalidation: string = ''
 
   // ═══════════════════════════════════════════════════════════════════════
-  // 🌊 WAVE 7003.3: LIQUID COGNITION V3 — SHADOW MODE
-  // El núcleo fluídico corre en paralelo (solo lectura) para telemetría.
-  // V2 mantiene autoridad absoluta sobre effectDecision y colorDecision.
+  // 🌊 WAVE 7004.5: LIQUID COGNITION V3 — AUTHORITY MODE
+  // V3 tiene autoridad sobre SI disparar (ignite). V2 selecciona QUÉ efecto.
+  // HARD_COOLDOWN y VisualConscienceEngine siguen evaluando el candidato.
   // ═══════════════════════════════════════════════════════════════════════
   private _liquidCore: LiquidCognitionCore = new LiquidCognitionCore()
   private _lastLiquidVerdict: LiquidVerdict | null = null
   private _liquidRecorder: LiquidTelemetryRecorder = new LiquidTelemetryRecorder()
+  private _v3Ignite: boolean = false
   
   constructor(config: Partial<SeleneTitanConsciousConfig> = {}) {
     super()
@@ -504,10 +515,11 @@ export class SeleneTitanConscious extends EventEmitter {
     // Output inicial
     this.lastOutput = createEmptyOutput()
 
-    // 🌊 WAVE 7003.3: Liquid Cognition V3 — Shadow Mode init
+    // 🌊 WAVE 7004.5: Liquid Cognition V3 — Authority Mode init
     this._liquidCore = new LiquidCognitionCore()
     this._lastLiquidVerdict = null
     this._liquidRecorder = new LiquidTelemetryRecorder()
+    this._v3Ignite = false
 
     if (this.config.debug) {
       // WAVE 2098: Boot silence — GENESIS banner removed (debug-only noise)
@@ -692,26 +704,11 @@ export class SeleneTitanConscious extends EventEmitter {
     
     // Actualizar historial
     this.updateHistory(pattern)
-    
-    // ─────────────────────────────────────────────────────────────────────
-    // 3. 🧠 THINK: Decidir qué hacer
-    // ─────────────────────────────────────────────────────────────────────
-    const rawDecision = await this.think(titanState, pattern)
-    
-    // ─────────────────────────────────────────────────────────────────────
-    // 4. 💭 DREAM: Simular si la decisión es buena
-    // ─────────────────────────────────────────────────────────────────────
-    const dreamValidated = this.dream(titanState, rawDecision)
-    
-    // ─────────────────────────────────────────────────────────────────────
-    // 5. 📜 VALIDATE: Asegurar que respeta la Constitución
-    // ─────────────────────────────────────────────────────────────────────
-    const finalOutput = this.validate(titanState, dreamValidated)
 
     // ─────────────────────────────────────────────────────────────────────
-    // 🌊 WAVE 7003.3: LIQUID COGNITION V3 — SHADOW MODE
-    // El núcleo fluídico corre en paralelo para telemetría.
-    // V2 mantiene autoridad absoluta — V3 NO modifica effectDecision ni colorDecision.
+    // 🌊 WAVE 7004.5: LIQUID COGNITION V3 — PRE-THINK (AUTHORITY)
+    // V3 procesa ANTES que V2 para que `ignite` pueda influir en el pipeline.
+    // Si SELENE_V3_AUTHORITY es true e ignite = true, V3 fuerza el disparo.
     // ─────────────────────────────────────────────────────────────────────
     {
       const now = Date.now()
@@ -720,16 +717,6 @@ export class SeleneTitanConscious extends EventEmitter {
       const beauty = this.currentBeauty?.totalBeauty ?? 0.5
       const consonance = this.currentConsonance?.totalConsonance ?? 0.7
 
-      // Determinar genoma del efecto candidato (si V2 decidió uno)
-      let effectGenome = NEUTRAL_GENOME
-      if (finalOutput.effectDecision?.effectType) {
-        const entry = getDynamicEffectRegistry().getEntry(finalOutput.effectDecision.effectType)
-        if (entry?.dna) {
-          effectGenome = entry.dna
-        }
-      }
-
-      // Predicción y alineación (simplified para shadow mode)
       const predProb = this.state.activePrediction?.probability ?? 0
       const predAlign = this.state.activePrediction ? 0.7 : 0.0
 
@@ -748,18 +735,63 @@ export class SeleneTitanConscious extends EventEmitter {
         predictionAlignment: predAlign,
         totalBeauty: beauty,
         consonance,
-        effectGenome,
+        effectGenome: NEUTRAL_GENOME,
       }, now)
 
-      // Si V3 ignite Y V2 también disparó → notificar ignición materializada
+      this._v3Ignite = SELENE_V3_AUTHORITY && this._lastLiquidVerdict.ignite
+
+      if (this._v3Ignite) {
+        console.log(
+          `[SeleneTitanConscious 🌊] V3 IGNITE: confidence=${this._lastLiquidVerdict.confidence.toFixed(3)} ` +
+          `intensity=${this._lastLiquidVerdict.intensity.toFixed(3)} squelch=${this._lastLiquidVerdict.squelch.toFixed(3)} ` +
+          `tension=${this._lastLiquidVerdict.fluid.tension.toFixed(3)} → V3 AUTHORITY ACTIVE`
+        )
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // 3. 🧠 THINK: Decidir qué hacer
+    // ─────────────────────────────────────────────────────────────────────
+    const rawDecision = await this.think(titanState, pattern)
+    
+    // ─────────────────────────────────────────────────────────────────────
+    // 4. 💭 DREAM: Simular si la decisión es buena
+    // ─────────────────────────────────────────────────────────────────────
+    const dreamValidated = this.dream(titanState, rawDecision)
+    
+    // ─────────────────────────────────────────────────────────────────────
+    // 5. 📜 VALIDATE: Asegurar que respeta la Constitución
+    // ─────────────────────────────────────────────────────────────────────
+    const finalOutput = this.validate(titanState, dreamValidated)
+
+    // ─────────────────────────────────────────────────────────────────────
+    // 🌊 WAVE 7004.5: LIQUID COGNITION V3 — POST-VALIDATE TELEMETRY
+    // El veredicto V3 ya fue computado antes de think(). Aquí solo
+    // registramos telemetría y notificamos ignición materializada.
+    // ─────────────────────────────────────────────────────────────────────
+    if (this._lastLiquidVerdict) {
+      const now = Date.now()
+
+      // Si V3 ignite Y un efecto pasó todos los gates → notificar ignición materializada
       if (this._lastLiquidVerdict.ignite && finalOutput.effectDecision) {
         this._liquidCore.notifyIgnition(this._lastLiquidVerdict.intensity, now)
+        console.log(
+          `[SeleneTitanConscious 🌊✅] V3 IGNITION MATERIALIZED: ` +
+          `${finalOutput.effectDecision.effectName ?? finalOutput.effectDecision.effectType} ` +
+          `| I=${this._lastLiquidVerdict.intensity.toFixed(3)}`
+        )
+      } else if (this._v3Ignite && !finalOutput.effectDecision) {
+        // V3 quiso disparar pero V2/safety no produjo un candidato válido
+        console.log(
+          `[SeleneTitanConscious 🌊⏸️] V3 IGNITE SUPPRESSED: no valid effect candidate ` +
+          `(HARD_COOLDOWN or Gatekeeper blocked) — safety wins`
+        )
       }
 
       // 🌊 WAVE 7003.4: Grabar frame en la Caja Negra (ring buffer zero-alloc)
       this._liquidRecorder.recordFrame(this._lastLiquidVerdict, now)
 
-      // Exponer telemetría V3 en debugInfo (sin alterar V2)
+      // Exponer telemetría V3 en debugInfo
       finalOutput.debugInfo.liquidCognition = {
         ignite: this._lastLiquidVerdict.ignite,
         confidence: this._lastLiquidVerdict.confidence,
@@ -1198,7 +1230,7 @@ export class SeleneTitanConscious extends EventEmitter {
     const fuzzyUnlock = this.lastFuzzyDecision 
       && (this.lastFuzzyDecision.action === 'strike' || this.lastFuzzyDecision.action === 'force_strike')
       && this.lastFuzzyDecision.confidence >= 0.50
-    const shouldRunDNA = (huntDecision.worthiness >= WORTHINESS_THRESHOLD || fuzzyUnlock) && !activeDictator
+    const shouldRunDNA = (huntDecision.worthiness >= WORTHINESS_THRESHOLD || fuzzyUnlock || this._v3Ignite) && !activeDictator
     if (shouldRunDNA) {
       // 🩸 WAVE 2101.4: GLOBAL EFFECT COOLDOWN GATE
       // Si se disparó CUALQUIER efecto hace menos de 8s, ni siquiera ejecutar pipeline.
@@ -1230,7 +1262,7 @@ export class SeleneTitanConscious extends EventEmitter {
       const JUST_FIRED_SHIELD_MS = 2000
       if (timeSinceLastEffect < JUST_FIRED_SHIELD_MS) {
         dreamIntegrationData = this.lastDreamIntegrationResult  // Hard block — ni drops pasan
-      } else if (timeSinceLastEffect < globalCooldownMs && !isDropUrgent && !isDropIncoming) {
+      } else if (timeSinceLastEffect < globalCooldownMs && !isDropUrgent && !isDropIncoming && !this._v3Ignite) {
         // 🩸 WAVE 2104.1: DIAGNOSTIC — Ver cuánto bloquea el global cooldown
         if (this.stats.framesProcessed % 15 === 0) {
           console.log(`[GLOBAL_COOLDOWN] ⏸️ Cached: ${Math.ceil((globalCooldownMs - timeSinceLastEffect) / 1000)}s left | vibe=${pattern.vibeId} lastEffect=${this.lastEffectType ?? 'none'}`)
@@ -1923,10 +1955,11 @@ export class SeleneTitanConscious extends EventEmitter {
     resetBeautyHistory()
     resetConsonanceState()
 
-    // 🌊 WAVE 7003.3: Reset Liquid Cognition V3
+    // 🌊 WAVE 7004.5: Reset Liquid Cognition V3
     this._liquidCore.reset()
     this._lastLiquidVerdict = null
     this._liquidRecorder.reset()
+    this._v3Ignite = false
 
     // Resetear cognición (PHASE 3)
     resetHuntEngine()

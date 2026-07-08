@@ -132,17 +132,18 @@ export interface ILiquidCognitionProfile
   extends TensionCoefficients, InertiaCoefficients, FusionCoefficients, IgnitionCoefficients {}
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Perfil por defecto — valores "Inicial" del Blueprint §11
+// Perfil calibrado — WAVE 7004.4 Monte Carlo Batch Calibration
+// 10 tracks, Simulated Annealing multi-start, coste global ponderado
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const DEFAULT_LIQUID_PROFILE: Readonly<ILiquidCognitionProfile> = Object.freeze({
   // — Tensión Superficial —
   T_min: 0.30,
   T_max: 0.85,
-  T_base: 0.50,
-  kappa_sigma: 0.35,
-  alpha_rise: 0.04,
-  tau_sat: 6.0,
+  T_base: 0.800,       // ⬆ 0.50 → 0.800 (MC)
+  kappa_sigma: 0.800,   // ⬆ 0.35 → 0.800 (MC)
+  alpha_rise: 0.010,    // ⬇ 0.04 → 0.010 (MC)
+  tau_sat: 1.0,         // ⬇ 6.0  → 1.0   (MC)
   lambda_0: 0.008,
   kappa_d: 2.5,
   D_half: 8.0,
@@ -164,13 +165,13 @@ export const DEFAULT_LIQUID_PROFILE: Readonly<ILiquidCognitionProfile> = Object.
   kappa_vreset: 0.15,
 
   // — Fusión —
-  w1: 0.22,
-  w2: 0.20,
-  w3: 0.15,
-  w4: 0.15,
-  w5: 0.12,
-  w6: 0.08,
-  w7: 0.08,
+  w1: 0.1699,  // ⬇ 0.22 (MC) — s_DNA
+  w2: 0.0291,  // ⬇ 0.20 (MC) — s_Z
+  w3: 0.3252,  // ⬆ 0.15 (MC) — s_E (dominante)
+  w4: 0.1515,  // ≈ 0.15 (MC) — s_V
+  w5: 0.0273,  // ⬇ 0.12 (MC) — s_X
+  w6: 0.2766,  // ⬆ 0.08 (MC) — s_P (Cassandra)
+  w7: 0.0204,  // ⬇ 0.08 (MC) — s_B
   sigma_g: 0.35,
   kappa_z: 4.0,
   b_z: 0.0,
@@ -180,7 +181,7 @@ export const DEFAULT_LIQUID_PROFILE: Readonly<ILiquidCognitionProfile> = Object.
   kappa_vmax: 0.75,
 
   // — Ignición —
-  Q_base: 0.45,
+  Q_base: 0.700,       // ⬆ 0.45 → 0.700 (MC) — lever principal
   kappa_T: 0.50,
   kappa_V: 0.40,
   I_min: 0.35,

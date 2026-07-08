@@ -439,6 +439,7 @@ export class SeleneTitanConscious extends EventEmitter {
   private _lastLiquidVerdict: LiquidVerdict | null = null
   private _liquidRecorder: LiquidTelemetryRecorder = new LiquidTelemetryRecorder()
   private _v3Ignite: boolean = false
+  private _lastSuppressedLog: number = 0
   
   constructor(config: Partial<SeleneTitanConsciousConfig> = {}) {
     super()
@@ -741,11 +742,15 @@ export class SeleneTitanConscious extends EventEmitter {
       this._v3Ignite = SELENE_V3_AUTHORITY && this._lastLiquidVerdict.ignite
 
       if (this._v3Ignite) {
-        console.log(
-          `[SeleneTitanConscious 🌊] V3 IGNITE: confidence=${this._lastLiquidVerdict.confidence.toFixed(3)} ` +
-          `intensity=${this._lastLiquidVerdict.intensity.toFixed(3)} squelch=${this._lastLiquidVerdict.squelch.toFixed(3)} ` +
-          `tension=${this._lastLiquidVerdict.fluid.tension.toFixed(3)} → V3 AUTHORITY ACTIVE`
-        )
+        const now = Date.now()
+        if (now - this._lastSuppressedLog > 1000) {
+          console.log(
+            `[SeleneTitanConscious 🌊] V3 IGNITE: confidence=${this._lastLiquidVerdict.confidence.toFixed(3)} ` +
+            `intensity=${this._lastLiquidVerdict.intensity.toFixed(3)} squelch=${this._lastLiquidVerdict.squelch.toFixed(3)} ` +
+            `tension=${this._lastLiquidVerdict.fluid.tension.toFixed(3)} → V3 AUTHORITY ACTIVE`
+          )
+          this._lastSuppressedLog = now
+        }
       }
     }
 
@@ -782,10 +787,13 @@ export class SeleneTitanConscious extends EventEmitter {
         )
       } else if (this._v3Ignite && !finalOutput.effectDecision) {
         // V3 quiso disparar pero V2/safety no produjo un candidato válido
-        console.log(
-          `[SeleneTitanConscious 🌊⏸️] V3 IGNITE SUPPRESSED: no valid effect candidate ` +
-          `(HARD_COOLDOWN or Gatekeeper blocked) — safety wins`
-        )
+        if (now - this._lastSuppressedLog > 1000) {
+          console.log(
+            `[SeleneTitanConscious 🌊⏸️] V3 IGNITE SUPPRESSED: no valid effect candidate ` +
+            `(HARD_COOLDOWN or Gatekeeper blocked) — safety wins`
+          )
+          this._lastSuppressedLog = now
+        }
       }
 
       // 🌊 WAVE 7003.4: Grabar frame en la Caja Negra (ring buffer zero-alloc)

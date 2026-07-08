@@ -140,7 +140,7 @@ export const DEFAULT_LIQUID_PROFILE: Readonly<ILiquidCognitionProfile> = Object.
   // — Tensión Superficial —
   T_min: 0.30,
   T_max: 0.85,
-  T_base: 0.800,       // ⬆ 0.50 → 0.800 (MC)
+  T_base: 0.600,       // ⬇ 0.800 → 0.600 (relaxed for fluidity)
   kappa_sigma: 0.800,   // ⬆ 0.35 → 0.800 (MC)
   alpha_rise: 0.010,    // ⬇ 0.04 → 0.010 (MC)
   tau_sat: 1.0,         // ⬇ 6.0  → 1.0   (MC)
@@ -181,7 +181,7 @@ export const DEFAULT_LIQUID_PROFILE: Readonly<ILiquidCognitionProfile> = Object.
   kappa_vmax: 0.75,
 
   // — Ignición —
-  Q_base: 0.700,       // ⬆ 0.45 → 0.700 (MC) — lever principal
+  Q_base: 0.550,       // ⬇ 0.700 → 0.550 (relaxed for fluidity)
   kappa_T: 0.50,
   kappa_V: 0.40,
   I_min: 0.35,

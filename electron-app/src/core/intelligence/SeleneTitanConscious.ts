@@ -95,7 +95,7 @@ import {
   resetHuntEngine,
   getHuntState,
   type HuntDecision,
-  type SpectralHint,  // 🔮 WAVE 1026: ROSETTA STONE
+  getEligibleCandidates,
 } from './think/HuntEngine'
 
 import {
@@ -173,9 +173,7 @@ import {
 // ═══════════════════════════════════════════════════════════════════════════
 
 import {
-  FuzzyDecisionMaker,
   DropBridge,
-  type FuzzyDecision,
   type DropBridgeResult,
 } from './think'
 
@@ -319,10 +317,7 @@ export class SeleneTitanConscious extends EventEmitter {
   private contextualMemory: ContextualMemory
   private lastMemoryOutput: ContextualMemoryOutput | null = null
   
-  // 🎲 WAVE 667-669: Fuzzy Decision System
-  private fuzzyDecisionMaker: FuzzyDecisionMaker
   private dropBridge: DropBridge
-  private lastFuzzyDecision: FuzzyDecision | null = null
   private lastDropBridgeResult: DropBridgeResult | null = null
   
   // 🎯 WAVE 685: Arsenal Repository (WAVE 4992)
@@ -457,12 +452,8 @@ export class SeleneTitanConscious extends EventEmitter {
       zScoreEpic: 2.5,       // Threshold para anomalía
     })
     
-    // 🎲 WAVE 667-669: Inicializar sistema de decisión fuzzy
-    this.fuzzyDecisionMaker = new FuzzyDecisionMaker()
     this.dropBridge = new DropBridge({
-      zScoreThreshold: 3.0,       // 3 sigma = condición divina
       peakSections: ['drop', 'chorus'],
-      minEnergy: 0.75,
     })
     
     // 🎯 WAVE 685: Inicializar Arsenal Repository
@@ -1092,15 +1083,8 @@ export class SeleneTitanConscious extends EventEmitter {
       timestamp: Date.now()
     }
     
-    // 🔮 WAVE 1026: ROSETTA STONE - Build SpectralHint from TitanState
-    const spectralHint = {
-      clarity: state.clarity,
-      harshness: state.harshness,
-      texture: this.deriveTextureFromState(state),
-    }
-    
-    // 2. HUNT ENGINE: Procesar FSM del depredador (🔮 con SpectralHint)
-    const huntDecision = processHunt(pattern, beautyAnalysis, consonanceAnalysis, spectralHint)
+    // 2. HUNT ENGINE: V3.3.B — Telemetry-only FSM (no mathematical authority)
+    const huntDecision = processHunt(pattern)
     
     // 3. PREDICTION ENGINE: Anticipar próximos eventos
     // 🔮 WAVE 1169: Usar predictCombined para detección reactiva por energía
@@ -1149,19 +1133,6 @@ export class SeleneTitanConscious extends EventEmitter {
       vibeId: pattern.vibeId,
       hasKick: false, // TODO: Integrar detección de transientes
       harshness: state.harshness,
-    })
-    
-    // 3.5b. FUZZY DECISION: Evaluar lógica difusa
-    // 🔋 WAVE 932: Ahora con consciencia de zona energética
-    this.lastFuzzyDecision = this.fuzzyDecisionMaker.evaluate({
-      energy: state.rawEnergy,
-      zScore: zScore,
-      sectionType: normalizedSection as 'intro' | 'verse' | 'chorus' | 'bridge' | 'buildup' | 'drop' | 'breakdown' | 'outro',
-      harshness: state.harshness ?? 0,
-      huntScore: huntDecision.confidence,
-      beauty: beautyAnalysis.totalBeauty,
-      energyContext: energyContext,  // 🔋 WAVE 932: Inyectar contexto energético
-      minEnergySinceLastEffect: this.minEnergySinceLastEffect,  // 🩸 WAVE 6040: Valley tracker
     })
     
     // ═══════════════════════════════════════════════════════════════════════
@@ -1227,18 +1198,9 @@ export class SeleneTitanConscious extends EventEmitter {
     // 🔒 WAVE 1179: Si hay dictador activo, el DNA respeta el silencio.
     // ═══════════════════════════════════════════════════════════════════════
     
-    // Si Hunt detectó momento digno Y no hay dictador activo, ejecutar simulador DNA
-    const WORTHINESS_THRESHOLD = 0.65
-    // 🩸 WAVE 2105: FUZZY RESURRECTION — Fuzzy can unlock the DNA pipeline
-    // Before: Only Hunt worthiness >= 0.65 could trigger DNA simulation.
-    // Problem: Hunt learning phase emits worthiness=0 for 120 frames (now 15),
-    // but even with the fix, there are moments where Hunt is at 0.60 (evaluating)
-    // while Fuzzy KNOWS it should strike (contextual intelligence: zone, z-score, mood).
-    // FIX: If Fuzzy says strike/force_strike with good confidence, that also unlocks DNA.
-    const fuzzyUnlock = this.lastFuzzyDecision 
-      && (this.lastFuzzyDecision.action === 'strike' || this.lastFuzzyDecision.action === 'force_strike')
-      && this.lastFuzzyDecision.confidence >= 0.50
-    const shouldRunDNA = (huntDecision.worthiness >= WORTHINESS_THRESHOLD || fuzzyUnlock || this._v3Ignite) && !activeDictator
+    // V3.3.B: V3 ignite is the sole authority for running the DNA pipeline.
+    // HuntEngine worthiness is telemetry only — no longer gates the pipeline.
+    const shouldRunDNA = (this._v3Ignite || huntDecision.suggestedPhase !== 'sleeping') && !activeDictator
     if (shouldRunDNA) {
       // 🩸 WAVE 2101.4: GLOBAL EFFECT COOLDOWN GATE
       // Si se disparó CUALQUIER efecto hace menos de 8s, ni siquiera ejecutar pipeline.
@@ -1419,8 +1381,6 @@ export class SeleneTitanConscious extends EventEmitter {
       spectralContext: spectralContextForDecision,
       // 🔒 WAVE 1177: CALIBRATION - Check if dictator is active to prevent DIVINE spam
       activeDictator: getEffectManager().hasDictator(),
-      // 🩸 WAVE 2105: FUZZY RESURRECTION — Fuzzy gets a real vote in decisions
-      fuzzyDecision: this.lastFuzzyDecision ?? undefined,
       // 🐘 WAVE 4861: Energía máxima del buffer de 30s para Absolute Energy Gate
       energyMaxHistoric: this.lastMemoryOutput?.stats.energy.max,
     }
@@ -1753,23 +1713,6 @@ export class SeleneTitanConscious extends EventEmitter {
       }
     }
     
-    // Log periódico con información fuzzy
-    if (this.config.debug && this.stats.framesProcessed % 30 === 0) {
-      const fuzzyEmoji = {
-        force_strike: '⚡',
-        strike: '🎯',
-        prepare: '🔮',
-        hold: '😴',
-      }[this.lastFuzzyDecision.action]
-      
-      // console.log(
-      //   `[SeleneTitanConscious] 🧠 Hunt=${this.state.huntPhase} ` +
-      //   `Fuzzy=${fuzzyEmoji}${this.lastFuzzyDecision.action} ` +
-      //   `Z=${zScore.toFixed(1)}σ ` +
-      //   `Alert=${this.lastDropBridgeResult.alertLevel}`
-      // )
-    }
-    
     return output
   }
   
@@ -1981,10 +1924,7 @@ export class SeleneTitanConscious extends EventEmitter {
     this.contextualMemory.reset()
     this.lastMemoryOutput = null
     
-    // 🎲 WAVE 667-669: Resetear sistema fuzzy
-    this.fuzzyDecisionMaker.reset()
     this.dropBridge.reset()
-    this.lastFuzzyDecision = null
     this.lastDropBridgeResult = null
     
     if (this.config.debug) {
@@ -2042,16 +1982,6 @@ export class SeleneTitanConscious extends EventEmitter {
   }
   
   // ═══════════════════════════════════════════════════════════════════════
-  // 🎲 WAVE 667-669: API DE FUZZY DECISION SYSTEM
-  // ═══════════════════════════════════════════════════════════════════════
-  
-  /**
-   * Obtiene la última decisión fuzzy tomada.
-   */
-  getFuzzyDecision(): FuzzyDecision | null {
-    return this.lastFuzzyDecision
-  }
-  
   /**
    * Obtiene el último resultado del Drop Bridge.
    */

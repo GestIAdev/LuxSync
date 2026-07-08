@@ -82,8 +82,6 @@ export class CalibrationRunner {
         const kickCount = snapshots.filter(s => s.kickDetected).length;
         const snareCount = snapshots.filter(s => s.snareDetected).length;
         const dropBridgeTriggers = snapshots.filter(s => s.dropBridgeTriggered).length;
-        const fuzzyStrikes = snapshots.filter(s => s.fuzzyAction === 'strike' || s.fuzzyAction === 'force_strike').length;
-        const fuzzyHolds = snapshots.filter(s => s.fuzzyAction === 'hold').length;
         // Section distribution
         const sectionCounts = {};
         for (const snapshot of snapshots) {
@@ -111,8 +109,6 @@ export class CalibrationRunner {
                 kickCount,
                 snareCount,
                 dropBridgeTriggers,
-                fuzzyStrikes,
-                fuzzyHolds
             },
             sectionDistribution,
             snapshots

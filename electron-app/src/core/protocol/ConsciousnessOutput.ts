@@ -252,9 +252,6 @@ export interface ConsciousnessDebugInfo {
   // 🎲 WAVE 667-669: FUZZY DECISION DEBUG INFO
   // ═══════════════════════════════════════════════════════════════════════
   
-  /** Acción decidida por el sistema fuzzy */
-  fuzzyAction?: 'force_strike' | 'strike' | 'prepare' | 'hold'
-  
   /** Z-Score actual de energía */
   zScore?: number
   

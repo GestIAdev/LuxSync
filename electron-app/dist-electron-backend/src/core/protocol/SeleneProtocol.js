@@ -163,8 +163,6 @@ export function createDefaultCognitive() {
             },
             ethicsFlags: [],
             energyZone: 'calm',
-            // 🎲 WAVE 1168: Fuzzy Decision debug
-            fuzzyAction: null,
             zScore: 0,
             dropBridgeAlert: 'none',
             // 🔥 WAVE 1176: OPERATION SNIPER
@@ -182,7 +180,9 @@ export function createDefaultCognitive() {
             },
             consensusScore: 0.33,
             dreamHistory: [],
-            predictionHistory: []
+            predictionHistory: [],
+            // 🌊 WAVE 7003.4: Liquid Cognition default (offline)
+            liquidCognition: null
         }
     };
 }

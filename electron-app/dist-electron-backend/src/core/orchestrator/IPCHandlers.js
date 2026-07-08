@@ -58,6 +58,28 @@ export function setupIPCHandlers(deps) {
     setupAudioMatrixHandlers(deps);
     setupTheiaHandlers();
     setupCalibrationHandlers();
+    setupLiquidTelemetryHandlers(deps);
+}
+// =============================================================================
+// 🌊 WAVE 7004.2: LIQUID TELEMETRY DUMP BRIDGE
+// =============================================================================
+function setupLiquidTelemetryHandlers(deps) {
+    const { titanOrchestrator } = deps;
+    ipcMain.handle('liquid-telemetry:dump', async () => {
+        if (!titanOrchestrator) {
+            return { success: false, error: 'TitanOrchestrator not initialized' };
+        }
+        try {
+            const filePath = await titanOrchestrator.dumpLiquidTelemetry();
+            if (filePath) {
+                return { success: true, filePath };
+            }
+            return { success: false, error: 'No telemetry data in buffer' };
+        }
+        catch (err) {
+            return { success: false, error: String(err) };
+        }
+    });
 }
 // =============================================================================
 // ðŸŽ›ï¸ WAVE 7120: L3++ CALIBRATION â€” SAB IPC bridge

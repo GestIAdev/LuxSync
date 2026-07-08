@@ -38,8 +38,8 @@ senseConsonance, evaluateHueChange, suggestConsonantHues, resetConsonanceState, 
 // COGNICIÓN - El Cazador (PHASE 3 COMPLETE)
 // ═══════════════════════════════════════════════════════════════════════════
 export { 
-// Hunt Engine
-processHunt, forcePhaseTransition, getHuntState, resetHuntEngine, getHuntStats, 
+// Hunt Engine — V3.3.B: Candidate generator
+processHunt, forcePhaseTransition, getHuntState, resetHuntEngine, getHuntStats, getEligibleCandidates, 
 // Prediction Engine
 predict, getLastPrediction, getSectionHistory, validatePrediction, resetPredictionEngine, 
 // Decision Maker

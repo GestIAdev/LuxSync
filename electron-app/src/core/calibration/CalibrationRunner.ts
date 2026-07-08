@@ -49,11 +49,6 @@ export interface MetricSnapshot {
   sectionType: string
   sectionConfidence: number
   
-  // Fuzzy outputs
-  fuzzyAction: string
-  fuzzyConfidence: number
-  fuzzyReasoning: string
-  
   // Drop bridge
   dropBridgeTriggered: boolean
   dropBridgeReason: string
@@ -90,8 +85,6 @@ export interface SignalReport {
     kickCount: number
     snareCount: number
     dropBridgeTriggers: number
-    fuzzyStrikes: number
-    fuzzyHolds: number
   }
   
   // Section distribution (% of time in each)
@@ -173,9 +166,6 @@ export interface BrainMetricProvider {
     snareDetected: boolean
     sectionType: string
     sectionConfidence: number
-    fuzzyAction: string
-    fuzzyConfidence: number
-    fuzzyReasoning: string
     dropBridgeTriggered: boolean
     dropBridgeReason: string
   }
@@ -269,10 +259,6 @@ export class CalibrationRunner {
     const kickCount = snapshots.filter(s => s.kickDetected).length
     const snareCount = snapshots.filter(s => s.snareDetected).length
     const dropBridgeTriggers = snapshots.filter(s => s.dropBridgeTriggered).length
-    const fuzzyStrikes = snapshots.filter(s => 
-      s.fuzzyAction === 'strike' || s.fuzzyAction === 'force_strike'
-    ).length
-    const fuzzyHolds = snapshots.filter(s => s.fuzzyAction === 'hold').length
 
     // Section distribution
     const sectionCounts: Record<string, number> = {}
@@ -302,8 +288,6 @@ export class CalibrationRunner {
         kickCount,
         snareCount,
         dropBridgeTriggers,
-        fuzzyStrikes,
-        fuzzyHolds
       },
       sectionDistribution,
       snapshots

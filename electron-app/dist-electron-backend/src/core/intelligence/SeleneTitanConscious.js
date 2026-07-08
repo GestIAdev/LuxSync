@@ -99,7 +99,7 @@ import { ContextualMemory, } from './memory';
 // ═══════════════════════════════════════════════════════════════════════════
 // 🎲 WAVE 667-669: FUZZY DECISION SYSTEM
 // ═══════════════════════════════════════════════════════════════════════════
-import { FuzzyDecisionMaker, DropBridge, } from './think';
+import { DropBridge, } from './think';
 // ═══════════════════════════════════════════════════════════════════════════
 // 🎯 WAVE 685: CONTEXTUAL EFFECT SELECTOR
 // 🔪 WAVE 1010.5: THE PURGE - Interfaces deprecated removidas
@@ -119,9 +119,19 @@ import { getEffectManager } from '../effects/EffectManager';
 // 🌊 WAVE 7003.3: SELENE V3 LIQUID COGNITION — SHADOW MODE
 // ═══════════════════════════════════════════════════════════════════════════
 import { LiquidCognitionCore, NEUTRAL_GENOME, } from './liquid/LiquidCognitionCore';
+import { LiquidTelemetryRecorder } from './liquid/LiquidTelemetryRecorder';
 // ═══════════════════════════════════════════════════════════════════════════
 // CONFIGURACIÓN
 // ═══════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
+// 🌊 WAVE 7004.5: SELENE V3 AUTHORITY CUTOVER
+// ═══════════════════════════════════════════════════════════════════════════
+// V3 Liquid Cognition tiene autoridad sobre SI disparar. El fluido `ignite`
+// es la señal soberana. V2 (DecisionMaker) sigue seleccionando QUÉ efecto,
+// pero no puede vetar el disparo cuando V3 dice ignite.
+// Los mecanismos de seguridad (HARD_COOLDOWN, VisualConscienceEngine)
+// siguen evaluando el candidato — V3 tiene autoridad, no inmunidad.
+const SELENE_V3_AUTHORITY = true;
 // ═══════════════════════════════════════════════════════════════════════════
 // 🌊 WAVE 1073.4: OCEANIC EFFECTS - NO DNA COOLDOWN OVERRIDE
 // ═══════════════════════════════════════════════════════════════════════════
@@ -164,7 +174,6 @@ export class SeleneTitanConscious extends EventEmitter {
     constructor(config = {}) {
         super();
         this.lastMemoryOutput = null;
-        this.lastFuzzyDecision = null;
         this.lastDropBridgeResult = null;
         this.lastEffectTimestamp = 0;
         this.lastEffectType = null;
@@ -254,12 +263,15 @@ export class SeleneTitanConscious extends EventEmitter {
         // Track last section to detect transitions and nuke the stale cache.
         this._lastSectionForCacheInvalidation = '';
         // ═══════════════════════════════════════════════════════════════════════
-        // 🌊 WAVE 7003.3: LIQUID COGNITION V3 — SHADOW MODE
-        // El núcleo fluídico corre en paralelo (solo lectura) para telemetría.
-        // V2 mantiene autoridad absoluta sobre effectDecision y colorDecision.
+        // 🌊 WAVE 7004.5: LIQUID COGNITION V3 — AUTHORITY MODE
+        // V3 tiene autoridad sobre SI disparar (ignite). V2 selecciona QUÉ efecto.
+        // HARD_COOLDOWN y VisualConscienceEngine siguen evaluando el candidato.
         // ═══════════════════════════════════════════════════════════════════════
         this._liquidCore = new LiquidCognitionCore();
         this._lastLiquidVerdict = null;
+        this._liquidRecorder = new LiquidTelemetryRecorder();
+        this._v3Ignite = false;
+        this._lastSuppressedLog = 0;
         // ═══════════════════════════════════════════════════════════════════════
         // SENSE: Percepción - USANDO SENSORES REALES
         // ═══════════════════════════════════════════════════════════════════════
@@ -282,12 +294,8 @@ export class SeleneTitanConscious extends EventEmitter {
             zScoreSignificant: 2.0,
             zScoreEpic: 2.5, // Threshold para anomalía
         });
-        // 🎲 WAVE 667-669: Inicializar sistema de decisión fuzzy
-        this.fuzzyDecisionMaker = new FuzzyDecisionMaker();
         this.dropBridge = new DropBridge({
-            zScoreThreshold: 3.0, // 3 sigma = condición divina
             peakSections: ['drop', 'chorus'],
-            minEnergy: 0.75,
         });
         // 🎯 WAVE 685: Inicializar Arsenal Repository
         this.effectSelector = new ArsenalRepository();
@@ -331,9 +339,11 @@ export class SeleneTitanConscious extends EventEmitter {
         };
         // Output inicial
         this.lastOutput = createEmptyOutput();
-        // 🌊 WAVE 7003.3: Liquid Cognition V3 — Shadow Mode init
+        // 🌊 WAVE 7004.5: Liquid Cognition V3 — Authority Mode init
         this._liquidCore = new LiquidCognitionCore();
         this._lastLiquidVerdict = null;
+        this._liquidRecorder = new LiquidTelemetryRecorder();
+        this._v3Ignite = false;
         if (this.config.debug) {
             // WAVE 2098: Boot silence — GENESIS banner removed (debug-only noise)
         }
@@ -493,21 +503,9 @@ export class SeleneTitanConscious extends EventEmitter {
         // Actualizar historial
         this.updateHistory(pattern);
         // ─────────────────────────────────────────────────────────────────────
-        // 3. 🧠 THINK: Decidir qué hacer
-        // ─────────────────────────────────────────────────────────────────────
-        const rawDecision = await this.think(titanState, pattern);
-        // ─────────────────────────────────────────────────────────────────────
-        // 4. 💭 DREAM: Simular si la decisión es buena
-        // ─────────────────────────────────────────────────────────────────────
-        const dreamValidated = this.dream(titanState, rawDecision);
-        // ─────────────────────────────────────────────────────────────────────
-        // 5. 📜 VALIDATE: Asegurar que respeta la Constitución
-        // ─────────────────────────────────────────────────────────────────────
-        const finalOutput = this.validate(titanState, dreamValidated);
-        // ─────────────────────────────────────────────────────────────────────
-        // 🌊 WAVE 7003.3: LIQUID COGNITION V3 — SHADOW MODE
-        // El núcleo fluídico corre en paralelo para telemetría.
-        // V2 mantiene autoridad absoluta — V3 NO modifica effectDecision ni colorDecision.
+        // 🌊 WAVE 7004.5: LIQUID COGNITION V3 — PRE-THINK (AUTHORITY)
+        // V3 procesa ANTES que V2 para que `ignite` pueda influir en el pipeline.
+        // Si SELENE_V3_AUTHORITY es true e ignite = true, V3 fuerza el disparo.
         // ─────────────────────────────────────────────────────────────────────
         {
             const now = Date.now();
@@ -515,15 +513,6 @@ export class SeleneTitanConscious extends EventEmitter {
             const energyMax = this.lastMemoryOutput?.stats.energy.max ?? titanState.rawEnergy;
             const beauty = this.currentBeauty?.totalBeauty ?? 0.5;
             const consonance = this.currentConsonance?.totalConsonance ?? 0.7;
-            // Determinar genoma del efecto candidato (si V2 decidió uno)
-            let effectGenome = NEUTRAL_GENOME;
-            if (finalOutput.effectDecision?.effectType) {
-                const entry = getDynamicEffectRegistry().getEntry(finalOutput.effectDecision.effectType);
-                if (entry?.dna) {
-                    effectGenome = entry.dna;
-                }
-            }
-            // Predicción y alineación (simplified para shadow mode)
             const predProb = this.state.activePrediction?.probability ?? 0;
             const predAlign = this.state.activePrediction ? 0.7 : 0.0;
             this._lastLiquidVerdict = this._liquidCore.process({
@@ -541,13 +530,56 @@ export class SeleneTitanConscious extends EventEmitter {
                 predictionAlignment: predAlign,
                 totalBeauty: beauty,
                 consonance,
-                effectGenome,
+                effectGenome: NEUTRAL_GENOME,
             }, now);
-            // Si V3 ignite Y V2 también disparó → notificar ignición materializada
+            this._v3Ignite = SELENE_V3_AUTHORITY && this._lastLiquidVerdict.ignite;
+            if (this._v3Ignite) {
+                const now = Date.now();
+                if (now - this._lastSuppressedLog > 1000) {
+                    console.log(`[SeleneTitanConscious 🌊] V3 IGNITE: confidence=${this._lastLiquidVerdict.confidence.toFixed(3)} ` +
+                        `intensity=${this._lastLiquidVerdict.intensity.toFixed(3)} squelch=${this._lastLiquidVerdict.squelch.toFixed(3)} ` +
+                        `tension=${this._lastLiquidVerdict.fluid.tension.toFixed(3)} → V3 AUTHORITY ACTIVE`);
+                    this._lastSuppressedLog = now;
+                }
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────────
+        // 3. 🧠 THINK: Decidir qué hacer
+        // ─────────────────────────────────────────────────────────────────────
+        const rawDecision = await this.think(titanState, pattern);
+        // ─────────────────────────────────────────────────────────────────────
+        // 4. 💭 DREAM: Simular si la decisión es buena
+        // ─────────────────────────────────────────────────────────────────────
+        const dreamValidated = this.dream(titanState, rawDecision);
+        // ─────────────────────────────────────────────────────────────────────
+        // 5. 📜 VALIDATE: Asegurar que respeta la Constitución
+        // ─────────────────────────────────────────────────────────────────────
+        const finalOutput = this.validate(titanState, dreamValidated);
+        // ─────────────────────────────────────────────────────────────────────
+        // 🌊 WAVE 7004.5: LIQUID COGNITION V3 — POST-VALIDATE TELEMETRY
+        // El veredicto V3 ya fue computado antes de think(). Aquí solo
+        // registramos telemetría y notificamos ignición materializada.
+        // ─────────────────────────────────────────────────────────────────────
+        if (this._lastLiquidVerdict) {
+            const now = Date.now();
+            // Si V3 ignite Y un efecto pasó todos los gates → notificar ignición materializada
             if (this._lastLiquidVerdict.ignite && finalOutput.effectDecision) {
                 this._liquidCore.notifyIgnition(this._lastLiquidVerdict.intensity, now);
+                console.log(`[SeleneTitanConscious 🌊✅] V3 IGNITION MATERIALIZED: ` +
+                    `${finalOutput.effectDecision.effectName ?? finalOutput.effectDecision.effectType} ` +
+                    `| I=${this._lastLiquidVerdict.intensity.toFixed(3)}`);
             }
-            // Exponer telemetría V3 en debugInfo (sin alterar V2)
+            else if (this._v3Ignite && !finalOutput.effectDecision) {
+                // V3 quiso disparar pero V2/safety no produjo un candidato válido
+                if (now - this._lastSuppressedLog > 1000) {
+                    console.log(`[SeleneTitanConscious 🌊⏸️] V3 IGNITE SUPPRESSED: no valid effect candidate ` +
+                        `(HARD_COOLDOWN or Gatekeeper blocked) — safety wins`);
+                    this._lastSuppressedLog = now;
+                }
+            }
+            // 🌊 WAVE 7003.4: Grabar frame en la Caja Negra (ring buffer zero-alloc)
+            this._liquidRecorder.recordFrame(this._lastLiquidVerdict, now);
+            // Exponer telemetría V3 en debugInfo
             finalOutput.debugInfo.liquidCognition = {
                 ignite: this._lastLiquidVerdict.ignite,
                 confidence: this._lastLiquidVerdict.confidence,
@@ -782,14 +814,8 @@ export class SeleneTitanConscious extends EventEmitter {
             suggestedTransitionMs: 500,
             timestamp: Date.now()
         };
-        // 🔮 WAVE 1026: ROSETTA STONE - Build SpectralHint from TitanState
-        const spectralHint = {
-            clarity: state.clarity,
-            harshness: state.harshness,
-            texture: this.deriveTextureFromState(state),
-        };
-        // 2. HUNT ENGINE: Procesar FSM del depredador (🔮 con SpectralHint)
-        const huntDecision = processHunt(pattern, beautyAnalysis, consonanceAnalysis, spectralHint);
+        // 2. HUNT ENGINE: V3.3.B — Telemetry-only FSM (no mathematical authority)
+        const huntDecision = processHunt(pattern);
         // 3. PREDICTION ENGINE: Anticipar próximos eventos
         // 🔮 WAVE 1169: Usar predictCombined para detección reactiva por energía
         // 🔮 WAVE 1190: PROJECT CASSANDRA - Integrar spectral buildup score
@@ -833,18 +859,6 @@ export class SeleneTitanConscious extends EventEmitter {
             vibeId: pattern.vibeId,
             hasKick: false, // TODO: Integrar detección de transientes
             harshness: state.harshness,
-        });
-        // 3.5b. FUZZY DECISION: Evaluar lógica difusa
-        // 🔋 WAVE 932: Ahora con consciencia de zona energética
-        this.lastFuzzyDecision = this.fuzzyDecisionMaker.evaluate({
-            energy: state.rawEnergy,
-            zScore: zScore,
-            sectionType: normalizedSection,
-            harshness: state.harshness ?? 0,
-            huntScore: huntDecision.confidence,
-            beauty: beautyAnalysis.totalBeauty,
-            energyContext: energyContext, // 🔋 WAVE 932: Inyectar contexto energético
-            minEnergySinceLastEffect: this.minEnergySinceLastEffect, // 🩸 WAVE 6040: Valley tracker
         });
         // ═══════════════════════════════════════════════════════════════════════
         // 🧬 WAVE 972.2: DNA BRAIN SIMULATION (ANTES DE DECISIONMAKER)
@@ -904,18 +918,9 @@ export class SeleneTitanConscious extends EventEmitter {
         // Gatekeeper controla el spam con cooldowns de efectos.
         // 🔒 WAVE 1179: Si hay dictador activo, el DNA respeta el silencio.
         // ═══════════════════════════════════════════════════════════════════════
-        // Si Hunt detectó momento digno Y no hay dictador activo, ejecutar simulador DNA
-        const WORTHINESS_THRESHOLD = 0.65;
-        // 🩸 WAVE 2105: FUZZY RESURRECTION — Fuzzy can unlock the DNA pipeline
-        // Before: Only Hunt worthiness >= 0.65 could trigger DNA simulation.
-        // Problem: Hunt learning phase emits worthiness=0 for 120 frames (now 15),
-        // but even with the fix, there are moments where Hunt is at 0.60 (evaluating)
-        // while Fuzzy KNOWS it should strike (contextual intelligence: zone, z-score, mood).
-        // FIX: If Fuzzy says strike/force_strike with good confidence, that also unlocks DNA.
-        const fuzzyUnlock = this.lastFuzzyDecision
-            && (this.lastFuzzyDecision.action === 'strike' || this.lastFuzzyDecision.action === 'force_strike')
-            && this.lastFuzzyDecision.confidence >= 0.50;
-        const shouldRunDNA = (huntDecision.worthiness >= WORTHINESS_THRESHOLD || fuzzyUnlock) && !activeDictator;
+        // V3.3.B: V3 ignite is the sole authority for running the DNA pipeline.
+        // HuntEngine worthiness is telemetry only — no longer gates the pipeline.
+        const shouldRunDNA = (this._v3Ignite || huntDecision.suggestedPhase !== 'sleeping') && !activeDictator;
         if (shouldRunDNA) {
             // 🩸 WAVE 2101.4: GLOBAL EFFECT COOLDOWN GATE
             // Si se disparó CUALQUIER efecto hace menos de 8s, ni siquiera ejecutar pipeline.
@@ -947,7 +952,7 @@ export class SeleneTitanConscious extends EventEmitter {
             if (timeSinceLastEffect < JUST_FIRED_SHIELD_MS) {
                 dreamIntegrationData = this.lastDreamIntegrationResult; // Hard block — ni drops pasan
             }
-            else if (timeSinceLastEffect < globalCooldownMs && !isDropUrgent && !isDropIncoming) {
+            else if (timeSinceLastEffect < globalCooldownMs && !isDropUrgent && !isDropIncoming && !this._v3Ignite) {
                 // 🩸 WAVE 2104.1: DIAGNOSTIC — Ver cuánto bloquea el global cooldown
                 if (this.stats.framesProcessed % 15 === 0) {
                     console.log(`[GLOBAL_COOLDOWN] ⏸️ Cached: ${Math.ceil((globalCooldownMs - timeSinceLastEffect) / 1000)}s left | vibe=${pattern.vibeId} lastEffect=${this.lastEffectType ?? 'none'}`);
@@ -1086,8 +1091,6 @@ export class SeleneTitanConscious extends EventEmitter {
             spectralContext: spectralContextForDecision,
             // 🔒 WAVE 1177: CALIBRATION - Check if dictator is active to prevent DIVINE spam
             activeDictator: getEffectManager().hasDictator(),
-            // 🩸 WAVE 2105: FUZZY RESURRECTION — Fuzzy gets a real vote in decisions
-            fuzzyDecision: this.lastFuzzyDecision ?? undefined,
             // 🐘 WAVE 4861: Energía máxima del buffer de 30s para Absolute Energy Gate
             energyMaxHistoric: this.lastMemoryOutput?.stats.energy.max,
         };
@@ -1372,21 +1375,6 @@ export class SeleneTitanConscious extends EventEmitter {
                 }
             };
         }
-        // Log periódico con información fuzzy
-        if (this.config.debug && this.stats.framesProcessed % 30 === 0) {
-            const fuzzyEmoji = {
-                force_strike: '⚡',
-                strike: '🎯',
-                prepare: '🔮',
-                hold: '😴',
-            }[this.lastFuzzyDecision.action];
-            // console.log(
-            //   `[SeleneTitanConscious] 🧠 Hunt=${this.state.huntPhase} ` +
-            //   `Fuzzy=${fuzzyEmoji}${this.lastFuzzyDecision.action} ` +
-            //   `Z=${zScore.toFixed(1)}σ ` +
-            //   `Alert=${this.lastDropBridgeResult.alertLevel}`
-            // )
-        }
         return output;
     }
     // ═══════════════════════════════════════════════════════════════════════
@@ -1547,9 +1535,11 @@ export class SeleneTitanConscious extends EventEmitter {
         resetPatternHistory();
         resetBeautyHistory();
         resetConsonanceState();
-        // 🌊 WAVE 7003.3: Reset Liquid Cognition V3
+        // 🌊 WAVE 7004.5: Reset Liquid Cognition V3
         this._liquidCore.reset();
         this._lastLiquidVerdict = null;
+        this._liquidRecorder.reset();
+        this._v3Ignite = false;
         // Resetear cognición (PHASE 3)
         resetHuntEngine();
         resetPredictionEngine();
@@ -1559,14 +1549,19 @@ export class SeleneTitanConscious extends EventEmitter {
         // 🧠 WAVE 666: Resetear memoria contextual
         this.contextualMemory.reset();
         this.lastMemoryOutput = null;
-        // 🎲 WAVE 667-669: Resetear sistema fuzzy
-        this.fuzzyDecisionMaker.reset();
         this.dropBridge.reset();
-        this.lastFuzzyDecision = null;
         this.lastDropBridgeResult = null;
         if (this.config.debug) {
             console.log('[SeleneTitanConscious] 🔄 Reset complete (PHASES 2-4 + Memory + Fuzzy)');
         }
+    }
+    /**
+     * 🌊 WAVE 7004.2: Dump Liquid Telemetry ring buffer to JSONL.
+     * Called by TitanEngine.dumpLiquidTelemetry() → IPC → frontend DUMP button.
+     * @returns Absolute path to the written .jsonl file, or null if no data.
+     */
+    async dumpLiquidTelemetry() {
+        return this._liquidRecorder.dumpToFile();
     }
     // ═══════════════════════════════════════════════════════════════════════
     // 🧠 WAVE 666: API DE MEMORIA CONTEXTUAL
@@ -1603,14 +1598,6 @@ export class SeleneTitanConscious extends EventEmitter {
         return this.contextualMemory.isWarmedUp;
     }
     // ═══════════════════════════════════════════════════════════════════════
-    // 🎲 WAVE 667-669: API DE FUZZY DECISION SYSTEM
-    // ═══════════════════════════════════════════════════════════════════════
-    /**
-     * Obtiene la última decisión fuzzy tomada.
-     */
-    getFuzzyDecision() {
-        return this.lastFuzzyDecision;
-    }
     /**
      * Obtiene el último resultado del Drop Bridge.
      */

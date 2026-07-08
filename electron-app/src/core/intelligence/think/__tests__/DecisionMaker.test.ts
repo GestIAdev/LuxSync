@@ -41,7 +41,6 @@ import type { BeautyAnalysis } from '../../sense/BeautySensor'
 import type { ConsonanceAnalysis } from '../../sense/ConsonanceSensor'
 import type { IntegrationDecision } from '../../integration/DreamEngineIntegrator'
 import type { EnergyContext } from '../../../protocol/MusicalContext'
-import type { FuzzyDecision } from '../FuzzyDecisionMaker'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MOCK FACTORIES — Inputs mínimos, deterministas, sin basura
@@ -74,32 +73,26 @@ function createBasePattern(overrides: Partial<SeleneMusicalPattern> = {}): Selen
 }
 
 /**
- * Hunt "dormido" — confianza baja, no sugiere nada.
- * combined = 0.3*0.4 + 0*0.3 + 0.5*0.3 = 0.27 → NO pasa gate 0.55
+ * Hunt "dormido" — V3.3.B: telemetry only, no gating.
  */
 function createBaseHunt(overrides: Partial<HuntDecision> = {}): HuntDecision {
   return {
     suggestedPhase: 'sleeping',
     worthiness: 0.2,
     confidence: 0.3,
-    conditions: null,
-    activeCandidate: null,
     reasoning: 'Test baseline — dormant',
     ...overrides,
   }
 }
 
 /**
- * Hunt "activo" — suficiente confianza para pasar el gate.
- * combined = 0.80*0.40 + 0.65*0.30 + 0.75*0.30 = 0.32 + 0.195 + 0.225 = 0.74 ✓
+ * Hunt "activo" — V3.3.B: telemetry only, no gating.
  */
 function createActiveHunt(overrides: Partial<HuntDecision> = {}): HuntDecision {
   return {
     suggestedPhase: 'striking',
     worthiness: 0.75,
     confidence: 0.80,
-    conditions: null,
-    activeCandidate: null,
     reasoning: 'Test active hunt',
     ...overrides,
   }
@@ -211,18 +204,6 @@ function createDNAProposal(effectId: string, intensity: number = 0.85): Integrat
   }
 }
 
-function createFuzzyDecision(overrides: Partial<FuzzyDecision> = {}): FuzzyDecision {
-  return {
-    action: 'strike',
-    intensity: 0.7,
-    confidence: 0.65,
-    reasoning: 'Test fuzzy strike',
-    fuzzyScores: { forceStrike: 0, strike: 0.5, prepare: 0.2, hold: 0.1 },
-    dominantRule: 'Notable_Energy_Strike',
-    ...overrides,
-  }
-}
-
 /**
  * Inputs DORMIDOS — no pasan el gate de confianza (combined ≈ 0.27).
  * Usados para tests que esperan HOLD / no-acción.
@@ -256,20 +237,12 @@ function buildActiveInputs(overrides: Partial<DecisionInputs> = {}): DecisionInp
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// HELPER: Reset drop lock via sección no-drop
-// ═══════════════════════════════════════════════════════════════════════════
-
-function resetDropLock(): void {
-  makeDecision(buildDormantInputs({ pattern: createBasePattern({ section: 'verse' }) }))
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
 // § 1. LA LEY DIVINA — Z > 4.0σ + Energy Gate
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe('§ 1. LA LEY DIVINA — DIVINE THRESHOLD + ENERGY GATE', () => {
 
-  beforeEach(() => resetDropLock())
+  beforeEach(() => { /* no-op: drop lock extirpated in V3 */ })
 
   it('DIVINE_THRESHOLD debería ser 4.0σ', () => {
     expect(DIVINE_THRESHOLD).toBe(4.0)
@@ -376,9 +349,9 @@ describe('§ 1. LA LEY DIVINA — DIVINE THRESHOLD + ENERGY GATE', () => {
 // § 2. EL MURO DEL BUILDUP — WAVE 2200.3 + 2203
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('§ 2. EL MURO DEL BUILDUP — DNA + Fuzzy + Hunt bloqueados', () => {
+describe('§ 2. EL MURO DEL BUILDUP — DNA bloqueados', () => {
   
-  beforeEach(() => resetDropLock())
+  beforeEach(() => { /* no-op: drop lock extirpated in V3 */ })
 
   it('DNA Priority 0: core_meltdown en buildup → BLOCKED', () => {
     const output = makeDecision(buildActiveInputs({
@@ -417,40 +390,6 @@ describe('§ 2. EL MURO DEL BUILDUP — DNA + Fuzzy + Hunt bloqueados', () => {
     // acid_sweep tiene 'buildup' en validSections (verificado vía Registry)
     expect(output.effectDecision).not.toBeNull()
     expect(output.effectDecision!.effectType).toBe('acid_sweep')
-  })
-
-  it('WAVE 2203: Fuzzy Strike con core_meltdown en buildup → BLOCKED', () => {
-    const output = makeDecision(buildActiveInputs({
-      pattern: createBasePattern({ section: 'buildup' }),
-      dreamIntegration: createDNAProposal('core_meltdown'),
-      fuzzyDecision: createFuzzyDecision({
-        action: 'strike',
-        confidence: 0.65,
-      }),
-      zScore: 1.35,
-      energyContext: createEnergyContext({ zone: 'intense', smoothed: 0.80 }),
-    }))
-
-    if (output.effectDecision) {
-      expect(output.effectDecision.effectType).not.toBe('core_meltdown')
-    }
-  })
-
-  it('WAVE 2203: Fuzzy force_strike con gatling_raid en buildup → BLOCKED', () => {
-    const output = makeDecision(buildActiveInputs({
-      pattern: createBasePattern({ section: 'buildup' }),
-      dreamIntegration: createDNAProposal('gatling_raid'),
-      fuzzyDecision: createFuzzyDecision({
-        action: 'force_strike',
-        confidence: 0.75,
-      }),
-      zScore: 2.0,
-      energyContext: createEnergyContext({ zone: 'intense', smoothed: 0.80 }),
-    }))
-
-    if (output.effectDecision) {
-      expect(output.effectDecision.effectType).not.toBe('gatling_raid')
-    }
   })
 
   it('WAVE 2203: Hunt worthiness alta con core_meltdown en buildup → BLOCKED', () => {
@@ -493,192 +432,12 @@ describe('§ 2. EL MURO DEL BUILDUP — DNA + Fuzzy + Hunt bloqueados', () => {
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
-// § 3. THE DROP LOCK — Anti-Esquizofrenia WAVE 2187
-// ═══════════════════════════════════════════════════════════════════════════
-
-describe('§ 3. THE DROP LOCK — Un drop, un efecto', () => {
-  
-  beforeEach(() => resetDropLock())
-
-  it('Primer disparo en drop → reasoning presente (pipeline activo)', () => {
-    const output = makeDecision(buildActiveInputs({
-      pattern: createBasePattern({ section: 'drop' }),
-      dreamIntegration: createDNAProposal('core_meltdown'),
-      zScore: 2.5,
-      energyContext: createEnergyContext({ zone: 'peak', smoothed: 0.90 }),
-    }))
-
-    // Primer drop con DNA loaded → debería disparar
-    expect(output.effectDecision).not.toBeNull()
-    expect(output.debugInfo.reasoning).toBeDefined()
-  })
-
-  it('Segundo disparo en mismo drop → DROP LOCKED (no duplica efecto)', () => {
-    // First call: adquiere lock
-    const first = makeDecision(buildActiveInputs({
-      pattern: createBasePattern({ section: 'drop' }),
-      dreamIntegration: createDNAProposal('core_meltdown'),
-      zScore: 2.0,
-      energyContext: createEnergyContext({ zone: 'peak', smoothed: 0.88 }),
-    }))
-
-    // Second call: mismo drop, lock activo
-    const second = makeDecision(buildActiveInputs({
-      pattern: createBasePattern({ section: 'drop' }),
-      dreamIntegration: createDNAProposal('core_meltdown'),
-      zScore: 2.0,
-      energyContext: createEnergyContext({ zone: 'peak', smoothed: 0.88 }),
-    }))
-
-    // El segundo NO debería duplicar el primer efecto pesado
-    // DNA Priority 0 sigue diciendo 'strike' pero el drop lock
-    // modifica el reasoning. Verificamos que no dispara DIVINE al menos:
-    expect(second.confidence).toBeLessThan(0.99)
-  })
-
-  it('Cambiar sección libera el lock', () => {
-    // Enter drop (adquiere lock)
-    makeDecision(buildActiveInputs({
-      pattern: createBasePattern({ section: 'drop' }),
-      dreamIntegration: createDNAProposal('core_meltdown'),
-    }))
-
-    // Leave drop → lock liberado via updateDropLock()
-    makeDecision(buildDormantInputs({
-      pattern: createBasePattern({ section: 'breakdown' }),
-    }))
-
-    // Re-enter drop → nuevo disparo debería funcionar
-    const output = makeDecision(buildActiveInputs({
-      pattern: createBasePattern({ section: 'drop' }),
-      dreamIntegration: createDNAProposal('core_meltdown'),
-      zScore: 2.5,
-      energyContext: createEnergyContext({ zone: 'peak', smoothed: 0.90 }),
-    }))
-
-    expect(output.effectDecision).not.toBeNull()
-    expect(output.effectDecision!.effectType).toBe('core_meltdown')
-  })
-})
-
-// ═══════════════════════════════════════════════════════════════════════════
-// § 4. VALLEY / BREAKDOWN PROTECTION
-// ═══════════════════════════════════════════════════════════════════════════
-
-describe('§ 4. ZONAS PROTEGIDAS — Valley + Breakdown = Silencio', () => {
-  
-  beforeEach(() => resetDropLock())
-
-  it('zone=valley + Z<0 → HOLD (Valley Protection)', () => {
-    const output = makeDecision(buildActiveInputs({
-      pattern: createBasePattern({ section: 'verse' }),
-      energyContext: createEnergyContext({ zone: 'valley', smoothed: 0.15 }),
-      zScore: -1.5,
-      dreamIntegration: createDNAProposal('acid_sweep'),
-    }))
-
-    // Valley protection: zone=valley + Z<0 → 'hold'
-    expect(output.effectDecision).toBeNull()
-  })
-
-  it('section=breakdown → HOLD (Breakdown Protection)', () => {
-    const output = makeDecision(buildActiveInputs({
-      pattern: createBasePattern({ section: 'breakdown' }),
-      energyContext: createEnergyContext({ zone: 'active', smoothed: 0.60 }),
-      zScore: 1.5,
-      dreamIntegration: createDNAProposal('acid_sweep'),
-    }))
-
-    // "Breakdowns are sacred darkness"
-    expect(output.effectDecision).toBeNull()
-  })
-
-  it('section=breakdown PERO Z>4σ + E>0.85 → DIVINE overrides darkness', () => {
-    const output = makeDecision(buildActiveInputs({
-      pattern: createBasePattern({ section: 'breakdown', vibeId: 'techno-club' }),
-      energyContext: createEnergyContext({ zone: 'peak', smoothed: 0.93 }),
-      zScore: 4.5,
-    }))
-
-    // DIVINE check es PRIORIDAD -1 → se ejecuta ANTES de breakdown check
-    expect(output.confidence).toBeGreaterThanOrEqual(0.95)
-    expect(output.effectDecision).not.toBeNull()
-    expect(output.debugInfo.reasoning).toContain('DIVINE')
-  })
-})
-
-// ═══════════════════════════════════════════════════════════════════════════
-// § 5. FUZZY RESURRECTION — Strike paths
-// ═══════════════════════════════════════════════════════════════════════════
-
-describe('§ 5. FUZZY RESURRECTION — Fuzzy gets a real vote', () => {
-  
-  beforeEach(() => resetDropLock())
-
-  it('Fuzzy strike + DNA proposal (no buildup) → STRIKE', () => {
-    const output = makeDecision(buildActiveInputs({
-      pattern: createBasePattern({ section: 'verse' }),
-      dreamIntegration: createDNAProposal('acid_sweep'),
-      fuzzyDecision: createFuzzyDecision({ action: 'strike', confidence: 0.55 }),
-      zScore: 1.5,
-      energyContext: createEnergyContext({ zone: 'active', smoothed: 0.70 }),
-    }))
-
-    // DNA Priority 0 aprobó acid_sweep en verse → 'strike' directo
-    expect(output.effectDecision).not.toBeNull()
-    expect(output.effectDecision!.effectType).toBe('acid_sweep')
-  })
-
-  it('Fuzzy strike SIN DNA proposal → no puede disparar efecto', () => {
-    const output = makeDecision(buildActiveInputs({
-      pattern: createBasePattern({ section: 'verse' }),
-      // NO dreamIntegration
-      fuzzyDecision: createFuzzyDecision({ action: 'strike', confidence: 0.65 }),
-      zScore: 1.5,
-      energyContext: createEnergyContext({ zone: 'active', smoothed: 0.70 }),
-    }))
-
-    // Sin DNA → no hay arma cargada → Fuzzy cae al vacío
-    expect(output.confidence).toBeLessThan(0.99)
-  })
-
-  it('Fuzzy force_strike + DNA + no buildup → STRIKE', () => {
-    const output = makeDecision(buildActiveInputs({
-      pattern: createBasePattern({ section: 'verse' }),
-      dreamIntegration: createDNAProposal('industrial_strobe'),
-      fuzzyDecision: createFuzzyDecision({ action: 'force_strike', confidence: 0.75 }),
-      zScore: 2.0,
-      energyContext: createEnergyContext({ zone: 'intense', smoothed: 0.80 }),
-    }))
-
-    // DNA Priority 0 en verse + industrial_strobe → 'strike'
-    expect(output.effectDecision).not.toBeNull()
-    expect(output.effectDecision!.effectType).toBe('industrial_strobe')
-  })
-
-  it('Fuzzy con confianza < 0.50 + DNA proposal → DNA Priority 0 sigue activo', () => {
-    const output = makeDecision(buildActiveInputs({
-      pattern: createBasePattern({ section: 'verse' }),
-      dreamIntegration: createDNAProposal('acid_sweep'),
-      fuzzyDecision: createFuzzyDecision({ action: 'strike', confidence: 0.40 }),
-      huntDecision: createActiveHunt({ worthiness: 0.6, confidence: 0.7 }),
-      zScore: 0.5,
-      energyContext: createEnergyContext({ zone: 'active', smoothed: 0.55 }),
-    }))
-
-    // Fuzzy tiene poca confianza PERO DNA Priority 0 está activo
-    // DNA Priority 0 es ARRIBA de Fuzzy → acid_sweep pasa igual
-    expect(output.debugInfo.reasoning).toBeDefined()
-  })
-})
-
-// ═══════════════════════════════════════════════════════════════════════════
 // § 6. SILENCE RULE — DNA o silencio
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe('§ 6. SILENCE RULE — DNA o silencio', () => {
   
-  beforeEach(() => resetDropLock())
+  beforeEach(() => { /* no-op: drop lock extirpated in V3 */ })
 
   it('Strike sin DNA proposal → no effectDecision (DNA vacío)', () => {
     const output = makeDecision(buildActiveInputs({

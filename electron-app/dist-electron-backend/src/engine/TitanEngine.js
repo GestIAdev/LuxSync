@@ -1115,6 +1115,14 @@ export class TitanEngine extends EventEmitter {
         return this.selene.isEnabled();
     }
     /**
+     * 🌊 WAVE 7004.2: Dump Liquid Telemetry ring buffer to JSONL file.
+     * Delegates to SeleneTitanConscious._liquidRecorder.dumpToFile().
+     * @returns Absolute path to the written .jsonl file, or null if no data.
+     */
+    async dumpLiquidTelemetry() {
+        return this.selene.dumpLiquidTelemetry();
+    }
+    /**
      * 🧬 WAVE 550: Obtiene telemetría de consciencia para el HUD táctico
      * 🔮 WAVE 1168: Expanded with Dream Simulator + Energy Zone + Fuzzy Decision
      * 🧠 WAVE 1195: Expanded with hunt stats, council votes, dream history
@@ -1150,7 +1158,6 @@ export class TitanEngine extends EventEmitter {
                 },
                 ethicsFlags: [],
                 energyZone: 'calm',
-                fuzzyAction: null,
                 zScore: 0,
                 dropBridgeAlert: 'none',
                 // 🔥 WAVE 1176: OPERATION SNIPER
@@ -1168,7 +1175,9 @@ export class TitanEngine extends EventEmitter {
                 },
                 consensusScore: 0.33,
                 dreamHistory: [],
-                predictionHistory: []
+                predictionHistory: [],
+                // 🌊 WAVE 7003.4: Liquid Cognition default (offline)
+                liquidCognition: null
             };
         }
         const debugInfo = output.debugInfo;
@@ -1239,9 +1248,6 @@ export class TitanEngine extends EventEmitter {
             'peak': 'peak'
         };
         const energyZone = energyZoneMap[seleneZone] ?? 'calm';
-        // 🔮 WAVE 1168: Get fuzzy decision data
-        const fuzzyDecision = this.selene.getFuzzyDecision();
-        const fuzzyAction = fuzzyDecision?.action ?? null;
         const zScore = debugInfo.zScore ?? this.selene.getEnergyZScore();
         const dropBridgeAlert = this.selene.getDropBridgeAlertLevel();
         // 🔥 WAVE 1176: OPERATION SNIPER - Get raw velocity for UI debugging
@@ -1325,7 +1331,6 @@ export class TitanEngine extends EventEmitter {
             lastDreamResult,
             ethicsFlags,
             energyZone,
-            fuzzyAction,
             zScore,
             dropBridgeAlert,
             // 🔥 WAVE 1176: OPERATION SNIPER
@@ -1335,7 +1340,9 @@ export class TitanEngine extends EventEmitter {
             councilVotes,
             consensusScore,
             dreamHistory,
-            predictionHistory
+            predictionHistory,
+            // 🌊 WAVE 7003.4: LIQUID COGNITION V3 — Propagar telemetría fluídica al HUD
+            liquidCognition: debugInfo.liquidCognition ?? null
         };
     }
     /**

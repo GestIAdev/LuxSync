@@ -84,7 +84,7 @@ export function logZoneTransition(fromZone, toZone, energy) {
 /**
  * 🧠 Log de estado de Hunt/Fuzzy - Throttled a 1/segundo
  */
-export function logHuntState(huntState, fuzzyAction, zScore, alert, confidence) {
+export function logHuntState(huntState, zScore, alert, confidence) {
     if (currentLevel === 'SILENT' || currentLevel === 'CALIBRATION')
         return;
     const key = 'huntState';
@@ -94,7 +94,7 @@ export function logHuntState(huntState, fuzzyAction, zScore, alert, confidence) 
     }
     throttleTimestamps[key] = now;
     const alertEmoji = alert === 'imminent' ? '⚠️' : alert === 'watching' ? '👀' : '';
-    console.log(`🧠 [HUNT] ${huntState} | Fuzzy: ${fuzzyAction} | ` +
+    console.log(`🧠 [HUNT] ${huntState} | ` +
         `Z: ${zScore.toFixed(1)}σ | Conf: ${confidence.toFixed(2)} ${alertEmoji}`);
 }
 /**

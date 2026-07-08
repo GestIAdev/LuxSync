@@ -1,38 +1,12 @@
 /**
- * ⚡ WAVE 668: DROP BRIDGE - El Puente del Trueno
+ * ⚡ DROP BRIDGE — V3 PHASE 3.3.B: ROUTING ONLY
  * ═══════════════════════════════════════════════════════════════════════════
- * "Cuando el universo se alinea, disparamos sin preguntar"
- * 
- * Esta es la CONDICIÓN DIVINA - un override de máxima prioridad que
- * cortocircuita toda la lógica fuzzy cuando el momento es ÉPICO.
- * 
- * CONDICIÓN:
- *   (energyZScore >= 3.0σ) AND (section ∈ {drop, chorus}) AND (energy >= 0.75)
- *   ⟹ FORCE_STRIKE con intensidad máxima
- * 
- * JUSTIFICACIÓN ESTADÍSTICA:
- * - Z-Score >= 3.0 significa que estamos a 3 desviaciones estándar del promedio
- * - Esto ocurre solo en el 0.15% de los frames (~2.7 por cada 1800 frames)
- * - Cuando coincide con un drop/chorus, es EL MOMENTO
- * 
- * ANATOMÍA DEL DROP:
- * 
- *   Energía
- *     │
- *   1.0│        ╱─────╲      ← Drop Zone (z > 3)
- *     │       ╱       ╲
- *   0.8│     ╱         ╲
- *     │    ╱           ╲
- *   0.6│   │ BUILDUP    │ RELEASE
- *     │   │             │
- *   0.4│──╱             ╲──
- *     │
- *     └──────────────────────→ Tiempo
- *         ↑
- *    Drop Bridge Fires Here
- * 
+ * V3.3.B: Static threshold checks extirpated. V3 Liquid Cognition's
+ * `epicness` and `T(t)` handle drop gating natively. This module
+ * now only provides arsenal routing: if V3 dictates a massive drop,
+ * the pipeline selects from Divine or Heavy arsenal.
+ *
  * @module core/intelligence/think/DropBridge
- * @wave 668
  */
 
 import type { SectionType } from '../../../engine/types'
@@ -41,9 +15,6 @@ import type { SectionType } from '../../../engine/types'
 // TIPOS
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * Input para evaluar el Drop Bridge
- */
 export interface DropBridgeInput {
   /** Z-Score de energía (-4 a +4 típicamente) */
   energyZScore: number
@@ -57,21 +28,22 @@ export interface DropBridgeInput {
   hasSnare?: boolean
   /** Harshness espectral opcional (0-1) */
   harshness?: number
-  /** Vibe actual para consciencia de género (WAVE 4860) */
+  /** Vibe actual para consciencia de género */
   vibeId?: string
 }
 
 /**
- * Resultado de la evaluación del Drop Bridge
+ * Resultado del Drop Bridge — V3.3.B: Routing telemetry only.
+ * shouldForceStrike is always false; V3 ignite is the sole authority.
  */
 export interface DropBridgeResult {
-  /** ¿Debe activarse el force strike? */
+  /** V3.3.B: Always false — V3 ignite is the sole firing authority */
   shouldForceStrike: boolean
-  /** Intensidad del force strike (0.85-1.0) */
+  /** Intensidad derivada del epicness (0-1) */
   intensity: number
   /** Razón legible */
   reason: string
-  /** Nivel de alerta: none, watching, imminent, ACTIVATED */
+  /** Nivel de alerta: none, watching, imminent, activated */
   alertLevel: 'none' | 'watching' | 'imminent' | 'activated'
   /** Métricas para debug */
   metrics: {
@@ -83,21 +55,12 @@ export interface DropBridgeResult {
   }
 }
 
-/**
- * Configuración del Drop Bridge (tuneable)
- */
 export interface DropBridgeConfig {
-  /** Z-Score mínimo para activar (default: 3.0) */
-  zScoreThreshold: number
-  /** Secciones que califican como "peak" */
+  /** Secciones que califican como "peak" for arsenal routing */
   peakSections: SectionType[]
-  /** Energía mínima requerida (default: 0.75) */
-  minEnergy: number
-  /** ¿Requerir presencia de kick? (default: false) */
-  requireKick: boolean
-  /** Z-Score para nivel "watching" (default: 2.0) */
+  /** Z-Score para nivel "watching" (telemetry) */
   watchingThreshold: number
-  /** Z-Score para nivel "imminent" (default: 2.5) */
+  /** Z-Score para nivel "imminent" (telemetry) */
   imminentThreshold: number
 }
 
@@ -105,126 +68,48 @@ export interface DropBridgeConfig {
 // CONSTANTES
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * Configuración por defecto del Drop Bridge
- * 
- * 🔬 WAVE 671: CALIBRADO CON DATOS EMPÍRICOS DEL LABORATORIO
- * ═══════════════════════════════════════════════════════════════════════════
- * Basado en CALIBRATION-REPORT.md:
- * - THE_DROP alcanza Z=4.2σ (supera threshold 3.0 por 40%)
- * - Energía pico del drop: E=0.63 (promedio)
- * - Techno agresivo: Z=2.4-2.6σ (no debe disparar)
- * 
- * DECISIONES:
- * - zScoreThreshold: 3.0 (conservador - separa drops épicos de techno agresivo)
- * - minEnergy: 0.60 (bajado desde 0.75 - THE_DROP alcanza 0.63 de media pico)
- *   → Tolerante con masterización menos agresiva sin comprometer detección
- */
 const DEFAULT_CONFIG: DropBridgeConfig = {
-  zScoreThreshold: 3.0,        // 3 sigma = 99.85 percentil (THE_DROP=4.2σ, Techno=2.6σ máx)
   peakSections: ['drop', 'chorus'],
-  minEnergy: 0.60,             // THE_DROP alcanza 0.63 pico - margen de seguridad para mal mastering
-  requireKick: false,          // Kick es bonus, no requerido
-  watchingThreshold: 2.0,      // Empezamos a prestar atención
-  imminentThreshold: 2.5,      // Algo gordo viene (techno agresivo ya dispara aquí)
+  watchingThreshold: 2.0,
+  imminentThreshold: 2.5,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// LÓGICA PRINCIPAL
+// LÓGICA PRINCIPAL — V3.3.B: Routing only, no threshold gating
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * 🌩️ EVALUAR DROP BRIDGE
- * 
- * Verifica si el momento actual califica para un override divino.
- * 
- * @param input - Estado actual
- * @param config - Configuración opcional
- * @returns Resultado con decisión y métricas
+ * V3.3.B: Evaluúa el estado para telemetría y routing de arsenal.
+ * No gatea el disparo — V3 Liquid Cognition decide eso.
  */
 export function checkDropBridge(
   input: DropBridgeInput,
   config: Partial<DropBridgeConfig> = {}
 ): DropBridgeResult {
   const cfg = { ...DEFAULT_CONFIG, ...config }
-  const { energyZScore, sectionType, rawEnergy, hasKick, vibeId } = input
+  const { energyZScore, sectionType, rawEnergy } = input
 
-  // ═══════════════════════════════════════════════════════════════════════
-  // 🌴 WAVE 4860: LATINO CONSCIOUSNESS — El groove pesado del reggaetón
-  // mantiene Z-scores artificialmente altos. Elevar thresholds para evitar
-  // falsos positivos de "momento divino" en cada kick de dembow.
-  // ═══════════════════════════════════════════════════════════════════════
-  const isLatinoVibe = vibeId === 'fiesta-latina' || (vibeId as string) === 'dembow' || (vibeId as string)?.includes('latina') || false
-  if (isLatinoVibe) {
-    cfg.zScoreThreshold = Math.max(cfg.zScoreThreshold, 3.5)
-    cfg.minEnergy = Math.max(cfg.minEnergy, 0.70)
-    cfg.watchingThreshold = Math.max(cfg.watchingThreshold, 2.5)
-    cfg.imminentThreshold = Math.max(cfg.imminentThreshold, 3.0)
-  }
-
-  const isTechnoVibe = vibeId === 'techno-club' || (vibeId as string) === 'hard-techno' || (vibeId as string)?.includes('techno') || false
-  if (isTechnoVibe) {
-    cfg.zScoreThreshold = Math.min(cfg.zScoreThreshold, 2.2) // Techno maxes at ~2.6
-    cfg.minEnergy = Math.min(cfg.minEnergy, 0.55)
-    cfg.watchingThreshold = Math.min(cfg.watchingThreshold, 1.5)
-    cfg.imminentThreshold = Math.min(cfg.imminentThreshold, 2.0)
-  }
-  
-  // === EVALUAR CONDICIONES ===
-  const conditionsMet: string[] = []
-  
-  // Condición 1: Z-Score épico
-  const isEpicZScore = energyZScore >= cfg.zScoreThreshold
-  if (isEpicZScore) {
-    conditionsMet.push(`z=${energyZScore.toFixed(2)}≥${cfg.zScoreThreshold}`)
-  }
-  
-  // Condición 2: Sección peak
   const isPeakSection = cfg.peakSections.includes(sectionType)
+  const conditionsMet: string[] = []
+
   if (isPeakSection) {
     conditionsMet.push(`section=${sectionType}∈peak`)
   }
-  
-  // Condición 3: Energía mínima
-  const hasMinEnergy = rawEnergy >= cfg.minEnergy
-  if (hasMinEnergy) {
-    conditionsMet.push(`E=${rawEnergy.toFixed(2)}≥${cfg.minEnergy}`)
-  }
-  
-  // Condición 4 (opcional): Kick presente
-  const kickCondition = !cfg.requireKick || hasKick
-  if (hasKick) {
+  if (input.hasKick) {
     conditionsMet.push('KICK')
   }
-  
-  // === DECISIÓN DIVINA ===
-  const shouldForceStrike = isEpicZScore && isPeakSection && hasMinEnergy && kickCondition
-  
-  // === CALCULAR INTENSIDAD ===
-  // Base: 0.85, escala con z-score hasta 1.0
-  // z=3.0 → 0.85, z=3.5 → 0.925, z=4.0 → 1.0
-  let intensity = 0
-  if (shouldForceStrike) {
-    const zExcess = energyZScore - cfg.zScoreThreshold
-    intensity = Math.min(1.0, 0.85 + zExcess * 0.15)
-    
-    // Bonus por kick detectado
-    if (hasKick) {
-      intensity = Math.min(1.0, intensity + 0.05)
-    }
-    
-    // Bonus por harshness alta (synth agresivo)
-    if (input.harshness && input.harshness > 0.7) {
-      intensity = Math.min(1.0, intensity + 0.03)
-    }
-  }
-  
-  // === DETERMINAR NIVEL DE ALERTA ===
-  const alertLevel = determineAlertLevel(energyZScore, cfg, shouldForceStrike)
-  
-  // === GENERAR RAZÓN ===
-  const reason = generateReason(shouldForceStrike, conditionsMet, energyZScore, sectionType, cfg)
-  
+
+  // V3.3.B: shouldForceStrike is always false — V3 ignite is the authority
+  const shouldForceStrike = false
+
+  // Intensity derived from z-score for routing (not gating)
+  const intensity = isPeakSection
+    ? Math.min(1.0, Math.max(0, (energyZScore - 1) / 3))
+    : 0
+
+  const alertLevel = determineAlertLevel(energyZScore, cfg)
+  const reason = generateReason(isPeakSection, conditionsMet, energyZScore, sectionType, cfg)
+
   return {
     shouldForceStrike,
     intensity,
@@ -234,144 +119,72 @@ export function checkDropBridge(
       zScore: energyZScore,
       section: sectionType,
       energy: rawEnergy,
-      threshold: cfg.zScoreThreshold,
+      threshold: cfg.imminentThreshold,
       conditionsMet,
     },
   }
 }
 
-/**
- * Determina el nivel de alerta basado en el Z-Score
- */
 function determineAlertLevel(
   zScore: number,
   cfg: DropBridgeConfig,
-  activated: boolean
 ): DropBridgeResult['alertLevel'] {
-  if (activated) return 'activated'
   if (zScore >= cfg.imminentThreshold) return 'imminent'
   if (zScore >= cfg.watchingThreshold) return 'watching'
   return 'none'
 }
 
-/**
- * Genera una razón legible para la decisión
- */
 function generateReason(
-  shouldFire: boolean,
+  isPeakSection: boolean,
   conditionsMet: string[],
   zScore: number,
   section: SectionType,
-  cfg: DropBridgeConfig
+  cfg: DropBridgeConfig,
 ): string {
-  if (shouldFire) {
-    return `🌩️ DROP BRIDGE ACTIVATED: ${conditionsMet.join(' + ')} → FORCE_STRIKE`
+  if (isPeakSection && zScore >= cfg.imminentThreshold) {
+    return `Drop Bridge ROUTING: ${conditionsMet.join(' + ')} → Divine/Heavy arsenal eligible`
   }
-  
-  const missing: string[] = []
-  if (zScore < cfg.zScoreThreshold) {
-    missing.push(`z=${zScore.toFixed(2)}<${cfg.zScoreThreshold}`)
-  }
-  if (!cfg.peakSections.includes(section)) {
-    missing.push(`section=${section}∉peak`)
-  }
-  
-  if (missing.length === 0) {
-    return `Drop Bridge: Conditions partially met [${conditionsMet.join(', ')}]`
-  }
-  
-  return `Drop Bridge INACTIVE: Missing ${missing.join(', ')}`
+  return `Drop Bridge STANDBY: section=${section}, z=${zScore.toFixed(2)}σ`
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CLASE WRAPPER
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * 🌩️ DropBridge Class
- * 
- * Wrapper con estado para tracking histórico y cooldown
- */
 export class DropBridge {
   private config: DropBridgeConfig
-  private lastActivation: number = 0
   private consecutiveHighZScores: number = 0
-  private readonly COOLDOWN_MS = 2000 // 2 segundos entre activaciones
-  private readonly HIGH_Z_PERSISTENCE = 3 // Frames consecutivos con z alto
-  
+  private readonly HIGH_Z_PERSISTENCE = 3
+
   constructor(config: Partial<DropBridgeConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config }
   }
-  
-  /**
-   * Evalúa si debe activarse el Drop Bridge
-   */
+
   check(input: DropBridgeInput): DropBridgeResult {
-    const now = Date.now()
-    
-    // Track z-scores altos consecutivos
     if (input.energyZScore >= this.config.imminentThreshold) {
       this.consecutiveHighZScores++
     } else {
       this.consecutiveHighZScores = 0
     }
-    
-    // Evaluación base
-    const result = checkDropBridge(input, this.config)
-    
-    // Aplicar cooldown
-    if (result.shouldForceStrike) {
-      const timeSinceLastActivation = now - this.lastActivation
-      
-      if (timeSinceLastActivation < this.COOLDOWN_MS) {
-        // Cooldown activo - suprimir activación
-        return {
-          ...result,
-          shouldForceStrike: false,
-          alertLevel: 'imminent',
-          reason: `${result.reason} [COOLDOWN ${(this.COOLDOWN_MS - timeSinceLastActivation) / 1000}s remaining]`,
-        }
-      }
-      
-      // Activación válida
-      this.lastActivation = now
-    }
-    
-    return result
+    return checkDropBridge(input, this.config)
   }
-  
-  /**
-   * Obtiene el número de frames consecutivos con z-score alto
-   */
+
   getConsecutiveHighZScores(): number {
     return this.consecutiveHighZScores
   }
-  
-  /**
-   * ¿Está el sistema en alerta alta? (Múltiples frames con z alto)
-   */
+
   isHighAlert(): boolean {
     return this.consecutiveHighZScores >= this.HIGH_Z_PERSISTENCE
   }
-  
-  /**
-   * Tiempo desde la última activación en ms
-   */
+
   getTimeSinceLastActivation(): number {
-    return Date.now() - this.lastActivation
+    return 0
   }
-  
-  /**
-   * Reset del estado (cambio de canción)
-   */
+
   reset(): void {
-    this.lastActivation = 0
     this.consecutiveHighZScores = 0
   }
-  
-  /**
-   * Actualiza la configuración
-   */
+
   updateConfig(config: Partial<DropBridgeConfig>): void {
     this.config = { ...this.config, ...config }
   }
@@ -381,39 +194,22 @@ export class DropBridge {
 // UTILIDADES
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * 📊 Calcula la probabilidad estadística de un Z-Score
- * (Para documentación y debug)
- */
 export function zScoreToProbability(zScore: number): number {
-  // Aproximación de la CDF normal estándar
-  // Usando la función de error (erf)
   const absZ = Math.abs(zScore)
-  
-  // Aproximación de Abramowitz and Stegun
   const a1 =  0.254829592
   const a2 = -0.284496736
   const a3 =  1.421413741
   const a4 = -1.453152027
   const a5 =  1.061405429
   const p  =  0.3275911
-  
   const t = 1.0 / (1.0 + p * absZ / Math.sqrt(2))
   const erf = 1 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-absZ * absZ / 2)
-  
-  // CDF
   const cdf = 0.5 * (1 + (zScore >= 0 ? erf : -erf))
-  
-  // Probabilidad de ser >= zScore (cola derecha)
   return 1 - cdf
 }
 
-/**
- * Descripción legible de la rareza de un Z-Score
- */
 export function describeZScore(zScore: number): string {
   const absZ = Math.abs(zScore)
-  
   if (absZ < 1.0) return 'Normal (68%)'
   if (absZ < 1.5) return 'Ligeramente inusual'
   if (absZ < 2.0) return 'Inusual (5%)'

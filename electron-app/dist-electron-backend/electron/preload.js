@@ -560,6 +560,8 @@ const luxApi = {
     },
     /** �📡 WAVE-14: Establecer Input Gain */
     setInputGain: (value) => ipcRenderer.invoke('lux:setInputGain', value),
+    /** 🌊 WAVE 7004.2: Dump Liquid Telemetry ring buffer to JSONL file */
+    dumpLiquidTelemetry: () => ipcRenderer.invoke('liquid-telemetry:dump'),
     /** 🎨 WAVE-14.5 + WAVE 250: Forzar mutación de paleta - Standardized to lux: */
     forceMutate: () => ipcRenderer.invoke('lux:forceMutation'),
     /** 🧠 WAVE-14.5: Resetear memoria de Selene */

@@ -100,8 +100,6 @@ function formatSignalReport(signal: SignalReport): string {
   lines.push(`- **Kicks:** ${signal.detections.kickCount}`)
   lines.push(`- **Snares:** ${signal.detections.snareCount}`)
   lines.push(`- **Drop Bridge Triggers:** ${signal.detections.dropBridgeTriggers}`)
-  lines.push(`- **Fuzzy Strikes:** ${signal.detections.fuzzyStrikes}`)
-  lines.push(`- **Fuzzy Holds:** ${signal.detections.fuzzyHolds}`)
   lines.push('')
 
   // Section distribution

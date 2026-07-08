@@ -73,14 +73,13 @@ export {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export {
-  // Hunt Engine
+  // Hunt Engine — V3.3.B: Candidate generator
   processHunt,
   forcePhaseTransition,
   getHuntState,
   resetHuntEngine,
   getHuntStats,
-  type HuntCandidate,
-  type StrikeConditions,
+  getEligibleCandidates,
   type HuntDecision,
   // Prediction Engine
   predict,

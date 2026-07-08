@@ -1470,7 +1470,6 @@ export class TitanEngine extends EventEmitter {
     }
     ethicsFlags: string[]
     energyZone: 'calm' | 'rising' | 'peak' | 'falling'
-    fuzzyAction: 'force_strike' | 'strike' | 'prepare' | 'hold' | null
     zScore: number
     dropBridgeAlert: 'none' | 'watching' | 'imminent' | 'activated'
     // 🔥 WAVE 1176: OPERATION SNIPER - Raw velocity for UI debugging
@@ -1543,7 +1542,6 @@ export class TitanEngine extends EventEmitter {
         },
         ethicsFlags: [],
         energyZone: 'calm',
-        fuzzyAction: null,
         zScore: 0,
         dropBridgeAlert: 'none',
         // 🔥 WAVE 1176: OPERATION SNIPER
@@ -1641,9 +1639,6 @@ export class TitanEngine extends EventEmitter {
     }
     const energyZone = energyZoneMap[seleneZone] ?? 'calm'
     
-    // 🔮 WAVE 1168: Get fuzzy decision data
-    const fuzzyDecision = this.selene.getFuzzyDecision()
-    const fuzzyAction = fuzzyDecision?.action ?? null
     const zScore = debugInfo.zScore ?? this.selene.getEnergyZScore()
     const dropBridgeAlert = this.selene.getDropBridgeAlertLevel()
     
@@ -1738,7 +1733,6 @@ export class TitanEngine extends EventEmitter {
       lastDreamResult,
       ethicsFlags,
       energyZone,
-      fuzzyAction,
       zScore,
       dropBridgeAlert,
       // 🔥 WAVE 1176: OPERATION SNIPER

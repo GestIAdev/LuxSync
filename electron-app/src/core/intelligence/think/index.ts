@@ -9,7 +9,6 @@
  * - HuntEngine: FSM del depredador estético
  * - PredictionEngine: Anticipación musical
  * - DecisionMaker: Síntesis final de decisiones
- * - 🆕 WAVE 667: FuzzyDecisionMaker: Lógica difusa para decisiones no binarias
  * - 🆕 WAVE 668: DropBridge: Override divino para momentos épicos
  * 
  * Flujo:
@@ -19,15 +18,14 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-// Hunt Engine - FSM del depredador
-export { 
-  processHunt, 
+// Hunt Engine - V3.3.B: Candidate generator (no mathematical authority)
+export {
+  processHunt,
   forcePhaseTransition,
   getHuntState,
   resetHuntEngine,
   getHuntStats,
-  type HuntCandidate,
-  type StrikeConditions,
+  getEligibleCandidates,
   type HuntDecision
 } from './HuntEngine'
 
@@ -58,21 +56,6 @@ export {
   type DecisionInputs,
   type DecisionMakerConfig
 } from './DecisionMaker'
-
-// 🆕 WAVE 667: Fuzzy Decision Maker - Lógica difusa
-export {
-  fuzzyEvaluate,
-  debugFuzzify,
-  getFuzzyRules,
-  FuzzyDecisionMaker,
-  type FuzzySet,
-  type ZScoreFuzzySet,
-  type SectionFuzzySet,
-  type FuzzyInputs,
-  type FuzzyOutputs,
-  type FuzzyDecision,
-  type FuzzyEvaluatorInput,
-} from './FuzzyDecisionMaker'
 
 // 🆕 WAVE 668: Drop Bridge - Override divino para momentos épicos
 export {

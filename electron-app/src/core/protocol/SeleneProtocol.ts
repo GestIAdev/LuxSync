@@ -404,9 +404,6 @@ export interface AITelemetry {
   // 🎲 WAVE 1168: FUZZY DECISION DEBUG
   // ═══════════════════════════════════════════════════════════════════════
   
-  /** Acción del sistema fuzzy */
-  fuzzyAction: 'force_strike' | 'strike' | 'prepare' | 'hold' | null
-  
   /** Z-Score de energía (desviación estándar) */
   zScore: number
   
@@ -993,8 +990,6 @@ export function createDefaultCognitive(): CognitiveData {
       },
       ethicsFlags: [],
       energyZone: 'calm',
-      // 🎲 WAVE 1168: Fuzzy Decision debug
-      fuzzyAction: null,
       zScore: 0,
       dropBridgeAlert: 'none',
       // 🔥 WAVE 1176: OPERATION SNIPER

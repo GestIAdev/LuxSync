@@ -128,7 +128,6 @@ export function logZoneTransition(
  */
 export function logHuntState(
   huntState: string,
-  fuzzyAction: string,
   zScore: number,
   alert: string,
   confidence: number
@@ -145,7 +144,7 @@ export function logHuntState(
   
   const alertEmoji = alert === 'imminent' ? '⚠️' : alert === 'watching' ? '👀' : ''
   console.log(
-    `🧠 [HUNT] ${huntState} | Fuzzy: ${fuzzyAction} | ` +
+    `🧠 [HUNT] ${huntState} | ` +
     `Z: ${zScore.toFixed(1)}σ | Conf: ${confidence.toFixed(2)} ${alertEmoji}`
   )
 }

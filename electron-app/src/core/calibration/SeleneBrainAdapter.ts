@@ -30,11 +30,6 @@
  *   └─────────────────┘
  *         │
  *         ▼
- *   ┌─────────────────┐
- *   │ FuzzyDecisionMkr│
- *   └─────────────────┘
- *         │
- *         ▼
  *   MetricSnapshot (telemetry)
  */
 
@@ -49,17 +44,8 @@ import {
   SectionType as MemorySectionType
 } from '../intelligence/memory/ContextualMemory'
 
-// Fuzzy Decision Maker
-import { 
-  FuzzyDecisionMaker, 
-  FuzzyDecision
-} from '../intelligence/think/FuzzyDecisionMaker'
-
 // Drop Bridge
 import { DropBridge, DropBridgeResult } from '../intelligence/think/DropBridge'
-
-// 🔋 WAVE 932: Import energy context helpers para calibración
-import { createDefaultEnergyContext } from '../protocol/MusicalContext'
 
 // Section type from engine (for compatibility)
 import { SectionType as EngineSectionType } from '../../engine/types'
@@ -117,9 +103,6 @@ interface ExtractedMetrics {
   bassZScore: number
   harshnessZScore: number
   
-  // Fuzzy
-  fuzzyDecision: FuzzyDecision | null
-  
   // Drop Bridge
   dropBridgeResult: DropBridgeResult | null
 }
@@ -142,7 +125,6 @@ export class SeleneBrainAdapter implements BrainMetricProvider {
   // Core components
   private godEarAnalyzer: GodEarAnalyzer
   private contextualMemory: ContextualMemory
-  private fuzzyDecisionMaker: FuzzyDecisionMaker
   private dropBridge: DropBridge
   
   // AGC state (simple implementation)
@@ -164,7 +146,6 @@ export class SeleneBrainAdapter implements BrainMetricProvider {
     // Initialize components
     this.godEarAnalyzer = new GodEarAnalyzer(this.config.sampleRate, 4096)
     this.contextualMemory = new ContextualMemory()
-    this.fuzzyDecisionMaker = new FuzzyDecisionMaker()
     this.dropBridge = new DropBridge()
     
     // Initialize metrics with zeros
@@ -225,21 +206,8 @@ export class SeleneBrainAdapter implements BrainMetricProvider {
     const bassZScore = contextOutput.stats.bass.zScore
     const harshnessZScore = contextOutput.stats.harshness.zScore
     
-    // Step 6: Fuzzy Decision (use mapped section type)
-    // 🔋 WAVE 932: Pass neutral energyContext for calibration
-    // (Calibration doesn't use real energy consciousness, just neutral values)
+    // Step 6: Drop Bridge check
     const mappedSection = mapSectionType(this.currentSection)
-    const fuzzyDecision = this.fuzzyDecisionMaker.evaluate({
-      energy: normalizedEnergy,
-      harshness: spectrum.harshness,
-      zScore: energyZScore,
-      sectionType: mappedSection,
-      huntScore: 0.5, // Neutral for calibration
-      beauty: 0.5,    // Neutral for calibration
-      energyContext: createDefaultEnergyContext()  // 🔋 WAVE 932: Neutral context
-    })
-    
-    // Step 7: Drop Bridge check
     const dropBridgeResult = this.dropBridge.check({
       energyZScore: energyZScore,
       sectionType: mappedSection,
@@ -267,7 +235,6 @@ export class SeleneBrainAdapter implements BrainMetricProvider {
       energyZScore,
       bassZScore,
       harshnessZScore,
-      fuzzyDecision,
       dropBridgeResult
     }
   }
@@ -277,7 +244,6 @@ export class SeleneBrainAdapter implements BrainMetricProvider {
    */
   getMetrics() {
     const m = this.currentMetrics
-    const fz = m.fuzzyDecision
     const db = m.dropBridgeResult
     
     return {
@@ -297,9 +263,6 @@ export class SeleneBrainAdapter implements BrainMetricProvider {
       snareDetected: m.snareDetected,
       sectionType: this.currentSection,
       sectionConfidence: this.sectionConfidence,
-      fuzzyAction: fz?.action ?? 'hold',
-      fuzzyConfidence: fz?.confidence ?? 0,
-      fuzzyReasoning: fz?.reasoning ?? '',
       dropBridgeTriggered: db?.shouldForceStrike ?? false,
       dropBridgeReason: db?.reason ?? ''
     }
@@ -318,7 +281,6 @@ export class SeleneBrainAdapter implements BrainMetricProvider {
     
     // Reset components
     this.contextualMemory.reset()
-    this.fuzzyDecisionMaker.reset()
     this.dropBridge.reset()
     
     // Reset GodEar FFT analyzer (WAVE 1235)
@@ -481,7 +443,6 @@ export class SeleneBrainAdapter implements BrainMetricProvider {
       energyZScore: 0,
       bassZScore: 0,
       harshnessZScore: 0,
-      fuzzyDecision: null,
       dropBridgeResult: null
     }
   }

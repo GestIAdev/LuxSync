@@ -147,6 +147,35 @@ const BPM_HISTORY_SIZE = 8;
 /** Minimum kicks required before reporting a BPM.
  *  Need at least 4 intervals (5 kicks) for any meaningful median. */
 const MIN_KICKS_FOR_BPM = 5;
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔧 WAVE 7002.4 (REC-12): AUTOCORRELATION VALIDATOR CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════════
+/** Energy history size for autocorrelation (~3 seconds at 46ms/frame).
+ *  Must be large enough to capture at least 2 full beat cycles at the
+ *  slowest detectable BPM (40 BPM = 1500ms/beat → need ~3000ms → 65 samples). */
+const AUTOCORR_HISTORY_SIZE = 64;
+/** How often (in frames) to run autocorrelation. It's O(n²) so we don't
+ *  want to run it every frame. Every 30 frames ≈ every 1.4 seconds. */
+const AUTOCORR_INTERVAL_FRAMES = 30;
+/** Agreement threshold (±5%). If interval BPM and autocorrelation BPM
+ *  agree within this margin, boost confidence. */
+const AUTOCORR_AGREE_PCT = 0.05;
+/** Disagreement threshold (±10%). If they disagree by more than this,
+ *  lower confidence — one of them is likely wrong. */
+const AUTOCORR_DISAGREE_PCT = 0.10;
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔧 WAVE 7002.4 (REC-13): KALMAN FILTER CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════════
+/** Process noise Q — how much we expect the true BPM to drift per measurement.
+ *  Small value = smooth tracking, slow tempo-change response.
+ *  0.5 BPM² per measurement allows ~2 BPM drift over 4 kicks. */
+const KALMAN_Q = 0.5;
+/** Initial measurement noise R — uncertainty of each BPM measurement.
+ *  Lower R = trust measurements more. We scale this by (1 - confidence)
+ *  so high-confidence measurements are trusted more. */
+const KALMAN_R_BASE = 8.0;
+/** Initial error covariance P0 — our initial uncertainty about the BPM. */
+const KALMAN_P0 = 100.0;
 /** Confidence decay per frame when no kick is detected.
  *  If the music stops or changes drastically, confidence fades. */
 const CONFIDENCE_DECAY_PER_FRAME = 0.001;
@@ -174,11 +203,42 @@ export class IntervalBPMTracker {
         this.peakEnergyEstimate = 0;
         // ─── Phase Tracking ───────────────────────────────────────────────
         this.lastBeatPhaseTimestamp = 0;
+        // 🔧 WAVE 7002.4 (F7): Fold boundary hysteresis — prevent jitter at pocket edges
+        // Remembers the last musical BPM output so we can apply a dead zone
+        // around pocket boundaries. Without this, raw BPM jittering at 135±1
+        // causes toggling between direct pass (135) and fold-down (102),
+        // producing 33 BPM jumps that flash through the physics engine.
+        this.lastMusicalBpm = 0;
+        // 🔧 WAVE 7002.4 (REC-10): Tempo-change detection.
+        // When outlier rejection blocks incoming BPMs, we track the rejected
+        // values. If N consecutive rejections cluster around a new tempo
+        // (within ±10% of each other), we accept the tempo change by
+        // flushing the history buffer and seeding it with the new tempo.
+        this.rejectedBpmHistory = [];
+        this.TEMPO_CHANGE_THRESHOLD = 4;
+        // 🔧 WAVE 7002.4 (REC-12): Autocorrelation validator.
+        // Longer energy history for spectral autocorrelation. Runs periodically
+        // to cross-validate the interval-based BPM. If both methods agree within
+        // ±5%, confidence is boosted. If they disagree by >10%, confidence is lowered.
+        this.autocorrHistory = new Float32Array(AUTOCORR_HISTORY_SIZE);
+        this.autocorrHistoryPos = 0;
+        this.autocorrHistoryCount = 0;
+        this.autocorrFrameCounter = 0;
+        this.autocorrBpm = 0;
+        // 🔧 WAVE 7002.4 (REC-13): 1D Kalman filter for BPM smoothing.
+        // Provides continuous (sub-integer) BPM estimates, formal confidence
+        // intervals, and natural tempo-change handling via process noise.
+        // Runs alongside the median — Kalman output is used as stableBpm when
+        // initialized, giving 126.3 instead of 126 (fixes W1 too).
+        this.kalmanBpm = 0;
+        this.kalmanP = KALMAN_P0;
+        this.kalmanInitialized = false;
         // ─── WAVE 3418: Periodic telemetry counter (no-kick frames) ──────
         this._periodicLogCounter = 0;
         this.frameDurationMs = overrideFrameDurationMs ?? (bufferSize / sampleRate) * 1000;
         this.energyHistory = new Float32Array(ENERGY_HISTORY_SIZE);
         this.bpmHistory = new Float64Array(BPM_HISTORY_SIZE);
+        this.autocorrHistory = new Float32Array(AUTOCORR_HISTORY_SIZE);
     }
     /**
      * Process one frame of audio data.
@@ -201,6 +261,12 @@ export class IntervalBPMTracker {
         this.energyHistory[this.energyHistoryPos] = rawBassEnergy;
         this.energyHistorySum += rawBassEnergy;
         this.energyHistoryPos = (this.energyHistoryPos + 1) % ENERGY_HISTORY_SIZE;
+        // 🔧 WAVE 7002.4 (REC-12): Feed autocorrelation history buffer
+        this.autocorrHistory[this.autocorrHistoryPos] = rawBassEnergy;
+        this.autocorrHistoryPos = (this.autocorrHistoryPos + 1) % AUTOCORR_HISTORY_SIZE;
+        if (this.autocorrHistoryCount < AUTOCORR_HISTORY_SIZE) {
+            this.autocorrHistoryCount++;
+        }
         const rollingAvg = this.energyHistoryCount > 0
             ? this.energyHistorySum / this.energyHistoryCount
             : 0;
@@ -331,6 +397,39 @@ export class IntervalBPMTracker {
                                 const ratio = instantBpm / this.stableBpm;
                                 if (ratio < 0.65 || ratio > 1.55) {
                                     acceptBpm = false; // outlier — skip this measurement
+                                    // 🔧 WAVE 7002.4 (REC-10): Tempo-change detection.
+                                    // Track rejected BPMs. If 4+ consecutive rejections cluster
+                                    // around a new tempo (within ±10% of their mean), accept the
+                                    // tempo change: flush history and seed with the new tempo.
+                                    this.rejectedBpmHistory.push(instantBpm);
+                                    if (this.rejectedBpmHistory.length >= this.TEMPO_CHANGE_THRESHOLD) {
+                                        // Compute mean of rejected BPMs
+                                        const meanRejected = this.rejectedBpmHistory.reduce((a, b) => a + b, 0) / this.rejectedBpmHistory.length;
+                                        // Check if they cluster tightly (±10% of mean)
+                                        const allClustered = this.rejectedBpmHistory.every(v => Math.abs(v - meanRejected) / meanRejected < 0.10);
+                                        if (allClustered && meanRejected > 0) {
+                                            // Genuine tempo change — flush and reseed
+                                            this.bpmHistory.fill(meanRejected);
+                                            this.bpmHistoryPos = 0;
+                                            this.bpmHistoryCount = BPM_HISTORY_SIZE;
+                                            // 🔧 WAVE 7002.4 (REC-13): Reset Kalman to new tempo
+                                            this.kalmanBpm = meanRejected;
+                                            this.kalmanP = KALMAN_P0;
+                                            this.kalmanInitialized = true;
+                                            this.stableBpm = this.kalmanInitialized
+                                                ? Math.round(this.kalmanBpm * 10) / 10
+                                                : this.computeMedianBpm();
+                                            this.currentConfidence = this.computeConfidence();
+                                            this.rejectedBpmHistory = [];
+                                            console.log(`[🥁 TEMPO-CHANGE] Detected shift to ${meanRejected.toFixed(0)} BPM ` +
+                                                `(was ${this.stableBpm.toFixed(0)}). History flushed.`);
+                                            acceptBpm = true;
+                                        }
+                                    }
+                                }
+                                else {
+                                    // Accepted measurement — reset rejection tracking
+                                    this.rejectedBpmHistory = [];
                                 }
                             }
                             if (acceptBpm) {
@@ -340,7 +439,16 @@ export class IntervalBPMTracker {
                                 this.bpmHistoryCount = Math.min(this.bpmHistoryCount + 1, BPM_HISTORY_SIZE);
                                 // ─── 5. Compute Median BPM ───────────────────────────
                                 if (this.bpmHistoryCount >= 3) {
-                                    this.stableBpm = this.computeMedianBpm();
+                                    const medianBpm = this.computeMedianBpm();
+                                    // 🔧 WAVE 7002.4 (REC-13): Kalman filter update.
+                                    // Provides sub-integer precision (126.3 instead of 126)
+                                    // and natural tempo-change handling via process noise.
+                                    this.kalmanUpdate(instantBpm, this.currentConfidence);
+                                    // Use Kalman estimate when initialized (continuous BPM),
+                                    // fall back to integer median for cold start.
+                                    this.stableBpm = this.kalmanInitialized
+                                        ? Math.round(this.kalmanBpm * 10) / 10 // 1 decimal place
+                                        : medianBpm;
                                     this.currentConfidence = this.computeConfidence();
                                 }
                             } // end acceptBpm
@@ -407,6 +515,9 @@ export class IntervalBPMTracker {
                 `peak_est=${this.peakEnergyEstimate.toFixed(5)} ` +
                 `kicks=${this.totalKicks} bpm=${this.stableBpm}`);
         }
+        // 🔧 WAVE 7002.4 (REC-12): Run autocorrelation validator periodically.
+        // Cross-validates interval-based BPM with spectral autocorrelation.
+        this.runAutocorrelationValidation();
         return {
             bpm: this.stableBpm,
             confidence: this.totalKicks >= MIN_KICKS_FOR_BPM ? this.currentConfidence : 0,
@@ -414,6 +525,119 @@ export class IntervalBPMTracker {
             kickDetected,
             beatPhase,
         };
+    }
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🔧 WAVE 7002.4 (REC-13): KALMAN FILTER — 1D BPM Estimator
+    // ═══════════════════════════════════════════════════════════════════════════
+    /**
+     * Kalman filter predict + update step.
+     *
+     * State model: BPM is constant + small random walk (process noise Q).
+     * Measurement: each accepted instantBpm from interval measurement.
+     *
+     * The Kalman filter provides:
+     * - Continuous BPM estimates (126.3 instead of 126) — fixes W1
+     * - Formal confidence intervals via error covariance P
+     * - Natural tempo-change handling via process noise
+     * - Prediction smoothing — less jittery than raw median
+     */
+    kalmanUpdate(measurement, confidence) {
+        if (!this.kalmanInitialized) {
+            // First measurement — initialize state
+            this.kalmanBpm = measurement;
+            this.kalmanP = KALMAN_P0;
+            this.kalmanInitialized = true;
+            return;
+        }
+        // Predict: BPM stays same, uncertainty grows
+        this.kalmanP += KALMAN_Q;
+        // Scale measurement noise by inverse confidence:
+        // High confidence → trust measurement → low R
+        // Low confidence → distrust measurement → high R
+        const R = KALMAN_R_BASE * (1.0 - Math.min(1.0, confidence));
+        // Update: compute Kalman gain and correct estimate
+        const K = this.kalmanP / (this.kalmanP + R);
+        this.kalmanBpm = this.kalmanBpm + K * (measurement - this.kalmanBpm);
+        this.kalmanP = (1 - K) * this.kalmanP;
+        // Clamp to sane range
+        this.kalmanBpm = Math.max(40, Math.min(300, this.kalmanBpm));
+    }
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🔧 WAVE 7002.4 (REC-12): AUTOCORRELATION VALIDATOR
+    // ═══════════════════════════════════════════════════════════════════════════
+    /**
+     * Compute BPM via autocorrelation of the energy history.
+     *
+     * Autocorrelation finds the periodicity in the energy signal:
+     *   R(lag) = Σ energy[i] × energy[i + lag]
+     *
+     * The lag with the highest R (excluding lag=0) corresponds to the
+     * beat period. Convert: BPM = 60000 / (lag × frameDurationMs).
+     *
+     * This is an independent measurement from the interval-based method.
+     * Cross-validating both improves cold-start reliability and detects
+     * tempo changes that outlier rejection might block.
+     *
+     * Only searches lags corresponding to 40-300 BPM (musical range).
+     */
+    computeAutocorrelationBpm() {
+        const n = this.autocorrHistoryCount;
+        if (n < AUTOCORR_HISTORY_SIZE)
+            return 0; // Need full buffer
+        // Search range: lags corresponding to 40-300 BPM
+        const minLag = Math.max(1, Math.round(60000 / (300 * this.frameDurationMs)));
+        const maxLag = Math.min(n - 1, Math.round(60000 / (40 * this.frameDurationMs)));
+        if (maxLag <= minLag)
+            return 0;
+        let bestLag = 0;
+        let bestCorr = -Infinity;
+        // Compute autocorrelation for each candidate lag
+        for (let lag = minLag; lag <= maxLag; lag++) {
+            let corr = 0;
+            for (let i = 0; i < n - lag; i++) {
+                // Read from circular buffer
+                const idxA = (this.autocorrHistoryPos + i) % AUTOCORR_HISTORY_SIZE;
+                const idxB = (this.autocorrHistoryPos + i + lag) % AUTOCORR_HISTORY_SIZE;
+                corr += this.autocorrHistory[idxA] * this.autocorrHistory[idxB];
+            }
+            // Normalize by number of terms
+            corr /= (n - lag);
+            if (corr > bestCorr) {
+                bestCorr = corr;
+                bestLag = lag;
+            }
+        }
+        if (bestLag === 0)
+            return 0;
+        return 60000 / (bestLag * this.frameDurationMs);
+    }
+    /**
+     * 🔧 WAVE 7002.4 (REC-12): Run autocorrelation validator periodically.
+     * Cross-validates interval-based BPM with autocorrelation BPM.
+     * - Agreement (±5%): boost confidence by 0.1
+     * - Disagreement (>10%): lower confidence by 0.15
+     * - In between: no change
+     */
+    runAutocorrelationValidation() {
+        this.autocorrFrameCounter++;
+        if (this.autocorrFrameCounter < AUTOCORR_INTERVAL_FRAMES)
+            return;
+        this.autocorrFrameCounter = 0;
+        if (this.stableBpm <= 0)
+            return;
+        this.autocorrBpm = this.computeAutocorrelationBpm();
+        if (this.autocorrBpm <= 0)
+            return;
+        const ratio = this.autocorrBpm / this.stableBpm;
+        const deviation = Math.abs(ratio - 1);
+        if (deviation <= AUTOCORR_AGREE_PCT) {
+            // Both methods agree — boost confidence
+            this.currentConfidence = Math.min(1, this.currentConfidence + 0.1);
+        }
+        else if (deviation > AUTOCORR_DISAGREE_PCT) {
+            // Methods disagree — lower confidence
+            this.currentConfidence = Math.max(0, this.currentConfidence - 0.15);
+        }
     }
     /**
      * Compute the median of the BPM history buffer.
@@ -461,20 +685,33 @@ export class IntervalBPMTracker {
         const n = this.bpmHistoryCount;
         if (n < 3)
             return 0;
-        let min = Infinity;
-        let max = -Infinity;
+        // 🔧 WAVE 7002.4 (REC-9): IQR-based confidence instead of max-min spread.
+        // IQR (Q3 - Q1) is robust against single outliers — one wild BPM in 8
+        // samples no longer tanks confidence to 0. The interquartile range
+        // captures the spread of the central 50% of measurements, ignoring
+        // the tails where outliers live.
+        const sorted = [];
         for (let i = 0; i < n; i++) {
-            const bpm = this.bpmHistory[i];
-            if (bpm < min)
-                min = bpm;
-            if (bpm > max)
-                max = bpm;
+            sorted.push(this.bpmHistory[i]);
         }
-        const spread = max - min;
-        // Normalize: spread of 0 → conf 1.0, spread of 60+ → conf ~0.0
-        // WAVE 2170: 60 BPM range (was 40) — more tolerant of natural BPM variation
-        const normalizedSpread = spread / 60;
-        const confidence = Math.max(0, Math.min(1, 1 - normalizedSpread));
+        sorted.sort((a, b) => a - b);
+        // Quartile positions (linear interpolation, same as computeMedianBpm)
+        const q1Idx = (n - 1) * 0.25;
+        const q3Idx = (n - 1) * 0.75;
+        const q1Lo = Math.floor(q1Idx);
+        const q1Hi = Math.ceil(q1Idx);
+        const q3Lo = Math.floor(q3Idx);
+        const q3Hi = Math.ceil(q3Idx);
+        const q1Frac = q1Idx - q1Lo;
+        const q3Frac = q3Idx - q3Lo;
+        const q1 = sorted[q1Lo] + q1Frac * (sorted[q1Hi] - sorted[q1Lo]);
+        const q3 = sorted[q3Lo] + q3Frac * (sorted[q3Hi] - sorted[q3Lo]);
+        const iqr = q3 - q1;
+        // Normalize: IQR of 0 → conf 1.0, IQR of 30+ → conf ~0.0
+        // IQR is typically ~60% of the max-min spread for normal distributions,
+        // so we use 30 BPM normalization (was 60 for max-min).
+        const normalizedIqr = iqr / 30;
+        const confidence = Math.max(0, Math.min(1, 1 - normalizedIqr));
         return confidence;
     }
     /** Get current stable BPM (raw, unfolded) */
@@ -554,9 +791,32 @@ export class IntervalBPMTracker {
         const raw = this.stableBpm;
         if (raw === 0)
             return 0;
-        // Direct hit — already in the pocket
-        if (raw >= targetMin && raw <= targetMax)
+        // 🔧 WAVE 7003 (F7): HYSTERESIS at pocket boundaries.
+        // If we already have a musical BPM and raw is near a boundary,
+        // require a margin before switching modes. This prevents 33-44 BPM
+        // jumps when raw BPM jitters ±1-2 BPM around the pocket edge.
+        const HYSTERESIS_MARGIN = 5;
+        const expandedMin = targetMin - HYSTERESIS_MARGIN;
+        const expandedMax = targetMax + HYSTERESIS_MARGIN;
+        // Direct hit — already in the pocket (with hysteresis expansion)
+        if (raw >= expandedMin && raw <= expandedMax) {
+            // If last output was a fold result and we're still near the boundary,
+            // keep the fold to avoid jitter. Only return raw if we're comfortably
+            // inside the pocket or we haven't folded recently.
+            if (this.lastMusicalBpm > 0 && this.lastMusicalBpm !== raw) {
+                const lastWasInPocket = this.lastMusicalBpm >= targetMin && this.lastMusicalBpm <= targetMax;
+                if (lastWasInPocket && raw >= targetMin && raw <= targetMax) {
+                    this.lastMusicalBpm = raw;
+                    return raw;
+                }
+                // If last was a fold and we're in the hysteresis zone, keep the fold
+                if (!lastWasInPocket && (raw < targetMin || raw > targetMax)) {
+                    return this.lastMusicalBpm;
+                }
+            }
+            this.lastMusicalBpm = raw; // 🔧 WAVE 7003 (F7)
             return raw;
+        }
         // ── FOLDING DOWN (raw too fast) ──────────────────────────────────────
         if (raw > targetMax) {
             const folds = [
@@ -568,8 +828,10 @@ export class IntervalBPMTracker {
             ];
             for (const f of folds) {
                 const folded = Math.round(f);
-                if (folded >= targetMin && folded <= targetMax)
+                if (folded >= targetMin && folded <= targetMax) {
+                    this.lastMusicalBpm = folded; // 🔧 WAVE 7003 (F7)
                     return folded;
+                }
             }
         }
         // ── FOLDING UP (raw too slow) ────────────────────────────────────────
@@ -582,8 +844,10 @@ export class IntervalBPMTracker {
             ];
             for (const f of folds) {
                 const folded = Math.round(f);
-                if (folded >= targetMin && folded <= targetMax)
+                if (folded >= targetMin && folded <= targetMax) {
+                    this.lastMusicalBpm = folded; // 🔧 WAVE 7003 (F7)
                     return folded;
+                }
             }
         }
         // ── WAVE 2181: SAFETY CLAMP — The Last Line of Defense ───────────────
@@ -591,7 +855,9 @@ export class IntervalBPMTracker {
         // clamp to the nearest pocket boundary. NEVER return raw BPM to physics.
         // A raw 275 BPM would drive movers at 4.6 Hz oscillation — mechanical death.
         const pocketCenter = (targetMin + targetMax) / 2;
-        return raw > pocketCenter ? targetMax : targetMin;
+        const clamped = raw > pocketCenter ? targetMax : targetMin;
+        this.lastMusicalBpm = clamped;
+        return clamped;
     }
     /** Reset tracker state — AMNESIA PROTOCOL */
     reset() {
@@ -609,5 +875,17 @@ export class IntervalBPMTracker {
         this.stableBpm = 0;
         this.currentConfidence = 0;
         this.lastBeatPhaseTimestamp = 0;
+        this.lastMusicalBpm = 0; // 🔧 WAVE 7003 (F7)
+        this.rejectedBpmHistory = []; // 🔧 WAVE 7002.4 (REC-10)
+        // 🔧 WAVE 7002.4 (REC-12): Reset autocorrelation state
+        this.autocorrHistory.fill(0);
+        this.autocorrHistoryPos = 0;
+        this.autocorrHistoryCount = 0;
+        this.autocorrFrameCounter = 0;
+        this.autocorrBpm = 0;
+        // 🔧 WAVE 7002.4 (REC-13): Reset Kalman state
+        this.kalmanBpm = 0;
+        this.kalmanP = KALMAN_P0;
+        this.kalmanInitialized = false;
     }
 }

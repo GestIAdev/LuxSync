@@ -28,6 +28,8 @@ export class AudioPipelineManager {
         this.lastStableWorkerBpm = 0;
         this.lastStableWorkerBpmFrame = 0;
         this.FREEWHEEL_TIMEOUT_FRAMES = 125; // ~5s a 25fps
+        // 🔧 WAVE 7002.4 (T2): Track last BPM passed to setBpm() to avoid redundant calls
+        this.lastSetBpm = 0;
         // ---- Diagnostics ----
         this.hasLoggedFirstAudio = false;
         this.audioBufferRejectCount = 0;
@@ -283,7 +285,11 @@ export class AudioPipelineManager {
         const workerOnBeat = this.lastAudioData.workerOnBeat ?? false;
         if (this.beatDetector && this.hasRealAudio) {
             if (workerBpm > 0 && workerConfidence > 0.2) {
-                this.beatDetector.setBpm(workerBpm);
+                // 🔧 WAVE 7002.4 (T2): Only call setBpm() when BPM actually changes
+                if (this.lastSetBpm !== workerBpm) {
+                    this.beatDetector.setBpm(workerBpm);
+                    this.lastSetBpm = workerBpm;
+                }
                 this.lastStableWorkerBpm = workerBpm;
                 this.lastStableWorkerBpmFrame = frameCount;
             }

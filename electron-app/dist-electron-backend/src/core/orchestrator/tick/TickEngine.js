@@ -90,6 +90,11 @@ export class TickEngine {
         this._glassView = new Float32Array(FIX_DATA_FLOATS);
         this.dmxWriter = new DmxUniverseWriter(getDmxSab());
         this._universeSnapshots = new Map();
+        // 🔧 WAVE 7002.4 (T3): Phase crossfade — smooth transition between PLL and worker phase.
+        // When pllLocked changes state, crossfade over PHASE_CROSSFADE_FRAMES frames
+        // to avoid instantaneous phase jumps that cause visual discontinuities.
+        this._phaseCrossfadeWeight = 0; // 0 = worker phase, 1 = PLL phase
+        this._prevPllLocked = false;
         this.ctx = ctx;
         TickEngine._instances.add(this);
     }
@@ -284,9 +289,15 @@ export class TickEngine {
             // Worker sordo Y memoria expirada â†’ PLL cae al Pacemaker interno (120 default)
             // PunkArchytect doctrine: Worker = OÃ­dos (honesto). Cerebro = Memoria (inerte).
             // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-            if (workerBpm > 0 && workerConfidence > 0.2) {
+            if (workerBpm > 0 && workerConfidence > 0.5) {
                 // ðŸ”¥ Worker activo: lock real + actualizar memoria
-                this.audioPipeline.beatDetector.setBpm(workerBpm);
+                // 🔧 WAVE 7002.4 (T2): Only call setBpm() when BPM actually changes.
+                // Calling setBpm() 44×/sec with the same value caused PLL re-lock
+                // jitter (candidateFrames forced to HYSTERESIS_FRAMES every frame).
+                if (this.audioPipeline.lastSetBpm !== workerBpm) {
+                    this.audioPipeline.beatDetector.setBpm(workerBpm);
+                    this.audioPipeline.lastSetBpm = workerBpm;
+                }
                 this.audioPipeline.lastStableWorkerBpm = workerBpm;
                 this.audioPipeline.lastStableWorkerBpmFrame = this.frameCount;
             }
@@ -305,6 +316,9 @@ export class TickEngine {
             if (workerOnBeat) {
                 beatState.onBeat = true;
                 beatState.kickDetected = true;
+                // 🔧 WAVE 7002 (F11): Feed real kick timestamp to PLL phase corrector.
+                // This reconnects the PLL to audio evidence — pllLocked can now become true.
+                this.audioPipeline.beatDetector.feedKick(now);
             }
             if (this.frameCount % 60 === 0) {
                 const pllInfo = beatState.pllLocked ? 'LOCKED' : 'FREEWHEEL';
@@ -338,12 +352,41 @@ export class TickEngine {
         // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         const _framesSinceStable = this.frameCount - this.audioPipeline.lastStableWorkerBpmFrame;
         const hasFreewheelMemory = this.audioPipeline.lastStableWorkerBpm > 0 && _framesSinceStable <= this.audioPipeline.FREEWHEEL_TIMEOUT_FRAMES;
-        if (workerBpm > 0 && workerConfidence > 0.2) {
+        if (workerBpm > 0 && workerConfidence > 0.5) {
             // Priority 1: Worker activo
             context.bpm = workerBpm;
-            context.beatPhase = beatState.pllLocked
-                ? (beatState.pllPhase ?? beatState.phase)
-                : workerBeatPhase;
+            // 🔧 WAVE 7003 (F5) + WAVE 7002.4 (T3): Phase crossfade.
+            // Always prefer PLL phase, but crossfade on lock state transitions
+            // to avoid instantaneous phase jumps that cause visual discontinuities.
+            const pllPhase = beatState.pllPhase;
+            if (pllPhase !== undefined && pllPhase !== null) {
+                // Update crossfade weight based on lock state
+                const targetWeight = beatState.pllLocked ? 1 : 0;
+                if (beatState.pllLocked !== this._prevPllLocked) {
+                    // Lock state changed — start crossfade
+                    this._prevPllLocked = beatState.pllLocked;
+                }
+                // Ease weight toward target
+                const step = 1 / TickEngine.PHASE_CROSSFADE_FRAMES;
+                if (this._phaseCrossfadeWeight < targetWeight) {
+                    this._phaseCrossfadeWeight = Math.min(targetWeight, this._phaseCrossfadeWeight + step);
+                }
+                else if (this._phaseCrossfadeWeight > targetWeight) {
+                    this._phaseCrossfadeWeight = Math.max(targetWeight, this._phaseCrossfadeWeight - step);
+                }
+                // Crossfade between worker and PLL phase (circular interpolation)
+                const w = this._phaseCrossfadeWeight;
+                let diff = pllPhase - workerBeatPhase;
+                // Wrap to shortest path
+                if (diff > 0.5)
+                    diff -= 1;
+                if (diff < -0.5)
+                    diff += 1;
+                context.beatPhase = (workerBeatPhase + diff * w + 1) % 1;
+            }
+            else {
+                context.beatPhase = workerBeatPhase;
+            }
             context.syncopation = this.audioPipeline.syncSmoother.estimateSyncopation(context.beatPhase, bass, mid);
         }
         else if (hasFreewheelMemory) {
@@ -382,6 +425,8 @@ export class TickEngine {
             beatCount: this.audioPipeline.lastAudioData.workerKickCount ?? beatState.beatCount,
             bpm: workerBpm > 0 ? workerBpm : beatState.bpm,
             beatConfidence: workerConfidence > 0 ? workerConfidence : beatState.confidence,
+            // 🔧 WAVE 7002 (F2): Propagate pllLocked to TitanEngine for Cassandra
+            pllLocked: beatState.pllLocked,
             // ðŸŒŠ WAVE 1011.5: MÃ©tricas FFT SUAVIZADAS (WAVE 3504.5: via SyncSmoother)
             harshness: this.audioPipeline.syncSmoother.currentSmoothed.harshness,
             spectralFlatness: this.audioPipeline.syncSmoother.currentSmoothed.spectralFlatness,
@@ -1468,3 +1513,4 @@ TickEngine.HOT_FRAME_DIVIDER = 1;
 // WAVE 7120: L3++ Calibration — plain entries stored directly (no SAB needed, both sides in main)
 TickEngine._calibEntries = [];
 TickEngine._instances = new Set();
+TickEngine.PHASE_CROSSFADE_FRAMES = 8;

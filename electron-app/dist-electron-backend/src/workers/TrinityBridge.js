@@ -719,11 +719,16 @@ VIBE_PROFILES['chill-lounge'] = VIBE_PROFILES['chill'];
 const DEFAULT_PROFILE = VIBE_PROFILES['techno'];
 export class SimpleSectionTracker {
     constructor() {
-        this.energyHistory = [];
-        this.bassHistory = [];
+        // 🔧 WAVE 7002.4 (REC-15): Circular buffers replace number[] + shift()
+        // Eliminates O(n) Array.shift() every frame — kills SE4.
+        this.energyHistory = new Float32Array(64);
+        this.bassHistory = new Float32Array(64);
+        this.energyHistoryPos = 0;
+        this.bassHistoryPos = 0;
+        this.historyCount = 0;
+        this.historySize = 64;
         this.currentSection = 'verse';
         this.beatsSinceChange = 0;
-        this.historySize = 64;
         // 🎯 WAVE 289.5: Estado temporal para DROP management
         this.dropStartTime = 0;
         this.lastDropEndTime = 0;
@@ -736,6 +741,10 @@ export class SimpleSectionTracker {
         // 🎯 WAVE 289.5: Vibe profile
         this.activeVibeId = 'techno';
         this.profile = DEFAULT_PROFILE;
+        // 🔧 WAVE 7003 (F4): Track whether we've ever had a buildup/drop for intro detection
+        this.hasHadBuildupOrDrop = false;
+        // 🔧 WAVE 7003 (F4): Chorus detection — sustained high energy with stable bass
+        this.chorusBeatAccumulator = 0;
     }
     /**
      * 🎯 WAVE 289.5: Cambiar el vibe activo
@@ -751,12 +760,13 @@ export class SimpleSectionTracker {
         this.framesSinceTransition++;
         const now = Date.now();
         const p = this.profile;
-        // Acumular historial
-        this.energyHistory.push(audio.volume);
-        this.bassHistory.push(audio.bass);
-        if (this.energyHistory.length > this.historySize) {
-            this.energyHistory.shift();
-            this.bassHistory.shift();
+        // Acumular historial (circular buffer — no shift() needed)
+        this.energyHistory[this.energyHistoryPos] = audio.volume;
+        this.bassHistory[this.bassHistoryPos] = audio.bass;
+        this.energyHistoryPos = (this.energyHistoryPos + 1) % this.historySize;
+        this.bassHistoryPos = (this.bassHistoryPos + 1) % this.historySize;
+        if (this.historyCount < this.historySize) {
+            this.historyCount++;
         }
         if (audio.onBeat) {
             this.beatsSinceChange++;
@@ -788,15 +798,20 @@ export class SimpleSectionTracker {
             (audio.mid * p.frequencyWeights.mid) +
             (audio.treble * p.frequencyWeights.treble);
         const weightedEnergy = Math.max(rawWeightedEnergy, audio.volume * 0.85);
-        // Promedios recientes vs históricos
-        const recentEnergy = this.avg(this.energyHistory.slice(-16));
-        const olderEnergy = this.avg(this.energyHistory.slice(0, 32));
-        const recentBass = this.avg(this.bassHistory.slice(-16));
-        const olderBass = this.avg(this.bassHistory.slice(0, 32)) || 0.1;
+        // Promedios recientes vs históricos (circular buffer reads)
+        const recentEnergy = this.avgRecent(16);
+        const olderEnergy = this.avgOldest(32);
+        const recentBass = this.avgRecentBass(16);
+        const olderBass = this.avgOldestBass(32) || 0.1;
         const bassRatio = recentBass / olderBass;
         const energyDelta = recentEnergy - olderEnergy;
         // === DECISIÓN DE SECCIÓN CON PERFILES VIBE-AWARE ===
         let newSection = this.currentSection;
+        // 🔧 WAVE 7003 (F4): INTRO — first ~5 seconds with low energy before any buildup/drop
+        // Music just started, energy is low, and we haven't hit a buildup or drop yet.
+        if (!this.hasHadBuildupOrDrop && this.frameCount < 150 && weightedEnergy < 0.30) {
+            newSection = 'intro';
+        }
         // 🎯 WAVE 289.5: DROP con cooldown, duración máxima y kill switch
         const inCooldown = (now - this.lastDropEndTime) < p.dropCooldown;
         const dropDuration = this.currentSection === 'drop' ? (now - this.dropStartTime) : 0;
@@ -852,11 +867,13 @@ export class SimpleSectionTracker {
                 this.dropStartTime = now;
                 this.beatsSinceChange = 0;
                 this.framesSinceTransition = 0;
+                this.hasHadBuildupOrDrop = true; // 🔧 WAVE 7003 (F4)
                 console.log(`[SimpleSectionTracker] 🔴 DROP ENTER | vibe=${this.activeVibeId} | bassRatio=${bassRatio.toFixed(2)} | energy=${weightedEnergy.toFixed(2)} | bass=${audio.bass.toFixed(2)} | kick=${hasKick}`);
             }
             // BUILDUP: Energía subiendo (only if hysteresis allows)
             else if (hysteresisAllows && energyDelta > p.buildupDeltaThreshold && weightedEnergy > 0.4 && bassRatio < 1.15) {
                 newSection = 'buildup';
+                this.hasHadBuildupOrDrop = true; // 🔧 WAVE 7003 (F4)
             }
             // BREAKDOWN: Caída de energía REAL (only if hysteresis allows)
             // 🩸 WAVE 2099: THE BLACK HOLE FIX — breakdown was a trap.
@@ -874,6 +891,15 @@ export class SimpleSectionTracker {
             else if (hysteresisAllows && energyDelta < -0.10 && weightedEnergy < p.breakdownEnergyThreshold) {
                 newSection = 'breakdown';
                 this.beatsSinceChange = 0;
+            }
+            // 🔧 WAVE 7003 (F4): CHORUS — sustained high energy with stable bass, not meeting drop criteria.
+            // Requires: wE > 0.6, bassRatio stable (0.85-1.15), beatsSinceChange > 16.
+            // This is the "groove" section — high energy but no bass spike, so it's not a drop.
+            else if (hysteresisAllows && weightedEnergy > 0.6 && bassRatio > 0.85 && bassRatio < 1.15 && this.beatsSinceChange > 16) {
+                if (this.currentSection !== 'chorus') {
+                    this.chorusBeatAccumulator = this.beatsSinceChange;
+                }
+                newSection = 'chorus';
             }
             // VERSE: Estado neutral — recovery from any section that's been stuck
             // 🩸 WAVE 2099: Reduced from 90 to 32 beats.
@@ -902,20 +928,77 @@ export class SimpleSectionTracker {
             energy: recentEnergy,
             transitionLikelihood,
             beatsSinceChange: this.beatsSinceChange,
-            confidence: Math.min(1, this.energyHistory.length / 32),
+            confidence: Math.min(1, this.historyCount / 32),
         };
+    }
+    // 🔧 WAVE 7002.4 (REC-15): Circular buffer avg methods — zero-alloc reads
+    // avgRecent(n): average of the n most recently written entries
+    avgRecent(n) {
+        if (this.historyCount === 0)
+            return 0;
+        const count = Math.min(n, this.historyCount);
+        let sum = 0;
+        for (let i = 0; i < count; i++) {
+            const idx = (this.energyHistoryPos - 1 - i + this.historySize * 2) % this.historySize;
+            sum += this.energyHistory[idx];
+        }
+        return sum / count;
+    }
+    // avgOldest(n): average of the n oldest entries in the buffer
+    avgOldest(n) {
+        if (this.historyCount === 0)
+            return 0;
+        const count = Math.min(n, this.historyCount);
+        let sum = 0;
+        // Oldest entry is at energyHistoryPos when buffer is full,
+        // or at index 0 when buffer is not yet full.
+        const oldestPos = this.historyCount >= this.historySize ? this.energyHistoryPos : 0;
+        for (let i = 0; i < count; i++) {
+            const idx = (oldestPos + i) % this.historySize;
+            sum += this.energyHistory[idx];
+        }
+        return sum / count;
+    }
+    avgRecentBass(n) {
+        if (this.historyCount === 0)
+            return 0;
+        const count = Math.min(n, this.historyCount);
+        let sum = 0;
+        for (let i = 0; i < count; i++) {
+            const idx = (this.bassHistoryPos - 1 - i + this.historySize * 2) % this.historySize;
+            sum += this.bassHistory[idx];
+        }
+        return sum / count;
+    }
+    avgOldestBass(n) {
+        if (this.historyCount === 0)
+            return 0;
+        const count = Math.min(n, this.historyCount);
+        let sum = 0;
+        const oldestPos = this.historyCount >= this.historySize ? this.bassHistoryPos : 0;
+        for (let i = 0; i < count; i++) {
+            const idx = (oldestPos + i) % this.historySize;
+            sum += this.bassHistory[idx];
+        }
+        return sum / count;
     }
     avg(arr) {
         return arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
     }
     reset() {
-        this.energyHistory = [];
-        this.bassHistory = [];
+        // 🔧 WAVE 7002.4 (REC-15): Reset circular buffers
+        this.energyHistory.fill(0);
+        this.bassHistory.fill(0);
+        this.energyHistoryPos = 0;
+        this.bassHistoryPos = 0;
+        this.historyCount = 0;
         this.currentSection = 'verse';
         this.beatsSinceChange = 0;
         this.dropStartTime = 0;
         this.lastDropEndTime = 0;
         this.framesSinceTransition = 0; // 🩸 WAVE 2098
+        this.hasHadBuildupOrDrop = false; // 🔧 WAVE 7003 (F4)
+        this.chorusBeatAccumulator = 0; // 🔧 WAVE 7003 (F4)
     }
 }
 // �️ WAVE 61: SimpleBinaryBias ELIMINADO

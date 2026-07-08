@@ -430,7 +430,7 @@ export class EffectDreamSimulator {
         const energyZone = context.energyZone ?? this.deriveEnergyZone(context.energy);
         if ((energyZone === 'valley' || energyZone === 'silence') && zScore < 0) {
             // 🧹 WAVE 1178.1: Log SILENCIADO - spam innecesario
-            // console.log(`[DREAM_SIMULATOR] 🛡️ VALLEY PROTECTION: zone=${energyZone} Z=${zScore.toFixed(2)} → NO CANDIDATES`)
+            // console.log(`[DREAM_SIMULATOR] 🛡️ VALLEY PROTECTION: zone=${energyZone} Z=${zScore.toFixed(3)} → NO CANDIDATES`)
             return []; // No generar candidatos - la música está muriendo
         }
         const zoneSource = context.energyZone ? 'SeleneTitanConscious' : 'local-fallback';
@@ -470,7 +470,7 @@ export class EffectDreamSimulator {
             && prediction.confidence > 0.55;
         if (projectedZone !== energyZone) {
             console.log(`[DREAM_SIMULATOR] 🔮 ORACLE VISION: zone override ${energyZone} → ${projectedZone} ` +
-                `(pred=${predType} timeToEvent=${timeToEvent}ms conf=${prediction.confidence.toFixed(2)})` +
+                `(pred=${predType} timeToEvent=${timeToEvent}ms conf=${prediction.confidence.toFixed(3)})` +
                 (relaxGuardsForFuture ? ' | Z-guards RELAXED' : ''));
         }
         const zoneFilteredEffects = this.filterByZone(vibeAllowedEffects, projectedZone);
@@ -577,7 +577,7 @@ export class EffectDreamSimulator {
         // 🔮 WAVE 1190: CASSANDRA LOG - Solo si hay predicción fuerte
         if (prediction.confidence > 0.6 && prediction.predictionType !== 'none') {
             console.log(`[DREAM_SIMULATOR] 🔮 CASSANDRA: type=${prediction.predictionType} ` +
-                `conf=${prediction.confidence.toFixed(2)} ` +
+                `conf=${prediction.confidence.toFixed(3)} ` +
                 `timeToEvent=${prediction.timeToEventMs ?? '?'}ms ` +
                 `urgent=${prediction.isUrgent} ` +
                 `candidates=${candidates.length}`);
@@ -589,7 +589,7 @@ export class EffectDreamSimulator {
         //   el Rescue parte desde todos los efectos del vibe (no solo los filtrados por zona)
         //   para garantizar candidatos en cualquier escenario predictivo.
         if (candidates.length === 0 && zoneFilteredEffects.length > 0) {
-            console.log(`[DREAM_SIMULATOR] ⚠️ All effects blocked by Z-guards! (Z=${zScore.toFixed(2)} projectedZone=${projectedZone}). Attempting Minimal Rescue...`);
+            console.log(`[DREAM_SIMULATOR] ⚠️ All effects blocked by Z-guards! (Z=${zScore.toFixed(3)} projectedZone=${projectedZone}). Attempting Minimal Rescue...`);
             const registry = getDynamicEffectRegistry();
             for (const effect of zoneFilteredEffects) {
                 if (moodController.isEffectBlocked(effect))
@@ -812,7 +812,7 @@ export class EffectDreamSimulator {
         // 🩸 WAVE 2104.1: DIAGNOSTIC — Target DNA (throttled: 1 per effect per dream cycle)
         // Solo loguear para el PRIMER efecto evaluado en cada dream cycle (evitar spam)
         if (this.simulationCount % 5 === 0 && effect.effect === 'acid_sweep') {
-            console.log(`[DNA_TARGET] 🎯 Target: A=${targetDNA.aggression.toFixed(2)} C=${targetDNA.chaos.toFixed(2)} O=${targetDNA.organicity.toFixed(2)} | E=${state.energy.toFixed(2)} H=${harshness.toFixed(2)}`);
+            console.log(`[DNA_TARGET] 🎯 Target: A=${targetDNA.aggression.toFixed(3)} C=${targetDNA.chaos.toFixed(3)} O=${targetDNA.organicity.toFixed(3)} | E=${state.energy.toFixed(3)} H=${harshness.toFixed(3)}`);
         }
         // Calcular distancia euclidiana 3D usando dna del Registry
         const effDna = effectEntry.dna;
@@ -1001,14 +1001,14 @@ export class EffectDreamSimulator {
         // SIN ESTO ESTAMOS CIEGOS. Se desactiva cuando el sistema esté calibrado.
         const top5 = scored.slice(0, 5);
         const predType = prediction.predictionType ?? 'none';
-        console.log(`[DREAM_RANKING] 🏆 TOP 5 (${scored.length} total) | pred=${predType} conf=${prediction.confidence.toFixed(2)}:\n` +
+        console.log(`[DREAM_RANKING] 🏆 TOP 5 (${scored.length} total) | pred=${predType} conf=${prediction.confidence.toFixed(3)}:\n` +
             top5.map((s, i) => {
                 const sc = s.scenario;
-                const dna = `DNA=${sc.projectedRelevance.toFixed(2)}`;
-                const div = `DIV=${sc.diversityScore.toFixed(2)}`;
-                const vib = `VIB=${sc.vibeCoherence.toFixed(2)}`;
-                const rsk = `RSK=${sc.riskLevel.toFixed(2)}`;
-                const dist = `dist=${sc.dnaDistance.toFixed(2)}`;
+                const dna = `DNA=${sc.projectedRelevance.toFixed(3)}`;
+                const div = `DIV=${sc.diversityScore.toFixed(3)}`;
+                const vib = `VIB=${sc.vibeCoherence.toFixed(3)}`;
+                const rsk = `RSK=${sc.riskLevel.toFixed(3)}`;
+                const dist = `dist=${sc.dnaDistance.toFixed(3)}`;
                 const tex = sc.effect.reasoning.includes('TEXTURE') ? '🎨REJECTED' : '';
                 const displayName = sc.effect.effectName ?? sc.effect.effect;
                 return `  ${i + 1}. ${displayName.padEnd(20)} SCORE=${s.score.toFixed(3)} | ${dna} ${div} ${vib} ${rsk} ${dist} ${tex}`;
@@ -1151,7 +1151,7 @@ export class EffectDreamSimulator {
             score += urgencyBoost;
             // Log para debugging de Cassandra urgency
             if (urgencyBoost > 0.10) {
-                console.log(`[DREAM_SIMULATOR] ⚡ CASSANDRA URGENCY: "${effectName}" +${urgencyBoost.toFixed(2)} (${timeToEvent}ms to event, prob: ${oracleProbability.toFixed(2)})`);
+                console.log(`[DREAM_SIMULATOR] ⚡ CASSANDRA URGENCY: "${effectName}" +${urgencyBoost.toFixed(3)} (${timeToEvent}ms to event, prob: ${oracleProbability.toFixed(3)})`);
             }
         }
         // 🔮 CASSANDRA: Boost adicional si alta probabilidad del Oráculo (> 0.7)
@@ -1173,7 +1173,7 @@ export class EffectDreamSimulator {
         if (bestScenario.riskLevel > 0.7) {
             return {
                 action: 'abort',
-                reason: `High risk: ${bestScenario.riskLevel.toFixed(2)}`
+                reason: `High risk: ${bestScenario.riskLevel.toFixed(3)}`
             };
         }
         if (bestScenario.hardwareConflicts.length > 0) {
@@ -1197,7 +1197,7 @@ export class EffectDreamSimulator {
         if (bestScenario.projectedRelevance < 0.30) {
             return {
                 action: 'modify',
-                reason: `Low relevance: ${bestScenario.projectedRelevance.toFixed(2)} - consider alternatives`
+                reason: `Low relevance: ${bestScenario.projectedRelevance.toFixed(3)} - consider alternatives`
             };
         }
         if (bestScenario.cooldownConflicts.length > 0) {
@@ -1209,7 +1209,7 @@ export class EffectDreamSimulator {
         // EXECUTE
         return {
             action: 'execute',
-            reason: `Relevance: ${bestScenario.projectedRelevance.toFixed(2)}, Risk: ${bestScenario.riskLevel.toFixed(2)} - GO!`
+            reason: `Relevance: ${bestScenario.projectedRelevance.toFixed(3)}, Risk: ${bestScenario.riskLevel.toFixed(3)} - GO!`
         };
     }
     detectWarnings(scenarios, context) {

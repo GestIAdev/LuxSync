@@ -803,6 +803,9 @@ export class TitanEngine extends EventEmitter {
             beatPhase: processedContext.beatPhase,
             syncopation: processedContext.syncopation,
             sectionType: normalizeSectionType(processedContext.section.type),
+            // 🔧 WAVE 7002 (F2+F3): Verdad del BPM — confianza y lock state
+            bpmConfidence: audio.beatConfidence ?? 0,
+            pllLocked: audio.pllLocked ?? false,
             // Paleta actual
             currentPalette: selenePalette,
             // Timing

@@ -48,7 +48,7 @@ function evalG3(dna) {
         status: pass ? 'pass' : 'fail',
         label: 'GENOME',
         description: pass
-            ? `A=${aggression.toFixed(2)} C=${chaos.toFixed(2)} O=${organicity.toFixed(2)} — OK`
+            ? `A=${aggression.toFixed(3)} C=${chaos.toFixed(3)} O=${organicity.toFixed(3)} — OK`
             : `Out of [0,1]: A=${aggression} C=${chaos} O=${organicity}`,
     };
 }

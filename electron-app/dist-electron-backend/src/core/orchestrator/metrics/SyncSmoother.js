@@ -60,7 +60,6 @@ const SYNC_EMA_ALPHA = 0.08;
  * // Each frame:
  * const bands = smoother.smooth(rawAudioBands)
  * const sync  = smoother.estimateSyncopation(beatPhase, bass, mid)
- * const fused = SyncSmoother.fuseRhythm(rawRhythm, pllState)
  * ```
  */
 export class SyncSmoother {
@@ -166,55 +165,11 @@ export class SyncSmoother {
             SYNC_EMA_ALPHA * instantSync + (1 - SYNC_EMA_ALPHA) * this._state.smoothedSyncopation;
         return this._state.smoothedSyncopation;
     }
-    /**
-     * Resolve the BPM / beat-phase / onBeat from Worker + Freewheel + Pacemaker.
-     *
-     * WAVE 2179: FREEWHEEL MEMORY — Worker-BPM priority chain:
-     *  1. Worker active (confidence > 0.2) → lock PLL to real BPM
-     *  2. Worker silent + recent memory   → freewheel at last stable BPM
-     *  3. Memory timeout / no memory      → fall back to Pacemaker internal
-     *
-     * This is a STATIC (pure) method because the priority logic is deterministic
-     * given the inputs — it does not need the EMA history.
-     *
-     * @param rhythm  Raw rhythm data including Worker fields and freewheel memory.
-     * @param pll     Current PLL state from BeatDetector.tick().
-     * @returns Fused rhythm ready for MusicalContext injection.
-     */
-    static fuseRhythm(rhythm, pll) {
-        const { workerBpm, workerBpmConfidence, workerOnBeat, workerBeatPhase, lastStableWorkerBpm, framesSinceStable, freewheelTimeoutFrames, } = rhythm;
-        const workerActive = workerBpm > 0 && workerBpmConfidence > 0.2;
-        const hasFreewheelMem = lastStableWorkerBpm > 0 && framesSinceStable <= freewheelTimeoutFrames;
-        if (workerActive) {
-            // Priority 1: Worker is alive and confident — use its ground truth
-            return {
-                bpm: workerBpm,
-                beatPhase: pll.pllLocked ? (pll.pllPhase ?? pll.phase) : workerBeatPhase,
-                onBeat: workerOnBeat || (pll.pllLocked && pll.onBeat),
-                isPLLBeat: pll.pllOnBeat,
-                confidence: workerBpmConfidence,
-            };
-        }
-        if (hasFreewheelMem) {
-            // Priority 2: FREEWHEEL — the show continues at the real BPM.
-            // The lights don't know about the break; the PLL spins on inertia.
-            return {
-                bpm: lastStableWorkerBpm,
-                beatPhase: pll.pllPhase ?? pll.phase,
-                onBeat: pll.pllLocked && pll.onBeat,
-                isPLLBeat: pll.pllOnBeat,
-                confidence: 0, // Worker is deaf — zero confidence for downstream guards
-            };
-        }
-        // Priority 3: Pacemaker internal (last resort — no Worker memory)
-        return {
-            bpm: pll.bpm > 0 ? pll.bpm : 120,
-            beatPhase: pll.pllPhase ?? pll.phase,
-            onBeat: pll.pllLocked && pll.onBeat,
-            isPLLBeat: pll.pllOnBeat,
-            confidence: pll.confidence,
-        };
-    }
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🔧 WAVE 7003 (F8): fuseRhythm() REMOVED — was dead code.
+    // TickEngine implements the Worker → Freewheel → Pacemaker priority chain
+    // inline (TickEngine.ts:387-409). This static method was never called.
+    // ═══════════════════════════════════════════════════════════════════════════
     /**
      * Reset smoother state (call when audio source changes or on hard stop).
      */

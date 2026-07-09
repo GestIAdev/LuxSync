@@ -35,25 +35,25 @@ export const DEFAULT_LIQUID_PROFILE = Object.freeze({
     w_f: 0.25,
     w_h: 0.20,
     w_p: 0.30,
-    beta_v: 0.03,
+    beta_v: 0.015, // ⬇ 0.03 → 0.015 (Fase 3: slower vapor accumulation in valleys)
     kappa_vreset: 0.15,
     // — Fusión —
     w1: 0.1699, // ⬇ 0.22 (MC) — s_DNA
     w2: 0.0291, // ⬇ 0.20 (MC) — s_Z
-    w3: 0.3252, // ⬆ 0.15 (MC) — s_E (dominante)
+    w3: 0.4518, // ⬆ 0.3252+0.1266 (Fase 5: Cassandra weight redistributed to s_E)
     w4: 0.1515, // ≈ 0.15 (MC) — s_V
     w5: 0.0273, // ⬇ 0.12 (MC) — s_X
-    w6: 0.2766, // ⬆ 0.08 (MC) — s_P (Cassandra)
+    w6: 0.1500, // ⬇ 0.2766 → 0.15 (Fase 5: Cassandra inflated base confidence)
     w7: 0.0204, // ⬇ 0.08 (MC) — s_B
     sigma_g: 0.35,
     kappa_z: 4.0,
     b_z: 0.0,
     gamma_e: 0.7,
     kappa_v: 5.0,
-    rho_v: 1.6,
-    kappa_vmax: 0.75,
+    rho_v: 1.2, // ⬇ 1.6 → 1.2 (Fase 4: anti-voice triggers earlier)
+    kappa_vmax: 0.90, // ⬆ 0.75 → 0.90 (Fase 4: harder vocal penalty)
     // — Ignición —
-    Q_base: 0.550, // ⬇ 0.700 → 0.550 (relaxed for fluidity)
+    Q_base: 0.650, // ⬆ 0.550 → 0.650 (reverted from artificial lower; was 0.700 original)
     kappa_T: 0.50,
     kappa_V: 0.40,
     I_min: 0.35,
@@ -61,5 +61,5 @@ export const DEFAULT_LIQUID_PROFILE = Object.freeze({
     kappa_vb: 0.10,
     kappa_rep: 0.6,
     tau_novelty: 45.0,
-    epsilon_divine: 0.25,
+    epsilon_divine: 0.40, // ⬆ 0.30 → 0.40 (Fase 2: crush spurious divines in valleys)
 });

@@ -133,7 +133,7 @@ export class CognitiveFluidState {
         this._timeSinceIgnition += dt;
         const noIgnition = this._timeSinceIgnition > 0.1 ? 1 : 0;
         const valleyFactor = 1 - eHat;
-        this._vaporPressure = clamp01(this._vaporPressure + p.beta_v * dt * noIgnition * valleyFactor);
+        this._vaporPressure = clamp(this._vaporPressure + p.beta_v * dt * noIgnition * valleyFactor, 0, 0.60);
         // ─────────────────────────────────────────────────────────
         // 7. Excitabilidad X(t) — recuperación post-disparo (§4.2)
         // ─────────────────────────────────────────────────────────
@@ -143,17 +143,24 @@ export class CognitiveFluidState {
         this._excitability += 0.3 * (xTarget - this._excitability);
         this._excitability = clamp01(this._excitability);
         // ─────────────────────────────────────────────────────────
-        // 8. Epicness — ruptura relativa de la superficie
+        // 8. Epicness — ruptura relativa de la superficie, tethered to energy
         // FIX: La fórmula original (impact - tension) / tension requiere
         // impact > tension, pero con la calibración actual el impacto máximo
         // práctico (~0.42) nunca supera la tensión de equilibrio (~0.70).
         // Nueva fórmula: ruptura relativa a la MITAD de la tensión.
         // epicness=1 cuando impact=tension, epicness=0 cuando impact≤tension/2.
+        //
+        // Fase 1B (PRECISION TUNING): Energy factor gate.
+        // Valleys (E<0.30) produce epicness=0. Vocal transients in E=0.35
+        // valleys get crushed by energyFactor=0.125. Only E≥0.70 allows
+        // full epicness — genuine drops/climaxes only.
         // ─────────────────────────────────────────────────────────
+        const energyFactor = clamp01((input.rawEnergy - 0.30) / 0.40);
         const halfTension = this._tension * 0.5;
-        this._epicness = halfTension > 0.001
+        const baseEpicness = halfTension > 0.001
             ? clamp01((this._impact - halfTension) / halfTension)
             : 0;
+        this._epicness = clamp01(baseEpicness * energyFactor);
     }
     /**
      * Notifica que una ignición fue materializada.

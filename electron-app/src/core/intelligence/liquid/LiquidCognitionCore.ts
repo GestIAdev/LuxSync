@@ -82,6 +82,12 @@ export interface LiquidProcessInput {
   // — Genoma del efecto candidato (para s_DNA) —
   // En Shadow Mode, usar NEUTRAL_GENOME si no hay candidato
   readonly effectGenome: FrozenGenome
+
+  // — Contextual Memory injection (Fase D: phase-aware epicness) —
+  /** Fase narrativa actual de ContextualMemory (BUILDING, CLIMAX, RELEASE, etc.) */
+  readonly contextualPhase: string
+  /** ¿La memoria contextual está calentada? Si false, epicness = 0 */
+  readonly isWarmedUp: boolean
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -219,6 +225,8 @@ export class LiquidCognitionCore {
       midPresence: input.midPresence,
       harmonicDensity: input.harmonicDensity,
       spectralFlatness: input.spectralFlatness,
+      contextualPhase: input.contextualPhase,
+      isWarmedUp: input.isWarmedUp,
       descriptors: {
         percussiveness: this._descriptors.percussiveness,
         melodicity: this._descriptors.melodicity,

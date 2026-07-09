@@ -273,7 +273,7 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
   // Static Z-score thresholds extirpated. V3 Liquid Cognition's epicness
   // is the sole authority for Divine arsenal routing.
   // ═══════════════════════════════════════════════════════════════════════
-  const V3_EPSILON_DIVINE = 0.40  // Fase 2: match profile default
+  const V3_EPSILON_DIVINE = 0.60  // Radical high-pass: only devastating impact qualifies
   const v3Epicness = inputs.v3Epicness ?? 0
 
   if (activeDictator) {

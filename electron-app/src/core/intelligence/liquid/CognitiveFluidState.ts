@@ -64,6 +64,10 @@ export interface FluidStateInput {
     readonly dirtiness: number
     readonly groove: number
   }
+  /** Fase narrativa de ContextualMemory (BUILDING, CLIMAX, RELEASE, etc.) */
+  readonly contextualPhase: string
+  /** ¿La memoria contextual está calentada? Si false, epicness = 0 */
+  readonly isWarmedUp: boolean
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -242,13 +246,29 @@ export class CognitiveFluidState {
     // Valleys (E<0.30) produce epicness=0. Vocal transients in E=0.35
     // valleys get crushed by energyFactor=0.125. Only E≥0.70 allows
     // full epicness — genuine drops/climaxes only.
+    //
+    // Fase D (ARCHITECTURAL): Contextual Memory injection.
+    // isWarmedUp=false → epicness=0 (cold-start/post-silence protection).
+    // Phase modifier: BUILDING×0.5, RELEASE×0.7, CLIMAX×1.0.
+    // This is the true regulator — no arbitrary cooldowns needed.
     // ─────────────────────────────────────────────────────────
-    const energyFactor = clamp01((input.rawEnergy - 0.30) / 0.40)
-    const halfTension = this._tension * 0.5
-    const baseEpicness = halfTension > 0.001
-      ? clamp01((this._impact - halfTension) / halfTension)
-      : 0
-    this._epicness = clamp01(baseEpicness * energyFactor)
+    if (!input.isWarmedUp) {
+      this._epicness = 0
+    } else {
+      const energyFactor = clamp01((input.rawEnergy - 0.30) / 0.40)
+      const halfTension = this._tension * 0.5
+      const baseEpicness = halfTension > 0.001
+        ? clamp01((this._impact - halfTension) / halfTension)
+        : 0
+      const phase = input.contextualPhase
+      const phaseModifier = phase === 'climax' ? 1.0
+        : phase === 'building' ? 0.5
+        : phase === 'release' ? 0.7
+        : phase === 'intro' ? 0.3
+        : phase === 'outro' ? 0.3
+        : 0.5  // unknown phase — conservative
+      this._epicness = clamp01(baseEpicness * energyFactor * phaseModifier)
+    }
   }
 
   /**

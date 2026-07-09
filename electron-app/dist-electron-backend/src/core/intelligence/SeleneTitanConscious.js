@@ -201,8 +201,8 @@ export class SeleneTitanConscious extends EventEmitter {
         // Shorter than DNA override: allows ambient effects to fire more frequently
         this.lastV3BypassTimestamp = 0;
         this.lastV3BypassEffect = null;
-        this.V3_BYPASS_MIN_INTERVAL_MS = 5000; // 5s between any V3 bypass
-        this.V3_BYPASS_SAME_EFFECT_INTERVAL_MS = 10000; // 10s for same effect via V3 bypass
+        this.V3_BYPASS_MIN_INTERVAL_MS = 8000; // 8s between any V3 bypass (was 5s)
+        this.V3_BYPASS_SAME_EFFECT_INTERVAL_MS = 15000; // 15s for same effect via V3 bypass (was 10s)
         // 🩸 WAVE 2103: PIPELINE EXECUTION THROTTLE — aligned with global cooldown
         // Was 2000ms (WAVE 2101.4), but global cooldown is 2500ms.
         // If the pipeline throttle fires at T=0 and the effect fires at T=0,
@@ -426,14 +426,19 @@ export class SeleneTitanConscious extends EventEmitter {
                         // made seconds ago; the musical landscape may have collapsed.
                         // V3 epicness is the sole authority — no static Z-score thresholds.
                         // ═══════════════════════════════════════════════════════════════
-                        const V3_EPSILON_DIVINE = 0.25;
+                        const V3_EPSILON_DIVINE = 0.40; // Fase 2: match profile default
                         const v3EpicnessNow = this._lastLiquidVerdict?.epicness ?? 0;
                         let divineAborted = false;
                         const registryEntry = getDynamicEffectRegistry().getEntry(candidate.effect);
-                        if (registryEntry?.simMeta.isDivineCandidate && v3EpicnessNow <= V3_EPSILON_DIVINE) {
-                            console.log(`[Sovereign Clock 🛡️] DIVINE ABORTED: "${candidate.effectName ?? candidate.effect}" ` +
-                                `V3 epicness=${v3EpicnessNow.toFixed(3)} ≤ ε=${V3_EPSILON_DIVINE} → buffer cleared, effect suppressed`);
-                            divineAborted = true;
+                        if (registryEntry?.simMeta.isDivineCandidate) {
+                            const energyTooLow = titanState.rawEnergy < 0.50;
+                            if (v3EpicnessNow <= V3_EPSILON_DIVINE || energyTooLow) {
+                                console.log(`[Sovereign Clock 🛡️] DIVINE ABORTED: "${candidate.effectName ?? candidate.effect}" ` +
+                                    `V3 epicness=${v3EpicnessNow.toFixed(3)} ≤ ε=${V3_EPSILON_DIVINE}` +
+                                    `${energyTooLow ? ` OR energy=${titanState.rawEnergy.toFixed(2)} < 0.50` : ''}` +
+                                    ` → buffer cleared, effect suppressed`);
+                                divineAborted = true;
+                            }
                         }
                         if (!divineAborted) {
                             if (glassBreak) {
@@ -962,7 +967,7 @@ export class SeleneTitanConscious extends EventEmitter {
             if (timeSinceLastEffect < JUST_FIRED_SHIELD_MS) {
                 dreamIntegrationData = this.lastDreamIntegrationResult; // Hard block — ni drops pasan
             }
-            else if (timeSinceLastEffect < globalCooldownMs && !isDropUrgent && !isDropIncoming && !this._v3Ignite) {
+            else if (timeSinceLastEffect < globalCooldownMs && !isDropUrgent && !isDropIncoming) {
                 // 🩸 WAVE 2104.1: DIAGNOSTIC — Ver cuánto bloquea el global cooldown
                 if (this.stats.framesProcessed % 15 === 0) {
                     console.log(`[GLOBAL_COOLDOWN] ⏸️ Cached: ${Math.ceil((globalCooldownMs - timeSinceLastEffect) / 1000)}s left | vibe=${pattern.vibeId} lastEffect=${this.lastEffectType ?? 'none'}`);
@@ -1231,7 +1236,7 @@ export class SeleneTitanConscious extends EventEmitter {
             const isHighSeverityCandidate = isHighSeverityEffect(intent)
                 || output.effectDecision?.reason?.includes('DROP')
                 || output.effectDecision?.reason?.includes('DIVINE');
-            const refractoryBlocked = isInRefractory && !isHighSeverityCandidate && !isHardMinimumBlocked && !this._v3Ignite;
+            const refractoryBlocked = isInRefractory && !isHighSeverityCandidate && !isHardMinimumBlocked;
             if (refractoryBlocked) {
                 console.log(`[Gatekeeper] Veto: Post-Drop Breathing Space — ${intent} blocked ` +
                     `(${Math.ceil((this.POST_DROP_REFRACTORY_MS - timeSinceHighSeverity) / 1000)}s remaining)`);

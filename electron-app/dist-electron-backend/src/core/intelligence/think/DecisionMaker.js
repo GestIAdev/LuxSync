@@ -142,7 +142,7 @@ function determineDecisionType(inputs) {
     // Static Z-score thresholds extirpated. V3 Liquid Cognition's epicness
     // is the sole authority for Divine arsenal routing.
     // ═══════════════════════════════════════════════════════════════════════
-    const V3_EPSILON_DIVINE = 0.25;
+    const V3_EPSILON_DIVINE = 0.40; // Fase 2: match profile default
     const v3Epicness = inputs.v3Epicness ?? 0;
     if (activeDictator) {
         // No loggear nada - silencio total para evitar spam

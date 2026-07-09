@@ -252,6 +252,7 @@ function extractMusicalContext(analysis: ExtendedAudioAnalysis): MusicalContext 
       confidence: section.confidence,
       duration: 0,
       isTransition: section.type === 'buildup' || section.type === 'breakdown',
+      evidence: section.evidence,
     },
     energy: analysis.energy,
     mood,

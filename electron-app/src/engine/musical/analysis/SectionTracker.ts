@@ -112,6 +112,11 @@ export const SECTION_PROFILES: Record<SectionType, {
     typicalDuration: [16, 64],
     characteristics: ['peak_energy', 'bass_heavy', 'full_impact'],
   },
+  textural_drop: {
+    energyRange: [0.3, 0.7],
+    typicalDuration: [8, 32],
+    characteristics: ['spectral_tension', 'high_freq_burst', 'textural_contrast'],
+  },
   breakdown: {
     energyRange: [0.2, 0.5],
     typicalDuration: [8, 32],
@@ -174,6 +179,12 @@ export const SECTION_TRANSITIONS: Record<SectionType, Array<{
     { to: 'breakdown', probability: 0.4 },
     { to: 'buildup', probability: 0.3 },
     { to: 'verse', probability: 0.15 },
+    { to: 'outro', probability: 0.15 },
+  ],
+  textural_drop: [
+    { to: 'breakdown', probability: 0.35 },
+    { to: 'buildup', probability: 0.3 },
+    { to: 'verse', probability: 0.2 },
     { to: 'outro', probability: 0.15 },
   ],
   breakdown: [

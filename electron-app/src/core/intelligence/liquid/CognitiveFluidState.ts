@@ -264,8 +264,11 @@ export class CognitiveFluidState {
       const phaseModifier = phase === 'climax' ? 1.0
         : phase === 'building' ? 0.5
         : phase === 'release' ? 0.7
+        : phase === 'textural' ? 0.8
         : phase === 'intro' ? 0.3
         : phase === 'outro' ? 0.3
+        : phase === 'silence' ? 0.0
+        : phase === 'valley' ? 0.2
         : 0.5  // unknown phase — conservative
       this._epicness = clamp01(baseEpicness * energyFactor * phaseModifier)
     }

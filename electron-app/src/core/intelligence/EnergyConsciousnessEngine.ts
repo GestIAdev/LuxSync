@@ -23,7 +23,8 @@
  * @version 1.0.0 - WAVE 931
  */
 
-import { EnergyContext, EnergyZone } from '../protocol/MusicalContext.js';
+import { EnergyContext, EnergyZone, type MultiSpectralZone, type EnergyZoneLabel, type SpectralSnapshot } from '../protocol/MusicalContext.js';
+import type { SectionEvidence } from '../../workers/TrinityBridge';
 import { EnergyLogger, type EnergyLogEntry } from './EnergyLogger.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -155,6 +156,10 @@ const DEFAULT_CONFIG: EnergyConsciousnessConfig = {
 export class EnergyConsciousnessEngine {
   private config: EnergyConsciousnessConfig
   
+  // 🌊 M-SARFE Phase 2: Multi-Spectral Energy Ladder
+  private readonly msLadder: MultiSpectralEnergyLadder
+  private lastMultiSpectralZone: MultiSpectralZone | null = null
+  
   // Estado interno
   private smoothedEnergy: number = 0
   private currentZone: EnergyZone = 'silence'
@@ -198,6 +203,7 @@ export class EnergyConsciousnessEngine {
   
   constructor(config: Partial<EnergyConsciousnessConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config }
+    this.msLadder = new MultiSpectralEnergyLadder()
   }
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -211,7 +217,7 @@ export class EnergyConsciousnessEngine {
    * @param debugData - (WAVE 978) Datos opcionales para el EnergyLogger
    * @returns EnergyContext con toda la información para decisiones
    */
-  process(rawEnergy: number, debugData?: EnergyDebugData): EnergyContext {
+  process(rawEnergy: number, debugData?: EnergyDebugData, evidence?: SectionEvidence): EnergyContext {
     const now = Date.now()
     
     // ═══════════════════════════════════════════════════════════════════
@@ -236,10 +242,23 @@ export class EnergyConsciousnessEngine {
     // ═══════════════════════════════════════════════════════════════════
     // 2. DETERMINAR ZONA
     // ═══════════════════════════════════════════════════════════════════
-    // CRITICAL: Para SALIR de zonas bajas, usamos energía RAW (instantánea)
-    // Para ENTRAR en zonas bajas, usamos energía SMOOTHED (suavizada)
-    // 🔥 WAVE 979: Ahora usamos effectiveEnergy (con peak hold) en lugar de smoothed
-    const newZone = this.determineZone(rawEnergy, effectiveEnergy)
+    // 🌊 M-SARFE Phase 2: When evidence is available, use Multi-Spectral Energy Ladder
+    // The MSEL computes base zone from smoothedEnergy, then applies tension elevation
+    // based on spectral evidence (Z_high, CF_high, spectralTension, divergence).
+    // Falls back to legacy determineZone() when no evidence (backward compatibility).
+    let newZone: EnergyZone
+    let multiSpectralZone: MultiSpectralZone | undefined
+    
+    if (evidence) {
+      multiSpectralZone = this.msLadder.classify(evidence, effectiveEnergy)
+      newZone = multiSpectralZone.label
+      this.lastMultiSpectralZone = multiSpectralZone
+    } else {
+      // CRITICAL: Para SALIR de zonas bajas, usamos energía RAW (instantánea)
+      // Para ENTRAR en zonas bajas, usamos energía SMOOTHED (suavizada)
+      // 🔥 WAVE 979: Ahora usamos effectiveEnergy (con peak hold) en lugar de smoothed
+      newZone = this.determineZone(rawEnergy, effectiveEnergy)
+    }
     
     // Detectar cambio de zona
     if (newZone !== this.currentZone) {
@@ -305,6 +324,7 @@ export class EnergyConsciousnessEngine {
       trend,
       lastZoneChange: this.lastZoneChange,
       isFlashbang,  // 🌋 WAVE 960
+      multiSpectralZone,  // 🌊 M-SARFE Phase 2
     }
   }
   
@@ -616,6 +636,7 @@ export class EnergyConsciousnessEngine {
     this.trendWindow = []
     this.lastHighEnergyTime = 0
     this.lastLowEnergyTime = Date.now()
+    this.lastMultiSpectralZone = null
   }
   
   /**
@@ -705,6 +726,121 @@ export class EnergyConsciousnessEngine {
       historySize: this.energyHistory.length,
       avgEnergy,
     }
+  }
+  
+  /**
+   * 🌊 M-SARFE Phase 2: Obtiene el último MultiSpectralZone computado
+   */
+  getMultiSpectralZone(): MultiSpectralZone | null {
+    return this.lastMultiSpectralZone
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🌊 M-SARFE Phase 2: MultiSpectralEnergyLadder
+// ═══════════════════════════════════════════════════════════════════════════
+// Replaces the 1D rawEnergy ladder with a multi-spectral classification
+// that incorporates spectral tension and divergence to recognize
+// textural drops and high-tension moments.
+//
+// ALGORITHM:
+// 1. Compute base zone from E_total (same thresholds as current system)
+// 2. Compute tension elevation from spectral tension index
+// 3. Final zone = baseZone + tensionElevation (clamped to 'peak')
+//
+// This means a moment with E_total=0.35 (AMBIENT) but spectralTension=1.2
+// (vocal scream) gets elevated to INTENSE or PEAK.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const ENERGY_ZONE_ORDINAL: Record<EnergyZoneLabel, number> = {
+  silence: 0, valley: 1, ambient: 2, gentle: 3, active: 4, intense: 5, peak: 6,
+}
+
+const ORDINAL_TO_ZONE: EnergyZoneLabel[] = [
+  'silence', 'valley', 'ambient', 'gentle', 'active', 'intense', 'peak',
+]
+
+export class MultiSpectralEnergyLadder {
+  /**
+   * Classify the current moment into a multi-spectral zone.
+   *
+   * ALGORITHM:
+   * 1. Compute base zone from E_total (same thresholds as current system)
+   * 2. Compute tension elevation from spectral tension index
+   * 3. Final zone = baseZone + tensionElevation (clamped to 'peak')
+   */
+  classify(evidence: SectionEvidence, smoothedEnergy: number): MultiSpectralZone {
+    // 1. Base zone from smoothed total energy (existing thresholds)
+    const baseZone = this.classifyByEnergy(smoothedEnergy)
+
+    // 2. Tension elevation
+    const tensionElevation = this.computeTensionElevation(evidence)
+
+    // 3. Final zone = base + elevation
+    const finalOrdinal = Math.min(
+      baseZone.ordinal + tensionElevation,
+      ENERGY_ZONE_ORDINAL['peak']
+    )
+    const finalLabel = ORDINAL_TO_ZONE[finalOrdinal]
+
+    return {
+      label: finalLabel,
+      ordinal: finalOrdinal,
+      baseZone: baseZone.label,
+      tensionElevation,
+      spectral: {
+        zLow: evidence.zLow,
+        zMid: evidence.zMid,
+        zHigh: evidence.zHigh,
+        zTotal: evidence.zTotal,
+        spectralTension: evidence.spectralTension,
+        spectralDivergence: evidence.spectralDivergence,
+        cfHigh: evidence.cfHigh,
+        eTotal: evidence.eTotal,
+      },
+    }
+  }
+
+  /**
+   * Base zone classification — same 7-zone ladder, same thresholds.
+   * This maintains backward compatibility with effect DNA energyZone ranges.
+   */
+  private classifyByEnergy(smoothed: number): { label: EnergyZoneLabel; ordinal: number } {
+    if (smoothed < 0.15) return { label: 'silence', ordinal: 0 }
+    if (smoothed < 0.30) return { label: 'valley',  ordinal: 1 }
+    if (smoothed < 0.45) return { label: 'ambient', ordinal: 2 }
+    if (smoothed < 0.60) return { label: 'gentle',  ordinal: 3 }
+    if (smoothed < 0.75) return { label: 'active',  ordinal: 4 }
+    if (smoothed < 0.90) return { label: 'intense', ordinal: 5 }
+    return { label: 'peak', ordinal: 6 }
+  }
+
+  /**
+   * Compute how many zones to elevate based on spectral tension.
+   *
+   * TENSION ELEVATION TABLE:
+   *   T < 0.3          |    0      | Normal music — no elevation
+   *   0.3 ≤ T < 0.6    |    +1     | Mild tension — one zone up
+   *   0.6 ≤ T < 0.9    |    +2     | Strong tension — two zones up
+   *   T ≥ 0.9          |    +3     | Extreme tension — three zones up
+   *
+   * GATE: Elevation requires Z_high > +1.0 OR CF_high > 5.0
+   * AND spectralDivergence >= 1.5.
+   * This prevents false elevation from low-frequency rumble alone.
+   */
+  private computeTensionElevation(ev: SectionEvidence): number {
+    // Gate: must have high-frequency evidence
+    const hasHighFreqEvidence = ev.zHigh > 1.0 || ev.cfHigh > 5.0
+    if (!hasHighFreqEvidence) return 0
+
+    // Gate: must have spectral divergence (bands moving apart)
+    if (ev.spectralDivergence < 1.5) return 0
+
+    const T = ev.spectralTension
+    if (T >= 0.9) return 3
+    if (T >= 0.6) return 2
+    if (T >= 0.3) return 1
+    return 0
   }
 }
 

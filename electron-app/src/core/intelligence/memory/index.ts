@@ -26,5 +26,11 @@ export type {
   ContextualMemoryConfig,
 } from './ContextualMemory';
 
+// M-SARFE Phase 3: Perception modules
+export { ThermodynamicVetoEngine } from '../perception/ThermodynamicVetoEngine';
+export type { ValidatedNarrativePhase, VetoVerdict } from '../perception/ThermodynamicVetoEngine';
+export { StateCouplingEnforcer } from '../perception/StateCouplingEnforcer';
+export type { AcousticRealityState } from '../perception/StateCouplingEnforcer';
+
 // Default export
 export { ContextualMemory as default } from './ContextualMemory';

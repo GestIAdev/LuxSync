@@ -53,6 +53,7 @@ export type NormalizedSectionType =
   | 'verse'
   | 'chorus'
   | 'drop'
+  | 'textural_drop'
   | 'bridge'
   | 'outro'
   | 'build'
@@ -226,18 +227,19 @@ export function calculateZoneIntents(audio: IntensityAudioInput): ZoneIntentMap 
  * Los alias más comunes están aquí; los no recognocidos caen a 'unknown'.
  */
 const SECTION_MAP: Record<string, NormalizedSectionType> = {
-  intro:      'intro',
-  verse:      'verse',
-  chorus:     'chorus',
-  drop:       'drop',
-  bridge:     'bridge',
-  outro:      'outro',
-  build:      'build',
-  buildup:    'build',
-  breakdown:  'breakdown',
-  hook:       'chorus',
-  prechorus:  'build',
-  postchorus: 'verse',
+  intro:           'intro',
+  verse:           'verse',
+  chorus:          'chorus',
+  drop:            'drop',
+  textural_drop:   'textural_drop',
+  bridge:          'bridge',
+  outro:           'outro',
+  build:           'build',
+  buildup:         'build',
+  breakdown:       'breakdown',
+  hook:            'chorus',
+  prechorus:       'build',
+  postchorus:      'verse',
 }
 
 /**

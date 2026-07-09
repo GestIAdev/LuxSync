@@ -7,7 +7,7 @@
  * Coordina:
  *   - SimpleRhythmDetector  (patrón rítmico, syncopation, groove)
  *   - SimpleHarmonyDetector (key, mood, temperatura)
- *   - SimpleSectionTracker  (intro/verse/chorus/drop/breakdown…)
+ *   - MultiSpectralSectionTracker  (multi-spectral section detection, M-SARFE Phase 1)
  *   - MoodSynthesizer      (VAD emotional analysis)
  *
  * Extraído de senses.ts (WAVE 8 INTEGRATION — PHASE 3 del pipeline).
@@ -24,7 +24,7 @@
 import {
   SimpleRhythmDetector,
   SimpleHarmonyDetector,
-  SimpleSectionTracker,
+  MultiSpectralSectionTracker,
   type AudioMetrics,
   type RhythmOutput,
   type HarmonyOutput,
@@ -94,15 +94,15 @@ function buildNeutralGenre(bpm: number, syncopation: number, hasFourOnFloor: boo
  *
  * Estado encapsulado:
  * - Instancias de SimpleRhythmDetector, SimpleHarmonyDetector,
- *   SimpleSectionTracker (stateful), MoodSynthesizer (stateful)
+ *   MultiSpectralSectionTracker (stateful), MoodSynthesizer (stateful)
  *
  * Llamar setVibe() cuando el Worker recibe MessageType.SET_VIBE
- * (necesario para que SimpleSectionTracker ajuste su lógica de sección).
+ * (necesario para que MultiSpectralSectionTracker ajuste su lógica de sección).
  */
 export class SectionTracker {
   private readonly rhythmDetector = new SimpleRhythmDetector();
   private readonly harmonyDetector = new SimpleHarmonyDetector();
-  private readonly sectionTrackerInner = new SimpleSectionTracker();
+  private readonly sectionTrackerInner = new MultiSpectralSectionTracker();
   private readonly moodSynthesizer = new MoodSynthesizer();
 
   /**
@@ -185,7 +185,7 @@ export class SectionTracker {
   }
 
   /**
-   * Actualiza el vibe en SimpleSectionTracker.
+   * Actualiza el vibe en MultiSpectralSectionTracker.
    * Llamar cuando el Worker recibe MessageType.SET_VIBE.
    */
   setVibe(vibeId: string): void {

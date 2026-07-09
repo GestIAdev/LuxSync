@@ -59,6 +59,7 @@ const SECTION_CONFIG: Record<SectionType, { label: string; emoji: string; color:
   'breakdown': { label: 'Breakdown', emoji: '⬇️', color: '#818cf8' },
   'buildup': { label: 'Buildup', emoji: '📈', color: '#fbbf24' },
   'drop': { label: 'DROP', emoji: '💥', color: '#ef4444' },
+  'textural_drop': { label: 'TXT DROP', emoji: '🌫️', color: '#a855f7' },
   'outro': { label: 'Outro', emoji: '🌙', color: '#64748b' },
   'unknown': { label: 'Unknown', emoji: '❓', color: '#475569' },
 }

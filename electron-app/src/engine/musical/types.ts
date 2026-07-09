@@ -254,6 +254,7 @@ export type SectionType =
   | 'bridge'
   | 'buildup'
   | 'drop'
+  | 'textural_drop'
   | 'breakdown'
   | 'outro'
   | 'unknown';
@@ -299,6 +300,9 @@ export interface SectionAnalysis {
   
   /** Confianza general */
   confidence: number;           // ← REGLA 2
+  
+  /** M-SARFE: Multi-spectral evidence bundle from Worker */
+  evidence?: import('../../workers/TrinityBridge').SectionEvidence;
   
   timestamp: number;
 }

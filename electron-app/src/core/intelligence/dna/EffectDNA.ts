@@ -189,6 +189,7 @@ const SECTION_ORGANICITY: Record<SectionType, number> = {
   'breakdown': 0.85,
   'buildup': 0.40,
   'drop': 0.15,
+  'textural_drop': 0.30,
   'outro': 0.75,
   'unknown': 0.50,
 }

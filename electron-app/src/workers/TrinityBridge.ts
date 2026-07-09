@@ -79,14 +79,48 @@ export interface HarmonyOutput {
 }
 
 /**
+ * Multi-Spectral Evidence Bundle (M-SARFE Phase 1)
+ *
+ * Carries the raw acoustic evidence that supports (or contradicts)
+ * the Worker's section hypothesis. The Main Thread's Thermodynamic
+ * Veto Engine validates this before declaring any narrative phase.
+ *
+ * MUTABLE — pre-allocated and reused every frame to avoid GC.
+ */
+export interface SectionEvidence {
+  zLow: number;
+  zMid: number;
+  zHigh: number;
+  zTotal: number;
+  cfLow: number;
+  cfHigh: number;
+  eLow: number;
+  eMid: number;
+  eHigh: number;
+  eTotal: number;
+  spectralTension: number;
+  spectralDivergence: number;
+  hasKick: boolean;
+  kickIntensity: number;
+  bpm: number;
+  beatPhase: number;
+  energyDelta: number;
+  bassRatio: number;
+}
+
+/**
  * Section Analysis Output (from SectionTracker)
+ *
+ * M-SARFE: now includes optional evidence bundle for Main Thread validation.
  */
 export interface SectionOutput {
-  type: 'intro' | 'verse' | 'chorus' | 'drop' | 'breakdown' | 'bridge' | 'buildup' | 'outro' | 'unknown';
+  type: 'intro' | 'verse' | 'chorus' | 'drop' | 'textural_drop' | 'breakdown' | 'bridge' | 'buildup' | 'outro' | 'unknown';
   energy: number;               // 0-1
   transitionLikelihood: number; // 0-1 (probability of section change)
   beatsSinceChange: number;
   confidence: number;
+  /** Multi-spectral evidence bundle (M-SARFE Phase 1) */
+  evidence?: SectionEvidence;
 }
 
 /**
@@ -241,8 +275,8 @@ export function sectionToMovement(
   energy: number,
   syncopation: number
 ): TrinityMovementPattern {
-  // High energy sections
-  if (section.type === 'drop' || section.type === 'chorus') {
+  // High energy sections (including textural drops — vocal screams etc.)
+  if (section.type === 'drop' || section.type === 'chorus' || section.type === 'textural_drop') {
     if (syncopation > 0.6) return 'figure8';
     if (energy > 0.8) return 'chase';
     return 'sweep';
@@ -1002,313 +1036,572 @@ VIBE_PROFILES['chill-lounge'] = VIBE_PROFILES['chill'];
 // Default profile (techno-compatible for backwards compatibility)
 const DEFAULT_PROFILE: VibeSectionProfile = VIBE_PROFILES['techno'];
 
-export class SimpleSectionTracker {
-  // 🔧 WAVE 7002.4 (REC-15): Circular buffers replace number[] + shift()
-  // Eliminates O(n) Array.shift() every frame — kills SE4.
-  private energyHistory: Float32Array = new Float32Array(64);
-  private bassHistory: Float32Array = new Float32Array(64);
+// ═══════════════════════════════════════════════════════════════════════════
+// 🌊 M-SARFE Phase 1: TriBandRollingStats — Zero-alloc per-band stats
+// ═══════════════════════════════════════════════════════════════════════════
+// Computes Welford-style rolling mean/variance for 3 bands (low/mid/high)
+// over a 1800-frame window (~30s @ 60fps, ~38s @ 47fps).
+// Also tracks crest factor (peak/RMS) per band.
+// All buffers pre-allocated as Float32Array — zero GC pressure.
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface TriBandStats {
+  zLow: number;
+  zMid: number;
+  zHigh: number;
+  zTotal: number;
+  cfLow: number;
+  cfHigh: number;
+  fusedEnergy: number;
+}
+
+class TriBandRollingStats {
+  private readonly windowSize: number;
+
+  // Circular buffers per band + fused
+  private readonly lowBuf: Float32Array;
+  private readonly midBuf: Float32Array;
+  private readonly highBuf: Float32Array;
+  private readonly fusedBuf: Float32Array;
+  private pos: number = 0;
+  private count: number = 0;
+
+  // Running sums for mean/variance (Welford sliding window)
+  private lowSum = 0;  private lowSumSq = 0;
+  private midSum = 0;  private midSumSq = 0;
+  private highSum = 0; private highSumSq = 0;
+  private fusedSum = 0; private fusedSumSq = 0;
+
+  // Energy fusion weights
+  private readonly wLow: number;
+  private readonly wMid: number;
+  private readonly wHigh: number;
+
+  // Pre-allocated output — mutated in place, NEVER reallocated
+  private readonly _stats: TriBandStats;
+
+  constructor(windowSize = 1800, wLow = 0.40, wMid = 0.35, wHigh = 0.25) {
+    this.windowSize = windowSize;
+    this.wLow = wLow;
+    this.wMid = wMid;
+    this.wHigh = wHigh;
+    this.lowBuf = new Float32Array(windowSize);
+    this.midBuf = new Float32Array(windowSize);
+    this.highBuf = new Float32Array(windowSize);
+    this.fusedBuf = new Float32Array(windowSize);
+    this._stats = {
+      zLow: 0, zMid: 0, zHigh: 0, zTotal: 0,
+      cfLow: 0, cfHigh: 0, fusedEnergy: 0,
+    };
+  }
+
+  update(low: number, mid: number, high: number): TriBandStats {
+    const fused = low * this.wLow + mid * this.wMid + high * this.wHigh;
+
+    // If buffer full, subtract oldest from sums
+    if (this.count >= this.windowSize) {
+      const oL = this.lowBuf[this.pos];
+      const oM = this.midBuf[this.pos];
+      const oH = this.highBuf[this.pos];
+      const oF = this.fusedBuf[this.pos];
+      this.lowSum -= oL;   this.lowSumSq -= oL * oL;
+      this.midSum -= oM;   this.midSumSq -= oM * oM;
+      this.highSum -= oH;  this.highSumSq -= oH * oH;
+      this.fusedSum -= oF; this.fusedSumSq -= oF * oF;
+    } else {
+      this.count++;
+    }
+
+    // Write new values
+    this.lowBuf[this.pos] = low;
+    this.midBuf[this.pos] = mid;
+    this.highBuf[this.pos] = high;
+    this.fusedBuf[this.pos] = fused;
+
+    // Add to sums
+    this.lowSum += low;    this.lowSumSq += low * low;
+    this.midSum += mid;    this.midSumSq += mid * mid;
+    this.highSum += high;  this.highSumSq += high * high;
+    this.fusedSum += fused; this.fusedSumSq += fused * fused;
+
+    // Advance
+    this.pos = (this.pos + 1) % this.windowSize;
+
+    // Compute stats
+    const n = this.count;
+    const meanLow = this.lowSum / n;
+    const meanMid = this.midSum / n;
+    const meanHigh = this.highSum / n;
+    const meanFused = this.fusedSum / n;
+
+    const varLow = Math.max(0, (this.lowSumSq - this.lowSum * this.lowSum / n) / n);
+    const varMid = Math.max(0, (this.midSumSq - this.midSum * this.midSum / n) / n);
+    const varHigh = Math.max(0, (this.highSumSq - this.highSum * this.highSum / n) / n);
+    const varFused = Math.max(0, (this.fusedSumSq - this.fusedSum * this.fusedSum / n) / n);
+
+    const stdLow = Math.sqrt(varLow);
+    const stdMid = Math.sqrt(varMid);
+    const stdHigh = Math.sqrt(varHigh);
+    const stdFused = Math.sqrt(varFused);
+
+    this._stats.zLow = stdLow > 1e-6 ? (low - meanLow) / stdLow : 0;
+    this._stats.zMid = stdMid > 1e-6 ? (mid - meanMid) / stdMid : 0;
+    this._stats.zHigh = stdHigh > 1e-6 ? (high - meanHigh) / stdHigh : 0;
+    this._stats.zTotal = stdFused > 1e-6 ? (fused - meanFused) / stdFused : 0;
+
+    // Crest factors: peak / RMS — scan buffer for peak (O(N), zero-alloc)
+    const rmsLow = Math.sqrt(this.lowSumSq / n);
+    const rmsHigh = Math.sqrt(this.highSumSq / n);
+    let peakLow = 0, peakHigh = 0;
+    for (let i = 0; i < this.count; i++) {
+      if (this.lowBuf[i] > peakLow) peakLow = this.lowBuf[i];
+      if (this.highBuf[i] > peakHigh) peakHigh = this.highBuf[i];
+    }
+    this._stats.cfLow = rmsLow > 1e-6 ? peakLow / rmsLow : 1;
+    this._stats.cfHigh = rmsHigh > 1e-6 ? peakHigh / rmsHigh : 1;
+
+    this._stats.fusedEnergy = fused;
+
+    return this._stats;
+  }
+
+  reset(): void {
+    this.lowBuf.fill(0);
+    this.midBuf.fill(0);
+    this.highBuf.fill(0);
+    this.fusedBuf.fill(0);
+    this.pos = 0;
+    this.count = 0;
+    this.lowSum = this.lowSumSq = 0;
+    this.midSum = this.midSumSq = 0;
+    this.highSum = this.highSumSq = 0;
+    this.fusedSum = this.fusedSumSq = 0;
+    this._stats.zLow = this._stats.zMid = this._stats.zHigh = this._stats.zTotal = 0;
+    this._stats.cfLow = this._stats.cfHigh = 0;
+    this._stats.fusedEnergy = 0;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🌊 M-SARFE Phase 1: MultiSpectralSectionTracker
+// ═══════════════════════════════════════════════════════════════════════════
+// Replaces SimpleSectionTracker. Uses multi-spectral Z-Scores, crest factors,
+// and spectral tension to classify sections via multi-criteria scoring.
+//
+// KEY DIFFERENCES vs SimpleSectionTracker:
+// 1. NO blind hold timers (DROP_HOLD_TIME_MS eliminated)
+// 2. Multi-criteria scoring: each section type scored against evidence
+// 3. Hysteresis: 0.15 stay bonus, 30 frame minimum (not 45)
+// 4. Emits SectionEvidence bundle for Main Thread Thermodynamic Veto
+// 5. Detects textural_drop (vocal screams, high-freq tension with bass drop)
+// 6. Zero allocation: all objects pre-allocated, mutated in place
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Static constants — will be moved to vibe profile in future phases
+const MSST_STAY_BONUS = 0.15;
+const MSST_MIN_FRAMES = 30;
+const MSST_SHORT_WINDOW = 64;
+const MSST_RECENT_FRAMES = 16;
+const MSST_OLDER_FRAMES = 32;
+const MSST_CF_THRESHOLD = 4.0;
+
+// Scoring thresholds
+const MSST_DROP_Z_LOW = 1.0;
+const MSST_DROP_Z_TOTAL = 0.8;
+const MSST_DROP_BASS_RATIO = 1.3;
+const MSST_DROP_KICK_INTENSITY = 0.3;
+const MSST_DROP_ENERGY_DELTA = 0.05;
+
+const MSST_TEXTURAL_Z_HIGH = 1.5;
+const MSST_TEXTURAL_CF_HIGH = 5.0;
+const MSST_TEXTURAL_Z_LOW = -0.5;
+const MSST_TEXTURAL_TENSION = 0.8;
+const MSST_TEXTURAL_DIVERGENCE = 2.5;
+const MSST_TEXTURAL_Z_MID = 1.0;
+
+const MSST_BUILDUP_DELTA = 0.03;
+const MSST_BUILDUP_Z_TOTAL_LOW = -0.5;
+const MSST_BUILDUP_Z_TOTAL_HIGH = 1.0;
+const MSST_BUILDUP_BASS_RATIO_LOW = 1.05;
+const MSST_BUILDUP_BASS_RATIO_HIGH = 1.3;
+const MSST_BUILDUP_TENSION = 0.3;
+
+const MSST_BREAKDOWN_DELTA = -0.08;
+const MSST_BREAKDOWN_Z_TOTAL = -0.5;
+const MSST_BREAKDOWN_Z_LOW = -0.5;
+const MSST_BREAKDOWN_TENSION = 0.3;
+const MSST_BREAKDOWN_DIVERGENCE = 1.5;
+
+const MSST_CHORUS_Z_TOTAL = 0.5;
+const MSST_CHORUS_BASS_RATIO_LOW = 0.85;
+const MSST_CHORUS_BASS_RATIO_HIGH = 1.15;
+const MSST_CHORUS_BEATS = 16;
+const MSST_CHORUS_Z_HIGH = 1.0;
+const MSST_CHORUS_TENSION = 0.5;
+
+const MSST_VERSE_Z_TOTAL = 0.8;
+const MSST_VERSE_DELTA = 0.03;
+const MSST_VERSE_TENSION = 0.2;
+const MSST_VERSE_BEATS = 32;
+
+const MSST_SECTION_KEYS: SectionOutput['type'][] = [
+  'intro', 'verse', 'buildup', 'chorus', 'drop',
+  'textural_drop', 'breakdown', 'bridge', 'outro', 'unknown',
+];
+
+export class MultiSpectralSectionTracker {
+  // Long-term stats (30s window) for Z-scores and crest factors
+  private readonly bandStats: TriBandRollingStats;
+
+  // Short-term circular buffers for energy delta and bass ratio
+  private readonly energyHistory: Float32Array;
+  private readonly bassHistory: Float32Array;
   private energyHistoryPos = 0;
   private bassHistoryPos = 0;
   private historyCount = 0;
-  private readonly historySize = 64;
+  private readonly historySize = MSST_SHORT_WINDOW;
+
+  // State
   private currentSection: SectionOutput['type'] = 'verse';
+  private framesInCurrentSection = 0;
   private beatsSinceChange = 0;
-  
-  // 🎯 WAVE 289.5: Estado temporal para DROP management
-  private dropStartTime: number = 0;
-  private lastDropEndTime: number = 0;
-  private frameCount: number = 0;
-  
-  // 🩸 WAVE 2098: SECTION HYSTERESIS — Prevent breakdown ping-pong
-  // After entering a section, it must stay for at least MIN_FRAMES_IN_SECTION
-  // before ANY transition can happen. This kills the breakdown→verse→breakdown cycle.
-  private framesSinceTransition: number = 0;
-  private readonly MIN_FRAMES_IN_SECTION = 45; // ~1.5s at 30fps — minimum stay
-  
-  // 🎯 WAVE 289.5: Vibe profile
-  private activeVibeId: string = 'techno';
-  private profile: VibeSectionProfile = DEFAULT_PROFILE;
-  
-  // 🔧 WAVE 7003 (F4): Track whether we've ever had a buildup/drop for intro detection
-  private hasHadBuildupOrDrop: boolean = false;
-  // 🔧 WAVE 7003 (F4): Chorus detection — sustained high energy with stable bass
-  private chorusBeatAccumulator: number = 0;
-  
-  /**
-   * 🎯 WAVE 289.5: Cambiar el vibe activo
-   * Llamado cuando TrinityOrchestrator propaga SET_VIBE a BETA
-   */
+  private frameCount = 0;
+  private hasHadBuildupOrDrop = false;
+
+  // Vibe (stored for future profile-based weighting)
+  private activeVibeId = 'techno';
+
+  // Pre-allocated objects — mutated in place, NEVER reallocated
+  private readonly _evidence: SectionEvidence;
+  private readonly _output: SectionOutput;
+  private readonly _scores: Record<SectionOutput['type'], number>;
+
+  constructor() {
+    this.bandStats = new TriBandRollingStats();
+    this.energyHistory = new Float32Array(MSST_SHORT_WINDOW);
+    this.bassHistory = new Float32Array(MSST_SHORT_WINDOW);
+
+    this._evidence = {
+      zLow: 0, zMid: 0, zHigh: 0, zTotal: 0,
+      cfLow: 0, cfHigh: 0,
+      eLow: 0, eMid: 0, eHigh: 0, eTotal: 0,
+      spectralTension: 0, spectralDivergence: 0,
+      hasKick: false, kickIntensity: 0,
+      bpm: 0, beatPhase: 0,
+      energyDelta: 0, bassRatio: 0,
+    };
+
+    this._output = {
+      type: 'verse',
+      energy: 0,
+      transitionLikelihood: 0,
+      beatsSinceChange: 0,
+      confidence: 0,
+      evidence: this._evidence,
+    };
+
+    this._scores = {
+      intro: 0, verse: 0, buildup: 0, chorus: 0,
+      drop: 0, textural_drop: 0, breakdown: 0,
+      bridge: 0, outro: 0, unknown: 0,
+    };
+  }
+
   setVibe(vibeId: string): void {
     this.activeVibeId = vibeId;
-    this.profile = VIBE_PROFILES[vibeId] || DEFAULT_PROFILE;
-    console.log(`[SimpleSectionTracker] 🎯 WAVE 289.5: Vibe → ${vibeId} | DropThreshold: ${this.profile.dropAbsoluteThreshold} | Cooldown: ${this.profile.dropCooldown}ms`);
+    console.log(`[MSST] Vibe → ${vibeId}`);
   }
-  
+
   analyze(audio: AudioMetrics, rhythm: RhythmOutput): SectionOutput {
     this.frameCount++;
-    this.framesSinceTransition++;
-    const now = Date.now();
-    const p = this.profile;
-    
-    // Acumular historial (circular buffer — no shift() needed)
+    this.framesInCurrentSection++;
+
+    // 1. Update long-term band stats (Z-scores, crest factors)
+    const stats = this.bandStats.update(audio.bass, audio.mid, audio.treble);
+
+    // 2. Update short-term buffers (energy delta, bass ratio)
     this.energyHistory[this.energyHistoryPos] = audio.volume;
     this.bassHistory[this.bassHistoryPos] = audio.bass;
     this.energyHistoryPos = (this.energyHistoryPos + 1) % this.historySize;
     this.bassHistoryPos = (this.bassHistoryPos + 1) % this.historySize;
-    if (this.historyCount < this.historySize) {
-      this.historyCount++;
-    }
-    
-    if (audio.onBeat) {
-      this.beatsSinceChange++;
-    }
-    
-    // 🩸 WAVE 2097: FRAME-BASED FALLBACK — Prevent section starvation
-    // If onBeat never fires (GOD EAR transient detection inactive), beatsSinceChange
-    // never increments and the tracker gets STUCK in breakdown/buildup forever.
-    // Estimate beats from frames: ~60fps, 120bpm = 2 beats/sec = 1 beat per 30 frames.
-    // Increment every 30 frames as a fallback when onBeat hasn't fired.
-    if (!audio.onBeat && this.frameCount % 30 === 0) {
-      this.beatsSinceChange++;
-    }
-    
-    // === MÉTRICAS CLAVE ===
-    // 🩸 WAVE 2100: hasKick threshold relaxed 0.5 → 0.3
-    // In the worker, kickIntensity from GodEar raw FFT is often 0.3-0.45.
-    // At 0.5 threshold, hasKick was ALWAYS false — no drop could ever detect a kick.
-    // 0.3 lets real kicks through while still filtering noise.
-    const hasKick = rhythm.drums?.kick && rhythm.drums.kickIntensity > 0.3;
-    
-    // 🎯 WAVE 289.5: Calcular energía PONDERADA por perfil
-    // 🩸 WAVE 2100: THE NORMALIZER FIX
-    // spectrum.bass/mid/treble from GodEarFFT are RAW power values (0.01-0.12).
-    // audio.volume is NORMALIZED by EnergyNormalizer (0.3-0.8 typical).
-    // With raw values, weightedEnergy ≈ 0.06 → breakdown ALWAYS wins (wE < 0.25).
-    // FIX: Use audio.volume as a FLOOR — if the normalized energy is higher than
-    // the raw weighted sum, the section tracker sees actual musical energy.
-    // This mirrors how the main thread uses frontendBass (normalized) not rawBass.
-    const rawWeightedEnergy = 
-      (audio.bass * p.frequencyWeights.bass) +
-      ((audio.bass + audio.mid) * 0.5 * p.frequencyWeights.midBass) +
-      (audio.mid * p.frequencyWeights.mid) +
-      (audio.treble * p.frequencyWeights.treble);
-    const weightedEnergy = Math.max(rawWeightedEnergy, audio.volume * 0.85);
-    
-    // Promedios recientes vs históricos (circular buffer reads)
-    const recentEnergy = this.avgRecent(16);
-    const olderEnergy = this.avgOldest(32);
-    const recentBass = this.avgRecentBass(16);
-    const olderBass = this.avgOldestBass(32) || 0.1;
-    
-    const bassRatio = recentBass / olderBass;
+    if (this.historyCount < this.historySize) this.historyCount++;
+
+    // 3. Beat tracking (frame-based fallback preserved)
+    if (audio.onBeat) this.beatsSinceChange++;
+    if (!audio.onBeat && this.frameCount % 30 === 0) this.beatsSinceChange++;
+
+    // 4. Short-term metrics
+    const recentEnergy = this.avgRecent(this.energyHistory, this.energyHistoryPos, MSST_RECENT_FRAMES);
+    const olderEnergy = this.avgOldest(this.energyHistory, this.energyHistoryPos, MSST_OLDER_FRAMES);
+    const recentBass = this.avgRecent(this.bassHistory, this.bassHistoryPos, MSST_RECENT_FRAMES);
+    const olderBass = this.avgOldest(this.bassHistory, this.bassHistoryPos, MSST_OLDER_FRAMES) || 0.1;
+
     const energyDelta = recentEnergy - olderEnergy;
-    
-    // === DECISIÓN DE SECCIÓN CON PERFILES VIBE-AWARE ===
-    let newSection = this.currentSection;
-    
-    // 🔧 WAVE 7003 (F4): INTRO — first ~5 seconds with low energy before any buildup/drop
-    // Music just started, energy is low, and we haven't hit a buildup or drop yet.
-    if (!this.hasHadBuildupOrDrop && this.frameCount < 150 && weightedEnergy < 0.30) {
-      newSection = 'intro';
-    }
-    // 🎯 WAVE 289.5: DROP con cooldown, duración máxima y kill switch
-    const inCooldown = (now - this.lastDropEndTime) < p.dropCooldown;
-    const dropDuration = this.currentSection === 'drop' ? (now - this.dropStartTime) : 0;
-    const dropExpired = dropDuration > p.maxDropDuration;
-    const energyKillSwitch = weightedEnergy < p.dropEnergyKillThreshold;
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🔒 WAVE 2185: DROP HOLD TIME — debounce obligatorio
-    // ═══════════════════════════════════════════════════════════════════════
-    // PROBLEMA: En minimal techno, la energía decae entre kicks (58ms gaps).
-    // El killSwitch se activa en esos micro-valleys y aborta el DROP
-    // apenas 58ms después de entrar. El drop REAL dura 16-32 compases.
-    //
-    // SOLUCIÓN: Una vez que el tracker hace DROP ENTER, el killSwitch
-    // tiene PROHIBIDO activarse durante al menos este hold time.
-    // Solo dropExpired (duración máxima) puede forzar la salida antes.
-    //
-    // 🩸 WAVE 2492: 1500ms → 4000ms
-    // LOG EVIDENCE (Hadtechnominimal.md): ALL drops lasted exactly ~1522ms.
-    //   DROP EXIT | killSwitch=true | duration=1522ms — killSwitch fires
-    //   22ms after the 1500ms hold expires. In hard techno, drops are 16-32
-    //   bars (29-58 seconds at 130 BPM). 1500ms is ~3 beats — the drop
-    //   barely starts when it's killed. 4000ms (~8 beats @120BPM) gives
-    //   the section tracker time to re-evaluate with accumulated energy.
-    //   maxDropDuration (profile.maxDropDuration) is the safety ceiling.
-    // ═══════════════════════════════════════════════════════════════════════
-    const DROP_HOLD_TIME_MS = 4000;
-    const dropHoldActive = dropDuration < DROP_HOLD_TIME_MS;
-    const killSwitchAllowed = energyKillSwitch && !dropHoldActive;
-    
-    if (this.currentSection === 'drop') {
-      // ¿Deberíamos SALIR del drop?
-      if (dropExpired || killSwitchAllowed) {
-        newSection = 'verse';
-        this.lastDropEndTime = now;
-        this.beatsSinceChange = 0;
-        this.framesSinceTransition = 0;
-        if (this.frameCount % 60 === 0 || dropExpired || killSwitchAllowed) {
-          console.log(`[SimpleSectionTracker] 🔴 DROP EXIT | expired=${dropExpired} | killSwitch=${killSwitchAllowed} | holdActive=${dropHoldActive} | duration=${dropDuration}ms | energy=${weightedEnergy.toFixed(2)}`);
-        }
-      }
-    } else {
-      // 🩸 WAVE 2098: HYSTERESIS GATE — Block transitions if section is too young
-      // Exception: DROP ENTER always overrides (we never want to miss a drop!)
-      const hysteresisAllows = this.framesSinceTransition >= this.MIN_FRAMES_IN_SECTION;
-      
-      // ¿Deberíamos ENTRAR en drop?
-      // 🩸 WAVE 2098: Relaxed weightedEnergy condition — was > p.dropAbsoluteThreshold (0.75)
-      // In techno, weightedEnergy is often 0.30-0.60 because bass-heavy signal through
-      // weighted average gets diluted by low mid/treble. Use bassRatio as PRIMARY signal.
-      // NEW: bassRatio > threshold AND (hasKick OR high bass energy directly)
-      const highBassDirectly = audio.bass > 0.65;
-      if (!inCooldown && bassRatio > p.dropEnergyRatio && (hasKick || highBassDirectly) && weightedEnergy > 0.30) {
-        newSection = 'drop';
-        this.dropStartTime = now;
-        this.beatsSinceChange = 0;
-        this.framesSinceTransition = 0;
-        this.hasHadBuildupOrDrop = true; // 🔧 WAVE 7003 (F4)
-        console.log(`[SimpleSectionTracker] 🔴 DROP ENTER | vibe=${this.activeVibeId} | bassRatio=${bassRatio.toFixed(2)} | energy=${weightedEnergy.toFixed(2)} | bass=${audio.bass.toFixed(2)} | kick=${hasKick}`);
-      }
-      // BUILDUP: Energía subiendo (only if hysteresis allows)
-      else if (hysteresisAllows && energyDelta > p.buildupDeltaThreshold && weightedEnergy > 0.4 && bassRatio < 1.15) {
-        newSection = 'buildup';
-        this.hasHadBuildupOrDrop = true; // 🔧 WAVE 7003 (F4)
-      }
-      // BREAKDOWN: Caída de energía REAL (only if hysteresis allows)
-      // 🩸 WAVE 2099: THE BLACK HOLE FIX — breakdown was a trap.
-      // energyDelta < -0.20 triggered on any small fluctuation (e.g., -0.21).
-      // In techno (constant bass), the weighted energy oscillates ±0.15 normally.
-      // Combined with breakdownEnergyThreshold=0.35 (which techno CONSTANTLY hits),
-      // the tracker fell into breakdown and never escaped because:
-      //   - verse requires beatsSinceChange>90 (45 seconds at 2 beats/sec!)
-      //   - buildup requires energyDelta>0.03 (steady bass doesn't rise)
-      //   - drop requires bassRatio>1.40 (stable history = ratio ~1.0)
-      //
-      // FIX: Tighten breakdown entry — only REAL energy collapses trigger it.
-      // -0.10 delta threshold means energy must DROP 10% between recent and older windows.
-      // AND wE must be below 0.25 (truly quiet, not just bass-steady techno at 0.30-0.40).
-      else if (hysteresisAllows && energyDelta < -0.10 && weightedEnergy < p.breakdownEnergyThreshold) {
-        newSection = 'breakdown';
-        this.beatsSinceChange = 0;
-      }
-      // 🔧 WAVE 7003 (F4): CHORUS — sustained high energy with stable bass, not meeting drop criteria.
-      // Requires: wE > 0.6, bassRatio stable (0.85-1.15), beatsSinceChange > 16.
-      // This is the "groove" section — high energy but no bass spike, so it's not a drop.
-      else if (hysteresisAllows && weightedEnergy > 0.6 && bassRatio > 0.85 && bassRatio < 1.15 && this.beatsSinceChange > 16) {
-        if (this.currentSection !== 'chorus') {
-          this.chorusBeatAccumulator = this.beatsSinceChange;
-        }
-        newSection = 'chorus';
-      }
-      // VERSE: Estado neutral — recovery from any section that's been stuck
-      // 🩸 WAVE 2099: Reduced from 90 to 32 beats.
-      // At ~2 beats/sec (fallback counter), 90 beats = 45 seconds stuck in breakdown.
-      // 32 beats = ~16 seconds — still long enough to be musically meaningful,
-      // but short enough to recover from the breakdown black hole.
-      else if (hysteresisAllows && this.beatsSinceChange > 32) {
-        newSection = 'verse';
-      }
-    }
-    
-    // 🩸 WAVE 2097: Log section transitions (not just drops)
-    if (newSection !== this.currentSection) {
-      this.framesSinceTransition = 0; // 🩸 WAVE 2098: Reset hysteresis on transition
-      console.log(`[SimpleSectionTracker] 📍 ${this.currentSection} → ${newSection} | bassR=${bassRatio.toFixed(2)} wE=${weightedEnergy.toFixed(2)} ΔE=${energyDelta.toFixed(3)} kick=${hasKick}`)
-    }
-    
-    // 🩸 WAVE 2097: Periodic diagnostic (every ~5 seconds)
-    if (this.frameCount % 300 === 0) {
-      console.log(`[SimpleSectionTracker] 📊 section=${this.currentSection} | bassR=${bassRatio.toFixed(2)}/${p.dropEnergyRatio} wE=${weightedEnergy.toFixed(2)}/${p.dropAbsoluteThreshold} kick=${hasKick} cool=${inCooldown}`)
-    }
-    
-    this.currentSection = newSection;
-    
-    const transitionLikelihood = Math.min(1, 
-      Math.abs(energyDelta) * 2 + 
+    const bassRatio = recentBass / olderBass;
+
+    // 5. Rhythm data
+    const hasKick = rhythm.drums?.kick && rhythm.drums.kickIntensity > 0.3;
+    const kickIntensity = rhythm.drums?.kickIntensity ?? 0;
+
+    // 6. Fill evidence object (mutate in place — zero alloc)
+    const ev = this._evidence;
+    ev.zLow = stats.zLow;
+    ev.zMid = stats.zMid;
+    ev.zHigh = stats.zHigh;
+    ev.zTotal = stats.zTotal;
+    ev.cfLow = stats.cfLow;
+    ev.cfHigh = stats.cfHigh;
+    ev.eLow = audio.bass;
+    ev.eMid = audio.mid;
+    ev.eHigh = audio.treble;
+    ev.eTotal = stats.fusedEnergy;
+    ev.spectralTension = this.computeTension(ev);
+    ev.spectralDivergence = this.computeDivergence(ev);
+    ev.hasKick = hasKick;
+    ev.kickIntensity = kickIntensity;
+    ev.bpm = audio.bpm;
+    ev.beatPhase = audio.beatPhase;
+    ev.energyDelta = energyDelta;
+    ev.bassRatio = bassRatio;
+
+    // 7. Score all section types (multi-criteria)
+    this._scores.intro = this.scoreIntro(ev);
+    this._scores.verse = this.scoreVerse(ev);
+    this._scores.buildup = this.scoreBuildup(ev);
+    this._scores.chorus = this.scoreChorus(ev);
+    this._scores.drop = this.scoreDrop(ev);
+    this._scores.textural_drop = this.scoreTexturalDrop(ev);
+    this._scores.breakdown = this.scoreBreakdown(ev);
+    this._scores.bridge = this.scoreBridge(ev);
+    this._scores.outro = this.scoreOutro(ev);
+    this._scores.unknown = 0;
+
+    // 8. Select winner with hysteresis
+    const winner = this.selectWithHysteresis();
+
+    // 9. Compute confidence (winner / (winner + runner-up))
+    const confidence = this.computeConfidence(winner);
+
+    // 10. Fill output (mutate in place — zero alloc)
+    this._output.type = winner;
+    this._output.energy = recentEnergy;
+    this._output.transitionLikelihood = Math.min(1,
+      Math.abs(energyDelta) * 2 +
       (rhythm.fillDetected ? 0.4 : 0) +
       (bassRatio > 1.1 && !hasKick ? 0.3 : 0)
     );
-    
-    return {
-      type: this.currentSection,
-      energy: recentEnergy,
-      transitionLikelihood,
-      beatsSinceChange: this.beatsSinceChange,
-      confidence: Math.min(1, this.historyCount / 32),
-    };
-  }
-  
-  // 🔧 WAVE 7002.4 (REC-15): Circular buffer avg methods — zero-alloc reads
-  // avgRecent(n): average of the n most recently written entries
-  private avgRecent(n: number): number {
-    if (this.historyCount === 0) return 0
-    const count = Math.min(n, this.historyCount)
-    let sum = 0
-    for (let i = 0; i < count; i++) {
-      const idx = (this.energyHistoryPos - 1 - i + this.historySize * 2) % this.historySize
-      sum += this.energyHistory[idx]
+    this._output.beatsSinceChange = this.beatsSinceChange;
+    this._output.confidence = confidence;
+    this._output.evidence = this._evidence;
+
+    // Log transitions
+    if (winner !== this.currentSection) {
+      console.log(
+        `[MSST] 📍 ${this.currentSection} → ${winner} | ` +
+        `zL=${ev.zLow.toFixed(1)} zM=${ev.zMid.toFixed(1)} zH=${ev.zHigh.toFixed(1)} ` +
+        `zT=${ev.zTotal.toFixed(1)} T=${ev.spectralTension.toFixed(2)} ` +
+        `D=${ev.spectralDivergence.toFixed(2)} cfH=${ev.cfHigh.toFixed(1)}`
+      );
+      this.currentSection = winner;
+      this.framesInCurrentSection = 0;
     }
-    return sum / count
+
+    // Periodic diagnostic (~5s)
+    if (this.frameCount % 300 === 0) {
+      console.log(
+        `[MSST] 📊 section=${this.currentSection} | ` +
+        `zL=${ev.zLow.toFixed(1)} zM=${ev.zMid.toFixed(1)} zH=${ev.zHigh.toFixed(1)} ` +
+        `zT=${ev.zTotal.toFixed(1)} T=${ev.spectralTension.toFixed(2)} ` +
+        `D=${ev.spectralDivergence.toFixed(2)} cfH=${ev.cfHigh.toFixed(1)} ` +
+        `bassR=${ev.bassRatio.toFixed(2)} ΔE=${ev.energyDelta.toFixed(3)} kick=${ev.hasKick}`
+      );
+    }
+
+    return this._output;
   }
 
-  // avgOldest(n): average of the n oldest entries in the buffer
-  private avgOldest(n: number): number {
-    if (this.historyCount === 0) return 0
-    const count = Math.min(n, this.historyCount)
-    let sum = 0
-    // Oldest entry is at energyHistoryPos when buffer is full,
-    // or at index 0 when buffer is not yet full.
-    const oldestPos = this.historyCount >= this.historySize ? this.energyHistoryPos : 0
-    for (let i = 0; i < count; i++) {
-      const idx = (oldestPos + i) % this.historySize
-      sum += this.energyHistory[idx]
-    }
-    return sum / count
+  // ── Composite metrics (pure math, operate on evidence) ────────────────
+
+  private computeTension(ev: SectionEvidence): number {
+    const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
+    return (
+      Math.max(0, ev.zHigh) * sigmoid(ev.cfHigh - MSST_CF_THRESHOLD) +
+      Math.max(0, -ev.zLow) * 0.5 +
+      Math.max(0, ev.zMid - ev.zLow) * 0.3
+    );
   }
 
-  private avgRecentBass(n: number): number {
-    if (this.historyCount === 0) return 0
-    const count = Math.min(n, this.historyCount)
-    let sum = 0
-    for (let i = 0; i < count; i++) {
-      const idx = (this.bassHistoryPos - 1 - i + this.historySize * 2) % this.historySize
-      sum += this.bassHistory[idx]
-    }
-    return sum / count
+  private computeDivergence(ev: SectionEvidence): number {
+    return Math.abs(ev.zLow - ev.zHigh) + Math.abs(ev.zMid - (ev.zLow + ev.zHigh) / 2);
   }
 
-  private avgOldestBass(n: number): number {
-    if (this.historyCount === 0) return 0
-    const count = Math.min(n, this.historyCount)
-    let sum = 0
-    const oldestPos = this.historyCount >= this.historySize ? this.bassHistoryPos : 0
-    for (let i = 0; i < count; i++) {
-      const idx = (oldestPos + i) % this.historySize
-      sum += this.bassHistory[idx]
-    }
-    return sum / count
+  // ── Section scorers (multi-criteria, normalized to [0, 1]) ────────────
+
+  private scoreDrop(ev: SectionEvidence): number {
+    let s = 0;
+    if (ev.zLow > MSST_DROP_Z_LOW) s++;
+    if (ev.zTotal > MSST_DROP_Z_TOTAL) s++;
+    if (ev.bassRatio > MSST_DROP_BASS_RATIO) s++;
+    if (ev.hasKick) s++;
+    if (ev.kickIntensity > MSST_DROP_KICK_INTENSITY) s++;
+    if (ev.energyDelta > MSST_DROP_ENERGY_DELTA) s++;
+    return s / 6;
   }
 
-  private avg(arr: number[]): number {
-    return arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+  private scoreTexturalDrop(ev: SectionEvidence): number {
+    let s = 0;
+    if (ev.zHigh > MSST_TEXTURAL_Z_HIGH) s++;
+    if (ev.cfHigh > MSST_TEXTURAL_CF_HIGH) s++;
+    if (ev.zLow < MSST_TEXTURAL_Z_LOW) s++;
+    if (ev.spectralTension > MSST_TEXTURAL_TENSION) s++;
+    if (ev.spectralDivergence > MSST_TEXTURAL_DIVERGENCE) s++;
+    if (ev.zMid > MSST_TEXTURAL_Z_MID) s += 0.5;
+    return Math.min(1, s / 5.5);
   }
-  
+
+  private scoreBuildup(ev: SectionEvidence): number {
+    let s = 0;
+    if (ev.energyDelta > MSST_BUILDUP_DELTA) s++;
+    if (ev.zTotal > MSST_BUILDUP_Z_TOTAL_LOW && ev.zTotal < MSST_BUILDUP_Z_TOTAL_HIGH) s++;
+    if (ev.bassRatio > MSST_BUILDUP_BASS_RATIO_LOW && ev.bassRatio < MSST_BUILDUP_BASS_RATIO_HIGH) s++;
+    if (ev.spectralTension > MSST_BUILDUP_TENSION) s += 0.5;
+    if (!ev.hasKick || ev.kickIntensity < 0.5) s++;
+    return s / 4.5;
+  }
+
+  private scoreBreakdown(ev: SectionEvidence): number {
+    let s = 0;
+    if (ev.energyDelta < MSST_BREAKDOWN_DELTA) s++;
+    if (ev.zTotal < MSST_BREAKDOWN_Z_TOTAL) s++;
+    if (ev.zLow < MSST_BREAKDOWN_Z_LOW) s++;
+    if (ev.spectralTension < MSST_BREAKDOWN_TENSION) s++;
+    if (ev.spectralDivergence < MSST_BREAKDOWN_DIVERGENCE) s++;
+    return s / 5;
+  }
+
+  private scoreChorus(ev: SectionEvidence): number {
+    let s = 0;
+    if (ev.zTotal > MSST_CHORUS_Z_TOTAL) s++;
+    if (ev.bassRatio > MSST_CHORUS_BASS_RATIO_LOW && ev.bassRatio < MSST_CHORUS_BASS_RATIO_HIGH) s++;
+    if (this.beatsSinceChange > MSST_CHORUS_BEATS) s++;
+    if (ev.spectralTension < MSST_CHORUS_TENSION) s++;
+    if (ev.zHigh < MSST_CHORUS_Z_HIGH) s++;
+    return s / 5;
+  }
+
+  private scoreVerse(ev: SectionEvidence): number {
+    let s = 0.3; // Base score — verse is the default
+    if (Math.abs(ev.zTotal) < MSST_VERSE_Z_TOTAL) s++;
+    if (Math.abs(ev.energyDelta) < MSST_VERSE_DELTA) s++;
+    if (ev.spectralTension < MSST_VERSE_TENSION) s++;
+    if (this.beatsSinceChange > MSST_VERSE_BEATS) s++;
+    return Math.min(1, s / 4.3);
+  }
+
+  private scoreIntro(ev: SectionEvidence): number {
+    if (!this.hasHadBuildupOrDrop && this.frameCount < 150 && ev.eTotal < 0.30) return 1.0;
+    return 0;
+  }
+
+  private scoreBridge(ev: SectionEvidence): number {
+    if (ev.zTotal > -0.3 && ev.zTotal < 0.3 && Math.abs(ev.energyDelta) < 0.02) return 0.4;
+    return 0;
+  }
+
+  private scoreOutro(ev: SectionEvidence): number {
+    if (this.hasHadBuildupOrDrop && ev.energyDelta < -0.05 && ev.zTotal < -0.3) return 0.6;
+    return 0;
+  }
+
+  // ── Hysteresis (no blind hold timers — just a stay bonus) ─────────────
+
+  private selectWithHysteresis(): SectionOutput['type'] {
+    // Too early to transition — stay in current section
+    if (this.framesInCurrentSection < MSST_MIN_FRAMES) {
+      return this.currentSection;
+    }
+
+    // Apply stay bonus to current section (temporary mutation, restored after)
+    if (this.currentSection !== 'unknown') {
+      this._scores[this.currentSection] += MSST_STAY_BONUS;
+    }
+
+    // Find winner
+    let winner: SectionOutput['type'] = 'verse';
+    let maxScore = -1;
+    for (let i = 0; i < MSST_SECTION_KEYS.length; i++) {
+      const key = MSST_SECTION_KEYS[i];
+      const score = this._scores[key];
+      if (score > maxScore) {
+        maxScore = score;
+        winner = key;
+      }
+    }
+
+    // Restore original score (remove stay bonus)
+    if (this.currentSection !== 'unknown') {
+      this._scores[this.currentSection] -= MSST_STAY_BONUS;
+    }
+
+    // Track buildup/drop occurrence for intro/outro detection
+    if (winner === 'buildup' || winner === 'drop' || winner === 'textural_drop') {
+      this.hasHadBuildupOrDrop = true;
+    }
+
+    return winner;
+  }
+
+  private computeConfidence(winner: SectionOutput['type']): number {
+    const winnerScore = this._scores[winner];
+    let runnerUpScore = 0;
+    for (let i = 0; i < MSST_SECTION_KEYS.length; i++) {
+      const key = MSST_SECTION_KEYS[i];
+      if (key !== winner) {
+        const score = this._scores[key];
+        if (score > runnerUpScore) runnerUpScore = score;
+      }
+    }
+    if (winnerScore + runnerUpScore < 1e-6) return 0;
+    return Math.min(1, winnerScore / (winnerScore + runnerUpScore));
+  }
+
+  // ── Short-term buffer helpers (zero-alloc circular reads) ─────────────
+
+  private avgRecent(buf: Float32Array, pos: number, n: number): number {
+    if (this.historyCount === 0) return 0;
+    const count = Math.min(n, this.historyCount);
+    let sum = 0;
+    for (let i = 0; i < count; i++) {
+      const idx = (pos - 1 - i + this.historySize * 2) % this.historySize;
+      sum += buf[idx];
+    }
+    return sum / count;
+  }
+
+  private avgOldest(buf: Float32Array, pos: number, n: number): number {
+    if (this.historyCount === 0) return 0;
+    const count = Math.min(n, this.historyCount);
+    let sum = 0;
+    const oldestPos = this.historyCount >= this.historySize ? pos : 0;
+    for (let i = 0; i < count; i++) {
+      const idx = (oldestPos + i) % this.historySize;
+      sum += buf[idx];
+    }
+    return sum / count;
+  }
+
   reset(): void {
-    // 🔧 WAVE 7002.4 (REC-15): Reset circular buffers
-    this.energyHistory.fill(0)
-    this.bassHistory.fill(0)
-    this.energyHistoryPos = 0
-    this.bassHistoryPos = 0
-    this.historyCount = 0
+    this.bandStats.reset();
+    this.energyHistory.fill(0);
+    this.bassHistory.fill(0);
+    this.energyHistoryPos = 0;
+    this.bassHistoryPos = 0;
+    this.historyCount = 0;
     this.currentSection = 'verse';
     this.beatsSinceChange = 0;
-    this.dropStartTime = 0;
-    this.lastDropEndTime = 0;
-    this.framesSinceTransition = 0; // 🩸 WAVE 2098
-    this.hasHadBuildupOrDrop = false; // 🔧 WAVE 7003 (F4)
-    this.chorusBeatAccumulator = 0; // 🔧 WAVE 7003 (F4)
+    this.frameCount = 0;
+    this.framesInCurrentSection = 0;
+    this.hasHadBuildupOrDrop = false;
   }
 }
 

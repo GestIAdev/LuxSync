@@ -19,6 +19,7 @@ import type { VibeId } from '../../types/VibeProfile'
 import type { GenerationOptions, SelenePalette } from '../../engine/color/SeleneColorEngine'
 import type { MetaEmotion } from '../../engine/color/MoodArbiter'
 import type { ColorStrategy } from '../../engine/color/StrategyArbiter'
+import type { SectionEvidence } from '../../workers/TrinityBridge'
 
 // WAVE 500 PHASE 5: Import de tipos reales de los módulos nuevos
 import type { MusicalPrediction as PredictionEnginePrediction } from './think/PredictionEngine'
@@ -145,7 +146,13 @@ export interface TitanStabilizedState {
   syncopation: number
   
   /** Tipo de sección musical */
-  sectionType: 'intro' | 'verse' | 'chorus' | 'drop' | 'bridge' | 'outro' | 'build' | 'breakdown' | 'unknown'
+  sectionType: 'intro' | 'verse' | 'chorus' | 'drop' | 'textural_drop' | 'bridge' | 'outro' | 'build' | 'breakdown' | 'unknown'
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🌊 M-SARFE Phase 2: Multi-spectral evidence from Worker
+  // ═══════════════════════════════════════════════════════════════════════
+  /** Multi-spectral evidence bundle (Z-scores, crest factors, tension, divergence) */
+  sectionEvidence?: SectionEvidence
   
   // ═══════════════════════════════════════════════════════════════════════
   // 🔧 WAVE 7002 (F2+F3): VERDAD DEL BPM — confianza y lock state

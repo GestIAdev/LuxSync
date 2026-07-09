@@ -1076,6 +1076,9 @@ export class TitanEngine extends EventEmitter {
       syncopation: processedContext.syncopation,
       sectionType: normalizeSectionType(processedContext.section.type),
       
+      // 🌊 M-SARFE Phase 2: Multi-spectral evidence from Worker
+      sectionEvidence: processedContext.section.evidence,
+      
       // 🔧 WAVE 7002 (F2+F3): Verdad del BPM — confianza y lock state
       bpmConfidence: audio.beatConfidence ?? 0,
       pllLocked: audio.pllLocked ?? false,

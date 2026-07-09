@@ -276,7 +276,7 @@ export class MusicalContextEngine extends EventEmitter {
     
     // 🔋 WAVE 931: Procesar consciencia energética con energía cruda del audio
     const rawEnergy = audio.energy?.current ?? baseContext.energy;
-    const energyContext = this.energyConsciousness.process(rawEnergy);
+    const energyContext = this.energyConsciousness.process(rawEnergy, undefined, baseContext.section.evidence);
     
     // Enriquecer el contexto con consciencia energética
     const enrichedContext: MusicalContext = {

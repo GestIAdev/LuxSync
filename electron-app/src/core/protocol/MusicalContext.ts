@@ -44,6 +44,40 @@
  * @version TITAN 2.0 → WAVE 1026 → WAVE 1228 (Phantom Optimization)
  */
 
+import type { SectionEvidence } from '../../workers/TrinityBridge'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🌊 M-SARFE Phase 2: Multi-Spectral Zone Types
+// ═══════════════════════════════════════════════════════════════════════════
+
+export type EnergyZoneLabel =
+  | 'silence'
+  | 'valley'
+  | 'ambient'
+  | 'gentle'
+  | 'active'
+  | 'intense'
+  | 'peak'
+
+export interface SpectralSnapshot {
+  readonly zLow: number
+  readonly zMid: number
+  readonly zHigh: number
+  readonly zTotal: number
+  readonly spectralTension: number
+  readonly spectralDivergence: number
+  readonly cfHigh: number
+  readonly eTotal: number
+}
+
+export interface MultiSpectralZone {
+  readonly label: EnergyZoneLabel
+  readonly ordinal: number
+  readonly baseZone: EnergyZoneLabel
+  readonly tensionElevation: number
+  readonly spectral: SpectralSnapshot
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TIPOS PRIMITIVOS MUSICALES
 // ═══════════════════════════════════════════════════════════════════════════
@@ -71,6 +105,7 @@ export type SectionType =
   | 'breakdown'
   | 'buildup'
   | 'drop'
+  | 'textural_drop'
   | 'outro'
   | 'unknown'
 
@@ -115,6 +150,8 @@ export interface SectionContext {
   duration: number
   /** ¿Es transición? */
   isTransition: boolean
+  /** M-SARFE: Multi-spectral evidence bundle from Worker */
+  evidence?: SectionEvidence
 }
 
 /**
@@ -204,6 +241,12 @@ export interface EnergyContext {
    * Esto previene que un grito aislado deje una Gatling disparando 4s al aire.
    */
   isFlashbang: boolean
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🌊 M-SARFE Phase 2: Multi-Spectral Zone
+  // ═══════════════════════════════════════════════════════════════════════
+  /** Multi-spectral zone with tension elevation data (null when no evidence) */
+  multiSpectralZone?: MultiSpectralZone
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

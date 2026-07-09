@@ -997,6 +997,7 @@ export class SeleneTitanConscious extends EventEmitter {
     const pattern = senseMusicalPattern(state)
     
     // 🧠 WAVE 666: Actualizar memoria contextual
+    // 🌊 M-SARFE Phase 3: Pass evidence + multiSpectralZone for TVE + Coupler
     this.lastMemoryOutput = this.contextualMemory.update({
       energy: state.rawEnergy,
       bass: state.bass,
@@ -1004,6 +1005,8 @@ export class SeleneTitanConscious extends EventEmitter {
       sectionType: state.sectionType as any, // Compatibilidad de tipos
       timestamp: state.timestamp,
       hasTransient: false, // TODO: Integrar detección de transientes
+      evidence: state.sectionEvidence,
+      multiSpectralZone: this.energyConsciousness.getMultiSpectralZone() ?? undefined,
     })
     
     // 🧠 WAVE 666: Enriquecer el patrón con Z-Score de energía
@@ -1140,7 +1143,7 @@ export class SeleneTitanConscious extends EventEmitter {
       trebleEnergy: state.high,
       // AGC gain no disponible en TitanState (TODO: agregar en el futuro)
       // spectralFlux no disponible en TitanState (TODO: agregar en el futuro)
-    })
+    }, state.sectionEvidence)
     
     // 🔋 WAVE 934+: Log zone transitions only when persistent (prevent spam)
     // Track frames in current zone
@@ -2174,12 +2177,12 @@ export class SeleneTitanConscious extends EventEmitter {
   /**
    * Normaliza el tipo de sección para el selector.
    */
-  private normalizeSectionType(sectionType: string): 'intro' | 'verse' | 'chorus' | 'bridge' | 'buildup' | 'drop' | 'breakdown' | 'outro' {
+  private normalizeSectionType(sectionType: string): 'intro' | 'verse' | 'chorus' | 'bridge' | 'buildup' | 'drop' | 'textural_drop' | 'breakdown' | 'outro' {
     // Normalizar 'build' → 'buildup'
     if (sectionType === 'build') return 'buildup'
     
     // Validar que sea un tipo conocido
-    const validTypes = ['intro', 'verse', 'chorus', 'bridge', 'buildup', 'drop', 'breakdown', 'outro']
+    const validTypes = ['intro', 'verse', 'chorus', 'bridge', 'buildup', 'drop', 'textural_drop', 'breakdown', 'outro']
     if (validTypes.includes(sectionType)) {
       return sectionType as any
     }

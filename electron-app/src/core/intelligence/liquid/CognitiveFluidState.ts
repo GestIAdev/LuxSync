@@ -10,6 +10,7 @@
  */
 
 import type { ILiquidCognitionProfile } from './ILiquidCognitionProfile'
+import type { AcousticRealityState } from '../perception/StateCouplingEnforcer'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Contrato de snapshot — lectura inmutable del estado
@@ -68,6 +69,8 @@ export interface FluidStateInput {
   readonly contextualPhase: string
   /** ¿La memoria contextual está calentada? Si false, epicness = 0 */
   readonly isWarmedUp: boolean
+  /** 🌊 M-SARFE Phase 4: Acoustic reality state with multi-spectral evidence */
+  readonly acousticReality?: AcousticRealityState
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -170,11 +173,38 @@ export class CognitiveFluidState {
     this._crestFactor = cfHat
 
     // ─────────────────────────────────────────────────────────
-    // 3. Impacto I(t) = w_z·ẑ + w_cf·CF̂ + w_e·Ê
+    // 3. Impacto I(t) — Multi-Spectral Fusion (M-SARFE Phase 4)
+    //
+    // When acousticReality is available, use the multi-spectral formula:
+    //   I(t) = w_E·Z_total + w_low·max(0,Z_low) + w_high·max(0,Z_high)
+    //         + w_CF·sigmoid(CF_high−4) + w_T·T + w_D·D
+    //
+    // Fallback to legacy 1D formula when no evidence:
+    //   I(t) = w_z·ẑ + w_cf·CF̂ + w_e·Ê
     // ─────────────────────────────────────────────────────────
-    const zHat = Math.tanh(input.zScore / p.z_ref)
     const eHat = input.rawEnergy / Math.max(input.energyMaxHistoric, 0.01)
-    this._impact = clamp01(p.w_z * zHat + p.w_cf * cfHat + p.w_e * eHat)
+
+    if (input.acousticReality) {
+      const ar = input.acousticReality
+      const zTotal = ar.zScores.total
+      const zLow = ar.zScores.low
+      const zHigh = ar.zScores.high
+      const cfHigh = ar.crestFactors.high
+      const T = ar.spectralTension
+      const D = ar.spectralDivergence
+
+      this._impact = clamp01(
+        p.w_E   * Math.tanh(zTotal / p.z_ref) +
+        p.w_low * Math.max(0, Math.tanh(zLow / p.z_ref)) +
+        p.w_high * Math.max(0, Math.tanh(zHigh / p.z_ref)) +
+        p.w_CF  * sigmoid(cfHigh - 4) +
+        p.w_T   * T +
+        p.w_D   * D
+      )
+    } else {
+      const zHat = Math.tanh(input.zScore / p.z_ref)
+      this._impact = clamp01(p.w_z * zHat + p.w_cf * cfHat + p.w_e * eHat)
+    }
 
     // ─────────────────────────────────────────────────────────
     // 4. Viscosidad μ(t) = clamp01(w_m·M + w_f·flatness + w_h·harmonicDensity − w_p·Π)

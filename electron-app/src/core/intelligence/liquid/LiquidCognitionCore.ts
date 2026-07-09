@@ -88,6 +88,9 @@ export interface LiquidProcessInput {
   readonly contextualPhase: string
   /** ¿La memoria contextual está calentada? Si false, epicness = 0 */
   readonly isWarmedUp: boolean
+
+  // 🌊 M-SARFE Phase 4: Multi-spectral acoustic reality
+  readonly acousticReality?: import('../perception/StateCouplingEnforcer').AcousticRealityState
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -227,6 +230,7 @@ export class LiquidCognitionCore {
       spectralFlatness: input.spectralFlatness,
       contextualPhase: input.contextualPhase,
       isWarmedUp: input.isWarmedUp,
+      acousticReality: input.acousticReality,
       descriptors: {
         percussiveness: this._descriptors.percussiveness,
         melodicity: this._descriptors.melodicity,

@@ -33,16 +33,30 @@ export interface TensionCoefficients {
   readonly D_half: number
   /** Relajación homeostática por frame */
   readonly lambda_home: number
-  /** Peso del Z-Score en el impacto I(t) */
+  /** @deprecated Use w_E (multi-spectral). Peso del Z-Score en el impacto I(t) */
   readonly w_z: number
-  /** Peso del Factor de Cresta en el impacto I(t) */
+  /** @deprecated Use w_CF (multi-spectral). Peso del Factor de Cresta en el impacto I(t) */
   readonly w_cf: number
-  /** Peso de la energía líquida en el impacto I(t) */
+  /** @deprecated Use w_E (multi-spectral). Peso de la energía líquida en el impacto I(t) */
   readonly w_e: number
   /** Punto de saturación del Z-Score (tanh) */
   readonly z_ref: number
   /** Punto de saturación del Factor de Cresta */
   readonly CF_ref: number
+
+  // 🌊 M-SARFE Phase 4: Multi-Spectral Impact Weights
+  /** Peso del Z-Score total (anomalía de energía global) */
+  readonly w_E: number
+  /** Peso del Z-Score de bass (dominancia de graves) */
+  readonly w_low: number
+  /** Peso del Z-Score de agudos (anomalía de alta frecuencia) */
+  readonly w_high: number
+  /** Peso del Crest Factor de agudos (detección vocal/transitorios) */
+  readonly w_CF: number
+  /** Peso de la tensión espectral T(t) */
+  readonly w_T: number
+  /** Peso de la divergencia espectral D(t) */
+  readonly w_D: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -153,6 +167,13 @@ export const DEFAULT_LIQUID_PROFILE: Readonly<ILiquidCognitionProfile> = Object.
   w_e: 0.25,
   z_ref: 3.0,
   CF_ref: 3.5,
+  // 🌊 M-SARFE Phase 4: Multi-Spectral Impact Weights (default)
+  w_E: 0.30,
+  w_low: 0.15,
+  w_high: 0.20,
+  w_CF: 0.15,
+  w_T: 0.12,
+  w_D: 0.08,
 
   // — Inercia y Vapor —
   tau_min: 1.5,

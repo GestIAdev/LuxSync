@@ -731,6 +731,7 @@ export class SeleneTitanConscious extends EventEmitter {
         effectGenome: NEUTRAL_GENOME,
         contextualPhase: this.lastMemoryOutput?.narrative?.narrativePhase ?? 'building',
         isWarmedUp: this.lastMemoryOutput?.isWarmedUp ?? false,
+        acousticReality: this.lastMemoryOutput?.acousticReality,
       }, now)
 
       this._v3Ignite = SELENE_V3_AUTHORITY && this._lastLiquidVerdict.ignite

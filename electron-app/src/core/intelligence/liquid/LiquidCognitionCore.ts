@@ -13,11 +13,12 @@
 
 import type { ILiquidCognitionProfile } from './ILiquidCognitionProfile'
 import { DEFAULT_LIQUID_PROFILE } from './ILiquidCognitionProfile'
-import { FluidDescriptorEngine } from './FluidDescriptors'
+import { FluidDescriptorEngine, type FluidDescriptors } from './FluidDescriptors'
 import { CognitiveFluidState, type FluidStateSnapshot } from './CognitiveFluidState'
 import { SensorFusionChamber, type SensorReadout } from './SensorFusionChamber'
 import { IgnitionChamber } from './IgnitionChamber'
 import type { FrozenGenome } from '../../arsenal/lfxTypes'
+import type { MoodId } from '../../mood/types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Contrato de salida — LiquidVerdict
@@ -98,10 +99,19 @@ export const NEUTRAL_GENOME: FrozenGenome = {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export class LiquidCognitionCore {
-  private readonly _descriptors: FluidDescriptorEngine
-  private readonly _fluidState: CognitiveFluidState
-  private readonly _fusion: SensorFusionChamber
-  private readonly _ignition: IgnitionChamber
+  private _descriptors: FluidDescriptorEngine
+  private _fluidState: CognitiveFluidState
+  private _fusion: SensorFusionChamber
+  private _ignition: IgnitionChamber
+  private _profile: ILiquidCognitionProfile
+  private _mood: MoodId = 'balanced'
+
+  // Mood multipliers — V3.4 Blueprint §14
+  private static readonly MOOD_MULTIPLIERS: Record<MoodId, { qScale: number; tauScale: number }> = {
+    calm:     { qScale: 1.25, tauScale: 1.5 },
+    balanced: { qScale: 1.0,  tauScale: 1.0 },
+    punk:     { qScale: 0.75, tauScale: 0.5 },
+  }
 
   // Snapshot pre-asignado — reutilizado entre llamadas
   private readonly _verdict: LiquidVerdict
@@ -115,6 +125,7 @@ export class LiquidCognitionCore {
   constructor(
     profile: ILiquidCognitionProfile = DEFAULT_LIQUID_PROFILE,
   ) {
+    this._profile = profile
     this._descriptors = new FluidDescriptorEngine()
     this._fluidState = new CognitiveFluidState(profile)
     this._fusion = new SensorFusionChamber(profile)
@@ -149,6 +160,36 @@ export class LiquidCognitionCore {
     this._sensorsRef = this._verdict.sensors
     this._fluidRef = this._verdict.fluid
   }
+
+  /**
+   * V3.4: Sets mood and applies scalar multipliers to Q_base and tau_r.
+   * Called only on mood change (user-driven, rare) — not in hot path.
+   * Recreates sub-modules with scaled profile (zero hot-path cost).
+   */
+  setMood(mood: MoodId): void {
+    if (mood === this._mood) return
+    this._mood = mood
+
+    const mult = LiquidCognitionCore.MOOD_MULTIPLIERS[mood]
+    const base = this._profile
+
+    const scaledProfile: ILiquidCognitionProfile = {
+      ...base,
+      Q_base:  base.Q_base  * mult.qScale,
+      tau_min: base.tau_min * mult.tauScale,
+      tau_max: base.tau_max * mult.tauScale,
+    }
+
+    this._profile = scaledProfile
+    this._fluidState = new CognitiveFluidState(scaledProfile)
+    this._ignition = new IgnitionChamber(scaledProfile)
+    // SensorFusionChamber and FluidDescriptors are mood-agnostic — no recreation needed
+  }
+
+  get mood(): MoodId { return this._mood }
+
+  /** V3.4.4: Acceso directo a descriptores ΠMΔG para telemetría */
+  get descriptors(): FluidDescriptors { return this._descriptors.getDescriptors() }
 
   /**
    * Ejecuta el pipeline fluídico completo para un frame.

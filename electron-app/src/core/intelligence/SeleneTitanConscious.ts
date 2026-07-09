@@ -352,6 +352,13 @@ export class SeleneTitanConscious extends EventEmitter {
   private readonly DNA_OVERRIDE_MIN_INTERVAL_MS = 12000  // 12s entre overrides
   private readonly DNA_OVERRIDE_SAME_EFFECT_INTERVAL_MS = 20000  // 20s para repetir el MISMO efecto con override
 
+  // V3 IGNITE BYPASS — cooldown bypass for V3 ignite when DNA approves with high ethics
+  // Shorter than DNA override: allows ambient effects to fire more frequently
+  private lastV3BypassTimestamp: number = 0
+  private lastV3BypassEffect: string | null = null
+  private readonly V3_BYPASS_MIN_INTERVAL_MS = 8000       // 8s between any V3 bypass (was 5s)
+  private readonly V3_BYPASS_SAME_EFFECT_INTERVAL_MS = 15000  // 15s for same effect via V3 bypass (was 10s)
+
   // 🩸 WAVE 2103: PIPELINE EXECUTION THROTTLE — aligned with global cooldown
   // Was 2000ms (WAVE 2101.4), but global cooldown is 2500ms.
   // If the pipeline throttle fires at T=0 and the effect fires at T=0,
@@ -512,6 +519,8 @@ export class SeleneTitanConscious extends EventEmitter {
     this._lastLiquidVerdict = null
     this._liquidRecorder = new LiquidTelemetryRecorder()
     this._v3Ignite = false
+    this.lastV3BypassTimestamp = 0
+    this.lastV3BypassEffect = null
 
     if (this.config.debug) {
       // WAVE 2098: Boot silence — GENESIS banner removed (debug-only noise)
@@ -591,23 +600,23 @@ export class SeleneTitanConscious extends EventEmitter {
 
           if (candidate) {
             // ═══════════════════════════════════════════════════════════════
-            // 🛡️ WAVE 5020: DIVINE LEAK FIX B — Re-evaluate Z-score before
-            // firing a divine pre-buffer. Cassandra's prediction was made
-            // seconds ago; the musical landscape may have collapsed since.
-            // If the effect is isDivineCandidate and the current Z-score
-            // no longer meets the vibe's effectiveDivineThreshold, abort.
+            // 🛡️ V3.4.4: DIVINE LEAK FIX B — Re-evaluate using V3 epicness
+            // before firing a divine pre-buffer. Cassandra's prediction was
+            // made seconds ago; the musical landscape may have collapsed.
+            // V3 epicness is the sole authority — no static Z-score thresholds.
             // ═══════════════════════════════════════════════════════════════
+            const V3_EPSILON_DIVINE = 0.40  // Fase 2: match profile default
+            const v3EpicnessNow = this._lastLiquidVerdict?.epicness ?? 0
             let divineAborted = false
             const registryEntry = getDynamicEffectRegistry().getEntry(candidate.effect)
             if (registryEntry?.simMeta.isDivineCandidate) {
-              const vibes = registryEntry.compatibleVibes
-              const isTechno = vibes.some((v: string) => v.includes('techno'))
-              const isLatino = vibes.some((v: string) => v.includes('latino') || v.includes('latina') || v.includes('dembow'))
-              const effectiveThreshold = isTechno ? 2.5 : isLatino ? 2.0 : 3.5
-              if (currentZScore < effectiveThreshold) {
+              const energyTooLow = titanState.rawEnergy < 0.50
+              if (v3EpicnessNow <= V3_EPSILON_DIVINE || energyTooLow) {
                 console.log(
                   `[Sovereign Clock 🛡️] DIVINE ABORTED: "${candidate.effectName ?? candidate.effect}" ` +
-                  `Z=${currentZScore.toFixed(2)}σ < ${effectiveThreshold} → buffer cleared, effect suppressed`
+                  `V3 epicness=${v3EpicnessNow.toFixed(3)} ≤ ε=${V3_EPSILON_DIVINE}` +
+                  `${energyTooLow ? ` OR energy=${titanState.rawEnergy.toFixed(2)} < 0.50` : ''}` +
+                  ` → buffer cleared, effect suppressed`
                 )
                 divineAborted = true
               }
@@ -671,38 +680,20 @@ export class SeleneTitanConscious extends EventEmitter {
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // 1. ⚡ ENERGY OVERRIDE CHECK (PRIMERO SIEMPRE)
-    // "En los drops, la física manda"
-    // ─────────────────────────────────────────────────────────────────────
-    const energyOverride = applyEnergyOverride(titanState)
-    
-    if (energyOverride) {
-      this.stats.energyOverridesTriggered++
-      
-      if (this.config.debug && this.stats.framesProcessed % 60 === 0) {
-        const info = getEnergyOverrideInfo(titanState)
-        console.log(`[SeleneTitanConscious] ⚡ ${info.reason}`)
-      }
-      
-      this.lastOutput = energyOverride
-      this.emit('energyOverride', { energy: titanState.smoothedEnergy })
-      return energyOverride
-    }
-    
-    // ─────────────────────────────────────────────────────────────────────
-    // 2. 👁️ SENSE: Percibir el estado musical
+    // 0. 👁️ SENSE + 🌊 V3 LIQUID COGNITION — MUST RUN EVERY FRAME
+    // V3 procesa ANTES que el EnergyOverride para que `ignite` pueda bypassarlo.
+    // Si V3 dice "fuego ahora", ni siquiera el EnergyOverride puede silenciarlo.
     // ─────────────────────────────────────────────────────────────────────
     const pattern = this.sense(titanState)
-    
-    // Actualizar historial
     this.updateHistory(pattern)
 
-    // ─────────────────────────────────────────────────────────────────────
-    // 🌊 WAVE 7004.5: LIQUID COGNITION V3 — PRE-THINK (AUTHORITY)
-    // V3 procesa ANTES que V2 para que `ignite` pueda influir en el pipeline.
-    // Si SELENE_V3_AUTHORITY es true e ignite = true, V3 fuerza el disparo.
-    // ─────────────────────────────────────────────────────────────────────
     {
+      // V3.4: Sync mood to LiquidCognitionCore (zero-alloc check, only acts on change)
+      const currentMood = MoodController.getInstance().getCurrentMood()
+      if (this._liquidCore.mood !== currentMood) {
+        this._liquidCore.setMood(currentMood)
+      }
+
       const now = Date.now()
       const zScore = this.lastMemoryOutput?.stats.energy.zScore ?? 0
       const energyMax = this.lastMemoryOutput?.stats.energy.max ?? titanState.rawEnergy
@@ -735,14 +726,41 @@ export class SeleneTitanConscious extends EventEmitter {
       if (this._v3Ignite) {
         const now = Date.now()
         if (now - this._lastSuppressedLog > 1000) {
+          const lv = this._lastLiquidVerdict!
+          const fd = this._liquidCore.descriptors
           console.log(
-            `[SeleneTitanConscious 🌊] V3 IGNITE: confidence=${this._lastLiquidVerdict.confidence.toFixed(3)} ` +
-            `intensity=${this._lastLiquidVerdict.intensity.toFixed(3)} squelch=${this._lastLiquidVerdict.squelch.toFixed(3)} ` +
-            `tension=${this._lastLiquidVerdict.fluid.tension.toFixed(3)} → V3 AUTHORITY ACTIVE`
+            `[SeleneTitanConscious 🌊] V3 IGNITE: C=${lv.confidence.toFixed(3)} ` +
+            `Q=${lv.squelch.toFixed(3)} I_fx=${lv.intensity.toFixed(3)} ` +
+            `epicness=${lv.epicness.toFixed(3)} ` +
+            `| I(t)=${lv.fluid.impact.toFixed(3)} CF=${lv.fluid.crestFactor.toFixed(3)} ` +
+            `T=${lv.fluid.tension.toFixed(3)} μ=${lv.fluid.viscosity.toFixed(3)} ` +
+            `V=${lv.fluid.vaporPressure.toFixed(3)} X=${lv.fluid.excitability.toFixed(3)} ` +
+            `| Π=${fd.percussiveness.toFixed(3)} M=${fd.melodicity.toFixed(3)} ` +
+            `Δ=${fd.dirtiness.toFixed(3)} G=${fd.groove.toFixed(3)} ` +
+            `→ V3 AUTHORITY ACTIVE`
           )
           this._lastSuppressedLog = now
         }
       }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // 1. ⚡ ENERGY OVERRIDE CHECK — V3 ignite can bypass this
+    // "En los drops, la física manda" — unless V3 says "fuego ahora"
+    // ─────────────────────────────────────────────────────────────────────
+    const energyOverride = applyEnergyOverride(titanState)
+    
+    if (energyOverride && !this._v3Ignite) {
+      this.stats.energyOverridesTriggered++
+      
+      if (this.config.debug && this.stats.framesProcessed % 60 === 0) {
+        const info = getEnergyOverrideInfo(titanState)
+        console.log(`[SeleneTitanConscious] ⚡ ${info.reason}`)
+      }
+      
+      this.lastOutput = energyOverride
+      this.emit('energyOverride', { energy: titanState.smoothedEnergy })
+      return energyOverride
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -1220,9 +1238,7 @@ export class SeleneTitanConscious extends EventEmitter {
       const baseCooldownMs = pattern.vibeId === 'fiesta-latina'
         ? this.LATINA_GLOBAL_EFFECT_COOLDOWN_MS
         : this.GLOBAL_EFFECT_COOLDOWN_MS
-      // 🎭 WAVE 4860: Conectar mood cooldownMultiplier al reloj global
-      // CALM x4.0 = 28s-32s | BALANCED x2.2 = 15s-18s | PUNK x0.7 = 5s-6s
-      const globalCooldownMs = MoodController.getInstance().applyCooldown(baseCooldownMs)
+      const globalCooldownMs = baseCooldownMs
 
       // ⚡ WAVE 4849: JUST-FIRED HARD SHIELD — 2s de inmunidad total
       // Evita el doble-disparo cuando prediction y drop-urgente coinciden en <1s.
@@ -1232,7 +1248,7 @@ export class SeleneTitanConscious extends EventEmitter {
       const JUST_FIRED_SHIELD_MS = 2000
       if (timeSinceLastEffect < JUST_FIRED_SHIELD_MS) {
         dreamIntegrationData = this.lastDreamIntegrationResult  // Hard block — ni drops pasan
-      } else if (timeSinceLastEffect < globalCooldownMs && !isDropUrgent && !isDropIncoming && !this._v3Ignite) {
+      } else if (timeSinceLastEffect < globalCooldownMs && !isDropUrgent && !isDropIncoming) {
         // 🩸 WAVE 2104.1: DIAGNOSTIC — Ver cuánto bloquea el global cooldown
         if (this.stats.framesProcessed % 15 === 0) {
           console.log(`[GLOBAL_COOLDOWN] ⏸️ Cached: ${Math.ceil((globalCooldownMs - timeSinceLastEffect) / 1000)}s left | vibe=${pattern.vibeId} lastEffect=${this.lastEffectType ?? 'none'}`)
@@ -1383,6 +1399,8 @@ export class SeleneTitanConscious extends EventEmitter {
       activeDictator: getEffectManager().hasDictator(),
       // 🐘 WAVE 4861: Energía máxima del buffer de 30s para Absolute Energy Gate
       energyMaxHistoric: this.lastMemoryOutput?.stats.energy.max,
+      // V3.4: Epicness from Liquid Cognition — sole authority for Divine routing
+      v3Epicness: this._lastLiquidVerdict?.epicness ?? 0,
     }
     
     // 🔍 WAVE 976.3: DEBUG - Ver qué recibe DecisionMaker
@@ -1512,10 +1530,10 @@ export class SeleneTitanConscious extends EventEmitter {
         && ethicsScore >= ethicsThreshold
         && !oceanicProtection
         && overrideTemporalReady
-      
+
       // 🔪 WAVE 1010: Si ya procesamos DIVINE arsenal, el efecto ya está validado
       const alreadyValidatedByArsenal = divineArsenal && divineArsenal.length > 0 && output.effectDecision
-      
+
       // ═══════════════════════════════════════════════════════════════════════════
       // 🔒 WAVE 1179: DICTATOR HARD MINIMUM PROTECTION
       // ═══════════════════════════════════════════════════════════════════════════
@@ -1539,7 +1557,39 @@ export class SeleneTitanConscious extends EventEmitter {
           `(${Math.ceil((this.POST_DROP_REFRACTORY_MS - timeSinceHighSeverity) / 1000)}s remaining)`
         )
       }
-      
+
+      // V3 IGNITE BYPASS — when V3 ignite is active and DNA approves with high ethics,
+      // bypass regular cooldown (but NOT HARD_COOLDOWN). This is the V3 equivalent of
+      // Cassandra's Sovereign Clock bypass, but for the normal pipeline.
+      // Allows ambient/non-epic effects to fire without requiring allowEthicsOverride.
+      const timeSinceLastV3Bypass = now - this.lastV3BypassTimestamp
+      const isSameEffectAsLastV3Bypass = intent === this.lastV3BypassEffect
+      const v3BypassTemporalMinimum = isSameEffectAsLastV3Bypass
+        ? this.V3_BYPASS_SAME_EFFECT_INTERVAL_MS
+        : this.V3_BYPASS_MIN_INTERVAL_MS
+      const v3BypassTemporalReady = timeSinceLastV3Bypass >= v3BypassTemporalMinimum
+      const v3IgniteBypass = this._v3Ignite
+        && isDNADecision
+        && ethicsScore >= ethicsThreshold
+        && !isHardMinimumBlocked
+        && !oceanicProtection
+        && v3BypassTemporalReady
+        && !alreadyValidatedByArsenal
+
+      // 📊 GATEKEEPER TELEMETRY — log the decision at the moment of firing/blocking
+      // Always log when DNA approved an effect, to trace why it fires or gets blocked
+      if (isDNADecision && output.effectDecision) {
+        const v3Epic = this._lastLiquidVerdict?.epicness ?? 0
+        console.log(
+          `[Gatekeeper 📊] ${intent} | v3Ignite=${this._v3Ignite} epicness=${v3Epic.toFixed(3)} | ` +
+          `hardBlocked=${isHardMinimumBlocked} refractory=${refractoryBlocked} | ` +
+          `arsenalValidated=${!!alreadyValidatedByArsenal} ethicsOverride=${hasHighEthicsOverride} | ` +
+          `v3Bypass=${v3IgniteBypass} v3BypassReady=${v3BypassTemporalReady} | ` +
+          `cooldown=${hardMinimumCheck.available ? 'OK' : hardMinimumCheck.reason} | ` +
+          `ethics=${ethicsScore.toFixed(2)}/${ethicsThreshold}`
+        )
+      }
+
       const availability = isHardMinimumBlocked
         ? hardMinimumCheck  // 🔒 HARD MINIMUM es LEY ABSOLUTA
         : refractoryBlocked
@@ -1548,6 +1598,8 @@ export class SeleneTitanConscious extends EventEmitter {
         ? { available: true, reason: 'DIVINE arsenal pre-validated' }
         : hasHighEthicsOverride
         ? { available: true, reason: `DNA override (${currentMoodProfile.emoji} ${currentMoodProfile.name}: ethics ${ethicsScore.toFixed(2)} > ${ethicsThreshold})` }
+        : v3IgniteBypass
+        ? { available: true, reason: `V3 IGNITE bypass (ethics=${ethicsScore.toFixed(2)})` }
         : hardMinimumCheck
       
       if (availability.available && output.effectDecision) {
@@ -1573,6 +1625,14 @@ export class SeleneTitanConscious extends EventEmitter {
             `[SeleneTitanConscious] 🧬 DNA COOLDOWN OVERRIDE (${currentMoodProfile.emoji} ${currentMoodProfile.name}): ` +
             `${intent} | ethics=${ethicsScore.toFixed(2)} > threshold=${ethicsThreshold} | ` +
             `nextOverride=${Math.ceil(this.DNA_OVERRIDE_MIN_INTERVAL_MS / 1000)}s`
+          )
+        } else if (v3IgniteBypass) {
+          this.lastV3BypassTimestamp = now
+          this.lastV3BypassEffect = intent
+          console.log(
+            `[SeleneTitanConscious 🌊] V3 IGNITE BYPASS: ${intent} | ` +
+            `ethics=${ethicsScore.toFixed(2)} | cooldown bypassed | ` +
+            `nextV3Bypass=${Math.ceil(v3BypassTemporalMinimum / 1000)}s`
           )
         } else if (isDNADecision && ethicsScore > ethicsThreshold && !overrideTemporalReady) {
           // ⚡ WAVE 2093.2: Log cuando temporal guard bloqueó el override
@@ -1911,6 +1971,8 @@ export class SeleneTitanConscious extends EventEmitter {
     this._lastLiquidVerdict = null
     this._liquidRecorder.reset()
     this._v3Ignite = false
+    this.lastV3BypassTimestamp = 0
+    this.lastV3BypassEffect = null
 
     // Resetear cognición (PHASE 3)
     resetHuntEngine()

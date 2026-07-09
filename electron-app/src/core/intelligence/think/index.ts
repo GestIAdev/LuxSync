@@ -46,13 +46,11 @@ export {
 } from './PredictionEngine'
 
 // Decision Maker - Síntesis final
-// 🔪 WAVE 1010: Ahora incluye DIVINE_THRESHOLD
-// ⚡ WAVE 4915: DIVINE_ARSENAL purgado — vive en el Live Registry.
+// V3.4: DIVINE_THRESHOLD purged — V3 epicness is the sole authority.
 export {
   makeDecision,
   mergeDecisions,
   isSignificantDecision,
-  DIVINE_THRESHOLD,
   type DecisionInputs,
   type DecisionMakerConfig
 } from './DecisionMaker'

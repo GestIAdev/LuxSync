@@ -181,7 +181,7 @@ export const DEFAULT_LIQUID_PROFILE: Readonly<ILiquidCognitionProfile> = Object.
   kappa_vmax: 0.75,
 
   // — Ignición —
-  Q_base: 0.550,       // ⬇ 0.700 → 0.550 (relaxed for fluidity)
+  Q_base: 0.650,       // ⬆ 0.550 → 0.650 (reverted from artificial lower; was 0.700 original)
   kappa_T: 0.50,
   kappa_V: 0.40,
   I_min: 0.35,
@@ -189,5 +189,5 @@ export const DEFAULT_LIQUID_PROFILE: Readonly<ILiquidCognitionProfile> = Object.
   kappa_vb: 0.10,
   kappa_rep: 0.6,
   tau_novelty: 45.0,
-  epsilon_divine: 0.25,
+  epsilon_divine: 0.40,  // ⬆ 0.30 → 0.40 (Fase 2: crush spurious divines in valleys)
 })

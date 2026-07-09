@@ -28,6 +28,8 @@ export const NEUTRAL_GENOME = {
 // ═══════════════════════════════════════════════════════════════════════════
 export class LiquidCognitionCore {
     constructor(profile = DEFAULT_LIQUID_PROFILE) {
+        this._mood = 'balanced';
+        this._profile = profile;
         this._descriptors = new FluidDescriptorEngine();
         this._fluidState = new CognitiveFluidState(profile);
         this._fusion = new SensorFusionChamber(profile);
@@ -56,6 +58,31 @@ export class LiquidCognitionCore {
         this._sensorsRef = this._verdict.sensors;
         this._fluidRef = this._verdict.fluid;
     }
+    /**
+     * V3.4: Sets mood and applies scalar multipliers to Q_base and tau_r.
+     * Called only on mood change (user-driven, rare) — not in hot path.
+     * Recreates sub-modules with scaled profile (zero hot-path cost).
+     */
+    setMood(mood) {
+        if (mood === this._mood)
+            return;
+        this._mood = mood;
+        const mult = LiquidCognitionCore.MOOD_MULTIPLIERS[mood];
+        const base = this._profile;
+        const scaledProfile = {
+            ...base,
+            Q_base: base.Q_base * mult.qScale,
+            tau_min: base.tau_min * mult.tauScale,
+            tau_max: base.tau_max * mult.tauScale,
+        };
+        this._profile = scaledProfile;
+        this._fluidState = new CognitiveFluidState(scaledProfile);
+        this._ignition = new IgnitionChamber(scaledProfile);
+        // SensorFusionChamber and FluidDescriptors are mood-agnostic — no recreation needed
+    }
+    get mood() { return this._mood; }
+    /** V3.4.4: Acceso directo a descriptores ΠMΔG para telemetría */
+    get descriptors() { return this._descriptors.getDescriptors(); }
     /**
      * Ejecuta el pipeline fluídico completo para un frame.
      * Hot path 44Hz — sin allocs, sin branches de género, determinístico.
@@ -152,3 +179,9 @@ export class LiquidCognitionCore {
         this._verdictMut.reasoning = '';
     }
 }
+// Mood multipliers — V3.4 Blueprint §14
+LiquidCognitionCore.MOOD_MULTIPLIERS = {
+    calm: { qScale: 1.25, tauScale: 1.5 },
+    balanced: { qScale: 1.0, tauScale: 1.0 },
+    punk: { qScale: 0.75, tauScale: 0.5 },
+};

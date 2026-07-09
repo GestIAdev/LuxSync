@@ -144,9 +144,15 @@ export class CognitiveFluidState {
         this._excitability = clamp01(this._excitability);
         // ─────────────────────────────────────────────────────────
         // 8. Epicness — ruptura relativa de la superficie
+        // FIX: La fórmula original (impact - tension) / tension requiere
+        // impact > tension, pero con la calibración actual el impacto máximo
+        // práctico (~0.42) nunca supera la tensión de equilibrio (~0.70).
+        // Nueva fórmula: ruptura relativa a la MITAD de la tensión.
+        // epicness=1 cuando impact=tension, epicness=0 cuando impact≤tension/2.
         // ─────────────────────────────────────────────────────────
-        this._epicness = this._tension > 0.001
-            ? Math.max(0, (this._impact - this._tension) / this._tension)
+        const halfTension = this._tension * 0.5;
+        this._epicness = halfTension > 0.001
+            ? clamp01((this._impact - halfTension) / halfTension)
             : 0;
     }
     /**

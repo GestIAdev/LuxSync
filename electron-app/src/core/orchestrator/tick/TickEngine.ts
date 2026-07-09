@@ -59,6 +59,17 @@ export class TickEngine {
   private _prevPllLocked = false
   private static readonly PHASE_CROSSFADE_FRAMES = 8
 
+  // 🛡️ BPM STABILIZATION SHIELD: Hysteresis + EMA + Conditional feedKick
+  private _stableBpm = 0
+  private _bpmCandidate = 0
+  private _bpmCandidateFrames = 0
+  private _smoothedBpm = 0
+  private static readonly BPM_HYSTERESIS_PCT = 0.08
+  private static readonly BPM_CANDIDATE_CONFIRM_FRAMES = 60
+  private static readonly BPM_CANDIDATE_MIN_CONFIDENCE = 0.7
+  private static readonly BPM_CANDIDATE_TOLERANCE = 2
+  private static readonly BPM_EMA_ALPHA = 0.15
+
   get brain() { return this.ctx.brain }
   get engine() { return this.ctx.engine }
   get hal() { return this.ctx.hal }
@@ -323,6 +334,7 @@ export class TickEngine {
     const workerConfidence = this.audioPipeline.lastAudioData.workerBpmConfidence ?? 0
     const workerOnBeat = this.audioPipeline.lastAudioData.workerOnBeat ?? false
     const workerBeatPhase = this.audioPipeline.lastAudioData.workerBeatPhase ?? 0
+    let acceptedBpm = workerBpm  // 🛡️ May be overridden by hysteresis gate
     
     if (this.audioPipeline.beatDetector && this.audioPipeline.hasRealAudio) {
       // ðŸ”¥ WAVE 2112 + WAVE 2179: WORKER BPM â†’ PLL
@@ -332,15 +344,44 @@ export class TickEngine {
       // PunkArchytect doctrine: Worker = OÃ­dos (honesto). Cerebro = Memoria (inerte).
       // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
       if (workerBpm > 0 && workerConfidence > 0.5) {
-        // ðŸ”¥ Worker activo: lock real + actualizar memoria
-        // 🔧 WAVE 7002.4 (T2): Only call setBpm() when BPM actually changes.
-        // Calling setBpm() 44×/sec with the same value caused PLL re-lock
-        // jitter (candidateFrames forced to HYSTERESIS_FRAMES every frame).
-        if (this.audioPipeline.lastSetBpm !== workerBpm) {
-          this.audioPipeline.beatDetector.setBpm(workerBpm)
-          this.audioPipeline.lastSetBpm = workerBpm
+        // 🛡️ BPM STABILIZATION SHIELD — Hysteresis Gate
+        // If workerBpm differs from stable BPM by >8%, require 60 consecutive
+        // frames at conf>0.7 before accepting. Prevents dembow ghost-kick
+        // half-time detection (e.g., 101→89) from causing instant jumps.
+        if (this._stableBpm > 0) {
+          const delta = Math.abs(workerBpm - this._stableBpm) / this._stableBpm
+          if (delta > TickEngine.BPM_HYSTERESIS_PCT) {
+            // Large change — require confirmation
+            if (Math.abs(workerBpm - this._bpmCandidate) <= TickEngine.BPM_CANDIDATE_TOLERANCE
+                && workerConfidence > TickEngine.BPM_CANDIDATE_MIN_CONFIDENCE) {
+              this._bpmCandidateFrames++
+              if (this._bpmCandidateFrames >= TickEngine.BPM_CANDIDATE_CONFIRM_FRAMES) {
+                this._stableBpm = workerBpm
+                this._bpmCandidate = 0
+                this._bpmCandidateFrames = 0
+              } else {
+                acceptedBpm = this._stableBpm
+              }
+            } else {
+              this._bpmCandidate = workerBpm
+              this._bpmCandidateFrames = 0
+              acceptedBpm = this._stableBpm
+            }
+          } else {
+            // Small change — accept and update stable
+            this._stableBpm = workerBpm
+            this._bpmCandidate = 0
+            this._bpmCandidateFrames = 0
+          }
+        } else {
+          this._stableBpm = workerBpm
         }
-        this.audioPipeline.lastStableWorkerBpm = workerBpm
+        // 🔧 WAVE 7002.4 (T2): Only call setBpm() when BPM actually changes.
+        if (this.audioPipeline.lastSetBpm !== acceptedBpm) {
+          this.audioPipeline.beatDetector.setBpm(acceptedBpm)
+          this.audioPipeline.lastSetBpm = acceptedBpm
+        }
+        this.audioPipeline.lastStableWorkerBpm = acceptedBpm
         this.audioPipeline.lastStableWorkerBpmFrame = this.frameCount
       } else {
         // ðŸ”¥ WAVE 2179: Worker sordo â†’ Â¿tenemos memoria reciente?
@@ -360,8 +401,11 @@ export class TickEngine {
         beatState.onBeat = true
         beatState.kickDetected = true
         // 🔧 WAVE 7002 (F11): Feed real kick timestamp to PLL phase corrector.
-        // This reconnects the PLL to audio evidence — pllLocked can now become true.
-        this.audioPipeline.beatDetector.feedKick(now)
+        // 🛡️ BPM SHIELD: Only feed kicks when worker confidence > 0.3 to prevent
+        // false PLL locks on ghost kicks (dembow half-time detection).
+        if (workerConfidence > 0.3) {
+          this.audioPipeline.beatDetector.feedKick(now)
+        }
       }
       
       if (this.frameCount % 60 === 0) {
@@ -398,8 +442,8 @@ export class TickEngine {
     const hasFreewheelMemory = this.audioPipeline.lastStableWorkerBpm > 0 && _framesSinceStable <= this.audioPipeline.FREEWHEEL_TIMEOUT_FRAMES
 
     if (workerBpm > 0 && workerConfidence > 0.5) {
-      // Priority 1: Worker activo
-      context.bpm = workerBpm
+      // Priority 1: Worker activo (hysteresis-filtered)
+      context.bpm = acceptedBpm
       // 🔧 WAVE 7003 (F5) + WAVE 7002.4 (T3): Phase crossfade.
       // Always prefer PLL phase, but crossfade on lock state transitions
       // to avoid instantaneous phase jumps that cause visual discontinuities.
@@ -446,6 +490,16 @@ export class TickEngine {
       )
     }
 
+    // 🛡️ BPM STABILIZATION SHIELD — EMA Smoothing
+    // Smooth the target BPM to eliminate instantaneous jumps.
+    // α=0.15 → ~4 seconds to converge on a large step change.
+    if (this._smoothedBpm <= 0) {
+      this._smoothedBpm = context.bpm
+    } else if (context.bpm > 0) {
+      this._smoothedBpm = (TickEngine.BPM_EMA_ALPHA * context.bpm) + (1 - TickEngine.BPM_EMA_ALPHA) * this._smoothedBpm
+    }
+    context.bpm = this._smoothedBpm
+
     // For TitanEngine
     // ðŸŽ›ï¸ WAVE 661: Incluir textura espectral
     // ðŸŽ¸ WAVE 1011.5: Usar mÃ©tricas SUAVIZADAS (no crudas) para evitar parpadeo
@@ -467,7 +521,7 @@ export class TickEngine {
       // beatState.beatCount (PLL) was always 0 because process() was retired in WAVE 2112.
       // The Worker's IntervalBPMTracker.totalKicks is the only real beat counter alive.
       beatCount: this.audioPipeline.lastAudioData.workerKickCount ?? beatState.beatCount,
-      bpm: workerBpm > 0 ? workerBpm : beatState.bpm,
+      bpm: context.bpm,
       beatConfidence: workerConfidence > 0 ? workerConfidence : beatState.confidence,
       // 🔧 WAVE 7002 (F2): Propagate pllLocked to TitanEngine for Cassandra
       pllLocked: beatState.pllLocked,

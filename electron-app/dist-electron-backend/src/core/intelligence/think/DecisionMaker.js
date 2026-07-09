@@ -39,11 +39,7 @@ function throttledLog(reason, message, limitMs = 1000) {
 // 🔪 WAVE 1010: DIVINE THRESHOLD & VIBE-AWARE ARSENAL
 // ═══════════════════════════════════════════════════════════════════════════
 // Movido desde ContextualEffectSelector - EL GENERAL tiene el control total
-/**
- * Umbral de Z-Score para DIVINE moment (momento de máximo impacto obligatorio)
- * 🔬 WAVE 2185: Elevado de 3.5 a 4.0 + dual validation con energía efectiva
- */
-export const DIVINE_THRESHOLD = 4.0;
+/** V3.4: Static DIVINE_THRESHOLD purged — V3 epicness > epsilon_divine is the sole authority. */
 /**
  * ⚡ WAVE 4915: DIVINE ARSENAL purgado.
  *
@@ -93,7 +89,12 @@ export function makeDecision(inputs, config = {}) {
     // Calcular confianza combinada
     const combinedConfidence = calculateCombinedConfidence(inputs, cfg);
     // ¿Suficiente confianza para decidir?
-    if (combinedConfidence < cfg.minConfidenceThreshold) {
+    // 🧬 WAVE 7004.6: DNA-approved effects bypass confidence threshold.
+    // combinedConfidence (pred*0.3 + beauty*0.3) almost never reaches 0.55 in practice,
+    // blocking ALL DNA-approved effects before determineDecisionType is even called.
+    // If DNA approved with high ethics, the effect should proceed regardless.
+    const dnaApproved = inputs.dreamIntegration?.approved && inputs.dreamIntegration.effect?.effect;
+    if (!dnaApproved && combinedConfidence < cfg.minConfidenceThreshold) {
         output.confidence = combinedConfidence;
         output.debugInfo.huntState = inputs.huntDecision.suggestedPhase;
         output.debugInfo.reasoning = `Low Confidence Matrix: ${combinedConfidence.toFixed(2)} < ${cfg.minConfidenceThreshold}`;
@@ -137,40 +138,32 @@ export function makeDecision(inputs, config = {}) {
 function determineDecisionType(inputs) {
     const { huntDecision, prediction, pattern, beauty, dreamIntegration, energyContext, zScore, activeDictator } = inputs;
     // ═══════════════════════════════════════════════════════════════════════
-    // 🌩️ PRIORIDAD -1: DIVINE MOMENT (Z > threshold + energy)
-    // V3 Phase 3.3: Absolute Energy Gate, Spectral Gate, Valley Protection,
-    // and Breakdown Protection extirpated — V3 liquid cognition handles these.
+    // 🌩️ PRIORIDAD -1: DIVINE MOMENT — V3.4: epicness > epsilon_divine
+    // Static Z-score thresholds extirpated. V3 Liquid Cognition's epicness
+    // is the sole authority for Divine arsenal routing.
     // ═══════════════════════════════════════════════════════════════════════
-    const currentZ = zScore ?? 0;
-    const DIVINE_ENERGY_GATE = 0.80;
-    const isTechnoVibe = pattern.vibeId === 'techno-club' || pattern.vibeId === 'hard-techno' || pattern.vibeId?.includes('techno') || false;
-    const isLatinoVibe = pattern.vibeId?.includes('latino') || pattern.vibeId?.includes('latina') || pattern.vibeId?.includes('dembow') || false;
-    const effectiveDivineThreshold = isTechnoVibe ? 2.5 : isLatinoVibe ? 2.2 : DIVINE_THRESHOLD;
+    const V3_EPSILON_DIVINE = 0.25;
+    const v3Epicness = inputs.v3Epicness ?? 0;
     if (activeDictator) {
         // No loggear nada - silencio total para evitar spam
     }
-    else if (currentZ >= effectiveDivineThreshold) {
-        const effectiveEnergy = energyContext?.absolute ?? 0;
-        if (effectiveEnergy < DIVINE_ENERGY_GATE) {
-            console.log(`[DecisionMaker 🌩️] DIVINE SUPPRESSED: Z=${currentZ.toFixed(2)}σ but rawEnergy=${effectiveEnergy.toFixed(2)} < ${DIVINE_ENERGY_GATE} → falling through to musical context priorities`);
-        }
-        else {
-            console.log(`[DecisionMaker 🌩️] DIVINE MOMENT: Z=${currentZ.toFixed(2)}σ energy=${effectiveEnergy.toFixed(2)} → MANDATORY FIRE`);
-            return 'divine_strike';
-        }
+    else if (v3Epicness > V3_EPSILON_DIVINE) {
+        console.log(`[DecisionMaker 🌩️] DIVINE MOMENT: V3 epicness=${v3Epicness.toFixed(3)} > ε=${V3_EPSILON_DIVINE} → MANDATORY FIRE`);
+        return 'divine_strike';
     }
     // 🧬 PRIORIDAD 0: DNA BRAIN - LA ÚLTIMA PALABRA
     const section = pattern.section;
     if (dreamIntegration?.approved && dreamIntegration.effect?.effect) {
         const proposedEffect = dreamIntegration.effect.effect;
         const isDivineEffect = getDynamicEffectRegistry().getEntry(proposedEffect)?.simMeta.isDivineCandidate ?? false;
-        const divineLeakBlocked = isDivineEffect && currentZ < effectiveDivineThreshold;
+        // V3.4: Divine leak check uses epicness instead of static Z-score
+        const divineLeakBlocked = isDivineEffect && v3Epicness <= V3_EPSILON_DIVINE;
         if (section === 'buildup' && !isEffectAllowedInSection(proposedEffect, section)) {
             // Fall through — buildup handler below will manage with soft effects
         }
         else if (divineLeakBlocked) {
             console.log(`[DecisionMaker 🛡️] DIVINE LEAK BLOCKED: "${proposedEffect}" is divine ` +
-                `but Z=${currentZ.toFixed(2)}σ < ${effectiveDivineThreshold} → falling through`);
+                `but V3 epicness=${v3Epicness.toFixed(3)} ≤ ε=${V3_EPSILON_DIVINE} → falling through`);
         }
         else {
             return 'strike';
@@ -319,14 +312,14 @@ function generateDivineStrikeDecision(inputs, output, confidence) {
     // Repository itera en orden de preferencia, el PRIMERO sin cooldown dispara.
     const rankedArsenal = rankArsenalByDiversity(arsenal);
     const suggestedEffect = rankedArsenal[0] || arsenal[0];
-    output.debugInfo.reasoning = `🌩️ DIVINE MOMENT: Z=${(zScore ?? 0).toFixed(2)}σ | vibe=${vibeId} | texture=${spectralContext?.texture ?? 'unknown'} | suggested=${suggestedEffect}`;
+    output.debugInfo.reasoning = `🌩️ DIVINE MOMENT: epicness=${(inputs.v3Epicness ?? 0).toFixed(3)} | vibe=${vibeId} | texture=${spectralContext?.texture ?? 'unknown'} | suggested=${suggestedEffect}`;
     // 🎲 WAVE 2494: Arsenal completo rankeado → Repository elige el primero disponible
     output.effectDecision = {
         effectType: suggestedEffect,
         effectName: getDynamicEffectRegistry().getEntry(suggestedEffect)?.name,
         intensity: 1.0, // DIVINE = máxima intensidad
         zones: ['all'], // DIVINE afecta todo
-        reason: `🌩️ DIVINE: Z=${(zScore ?? 0).toFixed(2)}σ > ${DIVINE_THRESHOLD} | Ranked: ${rankedArsenal.join(' > ')} | Full arsenal: ${arsenal.join(', ')}`,
+        reason: `🌩️ DIVINE: epicness=${(inputs.v3Epicness ?? 0).toFixed(3)} | Ranked: ${rankedArsenal.join(' > ')} | Full arsenal: ${arsenal.join(', ')}`,
         confidence: 0.99,
         // 🎲 WAVE 2494: Arsenal COMPLETO rankeado por diversity score
         // Repository itera en orden: primer candidato sin cooldown dispara.
@@ -339,7 +332,7 @@ function generateDivineStrikeDecision(inputs, output, confidence) {
         saturationMod: 1.25, // Colores vivos
         brightnessMod: 1.20, // Brillante
         confidence: 0.99,
-        reasoning: `DIVINE Strike (Z=${(zScore ?? 0).toFixed(2)}σ)`,
+        reasoning: `DIVINE Strike (epicness=${(inputs.v3Epicness ?? 0).toFixed(3)})`,
     };
     // Physics modifier: Máxima potencia
     output.physicsModifier = {

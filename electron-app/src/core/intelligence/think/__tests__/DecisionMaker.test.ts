@@ -30,7 +30,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import {
   makeDecision,
-  DIVINE_THRESHOLD,
   type DecisionInputs,
 } from '../DecisionMaker'
 import { getDynamicEffectRegistry } from '../../../../arsenal/DynamicEffectRegistry'
@@ -237,21 +236,16 @@ function buildActiveInputs(overrides: Partial<DecisionInputs> = {}): DecisionInp
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// § 1. LA LEY DIVINA — Z > 4.0σ + Energy Gate
+// § 1. LA LEY DIVINA — V3.4: epicness > epsilon_divine
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('§ 1. LA LEY DIVINA — DIVINE THRESHOLD + ENERGY GATE', () => {
+describe('§ 1. LA LEY DIVINA — V3.4 epicness > epsilon_divine', () => {
 
-  beforeEach(() => { /* no-op: drop lock extirpated in V3 */ })
+  beforeEach(() => { /* no-op */ })
 
-  it('DIVINE_THRESHOLD debería ser 4.0σ', () => {
-    expect(DIVINE_THRESHOLD).toBe(4.0)
-  })
-
-  it('Z > 4.0σ + E > 0.85 + zone=intense → MANDATORY FIRE (divine_strike)', () => {
+  it('V3 epicness > 0.25 → MANDATORY FIRE (divine_strike)', () => {
     const output = makeDecision(buildActiveInputs({
-      zScore: 4.5,
-      energyContext: createEnergyContext({ zone: 'intense', smoothed: 0.92 }),
+      v3Epicness: 0.35,
       pattern: createBasePattern({ section: 'drop', vibeId: 'techno-club' }),
     }))
 
@@ -260,9 +254,9 @@ describe('§ 1. LA LEY DIVINA — DIVINE THRESHOLD + ENERGY GATE', () => {
     expect(output.debugInfo.reasoning).toContain('DIVINE')
   })
 
-  it('Z > 4.0σ + E > 0.85 + zone=peak → MANDATORY FIRE', () => {
+  it('V3 epicness > 0.25 + high energy → MANDATORY FIRE', () => {
     const output = makeDecision(buildActiveInputs({
-      zScore: 5.2,
+      v3Epicness: 0.50,
       energyContext: createEnergyContext({ zone: 'peak', smoothed: 0.95 }),
       pattern: createBasePattern({ section: 'drop', vibeId: 'techno-club' }),
     }))
@@ -271,56 +265,31 @@ describe('§ 1. LA LEY DIVINA — DIVINE THRESHOLD + ENERGY GATE', () => {
     expect(output.effectDecision).not.toBeNull()
   })
 
-  it('Z > 4.0σ pero E < 0.85 → DIVINE SUPPRESSED, falls through', () => {
+  it('V3 epicness <= 0.25 → no DIVINE', () => {
     const output = makeDecision(buildActiveInputs({
-      zScore: 4.5,
+      v3Epicness: 0.20,
       energyContext: createEnergyContext({ zone: 'active', smoothed: 0.70 }),
       pattern: createBasePattern({ section: 'verse' }),
     }))
 
-    // No debería ser DIVINE — ENERGY_GATE bloqueó
     if (output.debugInfo.reasoning) {
       expect(output.debugInfo.reasoning).not.toContain('DIVINE MOMENT')
     }
   })
 
-  it('Z > 4.0σ pero zone=silence → DIVINE BLOCKED', () => {
+  it('V3 epicness = 0 → no DIVINE aunque E sea altísima', () => {
     const output = makeDecision(buildActiveInputs({
-      zScore: 6.0,
-      energyContext: createEnergyContext({ zone: 'silence', smoothed: 0.10 }),
-      pattern: createBasePattern({ section: 'breakdown' }),
-    }))
-
-    // DIVINE bloqueado por zone=silence → effectDecision queda null
-    expect(output.effectDecision).toBeNull()
-  })
-
-  it('Z > 4.0σ pero zone=valley → DIVINE BLOCKED', () => {
-    const output = makeDecision(buildActiveInputs({
-      zScore: 4.2,
-      energyContext: createEnergyContext({ zone: 'valley', smoothed: 0.20 }),
-      pattern: createBasePattern({ section: 'verse' }),
-    }))
-
-    if (output.debugInfo.reasoning) {
-      expect(output.debugInfo.reasoning).not.toContain('DIVINE MOMENT')
-    }
-  })
-
-  it('Z < 4.0σ (normal) → no DIVINE aunque E sea altísima', () => {
-    const output = makeDecision(buildActiveInputs({
-      zScore: 3.5,
+      v3Epicness: 0,
       energyContext: createEnergyContext({ zone: 'peak', smoothed: 0.98 }),
       pattern: createBasePattern({ section: 'drop' }),
     }))
 
-    // Z=3.5 no llega a DIVINE_THRESHOLD=4.0
     expect(output.confidence).toBeLessThan(0.99)
   })
 
-  it('DIVINE ignora el Buildup Restriction (Z>4σ es emergencia absoluta)', () => {
+  it('DIVINE ignora el Buildup Restriction (epicness alta es emergencia absoluta)', () => {
     const output = makeDecision(buildActiveInputs({
-      zScore: 4.8,
+      v3Epicness: 0.40,
       energyContext: createEnergyContext({ zone: 'peak', smoothed: 0.93 }),
       pattern: createBasePattern({ section: 'buildup' }),
       dreamIntegration: createDNAProposal('core_meltdown'),
@@ -334,7 +303,7 @@ describe('§ 1. LA LEY DIVINA — DIVINE THRESHOLD + ENERGY GATE', () => {
 
   it('Dictador activo → DIVINE se suprime silenciosamente', () => {
     const output = makeDecision(buildActiveInputs({
-      zScore: 5.0,
+      v3Epicness: 0.50,
       energyContext: createEnergyContext({ zone: 'peak', smoothed: 0.95 }),
       pattern: createBasePattern({ section: 'drop' }),
       activeDictator: 'core_meltdown',

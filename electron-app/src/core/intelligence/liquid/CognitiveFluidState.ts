@@ -230,11 +230,24 @@ export class CognitiveFluidState {
     this._excitability = clamp01(this._excitability)
 
     // ─────────────────────────────────────────────────────────
-    // 8. Epicness — ruptura relativa de la superficie
+    // 8. Epicness — ruptura relativa de la superficie, tethered to energy
+    // FIX: La fórmula original (impact - tension) / tension requiere
+    // impact > tension, pero con la calibración actual el impacto máximo
+    // práctico (~0.42) nunca supera la tensión de equilibrio (~0.70).
+    // Nueva fórmula: ruptura relativa a la MITAD de la tensión.
+    // epicness=1 cuando impact=tension, epicness=0 cuando impact≤tension/2.
+    //
+    // Fase 1B (PRECISION TUNING): Energy factor gate.
+    // Valleys (E<0.30) produce epicness=0. Vocal transients in E=0.35
+    // valleys get crushed by energyFactor=0.125. Only E≥0.70 allows
+    // full epicness — genuine drops/climaxes only.
     // ─────────────────────────────────────────────────────────
-    this._epicness = this._tension > 0.001
-      ? Math.max(0, (this._impact - this._tension) / this._tension)
+    const energyFactor = clamp01((input.rawEnergy - 0.30) / 0.40)
+    const halfTension = this._tension * 0.5
+    const baseEpicness = halfTension > 0.001
+      ? clamp01((this._impact - halfTension) / halfTension)
       : 0
+    this._epicness = clamp01(baseEpicness * energyFactor)
   }
 
   /**

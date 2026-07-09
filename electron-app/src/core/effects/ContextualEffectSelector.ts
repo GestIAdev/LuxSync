@@ -570,7 +570,7 @@ export class ArsenalRepository {
         ? this.config.effectTypeCooldowns[effectType]
         : (effectType.includes(':') ? this.DEFAULT_MUTANT_COOLDOWN_MS : this.config.minCooldownMs)
       baseCooldown = this.applyVibeCooldownAdjustment(effectType, baseCooldown, vibeId)
-      const effectiveCooldown = this.moodController.applyCooldown(baseCooldown)
+      const effectiveCooldown = baseCooldown
       
       const elapsed = Date.now() - lastFired
       const remaining = effectiveCooldown - elapsed
@@ -615,7 +615,7 @@ export class ArsenalRepository {
         ? this.config.effectTypeCooldowns[effectType]
         : (effectType.includes(':') ? this.DEFAULT_MUTANT_COOLDOWN_MS : this.config.minCooldownMs)
       baseCooldown = this.applyVibeCooldownAdjustment(effectType, baseCooldown, vibeId)
-      const effectiveCooldown = this.moodController.applyCooldown(baseCooldown)
+      const effectiveCooldown = baseCooldown
       const remaining = effectiveCooldown - (now - lastFired)
       if (remaining > 0) {
         result.set(effectType, remaining)
@@ -646,8 +646,7 @@ export class ArsenalRepository {
     // Techno necesita cooldowns más agresivos que Fiesta Latina
     baseCooldown = this.applyVibeCooldownAdjustment(effectType, baseCooldown, vibe || 'unknown')
     
-    // 🎭 WAVE 700.1: Aplicar multiplicador del mood
-    const effectiveCooldown = this.moodController.applyCooldown(baseCooldown)
+    const effectiveCooldown = baseCooldown
     
     return (Date.now() - lastFired) < effectiveCooldown
   }

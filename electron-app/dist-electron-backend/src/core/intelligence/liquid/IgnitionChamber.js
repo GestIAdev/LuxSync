@@ -44,7 +44,12 @@ export class IgnitionChamber {
         const tHatClamped = tHat < 0 ? 0 : tHat > 1 ? 1 : tHat;
         // ── Squelch adaptativo Q(t) ──
         // Q = Q_base · (1 + κ_T · T̂) · (1 − κ_V · V)
-        const squelch = p.Q_base * (1 + p.kappa_T * tHatClamped) * (1 - p.kappa_V * input.vaporPressure);
+        // 🛡️ V3 TUNE: Epicness-aware squelch — Q_eff = Q · (1 + κ_E · (1 − epicness))
+        // In valleys (epicness≈0): squelch rises 30%, blocking ambient spam.
+        // In climax (epicness≈1): no penalty, full sensitivity.
+        const epicnessClamped = input.v3Epicness < 0 ? 0 : input.v3Epicness > 1 ? 1 : input.v3Epicness;
+        const kappa_E = 0.30;
+        const squelch = p.Q_base * (1 + p.kappa_T * tHatClamped) * (1 - p.kappa_V * input.vaporPressure) * (1 + kappa_E * (1 - epicnessClamped));
         // ── Predicado único ──
         const ignite = input.confidence >= squelch;
         // ── Exceso de ruptura ──

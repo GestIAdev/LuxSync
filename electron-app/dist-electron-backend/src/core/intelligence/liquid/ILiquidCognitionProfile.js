@@ -61,5 +61,5 @@ export const DEFAULT_LIQUID_PROFILE = Object.freeze({
     kappa_vb: 0.10,
     kappa_rep: 0.6,
     tau_novelty: 45.0,
-    epsilon_divine: 0.40, // ⬆ 0.30 → 0.40 (Fase 2: crush spurious divines in valleys)
+    epsilon_divine: 0.60, // ⬆ 0.40 → 0.60 (radical high-pass: only devastating impact qualifies)
 });

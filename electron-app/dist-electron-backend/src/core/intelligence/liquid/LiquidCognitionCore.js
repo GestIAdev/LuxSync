@@ -110,6 +110,8 @@ export class LiquidCognitionCore {
             midPresence: input.midPresence,
             harmonicDensity: input.harmonicDensity,
             spectralFlatness: input.spectralFlatness,
+            contextualPhase: input.contextualPhase,
+            isWarmedUp: input.isWarmedUp,
             descriptors: {
                 percussiveness: this._descriptors.percussiveness,
                 melodicity: this._descriptors.melodicity,
@@ -142,6 +144,7 @@ export class LiquidCognitionCore {
             confidence: fusionResult.confidence,
             tension: fluidSnap.tension,
             vaporPressure: fluidSnap.vaporPressure,
+            v3Epicness: fluidSnap.epicness,
         });
         // ── 5. Construir LiquidVerdict (zero-alloc) ──
         // Copiar referencias del snapshot fluido y sensores al verdict pre-asignado

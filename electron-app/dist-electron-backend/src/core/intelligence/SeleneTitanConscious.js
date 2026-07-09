@@ -426,7 +426,7 @@ export class SeleneTitanConscious extends EventEmitter {
                         // made seconds ago; the musical landscape may have collapsed.
                         // V3 epicness is the sole authority — no static Z-score thresholds.
                         // ═══════════════════════════════════════════════════════════════
-                        const V3_EPSILON_DIVINE = 0.40; // Fase 2: match profile default
+                        const V3_EPSILON_DIVINE = 0.60; // Radical high-pass: only devastating impact qualifies
                         const v3EpicnessNow = this._lastLiquidVerdict?.epicness ?? 0;
                         let divineAborted = false;
                         const registryEntry = getDynamicEffectRegistry().getEntry(candidate.effect);
@@ -525,6 +525,8 @@ export class SeleneTitanConscious extends EventEmitter {
                 totalBeauty: beauty,
                 consonance,
                 effectGenome: NEUTRAL_GENOME,
+                contextualPhase: this.lastMemoryOutput?.narrative?.narrativePhase ?? 'building',
+                isWarmedUp: this.lastMemoryOutput?.isWarmedUp ?? false,
             }, now);
             this._v3Ignite = SELENE_V3_AUTHORITY && this._lastLiquidVerdict.ignite;
             if (this._v3Ignite) {
@@ -1110,6 +1112,8 @@ export class SeleneTitanConscious extends EventEmitter {
             energyMaxHistoric: this.lastMemoryOutput?.stats.energy.max,
             // V3.4: Epicness from Liquid Cognition — sole authority for Divine routing
             v3Epicness: this._lastLiquidVerdict?.epicness ?? 0,
+            // V3 TUNE: Contextual phase for DROP gating — only BUILDING can drop
+            contextualPhase: this.lastMemoryOutput?.narrative?.narrativePhase ?? 'building',
         };
         // 🔍 WAVE 976.3: DEBUG - Ver qué recibe DecisionMaker
         // 🔇 WAVE 982.5: Silenciado
@@ -1221,7 +1225,9 @@ export class SeleneTitanConscious extends EventEmitter {
                 && !oceanicProtection
                 && overrideTemporalReady;
             // 🔪 WAVE 1010: Si ya procesamos DIVINE arsenal, el efecto ya está validado
-            const alreadyValidatedByArsenal = divineArsenal && divineArsenal.length > 0 && output.effectDecision;
+            // 🛡️ V3 TUNE: DROP-origin divineArsenal must NOT bypass — only true DIVINE strikes
+            const isDivineOrigin = output.effectDecision?.reason?.includes('🌩️ DIVINE');
+            const alreadyValidatedByArsenal = isDivineOrigin && divineArsenal && divineArsenal.length > 0 && output.effectDecision;
             // ═══════════════════════════════════════════════════════════════════════════
             // 🔒 WAVE 1179: DICTATOR HARD MINIMUM PROTECTION
             // ═══════════════════════════════════════════════════════════════════════════

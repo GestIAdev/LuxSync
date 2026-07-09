@@ -142,6 +142,9 @@ export interface DecisionInputs {
 
   /** V3.4: Epicness from Liquid Cognition — sole authority for Divine arsenal routing */
   v3Epicness?: number
+
+  /** V3 TUNE: Contextual phase from ContextualMemory (building, climax, release, etc.) */
+  contextualPhase?: string
 }
 
 /**
@@ -293,9 +296,11 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
     if (section === 'buildup' && !isEffectAllowedInSection(proposedEffect, section)) {
       // Fall through — buildup handler below will manage with soft effects
     } else if (divineLeakBlocked) {
-      console.log(
+      throttledLog(
+        `divineLeak:${proposedEffect}`,
         `[DecisionMaker 🛡️] DIVINE LEAK BLOCKED: "${proposedEffect}" is divine ` +
-        `but V3 epicness=${v3Epicness.toFixed(3)} ≤ ε=${V3_EPSILON_DIVINE} → falling through`
+        `but V3 epicness=${v3Epicness.toFixed(3)} ≤ ε=${V3_EPSILON_DIVINE} → falling through`,
+        5000
       )
     } else {
       return 'strike'
@@ -304,15 +309,18 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
 
   // V3.3.B: HuntEngine worthiness gate removed — V3 ignite is the sole authority.
   // Prioridad 1: Drop predicho con alta probabilidad
-  if (prediction.type === 'drop_incoming' && prediction.probability > 0.65) {
+  // 🛡️ V3 TUNE: Gate with contextualPhase — a drop is only valid if the track
+  // is in a BUILDING phase. Prevents false drops on vocal transients / slow songs.
+  const contextualPhase = inputs.contextualPhase ?? 'building'
+  if (prediction.type === 'drop_incoming' && prediction.probability > 0.65 && contextualPhase === 'building') {
     return 'prepare_for_drop'
   }
-  if (pattern.section === 'drop') {
+  if (pattern.section === 'drop' && v3Epicness > 0.20) {
     return 'prepare_for_drop'
   }
 
-  // Prioridad 3: energy_spike
-  if (prediction.type === 'energy_spike' && prediction.probability > 0.75 && pattern.rhythmicIntensity > 0.6) {
+  // Prioridad 3: energy_spike — gated by contextualPhase to prevent false drops
+  if (prediction.type === 'energy_spike' && prediction.probability > 0.75 && pattern.rhythmicIntensity > 0.6 && contextualPhase === 'building') {
     return 'prepare_for_drop'
   }
 

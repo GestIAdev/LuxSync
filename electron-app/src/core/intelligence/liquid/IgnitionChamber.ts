@@ -39,6 +39,8 @@ export interface IgnitionInput {
   readonly tension: number
   /** Presión de vapor V(t) */
   readonly vaporPressure: number
+  /** V3 TUNE: Epicness from CognitiveFluidState — raises squelch in low-impact moments */
+  readonly v3Epicness: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -93,7 +95,12 @@ export class IgnitionChamber {
 
     // ── Squelch adaptativo Q(t) ──
     // Q = Q_base · (1 + κ_T · T̂) · (1 − κ_V · V)
-    const squelch = p.Q_base * (1 + p.kappa_T * tHatClamped) * (1 - p.kappa_V * input.vaporPressure)
+    // 🛡️ V3 TUNE: Epicness-aware squelch — Q_eff = Q · (1 + κ_E · (1 − epicness))
+    // In valleys (epicness≈0): squelch rises 45%, blocking ambient spam.
+    // In climax (epicness≈1): no penalty, full sensitivity.
+    const epicnessClamped = input.v3Epicness < 0 ? 0 : input.v3Epicness > 1 ? 1 : input.v3Epicness
+    const kappa_E = 0.45
+    const squelch = p.Q_base * (1 + p.kappa_T * tHatClamped) * (1 - p.kappa_V * input.vaporPressure) * (1 + kappa_E * (1 - epicnessClamped))
 
     // ── Predicado único ──
     const ignite = input.confidence >= squelch

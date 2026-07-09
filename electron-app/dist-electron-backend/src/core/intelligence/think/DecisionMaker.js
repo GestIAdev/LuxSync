@@ -142,7 +142,7 @@ function determineDecisionType(inputs) {
     // Static Z-score thresholds extirpated. V3 Liquid Cognition's epicness
     // is the sole authority for Divine arsenal routing.
     // ═══════════════════════════════════════════════════════════════════════
-    const V3_EPSILON_DIVINE = 0.40; // Fase 2: match profile default
+    const V3_EPSILON_DIVINE = 0.60; // Radical high-pass: only devastating impact qualifies
     const v3Epicness = inputs.v3Epicness ?? 0;
     if (activeDictator) {
         // No loggear nada - silencio total para evitar spam
@@ -171,7 +171,10 @@ function determineDecisionType(inputs) {
     }
     // V3.3.B: HuntEngine worthiness gate removed — V3 ignite is the sole authority.
     // Prioridad 1: Drop predicho con alta probabilidad
-    if (prediction.type === 'drop_incoming' && prediction.probability > 0.65) {
+    // 🛡️ V3 TUNE: Gate with contextualPhase — a drop is only valid if the track
+    // is in a BUILDING phase. Prevents false drops on vocal transients / slow songs.
+    const contextualPhase = inputs.contextualPhase ?? 'building';
+    if (prediction.type === 'drop_incoming' && prediction.probability > 0.65 && contextualPhase === 'building') {
         return 'prepare_for_drop';
     }
     if (pattern.section === 'drop') {

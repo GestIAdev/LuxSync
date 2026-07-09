@@ -381,7 +381,7 @@ export class SeleneTitanConscious extends EventEmitter {
   private readonly GLOBAL_EFFECT_COOLDOWN_MS = 7000  // 🩸 WAVE 2106: 7s (was 4s) — physics breathe
   // WAVE 4834: Fiesta Latina necesita más aire entre disparos para evitar
   // ráfagas de 4-6 EPM en BALANCED cuando el groove mantiene worthiness alto.
-  private readonly LATINA_GLOBAL_EFFECT_COOLDOWN_MS = 5000   // 🔪 WAVE 4947 MISIÓN 3: 8000→5000 para ritmo acorde al género latino
+  private readonly LATINA_GLOBAL_EFFECT_COOLDOWN_MS = 7000   // 🔪 WAVE 4947→V3 TUNE: 5000→7000 — latina needs more air between shots
 
   // ═══════════════════════════════════════════════════════════════════════
   // 🛡️ WAVE 4860: POST-DROP REFRACTORY LOCK — La Regla del Respiro Retinal
@@ -392,6 +392,13 @@ export class SeleneTitanConscious extends EventEmitter {
   // ═══════════════════════════════════════════════════════════════════════
   private lastHighSeverityEffectTimestamp: number = 0
   private readonly POST_DROP_REFRACTORY_MS = 4000  // 4s de respiro retinal
+
+  // V3 TUNE: DROP CHAIN COOLDOWN — after a DROP fires, block additional DROPs
+  // for 15s. Without this, the diversity selector picks a different effect each
+  // frame (all from the same arsenal), so per-effect cooldown doesn't help.
+  // Result was 3-4 DROP effects firing in ~100ms during a single drop moment.
+  private lastDropEffectTimestamp: number = 0
+  private readonly DROP_CHAIN_COOLDOWN_MS = 5000  // 5s between DROP effects
 
   // ═══════════════════════════════════════════════════════════════════════
   // 🎧 WAVE 4863: FFT X-RAY SNIFFER — Diagnóstico temporal de bandas
@@ -424,6 +431,9 @@ export class SeleneTitanConscious extends EventEmitter {
 
   // 🩸 WAVE 2105: THROTTLE constitution violation logs (65 lines of spam per 700-line log)
   private _constitutionLogThrottle: Record<string, number> = {}
+
+  // V3 TUNE: Throttle Gatekeeper telemetry — only log on state change, not every frame
+  private _lastGatekeeperLogKey: string = ''
 
   // 🩸 WAVE 2106: SECTION CHANGE DETECTION — invalidate DNA cache on section transitions
   // LOG EVIDENCE: acid_sweep DNA result computed during buildup gets CACHED,
@@ -1403,6 +1413,8 @@ export class SeleneTitanConscious extends EventEmitter {
       energyMaxHistoric: this.lastMemoryOutput?.stats.energy.max,
       // V3.4: Epicness from Liquid Cognition — sole authority for Divine routing
       v3Epicness: this._lastLiquidVerdict?.epicness ?? 0,
+      // V3 TUNE: Contextual phase for DROP gating — only BUILDING can drop
+      contextualPhase: this.lastMemoryOutput?.narrative?.narrativePhase ?? 'building',
     }
     
     // 🔍 WAVE 976.3: DEBUG - Ver qué recibe DecisionMaker
@@ -1534,7 +1546,9 @@ export class SeleneTitanConscious extends EventEmitter {
         && overrideTemporalReady
 
       // 🔪 WAVE 1010: Si ya procesamos DIVINE arsenal, el efecto ya está validado
-      const alreadyValidatedByArsenal = divineArsenal && divineArsenal.length > 0 && output.effectDecision
+      // 🛡️ V3 TUNE: DROP-origin divineArsenal must NOT bypass — only true DIVINE strikes
+      const isDivineOrigin = output.effectDecision?.reason?.includes('🌩️ DIVINE')
+      const alreadyValidatedByArsenal = isDivineOrigin && divineArsenal && divineArsenal.length > 0 && output.effectDecision
 
       // ═══════════════════════════════════════════════════════════════════════════
       // 🔒 WAVE 1179: DICTATOR HARD MINIMUM PROTECTION
@@ -1578,22 +1592,45 @@ export class SeleneTitanConscious extends EventEmitter {
         && v3BypassTemporalReady
         && !alreadyValidatedByArsenal
 
-      // 📊 GATEKEEPER TELEMETRY — log the decision at the moment of firing/blocking
-      // Always log when DNA approved an effect, to trace why it fires or gets blocked
+      // V3 TUNE: Epicness available for gating decisions
+      const v3Epic = this._lastLiquidVerdict?.epicness ?? 0
+
+      // 📊 GATEKEEPER TELEMETRY — log only on state change to prevent per-frame spam
       if (isDNADecision && output.effectDecision) {
-        const v3Epic = this._lastLiquidVerdict?.epicness ?? 0
-        console.log(
-          `[Gatekeeper 📊] ${intent} | v3Ignite=${this._v3Ignite} epicness=${v3Epic.toFixed(3)} | ` +
-          `hardBlocked=${isHardMinimumBlocked} refractory=${refractoryBlocked} | ` +
-          `arsenalValidated=${!!alreadyValidatedByArsenal} ethicsOverride=${hasHighEthicsOverride} | ` +
-          `v3Bypass=${v3IgniteBypass} v3BypassReady=${v3BypassTemporalReady} | ` +
-          `cooldown=${hardMinimumCheck.available ? 'OK' : hardMinimumCheck.reason} | ` +
-          `ethics=${ethicsScore.toFixed(2)}/${ethicsThreshold}`
-        )
+        const logKey = `${intent}|${this._v3Ignite}|${isHardMinimumBlocked}|${refractoryBlocked}`
+        if (logKey !== this._lastGatekeeperLogKey) {
+          this._lastGatekeeperLogKey = logKey
+          console.log(
+            `[Gatekeeper 📊] ${intent} | v3Ignite=${this._v3Ignite} epicness=${v3Epic.toFixed(3)} | ` +
+            `hardBlocked=${isHardMinimumBlocked} refractory=${refractoryBlocked} | ` +
+            `arsenalValidated=${!!alreadyValidatedByArsenal} ethicsOverride=${hasHighEthicsOverride} | ` +
+            `v3Bypass=${v3IgniteBypass} v3BypassReady=${v3BypassTemporalReady} | ` +
+            `cooldown=${hardMinimumCheck.available ? 'OK' : hardMinimumCheck.reason} | ` +
+            `ethics=${ethicsScore.toFixed(2)}/${ethicsThreshold}`
+          )
+        }
       }
+
+      // V3 TUNE: Ambient DNA classification — DNA-approved but NOT divine/drop origin.
+      // These are the "normal" effects that overfire. They must respect V3 ignition.
+      const isDropOrigin = output.effectDecision?.reason?.includes('🔴 DROP')
+      const isAmbientDNA = isDNADecision && !isDropOrigin && !alreadyValidatedByArsenal
+
+      // V3 TUNE: Drop reservation window — when Cassandra predicts a drop within 3s,
+      // block ambient effects to save Selene for the drop. Prevents "arriving late"
+      // because Selene was busy showing an ambient effect during the buildup.
+      const isDropImminent = prediction?.type === 'drop_incoming'
+        && prediction.estimatedTimeMs < 3000
+        && prediction.probability > 0.60
+
+      // V3 TUNE: DROP chain cooldown — prevent 3-4 DROP effects firing in rapid succession
+      const timeSinceLastDrop = now - this.lastDropEffectTimestamp
+      const isDropChainBlocked = isDropOrigin && timeSinceLastDrop < this.DROP_CHAIN_COOLDOWN_MS
 
       const availability = isHardMinimumBlocked
         ? hardMinimumCheck  // 🔒 HARD MINIMUM es LEY ABSOLUTA
+        : isDropChainBlocked
+        ? { available: false, reason: `DROP chain cooldown (${Math.ceil((this.DROP_CHAIN_COOLDOWN_MS - timeSinceLastDrop) / 1000)}s remaining)` }
         : refractoryBlocked
         ? { available: false, reason: 'Post-Drop Refractory Lock (WAVE 4860)' }
         : alreadyValidatedByArsenal
@@ -1602,6 +1639,10 @@ export class SeleneTitanConscious extends EventEmitter {
         ? { available: true, reason: `DNA override (${currentMoodProfile.emoji} ${currentMoodProfile.name}: ethics ${ethicsScore.toFixed(2)} > ${ethicsThreshold})` }
         : v3IgniteBypass
         ? { available: true, reason: `V3 IGNITE bypass (ethics=${ethicsScore.toFixed(2)})` }
+        : isAmbientDNA && v3Epic < 0.10
+        ? { available: false, reason: `Epicness too low for ambient DNA (${v3Epic.toFixed(3)} < 0.10)` }
+        : isAmbientDNA && isDropImminent
+        ? { available: false, reason: 'Drop reservation — saving Selene for imminent drop' }
         : hardMinimumCheck
       
       if (availability.available && output.effectDecision) {
@@ -1616,6 +1657,11 @@ export class SeleneTitanConscious extends EventEmitter {
           || pattern.section === 'drop'
         if (isHighSeverityApproved) {
           this.lastHighSeverityEffectTimestamp = now
+        }
+
+        // V3 TUNE: Register DROP chain cooldown timestamp
+        if (isDropOrigin) {
+          this.lastDropEffectTimestamp = now
         }
         
         if (hasHighEthicsOverride) {

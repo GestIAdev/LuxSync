@@ -261,6 +261,7 @@ export class LiquidCognitionCore {
       confidence: fusionResult.confidence,
       tension: fluidSnap.tension,
       vaporPressure: fluidSnap.vaporPressure,
+      v3Epicness: fluidSnap.epicness,
     })
 
     // ── 5. Construir LiquidVerdict (zero-alloc) ──

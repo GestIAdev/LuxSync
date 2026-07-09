@@ -216,8 +216,9 @@ export class CognitiveFluidState {
     this._timeSinceIgnition += dt
     const noIgnition = this._timeSinceIgnition > 0.1 ? 1 : 0
     const valleyFactor = 1 - eHat
-    this._vaporPressure = clamp01(
+    this._vaporPressure = clamp(
       this._vaporPressure + p.beta_v * dt * noIgnition * valleyFactor,
+      0, 0.60,  // Fase 3: V_max cap 0.60 (was implicitly 1.0 via clamp01)
     )
 
     // ─────────────────────────────────────────────────────────

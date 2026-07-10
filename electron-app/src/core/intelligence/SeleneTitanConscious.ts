@@ -610,29 +610,78 @@ export class SeleneTitanConscious extends EventEmitter {
 
           if (candidate) {
             // ═══════════════════════════════════════════════════════════════
-            // 🛡️ V3.4.4: DIVINE LEAK FIX B — Re-evaluate using V3 epicness
-            // before firing a divine pre-buffer. Cassandra's prediction was
-            // made seconds ago; the musical landscape may have collapsed.
-            // V3 epicness is the sole authority — no static Z-score thresholds.
+            // 🛡️ M-SARFE Phase 5: UNIVERSAL REALITY CLAMP
+            //
+            // The Sovereign Clock pre-buffered a shot seconds ago. Before
+            // firing, we check the CURRENT acoustic reality. If the music
+            // collapsed into a valley/silence and the effect is heavy/intense,
+            // we ABORT — regardless of divine status.
+            //
+            // The clamp applies to ALL pre-buffered effects, not just divine.
             // ═══════════════════════════════════════════════════════════════
-            const V3_EPSILON_DIVINE = 0.60  // Radical high-pass: only devastating impact qualifies
+            const V3_EPSILON_DIVINE = 0.60
             const v3EpicnessNow = this._lastLiquidVerdict?.epicness ?? 0
-            let divineAborted = false
+            let aborted = false
+            let abortReason = ''
             const registryEntry = getDynamicEffectRegistry().getEntry(candidate.effect)
-            if (registryEntry?.simMeta.isDivineCandidate) {
-              const energyTooLow = titanState.rawEnergy < 0.50
-              if (v3EpicnessNow <= V3_EPSILON_DIVINE || energyTooLow) {
-                console.log(
-                  `[Sovereign Clock 🛡️] DIVINE ABORTED: "${candidate.effectName ?? candidate.effect}" ` +
-                  `V3 epicness=${v3EpicnessNow.toFixed(3)} ≤ ε=${V3_EPSILON_DIVINE}` +
-                  `${energyTooLow ? ` OR energy=${titanState.rawEnergy.toFixed(2)} < 0.50` : ''}` +
-                  ` → buffer cleared, effect suppressed`
-                )
-                divineAborted = true
+            const ars = this.lastMemoryOutput?.acousticReality
+            const isHeavyEffect = registryEntry?.simMeta.isHeavyCandidate
+              || registryEntry?.simMeta.isDivineCandidate
+              || (registryEntry?.dna.aggression ?? 0) > 0.7
+
+            // ── UNIVERSAL CLAMP: Heavy effect in silence/valley = ABORT ──
+            if (isHeavyEffect) {
+              if (ars) {
+                const zoneLabel = ars.zone.label
+                const phaseLabel = ars.phase.phase
+                const inLowZone = zoneLabel === 'silence' || zoneLabel === 'valley'
+                const hasHiddenTension = phaseLabel === 'textural'
+
+                if (inLowZone && !hasHiddenTension) {
+                  aborted = true
+                  abortReason =
+                    `Acoustic Reality veto (Zone: ${zoneLabel}, Phase: ${phaseLabel})` +
+                    ` — heavy effect "${candidate.effectName ?? candidate.effect}" cannot fire in low energy`
+                }
+              } else {
+                // Fallback: no ARS — strict energy/Z-Score abort for heavy effects
+                const energyTooLow = titanState.rawEnergy < 0.35
+                const zTooLow = currentZScore < -0.5
+                if (energyTooLow || zTooLow) {
+                  aborted = true
+                  abortReason =
+                    `Fallback energy veto (E=${titanState.rawEnergy.toFixed(2)}` +
+                    `${energyTooLow ? ' < 0.35' : ''}` +
+                    `${zTooLow ? ` OR Z=${currentZScore.toFixed(2)} < -0.5` : ''})` +
+                    ` — heavy effect "${candidate.effectName ?? candidate.effect}" suppressed`
+                }
               }
             }
 
-            if (!divineAborted) {
+            // ── DIVINE ABORT: Enhanced with ARS zone check ──
+            if (!aborted && registryEntry?.simMeta.isDivineCandidate) {
+              const energyTooLow = titanState.rawEnergy < 0.50
+              const divineZoneVeto = ars
+                ? (ars.zone.label === 'silence' || ars.zone.label === 'valley')
+                  && ars.phase.phase !== 'textural'
+                : false
+              if (v3EpicnessNow <= V3_EPSILON_DIVINE || energyTooLow || divineZoneVeto) {
+                aborted = true
+                abortReason =
+                  `DIVINE ABORT: V3 epicness=${v3EpicnessNow.toFixed(3)} ≤ ε=${V3_EPSILON_DIVINE}` +
+                  `${energyTooLow ? ` OR energy=${titanState.rawEnergy.toFixed(2)} < 0.50` : ''}` +
+                  `${divineZoneVeto ? ` OR ARS zone=${ars!.zone.label}` : ''}` +
+                  ` → buffer cleared, divine effect suppressed`
+              }
+            }
+
+            if (aborted) {
+              console.log(
+                `[Sovereign Clock 🛡️] PRE-BUFFER ABORTED: "${candidate.effectName ?? candidate.effect}" — ${abortReason}`
+              )
+            }
+
+            if (!aborted) {
             if (glassBreak) {
               console.log(
                 `[SeleneTitanConscious] 🪟💥 CASSANDRA GLASS BREAK: firing "${candidate.effectName ?? candidate.effect}" ` +
@@ -676,7 +725,7 @@ export class SeleneTitanConscious extends EventEmitter {
 
             this.lastOutput = sovereignOutput
             return sovereignOutput
-            } // end if (!divineAborted)
+            } // end if (!aborted)
           }
         } else if (timeToEvent < -SOVEREIGN_WINDOW_MS) {
           // ⚰️ Ventana expirada — limpiar silenciosamente

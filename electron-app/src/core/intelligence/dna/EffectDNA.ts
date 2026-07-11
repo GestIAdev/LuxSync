@@ -81,6 +81,7 @@
 
 import type { Mood, SectionType } from '../../protocol/MusicalContext'
 import { getDynamicEffectRegistry } from '../../arsenal/DynamicEffectRegistry'
+import type { AcousticRealityState } from '../perception/StateCouplingEnforcer'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -292,10 +293,11 @@ export class DNAAnalyzer {
    */
   deriveTargetDNA(
     context: MusicalContextForDNA,
-    audioMetrics: AudioMetricsForDNA
+    audioMetrics: AudioMetricsForDNA,
+    ars?: AcousticRealityState
   ): TargetDNA {
     // 1. Calcular Target "crudo" del frame actual
-    const rawTarget = this.calculateRawTarget(context, audioMetrics)
+    const rawTarget = this.calculateRawTarget(context, audioMetrics, ars)
     
     // 2. Aplicar EMA para suavizar (anti-Parkinson)
     this.smoothedTarget.aggression = 
@@ -315,17 +317,25 @@ export class DNAAnalyzer {
       (1 - this.SMOOTHING_ALPHA) * this.smoothedTarget.confidence
     
     // 3. EXCEPCIÓN: Drops y Breakdowns resetean inercia (snap instantáneo)
-    if (context.section.type === 'drop' && context.section.confidence > 0.7) {
-      // Drop detectado → SNAP a alta agresión
-      this.smoothedTarget.aggression = Math.max(this.smoothedTarget.aggression, 0.80)
-      this.smoothedTarget.organicity = Math.min(this.smoothedTarget.organicity, 0.25)
-      // console.log(`[DNA_ANALYZER] 🔴 DROP SNAP: A=${this.smoothedTarget.aggression.toFixed(3)}, O=${this.smoothedTarget.organicity.toFixed(3)}`)
-    }
-    if (context.section.type === 'breakdown' && context.section.confidence > 0.7) {
-      // Breakdown detectado → SNAP a baja agresión, alta organicidad
-      this.smoothedTarget.aggression = Math.min(this.smoothedTarget.aggression, 0.25)
-      this.smoothedTarget.organicity = Math.max(this.smoothedTarget.organicity, 0.75)
-      // console.log(`[DNA_ANALYZER] 🌊 BREAKDOWN SNAP: A=${this.smoothedTarget.aggression.toFixed(3)}, O=${this.smoothedTarget.organicity.toFixed(3)}`)
+    // 🧬 M-SARFE: When ARS is available, use validated narrative phase for snap conditions
+    if (ars) {
+      if (ars.phase.phase === 'climax' && ars.phase.confidence > 0.7) {
+        this.smoothedTarget.aggression = Math.max(this.smoothedTarget.aggression, 0.80)
+        this.smoothedTarget.organicity = Math.min(this.smoothedTarget.organicity, 0.25)
+      }
+      if (ars.phase.phase === 'release' && ars.phase.confidence > 0.7) {
+        this.smoothedTarget.aggression = Math.min(this.smoothedTarget.aggression, 0.25)
+        this.smoothedTarget.organicity = Math.max(this.smoothedTarget.organicity, 0.75)
+      }
+    } else {
+      if (context.section.type === 'drop' && context.section.confidence > 0.7) {
+        this.smoothedTarget.aggression = Math.max(this.smoothedTarget.aggression, 0.80)
+        this.smoothedTarget.organicity = Math.min(this.smoothedTarget.organicity, 0.25)
+      }
+      if (context.section.type === 'breakdown' && context.section.confidence > 0.7) {
+        this.smoothedTarget.aggression = Math.min(this.smoothedTarget.aggression, 0.25)
+        this.smoothedTarget.organicity = Math.max(this.smoothedTarget.organicity, 0.75)
+      }
     }
     
     return { ...this.smoothedTarget }
@@ -503,8 +513,63 @@ export class DNAAnalyzer {
    */
   private calculateRawTarget(
     context: MusicalContextForDNA,
-    audioMetrics: AudioMetricsForDNA
+    audioMetrics: AudioMetricsForDNA,
+    ars?: AcousticRealityState
   ): TargetDNA {
+    // ═══════════════════════════════════════════════════════════════
+    // 🧬 M-SARFE: ARS-DRIVEN TARGET (real acoustic telemetry)
+    // ═══════════════════════════════════════════════════════════════
+    // When AcousticRealityState is available, derive Target DNA from real
+    // Z-scores, crest factors, spectral tension/divergence, and validated
+    // narrative phase — NO hardcoded fakes.
+    //
+    // Aggression (A): sustained pressure + total energy
+    //   A = clamp(tanh(zTotal)×0.4 + max(0,tanh(zLow))×0.4 + harshness×0.2, 0, 1)
+    //
+    // Chaos (C): transience and unpredictability
+    //   C = clamp(normDivergence×0.4 + sigmoid(cfLow−4)×0.4 + flatness×0.2, 0, 1)
+    //
+    // Organicity (O): phase and spectral purity
+    //   O = clamp((1−harshness)×0.4 + phaseOrganic×0.4 + tensionPenalty×0.2, 0, 1)
+    // ═══════════════════════════════════════════════════════════════
+    if (ars) {
+      const harshness = audioMetrics.harshness ?? 0.4
+      const spectralFlatness = audioMetrics.spectralFlatness ?? 0.5
+
+      // Aggression: sustained pressure + total energy
+      const zTotal = Math.max(0, Math.tanh(ars.zScores.total))
+      const zLow = Math.max(0, Math.tanh(ars.zScores.low))
+      const aggression = this.clamp(
+        zTotal * 0.4 + zLow * 0.4 + harshness * 0.2,
+        0, 1
+      )
+
+      // Chaos: transience and unpredictability
+      const normDivergence = Math.min(1, ars.spectralDivergence / 3)
+      const cfLowNorm = this.sigmoid(ars.crestFactors.low - 4)
+      const chaos = this.clamp(
+        normDivergence * 0.4 + cfLowNorm * 0.4 + spectralFlatness * 0.2,
+        0, 1
+      )
+
+      // Organicity: phase and spectral purity
+      const phase = ars.phase.phase
+      const phaseOrganic = (phase === 'textural' || phase === 'release') ? 0.4 : 0.1
+      const tensionPenalty = ars.spectralTension > 0.5 ? 0 : 0.2
+      const organicity = this.clamp(
+        (1 - harshness) * 0.4 + phaseOrganic + tensionPenalty,
+        0, 1
+      )
+
+      // Confidence: use ARS validation confidence
+      const confidence = ars.phase.confidence
+
+      return { aggression, chaos, organicity, confidence }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // LEGACY FALLBACK: No ARS available — use best available data
+    // ═══════════════════════════════════════════════════════════════
     // ═══════════════════════════════════════════════════════════════
     // 🔥 AGGRESSION: Derivada de ENERGÍA + PERCUSIÓN + ESPECTRO
     // ═══════════════════════════════════════════════════════════════
@@ -635,6 +700,13 @@ export class DNAAnalyzer {
    */
   private clamp(value: number, min: number, max: number): number {
     return Math.max(min, Math.min(max, value))
+  }
+
+  /**
+   * Sigmoid helper for normalizing crest factors to [0,1]
+   */
+  private sigmoid(x: number): number {
+    return 1 / (1 + Math.exp(-x))
   }
 }
 

@@ -6,6 +6,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { CircularBuffer } from './CircularBuffer';
 import { RollingStats } from './RollingStats';
+import { ThermodynamicVetoEngine } from '../perception/ThermodynamicVetoEngine';
+import { StateCouplingEnforcer } from '../perception/StateCouplingEnforcer';
 // ═══════════════════════════════════════════════════════════════════════════
 // 🔬 WAVE 1181: Z-SCORE RECALIBRATION - "Boris Brejcha nos enseñó la verdad"
 // ═══════════════════════════════════════════════════════════════════════════
@@ -74,11 +76,14 @@ export class ContextualMemory {
         // Frame counter para debug
         this.frameCount = 0;
         this.lastLogFrame = 0;
+        this.lastAcousticReality = null;
         this.config = { ...DEFAULT_CONFIG, ...config };
         this.energyStats = new RollingStats({ windowSize: this.config.bufferSize });
         this.bassStats = new RollingStats({ windowSize: this.config.bufferSize });
         this.harshnessStats = new RollingStats({ windowSize: this.config.bufferSize });
         this.sectionHistory = new CircularBuffer(this.config.sectionHistorySize);
+        this.tve = new ThermodynamicVetoEngine();
+        this.coupler = new StateCouplingEnforcer();
     }
     /**
      * Actualiza la memoria con nuevos datos y retorna análisis completo.
@@ -118,6 +123,7 @@ export class ContextualMemory {
             narrative,
             anomaly,
             isWarmedUp: this.energyStats.isWarmedUp,
+            acousticReality: this.lastAcousticReality ?? undefined,
         };
     }
     /**
@@ -154,6 +160,7 @@ export class ContextualMemory {
         this.currentSectionFrameCount = 0;
         this.frameCount = 0;
         this.lastLogFrame = 0;
+        this.lastAcousticReality = null;
     }
     // ═══════════════════════════════════════════════════════════════════════
     // MÉTODOS PRIVADOS
@@ -190,12 +197,47 @@ export class ContextualMemory {
     }
     /**
      * Calcula el contexto narrativo basado en historial.
+     *
+     * M-SARFE Phase 3: When evidence and multiSpectralZone are available,
+     * uses the Thermodynamic Veto Engine + State Coupling Enforcer
+     * instead of blind string-mapping.
      */
     calculateNarrativeContext(input) {
         const history = this.sectionHistory.getAll();
         const sectionAge = input.timestamp - this.currentSectionStart;
-        // Determinar fase narrativa
-        const narrativePhase = this.inferNarrativePhase(history, input.sectionType);
+        // M-SARFE Phase 3: TVE + Coupler pipeline when evidence is available
+        let narrativePhase;
+        if (input.evidence && input.multiSpectralZone) {
+            // Run TVE: validate Worker's hypothesis against acoustic evidence
+            const validated = this.tve.validate(input.sectionType, input.evidence, input.multiSpectralZone);
+            // Run Coupler: enforce zone×phase consistency
+            const coupled = this.coupler.enforce(input.multiSpectralZone, validated);
+            // Build AcousticRealityState
+            this.lastAcousticReality = {
+                timestamp: input.timestamp,
+                zone: coupled.zone,
+                phase: coupled.phase,
+                couplingCorrected: coupled.corrected,
+                zScores: {
+                    low: input.evidence.zLow,
+                    mid: input.evidence.zMid,
+                    high: input.evidence.zHigh,
+                    total: input.evidence.zTotal,
+                },
+                crestFactors: {
+                    low: input.evidence.cfLow,
+                    high: input.evidence.cfHigh,
+                },
+                spectralTension: input.evidence.spectralTension,
+                spectralDivergence: input.evidence.spectralDivergence,
+            };
+            narrativePhase = coupled.phase.phase;
+        }
+        else {
+            // Fallback: legacy string-mapping (no evidence available)
+            this.lastAcousticReality = null;
+            narrativePhase = this.inferNarrativePhaseLegacy(history, input.sectionType);
+        }
         // Predecir próxima sección
         const predictedNext = this.predictNextSection(history, input.sectionType);
         return {
@@ -207,10 +249,10 @@ export class ContextualMemory {
         };
     }
     /**
-     * Infiere la fase narrativa de la música.
+     * Legacy phase inference — blind string-mapping fallback.
+     * Used only when no SectionEvidence is available (pre-M-SARFE callers).
      */
-    inferNarrativePhase(history, current) {
-        // Fase directa por sección actual
+    inferNarrativePhaseLegacy(history, current) {
         if (current === 'intro')
             return 'intro';
         if (current === 'outro')
@@ -219,18 +261,14 @@ export class ContextualMemory {
             return 'climax';
         if (current === 'breakdown' || current === 'bridge')
             return 'release';
-        // Inferir de historial
         const recentTypes = history.slice(-3).map(h => h.type);
-        // Buildup → buildup = algo grande viene
         if (recentTypes.filter(t => t === 'buildup').length >= 2) {
             return 'building';
         }
-        // Post-drop = release (chequear si hubo drop reciente)
         const hadRecentDrop = recentTypes.some(t => t === 'drop');
         if (hadRecentDrop) {
             return 'release';
         }
-        // Default
         if (current === 'buildup' || current === 'verse')
             return 'building';
         return 'building';
@@ -246,6 +284,7 @@ export class ContextualMemory {
             'buildup': { section: 'drop', probability: 0.8 },
             'chorus': { section: 'verse', probability: 0.5 },
             'drop': { section: 'breakdown', probability: 0.7 },
+            'textural_drop': { section: 'breakdown', probability: 0.5 },
             'breakdown': { section: 'buildup', probability: 0.6 },
             'bridge': { section: 'chorus', probability: 0.7 },
             'outro': { section: 'unknown', probability: 0.3 },

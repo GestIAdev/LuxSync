@@ -158,6 +158,24 @@ export function useHephLibrary() {
     }
   }, [loadLibrary])
 
+  // ── Reactivity: listen for heph:index-updated IPC events ──
+  // When the HephaestusClipIndex changes in the main process (save/canonize/delete/boot),
+  // re-fetch metadata. This cures the race condition where the hook mounts before the
+  // async boot loader has finished populating the index.
+  useEffect(() => {
+    const hephApi = (window as any).luxsync?.hephaestus
+    if (!hephApi?.onIndexUpdated) return
+
+    const unsubscribe = hephApi.onIndexUpdated(() => {
+      console.log('[useHephLibrary] 📡 Index updated event received — refreshing metadata')
+      refreshMetadata()
+    })
+
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe()
+    }
+  }, [refreshMetadata])
+
   return {
     loadedClips: _loadedClips,
     isLoading: _isLoading,

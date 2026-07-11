@@ -363,6 +363,32 @@ export class EffectDreamSimulator {
         return filtered;
     }
     /**
+     * 🎯 pressureRange gate — filters candidates whose acoustic pressure envelope
+     * does not contain the current real-time pressure.
+     *
+     * A pressureRange of {0,0} is permissive (no gate).
+     * If relaxGuardsForFuture is true, the min gate is bypassed (pressure will arrive).
+     */
+    filterByPressure(effects, currentPressure, relaxGuardsForFuture) {
+        const registry = getDynamicEffectRegistry();
+        const filtered = effects.filter(effect => {
+            const entry = registry.getEntry(effect);
+            if (!entry)
+                return false;
+            const pr = entry.pressureRange;
+            if (pr.min === 0 && pr.max === 0)
+                return true;
+            if (relaxGuardsForFuture && currentPressure < pr.min)
+                return true;
+            return currentPressure >= pr.min && currentPressure <= pr.max;
+        });
+        if (filtered.length === 0) {
+            console.log(`[DREAM_SIMULATOR] 🎯 Pressure filter too strict (pressure=${currentPressure.toFixed(3)}), returning all zone-filtered effects`);
+            return effects;
+        }
+        return filtered;
+    }
+    /**
      * Helper para logging: muestra el rango de agresión de una zona
      * 🎚️ WAVE 996: Updated para THE LADDER - rangos ampliados
      */
@@ -474,6 +500,9 @@ export class EffectDreamSimulator {
                 (relaxGuardsForFuture ? ' | Z-guards RELAXED' : ''));
         }
         const zoneFilteredEffects = this.filterByZone(vibeAllowedEffects, projectedZone);
+        // 🎯 pressureRange gate — filter by acoustic pressure envelope
+        const currentPressure = context.energy ?? state.energy;
+        const pressureFilteredEffects = this.filterByPressure(zoneFilteredEffects, currentPressure, relaxGuardsForFuture);
         // 🎯 WAVE 4865: Muestreo sin reemplazo por effect id.
         // Evita clones en ranking cuando múltiples aliases/vías aportan el mismo efecto.
         const seenEffectIds = new Set();
@@ -482,7 +511,7 @@ export class EffectDreamSimulator {
         const moodController = MoodController.getInstance();
         const currentProfile = moodController.getCurrentProfile();
         let blockedCount = 0;
-        let zoneBlockedCount = vibeAllowedEffects.length - zoneFilteredEffects.length;
+        let zoneBlockedCount = vibeAllowedEffects.length - pressureFilteredEffects.length;
         // ⚡ WAVE 4846: SPATIAL COGNITION — Hardware manifest snapshot (once per call)
         // Construimos el Set de CanonicalZones activas UNA SOLA VEZ antes del loop.
         // Cada fixture habilitado contribuye su zona normalizada → el guard compara contra este Set.
@@ -491,7 +520,7 @@ export class EffectDreamSimulator {
             .filter(f => f.enabled !== false)
             .map(f => normalizeZone(f.zone)));
         // Generar candidatos SOLO de efectos filtrados
-        for (const effect of zoneFilteredEffects) {
+        for (const effect of pressureFilteredEffects) {
             if (seenEffectIds.has(effect)) {
                 continue;
             }
@@ -588,10 +617,10 @@ export class EffectDreamSimulator {
         // 🔮 WAVE 5014: Si la projectedZone amplió el pool pero todos siguen bloqueados,
         //   el Rescue parte desde todos los efectos del vibe (no solo los filtrados por zona)
         //   para garantizar candidatos en cualquier escenario predictivo.
-        if (candidates.length === 0 && zoneFilteredEffects.length > 0) {
+        if (candidates.length === 0 && pressureFilteredEffects.length > 0) {
             console.log(`[DREAM_SIMULATOR] ⚠️ All effects blocked by Z-guards! (Z=${zScore.toFixed(3)} projectedZone=${projectedZone}). Attempting Minimal Rescue...`);
             const registry = getDynamicEffectRegistry();
-            for (const effect of zoneFilteredEffects) {
+            for (const effect of pressureFilteredEffects) {
                 if (moodController.isEffectBlocked(effect))
                     continue;
                 const entry = registry.getEntry(effect);

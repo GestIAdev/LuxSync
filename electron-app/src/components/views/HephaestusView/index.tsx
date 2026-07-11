@@ -383,9 +383,11 @@ const HephaestusView: React.FC = () => {
 
   // WAVE 2030.13: Zone targeting handler
   const handleZonesChange = useCallback((zones: EffectZone[]) => {
+    const zoneTargets = zones as readonly ZoneTarget[]
     setClip(prev => ({
       ...prev,
-      spatialZones: zones as readonly ZoneTarget[]
+      spatialZones: zoneTargets,
+      tracks: prev.tracks.map(t => ({ ...t, zones: zoneTargets })),
     }))
     setIsDirty(true)
   }, [])

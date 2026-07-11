@@ -24,6 +24,7 @@ import { visualConscienceEngine } from '../conscience/VisualConscienceEngine'
 import { effectBiasTracker } from '../dream/EffectBiasTracker'
 import type { AudienceSafetyContext } from '../dream/AudienceSafetyContext'
 import { AudienceSafetyContextBuilder } from '../dream/AudienceSafetyContext'
+import type { AcousticRealityState } from '../perception/StateCouplingEnforcer'
 
 // 🎭 WAVE 920: MOOD INTEGRATION
 import { MoodController } from '../../mood/MoodController'
@@ -77,6 +78,10 @@ export interface PipelineContext {
   // 🧬 WAVE 2093 COG-3: Spectral Context real desde sensory layer
   /** SpectralContext derivado del FFT real — reemplaza hardcode por vibe */
   spectralContext?: import('../../protocol/MusicalContext').SpectralContext
+
+  // 🧬 M-SARFE: Acoustic Reality State — validated acoustic truth for DNA target derivation
+  /** When present, the Dream Simulator derives Target DNA from real Z-scores, crest factors, etc. */
+  acousticReality?: AcousticRealityState
 }
 
 export interface IntegrationDecision {
@@ -621,6 +626,11 @@ export class DreamEngineIntegrator {
     // 🧬 WAVE 2093 COG-3: Spectral Context
     if (context.spectralContext) {
       builder.withSpectral(context.spectralContext)
+    }
+
+    // 🧬 M-SARFE: Pass AcousticRealityState to Dream Simulator for real DNA target derivation
+    if (context.acousticReality) {
+      builder.withAcousticReality(context.acousticReality)
     }
     
     // 🔥 WAVE 996.8: CABLEAR EL HISTORIAL AL DREAMSIMULATOR

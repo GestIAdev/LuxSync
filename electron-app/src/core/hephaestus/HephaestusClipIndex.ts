@@ -96,6 +96,26 @@ function _buildMetadata(
 class HephaestusClipIndex {
   private readonly _byId = new Map<string, LoadedClip>()
   private readonly _byPath = new Map<string, LoadedClip>()
+  private _changeListeners: Array<() => void> = []
+
+  // ── Change Notification ─────────────────────────────────────────────
+
+  /**
+   * Register a callback fired whenever the index changes (upsert/remove/clear).
+   * Used by the main process to push 'heph:index-updated' IPC events to the renderer.
+   */
+  public onDidChange(cb: () => void): () => void {
+    this._changeListeners.push(cb)
+    return () => {
+      this._changeListeners = this._changeListeners.filter(fn => fn !== cb)
+    }
+  }
+
+  private _notifyChange(): void {
+    for (const cb of this._changeListeners) {
+      try { cb() } catch { /* listener error — ignore */ }
+    }
+  }
 
   // ── O(1) Lookups (synchronous) ──────────────────────────────────────────
 
@@ -122,11 +142,13 @@ class HephaestusClipIndex {
     if (!loaded) return
     this._byId.delete(id)
     this._byPath.delete(loaded.filePath)
+    this._notifyChange()
   }
 
   public clear(): void {
     this._byId.clear()
     this._byPath.clear()
+    this._notifyChange()
   }
 
   // ── Async Ingest ────────────────────────────────────────────────────────
@@ -213,6 +235,8 @@ class HephaestusClipIndex {
 
       this._byId.set(clip.id, loaded)
       this._byPath.set(filePath, loaded)
+
+      this._notifyChange()
 
       return loaded
     } catch (err) {

@@ -3,7 +3,7 @@
  * ⚒️ HEPHAESTUS FILE I/O - WAVE 2030.5
  * Persistence layer for .lfx (LuxSync FX) automation clips
  * 
- * Storage: userData/effects/*.lfx
+ * Storage: userData/arsenal/*.lfx
  * Format: JSON (HephAutomationClipV3)
  * 
  * The .lfx format is a JSON file containing:
@@ -33,7 +33,7 @@ import { getHephaestusClipIndex } from './HephaestusClipIndex'
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
 
-const EFFECTS_FOLDER = 'effects'
+const ARSENAL_FOLDER = 'arsenal'
 const LFX_EXTENSION = '.lfx'
 const SCHEMA_VERSION = 'hephaestus/v1'
 const FORMAT_VERSION = '1.0.0'
@@ -102,7 +102,7 @@ export interface HephClipMetadata {
  * ⚒️ HEPHAESTUS FILE I/O
  * 
  * Manages persistence of HephAutomationClips to the filesystem.
- * All clips are stored in userData/effects/ as .lfx files.
+ * All clips are stored in userData/arsenal/ as .lfx files.
  * 
  * RESPONSIBILITIES:
  * - Save clips to disk (with checksum)
@@ -112,27 +112,27 @@ export interface HephClipMetadata {
  * - Generate unique IDs for new clips
  */
 class HephFileIO {
-  private effectsPath: string | null = null
+  private arsenalPath: string | null = null
   
   // ═══════════════════════════════════════════════════════════════════════
   // INITIALIZATION
   // ═══════════════════════════════════════════════════════════════════════
   
   /**
-   * Get the effects folder path (userData/effects).
+   * Get the arsenal folder path (userData/arsenal).
    * Creates the folder if it doesn't exist.
    */
-  async getEffectsPath(): Promise<string> {
-    if (this.effectsPath) return this.effectsPath
+  async getArsenalPath(): Promise<string> {
+    if (this.arsenalPath) return this.arsenalPath
     
     const userDataPath = app.getPath('userData')
-    this.effectsPath = path.join(userDataPath, EFFECTS_FOLDER)
+    this.arsenalPath = path.join(userDataPath, ARSENAL_FOLDER)
     
     // Ensure folder exists
-    await fs.mkdir(this.effectsPath, { recursive: true })
+    await fs.mkdir(this.arsenalPath, { recursive: true })
     
-    console.log(`[HephFileIO] Effects folder: ${this.effectsPath}`)
-    return this.effectsPath
+    console.log(`[HephFileIO] Arsenal folder: ${this.arsenalPath}`)
+    return this.arsenalPath
   }
   
   /**
@@ -157,7 +157,7 @@ class HephFileIO {
    * @throws Error if serialization or write fails
    */
   async saveClip(clip: HephAutomationClipV3): Promise<string> {
-    await this.getEffectsPath()
+    await this.getArsenalPath()
 
     // ── Auto-generate safetyDeclaration if missing ──────────────────────
     // G6 requires a declaration when strobe tracks are present.
@@ -187,7 +187,7 @@ class HephFileIO {
     };
 
     const fileName = `${clip.id}.lfx`;
-    const filePath = path.join(this.effectsPath!, fileName);
+    const filePath = path.join(this.arsenalPath!, fileName);
 
     // Escribimos a disco
     await fs.writeFile(filePath, JSON.stringify(filePayload, null, 2), 'utf-8');
@@ -249,7 +249,7 @@ class HephFileIO {
    * @returns true if deleted, false if not found
    */
   async deleteClip(idOrPath: string): Promise<boolean> {
-    const effectsPath = await this.getEffectsPath()
+    const arsenalPath = await this.getArsenalPath()
     
     let filePath: string | null = null
     
@@ -257,11 +257,11 @@ class HephFileIO {
       filePath = idOrPath
     } else {
       // Find by ID
-      const files = await fs.readdir(effectsPath)
+      const files = await fs.readdir(arsenalPath)
       const lfxFiles = files.filter(f => f.endsWith(LFX_EXTENSION))
       
       for (const file of lfxFiles) {
-        const fullPath = path.join(effectsPath, file)
+        const fullPath = path.join(arsenalPath, file)
         try {
           const content = await fs.readFile(fullPath, 'utf-8')
           const lfx: LFXFile = JSON.parse(content)
@@ -318,9 +318,9 @@ class HephFileIO {
    * Check if a clip with given name already exists.
    */
   async clipExists(name: string): Promise<boolean> {
-    const effectsPath = await this.getEffectsPath()
+    const arsenalPath = await this.getArsenalPath()
     const filename = this.sanitizeFilename(name) + LFX_EXTENSION
-    const filePath = path.join(effectsPath, filename)
+    const filePath = path.join(arsenalPath, filename)
     
     try {
       await fs.access(filePath)

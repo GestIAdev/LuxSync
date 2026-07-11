@@ -95,8 +95,8 @@ export function setupKeyForgeIPCHandlers(
       return { success: false, error: 'Main window not available' }
     }
 
-    // Default output directory: userData/keyforge-profiles/
-    const defaultDir = path.join(app.getPath('userData'), 'keyforge-profiles')
+    // Default output directory: userData/arsenal/ (unified storage)
+    const defaultDir = path.join(app.getPath('userData'), 'arsenal')
     try {
       await fs.mkdir(defaultDir, { recursive: true })
     } catch {
@@ -147,7 +147,7 @@ export function setupKeyForgeIPCHandlers(
       return { success: false, error: 'Main window not available' }
     }
 
-    const defaultDir = path.join(app.getPath('userData'), 'keyforge-profiles')
+    const defaultDir = path.join(app.getPath('userData'), 'arsenal')
 
     const result = await dialog.showOpenDialog(mainWindow, {
       title:       'Import KeyForge Profile',

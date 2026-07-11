@@ -9,7 +9,7 @@
 //    genesis:getHallOfFame      — Legendary candidates from v_hall_of_fame
 //    genesis:getLineageTree     — Genealogical path from lineage_tree
 //    genesis:cullOrganism       — Manual cull (alive → culled)
-//    genesis:canonizeOrganism   — Canonize organism as immutable blueprint
+//    genesis:canonizeMutant     — THE ONLY canonization path (.lfx + DB + hot-register)
 //    genesis:runMaintenance     — Trigger runEcologicalMaintenance()
 // ═══════════════════════════════════════════════════════════════════════════
 import { ipcMain } from 'electron';
@@ -210,133 +210,6 @@ export function setupGenesisIPCHandlers() {
         }
     });
     // ═══════════════════════════════════════════════════════════════════════
-    // genesis:canonizeOrganism — Canonize as immutable blueprint + name
-    // ═══════════════════════════════════════════════════════════════════════
-    ipcMain.handle('genesis:canonizeOrganism', async (_event, organismId, customName) => {
-        try {
-            const vault = getGenesisVault();
-            const db = vault._db;
-            if (!db) {
-                return { success: false, error: 'Vault not initialized' };
-            }
-            // 1. Fetch the organism
-            const org = db.prepare(`SELECT * FROM lfx_organisms WHERE organism_id = ?`).get(organismId);
-            if (!org) {
-                return { success: false, error: 'Organism not found' };
-            }
-            // 2. Fetch the parent blueprint to clone its metadata
-            const bp = db.prepare('SELECT * FROM lfx_blueprints WHERE blueprint_id = ?').get(org.blueprint_id);
-            if (!bp) {
-                return { success: false, error: 'Parent blueprint not found' };
-            }
-            // 3. Create the new blueprint ID from the organism ID
-            const newBlueprintId = `canonized:${organismId}`;
-            // 3a. Determine the name — use custom name or auto-generate procedurally
-            const trimmedName = customName.trim();
-            let finalName;
-            if (trimmedName.length > 0) {
-                finalName = trimmedName;
-            }
-            else {
-                // Auto-generate a punchy procedural name from organism metrics
-                finalName = generateOrganismName({
-                    organismId: org.organism_id,
-                    blueprintId: org.blueprint_id,
-                    parentOrganismId: null,
-                    generation: org.generation,
-                    customName: null,
-                    deltaJson: org.delta_json,
-                    bezierSignature: new Float32Array(0),
-                    rarityScore: org.rarity_score,
-                    rarityTier: org.rarity_tier,
-                    l2DistanceParent: org.l2_distance_parent,
-                    operatorUsed: org.operator_used,
-                    neonatalShieldUntil: 0,
-                    birthVector: {
-                        zScoreAvg3s: 0, lowBandAvg3s: 0, energyPhaseEncoded: 0,
-                        vibeHash: 0, sectionEncoded: 0, textureEncoded: 0,
-                    },
-                    fitnessScore: org.fitness_score,
-                    trialsCount: 0, winsCount: 0, vetoesCount: 0, passesCount: 0,
-                    status: 'canonized',
-                    speciesId: null,
-                    bornAt: 0, lastEvaluatedAt: null, lastFiredAt: null,
-                    swarmOriginConsole: null,
-                }, {
-                    dnaAggression: bp.dna_aggression,
-                    dnaChaos: bp.dna_chaos,
-                    dnaOrganicity: bp.dna_organicity,
-                    textureAffinity: bp.texture_affinity,
-                });
-                console.log(`[GenesisIPC] 🎲 Auto-generated name: "${finalName}" for ${organismId}`);
-            }
-            // 4. Materialize the organism's mutated clip (apply delta chain to parent)
-            const materializer = getOrganismMaterializer();
-            const mat = materializer.materialize(organismId);
-            const canonizedClipJson = JSON.stringify(mat.clip);
-            // 5. Insert as a new immutable blueprint with source_origin = 'canonized'
-            db.prepare(`INSERT OR IGNORE INTO lfx_blueprints (
-            blueprint_id, name, author, category, source_origin,
-            dna_aggression, dna_chaos, dna_organicity, texture_affinity,
-            compatible_vibes, valid_sections, energy_zone_min, energy_zone_max,
-            aggression_range_min, aggression_range_max, spatial_behavior,
-            clip_v3_json, execution_domain,
-            is_strobe, is_divine_candidate, is_heavy_candidate,
-            checksum_sha256, schema_version, imported_at
-          ) VALUES (
-            @blueprint_id, @name, @author, @category, 'canonized',
-            @dna_aggression, @dna_chaos, @dna_organicity, @texture_affinity,
-            @compatible_vibes, @valid_sections, @energy_zone_min, @energy_zone_max,
-            @aggression_range_min, @aggression_range_max, @spatial_behavior,
-            @clip_v3_json, @execution_domain,
-            @is_strobe, @is_divine_candidate, @is_heavy_candidate,
-            @checksum_sha256, @schema_version, @imported_at
-          )`).run({
-                blueprint_id: newBlueprintId,
-                name: finalName,
-                author: bp.author,
-                category: bp.category,
-                dna_aggression: bp.dna_aggression,
-                dna_chaos: bp.dna_chaos,
-                dna_organicity: bp.dna_organicity,
-                texture_affinity: bp.texture_affinity,
-                compatible_vibes: bp.compatible_vibes,
-                valid_sections: bp.valid_sections,
-                energy_zone_min: bp.energy_zone_min,
-                energy_zone_max: bp.energy_zone_max,
-                aggression_range_min: bp.aggression_range_min,
-                aggression_range_max: bp.aggression_range_max,
-                spatial_behavior: bp.spatial_behavior,
-                clip_v3_json: canonizedClipJson,
-                execution_domain: bp.execution_domain,
-                is_strobe: bp.is_strobe,
-                is_divine_candidate: bp.is_divine_candidate,
-                is_heavy_candidate: bp.is_heavy_candidate,
-                checksum_sha256: bp.checksum_sha256,
-                schema_version: bp.schema_version,
-                imported_at: Date.now(),
-            });
-            // 6. Update organism status to 'canonized' + set custom_name
-            db.prepare(`UPDATE lfx_organisms
-           SET status = 'canonized', custom_name = @name
-           WHERE organism_id = @id`).run({ name: finalName, id: organismId });
-            console.log(`[GenesisIPC] 👑 Canonized organism ${organismId} as "${finalName}" ` +
-                `(blueprint: ${newBlueprintId})`);
-            return {
-                success: true,
-                blueprintId: newBlueprintId,
-                customName: finalName,
-            };
-        }
-        catch (error) {
-            console.error('[GenesisIPC] canonizeOrganism failed:', error);
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : 'Unknown error',
-            };
-        }
-    });
-    // ═══════════════════════════════════════════════════════════════════════
     // genesis:runMaintenance — Trigger runEcologicalMaintenance()
     // ═══════════════════════════════════════════════════════════════════════
     ipcMain.handle('genesis:runMaintenance', async () => {
@@ -404,66 +277,78 @@ export function setupGenesisIPCHandlers() {
         }
     });
     // ═══════════════════════════════════════════════════════════════════════
-    // genesis:canonizeToBuiltins — Write clip as .lfx to builtins/ + update status
+    // genesis:canonizeMutant — THE ONLY canonization path.
+    // Writes .lfx to userData/arsenal/, inserts blueprint, updates organism,
+    // and hot-registers in HephaestusClipIndex + DynamicEffectRegistry.
     // ═══════════════════════════════════════════════════════════════════════
-    ipcMain.handle('genesis:canonizeToBuiltins', async (_event, clip, organismId) => {
+    ipcMain.handle('genesis:canonizeMutant', async (_event, organismId, customName) => {
         try {
             const vault = getGenesisVault();
             const db = vault._db;
             if (!db) {
                 return { success: false, error: 'Vault not initialized' };
             }
-            // 1. Determine builtins directory — runtime app data path
-            const builtinsDir = path.join(app.getPath('userData'), 'builtins');
-            if (!fs.existsSync(builtinsDir)) {
-                fs.mkdirSync(builtinsDir, { recursive: true });
-            }
-            // 1a. 🧬 WAVE 6000.V7: Procedural baptism — override clip.name with
-            //   a generated name from the organism's metrics + blueprint DNA.
-            //   Also use the baptized name as the .lfx filename (sanitized).
+            // 1. Fetch the organism
             const org = db.prepare(`SELECT * FROM lfx_organisms WHERE organism_id = ?`).get(organismId);
-            let baptismName = clip.name || organismId;
-            if (org) {
-                if (org.custom_name) {
-                    baptismName = org.custom_name;
-                }
-                else {
-                    const bp = db.prepare('SELECT dna_aggression, dna_chaos, dna_organicity, texture_affinity FROM lfx_blueprints WHERE blueprint_id = ?').get(org.blueprint_id);
-                    baptismName = generateOrganismName({
-                        organismId: org.organism_id,
-                        blueprintId: org.blueprint_id,
-                        parentOrganismId: null,
-                        generation: org.generation,
-                        customName: null,
-                        deltaJson: org.delta_json,
-                        bezierSignature: new Float32Array(0),
-                        rarityScore: org.rarity_score,
-                        rarityTier: org.rarity_tier,
-                        l2DistanceParent: org.l2_distance_parent,
-                        operatorUsed: org.operator_used,
-                        neonatalShieldUntil: 0,
-                        birthVector: {
-                            zScoreAvg3s: 0, lowBandAvg3s: 0, energyPhaseEncoded: 0,
-                            vibeHash: 0, sectionEncoded: 0, textureEncoded: 0,
-                        },
-                        fitnessScore: org.fitness_score,
-                        trialsCount: 0, winsCount: 0, vetoesCount: 0, passesCount: 0,
-                        status: 'canonized',
-                        speciesId: null,
-                        bornAt: 0, lastEvaluatedAt: null, lastFiredAt: null,
-                        swarmOriginConsole: null,
-                    }, bp ? {
-                        dnaAggression: bp.dna_aggression,
-                        dnaChaos: bp.dna_chaos,
-                        dnaOrganicity: bp.dna_organicity,
-                        textureAffinity: bp.texture_affinity,
-                    } : undefined);
-                    console.log(`[GenesisIPC] 🎲 Baptism name: "${baptismName}" for ${organismId}`);
-                }
+            if (!org) {
+                return { success: false, error: 'Organism not found' };
             }
-            // Override clip name with the baptized name
+            // 2. Fetch the parent blueprint to clone its metadata
+            const bp = db.prepare('SELECT * FROM lfx_blueprints WHERE blueprint_id = ?').get(org.blueprint_id);
+            if (!bp) {
+                return { success: false, error: 'Parent blueprint not found' };
+            }
+            // 3. Determine the baptism name
+            const trimmedCustom = customName?.trim() ?? '';
+            let baptismName;
+            if (trimmedCustom.length > 0) {
+                baptismName = trimmedCustom;
+            }
+            else if (org.custom_name) {
+                baptismName = org.custom_name;
+            }
+            else {
+                baptismName = generateOrganismName({
+                    organismId: org.organism_id,
+                    blueprintId: org.blueprint_id,
+                    parentOrganismId: null,
+                    generation: org.generation,
+                    customName: null,
+                    deltaJson: org.delta_json,
+                    bezierSignature: new Float32Array(0),
+                    rarityScore: org.rarity_score,
+                    rarityTier: org.rarity_tier,
+                    l2DistanceParent: org.l2_distance_parent,
+                    operatorUsed: org.operator_used,
+                    neonatalShieldUntil: 0,
+                    birthVector: {
+                        zScoreAvg3s: 0, lowBandAvg3s: 0, energyPhaseEncoded: 0,
+                        vibeHash: 0, sectionEncoded: 0, textureEncoded: 0,
+                    },
+                    fitnessScore: org.fitness_score,
+                    trialsCount: 0, winsCount: 0, vetoesCount: 0, passesCount: 0,
+                    status: 'canonized',
+                    speciesId: null,
+                    bornAt: 0, lastEvaluatedAt: null, lastFiredAt: null,
+                    swarmOriginConsole: null,
+                }, {
+                    dnaAggression: bp.dna_aggression,
+                    dnaChaos: bp.dna_chaos,
+                    dnaOrganicity: bp.dna_organicity,
+                    textureAffinity: bp.texture_affinity,
+                });
+                console.log(`[GenesisIPC] 🎲 Baptism name: "${baptismName}" for ${organismId}`);
+            }
+            // 4. Materialize the organism's mutated clip
+            const materializer = getOrganismMaterializer();
+            const mat = materializer.materialize(organismId);
+            const clip = mat.clip;
             clip.name = baptismName;
-            // 2. Serialize as .lfx (LFXFileV3 wrapper) with proper checksum
+            // 5. Write .lfx to userData/arsenal/
+            const arsenalDir = path.join(app.getPath('userData'), 'arsenal');
+            if (!fs.existsSync(arsenalDir)) {
+                fs.mkdirSync(arsenalDir, { recursive: true });
+            }
             const checksum = createHash('sha256').update(JSON.stringify(clip)).digest('hex');
             const lfxContent = JSON.stringify({
                 $schema: 'luxsync.lfx/3.0',
@@ -472,32 +357,77 @@ export function setupGenesisIPCHandlers() {
             }, null, 2);
             const safeName = baptismName.replace(/[:<>|"*?/\\]/g, '_');
             const fileName = `${safeName}.lfx`;
-            const filePath = path.join(builtinsDir, fileName);
+            const filePath = path.join(arsenalDir, fileName);
             fs.writeFileSync(filePath, lfxContent, 'utf-8');
-            // 3. Update organism status to 'canonized'
-            db.prepare(`UPDATE lfx_organisms SET status = 'canonized' WHERE organism_id = ?`).run(organismId);
-            // 4. 🧬 WAVE 6000.V7: Hot-register in HephaestusClipIndex + DynamicEffectRegistry
-            //   so the canonized clip appears immediately in the library and Selene's
-            //   arsenal without requiring a restart.
+            // 6. Insert as a new immutable blueprint with source_origin = 'canonized'
+            const newBlueprintId = `canonized:${organismId}`;
+            const canonizedClipJson = JSON.stringify(clip);
+            db.prepare(`INSERT OR IGNORE INTO lfx_blueprints (
+            blueprint_id, name, author, category, source_origin,
+            dna_aggression, dna_chaos, dna_organicity, texture_affinity,
+            compatible_vibes, valid_sections, energy_zone_min, energy_zone_max,
+            aggression_range_min, aggression_range_max, spatial_behavior,
+            clip_v3_json, execution_domain,
+            is_strobe, is_divine_candidate, is_heavy_candidate,
+            checksum_sha256, schema_version, imported_at
+          ) VALUES (
+            @blueprint_id, @name, @author, @category, 'canonized',
+            @dna_aggression, @dna_chaos, @dna_organicity, @texture_affinity,
+            @compatible_vibes, @valid_sections, @energy_zone_min, @energy_zone_max,
+            @aggression_range_min, @aggression_range_max, @spatial_behavior,
+            @clip_v3_json, @execution_domain,
+            @is_strobe, @is_divine_candidate, @is_heavy_candidate,
+            @checksum_sha256, @schema_version, @imported_at
+          )`).run({
+                blueprint_id: newBlueprintId,
+                name: baptismName,
+                author: bp.author,
+                category: bp.category,
+                dna_aggression: bp.dna_aggression,
+                dna_chaos: bp.dna_chaos,
+                dna_organicity: bp.dna_organicity,
+                texture_affinity: bp.texture_affinity,
+                compatible_vibes: bp.compatible_vibes,
+                valid_sections: bp.valid_sections,
+                energy_zone_min: bp.energy_zone_min,
+                energy_zone_max: bp.energy_zone_max,
+                aggression_range_min: bp.aggression_range_min,
+                aggression_range_max: bp.aggression_range_max,
+                spatial_behavior: bp.spatial_behavior,
+                clip_v3_json: canonizedClipJson,
+                execution_domain: bp.execution_domain,
+                is_strobe: bp.is_strobe,
+                is_divine_candidate: bp.is_divine_candidate,
+                is_heavy_candidate: bp.is_heavy_candidate,
+                checksum_sha256: bp.checksum_sha256,
+                schema_version: bp.schema_version,
+                imported_at: Date.now(),
+            });
+            // 7. Update organism status to 'canonized' + set custom_name
+            db.prepare(`UPDATE lfx_organisms
+           SET status = 'canonized', custom_name = @name
+           WHERE organism_id = @id`).run({ name: baptismName, id: organismId });
+            // 8. Hot-register in HephaestusClipIndex + DynamicEffectRegistry
             try {
                 const index = getHephaestusClipIndex();
-                await index.upsert(filePath, 'builtin');
+                await index.upsert(filePath, 'user');
                 const loader = new LfxFileLoader(getDynamicEffectRegistry());
-                await loader.loadFile(filePath, 'builtin');
+                await loader.loadFile(filePath, 'user');
                 console.log(`[GenesisIPC] ⚡ Hot-registered "${baptismName}" in arsenal + library`);
             }
             catch (hotRegErr) {
                 console.warn(`[GenesisIPC] ⚠️ Hot-registration failed (non-fatal, will load on next boot):`, hotRegErr);
             }
-            console.log(`[GenesisIPC] 💾 Canonized to disk: ${organismId} → "${baptismName}" → ${filePath}`);
+            console.log(`[GenesisIPC] � Canonized mutant ${organismId} as "${baptismName}" → ${filePath}`);
             return {
                 success: true,
                 filePath,
                 fileName,
+                customName: baptismName,
             };
         }
         catch (error) {
-            console.error('[GenesisIPC] canonizeToBuiltins failed:', error);
+            console.error('[GenesisIPC] canonizeMutant failed:', error);
             return {
                 success: false,
                 error: error instanceof Error ? error.message : 'Unknown error',
@@ -545,7 +475,7 @@ ipcMain.handle('genesis:purgeEcosystem', async () => {
 });
 // ═══════════════════════════════════════════════════════════════════════════
 // genesis:deleteCanonized — Permanently delete a canonized organism
-// Removes: DB row, .lfx file from builtins/, HephaestusClipIndex entry,
+// Removes: DB row, .lfx file from arsenal/, HephaestusClipIndex entry,
 //          DynamicEffectRegistry entry, and blueprints row if present.
 // ═══════════════════════════════════════════════════════════════════════════
 ipcMain.handle('genesis:deleteCanonized', async (_event, organismId) => {
@@ -561,7 +491,7 @@ ipcMain.handle('genesis:deleteCanonized', async (_event, organismId) => {
             return { success: false, error: 'Organism not found or not canonized' };
         }
         // 2. Determine the .lfx filename — uses custom_name (baptism name) or blueprint_id
-        const builtinsDir = path.join(app.getPath('userData'), 'builtins');
+        const arsenalDir = path.join(app.getPath('userData'), 'arsenal');
         const clipId = org.blueprint_id;
         // Try to find the .lfx file by looking up the clip in the index
         const index = getHephaestusClipIndex();
@@ -588,7 +518,7 @@ ipcMain.handle('genesis:deleteCanonized', async (_event, organismId) => {
             // Fallback: try to find by sanitized name
             const nameToUse = org.custom_name ?? clipId;
             const safeName = nameToUse.replace(/[:<>|"*?/\\]/g, '_');
-            const fallbackPath = path.join(builtinsDir, `${safeName}.lfx`);
+            const fallbackPath = path.join(arsenalDir, `${safeName}.lfx`);
             if (fs.existsSync(fallbackPath)) {
                 try {
                     fs.unlinkSync(fallbackPath);

@@ -197,12 +197,12 @@ export function setupHephIPCHandlers() {
      * @returns { success, path }
      */
     ipcMain.handle('heph:getPath', async () => {
-        console.log('[HephIPC] Get effects path');
+        console.log('[HephIPC] Get arsenal path');
         try {
-            const effectsPath = await hephFileIO.getEffectsPath();
+            const arsenalPath = await hephFileIO.getArsenalPath();
             return {
                 success: true,
-                path: effectsPath,
+                path: arsenalPath,
             };
         }
         catch (error) {

@@ -151,6 +151,7 @@ export interface CognitiveDNA {
   readonly validSections: readonly string[]
   readonly energyZone: EnergyZoneRange
   readonly aggressionRange: Range
+  readonly pressureRange: Range
 
   // ── WAVE 2481 V2: directiva espacial obligatoria ──
   readonly spatialBehavior: SpatialBehavior
@@ -232,6 +233,7 @@ export interface RegistryEntry {
   readonly validSections: readonly string[]
   readonly energyZone: EnergyZoneRange
   readonly aggressionRange: Range
+  readonly pressureRange: Range
   readonly spatialBehavior: SpatialBehavior
   readonly ikCompatibility: IKCompatibility | null
 

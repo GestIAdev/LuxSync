@@ -397,6 +397,17 @@ const api = {
          * @returns { id }
          */
         generateId: () => ipcRenderer.invoke('heph:generateId'),
+        /**
+         * 📡 Reactivity: Subscribe to index change notifications.
+         * Fired whenever the HephaestusClipIndex changes (save/canonize/delete/boot).
+         * @param callback - Called when the index is updated
+         * @returns unsubscribe function
+         */
+        onIndexUpdated: (callback) => {
+            const handler = () => callback();
+            ipcRenderer.on('heph:index-updated', handler);
+            return () => ipcRenderer.removeListener('heph:index-updated', handler);
+        },
     },
     // ============================================
     // 🧬 WAVE 5000.V3 — GENESIS ENGINE (Era V)
@@ -407,12 +418,11 @@ const api = {
         getHallOfFame: () => ipcRenderer.invoke('genesis:getHallOfFame'),
         getLineageTree: (organismId) => ipcRenderer.invoke('genesis:getLineageTree', organismId),
         cullOrganism: (organismId) => ipcRenderer.invoke('genesis:cullOrganism', organismId),
-        canonizeOrganism: (organismId, customName) => ipcRenderer.invoke('genesis:canonizeOrganism', organismId, customName),
+        canonizeMutant: (organismId, customName) => ipcRenderer.invoke('genesis:canonizeMutant', organismId, customName),
         runMaintenance: () => ipcRenderer.invoke('genesis:runMaintenance'),
         getSpecies: () => ipcRenderer.invoke('genesis:getSpecies'),
         purgeEcosystem: () => ipcRenderer.invoke('genesis:purgeEcosystem'),
         materializeClip: (organismId) => ipcRenderer.invoke('genesis:materializeClip', organismId),
-        canonizeToBuiltins: (clip, organismId) => ipcRenderer.invoke('genesis:canonizeToBuiltins', clip, organismId),
         suggestName: (organismId) => ipcRenderer.invoke('genesis:suggestName', organismId),
         deleteCanonized: (organismId) => ipcRenderer.invoke('genesis:deleteCanonized', organismId),
     },

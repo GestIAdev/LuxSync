@@ -312,7 +312,7 @@ export class HephaestusRuntime {
      * a partir de `track.zones` específico, NO del bloque global del clip.
      */
     tickActive(active, baseClipTimeMs) {
-        const isCustomThisClip = active.clip.effectType === 'heph_custom';
+        const isCustomThisClip = active.clip.effectType === 'heph_custom' || active.clip.effectType === 'custom';
         const clipId = active.clip.id;
         const intensity = active.intensity;
         const durationMs = active.durationMs;

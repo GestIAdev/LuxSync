@@ -28,6 +28,13 @@ export const DEFAULT_LIQUID_PROFILE = Object.freeze({
     w_e: 0.25,
     z_ref: 3.0,
     CF_ref: 3.5,
+    // 🌊 M-SARFE Phase 4: Multi-Spectral Impact Weights (default)
+    w_E: 0.30,
+    w_low: 0.15,
+    w_high: 0.20,
+    w_CF: 0.15,
+    w_T: 0.12,
+    w_D: 0.08,
     // — Inercia y Vapor —
     tau_min: 1.5,
     tau_max: 9.0,

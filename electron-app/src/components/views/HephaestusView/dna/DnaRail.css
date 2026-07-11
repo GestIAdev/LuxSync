@@ -551,6 +551,84 @@
   box-shadow: 0 0 6px rgba(251, 191, 36, 0.15);
 }
 
+/* ── Acoustic Pressure ── */
+.dna-rail__pressure-permissive {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 8px;
+  background: rgba(96, 165, 250, 0.06);
+  border: 1px solid rgba(96, 165, 250, 0.15);
+  border-radius: 5px;
+}
+
+.dna-rail__pressure-permissive-text {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: rgba(96, 165, 250, 0.7);
+  text-transform: uppercase;
+}
+
+.dna-rail__pressure-enable-btn {
+  padding: 4px 12px;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: rgba(255, 107, 43, 0.8);
+  background: rgba(255, 107, 43, 0.08);
+  border: 1px solid rgba(255, 107, 43, 0.25);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dna-rail__pressure-enable-btn:hover {
+  background: rgba(255, 107, 43, 0.15);
+  border-color: rgba(255, 107, 43, 0.5);
+}
+
+.dna-rail__pressure-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dna-rail__pressure-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.dna-rail__pressure-axis {
+  font-size: 0.52rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: rgba(255, 107, 43, 0.6);
+  min-width: 24px;
+  font-family: var(--font-mono, monospace);
+}
+
+.dna-rail__pressure-reset-btn {
+  margin-top: 4px;
+  padding: 3px 8px;
+  font-size: 0.52rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.4);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  align-self: flex-end;
+}
+
+.dna-rail__pressure-reset-btn:hover {
+  color: rgba(255, 255, 255, 0.6);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
 /* ── Energy Thermometer ── */
 .dna-rail__thermometer {
   display: flex;

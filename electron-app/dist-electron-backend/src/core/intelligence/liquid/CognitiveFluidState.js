@@ -91,11 +91,35 @@ export class CognitiveFluidState {
         const cfHat = clamp01((cfRaw - 1) / (p.CF_ref - 1));
         this._crestFactor = cfHat;
         // ─────────────────────────────────────────────────────────
-        // 3. Impacto I(t) = w_z·ẑ + w_cf·CF̂ + w_e·Ê
+        // 3. Impacto I(t) — Multi-Spectral Fusion (M-SARFE Phase 4)
+        //
+        // When acousticReality is available, use the multi-spectral formula:
+        //   I(t) = w_E·Z_total + w_low·max(0,Z_low) + w_high·max(0,Z_high)
+        //         + w_CF·sigmoid(CF_high−4) + w_T·T + w_D·D
+        //
+        // Fallback to legacy 1D formula when no evidence:
+        //   I(t) = w_z·ẑ + w_cf·CF̂ + w_e·Ê
         // ─────────────────────────────────────────────────────────
-        const zHat = Math.tanh(input.zScore / p.z_ref);
         const eHat = input.rawEnergy / Math.max(input.energyMaxHistoric, 0.01);
-        this._impact = clamp01(p.w_z * zHat + p.w_cf * cfHat + p.w_e * eHat);
+        if (input.acousticReality) {
+            const ar = input.acousticReality;
+            const zTotal = ar.zScores.total;
+            const zLow = ar.zScores.low;
+            const zHigh = ar.zScores.high;
+            const cfHigh = ar.crestFactors.high;
+            const T = ar.spectralTension;
+            const D = ar.spectralDivergence;
+            this._impact = clamp01(p.w_E * Math.tanh(zTotal / p.z_ref) +
+                p.w_low * Math.max(0, Math.tanh(zLow / p.z_ref)) +
+                p.w_high * Math.max(0, Math.tanh(zHigh / p.z_ref)) +
+                p.w_CF * sigmoid(cfHigh - 4) +
+                p.w_T * T +
+                p.w_D * D);
+        }
+        else {
+            const zHat = Math.tanh(input.zScore / p.z_ref);
+            this._impact = clamp01(p.w_z * zHat + p.w_cf * cfHat + p.w_e * eHat);
+        }
         // ─────────────────────────────────────────────────────────
         // 4. Viscosidad μ(t) = clamp01(w_m·M + w_f·flatness + w_h·harmonicDensity − w_p·Π)
         // ─────────────────────────────────────────────────────────
@@ -173,9 +197,12 @@ export class CognitiveFluidState {
             const phaseModifier = phase === 'climax' ? 1.0
                 : phase === 'building' ? 0.5
                     : phase === 'release' ? 0.7
-                        : phase === 'intro' ? 0.3
-                            : phase === 'outro' ? 0.3
-                                : 0.5; // unknown phase — conservative
+                        : phase === 'textural' ? 0.8
+                            : phase === 'intro' ? 0.3
+                                : phase === 'outro' ? 0.3
+                                    : phase === 'silence' ? 0.0
+                                        : phase === 'valley' ? 0.2
+                                            : 0.5; // unknown phase — conservative
             this._epicness = clamp01(baseEpicness * energyFactor * phaseModifier);
         }
     }

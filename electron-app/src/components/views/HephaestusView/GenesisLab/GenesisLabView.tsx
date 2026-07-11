@@ -45,7 +45,7 @@ export const GenesisLabView: React.FC = () => {
   const fetchSpecies = useGenesisStore((s) => s.fetchSpecies)
   const selectOrganism = useGenesisStore((s) => s.selectOrganism)
   const cullOrganism = useGenesisStore((s) => s.cullOrganism)
-  const canonizeOrganism = useGenesisStore((s) => s.canonizeOrganism)
+  const canonizeMutant = useGenesisStore((s) => s.canonizeMutant)
   const runMaintenance = useGenesisStore((s) => s.runMaintenance)
   const purgeEcosystem = useGenesisStore((s) => s.purgeEcosystem)
   const setFilterRarityTier = useGenesisStore((s) => s.setFilterRarityTier)
@@ -76,34 +76,18 @@ export const GenesisLabView: React.FC = () => {
   }, [cullOrganism])
 
   const handleCanonize = useCallback(async (organismId: string, customName: string): Promise<boolean> => {
-    return canonizeOrganism(organismId, customName)
-  }, [canonizeOrganism])
+    return canonizeMutant(organismId, customName)
+  }, [canonizeMutant])
 
-  const handleCanonizeToBuiltins = useCallback(async (organismId: string) => {
-    const genesisApi = (window as any).luxsync?.genesis
-    if (!genesisApi?.canonizeToBuiltins) {
-      console.warn('[GenesisLab] genesis.canonizeToBuiltins IPC not available')
-      return
+  const handleCanonizeToDisk = useCallback(async (organismId: string) => {
+    const success = await canonizeMutant(organismId)
+    if (success) {
+      console.log(`[GenesisLab] � Canonized mutant to disk: ${organismId}`)
+      useGenesisStore.getState().refreshAll()
+    } else {
+      console.warn(`[GenesisLab] Canonization failed for ${organismId}`)
     }
-
-    try {
-      const matResult = await genesisApi.materializeClip(organismId)
-      if (!matResult.success || !matResult.clip) {
-        console.warn(`[GenesisLab] Cannot canonize — materialization failed: ${matResult.error}`)
-        return
-      }
-
-      const canonResult = await genesisApi.canonizeToBuiltins(matResult.clip, organismId)
-      if (canonResult.success) {
-        console.log(`[GenesisLab] 💾 Canonized to disk: ${organismId} → ${canonResult.fileName}`)
-        useGenesisStore.getState().refreshAll()
-      } else {
-        console.warn(`[GenesisLab] Canonization failed: ${canonResult.error}`)
-      }
-    } catch (err) {
-      console.error('[GenesisLab] Canonize to builtins error:', err)
-    }
-  }, [])
+  }, [canonizeMutant])
 
   const handleMaintenance = useCallback(() => {
     runMaintenance()
@@ -122,7 +106,7 @@ export const GenesisLabView: React.FC = () => {
       return
     }
 
-    if (!window.confirm('🗑️ DELETE CANONIZED ORGANISM?\n\nThis will permanently remove:\n• The organism from the database\n• The .lfx file from builtins/\n• The blueprint entry\n• The effect from the arsenal\n\nThis cannot be undone.')) {
+    if (!window.confirm('🗑️ DELETE CANONIZED ORGANISM?\n\nThis will permanently remove:\n• The organism from the database\n• The .lfx file from arsenal/\n• The blueprint entry\n• The effect from the arsenal\n\nThis cannot be undone.')) {
       return
     }
 
@@ -205,7 +189,7 @@ export const GenesisLabView: React.FC = () => {
             lineage={lineage}
             onPreviewInCanvas={handlePreviewInCanvas}
             onCull={handleCull}
-            onCanonizeToBuiltins={handleCanonizeToBuiltins}
+            onCanonizeToBuiltins={handleCanonizeToDisk}
             onDeleteCanonized={handleDeleteCanonized}
           />
         </div>

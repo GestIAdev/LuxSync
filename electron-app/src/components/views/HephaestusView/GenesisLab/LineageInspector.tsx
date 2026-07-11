@@ -158,7 +158,7 @@ export const LineageInspector: React.FC<LineageInspectorProps> = ({
             style={{ background: 'rgba(255,215,0,0.1)', border: '1px solid rgba(255,215,0,0.3)', color: '#ffd700' }}
             onClick={() => onCanonizeToBuiltins(organism.organism_id)}
           >
-            💾 CANONIZE TO DISK
+            � CANONIZE MUTANT
           </button>
         )}
         {organism.status === 'alive' || organism.status === 'champion' ? (

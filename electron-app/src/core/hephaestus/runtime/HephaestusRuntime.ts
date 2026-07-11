@@ -196,7 +196,7 @@ export interface HephFixtureOutput {
   normalizedValue: number
   // WAVE 3521: Normalized RGB (0-1 each) for Aether COLOR nodes (only for 'color' parameter)
   normalizedRgb?: { r: number; g: number; b: number }
-  // WAVE 3521: true if the originating clip has effectType === 'heph_custom'
+  // WAVE 3521: true if the originating clip has effectType === 'heph_custom' or 'custom'
   isCustomClip: boolean
   // 🏛️ WAVE 2483: ID of the source clip (for spatialBehavior lookup in DynamicEffectRegistry).
   // Optional + lazy: legacy code paths that don't stamp it remain valid.
@@ -283,6 +283,39 @@ export class HephaestusRuntime {
     this.clipCache.delete(filePath)
     if (this.debug) {
       console.log(`[HephRuntime] 🗑️ Cache invalidated: ${path.basename(filePath)}`)
+    }
+  }
+
+  /**
+   * Hot-reload: invalidate cache AND reload any active clips for this file.
+   * Called after a clip is saved in the Hephaestus editor.
+   * Preserves playback position (startTimeMs) so the clip continues seamlessly
+   * with the updated track data.
+   */
+  hotReload(filePath: string): void {
+    this.invalidateCache(filePath)
+    const freshClip = this.loadClip(filePath)
+    if (!freshClip) return
+
+    for (const [instanceId, active] of this.activeClips) {
+      if (active.filePath !== filePath) continue
+
+      const durationMs = active.durationMs
+      const { tracks, phaseConfig } = this._buildResolvedTracks(
+        freshClip,
+        durationMs,
+        undefined,
+      )
+
+      if (tracks.length === 0) continue
+
+      active.clip = freshClip
+      active.tracks = tracks
+      active.phaseConfig = phaseConfig
+
+      if (this.debug) {
+        console.log(`[HephRuntime] ⚡ HOT-RELOAD: ${instanceId} → ${path.basename(filePath)}`)
+      }
     }
   }
   
@@ -532,7 +565,7 @@ export class HephaestusRuntime {
    * a partir de `track.zones` específico, NO del bloque global del clip.
    */
   private tickActive(active: ActiveHephClip, baseClipTimeMs: number): void {
-    const isCustomThisClip = active.clip.effectType === 'heph_custom'
+    const isCustomThisClip = active.clip.effectType === 'heph_custom' || active.clip.effectType === 'custom'
     const clipId = active.clip.id
     const intensity = active.intensity
     const durationMs = active.durationMs

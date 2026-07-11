@@ -295,6 +295,11 @@ function _validateGenomeRanges(dna) {
         return false;
     if (dna.aggressionRange.min > dna.aggressionRange.max)
         return false;
+    const pr = dna.pressureRange ?? { min: 0, max: 0 };
+    if (!_in01(pr.min) || !_in01(pr.max))
+        return false;
+    if (pr.min > pr.max)
+        return false;
     return true;
 }
 function _in01(n) {
@@ -339,6 +344,10 @@ function _buildEntryFromV3(clip, options) {
         aggressionRange: Object.freeze({
             min: dna.aggressionRange.min,
             max: dna.aggressionRange.max,
+        }),
+        pressureRange: Object.freeze({
+            min: dna.pressureRange?.min ?? 0,
+            max: dna.pressureRange?.max ?? 0,
         }),
         spatialBehavior: dna.spatialBehavior,
         ikCompatibility: Object.freeze({ ...ikCompat }),

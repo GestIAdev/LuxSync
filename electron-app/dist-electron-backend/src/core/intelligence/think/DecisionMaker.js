@@ -162,8 +162,8 @@ function determineDecisionType(inputs) {
             // Fall through — buildup handler below will manage with soft effects
         }
         else if (divineLeakBlocked) {
-            console.log(`[DecisionMaker 🛡️] DIVINE LEAK BLOCKED: "${proposedEffect}" is divine ` +
-                `but V3 epicness=${v3Epicness.toFixed(3)} ≤ ε=${V3_EPSILON_DIVINE} → falling through`);
+            throttledLog(`divineLeak:${proposedEffect}`, `[DecisionMaker 🛡️] DIVINE LEAK BLOCKED: "${proposedEffect}" is divine ` +
+                `but V3 epicness=${v3Epicness.toFixed(3)} ≤ ε=${V3_EPSILON_DIVINE} → falling through`, 5000);
         }
         else {
             return 'strike';
@@ -177,11 +177,11 @@ function determineDecisionType(inputs) {
     if (prediction.type === 'drop_incoming' && prediction.probability > 0.65 && contextualPhase === 'building') {
         return 'prepare_for_drop';
     }
-    if (pattern.section === 'drop') {
+    if (pattern.section === 'drop' && v3Epicness > 0.20) {
         return 'prepare_for_drop';
     }
-    // Prioridad 3: energy_spike
-    if (prediction.type === 'energy_spike' && prediction.probability > 0.75 && pattern.rhythmicIntensity > 0.6) {
+    // Prioridad 3: energy_spike — gated by contextualPhase to prevent false drops
+    if (prediction.type === 'energy_spike' && prediction.probability > 0.75 && pattern.rhythmicIntensity > 0.6 && contextualPhase === 'building') {
         return 'prepare_for_drop';
     }
     // Prioridad 4: Buildup con potencial

@@ -224,7 +224,7 @@ export class SeleneTitanConscious extends EventEmitter {
         this.GLOBAL_EFFECT_COOLDOWN_MS = 7000; // 🩸 WAVE 2106: 7s (was 4s) — physics breathe
         // WAVE 4834: Fiesta Latina necesita más aire entre disparos para evitar
         // ráfagas de 4-6 EPM en BALANCED cuando el groove mantiene worthiness alto.
-        this.LATINA_GLOBAL_EFFECT_COOLDOWN_MS = 5000; // 🔪 WAVE 4947 MISIÓN 3: 8000→5000 para ritmo acorde al género latino
+        this.LATINA_GLOBAL_EFFECT_COOLDOWN_MS = 7000; // 🔪 WAVE 4947→V3 TUNE: 5000→7000 — latina needs more air between shots
         // ═══════════════════════════════════════════════════════════════════════
         // 🛡️ WAVE 4860: POST-DROP REFRACTORY LOCK — La Regla del Respiro Retinal
         // ═══════════════════════════════════════════════════════════════════════
@@ -234,6 +234,12 @@ export class SeleneTitanConscious extends EventEmitter {
         // ═══════════════════════════════════════════════════════════════════════
         this.lastHighSeverityEffectTimestamp = 0;
         this.POST_DROP_REFRACTORY_MS = 4000; // 4s de respiro retinal
+        // V3 TUNE: DROP CHAIN COOLDOWN — after a DROP fires, block additional DROPs
+        // for 15s. Without this, the diversity selector picks a different effect each
+        // frame (all from the same arsenal), so per-effect cooldown doesn't help.
+        // Result was 3-4 DROP effects firing in ~100ms during a single drop moment.
+        this.lastDropEffectTimestamp = 0;
+        this.DROP_CHAIN_COOLDOWN_MS = 5000; // 5s between DROP effects
         // ═══════════════════════════════════════════════════════════════════════
         // 🎧 WAVE 4863: FFT X-RAY SNIFFER — Diagnóstico temporal de bandas
         // ═══════════════════════════════════════════════════════════════════════
@@ -262,6 +268,8 @@ export class SeleneTitanConscious extends EventEmitter {
         // private readonly FALLTHROUGH_EXHAUSTION_COOLDOWN_MS = 5000       // DEAD CODE
         // 🩸 WAVE 2105: THROTTLE constitution violation logs (65 lines of spam per 700-line log)
         this._constitutionLogThrottle = {};
+        // V3 TUNE: Throttle Gatekeeper telemetry — only log on state change, not every frame
+        this._lastGatekeeperLogKey = '';
         // 🩸 WAVE 2106: SECTION CHANGE DETECTION — invalidate DNA cache on section transitions
         // LOG EVIDENCE: acid_sweep DNA result computed during buildup gets CACHED,
         // then FIRES during breakdown when GLOBAL_COOLDOWN expires and cache is reused.
@@ -421,26 +429,86 @@ export class SeleneTitanConscious extends EventEmitter {
                     dreamEngineIntegrator.clearPreBuffer();
                     if (candidate) {
                         // ═══════════════════════════════════════════════════════════════
-                        // 🛡️ V3.4.4: DIVINE LEAK FIX B — Re-evaluate using V3 epicness
-                        // before firing a divine pre-buffer. Cassandra's prediction was
-                        // made seconds ago; the musical landscape may have collapsed.
-                        // V3 epicness is the sole authority — no static Z-score thresholds.
+                        // 🛡️ M-SARFE Phase 5: UNIVERSAL REALITY CLAMP
+                        //
+                        // The Sovereign Clock pre-buffered a shot seconds ago. Before
+                        // firing, we check the CURRENT acoustic reality. If the music
+                        // collapsed into a valley/silence and the effect is heavy/intense,
+                        // we ABORT — regardless of divine status.
+                        //
+                        // The clamp applies to ALL pre-buffered effects, not just divine.
                         // ═══════════════════════════════════════════════════════════════
-                        const V3_EPSILON_DIVINE = 0.60; // Radical high-pass: only devastating impact qualifies
+                        const V3_EPSILON_DIVINE = 0.60;
                         const v3EpicnessNow = this._lastLiquidVerdict?.epicness ?? 0;
-                        let divineAborted = false;
+                        let aborted = false;
+                        let abortReason = '';
                         const registryEntry = getDynamicEffectRegistry().getEntry(candidate.effect);
-                        if (registryEntry?.simMeta.isDivineCandidate) {
-                            const energyTooLow = titanState.rawEnergy < 0.50;
-                            if (v3EpicnessNow <= V3_EPSILON_DIVINE || energyTooLow) {
-                                console.log(`[Sovereign Clock 🛡️] DIVINE ABORTED: "${candidate.effectName ?? candidate.effect}" ` +
-                                    `V3 epicness=${v3EpicnessNow.toFixed(3)} ≤ ε=${V3_EPSILON_DIVINE}` +
-                                    `${energyTooLow ? ` OR energy=${titanState.rawEnergy.toFixed(2)} < 0.50` : ''}` +
-                                    ` → buffer cleared, effect suppressed`);
-                                divineAborted = true;
+                        const ars = this.lastMemoryOutput?.acousticReality;
+                        const isHeavyEffect = registryEntry?.simMeta.isHeavyCandidate
+                            || registryEntry?.simMeta.isDivineCandidate
+                            || (registryEntry?.dna.aggression ?? 0) > 0.7;
+                        // ── UNIVERSAL CLAMP: Heavy effect in silence/valley = ABORT ──
+                        if (isHeavyEffect) {
+                            if (ars) {
+                                const zoneLabel = ars.zone.label;
+                                const phaseLabel = ars.phase.phase;
+                                const inLowZone = zoneLabel === 'silence' || zoneLabel === 'valley';
+                                const hasHiddenTension = phaseLabel === 'textural';
+                                if (inLowZone && !hasHiddenTension) {
+                                    aborted = true;
+                                    abortReason =
+                                        `Acoustic Reality veto (Zone: ${zoneLabel}, Phase: ${phaseLabel})` +
+                                            ` — heavy effect "${candidate.effectName ?? candidate.effect}" cannot fire in low energy`;
+                                }
+                            }
+                            else {
+                                // Fallback: no ARS — strict energy/Z-Score abort for heavy effects
+                                const energyTooLow = titanState.rawEnergy < 0.35;
+                                const zTooLow = currentZScore < -0.5;
+                                if (energyTooLow || zTooLow) {
+                                    aborted = true;
+                                    abortReason =
+                                        `Fallback energy veto (E=${titanState.rawEnergy.toFixed(2)}` +
+                                            `${energyTooLow ? ' < 0.35' : ''}` +
+                                            `${zTooLow ? ` OR Z=${currentZScore.toFixed(2)} < -0.5` : ''})` +
+                                            ` — heavy effect "${candidate.effectName ?? candidate.effect}" suppressed`;
+                                }
                             }
                         }
-                        if (!divineAborted) {
+                        // ── DIVINE ABORT: Enhanced with ARS zone check ──
+                        if (!aborted && registryEntry?.simMeta.isDivineCandidate) {
+                            const energyTooLow = titanState.rawEnergy < 0.50;
+                            const divineZoneVeto = ars
+                                ? (ars.zone.label === 'silence' || ars.zone.label === 'valley')
+                                    && ars.phase.phase !== 'textural'
+                                : false;
+                            if (v3EpicnessNow <= V3_EPSILON_DIVINE || energyTooLow || divineZoneVeto) {
+                                aborted = true;
+                                abortReason =
+                                    `DIVINE ABORT: V3 epicness=${v3EpicnessNow.toFixed(3)} ≤ ε=${V3_EPSILON_DIVINE}` +
+                                        `${energyTooLow ? ` OR energy=${titanState.rawEnergy.toFixed(2)} < 0.50` : ''}` +
+                                        `${divineZoneVeto ? ` OR ARS zone=${ars.zone.label}` : ''}` +
+                                        ` → buffer cleared, divine effect suppressed`;
+                            }
+                        }
+                        // ── PRESSURE VETO: Independent hard veto based on pressureRange DNA ──
+                        // Applies to ALL pre-buffered effects, not just heavy/divine.
+                        // A pressureRange of {0,0} is permissive (no gate).
+                        if (!aborted && registryEntry) {
+                            const pr = registryEntry.pressureRange;
+                            if (!(pr.min === 0 && pr.max === 0)) {
+                                const currentPressure = titanState.rawEnergy;
+                                if (currentPressure < pr.min || currentPressure > pr.max) {
+                                    aborted = true;
+                                    abortReason =
+                                        `Pressure veto (Pressure=${currentPressure.toFixed(2)} outside allowed range [${pr.min}, ${pr.max}])`;
+                                }
+                            }
+                        }
+                        if (aborted) {
+                            console.log(`[Sovereign Clock 🛡️] PRE-BUFFER ABORTED: "${candidate.effectName ?? candidate.effect}" — ${abortReason}`);
+                        }
+                        if (!aborted) {
                             if (glassBreak) {
                                 console.log(`[SeleneTitanConscious] 🪟💥 CASSANDRA GLASS BREAK: firing "${candidate.effectName ?? candidate.effect}" ` +
                                     `| drop landed EARLY (Z=${currentZScore.toFixed(2)} ≥ ${GLASS_BREAK_Z}, E=${titanState.rawEnergy.toFixed(2)}) ` +
@@ -478,7 +546,7 @@ export class SeleneTitanConscious extends EventEmitter {
                                 this.effectHistory.shift();
                             this.lastOutput = sovereignOutput;
                             return sovereignOutput;
-                        } // end if (!divineAborted)
+                        } // end if (!aborted)
                     }
                 }
                 else if (timeToEvent < -SOVEREIGN_WINDOW_MS) {
@@ -527,6 +595,7 @@ export class SeleneTitanConscious extends EventEmitter {
                 effectGenome: NEUTRAL_GENOME,
                 contextualPhase: this.lastMemoryOutput?.narrative?.narrativePhase ?? 'building',
                 isWarmedUp: this.lastMemoryOutput?.isWarmedUp ?? false,
+                acousticReality: this.lastMemoryOutput?.acousticReality,
             }, now);
             this._v3Ignite = SELENE_V3_AUTHORITY && this._lastLiquidVerdict.ignite;
             if (this._v3Ignite) {
@@ -732,6 +801,7 @@ export class SeleneTitanConscious extends EventEmitter {
         // Usar el sensor de patrones musicales
         const pattern = senseMusicalPattern(state);
         // 🧠 WAVE 666: Actualizar memoria contextual
+        // 🌊 M-SARFE Phase 3: Pass evidence + multiSpectralZone for TVE + Coupler
         this.lastMemoryOutput = this.contextualMemory.update({
             energy: state.rawEnergy,
             bass: state.bass,
@@ -739,6 +809,8 @@ export class SeleneTitanConscious extends EventEmitter {
             sectionType: state.sectionType, // Compatibilidad de tipos
             timestamp: state.timestamp,
             hasTransient: false, // TODO: Integrar detección de transientes
+            evidence: state.sectionEvidence,
+            multiSpectralZone: this.energyConsciousness.getMultiSpectralZone() ?? undefined,
         });
         // 🧠 WAVE 666: Enriquecer el patrón con Z-Score de energía
         const enrichedPattern = {
@@ -856,7 +928,7 @@ export class SeleneTitanConscious extends EventEmitter {
             trebleEnergy: state.high,
             // AGC gain no disponible en TitanState (TODO: agregar en el futuro)
             // spectralFlux no disponible en TitanState (TODO: agregar en el futuro)
-        });
+        }, state.sectionEvidence);
         // 🔋 WAVE 934+: Log zone transitions only when persistent (prevent spam)
         // Track frames in current zone
         if (energyContext.zone === this.lastLoggedZone) {
@@ -1264,28 +1336,51 @@ export class SeleneTitanConscious extends EventEmitter {
                 && !oceanicProtection
                 && v3BypassTemporalReady
                 && !alreadyValidatedByArsenal;
-            // 📊 GATEKEEPER TELEMETRY — log the decision at the moment of firing/blocking
-            // Always log when DNA approved an effect, to trace why it fires or gets blocked
+            // V3 TUNE: Epicness available for gating decisions
+            const v3Epic = this._lastLiquidVerdict?.epicness ?? 0;
+            // 📊 GATEKEEPER TELEMETRY — log only on state change to prevent per-frame spam
             if (isDNADecision && output.effectDecision) {
-                const v3Epic = this._lastLiquidVerdict?.epicness ?? 0;
-                console.log(`[Gatekeeper 📊] ${intent} | v3Ignite=${this._v3Ignite} epicness=${v3Epic.toFixed(3)} | ` +
-                    `hardBlocked=${isHardMinimumBlocked} refractory=${refractoryBlocked} | ` +
-                    `arsenalValidated=${!!alreadyValidatedByArsenal} ethicsOverride=${hasHighEthicsOverride} | ` +
-                    `v3Bypass=${v3IgniteBypass} v3BypassReady=${v3BypassTemporalReady} | ` +
-                    `cooldown=${hardMinimumCheck.available ? 'OK' : hardMinimumCheck.reason} | ` +
-                    `ethics=${ethicsScore.toFixed(2)}/${ethicsThreshold}`);
+                const logKey = `${intent}|${this._v3Ignite}|${isHardMinimumBlocked}|${refractoryBlocked}`;
+                if (logKey !== this._lastGatekeeperLogKey) {
+                    this._lastGatekeeperLogKey = logKey;
+                    console.log(`[Gatekeeper 📊] ${intent} | v3Ignite=${this._v3Ignite} epicness=${v3Epic.toFixed(3)} | ` +
+                        `hardBlocked=${isHardMinimumBlocked} refractory=${refractoryBlocked} | ` +
+                        `arsenalValidated=${!!alreadyValidatedByArsenal} ethicsOverride=${hasHighEthicsOverride} | ` +
+                        `v3Bypass=${v3IgniteBypass} v3BypassReady=${v3BypassTemporalReady} | ` +
+                        `cooldown=${hardMinimumCheck.available ? 'OK' : hardMinimumCheck.reason} | ` +
+                        `ethics=${ethicsScore.toFixed(2)}/${ethicsThreshold}`);
+                }
             }
+            // V3 TUNE: Ambient DNA classification — DNA-approved but NOT divine/drop origin.
+            // These are the "normal" effects that overfire. They must respect V3 ignition.
+            const isDropOrigin = output.effectDecision?.reason?.includes('🔴 DROP');
+            const isAmbientDNA = isDNADecision && !isDropOrigin && !alreadyValidatedByArsenal;
+            // V3 TUNE: Drop reservation window — when Cassandra predicts a drop within 3s,
+            // block ambient effects to save Selene for the drop. Prevents "arriving late"
+            // because Selene was busy showing an ambient effect during the buildup.
+            const isDropImminent = prediction?.type === 'drop_incoming'
+                && prediction.estimatedTimeMs < 3000
+                && prediction.probability > 0.60;
+            // V3 TUNE: DROP chain cooldown — prevent 3-4 DROP effects firing in rapid succession
+            const timeSinceLastDrop = now - this.lastDropEffectTimestamp;
+            const isDropChainBlocked = isDropOrigin && timeSinceLastDrop < this.DROP_CHAIN_COOLDOWN_MS;
             const availability = isHardMinimumBlocked
                 ? hardMinimumCheck // 🔒 HARD MINIMUM es LEY ABSOLUTA
-                : refractoryBlocked
-                    ? { available: false, reason: 'Post-Drop Refractory Lock (WAVE 4860)' }
-                    : alreadyValidatedByArsenal
-                        ? { available: true, reason: 'DIVINE arsenal pre-validated' }
-                        : hasHighEthicsOverride
-                            ? { available: true, reason: `DNA override (${currentMoodProfile.emoji} ${currentMoodProfile.name}: ethics ${ethicsScore.toFixed(2)} > ${ethicsThreshold})` }
-                            : v3IgniteBypass
-                                ? { available: true, reason: `V3 IGNITE bypass (ethics=${ethicsScore.toFixed(2)})` }
-                                : hardMinimumCheck;
+                : isDropChainBlocked
+                    ? { available: false, reason: `DROP chain cooldown (${Math.ceil((this.DROP_CHAIN_COOLDOWN_MS - timeSinceLastDrop) / 1000)}s remaining)` }
+                    : refractoryBlocked
+                        ? { available: false, reason: 'Post-Drop Refractory Lock (WAVE 4860)' }
+                        : alreadyValidatedByArsenal
+                            ? { available: true, reason: 'DIVINE arsenal pre-validated' }
+                            : hasHighEthicsOverride
+                                ? { available: true, reason: `DNA override (${currentMoodProfile.emoji} ${currentMoodProfile.name}: ethics ${ethicsScore.toFixed(2)} > ${ethicsThreshold})` }
+                                : v3IgniteBypass
+                                    ? { available: true, reason: `V3 IGNITE bypass (ethics=${ethicsScore.toFixed(2)})` }
+                                    : isAmbientDNA && v3Epic < 0.10
+                                        ? { available: false, reason: `Epicness too low for ambient DNA (${v3Epic.toFixed(3)} < 0.10)` }
+                                        : isAmbientDNA && isDropImminent
+                                            ? { available: false, reason: 'Drop reservation — saving Selene for imminent drop' }
+                                            : hardMinimumCheck;
             if (availability.available && output.effectDecision) {
                 finalEffectDecision = output.effectDecision;
                 // 🛡️ WAVE 4860: Registrar si este efecto es de alta severidad para activar
@@ -1297,6 +1392,10 @@ export class SeleneTitanConscious extends EventEmitter {
                     || pattern.section === 'drop';
                 if (isHighSeverityApproved) {
                     this.lastHighSeverityEffectTimestamp = now;
+                }
+                // V3 TUNE: Register DROP chain cooldown timestamp
+                if (isDropOrigin) {
+                    this.lastDropEffectTimestamp = now;
                 }
                 if (hasHighEthicsOverride) {
                     // ⚡ WAVE 2093.2: Registrar el override para temporal guard
@@ -1736,7 +1835,7 @@ export class SeleneTitanConscious extends EventEmitter {
         if (sectionType === 'build')
             return 'buildup';
         // Validar que sea un tipo conocido
-        const validTypes = ['intro', 'verse', 'chorus', 'bridge', 'buildup', 'drop', 'breakdown', 'outro'];
+        const validTypes = ['intro', 'verse', 'chorus', 'bridge', 'buildup', 'drop', 'textural_drop', 'breakdown', 'outro'];
         if (validTypes.includes(sectionType)) {
             return sectionType;
         }

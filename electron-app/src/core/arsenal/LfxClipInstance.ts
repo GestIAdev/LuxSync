@@ -551,6 +551,7 @@ export class LfxClipInstance {
 
     const aggression = this.acoTriad.aggression
     const aggressionRange = Object.freeze({ min: aggression, max: aggression })
+    const pressureRange = Object.freeze({ min: 0, max: 0 })
 
     const spatialBehavior: LfxSpatialBehavior = this.spatialBehavior
 
@@ -561,6 +562,7 @@ export class LfxClipInstance {
       validSections: Object.freeze([] as readonly string[]),
       energyZone,
       aggressionRange,
+      pressureRange,
       spatialBehavior,
       ikCompatibility: undefined,
     })

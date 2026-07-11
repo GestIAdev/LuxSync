@@ -22,6 +22,7 @@ import { serializeHephClip } from './types'
 import { LfxFileLoader } from '../arsenal/LfxFileLoader'
 import { getDynamicEffectRegistry } from '../arsenal/DynamicEffectRegistry'
 import { getHephaestusClipIndex } from './HephaestusClipIndex'
+import { getHephaestusRuntime } from '../orchestrator/IPCHandlers'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SETUP FUNCTION
@@ -59,6 +60,14 @@ export function setupHephIPCHandlers(): void {
       const registered = await _lfxLoader.loadFile(filePath, 'user')
       if (registered) {
         console.log(`[HephIPC] ⚡ Hot-registered "${clipData.name}" in arsenal for Selene`)
+      }
+
+      // ⚡ Hot-reload: invalidate runtime cache + reload active clips
+      // so changes are visible immediately without app restart.
+      try {
+        getHephaestusRuntime().hotReload(filePath)
+      } catch {
+        // Runtime may not be initialized yet (e.g. during tests)
       }
 
       return {
@@ -222,14 +231,14 @@ export function setupHephIPCHandlers(): void {
    * @returns { success, path }
    */
   ipcMain.handle('heph:getPath', async () => {
-    console.log('[HephIPC] Get effects path')
+    console.log('[HephIPC] Get arsenal path')
     
     try {
-      const effectsPath = await hephFileIO.getEffectsPath()
+      const arsenalPath = await hephFileIO.getArsenalPath()
       
       return {
         success: true,
-        path: effectsPath,
+        path: arsenalPath,
       }
     } catch (error) {
       console.error('[HephIPC] Get path failed:', error)

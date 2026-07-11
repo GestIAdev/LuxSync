@@ -376,6 +376,7 @@ export class LfxClipInstance {
         const compatibleVibes = Object.freeze(this.compatibleVibes.map(v => VIBE_BRIDGE[v]));
         const aggression = this.acoTriad.aggression;
         const aggressionRange = Object.freeze({ min: aggression, max: aggression });
+        const pressureRange = Object.freeze({ min: 0, max: 0 });
         const spatialBehavior = this.spatialBehavior;
         return Object.freeze({
             genome,
@@ -384,6 +385,7 @@ export class LfxClipInstance {
             validSections: Object.freeze([]),
             energyZone,
             aggressionRange,
+            pressureRange,
             spatialBehavior,
             ikCompatibility: undefined,
         });

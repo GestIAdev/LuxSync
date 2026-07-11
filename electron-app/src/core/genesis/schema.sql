@@ -38,6 +38,8 @@ CREATE TABLE IF NOT EXISTS lfx_blueprints (
   energy_zone_max       TEXT NOT NULL,
   aggression_range_min  REAL NOT NULL,
   aggression_range_max  REAL NOT NULL,
+  pressure_range_min    REAL NOT NULL DEFAULT 0,
+  pressure_range_max    REAL NOT NULL DEFAULT 0,
   spatial_behavior      TEXT NOT NULL,
 
   -- ADN Somático completo (el genoma V3 entero, congelado)

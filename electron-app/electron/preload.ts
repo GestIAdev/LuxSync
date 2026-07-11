@@ -531,6 +531,18 @@ const api = {
      */
     generateId: (): Promise<{ id: string }> =>
       ipcRenderer.invoke('heph:generateId'),
+
+    /**
+     * 📡 Reactivity: Subscribe to index change notifications.
+     * Fired whenever the HephaestusClipIndex changes (save/canonize/delete/boot).
+     * @param callback - Called when the index is updated
+     * @returns unsubscribe function
+     */
+    onIndexUpdated: (callback: () => void): (() => void) => {
+      const handler = () => callback()
+      ipcRenderer.on('heph:index-updated', handler)
+      return () => ipcRenderer.removeListener('heph:index-updated', handler)
+    },
   },
 
   // ============================================
@@ -546,8 +558,8 @@ const api = {
       ipcRenderer.invoke('genesis:getLineageTree', organismId),
     cullOrganism: (organismId: string): Promise<{ success: boolean; error?: string }> =>
       ipcRenderer.invoke('genesis:cullOrganism', organismId),
-    canonizeOrganism: (organismId: string, customName: string): Promise<{ success: boolean; blueprintId?: string; customName?: string; error?: string }> =>
-      ipcRenderer.invoke('genesis:canonizeOrganism', organismId, customName),
+    canonizeMutant: (organismId: string, customName?: string): Promise<{ success: boolean; filePath?: string; fileName?: string; customName?: string; error?: string }> =>
+      ipcRenderer.invoke('genesis:canonizeMutant', organismId, customName),
     runMaintenance: (): Promise<{ success: boolean; result?: unknown; error?: string }> =>
       ipcRenderer.invoke('genesis:runMaintenance'),
     getSpecies: (): Promise<{ success: boolean; species: unknown[]; error?: string }> =>
@@ -556,8 +568,6 @@ const api = {
       ipcRenderer.invoke('genesis:purgeEcosystem'),
     materializeClip: (organismId: string): Promise<{ success: boolean; clip?: unknown; error?: string }> =>
       ipcRenderer.invoke('genesis:materializeClip', organismId),
-    canonizeToBuiltins: (clip: unknown, organismId: string): Promise<{ success: boolean; filePath?: string; fileName?: string; error?: string }> =>
-      ipcRenderer.invoke('genesis:canonizeToBuiltins', clip, organismId),
     suggestName: (organismId: string): Promise<{ success: boolean; name?: string; error?: string }> =>
       ipcRenderer.invoke('genesis:suggestName', organismId),
     deleteCanonized: (organismId: string): Promise<{ success: boolean; deletedFile?: boolean; error?: string }> =>

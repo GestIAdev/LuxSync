@@ -69,6 +69,26 @@ class HephaestusClipIndex {
     constructor() {
         this._byId = new Map();
         this._byPath = new Map();
+        this._changeListeners = [];
+    }
+    // ── Change Notification ─────────────────────────────────────────────
+    /**
+     * Register a callback fired whenever the index changes (upsert/remove/clear).
+     * Used by the main process to push 'heph:index-updated' IPC events to the renderer.
+     */
+    onDidChange(cb) {
+        this._changeListeners.push(cb);
+        return () => {
+            this._changeListeners = this._changeListeners.filter(fn => fn !== cb);
+        };
+    }
+    _notifyChange() {
+        for (const cb of this._changeListeners) {
+            try {
+                cb();
+            }
+            catch { /* listener error — ignore */ }
+        }
     }
     // ── O(1) Lookups (synchronous) ──────────────────────────────────────────
     getById(id) {
@@ -91,10 +111,12 @@ class HephaestusClipIndex {
             return;
         this._byId.delete(id);
         this._byPath.delete(loaded.filePath);
+        this._notifyChange();
     }
     clear() {
         this._byId.clear();
         this._byPath.clear();
+        this._notifyChange();
     }
     // ── Async Ingest ────────────────────────────────────────────────────────
     /**
@@ -170,6 +192,7 @@ class HephaestusClipIndex {
             }
             this._byId.set(clip.id, loaded);
             this._byPath.set(filePath, loaded);
+            this._notifyChange();
             return loaded;
         }
         catch (err) {

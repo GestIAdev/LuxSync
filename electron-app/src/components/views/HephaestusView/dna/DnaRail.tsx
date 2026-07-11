@@ -170,6 +170,7 @@ interface DnaFormState {
   zones: EnergyZoneId[]
   vibes: CompatibleVibe[]
   maxStrobeFreqHz: number
+  pressureRange: { min: number; max: number }
 }
 
 function buildInstance(state: DnaFormState, clipId: string): LfxClipInstance {
@@ -228,6 +229,7 @@ export const DnaRail: React.FC<DnaRailProps> = ({
       zones: ['ambient', 'gentle', 'active'],
       vibes: [],
       maxStrobeFreqHz: 0,
+      pressureRange: { min: 0, max: 0 },
     }
     // Reverse-map compatibleVibes from bridged (Selene) → directive (CompatibleVibe)
     const rawVibes = Array.isArray(dna.compatibleVibes) ? dna.compatibleVibes : []
@@ -249,6 +251,7 @@ export const DnaRail: React.FC<DnaRailProps> = ({
       })(),
       vibes: reversedVibes,
       maxStrobeFreqHz: 0,
+      pressureRange: dna.pressureRange ? { ...dna.pressureRange } : { min: 0, max: 0 },
     }
   })
 
@@ -266,6 +269,7 @@ export const DnaRail: React.FC<DnaRailProps> = ({
         zones: ['ambient', 'gentle', 'active'],
         vibes: [],
         maxStrobeFreqHz: 0,
+        pressureRange: { min: 0, max: 0 },
       })
       return
     }
@@ -288,6 +292,7 @@ export const DnaRail: React.FC<DnaRailProps> = ({
       })(),
       vibes: reversedVibes,
       maxStrobeFreqHz: prev.maxStrobeFreqHz,
+      pressureRange: dna.pressureRange ? { ...dna.pressureRange } : { min: 0, max: 0 },
     }))
   }, [dna])
 
@@ -330,6 +335,7 @@ export const DnaRail: React.FC<DnaRailProps> = ({
       validSections: dna.validSections,
       energyZone: { ...reality.energyZone },
       aggressionRange: { ...reality.aggressionRange },
+      pressureRange: { ...form.pressureRange },
       spatialBehavior: reality.spatialBehavior,
       ikCompatibility: dna.ikCompatibility,
     })
@@ -406,6 +412,26 @@ export const DnaRail: React.FC<DnaRailProps> = ({
   const handleStrobeHz = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const val = Math.max(0, Math.min(30, parseFloat(e.target.value) || 0))
     setForm(prev => ({ ...prev, maxStrobeFreqHz: val }))
+  }, [])
+
+  const handlePressureMin = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = Math.max(0, Math.min(1, parseFloat(e.target.value) || 0))
+    setForm(prev => ({
+      ...prev,
+      pressureRange: { min: val, max: Math.max(val, prev.pressureRange.max) },
+    }))
+  }, [])
+
+  const handlePressureMax = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = Math.max(0, Math.min(1, parseFloat(e.target.value) || 0))
+    setForm(prev => ({
+      ...prev,
+      pressureRange: { min: Math.min(prev.pressureRange.min, val), max: val },
+    }))
+  }, [])
+
+  const handlePressureReset = useCallback(() => {
+    setForm(prev => ({ ...prev, pressureRange: { min: 0, max: 0 } }))
   }, [])
 
   // ── No DNA — CTA ──
@@ -587,7 +613,60 @@ export const DnaRail: React.FC<DnaRailProps> = ({
           </p>
         </section>
 
-        {/* ══ SECTION 5: VIBE COMPATIBILITY ══ */}
+        {/* ══ SECTION 5: ACOUSTIC PRESSURE ══ */}
+        <section className="dna-rail__section">
+          <div className="dna-rail__section-label">ACOUSTIC PRESSURE</div>
+          {form.pressureRange.min === 0 && form.pressureRange.max === 0 ? (
+            <div className="dna-rail__pressure-permissive">
+              <span className="dna-rail__pressure-permissive-text">PERMISSIVE — NO GATE</span>
+              <button
+                type="button"
+                className="dna-rail__pressure-enable-btn"
+                onClick={() => setForm(prev => ({ ...prev, pressureRange: { min: 0.2, max: 0.8 } }))}
+              >
+                + SET RANGE
+              </button>
+            </div>
+          ) : (
+            <div className="dna-rail__pressure-controls">
+              <div className="dna-rail__pressure-row">
+                <span className="dna-rail__pressure-axis">MIN</span>
+                <div className="dna-rail__slider-wrap">
+                  <input
+                    type="range"
+                    className="dna-rail__genome-slider dna-rail__genome-slider--sim"
+                    min={0} max={1} step={0.01}
+                    value={form.pressureRange.min}
+                    onChange={handlePressureMin}
+                  />
+                </div>
+                <span className="dna-rail__genome-val">{form.pressureRange.min.toFixed(2)}</span>
+              </div>
+              <div className="dna-rail__pressure-row">
+                <span className="dna-rail__pressure-axis">MAX</span>
+                <div className="dna-rail__slider-wrap">
+                  <input
+                    type="range"
+                    className="dna-rail__genome-slider dna-rail__genome-slider--sim"
+                    min={0} max={1} step={0.01}
+                    value={form.pressureRange.max}
+                    onChange={handlePressureMax}
+                  />
+                </div>
+                <span className="dna-rail__genome-val">{form.pressureRange.max.toFixed(2)}</span>
+              </div>
+              <button
+                type="button"
+                className="dna-rail__pressure-reset-btn"
+                onClick={handlePressureReset}
+              >
+                Reset to Permissive
+              </button>
+            </div>
+          )}
+        </section>
+
+        {/* ══ SECTION 6: VIBE COMPATIBILITY ══ */}
         <section className="dna-rail__section">
           <div className="dna-rail__section-label">VIBES</div>
           <div className="dna-rail__vibes">

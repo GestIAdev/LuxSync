@@ -487,16 +487,11 @@ async function initTitan() {
         if (_vibeDirectories.length === 0) {
             _vibeDirectories.push({ absolutePath: _builtinPath, source: 'builtin' });
         }
-        // ⚒️ WAVE 7033: USER CLIPS — userData/effects/ debe escanearse en boot
-        // Sin esto, los clips guardados por HephFileIO.saveClip() se escriben a
-        // userData/effects/ pero nunca entran al HephaestusClipIndex tras un reload.
-        const _userEffectsPath = path.join(app.getPath('userData'), 'effects');
-        _vibeDirectories.push({ absolutePath: _userEffectsPath, source: 'user' });
-        // 🧬 WAVE 6000.V7: CANONIZED CLIPS — userData/builtins/ contiene los .lfx
-        // exportados por genesis:canonizeToBuiltins. Sin esto, los efectos canonizados
-        // nunca entran al HephaestusClipIndex ni al DynamicEffectRegistry tras un reload.
-        const _canonizedPath = path.join(app.getPath('userData'), 'builtins');
-        _vibeDirectories.push({ absolutePath: _canonizedPath, source: 'builtin' });
+        // ⚒️ UNIFIED ARSENAL — userData/arsenal/ is the single source of truth for
+        // all .lfx files: Hephaestus saves, Genesis canonizations, and user imports.
+        // Replaces the fragmented userData/effects/ + userData/builtins/ paths.
+        const _arsenalPath = path.join(app.getPath('userData'), 'arsenal');
+        _vibeDirectories.push({ absolutePath: _arsenalPath, source: 'user' });
         const _lfxLoader = new LfxFileLoader(getDynamicEffectRegistry());
         const _arsenalReport = await _lfxLoader.loadAll(_vibeDirectories);
         console.log(`[TitanOrchestrator] ⚡ Infinite Arsenal: ` +
@@ -509,6 +504,23 @@ async function initTitan() {
     }
     catch (_arsenalErr) {
         console.error('[TitanOrchestrator] ❌ Arsenal boot failed (non-fatal):', _arsenalErr);
+    }
+    // ⚒️ UI REACTIVITY: Push 'heph:index-updated' to renderer whenever the
+    // HephaestusClipIndex changes (save/canonize/delete/boot). This cures the
+    // React UI race condition where useHephLibrary mounts before the index is populated.
+    try {
+        const { getHephaestusClipIndex } = await import('../src/core/hephaestus/HephaestusClipIndex');
+        getHephaestusClipIndex().onDidChange(() => {
+            try {
+                if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+                    mainWindow.webContents.send('heph:index-updated');
+                }
+            }
+            catch { /* renderer destroyed — ignore */ }
+        });
+    }
+    catch (_indexWireErr) {
+        console.warn('[TitanOrchestrator] ⚠️ Failed to wire HephaestusClipIndex change listener:', _indexWireErr);
     }
     // ════════════════════════════════════════════════════════════
     await titanOrchestrator.init();

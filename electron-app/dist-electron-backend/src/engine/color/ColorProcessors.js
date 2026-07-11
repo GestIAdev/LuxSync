@@ -157,6 +157,7 @@ const SECTION_MAP = {
     verse: 'verse',
     chorus: 'chorus',
     drop: 'drop',
+    textural_drop: 'textural_drop',
     bridge: 'bridge',
     outro: 'outro',
     build: 'build',

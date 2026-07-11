@@ -703,6 +703,10 @@ export function blendCognitiveDNA(dnaA, dnaB, dominant) {
         min: Math.min(dnaA.aggressionRange.min, dnaB.aggressionRange.min),
         max: Math.max(dnaA.aggressionRange.max, dnaB.aggressionRange.max),
     };
+    const pressureRange = {
+        min: Math.min(dnaA.pressureRange.min, dnaB.pressureRange.min),
+        max: Math.max(dnaA.pressureRange.max, dnaB.pressureRange.max),
+    };
     return {
         genome,
         textureAffinity,
@@ -710,6 +714,7 @@ export function blendCognitiveDNA(dnaA, dnaB, dominant) {
         validSections,
         energyZone,
         aggressionRange,
+        pressureRange,
         spatialBehavior,
         ikCompatibility: dom.ikCompatibility,
         executionDomain: dom.executionDomain,

@@ -7,7 +7,7 @@
  * Coordina:
  *   - SimpleRhythmDetector  (patrón rítmico, syncopation, groove)
  *   - SimpleHarmonyDetector (key, mood, temperatura)
- *   - SimpleSectionTracker  (intro/verse/chorus/drop/breakdown…)
+ *   - MultiSpectralSectionTracker  (multi-spectral section detection, M-SARFE Phase 1)
  *   - MoodSynthesizer      (VAD emotional analysis)
  *
  * Extraído de senses.ts (WAVE 8 INTEGRATION — PHASE 3 del pipeline).
@@ -20,7 +20,7 @@
  *          via VibeManager en GAMMA. Solo se devuelve un GenreOutput neutro
  *          para compatibilidad de protocolo.
  */
-import { SimpleRhythmDetector, SimpleHarmonyDetector, SimpleSectionTracker, } from '../../../workers/TrinityBridge';
+import { SimpleRhythmDetector, SimpleHarmonyDetector, MultiSpectralSectionTracker, } from '../../../workers/TrinityBridge';
 import { MoodSynthesizer } from '../../../engine/musical/classification/MoodSynthesizer';
 // ============================================
 // NEUTRAL GENRE OUTPUT (WAVE 61)
@@ -54,16 +54,16 @@ function buildNeutralGenre(bpm, syncopation, hasFourOnFloor, energy) {
  *
  * Estado encapsulado:
  * - Instancias de SimpleRhythmDetector, SimpleHarmonyDetector,
- *   SimpleSectionTracker (stateful), MoodSynthesizer (stateful)
+ *   MultiSpectralSectionTracker (stateful), MoodSynthesizer (stateful)
  *
  * Llamar setVibe() cuando el Worker recibe MessageType.SET_VIBE
- * (necesario para que SimpleSectionTracker ajuste su lógica de sección).
+ * (necesario para que MultiSpectralSectionTracker ajuste su lógica de sección).
  */
 export class SectionTracker {
     constructor() {
         this.rhythmDetector = new SimpleRhythmDetector();
         this.harmonyDetector = new SimpleHarmonyDetector();
-        this.sectionTrackerInner = new SimpleSectionTracker();
+        this.sectionTrackerInner = new MultiSpectralSectionTracker();
         this.moodSynthesizer = new MoodSynthesizer();
     }
     /**
@@ -122,7 +122,7 @@ export class SectionTracker {
         };
     }
     /**
-     * Actualiza el vibe en SimpleSectionTracker.
+     * Actualiza el vibe en MultiSpectralSectionTracker.
      * Llamar cuando el Worker recibe MessageType.SET_VIBE.
      */
     setVibe(vibeId) {

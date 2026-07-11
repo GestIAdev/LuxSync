@@ -573,7 +573,39 @@ export class EffectDreamSimulator {
     
     return filtered
   }
-  
+
+  /**
+   * 🎯 pressureRange gate — filters candidates whose acoustic pressure envelope
+   * does not contain the current real-time pressure.
+   *
+   * A pressureRange of {0,0} is permissive (no gate).
+   * If relaxGuardsForFuture is true, the min gate is bypassed (pressure will arrive).
+   */
+  private filterByPressure(
+    effects: string[],
+    currentPressure: number,
+    relaxGuardsForFuture: boolean,
+  ): string[] {
+    const registry = getDynamicEffectRegistry()
+    const filtered = effects.filter(effect => {
+      const entry = registry.getEntry(effect)
+      if (!entry) return false
+      const pr = entry.pressureRange
+      if (pr.min === 0 && pr.max === 0) return true
+      if (relaxGuardsForFuture && currentPressure < pr.min) return true
+      return currentPressure >= pr.min && currentPressure <= pr.max
+    })
+
+    if (filtered.length === 0) {
+      console.log(
+        `[DREAM_SIMULATOR] 🎯 Pressure filter too strict (pressure=${currentPressure.toFixed(3)}), returning all zone-filtered effects`,
+      )
+      return effects
+    }
+
+    return filtered
+  }
+
   /**
    * Helper para logging: muestra el rango de agresión de una zona
    * 🎚️ WAVE 996: Updated para THE LADDER - rangos ampliados
@@ -702,6 +734,10 @@ export class EffectDreamSimulator {
 
     const zoneFilteredEffects = this.filterByZone(vibeAllowedEffects, projectedZone)
 
+    // 🎯 pressureRange gate — filter by acoustic pressure envelope
+    const currentPressure = context.energy ?? state.energy
+    const pressureFilteredEffects = this.filterByPressure(zoneFilteredEffects, currentPressure, relaxGuardsForFuture)
+
     // 🎯 WAVE 4865: Muestreo sin reemplazo por effect id.
     // Evita clones en ranking cuando múltiples aliases/vías aportan el mismo efecto.
     const seenEffectIds = new Set<string>()
@@ -712,7 +748,7 @@ export class EffectDreamSimulator {
     const moodController = MoodController.getInstance()
     const currentProfile = moodController.getCurrentProfile()
     let blockedCount = 0
-    let zoneBlockedCount = vibeAllowedEffects.length - zoneFilteredEffects.length
+    let zoneBlockedCount = vibeAllowedEffects.length - pressureFilteredEffects.length
     
     // ⚡ WAVE 4846: SPATIAL COGNITION — Hardware manifest snapshot (once per call)
     // Construimos el Set de CanonicalZones activas UNA SOLA VEZ antes del loop.
@@ -725,7 +761,7 @@ export class EffectDreamSimulator {
     )
 
     // Generar candidatos SOLO de efectos filtrados
-    for (const effect of zoneFilteredEffects) {
+    for (const effect of pressureFilteredEffects) {
       if (seenEffectIds.has(effect)) {
         continue
       }
@@ -839,11 +875,11 @@ export class EffectDreamSimulator {
     // 🔮 WAVE 5014: Si la projectedZone amplió el pool pero todos siguen bloqueados,
     //   el Rescue parte desde todos los efectos del vibe (no solo los filtrados por zona)
     //   para garantizar candidatos en cualquier escenario predictivo.
-    if (candidates.length === 0 && zoneFilteredEffects.length > 0) {
+    if (candidates.length === 0 && pressureFilteredEffects.length > 0) {
       console.log(`[DREAM_SIMULATOR] ⚠️ All effects blocked by Z-guards! (Z=${zScore.toFixed(3)} projectedZone=${projectedZone}). Attempting Minimal Rescue...`)
       
       const registry = getDynamicEffectRegistry()
-      for (const effect of zoneFilteredEffects) {
+      for (const effect of pressureFilteredEffects) {
         if (moodController.isEffectBlocked(effect)) continue
         const entry = registry.getEntry(effect)
         if (!entry) continue
@@ -1068,21 +1104,22 @@ export class EffectDreamSimulator {
     const spectralFlatness = context.spectral?.flatness ?? 0.5
     
     // Construir MusicalContext para el DNAAnalyzer
-    // Derivamos todo lo que podemos de AudienceSafetyContext + SystemState
+    // 🧬 M-SARFE: When ARS is available, the DNAAnalyzer uses it for target derivation.
+    // The legacy fields below are only used as fallback when ARS is absent.
     const musicalContext: MusicalContextForDNA = {
       energy: state.energy,
-      syncopation: undefined,  // No disponible directamente
-      mood: this.deriveMusicalMood(context),
+      syncopation: undefined,
+      mood: 'neutral',
       section: {
         type: this.deriveSection(state, context),
         confidence: 0.75
       },
       rhythm: {
         drums: {
-          kickIntensity: state.energy * 0.8  // Derivado de energía
+          kickIntensity: 0
         },
         fillDetected: false,
-        groove: context.vibe.includes('latino') ? 0.8 : 0.5,
+        groove: 0.5,
         confidence: 0.7
       },
       energyContext: {
@@ -1092,18 +1129,21 @@ export class EffectDreamSimulator {
     }
     
     // Construir AudioMetrics para el DNAAnalyzer
+    // 🧬 M-SARFE: When ARS is present, bass/mid/treble are NOT used for target derivation.
+    // Only harshness and spectralFlatness are passed through (they come from real FFT).
     const audioMetrics: AudioMetricsForDNA = {
-      bass: state.energy * 0.7,
+      bass: 0.5,
       mid: 0.5,
-      treble: context.vibe.includes('techno') ? 0.6 : 0.4,
+      treble: 0.5,
       volume: state.energy,
       harshness,
       spectralFlatness
     }
     
     // Usar el DNAAnalyzer singleton para derivar el Target DNA
+    // 🧬 M-SARFE: Pass AcousticRealityState for real acoustic target derivation
     const dnaAnalyzer = getDNAAnalyzer()
-    const targetDNA = dnaAnalyzer.deriveTargetDNA(musicalContext, audioMetrics)
+    const targetDNA = dnaAnalyzer.deriveTargetDNA(musicalContext, audioMetrics, context.acousticReality)
     
     // 🩸 WAVE 2104.1: DIAGNOSTIC — Target DNA (throttled: 1 per effect per dream cycle)
     // Solo loguear para el PRIMER efecto evaluado en cada dream cycle (evitar spam)
@@ -1126,16 +1166,6 @@ export class EffectDreamSimulator {
     relevance = Math.max(0, Math.min(1, relevance))
     
     return { relevance, distance, targetDNA }
-  }
-  
-  /**
-   * 🧬 WAVE 970: Deriva mood musical del contexto de audiencia
-   */
-  private deriveMusicalMood(context: AudienceSafetyContext): 'aggressive' | 'melancholic' | 'euphoric' | 'neutral' {
-    if (context.vibe.includes('techno')) return 'aggressive'
-    if (context.vibe.includes('latino')) return 'euphoric'
-    if (context.vibe.includes('chill') || context.vibe.includes('ambient')) return 'melancholic'
-    return 'neutral'
   }
   
   /**

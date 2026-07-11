@@ -84,7 +84,7 @@ export interface GenesisStoreState {
   fetchSpecies: () => Promise<void>
   selectOrganism: (organismId: string | null) => void
   cullOrganism: (organismId: string) => Promise<void>
-  canonizeOrganism: (organismId: string, customName: string) => Promise<boolean>
+  canonizeMutant: (organismId: string, customName?: string) => Promise<boolean>
   runMaintenance: () => Promise<void>
   purgeEcosystem: () => Promise<void>
   setFilterRarityTier: (tier: string | null) => void
@@ -213,12 +213,12 @@ export const useGenesisStore = create<GenesisStoreState>((set, get) => ({
     }
   },
 
-  canonizeOrganism: async (organismId: string, customName: string): Promise<boolean> => {
+  canonizeMutant: async (organismId: string, customName?: string): Promise<boolean> => {
     const api = getGenesisApi()
     if (!api) return false
 
     try {
-      const result = await api.canonizeOrganism(organismId, customName)
+      const result = await api.canonizeMutant(organismId, customName)
       if (result.success) {
         // Update organism status in local state
         set((state) => ({
@@ -229,12 +229,12 @@ export const useGenesisStore = create<GenesisStoreState>((set, get) => ({
           ),
           hallOfFame: state.hallOfFame.filter((o) => o.organism_id !== organismId),
         }))
-        console.log(`[GenesisStore] 👑 Canonized: ${organismId} as "${result.customName}"`)
+        console.log(`[GenesisStore] 👑 Canonized mutant: ${organismId} as "${result.customName}"`)
         return true
       }
       return false
     } catch (err) {
-      console.error('[GenesisStore] canonizeOrganism error:', err)
+      console.error('[GenesisStore] canonizeMutant error:', err)
       return false
     }
   },

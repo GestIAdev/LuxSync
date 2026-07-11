@@ -675,6 +675,21 @@ export class SeleneTitanConscious extends EventEmitter {
               }
             }
 
+            // ── PRESSURE VETO: Independent hard veto based on pressureRange DNA ──
+            // Applies to ALL pre-buffered effects, not just heavy/divine.
+            // A pressureRange of {0,0} is permissive (no gate).
+            if (!aborted && registryEntry) {
+              const pr = registryEntry.pressureRange
+              if (!(pr.min === 0 && pr.max === 0)) {
+                const currentPressure = titanState.rawEnergy
+                if (currentPressure < pr.min || currentPressure > pr.max) {
+                  aborted = true
+                  abortReason =
+                    `Pressure veto (Pressure=${currentPressure.toFixed(2)} outside allowed range [${pr.min}, ${pr.max}])`
+                }
+              }
+            }
+
             if (aborted) {
               console.log(
                 `[Sovereign Clock 🛡️] PRE-BUFFER ABORTED: "${candidate.effectName ?? candidate.effect}" — ${abortReason}`
@@ -1401,6 +1416,8 @@ export class SeleneTitanConscious extends EventEmitter {
             ultraAir: state.ultraAir,     // 🎯 Dato real desde TitanEngine
           }
         },
+        // 🧬 M-SARFE: Inject AcousticRealityState for real DNA target derivation
+        acousticReality: this.lastMemoryOutput?.acousticReality,
       }
       
       // 🧬 DNA Brain simula - NO decide

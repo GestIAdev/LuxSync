@@ -11,6 +11,7 @@ export const DEFAULT_COGNITIVE_DNA = Object.freeze({
     validSections: [],
     energyZone: { min: 'ambient', max: 'peak' },
     aggressionRange: { min: 0, max: 1 },
+    pressureRange: { min: 0, max: 0 },
     spatialBehavior: 'absolute',
     ikCompatibility: undefined,
 });

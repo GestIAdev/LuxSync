@@ -29,6 +29,8 @@
 import type { EffectHistoryEntry, EffectBiasAnalysis } from './EffectBiasTracker'
 // 🛡️ WAVE 1030: THE GUARDIAN - SpectralContext for texture-aware ethics
 import type { SpectralContext } from '../../protocol/MusicalContext'
+// 🧬 M-SARFE: AcousticRealityState for real acoustic DNA target derivation
+import type { AcousticRealityState } from '../perception/StateCouplingEnforcer'
 
 // ═══════════════════════════════════════════════════════════════
 // AUDIENCE SAFETY CONTEXT
@@ -205,6 +207,14 @@ export interface AudienceSafetyContext {
    * OPTIONAL: Si no está presente, las reglas usan defaults conservadores.
    */
   spectral?: SpectralContext
+
+  /**
+   * 🧬 M-SARFE: Acoustic Reality State — validated acoustic truth from TVE + Coupler.
+   * When present, the Dream Simulator uses this to derive the Target DNA instead of
+   * hardcoded/fake audio metrics. Contains real Z-scores, crest factors, spectral
+   * tension/divergence, and validated narrative phase.
+   */
+  acousticReality?: AcousticRealityState
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -344,7 +354,15 @@ export class AudienceSafetyContextBuilder {
     this.context.spectral = spectral
     return this
   }
-  
+
+  /**
+   * 🧬 M-SARFE: Inject AcousticRealityState for real acoustic DNA target derivation.
+   */
+  withAcousticReality(ars: AcousticRealityState): this {
+    this.context.acousticReality = ars
+    return this
+  }
+
   // ═══════════════════════════════════════════════════════════════
   // BUILD
   // ═══════════════════════════════════════════════════════════════

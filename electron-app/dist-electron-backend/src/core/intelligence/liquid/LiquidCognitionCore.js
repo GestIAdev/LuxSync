@@ -112,6 +112,7 @@ export class LiquidCognitionCore {
             spectralFlatness: input.spectralFlatness,
             contextualPhase: input.contextualPhase,
             isWarmedUp: input.isWarmedUp,
+            acousticReality: input.acousticReality,
             descriptors: {
                 percussiveness: this._descriptors.percussiveness,
                 melodicity: this._descriptors.melodicity,

@@ -24,6 +24,13 @@ function sigmoid(x) {
 const ALPHA_TEMP = 1 - Math.pow(2, -1 / (2.0 * 44.0));
 // EMA α para energía RMS (ventana de crest factor ~350ms @ 44Hz ≈ 15 frames)
 const ALPHA_RMS = 1 - Math.pow(2, -1 / 15.4);
+// EMA asimétrica para impacto — subida rápida, bajada lenta
+// α_up = 0.35: half-life ~36ms (1.6 frames) — responde rápido a energía real
+// α_down = 0.08: half-life ~189ms (8.3 frames) — filtra spikes transitorios
+// Un frame FLASHBANG (raw=0.9) mueve smoothed de 0.3→0.51, no 0.3→0.9
+// Pero 3 frames sostenidos llegan a 0.54 — drops reales pasan
+const ALPHA_IMPACT_UP = 0.35;
+const ALPHA_IMPACT_DOWN = 0.08;
 // ═══════════════════════════════════════════════════════════════════════════
 // CognitiveFluidState — el vector Ψ(t) vivo
 // ═══════════════════════════════════════════════════════════════════════════
@@ -45,6 +52,7 @@ export class CognitiveFluidState {
         this._timeSinceImpact = 999; // Segundos desde último I > T·0.8
         this._lastTimestamp = 0;
         this._lastIntensity = 0;
+        this._diagFrame = 0;
         // ── Snapshot pre-asignado ──
         this._snapshot = {
             tension: 0,
@@ -109,16 +117,27 @@ export class CognitiveFluidState {
             const cfHigh = ar.crestFactors.high;
             const T = ar.spectralTension;
             const D = ar.spectralDivergence;
-            this._impact = clamp01(p.w_E * Math.tanh(zTotal / p.z_ref) +
+            const rawImpact = clamp01(p.w_E * Math.max(0, Math.tanh(zTotal / p.z_ref)) +
                 p.w_low * Math.max(0, Math.tanh(zLow / p.z_ref)) +
                 p.w_high * Math.max(0, Math.tanh(zHigh / p.z_ref)) +
                 p.w_CF * sigmoid(cfHigh - 4) +
                 p.w_T * T +
                 p.w_D * D);
+            const alphaI = rawImpact > this._impact ? ALPHA_IMPACT_UP : ALPHA_IMPACT_DOWN;
+            this._impact += alphaI * (rawImpact - this._impact);
+            this._diagFrame++;
+            if (this._diagFrame % 44 === 0) {
+                console.log(`[FLUID-DIAG] M-SARFE impact=${this._impact.toFixed(3)} | zT=${zTotal.toFixed(2)} zL=${zLow.toFixed(2)} zH=${zHigh.toFixed(2)} cfH=${cfHigh.toFixed(2)} T=${T.toFixed(3)} D=${D.toFixed(3)} | wE=${(p.w_E * Math.max(0, Math.tanh(zTotal / p.z_ref))).toFixed(3)} wL=${(p.w_low * Math.max(0, Math.tanh(zLow / p.z_ref))).toFixed(3)} wH=${(p.w_high * Math.max(0, Math.tanh(zHigh / p.z_ref))).toFixed(3)} wCF=${(p.w_CF * sigmoid(cfHigh - 4)).toFixed(3)} wT=${(p.w_T * T).toFixed(3)} wD=${(p.w_D * D).toFixed(3)}`);
+            }
         }
         else {
             const zHat = Math.tanh(input.zScore / p.z_ref);
-            this._impact = clamp01(p.w_z * zHat + p.w_cf * cfHat + p.w_e * eHat);
+            // Absolute Energy Gate: CF must not inject into I(t) when absolute
+            // energy is below 0.15 — prevents lone piano notes from spoofing drops
+            const cfContribution = input.rawEnergy > 0.15 ? p.w_cf * cfHat : 0;
+            const rawImpact = clamp01(p.w_z * zHat + cfContribution + p.w_e * eHat);
+            const alphaI = rawImpact > this._impact ? ALPHA_IMPACT_UP : ALPHA_IMPACT_DOWN;
+            this._impact += alphaI * (rawImpact - this._impact);
         }
         // ─────────────────────────────────────────────────────────
         // 4. Viscosidad μ(t) = clamp01(w_m·M + w_f·flatness + w_h·harmonicDensity − w_p·Π)
@@ -137,7 +156,7 @@ export class CognitiveFluidState {
         const sSat = sigmoid(this._timeHigh / p.tau_sat - 2); // Centrado en 2·τ_sat
         const dT_rise = p.alpha_rise * Math.max(0, this._impact - this._tension) * sSat * eHigh;
         // (b) Evaporación por sequía
-        const wasImpact = this._impact > this._tension * 0.8;
+        const wasImpact = this._impact > this._tension * 1.15;
         if (wasImpact) {
             this._timeSinceImpact = 0;
         }
@@ -168,30 +187,27 @@ export class CognitiveFluidState {
         this._excitability = clamp01(this._excitability);
         // ─────────────────────────────────────────────────────────
         // 8. Epicness — ruptura relativa de la superficie, tethered to energy
-        // FIX: La fórmula original (impact - tension) / tension requiere
-        // impact > tension, pero con la calibración actual el impacto máximo
-        // práctico (~0.42) nunca supera la tensión de equilibrio (~0.70).
-        // Nueva fórmula: ruptura relativa a la MITAD de la tensión.
-        // epicness=1 cuando impact=tension, epicness=0 cuando impact≤tension/2.
+        // REWRITE: effectiveTension = tension * 0.85.
+        // baseEpicness = clamp01((impact - effectiveTension) / (1.0 - effectiveTension))
+        // Impact must genuinely exceed 85% of current tension to generate epicness.
+        // At effectiveTension=0.595 (tension=0.70), impact needs >0.595 for any epicness.
+        //
+        // Vibe Friction: Hard genres (techno/industrial/hardstyle/dark) apply
+        // epicness^1.8 — suppresses mid-range epicness, only true peaks break through.
+        // Soft genres (ambient/latina/chill) apply epicness^1.0 — no friction.
         //
         // Fase 1B (PRECISION TUNING): Energy factor gate.
-        // Valleys (E<0.30) produce epicness=0. Vocal transients in E=0.35
-        // valleys get crushed by energyFactor=0.125. Only E≥0.70 allows
-        // full epicness — genuine drops/climaxes only.
-        //
         // Fase D (ARCHITECTURAL): Contextual Memory injection.
-        // isWarmedUp=false → epicness=0 (cold-start/post-silence protection).
-        // Phase modifier: BUILDING×0.5, RELEASE×0.7, CLIMAX×1.0.
-        // This is the true regulator — no arbitrary cooldowns needed.
         // ─────────────────────────────────────────────────────────
         if (!input.isWarmedUp) {
             this._epicness = 0;
         }
         else {
             const energyFactor = clamp01((input.rawEnergy - 0.30) / 0.40);
-            const halfTension = this._tension * 0.5;
-            const baseEpicness = halfTension > 0.001
-                ? clamp01((this._impact - halfTension) / halfTension)
+            const effectiveTension = this._tension * 0.50;
+            const denom = 1.0 - effectiveTension;
+            const baseEpicness = denom > 0.001
+                ? clamp01((this._impact - effectiveTension) / denom)
                 : 0;
             const phase = input.contextualPhase;
             const phaseModifier = phase === 'climax' ? 1.0
@@ -203,7 +219,18 @@ export class CognitiveFluidState {
                                     : phase === 'silence' ? 0.0
                                         : phase === 'valley' ? 0.2
                                             : 0.5; // unknown phase — conservative
-            this._epicness = clamp01(baseEpicness * energyFactor * phaseModifier);
+            let epic = clamp01(baseEpicness * energyFactor * phaseModifier);
+            // Vibe friction: hard genres compress epicness curve
+            const vibe = input.vibe ?? '';
+            const isHardVibe = vibe.includes('techno') || vibe.includes('industrial')
+                || vibe.includes('hardstyle') || vibe.includes('dark');
+            if (isHardVibe) {
+                epic = Math.pow(epic, 1.3);
+            }
+            this._epicness = clamp01(epic);
+            if (this._diagFrame % 44 === 0) {
+                console.log(`[FLUID-DIAG] epicness=${this._epicness.toFixed(3)} | base=${baseEpicness.toFixed(3)} impact=${this._impact.toFixed(3)} effT=${effectiveTension.toFixed(3)} tension=${this._tension.toFixed(3)} denom=${denom.toFixed(3)} E=${input.rawEnergy.toFixed(3)} eF=${energyFactor.toFixed(3)} phase=${phase} pM=${phaseModifier} vibe=${input.vibe ?? 'none'}`);
+            }
         }
     }
     /**

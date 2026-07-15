@@ -17,6 +17,7 @@
  * @revision WAVE 900.3.1 - Fixed type casting, cache key, execution tracking
  */
 import { effectDreamSimulator } from '../dream/EffectDreamSimulator';
+import { effectDisplayName } from '../../arsenal/DynamicEffectRegistry';
 import { visualConscienceEngine } from '../conscience/VisualConscienceEngine';
 import { effectBiasTracker } from '../dream/EffectBiasTracker';
 import { AudienceSafetyContextBuilder } from '../dream/AudienceSafetyContext';
@@ -43,48 +44,6 @@ export class DreamEngineIntegrator {
      */
     async executeFullPipeline(context) {
         const pipelineStartTime = Date.now();
-        // 🎭 WAVE 920: MOOD-AWARE THRESHOLD
-        const moodController = MoodController.getInstance();
-        const currentProfile = moodController.getCurrentProfile();
-        const rawWorthiness = context.huntDecision.worthiness;
-        const effectiveWorthiness = moodController.applyThreshold(rawWorthiness);
-        // 🔧 WAVE 1003.15: Comentado para reducir spam de logs
-        // console.log(
-        //   `[INTEGRATOR] 🎭 Mood: ${currentProfile.emoji} | ` +
-        //   `Raw worthiness: ${rawWorthiness.toFixed(2)} → Effective: ${effectiveWorthiness.toFixed(2)}`
-        // )
-        // 🚫 Guard: Si hunt no recomendó disparo (MOOD-AWARE)
-        // 🔧 WAVE 973.2: Threshold bajado de 0.65 → 0.60
-        // 🔧 WAVE 976.5: Threshold bajado de 0.60 → 0.55
-        // Permite que más DNA decisions lleguen al DecisionMaker
-        // Matemática con balanced (1.15x):
-        //   Raw 0.64 / 1.15 = 0.557 → PASA ✅ (antes fallaba)
-        //   Raw 0.70 / 1.15 = 0.609 → PASA ✅
-        //   Raw 0.75 / 1.15 = 0.652 → PASA ✅
-        // 🩸 WAVE 2100: Gate lowered 0.55 → 0.50
-        // 🩸 WAVE 2104: Gate raised 0.50 → 0.58
-        // 🩸 WAVE 2104.2: Gate adjusted 0.58 → 0.55. Con 0.58, raw=0.69/1.20=0.575 → BLOCKED por 0.005.
-        //   Eso bloqueó 4-5 momentos dignos en el log. 0.55 deja pasar el rango útil de Brejcha (0.66+)
-        //   pero sigue filtrando los <0.66 (effective<0.55). El control de calidad real está en el
-        //   ethicsThreshold que ahora es 1.20 (el override ya no es gratis).
-        // ⏳ FIX 2: WAVE 5008 - Bypass worthiness gate si el Oráculo tiene una predicción
-        const hasPrediction = context.predictionTimeMs !== undefined && context.predictionTimeMs > 0;
-        if (effectiveWorthiness < 0.55 && !hasPrediction) { // 🩸 WAVE 2104.2: was 0.58
-            // 🩸 WAVE 2104.1: DIAGNOSTIC — Ver qué momentos se descartan
-            console.log(`[INTEGRATOR_GATE] 🚫 WORTHINESS BLOCKED: raw=${rawWorthiness.toFixed(2)} effective=${effectiveWorthiness.toFixed(2)} < 0.55 | ${currentProfile.emoji} ${currentProfile.name}`);
-            return {
-                approved: false,
-                effect: null,
-                dreamTime: 0,
-                filterTime: 0,
-                totalTime: Date.now() - pipelineStartTime,
-                dreamRecommendation: `Hunt worthiness insufficient (${currentProfile.name} mode: ${rawWorthiness.toFixed(2)} → ${effectiveWorthiness.toFixed(2)})`,
-                ethicalVerdict: null,
-                circuitHealthy: true,
-                fallbackUsed: false,
-                alternatives: []
-            };
-        }
         // 🩸 WAVE 2103: ZONE GATE REFORM — "ambient" and "valley" are WHERE TECHNO LIVES
         // 
         // THE BUG: WAVE 2101.3/2101.5 blocked ambient+valley+silence from the pipeline.
@@ -207,10 +166,12 @@ export class DreamEngineIntegrator {
         // 🎭 WAVE 920: Apply mood intensity modifier to approved effect
         let moodAdjustedEffect = ethicalVerdict.approvedEffect;
         if (moodAdjustedEffect) {
+            const _moodController = MoodController.getInstance();
+            const _currentProfile = _moodController.getCurrentProfile();
             const rawIntensity = moodAdjustedEffect.intensity;
-            const adjustedIntensity = moodController.applyIntensity(rawIntensity);
+            const adjustedIntensity = _moodController.applyIntensity(rawIntensity);
             if (rawIntensity !== adjustedIntensity) {
-                console.log(`[INTEGRATOR] 🎭 Intensity adjusted: ${rawIntensity.toFixed(2)} → ${adjustedIntensity.toFixed(2)} (${currentProfile.emoji})`);
+                console.log(`[INTEGRATOR] 🎭 Intensity adjusted: ${rawIntensity.toFixed(2)} → ${adjustedIntensity.toFixed(2)} (${_currentProfile.emoji})`);
                 // Clone effect with adjusted intensity
                 moodAdjustedEffect = {
                     ...moodAdjustedEffect,
@@ -243,7 +204,7 @@ export class DreamEngineIntegrator {
             // V3.4: Static Divine Z-score threshold purged.
             // Divine leak prevention is now handled in DecisionMaker via V3 epicness.
             // The integrator no longer gates divine effects — it routes them.
-            console.log(`[INTEGRATOR] ✅ APPROVED: ${decision.effect.effect} @ ${decision.effect.intensity.toFixed(2)} | ` +
+            console.log(`[INTEGRATOR] ✅ APPROVED: ${effectDisplayName(decision.effect.effect)} @ ${decision.effect.intensity.toFixed(2)} | ` +
                 `ethics=${decision.ethicalVerdict?.ethicalScore?.toFixed(3) ?? '?'} | ` +
                 `Dream: ${dreamTime}ms | Total: ${decision.totalTime}ms`);
         }
@@ -346,9 +307,18 @@ export class DreamEngineIntegrator {
             catch {
                 activeCooldowns = new Map();
             }
+            // BUILDING phase: multiply cooldowns by 2.5 to slow down effect cadence
+            const narrativePhase = context.narrativePhase ?? '';
+            if (narrativePhase.toLowerCase() === 'building') {
+                const scaledCooldowns = new Map();
+                for (const [k, v] of activeCooldowns) {
+                    scaledCooldowns.set(k, v * 2.5);
+                }
+                activeCooldowns = scaledCooldowns;
+            }
             const systemState = {
                 currentPalette: { primary: 0, secondary: 0.33, accent: 0.66 }, // Default neutral
-                currentBeauty: context.huntDecision.confidence ?? 0.5,
+                currentBeauty: context.huntDecision?.confidence ?? 0.5,
                 lastEffect: null,
                 lastEffectTime: 0,
                 activeCooldowns,
@@ -465,6 +435,14 @@ export class DreamEngineIntegrator {
         if (context.spectralContext) {
             builder.withSpectral(context.spectralContext);
         }
+        // 🧬 M-SARFE: Pass AcousticRealityState to Dream Simulator for real DNA target derivation
+        if (context.acousticReality) {
+            builder.withAcousticReality(context.acousticReality);
+        }
+        // Narrative phase for BUILDING aggression filter
+        if (context.narrativePhase) {
+            builder.withNarrativePhase(context.narrativePhase);
+        }
         // 🔥 WAVE 996.8: CABLEAR EL HISTORIAL AL DREAMSIMULATOR
         // El Diversity Engine NECESITA el historial de efectos recientes para penalizar repeticiones
         // Sin esto, recentEffects siempre era [] y cyber_dualism ganaba TODO
@@ -517,7 +495,7 @@ export class DreamEngineIntegrator {
         // NO cachear si epilepsyMode diferente (cambia completamente los resultados)
         // 🔥 WAVE 996.5: INCLUIR recentEffects para que Diversity Engine funcione correctamente
         const energy = Math.round((context.pattern.energy ?? 0.5) * 10);
-        const worthiness = context.huntDecision.worthiness.toFixed(1);
+        const worthiness = (context.huntDecision?.worthiness ?? 0).toFixed(1);
         const gpuBucket = Math.round(context.gpuLoad * 5); // 0, 0.2, 0.4, 0.6, 0.8, 1.0
         const epilepsy = context.epilepsyMode ? '1' : '0';
         // 🎯 WAVE 996.5: Hash de efectos recientes para invalidar cache cuando cambia el historial

@@ -23,6 +23,8 @@
  * @version 1.0.0 - WAVE 931
  */
 import { EnergyLogger } from './EnergyLogger.js';
+// EMA α for 3s moving average RMS energy gate (half-life ~3s @ 44Hz)
+const ALPHA_RMS_3S = 1 - Math.pow(2, -1 / (3.0 * 44.0));
 const DEFAULT_CONFIG = {
     // ═══════════════════════════════════════════════════════════════════════════
     // � WAVE 996: THE 7-ZONE EXPANSION - THE LADDER
@@ -110,6 +112,11 @@ export class EnergyConsciousnessEngine {
         this.BASS_THRESHOLD = 0.65; // Umbral para detectar percusión
         // Historial para percentil
         this.energyHistory = [];
+        // 3s moving average RMS energy for absolute energy gating
+        this._rmsAverage3s = 0;
+        // 🌋 WAVE 960 TUNE: Flashbang cooldown — prevent false positives from zone oscillation
+        this._lastFlashbangTimestamp = 0;
+        this.FLASHBANG_COOLDOWN_MS = 500; // min 500ms between detections
         // Ventana para tendencia
         this.trendWindow = [];
         // Tracking de sostenibilidad
@@ -134,6 +141,8 @@ export class EnergyConsciousnessEngine {
         // 1. SUAVIZADO ASIMÉTRICO - La magia del "Fake Drop"
         // ═══════════════════════════════════════════════════════════════════
         const smoothed = this.calculateAsymmetricSmoothing(rawEnergy);
+        // 3s moving average RMS for absolute energy gating (flashbang gate)
+        this._rmsAverage3s += ALPHA_RMS_3S * (rawEnergy - this._rmsAverage3s);
         // ═══════════════════════════════════════════════════════════════════
         // 🔥 WAVE 979: PEAK HOLD - Preservar transitorios
         // ═══════════════════════════════════════════════════════════════════
@@ -447,6 +456,10 @@ export class EnergyConsciousnessEngine {
      * @returns true si detecta Flashbang, false si es transición normal
      */
     detectFlashbang(previousZone, currentZone, now) {
+        // 0. Cooldown — prevent false positives from rapid zone oscillation in techno
+        // Without this, zone bouncing valley↔intense triggers 4+ flashbangs in <80ms
+        if (now - this._lastFlashbangTimestamp < this.FLASHBANG_COOLDOWN_MS)
+            return false;
         // 1. ¿Es un cambio de zona reciente? (< 100ms)
         const timeSinceChange = now - this.lastZoneChange;
         if (timeSinceChange > 100)
@@ -462,8 +475,15 @@ export class EnergyConsciousnessEngine {
             currentZone === 'peak';
         if (!isToHigh)
             return false;
+        // 4. Absolute RMS Energy Gate: 3s moving average must exceed 0.25
+        // ⬆ 0.15 → 0.25: techno minimal has sustained RMS ~0.3-0.5, so 0.15 was too
+        // permissive — every micro-fluctuation passed. 0.25 filters techno noise
+        // while still catching genuine dynamic jumps (silence→drop in EDM)
+        if (this._rmsAverage3s < 0.25)
+            return false;
         // ✅ FLASHBANG DETECTED: Salto instantáneo de LOW → HIGH
-        console.log(`[🌋 FLASHBANG] Detected: ${previousZone} → ${currentZone} (${timeSinceChange}ms)`);
+        this._lastFlashbangTimestamp = now;
+        console.log(`[🌋 FLASHBANG] Detected: ${previousZone} → ${currentZone} (${timeSinceChange}ms) RMS3s=${this._rmsAverage3s.toFixed(2)}`);
         return true;
     }
     // ═══════════════════════════════════════════════════════════════════════

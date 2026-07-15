@@ -91,6 +91,9 @@ export interface LiquidProcessInput {
 
   // 🌊 M-SARFE Phase 4: Multi-spectral acoustic reality
   readonly acousticReality?: import('../perception/StateCouplingEnforcer').AcousticRealityState
+
+  /** Active vibe string for genre-aware epicness friction */
+  readonly vibe?: string
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -231,6 +234,7 @@ export class LiquidCognitionCore {
       contextualPhase: input.contextualPhase,
       isWarmedUp: input.isWarmedUp,
       acousticReality: input.acousticReality,
+      vibe: input.vibe,
       descriptors: {
         percussiveness: this._descriptors.percussiveness,
         melodicity: this._descriptors.melodicity,

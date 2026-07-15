@@ -21,6 +21,7 @@ import { getGenesisVault } from './GenesisVaultService';
 import { getColiseumService } from './ColiseumService';
 import { getOrganismMaterializer } from './OrganismMaterializer';
 import { getDynamicEffectRegistry } from '../arsenal/DynamicEffectRegistry';
+import { dreamEngineIntegrator } from '../intelligence/integration/DreamEngineIntegrator';
 import { LfxFileLoader } from '../arsenal/LfxFileLoader';
 import { getHephaestusClipIndex } from '../hephaestus/HephaestusClipIndex';
 import { generateOrganismName } from './naming/ProceduralNamer';
@@ -463,6 +464,8 @@ ipcMain.handle('genesis:purgeEcosystem', async () => {
         }
         // Clear materializer cache — stale materialized organisms must not survive purge
         getOrganismMaterializer().clearCache();
+        // Invalidate dream cache — stale results may reference now-deleted organisms
+        dreamEngineIntegrator.invalidateDreamCache();
         return { success: true, deleted: info.changes };
     }
     catch (error) {

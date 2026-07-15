@@ -501,26 +501,26 @@ export class NodeResolver implements INodeResolver {
   resolve(arbitrated: ArbitratedNodeMap): readonly IDMXPacket[] {
     this._resolveFrameIndex++
 
-    // 🚨 WAVE 4735.5 AUTO-DIAGNOSTIC: throttled warning if the gate is closed
-    // while there's substantial arbitrated traffic and no manual exemptions.
-    // This is the #1 silent-blackout cause.
-    if (this._safetyMiddleware && this._resolveFrameIndex % 200 === 0) {
-      const gateOpen = this._safetyMiddleware.isOutputEnabled()
-      if (!gateOpen && arbitrated.size > 0) {
-        let manualCount = 0
-        for (const [nid] of arbitrated) {
-          if (this._safetyMiddleware.isManualNode(nid)) manualCount++
-        }
-        if (manualCount === 0) {
-          console.warn(
-            `[NodeResolver 🚨 SILENT-BLACKOUT?] f=${this._resolveFrameIndex} | ` +
-            `gateOpen=false, manualNodes=0, arbitrated.size=${arbitrated.size} → ` +
-            `Smart Gate is blocking ALL non-KINETIC nodes. ` +
-            `Check TitanOrchestrator._outputEnabled (boot default = false).`
-          )
-        }
-      }
-    }
+    // 🚨 WAVE 4735.5 AUTO-DIAGNOSTIC: DISABLED — no hardware connected in dev,
+    // UI simulates lights by bypassing the output gate. This warning was
+    // irrelevant noise that confused the architect AI. Goodbye. 👋
+    // if (this._safetyMiddleware && this._resolveFrameIndex % 200 === 0) {
+    //   const gateOpen = this._safetyMiddleware.isOutputEnabled()
+    //   if (!gateOpen && arbitrated.size > 0) {
+    //     let manualCount = 0
+    //     for (const [nid] of arbitrated) {
+    //       if (this._safetyMiddleware.isManualNode(nid)) manualCount++
+    //     }
+    //     if (manualCount === 0) {
+    //       console.warn(
+    //         `[NodeResolver 🚨 SILENT-BLACKOUT?] f=${this._resolveFrameIndex} | ` +
+    //         `gateOpen=false, manualNodes=0, arbitrated.size=${arbitrated.size} → ` +
+    //         `Smart Gate is blocking ALL non-KINETIC nodes. ` +
+    //         `Check TitanOrchestrator._outputEnabled (boot default = false).`
+    //       )
+    //     }
+    //   }
+    // }
 
     // 1. Zero-fill y marcar universos como inactivos
     this._activeUniverses.clear()

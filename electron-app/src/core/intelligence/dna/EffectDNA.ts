@@ -80,7 +80,7 @@
  */
 
 import type { Mood, SectionType } from '../../protocol/MusicalContext'
-import { getDynamicEffectRegistry } from '../../arsenal/DynamicEffectRegistry'
+import { getDynamicEffectRegistry, effectDisplayName } from '../../arsenal/DynamicEffectRegistry'
 import type { AcousticRealityState } from '../perception/StateCouplingEnforcer'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -400,7 +400,7 @@ export class DNAAnalyzer {
 
     // Log solo si ya está penalizado (evitar spam)
     if (currentCount >= 1) {
-      console.log(`[DNA_ANALYZER] 📊 Diversity: ${effectId} usado ${currentCount + 1}x - Factor: ${this.DIVERSITY_FACTORS[Math.min(currentCount + 1, this.DIVERSITY_FACTORS.length - 1)]}x`)
+      console.log(`[DNA_ANALYZER] 📊 Diversity: ${effectDisplayName(effectId)} usado ${currentCount + 1}x - Factor: ${this.DIVERSITY_FACTORS[Math.min(currentCount + 1, this.DIVERSITY_FACTORS.length - 1)]}x`)
     }
   }
   

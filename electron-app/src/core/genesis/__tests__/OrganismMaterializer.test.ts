@@ -190,7 +190,7 @@ function insertOrganism(
       fitness_score, trials_count, wins_count, vetoes_count, passes_count,
       status, species_id, born_at, last_evaluated_at, last_fired_at, swarm_origin_console)
     VALUES (?, ?, ?, ?, NULL, ?, ?, 0.5, 'COMMON',
-      0.1, 'point_mutation', 5, '{}',
+      0.1, 'focal_mutation', 5, '{}',
       0.3, 0, 0, 0, 0,
       'alive', NULL, ?, NULL, NULL, NULL)`,
   ).run(id, blueprintId, parentId, gen, deltaJson, Buffer.from(new Float32Array(128).buffer), Date.now())

@@ -255,6 +255,13 @@ export interface RegistryEntry {
   /** Timestamp de ingesta. */
   readonly loadedAt: number
 
+  /** 🧬 GENESIS: Organism ID from the Coliseum DB. Present only for evolved mutants. */
+  readonly organismId?: string
+  /** 🧬 GENESIS: Number of times this organism has been fired in live shows. */
+  readonly trialsCount?: number
+  /** 🧬 GENESIS: Organism status from the Coliseum DB ('alive' | 'champion' | 'canonized' | …). */
+  readonly organismStatus?: string
+
   /**
    * Referencia al clip completo para carga lazy de curvas por el runtime.
    * Es OPCIONAL: si el Registry está corriendo en main process con FS access,

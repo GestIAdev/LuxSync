@@ -176,7 +176,7 @@ function insertOrganism(
       status, species_id, born_at, last_evaluated_at, last_fired_at, swarm_origin_console)
     VALUES (?, ?, NULL, 1,
       NULL, '[]', ?, 0.5, ?,
-      0.1, 'point_mutation', ?, '{}',
+      0.1, 'focal_mutation', ?, '{}',
       ?, ?, 0, 0, ?,
       ?, ?, ?, NULL, NULL, NULL)`,
   ).run(

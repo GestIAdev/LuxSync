@@ -51,7 +51,7 @@ import {
 import { HephParameterOverlay } from '../hephaestus/HephParameterOverlay'
 
 // ⚡ WAVE 4827: MUSCLE REWIRING — DynamicEffectRegistry + SeleneHephBridge
-import { getDynamicEffectRegistry } from '../arsenal/DynamicEffectRegistry'
+import { getDynamicEffectRegistry, effectDisplayName } from '../arsenal/DynamicEffectRegistry'
 import { getSeleneHephBridge } from '../arsenal/SeleneHephBridge'
 import type { ConsciousnessEffectDecision } from '../protocol/ConsciousnessOutput'
 
@@ -386,11 +386,18 @@ export class EffectManager extends EventEmitter {
       console.warn(`[EffectManager ⚠️] Unknown effect: "${config.effectType}" — not found in DynamicEffectRegistry`)
       return null
     }
+
+    // 🧬 TERMINAL QUARANTINE: Minions (status='alive') can NEVER be live-fired.
+    // This is the absolute final guard before HephRuntime.play() — no bypass.
+    if (entry.organismStatus === 'alive') {
+      console.warn(`[TERMINAL QUARANTINE BLOCKED] Attempted to live-fire a minion: ${config.effectType}`)
+      return null
+    }
     
     // 🚦 WAVE 700.7: TRAFFIC CONTROL - Check if busy with critical effect
     const trafficResult = this.checkTraffic(config.effectType, config.source)
     if (!trafficResult.allowed) {
-      console.log(`[EffectManager 🚦] ${config.effectType} BLOCKED: ${trafficResult.reason}`)
+      console.log(`[EffectManager 🚦] ${effectDisplayName(config.effectType)} BLOCKED: ${trafficResult.reason}`)
       this.emit('effectBlocked', {
         effectType: config.effectType,
         vibeId: config.musicalContext?.vibeId || 'unknown',
@@ -409,13 +416,13 @@ export class EffectManager extends EventEmitter {
     if (bypassShield) {
       // Chronos/Manual: Skip vibe restrictions entirely
       shieldResult = { allowed: true, degraded: false, message: 'Bypassed (chronos/manual source)' }
-      console.log(`[EffectManager 🎯] ${config.effectType} BYPASS SHIELD (source: ${config.source})`)
+      console.log(`[EffectManager 🎯] ${effectDisplayName(config.effectType)} BYPASS SHIELD (source: ${config.source})`)
     } else {
       shieldResult = this.validateWithShield(config.effectType, vibeId)
     }
     
     if (!shieldResult.allowed) {
-      console.log(`[EffectManager ⛔] ${config.effectType} BLOCKED in ${vibeId}. ${shieldResult.message}`)
+      console.log(`[EffectManager ⛔] ${effectDisplayName(config.effectType)} BLOCKED in ${vibeId}. ${shieldResult.message}`)
       this.emit('effectBlocked', {
         effectType: config.effectType,
         vibeId,
@@ -440,7 +447,7 @@ export class EffectManager extends EventEmitter {
         const selector = getArsenalRepository()
         const cooldownCheck = selector.checkAvailability(config.effectType, vibeId)
         if (!cooldownCheck.available) {
-          console.log(`[EffectManager ⏱️ GATEKEEPER] ${config.effectType} BLOCKED: ${cooldownCheck.reason}`)
+          console.log(`[EffectManager ⏱️ GATEKEEPER] ${effectDisplayName(config.effectType)} BLOCKED: ${cooldownCheck.reason}`)
           this.emit('effectBlocked', {
             effectType: config.effectType,
             vibeId,
@@ -475,7 +482,7 @@ export class EffectManager extends EventEmitter {
     }
 
     if (shieldResult.degraded) {
-      console.log(`[EffectManager ⚠️] ${config.effectType} DEGRADED in ${vibeId}. ${shieldResult.message}`)
+      console.log(`[EffectManager ⚠️] ${effectDisplayName(config.effectType)} DEGRADED in ${vibeId}. ${shieldResult.message}`)
     }
     const instanceToken = `${config.effectType}:${route.instanceId}`
 
@@ -963,6 +970,46 @@ export class EffectManager extends EventEmitter {
     }
     return false
   }
+
+  /**
+   * 🎯 WAVE 7158: ABORT EFFECTS CONTROLLING MOVEMENT — Resource Masking
+   *
+   * Interrogates the actual output vector of each active effect (not static maps)
+   * to find which ones are controlling spatial resources (pan/tilt/movement).
+   * Aborts them for a clean handoff when a new effect needs those same resources.
+   *
+   * @returns Array of aborted effect type names (for logging)
+   */
+  abortEffectsControllingMovement(): string[] {
+    const aborted: string[] = []
+    for (const [id, effect] of this.activeEffects) {
+      const output = effect.getOutput()
+      if (output?.movement) {
+        effect.abort()
+        this.activeEffects.delete(id)
+        aborted.push(effect.effectType)
+        this.emit('effectFinished', { effectId: id })
+      }
+    }
+    return aborted
+  }
+
+  /**
+   * 🎯 WAVE 7158: HAS ACTIVE EFFECTS CONTROLLING MOVEMENT — Resource Query
+   *
+   * Checks if any active effect is currently controlling spatial resources
+   * by interrogating actual output vectors. Used by V3 IGNITE BYPASS to
+   * detect resource conflicts before firing.
+   *
+   * @returns true if any active effect has movement in its output
+   */
+  hasActiveMovementControl(): boolean {
+    for (const effect of this.activeEffects.values()) {
+      const output = effect.getOutput()
+      if (output?.movement) return true
+    }
+    return false
+  }
   
   /**
    * 📋 LIST AVAILABLE - Lista tipos de efectos disponibles
@@ -1062,7 +1109,7 @@ export class EffectManager extends EventEmitter {
       // WAVE 4706: Human Override — disparos manuales (UI/MIDI/ForceStrike)
       // atraviesan GLOBAL_LOCK para evitar secuestro por dictador global.
       if (source === 'manual') {
-        console.log(`🧨 [GLOBAL_LOCK_BYPASS] ${effectType} autorizado por HUMAN_OVERRIDE (source=manual).`)
+        console.log(`🧨 [GLOBAL_LOCK_BYPASS] ${effectDisplayName(effectType)} autorizado por HUMAN_OVERRIDE (source=manual).`)
         return { allowed: true, reason: 'HUMAN_OVERRIDE: manual source bypasses GLOBAL_LOCK' }
       }
 
@@ -1081,7 +1128,7 @@ export class EffectManager extends EventEmitter {
       ].includes(activeDictator.effectType)
 
       if (!isEmergency || dictatorIsPeak) {
-        console.log(`🔒 [GLOBAL_LOCK] ${effectType} BLOQUEADO: ${activeDictator.effectType} tiene la palabra.`)
+        console.log(`🔒 [GLOBAL_LOCK] ${effectDisplayName(effectType)} BLOQUEADO: ${effectDisplayName(activeDictator.effectType)} tiene la palabra.`)
         return {
           allowed: false,
           reason: `🔒 GLOBAL_LOCK: ${activeDictator.effectType} (dictator) is speaking`,
@@ -1119,7 +1166,7 @@ export class EffectManager extends EventEmitter {
         .find(e => ATMOSPHERIC_EFFECTS.includes(e.effectType))
       
       if (atmosphericRunning) {
-        console.log(`🌫️ [ATMOSPHERIC_LOCK] ${effectType} BLOQUEADO: ${atmosphericRunning.effectType} ya está en el aire.`)
+        console.log(`🌫️ [ATMOSPHERIC_LOCK] ${effectDisplayName(effectType)} BLOQUEADO: ${effectDisplayName(atmosphericRunning.effectType)} ya está en el aire.`)
         return {
           allowed: false,
           reason: `🌫️ ATMOSPHERIC_LOCK: ${atmosphericRunning.effectType} already running`,
@@ -1169,7 +1216,7 @@ export class EffectManager extends EventEmitter {
       
       if (hardConflict) {
         const conflictZone = EFFECT_ZONE_MAP[hardConflict.effectType]
-        console.log(`[EffectManager 🔒] DIVINE MUTEX: ${effectType} (${incomingZone}) blocked by ${hardConflict.effectType} (${conflictZone}) — One God at a Time`)
+        console.log(`[EffectManager 🔒] DIVINE MUTEX: ${effectDisplayName(effectType)} (${incomingZone}) blocked by ${effectDisplayName(hardConflict.effectType)} (${conflictZone}) — One God at a Time`)
         return {
           allowed: false,
           reason: `🔒 DIVINE_MUTEX: ${hardConflict.effectType} (${conflictZone}) is speaking — One God at a Time`,

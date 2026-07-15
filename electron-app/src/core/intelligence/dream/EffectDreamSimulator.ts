@@ -46,7 +46,7 @@ import {
 } from '../dna/EffectDNA'
 
 // ⚡ WAVE 4824: DYNAMIC EFFECT REGISTRY — fuente única de verdad del arsenal
-import { getDynamicEffectRegistry } from '../../arsenal/DynamicEffectRegistry'
+import { getDynamicEffectRegistry, effectDisplayName } from '../../arsenal/DynamicEffectRegistry'
 
 // ⚡ WAVE 4846: SPATIAL COGNITION — Hardware Guard
 import { getTitanOrchestrator } from '../../orchestrator/TitanOrchestrator'
@@ -152,6 +152,10 @@ export interface EffectScenario {
   
   // 🔬 CONFIDENCE
   simulationConfidence: number      // 0-1, confianza en simulación
+
+  // 🧬 GENESIS: Organism identity for nurture bias
+  trialsCount?: number              // Number of live fires (undefined = consolidated blueprint)
+  isMutant?: boolean                // true if this candidate is an evolved organism
 }
 
 export interface EffectDreamResult {
@@ -282,15 +286,33 @@ export class EffectDreamSimulator {
     // 3. Rankear escenarios
     const rankedScenarios = this.rankScenarios(scenarios, musicalPrediction)
     
-    // 4. Seleccionar mejor escenario
-    const bestScenario = rankedScenarios[0] || null
+    // ═══════════════════════════════════════════════════════════════
+    // 🧬 QUARANTINE: Minions (status='alive') stay in rankedScenarios for
+    // fitness scoring ONLY. The bestScenario for execution AND pre-buffering
+    // must come from liveCandidates (non-alive). This prevents minions from
+    // winning the ranking and flowing through the normal pipeline.
+    // ═══════════════════════════════════════════════════════════════
+    
+    const registry = getDynamicEffectRegistry()
+    const liveCandidates = rankedScenarios.filter(s => {
+      const entry = registry.getEntry(s.effect.effect)
+      return entry?.organismStatus !== 'alive'
+    })
+    
+    // 4. Seleccionar mejor escenario — from live candidates only
+    const bestScenario = liveCandidates[0] || null
     
     // ═══════════════════════════════════════════════════════════════
     // 🔮 WAVE 1190: PROJECT CASSANDRA - Pre-buffer Storage
     // Si alta confianza y tiempo suficiente, guardar el mejor para después
+    // 🧬 QUARANTINE: Minions (status='alive') are EXCLUDED from pre-buffering.
+    //   They remain in rankedScenarios for fitness scoring ONLY.
+    //   Only champion/canonized organisms can be pre-buffered for live fire.
     // ═══════════════════════════════════════════════════════════════
     
-    if (bestScenario && 
+    const preBufferScenario = bestScenario
+    
+    if (preBufferScenario && 
         oracleProbability >= this.PRE_BUFFER_MIN_PROBABILITY && 
         timeToEvent >= this.PRE_BUFFER_MIN_TIME_MS &&
         !this.preBuffer) {  // Solo si no hay buffer ya
@@ -299,15 +321,15 @@ export class EffectDreamSimulator {
       
       if (predictionType !== 'none') {
         this.preBuffer = {
-          effect: bestScenario.effect,
-          score: bestScenario.projectedRelevance,
+          effect: preBufferScenario.effect,
+          score: preBufferScenario.projectedRelevance,
           bufferedAt: now,
           predictedEventAt: now + timeToEvent,
           predictionType,
           oracleProbability,
         }
         
-        console.log(`[DREAM_SIMULATOR] 🔮📦 CASSANDRA PRE-BUFFER: "${bestScenario.effect.effectName ?? bestScenario.effect.effect}" stored for ${predictionType} in ~${(timeToEvent / 1000).toFixed(1)}s (${(oracleProbability * 100).toFixed(0)}% confidence)`)
+        console.log(`[DREAM_SIMULATOR] 🔮📦 CASSANDRA PRE-BUFFER: "${preBufferScenario.effect.effectName ?? preBufferScenario.effect.effect}" stored for ${predictionType} in ~${(timeToEvent / 1000).toFixed(1)}s (${(oracleProbability * 100).toFixed(0)}% confidence)`)
       }
     }
     
@@ -346,7 +368,7 @@ export class EffectDreamSimulator {
     const justBuffered = this.preBuffer && this.preBuffer.bufferedAt === now
     if (justBuffered && recommendation.action === 'execute') {
       const deferredReason = `🔮 CASSANDRA DEFERRED: "${bestScenario!.effect.effect}" sealed for ${this.preBuffer!.predictionType} in ~${(timeToEvent / 1000).toFixed(1)}s — awaiting section confirmation`
-      console.log(`[DREAM_SIMULATOR] 🔮🛡️ TEMPORAL SEAL: ${bestScenario!.effect.effect} → 'modify' (pre-buffer active, timeToEvent=${timeToEvent}ms)`)
+      console.log(`[DREAM_SIMULATOR] 🔮🛡️ TEMPORAL SEAL: ${effectDisplayName(bestScenario!.effect.effect)} → 'modify' (pre-buffer active, timeToEvent=${timeToEvent}ms)`)
       return {
         scenarios: rankedScenarios,
         bestScenario,
@@ -412,6 +434,12 @@ export class EffectDreamSimulator {
     const { relevance: projectedRelevance, distance: dnaDistance, targetDNA } = 
       this.calculateDNARelevance(effect, currentState, context)
     
+    // 🧬 GENESIS: Extract organism identity from Registry for nurture bias
+    const registry = getDynamicEffectRegistry()
+    const registryEntry = registry.getEntry(effect.effect)
+    const trialsCount = registryEntry?.trialsCount
+    const isMutant = !!registryEntry?.organismId
+    
     return {
       effect,
       projectedBeauty,
@@ -427,7 +455,9 @@ export class EffectDreamSimulator {
       hardwareConflicts,
       vibeCoherence,
       diversityScore,
-      simulationConfidence
+      simulationConfidence,
+      trialsCount,              // 🧬 GENESIS: for nurture bias
+      isMutant,                 // 🧬 GENESIS: mutant flag
     }
   }
   
@@ -778,7 +808,7 @@ export class EffectDreamSimulator {
       if (state.activeCooldowns.has(effect)) {
         continue
       }
-      
+
       // ═══════════════════════════════════════════════════════════════════════════
       // ⚡ WAVE 4843: COGNITIVE BRIDGE — STROBE Z-GUARD + ZSCORE GUARDS
       // 🔮 WAVE 5014: Guards relajados para predicciones futuras garantizadas
@@ -802,6 +832,22 @@ export class EffectDreamSimulator {
       const registry = getDynamicEffectRegistry()
       const entry = registry.getEntry(effect)
       if (entry) {
+        // BUILDING phase aggression filter: reject high-aggression effects during buildup
+        const narrativePhase = (context.narrativePhase ?? '').toLowerCase()
+        if (narrativePhase === 'building' && entry.dna.aggression > 0.4) {
+          continue
+        }
+        // 🧬 PURGATORY WALL: Only elite organisms fire in the live rig.
+        // 'alive' minions are quarantined — they must earn 'champion' or 'canonized'
+        // status through simulation before being selected for live output.
+        // Built-in blueprints (no organismId) are always allowed.
+        if (entry.organismId && entry.organismStatus === 'alive') {
+          if (this.simulationCount % 30 === 0) {
+            console.log(`[DREAM_SIMULATOR] 🧬🛡️ PURGATORY WALL: ${effectDisplayName(effect)} blocked (status=alive, needs promotion)`)
+          }
+          continue
+        }
+
         const { isStrobe, zScoreGuards } = entry.simMeta
         const { energy } = context
 
@@ -1369,7 +1415,7 @@ export class EffectDreamSimulator {
         const rsk = `RSK=${sc.riskLevel.toFixed(3)}`
         const dist = `dist=${sc.dnaDistance.toFixed(3)}`
         const tex = sc.effect.reasoning.includes('TEXTURE') ? '🎨REJECTED' : ''
-        const displayName = sc.effect.effectName ?? sc.effect.effect
+        const displayName = effectDisplayName(sc.effect.effectName ?? sc.effect.effect)
         return `  ${i + 1}. ${displayName.padEnd(20)} SCORE=${s.score.toFixed(3)} | ${dna} ${div} ${vib} ${rsk} ${dist} ${tex}`
       }).join('\n')
     )
@@ -1403,7 +1449,8 @@ export class EffectDreamSimulator {
     
     // 🩸 WAVE 2104: adjustedRelevance ya no se usa en pesos principales
     // (diversity es factor independiente ahora), pero se mantiene para el perfect match check
-    const adjustedRelevance = scenario.projectedRelevance * scenario.diversityScore
+    // WAVE 7158: adjustedRelevance removed — diversity is now a final multiplicative penalty
+    // and the perfect-match check was redundant since diversity is globally enforced.
     
     // 🎲 WAVE 1178: ANTI-DETERMINISM - Exploration Factor
     // 🩸 WAVE 2104: Ventana 10s→8s, probabilidad 30%→40%, boost 0.15→0.12
@@ -1442,8 +1489,9 @@ export class EffectDreamSimulator {
       score += 0.1
     }
     
-    // Boost si match perfecto (alta relevancia Y sin penalización de diversidad)
-    if (adjustedRelevance > 0.80 && scenario.dnaDistance < 0.3) {
+    // Boost si match perfecto (alta relevancia Y cercanía DNA)
+    // WAVE 7158: adjustedRelevance removed — diversity now enforced as final multiplier
+    if (scenario.projectedRelevance > 0.80 && scenario.dnaDistance < 0.3) {
       score += 0.05
     }
     
@@ -1545,6 +1593,33 @@ export class EffectDreamSimulator {
       score += confidenceBoost
     }
     
+    // ═══════════════════════════════════════════════════════════════
+    // 🧬 GENESIS: NURTURE BIAS / PURGATORY BOOST
+    // Newborn mutants (< 5 live trials) get a small scoring boost to give
+    // them a fighting chance against optimized consolidated blueprints.
+    // Without this, young organisms starve — they never win the DNA
+    // Euclidean distance race against battle-tested effects.
+    // The boost is small enough to not override DNA matching but enough
+    // to break ties in favor of exploration.
+    // ═══════════════════════════════════════════════════════════════
+    const isNewborn = scenario.trialsCount !== undefined && scenario.trialsCount < 5
+    const nurtureBoost = isNewborn ? 0.08 : 0
+    score += nurtureBoost
+    
+    if (nurtureBoost > 0 && this.simulationCount % 10 === 0) {
+      console.log(`[DREAM_SIMULATOR] 🧬 NURTURE BIAS: "${effectDisplayName(effectName)}" +${nurtureBoost} (trials: ${scenario.trialsCount})`)
+    }
+    
+    // ═══════════════════════════════════════════════════════════════
+    // 🎲 WAVE 7158: DIVERSITY MULTIPLICATIVE FINAL PENALTY
+    // ═══════════════════════════════════════════════════════════════
+    // The additive diversityScore * 0.20 term (line ~1476) acts as a small
+    // tiebreaker among fresh effects, but cannot prevent a high-DNA candidate
+    // used 3× from winning via other boosts (vibe, risk, urgency, impact +0.40).
+    // This final multiplier ensures diversity is an ABSOLUTE gate: a shadowbanned
+    // effect (diversityScore=0.1) can never score above 0.1×max_possible.
+    score *= scenario.diversityScore
+
     return Math.max(0, Math.min(1, score))
   }
   

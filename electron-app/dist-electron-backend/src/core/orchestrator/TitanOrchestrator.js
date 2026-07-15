@@ -868,6 +868,10 @@ export class TitanOrchestrator {
      */
     toggleOutputEnabled() {
         this._outputEnabled = !this._outputEnabled;
+        // WAVE 6015 PARCHE 2: Propagate immediately to AetherSafetyMiddleware.
+        // Without this, the Smart Gate lags 1 frame behind the toggle, causing
+        // transient SILENT-BLACKOUT when the user arms output mid-session.
+        this._aetherSafety.setOutputEnabled(this._outputEnabled);
         return this._outputEnabled;
     }
     /**

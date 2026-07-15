@@ -20,6 +20,7 @@ import { serializeHephClip } from './types';
 import { LfxFileLoader } from '../arsenal/LfxFileLoader';
 import { getDynamicEffectRegistry } from '../arsenal/DynamicEffectRegistry';
 import { getHephaestusClipIndex } from './HephaestusClipIndex';
+import { getHephaestusRuntime } from '../orchestrator/IPCHandlers';
 // ═══════════════════════════════════════════════════════════════════════════
 // SETUP FUNCTION
 // ═══════════════════════════════════════════════════════════════════════════
@@ -50,6 +51,14 @@ export function setupHephIPCHandlers() {
             const registered = await _lfxLoader.loadFile(filePath, 'user');
             if (registered) {
                 console.log(`[HephIPC] ⚡ Hot-registered "${clipData.name}" in arsenal for Selene`);
+            }
+            // ⚡ Hot-reload: invalidate runtime cache + reload active clips
+            // so changes are visible immediately without app restart.
+            try {
+                getHephaestusRuntime().hotReload(filePath);
+            }
+            catch {
+                // Runtime may not be initialized yet (e.g. during tests)
             }
             return {
                 success: true,

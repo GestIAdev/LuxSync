@@ -5,7 +5,7 @@
 export { GenesisVaultService, getGenesisVault, __resetGenesisVaultForTests } from './GenesisVaultService';
 export { AncestralIngestor, getAncestralIngestor, __resetAncestralIngestorForTests } from './AncestralIngestor';
 // Era II — The Coliseum Awakens
-export { pointMutation, geneDuplication, phaseEpigenetics, temporalStretch, geneSplice, geneDeletion, interpolationDrift, crossover, blendCognitiveDNA, applyOperator, applyDelta, makeFatTailedRng, makeRng, stringToSeed, computeL2DistanceV2, } from './operators/GeneticOperators';
+export { focalMutation, geneAugmentation, spatialResonance, proportionalStretch, macroSplice, adaptivePruning, curveAdaptation, crossover, blendCognitiveDNA, applyOperator, applyDelta, makeFatTailedRng, makeRng, stringToSeed, computeL2DistanceV2, } from './operators/GeneticOperators';
 export { prenatalScreening } from './screening/PrenatalScreening';
 export { OrganismMaterializer, getOrganismMaterializer, __resetOrganismMaterializerForTests } from './OrganismMaterializer';
 export { ColiseumService, getColiseumService, __resetColiseumServiceForTests } from './ColiseumService';

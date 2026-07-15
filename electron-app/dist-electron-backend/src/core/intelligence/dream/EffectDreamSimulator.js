@@ -36,7 +36,7 @@ import { MoodController } from '../../mood/MoodController';
 // 🎨 WAVE 1029: THE DREAMER - Texture Affinity Integration
 import { getDNAAnalyzer } from '../dna/EffectDNA';
 // ⚡ WAVE 4824: DYNAMIC EFFECT REGISTRY — fuente única de verdad del arsenal
-import { getDynamicEffectRegistry } from '../../arsenal/DynamicEffectRegistry';
+import { getDynamicEffectRegistry, effectDisplayName } from '../../arsenal/DynamicEffectRegistry';
 // ⚡ WAVE 4846: SPATIAL COGNITION — Hardware Guard
 import { getTitanOrchestrator } from '../../orchestrator/TitanOrchestrator';
 import { normalizeZone } from '../../stage/ShowFileV2';
@@ -114,27 +114,42 @@ export class EffectDreamSimulator {
         }
         // 3. Rankear escenarios
         const rankedScenarios = this.rankScenarios(scenarios, musicalPrediction);
-        // 4. Seleccionar mejor escenario
-        const bestScenario = rankedScenarios[0] || null;
+        // ═══════════════════════════════════════════════════════════════
+        // 🧬 QUARANTINE: Minions (status='alive') stay in rankedScenarios for
+        // fitness scoring ONLY. The bestScenario for execution AND pre-buffering
+        // must come from liveCandidates (non-alive). This prevents minions from
+        // winning the ranking and flowing through the normal pipeline.
+        // ═══════════════════════════════════════════════════════════════
+        const registry = getDynamicEffectRegistry();
+        const liveCandidates = rankedScenarios.filter(s => {
+            const entry = registry.getEntry(s.effect.effect);
+            return entry?.organismStatus !== 'alive';
+        });
+        // 4. Seleccionar mejor escenario — from live candidates only
+        const bestScenario = liveCandidates[0] || null;
         // ═══════════════════════════════════════════════════════════════
         // 🔮 WAVE 1190: PROJECT CASSANDRA - Pre-buffer Storage
         // Si alta confianza y tiempo suficiente, guardar el mejor para después
+        // 🧬 QUARANTINE: Minions (status='alive') are EXCLUDED from pre-buffering.
+        //   They remain in rankedScenarios for fitness scoring ONLY.
+        //   Only champion/canonized organisms can be pre-buffered for live fire.
         // ═══════════════════════════════════════════════════════════════
-        if (bestScenario &&
+        const preBufferScenario = bestScenario;
+        if (preBufferScenario &&
             oracleProbability >= this.PRE_BUFFER_MIN_PROBABILITY &&
             timeToEvent >= this.PRE_BUFFER_MIN_TIME_MS &&
             !this.preBuffer) { // Solo si no hay buffer ya
             const predictionType = musicalPrediction.predictionType ?? 'none';
             if (predictionType !== 'none') {
                 this.preBuffer = {
-                    effect: bestScenario.effect,
-                    score: bestScenario.projectedRelevance,
+                    effect: preBufferScenario.effect,
+                    score: preBufferScenario.projectedRelevance,
                     bufferedAt: now,
                     predictedEventAt: now + timeToEvent,
                     predictionType,
                     oracleProbability,
                 };
-                console.log(`[DREAM_SIMULATOR] 🔮📦 CASSANDRA PRE-BUFFER: "${bestScenario.effect.effectName ?? bestScenario.effect.effect}" stored for ${predictionType} in ~${(timeToEvent / 1000).toFixed(1)}s (${(oracleProbability * 100).toFixed(0)}% confidence)`);
+                console.log(`[DREAM_SIMULATOR] 🔮📦 CASSANDRA PRE-BUFFER: "${preBufferScenario.effect.effectName ?? preBufferScenario.effect.effect}" stored for ${predictionType} in ~${(timeToEvent / 1000).toFixed(1)}s (${(oracleProbability * 100).toFixed(0)}% confidence)`);
             }
         }
         // 5. Generar recomendación
@@ -168,7 +183,7 @@ export class EffectDreamSimulator {
         const justBuffered = this.preBuffer && this.preBuffer.bufferedAt === now;
         if (justBuffered && recommendation.action === 'execute') {
             const deferredReason = `🔮 CASSANDRA DEFERRED: "${bestScenario.effect.effect}" sealed for ${this.preBuffer.predictionType} in ~${(timeToEvent / 1000).toFixed(1)}s — awaiting section confirmation`;
-            console.log(`[DREAM_SIMULATOR] 🔮🛡️ TEMPORAL SEAL: ${bestScenario.effect.effect} → 'modify' (pre-buffer active, timeToEvent=${timeToEvent}ms)`);
+            console.log(`[DREAM_SIMULATOR] 🔮🛡️ TEMPORAL SEAL: ${effectDisplayName(bestScenario.effect.effect)} → 'modify' (pre-buffer active, timeToEvent=${timeToEvent}ms)`);
             return {
                 scenarios: rankedScenarios,
                 bestScenario,
@@ -213,6 +228,11 @@ export class EffectDreamSimulator {
         const simulationConfidence = this.calculateSimulationConfidence(effect, currentState, context);
         // 🧬 WAVE 970: DNA-based contextual relevance
         const { relevance: projectedRelevance, distance: dnaDistance, targetDNA } = this.calculateDNARelevance(effect, currentState, context);
+        // 🧬 GENESIS: Extract organism identity from Registry for nurture bias
+        const registry = getDynamicEffectRegistry();
+        const registryEntry = registry.getEntry(effect.effect);
+        const trialsCount = registryEntry?.trialsCount;
+        const isMutant = !!registryEntry?.organismId;
         return {
             effect,
             projectedBeauty,
@@ -228,7 +248,9 @@ export class EffectDreamSimulator {
             hardwareConflicts,
             vibeCoherence,
             diversityScore,
-            simulationConfidence
+            simulationConfidence,
+            trialsCount, // 🧬 GENESIS: for nurture bias
+            isMutant, // 🧬 GENESIS: mutant flag
         };
     }
     /**
@@ -558,6 +580,21 @@ export class EffectDreamSimulator {
             const registry = getDynamicEffectRegistry();
             const entry = registry.getEntry(effect);
             if (entry) {
+                // BUILDING phase aggression filter: reject high-aggression effects during buildup
+                const narrativePhase = (context.narrativePhase ?? '').toLowerCase();
+                if (narrativePhase === 'building' && entry.dna.aggression > 0.4) {
+                    continue;
+                }
+                // 🧬 PURGATORY WALL: Only elite organisms fire in the live rig.
+                // 'alive' minions are quarantined — they must earn 'champion' or 'canonized'
+                // status through simulation before being selected for live output.
+                // Built-in blueprints (no organismId) are always allowed.
+                if (entry.organismId && entry.organismStatus === 'alive') {
+                    if (this.simulationCount % 30 === 0) {
+                        console.log(`[DREAM_SIMULATOR] 🧬🛡️ PURGATORY WALL: ${effectDisplayName(effect)} blocked (status=alive, needs promotion)`);
+                    }
+                    continue;
+                }
                 const { isStrobe, zScoreGuards } = entry.simMeta;
                 const { energy } = context;
                 // Guard 1: Strobe en energía descendente
@@ -804,21 +841,22 @@ export class EffectDreamSimulator {
         const harshness = context.spectral?.harshness ?? 0.4;
         const spectralFlatness = context.spectral?.flatness ?? 0.5;
         // Construir MusicalContext para el DNAAnalyzer
-        // Derivamos todo lo que podemos de AudienceSafetyContext + SystemState
+        // 🧬 M-SARFE: When ARS is available, the DNAAnalyzer uses it for target derivation.
+        // The legacy fields below are only used as fallback when ARS is absent.
         const musicalContext = {
             energy: state.energy,
-            syncopation: undefined, // No disponible directamente
-            mood: this.deriveMusicalMood(context),
+            syncopation: undefined,
+            mood: 'neutral',
             section: {
                 type: this.deriveSection(state, context),
                 confidence: 0.75
             },
             rhythm: {
                 drums: {
-                    kickIntensity: state.energy * 0.8 // Derivado de energía
+                    kickIntensity: 0
                 },
                 fillDetected: false,
-                groove: context.vibe.includes('latino') ? 0.8 : 0.5,
+                groove: 0.5,
                 confidence: 0.7
             },
             energyContext: {
@@ -827,17 +865,20 @@ export class EffectDreamSimulator {
             confidence: 0.75
         };
         // Construir AudioMetrics para el DNAAnalyzer
+        // 🧬 M-SARFE: When ARS is present, bass/mid/treble are NOT used for target derivation.
+        // Only harshness and spectralFlatness are passed through (they come from real FFT).
         const audioMetrics = {
-            bass: state.energy * 0.7,
+            bass: 0.5,
             mid: 0.5,
-            treble: context.vibe.includes('techno') ? 0.6 : 0.4,
+            treble: 0.5,
             volume: state.energy,
             harshness,
             spectralFlatness
         };
         // Usar el DNAAnalyzer singleton para derivar el Target DNA
+        // 🧬 M-SARFE: Pass AcousticRealityState for real acoustic target derivation
         const dnaAnalyzer = getDNAAnalyzer();
-        const targetDNA = dnaAnalyzer.deriveTargetDNA(musicalContext, audioMetrics);
+        const targetDNA = dnaAnalyzer.deriveTargetDNA(musicalContext, audioMetrics, context.acousticReality);
         // 🩸 WAVE 2104.1: DIAGNOSTIC — Target DNA (throttled: 1 per effect per dream cycle)
         // Solo loguear para el PRIMER efecto evaluado en cada dream cycle (evitar spam)
         if (this.simulationCount % 5 === 0 && effect.effect === 'acid_sweep') {
@@ -855,18 +896,6 @@ export class EffectDreamSimulator {
         let relevance = 1.0 - (distance / MAX_DISTANCE);
         relevance = Math.max(0, Math.min(1, relevance));
         return { relevance, distance, targetDNA };
-    }
-    /**
-     * 🧬 WAVE 970: Deriva mood musical del contexto de audiencia
-     */
-    deriveMusicalMood(context) {
-        if (context.vibe.includes('techno'))
-            return 'aggressive';
-        if (context.vibe.includes('latino'))
-            return 'euphoric';
-        if (context.vibe.includes('chill') || context.vibe.includes('ambient'))
-            return 'melancholic';
-        return 'neutral';
     }
     /**
      * 🧬 WAVE 970: Deriva sección del estado actual
@@ -1039,7 +1068,7 @@ export class EffectDreamSimulator {
                 const rsk = `RSK=${sc.riskLevel.toFixed(3)}`;
                 const dist = `dist=${sc.dnaDistance.toFixed(3)}`;
                 const tex = sc.effect.reasoning.includes('TEXTURE') ? '🎨REJECTED' : '';
-                const displayName = sc.effect.effectName ?? sc.effect.effect;
+                const displayName = effectDisplayName(sc.effect.effectName ?? sc.effect.effect);
                 return `  ${i + 1}. ${displayName.padEnd(20)} SCORE=${s.score.toFixed(3)} | ${dna} ${div} ${vib} ${rsk} ${dist} ${tex}`;
             }).join('\n'));
         return scored.map(s => s.scenario);
@@ -1188,6 +1217,21 @@ export class EffectDreamSimulator {
         if (oracleProbability > 0.7) {
             const confidenceBoost = (oracleProbability - 0.7) * 0.10; // Max +0.03 para prob=1.0 (era +0.06)
             score += confidenceBoost;
+        }
+        // ═══════════════════════════════════════════════════════════════
+        // 🧬 GENESIS: NURTURE BIAS / PURGATORY BOOST
+        // Newborn mutants (< 5 live trials) get a small scoring boost to give
+        // them a fighting chance against optimized consolidated blueprints.
+        // Without this, young organisms starve — they never win the DNA
+        // Euclidean distance race against battle-tested effects.
+        // The boost is small enough to not override DNA matching but enough
+        // to break ties in favor of exploration.
+        // ═══════════════════════════════════════════════════════════════
+        const isNewborn = scenario.trialsCount !== undefined && scenario.trialsCount < 5;
+        const nurtureBoost = isNewborn ? 0.08 : 0;
+        score += nurtureBoost;
+        if (nurtureBoost > 0 && this.simulationCount % 10 === 0) {
+            console.log(`[DREAM_SIMULATOR] 🧬 NURTURE BIAS: "${effectDisplayName(effectName)}" +${nurtureBoost} (trials: ${scenario.trialsCount})`);
         }
         return Math.max(0, Math.min(1, score));
     }

@@ -183,16 +183,23 @@ function evalG6(clip: HephAutomationClipV3, simMeta: SimulationMeta | undefined)
   }
 }
 
+// ─── TUNABLE THRESHOLDS ─────────────────────────────────────────────────────
+
+/** 🧬 G7 CLONE ABORT THRESHOLD: L2 distance below this = functional clone → abort. */
+const G7_CLONE_ABORT_L2_THRESHOLD = 0.02
+
+// ─── GATE EVALUATORS (pure, no side effects) ────────────────────────────────
+
 function evalG7Redundancy(l2Distance: number | undefined): PrenatalGateResult {
   if (l2Distance === undefined) {
     return { id: 'G7', status: 'na', label: 'REDUNDANCY', description: 'L2 distance not provided' }
   }
-  if (l2Distance < 0.005) {
+  if (l2Distance < G7_CLONE_ABORT_L2_THRESHOLD) {
     return {
       id: 'G7',
       status: 'fail',
       label: 'REDUNDANCY',
-      description: `Functional clone of ancestor (L2=${l2Distance.toFixed(4)} < 0.005). Mutation lacked structural divergence.`,
+      description: `Functional clone of ancestor (L2=${l2Distance.toFixed(4)} < ${G7_CLONE_ABORT_L2_THRESHOLD}). Mutation lacked structural divergence.`,
     }
   }
   return {
@@ -245,7 +252,7 @@ function evalG7Spatial(clip: HephAutomationClipV3, dna: CognitiveDNA | undefined
  *   G7-spatial warn
  *
  * @param l2Distance Optional L2 distance from parent. When provided,
- *   G7 redundancy gate rejects clones with L2 < 0.005.
+ *   G7 redundancy gate rejects clones with L2 < 0.02.
  */
 export function prenatalScreening(
   clip: HephAutomationClipV3,

@@ -139,6 +139,20 @@ export class AudienceSafetyContextBuilder {
         this.context.spectral = spectral;
         return this;
     }
+    /**
+     * 🧬 M-SARFE: Inject AcousticRealityState for real acoustic DNA target derivation.
+     */
+    withAcousticReality(ars) {
+        this.context.acousticReality = ars;
+        return this;
+    }
+    /**
+     * Set narrative phase for BUILDING phase aggression filtering.
+     */
+    withNarrativePhase(phase) {
+        this.context.narrativePhase = phase;
+        return this;
+    }
     // ═══════════════════════════════════════════════════════════════
     // BUILD
     // ═══════════════════════════════════════════════════════════════

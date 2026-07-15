@@ -115,6 +115,32 @@ export class HephaestusRuntime {
         }
     }
     /**
+     * Hot-reload: invalidate cache AND reload any active clips for this file.
+     * Called after a clip is saved in the Hephaestus editor.
+     * Preserves playback position (startTimeMs) so the clip continues seamlessly
+     * with the updated track data.
+     */
+    hotReload(filePath) {
+        this.invalidateCache(filePath);
+        const freshClip = this.loadClip(filePath);
+        if (!freshClip)
+            return;
+        for (const [instanceId, active] of this.activeClips) {
+            if (active.filePath !== filePath)
+                continue;
+            const durationMs = active.durationMs;
+            const { tracks, phaseConfig } = this._buildResolvedTracks(freshClip, durationMs, undefined);
+            if (tracks.length === 0)
+                continue;
+            active.clip = freshClip;
+            active.tracks = tracks;
+            active.phaseConfig = phaseConfig;
+            if (this.debug) {
+                console.log(`[HephRuntime] ⚡ HOT-RELOAD: ${instanceId} → ${path.basename(filePath)}`);
+            }
+        }
+    }
+    /**
      * Clear entire cache
      */
     clearCache() {

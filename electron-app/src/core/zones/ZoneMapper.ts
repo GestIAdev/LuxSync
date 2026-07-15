@@ -423,12 +423,6 @@ export function resolveZoneTags(tags: string[], fixtures: readonly ZoneMappableF
     }
   }
 
-  // 🧩 DIAGNÓSTICO COMPOUND FIXTURE (temporal — remover después de verificación)
-  const compoundInPool = pool.find(f => f.channelZones && f.channelZones.length > 0)
-  if (compoundInPool) {
-    console.log(`[ZoneMapper.resolveZoneTags] 🧩 compound fixture=${compoundInPool.id} EN POOL para tags=[${tags.join(',')}] | channelZones=[${(compoundInPool.channelZones ?? []).join(',')}]`)
-  }
-
   return pool.map(f => f.id)
 }
 

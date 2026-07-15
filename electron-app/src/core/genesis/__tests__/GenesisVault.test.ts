@@ -153,7 +153,7 @@ function makeOrganismPayload(id: string, blueprintId: string, generation = 1, pa
     rarity_score: 0.5,
     rarity_tier: 'COMMON',
     l2_distance_parent: 0.1,
-    operator_used: 'point_mutation',
+    operator_used: 'focal_mutation',
     neonatal_shield_until: 5,
     birth_vector_json: '{"zScoreAvg3s":0,"lowBandAvg3s":0,"energyPhaseEncoded":0,"vibeHash":0,"sectionEncoded":0,"textureEncoded":0}',
     fitness_score: 0.3,

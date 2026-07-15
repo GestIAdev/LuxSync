@@ -130,7 +130,7 @@ export function generateOrganismName(organism, blueprint) {
     }
     else {
         // Use operator type as a proxy for chaos
-        const chaosLikeOps = ['gene_duplication', 'transposition', 'crossover', 'temporal_stretch'];
+        const chaosLikeOps = ['gene_augmentation', 'transposition', 'crossover', 'proportional_stretch'];
         const isChaotic = chaosLikeOps.includes(organism.operatorUsed);
         nounPool = isChaotic ? NOUNS_HIGH_CHAOS : NOUNS_LOW_CHAOS;
     }

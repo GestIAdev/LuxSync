@@ -94,6 +94,15 @@ export interface EnergyConsciousnessConfig {
   trendWindowSize: number
 }
 
+// EMA α for 3s moving average RMS energy gate (half-life ~3s @ 44Hz)
+const ALPHA_RMS_3S = 1 - Math.pow(2, -1 / (3.0 * 44.0))
+
+// EMA α for 10s moving average RMS energy gate (half-life ~10s @ 44Hz)
+// Used for flashbang detection and dynamic epicness floors — smooths out
+// techno minimal zone oscillations (valley↔intense) while still rising
+// during genuine silence→drop transitions which sustain >10s.
+const ALPHA_RMS_10S = 1 - Math.pow(2, -1 / (10.0 * 44.0))
+
 const DEFAULT_CONFIG: EnergyConsciousnessConfig = {
   // ═══════════════════════════════════════════════════════════════════════════
   // � WAVE 996: THE 7-ZONE EXPANSION - THE LADDER
@@ -194,6 +203,17 @@ export class EnergyConsciousnessEngine {
   // Historial para percentil
   private energyHistory: number[] = []
   
+  // 3s moving average RMS energy for absolute energy gating
+  private _rmsAverage3s: number = 0
+
+  // 10s moving average RMS energy — slower low-pass for flashbang gate
+  // and dynamic epicness floors. Filters techno minimal oscillations.
+  private _rmsAverage10s: number = 0
+
+  // 🌋 WAVE 960 TUNE: Flashbang cooldown — prevent false positives from zone oscillation
+  private _lastFlashbangTimestamp: number = 0
+  private readonly FLASHBANG_COOLDOWN_MS = 500  // min 500ms between detections
+  
   // Ventana para tendencia
   private trendWindow: number[] = []
   
@@ -224,6 +244,11 @@ export class EnergyConsciousnessEngine {
     // 1. SUAVIZADO ASIMÉTRICO - La magia del "Fake Drop"
     // ═══════════════════════════════════════════════════════════════════
     const smoothed = this.calculateAsymmetricSmoothing(rawEnergy)
+    
+    // 3s moving average RMS for absolute energy gating
+    this._rmsAverage3s += ALPHA_RMS_3S * (rawEnergy - this._rmsAverage3s)
+    // 10s moving average RMS — slower low-pass for flashbang + dynamic floors
+    this._rmsAverage10s += ALPHA_RMS_10S * (rawEnergy - this._rmsAverage10s)
     
     // ═══════════════════════════════════════════════════════════════════
     // 🔥 WAVE 979: PEAK HOLD - Preservar transitorios
@@ -584,6 +609,10 @@ export class EnergyConsciousnessEngine {
     currentZone: EnergyZone,
     now: number
   ): boolean {
+    // 0. Cooldown — prevent false positives from rapid zone oscillation in techno
+    // Without this, zone bouncing valley↔intense triggers 4+ flashbangs in <80ms
+    if (now - this._lastFlashbangTimestamp < this.FLASHBANG_COOLDOWN_MS) return false
+
     // 1. ¿Es un cambio de zona reciente? (< 100ms)
     const timeSinceChange = now - this.lastZoneChange
     if (timeSinceChange > 100) return false  // Transición ya estabilizada
@@ -601,8 +630,16 @@ export class EnergyConsciousnessEngine {
     
     if (!isToHigh) return false
     
+    // 4. Absolute RMS Energy Gate: 10s moving average must exceed 0.25
+    // Switched from 3s to 10s EMA — the 3s average responds too fast to
+    // techno minimal zone oscillations (valley↔intense bouncing every ~200ms).
+    // The 10s average smooths these out while still rising during genuine
+    // silence→drop transitions which sustain high energy for >10s.
+    if (this._rmsAverage10s < 0.25) return false
+    
     // ✅ FLASHBANG DETECTED: Salto instantáneo de LOW → HIGH
-    console.log(`[🌋 FLASHBANG] Detected: ${previousZone} → ${currentZone} (${timeSinceChange}ms)`)
+    this._lastFlashbangTimestamp = now
+    console.log(`[🌋 FLASHBANG] Detected: ${previousZone} → ${currentZone} (${timeSinceChange}ms) RMS3s=${this._rmsAverage3s.toFixed(2)} RMS10s=${this._rmsAverage10s.toFixed(2)} t=${now}ms`)
     return true
   }
   
@@ -623,6 +660,14 @@ export class EnergyConsciousnessEngine {
   getSmoothedEnergy(): number {
     return this.smoothedEnergy
   }
+
+  /**
+   * 10s moving average RMS energy — slow low-pass for dynamic floors.
+   * Used by SeleneTitanConscious for dynamic epicness thresholds.
+   */
+  getRmsAverage10s(): number {
+    return this._rmsAverage10s
+  }
   
   /**
    * Reset del motor (para nueva canción)
@@ -637,6 +682,8 @@ export class EnergyConsciousnessEngine {
     this.lastHighEnergyTime = 0
     this.lastLowEnergyTime = Date.now()
     this.lastMultiSpectralZone = null
+    this._rmsAverage3s = 0
+    this._rmsAverage10s = 0
   }
   
   /**

@@ -21,6 +21,7 @@
 import { MoodController } from '../mood';
 // 🚨 WAVE 1004.2: DNA Diversity System - Shadowban por repetición
 import { getDNAAnalyzer } from '../intelligence/dna';
+import { effectDisplayName } from '../arsenal/DynamicEffectRegistry';
 // ═══════════════════════════════════════════════════════════════════════════
 // 🚪 WAVE 812: THE TIMEKEEPER - FUENTE DE VERDAD DEL TIEMPO
 // ═══════════════════════════════════════════════════════════════════════════
@@ -274,10 +275,10 @@ export class ArsenalRepository {
             const availability = this.checkAvailability(effect, vibeId);
             if (!availability.available)
                 continue;
-            console.log(`[EffectRepository 🔪] Arsenal selection: ${effect} AVAILABLE (from [${arsenal.join(', ')}])`);
+            console.log(`[EffectRepository 🔪] Arsenal selection: ${effectDisplayName(effect)} AVAILABLE (from [${arsenal.map(effectDisplayName).join(', ')}])`);
             return effect;
         }
-        console.log(`[EffectRepository 🔪] Arsenal EXHAUSTED - all effects in cooldown: [${arsenal.join(', ')}]`);
+        console.log(`[EffectRepository 🔪] Arsenal EXHAUSTED - all effects in cooldown: [${arsenal.map(effectDisplayName).join(', ')}]`);
         return null;
     }
     // ═══════════════════════════════════════════════════════════════════════════

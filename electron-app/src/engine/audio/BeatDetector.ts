@@ -557,9 +557,20 @@ export class BeatDetector {
         }
       }
       // Blend: frequency feedback + integral correction, anchored on previous smoothed BPM
-      this.pllSmoothedBpm = this.pllSmoothedBpm
+      const previousBpm = this.pllSmoothedBpm
+      let newBpm = this.pllSmoothedBpm
         + (frequencyBpm - this.pllSmoothedBpm) * PLL_FREQUENCY_GAIN
         - bpmCorrection
+      
+      // PLL Stabilization: when locked and confident, clamp BPM shift to ±1.5 BPM per beat
+      if (this.pllIsLocked && this.state.confidence > 0.5) {
+        const maxShift = 1.5
+        const delta = newBpm - previousBpm
+        if (delta > maxShift) newBpm = previousBpm + maxShift
+        else if (delta < -maxShift) newBpm = previousBpm - maxShift
+      }
+      
+      this.pllSmoothedBpm = newBpm
       
       // Clamp BPM to sane range
       this.pllSmoothedBpm = Math.max(this.minBpm, Math.min(this.maxBpm, this.pllSmoothedBpm))

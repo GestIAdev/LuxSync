@@ -16,6 +16,7 @@ import { getHeatmapLogger } from './fitness/HeatmapLogger';
 import { getColiseumService } from './ColiseumService';
 import { getAncestralIngestor } from './AncestralIngestor';
 import { getDynamicEffectRegistry } from '../arsenal/DynamicEffectRegistry';
+import { dreamEngineIntegrator } from '../intelligence/integration/DreamEngineIntegrator';
 const MAINTENANCE_INTERVAL_MS = 60000; // 60 seconds — geological time
 let _maintenanceTimer = null;
 let _ignited = false;
@@ -63,6 +64,10 @@ export async function igniteGenesisEngine() {
                 const injected = getDynamicEffectRegistry().refreshEvolutionaryCandidates(3);
                 if (injected > 0) {
                     console.log(`[GenesisIgnition 🧬] Arena Gates: ${injected} mutants injected into live pool`);
+                    // 🧬 WAVE 7003: Invalidate dream cache so Selene sees fresh candidates immediately.
+                    // Without this, the 5s dream cache returns stale "DNA: ❌ none" results
+                    // even after new champion/canonized organisms are registered.
+                    dreamEngineIntegrator.invalidateDreamCache();
                 }
             }
             catch (err) {

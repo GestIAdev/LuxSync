@@ -154,14 +154,14 @@ export const DEFAULT_LIQUID_PROFILE: Readonly<ILiquidCognitionProfile> = Object.
   // — Tensión Superficial —
   T_min: 0.30,
   T_max: 0.85,
-  T_base: 0.600,       // ⬇ 0.800 → 0.600 (relaxed for fluidity)
-  kappa_sigma: 0.800,   // ⬆ 0.35 → 0.800 (MC)
+  T_base: 0.400,       // ⬇ 0.600 → 0.400 — homeostatic target drops to ~0.40-0.48, lets tension relax in techno minimal
+  kappa_sigma: 0.20,    // tEq = T_base + 0.20*temp stays in [0.40, 0.57]
   alpha_rise: 0.010,    // ⬇ 0.04 → 0.010 (MC)
   tau_sat: 1.0,         // ⬇ 6.0  → 1.0   (MC)
   lambda_0: 0.008,
   kappa_d: 2.5,
   D_half: 8.0,
-  lambda_home: 0.015,
+  lambda_home: 0.020,  // ⬆ 0.015 → 0.020 — faster homeostatic pull toward lower T_base
   w_z: 0.45,
   w_cf: 0.30,
   w_e: 0.25,

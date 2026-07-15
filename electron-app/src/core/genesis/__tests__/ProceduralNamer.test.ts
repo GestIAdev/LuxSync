@@ -15,8 +15,8 @@ import type { LfxOrganism, RarityTier, MutationOperator } from '../types'
 
 const RARITY_TIERS: RarityTier[] = ['COMMON', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHIC']
 const OPERATORS: MutationOperator[] = [
-  'point_mutation', 'hue_drift', 'phase_epigenetics', 'gene_duplication',
-  'gene_deletion', 'crossover', 'temporal_stretch', 'context_drift', 'transposition',
+  'focal_mutation', 'hue_drift', 'spatial_resonance', 'gene_augmentation',
+  'adaptive_pruning', 'crossover', 'proportional_stretch', 'context_drift', 'transposition',
 ]
 
 function makeOrganism(
@@ -41,7 +41,7 @@ function makeOrganism(
     rarityScore: opts.rarityScore ?? 0.5,
     rarityTier: opts.rarityTier ?? 'COMMON',
     l2DistanceParent: opts.l2DistanceParent ?? 0.1,
-    operatorUsed: opts.operatorUsed ?? 'point_mutation',
+    operatorUsed: opts.operatorUsed ?? 'focal_mutation',
     neonatalShieldUntil: 5,
     birthVector: {
       zScoreAvg3s: 0, lowBandAvg3s: 0, energyPhaseEncoded: 0,
@@ -82,7 +82,7 @@ describe('🧬 ProceduralNamer — Stress Tests', () => {
       fitnessScore: 0.42,
       generation: 3,
       rarityTier: 'LEGENDARY',
-      operatorUsed: 'gene_duplication',
+      operatorUsed: 'gene_augmentation',
     })
 
     const firstName = generateOrganismName(org)

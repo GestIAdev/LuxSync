@@ -57,6 +57,10 @@ export class DynamicEffectRegistry {
             return null;
         }
         const dna = clip.cognitiveDNA;
+        // Polyfill legacy .lfx: inject default pressureRange if missing
+        if (!dna.pressureRange) {
+            dna.pressureRange = { min: 0.5, max: 1.0 };
+        }
         if (!_validateGenomeRanges(dna)) {
             console.warn(`[DynamicEffectRegistry ⚠️] V3 G3 fail: genome out of range for "${clip.id}"`);
             return null;
@@ -138,6 +142,9 @@ export class DynamicEffectRegistry {
                     const entry = this.registerEffectV3(lfxWrapper, {
                         filePath: null,
                         isBuiltin: false,
+                        organismId: candidate.organismId,
+                        trialsCount: candidate.trialsCount,
+                        organismStatus: candidate.status,
                     });
                     if (entry) {
                         injected++;
@@ -158,7 +165,8 @@ export class DynamicEffectRegistry {
                 }
             }
             console.log(`[ArenaInject 🧬] Cycle complete: ${injected} injected, ${rejected} rejected ` +
-                `out of ${result.candidates.length} candidates`);
+                `out of ${result.candidates.length} candidates ` +
+                `(status: ${result.candidates.map(c => c.status).join(', ')})`);
             return injected;
         }
         catch (err) {
@@ -173,13 +181,21 @@ export class DynamicEffectRegistry {
     getEffectsForVibe(vibe) {
         return this._byVibe.get(vibe) ?? DynamicEffectRegistry._EMPTY_ENTRIES;
     }
-    /** Retorna arsenal DIVINE pre-indexado por vibe. */
+    /** Retorna arsenal DIVINE pre-indexado por vibe. 🧬 PURGATORY WALL: excludes 'alive' organisms. */
     getDivineArsenal(vibe) {
-        return this._divineByVibe.get(vibe) ?? DynamicEffectRegistry._EMPTY_ENTRIES;
+        const raw = this._divineByVibe.get(vibe);
+        if (!raw)
+            return DynamicEffectRegistry._EMPTY_ENTRIES;
+        const filtered = raw.filter(e => !e.organismId || e.organismStatus !== 'alive');
+        return filtered.length === raw.length ? raw : filtered;
     }
-    /** Retorna arsenal HEAVY pre-indexado por vibe. */
+    /** Retorna arsenal HEAVY pre-indexado por vibe. 🧬 PURGATORY WALL: excludes 'alive' organisms. */
     getHeavyArsenal(vibe) {
-        return this._heavyByVibe.get(vibe) ?? DynamicEffectRegistry._EMPTY_ENTRIES;
+        const raw = this._heavyByVibe.get(vibe);
+        if (!raw)
+            return DynamicEffectRegistry._EMPTY_ENTRIES;
+        const filtered = raw.filter(e => !e.organismId || e.organismStatus !== 'alive');
+        return filtered.length === raw.length ? raw : filtered;
     }
     /** Lookup por ID. */
     getEntry(effectId) {
@@ -346,8 +362,8 @@ function _buildEntryFromV3(clip, options) {
             max: dna.aggressionRange.max,
         }),
         pressureRange: Object.freeze({
-            min: dna.pressureRange?.min ?? 0,
-            max: dna.pressureRange?.max ?? 0,
+            min: dna.pressureRange?.min ?? 0.5,
+            max: dna.pressureRange?.max ?? 1.0,
         }),
         spatialBehavior: dna.spatialBehavior,
         ikCompatibility: Object.freeze({ ...ikCompat }),
@@ -369,6 +385,9 @@ function _buildEntryFromV3(clip, options) {
         isBuiltin: options.isBuiltin ?? false,
         loadedAt: Date.now(),
         source: null,
+        organismId: options.organismId,
+        trialsCount: options.trialsCount,
+        organismStatus: options.organismStatus,
     };
     return Object.freeze(entry);
 }
@@ -394,4 +413,29 @@ export function getDynamicEffectRegistry() {
 /** SOLO para tests: resetea el singleton. */
 export function __resetDynamicEffectRegistryForTests() {
     _instance = null;
+}
+/**
+ * 🪞 WAVE 7003: Resolves an effect ID (which may be a raw UUID for evolved
+ * organisms) into a short, human-readable name for logging.
+ *
+ * Priority: entry.name → entry.organismId short tag → truncated ID.
+ * Returns the raw effectId unchanged if the registry is unavailable.
+ */
+export function effectDisplayName(effectId) {
+    try {
+        const entry = getDynamicEffectRegistry().getEntry(effectId);
+        if (entry?.name)
+            return entry.name;
+        if (entry?.organismId) {
+            const short = entry.organismId.includes(':')
+                ? entry.organismId.split(':')[1]?.substring(0, 8) ?? entry.organismId.substring(0, 8)
+                : entry.organismId.substring(0, 8);
+            return `${short}`;
+        }
+    }
+    catch {
+        // Registry not initialized — fall through
+    }
+    // Truncate long UUIDs to first 8 chars for readability
+    return effectId.length > 16 ? effectId.substring(0, 8) : effectId;
 }

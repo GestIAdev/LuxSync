@@ -11,7 +11,7 @@
 //  The clone is the mutated clip; the delta is the minimal diff to reproduce it.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import type { HephAutomationClipV3, HephTrack, HephKeyframe, HephCurve, HephInterpolation } from '../../hephaestus/types'
+import type { HephAutomationClipV3, HephTrack, HephKeyframe, HephCurve, HephInterpolation, HephParamId } from '../../hephaestus/types'
 import { BEZIER_PRESETS } from '../../hephaestus/types'
 import { ENERGY_ZONES } from '../../arsenal/LfxClipInstance'
 import type { PhaseConfigPro } from '../../hephaestus/phase/PhaseConfigPro'
@@ -246,10 +246,11 @@ function computeDStructural(
 
 /**
  * Composite L2 distance V2 — multi-space weighted average.
- * L2_total = 0.45 * D_curve + 0.35 * D_phase + 0.20 * D_structural
+ * L2_total = 0.55 * D_curve + 0.40 * D_phase + 0.05 * D_structural
  *
- * Unlike V1, this is NOT blind to phaseConfig changes (D_phase)
- * and captures structural topology shifts (D_structural).
+ * Rebalanced to favor curve/phase mutations (macro_splice, proportional_stretch)
+ * over structural destruction (track deletion). D_structural reduced from 0.20
+ * to 0.05 so that profound curve changes alone can achieve high L2 values.
  */
 export function computeL2DistanceV2(
   parent: HephAutomationClipV3,
@@ -259,7 +260,7 @@ export function computeL2DistanceV2(
   const dPhase = computeDPhase(parent, child)
   const dStructural = computeDStructural(parent, child)
 
-  return 0.45 * dCurve + 0.35 * dPhase + 0.20 * dStructural
+  return 0.55 * dCurve + 0.40 * dPhase + 0.05 * dStructural
 }
 
 // ─── RANDOM HELPERS (deterministic via seed) ────────────────────────────────
@@ -314,29 +315,48 @@ export function makeFatTailedRng(baseRng: () => number): FatTailedRng {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// OPERATOR 1: POINT MUTATION
+// OPERATOR 1: FOCAL MUTATION (Context-aware — replaces point_mutation)
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Modifies a single numeric `value` (and optionally a bezier handle) in a random track.
- * WAVE 6000.V2: Magnitude now drawn from truncated Cauchy distribution —
- * most mutations are small (MICRO/STANDARD), but rare CATACLYSMIC events occur.
+ * Shifts a single keyframe value by a perceptible amount (0.20-0.40) on a
+ * DNA-selected track. Aggression favors intensity/strobe; organicity favors
+ * color/zoom/pan/tilt. No microscopic Cauchy noise — only perceptible shifts.
  */
-export function pointMutation(
+export function focalMutation(
   parent: HephAutomationClipV3,
   seed?: number,
 ): OperatorResult {
   const rng = makeRng(seed ?? Date.now())
-  const fatRng = makeFatTailedRng(rng)
   const child = deepClone(parent)
   const delta: JsonPatchOp[] = []
 
-  const numericTracks = child.tracks
+  // Contextual target selection from DNA
+  const dna = child.cognitiveDNA
+  const genome = dna?.genome
+  const aggression = genome?.aggression ?? 0.5
+  const organicity = genome?.organicity ?? 0.5
+
+  let targetParamIds: string[] | null = null
+  if (aggression > 0.5) {
+    targetParamIds = ['intensity', 'strobe']
+  } else if (organicity > 0.5) {
+    targetParamIds = ['color', 'zoom', 'pan', 'tilt']
+  }
+
+  let numericTracks = child.tracks
     .map((t, i) => ({ track: t, index: i }))
     .filter((t) => t.track.curve.valueType === 'number' && t.track.curve.keyframes.length > 0)
 
+  if (targetParamIds) {
+    const filtered = numericTracks.filter((t) => targetParamIds!.includes(t.track.paramId))
+    if (filtered.length > 0) {
+      numericTracks = filtered
+    }
+  }
+
   if (numericTracks.length === 0) {
-    return { clip: child, delta, operator: 'point_mutation', l2Distance: 0 }
+    return { clip: child, delta, operator: 'focal_mutation', l2Distance: 0 }
   }
 
   const pick = numericTracks[Math.floor(rng() * numericTracks.length)]
@@ -345,54 +365,97 @@ export function pointMutation(
   const kfIdx = Math.floor(rng() * track.curve.keyframes.length)
   const kf = track.curve.keyframes[kfIdx]
 
-  // Fat-tailed magnitude: Cauchy(scale=0.02, maxAbs=0.60)
-  const magnitude = fatRng.sampleCauchy(0.02, 0.60)
-
-  const range = track.curve.range
-  const span = range[1] - range[0]
-
-  if (typeof kf.value === 'number') {
-    const oldVal = kf.value
-    const newVal = clamp(oldVal + magnitude * span, range[0], range[1])
-    kf.value = newVal
-    delta.push({
-      op: 'replace',
-      path: `/tracks/${trackIdx}/curve/keyframes/${kfIdx}/value`,
-      value: newVal,
-    })
+  if (typeof kf.value !== 'number') {
+    return { clip: child, delta, operator: 'focal_mutation', l2Distance: 0 }
   }
 
-  // 50% chance to also mutate a bezier handle
-  if (kf.bezierHandles && rng() < 0.5) {
-    const handleIdx = Math.floor(rng() * 4)
-    const oldHandle = kf.bezierHandles[handleIdx]
-    const handleDelta = fatRng.sampleCauchy(0.03, 0.80)
-    const newHandle = clamp(oldHandle + handleDelta, -2, 2)
-    kf.bezierHandles[handleIdx] = newHandle
+  // Perceptible shift: 0.20 to 0.40, random sign
+  const shiftMagnitude = 0.20 + rng() * 0.20
+  const sign = rng() < 0.5 ? -1 : 1
+  const range = track.curve.range
+  const span = range[1] - range[0]
+  const oldVal = kf.value
+  const newVal = clamp(oldVal + sign * shiftMagnitude * span, range[0], range[1])
+
+  kf.value = newVal
+  delta.push({
+    op: 'replace',
+    path: `/tracks/${trackIdx}/curve/keyframes/${kfIdx}/value`,
+    value: newVal,
+  })
+
+  // DNA Drift: aggression +0.020, chaos +0.020
+  if (dna && genome) {
+    const newAggression = clamp3(genome.aggression + 0.020, 0, 1)
+    const newChaos = clamp3(genome.chaos + 0.020, 0, 1)
+    const newOrganicity = genome.organicity
+
+    const newGenome: FrozenGenome = {
+      aggression: newAggression,
+      chaos: newChaos,
+      organicity: newOrganicity,
+    }
+
+    child.cognitiveDNA = {
+      ...dna,
+      genome: newGenome,
+    }
+
     delta.push({
       op: 'replace',
-      path: `/tracks/${trackIdx}/curve/keyframes/${kfIdx}/bezierHandles/${handleIdx}`,
-      value: newHandle,
+      path: '/cognitiveDNA/genome/aggression',
+      value: newAggression,
+    })
+    delta.push({
+      op: 'replace',
+      path: '/cognitiveDNA/genome/chaos',
+      value: newChaos,
+    })
+    delta.push({
+      op: 'replace',
+      path: '/cognitiveDNA/genome/organicity',
+      value: newOrganicity,
     })
   }
 
   return {
     clip: child,
     delta,
-    operator: 'point_mutation',
+    operator: 'focal_mutation',
     l2Distance: computeL2DistanceV2(parent, child),
   }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// OPERATOR 2: GENE DUPLICATION
+// OPERATOR 2: GENE AUGMENTATION (Lamarckian — replaces gene_duplication)
 // ═══════════════════════════════════════════════════════════════════════════
 
+/** Hardware parameters that gene_augmentation can inject. */
+const AUGMENTABLE_PARAMS: HephParamId[] = ['intensity', 'color', 'strobe', 'pan', 'tilt', 'zoom']
+
+/** Canonical ranges per paramId for curve generation. */
+const PARAM_RANGES: Record<string, [number, number]> = {
+  intensity: [0, 1],
+  color: [0, 360],
+  strobe: [0, 1],
+  pan: [0, 255],
+  tilt: [0, 255],
+  zoom: [0, 1],
+}
+
+/** 3-decimal precision clamp. */
+function clamp3(v: number, lo: number, hi: number): number {
+  return Math.round(Math.max(lo, Math.min(hi, v)) * 1000) / 1000
+}
+
 /**
- * Clones an existing track, mutates its phaseConfig (spreadDeg, wings, shuffle),
- * and appends it to the tracks array.
+ * Lamarckian operator: injects ONE missing structural track with a curve
+ * shaped by the parent's cognitiveDNA, then drifts the DNA itself.
+ *
+ * Unlike the old gene_duplication, this NEVER duplicates a paramId —
+ * it only adds tracks for parameters that are currently absent.
  */
-export function geneDuplication(
+export function geneAugmentation(
   parent: HephAutomationClipV3,
   seed?: number,
 ): OperatorResult {
@@ -400,173 +463,401 @@ export function geneDuplication(
   const child = deepClone(parent)
   const delta: JsonPatchOp[] = []
 
-  if (child.tracks.length === 0) {
+  // Step A: Inventory existing paramIds
+  const existingParams = new Set<string>()
+  for (const track of child.tracks) {
+    existingParams.add(track.paramId)
+  }
+
+  // Step B: Find missing candidates
+  const missing = AUGMENTABLE_PARAMS.filter((p) => !existingParams.has(p))
+  if (missing.length === 0) {
     return {
       clip: child,
       delta,
-      operator: 'gene_duplication',
+      operator: 'gene_augmentation',
       l2Distance: 0,
     }
   }
 
-  // Pick a random track to duplicate
-  const srcIdx = Math.floor(rng() * child.tracks.length)
-  const srcTrack = child.tracks[srcIdx]
-  const cloned: HephTrack = deepClone(srcTrack)
+  // Step C: Select one missing paramId
+  const chosenParam = missing[Math.floor(rng() * missing.length)]
+  const range = PARAM_RANGES[chosenParam] ?? [0, 1]
+  const span = range[1] - range[0]
+  const duration = child.durationMs
 
-  // New ID for the duplicated track
-  cloned.id = `${srcTrack.id}_dup_${Math.floor(rng() * 100000)}`
+  // Contextual shape: read parent's DNA aggression to decide curve character
+  const dna = child.cognitiveDNA
+  const aggression = dna?.genome.aggression ?? 0.5
+  const isAggressive = aggression >= 0.5
 
-  // Mutate phaseConfig — create or modify existing
-  const existingPhase = cloned.phaseConfig ?? { ...DEFAULT_PHASE_CONFIG_PRO }
-  const newPhase: PhaseConfigPro = {
-    ...existingPhase,
-    spreadDeg: clamp(existingPhase.spreadDeg + (rng() - 0.5) * 180, 0, 1440),
-    wings: clamp(Math.round(existingPhase.wings + (rng() < 0.5 ? -1 : 1) * (1 + Math.floor(rng() * 2))), 1, 8),
-    shuffle: clamp(existingPhase.shuffle + (rng() - 0.5) * 0.4, 0, 1),
-    shuffleSeed: Math.floor(rng() * 100000) + 1,
+  // Generate 2-3 keyframes
+  const numKfs = 2 + Math.floor(rng() * 2) // 2 or 3
+  const keyframes: HephKeyframe[] = []
+
+  for (let k = 0; k < numKfs; k++) {
+    const tFraction = numKfs === 1 ? 0 : k / (numKfs - 1)
+    const timeMs = Math.round(tFraction * duration)
+
+    let value: number
+    let interpolation: HephInterpolation
+
+    if (chosenParam === 'strobe') {
+      if (isAggressive) {
+        // Sharp/fast strobe: high values, hold interpolation for choppy effect
+        value = range[0] + span * (0.7 + rng() * 0.3)
+        interpolation = k < numKfs - 1 ? 'hold' : 'linear'
+      } else {
+        // Slow/smooth strobe: lower values, linear interpolation
+        value = range[0] + span * (0.2 + rng() * 0.3)
+        interpolation = 'linear'
+      }
+    } else if (chosenParam === 'color') {
+      // Color: spread across the hue range
+      value = range[0] + span * (k / Math.max(1, numKfs - 1))
+      interpolation = 'linear'
+    } else if (chosenParam === 'pan' || chosenParam === 'tilt') {
+      if (isAggressive) {
+        // Sharp positional jumps
+        value = range[0] + span * (rng() < 0.5 ? 0.1 + rng() * 0.2 : 0.7 + rng() * 0.2)
+        interpolation = 'hold'
+      } else {
+        // Smooth sweep
+        value = range[0] + span * tFraction
+        interpolation = 'bezier'
+      }
+    } else if (chosenParam === 'zoom') {
+      value = isAggressive
+        ? range[0] + span * (0.8 + rng() * 0.2)
+        : range[0] + span * (0.3 + rng() * 0.4)
+      interpolation = 'linear'
+    } else {
+      // intensity or fallback
+      value = range[0] + span * (0.4 + rng() * 0.5)
+      interpolation = isAggressive ? 'linear' : 'bezier'
+    }
+
+    value = Math.round(value * 1000) / 1000
+    const kf: HephKeyframe = { timeMs, value, interpolation }
+
+    if (interpolation === 'bezier') {
+      const presetKey = BEZIER_PRESET_KEYS[Math.floor(rng() * BEZIER_PRESET_KEYS.length)]
+      kf.bezierHandles = [...BEZIER_PRESETS[presetKey]] as [number, number, number, number]
+    }
+
+    keyframes.push(kf)
   }
-  cloned.phaseConfig = newPhase
 
-  // Optionally shift zones to create spatial divergence
-  if (rng() < 0.3 && cloned.zones.length > 0) {
-    // Keep zones as-is — duplication already creates spatial overlap diversity
+  // Build the new track
+  const newTrack: HephTrack = {
+    id: `aug_${chosenParam}_${Math.floor(rng() * 100000)}`,
+    paramId: chosenParam as HephParamId,
+    zones: child.tracks.length > 0
+      ? [...child.tracks[0].zones]
+      : ['all'],
+    curve: {
+      paramId: chosenParam as HephParamId,
+      valueType: chosenParam === 'color' ? 'color' : 'number',
+      range: [range[0], range[1]] as [number, number],
+      defaultValue: range[0],
+      keyframes,
+      mode: 'absolute',
+    },
   }
 
-  child.tracks.push(cloned)
+  // Step D: DNA Drift (Lamarckian)
+  const dnaDelta: JsonPatchOp[] = []
+  if (dna) {
+    let newAggression = dna.genome.aggression
+    let newChaos = dna.genome.chaos
+    let newOrganicity = dna.genome.organicity
+    let newPressureMin = dna.pressureRange.min
+    const newPressureMax = dna.pressureRange.max
+
+    if (chosenParam === 'strobe') {
+      newAggression = clamp3(newAggression + 0.150, 0, 1)
+      newChaos = clamp3(newChaos + 0.050, 0, 1)
+      newPressureMin = clamp3(newPressureMin + 0.100, 0, 1)
+    } else if (chosenParam === 'color') {
+      newOrganicity = clamp3(newOrganicity + 0.120, 0, 1)
+    } else if (chosenParam === 'pan' || chosenParam === 'tilt') {
+      newChaos = clamp3(newChaos + 0.120, 0, 1)
+    } else if (chosenParam === 'zoom') {
+      newAggression = clamp3(newAggression + 0.080, 0, 1)
+    } else if (chosenParam === 'intensity') {
+      newOrganicity = clamp3(newOrganicity + 0.060, 0, 1)
+    }
+
+    const newGenome: FrozenGenome = {
+      aggression: newAggression,
+      chaos: newChaos,
+      organicity: newOrganicity,
+    }
+
+    // Apply DNA mutations to the child
+    child.cognitiveDNA = {
+      ...dna,
+      genome: newGenome,
+      pressureRange: {
+        min: newPressureMin,
+        max: newPressureMax,
+      },
+    }
+
+    // Emit delta ops for DNA
+    dnaDelta.push({
+      op: 'replace',
+      path: '/cognitiveDNA/genome/aggression',
+      value: newAggression,
+    })
+    dnaDelta.push({
+      op: 'replace',
+      path: '/cognitiveDNA/genome/chaos',
+      value: newChaos,
+    })
+    dnaDelta.push({
+      op: 'replace',
+      path: '/cognitiveDNA/genome/organicity',
+      value: newOrganicity,
+    })
+    if (newPressureMin !== dna.pressureRange.min) {
+      dnaDelta.push({
+        op: 'replace',
+        path: '/cognitiveDNA/pressureRange/min',
+        value: newPressureMin,
+      })
+    }
+  }
+
+  // Step E: Apply track + emit delta
+  child.tracks.push(newTrack)
 
   delta.push({
     op: 'add',
     path: '/tracks/-',
-    value: cloned,
+    value: newTrack,
   })
+  delta.push(...dnaDelta)
 
   return {
     clip: child,
     delta,
-    operator: 'gene_duplication',
+    operator: 'gene_augmentation',
     l2Distance: computeL2DistanceV2(parent, child),
   }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// OPERATOR 3: PHASE EPIGENETICS
+// OPERATOR 3: SPATIAL RESONANCE (DNA-driven phase archetype — replaces phase_epigenetics)
 // ═══════════════════════════════════════════════════════════════════════════
 
+type SpatialArchetype = 'harmony' | 'chaos' | 'aggression'
+
 /**
- * Mutates PhaseConfigPro parameters across ALL tracks using fat-tailed distributions.
- * WAVE 6000.V2: spreadDeg and shuffle use sampleCauchy for signed variance,
- * wings and blocks use samplePareto for positive scalar jumps.
+ * Picks exactly ONE non-color track uniformly and applies a geometric phase
+ * archetype (Harmony, Chaos, Aggression) derived from the parent's cognitiveDNA.
+ * Color tracks are blacklisted — color phasing creates visual mud.
  */
-export function phaseEpigenetics(
+export function spatialResonance(
   parent: HephAutomationClipV3,
   seed?: number,
 ): OperatorResult {
   const rng = makeRng(seed ?? Date.now())
-  const fatRng = makeFatTailedRng(rng)
   const child = deepClone(parent)
   const delta: JsonPatchOp[] = []
 
-  for (let t = 0; t < child.tracks.length; t++) {
-    const track = child.tracks[t]
-    const existing = track.phaseConfig ?? { ...DEFAULT_PHASE_CONFIG_PRO }
+  // Step A: Democratic Target Selection — exclude color tracks
+  const candidates = child.tracks
+    .map((t, i) => ({ track: t, index: i }))
+    .filter((t) => t.track.paramId !== 'color')
 
-    const numMutations = 1 + Math.floor(rng() * 2)
-    const newPhase: PhaseConfigPro = { ...existing }
+  if (candidates.length === 0) {
+    return { clip: child, delta, operator: 'spatial_resonance', l2Distance: 0 }
+  }
 
-    for (let m = 0; m < numMutations; m++) {
-      const param = Math.floor(rng() * 5)
-      switch (param) {
-        case 0: // spreadDeg — Cauchy signed variance
-          newPhase.spreadDeg = clamp(
-            existing.spreadDeg + fatRng.sampleCauchy(30, 360), 0, 1440,
-          )
-          break
-        case 1: // wings — Pareto positive jump ± direction
-          newPhase.wings = clamp(
-            Math.round(existing.wings + (rng() < 0.5 ? -1 : 1) * fatRng.samplePareto(0.5, 2)),
-            1, 8,
-          )
-          break
-        case 2: // shuffle — Cauchy signed variance
-          newPhase.shuffle = clamp(
-            existing.shuffle + fatRng.sampleCauchy(0.05, 0.50), 0, 1,
-          )
-          break
-        case 3: // blocks — Pareto positive jump ± direction
-          newPhase.blocks = clamp(
-            Math.round(existing.blocks + (rng() < 0.5 ? -1 : 1) * fatRng.samplePareto(0.5, 2)),
-            1, 16,
-          )
-          break
-        case 4: // direction — coin flip
-          newPhase.direction = (rng() < 0.5 ? 1 : -1) as 1 | -1
-          break
-      }
+  // Uniform pick — 0 favoritism
+  const pick = candidates[Math.floor(rng() * candidates.length)]
+  const trackIdx = pick.index
+  const track = pick.track
+
+  // Step B: Archetype Phase Generation from genome
+  const dna = child.cognitiveDNA
+  const genome = dna?.genome
+  const chaos = genome?.chaos ?? 0.5
+  const aggression = genome?.aggression ?? 0.5
+  const organicity = genome?.organicity ?? 0.5
+
+  let archetype: SpatialArchetype
+  if (organicity > 0.5) {
+    archetype = 'harmony'
+  } else if (chaos > 0.6) {
+    archetype = 'chaos'
+  } else if (aggression > 0.6) {
+    archetype = 'aggression'
+  } else {
+    // RNG fallback 33/33/33
+    const roll = rng()
+    archetype = roll < 0.33 ? 'harmony' : roll < 0.66 ? 'chaos' : 'aggression'
+  }
+
+  const existing = track.phaseConfig ?? { ...DEFAULT_PHASE_CONFIG_PRO }
+  let newPhase: PhaseConfigPro
+
+  if (archetype === 'harmony') {
+    // Symmetrical and wide
+    newPhase = {
+      ...existing,
+      spreadDeg: 360,
+      wings: rng() < 0.5 ? 2 : 4, // even
+      shuffle: 0,
+      blocks: 1,
+      symmetry: 'mirror',
+      shuffleSeed: Math.floor(rng() * 100000) + 1,
+      direction: 1 as 1 | -1,
+    }
+  } else if (archetype === 'chaos') {
+    // Broken and asymmetrical
+    newPhase = {
+      ...existing,
+      spreadDeg: Math.round(90 + rng() * 180), // random(90, 270)
+      wings: rng() < 0.5 ? 1 : 3, // odd
+      shuffle: Math.round((0.3 + rng() * 0.5) * 1000) / 1000, // random(0.3, 0.8)
+      blocks: 2 + Math.floor(rng() * 3), // random(2, 4)
+      symmetry: 'linear',
+      shuffleSeed: Math.floor(rng() * 100000) + 1,
+      direction: (rng() < 0.5 ? 1 : -1) as 1 | -1,
+    }
+  } else {
+    // Aggression — unified wall/block
+    newPhase = {
+      ...existing,
+      spreadDeg: rng() < 0.5 ? 360 : 180,
+      wings: 1,
+      shuffle: 0,
+      blocks: 1,
+      symmetry: 'linear',
+      shuffleSeed: Math.floor(rng() * 100000) + 1,
+      direction: 1 as 1 | -1,
+    }
+  }
+
+  track.phaseConfig = newPhase
+
+  delta.push({
+    op: 'replace',
+    path: `/tracks/${trackIdx}/phaseConfig`,
+    value: newPhase,
+  })
+
+  // Step C: DNA Drift (3-decimal precision)
+  if (dna && genome) {
+    let newAggression = genome.aggression
+    let newChaos = genome.chaos
+    let newOrganicity = genome.organicity
+
+    if (archetype === 'harmony') {
+      newOrganicity = clamp3(newOrganicity + 0.030, 0, 1)
+      newChaos = clamp3(newChaos - 0.040, 0, 1)
+    } else if (archetype === 'chaos') {
+      newChaos = clamp3(newChaos + 0.050, 0, 1)
+    } else {
+      // aggression
+      newAggression = clamp3(newAggression + 0.040, 0, 1)
     }
 
-    newPhase.shuffleSeed = Math.floor(rng() * 100000) + 1
-    track.phaseConfig = newPhase
+    const newGenome: FrozenGenome = {
+      aggression: newAggression,
+      chaos: newChaos,
+      organicity: newOrganicity,
+    }
+
+    child.cognitiveDNA = {
+      ...dna,
+      genome: newGenome,
+    }
 
     delta.push({
       op: 'replace',
-      path: `/tracks/${t}/phaseConfig`,
-      value: newPhase,
+      path: '/cognitiveDNA/genome/aggression',
+      value: newAggression,
+    })
+    delta.push({
+      op: 'replace',
+      path: '/cognitiveDNA/genome/chaos',
+      value: newChaos,
+    })
+    delta.push({
+      op: 'replace',
+      path: '/cognitiveDNA/genome/organicity',
+      value: newOrganicity,
     })
   }
 
   return {
     clip: child,
     delta,
-    operator: 'phase_epigenetics',
+    operator: 'spatial_resonance',
     l2Distance: computeL2DistanceV2(parent, child),
   }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// OPERATOR 4: TEMPORAL STRETCH
+// OPERATOR 4: PROPORTIONAL STRETCH (Musical grid-safe — replaces temporal_stretch)
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Compresses or expands the timeMs of all keyframes by a factor derived
- * from a fat-tailed Cauchy distribution. factor < 1 = speed up, > 1 = slow down.
- * 70% chance targets a single track, 30% targets the entire clip.
+ * Stretches the entire clip by a strict musical multiplier (0.25, 0.5, 1.5, 2.0)
+ * selected from the parent's cognitiveDNA. All keyframes and durationMs are
+ * scaled globally, preserving internal sync and the rhythmic compás grid.
  */
-export function temporalStretch(
+export function proportionalStretch(
   parent: HephAutomationClipV3,
   seed?: number,
 ): OperatorResult {
   const rng = makeRng(seed ?? Date.now())
-  const fatRng = makeFatTailedRng(rng)
   const child = deepClone(parent)
   const delta: JsonPatchOp[] = []
 
   if (child.tracks.length === 0) {
-    return { clip: child, delta, operator: 'temporal_stretch', l2Distance: 0 }
+    return { clip: child, delta, operator: 'proportional_stretch', l2Distance: 0 }
   }
 
-  const factor = fatRng.sampleCauchy(0.15, 0.90) + 1.0
-  const targetClip = rng() < 0.3
-  const durationMs = child.durationMs
+  // Step A: Archetype Multiplier Selection from genome
+  const dna = child.cognitiveDNA
+  const genome = dna?.genome
+  const chaos = genome?.chaos ?? 0.5
+  const aggression = genome?.aggression ?? 0.5
+  const organicity = genome?.organicity ?? 0.5
 
-  if (targetClip) {
-    child.durationMs = Math.round(durationMs * factor)
-    delta.push({
-      op: 'replace',
-      path: '/durationMs',
-      value: child.durationMs,
-    })
+  let multiplier: number
+  if (aggression > 0.6 || chaos > 0.5) {
+    // Frenzy (Double-time): 0.5, with 20% chance of 0.25
+    multiplier = rng() < 0.2 ? 0.25 : 0.5
+  } else if (organicity > 0.6) {
+    // Lethargy (Half-time): 2.0
+    multiplier = 2.0
+  } else if (chaos > 0.4) {
+    // Syncopation: 1.5
+    multiplier = 1.5
+  } else {
+    // Fallback: uniform choice among [0.5, 1.5, 2.0]
+    const choices = [0.5, 1.5, 2.0]
+    multiplier = choices[Math.floor(rng() * choices.length)]
   }
 
-  const trackIndices = targetClip
-    ? child.tracks.map((_, i) => i)
-    : [Math.floor(rng() * child.tracks.length)]
+  // Step B: Global Application — stretch ALL tracks and ALL keyframes
+  child.durationMs = Math.round(parent.durationMs * multiplier)
+  delta.push({
+    op: 'replace',
+    path: '/durationMs',
+    value: child.durationMs,
+  })
 
-  for (const t of trackIndices) {
+  for (let t = 0; t < child.tracks.length; t++) {
     const track = child.tracks[t]
     for (let k = 0; k < track.curve.keyframes.length; k++) {
       const kf = track.curve.keyframes[k]
-      const newTime = clamp(Math.round(kf.timeMs * factor), 0, child.durationMs)
+      const newTime = Math.round(kf.timeMs * multiplier)
       kf.timeMs = newTime
       delta.push({
         op: 'replace',
@@ -574,114 +865,302 @@ export function temporalStretch(
         value: newTime,
       })
     }
+    // Enforce sort (mathematically preserved, but guard against rounding edge cases)
     track.curve.keyframes.sort((a, b) => a.timeMs - b.timeMs)
   }
 
-  return {
-    clip: child,
-    delta,
-    operator: 'temporal_stretch',
-    l2Distance: computeL2DistanceV2(parent, child),
-  }
-}
+  // Step C: DNA Drift (3-decimal precision)
+  if (dna && genome) {
+    let newAggression = genome.aggression
+    let newChaos = genome.chaos
+    let newOrganicity = genome.organicity
 
-// ═══════════════════════════════════════════════════════════════════════════
-// OPERATOR 5: GENE SPLICE
-// ═══════════════════════════════════════════════════════════════════════════
-
-const BEZIER_PRESET_KEYS = Object.keys(BEZIER_PRESETS)
-
-/**
- * Inserts 1-3 new keyframes between two existing ones in a numeric track.
- * Values are linearly interpolated + Cauchy noise. Emits 'add' ops.
- */
-export function geneSplice(
-  parent: HephAutomationClipV3,
-  seed?: number,
-): OperatorResult {
-  const rng = makeRng(seed ?? Date.now())
-  const fatRng = makeFatTailedRng(rng)
-  const child = deepClone(parent)
-  const delta: JsonPatchOp[] = []
-
-  const numericTracks = child.tracks
-    .map((t, i) => ({ track: t, index: i }))
-    .filter((t) => t.track.curve.valueType === 'number' && t.track.curve.keyframes.length >= 2)
-
-  if (numericTracks.length === 0) {
-    return { clip: child, delta, operator: 'gene_splice', l2Distance: 0 }
-  }
-
-  const pick = numericTracks[Math.floor(rng() * numericTracks.length)]
-  const track = pick.track
-  const trackIdx = pick.index
-  const kfs = track.curve.keyframes
-
-  const gapIdx = Math.floor(rng() * (kfs.length - 1))
-  const numInserts = 1 + Math.floor(rng() * 3)
-  const range = track.curve.range
-  const span = range[1] - range[0]
-
-  for (let j = 1; j <= numInserts; j++) {
-    const tFraction = j / (numInserts + 1)
-    const kfA = kfs[gapIdx]
-    const kfB = kfs[gapIdx + 1]
-
-    const baseTime = kfA.timeMs + (kfB.timeMs - kfA.timeMs) * tFraction
-    const valA = kfA.value
-    const valB = kfB.value
-    if (typeof valA !== 'number' || typeof valB !== 'number') break
-
-    const baseValue = valA + (valB - valA) * tFraction
-    const noise = fatRng.sampleCauchy(0.04, 0.50)
-    const newValue = clamp(baseValue + noise * span, range[0], range[1])
-
-    const interpRoll = rng()
-    const newInterp: HephInterpolation =
-      interpRoll < 0.6 ? 'bezier' : interpRoll < 0.9 ? 'linear' : 'hold'
-
-    const newKf: HephKeyframe = {
-      timeMs: Math.round(baseTime),
-      value: newValue,
-      interpolation: newInterp,
+    if (multiplier < 1.0) {
+      // Faster
+      newAggression = clamp3(newAggression + 0.050, 0, 1)
+      newChaos = clamp3(newChaos + 0.030, 0, 1)
+    } else {
+      // Slower
+      newOrganicity = clamp3(newOrganicity + 0.060, 0, 1)
+      newAggression = clamp3(newAggression - 0.040, 0, 1)
     }
 
-    if (newInterp === 'bezier') {
-      const presetKey = BEZIER_PRESET_KEYS[Math.floor(rng() * BEZIER_PRESET_KEYS.length)]
-      newKf.bezierHandles = [...BEZIER_PRESETS[presetKey]] as [number, number, number, number]
+    const newGenome: FrozenGenome = {
+      aggression: newAggression,
+      chaos: newChaos,
+      organicity: newOrganicity,
     }
 
-    // Find insertion index to maintain ascending timeMs
-    let insertIdx = gapIdx + 1
-    while (insertIdx < kfs.length && kfs[insertIdx].timeMs < newKf.timeMs) {
-      insertIdx++
+    child.cognitiveDNA = {
+      ...dna,
+      genome: newGenome,
     }
-    kfs.splice(insertIdx, 0, newKf)
 
     delta.push({
-      op: 'add',
-      path: `/tracks/${trackIdx}/curve/keyframes/${insertIdx}`,
-      value: newKf,
+      op: 'replace',
+      path: '/cognitiveDNA/genome/aggression',
+      value: newAggression,
+    })
+    delta.push({
+      op: 'replace',
+      path: '/cognitiveDNA/genome/chaos',
+      value: newChaos,
+    })
+    delta.push({
+      op: 'replace',
+      path: '/cognitiveDNA/genome/organicity',
+      value: newOrganicity,
     })
   }
 
   return {
     clip: child,
     delta,
-    operator: 'gene_splice',
+    operator: 'proportional_stretch',
     l2Distance: computeL2DistanceV2(parent, child),
   }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// OPERATOR 6: GENE DELETION
+// OPERATOR 5: MACRO SPLICE (Impact Mutation — replaces gene_splice)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const BEZIER_PRESET_KEYS = Object.keys(BEZIER_PRESETS)
+
+type MacroArchetype = 'stutter' | 'peak' | 'breath'
+
+/**
+ * Inserts a purposeful 2-keyframe "macro block" (Stutter, Peak, or Breath)
+ * into a wide temporal gap (>300ms) of a numeric track. The archetype is
+ * selected from the parent's cognitiveDNA genome, and the DNA is drifted
+ * accordingly. No microscopic jitter — only macro-structural interventions.
+ */
+export function macroSplice(
+  parent: HephAutomationClipV3,
+  seed?: number,
+): OperatorResult {
+  const rng = makeRng(seed ?? Date.now())
+  const child = deepClone(parent)
+  const delta: JsonPatchOp[] = []
+
+  // Step A: Find numeric tracks with ≥2 keyframes and a gap > 300ms
+  const numericTracks = child.tracks
+    .map((t, i) => ({ track: t, index: i }))
+    .filter((t) => t.track.curve.valueType === 'number' && t.track.curve.keyframes.length >= 2)
+
+  if (numericTracks.length === 0) {
+    return { clip: child, delta, operator: 'macro_splice', l2Distance: 0 }
+  }
+
+  // Collect all valid gaps across all numeric tracks
+  const candidateGaps: Array<{ trackIdx: number; gapIdx: number; gapMs: number }> = []
+  for (const pick of numericTracks) {
+    const kfs = pick.track.curve.keyframes
+    for (let g = 0; g < kfs.length - 1; g++) {
+      const gapMs = kfs[g + 1].timeMs - kfs[g].timeMs
+      if (gapMs > 300) {
+        candidateGaps.push({ trackIdx: pick.index, gapIdx: g, gapMs })
+      }
+    }
+  }
+
+  if (candidateGaps.length === 0) {
+    return { clip: child, delta, operator: 'macro_splice', l2Distance: 0 }
+  }
+
+  // Pick a random gap
+  const chosen = candidateGaps[Math.floor(rng() * candidateGaps.length)]
+  const track = child.tracks[chosen.trackIdx]
+  const trackIdx = chosen.trackIdx
+  const kfs = track.curve.keyframes
+  const gapIdx = chosen.gapIdx
+  const range = track.curve.range
+  const span = range[1] - range[0]
+
+  const kfA = kfs[gapIdx]
+  const kfB = kfs[gapIdx + 1]
+  const valA = kfA.value
+  const valB = kfB.value
+  if (typeof valA !== 'number' || typeof valB !== 'number') {
+    return { clip: child, delta, operator: 'macro_splice', l2Distance: 0 }
+  }
+
+  // Step B: Archetype Selection from genome
+  const dna = child.cognitiveDNA
+  const genome = dna?.genome
+  const chaos = genome?.chaos ?? 0.5
+  const aggression = genome?.aggression ?? 0.5
+  const organicity = genome?.organicity ?? 0.5
+
+  let archetype: MacroArchetype
+  if (chaos > 0.6) {
+    archetype = 'stutter'
+  } else if (aggression > 0.5) {
+    archetype = 'peak'
+  } else if (organicity > 0.5) {
+    archetype = 'breath'
+  } else {
+    // RNG fallback
+    const roll = rng()
+    archetype = roll < 0.33 ? 'stutter' : roll < 0.66 ? 'peak' : 'breath'
+  }
+
+  // Step C: Injection — create 2 keyframes (start and end of macro block)
+  const gapStart = kfA.timeMs
+  const gapEnd = kfB.timeMs
+  const gapMid = Math.round((gapStart + gapEnd) / 2)
+
+  let blockStartMs: number
+  let blockEndMs: number
+  let blockValue: number
+  let blockInterp: HephInterpolation
+
+  if (archetype === 'stutter') {
+    // Tight 80-120ms block dropping value to 0, hold interpolation
+    const blockWidth = 80 + Math.floor(rng() * 41) // 80-120ms
+    blockStartMs = gapMid - Math.round(blockWidth / 2)
+    blockEndMs = blockStartMs + blockWidth
+    blockValue = range[0] // drop to 0 (range min)
+    blockInterp = 'hold'
+  } else if (archetype === 'peak') {
+    // 150-200ms spike, value +0.40 * span clamped to range max
+    const blockWidth = 150 + Math.floor(rng() * 51) // 150-200ms
+    blockStartMs = gapMid - Math.round(blockWidth / 2)
+    blockEndMs = blockStartMs + blockWidth
+    const peakVal = (typeof valA === 'number' ? valA : range[0]) + 0.40 * span
+    blockValue = clamp(peakVal, range[0], range[1])
+    blockInterp = rng() < 0.5 ? 'linear' : 'hold'
+  } else {
+    // Breath: 300ms+ smooth dip, value -0.30 * span clamped to range min
+    const blockWidth = 300 + Math.floor(rng() * 200) // 300-500ms
+    blockStartMs = gapMid - Math.round(blockWidth / 2)
+    blockEndMs = blockStartMs + blockWidth
+    const breathVal = (typeof valA === 'number' ? valA : range[1]) - 0.30 * span
+    blockValue = clamp(breathVal, range[0], range[1])
+    blockInterp = 'bezier'
+  }
+
+  // Clamp block times within the gap
+  blockStartMs = Math.max(blockStartMs, gapStart + 1)
+  blockEndMs = Math.min(blockEndMs, gapEnd - 1)
+  if (blockEndMs <= blockStartMs) {
+    blockEndMs = blockStartMs + 1
+  }
+
+  const blockValueRounded = Math.round(blockValue * 1000) / 1000
+
+  // Create the 2 keyframes
+  const kfStart: HephKeyframe = {
+    timeMs: blockStartMs,
+    value: blockValueRounded,
+    interpolation: blockInterp,
+  }
+
+  // End keyframe: restore to interpolated value at blockEnd position
+  const tFractionEnd = (blockEndMs - gapStart) / (gapEnd - gapStart)
+  const restoredValue = Math.round((valA + (valB - valA) * tFractionEnd) * 1000) / 1000
+  const kfEnd: HephKeyframe = {
+    timeMs: blockEndMs,
+    value: restoredValue,
+    interpolation: kfA.interpolation, // restore original interpolation
+  }
+
+  if (blockInterp === 'bezier') {
+    const presetKey = BEZIER_PRESET_KEYS[Math.floor(rng() * BEZIER_PRESET_KEYS.length)]
+    kfStart.bezierHandles = [...BEZIER_PRESETS[presetKey]] as [number, number, number, number]
+  }
+
+  // Insert keyframes maintaining ascending timeMs order
+  // Find insertion index for kfStart
+  let insertIdxStart = gapIdx + 1
+  while (insertIdxStart < kfs.length && kfs[insertIdxStart].timeMs < kfStart.timeMs) {
+    insertIdxStart++
+  }
+  kfs.splice(insertIdxStart, 0, kfStart)
+  delta.push({
+    op: 'add',
+    path: `/tracks/${trackIdx}/curve/keyframes/${insertIdxStart}`,
+    value: kfStart,
+  })
+
+  // Find insertion index for kfEnd (after kfStart)
+  let insertIdxEnd = insertIdxStart + 1
+  while (insertIdxEnd < kfs.length && kfs[insertIdxEnd].timeMs < kfEnd.timeMs) {
+    insertIdxEnd++
+  }
+  kfs.splice(insertIdxEnd, 0, kfEnd)
+  delta.push({
+    op: 'add',
+    path: `/tracks/${trackIdx}/curve/keyframes/${insertIdxEnd}`,
+    value: kfEnd,
+  })
+
+  // Step D: DNA Drift (3-decimal precision)
+  const dnaDelta: JsonPatchOp[] = []
+  if (dna && genome) {
+    let newAggression = genome.aggression
+    let newChaos = genome.chaos
+    let newOrganicity = genome.organicity
+
+    if (archetype === 'stutter') {
+      newChaos = clamp3(newChaos + 0.050, 0, 1)
+      newOrganicity = clamp3(newOrganicity - 0.020, 0, 1)
+    } else if (archetype === 'peak') {
+      newAggression = clamp3(newAggression + 0.060, 0, 1)
+    } else {
+      // breath
+      newOrganicity = clamp3(newOrganicity + 0.050, 0, 1)
+      newAggression = clamp3(newAggression - 0.030, 0, 1)
+    }
+
+    const newGenome: FrozenGenome = {
+      aggression: newAggression,
+      chaos: newChaos,
+      organicity: newOrganicity,
+    }
+
+    child.cognitiveDNA = {
+      ...dna,
+      genome: newGenome,
+    }
+
+    dnaDelta.push({
+      op: 'replace',
+      path: '/cognitiveDNA/genome/aggression',
+      value: newAggression,
+    })
+    dnaDelta.push({
+      op: 'replace',
+      path: '/cognitiveDNA/genome/chaos',
+      value: newChaos,
+    })
+    dnaDelta.push({
+      op: 'replace',
+      path: '/cognitiveDNA/genome/organicity',
+      value: newOrganicity,
+    })
+  }
+
+  delta.push(...dnaDelta)
+
+  return {
+    clip: child,
+    delta,
+    operator: 'macro_splice',
+    l2Distance: computeL2DistanceV2(parent, child),
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// OPERATOR 6: ADAPTIVE PRUNING (Smart janitor — replaces gene_deletion)
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Removes a keyframe (preserving first/last anchors) or an entire track
- * (protecting the intensity channel). Emits 'remove' ops.
+ * Smart janitor that removes dead tracks (value range < 0.05) or redundant
+ * keyframes (3 consecutive with variance < 0.05). Never deletes the only
+ * intensity track. Clean code means less chaos.
  */
-export function geneDeletion(
+export function adaptivePruning(
   parent: HephAutomationClipV3,
   seed?: number,
 ): OperatorResult {
@@ -690,99 +1169,135 @@ export function geneDeletion(
   const delta: JsonPatchOp[] = []
 
   if (child.tracks.length === 0) {
-    return { clip: child, delta, operator: 'gene_deletion', l2Distance: 0 }
+    return { clip: child, delta, operator: 'adaptive_pruning', l2Distance: 0 }
   }
 
-  const mode: 'keyframe' | 'track' = rng() < 0.7 ? 'keyframe' : 'track'
+  // Step 1: Look for dead tracks (max - min < threshold across all keyframes)
+  // Protected tracks (intensity, color, pan, tilt) require variance = 0.00 to be pruned.
+  // Non-protected tracks use the standard 0.05 threshold.
+  const PROTECTED_TRACKS = new Set(['intensity', 'color', 'pan', 'tilt'])
+  const intensityTracks = child.tracks.filter((t) => t.paramId === 'intensity')
+  const deadTracks = child.tracks
+    .map((t, i) => ({ track: t, index: i }))
+    .filter((t) => {
+      // Never delete the only intensity track
+      if (t.track.paramId === 'intensity' && intensityTracks.length <= 1) return false
+      const kfs = t.track.curve.keyframes
+      if (kfs.length === 0) return true
+      const values = kfs.map((k) => (typeof k.value === 'number' ? k.value : 0))
+      const max = Math.max(...values)
+      const min = Math.min(...values)
+      const range = max - min
+      // Protected tracks: only prune if literally flat (variance = 0.00)
+      if (PROTECTED_TRACKS.has(t.track.paramId)) return range === 0
+      // Non-protected tracks: standard 0.05 threshold
+      return range < 0.05
+    })
 
-  if (mode === 'keyframe') {
-    const eligibleTracks = child.tracks
-      .map((t, i) => ({ track: t, index: i }))
-      .filter((t) => t.track.curve.keyframes.length >= 3)
-
-    if (eligibleTracks.length === 0) {
-      return { clip: child, delta, operator: 'gene_deletion', l2Distance: 0 }
-    }
-
-    const pick = eligibleTracks[Math.floor(rng() * eligibleTracks.length)]
-    const track = pick.track
-    const trackIdx = pick.index
-    const kfs = track.curve.keyframes
-
-    // Exclude first and last keyframe (anchors)
-    const kfIdx = 1 + Math.floor(rng() * (kfs.length - 2))
-    kfs.splice(kfIdx, 1)
-
+  if (deadTracks.length > 0) {
+    // Delete one dead track
+    const pick = deadTracks[Math.floor(rng() * deadTracks.length)]
+    child.tracks.splice(pick.index, 1)
     delta.push({
       op: 'remove',
-      path: `/tracks/${trackIdx}/curve/keyframes/${kfIdx}`,
+      path: `/tracks/${pick.index}`,
     })
-  } else {
-    if (child.tracks.length < 2) {
-      return { clip: child, delta, operator: 'gene_deletion', l2Distance: 0 }
+
+    // DNA Drift: chaos -0.040, organicity +0.030
+    const dna = child.cognitiveDNA
+    const genome = dna?.genome
+    if (dna && genome) {
+      const newChaos = clamp3(genome.chaos - 0.040, 0, 1)
+      const newOrganicity = clamp3(genome.organicity + 0.030, 0, 1)
+      const newAggression = genome.aggression
+
+      child.cognitiveDNA = {
+        ...dna,
+        genome: { aggression: newAggression, chaos: newChaos, organicity: newOrganicity },
+      }
+
+      delta.push({ op: 'replace', path: '/cognitiveDNA/genome/aggression', value: newAggression })
+      delta.push({ op: 'replace', path: '/cognitiveDNA/genome/chaos', value: newChaos })
+      delta.push({ op: 'replace', path: '/cognitiveDNA/genome/organicity', value: newOrganicity })
     }
 
-    // Protect intensity: don't delete the only intensity track
-    const intensityTracks = child.tracks.filter((t) => t.paramId === 'intensity')
-    const eligibleTracks = child.tracks
-      .map((t, i) => ({ track: t, index: i }))
-      .filter((t) =>
-        intensityTracks.length > 1 || t.track.paramId !== 'intensity',
-      )
-
-    if (eligibleTracks.length === 0) {
-      return { clip: child, delta, operator: 'gene_deletion', l2Distance: 0 }
+    return {
+      clip: child,
+      delta,
+      operator: 'adaptive_pruning',
+      l2Distance: computeL2DistanceV2(parent, child),
     }
+  }
 
-    const pick = eligibleTracks[Math.floor(rng() * eligibleTracks.length)]
-    const trackIdx = pick.index
-    child.tracks.splice(trackIdx, 1)
+  // Step 2: Look for redundant keyframes (3 consecutive with variance < 0.05)
+  const candidates: Array<{ trackIdx: number; kfIdx: number }> = []
+  for (let t = 0; t < child.tracks.length; t++) {
+    const kfs = child.tracks[t].curve.keyframes
+    for (let k = 1; k < kfs.length - 1; k++) {
+      const v0 = kfs[k - 1].value
+      const v1 = kfs[k].value
+      const v2 = kfs[k + 1].value
+      if (typeof v0 !== 'number' || typeof v1 !== 'number' || typeof v2 !== 'number') continue
+      const max = Math.max(v0, v1, v2)
+      const min = Math.min(v0, v1, v2)
+      if ((max - min) < 0.05) {
+        candidates.push({ trackIdx: t, kfIdx: k })
+      }
+    }
+  }
 
+  if (candidates.length > 0) {
+    const pick = candidates[Math.floor(rng() * candidates.length)]
+    child.tracks[pick.trackIdx].curve.keyframes.splice(pick.kfIdx, 1)
     delta.push({
       op: 'remove',
-      path: `/tracks/${trackIdx}`,
+      path: `/tracks/${pick.trackIdx}/curve/keyframes/${pick.kfIdx}`,
     })
+
+    // DNA Drift: chaos -0.040, organicity +0.030
+    const dna = child.cognitiveDNA
+    const genome = dna?.genome
+    if (dna && genome) {
+      const newChaos = clamp3(genome.chaos - 0.040, 0, 1)
+      const newOrganicity = clamp3(genome.organicity + 0.030, 0, 1)
+      const newAggression = genome.aggression
+
+      child.cognitiveDNA = {
+        ...dna,
+        genome: { aggression: newAggression, chaos: newChaos, organicity: newOrganicity },
+      }
+
+      delta.push({ op: 'replace', path: '/cognitiveDNA/genome/aggression', value: newAggression })
+      delta.push({ op: 'replace', path: '/cognitiveDNA/genome/chaos', value: newChaos })
+      delta.push({ op: 'replace', path: '/cognitiveDNA/genome/organicity', value: newOrganicity })
+    }
+
+    return {
+      clip: child,
+      delta,
+      operator: 'adaptive_pruning',
+      l2Distance: computeL2DistanceV2(parent, child),
+    }
   }
 
-  return {
-    clip: child,
-    delta,
-    operator: 'gene_deletion',
-    l2Distance: computeL2DistanceV2(parent, child),
-  }
+  // Step 3: Nothing to prune
+  return { clip: child, delta, operator: 'adaptive_pruning', l2Distance: 0 }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// OPERATOR 7: INTERPOLATION DRIFT
+// OPERATOR 7: CURVE ADAPTATION (DNA-driven — replaces interpolation_drift)
 // ═══════════════════════════════════════════════════════════════════════════
-
-const INTERP_TRANSITIONS: Record<HephInterpolation, [HephInterpolation, number][]> = {
-  bezier: [['linear', 0.30], ['hold', 0.15], ['bezier', 0.55]],
-  linear: [['bezier', 0.50], ['hold', 0.20], ['linear', 0.30]],
-  hold: [['bezier', 0.40], ['linear', 0.40], ['hold', 0.20]],
-}
-
-function pickTransition(rng: () => number, current: HephInterpolation): HephInterpolation {
-  const transitions = INTERP_TRANSITIONS[current]
-  const roll = rng()
-  let acc = 0
-  for (const [target, prob] of transitions) {
-    acc += prob
-    if (roll < acc) return target
-  }
-  return transitions[transitions.length - 1][0]
-}
 
 /**
- * Changes the interpolation type of a random keyframe using a Markov-style
- * transition matrix. Updates bezierHandles when entering/leaving bezier mode.
+ * Changes the interpolation type of a random keyframe based on the parent's
+ * cognitiveDNA. Organicity → bezier, aggression/chaos → hold, fallback → linear.
+ * No Markov transition matrix or Cauchy handle perturbation.
  */
-export function interpolationDrift(
+export function curveAdaptation(
   parent: HephAutomationClipV3,
   seed?: number,
 ): OperatorResult {
   const rng = makeRng(seed ?? Date.now())
-  const fatRng = makeFatTailedRng(rng)
   const child = deepClone(parent)
   const delta: JsonPatchOp[] = []
 
@@ -791,7 +1306,7 @@ export function interpolationDrift(
     .filter((t) => t.track.curve.keyframes.length >= 2)
 
   if (eligibleTracks.length === 0) {
-    return { clip: child, delta, operator: 'interpolation_drift', l2Distance: 0 }
+    return { clip: child, delta, operator: 'curve_adaptation', l2Distance: 0 }
   }
 
   const pick = eligibleTracks[Math.floor(rng() * eligibleTracks.length)]
@@ -804,13 +1319,24 @@ export function interpolationDrift(
   const kf = kfs[kfIdx]
   const currentInterp = kf.interpolation
 
-  // Pick new interpolation, re-roll once if same (avoid no-op)
-  let newInterp = pickTransition(rng, currentInterp)
-  if (newInterp === currentInterp) {
-    newInterp = pickTransition(rng, currentInterp)
+  // DNA-driven target interpolation
+  const dna = child.cognitiveDNA
+  const genome = dna?.genome
+  const aggression = genome?.aggression ?? 0.5
+  const chaos = genome?.chaos ?? 0.5
+  const organicity = genome?.organicity ?? 0.5
+
+  let newInterp: HephInterpolation
+  if (organicity > 0.5) {
+    newInterp = 'bezier'
+  } else if (aggression > 0.5 || chaos > 0.5) {
+    newInterp = 'hold'
+  } else {
+    newInterp = 'linear'
   }
+
   if (newInterp === currentInterp) {
-    return { clip: child, delta, operator: 'interpolation_drift', l2Distance: 0 }
+    return { clip: child, delta, operator: 'curve_adaptation', l2Distance: 0 }
   }
 
   kf.interpolation = newInterp
@@ -821,28 +1347,15 @@ export function interpolationDrift(
   })
 
   if (newInterp === 'bezier') {
-    if (kf.bezierHandles) {
-      // Perturb existing handles with Cauchy noise
-      const perturbed = kf.bezierHandles.map((h) =>
-        clamp(h + fatRng.sampleCauchy(0.03, 0.50), -2, 2),
-      ) as [number, number, number, number]
-      kf.bezierHandles = perturbed
-      delta.push({
-        op: 'replace',
-        path: `/tracks/${trackIdx}/curve/keyframes/${kfIdx}/bezierHandles`,
-        value: perturbed,
-      })
-    } else {
-      // Generate random preset
-      const presetKey = BEZIER_PRESET_KEYS[Math.floor(rng() * BEZIER_PRESET_KEYS.length)]
-      const handles = [...BEZIER_PRESETS[presetKey]] as [number, number, number, number]
-      kf.bezierHandles = handles
-      delta.push({
-        op: 'replace',
-        path: `/tracks/${trackIdx}/curve/keyframes/${kfIdx}/bezierHandles`,
-        value: handles,
-      })
-    }
+    // Generate default bezier handles from preset
+    const presetKey = BEZIER_PRESET_KEYS[Math.floor(rng() * BEZIER_PRESET_KEYS.length)]
+    const handles = [...BEZIER_PRESETS[presetKey]] as [number, number, number, number]
+    kf.bezierHandles = handles
+    delta.push({
+      op: 'replace',
+      path: `/tracks/${trackIdx}/curve/keyframes/${kfIdx}/bezierHandles`,
+      value: handles,
+    })
   } else {
     // Leaving bezier — remove handles if present
     if (kf.bezierHandles) {
@@ -854,10 +1367,33 @@ export function interpolationDrift(
     }
   }
 
+  // DNA Drift
+  if (dna && genome) {
+    let newAggression = genome.aggression
+    let newChaos = genome.chaos
+    let newOrganicity = genome.organicity
+
+    if (newInterp === 'bezier') {
+      newOrganicity = clamp3(newOrganicity + 0.040, 0, 1)
+    } else if (newInterp === 'hold') {
+      newChaos = clamp3(newChaos + 0.030, 0, 1)
+      newAggression = clamp3(newAggression + 0.020, 0, 1)
+    }
+
+    child.cognitiveDNA = {
+      ...dna,
+      genome: { aggression: newAggression, chaos: newChaos, organicity: newOrganicity },
+    }
+
+    delta.push({ op: 'replace', path: '/cognitiveDNA/genome/aggression', value: newAggression })
+    delta.push({ op: 'replace', path: '/cognitiveDNA/genome/chaos', value: newChaos })
+    delta.push({ op: 'replace', path: '/cognitiveDNA/genome/organicity', value: newOrganicity })
+  }
+
   return {
     clip: child,
     delta,
-    operator: 'interpolation_drift',
+    operator: 'curve_adaptation',
     l2Distance: computeL2DistanceV2(parent, child),
   }
 }
@@ -874,12 +1410,11 @@ export interface CrossoverResult {
   dominantParent: 'A' | 'B'
 }
 
-const DOMAIN_TEMPORAL = new Set(['intensity', 'color', 'strobe', 'strobeRate', 'zoom', 'focus'])
-const DOMAIN_SPATIAL = new Set(['pan', 'tilt'])
-
 /**
- * Blends cognitiveDNA from two parents, weighting numeric genome 60/40
+ * Blends cognitiveDNA from two parents, weighting numeric genome 70/30
  * toward the dominant parent. Unions lists (compatibleVibes, validSections).
+ * Tolerance ranges (pressureRange, aggressionRange) are AVERAGED, not
+ * outer-enveloped, to prevent range inflation across generations.
  * G4 PRE-SCREENING: if unioned energyZone span > 2, collapses to dominant's range.
  */
 export function blendCognitiveDNA(
@@ -891,9 +1426,9 @@ export function blendCognitiveDNA(
   const sub = dominant === 'A' ? dnaB : dnaA
 
   const genome: FrozenGenome = {
-    aggression: 0.6 * dom.genome.aggression + 0.4 * sub.genome.aggression,
-    chaos: 0.6 * dom.genome.chaos + 0.4 * sub.genome.chaos,
-    organicity: 0.6 * dom.genome.organicity + 0.4 * sub.genome.organicity,
+    aggression: clamp3(0.7 * dom.genome.aggression + 0.3 * sub.genome.aggression, 0, 1),
+    chaos: clamp3(0.7 * dom.genome.chaos + 0.3 * sub.genome.chaos, 0, 1),
+    organicity: clamp3(0.7 * dom.genome.organicity + 0.3 * sub.genome.organicity, 0, 1),
   }
 
   const textureAffinity: TextureAffinity = dom.textureAffinity
@@ -919,14 +1454,15 @@ export function blendCognitiveDNA(
       max: ENERGY_ZONES[Math.min(ENERGY_ZONES.length - 1, unionMaxIdx)] as EnergyZoneRange['max'],
     }
 
+  // AVERAGE tolerance ranges — prevents inflation across generations
   const aggressionRange = {
-    min: Math.min(dnaA.aggressionRange.min, dnaB.aggressionRange.min),
-    max: Math.max(dnaA.aggressionRange.max, dnaB.aggressionRange.max),
+    min: (dnaA.aggressionRange.min + dnaB.aggressionRange.min) / 2,
+    max: (dnaA.aggressionRange.max + dnaB.aggressionRange.max) / 2,
   }
 
   const pressureRange = {
-    min: Math.min(dnaA.pressureRange.min, dnaB.pressureRange.min),
-    max: Math.max(dnaA.pressureRange.max, dnaB.pressureRange.max),
+    min: (dnaA.pressureRange.min + dnaB.pressureRange.min) / 2,
+    max: (dnaA.pressureRange.max + dnaB.pressureRange.max) / 2,
   }
 
   return {
@@ -944,8 +1480,10 @@ export function blendCognitiveDNA(
 }
 
 /**
- * Sexual reproduction operator — combines temporal tracks from one parent
- * with spatial tracks from another, blending cognitiveDNA.
+ * Sexual reproduction operator — strict dominant/submissive track merge.
+ * All dominant parent tracks are inherited. Submissive parent tracks are
+ * added only if their paramId is not already present in the child.
+ * This guarantees zero orphaned tracks and resolves conflicts cleanly.
  *
  * Delta is a bulk replace of /tracks and /cognitiveDNA on the dominant parent.
  * L2 = min(distance to A, distance to B) — conservative rule.
@@ -955,42 +1493,26 @@ export function crossover(
   parentB: HephAutomationClipV3,
   fitnessA: number,
   fitnessB: number,
-  seed?: number,
+  _seed?: number,
 ): CrossoverResult {
-  const rng = makeRng(seed ?? Date.now())
   const dominant: 'A' | 'B' = fitnessA >= fitnessB ? 'A' : 'B'
   const dominantClip = dominant === 'A' ? parentA : parentB
+  const submissiveClip = dominant === 'A' ? parentB : parentA
 
-  // Domain inheritance with forced hybridization
-  let inheritTemporalFrom: 'A' | 'B' = rng() < 0.5 ? 'A' : 'B'
-  let inheritSpatialFrom: 'A' | 'B' = rng() < 0.5 ? 'A' : 'B'
-
-  // Force re-roll if both from same parent (guarantee hybrid)
-  if (inheritTemporalFrom === inheritSpatialFrom) {
-    inheritSpatialFrom = inheritSpatialFrom === 'A' ? 'B' : 'A'
-  }
-
-  const temporalDonor = inheritTemporalFrom === 'A' ? parentA : parentB
-  const spatialDonor = inheritSpatialFrom === 'A' ? parentA : parentB
-
-  // Build child tracks: temporal from one, spatial from other
+  // Strict dominant/submissive track merge:
+  // 1. Add ALL dominant parent tracks
+  // 2. Add submissive parent tracks ONLY if their paramId is novel
   const childTracks: HephTrack[] = []
+  const seenParamIds = new Set<string>()
 
-  for (const track of temporalDonor.tracks) {
-    if (DOMAIN_TEMPORAL.has(track.paramId)) {
-      childTracks.push(deepClone(track))
-    }
+  for (const track of dominantClip.tracks) {
+    childTracks.push(deepClone(track))
+    seenParamIds.add(track.paramId)
   }
-  for (const track of spatialDonor.tracks) {
-    if (DOMAIN_SPATIAL.has(track.paramId)) {
+  for (const track of submissiveClip.tracks) {
+    if (!seenParamIds.has(track.paramId)) {
       childTracks.push(deepClone(track))
-    }
-  }
-
-  // If no tracks matched (edge case), fall back to dominant parent's tracks
-  if (childTracks.length === 0) {
-    for (const track of dominantClip.tracks) {
-      childTracks.push(deepClone(track))
+      seenParamIds.add(track.paramId)
     }
   }
 
@@ -1051,20 +1573,20 @@ export function applyOperator(
   seed?: number,
 ): OperatorResult {
   switch (operatorType) {
-    case 'point_mutation':
-      return pointMutation(parent, seed)
-    case 'gene_duplication':
-      return geneDuplication(parent, seed)
-    case 'phase_epigenetics':
-      return phaseEpigenetics(parent, seed)
-    case 'temporal_stretch':
-      return temporalStretch(parent, seed)
-    case 'gene_splice':
-      return geneSplice(parent, seed)
-    case 'gene_deletion':
-      return geneDeletion(parent, seed)
-    case 'interpolation_drift':
-      return interpolationDrift(parent, seed)
+    case 'focal_mutation':
+      return focalMutation(parent, seed)
+    case 'gene_augmentation':
+      return geneAugmentation(parent, seed)
+    case 'spatial_resonance':
+      return spatialResonance(parent, seed)
+    case 'proportional_stretch':
+      return proportionalStretch(parent, seed)
+    case 'macro_splice':
+      return macroSplice(parent, seed)
+    case 'adaptive_pruning':
+      return adaptivePruning(parent, seed)
+    case 'curve_adaptation':
+      return curveAdaptation(parent, seed)
     case 'crossover':
       console.warn('[GeneticOperators] crossover requires two parents — use crossover() directly or ColiseumService.spawnHybrid()')
       return {

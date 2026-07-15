@@ -30,6 +30,7 @@ export interface CandidateOrganism {
   trialsCount: number
   neonatalShieldUntil: number
   isNeonatal: boolean  // true if still protected by shield
+  status: string  // organism status from DB: 'alive' | 'champion' | 'culled' | 'quarantined' | 'canonized'
 }
 
 export interface SelectionResult {
@@ -67,9 +68,9 @@ export class SpeciesQuotaSelector {
     // 1. Fetch all alive + champion organisms
     const rows = db.prepare(
       `SELECT organism_id, blueprint_id, species_id, fitness_score,
-              rarity_tier, trials_count, neonatal_shield_until
+              rarity_tier, trials_count, neonatal_shield_until, status
        FROM lfx_organisms
-       WHERE status IN ('alive', 'champion')
+       WHERE status IN ('alive', 'champion', 'canonized')
        ORDER BY fitness_score DESC`,
     ).all() as {
       organism_id: string
@@ -79,6 +80,7 @@ export class SpeciesQuotaSelector {
       rarity_tier: string
       trials_count: number
       neonatal_shield_until: number
+      status: string
     }[]
 
     if (rows.length === 0) {
@@ -95,6 +97,7 @@ export class SpeciesQuotaSelector {
       trialsCount: r.trials_count,
       neonatalShieldUntil: r.neonatal_shield_until,
       isNeonatal: r.trials_count <= r.neonatal_shield_until,
+      status: r.status,
     }))
 
     // 3. Group by species

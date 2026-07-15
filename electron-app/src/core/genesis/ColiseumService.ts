@@ -42,16 +42,16 @@ import { getOrganismMaterializer } from './OrganismMaterializer'
 
 // ─── OPERATOR ROULETTE (Structural Bias) ───────────────────────────────────
 // WAVE 6000.V4: Weighted selection favors structural innovation.
-// Without this, point_mutation dominates and structural operators
-// (gene_splice, gene_deletion) are never selected.
+// Without this, focal_mutation dominates and structural operators
+// (macro_splice, adaptive_pruning) are never selected.
 const OPERATOR_WEIGHTS_ROULETTE: ReadonlyArray<[MutationOperator, number]> = Object.freeze([
-  ['gene_splice',           0.20],
-  ['point_mutation',        0.20],
-  ['temporal_stretch',      0.15],
-  ['gene_deletion',         0.15],
-  ['interpolation_drift',   0.10],
-  ['phase_epigenetics',     0.10],
-  ['gene_duplication',      0.10],
+  ['focal_mutation',        0.20],
+  ['macro_splice',          0.15],
+  ['proportional_stretch',  0.15],
+  ['gene_augmentation',     0.18],
+  ['spatial_resonance',     0.15],
+  ['curve_adaptation',      0.12],
+  ['adaptive_pruning',      0.05],
 ])
 
 function pickWeightedOperator(rng: () => number): MutationOperator {
@@ -69,11 +69,22 @@ function pickWeightedOperator(rng: () => number): MutationOperator {
 //   • Entropy: existence costs energy (periodic decay)
 //   • Apoptosis: starvation below threshold → dissolution
 //   • Mitosis: abundance above threshold → cellular division
+//   • Vital Space: carrying capacity regulates spawn rates (Stellaris POP model)
 const ENTROPY_DECAY = 0.02          // fitness decay per maintenance cycle (~60s)
 const APOPTOSIS_THRESHOLD = 0.10    // below this vitality → culled (starved)
 const MITOSIS_THRESHOLD = 0.85      // above this + trials≥5 → may reproduce
 const MITOSIS_MIN_TRIALS = 5        // stability proof before reproduction
 const MITOSIS_ENERGY_TRANSFER = 0.35  // parent gives 35% of vitality to child
+
+// 🧬 SEMELPARITY: Sexual reproduction thresholds (The Mantis Rule)
+const SEXUAL_FITNESS_THRESHOLD = 0.80  // elite fitness required for breeding
+const SEXUAL_MIN_TRIALS = 10           // stability proof before breeding
+
+// 🧬 WAVE 6000.V9: VITAL SPACE — Carrying capacity (Stellaris POP model)
+// Maximum allowed alive organisms. Spawn probability scales inversely:
+//   0 pop = 100% spawn chance, MAX pop = 0% spawn chance.
+// Overcrowding (>80% capacity) also accelerates entropy decay (starvation).
+const MAX_VITAL_SPACE = 60
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 
@@ -491,16 +502,31 @@ export class ColiseumService {
 
   /**
    * Spawns the initial G1 cohort for a blueprint (cold start).
-   * WAVE 6000.V4: Reduced to 1 organism with 40% stochastic gate
-   * to prevent overpopulation and trial dilution.
+   * WAVE 6000.V9: Dynamic spawn probability based on Vital Space (carrying capacity).
+   * Spawn chance = 1.0 - (currentPop / MAX_VITAL_SPACE).
+   * Empty ecosystem → 100% spawn. Full ecosystem → 0% spawn.
    */
   spawnInitialCohort(parentBlueprintId: string): readonly SpawnResult[] {
     // WAVE 6000.V5: Deterministic PRNG — no Math.random()
     const rng = makeRng(stringToSeed(`${parentBlueprintId}-${Date.now()}`))
 
-    // Stochastic gate: 40% chance to spawn, 60% chance to skip
-    if (rng() > 0.40) {
-      console.log(`[Coliseum 🧬] Initial cohort for ${parentBlueprintId}: skipped (stochastic gate)`)
+    // 🧬 WAVE 6000.V9: Dynamic spawn gate based on carrying capacity
+    const db = (this._vault as any)._db
+    if (!db) {
+      throw new Error('[Coliseum] GenesisVault not initialized')
+    }
+    const popRow = db.prepare(
+      'SELECT count(*) as pop FROM lfx_organisms WHERE status = \'alive\'',
+    ).get() as { pop: number }
+    const currentPop = popRow.pop
+    const popRatio = Math.min(1.0, currentPop / MAX_VITAL_SPACE)
+    const spawnChance = 1.0 - popRatio
+
+    if (rng() > spawnChance) {
+      console.log(
+        `[Coliseum 🧬] Initial cohort for ${parentBlueprintId}: skipped ` +
+        `(vital space: ${currentPop}/${MAX_VITAL_SPACE}, spawn chance: ${(spawnChance * 100).toFixed(0)}%)`,
+      )
       return []
     }
 
@@ -537,6 +563,7 @@ export class ColiseumService {
     speciation: SpeciationResult
     lifecycle: LifecycleResult
     mitosisSpawns: number
+    sexualSpawns: number
   }> {
     // 1. Flush heatmap logger
     const logger = getHeatmapLogger()
@@ -562,12 +589,15 @@ export class ColiseumService {
     // 6. Mitosis — cellular division for thriving organisms
     const mitosisSpawns = this._mitosis(db)
 
+    // 7. Sexual reproduction — elite breeding with semelparity (parents die)
+    const sexualSpawns = this._sexualReproduction(db)
+
     console.log(
       `[Coliseum 🧬] Ecological maintenance complete: ` +
       `entropy:${entropyDecayed} ↓, apoptosis:${apoptosisCulls} ✖, ` +
       `${speciation.speciesCount} species, ` +
       `${lifecycle.promotions}↑ ${lifecycle.demotions}↓ ${lifecycle.culls}✂️, ` +
-      `${lifecycle.hallOfFameCandidates} HoF, mitosis:${mitosisSpawns} ⊕`,
+      `${lifecycle.hallOfFameCandidates} HoF, mitosis:${mitosisSpawns} ⊕, sexual:${sexualSpawns} ♀`,
     )
 
     return {
@@ -577,6 +607,7 @@ export class ColiseumService {
       speciation,
       lifecycle,
       mitosisSpawns,
+      sexualSpawns,
     }
   }
 
@@ -586,13 +617,36 @@ export class ColiseumService {
    * Entropy: Periodic vitality decay for all alive organisms.
    * The simple act of existing consumes energy. This is the thermodynamic
    * cost of life — without being chosen by Selene, organisms slowly starve.
+   *
+   * 🧬 WAVE 6000.V9: Overcrowding accelerates starvation.
+   * When population exceeds 80% of MAX_VITAL_SPACE, an additional
+   * crowding penalty is applied to cull weak organisms faster.
    */
   private _applyEntropyDecay(db: any): number {
+    // Query current population for crowding calculation
+    const popRow = db.prepare(
+      'SELECT count(*) as pop FROM lfx_organisms WHERE status = \'alive\'',
+    ).get() as { pop: number }
+    const currentPop = popRow.pop
+    const popRatio = Math.min(1.0, currentPop / MAX_VITAL_SPACE)
+
+    const baseDecay = ENTROPY_DECAY
+    const crowdingPenalty = popRatio > 0.8 ? 0.06 : 0
+    const finalDecay = baseDecay + crowdingPenalty
+
     const result = db.prepare(
       `UPDATE lfx_organisms
-       SET fitness_score = MAX(fitness_score - ${ENTROPY_DECAY}, 0.0)
+       SET fitness_score = MAX(fitness_score - ${finalDecay}, 0.0)
        WHERE status = 'alive'`,
     ).run()
+
+    if (crowdingPenalty > 0) {
+      console.log(
+        `[Coliseum 🧬] OVERCROWDING: ${currentPop}/${MAX_VITAL_SPACE} POPs ` +
+        `→ entropy decay ${baseDecay} + ${crowdingPenalty} = ${finalDecay}`,
+      )
+    }
+
     return result.changes
   }
 
@@ -670,6 +724,104 @@ export class ColiseumService {
     }
 
     return spawns
+  }
+
+  /**
+   * Sexual Reproduction (Semelparity — The Mantis Rule):
+   * Elite organisms (fitness ≥ 0.80, trials ≥ 10) are paired for crossover.
+   * After breeding, BOTH parents are culled (sacrificed) to free carrying capacity.
+   * This prevents elite stagnation and ensures generational turnover.
+   */
+  private _sexualReproduction(db: any): number {
+    // Query elite candidates
+    const candidates = db.prepare(
+      `SELECT organism_id, blueprint_id, fitness_score, generation, species_id
+       FROM lfx_organisms
+       WHERE status IN ('alive', 'champion')
+         AND fitness_score >= ${SEXUAL_FITNESS_THRESHOLD}
+         AND trials_count >= ${SEXUAL_MIN_TRIALS}
+       ORDER BY fitness_score DESC`,
+    ).all() as {
+      organism_id: string
+      blueprint_id: string
+      fitness_score: number
+      generation: number
+      species_id: string | null
+    }[]
+
+    if (candidates.length < 2) {
+      return 0
+    }
+
+    // Pair by species_id when possible, otherwise pair top 2 overall
+    const paired = new Set<string>()
+    let spawns = 0
+
+    // First pass: pair within same species
+    const bySpecies = new Map<string, typeof candidates>()
+    for (const c of candidates) {
+      const sid = c.species_id ?? '__none__'
+      if (!bySpecies.has(sid)) bySpecies.set(sid, [])
+      bySpecies.get(sid)!.push(c)
+    }
+
+    for (const [, group] of bySpecies) {
+      for (let i = 0; i + 1 < group.length; i += 2) {
+        const a = group[i]
+        const b = group[i + 1]
+        if (paired.has(a.organism_id) || paired.has(b.organism_id)) continue
+        paired.add(a.organism_id)
+        paired.add(b.organism_id)
+
+        const result = this._breedAndSacrifice(db, a.organism_id, b.organism_id)
+        if (result) spawns++
+      }
+    }
+
+    // Second pass: pair remaining unpaired elites across species
+    const remaining = candidates.filter((c) => !paired.has(c.organism_id))
+    for (let i = 0; i + 1 < remaining.length; i += 2) {
+      const a = remaining[i]
+      const b = remaining[i + 1]
+      const result = this._breedAndSacrifice(db, a.organism_id, b.organism_id)
+      if (result) spawns++
+    }
+
+    return spawns
+  }
+
+  /**
+   * Breeds two parents via spawnHybrid and sacrifices both (The Mantis Rule).
+   * Returns true if the hybrid was successfully spawned.
+   */
+  private _breedAndSacrifice(db: any, parentAId: string, parentBId: string): boolean {
+    try {
+      const result = this.spawnHybrid(parentAId, parentBId)
+
+      if (result.success) {
+        // THE MANTIS RULE: sacrifice both parents to free carrying capacity
+        db.prepare(
+          `UPDATE lfx_organisms SET status = 'culled' WHERE organism_id IN (?, ?)`,
+        ).run(parentAId, parentBId)
+
+        console.log(
+          `[Coliseum 🧬] SEMELPARITY: ${parentAId} × ${parentBId} → ${result.organismId} ` +
+          `— parents sacrificed (${result.rarityTier}, ρ=${result.rarityScore.toFixed(3)})`,
+        )
+        return true
+      } else {
+        console.warn(
+          `[Coliseum 🧬] Sexual reproduction aborted (prenatal screening): ` +
+          `${parentAId} × ${parentBId} — parents survive`,
+        )
+      }
+    } catch (err) {
+      console.warn(
+        `[Coliseum 🧬] Sexual reproduction failed: ${parentAId} × ${parentBId}`,
+        err,
+      )
+    }
+    return false
   }
 }
 

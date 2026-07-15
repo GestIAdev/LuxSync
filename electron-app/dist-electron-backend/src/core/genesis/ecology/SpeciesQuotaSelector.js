@@ -33,9 +33,9 @@ export class SpeciesQuotaSelector {
         }
         // 1. Fetch all alive + champion organisms
         const rows = db.prepare(`SELECT organism_id, blueprint_id, species_id, fitness_score,
-              rarity_tier, trials_count, neonatal_shield_until
+              rarity_tier, trials_count, neonatal_shield_until, status
        FROM lfx_organisms
-       WHERE status IN ('alive', 'champion')
+       WHERE status IN ('alive', 'champion', 'canonized')
        ORDER BY fitness_score DESC`).all();
         if (rows.length === 0) {
             return { candidates: [], totalPool: 0, speciesRepresented: 0, explorers: 0 };
@@ -50,6 +50,7 @@ export class SpeciesQuotaSelector {
             trialsCount: r.trials_count,
             neonatalShieldUntil: r.neonatal_shield_until,
             isNeonatal: r.trials_count <= r.neonatal_shield_until,
+            status: r.status,
         }));
         // 3. Group by species
         const bySpecies = new Map();

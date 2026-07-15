@@ -113,6 +113,7 @@ export class LiquidCognitionCore {
             contextualPhase: input.contextualPhase,
             isWarmedUp: input.isWarmedUp,
             acousticReality: input.acousticReality,
+            vibe: input.vibe,
             descriptors: {
                 percussiveness: this._descriptors.percussiveness,
                 melodicity: this._descriptors.melodicity,

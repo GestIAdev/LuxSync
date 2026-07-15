@@ -8,13 +8,13 @@ export { AncestralIngestor, getAncestralIngestor, __resetAncestralIngestorForTes
 
 // Era II — The Coliseum Awakens
 export {
-  pointMutation,
-  geneDuplication,
-  phaseEpigenetics,
-  temporalStretch,
-  geneSplice,
-  geneDeletion,
-  interpolationDrift,
+  focalMutation,
+  geneAugmentation,
+  spatialResonance,
+  proportionalStretch,
+  macroSplice,
+  adaptivePruning,
+  curveAdaptation,
   crossover,
   blendCognitiveDNA,
   applyOperator,

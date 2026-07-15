@@ -2,15 +2,15 @@
 // 🧪 WAVE 5000.V3 — ERA VI: CRASH TEST — Genetic Operators Robustness
 // ═══════════════════════════════════════════════════════════════════════════
 //  Tests:
-//  1. pointMutation — produces valid delta, clones correctly, original untouched
-//  2. geneDuplication — appends track, delta valid, original untouched
+//  1. focalMutation — produces valid delta, clones correctly, original untouched
+//  2. geneAugmentation — injects missing track, delta valid, original untouched
 //  3. applyDelta — round-trip: applying delta to parent produces same child
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { describe, it, expect } from 'vitest'
 import {
-  pointMutation,
-  geneDuplication,
+  focalMutation,
+  geneAugmentation,
   applyDelta,
   type JsonPatchOp,
 } from '../operators/GeneticOperators'
@@ -109,14 +109,14 @@ function deepEqual(a: unknown, b: unknown): boolean {
 // ─── TESTS ───────────────────────────────────────────────────────────────────
 
 describe('🧬 GeneticOperators — Delta Robustness', () => {
-  // ── 1. pointMutation ──────────────────────────────────────────────────────
+  // ── 1. focalMutation ──────────────────────────────────────────────────────
 
-  describe('pointMutation', () => {
+  describe('focalMutation', () => {
     it('should produce a valid delta with at least one replace op', () => {
       const parent = makeMockClip()
-      const result = pointMutation(parent, 42)
+      const result = focalMutation(parent, 42)
 
-      expect(result.operator).toBe('point_mutation')
+      expect(result.operator).toBe('focal_mutation')
       expect(result.delta.length).toBeGreaterThanOrEqual(1)
       expect(result.delta.every((op) => op.op === 'replace' || op.op === 'add' || op.op === 'remove')).toBe(true)
     })
@@ -124,22 +124,22 @@ describe('🧬 GeneticOperators — Delta Robustness', () => {
     it('should NOT mutate the original clip by reference', () => {
       const parent = makeMockClip()
       const parentSnapshot = JSON.stringify(parent)
-      pointMutation(parent, 42)
+      focalMutation(parent, 42)
 
       expect(JSON.stringify(parent)).toBe(parentSnapshot)
     })
 
     it('should produce a child that differs from parent', () => {
       const parent = makeMockClip()
-      const result = pointMutation(parent, 42)
+      const result = focalMutation(parent, 42)
 
       expect(deepEqual(result.clip, parent)).toBe(false)
     })
 
     it('should be deterministic with same seed', () => {
       const parent = makeMockClip()
-      const r1 = pointMutation(parent, 123)
-      const r2 = pointMutation(parent, 123)
+      const r1 = focalMutation(parent, 123)
+      const r2 = focalMutation(parent, 123)
 
       expect(JSON.stringify(r1.clip)).toBe(JSON.stringify(r2.clip))
       expect(JSON.stringify(r1.delta)).toBe(JSON.stringify(r2.delta))
@@ -147,26 +147,26 @@ describe('🧬 GeneticOperators — Delta Robustness', () => {
 
     it('should produce delta paths that start with /tracks/', () => {
       const parent = makeMockClip()
-      const result = pointMutation(parent, 42)
+      const result = focalMutation(parent, 42)
 
       expect(result.delta.every((op) => op.path.startsWith('/tracks/'))).toBe(true)
     })
   })
 
-  // ── 2. geneDuplication ────────────────────────────────────────────────────
+  // ── 2. geneAugmentation ────────────────────────────────────────────────────
 
-  describe('geneDuplication', () => {
+  describe('geneAugmentation', () => {
     it('should add a new track to the child clip', () => {
       const parent = makeMockClip()
       const originalTrackCount = parent.tracks.length
-      const result = geneDuplication(parent, 42)
+      const result = geneAugmentation(parent, 42)
 
       expect(result.clip.tracks.length).toBe(originalTrackCount + 1)
     })
 
     it('should produce a delta with an add op at /tracks/-', () => {
       const parent = makeMockClip()
-      const result = geneDuplication(parent, 42)
+      const result = geneAugmentation(parent, 42)
 
       expect(result.delta.length).toBeGreaterThanOrEqual(1)
       const addOp = result.delta.find((op) => op.op === 'add' && op.path === '/tracks/-')
@@ -176,24 +176,47 @@ describe('🧬 GeneticOperators — Delta Robustness', () => {
     it('should NOT mutate the original clip by reference', () => {
       const parent = makeMockClip()
       const parentSnapshot = JSON.stringify(parent)
-      geneDuplication(parent, 42)
+      geneAugmentation(parent, 42)
 
       expect(JSON.stringify(parent)).toBe(parentSnapshot)
     })
 
-    it('should give the duplicated track a new ID', () => {
+    it('should give the augmented track a new ID', () => {
       const parent = makeMockClip()
-      const result = geneDuplication(parent, 42)
+      const result = geneAugmentation(parent, 42)
       const newTrack = result.clip.tracks[result.clip.tracks.length - 1]
 
       expect(newTrack.id).not.toBe(parent.tracks[0].id)
-      expect(newTrack.id).toContain('_dup_')
+      expect(newTrack.id).toContain('aug_')
+    })
+
+    it('should never duplicate an existing paramId', () => {
+      const parent = makeMockClip()
+      const existingParamIds = new Set(parent.tracks.map((t) => t.paramId))
+      const result = geneAugmentation(parent, 42)
+      const newTrack = result.clip.tracks[result.clip.tracks.length - 1]
+
+      expect(existingParamIds.has(newTrack.paramId)).toBe(false)
+    })
+
+    it('should drift cognitiveDNA when present', () => {
+      const parent = makeMockClip()
+      const originalAggression = parent.cognitiveDNA!.genome.aggression
+      const result = geneAugmentation(parent, 42)
+
+      // DNA should be mutated (at least one genome field changed)
+      const newDna = result.clip.cognitiveDNA!
+      const changed =
+        newDna.genome.aggression !== originalAggression ||
+        newDna.genome.chaos !== parent.cognitiveDNA!.genome.chaos ||
+        newDna.genome.organicity !== parent.cognitiveDNA!.genome.organicity
+      expect(changed).toBe(true)
     })
 
     it('should be deterministic with same seed', () => {
       const parent = makeMockClip()
-      const r1 = geneDuplication(parent, 77)
-      const r2 = geneDuplication(parent, 77)
+      const r1 = geneAugmentation(parent, 77)
+      const r2 = geneAugmentation(parent, 77)
 
       expect(JSON.stringify(r1.clip)).toBe(JSON.stringify(r2.clip))
     })
@@ -204,7 +227,7 @@ describe('🧬 GeneticOperators — Delta Robustness', () => {
   describe('applyDelta', () => {
     it('should reproduce the same child when delta is applied to parent', () => {
       const parent = makeMockClip()
-      const result = pointMutation(parent, 99)
+      const result = focalMutation(parent, 99)
 
       // Apply the delta to a fresh copy of the parent
       const reconstructed = applyDelta(parent, result.delta as JsonPatchOp[])
@@ -213,9 +236,9 @@ describe('🧬 GeneticOperators — Delta Robustness', () => {
       expect(JSON.stringify(reconstructed)).toBe(JSON.stringify(result.clip))
     })
 
-    it('should handle geneDuplication delta round-trip', () => {
+    it('should handle geneAugmentation delta round-trip', () => {
       const parent = makeMockClip()
-      const result = geneDuplication(parent, 55)
+      const result = geneAugmentation(parent, 55)
 
       const reconstructed = applyDelta(parent, result.delta as JsonPatchOp[])
       expect(reconstructed.tracks.length).toBe(result.clip.tracks.length)

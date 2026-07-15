@@ -215,6 +215,12 @@ export interface AudienceSafetyContext {
    * tension/divergence, and validated narrative phase.
    */
   acousticReality?: AcousticRealityState
+
+  /**
+   * Narrative phase from ContextualMemory ('building', 'climax', 'release', etc.).
+   * Used for BUILDING phase aggression filtering.
+   */
+  narrativePhase?: string
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -360,6 +366,14 @@ export class AudienceSafetyContextBuilder {
    */
   withAcousticReality(ars: AcousticRealityState): this {
     this.context.acousticReality = ars
+    return this
+  }
+
+  /**
+   * Set narrative phase for BUILDING phase aggression filtering.
+   */
+  withNarrativePhase(phase: string): this {
+    this.context.narrativePhase = phase
     return this
   }
 

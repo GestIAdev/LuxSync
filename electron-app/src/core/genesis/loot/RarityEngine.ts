@@ -9,12 +9,12 @@
 //  novelty    = 1 − max_cosine_similarity(signature, all_alive)  [0 if no population]
 //  operator_w = per-operator weight table
 //
-//  Tier mapping (WAVE 6000.V7 recalibrated for DRIFT_MAX=0.55):
-//    COMMON     [0.00, 0.25)   shield = 3
-//    RARE       [0.25, 0.48)   shield = 6
-//    EPIC       [0.48, 0.70)   shield = 10
-//    LEGENDARY  [0.70, 0.88)   shield = 15
-//    MYTHIC     [0.88, 1.00]   shield = 20
+//  Tier mapping (WAVE 6000.V8.1 REBALANCE — lowered thresholds ~18%):
+//    COMMON     [0.00, 0.32)   shield = 3
+//    RARE       [0.32, 0.52)   shield = 6
+//    EPIC       [0.52, 0.68)   shield = 10
+//    LEGENDARY  [0.68, 0.80)   shield = 15
+//    MYTHIC     [0.80, 1.00]   shield = 20
 // ═══════════════════════════════════════════════════════════════════════════
 
 import type { MutationOperator, RarityTier } from '../types'
@@ -23,19 +23,19 @@ import type { MutationOperator, RarityTier } from '../types'
 
 const DRIFT_MAX = 0.55
 
-// WAVE 6000.V4: L2 distance below this threshold forces COMMON tier,
-// regardless of novelty score. Prevents rarity inflation from minor mutations.
-const COMMON_FORCE_L2_THRESHOLD = 0.08
+// WAVE 6000.V8.1: L2 distance below this threshold forces COMMON tier,
+// regardless of novelty score. Minor mutations (L2 < 0.18) are "crafting materials."
+const COMMON_FORCE_L2_THRESHOLD = 0.18
 
 const OPERATOR_WEIGHTS: Readonly<Record<MutationOperator, number>> = Object.freeze({
-  point_mutation: 0.15,
+  focal_mutation: 0.15,
   hue_drift: 0.15,
-  phase_epigenetics: 0.20,
-  gene_duplication: 0.50,
-  gene_deletion: 0.55,
-  gene_splice: 0.60,
-  temporal_stretch: 0.35,
-  interpolation_drift: 0.25,
+  spatial_resonance: 0.20,
+  gene_augmentation: 0.50,
+  adaptive_pruning: 0.55,
+  macro_splice: 0.60,
+  proportional_stretch: 0.35,
+  curve_adaptation: 0.25,
   crossover: 0.85,
   transposition: 0.85,
   context_drift: 0.65,
@@ -123,10 +123,10 @@ function computeNovelty(
  * Maps a raw ρ score [0,1] to a RarityTier.
  */
 export function tierFromScore(score: number): RarityTier {
-  if (score < 0.25) return 'COMMON'
-  if (score < 0.48) return 'RARE'
-  if (score < 0.70) return 'EPIC'
-  if (score < 0.88) return 'LEGENDARY'
+  if (score < 0.32) return 'COMMON'
+  if (score < 0.52) return 'RARE'
+  if (score < 0.68) return 'EPIC'
+  if (score < 0.80) return 'LEGENDARY'
   return 'MYTHIC'
 }
 
@@ -149,8 +149,9 @@ export function computeRarity(input: RarityInput): RarityOutput {
     sigmaNorm * 0.50 + novelty * 0.30 + operatorWeight * 0.20,
   )
 
-  // WAVE 6000.V4: Deflation — minor mutations (L2 < 0.08) are always COMMON,
-  // regardless of novelty. RARE+ reserved for meaningful structural divergence.
+  // WAVE 6000.V8.1: Lowered force-common threshold from 0.25 to 0.18.
+  // Minor mutations (L2 < 0.18) are always COMMON. RARE+ achievable via
+  // curve/phase mutations without requiring structural destruction.
   const tier: RarityTier = input.l2Distance < COMMON_FORCE_L2_THRESHOLD
     ? 'COMMON'
     : tierFromScore(score)
@@ -168,18 +169,34 @@ export function computeRarity(input: RarityInput): RarityOutput {
 
 /**
  * Simplified rarity computation when population signatures are not available
- * (e.g., first spawn or cold start). Novelty defaults to 0.5 (neutral).
+ * (e.g., first spawn or cold start). Novelty defaults to 0.10 (unproven).
+ * WAVE 6000.V8: Reduced from 0.5 to 0.10 — unproven novelty must not be rewarded.
  */
 export function computeRaritySimple(
   l2Distance: number,
   operator: MutationOperator,
 ): RarityOutput {
-  return computeRarity({
-    l2Distance,
-    operator,
-    bezierSignature: new Float32Array(128),
-    populationSignatures: [],
-  })
+  const sigmaNorm = clamp01(l2Distance / DRIFT_MAX)
+  const novelty = 0.10
+  const operatorWeight = OPERATOR_WEIGHTS[operator] ?? 0.15
+
+  const score = clamp01(
+    sigmaNorm * 0.50 + novelty * 0.30 + operatorWeight * 0.20,
+  )
+
+  const tier: RarityTier = l2Distance < COMMON_FORCE_L2_THRESHOLD
+    ? 'COMMON'
+    : tierFromScore(score)
+  const neonatalShield = NEONATAL_SHIELD[tier]
+  const rarityBonus = RARITY_BONUS[tier]
+
+  return {
+    score,
+    tier,
+    neonatalShield,
+    rarityBonus,
+    components: { sigmaNorm, novelty, operatorWeight },
+  }
 }
 
 // ─── RE-EXPORT CONSTANTS ────────────────────────────────────────────────────

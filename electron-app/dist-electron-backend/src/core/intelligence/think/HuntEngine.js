@@ -41,114 +41,21 @@ export function getEligibleCandidates(vibe, energyZone) {
  * V3.3.B: No worthiness calculation, no VIBE_STRIKE_MATRIX, no threshold checks.
  * Phase transitions are driven by simple energy/section heuristics for telemetry.
  */
-export function processHunt(pattern) {
-    state.framesInPhase++;
-    const isActive = pattern.rawEnergy > 0.3 ||
-        pattern.isBuilding ||
-        pattern.section === 'buildup' ||
-        pattern.section === 'drop' ||
-        pattern.section === 'chorus';
-    switch (state.phase) {
-        case 'sleeping':
-            if (isActive) {
-                transitionTo('stalking');
-                return {
-                    suggestedPhase: 'stalking',
-                    worthiness: 0.5,
-                    confidence: 0.4,
-                    reasoning: 'Activity detected — stalking',
-                };
-            }
-            return {
-                suggestedPhase: 'sleeping',
-                worthiness: 0,
-                confidence: 0.2,
-                reasoning: 'Standby',
-            };
-        case 'stalking':
-            if (isActive) {
-                transitionTo('evaluating');
-                return {
-                    suggestedPhase: 'evaluating',
-                    worthiness: 0.6,
-                    confidence: 0.5,
-                    reasoning: 'Promoting to evaluating',
-                };
-            }
-            if (state.framesInPhase > 60) {
-                transitionTo('sleeping');
-                return {
-                    suggestedPhase: 'sleeping',
-                    worthiness: 0,
-                    confidence: 0.2,
-                    reasoning: 'No activity — sleeping',
-                };
-            }
-            return {
-                suggestedPhase: 'stalking',
-                worthiness: 0.4,
-                confidence: 0.4,
-                reasoning: `Stalking frame ${state.framesInPhase}`,
-            };
-        case 'evaluating':
-            if (isActive) {
-                transitionTo('striking');
-                state.strikesThisSession++;
-                state.lastStrikeTimestamp = Date.now();
-                return {
-                    suggestedPhase: 'striking',
-                    worthiness: 0.8,
-                    confidence: 0.8,
-                    reasoning: `Strike #${state.strikesThisSession}`,
-                };
-            }
-            if (state.framesInPhase > 15) {
-                transitionTo('stalking');
-                return {
-                    suggestedPhase: 'stalking',
-                    worthiness: 0.3,
-                    confidence: 0.3,
-                    reasoning: 'Eval timeout — back to stalking',
-                };
-            }
-            return {
-                suggestedPhase: 'evaluating',
-                worthiness: 0.5,
-                confidence: 0.5,
-                reasoning: `Evaluating frame ${state.framesInPhase}`,
-            };
-        case 'striking':
-            transitionTo('learning');
-            return {
-                suggestedPhase: 'learning',
-                worthiness: 0,
-                confidence: 0.8,
-                reasoning: 'Strike executed',
-            };
-        case 'learning':
-            if (state.framesInPhase >= 45) {
-                transitionTo('stalking');
-                return {
-                    suggestedPhase: 'stalking',
-                    worthiness: 0,
-                    confidence: 0.4,
-                    reasoning: 'Cooldown complete',
-                };
-            }
-            return {
-                suggestedPhase: 'learning',
-                worthiness: 0,
-                confidence: 0.3,
-                reasoning: `Learning cooldown: ${state.framesInPhase}/45`,
-            };
-        default:
-            return {
-                suggestedPhase: 'sleeping',
-                worthiness: 0,
-                confidence: 0.2,
-                reasoning: 'Unknown phase — sleeping',
-            };
-    }
+const HUNT_TELEMETRY_STATIC = {
+    suggestedPhase: 'stalking',
+    worthiness: 0,
+    confidence: 0.3,
+    reasoning: 'V3 Liquid Cognition authority — Hunt FSM lobotomized',
+};
+/**
+ * V3 LOBOTOMY: processHunt is now a zero-cost static telemetry stub.
+ * The V2 FSM (sleeping→stalking→evaluating→striking→learning) was degenerate:
+ * it cycled in 3 frames then sat in 45-frame cooldown, providing no useful signal.
+ * V3 Liquid Cognition (epicness, impact, tension) is the sole authority.
+ * This function is kept for interface compatibility only.
+ */
+export function processHunt(_pattern) {
+    return HUNT_TELEMETRY_STATIC;
 }
 /**
  * Fuerza transición de fase (para control externo)

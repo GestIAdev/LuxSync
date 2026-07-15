@@ -39,7 +39,7 @@ import type { SpectralContext } from '../../protocol/MusicalContext'
 // 🎲 WAVE 2183: DIVERSITY FIX — Arsenal selector respeta penalización de diversidad
 import { getDNAAnalyzer } from '../dna/EffectDNA'
 // ⚡ WAVE 4843: COGNITIVE BRIDGE — Registry como fuente de verdad de pesadez de efectos
-import { getDynamicEffectRegistry } from '../../arsenal/DynamicEffectRegistry'
+import { getDynamicEffectRegistry, effectDisplayName } from '../../arsenal/DynamicEffectRegistry'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ⏱️ WAVE 5009: THROTTLE MECHANISM PARA LOGS DE BLOQUEO
@@ -275,8 +275,15 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
   // 🌩️ PRIORIDAD -1: DIVINE MOMENT — V3.4: epicness > epsilon_divine
   // Static Z-score thresholds extirpated. V3 Liquid Cognition's epicness
   // is the sole authority for Divine arsenal routing.
+  // 🩸 WAVE 7159: Vibe-adjusted threshold — techno minimal sustains energy
+  // but lacks spectral divergence for massive impact spikes. Lowering the
+  // divine gate to 0.50 for techno/industrial/hardstyle lets Selene access
+  // her divine arsenal without breaking epicness doctrine. Other genres
+  // keep the strict 0.60 threshold.
   // ═══════════════════════════════════════════════════════════════════════
-  const V3_EPSILON_DIVINE = 0.60  // Radical high-pass: only devastating impact qualifies
+  const vibeId = pattern.vibeId ?? ''
+  const isTechnoVibe = vibeId.includes('techno') || vibeId.includes('industrial') || vibeId.includes('hardstyle')
+  const V3_EPSILON_DIVINE = isTechnoVibe ? 0.50 : 0.60
   const v3Epicness = inputs.v3Epicness ?? 0
 
   if (activeDictator) {
@@ -358,12 +365,6 @@ function calculateCombinedConfidence(
     combined = Math.min(1, combined + 0.1)
   }
   
-  // Penalización si hay señales contradictorias
-  if (inputs.huntDecision.suggestedPhase === 'sleeping' &&
-      inputs.prediction.probability > 0.8) {
-    combined *= 0.85
-  }
-  
   return combined
 }
 
@@ -424,8 +425,8 @@ function rankArsenalByDiversity(arsenal: string[]): string[] {
 
   const winner = scored[0]
   console.log(
-    `[DecisionMaker 🎲] DIVERSITY SELECT: winner=${winner.id} score=${winner.score.toFixed(3)} ` +
-    `from [${arsenal.join(', ')}]`
+    `[DecisionMaker 🎲] DIVERSITY SELECT: winner=${effectDisplayName(winner.id)} score=${winner.score.toFixed(3)} ` +
+    `from [${arsenal.map(effectDisplayName).join(', ')}]`
   )
   
   return scored.map(s => s.id)
@@ -488,7 +489,7 @@ function generateDivineStrikeDecision(
   const rankedArsenal = rankArsenalByDiversity(arsenal)
   const suggestedEffect = rankedArsenal[0] || arsenal[0]
   
-  output.debugInfo.reasoning = `🌩️ DIVINE MOMENT: epicness=${(inputs.v3Epicness ?? 0).toFixed(3)} | vibe=${vibeId} | texture=${spectralContext?.texture ?? 'unknown'} | suggested=${suggestedEffect}`
+  output.debugInfo.reasoning = `🌩️ DIVINE MOMENT: epicness=${(inputs.v3Epicness ?? 0).toFixed(3)} | vibe=${vibeId} | texture=${spectralContext?.texture ?? 'unknown'} | suggested=${effectDisplayName(suggestedEffect)}`
   
   // 🎲 WAVE 2494: Arsenal completo rankeado → Repository elige el primero disponible
   output.effectDecision = {
@@ -496,7 +497,7 @@ function generateDivineStrikeDecision(
     effectName: getDynamicEffectRegistry().getEntry(suggestedEffect)?.name,
     intensity: 1.0,  // DIVINE = máxima intensidad
     zones: ['all'],  // DIVINE afecta todo
-    reason: `🌩️ DIVINE: epicness=${(inputs.v3Epicness ?? 0).toFixed(3)} | Ranked: ${rankedArsenal.join(' > ')} | Full arsenal: ${arsenal.join(', ')}`,
+    reason: `🌩️ DIVINE: epicness=${(inputs.v3Epicness ?? 0).toFixed(3)} | Ranked: ${rankedArsenal.map(effectDisplayName).join(' > ')} | Full arsenal: ${arsenal.map(effectDisplayName).join(', ')}`,
     confidence: 0.99,
     // 🎲 WAVE 2494: Arsenal COMPLETO rankeado por diversity score
     // Repository itera en orden: primer candidato sin cooldown dispara.
@@ -524,7 +525,7 @@ function generateDivineStrikeDecision(
     `[DecisionMaker 🌩️] DIVINE STRIKE: Z=${(zScore ?? 0).toFixed(2)}σ | ` +
     `vibe=${vibeId} | zone=${energyContext?.zone ?? 'unknown'} | ` +
     `texture=${spectralContext?.texture ?? 'N/A'} | ` +
-    `arsenal=[${arsenal.join(', ')}]`
+    `arsenal=[${arsenal.map(effectDisplayName).join(', ')}]`
   )
   
   return output
@@ -660,13 +661,13 @@ function generateDropPreparationDecision(
         effectName: getDynamicEffectRegistry().getEntry(suggestedEffect)?.name,
         intensity: 0.8 + prediction.probability * 0.2,
         zones: ['all'],
-        reason: `🔴 DROP: prob=${prediction.probability.toFixed(2)} | winner=${suggestedEffect} | full arsenal=${dropArsenal.join(', ')}`,
+        reason: `🔴 DROP: prob=${prediction.probability.toFixed(2)} | winner=${effectDisplayName(suggestedEffect)} | full arsenal=${dropArsenal.map(effectDisplayName).join(', ')}`,
         confidence: prediction.probability,
         divineArsenal: [suggestedEffect],
       } as any
       
       console.log(
-        `[DecisionMaker 🔴] DROP EFFECT: ${suggestedEffect} | prob=${prediction.probability.toFixed(2)} ` +
+        `[DecisionMaker 🔴] DROP EFFECT: ${effectDisplayName(suggestedEffect)} | prob=${prediction.probability.toFixed(2)} ` +
         `vibe=${vibeId} | Z=${currentZ.toFixed(2)}`
       )
     }

@@ -38,6 +38,7 @@ import * as path from 'path'
 import type {
   HephAutomationClipV3,
   HephCurve,
+  HephKeyframe,
   HephParamId,
   BlendMode,
   HSL,
@@ -896,6 +897,12 @@ export class HephaestusRuntime {
     const tracks: ResolvedTrack[] = []
     let topLevelPhaseConfig: PhaseConfigPro | null = null
 
+    // 🌊 WAVE 7160: Temporal rescaling — stretch keyframes proportionally
+    // when durationOverrideMs differs from clip.durationMs. This eliminates
+    // the "brick" rigidity of static V2.1 keyframes, allowing Selene to
+    // dynamically control effect duration without truncating curves.
+    const stretchFactor = durationMs / clip.durationMs
+
     // ── Resolución del inventario de fixtures (compartido entre tracks) ──
     // Las zonas se resuelven contra el inventario actual del Orchestrator.
     // Caller puede pre-resolver `externalFixtureIds` para ahorrar lookups
@@ -934,7 +941,7 @@ export class HephaestusRuntime {
       if (trackPhase != null && topLevelPhaseConfig == null) {
         topLevelPhaseConfig = trackPhase
       }
-      tracks.push(this._buildResolvedTrack(t.id, t.paramId, t.curve, t.blendMode, fixtureIds, trackPhase, durationMs, t.zones, t.phaseOverrides, t.colorOverride))
+      tracks.push(this._buildResolvedTrack(t.id, t.paramId, t.curve, t.blendMode, fixtureIds, trackPhase, durationMs, stretchFactor, t.zones, t.phaseOverrides, t.colorOverride))
     }
 
     return { tracks, phaseConfig: topLevelPhaseConfig }
@@ -953,11 +960,24 @@ export class HephaestusRuntime {
     fixtureIds: string[],
     phaseConfig: PhaseConfigPro | null,
     durationMs: number,
+    stretchFactor: number,
     zones?: readonly string[],
     phaseOverrides?: PhaseOverrideMap,
     colorOverride?: HSL,
   ): ResolvedTrack {
-    const singleCurveMap = new Map<HephParamId, HephCurve>([[paramId, curve]])
+    // 🌊 WAVE 7160: Clone + rescale keyframes when stretchFactor !== 1.
+    // Critical: must NOT mutate the original clip's curve (cached, shared).
+    const effectiveCurve: HephCurve = stretchFactor !== 1
+      ? {
+          ...curve,
+          keyframes: curve.keyframes.map((kf): HephKeyframe => ({
+            ...kf,
+            timeMs: Math.round(kf.timeMs * stretchFactor),
+          })),
+        }
+      : curve
+
+    const singleCurveMap = new Map<HephParamId, HephCurve>([[paramId, effectiveCurve]])
     const evaluator = new CurveEvaluator(singleCurveMap, durationMs)
 
     let fixturePhases: FixturePhase[] | null = null

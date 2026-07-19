@@ -1215,3 +1215,439 @@
   color: rgba(255, 255, 255, 0.55);
   max-width: 220px;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🏗️ WAVE 7179 (M5): CALIBRATION DOCK
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.calibration-dock {
+  width: 320px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: #0d0d12;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  overflow-y: auto;
+  overflow-x: hidden;
+  animation: cal-dock-slide-in 0.2s ease-out;
+}
+
+@keyframes cal-dock-slide-in {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.calibration-dock-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  position: sticky;
+  top: 0;
+  background: #0d0d12;
+  z-index: 2;
+}
+
+.calibration-dock-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.calibration-dock-dirty {
+  color: #f59e0b;
+  font-size: 10px;
+  animation: cal-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes cal-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.calibration-dock-section {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.calibration-dock-empty {
+  padding: 40px 16px;
+  text-align: center;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.calibration-dock-actions {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ── Section Labels ────────────────────────────────────────────── */
+
+.cal-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 8px;
+}
+
+/* ── Fixture List ──────────────────────────────────────────────── */
+
+.cal-fixture-list {
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.cal-fixture-list-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.cal-fixture-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.cal-fixture-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.cal-fixture-item--active {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.cal-fixture-item-name {
+  font-weight: 500;
+}
+
+.cal-fixture-item-type {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.35);
+  text-transform: capitalize;
+}
+
+.cal-fixture-list-empty {
+  padding: 20px 16px;
+  text-align: center;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* ── Offset Trim Pad ───────────────────────────────────────────── */
+
+.cal-trim-pad-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.cal-trim-pad-label {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  align-items: center;
+}
+
+.cal-trim-pad-label > span:first-child {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.cal-trim-pad-values {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  font-variant-numeric: tabular-nums;
+}
+
+.cal-trim-pad {
+  position: relative;
+  border-radius: 8px;
+  background: radial-gradient(circle at center, rgba(59, 130, 246, 0.04) 0%, rgba(0, 0, 0, 0.4) 70%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+
+.cal-trim-pad-grid-h {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.cal-trim-pad-grid-v {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.cal-trim-pad-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  transform: translate(-50%, -50%);
+}
+
+.cal-trim-pad-crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #3b82f6;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
+  transform-origin: center;
+  transition: transform 0.05s ease-out;
+  pointer-events: none;
+}
+
+.cal-trim-pad-hint {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.25);
+  text-align: center;
+}
+
+/* ── Axis Polarity Toggles ─────────────────────────────────────── */
+
+.cal-polarity-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cal-polarity-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.cal-polarity-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.cal-toggle {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  padding: 0;
+}
+
+.cal-toggle--active {
+  background: #3b82f6;
+}
+
+.cal-toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s ease;
+}
+
+.cal-toggle--active .cal-toggle-knob {
+  transform: translateX(16px);
+}
+
+/* ── Target Mini Pad ───────────────────────────────────────────── */
+
+.cal-target-mini-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cal-target-mini-row {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.cal-target-mini-pad {
+  position: relative;
+  border-radius: 8px;
+  background: radial-gradient(circle at center, rgba(34, 197, 94, 0.04) 0%, rgba(0, 0, 0, 0.4) 70%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+
+.cal-target-mini-grid-h {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.cal-target-mini-grid-v {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.cal-target-mini-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  transform: translate(-50%, -50%);
+}
+
+.cal-target-mini-dot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #22c55e;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+  transform-origin: center;
+  transition: transform 0.05s ease-out;
+  pointer-events: none;
+}
+
+.cal-target-mini-z {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+
+.cal-target-mini-z-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 600;
+}
+
+.cal-target-mini-z-slider {
+  writing-mode: vertical-lr;
+  direction: rtl;
+  width: 6px;
+  flex: 1;
+  accent-color: #22c55e;
+}
+
+.cal-target-mini-z-value {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  font-variant-numeric: tabular-nums;
+}
+
+.cal-target-mini-coords {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.35);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Action Buttons ────────────────────────────────────────────── */
+
+.cal-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cal-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.cal-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cal-btn--apply {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #22c55e;
+}
+
+.cal-btn--apply:hover:not(:disabled) {
+  background: rgba(34, 197, 94, 0.25);
+}
+
+.cal-btn--revert {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+}
+
+.cal-btn--revert:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.2);
+}
+
+.cal-btn--reset {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.15);
+  color: rgba(239, 68, 68, 0.8);
+}
+
+.cal-btn--reset:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.15);
+}

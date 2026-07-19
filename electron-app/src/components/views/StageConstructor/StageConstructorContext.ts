@@ -13,8 +13,8 @@ export interface ConstructorContextType {
   setDraggedFixtureType: (type: string | null) => void
 
   // Tool mode
-  toolMode: 'select' | 'boxSelect'
-  setToolMode: (mode: 'select' | 'boxSelect') => void
+  toolMode: 'select' | 'boxSelect' | 'calibrate'
+  setToolMode: (mode: 'select' | 'boxSelect' | 'calibrate') => void
 
   // Zone visibility
   showZones: boolean

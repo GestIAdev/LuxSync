@@ -368,6 +368,15 @@ export class NodeResolver implements INodeResolver {
   }
 
   /**
+   * 🏗️ WAVE 7179 (M5): Invalida el cache del IKFixtureProfile para un nodo.
+   * Llamado cuando la calibración del fixture cambia en runtime (Calibration Dock).
+   * El siguiente frame re-construirá el perfil con la nueva calibración.
+   */
+  invalidateIKProfile(nodeId: NodeId): void {
+    this._ikProfiles.delete(nodeId)
+  }
+
+  /**
    * 🔥 WAVE 4720: Registra un device y pre-computa su mapa de ignición.
    *
    * Llamar DESPUÉS de NodeGraph.registerDevice() — el device debe estar

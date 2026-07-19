@@ -910,6 +910,12 @@ declare global {
       releaseSpatialTarget: (args: { fixtureIds: string[] }) => Promise<{ success: boolean; error?: string }>
 
       /**
+       * 🏗️ WAVE 7179 (M5): Invalidate IK profile cache for a node.
+       * Called by the Calibration Dock when calibration offsets change.
+       */
+      invalidateIKProfile: (args: { nodeId: string }) => Promise<{ success: boolean; error?: string }>
+
+      /**
        * WAVE 4702: Sync fixtures al backend (TitanOrchestrator via Aether).
        * Canal canónico post WAVE 4702.
        */

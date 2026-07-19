@@ -1116,6 +1116,25 @@ export function registerAetherIPCHandlers(): void {
     }
   )
 
+  /**
+   * 🏗️ WAVE 7179 (M5): Invalidate IK profile cache for a node.
+   * Called by the Calibration Dock when calibration offsets change at runtime.
+   * The resolver will rebuild the IKFixtureProfile on the next frame.
+   */
+  ipcMain.handle(
+    'lux:aether:invalidateIKProfile',
+    (_event, { nodeId }: { nodeId: string }) => {
+      try {
+        const resolver = getTitanOrchestrator().getAetherResolver()
+        resolver.invalidateIKProfile(nodeId)
+        return { success: true }
+      } catch (err) {
+        console.error('[AetherIPC] invalidateIKProfile error:', err)
+        return { success: false, error: String(err) }
+      }
+    }
+  )
+
   // ── F1: FIXTURE SYNC — Canal canónico → TitanOrchestrator (WAVE 4702) ───────
   /**
    * F1: Sync fixtures desde stageStore al NodeGraph de Aether.

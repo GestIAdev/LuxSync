@@ -34,7 +34,7 @@ interface ShortcutHandlers {
   onCreateGroup?: () => void
   
   /** Callback para cambiar tool mode */
-  onToolModeChange?: (mode: 'select' | 'boxSelect') => void
+  onToolModeChange?: (mode: 'select' | 'boxSelect' | 'calibrate') => void
   
   /** Callback para confirmar acción destructiva (eliminar) */
   onConfirmDelete?: () => boolean
@@ -227,6 +227,15 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers = {}): void {
     if (key.toLowerCase() === 'b' && !isCtrlOrCmd && !event.shiftKey) {
       event.preventDefault()
       handlersRef.current.onToolModeChange?.('boxSelect')
+      return
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // C: Tool mode Calibrate
+    // ─────────────────────────────────────────────────────────────────────
+    if (key.toLowerCase() === 'c' && !isCtrlOrCmd && !event.shiftKey) {
+      event.preventDefault()
+      handlersRef.current.onToolModeChange?.('calibrate')
       return
     }
     

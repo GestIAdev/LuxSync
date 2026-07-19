@@ -26,7 +26,7 @@ import { useStageStore } from '../../stores/stageStore'
 import { useSelectionStore } from '../../stores/selectionStore'
 import { useControlStore } from '../../stores/controlStore'
 import { useNavigationStore, selectStageConstructorNav } from '../../stores/navigationStore'
-import { Box, Layers, Move3D, Save, FolderOpen, Plus, Trash2, Magnet, MousePointer2, BoxSelect, Users, Map, Wrench, RefreshCcw, Upload, ChevronRight, ChevronDown, FilePlus, Pencil, LayoutGrid, Box as Box3D } from 'lucide-react'
+import { Box, Layers, Move3D, Save, FolderOpen, Plus, Trash2, Magnet, MousePointer2, BoxSelect, Users, Map, Wrench, RefreshCcw, Upload, ChevronRight, ChevronDown, FilePlus, Pencil, LayoutGrid, Box as Box3D, Crosshair } from 'lucide-react'
 import { lazy as lazyComponent } from 'react'
 const StageCanvas2D = lazyComponent(() => import('./StageConstructor/StageCanvas2D'))
 import { createDefaultFixture, DEFAULT_PHYSICS_PROFILES, mapLibraryTypeToFixtureType } from '../../core/stage/ShowFileV2'
@@ -42,6 +42,7 @@ import './StageConstructorView.css'
 // Lazy load the heavy 3D canvas
 const StageGrid3D = lazy(() => import('./StageConstructor/StageGrid3D'))
 const GroupManagerPanel = lazy(() => import('./StageConstructor/GroupManagerPanel'))
+const CalibrationDock = lazy(() => import('./StageConstructor/calibration/CalibrationDock'))
 // WAVE 1117: DELETED - FixtureForge modal removed, now uses /forge view
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -542,6 +543,13 @@ const ConstructorToolbar: React.FC = () => {
           >
             <BoxSelect size={16} />
           </button>
+          <button 
+            className={`tool-btn ${toolMode === 'calibrate' ? 'active' : ''}`}
+            title="Calibrate Tool (C)"
+            onClick={() => setToolMode('calibrate')}
+          >
+            <Crosshair size={16} />
+          </button>
         </div>
         
         {/* Snap Toggle */}
@@ -648,7 +656,7 @@ const StageConstructorView: React.FC = () => {
   // WAVE 361.5 - Snap system state
   const [snapEnabled, setSnapEnabled] = useState(true) // Default ON
   const [draggedFixtureType, setDraggedFixtureType] = useState<string | null>(null)
-  const [toolMode, setToolMode] = useState<'select' | 'boxSelect'>('select')
+  const [toolMode, setToolMode] = useState<'select' | 'boxSelect' | 'calibrate'>('select')
   
   // WAVE 363 - Zone visibility & Groups
   const [showZones, setShowZones] = useState(true)  // Default ON
@@ -769,7 +777,12 @@ const StageConstructorView: React.FC = () => {
             )}
           </div>
           
-          {/* Right Sidebar - Properties / Groups (Tabbed) */}
+          {/* Right Sidebar — Properties / Groups (Tabbed) OR Calibration Dock */}
+          {toolMode === 'calibrate' ? (
+            <Suspense fallback={<div className="loading-tab">Loading calibration...</div>}>
+              <CalibrationDock />
+            </Suspense>
+          ) : (
           <aside className="constructor-sidebar properties-sidebar">
             {/* Tab Header - WAVE 363 */}
             <div className="sidebar-tabs">
@@ -800,6 +813,7 @@ const StageConstructorView: React.FC = () => {
               )}
             </div>
           </aside>
+          )}
         </div>
         
         {/* WAVE 1117: DELETED - FixtureForge modal removed, now uses /forge route */}

@@ -22,6 +22,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import type { Position3D, Rotation3D, InstallationOrientation } from '../../core/stage/ShowFileV2'
+import { getIKMountAngles } from './mountTransforms'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -168,15 +169,10 @@ const PAN_SAFETY_MARGIN = 5
  *
  * wall-left/right: solo yaw. Sin inversión Y↔Z.
  */
-const MOUNT_ANGLES: Record<InstallationOrientation, { pitch: number; yaw: number; roll: number }> = {
-  'floor':       { pitch: 0, yaw:   0, roll: 0 },
-  'totem':       { pitch: 0, yaw:   0, roll: 0 },
-  'ceiling':     { pitch: 0, yaw:   0, roll: 0 },
-  'truss-front': { pitch: 0, yaw:   0, roll: 0 },
-  'truss-back':  { pitch: 0, yaw: 180, roll: 0 },
-  'wall-left':   { pitch: 0, yaw:  90, roll: 0 },
-  'wall-right':  { pitch: 0, yaw: -90, roll: 0 },
-}
+// ⚓ WAVE 7178 (M1.2): tabla local eliminada. Los ángulos de montaje ahora
+// se derivan de la SSOT (mountTransforms.ts) vía getIKMountAngles(), que
+// reproduce bit a bit estos mismos valores históricos (pitch siempre 0 —
+// la verticalidad la resuelve el signo de dy más abajo, no una rotación).
 
 /**
  * WAVE 4892/4893 — Telemetría temporal del solver IK.
@@ -230,11 +226,11 @@ export function solveInto(
   const dy = target.y - fixture.position.y
   const dz = target.z - fixture.position.z
 
-  const mountAngles = MOUNT_ANGLES[fixture.orientation.installation] ?? MOUNT_ANGLES['ceiling']
-  
-  const totalPitchRad = (mountAngles.pitch + fixture.orientation.rotation.pitch) * DEG_TO_RAD
-  const totalYawRad   = (mountAngles.yaw   + fixture.orientation.rotation.yaw)   * DEG_TO_RAD
-  const totalRollRad  = (mountAngles.roll  + fixture.orientation.rotation.roll)  * DEG_TO_RAD
+  const mountAngles = getIKMountAngles(fixture.orientation.installation)
+
+  const totalPitchRad = mountAngles.pitchRad + fixture.orientation.rotation.pitch * DEG_TO_RAD
+  const totalYawRad   = mountAngles.yawRad   + fixture.orientation.rotation.yaw   * DEG_TO_RAD
+  const totalRollRad  = mountAngles.rollRad  + fixture.orientation.rotation.roll  * DEG_TO_RAD
 
   const local = rotateToLocalFrame(dx, dy, dz, totalPitchRad, totalYawRad, totalRollRad)
 

@@ -196,11 +196,14 @@ describe('Suite B §2 — getMountQuaternion()', () => {
 
 describe('Suite B §3 — Cobertura completa de MOUNT_QUATERNIONS', () => {
 
-  test('la tabla contiene exactamente las 6 orientaciones canónicas', () => {
+  test('la tabla contiene exactamente las 7 orientaciones canónicas', () => {
+    // NOTA (WAVE 7178): 'totem' se agregó a InstallationOrientation después de
+    // esta suite original (WAVE 4573) y comparte semántica con 'floor' (facing: 'up').
     const keys = Object.keys(MOUNT_QUATERNIONS).sort()
     expect(keys).toEqual([
       'ceiling',
       'floor',
+      'totem',
       'truss-back',
       'truss-front',
       'wall-left',

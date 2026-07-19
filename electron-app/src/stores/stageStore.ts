@@ -52,6 +52,9 @@ import {
   validateShowFileDeep,
   snapPosition,
   clampToCrystalBox,
+  clampElevation,
+  computePlanarPlacement,
+  InstallationOrientation,
 } from '../core/stage/ShowFileV2'
 import { autoMigrate, parseLegacyScenes } from '../core/stage/ShowFileMigrator'
 import { ensureSystemGroups } from '../core/stage/DefaultGroupsService'
@@ -144,6 +147,28 @@ interface StageStoreActions {
   
   /** Update fixture position (THE MEAT - positions are persisted!) */
   updateFixturePosition: (id: string, position: Position3D) => void
+
+  /**
+   * 🏗️ WAVE 7179 (M2): coloca un fixture en el lienzo 2D (Blueprint Mode).
+   * Actualiza X/Z, infiere/hereda Y y orientación, y marca `placementMode: 'planar'`.
+   * Si `rigId` referencia un rig existente en `showFile.rigs`, el fixture
+   * hereda su altura y orientación (snap magnético a estructura física).
+   */
+  placeFixture2D: (
+    fixtureId: string,
+    x: number,
+    z: number,
+    orientation: InstallationOrientation,
+    rigId?: string
+  ) => void
+
+  /**
+   * 🏗️ WAVE 7179 (M2): ajusta SOLO el eje Y de un fixture ya colocado,
+   * con snap+clamp automático a los límites del Crystal Box (`stage.height`).
+   * Pieza clave para prescindir de los controles de posición 3D en la UI —
+   * permite editar la elevación desde el lienzo 2D (scrubber interactivo).
+   */
+  setFixtureElevation: (fixtureId: string, y: number) => void
   
   /** Update fixture rotation */
   updateFixtureRotation: (id: string, rotation: Rotation3D) => void
@@ -663,6 +688,42 @@ export const useStageStore = create<StageStore>()(
       // 🧱 WAVE 4538: Snap + clamp al Crystal Box antes de persistir
       const snapped = stage ? clampToCrystalBox(position, stage) : snapPosition(position)
       get().updateFixture(id, { position: snapped })
+    },
+
+    // 🏗️ WAVE 7179 (M2): coloca un fixture en el lienzo 2D (Blueprint Mode).
+    placeFixture2D: (fixtureId, x, z, orientation, rigId) => {
+      const { showFile, stage } = get()
+      if (!showFile) return
+
+      const rig = rigId ? showFile.rigs?.find(r => r.id === rigId) : undefined
+      if (rigId && !rig) {
+        console.warn(`[stageStore] placeFixture2D: rigId "${rigId}" no encontrado — colocando sin herencia de rig`)
+      }
+
+      const result = computePlanarPlacement(x, z, orientation, rig)
+      const snappedPosition = stage ? clampToCrystalBox(result.position, stage) : snapPosition(result.position)
+
+      get().updateFixture(fixtureId, {
+        position: snappedPosition,
+        orientation: result.orientation,
+        rigId: result.rigId,
+        placementMode: result.placementMode,
+        isPlaced: false, // legacy: 2D sigue siendo el universo "isPlaced=false" — ver StageCanvas2D
+      })
+    },
+
+    // 🏗️ WAVE 7179 (M2): ajusta SOLO el eje Y, clampeado al Crystal Box.
+    setFixtureElevation: (fixtureId, y) => {
+      const { showFile, stage } = get()
+      if (!showFile) return
+
+      const fixture = showFile.fixtures.find(f => f.id === fixtureId)
+      if (!fixture) return
+
+      const clampedY = clampElevation(y, stage)
+      get().updateFixture(fixtureId, {
+        position: { ...fixture.position, y: clampedY },
+      })
     },
     
     updateFixtureRotation: (id, rotation) => {

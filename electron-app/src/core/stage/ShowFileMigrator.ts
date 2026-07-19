@@ -605,10 +605,55 @@ const V2_PATCHES: V2Patch[] = [
       }
     }
   },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🏗️ WAVE 7179 (M2): FIXTURE PLACEMENT MODE (P2 tri-state)
+  //
+  // BEFORE: `isPlaced` era el único flag espacial — booleano, sin distinguir
+  //         "colocado en 2D con Y inferido" de "coordenadas 3D explícitas".
+  // AFTER:  `placementMode: 'unplaced' | 'planar' | '3d'` convive con
+  //         `isPlaced` (que se mantiene intacto para compat de UI legacy).
+  //
+  // Heurística de asignación por defecto para shows existentes:
+  //   - isPlaced === true  → '3d' (coordenadas explícitas confirmadas en el
+  //     builder 3D — el caso histórico más común).
+  //   - Y ≈ 0 (dentro de VOXEL_SIZE)  → 'planar' (fixture de piso, coherente
+  //     con un layout 2D top-down sin elevación).
+  //   - En cualquier otro caso → '3d' (comportamiento conservador: preserva
+  //     exactamente la posición/física existente sin asumir un origen 2D).
+  // ═══════════════════════════════════════════════════════════════════════
+  {
+    fromVersion: '2.3.0',
+    toVersion: '2.4.0',
+    description: 'WAVE 7179: Add FixtureV2.placementMode (P2 tri-state placement lifecycle)',
+    apply: (show) => {
+      const fixtures = show.fixtures as Array<Record<string, unknown>>
+
+      for (const f of fixtures) {
+        if (f.placementMode !== undefined) continue
+
+        const pos = f.position as { x?: number; y?: number; z?: number } | undefined
+        const y = pos?.y ?? 0
+
+        if (f.isPlaced === true) {
+          f.placementMode = '3d'
+        } else if (Math.abs(y) < 0.01) {
+          f.placementMode = 'planar'
+        } else {
+          f.placementMode = '3d'
+        }
+      }
+
+      // rigs[] no existía antes de esta fase — inicializar vacío si falta.
+      if (!Array.isArray(show.rigs)) {
+        show.rigs = []
+      }
+    }
+  },
 ]
 
 /** Current latest V2 schema version */
-export const LATEST_V2_VERSION = '2.3.0'
+export const LATEST_V2_VERSION = '2.4.0'
 
 /**
  * Migrate a V2 show file through all incremental patches to latest.

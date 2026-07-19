@@ -13,21 +13,11 @@ import { useSelectionStore } from '../../../stores/selectionStore'
 import {
   createDefaultFixture,
   mapLibraryTypeToFixtureType,
+  DEFAULT_ORIENTATION_HEIGHT,
 } from '../../../core/stage/ShowFileV2'
 import type { FixtureV2, InstallationOrientation, CanonicalZone, FixtureZone } from '../../../core/stage/ShowFileV2'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-
-/** Infer Y from mount orientation when dropped onto 2D canvas */
-const ORIENTATION_HEIGHT: Record<InstallationOrientation, number> = {
-  'ceiling':     4.0,
-  'totem':       1.5,
-  'truss-front': 3.5,
-  'truss-back':  3.5,
-  'wall-left':   2.5,
-  'wall-right':  2.5,
-  'floor':       0.1,
-}
 
 /** Visual shape per fixture type */
 type FixtureShape = 'triangle' | 'circle' | 'diamond' | 'rect'
@@ -149,7 +139,7 @@ function FixtureGlyph({ type, color, size = 16 }: { type: string; color: string;
 
 const StageCanvas2D: React.FC = () => {
   const fixtures      = useStageStore(state => state.fixtures)
-  const updateFixture  = useStageStore(state => state.updateFixture)
+  const placeFixture2D = useStageStore(state => state.placeFixture2D)
   const setFixtureZone = useStageStore(state => state.setFixtureZone)
   const addFixture     = useStageStore(state => state.addFixture)
   const removeFixture  = useStageStore(state => state.removeFixture)  // 🗑️ WAVE 4576 M4
@@ -257,17 +247,14 @@ const StageCanvas2D: React.FC = () => {
     const [xFrac, zFrac] = toFraction(px + drag.offsetX, py + drag.offsetY)
 
     const f = fixtures.find(fx => fx.id === drag.fixtureId)
-    const yHeight = ORIENTATION_HEIGHT[f?.orientation ?? 'ceiling'] ?? 3.0
     const zone = inferZone(xFrac, zFrac)
 
-    updateFixture(drag.fixtureId, {
-      position: { x: xm, y: yHeight, z: zm },
-      isPlaced: false,   // permanece en el universo 2D
-    })
+    // 🏗️ WAVE 7179 (M2): usa mutador puro — Y inferida vía SSOT DEFAULT_ORIENTATION_HEIGHT
+    placeFixture2D(drag.fixtureId, xm, zm, f?.orientation ?? 'ceiling')
     setFixtureZone(drag.fixtureId, zone as any)
     setDrag(null)
     setDropTarget(null)
-  }, [drag, dropTarget, fromSVG, toFraction, fixtures, updateFixture, setFixtureZone])
+  }, [drag, dropTarget, fromSVG, toFraction, fixtures, placeFixture2D, setFixtureZone])
 
   // ── Drop from external Fixture Library drag (HTML5 DnD) ───────────────────
   const onDragOver = useCallback((e: React.DragEvent) => {
@@ -305,11 +292,8 @@ const StageCanvas2D: React.FC = () => {
     const fixtureId = e.dataTransfer.getData('application/fixture-id')
     if (fixtureId) {
       const f = fixtures.find(fx => fx.id === fixtureId)
-      const yHeight = ORIENTATION_HEIGHT[f?.orientation ?? 'ceiling'] ?? 3.0
-      updateFixture(fixtureId, {
-        position: { x: xm, y: yHeight, z: zm },
-        isPlaced: false,   // tray → canvas 2D: sigue siendo universo unplaced
-      })
+      // 🏗️ WAVE 7179 (M2): usa mutador puro — Y inferida vía SSOT
+      placeFixture2D(fixtureId, xm, zm, f?.orientation ?? 'ceiling')
       setFixtureZone(fixtureId, zone)
       return
     }
@@ -321,7 +305,6 @@ const StageCanvas2D: React.FC = () => {
     if (!fixtureType) return
 
     const libraryId  = e.dataTransfer.getData('library-fixture-id')
-    const yHeight    = ORIENTATION_HEIGHT['ceiling']
     const newId      = `fixture-${Date.now()}`
     const nextAddr   = useStageStore.getState().fixtures.length * 8 + 1
     const mappedType = mapLibraryTypeToFixtureType(fixtureType) as FixtureV2['type']
@@ -332,7 +315,7 @@ const StageCanvas2D: React.FC = () => {
 
     let partialData: Partial<FixtureV2> = {
       type: mappedType,
-      position: { x: xm, y: yHeight, z: zm },
+      position: { x: xm, y: DEFAULT_ORIENTATION_HEIGHT['ceiling'], z: zm },
       zone: zone as FixtureZone,
       orientation,
       isPlaced: false,   // 2D ≡ unplaced — 3D ≡ placed
@@ -387,11 +370,13 @@ const StageCanvas2D: React.FC = () => {
       }
       const newFixture = createDefaultFixture(newId, nextAddr, partialData)
       addFixture(newFixture)
+      // 🏗️ WAVE 7179 (M2): usa mutador puro para setear placementMode + SSOT Y
+      placeFixture2D(newId, xm, zm, orientation)
       // Zone is embedded in partialData above; normalizeZone runs inside setFixtureZone
       setFixtureZone(newId, zone as FixtureZone)
     }
     finalize()
-  }, [fromSVG, toFraction, fixtures, updateFixture, setFixtureZone, addFixture])
+  }, [fromSVG, toFraction, fixtures, placeFixture2D, setFixtureZone, addFixture])
 
   // ── Tick marks ────────────────────────────────────────────────────────────
   const ticks = useMemo(() => {

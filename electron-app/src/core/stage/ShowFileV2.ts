@@ -87,6 +87,60 @@ export function clampToCrystalBox(
   }
 }
 
+/**
+ * 🏗️ WAVE 7179 (M2): clampea/snapea SOLO el eje Y al Crystal Box.
+ * Usado por `setFixtureElevation()` — reutiliza exactamente las mismas
+ * reglas de snap+clamp que `clampToCrystalBox`, sin tocar X/Z.
+ * Si `stage` es null (show sin dimensiones aún cargadas), solo aplica
+ * snap-to-voxel y el piso físico (Y >= 0).
+ */
+export function clampElevation(y: number, stage: StageDimensions | null): number {
+  if (!stage) return Math.max(0, snapToVoxel(y))
+  return Math.max(0, Math.min(stage.height, snapToVoxel(y)))
+}
+
+/**
+ * 🏗️ WAVE 7179 (M2): resultado puro de una colocación planar (2D).
+ * Ver `placeFixture2D()` en stageStore — esta función es la lógica pura,
+ * testeable sin Zustand, que decide posición/orientación/rigId resultantes.
+ */
+export interface PlanarPlacementResult {
+  position: Position3D
+  orientation: InstallationOrientation
+  rigId: string | undefined
+  placementMode: 'planar'
+}
+
+/**
+ * Calcula el resultado puro de colocar un fixture en el lienzo 2D.
+ *
+ * - Sin `rig`: Y se infiere de `orientation` vía `DEFAULT_ORIENTATION_HEIGHT`.
+ * - Con `rig`: el fixture HEREDA `height` y `orientation` del rig (snap
+ *   magnético a estructura física — Rigging Kit de Obsidian Studio V3),
+ *   ignorando el parámetro `orientation` explícito.
+ */
+export function computePlanarPlacement(
+  x: number,
+  z: number,
+  orientation: InstallationOrientation,
+  rig?: RigV2
+): PlanarPlacementResult {
+  if (rig) {
+    return {
+      position: { x, y: rig.height, z },
+      orientation: rig.orientation,
+      rigId: rig.id,
+      placementMode: 'planar',
+    }
+  }
+  return {
+    position: { x, y: DEFAULT_ORIENTATION_HEIGHT[orientation] ?? 3.0, z },
+    orientation,
+    rigId: undefined,
+    placementMode: 'planar',
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES: PHYSICS & SAFETY
 // ═══════════════════════════════════════════════════════════════════════════
@@ -117,6 +171,57 @@ export type InstallationOrientation =
   | 'wall-right' 
   | 'truss-front' 
   | 'truss-back'
+
+/**
+ * 🏗️ WAVE 7179 (M2): CICLO DE VIDA ESPACIAL DEL FIXTURE
+ *
+ * Reemplaza conceptualmente el flag binario `isPlaced` por un tri-estado
+ * explícito que modela el ciclo de vida completo de un fixture en el
+ * Stage Constructor (Obsidian Studio V3):
+ *
+ * - 'unplaced': fantasma en espera. Sin posición espacial confirmada por
+ *   el operador — el visualizador lo trata como layout fallback / IK skip.
+ * - 'planar'  : ubicado en el lienzo 2D (Blueprint Mode). X/Z explícitos;
+ *   Y se infiere de la orientación o se hereda de un rig (`rigId`), y
+ *   puede ajustarse independientemente vía `setFixtureElevation()`.
+ * - '3d'      : coordenadas XYZ absolutas explícitas, colocado directamente
+ *   en el lienzo 3D (Studio Mode).
+ *
+ * `isPlaced` se mantiene como campo LEGACY derivado — ver `FixtureV2.isPlaced`.
+ */
+export type FixturePlacementMode = 'unplaced' | 'planar' | '3d'
+
+/**
+ * 🏗️ WAVE 7179 (M2): RIGGING KIT — estructura física mínima (truss/tótem)
+ * a la que un fixture puede "snapear" en el lienzo 3D, heredando altura y
+ * orientación. Modelo mínimo de datos; la creación/edición interactiva de
+ * rigs llega con la UI de Obsidian Studio V3 — este tipo solo habilita el
+ * lookup de herencia desde `placeFixture2D()`.
+ */
+export interface RigV2 {
+  id: string
+  /** Posición del rig en el escenario (metros). */
+  position: Position3D
+  /** Altura de montaje que heredan los fixtures anclados (metros). */
+  height: number
+  /** Orientación que heredan los fixtures anclados. */
+  orientation: InstallationOrientation
+}
+
+/**
+ * Altura Y por defecto (metros) inferida de la orientación de montaje.
+ * Usada por `placeFixture2D()` cuando el fixture no hereda de un rig.
+ * SSOT — antes duplicada localmente en StageCanvas2D.tsx.
+ */
+export const DEFAULT_ORIENTATION_HEIGHT: Record<InstallationOrientation, number> = {
+  'ceiling':     4.0,
+  'totem':       1.5,
+  'truss-front': 3.5,
+  'truss-back':  3.5,
+  'wall-left':   2.5,
+  'wall-right':  2.5,
+  'floor':       0.1,
+}
 
 /**
  * 🛡️ PHYSICS PROFILE - THE LIFE INSURANCE
@@ -674,9 +779,32 @@ export interface FixtureV2 {
    * True when the user has explicitly placed this fixture in the 3D StageBuilder.
    * False/undefined = "guerrilla" fixture, added via quick-add without 3D coordinates.
    * When false, the visualizer uses zone layout fallback and IK is skipped.
+   *
+   * ⚠️ LEGACY (WAVE 7179 M2): superseded conceptually by `placementMode`.
+   * Mantenido para compatibilidad — código existente (StageCanvas2D, filtros
+   * de UI) sigue leyendo/escribiendo este campo sin regresión. Los nuevos
+   * mutadores (`placeFixture2D`, `setFixtureElevation`) actualizan
+   * `placementMode`; `isPlaced` se sigue escribiendo en paralelo donde ya
+   * se escribía antes, para no romper ningún consumidor legacy.
    */
   isPlaced?: boolean
-  
+
+  /**
+   * 🏗️ WAVE 7179 (M2): tri-estado del ciclo de vida espacial.
+   * Ver `FixturePlacementMode`. Opcional solo por compatibilidad con
+   * fixtures deserializados de versiones de schema anteriores a 2.4.0 —
+   * el migrador (`ShowFileMigrator.ts`) y `createDefaultFixture()` siempre
+   * lo pueblan explícitamente para fixtures nuevos/migrados.
+   */
+  placementMode?: FixturePlacementMode
+
+  /**
+   * 🏗️ WAVE 7179 (M2): referencia al `RigV2.id` del truss/tótem del que
+   * este fixture heredó altura (Y) y orientación vía `placeFixture2D()`.
+   * `undefined` = fixture independiente, sin anclaje a estructura física.
+   */
+  rigId?: string
+
   /** Physics and safety profile */
   physics: PhysicsProfile
   
@@ -1006,7 +1134,7 @@ export interface ShowFileV2 {
   // ═══════════════════════════════════════════════════════════════════════
   
   /** Schema version for migration (2.0.0 = initial V2, 2.1.0+ = incremental patches) */
-  schemaVersion: '2.0.0' | '2.1.0' | '2.2.0' | '2.3.0'
+  schemaVersion: '2.0.0' | '2.1.0' | '2.2.0' | '2.3.0' | '2.4.0'
   
   /** Show name */
   name: string
@@ -1045,6 +1173,13 @@ export interface ShowFileV2 {
   
   /** Fixture groups */
   groups: FixtureGroup[]
+
+  /**
+   * 🏗️ WAVE 7179 (M2): estructuras físicas (trusses/tótems) del Rigging Kit.
+   * Opcional por compatibilidad con shows anteriores a esta fase — el
+   * migrador y `createEmptyShowFile()` siempre lo pueblan como `[]`.
+   */
+  rigs?: RigV2[]
   
   // ═══════════════════════════════════════════════════════════════════════
   // SCENES
@@ -1109,6 +1244,7 @@ export function createEmptyShowFile(name: string = 'New Show'): ShowFileV2 {
     
     fixtures: [],
     groups: [],
+    rigs: [],
     scenes: [],
     
     dmx: {
@@ -1151,6 +1287,10 @@ export function createDefaultFixture(
     rotation: options.rotation || { pitch: 0, yaw: 0, roll: 0 },
     orientation: options.orientation || 'ceiling',
     isPlaced: options.isPlaced,
+    // 🏗️ WAVE 7179 (M2): fixtures nuevos nacen 'unplaced' (fantasma en espera)
+    // salvo que el caller ya sepa su modo (p.ej. placeFixture2D lo sobreescribe
+    // inmediatamente después vía el spread de `options` más abajo).
+    placementMode: options.placementMode || 'unplaced',
     physics: options.physics || { ...DEFAULT_PHYSICS_PROFILES['unknown'] },
     zone: options.zone || 'unassigned',
     enabled: true,
@@ -1217,9 +1357,10 @@ export function validateShowFileDeep(data: unknown): ShowFileValidationResult {
     show.schemaVersion !== '2.0.0' &&
     show.schemaVersion !== '2.1.0' &&
     show.schemaVersion !== '2.2.0' &&
-    show.schemaVersion !== '2.3.0'
+    show.schemaVersion !== '2.3.0' &&
+    show.schemaVersion !== '2.4.0'
   ) {
-    errors.push(`Invalid schemaVersion: expected '2.0.0', '2.1.0', '2.2.0', or '2.3.0', got '${show.schemaVersion}'`)
+    errors.push(`Invalid schemaVersion: expected '2.0.0', '2.1.0', '2.2.0', '2.3.0', or '2.4.0', got '${show.schemaVersion}'`)
   }
   if (typeof show.name !== 'string' || show.name.trim() === '') {
     errors.push(`Invalid or empty show name: '${show.name}'`)

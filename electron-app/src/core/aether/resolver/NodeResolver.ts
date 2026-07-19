@@ -106,6 +106,13 @@ const MATH_TELEMETRY_EVERY_FRAMES = 30
 const IK_DEFAULT_PAN_RANGE_DEG  = 540
 const IK_DEFAULT_TILT_RANGE_DEG = 270
 
+// 🏗️ WAVE 7179 (M4): VMM offset scale factors for post-solve DMX-domain fusion.
+// Mirror NodeArbiter's RELATIVE_OFFSET_SCALE_PAN/TILT — preserves legacy visual behavior.
+const VMM_OFFSET_SCALE_PAN  = 0.5
+const VMM_OFFSET_SCALE_TILT = 0.5
+const VMM_GIMBAL_TILT_CENTER         = 0.5
+const VMM_GIMBAL_TILT_FADE_HALFWIDTH = 10 / 255
+
 // WAVE 4735.3: auditoría de salud del tick Aether (~2.27s @ 44Hz)
 const AETHER_TICK_HEALTH_EVERY_FRAMES = 100
 
@@ -293,7 +300,13 @@ export class NodeResolver implements INodeResolver {
 
   // 🛂 WAVE 4557: Safety middleware for velocity clamping, airbag, DarkSpin
   private _safetyMiddleware: AetherSafetyMiddleware | null = null
-  // 🌊 WAVE 4703: Tracks devices currently in DarkSpin transit to suppress per-frame log spam.
+
+  // �️ WAVE 7179 (M4): VMM spatial params — dist_scale per node + global amplitude.
+  // Mirrors NodeArbiter's state. Set by AetherIPCHandlers alongside the arbiter setters.
+  // Used in _writeNodeIK to apply VMM offsets post-solve in DMX domain.
+  private readonly _spatialDistanceScales = new Map<NodeId, number>()
+  private _relativeOffsetAmplitude = 1.0
+  // �� WAVE 4703: Tracks devices currently in DarkSpin transit to suppress per-frame log spam.
   // Cleared each sweep — log fires only on the first frame a device enters transit.
   private readonly _darkSpinActiveDevices = new Set<DeviceId>()
 
@@ -328,6 +341,30 @@ export class NodeResolver implements INodeResolver {
    */
   setSafetyMiddleware(middleware: AetherSafetyMiddleware): void {
     this._safetyMiddleware = middleware
+  }
+
+  /**
+   * 🏗️ WAVE 7179 (M4): Setter de la escala de distancia por nodo.
+   * Espejo de NodeArbiter.setSpatialDistanceScale — llamado desde AetherIPCHandlers.
+   */
+  setSpatialDistanceScale(nodeId: NodeId, scale: number): void {
+    if (!Number.isFinite(scale)) return
+    const clamped = scale < 0.25 ? 0.25 : scale > 2 ? 2 : scale
+    this._spatialDistanceScales.set(nodeId, clamped)
+  }
+
+  /**
+   * 🏗️ WAVE 7179 (M4): Setter de la amplitud global del offset relativo.
+   * Espejo de NodeArbiter.setRelativeOffsetAmplitude — llamado desde AetherIPCHandlers.
+   */
+  setRelativeOffsetAmplitude(value: number): void {
+    if (!Number.isFinite(value)) return
+    this._relativeOffsetAmplitude = value < 0 ? 0 : value > 2 ? 2 : value
+  }
+
+  /** 🏗️ WAVE 7179 (M4): Limpiar la escala de distancia de un nodo (release). */
+  clearSpatialDistanceScale(nodeId: NodeId): void {
+    this._spatialDistanceScales.delete(nodeId)
   }
 
   /**
@@ -1462,9 +1499,43 @@ export class NodeResolver implements INodeResolver {
       }
     }
 
+    // 🏗️ WAVE 7179 (M4): VMM Post-Solve Fusion — aplica offsets del VMM en dominio DMX.
+    // Los offsets (pan_offset, tilt_offset) provienen del L0 (VibeMovementManager)
+    // y están en espacio normalizado [-1, +1]. Se escalan por amplitude, dist_scale
+    // y el factor de gimbal lock fade, luego se convierten a DMX (0-255) y se suman
+    // al resultado lógico del IK. Esto reemplaza la fusión que hacía NodeArbiter
+    // en el dominio normalizado 0-1.
+    let logicalPan  = ikResult.pan
+    let logicalTilt = ikResult.tilt
+
+    const panOffset  = channelValues['pan_offset']
+    const tiltOffset = channelValues['tilt_offset']
+    const hasPanOffset  = panOffset !== undefined && Number.isFinite(panOffset)
+    const hasTiltOffset = tiltOffset !== undefined && Number.isFinite(tiltOffset)
+
+    if (hasPanOffset || hasTiltOffset) {
+      const amp = this._relativeOffsetAmplitude
+      const distScale = this._spatialDistanceScales.get(node.nodeId) ?? 1.0
+
+      if (hasPanOffset) {
+        // Gimbal lock fade: atenuar pan_offset cuando tilt ≈ centro (0.5 norm = ~127 DMX)
+        const tiltNorm = logicalTilt / 255
+        const tiltDist = Math.abs(tiltNorm - VMM_GIMBAL_TILT_CENTER)
+        const gimbalFactor = tiltDist >= VMM_GIMBAL_TILT_FADE_HALFWIDTH
+          ? 1
+          : tiltDist / VMM_GIMBAL_TILT_FADE_HALFWIDTH
+        const panDelta = (panOffset as number) * amp * VMM_OFFSET_SCALE_PAN * distScale * gimbalFactor * 255
+        logicalPan = logicalPan + panDelta
+      }
+      if (hasTiltOffset) {
+        const tiltDelta = (tiltOffset as number) * amp * VMM_OFFSET_SCALE_TILT * distScale * 255
+        logicalTilt = logicalTilt + tiltDelta
+      }
+    }
+
     // ★ WAVE 4557: Velocity clamp + Airbag via AetherSafetyMiddleware
-    let safePan  = sanitizeDmxByte(ikResult.pan)
-    let safeTilt = sanitizeDmxByte(ikResult.tilt)
+    let safePan  = sanitizeDmxByte(logicalPan)
+    let safeTilt = sanitizeDmxByte(logicalTilt)
     const sm = this._safetyMiddleware
     if (sm) {
       sm.clampKineticVelocityInto(this._kineticClampScratch, node.nodeId, safePan, safeTilt)

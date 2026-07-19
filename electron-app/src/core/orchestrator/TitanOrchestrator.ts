@@ -462,6 +462,19 @@ export class TitanOrchestrator {
   }
 
   /**
+   * 🏗️ WAVE 7179 (M4): Expone el NodeResolver interno para que
+   * AetherIPCHandlers pueda inyectar dist_scale y amplitude al resolver
+   * (post-solve VMM fusion en dominio DMX).
+   */
+  public getAetherResolver(): NodeResolver {
+    this.hydrationEngine.ensureAetherMatrixInitialized()
+    if (!this._aetherResolver) {
+      throw new Error('Aether Matrix initialization failed: NodeResolver unavailable')
+    }
+    return this._aetherResolver
+  }
+
+  /**
    * WAVE 6020 SALVA-SHOWS: Expone el PhysicsPostProcessor para que
    * AetherIPCHandlers pueda exorcizar el estado 3D en Unlock espacial.
    */

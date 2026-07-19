@@ -696,6 +696,8 @@ export function registerAetherIPCHandlers(): void {
         // Mapeo: slider [0..100] → ratio [0..2.0] (50 = 1.0 = legacy default).
         // El arbiter aplica clamp interno [0, 2] como red de seguridad.
         arbiter.setRelativeOffsetAmplitude(amplitudeNorm * 2)
+        // 🏗️ WAVE 7179 (M4): Mirror amplitude to resolver for post-solve VMM fusion.
+        try { getTitanOrchestrator().getAetherResolver().setRelativeOffsetAmplitude(amplitudeNorm * 2) } catch { /* resolver not ready */ }
 
         // Construir nodeIds en formato Aether: `${fixtureId}:kinetic`
         const nodeIds = fixtureIds.map(id => resolveKineticNodeId(`${id}:kinetic`))
@@ -851,8 +853,11 @@ export function registerAetherIPCHandlers(): void {
 
         // ⚡ WAVE 4915: live update del Relative Offset Amplitude (sin reiniciar fase).
         // Mismo mapeo que setManualPattern: [0..100] → [0..2.0].
-        const arbiterForAmp = getTitanOrchestrator().getAetherArbiter()
+        const orch = getTitanOrchestrator()
+        const arbiterForAmp = orch.getAetherArbiter()
         arbiterForAmp.setRelativeOffsetAmplitude(amplitude * 2)
+        // 🏗️ WAVE 7179 (M4): Mirror amplitude to resolver for post-solve VMM fusion.
+        try { orch.getAetherResolver().setRelativeOffsetAmplitude(amplitude * 2) } catch { /* resolver not ready */ }
 
         let nodeIds: string[]
         if (Array.isArray(payload?.fixtureIds) && payload.fixtureIds.length > 0) {
@@ -971,6 +976,7 @@ export function registerAetherIPCHandlers(): void {
       try {
         const orchestrator = getTitanOrchestrator()
         const arbiter = orchestrator.getAetherArbiter()
+        const resolver = orchestrator.getAetherResolver()
         const allFixtures: any[] = (orchestrator as any).fixtures ?? []
 
         // ── WAVE 7179 (M3): Resolver posiciones reales sin construir IK profiles ──
@@ -1008,10 +1014,12 @@ export function registerAetherIPCHandlers(): void {
           const distance = Math.sqrt(dx * dx + dy * dy + dz * dz)
           if (!Number.isFinite(distance) || distance < 1e-6) {
             arbiter.setSpatialDistanceScale(resolveKineticNodeId(`${fi.id}:kinetic`), 2.0)
+            resolver.setSpatialDistanceScale(resolveKineticNodeId(`${fi.id}:kinetic`), 2.0)
             continue
           }
           const scale = D_REF / distance
           arbiter.setSpatialDistanceScale(resolveKineticNodeId(`${fi.id}:kinetic`), scale)
+          resolver.setSpatialDistanceScale(resolveKineticNodeId(`${fi.id}:kinetic`), scale)
         }
 
         // 🏗️ WAVE 7179 (M3): computeFanSubTargets — pura geometría, sin solve()
@@ -1060,7 +1068,10 @@ export function registerAetherIPCHandlers(): void {
       }
 
       try {
-        const arbiter = getTitanOrchestrator().getAetherArbiter()
+        const orch = getTitanOrchestrator()
+        const arbiter = orch.getAetherArbiter()
+        let resolver: { clearSpatialDistanceScale(nodeId: string): void } | null = null
+        try { resolver = orch.getAetherResolver() } catch { /* not ready */ }
         for (const id of fixtureIds) {
           const nodeId = resolveKineticNodeId(`${id}:kinetic`)
           // WAVE 4980: Anti-jitter release fade.
@@ -1089,6 +1100,7 @@ export function registerAetherIPCHandlers(): void {
           arbiter.clearMotorKineticOverride(nodeId)
           // ⚡ WAVE 4915: limpiar la distance scale junto con el override.
           arbiter.clearSpatialDistanceScale(nodeId)
+          if (resolver) resolver.clearSpatialDistanceScale(nodeId)
         }
         // Si el caller libera todos los fixtures (release global), limpiar las tablas
         // enteras como red de seguridad ante leaks de overrides huérfanos.

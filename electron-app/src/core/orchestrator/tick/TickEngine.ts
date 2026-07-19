@@ -917,14 +917,14 @@ export class TickEngine {
     // â†’ flushToDriver (Aduana+send). Sin pasos intermedios redundantes.
 
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    // âš¡ WAVE 2510: DUAL-CHANNEL BROADCAST â€” Hot Frame (22Hz) + Full Truth (~7Hz)
+    // WAVE 2510: DUAL-CHANNEL BROADCAST — Hot Frame (44Hz) + Full Truth (11Hz)
     //
-    // Hot Frame: Every HOT_FRAME_DIVIDER ticks (22Hz). Carries fixture dynamic data.
-    //   â†’ Frontend â†’ RenderWorker â†’ HyperionView preview.
-    //   â†’ Lightweight: fixtures array + beat + frame number.
+    // Hot Frame: Every HOT_FRAME_DIVIDER ticks (44Hz). Carries fixture dynamic data.
+    //   → Frontend → RenderWorker → HyperionView preview.
+    //   → Lightweight: fixtures array + beat + frame number.
     //
-    // Full Truth: Every TRUTH_BROADCAST_DIVIDER ticks (~7Hz).
-    //   â†’ Full SeleneTruth. Feeds React stores, HUD, audio meters, etc.
+    // Full Truth: Every TRUTH_BROADCAST_DIVIDER ticks (11Hz).
+    //   → Full SeleneTruth. Feeds React stores, HUD, audio meters, etc.
     //
     // ðŸ‘» WAVE 2540.7: CHRONOS BYPASS â€” During Chronos playback, broadcast
     // full truth at full rate (44fps) since Cinema needs complete data.
@@ -948,10 +948,10 @@ export class TickEngine {
       }
     }
 
-    // â”€â”€ HOT FRAME â€” Every HOT_FRAME_DIVIDER ticks (44Hz) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    // âš¡ WAVE 3050: Throttled from 44Hz â†’ 22Hz. DMX stays at 44Hz.
-    // âš¡ WAVE 4559: Overclock â†’ 44Hz. Strobe y flash sin frame-skip al canvas.
-    // âš¡ WAVE 3065: Emitted BEFORE flushToDriver â€” values are real engine output.
+    // ── HOT FRAME — Every HOT_FRAME_DIVIDER ticks (44Hz) ──────────────────
+    // WAVE 3050: Originally throttled to 22Hz. DMX stays at 44Hz.
+    // WAVE 4559: Overclocked to 44Hz. Strobe y flash sin frame-skip al canvas.
+    // WAVE 3065: Emitted BEFORE flushToDriver — values are real engine output.
     // 🛡️ WAVE-6060: Reactivado como fallback cuando GlassBridge no levanta.
     if (this.onHotFrame && this.frameCount % TickEngine.HOT_FRAME_DIVIDER === 0) {
       const _hfCount = fixtureStates.length
@@ -1424,7 +1424,7 @@ export class TickEngine {
 
     // El broadcast UI siempre recibe los valores reales del engine.
 
-    // â”€â”€ FULL TRUTH â€” Every TRUTH_BROADCAST_DIVIDER ticks (~7Hz) â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── FULL TRUTH — Every TRUTH_BROADCAST_DIVIDER ticks (11Hz) ──────────
     if (this.onBroadcast && shouldBroadcastFullTruth) {
       const currentVibe = this.engine.getCurrentVibe()
       

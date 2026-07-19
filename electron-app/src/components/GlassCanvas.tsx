@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { getTransientTruth } from '../stores/transientStore'
-import { useTruthStore } from '../stores/truthStore'
+import { getTransientTruth, getTransientFixture } from '../stores/transientStore'
 
 const CANVAS_W = 800
 const CANVAS_H = 200
@@ -36,24 +35,18 @@ export default function GlassCanvas() {
         transient.sensory.beat.onBeat = view[4] > 0.5
       }
       
-      // 2. Fixtures (desde offset 10) — 🛠️ WAVE 6018 PARCHE 1: Zero-allocation in-place mutation
-      // NO recrear array ni Map — mutar objetos existentes para preservar referencias de fixtureIndex.
-      const fixtures = useTruthStore.getState().truth?.hardware?.fixtures
+      // 2. Fixtures (desde offset 10) — WAVE 7174: Leer IDs de transientStore (no truthStore que está vacío)
+      // O(1) lookup via getTransientFixture() — zero Array.find(), zero allocation.
+      const fixtures = transient.hardware?.fixtures
       if (fixtures && fixtures.length > 0) {
-        if (!transient.hardware) (transient as any).hardware = { fixtures: [] }
-        const transientFixtures = transient.hardware.fixtures
-        
         for (let i = 0; i < fixtures.length; i++) {
           const off = 10 + i * 16
           const id = fixtures[i]?.id
           if (!id) continue
-          
-          let tFix: any = transientFixtures.find((f: any) => f.id === id)
-          if (!tFix) {
-            tFix = { id, name: fixtures[i].name, type: fixtures[i].type, zone: fixtures[i].zone }
-            transientFixtures.push(tFix)
-          }
-          
+
+          const tFix: any = getTransientFixture(id)
+          if (!tFix) continue
+
           tFix.color = { r: view[off], g: view[off+1], b: view[off+2] }
           tFix.dimmer = view[off+5] / 255
           tFix.intensity = view[off+5] / 255

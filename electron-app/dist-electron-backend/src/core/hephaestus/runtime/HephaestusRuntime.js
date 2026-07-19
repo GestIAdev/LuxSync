@@ -186,6 +186,7 @@ export class HephaestusRuntime {
             intensity: options.intensity ?? 1.0,
             loop: options.loop ?? false,
             phaseConfig,
+            silenceSpatial: options.silenceSpatial ?? false,
         };
         this.activeClips.set(instanceId, activeClip);
         this.totalTriggered++;
@@ -227,6 +228,7 @@ export class HephaestusRuntime {
             intensity: options.intensity ?? 1.0,
             loop: options.loop ?? false,
             phaseConfig,
+            silenceSpatial: options.silenceSpatial ?? false,
         };
         this.activeClips.set(instanceId, activeClip);
         this.totalTriggered++;
@@ -343,6 +345,7 @@ export class HephaestusRuntime {
         const intensity = active.intensity;
         const durationMs = active.durationMs;
         const isLoop = active.loop;
+        const silenceSpatial = active.silenceSpatial === true;
         this._blendMap.clear();
         for (let ti = 0; ti < active.tracks.length; ti++) {
             const track = active.tracks[ti];
@@ -366,7 +369,7 @@ export class HephaestusRuntime {
                     else {
                         fixtureTimeMs = Math.min(baseClipTimeMs + fp.phaseOffsetMs, durationMs);
                     }
-                    this._emitTrackSample(track, fp.fixtureId, fixtureTimeMs, evaluator, paramName, intensity, isCustomThisClip, clipId, track.zones);
+                    this._emitTrackSample(track, fp.fixtureId, fixtureTimeMs, evaluator, paramName, intensity, isCustomThisClip, clipId, track.zones, silenceSpatial);
                 }
                 continue;
             }
@@ -375,7 +378,7 @@ export class HephaestusRuntime {
             if (fixtureIds.length === 0)
                 continue;
             for (let fi = 0; fi < fixtureIds.length; fi++) {
-                this._emitTrackSample(track, fixtureIds[fi], baseClipTimeMs, evaluator, paramName, intensity, isCustomThisClip, clipId, track.zones);
+                this._emitTrackSample(track, fixtureIds[fi], baseClipTimeMs, evaluator, paramName, intensity, isCustomThisClip, clipId, track.zones, silenceSpatial);
             }
         }
     }
@@ -386,7 +389,7 @@ export class HephaestusRuntime {
      * `tickWithPhase` y `tickLegacy`. La pista ya trae cacheado `valueType`
      * para evitar el lookup `curve.valueType` en hot-path.
      */
-    _emitTrackSample(track, fixtureId, timeMs, evaluator, paramName, intensity, isCustomThisClip, clipId, trackZones) {
+    _emitTrackSample(track, fixtureId, timeMs, evaluator, paramName, intensity, isCustomThisClip, clipId, trackZones, silenceSpatial) {
         const blendKey = fixtureId + ':' + paramName;
         const existingIdx = this._blendMap.get(blendKey);
         if (track.valueType === 'color') {
@@ -423,7 +426,7 @@ export class HephaestusRuntime {
                 this._blendOutput(this.outputBuffer[existingIdx], track.blendMode, 0, rgb, undefined, 0, this._normRgbBuf);
                 return;
             }
-            this.writeOutput(fixtureId, 'all', paramName, 0, rgb, undefined, 0, this._normRgbBuf, isCustomThisClip, clipId, trackZones);
+            this.writeOutput(fixtureId, 'all', paramName, 0, rgb, undefined, 0, this._normRgbBuf, isCustomThisClip, clipId, trackZones, silenceSpatial);
             this._blendMap.set(blendKey, this.outputCursor - 1);
         }
         else {
@@ -437,7 +440,7 @@ export class HephaestusRuntime {
                 this._blendOutput(this.outputBuffer[existingIdx], track.blendMode, scaledValue, undefined, fine, withIntensity, undefined);
                 return;
             }
-            this.writeOutput(fixtureId, 'all', paramName, scaledValue, undefined, fine, withIntensity, undefined, isCustomThisClip, clipId, trackZones);
+            this.writeOutput(fixtureId, 'all', paramName, scaledValue, undefined, fine, withIntensity, undefined, isCustomThisClip, clipId, trackZones, silenceSpatial);
             this._blendMap.set(blendKey, this.outputCursor - 1);
         }
     }
@@ -507,7 +510,7 @@ export class HephaestusRuntime {
      * Mutates in-place — zero allocation in the hot path.
      * Auto-grows if capacity estimate was wrong (rare).
      */
-    writeOutput(fixtureId, zone, parameter, value, rgb, fine, normalizedValue, normalizedRgb, isCustomClip, clipId, trackZones) {
+    writeOutput(fixtureId, zone, parameter, value, rgb, fine, normalizedValue, normalizedRgb, isCustomClip, clipId, trackZones, silenceSpatial) {
         // Auto-grow if needed (rare — only if capacity estimate was wrong)
         if (this.outputCursor >= this.outputCapacity) {
             this.ensureOutputCapacity(this.outputCursor + 64);
@@ -522,6 +525,7 @@ export class HephaestusRuntime {
         out.isCustomClip = isCustomClip ?? false;
         out.clipId = clipId;
         out.trackZones = trackZones;
+        out.silenceSpatial = silenceSpatial;
         // 🩹 WAVE 4995: Protect Memory Reference
         // Only copy color values if the track actually provides them.
         // Do not destroy the pre-allocated references when processing non-color params.
@@ -588,6 +592,11 @@ export class HephaestusRuntime {
     _buildResolvedTracks(clip, durationMs, externalFixtureIds) {
         const tracks = [];
         let topLevelPhaseConfig = null;
+        // 🌊 WAVE 7160: Temporal rescaling — stretch keyframes proportionally
+        // when durationOverrideMs differs from clip.durationMs. This eliminates
+        // the "brick" rigidity of static V2.1 keyframes, allowing Selene to
+        // dynamically control effect duration without truncating curves.
+        const stretchFactor = durationMs / clip.durationMs;
         // ── Resolución del inventario de fixtures (compartido entre tracks) ──
         // Las zonas se resuelven contra el inventario actual del Orchestrator.
         // Caller puede pre-resolver `externalFixtureIds` para ahorrar lookups
@@ -623,7 +632,7 @@ export class HephaestusRuntime {
             if (trackPhase != null && topLevelPhaseConfig == null) {
                 topLevelPhaseConfig = trackPhase;
             }
-            tracks.push(this._buildResolvedTrack(t.id, t.paramId, t.curve, t.blendMode, fixtureIds, trackPhase, durationMs, t.zones, t.phaseOverrides, t.colorOverride));
+            tracks.push(this._buildResolvedTrack(t.id, t.paramId, t.curve, t.blendMode, fixtureIds, trackPhase, durationMs, stretchFactor, t.zones, t.phaseOverrides, t.colorOverride));
         }
         return { tracks, phaseConfig: topLevelPhaseConfig };
     }
@@ -632,8 +641,19 @@ export class HephaestusRuntime {
      * Crea un `CurveEvaluator` con UNA sola curva (Map de tamaño 1) y, si hay
      * `phaseConfig + fixtureIds`, calcula la distribución de fase per-fixture.
      */
-    _buildResolvedTrack(id, paramId, curve, blendMode, fixtureIds, phaseConfig, durationMs, zones, phaseOverrides, colorOverride) {
-        const singleCurveMap = new Map([[paramId, curve]]);
+    _buildResolvedTrack(id, paramId, curve, blendMode, fixtureIds, phaseConfig, durationMs, stretchFactor, zones, phaseOverrides, colorOverride) {
+        // 🌊 WAVE 7160: Clone + rescale keyframes when stretchFactor !== 1.
+        // Critical: must NOT mutate the original clip's curve (cached, shared).
+        const effectiveCurve = stretchFactor !== 1
+            ? {
+                ...curve,
+                keyframes: curve.keyframes.map((kf) => ({
+                    ...kf,
+                    timeMs: Math.round(kf.timeMs * stretchFactor),
+                })),
+            }
+            : curve;
+        const singleCurveMap = new Map([[paramId, effectiveCurve]]);
         const evaluator = new CurveEvaluator(singleCurveMap, durationMs);
         let fixturePhases = null;
         const hasOverrides = phaseOverrides && Object.keys(phaseOverrides).length > 0;

@@ -12,9 +12,8 @@
       "fiesta-latina"
     ],
     "vibeCompat": [
-      "chill",
-      "latin",
-      "ambient"
+      "chill-lounge",
+      "fiesta-latina"
     ],
     "spatialZones": [
       "all"
@@ -126,9 +125,8 @@
       },
       "textureAffinity": "clean",
       "compatibleVibes": [
-        "chill",
-        "latin",
-        "ambient"
+        "chill-lounge",
+        "fiesta-latina"
       ],
       "validSections": [
         "intro",
@@ -143,7 +141,11 @@
         "min": 0,
         "max": 0.25
       },
-      "spatialBehavior": "static"
+      "spatialBehavior": "static",
+      "pressureRange": {
+        "min": 0,
+        "max": 1
+      }
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -163,7 +165,8 @@
         "minimumZ": null,
         "minimumEnergy": null
       }
-    }
+    },
+    "schemaVersion": "3.0"
   },
-  "checksum": "ad3a67e65902e7142885612e7d5eb3be985b0c63818c75d7487e81d87e1febf2"
+  "checksum": "cbd4a0dbdfc834a7b3544c6d22d7f34bcfebe933be00310799c23f55fd030eab"
 }

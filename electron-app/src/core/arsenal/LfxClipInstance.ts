@@ -501,6 +501,11 @@ export class LfxClipInstance {
   /**
    * Proyecta el átomo a un bloque `CognitiveDNA` (formato `.lfx v2.1`).
    *
+   * WAVE 7176: Si se pasa `overrides`, los valores explícitos del usuario
+   * (pressureRange, textureAffinity, spatialBehavior, etc.) tienen prioridad
+   * absoluta sobre cualquier recálculo del archetype. Solo se recalculan
+   * los campos que NO estén presentes en `overrides`.
+   *
    * - `genome`: tríada ACO directa.
    * - `compatibleVibes`: vibes traducidas a las etiquetas reales de Selene
    *   (vía `VIBE_BRIDGE`).
@@ -512,7 +517,7 @@ export class LfxClipInstance {
    * - `spatialBehavior`: mapeado al subset de `lfxTypes` (`'static'`
    *   pasa tal cual; los otros también son válidos en lfx).
    */
-  public toCognitiveDNA(): CognitiveDNA {
+  public toCognitiveDNA(overrides?: Partial<CognitiveDNA>): CognitiveDNA {
     const genome: FrozenGenome = Object.freeze({
       aggression: this.acoTriad.aggression,
       chaos: this.acoTriad.chaos,
@@ -551,36 +556,53 @@ export class LfxClipInstance {
 
     const aggression = this.acoTriad.aggression
     const aggressionRange = Object.freeze({ min: aggression, max: aggression })
+
     // 🩸 WAVE 7159: Acoustic pressure gating — replace permissive {0,0} default
     // with classification-based ranges so the pressure veto actually fires.
     // Hard effects (strobe/heavy/divine archetype OR aggression > 0.7) require
     // high acoustic pressure (rawEnergy 0.5–1.0). Ambient effects are gated to
     // low pressure (0.0–0.5). Utility stays permissive (0.0–1.0).
+    //
+    // WAVE 7176: Si overrides.pressureRange está presente, tiene prioridad
+    // absoluta — el usuario editó los sliders manualmente.
     const isHardArchetype =
       this._userArchetype === 'strobe' ||
       this._userArchetype === 'heavy' ||
       this._userArchetype === 'divine'
     const isAmbientArchetype = this._userArchetype === 'ambient'
-    const pressureRange = Object.freeze(
+    const computedPressureRange = Object.freeze(
       isHardArchetype || aggression > 0.7
         ? { min: 0.5, max: 1.0 }
         : isAmbientArchetype
           ? { min: 0.0, max: 0.5 }
           : { min: 0.0, max: 1.0 }
     )
+    const pressureRange = Object.freeze(
+      overrides?.pressureRange
+        ? { min: overrides.pressureRange.min, max: overrides.pressureRange.max }
+        : computedPressureRange
+    )
 
     const spatialBehavior: LfxSpatialBehavior = this.spatialBehavior
 
     return Object.freeze({
-      genome,
-      textureAffinity,
-      compatibleVibes,
-      validSections: Object.freeze([] as readonly string[]),
-      energyZone,
-      aggressionRange,
+      genome: overrides?.genome ? { ...overrides.genome } : genome,
+      textureAffinity: overrides?.textureAffinity ?? textureAffinity,
+      compatibleVibes: overrides?.compatibleVibes
+        ? [...overrides.compatibleVibes]
+        : compatibleVibes,
+      validSections: overrides?.validSections
+        ? [...overrides.validSections]
+        : Object.freeze([] as readonly string[]),
+      energyZone: overrides?.energyZone
+        ? { min: overrides.energyZone.min, max: overrides.energyZone.max }
+        : energyZone,
+      aggressionRange: overrides?.aggressionRange
+        ? { min: overrides.aggressionRange.min, max: overrides.aggressionRange.max }
+        : aggressionRange,
       pressureRange,
-      spatialBehavior,
-      ikCompatibility: undefined,
+      spatialBehavior: overrides?.spatialBehavior ?? spatialBehavior,
+      ikCompatibility: overrides?.ikCompatibility,
     })
   }
 

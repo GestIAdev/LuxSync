@@ -12,11 +12,11 @@
       "poprock"
     ],
     "vibeCompat": [
-      "rock",
       "pop-rock"
     ],
     "spatialZones": [
-      "all"
+      "all-pars",
+      "all-movers"
     ],
     "mixBus": "global",
     "priority": 92,
@@ -27,7 +27,7 @@
         "id": "45d99f42-86f3-4c47-931f-95b93cdaa92f",
         "paramId": "intensity",
         "zones": [
-          "all"
+          "all-pars"
         ],
         "blendMode": "replace",
         "curve": {
@@ -79,7 +79,7 @@
         "id": "98348aec-bd28-47cd-9d6c-5cd0a1ff364a",
         "paramId": "color",
         "zones": [
-          "all"
+          "all-pars"
         ],
         "blendMode": "replace",
         "curve": {
@@ -112,7 +112,7 @@
         "id": "12a1296a-73ab-45a9-9da9-fc3785b0f74a",
         "paramId": "strobeRate",
         "zones": [
-          "all"
+          "all-movers"
         ],
         "blendMode": "replace",
         "curve": {
@@ -160,7 +160,6 @@
       },
       "textureAffinity": "dirty",
       "compatibleVibes": [
-        "rock",
         "pop-rock"
       ],
       "validSections": [
@@ -175,7 +174,11 @@
         "min": 0,
         "max": 1
       },
-      "spatialBehavior": "static"
+      "spatialBehavior": "static",
+      "pressureRange": {
+        "min": 0.5,
+        "max": 1
+      }
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -184,18 +187,19 @@
         "vibeBonus": 0.05
       },
       "gpuCost": 0.3,
-      "fatigueImpact": 0.18,
+      "fatigueImpact": 0.8,
       "minDurationMs": 1000,
-      "cooldownMs": 3000,
+      "cooldownMs": 15000,
       "isStrobe": true,
       "isDivineCandidate": true,
       "isHeavyCandidate": true,
       "zScoreGuards": {
         "requireRising": true,
-        "minimumZ": 2,
+        "minimumZ": 2.2,
         "minimumEnergy": 0.7
       }
-    }
+    },
+    "schemaVersion": "3.0"
   },
-  "checksum": "f6b50b1cf9da47ebd6952507a7f82787a5b060e725bfa44db2bd319d7981b7ad"
+  "checksum": "4dabeee1b9dff6c54a042da0b593e3fb273bff4120f87e9379bdc343dd825abe"
 }

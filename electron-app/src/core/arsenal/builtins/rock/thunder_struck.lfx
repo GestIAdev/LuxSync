@@ -12,9 +12,7 @@
       "poprock"
     ],
     "vibeCompat": [
-      "rock",
-      "pop-rock",
-      "metal"
+      "pop-rock"
     ],
     "spatialZones": [
       "all"
@@ -137,9 +135,7 @@
       },
       "textureAffinity": "universal",
       "compatibleVibes": [
-        "rock",
-        "pop-rock",
-        "metal"
+        "pop-rock"
       ],
       "validSections": [
         "drop",
@@ -153,7 +149,11 @@
         "min": 0,
         "max": 1
       },
-      "spatialBehavior": "static"
+      "spatialBehavior": "static",
+      "pressureRange": {
+        "min": 0.5,
+        "max": 1
+      }
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -173,7 +173,8 @@
         "minimumZ": null,
         "minimumEnergy": 0.7
       }
-    }
+    },
+    "schemaVersion": "3.0"
   },
-  "checksum": "fb219efc45343551e257020b6a296554b68784453797414f8084a1946cc329ef"
+  "checksum": "b8221884d38b4931affde56240238d82c389776fde89a7525bab70ce46f46102"
 }

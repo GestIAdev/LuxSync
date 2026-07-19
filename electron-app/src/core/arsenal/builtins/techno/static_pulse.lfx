@@ -12,12 +12,11 @@
       "techno"
     ],
     "vibeCompat": [
-      "techno",
-      "minimal",
-      "acid"
+      "techno-club"
     ],
     "spatialZones": [
-      "all"
+      "all-pars",
+      "all-movers"
     ],
     "mixBus": "global",
     "priority": 70,
@@ -28,7 +27,7 @@
         "id": "0866171c-a69e-414e-a3d5-d5e941c2a8aa",
         "paramId": "intensity",
         "zones": [
-          "all"
+          "all-pars"
         ],
         "blendMode": "replace",
         "curve": {
@@ -80,7 +79,7 @@
         "id": "a26b067a-e36a-4f92-95bc-69a4fff8d087",
         "paramId": "color",
         "zones": [
-          "all"
+          "all-pars"
         ],
         "blendMode": "replace",
         "curve": {
@@ -131,7 +130,7 @@
         "id": "7e6a1d10-e5b1-4667-b3c3-83cfc6bcb33a",
         "paramId": "strobeRate",
         "zones": [
-          "all"
+          "all-movers"
         ],
         "blendMode": "replace",
         "curve": {
@@ -182,9 +181,7 @@
       },
       "textureAffinity": "dirty",
       "compatibleVibes": [
-        "techno",
-        "minimal",
-        "acid"
+        "techno-club"
       ],
       "validSections": [
         "build",
@@ -199,7 +196,11 @@
         "min": 0,
         "max": 0.9
       },
-      "spatialBehavior": "static"
+      "spatialBehavior": "static",
+      "pressureRange": {
+        "min": 0.5,
+        "max": 1
+      }
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -219,7 +220,8 @@
         "minimumZ": 2,
         "minimumEnergy": null
       }
-    }
+    },
+    "schemaVersion": "3.0"
   },
-  "checksum": "80a9d0b2b2fa57e1ee8445c2394999d72c6072d14d2bd92b0ecf5cabb03a207d"
+  "checksum": "30b6d7b050071dc30c8b5ab3170fe522771f1578fcc3a697c2cbd6a80fe79797"
 }

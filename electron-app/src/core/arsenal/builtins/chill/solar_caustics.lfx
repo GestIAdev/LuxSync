@@ -13,7 +13,8 @@
       "chill-lounge"
     ],
     "spatialZones": [
-      "all"
+      "all-pars",
+      "all-movers"
     ],
     "mixBus": "ambient",
     "priority": 30,
@@ -24,7 +25,7 @@
         "id": "1fe3e853-b2d2-4dc2-8eb4-b527cce75893",
         "paramId": "intensity",
         "zones": [
-          "all"
+          "all-pars"
         ],
         "blendMode": "replace",
         "curve": {
@@ -71,7 +72,7 @@
         "id": "74d0a6e3-df58-4041-8578-8a6e0b001fa0",
         "paramId": "pan",
         "zones": [
-          "all"
+          "all-movers"
         ],
         "blendMode": "replace",
         "curve": {
@@ -140,7 +141,7 @@
         "id": "f6b959b9-5d41-45d7-8c01-52a4a8c36332",
         "paramId": "tilt",
         "zones": [
-          "all"
+          "all-movers"
         ],
         "blendMode": "replace",
         "curve": {
@@ -239,7 +240,11 @@
         "min": 0,
         "max": 0.3
       },
-      "spatialBehavior": "relative_offset"
+      "spatialBehavior": "relative_offset",
+      "pressureRange": {
+        "min": 0,
+        "max": 1
+      }
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -259,7 +264,8 @@
         "minimumZ": null,
         "minimumEnergy": null
       }
-    }
+    },
+    "schemaVersion": "3.0"
   },
-  "checksum": "41c5956803a73a559a24d0af6f9b05a330cf496ba7ac5d0427446dcf27ff9107"
+  "checksum": "38d146063e745230264750aa094d38a04929b79431273f9a55e906b8356eeba6"
 }

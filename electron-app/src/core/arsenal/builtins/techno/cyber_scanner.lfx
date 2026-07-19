@@ -13,7 +13,7 @@
       "laser"
     ],
     "vibeCompat": [
-      "techno"
+      "techno-club"
     ],
     "durationMs": 3000,
     "effectType": "heph_custom",
@@ -25,7 +25,7 @@
       },
       "textureAffinity": "clean",
       "compatibleVibes": [
-        "techno"
+        "techno-club"
       ],
       "validSections": [
         "drop",
@@ -39,7 +39,11 @@
         "min": 0.7,
         "max": 1
       },
-      "spatialBehavior": "dynamic"
+      "spatialBehavior": "dynamic",
+      "pressureRange": {
+        "min": 0.5,
+        "max": 1
+      }
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -130,6 +134,10 @@
               "value": 0,
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         }
       },
@@ -159,6 +167,10 @@
               },
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            360
           ]
         }
       },
@@ -181,9 +193,22 @@
               "value": 0,
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         }
       }
-    ]
-  }
+    ],
+    "spatialZones": [
+      "all-movers",
+      "air",
+      "all-pars",
+      "ambient",
+      "flash"
+    ],
+    "schemaVersion": "3.0"
+  },
+  "checksum": "0a0cc1b18b95683195ead5432b5a77ae044e4f1abb9ef581a43f14cce5d87bd9"
 }

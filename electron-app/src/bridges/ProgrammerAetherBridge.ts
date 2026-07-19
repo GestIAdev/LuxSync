@@ -291,6 +291,7 @@ function extractCellBeam(data: BeamCellPayload): Record<string, number> | null {
   if (data.iris  !== undefined) ch['iris']  = data.iris
   if (data.gobo  !== undefined) ch['gobo']  = data.gobo
   if (data.prism !== undefined) ch['prism'] = data.prism
+  if (data.prismRotation !== undefined) ch['prism_rotation'] = data.prismRotation
   return Object.keys(ch).length > 0 ? ch : null
 }
 
@@ -460,10 +461,10 @@ class ProgrammerAetherBridgeClass {
           coveredNodeIds.add(nodeId)
           if (channels !== null) {
             setPayloads.push({ nodeId, channels })
-          } else {
-            // Payload vacío = liberar este nodo
-            clearNodeIds.push(nodeId)
           }
+          // If channels === null but the cell override still exists, do NOT clear.
+          // The cell may have only non-L2 channels (e.g. 'limit' uses dedicated IPC).
+          // Only pendingClearNodeIds (from releaseCell) should trigger clears.
         }
       }
     }

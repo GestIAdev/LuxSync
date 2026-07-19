@@ -29,6 +29,7 @@ export const NEUTRAL_GENOME = {
 export class LiquidCognitionCore {
     constructor(profile = DEFAULT_LIQUID_PROFILE) {
         this._mood = 'balanced';
+        this._textureLogFrame = 0;
         this._profile = profile;
         this._descriptors = new FluidDescriptorEngine();
         this._fluidState = new CognitiveFluidState(profile);
@@ -101,6 +102,31 @@ export class LiquidCognitionCore {
             syncopation: input.syncopation,
             rhythmicIntensity: input.rhythmicIntensity,
         });
+        // ── 1b. TEXTURE RADAR — throttled logger (~2s) — DISABLED (noisy) ──
+        // this._textureLogFrame++
+        // if (this._textureLogFrame >= 90) {
+        //   this._textureLogFrame = 0
+        //   const flat = input.spectralFlatness
+        //   const melo = this._descriptors.melodicity
+        //   const dirt = this._descriptors.dirtiness
+        //   const perc = this._descriptors.percussiveness
+        //   const groo = this._descriptors.groove
+        //   const harsh = input.harshness
+        //   const vibe = input.vibe ?? '?'
+        //   const bar = (v: number, width = 20) => {
+        //     const filled = Math.round(v * width)
+        //     return '[' + '#'.repeat(filled) + '-'.repeat(width - filled) + ']'
+        //   }
+        //   console.log(
+        //     `[TEXTURE 🎨] vibe=${vibe} | ` +
+        //     `Flat=${flat.toFixed(2)}${bar(flat)} ` +
+        //     `Melo=${melo.toFixed(2)}${bar(melo)} ` +
+        //     `Dirt=${dirt.toFixed(2)}${bar(dirt)}\n` +
+        //     `           Perc=${perc.toFixed(2)}${bar(perc)} ` +
+        //     `Groove=${groo.toFixed(2)}${bar(groo)} ` +
+        //     `Harsh=${harsh.toFixed(2)}${bar(harsh)}`
+        //   )
+        // }
         // ── 2. Actualizar estado fluídico Ψ(t) ──
         this._fluidState.update({
             zScore: input.zScore,

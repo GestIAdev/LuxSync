@@ -436,3 +436,20 @@ DISPARO CERTERO
 [EffectManager 🔥] Oro Sólido [oro_solido] FIRED [hunt] in fiesta-latina  ⚡[HEPH-BRIDGE] | I:0.82 Z:1.1
 [DNA_ANALYZER] 📊 Diversity: oro_solido usado 2x - Factor: 0.35x
 [Coliseum 🧬] Initial cohort for oro_solido: skipped (stochastic gate)
+
+41472081
+[SeleneTitanConscious] 🔮👑 CASSANDRA SOVEREIGN CLOCK: firing "Feral Wave Omega" | overdue=14.6435546875ms | confidence=0.60 | bypassing HuntEngine + Fuzzy + EnergyOverride
+[HephRuntime] ▶️ PLAY: Feral Wave Omega (3500ms, 3 tracks) ID=heph_9_1783603286389
+[SeleneTitanConscious 🔥] Cooldown registered: 00000000:8e8ab59a-7d5d-465d-9879-a2e294c3ed9f
+[EffectManager 🔥] EPIC-8e8a FIRED [hunt] in fiesta-latina  ⚡[HEPH-BRIDGE] | I:0.80 Z:0.4
+[DNA_ANALYZER] 📊 Diversity: 00000000:8e8ab59a-7d5d-465d-9879-a2e294c3ed9f usado 2x - Factor: 0.35x
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×2] | scene:41b | Pan:62 Tilt:20 | sBPM:101 phase:16°
+
+[SeleneTitanConscious 🌊] V3 IGNITE: C=0.547 Q=0.466 I_fx=0.668 epicness=0.000 | I(t)=0.234 CF=0.011 T=0.753 μ=0.260 V=1.000 X=1.000 | Π=0.526 M=0.749 Δ=0.185 G=0.500 → V3 AUTHORITY ACTIVE
+beat #1172 | bass=0.5438 sab=0.000 | ðŸ”¬in_peak=0.47116 in_rms=0.20063
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.731 | MID: 0.600 | HIGH: 0.171 | TOTAL: 0.696 | Max_30s: 1.000
+[SeleneTitanConscious] 🔮👑 CASSANDRA SOVEREIGN CLOCK: firing "Cumbia Moon" | overdue=16.588134765625ms | confidence=0.60 | bypassing HuntEngine + Fuzzy + EnergyOverride
+[HephRuntime] ▶️ PLAY: Cumbia Moon (5000ms, 2 tracks) ID=heph_10_1783603320138
+[SeleneTitanConscious 🔥] Cooldown registered: cumbia_moon
+[EffectManager 🔥] Cumbia Moon [cumbia_moon] FIRED [hunt] in fiesta-latina  ⚡[HEPH-BRIDGE] | I:0.80 Z:1.5
+[DNA_ANALYZER] 📊 Diversity: cumbia_moon usado 2x - Factor: 0.35x

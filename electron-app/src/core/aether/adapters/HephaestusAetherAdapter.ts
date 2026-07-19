@@ -45,6 +45,9 @@ export class HephaestusAetherAdapter {
   // 🩹 WAVE 4995: Zero-alloc intent consolidation map
   private readonly _frameIntentMap = new Map<NodeId, MutableNodeIntent>()
 
+  // WAVE 7172: Nodes with IK spatial suppression for this frame.
+  private readonly _spatialSuppressedNodes = new Set<string>()
+
   private readonly _emptyIntents: readonly INodeIntent[] = Object.freeze([])
 
   // 🏛️ WAVE 2483: per-frame cached lookup of (clipId → spatialBehavior).
@@ -74,6 +77,23 @@ export class HephaestusAetherAdapter {
     this._frameIntents.length = 0
     this._spatialCache.clear()
     this._frameIntentMap.clear()
+
+    // WAVE 7172: Collect nodes with silenceSpatial=true for IK suppression.
+    this._spatialSuppressedNodes.clear()
+    for (let i = 0; i < outputs.length; i++) {
+      const out = outputs[i]
+      if (!out.silenceSpatial) continue
+      const nodeIds = this._graph.getDeviceNodes(out.fixtureId)
+      for (let j = 0; j < nodeIds.length; j++) {
+        const nd = this._graph.getNodeData(nodeIds[j])
+        if (nd && nd.family === NodeFamily.KINETIC) {
+          this._spatialSuppressedNodes.add(nodeIds[j])
+        }
+      }
+    }
+    if (this._spatialSuppressedNodes.size > 0) {
+      arbiter.setSpatialSuppression(this._spatialSuppressedNodes)
+    }
 
     // 🩹 WAVE 4995: Zero-alloc intent consolidation.
     // Instead of emitting multiple disconnected intents for the same nodeId,

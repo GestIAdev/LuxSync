@@ -13,9 +13,8 @@
       "bpm-sync"
     ],
     "vibeCompat": [
-      "latin",
-      "ambient",
-      "chill"
+      "fiesta-latina",
+      "chill-lounge"
     ],
     "spatialZones": [
       "all"
@@ -146,9 +145,8 @@
       },
       "textureAffinity": "universal",
       "compatibleVibes": [
-        "latin",
-        "ambient",
-        "chill"
+        "fiesta-latina",
+        "chill-lounge"
       ],
       "validSections": [
         "intro",
@@ -164,7 +162,11 @@
         "min": 0,
         "max": 0.8
       },
-      "spatialBehavior": "static"
+      "spatialBehavior": "static",
+      "pressureRange": {
+        "min": 0,
+        "max": 1
+      }
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -184,7 +186,8 @@
         "minimumZ": null,
         "minimumEnergy": null
       }
-    }
+    },
+    "schemaVersion": "3.0"
   },
-  "checksum": "11e2f9d5105e6588da08aba1854d1ca7acaf59a1f34eefb532766225764895cf"
+  "checksum": "057ab8ea737d71789026b8e0ef91348fe7a99e032176f8cb43bc8080e32c4045"
 }

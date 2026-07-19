@@ -43,7 +43,6 @@ interface HyperionPar3DProps {
   fixture: Fixture3DData
   onSelect?: (id: string, shift: boolean, ctrl: boolean) => void
   showBeam?: boolean
-  beatIntensity?: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -54,7 +53,6 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
   fixture,
   onSelect,
   showBeam = true,
-  beatIntensity = 0,
 }) => {
   const groupRef = useRef<THREE.Group>(null)
   const lensMaterialRef = useRef<THREE.MeshBasicMaterial>(null)

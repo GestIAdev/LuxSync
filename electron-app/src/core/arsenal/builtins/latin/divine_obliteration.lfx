@@ -12,7 +12,7 @@
       "white"
     ],
     "vibeCompat": [
-      "techno",
+      "techno-club",
       "fiesta-latina"
     ],
     "durationMs": 3000,
@@ -25,7 +25,7 @@
       },
       "textureAffinity": "clean",
       "compatibleVibes": [
-        "techno",
+        "techno-club",
         "fiesta-latina"
       ],
       "validSections": [
@@ -39,7 +39,11 @@
         "min": 0.8,
         "max": 1
       },
-      "spatialBehavior": "static"
+      "spatialBehavior": "static",
+      "pressureRange": {
+        "min": 0.5,
+        "max": 1
+      }
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -84,6 +88,10 @@
               "value": 0,
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         }
       },
@@ -114,6 +122,10 @@
               },
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            360
           ]
         }
       },
@@ -152,6 +164,10 @@
               "value": 0,
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         }
       },
@@ -190,9 +206,22 @@
               "value": 0,
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         }
       }
-    ]
-  }
+    ],
+    "spatialZones": [
+      "all-movers",
+      "air",
+      "all-pars",
+      "ambient",
+      "flash"
+    ],
+    "schemaVersion": "3.0"
+  },
+  "checksum": "dd9549ee389f0cbf3d0863086b42ce14483a690e8b8eb07b64a552f03d0b59ac"
 }

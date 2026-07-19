@@ -12,12 +12,12 @@
       "fiesta-latina"
     ],
     "vibeCompat": [
-      "latin",
-      "techno",
-      "electronic"
+      "fiesta-latina",
+      "techno-club"
     ],
     "spatialZones": [
-      "all"
+      "all-pars",
+      "all-movers"
     ],
     "mixBus": "global",
     "priority": 85,
@@ -28,7 +28,7 @@
         "id": "d080b4fb-2543-407f-9b06-ccb32cfc3275",
         "paramId": "intensity",
         "zones": [
-          "all"
+          "all-pars"
         ],
         "blendMode": "replace",
         "curve": {
@@ -80,7 +80,7 @@
         "id": "a61859d9-849f-4e24-972a-07797959b8bf",
         "paramId": "strobeRate",
         "zones": [
-          "all"
+          "all-movers"
         ],
         "blendMode": "replace",
         "curve": {
@@ -131,9 +131,8 @@
       },
       "textureAffinity": "dirty",
       "compatibleVibes": [
-        "latin",
-        "techno",
-        "electronic"
+        "fiesta-latina",
+        "techno-club"
       ],
       "validSections": [
         "build",
@@ -148,7 +147,11 @@
         "min": 0,
         "max": 1
       },
-      "spatialBehavior": "static"
+      "spatialBehavior": "static",
+      "pressureRange": {
+        "min": 0.5,
+        "max": 1
+      }
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -168,7 +171,8 @@
         "minimumZ": 2,
         "minimumEnergy": 0.7
       }
-    }
+    },
+    "schemaVersion": "3.0"
   },
-  "checksum": "cfff7aa285e43dadd5dea23e42e34ba437b9f253356481da5473dd7f5959ef5f"
+  "checksum": "8f6a407c5ed3a6c90a02b0c64556448b2c51f4d45b9c5f2c817e0625e4049cc5"
 }

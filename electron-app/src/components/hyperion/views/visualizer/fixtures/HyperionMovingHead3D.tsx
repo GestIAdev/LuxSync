@@ -102,7 +102,6 @@ interface HyperionMovingHead3DProps {
   fixture: Fixture3DData
   onSelect?: (id: string, shift: boolean, ctrl: boolean) => void
   showBeam?: boolean
-  beatIntensity?: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -113,7 +112,6 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
   fixture,
   onSelect,
   showBeam = true,
-  beatIntensity = 0,
 }) => {
   const groupRef = useRef<THREE.Group>(null)
   const yokeRef = useRef<THREE.Group>(null)

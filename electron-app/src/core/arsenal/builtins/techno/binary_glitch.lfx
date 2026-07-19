@@ -13,7 +13,7 @@
       "digital"
     ],
     "vibeCompat": [
-      "techno"
+      "techno-club"
     ],
     "spatialZones": [
       "front",
@@ -29,7 +29,7 @@
       },
       "textureAffinity": "universal",
       "compatibleVibes": [
-        "techno"
+        "techno-club"
       ],
       "validSections": [
         "drop",
@@ -43,7 +43,11 @@
         "min": 0.7,
         "max": 1
       },
-      "spatialBehavior": "absolute"
+      "spatialBehavior": "absolute",
+      "pressureRange": {
+        "min": 0.5,
+        "max": 1
+      }
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -52,9 +56,9 @@
         "vibeBonus": 0.12
       },
       "gpuCost": 0.15,
-      "fatigueImpact": 0.55,
+      "fatigueImpact": 0.8,
       "minDurationMs": 800,
-      "cooldownMs": 4000,
+      "cooldownMs": 15000,
       "isStrobe": true,
       "isDivineCandidate": true,
       "isHeavyCandidate": false,
@@ -116,6 +120,10 @@
               "value": 0,
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         },
         "blendMode": "replace"
@@ -171,6 +179,10 @@
               "value": 1,
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         },
         "blendMode": "replace"
@@ -199,6 +211,10 @@
               },
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            360
           ]
         },
         "blendMode": "replace"
@@ -227,10 +243,16 @@
               },
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            360
           ]
         },
         "blendMode": "replace"
       }
-    ]
-  }
+    ],
+    "schemaVersion": "3.0"
+  },
+  "checksum": "569e563d69bb6b16f77bc6d452797bfe0ac42eea07c66f8aa28f2022249b5138"
 }

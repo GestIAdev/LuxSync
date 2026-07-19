@@ -12,8 +12,7 @@
       "techno"
     ],
     "vibeCompat": [
-      "techno",
-      "minimal"
+      "techno-club"
     ],
     "spatialZones": [
       "all"
@@ -137,8 +136,7 @@
       },
       "textureAffinity": "universal",
       "compatibleVibes": [
-        "techno",
-        "minimal"
+        "techno-club"
       ],
       "validSections": [
         "intro",
@@ -154,7 +152,11 @@
         "min": 0,
         "max": 0.55
       },
-      "spatialBehavior": "static"
+      "spatialBehavior": "static",
+      "pressureRange": {
+        "min": 0,
+        "max": 0.5
+      }
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -174,7 +176,8 @@
         "minimumZ": null,
         "minimumEnergy": null
       }
-    }
+    },
+    "schemaVersion": "3.0"
   },
-  "checksum": "223c9d726b6cfec707891e66ebe5cf681ee0e3a2e19ac1297a0369198895ba04"
+  "checksum": "416dd92301a9d064a189651274d00d2f8c2f1c1346239362c78301c9cb775b25"
 }

@@ -31,6 +31,16 @@ const ALPHA_RMS = 1 - Math.pow(2, -1 / 15.4);
 // Pero 3 frames sostenidos llegan a 0.54 — drops reales pasan
 const ALPHA_IMPACT_UP = 0.35;
 const ALPHA_IMPACT_DOWN = 0.08;
+// EMA asimétrica para epicness — subida moderada, bajada lenta
+// α_up = 0.15: half-life ~92ms (4 frames) — captura crescendos reales sin spike transitorio
+// α_down = 0.06: half-life ~231ms (10 frames) — mantiene epicness durante micro-valles
+// Un flip de phase building→climax ya NO duplica el epicness en 1 frame: se asienta en ~4
+const ALPHA_EPIC_UP = 0.15;
+const ALPHA_EPIC_DOWN = 0.06;
+// EMA para phase modifier — suaviza transiciones building↔climax
+// α = 0.08: half-life ~173ms (7.6 frames) — la fase necesita sostenerse ~300ms para afectar el epicness
+// Esto previene que un flip transitorio de phase doble o halve el epicness instantáneamente
+const ALPHA_PHASE_MOD = 0.08;
 // ═══════════════════════════════════════════════════════════════════════════
 // CognitiveFluidState — el vector Ψ(t) vivo
 // ═══════════════════════════════════════════════════════════════════════════
@@ -44,6 +54,7 @@ export class CognitiveFluidState {
         this._impact = 0;
         this._crestFactor = 0;
         this._epicness = 0;
+        this._smoothedPhaseMod = 0.5; // EMA del phase modifier, arranca conservador
         // ── Estado auxiliar para dinámicas ──
         this._rmsEnergy = 0;
         this._peakEnergyWindow = 0;
@@ -201,6 +212,7 @@ export class CognitiveFluidState {
         // ─────────────────────────────────────────────────────────
         if (!input.isWarmedUp) {
             this._epicness = 0;
+            this._smoothedPhaseMod = 0.5;
         }
         else {
             const energyFactor = clamp01((input.rawEnergy - 0.30) / 0.40);
@@ -210,7 +222,7 @@ export class CognitiveFluidState {
                 ? clamp01((this._impact - effectiveTension) / denom)
                 : 0;
             const phase = input.contextualPhase;
-            const phaseModifier = phase === 'climax' ? 1.0
+            const targetPhaseMod = phase === 'climax' ? 1.0
                 : phase === 'building' ? 0.5
                     : phase === 'release' ? 0.7
                         : phase === 'textural' ? 0.8
@@ -219,6 +231,9 @@ export class CognitiveFluidState {
                                     : phase === 'silence' ? 0.0
                                         : phase === 'valley' ? 0.2
                                             : 0.5; // unknown phase — conservative
+            // Smooth phase modifier: EMA prevents instant doubling when phase flips
+            this._smoothedPhaseMod += ALPHA_PHASE_MOD * (targetPhaseMod - this._smoothedPhaseMod);
+            const phaseModifier = this._smoothedPhaseMod;
             let epic = clamp01(baseEpicness * energyFactor * phaseModifier);
             // Vibe friction: hard genres compress epicness curve
             const vibe = input.vibe ?? '';
@@ -227,9 +242,12 @@ export class CognitiveFluidState {
             if (isHardVibe) {
                 epic = Math.pow(epic, 1.3);
             }
-            this._epicness = clamp01(epic);
+            // EMA asimétrica: subida moderada, bajada lenta — estabiliza sin perder respuesta
+            const alphaE = epic > this._epicness ? ALPHA_EPIC_UP : ALPHA_EPIC_DOWN;
+            this._epicness += alphaE * (epic - this._epicness);
+            this._epicness = clamp01(this._epicness);
             if (this._diagFrame % 44 === 0) {
-                console.log(`[FLUID-DIAG] epicness=${this._epicness.toFixed(3)} | base=${baseEpicness.toFixed(3)} impact=${this._impact.toFixed(3)} effT=${effectiveTension.toFixed(3)} tension=${this._tension.toFixed(3)} denom=${denom.toFixed(3)} E=${input.rawEnergy.toFixed(3)} eF=${energyFactor.toFixed(3)} phase=${phase} pM=${phaseModifier} vibe=${input.vibe ?? 'none'}`);
+                console.log(`[FLUID-DIAG] epicness=${this._epicness.toFixed(3)} | base=${baseEpicness.toFixed(3)} impact=${this._impact.toFixed(3)} effT=${effectiveTension.toFixed(3)} tension=${this._tension.toFixed(3)} denom=${denom.toFixed(3)} E=${input.rawEnergy.toFixed(3)} eF=${energyFactor.toFixed(3)} phase=${phase} pM=${phaseModifier.toFixed(3)} vibe=${input.vibe ?? 'none'}`);
             }
         }
     }
@@ -281,6 +299,7 @@ export class CognitiveFluidState {
         this._impact = 0;
         this._crestFactor = 0;
         this._epicness = 0;
+        this._smoothedPhaseMod = 0.5;
         this._rmsEnergy = 0;
         this._peakEnergyWindow = 0;
         this._timeHigh = 0;

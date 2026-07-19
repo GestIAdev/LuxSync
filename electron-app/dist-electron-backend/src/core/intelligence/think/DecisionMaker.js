@@ -141,8 +141,15 @@ function determineDecisionType(inputs) {
     // 🌩️ PRIORIDAD -1: DIVINE MOMENT — V3.4: epicness > epsilon_divine
     // Static Z-score thresholds extirpated. V3 Liquid Cognition's epicness
     // is the sole authority for Divine arsenal routing.
+    // 🩸 WAVE 7159: Vibe-adjusted threshold — techno minimal sustains energy
+    // but lacks spectral divergence for massive impact spikes. Lowering the
+    // divine gate to 0.50 for techno/industrial/hardstyle lets Selene access
+    // her divine arsenal without breaking epicness doctrine. Other genres
+    // keep the strict 0.60 threshold.
     // ═══════════════════════════════════════════════════════════════════════
-    const V3_EPSILON_DIVINE = 0.60; // Radical high-pass: only devastating impact qualifies
+    const vibeId = pattern.vibeId ?? '';
+    const isTechnoVibe = vibeId.includes('techno') || vibeId.includes('industrial') || vibeId.includes('hardstyle');
+    const V3_EPSILON_DIVINE = isTechnoVibe ? 0.50 : 0.60;
     const v3Epicness = inputs.v3Epicness ?? 0;
     if (activeDictator) {
         // No loggear nada - silencio total para evitar spam

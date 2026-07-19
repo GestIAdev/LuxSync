@@ -10,7 +10,7 @@
       "techno"
     ],
     "vibeCompat": [
-      "techno"
+      "techno-club"
     ],
     "durationMs": 1600,
     "effectType": "heph_custom",
@@ -30,7 +30,7 @@
         "id": "base-intensity",
         "paramId": "intensity",
         "zones": [
-          "all-pars"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -58,6 +58,10 @@
               "value": 0,
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         }
       },
@@ -65,7 +69,7 @@
         "id": "base-color",
         "paramId": "color",
         "zones": [
-          "all-pars"
+          "all"
         ],
         "blendMode": "replace",
         "curve": {
@@ -86,6 +90,10 @@
               },
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            360
           ]
         }
       }
@@ -98,7 +106,7 @@
       },
       "textureAffinity": "clean",
       "compatibleVibes": [
-        "techno"
+        "techno-club"
       ],
       "validSections": [
         "drop"
@@ -111,7 +119,11 @@
         "min": 0.4,
         "max": 0.8
       },
-      "spatialBehavior": "static"
+      "spatialBehavior": "static",
+      "pressureRange": {
+        "min": 0,
+        "max": 1
+      }
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -131,6 +143,11 @@
         "minimumZ": null,
         "minimumEnergy": null
       }
-    }
-  }
+    },
+    "spatialZones": [
+      "all"
+    ],
+    "schemaVersion": "3.0"
+  },
+  "checksum": "6de905e1ea5c6c46c55dc2613d7569509de33cb0ad2e851d2ddd5b5663575032"
 }

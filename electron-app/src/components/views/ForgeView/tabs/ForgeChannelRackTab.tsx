@@ -7,9 +7,32 @@ import {
 } from '../../../icons/LuxIcons'
 import { FixturePreview3D } from '../../../shared/PhysicsTuner/FixturePreview3D'
 import { SimpleModeLockBanner, isSimpleCompatible } from '../canvas/ForgeModeSwitcher'
-import type { FixtureChannel, ChannelType, FixtureType, IDMXGovernor } from '../../../../types/FixtureDefinition'
+import type { FixtureChannel, ChannelType, FixtureType, IDMXGovernor, IGovernorRule } from '../../../../types/FixtureDefinition'
 import type { ForgeAction } from '../../../../core/forge/forgeBuilderState'
 import { FUNCTION_PALETTE, getChannelCategory, getCategoryColor, getSmartDefaultValue } from '../FixtureForgeEmbedded'
+
+// ────────────────────────────────────────────────────────────────────────────────
+// GOVERNOR SUMMARY — compact display of multi-rule governors
+// ────────────────────────────────────────────────────────────────────────────────
+
+function formatGovernorRule(rule: IGovernorRule): string {
+  const intent = rule.when.intentType
+  const condition = rule.when.min !== undefined ? `≥${rule.when.min}` : ''
+  const action = rule.then.forceByte !== undefined
+    ? `=${rule.then.forceByte}`
+    : rule.then.clampMin !== undefined
+      ? `≥${rule.then.clampMin}`
+      : rule.then.mapToRange !== undefined
+        ? `→[${rule.then.mapToRange[0]}-${rule.then.mapToRange[1]}]`
+        : '?'
+  return `${intent}${condition ? `(${condition})` : ''}${action}`
+}
+
+function formatGovernorSummary(gov: IDMXGovernor): string {
+  if (gov.rules.length === 0) return 'empty'
+  if (gov.rules.length === 1) return formatGovernorRule(gov.rules[0])
+  return gov.rules.map(formatGovernorRule).join(' | ')
+}
 
 // ────────────────────────────────────────────────────────────────────────────────
 // PROPS
@@ -200,7 +223,7 @@ const ForgeChannelRackTab: React.FC<ForgeChannelRackTabProps> = ({
                     <button
                       className={`btn-governor-inline ${activeGov ? 'governor-active' : ''}`}
                       onClick={() => setEditingGovIdx(editingGovIdx === idx ? null : idx)}
-                      title={activeGov ? `Governor: ${activeGov.rules[0]?.then.forceByte}` : 'Governor OFF'}
+                      title={activeGov ? formatGovernorSummary(activeGov) : 'Governor OFF'}
                       style={{
                         background: activeGov ? 'rgba(245, 158, 11, 0.2)' : 'transparent',
                         border: `1px solid ${activeGov ? 'rgba(245, 158, 11, 0.8)' : 'rgba(255,255,255,0.12)'}`,
@@ -218,7 +241,7 @@ const ForgeChannelRackTab: React.FC<ForgeChannelRackTabProps> = ({
                       }}
                     >
                       <ShieldIcon size={12} color={activeGov ? '#fbbf24' : 'rgba(255,255,255,0.5)'} />
-                      <span>{activeGov ? `Governor: ${activeGov.rules[0]?.then.forceByte}` : 'Governor OFF'}</span>
+                      <span>{activeGov ? 'Governor ON' : 'Governor OFF'}</span>
                     </button>
                     <button
                       className="channel-clear"
@@ -235,32 +258,69 @@ const ForgeChannelRackTab: React.FC<ForgeChannelRackTabProps> = ({
                 <div className="governor-inline-drawer">
                   <span className="drawer-arrow">└──►</span>
                   <span className="drawer-hint">
-                    When Selene requests extreme <b>{channel.type.toUpperCase()}</b> ──► Lock byte to:
+                    <b>{channel.type.toUpperCase()}</b> governor — {activeGov ? `${activeGov.rules.length} rule(s)` : 'no rules'}
                   </span>
-                  <input
-                    type="number"
-                    min="0"
-                    max="255"
-                    autoFocus
-                    defaultValue={
-                      dmxGovernors.find(g => g.channelIndex === idx)?.rules[0]?.then.forceByte ?? 255
-                    }
-                    onChange={(e) => {
-                      const safeByte = Math.min(255, Math.max(0, parseInt(e.target.value) || 0))
-                      dispatch({
-                        type: 'GOVERNOR_SET_FOR_CHANNEL',
-                        channelIndex: idx,
-                        governor: {
+                  {activeGov && (
+                    <div className="governor-rules-list" style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                      {activeGov.rules.map((rule, ri) => (
+                        <div key={ri} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px' }}>
+                          <span style={{ color: '#fbbf24', minWidth: '80px' }}>{rule.when.intentType}{rule.when.min !== undefined ? ` ≥${rule.when.min}` : ''}</span>
+                          <span style={{ color: 'rgba(255,255,255,0.4)' }}>→</span>
+                          {rule.then.forceByte !== undefined && (
+                            <input
+                              type="number" min="0" max="255"
+                              defaultValue={rule.then.forceByte}
+                              style={{ width: '50px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(245,158,11,0.4)', color: '#fbbf24', borderRadius: '3px', padding: '2px 4px', fontSize: '10px' }}
+                              onChange={(e) => {
+                                const safeByte = Math.min(255, Math.max(0, parseInt(e.target.value) || 0))
+                                const newRules = activeGov.rules.map((r, i) => i === ri ? { ...r, then: { ...r.then, forceByte: safeByte } } : r)
+                                dispatch({ type: 'GOVERNOR_SET_FOR_CHANNEL', channelIndex: idx, governor: { ...activeGov, rules: newRules } })
+                              }}
+                            />
+                          )}
+                          {rule.then.clampMin !== undefined && (
+                            <input
+                              type="number" min="0" max="255"
+                              defaultValue={rule.then.clampMin}
+                              style={{ width: '50px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(245,158,11,0.4)', color: '#fbbf24', borderRadius: '3px', padding: '2px 4px', fontSize: '10px' }}
+                              onChange={(e) => {
+                                const safeVal = Math.min(255, Math.max(0, parseInt(e.target.value) || 0))
+                                const newRules = activeGov.rules.map((r, i) => i === ri ? { ...r, then: { ...r.then, clampMin: safeVal } } : r)
+                                dispatch({ type: 'GOVERNOR_SET_FOR_CHANNEL', channelIndex: idx, governor: { ...activeGov, rules: newRules } })
+                              }}
+                            />
+                          )}
+                          {rule.then.forceByte === undefined && rule.then.clampMin === undefined && (
+                            <span style={{ color: 'rgba(255,255,255,0.4)' }}>mapToRange</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {!activeGov && (
+                    <input
+                      type="number"
+                      min="0"
+                      max="255"
+                      autoFocus
+                      defaultValue={255}
+                      onChange={(e) => {
+                        const safeByte = Math.min(255, Math.max(0, parseInt(e.target.value) || 0))
+                        dispatch({
+                          type: 'GOVERNOR_SET_FOR_CHANNEL',
                           channelIndex: idx,
-                          description: `${channel.type.toUpperCase()} safety limit`,
-                          rules: [{
-                            when: { intentType: 'fallback', min: 0.85 },
-                            then: { forceByte: safeByte }
-                          }]
-                        }
-                      })
-                    }}
-                  />
+                          governor: {
+                            channelIndex: idx,
+                            description: `${channel.type.toUpperCase()} safety limit`,
+                            rules: [{
+                              when: { intentType: 'fallback', min: 0.85 },
+                              then: { forceByte: safeByte }
+                            }]
+                          }
+                        })
+                      }}
+                    />
+                  )}
                   <button
                     className="btn-drawer-kill"
                     onClick={() => {

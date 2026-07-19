@@ -377,9 +377,11 @@ export class TitanOrchestrator {
         this.onBroadcast = null;
         //  WAVE 2510: Hot Frame callback â€” high-frequency fixture data at 44Hz
         // Carries ONLY dynamic fixture data (fixtures array + beat flag + frame number)
-        // Separate from full SeleneTruth which broadcasts at ~7Hz
+        // Separate from full SeleneTruth which broadcasts at 11Hz (TickEngine.TRUTH_BROADCAST_DIVIDER=4)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         this.onHotFrame = null;
+        // WAVE 7174: Divider constants moved to TickEngine as single source of truth.
+        // See TickEngine.TRUTH_BROADCAST_DIVIDER (4 = 11Hz) and TickEngine.HOT_FRAME_DIVIDER (1 = 44Hz).
         //  WAVE 2464: PEAK HOLD â€” Captura el pico de intensidad del frame skipeado.
         // El throttle frameCount % 2 hace que broadcasts salten 1 de cada 2 frames (40ms).
         // Un beat con decay de 40ms puede nacer y morir en ese frame skipeado â€” el canvas
@@ -505,6 +507,7 @@ export class TitanOrchestrator {
                         const instanceId = runtime.playFromClip(mat.clip, {
                             intensity: resolved.intensity,
                             durationOverrideMs: resolved.durationMs,
+                            silenceSpatial: resolved.silenceSpatial,
                         });
                         return instanceId != null ? 1 : -1;
                     }
@@ -519,6 +522,7 @@ export class TitanOrchestrator {
                 const instanceId = runtime.play(resolved.filePath, {
                     intensity: resolved.intensity,
                     durationOverrideMs: resolved.durationMs,
+                    silenceSpatial: resolved.silenceSpatial,
                 });
                 return instanceId != null ? 1 : -1;
             });
@@ -952,15 +956,6 @@ export class TitanOrchestrator {
         };
     }
 }
-//  WAVE 2510: Full truth broadcast divider
-// At 44Hz tick, send full SeleneTruth every TRUTH_BROADCAST_DIVIDER ticks (~7Hz)
-TitanOrchestrator.TRUTH_BROADCAST_DIVIDER = 6;
-// WAVE 3050: HOT FRAME BROADCAST DIVIDER
-// Decouple IPC rate from DMX engine rate. DMX runs at 44Hz, UI gets hot-frames at 44Hz.
-//  WAVE 4559: Overclock â€” subido de 2 (22Hz) a 1 (44Hz).
-// Strobe y flash ahora llegan sin frame-skip al canvas 2D.
-// transientStore + RenderWorker interpolates between frames anyway.
-TitanOrchestrator.HOT_FRAME_DIVIDER = 1;
 // Singleton instance
 let orchestratorInstance = null;
 /**

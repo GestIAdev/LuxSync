@@ -120,6 +120,7 @@ export interface BeamCellPayload {
   readonly iris?: number
   readonly gobo?: number
   readonly prism?: number
+  readonly prismRotation?: number
 }
 
 /**

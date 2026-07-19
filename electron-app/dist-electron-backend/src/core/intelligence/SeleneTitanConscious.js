@@ -448,7 +448,11 @@ export class SeleneTitanConscious extends EventEmitter {
                         //
                         // The clamp applies to ALL pre-buffered effects, not just divine.
                         // ═══════════════════════════════════════════════════════════════
-                        const V3_EPSILON_DIVINE = 0.60;
+                        // 🩸 WAVE 7159: Vibe-adjusted divine threshold — techno/industrial/hardstyle
+                        // use 0.50 (sustained energy but low spectral divergence). Others keep 0.60.
+                        const sovereignVibeId = titanState.vibeId ?? '';
+                        const isTechnoSovereign = sovereignVibeId.includes('techno') || sovereignVibeId.includes('industrial') || sovereignVibeId.includes('hardstyle');
+                        const V3_EPSILON_DIVINE = isTechnoSovereign ? 0.50 : 0.60;
                         const v3EpicnessNow = this._lastLiquidVerdict?.epicness ?? 0;
                         let aborted = false;
                         let abortReason = '';
@@ -500,6 +504,12 @@ export class SeleneTitanConscious extends EventEmitter {
                                         ` → buffer cleared, divine effect suppressed`;
                             }
                         }
+                        // 🩸 WAVE 7159: Moved rms10s + floor declarations before pressure veto
+                        // so they're available in both abort AND fire logs for full auditability.
+                        const sovereignRms10s = this.energyConsciousness.getRmsAverage10s();
+                        const SOVEREIGN_EPICNESS_ABSOLUTE_FLOOR = Math.max(0.02, sovereignRms10s * 0.08);
+                        const SOVEREIGN_EPICNESS_FLOOR = Math.max(0.05, sovereignRms10s * 0.12);
+                        const SOVEREIGN_ENERGY_FLOOR = 0.40;
                         // ── PRESSURE VETO: Independent hard veto based on pressureRange DNA ──
                         // Applies to ALL pre-buffered effects, not just heavy/divine.
                         // A pressureRange of {0,0} is permissive (no gate).
@@ -514,28 +524,24 @@ export class SeleneTitanConscious extends EventEmitter {
                                 }
                             }
                         }
-                        // ── UNIVERSAL EPICNESS FLOOR: Even non-heavy effects need minimal acoustic justification ──
-                        // Abyssal Rise, Seismic Snap, K.I.T.T. Scanner etc. were bypassing all reality checks
-                        // because they're not classified as heavy/divine. This floor ensures that if the music
-                        // has truly died (epicness ≈ 0 AND energy < 0.40), NO Sovereign Clock fire happens.
+                        // ── UNIVERSAL EPICNESS FLOOR (DYNAMIC): Scales with recent RMS energy ──
+                        // Hardcoded floors (0.02/0.05) were too low for techno minimal where
+                        // epicness hovers near 0 but energy is sustained at 0.40-0.60.
+                        // Dynamic floors use rmsAverage10s as baseline: higher sustained energy
+                        // demands proportionally higher epicness to justify a Sovereign fire.
                         if (!aborted) {
-                            const SOVEREIGN_EPICNESS_FLOOR = 0.05;
-                            const SOVEREIGN_ENERGY_FLOOR = 0.40;
-                            const SOVEREIGN_EPICNESS_ABSOLUTE_FLOOR = 0.02;
                             // Tier 1: Absolute floor — epicness near-zero blocks regardless of energy.
-                            // In techno, energy is always >0.40 so the AND guard never triggered.
-                            // This tier ensures that if the liquid says epicness≈0, NO fire happens.
                             if (v3EpicnessNow < SOVEREIGN_EPICNESS_ABSOLUTE_FLOOR) {
                                 aborted = true;
                                 abortReason =
-                                    `Universal epicness absolute floor (epicness=${v3EpicnessNow.toFixed(3)} < ${SOVEREIGN_EPICNESS_ABSOLUTE_FLOOR})` +
+                                    `Universal epicness absolute floor (epicness=${v3EpicnessNow.toFixed(3)} < ${SOVEREIGN_EPICNESS_ABSOLUTE_FLOOR.toFixed(3)} rms10s=${sovereignRms10s.toFixed(2)})` +
                                         ` — liquid cognition denies any acoustic justification`;
                             }
                             // Tier 2: Combined floor — low epicness AND low energy
                             else if (v3EpicnessNow < SOVEREIGN_EPICNESS_FLOOR && titanState.rawEnergy < SOVEREIGN_ENERGY_FLOOR) {
                                 aborted = true;
                                 abortReason =
-                                    `Universal epicness floor (epicness=${v3EpicnessNow.toFixed(3)} < ${SOVEREIGN_EPICNESS_FLOOR}` +
+                                    `Universal epicness floor (epicness=${v3EpicnessNow.toFixed(3)} < ${SOVEREIGN_EPICNESS_FLOOR.toFixed(3)}` +
                                         ` AND energy=${titanState.rawEnergy.toFixed(2)} < ${SOVEREIGN_ENERGY_FLOOR})` +
                                         ` — no acoustic justification for Sovereign Clock fire`;
                             }
@@ -552,6 +558,8 @@ export class SeleneTitanConscious extends EventEmitter {
                             else {
                                 console.log(`[SeleneTitanConscious] 🔮👑 CASSANDRA SOVEREIGN CLOCK: firing "${candidate.effectName ?? candidate.effect}" ` +
                                     `| overdue=${Math.abs(timeToEvent)}ms | confidence=${candidate.confidence.toFixed(2)} ` +
+                                    `| epicness=${v3EpicnessNow.toFixed(3)} rms10s=${sovereignRms10s.toFixed(2)} ` +
+                                    `floor_abs=${SOVEREIGN_EPICNESS_ABSOLUTE_FLOOR.toFixed(3)} floor_combined=${SOVEREIGN_EPICNESS_FLOOR.toFixed(3)} ` +
                                     `| bypassing HuntEngine + Fuzzy + EnergyOverride`);
                             }
                             const reason = glassBreak
@@ -1371,10 +1379,23 @@ export class SeleneTitanConscious extends EventEmitter {
             const v3BypassTemporalReady = timeSinceLastV3Bypass >= v3BypassTemporalMinimum;
             // V3 TUNE: Epicness available for gating decisions
             const v3Epic = this._lastLiquidVerdict?.epicness ?? 0;
-            // 🛡️ V3 TUNE: Epicness floor for V3 bypass — prevents firing with near-zero epicness
-            // Even if ignite=true and DNA approves, if the liquid says epicness≈0,
-            // there's no acoustic justification. Bypass must respect the liquid's verdict.
-            const v3BypassEpicnessFloor = 0.05;
+            // 🛡️ V3 TUNE: Dynamic epicness floor for V3 bypass — scales with recent RMS energy.
+            // Hardcoded 0.05 was too low for techno minimal (sustained energy ~0.45 but
+            // epicness ~0.02). Dynamic floor: max(0.05, rmsAverage10s * 0.10).
+            // In techno (RMS~0.45): floor becomes ~0.045 → still permissive but proportional.
+            // In silence (RMS~0.05): floor stays at 0.05.
+            //
+            // 🩸 WAVE 7159: HARD EFFECT FLOOR — hard/divine candidates require higher
+            // acoustic pressure (epicness) to bypass cooldowns. Ambient effects can
+            // still fire at the lower floor, but aggressive effects must clear a
+            // stricter bar. This separates hard from ambient via acoustic pressure.
+            const candidateEntry = getDynamicEffectRegistry().getEntry(intent);
+            const isHardForBypass = candidateEntry?.simMeta.isHeavyCandidate
+                || candidateEntry?.simMeta.isDivineCandidate
+                || (candidateEntry?.dna.aggression ?? 0) > 0.7;
+            const v3BypassEpicnessFloor = isHardForBypass
+                ? Math.max(0.15, this.energyConsciousness.getRmsAverage10s() * 0.20)
+                : Math.max(0.05, this.energyConsciousness.getRmsAverage10s() * 0.10);
             const v3IgniteBypass = this._v3Ignite
                 && isDNADecision
                 && ethicsScore >= ethicsThreshold
@@ -1383,6 +1404,23 @@ export class SeleneTitanConscious extends EventEmitter {
                 && v3BypassTemporalReady
                 && !alreadyValidatedByArsenal
                 && v3Epic >= v3BypassEpicnessFloor;
+            // 🎯 WAVE 7158: RESOURCE MASKING — Prevent effect overlap on spatial resources
+            // Interrogates actual output vectors of active effects (not static maps).
+            // If the candidate will control spatial resources (pan/tilt/movement) AND
+            // active effects are already controlling movement, abort the prior effects
+            // for a clean handoff. This prevents jitter from two effects fighting over
+            // the same pan/tilt channels.
+            const candidateControlsMovement = candidateEntry
+                ? candidateEntry.spatialBehavior !== 'static'
+                : false;
+            const activeControlsMovement = getEffectManager().hasActiveMovementControl();
+            if (v3IgniteBypass && candidateControlsMovement && activeControlsMovement) {
+                const aborted = getEffectManager().abortEffectsControllingMovement();
+                if (aborted.length > 0) {
+                    console.log(`[V3 IGNITE 🎯 RESOURCE MASKING] Aborted ${aborted.length} active effect(s) ` +
+                        `controlling movement: [${aborted.join(', ')}] — clean handoff for "${effectDisplayName(intent)}"`);
+                }
+            }
             // 📊 GATEKEEPER TELEMETRY — log only on state change to prevent per-frame spam
             if (isDNADecision && output.effectDecision) {
                 const logKey = `${intent}|${this._v3Ignite}|${isHardMinimumBlocked}|${refractoryBlocked}`;
@@ -1393,7 +1431,8 @@ export class SeleneTitanConscious extends EventEmitter {
                         `arsenalValidated=${!!alreadyValidatedByArsenal} ethicsOverride=${hasHighEthicsOverride} | ` +
                         `v3Bypass=${v3IgniteBypass} v3BypassReady=${v3BypassTemporalReady} | ` +
                         `cooldown=${hardMinimumCheck.available ? 'OK' : hardMinimumCheck.reason} | ` +
-                        `ethics=${ethicsScore.toFixed(2)}/${ethicsThreshold}`);
+                        `ethics=${ethicsScore.toFixed(2)}/${ethicsThreshold} | ` +
+                        `floor=${v3BypassEpicnessFloor.toFixed(3)}${isHardForBypass ? ' (HARD)' : ''}`);
                 }
             }
             // V3 TUNE: Ambient DNA classification — DNA-approved but NOT divine/drop origin.

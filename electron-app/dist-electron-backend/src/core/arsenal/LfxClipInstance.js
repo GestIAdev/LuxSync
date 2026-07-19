@@ -376,7 +376,20 @@ export class LfxClipInstance {
         const compatibleVibes = Object.freeze(this.compatibleVibes.map(v => VIBE_BRIDGE[v]));
         const aggression = this.acoTriad.aggression;
         const aggressionRange = Object.freeze({ min: aggression, max: aggression });
-        const pressureRange = Object.freeze({ min: 0, max: 0 });
+        // 🩸 WAVE 7159: Acoustic pressure gating — replace permissive {0,0} default
+        // with classification-based ranges so the pressure veto actually fires.
+        // Hard effects (strobe/heavy/divine archetype OR aggression > 0.7) require
+        // high acoustic pressure (rawEnergy 0.5–1.0). Ambient effects are gated to
+        // low pressure (0.0–0.5). Utility stays permissive (0.0–1.0).
+        const isHardArchetype = this._userArchetype === 'strobe' ||
+            this._userArchetype === 'heavy' ||
+            this._userArchetype === 'divine';
+        const isAmbientArchetype = this._userArchetype === 'ambient';
+        const pressureRange = Object.freeze(isHardArchetype || aggression > 0.7
+            ? { min: 0.5, max: 1.0 }
+            : isAmbientArchetype
+                ? { min: 0.0, max: 0.5 }
+                : { min: 0.0, max: 1.0 });
         const spatialBehavior = this.spatialBehavior;
         return Object.freeze({
             genome,

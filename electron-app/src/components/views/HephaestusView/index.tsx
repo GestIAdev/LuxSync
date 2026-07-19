@@ -30,7 +30,6 @@ import { HephLogoIcon, TargetIcon } from '../../icons/LuxIcons'
 import type {
   HephAutomationClipV3,
   HephAutomationClip,
-  ZoneTarget
 } from '../../../core/hephaestus/types'
 import type { EffectZone } from '../../../core/effects/types'
 import { serializeHephClip } from '../../../core/hephaestus/types'
@@ -381,15 +380,11 @@ const HephaestusView: React.FC = () => {
     }
   }, [refreshMetadata])
 
-  // WAVE 2030.13: Zone targeting handler
-  const handleZonesChange = useCallback((zones: EffectZone[]) => {
-    const zoneTargets = zones as readonly ZoneTarget[]
-    setClip(prev => ({
-      ...prev,
-      spatialZones: zoneTargets,
-      tracks: prev.tracks.map(t => ({ ...t, zones: zoneTargets })),
-    }))
-    setIsDirty(true)
+  // WAVE 7161: Global zone selector is now display-only.
+  // spatialZones is auto-computed as the union of all track zones by the store.
+  // Per-track zone editing is done in ParameterLane via store.setTrackZones().
+  const handleZonesChange = useCallback((_zones: EffectZone[]) => {
+    // No-op: display-only badge. Zone editing is per-track in ForgeTab.
   }, [])
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -517,7 +512,7 @@ const HephaestusView: React.FC = () => {
           <ZoneSelector
             selectedZones={clip.spatialZones as unknown as EffectZone[]}
             onZonesChange={handleZonesChange}
-            disabled={isSaving}
+            disabled={true}
           />
           <span style={{ color: '#333' }}>│</span>
           <SafetyStrip

@@ -2,7 +2,7 @@
   "id": "user-1780166804188-l0ooydmro",
   "name": "LB230N 7R (Aether Convergence)",
   "manufacturer": "Big Dipper",
-  "channelCount": 22,
+  "channelCount": 16,
   "type": "moving-head",
   "confidence": 0.98,
   "detectionMethod": "channels",
@@ -139,7 +139,7 @@
       "channelIndex": 1,
       "rules": [
         { "when": { "intentType": "shutter" }, "then": { "forceByte": 0 } },
-        { "when": { "intentType": "strobe", "min": 0.001 }, "then": { "mapToRange": [4, 195] } },
+        { "when": { "intentType": "strobe", "min": 0.001 }, "then": { "forceByte": 250 } },
         { "when": { "intentType": "fallback" }, "then": { "forceByte": 255 } }
       ]
     },
@@ -153,7 +153,7 @@
   ],
   "channels": [
     { "index": 0, "name": "Color Wheel", "type": "color_wheel", "is16bit": false, "defaultValue": 0 },
-    { "index": 1, "name": "Strobe", "type": "strobe", "defaultValue": 255, "is16bit": false, "ignitionDeps": [] },
+    { "index": 1, "name": "Strobe", "type": "strobe", "defaultValue": 0, "is16bit": false, "ignitionDeps": [] },
     { "index": 2, "name": "Dimmer", "type": "dimmer", "defaultValue": 255, "is16bit": false, "ignitionDeps": [] },
     { "index": 3, "name": "Gobo", "type": "gobo", "defaultValue": 0, "is16bit": false },
     { "index": 4, "name": "Prism", "type": "prism", "defaultValue": 0, "is16bit": false },

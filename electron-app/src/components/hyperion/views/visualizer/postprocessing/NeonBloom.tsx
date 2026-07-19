@@ -15,7 +15,7 @@
  * @updated WAVE 2042.14 — Neon tuning for professional look
  */
 
-import React, { useMemo } from 'react'
+import React from 'react'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import { BlendFunction } from 'postprocessing'
 
@@ -34,8 +34,6 @@ interface NeonBloomProps {
   luminanceSmoothing?: number
   /** Radio del bloom - larger = softer glow */
   radius?: number
-  /** Intensidad del beat (para pulsación) */
-  beatIntensity?: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -55,18 +53,14 @@ export const NeonBloom: React.FC<NeonBloomProps> = ({
   luminanceThreshold = 0.9,
   luminanceSmoothing = 0.3,
   radius = 0.5,
-  beatIntensity = 0,
 }) => {
   if (!enabled) return null
-
-  // Very subtle beat modulation
-  const adjustedIntensity = intensity + beatIntensity * 0.1
 
   return (
     <EffectComposer multisampling={0}>
       {/* 🌟 BLOOM - The main glow effect */}
       <Bloom
-        intensity={adjustedIntensity}
+        intensity={intensity}
         luminanceThreshold={luminanceThreshold}
         luminanceSmoothing={luminanceSmoothing}
         radius={radius}

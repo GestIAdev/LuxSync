@@ -541,21 +541,33 @@ function calculateSpectralFlatness(magnitudes) {
     const n = magnitudes.length - 1; // Exclude DC
     if (n <= 0)
         return 0;
+    // Find max magnitude (excluding DC) for relative threshold
+    let maxMag = 0;
+    for (let bin = 1; bin < magnitudes.length; bin++) {
+        if (magnitudes[bin] > maxMag)
+            maxMag = magnitudes[bin];
+    }
+    if (maxMag === 0)
+        return 0;
+    // Relative threshold: 1% of max magnitude filters YouTube compression noise floor
+    const RELATIVE_THRESHOLD = maxMag * 0.01;
+    const threshold2 = RELATIVE_THRESHOLD * RELATIVE_THRESHOLD;
     let logSum = 0;
     let arithmeticSum = 0;
     let validBins = 0;
     for (let bin = 1; bin < magnitudes.length; bin++) {
         const mag2 = magnitudes[bin] * magnitudes[bin];
-        if (mag2 > 1e-10) { // Avoid log(0)
+        if (mag2 > threshold2) {
             logSum += Math.log(mag2);
+            arithmeticSum += mag2;
             validBins++;
         }
-        arithmeticSum += mag2;
     }
     if (validBins === 0 || arithmeticSum === 0)
         return 0;
+    // Both means use validBins as denominator — fixes the mathematical discrepancy
     const geometricMean = Math.exp(logSum / validBins);
-    const arithmeticMean = arithmeticSum / n;
+    const arithmeticMean = arithmeticSum / validBins;
     return Math.min(1.0, geometricMean / arithmeticMean);
 }
 /**

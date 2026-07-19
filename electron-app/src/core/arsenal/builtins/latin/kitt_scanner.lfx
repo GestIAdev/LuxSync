@@ -12,7 +12,7 @@
       "fast"
     ],
     "vibeCompat": [
-      "techno"
+      "techno-club"
     ],
     "durationMs": 1600,
     "effectType": "heph_custom",
@@ -24,7 +24,7 @@
       },
       "textureAffinity": "clean",
       "compatibleVibes": [
-        "techno"
+        "techno-club"
       ],
       "validSections": [
         "active",
@@ -38,7 +38,11 @@
         "min": 0.5,
         "max": 0.9
       },
-      "spatialBehavior": "dynamic"
+      "spatialBehavior": "dynamic",
+      "pressureRange": {
+        "min": 0,
+        "max": 1
+      }
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -89,6 +93,10 @@
               },
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            360
           ]
         }
       },
@@ -136,6 +144,10 @@
               "value": 1,
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         }
       },
@@ -211,6 +223,10 @@
               "value": 0,
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         }
       },
@@ -258,9 +274,26 @@
               "value": 0,
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         }
       }
-    ]
-  }
+    ],
+    "spatialZones": [
+      "all-movers",
+      "all-pars",
+      "ambient",
+      "flash",
+      "air",
+      "movers-left",
+      "front",
+      "back",
+      "movers-right"
+    ],
+    "schemaVersion": "3.0"
+  },
+  "checksum": "7eb4bbe0bbc9bfd7b0061eaa7b8f59972a8fab2151805cf7dfa3226214c9e174"
 }

@@ -11,7 +11,7 @@
 //  The clone is the mutated clip; the delta is the minimal diff to reproduce it.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import type { HephAutomationClipV3, HephTrack, HephKeyframe, HephCurve, HephInterpolation, HephParamId } from '../../hephaestus/types'
+import type { HephAutomationClipV3, HephTrack, HephKeyframe, HephCurve, HephInterpolation, HephParamId, ZoneTarget } from '../../hephaestus/types'
 import { BEZIER_PRESETS } from '../../hephaestus/types'
 import { ENERGY_ZONES } from '../../arsenal/LfxClipInstance'
 import type { PhaseConfigPro } from '../../hephaestus/phase/PhaseConfigPro'
@@ -202,7 +202,8 @@ function computeDPhase(
 
 /**
  * D_structural: topological distance [0,1] based on track count diff,
- * average keyframe count diff, and interpolation change ratio.
+ * average keyframe count diff, interpolation change ratio,
+ * and WAVE 7165: zone divergence bonus for multicellular innovation.
  */
 function computeDStructural(
   parent: HephAutomationClipV3,
@@ -239,8 +240,24 @@ function computeDStructural(
     ? interpolationChanges / comparedTracks
     : 0
 
+  // WAVE 7165: Zone divergence — count (paramId, zone) pairs in child not present in parent
+  const parentZoneKeys = new Set<string>()
+  for (const track of parent.tracks) {
+    for (const zone of track.zones) {
+      parentZoneKeys.add(`${track.paramId}::${zone}`)
+    }
+  }
+  let newZonePairs = 0
+  for (const track of child.tracks) {
+    for (const zone of track.zones) {
+      const key = `${track.paramId}::${zone}`
+      if (!parentZoneKeys.has(key)) newZonePairs++
+    }
+  }
+  const zoneDivergence = Math.min(1, newZonePairs / Math.max(parent.tracks.length, 1))
+
   return Math.max(0, Math.min(1,
-    0.5 * trackCountDiff + 0.35 * avgKfDiff + 0.15 * interpRatio,
+    0.45 * trackCountDiff + 0.30 * avgKfDiff + 0.10 * interpRatio + 0.15 * zoneDivergence,
   ))
 }
 
@@ -449,11 +466,12 @@ function clamp3(v: number, lo: number, hi: number): number {
 }
 
 /**
- * Lamarckian operator: injects ONE missing structural track with a curve
+ * WAVE 7165: Lamarckian operator — injects ONE structural track with a curve
  * shaped by the parent's cognitiveDNA, then drifts the DNA itself.
  *
- * Unlike the old gene_duplication, this NEVER duplicates a paramId —
- * it only adds tracks for parameters that are currently absent.
+ * Multicellular: tracks are tracked by composite key (paramId, zones).
+ * If all params are already present for all zones, the operator injects a
+ * duplicate paramId targeting a COMPLEMENTARY zone to foster spatial diversity.
  */
 export function geneAugmentation(
   parent: HephAutomationClipV3,
@@ -463,25 +481,66 @@ export function geneAugmentation(
   const child = deepClone(parent)
   const delta: JsonPatchOp[] = []
 
-  // Step A: Inventory existing paramIds
+  // Step A: Inventory existing track signatures (paramId + zones composite)
+  const existingTrackKeys = new Set<string>()
   const existingParams = new Set<string>()
+  const usedZones = new Set<string>()
   for (const track of child.tracks) {
+    existingTrackKeys.add(`${track.paramId}::${track.zones.join(',')}`)
     existingParams.add(track.paramId)
+    for (const z of track.zones) usedZones.add(z)
   }
 
-  // Step B: Find missing candidates
-  const missing = AUGMENTABLE_PARAMS.filter((p) => !existingParams.has(p))
-  if (missing.length === 0) {
-    return {
-      clip: child,
-      delta,
-      operator: 'gene_augmentation',
-      l2Distance: 0,
+  // All canonical zones available for complementary injection
+  const ALL_CANONICAL = ['front', 'back', 'floor', 'movers-left', 'movers-right', 'center', 'air', 'ambient']
+
+  // Step B: Find missing candidates — params not yet present at all
+  const missingParams = AUGMENTABLE_PARAMS.filter((p) => !existingParams.has(p))
+
+  // Step B2: If all params exist, find params that don't cover ALL zones yet
+  let chosenParam: string
+  let injectZones: string[]
+
+  if (missingParams.length > 0) {
+    // Classic path: inject a completely new paramId
+    chosenParam = missingParams[Math.floor(rng() * missingParams.length)]
+    // Use complementary zones not yet covered by this paramId
+    const paramZones = new Set<string>()
+    for (const track of child.tracks) {
+      if (track.paramId === chosenParam) for (const z of track.zones) paramZones.add(z)
     }
+    const unusedZones = ALL_CANONICAL.filter(z => !paramZones.has(z) && !usedZones.has(z))
+    injectZones = unusedZones.length > 0
+      ? [unusedZones[Math.floor(rng() * unusedZones.length)]]
+      : child.tracks.length > 0 ? [...child.tracks[0].zones] : ['all']
+  } else {
+    // WAVE 7165: Multicellular path — inject a duplicate paramId into a complementary zone
+    // Find (paramId, zone) combinations not yet covered
+    const candidates: Array<{ paramId: string; zone: string }> = []
+    for (const param of AUGMENTABLE_PARAMS) {
+      const paramZones = new Set<string>()
+      for (const track of child.tracks) {
+        if (track.paramId === param) for (const z of track.zones) paramZones.add(z)
+      }
+      for (const zone of ALL_CANONICAL) {
+        if (!paramZones.has(zone)) {
+          candidates.push({ paramId: param, zone })
+        }
+      }
+    }
+    if (candidates.length === 0) {
+      return {
+        clip: child,
+        delta,
+        operator: 'gene_augmentation',
+        l2Distance: 0,
+      }
+    }
+    const pick = candidates[Math.floor(rng() * candidates.length)]
+    chosenParam = pick.paramId
+    injectZones = [pick.zone]
   }
 
-  // Step C: Select one missing paramId
-  const chosenParam = missing[Math.floor(rng() * missing.length)]
   const range = PARAM_RANGES[chosenParam] ?? [0, 1]
   const span = range[1] - range[0]
   const duration = child.durationMs
@@ -548,13 +607,11 @@ export function geneAugmentation(
     keyframes.push(kf)
   }
 
-  // Build the new track
+  // Build the new track — WAVE 7165: inject complementary zones
   const newTrack: HephTrack = {
     id: `aug_${chosenParam}_${Math.floor(rng() * 100000)}`,
     paramId: chosenParam as HephParamId,
-    zones: child.tracks.length > 0
-      ? [...child.tracks[0].zones]
-      : ['all'],
+    zones: injectZones as ZoneTarget[],
     curve: {
       paramId: chosenParam as HephParamId,
       valueType: chosenParam === 'color' ? 'color' : 'number',
@@ -1175,13 +1232,21 @@ export function adaptivePruning(
   // Step 1: Look for dead tracks (max - min < threshold across all keyframes)
   // Protected tracks (intensity, color, pan, tilt) require variance = 0.00 to be pruned.
   // Non-protected tracks use the standard 0.05 threshold.
+  // WAVE 7165: Zone-aware protection — don't prune the last track covering a (paramId, zone) pair.
   const PROTECTED_TRACKS = new Set(['intensity', 'color', 'pan', 'tilt'])
-  const intensityTracks = child.tracks.filter((t) => t.paramId === 'intensity')
+
+  // Build a map of (paramId::zone) → count of tracks covering that pair
+  const zoneCoverage = new Map<string, number>()
+  for (const track of child.tracks) {
+    for (const zone of track.zones) {
+      const key = `${track.paramId}::${zone}`
+      zoneCoverage.set(key, (zoneCoverage.get(key) ?? 0) + 1)
+    }
+  }
+
   const deadTracks = child.tracks
     .map((t, i) => ({ track: t, index: i }))
     .filter((t) => {
-      // Never delete the only intensity track
-      if (t.track.paramId === 'intensity' && intensityTracks.length <= 1) return false
       const kfs = t.track.curve.keyframes
       if (kfs.length === 0) return true
       const values = kfs.map((k) => (typeof k.value === 'number' ? k.value : 0))
@@ -1189,9 +1254,17 @@ export function adaptivePruning(
       const min = Math.min(...values)
       const range = max - min
       // Protected tracks: only prune if literally flat (variance = 0.00)
-      if (PROTECTED_TRACKS.has(t.track.paramId)) return range === 0
-      // Non-protected tracks: standard 0.05 threshold
-      return range < 0.05
+      if (PROTECTED_TRACKS.has(t.track.paramId)) {
+        if (range !== 0) return false
+      } else {
+        if (range >= 0.05) return false
+      }
+      // WAVE 7165: Don't prune if this is the only track covering any of its (paramId, zone) pairs
+      for (const zone of t.track.zones) {
+        const key = `${t.track.paramId}::${zone}`
+        if ((zoneCoverage.get(key) ?? 0) <= 1) return false
+      }
+      return true
     })
 
   if (deadTracks.length > 0) {
@@ -1499,20 +1572,20 @@ export function crossover(
   const dominantClip = dominant === 'A' ? parentA : parentB
   const submissiveClip = dominant === 'A' ? parentB : parentA
 
-  // Strict dominant/submissive track merge:
-  // 1. Add ALL dominant parent tracks
-  // 2. Add submissive parent tracks ONLY if their paramId is novel
+  // WAVE 7165: Multicellular crossover — use composite key paramId::zones
+  // to allow submissive parent to contribute tracks with same paramId but different zones.
   const childTracks: HephTrack[] = []
-  const seenParamIds = new Set<string>()
+  const seenTrackKeys = new Set<string>()
 
   for (const track of dominantClip.tracks) {
     childTracks.push(deepClone(track))
-    seenParamIds.add(track.paramId)
+    seenTrackKeys.add(`${track.paramId}::${track.zones.join(',')}`)
   }
   for (const track of submissiveClip.tracks) {
-    if (!seenParamIds.has(track.paramId)) {
+    const key = `${track.paramId}::${track.zones.join(',')}`
+    if (!seenTrackKeys.has(key)) {
       childTracks.push(deepClone(track))
-      seenParamIds.add(track.paramId)
+      seenTrackKeys.add(key)
     }
   }
 

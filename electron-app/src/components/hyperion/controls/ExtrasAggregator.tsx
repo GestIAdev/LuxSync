@@ -131,22 +131,29 @@ interface PhantomChannelRowProps {
 }
 
 const PhantomChannelRow: React.FC<PhantomChannelRowProps> = ({ phantom }) => {
-  // Estado local del valor (no hay store para orfanos — van directo por setExtra).
-  const [value, setValue] = useState<number>(phantom.defaultValue)
+  // WAVE 4736: Hydrate from programmerStore instead of local state.
+  // Reads from fixtureOverrides.extras so values survive view switches.
+  const isNameKeyed = phantom.type === 'custom' || phantom.type === 'unknown'
+  const channelKey  = isNameKeyed ? phantom.label : phantom.type
+
+  const storedValue = useProgrammerStore(s => {
+    for (const ov of s.fixtureOverrides.values()) {
+      const found = ov.extras?.get(channelKey)
+      if (found !== undefined) return Math.round(found * 255)
+    }
+    return undefined
+  })
+
+  const value = storedValue ?? phantom.defaultValue
 
   const [hexColor, cR, cG, cB] = phantomTypeColor(phantom.type)
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const v = parseInt(e.target.value, 10)
-    setValue(v)
-
-    // WAVE 3503: Para custom/unknown, key = label. Para el resto, key = type.
-    const isNameKeyed = phantom.type === 'custom' || phantom.type === 'unknown'
-    const channelKey  = isNameKeyed ? phantom.label : phantom.type
 
     // Canales orfanos van por setExtra (fixture-scope, no por cellKey).
     useProgrammerStore.getState().setExtra(channelKey, v)
-  }, [phantom.label, phantom.type])
+  }, [channelKey])
 
   return (
     <div

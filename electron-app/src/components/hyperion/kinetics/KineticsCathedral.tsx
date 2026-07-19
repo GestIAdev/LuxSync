@@ -298,12 +298,14 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
               <span className="kc-paradigm-btn__label">FORMATION</span>
             </button>
             <button
-              className={`kc-paradigm-btn kc-paradigm-btn--spatial${viewMode === 'spatial' ? ' kc-paradigm-btn--active' : ''}`}
+              className={`kc-paradigm-btn kc-paradigm-btn--spatial kc-paradigm-btn--frozen${viewMode === 'spatial' ? ' kc-paradigm-btn--active' : ''}`}
+              disabled
               onClick={() => handleViewMode('spatial')}
-              title="IK 3D spatial targeting - Sniper"
+              title="WAVE 7172: IK 3D spatial targeting frozen — calibration required"
             >
               <span className="kc-paradigm-btn__icon">🎯</span>
               <span className="kc-paradigm-btn__label">SPATIAL</span>
+              <span className="kc-paradigm-btn__lock">[ CALIBRATION REQ ]</span>
             </button>
           </div>
 

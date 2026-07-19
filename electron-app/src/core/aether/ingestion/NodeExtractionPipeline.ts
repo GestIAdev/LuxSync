@@ -73,6 +73,8 @@ import type {
   FixtureDefinition,
   FixtureChannel,
   FixtureType,
+  WheelColor,
+  DerivedCapabilities,
 } from '../../../types/FixtureDefinition'
 import type { IForgeNodeGraph, IForgeNode, IOutputDmxConfig } from '../../forge/types'
 import type { FixtureV2, InstallationOrientation } from '../../stage/ShowFileV2'
@@ -411,6 +413,14 @@ export class NodeExtractionPipeline {
     const _govs = fixtureDef.dmxGovernors ?? []
     if (_govs.length > 0) {
       console.log(`[GovernorEngine 🏛️] ADUANA ARMADA para ${resolvedDeviceId}: ${_govs.length} gobernadores en posición.`)
+      // WAVE 7031 DIAG: Trace channel-to-governor matching
+      const _isZero = fixtureDef.channels.length > 0 && fixtureDef.channels[0].index === 0
+      const _chanSummary = fixtureDef.channels.map(ch => {
+        const _offset = _isZero ? ch.index : ch.index - 1
+        const _gov = _govs.find(g => g.channelIndex === _offset)
+        return `${ch.type}@off=${_offset}${_gov ? '+gov' : ''}`
+      })
+      console.log(`[WAVE-7031-DIAG] ${resolvedDeviceId}: ${_chanSummary.join(', ')}`)
     }
 
     return {
@@ -557,10 +567,12 @@ export class NodeExtractionPipeline {
     // El nodeGraph puede carecer de defaultDmxValue si fue serializado antes de WAVE 4817
     // o editado manualmente. La fuente canónica de verdad para valores por defecto es
     // fixtureDef.channels (keyed por dmxOffset 0-based).
+    // WAVE 7031: Detect 0-based vs 1-based indexing convention.
+    const _isZeroBased = fixtureDef.channels.length > 0 && fixtureDef.channels[0].index === 0
     const legacyDefaultByOffset = new Map<number, number>()
     for (const ch of fixtureDef.channels) {
       if (typeof ch.index === 'number' && typeof ch.defaultValue === 'number') {
-        legacyDefaultByOffset.set(ch.index - 1, ch.defaultValue) // index es 1-based
+        legacyDefaultByOffset.set(_isZeroBased ? ch.index : ch.index - 1, ch.defaultValue)
       }
     }
 
@@ -841,20 +853,24 @@ export class NodeExtractionPipeline {
   ): ICapabilityNode[] {
     const nodes: ICapabilityNode[] = []
 
+    // WAVE 7031: Detect indexing convention ONCE from the full fixture channel list.
+    // Per-group detection was buggy — see _mapChannels docs.
+    const isZeroBased = fixtureDef.channels.length > 0 && fixtureDef.channels[0].index === 0
+
     for (const group of topology.colorGroups) {
-      nodes.push(this._buildColorNode(deviceId, zoneId, fixtureDef, group, position))
+      nodes.push(this._buildColorNode(deviceId, zoneId, fixtureDef, group, position, isZeroBased))
     }
     if (topology.impactChannels.length > 0) {
-      nodes.push(this._buildImpactNode(deviceId, zoneId, fixtureDef, topology.impactChannels, position))
+      nodes.push(this._buildImpactNode(deviceId, zoneId, fixtureDef, topology.impactChannels, position, isZeroBased))
     }
     if (topology.kineticChannels.length > 0) {
-      nodes.push(this._buildKineticNode(deviceId, zoneId, fixtureDef, topology.kineticChannels, position, orientation))
+      nodes.push(this._buildKineticNode(deviceId, zoneId, fixtureDef, topology.kineticChannels, position, orientation, isZeroBased))
     }
     if (topology.beamChannels.length > 0) {
-      nodes.push(this._buildBeamNode(deviceId, zoneId, topology.beamChannels, position))
+      nodes.push(this._buildBeamNode(deviceId, zoneId, topology.beamChannels, position, isZeroBased))
     }
     if (topology.atmosphereChannels.length > 0) {
-      nodes.push(this._buildAtmosphereNode(deviceId, zoneId, fixtureDef, topology.atmosphereChannels, position))
+      nodes.push(this._buildAtmosphereNode(deviceId, zoneId, fixtureDef, topology.atmosphereChannels, position, isZeroBased))
     }
 
     return nodes
@@ -942,10 +958,11 @@ export class NodeExtractionPipeline {
     fixtureDef: Readonly<FixtureDefinition>,
     group:      ChannelGroup,
     position?:  Position3D,
+    isZeroBased = false,
   ): IColorNodeData {
     const nodeId: NodeId = `${deviceId}:${group.labelSuffix}`
 
-    const channels   = this._mapChannels(group.channels)
+    const channels   = this._mapChannels(group.channels, false, undefined, isZeroBased)
     const mixingType = this._detectMixingType(group.channels)
     const colorWheel = this._buildColorWheelDef(fixtureDef)
 
@@ -973,6 +990,7 @@ export class NodeExtractionPipeline {
     fixtureDef: Readonly<FixtureDefinition>,
     impactChs: readonly FixtureChannel[],
     position?: Position3D,
+    isZeroBased = false,
   ): IImpactNodeData {
     const nodeId: NodeId = `${deviceId}:impact`
 
@@ -987,7 +1005,7 @@ export class NodeExtractionPipeline {
       deviceId,
       zoneId,
       role:          hasDimmer ? 'primary' : 'percussion',
-      channels:      this._mapChannels(impactChs, false, fixtureDef.capabilities),
+      channels:      this._mapChannels(impactChs, false, fixtureDef.capabilities, isZeroBased),
       constraints:   IMPACT_CONSTRAINTS,
       transferCurve: IMPACT_TRANSFER_CURVE,
       bandMix:       IMPACT_BAND_MIX,
@@ -1006,6 +1024,7 @@ export class NodeExtractionPipeline {
     kineticChs:   readonly FixtureChannel[],
     position?:    Position3D,
     orientation?: string,
+    isZeroBased = false,
   ): IKineticNodeData {
     const nodeId: NodeId = `${deviceId}:kinetic`
 
@@ -1017,7 +1036,7 @@ export class NodeExtractionPipeline {
     const hasRotation  = kineticChs.some(ch => ch.type === 'rotation')
     const isContinuous = !hasPanTilt && hasRotation
 
-    const channels = this._mapChannels(kineticChs, true)
+    const channels = this._mapChannels(kineticChs, true, undefined, isZeroBased)
     // WAVE 4814: respetar defaultValue del JSON para posición home de rotación.
     const rotCh        = channels.find(c => c.type === 'rotation')
     const rotationHome = rotCh && typeof rotCh.defaultValue === 'number'
@@ -1060,6 +1079,7 @@ export class NodeExtractionPipeline {
     zoneId:    ZoneId,
     beamChs:   readonly FixtureChannel[],
     position?: Position3D,
+    isZeroBased = false,
   ): IBeamNodeData {
     const nodeId: NodeId = `${deviceId}:beam`
     const types = new Set(beamChs.map(ch => ch.type))
@@ -1075,7 +1095,7 @@ export class NodeExtractionPipeline {
       deviceId,
       zoneId,
       role:             hasBeamShaping ? 'primary' : 'decoration',
-      channels:         this._mapChannels(beamChs),
+      channels:         this._mapChannels(beamChs, false, undefined, isZeroBased),
       constraints:      BEAM_CONSTRAINTS,
       hasGobo:          types.has('gobo'),
       hasGoboRotation:  types.has('gobo_rotation'),
@@ -1098,6 +1118,7 @@ export class NodeExtractionPipeline {
     fixtureDef:    Readonly<FixtureDefinition>,
     atmosphereChs: readonly FixtureChannel[],
     position?:     Position3D,
+    isZeroBased = false,
   ): IAtmosphereNodeData {
     const nodeId: NodeId = `${deviceId}:atmosphere`
 
@@ -1116,7 +1137,7 @@ export class NodeExtractionPipeline {
       deviceId,
       zoneId,
       role,
-      channels:    this._mapChannels(atmosphereChs),
+      channels:    this._mapChannels(atmosphereChs, false, undefined, isZeroBased),
       constraints: ATMOSPHERE_CONSTRAINTS,
       atmosType,
       safety:      ATMOSPHERE_SAFETY_INIT,
@@ -1184,18 +1205,25 @@ export class NodeExtractionPipeline {
     channels: readonly FixtureChannel[],
     kinetic = false,
     capabilities?: FixtureDefinition['capabilities'],
+    isZeroBased = false,
   ): INodeChannelDef[] {
+    // WAVE 7031: Detect indexing convention.
+    // Forge UI saves channels with 0-based index (array position).
+    // FXTParser saves channels with 1-based index (DMX channel 1,2,3...).
+    // isZeroBased is detected once from the full fixture channel list in _buildAllNodes
+    // and passed down. Per-group detection was buggy: a group starting at index 1
+    // (e.g. impact channels [strobe@1, dimmer@2]) would falsely conclude 1-based
+    // and subtract 1, creating dmxOffset collisions with 0-based groups.
+
     return channels.map(ch => {
       const chType = this._normalizeChannelType(ch.type)
-      // 🎛️ DMX Personality: Trinity contract no longer stores minDimmer/strobePersonality
-      // in DerivedCapabilities. These values must now be provided via DMX Governors or
-      // channel-level configuration if needed in the future.
       const dmxPersonality: INodeChannelDef['dmxPersonality'] | undefined = undefined
       const mapped: INodeChannelDef = {
         type:         chType as AetherChannelType,
-        // 🔧 WAVE 4735.7: FixtureChannel.index is 1-based (DMX channel 1,2,3...).
         // dmxOffset must be 0-based (offset within fixture).
-        dmxOffset:    ch.index - 1,
+        // 0-based: dmxOffset = ch.index (already 0-based)
+        // 1-based: dmxOffset = ch.index - 1 (convert from 1-based)
+        dmxOffset:    isZeroBased ? ch.index : ch.index - 1,
         defaultValue: this._resolveDefaultValue(ch, kinetic),
         is16bit:    ch.is16bit  ?? false,
         customName: ch.customName,
@@ -1256,17 +1284,38 @@ export class NodeExtractionPipeline {
 
   private _buildColorWheelDef(fixtureDef: Readonly<FixtureDefinition>): ColorWheelDefinition | undefined {
     const wh = fixtureDef.wheels
-    if (!wh || wh.colors.length === 0) return undefined
+    if (wh && wh.colors.length > 0) {
+      return {
+        name:            fixtureDef.name + ' Color Wheel',
+        slots:           wh.colors.map(c => ({
+          name:       c.name,
+          dmxValue:   c.dmx,
+          previewRgb: c.rgb,
+        })),
+        minTransitionMs: wh.minChangeTimeMs ?? 200,
+      } satisfies ColorWheelDefinition
+    }
 
-    return {
-      name:            fixtureDef.name + ' Color Wheel',
-      slots:           wh.colors.map(c => ({
-        name:       c.name,
-        dmxValue:   c.dmx,
-        previewRgb: c.rgb,
-      })),
-      minTransitionMs: wh.minChangeTimeMs ?? 200,
-    } satisfies ColorWheelDefinition
+    // Fallback: legacy JSONs store wheel data in capabilities.colorWheel
+    // (pre-unification format, before wheels field was introduced)
+    const legacyWheel = (fixtureDef as FixtureDefinition & {
+      capabilities?: DerivedCapabilities & {
+        colorWheel?: { colors: WheelColor[]; minChangeTimeMs?: number }
+      }
+    }).capabilities?.colorWheel
+    if (legacyWheel && legacyWheel.colors.length > 0) {
+      return {
+        name:            fixtureDef.name + ' Color Wheel',
+        slots:           legacyWheel.colors.map(c => ({
+          name:       c.name,
+          dmxValue:   c.dmx,
+          previewRgb: c.rgb,
+        })),
+        minTransitionMs: legacyWheel.minChangeTimeMs ?? 200,
+      } satisfies ColorWheelDefinition
+    }
+
+    return undefined
   }
 
   private _mapMotorType(legacyMotor: string | undefined): MotorType {

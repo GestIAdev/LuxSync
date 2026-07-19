@@ -12,8 +12,11 @@
  * @version WAVE 2030.8
  */
 
-import React, { useMemo } from 'react'
-import type { HephCurve, HephParamId } from '../../../core/hephaestus/types'
+import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
+import type { HephCurve, HephParamId, ZoneTarget } from '../../../core/hephaestus/types'
+import type { EffectZone } from '../../../core/effects/types'
+import { SmartZoneSelector, getZoneBadgeText, getZoneBadgeIcon } from './SmartZoneSelector'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PARAM METADATA — Exported for use in other components
@@ -117,7 +120,7 @@ const MiniCurvePreview: React.FC<{ curve: HephCurve; color: string }> = ({ curve
   }, [curve])
 
   return (
-    <svg width="120" height="24" viewBox="0 0 120 24" className="param-lane__mini-curve">
+    <svg width="120" height="24" viewBox="0 0 120 24" className="param-lane__mini-curve" style={{ pointerEvents: 'none', zIndex: 0, position: 'relative' }}>
       <path d={pathD} stroke={color} strokeWidth="1.5" fill="none" opacity="0.7" />
     </svg>
   )
@@ -128,53 +131,209 @@ const MiniCurvePreview: React.FC<{ curve: HephCurve; color: string }> = ({ curve
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface ParameterLaneProps {
+  trackId: string
   paramId: HephParamId
   curve: HephCurve
+  zones: readonly ZoneTarget[]
   isActive: boolean
   onClick: () => void
-  onRemove?: (paramId: HephParamId) => void  // WAVE 2030.8: Delete handler
+  onRemove?: (trackId: string) => void
+  onDuplicate?: (trackId: string) => void
+  onTrackZonesChange?: (trackId: string, zones: ZoneTarget[]) => void
 }
 
 export const ParameterLane: React.FC<ParameterLaneProps> = ({
+  trackId,
   paramId,
   curve,
+  zones,
   isActive,
   onClick,
   onRemove,
+  onDuplicate,
+  onTrackZonesChange,
 }) => {
   const meta = PARAM_META[paramId] ?? { label: paramId.toUpperCase(), color: '#888', icon: '●' }
+  const [showZonePopover, setShowZonePopover] = useState(false)
+  const zoneBadgeRef = useRef<HTMLButtonElement>(null)
+  const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null)
+
+  // Compute popover position from badge rect when opening
+  const openPopover = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (zoneBadgeRef.current) {
+      const rect = zoneBadgeRef.current.getBoundingClientRect()
+      setPopoverPos({ top: rect.bottom + 4, left: rect.left })
+    }
+    setShowZonePopover(true)
+  }, [])
+
+  // Click-outside to close zone popover
+  useEffect(() => {
+    if (!showZonePopover) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        zoneBadgeRef.current && !zoneBadgeRef.current.contains(e.target as Node) &&
+        !(e.target as HTMLElement).closest('.param-lane__zone-popover-portal')
+      ) {
+        setShowZonePopover(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showZonePopover])
 
   const handleRemove = (e: React.MouseEvent) => {
-    e.stopPropagation()  // Don't trigger onClick
+    e.stopPropagation()
     if (onRemove) {
-      onRemove(paramId)
+      onRemove(trackId)
     }
   }
 
+  const handleDuplicate = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (onDuplicate) {
+      onDuplicate(trackId)
+    }
+  }
+
+  const handleZoneToggle = useCallback((effZones: EffectZone[]) => {
+    if (onTrackZonesChange) {
+      onTrackZonesChange(trackId, effZones as ZoneTarget[])
+    }
+  }, [trackId, onTrackZonesChange])
+
+  const zoneBadgeText = getZoneBadgeText(zones as EffectZone[])
+  const zoneBadgeIcon = getZoneBadgeIcon(zones as EffectZone[])
+
+  const modeAbbr: Record<string, string> = {
+    absolute: 'ABS',
+    relative: 'REL',
+    additive: 'ADD',
+  }
+  const modeText = modeAbbr[curve.mode] ?? curve.mode.slice(0, 3).toUpperCase()
+
   return (
-    <button
+    <div
       className={`param-lane ${isActive ? 'param-lane--active' : ''}`}
       onClick={onClick}
-      style={{ '--lane-color': meta.color } as React.CSSProperties}
+      style={{ '--lane-color': meta.color, position: 'relative' } as React.CSSProperties}
     >
       <span className="param-lane__icon">{meta.icon}</span>
-      <div className="param-lane__info">
-        <span className="param-lane__label">{meta.label}</span>
-        <span className="param-lane__mode">{curve.mode.toUpperCase()}</span>
+      <div className="param-lane__info" style={{ position: 'relative', zIndex: 10 }}>
+        {/* Row 1: param name + mode abbreviation */}
+        <div className="param-lane__label-row" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span className="param-lane__label">{meta.label}</span>
+          <span className="param-lane__mode-abbr" style={{
+            fontSize: '8px',
+            fontWeight: 600,
+            color: 'rgba(255,255,255,0.25)',
+            letterSpacing: '0.08em',
+            fontFamily: '"Rajdhani", sans-serif',
+            flexShrink: 0,
+          }}>
+            {modeText}
+          </span>
+        </div>
       </div>
       <MiniCurvePreview curve={curve} color={meta.color} />
-      {isActive && <span className="param-lane__indicator" />}
-      
-      {/* WAVE 2030.8: Delete button */}
-      {onRemove && (
-        <span 
-          className="param-lane__delete"
-          onClick={handleRemove}
-          title={`Remove ${meta.label} parameter`}
+
+      {/* Zone badge — absolute positioned, spans full lane width */}
+      {onTrackZonesChange && (
+        <button
+          ref={zoneBadgeRef}
+          className="param-lane__zone-badge"
+          onClick={openPopover}
+          title="Click to edit zone targeting for this track"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '3px',
+            background: 'rgba(0,0,0,0.3)',
+            border: `1px solid ${isActive ? 'rgba(255,107,43,0.3)' : 'rgba(255,255,255,0.08)'}`,
+            borderRadius: '3px',
+            padding: '1px 5px',
+            fontSize: '8px',
+            fontWeight: 600,
+            color: isActive ? '#ff8c42' : '#777',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            letterSpacing: '0.04em',
+            fontFamily: '"Rajdhani", sans-serif',
+            lineHeight: '14px',
+          }}
         >
-          ×
-        </span>
+          <span style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>{zoneBadgeIcon}</span>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{zoneBadgeText}</span>
+        </button>
       )}
-    </button>
+
+      {isActive && <span className="param-lane__indicator" />}
+
+      {/* Hover actions — duplicate + delete */}
+      <div
+        className={`param-lane__actions ${isActive ? 'param-lane__actions--visible' : ''}`}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '2px',
+          flexShrink: 0,
+          zIndex: 11,
+          position: 'relative',
+        }}
+      >
+        {onDuplicate && (
+          <span
+            className="param-lane__duplicate"
+            onClick={handleDuplicate}
+            title={`Duplicate ${meta.label} track`}
+          >
+            ⧉
+          </span>
+        )}
+        {onRemove && (
+          <span
+            className="param-lane__delete"
+            onClick={handleRemove}
+            title={`Remove ${meta.label} track`}
+          >
+            ×
+          </span>
+        )}
+      </div>
+
+      {/* Zone popover — rendered via Portal to document.body */}
+      {showZonePopover && popoverPos && createPortal(
+        <div
+          className="param-lane__zone-popover-portal"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+          style={{
+            position: 'fixed',
+            top: popoverPos.top,
+            left: popoverPos.left,
+            zIndex: 99999,
+            background: '#0a0a0f',
+            border: '1px solid rgba(255, 107, 43, 0.2)',
+            borderRadius: '6px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.8)',
+            padding: '8px',
+            minWidth: '200px',
+          }}
+        >
+          <div style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(255,107,43,0.5)', letterSpacing: '0.1em', marginBottom: '6px', fontFamily: '"Rajdhani", sans-serif' }}>
+            ZONE TARGET — {meta.label}
+          </div>
+          <SmartZoneSelector
+            selectedZones={zones as EffectZone[]}
+            onZonesChange={handleZoneToggle}
+            compact
+          />
+        </div>,
+        document.body
+      )}
+    </div>
   )
 }

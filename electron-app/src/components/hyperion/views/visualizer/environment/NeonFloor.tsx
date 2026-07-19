@@ -33,7 +33,6 @@ interface NeonFloorProps {
   width?: number
   depth?: number
   showGrid?: boolean
-  beatIntensity?: number
   primaryColor?: string
   secondaryColor?: string
 }
@@ -46,7 +45,6 @@ export const NeonFloor: React.FC<NeonFloorProps> = ({
   width = 12,
   depth = 8,
   showGrid = true,
-  beatIntensity = 0,
   primaryColor = '#00F0FF',
   secondaryColor = '#FF00E5',
 }) => {

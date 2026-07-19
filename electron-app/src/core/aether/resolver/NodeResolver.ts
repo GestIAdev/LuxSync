@@ -1283,11 +1283,15 @@ export class NodeResolver implements INodeResolver {
       if (_govs !== undefined && _govs.length > 0) {
         finalByte = sanitizeDmxByte(applyDMXGovernors(_govs, chDef.dmxOffset, chDef.type, rawNormalized, safeDmxValue))
 
-        // 🚨 EL SONAR DEL GOBERNADOR (Loguea SOLO si altera el byte físico)
-        // Usamos Math.random() < 0.02 para que a 44Hz solo escupa el log aprox 1 vez por segundo y no congele la terminal.
-        if (finalByte !== safeDmxValue && Math.random() < 0.02) {
-          console.log(`[Governor MUX 🏛️] Intercept: ${device.deviceId} (CH:${chDef.dmxOffset}|${chDef.type}) | Math: ${safeDmxValue} ──► CLAMP: ${finalByte}`)
-        }
+        // // 🚨 EL SONAR DEL GOBERNADOR (Loguea SOLO si altera el byte físico)
+        // // Usamos Math.random() < 0.02 para que a 44Hz solo escupa el log aprox 1 vez por segundo y no congele la terminal.
+        // if (finalByte !== safeDmxValue && Math.random() < 0.02) {
+        //   console.log(`[Governor MUX 🏛️] Intercept: ${device.deviceId} (CH:${chDef.dmxOffset}|${chDef.type}) | Math: ${safeDmxValue} ──► CLAMP: ${finalByte}`)
+        // }
+        // // WAVE 7031 DIAG: Trace dimmer/strobe governor evaluation at 1Hz
+        // if ((chDef.type === 'dimmer' || chDef.type === 'strobe') && this._resolveFrameIndex % 44 === 0) {
+        //   console.log(`[WAVE-7031-DIAG] ${device.deviceId} ch=${chDef.dmxOffset} type=${chDef.type} norm=${rawNormalized.toFixed(3)} byte=${safeDmxValue} → final=${finalByte} govs=${_govs.length}`)
+        // }
       }
       buf[bufIdx] = finalByte
     }

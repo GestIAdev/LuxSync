@@ -14,7 +14,7 @@
       "front-back"
     ],
     "vibeCompat": [
-      "techno"
+      "techno-club"
     ],
     "durationMs": 2000,
     "effectType": "heph_custom",
@@ -26,7 +26,7 @@
       },
       "textureAffinity": "dirty",
       "compatibleVibes": [
-        "techno"
+        "techno-club"
       ],
       "validSections": [
         "drop",
@@ -40,7 +40,11 @@
         "min": 0.6,
         "max": 1
       },
-      "spatialBehavior": "dynamic"
+      "spatialBehavior": "dynamic",
+      "pressureRange": {
+        "min": 0.5,
+        "max": 1
+      }
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -93,6 +97,10 @@
               "value": 0,
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         },
         "blendMode": "replace"
@@ -128,6 +136,10 @@
               "value": 0,
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         },
         "blendMode": "replace"
@@ -156,6 +168,10 @@
               },
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            360
           ]
         },
         "blendMode": "replace"
@@ -184,6 +200,10 @@
               },
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            360
           ]
         },
         "blendMode": "replace"
@@ -205,6 +225,10 @@
               "value": 1,
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         }
       },
@@ -225,6 +249,10 @@
               "value": 1,
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         }
       },
@@ -246,9 +274,21 @@
               "value": 0,
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         }
       }
-    ]
-  }
+    ],
+    "spatialZones": [
+      "front",
+      "back",
+      "all-movers",
+      "air"
+    ],
+    "schemaVersion": "3.0"
+  },
+  "checksum": "2e3b471b9f0aaed59a71e500b4bd1e9790c45dce5867d3979019ac9948801bc6"
 }

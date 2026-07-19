@@ -121,18 +121,15 @@ const WebGLContextHandler: React.FC = () => {
 /**
  * Beat Tracker — Tracks beat intensity for visual effects
  */
-const BeatTracker: React.FC<{ onBeatIntensity: (intensity: number) => void }> = ({ onBeatIntensity }) => {
+const BeatTracker: React.FC<{ beatIntensityRef: React.MutableRefObject<number> }> = ({ beatIntensityRef }) => {
   const onBeat = useAudioStore(state => state.onBeat)
-  const beatIntensityRef = useRef(0)
 
   useFrame((_, delta) => {
-    // Decay beat intensity
     if (onBeat) {
       beatIntensityRef.current = 1.0
     } else {
-      beatIntensityRef.current *= Math.exp(-8 * delta)  // Exponential decay
+      beatIntensityRef.current *= Math.exp(-8 * delta)
     }
-    onBeatIntensity(beatIntensityRef.current)
   })
 
   return null
@@ -220,7 +217,7 @@ const Scene: React.FC<{
   onSelect,
   onMetrics,
 }) => {
-  const [beatIntensity, setBeatIntensity] = useState(0)
+  const beatIntensityRef = useRef(0)
   const qualitySettings = QUALITY_PRESETS[quality]
 
   // Get fixture data from stores, wiring real stage dimensions
@@ -247,7 +244,7 @@ const Scene: React.FC<{
        * HELPERS & HANDLERS
        * ═══════════════════════════════════════════════════════════════════ */}
       <WebGLContextHandler />
-      <BeatTracker onBeatIntensity={setBeatIntensity} />
+      <BeatTracker beatIntensityRef={beatIntensityRef} />
       {onMetrics && <PerformanceMonitor onMetrics={onMetrics} fixtureCount={fixtureCount} />}
 
       {/* ═══════════════════════════════════════════════════════════════════
@@ -290,7 +287,6 @@ const Scene: React.FC<{
         width={stageConfig.width}
         depth={stageConfig.depth}
         showGrid={showFloorGrid}
-        beatIntensity={beatIntensity}
       />
       
       {showTruss && (
@@ -311,7 +307,6 @@ const Scene: React.FC<{
           fixture={fixture}
           onSelect={onSelect}
           showBeam={showBeams}
-          beatIntensity={beatIntensity}
         />
       ))}
 
@@ -324,7 +319,6 @@ const Scene: React.FC<{
           fixture={fixture}
           onSelect={onSelect}
           showBeam={showBeams}
-          beatIntensity={beatIntensity}
         />
       ))}
 
@@ -337,7 +331,6 @@ const Scene: React.FC<{
           fixture={fixture}
           onSelect={onSelect}
           showBeam={showBeams}
-          beatIntensity={beatIntensity}
         />
       ))}
 
@@ -354,7 +347,6 @@ const Scene: React.FC<{
           enabled={true}
           intensity={0.4}
           luminanceThreshold={0.85}
-          beatIntensity={beatIntensity * 0.15}
         />
       )}
     </>

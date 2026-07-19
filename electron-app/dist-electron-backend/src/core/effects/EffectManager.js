@@ -435,12 +435,13 @@ export class EffectManager extends EventEmitter {
                     sectionEncoded: 0,
                     textureEncoded: 0,
                 };
-                // 🧬 WAVE 5000.V3 FIX: Nepotism abolished. Only the EXACT organism_id
-                // that was fired in the live arena receives metabolic reward.
-                // If effectType is a blueprint ancestral ID (not a mutated child),
-                // this query returns 0 rows — granite ancestors don't eat.
+                // 🧬 WAVE 7166 FIX: Query by blueprint_id, NOT organism_id.
+                // config.effectType is the blueprint ancestral ID (e.g. 'solar_flare'),
+                // not an organism_id (e.g. 'org_xxxx'). The old query matched
+                // organism_id = config.effectType which ALWAYS returned 0 rows,
+                // starving the entire ecosystem of trials and fitness.
                 const organisms = db.prepare(`SELECT organism_id FROM lfx_organisms
-           WHERE organism_id = ? AND status = 'alive'`).all(config.effectType);
+           WHERE blueprint_id = ? AND status = 'alive'`).all(config.effectType);
                 // 🧬 BIG BANG SPARK: If the blueprint has zero living descendants, spawn
                 // an initial cohort immediately. This ensures that any effect fired in
                 // vivo — even if cold-start seeding missed it — gets its first children.
@@ -773,6 +774,45 @@ export class EffectManager extends EventEmitter {
             effect.abort();
             this.activeEffects.delete(effectId);
             return true;
+        }
+        return false;
+    }
+    /**
+     * 🎯 WAVE 7158: ABORT EFFECTS CONTROLLING MOVEMENT — Resource Masking
+     *
+     * Interrogates the actual output vector of each active effect (not static maps)
+     * to find which ones are controlling spatial resources (pan/tilt/movement).
+     * Aborts them for a clean handoff when a new effect needs those same resources.
+     *
+     * @returns Array of aborted effect type names (for logging)
+     */
+    abortEffectsControllingMovement() {
+        const aborted = [];
+        for (const [id, effect] of this.activeEffects) {
+            const output = effect.getOutput();
+            if (output?.movement) {
+                effect.abort();
+                this.activeEffects.delete(id);
+                aborted.push(effect.effectType);
+                this.emit('effectFinished', { effectId: id });
+            }
+        }
+        return aborted;
+    }
+    /**
+     * 🎯 WAVE 7158: HAS ACTIVE EFFECTS CONTROLLING MOVEMENT — Resource Query
+     *
+     * Checks if any active effect is currently controlling spatial resources
+     * by interrogating actual output vectors. Used by V3 IGNITE BYPASS to
+     * detect resource conflicts before firing.
+     *
+     * @returns true if any active effect has movement in its output
+     */
+    hasActiveMovementControl() {
+        for (const effect of this.activeEffects.values()) {
+            const output = effect.getOutput();
+            if (output?.movement)
+                return true;
         }
         return false;
     }

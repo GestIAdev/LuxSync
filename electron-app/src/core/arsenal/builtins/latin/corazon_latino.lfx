@@ -11,12 +11,13 @@
       "fiesta-latina"
     ],
     "vibeCompat": [
-      "latin"
+      "fiesta-latina"
     ],
     "spatialZones": [
       "back",
-      "all-movers",
       "front",
+      "all-movers",
+      "air",
       "floor",
       "ambient"
     ],
@@ -30,7 +31,7 @@
       },
       "textureAffinity": "clean",
       "compatibleVibes": [
-        "latin"
+        "fiesta-latina"
       ],
       "validSections": [
         "ambient",
@@ -46,7 +47,11 @@
         "min": 0.25,
         "max": 0.6
       },
-      "spatialBehavior": "static"
+      "spatialBehavior": "static",
+      "pressureRange": {
+        "min": 0,
+        "max": 1
+      }
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -102,6 +107,10 @@
               },
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            360
           ]
         }
       },
@@ -167,6 +176,10 @@
               "value": 0.16,
               "interpolation": "linear"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         }
       },
@@ -195,6 +208,10 @@
               },
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            360
           ]
         }
       },
@@ -230,6 +247,10 @@
               "value": 0.2,
               "interpolation": "linear"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         }
       },
@@ -259,6 +280,10 @@
               },
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            360
           ]
         }
       },
@@ -325,6 +350,10 @@
               "value": 0.12,
               "interpolation": "linear"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         }
       },
@@ -353,6 +382,10 @@
               },
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            360
           ]
         }
       },
@@ -418,6 +451,10 @@
               "value": 0.1,
               "interpolation": "linear"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         }
       },
@@ -446,6 +483,10 @@
               },
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            360
           ]
         }
       },
@@ -511,9 +552,15 @@
               "value": 0.12,
               "interpolation": "linear"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         }
       }
-    ]
-  }
+    ],
+    "schemaVersion": "3.0"
+  },
+  "checksum": "24d64a3ed26a2061809b16892b7b6d1c47a19e815e51c5538099ba87565cc8db"
 }

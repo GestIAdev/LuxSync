@@ -95,7 +95,11 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
   
   // 🔥 WAVE 2463: PATH 1.5 — Library store in RAM (fans, ingenios, user fixtures)
   const getLibraryFixtureById = useLibraryStore(state => state.getFixtureById)
-  
+
+  // WAVE 4736: Subscribe to fixtureOverrides so we can hydrate slider values
+  // from the store when the component remounts (e.g. after switching views).
+  const fixtureOverrides = useProgrammerStore(s => s.fixtureOverrides)
+
   // Phantom channel values: Map<channelIndex, dmxValue>
   const [channelValues, setChannelValues] = useState<Map<number, number>>(new Map())
   
@@ -322,12 +326,29 @@ export const ExtrasSection: React.FC<ExtrasSectionProps> = ({
         allPhantomChannels.sort((a, b) => a.channelIndex - b.channelIndex)
         setPhantomChannels(allPhantomChannels)
         
-        // Initialize values with defaults — but ONLY for channels not yet in state
-        // (preserves any values the operator already set before resolution finished)
+        // Initialize values — hydrate from store if available, else use defaults.
+        // WAVE 4736: This fixes the hydration bug where switching views lost slider values.
         setChannelValues(prev => {
           const merged = new Map(prev)
           for (const ch of allPhantomChannels) {
-            if (!merged.has(ch.channelIndex)) {
+            // Compute the store key (same logic as handleChannelChange)
+            const isNameKeyed = ch.type === 'custom' || ch.type === 'unknown'
+            const storeKey = isNameKeyed ? ch.label : ch.type
+            
+            // Search all fixture overrides for this extras key
+            let storedValue: number | undefined
+            for (const ov of fixtureOverrides.values()) {
+              const found = ov.extras?.get(storeKey)
+              if (found !== undefined) {
+                storedValue = Math.round(found * 255)
+                break
+              }
+            }
+            
+            if (storedValue !== undefined) {
+              merged.set(ch.channelIndex, storedValue)
+              operatorSetRef.current.add(ch.channelIndex)
+            } else if (!merged.has(ch.channelIndex)) {
               merged.set(ch.channelIndex, ch.defaultValue)
             }
           }

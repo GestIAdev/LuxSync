@@ -101,7 +101,11 @@
         "min": 0.03,
         "max": 0.33
       },
-      "spatialBehavior": "static"
+      "spatialBehavior": "static",
+      "pressureRange": {
+        "min": 0,
+        "max": 1
+      }
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -121,7 +125,8 @@
         "minimumZ": null,
         "minimumEnergy": null
       }
-    }
+    },
+    "schemaVersion": "3.0"
   },
-  "checksum": "212ea8df10dba2ae7399d74c5936f80cd226d40147425eee9b569c0d68f4cf42"
+  "checksum": "465a1775ae00603cf9092551d80abf2f9e059e3e3bdb541bce39cbc71d24c480"
 }

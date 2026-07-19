@@ -156,6 +156,9 @@ export interface EffectScenario {
   // 🧬 GENESIS: Organism identity for nurture bias
   trialsCount?: number              // Number of live fires (undefined = consolidated blueprint)
   isMutant?: boolean                // true if this candidate is an evolved organism
+
+  // 🎨 WAVE 7168: Texture affinity contextual bonus (-0.03 to +0.08)
+  textureBonus?: number             // Bonus/malus from texture affinity vs acoustic environment
 }
 
 export interface EffectDreamResult {
@@ -439,6 +442,9 @@ export class EffectDreamSimulator {
     const registryEntry = registry.getEntry(effect.effect)
     const trialsCount = registryEntry?.trialsCount
     const isMutant = !!registryEntry?.organismId
+
+    // 🎨 WAVE 7168: Texture affinity contextual bonus
+    const textureBonus = this.calculateTextureBonus(effect.effect, context)
     
     return {
       effect,
@@ -458,6 +464,7 @@ export class EffectDreamSimulator {
       simulationConfidence,
       trialsCount,              // 🧬 GENESIS: for nurture bias
       isMutant,                 // 🧬 GENESIS: mutant flag
+      textureBonus,             // 🎨 WAVE 7168: texture affinity bonus
     }
   }
   
@@ -1388,7 +1395,60 @@ export class EffectDreamSimulator {
     
     return confidence
   }
-  
+
+  // ═══════════════════════════════════════════════════════════════
+  // 🎨 WAVE 7168: TEXTURE AFFINITY CONTEXTUAL BONUS
+  // ═══════════════════════════════════════════════════════════════
+  // Re-activates texture affinity as a SOFT contextual modifier (not a gate).
+  // Uses the same dirtiness formula as FluidDescriptorEngine for consistency.
+  //
+  // Bonus range: -0.03 (mild conflict) to +0.08 (strong match).
+  // Universal effects: always 0 (neutral).
+  // Dirty effects: bonus proportional to environment dirtiness.
+  // Clean effects: bonus proportional to environment cleanliness.
+  // Cross-match (dirty in clean / clean in dirty): small -0.03 penalty.
+  // ═══════════════════════════════════════════════════════════════
+
+  private calculateTextureBonus(
+    effectId: string,
+    context: AudienceSafetyContext
+  ): number {
+    const entry = getDynamicEffectRegistry().getEntry(effectId)
+    if (!entry) return 0
+
+    const affinity = entry.textureAffinity
+    if (affinity === 'universal') return 0
+
+    const spectral = context.spectral
+    if (!spectral) return 0
+
+    const harshness = spectral.harshness ?? 0.3
+    const flatness = spectral.flatness ?? 0.1
+    const clarity = spectral.clarity ?? 0.5
+
+    // Same formula as FluidDescriptorEngine.dirtiness
+    const dirtiness = harshness * (0.5 + 0.5 * flatness)
+    const cleanliness = clarity * (1 - dirtiness)
+
+    if (affinity === 'dirty') {
+      // Dirty effect thrives in dirty environment
+      let bonus = dirtiness * 0.08
+      // Mild penalty if environment is very clean
+      if (dirtiness < 0.12) bonus -= 0.03
+      return bonus
+    }
+
+    if (affinity === 'clean') {
+      // Clean effect thrives in clean environment
+      let bonus = cleanliness * 0.08
+      // Mild penalty if environment is very dirty
+      if (dirtiness > 0.35) bonus -= 0.03
+      return bonus
+    }
+
+    return 0
+  }
+
   // ═══════════════════════════════════════════════════════════════
   // PRIVATE: RANKING & RECOMMENDATION
   // ═══════════════════════════════════════════════════════════════
@@ -1414,7 +1474,7 @@ export class EffectDreamSimulator {
         const vib = `VIB=${sc.vibeCoherence.toFixed(3)}`
         const rsk = `RSK=${sc.riskLevel.toFixed(3)}`
         const dist = `dist=${sc.dnaDistance.toFixed(3)}`
-        const tex = sc.effect.reasoning.includes('TEXTURE') ? '🎨REJECTED' : ''
+        const tex = sc.textureBonus ? `TEX=${sc.textureBonus >= 0 ? '+' : ''}${sc.textureBonus.toFixed(3)}` : ''
         const displayName = effectDisplayName(sc.effect.effectName ?? sc.effect.effect)
         return `  ${i + 1}. ${displayName.padEnd(20)} SCORE=${s.score.toFixed(3)} | ${dna} ${div} ${vib} ${rsk} ${dist} ${tex}`
       }).join('\n')
@@ -1609,7 +1669,16 @@ export class EffectDreamSimulator {
     if (nurtureBoost > 0 && this.simulationCount % 10 === 0) {
       console.log(`[DREAM_SIMULATOR] 🧬 NURTURE BIAS: "${effectDisplayName(effectName)}" +${nurtureBoost} (trials: ${scenario.trialsCount})`)
     }
-    
+
+    // ═══════════════════════════════════════════════════════════════
+    // 🎨 WAVE 7168: TEXTURE AFFINITY CONTEXTUAL BONUS
+    // Soft modifier: +0.08 max match, -0.03 max conflict, 0 for universal.
+    // Applied AFTER nurture bias, BEFORE diversity multiplicative penalty
+    // so it participates in the final score but never vetoes a candidate.
+    // ═══════════════════════════════════════════════════════════════
+    const textureBonus = scenario.textureBonus ?? 0
+    score += textureBonus
+
     // ═══════════════════════════════════════════════════════════════
     // 🎲 WAVE 7158: DIVERSITY MULTIPLICATIVE FINAL PENALTY
     // ═══════════════════════════════════════════════════════════════

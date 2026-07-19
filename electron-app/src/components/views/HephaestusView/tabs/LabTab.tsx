@@ -39,6 +39,8 @@ import type {
 import type { PhaseConfigPro } from '../../../../core/hephaestus/phase/PhaseConfigPro'
 import type { PhaseOverride } from '../../../../core/hephaestus/phase/PhaseOverride'
 import { resolveZoneTags } from '../../../../core/zones/ZoneMapper'
+import { getZoneBadgeText, getZoneBadgeIcon } from '../SmartZoneSelector'
+import type { EffectZone } from '../../../../core/effects/types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -223,13 +225,47 @@ export const LabTab: React.FC<LabTabProps> = ({ temporalActions, isSaving = fals
               backgroundPosition: 'right 8px center',
             }}
           >
-            {clip?.tracks.map(t => (
+            {clip?.tracks.map(t => {
+              const zoneText = getZoneBadgeText(t.zones as EffectZone[])
+              return (
               <option key={t.id} value={t.id} style={{ background: '#0a0a0f', color: '#FF6B2B', fontSize: '11px', fontFamily: '"Rajdhani", sans-serif' }}>
-                {t.paramId.toUpperCase()}
+                {t.paramId.toUpperCase()} — {zoneText}
               </option>
-            )) ?? <option value="">No tracks</option>}
+              )
+            }) ?? <option value="">No tracks</option>}
           </select>
         </div>
+
+        {/* WAVE 7161: Zone badge — shows which fixture group the phase distributor targets */}
+        {activeTrack && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            marginBottom: '6px',
+            flexShrink: 0,
+            padding: '4px 8px',
+            background: 'rgba(255, 107, 43, 0.06)',
+            border: '1px solid rgba(255, 107, 43, 0.15)',
+            borderRadius: '4px',
+            fontSize: '10px',
+            fontFamily: '"Rajdhani", "Eurostile", sans-serif',
+            fontWeight: 600,
+            color: '#ff8c42',
+            letterSpacing: '0.06em',
+          }}>
+            <span style={{ display: 'flex', alignItems: 'center' }}>
+              {getZoneBadgeIcon(activeTrack.zones as EffectZone[])}
+            </span>
+            <span>PHASE TARGET:</span>
+            <span style={{ color: '#fff', fontWeight: 700 }}>
+              {getZoneBadgeText(activeTrack.zones as EffectZone[])}
+            </span>
+            <span style={{ color: 'rgba(255,107,43,0.4)', fontSize: '9px' }}>
+              ({activeTrack.paramId.toUpperCase()})
+            </span>
+          </div>
+        )}
 
         <div className="heph-lab-phase-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <PhaseControls

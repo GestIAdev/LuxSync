@@ -403,25 +403,26 @@ export class NodeResolver {
      */
     resolve(arbitrated) {
         this._resolveFrameIndex++;
-        // 🚨 WAVE 4735.5 AUTO-DIAGNOSTIC: throttled warning if the gate is closed
-        // while there's substantial arbitrated traffic and no manual exemptions.
-        // This is the #1 silent-blackout cause.
-        if (this._safetyMiddleware && this._resolveFrameIndex % 200 === 0) {
-            const gateOpen = this._safetyMiddleware.isOutputEnabled();
-            if (!gateOpen && arbitrated.size > 0) {
-                let manualCount = 0;
-                for (const [nid] of arbitrated) {
-                    if (this._safetyMiddleware.isManualNode(nid))
-                        manualCount++;
-                }
-                if (manualCount === 0) {
-                    console.warn(`[NodeResolver 🚨 SILENT-BLACKOUT?] f=${this._resolveFrameIndex} | ` +
-                        `gateOpen=false, manualNodes=0, arbitrated.size=${arbitrated.size} → ` +
-                        `Smart Gate is blocking ALL non-KINETIC nodes. ` +
-                        `Check TitanOrchestrator._outputEnabled (boot default = false).`);
-                }
-            }
-        }
+        // 🚨 WAVE 4735.5 AUTO-DIAGNOSTIC: DISABLED — no hardware connected in dev,
+        // UI simulates lights by bypassing the output gate. This warning was
+        // irrelevant noise that confused the architect AI. Goodbye. 👋
+        // if (this._safetyMiddleware && this._resolveFrameIndex % 200 === 0) {
+        //   const gateOpen = this._safetyMiddleware.isOutputEnabled()
+        //   if (!gateOpen && arbitrated.size > 0) {
+        //     let manualCount = 0
+        //     for (const [nid] of arbitrated) {
+        //       if (this._safetyMiddleware.isManualNode(nid)) manualCount++
+        //     }
+        //     if (manualCount === 0) {
+        //       console.warn(
+        //         `[NodeResolver 🚨 SILENT-BLACKOUT?] f=${this._resolveFrameIndex} | ` +
+        //         `gateOpen=false, manualNodes=0, arbitrated.size=${arbitrated.size} → ` +
+        //         `Smart Gate is blocking ALL non-KINETIC nodes. ` +
+        //         `Check TitanOrchestrator._outputEnabled (boot default = false).`
+        //       )
+        //     }
+        //   }
+        // }
         // 1. Zero-fill y marcar universos como inactivos
         this._activeUniverses.clear();
         for (const [, buf] of this._universeBuffers) {
@@ -1095,11 +1096,15 @@ export class NodeResolver {
             let finalByte = safeDmxValue;
             if (_govs !== undefined && _govs.length > 0) {
                 finalByte = sanitizeDmxByte(applyDMXGovernors(_govs, chDef.dmxOffset, chDef.type, rawNormalized, safeDmxValue));
-                // 🚨 EL SONAR DEL GOBERNADOR (Loguea SOLO si altera el byte físico)
-                // Usamos Math.random() < 0.02 para que a 44Hz solo escupa el log aprox 1 vez por segundo y no congele la terminal.
-                if (finalByte !== safeDmxValue && Math.random() < 0.02) {
-                    console.log(`[Governor MUX 🏛️] Intercept: ${device.deviceId} (CH:${chDef.dmxOffset}|${chDef.type}) | Math: ${safeDmxValue} ──► CLAMP: ${finalByte}`);
-                }
+                // // 🚨 EL SONAR DEL GOBERNADOR (Loguea SOLO si altera el byte físico)
+                // // Usamos Math.random() < 0.02 para que a 44Hz solo escupa el log aprox 1 vez por segundo y no congele la terminal.
+                // if (finalByte !== safeDmxValue && Math.random() < 0.02) {
+                //   console.log(`[Governor MUX 🏛️] Intercept: ${device.deviceId} (CH:${chDef.dmxOffset}|${chDef.type}) | Math: ${safeDmxValue} ──► CLAMP: ${finalByte}`)
+                // }
+                // // WAVE 7031 DIAG: Trace dimmer/strobe governor evaluation at 1Hz
+                // if ((chDef.type === 'dimmer' || chDef.type === 'strobe') && this._resolveFrameIndex % 44 === 0) {
+                //   console.log(`[WAVE-7031-DIAG] ${device.deviceId} ch=${chDef.dmxOffset} type=${chDef.type} norm=${rawNormalized.toFixed(3)} byte=${safeDmxValue} → final=${finalByte} govs=${_govs.length}`)
+                // }
             }
             buf[bufIdx] = finalByte;
         }

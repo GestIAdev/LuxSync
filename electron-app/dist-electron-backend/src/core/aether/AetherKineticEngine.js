@@ -110,6 +110,34 @@ const DITHER_FREQ_FACTOR = 0.1;
  * Las funciones de patrón emiten [-1,1] simétrico puro.
  */
 const PAN_ASPECT_RATIO = 0.5; // 270° / 540° = 0.5
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 7030 — ORIENTATION-AWARE TILT OFFSET (VMM parity)
+// ═══════════════════════════════════════════════════════════════════════════
+// Mirrors VibeMovementManager.generateIntent tilt offset logic so that
+// manual patterns breathe with the same center of gravity as automatic VMM
+// patterns. Without this, manual patterns on totem/ceiling fixtures oscillate
+// around the raw anchor without orientation bias, causing TILT_ARBITER_MAX
+// to clip the useful range.
+//
+// The offset is applied in [-1,1] pattern space, then scaled by 0.45 (same
+// factor as the amplitude excursion) and further scaled by amplitude so it
+// vanishes at amplitude=0 (preserving the operator's anchor exactly).
+//
+// Values match VibeMovementManager.ts:
+//   totem:           -0.45  (bias towards audience)
+//   ceiling/truss:   -0.325 (center of safe hemisphere)
+//   floor:            0     (no bias — floor is the reference orientation)
+const TILT_OFFSET_TOTEM = -0.45;
+const TILT_OFFSET_CEILING = -0.325;
+function resolveTiltOffset(mountOrientation) {
+    if (mountOrientation === 'totem')
+        return TILT_OFFSET_TOTEM;
+    if (mountOrientation === 'ceiling'
+        || mountOrientation === 'truss-front'
+        || mountOrientation === 'truss-back')
+        return TILT_OFFSET_CEILING;
+    return 0; // floor and other orientations: no bias
+}
 const PATTERN_FNS = {
     // ── STATIC ─────────────────────────────────────────────────────────────
     // Guardia defensiva: si llega 'static' (no debería; el IPC lo intercepta),
@@ -250,7 +278,7 @@ export class AetherKineticEngine {
      * @param amplitude [0, 1] — amplitud (excursión del patrón)
      * @param fan       [0, 1] — valor del slider Fan/Dispersión
      */
-    setManualKinetics(nodeIds, pattern, speed, amplitude, fan, _arbiter) {
+    setManualKinetics(nodeIds, pattern, speed, amplitude, fan, _arbiter, mountOrientations) {
         console.log('[SONDA L2-ENGINE] Multitrack upsert:', pattern, 'Nodos:', nodeIds.length, 'IDs:', nodeIds);
         if (nodeIds.length === 0)
             return; // no-op: multitrack NO tiene 'stop global' implícito
@@ -282,6 +310,7 @@ export class AetherKineticEngine {
                 fan: fanClamped,
                 fanIndex: i,
                 fanTotal: total,
+                mountOrientation: (mountOrientations && mountOrientations[i]) ? mountOrientations[i].toLowerCase().trim() : 'floor',
             });
         }
     }
@@ -482,12 +511,19 @@ export class AetherKineticEngine {
             //   → Círculo real en espacio físico. Sin deformación. Sin clipping.
             const scaledX = x * PAN_ASPECT_RATIO * cfg.amplitude * 0.45;
             const scaledY = y * cfg.amplitude * 0.45;
+            // WAVE 7030 — ORIENTATION-AWARE TILT OFFSET (VMM parity)
+            // Shifts the pattern's center of gravity in [0,1] space to match what
+            // the VMM does in [-1,1] space. The offset is scaled by amplitude so
+            // it vanishes at amplitude=0 (anchor preserved) and reaches full VMM
+            // equivalent at amplitude=1. This prevents TILT_ARBITER_MAX from
+            // clipping totem/ceiling fixtures whose anchor sits near the cap.
+            const tiltOffsetNorm = resolveTiltOffset(cfg.mountOrientation) * 0.45 * cfg.amplitude;
             // WAVE 4718 — ANCHOR DEL RADAR: lectura por nodo del override L2.
             const l2 = arbiter.getManualOverride(nodeId);
             const anchorPan = (l2 && Number.isFinite(l2['pan_base'])) ? l2['pan_base'] : 0.5;
             const anchorTilt = (l2 && Number.isFinite(l2['tilt_base'])) ? l2['tilt_base'] : 0.5;
             const panBase = clamp01(anchorPan + scaledX);
-            const tiltBase = clamp01(anchorTilt + scaledY);
+            const tiltBase = clamp01(anchorTilt + scaledY + tiltOffsetNorm);
             // ── WAVE 4750 — FILTRO GLACIAR ANTI-JITTER 8-BIT ──────────────────────
             // Calcula la velocidad de cambio respecto al frame anterior.
             // Si el movimiento es glaciar (|delta| < umbral), inyecta una

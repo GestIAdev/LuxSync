@@ -39,3 +39,5 @@ El Reloj Soberano permite que efectos menores (no divinos) como `Abyssal Rise` p
 ---
 
 El barco está en el dique seco y tenemos los planos sobre la mesa. Para empezar esta reingeniería sin ahogarnos en código cruzado, ¿por qué estrato prefieres que empecemos a diseñar los nuevos modelos matemáticos: por la percepción acústica cruda (Estrato 1) o curando la alucinación de la memoria contextual (Estrato 2)?
+
+-----------------------------

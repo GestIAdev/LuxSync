@@ -16,11 +16,14 @@
       "fiesta-latina"
     ],
     "spatialZones": [
+      "all-pars",
+      "all-movers",
+      "ambient",
+      "air",
+      "flash",
       "movers-left",
       "front",
       "floor",
-      "ambient",
-      "air",
       "back",
       "movers-right"
     ],
@@ -34,7 +37,7 @@
       },
       "textureAffinity": "clean",
       "compatibleVibes": [
-        "latino-organic"
+        "fiesta-latina"
       ],
       "validSections": [
         "intro",
@@ -50,7 +53,11 @@
         "min": 0.3,
         "max": 0.7
       },
-      "spatialBehavior": "absolute"
+      "spatialBehavior": "absolute",
+      "pressureRange": {
+        "min": 0,
+        "max": 1
+      }
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -101,6 +108,10 @@
               },
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            360
           ]
         }
       },
@@ -148,6 +159,10 @@
               "value": 1,
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         }
       },
@@ -218,6 +233,10 @@
               "value": 0,
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         }
       },
@@ -288,6 +307,10 @@
               "value": 0,
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         }
       },
@@ -336,9 +359,15 @@
               "value": 0,
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         }
       }
-    ]
-  }
+    ],
+    "schemaVersion": "3.0"
+  },
+  "checksum": "2d94d4d1902a507a0522f993b4feb9e9136de16082bad978ce68ed49554db2a0"
 }

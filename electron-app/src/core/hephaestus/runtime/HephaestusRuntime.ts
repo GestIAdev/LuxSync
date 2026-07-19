@@ -164,6 +164,9 @@ interface ActiveHephClip {
    * la fase efectiva por pista vive ya en `tracks[i].fixturePhases`.
    */
   phaseConfig: PhaseConfigPro | null
+
+  /** WAVE 7172: Si true, suprime targets IK espaciales durante la vida del clip. */
+  silenceSpatial?: boolean
 }
 
 /** 
@@ -204,6 +207,8 @@ export interface HephFixtureOutput {
   clipId?: string
   // 🧩 COMPOUND ROUTING: source track zone tags for zone-aware node routing in HephaestusAetherAdapter.
   trackZones?: readonly string[]
+  // WAVE 7172: Si true, el adapter suprime IK spatial targets para este fixture.
+  silenceSpatial?: boolean
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -350,6 +355,8 @@ export class HephaestusRuntime {
     loop?: boolean
     /** ⚒️ WAVE 2400: External fixture IDs for phase distribution (pre-resolved) */
     fixtureIds?: string[]
+    /** WAVE 7172: Suprime IK spatial targets durante la vida del clip. */
+    silenceSpatial?: boolean
   } = {}): string | null {
     const clip = this.loadClip(filePath)
     if (!clip) {
@@ -382,6 +389,7 @@ export class HephaestusRuntime {
       intensity: options.intensity ?? 1.0,
       loop: options.loop ?? false,
       phaseConfig,
+      silenceSpatial: options.silenceSpatial ?? false,
     }
 
     this.activeClips.set(instanceId, activeClip)
@@ -418,6 +426,8 @@ export class HephaestusRuntime {
     loop?: boolean
     /** ⚒️ WAVE 2400: External fixture IDs for phase distribution (pre-resolved) */
     fixtureIds?: string[]
+    /** WAVE 7172: Suprime IK spatial targets durante la vida del clip. */
+    silenceSpatial?: boolean
   } = {}): string {
     const instanceId = `heph_diamond_${++this.instanceCounter}_${Date.now()}`
     const now = Date.now()
@@ -440,6 +450,7 @@ export class HephaestusRuntime {
       intensity: options.intensity ?? 1.0,
       loop: options.loop ?? false,
       phaseConfig,
+      silenceSpatial: options.silenceSpatial ?? false,
     }
 
     this.activeClips.set(instanceId, activeClip)
@@ -571,6 +582,7 @@ export class HephaestusRuntime {
     const intensity = active.intensity
     const durationMs = active.durationMs
     const isLoop = active.loop
+    const silenceSpatial = active.silenceSpatial === true
     this._blendMap.clear()
 
     for (let ti = 0; ti < active.tracks.length; ti++) {
@@ -605,6 +617,7 @@ export class HephaestusRuntime {
             isCustomThisClip,
             clipId,
             track.zones,
+            silenceSpatial,
           )
         }
         continue
@@ -624,6 +637,7 @@ export class HephaestusRuntime {
           isCustomThisClip,
           clipId,
           track.zones,
+          silenceSpatial,
         )
       }
     }
@@ -646,6 +660,7 @@ export class HephaestusRuntime {
     isCustomThisClip: boolean,
     clipId: string,
     trackZones: readonly string[] | undefined,
+    silenceSpatial?: boolean,
   ): void {
     const blendKey = fixtureId + ':' + paramName
     const existingIdx = this._blendMap.get(blendKey)
@@ -681,7 +696,7 @@ export class HephaestusRuntime {
         this._blendOutput(this.outputBuffer[existingIdx], track.blendMode, 0, rgb, undefined, 0, this._normRgbBuf)
         return
       }
-      this.writeOutput(fixtureId, 'all', paramName, 0, rgb, undefined, 0, this._normRgbBuf, isCustomThisClip, clipId, trackZones)
+      this.writeOutput(fixtureId, 'all', paramName, 0, rgb, undefined, 0, this._normRgbBuf, isCustomThisClip, clipId, trackZones, silenceSpatial)
       this._blendMap.set(blendKey, this.outputCursor - 1)
     } else {
       const rawValue = evaluator.getValue(paramName, timeMs)
@@ -695,7 +710,7 @@ export class HephaestusRuntime {
         this._blendOutput(this.outputBuffer[existingIdx], track.blendMode, scaledValue, undefined, fine, withIntensity, undefined)
         return
       }
-      this.writeOutput(fixtureId, 'all', paramName, scaledValue, undefined, fine, withIntensity, undefined, isCustomThisClip, clipId, trackZones)
+      this.writeOutput(fixtureId, 'all', paramName, scaledValue, undefined, fine, withIntensity, undefined, isCustomThisClip, clipId, trackZones, silenceSpatial)
       this._blendMap.set(blendKey, this.outputCursor - 1)
     }
   }
@@ -806,7 +821,8 @@ export class HephaestusRuntime {
     normalizedRgb?: { r: number; g: number; b: number },
     isCustomClip?: boolean,
     clipId?: string,
-    trackZones?: readonly string[]
+    trackZones?: readonly string[],
+    silenceSpatial?: boolean,
   ): void {
     // Auto-grow if needed (rare — only if capacity estimate was wrong)
     if (this.outputCursor >= this.outputCapacity) {
@@ -823,6 +839,7 @@ export class HephaestusRuntime {
     out.isCustomClip = isCustomClip ?? false
     out.clipId = clipId
     out.trackZones = trackZones
+    out.silenceSpatial = silenceSpatial
     // 🩹 WAVE 4995: Protect Memory Reference
     // Only copy color values if the track actually provides them.
     // Do not destroy the pre-allocated references when processing non-color params.

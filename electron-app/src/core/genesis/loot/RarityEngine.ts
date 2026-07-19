@@ -9,23 +9,24 @@
 //  novelty    = 1 − max_cosine_similarity(signature, all_alive)  [0 if no population]
 //  operator_w = per-operator weight table
 //
-//  Tier mapping (WAVE 6000.V8.1 REBALANCE — lowered thresholds ~18%):
-//    COMMON     [0.00, 0.32)   shield = 3
-//    RARE       [0.32, 0.52)   shield = 6
-//    EPIC       [0.52, 0.68)   shield = 10
-//    LEGENDARY  [0.68, 0.80)   shield = 15
-//    MYTHIC     [0.80, 1.00]   shield = 20
+//  Tier mapping (WAVE 7166 V3 RE-SCALE — V3 L2 max ~0.34):
+//    COMMON     [0.00, 0.12)   shield = 3
+//    RARE       [0.12, 0.20)   shield = 6
+//    EPIC       [0.20, 0.28)   shield = 10
+//    LEGENDARY  [0.28, 0.33)   shield = 15
+//    MYTHIC     [0.33, 1.00]   shield = 20
 // ═══════════════════════════════════════════════════════════════════════════
 
 import type { MutationOperator, RarityTier } from '../types'
 
 // ─── CONSTANTS ──────────────────────────────────────────────────────────────
 
-const DRIFT_MAX = 0.55
+// WAVE 7166: Lowered from 0.55 → 0.40 — V3 L2 distances are compressed
+// because D_structural weight is only 0.05 and mutations are surgical.
+const DRIFT_MAX = 0.40
 
-// WAVE 6000.V8.1: L2 distance below this threshold forces COMMON tier,
-// regardless of novelty score. Minor mutations (L2 < 0.18) are "crafting materials."
-const COMMON_FORCE_L2_THRESHOLD = 0.18
+// WAVE 7166: Lowered from 0.18 → 0.08 — trivial mutations stay COMMON.
+const COMMON_FORCE_L2_THRESHOLD = 0.08
 
 const OPERATOR_WEIGHTS: Readonly<Record<MutationOperator, number>> = Object.freeze({
   focal_mutation: 0.15,
@@ -123,10 +124,11 @@ function computeNovelty(
  * Maps a raw ρ score [0,1] to a RarityTier.
  */
 export function tierFromScore(score: number): RarityTier {
-  if (score < 0.32) return 'COMMON'
-  if (score < 0.52) return 'RARE'
-  if (score < 0.68) return 'EPIC'
-  if (score < 0.80) return 'LEGENDARY'
+  // WAVE 7166: Re-scaled for V3 L2 distribution (max ~0.34)
+  if (score < 0.12) return 'COMMON'
+  if (score < 0.20) return 'RARE'
+  if (score < 0.28) return 'EPIC'
+  if (score < 0.33) return 'LEGENDARY'
   return 'MYTHIC'
 }
 

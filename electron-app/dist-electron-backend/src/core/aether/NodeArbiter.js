@@ -106,14 +106,19 @@ const PHOTON_TRACER_EVERY_FRAMES = 20;
 // la base es 0.5 (sin IK), garantizando cero regresión visual.
 const RELATIVE_OFFSET_SCALE_PAN = 0.5;
 const RELATIVE_OFFSET_SCALE_TILT = 0.5;
-// WAVE 4980: Límite físico superior del tilt en espacio normalizado [0, 1].
-// Corresponde a ~217 DMX — impide que la fusión empuje el haz a posiciones
-// extremas de hardware independientemente del origen del valor (IK o VMM).
-const TILT_ARBITER_MAX = 0.85;
-// WAVE 4988 Paso 2: Límite físico inferior del tilt en espacio normalizado [0, 1].
-// Corresponde a ~38 DMX — impide que el fade o la fusión degraden hacia 0 (techo)
-// en rigs donde DMX 0 = posición de techo. Protege ceiling y floor mounts por igual.
-const TILT_ARBITER_MIN = 0.15;
+// WAVE 4980→7030: Límite físico superior del tilt en espacio normalizado [0, 1].
+// ANTES 0.85 (~217 DMX) — recortaba 15% del recorrido útil superior, impidiendo
+// que fixtures totem apuntaran al suelo (DMX 220-255) y que ceiling fixtures
+// alcanzaran el horizonte. La causa raíz del clip era falta de orientation-aware
+// tilt offset en el AetherKineticEngine (WAVE 7030 ya corrige eso).
+// AHORA 0.95 (~242 DMX) — deja margen lógico anti-degenerado mientras el
+// AetherSafetyMiddleware airbag (5 DMX) protege el hardware en [5, 250].
+const TILT_ARBITER_MAX = 0.95;
+// WAVE 4988→7030: Límite físico inferior del tilt en espacio normalizado [0, 1].
+// ANTES 0.15 (~38 DMX) — recortaba 15% del recorrido útil inferior, impidiendo
+// que ceiling fixtures apuntaran al techo (DMX 0-38) tras la inversión del resolver.
+// AHORA 0.05 (~13 DMX) — el airbag (5 DMX) sigue siendo la protección física final.
+const TILT_ARBITER_MIN = 0.05;
 // Gimbal Lock fade: cuando el haz apunta cerca del cenit (tilt_base ≈ 0.5),
 // el pan offset rota la carcasa sin desplazamiento visual del beam. Atenuamos
 // el offset de pan dentro de una banda de ±GIMBAL_TILT_FADE_HALFWIDTH alrededor
@@ -249,6 +254,8 @@ export class NodeArbiter {
          * Key = `${fixtureId}:kinetic`, Value = { pan_base, tilt_base } computados.
          */
         this._motorKineticOverrides = new Map();
+        /** WAVE 7172: Nodos con supresión IK espacial para este frame. */
+        this._spatialSuppressedNodes = new Set();
         /**
          * WAVE 4914: Amplitud global del flujo de offset relativo (escala el offset VMM).
          * 1.0 = legacy (preserva el mapeo `(intent.x+1)/2` cuando no hay base IK).
@@ -422,6 +429,12 @@ export class NodeArbiter {
     clearAllMotorKineticOverrides() {
         this._motorKineticOverrides.clear();
     }
+    /** WAVE 7172: Registra nodos cuya base IK debe ser suprimida este frame. */
+    setSpatialSuppression(nodeIds) {
+        for (const id of nodeIds) {
+            this._spatialSuppressedNodes.add(id);
+        }
+    }
     /**
      * WAVE 4718: Lectura del anchor de L2 para el motor cinético.
      * Devuelve los `pan_base`/`tilt_base` actuales del nodo (0-1),
@@ -513,6 +526,8 @@ export class NodeArbiter {
         this._l3DominatedChannels.clear();
         // WAVE 4918.5: limpiar nodos Hephaestus-color silenciadores de L0
         this._l3HephColorNodeIds.clear();
+        // WAVE 7172: limpiar supresión IK espacial del frame anterior
+        this._spatialSuppressedNodes.clear();
         // L2: registrar canales tocados por nodo
         for (const [nodeId, channels] of this._manualOverrides) {
             let set = this._opaqueNodeChannels.get(nodeId);
@@ -788,8 +803,12 @@ export class NodeArbiter {
             const hasTiltOffset = isFiniteChannelValue(tiltOffset);
             const motor = this._motorKineticOverrides.get(nodeId);
             const manual = this._manualOverrides.get(nodeId);
-            const motorPan = motor ? motor['pan_base'] : undefined;
-            const motorTilt = motor ? motor['tilt_base'] : undefined;
+            // WAVE 7172: SPATIAL SUPPRESSION — si este nodo está suprimido (clip absoluto
+            // con silenceSpatial=true), ignorar completamente la base IK del motor.
+            // El pan/tilt absoluto del clip L3+ ya está en el record vía _applyIntent.
+            const spatialSuppressed = this._spatialSuppressedNodes.has(nodeId);
+            const motorPan = (!spatialSuppressed && motor) ? motor['pan_base'] : undefined;
+            const motorTilt = (!spatialSuppressed && motor) ? motor['tilt_base'] : undefined;
             const manualPan = manual ? manual['pan_base'] : undefined;
             const manualTilt = manual ? manual['tilt_base'] : undefined;
             const hasMotorPan = isFiniteChannelValue(motorPan);

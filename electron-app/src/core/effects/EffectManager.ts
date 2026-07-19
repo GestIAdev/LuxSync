@@ -563,13 +563,14 @@ export class EffectManager extends EventEmitter {
           textureEncoded: 0,
         }
 
-        // 🧬 WAVE 5000.V3 FIX: Nepotism abolished. Only the EXACT organism_id
-        // that was fired in the live arena receives metabolic reward.
-        // If effectType is a blueprint ancestral ID (not a mutated child),
-        // this query returns 0 rows — granite ancestors don't eat.
+        // 🧬 WAVE 7166 FIX: Query by blueprint_id, NOT organism_id.
+        // config.effectType is the blueprint ancestral ID (e.g. 'solar_flare'),
+        // not an organism_id (e.g. 'org_xxxx'). The old query matched
+        // organism_id = config.effectType which ALWAYS returned 0 rows,
+        // starving the entire ecosystem of trials and fitness.
         const organisms = db.prepare(
           `SELECT organism_id FROM lfx_organisms
-           WHERE organism_id = ? AND status = 'alive'`,
+           WHERE blueprint_id = ? AND status = 'alive'`,
         ).all(config.effectType) as { organism_id: string }[]
 
         // 🧬 BIG BANG SPARK: If the blueprint has zero living descendants, spawn

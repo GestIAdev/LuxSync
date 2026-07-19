@@ -48,6 +48,7 @@ import type {
   HephKeyframe,
   HephTrack,
   HephAudioBinding,
+  ZoneTarget,
 } from '../../../../core/hephaestus/types'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -108,6 +109,9 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
   const clip = useHephaestusEditorStore(state => state.clip)
   const activeTrackId = useHephaestusEditorStore(state => state.selection.activeTrackId)
   const selectTrack = useHephaestusEditorStore(state => state.selectTrack)
+  const removeTrackFromStore = useHephaestusEditorStore(state => state.removeTrack)
+  const duplicateTrackFromStore = useHephaestusEditorStore(state => state.duplicateTrack)
+  const setTrackZonesFromStore = useHephaestusEditorStore(state => state.setTrackZones)
   const viewport = useHephaestusEditorStore(state => state.viewport)
   const setStoreViewport = useHephaestusEditorStore(state => state.setViewport)
   const undoStackLen = useHephaestusEditorStore(state => state._undoStack.length)
@@ -159,29 +163,15 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
     return track ? track.curve : null
   }, [clip, activeTrackId])
 
-  const paramIds = useMemo<HephParamId[]>(() => {
-    if (!clip) return []
-    return Array.from(new Set(clip.tracks.map(t => t.paramId)))
-  }, [clip])
-
   const availableParams = useMemo<HephParamId[]>(() => {
-    if (!clip) return ALL_PARAM_IDS
-    const used = new Set(clip.tracks.map(t => t.paramId))
-    return ALL_PARAM_IDS.filter(p => !used.has(p))
-  }, [clip])
+    return ALL_PARAM_IDS
+  }, [])
 
   const activeParam = useMemo<HephParamId | null>(() => {
     if (!clip || !activeTrackId) return null
     const track = clip.tracks.find(t => t.id === activeTrackId)
     return track ? track.paramId : null
   }, [clip, activeTrackId])
-
-  const setActiveParam = useCallback((paramId: HephParamId) => {
-    const currentClip = useHephaestusEditorStore.getState().clip
-    if (!currentClip) return
-    const track = currentClip.tracks.find(t => t.paramId === paramId)
-    if (track) selectTrack(track.id)
-  }, [selectTrack])
 
   const groupedAvailableParams = useMemo(() => {
     const groups = new Map<ParamCategory, HephParamId[]>()
@@ -360,11 +350,12 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
   // ═══════════════════════════════════════════════════════════════════════
 
   const updateCurve = useCallback((paramId: HephParamId | null, updater: (curve: HephCurve) => HephCurve) => {
-    if (!paramId) return
+    const trackId = useHephaestusEditorStore.getState().selection.activeTrackId
+    if (!trackId) return
     const store = useHephaestusEditorStore.getState()
     const isDragging = store._dragSnapshot !== null
     const buildNext = (prev: HephAutomationClipV3): HephAutomationClipV3 => {
-      const trackIdx = prev.tracks.findIndex(t => t.paramId === paramId)
+      const trackIdx = prev.tracks.findIndex(t => t.id === trackId)
       if (trackIdx === -1) return prev
       const existing = prev.tracks[trackIdx].curve
       const newTracks = [...prev.tracks]
@@ -775,52 +766,50 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
   // ═══════════════════════════════════════════════════════════════════════
 
   const handleAddParam = useCallback((paramId: HephParamId) => {
-    setClip((prev: HephAutomationClipV3): HephAutomationClipV3 => {
-      if (prev.tracks.some(t => t.paramId === paramId)) return prev
+    const isColor = paramId === 'color'
+    const newCurve: HephCurve = {
+      paramId,
+      valueType: isColor ? 'color' : 'number',
+      range: [0, 1],
+      defaultValue: isColor ? { h: 0, s: 100, l: 50 } : 0,
+      keyframes: [
+        { timeMs: 0, value: isColor ? { h: 0, s: 100, l: 50 } : 0, interpolation: 'linear' },
+        { timeMs: clip.durationMs, value: isColor ? { h: 0, s: 100, l: 50 } : 1, interpolation: 'hold' },
+      ],
+      mode: 'absolute'
+    }
 
-      const isColor = paramId === 'color'
-      const newCurve: HephCurve = {
-        paramId,
-        valueType: isColor ? 'color' : 'number',
-        range: [0, 1],
-        defaultValue: isColor ? { h: 0, s: 100, l: 50 } : 0,
-        keyframes: [
-          { timeMs: 0, value: isColor ? { h: 0, s: 100, l: 50 } : 0, interpolation: 'linear' },
-          { timeMs: prev.durationMs, value: isColor ? { h: 0, s: 100, l: 50 } : 1, interpolation: 'hold' },
-        ],
-        mode: 'absolute'
-      }
-
-      const newTrack: HephTrack = {
-        id: crypto.randomUUID(),
-        paramId,
-        zones: prev.spatialZones.length > 0 ? [...prev.spatialZones] : ['all'],
-        curve: newCurve,
-        blendMode: paramId === 'intensity' ? 'max' : 'replace',
-      }
-
-      return { ...prev, tracks: [...prev.tracks, newTrack] }
+    const newTrackId = useHephaestusEditorStore.getState().addTrack({
+      paramId,
+      zones: clip.spatialZones.length > 0 ? [...clip.spatialZones] : ['all'],
+      curve: newCurve,
+      blendMode: paramId === 'intensity' ? 'max' : 'replace',
     })
-    setActiveParam(paramId)
+    selectTrack(newTrackId)
     setShowAddParamDropdown(false)
-  }, [setActiveParam])
+  }, [clip.durationMs, clip.spatialZones, selectTrack])
 
-  const handleRemoveParam = useCallback((paramId: HephParamId) => {
-    setClip((prev: HephAutomationClipV3): HephAutomationClipV3 => {
-      if (!prev.tracks.some(t => t.paramId === paramId)) return prev
-      return { ...prev, tracks: prev.tracks.filter(t => t.paramId !== paramId) }
-    })
-
-    if (activeParam === paramId) {
-      const remaining = paramIds.filter(p => p !== paramId)
+  const handleRemoveTrack = useCallback((trackId: string) => {
+    removeTrackFromStore(trackId)
+    if (activeTrackId === trackId) {
+      const remaining = clip.tracks.filter(t => t.id !== trackId)
       if (remaining.length > 0) {
-        setActiveParam(remaining[0] as HephParamId)
+        selectTrack(remaining[0].id)
       } else {
         selectTrack(null)
       }
     }
     setSelectedKeyframeIdx(null)
-  }, [activeParam, paramIds, selectTrack, setActiveParam])
+  }, [removeTrackFromStore, activeTrackId, clip.tracks, selectTrack])
+
+  const handleDuplicateTrack = useCallback((trackId: string) => {
+    const newId = duplicateTrackFromStore(trackId)
+    selectTrack(newId)
+  }, [duplicateTrackFromStore, selectTrack])
+
+  const handleTrackZonesChange = useCallback((trackId: string, zones: ZoneTarget[]) => {
+    setTrackZonesFromStore(trackId, zones)
+  }, [setTrackZonesFromStore])
 
   // ═══════════════════════════════════════════════════════════════════════
   // TEMPLATE & BEZIER PRESETS
@@ -1059,32 +1048,33 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
         )}
 
         {/* ── Parameter Lanes ── */}
-        <aside style={{ width: '220px', flexShrink: 0, height: '100%', overflowX: 'hidden', overflowY: 'auto', borderRight: '1px solid rgba(255, 107, 43, 0.1)', boxSizing: 'border-box' }}>
+        <aside style={{ width: '255px', flexShrink: 0, height: '100%', overflowX: 'hidden', overflowY: 'auto', borderRight: '1px solid rgba(255, 107, 43, 0.1)', boxSizing: 'border-box' }}>
           <div className="heph-param-sidebar" style={{ boxSizing: 'border-box', width: '100%', padding: '8px 12px' }}>
             <div className="heph-param-sidebar__header">
               <span className="heph-param-sidebar__title">PARAMETERS</span>
             </div>
             <div className="heph-param-sidebar__lanes">
-              {paramIds.length === 0 ? (
+              {clip.tracks.length === 0 ? (
                 <div className="heph-param-sidebar__empty">
                   <span className="heph-param-sidebar__empty-icon">⚒️</span>
                   <span className="heph-param-sidebar__empty-text">No parameters</span>
                   <span className="heph-param-sidebar__empty-hint">Click + to add automation</span>
                 </div>
               ) : (
-                paramIds.map(paramId => {
-                  const track = clip.tracks.find(t => t.paramId === paramId)
-                  return (
+                clip.tracks.map(track => (
                   <ParameterLane
-                    key={paramId}
-                    paramId={paramId}
-                    curve={track!.curve}
-                    isActive={paramId === activeParam}
-                    onClick={() => setActiveParam(paramId)}
-                    onRemove={handleRemoveParam}
+                    key={track.id}
+                    trackId={track.id}
+                    paramId={track.paramId}
+                    curve={track.curve}
+                    zones={track.zones}
+                    isActive={track.id === activeTrackId}
+                    onClick={() => selectTrack(track.id)}
+                    onRemove={handleRemoveTrack}
+                    onDuplicate={handleDuplicateTrack}
+                    onTrackZonesChange={handleTrackZonesChange}
                   />
-                  )
-                })
+                ))
               )}
             </div>
 

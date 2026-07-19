@@ -20,7 +20,7 @@
  */
 
 import React, { useCallback, useMemo, useRef, useState, useEffect } from 'react'
-import type { CognitiveDNA, SimulationMeta } from '../../../../core/arsenal/lfxTypes'
+import type { CognitiveDNA, SimulationMeta, TextureAffinity } from '../../../../core/arsenal/lfxTypes'
 import {
   LfxClipInstance,
   ARCHETYPE_BIAS_MAP,
@@ -171,6 +171,7 @@ interface DnaFormState {
   vibes: CompatibleVibe[]
   maxStrobeFreqHz: number
   pressureRange: { min: number; max: number }
+  textureAffinity: TextureAffinity
 }
 
 function buildInstance(state: DnaFormState, clipId: string): LfxClipInstance {
@@ -230,6 +231,7 @@ export const DnaRail: React.FC<DnaRailProps> = ({
       vibes: [],
       maxStrobeFreqHz: 0,
       pressureRange: { min: 0, max: 0 },
+      textureAffinity: 'universal',
     }
     // Reverse-map compatibleVibes from bridged (Selene) → directive (CompatibleVibe)
     const rawVibes = Array.isArray(dna.compatibleVibes) ? dna.compatibleVibes : []
@@ -252,6 +254,7 @@ export const DnaRail: React.FC<DnaRailProps> = ({
       vibes: reversedVibes,
       maxStrobeFreqHz: 0,
       pressureRange: dna.pressureRange ? { ...dna.pressureRange } : { min: 0, max: 0 },
+      textureAffinity: dna.textureAffinity ?? 'universal',
     }
   })
 
@@ -270,6 +273,7 @@ export const DnaRail: React.FC<DnaRailProps> = ({
         vibes: [],
         maxStrobeFreqHz: 0,
         pressureRange: { min: 0, max: 0 },
+        textureAffinity: 'universal',
       })
       return
     }
@@ -293,6 +297,7 @@ export const DnaRail: React.FC<DnaRailProps> = ({
       vibes: reversedVibes,
       maxStrobeFreqHz: prev.maxStrobeFreqHz,
       pressureRange: dna.pressureRange ? { ...dna.pressureRange } : { min: 0, max: 0 },
+      textureAffinity: dna.textureAffinity ?? 'universal',
     }))
   }, [dna])
 
@@ -321,23 +326,33 @@ export const DnaRail: React.FC<DnaRailProps> = ({
   const bias = useMemo(() => ARCHETYPE_BIAS_MAP[form.archetype], [form.archetype])
 
   // ── Propagate to parent whenever form changes (user-initiated only) ──
+  // WAVE 7176: ALL user-editable fields come from `form` state (live slider values),
+  // not from `instance.toCognitiveDNA()` which recalculates from archetype bias.
+  // `toCognitiveDNA(overrides)` is called with form values so the instance only
+  // fills in computed fields (genome, energyZone, aggressionRange) that the
+  // user doesn't directly edit via sliders.
   useEffect(() => {
     if (isSyncingFromDna.current) {
       isSyncingFromDna.current = false
       return
     }
     if (!dna) return
-    const reality = instance.toCognitiveDNA()
+    const reality = instance.toCognitiveDNA({
+      pressureRange: { ...form.pressureRange },
+      textureAffinity: form.textureAffinity,
+      validSections: dna.validSections,
+      ikCompatibility: dna.ikCompatibility,
+    })
     onDnaChange({
       genome: { ...reality.genome },
       textureAffinity: reality.textureAffinity,
       compatibleVibes: [...reality.compatibleVibes],
-      validSections: dna.validSections,
+      validSections: [...reality.validSections],
       energyZone: { ...reality.energyZone },
       aggressionRange: { ...reality.aggressionRange },
-      pressureRange: { ...form.pressureRange },
+      pressureRange: { ...reality.pressureRange },
       spatialBehavior: reality.spatialBehavior,
-      ikCompatibility: dna.ikCompatibility,
+      ikCompatibility: reality.ikCompatibility,
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [instance])
@@ -432,6 +447,10 @@ export const DnaRail: React.FC<DnaRailProps> = ({
 
   const handlePressureReset = useCallback(() => {
     setForm(prev => ({ ...prev, pressureRange: { min: 0, max: 0 } }))
+  }, [])
+
+  const handleTextureAffinity = useCallback((affinity: TextureAffinity) => {
+    setForm(prev => ({ ...prev, textureAffinity: affinity }))
   }, [])
 
   // ── No DNA — CTA ──
@@ -579,6 +598,23 @@ export const DnaRail: React.FC<DnaRailProps> = ({
               <span className="dna-rail__genome-val">/ 25 max</span>
             </div>
           )}
+        </section>
+
+        {/* ══ SECTION 3.5: TEXTURE AFFINITY (WAVE 7169) ══ */}
+        <section className="dna-rail__section">
+          <div className="dna-rail__section-label">TEXTURE AFFINITY</div>
+          <div className="dna-rail__radio-group">
+            {(['clean', 'universal', 'dirty'] as const).map(ta => (
+              <button
+                key={ta}
+                type="button"
+                className={`dna-rail__radio-btn ${form.textureAffinity === ta ? 'dna-rail__radio-btn--active' : ''}`}
+                onClick={() => handleTextureAffinity(ta)}
+              >
+                {ta}
+              </button>
+            ))}
+          </div>
         </section>
 
         {/* ══ SECTION 4: ENERGY THERMOMETER ══ */}

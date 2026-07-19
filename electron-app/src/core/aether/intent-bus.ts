@@ -366,6 +366,15 @@ export interface INodeArbiter {
   clearCalibrationIntents(): void
 
   /**
+   * WAVE 7172: Suppress IK spatial targets for specific nodes during this frame.
+   * When a node is in the suppression set, _applyRelativeOffsetFusion skips
+   * motor kinetic overrides (pan_base/tilt_base from IK engine) for that node,
+   * allowing absolute pan/tilt from L3+ clips to take full control.
+   * Cleared at the start of every arbitrate() cycle.
+   */
+  setSpatialSuppression(nodeIds: ReadonlySet<string>): void
+
+  /**
    * WAVE 7110-B: Registra el bus de L1 de Chronos.
    * El bus se limpia y rellena cada frame antes de arbitrate().
    * Comparte la capa L1 con Selene — misma prioridad.

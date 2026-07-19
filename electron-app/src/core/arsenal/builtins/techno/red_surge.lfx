@@ -14,7 +14,7 @@
       "buildup"
     ],
     "vibeCompat": [
-      "techno"
+      "techno-club"
     ],
     "durationMs": 3000,
     "effectType": "heph_custom",
@@ -26,7 +26,7 @@
       },
       "textureAffinity": "dirty",
       "compatibleVibes": [
-        "techno"
+        "techno-club"
       ],
       "validSections": [
         "drop",
@@ -40,7 +40,11 @@
         "min": 0.5,
         "max": 1
       },
-      "spatialBehavior": "static"
+      "spatialBehavior": "static",
+      "pressureRange": {
+        "min": 0.5,
+        "max": 1
+      }
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -49,15 +53,15 @@
         "vibeBonus": 0.1
       },
       "gpuCost": 0.25,
-      "fatigueImpact": 0.5,
+      "fatigueImpact": 0.8,
       "minDurationMs": 3000,
-      "cooldownMs": 5000,
+      "cooldownMs": 15000,
       "isStrobe": true,
       "isDivineCandidate": true,
       "isHeavyCandidate": true,
       "zScoreGuards": {
         "requireRising": true,
-        "minimumZ": 1.5,
+        "minimumZ": 2.2,
         "minimumEnergy": 0.8
       }
     },
@@ -90,6 +94,10 @@
               "value": 1,
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         },
         "blendMode": "replace"
@@ -138,6 +146,10 @@
               },
               "interpolation": "linear"
             }
+          ],
+          "range": [
+            0,
+            360
           ]
         },
         "blendMode": "replace"
@@ -161,6 +173,10 @@
               "value": 1,
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         }
       },
@@ -182,9 +198,22 @@
               "value": 0,
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         }
       }
-    ]
-  }
+    ],
+    "spatialZones": [
+      "all-pars",
+      "ambient",
+      "flash",
+      "all-movers",
+      "air"
+    ],
+    "schemaVersion": "3.0"
+  },
+  "checksum": "fbfb7523474f68c6aec9c663a08e713d175a83c523b26f5f6c7af8b3e6cfd9f1"
 }

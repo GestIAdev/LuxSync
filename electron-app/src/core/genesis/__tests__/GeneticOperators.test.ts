@@ -65,6 +65,7 @@ function makeMockClip(): HephAutomationClipV3 {
     validSections: ['drop', 'verse'],
     energyZone: { min: 'ambient', max: 'peak' },
     aggressionRange: { min: 0.3, max: 0.8 },
+    pressureRange: { min: 0.2, max: 0.9 },
     spatialBehavior: 'static',
   }
 
@@ -145,11 +146,13 @@ describe('🧬 GeneticOperators — Delta Robustness', () => {
       expect(JSON.stringify(r1.delta)).toBe(JSON.stringify(r2.delta))
     })
 
-    it('should produce delta paths that start with /tracks/', () => {
+    it('should produce delta paths that start with /tracks/ for track mutations', () => {
       const parent = makeMockClip()
       const result = focalMutation(parent, 42)
 
-      expect(result.delta.every((op) => op.path.startsWith('/tracks/'))).toBe(true)
+      const trackOps = result.delta.filter((op) => !op.path.startsWith('/cognitiveDNA'))
+      expect(trackOps.length).toBeGreaterThanOrEqual(1)
+      expect(trackOps.every((op) => op.path.startsWith('/tracks/'))).toBe(true)
     })
   })
 
@@ -190,13 +193,47 @@ describe('🧬 GeneticOperators — Delta Robustness', () => {
       expect(newTrack.id).toContain('aug_')
     })
 
-    it('should never duplicate an existing paramId', () => {
+    it('should allow duplicate paramIds if zones differ (WAVE 7165 multicellular)', () => {
+      // Build a clip where ALL augmentable params already exist
       const parent = makeMockClip()
-      const existingParamIds = new Set(parent.tracks.map((t) => t.paramId))
+      const allParamTracks: HephTrack[] = []
+      const augmentableParams = ['intensity', 'color', 'strobe', 'pan', 'tilt', 'zoom'] as const
+      for (const paramId of augmentableParams) {
+        allParamTracks.push({
+          id: `track-${paramId}-001`,
+          paramId,
+          zones: ['front'],
+          curve: {
+            paramId,
+            valueType: paramId === 'color' ? 'color' : 'number',
+            range: paramId === 'color' ? [0, 360] : paramId === 'pan' || paramId === 'tilt' ? [0, 255] : [0, 1],
+            defaultValue: paramId === 'color' ? { h: 0, s: 100, l: 50 } : 0,
+            keyframes: [
+              { timeMs: 0, value: paramId === 'color' ? { h: 0, s: 100, l: 50 } : 0.5, interpolation: 'linear' },
+              { timeMs: 1000, value: paramId === 'color' ? { h: 180, s: 100, l: 50 } : 0.8, interpolation: 'linear' },
+            ],
+            mode: 'absolute',
+          },
+        })
+      }
+      parent.tracks = allParamTracks
+
       const result = geneAugmentation(parent, 42)
       const newTrack = result.clip.tracks[result.clip.tracks.length - 1]
 
-      expect(existingParamIds.has(newTrack.paramId)).toBe(false)
+      // The new track SHOULD have a paramId that already exists (multicellular)
+      const existingParamIds = new Set(parent.tracks.map((t) => t.paramId))
+      expect(existingParamIds.has(newTrack.paramId)).toBe(true)
+
+      // But the zone MUST be different from any existing track with the same paramId
+      const sameParamTracks = parent.tracks.filter((t) => t.paramId === newTrack.paramId)
+      for (const existing of sameParamTracks) {
+        const existingZones = new Set(existing.zones)
+        const newZones = newTrack.zones
+        // At least one zone in newTrack should NOT be in any existing track with same paramId
+        const hasNewZone = newZones.some((z) => !existingZones.has(z))
+        expect(hasNewZone).toBe(true)
+      }
     })
 
     it('should drift cognitiveDNA when present', () => {

@@ -704,7 +704,14 @@ export function registerAetherIPCHandlers() {
             // WAVE 4710: Programmer Paradigm — la selección NO dicta el ciclo de vida en L2.
             // Fixtures que salen del scope del engine quedan congelados vía L2-MOTOR
             // hasta un Unlock explícito. NO se limpian overrides aquí.
-            aetherKineticEngine.setManualKinetics(nodeIds, nativePattern, speedNorm, amplitudeNorm, fanNorm, arbiter);
+            // WAVE 7030: Resolve mount orientation per fixture for VMM-parity tilt offset.
+            const _orch = getTitanOrchestrator();
+            const _graph = _orch.getAetherNodeGraph();
+            const mountOrientations = nodeIds.map(nid => {
+                const kn = _graph.getNodeData(nid);
+                return kn?.ikOrientation?.installation ?? 'floor';
+            });
+            aetherKineticEngine.setManualKinetics(nodeIds, nativePattern, speedNorm, amplitudeNorm, fanNorm, arbiter, mountOrientations);
             return { success: true, pattern: nativePattern };
         }
         catch (err) {

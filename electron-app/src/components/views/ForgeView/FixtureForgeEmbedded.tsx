@@ -491,6 +491,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
       manufacturer: state.meta.manufacturer || baseFixture.manufacturer,
       type: state.meta.type || baseFixture.type,
       channels: syncedChannels,
+      channelCount: syncedChannels.length,
       dmxGovernors: state.dmxGovernors.length > 0 ? [...state.dmxGovernors] : baseFixture.dmxGovernors ?? [],
       physics: statePhysics ? {
         motorType: statePhysics.motorType as any,

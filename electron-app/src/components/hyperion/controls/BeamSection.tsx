@@ -38,15 +38,16 @@ export const BeamSection: React.FC<BeamSectionProps> = ({ ctx, peerCellKeys, isE
     return v !== undefined ? clamp255(v * 255) : fallback
   }, [clamp255])
 
-  const gobo       = denorm255(data.gobo,  0)
-  const prismValue = denorm255(data.prism, 0)
-  const focus      = denorm255(data.focus, 128)
-  const zoom       = denorm255(data.zoom,  128)
-  const iris       = denorm255(data.iris,  255)
+  const gobo           = denorm255(data.gobo,  0)
+  const prismValue     = denorm255(data.prism, 0)
+  const prismRotation  = denorm255(data.prismRotation, 0)
+  const focus          = denorm255(data.focus, 128)
+  const zoom           = denorm255(data.zoom,  128)
+  const iris           = denorm255(data.iris,  255)
   const hasOverride = Object.keys(data).length > 0
 
   // WAVE 4731: Hive Mind — dispatch simultáneo a todas las células del grupo
-  const applyBeam = useCallback((ch: 'gobo' | 'prism' | 'focus' | 'zoom' | 'iris', val: number) => {
+  const applyBeam = useCallback((ch: 'gobo' | 'prism' | 'prismRotation' | 'focus' | 'zoom' | 'iris', val: number) => {
     const store = useProgrammerStore.getState()
     store.setCellBeam(ctx.cellKey, ch, val)
     if (peerCellKeys) for (const k of peerCellKeys) store.setCellBeam(k, ch, val)
@@ -68,6 +69,10 @@ export const BeamSection: React.FC<BeamSectionProps> = ({ ctx, peerCellKeys, isE
 
   const handlePrismChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     applyBeam('prism', parseInt(e.target.value, 10))
+  }, [applyBeam])
+
+  const handlePrismRotationChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    applyBeam('prismRotation', parseInt(e.target.value, 10))
   }, [applyBeam])
 
   const handleFocusChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -179,7 +184,34 @@ export const BeamSection: React.FC<BeamSectionProps> = ({ ctx, peerCellKeys, isE
               </div>
             </div>
           </div>
-          
+
+          {/* ═══════════════════════════════════════════════════════════════════
+              PRISM ROTATION
+              ═══════════════════════════════════════════════════════════════════ */}
+          <div className="beam-control prism-control">
+            <div className="control-header">
+              <label className="control-label">PRISM ROT</label>
+              <span className="control-value">
+                {prismRotation < 126 ? `CW ${Math.round((1 - prismRotation / 127) * 100)}%` : prismRotation > 130 ? `CCW ${Math.round(((prismRotation - 128) / 127) * 100)}%` : 'STOP'}
+              </span>
+            </div>
+            <div className="prism-slider-wrap">
+              <input
+                type="range"
+                className="beam-slider prism-slider"
+                min={0}
+                max={255}
+                value={prismRotation}
+                onChange={handlePrismRotationChange}
+              />
+              <div className="prism-markers">
+                <span className="prism-marker" style={{ left: '0%' }}>CW</span>
+                <span className="prism-marker" style={{ left: '49.8%' }}>STOP</span>
+                <span className="prism-marker" style={{ left: '100%' }}>CCW</span>
+              </div>
+            </div>
+          </div>
+
           {/* ═══════════════════════════════════════════════════════════════════
               FOCUS & ZOOM
               ═══════════════════════════════════════════════════════════════════ */}
@@ -262,13 +294,14 @@ export const BeamBody: React.FC<BeamBodyProps> = ({ primaryKey, allCellKeys }) =
   const denorm = (v: number | undefined, fallback: number) =>
     v !== undefined ? clamp255Local(v * 255) : fallback
 
-  const gobo       = denorm(data.gobo,  0)
-  const prismValue = denorm(data.prism, 0)
-  const focus      = denorm(data.focus, 128)
-  const zoom       = denorm(data.zoom,  128)
-  const iris       = denorm(data.iris,  255)
+  const gobo           = denorm(data.gobo,  0)
+  const prismValue     = denorm(data.prism, 0)
+  const prismRotation  = denorm(data.prismRotation, 0)
+  const focus          = denorm(data.focus, 128)
+  const zoom           = denorm(data.zoom,  128)
+  const iris           = denorm(data.iris,  255)
 
-  const applyBeam = useCallback((ch: 'gobo' | 'prism' | 'focus' | 'zoom' | 'iris', val: number) => {
+  const applyBeam = useCallback((ch: 'gobo' | 'prism' | 'prismRotation' | 'focus' | 'zoom' | 'iris', val: number) => {
     const store = useProgrammerStore.getState()
     for (const k of allCellKeys) store.setCellBeam(k, ch, val)
   }, [allCellKeys])
@@ -321,6 +354,27 @@ export const BeamBody: React.FC<BeamBodyProps> = ({ primaryKey, allCellKeys }) =
             <span className="prism-marker" style={{ left: '0%' }}>OFF</span>
             <span className="prism-marker" style={{ left: '47.8%' }}>122</span>
             <span className="prism-marker" style={{ left: '100%' }}>255</span>
+          </div>
+        </div>
+      </div>
+
+      {/* PRISM ROTATION */}
+      <div className="beam-control prism-control">
+        <div className="control-header">
+          <label className="control-label">PRISM ROT</label>
+          <span className="control-value">
+            {prismRotation < 126 ? `CW ${Math.round((1 - prismRotation / 127) * 100)}%` : prismRotation > 130 ? `CCW ${Math.round(((prismRotation - 128) / 127) * 100)}%` : 'STOP'}
+          </span>
+        </div>
+        <div className="prism-slider-wrap">
+          <input type="range" className="beam-slider prism-slider"
+            min={0} max={255} value={prismRotation}
+            onChange={e => applyBeam('prismRotation', parseInt(e.target.value, 10))}
+          />
+          <div className="prism-markers">
+            <span className="prism-marker" style={{ left: '0%' }}>CW</span>
+            <span className="prism-marker" style={{ left: '49.8%' }}>STOP</span>
+            <span className="prism-marker" style={{ left: '100%' }}>CCW</span>
           </div>
         </div>
       </div>

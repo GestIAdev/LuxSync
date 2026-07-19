@@ -12,12 +12,12 @@
       "techno"
     ],
     "vibeCompat": [
-      "techno",
-      "industrial",
-      "metal"
+      "techno-club",
+      "pop-rock"
     ],
     "spatialZones": [
-      "all"
+      "all-pars",
+      "all-movers"
     ],
     "mixBus": "global",
     "priority": 100,
@@ -28,7 +28,7 @@
         "id": "d0d8cae2-c5c6-4854-a91a-187faf749bbf",
         "paramId": "intensity",
         "zones": [
-          "all"
+          "all-pars"
         ],
         "blendMode": "replace",
         "curve": {
@@ -69,7 +69,7 @@
         "id": "87c7c738-5728-422a-acb6-b87c31b67f76",
         "paramId": "color",
         "zones": [
-          "all"
+          "all-pars"
         ],
         "blendMode": "replace",
         "curve": {
@@ -111,7 +111,7 @@
         "id": "0bbd2f44-f899-4b92-a49d-755328aec832",
         "paramId": "strobeRate",
         "zones": [
-          "all"
+          "all-movers"
         ],
         "blendMode": "replace",
         "curve": {
@@ -160,9 +160,8 @@
       },
       "textureAffinity": "dirty",
       "compatibleVibes": [
-        "techno",
-        "industrial",
-        "metal"
+        "techno-club",
+        "pop-rock"
       ],
       "validSections": [
         "drop",
@@ -176,7 +175,11 @@
         "min": 0,
         "max": 1
       },
-      "spatialBehavior": "static"
+      "spatialBehavior": "static",
+      "pressureRange": {
+        "min": 0.5,
+        "max": 1
+      }
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -185,18 +188,19 @@
         "vibeBonus": 0.05
       },
       "gpuCost": 0.3,
-      "fatigueImpact": 0.18,
+      "fatigueImpact": 0.8,
       "minDurationMs": 1000,
-      "cooldownMs": 6300,
+      "cooldownMs": 15000,
       "isStrobe": true,
       "isDivineCandidate": true,
       "isHeavyCandidate": true,
       "zScoreGuards": {
         "requireRising": true,
-        "minimumZ": 2,
+        "minimumZ": 2.2,
         "minimumEnergy": 0.7
       }
-    }
+    },
+    "schemaVersion": "3.0"
   },
-  "checksum": "395cd9aba90872769d9e5b3136e816c0543def14d2e018240d1e121fc5b29160"
+  "checksum": "2673c65fd9dabe9b5d0ec3600c87afb260bf10a88088f7aeed200ed711b9701f"
 }

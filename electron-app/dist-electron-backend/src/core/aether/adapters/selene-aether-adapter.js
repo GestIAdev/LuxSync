@@ -13,7 +13,8 @@
  *         → IIntentBus.push() con priority=300, source='effect'
  *
  * REGLAS ABSOLUTAS:
- *   ❌ NUNCA emite targetX/Y/Z, pan, tilt (L3 bloqueado de movimiento)
+ *   ✅ WAVE 7172: AHORA EMITE pan_offset/tilt_offset (offsets relativos) hacia KINETIC nodes
+ *   ❌ NUNCA emite targetX/Y/Z, pan, tilt absolutos (eso es exclusivo de Hephaestus L3+)
  *   ✅ CERO new en hot-path (scratch objects pre-allocated)
  *   ✅ priority = 300 (L3 Effects range: 300-399)
  *   ✅ source = 'effect'
@@ -172,11 +173,22 @@ export class SeleneAetherAdapter {
             source: L3_SOURCE,
             mergeStrategy: 'LTP',
         };
+        // WAVE 7172: Scratch para canales KINETIC (pan_offset, tilt_offset)
+        this._kineticValues = { pan_offset: 0, tilt_offset: 0 };
+        this._kineticScratch = {
+            nodeId: '',
+            values: null,
+            priority: L3_PRIORITY,
+            confidence: 1.0,
+            source: L3_SOURCE,
+            mergeStrategy: 'LTP',
+        };
         this._zoneRouter = zoneRouter;
         // Cablear values al scratch — un único wiring en construcción
         this._impactScratch.values = this._impactValues;
         this._colorScratch.values = this._colorValues;
         this._strobeScratch.values = this._strobeValues;
+        this._kineticScratch.values = this._kineticValues;
     }
     // ═════════════════════════════════════════════════════════════════════════
     // PUBLIC API
@@ -211,6 +223,10 @@ export class SeleneAetherAdapter {
         // ── Fase 2: Zone overrides (zonas específicas) ────────────────────────
         if (effectOutput.zoneOverrides) {
             this._processZoneOverrides(effectOutput.zoneOverrides, composition, bus);
+        }
+        // ── Fase 1.5: WAVE 7172 — Movement override global (pan_offset/tilt_offset) ──
+        if (effectOutput.movementOverride) {
+            this._emitMovementGlobal(effectOutput.movementOverride, composition, bus);
         }
         // ── Fase 3: Physics modifier (strobe) ─────────────────────────────────
         if (consciousness?.physicsModifier) {
@@ -268,7 +284,7 @@ export class SeleneAetherAdapter {
      * Emite los overrides específicos por zona.
      *
      * Itera el mapa zoneOverrides y traduce cada zona a sus NodeIds.
-     * DESCARTA completamente el campo `movement` de cada zona (regla L3).
+     * WAVE 7172: Ahora procesa el campo `movement` como pan_offset/tilt_offset.
      */
     _processZoneOverrides(zoneOverrides, composition, bus) {
         for (const zoneId in zoneOverrides) {
@@ -301,8 +317,77 @@ export class SeleneAetherAdapter {
             if (override.strobeRate !== undefined && override.strobeRate > 0) {
                 this._emitStrobe(zone, clamp01(override.strobeRate), composition, bus);
             }
-            // ❌ override.movement → DESCARTADO (Regla L3: movimiento ≡ KineticAdapter)
+            // WAVE 7172: movement → KINETIC nodes de esta zona como pan_offset/tilt_offset
+            if (override.movement) {
+                this._emitMovement(zone, override.movement, composition, bus);
+            }
         }
+    }
+    /**
+     * WAVE 7172: Emite intents de movimiento (pan_offset/tilt_offset) a todos los
+     * nodos KINETIC de una zona. Los valores del efecto están en [-1,+1] y se
+     * emiten directamente como offsets relativos — el NodeArbiter los sumará al
+     * pan_base/tilt_base vía _applyRelativeOffsetFusion.
+     *
+     * Si isAbsolute=true, el offset se convierte a posición absoluta [0,1] usando
+     * (v + 1) / 2 y se emite como pan/tilt directo en lugar de offset.
+     */
+    _emitMovement(zone, movement, confidence, bus) {
+        const nodeIds = this._zoneRouter.resolve(zone, NodeFamily.KINETIC);
+        if (nodeIds.length === 0)
+            return;
+        const scratch = this._kineticScratch;
+        const vals = this._kineticValues;
+        // Limpiar valores residuales del frame anterior
+        delete vals['pan'];
+        delete vals['tilt'];
+        vals['pan_offset'] = 0;
+        vals['tilt_offset'] = 0;
+        const isAbsolute = movement.isAbsolute === true;
+        if (movement.pan !== undefined) {
+            if (isAbsolute) {
+                delete vals['pan_offset'];
+                vals['pan'] = clamp01((movement.pan + 1) / 2);
+            }
+            else {
+                vals['pan_offset'] = movement.pan;
+            }
+        }
+        else {
+            delete vals['pan_offset'];
+            delete vals['pan'];
+        }
+        if (movement.tilt !== undefined) {
+            if (isAbsolute) {
+                delete vals['tilt_offset'];
+                vals['tilt'] = clamp01((movement.tilt + 1) / 2);
+            }
+            else {
+                vals['tilt_offset'] = movement.tilt;
+            }
+        }
+        else {
+            delete vals['tilt_offset'];
+            delete vals['tilt'];
+        }
+        if (movement.speed !== undefined) {
+            vals['speed'] = clamp01(movement.speed);
+        }
+        else {
+            delete vals['speed'];
+        }
+        scratch.confidence = confidence;
+        scratch.mergeStrategy = 'LTP';
+        for (let i = 0; i < nodeIds.length; i++) {
+            scratch.nodeId = nodeIds[i];
+            bus.push(scratch);
+        }
+    }
+    /**
+     * WAVE 7172: Emite movement override global (zona 'all') a todos los nodos KINETIC.
+     */
+    _emitMovementGlobal(movement, confidence, bus) {
+        this._emitMovement('all', movement, confidence, bus);
     }
     /**
      * Emite intents de strobe/flash basados en el physicsModifier de Selene.

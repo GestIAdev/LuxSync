@@ -12,11 +12,11 @@
       "techno"
     ],
     "vibeCompat": [
-      "techno",
-      "industrial"
+      "techno-club"
     ],
     "spatialZones": [
-      "all"
+      "all-pars",
+      "all-movers"
     ],
     "mixBus": "global",
     "priority": 93,
@@ -27,7 +27,7 @@
         "id": "797c3667-1fc4-4060-8dd4-2fcff4a6d65c",
         "paramId": "intensity",
         "zones": [
-          "all"
+          "all-pars"
         ],
         "blendMode": "replace",
         "curve": {
@@ -84,7 +84,7 @@
         "id": "3b438e2a-62d5-4abf-8eed-4d7f8f3f1dcb",
         "paramId": "color",
         "zones": [
-          "all"
+          "all-pars"
         ],
         "blendMode": "replace",
         "curve": {
@@ -135,7 +135,7 @@
         "id": "23fc1ac7-9194-4dd9-bd7a-41fd27905275",
         "paramId": "strobeRate",
         "zones": [
-          "all"
+          "all-movers"
         ],
         "blendMode": "replace",
         "curve": {
@@ -186,8 +186,7 @@
       },
       "textureAffinity": "dirty",
       "compatibleVibes": [
-        "techno",
-        "industrial"
+        "techno-club"
       ],
       "validSections": [
         "drop",
@@ -201,7 +200,11 @@
         "min": 0,
         "max": 1
       },
-      "spatialBehavior": "static"
+      "spatialBehavior": "static",
+      "pressureRange": {
+        "min": 0.5,
+        "max": 1
+      }
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -210,18 +213,19 @@
         "vibeBonus": 0.05
       },
       "gpuCost": 0.3,
-      "fatigueImpact": 0.18,
+      "fatigueImpact": 0.8,
       "minDurationMs": 1000,
-      "cooldownMs": 3000,
+      "cooldownMs": 15000,
       "isStrobe": true,
       "isDivineCandidate": true,
       "isHeavyCandidate": true,
       "zScoreGuards": {
         "requireRising": true,
-        "minimumZ": 2,
+        "minimumZ": 2.2,
         "minimumEnergy": 0.7
       }
-    }
+    },
+    "schemaVersion": "3.0"
   },
-  "checksum": "ae48c4ae80d206a5841953747413df859e50e2e815526319b9e3f18ea33e4b5e"
+  "checksum": "604d32d64cf27dbb34efb7497a5361f67b8eef562d8eff1863c2c0779b2b6e60"
 }

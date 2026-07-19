@@ -13,11 +13,13 @@
       "epic"
     ],
     "vibeCompat": [
-      "techno"
+      "techno-club"
     ],
     "spatialZones": [
       "all-pars",
-      "all-movers"
+      "ambient",
+      "all-movers",
+      "air"
     ],
     "durationMs": 3800,
     "effectType": "heph_custom",
@@ -29,7 +31,7 @@
       },
       "textureAffinity": "clean",
       "compatibleVibes": [
-        "techno"
+        "techno-club"
       ],
       "validSections": [
         "build",
@@ -43,7 +45,11 @@
         "min": 0.4,
         "max": 0.9
       },
-      "spatialBehavior": "absolute"
+      "spatialBehavior": "absolute",
+      "pressureRange": {
+        "min": 0.5,
+        "max": 1
+      }
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -71,7 +77,6 @@
         "zones": [
           "all-pars",
           "ambient"
-        
         ],
         "curve": {
           "paramId": "intensity",
@@ -94,6 +99,10 @@
               "value": 0.9,
               "interpolation": "linear"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         },
         "blendMode": "replace"
@@ -104,7 +113,6 @@
         "zones": [
           "all-pars",
           "ambient"
-        
         ],
         "curve": {
           "paramId": "color",
@@ -133,6 +141,10 @@
               },
               "interpolation": "linear"
             }
+          ],
+          "range": [
+            0,
+            360
           ]
         },
         "blendMode": "replace"
@@ -159,6 +171,10 @@
               "value": 1,
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         },
         "blendMode": "replace"
@@ -169,7 +185,6 @@
         "zones": [
           "all-pars",
           "ambient"
-          
         ],
         "curve": {
           "paramId": "strobeRate",
@@ -191,10 +206,16 @@
               "value": 0.35,
               "interpolation": "hold"
             }
+          ],
+          "range": [
+            0,
+            1
           ]
         },
         "blendMode": "replace"
       }
-    ]
-  }
+    ],
+    "schemaVersion": "3.0"
+  },
+  "checksum": "e22820d351f8c138e4b4290d273caae58440f07b498b0159668e88bb8e457400"
 }

@@ -126,7 +126,7 @@
       },
       "textureAffinity": "universal",
       "compatibleVibes": [
-        "latino-organic"
+        "fiesta-latina"
       ],
       "validSections": [
         "drop",
@@ -140,7 +140,11 @@
         "min": 0,
         "max": 1
       },
-      "spatialBehavior": "static"
+      "spatialBehavior": "static",
+      "pressureRange": {
+        "min": 0.5,
+        "max": 1
+      }
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -149,18 +153,19 @@
         "vibeBonus": 0.05
       },
       "gpuCost": 0.3,
-      "fatigueImpact": 0.06,
+      "fatigueImpact": 0.8,
       "minDurationMs": 1000,
-      "cooldownMs": 4500,
+      "cooldownMs": 15000,
       "isStrobe": true,
       "isDivineCandidate": true,
       "isHeavyCandidate": false,
       "zScoreGuards": {
         "requireRising": false,
-        "minimumZ": null,
+        "minimumZ": 2.2,
         "minimumEnergy": 0.7
       }
-    }
+    },
+    "schemaVersion": "3.0"
   },
-  "checksum": "3ab162b083ea4c14a0e68c0c8c0a1842b4cf357b8d07e4a51cfa718415c4c42e"
+  "checksum": "61eae93fd8bb3f2ec75950ebf99b1018c83dc02a88c14795fd57302c07ddc68c"
 }

@@ -493,6 +493,63 @@ export function solveGroupWithFan(
 }
 
 /**
+ * 🏗️ WAVE 7179 (M3): Calcula ÚNICAMENTE los sub-targets espaciales para un
+ * grupo de fixtures con fan. No llama solve() — pura geometría de distribución.
+ *
+ * Reutiliza `computeLineFanOffsets` / `computeCircleFanOffsets` para calcular
+ * las desviaciones, y devuelve las coordenadas XYZ modificadas por fixture.
+ *
+ * @param fixtures       - Array mínimo con id + posición de cada fixture
+ * @param target         - Target central del grupo
+ * @param fanMode        - Modo de dispersión ('converge' | 'line' | 'circle')
+ * @param fanAmplitude   - Amplitud en metros (0 = converge)
+ * @returns Map de fixtureId → Target3D (sub-target calculado)
+ */
+export function computeFanSubTargets(
+  fixtures: ReadonlyArray<{ id: string; position: Position3D }>,
+  target: Target3D,
+  fanMode: SpatialFanMode,
+  fanAmplitude: number,
+): Map<string, Target3D> {
+  const results = new Map<string, Target3D>()
+
+  if (fixtures.length === 0) return results
+
+  const amp = Math.max(0, fanAmplitude)
+
+  // ── CONVERGE: sin offsets, todos al mismo punto ──
+  if (fanMode === 'converge' || amp === 0) {
+    for (const fixture of fixtures) {
+      results.set(fixture.id, { ...target })
+    }
+    return results
+  }
+
+  // ── Calcular offsets según modo ──
+  let offsets: Array<{ dx: number; dz: number }>
+
+  if (fanMode === 'line') {
+    const positions = fixtures.map(f => f.position)
+    offsets = computeLineFanOffsets(positions, target, amp)
+  } else {
+    offsets = computeCircleFanOffsets(fixtures.length, amp)
+  }
+
+  // ── Construir sub-targets sin resolver IK ──
+  for (let i = 0; i < fixtures.length; i++) {
+    const fixture = fixtures[i]
+    const offset = offsets[i]
+    results.set(fixture.id, {
+      x: target.x + offset.dx,
+      y: target.y,
+      z: target.z + offset.dz,
+    })
+  }
+
+  return results
+}
+
+/**
  * Construye un IKFixtureProfile desde los datos de ShowFileV2/PatchedFixture.
  * Función de conveniencia para no tener que armar el perfil manualmente.
  *

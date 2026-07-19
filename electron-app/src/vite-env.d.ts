@@ -876,8 +876,10 @@ declare global {
         Promise<{ success: boolean; error?: string }>
 
       /**
-       * E12 WAVE 4531: Apply spatial IK target para fixtures.
-       * Stub hacia IK nativo futuro — delega a masterArbiter mentre migra.
+       * E12 WAVE 7179 M3: Apply spatial target para fixtures.
+       * Calcula sub-targets espaciales (geometría pura de fan) e inyecta
+       * coordenadas target_x/y/z en el árbitro. No resuelve IK en esta capa.
+       * El solve completo ocurre en el resolver de nodos más adelante.
        */
       applySpatialTarget: (args: {
         target: { x: number; y: number; z: number }
@@ -900,7 +902,7 @@ declare global {
           tiltRangeDeg?: number
           isPlaced?: boolean
         }>
-      }) => Promise<{ success: boolean; results?: Record<string, unknown>; error?: string }>
+      }) => Promise<{ success: boolean; subTargets?: Record<string, { x: number; y: number; z: number }>; error?: string }>
 
       /**
        * E12 WAVE 4531: Release spatial target — devuelve fixtures al control AI.

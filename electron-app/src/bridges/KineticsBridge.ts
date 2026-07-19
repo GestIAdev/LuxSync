@@ -726,29 +726,17 @@ class KineticsBridgeClass {
         fixtureIKProfiles,
       })
 
-      // Detectar fixtures que no puedo controlar (motor superior activo)
-      if (result?.results) {
-        const locked = new Set<string>()
-        for (const [id, res] of Object.entries(result.results)) {
-          const r = res as { locked?: boolean; success?: boolean }
-          if (r.locked === true || r.success === false) {
-            locked.add(id)
-          }
-        }
-        useMovementStore.getState().setLockedFixtures(locked)
-
-        // Actualizar reachability en movementStore con los resultados IK
-        const reachability: Record<string, import('../engine/movement/InverseKinematicsEngine').IKResult> = {}
+      // 🏗️ WAVE 7179 (M3): El IPC ya no resuelve IK — retorna solo subTargets.
+      // La telemetría de reachability se leerá de forma asíncrona desde los
+      // transient updates que publicará el resolver más adelante.
+      if (result?.subTargets) {
         const subTargets: Record<string, import('../engine/movement/InverseKinematicsEngine').Target3D> = {}
-        for (const [id, res] of Object.entries(result.results)) {
-          const ik = res as import('../engine/movement/InverseKinematicsEngine').IKResult & { subTarget?: import('../engine/movement/InverseKinematicsEngine').Target3D }
-          reachability[id] = ik
-          if (ik.subTarget) {
-            subTargets[id] = ik.subTarget
-          }
+        for (const [id, st] of Object.entries(result.subTargets)) {
+          subTargets[id] = st as import('../engine/movement/InverseKinematicsEngine').Target3D
         }
-        useMovementStore.getState().setSpatialReachability(reachability)
         useMovementStore.getState().setSpatialSubTargets(subTargets)
+        // Limpiar reachability stale — el resolver publicará nuevos datos vía transient
+        useMovementStore.getState().setSpatialReachability({})
       }
     } catch (err) {
       console.error('[KineticsBridge] applySpatialTarget error:', err)

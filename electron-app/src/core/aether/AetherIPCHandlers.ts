@@ -22,9 +22,8 @@
 import { ipcMain } from 'electron'
 import { getTitanOrchestrator } from '../orchestrator/TitanOrchestrator'
 // 🚦 WAVE 4704: masterArbiter eliminado. IK solver nativo directo.
-import { buildProfile, solveGroupWithFan, setIKDebug } from '../../engine/movement/InverseKinematicsEngine'
+import { computeFanSubTargets, setIKDebug } from '../../engine/movement/InverseKinematicsEngine'
 import type { SpatialFanMode } from '../../engine/movement/InverseKinematicsEngine'
-import type { InstallationOrientation } from '../stage/ShowFileV2'
 // WAVE 4659: V3 — vibeMovementManager para propagar patrones manuales al pipeline Aether
 import { vibeMovementManager } from '../../engine/movement/VibeMovementManager'
 // ⚡ WAVE 4700: Motor cinético nativo L2 — sustituye masterArbiter + VMM para patrones manuales
@@ -928,10 +927,15 @@ export function registerAetherIPCHandlers(): void {
   )
 
   /**
-   * E12: Apply spatial target (IK solve) para fixtures.
+   * E12: Apply spatial target para fixtures.
    * Ruta: lux:aether:applySpatialTarget (Aether IPC)
-   * Engine: InverseKinematicsEngine.solveGroupWithFan() — WAVE 4704 (masterArbiter eliminado)
+   * Engine: computeFanSubTargets() — WAVE 7179 M3 (single-solve pipeline)
    * Payload: { target: {x,y,z}, fixtureIds, fanMode?, fanAmplitude?, fixturePositions? }
+   *
+   * 🏗️ WAVE 7179 (M3): El handler YA NO resuelve IK. Solo calcula los sub-targets
+   * espaciales (geometría pura de fan) e inyecta coordenadas target_x/y/z en el
+   * árbitro. El solve completo ocurrirá única y exclusivamente en el resolver de
+   * nodos más adelante en el pipeline.
    *
    * WAVE 4884 Fase 2B: fixturePositions es un mapa id→Position3D enviado por el frontend
    * (KineticsBridge) con las coordenadas reales del stageStore. Se usa con prioridad sobre
@@ -969,13 +973,10 @@ export function registerAetherIPCHandlers(): void {
         const arbiter = orchestrator.getAetherArbiter()
         const allFixtures: any[] = (orchestrator as any).fixtures ?? []
 
-        const profiles = []
-        const validIds: string[] = []
-        // ── WAVE 4881 Fase 2: anti-flip ──
-        // Construir mapa fixtureId → currentPanDMX leyendo el override L2 vivo
-        // del arbiter (pan_base 0..1) y escalándolo a DMX. Sin esto el solver
-        // no puede aplicar shortest-path y los cruces de hemisferio giran 540°.
-        const currentPanDMXMap = new Map<string, number>()
+        // ── WAVE 7179 (M3): Resolver posiciones reales sin construir IK profiles ──
+        // Ya no se necesita buildProfile ni calibration ni panRange/tiltRange en esta capa.
+        // Solo necesitamos id + position para computeFanSubTargets y distance scale.
+        const fixtureInputs: Array<{ id: string; position: { x: number; y: number; z: number } }> = []
 
         for (const id of fixtureIds) {
           const f = allFixtures.find((x: any) => x.id === id)
@@ -986,138 +987,59 @@ export function registerAetherIPCHandlers(): void {
           // Si ninguno tiene posición válida, se salta el fixture.
           const resolvedPosition = fixturePositions?.[id] ?? f?.position
           if (!resolvedPosition) continue
-          const cal = stageIK?.calibration ?? f?.calibration
-          const physics = f?.physics
-          const orientationRaw = stageIK?.orientation ?? f?.orientation ?? f?.installationType
-          const installation = (
-            orientationRaw === 'ceiling' ||
-            orientationRaw === 'floor' ||
-            orientationRaw === 'totem' ||
-            orientationRaw === 'truss-front' ||
-            orientationRaw === 'truss-back' ||
-            orientationRaw === 'wall-left' ||
-            orientationRaw === 'wall-right'
-          )
-            ? orientationRaw
-            : 'ceiling'
-          // WAVE 4910: REVERT WAVE 4905 — panInvert debe ser false.
-          //
-          // WAVE 4905 asumió que la fórmula del visualizador era:
-          //   panAngle = -(physicalPan - 0.5) * range  (con negativo)
-          // y concluyó que panInvert=true convergía. Ese análisis era incorrecto.
-          //
-          // El código real del visualizador (HyperionMovingHead3D.tsx L242) es:
-          //   panAngle = (smoothPan - 0.5) * PAN_RANGE  (SIN negativo)
-          //
-          // Con la fórmula real:
-          //   panInvert=false: panDMX=161 → livePan=0.63 → panAngle=+35° → CONVERGE ✓
-          //   panInvert=true:  panDMX=94  → livePan=0.37 → panAngle=-35° → DIVERGE ✗
-          //
-          // El showfile tiene panInvert:false (configurado por el usuario). Respetamos eso.
-          // ── WAVE 4881 Fase 2: rango mecánico real ──
-          // Leer panRange/tiltRange en cascada para evitar el fallback ciego
-          // a 540/270. Orden: root-level legacy → capabilities → physics.
-          const panRangeDeg: number | undefined =
-            stageIK?.panRangeDeg ?? f?.panRangeDeg ?? f?.capabilities?.panRange ?? physics?.panRange
-          const tiltRangeDeg: number | undefined =
-            stageIK?.tiltRangeDeg ?? f?.tiltRangeDeg ?? f?.capabilities?.tiltRange ?? physics?.tiltRange
-          if (panRangeDeg === undefined || tiltRangeDeg === undefined) {
-            console.warn(
-              `[AetherIPC applySpatialTarget] fixture=${id} sin panRange/tiltRange explícitos; ` +
-              `IK caerá a defaults industria 540°/270°. Recomendado: declarar capabilities.panRange/tiltRange.`,
-            )
+          if (!Number.isFinite(resolvedPosition.x) || !Number.isFinite(resolvedPosition.y) || !Number.isFinite(resolvedPosition.z)) {
+            console.warn(`[AetherIPC applySpatialTarget] fixture=${id} posición no-finita, ignorado.`)
+            continue
           }
-          const profile = buildProfile(
-            id,
-            resolvedPosition,
-            stageIK?.rotation ?? f?.rotation,
-            installation as InstallationOrientation,
-            {
-              panOffset:  cal?.panOffset  ?? 0,
-              tiltOffset: cal?.tiltOffset ?? 0,
-              panInvert:  false,  // WAVE 4910: visualizador usa (pan-0.5)*range (sin negativo)
-              tiltInvert: false,  // siempre false (WAVE 4898 frame correcto)
-            },
-            panRangeDeg,
-            tiltRangeDeg,
-            physics?.tiltLimits,
-          )
-          profiles.push(profile)
-          validIds.push(id)
-
-          // ── currentPanDMX desde L2: pan_base está en 0..1, DMX en 0..255 ──
-          const l2 = arbiter.getManualOverride(resolveKineticNodeId(`${id}:kinetic`))
-          const panBase = l2 && Number.isFinite(l2['pan_base']) ? l2['pan_base'] : undefined
-          if (panBase !== undefined) {
-            const clamped = panBase < 0 ? 0 : panBase > 1 ? 1 : panBase
-            currentPanDMXMap.set(id, clamped * 255)
-          }
+          fixtureInputs.push({ id, position: resolvedPosition })
         }
 
-        if (profiles.length === 0) return { success: true, results: {} }
+        if (fixtureInputs.length === 0) return { success: true, subTargets: {} }
 
         // ⚡ WAVE 4915: Pre-computar Spatial Distance Scale por fixture (§3.2 del blueprint).
         // Mantiene el arco visual del patrón VMM aproximadamente constante entre fixtures
         // cercanos y lejanos al target. Formula lineal simple: scale = d_ref / distance,
         // recortado a [0.25, 2.0] por el setter del arbiter.
         const D_REF = 8.0  // metros — distancia "de diseño" (blueprint §3.2)
-        for (let i = 0; i < profiles.length; i++) {
-          const id = validIds[i]
-          const fxPos = profiles[i].position
-          if (!fxPos) continue
-          const dx = fxPos.x - target.x
-          const dy = fxPos.y - target.y
-          const dz = fxPos.z - target.z
+        for (const fi of fixtureInputs) {
+          const dx = fi.position.x - target.x
+          const dy = fi.position.y - target.y
+          const dz = fi.position.z - target.z
           const distance = Math.sqrt(dx * dx + dy * dy + dz * dz)
           if (!Number.isFinite(distance) || distance < 1e-6) {
-            // Fixture prácticamente encima del target — máximo arco órbital.
-            arbiter.setSpatialDistanceScale(resolveKineticNodeId(`${id}:kinetic`), 2.0)
+            arbiter.setSpatialDistanceScale(resolveKineticNodeId(`${fi.id}:kinetic`), 2.0)
             continue
           }
           const scale = D_REF / distance
-          arbiter.setSpatialDistanceScale(resolveKineticNodeId(`${id}:kinetic`), scale)
+          arbiter.setSpatialDistanceScale(resolveKineticNodeId(`${fi.id}:kinetic`), scale)
         }
 
-        const results = solveGroupWithFan(
-          profiles,
+        // 🏗️ WAVE 7179 (M3): computeFanSubTargets — pura geometría, sin solve()
+        const subTargets = computeFanSubTargets(
+          fixtureInputs,
           target,
           (fanMode ?? 'converge') as SpatialFanMode,
           fanAmplitude ?? 0,
-          currentPanDMXMap.size > 0 ? currentPanDMXMap : null,
         )
 
-        const serialized: Record<string, unknown> = {}
-        for (const id of validIds) {
-          const ikResult = results.get(id)
-          if (!ikResult) continue
-
-          // WAVE 4885 Fase 2: guard anti-NaN.
-          // El IK puede producir NaN si resolvedPosition llegó malformado (x/y/z no-finitos).
-          // Un NaN en _motorKineticOverrides envenenaría el árbitro para ese fixture.
-          const panNorm  = ikResult.pan  / 255
-          const tiltNorm = ikResult.tilt / 255
-          if (!Number.isFinite(panNorm) || !Number.isFinite(tiltNorm)) {
-            console.error(
-              `[AetherIPC applySpatialTarget] NaN en output IK fixture=${id}` +
-              ` pan=${ikResult.pan} tilt=${ikResult.tilt} — fixture ignorado.`,
-            )
-            continue
-          }
-
-          // WAVE 4885 Fase 2: setMotorKineticOverride en lugar de setManualOverride.
-          // setManualOverride escribe en _manualOverrides donde pan_base/tilt_base son
-          // el anchor del radar clásico y NO se traducen a pan/tilt (ver NodeArbiter.ts:532).
-          // setMotorKineticOverride escribe en _motorKineticOverrides — bloque L2-MOTOR
-          // que aplica DESPUÉS del Grand Master con supremacía absoluta sobre pan/tilt.
-          arbiter.setMotorKineticOverride(resolveKineticNodeId(`${id}:kinetic`), {
-            pan_base:  panNorm,
-            tilt_base: tiltNorm,
+        // ── Inyectar overrides espaciales puros en el árbitro ──
+        // Nada de pan_base ni tilt_base en esta fase. Solo coordenadas target_x/y/z.
+        // El resolver de nodos leerá estas coordenadas y hará el solve completo.
+        const serialized: Record<string, { x: number; y: number; z: number }> = {}
+        for (const [id, subTarget] of subTargets) {
+          const nodeId = resolveKineticNodeId(`${id}:kinetic`)
+          arbiter.setMotorKineticOverride(nodeId, {
+            target_x: subTarget.x,
+            target_y: subTarget.y,
+            target_z: subTarget.z,
           })
-          console.log(`[ZOMBIE-DIAG] applySpatialTarget wrote motor override ${id}: pan_base=${panNorm.toFixed(4)} tilt_base=${tiltNorm.toFixed(4)}`)
-          serialized[id] = ikResult
+          serialized[id] = subTarget
         }
 
-        return { success: true, results: serialized }
+        // Retornar inmediatamente los subTargets para mantener la reactividad visual
+        // del pad de control. La telemetría de reachability se leerá de forma asíncrona
+        // desde los transient updates que publicará el resolver más adelante.
+        return { success: true, subTargets: serialized }
       } catch (err) {
         console.error('[AetherIPC] applySpatialTarget error:', err)
         return { success: false, error: String(err) }
@@ -1142,12 +1064,13 @@ export function registerAetherIPCHandlers(): void {
         for (const id of fixtureIds) {
           const nodeId = resolveKineticNodeId(`${id}:kinetic`)
           // WAVE 4980: Anti-jitter release fade.
-          // Leemos la posición IK actual (_motorKineticOverrides) y la
-          // inyectamos como pan/tilt absolutos en _manualOverrides ANTES de
-          // llamar a clearManualOverride. Así, clearManualOverride captura el
-          // snapshot en _releaseStates con RELEASE_MS_SLOW (1000ms) y el
-          // Árbitro aplica ease-out cubic de vuelta hacia L0, eliminando el
-          // latigazo (snap) de la cabeza móvil al soltar el target espacial.
+          // 🏗️ WAVE 7179 (M3): El motor override ahora contiene target_x/y/z
+          // (coordenadas espaciales puras), no pan_base/tilt_base. No podemos
+          // usar coordenadas XYZ como valores de fade pan/tilt — el fade es
+          // un no-op en M3. El resolver detendrá el solve espacial cuando
+          // clearMotorKineticOverride elimine las coordenadas target.
+          // El ease-out hacia L0 se preserva vía clearManualOverride si hay
+          // overrides clásicos del radar (pan_base/tilt_base) todavía activos.
           const motorOverride = arbiter.getMotorKineticOverride(nodeId)
           if (motorOverride) {
             const panBase  = (motorOverride as Record<string, number>)['pan_base']

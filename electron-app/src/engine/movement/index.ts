@@ -47,6 +47,7 @@ export {
   computeLineFanOffsets,
   computeCircleFanOffsets,
   solveGroupWithFan,
+  computeFanSubTargets,
 } from './InverseKinematicsEngine'
 export type {
   Target3D,

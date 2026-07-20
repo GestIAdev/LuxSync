@@ -1,11 +1,17 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState, useCallback } from 'react'
+import { useStageStore } from '../../../../stores/stageStore'
 import { PaperLayer } from './layers/PaperLayer'
 import { GridLayer } from './layers/GridLayer'
 import { SymbolLayer } from './layers/SymbolLayer'
+import { DimensionLayer } from './layers/DimensionLayer'
+import { DragDropController2D, type DragState2D } from './interaction/DragDropController2D'
+import { CoverageRing } from './interaction/CoverageRing'
+import { ElevationScrubber, type ElevationState } from './elevation/ElevationScrubber'
+import { SectionProfileGhost } from './elevation/SectionProfileGhost'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // BlueprintCanvas — El Viewport SVG
-// PROYECTO EREBUS FASE 4
+// PROYECTO EREBUS — FASE 4 + FASE 7
 //
 // Contenedor raíz del lienzo 2D (Blueprint Mode).
 // Ocupa el 100% del espacio bajo el HUD.
@@ -15,6 +21,8 @@ import { SymbolLayer } from './layers/SymbolLayer'
 //   X: Left (-) to Right (+) — stage width
 //   Z: Back (-) to Front (+) — stage depth
 //   SVG Y axis = 3D Z axis (top-down view)
+//
+// FASE 7: Drag & Drop 2D, Cotas Vivas, Elevación Latente, Coverage Ring.
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface BlueprintCanvasProps {
@@ -34,6 +42,22 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
   padding = 2,
   style,
 }) => {
+  const fixtures = useStageStore(s => s.fixtures)
+
+  // ── FASE 7: Interaction state ─────────────────────────────────────────────
+  const [dragState, setDragState] = useState<DragState2D | null>(null)
+  const [elevationState, setElevationState] = useState<ElevationState | null>(null)
+
+  const handleDragUpdate = useCallback((state: DragState2D) => setDragState(state), [])
+  const handleDragEnd = useCallback(() => setDragState(null), [])
+  const handleElevationChange = useCallback((state: ElevationState | null) => setElevationState(state), [])
+
+  // Neighbor positions for DimensionLayer
+  const neighborPositions = useMemo(
+    () => fixtures.map(f => ({ id: f.id, x: f.position.x, z: f.position.z })),
+    [fixtures],
+  )
+
   // viewBox spans from (-padding) to (stageWidth + padding) on X
   // and from (-padding) to (stageDepth + padding) on Z (mapped to SVG Y)
   const viewBox = useMemo(
@@ -74,8 +98,41 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
         padding={padding}
       />
 
+      {/* Layer 4: Cotas Vivas (only during drag) */}
+      <DimensionLayer
+        dragState={dragState}
+        neighborPositions={neighborPositions}
+        stageWidth={stageWidth}
+        stageDepth={stageDepth}
+        padding={padding}
+      />
+
+      {/* Coverage Ring (only during elevation scrubbing) */}
+      <CoverageRing elevationState={elevationState} />
+
       {/* Layer 5: Symbols (fixture simbology) */}
       <SymbolLayer />
+
+      {/* FASE 7: Drag & Drop 2D + Elevation Scrubber */}
+      <DragDropController2D
+        stageWidth={stageWidth}
+        stageDepth={stageDepth}
+        padding={padding}
+        onDragUpdate={handleDragUpdate}
+        onDragEnd={handleDragEnd}
+      />
+      <ElevationScrubber
+        fixtures={fixtures}
+        onElevationChange={handleElevationChange}
+      />
+
+      {/* Section Profile Ghost (only during elevation scrubbing) */}
+      <SectionProfileGhost
+        elevationState={elevationState}
+        stageWidth={stageWidth}
+        stageDepth={stageDepth}
+        padding={padding}
+      />
     </svg>
   )
 }

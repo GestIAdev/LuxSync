@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useStageStore } from '../../../../../stores/stageStore'
+import { useSelectionStore } from '../../../../../stores/selectionStore'
 import { snapToVoxel, VOXEL_SIZE } from '../../../../../core/stage/ShowFileV2'
 import type { FixtureV2 } from '../../../../../core/stage/ShowFileV2'
 
@@ -40,8 +41,9 @@ export const ElevationScrubber: React.FC<ElevationScrubberProps> = ({
   onElevationChange,
 }) => {
   const setFixtureElevation = useStageStore(s => s.setFixtureElevation)
+  const setHovered = useSelectionStore(s => s.setHovered)
 
-  const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const [hoveredId, setHoveredIdLocal] = useState<string | null>(null)
   const [elevationState, setElevationState] = useState<ElevationState | null>(null)
   const fadeTimerRef = useRef<number | null>(null)
   const altDragRef = useRef<{ startClientY: number; fixtureId: string; startElevation: number } | null>(null)
@@ -151,8 +153,8 @@ export const ElevationScrubber: React.FC<ElevationScrubberProps> = ({
           r={0.2}
           fill="transparent"
           style={{ cursor: 'ns-resize' }}
-          onPointerEnter={() => setHoveredId(f.id)}
-          onPointerLeave={() => setHoveredId(null)}
+          onPointerEnter={() => { setHoveredIdLocal(f.id); setHovered(f.id) }}
+          onPointerLeave={() => { setHoveredIdLocal(null); setHovered(null) }}
           onPointerDown={(e) => {
             if (e.altKey) {
               e.stopPropagation()

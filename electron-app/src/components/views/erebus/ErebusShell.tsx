@@ -3,6 +3,7 @@ import { CommandStrip } from './hud/CommandStrip'
 import { DockRail } from './hud/DockRail'
 import { ContextInspector } from './hud/ContextInspector'
 import { StatusRibbon } from './hud/StatusRibbon'
+import { RadialMenu } from './hud/RadialMenu'
 import { useViewTransition } from './transition/ViewTransitionDirector'
 import './erebus.css'
 
@@ -90,6 +91,7 @@ export const ErebusShell: React.FC = () => {
       <DockRail />
       <ContextInspector toolMode={toolMode} />
       <StatusRibbon />
+      <RadialMenu />
     </div>
   )
 }

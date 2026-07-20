@@ -9,7 +9,7 @@ import { snapToVoxel, VOXEL_SIZE, clampToCrystalBox } from '../../../../../core/
 
 // ═══════════════════════════════════════════════════════════════════════════
 // DragDropController3D — El Controlador del Cursor
-// PROYECTO EREBUS FASE 6
+// PROYECTO EREBUS FASE 6 + FASE 8
 //
 // Implementa la lógica de arrastre en R3F:
 //   - Intercepta eventos de puntero sobre fixtures
@@ -22,6 +22,7 @@ import { snapToVoxel, VOXEL_SIZE, clampToCrystalBox } from '../../../../../core/
 //   - En el drop: hereda Y, orientation y rigId del truss
 //   - Si se suelta en el suelo (Y < 0.3m): orientation 'floor', rigId undefined
 //
+// FASE 8: selectionStore integration — select on click, hover, context menu.
 // Límites: respeta clampToCrystalBox del store.
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -133,6 +134,10 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
   const rigs = useStageStore(s => s.showFile?.rigs ?? [])
   const updateFixture = useStageStore(s => s.updateFixture)
   const updateFixturePosition = useStageStore(s => s.updateFixturePosition)
+
+  // FASE 8: selectionStore integration
+  const select = useSelectionStore(s => s.select)
+  const setHovered = useSelectionStore(s => s.setHovered)
   const selectedIds = useSelectionStore(s => s.selectedIds)
 
   // ── State ────────────────────────────────────────────────────────────────
@@ -169,6 +174,13 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
 
       e.stopPropagation()
 
+      // FASE 8: Notify selectionStore (Shift = add, plain = replace)
+      if (e.shiftKey) {
+        select(fixtureId, 'add')
+      } else if (!selectedIds.has(fixtureId)) {
+        select(fixtureId, 'replace')
+      }
+
       draggedFixtureRef.current = fixture
       setIsDragging(true)
       onDragStart?.()
@@ -198,7 +210,22 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
       setActiveAnchors(nearbyAnchors)
       setAnchorsVisible(true)
     },
-    [enabled, fixtures, rigs, onDragStart, dragPlane],
+    [enabled, fixtures, rigs, onDragStart, dragPlane, select, selectedIds],
+  )
+
+  // ── Context menu handler (right-click) ──────────────────────────────────
+  const handleContextMenu = useCallback(
+    (e: any) => {
+      const fixtureId = e.object?.userData?.fixtureId
+      if (!fixtureId) return
+      e.stopPropagation()
+      e.preventDefault()
+      select(fixtureId, 'replace')
+      window.dispatchEvent(new CustomEvent('erebus:radial-menu', {
+        detail: { clientX: e.clientX, clientY: e.clientY, fixtureId },
+      }))
+    },
+    [select],
   )
 
   // ── Update drag position via pointer move ────────────────────────────────
@@ -352,10 +379,33 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
       <mesh
         visible={false}
         onPointerDown={handlePointerDown}
+        onPointerOver={(e) => {
+          const fid = e.object?.userData?.fixtureId
+          if (fid) setHovered(fid)
+        }}
+        onPointerOut={() => setHovered(null)}
+        onContextMenu={handleContextMenu}
         position={[stageWidth / 2, 0, stageDepth / 2]}
       >
         <boxGeometry args={[stageWidth, 0.01, stageDepth]} />
       </mesh>
+
+      {/* Selection ring — pulsing torus around selected fixtures */}
+      {fixtures.filter(f => selectedIds.has(f.id)).map(f => (
+        <mesh
+          key={`sel-${f.id}`}
+          position={[f.position.x, f.position.y, f.position.z]}
+          rotation={[Math.PI / 2, 0, 0]}
+        >
+          <torusGeometry args={[0.12, 0.008, 8, 32]} />
+          <meshBasicMaterial
+            color="#5EEAD4"
+            transparent
+            opacity={0.7}
+            depthWrite={false}
+          />
+        </mesh>
+      ))}
 
       {/* Anchor points — revealed during drag near rigs */}
       <AnchorPoints positions={activeAnchors} visible={anchorsVisible} />

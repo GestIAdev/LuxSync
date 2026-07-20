@@ -1,19 +1,19 @@
 import React, { useCallback, useMemo, useRef, useState, useEffect } from 'react'
 import { useStageStore } from '../../../../../stores/stageStore'
+import { useSelectionStore } from '../../../../../stores/selectionStore'
 import { snapToVoxel, VOXEL_SIZE, clampToCrystalBox } from '../../../../../core/stage/ShowFileV2'
 import type { FixtureV2, StageDimensions } from '../../../../../core/stage/ShowFileV2'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // DragDropController2D — Arrastre y Alineación en el plano SVG
-// PROYECTO EREBUS FASE 7
+// PROYECTO EREBUS FASE 7 + FASE 8
 //
 // Intercepta eventos de puntero SVG para mover fixtures en el plano XZ.
 // Snapping a cuadrícula de voxels (0.25m).
 // Alineación magnética: <0.1m del eje X o Z de otro fixture → imán + línea.
 //
-// DEUDA TÉCNICA: usa estado local para selección/hover en lugar de
-// selectionStore (no verificado en esta fase). Migrar cuando se integre
-// el store de selección unificado.
+// FASE 8: Integración con selectionStore — selección única, multi con Shift,
+// hover global notificado al store unificado.
 // ═══════════════════════════════════════════════════════════════════════════
 
 const ALIGN_THRESHOLD = 0.1 // 10cm — distancia de activación de alineación magnética
@@ -53,6 +53,12 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
   const fixtures = useStageStore(s => s.fixtures)
   const placeFixture2D = useStageStore(s => s.placeFixture2D)
   const updateFixturePosition = useStageStore(s => s.updateFixturePosition)
+
+  // FASE 8: selectionStore integration
+  const select = useSelectionStore(s => s.select)
+  const setHovered = useSelectionStore(s => s.setHovered)
+  const deselectAll = useSelectionStore(s => s.deselectAll)
+  const selectedIds = useSelectionStore(s => s.selectedIds)
 
   const [dragging, setDragging] = useState<DragState2D | null>(null)
   const svgRef = useRef<SVGSVGElement | null>(null)
@@ -104,6 +110,13 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
       const fixture = fixtures.find(f => f.id === fixtureId)
       if (!fixture) return
 
+      // FASE 8: Notify selectionStore (Shift = add, plain = replace)
+      if (!e.shiftKey && !selectedIds.has(fixtureId)) {
+        select(fixtureId, 'replace')
+      } else if (e.shiftKey) {
+        select(fixtureId, 'add')
+      }
+
       const { x, z } = screenToSVG(e.clientX, e.clientY)
       const snappedX = snapToVoxel(x)
       const snappedZ = snapToVoxel(z)
@@ -118,7 +131,7 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
       setDragging(state)
       onDragUpdate?.(state)
     },
-    [fixtures, screenToSVG, onDragUpdate],
+    [fixtures, screenToSVG, onDragUpdate, select, selectedIds],
   )
 
   // ── Drag move ──────────────────────────────────────────────────────────────
@@ -190,8 +203,23 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
           cy={f.position.z}
           r={0.2}
           fill="transparent"
-          style={{ cursor: 'grab', pointerEvents: 'all' }}
+          style={{
+            cursor: 'grab',
+            pointerEvents: 'all',
+            stroke: selectedIds.has(f.id) ? 'var(--obs-accent, #5EEAD4)' : 'transparent',
+            strokeWidth: 0.004,
+          }}
           onPointerDown={(e) => handlePointerDown(e, f.id)}
+          onPointerEnter={() => setHovered(f.id)}
+          onPointerLeave={() => setHovered(null)}
+          onContextMenu={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            select(f.id, 'replace')
+            window.dispatchEvent(new CustomEvent('erebus:radial-menu', {
+              detail: { clientX: e.clientX, clientY: e.clientY, fixtureId: f.id },
+            }))
+          }}
         />
       ))}
 

@@ -19,7 +19,7 @@ import './ContentArea.css'
 
 // Lazy load views for better performance
 const DashboardView = lazy(() => import('../views/DashboardView'))
-const StageConstructorView = lazy(() => import('../views/StageConstructorView'))
+const ErebusShell = lazy(() => import('../views/erebus/ErebusShell'))
 const LiveStageView = lazy(() => import('../hyperion'))
 const CalibrationView = lazy(() => import('../views/CalibrationView'))
 const ForgeView = lazy(() => import('../views/ForgeView'))  // 🔨 WAVE 1110
@@ -130,7 +130,7 @@ const ContentArea: React.FC = () => {
       case 'dashboard':
         return <DashboardView />
       case 'constructor':
-        return <StageConstructorView />
+        return <ErebusShell />
       case 'live':
         return <LiveStageView />
       case 'calibration':

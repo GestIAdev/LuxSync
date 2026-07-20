@@ -1,0 +1,220 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   EREBUS — Obsidian Palette & Base Styles
+   PROYECTO EREBUS FASE 1
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --obs-void: #0B0D12;
+  --obs-floor: #14171F;
+  --obs-surface: #1B1F2A;
+  --obs-line: #2A3040;
+  --obs-ink: #8B94A8;
+  --obs-bright: #E4E9F2;
+  --obs-accent: #5EEAD4;
+  --obs-amber: #F5B04D;
+  --obs-magenta: #E455A0;
+  --obs-ghost: rgba(94, 234, 212, 0.12);
+}
+
+/* ── Shell ─────────────────────────────────────────────────────── */
+
+.erebus-shell {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--obs-floor);
+  font-family: 'Inter', system-ui, sans-serif;
+  color: var(--obs-bright);
+}
+
+/* ── Command Strip (top satellite) ─────────────────────────────── */
+
+.erebus-command-strip {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 12px;
+  background: rgba(27, 31, 42, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--obs-line);
+  border-radius: 8px;
+  z-index: 100;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.erebus-cmd-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px;
+  border-right: 1px solid var(--obs-line);
+}
+
+.erebus-cmd-group:last-child {
+  border-right: none;
+}
+
+.erebus-cmd-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  min-width: 28px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--obs-ink);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.erebus-cmd-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--obs-bright);
+}
+
+.erebus-cmd-btn--active {
+  background: rgba(94, 234, 212, 0.12);
+  color: var(--obs-accent);
+}
+
+.erebus-cmd-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--obs-line);
+}
+
+/* ── Dock Rail (left satellite) ────────────────────────────────── */
+
+.erebus-dock-rail {
+  position: absolute;
+  top: 64px;
+  left: 12px;
+  width: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0;
+  background: rgba(27, 31, 42, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--obs-line);
+  border-radius: 8px;
+  z-index: 100;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.erebus-rail-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--obs-ink);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.erebus-rail-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--obs-bright);
+}
+
+.erebus-rail-btn--active {
+  background: rgba(94, 234, 212, 0.12);
+  color: var(--obs-accent);
+}
+
+.erebus-rail-divider {
+  width: 28px;
+  height: 1px;
+  background: var(--obs-line);
+  margin: 2px 0;
+}
+
+/* ── Context Inspector (right satellite) ───────────────────────── */
+
+.erebus-context-inspector {
+  position: absolute;
+  top: 64px;
+  right: 12px;
+  width: 320px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  background: rgba(27, 31, 42, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--obs-line);
+  border-radius: 8px;
+  z-index: 100;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+  animation: erebus-inspector-slide 0.15s ease-out;
+}
+
+@keyframes erebus-inspector-slide {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.erebus-inspector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--obs-line);
+}
+
+.erebus-inspector-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--obs-ink);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.erebus-inspector-body {
+  padding: 12px 14px;
+}
+
+/* ── Status Ribbon (bottom satellite) ──────────────────────────── */
+
+.erebus-status-ribbon {
+  position: absolute;
+  bottom: 8px;
+  left: 12px;
+  right: 12px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+  font-family: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace;
+  font-size: 11px;
+  color: var(--obs-ink);
+  z-index: 100;
+  pointer-events: none;
+}
+
+.erebus-status-sep {
+  margin: 0 8px;
+  color: var(--obs-line);
+}
+
+.erebus-status-accent {
+  color: var(--obs-accent);
+}

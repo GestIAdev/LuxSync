@@ -5,8 +5,9 @@ import { ContextInspector } from './hud/ContextInspector'
 import { StatusRibbon } from './hud/StatusRibbon'
 import './erebus.css'
 
-// Lazy load the heavy 3D canvas
+// Lazy load the heavy canvases
 const StudioCanvas = lazy(() => import('./studio3d/StudioCanvas'))
+const BlueprintCanvas = lazy(() => import('./blueprint2d/BlueprintCanvas'))
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ErebusShell — Layout Raíz
@@ -38,6 +39,11 @@ export const ErebusShell: React.FC = () => {
         {viewMode === '3d' && (
           <Suspense fallback={null}>
             <StudioCanvas quality="HQ" />
+          </Suspense>
+        )}
+        {viewMode === '2d' && (
+          <Suspense fallback={null}>
+            <BlueprintCanvas />
           </Suspense>
         )}
       </div>

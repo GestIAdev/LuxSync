@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useCallback, useState } from 'react'
+import React, { Suspense, lazy, useCallback, useState, useEffect } from 'react'
 import { CommandStrip } from './hud/CommandStrip'
 import { DockRail } from './hud/DockRail'
 import { ContextInspector } from './hud/ContextInspector'
@@ -6,6 +6,8 @@ import { StatusRibbon } from './hud/StatusRibbon'
 import { RadialMenu } from './hud/RadialMenu'
 import { CommandPalette } from './hud/CommandPalette'
 import { useViewTransition } from './transition/ViewTransitionDirector'
+import { useLibraryStore } from '../../../stores/libraryStore'
+import { useStageStore } from '../../../stores/stageStore'
 import './erebus.css'
 
 // Lazy load the heavy canvases
@@ -35,6 +37,21 @@ export interface ErebusContextValue {
 export const ErebusShell: React.FC = () => {
   const [toolMode, setToolMode] = useState<ToolMode>('select')
   const [viewMode, setViewMode] = useState<ViewMode>('3d')
+
+  // ── Bootstrap: load library + ensure show file exists ────────────────────
+  const loadFromDisk = useLibraryStore(s => s.loadFromDisk)
+  const showFile = useStageStore(s => s.showFile)
+  const newShow = useStageStore(s => s.newShow)
+
+  useEffect(() => {
+    loadFromDisk(true)
+  }, [loadFromDisk])
+
+  useEffect(() => {
+    if (!showFile) {
+      newShow('Untitled Show')
+    }
+  }, [showFile, newShow])
 
   // ── FASE 5: Transition director ──────────────────────────────────────────
   const handleViewChange = useCallback((newView: ViewMode) => {

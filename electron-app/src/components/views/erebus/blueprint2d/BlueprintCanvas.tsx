@@ -3,7 +3,7 @@ import { useStageStore } from '../../../../stores/stageStore'
 import { PaperLayer } from './layers/PaperLayer'
 import { GridLayer } from './layers/GridLayer'
 import { ZoneLayer } from './layers/ZoneLayer'
-import { SymbolLayer } from './layers/SymbolLayer'
+import { SymbolLayer, type FixtureSymbolData } from './layers/SymbolLayer'
 import { DimensionLayer } from './layers/DimensionLayer'
 import { DragDropController2D, type DragState2D } from './interaction/DragDropController2D'
 import { LassoSelection } from './interaction/LassoSelection'
@@ -58,6 +58,20 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
   // Neighbor positions for DimensionLayer
   const neighborPositions = useMemo(
     () => fixtures.map(f => ({ id: f.id, x: f.position.x, z: f.position.z })),
+    [fixtures],
+  )
+
+  // Map fixtures to symbol data for SymbolLayer
+  const symbolFixtures = useMemo<FixtureSymbolData[]>(
+    () =>
+      fixtures.map(f => ({
+        id: f.id,
+        type: (f.type === 'bar' ? 'wash' : f.type) as FixtureSymbolData['type'],
+        x: f.position.x,
+        z: f.position.z,
+        yaw: f.rotation.yaw,
+        label: `${f.name} · U${f.universe}.${f.address}`,
+      })),
     [fixtures],
   )
 
@@ -121,7 +135,7 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
       <CoverageRing elevationState={elevationState} />
 
       {/* Layer 5: Symbols (fixture simbology) */}
-      <SymbolLayer />
+      <SymbolLayer fixtures={symbolFixtures} />
 
       {/* FASE 7: Drag & Drop 2D + Elevation Scrubber */}
       <DragDropController2D

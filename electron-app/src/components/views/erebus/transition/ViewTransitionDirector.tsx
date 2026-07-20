@@ -145,10 +145,10 @@ export function useViewTransition(
   }, [isTransitioning, direction, onViewChange])
 
   // ── Compute crossfade opacities ──────────────────────────────────────────
-  const { opacity3D, opacity2D } = getCrossfadeOpacities(
-    direction ?? '3d-to-2d',
-    transitionProgress,
-  )
+  // During transition: use directional crossfade. After transition: settled view gets opacity 1.
+  const { opacity3D, opacity2D } = isTransitioning
+    ? getCrossfadeOpacities(direction ?? '3d-to-2d', transitionProgress)
+    : { opacity3D: settledView === '3d' ? 1 : 0, opacity2D: settledView === '2d' ? 1 : 0 }
 
   // ── Mount logic ──────────────────────────────────────────────────────────
   // During transition: both canvases mounted

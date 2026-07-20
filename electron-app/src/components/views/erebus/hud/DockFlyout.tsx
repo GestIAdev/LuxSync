@@ -12,8 +12,8 @@ import { FixtureCard } from './FixtureCard'
 // ═══════════════════════════════════════════════════════════════════════════
 
 const CATEGORY_MAP: Record<string, string[]> = {
-  moving: ['moving-head', 'scanner', 'spot'],
-  par: ['par', 'wash'],
+  moving: ['moving-head', 'scanner'],
+  par: ['par', 'wash', 'bar'],
   strobe: ['strobe', 'blinder'],
   laser: ['laser'],
   rigging: [],

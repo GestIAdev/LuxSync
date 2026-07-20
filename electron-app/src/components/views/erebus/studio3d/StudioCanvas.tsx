@@ -4,24 +4,38 @@ import * as THREE from 'three'
 import { StudioAtmosphere } from './environment/StudioAtmosphere'
 import { StudioFloor } from './environment/StudioFloor'
 import { ServiceLighting } from './environment/ServiceLighting'
+import { CameraLerpController } from '../transition/ViewTransitionDirector'
+import type { CameraKeyframe } from '../transition/ProjectionLerp'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // StudioCanvas — El Motor R3F
-// PROYECTO EREBUS FASE 2
+// PROYECTO EREBUS — FASE 2 + FASE 5
 //
 // Ocupa el 100% del contenedor padre (centro libre de ErebusShell).
 // z-index inferior a los satélites HUD.
 // Tone mapping neutro, fondo --obs-void, DPR capped for performance.
+// FASE 5: CameraLerpController para transición cinematográfica 2D↔3D.
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface StudioCanvasProps {
   quality?: 'HQ' | 'LQ'
+  /** Opacity for crossfade during transition (0→1) */
+  opacity?: number
+  /** Whether a transition is in progress (enables camera lerp) */
+  isTransitioning?: boolean
+  /** Getter for interpolated camera keyframe */
+  getCameraKeyframe?: () => CameraKeyframe | null
 }
 
 const HQ_DPR: [number, number] = [1, 1.5]
 const LQ_DPR: [number, number] = [1, 1]
 
-export const StudioCanvas: React.FC<StudioCanvasProps> = ({ quality = 'HQ' }) => {
+export const StudioCanvas: React.FC<StudioCanvasProps> = ({
+  quality = 'HQ',
+  opacity = 1,
+  isTransitioning = false,
+  getCameraKeyframe,
+}) => {
   const isHQ = quality === 'HQ'
   const dpr = isHQ ? HQ_DPR : LQ_DPR
 
@@ -32,7 +46,7 @@ export const StudioCanvas: React.FC<StudioCanvasProps> = ({ quality = 'HQ' }) =>
       frameloop="always"
       gl={{
         antialias: isHQ,
-        alpha: false,
+        alpha: true,
         powerPreference: 'high-performance',
         stencil: false,
         depth: true,
@@ -48,6 +62,9 @@ export const StudioCanvas: React.FC<StudioCanvasProps> = ({ quality = 'HQ' }) =>
         height: '100%',
         background: '#0B0D12',
         zIndex: 1,
+        opacity,
+        transition: isTransitioning ? 'none' : 'opacity 200ms ease-out',
+        pointerEvents: opacity < 0.5 ? 'none' : 'auto',
       }}
       camera={{
         position: [8, 6, 12],
@@ -57,13 +74,18 @@ export const StudioCanvas: React.FC<StudioCanvasProps> = ({ quality = 'HQ' }) =>
       }}
     >
       <Suspense fallback={null}>
+        {/* Camera transition controller */}
+        {isTransitioning && getCameraKeyframe && (
+          <CameraLerpController
+            getCameraKeyframe={getCameraKeyframe}
+            isTransitioning={isTransitioning}
+          />
+        )}
+
         {/* Environment */}
         <StudioAtmosphere quality={quality} />
         <ServiceLighting />
         <StudioFloor quality={quality} />
-
-        {/* Placeholder camera — future: OrbitControls from drei */}
-        {/* Placeholder content — fixtures, rigs, calibration beams in Phase 3+ */}
       </Suspense>
     </Canvas>
   )

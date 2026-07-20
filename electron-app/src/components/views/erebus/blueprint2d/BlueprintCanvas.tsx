@@ -24,12 +24,15 @@ interface BlueprintCanvasProps {
   stageDepth?: number
   /** Padding around stage in meters (default 2) */
   padding?: number
+  /** Inline style override (for crossfade opacity during transition) */
+  style?: React.CSSProperties
 }
 
 export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
   stageWidth = 12,
   stageDepth = 8,
   padding = 2,
+  style,
 }) => {
   // viewBox spans from (-padding) to (stageWidth + padding) on X
   // and from (-padding) to (stageDepth + padding) on Z (mapped to SVG Y)
@@ -58,6 +61,7 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
         height: '100%',
         background: 'var(--obs-floor)',
         zIndex: 1,
+        ...style,
       }}
     >
       {/* Layer 0: Paper (background + noise) */}

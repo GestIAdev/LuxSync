@@ -4,6 +4,8 @@ import * as THREE from 'three'
 import { StudioAtmosphere } from './environment/StudioAtmosphere'
 import { StudioFloor } from './environment/StudioFloor'
 import { ServiceLighting } from './environment/ServiceLighting'
+import { CrystalEdges } from './environment/CrystalEdges'
+import { DragDropController3D } from './interaction/DragDropController3D'
 import { CameraLerpController } from '../transition/ViewTransitionDirector'
 import type { CameraKeyframe } from '../transition/ProjectionLerp'
 
@@ -86,6 +88,10 @@ export const StudioCanvas: React.FC<StudioCanvasProps> = ({
         <StudioAtmosphere quality={quality} />
         <ServiceLighting />
         <StudioFloor quality={quality} />
+        <CrystalEdges />
+
+        {/* FASE 6: Interaction */}
+        <DragDropController3D />
       </Suspense>
     </Canvas>
   )

@@ -32,7 +32,12 @@ export const CommandPalette: React.FC = () => {
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
-  const allLibraryFixtures = useLibraryStore(s => s.getAllFixtures())
+  const systemFixtures = useLibraryStore(s => s.systemFixtures)
+  const userFixtures = useLibraryStore(s => s.userFixtures)
+  const allLibraryFixtures = useMemo(
+    () => [...systemFixtures, ...userFixtures],
+    [systemFixtures, userFixtures],
+  )
   const stageFixtures = useStageStore(s => s.fixtures)
   const addFixture = useStageStore(s => s.addFixture)
 

@@ -9,4 +9,4 @@ export { FixturePhysicsDriver } from './FixturePhysicsDriver';
 export { getMovementPreset, getMovementPhysics, getOpticsConfig, getMovementBehavior, getAvailableVibeIds, MOVEMENT_PRESETS, } from './VibeMovementPresets';
 // WAVE 2601: Inverse Kinematics Engine - Spatial 3D → Pan/Tilt DMX
 // WAVE 2621-2622: Spatial Fan (Line + Circle) offset math
-export { solve as ikSolve, solveGroup as ikSolveGroup, buildProfile as ikBuildProfile, computeLineFanOffsets, computeCircleFanOffsets, solveGroupWithFan, } from './InverseKinematicsEngine';
+export { solve as ikSolve, solveGroup as ikSolveGroup, buildProfile as ikBuildProfile, computeLineFanOffsets, computeCircleFanOffsets, solveGroupWithFan, computeFanSubTargets, } from './InverseKinematicsEngine';

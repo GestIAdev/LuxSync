@@ -31,7 +31,7 @@ import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { useShallow } from 'zustand/shallow';
 import { useSelectionStore } from './selectionStore';
-import { createEmptyShowFile, createFixtureGroup, normalizeZone, validateShowFileDeep, snapPosition, clampToCrystalBox, } from '../core/stage/ShowFileV2';
+import { createEmptyShowFile, createFixtureGroup, normalizeZone, validateShowFileDeep, snapPosition, clampToCrystalBox, clampElevation, computePlanarPlacement, } from '../core/stage/ShowFileV2';
 import { autoMigrate } from '../core/stage/ShowFileMigrator';
 import { ensureSystemGroups } from '../core/stage/DefaultGroupsService';
 // ═══════════════════════════════════════════════════════════════════════════
@@ -416,6 +416,38 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
         // 🧱 WAVE 4538: Snap + clamp al Crystal Box antes de persistir
         const snapped = stage ? clampToCrystalBox(position, stage) : snapPosition(position);
         get().updateFixture(id, { position: snapped });
+    },
+    // 🏗️ WAVE 7179 (M2): coloca un fixture en el lienzo 2D (Blueprint Mode).
+    placeFixture2D: (fixtureId, x, z, orientation, rigId) => {
+        const { showFile, stage } = get();
+        if (!showFile)
+            return;
+        const rig = rigId ? showFile.rigs?.find(r => r.id === rigId) : undefined;
+        if (rigId && !rig) {
+            console.warn(`[stageStore] placeFixture2D: rigId "${rigId}" no encontrado — colocando sin herencia de rig`);
+        }
+        const result = computePlanarPlacement(x, z, orientation, rig);
+        const snappedPosition = stage ? clampToCrystalBox(result.position, stage) : snapPosition(result.position);
+        get().updateFixture(fixtureId, {
+            position: snappedPosition,
+            orientation: result.orientation,
+            rigId: result.rigId,
+            placementMode: result.placementMode,
+            isPlaced: false, // legacy: 2D sigue siendo el universo "isPlaced=false" — ver StageCanvas2D
+        });
+    },
+    // 🏗️ WAVE 7179 (M2): ajusta SOLO el eje Y, clampeado al Crystal Box.
+    setFixtureElevation: (fixtureId, y) => {
+        const { showFile, stage } = get();
+        if (!showFile)
+            return;
+        const fixture = showFile.fixtures.find(f => f.id === fixtureId);
+        if (!fixture)
+            return;
+        const clampedY = clampElevation(y, stage);
+        get().updateFixture(fixtureId, {
+            position: { ...fixture.position, y: clampedY },
+        });
     },
     updateFixtureRotation: (id, rotation) => {
         get().updateFixture(id, { rotation });

@@ -801,22 +801,16 @@ export class NodeArbiter {
             const tiltOffset = record['tilt_offset'];
             const hasPanOffset = isFiniteChannelValue(panOffset);
             const hasTiltOffset = isFiniteChannelValue(tiltOffset);
-            const motor = this._motorKineticOverrides.get(nodeId);
             const manual = this._manualOverrides.get(nodeId);
-            // WAVE 7172: SPATIAL SUPPRESSION — si este nodo está suprimido (clip absoluto
-            // con silenceSpatial=true), ignorar completamente la base IK del motor.
-            // El pan/tilt absoluto del clip L3+ ya está en el record vía _applyIntent.
-            const spatialSuppressed = this._spatialSuppressedNodes.has(nodeId);
-            const motorPan = (!spatialSuppressed && motor) ? motor['pan_base'] : undefined;
-            const motorTilt = (!spatialSuppressed && motor) ? motor['tilt_base'] : undefined;
+            // 🏗️ WAVE 7179 (M4): Motor overrides now contain target_x/y/z (spatial coords),
+            // NOT pan_base/tilt_base. The IK solve + VMM fusion happens in NodeResolver.
+            // We only read pan_base/tilt_base from MANUAL overrides (classic radar / HOLD).
             const manualPan = manual ? manual['pan_base'] : undefined;
             const manualTilt = manual ? manual['tilt_base'] : undefined;
-            const hasMotorPan = isFiniteChannelValue(motorPan);
-            const hasMotorTilt = isFiniteChannelValue(motorTilt);
             const hasManualPan = isFiniteChannelValue(manualPan);
             const hasManualTilt = isFiniteChannelValue(manualTilt);
-            const hasBasePan = hasMotorPan || hasManualPan;
-            const hasBaseTilt = hasMotorTilt || hasManualTilt;
+            const hasBasePan = hasManualPan;
+            const hasBaseTilt = hasManualTilt;
             // Skip nodos sin base ni offset — no son cinéticos en este frame.
             if (!hasBasePan && !hasBaseTilt && !hasPanOffset && !hasTiltOffset) {
                 continue;
@@ -842,8 +836,8 @@ export class NodeArbiter {
                     console.warn(`[ARBITER DIAG] Fixture: ${fixtureId}`, {
                         payload_pan: manual['pan'],
                         payload_base: manual['pan_base'],
-                        hasMotorPan: hasMotorPan,
-                        isHoldActive: (!hasMotorPan && !hasMotorTilt)
+                        hasManualPan: hasManualPan,
+                        isHoldActive: (!hasManualPan && !hasManualTilt)
                     });
                 }
             }
@@ -857,7 +851,8 @@ export class NodeArbiter {
             // Doctrina: HOLD = posición estática absoluta, L0 completamente silenciado.
             // WAVE 4935: Sticky Clutch fix. Si hay un payload absoluto fresco ('pan'),
             // respetar su supremacía, no sobrescribir con el 'pan_base' congelado.
-            const isHoldState = (hasManualPan || hasManualTilt) && !hasMotorPan && !hasMotorTilt;
+            // 🏗️ WAVE 7179 (M4): HOLD is now purely manual-based (motor no longer has pan_base/tilt_base).
+            const isHoldState = (hasManualPan || hasManualTilt);
             if (isHoldState) {
                 if (hasManualPan && !isFiniteChannelValue(manualAbsPan))
                     record['pan'] = manualPan;
@@ -865,13 +860,10 @@ export class NodeArbiter {
                     record['tilt'] = manualTilt;
                 continue;
             }
-            // Resolver base con prioridad motor > manual > 0.5 (centro neutro).
-            const basePan = hasMotorPan ? motorPan
-                : hasManualPan ? manualPan
-                    : 0.5;
-            const baseTilt = hasMotorTilt ? motorTilt
-                : hasManualTilt ? manualTilt
-                    : 0.5;
+            // 🏗️ WAVE 7179 (M4): Base resolver — solo manual (motor ya no tiene pan_base/tilt_base).
+            // El IK solve + VMM fusion ocurre en NodeResolver._writeNodeIK.
+            const basePan = hasManualPan ? manualPan : 0.5;
+            const baseTilt = hasManualTilt ? manualTilt : 0.5;
             // Escala por distancia (WAVE 4914 §3.2) — default 1.0 si no se configuró.
             const distScale = this._spatialDistanceScales.get(nodeId) ?? 1.0;
             // ── Gimbal Lock fade sobre pan_offset ──────────────────────────

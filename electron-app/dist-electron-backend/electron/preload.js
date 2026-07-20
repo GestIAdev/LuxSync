@@ -1020,6 +1020,11 @@ const luxApi = {
          */
         releaseSpatialTarget: (args) => ipcRenderer.invoke('lux:aether:releaseSpatialTarget', args),
         /**
+         * 🏗️ WAVE 7179 (M5): Invalidate IK profile cache for a node.
+         * Called by the Calibration Dock when calibration offsets change.
+         */
+        invalidateIKProfile: (args) => ipcRenderer.invoke('lux:aether:invalidateIKProfile', args),
+        /**
          * WAVE 5020: Selection Kill — inhibit 0.0 solo en nodos :impact de los fixtures indicados.
          * Pan/Tilt siguen vivos. Toggle latch desde el dispatcher.
          */

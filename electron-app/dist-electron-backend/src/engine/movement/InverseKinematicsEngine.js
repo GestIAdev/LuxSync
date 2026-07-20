@@ -20,6 +20,7 @@
 // ── PIPELINE ──
 // SpatialTargetPad (UI) → IKEngine.solve() → MasterArbiter → PhysicsDriver → HAL → DMX
 // ═══════════════════════════════════════════════════════════════════════════
+import { getIKMountAngles } from './mountTransforms';
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTES
 // ═══════════════════════════════════════════════════════════════════════════
@@ -68,15 +69,10 @@ const PAN_SAFETY_MARGIN = 5;
  *
  * wall-left/right: solo yaw. Sin inversión Y↔Z.
  */
-const MOUNT_ANGLES = {
-    'floor': { pitch: 0, yaw: 0, roll: 0 },
-    'totem': { pitch: 0, yaw: 0, roll: 0 },
-    'ceiling': { pitch: 0, yaw: 0, roll: 0 },
-    'truss-front': { pitch: 0, yaw: 0, roll: 0 },
-    'truss-back': { pitch: 0, yaw: 180, roll: 0 },
-    'wall-left': { pitch: 0, yaw: 90, roll: 0 },
-    'wall-right': { pitch: 0, yaw: -90, roll: 0 },
-};
+// ⚓ WAVE 7178 (M1.2): tabla local eliminada. Los ángulos de montaje ahora
+// se derivan de la SSOT (mountTransforms.ts) vía getIKMountAngles(), que
+// reproduce bit a bit estos mismos valores históricos (pitch siempre 0 —
+// la verticalidad la resuelve el signo de dy más abajo, no una rotación).
 /**
  * WAVE 4892/4893 — Telemetría temporal del solver IK.
  * Activar con env LUX_DEBUG_IK=1 o setIKDebug(true) en runtime.
@@ -115,10 +111,10 @@ export function solveInto(out, fixture, target, currentPanDMX = null) {
     const dx = target.x - fixture.position.x;
     const dy = target.y - fixture.position.y;
     const dz = target.z - fixture.position.z;
-    const mountAngles = MOUNT_ANGLES[fixture.orientation.installation] ?? MOUNT_ANGLES['ceiling'];
-    const totalPitchRad = (mountAngles.pitch + fixture.orientation.rotation.pitch) * DEG_TO_RAD;
-    const totalYawRad = (mountAngles.yaw + fixture.orientation.rotation.yaw) * DEG_TO_RAD;
-    const totalRollRad = (mountAngles.roll + fixture.orientation.rotation.roll) * DEG_TO_RAD;
+    const mountAngles = getIKMountAngles(fixture.orientation.installation);
+    const totalPitchRad = mountAngles.pitchRad + fixture.orientation.rotation.pitch * DEG_TO_RAD;
+    const totalYawRad = mountAngles.yawRad + fixture.orientation.rotation.yaw * DEG_TO_RAD;
+    const totalRollRad = mountAngles.rollRad + fixture.orientation.rotation.roll * DEG_TO_RAD;
     const local = rotateToLocalFrame(dx, dy, dz, totalPitchRad, totalYawRad, totalRollRad);
     let horizontalDist = Math.sqrt(local.x * local.x + local.z * local.z);
     // WAVE 6020 DEFLECTOR: Si el target cruza demasiado cerca del eje Y del
@@ -331,6 +327,52 @@ export function solveGroupWithFan(fixtures, target, fanMode, fanAmplitude, curre
         const currentPan = currentPanDMXMap?.get(fixture.id) ?? null;
         const ik = solve(fixture, subTarget, currentPan);
         results.set(fixture.id, { ...ik, subTarget });
+    }
+    return results;
+}
+/**
+ * 🏗️ WAVE 7179 (M3): Calcula ÚNICAMENTE los sub-targets espaciales para un
+ * grupo de fixtures con fan. No llama solve() — pura geometría de distribución.
+ *
+ * Reutiliza `computeLineFanOffsets` / `computeCircleFanOffsets` para calcular
+ * las desviaciones, y devuelve las coordenadas XYZ modificadas por fixture.
+ *
+ * @param fixtures       - Array mínimo con id + posición de cada fixture
+ * @param target         - Target central del grupo
+ * @param fanMode        - Modo de dispersión ('converge' | 'line' | 'circle')
+ * @param fanAmplitude   - Amplitud en metros (0 = converge)
+ * @returns Map de fixtureId → Target3D (sub-target calculado)
+ */
+export function computeFanSubTargets(fixtures, target, fanMode, fanAmplitude) {
+    const results = new Map();
+    if (fixtures.length === 0)
+        return results;
+    const amp = Math.max(0, fanAmplitude);
+    // ── CONVERGE: sin offsets, todos al mismo punto ──
+    if (fanMode === 'converge' || amp === 0) {
+        for (const fixture of fixtures) {
+            results.set(fixture.id, { ...target });
+        }
+        return results;
+    }
+    // ── Calcular offsets según modo ──
+    let offsets;
+    if (fanMode === 'line') {
+        const positions = fixtures.map(f => f.position);
+        offsets = computeLineFanOffsets(positions, target, amp);
+    }
+    else {
+        offsets = computeCircleFanOffsets(fixtures.length, amp);
+    }
+    // ── Construir sub-targets sin resolver IK ──
+    for (let i = 0; i < fixtures.length; i++) {
+        const fixture = fixtures[i];
+        const offset = offsets[i];
+        results.set(fixture.id, {
+            x: target.x + offset.dx,
+            y: target.y,
+            z: target.z + offset.dz,
+        });
     }
     return results;
 }

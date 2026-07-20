@@ -27,7 +27,12 @@ interface DockFlyoutProps {
 }
 
 export const DockFlyout: React.FC<DockFlyoutProps> = ({ categoryId, pinned, visible }) => {
-  const allFixtures = useLibraryStore(s => s.getAllFixtures())
+  const systemFixtures = useLibraryStore(s => s.systemFixtures)
+  const userFixtures = useLibraryStore(s => s.userFixtures)
+  const allFixtures = useMemo(
+    () => [...systemFixtures, ...userFixtures],
+    [systemFixtures, userFixtures],
+  )
   const [searchQuery, setSearchQuery] = useState('')
   const [retracted, setRetracted] = useState(false)
 

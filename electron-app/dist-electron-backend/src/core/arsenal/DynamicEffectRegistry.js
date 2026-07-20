@@ -57,8 +57,10 @@ export class DynamicEffectRegistry {
             return null;
         }
         const dna = clip.cognitiveDNA;
-        // Polyfill legacy .lfx: inject default pressureRange if missing
-        if (!dna.pressureRange) {
+        // WAVE 7176: Only polyfill pressureRange if the field is truly absent
+        // (undefined or null). A value of {min:0, max:0} is a legitimate
+        // "permissive" user choice and must NOT be overwritten with defaults.
+        if (dna.pressureRange == null) {
             dna.pressureRange = { min: 0.5, max: 1.0 };
         }
         if (!_validateGenomeRanges(dna)) {

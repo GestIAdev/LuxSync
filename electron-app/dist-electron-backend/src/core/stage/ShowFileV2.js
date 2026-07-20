@@ -56,6 +56,56 @@ export function clampToCrystalBox(pos, stage) {
     };
 }
 /**
+ * 🏗️ WAVE 7179 (M2): clampea/snapea SOLO el eje Y al Crystal Box.
+ * Usado por `setFixtureElevation()` — reutiliza exactamente las mismas
+ * reglas de snap+clamp que `clampToCrystalBox`, sin tocar X/Z.
+ * Si `stage` es null (show sin dimensiones aún cargadas), solo aplica
+ * snap-to-voxel y el piso físico (Y >= 0).
+ */
+export function clampElevation(y, stage) {
+    if (!stage)
+        return Math.max(0, snapToVoxel(y));
+    return Math.max(0, Math.min(stage.height, snapToVoxel(y)));
+}
+/**
+ * Calcula el resultado puro de colocar un fixture en el lienzo 2D.
+ *
+ * - Sin `rig`: Y se infiere de `orientation` vía `DEFAULT_ORIENTATION_HEIGHT`.
+ * - Con `rig`: el fixture HEREDA `height` y `orientation` del rig (snap
+ *   magnético a estructura física — Rigging Kit de Obsidian Studio V3),
+ *   ignorando el parámetro `orientation` explícito.
+ */
+export function computePlanarPlacement(x, z, orientation, rig) {
+    if (rig) {
+        return {
+            position: { x, y: rig.height, z },
+            orientation: rig.orientation,
+            rigId: rig.id,
+            placementMode: 'planar',
+        };
+    }
+    return {
+        position: { x, y: DEFAULT_ORIENTATION_HEIGHT[orientation] ?? 3.0, z },
+        orientation,
+        rigId: undefined,
+        placementMode: 'planar',
+    };
+}
+/**
+ * Altura Y por defecto (metros) inferida de la orientación de montaje.
+ * Usada por `placeFixture2D()` cuando el fixture no hereda de un rig.
+ * SSOT — antes duplicada localmente en StageCanvas2D.tsx.
+ */
+export const DEFAULT_ORIENTATION_HEIGHT = {
+    'ceiling': 4.0,
+    'totem': 1.5,
+    'truss-front': 3.5,
+    'truss-back': 3.5,
+    'wall-left': 2.5,
+    'wall-right': 2.5,
+    'floor': 0.1,
+};
+/**
  * Default physics profiles by motor type
  */
 export const DEFAULT_PHYSICS_PROFILES = {
@@ -358,6 +408,7 @@ export function createEmptyShowFile(name = 'New Show') {
         },
         fixtures: [],
         groups: [],
+        rigs: [],
         scenes: [],
         dmx: {
             driver: 'virtual',
@@ -392,6 +443,10 @@ export function createDefaultFixture(id, address, options = {}) {
         rotation: options.rotation || { pitch: 0, yaw: 0, roll: 0 },
         orientation: options.orientation || 'ceiling',
         isPlaced: options.isPlaced,
+        // 🏗️ WAVE 7179 (M2): fixtures nuevos nacen 'unplaced' (fantasma en espera)
+        // salvo que el caller ya sepa su modo (p.ej. placeFixture2D lo sobreescribe
+        // inmediatamente después vía el spread de `options` más abajo).
+        placementMode: options.placementMode || 'unplaced',
         physics: options.physics || { ...DEFAULT_PHYSICS_PROFILES['unknown'] },
         zone: options.zone || 'unassigned',
         enabled: true,
@@ -435,8 +490,9 @@ export function validateShowFileDeep(data) {
     if (show.schemaVersion !== '2.0.0' &&
         show.schemaVersion !== '2.1.0' &&
         show.schemaVersion !== '2.2.0' &&
-        show.schemaVersion !== '2.3.0') {
-        errors.push(`Invalid schemaVersion: expected '2.0.0', '2.1.0', '2.2.0', or '2.3.0', got '${show.schemaVersion}'`);
+        show.schemaVersion !== '2.3.0' &&
+        show.schemaVersion !== '2.4.0') {
+        errors.push(`Invalid schemaVersion: expected '2.0.0', '2.1.0', '2.2.0', '2.3.0', or '2.4.0', got '${show.schemaVersion}'`);
     }
     if (typeof show.name !== 'string' || show.name.trim() === '') {
         errors.push(`Invalid or empty show name: '${show.name}'`);

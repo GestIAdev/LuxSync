@@ -4,6 +4,7 @@ import { DockRail } from './hud/DockRail'
 import { ContextInspector } from './hud/ContextInspector'
 import { StatusRibbon } from './hud/StatusRibbon'
 import { RadialMenu } from './hud/RadialMenu'
+import { CommandPalette } from './hud/CommandPalette'
 import { useViewTransition } from './transition/ViewTransitionDirector'
 import './erebus.css'
 
@@ -92,6 +93,7 @@ export const ErebusShell: React.FC = () => {
       <ContextInspector toolMode={toolMode} />
       <StatusRibbon />
       <RadialMenu />
+      <CommandPalette />
     </div>
   )
 }

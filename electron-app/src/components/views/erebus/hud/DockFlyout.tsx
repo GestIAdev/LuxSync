@@ -1,0 +1,110 @@
+import React, { useMemo, useState, useCallback, useEffect } from 'react'
+import { useLibraryStore, type LibraryFixture } from '../../../../stores/libraryStore'
+import { FixtureCard } from './FixtureCard'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DockFlyout — Panel lateral de 280px con cards de fixtures
+// PROYECTO EREBUS FASE 9
+//
+// Se despliega al hacer hover sobre un icono de categoría en el DockRail.
+// Se retrae instantáneamente al iniciar un drag desde una FixtureCard.
+// Soporta pin (doble click en icono) para sesiones de patch intensivo.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const CATEGORY_MAP: Record<string, string[]> = {
+  moving: ['moving-head', 'scanner', 'spot'],
+  par: ['par', 'wash'],
+  strobe: ['strobe', 'blinder'],
+  laser: ['laser'],
+  rigging: [],
+  ingenio: ['fan', 'fog', 'mirror-ball', 'pyro', 'effect', 'generic'],
+}
+
+interface DockFlyoutProps {
+  categoryId: string
+  pinned: boolean
+  visible: boolean
+}
+
+export const DockFlyout: React.FC<DockFlyoutProps> = ({ categoryId, pinned, visible }) => {
+  const allFixtures = useLibraryStore(s => s.getAllFixtures())
+  const [searchQuery, setSearchQuery] = useState('')
+  const [retracted, setRetracted] = useState(false)
+
+  // ── Listen for retract event from FixtureCard drag start ─────────────────
+  useEffect(() => {
+    const handleRetract = () => setRetracted(true)
+    const handleRestore = () => setRetracted(false)
+
+    window.addEventListener('erebus:dock-flyout-retract', handleRetract)
+    window.addEventListener('erebus:dock-flyout-restore', handleRestore)
+    return () => {
+      window.removeEventListener('erebus:dock-flyout-retract', handleRetract)
+      window.removeEventListener('erebus:dock-flyout-restore', handleRestore)
+    }
+  }, [])
+
+  // ── Filter fixtures by category and search ────────────────────────────────
+  const filteredFixtures = useMemo(() => {
+    const categoryTypes = CATEGORY_MAP[categoryId] ?? []
+    let fixtures: LibraryFixture[]
+
+    if (categoryTypes.length === 0) {
+      // Rigging category — no fixtures, show empty state
+      fixtures = []
+    } else {
+      fixtures = allFixtures.filter(f => categoryTypes.includes(f.type))
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      fixtures = fixtures.filter(
+        f =>
+          f.name.toLowerCase().includes(q) ||
+          f.manufacturer.toLowerCase().includes(q),
+      )
+    }
+
+    return fixtures
+  }, [allFixtures, categoryId, searchQuery])
+
+  const shouldShow = (visible || pinned) && !retracted
+  if (!shouldShow) return null
+
+  return (
+    <div className={`erebus-dock-flyout ${pinned ? 'erebus-dock-flyout--pinned' : ''}`}>
+      {/* Search bar */}
+      <div className="erebus-dock-flyout-search">
+        <input
+          type="text"
+          placeholder="Search fixtures..."
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          className="erebus-dock-flyout-input"
+        />
+      </div>
+
+      {/* Fixture cards */}
+      <div className="erebus-dock-flyout-list">
+        {filteredFixtures.length === 0 ? (
+          <div className="erebus-dock-flyout-empty">
+            {categoryId === 'rigging'
+              ? 'Rigging components — drag from canvas'
+              : 'No fixtures found'}
+          </div>
+        ) : (
+          filteredFixtures.map(fixture => (
+            <FixtureCard key={fixture.id} fixture={fixture} />
+          ))
+        )}
+      </div>
+
+      {/* Pin indicator */}
+      {pinned && (
+        <div className="erebus-dock-flyout-pin-badge">Pinned</div>
+      )}
+    </div>
+  )
+}
+
+export default DockFlyout

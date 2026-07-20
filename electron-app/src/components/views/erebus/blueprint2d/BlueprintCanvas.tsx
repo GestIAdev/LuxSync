@@ -1,10 +1,12 @@
-import React, { useMemo, useState, useCallback } from 'react'
+import React, { useMemo, useState, useCallback, useRef } from 'react'
 import { useStageStore } from '../../../../stores/stageStore'
 import { PaperLayer } from './layers/PaperLayer'
 import { GridLayer } from './layers/GridLayer'
+import { ZoneLayer } from './layers/ZoneLayer'
 import { SymbolLayer } from './layers/SymbolLayer'
 import { DimensionLayer } from './layers/DimensionLayer'
 import { DragDropController2D, type DragState2D } from './interaction/DragDropController2D'
+import { LassoSelection } from './interaction/LassoSelection'
 import { CoverageRing } from './interaction/CoverageRing'
 import { ElevationScrubber, type ElevationState } from './elevation/ElevationScrubber'
 import { SectionProfileGhost } from './elevation/SectionProfileGhost'
@@ -43,6 +45,7 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
   style,
 }) => {
   const fixtures = useStageStore(s => s.fixtures)
+  const svgRef = useRef<SVGSVGElement | null>(null)
 
   // ── FASE 7: Interaction state ─────────────────────────────────────────────
   const [dragState, setDragState] = useState<DragState2D | null>(null)
@@ -74,6 +77,7 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
 
   return (
     <svg
+      ref={svgRef}
       className="blueprint-canvas"
       viewBox={viewBoxStr}
       preserveAspectRatio="xMidYMid meet"
@@ -98,6 +102,12 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
         padding={padding}
       />
 
+      {/* Layer 3: Zones (canonical architectural zones) */}
+      <ZoneLayer
+        stageWidth={stageWidth}
+        stageDepth={stageDepth}
+      />
+
       {/* Layer 4: Cotas Vivas (only during drag) */}
       <DimensionLayer
         dragState={dragState}
@@ -120,6 +130,12 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
         padding={padding}
         onDragUpdate={handleDragUpdate}
         onDragEnd={handleDragEnd}
+      />
+      <LassoSelection
+        svgRef={svgRef}
+        stageWidth={stageWidth}
+        stageDepth={stageDepth}
+        padding={padding}
       />
       <ElevationScrubber
         fixtures={fixtures}

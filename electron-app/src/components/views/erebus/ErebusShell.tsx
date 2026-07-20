@@ -1,17 +1,20 @@
-import React, { useState } from 'react'
+import React, { Suspense, lazy, useState } from 'react'
 import { CommandStrip } from './hud/CommandStrip'
 import { DockRail } from './hud/DockRail'
 import { ContextInspector } from './hud/ContextInspector'
 import { StatusRibbon } from './hud/StatusRibbon'
 import './erebus.css'
 
+// Lazy load the heavy 3D canvas
+const StudioCanvas = lazy(() => import('./studio3d/StudioCanvas'))
+
 // ═══════════════════════════════════════════════════════════════════════════
 // ErebusShell — Layout Raíz
-// PROYECTO EREBUS FASE 1
+// PROYECTO EREBUS — FASE 1 + FASE 2
 //
 // 100vw / 100vh, sin márgenes. Fondo: var(--obs-floor).
 // Contenedor relativo que aloja de forma absoluta a los cuatro satélites.
-// El centro del DOM queda completamente libre para el futuro Canvas 3D/2D.
+// El centro aloja el Canvas R3F (Studio Mode) o Blueprint (2D Mode).
 // ═══════════════════════════════════════════════════════════════════════════
 
 export type ToolMode = 'select' | 'move' | 'rig' | 'calibrate' | 'measure'
@@ -30,10 +33,16 @@ export const ErebusShell: React.FC = () => {
 
   return (
     <div className="erebus-shell">
-      {/* ═══ Canvas placeholder — future StudioCanvas / BlueprintCanvas ═══ */}
-      {/* The center is completely free. Canvas will mount here in Phase 2. */}
+      {/* ═══ Canvas — Studio Mode (3D) / Blueprint Mode (2D) ═══ */}
+      <div className="erebus-canvas-mount">
+        {viewMode === '3d' && (
+          <Suspense fallback={null}>
+            <StudioCanvas quality="HQ" />
+          </Suspense>
+        )}
+      </div>
 
-      {/* ═══ HUD Satellites (absolute positioned) ═══ */}
+      {/* ═══ HUD Satellites (absolute positioned, z-index above canvas) ═══ */}
       <CommandStrip
         toolMode={toolMode}
         setToolMode={setToolMode}

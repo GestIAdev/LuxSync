@@ -30,6 +30,17 @@
   color: var(--obs-bright);
 }
 
+/* ── Canvas Mount (fills shell, below HUD) ─────────────────────── */
+
+.erebus-canvas-mount {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
 /* ── Command Strip (top satellite) ─────────────────────────────── */
 
 .erebus-command-strip {

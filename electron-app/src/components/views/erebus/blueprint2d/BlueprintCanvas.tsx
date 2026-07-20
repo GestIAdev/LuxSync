@@ -82,6 +82,7 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
       viewBox={viewBoxStr}
       preserveAspectRatio="xMidYMid meet"
       style={{
+        ...style,
         position: 'absolute',
         top: 0,
         left: 0,
@@ -89,7 +90,6 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
         height: '100%',
         background: 'var(--obs-floor)',
         zIndex: 1,
-        ...style,
       }}
     >
       {/* Layer 0: Paper (background + noise) */}

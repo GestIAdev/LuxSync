@@ -1,5 +1,6 @@
 import React, { Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
+import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { StudioAtmosphere } from './environment/StudioAtmosphere'
 import { StudioFloor } from './environment/StudioFloor'
@@ -92,6 +93,9 @@ export const StudioCanvas: React.FC<StudioCanvasProps> = ({
 
         {/* FASE 6: Interaction */}
         <DragDropController3D />
+
+        {/* Camera controls — disabled during transition so CameraLerpController has full authority */}
+        <OrbitControls enabled={!isTransitioning} makeDefault />
       </Suspense>
     </Canvas>
   )

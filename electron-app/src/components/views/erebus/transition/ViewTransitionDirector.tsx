@@ -65,6 +65,7 @@ export function useViewTransition(
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [transitionProgress, setTransitionProgress] = useState(0)
   const [direction, setDirection] = useState<TransitionDirection | null>(null)
+  const [settledView, setSettledView] = useState<'3d' | '2d'>(currentView)
 
   // Refs for animation loop (avoid re-renders during RAF)
   const rafRef = useRef<number | null>(null)
@@ -119,7 +120,8 @@ export function useViewTransition(
       }
 
       if (rawProgress >= 1) {
-        // Transition complete
+        // Transition complete — update settledView synchronously to avoid mount flash
+        setSettledView(targetViewRef.current)
         setIsTransitioning(false)
         setDirection(null)
         setTransitionProgress(0)
@@ -150,14 +152,15 @@ export function useViewTransition(
 
   // ── Mount logic ──────────────────────────────────────────────────────────
   // During transition: both canvases mounted
-  // After transition: only the target canvas mounted
+  // After transition: only the target canvas mounted (using settledView, not currentView prop,
+  // to avoid a one-frame flash where currentView hasn't propagated yet)
   const mount3D = isTransitioning
-    ? direction === '3d-to-2d' || direction === '2d-to-3d' // both during transition
-    : currentView === '3d'
+    ? true // both during transition
+    : settledView === '3d'
 
   const mount2D = isTransitioning
-    ? direction === '3d-to-2d' || direction === '2d-to-3d' // both during transition
-    : currentView === '2d'
+    ? true // both during transition
+    : settledView === '2d'
 
   // ── getCameraKeyframe getter ─────────────────────────────────────────────
   const getCameraKeyframe = useCallback(() => cameraRef.current, [])

@@ -121,14 +121,16 @@ export const ErebusShell: React.FC = () => {
     const el = canvasMountRef.current
     if (!el) return
 
-    el.addEventListener('dragenter', handleDragOverNative)
-    el.addEventListener('dragover', handleDragOverNative)
-    el.addEventListener('drop', handleDropNative)
+    const opts = { capture: true }
+
+    el.addEventListener('dragenter', handleDragOverNative, opts)
+    el.addEventListener('dragover', handleDragOverNative, opts)
+    el.addEventListener('drop', handleDropNative, opts)
 
     return () => {
-      el.removeEventListener('dragenter', handleDragOverNative)
-      el.removeEventListener('dragover', handleDragOverNative)
-      el.removeEventListener('drop', handleDropNative)
+      el.removeEventListener('dragenter', handleDragOverNative, opts)
+      el.removeEventListener('dragover', handleDragOverNative, opts)
+      el.removeEventListener('drop', handleDropNative, opts)
     }
   }, [handleDragOverNative, handleDropNative])
 

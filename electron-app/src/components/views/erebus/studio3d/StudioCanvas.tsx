@@ -9,6 +9,8 @@ import { CrystalEdges } from './environment/CrystalEdges'
 import { DragDropController3D } from './interaction/DragDropController3D'
 import { CameraLerpController } from '../transition/ViewTransitionDirector'
 import type { CameraKeyframe } from '../transition/ProjectionLerp'
+import type { ToolMode } from '../ErebusShell'
+import { useSelectionStore } from '../../../../stores/selectionStore'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // StudioCanvas — El Motor R3F
@@ -28,6 +30,8 @@ interface StudioCanvasProps {
   isTransitioning?: boolean
   /** Getter for interpolated camera keyframe */
   getCameraKeyframe?: () => CameraKeyframe | null
+  /** Active tool mode */
+  toolMode?: ToolMode
 }
 
 const HQ_DPR: [number, number] = [1, 1.5]
@@ -38,9 +42,11 @@ export const StudioCanvas: React.FC<StudioCanvasProps> = ({
   opacity = 1,
   isTransitioning = false,
   getCameraKeyframe,
+  toolMode = 'select',
 }) => {
   const isHQ = quality === 'HQ'
   const dpr = isHQ ? HQ_DPR : LQ_DPR
+  const deselectAll = useSelectionStore(s => s.deselectAll)
 
   return (
     <div
@@ -59,6 +65,7 @@ export const StudioCanvas: React.FC<StudioCanvasProps> = ({
       shadows={isHQ}
       dpr={dpr}
       frameloop="always"
+      onPointerMissed={() => deselectAll()}
       gl={{
         antialias: isHQ,
         alpha: true,
@@ -101,7 +108,7 @@ export const StudioCanvas: React.FC<StudioCanvasProps> = ({
         <CrystalEdges />
 
         {/* FASE 6: Interaction (renders FixtureLayer3D internally with pointer handlers) */}
-        <DragDropController3D />
+        <DragDropController3D toolMode={toolMode} />
 
         {/* Camera controls — disabled during transition so CameraLerpController has full authority */}
         <OrbitControls enabled={!isTransitioning} makeDefault />

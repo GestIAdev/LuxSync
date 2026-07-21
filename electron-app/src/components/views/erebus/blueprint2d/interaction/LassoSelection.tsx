@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { useStageStore } from '../../../../../stores/stageStore'
 import { useSelectionStore } from '../../../../../stores/selectionStore'
+import type { ToolMode } from '../../ErebusShell'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // LassoSelection — Selección Múltiple por Lazo (2D)
@@ -27,6 +28,8 @@ interface LassoSelectionProps {
   stageWidth?: number
   stageDepth?: number
   padding?: number
+  /** Active tool mode — lasso only active in 'select' mode */
+  toolMode?: ToolMode
 }
 
 export const LassoSelection: React.FC<LassoSelectionProps> = ({
@@ -34,6 +37,7 @@ export const LassoSelection: React.FC<LassoSelectionProps> = ({
   stageWidth = 12,
   stageDepth = 8,
   padding = 2,
+  toolMode = 'select',
 }) => {
   const fixtures = useStageStore(s => s.fixtures)
   const selectMultiple = useSelectionStore(s => s.selectMultiple)
@@ -60,6 +64,8 @@ export const LassoSelection: React.FC<LassoSelectionProps> = ({
     (e: React.PointerEvent) => {
       // Only start lasso on left click without Shift/Ctrl
       if (e.button !== 0 || e.shiftKey || e.ctrlKey || e.metaKey) return
+      // Only active in select mode
+      if (toolMode !== 'select') return
 
       // Check if clicking on empty space (not on a fixture circle)
       const target = e.target as SVGElement

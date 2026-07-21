@@ -3,6 +3,7 @@ import { useStageStore } from '../../../../../stores/stageStore'
 import { useSelectionStore } from '../../../../../stores/selectionStore'
 import { snapToVoxel, VOXEL_SIZE, clampToCrystalBox } from '../../../../../core/stage/ShowFileV2'
 import type { FixtureV2, StageDimensions } from '../../../../../core/stage/ShowFileV2'
+import type { ToolMode } from '../../ErebusShell'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // DragDropController2D — Arrastre y Alineación en el plano SVG
@@ -40,6 +41,8 @@ interface DragDropController2DProps {
   onDragUpdate?: (state: DragState2D) => void
   /** Called when drag ends */
   onDragEnd?: () => void
+  /** Active tool mode — 'move' enables dragging, 'select' only selects */
+  toolMode?: ToolMode
 }
 
 export const DragDropController2D: React.FC<DragDropController2DProps> = ({
@@ -49,6 +52,7 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
   padding = 2,
   onDragUpdate,
   onDragEnd,
+  toolMode = 'select',
 }) => {
   const fixtures = useStageStore(s => s.fixtures)
   const placeFixture2D = useStageStore(s => s.placeFixture2D)
@@ -105,17 +109,23 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
   const handlePointerDown = useCallback(
     (e: React.PointerEvent, fixtureId: string) => {
       e.stopPropagation()
+
+      // Selection logic (works in all modes)
+      if (e.ctrlKey || e.metaKey) {
+        select(fixtureId, 'toggle')
+      } else if (e.shiftKey) {
+        select(fixtureId, 'add')
+      } else if (!selectedIds.has(fixtureId)) {
+        select(fixtureId, 'replace')
+      }
+
+      // Only start drag in 'move' mode
+      if (toolMode !== 'move') return
+
       e.preventDefault()
 
       const fixture = fixtures.find(f => f.id === fixtureId)
       if (!fixture) return
-
-      // FASE 8: Notify selectionStore (Shift = add, plain = replace)
-      if (!e.shiftKey && !selectedIds.has(fixtureId)) {
-        select(fixtureId, 'replace')
-      } else if (e.shiftKey) {
-        select(fixtureId, 'add')
-      }
 
       const { x, z } = screenToSVG(e.clientX, e.clientY)
       const snappedX = snapToVoxel(x)
@@ -131,7 +141,7 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
       setDragging(state)
       onDragUpdate?.(state)
     },
-    [fixtures, screenToSVG, onDragUpdate, select, selectedIds],
+    [fixtures, screenToSVG, onDragUpdate, select, selectedIds, toolMode],
   )
 
   // ── Drag move ──────────────────────────────────────────────────────────────
@@ -204,7 +214,7 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
           r={0.2}
           fill="transparent"
           style={{
-            cursor: 'grab',
+            cursor: toolMode === 'move' ? 'grab' : 'pointer',
             pointerEvents: 'all',
             stroke: selectedIds.has(f.id) ? 'var(--obs-accent, #5EEAD4)' : 'transparent',
             strokeWidth: 0.004,

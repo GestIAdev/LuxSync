@@ -200,6 +200,7 @@ export const ErebusShell: React.FC = () => {
               opacity={transition.opacity3D}
               isTransitioning={transition.isTransitioning}
               getCameraKeyframe={transition.getCameraKeyframe}
+              toolMode={toolMode}
             />
           </Suspense>
         )}
@@ -212,6 +213,7 @@ export const ErebusShell: React.FC = () => {
                 opacity: transition.opacity2D,
                 pointerEvents: transition.opacity2D < 0.5 ? 'none' : 'auto',
               }}
+              toolMode={toolMode}
             />
           </Suspense>
         )}

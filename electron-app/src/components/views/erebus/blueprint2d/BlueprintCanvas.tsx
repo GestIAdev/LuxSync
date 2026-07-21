@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useCallback, useRef } from 'react'
 import { useStageStore } from '../../../../stores/stageStore'
+import { useSelectionStore } from '../../../../stores/selectionStore'
 import { PaperLayer } from './layers/PaperLayer'
 import { GridLayer } from './layers/GridLayer'
 import { ZoneLayer } from './layers/ZoneLayer'
@@ -10,6 +11,7 @@ import { LassoSelection } from './interaction/LassoSelection'
 import { CoverageRing } from './interaction/CoverageRing'
 import { ElevationScrubber, type ElevationState } from './elevation/ElevationScrubber'
 import { SectionProfileGhost } from './elevation/SectionProfileGhost'
+import type { ToolMode } from '../ErebusShell'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // BlueprintCanvas — El Viewport SVG
@@ -36,6 +38,8 @@ interface BlueprintCanvasProps {
   padding?: number
   /** Inline style override (for crossfade opacity during transition) */
   style?: React.CSSProperties
+  /** Active tool mode */
+  toolMode?: ToolMode
 }
 
 export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
@@ -43,8 +47,10 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
   stageDepth = 8,
   padding = 2,
   style,
+  toolMode = 'select',
 }) => {
   const fixtures = useStageStore(s => s.fixtures)
+  const deselectAll = useSelectionStore(s => s.deselectAll)
   const svgRef = useRef<SVGSVGElement | null>(null)
 
   // ── FASE 7: Interaction state ─────────────────────────────────────────────
@@ -95,6 +101,10 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
       className="blueprint-canvas"
       viewBox={viewBoxStr}
       preserveAspectRatio="xMidYMid meet"
+      onClick={(e) => {
+        // Only deselect if clicking the SVG background itself (not a child element)
+        if (e.target === e.currentTarget) deselectAll()
+      }}
       style={{
         ...style,
         position: 'absolute',
@@ -144,12 +154,14 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
         padding={padding}
         onDragUpdate={handleDragUpdate}
         onDragEnd={handleDragEnd}
+        toolMode={toolMode}
       />
       <LassoSelection
         svgRef={svgRef}
         stageWidth={stageWidth}
         stageDepth={stageDepth}
         padding={padding}
+        toolMode={toolMode}
       />
       <ElevationScrubber
         fixtures={fixtures}

@@ -7,6 +7,7 @@ import { AnchorPoints } from '../rigging/AnchorPoints'
 import { FixtureLayer3D } from '../fixtures/FixtureLayer3D'
 import type { RigV2, FixtureV2, InstallationOrientation, Position3D } from '../../../../../core/stage/ShowFileV2'
 import { snapToVoxel, VOXEL_SIZE, clampToCrystalBox } from '../../../../../core/stage/ShowFileV2'
+import type { ToolMode } from '../../ErebusShell'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // DragDropController3D — El Controlador del Cursor
@@ -118,6 +119,8 @@ interface DragDropController3DProps {
   stageWidth?: number
   stageDepth?: number
   stageHeight?: number
+  /** Active tool mode — 'move' enables dragging, 'select' only selects */
+  toolMode?: ToolMode
 }
 
 export const DragDropController3D: React.FC<DragDropController3DProps> = ({
@@ -127,6 +130,7 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
   stageWidth = 12,
   stageDepth = 8,
   stageHeight = 6,
+  toolMode = 'select',
 }) => {
   const { camera, gl, raycaster, pointer, controls } = useThree()
 
@@ -140,6 +144,7 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
   const select = useSelectionStore(s => s.select)
   const setHovered = useSelectionStore(s => s.setHovered)
   const selectedIds = useSelectionStore(s => s.selectedIds)
+  const deselectAll = useSelectionStore(s => s.deselectAll)
 
   // ── State ────────────────────────────────────────────────────────────────
   const [isDragging, setIsDragging] = useState(false)
@@ -172,7 +177,6 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
   const handlePointerDown = useCallback(
     (e: any) => {
       if (!enabled) return
-      // Only start drag on left click with a selected fixture
       if (e.button !== 0) return
       // Traverse up to find the group with fixtureId in userData
       let obj = e.object
@@ -186,17 +190,22 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
       }
       if (!fixtureId) return
 
-      const fixture = fixtures.find(f => f.id === fixtureId)
-      if (!fixture) return
-
       e.stopPropagation()
 
-      // FASE 8: Notify selectionStore (Shift = add, plain = replace)
-      if (e.shiftKey) {
+      // Selection logic (works in all modes)
+      if (e.ctrlKey || e.metaKey) {
+        select(fixtureId, 'toggle')
+      } else if (e.shiftKey) {
         select(fixtureId, 'add')
       } else if (!selectedIds.has(fixtureId)) {
         select(fixtureId, 'replace')
       }
+
+      // Only start drag in 'move' mode
+      if (toolMode !== 'move') return
+
+      const fixture = fixtures.find(f => f.id === fixtureId)
+      if (!fixture) return
 
       draggedFixtureRef.current = fixture
       setIsDragging(true)
@@ -227,7 +236,7 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
       setActiveAnchors(nearbyAnchors)
       setAnchorsVisible(true)
     },
-    [enabled, fixtures, rigs, onDragStart, dragPlane, select, selectedIds],
+    [enabled, fixtures, rigs, onDragStart, dragPlane, select, selectedIds, toolMode],
   )
 
   // ── Context menu handler (right-click) ──────────────────────────────────

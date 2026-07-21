@@ -363,7 +363,7 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
     }
   }, [isDragging, camera, gl, raycaster, dragPlane, rigs, updateFixture, updateFixturePosition, stageDims, onDragEnd])
 
-  // ── Frame loop: spring interpolation ─────────────────────────────────────
+  // ── Frame loop: spring interpolation + live position update ──────────────
   useFrame(() => {
     if (!dragRef.current || !isDragging) return
 
@@ -385,6 +385,13 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
       // Free drag — follow cursor with slight smoothing
       ds.visualPos.lerp(ds.targetPos, 0.4)
     }
+
+    // Live-update fixture position in store so the mesh visually follows
+    updateFixturePosition(ds.fixtureId, {
+      x: ds.visualPos.x,
+      y: ds.visualPos.y,
+      z: ds.visualPos.z,
+    })
   })
 
   // ── Render: fixture layer with interaction + anchor points ──────────────
@@ -434,11 +441,11 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
       {/* Visual ghost of dragged fixture (follows visualPos) */}
       {isDragging && dragRef.current && (
         <mesh position={dragRef.current.visualPos.toArray()}>
-          <sphereGeometry args={[0.05, 8, 8]} />
+          <sphereGeometry args={[0.15, 16, 16]} />
           <meshBasicMaterial
             color={snapActive ? '#5EEAD4' : '#F5B04D'}
             transparent
-            opacity={0.5}
+            opacity={0.8}
             depthWrite={false}
           />
         </mesh>

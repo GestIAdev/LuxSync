@@ -26,8 +26,8 @@ interface CrystalEdgesProps {
 }
 
 const PROXIMITY_THRESHOLD = 0.5 // 50cm — distancia de activación del glow
-const BASE_OPACITY = 0.08 // opacidad en reposo
-const ACTIVE_OPACITY = 0.6 // opacidad cuando se acerca el fixture
+const BASE_OPACITY = 0.25 // opacidad en reposo
+const ACTIVE_OPACITY = 0.85 // opacidad cuando se acerca el fixture
 
 export const CrystalEdges: React.FC<CrystalEdgesProps> = ({
   width = 12,
@@ -143,7 +143,7 @@ const EdgeLine: React.FC<EdgeLineProps> = ({ points, color, opacityRef, index })
     <Line
       points={points}
       color={color}
-      lineWidth={1}
+      lineWidth={2}
       transparent
       opacity={BASE_OPACITY}
       depthWrite={false}

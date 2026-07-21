@@ -122,6 +122,9 @@ export const CommandPalette: React.FC = () => {
             type: libFixture.type as any,
             profileId: libFixture.id,
             channelCount: libFixture.channels?.length ?? 1,
+            position: { x: 6, y: 3, z: 4 },
+            isPlaced: true,
+            placementMode: '3d',
           },
         )
         addFixture(newFixture)
@@ -131,7 +134,11 @@ export const CommandPalette: React.FC = () => {
           new CustomEvent('erebus:select-fixture', { detail: { fixtureId: result.data.id } }),
         )
       } else if (result.type === 'action' && result.id === 'action-add') {
-        const newFixture = createDefaultFixture(`fix-${Date.now()}`, stageFixtures.length + 1)
+        const newFixture = createDefaultFixture(`fix-${Date.now()}`, stageFixtures.length + 1, {
+          position: { x: 6, y: 3, z: 4 },
+          isPlaced: true,
+          placementMode: '3d',
+        })
         addFixture(newFixture)
       }
       setOpen(false)

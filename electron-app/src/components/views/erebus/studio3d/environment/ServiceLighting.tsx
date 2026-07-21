@@ -16,12 +16,12 @@ export const ServiceLighting: React.FC = () => {
   return (
     <>
       {/* Ambient — cold neutral fill */}
-      <ambientLight intensity={0.15} color="#3a3a4a" />
+      <ambientLight intensity={0.3} color="#3a3a4a" />
 
       {/* Directional — cold service light from above */}
       <directionalLight
         position={[5, 12, 5]}
-        intensity={0.35}
+        intensity={0.5}
         color="#aabbcc"
         castShadow
         shadow-mapSize-width={1024}
@@ -34,10 +34,10 @@ export const ServiceLighting: React.FC = () => {
         shadow-camera-bottom={-15}
       />
 
-      {/* Secondary fill from opposite side — very dim */}
+      {/* Secondary fill from opposite side */}
       <directionalLight
         position={[-8, 6, -4]}
-        intensity={0.08}
+        intensity={0.15}
         color="#556677"
       />
     </>

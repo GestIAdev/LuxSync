@@ -102,7 +102,7 @@ export const DockRail: React.FC = () => {
             top: 64,
             left: 60,
             width: 280,
-            height: 'calc(100vh - 100px)',
+            height: 'calc(100% - 100px)',
             zIndex: 99,
           }}
         >

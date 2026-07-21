@@ -44,7 +44,6 @@ export const ErebusShell: React.FC = () => {
   const showFile = useStageStore(s => s.showFile)
   const newShow = useStageStore(s => s.newShow)
   const addFixture = useStageStore(s => s.addFixture)
-  const stageFixtures = useStageStore(s => s.fixtures)
   const canvasMountRef = useRef<HTMLDivElement>(null)
 
   // Stage dimensions for coordinate mapping
@@ -62,15 +61,18 @@ export const ErebusShell: React.FC = () => {
   }, [showFile, newShow])
 
   // ── Drag-drop from FixtureCard to canvas ──────────────────────────────────
-  const handleDragOver = useCallback((e: React.DragEvent) => {
+  // Use native event listeners on the canvas mount element to bypass any
+  // issues with R3F's canvas element swallowing HTML5 drag events or React's
+  // synthetic event system not properly catching them.
+  const handleDragOverNative = useCallback((e: DragEvent) => {
     e.preventDefault()
-    e.dataTransfer.dropEffect = 'copy'
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
   }, [])
 
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
+  const handleDropNative = useCallback(
+    (e: DragEvent) => {
       e.preventDefault()
-      const libraryId = e.dataTransfer.getData('application/x-fixture-library-id')
+      const libraryId = e.dataTransfer?.getData('application/x-fixture-library-id')
       if (!libraryId) return
 
       // Find fixture in library
@@ -89,12 +91,10 @@ export const ErebusShell: React.FC = () => {
       const ndcY = (e.clientY - rect.top) / rect.height
 
       // Map to stage coordinates (center origin for 3D, top-left for 2D)
-      // For 3D: center of stage = (stageWidth/2, stageDepth/2)
-      // For 2D: same mapping as BlueprintCanvas viewBox
       const stageX = ndcX * stageWidth
       const stageZ = ndcY * stageDepth
 
-      const fixtureCount = stageFixtures.length
+      const fixtureCount = useStageStore.getState().fixtures.length
       const newFixture = createDefaultFixture(
         `fix-${Date.now()}`,
         fixtureCount * 4 + 1,
@@ -112,8 +112,25 @@ export const ErebusShell: React.FC = () => {
       )
       addFixture(newFixture)
     },
-    [stageFixtures, addFixture, stageWidth, stageDepth],
+    [addFixture, stageWidth, stageDepth],
   )
+
+  // Attach native listeners on canvas mount — capture phase to intercept
+  // before R3F's canvas can swallow the events.
+  useEffect(() => {
+    const el = canvasMountRef.current
+    if (!el) return
+
+    el.addEventListener('dragenter', handleDragOverNative)
+    el.addEventListener('dragover', handleDragOverNative)
+    el.addEventListener('drop', handleDropNative)
+
+    return () => {
+      el.removeEventListener('dragenter', handleDragOverNative)
+      el.removeEventListener('dragover', handleDragOverNative)
+      el.removeEventListener('drop', handleDropNative)
+    }
+  }, [handleDragOverNative, handleDropNative])
 
   // ── Quick-add via double-click on FixtureCard ─────────────────────────────
   useEffect(() => {
@@ -172,8 +189,6 @@ export const ErebusShell: React.FC = () => {
       <div
         className="erebus-canvas-mount"
         ref={canvasMountRef}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
       >
         {/* 3D Canvas — mounted during 3D mode and during transitions */}
         {transition.mount3D && (
@@ -183,8 +198,6 @@ export const ErebusShell: React.FC = () => {
               opacity={transition.opacity3D}
               isTransitioning={transition.isTransitioning}
               getCameraKeyframe={transition.getCameraKeyframe}
-              onDragOver={handleDragOver}
-              onDrop={handleDrop}
             />
           </Suspense>
         )}
@@ -197,8 +210,6 @@ export const ErebusShell: React.FC = () => {
                 opacity: transition.opacity2D,
                 pointerEvents: transition.opacity2D < 0.5 ? 'none' : 'auto',
               }}
-              onDragOver={handleDragOver}
-              onDrop={handleDrop}
             />
           </Suspense>
         )}

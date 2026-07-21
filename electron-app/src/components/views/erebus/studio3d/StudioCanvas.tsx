@@ -28,9 +28,6 @@ interface StudioCanvasProps {
   isTransitioning?: boolean
   /** Getter for interpolated camera keyframe */
   getCameraKeyframe?: () => CameraKeyframe | null
-  /** Drag-drop handlers forwarded to the canvas DOM element */
-  onDragOver?: React.DragEventHandler<HTMLElement>
-  onDrop?: React.DragEventHandler<HTMLElement>
 }
 
 const HQ_DPR: [number, number] = [1, 1.5]
@@ -41,8 +38,6 @@ export const StudioCanvas: React.FC<StudioCanvasProps> = ({
   opacity = 1,
   isTransitioning = false,
   getCameraKeyframe,
-  onDragOver,
-  onDrop,
 }) => {
   const isHQ = quality === 'HQ'
   const dpr = isHQ ? HQ_DPR : LQ_DPR
@@ -59,8 +54,6 @@ export const StudioCanvas: React.FC<StudioCanvasProps> = ({
         transition: isTransitioning ? 'none' : 'opacity 200ms ease-out',
         pointerEvents: opacity < 0.5 ? 'none' : 'auto',
       }}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
     >
     <Canvas
       shadows={isHQ}

@@ -527,8 +527,9 @@
   border-radius: 6px;
   background: rgba(0, 0, 0, 0.2);
   cursor: grab;
-  transition: all 0.12s ease;
+  transition: border-color 0.12s ease, background 0.12s ease;
   user-select: none;
+  -webkit-user-drag: element;
 }
 
 .erebus-fixture-card:hover {

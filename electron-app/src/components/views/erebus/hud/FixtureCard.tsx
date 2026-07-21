@@ -26,11 +26,19 @@ export const FixtureCard: React.FC<FixtureCardProps> = ({ fixture }) => {
       e.dataTransfer.setData('application/x-fixture-type', fixture.type)
       e.dataTransfer.effectAllowed = 'copy'
 
-      // Retract flyout immediately — canvas takes over
-      window.dispatchEvent(new CustomEvent('erebus:dock-flyout-retract'))
+      // Retract flyout after drag has fully started — if we retract
+      // synchronously, the FixtureCard unmounts and the drag is cancelled.
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('erebus:dock-flyout-retract'))
+      }, 50)
     },
     [fixture],
   )
+
+  const handleDragEnd = useCallback(() => {
+    // Restore flyout after drag ends
+    window.dispatchEvent(new CustomEvent('erebus:dock-flyout-restore'))
+  }, [])
 
   const handleDoubleClick = useCallback(() => {
     // Quick-add: emit event for instant patch at stage center
@@ -46,6 +54,7 @@ export const FixtureCard: React.FC<FixtureCardProps> = ({ fixture }) => {
       className="erebus-fixture-card"
       draggable
       onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
       onDoubleClick={handleDoubleClick}
       title={`Drag to canvas or double-click to add — ${fixture.name}`}
     >

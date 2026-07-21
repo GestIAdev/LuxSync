@@ -13,11 +13,23 @@ import { FixtureGhost3D } from './FixtureGhost3D'
 //   - FixtureBody3D (placed fixtures with position)
 //   - FixtureGhost3D (unplaced fixtures, holographic float)
 //
-// Each mesh gets userData.fixtureId so DragDropController3D can raycast
-// and intercept pointer events.
+// Each group gets userData.fixtureId and pointer event handlers
+// so DragDropController3D can intercept clicks, hover, and context menu.
 // ═══════════════════════════════════════════════════════════════════════════
 
-export const FixtureLayer3D: React.FC = () => {
+interface FixtureLayer3DProps {
+  onPointerDown?: (e: any) => void
+  onPointerOver?: (e: any) => void
+  onPointerOut?: (e: any) => void
+  onContextMenu?: (e: any) => void
+}
+
+export const FixtureLayer3D: React.FC<FixtureLayer3DProps> = ({
+  onPointerDown,
+  onPointerOver,
+  onPointerOut,
+  onContextMenu,
+}) => {
   const fixtures = useStageStore(s => s.fixtures)
   const selectedIds = useSelectionStore(s => s.selectedIds)
 
@@ -43,6 +55,10 @@ export const FixtureLayer3D: React.FC = () => {
             position={position}
             rotation={rotation}
             userData={{ fixtureId: f.id }}
+            onPointerDown={onPointerDown}
+            onPointerOver={onPointerOver}
+            onPointerOut={onPointerOut}
+            onContextMenu={onContextMenu}
           >
             {isUnplaced ? (
               <FixtureGhost3D
@@ -59,7 +75,7 @@ export const FixtureLayer3D: React.FC = () => {
           </group>
         )
       }),
-    [fixtures, selectedIds],
+    [fixtures, selectedIds, onPointerDown, onPointerOver, onPointerOut, onContextMenu],
   )
 
   return <>{renderedFixtures}</>

@@ -7,7 +7,6 @@ import { StudioFloor } from './environment/StudioFloor'
 import { ServiceLighting } from './environment/ServiceLighting'
 import { CrystalEdges } from './environment/CrystalEdges'
 import { DragDropController3D } from './interaction/DragDropController3D'
-import { FixtureLayer3D } from './fixtures/FixtureLayer3D'
 import { CameraLerpController } from '../transition/ViewTransitionDirector'
 import type { CameraKeyframe } from '../transition/ProjectionLerp'
 
@@ -92,10 +91,7 @@ export const StudioCanvas: React.FC<StudioCanvasProps> = ({
         <StudioFloor quality={quality} />
         <CrystalEdges />
 
-        {/* FASE 3: Fixture rendering */}
-        <FixtureLayer3D />
-
-        {/* FASE 6: Interaction */}
+        {/* FASE 6: Interaction (renders FixtureLayer3D internally with pointer handlers) */}
         <DragDropController3D />
 
         {/* Camera controls — disabled during transition so CameraLerpController has full authority */}

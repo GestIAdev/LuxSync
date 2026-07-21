@@ -4,6 +4,7 @@ import { useThree, useFrame } from '@react-three/fiber'
 import { useStageStore } from '../../../../../stores/stageStore'
 import { useSelectionStore } from '../../../../../stores/selectionStore'
 import { AnchorPoints } from '../rigging/AnchorPoints'
+import { FixtureLayer3D } from '../fixtures/FixtureLayer3D'
 import type { RigV2, FixtureV2, InstallationOrientation, Position3D } from '../../../../../core/stage/ShowFileV2'
 import { snapToVoxel, VOXEL_SIZE, clampToCrystalBox } from '../../../../../core/stage/ShowFileV2'
 
@@ -166,7 +167,16 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
       if (!enabled) return
       // Only start drag on left click with a selected fixture
       if (e.button !== 0) return
-      const fixtureId = e.object?.userData?.fixtureId
+      // Traverse up to find the group with fixtureId in userData
+      let obj = e.object
+      let fixtureId: string | undefined
+      while (obj) {
+        if (obj.userData?.fixtureId) {
+          fixtureId = obj.userData.fixtureId
+          break
+        }
+        obj = obj.parent
+      }
       if (!fixtureId) return
 
       const fixture = fixtures.find(f => f.id === fixtureId)
@@ -216,7 +226,15 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
   // ── Context menu handler (right-click) ──────────────────────────────────
   const handleContextMenu = useCallback(
     (e: any) => {
-      const fixtureId = e.object?.userData?.fixtureId
+      let obj = e.object
+      let fixtureId: string | undefined
+      while (obj) {
+        if (obj.userData?.fixtureId) {
+          fixtureId = obj.userData.fixtureId
+          break
+        }
+        obj = obj.parent
+      }
       if (!fixtureId) return
       e.stopPropagation()
       e.preventDefault()
@@ -369,26 +387,29 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
     }
   })
 
-  // ── Render: invisible interaction plane + anchor points ──────────────────
-  // This component doesn't render visible geometry itself — it manages
-  // the drag state and renders AnchorPoints when near a rig.
+  // ── Render: fixture layer with interaction + anchor points ──────────────
+  // FixtureLayer3D renders visible meshes and forwards pointer events here.
 
   return (
     <>
-      {/* Invisible plane for raycasting (covers full stage) */}
-      <mesh
-        visible={false}
+      {/* FASE 3: Fixture rendering with interaction handlers */}
+      <FixtureLayer3D
         onPointerDown={handlePointerDown}
         onPointerOver={(e) => {
-          const fid = e.object?.userData?.fixtureId
+          let obj = e.object
+          let fid: string | undefined
+          while (obj) {
+            if (obj.userData?.fixtureId) {
+              fid = obj.userData.fixtureId
+              break
+            }
+            obj = obj.parent
+          }
           if (fid) setHovered(fid)
         }}
         onPointerOut={() => setHovered(null)}
         onContextMenu={handleContextMenu}
-        position={[stageWidth / 2, 0, stageDepth / 2]}
-      >
-        <boxGeometry args={[stageWidth, 0.01, stageDepth]} />
-      </mesh>
+      />
 
       {/* Selection ring — pulsing torus around selected fixtures */}
       {fixtures.filter(f => selectedIds.has(f.id)).map(f => (

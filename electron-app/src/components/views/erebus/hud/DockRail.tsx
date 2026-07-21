@@ -23,12 +23,17 @@ export const DockRail: React.FC = () => {
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null)
   const [pinnedCategory, setPinnedCategory] = useState<string | null>(null)
   const hoverTimerRef = useRef<number | null>(null)
+  const closeTimerRef = useRef<number | null>(null)
 
   const activeCategory = pinnedCategory ?? hoveredCategory
   const isPinned = pinnedCategory !== null
 
-  // ── Hover with 150ms delay to prevent flicker ─────────────────────────────
+  // ── Hover with 150ms open delay ────────────────────────────────────────────
   const handleMouseEnter = useCallback((catId: string) => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
     if (hoverTimerRef.current) {
       clearTimeout(hoverTimerRef.current)
       hoverTimerRef.current = null
@@ -36,12 +41,21 @@ export const DockRail: React.FC = () => {
     hoverTimerRef.current = window.setTimeout(() => setHoveredCategory(catId), 150)
   }, [])
 
+  // ── Delayed close (300ms) so user can move from rail to flyout ─────────────
   const handleMouseLeave = useCallback(() => {
     if (hoverTimerRef.current) {
       clearTimeout(hoverTimerRef.current)
       hoverTimerRef.current = null
     }
-    setHoveredCategory(null)
+    closeTimerRef.current = window.setTimeout(() => setHoveredCategory(null), 300)
+  }, [])
+
+  // ── Cancel close when entering the flyout area ─────────────────────────────
+  const handleFlyoutEnter = useCallback(() => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
   }, [])
 
   // ── Double click to pin/unpin ─────────────────────────────────────────────
@@ -49,13 +63,12 @@ export const DockRail: React.FC = () => {
     setPinnedCategory(prev => (prev === catId ? null : catId))
   }, [])
 
-  // ── Restore flyout after drag ends ────────────────────────────────────────
+  // ── Cleanup timers on unmount ──────────────────────────────────────────────
   useEffect(() => {
-    const handleRestore = () => {
-      // Flyout restore is handled by DockFlyout itself via event
+    return () => {
+      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
     }
-    window.addEventListener('erebus:dock-flyout-restore', handleRestore)
-    return () => window.removeEventListener('erebus:dock-flyout-restore', handleRestore)
   }, [])
 
   return (
@@ -81,11 +94,13 @@ export const DockRail: React.FC = () => {
 
       {/* DockFlyout — shown when hovering or pinned */}
       {activeCategory && (
-        <DockFlyout
-          categoryId={activeCategory}
-          pinned={isPinned}
-          visible={hoveredCategory !== null}
-        />
+        <div onMouseEnter={handleFlyoutEnter} onMouseLeave={handleMouseLeave}>
+          <DockFlyout
+            categoryId={activeCategory}
+            pinned={isPinned}
+            visible={hoveredCategory !== null || isPinned}
+          />
+        </div>
       )}
     </>
   )

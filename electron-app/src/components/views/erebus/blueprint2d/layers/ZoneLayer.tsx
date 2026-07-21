@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback, useEffect, useMemo } from 'react'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ZoneLayer — Zonas Arquitectónicas (Capa 3 del SVG)
@@ -22,14 +22,21 @@ interface ZoneDef {
   height: number
 }
 
-// Canonical zones — relative to stage coordinate system (meters)
-const CANONICAL_ZONES: ZoneDef[] = [
-  { id: 'front', name: 'FRONT', x: 0, y: 5.5, width: 12, height: 2.5 },
-  { id: 'mid', name: 'MID', x: 0, y: 2.5, width: 12, height: 3 },
-  { id: 'back', name: 'BACK', x: 0, y: 0, width: 12, height: 2.5 },
-  { id: 'left', name: 'STAGE LEFT', x: -1.5, y: 0, width: 1.5, height: 8 },
-  { id: 'right', name: 'STAGE RIGHT', x: 12, y: 0, width: 1.5, height: 8 },
-]
+// Compute canonical zones from actual stage dimensions (meters)
+function computeZones(stageWidth: number, stageDepth: number): ZoneDef[] {
+  const sideWidth = Math.max(1.5, stageWidth * 0.125) // 12.5% of width, min 1.5m
+  const frontDepth = stageDepth * 0.3 // front 30%
+  const backDepth = stageDepth * 0.3 // back 30%
+  const midDepth = stageDepth - frontDepth - backDepth // mid = remaining 40%
+
+  return [
+    { id: 'back', name: 'BACK', x: 0, y: 0, width: stageWidth, height: backDepth },
+    { id: 'mid', name: 'MID', x: 0, y: backDepth, width: stageWidth, height: midDepth },
+    { id: 'front', name: 'FRONT', x: 0, y: backDepth + midDepth, width: stageWidth, height: frontDepth },
+    { id: 'left', name: 'STAGE LEFT', x: -sideWidth, y: 0, width: sideWidth, height: stageDepth },
+    { id: 'right', name: 'STAGE RIGHT', x: stageWidth, y: 0, width: sideWidth, height: stageDepth },
+  ]
+}
 
 interface ZoneLayerProps {
   stageWidth?: number
@@ -42,6 +49,11 @@ export const ZoneLayer: React.FC<ZoneLayerProps> = ({
 }) => {
   const [hoveredZone, setHoveredZone] = useState<string | null>(null)
   const [dragOverZone, setDragOverZone] = useState<string | null>(null)
+
+  const zones = useMemo(
+    () => computeZones(stageWidth, stageDepth),
+    [stageWidth, stageDepth],
+  )
 
   // ── Listen for drag-over-zone events from DragDropController2D ────────────
   useEffect(() => {
@@ -75,7 +87,7 @@ export const ZoneLayer: React.FC<ZoneLayerProps> = ({
         </pattern>
       </defs>
 
-      {CANONICAL_ZONES.map(zone => {
+      {zones.map(zone => {
         const isHighlighted = hoveredZone === zone.id || dragOverZone === zone.id
         return (
           <g

@@ -38,7 +38,7 @@ export const DockRail: React.FC = () => {
       clearTimeout(hoverTimerRef.current)
       hoverTimerRef.current = null
     }
-    hoverTimerRef.current = window.setTimeout(() => setHoveredCategory(catId), 150)
+    hoverTimerRef.current = window.setTimeout(() => setHoveredCategory(catId), 100)
   }, [])
 
   // ── Delayed close (300ms) so user can move from rail to flyout ─────────────
@@ -94,7 +94,18 @@ export const DockRail: React.FC = () => {
 
       {/* DockFlyout — shown when hovering or pinned */}
       {activeCategory && (
-        <div onMouseEnter={handleFlyoutEnter} onMouseLeave={handleMouseLeave}>
+        <div
+          onMouseEnter={handleFlyoutEnter}
+          onMouseLeave={handleMouseLeave}
+          style={{
+            position: 'absolute',
+            top: 64,
+            left: 60,
+            width: 280,
+            height: 'calc(100vh - 100px)',
+            zIndex: 99,
+          }}
+        >
           <DockFlyout
             categoryId={activeCategory}
             pinned={isPinned}

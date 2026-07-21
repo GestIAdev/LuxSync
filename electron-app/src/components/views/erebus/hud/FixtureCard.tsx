@@ -57,8 +57,8 @@ export const FixtureCard: React.FC<FixtureCardProps> = ({ fixture }) => {
       </div>
       {tags.length > 0 && (
         <div className="erebus-fixture-card-tags">
-          {tags.slice(0, 4).map(tag => (
-            <span key={tag} className="erebus-fixture-card-tag">
+          {tags.slice(0, 4).map((tag, i) => (
+            <span key={`${tag}-${i}`} className="erebus-fixture-card-tag">
               {tag}
             </span>
           ))}

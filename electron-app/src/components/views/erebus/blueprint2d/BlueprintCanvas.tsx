@@ -36,6 +36,9 @@ interface BlueprintCanvasProps {
   padding?: number
   /** Inline style override (for crossfade opacity during transition) */
   style?: React.CSSProperties
+  /** Drag-drop handlers forwarded to the SVG element */
+  onDragOver?: React.DragEventHandler<SVGSVGElement>
+  onDrop?: React.DragEventHandler<SVGSVGElement>
 }
 
 export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
@@ -43,6 +46,8 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
   stageDepth = 8,
   padding = 2,
   style,
+  onDragOver,
+  onDrop,
 }) => {
   const fixtures = useStageStore(s => s.fixtures)
   const svgRef = useRef<SVGSVGElement | null>(null)
@@ -105,6 +110,8 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
         background: 'var(--obs-floor)',
         zIndex: 1,
       }}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
     >
       {/* Layer 0: Paper (background + noise) */}
       <PaperLayer width={viewBox.w} height={viewBox.h} x={viewBox.x} y={viewBox.y} />

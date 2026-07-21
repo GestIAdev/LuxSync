@@ -183,6 +183,8 @@ export const ErebusShell: React.FC = () => {
               opacity={transition.opacity3D}
               isTransitioning={transition.isTransitioning}
               getCameraKeyframe={transition.getCameraKeyframe}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
             />
           </Suspense>
         )}
@@ -195,6 +197,8 @@ export const ErebusShell: React.FC = () => {
                 opacity: transition.opacity2D,
                 pointerEvents: transition.opacity2D < 0.5 ? 'none' : 'auto',
               }}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
             />
           </Suspense>
         )}

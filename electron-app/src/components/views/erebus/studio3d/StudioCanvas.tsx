@@ -48,6 +48,20 @@ export const StudioCanvas: React.FC<StudioCanvasProps> = ({
   const dpr = isHQ ? HQ_DPR : LQ_DPR
 
   return (
+    <div
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        opacity,
+        transition: isTransitioning ? 'none' : 'opacity 200ms ease-out',
+        pointerEvents: opacity < 0.5 ? 'none' : 'auto',
+      }}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+    >
     <Canvas
       shadows={isHQ}
       dpr={dpr}
@@ -70,9 +84,6 @@ export const StudioCanvas: React.FC<StudioCanvasProps> = ({
         height: '100%',
         background: '#0B0D12',
         zIndex: 1,
-        opacity,
-        transition: isTransitioning ? 'none' : 'opacity 200ms ease-out',
-        pointerEvents: opacity < 0.5 ? 'none' : 'auto',
       }}
       camera={{
         position: [8, 6, 12],
@@ -80,8 +91,6 @@ export const StudioCanvas: React.FC<StudioCanvasProps> = ({
         near: 0.1,
         far: 100,
       }}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
     >
       <Suspense fallback={null}>
         {/* Camera transition controller */}
@@ -105,6 +114,7 @@ export const StudioCanvas: React.FC<StudioCanvasProps> = ({
         <OrbitControls enabled={!isTransitioning} makeDefault />
       </Suspense>
     </Canvas>
+    </div>
   )
 }
 

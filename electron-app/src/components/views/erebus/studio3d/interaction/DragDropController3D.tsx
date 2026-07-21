@@ -128,7 +128,7 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
   stageDepth = 8,
   stageHeight = 6,
 }) => {
-  const { camera, gl, raycaster, pointer } = useThree()
+  const { camera, gl, raycaster, pointer, controls } = useThree()
 
   // ── Store ────────────────────────────────────────────────────────────────
   const fixtures = useStageStore(s => s.fixtures)
@@ -146,6 +146,13 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
   const [activeAnchors, setActiveAnchors] = useState<[number, number, number][]>([])
   const [anchorsVisible, setAnchorsVisible] = useState(false)
   const [snapActive, setSnapActive] = useState(false)
+
+  // Disable OrbitControls while dragging a fixture
+  useEffect(() => {
+    if (controls) {
+      (controls as any).enabled = !isDragging
+    }
+  }, [isDragging, controls])
 
   const dragRef = useRef<DragState | null>(null)
   const dragPlaneRef = useRef<THREE.Plane>(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0))

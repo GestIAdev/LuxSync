@@ -322,6 +322,32 @@
   font-weight: 500;
 }
 
+.erebus-coord-input {
+  width: 100%;
+  max-width: 70px;
+  font-size: 12px;
+  color: var(--obs-bright);
+  font-family: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace;
+  font-weight: 500;
+  background: rgba(11, 13, 18, 0.6);
+  border: 1px solid var(--obs-line);
+  border-radius: 4px;
+  padding: 2px 4px;
+  text-align: center;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.erebus-coord-input:focus {
+  border-color: var(--obs-accent);
+}
+
+.erebus-coord-input::-webkit-inner-spin-button,
+.erebus-coord-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .erebus-inspector-gizmo {
   display: flex;
   justify-content: center;

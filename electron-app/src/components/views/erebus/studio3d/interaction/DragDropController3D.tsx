@@ -370,12 +370,35 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
       onDragEnd?.()
     }
 
+    const handleWheel = (e: WheelEvent) => {
+      if (!dragRef.current) return
+      e.preventDefault()
+
+      const direction = e.deltaY > 0 ? -1 : 1
+      const step = VOXEL_SIZE // 0.25m per scroll notch
+      const newY = snapToVoxel(dragRef.current.targetPos.y + direction * step)
+
+      // Clamp Y to Crystal Box
+      const clamped = clampToCrystalBox(
+        { x: dragRef.current.targetPos.x, y: newY, z: dragRef.current.targetPos.z },
+        stageDims,
+      )
+
+      dragRef.current.targetPos.y = clamped.y
+      dragRef.current.visualPos.y = clamped.y
+
+      // Update drag plane to new height so XZ movement stays at this Y
+      dragPlane.set(new THREE.Vector3(0, 1, 0), -clamped.y)
+    }
+
     window.addEventListener('pointermove', handleMove)
     window.addEventListener('pointerup', handleUp)
+    window.addEventListener('wheel', handleWheel, { passive: false })
 
     return () => {
       window.removeEventListener('pointermove', handleMove)
       window.removeEventListener('pointerup', handleUp)
+      window.removeEventListener('wheel', handleWheel)
     }
   }, [isDragging, camera, gl, raycaster, dragPlane, rigs, updateFixture, updateFixturePosition, stageDims, onDragEnd])
 

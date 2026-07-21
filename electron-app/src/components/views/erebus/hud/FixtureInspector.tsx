@@ -1,5 +1,6 @@
 import React from 'react'
 import { useStageStore } from '../../../../stores/stageStore'
+import { snapToVoxel, clampToCrystalBox, VOXEL_SIZE } from '../../../../core/stage/ShowFileV2'
 import type { FixtureV2 } from '../../../../core/stage/ShowFileV2'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -15,12 +16,19 @@ interface FixtureInspectorProps {
 
 export const FixtureInspector: React.FC<FixtureInspectorProps> = ({ fixtureId }) => {
   const fixture = useStageStore(s => s.fixtures.find(f => f.id === fixtureId))
+  const updateFixturePosition = useStageStore(s => s.updateFixturePosition)
 
   if (!fixture) {
     return <div className="erebus-inspector-empty">Fixture not found</div>
   }
 
   const { position, orientation, rigId, type } = fixture
+
+  const handlePosChange = (axis: 'x' | 'y' | 'z', value: number) => {
+    const newPos = { ...position, [axis]: snapToVoxel(value) }
+    const clamped = clampToCrystalBox(newPos, { width: 12, depth: 8, height: 6, gridSize: VOXEL_SIZE })
+    updateFixturePosition(fixture.id, clamped)
+  }
 
   return (
     <div className="erebus-fixture-inspector">
@@ -35,21 +43,39 @@ export const FixtureInspector: React.FC<FixtureInspectorProps> = ({ fixtureId })
         <span className="erebus-inspector-value">{type}</span>
       </div>
 
-      {/* Live coordinates */}
+      {/* Live coordinates — editable */}
       <div className="erebus-inspector-section">
         <div className="erebus-inspector-section-title">Position</div>
         <div className="erebus-coord-grid">
           <div className="erebus-coord">
             <span className="erebus-coord-axis">X</span>
-            <span className="erebus-coord-value">{position.x.toFixed(2)}m</span>
+            <input
+              className="erebus-coord-input"
+              type="number"
+              step={0.25}
+              value={Number(position.x.toFixed(2))}
+              onChange={(e) => handlePosChange('x', parseFloat(e.target.value) || 0)}
+            />
           </div>
           <div className="erebus-coord">
             <span className="erebus-coord-axis">Y</span>
-            <span className="erebus-coord-value">{position.y.toFixed(2)}m</span>
+            <input
+              className="erebus-coord-input"
+              type="number"
+              step={0.25}
+              value={Number(position.y.toFixed(2))}
+              onChange={(e) => handlePosChange('y', parseFloat(e.target.value) || 0)}
+            />
           </div>
           <div className="erebus-coord">
             <span className="erebus-coord-axis">Z</span>
-            <span className="erebus-coord-value">{position.z.toFixed(2)}m</span>
+            <input
+              className="erebus-coord-input"
+              type="number"
+              step={0.25}
+              value={Number(position.z.toFixed(2))}
+              onChange={(e) => handlePosChange('z', parseFloat(e.target.value) || 0)}
+            />
           </div>
         </div>
       </div>

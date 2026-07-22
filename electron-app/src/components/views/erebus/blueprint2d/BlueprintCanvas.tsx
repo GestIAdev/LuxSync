@@ -16,10 +16,6 @@ import { RigPlanLayer } from './layers/RigPlanLayer'
 import { MeasureLayer2D } from './interaction/MeasureLayer2D'
 import type { ToolMode } from '../ErebusShell'
 
-// Pre-baked 4×4 noise tile — 2% opacity grain, zero GPU cost
-const NOISE_DATA_URI =
-  'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="4" height="4"%3E%3Crect width="4" height="4" fill="%2314171F"/%3E%3Crect x="0" y="0" width="1" height="1" fill="%23202430" opacity="0.5"/%3E%3Crect x="2" y="1" width="1" height="1" fill="%231a1e28" opacity="0.4"/%3E%3Crect x="1" y="3" width="1" height="1" fill="%23222632" opacity="0.3"/%3E%3Crect x="3" y="2" width="1" height="1" fill="%231c2030" opacity="0.4"/%3E%3C/svg%3E'
-
 // ═══════════════════════════════════════════════════════════════════════════
 // BlueprintCanvas — El Viewport SVG
 // PROYECTO EREBUS — FASE 4 + FASE 7
@@ -125,10 +121,6 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
     >
       {/* ═══ Global <defs> — declarados una sola vez en la raíz del SVG ═══ */}
       <defs>
-        {/* Paper noise pattern — static, zero GPU cost */}
-        <pattern id="paper-noise" x="0" y="0" width="4" height="4" patternUnits="userSpaceOnUse">
-          <image href={NOISE_DATA_URI} x="0" y="0" width="4" height="4" />
-        </pattern>
         {/* Zone dot fill — for hover/drag-over highlight */}
         <pattern id="zone-dot-fill" x="0" y="0" width="0.3" height="0.3" patternUnits="userSpaceOnUse">
           <circle cx="0.15" cy="0.15" r="0.015" fill="var(--obs-accent)" opacity="0.03" />

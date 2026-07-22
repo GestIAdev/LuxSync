@@ -39,7 +39,7 @@ interface SymbolLayerProps {
 // ── Constants ──────────────────────────────────────────────────────────────
 
 const STROKE = 'var(--obs-bright, #E4E9F2)'
-const STROKE_WIDTH = 0.008 // ~0.8mm — 1px equivalent at typical zoom
+const STROKE_WIDTH = 1 // 1px screen pixel — non-scaling-stroke
 const SYMBOL_RADIUS = 0.15 // 30cm diameter symbols
 const LABEL_SIZE = 0.25 // 25cm metric — legible at full-stage zoom
 const LABEL_OFFSET = 0.35 // below symbol — scaled for 0.25 fontSize
@@ -87,7 +87,7 @@ const MovingHeadSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
         fill={STROKE}
         fillOpacity={0.15}
         stroke={STROKE}
-        strokeWidth={STROKE_WIDTH * 0.7}
+        strokeWidth={1}
         vectorEffect="non-scaling-stroke"
       />
       {/* Label */}
@@ -129,7 +129,7 @@ const WashSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
           x2={data.x - w / 2 + offset + h}
           y2={data.z + h / 2}
           stroke={STROKE}
-          strokeWidth={STROKE_WIDTH * 0.5}
+          strokeWidth={1}
           opacity={0.2}
           vectorEffect="non-scaling-stroke"
         />
@@ -228,7 +228,7 @@ const StrobeSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
         points={`${data.x},${data.z - r * 0.7} ${data.x + r * 0.7},${data.z} ${data.x},${data.z + r * 0.7} ${data.x - r * 0.7},${data.z}`}
         fill="none"
         stroke={STROKE}
-        strokeWidth={STROKE_WIDTH * 0.7}
+        strokeWidth={1}
         opacity={0.5}
         vectorEffect="non-scaling-stroke"
       />
@@ -291,7 +291,7 @@ const LaserSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
             x2={data.x + Math.cos(angle) * armLen}
             y2={data.z + Math.sin(angle) * armLen}
             stroke={STROKE}
-            strokeWidth={STROKE_WIDTH * 0.7}
+            strokeWidth={1}
             vectorEffect="non-scaling-stroke"
           />
         )

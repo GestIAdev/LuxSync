@@ -28,14 +28,14 @@ export const PaperLayer: React.FC<PaperLayerProps> = ({ x, y, width, height }) =
         fill="var(--obs-floor, #14171F)"
       />
 
-      {/* Noise overlay — pattern definido en BlueprintCanvas <defs> */}
+      {/* Subtle texture overlay — solid fill, no pattern dependency */}
       <rect
         x={x}
         y={y}
         width={width}
         height={height}
-        fill="url(#paper-noise)"
-        opacity={0.15}
+        fill="var(--obs-surface, #1B1F2A)"
+        opacity={0.03}
       />
     </>
   )

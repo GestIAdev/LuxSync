@@ -57,7 +57,7 @@ export const ArchitectureLayer: React.FC<ArchitectureLayerProps> = ({
             x2={Math.min(x2t, xEnd)}
             y2={z2t}
             stroke="var(--obs-line, #2A3040)"
-            strokeWidth={0.004}
+            strokeWidth={1}
             opacity={0.15}
             vectorEffect="non-scaling-stroke"
           />
@@ -77,7 +77,7 @@ export const ArchitectureLayer: React.FC<ArchitectureLayerProps> = ({
             x2={Math.min(x2b, xEnd)}
             y2={z2b}
             stroke="var(--obs-line, #2A3040)"
-            strokeWidth={0.004}
+            strokeWidth={1}
             opacity={0.15}
             vectorEffect="non-scaling-stroke"
           />
@@ -95,7 +95,7 @@ export const ArchitectureLayer: React.FC<ArchitectureLayerProps> = ({
             x2={0}
             y2={Math.min(z2l, zEnd)}
             stroke="var(--obs-line, #2A3040)"
-            strokeWidth={0.004}
+            strokeWidth={1}
             opacity={0.15}
             vectorEffect="non-scaling-stroke"
           />
@@ -113,7 +113,7 @@ export const ArchitectureLayer: React.FC<ArchitectureLayerProps> = ({
             x2={xEnd}
             y2={Math.min(z2r, zEnd)}
             stroke="var(--obs-line, #2A3040)"
-            strokeWidth={0.004}
+            strokeWidth={1}
             opacity={0.15}
             vectorEffect="non-scaling-stroke"
           />
@@ -137,7 +137,7 @@ export const ArchitectureLayer: React.FC<ArchitectureLayerProps> = ({
         height={stageDepth}
         fill="none"
         stroke="var(--obs-line, #2A3040)"
-        strokeWidth={0.015}
+        strokeWidth={2}
         vectorEffect="non-scaling-stroke"
       />
 
@@ -149,7 +149,7 @@ export const ArchitectureLayer: React.FC<ArchitectureLayerProps> = ({
         height={stageDepth + BORDER_OFFSET * 2}
         fill="none"
         stroke="var(--obs-line, #2A3040)"
-        strokeWidth={0.005}
+        strokeWidth={1.5}
         opacity={0.5}
         vectorEffect="non-scaling-stroke"
       />

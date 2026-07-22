@@ -1,6 +1,8 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react'
 import { useLibraryStore, type LibraryFixture } from '../../../../stores/libraryStore'
+import { useStageStore } from '../../../../stores/stageStore'
 import { FixtureCard } from './FixtureCard'
+import type { RigV2 } from '../../../../core/stage/ShowFileV2'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // DockFlyout — Panel lateral de 280px con cards de fixtures
@@ -33,6 +35,7 @@ export const DockFlyout: React.FC<DockFlyoutProps> = ({ categoryId, pinned, visi
     () => [...systemFixtures, ...userFixtures],
     [systemFixtures, userFixtures],
   )
+  const addRig = useStageStore(s => s.addRig)
   const [searchQuery, setSearchQuery] = useState('')
   const [retracted, setRetracted] = useState(false)
 
@@ -55,7 +58,6 @@ export const DockFlyout: React.FC<DockFlyoutProps> = ({ categoryId, pinned, visi
     let fixtures: LibraryFixture[]
 
     if (categoryTypes.length === 0) {
-      // Rigging category — no fixtures, show empty state
       fixtures = []
     } else {
       fixtures = allFixtures.filter(f => categoryTypes.includes(f.type))
@@ -73,6 +75,18 @@ export const DockFlyout: React.FC<DockFlyoutProps> = ({ categoryId, pinned, visi
     return fixtures
   }, [allFixtures, categoryId, searchQuery])
 
+  const handleAddRig = useCallback((type: 'truss' | 'totem') => {
+    const rigId = `rig-${Date.now()}`
+    const rig: RigV2 = {
+      id: rigId,
+      position: { x: 0, y: 0, z: 0 },
+      height: type === 'totem' ? 2.5 : 3.5,
+      orientation: type === 'totem' ? 'totem' : 'truss-front' as any,
+    }
+    addRig(rig)
+    window.dispatchEvent(new CustomEvent('erebus:rig-created', { detail: { rigId } }))
+  }, [addRig])
+
   const shouldShow = (visible || pinned) && !retracted
   if (!shouldShow) return null
 
@@ -89,13 +103,32 @@ export const DockFlyout: React.FC<DockFlyoutProps> = ({ categoryId, pinned, visi
         />
       </div>
 
-      {/* Fixture cards */}
+      {/* Fixture cards or rig cards */}
       <div className="erebus-dock-flyout-list">
-        {filteredFixtures.length === 0 ? (
+        {categoryId === 'rigging' ? (
+          <div className="erebus-rig-cards">
+            <button
+              className="erebus-rig-card"
+              onClick={() => handleAddRig('truss')}
+              title="Add a 3m truss at stage center"
+            >
+              <span className="erebus-rig-card-icon">─</span>
+              <span className="erebus-rig-card-name">Truss (3m)</span>
+              <span className="erebus-rig-card-desc">Horizontal truss, 3.5m height</span>
+            </button>
+            <button
+              className="erebus-rig-card"
+              onClick={() => handleAddRig('totem')}
+              title="Add a 2.5m totem at stage center"
+            >
+              <span className="erebus-rig-card-icon">│</span>
+              <span className="erebus-rig-card-name">Totem (2.5m)</span>
+              <span className="erebus-rig-card-desc">Vertical tower, 2.5m height</span>
+            </button>
+          </div>
+        ) : filteredFixtures.length === 0 ? (
           <div className="erebus-dock-flyout-empty">
-            {categoryId === 'rigging'
-              ? 'Rigging components — drag from canvas'
-              : 'No fixtures found'}
+            No fixtures found
           </div>
         ) : (
           filteredFixtures.map(fixture => (

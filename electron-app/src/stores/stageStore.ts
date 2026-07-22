@@ -55,6 +55,7 @@ import {
   clampElevation,
   computePlanarPlacement,
   InstallationOrientation,
+  RigV2,
 } from '../core/stage/ShowFileV2'
 import { autoMigrate, parseLegacyScenes } from '../core/stage/ShowFileMigrator'
 import { ensureSystemGroups } from '../core/stage/DefaultGroupsService'
@@ -190,6 +191,19 @@ interface StageStoreActions {
   
   /** 🔄 WAVE 6018: Sync fixtures directly from backend truth (defensa contra shows fantasma) */
   syncFixturesFromTruth: (truthFixtures: any[]) => void
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // RIG ACTIONS
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /** Add a new rig to the show file */
+  addRig: (rig: RigV2) => void
+
+  /** Update an existing rig */
+  updateRig: (id: string, updates: Partial<RigV2>) => void
+
+  /** Remove a rig by ID (detaches all anchored fixtures) */
+  removeRig: (id: string) => void
   
   // ═══════════════════════════════════════════════════════════════════════
   // GROUP ACTIONS
@@ -866,6 +880,51 @@ export const useStageStore = create<StageStore>()(
         get()._syncDerivedState()
         console.log(`[stageStore] 🔄 Censo Sincronizado desde el Backend: ahora hay ${truthFixtures.length} fixtures.`)
       }
+    },
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // RIG ACTIONS
+    // ═══════════════════════════════════════════════════════════════════════
+
+    addRig: (rig) => {
+      const { showFile } = get()
+      if (!showFile) return
+      if (!showFile.rigs) showFile.rigs = []
+      showFile.rigs.push(rig)
+      set({ showFile: { ...showFile } })
+    },
+
+    updateRig: (id, updates) => {
+      const { showFile } = get()
+      if (!showFile?.rigs) return
+      const rig = showFile.rigs.find(r => r.id === id)
+      if (!rig) return
+      Object.assign(rig, updates)
+      // Propagate height/orientation to anchored fixtures
+      const { fixtures } = get()
+      for (const f of fixtures) {
+        if (f.rigId === id) {
+          get().updateFixture(f.id, {
+            position: { ...f.position, y: rig.height },
+            orientation: rig.orientation,
+          })
+        }
+      }
+      set({ showFile: { ...showFile } })
+    },
+
+    removeRig: (id) => {
+      const { showFile } = get()
+      if (!showFile?.rigs) return
+      showFile.rigs = showFile.rigs.filter(r => r.id !== id)
+      // Detach all anchored fixtures
+      const { fixtures } = get()
+      for (const f of fixtures) {
+        if (f.rigId === id) {
+          get().updateFixture(f.id, { rigId: undefined })
+        }
+      }
+      set({ showFile: { ...showFile } })
     },
     
     // ═══════════════════════════════════════════════════════════════════════

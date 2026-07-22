@@ -7,6 +7,7 @@ import { StudioFloor } from './environment/StudioFloor'
 import { ServiceLighting } from './environment/ServiceLighting'
 import { CrystalEdges } from './environment/CrystalEdges'
 import { DragDropController3D } from './interaction/DragDropController3D'
+import { RigSystem } from './rigging/RigSystem'
 import { CameraLerpController } from '../transition/ViewTransitionDirector'
 import type { CameraKeyframe } from '../transition/ProjectionLerp'
 import type { ToolMode } from '../ErebusShell'
@@ -109,6 +110,9 @@ export const StudioCanvas: React.FC<StudioCanvasProps> = ({
 
         {/* FASE 6: Interaction (renders FixtureLayer3D internally with pointer handlers) */}
         <DragDropController3D toolMode={toolMode} />
+
+        {/* Rig System — renders all rigs + handles rig tool mode */}
+        <RigSystem toolMode={toolMode} />
 
         {/* Camera controls — disabled during transition so CameraLerpController has full authority */}
         <OrbitControls enabled={!isTransitioning} makeDefault />

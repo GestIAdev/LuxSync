@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import type { ToolMode, ViewMode } from '../ErebusShell'
+import { useSnapStore, type SnapSize } from '../../../../stores/snapStore'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CommandStrip — Satélite Superior
@@ -23,12 +24,32 @@ const TOOLS: { mode: ToolMode; label: string }[] = [
   { mode: 'measure', label: 'Measure' },
 ]
 
+const SNAP_SIZES: SnapSize[] = [0.1, 0.25, 0.5, 1.0]
+
 export const CommandStrip: React.FC<CommandStripProps> = ({
   toolMode,
   setToolMode,
   viewMode,
   setViewMode,
 }) => {
+  const [snapOpen, setSnapOpen] = useState(false)
+  const snapRef = useRef<HTMLDivElement>(null)
+  const snapEnabled = useSnapStore(s => s.snapEnabled)
+  const snapSize = useSnapStore(s => s.snapSize)
+  const toggleSnap = useSnapStore(s => s.toggleSnap)
+  const setSnapSize = useSnapStore(s => s.setSnapSize)
+
+  useEffect(() => {
+    if (!snapOpen) return
+    const handler = (e: MouseEvent) => {
+      if (snapRef.current && !snapRef.current.contains(e.target as Node)) {
+        setSnapOpen(false)
+      }
+    }
+    window.addEventListener('mousedown', handler)
+    return () => window.removeEventListener('mousedown', handler)
+  }, [snapOpen])
+
   return (
     <div className="erebus-command-strip">
       {/* View toggle */}
@@ -60,11 +81,48 @@ export const CommandStrip: React.FC<CommandStripProps> = ({
         ))}
       </div>
 
-      {/* Snap placeholder */}
-      <div className="erebus-cmd-group">
-        <button className="erebus-cmd-btn" title="Snap settings">
-          Snap
+      {/* Snap settings popover */}
+      <div className="erebus-cmd-group" ref={snapRef} style={{ position: 'relative' }}>
+        <button
+          className={`erebus-cmd-btn ${snapEnabled ? 'erebus-cmd-btn--active' : ''}`}
+          title="Snap settings"
+          onClick={() => setSnapOpen(o => !o)}
+        >
+          Snap {snapEnabled ? `${snapSize}m` : 'Off'}
         </button>
+
+        {snapOpen && (
+          <div className="erebus-snap-popover">
+            <div className="erebus-snap-popover-row">
+              <label className="erebus-snap-toggle">
+                <input
+                  type="checkbox"
+                  checked={snapEnabled}
+                  onChange={toggleSnap}
+                />
+                <span>Enable snap</span>
+              </label>
+            </div>
+
+            <div className="erebus-snap-popover-row">
+              <span className="erebus-snap-popover-label">Grid size</span>
+              <div className="erebus-snap-size-grid">
+                {SNAP_SIZES.map(size => (
+                  <button
+                    key={size}
+                    className={`erebus-snap-size-btn ${
+                      snapSize === size ? 'erebus-snap-size-btn--active' : ''
+                    }`}
+                    onClick={() => setSnapSize(size)}
+                    disabled={!snapEnabled}
+                  >
+                    {size}m
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

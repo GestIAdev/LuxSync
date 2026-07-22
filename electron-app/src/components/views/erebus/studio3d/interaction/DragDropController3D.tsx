@@ -8,6 +8,7 @@ import { generateRigAnchors } from '../rigging/RigSystem'
 import { FixtureLayer3D } from '../fixtures/FixtureLayer3D'
 import type { RigV2, FixtureV2, InstallationOrientation, Position3D } from '../../../../../core/stage/ShowFileV2'
 import { snapToVoxel, VOXEL_SIZE, clampToCrystalBox } from '../../../../../core/stage/ShowFileV2'
+import { useSnapStore } from '../../../../../stores/snapStore'
 import type { ToolMode } from '../../ErebusShell'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -130,6 +131,8 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
   const setHovered = useSelectionStore(s => s.setHovered)
   const selectedIds = useSelectionStore(s => s.selectedIds)
   const deselectAll = useSelectionStore(s => s.deselectAll)
+  const snap = useSnapStore(s => s.snap)
+  const snapSize = useSnapStore(s => s.snapSize)
 
   // ── State ────────────────────────────────────────────────────────────────
   const [isDragging, setIsDragging] = useState(false)
@@ -154,8 +157,8 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
 
   // ── Stage dimensions for clamping ────────────────────────────────────────
   const stageDims = useMemo(
-    () => ({ width: stageWidth, depth: stageDepth, height: stageHeight, gridSize: VOXEL_SIZE }),
-    [stageWidth, stageDepth, stageHeight],
+    () => ({ width: stageWidth, depth: stageDepth, height: stageHeight, gridSize: snapSize }),
+    [stageWidth, stageDepth, stageHeight, snapSize],
   )
 
   // ── Start drag ───────────────────────────────────────────────────────────
@@ -265,8 +268,8 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
       if (!hit) return
 
       // Snap to voxel
-      const snappedX = snapToVoxel(hit.x)
-      const snappedZ = snapToVoxel(hit.z)
+      const snappedX = snap(hit.x)
+      const snappedZ = snap(hit.z)
       const currentY = dragRef.current.visualPos.y
 
       // Clamp to Crystal Box
@@ -279,16 +282,16 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
       dragRef.current.targetPos.copy(cursorPos)
 
       // Check for snap targets
-      const snap = findNearestSnap(cursorPos, rigs)
-      if (snap) {
-        dragRef.current.snapTarget = snap
+      const snapResult = findNearestSnap(cursorPos, rigs)
+      if (snapResult) {
+        dragRef.current.snapTarget = snapResult
         dragRef.current.isSnapping = true
         dragRef.current.springStart = performance.now()
         // Override target to snap position
         dragRef.current.targetPos.set(
-          snap.position.x,
-          snap.position.y,
-          snap.position.z,
+          snapResult.position.x,
+          snapResult.position.y,
+          snapResult.position.z,
         )
         setSnapActive(true)
       } else {
@@ -309,9 +312,9 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
         // Dropped on anchor — inherit rig properties
         updateFixture(fixture.id, {
           position: {
-            x: snapToVoxel(ds.snapTarget.position.x),
-            y: snapToVoxel(ds.snapTarget.rigHeight),
-            z: snapToVoxel(ds.snapTarget.position.z),
+            x: snap(ds.snapTarget.position.x),
+            y: snap(ds.snapTarget.rigHeight),
+            z: snap(ds.snapTarget.position.z),
           },
           orientation: ds.snapTarget.orientation,
           rigId: ds.snapTarget.rigId,
@@ -322,9 +325,9 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
         // Dropped on floor
         updateFixture(fixture.id, {
           position: {
-            x: snapToVoxel(ds.visualPos.x),
+            x: snap(ds.visualPos.x),
             y: 0,
-            z: snapToVoxel(ds.visualPos.z),
+            z: snap(ds.visualPos.z),
           },
           orientation: 'floor' as InstallationOrientation,
           rigId: undefined,
@@ -334,9 +337,9 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
       } else {
         // Free placement in 3D
         updateFixturePosition(fixture.id, {
-          x: snapToVoxel(ds.visualPos.x),
-          y: snapToVoxel(ds.visualPos.y),
-          z: snapToVoxel(ds.visualPos.z),
+          x: snap(ds.visualPos.x),
+          y: snap(ds.visualPos.y),
+          z: snap(ds.visualPos.z),
         })
         updateFixture(fixture.id, {
           rigId: undefined,
@@ -360,8 +363,8 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
       e.preventDefault()
 
       const direction = e.deltaY > 0 ? -1 : 1
-      const step = VOXEL_SIZE // 0.25m per scroll notch
-      const newY = snapToVoxel(dragRef.current.targetPos.y + direction * step)
+      const step = snapSize
+      const newY = snap(dragRef.current.targetPos.y + direction * step)
 
       // Clamp Y to Crystal Box
       const clamped = clampToCrystalBox(
@@ -385,7 +388,7 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
       window.removeEventListener('pointerup', handleUp)
       window.removeEventListener('wheel', handleWheel)
     }
-  }, [isDragging, camera, gl, raycaster, dragPlane, rigs, updateFixture, updateFixturePosition, stageDims, onDragEnd])
+  }, [isDragging, camera, gl, raycaster, dragPlane, rigs, updateFixture, updateFixturePosition, stageDims, onDragEnd, snap, snapSize])
 
   // ── Frame loop: spring interpolation + live position update ──────────────
   useFrame(() => {

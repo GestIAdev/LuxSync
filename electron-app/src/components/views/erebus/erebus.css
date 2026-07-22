@@ -107,6 +107,83 @@
   background: var(--obs-line);
 }
 
+.erebus-snap-popover {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  min-width: 200px;
+  padding: 12px;
+  background: rgba(20, 23, 31, 0.95);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--obs-line);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.erebus-snap-popover-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.erebus-snap-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--obs-bright);
+  cursor: pointer;
+}
+
+.erebus-snap-toggle input {
+  accent-color: var(--obs-accent);
+}
+
+.erebus-snap-popover-label {
+  font-size: 10px;
+  color: var(--obs-ink);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.erebus-snap-size-grid {
+  display: flex;
+  gap: 4px;
+}
+
+.erebus-snap-size-btn {
+  flex: 1;
+  padding: 6px 0;
+  border: 1px solid var(--obs-line);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--obs-ink);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.erebus-snap-size-btn:hover:not(:disabled) {
+  border-color: var(--obs-accent);
+  color: var(--obs-bright);
+}
+
+.erebus-snap-size-btn--active {
+  background: rgba(94, 234, 212, 0.12);
+  border-color: var(--obs-accent);
+  color: var(--obs-accent);
+}
+
+.erebus-snap-size-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* ── Dock Rail (left satellite) ────────────────────────────────── */
 
 .erebus-dock-rail {

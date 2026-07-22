@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { useThree } from '@react-three/fiber'
 import { useStageStore } from '../../../../../stores/stageStore'
 import { useSelectionStore } from '../../../../../stores/selectionStore'
+import { useSnapStore } from '../../../../../stores/snapStore'
 import { TrussSection } from './TrussSection'
 import { TotemTower } from './TotemTower'
 import { AnchorPoints } from './AnchorPoints'
@@ -60,6 +61,7 @@ export const RigSystem: React.FC<RigSystemProps> = ({
   const updateRig = useStageStore(s => s.updateRig)
   const fixtures = useStageStore(s => s.fixtures)
   const updateFixturePosition = useStageStore(s => s.updateFixturePosition)
+  const snap = useSnapStore(s => s.snap)
 
   const { raycaster, camera, gl } = useThree()
   const selectedIds = useSelectionStore(s => s.selectedIds)
@@ -85,8 +87,8 @@ export const RigSystem: React.FC<RigSystemProps> = ({
       raycaster.ray.intersectPlane(groundPlane, hit)
       if (!hit) return
 
-      const x = Math.round(hit.x / 0.25) * 0.25
-      const z = Math.round(hit.z / 0.25) * 0.25
+      const x = snap(hit.x)
+      const z = snap(hit.z)
 
       const rigId = `rig-${Date.now()}`
       const newRig: RigV2 = {
@@ -98,7 +100,7 @@ export const RigSystem: React.FC<RigSystemProps> = ({
       addRig(newRig)
       select(rigId, 'replace')
     },
-    [toolMode, gl, raycaster, camera, groundPlane, addRig, select],
+    [toolMode, gl, raycaster, camera, groundPlane, addRig, select, snap],
   )
 
   return (
@@ -163,6 +165,7 @@ const RigRenderer: React.FC<RigRendererProps> = ({
   onHover,
 }) => {
   const { gl, camera, raycaster, controls } = useThree()
+  const snap = useSnapStore(s => s.snap)
   const dragPlane = useMemo(
     () => new THREE.Plane(new THREE.Vector3(0, 1, 0), -rig.height),
     [rig.height],
@@ -190,8 +193,8 @@ const RigRenderer: React.FC<RigRendererProps> = ({
       const hit = raycaster.ray.intersectPlane(dragPlane, intersectionRef.current)
       if (!hit) return
 
-      const x = Math.round(hit.x / 0.25) * 0.25
-      const z = Math.round(hit.z / 0.25) * 0.25
+      const x = snap(hit.x)
+      const z = snap(hit.z)
 
       const start = dragStartRef.current
       if (!start) return
@@ -225,7 +228,7 @@ const RigRenderer: React.FC<RigRendererProps> = ({
       window.removeEventListener('pointermove', handleMove)
       window.removeEventListener('pointerup', handleUp)
     }
-  }, [isDragging, gl, camera, raycaster, dragPlane, rig.id, rig.position.y, updateRig, updateFixturePosition, fixtures])
+  }, [isDragging, gl, camera, raycaster, dragPlane, rig.id, rig.position.y, updateRig, updateFixturePosition, fixtures, snap])
 
   const handlePointerDown = (e: any) => {
     if (e.button !== 0) return

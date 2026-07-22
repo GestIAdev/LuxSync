@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useRef, useState, useEffect } from 'react'
 import { useStageStore } from '../../../../../stores/stageStore'
 import { useSelectionStore } from '../../../../../stores/selectionStore'
 import { snapToVoxel, VOXEL_SIZE, clampToCrystalBox } from '../../../../../core/stage/ShowFileV2'
+import { useSnapStore } from '../../../../../stores/snapStore'
 import type { FixtureV2, StageDimensions } from '../../../../../core/stage/ShowFileV2'
 import type { ToolMode } from '../../ErebusShell'
 
@@ -57,6 +58,7 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
   const fixtures = useStageStore(s => s.fixtures)
   const placeFixture2D = useStageStore(s => s.placeFixture2D)
   const updateFixturePosition = useStageStore(s => s.updateFixturePosition)
+  const snap = useSnapStore(s => s.snap)
 
   // FASE 8: selectionStore integration
   const select = useSelectionStore(s => s.select)
@@ -128,8 +130,8 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
       if (!fixture) return
 
       const { x, z } = screenToSVG(e.clientX, e.clientY)
-      const snappedX = snapToVoxel(x)
-      const snappedZ = snapToVoxel(z)
+      const snappedX = snap(x)
+      const snappedZ = snap(z)
 
       const state: DragState2D = {
         fixtureId,
@@ -152,8 +154,8 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
       if (!dragRef.current) return
       const { x, z } = screenToSVG(e.clientX, e.clientY)
 
-      let snappedX = snapToVoxel(x)
-      let snappedZ = snapToVoxel(z)
+      let snappedX = snap(x)
+      let snappedZ = snap(z)
 
       // Clamp to Crystal Box
       const clamped = clampToCrystalBox(
@@ -200,7 +202,7 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
       window.removeEventListener('pointermove', handleMove)
       window.removeEventListener('pointerup', handleUp)
     }
-  }, [dragging, screenToSVG, findAlignment, stageDims, fixtures, placeFixture2D, onDragUpdate, onDragEnd])
+  }, [dragging, screenToSVG, findAlignment, stageDims, fixtures, placeFixture2D, onDragUpdate, onDragEnd, snap])
 
   // ── Render: invisible interaction overlays on each fixture ─────────────────
   // We render transparent circles over each fixture position to capture pointer events

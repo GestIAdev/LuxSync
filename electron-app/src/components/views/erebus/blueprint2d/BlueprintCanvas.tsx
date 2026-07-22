@@ -12,6 +12,7 @@ import { CoverageRing } from './interaction/CoverageRing'
 import { ElevationScrubber, type ElevationState } from './elevation/ElevationScrubber'
 import { SectionProfileGhost } from './elevation/SectionProfileGhost'
 import { RigPlanLayer } from './layers/RigPlanLayer'
+import { MeasureLayer2D } from './interaction/MeasureLayer2D'
 import type { ToolMode } from '../ErebusShell'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -162,6 +163,14 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
       />
       <LassoSelection
         svgRef={svgRef}
+        stageWidth={stageWidth}
+        stageDepth={stageDepth}
+        padding={padding}
+        toolMode={toolMode}
+      />
+
+      {/* Measure Tool (2D) */}
+      <MeasureLayer2D
         stageWidth={stageWidth}
         stageDepth={stageDepth}
         padding={padding}

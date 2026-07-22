@@ -104,8 +104,9 @@ export const ZoneLayer: React.FC<ZoneLayerProps> = ({
               height={zone.height}
               fill={isHighlighted ? 'url(#zone-dot-fill)' : 'transparent'}
               stroke="var(--obs-line)"
-              strokeWidth={0.008}
-              strokeDasharray="0.15 0.08"
+              strokeWidth={0.015}
+              strokeDasharray="0.2 0.1"
+              vectorEffect="non-scaling-stroke"
               style={{
                 animation: isHighlighted
                   ? 'none'
@@ -115,13 +116,14 @@ export const ZoneLayer: React.FC<ZoneLayerProps> = ({
 
             {/* Zone label — technical typography */}
             <text
-              x={zone.x + 0.15}
-              y={zone.y + 0.25}
-              fill="var(--obs-ink)"
-              fontSize={0.09}
+              x={zone.x + 0.3}
+              y={zone.y + 0.5}
+              fill="var(--obs-bright, #E4E9F2)"
+              fontSize={0.5}
               fontFamily="'Inter', system-ui, sans-serif"
-              fontWeight={600}
-              letterSpacing="0.15em"
+              fontWeight={700}
+              letterSpacing="0.1em"
+              opacity={0.75}
               style={{ textTransform: 'uppercase' }}
               pointerEvents="none"
             >

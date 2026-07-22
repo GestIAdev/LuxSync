@@ -41,7 +41,7 @@ interface SymbolLayerProps {
 const STROKE = 'var(--obs-bright, #E4E9F2)'
 const STROKE_WIDTH = 0.008 // ~0.8mm — 1px equivalent at typical zoom
 const SYMBOL_RADIUS = 0.15 // 30cm diameter symbols
-const LABEL_SIZE = 0.08 // ~8px at typical zoom
+const LABEL_SIZE = 0.25 // 25cm in world space — readable at any zoom
 const LABEL_OFFSET = 0.22 // below symbol
 
 // ── Individual Symbol Components ───────────────────────────────────────────
@@ -69,6 +69,7 @@ const MovingHeadSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
           stroke={data.liveColor}
           strokeWidth={0.006}
           opacity={0.8}
+          vectorEffect="non-scaling-stroke"
         />
       )}
       {/* Main circle */}
@@ -78,6 +79,7 @@ const MovingHeadSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
         fill="none"
         stroke={STROKE}
         strokeWidth={STROKE_WIDTH}
+        vectorEffect="non-scaling-stroke"
       />
       {/* Orientation wedge */}
       <path
@@ -86,13 +88,15 @@ const MovingHeadSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
         fillOpacity={0.15}
         stroke={STROKE}
         strokeWidth={STROKE_WIDTH * 0.7}
+        vectorEffect="non-scaling-stroke"
       />
       {/* Label */}
       {data.label && (
         <text
           x={data.x}
           y={data.z + LABEL_OFFSET}
-          fill="var(--obs-ink, #8B94A8)"
+          dy="0.4"
+          fill="var(--obs-bright, #E4E9F2)"
           fontSize={LABEL_SIZE}
           fontFamily="monospace"
           textAnchor="middle"
@@ -127,6 +131,7 @@ const WashSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
           stroke={STROKE}
           strokeWidth={STROKE_WIDTH * 0.5}
           opacity={0.2}
+          vectorEffect="non-scaling-stroke"
         />
       )
     }
@@ -146,6 +151,7 @@ const WashSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
           stroke={data.liveColor}
           strokeWidth={0.006}
           opacity={0.8}
+          vectorEffect="non-scaling-stroke"
         />
       )}
       {/* Main rectangle */}
@@ -157,6 +163,7 @@ const WashSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
         fill="none"
         stroke={STROKE}
         strokeWidth={STROKE_WIDTH}
+        vectorEffect="non-scaling-stroke"
       />
       {/* Interior hatching */}
       <g clipPath={`url(#wash-clip-${data.id})`}>
@@ -177,7 +184,8 @@ const WashSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
         <text
           x={data.x}
           y={data.z + h / 2 + LABEL_OFFSET * 0.7}
-          fill="var(--obs-ink, #8B94A8)"
+          dy="0.4"
+          fill="var(--obs-bright, #E4E9F2)"
           fontSize={LABEL_SIZE}
           fontFamily="monospace"
           textAnchor="middle"
@@ -204,6 +212,7 @@ const StrobeSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
           strokeWidth={0.006}
           opacity={0.8}
           transform={`translate(0.015, 0.015) scale(1.1) translate(${data.x * -0.1}, ${data.z * -0.1})`}
+          vectorEffect="non-scaling-stroke"
         />
       )}
       {/* Outer diamond */}
@@ -212,6 +221,7 @@ const StrobeSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
         fill="none"
         stroke={STROKE}
         strokeWidth={STROKE_WIDTH}
+        vectorEffect="non-scaling-stroke"
       />
       {/* Inner diamond (double border) */}
       <polygon
@@ -220,12 +230,14 @@ const StrobeSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
         stroke={STROKE}
         strokeWidth={STROKE_WIDTH * 0.7}
         opacity={0.5}
+        vectorEffect="non-scaling-stroke"
       />
       {data.label && (
         <text
           x={data.x}
           y={data.z + LABEL_OFFSET}
-          fill="var(--obs-ink, #8B94A8)"
+          dy="0.4"
+          fill="var(--obs-bright, #E4E9F2)"
           fontSize={LABEL_SIZE}
           fontFamily="monospace"
           textAnchor="middle"
@@ -254,6 +266,7 @@ const LaserSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
           stroke={data.liveColor}
           strokeWidth={0.006}
           opacity={0.8}
+          vectorEffect="non-scaling-stroke"
         />
       )}
       {/* Box */}
@@ -265,6 +278,7 @@ const LaserSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
         fill="none"
         stroke={STROKE}
         strokeWidth={STROKE_WIDTH}
+        vectorEffect="non-scaling-stroke"
       />
       {/* Asterisk (6 arms) */}
       {Array.from({ length: 6 }, (_, i) => {
@@ -278,6 +292,7 @@ const LaserSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
             y2={data.z + Math.sin(angle) * armLen}
             stroke={STROKE}
             strokeWidth={STROKE_WIDTH * 0.7}
+            vectorEffect="non-scaling-stroke"
           />
         )
       })}
@@ -285,7 +300,8 @@ const LaserSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
         <text
           x={data.x}
           y={data.z + r + LABEL_OFFSET * 0.7}
-          fill="var(--obs-ink, #8B94A8)"
+          dy="0.4"
+          fill="var(--obs-bright, #E4E9F2)"
           fontSize={LABEL_SIZE}
           fontFamily="monospace"
           textAnchor="middle"

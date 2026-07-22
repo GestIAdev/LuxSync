@@ -5,8 +5,8 @@ import React, { useMemo } from 'react'
 // PROYECTO EREBUS FASE 4 — Layer 1
 //
 // Doble trama vectorial:
-//   Fina: cada 0.25m, opacidad 4%, --obs-line
-//   Maestra: cada 1m, opacidad 10%, --obs-line
+//   Fina: cada 0.25m, opacidad 15%, --obs-line
+//   Maestra: cada 1m, opacidad 35%, --obs-line
 //   Cruces (+) cada 5m en intersecciones maestras
 //
 // Hairlines perfectas — stroke-width en metros para escalado correcto.
@@ -44,7 +44,8 @@ export const GridLayer: React.FC<GridLayerProps> = ({
           x2={x} y2={zEnd}
           stroke="var(--obs-line, #2A3040)"
           strokeWidth={HAIRLINE_WIDTH}
-          opacity={0.04}
+          opacity={0.15}
+          vectorEffect="non-scaling-stroke"
         />
       )
     }
@@ -56,7 +57,8 @@ export const GridLayer: React.FC<GridLayerProps> = ({
           x2={xEnd} y2={z}
           stroke="var(--obs-line, #2A3040)"
           strokeWidth={HAIRLINE_WIDTH}
-          opacity={0.04}
+          opacity={0.15}
+          vectorEffect="non-scaling-stroke"
         />
       )
     }
@@ -71,7 +73,8 @@ export const GridLayer: React.FC<GridLayerProps> = ({
           x2={x} y2={zEnd}
           stroke="var(--obs-line, #2A3040)"
           strokeWidth={HAIRLINE_WIDTH}
-          opacity={0.10}
+          opacity={0.35}
+          vectorEffect="non-scaling-stroke"
         />
       )
     }
@@ -83,7 +86,8 @@ export const GridLayer: React.FC<GridLayerProps> = ({
           x2={xEnd} y2={z}
           stroke="var(--obs-line, #2A3040)"
           strokeWidth={HAIRLINE_WIDTH}
-          opacity={0.10}
+          opacity={0.35}
+          vectorEffect="non-scaling-stroke"
         />
       )
     }
@@ -100,14 +104,16 @@ export const GridLayer: React.FC<GridLayerProps> = ({
               x2={x + crossSize} y2={z}
               stroke="var(--obs-line, #2A3040)"
               strokeWidth={HAIRLINE_WIDTH * 1.5}
-              opacity={0.12}
+              opacity={0.4}
+              vectorEffect="non-scaling-stroke"
             />
             <line
               x1={x} y1={z - crossSize}
               x2={x} y2={z + crossSize}
               stroke="var(--obs-line, #2A3040)"
               strokeWidth={HAIRLINE_WIDTH * 1.5}
-              opacity={0.12}
+              opacity={0.4}
+              vectorEffect="non-scaling-stroke"
             />
           </g>
         )

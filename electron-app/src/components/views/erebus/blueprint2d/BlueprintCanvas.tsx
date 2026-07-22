@@ -11,6 +11,7 @@ import { LassoSelection } from './interaction/LassoSelection'
 import { CoverageRing } from './interaction/CoverageRing'
 import { ElevationScrubber, type ElevationState } from './elevation/ElevationScrubber'
 import { SectionProfileGhost } from './elevation/SectionProfileGhost'
+import { RigPlanLayer } from './layers/RigPlanLayer'
 import type { ToolMode } from '../ErebusShell'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -146,6 +147,9 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
 
       {/* Layer 5: Symbols (fixture simbology) */}
       <SymbolLayer fixtures={symbolFixtures} />
+
+      {/* Layer 5b: Rig Plan (trusses + totems in 2D) */}
+      <RigPlanLayer />
 
       {/* FASE 7: Drag & Drop 2D + Elevation Scrubber */}
       <DragDropController2D

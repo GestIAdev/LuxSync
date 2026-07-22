@@ -162,7 +162,7 @@ const RigRenderer: React.FC<RigRendererProps> = ({
   onSelect,
   onHover,
 }) => {
-  const { gl, camera, raycaster } = useThree()
+  const { gl, camera, raycaster, controls } = useThree()
   const dragPlane = useMemo(
     () => new THREE.Plane(new THREE.Vector3(0, 1, 0), -rig.height),
     [rig.height],
@@ -170,6 +170,13 @@ const RigRenderer: React.FC<RigRendererProps> = ({
   const [isDragging, setIsDragging] = useState(false)
   const dragStartRef = useRef<{ x: number; z: number } | null>(null)
   const intersectionRef = useRef(new THREE.Vector3())
+
+  // Disable OrbitControls while dragging a rig
+  useEffect(() => {
+    if (controls) {
+      (controls as any).enabled = !isDragging
+    }
+  }, [isDragging, controls])
 
   useEffect(() => {
     if (!isDragging) return

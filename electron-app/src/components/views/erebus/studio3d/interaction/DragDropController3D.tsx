@@ -4,6 +4,7 @@ import { useThree, useFrame } from '@react-three/fiber'
 import { useStageStore } from '../../../../../stores/stageStore'
 import { useSelectionStore } from '../../../../../stores/selectionStore'
 import { AnchorPoints } from '../rigging/AnchorPoints'
+import { generateRigAnchors } from '../rigging/RigSystem'
 import { FixtureLayer3D } from '../fixtures/FixtureLayer3D'
 import type { RigV2, FixtureV2, InstallationOrientation, Position3D } from '../../../../../core/stage/ShowFileV2'
 import { snapToVoxel, VOXEL_SIZE, clampToCrystalBox } from '../../../../../core/stage/ShowFileV2'
@@ -33,7 +34,6 @@ import type { ToolMode } from '../../ErebusShell'
 const SNAP_RADIUS = 0.4 // 40cm — distancia de activación del snap magnético
 const SPRING_MS = 120 // duración del spring de asentamiento
 const FLOOR_THRESHOLD = 0.3 // Y < 0.3m = snap al suelo
-const ANCHOR_SPACING = 0.5 // 50cm entre puntos de anclaje
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -58,21 +58,6 @@ interface DragState {
   springStart: number
 }
 
-// ── Helper: generate anchor points along a truss ───────────────────────────
-
-function generateAnchorPoints(rig: RigV2): [number, number, number][] {
-  const points: [number, number, number][] = []
-  const { position, height } = rig
-
-  // Generate anchors along X axis centered on rig position
-  // Span ±2m from rig center, every 0.5m
-  for (let dx = -2; dx <= 2; dx += ANCHOR_SPACING) {
-    points.push([position.x + dx, height - 0.15, position.z]) // 15cm below cord
-  }
-
-  return points
-}
-
 // ── Helper: find nearest snap target ───────────────────────────────────────
 
 function findNearestSnap(
@@ -84,7 +69,7 @@ function findNearestSnap(
 
   for (const rig of rigs) {
     // Generate anchor points for this rig
-    const anchors = generateAnchorPoints(rig)
+    const anchors = generateRigAnchors(rig)
     for (const anchor of anchors) {
       const dx = cursorPos.x - anchor[0]
       const dy = cursorPos.y - anchor[1]
@@ -230,7 +215,7 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
         const dz = fixture.position.z - rig.position.z
         const dist2D = Math.sqrt(dx * dx + dz * dz)
         if (dist2D < 3) {
-          nearbyAnchors.push(...generateAnchorPoints(rig))
+          nearbyAnchors.push(...generateRigAnchors(rig))
         }
       }
       setActiveAnchors(nearbyAnchors)

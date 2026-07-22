@@ -3,6 +3,7 @@ import { useStageStore } from '../../../../stores/stageStore'
 import { useSelectionStore } from '../../../../stores/selectionStore'
 import { PaperLayer } from './layers/PaperLayer'
 import { GridLayer } from './layers/GridLayer'
+import { ArchitectureLayer } from './layers/ArchitectureLayer'
 import { ZoneLayer } from './layers/ZoneLayer'
 import { SymbolLayer, type FixtureSymbolData } from './layers/SymbolLayer'
 import { DimensionLayer } from './layers/DimensionLayer'
@@ -123,6 +124,13 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
 
       {/* Layer 1: Grid (dual trama + crosshairs) */}
       <GridLayer
+        stageWidth={stageWidth}
+        stageDepth={stageDepth}
+        padding={padding}
+      />
+
+      {/* Layer 2: Architecture (stage border + exterior hatching) */}
+      <ArchitectureLayer
         stageWidth={stageWidth}
         stageDepth={stageDepth}
         padding={padding}

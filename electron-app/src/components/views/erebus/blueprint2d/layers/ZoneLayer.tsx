@@ -1,20 +1,26 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
+import { useStageStore } from '../../../../../stores/stageStore'
+import { getActiveZones, type CanonicalZone } from '../../../../../core/zones/ZoneMapper'
+import { normalizeZone } from '../../../../../core/stage/ShowFileV2'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ZoneLayer — Zonas Arquitectónicas (Capa 3 del SVG)
-// PROYECTO EREBUS FASE 9
+// ZoneLayer — Zonas Arquitectónicas Dinámicas (Capa 3 del SVG)
+// PROYECTO EREBUS — OBSIDIAN STUDIO V3
 //
-// Contornos de línea discontinua con tipografía técnica condensada
-// (mayúsculas, tracking amplio, 9px) en la esquina interior.
+// Las zonas se derivan DINÁMICAMENTE de los fixtures del show.
+// Cada zona canónica activa (con fixtures asignados) se renderiza como
+// un contorno de línea discontinua — como habitaciones en un plano.
 //
 // Microinteracción:
-//   - Relleno de trama de puntos al 3% solo en hover o cuando se arrastra
-//     un fixture sobre ellas.
+//   - Relleno de trama de puntos al 3% solo en hover o drag-over.
 //   - El contorno discontinuo "camina" (dash-offset animado lentísimo).
+//
+// Tipografía: técnica condensada, mayúsculas, tracking amplio, 9px.
+// vector-effect="non-scaling-stroke" en toda la geometría.
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface ZoneDef {
-  id: string
+  id: CanonicalZone
   name: string
   x: number
   y: number
@@ -22,21 +28,92 @@ interface ZoneDef {
   height: number
 }
 
-// Canonical lighting zones — operator nomenclature
-function computeZones(stageWidth: number, stageDepth: number): ZoneDef[] {
-  const sideWidth = Math.max(1.5, stageWidth * 0.2) // 20% flanks for movers
-  const centerWidth = stageWidth - sideWidth * 2
-  const airHeight = stageDepth * 0.35 // back 35% — contras/aerial effects
-  const ambientHeight = stageDepth * 0.35 // front 35% — ambient/wash
-  const centerHeight = stageDepth - airHeight - ambientHeight // mid 30% — center/flash/strobe
+// Zone display names — clean, no emojis (CAD style)
+const ZONE_DISPLAY_NAMES: Record<CanonicalZone, string> = {
+  'front': 'FRONT',
+  'back': 'BACK',
+  'floor': 'FLOOR',
+  'movers-left': 'MOVERS LEFT',
+  'movers-right': 'MOVERS RIGHT',
+  'center': 'CENTER / FLASH / STROBE',
+  'air': 'AIR',
+  'ambient': 'AMBIENT',
+  'unassigned': 'UNASSIGNED',
+}
 
-  return [
-    { id: 'movers-left', name: 'MOVERS LEFT', x: 0, y: 0, width: sideWidth, height: stageDepth },
-    { id: 'movers-right', name: 'MOVERS RIGHT', x: stageWidth - sideWidth, y: 0, width: sideWidth, height: stageDepth },
-    { id: 'center', name: 'CENTER / FLASH / STROBE', x: sideWidth, y: airHeight, width: centerWidth, height: centerHeight },
-    { id: 'ambient', name: 'AMBIENT', x: sideWidth, y: airHeight + centerHeight, width: centerWidth, height: ambientHeight },
-    { id: 'air', name: 'AIR', x: sideWidth, y: 0, width: centerWidth, height: airHeight },
-  ]
+// Compute spatial layout for a given set of active canonical zones.
+// The layout adapts to which zones are present in the show.
+function computeZoneLayout(
+  activeZones: CanonicalZone[],
+  stageWidth: number,
+  stageDepth: number,
+): ZoneDef[] {
+  if (activeZones.length === 0) return []
+
+  const hasMoversLeft = activeZones.includes('movers-left')
+  const hasMoversRight = activeZones.includes('movers-right')
+  const hasCenter = activeZones.includes('center')
+  const hasAir = activeZones.includes('air')
+  const hasAmbient = activeZones.includes('ambient')
+  const hasFront = activeZones.includes('front')
+  const hasBack = activeZones.includes('back')
+  const hasFloor = activeZones.includes('floor')
+
+  const sideWidth = Math.max(1.5, stageWidth * 0.2)
+  const hasSides = hasMoversLeft || hasMoversRight
+  const centerStartX = hasSides ? sideWidth : 0
+  const centerWidth = hasSides ? stageWidth - sideWidth * 2 : stageWidth
+
+  // Vertical layout: back/air at top, center in middle, front/ambient at bottom
+  const verticalCount = [hasBack, hasAir, hasCenter, hasAmbient, hasFront, hasFloor].filter(Boolean).length
+  const sectionHeight = verticalCount > 0 ? stageDepth / verticalCount : stageDepth
+
+  const defs: ZoneDef[] = []
+  let currentY = 0
+
+  // Sides span full height
+  if (hasMoversLeft) {
+    defs.push({
+      id: 'movers-left',
+      name: ZONE_DISPLAY_NAMES['movers-left'],
+      x: 0, y: 0, width: sideWidth, height: stageDepth,
+    })
+  }
+  if (hasMoversRight) {
+    defs.push({
+      id: 'movers-right',
+      name: ZONE_DISPLAY_NAMES['movers-right'],
+      x: stageWidth - sideWidth, y: 0, width: sideWidth, height: stageDepth,
+    })
+  }
+
+  // Center column — stacked vertically by zone type
+  if (hasBack) {
+    defs.push({ id: 'back', name: ZONE_DISPLAY_NAMES['back'], x: centerStartX, y: currentY, width: centerWidth, height: sectionHeight })
+    currentY += sectionHeight
+  }
+  if (hasAir) {
+    defs.push({ id: 'air', name: ZONE_DISPLAY_NAMES['air'], x: centerStartX, y: currentY, width: centerWidth, height: sectionHeight })
+    currentY += sectionHeight
+  }
+  if (hasCenter) {
+    defs.push({ id: 'center', name: ZONE_DISPLAY_NAMES['center'], x: centerStartX, y: currentY, width: centerWidth, height: sectionHeight })
+    currentY += sectionHeight
+  }
+  if (hasAmbient) {
+    defs.push({ id: 'ambient', name: ZONE_DISPLAY_NAMES['ambient'], x: centerStartX, y: currentY, width: centerWidth, height: sectionHeight })
+    currentY += sectionHeight
+  }
+  if (hasFront) {
+    defs.push({ id: 'front', name: ZONE_DISPLAY_NAMES['front'], x: centerStartX, y: currentY, width: centerWidth, height: sectionHeight })
+    currentY += sectionHeight
+  }
+  if (hasFloor) {
+    defs.push({ id: 'floor', name: ZONE_DISPLAY_NAMES['floor'], x: centerStartX, y: currentY, width: centerWidth, height: sectionHeight })
+    currentY += sectionHeight
+  }
+
+  return defs
 }
 
 interface ZoneLayerProps {
@@ -51,9 +128,21 @@ export const ZoneLayer: React.FC<ZoneLayerProps> = ({
   const [hoveredZone, setHoveredZone] = useState<string | null>(null)
   const [dragOverZone, setDragOverZone] = useState<string | null>(null)
 
+  // ── Derive active zones from store fixtures ───────────────────────────────
+  const fixtures = useStageStore(s => s.fixtures)
+
+  const activeZones = useMemo(
+    () => getActiveZones(fixtures.map(f => ({
+      id: f.id,
+      zone: normalizeZone(f.zone),
+      enabled: f.enabled !== false,
+    }))),
+    [fixtures],
+  )
+
   const zones = useMemo(
-    () => computeZones(stageWidth, stageDepth),
-    [stageWidth, stageDepth],
+    () => computeZoneLayout(activeZones, stageWidth, stageDepth),
+    [activeZones, stageWidth, stageDepth],
   )
 
   // ── Listen for drag-over-zone events from DragDropController2D ────────────
@@ -97,7 +186,7 @@ export const ZoneLayer: React.FC<ZoneLayerProps> = ({
             onPointerLeave={() => setHoveredZone(null)}
             style={{ pointerEvents: 'all', cursor: 'default' }}
           >
-            {/* Zone rectangle */}
+            {/* Zone rectangle — dashed outline like rooms in an architect's plan */}
             <rect
               x={zone.x}
               y={zone.y}
@@ -105,7 +194,7 @@ export const ZoneLayer: React.FC<ZoneLayerProps> = ({
               height={zone.height}
               fill={isHighlighted ? 'url(#zone-dot-fill)' : 'transparent'}
               stroke="var(--obs-line)"
-              strokeWidth={0.015}
+              strokeWidth={0.012}
               strokeDasharray="0.2 0.1"
               vectorEffect="non-scaling-stroke"
               style={{
@@ -115,16 +204,16 @@ export const ZoneLayer: React.FC<ZoneLayerProps> = ({
               }}
             />
 
-            {/* Zone label — technical typography */}
+            {/* Zone label — technical typography, interior corner */}
             <text
-              x={zone.x + 0.3}
-              y={zone.y + 0.5}
-              fill="var(--obs-bright, #E4E9F2)"
-              fontSize={0.15}
+              x={zone.x + 0.2}
+              y={zone.y + 0.25}
+              fill="var(--obs-ink, #8B94A8)"
+              fontSize={0.09}
               fontFamily="'Inter', system-ui, sans-serif"
-              fontWeight={700}
-              letterSpacing="0.1em"
-              opacity={0.75}
+              fontWeight={600}
+              letterSpacing="0.15em"
+              opacity={0.7}
               style={{ textTransform: 'uppercase' }}
               pointerEvents="none"
             >

@@ -151,6 +151,7 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
   const dragPlaneRef = useRef<THREE.Plane>(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0))
   const intersectionRef = useRef<THREE.Vector3>(new THREE.Vector3())
   const draggedFixtureRef = useRef<FixtureV2 | null>(null)
+  const draggedGroupRef = useRef<THREE.Group | null>(null)
 
   // ── Invisible drag plane (Y = current fixture height) ────────────────────
   const dragPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), [])
@@ -196,6 +197,7 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
       if (!fixture) return
 
       draggedFixtureRef.current = fixture
+      draggedGroupRef.current = obj as THREE.Group
       setIsDragging(true)
       onDragStart?.()
 
@@ -241,7 +243,7 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
       }
       if (!fixtureId) return
       e.stopPropagation()
-      e.preventDefault()
+      if (e.nativeEvent?.preventDefault) e.nativeEvent.preventDefault()
       select(fixtureId, 'replace')
       window.dispatchEvent(new CustomEvent('erebus:radial-menu', {
         detail: { clientX: e.clientX, clientY: e.clientY, fixtureId },
@@ -355,6 +357,7 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
       setActiveAnchors([])
       dragRef.current = null
       draggedFixtureRef.current = null
+      draggedGroupRef.current = null
       onDragEnd?.()
     }
 
@@ -413,12 +416,10 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
       ds.visualPos.lerp(ds.targetPos, 0.4)
     }
 
-    // Live-update fixture position in store so the mesh visually follows
-    updateFixturePosition(ds.fixtureId, {
-      x: ds.visualPos.x,
-      y: ds.visualPos.y,
-      z: ds.visualPos.z,
-    })
+    // Update the dragged group's position imperatively (no store write per frame)
+    if (draggedGroupRef.current) {
+      draggedGroupRef.current.position.set(ds.visualPos.x, ds.visualPos.y, ds.visualPos.z)
+    }
   })
 
   // ── Render: fixture layer with interaction + anchor points ──────────────

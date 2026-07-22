@@ -140,6 +140,9 @@ interface StageStoreActions {
   /** Add a new fixture */
   addFixture: (fixture: FixtureV2) => void
   
+  /** Duplicate a fixture by ID (new ID, offset position) */
+  duplicateFixture: (id: string) => string | null
+  
   /** Remove a fixture by ID */
   removeFixture: (id: string) => void
   
@@ -664,6 +667,31 @@ export const useStageStore = create<StageStore>()(
         lux.aether.setFixtures(allFixtures, null)
           .catch((err: any) => console.warn('[addFixture] Backend sync failed:', err))
       }
+    },
+
+    duplicateFixture: (id) => {
+      const { showFile } = get()
+      if (!showFile) return null
+
+      const original = showFile.fixtures.find(f => f.id === id)
+      if (!original) return null
+
+      const newId = `fix-${Date.now()}`
+      const copy: FixtureV2 = {
+        ...original,
+        id: newId,
+        name: `${original.name} (copy)`,
+        address: 0, // Reset DMX address — user must patch
+        position: {
+          x: original.position.x + 0.5,
+          y: original.position.y,
+          z: original.position.z + 0.5,
+        },
+      }
+      showFile.fixtures.push(copy)
+      get()._syncDerivedState()
+      get()._setDirty()
+      return newId
     },
     
     removeFixture: (id) => {

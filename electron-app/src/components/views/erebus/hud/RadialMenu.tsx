@@ -44,6 +44,9 @@ export const RadialMenu: React.FC<RadialMenuProps> = ({ onAction }) => {
   const [menuState, setMenuState] = useState<RadialMenuState | null>(null)
   const select = useSelectionStore(s => s.select)
   const removeFixture = useStageStore(s => s.removeFixture)
+  const duplicateFixture = useStageStore(s => s.duplicateFixture)
+  const updateFixture = useStageStore(s => s.updateFixture)
+  const setFixtureElevation = useStageStore(s => s.setFixtureElevation)
 
   // ── Listen for context menu events from DragDropControllers ───────────────
   useEffect(() => {
@@ -93,21 +96,34 @@ export const RadialMenu: React.FC<RadialMenuProps> = ({ onAction }) => {
       const { fixtureId } = menuState
 
       switch (actionId) {
-        case 'duplicate':
-          // Emit event for duplication logic
-          window.dispatchEvent(new CustomEvent('erebus:action-duplicate', { detail: { fixtureId } }))
+        case 'duplicate': {
+          const newId = duplicateFixture(fixtureId)
+          if (newId) select(newId, 'replace')
           break
-        case 'elevate':
-          // Emit event for elevation mode
-          window.dispatchEvent(new CustomEvent('erebus:action-elevate', { detail: { fixtureId } }))
+        }
+        case 'elevate': {
+          // Bump elevation by +0.5m, clamped by Crystal Box in store
+          const fixture = useStageStore.getState().fixtures.find(f => f.id === fixtureId)
+          if (fixture) setFixtureElevation(fixtureId, fixture.position.y + 0.5)
           break
-        case 'orientation':
-          window.dispatchEvent(new CustomEvent('erebus:action-orientation', { detail: { fixtureId } }))
+        }
+        case 'orientation': {
+          // Cycle through orientations
+          const fixture = useStageStore.getState().fixtures.find(f => f.id === fixtureId)
+          if (fixture) {
+            const orientations = ['floor', 'truss-front', 'truss-side', 'truss-back', 'totem'] as const
+            const currentIdx = orientations.indexOf(fixture.orientation as any)
+            const nextIdx = (currentIdx + 1) % orientations.length
+            updateFixture(fixtureId, { orientation: orientations[nextIdx] as any })
+          }
           break
+        }
         case 'calibrate':
+          // Switch to calibrate tool mode via event
           window.dispatchEvent(new CustomEvent('erebus:action-calibrate', { detail: { fixtureId } }))
           break
         case 'zone':
+          // Emit zone assignment event (future: zone picker)
           window.dispatchEvent(new CustomEvent('erebus:action-zone', { detail: { fixtureId } }))
           break
         case 'delete':
@@ -118,7 +134,7 @@ export const RadialMenu: React.FC<RadialMenuProps> = ({ onAction }) => {
       onAction?.(actionId, fixtureId)
       setMenuState(null)
     },
-    [menuState, removeFixture, onAction],
+    [menuState, removeFixture, duplicateFixture, updateFixture, setFixtureElevation, select, onAction],
   )
 
   if (!menuState) return null

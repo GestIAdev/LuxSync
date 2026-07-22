@@ -8,6 +8,7 @@ import { CommandPalette } from './hud/CommandPalette'
 import { useViewTransition } from './transition/ViewTransitionDirector'
 import { useLibraryStore } from '../../../stores/libraryStore'
 import { useStageStore } from '../../../stores/stageStore'
+import { useSelectionStore } from '../../../stores/selectionStore'
 import { createDefaultFixture } from '../../../core/stage/ShowFileV2'
 import './erebus.css'
 
@@ -59,6 +60,19 @@ export const ErebusShell: React.FC = () => {
       newShow('Untitled Show')
     }
   }, [showFile, newShow])
+
+  // ── RadialMenu action: calibrate → switch tool mode ──────────────────────
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (detail?.fixtureId) {
+        useSelectionStore.getState().select(detail.fixtureId, 'replace')
+      }
+      setToolMode('calibrate')
+    }
+    window.addEventListener('erebus:action-calibrate', handler)
+    return () => window.removeEventListener('erebus:action-calibrate', handler)
+  }, [])
 
   // ── Drag-drop from FixtureCard to canvas ──────────────────────────────────
   // Use native event listeners on the canvas mount element to bypass any

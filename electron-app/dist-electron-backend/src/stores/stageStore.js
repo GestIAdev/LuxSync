@@ -385,6 +385,30 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
                 .catch((err) => console.warn('[addFixture] Backend sync failed:', err));
         }
     },
+    duplicateFixture: (id) => {
+        const { showFile } = get();
+        if (!showFile)
+            return null;
+        const original = showFile.fixtures.find(f => f.id === id);
+        if (!original)
+            return null;
+        const newId = `fix-${Date.now()}`;
+        const copy = {
+            ...original,
+            id: newId,
+            name: `${original.name} (copy)`,
+            address: 0, // Reset DMX address — user must patch
+            position: {
+                x: original.position.x + 0.5,
+                y: original.position.y,
+                z: original.position.z + 0.5,
+            },
+        };
+        showFile.fixtures.push(copy);
+        get()._syncDerivedState();
+        get()._setDirty();
+        return newId;
+    },
     removeFixture: (id) => {
         const { showFile } = get();
         if (!showFile)
@@ -579,6 +603,52 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
             get()._syncDerivedState();
             console.log(`[stageStore] 🔄 Censo Sincronizado desde el Backend: ahora hay ${truthFixtures.length} fixtures.`);
         }
+    },
+    // ═══════════════════════════════════════════════════════════════════════
+    // RIG ACTIONS
+    // ═══════════════════════════════════════════════════════════════════════
+    addRig: (rig) => {
+        const { showFile } = get();
+        if (!showFile)
+            return;
+        if (!showFile.rigs)
+            showFile.rigs = [];
+        showFile.rigs.push(rig);
+        set({ showFile: { ...showFile } });
+    },
+    updateRig: (id, updates) => {
+        const { showFile } = get();
+        if (!showFile?.rigs)
+            return;
+        const rig = showFile.rigs.find(r => r.id === id);
+        if (!rig)
+            return;
+        Object.assign(rig, updates);
+        // Propagate height/orientation to anchored fixtures
+        const { fixtures } = get();
+        for (const f of fixtures) {
+            if (f.rigId === id) {
+                get().updateFixture(f.id, {
+                    position: { ...f.position, y: rig.height },
+                    orientation: rig.orientation,
+                });
+            }
+        }
+        set({ showFile: { ...showFile } });
+    },
+    removeRig: (id) => {
+        const { showFile } = get();
+        if (!showFile?.rigs)
+            return;
+        showFile.rigs = showFile.rigs.filter(r => r.id !== id);
+        // Detach all anchored fixtures
+        const { fixtures } = get();
+        for (const f of fixtures) {
+            if (f.rigId === id) {
+                get().updateFixture(f.id, { rigId: undefined });
+            }
+        }
+        set({ showFile: { ...showFile } });
     },
     // ═══════════════════════════════════════════════════════════════════════
     // GROUP ACTIONS

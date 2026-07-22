@@ -187,10 +187,10 @@ export const ZoneLayer: React.FC<ZoneLayerProps> = ({
 
             {/* Zone label — technical typography, interior corner */}
             <text
-              x={zone.x + 0.2}
-              y={zone.y + 0.25}
+              x={zone.x + 0.3}
+              y={zone.y + 0.35}
               fill="var(--obs-ink, #8B94A8)"
-              fontSize={0.45}
+              fontSize={0.18}
               fontFamily="'Inter', system-ui, sans-serif"
               fontWeight={600}
               letterSpacing="0.15em"

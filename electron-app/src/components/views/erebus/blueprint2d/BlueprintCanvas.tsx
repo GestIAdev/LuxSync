@@ -90,14 +90,15 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
     [fixtures, stageWidth, stageDepth],
   )
 
-  // viewBox spans from (-padding) to (stageWidth + padding) on X
-  // and from (-padding) to (stageDepth + padding) on Z (mapped to SVG Y)
+  // viewBox spans beyond architecture padding to include grid overscan
+  // Grid extends GRID_OVERSCAN (3m) beyond the architecture hatching ring
+  const GRID_OVERSCAN = 3
   const viewBox = useMemo(
     () => ({
-      x: -padding,
-      y: -padding,
-      w: stageWidth + padding * 2,
-      h: stageDepth + padding * 2,
+      x: -(padding + GRID_OVERSCAN),
+      y: -(padding + GRID_OVERSCAN),
+      w: stageWidth + (padding + GRID_OVERSCAN) * 2,
+      h: stageDepth + (padding + GRID_OVERSCAN) * 2,
     }),
     [stageWidth, stageDepth, padding],
   )

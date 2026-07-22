@@ -24,6 +24,7 @@ const CROSSHAIR_SPACING = 5.0 // meters
 const FINE_WIDTH = 1 // 1px screen pixel — non-scaling-stroke
 const MASTER_WIDTH = 1.5 // 1.5px screen pixel
 const CROSS_WIDTH = 2 // 2px screen pixel
+const GRID_OVERSCAN = 3 // meters beyond architecture padding
 
 export const GridLayer: React.FC<GridLayerProps> = ({
   stageWidth,
@@ -31,10 +32,10 @@ export const GridLayer: React.FC<GridLayerProps> = ({
   padding,
 }) => {
   const { fineLines, masterLines, crosshairs } = useMemo(() => {
-    const xStart = -padding
-    const xEnd = stageWidth + padding
-    const zStart = -padding
-    const zEnd = stageDepth + padding
+    const xStart = -(padding + GRID_OVERSCAN)
+    const xEnd = stageWidth + padding + GRID_OVERSCAN
+    const zStart = -(padding + GRID_OVERSCAN)
+    const zEnd = stageDepth + padding + GRID_OVERSCAN
 
     // Fine grid lines (vertical = constant X, horizontal = constant Z)
     const fine: React.ReactNode[] = []
@@ -123,7 +124,7 @@ export const GridLayer: React.FC<GridLayerProps> = ({
     }
 
     return { fineLines: fine, masterLines: master, crosshairs: crosses }
-  }, [stageWidth, stageDepth, padding])
+  }, [stageWidth, stageDepth, padding]) // GRID_OVERSCAN is a constant
 
   return (
     <g>

@@ -66,22 +66,28 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
 
   // Neighbor positions for DimensionLayer
   const neighborPositions = useMemo(
-    () => fixtures.map(f => ({ id: f.id, x: f.position.x, z: f.position.z })),
-    [fixtures],
+    () => fixtures.map(f => ({
+      id: f.id,
+      x: f.position.x + stageWidth / 2,
+      z: f.position.z + stageDepth / 2,
+    })),
+    [fixtures, stageWidth, stageDepth],
   )
 
   // Map fixtures to symbol data for SymbolLayer
+  // Transform from 3D center-origin (0,0 = stage center) to SVG top-left-origin
+  // (0,0 = top-left corner of stage rect)
   const symbolFixtures = useMemo<FixtureSymbolData[]>(
     () =>
       fixtures.map(f => ({
         id: f.id,
         type: (f.type === 'bar' ? 'wash' : f.type) as FixtureSymbolData['type'],
-        x: f.position.x,
-        z: f.position.z,
+        x: f.position.x + stageWidth / 2,
+        z: f.position.z + stageDepth / 2,
         yaw: f.rotation.yaw,
         label: `${f.name} · U${f.universe}.${f.address}`,
       })),
-    [fixtures],
+    [fixtures, stageWidth, stageDepth],
   )
 
   // viewBox spans from (-padding) to (stageWidth + padding) on X

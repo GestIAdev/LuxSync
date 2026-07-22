@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { useStageStore } from '../../../../../stores/stageStore'
-import { getActiveZones, type CanonicalZone } from '../../../../../core/zones/ZoneMapper'
-import { normalizeZone } from '../../../../../core/stage/ShowFileV2'
+import { type CanonicalZone } from '../../../../../core/zones/ZoneMapper'
+import { CANONICAL_ZONES } from '../../../../../core/stage/ShowFileV2'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ZoneLayer — Zonas Arquitectónicas Dinámicas (Capa 3 del SVG)
@@ -128,21 +127,17 @@ export const ZoneLayer: React.FC<ZoneLayerProps> = ({
   const [hoveredZone, setHoveredZone] = useState<string | null>(null)
   const [dragOverZone, setDragOverZone] = useState<string | null>(null)
 
-  // ── Derive active zones from store fixtures ───────────────────────────────
-  const fixtures = useStageStore(s => s.fixtures)
-
-  const activeZones = useMemo(
-    () => getActiveZones(fixtures.map(f => ({
-      id: f.id,
-      zone: normalizeZone(f.zone),
-      enabled: f.enabled !== false,
-    }))),
-    [fixtures],
+  // ── Always show all 8 canonical zones (excluding 'unassigned') ──────────
+  // The architectural plan must display the full spatial matrix regardless
+  // of whether fixtures are currently assigned to each zone.
+  const allZones = useMemo(
+    () => CANONICAL_ZONES.filter(z => z !== 'unassigned') as CanonicalZone[],
+    [],
   )
 
   const zones = useMemo(
-    () => computeZoneLayout(activeZones, stageWidth, stageDepth),
-    [activeZones, stageWidth, stageDepth],
+    () => computeZoneLayout(allZones, stageWidth, stageDepth),
+    [allZones, stageWidth, stageDepth],
   )
 
   // ── Listen for drag-over-zone events from DragDropController2D ────────────
@@ -163,20 +158,6 @@ export const ZoneLayer: React.FC<ZoneLayerProps> = ({
 
   return (
     <g className="zone-layer" style={{ pointerEvents: 'none' }}>
-      <defs>
-        {/* Dot pattern for hover/drag fill — 3% opacity */}
-        <pattern
-          id="zone-dot-fill"
-          x="0"
-          y="0"
-          width="0.3"
-          height="0.3"
-          patternUnits="userSpaceOnUse"
-        >
-          <circle cx="0.15" cy="0.15" r="0.015" fill="var(--obs-accent)" opacity="0.03" />
-        </pattern>
-      </defs>
-
       {zones.map(zone => {
         const isHighlighted = hoveredZone === zone.id || dragOverZone === zone.id
         return (

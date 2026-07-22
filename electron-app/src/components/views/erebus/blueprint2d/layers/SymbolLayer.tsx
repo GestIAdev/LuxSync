@@ -41,7 +41,7 @@ interface SymbolLayerProps {
 const STROKE = 'var(--obs-bright, #E4E9F2)'
 const STROKE_WIDTH = 0.008 // ~0.8mm — 1px equivalent at typical zoom
 const SYMBOL_RADIUS = 0.15 // 30cm diameter symbols
-const LABEL_SIZE = 0.25 // 25cm in world space — readable at any zoom
+const LABEL_SIZE = 0.08 // 8cm metric — CAD-scale label
 const LABEL_OFFSET = 0.22 // below symbol
 
 // ── Individual Symbol Components ───────────────────────────────────────────
@@ -95,7 +95,7 @@ const MovingHeadSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
         <text
           x={data.x}
           y={data.z + LABEL_OFFSET}
-          dy="0.4"
+          dy="0.2"
           fill="var(--obs-bright, #E4E9F2)"
           fontSize={LABEL_SIZE}
           fontFamily="monospace"
@@ -184,7 +184,7 @@ const WashSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
         <text
           x={data.x}
           y={data.z + h / 2 + LABEL_OFFSET * 0.7}
-          dy="0.4"
+          dy="0.2"
           fill="var(--obs-bright, #E4E9F2)"
           fontSize={LABEL_SIZE}
           fontFamily="monospace"
@@ -236,7 +236,7 @@ const StrobeSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
         <text
           x={data.x}
           y={data.z + LABEL_OFFSET}
-          dy="0.4"
+          dy="0.2"
           fill="var(--obs-bright, #E4E9F2)"
           fontSize={LABEL_SIZE}
           fontFamily="monospace"
@@ -300,7 +300,7 @@ const LaserSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
         <text
           x={data.x}
           y={data.z + r + LABEL_OFFSET * 0.7}
-          dy="0.4"
+          dy="0.2"
           fill="var(--obs-bright, #E4E9F2)"
           fontSize={LABEL_SIZE}
           fontFamily="monospace"

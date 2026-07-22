@@ -28,7 +28,7 @@ interface DimensionLayerProps {
 const INK = 'var(--obs-ink, #8B94A8)'
 const ACCENT = 'var(--obs-accent, #5EEAD4)'
 const STROKE_WIDTH = 0.004
-const FONT_SIZE = 0.07
+const FONT_SIZE = 0.08
 const ARROW_SIZE = 0.03
 const TICK_OFFSET = 0.15
 

@@ -22,19 +22,20 @@ interface ZoneDef {
   height: number
 }
 
-// Compute canonical zones from actual stage dimensions (meters)
+// Canonical lighting zones — operator nomenclature
 function computeZones(stageWidth: number, stageDepth: number): ZoneDef[] {
-  const sideWidth = Math.max(1.5, stageWidth * 0.125) // 12.5% of width, min 1.5m
-  const frontDepth = stageDepth * 0.3 // front 30%
-  const backDepth = stageDepth * 0.3 // back 30%
-  const midDepth = stageDepth - frontDepth - backDepth // mid = remaining 40%
+  const sideWidth = Math.max(1.5, stageWidth * 0.2) // 20% flanks for movers
+  const centerWidth = stageWidth - sideWidth * 2
+  const airHeight = stageDepth * 0.35 // back 35% — contras/aerial effects
+  const ambientHeight = stageDepth * 0.35 // front 35% — ambient/wash
+  const centerHeight = stageDepth - airHeight - ambientHeight // mid 30% — center/flash/strobe
 
   return [
-    { id: 'back', name: 'BACK', x: 0, y: 0, width: stageWidth, height: backDepth },
-    { id: 'mid', name: 'MID', x: 0, y: backDepth, width: stageWidth, height: midDepth },
-    { id: 'front', name: 'FRONT', x: 0, y: backDepth + midDepth, width: stageWidth, height: frontDepth },
-    { id: 'left', name: 'STAGE LEFT', x: -sideWidth, y: 0, width: sideWidth, height: stageDepth },
-    { id: 'right', name: 'STAGE RIGHT', x: stageWidth, y: 0, width: sideWidth, height: stageDepth },
+    { id: 'movers-left', name: 'MOVERS LEFT', x: 0, y: 0, width: sideWidth, height: stageDepth },
+    { id: 'movers-right', name: 'MOVERS RIGHT', x: stageWidth - sideWidth, y: 0, width: sideWidth, height: stageDepth },
+    { id: 'center', name: 'CENTER / FLASH / STROBE', x: sideWidth, y: airHeight, width: centerWidth, height: centerHeight },
+    { id: 'ambient', name: 'AMBIENT', x: sideWidth, y: airHeight + centerHeight, width: centerWidth, height: ambientHeight },
+    { id: 'air', name: 'AIR', x: sideWidth, y: 0, width: centerWidth, height: airHeight },
   ]
 }
 
@@ -119,7 +120,7 @@ export const ZoneLayer: React.FC<ZoneLayerProps> = ({
               x={zone.x + 0.3}
               y={zone.y + 0.5}
               fill="var(--obs-bright, #E4E9F2)"
-              fontSize={0.5}
+              fontSize={0.15}
               fontFamily="'Inter', system-ui, sans-serif"
               fontWeight={700}
               letterSpacing="0.1em"

@@ -41,8 +41,8 @@ interface SymbolLayerProps {
 const STROKE = 'var(--obs-bright, #E4E9F2)'
 const STROKE_WIDTH = 0.008 // ~0.8mm — 1px equivalent at typical zoom
 const SYMBOL_RADIUS = 0.15 // 30cm diameter symbols
-const LABEL_SIZE = 0.08 // 8cm metric — CAD-scale label
-const LABEL_OFFSET = 0.22 // below symbol
+const LABEL_SIZE = 0.25 // 25cm metric — legible at full-stage zoom
+const LABEL_OFFSET = 0.35 // below symbol — scaled for 0.25 fontSize
 
 // ── Individual Symbol Components ───────────────────────────────────────────
 

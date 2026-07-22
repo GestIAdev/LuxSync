@@ -21,7 +21,7 @@ interface GridLayerProps {
 const FINE_SPACING = 0.25 // meters
 const MASTER_SPACING = 1.0 // meters
 const CROSSHAIR_SPACING = 5.0 // meters
-const HAIRLINE_WIDTH = 0.003 // ~0.3mm at 1:1 scale — crisp hairline
+const HAIRLINE_WIDTH = 0.005 // ~0.5mm at 1:1 scale — crisp hairline
 
 export const GridLayer: React.FC<GridLayerProps> = ({
   stageWidth,
@@ -44,7 +44,7 @@ export const GridLayer: React.FC<GridLayerProps> = ({
           x2={x} y2={zEnd}
           stroke="var(--obs-line, #2A3040)"
           strokeWidth={HAIRLINE_WIDTH}
-          opacity={0.04}
+          opacity={0.08}
           vectorEffect="non-scaling-stroke"
         />
       )
@@ -57,7 +57,7 @@ export const GridLayer: React.FC<GridLayerProps> = ({
           x2={xEnd} y2={z}
           stroke="var(--obs-line, #2A3040)"
           strokeWidth={HAIRLINE_WIDTH}
-          opacity={0.04}
+          opacity={0.08}
           vectorEffect="non-scaling-stroke"
         />
       )
@@ -73,7 +73,7 @@ export const GridLayer: React.FC<GridLayerProps> = ({
           x2={x} y2={zEnd}
           stroke="var(--obs-line, #2A3040)"
           strokeWidth={HAIRLINE_WIDTH}
-          opacity={0.10}
+          opacity={0.18}
           vectorEffect="non-scaling-stroke"
         />
       )
@@ -86,7 +86,7 @@ export const GridLayer: React.FC<GridLayerProps> = ({
           x2={xEnd} y2={z}
           stroke="var(--obs-line, #2A3040)"
           strokeWidth={HAIRLINE_WIDTH}
-          opacity={0.10}
+          opacity={0.18}
           vectorEffect="non-scaling-stroke"
         />
       )
@@ -104,7 +104,7 @@ export const GridLayer: React.FC<GridLayerProps> = ({
               x2={x + crossSize} y2={z}
               stroke="var(--obs-line, #2A3040)"
               strokeWidth={HAIRLINE_WIDTH * 1.5}
-              opacity={0.12}
+              opacity={0.22}
               vectorEffect="non-scaling-stroke"
             />
             <line
@@ -112,7 +112,7 @@ export const GridLayer: React.FC<GridLayerProps> = ({
               x2={x} y2={z + crossSize}
               stroke="var(--obs-line, #2A3040)"
               strokeWidth={HAIRLINE_WIDTH * 1.5}
-              opacity={0.12}
+              opacity={0.22}
               vectorEffect="non-scaling-stroke"
             />
           </g>

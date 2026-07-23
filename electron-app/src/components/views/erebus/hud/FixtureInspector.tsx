@@ -1,7 +1,12 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import { useStageStore } from '../../../../stores/stageStore'
-import { snapToVoxel, clampToCrystalBox, VOXEL_SIZE } from '../../../../core/stage/ShowFileV2'
-import type { FixtureV2 } from '../../../../core/stage/ShowFileV2'
+import {
+  snapToVoxel,
+  clampToCrystalBox,
+  VOXEL_SIZE,
+  CANONICAL_ZONES,
+} from '../../../../core/stage/ShowFileV2'
+import type { FixtureV2, InstallationOrientation, CanonicalZone } from '../../../../core/stage/ShowFileV2'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FixtureInspector — Datos de un foco seleccionado
@@ -17,12 +22,31 @@ interface FixtureInspectorProps {
 export const FixtureInspector: React.FC<FixtureInspectorProps> = ({ fixtureId }) => {
   const fixture = useStageStore(s => s.fixtures.find(f => f.id === fixtureId))
   const updateFixturePosition = useStageStore(s => s.updateFixturePosition)
+  const updateFixture = useStageStore(s => s.updateFixture)
+  const setFixtureZone = useStageStore(s => s.setFixtureZone)
+
+  const handleOrientationChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      if (!fixture) return
+      const newOrientation = e.target.value as InstallationOrientation
+      updateFixture(fixture.id, { orientation: newOrientation })
+    },
+    [fixture, updateFixture],
+  )
+
+  const handleZoneChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      if (!fixture) return
+      setFixtureZone(fixture.id, e.target.value as CanonicalZone)
+    },
+    [fixture, setFixtureZone],
+  )
 
   if (!fixture) {
     return <div className="erebus-inspector-empty">Fixture not found</div>
   }
 
-  const { position, orientation, rigId, type } = fixture
+  const { position, orientation, zone, type } = fixture
 
   const handlePosChange = (axis: 'x' | 'y' | 'z', value: number) => {
     const newPos = { ...position, [axis]: snapToVoxel(value) }
@@ -80,16 +104,36 @@ export const FixtureInspector: React.FC<FixtureInspectorProps> = ({ fixtureId })
         </div>
       </div>
 
-      {/* Orientation */}
+      {/* Orientation — editable dropdown */}
       <div className="erebus-inspector-row">
         <span className="erebus-inspector-label">Orientation</span>
-        <span className="erebus-inspector-value">{orientation}</span>
+        <select
+          className="erebus-inspector-select"
+          value={orientation}
+          onChange={handleOrientationChange}
+        >
+          <option value="ceiling">ceiling</option>
+          <option value="truss-front">truss-front</option>
+          <option value="truss-back">truss-back</option>
+          <option value="floor">floor</option>
+          <option value="totem">totem</option>
+          <option value="wall-left">wall-left</option>
+          <option value="wall-right">wall-right</option>
+        </select>
       </div>
 
-      {/* Rig assignment */}
+      {/* Zone — editable dropdown */}
       <div className="erebus-inspector-row">
-        <span className="erebus-inspector-label">Rig</span>
-        <span className="erebus-inspector-value">{rigId ?? '—'}</span>
+        <span className="erebus-inspector-label">Zone</span>
+        <select
+          className="erebus-inspector-select"
+          value={zone}
+          onChange={handleZoneChange}
+        >
+          {CANONICAL_ZONES.map(z => (
+            <option key={z} value={z}>{z}</option>
+          ))}
+        </select>
       </div>
 
       {/* Mini orientation gizmo */}

@@ -9,6 +9,7 @@ import { CrystalEdges } from './environment/CrystalEdges'
 import { DragDropController3D } from './interaction/DragDropController3D'
 import { MeasureLayer3D } from './interaction/MeasureLayer3D'
 import { RigSystem } from './rigging/RigSystem'
+import { SpatialGuides } from './helpers/SpatialGuides'
 import { CameraLerpController } from '../transition/ViewTransitionDirector'
 import type { CameraKeyframe } from '../transition/ProjectionLerp'
 import type { ToolMode } from '../ErebusShell'
@@ -117,6 +118,9 @@ export const StudioCanvas: React.FC<StudioCanvasProps> = ({
 
         {/* Measure Tool (3D) */}
         <MeasureLayer3D toolMode={toolMode} />
+
+        {/* Spatial Guides — projection lines from selected object */}
+        <SpatialGuides />
 
         {/* Camera controls — disabled during transition and non-interactive tool modes */}
         <OrbitControls

@@ -249,10 +249,24 @@ const RigRenderer: React.FC<RigRendererProps> = ({
     setIsDragging(true)
   }
 
+  const handleWheel = (e: any) => {
+    if (toolMode !== 'move' && toolMode !== 'rig') return
+    e.stopPropagation()
+
+    const deltaY = e.deltaY > 0 ? -0.25 : 0.25
+    const currentY = rig.position.y
+    const newY = Math.max(0, currentY + deltaY)
+
+    if (newY !== currentY) {
+      updateRig(rig.id, { position: { ...rig.position, y: newY } })
+    }
+  }
+
   return (
     <group
       userData={{ rigId: rig.id }}
       onPointerDown={handlePointerDown}
+      onWheel={handleWheel}
       onPointerOver={() => onHover(rig.id)}
       onPointerOut={() => onHover(null)}
     >

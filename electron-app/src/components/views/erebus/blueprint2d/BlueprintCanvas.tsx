@@ -85,22 +85,24 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
         x: f.position.x + stageWidth / 2,
         z: f.position.z + stageDepth / 2,
         yaw: f.rotation.yaw,
-        label: `${f.name} · U${f.universe}.${f.address}`,
+        name: f.name,
+        dmx: `U${f.universe}.${f.address}`,
       })),
     [fixtures, stageWidth, stageDepth],
   )
 
-  // viewBox spans beyond architecture padding to include grid overscan
-  // Grid extends GRID_OVERSCAN (3m) beyond the architecture hatching ring
-  const GRID_OVERSCAN = 3
+  // viewBox — tight framing: 1.5m padding around stage so it dominates viewport
+  // Grid (GridLayer) still draws beyond this to its own overscan, but the
+  // viewBox crops to this tighter frame for a closer default zoom.
+  const VIEWBOX_PADDING = 1.5
   const viewBox = useMemo(
     () => ({
-      x: -(padding + GRID_OVERSCAN),
-      y: -(padding + GRID_OVERSCAN),
-      w: stageWidth + (padding + GRID_OVERSCAN) * 2,
-      h: stageDepth + (padding + GRID_OVERSCAN) * 2,
+      x: -VIEWBOX_PADDING,
+      y: -VIEWBOX_PADDING,
+      w: stageWidth + VIEWBOX_PADDING * 2,
+      h: stageDepth + VIEWBOX_PADDING * 2,
     }),
-    [stageWidth, stageDepth, padding],
+    [stageWidth, stageDepth],
   )
 
   const viewBoxStr = `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`

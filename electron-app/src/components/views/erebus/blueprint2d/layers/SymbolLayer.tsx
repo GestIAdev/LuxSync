@@ -27,7 +27,12 @@ export interface FixtureSymbolData {
   x: number // meters (stage coords)
   z: number // meters (mapped to SVG Y)
   yaw?: number // degrees — for moving-head orientation wedge
-  label?: string // e.g. "MH-07 · U1.121"
+  /** Short fixture name (will be truncated to 12 chars) */
+  name?: string
+  /** DMX address string, e.g. "U0.21" */
+  dmx?: string
+  /** Legacy single-line label (deprecated, use name+dmx) */
+  label?: string
   /** Live DMX color ring (if show running), else null */
   liveColor?: string | null
 }
@@ -41,8 +46,54 @@ interface SymbolLayerProps {
 const STROKE = 'var(--obs-bright, #E4E9F2)'
 const STROKE_WIDTH = 1 // 1px screen pixel — non-scaling-stroke
 const SYMBOL_RADIUS = 0.15 // 30cm diameter symbols
-const LABEL_SIZE = 0.25 // 25cm metric — legible at full-stage zoom
-const LABEL_OFFSET = 0.35 // below symbol — scaled for 0.25 fontSize
+const LABEL_SIZE = 0.14 // 14cm metric — compact CAD label
+const DMX_SIZE = 0.11 // 11cm metric — smaller DMX sub-label
+const LABEL_OFFSET = 0.35 // below symbol — vertical offset
+const MAX_NAME_LEN = 12 // truncate fixture names to this many chars
+
+/** Truncate name to MAX_NAME_LEN with ellipsis */
+function truncateName(name: string): string {
+  return name.length > MAX_NAME_LEN ? name.slice(0, MAX_NAME_LEN) + '\u2026' : name
+}
+
+/** Compact multiline label: line 1 = truncated name, line 2 = DMX address */
+const FixtureLabel: React.FC<{ data: FixtureSymbolData; y: number }> = ({ data, y }) => {
+  const displayName = data.name ? truncateName(data.name) : (data.label ?? '')
+  const dmx = data.dmx ?? ''
+  if (!displayName && !dmx) return null
+  return (
+    <text
+      x={data.x}
+      y={y}
+      textAnchor="middle"
+      pointerEvents="none"
+    >
+      {displayName && (
+        <tspan
+          x={data.x}
+          dy="0"
+          fill="var(--obs-bright, #E4E9F2)"
+          fontSize={LABEL_SIZE}
+          fontFamily="'Inter', system-ui, sans-serif"
+          fontWeight={500}
+        >
+          {displayName}
+        </tspan>
+      )}
+      {dmx && (
+        <tspan
+          x={data.x}
+          dy={LABEL_SIZE * 1.4}
+          fill="var(--obs-accent, #4FC3F7)"
+          fontSize={DMX_SIZE}
+          fontFamily="monospace"
+        >
+          {dmx}
+        </tspan>
+      )}
+    </text>
+  )
+}
 
 // ── Individual Symbol Components ───────────────────────────────────────────
 
@@ -90,20 +141,8 @@ const MovingHeadSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
         strokeWidth={1}
         vectorEffect="non-scaling-stroke"
       />
-      {/* Label */}
-      {data.label && (
-        <text
-          x={data.x}
-          y={data.z + LABEL_OFFSET}
-          dy="0.2"
-          fill="var(--obs-bright, #E4E9F2)"
-          fontSize={LABEL_SIZE}
-          fontFamily="monospace"
-          textAnchor="middle"
-        >
-          {data.label}
-        </text>
-      )}
+      {/* Label — multiline: name + DMX */}
+      <FixtureLabel data={data} y={data.z + LABEL_OFFSET} />
     </g>
   )
 }
@@ -179,20 +218,8 @@ const WashSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
           />
         </clipPath>
       </defs>
-      {/* Label */}
-      {data.label && (
-        <text
-          x={data.x}
-          y={data.z + h / 2 + LABEL_OFFSET * 0.7}
-          dy="0.2"
-          fill="var(--obs-bright, #E4E9F2)"
-          fontSize={LABEL_SIZE}
-          fontFamily="monospace"
-          textAnchor="middle"
-        >
-          {data.label}
-        </text>
-      )}
+      {/* Label — multiline: name + DMX */}
+      <FixtureLabel data={data} y={data.z + h / 2 + LABEL_OFFSET * 0.7} />
     </g>
   )
 }
@@ -232,19 +259,8 @@ const StrobeSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
         opacity={0.5}
         vectorEffect="non-scaling-stroke"
       />
-      {data.label && (
-        <text
-          x={data.x}
-          y={data.z + LABEL_OFFSET}
-          dy="0.2"
-          fill="var(--obs-bright, #E4E9F2)"
-          fontSize={LABEL_SIZE}
-          fontFamily="monospace"
-          textAnchor="middle"
-        >
-          {data.label}
-        </text>
-      )}
+      {/* Label — multiline: name + DMX */}
+      <FixtureLabel data={data} y={data.z + LABEL_OFFSET} />
     </g>
   )
 }
@@ -296,19 +312,8 @@ const LaserSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
           />
         )
       })}
-      {data.label && (
-        <text
-          x={data.x}
-          y={data.z + r + LABEL_OFFSET * 0.7}
-          dy="0.2"
-          fill="var(--obs-bright, #E4E9F2)"
-          fontSize={LABEL_SIZE}
-          fontFamily="monospace"
-          textAnchor="middle"
-        >
-          {data.label}
-        </text>
-      )}
+      {/* Label — multiline: name + DMX */}
+      <FixtureLabel data={data} y={data.z + r + LABEL_OFFSET * 0.7} />
     </g>
   )
 }

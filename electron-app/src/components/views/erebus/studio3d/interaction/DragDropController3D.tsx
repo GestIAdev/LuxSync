@@ -6,6 +6,7 @@ import { useSelectionStore } from '../../../../../stores/selectionStore'
 import { AnchorPoints } from '../rigging/AnchorPoints'
 import { generateRigAnchors } from '../rigging/RigSystem'
 import { FixtureLayer3D } from '../fixtures/FixtureLayer3D'
+import { dragPositionRef } from '../helpers/dragPositionRef'
 import type { RigV2, FixtureV2, InstallationOrientation, Position3D } from '../../../../../core/stage/ShowFileV2'
 import { snapToVoxel, VOXEL_SIZE, clampToCrystalBox } from '../../../../../core/stage/ShowFileV2'
 import { useSnapStore } from '../../../../../stores/snapStore'
@@ -367,6 +368,7 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
       dragRef.current = null
       draggedFixtureRef.current = null
       draggedGroupRef.current = null
+      dragPositionRef.current = null
       onDragEnd?.()
     }
 
@@ -429,6 +431,9 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
     if (draggedGroupRef.current) {
       draggedGroupRef.current.position.set(ds.visualPos.x, ds.visualPos.y, ds.visualPos.z)
     }
+
+    // Publish live position for SpatialGuides (zero-renders)
+    dragPositionRef.current = ds.visualPos
   })
 
   // ── Render: fixture layer with interaction + anchor points ──────────────

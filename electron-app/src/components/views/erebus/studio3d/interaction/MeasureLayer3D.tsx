@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { useThree } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import { useStageStore } from '../../../../../stores/stageStore'
+import { clampToCrystalBox } from '../../../../../core/stage/ShowFileV2'
 import type { ToolMode } from '../../ErebusShell'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -33,6 +34,7 @@ const INK = '#8B94A8'
 
 export const MeasureLayer3D: React.FC<MeasureLayer3DProps> = ({ toolMode }) => {
   const fixtures = useStageStore(s => s.fixtures)
+  const stageDims = useStageStore(s => s.showFile?.stage ?? null)
   const { gl, camera, raycaster } = useThree()
   const [pointA, setPointA] = useState<MeasurePoint3D | null>(null)
   const [pointB, setPointB] = useState<MeasurePoint3D | null>(null)
@@ -72,12 +74,18 @@ export const MeasureLayer3D: React.FC<MeasureLayer3DProps> = ({ toolMode }) => {
       const ndcY = -((e.clientY - rect.top) / rect.height) * 2 + 1
       raycaster.setFromCamera({ x: ndcX, y: ndcY } as THREE.Vector2, camera)
       const hit = raycaster.ray.intersectPlane(groundPlane, intersectionRef.current)
-      if (hit) setHoverPos(hit.clone())
+      if (hit) {
+        const clamped = clampToCrystalBox(
+          { x: hit.x, y: hit.y, z: hit.z },
+          stageDims ?? { width: 12, depth: 8, height: 6, gridSize: 0.25 },
+        )
+        setHoverPos(new THREE.Vector3(clamped.x, clamped.y, clamped.z))
+      }
     }
 
     window.addEventListener('pointermove', handleMove)
     return () => window.removeEventListener('pointermove', handleMove)
-  }, [toolMode, pointA, pointB, gl, camera, raycaster, groundPlane])
+  }, [toolMode, pointA, pointB, gl, camera, raycaster, groundPlane, stageDims])
 
   const handleFixtureClick = useCallback(
     (e: any) => {

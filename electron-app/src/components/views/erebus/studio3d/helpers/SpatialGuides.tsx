@@ -57,7 +57,7 @@ export const SpatialGuides: React.FC = () => {
     const rig = rigs.find(r => r.id === id)
     if (rig) {
       return {
-        storePos: new THREE.Vector3(rig.position.x, rig.position.y, rig.position.z),
+        storePos: new THREE.Vector3(rig.position.x, rig.height, rig.position.z),
         hasSelection: true,
       }
     }

@@ -9,6 +9,7 @@ import { TotemTower } from './TotemTower'
 import { AnchorPoints } from './AnchorPoints'
 import type { RigV2, FixtureV2 } from '../../../../../core/stage/ShowFileV2'
 import type { ToolMode } from '../../ErebusShell'
+import { dragPositionRef } from '../helpers/dragPositionRef'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // RigSystem — Orquestador de Rigging
@@ -175,6 +176,7 @@ const RigRenderer: React.FC<RigRendererProps> = ({
   const [isDragging, setIsDragging] = useState(false)
   const dragStartRef = useRef<{ x: number; z: number } | null>(null)
   const intersectionRef = useRef(new THREE.Vector3())
+  const wheelClearRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   // Disable OrbitControls while dragging a rig
   useEffect(() => {
@@ -205,6 +207,9 @@ const RigRenderer: React.FC<RigRendererProps> = ({
 
       updateRig(rig.id, { position: { x, y: rig.position.y, z } })
 
+      // Publish live position for SpatialGuides
+      dragPositionRef.current = new THREE.Vector3(x, rig.height, z)
+
       // Move anchored fixtures with the rig
       for (const f of fixtures) {
         if (f.rigId === rig.id) {
@@ -222,6 +227,7 @@ const RigRenderer: React.FC<RigRendererProps> = ({
     const handleUp = () => {
       setIsDragging(false)
       dragStartRef.current = null
+      dragPositionRef.current = null
     }
 
     window.addEventListener('pointermove', handleMove)
@@ -254,11 +260,17 @@ const RigRenderer: React.FC<RigRendererProps> = ({
     e.stopPropagation()
 
     const deltaY = e.deltaY > 0 ? -0.25 : 0.25
-    const currentY = rig.position.y
-    const newY = Math.max(0, currentY + deltaY)
+    const currentHeight = rig.height
+    const newHeight = Math.max(0.5, currentHeight + deltaY)
 
-    if (newY !== currentY) {
-      updateRig(rig.id, { position: { ...rig.position, y: newY } })
+    if (newHeight !== currentHeight) {
+      updateRig(rig.id, { height: newHeight })
+      dragPositionRef.current = new THREE.Vector3(rig.position.x, newHeight, rig.position.z)
+
+      clearTimeout(wheelClearRef.current)
+      wheelClearRef.current = setTimeout(() => {
+        dragPositionRef.current = null
+      }, 150)
     }
   }
 

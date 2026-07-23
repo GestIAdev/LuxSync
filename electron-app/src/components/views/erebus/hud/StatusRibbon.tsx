@@ -19,6 +19,7 @@ import { VOXEL_SIZE } from '../../../../core/stage/ShowFileV2'
 
 export const StatusRibbon: React.FC = () => {
   const fixtureCount = useStageStore(s => s.fixtures.length)
+  const showName = useStageStore(s => s.showFile?.name ?? '—')
 
   // ── Live cursor coords (updated via rAF, no React re-render) ───────────────
   const coordsRef = useRef<HTMLSpanElement>(null)
@@ -57,6 +58,8 @@ export const StatusRibbon: React.FC = () => {
 
   return (
     <div className="erebus-status-ribbon">
+      <span className="erebus-status-show-name">{showName}</span>
+      <span className="erebus-status-sep">│</span>
       <span ref={coordsRef}>x:0.00 y:0.00 z:0.00</span>
       <span className="erebus-status-sep">│</span>
       <span>{fixtureCount} fixtures</span>

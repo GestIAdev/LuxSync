@@ -315,6 +315,12 @@
   pointer-events: none;
 }
 
+.erebus-status-show-name {
+  color: var(--obs-accent);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
 .erebus-status-sep {
   margin: 0 8px;
   color: var(--obs-line);

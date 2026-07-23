@@ -1,6 +1,9 @@
 import React, { useMemo, useState, useCallback, useRef } from 'react'
 import { useStageStore } from '../../../../stores/stageStore'
 import { useSelectionStore } from '../../../../stores/selectionStore'
+import { useLibraryStore } from '../../../../stores/libraryStore'
+import { useSnapStore } from '../../../../stores/snapStore'
+import { createDefaultFixture } from '../../../../core/stage/ShowFileV2'
 import { PaperLayer } from './layers/PaperLayer'
 import { GridLayer } from './layers/GridLayer'
 import { ArchitectureLayer } from './layers/ArchitectureLayer'
@@ -14,6 +17,7 @@ import { ElevationScrubber, type ElevationState } from './elevation/ElevationScr
 import { SectionProfileGhost } from './elevation/SectionProfileGhost'
 import { RigPlanLayer } from './layers/RigPlanLayer'
 import { MeasureLayer2D } from './interaction/MeasureLayer2D'
+import { useScreenToSVG } from './interaction/screenToSVG'
 import type { ToolMode } from '../ErebusShell'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -53,13 +57,66 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
   toolMode = 'select',
 }) => {
   const fixtures = useStageStore(s => s.fixtures)
+  const addFixture = useStageStore(s => s.addFixture)
   const deselectAll = useSelectionStore(s => s.deselectAll)
+  const snap = useSnapStore(s => s.snap)
   const svgRef = useRef<SVGSVGElement | null>(null)
 
   // ── FASE 7: Interaction state ─────────────────────────────────────────────
   const [dragState, setDragState] = useState<DragState2D | null>(null)
   const [elevationState, setElevationState] = useState<ElevationState | null>(null)
   const [dragHandlers, setDragHandlers] = useState<DragHandlers | null>(null)
+
+  // ── Shared coordinate conversion (DOM → SVG user space) ──────────────────
+  const screenToSVG = useScreenToSVG(svgRef)
+
+  // ── Drop handler for new fixtures from tool panel ──────────────────────────
+  // Uses screenToSVG (getScreenCTM) for pixel-perfect placement, then applies
+  // the inverse offset to convert SVG top-left coords → 3D center-origin.
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      const libraryId = e.dataTransfer.getData('application/x-fixture-library-id')
+      if (!libraryId) return
+
+      const libState = useLibraryStore.getState()
+      const libFixture = [...libState.systemFixtures, ...libState.userFixtures].find(
+        f => f.id === libraryId,
+      )
+      if (!libFixture) return
+
+      // Convert screen pixels → SVG user space (meters, top-left origin)
+      const { x: svgX, y: svgZ } = screenToSVG(e.clientX, e.clientY)
+
+      // SVG top-left origin → 3D center-origin
+      const worldX = snap(svgX - stageWidth / 2)
+      const worldZ = snap(svgZ - stageDepth / 2)
+
+      const fixtureCount = useStageStore.getState().fixtures.length
+      const newFixture = createDefaultFixture(
+        `fix-${Date.now()}`,
+        fixtureCount * 4 + 1,
+        {
+          name: libFixture.name,
+          model: libFixture.name,
+          manufacturer: libFixture.manufacturer,
+          type: libFixture.type as any,
+          profileId: libFixture.id,
+          channelCount: libFixture.channels?.length ?? 1,
+          position: { x: worldX, y: 3, z: worldZ },
+          isPlaced: true,
+          placementMode: '3d',
+        },
+      )
+      addFixture(newFixture)
+    },
+    [screenToSVG, snap, stageWidth, stageDepth, addFixture],
+  )
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
+  }, [])
 
   const handleDragUpdate = useCallback((state: DragState2D) => setDragState(state), [])
   const handleDragEnd = useCallback(() => setDragState(null), [])
@@ -114,6 +171,8 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
       className="blueprint-canvas"
       viewBox={viewBoxStr}
       preserveAspectRatio="xMidYMid meet"
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
       onClick={(e) => {
         // Only deselect if clicking the SVG background itself (not a child element)
         if (e.target === e.currentTarget) deselectAll()

@@ -74,40 +74,33 @@ export const ErebusShell: React.FC = () => {
     return () => window.removeEventListener('erebus:action-calibrate', handler)
   }, [])
 
-  // ── Drag-drop from FixtureCard to canvas ──────────────────────────────────
-  // Use native event listeners on the canvas mount element to bypass any
-  // issues with R3F's canvas element swallowing HTML5 drag events or React's
-  // synthetic event system not properly catching them.
-  const handleDragOverNative = useCallback((e: DragEvent) => {
-    e.preventDefault()
-    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
-  }, [])
+  // ── Drop for new fixtures is handled by BlueprintCanvas via onDrop ────────
+  // (uses screenToSVG + offset inverse for pixel-perfect placement)
 
-  const handleDropNative = useCallback(
-    (e: DragEvent) => {
+  // Attach native listeners on canvas mount — capture phase to intercept
+  // before R3F's canvas can swallow the events.
+  // Only needed for 3D mode (BlueprintCanvas handles its own onDrop in 2D).
+  useEffect(() => {
+    const el = canvasMountRef.current
+    if (!el) return
+
+    const handleDragOverNative = (e: DragEvent) => {
+      e.preventDefault()
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
+    }
+
+    const handleDropNative = (e: DragEvent) => {
       e.preventDefault()
       const libraryId = e.dataTransfer?.getData('application/x-fixture-library-id')
       if (!libraryId) return
 
-      // Find fixture in library
       const libState = useLibraryStore.getState()
       const libFixture = [...libState.systemFixtures, ...libState.userFixtures].find(
         f => f.id === libraryId,
       )
       if (!libFixture) return
 
-      // Compute drop position relative to canvas mount
-      const rect = canvasMountRef.current?.getBoundingClientRect()
-      if (!rect) return
-
-      // Normalize to 0..1 within canvas
-      const ndcX = (e.clientX - rect.left) / rect.width
-      const ndcY = (e.clientY - rect.top) / rect.height
-
-      // Map to stage coordinates (center origin for 3D, top-left for 2D)
-      const stageX = ndcX * stageWidth
-      const stageZ = ndcY * stageDepth
-
+      // 3D mode: approximate placement at center of stage
       const fixtureCount = useStageStore.getState().fixtures.length
       const newFixture = createDefaultFixture(
         `fix-${Date.now()}`,
@@ -119,21 +112,13 @@ export const ErebusShell: React.FC = () => {
           type: libFixture.type as any,
           profileId: libFixture.id,
           channelCount: libFixture.channels?.length ?? 1,
-          position: { x: stageX, y: 3, z: stageZ },
+          position: { x: 0, y: 3, z: 0 },
           isPlaced: true,
           placementMode: '3d',
         },
       )
       addFixture(newFixture)
-    },
-    [addFixture, stageWidth, stageDepth],
-  )
-
-  // Attach native listeners on canvas mount — capture phase to intercept
-  // before R3F's canvas can swallow the events.
-  useEffect(() => {
-    const el = canvasMountRef.current
-    if (!el) return
+    }
 
     const opts = { capture: true }
 
@@ -146,7 +131,7 @@ export const ErebusShell: React.FC = () => {
       el.removeEventListener('dragover', handleDragOverNative, opts)
       el.removeEventListener('drop', handleDropNative, opts)
     }
-  }, [handleDragOverNative, handleDropNative])
+  }, [addFixture])
 
   // ── Quick-add via double-click on FixtureCard ─────────────────────────────
   useEffect(() => {

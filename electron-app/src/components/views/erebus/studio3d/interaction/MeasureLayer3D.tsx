@@ -190,14 +190,14 @@ export const MeasureLayer3D: React.FC<MeasureLayer3DProps> = ({ toolMode }) => {
               borderRadius: '4px',
               padding: '4px 8px',
               fontFamily: 'monospace',
-              fontSize: '11px',
+              fontSize: '14px',
               color: measure.isFinal ? ACCENT : AMBER,
               whiteSpace: 'nowrap',
             }}
           >
             <div>{measure.dist.toFixed(2)}m</div>
             {measure.isFinal && (
-              <div style={{ fontSize: '9px', color: INK, marginTop: '2px' }}>
+              <div style={{ fontSize: '11px', color: INK, marginTop: '2px' }}>
                 ΔX:{measure.dx.toFixed(2)} ΔY:{measure.dy.toFixed(2)} ΔZ:{measure.dz.toFixed(2)}
               </div>
             )}

@@ -192,6 +192,9 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
       }
       if (!targetId) return
 
+      // In measure mode, let the event propagate to MeasureLayer3D
+      if (toolMode === 'measure') return
+
       e.stopPropagation()
 
       // Selection logic (works in all modes)

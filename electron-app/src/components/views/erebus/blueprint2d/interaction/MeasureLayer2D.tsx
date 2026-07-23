@@ -34,7 +34,7 @@ const ACCENT = 'var(--obs-accent, #5EEAD4)'
 const INK = 'var(--obs-ink, #8B94A8)'
 const AMBER = 'var(--obs-amber, #F5B04D)'
 const STROKE_WIDTH = 0.006
-const FONT_SIZE = 0.08
+const FONT_SIZE = 0.12
 const ARROW_SIZE = 0.04
 
 export const MeasureLayer2D: React.FC<MeasureLayer2DProps> = ({

@@ -21,7 +21,7 @@ import { useSelectionStore } from '../../../../../stores/selectionStore'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-export type FixtureSymbolType = 'moving-head' | 'wash' | 'par' | 'strobe' | 'blinder' | 'laser' | 'truss'
+export type FixtureSymbolType = 'moving-head' | 'wash' | 'par' | 'strobe' | 'blinder' | 'laser' | 'truss' | 'effect' | 'generic'
 
 export interface FixtureSymbolData {
   id: string
@@ -420,6 +420,71 @@ const LaserSymbol: React.FC<{ data: FixtureSymbolData } & SymbolInteractionProps
   )
 }
 
+/** Effect / Generic: hexagon with inner circle (fans, fog, pyro, mirror balls, etc.) */
+const EffectSymbol: React.FC<{ data: FixtureSymbolData } & SymbolInteractionProps> = ({
+  data,
+  isSelected,
+  isHovered,
+  onPointerDown,
+  onPointerEnter,
+  onPointerLeave,
+  onContextMenu,
+}) => {
+  const r = SYMBOL_RADIUS
+  const innerR = r * 0.4
+
+  // Hexagon vertices
+  const hexPts = Array.from({ length: 6 }, (_, i) => {
+    const angle = (i * Math.PI) / 3 - Math.PI / 6
+    return `${data.x + Math.cos(angle) * r},${data.z + Math.sin(angle) * r}`
+  }).join(' ')
+
+  return (
+    <g
+      style={{ pointerEvents: 'all', cursor: 'pointer', opacity: isHovered && !isSelected ? HOVER_OPACITY : 1 }}
+      onPointerDown={onPointerDown}
+      onPointerEnter={onPointerEnter}
+      onPointerLeave={onPointerLeave}
+      onContextMenu={onContextMenu}
+    >
+      {/* Selection ring */}
+      {isSelected && <SelectionRing data={data} />}
+      {data.liveColor && (
+        <circle
+          cx={data.x}
+          cy={data.z}
+          r={r + 0.015}
+          fill="none"
+          stroke={data.liveColor}
+          strokeWidth={0.006}
+          opacity={0.8}
+          vectorEffect="non-scaling-stroke"
+        />
+      )}
+      {/* Hexagon */}
+      <polygon
+        points={hexPts}
+        fill="none"
+        stroke={isSelected ? SELECT_STROKE : STROKE}
+        strokeWidth={STROKE_WIDTH}
+        vectorEffect="non-scaling-stroke"
+      />
+      {/* Inner circle */}
+      <circle
+        cx={data.x}
+        cy={data.z}
+        r={innerR}
+        fill="none"
+        stroke={STROKE}
+        strokeWidth={1}
+        vectorEffect="non-scaling-stroke"
+      />
+      {/* Label — multiline: name + DMX */}
+      <FixtureLabel data={data} y={data.z + r + LABEL_OFFSET * 0.7} />
+    </g>
+  )
+}
+
 // ── Main Layer Component ───────────────────────────────────────────────────
 
 export const SymbolLayer: React.FC<SymbolLayerProps> = ({
@@ -464,8 +529,11 @@ export const SymbolLayer: React.FC<SymbolLayerProps> = ({
             return <StrobeSymbol key={f.id} data={f} {...interactionProps} />
           case 'laser':
             return <LaserSymbol key={f.id} data={f} {...interactionProps} />
+          case 'effect':
+          case 'generic':
+            return <EffectSymbol key={f.id} data={f} {...interactionProps} />
           default:
-            return null
+            return <EffectSymbol key={f.id} data={f} {...interactionProps} />
         }
       })}
     </g>

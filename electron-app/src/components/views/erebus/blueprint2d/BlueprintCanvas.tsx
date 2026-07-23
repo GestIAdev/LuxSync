@@ -139,7 +139,7 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
     () =>
       fixtures.map(f => ({
         id: f.id,
-        type: (f.type === 'bar' ? 'wash' : f.type) as FixtureSymbolData['type'],
+        type: (f.type === 'bar' ? 'wash' : ['effect', 'generic', 'fan', 'fog', 'mirror-ball', 'pyro'].includes(f.type) ? 'effect' : f.type) as FixtureSymbolData['type'],
         x: f.position.x + stageWidth / 2,
         z: f.position.z + stageDepth / 2,
         yaw: f.rotation.yaw,

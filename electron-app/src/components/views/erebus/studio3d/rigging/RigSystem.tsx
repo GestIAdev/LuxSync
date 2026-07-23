@@ -7,7 +7,7 @@ import { useSnapStore } from '../../../../../stores/snapStore'
 import { TrussSection } from './TrussSection'
 import { TotemTower } from './TotemTower'
 import { AnchorPoints } from './AnchorPoints'
-import type { RigV2, FixtureV2 } from '../../../../../core/stage/ShowFileV2'
+import { clampToCrystalBox, type RigV2, type FixtureV2, type StageDimensions } from '../../../../../core/stage/ShowFileV2'
 import type { ToolMode } from '../../ErebusShell'
 import { dragPositionRef } from '../helpers/dragPositionRef'
 
@@ -63,6 +63,7 @@ export const RigSystem: React.FC<RigSystemProps> = ({
   const fixtures = useStageStore(s => s.fixtures)
   const updateFixturePosition = useStageStore(s => s.updateFixturePosition)
   const snap = useSnapStore(s => s.snap)
+  const stageDims = useStageStore(s => s.showFile?.stage ?? null)
 
   const { raycaster, camera, gl } = useThree()
   const selectedIds = useSelectionStore(s => s.selectedIds)
@@ -88,22 +89,23 @@ export const RigSystem: React.FC<RigSystemProps> = ({
       raycaster.ray.intersectPlane(groundPlane, hit)
       if (!hit) return
 
-      const x = snap(hit.x)
-      const z = snap(hit.z)
-
       const isTotem = e.shiftKey
 
       const rigId = `rig-${Date.now()}`
+      const clamped = clampToCrystalBox(
+        { x: snap(hit.x), y: 0, z: snap(hit.z) },
+        stageDims ?? { width: 12, depth: 8, height: 6, gridSize: 0.25 },
+      )
       const newRig: RigV2 = {
         id: rigId,
-        position: { x, y: 0, z },
+        position: { x: clamped.x, y: 0, z: clamped.z },
         height: isTotem ? 2.5 : TRUSS_DEFAULT_HEIGHT,
         orientation: isTotem ? 'totem' : 'truss-front' as any,
       }
       addRig(newRig)
       select(rigId, 'replace')
     },
-    [toolMode, gl, raycaster, camera, groundPlane, addRig, select, snap],
+    [toolMode, gl, raycaster, camera, groundPlane, addRig, select, snap, stageDims],
   )
 
   return (
@@ -122,6 +124,7 @@ export const RigSystem: React.FC<RigSystemProps> = ({
             fixtures={fixtures}
             onSelect={select}
             onHover={setHovered}
+            stageDims={stageDims}
           />
         )
       })}
@@ -154,6 +157,7 @@ interface RigRendererProps {
   fixtures: FixtureV2[]
   onSelect: (id: string, mode: 'replace' | 'add' | 'toggle') => void
   onHover: (id: string | null) => void
+  stageDims: StageDimensions | null
 }
 
 const RigRenderer: React.FC<RigRendererProps> = ({
@@ -166,6 +170,7 @@ const RigRenderer: React.FC<RigRendererProps> = ({
   fixtures,
   onSelect,
   onHover,
+  stageDims,
 }) => {
   const { gl, camera, raycaster, controls } = useThree()
   const snap = useSnapStore(s => s.snap)
@@ -197,11 +202,19 @@ const RigRenderer: React.FC<RigRendererProps> = ({
       const hit = raycaster.ray.intersectPlane(dragPlane, intersectionRef.current)
       if (!hit) return
 
-      const x = snap(hit.x)
-      const z = snap(hit.z)
+      const rawX = snap(hit.x)
+      const rawZ = snap(hit.z)
 
       const start = dragStartRef.current
       if (!start) return
+
+      // Clamp to crystal box
+      const clamped = clampToCrystalBox(
+        { x: rawX, y: rig.height, z: rawZ },
+        stageDims ?? { width: 12, depth: 8, height: 6, gridSize: 0.25 },
+      )
+      const x = clamped.x
+      const z = clamped.z
       const dx = x - start.x
       const dz = z - start.z
 
@@ -236,7 +249,7 @@ const RigRenderer: React.FC<RigRendererProps> = ({
       window.removeEventListener('pointermove', handleMove)
       window.removeEventListener('pointerup', handleUp)
     }
-  }, [isDragging, gl, camera, raycaster, dragPlane, rig.id, rig.position.y, updateRig, updateFixturePosition, fixtures, snap])
+  }, [isDragging, gl, camera, raycaster, dragPlane, rig.id, rig.position.y, rig.height, updateRig, updateFixturePosition, fixtures, snap, stageDims])
 
   const handlePointerDown = (e: any) => {
     if (e.button !== 0) return
@@ -261,7 +274,8 @@ const RigRenderer: React.FC<RigRendererProps> = ({
 
     const deltaY = e.deltaY > 0 ? -0.25 : 0.25
     const currentHeight = rig.height
-    const newHeight = Math.max(0.5, currentHeight + deltaY)
+    const maxH = stageDims?.height ?? 6
+    const newHeight = Math.max(0.5, Math.min(maxH, currentHeight + deltaY))
 
     if (newHeight !== currentHeight) {
       updateRig(rig.id, { height: newHeight })

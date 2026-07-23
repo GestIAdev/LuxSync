@@ -126,6 +126,7 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
   const rigs = useStageStore(s => s.showFile?.rigs ?? [])
   const updateFixture = useStageStore(s => s.updateFixture)
   const updateFixturePosition = useStageStore(s => s.updateFixturePosition)
+  const stage = useStageStore(s => s.showFile?.stage ?? null)
 
   // FASE 8: selectionStore integration
   const select = useSelectionStore(s => s.select)
@@ -159,8 +160,13 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
 
   // ── Stage dimensions for clamping ────────────────────────────────────────
   const stageDims = useMemo(
-    () => ({ width: stageWidth, depth: stageDepth, height: stageHeight, gridSize: snapSize }),
-    [stageWidth, stageDepth, stageHeight, snapSize],
+    () => ({
+      width: stage?.width ?? stageWidth,
+      depth: stage?.depth ?? stageDepth,
+      height: stage?.height ?? stageHeight,
+      gridSize: snapSize,
+    }),
+    [stage, stageWidth, stageDepth, stageHeight, snapSize],
   )
 
   // ── Start drag ───────────────────────────────────────────────────────────

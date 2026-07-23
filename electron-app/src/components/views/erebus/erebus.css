@@ -101,6 +101,11 @@
   color: var(--obs-accent);
 }
 
+.erebus-cmd-btn--dirty {
+  color: var(--obs-accent, #5EEAD4);
+  text-shadow: 0 0 6px rgba(94, 234, 212, 0.4);
+}
+
 .erebus-cmd-divider {
   width: 1px;
   height: 20px;

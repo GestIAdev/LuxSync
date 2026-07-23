@@ -1,6 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import type { ToolMode, ViewMode } from '../ErebusShell'
 import { useSnapStore, type SnapSize } from '../../../../stores/snapStore'
+import { useStageStore } from '../../../../stores/stageStore'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CommandStrip — Satélite Superior
@@ -39,6 +40,13 @@ export const CommandStrip: React.FC<CommandStripProps> = ({
   const toggleSnap = useSnapStore(s => s.toggleSnap)
   const setSnapSize = useSnapStore(s => s.setSnapSize)
 
+  // ── I/O: stage store ──────────────────────────────────────────────────────
+  const showFile = useStageStore(s => s.showFile)
+  const showFilePath = useStageStore(s => s.showFilePath)
+  const isDirty = useStageStore(s => s.isDirty)
+  const newShow = useStageStore(s => s.newShow)
+  const saveShow = useStageStore(s => s.saveShow)
+
   useEffect(() => {
     if (!snapOpen) return
     const handler = (e: MouseEvent) => {
@@ -50,8 +58,87 @@ export const CommandStrip: React.FC<CommandStripProps> = ({
     return () => window.removeEventListener('mousedown', handler)
   }, [snapOpen])
 
+  // ── I/O handlers ──────────────────────────────────────────────────────────
+  const handleSave = useCallback(async () => {
+    try {
+      if (showFilePath && showFilePath !== 'active') {
+        await saveShow()
+      } else {
+        const lux = (window as any).lux
+        if (lux?.stage?.saveAsDialog && showFile) {
+          const result = await lux.stage.saveAsDialog(showFile, showFile.name)
+          if (result?.success && result?.path) {
+            useStageStore.setState({ showFilePath: result.path, isDirty: false })
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[CommandStrip] Save failed:', err)
+    }
+  }, [showFilePath, showFile, saveShow])
+
+  const confirmDiscard = useCallback(async (): Promise<boolean> => {
+    if (!isDirty) return true
+    const lux = (window as any).lux
+    if (!lux?.stage?.confirmUnsaved) return true
+    try {
+      const result = await lux.stage.confirmUnsaved(showFile?.name ?? 'Untitled')
+      if (result === 'cancel') return false
+      if (result === 'save') {
+        await handleSave()
+      }
+      return true
+    } catch {
+      return false
+    }
+  }, [isDirty, showFile, handleSave])
+
+  const handleOpen = useCallback(async () => {
+    const ok = await confirmDiscard()
+    if (!ok) return
+    const lux = (window as any).lux
+    if (lux?.stage?.openDialog) {
+      try {
+        await lux.stage.openDialog()
+      } catch (err) {
+        console.error('[CommandStrip] Open failed:', err)
+      }
+    }
+  }, [confirmDiscard])
+
+  const handleNew = useCallback(async () => {
+    const ok = await confirmDiscard()
+    if (!ok) return
+    newShow('Untitled Show')
+  }, [confirmDiscard, newShow])
+
   return (
     <div className="erebus-command-strip">
+      {/* I/O group — New / Open / Save */}
+      <div className="erebus-cmd-group">
+        <button
+          className="erebus-cmd-btn"
+          title="New show"
+          onClick={handleNew}
+        >
+          New
+        </button>
+        <button
+          className="erebus-cmd-btn"
+          title="Open show"
+          onClick={handleOpen}
+        >
+          Open
+        </button>
+        <button
+          className={`erebus-cmd-btn ${isDirty ? 'erebus-cmd-btn--dirty' : ''}`}
+          title={isDirty ? 'Unsaved changes — click to save' : 'Save show'}
+          onClick={handleSave}
+        >
+          Save{isDirty ? ' *' : ''}
+        </button>
+      </div>
+
       {/* View toggle */}
       <div className="erebus-cmd-group">
         <button

@@ -9,9 +9,12 @@ import { useScreenToSVG } from './screenToSVG'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // DragDropController2D — Arrastre y Alineación en el plano SVG
-// PROYECTO EREBUS FASE 7 + FASE 8
+// PROYECTO EREBUS FASE 7 + FASE 8 + FASE 1 COMMIT B
 //
-// Intercepta eventos de puntero SVG para mover fixtures en el plano XZ.
+// Motor de arrastre: recibe eventos de puntero desde SymbolLayer (no tiene
+// overlays propios). Renderiza solo feedback visual durante el drag:
+// línea de alineación magnética + ghost symbol.
+//
 // Snapping a cuadrícula de voxels (0.25m).
 // Alineación magnética: <0.1m del eje X o Z de otro fixture → imán + línea.
 //
@@ -34,6 +37,14 @@ export interface DragState2D {
   alignment: AlignmentLine | null
 }
 
+/** Handlers exposed by DragDropController2D for SymbolLayer to consume */
+export interface DragHandlers {
+  onFixturePointerDown: (e: React.PointerEvent, fixtureId: string) => void
+  onFixturePointerEnter: (fixtureId: string) => void
+  onFixturePointerLeave: () => void
+  onFixtureContextMenu: (e: React.MouseEvent, fixtureId: string) => void
+}
+
 interface DragDropController2DProps {
   /** SVG element ref from BlueprintCanvas root — for coordinate conversion */
   svgRef: React.RefObject<SVGSVGElement | null>
@@ -47,6 +58,8 @@ interface DragDropController2DProps {
   onDragEnd?: () => void
   /** Active tool mode — 'move' enables dragging, 'select' only selects */
   toolMode?: ToolMode
+  /** Called with drag handlers when the controller mounts — pass these to SymbolLayer */
+  onHandlersReady?: (handlers: DragHandlers) => void
 }
 
 export const DragDropController2D: React.FC<DragDropController2DProps> = ({
@@ -58,6 +71,7 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
   onDragUpdate,
   onDragEnd,
   toolMode = 'select',
+  onHandlersReady,
 }) => {
   const fixtures = useStageStore(s => s.fixtures)
   const placeFixture2D = useStageStore(s => s.placeFixture2D)
@@ -149,6 +163,29 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
     [fixtures, screenToSVG, onDragUpdate, select, selectedIds, toolMode],
   )
 
+  // ── Context menu handler (exposed for SymbolLayer) ─────────────────────────
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent, fixtureId: string) => {
+      e.preventDefault()
+      e.stopPropagation()
+      select(fixtureId, 'replace')
+      window.dispatchEvent(new CustomEvent('erebus:radial-menu', {
+        detail: { clientX: e.clientX, clientY: e.clientY, fixtureId },
+      }))
+    },
+    [select],
+  )
+
+  // ── Expose handlers to parent (BlueprintCanvas → SymbolLayer) ──────────────
+  useEffect(() => {
+    onHandlersReady?.({
+      onFixturePointerDown: handlePointerDown,
+      onFixturePointerEnter: setHovered,
+      onFixturePointerLeave: () => setHovered(null),
+      onFixtureContextMenu: handleContextMenu,
+    })
+  }, [onHandlersReady, handlePointerDown, setHovered, handleContextMenu])
+
   // ── Drag move ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!dragging) return
@@ -210,38 +247,10 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
     }
   }, [dragging, screenToSVG, findAlignment, stageDims, fixtures, placeFixture2D, onDragUpdate, onDragEnd, snap, offsetX, offsetZ])
 
-  // ── Render: invisible interaction overlays on each fixture ─────────────────
-  // We render transparent circles over each fixture position to capture pointer events
+  // ── Render: drag feedback only (alignment line + ghost symbol) ────────────
+  // No overlay circles — interaction is handled by SymbolLayer's native events
   return (
-    <g className="drag-drop-controller-2d" style={{ pointerEvents: dragging ? 'none' : 'auto' }}>
-      {fixtures.map(f => (
-        <circle
-          key={f.id}
-          cx={f.position.x + offsetX}
-          cy={f.position.z + offsetZ}
-          r={0.2}
-          fill="transparent"
-          style={{
-            cursor: toolMode === 'move' ? 'grab' : 'pointer',
-            pointerEvents: 'all',
-            stroke: selectedIds.has(f.id) ? 'var(--obs-accent, #5EEAD4)' : 'transparent',
-            strokeWidth: 1.5,
-          }}
-          vectorEffect="non-scaling-stroke"
-          onPointerDown={(e) => handlePointerDown(e, f.id)}
-          onPointerEnter={() => setHovered(f.id)}
-          onPointerLeave={() => setHovered(null)}
-          onContextMenu={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            select(f.id, 'replace')
-            window.dispatchEvent(new CustomEvent('erebus:radial-menu', {
-              detail: { clientX: e.clientX, clientY: e.clientY, fixtureId: f.id },
-            }))
-          }}
-        />
-      ))}
-
+    <g className="drag-drop-controller-2d" style={{ pointerEvents: 'none' }}>
       {/* Alignment line during drag (SVG coords = 3D + offset) */}
       {dragging?.alignment && (
         <line

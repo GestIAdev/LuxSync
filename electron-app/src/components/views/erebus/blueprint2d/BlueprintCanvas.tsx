@@ -7,7 +7,7 @@ import { ArchitectureLayer } from './layers/ArchitectureLayer'
 import { ZoneLayer } from './layers/ZoneLayer'
 import { SymbolLayer, type FixtureSymbolData } from './layers/SymbolLayer'
 import { DimensionLayer } from './layers/DimensionLayer'
-import { DragDropController2D, type DragState2D } from './interaction/DragDropController2D'
+import { DragDropController2D, type DragState2D, type DragHandlers } from './interaction/DragDropController2D'
 import { LassoSelection } from './interaction/LassoSelection'
 import { CoverageRing } from './interaction/CoverageRing'
 import { ElevationScrubber, type ElevationState } from './elevation/ElevationScrubber'
@@ -59,6 +59,7 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
   // ── FASE 7: Interaction state ─────────────────────────────────────────────
   const [dragState, setDragState] = useState<DragState2D | null>(null)
   const [elevationState, setElevationState] = useState<ElevationState | null>(null)
+  const [dragHandlers, setDragHandlers] = useState<DragHandlers | null>(null)
 
   const handleDragUpdate = useCallback((state: DragState2D) => setDragState(state), [])
   const handleDragEnd = useCallback(() => setDragState(null), [])
@@ -171,13 +172,28 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
       {/* Coverage Ring (only during elevation scrubbing) */}
       <CoverageRing elevationState={elevationState} />
 
-      {/* Layer 5: Symbols (fixture simbology) */}
-      <SymbolLayer fixtures={symbolFixtures} />
+      {/* Layer 4b: Lasso capture rect — BELOW symbols so fixture clicks don't trigger lasso */}
+      <LassoSelection
+        svgRef={svgRef}
+        stageWidth={stageWidth}
+        stageDepth={stageDepth}
+        padding={padding}
+        toolMode={toolMode}
+      />
+
+      {/* Layer 5: Symbols (fixture simbology) — interactive, receives pointer events */}
+      <SymbolLayer
+        fixtures={symbolFixtures}
+        onFixturePointerDown={dragHandlers?.onFixturePointerDown}
+        onFixturePointerEnter={dragHandlers?.onFixturePointerEnter}
+        onFixturePointerLeave={dragHandlers?.onFixturePointerLeave}
+        onFixtureContextMenu={dragHandlers?.onFixtureContextMenu}
+      />
 
       {/* Layer 5b: Rig Plan (trusses + totems in 2D) */}
       <RigPlanLayer />
 
-      {/* FASE 7: Drag & Drop 2D + Elevation Scrubber */}
+      {/* Layer 6: Drag feedback (alignment line + ghost) — above symbols, pointerEvents none */}
       <DragDropController2D
         svgRef={svgRef}
         stageWidth={stageWidth}
@@ -186,13 +202,7 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
         onDragUpdate={handleDragUpdate}
         onDragEnd={handleDragEnd}
         toolMode={toolMode}
-      />
-      <LassoSelection
-        svgRef={svgRef}
-        stageWidth={stageWidth}
-        stageDepth={stageDepth}
-        padding={padding}
-        toolMode={toolMode}
+        onHandlersReady={setDragHandlers}
       />
 
       {/* Measure Tool (2D) */}

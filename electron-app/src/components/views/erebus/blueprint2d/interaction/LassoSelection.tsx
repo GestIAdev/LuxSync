@@ -102,11 +102,13 @@ export const LassoSelection: React.FC<LassoSelectionProps> = ({
         return
       }
 
-      // Find fixtures within the lasso rectangle
+      // Find fixtures within the lasso rectangle (SVG coords = 3D + offset)
+      const offsetX = stageWidth / 2
+      const offsetZ = stageDepth / 2
       const selectedIds: string[] = []
       for (const f of fixtures) {
-        const fx = f.position.x
-        const fz = f.position.z
+        const fx = f.position.x + offsetX
+        const fz = f.position.z + offsetZ
         if (fx >= minX && fx <= maxX && fz >= minY && fz <= maxY) {
           selectedIds.push(f.id)
         }
@@ -128,7 +130,7 @@ export const LassoSelection: React.FC<LassoSelectionProps> = ({
       window.removeEventListener('pointermove', handleMove)
       window.removeEventListener('pointerup', handleUp)
     }
-  }, [lasso, fixtures, selectMultiple, deselectAll, screenToSVG])
+  }, [lasso, fixtures, selectMultiple, deselectAll, screenToSVG, stageWidth, stageDepth])
 
   // ── Render lasso rectangle ─────────────────────────────────────────────────
   if (!lasso) {

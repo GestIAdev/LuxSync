@@ -1,11 +1,14 @@
 import React, { useMemo } from 'react'
+import { useSelectionStore } from '../../../../../stores/selectionStore'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SymbolLayer — Simbología USITT
 // PROYECTO EREBUS FASE 4 — Layer 5
 //
-// Símbolos pasivos para representar fixtures en el plano 2D.
-// Trazo --obs-bright a 1px (escala metros), relleno transparente.
+// Símbolos interactivos para representar fixtures en el plano 2D.
+// Trazo --obs-bright a 1px (non-scaling-stroke), relleno transparente.
+// Eventos de puntero nativos en el <g> raíz de cada símbolo.
+// Feedback visual de selección (anillo cyan) y hover (stroke tenue).
 //
 // Moving Head: círculo con cuña de orientación (yaw base)
 // Wash / PAR: rectángulo con hachurado interior
@@ -13,8 +16,7 @@ import React, { useMemo } from 'react'
 // Laser: asterisco técnico en caja
 // Truss: doble línea con marcas de sección
 //
-// Etiqueta compacta bajo el símbolo: "MH-07 · U1.121" en 8px.
-// Sin interactividad — pura representación visual pasiva.
+// Etiqueta compacta multilínea bajo el símbolo (pointerEvents: none).
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -39,6 +41,14 @@ export interface FixtureSymbolData {
 
 interface SymbolLayerProps {
   fixtures?: FixtureSymbolData[]
+  /** Pointer down on a fixture symbol (select / start drag) */
+  onFixturePointerDown?: (e: React.PointerEvent, fixtureId: string) => void
+  /** Pointer enter on a fixture symbol (hover) */
+  onFixturePointerEnter?: (fixtureId: string) => void
+  /** Pointer leave from a fixture symbol (clear hover) */
+  onFixturePointerLeave?: () => void
+  /** Context menu (right-click) on a fixture */
+  onFixtureContextMenu?: (e: React.MouseEvent, fixtureId: string) => void
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -50,6 +60,9 @@ const LABEL_SIZE = 0.14 // 14cm metric — compact CAD label
 const DMX_SIZE = 0.11 // 11cm metric — smaller DMX sub-label
 const LABEL_OFFSET = 0.35 // below symbol — vertical offset
 const MAX_NAME_LEN = 12 // truncate fixture names to this many chars
+const SELECT_RING_RADIUS = 0.22 // selection ring radius (slightly larger than symbol)
+const SELECT_STROKE = 'var(--obs-accent, #5EEAD4)'
+const HOVER_OPACITY = 0.6
 
 /** Truncate name to MAX_NAME_LEN with ellipsis */
 function truncateName(name: string): string {
@@ -97,8 +110,41 @@ const FixtureLabel: React.FC<{ data: FixtureSymbolData; y: number }> = ({ data, 
 
 // ── Individual Symbol Components ───────────────────────────────────────────
 
+/** Shared interaction props for all symbol components */
+interface SymbolInteractionProps {
+  isSelected: boolean
+  isHovered: boolean
+  onPointerDown?: (e: React.PointerEvent) => void
+  onPointerEnter?: () => void
+  onPointerLeave?: () => void
+  onContextMenu?: (e: React.MouseEvent) => void
+}
+
+/** Selection ring — rendered around selected fixtures */
+const SelectionRing: React.FC<{ data: FixtureSymbolData }> = ({ data }) => (
+  <circle
+    cx={data.x}
+    cy={data.z}
+    r={SELECT_RING_RADIUS}
+    fill="none"
+    stroke={SELECT_STROKE}
+    strokeWidth={1.5}
+    opacity={0.8}
+    vectorEffect="non-scaling-stroke"
+    pointerEvents="none"
+  />
+)
+
 /** Moving Head: circle with orientation wedge */
-const MovingHeadSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
+const MovingHeadSymbol: React.FC<{ data: FixtureSymbolData } & SymbolInteractionProps> = ({
+  data,
+  isSelected,
+  isHovered,
+  onPointerDown,
+  onPointerEnter,
+  onPointerLeave,
+  onContextMenu,
+}) => {
   const yawRad = ((data.yaw ?? 0) * Math.PI) / 180
   const wedgeEnd = {
     x: data.x + Math.cos(yawRad) * SYMBOL_RADIUS,
@@ -110,7 +156,15 @@ const MovingHeadSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
   }
 
   return (
-    <g>
+    <g
+      style={{ pointerEvents: 'all', cursor: 'pointer', opacity: isHovered && !isSelected ? HOVER_OPACITY : 1 }}
+      onPointerDown={onPointerDown}
+      onPointerEnter={onPointerEnter}
+      onPointerLeave={onPointerLeave}
+      onContextMenu={onContextMenu}
+    >
+      {/* Selection ring */}
+      {isSelected && <SelectionRing data={data} />}
       {/* Outer live-color ring (if show running) */}
       {data.liveColor && (
         <circle
@@ -128,7 +182,7 @@ const MovingHeadSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
         cx={data.x} cy={data.z}
         r={SYMBOL_RADIUS}
         fill="none"
-        stroke={STROKE}
+        stroke={isSelected ? SELECT_STROKE : STROKE}
         strokeWidth={STROKE_WIDTH}
         vectorEffect="non-scaling-stroke"
       />
@@ -148,7 +202,15 @@ const MovingHeadSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
 }
 
 /** Wash / PAR: rectangle with interior hatching */
-const WashSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
+const WashSymbol: React.FC<{ data: FixtureSymbolData } & SymbolInteractionProps> = ({
+  data,
+  isSelected,
+  isHovered,
+  onPointerDown,
+  onPointerEnter,
+  onPointerLeave,
+  onContextMenu,
+}) => {
   const w = SYMBOL_RADIUS * 1.6
   const h = SYMBOL_RADIUS * 1.2
   const hatchSpacing = 0.03
@@ -178,7 +240,15 @@ const WashSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
   }, [data.x, data.z, w, h])
 
   return (
-    <g>
+    <g
+      style={{ pointerEvents: 'all', cursor: 'pointer', opacity: isHovered && !isSelected ? HOVER_OPACITY : 1 }}
+      onPointerDown={onPointerDown}
+      onPointerEnter={onPointerEnter}
+      onPointerLeave={onPointerLeave}
+      onContextMenu={onContextMenu}
+    >
+      {/* Selection ring */}
+      {isSelected && <SelectionRing data={data} />}
       {/* Live-color ring */}
       {data.liveColor && (
         <rect
@@ -200,7 +270,7 @@ const WashSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
         width={w}
         height={h}
         fill="none"
-        stroke={STROKE}
+        stroke={isSelected ? SELECT_STROKE : STROKE}
         strokeWidth={STROKE_WIDTH}
         vectorEffect="non-scaling-stroke"
       />
@@ -225,12 +295,28 @@ const WashSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
 }
 
 /** Strobe / Blinder: diamond with double border */
-const StrobeSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
+const StrobeSymbol: React.FC<{ data: FixtureSymbolData } & SymbolInteractionProps> = ({
+  data,
+  isSelected,
+  isHovered,
+  onPointerDown,
+  onPointerEnter,
+  onPointerLeave,
+  onContextMenu,
+}) => {
   const r = SYMBOL_RADIUS
   const points = `${data.x},${data.z - r} ${data.x + r},${data.z} ${data.x},${data.z + r} ${data.x - r},${data.z}`
 
   return (
-    <g>
+    <g
+      style={{ pointerEvents: 'all', cursor: 'pointer', opacity: isHovered && !isSelected ? HOVER_OPACITY : 1 }}
+      onPointerDown={onPointerDown}
+      onPointerEnter={onPointerEnter}
+      onPointerLeave={onPointerLeave}
+      onContextMenu={onContextMenu}
+    >
+      {/* Selection ring */}
+      {isSelected && <SelectionRing data={data} />}
       {data.liveColor && (
         <polygon
           points={points}
@@ -246,7 +332,7 @@ const StrobeSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
       <polygon
         points={points}
         fill="none"
-        stroke={STROKE}
+        stroke={isSelected ? SELECT_STROKE : STROKE}
         strokeWidth={STROKE_WIDTH}
         vectorEffect="non-scaling-stroke"
       />
@@ -266,12 +352,28 @@ const StrobeSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
 }
 
 /** Laser: technical asterisk in box */
-const LaserSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
+const LaserSymbol: React.FC<{ data: FixtureSymbolData } & SymbolInteractionProps> = ({
+  data,
+  isSelected,
+  isHovered,
+  onPointerDown,
+  onPointerEnter,
+  onPointerLeave,
+  onContextMenu,
+}) => {
   const r = SYMBOL_RADIUS
   const armLen = r * 0.6
 
   return (
-    <g>
+    <g
+      style={{ pointerEvents: 'all', cursor: 'pointer', opacity: isHovered && !isSelected ? HOVER_OPACITY : 1 }}
+      onPointerDown={onPointerDown}
+      onPointerEnter={onPointerEnter}
+      onPointerLeave={onPointerLeave}
+      onContextMenu={onContextMenu}
+    >
+      {/* Selection ring */}
+      {isSelected && <SelectionRing data={data} />}
       {data.liveColor && (
         <rect
           x={data.x - r - 0.015}
@@ -292,7 +394,7 @@ const LaserSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
         width={r * 2}
         height={r * 2}
         fill="none"
-        stroke={STROKE}
+        stroke={isSelected ? SELECT_STROKE : STROKE}
         strokeWidth={STROKE_WIDTH}
         vectorEffect="non-scaling-stroke"
       />
@@ -320,21 +422,48 @@ const LaserSymbol: React.FC<{ data: FixtureSymbolData }> = ({ data }) => {
 
 // ── Main Layer Component ───────────────────────────────────────────────────
 
-export const SymbolLayer: React.FC<SymbolLayerProps> = ({ fixtures = [] }) => {
+export const SymbolLayer: React.FC<SymbolLayerProps> = ({
+  fixtures = [],
+  onFixturePointerDown,
+  onFixturePointerEnter,
+  onFixturePointerLeave,
+  onFixtureContextMenu,
+}) => {
+  const selectedIds = useSelectionStore(s => s.selectedIds)
+  const hoveredId = useSelectionStore(s => s.hoveredId)
+
   return (
-    <g>
+    <g className="symbol-layer">
       {fixtures.map((f) => {
+        const isSelected = selectedIds.has(f.id)
+        const isHovered = hoveredId === f.id
+
+        const interactionProps = {
+          isSelected,
+          isHovered,
+          onPointerDown: onFixturePointerDown
+            ? (e: React.PointerEvent) => { e.stopPropagation(); onFixturePointerDown(e, f.id) }
+            : undefined,
+          onPointerEnter: onFixturePointerEnter
+            ? () => onFixturePointerEnter(f.id)
+            : undefined,
+          onPointerLeave: onFixturePointerLeave,
+          onContextMenu: onFixtureContextMenu
+            ? (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); onFixtureContextMenu(e, f.id) }
+            : undefined,
+        }
+
         switch (f.type) {
           case 'moving-head':
-            return <MovingHeadSymbol key={f.id} data={f} />
+            return <MovingHeadSymbol key={f.id} data={f} {...interactionProps} />
           case 'wash':
           case 'par':
-            return <WashSymbol key={f.id} data={f} />
+            return <WashSymbol key={f.id} data={f} {...interactionProps} />
           case 'strobe':
           case 'blinder':
-            return <StrobeSymbol key={f.id} data={f} />
+            return <StrobeSymbol key={f.id} data={f} {...interactionProps} />
           case 'laser':
-            return <LaserSymbol key={f.id} data={f} />
+            return <LaserSymbol key={f.id} data={f} {...interactionProps} />
           default:
             return null
         }

@@ -131,6 +131,7 @@ export const MeasureLayer3D: React.FC<MeasureLayer3DProps> = ({ toolMode }) => {
         <mesh
           key={f.id}
           position={[f.position.x, f.position.y, f.position.z]}
+          userData={{ fixtureId: f.id }}
           onPointerDown={handleFixtureClick}
         >
           <sphereGeometry args={[0.15, 8, 8]} />

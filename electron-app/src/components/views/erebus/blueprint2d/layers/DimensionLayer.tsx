@@ -27,7 +27,7 @@ interface DimensionLayerProps {
 
 const INK = 'var(--obs-ink, #8B94A8)'
 const ACCENT = 'var(--obs-accent, #5EEAD4)'
-const STROKE_WIDTH = 0.004
+const STROKE_WIDTH = 1
 const FONT_SIZE = 0.08
 const ARROW_SIZE = 0.03
 const TICK_OFFSET = 0.15
@@ -41,7 +41,11 @@ export const DimensionLayer: React.FC<DimensionLayerProps> = ({
 }) => {
   if (!dragState) return null
 
-  const { x, z } = dragState
+  // dragState.x/z are in 3D center-origin coords — convert to SVG top-left
+  const offsetX = stageWidth / 2
+  const offsetZ = stageDepth / 2
+  const x = dragState.x + offsetX
+  const z = dragState.z + offsetZ
 
   // ── Compute distances to stage edges ──────────────────────────────────────
   const distLeft = x - (-padding)
@@ -100,12 +104,13 @@ export const DimensionLayer: React.FC<DimensionLayerProps> = ({
                 x2={edge.to} y2={lineZ}
                 stroke={INK}
                 strokeWidth={STROKE_WIDTH}
+                vectorEffect="non-scaling-stroke"
                 markerStart="url(#dim-arrow)"
                 markerEnd="url(#dim-arrow)"
               />
               {/* Extension lines */}
-              <line x1={edge.from} y1={z} x2={edge.from} y2={lineZ} stroke={INK} strokeWidth={STROKE_WIDTH * 0.5} opacity={0.4} />
-              <line x1={edge.to} y1={z} x2={edge.to} y2={lineZ} stroke={INK} strokeWidth={STROKE_WIDTH * 0.5} opacity={0.4} />
+              <line x1={edge.from} y1={z} x2={edge.from} y2={lineZ} stroke={INK} strokeWidth={STROKE_WIDTH * 0.5} opacity={0.4} vectorEffect="non-scaling-stroke" />
+              <line x1={edge.to} y1={z} x2={edge.to} y2={lineZ} stroke={INK} strokeWidth={STROKE_WIDTH * 0.5} opacity={0.4} vectorEffect="non-scaling-stroke" />
               <text
                 x={(edge.from + edge.to) / 2}
                 y={lineZ - FONT_SIZE * 0.5}
@@ -128,11 +133,12 @@ export const DimensionLayer: React.FC<DimensionLayerProps> = ({
                 x2={lineX} y2={edge.to}
                 stroke={INK}
                 strokeWidth={STROKE_WIDTH}
+                vectorEffect="non-scaling-stroke"
                 markerStart="url(#dim-arrow)"
                 markerEnd="url(#dim-arrow)"
               />
-              <line x1={x} y1={edge.from} x2={lineX} y2={edge.from} stroke={INK} strokeWidth={STROKE_WIDTH * 0.5} opacity={0.4} />
-              <line x1={x} y1={edge.to} x2={lineX} y2={edge.to} stroke={INK} strokeWidth={STROKE_WIDTH * 0.5} opacity={0.4} />
+              <line x1={x} y1={edge.from} x2={lineX} y2={edge.from} stroke={INK} strokeWidth={STROKE_WIDTH * 0.5} opacity={0.4} vectorEffect="non-scaling-stroke" />
+              <line x1={x} y1={edge.to} x2={lineX} y2={edge.to} stroke={INK} strokeWidth={STROKE_WIDTH * 0.5} opacity={0.4} vectorEffect="non-scaling-stroke" />
               <text
                 x={lineX + FONT_SIZE * 0.5}
                 y={(edge.from + edge.to) / 2}
@@ -158,6 +164,7 @@ export const DimensionLayer: React.FC<DimensionLayerProps> = ({
             strokeWidth={STROKE_WIDTH * 0.7}
             strokeDasharray="0.04 0.04"
             opacity={0.5}
+            vectorEffect="non-scaling-stroke"
           />
           <text
             x={(x + nearestNeighbor.x) / 2}

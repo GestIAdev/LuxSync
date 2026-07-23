@@ -190,6 +190,34 @@ const RigRenderer: React.FC<RigRendererProps> = ({
     }
   }, [isDragging, controls])
 
+  // Native wheel listener for rig height adjustment — works when selected + move/rig mode
+  useEffect(() => {
+    if (!isSelected || (toolMode !== 'move' && toolMode !== 'rig')) return
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+
+      const deltaY = e.deltaY > 0 ? -0.25 : 0.25
+      const currentHeight = rig.height
+      const maxH = stageDims?.height ?? 6
+      const newHeight = Math.max(0.5, Math.min(maxH, currentHeight + deltaY))
+
+      if (newHeight !== currentHeight) {
+        updateRig(rig.id, { height: newHeight })
+        dragPositionRef.current = new THREE.Vector3(rig.position.x, newHeight, rig.position.z)
+
+        clearTimeout(wheelClearRef.current)
+        wheelClearRef.current = setTimeout(() => {
+          dragPositionRef.current = null
+        }, 150)
+      }
+    }
+
+    window.addEventListener('wheel', handleWheel, { passive: false })
+    return () => window.removeEventListener('wheel', handleWheel)
+  }, [isSelected, toolMode, rig.id, rig.height, rig.position.x, rig.position.z, stageDims, updateRig])
+
   useEffect(() => {
     if (!isDragging) return
 
@@ -268,31 +296,10 @@ const RigRenderer: React.FC<RigRendererProps> = ({
     setIsDragging(true)
   }
 
-  const handleWheel = (e: any) => {
-    if (toolMode !== 'move' && toolMode !== 'rig') return
-    e.stopPropagation()
-
-    const deltaY = e.deltaY > 0 ? -0.25 : 0.25
-    const currentHeight = rig.height
-    const maxH = stageDims?.height ?? 6
-    const newHeight = Math.max(0.5, Math.min(maxH, currentHeight + deltaY))
-
-    if (newHeight !== currentHeight) {
-      updateRig(rig.id, { height: newHeight })
-      dragPositionRef.current = new THREE.Vector3(rig.position.x, newHeight, rig.position.z)
-
-      clearTimeout(wheelClearRef.current)
-      wheelClearRef.current = setTimeout(() => {
-        dragPositionRef.current = null
-      }, 150)
-    }
-  }
-
   return (
     <group
       userData={{ rigId: rig.id }}
       onPointerDown={handlePointerDown}
-      onWheel={handleWheel}
       onPointerOver={() => onHover(rig.id)}
       onPointerOut={() => onHover(null)}
     >

@@ -5,6 +5,7 @@ import { snapToVoxel, VOXEL_SIZE, clampToCrystalBox } from '../../../../../core/
 import { useSnapStore } from '../../../../../stores/snapStore'
 import type { FixtureV2, StageDimensions } from '../../../../../core/stage/ShowFileV2'
 import type { ToolMode } from '../../ErebusShell'
+import { useScreenToSVG } from './screenToSVG'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // DragDropController2D — Arrastre y Alineación en el plano SVG
@@ -34,6 +35,8 @@ export interface DragState2D {
 }
 
 interface DragDropController2DProps {
+  /** SVG element ref from BlueprintCanvas root — for coordinate conversion */
+  svgRef: React.RefObject<SVGSVGElement | null>
   stageWidth?: number
   stageDepth?: number
   stageHeight?: number
@@ -47,6 +50,7 @@ interface DragDropController2DProps {
 }
 
 export const DragDropController2D: React.FC<DragDropController2DProps> = ({
+  svgRef,
   stageWidth = 12,
   stageDepth = 8,
   stageHeight = 6,
@@ -67,7 +71,6 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
   const selectedIds = useSelectionStore(s => s.selectedIds)
 
   const [dragging, setDragging] = useState<DragState2D | null>(null)
-  const svgRef = useRef<SVGSVGElement | null>(null)
   const dragRef = useRef<DragState2D | null>(null)
 
   const stageDims = useMemo<StageDimensions>(
@@ -75,18 +78,15 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
     [stageWidth, stageDepth, stageHeight],
   )
 
-  // ── Convert screen coords to SVG meters ──────────────────────────────────
-  const screenToSVG = useCallback((clientX: number, clientY: number) => {
-    const svg = svgRef.current
-    if (!svg) return { x: 0, z: 0 }
-    const pt = svg.createSVGPoint()
-    pt.x = clientX
-    pt.y = clientY
-    const ctm = svg.getScreenCTM()
-    if (!ctm) return { x: 0, z: 0 }
-    const svgPt = pt.matrixTransform(ctm.inverse())
-    return { x: svgPt.x, z: svgPt.y }
-  }, [])
+  // ── Shared coordinate conversion (DOM → SVG user space) ──────────────────
+  const screenToSVG = useScreenToSVG(svgRef)
+
+  // ── Offset between SVG top-left origin and 3D center-origin ───────────────
+  // SVG coords: (0,0) = top-left corner of stage rect
+  // 3D coords:  (0,0) = center of stage
+  // Transform: svgX = worldX + stageWidth/2, svgZ = worldZ + stageDepth/2
+  const offsetX = stageWidth / 2
+  const offsetZ = stageDepth / 2
 
   // ── Find alignment target ─────────────────────────────────────────────────
   const findAlignment = useCallback(
@@ -129,9 +129,12 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
       const fixture = fixtures.find(f => f.id === fixtureId)
       if (!fixture) return
 
-      const { x, z } = screenToSVG(e.clientX, e.clientY)
-      const snappedX = snap(x)
-      const snappedZ = snap(z)
+      const { x, y } = screenToSVG(e.clientX, e.clientY)
+      // SVG coords → 3D center-origin for store
+      const worldX = x - offsetX
+      const worldZ = y - offsetZ
+      const snappedX = snap(worldX)
+      const snappedZ = snap(worldZ)
 
       const state: DragState2D = {
         fixtureId,
@@ -152,12 +155,15 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
 
     const handleMove = (e: PointerEvent) => {
       if (!dragRef.current) return
-      const { x, z } = screenToSVG(e.clientX, e.clientY)
+      const { x, y } = screenToSVG(e.clientX, e.clientY)
+      // SVG coords → 3D center-origin for store/clamp
+      const worldX = x - offsetX
+      const worldZ = y - offsetZ
 
-      let snappedX = snap(x)
-      let snappedZ = snap(z)
+      let snappedX = snap(worldX)
+      let snappedZ = snap(worldZ)
 
-      // Clamp to Crystal Box
+      // Clamp to Crystal Box (operates in 3D center-origin)
       const clamped = clampToCrystalBox(
         { x: snappedX, y: 0, z: snappedZ },
         stageDims,
@@ -165,7 +171,7 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
       snappedX = clamped.x
       snappedZ = clamped.z
 
-      // Magnetic alignment
+      // Magnetic alignment (operates in 3D center-origin)
       const alignment = findAlignment(snappedX, snappedZ, dragRef.current.fixtureId)
       if (alignment) {
         if (alignment.axis === 'x') snappedX = alignment.value
@@ -202,7 +208,7 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
       window.removeEventListener('pointermove', handleMove)
       window.removeEventListener('pointerup', handleUp)
     }
-  }, [dragging, screenToSVG, findAlignment, stageDims, fixtures, placeFixture2D, onDragUpdate, onDragEnd, snap])
+  }, [dragging, screenToSVG, findAlignment, stageDims, fixtures, placeFixture2D, onDragUpdate, onDragEnd, snap, offsetX, offsetZ])
 
   // ── Render: invisible interaction overlays on each fixture ─────────────────
   // We render transparent circles over each fixture position to capture pointer events
@@ -211,16 +217,17 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
       {fixtures.map(f => (
         <circle
           key={f.id}
-          cx={f.position.x}
-          cy={f.position.z}
+          cx={f.position.x + offsetX}
+          cy={f.position.z + offsetZ}
           r={0.2}
           fill="transparent"
           style={{
             cursor: toolMode === 'move' ? 'grab' : 'pointer',
             pointerEvents: 'all',
             stroke: selectedIds.has(f.id) ? 'var(--obs-accent, #5EEAD4)' : 'transparent',
-            strokeWidth: 0.004,
+            strokeWidth: 1.5,
           }}
+          vectorEffect="non-scaling-stroke"
           onPointerDown={(e) => handlePointerDown(e, f.id)}
           onPointerEnter={() => setHovered(f.id)}
           onPointerLeave={() => setHovered(null)}
@@ -235,31 +242,33 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
         />
       ))}
 
-      {/* Alignment line during drag */}
+      {/* Alignment line during drag (SVG coords = 3D + offset) */}
       {dragging?.alignment && (
         <line
-          x1={dragging.alignment.axis === 'x' ? dragging.alignment.value : -padding}
-          y1={dragging.alignment.axis === 'x' ? -padding : dragging.alignment.value}
-          x2={dragging.alignment.axis === 'x' ? dragging.alignment.value : stageWidth + padding}
-          y2={dragging.alignment.axis === 'x' ? stageDepth + padding : dragging.alignment.value}
+          x1={dragging.alignment.axis === 'x' ? dragging.alignment.value + offsetX : -padding}
+          y1={dragging.alignment.axis === 'x' ? -padding : dragging.alignment.value + offsetZ}
+          x2={dragging.alignment.axis === 'x' ? dragging.alignment.value + offsetX : stageWidth + padding}
+          y2={dragging.alignment.axis === 'x' ? stageDepth + padding : dragging.alignment.value + offsetZ}
           stroke="var(--obs-accent, #5EEAD4)"
-          strokeWidth={0.004}
+          strokeWidth={1.5}
           strokeDasharray="0.05 0.05"
           opacity={0.7}
           pointerEvents="none"
+          vectorEffect="non-scaling-stroke"
         />
       )}
 
-      {/* Ghost symbol during drag */}
+      {/* Ghost symbol during drag (SVG coords = 3D + offset) */}
       {dragging && (
         <circle
-          cx={dragging.x}
-          cy={dragging.z}
+          cx={dragging.x + offsetX}
+          cy={dragging.z + offsetZ}
           r={0.15}
           fill="var(--obs-ghost, rgba(94,234,212,0.12))"
           stroke="var(--obs-accent, #5EEAD4)"
-          strokeWidth={0.006}
+          strokeWidth={1.5}
           pointerEvents="none"
+          vectorEffect="non-scaling-stroke"
         />
       )}
     </g>

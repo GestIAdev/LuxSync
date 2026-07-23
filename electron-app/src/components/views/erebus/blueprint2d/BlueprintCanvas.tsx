@@ -179,6 +179,7 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
 
       {/* FASE 7: Drag & Drop 2D + Elevation Scrubber */}
       <DragDropController2D
+        svgRef={svgRef}
         stageWidth={stageWidth}
         stageDepth={stageDepth}
         padding={padding}
@@ -196,6 +197,7 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
 
       {/* Measure Tool (2D) */}
       <MeasureLayer2D
+        svgRef={svgRef}
         stageWidth={stageWidth}
         stageDepth={stageDepth}
         padding={padding}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useStageStore } from '../../../../../stores/stageStore'
 import { useSelectionStore } from '../../../../../stores/selectionStore'
+import { useScreenToSVG } from './screenToSVG'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MeasureLayer2D — Cotas entre fixtures (Measure Tool, 2D)
@@ -15,6 +16,8 @@ import { useSelectionStore } from '../../../../../stores/selectionStore'
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface MeasureLayer2DProps {
+  /** SVG element ref from BlueprintCanvas root — for coordinate conversion */
+  svgRef: React.RefObject<SVGSVGElement | null>
   stageWidth?: number
   stageDepth?: number
   padding?: number
@@ -35,6 +38,7 @@ const FONT_SIZE = 0.08
 const ARROW_SIZE = 0.04
 
 export const MeasureLayer2D: React.FC<MeasureLayer2DProps> = ({
+  svgRef,
   stageWidth = 12,
   stageDepth = 8,
   padding = 2,
@@ -42,9 +46,14 @@ export const MeasureLayer2D: React.FC<MeasureLayer2DProps> = ({
 }) => {
   const fixtures = useStageStore(s => s.fixtures)
   const select = useSelectionStore(s => s.select)
+  const screenToSVG = useScreenToSVG(svgRef)
   const [pointA, setPointA] = useState<MeasurePoint | null>(null)
   const [pointB, setPointB] = useState<MeasurePoint | null>(null)
   const [hoverPos, setHoverPos] = useState<{ x: number; z: number } | null>(null)
+
+  // ── Offset between SVG top-left origin and 3D center-origin ───────────────
+  const offsetX = stageWidth / 2
+  const offsetZ = stageDepth / 2
 
   // Reset when leaving measure mode
   useEffect(() => {
@@ -102,17 +111,11 @@ export const MeasureLayer2D: React.FC<MeasureLayer2DProps> = ({
   const handleMouseMove = useCallback(
     (e: React.PointerEvent) => {
       if (toolMode !== 'measure' || !pointA || pointB) return
-      const svg = (e.currentTarget as SVGGElement).ownerSVGElement
-      if (!svg) return
-      const pt = svg.createSVGPoint()
-      pt.x = e.clientX
-      pt.y = e.clientY
-      const ctm = svg.getScreenCTM()
-      if (!ctm) return
-      const svgPt = pt.matrixTransform(ctm.inverse())
-      setHoverPos({ x: svgPt.x, z: svgPt.y })
+      const { x, y } = screenToSVG(e.clientX, e.clientY)
+      // SVG coords → 3D center-origin for measure display
+      setHoverPos({ x: x - offsetX, z: y - offsetZ })
     },
-    [toolMode, pointA, pointB],
+    [toolMode, pointA, pointB, screenToSVG, offsetX, offsetZ],
   )
 
   // Compute distance
@@ -155,12 +158,12 @@ export const MeasureLayer2D: React.FC<MeasureLayer2DProps> = ({
         style={{ pointerEvents: 'all' }}
       />
 
-      {/* Click targets on fixtures */}
+      {/* Click targets on fixtures (SVG coords = 3D + offset) */}
       {fixtures.map(f => (
         <circle
           key={f.id}
-          cx={f.position.x}
-          cy={f.position.z}
+          cx={f.position.x + offsetX}
+          cy={f.position.z + offsetZ}
           r={0.2}
           fill="transparent"
           onPointerDown={(e) => handleFixtureClick(e, f.id)}
@@ -168,33 +171,34 @@ export const MeasureLayer2D: React.FC<MeasureLayer2DProps> = ({
             pointerEvents: 'all',
             cursor: 'crosshair',
             stroke: pointA?.id === f.id ? ACCENT : 'transparent',
-            strokeWidth: 0.004,
+            strokeWidth: 1.5,
           }}
+          vectorEffect="non-scaling-stroke"
         />
       ))}
 
       {/* Measure line */}
       {measure && (
         <g pointerEvents="none">
-          {/* Main line */}
+          {/* Main line (SVG coords = 3D + offset) */}
           <line
-            x1={measure.ax}
-            y1={measure.az}
-            x2={measure.bx}
-            y2={measure.bz}
+            x1={measure.ax + offsetX}
+            y1={measure.az + offsetZ}
+            x2={measure.bx + offsetX}
+            y2={measure.bz + offsetZ}
             stroke={ACCENT}
             strokeWidth={STROKE_WIDTH}
             markerStart="url(#measure-arrow)"
             markerEnd="url(#measure-arrow)"
           />
           {/* Endpoint markers */}
-          <circle cx={measure.ax} cy={measure.az} r={0.04} fill={ACCENT} />
-          <circle cx={measure.bx} cy={measure.bz} r={0.04} fill={pointB ? ACCENT : AMBER} opacity={pointB ? 1 : 0.5} />
+          <circle cx={measure.ax + offsetX} cy={measure.az + offsetZ} r={0.04} fill={ACCENT} />
+          <circle cx={measure.bx + offsetX} cy={measure.bz + offsetZ} r={0.04} fill={pointB ? ACCENT : AMBER} opacity={pointB ? 1 : 0.5} />
 
           {/* Distance label */}
           <text
-            x={(measure.ax + measure.bx) / 2}
-            y={(measure.az + measure.bz) / 2 - FONT_SIZE * 0.5}
+            x={(measure.ax + measure.bx) / 2 + offsetX}
+            y={(measure.az + measure.bz) / 2 + offsetZ - FONT_SIZE * 0.5}
             fill={ACCENT}
             fontSize={FONT_SIZE}
             fontFamily="monospace"
@@ -206,8 +210,8 @@ export const MeasureLayer2D: React.FC<MeasureLayer2DProps> = ({
           {/* DX/DZ breakdown */}
           {pointB && (
             <text
-              x={(measure.ax + measure.bx) / 2}
-              y={(measure.az + measure.bz) / 2 + FONT_SIZE * 0.8}
+              x={(measure.ax + measure.bx) / 2 + offsetX}
+              y={(measure.az + measure.bz) / 2 + offsetZ + FONT_SIZE * 0.8}
               fill={INK}
               fontSize={FONT_SIZE * 0.75}
               fontFamily="monospace"

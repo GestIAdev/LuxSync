@@ -2,6 +2,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { useStageStore } from '../../../../../stores/stageStore'
 import { useSelectionStore } from '../../../../../stores/selectionStore'
 import type { ToolMode } from '../../ErebusShell'
+import { useScreenToSVG } from './screenToSVG'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // LassoSelection — Selección Múltiple por Lazo (2D)
@@ -46,18 +47,8 @@ export const LassoSelection: React.FC<LassoSelectionProps> = ({
   const [lasso, setLasso] = useState<LassoRect | null>(null)
   const isLassoingRef = useRef(false)
 
-  // ── Convert screen coords to SVG meters ────────────────────────────────────
-  const screenToSVG = useCallback((clientX: number, clientY: number) => {
-    const svg = svgRef.current
-    if (!svg) return { x: 0, y: 0 }
-    const pt = svg.createSVGPoint()
-    pt.x = clientX
-    pt.y = clientY
-    const ctm = svg.getScreenCTM()
-    if (!ctm) return { x: 0, y: 0 }
-    const svgPt = pt.matrixTransform(ctm.inverse())
-    return { x: svgPt.x, y: svgPt.y }
-  }, [svgRef])
+  // ── Convert screen coords to SVG meters (shared utility) ───────────────────
+  const screenToSVG = useScreenToSVG(svgRef)
 
   // ── Start lasso on pointer down in empty space ─────────────────────────────
   const handlePointerDown = useCallback(

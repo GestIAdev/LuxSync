@@ -167,33 +167,42 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
     (e: any) => {
       if (!enabled) return
       if (e.button !== 0) return
-      // Traverse up to find the group with fixtureId in userData
+      // Traverse up to find the group with fixtureId or rigId in userData
       let obj = e.object
-      let fixtureId: string | undefined
+      let targetId: string | undefined
+      let isRig = false
       while (obj) {
         if (obj.userData?.fixtureId) {
-          fixtureId = obj.userData.fixtureId
+          targetId = obj.userData.fixtureId
+          break
+        }
+        if (obj.userData?.rigId) {
+          targetId = obj.userData.rigId
+          isRig = true
           break
         }
         obj = obj.parent
       }
-      if (!fixtureId) return
+      if (!targetId) return
 
       e.stopPropagation()
 
       // Selection logic (works in all modes)
       if (e.ctrlKey || e.metaKey) {
-        select(fixtureId, 'toggle')
+        select(targetId, 'toggle')
       } else if (e.shiftKey) {
-        select(fixtureId, 'add')
-      } else if (!selectedIds.has(fixtureId)) {
-        select(fixtureId, 'replace')
+        select(targetId, 'add')
+      } else if (!selectedIds.has(targetId)) {
+        select(targetId, 'replace')
       }
 
-      // Only start drag in 'move' mode
+      // Rigs are dragged by RigRenderer's own handler — bail out here
+      if (isRig) return
+
+      // Only start fixture drag in 'move' mode
       if (toolMode !== 'move') return
 
-      const fixture = fixtures.find(f => f.id === fixtureId)
+      const fixture = fixtures.find(f => f.id === targetId)
       if (!fixture) return
 
       draggedFixtureRef.current = fixture
@@ -205,7 +214,7 @@ export const DragDropController3D: React.FC<DragDropController3DProps> = ({
       dragPlane.set(new THREE.Vector3(0, 1, 0), -fixture.position.y)
 
       dragRef.current = {
-        fixtureId,
+        fixtureId: targetId,
         visualPos: new THREE.Vector3(fixture.position.x, fixture.position.y, fixture.position.z),
         targetPos: new THREE.Vector3(fixture.position.x, fixture.position.y, fixture.position.z),
         snapTarget: null,

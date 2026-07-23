@@ -90,12 +90,14 @@ export const RigSystem: React.FC<RigSystemProps> = ({
       const x = snap(hit.x)
       const z = snap(hit.z)
 
+      const isTotem = e.shiftKey
+
       const rigId = `rig-${Date.now()}`
       const newRig: RigV2 = {
         id: rigId,
         position: { x, y: 0, z },
-        height: TRUSS_DEFAULT_HEIGHT,
-        orientation: 'truss-front' as any,
+        height: isTotem ? 2.5 : TRUSS_DEFAULT_HEIGHT,
+        orientation: isTotem ? 'totem' : 'truss-front' as any,
       }
       addRig(newRig)
       select(rigId, 'replace')
@@ -242,7 +244,7 @@ const RigRenderer: React.FC<RigRendererProps> = ({
       onSelect(rig.id, 'replace')
     }
 
-    if (toolMode !== 'rig') return
+    if (toolMode !== 'rig' && toolMode !== 'move') return
     dragStartRef.current = { x: rig.position.x, z: rig.position.z }
     setIsDragging(true)
   }

@@ -118,8 +118,11 @@ export const StudioCanvas: React.FC<StudioCanvasProps> = ({
         {/* Measure Tool (3D) */}
         <MeasureLayer3D toolMode={toolMode} />
 
-        {/* Camera controls — disabled during transition so CameraLerpController has full authority */}
-        <OrbitControls enabled={!isTransitioning} makeDefault />
+        {/* Camera controls — disabled during transition and non-interactive tool modes */}
+        <OrbitControls
+          enabled={!isTransitioning && (toolMode === 'select' || toolMode === 'move')}
+          makeDefault
+        />
       </Suspense>
     </Canvas>
     </div>

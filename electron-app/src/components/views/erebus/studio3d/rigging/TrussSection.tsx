@@ -36,8 +36,8 @@ export const TrussSection: React.FC<TrussSectionProps> = ({
   const material = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
-        color: new THREE.Color('#1B1F2A'),
-        metalness: 0.85,
+        color: new THREE.Color('#1E2024'),
+        metalness: 0.6,
         roughness: 0.4,
         envMapIntensity: 0.5,
       }),

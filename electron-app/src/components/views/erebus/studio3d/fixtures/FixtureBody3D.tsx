@@ -1,6 +1,7 @@
 import React, { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
+import { Edges } from '@react-three/drei'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FixtureBody3D — Foco en Reposo
@@ -24,9 +25,9 @@ interface FixtureBody3DProps {
 
 // ── Materials ──────────────────────────────────────────────────────────────
 
-const BODY_COLOR = '#1B1F2A' // --obs-surface
+const BODY_COLOR = '#1E2024' // anthracite gray — metallic matte
 const LENS_COLOR = '#2A3040' // --obs-line
-const LENS_EMISSIVE = '#5EEAD4' // --obs-accent at 2% intensity
+const LENS_EMISSIVE = '#ffffff' // white emissive for standby pilot
 const RIM_COLOR = '#5EEAD4' // --obs-accent
 
 // ── Fresnel Selection Shader ───────────────────────────────────────────────
@@ -69,8 +70,8 @@ export const FixtureBody3D: React.FC<FixtureBody3DProps> = ({
     () =>
       new THREE.MeshStandardMaterial({
         color: new THREE.Color(BODY_COLOR),
-        metalness: 0.3,
-        roughness: 0.7,
+        metalness: 0.6,
+        roughness: 0.4,
       }),
     [],
   )
@@ -81,7 +82,7 @@ export const FixtureBody3D: React.FC<FixtureBody3DProps> = ({
       new THREE.MeshStandardMaterial({
         color: new THREE.Color(LENS_COLOR),
         emissive: new THREE.Color(LENS_EMISSIVE),
-        emissiveIntensity: 0.02,
+        emissiveIntensity: 0.05,
         metalness: 0.1,
         roughness: 0.3,
       }),
@@ -150,6 +151,7 @@ export const FixtureBody3D: React.FC<FixtureBody3DProps> = ({
         {isWash
           ? <cylinderGeometry args={[0.1, 0.12, 0.1, 16]} />
           : <boxGeometry args={[0.14, 0.12, 0.14]} />}
+        <Edges color="#00ffcc" opacity={0.25} transparent />
       </mesh>
 
       {/* Lens — the only emissive element (standby pilot) */}

@@ -1,5 +1,6 @@
 import React, { useMemo, useRef } from 'react'
 import * as THREE from 'three'
+import { Edges } from '@react-three/drei'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TotemTower — Tótem / Torre vertical con base lastrada
@@ -36,8 +37,8 @@ export const TotemTower: React.FC<TotemTowerProps> = ({
   const material = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
-        color: new THREE.Color('#1B1F2A'),
-        metalness: 0.85,
+        color: new THREE.Color('#1E2024'),
+        metalness: 0.6,
         roughness: 0.4,
         envMapIntensity: 0.5,
       }),
@@ -72,7 +73,9 @@ export const TotemTower: React.FC<TotemTowerProps> = ({
         position={[0, BASE_H / 2, 0]}
         castShadow
         receiveShadow
-      />
+      >
+        <Edges color="#00ffcc" opacity={0.2} transparent />
+      </mesh>
 
       {/* Mast */}
       <mesh
@@ -90,7 +93,9 @@ export const TotemTower: React.FC<TotemTowerProps> = ({
         position={[0, topY, 0]}
         castShadow
         receiveShadow
-      />
+      >
+        <Edges color="#00ffcc" opacity={0.2} transparent />
+      </mesh>
     </group>
   )
 }

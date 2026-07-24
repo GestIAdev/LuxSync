@@ -24,7 +24,7 @@ interface StudioFloorProps {
 const FLOOR_SIZE = 40
 const FLOOR_COLOR = '#14171F'
 const GRID_SPACING = 0.25 // meters
-const GRID_COLOR = '#2A3040' // --obs-line
+const GRID_COLOR = '#3a4456' // --obs-line brighter
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Grid Shader — micro-surco via fwidth
@@ -65,11 +65,11 @@ const gridFragmentShader = /* glsl */ `
     float majorLine = 1.0 - min(majorIntensity.x, majorIntensity.y);
 
     // Combine: minor lines dim, major lines brighter
-    float gridAlpha = lineMin * 0.04 + majorLine * 0.10;
+    float gridAlpha = lineMin * 0.08 + majorLine * 0.18;
 
     // Distance fade — grid fades into void at edges
     float dist = length(vWorldPos);
-    float fade = 1.0 - smoothstep(12.0, 18.0, dist);
+    float fade = 1.0 - smoothstep(15.0, 22.0, dist);
 
     vec3 color = mix(uBaseColor, uLineColor, gridAlpha * fade);
     gl_FragColor = vec4(color, 1.0);

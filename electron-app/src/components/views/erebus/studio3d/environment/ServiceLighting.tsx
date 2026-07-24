@@ -5,18 +5,18 @@ import React from 'react'
 // PROYECTO EREBUS FASE 2
 //
 // Cero skyboxes fotográficos. Iluminación fría y técnica:
-//   - directionalLight cenital (intensity 0.35, color frío)
-//   - ambientLight (intensity 0.15, color neutro frío)
+//   - hemisphereLight (sky #2a303c / ground #14171f, intensity 0.4)
+//   - directionalLight cenital (intensity 0.5, color frío)
 //
-// En modo calibrate (futuro Fase 3): la luz baja al 40%.
-// Por ahora, iluminación base fija.
+// La hemisphereLight despega los objetos del negro puro sin
+// lavar la escena — sky tint azulado, ground tint oscuro.
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const ServiceLighting: React.FC = () => {
   return (
     <>
-      {/* Ambient — cold neutral fill */}
-      <ambientLight intensity={0.3} color="#3a3a4a" />
+      {/* Hemisphere — sky/ground fill to lift objects off pure black */}
+      <hemisphereLight args={['#2a303c', '#14171f', 0.4]} />
 
       {/* Directional — cold service light from above */}
       <directionalLight

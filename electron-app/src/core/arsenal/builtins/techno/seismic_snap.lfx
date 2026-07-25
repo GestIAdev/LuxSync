@@ -164,7 +164,7 @@
             {
               "timeMs": 0,
               "value": {
-                "h": 333,
+                "h": 360,
                 "s": 90,
                 "l": 55
               },
@@ -331,5 +331,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:93d3c94ad430a6b6538664206034b161edc2f001ba3f24f6e43a2885acf46625"
+  "checksum": "sha256:7f4c7acad8d8a603c5f760e695bc0b4a057aed9da337861a09d4c6ec1e42f497"
 }

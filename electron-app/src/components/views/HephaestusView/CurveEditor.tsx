@@ -151,8 +151,9 @@ interface Viewport {
  */
 function getPlotValue(value: number | { h: number; s: number; l: number }, valueType: 'number' | 'color'): number {
   if (valueType === 'color' && typeof value === 'object' && 'h' in value) {
-    // Normalize hue: 0-360 → 0-1 for canvas plotting
-    return value.h / 360
+    // Normalize hue: 0-359 → 0-1 for canvas plotting
+    // h=0 maps to y=1 (top) since 0° and 360° are both red — the top of the hue circle
+    return value.h === 0 ? 1 : value.h / 360
   }
   // Numeric value
   return value as number

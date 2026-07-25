@@ -89,7 +89,7 @@ export { setupGenesisIPCHandlers } from './genesisIpc'
 export type { OrganismListFilter, OrganismDTO, HallOfFameDTO, LineageNodeDTO } from './genesisIpc'
 
 // Era VI — The Lamarckian Medium (Geological Loop Ignition)
-export { igniteGenesisEngine, shutdownGenesisEngine } from './GenesisIgnition'
+export { igniteGenesisEngine, shutdownGenesisEngine, pauseGenesisEngine, resumeGenesisEngine, isGenesisPaused } from './GenesisIgnition'
 
 // Era V Addendum — Procedural Naming Engine
 export { generateOrganismName, COMBINATORIAL_SPACE } from './naming/ProceduralNamer'

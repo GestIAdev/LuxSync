@@ -23,6 +23,7 @@ const MAINTENANCE_INTERVAL_MS = 60_000  // 60 seconds — geological time
 
 let _maintenanceTimer: ReturnType<typeof setInterval> | null = null
 let _ignited = false
+let _genesisPaused = false
 
 /**
  * Ignites the Genesis Engine's geological loop.
@@ -63,6 +64,7 @@ export async function igniteGenesisEngine(): Promise<void> {
 
   // 4. Geological maintenance timer (60s) + Arena Gates refresh
   _maintenanceTimer = setInterval(() => {
+    if (_genesisPaused) return
     getColiseumService()
       .runEcologicalMaintenance()
       .then(() => {
@@ -106,6 +108,32 @@ export function shutdownGenesisEngine(): void {
     .catch(() => {})
   _ignited = false
   console.log('[GenesisIgnition 🧬] Geological loop stopped.')
+}
+
+/**
+ * Pauses the Genesis ecosystem — stops spawning/mutating organisms.
+ * The maintenance timer keeps running but skips all work.
+ */
+export function pauseGenesisEngine(): void {
+  if (_genesisPaused) return
+  _genesisPaused = true
+  console.log('[GenesisIgnition 🧬] Ecosystem PAUSED — no new spawns/mutations.')
+}
+
+/**
+ * Resumes the Genesis ecosystem — organisms will spawn/mutate again.
+ */
+export function resumeGenesisEngine(): void {
+  if (!_genesisPaused) return
+  _genesisPaused = false
+  console.log('[GenesisIgnition 🧬] Ecosystem RESUMED — geological loop active.')
+}
+
+/**
+ * Returns true if the Genesis ecosystem is currently paused.
+ */
+export function isGenesisPaused(): boolean {
+  return _genesisPaused
 }
 
 /**

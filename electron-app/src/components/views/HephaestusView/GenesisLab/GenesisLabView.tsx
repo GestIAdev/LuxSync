@@ -38,6 +38,7 @@ export const GenesisLabView: React.FC = () => {
   const lastMaintenanceAt = useGenesisStore((s) => s.lastMaintenanceAt)
   const filterRarityTier = useGenesisStore((s) => s.filterRarityTier)
   const filterStatus = useGenesisStore((s) => s.filterStatus)
+  const isPaused = useGenesisStore((s) => s.isPaused)
 
   // Store actions
   const fetchOrganisms = useGenesisStore((s) => s.fetchOrganisms)
@@ -50,13 +51,16 @@ export const GenesisLabView: React.FC = () => {
   const purgeEcosystem = useGenesisStore((s) => s.purgeEcosystem)
   const setFilterRarityTier = useGenesisStore((s) => s.setFilterRarityTier)
   const setFilterStatus = useGenesisStore((s) => s.setFilterStatus)
+  const togglePaused = useGenesisStore((s) => s.togglePaused)
+  const fetchPaused = useGenesisStore((s) => s.fetchPaused)
 
   // Initial load
   useEffect(() => {
     fetchOrganisms()
     fetchHallOfFame()
     fetchSpecies()
-  }, [fetchOrganisms, fetchHallOfFame, fetchSpecies])
+    fetchPaused()
+  }, [fetchOrganisms, fetchHallOfFame, fetchSpecies, fetchPaused])
 
   // Selected organism object
   const selectedOrganism = organisms.find((o) => o.organism_id === selectedOrganismId) ?? null
@@ -142,6 +146,20 @@ export const GenesisLabView: React.FC = () => {
           {error && (
             <span style={{ fontSize: '9px', color: '#ef4444' }}>⚠ {error}</span>
           )}
+          <button
+            type="button"
+            className="genesis-lab__btn"
+            onClick={togglePaused}
+            style={{
+              background: isPaused ? 'rgba(239, 68, 68, 0.15)' : 'rgba(34, 197, 94, 0.15)',
+              border: `1px solid ${isPaused ? 'rgba(239, 68, 68, 0.4)' : 'rgba(34, 197, 94, 0.4)'}`,
+              color: isPaused ? '#ef4444' : '#22c55e',
+              fontWeight: 600,
+              minWidth: '140px',
+            }}
+          >
+            {isPaused ? '⏸ ECOSYSTEM PAUSED' : '▶ ECOSYSTEM ACTIVE'}
+          </button>
           <button
             type="button"
             className="genesis-lab__btn genesis-lab__btn--primary"

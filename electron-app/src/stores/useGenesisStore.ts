@@ -72,6 +72,7 @@ export interface GenesisStoreState {
   isLoading: boolean
   error: string | null
   lastMaintenanceAt: number | null
+  isPaused: boolean
 
   // Filter
   filterRarityTier: string | null
@@ -90,6 +91,8 @@ export interface GenesisStoreState {
   setFilterRarityTier: (tier: string | null) => void
   setFilterStatus: (status: string | null) => void
   refreshAll: () => Promise<void>
+  togglePaused: () => Promise<void>
+  fetchPaused: () => Promise<void>
 }
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
@@ -112,6 +115,7 @@ export const useGenesisStore = create<GenesisStoreState>((set, get) => ({
   isLoading: false,
   error: null,
   lastMaintenanceAt: null,
+  isPaused: false,
 
   // Filter
   filterRarityTier: null,
@@ -292,5 +296,32 @@ export const useGenesisStore = create<GenesisStoreState>((set, get) => ({
       get().fetchHallOfFame(),
       get().fetchSpecies(),
     ])
+  },
+
+  togglePaused: async () => {
+    const api = getGenesisApi()
+    if (!api?.setPaused) return
+    try {
+      const result = await api.setPaused(!get().isPaused)
+      if (result.success) {
+        set({ isPaused: result.paused })
+        console.log(`[GenesisStore] 🧬 Ecosystem ${result.paused ? 'PAUSED' : 'RESUMED'}`)
+      }
+    } catch (err) {
+      console.error('[GenesisStore] togglePaused error:', err)
+    }
+  },
+
+  fetchPaused: async () => {
+    const api = getGenesisApi()
+    if (!api?.getPaused) return
+    try {
+      const result = await api.getPaused()
+      if (result.success) {
+        set({ isPaused: result.paused })
+      }
+    } catch (err) {
+      console.error('[GenesisStore] fetchPaused error:', err)
+    }
   },
 }))

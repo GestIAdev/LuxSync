@@ -26,6 +26,7 @@ import { dreamEngineIntegrator } from '../intelligence/integration/DreamEngineIn
 import { LfxFileLoader } from '../arsenal/LfxFileLoader'
 import { getHephaestusClipIndex } from '../hephaestus/HephaestusClipIndex'
 import { generateOrganismName } from './naming/ProceduralNamer'
+import { pauseGenesisEngine, resumeGenesisEngine, isGenesisPaused } from './GenesisIgnition'
 import type { RarityTier, OrganismStatus } from './types'
 import type { HephAutomationClipV3 } from '../hephaestus/types'
 
@@ -619,6 +620,25 @@ export function setupGenesisIPCHandlers(): void {
       }
     },
   )
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // genesis:setPaused — Pause/resume the Genesis ecosystem
+  // ═══════════════════════════════════════════════════════════════════════
+  ipcMain.handle('genesis:setPaused', async (_event, paused: boolean) => {
+    if (paused) {
+      pauseGenesisEngine()
+    } else {
+      resumeGenesisEngine()
+    }
+    return { success: true, paused: isGenesisPaused() }
+  })
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // genesis:getPaused — Check if Genesis ecosystem is paused
+  // ═══════════════════════════════════════════════════════════════════════
+  ipcMain.handle('genesis:getPaused', async () => {
+    return { success: true, paused: isGenesisPaused() }
+  })
 
   console.log('[GenesisIPC 🧬] All genesis channels registered')
 }

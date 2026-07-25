@@ -572,6 +572,10 @@ const api = {
       ipcRenderer.invoke('genesis:suggestName', organismId),
     deleteCanonized: (organismId: string): Promise<{ success: boolean; deletedFile?: boolean; error?: string }> =>
       ipcRenderer.invoke('genesis:deleteCanonized', organismId),
+    setPaused: (paused: boolean): Promise<{ success: boolean; paused: boolean }> =>
+      ipcRenderer.invoke('genesis:setPaused', paused),
+    getPaused: (): Promise<{ success: boolean; paused: boolean }> =>
+      ipcRenderer.invoke('genesis:getPaused'),
   },
 }
 

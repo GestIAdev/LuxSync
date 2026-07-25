@@ -1,5 +1,6 @@
 {
   "$schema": "luxsync.lfx/3.0",
+  "version": "1.0.0",
   "clip": {
     "id": "ghost_breath",
     "name": "Ghost Breath",
@@ -29,7 +30,6 @@
         "zones": [
           "all"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
@@ -45,8 +45,8 @@
               "interpolation": "linear"
             },
             {
-              "timeMs": 1200,
-              "value": 0.15,
+              "timeMs": 667,
+              "value": 0.449,
               "interpolation": "bezier",
               "bezierHandles": [
                 0.42,
@@ -56,8 +56,8 @@
               ]
             },
             {
-              "timeMs": 1800,
-              "value": 0.15,
+              "timeMs": 1326,
+              "value": 0.141,
               "interpolation": "hold"
             },
             {
@@ -73,40 +73,60 @@
             }
           ],
           "mode": "absolute"
+        },
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spreadDeg": 181,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
         }
       },
       {
-        "id": "73d25b8c-f6f1-46f3-b1d0-420d2bff5b89",
+        "id": "822f7317-4bc3-4623-86f0-954695b734b8",
         "paramId": "color",
         "zones": [
           "all"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "color",
           "valueType": "color",
           "range": [
             0,
-            360
+            1
           ],
           "defaultValue": {
-            "h": 200,
-            "s": 30,
-            "l": 40
+            "h": 0,
+            "s": 100,
+            "l": 50
           },
           "keyframes": [
             {
               "timeMs": 0,
               "value": {
-                "h": 200,
-                "s": 30,
-                "l": 40
+                "h": 0,
+                "s": 0,
+                "l": 100
+              },
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 3000,
+              "value": {
+                "h": 0,
+                "s": 0,
+                "l": 100
               },
               "interpolation": "hold"
             }
           ],
           "mode": "absolute"
-        }
+        },
+        "dimmerScale": 1,
+        "blendMode": "replace"
       }
     ],
     "staticParams": {
@@ -118,6 +138,7 @@
       "bpmRef": 128
     },
     "cognitiveDNA": {
+      "archetype": "utility",
       "genome": {
         "aggression": 0.1,
         "chaos": 0.3,
@@ -134,18 +155,18 @@
         "silence"
       ],
       "energyZone": {
-        "min": "silence",
-        "max": "valley"
+        "min": "valley",
+        "max": "ambient"
       },
       "aggressionRange": {
-        "min": 0,
-        "max": 0.25
+        "min": 0.1,
+        "max": 0.1
       },
-      "spatialBehavior": "static",
       "pressureRange": {
         "min": 0,
         "max": 1
-      }
+      },
+      "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -168,5 +189,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "cbd4a0dbdfc834a7b3544c6d22d7f34bcfebe933be00310799c23f55fd030eab"
+  "checksum": "sha256:a7e1e1f01606f310d106c781cefcb7555fb142178b756700cfd124ec785767bc"
 }

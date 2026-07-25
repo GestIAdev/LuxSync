@@ -503,16 +503,22 @@ export class SeleneTitanConscious extends EventEmitter {
                             const sovereignRms10sForDivine = this.energyConsciousness.getRmsAverage10s();
                             // 🩸 WAVE 7172: Latin vibes use lower RMS10s floor (0.65 vs 0.75)
                             const SOVEREIGN_DIVINE_RMS_FLOOR = isLatinSovereign ? 0.65 : 0.75;
-                            // 🩸 WAVE 7175: Lower sustained epicness threshold for Latin vibes (0.45 → 0.35)
-                            const SOVEREIGN_DIVINE_EPICNESS = isLatinSovereign ? 0.35 : 0.45;
+                            // 🩸 WAVE 7186: Sustained epicness threshold raised to 0.50 for ALL vibes.
+                            const SOVEREIGN_DIVINE_EPICNESS = 0.50;
                             const divinePeakPassed = v3EpicnessNow > V3_EPSILON_DIVINE;
                             const divineSustainedPassed = v3EpicnessNow > SOVEREIGN_DIVINE_EPICNESS && sovereignRms10sForDivine > SOVEREIGN_DIVINE_RMS_FLOOR;
-                            const divineEpicnessBlocked = !divinePeakPassed && !divineSustainedPassed;
+                            // 🩸 WAVE 7186: Z-SCORE FLOOR — Divine is a rare event by definition.
+                            // V2 experience set this at 2.2σ. We relax to 2.10σ to give Latin genres
+                            // a sliver of headroom while still preventing divines at 1.6-1.7σ.
+                            const SOVEREIGN_DIVINE_MIN_Z = 2.10;
+                            const divineZPassed = currentZScore >= SOVEREIGN_DIVINE_MIN_Z;
+                            const divineEpicnessBlocked = (!divinePeakPassed && !divineSustainedPassed) || !divineZPassed;
                             if (divineEpicnessBlocked || energyTooLow || divineZoneVeto) {
                                 aborted = true;
                                 abortReason =
                                     `DIVINE ABORT: V3 epicness=${v3EpicnessNow.toFixed(3)}` +
                                         ` (peak>${V3_EPSILON_DIVINE}? ${divinePeakPassed}; sustained>${SOVEREIGN_DIVINE_EPICNESS}+rms>${SOVEREIGN_DIVINE_RMS_FLOOR}? ${divineSustainedPassed})` +
+                                        ` Z=${currentZScore.toFixed(2)}σ ≥ ${SOVEREIGN_DIVINE_MIN_Z}? ${divineZPassed}` +
                                         `${energyTooLow ? ` OR energy=${titanState.rawEnergy.toFixed(2)} < 0.50` : ''}` +
                                         `${divineZoneVeto ? ` OR ARS zone=${ars.zone.label}` : ''}` +
                                         ` → buffer cleared, divine effect suppressed`;

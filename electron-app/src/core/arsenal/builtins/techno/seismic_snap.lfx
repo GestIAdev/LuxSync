@@ -164,9 +164,9 @@
             {
               "timeMs": 0,
               "value": {
-                "h": 0,
-                "s": 90,
-                "l": 55
+                "h": 343,
+                "s": 100,
+                "l": 50
               },
               "interpolation": "linear"
             },
@@ -185,7 +185,7 @@
         "blendMode": "replace"
       },
       {
-        "id": "0c636a2b-4c0d-4307-90ac-21c4f8c71d8c",
+        "id": "3aeff48e-5624-4df0-8682-ef07bb168c53",
         "paramId": "color",
         "zones": [
           "all-movers"
@@ -207,8 +207,8 @@
               "timeMs": 0,
               "value": {
                 "h": 0,
-                "s": 90,
-                "l": 55
+                "s": 0,
+                "l": 100
               },
               "interpolation": "linear"
             },
@@ -331,5 +331,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:673f756738e988cd36e3804fc87633cee1da1ee25e935c078a08a4cd1eb02123"
+  "checksum": "sha256:27a4f0e9f58edcadd22f2aab7026b88e8b0b0db358afd5a741d1cc41f332f1bc"
 }

@@ -1,5 +1,6 @@
 {
   "$schema": "luxsync.lfx/3.0",
+  "version": "1.0.0",
   "clip": {
     "id": "core_meltdown",
     "name": "Core Meltdown",
@@ -17,7 +18,7 @@
     ],
     "spatialZones": [
       "all-pars",
-      "all-movers"
+      "all"
     ],
     "mixBus": "global",
     "priority": 100,
@@ -30,7 +31,6 @@
         "zones": [
           "all-pars"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
@@ -63,7 +63,8 @@
             }
           ],
           "mode": "absolute"
-        }
+        },
+        "blendMode": "replace"
       },
       {
         "id": "87c7c738-5728-422a-acb6-b87c31b67f76",
@@ -71,7 +72,6 @@
         "zones": [
           "all-pars"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "color",
           "valueType": "color",
@@ -105,15 +105,15 @@
             }
           ],
           "mode": "absolute"
-        }
+        },
+        "blendMode": "replace"
       },
       {
         "id": "0bbd2f44-f899-4b92-a49d-755328aec832",
         "paramId": "strobeRate",
         "zones": [
-          "all-movers"
+          "all"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "strobeRate",
           "valueType": "number",
@@ -140,7 +140,8 @@
             }
           ],
           "mode": "absolute"
-        }
+        },
+        "blendMode": "replace"
       }
     ],
     "staticParams": {
@@ -200,7 +201,12 @@
         "minimumEnergy": 0.7
       }
     },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 25,
+      "containsRapidFlash": true,
+      "communityTrusted": false
+    },
     "schemaVersion": "3.0"
   },
-  "checksum": "2673c65fd9dabe9b5d0ec3600c87afb260bf10a88088f7aeed200ed711b9701f"
+  "checksum": "sha256:2be19ea3bf8b35ae70263d40db6b99382e272596b427058b9f00360dc38d3862"
 }

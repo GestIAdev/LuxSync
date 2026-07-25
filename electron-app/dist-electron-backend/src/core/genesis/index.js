@@ -20,7 +20,7 @@ export { SpeciesQuotaSelector, getSpeciesQuotaSelector, __resetSpeciesQuotaSelec
 // Era V — The Operator's Mirror (IPC + UI)
 export { setupGenesisIPCHandlers } from './genesisIpc';
 // Era VI — The Lamarckian Medium (Geological Loop Ignition)
-export { igniteGenesisEngine, shutdownGenesisEngine } from './GenesisIgnition';
+export { igniteGenesisEngine, shutdownGenesisEngine, pauseGenesisEngine, resumeGenesisEngine, isGenesisPaused } from './GenesisIgnition';
 // Era V Addendum — Procedural Naming Engine
 export { generateOrganismName, COMBINATORIAL_SPACE } from './naming/ProceduralNamer';
 // WAVE 6000.V5 — Short Military Tags

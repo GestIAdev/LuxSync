@@ -25,6 +25,7 @@ import { dreamEngineIntegrator } from '../intelligence/integration/DreamEngineIn
 import { LfxFileLoader } from '../arsenal/LfxFileLoader';
 import { getHephaestusClipIndex } from '../hephaestus/HephaestusClipIndex';
 import { generateOrganismName } from './naming/ProceduralNamer';
+import { pauseGenesisEngine, resumeGenesisEngine, isGenesisPaused } from './GenesisIgnition';
 // ─── SETUP ──────────────────────────────────────────────────────────────────
 export function setupGenesisIPCHandlers() {
     // ═══════════════════════════════════════════════════════════════════════
@@ -434,6 +435,24 @@ export function setupGenesisIPCHandlers() {
                 error: error instanceof Error ? error.message : 'Unknown error',
             };
         }
+    });
+    // ═══════════════════════════════════════════════════════════════════════
+    // genesis:setPaused — Pause/resume the Genesis ecosystem
+    // ═══════════════════════════════════════════════════════════════════════
+    ipcMain.handle('genesis:setPaused', async (_event, paused) => {
+        if (paused) {
+            pauseGenesisEngine();
+        }
+        else {
+            resumeGenesisEngine();
+        }
+        return { success: true, paused: isGenesisPaused() };
+    });
+    // ═══════════════════════════════════════════════════════════════════════
+    // genesis:getPaused — Check if Genesis ecosystem is paused
+    // ═══════════════════════════════════════════════════════════════════════
+    ipcMain.handle('genesis:getPaused', async () => {
+        return { success: true, paused: isGenesisPaused() };
     });
     console.log('[GenesisIPC 🧬] All genesis channels registered');
 }

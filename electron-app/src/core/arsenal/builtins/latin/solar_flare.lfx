@@ -1,5 +1,6 @@
 {
   "$schema": "luxsync.lfx/3.0",
+  "version": "1.0.0",
   "clip": {
     "id": "solar_flare",
     "name": "Solar Flare",
@@ -29,7 +30,6 @@
         "zones": [
           "all"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
@@ -73,7 +73,8 @@
             }
           ],
           "mode": "absolute"
-        }
+        },
+        "blendMode": "replace"
       },
       {
         "id": "8ad489fa-7f5a-43ab-bac6-bec458ba1f70",
@@ -81,7 +82,6 @@
         "zones": [
           "all"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "color",
           "valueType": "color",
@@ -98,7 +98,7 @@
             {
               "timeMs": 0,
               "value": {
-                "h": 45,
+                "h": 9,
                 "s": 100,
                 "l": 75
               },
@@ -107,7 +107,7 @@
             {
               "timeMs": 1500,
               "value": {
-                "h": 30,
+                "h": 29,
                 "s": 100,
                 "l": 60
               },
@@ -115,7 +115,8 @@
             }
           ],
           "mode": "absolute"
-        }
+        },
+        "blendMode": "replace"
       }
     ],
     "staticParams": {
@@ -149,11 +150,11 @@
         "min": 0.842,
         "max": 0.842
       },
-      "spatialBehavior": "static",
       "pressureRange": {
         "min": 0,
         "max": 0.61
-      }
+      },
+      "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -166,7 +167,7 @@
       "minDurationMs": 1000,
       "cooldownMs": 15000,
       "isStrobe": false,
-      "isDivineCandidate": false,
+      "isDivineCandidate": true,
       "isHeavyCandidate": true,
       "zScoreGuards": {
         "requireRising": false,
@@ -176,5 +177,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "68359e6cebd8ea351198f1207f8aa1107c2dc63d61646f2532e23e2bb028fa2a"
+  "checksum": "sha256:706e1e16b955b1d2bae9769d1e92a5cb6b4512f8d1daf6aef46f50c3ae3a05e4"
 }

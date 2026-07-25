@@ -158,19 +158,27 @@ function determineDecisionType(inputs) {
     // permanently block divine effects like Latina Meltdown in Latin genres.
     const rms10s = inputs.rmsAverage10s ?? 0;
     const DIVINE_SUSTAINED_RMS_FLOOR = isLatinVibe ? 0.65 : 0.75;
-    // 🩸 WAVE 7175: Lower sustained epicness threshold for Latin vibes (0.45 → 0.35).
-    // Reggaeton's sustained-energy epicness lives at 0.25-0.35 (temp=0.70, pM=0.7).
-    // The 0.45 threshold permanently blocks Strobe Storm, Latina Meltdown, etc.
-    const DIVINE_SUSTAINED_EPICNESS = isLatinVibe ? 0.35 : 0.45;
+    // 🩸 WAVE 7186: Sustained epicness threshold raised to 0.50 for ALL vibes.
+    // The previous 0.35 for Latin allowed divines at epicness=0.37 which is
+    // merely "energetic", not "divine". With Z ≥ 2.10 + epicness ≥ 0.50 the
+    // divine is truly rare.
+    const DIVINE_SUSTAINED_EPICNESS = 0.50;
     const divinePeakPassed = v3Epicness > V3_EPSILON_DIVINE;
     const divineSustainedPassed = v3Epicness > DIVINE_SUSTAINED_EPICNESS && rms10s > DIVINE_SUSTAINED_RMS_FLOOR;
-    const divineGatePassed = divinePeakPassed || divineSustainedPassed;
+    // 🩸 WAVE 7186: Z-SCORE FLOOR — Divine is a rare event by definition.
+    // V2 experience set this at 2.2σ. We relax to 2.10σ to give Latin genres
+    // a sliver of headroom while still preventing divines at 1.6-1.7σ which
+    // are merely "energetic", not "divine".
+    const DIVINE_MIN_Z_SCORE = 2.10;
+    const divineZPassed = (zScore ?? 0) >= DIVINE_MIN_Z_SCORE;
+    const divineGatePassed = (divinePeakPassed || divineSustainedPassed) && divineZPassed;
     if (activeDictator) {
         // No loggear nada - silencio total para evitar spam
     }
     else if (divineGatePassed) {
         console.log(`[DecisionMaker 🌩️] DIVINE MOMENT: V3 epicness=${v3Epicness.toFixed(3)}` +
             ` (peak>${V3_EPSILON_DIVINE}? ${divinePeakPassed}; sustained>${DIVINE_SUSTAINED_EPICNESS}+rms>${DIVINE_SUSTAINED_RMS_FLOOR}? ${divineSustainedPassed})` +
+            ` Z=${(zScore ?? 0).toFixed(2)}σ ≥ ${DIVINE_MIN_Z_SCORE}? ${divineZPassed}` +
             ` → MANDATORY FIRE`);
         return 'divine_strike';
     }

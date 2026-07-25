@@ -818,7 +818,11 @@ export class NodeArbiter implements INodeArbiter {
         // KineticsBridge._flushClassic). Se almacenan tal cual — NO se traducen a pan/tilt
         // aquí. La traducción final ocurre exclusivamente en el bloque L2-MOTOR
         // (post-hardlock), ejecutado por AetherKineticEngine vía _motorKineticOverrides.
-        record[key] = incoming
+        if (key === 'tilt') {
+          record[key] = Math.max(TILT_ARBITER_MIN, Math.min(incoming, TILT_ARBITER_MAX))
+        } else {
+          record[key] = incoming
+        }
       }
     }
 
@@ -1037,7 +1041,10 @@ export class NodeArbiter implements INodeArbiter {
       const isHoldState = (hasManualPan || hasManualTilt) && !hasMotorPan && !hasMotorTilt
       if (isHoldState) {
         if (hasManualPan && !isFiniteChannelValue(manualAbsPan)) record['pan'] = manualPan as number
-        if (hasManualTilt && !isFiniteChannelValue(manualAbsTilt)) record['tilt'] = manualTilt as number
+        if (hasManualTilt && !isFiniteChannelValue(manualAbsTilt)) {
+          const clampedTilt = Math.max(TILT_ARBITER_MIN, Math.min(manualTilt as number, TILT_ARBITER_MAX))
+          record['tilt'] = clampedTilt
+        }
         continue
       }
 

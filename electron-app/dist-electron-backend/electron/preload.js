@@ -425,6 +425,8 @@ const api = {
         materializeClip: (organismId) => ipcRenderer.invoke('genesis:materializeClip', organismId),
         suggestName: (organismId) => ipcRenderer.invoke('genesis:suggestName', organismId),
         deleteCanonized: (organismId) => ipcRenderer.invoke('genesis:deleteCanonized', organismId),
+        setPaused: (paused) => ipcRenderer.invoke('genesis:setPaused', paused),
+        getPaused: () => ipcRenderer.invoke('genesis:getPaused'),
     },
 };
 // ============================================================================

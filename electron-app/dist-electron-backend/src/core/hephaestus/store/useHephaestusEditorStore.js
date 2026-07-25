@@ -144,31 +144,26 @@ export const useHephaestusEditorStore = create()(immer((set, get) => {
         renameClip: (name) => mutate('Rename clip', draft => { draft.name = name; }),
         setDuration: (durationMs) => mutate('Set duration', draft => {
             const oldDuration = draft.durationMs;
+            if (oldDuration === durationMs)
+                return;
             draft.durationMs = durationMs;
-            // WAVE 7179: Clamp all keyframes to [0, newDurationMs].
-            // When shortening a clip, keyframes beyond the new duration become
-            // invisible/undeletable in the canvas. Merge them to the new boundary.
-            if (durationMs < oldDuration) {
-                for (const track of draft.tracks) {
-                    const kfs = track.curve.keyframes;
-                    if (kfs.length === 0)
-                        continue;
-                    // Filter out keyframes beyond new duration, but keep at least one at the boundary
-                    const clamped = kfs.filter(kf => kf.timeMs <= durationMs);
-                    const dropped = kfs.length - clamped.length;
-                    if (dropped > 0) {
-                        // If we dropped keyframes, ensure one exists at the new end boundary
-                        // with the value of the last dropped keyframe (hold semantics)
-                        const lastDropped = kfs[kfs.length - 1];
-                        const existingAtBoundary = clamped.find(kf => kf.timeMs === durationMs);
-                        if (!existingAtBoundary && lastDropped) {
-                            clamped.push({ ...lastDropped, timeMs: durationMs });
-                        }
-                        // Sort just in case
-                        clamped.sort((a, b) => a.timeMs - b.timeMs);
-                        track.curve.keyframes = clamped;
-                    }
+            // Time-Stretch: scale all keyframes proportionally to new duration
+            const ratio = durationMs / oldDuration;
+            for (const track of draft.tracks) {
+                const kfs = track.curve.keyframes;
+                if (kfs.length === 0)
+                    continue;
+                const scaled = kfs.map(kf => ({
+                    ...kf,
+                    timeMs: Math.round(kf.timeMs * ratio),
+                }));
+                // Deduplicate: if rounding causes collisions, keep the last one at each timestamp
+                const seen = new Map();
+                for (const kf of scaled) {
+                    seen.set(kf.timeMs, kf);
                 }
+                const deduped = Array.from(seen.values()).sort((a, b) => a.timeMs - b.timeMs);
+                track.curve.keyframes = deduped;
             }
         }),
         setMixBus: (bus) => mutate('Set mix bus', draft => { draft.mixBus = bus; }),

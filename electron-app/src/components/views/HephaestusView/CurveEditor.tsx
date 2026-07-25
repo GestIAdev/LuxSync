@@ -144,16 +144,16 @@ interface Viewport {
 
 /**
  * Extract the plottable numeric value from a keyframe value.
- * For color curves: uses hue (0-360) normalized to 0-1.
+ * For color curves: uses lightness (0-100) normalized to 0-1.
  * For numeric curves: returns the value directly.
  * 
  * This prevents NaN in all coordinate calculations.
  */
 function getPlotValue(value: number | { h: number; s: number; l: number }, valueType: 'number' | 'color'): number {
   if (valueType === 'color' && typeof value === 'object' && 'h' in value) {
-    // Normalize hue: 0-359 → 0-1 for canvas plotting
-    // h=0 maps to y=1 (top) since 0° and 360° are both red — the top of the hue circle
-    return value.h === 0 ? 1 : value.h / 360
+    // For color curves, Y axis = lightness (0-100 → 0-1)
+    // Hue is set via the color picker (double-click), not via Y position
+    return value.l / 100
   }
   // Numeric value
   return value as number

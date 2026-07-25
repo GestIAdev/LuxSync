@@ -164,7 +164,7 @@
             {
               "timeMs": 0,
               "value": {
-                "h": 360,
+                "h": 0,
                 "s": 90,
                 "l": 55
               },
@@ -173,7 +173,7 @@
             {
               "timeMs": 2500,
               "value": {
-                "h": 360,
+                "h": 0,
                 "s": 0,
                 "l": 100
               },
@@ -185,7 +185,7 @@
         "blendMode": "replace"
       },
       {
-        "id": "9249c74d-800d-450f-a44b-f01a5c52d644",
+        "id": "0c636a2b-4c0d-4307-90ac-21c4f8c71d8c",
         "paramId": "color",
         "zones": [
           "all-movers"
@@ -206,7 +206,7 @@
             {
               "timeMs": 0,
               "value": {
-                "h": 360,
+                "h": 0,
                 "s": 90,
                 "l": 55
               },
@@ -215,7 +215,7 @@
             {
               "timeMs": 2500,
               "value": {
-                "h": 360,
+                "h": 0,
                 "s": 0,
                 "l": 100
               },
@@ -331,5 +331,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "sha256:7f4c7acad8d8a603c5f760e695bc0b4a057aed9da337861a09d4c6ec1e42f497"
+  "checksum": "sha256:673f756738e988cd36e3804fc87633cee1da1ee25e935c078a08a4cd1eb02123"
 }

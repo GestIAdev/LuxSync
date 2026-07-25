@@ -383,12 +383,13 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
 
       let kfValue: number | { h: number; s: number; l: number } = value
       if (curve.valueType === 'color') {
-        const hue = Math.max(0, Math.min(value * 360, 360)) % 360
+        // Y axis = lightness (0-1 → 0-100). Hue/saturation come from nearest keyframe or default.
+        const lightness = Math.max(0, Math.min(value * 100, 100))
         const nearestKf = insertIdx > 0 ? newKfs[insertIdx - 1] : newKfs[0]
         const refHSL = nearestKf && typeof nearestKf.value === 'object' && 'h' in nearestKf.value
           ? nearestKf.value
-          : (typeof curve.defaultValue === 'object' ? curve.defaultValue as { h: number; s: number; l: number } : { h: 0, s: 100, l: 50 })
-        kfValue = { h: hue, s: refHSL.s, l: refHSL.l }
+          : (typeof curve.defaultValue === 'object' ? curve.defaultValue as { h: number; s: number; l: number } : { h: 0, s: 0, l: 100 })
+        kfValue = { h: refHSL.h, s: refHSL.s, l: lightness }
       }
 
       const newKf = {
@@ -432,11 +433,11 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
           if (curve.valueType === 'color') {
             const origPlot = getPlotValue(kf.value, curve.valueType)
             const newPlot = Math.max(0, Math.min(origPlot + deltaValue, 1))
-            const hue = Math.round(newPlot * 360) % 360
+            const lightness = Math.round(newPlot * 100)
             const origHSL = typeof kf.value === 'object' && 'h' in kf.value
               ? kf.value
-              : (typeof curve.defaultValue === 'object' ? curve.defaultValue as { h: number; s: number; l: number } : { h: 0, s: 100, l: 50 })
-            kfValue = { h: hue, s: origHSL.s, l: origHSL.l }
+              : (typeof curve.defaultValue === 'object' ? curve.defaultValue as { h: number; s: number; l: number } : { h: 0, s: 0, l: 100 })
+            kfValue = { h: origHSL.h, s: origHSL.s, l: lightness }
           } else {
             const [rangeMin, rangeMax] = curve.range
             kfValue = Math.max(rangeMin, Math.min((kf.value as number) + deltaValue, rangeMax))
@@ -451,12 +452,12 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
 
       let kfValue: number | { h: number; s: number; l: number } = numericValue
       if (curve.valueType === 'color') {
-        // value is 0-1 normalized hue (from fromY/getPlotValue space)
-        const hue = Math.round(Math.max(0, Math.min(numericValue * 360, 360))) % 360
+        // Y axis = lightness (0-1 → 0-100). Hue/saturation preserved from existing keyframe.
+        const lightness = Math.round(Math.max(0, Math.min(numericValue * 100, 100)))
         const origHSL = existing && typeof existing.value === 'object' && 'h' in existing.value
           ? existing.value
-          : (typeof curve.defaultValue === 'object' ? curve.defaultValue as { h: number; s: number; l: number } : { h: 0, s: 100, l: 50 })
-        kfValue = { h: hue, s: origHSL.s, l: origHSL.l }
+          : (typeof curve.defaultValue === 'object' ? curve.defaultValue as { h: number; s: number; l: number } : { h: 0, s: 0, l: 100 })
+        kfValue = { h: origHSL.h, s: origHSL.s, l: lightness }
       }
 
       newKfs[index] = { ...newKfs[index], timeMs, value: kfValue }

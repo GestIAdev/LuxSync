@@ -392,7 +392,10 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
           const refHSL = nearestKf && typeof nearestKf.value === 'object' && 'h' in nearestKf.value
             ? nearestKf.value
             : (typeof curve.defaultValue === 'object' ? curve.defaultValue as { h: number; s: number; l: number } : { h: 0, s: 100, l: 50 })
-          kfValue = { h: hue, s: refHSL.s, l: refHSL.l }
+          // If ref is white (s=0, l=100), use standard hue spectrum values
+          const s = refHSL.s === 0 && refHSL.l === 100 ? 100 : refHSL.s
+          const l = refHSL.s === 0 && refHSL.l === 100 ? 50 : refHSL.l
+          kfValue = { h: hue, s, l }
         }
       }
 
@@ -444,7 +447,10 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
               kfValue = { h: 0, s: 0, l: 100 }
             } else {
               const hue = Math.round(newPlot * 360)
-              kfValue = { h: hue, s: origHSL.s, l: origHSL.l }
+              // If orig is white (s=0, l=100), restore standard hue spectrum values
+              const s = origHSL.s === 0 && origHSL.l === 100 ? 100 : origHSL.s
+              const l = origHSL.s === 0 && origHSL.l === 100 ? 50 : origHSL.l
+              kfValue = { h: hue, s, l }
             }
           } else {
             const [rangeMin, rangeMax] = curve.range
@@ -467,7 +473,10 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
           kfValue = { h: 0, s: 0, l: 100 }
         } else {
           const hue = Math.round(Math.max(0, Math.min(numericValue * 360, 360)))
-          kfValue = { h: hue, s: origHSL.s, l: origHSL.l }
+          // If orig is white (s=0, l=100), restore standard hue spectrum values
+          const s = origHSL.s === 0 && origHSL.l === 100 ? 100 : origHSL.s
+          const l = origHSL.s === 0 && origHSL.l === 100 ? 50 : origHSL.l
+          kfValue = { h: hue, s, l }
         }
       }
 

@@ -474,6 +474,9 @@ export class NodeResolver {
         this._forgeAccumValues.clear();
         this._forgeManualDevices.clear();
         this._forgeValuePoolCursor = 0;
+        // WAVE 7176: Clear pending color change state for this frame.
+        // _translateColor() will re-add nodes if the quantizer blocks their color change.
+        this._safetyMiddleware?.clearPendingColorChanges();
         // 2. Para cada nodo arbitrado:
         //    - legacy: escribir directo
         //    - forge: acumular por device y evaluar al final (una sola vez)
@@ -507,6 +510,11 @@ export class NodeResolver {
         // Inyecta prerequisitos (ej. shutter=255) cuando el canal fuente está activo.
         // HTP: Math.max(buf[target], requiredValue) — nunca baja un valor más alto.
         this._applyIgnitionInjections();
+        // 🌑 WAVE 7175: FINAL DARKSPIN LTP BLACKOUT — VETO ABSOLUTO.
+        // Ejecutado DESPUÉS de _applyIgnitionInjections() para garantizar que
+        // ninguna inyección HTP pueda restaurar el dimmer/shutter durante el tránsito.
+        // LTP/Replace: asignación directa (no HTP) — el veto es incondicional.
+        this._applyDarkSpinFinalBlackout();
         // 3. Ensamblar los packets de salida desde los buffers activos
         this._framePackets.clear();
         for (const universe of this._activeUniverses) {
@@ -629,6 +637,7 @@ export class NodeResolver {
                     universe: device.universe,
                     wheelBufIdx,
                     minTransitionMs,
+                    allowsContinuousSpin: colorNode.colorWheel?.allowsContinuousSpin ?? false,
                 });
                 // Initialize last known byte
                 if (!this._lastWheelBytes.has(deviceId)) {
@@ -783,7 +792,7 @@ export class NodeResolver {
                         break;
                     }
                     if (darkSpinEligible && wheelDmx !== undefined && wheelTransitMs > 0) {
-                        const inBlackout = sm.checkDarkSpin(node.nodeId, wheelDmx, wheelTransitMs);
+                        const inBlackout = sm.checkDarkSpin(node.nodeId, wheelDmx, wheelTransitMs, colorNode.colorWheel?.allowsContinuousSpin ?? false);
                         if (inBlackout) {
                             for (let ci = 0; ci < node.channels.length; ci++) {
                                 const chDef = node.channels[ci];
@@ -929,7 +938,7 @@ export class NodeResolver {
                     break;
                 }
                 if (darkSpinEligible && wheelDmx !== undefined && wheelTransitMs > 0) {
-                    const inBlackout = sm.checkDarkSpin(node.nodeId, wheelDmx, wheelTransitMs);
+                    const inBlackout = sm.checkDarkSpin(node.nodeId, wheelDmx, wheelTransitMs, colorNode.colorWheel?.allowsContinuousSpin ?? false);
                     if (inBlackout) {
                         for (let ci = 0; ci < node.channels.length; ci++) {
                             const chDef = node.channels[ci];
@@ -1185,7 +1194,7 @@ export class NodeResolver {
                 // Wheel byte changed — trigger DarkSpin transit state.
                 // checkDarkSpin handles: new transit start, active transit blackout,
                 // transit completion, and fail-safe timeout.
-                sm.checkDarkSpin(entry.colorNodeId, currentByte, entry.minTransitionMs);
+                sm.checkDarkSpin(entry.colorNodeId, currentByte, entry.minTransitionMs, entry.allowsContinuousSpin ?? false);
             }
             // Update last known byte in-place (zero-alloc)
             this._lastWheelBytes.set(entry.deviceId, currentByte);
@@ -1259,6 +1268,63 @@ export class NodeResolver {
         for (const prevDeviceId of this._darkSpinActiveDevices) {
             if (!transitDevices.has(prevDeviceId)) {
                 this._darkSpinActiveDevices.delete(prevDeviceId);
+            }
+        }
+    }
+    /**
+     * 🌑 WAVE 7175: FINAL DarkSpin LTP blackout — VETO ABSOLUTO.
+     *
+     * Runs AFTER _applyIgnitionInjections(). Uses LTP (direct assignment, not HTP)
+     * to guarantee that no ignition injection or any other post-resolve pass can
+     * restore dimmer/shutter values during an active wheel transit.
+     *
+     * Scans ALL nodes (COLOR + IMPACT) of devices with active DarkSpin transit
+     * and forces dimmer/shutter channels to 0 in the universe buffer.
+     */
+    _applyDarkSpinFinalBlackout() {
+        const sm = this._safetyMiddleware;
+        if (!sm)
+            return;
+        const transitNodeIds = sm.getDarkSpinTransitNodeIds();
+        if (transitNodeIds.length === 0)
+            return;
+        // Collect unique deviceIds in transit
+        const transitDevices = new Set();
+        for (const nodeId of transitNodeIds) {
+            const node = this._graph.getNodeData(nodeId);
+            if (!node || node.family !== NodeFamily.COLOR)
+                continue;
+            if (!this._isDarkSpinEligibleColorNode(node))
+                continue;
+            transitDevices.add(node.deviceId);
+        }
+        if (transitDevices.size === 0)
+            return;
+        // For each transit device, zero ALL dimmer/shutter channels across ALL nodes
+        for (const deviceId of transitDevices) {
+            const device = this._graph.getDevice(deviceId);
+            if (!device)
+                continue;
+            const buf = this._universeBuffers.get(device.universe);
+            if (!buf)
+                continue;
+            const baseAddr = device.dmxAddress - 1;
+            const nodeIds = this._graph.getDeviceNodes(deviceId);
+            if (!nodeIds)
+                continue;
+            for (const nid of nodeIds) {
+                const node = this._graph.getNodeData(nid);
+                if (!node)
+                    continue;
+                for (let ci = 0; ci < node.channels.length; ci++) {
+                    const chDef = node.channels[ci];
+                    if (chDef.type !== DIMMER_CHANNEL && chDef.type !== SHUTTER_CHANNEL)
+                        continue;
+                    const idx = baseAddr + chDef.dmxOffset;
+                    if (idx < 0 || idx >= DMX_UNIVERSE_SIZE)
+                        continue;
+                    buf[idx] = 0;
+                }
             }
         }
     }
@@ -1566,6 +1632,13 @@ export class NodeResolver {
                     }
                     // Si no hay lastAllowedColor, mantenemos el valor ya calculado
                     // (puede ser 0 = Open en la primera retención).
+                    // WAVE 7176: Pre-emptive blackout — the color change is pending but
+                    // gated by the quantizer. Notify the safety middleware so cross-node
+                    // and final sweeps zero the dimmer BEFORE the wheel moves, preventing
+                    // the 1-tick flash of the old color at full intensity.
+                    if (this._safetyMiddleware) {
+                        this._safetyMiddleware.notifyPendingColorChange(nodeId);
+                    }
                 }
                 // ★ WAVE 4557: DarkSpin — transit blackout via AetherSafetyMiddleware
                 // If the color wheel value changed, force dimmer=0 during mechanical transit.
@@ -1573,7 +1646,7 @@ export class NodeResolver {
                 const darkSpinEligible = this._isDarkSpinEligibleColorNode(this._graph.getNodeData(nodeId));
                 if (this._safetyMiddleware && darkSpinEligible && aetherWheel.minTransitionMs > 0) {
                     const wheelDmxForDarkSpin = Math.round(wheelDmxNorm * 255);
-                    const inBlackout = this._safetyMiddleware.checkDarkSpin(nodeId, wheelDmxForDarkSpin, aetherWheel.minTransitionMs);
+                    const inBlackout = this._safetyMiddleware.checkDarkSpin(nodeId, wheelDmxForDarkSpin, aetherWheel.minTransitionMs, aetherWheel.allowsContinuousSpin ?? false);
                     if (inBlackout) {
                         s[CH_COLOR_WHEEL] = wheelDmxNorm;
                         s[CH_R] = safeR;
@@ -1637,7 +1710,7 @@ export class NodeResolver {
                 name: slot.name,
                 rgb: { r: slot.previewRgb.r, g: slot.previewRgb.g, b: slot.previewRgb.b },
             })),
-            allowsContinuousSpin: false,
+            allowsContinuousSpin: wheel.allowsContinuousSpin ?? false,
             minChangeTimeMs: wheel.minTransitionMs,
         };
         this._wheelLegacyCache.set(wheel, result);

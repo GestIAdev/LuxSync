@@ -8,6 +8,7 @@
 import type { CognitiveDNA, SimulationMeta } from '../arsenal/lfxTypes'
 
 export const DEFAULT_COGNITIVE_DNA: Readonly<CognitiveDNA> = Object.freeze({
+  archetype: 'utility',
   genome: { aggression: 0.5, chaos: 0.5, organicity: 0.5 },
   textureAffinity: 'universal',
   compatibleVibes: [],

@@ -231,16 +231,6 @@ export interface StageConfig {
   height: number
 }
 
-/**
- * Configuración por defecto del escenario (tamaño mediano típico).
- * Se puede override por show cargado.
- */
-export const DEFAULT_STAGE_CONFIG: StageConfig = {
-  width: 12,   // 12 metros de ancho
-  depth: 8,    // 8 metros de profundidad
-  height: 5,   // 5 metros de altura máxima
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 // UTILITY FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -380,8 +370,12 @@ export function calculatePosition3D(
   zone: CanonicalZone,
   index: number,
   totalInZone: number,
-  config: StageConfig = DEFAULT_STAGE_CONFIG
+  config?: StageConfig
 ): { x: number; y: number; z: number } {
+  if (!config || config.width <= 0 || config.depth <= 0 || config.height <= 0) {
+    console.warn('[calculatePosition3D] Missing or invalid stage config — fixtures will cluster at origin (0,0,0)')
+    return { x: 0, y: 0, z: 0 }
+  }
   const layout = ZONE_LAYOUT_3D[zone]
   const halfWidth = config.width / 2
   const halfDepth = config.depth / 2

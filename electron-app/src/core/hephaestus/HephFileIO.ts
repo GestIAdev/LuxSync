@@ -18,6 +18,7 @@
 
 import { app } from 'electron'
 import * as fs from 'fs/promises'
+import * as fsSync from 'fs'
 import * as path from 'path'
 import * as crypto from 'crypto'
 import type {
@@ -113,6 +114,79 @@ export interface HephClipMetadata {
  */
 class HephFileIO {
   private arsenalPath: string | null = null
+  private builtinsPath: string | null = null
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // DEV-MODE BUILTIN RESOLUTION
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * In dev mode, resolve the builtins directory path.
+   * Mirrors the logic in electron/main.ts and AncestralIngestor.
+   */
+  private getBuiltinsPath(): string | null {
+    if (this.builtinsPath) return this.builtinsPath
+
+    // Production: builtins are in extraResources (read-only, don't write here)
+    if (app.isPackaged) return null
+
+    // Dev: builtins live in the source tree
+    const candidates = [
+      path.join(__dirname, '..', 'src', 'core', 'arsenal', 'builtins'),
+      path.join(__dirname, '..', '..', '..', 'src', 'core', 'arsenal', 'builtins'),
+      path.join(__dirname, '..', 'arsenal', 'builtins'),
+    ]
+
+    for (const c of candidates) {
+      if (fsSync.existsSync(c)) {
+        this.builtinsPath = c
+        return c
+      }
+    }
+    return null
+  }
+
+  /**
+   * Find a builtin .lfx file by clip ID (recursive search).
+   * Returns the absolute path if found, null otherwise.
+   */
+  private async findBuiltinById(clipId: string): Promise<string | null> {
+    const builtinsDir = this.getBuiltinsPath()
+    if (!builtinsDir) return null
+
+    const scanDir = async (dir: string): Promise<string | null> => {
+      let entries: string[]
+      try {
+        entries = await fs.readdir(dir)
+      } catch {
+        return null
+      }
+      for (const entry of entries) {
+        const full = path.join(dir, entry)
+        let stat
+        try {
+          stat = await fs.stat(full)
+        } catch {
+          continue
+        }
+        if (stat.isDirectory()) {
+          const found = await scanDir(full)
+          if (found) return found
+        } else if (entry.endsWith(LFX_EXTENSION)) {
+          try {
+            const raw = await fs.readFile(full, 'utf-8')
+            const lfx = JSON.parse(raw)
+            if (lfx.clip?.id === clipId) return full
+          } catch {
+            // skip corrupted
+          }
+        }
+      }
+      return null
+    }
+
+    return scanDir(builtinsDir)
+  }
   
   // ═══════════════════════════════════════════════════════════════════════
   // INITIALIZATION
@@ -186,15 +260,34 @@ class HephFileIO {
       checksum: `sha256:${hash}`
     };
 
-    const fileName = `${clip.id}.lfx`;
-    const filePath = path.join(this.arsenalPath!, fileName);
+    // 🔒 WAVE 7185: DEV-MODE BUILTIN-AWARE SAVE
+    // In development, if this clip ID matches a builtin, write directly to the
+    // builtin file in src/core/arsenal/builtins/ to avoid the double-save problem.
+    // In production (packaged), always save to userData/arsenal/ as a non-destructive override.
+    let filePath: string
+    let fileSource: 'builtin' | 'user' = 'user'
+
+    if (!app.isPackaged) {
+      const builtinPath = await this.findBuiltinById(clip.id)
+      if (builtinPath) {
+        filePath = builtinPath
+        fileSource = 'builtin'
+        console.log(`[HephFileIO] Dev mode: saving builtin ${clip.id} → ${path.relative(this.getBuiltinsPath()!, builtinPath)}`)
+      } else {
+        const fileName = `${clip.id}.lfx`
+        filePath = path.join(this.arsenalPath!, fileName)
+      }
+    } else {
+      const fileName = `${clip.id}.lfx`
+      filePath = path.join(this.arsenalPath!, fileName)
+    }
 
     // Escribimos a disco
     await fs.writeFile(filePath, JSON.stringify(filePayload, null, 2), 'utf-8');
 
     // Actualizamos el índice en memoria O(1) inmediatamente
     const index = getHephaestusClipIndex();
-    await index.upsert(filePath, 'user');
+    await index.upsert(filePath, fileSource);
 
     return filePath;
   }

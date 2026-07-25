@@ -145,6 +145,9 @@ export interface DecisionInputs {
 
   /** V3 TUNE: Contextual phase from ContextualMemory (building, climax, release, etc.) */
   contextualPhase?: string
+
+  /** 🩸 WAVE 7171: RMS 10s average for two-path divine gate (sustained epicness check) */
+  rmsAverage10s?: number
 }
 
 /**
@@ -283,13 +286,39 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
   // ═══════════════════════════════════════════════════════════════════════
   const vibeId = pattern.vibeId ?? ''
   const isTechnoVibe = vibeId.includes('techno') || vibeId.includes('industrial') || vibeId.includes('hardstyle')
+  const isLatinVibe = vibeId.includes('latina') || vibeId.includes('latino') || vibeId.includes('fiesta')
   const V3_EPSILON_DIVINE = isTechnoVibe ? 0.50 : 0.60
   const v3Epicness = inputs.v3Epicness ?? 0
+  // 🩸 WAVE 7171: Two-path divine gate — A) brutal isolated peak OR B) sustained epicness
+  // 🩸 WAVE 7172: Latin vibes use lower RMS10s floor (0.65 vs 0.75) — reggaeton's
+  // oscillating bass keeps RMS10s at 0.62-0.67, never reaching 0.75. This would
+  // permanently block divine effects like Latina Meltdown in Latin genres.
+  const rms10s = inputs.rmsAverage10s ?? 0
+  const DIVINE_SUSTAINED_RMS_FLOOR = isLatinVibe ? 0.65 : 0.75
+  // 🩸 WAVE 7186: Sustained epicness threshold raised to 0.50 for ALL vibes.
+  // The previous 0.35 for Latin allowed divines at epicness=0.37 which is
+  // merely "energetic", not "divine". With Z ≥ 2.10 + epicness ≥ 0.50 the
+  // divine is truly rare.
+  const DIVINE_SUSTAINED_EPICNESS = 0.50
+  const divinePeakPassed = v3Epicness > V3_EPSILON_DIVINE
+  const divineSustainedPassed = v3Epicness > DIVINE_SUSTAINED_EPICNESS && rms10s > DIVINE_SUSTAINED_RMS_FLOOR
+  // 🩸 WAVE 7186: Z-SCORE FLOOR — Divine is a rare event by definition.
+  // V2 experience set this at 2.2σ. We relax to 2.10σ to give Latin genres
+  // a sliver of headroom while still preventing divines at 1.6-1.7σ which
+  // are merely "energetic", not "divine".
+  const DIVINE_MIN_Z_SCORE = 2.10
+  const divineZPassed = (zScore ?? 0) >= DIVINE_MIN_Z_SCORE
+  const divineGatePassed = (divinePeakPassed || divineSustainedPassed) && divineZPassed
 
   if (activeDictator) {
     // No loggear nada - silencio total para evitar spam
-  } else if (v3Epicness > V3_EPSILON_DIVINE) {
-    console.log(`[DecisionMaker 🌩️] DIVINE MOMENT: V3 epicness=${v3Epicness.toFixed(3)} > ε=${V3_EPSILON_DIVINE} → MANDATORY FIRE`)
+  } else if (divineGatePassed) {
+    console.log(
+      `[DecisionMaker 🌩️] DIVINE MOMENT: V3 epicness=${v3Epicness.toFixed(3)}` +
+      ` (peak>${V3_EPSILON_DIVINE}? ${divinePeakPassed}; sustained>${DIVINE_SUSTAINED_EPICNESS}+rms>${DIVINE_SUSTAINED_RMS_FLOOR}? ${divineSustainedPassed})` +
+      ` Z=${(zScore ?? 0).toFixed(2)}σ ≥ ${DIVINE_MIN_Z_SCORE}? ${divineZPassed}` +
+      ` → MANDATORY FIRE`
+    )
     return 'divine_strike'
   }
 
@@ -298,15 +327,17 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
   if (dreamIntegration?.approved && dreamIntegration.effect?.effect) {
     const proposedEffect = dreamIntegration.effect.effect
     const isDivineEffect = getDynamicEffectRegistry().getEntry(proposedEffect)?.simMeta.isDivineCandidate ?? false
-    // V3.4: Divine leak check uses epicness instead of static Z-score
-    const divineLeakBlocked = isDivineEffect && v3Epicness <= V3_EPSILON_DIVINE
+    // 🩸 WAVE 7171: Two-path divine leak check — blocked only if BOTH paths fail
+    const divineLeakBlocked = isDivineEffect && !divineGatePassed
     if (section === 'buildup' && !isEffectAllowedInSection(proposedEffect, section)) {
       // Fall through — buildup handler below will manage with soft effects
     } else if (divineLeakBlocked) {
       throttledLog(
         `divineLeak:${proposedEffect}`,
         `[DecisionMaker 🛡️] DIVINE LEAK BLOCKED: "${proposedEffect}" is divine ` +
-        `but V3 epicness=${v3Epicness.toFixed(3)} ≤ ε=${V3_EPSILON_DIVINE} → falling through`,
+        `but V3 epicness=${v3Epicness.toFixed(3)} ` +
+        `(peak>${V3_EPSILON_DIVINE}? ${divinePeakPassed}; sustained>${DIVINE_SUSTAINED_EPICNESS}+rms>${DIVINE_SUSTAINED_RMS_FLOOR}? ${divineSustainedPassed})` +
+        ` → falling through`,
         5000
       )
     } else {

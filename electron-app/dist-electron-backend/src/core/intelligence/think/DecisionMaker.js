@@ -149,13 +149,29 @@ function determineDecisionType(inputs) {
     // ═══════════════════════════════════════════════════════════════════════
     const vibeId = pattern.vibeId ?? '';
     const isTechnoVibe = vibeId.includes('techno') || vibeId.includes('industrial') || vibeId.includes('hardstyle');
+    const isLatinVibe = vibeId.includes('latina') || vibeId.includes('latino') || vibeId.includes('fiesta');
     const V3_EPSILON_DIVINE = isTechnoVibe ? 0.50 : 0.60;
     const v3Epicness = inputs.v3Epicness ?? 0;
+    // 🩸 WAVE 7171: Two-path divine gate — A) brutal isolated peak OR B) sustained epicness
+    // 🩸 WAVE 7172: Latin vibes use lower RMS10s floor (0.65 vs 0.75) — reggaeton's
+    // oscillating bass keeps RMS10s at 0.62-0.67, never reaching 0.75. This would
+    // permanently block divine effects like Latina Meltdown in Latin genres.
+    const rms10s = inputs.rmsAverage10s ?? 0;
+    const DIVINE_SUSTAINED_RMS_FLOOR = isLatinVibe ? 0.65 : 0.75;
+    // 🩸 WAVE 7175: Lower sustained epicness threshold for Latin vibes (0.45 → 0.35).
+    // Reggaeton's sustained-energy epicness lives at 0.25-0.35 (temp=0.70, pM=0.7).
+    // The 0.45 threshold permanently blocks Strobe Storm, Latina Meltdown, etc.
+    const DIVINE_SUSTAINED_EPICNESS = isLatinVibe ? 0.35 : 0.45;
+    const divinePeakPassed = v3Epicness > V3_EPSILON_DIVINE;
+    const divineSustainedPassed = v3Epicness > DIVINE_SUSTAINED_EPICNESS && rms10s > DIVINE_SUSTAINED_RMS_FLOOR;
+    const divineGatePassed = divinePeakPassed || divineSustainedPassed;
     if (activeDictator) {
         // No loggear nada - silencio total para evitar spam
     }
-    else if (v3Epicness > V3_EPSILON_DIVINE) {
-        console.log(`[DecisionMaker 🌩️] DIVINE MOMENT: V3 epicness=${v3Epicness.toFixed(3)} > ε=${V3_EPSILON_DIVINE} → MANDATORY FIRE`);
+    else if (divineGatePassed) {
+        console.log(`[DecisionMaker 🌩️] DIVINE MOMENT: V3 epicness=${v3Epicness.toFixed(3)}` +
+            ` (peak>${V3_EPSILON_DIVINE}? ${divinePeakPassed}; sustained>${DIVINE_SUSTAINED_EPICNESS}+rms>${DIVINE_SUSTAINED_RMS_FLOOR}? ${divineSustainedPassed})` +
+            ` → MANDATORY FIRE`);
         return 'divine_strike';
     }
     // 🧬 PRIORIDAD 0: DNA BRAIN - LA ÚLTIMA PALABRA
@@ -163,14 +179,16 @@ function determineDecisionType(inputs) {
     if (dreamIntegration?.approved && dreamIntegration.effect?.effect) {
         const proposedEffect = dreamIntegration.effect.effect;
         const isDivineEffect = getDynamicEffectRegistry().getEntry(proposedEffect)?.simMeta.isDivineCandidate ?? false;
-        // V3.4: Divine leak check uses epicness instead of static Z-score
-        const divineLeakBlocked = isDivineEffect && v3Epicness <= V3_EPSILON_DIVINE;
+        // 🩸 WAVE 7171: Two-path divine leak check — blocked only if BOTH paths fail
+        const divineLeakBlocked = isDivineEffect && !divineGatePassed;
         if (section === 'buildup' && !isEffectAllowedInSection(proposedEffect, section)) {
             // Fall through — buildup handler below will manage with soft effects
         }
         else if (divineLeakBlocked) {
             throttledLog(`divineLeak:${proposedEffect}`, `[DecisionMaker 🛡️] DIVINE LEAK BLOCKED: "${proposedEffect}" is divine ` +
-                `but V3 epicness=${v3Epicness.toFixed(3)} ≤ ε=${V3_EPSILON_DIVINE} → falling through`, 5000);
+                `but V3 epicness=${v3Epicness.toFixed(3)} ` +
+                `(peak>${V3_EPSILON_DIVINE}? ${divinePeakPassed}; sustained>${DIVINE_SUSTAINED_EPICNESS}+rms>${DIVINE_SUSTAINED_RMS_FLOOR}? ${divineSustainedPassed})` +
+                ` → falling through`, 5000);
         }
         else {
             return 'strike';

@@ -402,8 +402,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  padding: 8px 4px 6px;
+  gap: 2px;
+  padding: 6px 4px 4px;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 6px;
@@ -871,8 +871,8 @@
 }
 
 .dna-cube3d {
-  width: 80px;
-  height: 80px;
+  width: 62px;
+  height: 62px;
   position: relative;
   transform-style: preserve-3d;
   animation: cube-spin 12s linear infinite;
@@ -888,8 +888,8 @@
 
 .dna-cube3d__face {
   position: absolute;
-  width: 80px;
-  height: 80px;
+  width: 62px;
+  height: 62px;
   border: 1px solid color-mix(in srgb, var(--cube-color, #ff6b2b) 55%, transparent);
   background: color-mix(in srgb, var(--cube-color, #ff6b2b) 6%, rgba(0,0,0,0.15));
   backdrop-filter: blur(2px);
@@ -900,12 +900,12 @@
   overflow: hidden;
 }
 
-.dna-cube3d__face--front  { transform: translateZ(40px); }
-.dna-cube3d__face--back   { transform: rotateY(180deg) translateZ(40px); }
-.dna-cube3d__face--right  { transform: rotateY(90deg)  translateZ(40px); }
-.dna-cube3d__face--left   { transform: rotateY(-90deg) translateZ(40px); }
-.dna-cube3d__face--top    { transform: rotateX(90deg)  translateZ(40px); }
-.dna-cube3d__face--bottom { transform: rotateX(-90deg) translateZ(40px); }
+.dna-cube3d__face--front  { transform: translateZ(31px); }
+.dna-cube3d__face--back   { transform: rotateY(180deg) translateZ(31px); }
+.dna-cube3d__face--right  { transform: rotateY(90deg)  translateZ(31px); }
+.dna-cube3d__face--left   { transform: rotateY(-90deg) translateZ(31px); }
+.dna-cube3d__face--top    { transform: rotateX(90deg)  translateZ(31px); }
+.dna-cube3d__face--bottom { transform: rotateX(-90deg) translateZ(31px); }
 
 .dna-cube3d__face--front {
   background: color-mix(in srgb, var(--cube-color, #ff6b2b) 10%, rgba(0,0,0,0.2));
@@ -952,4 +952,122 @@
 .dna-cube3d__values strong {
   color: var(--cube-color, #ff6b2b);
   font-weight: 800;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * WAVE 7185 — SIM GUARDS (simulationMeta UI)
+ * Compact toggles + numeric inputs for isStrobe, isHeavyCandidate,
+ * isDivineCandidate, cooldownMs, fatigueImpact.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.dna-rail__section--sim-guards {
+  padding: 8px 14px 10px;
+}
+
+.dna-rail__meta-toggles {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.dna-rail__meta-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  user-select: none;
+  padding: 3px 6px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 4px;
+  transition: all 0.12s ease;
+}
+
+.dna-rail__meta-toggle:hover {
+  border-color: rgba(255, 107, 43, 0.25);
+}
+
+.dna-rail__meta-toggle input[type="checkbox"] {
+  display: none;
+}
+
+.dna-rail__meta-toggle-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.dna-rail__meta-toggle--on {
+  background: rgba(255, 107, 43, 0.1);
+  border-color: rgba(255, 107, 43, 0.4);
+}
+
+.dna-rail__meta-toggle--on .dna-rail__meta-toggle-dot {
+  background: #ff6b2b;
+  border-color: #ff6b2b;
+  box-shadow: 0 0 8px rgba(255, 107, 43, 0.7);
+}
+
+.dna-rail__meta-toggle-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  color: rgba(255, 255, 255, 0.35);
+  text-transform: uppercase;
+  font-family: var(--font-mono, monospace);
+}
+
+.dna-rail__meta-toggle--on .dna-rail__meta-toggle-label {
+  color: #ff6b2b;
+}
+
+.dna-rail__meta-numerics {
+  display: flex;
+  gap: 8px;
+}
+
+.dna-rail__meta-numeric-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+
+.dna-rail__meta-numeric-label {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: rgba(255, 255, 255, 0.3);
+  text-transform: uppercase;
+  font-family: var(--font-mono, monospace);
+  white-space: nowrap;
+}
+
+.dna-rail__meta-numeric-input {
+  width: 52px;
+  padding: 4px 4px;
+  font-size: 0.62rem;
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.55);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  text-align: center;
+  outline: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.dna-rail__meta-numeric-input:focus {
+  border-color: rgba(255, 107, 43, 0.5);
+}
+
+.dna-rail__meta-numeric-unit {
+  font-size: 0.52rem;
+  color: rgba(255, 255, 255, 0.25);
+  font-family: var(--font-mono, monospace);
 }

@@ -540,6 +540,15 @@ export class VibeMovementManager {
         this.manualSpeedOverride = null;
         this.manualAmplitudeOverride = null;
         this.manualPatternOverride = null;
+        /**
+         * L2 ACTIVE FLAG — silences VMM (L0) without clearing manual overrides.
+         * When true, generateIntent returns a no-op intent so the L2 kinetic engine
+         * has absolute supremacy. Unlike setManualPattern(null), this does NOT
+         * reset manualPatternOverride/Speed/Amplitude, preventing ProgrammerAetherBridge
+         * from detecting "overrides cleared" and reactively firing clearManualOverrides
+         * on the arbiter (which would wipe the L2 anchor pan_base/tilt_base).
+         */
+        this._l2Active = false;
         // WAVE 1155.1: SMOOTH TRANSITION SYSTEM
         // Cuando el patron cambia, hacemos LERP de 2 segundos
         this.lastPosition = { x: 0, y: 0 };
@@ -645,11 +654,19 @@ export class VibeMovementManager {
         this.manualSpeedOverride = null;
         this.manualAmplitudeOverride = null;
         this.manualPatternOverride = null;
+        this._l2Active = false;
         // Limpiar también los L2 phase offsets
         for (const key in this._l2PhaseOverrides) {
             delete this._l2PhaseOverrides[key];
         }
         console.log(`[CHOREO] All overrides cleared`);
+    }
+    setL2Active(active) {
+        this._l2Active = active;
+        console.log(`[CHOREO] L2 engine ${active ? 'ACTIVATED — VMM silenced' : 'DEACTIVATED — VMM resumes'}`);
+    }
+    isL2Active() {
+        return this._l2Active;
     }
     // GENERATE INTENT - El corazon del coreografo
     generateIntent(vibeId, audio, fixtureIndex = 0, totalFixtures = 1, 
@@ -659,6 +676,20 @@ export class VibeMovementManager {
     phaseOffset = 0, 
     /** WAVE 4931: Mount orientation for audience-facing bias */
     mountOrientation) {
+        // L2 ACTIVE: VMM silenced — L2 kinetic engine has absolute supremacy.
+        // Return no-op intent. Unlike manualPatternOverride=null, this does NOT
+        // clear overrides, preventing the bridge from reactively clearing L2 anchors.
+        if (this._l2Active) {
+            const intent = this._tempIntent;
+            intent.x = 0.5;
+            intent.y = 0.5;
+            intent.pattern = 'breath';
+            intent.speed = 0;
+            intent.amplitude = 0;
+            intent._frequency = 0;
+            intent._phrase = 0;
+            return intent;
+        }
         // ═══════════════════════════════════════════════════════════════════════
         // 🎭 WAVE 2086.1: FRAME-ONCE GUARD
         // TitanEngine now calls generateIntent() TWICE per frame (L + R stereo).
@@ -787,7 +818,17 @@ export class VibeMovementManager {
         if (audio.energy < 0.03 && config.homeOnSilence) {
             return this.createFreezeIntent(patternName);
         }
-        const phase = this.schedulerState.phase + phaseOffset;
+        // 🐍 WAVE 6020.11: SNAKE AS PHASE OFFSET (not 2D rotation)
+        // The old 2D rotation of the position vector distorted non-circular patterns
+        // (figure8, ballyhoo) and pushed y outside the safe tilt range, causing
+        // clamp artifacts (jumping/freezing). Applying the snake offset as a phase
+        // shift BEFORE the pattern function preserves the pattern shape and keeps
+        // the output naturally within the safe range.
+        const stereoConfig = STEREO_CONFIG[vibeId] || STEREO_CONFIG['idle'];
+        const snakePhaseOffset = stereoConfig.type === 'snake' && totalFixtures > 1
+            ? fixtureIndex * stereoConfig.offset
+            : 0;
+        const phase = this.schedulerState.phase + phaseOffset + snakePhaseOffset;
         // PATTERN EXECUTION
         const patternFn = PATTERNS[patternName];
         if (!patternFn) {
@@ -888,7 +929,7 @@ export class VibeMovementManager {
             const fromPhasePerBeat = (2 * Math.PI) / fromCfg.cycleBeats;
             // Fase del patrón saliente: snapshot + beats acumulados × velocidad de su ciclo
             const fromPhase = this.kineticTransition.fromPhaseSnapshot +
-                this.kineticTransition.progressBeats * fromPhasePerBeat + phaseOffset;
+                this.kineticTransition.progressBeats * fromPhasePerBeat + phaseOffset + snakePhaseOffset;
             const fromPatternFn = PATTERNS[this.kineticTransition.fromPattern];
             if (fromPatternFn) {
                 // Usar object pooling para crossfade
@@ -931,59 +972,19 @@ export class VibeMovementManager {
         // ═══════════════════════════════════════════════════════════════════════
         // 🎭 WAVE 2086.1: STEREO PHASE OFFSET — The Resurrection
         //
-        // ANTES: applyPhaseOffset() vivía en HAL pero SOLO era llamada por
-        // renderFromIntent() (flujo muerto). renderFromTarget() (flujo activo)
-        // la ignoraba. Resultado: todos los movers eran clones (Borg mode).
+        // WAVE 6020.11: SNAKE is now applied as a PHASE OFFSET before the pattern
+        // function (see snakePhaseOffset above), NOT as a 2D rotation of the
+        // position vector. This preserves the pattern shape and keeps the output
+        // within the safe tilt range without clamping artifacts.
         //
-        // AHORA: La lógica de mirror/snake vive AQUÍ, donde se genera el
-        // movimiento. Cada fixture recibe su posición diferenciada ANTES de
-        // que llegue al Arbiter. Así el Arbiter ya ve L/R distinto.
-        //
-        // MIRROR (techno): Fixture impar invierte X → puertas del infierno
-        // SNAKE (latino/pop/chill): Cada fixture añade offset a la fase base
-        //   → ola mexicana, cadena de caderas
+        // MIRROR (techno): Handled by lrPhaseOffset in KineticAdapter (π for right side)
+        // SNAKE (latino/pop/chill): Handled by snakePhaseOffset above (phase shift)
         // SYNC (idle): Sin cambio
         // ═══════════════════════════════════════════════════════════════════════
-        const stereoConfig = STEREO_CONFIG[vibeId] || STEREO_CONFIG['idle'];
         const stereoPosition = this._tempFinalPos;
         stereoPosition.x = finalPosition.x;
         stereoPosition.y = finalPosition.y;
-        if (stereoConfig.type === 'mirror' && totalFixtures > 1) {
-            // 🪞 MIRROR: El efecto espejo se gestiona EXCLUSIVAMENTE mediante lrPhaseOffset.
-            // WAVE 4986 Paso 4: Eliminar la inversión física de stereoPosition.x.
-            //
-            // La lógica anterior invertía el eje X en espacio de posición:
-            //   stereoPosition.x = finalPosition.x * (fixtureIndex % 2 === 0 ? 1 : -1)
-            // Esto se aplicaba DESPUÉS de que lrPhaseOffset=π ya había desplazado la fase.
-            // El resultado era: phase_shift=π + position_flip = desfase compuesto no lineal
-            // que producía movimientos caóticos e impredecibles (jitter, bucles).
-            //
-            // Con lrPhaseOffset=π (en KineticAdapter, con deadzone WAVE 4986 Paso 3):
-            //   Fixture L (x < -0.05): fase θ     → patrón natural
-            //   Fixture R (x > +0.05): fase θ+π   → patrón espejado naturalmente
-            // El generador de patrones (sin/cos) evalúa fase+π y produce x=-x, y=y
-            // automáticamente para osciladores simétricos. Cero inversión manual necesaria.
-        }
-        else if (stereoConfig.type === 'snake' && totalFixtures > 1) {
-            // 🐍 SNAKE: Cada fixture aplica un desfase angular a la posición
-            // La posición base (finalPosition) es un punto en una trayectoria
-            // circular/elíptica. Rotamos ese punto alrededor del centro (0,0)
-            // por el offset del fixture → efecto ola/cadena.
-            const phaseOffset = fixtureIndex * stereoConfig.offset;
-            // Magnitud del movimiento (distancia al centro en espacio -1..+1)
-            const mag = Math.sqrt(finalPosition.x * finalPosition.x + finalPosition.y * finalPosition.y);
-            if (mag > 0.01) {
-                // Ángulo actual del vector posición
-                const currentAngle = Math.atan2(finalPosition.y, finalPosition.x);
-                // Rotar por el phase offset del fixture
-                const newAngle = currentAngle + phaseOffset;
-                stereoPosition.x = Math.cos(newAngle) * mag;
-                stereoPosition.y = Math.sin(newAngle) * mag;
-            }
-            // Si mag ≈ 0 (posición en centro), no hay nada que rotar
-        }
-        // 'sync' → stereoPosition = finalPosition (sin cambio)
-        // Clampar al rango válido
+        // Clampar al rango válido (stereoPosition = finalPosition, ya clamped arriba)
         stereoPosition.x = Math.max(-1, Math.min(1, stereoPosition.x));
         stereoPosition.y = Math.max(-1, Math.min(1, stereoPosition.y));
         // Frecuencia efectiva (con override manual)

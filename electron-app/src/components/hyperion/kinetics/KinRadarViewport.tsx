@@ -124,7 +124,10 @@ export const KinRadarViewport: React.FC = () => {
     }
 
     const stage: StageDimensions = stageFromStore ?? {
-      width: 12, depth: 10, height: 6, gridSize: 1,
+      width: 1, depth: 1, height: 1, gridSize: 0.25,
+    }
+    if (!stageFromStore) {
+      console.warn('[KinRadarViewport] stageFromStore is null — using safe fallback. Stage store should always have dimensions in V3.')
     }
 
     return { movingHeadIds: moving, staticIds: statics, stageForPad: stage }

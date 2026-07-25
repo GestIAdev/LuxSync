@@ -27,9 +27,6 @@ import type { InstallationOrientation, Rotation3D } from '../../../../core/stage
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Default stage dimensions for position calculation */
-const STAGE_HALF_WIDTH = 6    // 12m / 2
-const STAGE_HALF_DEPTH = 4    // 8m / 2
 const DEFAULT_PAN_RANGE_DEG = 540
 const DEFAULT_TILT_RANGE_DEG = 270
 const UNPLACED_SENTINEL_Y = 3
@@ -144,12 +141,13 @@ export function useFixture3DData(options: UseFixture3DDataOptions = {}) {
   }
 
   // ── Stage Dimensions ──────────────────────────────────────────────────────
-  const halfWidth = options.stageConfig?.width 
-    ? options.stageConfig.width / 2 
-    : STAGE_HALF_WIDTH
-  const halfDepth = options.stageConfig?.depth 
-    ? options.stageConfig.depth / 2 
-    : STAGE_HALF_DEPTH
+  // V3: stageConfig must always provide dimensions. If missing, unplaced
+  // fixtures cluster at origin (0,0) — placed fixtures use authored position.
+  const halfWidth = (options.stageConfig?.width ?? 0) / 2
+  const halfDepth = (options.stageConfig?.depth ?? 0) / 2
+  if (process.env.NODE_ENV !== 'production' && !options.stageConfig?.width) {
+    console.warn('[useFixture3DData] stageConfig missing width/depth — unplaced fixtures will cluster at origin')
+  }
 
   // ── Group fixtures by zone for positioning ────────────────────────────────
   const fixturesByZone = useMemo(() => {

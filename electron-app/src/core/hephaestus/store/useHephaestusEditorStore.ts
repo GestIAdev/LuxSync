@@ -290,7 +290,28 @@ export const useHephaestusEditorStore = create<HephaestusEditorStore>()(
       mutate('Rename clip', draft => { draft.name = name }),
 
     setDuration: (durationMs) =>
-      mutate('Set duration', draft => { draft.durationMs = durationMs }),
+      mutate('Set duration', draft => {
+        const oldDuration = draft.durationMs
+        if (oldDuration === durationMs) return
+        draft.durationMs = durationMs
+        // Time-Stretch: scale all keyframes proportionally to new duration
+        const ratio = durationMs / oldDuration
+        for (const track of draft.tracks) {
+          const kfs = track.curve.keyframes
+          if (kfs.length === 0) continue
+          const scaled = kfs.map(kf => ({
+            ...kf,
+            timeMs: Math.round(kf.timeMs * ratio),
+          }))
+          // Deduplicate: if rounding causes collisions, keep the last one at each timestamp
+          const seen = new Map<number, typeof scaled[number]>()
+          for (const kf of scaled) {
+            seen.set(kf.timeMs, kf)
+          }
+          const deduped = Array.from(seen.values()).sort((a, b) => a.timeMs - b.timeMs)
+          track.curve.keyframes = deduped
+        }
+      }),
 
     setMixBus: (bus) =>
       mutate('Set mix bus', draft => { draft.mixBus = bus }),

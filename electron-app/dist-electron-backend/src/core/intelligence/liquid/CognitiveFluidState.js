@@ -242,12 +242,23 @@ export class CognitiveFluidState {
             if (isHardVibe) {
                 epic = Math.pow(epic, 1.3);
             }
+            // 🩸 WAVE 7173: Sustained-energy epicness for Latin vibes.
+            // Reggaeton/cumbia sustain energy at 0.72-0.85 without dramatic spectral
+            // spikes → z-scores stay low → impact can't exceed tension → baseEpicness
+            // near zero. But sustained high temperature IS the epic moment in Latin
+            // music. This parallel path uses temperature directly instead of requiring
+            // impact > tension.
+            const isLatinVibe = vibe.includes('latina') || vibe.includes('latino') || vibe.includes('fiesta');
+            if (isLatinVibe) {
+                const sustainedEpic = clamp01((this._temperature - 0.55) / 0.35);
+                epic = Math.max(epic, sustainedEpic * energyFactor * phaseModifier);
+            }
             // EMA asimétrica: subida moderada, bajada lenta — estabiliza sin perder respuesta
             const alphaE = epic > this._epicness ? ALPHA_EPIC_UP : ALPHA_EPIC_DOWN;
             this._epicness += alphaE * (epic - this._epicness);
             this._epicness = clamp01(this._epicness);
             if (this._diagFrame % 44 === 0) {
-                console.log(`[FLUID-DIAG] epicness=${this._epicness.toFixed(3)} | base=${baseEpicness.toFixed(3)} impact=${this._impact.toFixed(3)} effT=${effectiveTension.toFixed(3)} tension=${this._tension.toFixed(3)} denom=${denom.toFixed(3)} E=${input.rawEnergy.toFixed(3)} eF=${energyFactor.toFixed(3)} phase=${phase} pM=${phaseModifier.toFixed(3)} vibe=${input.vibe ?? 'none'}`);
+                console.log(`[FLUID-DIAG] epicness=${this._epicness.toFixed(3)} | base=${baseEpicness.toFixed(3)} impact=${this._impact.toFixed(3)} effT=${effectiveTension.toFixed(3)} tension=${this._tension.toFixed(3)} denom=${denom.toFixed(3)} E=${input.rawEnergy.toFixed(3)} eF=${energyFactor.toFixed(3)} phase=${phase} pM=${phaseModifier.toFixed(3)} temp=${this._temperature.toFixed(3)} vibe=${input.vibe ?? 'none'}`);
             }
         }
     }

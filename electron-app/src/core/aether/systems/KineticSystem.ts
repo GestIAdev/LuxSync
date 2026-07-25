@@ -165,7 +165,8 @@ export class KineticSystem
     if ('rotation'  in this._valuesDict) delete this._valuesDict['rotation']
     if ('speed'     in this._valuesDict) delete this._valuesDict['speed']
 
-    view.forEach((node: IKineticNodeData) => {
+    const kineticTotal = view.count
+    view.forEach((node: IKineticNodeData, _index: number) => {
       // ── 1. Calcular posición raw según el patrón VMM ──────────────────────
       let pan  = HOME_PAN
       let tilt = HOME_TILT
@@ -182,7 +183,7 @@ export class KineticSystem
             : TWO_PI * 0.5  // 0.5 Hz si no hay BPM detectado
 
           // Phase offset único por nodo basado en stereoIndex — onda viajera
-          const phaseOffset = node.stereoIndex * WAVE_PHASE_INCREMENT * TWO_PI
+          const phaseOffset = _index * WAVE_PHASE_INCREMENT * TWO_PI
 
           // nowMs en segundos para el argumento del seno
           const t = context.nowMs / 1000
@@ -197,8 +198,8 @@ export class KineticSystem
           // en esta sección, basada en su índice en el array.
           // Función determinista: f(stereoIndex, stereoTotal)
           // Produce distribución regular sin random.
-          const total = node.stereoTotal > 0 ? node.stereoTotal : 1
-          const frac  = node.stereoIndex / total
+          const total = kineticTotal
+          const frac  = total > 1 ? _index / total : 0
           pan  = 0.15 + frac * 0.70  // 0.15 a 0.85, distribuido regular
           tilt = 0.35 + (1 - frac) * 0.30  // tilt inverso al pan
           break
@@ -214,7 +215,7 @@ export class KineticSystem
 
         case 4: { // wave — onda viajera lenta
           const phase = audio.beatPhase  // 0-1 dentro del beat actual
-          const waveOffset = (node.stereoIndex * WAVE_PHASE_INCREMENT + phase) % 1
+          const waveOffset = (_index * WAVE_PHASE_INCREMENT + phase) % 1
           pan  = 0.2 + waveOffset * 0.6   // rango 0.2..0.8
           tilt = HOME_TILT + SWEEP_AMPLITUDE_TILT * Math.sin(waveOffset * TWO_PI)
           break
@@ -242,8 +243,8 @@ export class KineticSystem
             tilt = DROP_TILT
           }
           // Phase offset stereo para abanico de impacto
-          const total = node.stereoTotal > 0 ? node.stereoTotal : 1
-          const frac  = node.stereoIndex / total
+          const total = kineticTotal
+          const frac  = total > 1 ? _index / total : 0
           pan  = 0.30 + frac * 0.40  // 0.30 a 0.70
           break
         }
@@ -257,8 +258,8 @@ export class KineticSystem
       if (isChillVibe) {
         // WAVE 4845: Chill absoluto — cero dependencia de beats/transientes.
         const tSec = context.nowMs / 1000
-        const total = node.stereoTotal > 0 ? node.stereoTotal : 1
-        const frac = node.stereoIndex / total
+        const total = kineticTotal
+        const frac = total > 1 ? _index / total : 0
         const phase = frac * TWO_PI
         const targetPan = BaseSystem.clamp01(0.5 + Math.sin((TWO_PI * tSec) / 180 + phase) * 0.15)
         const targetTilt = BaseSystem.clamp01(0.5 + Math.cos((TWO_PI * tSec) / 240 + phase) * 0.10)

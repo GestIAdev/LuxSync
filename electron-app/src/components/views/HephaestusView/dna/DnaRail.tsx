@@ -40,6 +40,7 @@ import './DnaRail.css'
 
 // ─── RE-EXPORTS from shared defaults (single source of truth) ──────────────
 export { DEFAULT_COGNITIVE_DNA, DEFAULT_SIMULATION_META } from '../../../../core/hephaestus/defaults'
+import { DEFAULT_SIMULATION_META } from '../../../../core/hephaestus/defaults'
 
 // ─── ARCHETYPE CATALOG UI ───────────────────────────────────────────────────
 
@@ -216,11 +217,48 @@ interface DnaRailProps {
 
 export const DnaRail: React.FC<DnaRailProps> = ({
   dna,
+  simMeta,
   onDnaChange,
+  onSimMetaChange,
   onEnableDna,
 }) => {
   // Stable clip id for the session (re-mounts = new id, but that's fine)
   const clipIdRef = useRef(crypto.randomUUID())
+
+  // ── Local simMeta state (drives SIM GUARDS section + propagates to parent) ──
+  const [meta, setMeta] = useState<SimulationMeta>(() =>
+    simMeta ? { ...simMeta } : { ...DEFAULT_SIMULATION_META },
+  )
+
+  // Track last propagated meta content to break the update cycle
+  const lastPropagatedRef = useRef<string>(JSON.stringify(meta))
+
+  // Sync local meta when a new clip is loaded (simMeta prop identity changes)
+  const metaIdRef = useRef(simMeta)
+  useEffect(() => {
+    if (metaIdRef.current === simMeta) return
+    metaIdRef.current = simMeta
+    if (!simMeta) return
+    // Content check: skip if the new simMeta has the same content as current meta
+    const incoming = JSON.stringify(simMeta)
+    if (incoming === lastPropagatedRef.current) return
+    isSyncingFromMeta.current = true
+    setMeta({ ...simMeta })
+  }, [simMeta])
+
+  // Propagate meta changes to parent (user-initiated only)
+  const isSyncingFromMeta = useRef(false)
+  useEffect(() => {
+    if (isSyncingFromMeta.current) {
+      isSyncingFromMeta.current = false
+      return
+    }
+    const serialized = JSON.stringify(meta)
+    if (serialized === lastPropagatedRef.current) return
+    lastPropagatedRef.current = serialized
+    onSimMetaChange(meta)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meta])
 
   // ── Local form state (drives UI + LfxClipInstance derivation) ──
   const [form, setForm] = useState<DnaFormState>(() => {
@@ -233,6 +271,8 @@ export const DnaRail: React.FC<DnaRailProps> = ({
       pressureRange: { min: 0, max: 0 },
       textureAffinity: 'universal',
     }
+    // Read archetype from dna if present (WAVE 7177 fix: archetype was not being saved)
+    const dnaArchetype = dna.archetype ?? 'utility'
     // Reverse-map compatibleVibes from bridged (Selene) → directive (CompatibleVibe)
     const rawVibes = Array.isArray(dna.compatibleVibes) ? dna.compatibleVibes : []
     const reversedVibes: CompatibleVibe[] = []
@@ -241,7 +281,7 @@ export const DnaRail: React.FC<DnaRailProps> = ({
       if (r && !reversedVibes.includes(r)) reversedVibes.push(r)
     }
     return {
-      archetype: 'utility',
+      archetype: dnaArchetype,
       aco: { ...dna.genome },
       zones: (() => {
         const lo = ENERGY_ZONES.indexOf(dna.energyZone.min)
@@ -283,8 +323,9 @@ export const DnaRail: React.FC<DnaRailProps> = ({
       const r = reverseVibeBridge(v)
       if (r && !reversedVibes.includes(r)) reversedVibes.push(r)
     }
+    const syncArchetype = dna.archetype ?? 'utility'
     setForm(prev => ({
-      archetype: prev.archetype,
+      archetype: syncArchetype,
       aco: { ...dna.genome },
       zones: (() => {
         const lo = ENERGY_ZONES.indexOf(dna.energyZone.min)
@@ -338,12 +379,14 @@ export const DnaRail: React.FC<DnaRailProps> = ({
     }
     if (!dna) return
     const reality = instance.toCognitiveDNA({
+      archetype: form.archetype,
       pressureRange: { ...form.pressureRange },
       textureAffinity: form.textureAffinity,
       validSections: dna.validSections,
       ikCompatibility: dna.ikCompatibility,
     })
     onDnaChange({
+      archetype: reality.archetype,
       genome: { ...reality.genome },
       textureAffinity: reality.textureAffinity,
       compatibleVibes: [...reality.compatibleVibes],
@@ -377,6 +420,13 @@ export const DnaRail: React.FC<DnaRailProps> = ({
       }
       return next
     })
+    // 🔒 WAVE 7185: Auto-sync simMeta flags from archetype selection
+    setMeta(prev => ({
+      ...prev,
+      isStrobe: arch === 'strobe',
+      isDivineCandidate: arch === 'divine',
+      isHeavyCandidate: arch === 'heavy',
+    }))
   }, [])
 
   const handleAco = useCallback((axis: keyof AcoTriad) =>
@@ -451,6 +501,22 @@ export const DnaRail: React.FC<DnaRailProps> = ({
 
   const handleTextureAffinity = useCallback((affinity: TextureAffinity) => {
     setForm(prev => ({ ...prev, textureAffinity: affinity }))
+  }, [])
+
+  // ── SIM GUARDS handlers (manual override of auto-synced flags) ──
+
+  const handleMetaToggle = useCallback((key: 'isStrobe' | 'isDivineCandidate' | 'isHeavyCandidate') => {
+    setMeta(prev => ({ ...prev, [key]: !prev[key] }))
+  }, [])
+
+  const handleCooldownChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = Math.max(0, Math.min(60000, parseInt(e.target.value) || 0))
+    setMeta(prev => ({ ...prev, cooldownMs: val }))
+  }, [])
+
+  const handleFatigueChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = Math.max(0, Math.min(1, parseFloat(e.target.value) || 0))
+    setMeta(prev => ({ ...prev, fatigueImpact: val }))
   }, [])
 
   // ── No DNA — CTA ──
@@ -534,6 +600,65 @@ export const DnaRail: React.FC<DnaRailProps> = ({
             />
           </div>
           <p className="dna-rail__narrative">{narrative}</p>
+        </section>
+
+        {/* ══ SECTION 2.5: SIM GUARDS (simulationMeta) ══ */}
+        <section className="dna-rail__section dna-rail__section--sim-guards">
+          <div className="dna-rail__section-label">SIM GUARDS</div>
+          {/* Row 1: Boolean toggles */}
+          <div className="dna-rail__meta-toggles">
+            <label className={`dna-rail__meta-toggle ${meta.isStrobe ? 'dna-rail__meta-toggle--on' : ''}`}>
+              <input
+                type="checkbox"
+                checked={meta.isStrobe}
+                onChange={() => handleMetaToggle('isStrobe')}
+              />
+              <span className="dna-rail__meta-toggle-dot" />
+              <span className="dna-rail__meta-toggle-label">Strobe</span>
+            </label>
+            <label className={`dna-rail__meta-toggle ${meta.isHeavyCandidate ? 'dna-rail__meta-toggle--on' : ''}`}>
+              <input
+                type="checkbox"
+                checked={meta.isHeavyCandidate}
+                onChange={() => handleMetaToggle('isHeavyCandidate')}
+              />
+              <span className="dna-rail__meta-toggle-dot" />
+              <span className="dna-rail__meta-toggle-label">Heavy</span>
+            </label>
+            <label className={`dna-rail__meta-toggle ${meta.isDivineCandidate ? 'dna-rail__meta-toggle--on' : ''}`}>
+              <input
+                type="checkbox"
+                checked={meta.isDivineCandidate}
+                onChange={() => handleMetaToggle('isDivineCandidate')}
+              />
+              <span className="dna-rail__meta-toggle-dot" />
+              <span className="dna-rail__meta-toggle-label">Divine</span>
+            </label>
+          </div>
+          {/* Row 2: Numeric inputs */}
+          <div className="dna-rail__meta-numerics">
+            <div className="dna-rail__meta-numeric-row">
+              <span className="dna-rail__meta-numeric-label">Cooldown</span>
+              <input
+                type="number"
+                className="dna-rail__meta-numeric-input"
+                min={0} max={60000} step={500}
+                value={meta.cooldownMs}
+                onChange={handleCooldownChange}
+              />
+              <span className="dna-rail__meta-numeric-unit">ms</span>
+            </div>
+            <div className="dna-rail__meta-numeric-row">
+              <span className="dna-rail__meta-numeric-label">Fatigue</span>
+              <input
+                type="number"
+                className="dna-rail__meta-numeric-input"
+                min={0} max={1} step={0.01}
+                value={meta.fatigueImpact}
+                onChange={handleFatigueChange}
+              />
+            </div>
+          </div>
         </section>
 
         {/* ══ SECTION 3: ACO SLIDERS ══ */}

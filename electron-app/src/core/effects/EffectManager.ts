@@ -274,7 +274,7 @@ const EFFECT_ZONE_MAP: Record<string, EnergyZoneLadder> = {
   // ☢️ INTENSE (75-90%): Sierra celestial y ascenso abismal - pre-clímax
   'sky_saw': 'intense',
   'abyssal_rise': 'intense',
-  'tidal_wave': 'intense',        // 🌊 WAVE 2680: Registrado — ola de energía
+  'tidal_wave': 'active',         // 🌊 WAVE 2680: Registrado — ola de energía (lfx max=active, aggression 0.55)
   'strobe_burst': 'intense',      // 🔥 WAVE 2680: Registrado — ráfaga rítmica
   
   // 💣 PEAK (90-100%): Artillería pesada - territorio de drops

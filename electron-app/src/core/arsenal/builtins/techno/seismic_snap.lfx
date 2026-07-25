@@ -1,5 +1,6 @@
 {
   "$schema": "luxsync.lfx/3.0",
+  "version": "1.0.0",
   "clip": {
     "id": "seismic_snap",
     "name": "Seismic Snap",
@@ -16,7 +17,8 @@
     ],
     "spatialZones": [
       "all-pars",
-      "all-movers"
+      "all-movers",
+      "all"
     ],
     "mixBus": "global",
     "priority": 82,
@@ -29,7 +31,6 @@
         "zones": [
           "all-pars"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
@@ -41,17 +42,22 @@
           "keyframes": [
             {
               "timeMs": 0,
+              "value": 0.994,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 0,
               "value": 0,
               "interpolation": "linear"
             },
             {
-              "timeMs": 125,
+              "timeMs": 500,
               "value": 0,
               "interpolation": "hold"
             },
             {
-              "timeMs": 126,
-              "value": 1,
+              "timeMs": 500,
+              "value": 0.988,
               "interpolation": "linear",
               "bezierHandles": [
                 0,
@@ -61,12 +67,52 @@
               ]
             },
             {
-              "timeMs": 526,
-              "value": 1,
-              "interpolation": "hold"
+              "timeMs": 1500,
+              "value": 0.994,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 1500,
+              "value": 0,
+              "interpolation": "linear"
             },
             {
               "timeMs": 2500,
+              "value": 0.0075,
+              "interpolation": "linear"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      },
+      {
+        "id": "d29bdff1-c1cd-41ff-ad1c-84fb68f8f79e",
+        "paramId": "intensity",
+        "zones": [
+          "all-movers"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 1,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 500,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 500,
               "value": 0,
               "interpolation": "linear",
               "bezierHandles": [
@@ -75,10 +121,26 @@
                 1,
                 1
               ]
+            },
+            {
+              "timeMs": 1500,
+              "value": 0,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 1500,
+              "value": 1,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2500,
+              "value": 1,
+              "interpolation": "linear"
             }
           ],
           "mode": "absolute"
-        }
+        },
+        "blendMode": "replace"
       },
       {
         "id": "612d4134-4c3d-4139-902f-8f1c5515615b",
@@ -86,7 +148,6 @@
         "zones": [
           "all-pars"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "color",
           "valueType": "color",
@@ -103,7 +164,7 @@
             {
               "timeMs": 0,
               "value": {
-                "h": 0,
+                "h": 333,
                 "s": 90,
                 "l": 55
               },
@@ -112,7 +173,7 @@
             {
               "timeMs": 2500,
               "value": {
-                "h": 0,
+                "h": 360,
                 "s": 0,
                 "l": 100
               },
@@ -120,15 +181,57 @@
             }
           ],
           "mode": "absolute"
-        }
+        },
+        "blendMode": "replace"
+      },
+      {
+        "id": "9249c74d-800d-450f-a44b-f01a5c52d644",
+        "paramId": "color",
+        "zones": [
+          "all-movers"
+        ],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
+          "defaultValue": {
+            "h": 0,
+            "s": 90,
+            "l": 55
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 360,
+                "s": 90,
+                "l": 55
+              },
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2500,
+              "value": {
+                "h": 360,
+                "s": 0,
+                "l": 100
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
       },
       {
         "id": "b32d1768-771c-46e2-a312-9535727f2fe6",
         "paramId": "strobeRate",
         "zones": [
-          "all-movers"
+          "all"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "strobeRate",
           "valueType": "number",
@@ -144,18 +247,19 @@
               "interpolation": "hold"
             },
             {
-              "timeMs": 550,
-              "value": 0.8333333333333334,
+              "timeMs": 500,
+              "value": 1,
               "interpolation": "hold"
             },
             {
-              "timeMs": 1150,
-              "value": 0,
+              "timeMs": 1500,
+              "value": 0.003,
               "interpolation": "hold"
             }
           ],
           "mode": "absolute"
-        }
+        },
+        "blendMode": "replace"
       }
     ],
     "staticParams": {
@@ -172,6 +276,7 @@
       "shakeFrequencyHz": 10
     },
     "cognitiveDNA": {
+      "archetype": "heavy",
       "genome": {
         "aggression": 0.87,
         "chaos": 0.75,
@@ -179,7 +284,7 @@
       },
       "textureAffinity": "dirty",
       "compatibleVibes": [
-        "techno-club"
+        "fiesta-latina"
       ],
       "validSections": [
         "build",
@@ -187,18 +292,18 @@
         "breakdown"
       ],
       "energyZone": {
-        "min": "active",
-        "max": "intense"
+        "min": "intense",
+        "max": "peak"
       },
       "aggressionRange": {
-        "min": 0,
+        "min": 0.87,
+        "max": 0.87
+      },
+      "pressureRange": {
+        "min": 0.79,
         "max": 1
       },
-      "spatialBehavior": "static",
-      "pressureRange": {
-        "min": 0.5,
-        "max": 1
-      }
+      "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -219,7 +324,12 @@
         "minimumEnergy": null
       }
     },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 25,
+      "containsRapidFlash": true,
+      "communityTrusted": false
+    },
     "schemaVersion": "3.0"
   },
-  "checksum": "9f4fb33ac1543b043dc289b7bc1dc7b913b0ad405439024bc0e65b60623b4e72"
+  "checksum": "sha256:93d3c94ad430a6b6538664206034b161edc2f001ba3f24f6e43a2885acf46625"
 }

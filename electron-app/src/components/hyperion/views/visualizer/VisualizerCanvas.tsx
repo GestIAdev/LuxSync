@@ -43,10 +43,13 @@ import './VisualizerCanvas.css'
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Fallback stage dimensions (used when show file has no stage data) */
-const DEFAULT_STAGE_WIDTH = 12
-const DEFAULT_STAGE_DEPTH = 8
-const DEFAULT_TRUSS_HEIGHT = 5
+/** V3: Minimal safe fallback to prevent NaN/zero-division when stageDims is null.
+ *  In V3, stageStore should always have stage dimensions (createEmptyShowFile populates them).
+ *  These values are a crash-guard, NOT a default stage size. */
+const SAFE_FALLBACK_WIDTH = 1
+const SAFE_FALLBACK_DEPTH = 1
+const SAFE_FALLBACK_TRUSS_HEIGHT = 1
+const SAFE_FALLBACK_GRID = 0.25
 
 /** Camera: fallback position — overridden per-scene via stageConfig diagonal */
 const DEFAULT_CAMERA_TARGET: [number, number, number] = [0, 2, 0]
@@ -409,10 +412,13 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
   // 🏗️ WAVE 4575-B: Dynamic stage config from stageStore — no more hardcoded 12×8
   const stageDims = useStageStore(selectStageDimensions)
   const stageConfig = useMemo<ResolvedStageConfig>(() => {
-    const w = stageDims?.width ?? DEFAULT_STAGE_WIDTH
-    const d = stageDims?.depth ?? DEFAULT_STAGE_DEPTH
-    const h = stageDims?.height ?? DEFAULT_TRUSS_HEIGHT
-    const g = stageDims?.gridSize ?? 1
+    if (!stageDims) {
+      console.warn('[VisualizerCanvas] stageDims is null — using safe fallback. Stage store should always have dimensions in V3.')
+    }
+    const w = stageDims?.width ?? SAFE_FALLBACK_WIDTH
+    const d = stageDims?.depth ?? SAFE_FALLBACK_DEPTH
+    const h = stageDims?.height ?? SAFE_FALLBACK_TRUSS_HEIGHT
+    const g = stageDims?.gridSize ?? SAFE_FALLBACK_GRID
     // Camera pulled back to diagonal × 0.8 so full stage always fits in FOV=50
     const diag = Math.sqrt(w * w + d * d)
     return {

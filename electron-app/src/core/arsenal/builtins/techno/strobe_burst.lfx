@@ -1,5 +1,6 @@
 {
   "$schema": "luxsync.lfx/3.0",
+  "version": "1.0.0",
   "clip": {
     "id": "strobe_burst",
     "name": "Strobe Burst",
@@ -17,11 +18,11 @@
     ],
     "spatialZones": [
       "all-pars",
-      "all-movers"
+      "all"
     ],
     "mixBus": "global",
     "priority": 85,
-    "durationMs": 396,
+    "durationMs": 1500,
     "effectType": "heph_custom",
     "tracks": [
       {
@@ -30,7 +31,6 @@
         "zones": [
           "all-pars"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
@@ -57,13 +57,8 @@
               ]
             },
             {
-              "timeMs": 34,
+              "timeMs": 1500,
               "value": 1,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 396,
-              "value": 0,
               "interpolation": "linear",
               "bezierHandles": [
                 0,
@@ -74,15 +69,15 @@
             }
           ],
           "mode": "absolute"
-        }
+        },
+        "blendMode": "replace"
       },
       {
         "id": "a61859d9-849f-4e24-972a-07797959b8bf",
         "paramId": "strobeRate",
         "zones": [
-          "all-movers"
+          "all"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "strobeRate",
           "valueType": "number",
@@ -103,13 +98,14 @@
               "interpolation": "hold"
             },
             {
-              "timeMs": 396,
-              "value": 0,
+              "timeMs": 1500,
+              "value": 0.0224,
               "interpolation": "hold"
             }
           ],
           "mode": "absolute"
-        }
+        },
+        "blendMode": "replace"
       }
     ],
     "staticParams": {
@@ -124,6 +120,7 @@
       "gapDurationMs": 33
     },
     "cognitiveDNA": {
+      "archetype": "utility",
       "genome": {
         "aggression": 0.9,
         "chaos": 0.75,
@@ -140,18 +137,18 @@
         "breakdown"
       ],
       "energyZone": {
-        "min": "active",
-        "max": "intense"
+        "min": "peak",
+        "max": "peak"
       },
       "aggressionRange": {
-        "min": 0,
-        "max": 1
+        "min": 0.9,
+        "max": 0.9
       },
-      "spatialBehavior": "static",
       "pressureRange": {
         "min": 0.5,
         "max": 1
-      }
+      },
+      "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -164,7 +161,7 @@
       "minDurationMs": 396,
       "cooldownMs": 3000,
       "isStrobe": true,
-      "isDivineCandidate": false,
+      "isDivineCandidate": true,
       "isHeavyCandidate": true,
       "zScoreGuards": {
         "requireRising": true,
@@ -172,7 +169,12 @@
         "minimumEnergy": 0.7
       }
     },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 25,
+      "containsRapidFlash": true,
+      "communityTrusted": false
+    },
     "schemaVersion": "3.0"
   },
-  "checksum": "8f6a407c5ed3a6c90a02b0c64556448b2c51f4d45b9c5f2c817e0625e4049cc5"
+  "checksum": "sha256:bb11ffe2a2d2e5dfc8f085aed2e1f79b80dcb35dfb4cf8156bd34d27835c6048"
 }

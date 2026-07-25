@@ -281,6 +281,14 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
   // ── Track if we've restored viewport from initialViewport (do it only once) ──
   const viewportRestoredRef = useRef(false)
 
+  // ── Refs for latest values (avoid re-triggering save effect on dimension/duration changes) ──
+  const viewportRef = useRef(viewport)
+  viewportRef.current = viewport
+  const dimensionsRef = useRef(dimensions)
+  dimensionsRef.current = dimensions
+  const durationMsRef = useRef(durationMs)
+  durationMsRef.current = durationMs
+
   // ── Drag state ──
   const [drag, setDrag] = useState<DragState | null>(null)
 
@@ -339,25 +347,45 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
     // panOffsetMs = scrollX * (durationMs / width)
     const restoredPanOffsetMs = (initialViewport.scrollX * durationMs) / dimensions.width
     
+    // WAVE 7178 FIX: Clamp to valid range [0, durationMs - visibleDurationMs]
+    // Previously only clamped to non-negative, allowing panOffsetMs beyond the visible
+    // range which pushed keyframes off-screen.
+    const visDur = durationMs / initialViewport.zoom
+    const maxPan = Math.max(0, durationMs - visDur)
+    
     setViewport({
       zoom: initialViewport.zoom,
-      panOffsetMs: Math.max(0, restoredPanOffsetMs), // Clamp to non-negative
+      panOffsetMs: Math.max(0, Math.min(restoredPanOffsetMs, maxPan)),
     })
     
     viewportRestoredRef.current = true
   }, [initialViewport, dimensions.width, durationMs])
 
-  // ⚒️ WAVE 2043.8: Save viewport state on unmount or when channel changes
+  // WAVE 7178: Clamp panOffsetMs when durationMs or zoom changes.
+  // Without this, a decrease in durationMs or increase in zoom can leave
+  // panOffsetMs beyond the valid range, pushing all keyframes off-screen.
+  useEffect(() => {
+    const visDur = durationMs / viewport.zoom
+    const maxPan = Math.max(0, durationMs - visDur)
+    if (viewport.panOffsetMs > maxPan) {
+      setViewport(prev => ({ ...prev, panOffsetMs: maxPan }))
+    }
+  }, [durationMs, viewport.zoom])
+
+  // ⚒️ WAVE 2043.8: Save viewport state on unmount only.
+  // WAVE 7178 FIX: Previously depended on [viewport, dimensions.width, durationMs, onViewportChange],
+  // causing the cleanup to fire on every dimension/duration change and save a stale scrollX
+  // (computed with the OLD width). On remount, the restore used the stale scrollX with the NEW
+  // width, producing a drifted panOffsetMs that pushed keyframes outside the canvas.
+  // Now uses refs for latest values and only saves on unmount.
   useEffect(() => {
     return () => {
       if (onViewportChange) {
-        // Convert panOffsetMs (ms) to scrollX (px)
-        // scrollX = panOffsetMs * (width / durationMs)
-        const scrollX = (viewport.panOffsetMs * dimensions.width) / durationMs
-        onViewportChange({ zoom: viewport.zoom, scrollX })
+        const scrollX = (viewportRef.current.panOffsetMs * dimensionsRef.current.width) / durationMsRef.current
+        onViewportChange({ zoom: viewportRef.current.zoom, scrollX })
       }
     }
-  }, [viewport, dimensions.width, durationMs, onViewportChange])
+  }, [onViewportChange])
 
   // ── Coordinate transforms ──
   const { width, height } = dimensions
@@ -419,6 +447,61 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
     }
     return lines
   }, [rangeMin, rangeSpan])
+
+  // ── Color preview strip segments (color curves only) ──
+  const STRIP_HEIGHT = 16
+  const colorStripSegments = useMemo(() => {
+    if (!isColorCurve || curve.keyframes.length === 0) return []
+    const kfs = curve.keyframes
+    const segments: { x: number; w: number; fill: string }[] = []
+    const NUM_SAMPLES = 80
+    const stripY = PADDING.top + plotH + 4
+    const segW = plotW / NUM_SAMPLES
+
+    const lerpHue = (h0: number, h1: number, t: number) => {
+      let delta = h1 - h0
+      if (delta > 180) delta -= 360
+      if (delta < -180) delta += 360
+      let result = h0 + delta * t
+      if (result < 0) result += 360
+      if (result >= 360) result -= 360
+      return result
+    }
+
+    for (let i = 0; i < NUM_SAMPLES; i++) {
+      const t = i / (NUM_SAMPLES - 1)
+      const timeMs = visibleStartMs + t * visibleDurationMs
+      const clampedTime = Math.max(0, Math.min(timeMs, durationMs))
+
+      // Find surrounding keyframes
+      let kf0 = kfs[0]
+      let kf1 = kfs[kfs.length - 1]
+      for (let j = 0; j < kfs.length - 1; j++) {
+        if (kfs[j].timeMs <= clampedTime && kfs[j + 1].timeMs >= clampedTime) {
+          kf0 = kfs[j]
+          kf1 = kfs[j + 1]
+          break
+        }
+      }
+
+      const segDur = kf1.timeMs - kf0.timeMs
+      const progress = segDur > 0 ? (clampedTime - kf0.timeMs) / segDur : 0
+
+      const v0 = kf0.value as { h: number; s: number; l: number }
+      const v1 = kf1.value as { h: number; s: number; l: number }
+
+      const h = lerpHue(v0.h, v1.h, progress)
+      const s = v0.s + (v1.s - v0.s) * progress
+      const l = v0.l + (v1.l - v0.l) * progress
+
+      segments.push({
+        x: PADDING.left + i * segW,
+        w: segW + 1,
+        fill: `hsl(${h}, ${s}%, ${l}%)`,
+      })
+    }
+    return segments
+  }, [isColorCurve, curve.keyframes, plotW, plotH, visibleStartMs, visibleDurationMs, durationMs])
 
   /**
    * ⚒️ WAVE 2044: BPM INJECTION — Derive beat divisions from real BPM.
@@ -987,10 +1070,9 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
     <div ref={containerRef} className="heph-curve-editor">
       <svg
         ref={svgRef}
-        width={width}
-        height={height}
         viewBox={`0 0 ${width} ${height}`}
         className="heph-curve-svg"
+        preserveAspectRatio="none"
         onDoubleClick={handleDoubleClick}
         onClick={handleBackgroundClick}
         onMouseDown={handleSVGMouseDown}
@@ -1398,6 +1480,32 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
         >
           {viewport.zoom.toFixed(1)}x
         </text>
+
+        {/* ═══ COLOR PREVIEW STRIP (color curves only) ═══ */}
+        {isColorCurve && colorStripSegments.length > 0 && (
+          <g pointerEvents="none">
+            {colorStripSegments.map((seg, i) => (
+              <rect
+                key={`strip-${i}`}
+                x={seg.x}
+                y={PADDING.top + plotH + 4}
+                width={seg.w}
+                height={STRIP_HEIGHT}
+                fill={seg.fill}
+              />
+            ))}
+            <rect
+              x={PADDING.left}
+              y={PADDING.top + plotH + 4}
+              width={plotW}
+              height={STRIP_HEIGHT}
+              fill="none"
+              stroke="rgba(255,255,255,0.15)"
+              strokeWidth="1"
+              rx="2"
+            />
+          </g>
+        )}
 
         {/* ═══ UX HINTS - WAVE 2030.9 ═══ */}
         <text

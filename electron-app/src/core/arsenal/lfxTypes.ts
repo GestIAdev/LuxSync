@@ -33,6 +33,9 @@ export type HephTrackV3 = HephTrack
 /** Compatibilidad espectral del efecto (Texture Affinity — WAVE 1029). */
 export type TextureAffinity = 'clean' | 'dirty' | 'universal'
 
+/** Etiqueta semántica del usuario. Cerrada deliberadamente. */
+export type UserArchetype = 'strobe' | 'ambient' | 'heavy' | 'divine' | 'utility'
+
 /**
  * Relación del clip con la base IK del motor Aether.
  *
@@ -145,6 +148,7 @@ export interface PixelExecutionHints {
  * Fuente de verdad única — EFFECT_DNA_REGISTRY purgado (WAVE 4825).
  */
 export interface CognitiveDNA {
+  readonly archetype?: UserArchetype
   readonly genome: FrozenGenome
   readonly textureAffinity: TextureAffinity
   readonly compatibleVibes: readonly string[]

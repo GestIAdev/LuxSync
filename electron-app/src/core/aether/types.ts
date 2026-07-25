@@ -399,6 +399,12 @@ export interface ColorWheelDefinition {
    * que podrían dañar el motor de la rueda.
    */
   readonly minTransitionMs: number
+  /**
+   * ¿Permite giro continuo (rainbow effect)?
+   * Si true, la distancia DMX se calcula por camino más corto (wrapping 256).
+   * Si false, la distancia es lineal absoluta.
+   */
+  readonly allowsContinuousSpin?: boolean
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

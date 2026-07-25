@@ -163,15 +163,6 @@ export const ZONE_LAYOUT_3D = {
         defaultPitch: -30,
     },
 };
-/**
- * Configuración por defecto del escenario (tamaño mediano típico).
- * Se puede override por show cargado.
- */
-export const DEFAULT_STAGE_CONFIG = {
-    width: 12, // 12 metros de ancho
-    depth: 8, // 8 metros de profundidad
-    height: 5, // 5 metros de altura máxima
-};
 // ═══════════════════════════════════════════════════════════════════════════
 // UTILITY FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -286,7 +277,11 @@ export function calculatePosition2D(zone, index, totalInZone, canvasWidth, canva
  * @param config — Configuración del escenario (dimensiones)
  * @returns Coordenadas {x, y, z} en metros
  */
-export function calculatePosition3D(zone, index, totalInZone, config = DEFAULT_STAGE_CONFIG) {
+export function calculatePosition3D(zone, index, totalInZone, config) {
+    if (!config || config.width <= 0 || config.depth <= 0 || config.height <= 0) {
+        console.warn('[calculatePosition3D] Missing or invalid stage config — fixtures will cluster at origin (0,0,0)');
+        return { x: 0, y: 0, z: 0 };
+    }
     const layout = ZONE_LAYOUT_3D[zone];
     const halfWidth = config.width / 2;
     const halfDepth = config.depth / 2;

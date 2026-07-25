@@ -49,7 +49,7 @@ export interface SpatialTargetPadProps {
   /** Fixtures to render as static ghosts on the map */
   fixtures: SpatialFixtureGhost[]
 
-  /** Physical stage dimensions (meters) */
+  /** Physical stage dimensions (meters) — REQUIRED in V3. No fallback. */
   stage: StageDimensions
 
   /** Disabled state */
@@ -88,17 +88,6 @@ export interface SpatialTargetPadProps {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// DEFAULTS
-// ═══════════════════════════════════════════════════════════════════════════
-
-const DEFAULT_STAGE: StageDimensions = {
-  width: 12,
-  depth: 10,
-  height: 6,
-  gridSize: 1,
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
 // COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -106,7 +95,7 @@ export const SpatialTargetPad: React.FC<SpatialTargetPadProps> = ({
   target,
   onChange,
   fixtures,
-  stage: stageProp,
+  stage,
   disabled = false,
   onCenter,
   reachabilityMap,
@@ -116,7 +105,6 @@ export const SpatialTargetPad: React.FC<SpatialTargetPadProps> = ({
   onFanAmplitudeChange,
   subTargets,
 }) => {
-  const stage = stageProp ?? DEFAULT_STAGE
 
   // ── REFS ──
   const gridRef = useRef<HTMLDivElement>(null)

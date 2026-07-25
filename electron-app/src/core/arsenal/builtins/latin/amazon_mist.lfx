@@ -1,5 +1,6 @@
 {
   "$schema": "luxsync.lfx/3.0",
+  "version": "1.0.0",
   "clip": {
     "id": "amazon_mist",
     "name": "Amazon Mist",
@@ -29,7 +30,6 @@
         "zones": [
           "all"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
@@ -73,6 +73,16 @@
             }
           ],
           "mode": "absolute"
+        },
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spreadDeg": 90,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 1,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
         }
       },
       {
@@ -81,7 +91,6 @@
         "zones": [
           "all"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "color",
           "valueType": "color",
@@ -98,7 +107,7 @@
             {
               "timeMs": 0,
               "value": {
-                "h": 160,
+                "h": 130,
                 "s": 60,
                 "l": 35
               },
@@ -107,7 +116,7 @@
             {
               "timeMs": 4000,
               "value": {
-                "h": 180,
+                "h": 131,
                 "s": 50,
                 "l": 40
               },
@@ -115,7 +124,8 @@
             }
           ],
           "mode": "absolute"
-        }
+        },
+        "blendMode": "replace"
       }
     ],
     "staticParams": {
@@ -127,6 +137,7 @@
       "bpmRef": 128
     },
     "cognitiveDNA": {
+      "archetype": "utility",
       "genome": {
         "aggression": 0.12,
         "chaos": 0.3,
@@ -134,8 +145,7 @@
       },
       "textureAffinity": "clean",
       "compatibleVibes": [
-        "fiesta-latina",
-        "chill-lounge"
+        "fiesta-latina"
       ],
       "validSections": [
         "intro",
@@ -143,18 +153,18 @@
         "silence"
       ],
       "energyZone": {
-        "min": "silence",
-        "max": "valley"
+        "min": "valley",
+        "max": "ambient"
       },
       "aggressionRange": {
-        "min": 0,
-        "max": 0.27
+        "min": 0.12,
+        "max": 0.12
       },
-      "spatialBehavior": "static",
       "pressureRange": {
         "min": 0,
         "max": 1
-      }
+      },
+      "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -177,5 +187,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "7fc0bdc9ebfaf7cc3527acfa4ea005812a36914cc720928b392ede90bb665ab3"
+  "checksum": "sha256:8afdeeef90b76273736a075ddc8e49e241102633a475411da1ca383a3ad1ea60"
 }

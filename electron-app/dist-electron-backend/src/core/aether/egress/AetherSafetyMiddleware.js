@@ -48,6 +48,11 @@ export class AetherSafetyMiddleware {
         this._kineticState = new Map();
         // ── Per-node DarkSpin transit state ────────────────────────────────────
         this._darkSpinState = new Map();
+        // ── WAVE 7176: Pending color change nodes (pre-emptive blackout) ────────
+        // When the HarmonicQuantizer blocks a color change, the node is added here.
+        // getDarkSpinTransitNodeIds() includes these nodes so cross-node/final
+        // sweeps zero the dimmer BEFORE the wheel moves, preventing the 1-tick flash.
+        this._pendingColorChangeNodes = new Set();
         // ── Output gate ────────────────────────────────────────────────────────
         this._outputEnabled = true;
         this._manualNodeIds = new Set();
@@ -279,13 +284,36 @@ export class AetherSafetyMiddleware {
             if (s.inTransit)
                 out.push(nodeId);
         }
+        // WAVE 7176: Include pending color change nodes (pre-emptive blackout)
+        for (const nodeId of this._pendingColorChangeNodes) {
+            out.push(nodeId);
+        }
         return out;
+    }
+    /**
+     * WAVE 7176: Notify that a color change is pending (quantizer blocked it).
+     * The node will be included in getDarkSpinTransitNodeIds() so sweeps
+     * zero the dimmer pre-emptively, preventing the 1-tick flash of old color.
+     */
+    notifyPendingColorChange(nodeId) {
+        this._pendingColorChangeNodes.add(nodeId);
+    }
+    /**
+     * WAVE 7176: Clear pending color change state. Called at the start of
+     * each resolve() frame by NodeResolver.
+     */
+    clearPendingColorChanges() {
+        this._pendingColorChangeNodes.clear();
     }
     /**
      * Returns true if dimmer must be forced to 0 (transit blackout active).
      * Woodstock-compliant: uses this._nowMs (performance.now()-based).
+     *
+     * WAVE 7175: Dynamic transitMs based on DMX distance.
+     *   transitMs = baseTime + (dmxDistance * timePerDmxStep)
+     *   Clamped to [minTransitMs, maxTransitMs=1000].
      */
-    checkDarkSpin(nodeId, currentWheelDmx, minTransitMs, safetyMargin = 1.1) {
+    checkDarkSpin(nodeId, currentWheelDmx, minTransitMs, allowsContinuousSpin = false) {
         let s = this._darkSpinState.get(nodeId);
         if (!s) {
             s = { lastStableWheelDmx: currentWheelDmx, pendingWheelDmx: currentWheelDmx,
@@ -314,9 +342,20 @@ export class AetherSafetyMiddleware {
         }
         // CHECK 2: New color change?
         if (currentWheelDmx !== s.lastStableWheelDmx) {
+            // WAVE 7175: Calculate dynamic transit duration based on DMX distance.
+            const rawDelta = Math.abs(currentWheelDmx - s.lastStableWheelDmx);
+            const dmxDistance = allowsContinuousSpin
+                ? Math.min(rawDelta, 256 - rawDelta)
+                : rawDelta;
+            const TIME_PER_DMX_STEP = 4; // ms per DMX step
+            const SETTLEMENT_MS = 150; // mechanical settling (inertia without RDM)
+            const MAX_TRANSIT_MS = 1000;
+            const dynamicTransitMs = Math.min(MAX_TRANSIT_MS, Math.max(minTransitMs, minTransitMs + dmxDistance * TIME_PER_DMX_STEP + SETTLEMENT_MS));
+            // WAVE 7176: Real transit starts — clear any pending state
+            this._pendingColorChangeNodes.delete(nodeId);
             s.inTransit = true;
             s.transitStartMs = now;
-            s.transitDurationMs = Math.round(minTransitMs * safetyMargin);
+            s.transitDurationMs = dynamicTransitMs;
             s.pendingWheelDmx = currentWheelDmx;
             return true; // Blackout starts now
         }

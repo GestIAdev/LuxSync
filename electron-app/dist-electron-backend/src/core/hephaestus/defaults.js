@@ -5,6 +5,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 export const DEFAULT_COGNITIVE_DNA = Object.freeze({
+    archetype: 'utility',
     genome: { aggression: 0.5, chaos: 0.5, organicity: 0.5 },
     textureAffinity: 'universal',
     compatibleVibes: [],

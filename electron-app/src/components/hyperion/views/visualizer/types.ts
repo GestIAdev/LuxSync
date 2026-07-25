@@ -141,19 +141,6 @@ export interface StageConfig3D {
   floorColor: string
 }
 
-/**
- * Configuración por defecto del escenario.
- * Basada en un escenario de club/venue medio.
- */
-export const DEFAULT_STAGE_CONFIG: StageConfig3D = {
-  width: 12,        // 12m de ancho
-  depth: 8,         // 8m de profundidad
-  trussHeight: 5,   // 5m de altura
-  showFloor: true,
-  showTruss: true,
-  floorColor: '#080810',
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 // VISUALIZER OPTIONS — Render configuration
 // ═══════════════════════════════════════════════════════════════════════════

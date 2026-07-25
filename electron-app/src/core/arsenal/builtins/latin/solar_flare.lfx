@@ -127,15 +127,15 @@
       "bpmRef": 128
     },
     "cognitiveDNA": {
+      "archetype": "heavy",
       "genome": {
-        "aggression": 0.9,
-        "chaos": 0.3,
-        "organicity": 0.1
+        "aggression": 0.842,
+        "chaos": 0.442,
+        "organicity": 0.45
       },
-      "textureAffinity": "universal",
+      "textureAffinity": "clean",
       "compatibleVibes": [
-        "fiesta-latina",
-        "techno-club"
+        "fiesta-latina"
       ],
       "validSections": [
         "drop",
@@ -146,13 +146,13 @@
         "max": "peak"
       },
       "aggressionRange": {
-        "min": 0,
-        "max": 1
+        "min": 0.842,
+        "max": 0.842
       },
       "spatialBehavior": "static",
       "pressureRange": {
-        "min": 0.5,
-        "max": 1
+        "min": 0,
+        "max": 0.61
       }
     },
     "simulationMeta": {
@@ -166,7 +166,7 @@
       "minDurationMs": 1000,
       "cooldownMs": 15000,
       "isStrobe": false,
-      "isDivineCandidate": true,
+      "isDivineCandidate": false,
       "isHeavyCandidate": true,
       "zScoreGuards": {
         "requireRising": false,
@@ -176,5 +176,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "55e3f0c43164097551d85054d6af69c643a20e58efc260c46479d0bd812b370d"
+  "checksum": "68359e6cebd8ea351198f1207f8aa1107c2dc63d61646f2532e23e2bb028fa2a"
 }

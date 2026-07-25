@@ -403,6 +403,7 @@ export class LfxClipInstance {
             : computedPressureRange);
         const spatialBehavior = this.spatialBehavior;
         return Object.freeze({
+            archetype: overrides?.archetype ?? this._userArchetype,
             genome: overrides?.genome ? { ...overrides.genome } : genome,
             textureAffinity: overrides?.textureAffinity ?? textureAffinity,
             compatibleVibes: overrides?.compatibleVibes

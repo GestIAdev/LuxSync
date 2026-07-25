@@ -26,7 +26,6 @@ export {
   // 3D Layout
   ZONE_LAYOUT_3D,
   calculatePosition3D,
-  DEFAULT_STAGE_CONFIG,
   getDefaultPitch,
   
   // Helper functions

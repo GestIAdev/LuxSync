@@ -1293,6 +1293,7 @@ export class NodeExtractionPipeline {
           previewRgb: c.rgb,
         })),
         minTransitionMs: wh.minChangeTimeMs ?? 200,
+        allowsContinuousSpin: wh.allowsContinuousSpin ?? false,
       } satisfies ColorWheelDefinition
     }
 
@@ -1312,6 +1313,7 @@ export class NodeExtractionPipeline {
           previewRgb: c.rgb,
         })),
         minTransitionMs: legacyWheel.minChangeTimeMs ?? 200,
+        allowsContinuousSpin: (legacyWheel as { allowsContinuousSpin?: boolean }).allowsContinuousSpin ?? false,
       } satisfies ColorWheelDefinition
     }
 

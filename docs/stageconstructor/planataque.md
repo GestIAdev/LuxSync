@@ -1,145 +1,68 @@
-Auditoría de Inspección — Fase 1: Select & Move
-1. Sistema de Estado Global (Stores)
-Selección — useSelectionStore
-@/electron-app/src/stores/selectionStore.ts
+HyperionView Architecture Audit — Erebus Engine V3 Compatibility
+1. Sincronización Espacial y Escala (Stage Size)
+✅ What's already V3-compatible
+stageStore at @/stores/stageStore.ts:109 exposes stage: StageDimensions | null and already imports clampToCrystalBox, clampElevation, and snapPosition from ShowFileV2. The store is the single source of truth and is Crystal Box-aware.
+VisualizerCanvas at @/components/hyperion/views/visualizer/VisualizerCanvas.tsx:410-425 consumes selectStageDimensions from stageStore and dynamically computes stageConfig (width, depth, trussHeight, gridSize, cameraDistance) from the store. Camera distance is derived from the diagonal — no hardcoded assumptions.
+ZoneLayoutEngine at @/components/hyperion/shared/ZoneLayoutEngine.ts:160-219 uses relative factors (heightFactor, depthFactor, xRange, fixedX) multiplied by halfWidth/halfDepth at runtime. This is already continuous-coordinate-friendly — zones scale with any stage size.
+useFixture3DData at @/components/hyperion/views/visualizer/useFixture3DData.ts:147-152 reads halfWidth/halfDepth from stageConfig passed as props, not from constants. Placed fixtures use authored position.x/y/z directly (line 188-191).
+⚠️ Legacy code dependent on fixed stage dimensions
+File	Lines	Issue	Severity
+useFixture3DData.ts	31-32	STAGE_HALF_WIDTH = 6 / STAGE_HALF_DEPTH = 4 — hardcoded fallback constants (12m×8m). Used when stageConfig is missing (lines 147-152). In V3 with Crystal Box, there is no "default" stage size.	Medium — fallback only triggers if stageStore has no stage data, but the constants encode a V2 assumption.
+VisualizerCanvas.tsx	47-49	DEFAULT_STAGE_WIDTH = 12, DEFAULT_STAGE_DEPTH = 8, DEFAULT_TRUSS_HEIGHT = 5 — same V2 fallback. Used at lines 412-414 when stageDims is null.	Medium — same issue: fallback encodes fixed dimensions. V3 should either refuse to render without stage data or use a canonical Crystal Box default.
+SpatialTargetPad.tsx	94-99	DEFAULT_STAGE: StageDimensions = { width: 12, depth: 10, height: 6, gridSize: 1 } — hardcoded fallback when stageProp is not provided.	Low — only used if parent doesn't pass stage dimensions. But the default itself is a V2 assumption.
+🔴 Key finding: stage: StageDimensions | null
+The stageStore holds stage: StageDimensions | null (line 109). When null, the entire 3D pipeline falls back to hardcoded V2 dimensions. In V3, the Crystal Box implies a continuous coordinate system — null stage should never occur in a V3 show file. The fallback constants are dead code waiting to cause confusion.
 
-Existe y está completo. El store tiene:
+2. Rendimiento del Pipeline 3D (11Hz vs 44Hz)
+✅ The 3D render loop is NOT bottlenecked by reactive subscriptions
+The architecture is correctly decoupled — this is the WAVE 2236 "DECOUPLING" pattern:
 
-selectedIds: Set<string> — IDs de fixtures seleccionados
-select(id, mode) — modos: replace, add, remove, toggle
-selectMultiple(ids, mode) — para box/lasso
-deselectAll(), deselect(id), toggleSelection(id)
-setHovered(id) — hover tracking
-selectRange(fromId, toId, allIds) — Shift+Click
-Helpers: isSelected(id), hasSelection(), getSelectedArray()
-Veredicto: No hay que crear nada. El store está listo para integrar con SymbolLayer.
+Data flow (44Hz → 3D canvas):
 
-Posición — useStageStore
-@/electron-app/src/stores/stageStore.ts:728-733
+TickEngine at @/core/orchestrator/tick/TickEngine.ts:37 — HOT_FRAME_DIVIDER = 1 (every frame = 44Hz).
+TitanOrchestrator calls onHotFrame callback at 44Hz.
+useSeleneTruth.ts:209-213 — window.lux.onHotFrame listener calls injectHotFrame(hotFrame) → goes straight to transientStore.
+transientStore.ts:151 — injectHotFrame() does an in-place deep merge on mutable refs. No Zustand, no React re-renders. Zero allocations on the hot path (WAVE 5034 pre-allocated _hotFrameExistingById Map).
+HyperionMovingHead3D.tsx:214 and HyperionPar3D.tsx:96 — inside useFrame(), call getTransientFixture(id) which is a pure Map.get() O(1) lookup on the mutable ref. Zero React cost.
+What useFixture3DData does reactively (slow path, correct):
 
-Existe acción limpia:
+@/useFixture3DData.ts:119-121 — subscribes to fixtures, selectedIds, overrides via Zustand. These are structural changes only (fixtures added/removed, selection, manual overrides). The useMemo at line 170 rebuilds Fixture3DData[] only when these change — not at 44Hz.
+Dynamic values (color, intensity, pan, tilt, zoom) are explicitly NOT in the reactive path. They're read as a one-time snapshot at line 226 (getTransientFixture) and then live-updated in useFrame inside each 3D component.
+⚠️ Minor performance observations
+File	Lines	Observation	Severity
+HyperionMovingHead3D.tsx	188-189	useMovementStore and useProgrammerStore selectors are reactive subscriptions outside useFrame. These are fine — they only fire on manual override changes, not per-frame.	None — correct pattern.
+VisualizerCanvas.tsx	125-133	BeatTracker uses useAudioStore(state => state.onBeat) — a reactive subscription inside useFrame's parent. onBeat changes at most once per beat (~2Hz). No issue.	None.
+transientStore.ts	265-280	injectHotFrame writes to useKineticHydrationStore.setState() when activeKineticPattern changes. This is throttled by value-change detection (_lastVmmPattern), so it only fires on pattern changes (~every 8 beats).	None — correctly throttled.
+✅ Verdict: The 3D pipeline correctly consumes 44Hz data directly from transientStore via getTransientFixture() inside useFrame. No slow reactive subscriptions on the hot path.
+3. Limpieza de Interfaz (Breathing Space)
+✅ No redundant positioning controls in the main sidebar
+HyperionView sidebar toggles between two modes:
 
+controls mode → renders StageSidebar → which renders TheProgrammer (Controls tab) or GroupsPanel/SceneBrowser.
+kinetics mode → renders KineticsCathedral.
+TheProgrammer at @/components/hyperion/controls/TheProgrammer.tsx:302-303 delegates all control rendering to CellRouter — a dynamic cell router that renders capability-based cells. It does not directly embed positioning controls.
 
+KineticsCathedral at @/components/hyperion/kinetics/KineticsCathedral.tsx contains pattern controls (speed, amplitude, chaos, view mode) and an "Unlock" button. No redundant positioning or fan mode controls — it operates on kinetic parameters, not spatial positioning.
 
-ts
-updateFixturePosition: (id, position: Position3D) => void
-Internamente aplica clampToCrystalBox(position, stage) (snap + clamp a límites de sala) antes de persistir.
+⚠️ Position controls that exist but are NOT redundant
+Component	Location	Purpose	Redundant with Stage Constructor?
+XYPad	controls/controls/XYPad.tsx	Direct pan/tilt degree control (DMX-level)	No — Stage Constructor positions fixtures in 3D space; XYPad controls DMX pan/tilt angles. Different abstraction layer.
+RadarXY	controls/controls/RadarXY.tsx	Group pan/tilt with ghost points	No — same as XYPad but for group control.
+SpatialTargetPad	controls/controls/SpatialTargetPad.tsx	IK-based target positioning in meters	No — tells fixtures where to look in stage space, not where they are mounted. This is aim control, not placement.
+VSlider	controls/controls/ManualPatternControls.tsx	Speed/Amplitude vertical sliders	No — kinetic pattern parameters.
+✅ Fan mode controls
+SpatialTargetPad (lines 506-554) contains fan mode controls (converge/line/circle + amplitude slider). These are aim fan controls, not positioning fan controls. They control how beams spread toward a target, not how fixtures are physically arranged. Not redundant with Stage Constructor.
 
-También existe placeFixture2D(fixtureId, x, z, orientation, rigId) — pipeline unificado 2D que hereda altura/orientación de rigs.
+movementStore at @/stores/movementStore.ts:170-200 holds spatialFanMode and spatialFanAmplitude — these are kinetic/aim parameters, not stage layout parameters.
 
-Veredicto: updateFixturePosition está listo. Sin embargo, hay un problema crítico de coordenadas: el store espera coordenadas 3D center-origin (0,0 = centro), pero DragDropController2D le pasa coordenadas SVG top-left-origin sin revertir el offset +stageWidth/2 / +stageDepth/2. Esto causará que los fixtures salten al soltarlos.
+✅ Verdict: No redundant positioning or fan mode controls found. The UI cleanly separates fixture placement (Stage Constructor) from fixture aiming (Programmer controls) and kinetic patterns (KineticsCathedral).
+Summary of Refactor Targets
+Priority	File	Issue	Action
+P1	useFixture3DData.ts:31-32	Hardcoded STAGE_HALF_WIDTH=6, STAGE_HALF_DEPTH=4	Replace with V3 Crystal Box canonical default or throw if stage is null.
+P1	VisualizerCanvas.tsx:47-49	Hardcoded DEFAULT_STAGE_WIDTH=12, DEFAULT_STAGE_DEPTH=8, DEFAULT_TRUSS_HEIGHT=5	Same — replace with V3 canonical default or enforce non-null stage.
+P2	SpatialTargetPad.tsx:94-99	Hardcoded DEFAULT_STAGE fallback	Pass stage dimensions from stageStore at all call sites; remove fallback.
+P3	stageStore.ts:109	`stage: StageDimensions	null` — nullable stage enables V2 fallbacks
+No changes needed for:
 
-2. Ciclo de Eventos del Puntero en SVG
-SymbolLayer — Sin eventos de puntero
-@/electron-app/src/components/views/erebus/blueprint2d/layers/SymbolLayer.tsx
-
-Los símbolos (<g>, <circle>, <rect>, <polygon>) no tienen ningún listener (onPointerDown, onPointerUp, onPointerEnter). Son puramente visuales. El FixtureLabel tiene pointerEvents="none" explícito.
-
-DragDropController2D — Captura vía overlays invisibles
-@/electron-app/src/components/views/erebus/blueprint2d/interaction/DragDropController2D.tsx:210-236
-
-Renderiza círculos transparentes (r=0.2, fill="transparent", pointerEvents="all") sobre cada fixture para capturar onPointerDown. Este es el controlador activo de drag en 2D.
-
-Problemas detectados:
-
-Coordenadas sin offset: Los overlays usan cx={f.position.x} y cy={f.position.z} directamente (center-origin), pero el SVG está en top-left-origin. Los círculos interactivos no coinciden con los símbolos visuales de SymbolLayer (que sí tienen el offset aplicado en BlueprintCanvas).
-strokeWidth={0.004} en el ring de selección — sub-pixel con non-scaling-stroke, invisible.
-svgRef local: El controlador crea su propio svgRef (línea 70) en lugar de usar el svgRef del BlueprintCanvas raíz. Esto puede fallar si el SVG no es el elemento directo.
-LassoSelection — Capa de captura de fondo
-@/electron-app/src/components/views/erebus/blueprint2d/interaction/LassoSelection.tsx:145-154
-
-Renderiza un <rect> transparente con pointerEvents="all" que cubre todo el escenario. Este rect podría interceptar clics antes de que lleguen a los círculos de DragDropController2D, dependiendo del z-order.
-
-Veredicto: El sistema de eventos existe pero está desconectado de SymbolLayer y tiene un bug de coordenadas heredado del offset que introdujimos. Hay que:
-
-Conectar onPointerDown/onPointerEnter/onPointerLeave directamente en los <g> de SymbolLayer
-Aplicar el offset inverso al comunicarse con el store
-Revisar el z-order de LassoSelection vs DragDropController2D
-3. Conversión de Coordenadas (Screen → World Space)
-Existe y está implementada en 3 lugares:
-DragDropController2D (líneas 79-89):
-
-
-
-ts
-const screenToSVG = (clientX, clientY) => {
-  const pt = svg.createSVGPoint()
-  pt.x = clientX; pt.y = clientY
-  const ctm = svg.getScreenCTM()
-  const svgPt = pt.matrixTransform(ctm.inverse())
-  return { x: svgPt.x, z: svgPt.y }
-}
-LassoSelection (líneas 50-60): Patrón idéntico.
-
-MeasureLayer2D (líneas 102-114): Patrón idéntico.
-
-Veredicto: La matemática getScreenCTM().inverse() está correcta y probada. Sin embargo:
-
-Está duplicada 3 veces. Debería extraerse a un hook/utilidad compartida.
-El svgRef de DragDropController2D es local y puede no resolver el SVG correcto. Debería recibir el svgRef del BlueprintCanvas como prop (como ya hace LassoSelection).
-El resultado está en coordenadas SVG (top-left), pero el store espera coordenadas 3D (center-origin). Falta restar stageWidth/2 y stageDepth/2 antes de pasar a placeFixture2D / updateFixturePosition.
-4. Subsistema de Snap
-SnapStore — useSnapStore
-@/electron-app/src/stores/snapStore.ts
-
-Completo y global:
-
-snapEnabled: boolean (default: true)
-snapSize: SnapSize — 0.1 | 0.25 | 0.5 | 1.0 (default: 0.25)
-snap(value: number) => number — redondea al múltiplo de snapSize si está activado
-toggleSnap(), setSnapSize(size)
-CommandStrip (HUD)
-@/electron-app/src/components/views/erebus/hud/CommandStrip.tsx:84-126
-
-Botón Snap con popover: toggle on/off + selector de tamaño de grid (0.1m, 0.25m, 0.5m, 1.0m).
-
-Consumidores actuales:
-DragDropController2D — usa snap() en handlePointerDown y handleMove
-DragDropController3D — usa snap() en drag y en handleUp
-RigSystem — usa snap() al colocar rigs
-Veredicto: El snap está listo. Solo hay que asegurar que SymbolLayer (o el nuevo controlador de drag) consuma useSnapStore(s => s.snap) durante el arrastre.
-
-Plan de Ataque
-
-
-PASO 1: Extraer utilidad screenToSVG compartida
-  - Crear hook useScreenToSVG(svgRef) o función pura
-  - Eliminar duplicación en DragDropController2D, LassoSelection, MeasureLayer2D
-  - DragDropController2D debe recibir svgRef de BlueprintCanvas como prop
- 
-PASO 2: Fix de coordenadas en DragDropController2D
-  - Los overlays de captura deben usar x+stageWidth/2, z+stageDepth/2
-    (igual que SymbolLayer)
-  - Al soltar (handleUp), restar stageWidth/2 y stageDepth/2 antes
-    de llamar placeFixture2D / updateFixturePosition
-  - Migrar strokeWidth del ring de selección a 1.5px (non-scaling-stroke)
- 
-PASO 3: Conectar eventos en SymbolLayer
-  - Añadir onPointerDown, onPointerEnter, onPointerLeave en los <g>
-    de cada símbolo
-  - Delegar a callbacks pasadas como props desde BlueprintCanvas
-  - SymbolLayer necesita props: onFixturePointerDown, onFixtureHover, etc.
-  - O alternativamente: mover los overlays invisibles de DragDropController2D
-    a dentro de SymbolLayer (mejor z-order, menos capas)
- 
-PASO 4: Feedback visual de selección en SymbolLayer
-  - Leer useSelectionStore(s => s.selectedIds) en SymbolLayer
-  - Renderizar ring de selección (stroke --obs-accent) en los símbolos
-    seleccionados
-  - Renderizar hover state (stroke tenue) en el fixture hovered
- 
-PASO 5: Revisar z-order de capas de interacción
-  - LassoSelection capture rect debe estar DEBAJO de los símbolos
-  - DragDropController2D overlays deben estar ENCIMA de los símbolos
-    (o integrados en ellos)
-  - BlueprintCanvas onClick (deselectAll) no debe interferir con
-    clics en fixtures (e.target === e.currentTarget check ya existe)
- 
-PASO 6: Probar flujo completo Select + Move
-  - Click en fixture → selecciona
-  - Ctrl+Click → toggle selección
-  - Shift+Click → añadir a selección
-  - Move mode + drag → arrastra con snap
-  - Lasso en espacio vacío → selección rectangular
-  - Click en vacío → deselectAll
-Prioridad: El Paso 2 (fix de coordenadas) es crítico — sin él, cualquier drag mueve los fixtures a posiciones erróneas. Los pasos 3-4 son la integración visual. El paso 1 es refactor de limpieza.
+3D render loop data pipeline (already correctly decoupled at 44Hz via transientStore).
+UI control separation (no redundant positioning/fan controls).

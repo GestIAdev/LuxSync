@@ -115,7 +115,15 @@ export function registerAetherIPCHandlers() {
             }
             for (const nodeId of nodeIds) {
                 if (typeof nodeId === 'string') {
-                    arbiter.clearManualOverride(resolveKineticNodeId(nodeId));
+                    const resolved = resolveKineticNodeId(nodeId);
+                    // MANUAL PATTERN LOCK: skip nodes with active L2 pattern.
+                    // The SURVIVAL layer fires reactive clears after upserts;
+                    // without this guard, the anchor pan_base/tilt_base is wiped.
+                    if (arbiter.hasManualPatternLock(resolved)) {
+                        console.log(`[ZOMBIE-DIAG] clearManualOverrides SKIPPED (pattern-lock): ${resolved}`);
+                        continue;
+                    }
+                    arbiter.clearManualOverride(resolved);
                 }
             }
             return { success: true };
@@ -443,6 +451,10 @@ export function registerAetherIPCHandlers() {
                 const orchestrator = getTitanOrchestrator();
                 const nodeGraph = orchestrator.getAetherNodeGraph();
                 const removeNodeIds = fixtureIds.map(id => resolveKineticNodeId(`${id}:kinetic`));
+                // MANUAL PATTERN LOCK: release the locks so clearManualOverride can proceed normally.
+                for (const nodeId of removeNodeIds) {
+                    arbiter.clearManualPatternLock(nodeId);
+                }
                 // WAVE 6020.5 FIX: Capturar estado IK ANTES de removeNodes.
                 // currentPosition.tilt tiene semántica distinta según la ruta:
                 //   · Ruta IK  (_writeNodeIK): guarda DMX_físico/255 — el IKEngine
@@ -532,9 +544,7 @@ export function registerAetherIPCHandlers() {
                     console.log(`[ZOMBIE-DIAG] Post-RELEASE ${nodeId}: manual=${manual ? 'EXISTS:' + Object.keys(manual).join(',') : 'CLEARED'} motor=${motor ? 'EXISTS:' + Object.keys(motor).join(',') : 'CLEARED'}`);
                 }
                 if (!aetherKineticEngine.isActive()) {
-                    vibeMovementManager.setManualPattern(null);
-                    vibeMovementManager.setManualSpeed(null);
-                    vibeMovementManager.setManualAmplitude(null);
+                    vibeMovementManager.setL2Active(false);
                     vibeMovementManager.setKineticFanOffsets({});
                 }
                 console.log('[ZOMBIE-DIAG] ✅ RELEASE branch complete');
@@ -543,6 +553,10 @@ export function registerAetherIPCHandlers() {
             if (pattern === 'hold' || pattern === 'static') {
                 console.log('[ZOMBIE-DIAG] → Branch HOLD (freeze intentional)');
                 const removeNodeIds = fixtureIds.map(id => resolveKineticNodeId(`${id}:kinetic`));
+                // MANUAL PATTERN LOCK: release the locks for HOLD (motor stops, freeze takes over).
+                for (const nodeId of removeNodeIds) {
+                    arbiter.clearManualPatternLock(nodeId);
+                }
                 // WAVE 6020 FIX: Purge veneno IK de _manualOverrides ANTES del merge aditivo.
                 // Si targetX/Y/Z sobrevivieron de un spatial target previo, el merge
                 // in-place de setManualOverride las preservaría → zombie state permanente.
@@ -581,9 +595,7 @@ export function registerAetherIPCHandlers() {
                     console.log(`[ZOMBIE-DIAG] Post-HOLD ${nodeId}: manual=${manual ? 'EXISTS:' + Object.keys(manual).join(',') : 'CLEARED'} motor=${motor ? 'EXISTS:' + Object.keys(motor).join(',') : 'CLEARED'}`);
                 }
                 if (!aetherKineticEngine.isActive()) {
-                    vibeMovementManager.setManualPattern(null);
-                    vibeMovementManager.setManualSpeed(null);
-                    vibeMovementManager.setManualAmplitude(null);
+                    vibeMovementManager.setL2Active(false);
                     vibeMovementManager.setKineticFanOffsets({});
                 }
                 console.log('[ZOMBIE-DIAG] ✅ HOLD branch complete');
@@ -606,12 +618,13 @@ export function registerAetherIPCHandlers() {
             const nodeIds = fixtureIds.map(id => resolveKineticNodeId(`${id}:kinetic`));
             // Mapear nombre de patrón UI → NativeKineticPattern
             const nativePattern = mapToNativePattern(pattern);
-            // Silenciar VMM — con L2 supremacy el delta L0 ya no llega al resultado
-            // final de pan/tilt, pero silenciar VMM evita el coste de CPU inútil.
-            vibeMovementManager.setManualPattern(null);
-            vibeMovementManager.setManualSpeed(null);
-            vibeMovementManager.setManualAmplitude(null);
-            vibeMovementManager.setKineticFanOffsets({});
+            // Silenciar VMM via L2 flag — NO clearing manual overrides.
+            // Old code called setManualPattern(null)/setManualSpeed(null)/setManualAmplitude(null)
+            // which reset manualPatternOverride to null. The bridge detected this as
+            // "overrides cleared" and reactively fired clearManualOverrides on the arbiter,
+            // wiping the L2 anchor pan_base/tilt_base. setL2Active(true) silences VMM
+            // output without touching override state.
+            vibeMovementManager.setL2Active(true);
             // ⚡ WAVE 4916 — IK ANCHOR PRESERVATION:
             // Antes de aceptar el anchor del payload UI (típicamente 0.5/0.5 = centro
             // muerto), por cada fixture comprobamos si tiene un Spatial Target IK
@@ -716,6 +729,10 @@ export function registerAetherIPCHandlers() {
                 const kn = _graph.getNodeData(nid);
                 return kn?.ikOrientation?.installation ?? 'floor';
             });
+            // MANUAL PATTERN LOCK: registrar los nodeIds ANTES de activar el motor.
+            // Esto blindaje pan_base/tilt_base contra clearManualOverrides reactivo
+            // disparado por la capa SURVIVAL (ProgrammerAetherBridge) tras el upsert.
+            arbiter.setManualPatternLock(nodeIds);
             aetherKineticEngine.setManualKinetics(nodeIds, nativePattern, speedNorm, amplitudeNorm, fanNorm, arbiter, mountOrientations);
             return { success: true, pattern: nativePattern };
         }

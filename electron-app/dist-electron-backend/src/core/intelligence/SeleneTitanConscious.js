@@ -452,6 +452,7 @@ export class SeleneTitanConscious extends EventEmitter {
                         // use 0.50 (sustained energy but low spectral divergence). Others keep 0.60.
                         const sovereignVibeId = titanState.vibeId ?? '';
                         const isTechnoSovereign = sovereignVibeId.includes('techno') || sovereignVibeId.includes('industrial') || sovereignVibeId.includes('hardstyle');
+                        const isLatinSovereign = sovereignVibeId.includes('latina') || sovereignVibeId.includes('latino') || sovereignVibeId.includes('fiesta');
                         const V3_EPSILON_DIVINE = isTechnoSovereign ? 0.50 : 0.60;
                         const v3EpicnessNow = this._lastLiquidVerdict?.epicness ?? 0;
                         let aborted = false;
@@ -489,16 +490,29 @@ export class SeleneTitanConscious extends EventEmitter {
                             }
                         }
                         // ── DIVINE ABORT: Enhanced with ARS zone check ──
+                        // 🩸 WAVE 7171: TWO-PATH DIVINE GATE — A) brutal isolated peak OR
+                        // B) sustained epicness with high acoustic pressure base.
+                        // Permite que latina_meltdown vea la luz en clímax latinos de alta
+                        // energía sin regalar el estatus divino a transientes aislados.
                         if (!aborted && registryEntry?.simMeta.isDivineCandidate) {
                             const energyTooLow = titanState.rawEnergy < 0.50;
                             const divineZoneVeto = ars
                                 ? (ars.zone.label === 'silence' || ars.zone.label === 'valley')
                                     && ars.phase.phase !== 'textural'
                                 : false;
-                            if (v3EpicnessNow <= V3_EPSILON_DIVINE || energyTooLow || divineZoneVeto) {
+                            const sovereignRms10sForDivine = this.energyConsciousness.getRmsAverage10s();
+                            // 🩸 WAVE 7172: Latin vibes use lower RMS10s floor (0.65 vs 0.75)
+                            const SOVEREIGN_DIVINE_RMS_FLOOR = isLatinSovereign ? 0.65 : 0.75;
+                            // 🩸 WAVE 7175: Lower sustained epicness threshold for Latin vibes (0.45 → 0.35)
+                            const SOVEREIGN_DIVINE_EPICNESS = isLatinSovereign ? 0.35 : 0.45;
+                            const divinePeakPassed = v3EpicnessNow > V3_EPSILON_DIVINE;
+                            const divineSustainedPassed = v3EpicnessNow > SOVEREIGN_DIVINE_EPICNESS && sovereignRms10sForDivine > SOVEREIGN_DIVINE_RMS_FLOOR;
+                            const divineEpicnessBlocked = !divinePeakPassed && !divineSustainedPassed;
+                            if (divineEpicnessBlocked || energyTooLow || divineZoneVeto) {
                                 aborted = true;
                                 abortReason =
-                                    `DIVINE ABORT: V3 epicness=${v3EpicnessNow.toFixed(3)} ≤ ε=${V3_EPSILON_DIVINE}` +
+                                    `DIVINE ABORT: V3 epicness=${v3EpicnessNow.toFixed(3)}` +
+                                        ` (peak>${V3_EPSILON_DIVINE}? ${divinePeakPassed}; sustained>${SOVEREIGN_DIVINE_EPICNESS}+rms>${SOVEREIGN_DIVINE_RMS_FLOOR}? ${divineSustainedPassed})` +
                                         `${energyTooLow ? ` OR energy=${titanState.rawEnergy.toFixed(2)} < 0.50` : ''}` +
                                         `${divineZoneVeto ? ` OR ARS zone=${ars.zone.label}` : ''}` +
                                         ` → buffer cleared, divine effect suppressed`;
@@ -972,7 +986,7 @@ export class SeleneTitanConscious extends EventEmitter {
             trebleEnergy: state.high,
             // AGC gain no disponible en TitanState (TODO: agregar en el futuro)
             // spectralFlux no disponible en TitanState (TODO: agregar en el futuro)
-        }, state.sectionEvidence);
+        }, state.sectionEvidence, pattern.vibeId);
         // 🔋 WAVE 934+: Log zone transitions only when persistent (prevent spam)
         // Track frames in current zone
         if (energyContext.zone === this.lastLoggedZone) {
@@ -1234,6 +1248,8 @@ export class SeleneTitanConscious extends EventEmitter {
             v3Epicness: this._lastLiquidVerdict?.epicness ?? 0,
             // V3 TUNE: Contextual phase for DROP gating — only BUILDING can drop
             contextualPhase: this.lastMemoryOutput?.narrative?.narrativePhase ?? 'building',
+            // 🩸 WAVE 7171: RMS 10s for two-path divine gate (sustained epicness check)
+            rmsAverage10s: this.energyConsciousness.getRmsAverage10s(),
         };
         // 🔍 WAVE 976.3: DEBUG - Ver qué recibe DecisionMaker
         // 🔇 WAVE 982.5: Silenciado
@@ -1464,7 +1480,9 @@ export class SeleneTitanConscious extends EventEmitter {
                                         ? { available: false, reason: `Epicness too low for ambient DNA (${v3Epic.toFixed(3)} < 0.10)` }
                                         : isAmbientDNA && isDropImminent
                                             ? { available: false, reason: 'Drop reservation — saving Selene for imminent drop' }
-                                            : hardMinimumCheck;
+                                            : isHardForBypass && v3Epic < v3BypassEpicnessFloor
+                                                ? { available: false, reason: `Epicness floor for hard/strobe effect (${v3Epic.toFixed(3)} < ${v3BypassEpicnessFloor.toFixed(3)})` }
+                                                : hardMinimumCheck;
             if (availability.available && output.effectDecision) {
                 finalEffectDecision = output.effectDecision;
                 // 🛡️ WAVE 4860: Registrar si este efecto es de alta severidad para activar

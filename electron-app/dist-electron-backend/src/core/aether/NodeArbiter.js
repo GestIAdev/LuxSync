@@ -257,6 +257,15 @@ export class NodeArbiter {
         /** WAVE 7172: Nodos con supresión IK espacial para este frame. */
         this._spatialSuppressedNodes = new Set();
         /**
+         * MANUAL PATTERN LOCK — nodos con patrón manual L2 activo.
+         * Cuando un nodeId está aquí, clearManualOverride preserva pan_base/tilt_base
+         * para que el motor L2 no pierda su anchor. La capa SURVIVAL no puede
+         * purgar el anchor mientras el patrón esté activo.
+         * Registrado por AetherIPCHandlers.setManualPattern (activación).
+         * Eliminado por setManualPattern release/hold o clearManualPatternLock.
+         */
+        this._manualPatternLocks = new Set();
+        /**
          * WAVE 4914: Amplitud global del flujo de offset relativo (escala el offset VMM).
          * 1.0 = legacy (preserva el mapeo `(intent.x+1)/2` cuando no hay base IK).
          * <1.0 = órbitas más pequeñas. >1.0 = sobrepasa el envelope (se recorta con clamp01).
@@ -357,6 +366,47 @@ export class NodeArbiter {
             // quiere liberar inmediatamente a L0 sin interpolar contra un patrón
             // automático recién nacido que tira el foco al techo.
             const skipFade = releaseMs === 0;
+            // MANUAL PATTERN LOCK: si el nodo tiene un patrón L2 activo,
+            // preservar pan_base/tilt_base (anchor del motor). Solo limpiar
+            // los demás canales (pan, tilt, dimmer, etc.) y set up fade para esos.
+            const hasPatternLock = this._manualPatternLocks.has(nodeId);
+            const anchorKeys = new Set(['pan_base', 'tilt_base']);
+            if (hasPatternLock) {
+                const nonAnchorKeys = allKeys.filter(k => !anchorKeys.has(k));
+                if (nonAnchorKeys.length > 0) {
+                    console.log(`[ZOMBIE-DIAG] clearManualOverride PATTERN-LOCK ${nodeId}: preserving anchor [pan_base,tilt_base], clearing=[${nonAnchorKeys.join(',')}]`);
+                }
+                if (!skipFade) {
+                    const snapshot = {};
+                    const durationByChannel = {};
+                    for (const key of nonAnchorKeys) {
+                        if (IK_POISON_KEYS.has(key))
+                            continue;
+                        const v = channels[key];
+                        if (typeof v === 'number' && Number.isFinite(v)) {
+                            let snapshotKey = key;
+                            if (key === 'pan_base')
+                                snapshotKey = 'pan';
+                            if (key === 'tilt_base')
+                                snapshotKey = 'tilt';
+                            snapshot[snapshotKey] = v;
+                            durationByChannel[snapshotKey] = SLOW_RELEASE_CHANNELS.has(snapshotKey) ? RELEASE_MS_SLOW : RELEASE_MS_FAST;
+                        }
+                    }
+                    if (Object.keys(snapshot).length > 0) {
+                        this._releaseStates.set(nodeId, {
+                            channels: snapshot,
+                            startedAtMs: performance.now(),
+                            durationByChannel,
+                        });
+                    }
+                }
+                // Remove non-anchor keys in-place, keep pan_base/tilt_base
+                for (const key of nonAnchorKeys) {
+                    delete channels[key];
+                }
+                return;
+            }
             if (!skipFade) {
                 // Capturar snapshot para el fade de retorno
                 const snapshot = {};
@@ -415,6 +465,26 @@ export class NodeArbiter {
     }
     clearMotorKineticOverride(nodeId) {
         this._motorKineticOverrides.delete(nodeId);
+    }
+    /**
+     * MANUAL PATTERN LOCK API.
+     * setManualPattern (IPC) registra los nodeIds antes de activar el motor L2.
+     * clearManualOverride respeta el lock: preserva pan_base/tilt_base.
+     * release/hold branches del IPC handler eliminan el lock.
+     */
+    setManualPatternLock(nodeIds) {
+        for (let i = 0; i < nodeIds.length; i++) {
+            this._manualPatternLocks.add(nodeIds[i]);
+        }
+    }
+    clearManualPatternLock(nodeId) {
+        this._manualPatternLocks.delete(nodeId);
+    }
+    clearAllManualPatternLocks() {
+        this._manualPatternLocks.clear();
+    }
+    hasManualPatternLock(nodeId) {
+        return this._manualPatternLocks.has(nodeId);
     }
     /**
      * WAVE 4916: Lectura del override del motor cinético (IK puro o motor pattern).
@@ -802,15 +872,21 @@ export class NodeArbiter {
             const hasPanOffset = isFiniteChannelValue(panOffset);
             const hasTiltOffset = isFiniteChannelValue(tiltOffset);
             const manual = this._manualOverrides.get(nodeId);
-            // 🏗️ WAVE 7179 (M4): Motor overrides now contain target_x/y/z (spatial coords),
-            // NOT pan_base/tilt_base. The IK solve + VMM fusion happens in NodeResolver.
-            // We only read pan_base/tilt_base from MANUAL overrides (classic radar / HOLD).
+            // Motor override (AetherKineticEngine live output) — pan_base/tilt_base
+            // with the moving pattern. Manual override has the static radar anchor.
+            // Motor takes priority: when the engine is active, the fixture must move
+            // with the motor output, not freeze at the manual anchor.
+            const motor = this._motorKineticOverrides.get(nodeId);
+            const motorPan = motor ? motor['pan_base'] : undefined;
+            const motorTilt = motor ? motor['tilt_base'] : undefined;
+            const hasMotorPan = isFiniteChannelValue(motorPan);
+            const hasMotorTilt = isFiniteChannelValue(motorTilt);
             const manualPan = manual ? manual['pan_base'] : undefined;
             const manualTilt = manual ? manual['tilt_base'] : undefined;
             const hasManualPan = isFiniteChannelValue(manualPan);
             const hasManualTilt = isFiniteChannelValue(manualTilt);
-            const hasBasePan = hasManualPan;
-            const hasBaseTilt = hasManualTilt;
+            const hasBasePan = hasMotorPan || hasManualPan;
+            const hasBaseTilt = hasMotorTilt || hasManualTilt;
             // Skip nodos sin base ni offset — no son cinéticos en este frame.
             if (!hasBasePan && !hasBaseTilt && !hasPanOffset && !hasTiltOffset) {
                 continue;
@@ -842,17 +918,11 @@ export class NodeArbiter {
                 }
             }
             // WAVE 4934 M1: HOLD STATE DETECTION.
-            // _manualOverrides tiene pan_base/tilt_base (anchor del radar escrito por
-            // _flushClassic al activar el patrón) pero _motorKineticOverrides NO tiene
-            // nada (removeNodes() fue llamado por HOLD → engine sacó el nodo).
-            // En este estado el mover debe CONGELARSE exactamente en el anchor del radar.
-            // Sin este check, L0 sumaba su offset al anchor (hasManualPan=true →
-            // basePan=radarAnchor → final=radarAnchor + L0_offset * amp → deriva).
-            // Doctrina: HOLD = posición estática absoluta, L0 completamente silenciado.
-            // WAVE 4935: Sticky Clutch fix. Si hay un payload absoluto fresco ('pan'),
-            // respetar su supremacía, no sobrescribir con el 'pan_base' congelado.
-            // 🏗️ WAVE 7179 (M4): HOLD is now purely manual-based (motor no longer has pan_base/tilt_base).
-            const isHoldState = (hasManualPan || hasManualTilt);
+            // HOLD = motor inactive (no pan_base/tilt_base in _motorKineticOverrides)
+            // but manual has pan_base/tilt_base (radar anchor). The fixture must freeze
+            // at the anchor. When the motor IS active (sweep, circle, etc.), the motor's
+            // pan_base/tilt_base has the live pattern output and isHoldState must be false.
+            const isHoldState = (hasManualPan || hasManualTilt) && !hasMotorPan && !hasMotorTilt;
             if (isHoldState) {
                 if (hasManualPan && !isFiniteChannelValue(manualAbsPan))
                     record['pan'] = manualPan;
@@ -860,10 +930,11 @@ export class NodeArbiter {
                     record['tilt'] = manualTilt;
                 continue;
             }
-            // 🏗️ WAVE 7179 (M4): Base resolver — solo manual (motor ya no tiene pan_base/tilt_base).
-            // El IK solve + VMM fusion ocurre en NodeResolver._writeNodeIK.
-            const basePan = hasManualPan ? manualPan : 0.5;
-            const baseTilt = hasManualTilt ? manualTilt : 0.5;
+            // Base resolver — motor (live pattern) takes priority over manual (static anchor).
+            // When motor is active, basePan/baseTilt = motor output (moving).
+            // When motor is inactive, basePan/baseTilt = manual anchor (for offset fusion).
+            const basePan = hasMotorPan ? motorPan : (hasManualPan ? manualPan : 0.5);
+            const baseTilt = hasMotorTilt ? motorTilt : (hasManualTilt ? manualTilt : 0.5);
             // Escala por distancia (WAVE 4914 §3.2) — default 1.0 si no se configuró.
             const distScale = this._spatialDistanceScales.get(nodeId) ?? 1.0;
             // ── Gimbal Lock fade sobre pan_offset ──────────────────────────
@@ -1199,6 +1270,7 @@ export class NodeArbiter {
         this._manualOverrides.clear();
         this._motorKineticOverrides.clear();
         this._releaseStates.clear();
+        this._manualPatternLocks.clear();
     }
     /**
      * PARCHE 4 — ARMED LOCK: Purga completa de estado obsoleto al cargar un show.
@@ -1217,6 +1289,7 @@ export class NodeArbiter {
         this._manualOverrides.clear();
         this._motorKineticOverrides.clear();
         this._releaseStates.clear();
+        this._manualPatternLocks.clear();
         this._moverShieldNodeIds.clear();
         this._inhibitLimits.clear();
         this._calibrationIntents = [];

@@ -576,14 +576,17 @@ export class EffectDreamSimulator {
     // 🎚️ WAVE 996: THE LADDER OVERRIDES - Rangos ampliados para no competir con ContextualEffectSelector
     // THE LADDER ya hace la clasificación correcta en ContextualEffectSelector.
     // Aquí solo filtramos extremos obvios (no poner strobe pesado en silence).
+    // 🩸 WAVE 7170: DEAD ZONE CLOSURE — Rangos contiguos sin huecos matemáticos.
+    // corazon_latino (A=0.38) caía en el hueco entre silence(0.30) y active(0.40).
+    // Ahora los rangos son contiguos: cada max de zona Z coincide con el min de zona Z+1.
     const aggressionLimits: Record<string, { min: number; max: number }> = {
-      'silence': { min: 0, max: 0.30 },    // Solo efectos muy suaves
-      'valley':  { min: 0, max: 0.50 },    // Suaves + algo de respiración
-      'ambient': { min: 0, max: 0.70 },    // Moderados (ampliar para digital_rain + acid_sweep)
-      'gentle':  { min: 0, max: 0.85 },    // Transición amplia (incluir ambient_strobe, binary_glitch)
-      'active':  { min: 0.40, max: 0.80 }, // 🔬 WAVE 5003: Separar soft de hard
-      'intense': { min: 0.60, max: 1.00 }, // 🔬 WAVE 5003: Solo hard, medios a active
-      'peak':    { min: 0.70, max: 1.00 }, // Solo los más brutales (gatling, core_meltdown, industrial)
+      'silence': { min: 0,    max: 0.35 },    // Solo efectos muy suaves
+      'valley':  { min: 0,    max: 0.50 },    // Suaves + algo de respiración
+      'ambient': { min: 0,    max: 0.70 },    // Moderados (ampliar para digital_rain + acid_sweep)
+      'gentle':  { min: 0,    max: 0.85 },    // Transición amplia (incluir ambient_strobe, binary_glitch)
+      'active':  { min: 0.35, max: 0.80 },    // 🔬 WAVE 5003+7170: min 0.40→0.35 para cerrar el hueco
+      'intense': { min: 0.60, max: 1.00 },    // 🔬 WAVE 5003: Solo hard, medios a active
+      'peak':    { min: 0.70, max: 1.00 },    // Solo los más brutales (gatling, core_meltdown, industrial)
     }
     
     const limits = aggressionLimits[zone] || { min: 0, max: 1 }
@@ -598,16 +601,41 @@ export class EffectDreamSimulator {
       return entry.dna.aggression >= limits.min && entry.dna.aggression <= limits.max
     })
     
-    // Si el filtro es demasiado estricto y no queda nada, relajar
-    if (filtered.length === 0) {
-      console.log(`[DREAM_SIMULATOR] 🧘 Zone ${zone} filter too strict (limits: ${limits.min}-${limits.max}), returning suavest available`)
-      // Devolver los 3 efectos con menor agresión de la lista original
-      return effects
-        .filter(e => registry.getEntry(e))
+    // 🩸 WAVE 7170: ANTI-MONOPOLY FALLBACK — Dispara si el pool es < 4, no solo si es 0.
+    // Evita la competencia binaria constante (2 candidatos) que permite que un solo
+    // efecto domine el ranking ciclo tras ciclo.
+    // 🔒 WAVE 7180: ZONE-ADJACENT EXPANSION — Solo traer efectos de zonas ±1 nivel.
+    // Antes se añadían TODOS los efectos restantes, lo que metía efectos ambientales
+    // (Amazon Mist, Ghost Breath) en pools de alta energía y viceversa.
+    if (filtered.length < 4) {
+      const ZONE_ORDER = ['silence', 'valley', 'ambient', 'gentle', 'active', 'intense', 'peak']
+      const zoneIdx = ZONE_ORDER.indexOf(zone)
+      const adjacentZones = new Set<string>()
+      if (zoneIdx > 0) adjacentZones.add(ZONE_ORDER[zoneIdx - 1])
+      if (zoneIdx < ZONE_ORDER.length - 1) adjacentZones.add(ZONE_ORDER[zoneIdx + 1])
+
+      const existing = new Set(filtered)
+      const extras = effects
+        .filter(e => {
+          if (existing.has(e)) return false
+          const entry = registry.getEntry(e)
+          if (!entry) return false
+          // Solo incluir si la aggression del efecto cae en una zona adyacente
+          const effZone = ZONE_ORDER.find(z => {
+            const l = aggressionLimits[z]
+            return entry.dna.aggression >= l.min && entry.dna.aggression <= l.max
+          })
+          return effZone ? adjacentZones.has(effZone) : false
+        })
         .sort((a, b) => (registry.getEntry(a)?.dna.aggression ?? 0) - (registry.getEntry(b)?.dna.aggression ?? 0))
-        .slice(0, 3)
+      const merged = [...filtered, ...extras]
+      console.log(
+        `[DREAM_SIMULATOR] 🧘 Zone ${zone} pool too small (${filtered.length} < 4), ` +
+        `expanded to ${merged.length} by adding ${extras.length} adjacent-zone effects (adjacent: ${[...adjacentZones].join(', ')})`
+      )
+      return merged
     }
-    
+
     return filtered
   }
 
@@ -751,9 +779,17 @@ export class EffectDreamSimulator {
 
     // Zona proyectada: la que habrá en el momento del evento, no la actual.
     // drop/energy_spike → peak; buildup → intense; cualquier otro → zona actual.
-    const projectedZone = isFutureHeavyEvent ? 'peak'
+    // 🩸 WAVE 7175: CAP for Latin vibes — reggaeton's chronically high energy
+    // makes the predictor see "energy_spike" on every beat. Projecting to 'peak'
+    // bypasses genre-aware remapping and filters out corazon_latino (0.37) and
+    // tidal_wave (0.55) via aggression limits. Cap at 'active' (min 0.35, max 0.80).
+    const isLatinVibe = state.vibe.includes('latina') || state.vibe.includes('latino') || state.vibe.includes('fiesta')
+    const rawProjectedZone = isFutureHeavyEvent ? 'peak'
       : isFutureBuildup ? 'intense'
       : energyZone
+    const projectedZone = isLatinVibe && (rawProjectedZone === 'peak' || rawProjectedZone === 'intense')
+      ? 'active'
+      : rawProjectedZone
 
     // Relajar guards predictivos: si el evento está garantizado, el Z y la energía
     // del frame actual son irrelevantes — subirán cuando el drop rompa.
@@ -841,7 +877,12 @@ export class EffectDreamSimulator {
       if (entry) {
         // BUILDING phase aggression filter: reject high-aggression effects during buildup
         const narrativePhase = (context.narrativePhase ?? '').toLowerCase()
-        if (narrativePhase === 'building' && entry.dna.aggression > 0.4) {
+        // 🩸 WAVE 7170: PARADOX RESOLUTION — Si projectedZone es 'intense' o 'peak',
+        // la proyección energética manda sobre la restricción de fase base.
+        // Sin esto, building + projectedZone='intense' (min aggression 0.60) es una
+        // contradicción lógica: el filtro building rechaza >0.4 pero intense requiere ≥0.60.
+        const isProjectedHighEnergy = projectedZone === 'intense' || projectedZone === 'peak'
+        if (narrativePhase === 'building' && entry.dna.aggression > 0.4 && !isProjectedHighEnergy) {
           continue
         }
         // 🧬 PURGATORY WALL: Only elite organisms fire in the live rig.

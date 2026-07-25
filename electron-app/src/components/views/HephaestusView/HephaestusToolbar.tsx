@@ -119,14 +119,15 @@ export const HephaestusToolbar: React.FC<HephaestusToolbarProps> = ({
       height: '48px',
       flexShrink: 0,
       width: '100%',
+      minWidth: 0,
       padding: '0 20px',
       background: '#141414',
       borderBottom: '1px solid #222222',
       boxSizing: 'border-box',
-      overflowX: 'auto',
+      overflow: 'hidden',
       userSelect: 'none',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '24px', minWidth: 0, flex: '1 1 0', overflow: 'hidden' }}>
 
         {/* GRUPO 1: Micro-Interpolación */}
         <div className="heph-toolbar__group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

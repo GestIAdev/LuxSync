@@ -13,7 +13,6 @@
 
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { NewClipModal } from './NewClipModal'
-import { ZoneSelector } from './ZoneSelector'
 import { SafetyStrip } from './safety/SafetyStrip'
 import { ForgeTab } from './tabs/ForgeTab'
 import { LabTab } from './tabs/LabTab'
@@ -31,7 +30,6 @@ import type {
   HephAutomationClipV3,
   HephAutomationClip,
 } from '../../../core/hephaestus/types'
-import type { EffectZone } from '../../../core/effects/types'
 import { serializeHephClip } from '../../../core/hephaestus/types'
 import { evaluateGates } from './safety/gateEvaluators'
 import './HephaestusView.css'
@@ -54,6 +52,7 @@ const HephaestusView: React.FC = () => {
   const redoStackLen = useHephaestusEditorStore(state => state._redoStack.length)
   const viewport = useHephaestusEditorStore(state => state.viewport)
   const loadClip = useHephaestusEditorStore(state => state.loadClip)
+  const setDuration = useHephaestusEditorStore(state => state.setDuration)
 
   const setClip = useCallback((updater: (prev: HephAutomationClipV3) => HephAutomationClipV3) => {
     const { mutate, clip: currentClip } = useHephaestusEditorStore.getState()
@@ -380,13 +379,6 @@ const HephaestusView: React.FC = () => {
     }
   }, [refreshMetadata])
 
-  // WAVE 7161: Global zone selector is now display-only.
-  // spatialZones is auto-computed as the union of all track zones by the store.
-  // Per-track zone editing is done in ParameterLane via store.setTrackZones().
-  const handleZonesChange = useCallback((_zones: EffectZone[]) => {
-    // No-op: display-only badge. Zone editing is per-track in ForgeTab.
-  }, [])
-
   // ═══════════════════════════════════════════════════════════════════════
   // WAVE 2030.26 — Editable Header (Name & Duration)
   // ═══════════════════════════════════════════════════════════════════════
@@ -417,12 +409,12 @@ const HephaestusView: React.FC = () => {
     if (!isNaN(parsed) && parsed >= 0.1) {
       const newMs = Math.round(parsed * 1000)
       if (newMs !== clip.durationMs) {
-        setClip(prev => ({ ...prev, durationMs: newMs }))
+        setDuration(newMs)
         setIsDirty(true)
       }
     }
     setIsEditingDuration(false)
-  }, [editDurationValue, clip.durationMs])
+  }, [editDurationValue, clip.durationMs, setDuration])
 
   // ═══════════════════════════════════════════════════════════════════════
   // RENDER — 3-Tier DAW Shell
@@ -431,7 +423,7 @@ const HephaestusView: React.FC = () => {
   return (
     <div className="heph-view">
       {/* ══ TIER 1: GLOBAL I/O BAR ══ */}
-      <header className="heph-global-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '40px', padding: '0 16px', background: 'transparent', borderBottom: '1px solid rgba(255, 107, 43, 0.1)', userSelect: 'none', position: 'relative', zIndex: 1000 }}>
+      <header className="heph-global-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '40px', padding: '0 16px', background: 'transparent', borderBottom: '1px solid rgba(255, 107, 43, 0.1)', userSelect: 'none', position: 'relative', zIndex: 1000, overflow: 'hidden', minWidth: 0, flexShrink: 0 }}>
 
         {/* BLOQUE IZQUIERDO: Identity + Clip Name */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
@@ -508,12 +500,6 @@ const HephaestusView: React.FC = () => {
           )}
           <span style={{ color: '#333' }}>│</span>
           <span className="heph-header__param-count">{paramCount} PARAMS</span>
-          <span style={{ color: '#333' }}>│</span>
-          <ZoneSelector
-            selectedZones={clip.spatialZones as unknown as EffectZone[]}
-            onZonesChange={handleZonesChange}
-            disabled={true}
-          />
           <span style={{ color: '#333' }}>│</span>
           <SafetyStrip
             clip={clip}
@@ -621,6 +607,8 @@ const HephaestusView: React.FC = () => {
         background: 'rgba(255, 255, 255, 0.02)',
         borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
         flexShrink: 0,
+        overflow: 'hidden',
+        minWidth: 0,
         userSelect: 'none',
       }}>
         <div style={{ display: 'flex', gap: '2px', background: 'rgba(255, 255, 255, 0.03)', padding: '2px', borderRadius: '4px' }}>
@@ -694,7 +682,7 @@ const HephaestusView: React.FC = () => {
       </nav>
 
       {/* ══ TIER 3: ACTIVE WORKSPACE HOST ══ */}
-      <div className="heph-tier3-host" style={{ display: 'flex', flex: 1, minHeight: 0, width: '100%', overflow: 'hidden' }}>
+      <div className="heph-tier3-host" style={{ minHeight: 0, minWidth: 0, width: '100%', height: '100%', overflow: 'hidden', position: 'relative' }}>
         {activeTab === 'sculpt' && (
           <ForgeTab
             temporalActions={temporalActions}

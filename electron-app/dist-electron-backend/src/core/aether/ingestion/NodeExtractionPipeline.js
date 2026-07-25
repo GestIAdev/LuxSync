@@ -975,6 +975,7 @@ export class NodeExtractionPipeline {
                     previewRgb: c.rgb,
                 })),
                 minTransitionMs: wh.minChangeTimeMs ?? 200,
+                allowsContinuousSpin: wh.allowsContinuousSpin ?? false,
             };
         }
         // Fallback: legacy JSONs store wheel data in capabilities.colorWheel
@@ -989,6 +990,7 @@ export class NodeExtractionPipeline {
                     previewRgb: c.rgb,
                 })),
                 minTransitionMs: legacyWheel.minChangeTimeMs ?? 200,
+                allowsContinuousSpin: legacyWheel.allowsContinuousSpin ?? false,
             };
         }
         return undefined;

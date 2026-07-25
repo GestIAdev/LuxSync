@@ -11,7 +11,10 @@
   display: flex;
   flex-direction: column;
   width: 100vw;
+  max-width: 100vw;
+  min-width: 0;
   height: 100vh;
+  max-height: 100vh;
   overflow: hidden;
   background: var(--bg-primary, #0a0a0f);
 }
@@ -20,6 +23,7 @@
 .main-layout {
   display: flex;
   flex: 1;               /* Ocupar todo el espacio restante tras TitleBar */
+  min-width: 0;          /* Prevent flex children from pushing width beyond container */
   min-height: 0;         /* Crucial para overflow correcto en flex children */
   overflow: hidden;
   background: var(--bg-primary, #0a0a0f);

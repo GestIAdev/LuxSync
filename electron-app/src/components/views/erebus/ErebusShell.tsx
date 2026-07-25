@@ -79,8 +79,12 @@ export const ErebusShell: React.FC = () => {
 
   // Attach native listeners on canvas mount — capture phase to intercept
   // before R3F's canvas can swallow the events.
-  // Only needed for 3D mode (BlueprintCanvas handles its own onDrop in 2D).
+  // ONLY in 3D mode: BlueprintCanvas handles its own onDrop in 2D mode.
+  // Without this guard, both the native listener (capture, parent div) and
+  // BlueprintCanvas's React onDrop fire → double fixture creation.
   useEffect(() => {
+    if (viewMode !== '3d') return
+
     const el = canvasMountRef.current
     if (!el) return
 
@@ -91,6 +95,7 @@ export const ErebusShell: React.FC = () => {
 
     const handleDropNative = (e: DragEvent) => {
       e.preventDefault()
+      e.stopPropagation()
       const libraryId = e.dataTransfer?.getData('application/x-fixture-library-id')
       if (!libraryId) return
 
@@ -131,7 +136,7 @@ export const ErebusShell: React.FC = () => {
       el.removeEventListener('dragover', handleDragOverNative, opts)
       el.removeEventListener('drop', handleDropNative, opts)
     }
-  }, [addFixture])
+  }, [addFixture, viewMode])
 
   // ── Quick-add via double-click on FixtureCard ─────────────────────────────
   useEffect(() => {

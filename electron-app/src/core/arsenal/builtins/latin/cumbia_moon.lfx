@@ -1,5 +1,6 @@
 {
   "$schema": "luxsync.lfx/3.0",
+  "version": "1.0.0",
   "clip": {
     "id": "cumbia_moon",
     "name": "Cumbia Moon",
@@ -30,7 +31,6 @@
         "zones": [
           "all"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "intensity",
           "valueType": "number",
@@ -74,6 +74,16 @@
             }
           ],
           "mode": "absolute"
+        },
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spreadDeg": 121,
+          "symmetry": "linear",
+          "wings": 1,
+          "blocks": 2,
+          "shuffle": 0,
+          "shuffleSeed": 1,
+          "direction": 1
         }
       },
       {
@@ -82,7 +92,6 @@
         "zones": [
           "all"
         ],
-        "blendMode": "replace",
         "curve": {
           "paramId": "color",
           "valueType": "color",
@@ -125,7 +134,8 @@
             }
           ],
           "mode": "absolute"
-        }
+        },
+        "blendMode": "replace"
       }
     ],
     "staticParams": {
@@ -138,15 +148,15 @@
       "beatsPerCycle": 5
     },
     "cognitiveDNA": {
+      "archetype": "utility",
       "genome": {
-        "aggression": 0.65,
+        "aggression": 0.394,
         "chaos": 0.3,
-        "organicity": 0.1
+        "organicity": 0.55
       },
-      "textureAffinity": "universal",
+      "textureAffinity": "clean",
       "compatibleVibes": [
-        "fiesta-latina",
-        "chill-lounge"
+        "fiesta-latina"
       ],
       "validSections": [
         "intro",
@@ -159,14 +169,14 @@
         "max": "active"
       },
       "aggressionRange": {
-        "min": 0,
-        "max": 0.8
+        "min": 0.394,
+        "max": 0.394
       },
-      "spatialBehavior": "static",
       "pressureRange": {
-        "min": 0,
-        "max": 1
-      }
+        "min": 0.09,
+        "max": 0.6
+      },
+      "spatialBehavior": "static"
     },
     "simulationMeta": {
       "beautyWeights": {
@@ -189,5 +199,5 @@
     },
     "schemaVersion": "3.0"
   },
-  "checksum": "057ab8ea737d71789026b8e0ef91348fe7a99e032176f8cb43bc8080e32c4045"
+  "checksum": "sha256:35aedf9de7da9a0e77bddf870971868aed45fb89db210f3dd9f70ff026707217"
 }

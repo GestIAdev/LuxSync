@@ -143,7 +143,7 @@ export class EnergyConsciousnessEngine {
      * @param debugData - (WAVE 978) Datos opcionales para el EnergyLogger
      * @returns EnergyContext con toda la información para decisiones
      */
-    process(rawEnergy, debugData, evidence) {
+    process(rawEnergy, debugData, evidence, vibe) {
         const now = Date.now();
         // ═══════════════════════════════════════════════════════════════════
         // 1. SUAVIZADO ASIMÉTRICO - La magia del "Fake Drop"
@@ -175,7 +175,14 @@ export class EnergyConsciousnessEngine {
         let newZone;
         let multiSpectralZone;
         if (evidence) {
-            multiSpectralZone = this.msLadder.classify(evidence, effectiveEnergy);
+            // 🩸 WAVE 7175: For Latin vibes, use smoothed energy (not effectiveEnergy with peak hold).
+            // Reggaeton/cumbia have transients on every beat — peak hold is chronically active,
+            // inflating effectiveEnergy to 0.90+ and defeating the -0.15 genre offset.
+            // Smoothed energy reflects the true cruising energy of the genre.
+            const zoneEnergy = vibe && (vibe.includes('latina') || vibe.includes('latino') || vibe.includes('fiesta'))
+                ? smoothed
+                : effectiveEnergy;
+            multiSpectralZone = this.msLadder.classify(evidence, zoneEnergy, vibe);
             newZone = multiSpectralZone.label;
             this.lastMultiSpectralZone = multiSpectralZone;
         }
@@ -644,11 +651,21 @@ export class MultiSpectralEnergyLadder {
      * 2. Compute tension elevation from spectral tension index
      * 3. Final zone = baseZone + tensionElevation (clamped to 'peak')
      */
-    classify(evidence, smoothedEnergy) {
-        // 1. Base zone from smoothed total energy (existing thresholds)
-        const baseZone = this.classifyByEnergy(smoothedEnergy);
-        // 2. Tension elevation
-        const tensionElevation = this.computeTensionElevation(evidence);
+    classify(evidence, smoothedEnergy, vibe) {
+        const isLatinVibe = vibe?.includes('latina') || vibe?.includes('latino') || vibe?.includes('fiesta');
+        // 1. Base zone from smoothed total energy
+        // 🩸 WAVE 7174: Genre-aware energy remapping for Latin vibes.
+        // Reggaeton/cumbia sustain E=0.65-0.85 as normal cruising energy.
+        // EDM thresholds classify this as 'intense'/'peak', filtering out
+        // effects like corazon_latino (0.38 aggression) and tidal_wave (0.55).
+        // Offset of -0.15 shifts the ladder so E=0.75→'active' (not 'intense'),
+        // E=0.90→'intense' (not 'peak'). Only genuine peaks >0.95 reach 'peak'.
+        const adjustedEnergy = isLatinVibe ? Math.max(0, smoothedEnergy - 0.15) : smoothedEnergy;
+        const baseZone = this.classifyByEnergy(adjustedEnergy);
+        // 2. Tension elevation — ZERO for Latin vibes.
+        // Reggaeton's spectral tension is a genre characteristic (bass+
+        // percussion+vocals), not a momentary event. Any elevation is artificial.
+        const tensionElevation = isLatinVibe ? 0 : this.computeTensionElevation(evidence);
         // 3. Final zone = base + elevation
         const finalOrdinal = Math.min(baseZone.ordinal + tensionElevation, ENERGY_ZONE_ORDINAL['peak']);
         const finalLabel = ORDINAL_TO_ZONE[finalOrdinal];

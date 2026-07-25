@@ -24,20 +24,13 @@ import type {
   EnergyZoneRange,
   TextureAffinity,
   SpatialBehavior as LfxSpatialBehavior,
+  UserArchetype,
 } from './lfxTypes'
 
 // ─── TIPOS ESTRICTOS (FASE 1) ───────────────────────────────────────────────
 
-/**
- * Etiqueta semántica del usuario. Cerrada deliberadamente — toda extensión
- * obliga a actualizar `ARCHETYPE_BIAS_MAP` y el linter.
- */
-export type UserArchetype =
-  | 'strobe'
-  | 'ambient'
-  | 'heavy'
-  | 'divine'
-  | 'utility'
+// Re-export UserArchetype for backward compatibility (now defined in lfxTypes.ts)
+export type { UserArchetype }
 
 /** Comportamiento espacial frente al motor IK (subset declarado en directiva). */
 export type SpatialBehavior = 'relative_offset' | 'absolute' | 'static'
@@ -586,6 +579,7 @@ export class LfxClipInstance {
     const spatialBehavior: LfxSpatialBehavior = this.spatialBehavior
 
     return Object.freeze({
+      archetype: overrides?.archetype ?? this._userArchetype,
       genome: overrides?.genome ? { ...overrides.genome } : genome,
       textureAffinity: overrides?.textureAffinity ?? textureAffinity,
       compatibleVibes: overrides?.compatibleVibes

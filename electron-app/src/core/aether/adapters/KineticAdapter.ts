@@ -271,8 +271,8 @@ export class KineticAdapter extends BaseSystem<IKineticNodeData> implements IAet
         // pero se emite como OFFSET relativo al centro (∈ [-1,+1]) para que el arbiter lo sume
         // sobre la base IK / radar anchor.
         const tSec = context.nowMs / 1000
-        const total = node.stereoTotal > 0 ? node.stereoTotal : 1
-        const frac = node.stereoIndex / total
+        const total = nodes.count
+        const frac = total > 1 ? _index / total : 0
         const phase = frac * TWO_PI + phaseOffset * 0.25
         const targetPan = BaseSystem.clamp01(0.5 + Math.sin((TWO_PI * tSec) / 180 + phase) * 0.15)
         const targetTilt = BaseSystem.clamp01(0.5 + Math.cos((TWO_PI * tSec) / 240 + phase) * 0.10)
@@ -292,8 +292,8 @@ export class KineticAdapter extends BaseSystem<IKineticNodeData> implements IAet
         const intent = this._vmm.generateIntent(
           vibeId,
           va,
-          node.stereoIndex,
-          node.stereoTotal,
+          _index,
+          nodes.count,
           node.maxPanSpeed,
           phaseOffset,
           mountOrientation,

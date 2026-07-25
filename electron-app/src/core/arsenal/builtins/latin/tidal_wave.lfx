@@ -1,5 +1,6 @@
 {
   "$schema": "luxsync.lfx/3.0",
+  "version": "1.0.0",
   "clip": {
     "id": "tidal_wave",
     "name": "Tidal Wave (Golden Bounce)",
@@ -27,8 +28,303 @@
       "back",
       "movers-right"
     ],
-    "durationMs": 6000,
+    "durationMs": 3000,
     "effectType": "heph_custom",
+    "tracks": [
+      {
+        "id": "wave-gold-master",
+        "paramId": "color",
+        "zones": [
+          "all-pars",
+          "all-movers",
+          "ambient",
+          "air",
+          "flash"
+        ],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
+          "defaultValue": {
+            "h": 42,
+            "s": 100,
+            "l": 50
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 42,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      },
+      {
+        "id": "wave-left",
+        "paramId": "intensity",
+        "zones": [
+          "movers-left"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 1,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 500,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 2500,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 3000,
+              "value": 1,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      },
+      {
+        "id": "wave-front-floor",
+        "paramId": "intensity",
+        "zones": [
+          "front",
+          "floor"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 500,
+              "value": 1,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 1000,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 2000,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 2500,
+              "value": 1,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 3000,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      },
+      {
+        "id": "wave-ambient-air",
+        "paramId": "intensity",
+        "zones": [
+          "ambient",
+          "air"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 500,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 1000,
+              "value": 1,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 1500,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 2000,
+              "value": 1,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 2500,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      },
+      {
+        "id": "wave-back-right",
+        "paramId": "intensity",
+        "zones": [
+          "back",
+          "movers-right"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1000,
+              "value": 0,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 1500,
+              "value": 1,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.5,
+                0,
+                0.5,
+                1
+              ]
+            },
+            {
+              "timeMs": 2000,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      }
+    ],
+    "staticParams": {},
     "cognitiveDNA": {
       "genome": {
         "aggression": 0.55,
@@ -78,296 +374,7 @@
         "minimumEnergy": null
       }
     },
-    "tracks": [
-      {
-        "id": "wave-gold-master",
-        "paramId": "color",
-        "zones": [
-          "all-pars",
-          "all-movers",
-          "ambient",
-          "air",
-          "flash"
-        ],
-        "blendMode": "replace",
-        "curve": {
-          "paramId": "color",
-          "valueType": "color",
-          "defaultValue": {
-            "h": 42,
-            "s": 100,
-            "l": 50
-          },
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": {
-                "h": 42,
-                "s": 100,
-                "l": 50
-              },
-              "interpolation": "hold"
-            }
-          ],
-          "range": [
-            0,
-            360
-          ]
-        }
-      },
-      {
-        "id": "wave-left",
-        "paramId": "intensity",
-        "zones": [
-          "movers-left"
-        ],
-        "blendMode": "replace",
-        "curve": {
-          "paramId": "intensity",
-          "valueType": "number",
-          "defaultValue": 0,
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": 1,
-              "interpolation": "bezier",
-              "bezierHandles": [
-                0.5,
-                0,
-                0.5,
-                1
-              ]
-            },
-            {
-              "timeMs": 1000,
-              "value": 0,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 5000,
-              "value": 0,
-              "interpolation": "bezier",
-              "bezierHandles": [
-                0.5,
-                0,
-                0.5,
-                1
-              ]
-            },
-            {
-              "timeMs": 6000,
-              "value": 1,
-              "interpolation": "hold"
-            }
-          ],
-          "range": [
-            0,
-            1
-          ]
-        }
-      },
-      {
-        "id": "wave-front-floor",
-        "paramId": "intensity",
-        "zones": [
-          "front",
-          "floor"
-        ],
-        "blendMode": "replace",
-        "curve": {
-          "paramId": "intensity",
-          "valueType": "number",
-          "defaultValue": 0,
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": 0,
-              "interpolation": "bezier",
-              "bezierHandles": [
-                0.5,
-                0,
-                0.5,
-                1
-              ]
-            },
-            {
-              "timeMs": 1000,
-              "value": 1,
-              "interpolation": "bezier",
-              "bezierHandles": [
-                0.5,
-                0,
-                0.5,
-                1
-              ]
-            },
-            {
-              "timeMs": 2000,
-              "value": 0,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 4000,
-              "value": 0,
-              "interpolation": "bezier",
-              "bezierHandles": [
-                0.5,
-                0,
-                0.5,
-                1
-              ]
-            },
-            {
-              "timeMs": 5000,
-              "value": 1,
-              "interpolation": "bezier",
-              "bezierHandles": [
-                0.5,
-                0,
-                0.5,
-                1
-              ]
-            },
-            {
-              "timeMs": 6000,
-              "value": 0,
-              "interpolation": "hold"
-            }
-          ],
-          "range": [
-            0,
-            1
-          ]
-        }
-      },
-      {
-        "id": "wave-ambient-air",
-        "paramId": "intensity",
-        "zones": [
-          "ambient",
-          "air"
-        ],
-        "blendMode": "replace",
-        "curve": {
-          "paramId": "intensity",
-          "valueType": "number",
-          "defaultValue": 0,
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": 0,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 1000,
-              "value": 0,
-              "interpolation": "bezier",
-              "bezierHandles": [
-                0.5,
-                0,
-                0.5,
-                1
-              ]
-            },
-            {
-              "timeMs": 2000,
-              "value": 1,
-              "interpolation": "bezier",
-              "bezierHandles": [
-                0.5,
-                0,
-                0.5,
-                1
-              ]
-            },
-            {
-              "timeMs": 3000,
-              "value": 0,
-              "interpolation": "bezier",
-              "bezierHandles": [
-                0.5,
-                0,
-                0.5,
-                1
-              ]
-            },
-            {
-              "timeMs": 4000,
-              "value": 1,
-              "interpolation": "bezier",
-              "bezierHandles": [
-                0.5,
-                0,
-                0.5,
-                1
-              ]
-            },
-            {
-              "timeMs": 5000,
-              "value": 0,
-              "interpolation": "hold"
-            }
-          ],
-          "range": [
-            0,
-            1
-          ]
-        }
-      },
-      {
-        "id": "wave-back-right",
-        "paramId": "intensity",
-        "zones": [
-          "back",
-          "movers-right"
-        ],
-        "blendMode": "replace",
-        "curve": {
-          "paramId": "intensity",
-          "valueType": "number",
-          "defaultValue": 0,
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": 0,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 2000,
-              "value": 0,
-              "interpolation": "bezier",
-              "bezierHandles": [
-                0.5,
-                0,
-                0.5,
-                1
-              ]
-            },
-            {
-              "timeMs": 3000,
-              "value": 1,
-              "interpolation": "bezier",
-              "bezierHandles": [
-                0.5,
-                0,
-                0.5,
-                1
-              ]
-            },
-            {
-              "timeMs": 4000,
-              "value": 0,
-              "interpolation": "hold"
-            }
-          ],
-          "range": [
-            0,
-            1
-          ]
-        }
-      }
-    ],
     "schemaVersion": "3.0"
   },
-  "checksum": "2d94d4d1902a507a0522f993b4feb9e9136de16082bad978ce68ed49554db2a0"
+  "checksum": "sha256:5dd3bb1853524899a2590be8e19360b87d7b74a2de52f9e8d495fe194c01961b"
 }

@@ -898,10 +898,10 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
   // ═══════════════════════════════════════════════════════════════════════
 
   return (
-    <div className="heph-forge-tab" style={{ display: 'flex', flexDirection: 'column', flex: 1, height: '100%', width: '100%', overflow: 'hidden' }}>
+    <div className="heph-forge-tab" style={{ display: 'grid', gridTemplateRows: 'auto 1fr', height: '100%', width: '100%', minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
 
       {/* 1. CORONA HORIZONTAL: Toolbar abarcando el 100% */}
-      <div className="heph-forge-topbar" style={{ flex: '0 0 auto', width: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderBottom: '1px solid rgba(255, 107, 43, 0.1)', background: 'transparent' }}>
+      <div className="heph-forge-topbar" style={{ width: '100%', minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', borderBottom: '1px solid rgba(255, 107, 43, 0.1)', background: 'transparent' }}>
         <HephaestusToolbar
           activeCurve={activeCurve}
           selectedKeyframeIdx={selectedKeyframeIdx}
@@ -914,7 +914,7 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
       </div>
 
       {/* 2. CUERPO DE 3 COLUMNAS EN FILA (row) */}
-      <div className="heph-forge-columns" style={{ display: 'flex', flexDirection: 'row', flex: 1, minHeight: 0, width: '100%', overflow: 'hidden' }}>
+      <div className="heph-forge-columns" style={{ display: 'flex', flexDirection: 'row', minHeight: 0, minWidth: 0, width: '100%', height: '100%', overflow: 'hidden' }}>
 
         {/* ── Library Panel (collapsible) ── */}
         {showAssetBrowser && (
@@ -1154,7 +1154,7 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
         </aside>
 
         {/* ── Curve Editor (main canvas) ── */}
-        <main style={{ display: 'flex', flex: 1, height: '100%', minWidth: 0, position: 'relative' }}>
+        <main style={{ display: 'flex', flex: 1, height: '100%', minWidth: 0, minHeight: 0, position: 'relative', overflow: 'hidden' }}>
           {activeCurve ? (
             <CurveEditor
               curve={activeCurve}

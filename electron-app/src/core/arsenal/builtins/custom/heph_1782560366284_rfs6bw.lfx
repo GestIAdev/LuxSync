@@ -1,0 +1,117 @@
+﻿{
+    "$schema":  "luxsync.lfx/3.0",
+    "clip":  {
+                 "id":  "heph_1782560366284_rfs6bw",
+                 "name":  "movementtest",
+                 "author":  "LuxSync User",
+                 "category":  "movement",
+                 "tags":  [
+
+                          ],
+                 "vibeCompat":  [
+
+                                ],
+                 "spatialZones":  [
+                                      "all-movers"
+                                  ],
+                 "mixBus":  "htp",
+                 "priority":  50,
+                 "durationMs":  8000,
+                 "effectType":  "heph_custom",
+                 "tracks":  [
+                                {
+                                    "id":  "track-pan-heph_1782560366284_rfs6bw",
+                                    "paramId":  "pan",
+                                    "zones":  [
+                                                  "all-movers"
+                                              ],
+                                    "curve":  {
+                                                  "paramId":  "pan",
+                                                  "valueType":  "number",
+                                                  "range":  [
+                                                                0,
+                                                                1
+                                                            ],
+                                                  "defaultValue":  0,
+                                                  "keyframes":  [
+                                                                    {
+                                                                        "timeMs":  0,
+                                                                        "value":  0,
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  8000,
+                                                                        "value":  1,
+                                                                        "interpolation":  "hold"
+                                                                    }
+                                                                ],
+                                                  "mode":  "absolute"
+                                              }
+                                },
+                                {
+                                    "id":  "track-tilt-heph_1782560366284_rfs6bw",
+                                    "paramId":  "tilt",
+                                    "zones":  [
+                                                  "all-movers"
+                                              ],
+                                    "curve":  {
+                                                  "paramId":  "tilt",
+                                                  "valueType":  "number",
+                                                  "range":  [
+                                                                0,
+                                                                1
+                                                            ],
+                                                  "defaultValue":  0,
+                                                  "keyframes":  [
+                                                                    {
+                                                                        "timeMs":  0,
+                                                                        "value":  0,
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  8000,
+                                                                        "value":  1,
+                                                                        "interpolation":  "hold"
+                                                                    }
+                                                                ],
+                                                  "mode":  "absolute"
+                                              }
+                                },
+                                {
+                                    "id":  "a883efa8-29b7-43aa-a6bb-f92c9ecb18e2",
+                                    "paramId":  "intensity",
+                                    "zones":  [
+                                                  "all-movers"
+                                              ],
+                                    "curve":  {
+                                                  "paramId":  "intensity",
+                                                  "valueType":  "number",
+                                                  "range":  [
+                                                                0,
+                                                                1
+                                                            ],
+                                                  "defaultValue":  0,
+                                                  "keyframes":  [
+                                                                    {
+                                                                        "timeMs":  0,
+                                                                        "value":  1,
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  8000,
+                                                                        "value":  1,
+                                                                        "interpolation":  "hold"
+                                                                    }
+                                                                ],
+                                                  "mode":  "absolute"
+                                              },
+                                    "blendMode":  "max"
+                                }
+                            ],
+                 "staticParams":  {
+
+                                  },
+                 "schemaVersion":  "3.0"
+             },
+    "checksum":  ""
+}

@@ -1,206 +1,175 @@
-{
-  "$schema": "luxsync.lfx/3.0",
-  "clip": {
-    "id": "ambient_strobe",
-    "name": "Ambient Strobe — Royal Atomic (15Hz)",
-    "author": "LuxSync Factory / Reforged",
-    "category": "composite",
-    "tags": [
-      "strobe",
-      "ambient",
-      "stadium",
-      "techno",
-      "latin"
-    ],
-    "vibeCompat": [
-      "techno-club",
-      "fiesta-latina"
-    ],
-    "durationMs": 4000,
-    "effectType": "heph_custom",
-    "tracks": [
-      {
-        "id": "atomic-intensity",
-        "paramId": "intensity",
-        "zones": [
-          "all-pars",
-          "ambient",
-          "flash"
-        ],
-        "blendMode": "replace",
-        "curve": {
-          "paramId": "intensity",
-          "valueType": "number",
-          "defaultValue": 1,
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": 1,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 4000,
-              "value": 1,
-              "interpolation": "hold"
-            }
-          ],
-          "range": [
-            0,
-            1
-          ]
-        }
-      },
-      {
-        "id": "atomic-strobe-rate",
-        "paramId": "strobeRate",
-        "zones": [
-          "all-pars",
-          "flash",
-          "ambient"
-        ],
-        "blendMode": "replace",
-        "curve": {
-          "paramId": "strobeRate",
-          "valueType": "number",
-          "defaultValue": 1,
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": 1,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 4000,
-              "value": 0.95,
-              "interpolation": "hold"
-            }
-          ],
-          "range": [
-            0,
-            1
-          ]
-        }
-      },
-      {
-        "id": "atomic-royal-blue",
-        "paramId": "color",
-        "zones": [
-          "all-pars",
-          "ambient"
-        ],
-        "blendMode": "replace",
-        "curve": {
-          "paramId": "color",
-          "valueType": "color",
-          "defaultValue": {
-            "h": 240,
-            "s": 100,
-            "l": 50
-          },
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": {
-                "h": 240,
-                "s": 100,
-                "l": 50
-              },
-              "interpolation": "hold"
-            }
-          ],
-          "range": [
-            0,
-            360
-          ]
-        }
-      },
-      {
-        "id": "tactical-blackout-movers",
-        "paramId": "intensity",
-        "zones": [
-          "all-movers",
-          "air"
-        ],
-        "blendMode": "replace",
-        "curve": {
-          "paramId": "intensity",
-          "valueType": "number",
-          "defaultValue": 0,
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": 0,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 4000,
-              "value": 0,
-              "interpolation": "hold"
-            }
-          ],
-          "range": [
-            0,
-            1
-          ]
-        }
-      }
-    ],
-    "cognitiveDNA": {
-      "genome": {
-        "aggression": 0.95,
-        "chaos": 0.85,
-        "organicity": 0.05
-      },
-      "textureAffinity": "dirty",
-      "compatibleVibes": [
-        "techno-club",
-        "fiesta-latina"
-      ],
-      "validSections": [
-        "drop",
-        "peak"
-      ],
-      "energyZone": {
-        "min": "intense",
-        "max": "peak"
-      },
-      "aggressionRange": {
-        "min": 0.75,
-        "max": 1
-      },
-      "spatialBehavior": "static",
-      "pressureRange": {
-        "min": 0.5,
-        "max": 1
-      }
-    },
-    "simulationMeta": {
-      "beautyWeights": {
-        "base": 0.85,
-        "energyMultiplier": 1.25,
-        "vibeBonus": 0.1
-      },
-      "gpuCost": 0.3,
-      "fatigueImpact": 0.85,
-      "minDurationMs": 1000,
-      "cooldownMs": 16000,
-      "isStrobe": true,
-      "isDivineCandidate": true,
-      "isHeavyCandidate": true,
-      "zScoreGuards": {
-        "requireRising": false,
-        "minimumZ": 2.2,
-        "minimumEnergy": null
-      }
-    },
-    "spatialZones": [
-      "all-pars",
-      "ambient",
-      "flash",
-      "all-movers",
-      "air"
-    ],
-    "schemaVersion": "3.0"
-  },
-  "checksum": "98088730e71d4a314aeaf29567944d218cf90fc85ab25ad36cb2c04cd3ecb738"
+﻿{
+    "$schema":  "luxsync.lfx/3.0",
+    "clip":  {
+                 "id":  "ambient_strobe",
+                 "name":  "Ambient Strobe — Royal Atomic (15Hz)",
+                 "author":  "LuxSync Factory / Reforged",
+                 "category":  "composite",
+                 "tags":  [
+                              "strobe",
+                              "ambient",
+                              "stadium",
+                              "techno",
+                              "latin"
+                          ],
+                 "vibeCompat":  [
+                                    "techno-club",
+                                    "fiesta-latina"
+                                ],
+                 "durationMs":  4000,
+                 "effectType":  "heph_custom",
+                 "tracks":  [
+                                {
+                                    "id":  "atomic-intensity",
+                                    "paramId":  "intensity",
+                                    "zones":  [
+                                                  "all-pars",
+                                                  "ambient",
+                                                  "flash"
+                                              ],
+                                    "blendMode":  "replace",
+                                    "curve":  {
+                                                  "paramId":  "intensity",
+                                                  "valueType":  "number",
+                                                  "defaultValue":  1,
+                                                  "keyframes":  [
+                                                                    {
+                                                                        "timeMs":  0,
+                                                                        "value":  1,
+                                                                        "interpolation":  "hold"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  4000,
+                                                                        "value":  1,
+                                                                        "interpolation":  "hold"
+                                                                    }
+                                                                ],
+                                                  "range":  [
+                                                                0,
+                                                                1
+                                                            ]
+                                              }
+                                },
+                                {
+                                    "id":  "atomic-royal-blue",
+                                    "paramId":  "color",
+                                    "zones":  [
+                                                  "all-pars",
+                                                  "ambient"
+                                              ],
+                                    "blendMode":  "replace",
+                                    "curve":  {
+                                                  "paramId":  "color",
+                                                  "valueType":  "color",
+                                                  "defaultValue":  {
+                                                                       "h":  240,
+                                                                       "s":  100,
+                                                                       "l":  50
+                                                                   },
+                                                  "keyframes":  [
+                                                                    {
+                                                                        "timeMs":  0,
+                                                                        "value":  {
+                                                                                      "h":  240,
+                                                                                      "s":  100,
+                                                                                      "l":  50
+                                                                                  },
+                                                                        "interpolation":  "hold"
+                                                                    }
+                                                                ],
+                                                  "range":  [
+                                                                0,
+                                                                360
+                                                            ]
+                                              }
+                                },
+                                {
+                                    "id":  "tactical-blackout-movers",
+                                    "paramId":  "intensity",
+                                    "zones":  [
+                                                  "all-movers",
+                                                  "air"
+                                              ],
+                                    "blendMode":  "replace",
+                                    "curve":  {
+                                                  "paramId":  "intensity",
+                                                  "valueType":  "number",
+                                                  "defaultValue":  0,
+                                                  "keyframes":  [
+                                                                    {
+                                                                        "timeMs":  0,
+                                                                        "value":  0,
+                                                                        "interpolation":  "hold"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  4000,
+                                                                        "value":  0,
+                                                                        "interpolation":  "hold"
+                                                                    }
+                                                                ],
+                                                  "range":  [
+                                                                0,
+                                                                1
+                                                            ]
+                                              }
+                                }
+                            ],
+                 "cognitiveDNA":  {
+                                      "genome":  {
+                                                     "aggression":  0.95,
+                                                     "chaos":  0.85,
+                                                     "organicity":  0.05
+                                                 },
+                                      "textureAffinity":  "dirty",
+                                      "compatibleVibes":  [
+                                                              "techno-club",
+                                                              "fiesta-latina"
+                                                          ],
+                                      "validSections":  [
+                                                            "drop",
+                                                            "peak"
+                                                        ],
+                                      "energyZone":  {
+                                                         "min":  "intense",
+                                                         "max":  "peak"
+                                                     },
+                                      "aggressionRange":  {
+                                                              "min":  0.75,
+                                                              "max":  1
+                                                          },
+                                      "spatialBehavior":  "static",
+                                      "pressureRange":  {
+                                                            "min":  0.5,
+                                                            "max":  1
+                                                        }
+                                  },
+                 "simulationMeta":  {
+                                        "beautyWeights":  {
+                                                              "base":  0.85,
+                                                              "energyMultiplier":  1.25,
+                                                              "vibeBonus":  0.1
+                                                          },
+                                        "gpuCost":  0.3,
+                                        "fatigueImpact":  0.85,
+                                        "minDurationMs":  1000,
+                                        "cooldownMs":  16000,
+                                        "isStrobe":  true,
+                                        "isDivineCandidate":  true,
+                                        "isHeavyCandidate":  true,
+                                        "zScoreGuards":  {
+                                                             "requireRising":  false,
+                                                             "minimumZ":  2.2,
+                                                             "minimumEnergy":  null
+                                                         }
+                                    },
+                 "spatialZones":  [
+                                      "all-pars",
+                                      "ambient",
+                                      "flash",
+                                      "all-movers",
+                                      "air"
+                                  ],
+                 "schemaVersion":  "3.0"
+             },
+    "checksum":  "98088730e71d4a314aeaf29567944d218cf90fc85ab25ad36cb2c04cd3ecb738"
 }

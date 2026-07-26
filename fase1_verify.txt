@@ -1,0 +1,15 @@
+﻿=== custom/ ===
+  Feral Wave Omega.lfx (4735 B)
+  heph_1782553308617_cgkagj.lfx (1657 B)
+  heph_1782560366284_rfs6bw.lfx (2443 B)
+  heph_1782609140553_bto9fn.lfx (8442 B)
+  heph_1782928865838_apewm8.lfx (4129 B)
+  heph_1782937097650_pjisyy.lfx (6505 B)
+  heph_1784931422617_tpox7b.lfx (9599 B)
+  heph_1784952802805_jigk8a.lfx (7835 B)
+
+Total .lfx in repo: 50
+
+=== .jlfx in repo ===
+  C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\core\arsenal\builtins\techno\strobe_ping_pong.jlfx
+

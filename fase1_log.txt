@@ -1,0 +1,29 @@
+﻿OVERRIDE: amazon_mist -> C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\core\arsenal\builtins\latin\amazon_mist.lfx
+OVERRIDE: binary_glitch -> C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\core\arsenal\builtins\techno\binary_glitch.lfx
+OVERRIDE: corazon_latino -> C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\core\arsenal\builtins\latin\corazon_latino.lfx
+OVERRIDE: core_meltdown -> C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\core\arsenal\builtins\techno\core_meltdown.lfx
+OVERRIDE: cumbia_moon -> C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\core\arsenal\builtins\latin\cumbia_moon.lfx
+OVERRIDE: cyber_dualism -> C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\core\arsenal\builtins\techno\cyber_dualism.lfx
+OVERRIDE: 00000000:8e8ab59a-7d5d-465d-9879-a2e294c3ed9f -> C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\core\arsenal\builtins\custom\Feral Wave Omega.lfx
+OVERRIDE: ghost_breath -> C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\core\arsenal\builtins\latin\ghost_breath.lfx
+OVERRIDE: heph_1782609140553_bto9fn -> C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\core\arsenal\builtins\custom\heph_1782609140553_bto9fn.lfx
+OVERRIDE: heph_1782937097650_pjisyy -> C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\core\arsenal\builtins\custom\heph_1782937097650_pjisyy.lfx
+OVERRIDE: heph_1784931422617_tpox7b -> C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\core\arsenal\builtins\custom\heph_1784931422617_tpox7b.lfx
+OVERRIDE: heph_1784952802805_jigk8a -> C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\core\arsenal\builtins\custom\heph_1784952802805_jigk8a.lfx
+OVERRIDE: kitt_scanner -> C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\core\arsenal\builtins\latin\kitt_scanner.lfx
+OVERRIDE: lateral_frag -> C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\core\arsenal\builtins\techno\lateral_frag.lfx
+OVERRIDE: latina_meltdown -> C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\core\arsenal\builtins\latin\latina_meltdown.lfx
+OVERRIDE: machine_gun -> C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\core\arsenal\builtins\techno\machine_gun.lfx
+OVERRIDE: salsa_fire -> C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\core\arsenal\builtins\latin\salsa_fire.lfx
+OVERRIDE: seismic_snap -> C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\core\arsenal\builtins\techno\seismic_snap.lfx
+OVERRIDE: solar_flare -> C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\core\arsenal\builtins\latin\solar_flare.lfx
+OVERRIDE: strobe_burst -> C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\core\arsenal\builtins\techno\strobe_burst.lfx
+OVERRIDE: heph_1782553308617_cgkagj -> C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\core\arsenal\builtins\custom\heph_1782553308617_cgkagj.lfx
+OVERRIDE: heph_1782560366284_rfs6bw -> C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\core\arsenal\builtins\custom\heph_1782560366284_rfs6bw.lfx
+SKIP (dup): heph_1782609140553_bto9fn from heph_1782609140553_bto9fn.lfx
+OVERRIDE: heph_1782928865838_apewm8 -> C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\core\arsenal\builtins\custom\heph_1782928865838_apewm8.lfx
+SKIP (dup): heph_1782937097650_pjisyy from heph_1782937097650_pjisyy.lfx
+SKIP (dup): kitt_scanner from kitt_scanner.lfx
+SKIP (dup): 00000000:8e8ab59a-7d5d-465d-9879-a2e294c3ed9f from Feral Wave Omega.lfx
+SKIP (dup): heph_1782609140553_bto9fn from heph_1782609140553_bto9fn.lfx
+SKIP (dup): heph_1782937097650_pjisyy from heph_1782937097650_pjisyy.lfx

@@ -1,182 +1,182 @@
-{
-  "$schema": "luxsync.lfx/3.0",
-  "clip": {
-    "id": "void_mist",
-    "name": "Void Mist",
-    "author": "LuxSync-Migrator-v3 / WAVE 4848",
-    "category": "physical",
-    "tags": [
-      "ambient",
-      "void",
-      "deep",
-      "techno"
-    ],
-    "vibeCompat": [
-      "techno-club"
-    ],
-    "spatialZones": [
-      "all"
-    ],
-    "mixBus": "global",
-    "priority": 60,
-    "durationMs": 3000,
-    "effectType": "heph_custom",
-    "tracks": [
-      {
-        "id": "3131527b-803a-469b-9159-9ef8532f299f",
-        "paramId": "intensity",
-        "zones": [
-          "all"
-        ],
-        "blendMode": "replace",
-        "curve": {
-          "paramId": "intensity",
-          "valueType": "number",
-          "range": [
-            0,
-            1
-          ],
-          "defaultValue": 0.1,
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": 0.1,
-              "interpolation": "linear"
-            },
-            {
-              "timeMs": 800,
-              "value": 0.45,
-              "interpolation": "bezier",
-              "bezierHandles": [
-                0.42,
-                0,
-                0.58,
-                1
-              ]
-            },
-            {
-              "timeMs": 2200,
-              "value": 0.45,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 3000,
-              "value": 0.1,
-              "interpolation": "bezier",
-              "bezierHandles": [
-                0.42,
-                0,
-                0.58,
-                1
-              ]
-            }
-          ],
-          "mode": "absolute"
-        }
-      },
-      {
-        "id": "7e7c97e8-4cde-4c43-be0b-89088ffa3d09",
-        "paramId": "color",
-        "zones": [
-          "all"
-        ],
-        "blendMode": "replace",
-        "curve": {
-          "paramId": "color",
-          "valueType": "color",
-          "range": [
-            0,
-            360
-          ],
-          "defaultValue": {
-            "h": 270,
-            "s": 100,
-            "l": 12
-          },
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": {
-                "h": 270,
-                "s": 100,
-                "l": 12
-              },
-              "interpolation": "linear"
-            },
-            {
-              "timeMs": 3000,
-              "value": {
-                "h": 250,
-                "s": 90,
-                "l": 18
-              },
-              "interpolation": "hold"
-            }
-          ],
-          "mode": "absolute"
-        }
-      }
-    ],
-    "staticParams": {
-      "dominantColorH": 270,
-      "dominantColorS": 100,
-      "dominantColorL": 12,
-      "isOneShot": false,
-      "legacyMixBus": "global",
-      "bpmRef": 128,
-      "parBreathHz": 0.25,
-      "moverBreathHz": 0.3,
-      "moverMinDimmer": 0.03
-    },
-    "cognitiveDNA": {
-      "genome": {
-        "aggression": 0.6,
-        "chaos": 0.3,
-        "organicity": 0.1
-      },
-      "textureAffinity": "universal",
-      "compatibleVibes": [
-        "techno-club"
-      ],
-      "validSections": [
-        "build",
-        "active",
-        "breakdown"
-      ],
-      "energyZone": {
-        "min": "gentle",
-        "max": "active"
-      },
-      "aggressionRange": {
-        "min": 0,
-        "max": 0.75
-      },
-      "spatialBehavior": "static",
-      "pressureRange": {
-        "min": 0,
-        "max": 1
-      }
-    },
-    "simulationMeta": {
-      "beautyWeights": {
-        "base": 0.7,
-        "energyMultiplier": 1.05,
-        "vibeBonus": 0.05
-      },
-      "gpuCost": 0.3,
-      "fatigueImpact": 0.06,
-      "minDurationMs": 1000,
-      "cooldownMs": 4500,
-      "isStrobe": false,
-      "isDivineCandidate": false,
-      "isHeavyCandidate": false,
-      "zScoreGuards": {
-        "requireRising": false,
-        "minimumZ": null,
-        "minimumEnergy": null
-      }
-    },
-    "schemaVersion": "3.0"
-  },
-  "checksum": "ed666657e3af3b7dff2a07efcfe281eb333cc27a31d6bacbeff7795217105ba7"
+﻿{
+    "$schema":  "luxsync.lfx/3.0",
+    "clip":  {
+                 "id":  "void_mist",
+                 "name":  "Void Mist",
+                 "author":  "LuxSync-Migrator-v3 / WAVE 4848",
+                 "category":  "physical",
+                 "tags":  [
+                              "ambient",
+                              "void",
+                              "deep",
+                              "techno"
+                          ],
+                 "vibeCompat":  [
+                                    "techno-club"
+                                ],
+                 "spatialZones":  [
+                                      "all"
+                                  ],
+                 "mixBus":  "global",
+                 "priority":  60,
+                 "durationMs":  3000,
+                 "effectType":  "heph_custom",
+                 "tracks":  [
+                                {
+                                    "id":  "3131527b-803a-469b-9159-9ef8532f299f",
+                                    "paramId":  "intensity",
+                                    "zones":  [
+                                                  "all"
+                                              ],
+                                    "blendMode":  "replace",
+                                    "curve":  {
+                                                  "paramId":  "intensity",
+                                                  "valueType":  "number",
+                                                  "range":  [
+                                                                0,
+                                                                1
+                                                            ],
+                                                  "defaultValue":  0.1,
+                                                  "keyframes":  [
+                                                                    {
+                                                                        "timeMs":  0,
+                                                                        "value":  0.1,
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  800,
+                                                                        "value":  0.45,
+                                                                        "interpolation":  "bezier",
+                                                                        "bezierHandles":  [
+                                                                                              0.42,
+                                                                                              0,
+                                                                                              0.58,
+                                                                                              1
+                                                                                          ]
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  2200,
+                                                                        "value":  0.45,
+                                                                        "interpolation":  "hold"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  3000,
+                                                                        "value":  0.1,
+                                                                        "interpolation":  "bezier",
+                                                                        "bezierHandles":  [
+                                                                                              0.42,
+                                                                                              0,
+                                                                                              0.58,
+                                                                                              1
+                                                                                          ]
+                                                                    }
+                                                                ],
+                                                  "mode":  "absolute"
+                                              }
+                                },
+                                {
+                                    "id":  "7e7c97e8-4cde-4c43-be0b-89088ffa3d09",
+                                    "paramId":  "color",
+                                    "zones":  [
+                                                  "all"
+                                              ],
+                                    "blendMode":  "replace",
+                                    "curve":  {
+                                                  "paramId":  "color",
+                                                  "valueType":  "color",
+                                                  "range":  [
+                                                                0,
+                                                                360
+                                                            ],
+                                                  "defaultValue":  {
+                                                                       "h":  270,
+                                                                       "s":  100,
+                                                                       "l":  12
+                                                                   },
+                                                  "keyframes":  [
+                                                                    {
+                                                                        "timeMs":  0,
+                                                                        "value":  {
+                                                                                      "h":  270,
+                                                                                      "s":  100,
+                                                                                      "l":  12
+                                                                                  },
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  3000,
+                                                                        "value":  {
+                                                                                      "h":  250,
+                                                                                      "s":  90,
+                                                                                      "l":  18
+                                                                                  },
+                                                                        "interpolation":  "hold"
+                                                                    }
+                                                                ],
+                                                  "mode":  "absolute"
+                                              }
+                                }
+                            ],
+                 "staticParams":  {
+                                      "dominantColorH":  270,
+                                      "dominantColorS":  100,
+                                      "dominantColorL":  12,
+                                      "isOneShot":  false,
+                                      "legacyMixBus":  "global",
+                                      "bpmRef":  128,
+                                      "parBreathHz":  0.25,
+                                      "moverBreathHz":  0.3,
+                                      "moverMinDimmer":  0.03
+                                  },
+                 "cognitiveDNA":  {
+                                      "genome":  {
+                                                     "aggression":  0.6,
+                                                     "chaos":  0.3,
+                                                     "organicity":  0.1
+                                                 },
+                                      "textureAffinity":  "universal",
+                                      "compatibleVibes":  [
+                                                              "techno-club"
+                                                          ],
+                                      "validSections":  [
+                                                            "build",
+                                                            "active",
+                                                            "breakdown"
+                                                        ],
+                                      "energyZone":  {
+                                                         "min":  "gentle",
+                                                         "max":  "active"
+                                                     },
+                                      "aggressionRange":  {
+                                                              "min":  0,
+                                                              "max":  0.75
+                                                          },
+                                      "spatialBehavior":  "static",
+                                      "pressureRange":  {
+                                                            "min":  0,
+                                                            "max":  1
+                                                        }
+                                  },
+                 "simulationMeta":  {
+                                        "beautyWeights":  {
+                                                              "base":  0.7,
+                                                              "energyMultiplier":  1.05,
+                                                              "vibeBonus":  0.05
+                                                          },
+                                        "gpuCost":  0.3,
+                                        "fatigueImpact":  0.06,
+                                        "minDurationMs":  1000,
+                                        "cooldownMs":  4500,
+                                        "isStrobe":  false,
+                                        "isDivineCandidate":  false,
+                                        "isHeavyCandidate":  false,
+                                        "zScoreGuards":  {
+                                                             "requireRising":  false,
+                                                             "minimumZ":  null,
+                                                             "minimumEnergy":  null
+                                                         }
+                                    },
+                 "schemaVersion":  "3.0"
+             },
+    "checksum":  "ed666657e3af3b7dff2a07efcfe281eb333cc27a31d6bacbeff7795217105ba7"
 }

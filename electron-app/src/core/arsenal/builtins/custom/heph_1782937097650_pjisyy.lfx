@@ -1,0 +1,281 @@
+﻿{
+    "$schema":  "luxsync.lfx/3.0",
+    "clip":  {
+                 "id":  "heph_1782937097650_pjisyy",
+                 "name":  "depo",
+                 "author":  "LuxSync User",
+                 "category":  "color",
+                 "tags":  [
+
+                          ],
+                 "vibeCompat":  [
+
+                                ],
+                 "spatialZones":  [
+                                      "all"
+                                  ],
+                 "mixBus":  "htp",
+                 "priority":  50,
+                 "durationMs":  6000,
+                 "effectType":  "custom",
+                 "tracks":  [
+                                {
+                                    "id":  "track-color-heph_1782937097650_pjisyy",
+                                    "paramId":  "color",
+                                    "zones":  [
+                                                  "all"
+                                              ],
+                                    "curve":  {
+                                                  "paramId":  "color",
+                                                  "valueType":  "color",
+                                                  "range":  [
+                                                                0,
+                                                                360
+                                                            ],
+                                                  "defaultValue":  {
+                                                                       "h":  0,
+                                                                       "s":  100,
+                                                                       "l":  50
+                                                                   },
+                                                  "keyframes":  [
+                                                                    {
+                                                                        "timeMs":  0,
+                                                                        "value":  {
+                                                                                      "h":  0,
+                                                                                      "s":  100,
+                                                                                      "l":  50
+                                                                                  },
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  1000,
+                                                                        "value":  {
+                                                                                      "h":  360,
+                                                                                      "s":  100,
+                                                                                      "l":  50
+                                                                                  },
+                                                                        "interpolation":  "hold"
+                                                                    }
+                                                                ],
+                                                  "mode":  "absolute"
+                                              },
+                                    "dimmerScale":  1,
+                                    "blendMode":  "replace",
+                                    "phaseConfig":  {
+                                                        "spreadDeg":  0,
+                                                        "symmetry":  "linear",
+                                                        "wings":  1,
+                                                        "blocks":  1,
+                                                        "shuffle":  0,
+                                                        "shuffleSeed":  1,
+                                                        "direction":  1
+                                                    }
+                                },
+                                {
+                                    "id":  "afeb3b98-7633-465c-9942-c4d9a6a9665a",
+                                    "paramId":  "intensity",
+                                    "zones":  [
+                                                  "all"
+                                              ],
+                                    "curve":  {
+                                                  "paramId":  "intensity",
+                                                  "valueType":  "number",
+                                                  "range":  [
+                                                                0,
+                                                                1
+                                                            ],
+                                                  "defaultValue":  0,
+                                                  "keyframes":  [
+                                                                    {
+                                                                        "timeMs":  0,
+                                                                        "value":  0,
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  362,
+                                                                        "value":  0.9851,
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  615,
+                                                                        "value":  0,
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  889,
+                                                                        "value":  0.9866,
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  1214,
+                                                                        "value":  0,
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  1231,
+                                                                        "value":  0.0045,
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  1576,
+                                                                        "value":  0.9851,
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  1829,
+                                                                        "value":  0,
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  2103,
+                                                                        "value":  0.9866,
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  2445,
+                                                                        "value":  0.0045,
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  2455,
+                                                                        "value":  0,
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  2817,
+                                                                        "value":  0.9851,
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  3070,
+                                                                        "value":  0,
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  3344,
+                                                                        "value":  0.9866,
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  3686,
+                                                                        "value":  0.0045,
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  3697,
+                                                                        "value":  0,
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  4059,
+                                                                        "value":  0.9851,
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  4312,
+                                                                        "value":  0,
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  4586,
+                                                                        "value":  0.9866,
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  4910,
+                                                                        "value":  0,
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  4928,
+                                                                        "value":  0.0045,
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  5272,
+                                                                        "value":  0.9851,
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  5525,
+                                                                        "value":  0,
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  5799,
+                                                                        "value":  0.9866,
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  6141,
+                                                                        "value":  0.0045,
+                                                                        "interpolation":  "linear"
+                                                                    }
+                                                                ],
+                                                  "mode":  "absolute"
+                                              },
+                                    "blendMode":  "max",
+                                    "phaseConfig":  {
+                                                        "spreadDeg":  90,
+                                                        "symmetry":  "linear",
+                                                        "wings":  1,
+                                                        "blocks":  1,
+                                                        "shuffle":  0,
+                                                        "shuffleSeed":  1,
+                                                        "direction":  1
+                                                    }
+                                }
+                            ],
+                 "staticParams":  {
+
+                                  },
+                 "cognitiveDNA":  {
+                                      "genome":  {
+                                                     "aggression":  0.5,
+                                                     "chaos":  0.5,
+                                                     "organicity":  0.5
+                                                 },
+                                      "textureAffinity":  "universal",
+                                      "compatibleVibes":  [
+                                                              "techno-club"
+                                                          ],
+                                      "validSections":  [
+
+                                                        ],
+                                      "energyZone":  {
+                                                         "min":  "gentle",
+                                                         "max":  "active"
+                                                     },
+                                      "aggressionRange":  {
+                                                              "min":  0.5,
+                                                              "max":  0.5
+                                                          },
+                                      "pressureRange":  {
+                                                            "min":  0,
+                                                            "max":  0
+                                                        },
+                                      "spatialBehavior":  "static"
+                                  },
+                 "simulationMeta":  {
+                                        "beautyWeights":  {
+                                                              "base":  0.5,
+                                                              "energyMultiplier":  1,
+                                                              "vibeBonus":  0
+                                                          },
+                                        "gpuCost":  0.3,
+                                        "fatigueImpact":  0.06,
+                                        "minDurationMs":  1000,
+                                        "cooldownMs":  7000,
+                                        "isStrobe":  false,
+                                        "isDivineCandidate":  false,
+                                        "isHeavyCandidate":  false,
+                                        "zScoreGuards":  {
+                                                             "requireRising":  false,
+                                                             "minimumZ":  null,
+                                                             "minimumEnergy":  null
+                                                         }
+                                    },
+                 "schemaVersion":  "3.0"
+             },
+    "checksum":  "sha256:b29797bf9cf426c1c6a0a5d7ddae4c1e8466d9a4fd75bdf2f07ff97534e6c1dd"
+}

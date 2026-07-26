@@ -1,0 +1,7 @@
+﻿
+=== REMAINING V2.1 REMNANTS ===
+strobeRate tracks: 0
+root version: 0
+strobeRateHz: 0
+missing schemaVersion: 0
+Total files: 51

@@ -1,171 +1,182 @@
-{
-  "$schema": "luxsync.lfx/3.0",
-  "clip": {
-    "id": "latina_meltdown",
-    "name": "Latina Meltdown",
-    "author": "LuxSync-Migrator-v3 / WAVE 4848",
-    "category": "physical",
-    "tags": [
-      "meltdown",
-      "peak",
-      "fiesta-latina"
-    ],
-    "vibeCompat": [
-      "fiesta-latina"
-    ],
-    "spatialZones": [
-      "all"
-    ],
-    "mixBus": "global",
-    "priority": 95,
-    "durationMs": 3000,
-    "effectType": "heph_custom",
-    "tracks": [
-      {
-        "id": "8a2f97e2-a936-4d5c-904a-bc3b9c8517d9",
-        "paramId": "intensity",
-        "zones": [
-          "all"
-        ],
-        "blendMode": "replace",
-        "curve": {
-          "paramId": "intensity",
-          "valueType": "number",
-          "range": [
-            0,
-            1
-          ],
-          "defaultValue": 0,
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": 1,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 3000,
-              "value": 1,
-              "interpolation": "hold"
-            }
-          ],
-          "mode": "absolute"
-        }
-      },
-      {
-        "id": "fdaffbb6-b400-4761-8415-76290ca5c8a6",
-        "paramId": "color",
-        "zones": [
-          "all"
-        ],
-        "blendMode": "replace",
-        "curve": {
-          "paramId": "color",
-          "valueType": "color",
-          "range": [
-            0,
-            360
-          ],
-          "defaultValue": {
-            "h": 42,
-            "s": 100,
-            "l": 50
-          },
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": {
-                "h": 42,
-                "s": 100,
-                "l": 50
-              },
-              "interpolation": "hold"
-            }
-          ],
-          "mode": "absolute"
-        }
-      },
-      {
-        "id": "4f80cac4-dff9-4abd-9b03-416124f01709",
-        "paramId": "strobe",
-        "zones": [
-          "all"
-        ],
-        "blendMode": "replace",
-        "curve": {
-          "paramId": "strobe",
-          "valueType": "number",
-          "range": [
-            0,
-            1
-          ],
-          "defaultValue": 1,
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": 1,
-              "interpolation": "hold"
-            }
-          ],
-          "mode": "absolute"
-        }
-      }
-    ],
-    "staticParams": {
-      "dominantColorH": 0,
-      "dominantColorS": 100,
-      "dominantColorL": 60,
-      "isOneShot": false,
-      "legacyMixBus": "global",
-      "bpmRef": 128
-    },
-    "cognitiveDNA": {
-      "genome": {
-        "aggression": 0.95,
-        "chaos": 0.3,
-        "organicity": 0.1
-      },
-      "textureAffinity": "universal",
-      "compatibleVibes": [
-        "fiesta-latina"
-      ],
-      "validSections": [
-        "drop",
-        "peak"
-      ],
-      "energyZone": {
-        "min": "intense",
-        "max": "peak"
-      },
-      "aggressionRange": {
-        "min": 0,
-        "max": 1
-      },
-      "spatialBehavior": "static",
-      "pressureRange": {
-        "min": 0.5,
-        "max": 1
-      }
-    },
-    "simulationMeta": {
-      "beautyWeights": {
-        "base": 0.875,
-        "energyMultiplier": 1.05,
-        "vibeBonus": 0.05
-      },
-      "gpuCost": 0.3,
-      "fatigueImpact": 0.8,
-      "minDurationMs": 1000,
-      "cooldownMs": 15000,
-      "isStrobe": true,
-      "isDivineCandidate": true,
-      "isHeavyCandidate": false,
-      "zScoreGuards": {
-        "requireRising": false,
-        "minimumZ": 2.2,
-        "minimumEnergy": 0.7
-      }
-    },
-    "schemaVersion": "3.0"
-  },
-  "checksum": "61eae93fd8bb3f2ec75950ebf99b1018c83dc02a88c14795fd57302c07ddc68c"
+﻿{
+    "$schema":  "luxsync.lfx/3.0",
+    "clip":  {
+                 "id":  "latina_meltdown",
+                 "name":  "Latina Meltdown",
+                 "author":  "LuxSync-Migrator-v3 / WAVE 4848",
+                 "category":  "physical",
+                 "tags":  [
+                              "meltdown",
+                              "peak",
+                              "fiesta-latina"
+                          ],
+                 "vibeCompat":  [
+                                    "fiesta-latina"
+                                ],
+                 "spatialZones":  [
+                                      "all"
+                                  ],
+                 "mixBus":  "global",
+                 "priority":  95,
+                 "durationMs":  3000,
+                 "effectType":  "heph_custom",
+                 "tracks":  [
+                                {
+                                    "id":  "8a2f97e2-a936-4d5c-904a-bc3b9c8517d9",
+                                    "paramId":  "intensity",
+                                    "zones":  [
+                                                  "all"
+                                              ],
+                                    "curve":  {
+                                                  "paramId":  "intensity",
+                                                  "valueType":  "number",
+                                                  "range":  [
+                                                                0,
+                                                                1
+                                                            ],
+                                                  "defaultValue":  0,
+                                                  "keyframes":  [
+                                                                    {
+                                                                        "timeMs":  0,
+                                                                        "value":  1,
+                                                                        "interpolation":  "hold"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  3000,
+                                                                        "value":  1,
+                                                                        "interpolation":  "hold"
+                                                                    }
+                                                                ],
+                                                  "mode":  "absolute"
+                                              },
+                                    "blendMode":  "replace"
+                                },
+                                {
+                                    "id":  "fdaffbb6-b400-4761-8415-76290ca5c8a6",
+                                    "paramId":  "color",
+                                    "zones":  [
+                                                  "all"
+                                              ],
+                                    "curve":  {
+                                                  "paramId":  "color",
+                                                  "valueType":  "color",
+                                                  "range":  [
+                                                                0,
+                                                                360
+                                                            ],
+                                                  "defaultValue":  {
+                                                                       "h":  42,
+                                                                       "s":  100,
+                                                                       "l":  50
+                                                                   },
+                                                  "keyframes":  [
+                                                                    {
+                                                                        "timeMs":  0,
+                                                                        "value":  {
+                                                                                      "h":  42,
+                                                                                      "s":  100,
+                                                                                      "l":  50
+                                                                                  },
+                                                                        "interpolation":  "hold"
+                                                                    }
+                                                                ],
+                                                  "mode":  "absolute"
+                                              },
+                                    "blendMode":  "replace"
+                                },
+                                {
+                                    "id":  "4f80cac4-dff9-4abd-9b03-416124f01709",
+                                    "paramId":  "strobe",
+                                    "zones":  [
+                                                  "all"
+                                              ],
+                                    "curve":  {
+                                                  "paramId":  "strobe",
+                                                  "valueType":  "number",
+                                                  "range":  [
+                                                                0,
+                                                                1
+                                                            ],
+                                                  "defaultValue":  1,
+                                                  "keyframes":  [
+                                                                    {
+                                                                        "timeMs":  0,
+                                                                        "value":  0.997,
+                                                                        "interpolation":  "hold"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  3000,
+                                                                        "value":  0.9911,
+                                                                        "interpolation":  "linear"
+                                                                    }
+                                                                ],
+                                                  "mode":  "absolute"
+                                              },
+                                    "blendMode":  "replace"
+                                }
+                            ],
+                 "staticParams":  {
+                                      "dominantColorH":  0,
+                                      "dominantColorS":  100,
+                                      "dominantColorL":  60,
+                                      "isOneShot":  false,
+                                      "legacyMixBus":  "global",
+                                      "bpmRef":  128
+                                  },
+                 "cognitiveDNA":  {
+                                      "archetype":  "divine",
+                                      "genome":  {
+                                                     "aggression":  0.95,
+                                                     "chaos":  0.503,
+                                                     "organicity":  0.1
+                                                 },
+                                      "textureAffinity":  "universal",
+                                      "compatibleVibes":  [
+                                                              "fiesta-latina"
+                                                          ],
+                                      "validSections":  [
+                                                            "drop",
+                                                            "peak"
+                                                        ],
+                                      "energyZone":  {
+                                                         "min":  "intense",
+                                                         "max":  "peak"
+                                                     },
+                                      "aggressionRange":  {
+                                                              "min":  0.95,
+                                                              "max":  0.95
+                                                          },
+                                      "pressureRange":  {
+                                                            "min":  0.75,
+                                                            "max":  1
+                                                        },
+                                      "spatialBehavior":  "static"
+                                  },
+                 "simulationMeta":  {
+                                        "beautyWeights":  {
+                                                              "base":  0.875,
+                                                              "energyMultiplier":  1.05,
+                                                              "vibeBonus":  0.05
+                                                          },
+                                        "gpuCost":  0.3,
+                                        "fatigueImpact":  0.8,
+                                        "minDurationMs":  1000,
+                                        "cooldownMs":  15000,
+                                        "isStrobe":  true,
+                                        "isDivineCandidate":  true,
+                                        "isHeavyCandidate":  false,
+                                        "zScoreGuards":  {
+                                                             "requireRising":  false,
+                                                             "minimumZ":  2.2,
+                                                             "minimumEnergy":  0.7
+                                                         }
+                                    },
+                 "safetyDeclaration":  {
+                                           "maxStrobeFreqHz":  25,
+                                           "containsRapidFlash":  true,
+                                           "communityTrusted":  false
+                                       },
+                 "schemaVersion":  "3.0"
+             },
+    "checksum":  "sha256:805c5d892c6691b5a16101801d780907b9111336ad47dc21f4167cdd984b48c2"
 }

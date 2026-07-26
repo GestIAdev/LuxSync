@@ -1,294 +1,216 @@
-{
-  "$schema": "luxsync.lfx/3.0",
-  "clip": {
-    "id": "cascade_strike",
-    "name": "Cascade Strike",
-    "author": "LuxSync Factory",
-    "category": "physical",
-    "tags": [
-      "strobe",
-      "cascade",
-      "techno",
-      "spatial",
-      "drop",
-      "front-back"
-    ],
-    "vibeCompat": [
-      "techno-club"
-    ],
-    "durationMs": 2000,
-    "effectType": "heph_custom",
-    "cognitiveDNA": {
-      "genome": {
-        "aggression": 0.85,
-        "chaos": 0.7,
-        "organicity": 0.2
-      },
-      "textureAffinity": "dirty",
-      "compatibleVibes": [
-        "techno-club"
-      ],
-      "validSections": [
-        "drop",
-        "peak"
-      ],
-      "energyZone": {
-        "min": "intense",
-        "max": "peak"
-      },
-      "aggressionRange": {
-        "min": 0.6,
-        "max": 1
-      },
-      "spatialBehavior": "dynamic",
-      "pressureRange": {
-        "min": 0.5,
-        "max": 1
-      }
-    },
-    "simulationMeta": {
-      "beautyWeights": {
-        "base": 0.85,
-        "energyMultiplier": 1,
-        "vibeBonus": 0.1
-      },
-      "gpuCost": 0.35,
-      "fatigueImpact": 0.45,
-      "minDurationMs": 2000,
-      "cooldownMs": 3500,
-      "isStrobe": true,
-      "isDivineCandidate": false,
-      "isHeavyCandidate": true,
-      "zScoreGuards": {
-        "requireRising": false,
-        "minimumZ": 1.5,
-        "minimumEnergy": 0.8
-      }
-    },
-    "tracks": [
-      {
-        "id": "strobe-front",
-        "paramId": "strobeRate",
-        "zones": [
-          "front"
-        ],
-        "curve": {
-          "paramId": "strobeRate",
-          "valueType": "number",
-          "defaultValue": 0,
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": 1,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 250,
-              "value": 0,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 1000,
-              "value": 1,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 1250,
-              "value": 0,
-              "interpolation": "hold"
-            }
-          ],
-          "range": [
-            0,
-            1
-          ]
-        },
-        "blendMode": "replace"
-      },
-      {
-        "id": "strobe-back",
-        "paramId": "strobeRate",
-        "zones": [
-          "back"
-        ],
-        "curve": {
-          "paramId": "strobe",
-          "valueType": "number",
-          "defaultValue": 0,
-          "keyframes": [
-            {
-              "timeMs": 250,
-              "value": 1,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 500,
-              "value": 0,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 1250,
-              "value": 1,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 1500,
-              "value": 0,
-              "interpolation": "hold"
-            }
-          ],
-          "range": [
-            0,
-            1
-          ]
-        },
-        "blendMode": "replace"
-      },
-      {
-        "id": "color-front-blue",
-        "paramId": "color",
-        "zones": [
-          "front"
-        ],
-        "curve": {
-          "paramId": "color",
-          "valueType": "color",
-          "defaultValue": {
-            "h": 220,
-            "s": 100,
-            "l": 60
-          },
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": {
-                "h": 220,
-                "s": 100,
-                "l": 60
-              },
-              "interpolation": "hold"
-            }
-          ],
-          "range": [
-            0,
-            360
-          ]
-        },
-        "blendMode": "replace"
-      },
-      {
-        "id": "color-back-cyan",
-        "paramId": "color",
-        "zones": [
-          "back"
-        ],
-        "curve": {
-          "paramId": "color",
-          "valueType": "color",
-          "defaultValue": {
-            "h": 185,
-            "s": 100,
-            "l": 55
-          },
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": {
-                "h": 185,
-                "s": 100,
-                "l": 55
-              },
-              "interpolation": "hold"
-            }
-          ],
-          "range": [
-            0,
-            360
-          ]
-        },
-        "blendMode": "replace"
-      },
-      {
-        "id": "intensity-front",
-        "paramId": "intensity",
-        "zones": [
-          "front"
-        ],
-        "blendMode": "replace",
-        "curve": {
-          "paramId": "intensity",
-          "valueType": "number",
-          "defaultValue": 1,
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": 1,
-              "interpolation": "hold"
-            }
-          ],
-          "range": [
-            0,
-            1
-          ]
-        }
-      },
-      {
-        "id": "intensity-back",
-        "paramId": "intensity",
-        "zones": [
-          "back"
-        ],
-        "blendMode": "replace",
-        "curve": {
-          "paramId": "intensity",
-          "valueType": "number",
-          "defaultValue": 1,
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": 1,
-              "interpolation": "hold"
-            }
-          ],
-          "range": [
-            0,
-            1
-          ]
-        }
-      },
-      {
-        "id": "movers-blackout",
-        "paramId": "intensity",
-        "zones": [
-          "all-movers",
-          "air"
-        ],
-        "blendMode": "replace",
-        "curve": {
-          "paramId": "intensity",
-          "valueType": "number",
-          "defaultValue": 0,
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": 0,
-              "interpolation": "hold"
-            }
-          ],
-          "range": [
-            0,
-            1
-          ]
-        }
-      }
-    ],
-    "spatialZones": [
-      "front",
-      "back",
-      "all-movers",
-      "air"
-    ],
-    "schemaVersion": "3.0"
-  },
-  "checksum": "2e3b471b9f0aaed59a71e500b4bd1e9790c45dce5867d3979019ac9948801bc6"
+﻿{
+    "$schema":  "luxsync.lfx/3.0",
+    "clip":  {
+                 "id":  "cascade_strike",
+                 "name":  "Cascade Strike",
+                 "author":  "LuxSync Factory",
+                 "category":  "physical",
+                 "tags":  [
+                              "strobe",
+                              "cascade",
+                              "techno",
+                              "spatial",
+                              "drop",
+                              "front-back"
+                          ],
+                 "vibeCompat":  [
+                                    "techno-club"
+                                ],
+                 "durationMs":  2000,
+                 "effectType":  "heph_custom",
+                 "cognitiveDNA":  {
+                                      "genome":  {
+                                                     "aggression":  0.85,
+                                                     "chaos":  0.7,
+                                                     "organicity":  0.2
+                                                 },
+                                      "textureAffinity":  "dirty",
+                                      "compatibleVibes":  [
+                                                              "techno-club"
+                                                          ],
+                                      "validSections":  [
+                                                            "drop",
+                                                            "peak"
+                                                        ],
+                                      "energyZone":  {
+                                                         "min":  "intense",
+                                                         "max":  "peak"
+                                                     },
+                                      "aggressionRange":  {
+                                                              "min":  0.6,
+                                                              "max":  1
+                                                          },
+                                      "spatialBehavior":  "dynamic",
+                                      "pressureRange":  {
+                                                            "min":  0.5,
+                                                            "max":  1
+                                                        }
+                                  },
+                 "simulationMeta":  {
+                                        "beautyWeights":  {
+                                                              "base":  0.85,
+                                                              "energyMultiplier":  1,
+                                                              "vibeBonus":  0.1
+                                                          },
+                                        "gpuCost":  0.35,
+                                        "fatigueImpact":  0.45,
+                                        "minDurationMs":  2000,
+                                        "cooldownMs":  3500,
+                                        "isStrobe":  true,
+                                        "isDivineCandidate":  false,
+                                        "isHeavyCandidate":  true,
+                                        "zScoreGuards":  {
+                                                             "requireRising":  false,
+                                                             "minimumZ":  1.5,
+                                                             "minimumEnergy":  0.8
+                                                         }
+                                    },
+                 "tracks":  [
+                                {
+                                    "id":  "color-front-blue",
+                                    "paramId":  "color",
+                                    "zones":  [
+                                                  "front"
+                                              ],
+                                    "curve":  {
+                                                  "paramId":  "color",
+                                                  "valueType":  "color",
+                                                  "defaultValue":  {
+                                                                       "h":  220,
+                                                                       "s":  100,
+                                                                       "l":  60
+                                                                   },
+                                                  "keyframes":  [
+                                                                    {
+                                                                        "timeMs":  0,
+                                                                        "value":  {
+                                                                                      "h":  220,
+                                                                                      "s":  100,
+                                                                                      "l":  60
+                                                                                  },
+                                                                        "interpolation":  "hold"
+                                                                    }
+                                                                ],
+                                                  "range":  [
+                                                                0,
+                                                                360
+                                                            ]
+                                              },
+                                    "blendMode":  "replace"
+                                },
+                                {
+                                    "id":  "color-back-cyan",
+                                    "paramId":  "color",
+                                    "zones":  [
+                                                  "back"
+                                              ],
+                                    "curve":  {
+                                                  "paramId":  "color",
+                                                  "valueType":  "color",
+                                                  "defaultValue":  {
+                                                                       "h":  185,
+                                                                       "s":  100,
+                                                                       "l":  55
+                                                                   },
+                                                  "keyframes":  [
+                                                                    {
+                                                                        "timeMs":  0,
+                                                                        "value":  {
+                                                                                      "h":  185,
+                                                                                      "s":  100,
+                                                                                      "l":  55
+                                                                                  },
+                                                                        "interpolation":  "hold"
+                                                                    }
+                                                                ],
+                                                  "range":  [
+                                                                0,
+                                                                360
+                                                            ]
+                                              },
+                                    "blendMode":  "replace"
+                                },
+                                {
+                                    "id":  "intensity-front",
+                                    "paramId":  "intensity",
+                                    "zones":  [
+                                                  "front"
+                                              ],
+                                    "blendMode":  "replace",
+                                    "curve":  {
+                                                  "paramId":  "intensity",
+                                                  "valueType":  "number",
+                                                  "defaultValue":  1,
+                                                  "keyframes":  [
+                                                                    {
+                                                                        "timeMs":  0,
+                                                                        "value":  1,
+                                                                        "interpolation":  "hold"
+                                                                    }
+                                                                ],
+                                                  "range":  [
+                                                                0,
+                                                                1
+                                                            ]
+                                              }
+                                },
+                                {
+                                    "id":  "intensity-back",
+                                    "paramId":  "intensity",
+                                    "zones":  [
+                                                  "back"
+                                              ],
+                                    "blendMode":  "replace",
+                                    "curve":  {
+                                                  "paramId":  "intensity",
+                                                  "valueType":  "number",
+                                                  "defaultValue":  1,
+                                                  "keyframes":  [
+                                                                    {
+                                                                        "timeMs":  0,
+                                                                        "value":  1,
+                                                                        "interpolation":  "hold"
+                                                                    }
+                                                                ],
+                                                  "range":  [
+                                                                0,
+                                                                1
+                                                            ]
+                                              }
+                                },
+                                {
+                                    "id":  "movers-blackout",
+                                    "paramId":  "intensity",
+                                    "zones":  [
+                                                  "all-movers",
+                                                  "air"
+                                              ],
+                                    "blendMode":  "replace",
+                                    "curve":  {
+                                                  "paramId":  "intensity",
+                                                  "valueType":  "number",
+                                                  "defaultValue":  0,
+                                                  "keyframes":  [
+                                                                    {
+                                                                        "timeMs":  0,
+                                                                        "value":  0,
+                                                                        "interpolation":  "hold"
+                                                                    }
+                                                                ],
+                                                  "range":  [
+                                                                0,
+                                                                1
+                                                            ]
+                                              }
+                                }
+                            ],
+                 "spatialZones":  [
+                                      "front",
+                                      "back",
+                                      "all-movers",
+                                      "air"
+                                  ],
+                 "schemaVersion":  "3.0"
+             },
+    "checksum":  "2e3b471b9f0aaed59a71e500b4bd1e9790c45dce5867d3979019ac9948801bc6"
 }

@@ -1,0 +1,6 @@
+﻿=== FASE 2 STATS ===
+Files processed: 51
+version removed: 0
+strobeRate tracks removed: 0
+strobeRateHz removed: 0
+schema injected: 0

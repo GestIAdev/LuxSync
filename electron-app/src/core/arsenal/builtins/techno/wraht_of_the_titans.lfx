@@ -1,223 +1,192 @@
-{
-  "$schema": "luxsync.lfx/3.0",
-  "clip": {
-    "id": "wrath_of_titans",
-    "name": "Wrath of the Titans",
-    "author": "LuxSync Factory",
-    "category": "composite",
-    "tags": [
-      "divine",
-      "epic-buildup",
-      "strobe",
-      "techno"
-    ],
-    "vibeCompat": [
-      "techno-club"
-    ],
-    "durationMs": 10000,
-    "effectType": "heph_custom",
-    "cognitiveDNA": {
-      "genome": {
-        "aggression": 1,
-        "chaos": 0.8,
-        "organicity": 0.1
-      },
-      "textureAffinity": "dirty",
-      "compatibleVibes": [
-        "techno-club"
-      ],
-      "validSections": [
-        "buildup",
-        "drop"
-      ],
-      "energyZone": {
-        "min": "intense",
-        "max": "peak"
-      },
-      "aggressionRange": {
-        "min": 0.8,
-        "max": 1
-      },
-      "spatialBehavior": "dynamic",
-      "pressureRange": {
-        "min": 0.5,
-        "max": 1
-      }
-    },
-    "simulationMeta": {
-      "beautyWeights": {
-        "base": 0.9,
-        "energyMultiplier": 1.5,
-        "vibeBonus": 0.2
-      },
-      "gpuCost": 0.5,
-      "fatigueImpact": 0.95,
-      "minDurationMs": 10000,
-      "cooldownMs": 20000,
-      "isStrobe": true,
-      "isDivineCandidate": true,
-      "isHeavyCandidate": true,
-      "zScoreGuards": {
-        "requireRising": true,
-        "minimumZ": 4.5,
-        "minimumEnergy": 0.9
-      }
-    },
-    "tracks": [
-      {
-        "id": "titans-mover-color",
-        "paramId": "color",
-        "zones": [
-          "all-movers",
-          "air"
-        ],
-        "blendMode": "replace",
-        "curve": {
-          "paramId": "color",
-          "valueType": "color",
-          "defaultValue": {
-            "h": 240,
-            "s": 100,
-            "l": 10
-          },
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": {
-                "h": 240,
-                "s": 100,
-                "l": 10
-              },
-              "interpolation": "linear"
-            },
-            {
-              "timeMs": 8000,
-              "value": {
-                "h": 0,
-                "s": 100,
-                "l": 50
-              },
-              "interpolation": "linear"
-            }
-          ],
-          "range": [
-            0,
-            360
-          ]
-        }
-      },
-      {
-        "id": "titans-mover-intensity",
-        "paramId": "intensity",
-        "zones": [
-          "all-movers",
-          "air"
-        ],
-        "blendMode": "replace",
-        "curve": {
-          "paramId": "intensity",
-          "valueType": "number",
-          "defaultValue": 0,
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": 0.1,
-              "interpolation": "bezier",
-              "bezierHandles": [
-                0.5,
-                0,
-                1,
-                1
-              ]
-            },
-            {
-              "timeMs": 8000,
-              "value": 1,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 8001,
-              "value": 0,
-              "interpolation": "hold"
-            }
-          ],
-          "range": [
-            0,
-            1
-          ]
-        }
-      },
-      {
-        "id": "titans-pars-strobe",
-        "paramId": "strobeRate",
-        "zones": [
-          "all-pars",
-          "ambient",
-          "flash"
-        ],
-        "blendMode": "replace",
-        "curve": {
-          "paramId": "strobeRate",
-          "valueType": "number",
-          "defaultValue": 0,
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": 0,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 8000,
-              "value": 1,
-              "interpolation": "hold"
-            }
-          ],
-          "range": [
-            0,
-            1
-          ]
-        }
-      },
-      {
-        "id": "titans-pars-intensity",
-        "paramId": "intensity",
-        "zones": [
-          "all-pars",
-          "ambient",
-          "flash"
-        ],
-        "blendMode": "replace",
-        "curve": {
-          "paramId": "intensity",
-          "valueType": "number",
-          "defaultValue": 0,
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": 0,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 8000,
-              "value": 1,
-              "interpolation": "hold"
-            }
-          ],
-          "range": [
-            0,
-            1
-          ]
-        }
-      }
-    ],
-    "spatialZones": [
-      "all-movers",
-      "air",
-      "all-pars",
-      "ambient",
-      "flash"
-    ],
-    "schemaVersion": "3.0"
-  },
-  "checksum": "c75653c102b661e308333c8a431742378cfb26e4b39f68e16de7f7b8564927b2"
+﻿{
+    "$schema":  "luxsync.lfx/3.0",
+    "clip":  {
+                 "id":  "wrath_of_titans",
+                 "name":  "Wrath of the Titans",
+                 "author":  "LuxSync Factory",
+                 "category":  "composite",
+                 "tags":  [
+                              "divine",
+                              "epic-buildup",
+                              "strobe",
+                              "techno"
+                          ],
+                 "vibeCompat":  [
+                                    "techno-club"
+                                ],
+                 "durationMs":  10000,
+                 "effectType":  "heph_custom",
+                 "cognitiveDNA":  {
+                                      "genome":  {
+                                                     "aggression":  1,
+                                                     "chaos":  0.8,
+                                                     "organicity":  0.1
+                                                 },
+                                      "textureAffinity":  "dirty",
+                                      "compatibleVibes":  [
+                                                              "techno-club"
+                                                          ],
+                                      "validSections":  [
+                                                            "buildup",
+                                                            "drop"
+                                                        ],
+                                      "energyZone":  {
+                                                         "min":  "intense",
+                                                         "max":  "peak"
+                                                     },
+                                      "aggressionRange":  {
+                                                              "min":  0.8,
+                                                              "max":  1
+                                                          },
+                                      "spatialBehavior":  "dynamic",
+                                      "pressureRange":  {
+                                                            "min":  0.5,
+                                                            "max":  1
+                                                        }
+                                  },
+                 "simulationMeta":  {
+                                        "beautyWeights":  {
+                                                              "base":  0.9,
+                                                              "energyMultiplier":  1.5,
+                                                              "vibeBonus":  0.2
+                                                          },
+                                        "gpuCost":  0.5,
+                                        "fatigueImpact":  0.95,
+                                        "minDurationMs":  10000,
+                                        "cooldownMs":  20000,
+                                        "isStrobe":  true,
+                                        "isDivineCandidate":  true,
+                                        "isHeavyCandidate":  true,
+                                        "zScoreGuards":  {
+                                                             "requireRising":  true,
+                                                             "minimumZ":  4.5,
+                                                             "minimumEnergy":  0.9
+                                                         }
+                                    },
+                 "tracks":  [
+                                {
+                                    "id":  "titans-mover-color",
+                                    "paramId":  "color",
+                                    "zones":  [
+                                                  "all-movers",
+                                                  "air"
+                                              ],
+                                    "blendMode":  "replace",
+                                    "curve":  {
+                                                  "paramId":  "color",
+                                                  "valueType":  "color",
+                                                  "defaultValue":  {
+                                                                       "h":  240,
+                                                                       "s":  100,
+                                                                       "l":  10
+                                                                   },
+                                                  "keyframes":  [
+                                                                    {
+                                                                        "timeMs":  0,
+                                                                        "value":  {
+                                                                                      "h":  240,
+                                                                                      "s":  100,
+                                                                                      "l":  10
+                                                                                  },
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  8000,
+                                                                        "value":  {
+                                                                                      "h":  0,
+                                                                                      "s":  100,
+                                                                                      "l":  50
+                                                                                  },
+                                                                        "interpolation":  "linear"
+                                                                    }
+                                                                ],
+                                                  "range":  [
+                                                                0,
+                                                                360
+                                                            ]
+                                              }
+                                },
+                                {
+                                    "id":  "titans-mover-intensity",
+                                    "paramId":  "intensity",
+                                    "zones":  [
+                                                  "all-movers",
+                                                  "air"
+                                              ],
+                                    "blendMode":  "replace",
+                                    "curve":  {
+                                                  "paramId":  "intensity",
+                                                  "valueType":  "number",
+                                                  "defaultValue":  0,
+                                                  "keyframes":  [
+                                                                    {
+                                                                        "timeMs":  0,
+                                                                        "value":  0.1,
+                                                                        "interpolation":  "bezier",
+                                                                        "bezierHandles":  [
+                                                                                              0.5,
+                                                                                              0,
+                                                                                              1,
+                                                                                              1
+                                                                                          ]
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  8000,
+                                                                        "value":  1,
+                                                                        "interpolation":  "hold"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  8001,
+                                                                        "value":  0,
+                                                                        "interpolation":  "hold"
+                                                                    }
+                                                                ],
+                                                  "range":  [
+                                                                0,
+                                                                1
+                                                            ]
+                                              }
+                                },
+                                {
+                                    "id":  "titans-pars-intensity",
+                                    "paramId":  "intensity",
+                                    "zones":  [
+                                                  "all-pars",
+                                                  "ambient",
+                                                  "flash"
+                                              ],
+                                    "blendMode":  "replace",
+                                    "curve":  {
+                                                  "paramId":  "intensity",
+                                                  "valueType":  "number",
+                                                  "defaultValue":  0,
+                                                  "keyframes":  [
+                                                                    {
+                                                                        "timeMs":  0,
+                                                                        "value":  0,
+                                                                        "interpolation":  "hold"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  8000,
+                                                                        "value":  1,
+                                                                        "interpolation":  "hold"
+                                                                    }
+                                                                ],
+                                                  "range":  [
+                                                                0,
+                                                                1
+                                                            ]
+                                              }
+                                }
+                            ],
+                 "spatialZones":  [
+                                      "all-movers",
+                                      "air",
+                                      "all-pars",
+                                      "ambient",
+                                      "flash"
+                                  ],
+                 "schemaVersion":  "3.0"
+             },
+    "checksum":  "c75653c102b661e308333c8a431742378cfb26e4b39f68e16de7f7b8564927b2"
 }

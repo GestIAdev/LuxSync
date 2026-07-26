@@ -1,34 +1,34 @@
 ﻿{
     "$schema":  "luxsync.lfx/3.0",
     "clip":  {
-                 "id":  "core_meltdown",
-                 "name":  "Core Meltdown",
+                 "id":  "00000000:8e8ab59a-7d5d-465d-9879-a2e294c3ed9f",
+                 "name":  "Feral Wave Omega",
                  "author":  "LuxSync-Migrator-v3 / WAVE 4848",
                  "category":  "physical",
                  "tags":  [
-                              "strobe",
-                              "nuclear",
+                              "oro",
+                              "trompetazo",
                               "peak",
-                              "techno"
+                              "fiesta-latina"
                           ],
                  "vibeCompat":  [
-                                    "techno-club",
-                                    "pop-rock"
+                                    "latin"
                                 ],
                  "spatialZones":  [
                                       "all"
                                   ],
                  "mixBus":  "global",
-                 "priority":  100,
-                 "durationMs":  4200,
+                 "priority":  98,
+                 "durationMs":  3500,
                  "effectType":  "heph_custom",
                  "tracks":  [
                                 {
-                                    "id":  "d0d8cae2-c5c6-4854-a91a-187faf749bbf",
+                                    "id":  "b30c3e84-41cc-41c3-b4b9-a2411bfd044b",
                                     "paramId":  "intensity",
                                     "zones":  [
                                                   "all"
                                               ],
+                                    "blendMode":  "replace",
                                     "curve":  {
                                                   "paramId":  "intensity",
                                                   "valueType":  "number",
@@ -44,7 +44,23 @@
                                                                         "interpolation":  "linear"
                                                                     },
                                                                     {
-                                                                        "timeMs":  1,
+                                                                        "timeMs":  800,
+                                                                        "value":  0.5,
+                                                                        "interpolation":  "linear",
+                                                                        "bezierHandles":  [
+                                                                                              0,
+                                                                                              0,
+                                                                                              1,
+                                                                                              1
+                                                                                          ]
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  1000,
+                                                                        "value":  1,
+                                                                        "interpolation":  "hold"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  1800,
                                                                         "value":  1,
                                                                         "interpolation":  "linear",
                                                                         "bezierHandles":  [
@@ -55,21 +71,21 @@
                                                                                           ]
                                                                     },
                                                                     {
-                                                                        "timeMs":  4200,
-                                                                        "value":  1,
+                                                                        "timeMs":  3500,
+                                                                        "value":  0,
                                                                         "interpolation":  "hold"
                                                                     }
                                                                 ],
                                                   "mode":  "absolute"
-                                              },
-                                    "blendMode":  "replace"
+                                              }
                                 },
                                 {
-                                    "id":  "87c7c738-5728-422a-acb6-b87c31b67f76",
+                                    "id":  "f525e4f2-6788-4fad-b414-0c9f276791c9",
                                     "paramId":  "color",
                                     "zones":  [
                                                   "all"
                                               ],
+                                    "blendMode":  "replace",
                                     "curve":  {
                                                   "paramId":  "color",
                                                   "valueType":  "color",
@@ -78,53 +94,86 @@
                                                                 360
                                                             ],
                                                   "defaultValue":  {
-                                                                       "h":  300,
+                                                                       "h":  46,
                                                                        "s":  100,
-                                                                       "l":  50
+                                                                       "l":  58
                                                                    },
                                                   "keyframes":  [
                                                                     {
                                                                         "timeMs":  0,
                                                                         "value":  {
-                                                                                      "h":  300,
+                                                                                      "h":  46,
                                                                                       "s":  100,
-                                                                                      "l":  50
+                                                                                      "l":  58
                                                                                   },
-                                                                        "interpolation":  "linear"
-                                                                    },
+                                                                        "interpolation":  "hold"
+                                                                    }
+                                                                ],
+                                                  "mode":  "absolute"
+                                              }
+                                },
+                                {
+                                    "id":  "f525e4f2-6788-4fad-b414-0c9f276791c9_dup_55688",
+                                    "paramId":  "color",
+                                    "zones":  [
+                                                  "all"
+                                              ],
+                                    "blendMode":  "replace",
+                                    "curve":  {
+                                                  "paramId":  "color",
+                                                  "valueType":  "color",
+                                                  "range":  [
+                                                                0,
+                                                                360
+                                                            ],
+                                                  "defaultValue":  {
+                                                                       "h":  46,
+                                                                       "s":  100,
+                                                                       "l":  58
+                                                                   },
+                                                  "keyframes":  [
                                                                     {
-                                                                        "timeMs":  4200,
+                                                                        "timeMs":  0,
                                                                         "value":  {
-                                                                                      "h":  0,
-                                                                                      "s":  0,
-                                                                                      "l":  100
+                                                                                      "h":  46,
+                                                                                      "s":  100,
+                                                                                      "l":  58
                                                                                   },
                                                                         "interpolation":  "hold"
                                                                     }
                                                                 ],
                                                   "mode":  "absolute"
                                               },
-                                    "blendMode":  "replace"
+                                    "phaseConfig":  {
+                                                        "spreadDeg":  0,
+                                                        "symmetry":  "linear",
+                                                        "wings":  2,
+                                                        "blocks":  1,
+                                                        "shuffle":  0,
+                                                        "shuffleSeed":  90135,
+                                                        "direction":  1
+                                                    }
                                 }
                             ],
                  "staticParams":  {
-                                      "dominantColorH":  300,
+                                      "dominantColorH":  46,
                                       "dominantColorS":  100,
-                                      "dominantColorL":  50,
+                                      "dominantColorL":  58,
                                       "isOneShot":  false,
                                       "legacyMixBus":  "global",
-                                      "bpmRef":  128
+                                      "bpmRef":  128,
+                                      "latchMs":  800,
+                                      "decayMs":  1700
                                   },
                  "cognitiveDNA":  {
                                       "genome":  {
-                                                     "aggression":  1,
-                                                     "chaos":  0.75,
-                                                     "organicity":  0.1
+                                                     "aggression":  0.98,
+                                                     "chaos":  0.3,
+                                                     "organicity":  0.3
                                                  },
-                                      "textureAffinity":  "dirty",
+                                      "textureAffinity":  "universal",
                                       "compatibleVibes":  [
-                                                              "techno-club",
-                                                              "pop-rock"
+                                                              "latin"
                                                           ],
                                       "validSections":  [
                                                             "drop",
@@ -138,37 +187,28 @@
                                                               "min":  0,
                                                               "max":  1
                                                           },
-                                      "spatialBehavior":  "static",
-                                      "pressureRange":  {
-                                                            "min":  0.5,
-                                                            "max":  1
-                                                        }
+                                      "spatialBehavior":  "static"
                                   },
                  "simulationMeta":  {
                                         "beautyWeights":  {
-                                                              "base":  0.9,
+                                                              "base":  0.89,
                                                               "energyMultiplier":  1.05,
                                                               "vibeBonus":  0.05
                                                           },
                                         "gpuCost":  0.3,
-                                        "fatigueImpact":  0.8,
-                                        "minDurationMs":  1000,
-                                        "cooldownMs":  15000,
-                                        "isStrobe":  true,
-                                        "isDivineCandidate":  true,
+                                        "fatigueImpact":  0.06,
+                                        "minDurationMs":  3500,
+                                        "cooldownMs":  5000,
+                                        "isStrobe":  false,
+                                        "isDivineCandidate":  false,
                                         "isHeavyCandidate":  true,
                                         "zScoreGuards":  {
-                                                             "requireRising":  true,
-                                                             "minimumZ":  2.2,
+                                                             "requireRising":  false,
+                                                             "minimumZ":  null,
                                                              "minimumEnergy":  0.7
                                                          }
                                     },
-                 "safetyDeclaration":  {
-                                           "maxStrobeFreqHz":  25,
-                                           "containsRapidFlash":  true,
-                                           "communityTrusted":  false
-                                       },
                  "schemaVersion":  "3.0"
              },
-    "checksum":  "sha256:b5412ae56b03e2f94d350a0f159d82c1172e8b936b92248084304e8edeb2957e"
+    "checksum":  "sha256:79c5dc573eebdee3bf6684d8da7af9035caab598aa2ff30a4c9fd26aa939fb47"
 }

@@ -1,0 +1,186 @@
+﻿{
+    "$schema":  "luxsync.lfx/3.0",
+    "clip":  {
+                 "id":  "heph_1782928865838_apewm8",
+                 "name":  "TESTEANDOPHASE",
+                 "author":  "LuxSync User",
+                 "category":  "color",
+                 "tags":  [
+
+                          ],
+                 "vibeCompat":  [
+
+                                ],
+                 "spatialZones":  [
+                                      "all-pars"
+                                  ],
+                 "mixBus":  "htp",
+                 "priority":  50,
+                 "durationMs":  2000,
+                 "effectType":  "custom",
+                 "tracks":  [
+                                {
+                                    "id":  "track-color-heph_1782928865838_apewm8",
+                                    "paramId":  "color",
+                                    "zones":  [
+                                                  "all-pars"
+                                              ],
+                                    "curve":  {
+                                                  "paramId":  "color",
+                                                  "valueType":  "color",
+                                                  "range":  [
+                                                                0,
+                                                                360
+                                                            ],
+                                                  "defaultValue":  {
+                                                                       "h":  0,
+                                                                       "s":  100,
+                                                                       "l":  50
+                                                                   },
+                                                  "keyframes":  [
+                                                                    {
+                                                                        "timeMs":  20,
+                                                                        "value":  {
+                                                                                      "h":  91.65599999999999,
+                                                                                      "s":  100,
+                                                                                      "l":  50
+                                                                                  },
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  400,
+                                                                        "value":  {
+                                                                                      "h":  175,
+                                                                                      "s":  100,
+                                                                                      "l":  50
+                                                                                  },
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  2000,
+                                                                        "value":  {
+                                                                                      "h":  289,
+                                                                                      "s":  100,
+                                                                                      "l":  50
+                                                                                  },
+                                                                        "interpolation":  "hold"
+                                                                    }
+                                                                ],
+                                                  "mode":  "absolute"
+                                              },
+                                    "dimmerScale":  1,
+                                    "blendMode":  "replace",
+                                    "phaseConfig":  {
+                                                        "spreadDeg":  0,
+                                                        "symmetry":  "linear",
+                                                        "wings":  1,
+                                                        "blocks":  1,
+                                                        "shuffle":  0,
+                                                        "shuffleSeed":  1,
+                                                        "direction":  1
+                                                    },
+                                    "phaseOverrides":  {
+                                                           "fixture-1781916691347":  {
+                                                                                         "mode":  "absolute",
+                                                                                         "offsetMs":  592.8262256389157
+                                                                                     },
+                                                           "fixture-1781917329509":  {
+                                                                                         "mode":  "absolute",
+                                                                                         "offsetMs":  14.331619239165827
+                                                                                     }
+                                                       }
+                                },
+                                {
+                                    "id":  "94bf93ad-4948-4cdf-8740-98c19aa73173",
+                                    "paramId":  "intensity",
+                                    "zones":  [
+                                                  "all-pars"
+                                              ],
+                                    "curve":  {
+                                                  "paramId":  "intensity",
+                                                  "valueType":  "number",
+                                                  "range":  [
+                                                                0,
+                                                                1
+                                                            ],
+                                                  "defaultValue":  0,
+                                                  "keyframes":  [
+                                                                    {
+                                                                        "timeMs":  0,
+                                                                        "value":  0,
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  48,
+                                                                        "value":  0.5436,
+                                                                        "interpolation":  "hold"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  50,
+                                                                        "value":  0,
+                                                                        "interpolation":  "linear"
+                                                                    }
+                                                                ],
+                                                  "mode":  "absolute"
+                                              },
+                                    "blendMode":  "max",
+                                    "phaseConfig":  {
+                                                        "spreadDeg":  84,
+                                                        "symmetry":  "linear",
+                                                        "wings":  1,
+                                                        "blocks":  1,
+                                                        "shuffle":  0,
+                                                        "shuffleSeed":  1,
+                                                        "direction":  -1
+                                                    }
+                                }
+                            ],
+                 "staticParams":  {
+
+                                  },
+                 "cognitiveDNA":  {
+                                      "genome":  {
+                                                     "aggression":  0.5,
+                                                     "chaos":  0.5,
+                                                     "organicity":  0.5
+                                                 },
+                                      "textureAffinity":  "universal",
+                                      "compatibleVibes":  [
+
+                                                          ],
+                                      "validSections":  [
+
+                                                        ],
+                                      "energyZone":  {
+                                                         "min":  "ambient",
+                                                         "max":  "peak"
+                                                     },
+                                      "aggressionRange":  {
+                                                              "min":  0.5,
+                                                              "max":  0.5
+                                                          },
+                                      "spatialBehavior":  "static"
+                                  },
+                 "simulationMeta":  {
+                                        "beautyWeights":  {
+                                                              "base":  0.5,
+                                                              "energyMultiplier":  1,
+                                                              "vibeBonus":  0
+                                                          },
+                                        "gpuCost":  0.3,
+                                        "fatigueImpact":  0.06,
+                                        "minDurationMs":  1000,
+                                        "cooldownMs":  7000,
+                                        "isStrobe":  false,
+                                        "isDivineCandidate":  false,
+                                        "isHeavyCandidate":  false,
+                                        "zScoreGuards":  {
+                                                             "requireRising":  false,
+                                                             "minimumZ":  null,
+                                                             "minimumEnergy":  null
+                                                         }
+                                    },
+                 "schemaVersion":  "3.0"
+             },
+    "checksum":  "sha256:80cf1240629284dc8fc9d10518223d34fa03f22a19cc57f85c850dd38d6cae5c"
+}

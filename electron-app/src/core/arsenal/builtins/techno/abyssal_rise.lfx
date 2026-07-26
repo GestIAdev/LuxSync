@@ -1,221 +1,156 @@
-{
-  "$schema": "luxsync.lfx/3.0",
-  "clip": {
-    "id": "abyssal_rise",
-    "name": "Abyssal Rise",
-    "author": "LuxSync Factory",
-    "category": "composite",
-    "tags": [
-      "fade",
-      "strobe",
-      "techno",
-      "spatial",
-      "epic"
-    ],
-    "vibeCompat": [
-      "techno-club"
-    ],
-    "spatialZones": [
-      "all-pars",
-      "ambient",
-      "all-movers",
-      "air"
-    ],
-    "durationMs": 3800,
-    "effectType": "heph_custom",
-    "cognitiveDNA": {
-      "genome": {
-        "aggression": 0.7,
-        "chaos": 0.4,
-        "organicity": 0.2
-      },
-      "textureAffinity": "clean",
-      "compatibleVibes": [
-        "techno-club"
-      ],
-      "validSections": [
-        "build",
-        "buildup"
-      ],
-      "energyZone": {
-        "min": "active",
-        "max": "intense"
-      },
-      "aggressionRange": {
-        "min": 0.4,
-        "max": 0.9
-      },
-      "spatialBehavior": "absolute",
-      "pressureRange": {
-        "min": 0.5,
-        "max": 1
-      }
-    },
-    "simulationMeta": {
-      "beautyWeights": {
-        "base": 0.8,
-        "energyMultiplier": 1,
-        "vibeBonus": 0.1
-      },
-      "gpuCost": 0.2,
-      "fatigueImpact": 0.3,
-      "minDurationMs": 3800,
-      "cooldownMs": 6000,
-      "isStrobe": true,
-      "isDivineCandidate": false,
-      "isHeavyCandidate": true,
-      "zScoreGuards": {
-        "requireRising": true,
-        "minimumZ": 1,
-        "minimumEnergy": 0.6
-      }
-    },
-    "tracks": [
-      {
-        "id": "abyss-intensity",
-        "paramId": "intensity",
-        "zones": [
-          "all-pars",
-          "ambient"
-        ],
-        "curve": {
-          "paramId": "intensity",
-          "valueType": "number",
-          "defaultValue": 0,
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": 0,
-              "interpolation": "bezier",
-              "bezierHandles": [
-                0.85,
-                0,
-                1,
-                1
-              ]
-            },
-            {
-              "timeMs": 3800,
-              "value": 0.9,
-              "interpolation": "linear"
-            }
-          ],
-          "range": [
-            0,
-            1
-          ]
-        },
-        "blendMode": "replace"
-      },
-      {
-        "id": "abyss-color",
-        "paramId": "color",
-        "zones": [
-          "all-pars",
-          "ambient"
-        ],
-        "curve": {
-          "paramId": "color",
-          "valueType": "color",
-          "defaultValue": {
-            "h": 240,
-            "s": 100,
-            "l": 12
-          },
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": {
-                "h": 240,
-                "s": 100,
-                "l": 12
-              },
-              "interpolation": "linear"
-            },
-            {
-              "timeMs": 3800,
-              "value": {
-                "h": 235,
-                "s": 100,
-                "l": 50
-              },
-              "interpolation": "linear"
-            }
-          ],
-          "range": [
-            0,
-            360
-          ]
-        },
-        "blendMode": "replace"
-      },
-      {
-        "id": "abyss-strobe",
-        "paramId": "strobeRate",
-        "zones": [
-          "all-movers",
-          "air"
-        ],
-        "curve": {
-          "paramId": "strobeRate",
-          "valueType": "number",
-          "defaultValue": 0,
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": 0,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 3000,
-              "value": 1,
-              "interpolation": "hold"
-            }
-          ],
-          "range": [
-            0,
-            1
-          ]
-        },
-        "blendMode": "replace"
-      },
-      {
-        "id": "abyss-par-ministrobe",
-        "paramId": "strobeRate",
-        "zones": [
-          "all-pars",
-          "ambient"
-        ],
-        "curve": {
-          "paramId": "strobeRate",
-          "valueType": "number",
-          "defaultValue": 0,
-          "keyframes": [
-            {
-              "timeMs": 0,
-              "value": 0,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 3400,
-              "value": 0,
-              "interpolation": "hold"
-            },
-            {
-              "timeMs": 3600,
-              "value": 0.35,
-              "interpolation": "hold"
-            }
-          ],
-          "range": [
-            0,
-            1
-          ]
-        },
-        "blendMode": "replace"
-      }
-    ],
-    "schemaVersion": "3.0"
-  },
-  "checksum": "e22820d351f8c138e4b4290d273caae58440f07b498b0159668e88bb8e457400"
+﻿{
+    "$schema":  "luxsync.lfx/3.0",
+    "clip":  {
+                 "id":  "abyssal_rise",
+                 "name":  "Abyssal Rise",
+                 "author":  "LuxSync Factory",
+                 "category":  "composite",
+                 "tags":  [
+                              "fade",
+                              "strobe",
+                              "techno",
+                              "spatial",
+                              "epic"
+                          ],
+                 "vibeCompat":  [
+                                    "techno-club"
+                                ],
+                 "spatialZones":  [
+                                      "all-pars",
+                                      "ambient",
+                                      "all-movers",
+                                      "air"
+                                  ],
+                 "durationMs":  3800,
+                 "effectType":  "heph_custom",
+                 "cognitiveDNA":  {
+                                      "genome":  {
+                                                     "aggression":  0.7,
+                                                     "chaos":  0.4,
+                                                     "organicity":  0.2
+                                                 },
+                                      "textureAffinity":  "clean",
+                                      "compatibleVibes":  [
+                                                              "techno-club"
+                                                          ],
+                                      "validSections":  [
+                                                            "build",
+                                                            "buildup"
+                                                        ],
+                                      "energyZone":  {
+                                                         "min":  "active",
+                                                         "max":  "intense"
+                                                     },
+                                      "aggressionRange":  {
+                                                              "min":  0.4,
+                                                              "max":  0.9
+                                                          },
+                                      "spatialBehavior":  "absolute",
+                                      "pressureRange":  {
+                                                            "min":  0.5,
+                                                            "max":  1
+                                                        }
+                                  },
+                 "simulationMeta":  {
+                                        "beautyWeights":  {
+                                                              "base":  0.8,
+                                                              "energyMultiplier":  1,
+                                                              "vibeBonus":  0.1
+                                                          },
+                                        "gpuCost":  0.2,
+                                        "fatigueImpact":  0.3,
+                                        "minDurationMs":  3800,
+                                        "cooldownMs":  6000,
+                                        "isStrobe":  true,
+                                        "isDivineCandidate":  false,
+                                        "isHeavyCandidate":  true,
+                                        "zScoreGuards":  {
+                                                             "requireRising":  true,
+                                                             "minimumZ":  1,
+                                                             "minimumEnergy":  0.6
+                                                         }
+                                    },
+                 "tracks":  [
+                                {
+                                    "id":  "abyss-intensity",
+                                    "paramId":  "intensity",
+                                    "zones":  [
+                                                  "all-pars",
+                                                  "ambient"
+                                              ],
+                                    "curve":  {
+                                                  "paramId":  "intensity",
+                                                  "valueType":  "number",
+                                                  "defaultValue":  0,
+                                                  "keyframes":  [
+                                                                    {
+                                                                        "timeMs":  0,
+                                                                        "value":  0,
+                                                                        "interpolation":  "bezier",
+                                                                        "bezierHandles":  [
+                                                                                              0.85,
+                                                                                              0,
+                                                                                              1,
+                                                                                              1
+                                                                                          ]
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  3800,
+                                                                        "value":  0.9,
+                                                                        "interpolation":  "linear"
+                                                                    }
+                                                                ],
+                                                  "range":  [
+                                                                0,
+                                                                1
+                                                            ]
+                                              },
+                                    "blendMode":  "replace"
+                                },
+                                {
+                                    "id":  "abyss-color",
+                                    "paramId":  "color",
+                                    "zones":  [
+                                                  "all-pars",
+                                                  "ambient"
+                                              ],
+                                    "curve":  {
+                                                  "paramId":  "color",
+                                                  "valueType":  "color",
+                                                  "defaultValue":  {
+                                                                       "h":  240,
+                                                                       "s":  100,
+                                                                       "l":  12
+                                                                   },
+                                                  "keyframes":  [
+                                                                    {
+                                                                        "timeMs":  0,
+                                                                        "value":  {
+                                                                                      "h":  240,
+                                                                                      "s":  100,
+                                                                                      "l":  12
+                                                                                  },
+                                                                        "interpolation":  "linear"
+                                                                    },
+                                                                    {
+                                                                        "timeMs":  3800,
+                                                                        "value":  {
+                                                                                      "h":  235,
+                                                                                      "s":  100,
+                                                                                      "l":  50
+                                                                                  },
+                                                                        "interpolation":  "linear"
+                                                                    }
+                                                                ],
+                                                  "range":  [
+                                                                0,
+                                                                360
+                                                            ]
+                                              },
+                                    "blendMode":  "replace"
+                                }
+                            ],
+                 "schemaVersion":  "3.0"
+             },
+    "checksum":  "e22820d351f8c138e4b4290d273caae58440f07b498b0159668e88bb8e457400"
 }

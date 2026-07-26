@@ -726,7 +726,12 @@ export class NodeArbiter {
                 // KineticsBridge._flushClassic). Se almacenan tal cual — NO se traducen a pan/tilt
                 // aquí. La traducción final ocurre exclusivamente en el bloque L2-MOTOR
                 // (post-hardlock), ejecutado por AetherKineticEngine vía _motorKineticOverrides.
-                record[key] = incoming;
+                if (key === 'tilt') {
+                    record[key] = Math.max(TILT_ARBITER_MIN, Math.min(incoming, TILT_ARBITER_MAX));
+                }
+                else {
+                    record[key] = incoming;
+                }
             }
         }
         // L3: Effect intents (WAVE 4705 — autoridad sobre L2 manual)
@@ -926,8 +931,10 @@ export class NodeArbiter {
             if (isHoldState) {
                 if (hasManualPan && !isFiniteChannelValue(manualAbsPan))
                     record['pan'] = manualPan;
-                if (hasManualTilt && !isFiniteChannelValue(manualAbsTilt))
-                    record['tilt'] = manualTilt;
+                if (hasManualTilt && !isFiniteChannelValue(manualAbsTilt)) {
+                    const clampedTilt = Math.max(TILT_ARBITER_MIN, Math.min(manualTilt, TILT_ARBITER_MAX));
+                    record['tilt'] = clampedTilt;
+                }
                 continue;
             }
             // Base resolver — motor (live pattern) takes priority over manual (static anchor).

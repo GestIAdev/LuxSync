@@ -1,5 +1,0 @@
-﻿Renamed: strobe_ping_pong.jlfx -> strobe_ping_pong.lfx
-Verify: No .jlfx files remain
-strobe_ping_pong.lfx exists: True
-00000000 in arsenal gone: True
-00000000 in effects gone: True

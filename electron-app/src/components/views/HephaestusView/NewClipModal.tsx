@@ -113,7 +113,6 @@ const DEFAULT_BLEND_MODE_BY_PARAM: Record<HephParamId, BlendMode> = {
   gobo2: 'replace',
   prism: 'replace',
   strobe: 'max',
-  strobeRate: 'max',
   globalComp: 'replace',
   width: 'replace',
   direction: 'replace',

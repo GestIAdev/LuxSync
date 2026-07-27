@@ -328,7 +328,6 @@ function _paramFamily(param: string): NodeFamily | null {
   switch (param) {
     case 'intensity':
     case 'strobe':
-    case 'strobeRate':  // 🩹 WAVE 4852 FIX-C: v3 canonical alias for 'strobe'
       return NodeFamily.IMPACT
     case 'color':
     case 'white':
@@ -378,7 +377,6 @@ function _populateValues(
       values['dimmer'] = output.normalizedValue
       break
     case 'strobe':
-    case 'strobeRate':  // 🩹 WAVE 4852 FIX-C: v3 canonical alias falls through
       // 🩹 WAVE 4830: STROBE BLIND PATH FIX
       // LiquidAetherAdapter (L0) escribe { shutter: 1.0, strobeRate: v } para
       // abrir el obturador mecánico. HephaestusAetherAdapter solo escribía

@@ -211,7 +211,7 @@ export function useLiveCalibration(
       if (white !== undefined) channels.push({ channel: 'white', value: Math.max(0, Math.min(1, white)) })
       const amber = n.get('amber')
       if (amber !== undefined) channels.push({ channel: 'amber', value: Math.max(0, Math.min(1, amber)) })
-      const strobe = n.get('strobe') ?? n.get('strobeRate')
+      const strobe = n.get('strobe')
       if (strobe !== undefined) channels.push({ channel: 'strobe', value: Math.max(0, Math.min(1, strobe)) })
       const zoom = n.get('zoom')
       if (zoom !== undefined) channels.push({ channel: 'zoom', value: Math.max(0, Math.min(1, zoom)) })
@@ -239,10 +239,9 @@ export function useLiveCalibration(
       // strobe belongs to IMPACT family (same as dimmer) per HephaestusAetherAdapter._paramFamily
       const impactChannels = channels.filter(ch => ch.channel === 'dimmer' || ch.channel === 'strobe')
       // Add shutter=1.0 when strobe > 0 to open mechanical shutter
-      const strobeVal = n.get('strobe') ?? n.get('strobeRate')
+      const strobeVal = n.get('strobe')
       if (strobeVal !== undefined && strobeVal > 0) {
         impactChannels.push({ channel: 'shutter', value: 1.0 })
-        impactChannels.push({ channel: 'strobeRate', value: Math.max(0, Math.min(1, strobeVal)) })
       }
       // white/amber belong to COLOR family per _paramFamily
       const colorChannels = channels.filter(ch => ch.channel === 'r' || ch.channel === 'g' || ch.channel === 'b' || ch.channel === 'white' || ch.channel === 'amber')

@@ -182,7 +182,7 @@ function evaluateFixtureFrame(
   const tilt16 = scaleToDMX16(n.get('tilt') ?? 0.5)
   const white = scaleToDMX('white', n.get('white') ?? 0)
   const amber = scaleToDMX('amber', n.get('amber') ?? 0)
-  const strobe = scaleToDMX('strobe', n.get('strobe') ?? n.get('strobeRate') ?? 0)
+  const strobe = scaleToDMX('strobe', n.get('strobe') ?? 0)
   const zoom = scaleToDMX('zoom', n.get('zoom') ?? 0.5)
   const focus = scaleToDMX('focus', n.get('focus') ?? 0.5)
 

@@ -155,7 +155,7 @@ function evalG6(clip: HephAutomationClipV3, simMeta: SimulationMeta | undefined)
   // hardware strobe macro handles the flashing. Only require ≥4 keyframes
   // when strobe is simulated artificially via intensity (dimmer chaser).
   const strobeTrack = clip.tracks.find(
-    (t) => t.paramId === 'strobe' || t.paramId === 'strobeRate',
+    (t) => t.paramId === 'strobe',
   )
   if (strobeTrack) {
     const kfs = strobeTrack.curve.keyframes

@@ -156,7 +156,7 @@ export const DEFAULT_PHASE_CONFIG: Readonly<PhaseConfig> = {
  *   'gobo1'      → gobo wheel 1 (0-1 → 0-255 DMX)
  *   'gobo2'      → gobo wheel 2 (0-1 → 0-255 DMX)
  *   'prism'      → prism rotation (0-1 → 0-255 DMX)
- *   'strobe'     → strobeRate (0=off, 1=18Hz max)
+ *   'strobe'     → strobe (0=off, 1=18Hz max)
  *   'globalComp' → globalComposition (0-1)
  *   'width'      → param interno (beam/chase width, 0-1)
  *   'direction'  → param interno (sweep direction, 0=L→R, 1=R→L)
@@ -176,11 +176,6 @@ export type HephParamId =
   | 'gobo2'
   | 'prism'
   | 'strobe'
-  /**
-   * WAVE 4848 V3: normalizedValue ∈ [0,1]. Adapter abre shutter automáticamente.
-   * Alias de contrato v3 — en v2 era 'strobe', en v3 se documenta como 'strobeRate'.
-   */
-  | 'strobeRate'
   | 'globalComp'
   | 'width'
   | 'direction'

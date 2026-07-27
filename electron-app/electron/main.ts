@@ -571,61 +571,55 @@ async function initTitan(): Promise<void> {
   registerTitanOrchestrator(titanOrchestrator)
 
   // ════════════════════════════════════════════════════════════
-  // ⚡ WAVE 4822: INFINITE ARSENAL — BOOT INGESTION
-  // Poblar DynamicEffectRegistry antes del primer ciclo de Selene.
-  // Fallo silencioso: si los .lfx no están, el sistema cae al path legacy.
-  // 
-  // ORGANIZACIÓN POR VIBES:
-  // - Descubre automáticamente todas las subcarpetas dentro de /builtins/
-  // - Cada vibe (techno/, latin/, etc.) se carga como un DirectorySpec
+  // ⚡ INFINITE ARSENAL — BOOT INGESTION (Single Source of Truth)
+  // userData/arsenal/ es la única fuente de verdad para .lfx.
+  // Si está vacío, se copia desde builtins/ (fábrica) al primer arranque.
   // ════════════════════════════════════════════════════════════
   try {
+    const _arsenalPath = path.join(app.getPath('userData'), 'arsenal')
     const _builtinPath = app.isPackaged
       ? path.join(process.resourcesPath, 'builtins')
       : path.join(__dirname, '..', 'src', 'core', 'arsenal', 'builtins')
 
-    // Auto-discover todas las carpetas de vibes dentro de /builtins/
-    const _vibeDirectories: DirectorySpec[] = []
+    // ── Bootstrapper: si userData/arsenal/ está vacío, copiar desde builtins/ ──
+    let _arsenalIsEmpty = true
     try {
-      const _dirEntries = fs.readdirSync(_builtinPath, { withFileTypes: true })
-      for (const entry of _dirEntries) {
-        if (entry.isDirectory()) {
-          _vibeDirectories.push({
-            absolutePath: path.join(_builtinPath, entry.name),
-            source: 'builtin'
-          })
+      const _existing = fs.readdirSync(_arsenalPath)
+      _arsenalIsEmpty = !_existing.some(f => f.toLowerCase().endsWith('.lfx'))
+    } catch { /* dir doesn't exist yet */ }
+
+    if (_arsenalIsEmpty && fs.existsSync(_builtinPath)) {
+      fs.mkdirSync(_arsenalPath, { recursive: true })
+      const _copyRecursive = (srcDir: string) => {
+        const entries = fs.readdirSync(srcDir, { withFileTypes: true })
+        for (const entry of entries) {
+          const src = path.join(srcDir, entry.name)
+          if (entry.isDirectory()) {
+            _copyRecursive(src)
+          } else if (entry.name.toLowerCase().endsWith('.lfx')) {
+            const dest = path.join(_arsenalPath, entry.name)
+            fs.copyFileSync(src, dest)
+          }
         }
       }
-    } catch (_discoverErr) {
-      console.warn('[TitanOrchestrator] ⚠️ Failed to discover vibe directories:', _discoverErr)
+      _copyRecursive(_builtinPath)
+      const _copiedCount = fs.readdirSync(_arsenalPath).filter(f => f.toLowerCase().endsWith('.lfx')).length
+      console.log(`[TitanOrchestrator] 📦 Bootstrapped arsenal: ${_copiedCount} .lfx copied from builtins → userData/arsenal/`)
     }
 
-    // Si no encontró ninguna subcarpeta, cargar desde la raíz (fallback legacy)
-    if (_vibeDirectories.length === 0) {
-      _vibeDirectories.push({ absolutePath: _builtinPath, source: 'builtin' })
-    }
-
-    // ⚒️ UNIFIED ARSENAL — userData/arsenal/ is the single source of truth for
-    // all .lfx files: Hephaestus saves, Genesis canonizations, and user imports.
-    // Replaces the fragmented userData/effects/ + userData/builtins/ paths.
-    const _arsenalPath = path.join(app.getPath('userData'), 'arsenal')
-    _vibeDirectories.push({ absolutePath: _arsenalPath, source: 'user' })
+    // ── Load ONLY from userData/arsenal/ (single source of truth) ──
+    const _loadDirs: DirectorySpec[] = [
+      { absolutePath: _arsenalPath, source: 'user' }
+    ]
 
     const _lfxLoader = new LfxFileLoader(getDynamicEffectRegistry())
-    const _arsenalReport = await _lfxLoader.loadAll(_vibeDirectories)
+    const _arsenalReport = await _lfxLoader.loadAll(_loadDirs)
 
     console.log(
       `[TitanOrchestrator] ⚡ Infinite Arsenal: ` +
-      `${_arsenalReport.accepted}/${_arsenalReport.scanned} .lfx cargados desde ${_vibeDirectories.length} vibe(s) ` +
+      `${_arsenalReport.accepted}/${_arsenalReport.scanned} .lfx cargados desde userData/arsenal/ ` +
       `(rechazados: ${_arsenalReport.rejected}, errores: ${_arsenalReport.errors})`
     )
-
-    if (isDev && _arsenalReport.accepted < 48) {
-      console.warn(
-        `[TitanOrchestrator] ⚠️ Arsenal incompleto: esperados ≥48, ` +
-        `cargados ${_arsenalReport.accepted}`
-      )
-    }
   } catch (_arsenalErr) {
     console.error('[TitanOrchestrator] ❌ Arsenal boot failed (non-fatal):', _arsenalErr)
   }

@@ -610,7 +610,7 @@ export class TitanOrchestrator {
   }
 
   constructor(config: TitanConfig = {}) {
-    console.warn(`[GHOST-HUNTER] 👻 Instanciando TitanOrchestrator. ID: ${this._instanceId}`)
+    // GHOST-HUNTER instantiation log silenced
     this.config = {
       debug: false,
       // WAVE 255: Force IDLE on startup - system starts in blackout
@@ -812,7 +812,7 @@ export class TitanOrchestrator {
    */
     start(): void {
     this._startCount++
-    console.warn(`[GHOST-HUNTER] ▶️ TitanOrchestrator.start() llamado. ID: ${this._instanceId} | startCount: ${this._startCount}`)
+    // GHOST-HUNTER start() log silenced
     if (this._startCount > 1) {
       console.error(`[GHOST-HUNTER] 🔴 ALERTA DE CLON: start() invocado ${this._startCount} veces en la misma instancia. Posible fuga de lifecycle.`)
     }
@@ -1101,7 +1101,7 @@ export class TitanOrchestrator {
         dmxAddress: f.dmxAddress || f.address,
         isVirtual: f.isVirtual ?? false,
       }))
-      console.log(`[TitanOrchestrator] setFixtures: ${this.fixtures.length} fixtures | IDs: ${this.fixtures.slice(0, 3).map((f: any) => f.id).join(', ')}...`)
+      // setFixtures log silenced — fires 3× on startup
       const layout = this.hydrationEngine.setFixtures(this.fixtures, stageBounds)
       // PARCHE 4: Purgar todos los node refs obsoletos del Arbiter ahora que el
       // grafo está reconstruido. Elimina _manualOverrides, _moverShieldNodeIds,

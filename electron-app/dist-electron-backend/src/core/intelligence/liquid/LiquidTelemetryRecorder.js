@@ -41,6 +41,9 @@ export class LiquidTelemetryRecorder {
         this._s_X = new Float64Array(BUFFER_SIZE);
         this._s_P = new Float64Array(BUFFER_SIZE);
         this._s_B = new Float64Array(BUFFER_SIZE);
+        // WAVE 8008: Rhythmic percussion energies
+        this._snare_energy = new Float64Array(BUFFER_SIZE);
+        this._hh_energy = new Float64Array(BUFFER_SIZE);
         this._head = 0;
         this._count = 0;
         this._totalRecorded = 0;
@@ -53,13 +56,14 @@ export class LiquidTelemetryRecorder {
             epicness: 0, tension: 0, viscosity: 0, vaporPressure: 0, excitability: 0,
             temperature: 0, impact: 0, crestFactor: 0,
             s_DNA: 0, s_Z: 0, s_E: 0, s_V: 0, s_X: 0, s_P: 0, s_B: 0,
+            snare_energy: 0, hh_energy: 0,
         };
     }
     /**
      * Graba un frame del LiquidVerdict en el ring buffer.
      * Hot path 44Hz — zero-alloc, solo escritura de primitivos en arrays tipados.
      */
-    recordFrame(verdict, now) {
+    recordFrame(verdict, now, snareEnergy, hhEnergy) {
         const idx = this._head;
         this._timestamps[idx] = now;
         this._ignite[idx] = verdict.ignite ? 1 : 0;
@@ -81,6 +85,8 @@ export class LiquidTelemetryRecorder {
         this._s_X[idx] = verdict.sensors.s_X;
         this._s_P[idx] = verdict.sensors.s_P;
         this._s_B[idx] = verdict.sensors.s_B;
+        this._snare_energy[idx] = snareEnergy ?? 0;
+        this._hh_energy[idx] = hhEnergy ?? 0;
         // Avanzar cabeza del ring buffer
         this._head = (this._head + 1) % BUFFER_SIZE;
         if (this._count < BUFFER_SIZE)
@@ -132,6 +138,8 @@ export class LiquidTelemetryRecorder {
                 s_X: this._s_X[idx],
                 s_P: this._s_P[idx],
                 s_B: this._s_B[idx],
+                snare_energy: this._snare_energy[idx],
+                hh_energy: this._hh_energy[idx],
             };
         }
         return frames;
@@ -192,6 +200,8 @@ export class LiquidTelemetryRecorder {
         s.s_X = this._s_X[idx];
         s.s_P = this._s_P[idx];
         s.s_B = this._s_B[idx];
+        s.snare_energy = this._snare_energy[idx];
+        s.hh_energy = this._hh_energy[idx];
         return s;
     }
     reset() {

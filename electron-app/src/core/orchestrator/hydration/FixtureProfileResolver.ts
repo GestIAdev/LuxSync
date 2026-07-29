@@ -62,9 +62,7 @@ export class FixtureProfileResolver {
     const rawChannels = hasZeroBased
       ? rawChannelsOriginal.map((ch: any) => ch ? { ...ch, index: ch.index + 1 } : ch)
       : rawChannelsOriginal
-    if (hasZeroBased) {
-      console.log(`[FixtureProfileResolver] 🔧 WAVE 4735.7: Migrated 0-based → 1-based for fixture "${fixture.id ?? profileId}"`)
-    }
+    // Migration log silenced — fires on every setFixtures call
 
     const hasNodeGraph = !!(definition as any).nodeGraph || !!(fixture as any).forgeGraph || !!(fixture as any).nodeGraph
     if (hasNodeGraph) {

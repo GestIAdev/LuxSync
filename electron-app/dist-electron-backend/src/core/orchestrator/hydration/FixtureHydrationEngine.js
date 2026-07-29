@@ -222,7 +222,6 @@ export class FixtureHydrationEngine {
                 const fixtureGraph = fixture.forgeGraph ?? fixture.nodeGraph;
                 if (fixtureGraph && definition) {
                     definition.nodeGraph = fixtureGraph;
-                    console.log(`[FixtureHydrationEngine] 🔧 WAVE 4735.7: V2 bridge — injected forgeGraph → nodeGraph for fixture "${fixture.id}"`);
                 }
                 if (!definition || definition.channels.length === 0) {
                     const profileId = ctx.profileResolver.resolveFixtureProfileId(fixture);
@@ -249,14 +248,7 @@ export class FixtureHydrationEngine {
                     console.warn(`[FixtureHydrationEngine] ⚡ WAVE 4610-B: Fixture "${fixture.id}" sin perfil resuelto — inyectando definición mínima (dimmer)`);
                 }
                 const fixtureV2 = ctx.profileResolver.buildFixtureV2ForAether(fixture, definition);
-                // 🏛️ Ping A-DIAG: Verificar si dmxGovernors sobrevive al profile resolver
-                const _govs = definition.dmxGovernors;
-                if (Array.isArray(_govs) && _govs.length > 0) {
-                    console.log(`[GovernorEngine DIAG] 🏛️ dmxGovernors presente en "${fixture.id}": ${_govs.length} reglas`);
-                }
-                else if (fixture.dmxGovernors) {
-                    console.log(`[GovernorEngine DIAG] ⚠️ dmxGovernors en fixture pero NO en definition para "${fixture.id}"`);
-                }
+                // GovernorEngine DIAG logs silenced — fires per-fixture on every setFixtures
                 const deviceDef = pipeline.extract(definition, fixtureV2);
                 const forgeGraph = fixture.forgeGraph ?? fixture.nodeGraph ?? undefined;
                 staged.push({ deviceDef, forgeGraph });
@@ -279,15 +271,8 @@ export class FixtureHydrationEngine {
         for (const { deviceDef, forgeGraph } of staged) {
             this.registerAetherDevice(deviceDef, forgeGraph);
             registered++;
-            const nodeIds = deviceDef.nodes.map(n => `${String(n.nodeId)}(${n.family})`).join(', ');
-            console.log(`[FixtureHydrationEngine] ✅ WAVE 4674: Fixture "${deviceDef.deviceId}" ` +
-                `→ Aether @ dmx:${deviceDef.dmxAddress}/u${deviceDef.universe} | nodes: [${nodeIds}]`);
-            // 🧩 DIAGNÓSTICO COMPOUND FIXTURE: verificar zonas del Tungsten tras registro
-            const devId = String(deviceDef.deviceId);
-            if (devId === 'fixture-1781916704143') {
-                const zones = deviceDef.nodes.map(n => `${n.nodeId}→${n.zoneId ?? '?'}`).join(', ');
-                console.log(`[FixtureHydrationEngine] 🧩 Tungsten compound zones: [${zones}]`);
-            }
+            // Per-fixture hydration log silenced — fires 16× per setFixtures call
+            // Tungsten compound zones diagnostic silenced
         }
         ctx.zoneNodeRouter = new ZoneNodeRouter(ctx.aetherGraph);
         ctx.seleneAetherAdapter = new SeleneAetherAdapter(ctx.zoneNodeRouter);

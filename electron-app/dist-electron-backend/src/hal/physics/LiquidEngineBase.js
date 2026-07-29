@@ -108,6 +108,12 @@ export class LiquidEngineBase {
         this._snareHoldCounter = 0;
         // WAVE 6070.2: Debounce Anti-Jitter — cooldown de 80ms para evitar re-triggers del mismo clap
         this._lastSnareTime = 0;
+        // WAVE 8008 ADAPTER: Pre-procesador snare_energy EMA → impulso binario
+        // Convierte la señal continua del RhythmicPercussionTracker en impulsos
+        // compatibles con LiquidEnvelope (diseñado para señales binarias 0/1)
+        this._prevSnareEnergy = 0;
+        this._lastSnareOnset = 0;
+        this._snareImpulse = 0;
         // Kick Veto state
         this._kickVetoFrames = 0;
         // Transient Shaper state (WAVE 2427 → WAVE 2446)
@@ -179,10 +185,10 @@ export class LiquidEngineBase {
             // WAVE 4948 — LATINO VOCAL KILL HARDENING
             // Endurece el rechazo armónico para cortar voz/autotune en back pars.
             if (percussiveRatio < 0.88) {
-                tonalSquelch = 0.0; // muerte absoluta en zona tonal predominante
+                tonalSquelch = 0.30; // WAVE 8009.2: 0.0→0.30 — sin muerte absoluta, transitorios sutiles conservan escala
             }
             else if (percussiveRatio < 1.12) {
-                tonalSquelch = 0.22; // zona mixta ultra-castigada (antes 0.4)
+                tonalSquelch = 0.50; // WAVE 8009.2: 0.22→0.50 — zona mixta menos castigada
             }
             // Ratio >= 1.12 -> tonalSquelch queda en 1.0 (transiente realmente percusivo)
         }
@@ -395,6 +401,29 @@ export class LiquidEngineBase {
             this._snareHoldCounter--;
         }
         let hybridSnare = percRaw;
+        // ═══════════════════════════════════════════════════════════════════
+        // WAVE 8008 ADAPTER: Pre-procesador snare_energy EMA → impulso binario
+        // Cuando GodEarFFT V3 suministra snare_energy (EMA continua del
+        // RhythmicPercussionTracker), convertirla a impulso binario con decay
+        // rápido antes de alimentar LiquidEnvelope. Esto preserva la lógica
+        // original del envelope sin modificaciones.
+        // ═══════════════════════════════════════════════════════════════════
+        if (input.snare_energy !== undefined) {
+            const rawSnareEnergy = input.snare_energy;
+            const snareDelta = rawSnareEnergy - this._prevSnareEnergy;
+            // Detectar onset: derivada positiva significativa + umbral absoluto + cooldown 80ms
+            // WAVE 8009.2: umbrales bajados 0.02→0.01 y 0.12→0.06 para capturar micro-percusión minimal
+            const snareOnset = snareDelta > 0.01 && rawSnareEnergy > 0.06 && (now - this._lastSnareOnset > 80);
+            if (snareOnset) {
+                this._lastSnareOnset = now;
+                this._snareImpulse = 1.0;
+            }
+            // Decay artificial rápido — 4% restante por frame (~90ms a 44Hz)
+            this._snareImpulse *= 0.04;
+            this._prevSnareEnergy = rawSnareEnergy;
+            // Sobreescribir hybridSnare con el impulso adaptado
+            hybridSnare = this._snareImpulse;
+        }
         // 2. THE MORPHOLOGIC CENTROID SHIELD (WAVE 2449)
         // El bombo puede coexistir con synths en techno melódico (Anyma) porque el bombo
         // es el instrumento melódico — mismo centroide, indistinguibles con frecuencia fija.

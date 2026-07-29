@@ -1,0 +1,156 @@
+{
+  "PearlPiccolo Side SnrOff-01.wav": {
+    "scaledKick": 0.016727514874397255,
+    "scaledHighs": 0.0009547322873592054,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.6499109169648724,
+    "strobeDrive": 0.11542608032253804,
+    "strobeDriveRaw": 0.26543880092153727,
+    "chromaFlux": 0.014806110336977995,
+    "flatness": 0.1684796003071791,
+    "whiteNoiseScore": 0.6847960030717909
+  },
+  "PearlPiccolo Side SnrOff-02.wav": {
+    "scaledKick": 0.012957685138127437,
+    "scaledHighs": 0.0008897937311019475,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.6579907934036623,
+    "strobeDrive": 0.13440949461499485,
+    "strobeDriveRaw": 0.23518617302621064,
+    "chromaFlux": 0.005816381060477346,
+    "flatness": 0.1583953910087369,
+    "whiteNoiseScore": 0.5839539100873689
+  },
+  "PearlPiccolo Side SnrOff-03.wav": {
+    "scaledKick": 0.027200019454230243,
+    "scaledHighs": 0.001001492983525228,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.6994533032780184,
+    "strobeDrive": 0.07285149405141025,
+    "strobeDriveRaw": 0.10512237367367216,
+    "chromaFlux": 0.01730914497515623,
+    "flatness": 0.1350407912245574,
+    "whiteNoiseScore": 0.3504079122455739
+  },
+  "PearlPiccolo Side SnrOff-04.wav": {
+    "scaledKick": 0.010099804415328324,
+    "scaledHighs": 0.0008644094781167427,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.6543129659614514,
+    "strobeDrive": 0.0561815267976944,
+    "strobeDriveRaw": 0.06735194990773813,
+    "chromaFlux": 0.00883984356492707,
+    "flatness": 0.10245064996924605,
+    "whiteNoiseScore": 0.024506499692460437
+  },
+  "PearlPiccolo Side SnrOff-05.wav": {
+    "scaledKick": 0.015149407209971748,
+    "scaledHighs": 0.0007741170775094374,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.6822513225649528,
+    "strobeDrive": 0.07843308662222834,
+    "strobeDriveRaw": 0.15974453320636672,
+    "chromaFlux": 0.014383673967052674,
+    "flatness": 0.13324817773545558,
+    "whiteNoiseScore": 0.33248177735455575
+  },
+  "PearlPiccolo Side SnrOn-01.wav": {
+    "scaledKick": 0.004591978100960029,
+    "scaledHighs": 0.009115791514253443,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.9930274370573822,
+    "strobeDrive": 0.19858444906651385,
+    "strobeDriveRaw": 0.5233495281527343,
+    "chromaFlux": 0.01280573012547147,
+    "flatness": 0.1683949686028137,
+    "whiteNoiseScore": 0.6839496860281369
+  },
+  "PearlPiccolo Side SnrOn-02.wav": {
+    "scaledKick": 0.006891693434739235,
+    "scaledHighs": 0.011649953176394025,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.9929557992997604,
+    "strobeDrive": 0.24673335137979752,
+    "strobeDriveRaw": 0.41698375132450893,
+    "chromaFlux": 0.010133534568119995,
+    "flatness": 0.18719465949406375,
+    "whiteNoiseScore": 0.8719465949406374
+  },
+  "PearlPiccolo Side SnrOn-03.wav": {
+    "scaledKick": 0.01425399194119231,
+    "scaledHighs": 0.016555280320441117,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.9977022230316088,
+    "strobeDrive": 0.23897214342638037,
+    "strobeDriveRaw": 0.6340521191409425,
+    "chromaFlux": 0.008741879237170597,
+    "flatness": 0.19594626031709642,
+    "whiteNoiseScore": 0.9594626031709641
+  },
+  "PearlPiccolo Side SnrOn-04.wav": {
+    "scaledKick": 0.007937828632392912,
+    "scaledHighs": 0.010674669089812065,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.9948560839793041,
+    "strobeDrive": 0.21889697415955306,
+    "strobeDriveRaw": 0.48425878340603506,
+    "chromaFlux": 0.012459844111017252,
+    "flatness": 0.19513899281525343,
+    "whiteNoiseScore": 0.9513899281525342
+  },
+  "PearlPiccolo Side SnrOn-05.wav": {
+    "scaledKick": 0.014103163386963229,
+    "scaledHighs": 0.0106867849318065,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.993810416186257,
+    "strobeDrive": 0.2106992006142549,
+    "strobeDriveRaw": 0.5098646262954549,
+    "chromaFlux": 0.013065509677927273,
+    "flatness": 0.16964478895690902,
+    "whiteNoiseScore": 0.6964478895690901
+  },
+  "PearlPiccolo Side SnrOn-06.wav": {
+    "scaledKick": 0.011978383057426814,
+    "scaledHighs": 0.018925532862624984,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.9966005414544725,
+    "strobeDrive": 0.20957020342069652,
+    "strobeDriveRaw": 0.501715177407916,
+    "chromaFlux": 0.008107699609954637,
+    "flatness": 0.17092716201808766,
+    "whiteNoiseScore": 0.7092716201808765
+  },
+  "PearlPiccolo Side SnrOn-07.wav": {
+    "scaledKick": 0.006464811186475815,
+    "scaledHighs": 0.006754098656362147,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.9893226764054045,
+    "strobeDrive": 0.22180557979873491,
+    "strobeDriveRaw": 0.43660248203772933,
+    "chromaFlux": 0.011075645914705612,
+    "flatness": 0.1859996323239876,
+    "whiteNoiseScore": 0.8599963232398761
+  },
+  "PearlPiccolo Side SnrOn-08.wav": {
+    "scaledKick": 0.006867179882277719,
+    "scaledHighs": 0.010005385754777678,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.994346413819017,
+    "strobeDrive": 0.20850218587163408,
+    "strobeDriveRaw": 0.4901434779623588,
+    "chromaFlux": 0.006696813455199138,
+    "flatness": 0.16806000716406724,
+    "whiteNoiseScore": 0.6806000716406724
+  },
+  "PearlPiccolo Side SnrOn-09.wav": {
+    "scaledKick": 0.0072100649091613594,
+    "scaledHighs": 0.009221370155855627,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.9920998643055501,
+    "strobeDrive": 0.17778126281352233,
+    "strobeDriveRaw": 0.482880079277335,
+    "chromaFlux": 0.012403431690311072,
+    "flatness": 0.1567602978146781,
+    "whiteNoiseScore": 0.5676029781467808
+  }
+}

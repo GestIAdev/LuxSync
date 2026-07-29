@@ -1304,7 +1304,7 @@ export class NodeArbiter {
             clearTimeout(this._calibrationWatchdog);
             this._calibrationWatchdog = null;
         }
-        console.log('[NodeArbiter] 🧹 purgeForShow: stale L2 node refs + L3++ calibration cleared for new show');
+        // purgeForShow log silenced
     }
     /**
      * WAVE 4529: Lista los nodeIds que tienen overrides manuales activos.

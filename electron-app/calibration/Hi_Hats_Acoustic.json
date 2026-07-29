@@ -1,0 +1,68 @@
+{
+  "Acoustic Hat-01.wav": {
+    "scaledKick": 0.0006897565737378292,
+    "scaledHighs": 0.004949454604726645,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.9899177433667976,
+    "strobeDrive": 0.26238771969567876,
+    "strobeDriveRaw": 0.5995064602007859,
+    "chromaFlux": 0.007485616521656238,
+    "flatness": 0.3401639275513131,
+    "whiteNoiseScore": 1
+  },
+  "Acoustic Hat-02.wav": {
+    "scaledKick": 0.0014454872778774256,
+    "scaledHighs": 0.01694042496356701,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.9979955818229791,
+    "strobeDrive": 0.27341396918836647,
+    "strobeDriveRaw": 0.6479734909378748,
+    "chromaFlux": 0.007773064641815217,
+    "flatness": 0.334168004742113,
+    "whiteNoiseScore": 1
+  },
+  "Acoustic Hat-03.wav": {
+    "scaledKick": 0.0010807664464421531,
+    "scaledHighs": 0.004752230911279312,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.9933255844713483,
+    "strobeDrive": 0.2640927834362708,
+    "strobeDriveRaw": 0.6199535068280903,
+    "chromaFlux": 0.006822303595879222,
+    "flatness": 0.29890629937994007,
+    "whiteNoiseScore": 1
+  },
+  "Acoustic Hat-04.wav": {
+    "scaledKick": 0.0007740332817964494,
+    "scaledHighs": 0.005021210997439663,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.9914642491359956,
+    "strobeDrive": 0.2644987000706341,
+    "strobeDriveRaw": 0.608785494815974,
+    "chromaFlux": 0.00786743031982742,
+    "flatness": 0.27643507351614827,
+    "whiteNoiseScore": 1
+  },
+  "Acoustic Hat-05.wav": {
+    "scaledKick": 0.0011150324478368142,
+    "scaledHighs": 0.006866566188439739,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.9958086044429526,
+    "strobeDrive": 0.2704287450646303,
+    "strobeDriveRaw": 0.6348516266577159,
+    "chromaFlux": 0.006803874007510292,
+    "flatness": 0.3638403284703433,
+    "whiteNoiseScore": 1
+  },
+  "Acoustic Hat-06.wav": {
+    "scaledKick": 0.0014334936517489464,
+    "scaledHighs": 0.0184379220935172,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.998217975067115,
+    "strobeDrive": 0.27371753596661197,
+    "strobeDriveRaw": 0.64930785040269,
+    "chromaFlux": 0.007297341313888881,
+    "flatness": 0.3500756158280312,
+    "whiteNoiseScore": 1
+  }
+}

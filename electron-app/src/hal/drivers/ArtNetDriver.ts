@@ -104,6 +104,7 @@ export class ArtNetDriver extends EventEmitter {
   private minSendInterval: number
   private lastFrameTime: number = 0
   private artPollTimer: ReturnType<typeof setInterval> | null = null  // WAVE 2525: ArtPoll
+  private _artPollReplyReceived: boolean = false  // Track if interface ever responded
 
   // ── WAVE 6019: SAB Follower ───────────────────────────────────────────
   private _sabReader: DmxUniverseReader | null = null
@@ -118,8 +119,9 @@ export class ArtNetDriver extends EventEmitter {
       // 🎯 WAVE 153.7: Default a IP del nodo IMC Pro H1 (no broadcast!)
       ip: config.ip ?? '10.0.0.10',
       port: config.port ?? ARTNET_PORT,
-      // WAVE 2525: Universe 1 — interfaces Pro ignoran universo 0 por convención
-      universe: config.universe ?? 1,
+      // WAVE 2525→R3: Universe 0 — most interfaces (including user's) are factory-set to 0.
+      // The SAB also writes universe 0 by default (TickEngine forces it).
+      universe: config.universe ?? 0,
       // WAVE 2525: 44Hz para salida sincronizada con TitanOrchestrator
       refreshRate: config.refreshRate ?? 44,
       nodeName: config.nodeName ?? 'LuxSync',
@@ -191,6 +193,9 @@ export class ArtNetDriver extends EventEmitter {
         if (msg.toString('ascii', 0, 7) !== 'Art-Net') return
         const opcode = msg.readUInt16LE(8)
         if (opcode === 0x2100) {  // ArtPollReply
+          if (!this._artPollReplyReceived) {
+            this._artPollReplyReceived = true
+          }
           this.log(`🟢 ArtPollReply from ${rinfo.address} — node alive`)
           this.emit('node-discovered', { ip: rinfo.address })
         } else if (opcode === 0x9700) {  // OpTimeCode — WAVE 7102
@@ -206,7 +211,13 @@ export class ArtNetDriver extends EventEmitter {
       // Art-Net 4 §4: Los controladores DEBEN enviar ArtPoll al arrancar y
       // cada 2.5s para mantener el forwarding activo en interfaces Pro.
       this.sendArtPoll()
-      this.artPollTimer = setInterval(() => this.sendArtPoll(), ARTPOLL_INTERVAL_MS)
+      this.artPollTimer = setInterval(() => {
+        this.sendArtPoll()
+        // Diagnostic: warn if no ArtPollReply after 10 seconds
+        if (!this._artPollReplyReceived && this.framesSent > 0 && this.framesSent % 40 === 0) {
+          this.log(`⚠️ No ArtPollReply received after ${this.framesSent} frames — interface may be offline or at a different IP`)
+        }
+      }, ARTPOLL_INTERVAL_MS)
       
       return true
     } catch (error) {
@@ -413,6 +424,16 @@ export class ArtNetDriver extends EventEmitter {
       }
     })
 
+    // Also send to subnet broadcast — if the interface IP changed or its
+    // UDP unicast stack is damaged, broadcast may still reach it.
+    const parts = this.config.ip.split('.')
+    if (parts.length === 4) {
+      const subnetBcast = `${parts[0]}.${parts[1]}.${parts[2]}.255`
+      if (subnetBcast !== this.config.ip) {
+        this.socket.send(packet, this.config.port, subnetBcast, () => {})
+      }
+    }
+
     // Increment sequence (1-255, wraps)
     this.sequence = this.sequence >= 255 ? 1 : this.sequence + 1
 
@@ -458,6 +479,16 @@ export class ArtNetDriver extends EventEmitter {
       })
       
       promises.push(promise)
+
+      // Also send to subnet broadcast — if the interface IP changed,
+      // broadcast may still reach it.
+      const parts = this.config.ip.split('.')
+      if (parts.length === 4) {
+        const subnetBcast = `${parts[0]}.${parts[1]}.${parts[2]}.255`
+        if (subnetBcast !== this.config.ip) {
+          this.socket!.send(packet, this.config.port, subnetBcast, () => {})
+        }
+      }
     }
 
     // Esperar a que todos se envíen en paralelo

@@ -34,11 +34,7 @@ export class StageBoundsManager {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   updateStageBounds(stageBounds: StageBoundsInput | undefined, fixtures: any[]): void {
     const bounds = this.bounds
-
-    console.log(
-      `[STAGE-BOUNDS] input=(${stageBounds?.width?.toFixed(2) ?? 'N/A'},${stageBounds?.height?.toFixed(2) ?? 'N/A'},${stageBounds?.depth?.toFixed(2) ?? 'N/A'}) ` +
-      `current=(${bounds.width.toFixed(2)},${bounds.height.toFixed(2)},${bounds.depth.toFixed(2)})`,
-    )
+    // STAGE-BOUNDS log silenced — fires on every setFixtures call
 
     if (stageBounds) {
       if (stageBounds.width !== undefined && Number.isFinite(stageBounds.width) && stageBounds.width > 0) {

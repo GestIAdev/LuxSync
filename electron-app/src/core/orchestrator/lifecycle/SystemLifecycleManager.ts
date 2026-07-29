@@ -74,7 +74,7 @@ export class SystemLifecycleManager {
       }
       try {
         await this.ctx.oscProvider.start()
-        console.log('[TitanOrchestrator] WAVE 3401: OSCNexusProvider started (UDP 9000/9001)')
+        // OSCNexusProvider started log silenced
       } catch (oscErr) {
         console.error('[TitanOrchestrator] âš ï¸ OSCNexusProvider failed to start:', oscErr)
         // Non-fatal: LuxSync operates without OSC. Provider state â†’ error, AudioMatrix falls back.
@@ -86,12 +86,12 @@ export class SystemLifecycleManager {
         this.ctx.virtualWireProvider = new VirtualWireProvider()
         await this.ctx.virtualWireProvider.initialize({})
         audioMatrix.registerProvider(this.ctx.virtualWireProvider)
-        console.log('[TitanOrchestrator] WAVE 3402: VirtualWireProvider registered')
+        // VirtualWireProvider registered log silenced
 
         this.ctx.usbDirectLinkProvider = new USBDirectLinkProvider()
         await this.ctx.usbDirectLinkProvider.initialize({})
         audioMatrix.registerProvider(this.ctx.usbDirectLinkProvider)
-        console.log('[TitanOrchestrator] WAVE 3402: USBDirectLinkProvider registered')
+        // USBDirectLinkProvider registered log silenced
       }
     } catch (e) {
       console.error('[TitanOrchestrator] âŒ Trinity startup failed:', e)

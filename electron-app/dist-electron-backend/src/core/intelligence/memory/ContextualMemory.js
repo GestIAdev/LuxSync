@@ -76,6 +76,8 @@ export class ContextualMemory {
         // Frame counter para debug
         this.frameCount = 0;
         this.lastLogFrame = 0;
+        this.lastNarrativePhase = 'building';
+        this.climaxStartTime = 0;
         this.lastAcousticReality = null;
         this.config = { ...DEFAULT_CONFIG, ...config };
         this.energyStats = new RollingStats({ windowSize: this.config.bufferSize });
@@ -161,6 +163,8 @@ export class ContextualMemory {
         this.frameCount = 0;
         this.lastLogFrame = 0;
         this.lastAcousticReality = null;
+        this.lastNarrativePhase = 'building';
+        this.climaxStartTime = 0;
     }
     // ═══════════════════════════════════════════════════════════════════════
     // MÉTODOS PRIVADOS
@@ -238,6 +242,19 @@ export class ContextualMemory {
             this.lastAcousticReality = null;
             narrativePhase = this.inferNarrativePhaseLegacy(history, input.sectionType);
         }
+        // TAREA 6: CLIMAX LOCKOUT — prevent erratic CLIMAX→BUILDING transitions
+        // Hold climax for at least CLIMAX_LOCKOUT_MS unless energy drop is sustained
+        if (this.lastNarrativePhase === 'climax' && narrativePhase !== 'climax' && narrativePhase !== 'silence') {
+            const timeInClimax = input.timestamp - this.climaxStartTime;
+            if (timeInClimax < ContextualMemory.CLIMAX_LOCKOUT_MS) {
+                narrativePhase = 'climax';
+            }
+        }
+        // Track climax entry
+        if (narrativePhase === 'climax' && this.lastNarrativePhase !== 'climax') {
+            this.climaxStartTime = input.timestamp;
+        }
+        this.lastNarrativePhase = narrativePhase;
         // Predecir próxima sección
         const predictedNext = this.predictNextSection(history, input.sectionType);
         return {
@@ -403,4 +420,6 @@ export class ContextualMemory {
             `${anomaly.isAnomaly ? `⚡ ${anomaly.recommendation.toUpperCase()}` : 'normal'}`);
     }
 }
+// TAREA 6: CLIMAX lockout — prevent erratic CLIMAX→BUILDING transitions
+ContextualMemory.CLIMAX_LOCKOUT_MS = 4000; // ≈8 beats at 120 BPM
 export default ContextualMemory;

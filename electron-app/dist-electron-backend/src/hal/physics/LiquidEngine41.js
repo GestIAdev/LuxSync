@@ -34,7 +34,7 @@ export class LiquidEngine41 extends LiquidEngineBase {
         // default (latino/pop/etc.): Front = max(subBass, kick), Back = max(snare, highMid).
         const isStrict = this.profile.layout41Strategy === 'strict-split';
         const frontPar = isStrict ? frontRight : Math.max(frontLeft, frontRight);
-        const backPar = isStrict ? backRight : Math.max(backLeft, backRight);
+        const backPar = Math.max(backLeft, backRight); // FIX: strict-split solo afecta front; back siempre usa ambos canales
         const outMoverL = moverLeft;
         const outMoverR = moverRight;
         // ── [LAB-DATA] front/back — Telemetría táctica para calibración 4.1 (SILENCIADO)

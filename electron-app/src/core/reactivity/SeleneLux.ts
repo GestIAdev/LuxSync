@@ -59,7 +59,7 @@ import {
 } from '../../hal/physics';
 import type { LiquidEngineBase } from '../../hal/physics/LiquidEngineBase'
 
-import type { GodEarBands } from '../../workers/GodEarFFT';
+import type { GodEarBands, GodEarPhoton } from '../../workers/GodEarFFT';
 
 import { 
   ElementalModifiers, 
@@ -126,6 +126,13 @@ export interface SeleneLuxAudioMetrics {
   isPLLBeat?: boolean;
   // 💥 WAVE 2347: crestFactor — relación pico/RMS espectral
   crestFactor?: number;
+
+  // 🌊 WAVE 8003: Photon block — wallIntensity lower-bound for anti-collapse DMX
+  photon?: GodEarPhoton;
+
+  // WAVE 8008: Rhythmic percussion isolated energies from GodEarFFT
+  snare_energy?: number;  // 0-1 — geometric mean of body + crack
+  hh_energy?: number;     // 0-1 — high band (5-15kHz)
 }
 
 /**
@@ -172,6 +179,8 @@ export interface SeleneLuxOutput {
   isFlashActive: boolean;
   isSolarFlare: boolean;
   dimmerOverride: number | null;
+  // 🌊 WAVE 8004: Photon strobe override — rate + duty from StrobeEngine
+  strobeOverride?: { rate: number; duty: number } | null;
   /** 🌊 WAVE 7129.6: Morph factor from ChillAmbientEngine [0.20, 0.80]. Drives hue drift. */
   morphFactor: number | null;
   forceMovement: boolean;
@@ -458,7 +467,7 @@ export class SeleneLux {
    */
   public setLiquidStereo(enabled: boolean): void {
     this.useLiquidStereo = enabled;
-    console.log(`[SeleneLux 🌊] Liquid Stereo: ${enabled ? 'ACTIVE' : 'OFF (legacy fallback)'}`);
+    // Liquid Stereo log silenced
   }
 
   /**
@@ -471,7 +480,7 @@ export class SeleneLux {
     const actualMode = mode === 'legacy' ? '4.1' : mode;
     this.liquidLayout = actualMode;
     this.useLiquidStereo = true; // Siempre liquid activo
-    console.log(`[SeleneLux 🌊] Layout: ${actualMode} | Liquid: ALWAYS ON`);
+    // Layout log silenced — fires on every setFixtures
   }
 
   public getLastActiveLiquidEngine(): LiquidEngineBase {
@@ -627,6 +636,9 @@ export class SeleneLux {
         isKick: audioMetrics.kickDetected ?? false,
         spectralCentroid: audioMetrics.spectralCentroid ?? 0,
         morphFactorOverride: chillMorphFactor,  // undefined para todos los vibes no-chill
+        // WAVE 8008: Rhythmic percussion isolated energies
+        snare_energy: audioMetrics.snare_energy,
+        hh_energy: audioMetrics.hh_energy,
       };
       
       // 🌊 WAVE 2432: THE SWITCH BIFURCADO — 4.1 o 7.1, sin legacy
@@ -645,7 +657,7 @@ export class SeleneLux {
       // 🩺 WAVE 4655-DIAG: log engine switch (once per change, not every frame)
       const engineName = liquidEngine === liquidEngine71 ? '71' : (liquidEngine === omniEngine41Telemetry ? '41T' : '41');
       if (engineName !== this._lastLoggedEngine) {
-        console.log(`[SeleneLux 🌊] ENGINE: ${engineName} | layout=${this.liquidLayout} | vibe=${vibeContext.activeVibe} | chill=${isChill}`);
+        // ENGINE switch diagnostic log silenced
         this._lastLoggedEngine = engineName;
       }
       // 🩺 WAVE 4655-DIAG-V2: Si telemetry está activo pero el motor real es otro
@@ -1205,6 +1217,30 @@ export class SeleneLux {
     // 🧠 WAVE 450: Detectar si Energy Override está activo
     const energyOverrideActive = isEnergyOverrideActive(audioMetrics.avgNormEnergy);
     
+    // 🌊 WAVE 8003: PHOTON ANTI-COLLAPSE — wallIntensity as dimmer lower-bound
+    // When brickwall limiter compresses dynamics, wallIntensity ensures
+    // a minimum intensity floor so fixtures don't go dark.
+    // If photon is undefined (V2 fallback), behavior is unchanged.
+    const photon = audioMetrics.photon;
+    if (photon && photon.wallIntensity > 0) {
+      dimmerOverride = dimmerOverride !== null
+        ? Math.max(dimmerOverride, photon.wallIntensity)
+        : photon.wallIntensity;
+    }
+
+    // 🌊 WAVE 8004: PHOTON STROBE — StrobeEngine output drives strobeOverride
+    // When active, provides rate + duty for HAL to use native strobe channel
+    // or modulate dimmer. Falls back to physics-engine strobe if photon inactive.
+    let strobeOverride: { rate: number; duty: number } | null = null;
+    if (photon?.strobe?.active) {
+      strobeOverride = {
+        rate: photon.strobe.rateHz,
+        duty: photon.strobe.duty,
+      };
+      // Photon strobe takes priority over physics-engine strobe flag
+      isStrobeActive = true;
+    }
+    
     this.lastOutput = {
       palette: outputPalette,
       zoneIntensities,
@@ -1212,6 +1248,7 @@ export class SeleneLux {
       isFlashActive,
       isSolarFlare,
       dimmerOverride,
+      strobeOverride,
       morphFactor,
       forceMovement,
       physicsApplied,
@@ -1298,6 +1335,10 @@ export class SeleneLux {
       hihatDetected: src.hihatDetected === true,
       isPLLBeat: src.isPLLBeat === true,
       crestFactor: Math.max(0, safeNumber(src.crestFactor, 0)),
+      // WAVE 8008: Rhythmic percussion isolated energies — must survive normalization
+      snare_energy: clamp01(src.snare_energy, 0),
+      hh_energy: clamp01(src.hh_energy, 0),
+      photon: src.photon,
     }
   }
   

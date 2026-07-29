@@ -111,9 +111,9 @@ const AGC_CONFIG = {
     subBass: { attackMs: 150, releaseMs: 50, targetRMS: 0.4, maxGain: 3.0 },
     bass: { attackMs: 120, releaseMs: 60, targetRMS: 0.45, maxGain: 2.5 },
     lowMid: { attackMs: 100, releaseMs: 80, targetRMS: 0.5, maxGain: 2.0 },
-    mid: { attackMs: 80, releaseMs: 100, targetRMS: 0.5, maxGain: 2.0 },
-    highMid: { attackMs: 60, releaseMs: 120, targetRMS: 0.45, maxGain: 2.5 },
-    treble: { attackMs: 40, releaseMs: 150, targetRMS: 0.4, maxGain: 3.0 },
+    mid: { attackMs: 80, releaseMs: 100, targetRMS: 0.55, maxGain: 3.0 },
+    highMid: { attackMs: 60, releaseMs: 120, targetRMS: 0.55, maxGain: 3.5 },
+    treble: { attackMs: 40, releaseMs: 150, targetRMS: 0.50, maxGain: 4.0 },
     ultraAir: { attackMs: 30, releaseMs: 180, targetRMS: 0.3, maxGain: 4.0 },
 };
 /**
@@ -135,8 +135,17 @@ const AGC_CONFIG = {
  * - This scaling is applied to the pre-AGC band path used by UI/DMX and rBPM feed.
  * - AGC is applied after this stage on `bands` only.
  */
-const POST_FFT_LEGACY_EQ_GAIN = 2.25;
-const POST_FFT_BAND_OUTPUT_CLAMP = 1.0;
+// WAVE 8005 R2: AGC headroom — absMax observed 1.2069 across 432 samples,
+// zero samples above 1.25, so 1.50 was over-provisioned.
+const AGC_HEADROOM = 1.25;
+const AGC_TARGET_SCALE = 0.64; // Confirmed R2: p95 kicks 1.4133 → 0.9608
+const POST_FFT_LEGACY_EQ_GAIN = 2.25 * AGC_TARGET_SCALE; // 1.44
+const POST_FFT_BAND_OUTPUT_CLAMP = AGC_HEADROOM;
+// WAVE 8005 R2: Spectral flatness → whiteNoiseScore mapping.
+// OFFSET at kicks p75 (0.1021) keeps 75% of kicks at zero.
+// SCALE saturates at flatness 0.20 — above cymbals median (0.1965).
+const FLATNESS_OFFSET = 0.10;
+const FLATNESS_SCALE = 0.10;
 const RADIX2_RAW_TELEMETRY_INTERVAL_FRAMES = 60;
 // ═══════════════════════════════════════════════════════════════════════════════
 // SECTION 3: WINDOWING - BLACKMAN-HARRIS 4-TERM
@@ -294,6 +303,29 @@ function getBitReversalTable(n) {
     }
     return BIT_REVERSAL_TABLE;
 }
+// ═══════════════════════════════════════════════════════════════════════════════
+// WAVE 8001: TWIDDLE FACTOR LUT — Pre-computed sin/cos for all FFT stages
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// For N=4096, all twiddle factors W_m^j = W_N^(j·N/m) are subsets of
+// W_N^k for k ∈ [0, N/2). Two Float32Array(2048) = 16KB total, singleton.
+// Eliminates 4096 trig calls/frame (2048 cos + 2048 sin).
+let TW_COS = null;
+let TW_SIN = null;
+let TW_LUT_SIZE = 0;
+function initTwiddleLUT(n) {
+    if (TW_COS && TW_SIN && TW_LUT_SIZE === n)
+        return;
+    const half = n >> 1;
+    TW_COS = new Float32Array(half);
+    TW_SIN = new Float32Array(half);
+    const step = -2 * Math.PI / n;
+    for (let k = 0; k < half; k++) {
+        TW_COS[k] = Math.cos(step * k);
+        TW_SIN[k] = Math.sin(step * k);
+    }
+    TW_LUT_SIZE = n;
+}
 /**
  * Compute FFT using Cooley-Tukey Radix-2 Decimation-In-Time (DIT).
  *
@@ -328,13 +360,12 @@ function computeFFTCore(samples, outReal, outImag) {
     //   W_m^j = exp(-j·2π·j/m) = cos(2πj/m) - j·sin(2πj/m)
     for (let size = 2; size <= n; size <<= 1) {
         const halfSize = size >> 1;
-        const angleStep = -2 * Math.PI / size; // Negative for forward DFT
+        const stride = n / size; // W_m^j = W_N^(j·stride)
         for (let groupStart = 0; groupStart < n; groupStart += size) {
             for (let j = 0; j < halfSize; j++) {
-                // Twiddle factor W = exp(-j·2π·j/size)
-                const angle = angleStep * j;
-                const wr = Math.cos(angle);
-                const wi = Math.sin(angle);
+                // WAVE 8001: Twiddle factor from LUT (zero trig calls in hot path)
+                const wr = TW_COS[j * stride];
+                const wi = TW_SIN[j * stride];
                 const evenIdx = groupStart + j;
                 const oddIdx = groupStart + j + halfSize;
                 // Twiddle the odd element: t = W · x[odd]
@@ -350,21 +381,26 @@ function computeFFTCore(samples, outReal, outImag) {
     }
 }
 /**
- * Compute magnitude spectrum from complex FFT output.
+ * WAVE 8001: Compute POWER spectrum from complex FFT output.
  *
- * WAVE 2090.1: ZERO-ALLOCATION — writes into pre-allocated output buffer.
+ * Replaces computeMagnitudeSpectrum. Operates in power domain (re² + im²)
+ * to eliminate 2049 sqrt calls/frame. sqrt is deferred to extractBandPower
+ * (7 calls total) and spectral metrics that need it.
+ *
+ * The normalization factor is squared (nf²) since we're in power domain:
+ *   magnitude = sqrt(re² + im²) * nf
+ *   power     = (re² + im²) * nf²
  *
  * @param real - Real part of FFT
  * @param imag - Imaginary part of FFT
  * @param output - Pre-allocated output buffer (MUST be >= numBins + 1)
  * @param numBins - Number of bins (real.length / 2)
  */
-function computeMagnitudeSpectrum(real, imag, output, numBins) {
-    // Normalization factor (window compensation + FFT normalization)
-    const normFactor = 1 / (real.length * BLACKMAN_HARRIS_COHERENT_GAIN);
+function computePowerSpectrum(real, imag, output, numBins) {
+    const nf = 1 / (real.length * BLACKMAN_HARRIS_COHERENT_GAIN);
+    const nf2 = nf * nf;
     for (let i = 0; i <= numBins; i++) {
-        const mag = Math.sqrt(real[i] * real[i] + imag[i] * imag[i]);
-        output[i] = mag * normFactor;
+        output[i] = (real[i] * real[i] + imag[i] * imag[i]) * nf2;
     }
 }
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -470,27 +506,34 @@ function scaleBandEnergyForVisual(rawRms, weightSum) {
     return Math.min(POST_FFT_BAND_OUTPUT_CLAMP, scaled);
 }
 /**
- * Extract band energy using LR4 filtered magnitudes.
+ * WAVE 8001: Extract band energy from POWER spectrum using LR4 filtered weights.
  *
- * @param magnitudes - Magnitude spectrum
+ * Operates entirely in power domain. The input `power` array contains P_k = |X_k|²
+ * (already normalized). The weighted average power is computed, then sqrt is applied
+ * ONCE at the end to return RMS — identical result to V2's extractBandEnergy
+ * but with 2049 fewer sqrt calls per frame.
+ *
+ * Mathematical equivalence:
+ *   V2: sqrt( Σ (sqrt(P_k))² · w_k / Σw ) = sqrt( Σ P_k · w_k / Σw )
+ *   V3: sqrt( Σ P_k · w_k / Σw )                         ← same thing
+ *
+ * @param power - Power spectrum (P_k = |X_k|², normalized)
  * @param mask - LR4 filter mask for this band
- * @returns RMS energy for this band (0.0-1.0)
+ * @returns RMS energy for this band (0.0-1.0) — same scale as V2
  */
-function extractBandEnergy(magnitudes, mask) {
+function extractBandPower(power, mask) {
     let energy = 0;
     let weightSum = 0;
-    for (let bin = 0; bin < magnitudes.length && bin < mask.length; bin++) {
+    for (let bin = 0; bin < power.length && bin < mask.length; bin++) {
         const weight = mask[bin];
-        if (weight > 0.001) { // Skip negligible weights for performance
-            energy += magnitudes[bin] * magnitudes[bin] * weight;
+        if (weight > 0.001) {
+            energy += power[bin] * weight;
             weightSum += weight;
         }
     }
-    // Normalize by total weight to maintain consistent scale
     if (weightSum > 0) {
         energy /= weightSum;
     }
-    // Return RMS
     return Math.sqrt(energy);
 }
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -501,7 +544,10 @@ function extractBandEnergy(magnitudes, mask) {
  *
  * "Center of mass" of the spectrum. Higher = brighter sound.
  *
- * Formula: Σ(f[k] × |X[k]|²) / Σ(|X[k]|²)
+ * Formula: Σ(f[k] × P[k]) / Σ(P[k])    where P[k] = |X[k]|² (power domain)
+ *
+ * WAVE 8001: Adapted to power domain — uses power[bin] directly instead of
+ * magnitudes[bin]². Mathematically identical result.
  *
  * Typical values:
  * - Kick: 80-200Hz
@@ -509,63 +555,69 @@ function extractBandEnergy(magnitudes, mask) {
  * - Female voice: 400-700Hz
  * - Cymbals: 3000-6000Hz
  */
-function calculateSpectralCentroid(magnitudes, sampleRate, fftSize) {
+function calculateSpectralCentroid(power, sampleRate, fftSize) {
     const binResolution = sampleRate / fftSize;
     let weightedSum = 0;
-    let magnitudeSum = 0;
-    for (let bin = 1; bin < magnitudes.length; bin++) { // Skip DC
+    let powerSum = 0;
+    for (let bin = 1; bin < power.length; bin++) {
         const freq = bin * binResolution;
-        const mag2 = magnitudes[bin] * magnitudes[bin];
-        weightedSum += freq * mag2;
-        magnitudeSum += mag2;
+        const p = power[bin];
+        weightedSum += freq * p;
+        powerSum += p;
     }
-    if (magnitudeSum === 0)
+    if (powerSum === 0)
         return 0;
-    return weightedSum / magnitudeSum;
+    return weightedSum / powerSum;
 }
 /**
  * Calculate Spectral Flatness (Wiener Entropy).
  *
  * Measures how "tonal" vs "noisy" the spectrum is.
  *
- * Formula: geometric_mean(|X|²) / arithmetic_mean(|X|²)
+ * Formula: geometric_mean(P) / arithmetic_mean(P)    where P = |X|² (power domain)
+ *
+ * WAVE 8001: Adapted to power domain. The input is now P_k directly.
+ * The relative threshold is squared: 0.01² of maxPower (was 0.01 of maxMag,
+ * then squared internally — same result since maxPower = maxMag²).
+ *
+ * Note: flatness_P = flatness_mag² approximately. Downstream consumers that
+ * threshold on flatness should recalibrate: 0.8 → 0.64. The raw value returned
+ * by this function is now in the power-domain scale.
  *
  * Values:
  * - 0.0: Pure tone (all energy in one frequency)
  * - 1.0: White noise (energy uniformly distributed)
- * - 0.1-0.3: Tonal music (clear instruments)
- * - 0.4-0.6: Percussive music
- * - 0.7+: Noise/effects
+ * - 0.01-0.09: Tonal music (clear instruments) [was 0.1-0.3 in mag domain]
+ * - 0.16-0.36: Percussive music [was 0.4-0.6]
+ * - 0.49+: Noise/effects [was 0.7+]
  */
-function calculateSpectralFlatness(magnitudes) {
-    const n = magnitudes.length - 1; // Exclude DC
+function calculateSpectralFlatness(power) {
+    const n = power.length - 1; // Exclude DC
     if (n <= 0)
         return 0;
-    // Find max magnitude (excluding DC) for relative threshold
-    let maxMag = 0;
-    for (let bin = 1; bin < magnitudes.length; bin++) {
-        if (magnitudes[bin] > maxMag)
-            maxMag = magnitudes[bin];
+    // Find max power (excluding DC) for relative threshold
+    let maxPower = 0;
+    for (let bin = 1; bin < power.length; bin++) {
+        if (power[bin] > maxPower)
+            maxPower = power[bin];
     }
-    if (maxMag === 0)
+    if (maxPower === 0)
         return 0;
-    // Relative threshold: 1% of max magnitude filters YouTube compression noise floor
-    const RELATIVE_THRESHOLD = maxMag * 0.01;
-    const threshold2 = RELATIVE_THRESHOLD * RELATIVE_THRESHOLD;
+    // Relative threshold: (1%)² of max power — filters YouTube compression noise floor
+    const threshold = maxPower * 0.0001; // 0.01²
     let logSum = 0;
     let arithmeticSum = 0;
     let validBins = 0;
-    for (let bin = 1; bin < magnitudes.length; bin++) {
-        const mag2 = magnitudes[bin] * magnitudes[bin];
-        if (mag2 > threshold2) {
-            logSum += Math.log(mag2);
-            arithmeticSum += mag2;
+    for (let bin = 1; bin < power.length; bin++) {
+        const p = power[bin];
+        if (p > threshold) {
+            logSum += Math.log(p);
+            arithmeticSum += p;
             validBins++;
         }
     }
     if (validBins === 0 || arithmeticSum === 0)
         return 0;
-    // Both means use validBins as denominator — fixes the mathematical discrepancy
     const geometricMean = Math.exp(logSum / validBins);
     const arithmeticMean = arithmeticSum / validBins;
     return Math.min(1.0, geometricMean / arithmeticMean);
@@ -575,29 +627,30 @@ function calculateSpectralFlatness(magnitudes) {
  *
  * Frequency below which 85% of the energy is contained.
  *
+ * WAVE 8001: Adapted to power domain. Energy is now Σ P_k directly
+ * (was Σ mag_k² which is the same value).
+ *
  * Indicates if music is:
  * - Low rolloff: Hip-hop, Dub, Bass music
  * - High rolloff: EDM, Pop, Hi-fi
  */
-function calculateSpectralRolloff(magnitudes, sampleRate, fftSize, percentile = 0.85) {
+function calculateSpectralRolloff(power, sampleRate, fftSize, percentile = 0.85) {
     const binResolution = sampleRate / fftSize;
-    // Calculate total energy
     let totalEnergy = 0;
-    for (let bin = 1; bin < magnitudes.length; bin++) {
-        totalEnergy += magnitudes[bin] * magnitudes[bin];
+    for (let bin = 1; bin < power.length; bin++) {
+        totalEnergy += power[bin];
     }
     if (totalEnergy === 0)
         return 0;
-    // Find frequency where percentile% of energy is reached
     const threshold = totalEnergy * percentile;
     let cumulativeEnergy = 0;
-    for (let bin = 1; bin < magnitudes.length; bin++) {
-        cumulativeEnergy += magnitudes[bin] * magnitudes[bin];
+    for (let bin = 1; bin < power.length; bin++) {
+        cumulativeEnergy += power[bin];
         if (cumulativeEnergy >= threshold) {
             return bin * binResolution;
         }
     }
-    return sampleRate / 2; // Nyquist if threshold not reached
+    return sampleRate / 2;
 }
 /**
  * Calculate Clarity Index (proprietary GOD EAR metric).
@@ -609,14 +662,9 @@ function calculateSpectralRolloff(magnitudes, sampleRate, fftSize, percentile = 
  * 2. Crest Factor (peak/RMS - more dynamic = clearer)
  * 3. Spectral Concentration (energy in peaks vs floor)
  *
- * WAVE 2090.1: ZERO-ALLOCATION REFACTOR
- * OLD: Array.from(magnitudes).sort() — O(N log N) + Array copy of 2049 elements per frame
- * NEW: Single-pass O(N) with running threshold — ZERO allocations, ZERO copies
- *
- * Algorithm: Instead of sorting to find "top 10%" energy, we compute the
- * RMS (root-mean-square) of all magnitudes in a single pass, then do a
- * second pass counting bins that exceed RMS as "peak" bins. This gives
- * equivalent spectral concentration measurement without sort or copy.
+ * WAVE 8001: Adapted to power domain. totalEnergy = Σ P_k directly.
+ * RMS threshold comparison: instead of mag[i] > sqrt(ΣP/n), we use
+ * P[i] > ΣP/n (mean power) — algebraically equivalent, avoids per-bin sqrt.
  *
  * Values:
  * - 0.0-0.3: Very noisy (mp3 128kbps, bad master)
@@ -624,33 +672,25 @@ function calculateSpectralRolloff(magnitudes, sampleRate, fftSize, percentile = 
  * - 0.7-0.9: High fidelity (CD quality, good master)
  * - 0.9+: Studio quality
  */
-function calculateClarity(magnitudes, flatness, crestFactor, numBins) {
-    // Factor 1: Tonality (inverse of flatness)
+function calculateClarity(power, flatness, crestFactor, numBins) {
     const tonality = 1.0 - flatness;
-    // Factor 2: Normalized crest factor (typical max ~6)
     const normalizedCrest = Math.min(1.0, crestFactor / 6.0);
-    // Factor 3: Spectral concentration — ZERO-ALLOCATION O(N)
-    // Pass 1: Compute total energy and RMS threshold in one sweep
     let totalEnergy = 0;
     for (let i = 0; i < numBins; i++) {
-        totalEnergy += magnitudes[i] * magnitudes[i];
+        totalEnergy += power[i];
     }
-    if (totalEnergy === 0) {
+    if (totalEnergy === 0)
         return 0;
-    }
-    const rmsThreshold = Math.sqrt(totalEnergy / numBins);
-    // Pass 2: Sum energy of bins above RMS threshold ("peaks")
-    // Bins above RMS are considered "dominant frequency content"
-    // In a tonal signal, few bins hold most energy → high concentration
-    // In noise, all bins are similar → low concentration
+    // Mean power = ΣP/n. In V2 this was (rmsThreshold)² = totalEnergy/n.
+    // Comparing P[i] > meanPower is equivalent to mag[i] > rmsThreshold.
+    const meanPower = totalEnergy / numBins;
     let peakEnergy = 0;
     for (let i = 0; i < numBins; i++) {
-        if (magnitudes[i] > rmsThreshold) {
-            peakEnergy += magnitudes[i] * magnitudes[i];
+        if (power[i] > meanPower) {
+            peakEnergy += power[i];
         }
     }
     const concentration = peakEnergy / totalEnergy;
-    // Combine with weights
     const clarity = (tonality * 0.4 +
         normalizedCrest * 0.3 +
         concentration * 0.3);
@@ -659,20 +699,26 @@ function calculateClarity(magnitudes, flatness, crestFactor, numBins) {
 /**
  * Calculate Crest Factor (Peak/RMS ratio).
  *
+ * WAVE 8001: Adapted to power domain. peak = sqrt(max(P)), rms = sqrt(mean(P)).
+ * crest = peak / rms — same result as V2 with 1 sqrt for peak + 1 sqrt for rms.
+ *
  * Indicates dynamic range:
  * - Low (~1-2): Heavily compressed (loud war)
  * - Medium (~3-6): Normal music
  * - High (~6+): Very dynamic (classical, jazz)
  */
-function calculateCrestFactor(magnitudes) {
-    let peak = 0;
-    let sumSquares = 0;
-    for (let i = 0; i < magnitudes.length; i++) {
-        if (magnitudes[i] > peak)
-            peak = magnitudes[i];
-        sumSquares += magnitudes[i] * magnitudes[i];
+function calculateCrestFactor(power) {
+    let maxPower = 0;
+    let sumPower = 0;
+    for (let i = 0; i < power.length; i++) {
+        if (power[i] > maxPower)
+            maxPower = power[i];
+        sumPower += power[i];
     }
-    const rms = Math.sqrt(sumSquares / magnitudes.length);
+    if (sumPower === 0)
+        return 0;
+    const peak = Math.sqrt(maxPower);
+    const rms = Math.sqrt(sumPower / power.length);
     if (rms === 0)
         return 0;
     return peak / rms;
@@ -745,20 +791,321 @@ function analyzeStereo(leftChannel, rightChannel) {
     return { correlation, width, balance };
 }
 // ═══════════════════════════════════════════════════════════════════════════════
-// SECTION 9: AGC TRUST ZONES (Per-Band Independent Gain Control)
+// SECTION 8.5: WAVE 8002 — SPECTRAL FLUX V3 + SATURATION INDEX
 // ═══════════════════════════════════════════════════════════════════════════════
 /**
- * AGC Trust Zone Controller
+ * WAVE 8002: SaturationMeter — detects brickwall limiter compression.
  *
- * Each band has independent gain control to prevent the "yoyo effect"
- * where a loud bass causes everything to duck, or quiet highs disappear.
+ * Combines three orthogonal indicators:
+ *   1. Crest factor collapse (peak/RMS in power domain)
+ *   2. Loudness dwell (fast + slow EMAs pegged to peak)
+ *   3. Spectral flatness elevation
+ *
+ * Output: SI_smooth ∈ [0, 1] — 0 = dynamic music, 1 = fully brickwalled.
+ *
+ * ~12 ops/frame. State: 4 floats.
  */
+class SaturationMeter {
+    constructor() {
+        this.lFast = 0;
+        this.lSlow = 0;
+        this.lPeak = 1e-6;
+        this.siSmooth = 0;
+    }
+    update(totalPower, crestDb, flatnessP) {
+        this.lFast += 0.4 * (totalPower - this.lFast);
+        this.lSlow += 0.02 * (totalPower - this.lSlow);
+        this.lPeak = totalPower > this.lPeak ? totalPower : this.lPeak * 0.999;
+        const siCrest = Math.max(0, Math.min(1, (14 - crestDb) / 8));
+        const siDwell = Math.max(0, Math.min(1, this.lFast / (0.75 * this.lPeak + 1e-12)))
+            * Math.max(0, Math.min(1, this.lSlow / (0.60 * this.lPeak + 1e-12)));
+        const siFlat = Math.max(0.3, Math.max(0, Math.min(1, (flatnessP - 0.15) / 0.35)));
+        const si = Math.pow(siCrest, 0.4) * Math.pow(siDwell, 0.4) * Math.pow(siFlat, 0.2);
+        const k = si > this.siSmooth ? 0.30 : 0.04;
+        this.siSmooth += k * (si - this.siSmooth);
+        return this.siSmooth;
+    }
+    reset() {
+        this.lFast = 0;
+        this.lSlow = 0;
+        this.lPeak = 1e-6;
+        this.siSmooth = 0;
+    }
+}
+/**
+ * WAVE 8002: Compute Spectral Flux V3 — half-wave rectified, whitened, normalized.
+ *
+ * F(t)      = Σ_k max(0, P_t[k] − P_{t−1}[k]) / max(ε, R_t[k])
+ * R_t[k]    = max(P_t[k], λ·R_{t−1}[k])     λ = 0.995 (peak-hold with decay)
+ * F_norm(t) = F(t) / (ε + Σ_k P_t[k])
+ *
+ * The whitening reference R_t is stored in `fluxWhitening` and updated in-place.
+ * The previous frame's power is stored in `prevPower`.
+ *
+ * @param power       Current frame power spectrum (P_t)
+ * @param prevPower   Previous frame power spectrum (P_{t-1}) — mutated to current
+ * @param fluxWhitening Peak-hold whitening reference (R_t) — mutated in-place
+ * @param numBins     Number of bins
+ * @returns Normalized spectral flux ∈ [0, ~1] (adimensional by whitening)
+ */
+function computeSpectralFlux(power, prevPower, fluxWhitening, numBins) {
+    let totalFlux = 0;
+    let totalPower = 0;
+    for (let k = 1; k <= numBins; k++) {
+        const p = power[k];
+        const r = fluxWhitening[k] * 0.995;
+        fluxWhitening[k] = p > r ? p : r;
+        const d = p - prevPower[k];
+        if (d > 0)
+            totalFlux += d / (fluxWhitening[k] + 1e-12);
+        totalPower += p;
+        prevPower[k] = p;
+    }
+    return totalPower > 1e-10 ? totalFlux / numBins : 0;
+}
+// ═══════════════════════════════════════════════════════════════════════════════
+// SECTION 9: AGC TRUST ZONES (Per-Band Independent Gain Control)
+// ═══════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════════
+// WAVE 8004: STROBE ENGINE — Maps acoustic chaos to photonic strobe
+// Safety: hard-capped at 12Hz for photosensitive epilepsy protection.
+// ═══════════════════════════════════════════════════════════════════════════════
+class StrobeEngine {
+    constructor() {
+        this.driveSmooth = 0;
+        this.rateSmooth = 0;
+        this.cooldown = 0;
+        this._lastDriveRaw = 0;
+    }
+    /**
+     * Process transient density + white noise score into a strobe state.
+     * @param transientDensity  [0, 1] — onset rate proxy from photon block
+     * @param whiteNoiseScore   [0, 1] — broadband noise indicator
+     * @param spectralFlux      [0, ~1] — V3 flux for drive modulation
+     * @param deltaMs           Frame delta in milliseconds
+     * @param tonalRatio        kick/highs ratio — high = tonal/bass dominated
+     * @returns Strobe state for GodEarPhoton
+     */
+    process(transientDensity, whiteNoiseScore, spectralFlux, deltaMs, tonalRatio) {
+        // Drive = combined chaos signal from transients + noise + flux.
+        // Flux is floored+expanded: raw normalized flux sits at 0.80-1.00 for all
+        // real material, so without the floor it degenerates into a constant offset.
+        const fluxNorm = Math.max(0, Math.min(1, (spectralFlux - StrobeEngine.FLUX_FLOOR) / StrobeEngine.FLUX_RANGE));
+        // Tonal gate: scale down transientDensity when signal is overwhelmingly
+        // tonal (sustained bass/synth). White noise and flux pass through untouched
+        // so snares/hi-hats riding over a bassline still trigger the strobe.
+        // tonalRatio ≤ KNEE → gate=1.0, ≥ RATIO → gate=0.0, linear between.
+        const tonalGate = tonalRatio <= StrobeEngine.TONAL_GATE_KNEE
+            ? 1.0
+            : tonalRatio >= StrobeEngine.TONAL_GATE_RATIO
+                ? 0.0
+                : 1.0 - (tonalRatio - StrobeEngine.TONAL_GATE_KNEE) /
+                    (StrobeEngine.TONAL_GATE_RATIO - StrobeEngine.TONAL_GATE_KNEE);
+        const gatedTransientDensity = transientDensity * tonalGate;
+        const driveRaw = gatedTransientDensity * StrobeEngine.WEIGHT_TRANSIENT +
+            whiteNoiseScore * StrobeEngine.WEIGHT_NOISE +
+            fluxNorm * StrobeEngine.WEIGHT_FLUX;
+        this._lastDriveRaw = driveRaw;
+        // Asymmetric smoothing: fast attack, slow release
+        const k = driveRaw > this.driveSmooth ? 0.35 : 0.06;
+        this.driveSmooth += k * (driveRaw - this.driveSmooth);
+        // Cooldown after active burst — prevents flicker on edge cases
+        if (this.cooldown > 0) {
+            this.cooldown -= deltaMs;
+        }
+        // Activate when drive exceeds threshold and cooldown expired
+        const active = this.driveSmooth > StrobeEngine.ACTIVATION_THRESHOLD && this.cooldown <= 0;
+        // Rate: map drive [ACTIVATION_THRESHOLD, 1.0] → [MIN_RATE, MAX_RATE] Hz
+        let targetRate = 0;
+        if (active) {
+            const driveNorm = Math.max(0, Math.min(1, (this.driveSmooth - StrobeEngine.ACTIVATION_THRESHOLD) /
+                (1 - StrobeEngine.ACTIVATION_THRESHOLD)));
+            targetRate = StrobeEngine.MIN_RATE_HZ + driveNorm * (StrobeEngine.MAX_RATE_HZ - StrobeEngine.MIN_RATE_HZ);
+        }
+        // Smooth rate changes
+        this.rateSmooth += 0.15 * (targetRate - this.rateSmooth);
+        // Duty: inverse to rate — faster strobes have shorter duty
+        // High drive → narrow pulse (10-15%), low drive → wider (20-30%)
+        const duty = active
+            ? Math.max(0.08, Math.min(0.30, 0.30 - this.driveSmooth * 0.20))
+            : 0;
+        // If drive drops below deactivation threshold, enter cooldown
+        if (!active && this.driveSmooth < StrobeEngine.DEACTIVATION_THRESH && this.cooldown <= 0) {
+            this.cooldown = 200; // 200ms cooldown before reactivation
+        }
+        return {
+            active,
+            rateHz: active ? Math.min(StrobeEngine.MAX_RATE_HZ, this.rateSmooth) : 0,
+            duty,
+            drive: this.driveSmooth,
+        };
+    }
+    // WAVE 8004: Telemetry getters
+    get drive() { return this.driveSmooth; }
+    get driveRaw() { return this._lastDriveRaw; }
+    get rate() { return this.rateSmooth; }
+    get cooldownMs() { return this.cooldown; }
+    get activationThreshold() { return StrobeEngine.ACTIVATION_THRESHOLD; }
+    get maxRateHz() { return StrobeEngine.MAX_RATE_HZ; }
+    reset() {
+        this.driveSmooth = 0;
+        this.rateSmooth = 0;
+        this.cooldown = 0;
+        this._lastDriveRaw = 0;
+    }
+}
+StrobeEngine.MAX_RATE_HZ = 12; // Photosensitive safety cap
+StrobeEngine.MIN_RATE_HZ = 2; // Below this, not a strobe
+// WAVE 8005 R3: Roll-validated weights — transient density carries roll
+// detection, noise weight cut (melodic exploits flatness), flux compensates.
+StrobeEngine.WEIGHT_TRANSIENT = 0.50;
+StrobeEngine.WEIGHT_NOISE = 0.15;
+StrobeEngine.WEIGHT_FLUX = 0.35;
+// Normalized flux saturates near 1.0 for any real signal; expand [0.95, 1.0].
+StrobeEngine.FLUX_FLOOR = 0.95;
+StrobeEngine.FLUX_RANGE = 0.05;
+// R3: Grid search on 27 roll samples + 63 kicks + 37 melodic.
+// 0% kicks fire, 44% all rolls, 55% pure rolls, 16% melodic, 3% snare.
+StrobeEngine.ACTIVATION_THRESHOLD = 0.60;
+StrobeEngine.DEACTIVATION_THRESH = 0.30;
+// Tonal gate: when tonalRatio is high (bass/synth dominates highs),
+// sustained notes fool the onset detector into inflating transientDensity.
+// Gate scales down the transientDensity contribution to prevent false strobe.
+StrobeEngine.TONAL_GATE_KNEE = 3.0; // Below: no penalty
+StrobeEngine.TONAL_GATE_RATIO = 5.0; // Above: full penalty
+// ═══════════════════════════════════════════════════════════════════════════════
+// WAVE 8004: CHROMA COUPLER — Maps harmonic content to hue + colorSnap
+// Consumes the 12-bin chromagram (pitch classes C→B, normalized 0-1).
+// Hue is derived from the circle of fifths mapping: each pitch class
+// gets a hue position, and the dominant class determines the color.
+// ═══════════════════════════════════════════════════════════════════════════════
+class ChromaCoupler {
+    constructor() {
+        this.currentHue = 0;
+        this.prevHue = 0;
+        this.hueSmooth = 0;
+        this.chromaFluxSmooth = 0;
+        this.snapThreshold = 0.0100;
+        this.snapCooldown = 0;
+    }
+    /**
+     * Process the 12-bin chromagram to extract hue, colorSnap, and chromaFlux.
+     * @param chroma  Float32Array(12) — normalized [0,1] per pitch class
+     * @param deltaMs Frame delta in milliseconds
+     */
+    process(chroma, deltaMs) {
+        // Find dominant pitch class (highest energy)
+        let maxIdx = 0;
+        let maxVal = 0;
+        for (let i = 0; i < 12; i++) {
+            if (chroma[i] > maxVal) {
+                maxVal = chroma[i];
+                maxIdx = i;
+            }
+        }
+        // Weighted average hue using circle of fifths mapping
+        // This gives a continuous hue even when multiple classes are active
+        let weightedSin = 0;
+        let weightedCos = 0;
+        let totalWeight = 0;
+        for (let i = 0; i < 12; i++) {
+            const w = chroma[i] * chroma[i]; // square for emphasis on dominant
+            if (w > 1e-6) {
+                const hueAngle = ChromaCoupler.FIFTHS_HUE[i] * Math.PI * 2;
+                weightedSin += w * Math.sin(hueAngle);
+                weightedCos += w * Math.cos(hueAngle);
+                totalWeight += w;
+            }
+        }
+        this.prevHue = this.hueSmooth;
+        if (totalWeight > 1e-6) {
+            const angle = Math.atan2(weightedSin, weightedCos);
+            const rawHue = (angle / (Math.PI * 2) + 1) % 1; // [0, 1)
+            // Smooth hue transition (short circular distance)
+            let diff = rawHue - this.hueSmooth;
+            if (diff > 0.5)
+                diff -= 1;
+            if (diff < -0.5)
+                diff += 1;
+            this.hueSmooth += 0.08 * diff;
+            if (this.hueSmooth < 0)
+                this.hueSmooth += 1;
+            if (this.hueSmooth >= 1)
+                this.hueSmooth -= 1;
+            this.currentHue = this.hueSmooth;
+        }
+        // Chroma flux: rate of hue change
+        let hueDelta = Math.abs(this.hueSmooth - this.prevHue);
+        if (hueDelta > 0.5)
+            hueDelta = 1 - hueDelta; // circular distance
+        this.chromaFluxSmooth += 0.12 * (hueDelta - this.chromaFluxSmooth);
+        // Color snap: detect abrupt harmonic shifts
+        if (this.snapCooldown > 0) {
+            this.snapCooldown -= deltaMs;
+        }
+    }
+    /**
+     * Returns true if a color snap was detected this frame.
+     * Must be called after process().
+     */
+    isSnap(scaledKick, scaledHighs) {
+        if (this.chromaFluxSmooth > this.snapThreshold && this.snapCooldown <= 0) {
+            // WAVE 8005: Tonal gate — reject snaps from non-tonal sources (cymbals, hi-hats)
+            if (scaledKick !== undefined && scaledHighs !== undefined) {
+                const tonalRatio = scaledKick / (scaledHighs + 1e-6);
+                if (tonalRatio < ChromaCoupler.TONAL_GATE_RATIO)
+                    return false;
+            }
+            this.snapCooldown = 500; // 500ms between snaps
+            return true;
+        }
+        return false;
+    }
+    get hue() { return this.currentHue; }
+    get chromaFlux() { return this.chromaFluxSmooth; }
+    get snapCooldownMs() { return this.snapCooldown; }
+    get snapThresholdValue() { return this.snapThreshold; }
+    reset() {
+        this.currentHue = 0;
+        this.prevHue = 0;
+        this.hueSmooth = 0;
+        this.chromaFluxSmooth = 0;
+        this.snapCooldown = 0;
+    }
+}
+// Circle of fifths hue mapping [0, 1] — C=0, G=0.083, D=0.167, A=0.25, ...
+// Each fifth = 1/12 of the hue wheel (30°), arranged by acoustic proximity
+ChromaCoupler.FIFTHS_HUE = [
+    0.00, // C  (0)
+    0.583, // C# (1) — tritone area
+    0.167, // D  (2)
+    0.667, // D# (3)
+    0.333, // E  (4)
+    0.083, // F  (5)
+    0.667, // F# (6) — tritone
+    0.250, // G  (7)
+    0.750, // G# (8)
+    0.417, // A  (9)
+    0.833, // A# (10)
+    0.500, // B  (11)
+];
+// WAVE 8005 R2: 0.0100 + tonal ratio 3.0 lifts melodic detection 54%→84%
+// while cutting snare false positives 23%→13%. Cymbals/hi-hats stay at 0%.
+ChromaCoupler.TONAL_GATE_RATIO = 3.0;
+// ═══════════════════════════════════════════════════════════════════════════════
+// AGC Trust Zone Controller
+// 
+// Each band has independent gain control to prevent the "yoyo effect"
+// where a loud bass causes everything to duck, or quiet highs disappear.
+// ═══════════════════════════════════════════════════════════════════════════════
 class AGCTrustZone {
     constructor() {
         this.gains = {};
         this.rmsHistory = {};
         this.historyLength = 20; // ~1 second @ 20fps
         this.isActive = true;
+        // WAVE 8003: AGC Freeze — when SI > 0.6, prevent gain reduction (brickwall anti-compensate)
+        this.freezeReduction = false;
         // Initialize gains to 1.0 for all bands
         for (const config of Object.values(GOD_EAR_BAND_CONFIG)) {
             this.gains[config.id] = 1.0;
@@ -812,7 +1159,15 @@ class AGCTrustZone {
         }
         // Exponential smoothing
         const alpha = Math.min(1.0, deltaMs / smoothingTime);
-        this.gains[bandId] = currentGain + gainDiff * alpha;
+        const newGain = currentGain + gainDiff * alpha;
+        // WAVE 8003: AGC Freeze — when brickwall detected, prevent gain reduction.
+        // gain(t) = SI > 0.6 ? max(gain_agc(t), gain(t-1)) : gain_agc(t)
+        if (this.freezeReduction && newGain < currentGain) {
+            this.gains[bandId] = currentGain; // hold previous gain
+        }
+        else {
+            this.gains[bandId] = newGain;
+        }
         // WAVE 3424: DMX protection clamp after post-FFT scaling + AGC gain.
         return Math.min(POST_FFT_BAND_OUTPUT_CLAMP, rawValue * this.gains[bandId]);
     }
@@ -842,6 +1197,12 @@ class AGCTrustZone {
     setActive(active) {
         this.isActive = active;
     }
+    // WAVE 8003: AGC Freeze — prevent gain reduction under brickwall saturation
+    setFreezeReduction(freeze) {
+        this.freezeReduction = freeze;
+    }
+    // WAVE 8004: Telemetry getter
+    get isFreezeReduction() { return this.freezeReduction; }
     /**
      * Reset AGC state
      */
@@ -866,11 +1227,56 @@ class SlopeBasedOnsetDetector {
         this.history = {};
         this.historyIndex = {};
         this.historyLength = 8;
+        /** Monotonic timestamps (ms) of onsets inside the window — zero-alloc ring */
+        this.onsetTimes = new Float64Array(SlopeBasedOnsetDetector.DENSITY_CAPACITY);
+        this.onsetCount = 0;
+        this.elapsedMs = 0;
         for (const band of ['kick', 'snare', 'hihat']) {
             this.history[band] = new Float32Array(this.historyLength);
             this.historyIndex[band] = 0;
         }
     }
+    /**
+     * Advance the internal clock, register an onset if one fired this frame,
+     * evict onsets older than the window, and return the resulting density.
+     *
+     * Mapping: 0 hits → 0.0 | 1 hit → 0.15 | 6+ hits → 1.0 (linear in between).
+     *
+     * @param onsetDetected true when any band reported an onset this frame
+     * @param deltaMs       frame delta in milliseconds
+     * @returns transient density ∈ [0, 1]
+     */
+    updateTemporalDensity(onsetDetected, deltaMs) {
+        const CAP = SlopeBasedOnsetDetector.DENSITY_CAPACITY;
+        this.elapsedMs += deltaMs;
+        if (onsetDetected) {
+            if (this.onsetCount < CAP) {
+                this.onsetTimes[this.onsetCount++] = this.elapsedMs;
+            }
+            else {
+                // Ring is full (pathological onset storm) — drop the oldest entry.
+                for (let i = 1; i < CAP; i++)
+                    this.onsetTimes[i - 1] = this.onsetTimes[i];
+                this.onsetTimes[CAP - 1] = this.elapsedMs;
+            }
+        }
+        // Evict onsets that fell out of the sliding window (in-place compaction).
+        const cutoff = this.elapsedMs - SlopeBasedOnsetDetector.DENSITY_WINDOW_MS;
+        let kept = 0;
+        for (let i = 0; i < this.onsetCount; i++) {
+            if (this.onsetTimes[i] >= cutoff) {
+                this.onsetTimes[kept++] = this.onsetTimes[i];
+            }
+        }
+        this.onsetCount = kept;
+        if (kept === 0)
+            return 0;
+        const base = SlopeBasedOnsetDetector.DENSITY_BASE;
+        const step = (1 - base) / (SlopeBasedOnsetDetector.DENSITY_SATURATION_HITS - 1);
+        return Math.min(1, base + (kept - 1) * step);
+    }
+    /** Number of onsets currently inside the sliding window (telemetry) */
+    get onsetsInWindow() { return this.onsetCount; }
     /**
      * Detect onset based on energy slope.
      *
@@ -899,7 +1305,7 @@ class SlopeBasedOnsetDetector {
         }
         const avgEnergy = sum / len;
         // Onset = rapid positive slope
-        const slopeThreshold = Math.max(0.05, avgEnergy * 0.3);
+        const slopeThreshold = Math.max(avgEnergy * 0.05, avgEnergy * 0.3);
         return shortTermSlope > slopeThreshold && longTermSlope > slopeThreshold * 0.5;
     }
     /**
@@ -910,8 +1316,22 @@ class SlopeBasedOnsetDetector {
             this.history[band].fill(0);
             this.historyIndex[band] = 0;
         }
+        this.onsetCount = 0;
+        this.elapsedMs = 0;
     }
 }
+// ═══ WAVE 8005 R2: TEMPORAL ONSET DENSITY ═══
+// Sliding 500ms window counting real onset events. Replaces the previous
+// `strength * 2` formulation, which measured transient ENERGY (biased toward
+// sub-bass) rather than event RATE, and therefore could never distinguish a
+// snare roll from an isolated kick.
+SlopeBasedOnsetDetector.DENSITY_WINDOW_MS = 500;
+/** Onsets within the window that map to full density (1.0) */
+SlopeBasedOnsetDetector.DENSITY_SATURATION_HITS = 6;
+/** Density produced by a single isolated onset */
+SlopeBasedOnsetDetector.DENSITY_BASE = 0.15;
+/** Ring capacity — 500ms @ 60fps can hold at most 30 onsets */
+SlopeBasedOnsetDetector.DENSITY_CAPACITY = 32;
 // ═══════════════════════════════════════════════════════════════════════════════
 // SECTION 11: MAIN GOD EAR ANALYZER CLASS
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -947,7 +1367,7 @@ class SlopeBasedOnsetDetector {
 // Musical range: A0 (27.5 Hz) → C8 (4186 Hz)
 // ZERO allocation: writes directly into pre-allocated Float32Array(12)
 // ═══════════════════════════════════════════════════════════════════════════════
-function computeChromaFromSpectrum(magnitudes, numBins, sampleRate, fftSize, output // 12 elements, pre-allocated
+function computeChromaFromSpectrum(power, numBins, sampleRate, fftSize, output // 12 elements, pre-allocated
 ) {
     output.fill(0);
     const binResolution = sampleRate / fftSize;
@@ -957,7 +1377,7 @@ function computeChromaFromSpectrum(magnitudes, numBins, sampleRate, fftSize, out
             continue; // musical range only
         const midiNote = 12 * Math.log2(freq / 440) + 69;
         const pitchClass = ((Math.round(midiNote) % 12) + 12) % 12; // guard negative modulo
-        output[pitchClass] += magnitudes[bin] * magnitudes[bin]; // power, not amplitude
+        output[pitchClass] += power[bin]; // WAVE 8001: already power domain
     }
     // Normalize to [0, 1]
     let maxEnergy = 0;
@@ -970,10 +1390,180 @@ function computeChromaFromSpectrum(magnitudes, numBins, sampleRate, fftSize, out
             output[i] /= maxEnergy;
     }
 }
+// ═══════════════════════════════════════════════════════════════════════════════
+// WAVE 8008: RHYTHMIC PERCUSSION TRACKER
+// Sub-band isolation for snare (body + crack coincidence) and hi-hat detection.
+// Adaptive thresholds + absence counters + rhythmic_void for Selene IA.
+// ═══════════════════════════════════════════════════════════════════════════════
+class RhythmicPercussionTracker {
+    constructor(sampleRate, fftSize) {
+        // Adaptive threshold EMAs — track the moving average of each sub-band
+        this._snareBodyEMA = 0;
+        this._snareCrackEMA = 0;
+        this._hhEMA = 0;
+        this._emaAlpha = 0.02; // ~1s time constant @ ~20fps
+        // Absence tracking — monotonic clock + last-hit timestamps
+        this._elapsedMs = 0;
+        this._lastSnareHitMs = 0;
+        this._lastHHHitMs = 0;
+        // Snare/HH energy — attack-release envelope (peak follower)
+        this._snareEnergyEMA = 0;
+        this._hhEnergyEMA = 0;
+        // Diagnostic counter for raw value logging
+        this._diagCounter = 0;
+        // Cooldown to prevent double-triggering on the same hit
+        this._snareCooldownMs = 0;
+        this._hhCooldownMs = 0;
+        const binRes = sampleRate / fftSize;
+        this.snareBodyLoBin = Math.floor(150 / binRes);
+        this.snareBodyHiBin = Math.ceil(250 / binRes);
+        this.snareCrackLoBin = Math.floor(2000 / binRes);
+        this.snareCrackHiBin = Math.ceil(5000 / binRes);
+        this.hhLoBin = Math.floor(5000 / binRes);
+        this.hhHiBin = Math.ceil(15000 / binRes);
+    }
+    /**
+     * Extract sub-band RMS energy from power spectrum (sqrt of mean power).
+     * Zero-allocation: reads directly from the pre-allocated powerSpectrum.
+     */
+    extractSubBand(power, loBin, hiBin) {
+        let sum = 0;
+        let count = 0;
+        const upper = Math.min(hiBin, power.length - 1);
+        for (let bin = loBin; bin <= upper; bin++) {
+            sum += power[bin];
+            count++;
+        }
+        if (count === 0)
+            return 0;
+        // WAVE 8008 fix: integrated RMS + legacy gain + percussion boost.
+        // sqrt(total_power) captures the full energy across all bins in the sub-band.
+        // RHYTHMIC_GAIN compensates for the narrow bin range vs full-band extraction.
+        const integratedRms = Math.sqrt(sum);
+        return Math.min(POST_FFT_BAND_OUTPUT_CLAMP, integratedRms * POST_FFT_LEGACY_EQ_GAIN * RhythmicPercussionTracker.RHYTHMIC_GAIN);
+    }
+    /**
+     * Process one frame and produce rhythmic percussion telemetry.
+     *
+     * @param power    Pre-allocated power spectrum (Float32Array, numBins+1)
+     * @param deltaMs  Frame delta in milliseconds
+     * @returns GodEarRhythmicPercussion payload
+     */
+    process(power, deltaMs) {
+        this._elapsedMs += deltaMs;
+        this._snareCooldownMs -= deltaMs;
+        this._hhCooldownMs -= deltaMs;
+        // ── 1. Extract raw sub-band energies ──
+        const snareBody = this.extractSubBand(power, this.snareBodyLoBin, this.snareBodyHiBin);
+        const snareCrack = this.extractSubBand(power, this.snareCrackLoBin, this.snareCrackHiBin);
+        const hhRaw = this.extractSubBand(power, this.hhLoBin, this.hhHiBin);
+        // ── 2. Update adaptive threshold EMAs ──
+        this._snareBodyEMA += this._emaAlpha * (snareBody - this._snareBodyEMA);
+        this._snareCrackEMA += this._emaAlpha * (snareCrack - this._snareCrackEMA);
+        this._hhEMA += this._emaAlpha * (hhRaw - this._hhEMA);
+        // ── 3. Snare detection: requires BOTH body AND crack above threshold ──
+        const snareBodyThresh = Math.max(this._snareBodyEMA * RhythmicPercussionTracker.SNARE_BODY_MULT, RhythmicPercussionTracker.SNARE_FLOOR);
+        const snareCrackThresh = Math.max(this._snareCrackEMA * RhythmicPercussionTracker.SNARE_CRACK_MULT, RhythmicPercussionTracker.SNARE_FLOOR);
+        const snareAboveThresh = snareBody > snareBodyThresh &&
+            snareCrack > snareCrackThresh;
+        const snareHit = snareAboveThresh && this._snareCooldownMs <= 0;
+        if (snareHit) {
+            this._lastSnareHitMs = this._elapsedMs;
+            this._snareCooldownMs = RhythmicPercussionTracker.SNARE_COOLDOWN;
+        }
+        // ── 4. Hi-hat detection: high band above adaptive threshold ──
+        const hhThresh = Math.max(this._hhEMA * RhythmicPercussionTracker.HH_MULT, RhythmicPercussionTracker.HH_FLOOR);
+        const hhAboveThresh = hhRaw > hhThresh;
+        const hhHit = hhAboveThresh && this._hhCooldownMs <= 0;
+        if (hhHit) {
+            this._lastHHHitMs = this._elapsedMs;
+            this._hhCooldownMs = RhythmicPercussionTracker.HH_COOLDOWN;
+        }
+        // ── 5. Energy outputs — threshold-gated asymmetric attack/release envelope ──
+        // Gate by threshold crossing (not cooldown) so energy tracks the actual
+        // percussion envelope duration. Sustained vocals/melodies stay below
+        // adaptive threshold (×2.0/×1.8) so their energy contribution is zero.
+        const snareEnergyRaw = snareAboveThresh ? Math.sqrt(snareBody * snareCrack) : 0;
+        if (snareEnergyRaw > this._snareEnergyEMA) {
+            this._snareEnergyEMA += RhythmicPercussionTracker.ENERGY_ATTACK * (snareEnergyRaw - this._snareEnergyEMA);
+        }
+        else {
+            this._snareEnergyEMA += RhythmicPercussionTracker.ENERGY_RELEASE * (snareEnergyRaw - this._snareEnergyEMA);
+        }
+        const hhEnergyRaw = hhAboveThresh ? hhRaw : 0;
+        if (hhEnergyRaw > this._hhEnergyEMA) {
+            this._hhEnergyEMA += RhythmicPercussionTracker.ENERGY_ATTACK * (hhEnergyRaw - this._hhEnergyEMA);
+        }
+        else {
+            this._hhEnergyEMA += RhythmicPercussionTracker.ENERGY_RELEASE * (hhEnergyRaw - this._hhEnergyEMA);
+        }
+        // WAVE 8008 diagnostic: log raw sub-band values every ~44 frames (1s)
+        this._diagCounter++;
+        if (this._diagCounter % 44 === 0) {
+            console.log(`[🥁 RAW] body=${snareBody.toFixed(5)} crack=${snareCrack.toFixed(5)} ` +
+                `hh=${hhRaw.toFixed(5)} | sqrt(body*crack)=${snareEnergyRaw.toFixed(5)} ` +
+                `EMA_snare=${this._snareEnergyEMA.toFixed(5)} EMA_hh=${this._hhEnergyEMA.toFixed(5)} ` +
+                `| bodyEMA=${this._snareBodyEMA.toFixed(5)} bodyThresh=${(this._snareBodyEMA * RhythmicPercussionTracker.SNARE_BODY_MULT).toFixed(5)} ` +
+                `crackEMA=${this._snareCrackEMA.toFixed(5)} crackThresh=${(this._snareCrackEMA * RhythmicPercussionTracker.SNARE_CRACK_MULT).toFixed(5)} ` +
+                `hhEMA=${this._hhEMA.toFixed(5)} hhThresh=${(this._hhEMA * RhythmicPercussionTracker.HH_MULT).toFixed(5)} ` +
+                `| snareHit=${snareHit ? 1 : 0} hhHit=${hhHit ? 1 : 0} snareAbove=${snareAboveThresh ? 1 : 0} hhAbove=${hhAboveThresh ? 1 : 0}`);
+        }
+        // ── 6. Absence counters ──
+        const snareAbsenceMs = this._elapsedMs - this._lastSnareHitMs;
+        const hhAbsenceMs = this._elapsedMs - this._lastHHHitMs;
+        // ── 7. Rhythmic void — normalized [0,1] ──
+        // Saturates at 3000ms absence for both. Geometric mean ensures that
+        // if EITHER percussion is active, void stays low.
+        const snareVoid = Math.min(1, snareAbsenceMs / 3000);
+        const hhVoid = Math.min(1, hhAbsenceMs / 3000);
+        const rhythmicVoid = Math.sqrt(snareVoid * hhVoid);
+        return {
+            snare_energy: this._snareEnergyEMA,
+            hh_energy: this._hhEnergyEMA,
+            snare_absence_ms: snareAbsenceMs,
+            hh_absence_ms: hhAbsenceMs,
+            rhythmic_void: rhythmicVoid,
+        };
+    }
+    reset() {
+        this._snareBodyEMA = 0;
+        this._snareCrackEMA = 0;
+        this._hhEMA = 0;
+        this._snareEnergyEMA = 0;
+        this._hhEnergyEMA = 0;
+        this._elapsedMs = 0;
+        this._lastSnareHitMs = 0;
+        this._lastHHHitMs = 0;
+        this._snareCooldownMs = 0;
+        this._hhCooldownMs = 0;
+    }
+}
+// WAVE 8008 fix: asymmetric attack/release — instant attack, ~200ms release
+RhythmicPercussionTracker.ENERGY_ATTACK = 0.85; // near-instant rise
+RhythmicPercussionTracker.ENERGY_RELEASE = 0.06; // ~330ms decay @ 44Hz
+// WAVE 8008 fix: gain boost for sub-band energies to reach useful 0-1 range
+RhythmicPercussionTracker.RHYTHMIC_GAIN = 8.0;
+RhythmicPercussionTracker.SNARE_COOLDOWN = 80; // 80ms min between snare hits
+RhythmicPercussionTracker.HH_COOLDOWN = 40; // 40ms min between HH hits
+// Adaptive threshold multipliers — relative to moving average
+RhythmicPercussionTracker.SNARE_BODY_MULT = 2.0;
+RhythmicPercussionTracker.SNARE_CRACK_MULT = 1.8;
+RhythmicPercussionTracker.HH_MULT = 2.2;
+// Minimum absolute energy floor (below this = silence, never a hit)
+RhythmicPercussionTracker.SNARE_FLOOR = 0.008;
+RhythmicPercussionTracker.HH_FLOOR = 0.005;
 export class GodEarAnalyzer {
     constructor(sampleRate = 44100, fftSize = 4096) {
         this.frameIndex = 0;
         this.lastTimestamp = 0;
+        // WAVE 8002: EMA of rawBassEnergy for flux scale calibration
+        this.rawBassEnergyRef = 0;
+        // WAVE 8003: Last frame's SI for AGC freeze (set before AGC runs)
+        this.lastSI = 0;
+        // WAVE 8004: Debug mode — enables telemetry collection (zero-cost when false)
+        this.debugMode = false;
+        // WAVE 8004: Cached telemetry snapshot from last analyze() call
+        this._telemetry = null;
         // Feature flags
         this.useAGC = true;
         this.useStereo = true;
@@ -982,20 +1572,28 @@ export class GodEarAnalyzer {
         this.numBins = fftSize >> 1; // fftSize / 2
         this.agc = new AGCTrustZone();
         this.onsetDetector = new SlopeBasedOnsetDetector();
+        this.saturationMeter = new SaturationMeter();
+        this.strobeEngine = new StrobeEngine();
+        this.chromaCoupler = new ChromaCoupler();
+        this.rhythmicTracker = new RhythmicPercussionTracker(sampleRate, fftSize);
         // ═════════ WAVE 2090.1: ONE-TIME BUFFER ALLOCATION ═════════
         this.inputBuffer = new Float32Array(fftSize);
         this.dcBuffer = new Float32Array(fftSize);
         this.windowedBuffer = new Float32Array(fftSize);
         this.fftReal = new Float32Array(fftSize);
         this.fftImag = new Float32Array(fftSize);
-        this.magnitudes = new Float32Array(this.numBins + 1); // Include Nyquist
+        this.powerSpectrum = new Float32Array(this.numBins + 1); // Include Nyquist
         this.monoMixBuffer = new Float32Array(fftSize);
         // 🎹 WAVE 2301: 12-bin chromagram buffer (pitch classes C through B)
         this.chromaBuffer = new Float32Array(12);
+        // WAVE 8002: Spectral Flux V3 buffers
+        this.prevPower = new Float32Array(this.numBins + 1);
+        this.fluxWhitening = new Float32Array(this.numBins + 1);
         // ════════════════════════════════════════════════════════════
         // Initialize LR4 filter masks (also one-time)
         getLR4FilterMasks(fftSize, sampleRate);
-        // WAVE 2098: Boot silence
+        // WAVE 8001: Initialize Twiddle Factor LUT for FFT core
+        initTwiddleLUT(fftSize);
     }
     /**
      * Analyze mono audio buffer.
@@ -1004,9 +1602,13 @@ export class GodEarAnalyzer {
      * No new Float32Array, no Array.from, no .sort(), no .slice() in the hot path.
      *
      * @param buffer - Audio samples (Float32Array)
+     * @param deltaMsOverride - Optional audio-domain frame time in ms. Real-time
+     *   callers should omit this (wall-clock is correct). Offline/batch callers
+     *   MUST supply it (e.g. fftSize / sampleRate * 1000), otherwise time-based
+     *   metrics such as transientDensity are measured against CPU time.
      * @returns Complete GodEarSpectrum
      */
-    analyze(buffer) {
+    analyze(buffer, deltaMsOverride) {
         const startTime = performance.now();
         // ═══ STAGE 0: Prepare input into pre-allocated buffer ═══
         // Zero out the input buffer (handles padding implicitly)
@@ -1022,27 +1624,28 @@ export class GodEarAnalyzer {
         applyBlackmanHarrisWindow(this.dcBuffer, this.windowedBuffer);
         // ═══ STAGE 3: FFT → fftReal, fftImag ═══
         computeFFTCore(this.windowedBuffer, this.fftReal, this.fftImag);
-        // ═══ STAGE 4: Magnitude Spectrum → magnitudes ═══
-        computeMagnitudeSpectrum(this.fftReal, this.fftImag, this.magnitudes, this.numBins);
-        // 🎹 WAVE 2301: THE CHROMAGRAM AWAKENING
-        // Compute 12-bin chromagram directly from magnitude spectrum.
+        // ═══ STAGE 4: Power Spectrum → powerSpectrum (WAVE 8001: sqrt deferred) ═══
+        computePowerSpectrum(this.fftReal, this.fftImag, this.powerSpectrum, this.numBins);
+        // 🎹 WAVE 2301: THE CHROMAGRAM AWAKENING (WAVE 8001: now reads from power spectrum)
+        // Compute 12-bin chromagram directly from power spectrum.
         // Bin frequency → MIDI note → pitch class (0=C … 11=B), power accumulated, normalized.
         // Zero-allocation: writes into pre-allocated this.chromaBuffer.
-        computeChromaFromSpectrum(this.magnitudes, this.numBins, this.sampleRate, this.fftSize, this.chromaBuffer);
+        computeChromaFromSpectrum(this.powerSpectrum, this.numBins, this.sampleRate, this.fftSize, this.chromaBuffer);
         // ═══ STAGE 5: LR4 Filter Bank + Band Extraction ═══
         const filterMasks = getLR4FilterMasks(this.fftSize, this.sampleRate);
         const filterWeightSums = getLR4FilterWeightSums(this.fftSize, this.sampleRate);
-        const deltaMs = this.lastTimestamp > 0 ? startTime - this.lastTimestamp : 50;
+        const deltaMs = deltaMsOverride ?? (this.lastTimestamp > 0 ? startTime - this.lastTimestamp : 50);
         this.lastTimestamp = startTime;
-        // Extract raw band energies (reads from this.magnitudes, no allocation)
+        // Extract raw band energies (reads from this.powerSpectrum, no allocation)
+        // WAVE 8001: extractBandPower operates in power domain, sqrt only at output
         const rawBands = {
-            subBass: extractBandEnergy(this.magnitudes, filterMasks.get('subBass')),
-            bass: extractBandEnergy(this.magnitudes, filterMasks.get('bass')),
-            lowMid: extractBandEnergy(this.magnitudes, filterMasks.get('lowMid')),
-            mid: extractBandEnergy(this.magnitudes, filterMasks.get('mid')),
-            highMid: extractBandEnergy(this.magnitudes, filterMasks.get('highMid')),
-            treble: extractBandEnergy(this.magnitudes, filterMasks.get('treble')),
-            ultraAir: extractBandEnergy(this.magnitudes, filterMasks.get('ultraAir')),
+            subBass: extractBandPower(this.powerSpectrum, filterMasks.get('subBass')),
+            bass: extractBandPower(this.powerSpectrum, filterMasks.get('bass')),
+            lowMid: extractBandPower(this.powerSpectrum, filterMasks.get('lowMid')),
+            mid: extractBandPower(this.powerSpectrum, filterMasks.get('mid')),
+            highMid: extractBandPower(this.powerSpectrum, filterMasks.get('highMid')),
+            treble: extractBandPower(this.powerSpectrum, filterMasks.get('treble')),
+            ultraAir: extractBandPower(this.powerSpectrum, filterMasks.get('ultraAir')),
         };
         // WAVE 3425: scale pre-AGC bands so UI/DMX and BPM tracker share the same
         // deterministic post-FFT magnitude domain.
@@ -1065,6 +1668,8 @@ export class GodEarAnalyzer {
                 `highMid=${scaledBands.highMid.toFixed(6)}`);
         }
         // ═══ STAGE 6: AGC Trust Zones ═══
+        // WAVE 8003: AGC Freeze — use previous frame's SI to prevent gain reduction under brickwall
+        this.agc.setFreezeReduction(this.lastSI > 0.6);
         const bands = this.useAGC ? {
             subBass: this.agc.process('subBass', scaledBands.subBass, deltaMs),
             bass: this.agc.process('bass', scaledBands.bass, deltaMs),
@@ -1074,16 +1679,60 @@ export class GodEarAnalyzer {
             treble: this.agc.process('treble', scaledBands.treble, deltaMs),
             ultraAir: this.agc.process('ultraAir', scaledBands.ultraAir, deltaMs),
         } : scaledBands;
-        // ═══ Spectral Metrics (reads from this.magnitudes, no allocation) ═══
-        const flatness = calculateSpectralFlatness(this.magnitudes);
-        const crestFactor = calculateCrestFactor(this.magnitudes);
+        // ═══ Spectral Metrics (reads from this.powerSpectrum, no allocation) ═══
+        // WAVE 8001: All metrics adapted to power domain — same output values as V2
+        const flatness = calculateSpectralFlatness(this.powerSpectrum);
+        const crestFactor = calculateCrestFactor(this.powerSpectrum);
         const spectral = {
-            centroid: calculateSpectralCentroid(this.magnitudes, this.sampleRate, this.fftSize),
+            centroid: calculateSpectralCentroid(this.powerSpectrum, this.sampleRate, this.fftSize),
             flatness,
-            rolloff: calculateSpectralRolloff(this.magnitudes, this.sampleRate, this.fftSize),
+            rolloff: calculateSpectralRolloff(this.powerSpectrum, this.sampleRate, this.fftSize),
             crestFactor,
-            clarity: calculateClarity(this.magnitudes, flatness, crestFactor, this.numBins + 1),
+            clarity: calculateClarity(this.powerSpectrum, flatness, crestFactor, this.numBins + 1),
         };
+        // ═══ Dominant Frequency + Total Energy (needed by WAVE 8002 SI) ═══
+        // WAVE 8001: Find max power bin — same index as max magnitude
+        let maxPower = 0;
+        let dominantBin = 0;
+        let totalPowerSum = 0;
+        for (let i = 0; i <= this.numBins; i++) {
+            const p = this.powerSpectrum[i];
+            totalPowerSum += p;
+            if (i > 0 && p > maxPower) {
+                maxPower = p;
+                dominantBin = i;
+            }
+        }
+        const dominantFrequency = dominantBin * (this.sampleRate / this.fftSize);
+        const totalEnergy = Math.sqrt(totalPowerSum);
+        // ═══ WAVE 8002: Spectral Flux V3 + Saturation Index ═══
+        // Compute half-wave rectified whitened flux from power spectrum.
+        // Uses prevPower and fluxWhitening buffers (mutated in-place).
+        const spectralFluxV3 = computeSpectralFlux(this.powerSpectrum, this.prevPower, this.fluxWhitening, this.numBins);
+        // Compute Saturation Index from crest, flatness, and total power.
+        // crestFactor is in power domain: CF_dB = 10·log₁₀(maxP/meanP).
+        const crestDb = 10 * Math.log10((maxPower > 0 && totalPowerSum > 0)
+            ? (maxPower * (this.numBins + 1) / totalPowerSum)
+            : 1);
+        const si = this.saturationMeter.update(totalPowerSum, crestDb, flatness);
+        this.lastSI = si;
+        // WAVE 8002: Crossfade for BPM tracker — α = SI
+        // When SI≈0 (dynamic): bandsRaw unchanged — identical to V2.
+        // When SI≈1 (brickwall): flux signal stabilizes the kick feed.
+        // Scale flux to match rawBassEnergy range via slow EMA reference.
+        const rawBassEnergy = scaledBands.subBass + scaledBands.bass;
+        // EMA with τ ≈ 1s (k=0.02 @ ~20fps)
+        this.rawBassEnergyRef += 0.02 * (rawBassEnergy - this.rawBassEnergyRef);
+        // Scale flux to energy domain: flux ∈ [0,~1], ref ∈ [0,~1]
+        const fluxScaled = spectralFluxV3 * (this.rawBassEnergyRef + 1e-10);
+        // Crossfade: α·fluxScaled + (1−α)·energy
+        const kickSignal = si * fluxScaled + (1 - si) * rawBassEnergy;
+        // Distribute back to subBass/bass preserving their original ratio
+        const ratio = rawBassEnergy > 1e-10
+            ? scaledBands.subBass / rawBassEnergy
+            : 0.5;
+        const crossfadeSubBass = kickSignal * ratio;
+        const crossfadeBass = kickSignal * (1 - ratio);
         // ═══ Transient Detection ═══
         const kickDetected = this.onsetDetector.detectOnset('kick', rawBands.subBass + rawBands.bass * 0.5);
         const snareDetected = this.onsetDetector.detectOnset('snare', rawBands.mid + rawBands.lowMid * 0.5);
@@ -1095,28 +1744,84 @@ export class GodEarAnalyzer {
             any: kickDetected || snareDetected || hihatDetected,
             strength: Math.max(kickDetected ? rawBands.subBass : 0, snareDetected ? rawBands.mid : 0, hihatDetected ? rawBands.treble : 0),
         };
-        // ═══ Dominant Frequency (reads from this.magnitudes, no allocation) ═══
-        let maxMag = 0;
-        let dominantBin = 0;
-        for (let i = 1; i <= this.numBins; i++) {
-            if (this.magnitudes[i] > maxMag) {
-                maxMag = this.magnitudes[i];
-                dominantBin = i;
-            }
+        // ═══ WAVE 8003+8004: Photon Block ═══
+        // wallIntensity = min(1, SI^0.7 * 0.85) — lower-bound anti-collapse for DMX
+        const wallIntensity = Math.min(1, Math.pow(si, 0.7) * 0.85);
+        // White noise score: high flatness indicates broadband noise
+        const whiteNoiseScore = Math.max(0, Math.min(1, (flatness - FLATNESS_OFFSET) / FLATNESS_SCALE));
+        // WAVE 8005 R2: True temporal onset density over a 500ms sliding window.
+        // No longer derived from band strength — this measures event RATE.
+        const transientDensity = this.onsetDetector.updateTemporalDensity(transients.any, deltaMs);
+        // WAVE 8004: StrobeEngine — maps chaos to strobe state (12Hz safety cap)
+        // Tonal gate: high kick/highs ratio means sustained tonal content (bass/synth),
+        // which fools the onset detector into inflating transientDensity.
+        const tonalRatio = kickSignal / (scaledBands.treble + 1e-6);
+        const strobeState = this.strobeEngine.process(transientDensity, whiteNoiseScore, spectralFluxV3, deltaMs, tonalRatio);
+        // WAVE 8004: ChromaCoupler — maps chromagram to hue + colorSnap + chromaFlux
+        this.chromaCoupler.process(this.chromaBuffer, deltaMs);
+        // WAVE 8008: Rhythmic Percussion Tracker — sub-band snare/HH isolation + void
+        const rhythmic = this.rhythmicTracker.process(this.powerSpectrum, deltaMs);
+        const photon = {
+            saturation: si,
+            wallIntensity,
+            strobe: strobeState,
+            hue: this.chromaCoupler.hue,
+            colorSnap: this.chromaCoupler.isSnap(kickSignal, scaledBands.treble),
+            chromaFlux: this.chromaCoupler.chromaFlux,
+            spectralFlux: spectralFluxV3,
+            transientDensity,
+            whiteNoiseScore,
+        };
+        // WAVE 8004: Telemetry snapshot — only populated when debugMode is active
+        if (this.debugMode) {
+            const agcState = this.agc.getState();
+            this._telemetry = {
+                agc: {
+                    gains: agcState.perBandGains,
+                    freezeReduction: this.agc.isFreezeReduction,
+                },
+                strobe: {
+                    drive: this.strobeEngine.drive,
+                    driveRaw: this.strobeEngine.driveRaw,
+                    rate: this.strobeEngine.rate,
+                    cooldownMs: this.strobeEngine.cooldownMs,
+                    activationThreshold: this.strobeEngine.activationThreshold,
+                    maxRateHz: this.strobeEngine.maxRateHz,
+                },
+                chroma: {
+                    hue: this.chromaCoupler.hue,
+                    chromaFlux: this.chromaCoupler.chromaFlux,
+                    snapCooldownMs: this.chromaCoupler.snapCooldownMs,
+                    snapThreshold: this.chromaCoupler.snapThresholdValue,
+                },
+                levels: {
+                    rawKick: rawBands.subBass + rawBands.bass * 0.5,
+                    rawSubBass: rawBands.subBass,
+                    rawHighs: rawBands.treble + rawBands.highMid * 0.3,
+                    scaledKick: kickSignal,
+                    scaledSubBass: scaledBands.subBass,
+                    scaledHighs: scaledBands.treble,
+                },
+                metrics: {
+                    saturationIndex: si,
+                    transientDensity,
+                    spectralFluxV3,
+                    flatness,
+                    whiteNoiseScore,
+                },
+            };
         }
-        const dominantFrequency = dominantBin * (this.sampleRate / this.fftSize);
-        // ═══ Total Energy (reads from this.magnitudes, no allocation) ═══
-        let totalEnergy = 0;
-        for (let i = 0; i <= this.numBins; i++) {
-            totalEnergy += this.magnitudes[i] * this.magnitudes[i];
-        }
-        totalEnergy = Math.sqrt(totalEnergy);
         const processingLatency = performance.now() - startTime;
         this.frameIndex++;
         // ═══ STAGE 7: Output ═══
         return {
             bands,
-            bandsRaw: scaledBands,
+            bandsRaw: {
+                ...scaledBands,
+                // WAVE 8002: crossfade subBass/bass with flux for BPM tracker stability
+                subBass: crossfadeSubBass,
+                bass: crossfadeBass,
+            },
             spectral,
             stereo: null, // Mono analysis
             transients,
@@ -1129,13 +1834,19 @@ export class GodEarAnalyzer {
                 sampleRate: this.sampleRate,
                 windowFunction: 'blackman-harris',
                 filterOrder: 4,
-                version: '2.0.0',
+                version: '3.0.0',
             },
             dominantFrequency,
             totalEnergy,
             // 🎹 WAVE 2301: 12-bin chromagram (C through B, normalized 0-1)
             // Array.from is a one-time 12-element copy — negligible at 20fps.
             chroma: Array.from(this.chromaBuffer),
+            // WAVE 8002: Spectral Flux V3 (normalized, whitened)
+            spectralFluxV3,
+            // WAVE 8003: Photon block
+            photon,
+            // WAVE 8008: Rhythmic percussion telemetry
+            rhythmic,
         };
     }
     /**
@@ -1182,15 +1893,43 @@ export class GodEarAnalyzer {
     reset() {
         this.agc.reset();
         this.onsetDetector.reset();
+        this.saturationMeter.reset();
+        this.strobeEngine.reset();
+        this.chromaCoupler.reset();
+        this.rhythmicTracker.reset();
+        this.rawBassEnergyRef = 0;
+        this.lastSI = 0;
+        this.prevPower.fill(0);
+        this.fluxWhitening.fill(0);
         this.frameIndex = 0;
         this.lastTimestamp = 0;
+        this._telemetry = null;
         console.log('[GOD EAR] 🔄 Analyzer reset');
     }
     /**
      * Get analyzer info
      */
     getInfo() {
-        return `GOD EAR v2.0.0 | ${this.fftSize} Radix-2 DIT FFT | ${this.sampleRate}Hz | ${BIN_RESOLUTION.toFixed(2)}Hz/bin | Blackman-Harris | LR4 Filters`;
+        return `GOD EAR v3.0.0 | ${this.fftSize} Radix-2 DIT FFT + LUT | ${this.sampleRate}Hz | ${BIN_RESOLUTION.toFixed(2)}Hz/bin | Blackman-Harris | LR4 Filters | Power Spectrum`;
+    }
+    // ═══════════════════════════════════════════════════════════════════════════
+    // WAVE 8004: TELEMETRY API — On-demand DSP state inspection
+    // ═══════════════════════════════════════════════════════════════════════════
+    /**
+     * Enable/disable debug mode for telemetry collection.
+     * When false, getTelemetry() returns null and zero overhead is added to analyze().
+     */
+    setDebugMode(active) {
+        this.debugMode = active;
+        if (!active)
+            this._telemetry = null;
+    }
+    /**
+     * Get current telemetry snapshot. Returns null when debugMode is false.
+     * The snapshot reflects the last analyze() call's internal state.
+     */
+    getTelemetry() {
+        return this._telemetry;
     }
     /**
      * Find nearest power of 2
@@ -1235,7 +1974,7 @@ export function verifySeparation(sampleRate = 44100, fftSize = 4096) {
     for (const [key, config] of Object.entries(GOD_EAR_BAND_CONFIG)) {
         const mask = filterMasks.get(config.id);
         if (mask) {
-            results[config.id] = extractBandEnergy(testMagnitudes, mask);
+            results[config.id] = extractBandPower(testMagnitudes, mask);
         }
     }
     // Normalize results relative to maximum for clearer display

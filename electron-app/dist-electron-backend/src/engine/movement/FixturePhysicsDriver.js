@@ -193,18 +193,7 @@ export class FixturePhysicsDriver {
         this.configs.set(fixtureId, finalConfig);
         this.currentPositions.set(fixtureId, { pan: finalConfig.home.pan, tilt: finalConfig.home.tilt });
         this.velocities.set(fixtureId, { pan: 0, tilt: 0 });
-        // 🏗️ WAVE 1105.2: Log physics profile if present
-        if (finalConfig.physicsProfile) {
-            const pp = finalConfig.physicsProfile;
-            console.log(`[PhysicsDriver] 🏗️ Fixture "${fixtureId}" has PhysicsProfile: ` +
-                `${pp.motorType ?? 'unknown'} motor | ` +
-                `maxAcc:${pp.maxAcceleration ?? 'default'} | ` +
-                `maxVel:${pp.maxVelocity ?? 'default'} | ` +
-                `tier:${pp.qualityTier ?? 'unknown'}`);
-        }
-        else {
-            console.log(`[PhysicsDriver] Fixture "${fixtureId}" registrado:`, finalConfig.installationType);
-        }
+        // PhysicsProfile log silenced — fires on every setFixtures
         return this;
     }
     /** 🏗️ WAVE 2061: Inyectar perfil físico en vivo desde el HAL */

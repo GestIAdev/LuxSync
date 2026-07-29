@@ -90,6 +90,12 @@ export function buildPayload(input) {
         // -- Technical metrics --
         spectralCentroid: spectrum.spectralCentroid,
         spectralFlux: spectrum.spectralFlux,
+        // WAVE 8002: Spectral Flux V3 (undefined if GodEar V2 fallback)
+        spectralFluxV3: spectrum.spectralFluxV3,
+        // WAVE 8003: Photon block (undefined if GodEar V2 fallback)
+        photon: spectrum.photon,
+        // WAVE 8008: Rhythmic percussion telemetry
+        rhythmic: spectrum.rhythmic,
         zeroCrossingRate: calculateZeroCrossingRate(snapshotBuffer),
         // -- WAVE 1162: RAW BASS (pre-AGC, para Pacemaker) --
         rawBassEnergy: spectrum.rawBassEnergy,

@@ -216,6 +216,12 @@ export class TrinityBrain extends EventEmitter {
             // 🌊 WAVE 3516.1: EL 7º PASAJERO — alta frecuencia sin colapsar hacia el Orchestrator
             rawTreble: analysis.rawTreble,
             ultraAir: analysis.ultraAir,
+            // 🌊 WAVE 8002: Spectral Flux V3 — propagates to AudioPipelineManager
+            spectralFluxV3: analysis.spectralFluxV3,
+            // 🌊 WAVE 8003: Photon block — propagates to SeleneLux via AudioPipelineManager
+            photon: analysis.photon,
+            // 🥁 WAVE 8008: Rhythmic percussion telemetry — snare/hi-hat isolated energies
+            rhythmic: analysis.rhythmic,
         });
         // Log cada ~30 frames (1 segundo)
         if (this.frameCount % 30 === 0) {

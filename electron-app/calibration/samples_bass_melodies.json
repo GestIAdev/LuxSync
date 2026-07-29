@@ -1,0 +1,134 @@
+{
+  "DB_BlussBass[120]-C.wav": {
+    "scaledKick": 0.798845196708678,
+    "scaledHighs": 0.014015999479539316,
+    "transientDensity": 0.66,
+    "spectralFluxV3": 0.8349514263927255,
+    "strobeDrive": 0.3104743064662908,
+    "strobeDriveRaw": 0.36,
+    "chromaFlux": 0.018676058312684447,
+    "flatness": 0.42767217610929137,
+    "whiteNoiseScore": 1
+  },
+  "DB_CylonBass[120]-E.wav": {
+    "scaledKick": 0.48395329214856364,
+    "scaledHighs": 0.014441096409425206,
+    "transientDensity": 0.49,
+    "spectralFluxV3": 0.9975439573319524,
+    "strobeDrive": 0.18544476066404136,
+    "strobeDriveRaw": 0.34526374399171494,
+    "chromaFlux": 0.009203867582212847,
+    "flatness": 0.08350337573530606,
+    "whiteNoiseScore": 0
+  },
+  "DB_FlubBass[120]-E.wav": {
+    "scaledKick": 0.6687141016382041,
+    "scaledHighs": 0.0033831060297798234,
+    "transientDensity": 0.49,
+    "spectralFluxV3": 0.7326274527779632,
+    "strobeDrive": 0.18018677949058867,
+    "strobeDriveRaw": 0.196,
+    "chromaFlux": 0.011717886184190573,
+    "flatness": 0.10083581265721656,
+    "whiteNoiseScore": 0.008358126572165503
+  },
+  "DB_FlunkBass[120]-C.wav": {
+    "scaledKick": 0.6470699327430576,
+    "scaledHighs": 0.10320390055204834,
+    "transientDensity": 0.83,
+    "spectralFluxV3": 0.9996455644734464,
+    "strobeDrive": 0.3506579257675879,
+    "strobeDriveRaw": 0.5640000000000001,
+    "chromaFlux": 0.01924842193236937,
+    "flatness": 0.35245505861377685,
+    "whiteNoiseScore": 1
+  },
+  "DB_MetaBass[120]-G.wav": {
+    "scaledKick": 0.31213662810978066,
+    "scaledHighs": 0.017554395141762557,
+    "transientDensity": 0.49,
+    "spectralFluxV3": 0.9011633702950187,
+    "strobeDrive": 0.20790917109751927,
+    "strobeDriveRaw": 0.26169160738245467,
+    "chromaFlux": 0.018332970621282262,
+    "flatness": 0.164444144477911,
+    "whiteNoiseScore": 0.6444414447791099
+  },
+  "DB_OppoBass[120]-G.wav": {
+    "scaledKick": 0.71944295009435,
+    "scaledHighs": 0.030667958948251438,
+    "transientDensity": 0.83,
+    "spectralFluxV3": 0.9359284448490804,
+    "strobeDrive": 0.3667618456190451,
+    "strobeDriveRaw": 0.496,
+    "chromaFlux": 0.014645950254868189,
+    "flatness": 0.2407105936722178,
+    "whiteNoiseScore": 1
+  },
+  "DB_OrusBass[120]-A.wav": {
+    "scaledKick": 0.770739276199742,
+    "scaledHighs": 0.008544872315861126,
+    "transientDensity": 0.66,
+    "spectralFluxV3": 0.9317388577929177,
+    "strobeDrive": 0.33990773896379173,
+    "strobeDriveRaw": 0.496,
+    "chromaFlux": 0.012812798410134453,
+    "flatness": 0.32246007754405615,
+    "whiteNoiseScore": 1
+  },
+  "DB_SayzedBass[120]-D.wav": {
+    "scaledKick": 0.39269915954884227,
+    "scaledHighs": 0.06828827481066829,
+    "transientDensity": 0.66,
+    "spectralFluxV3": 0.947584478475207,
+    "strobeDrive": 0.4480533795597987,
+    "strobeDriveRaw": 0.5640000000000001,
+    "chromaFlux": 0.012970043355463902,
+    "flatness": 0.2656497621545619,
+    "whiteNoiseScore": 1
+  },
+  "DB_SchtuffBass[120]-A.wav": {
+    "scaledKick": 0.4917678946122269,
+    "scaledHighs": 0.008859857007760177,
+    "transientDensity": 0.66,
+    "spectralFluxV3": 0.935573703161303,
+    "strobeDrive": 0.3705855663091575,
+    "strobeDriveRaw": 0.496,
+    "chromaFlux": 0.02605840677944729,
+    "flatness": 0.3878466991058766,
+    "whiteNoiseScore": 1
+  },
+  "DB_SheaBass[120]-C.wav": {
+    "scaledKick": 0.6006130414568287,
+    "scaledHighs": 0.0039977967766732896,
+    "transientDensity": 0.66,
+    "spectralFluxV3": 0.832296617135431,
+    "strobeDrive": 0.24778852122770578,
+    "strobeDriveRaw": 0.42799999999999994,
+    "chromaFlux": 0.015022102167151724,
+    "flatness": 0.3957647803017313,
+    "whiteNoiseScore": 1
+  },
+  "DB_SofKnockBass[120]-D.wav": {
+    "scaledKick": 0.40219525901746633,
+    "scaledHighs": 0.01417017502423095,
+    "transientDensity": 0.9999999999999999,
+    "spectralFluxV3": 0.8330183753762722,
+    "strobeDrive": 0.44358484904029283,
+    "strobeDriveRaw": 0.632,
+    "chromaFlux": 0.016979489238706742,
+    "flatness": 0.24194353146528993,
+    "whiteNoiseScore": 1
+  },
+  "DB_TangBass[120]-G.wav": {
+    "scaledKick": 0.7294768600242258,
+    "scaledHighs": 0.012952884883467613,
+    "transientDensity": 0.83,
+    "spectralFluxV3": 0.7951777306565747,
+    "strobeDrive": 0.2984084666505553,
+    "strobeDriveRaw": 0.42799999999999994,
+    "chromaFlux": 0.011623074734341507,
+    "flatness": 0.3448885110382277,
+    "whiteNoiseScore": 1
+  }
+}

@@ -165,6 +165,16 @@ export interface TitanStabilizedState {
   pllLocked: boolean
   
   // ═══════════════════════════════════════════════════════════════════════
+  // 🥁 WAVE 8008: Rhythmic percussion isolated energies from GodEarFFT
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Raw snare energy [0,1] — geometric mean of body (150-250Hz) + crack (2-5kHz) */
+  snare_energy?: number
+  
+  /** Raw hi-hat energy [0,1] — high band (5-15kHz) */
+  hh_energy?: number
+  
+  // ═══════════════════════════════════════════════════════════════════════
   // PALETA ACTUAL (para simulaciones)
   // ═══════════════════════════════════════════════════════════════════════
   

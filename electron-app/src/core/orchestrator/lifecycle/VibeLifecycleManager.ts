@@ -157,7 +157,7 @@ export class VibeLifecycleManager {
     if (this.engine) {
       this.engine.setLiquidStereo(enabled)
     }
-    console.log(`[TitanOrchestrator] 🌊 Liquid Stereo: ${enabled ? 'ACTIVE' : 'OFF'}`)
+    // Liquid Stereo log silenced
     this.logManager.log('Physics', `🌊 Liquid Stereo: ${enabled ? '7-BAND' : 'GOD MODE'}`)
   }
 
@@ -166,7 +166,7 @@ export class VibeLifecycleManager {
     if (this.engine) {
       this.engine.setLiquidLayout(mode)
     }
-    console.log(`[TitanOrchestrator] 🌊 Layout: ${mode}`)
+    // Layout log silenced — fires on every setFixtures
     this.logManager.log('Physics', `🌊 Layout switched to ${mode}`)
   }
 

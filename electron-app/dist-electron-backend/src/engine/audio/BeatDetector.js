@@ -92,7 +92,7 @@ const PLL_SOFT_CORRECTION_WINDOW_MS = 120;
  * 0.0 = ignore error, 1.0 = snap immediately.
  * 0.3 means we correct 30% of the error per kick — smooth but responsive.
  */
-const PLL_PROPORTIONAL_GAIN = 0.3;
+const PLL_PROPORTIONAL_GAIN = 0.15;
 /**
  * Integral gain for BPM drift correction.
  * Accumulates small errors to slowly adjust smoothedBpm.
@@ -106,7 +106,7 @@ const PLL_INTEGRAL_GAIN = 0.005;
  * a low gain to avoid reacting to single missed-kick intervals, while
  * still tracking genuine tempo drift over several kicks.
  */
-const PLL_FREQUENCY_GAIN = 0.15;
+const PLL_FREQUENCY_GAIN = 0.08;
 /**
  * Lookahead time (ms) for anticipatory beat prediction.
  * onBeat fires this many ms BEFORE the predicted beat impact.
@@ -421,7 +421,7 @@ export class BeatDetector {
                 - bpmCorrection;
             // PLL Stabilization: when locked and confident, clamp BPM shift to ±1.5 BPM per beat
             if (this.pllIsLocked && this.state.confidence > 0.5) {
-                const maxShift = 1.5;
+                const maxShift = 0.8;
                 const delta = newBpm - previousBpm;
                 if (delta > maxShift)
                     newBpm = previousBpm + maxShift;

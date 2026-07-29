@@ -602,10 +602,7 @@ export class FXTParser {
               typeof ch?.type === 'string' && ch.type.toLowerCase() === 'rotation',
             )
             if (rotationChannel) {
-              console.log(
-                `[DYE] Canal Rotation - defaultValue leído: ${String(rotationChannel.defaultValue)} ` +
-                `| fixture=${fixtureNameForDye} | file=${file}`,
-              )
+              // DYE Canal Rotation log silenced
             }
           }
           

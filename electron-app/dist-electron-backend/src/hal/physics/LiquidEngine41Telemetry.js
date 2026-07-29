@@ -35,70 +35,6 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
         this._lastTrebleForDelta = 0;
         this._buffer = [];
         this._bufferHead = 0;
-        this._subBassProbe = LiquidEngine41Telemetry.freshProbeState();
-        this._kickProbe = LiquidEngine41Telemetry.freshProbeState();
-        this._snareProbe = LiquidEngine41Telemetry.freshProbeState();
-        this._highMidProbe = LiquidEngine41Telemetry.freshProbeState();
-    }
-    static freshProbeState() {
-        return {
-            avgSignal: 0,
-            avgSignalPeak: 0,
-            lastFireTime: 0,
-            lastSignal: 0,
-            wasAttacking: false,
-        };
-    }
-    evaluateEnvelopeProbe(signal, config, morphFactor, now, isBreakdown, state) {
-        const velocity = signal - state.lastSignal;
-        state.lastSignal = signal;
-        const isRisingAttack = velocity >= -0.005;
-        const isGraceFrame = state.wasAttacking && velocity >= -0.03;
-        const isAttacking = isRisingAttack || isGraceFrame;
-        state.wasAttacking = isRisingAttack && velocity > 0.01;
-        if (signal > state.avgSignal) {
-            state.avgSignal = state.avgSignal * 0.98 + signal * 0.02;
-        }
-        else {
-            state.avgSignal = state.avgSignal * 0.88 + signal * 0.12;
-        }
-        const timeSinceLastFire = state.lastFireTime > 0 ? now - state.lastFireTime : 0;
-        const isDrySpell = timeSinceLastFire > 2000;
-        const peakDecay = isDrySpell ? 0.985 : 0.993;
-        if (state.avgSignal > state.avgSignalPeak) {
-            state.avgSignalPeak = state.avgSignal;
-        }
-        else {
-            state.avgSignalPeak = state.avgSignalPeak * peakDecay + state.avgSignal * (1 - peakDecay);
-        }
-        const drySpellFloorDecay = timeSinceLastFire > 3000
-            ? Math.min(1.0, (timeSinceLastFire - 3000) / 3000)
-            : 0;
-        const adaptiveFloor = config.gateOn - (0.12 * drySpellFloorDecay);
-        const avgEffective = Math.max(state.avgSignal, state.avgSignalPeak * 0.55, adaptiveFloor);
-        const dynamicGate = avgEffective + config.gateMargin;
-        const breakdownPenalty = isBreakdown ? 0.06 : 0;
-        let kickPower = 0;
-        const gatePassed = signal > dynamicGate && isAttacking && signal > 0.15;
-        if (gatePassed) {
-            const requiredJump = 0.14 - 0.07 * morphFactor + breakdownPenalty;
-            let rawPower = (signal - dynamicGate) / requiredJump;
-            rawPower = Math.min(1.0, Math.max(0, rawPower));
-            const crushExp = config.crushExponent + 0.3 * (1.0 - morphFactor);
-            kickPower = Math.pow(rawPower, crushExp);
-        }
-        const squelch = Math.max(0.02, config.squelchBase - config.squelchSlope * morphFactor);
-        const ignited = kickPower > squelch;
-        if (ignited) {
-            state.lastFireTime = now;
-        }
-        return {
-            dynamicGate,
-            squelch,
-            kickPower,
-            gatePassed,
-            ignited,
-        };
     }
     /** Activa o desactiva el logging. En producción: siempre false. */
     setTelemetryEnabled(enabled) {
@@ -119,10 +55,6 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
         this._buffer = [];
         this._bufferHead = 0;
         this._frameCount = 0;
-        this._subBassProbe = LiquidEngine41Telemetry.freshProbeState();
-        this._kickProbe = LiquidEngine41Telemetry.freshProbeState();
-        this._snareProbe = LiquidEngine41Telemetry.freshProbeState();
-        this._highMidProbe = LiquidEngine41Telemetry.freshProbeState();
     }
     /**
      * Vuelca el buffer circular completo a disco en formato [LATINO-41].
@@ -203,7 +135,7 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
         // ── 4.1 COMPACTION ──────────────────────────────────────────────
         const isStrict = this.profile.layout41Strategy === 'strict-split';
         const frontPar = isStrict ? frontRight : Math.max(frontLeft, frontRight);
-        const backPar = isStrict ? backRight : Math.max(backLeft, backRight);
+        const backPar = Math.max(backLeft, backRight); // FIX: strict-split solo afecta front; back siempre usa ambos canales
         // ── SIDECHAIN DETECTION (replicar lógica del Base para telemetría) ──
         const p = this.profile;
         const frontMax = frontPar; // en 4.1, frontPar === frontMax
@@ -226,14 +158,15 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
             if (this._buffer.length === 0 && this._frameCount === 0) {
                 console.error(`[OMNI-41 TELEMETRY] CAPTURA INICIADA — profile=${this.profile.id}`);
             }
-            // OMNI-41: kickRaw usa la misma lógica que LiquidEngineBase (ZERO-LATENCY KICK)
-            const kickRaw = frame.isKick ? bands.bass : 0;
-            const snareInput = frame.snareAttack;
-            const highMidInput = Math.max(0, bands.lowMid * p.backLLowMidWeight + bands.mid * p.backLMidWeight
-                - bands.treble * p.backLTrebleSub - bands.bass * p.backLBassSub);
-            const kickProbe = this.evaluateEnvelopeProbe(kickRaw, p.envelopeKick, morphFactor, frame.now, frame.isBreakdown, this._kickProbe);
-            const snareProbe = this.evaluateEnvelopeProbe(snareInput, p.envelopeSnare, morphFactor, frame.now, frame.isBreakdown, this._snareProbe);
-            const highMidProbe = this.evaluateEnvelopeProbe(highMidInput, p.envelopeHighMid, morphFactor, frame.now, frame.isBreakdown, this._highMidProbe);
+            // WAVE 8009.1: Direct probe reads from real envelope instances — zero re-evaluation.
+            // The base class processAudio() already called envXxx.process() before routeZones(),
+            // so .probe contains the exact values used for DMX output.
+            const kickProbe = this.envKick.probe;
+            const snareProbe = this.envSnare.probe;
+            const highMidProbe = this.envHighMid.probe;
+            const kickRaw = kickProbe.signal;
+            const snareInput = snareProbe.signal;
+            const highMidInput = highMidProbe.signal;
             const record = {
                 subBass: bands.subBass,
                 mid: bands.mid,
@@ -278,11 +211,6 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
                 this._buffer[this._bufferHead] = record;
                 this._bufferHead = (this._bufferHead + 1) % LiquidEngine41Telemetry.BUFFER_SIZE;
             }
-            // ── FRONT-ONLY LIVE TELEMETRY ─────────────────────────────────────
-            // WAVE 2439.8: Telemetría en vivo SOLO para Front L/R a 44Hz.
-            // Objetivo: diagnosticar por qué Front R se enciende con "cualquier cosa"
-            // y por qué el morph abre las puertas de par en par.
-            const subBassProbe = this.evaluateEnvelopeProbe(bands.subBass, p.envelopeSubBass, morphFactor, frame.now, frame.isBreakdown, this._subBassProbe);
             // 🔇 FRONT-TEL silenciado — ahora solo BACK-TEL para calibración de backs
             // console.log(
             //   `[FRONT-TEL]` +
@@ -290,33 +218,32 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
             //   ...
             // )
             // 🔇 BACK-TEL silenciado — calibración de backs completada
-            // console.log(
-            //   `[BACK-TEL]` +
-            //   ` sB:${bands.subBass.toFixed(3)}` +
-            //   ` bass:${bands.bass.toFixed(3)}` +
-            //   ` mid:${bands.mid.toFixed(3)}` +
-            //   ` hM:${bands.highMid.toFixed(3)}` +
-            //   ` tr:${bands.treble.toFixed(3)}` +
-            //   ` | isK:${frame.isKick ? 1 : 0}` +
-            //   ` isKE:${frame.isKickEdge ? 1 : 0}` +
-            //   ` percRaw:${percRaw.toFixed(3)}` +
-            //   ` | morph:${morphFactor.toFixed(3)}` +
-            //   ` brk:${frame.isBreakdown ? 1 : 0}` +
-            //   ` strict:${isStrict ? 1 : 0}` +
-            //   ` | bL_in:${highMidInput.toFixed(3)}` +
-            //   ` bL_gate:${highMidProbe.dynamicGate.toFixed(3)}` +
-            //   ` bL_sq:${highMidProbe.squelch.toFixed(3)}` +
-            //   ` bL_pow:${highMidProbe.kickPower.toFixed(3)}` +
-            //   ` bL_ign:${highMidProbe.ignited ? 1 : 0}` +
-            //   ` | bR_in:${snareInput.toFixed(3)}` +
-            //   ` bR_gate:${snareProbe.dynamicGate.toFixed(3)}` +
-            //   ` bR_sq:${snareProbe.squelch.toFixed(3)}` +
-            //   ` bR_pow:${snareProbe.kickPower.toFixed(3)}` +
-            //   ` bR_ign:${snareProbe.ignited ? 1 : 0}` +
-            //   ` | outBL:${backLeft.toFixed(3)}` +
-            //   ` outBR:${backRight.toFixed(3)}` +
-            //   ` outPar:${backPar.toFixed(3)}`
-            // )
+            // WAVE 8008: Reactivated frame-by-frame for snare/hihat envelope debugging
+            console.log(`[BACK-TEL]` +
+                ` sB:${bands.subBass.toFixed(3)}` +
+                ` bass:${bands.bass.toFixed(3)}` +
+                ` mid:${bands.mid.toFixed(3)}` +
+                ` hM:${bands.highMid.toFixed(3)}` +
+                ` tr:${bands.treble.toFixed(3)}` +
+                ` | isK:${frame.isKick ? 1 : 0}` +
+                ` isKE:${frame.isKickEdge ? 1 : 0}` +
+                ` percRaw:${percRaw.toFixed(3)}` +
+                ` | morph:${morphFactor.toFixed(3)}` +
+                ` brk:${frame.isBreakdown ? 1 : 0}` +
+                ` strict:${isStrict ? 1 : 0}` +
+                ` | bL_in:${highMidInput.toFixed(3)}` +
+                ` bL_gate:${highMidProbe.dynamicGate.toFixed(3)}` +
+                ` bL_sq:${highMidProbe.squelch.toFixed(3)}` +
+                ` bL_pow:${highMidProbe.kickPower.toFixed(3)}` +
+                ` bL_ign:${highMidProbe.ignited ? 1 : 0}` +
+                ` | bR_in:${snareInput.toFixed(3)}` +
+                ` bR_gate:${snareProbe.dynamicGate.toFixed(3)}` +
+                ` bR_sq:${snareProbe.squelch.toFixed(3)}` +
+                ` bR_pow:${snareProbe.kickPower.toFixed(3)}` +
+                ` bR_ign:${snareProbe.ignited ? 1 : 0}` +
+                ` | outBL:${backLeft.toFixed(3)}` +
+                ` outBR:${backRight.toFixed(3)}` +
+                ` outPar:${backPar.toFixed(3)}`);
             this._frameCount++;
         }
         return {

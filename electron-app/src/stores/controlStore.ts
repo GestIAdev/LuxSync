@@ -421,13 +421,12 @@ export const useControlStore = create<ControlState>()(
       // ═══════════════════════════════════════════════════════════════════
       
       setLiquidLayout: (mode) => {
-        console.log(`[ControlStore] 🌊 Layout: ${mode}`)
+        // ControlStore Layout log silenced
         set({ liquidLayout: mode, useLiquidStereo: true })
       },
       
       setLiquidStereo: (enabled) => {
-        // Legacy compat — always liquid, just log
-        console.log(`[ControlStore] 🌊 Liquid Stereo: ${enabled ? 'ON' : 'OFF (compat)'}`)
+        // Legacy compat — always liquid, log silenced
         set({ useLiquidStereo: enabled })
       },
       

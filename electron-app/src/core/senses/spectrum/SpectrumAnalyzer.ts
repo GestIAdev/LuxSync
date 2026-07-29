@@ -15,7 +15,7 @@
  *   - PsychoacousticScaler (puro, in-package)
  */
 
-import { GodEarAnalyzer, toLegacyFormat, type GodEarSpectrum } from '../../../workers/GodEarFFT';
+import { GodEarAnalyzer, toLegacyFormat, type GodEarSpectrum, type GodEarPhoton, type GodEarRhythmicPercussion } from '../../../workers/GodEarFFT';
 import { toWebAudioScaledLevel } from './PsychoacousticScaler';
 
 // ============================================
@@ -71,6 +71,16 @@ export interface SpectrumResult {
 
   // WAVE 2347: crestFactor — relación pico/RMS espectral (kick vs rolling bass)
   crestFactor: number;
+
+  // WAVE 8002: Spectral Flux V3 — half-wave rectified, whitened, normalized.
+  // Undefined if GodEar V2 fallback. In [0, ~1] (adimensional por whitening).
+  spectralFluxV3?: number;
+
+  // WAVE 8003: Photon block — saturation, wallIntensity, strobe, hue, etc.
+  photon?: GodEarPhoton;
+
+  // WAVE 8008: Rhythmic percussion telemetry — snare/hi-hat isolated energies
+  rhythmic?: GodEarRhythmicPercussion;
 }
 
 // ============================================
@@ -190,6 +200,13 @@ export class SpectrumAnalyzer {
 
       // WAVE 2301: Native chromagram del GodEar Worker
       chroma: godEarResult.chroma,
+
+      // WAVE 8002: Spectral Flux V3 (undefined if V2 fallback)
+      spectralFluxV3: godEarResult.spectralFluxV3,
+      // WAVE 8003: Photon block (undefined if V2 fallback)
+      photon: godEarResult.photon,
+      // WAVE 8008: Rhythmic percussion telemetry
+      rhythmic: godEarResult.rhythmic,
     };
   }
 

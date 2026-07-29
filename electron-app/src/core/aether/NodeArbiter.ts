@@ -1443,7 +1443,7 @@ export class NodeArbiter implements INodeArbiter {
       clearTimeout(this._calibrationWatchdog)
       this._calibrationWatchdog = null
     }
-    console.log('[NodeArbiter] 🧹 purgeForShow: stale L2 node refs + L3++ calibration cleared for new show')
+    // purgeForShow log silenced
   }
 
   /**

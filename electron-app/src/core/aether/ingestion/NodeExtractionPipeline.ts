@@ -384,9 +384,7 @@ export class NodeExtractionPipeline {
     const topology = this._analyzeTopology(fixtureDef)
     const fixtureGraph = (fixtureDef as FixtureDefinition & { nodeGraph?: IForgeNodeGraph }).nodeGraph
     const hasForgeGraph = fixtureGraph && fixtureGraph.nodes.length > 0
-    if (hasForgeGraph) {
-      console.log(`[NodeExtractionPipeline] 🔧 WAVE 4735.7: V2 path — _buildNodesFromForgeGraph for ${String(resolvedDeviceId)} with ${fixtureGraph.nodes.length} output_dmx nodes`)
-    }
+    // V2 path log silenced
     const nodes = hasForgeGraph
       ? this._buildNodesFromForgeGraph(
           resolvedDeviceId,
@@ -625,7 +623,7 @@ export class NodeExtractionPipeline {
 
     // 🧩 DIAGNÓSTICO COMPOUND FIXTURE: log zone assignments for this device
     const zoneMap = nodes.map(n => `${n.nodeId}→${(n as any).zoneId ?? '?'}`).join(', ')
-    console.log(`[NodeExtractionPipeline._buildNodesFromForgeGraph] 🧩 device=${String(deviceId)} | zones: [${zoneMap}]`)
+    // Compound fixture zones diagnostic log silenced
 
     return nodes
   }
@@ -751,12 +749,7 @@ export class NodeExtractionPipeline {
       const rotationHome = rotCh && typeof rotCh.defaultValue === 'number'
         ? rotCh.defaultValue / 255
         : 0.5
-      if (rotCh && fixtureDef.name.toLowerCase().includes('tungsten')) {
-        console.log(
-          `[DYE] Nodo extraído con rotationHome: ${rotationHome} ` +
-          `| nodeId=${String(nodeId)} | fixture=${fixtureDef.name}`,
-        )
-      }
+      // DYE rotationHome log silenced
       return {
         nodeId,
         family:            NodeFamily.KINETIC,

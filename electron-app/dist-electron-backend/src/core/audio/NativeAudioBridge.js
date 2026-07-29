@@ -40,28 +40,11 @@ export class NativeAudioBridge {
             return [];
         }
         const nativeDevices = this.addon.enumerateDevices();
-        // ─── LIFT LOG BLACKOUT: dump full device table ───────────────────────────
-        console.log(`[NativeAudio] Device enumeration — ${nativeDevices.length} device(s) found:`);
-        for (const dev of nativeDevices) {
-            const flags = [
-                dev.isDefault ? 'DEFAULT' : null,
-                dev.isLoopback ? 'LOOPBACK' : null,
-                dev.isExclusiveCapable ? 'EXCLUSIVE' : null,
-            ].filter(Boolean).join(', ') || 'shared-only';
-            console.log(`[NativeAudio]   [${dev.driver.toUpperCase()}] "${dev.name}"` +
-                ` | ${dev.channels}ch @ ${dev.sampleRate}Hz` +
-                ` | flags: [${flags}]` +
-                ` | supported rates: [${dev.sampleRates.join(', ')}]` +
-                ` | id: ${dev.id}`);
-        }
+        // Verbose device enumeration silenced — was dumping 7+ lines per call
         const loopbacks = nativeDevices.filter(d => d.isLoopback);
         if (loopbacks.length === 0) {
             console.warn('[NativeAudio] ⚠️  No loopback/virtual-cable devices detected. VirtualWire will be unavailable.');
         }
-        else {
-            console.log(`[NativeAudio] ✅ Loopback device(s) detected: ${loopbacks.map(d => `"${d.name}"`).join(', ')}`);
-        }
-        // ─────────────────────────────────────────────────────────────────────────
         return nativeDevices.map((dev) => ({
             id: dev.id,
             name: dev.name,
@@ -170,7 +153,7 @@ export class NativeAudioBridge {
     // PRIVATE
     // ============================================
     loadNativeAddon() {
-        console.log('[NativeAudio] Loading native addon luxsync_audio...');
+        // Loading native addon log silenced
         try {
             // The native addon is built by node-gyp into native/build/Release/
             // bindings() searches relative to __dirname of the calling module.
@@ -186,7 +169,7 @@ export class NativeAudioBridge {
             this.addon = bindings({ bindings: 'luxsync_audio', module_root: nativeRoot });
             this._available = true;
             this._loadError = null;
-            console.log('[NativeAudio] ✅ Native addon loaded successfully');
+            // Native addon loaded log silenced
         }
         catch (err) {
             this.addon = null;

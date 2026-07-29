@@ -228,9 +228,6 @@ export class CognitiveFluidState {
       const alphaI = rawImpact > this._impact ? ALPHA_IMPACT_UP : ALPHA_IMPACT_DOWN
       this._impact += alphaI * (rawImpact - this._impact)
       this._diagFrame++
-      if (this._diagFrame % 44 === 0) {
-        console.log(`[FLUID-DIAG] M-SARFE impact=${this._impact.toFixed(3)} | zT=${zTotal.toFixed(2)} zL=${zLow.toFixed(2)} zH=${zHigh.toFixed(2)} cfH=${cfHigh.toFixed(2)} T=${T.toFixed(3)} D=${D.toFixed(3)} | wE=${(p.w_E * Math.max(0, Math.tanh(zTotal / p.z_ref))).toFixed(3)} wL=${(p.w_low * Math.max(0, Math.tanh(zLow / p.z_ref))).toFixed(3)} wH=${(p.w_high * Math.max(0, Math.tanh(zHigh / p.z_ref))).toFixed(3)} wCF=${(p.w_CF * sigmoid(cfHigh - 4)).toFixed(3)} wT=${(p.w_T * T).toFixed(3)} wD=${(p.w_D * D).toFixed(3)}`)
-      }
     } else {
       const zHat = Math.tanh(input.zScore / p.z_ref)
       // Absolute Energy Gate: CF must not inject into I(t) when absolute
@@ -359,9 +356,6 @@ export class CognitiveFluidState {
       const alphaE = epic > this._epicness ? ALPHA_EPIC_UP : ALPHA_EPIC_DOWN
       this._epicness += alphaE * (epic - this._epicness)
       this._epicness = clamp01(this._epicness)
-      if (this._diagFrame % 44 === 0) {
-        console.log(`[FLUID-DIAG] epicness=${this._epicness.toFixed(3)} | base=${baseEpicness.toFixed(3)} impact=${this._impact.toFixed(3)} effT=${effectiveTension.toFixed(3)} tension=${this._tension.toFixed(3)} denom=${denom.toFixed(3)} E=${input.rawEnergy.toFixed(3)} eF=${energyFactor.toFixed(3)} phase=${phase} pM=${phaseModifier.toFixed(3)} temp=${this._temperature.toFixed(3)} vibe=${input.vibe ?? 'none'}`)
-      }
     }
   }
 

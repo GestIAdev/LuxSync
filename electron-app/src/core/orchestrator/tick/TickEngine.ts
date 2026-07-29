@@ -543,6 +543,9 @@ export class TickEngine {
       kickDetected: workerOnBeat || (beatState.pllLocked && this.audioPipeline.lastAudioData.kickDetected),
       snareDetected: this.audioPipeline.lastAudioData.snareDetected,
       hihatDetected: this.audioPipeline.lastAudioData.hihatDetected,
+      // WAVE 8008: Rhythmic percussion isolated energies
+      snare_energy: this.audioPipeline.lastAudioData.rhythmic?.snare_energy,
+      hh_energy: this.audioPipeline.lastAudioData.rhythmic?.hh_energy,
       // â±ï¸ WAVE 2305: THE INFALLIBLE METRONOME â€” PLL beat prediction
       isPLLBeat: beatState.pllOnBeat,
     }
@@ -998,6 +1001,14 @@ export class TickEngine {
     // âš¡ WAVE-4592: flushToDriver() ELIMINADO â€” la Aduana y el send DMX
     // son responsabilidad exclusiva del bloque Aether (aetherSafety + sendUniverseRaw).
     // this.hal.flushToDriver(fixtureStates)  â† DISCONNECTED WAVE-4592
+    //
+    // FIX: When there are no Aether devices, the SAB is never written and the
+    // ArtNet driver reads empty buffers. Re-enable flushToDriver() as fallback
+    // so DMX goes out via the CompositeDriver (USB + ArtNet adapter).
+    // Only call when a driver is actually connected to avoid warning spam.
+    if (!this._aetherHasDevices && this.hal && this.hal.isConnected) {
+      this.hal.flushToDriver(fixtureStates)
+    }
 
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // âš›ï¸ WAVE 3505.4: AETHER MATRIX â€” V2 Agnostic Engine Pipeline
@@ -1090,7 +1101,7 @@ export class TickEngine {
       // ðŸ©º WAVE 4655-DIAG: log engine read (throttled)
       const _engineName = (_activeEngine as { constructor?: { name?: string } })?.constructor?.name ?? 'none'
       if (this._lastLoggedEngine !== _engineName) {
-        console.log(`[TitanOrchestrator ðŸŒŠ] AETHER-ENGINE: ${_engineName} | frame=${this.frameCount}`)
+        // AETHER-ENGINE diagnostic log silenced
         this._lastLoggedEngine = _engineName
       }
       const _liqFrame  = _activeEngine?.lastFrame ?? null

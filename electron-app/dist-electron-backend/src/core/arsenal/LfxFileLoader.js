@@ -1,10 +1,10 @@
 // ════════════════════════════════════════════════════════════════════════════
 // 🏛️ WAVE 2483 — INFINITE ARSENAL · LFX FILE LOADER
 // ════════════════════════════════════════════════════════════════════════════
-//  Servicio de carga física de `.lfx v2.1` desde disco hacia el Registry.
+//  Servicio de carga física de `.lfx v3.0` desde disco hacia el Registry.
 //
 //  RESPONSABILIDAD ÚNICA:
-//    - Escanear directorios designados (/builtin-effects/, /user-effects/).
+//    - Escanear userData/arsenal/ (single source of truth).
 //    - Parsear JSON + validar gates G2..G7.
 //    - Inyectar entries válidas en el DynamicEffectRegistry.
 //    - Trabaja en el main process (fs.promises). NO debe importarse desde
@@ -45,7 +45,7 @@ export class LfxFileLoader {
      * marginal y simplifica el código.
      *
      * Si un directorio no existe, se ignora silenciosamente — útil para
-     * arrancar sin `/user-effects/` creado todavía.
+     * arrancar sin `userData/arsenal/` creado todavía.
      */
     async loadAll(directories) {
         let scanned = 0;
@@ -62,8 +62,7 @@ export class LfxFileLoader {
             for (const id of dirReport.entries)
                 entries.push(id);
         }
-        console.log(`[LfxFileLoader 🏛️] Scan complete: scanned=${scanned} accepted=${accepted} ` +
-            `rejected=${rejected} errors=${errors}`);
+        // Scan complete log silenced — non-essential startup noise
         return Object.freeze({ scanned, accepted, rejected, errors, entries });
     }
     /** Carga un único `.lfx` (útil para hot-reload o ingesta drag-and-drop). */

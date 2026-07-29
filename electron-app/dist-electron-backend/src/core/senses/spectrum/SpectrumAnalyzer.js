@@ -115,6 +115,12 @@ export class SpectrumAnalyzer {
             rawMidEnergy: godEarResult.bandsRaw.mid,
             // WAVE 2301: Native chromagram del GodEar Worker
             chroma: godEarResult.chroma,
+            // WAVE 8002: Spectral Flux V3 (undefined if V2 fallback)
+            spectralFluxV3: godEarResult.spectralFluxV3,
+            // WAVE 8003: Photon block (undefined if V2 fallback)
+            photon: godEarResult.photon,
+            // WAVE 8008: Rhythmic percussion telemetry
+            rhythmic: godEarResult.rhythmic,
         };
     }
     /**

@@ -247,7 +247,7 @@ export class TrinityOrchestrator extends EventEmitter {
       await this.legacyBridge.initialize({});
       await this.legacyBridge.start();
       this.audioMatrix.registerProvider(this.legacyBridge);
-      console.log('[ALPHA] WAVE 3409: AudioMatrix initialized (SAB + LegacyBridge STREAMING)');
+      // AudioMatrix initialized log silenced;
 
       // Spawn workers
       await this.spawnWorker('beta');

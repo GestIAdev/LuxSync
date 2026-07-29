@@ -125,7 +125,7 @@ class HephFileIO {
     // Ensure folder exists
     await fs.mkdir(this.arsenalPath, { recursive: true })
     
-    console.log(`[HephFileIO] Arsenal folder: ${this.arsenalPath}`)
+    // Arsenal folder log silenced
     return this.arsenalPath
   }
   

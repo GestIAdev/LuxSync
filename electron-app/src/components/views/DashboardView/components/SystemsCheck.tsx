@@ -100,9 +100,9 @@ const MiniVisualizer: React.FC = () => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const ArtNetPanel: React.FC = () => {
-  const [ip, setIp] = useState<string>('255.255.255.255')
+  const [ip, setIp] = useState<string>('10.0.0.10')
   const [port, setPort] = useState<number>(6454)
-  const [universe, setUniverse] = useState<number>(1)
+  const [universe, setUniverse] = useState<number>(0)
   const [status, setStatus] = useState<ArtNetStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)

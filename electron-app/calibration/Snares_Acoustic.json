@@ -1,0 +1,46 @@
+{
+  "Acoustic Snare-01.wav": {
+    "scaledKick": 0.03480335750877882,
+    "scaledHighs": 0.013159718449619372,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.9792006532415741,
+    "strobeDrive": 0.23142392915969573,
+    "strobeDriveRaw": 0.4965347402299585,
+    "chromaFlux": 0.007666311191240437,
+    "flatness": 0.19282121500702876,
+    "whiteNoiseScore": 0.9282121500702875
+  },
+  "Acoustic Snare-02.wav": {
+    "scaledKick": 0.051297418114498165,
+    "scaledHighs": 0.01940149380823297,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.9853575503900326,
+    "strobeDrive": 0.2555562771371586,
+    "strobeDriveRaw": 0.5694781412622358,
+    "chromaFlux": 0.006564706487509148,
+    "flatness": 0.23355666376056153,
+    "whiteNoiseScore": 1
+  },
+  "Acoustic Snare-03.wav": {
+    "scaledKick": 0.04915977059065059,
+    "scaledHighs": 0.014318905574589848,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.9801120516579978,
+    "strobeDrive": 0.21810712030042917,
+    "strobeDriveRaw": 0.40486646285902933,
+    "chromaFlux": 0.007984483414568368,
+    "flatness": 0.20731854237731737,
+    "whiteNoiseScore": 1
+  },
+  "Acoustic Snare-04.wav": {
+    "scaledKick": 0.08272519239150714,
+    "scaledHighs": 0.021035648162386816,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.9846975623162303,
+    "strobeDrive": 0.21576454570845455,
+    "strobeDriveRaw": 0.3945694316855146,
+    "chromaFlux": 0.006692306569936897,
+    "flatness": 0.23273539232411564,
+    "whiteNoiseScore": 1
+  }
+}

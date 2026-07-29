@@ -45,8 +45,7 @@ export async function igniteGenesisEngine() {
     // 2. Ancestral ingestion — populate lfx_blueprints from .lfx catalog BEFORE seeding
     try {
         const report = await getAncestralIngestor().ingestAll();
-        console.log(`[GenesisIgnition 🧬] Ancestral ingestion: ${report.inserted} inserted, ` +
-            `${report.skipped} skipped, ${report.errors} errors`);
+        // Ancestral ingestion summary log silenced
     }
     catch (err) {
         console.warn('[GenesisIgnition ⚠️] Ancestral ingestion failed:', err);
@@ -82,9 +81,7 @@ export async function igniteGenesisEngine() {
         });
     }, MAINTENANCE_INTERVAL_MS);
     _maintenanceTimer.unref();
-    console.log(`[GenesisIgnition 🧬] Geological loop ignited — ` +
-        `maintenance every ${MAINTENANCE_INTERVAL_MS / 1000}s, ` +
-        `heatmap flush every 10s`);
+    // Geological loop ignited log silenced
 }
 /**
  * Shuts down the geological loop. Call during app shutdown.

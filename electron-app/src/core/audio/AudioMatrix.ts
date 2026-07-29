@@ -115,7 +115,7 @@ export class AudioMatrix implements IAudioMatrix {
     }
 
     this.providers.set(type, provider)
-    console.log(`[AudioMatrix] WAVE 3401: Provider registered: ${type}`)
+    // Provider registered log silenced
 
     // If no active source, try to activate this one
     if (!this.activeSource) {
@@ -252,7 +252,7 @@ export class AudioMatrix implements IAudioMatrix {
       // No current source -- direct activation, no crossfade needed
       this.activeSource = newSource
       this.crossfadeGain = 1.0
-      console.log(`[AudioMatrix] WAVE 3401: Direct activation: ${newSource}`)
+      // Direct activation log silenced
       return
     }
 
@@ -356,7 +356,7 @@ export class AudioMatrix implements IAudioMatrix {
   // ============================================
 
   private handleProviderStatusChange(type: InputSourceType, status: InputProviderStatus): void {
-    console.log(`[AudioMatrix] Provider ${type} status: ${status.state}`)
+    // Provider status change log silenced
 
     if (status.state === 'streaming') {
       this.evaluateActiveSource()

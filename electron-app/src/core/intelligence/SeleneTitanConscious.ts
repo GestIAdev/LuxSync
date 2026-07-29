@@ -557,6 +557,82 @@ export class SeleneTitanConscious extends EventEmitter {
     this.minEnergySinceLastEffect = Math.min(this.minEnergySinceLastEffect, titanState.rawEnergy)
     
     // ─────────────────────────────────────────────────────────────────────
+    // 0. 👁️ SENSE + 🌊 V3 LIQUID COGNITION — MUST RUN EVERY FRAME
+    // V3 procesa ANTES que el EnergyOverride para que `ignite` pueda bypassarlo.
+    // Si V3 dice "fuego ahora", ni siquiera el EnergyOverride puede silenciarlo.
+    // 🌊 WAVE 8007: Movido ANTES del `enabled` check — la telemetría V3 debe
+    // grabarse incluso cuando la consciencia está deshabilitada (modo reactivo).
+    // ─────────────────────────────────────────────────────────────────────
+    const pattern = this.sense(titanState)
+    this.updateHistory(pattern)
+
+    {
+      // V3.4: Sync mood to LiquidCognitionCore (zero-alloc check, only acts on change)
+      const currentMood = MoodController.getInstance().getCurrentMood()
+      if (this._liquidCore.mood !== currentMood) {
+        this._liquidCore.setMood(currentMood)
+      }
+
+      const now = Date.now()
+      const zScore = this.lastMemoryOutput?.stats.energy.zScore ?? 0
+      const energyMax = this.lastMemoryOutput?.stats.energy.max ?? titanState.rawEnergy
+      const beauty = this.currentBeauty?.totalBeauty ?? 0.5
+      const consonance = this.currentConsonance?.totalConsonance ?? 0.7
+
+      const predProb = this.state.activePrediction?.probability ?? 0
+      const predAlign = this.state.activePrediction ? 0.7 : 0.0
+
+      this._lastLiquidVerdict = this._liquidCore.process({
+        rawEnergy: titanState.rawEnergy,
+        zScore,
+        energyMaxHistoric: energyMax,
+        bassPresence: titanState.bass,
+        midPresence: titanState.mid,
+        harshness: titanState.harshness,
+        spectralFlatness: titanState.spectralFlatness,
+        harmonicDensity: pattern.harmonicDensity,
+        syncopation: pattern.syncopation,
+        rhythmicIntensity: pattern.rhythmicIntensity,
+        predictionProbability: predProb,
+        predictionAlignment: predAlign,
+        totalBeauty: beauty,
+        consonance,
+        effectGenome: NEUTRAL_GENOME,
+        contextualPhase: this.lastMemoryOutput?.narrative?.narrativePhase ?? 'building',
+        isWarmedUp: this.lastMemoryOutput?.isWarmedUp ?? false,
+        acousticReality: this.lastMemoryOutput?.acousticReality,
+        vibe: pattern.vibeId,
+      }, now)
+
+      this._v3Ignite = SELENE_V3_AUTHORITY && this._lastLiquidVerdict.ignite
+
+      if (this._v3Ignite) {
+        const now = Date.now()
+        if (now - this._lastSuppressedLog > 1000) {
+          const lv = this._lastLiquidVerdict!
+          const fd = this._liquidCore.descriptors
+          console.log(
+            `[SeleneTitanConscious 🌊] V3 IGNITE: C=${lv.confidence.toFixed(3)} ` +
+            `Q=${lv.squelch.toFixed(3)} I_fx=${lv.intensity.toFixed(3)} ` +
+            `epicness=${lv.epicness.toFixed(3)} ` +
+            `| I(t)=${lv.fluid.impact.toFixed(3)} CF=${lv.fluid.crestFactor.toFixed(3)} ` +
+            `T=${lv.fluid.tension.toFixed(3)} μ=${lv.fluid.viscosity.toFixed(3)} ` +
+            `V=${lv.fluid.vaporPressure.toFixed(3)} X=${lv.fluid.excitability.toFixed(3)} ` +
+            `| Π=${fd.percussiveness.toFixed(3)} M=${fd.melodicity.toFixed(3)} ` +
+            `Δ=${fd.dirtiness.toFixed(3)} G=${fd.groove.toFixed(3)} ` +
+            `→ V3 AUTHORITY ACTIVE`
+          )
+          this._lastSuppressedLog = now
+        }
+      }
+
+      // 🌊 WAVE 7003.4: Grabar frame en la Caja Negra (ring buffer zero-alloc)
+      // 🌊 WAVE 8007: Movido aquí (antes del `enabled` check) para que la telemetría
+      // se grabe incluso en modo reactivo (consciencia deshabilitada).
+      this._liquidRecorder.recordFrame(this._lastLiquidVerdict, now, titanState.snare_energy, titanState.hh_energy)
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     // 0. CHECK: ¿Está habilitada la consciencia?
     // ─────────────────────────────────────────────────────────────────────
     if (!this.config.enabled) {
@@ -820,75 +896,6 @@ export class SeleneTitanConscious extends EventEmitter {
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // 0. 👁️ SENSE + 🌊 V3 LIQUID COGNITION — MUST RUN EVERY FRAME
-    // V3 procesa ANTES que el EnergyOverride para que `ignite` pueda bypassarlo.
-    // Si V3 dice "fuego ahora", ni siquiera el EnergyOverride puede silenciarlo.
-    // ─────────────────────────────────────────────────────────────────────
-    const pattern = this.sense(titanState)
-    this.updateHistory(pattern)
-
-    {
-      // V3.4: Sync mood to LiquidCognitionCore (zero-alloc check, only acts on change)
-      const currentMood = MoodController.getInstance().getCurrentMood()
-      if (this._liquidCore.mood !== currentMood) {
-        this._liquidCore.setMood(currentMood)
-      }
-
-      const now = Date.now()
-      const zScore = this.lastMemoryOutput?.stats.energy.zScore ?? 0
-      const energyMax = this.lastMemoryOutput?.stats.energy.max ?? titanState.rawEnergy
-      const beauty = this.currentBeauty?.totalBeauty ?? 0.5
-      const consonance = this.currentConsonance?.totalConsonance ?? 0.7
-
-      const predProb = this.state.activePrediction?.probability ?? 0
-      const predAlign = this.state.activePrediction ? 0.7 : 0.0
-
-      this._lastLiquidVerdict = this._liquidCore.process({
-        rawEnergy: titanState.rawEnergy,
-        zScore,
-        energyMaxHistoric: energyMax,
-        bassPresence: titanState.bass,
-        midPresence: titanState.mid,
-        harshness: titanState.harshness,
-        spectralFlatness: titanState.spectralFlatness,
-        harmonicDensity: pattern.harmonicDensity,
-        syncopation: pattern.syncopation,
-        rhythmicIntensity: pattern.rhythmicIntensity,
-        predictionProbability: predProb,
-        predictionAlignment: predAlign,
-        totalBeauty: beauty,
-        consonance,
-        effectGenome: NEUTRAL_GENOME,
-        contextualPhase: this.lastMemoryOutput?.narrative?.narrativePhase ?? 'building',
-        isWarmedUp: this.lastMemoryOutput?.isWarmedUp ?? false,
-        acousticReality: this.lastMemoryOutput?.acousticReality,
-        vibe: pattern.vibeId,
-      }, now)
-
-      this._v3Ignite = SELENE_V3_AUTHORITY && this._lastLiquidVerdict.ignite
-
-      if (this._v3Ignite) {
-        const now = Date.now()
-        if (now - this._lastSuppressedLog > 1000) {
-          const lv = this._lastLiquidVerdict!
-          const fd = this._liquidCore.descriptors
-          console.log(
-            `[SeleneTitanConscious 🌊] V3 IGNITE: C=${lv.confidence.toFixed(3)} ` +
-            `Q=${lv.squelch.toFixed(3)} I_fx=${lv.intensity.toFixed(3)} ` +
-            `epicness=${lv.epicness.toFixed(3)} ` +
-            `| I(t)=${lv.fluid.impact.toFixed(3)} CF=${lv.fluid.crestFactor.toFixed(3)} ` +
-            `T=${lv.fluid.tension.toFixed(3)} μ=${lv.fluid.viscosity.toFixed(3)} ` +
-            `V=${lv.fluid.vaporPressure.toFixed(3)} X=${lv.fluid.excitability.toFixed(3)} ` +
-            `| Π=${fd.percussiveness.toFixed(3)} M=${fd.melodicity.toFixed(3)} ` +
-            `Δ=${fd.dirtiness.toFixed(3)} G=${fd.groove.toFixed(3)} ` +
-            `→ V3 AUTHORITY ACTIVE`
-          )
-          this._lastSuppressedLog = now
-        }
-      }
-    }
-
-    // ─────────────────────────────────────────────────────────────────────
     // 1. ⚡ ENERGY OVERRIDE CHECK — V3 ignite can bypass this
     // "En los drops, la física manda" — unless V3 says "fuego ahora"
     // ─────────────────────────────────────────────────────────────────────
@@ -948,9 +955,6 @@ export class SeleneTitanConscious extends EventEmitter {
           this._lastSuppressedLog = now
         }
       }
-
-      // 🌊 WAVE 7003.4: Grabar frame en la Caja Negra (ring buffer zero-alloc)
-      this._liquidRecorder.recordFrame(this._lastLiquidVerdict, now)
 
       // Exponer telemetría V3 en debugInfo
       finalOutput.debugInfo.liquidCognition = {

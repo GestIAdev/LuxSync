@@ -294,7 +294,7 @@ export class OSCNexusProvider implements IInputProvider {
 
     await new Promise<void>((resolve, reject) => {
       this.listenSocket!.bind(this.config.listenPort, () => {
-        console.log(`[OSCNexus] WAVE 3401: Listening on UDP port ${this.config.listenPort}`)
+        // OSCNexus Listening log silenced
         resolve()
       })
       this.listenSocket!.once('error', reject)
@@ -316,7 +316,7 @@ export class OSCNexusProvider implements IInputProvider {
         })
         this.publishSocket!.once('error', reject)
       })
-      console.log(`[OSCNexus] WAVE 3401: Publisher ready on UDP port ${this.config.publishPort}`)
+      // OSCNexus Publisher ready log silenced
     }
 
     // Register built-in route handlers

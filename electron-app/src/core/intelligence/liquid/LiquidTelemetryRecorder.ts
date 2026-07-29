@@ -47,6 +47,9 @@ interface TelemetryFrame {
   s_X: number
   s_P: number
   s_B: number
+  // 🥁 WAVE 8008: Rhythmic percussion isolated energies
+  snare_energy: number
+  hh_energy: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -75,6 +78,9 @@ export class LiquidTelemetryRecorder {
   private readonly _s_X: Float64Array = new Float64Array(BUFFER_SIZE)
   private readonly _s_P: Float64Array = new Float64Array(BUFFER_SIZE)
   private readonly _s_B: Float64Array = new Float64Array(BUFFER_SIZE)
+  // WAVE 8008: Rhythmic percussion energies
+  private readonly _snare_energy: Float64Array = new Float64Array(BUFFER_SIZE)
+  private readonly _hh_energy: Float64Array = new Float64Array(BUFFER_SIZE)
 
   private _head: number = 0
   private _count: number = 0
@@ -84,7 +90,7 @@ export class LiquidTelemetryRecorder {
    * Graba un frame del LiquidVerdict en el ring buffer.
    * Hot path 44Hz — zero-alloc, solo escritura de primitivos en arrays tipados.
    */
-  recordFrame(verdict: LiquidVerdict, now: number): void {
+  recordFrame(verdict: LiquidVerdict, now: number, snareEnergy?: number, hhEnergy?: number): void {
     const idx = this._head
 
     this._timestamps[idx] = now
@@ -107,6 +113,8 @@ export class LiquidTelemetryRecorder {
     this._s_X[idx] = verdict.sensors.s_X
     this._s_P[idx] = verdict.sensors.s_P
     this._s_B[idx] = verdict.sensors.s_B
+    this._snare_energy[idx] = snareEnergy ?? 0
+    this._hh_energy[idx] = hhEnergy ?? 0
 
     // Avanzar cabeza del ring buffer
     this._head = (this._head + 1) % BUFFER_SIZE
@@ -163,6 +171,8 @@ export class LiquidTelemetryRecorder {
         s_X: this._s_X[idx],
         s_P: this._s_P[idx],
         s_B: this._s_B[idx],
+        snare_energy: this._snare_energy[idx],
+        hh_energy: this._hh_energy[idx],
       }
     }
 
@@ -217,6 +227,7 @@ export class LiquidTelemetryRecorder {
     epicness: 0, tension: 0, viscosity: 0, vaporPressure: 0, excitability: 0,
     temperature: 0, impact: 0, crestFactor: 0,
     s_DNA: 0, s_Z: 0, s_E: 0, s_V: 0, s_X: 0, s_P: 0, s_B: 0,
+    snare_energy: 0, hh_energy: 0,
   }
 
   getLastFrame(): TelemetryFrame | null {
@@ -244,6 +255,8 @@ export class LiquidTelemetryRecorder {
     s.s_X = this._s_X[idx]
     s.s_P = this._s_P[idx]
     s.s_B = this._s_B[idx]
+    s.snare_energy = this._snare_energy[idx]
+    s.hh_energy = this._hh_energy[idx]
 
     return s
   }

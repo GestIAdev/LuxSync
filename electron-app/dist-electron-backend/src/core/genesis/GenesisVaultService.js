@@ -260,7 +260,7 @@ export class GenesisVaultService {
             countBlueprints: this._db.prepare('SELECT COUNT(*) as cnt FROM lfx_blueprints'),
         };
         this._isInitialized = true;
-        console.log(`[GenesisVault 🧬] Initialized at: ${this._dbPath}`);
+        // GenesisVault initialized log silenced
     }
     /**
      * Runs a manual WAL checkpoint (call during idle / session end).

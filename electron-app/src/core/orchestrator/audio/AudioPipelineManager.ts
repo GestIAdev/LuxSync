@@ -12,6 +12,7 @@ import { BeatDetector } from '../../../engine/audio/BeatDetector'
 import { SyncSmoother } from '../metrics/SyncSmoother'
 import type { TrinityOrchestrator } from '../../../workers/TrinityOrchestrator'
 import type { TrinityBrain } from '../../../brain/TrinityBrain'
+import type { GodEarPhoton, GodEarRhythmicPercussion } from '../../../workers/GodEarFFT'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -43,6 +44,12 @@ export interface AudioDataSnapshot {
   workerKickCount?: number
   inputPeakAbs?: number
   inputRMS?: number
+  // WAVE 8002: Spectral Flux V3 — half-wave rectified, whitened, normalized
+  spectralFluxV3?: number
+  // WAVE 8003: Photon block — saturation, wallIntensity, strobe, etc.
+  photon?: GodEarPhoton
+  // WAVE 8008: Rhythmic percussion telemetry — snare/hi-hat isolated energies
+  rhythmic?: GodEarRhythmicPercussion
 }
 
 export interface BeatState {
@@ -146,6 +153,12 @@ export class AudioPipelineManager {
       beatPhase?: number; beatStrength?: number;
       kickCount?: number;
       inputPeakAbs?: number; inputRMS?: number;
+      // WAVE 8002: Spectral Flux V3
+      spectralFluxV3?: number;
+      // WAVE 8003: Photon block
+      photon?: GodEarPhoton;
+      // WAVE 8008: Rhythmic percussion telemetry
+      rhythmic?: GodEarRhythmicPercussion;
     }) => {
       const matrixStatus = this.ctx.trinity?.getAudioMatrix()?.getStatus()
       const activeSource = matrixStatus?.activeSource ?? null
@@ -191,6 +204,12 @@ export class AudioPipelineManager {
           inputRMS: levels.inputRMS ?? this.lastAudioData.inputRMS,
           rawTreble: levels.rawTreble ?? this.lastAudioData.rawTreble,
           ultraAir:  levels.ultraAir  ?? this.lastAudioData.ultraAir,
+          // WAVE 8002: Spectral Flux V3
+          spectralFluxV3: levels.spectralFluxV3 ?? this.lastAudioData.spectralFluxV3,
+          // WAVE 8003: Photon block
+          photon: levels.photon ?? this.lastAudioData.photon,
+          // WAVE 8008: Rhythmic percussion telemetry
+          rhythmic: levels.rhythmic ?? this.lastAudioData.rhythmic,
         }
 
         const wasActive = this.hasRealAudio
@@ -228,6 +247,12 @@ export class AudioPipelineManager {
           inputRMS: levels.inputRMS ?? this.lastAudioData.inputRMS,
           rawTreble: levels.rawTreble ?? this.lastAudioData.rawTreble,
           ultraAir:  levels.ultraAir  ?? this.lastAudioData.ultraAir,
+          // WAVE 8002: Spectral Flux V3
+          spectralFluxV3: levels.spectralFluxV3 ?? this.lastAudioData.spectralFluxV3,
+          // WAVE 8003: Photon block
+          photon: levels.photon ?? this.lastAudioData.photon,
+          // WAVE 8008: Rhythmic percussion telemetry
+          rhythmic: levels.rhythmic ?? this.lastAudioData.rhythmic,
         }
       }
     })
@@ -267,6 +292,7 @@ export class AudioPipelineManager {
       workerBeatPhase: this.lastAudioData.workerBeatPhase,
       workerBeatStrength: this.lastAudioData.workerBeatStrength,
       workerKickCount: this.lastAudioData.workerKickCount,
+      rhythmic: this.lastAudioData.rhythmic,
     }
 
     const wasAudioActive = this.hasRealAudio

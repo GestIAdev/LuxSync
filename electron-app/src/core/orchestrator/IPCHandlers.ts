@@ -15,6 +15,7 @@ import type { HephAutomationClipV3 } from '../hephaestus/types'
 import { HephaestusRuntime } from '../hephaestus/runtime/HephaestusRuntime'
 // ðŸ“¡ WAVE 2048: Art-Net Network Discovery
 import { getArtNetDiscovery } from '../../hal/drivers/ArtNetDiscovery'
+import { getDmxSab } from '../aether/glass/GlassMemory'
 // WAVE 3403: AudioMatrix IPC bridge
 import { getTrinity } from '../../workers/TrinityOrchestrator'
 import type { InputSourceType } from '../audio/OmniInputTypes'
@@ -251,7 +252,7 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
   
   // 🌊 WAVE 2401: Liquid Stereo toggle (7-band per-zone envelopes)
   ipcMain.handle('lux:setLiquidStereo', (_event, enabled: boolean) => {
-    console.log('[IPC] lux:setLiquidStereo:', enabled)
+    // IPC setLiquidStereo log silenced
     if (titanOrchestrator) {
       titanOrchestrator.setLiquidStereo(enabled)
     }
@@ -260,7 +261,7 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
   
   // 🌊 WAVE 2432: THE GREAT WIRING — Layout Switch (4.1 / 7.1)
   ipcMain.handle('lux:setLiquidLayout', (_event, mode: string) => {
-    console.log('[IPC] lux:setLiquidLayout:', mode)
+    // IPC setLiquidLayout log silenced
     if (titanOrchestrator && (mode === '4.1' || mode === '7.1')) {
       titanOrchestrator.setLiquidLayout(mode as '4.1' | '7.1')
     }
@@ -1785,15 +1786,15 @@ function setupDMXHandlers(deps: IPCDependencies): void {
         // Also send via ArtNet if configured (for ArtNet universe 0)
         // ðŸ”§ WAVE 1218 FIX: isConnected not isRunning
         if (deps.artNetDriver?.isConnected) {
-          deps.artNetDriver.setChannel(clampedAddress, clampedValue)
-          deps.artNetDriver.send()  // ðŸ”¥ WAVE 1008.5: Force immediate send for calibration
+          deps.artNetDriver.setChannel(clampedAddress, clampedValue, 0)
+          deps.artNetDriver.sendUniverse(0)
         }
       } else {
         // Higher universes - ArtNet only
         // ðŸ”§ WAVE 1218 FIX: isConnected not isRunning
         if (deps.artNetDriver?.isConnected) {
           deps.artNetDriver.setChannel(clampedAddress, clampedValue, universe)
-          deps.artNetDriver.send()  // ðŸ”¥ WAVE 1008.5: Force immediate send
+          deps.artNetDriver.sendUniverse(universe)
         }
       }
       
@@ -1822,6 +1823,14 @@ function setupArtNetHandlers(deps: IPCDependencies): void {
         artNetDriver.configure(config)
       }
       const success = await artNetDriver.start()
+      if (success) {
+        // Wire ArtNet to the DMX SAB so it reads universe data from the TickEngine.
+        // Without this, the driver has a socket but no data source — packets go out empty.
+        const sab = getDmxSab()
+        const configuredUniverse = artNetDriver.currentConfig.universe ?? 0
+        artNetDriver.attachSab(sab, [configuredUniverse], 44)
+        console.log(`[ArtNet IPC] attachSab wired: universe=${configuredUniverse} @44Hz`)
+      }
       return { success, status: artNetDriver.getStatus() }
     } catch (err) {
       return { success: false, error: String(err) }

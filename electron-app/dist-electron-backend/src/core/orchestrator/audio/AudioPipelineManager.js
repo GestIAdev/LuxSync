@@ -100,6 +100,12 @@ export class AudioPipelineManager {
                     inputRMS: levels.inputRMS ?? this.lastAudioData.inputRMS,
                     rawTreble: levels.rawTreble ?? this.lastAudioData.rawTreble,
                     ultraAir: levels.ultraAir ?? this.lastAudioData.ultraAir,
+                    // WAVE 8002: Spectral Flux V3
+                    spectralFluxV3: levels.spectralFluxV3 ?? this.lastAudioData.spectralFluxV3,
+                    // WAVE 8003: Photon block
+                    photon: levels.photon ?? this.lastAudioData.photon,
+                    // WAVE 8008: Rhythmic percussion telemetry
+                    rhythmic: levels.rhythmic ?? this.lastAudioData.rhythmic,
                 };
                 const wasActive = this.hasRealAudio;
                 this.hasRealAudio = true;
@@ -138,6 +144,12 @@ export class AudioPipelineManager {
                     inputRMS: levels.inputRMS ?? this.lastAudioData.inputRMS,
                     rawTreble: levels.rawTreble ?? this.lastAudioData.rawTreble,
                     ultraAir: levels.ultraAir ?? this.lastAudioData.ultraAir,
+                    // WAVE 8002: Spectral Flux V3
+                    spectralFluxV3: levels.spectralFluxV3 ?? this.lastAudioData.spectralFluxV3,
+                    // WAVE 8003: Photon block
+                    photon: levels.photon ?? this.lastAudioData.photon,
+                    // WAVE 8008: Rhythmic percussion telemetry
+                    rhythmic: levels.rhythmic ?? this.lastAudioData.rhythmic,
                 };
             }
         });
@@ -175,6 +187,7 @@ export class AudioPipelineManager {
             workerBeatPhase: this.lastAudioData.workerBeatPhase,
             workerBeatStrength: this.lastAudioData.workerBeatStrength,
             workerKickCount: this.lastAudioData.workerKickCount,
+            rhythmic: this.lastAudioData.rhythmic,
         };
         const wasAudioActive = this.hasRealAudio;
         this.hasRealAudio = energy > 0.01;

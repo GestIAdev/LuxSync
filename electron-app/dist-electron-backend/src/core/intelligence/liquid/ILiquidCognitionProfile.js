@@ -38,10 +38,10 @@ export const DEFAULT_LIQUID_PROFILE = Object.freeze({
     // — Inercia y Vapor —
     tau_min: 1.5,
     tau_max: 9.0,
-    w_m: 0.40,
+    w_m: 0.50, // FIX: 0.40→0.50 — aumentar peso de melodicidad para μ no colapse en techno
     w_f: 0.25,
     w_h: 0.20,
-    w_p: 0.30,
+    w_p: 0.10, // FIX: 0.30→0.10 — w_p=0.30 dominaba en techno (Π~0.6-0.9) y forzaba μ=0.000
     beta_v: 0.015, // ⬇ 0.03 → 0.015 (Fase 3: slower vapor accumulation in valleys)
     kappa_vreset: 0.15,
     // — Fusión —

@@ -1,0 +1,134 @@
+{
+  "CYCdh_Crash-01.wav": {
+    "scaledKick": 0.01701723287969303,
+    "scaledHighs": 0.16070861980698106,
+    "transientDensity": 0.31999999999999995,
+    "spectralFluxV3": 0.9997971083421568,
+    "strobeDrive": 0.24413385140643157,
+    "strobeDriveRaw": 0.5444562525155918,
+    "chromaFlux": 0.01972882337633551,
+    "flatness": 0.1618912008208835,
+    "whiteNoiseScore": 0.6189120082088351
+  },
+  "CYCdh_Crash-02.wav": {
+    "scaledKick": 0.018961657702116545,
+    "scaledHighs": 0.12990095436897442,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.9992518318634054,
+    "strobeDrive": 0.3235530609605368,
+    "strobeDriveRaw": 0.4569912219995552,
+    "chromaFlux": 0.025072649291851896,
+    "flatness": 0.5510786490417738,
+    "whiteNoiseScore": 1
+  },
+  "CYCdh_Crash-03.wav": {
+    "scaledKick": 0.024693646610572443,
+    "scaledHighs": 0.14973337309565554,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.9999729437666774,
+    "strobeDrive": 0.29957497861598315,
+    "strobeDriveRaw": 0.4577473285007416,
+    "chromaFlux": 0.02306492146105945,
+    "flatness": 0.27225628751495456,
+    "whiteNoiseScore": 1
+  },
+  "CYCdh_MultiCrash-01.wav": {
+    "scaledKick": 0.015958490035211298,
+    "scaledHighs": 0.06773204336715852,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.938135566490504,
+    "strobeDrive": 0.2884043186838108,
+    "strobeDriveRaw": 0.3156312571748443,
+    "chromaFlux": 0.016477864343401837,
+    "flatness": 0.45648999393884204,
+    "whiteNoiseScore": 1
+  },
+  "CYCdh_MultiCrash-02.wav": {
+    "scaledKick": 0.025743266256392727,
+    "scaledHighs": 0.08086426337687215,
+    "transientDensity": 0.31999999999999995,
+    "spectralFluxV3": 0.9429084530217366,
+    "strobeDrive": 0.24759723750629686,
+    "strobeDriveRaw": 0.3,
+    "chromaFlux": 0.01268639156301463,
+    "flatness": 0.4566745194984978,
+    "whiteNoiseScore": 1
+  },
+  "CYCdh_MultiCrash-03.wav": {
+    "scaledKick": 0.022235007396417265,
+    "scaledHighs": 0.04256766629593162,
+    "transientDensity": 0.31999999999999995,
+    "spectralFluxV3": 0.9346095249232934,
+    "strobeDrive": 0.1489534810699074,
+    "strobeDriveRaw": 0.23987246671467471,
+    "chromaFlux": 0.018253586833464702,
+    "flatness": 0.17620957957465783,
+    "whiteNoiseScore": 0.7620957957465782
+  },
+  "CYCdh_MultiCrashHi-01.wav": {
+    "scaledKick": 0.006511491857593792,
+    "scaledHighs": 0.0781769834581717,
+    "transientDensity": 0.31999999999999995,
+    "spectralFluxV3": 0.9999745998587231,
+    "strobeDrive": 0.28568163072670905,
+    "strobeDriveRaw": 0.6598475991523386,
+    "chromaFlux": 0.021059561365331,
+    "flatness": 0.2385486180106699,
+    "whiteNoiseScore": 1
+  },
+  "CYCdh_MultiCrashHi-02.wav": {
+    "scaledKick": 0.004337718462903504,
+    "scaledHighs": 0.0748446530156255,
+    "transientDensity": 0.31999999999999995,
+    "spectralFluxV3": 0.9999665401070309,
+    "strobeDrive": 0.26510965703643913,
+    "strobeDriveRaw": 0.6305208806725826,
+    "chromaFlux": 0.012367564806481242,
+    "flatness": 0.19024054667679902,
+    "whiteNoiseScore": 0.90240546676799
+  },
+  "CYCdh_MultiCrashHi-03.wav": {
+    "scaledKick": 0.004419333345445939,
+    "scaledHighs": 0.07379606274098618,
+    "transientDensity": 0.31999999999999995,
+    "spectralFluxV3": 0.9998475473267132,
+    "strobeDrive": 0.2209566085037808,
+    "strobeDriveRaw": 0.5012696161167476,
+    "chromaFlux": 0.028430222447805457,
+    "flatness": 0.18246437852263422,
+    "whiteNoiseScore": 0.8246437852263422
+  },
+  "CYCdh_MultiCrashLo-01.wav": {
+    "scaledKick": 0.01349933699753517,
+    "scaledHighs": 0.04982528292930416,
+    "transientDensity": 0.49,
+    "spectralFluxV3": 0.8996752450731477,
+    "strobeDrive": 0.2643591177451695,
+    "strobeDriveRaw": 0.42799999999999994,
+    "chromaFlux": 0.02017758672396541,
+    "flatness": 0.2055553077801982,
+    "whiteNoiseScore": 1
+  },
+  "CYCdh_MultiCrashLo-02.wav": {
+    "scaledKick": 0.03030374801039619,
+    "scaledHighs": 0.046256177992315926,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.8946832326392288,
+    "strobeDrive": 0.22147308800281237,
+    "strobeDriveRaw": 0.3493660367962507,
+    "chromaFlux": 0.026179390249449527,
+    "flatness": 0.19645534559875025,
+    "whiteNoiseScore": 0.9645534559875024
+  },
+  "CYCdh_MultiCrashLo-03.wav": {
+    "scaledKick": 0.032195452597631284,
+    "scaledHighs": 0.03703833916434814,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.8846978784961175,
+    "strobeDrive": 0.2063529510677814,
+    "strobeDriveRaw": 0.24441708284488772,
+    "chromaFlux": 0.016859349658371887,
+    "flatness": 0.1814723609482959,
+    "whiteNoiseScore": 0.8147236094829591
+  }
+}

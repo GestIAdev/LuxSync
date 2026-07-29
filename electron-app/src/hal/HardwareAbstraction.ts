@@ -1307,7 +1307,7 @@ export class HardwareAbstraction {
     }
     // Cascade to FixtureMapper's own cache
     this.mapper.invalidateProfileCache(profileId)
-    console.log(`[HAL] 🔥 WAVE 2183: Profile cache invalidated${profileId ? ` for "${profileId}"` : ' (ALL)'}`)
+    // Profile cache invalidated log silenced
   }
   
   /**
@@ -2258,7 +2258,7 @@ export class HardwareAbstraction {
    */
   public registerMover(fixtureId: string, installationType: string = 'ceiling'): void {
     this.movementPhysics.registerFixture(fixtureId, { installationType })
-    console.log(`[HAL] 🔧 Registered mover "${fixtureId}" (${installationType})`)
+    // Registered mover log silenced
   }
   
   /**

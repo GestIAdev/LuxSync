@@ -40,7 +40,7 @@ function hydrateBackendFromShow(showFile) {
             ? { width: showFile.stage.width, height: showFile.stage.height, depth: showFile.stage.depth }
             : undefined;
         orchestrator.setFixtures(fixtures, stageBounds);
-        console.log(`[StageIPC] ✅ F1 HYDRATION: ${fixtures.length} fixtures injected directly into backend`);
+        // F1 HYDRATION log silenced — fires on every show load
     }
     catch (err) {
         console.error('[StageIPC] ❌ F1 HYDRATION FAILED:', err);
@@ -88,7 +88,7 @@ export function setupStageIPCHandlers(getMainWindow) {
      * WAVE 4718: Emits lux:stage:loaded broadcast so setupStageStoreListeners hydrates the store
      */
     ipcMain.handle('lux:stage:loadActive', async () => {
-        console.log('[StageIPC] Load active show');
+        // 'Load active show' log silenced
         const result = await stagePersistence.loadShow();
         if (result.success && result.showFile) {
             // F1: Hydrate backend BEFORE notifying renderer

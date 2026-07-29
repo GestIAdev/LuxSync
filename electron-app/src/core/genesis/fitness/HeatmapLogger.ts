@@ -67,7 +67,7 @@ export class HeatmapLogger {
         console.warn('[HeatmapLogger ⚠️] Flush error:', err)
       })
     }, FLUSH_INTERVAL_MS)
-    console.log(`[HeatmapLogger 🧬] Started — flush every ${FLUSH_INTERVAL_MS / 1000}s`)
+    // HeatmapLogger started log silenced
   }
 
   /**

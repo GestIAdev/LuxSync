@@ -1012,7 +1012,7 @@ export class HardwareAbstraction {
         }
         // Cascade to FixtureMapper's own cache
         this.mapper.invalidateProfileCache(profileId);
-        console.log(`[HAL] 🔥 WAVE 2183: Profile cache invalidated${profileId ? ` for "${profileId}"` : ' (ALL)'}`);
+        // Profile cache invalidated log silenced
     }
     /**
      * � WAVE 2088.6: BABEL FISH PHYSICS — Traductor universal de perfiles de motor
@@ -1865,7 +1865,7 @@ export class HardwareAbstraction {
      */
     registerMover(fixtureId, installationType = 'ceiling') {
         this.movementPhysics.registerFixture(fixtureId, { installationType });
-        console.log(`[HAL] 🔧 Registered mover "${fixtureId}" (${installationType})`);
+        // Registered mover log silenced
     }
     /**
      * 🔧 WAVE 338: Translate abstract position to DMX for a mover

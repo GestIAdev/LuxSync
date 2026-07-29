@@ -649,6 +649,9 @@ export class TitanEngine extends EventEmitter {
             hihatDetected: audio.hihatDetected,
             isPLLBeat: audio.isPLLBeat, // ⏱️ WAVE 2305
             crestFactor: audio.crestFactor, // 💥 WAVE 2347
+            // 🥁 WAVE 8008: Rhythmic percussion isolated energies
+            snare_energy: audio.snare_energy,
+            hh_energy: audio.hh_energy,
         }, elementalMods);
         // Log del sistema nervioso (cada 60 frames si hay energía)
         if (this.state.frameCount % 60 === 0 && audio.energy > 0.05) {
@@ -808,6 +811,9 @@ export class TitanEngine extends EventEmitter {
             // 🔧 WAVE 7002 (F2+F3): Verdad del BPM — confianza y lock state
             bpmConfidence: audio.beatConfidence ?? 0,
             pllLocked: audio.pllLocked ?? false,
+            // 🥁 WAVE 8008: Rhythmic percussion isolated energies
+            snare_energy: audio.snare_energy,
+            hh_energy: audio.hh_energy,
             // Paleta actual
             currentPalette: selenePalette,
             // Timing
@@ -1091,14 +1097,14 @@ export class TitanEngine extends EventEmitter {
      */
     setLiquidStereo(enabled) {
         this.nervousSystem.setLiquidStereo(enabled);
-        console.log(`[TitanEngine] 🌊 Liquid Stereo ${enabled ? 'ACTIVE (7-band)' : 'OFF (God Mode)'}`);
+        // TitanEngine Liquid Stereo log silenced
     }
     /**
      * 🌊 WAVE 2432: THE GREAT WIRING — Layout Switch (4.1 / 7.1)
      */
     setLiquidLayout(mode) {
         this.nervousSystem.setLiquidLayout(mode);
-        console.log(`[TitanEngine] 🌊 Layout: ${mode}`);
+        // TitanEngine Layout log silenced
     }
     getActiveLiquidEngine() {
         return this.nervousSystem.getLastActiveLiquidEngine();
@@ -1583,6 +1589,8 @@ export class TitanEngine extends EventEmitter {
             hihatDetected: src.hihatDetected === true,
             isPLLBeat: src.isPLLBeat === true,
             crestFactor: Math.max(0, safeNumber(src.crestFactor, 0)),
+            snare_energy: clamp01(src.snare_energy, 0),
+            hh_energy: clamp01(src.hh_energy, 0),
         };
     }
     /**

@@ -446,8 +446,7 @@ export class FXTParser {
                     if (isTungstenFixture && Array.isArray(jsonFixture.channels)) {
                         const rotationChannel = jsonFixture.channels.find((ch) => typeof ch?.type === 'string' && ch.type.toLowerCase() === 'rotation');
                         if (rotationChannel) {
-                            console.log(`[DYE] Canal Rotation - defaultValue leído: ${String(rotationChannel.defaultValue)} ` +
-                                `| fixture=${fixtureNameForDye} | file=${file}`);
+                            // DYE Canal Rotation log silenced
                         }
                     }
                     // Detect type from name or explicit type field

@@ -1,0 +1,90 @@
+{
+  "CYCdh_KesKick-01.wav": {
+    "scaledKick": 0.034852282692148046,
+    "scaledHighs": 0.00009670311412403604,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.5315096143785483,
+    "strobeDrive": 0.055474866562499996,
+    "strobeDriveRaw": 0.06,
+    "chromaFlux": 0.003537830128844862,
+    "flatness": 0.04255099880171866,
+    "whiteNoiseScore": 0
+  },
+  "CYCdh_KesKick-02.wav": {
+    "scaledKick": 0.06302341619969486,
+    "scaledHighs": 0.0003365404419527299,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.8049746809859941,
+    "strobeDrive": 0.055474866562499996,
+    "strobeDriveRaw": 0.06,
+    "chromaFlux": 0.0040807483478376705,
+    "flatness": 0.03505353520103984,
+    "whiteNoiseScore": 0
+  },
+  "CYCdh_KesKick-03.wav": {
+    "scaledKick": 0.09981876213075645,
+    "scaledHighs": 0.0013957465485625953,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.967233578588238,
+    "strobeDrive": 0.059674018093437996,
+    "strobeDriveRaw": 0.16340147152942824,
+    "chromaFlux": 0.004155035666799804,
+    "flatness": 0.03123176782828507,
+    "whiteNoiseScore": 0
+  },
+  "CYCdh_KesKick-04.wav": {
+    "scaledKick": 0.10460102559481169,
+    "scaledHighs": 0.00283055277855918,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.9913580610417481,
+    "strobeDrive": 0.10785192818767102,
+    "strobeDriveRaw": 0.30814836625048864,
+    "chromaFlux": 0.0053750252075525215,
+    "flatness": 0.035476051973345225,
+    "whiteNoiseScore": 0
+  },
+  "CYCdh_KesKick-05.wav": {
+    "scaledKick": 0.08019911984887779,
+    "scaledHighs": 0.002265140005118185,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.9853507630097164,
+    "strobeDrive": 0.09523660232040444,
+    "strobeDriveRaw": 0.2721045780582984,
+    "chromaFlux": 0.004319911260356636,
+    "flatness": 0.031340135564870746,
+    "whiteNoiseScore": 0
+  },
+  "CYCdh_KesKick-06.wav": {
+    "scaledKick": 0.11460297114457191,
+    "scaledHighs": 0.0024725265524191253,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.9856684079238073,
+    "strobeDrive": 0.09590365663999537,
+    "strobeDriveRaw": 0.2740104475428439,
+    "chromaFlux": 0.006687058886530373,
+    "flatness": 0.03964879037314126,
+    "whiteNoiseScore": 0
+  },
+  "CYCdh_KesKick-07.wav": {
+    "scaledKick": 0.3074736198070712,
+    "scaledHighs": 0.003762735553998013,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.992860183650829,
+    "strobeDrive": 0.11100638566674088,
+    "strobeDriveRaw": 0.317161101904974,
+    "chromaFlux": 0.009119096707892422,
+    "flatness": 0.09394206463892721,
+    "whiteNoiseScore": 0
+  },
+  "CYCdh_KesKick-08.wav": {
+    "scaledKick": 0.28747986404748044,
+    "scaledHighs": 0.004221043416109043,
+    "transientDensity": 0.15,
+    "spectralFluxV3": 0.9931366476356399,
+    "strobeDrive": 0.1115869600348439,
+    "strobeDriveRaw": 0.31881988581383974,
+    "chromaFlux": 0.006649894239232578,
+    "flatness": 0.1013689761676556,
+    "whiteNoiseScore": 0.013689761676555917
+  }
+}

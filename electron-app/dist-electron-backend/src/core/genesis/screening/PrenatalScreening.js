@@ -122,7 +122,7 @@ function evalG6(clip, simMeta) {
     // a single static keyframe (value in [0,1]) is valid — the fixture's
     // hardware strobe macro handles the flashing. Only require ≥4 keyframes
     // when strobe is simulated artificially via intensity (dimmer chaser).
-    const strobeTrack = clip.tracks.find((t) => t.paramId === 'strobe' || t.paramId === 'strobeRate');
+    const strobeTrack = clip.tracks.find((t) => t.paramId === 'strobe');
     if (strobeTrack) {
         const kfs = strobeTrack.curve.keyframes;
         const validStatic = kfs.length >= 1 && kfs.every((k) => typeof k.value === 'number' && k.value >= 0 && k.value <= 1);

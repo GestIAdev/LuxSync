@@ -50,7 +50,7 @@ export class VirtualWireProvider {
     }
     async initialize(config) {
         this.config = config;
-        console.log('[VirtualWire] initialize() — checking native bridge...');
+        // initialize() log silenced
         const bridge = getNativeAudioBridge();
         if (!bridge.available) {
             console.error(`[VirtualWire] ❌ Native bridge unavailable: ${bridge.loadError}`);
@@ -95,7 +95,7 @@ export class VirtualWireProvider {
                 null;
             if (virtualDevice) {
                 this.selectedDeviceId = virtualDevice.id;
-                console.log(`[VirtualWire] Auto-detected virtual capture device: "${virtualDevice.name}" (${virtualDevice.id}) — isLoopback=${virtualDevice.isLoopback}`);
+                // Auto-detected virtual capture device log silenced
             }
             else {
                 console.warn('[VirtualWire] ⚠️  No virtual loopback device auto-detected. VB-Cable "CABLE Input" not found in enumeration.');
@@ -113,7 +113,7 @@ export class VirtualWireProvider {
             errorMessage: this.selectedDeviceId ? null : 'No VB-Cable/BlackHole detected',
         });
         if (this.selectedDeviceId) {
-            console.log(`[VirtualWire] ✅ Initialized — device: "${deviceName}" ready, waiting for start()`);
+            // VirtualWire initialized log silenced
         }
         else {
             console.warn('[VirtualWire] ⚠️  Initialized with NO device — start() will fail until a loopback device is available');
@@ -166,7 +166,7 @@ export class VirtualWireProvider {
             deviceId: this.selectedDeviceId,
             sampleRate: targetRate,
             channels,
-            bufferSizeFrames: 256,
+            bufferSizeFrames: 1024,
             exclusiveMode: !isLoopbackDevice && (this.config.exclusiveMode ?? true),
             loopbackMode: isLoopbackDevice,
         }, (data, frameCount, ch, sampleRate) => {

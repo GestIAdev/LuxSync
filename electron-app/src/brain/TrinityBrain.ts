@@ -22,6 +22,7 @@ import {
 // Importar TrinityOrchestrator para conexión con Workers
 import { TrinityOrchestrator } from '../workers/TrinityOrchestrator'
 import type { AudioAnalysis } from '../workers/WorkerProtocol'
+import type { ExtendedAudioAnalysis } from '../core/senses/io/AnalysisResponseBuilder'
 
 /**
  * Eventos que emite TrinityBrain
@@ -260,6 +261,12 @@ export class TrinityBrain extends EventEmitter {
       // 🌊 WAVE 3516.1: EL 7º PASAJERO — alta frecuencia sin colapsar hacia el Orchestrator
       rawTreble: analysis.rawTreble,
       ultraAir:  analysis.ultraAir,
+      // 🌊 WAVE 8002: Spectral Flux V3 — propagates to AudioPipelineManager
+      spectralFluxV3: (analysis as ExtendedAudioAnalysis).spectralFluxV3,
+      // 🌊 WAVE 8003: Photon block — propagates to SeleneLux via AudioPipelineManager
+      photon: (analysis as ExtendedAudioAnalysis).photon,
+      // 🥁 WAVE 8008: Rhythmic percussion telemetry — snare/hi-hat isolated energies
+      rhythmic: (analysis as ExtendedAudioAnalysis).rhythmic,
     })
 
     // Log cada ~30 frames (1 segundo)

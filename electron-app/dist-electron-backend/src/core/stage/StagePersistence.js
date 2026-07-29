@@ -261,7 +261,7 @@ export class StagePersistence {
                     // �️ WAVE 2093.3 (CW-10): Run through V2 incremental migration
                     const { show: patchedShow, appliedPatches } = migrateV2ToLatest(showFile);
                     if (appliedPatches.length > 0) {
-                        console.log(`[StagePersistence] 🔄 V2 incremental migration: ${appliedPatches.length} patches applied`);
+                        // V2 incremental migration log silenced
                     }
                     // �🔥 WAVE 2040.24 FASE 6: Normalizar zonas legacy en archivos V2 existentes
                     // Un .luxshow puede tener 'FRONT_PARS', 'stage-left', etc.
@@ -270,21 +270,21 @@ export class StagePersistence {
                     for (const fixture of patchedShow.fixtures) {
                         const canonical = normalizeZone(fixture.zone);
                         if (fixture.zone !== canonical) {
-                            console.log(`[StagePersistence] 🔄 Zone normalized: "${fixture.zone}" → "${canonical}" (fixture: ${fixture.id})`);
+                            // Per-fixture zone normalization log silenced
                             fixture.zone = canonical;
                             zonesNormalized++;
                         }
                     }
                     if (zonesNormalized > 0 || appliedPatches.length > 0) {
-                        console.log(`[StagePersistence] ✅ Normalized ${zonesNormalized} fixture zones to canonical`);
+                        // Normalized zones log silenced
                         // Auto-save con zonas normalizadas y/o patches aplicados (async)
                         patchedShow.modifiedAt = new Date().toISOString();
                         const targetSavePath = filePath || this.getActiveShowPath();
                         await fsp.writeFile(targetSavePath, JSON.stringify(patchedShow, null, 2), 'utf-8');
-                        console.log(`[StagePersistence] 💾 Auto-saved with normalized zones`);
+                        // Auto-saved log silenced
                     }
                     this.addToRecentShows(targetPath);
-                    console.log(`[StagePersistence] 📂 Loaded V2 show: ${patchedShow.name}`);
+                    // 'Loaded V2 show' log silenced
                     return { success: true, showFile: patchedShow, migrated: appliedPatches.length > 0 };
                 }
                 else {
@@ -293,7 +293,7 @@ export class StagePersistence {
             }
             else if (version === '1.0.0') {
                 // Legacy V1, migrate
-                console.log('[StagePersistence] 🔄 Legacy V1 file detected, migrating...');
+                // Legacy V1 migration log silenced
                 return this.migrateAndLoad(data, targetPath);
             }
             else {

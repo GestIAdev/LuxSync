@@ -79,7 +79,7 @@ export class AudioMatrix {
             this.handleProviderStatusChange(type, status);
         };
         this.providers.set(type, provider);
-        console.log(`[AudioMatrix] WAVE 3401: Provider registered: ${type}`);
+        // Provider registered log silenced
         // If no active source, try to activate this one
         if (!this.activeSource) {
             this.evaluateActiveSource();
@@ -199,7 +199,7 @@ export class AudioMatrix {
             // No current source -- direct activation, no crossfade needed
             this.activeSource = newSource;
             this.crossfadeGain = 1.0;
-            console.log(`[AudioMatrix] WAVE 3401: Direct activation: ${newSource}`);
+            // Direct activation log silenced
             return;
         }
         console.log(`[AudioMatrix] WAVE 3401: Hot-swap initiated: ${this.activeSource} -> ${newSource}`);
@@ -289,7 +289,7 @@ export class AudioMatrix {
     // PROVIDER STATUS CHANGES
     // ============================================
     handleProviderStatusChange(type, status) {
-        console.log(`[AudioMatrix] Provider ${type} status: ${status.state}`);
+        // Provider status change log silenced
         if (status.state === 'streaming') {
             this.evaluateActiveSource();
         }

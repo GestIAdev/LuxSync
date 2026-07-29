@@ -182,5 +182,5 @@ export function setupKeyForgeIPCHandlers(
     }
   })
 
-  console.log('[KeyForgeIPC] ⌨ Handlers registered: lux:keyforge:export, lux:keyforge:import')
+  // KeyForgeIPC handlers registered log silenced
 }

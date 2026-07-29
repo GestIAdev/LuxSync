@@ -122,6 +122,22 @@ interface LiquidEnvelopeState {
   sustainedFrames: number
   /** Endurecimiento acumulado de squelch por sustain */
   sustainedSquelchBoost: number
+  /** WAVE 8009.2: Contador de frames consecutivos de silencio para reset de gate */
+  silenceFrames: number
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PROBE — Telemetría de un solo frame (WAVE 8009.1 compat)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface LiquidEnvelopeProbe {
+  signal: number
+  dynamicGate: number
+  squelch: number
+  kickPower: number
+  gatePassed: boolean
+  ignited: boolean
+  output: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -132,6 +148,7 @@ export class LiquidEnvelope {
 
   private config: LiquidEnvelopeConfig
   private state: LiquidEnvelopeState
+  private _lastProbe: LiquidEnvelopeProbe = { signal: 0, dynamicGate: 0, squelch: 0, kickPower: 0, gatePassed: false, ignited: false, output: 0 }
 
   constructor(config: LiquidEnvelopeConfig) {
     this.config = config
@@ -196,8 +213,23 @@ export class LiquidEnvelope {
     // 3. PEAK MEMORY + TIDAL GATE — Adaptive peak decay
     //    Herencia: WAVE 2385 (Tidal Gate — conditional peak release)
     // ═══════════════════════════════════════════════════════════════════
-    const timeSinceLastFire = s.lastFireTime > 0 ? now - s.lastFireTime : 0
+    // WAVE 8009.2: Treat never-fired (lastFireTime=0) as ancient history
+    // so dry spell logic activates immediately, preventing gate freeze.
+    const timeSinceLastFire = s.lastFireTime > 0 ? now - s.lastFireTime : 999999
     const isDrySpell = timeSinceLastFire > 2000
+
+    // WAVE 8009.2: SILENCE RESET — Track consecutive near-zero frames.
+    // After 60 frames (~1.4s at 44Hz) of signal < 0.01, force avgSignalPeak
+    // to 0 so dynamicGate drops to adaptiveFloor instead of staying frozen.
+    if (signal < 0.01) {
+      s.silenceFrames++
+      if (s.silenceFrames > 60) {
+        s.avgSignalPeak = 0
+        s.avgSignal = 0
+      }
+    } else {
+      s.silenceFrames = 0
+    }
 
     // Peak decay: normal 0.993 (~4.7s half-life), dry spell 0.985 (~1.5s)
     const peakDecay = isDrySpell ? 0.985 : 0.993
@@ -331,10 +363,20 @@ export class LiquidEnvelope {
 
     const faded = Math.min(c.maxIntensity, s.intensity * fadeFactor)
 
+    // WAVE 8009.1: Store probe for telemetry — zero-cost when not read
+    const gatePassed = signal > dynamicGate && isAttacking && signal > 0.15 && velocity >= attackSlopeMin
+    const ignited = kickPower > squelch
+    this._lastProbe = { signal, dynamicGate, squelch, kickPower, gatePassed, ignited, output: faded }
+
     // WAVE 2990: GHOST CAP FLOOR ELIMINATED.
     // The artificial dimmer floor (ghostCap * max(morph, 0.1)) prevented DMX 0.
     // If audio energy is zero, output must be zero. No residual glow.
     return faded
+  }
+
+  /** WAVE 8009.1: Probe — telemetría read-only del último frame procesado */
+  get probe(): LiquidEnvelopeProbe {
+    return this._lastProbe
   }
 
   private static freshState(): LiquidEnvelopeState {
@@ -347,6 +389,7 @@ export class LiquidEnvelope {
       wasAttacking: false,
       sustainedFrames: 0,
       sustainedSquelchBoost: 0,
+      silenceFrames: 0,
     }
   }
 

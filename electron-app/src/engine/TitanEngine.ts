@@ -153,6 +153,9 @@ export interface EngineAudioMetrics {
   pllLocked?: boolean
   // � WAVE 2347: crestFactor — relación pico/RMS espectral (kick vs rolling bass)
   crestFactor?: number
+  // WAVE 8008: Rhythmic percussion isolated energies from GodEarFFT
+  snare_energy?: number  // 0-1 — geometric mean of body (150-250Hz) + crack (2-5kHz)
+  hh_energy?: number     // 0-1 — high band (5-15kHz)
 }
 
 /**
@@ -901,6 +904,9 @@ export class TitanEngine extends EventEmitter {
         hihatDetected: audio.hihatDetected,
         isPLLBeat: audio.isPLLBeat,  // ⏱️ WAVE 2305
         crestFactor: audio.crestFactor,  // 💥 WAVE 2347
+        // 🥁 WAVE 8008: Rhythmic percussion isolated energies
+        snare_energy: audio.snare_energy,
+        hh_energy: audio.hh_energy,
       },
       elementalMods
     )
@@ -1082,6 +1088,10 @@ export class TitanEngine extends EventEmitter {
       // 🔧 WAVE 7002 (F2+F3): Verdad del BPM — confianza y lock state
       bpmConfidence: audio.beatConfidence ?? 0,
       pllLocked: audio.pllLocked ?? false,
+      
+      // 🥁 WAVE 8008: Rhythmic percussion isolated energies
+      snare_energy: audio.snare_energy,
+      hh_energy: audio.hh_energy,
       
       // Paleta actual
       currentPalette: selenePalette,
@@ -1403,7 +1413,7 @@ export class TitanEngine extends EventEmitter {
    */
   public setLiquidStereo(enabled: boolean): void {
     this.nervousSystem.setLiquidStereo(enabled);
-    console.log(`[TitanEngine] 🌊 Liquid Stereo ${enabled ? 'ACTIVE (7-band)' : 'OFF (God Mode)'}`);
+    // TitanEngine Liquid Stereo log silenced
   }
 
   /**
@@ -1411,7 +1421,7 @@ export class TitanEngine extends EventEmitter {
    */
   public setLiquidLayout(mode: '4.1' | '7.1'): void {
     this.nervousSystem.setLiquidLayout(mode);
-    console.log(`[TitanEngine] 🌊 Layout: ${mode}`);
+    // TitanEngine Layout log silenced
   }
 
   public getActiveLiquidEngine(): LiquidEngineBase {
@@ -2026,6 +2036,8 @@ export class TitanEngine extends EventEmitter {
       hihatDetected: src.hihatDetected === true,
       isPLLBeat: src.isPLLBeat === true,
       crestFactor: Math.max(0, safeNumber(src.crestFactor, 0)),
+      snare_energy: clamp01(src.snare_energy, 0),
+      hh_energy: clamp01(src.hh_energy, 0),
     }
   }
   

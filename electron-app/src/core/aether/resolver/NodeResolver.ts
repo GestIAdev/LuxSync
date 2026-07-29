@@ -710,10 +710,7 @@ export class NodeResolver implements INodeResolver {
 
     if (injections.length > 0) {
       this._ignitionMap.set(deviceId, injections)
-      console.log(
-        `[NodeResolver] 🔥 WAVE 4720: ${injections.length} ignition injection(s) ` +
-        `pre-computed for device ${String(deviceId)}`
-      )
+      // Ignition injection log silenced — fires on every setFixtures
     }
   }
 
@@ -1306,10 +1303,7 @@ export class NodeResolver implements INodeResolver {
         ? 0
         : sanitizeDmxByte(dmxValue)
       if (chDef.type === 'rotation' && safeDmxValue === 127) {
-        console.log(
-          `[DYE] Escribiendo DMX para Rotation. Valor: ${safeDmxValue}. ` +
-          `Source: ${rawSource} | node=${String(node.nodeId)} | device=${String(device.deviceId)}`,
-        )
+        // DYE rotation DMX write log silenced
       }
       buf[bufIdx] = safeDmxValue
 

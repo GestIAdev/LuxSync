@@ -102,10 +102,7 @@ export class LfxFileLoader {
       for (const id of dirReport.entries) entries.push(id)
     }
 
-    console.log(
-      `[LfxFileLoader 🏛️] Scan complete: scanned=${scanned} accepted=${accepted} ` +
-      `rejected=${rejected} errors=${errors}`,
-    )
+    // Scan complete log silenced — non-essential startup noise
 
     return Object.freeze({ scanned, accepted, rejected, errors, entries })
   }

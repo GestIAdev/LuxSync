@@ -194,6 +194,14 @@ export interface AudioAnalysis {
   // rawTreble y ultraAir viajan limpios para LiquidEngine71 / Aether Matrix.
   rawTreble?: number;     // 6-16 kHz puro (sin ultraAir mezclado)
   ultraAir?: number;      // 16-22 kHz air digital
+
+  // 🌊 WAVE 8002: Spectral Flux V3 — half-wave rectified, whitened, normalized.
+  // Undefined if GodEar V2 fallback. In [0, ~1] (adimensional por whitening).
+  spectralFluxV3?: number;
+
+  // 🌊 WAVE 8003: Photon block — saturation, wallIntensity, strobe, hue, etc.
+  // Undefined if GodEar V2 fallback.
+  photon?: GodEarPhoton;
 }
 
 // ============================================
@@ -276,6 +284,7 @@ export interface LightingDecision {
 
 // 🎨 WAVE 2096.1: RGBColor unificado en types/color.ts (VULN-COLOR-07)
 import { RGBColor } from '../types/color'
+import type { GodEarPhoton } from './GodEarFFT'
 export type { RGBColor }
 
 export type MovementPattern = 

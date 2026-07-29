@@ -640,7 +640,7 @@ export function setupGenesisIPCHandlers(): void {
     return { success: true, paused: isGenesisPaused() }
   })
 
-  console.log('[GenesisIPC 🧬] All genesis channels registered')
+  // GenesisIPC channels registered log silenced
 }
 
 // ═══════════════════════════════════════════════════════════════════════

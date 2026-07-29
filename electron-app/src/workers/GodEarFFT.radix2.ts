@@ -262,3 +262,250 @@ fE /= 4096;
 console.log(`  Parseval: rel_err=${(Math.abs(tE - fE) / tE).toExponential(3)}`);
 
 console.log(`\n${ok ? '✅ ALL TESTS PASSED' : '❌ SOME TESTS FAILED'}`);
+
+// ═══════════════════════════════════════════════════════════════
+// WAVE 8001: V3 PHASE 0 TESTS — LUT Parity + Power Spectrum + Parseval
+// ═══════════════════════════════════════════════════════════════
+
+console.log('\n╔══════════════════════════════════════════════════════════════╗');
+console.log('║  WAVE 8001: V3 PHASE 0 — LUT PARITY + POWER SPECTRUM       ║');
+console.log('╚══════════════════════════════════════════════════════════════╝\n');
+
+// ─── Test 1: LUT Twiddle Factor Parity ───────────────────────────
+// Compare FFT results using Math.cos/sin (hot-path) vs LUT pre-computed values.
+// Tolerance: < 1e-5 (strict)
+
+function initTwiddleLUT(n: number): { cos: Float32Array; sin: Float32Array } {
+  const half = n >> 1;
+  const cos = new Float32Array(half);
+  const sin = new Float32Array(half);
+  const step = -2 * Math.PI / n;
+  for (let k = 0; k < half; k++) {
+    cos[k] = Math.cos(step * k);
+    sin[k] = Math.sin(step * k);
+  }
+  return { cos, sin };
+}
+
+function radix2DIT_LUT(
+  samples: Float32Array,
+  outRe: Float32Array,
+  outIm: Float32Array,
+  tw: { cos: Float32Array; sin: Float32Array }
+): void {
+  const N = samples.length;
+  const br = bitReverse(N);
+
+  for (let i = 0; i < N; i++) {
+    outRe[i] = samples[br[i]];
+    outIm[i] = 0;
+  }
+
+  for (let size = 2; size <= N; size <<= 1) {
+    const halfSize = size >> 1;
+    const stride = N / size;
+
+    for (let groupStart = 0; groupStart < N; groupStart += size) {
+      for (let j = 0; j < halfSize; j++) {
+        const wr = tw.cos[j * stride];
+        const wi = tw.sin[j * stride];
+
+        const evenIdx = groupStart + j;
+        const oddIdx = groupStart + j + halfSize;
+
+        const tRe = wr * outRe[oddIdx] - wi * outIm[oddIdx];
+        const tIm = wr * outIm[oddIdx] + wi * outRe[oddIdx];
+
+        outRe[oddIdx] = outRe[evenIdx] - tRe;
+        outIm[oddIdx] = outIm[evenIdx] - tIm;
+        outRe[evenIdx] = outRe[evenIdx] + tRe;
+        outIm[evenIdx] = outIm[evenIdx] + tIm;
+      }
+    }
+  }
+}
+
+function testLUTParity(signal: number[], label: string): boolean {
+  const N = signal.length;
+  const input = new Float32Array(signal);
+  const reHot = new Float32Array(N);
+  const imHot = new Float32Array(N);
+  const reLUT = new Float32Array(N);
+  const imLUT = new Float32Array(N);
+
+  radix2DIT(input, reHot, imHot);
+
+  const tw = initTwiddleLUT(N);
+  radix2DIT_LUT(input, reLUT, imLUT, tw);
+
+  let maxErr = 0;
+  for (let k = 0; k < N; k++) {
+    const err = Math.max(
+      Math.abs(reHot[k] - reLUT[k]),
+      Math.abs(imHot[k] - imLUT[k])
+    );
+    if (err > maxErr) maxErr = err;
+  }
+
+  const TOL = 1e-5;
+  const passed = maxErr < TOL;
+  console.log(`LUT Parity ${label} (N=${N}): max_err=${maxErr.toExponential(3)} ${passed ? '✅' : '❌'}`);
+  return passed;
+}
+
+let lutOk = true;
+lutOk = testLUTParity([1, 2, 3, 4, 5, 6, 7, 8], 'Simple8') && lutOk;
+
+const lutSig64: number[] = [];
+for (let n = 0; n < 64; n++) lutSig64.push(Math.cos(2 * Math.PI * 3 * n / 64));
+lutOk = testLUTParity(lutSig64, 'Cosine_f3_N64') && lutOk;
+
+const lutSig256: number[] = [];
+for (let n = 0; n < 256; n++) lutSig256.push(Math.sin(2 * Math.PI * 10 * n / 256) + 0.3 * Math.cos(2 * Math.PI * 50 * n / 256));
+lutOk = testLUTParity(lutSig256, 'MultiTone_N256') && lutOk;
+
+const lutSig4k: number[] = [];
+for (let n = 0; n < 4096; n++) lutSig4k.push(Math.cos(2*Math.PI*3*n/4096) + 0.5*Math.cos(2*Math.PI*100*n/4096));
+lutOk = testLUTParity(lutSig4k, 'MultiTone_N4096') && lutOk;
+
+// ─── Test 2: Parseval's Theorem in Power Domain ──────────────────
+// For DFT: Σ|x[n]|² = (1/N) Σ|X[k]|²
+// In power domain: P[k] = |X[k]|², so Σ P[k] = N · Σ|x[n]|²
+// We verify: Σ P[k] / N ≈ Σ |x[n]|²
+
+console.log('\n--- Parseval in Power Domain (N=4096) ---');
+const parseBuf = new Float32Array(4096);
+for (let n = 0; n < 4096; n++) parseBuf[n] = Math.sin(Math.PI * n * n / 4096);
+const pR = new Float32Array(4096);
+const pI = new Float32Array(4096);
+const tw4k = initTwiddleLUT(4096);
+radix2DIT_LUT(parseBuf, pR, pI, tw4k);
+
+let timeEnergy = 0;
+for (let n = 0; n < 4096; n++) timeEnergy += parseBuf[n] * parseBuf[n];
+
+let freqPowerSum = 0;
+for (let k = 0; k < 4096; k++) freqPowerSum += pR[k] * pR[k] + pI[k] * pI[k];
+
+const parsevalPower = freqPowerSum / 4096;
+const parsevalErr = Math.abs(timeEnergy - parsevalPower) / timeEnergy;
+console.log(`  Time energy:  ${timeEnergy.toExponential(6)}`);
+console.log(`  Freq power/N: ${parsevalPower.toExponential(6)}`);
+console.log(`  Rel error:    ${parsevalErr.toExponential(3)}`);
+const parsevalPass = parsevalErr < 1e-5;
+console.log(`  Parseval Power: ${parsevalPass ? '✅' : '❌'}`);
+
+// ─── Test 3: Band Energy V2 (magnitude) vs V3 (power) Equivalence ─
+// Verify that extractBandPower(power, mask) == extractBandEnergy(magnitude, mask)
+// where power[k] = magnitude[k]² (same normalization).
+
+console.log('\n--- Band Energy V2 (magnitude) vs V3 (power) Equivalence ---');
+
+// Simulate magnitude spectrum and power spectrum
+const N = 4096;
+const numBins = N >> 1;
+const testMag = new Float32Array(numBins + 1);
+const testPow = new Float32Array(numBins + 1);
+
+// Fill with a realistic spectrum: a few peaks + noise floor
+for (let k = 0; k <= numBins; k++) {
+  const val = 0.001 + 0.5 * Math.abs(Math.sin(k * 0.01)) + (k === 100 ? 0.8 : 0) + (k === 500 ? 0.6 : 0);
+  testMag[k] = val;
+  testPow[k] = val * val;
+}
+
+// V2 extractBandEnergy (magnitude domain)
+function extractBandEnergyV2(magnitudes: Float32Array, mask: Float32Array): number {
+  let energy = 0;
+  let weightSum = 0;
+  for (let bin = 0; bin < magnitudes.length && bin < mask.length; bin++) {
+    const weight = mask[bin];
+    if (weight > 0.001) {
+      energy += magnitudes[bin] * magnitudes[bin] * weight;
+      weightSum += weight;
+    }
+  }
+  if (weightSum > 0) energy /= weightSum;
+  return Math.sqrt(energy);
+}
+
+// V3 extractBandPower (power domain)
+function extractBandPowerV3(power: Float32Array, mask: Float32Array): number {
+  let energy = 0;
+  let weightSum = 0;
+  for (let bin = 0; bin < power.length && bin < mask.length; bin++) {
+    const weight = mask[bin];
+    if (weight > 0.001) {
+      energy += power[bin] * weight;
+      weightSum += weight;
+    }
+  }
+  if (weightSum > 0) energy /= weightSum;
+  return Math.sqrt(energy);
+}
+
+// Generate simple rectangular masks for testing (like LR4 but simpler)
+function makeRectMask(start: number, end: number, len: number): Float32Array {
+  const m = new Float32Array(len);
+  for (let i = start; i <= end && i < len; i++) m[i] = 1.0;
+  return m;
+}
+
+const bands = [
+  { name: 'subBass', start: 2, end: 6 },    // ~20-60Hz
+  { name: 'bass',    start: 6, end: 23 },   // ~60-250Hz
+  { name: 'mid',     start: 46, end: 185 }, // ~500-2000Hz
+  { name: 'treble',  start: 557, end: 1485 } // ~6-16kHz
+];
+
+let bandOk = true;
+for (const band of bands) {
+  const mask = makeRectMask(band.start, band.end, numBins + 1);
+  const v2 = extractBandEnergyV2(testMag, mask);
+  const v3 = extractBandPowerV3(testPow, mask);
+  const err = Math.abs(v2 - v3);
+  const relErr = v2 > 0 ? err / v2 : 0;
+  const pass = relErr < 1e-5;
+  console.log(`  ${band.name}: V2=${v2.toFixed(8)} V3=${v3.toFixed(8)} rel_err=${relErr.toExponential(3)} ${pass ? '✅' : '❌'}`);
+  bandOk = bandOk && pass;
+}
+
+// ─── Test 4: LUT Performance Comparison ──────────────────────────
+console.log('\n--- LUT vs Hot-Path Trig Performance (N=4096, 500 iterations) ---');
+const perfLUT = new Float32Array(4096);
+for (let n = 0; n < 4096; n++) perfLUT[n] = Math.sin(Math.PI * n * n / 4096);
+const lR = new Float32Array(4096);
+const lI = new Float32Array(4096);
+const twPerf = initTwiddleLUT(4096);
+
+// Warmup
+for (let i = 0; i < 50; i++) {
+  radix2DIT(perfLUT, lR, lI);
+  radix2DIT_LUT(perfLUT, lR, lI, twPerf);
+}
+
+const hotTimes: number[] = [];
+const lutTimes: number[] = [];
+for (let i = 0; i < 500; i++) {
+  let t0 = performance.now();
+  radix2DIT(perfLUT, lR, lI);
+  hotTimes.push(performance.now() - t0);
+
+  t0 = performance.now();
+  radix2DIT_LUT(perfLUT, lR, lI, twPerf);
+  lutTimes.push(performance.now() - t0);
+}
+
+const hotAvg = hotTimes.reduce((a, b) => a + b) / hotTimes.length;
+const lutAvg = lutTimes.reduce((a, b) => a + b) / lutTimes.length;
+const speedup = (hotAvg / lutAvg - 1) * 100;
+console.log(`  Hot-path trig: avg=${hotAvg.toFixed(3)}ms`);
+console.log(`  LUT twiddle:   avg=${lutAvg.toFixed(3)}ms`);
+console.log(`  Speedup:       ${speedup.toFixed(1)}% ${speedup > 0 ? '✅' : '⚠️'}`);
+
+// ─── V3 Phase 0 Summary ──────────────────────────────────────────
+const v3Pass = lutOk && parsevalPass && bandOk;
+console.log(`\nWAVE 8001 Phase 0: ${v3Pass ? '✅ ALL V3 TESTS PASSED' : '❌ SOME V3 TESTS FAILED'}`);
+console.log(`  LUT Parity:     ${lutOk ? '✅' : '❌'}`);
+console.log(`  Parseval Power: ${parsevalPass ? '✅' : '❌'}`);
+console.log(`  Band V2=V3:     ${bandOk ? '✅' : '❌'}`);

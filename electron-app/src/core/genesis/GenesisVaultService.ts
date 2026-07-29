@@ -310,7 +310,7 @@ export class GenesisVaultService {
     }
 
     this._isInitialized = true
-    console.log(`[GenesisVault 🧬] Initialized at: ${this._dbPath}`)
+    // GenesisVault initialized log silenced
   }
 
   /**

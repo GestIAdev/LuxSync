@@ -127,10 +127,14 @@ class HephaestusClipIndex {
      */
     async upsert(filePath, source) {
         try {
-            const raw = await fs.readFile(filePath, 'utf-8');
+            let raw = await fs.readFile(filePath, 'utf-8');
             if (!raw || raw.trim().length === 0) {
                 console.error(`[HephClipIndex] ❌ Empty file: ${filePath}`);
                 return null;
+            }
+            // Strip UTF-8 BOM (U+FEFF) if present — some editors save with BOM
+            if (raw.charCodeAt(0) === 0xFEFF) {
+                raw = raw.slice(1);
             }
             const parsed = JSON.parse(raw);
             const schema = parsed?.$schema;

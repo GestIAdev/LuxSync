@@ -258,6 +258,11 @@ export class ContextualMemory {
   private frameCount: number = 0;
   private lastLogFrame: number = 0;
 
+  // TAREA 6: CLIMAX lockout — prevent erratic CLIMAX→BUILDING transitions
+  private static readonly CLIMAX_LOCKOUT_MS = 4000; // ≈8 beats at 120 BPM
+  private lastNarrativePhase: NarrativePhase = 'building';
+  private climaxStartTime: number = 0;
+
   // 🌡️ M-SARFE Phase 3: TVE + State Coupling Enforcer
   private readonly tve: ThermodynamicVetoEngine;
   private readonly coupler: StateCouplingEnforcer;
@@ -362,6 +367,8 @@ export class ContextualMemory {
     this.frameCount = 0;
     this.lastLogFrame = 0;
     this.lastAcousticReality = null;
+    this.lastNarrativePhase = 'building';
+    this.climaxStartTime = 0;
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -454,6 +461,20 @@ export class ContextualMemory {
       narrativePhase = this.inferNarrativePhaseLegacy(history, input.sectionType);
     }
     
+    // TAREA 6: CLIMAX LOCKOUT — prevent erratic CLIMAX→BUILDING transitions
+    // Hold climax for at least CLIMAX_LOCKOUT_MS unless energy drop is sustained
+    if (this.lastNarrativePhase === 'climax' && narrativePhase !== 'climax' && narrativePhase !== 'silence') {
+      const timeInClimax = input.timestamp - this.climaxStartTime;
+      if (timeInClimax < ContextualMemory.CLIMAX_LOCKOUT_MS) {
+        narrativePhase = 'climax';
+      }
+    }
+    // Track climax entry
+    if (narrativePhase === 'climax' && this.lastNarrativePhase !== 'climax') {
+      this.climaxStartTime = input.timestamp;
+    }
+    this.lastNarrativePhase = narrativePhase;
+
     // Predecir próxima sección
     const predictedNext = this.predictNextSection(history, input.sectionType);
     

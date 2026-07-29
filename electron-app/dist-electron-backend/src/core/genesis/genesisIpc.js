@@ -454,7 +454,7 @@ export function setupGenesisIPCHandlers() {
     ipcMain.handle('genesis:getPaused', async () => {
         return { success: true, paused: isGenesisPaused() };
     });
-    console.log('[GenesisIPC 🧬] All genesis channels registered');
+    // GenesisIPC channels registered log silenced
 }
 // ═══════════════════════════════════════════════════════════════════════
 // genesis:purgeEcosystem — Delete all organisms except canonized

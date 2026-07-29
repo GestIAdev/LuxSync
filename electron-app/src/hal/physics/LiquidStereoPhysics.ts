@@ -62,6 +62,9 @@ export interface LiquidStereoInput {
    * undefined = comportamiento standard (calculado desde avgMidProfiler)
    */
   morphFactorOverride?: number
+  // WAVE 8008: Rhythmic percussion isolated energies from GodEarFFT
+  snare_energy?: number  // 0-1 — geometric mean of body (150-250Hz) + crack (2-5kHz)
+  hh_energy?: number     // 0-1 — high band (5-15kHz)
 }
 
 export interface LiquidStereoResult {

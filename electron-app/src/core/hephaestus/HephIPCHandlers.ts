@@ -231,7 +231,7 @@ export function setupHephIPCHandlers(): void {
    * @returns { success, path }
    */
   ipcMain.handle('heph:getPath', async () => {
-    console.log('[HephIPC] Get arsenal path')
+    // Get arsenal path log silenced
     
     try {
       const arsenalPath = await hephFileIO.getArsenalPath()

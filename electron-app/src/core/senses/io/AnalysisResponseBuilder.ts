@@ -25,6 +25,7 @@ import type {
 } from '../../../workers/TrinityBridge';
 import type { MoodState } from '../../../engine/musical/classification/MoodSynthesizer';
 import type { GodEarBPMResult } from '../../../workers/IntervalBPMTracker';
+import type { GodEarPhoton, GodEarRhythmicPercussion } from '../../../workers/GodEarFFT';
 import type { AGCOutput } from '../../../workers/utils/AutomaticGainControl';
 import type { SpectrumResult } from '../spectrum/SpectrumAnalyzer';
 
@@ -39,6 +40,15 @@ import type { SpectrumResult } from '../spectrum/SpectrumAnalyzer';
 export interface ExtendedAudioAnalysis extends AudioAnalysis {
   /** WAVE 670: Factor de ganancia del AGC — visible en TitanOrchestrator logs */
   agcGainFactor?: number;
+
+  /** WAVE 8002: Spectral Flux V3 — half-wave rectified, whitened, normalized. */
+  spectralFluxV3?: number;
+
+  /** WAVE 8003: Photon block — saturation, wallIntensity, strobe, hue, etc. */
+  photon?: GodEarPhoton;
+
+  /** WAVE 8008: Rhythmic percussion telemetry — snare/hi-hat isolated energies */
+  rhythmic?: GodEarRhythmicPercussion;
 
   /** Wave 8 rich analysis data — enviado a GAMMA para decisiones inteligentes */
   wave8?: {
@@ -208,6 +218,12 @@ export function buildPayload(input: AnalysisBuildInput): ExtendedAudioAnalysis {
     // -- Technical metrics --
     spectralCentroid: spectrum.spectralCentroid,
     spectralFlux: spectrum.spectralFlux,
+    // WAVE 8002: Spectral Flux V3 (undefined if GodEar V2 fallback)
+    spectralFluxV3: spectrum.spectralFluxV3,
+    // WAVE 8003: Photon block (undefined if GodEar V2 fallback)
+    photon: spectrum.photon,
+    // WAVE 8008: Rhythmic percussion telemetry
+    rhythmic: spectrum.rhythmic,
     zeroCrossingRate: calculateZeroCrossingRate(snapshotBuffer),
 
     // -- WAVE 1162: RAW BASS (pre-AGC, para Pacemaker) --

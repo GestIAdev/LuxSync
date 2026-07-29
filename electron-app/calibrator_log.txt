@@ -1,0 +1,44 @@
+
+═══════════════════════════════════════════════════════════════
+        🩻 GOD EAR OFFLINE CALIBRATOR - WAVE 8005 🩻         
+═══════════════════════════════════════════════════════════════
+  Input dir : ../samples/redobles
+  Output    : redobles.json
+  FFT size  : 4096
+  Batch mode: NO
+
+[CALIBRATOR] Analyzer: GOD EAR v3.0.0 | 4096 Radix-2 DIT FFT + LUT | 44100Hz | 10.77Hz/bin | Blackman-Harris | LR4 Filters | Power Spectrum
+[CALIBRATOR] Debug mode: ACTIVE
+[CALIBRATOR] Zero-padding: ENABLED (samples < 4096 padded with silence)
+
+[CALIBRATOR] Found 27 .wav file(s) in redobles
+[CALIBRATOR] ✅ IF_KikSnrFillA_120-01.wav | 88200 samples | kick=0.2537 highs=0.0269 td=0.4900 flux=0.9043 drive=0.3435 dRaw=0.4960 cFlux=0.0155 flat=0.2168 wns=1.0000
+[CALIBRATOR] ✅ IF_KikSnrFillA_120-02.wav | 88200 samples | kick=0.2717 highs=0.0270 td=0.4900 flux=0.9036 drive=0.2352 dRaw=0.3389 cFlux=0.0113 flat=0.1703 wns=0.7029
+[CALIBRATOR] ✅ IF_KikSnrFillA_120-03.wav | 88200 samples | kick=0.2667 highs=0.0247 td=0.6600 flux=0.9187 drive=0.4316 dRaw=0.5640 cFlux=0.0164 flat=0.2541 wns=1.0000
+[CALIBRATOR] ✅ IF_KikSnrFillA_120-04.wav | 88200 samples | kick=0.2990 highs=0.0261 td=0.6600 flux=0.9650 drive=0.3442 dRaw=0.4280 cFlux=0.0205 flat=0.2427 wns=1.0000
+[CALIBRATOR] ✅ IF_KikSnrFillA_120-05.wav | 88200 samples | kick=0.2929 highs=0.0247 td=0.6600 flux=0.9332 drive=0.3751 dRaw=0.4580 cFlux=0.0179 flat=0.1892 wns=0.8916
+[CALIBRATOR] ✅ IF_KikSnrFillA_120-06.wav | 88200 samples | kick=0.1473 highs=0.0206 td=0.3200 flux=0.9807 drive=0.2938 dRaw=0.3600 cFlux=0.0142 flat=0.2075 wns=1.0000
+[CALIBRATOR] ✅ IF_KikSnrFillA_120-07.wav | 88200 samples | kick=0.2954 highs=0.0239 td=0.8300 flux=0.9635 drive=0.4585 dRaw=0.5640 cFlux=0.0158 flat=0.2115 wns=1.0000
+[CALIBRATOR] ✅ IF_KikSnrFillA_120-08.wav | 88200 samples | kick=0.2953 highs=0.0263 td=0.4900 flux=0.9733 drive=0.3555 dRaw=0.4996 cFlux=0.0217 flat=0.2306 wns=1.0000
+[CALIBRATOR] ✅ IF_KikSnrFillB_120-01.wav | 88200 samples | kick=0.3119 highs=0.0224 td=0.4900 flux=0.9933 drive=0.3198 dRaw=0.4960 cFlux=0.0149 flat=0.2081 wns=1.0000
+[CALIBRATOR] ✅ IF_KikSnrFillB_120-02.wav | 88200 samples | kick=0.3301 highs=0.0261 td=0.4900 flux=0.9931 drive=0.2313 dRaw=0.3505 cFlux=0.0111 flat=0.1515 wns=0.5149
+[CALIBRATOR] ✅ IF_KikSnrFillB_120-03.wav | 88200 samples | kick=0.2511 highs=0.0233 td=0.6600 flux=0.9629 drive=0.3359 dRaw=0.4960 cFlux=0.0198 flat=0.2198 wns=1.0000
+[CALIBRATOR] ✅ IF_KikSnrFillB_120-04.wav | 88200 samples | kick=0.3897 highs=0.0220 td=0.4900 flux=0.9847 drive=0.2836 dRaw=0.4280 cFlux=0.0146 flat=0.2081 wns=1.0000
+[CALIBRATOR] ✅ IF_KikSnrFillB_120-05.wav | 88200 samples | kick=0.3506 highs=0.0271 td=0.6600 flux=0.9337 drive=0.2966 dRaw=0.3672 cFlux=0.0186 flat=0.1797 wns=0.7973
+[CALIBRATOR] ✅ IF_KikSnrFillB_120-06.wav | 88200 samples | kick=0.2767 highs=0.0263 td=0.6600 flux=0.9870 drive=0.3085 dRaw=0.4280 cFlux=0.0178 flat=0.2232 wns=1.0000
+[CALIBRATOR] ✅ IF_KikSnrFillB_120-07.wav | 88200 samples | kick=0.3458 highs=0.0268 td=0.8300 flux=0.9517 drive=0.3828 dRaw=0.5640 cFlux=0.0177 flat=0.2150 wns=1.0000
+[CALIBRATOR] ✅ IF_KikSnrFillB_120-08.wav | 88200 samples | kick=0.3395 highs=0.0257 td=0.4900 flux=0.9837 drive=0.3334 dRaw=0.4440 cFlux=0.0240 flat=0.1860 wns=0.8600
+[CALIBRATOR] ✅ IF_LudSnrRoll_120-01.wav | 88200 samples | kick=0.2470 highs=0.0304 td=0.6600 flux=0.8289 drive=0.2019 dRaw=0.2665 cFlux=0.0193 flat=0.1200 wns=0.2002
+[CALIBRATOR] ✅ IF_LudSnrRoll_120-02.wav | 88200 samples | kick=0.1626 highs=0.0223 td=0.6600 flux=0.9520 drive=0.2068 dRaw=0.3164 cFlux=0.0168 flat=0.1401 wns=0.4013
+[CALIBRATOR] ✅ IF_LudSnrRoll_120-03.wav | 88200 samples | kick=0.1594 highs=0.0088 td=0.4900 flux=0.7586 drive=0.1394 dRaw=0.1960 cFlux=0.0156 flat=0.0768 wns=0.0000
+[CALIBRATOR] ✅ IF_LudSnrRoll_120-04.wav | 88200 samples | kick=0.2113 highs=0.0173 td=0.6600 flux=0.8359 drive=0.1883 dRaw=0.2640 cFlux=0.0159 flat=0.1083 wns=0.0826
+[CALIBRATOR] ✅ IF_SnareRoll_120-01.wav | 88200 samples | kick=0.1274 highs=0.0280 td=0.6600 flux=0.9796 drive=0.3816 dRaw=0.5374 cFlux=0.0157 flat=0.2456 wns=1.0000
+[CALIBRATOR] ✅ IF_SnareRoll_120-02.wav | 88200 samples | kick=0.1091 highs=0.0305 td=0.8300 flux=0.9534 drive=0.4497 dRaw=0.5640 cFlux=0.0137 flat=0.2380 wns=1.0000
+[CALIBRATOR] ✅ IF_SnareRoll_120-03.wav | 88200 samples | kick=0.1194 highs=0.0259 td=0.6600 flux=0.9757 drive=0.4028 dRaw=0.4830 cFlux=0.0145 flat=0.2500 wns=1.0000
+[CALIBRATOR] ✅ IF_SnareRoll_120-04.wav | 88200 samples | kick=0.1306 highs=0.0221 td=0.6600 flux=0.9885 drive=0.4311 dRaw=0.5640 cFlux=0.0161 flat=0.2244 wns=1.0000
+[CALIBRATOR] ✅ IF_SnareRoll_120-05.wav | 88200 samples | kick=0.1283 highs=0.0234 td=0.4900 flux=0.9870 drive=0.3465 dRaw=0.5310 cFlux=0.0119 flat=0.2409 wns=1.0000
+[CALIBRATOR] ✅ IF_SnareRoll_120-06.wav | 88200 samples | kick=0.1266 highs=0.0240 td=0.8300 flux=0.9785 drive=0.3974 dRaw=0.5640 cFlux=0.0127 flat=0.2259 wns=1.0000
+[CALIBRATOR] ✅ IF_SnareRoll_120-07.wav | 88200 samples | kick=0.1108 highs=0.0252 td=1.0000 flux=0.9768 drive=0.5307 dRaw=0.6368 cFlux=0.0149 flat=0.2126 wns=1.0000
+[CALIBRATOR] ✅ Results written to calibration\redobles.json
+
+[CALIBRATOR] Log written to C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\calibrator_log.txt

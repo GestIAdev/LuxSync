@@ -652,6 +652,8 @@ export class TitanEngine extends EventEmitter {
             // 🥁 WAVE 8008: Rhythmic percussion isolated energies
             snare_energy: audio.snare_energy,
             hh_energy: audio.hh_energy,
+            // 🌊 WAVE 8003: Photon block — strobe inputs + wallIntensity
+            photon: audio.photon,
         }, elementalMods);
         // Log del sistema nervioso (cada 60 frames si hay energía)
         if (this.state.frameCount % 60 === 0 && audio.energy > 0.05) {
@@ -1591,6 +1593,7 @@ export class TitanEngine extends EventEmitter {
             crestFactor: Math.max(0, safeNumber(src.crestFactor, 0)),
             snare_energy: clamp01(src.snare_energy, 0),
             hh_energy: clamp01(src.hh_energy, 0),
+            photon: src.photon,
         };
     }
     /**

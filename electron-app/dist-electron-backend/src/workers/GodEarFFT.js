@@ -907,8 +907,9 @@ class StrobeEngine {
             whiteNoiseScore * StrobeEngine.WEIGHT_NOISE +
             fluxNorm * StrobeEngine.WEIGHT_FLUX;
         this._lastDriveRaw = driveRaw;
-        // Asymmetric smoothing: fast attack, slow release
-        const k = driveRaw > this.driveSmooth ? 0.35 : 0.06;
+        // R4: Faster attack (0.60 vs 0.35) — transient bursts of 2 frames now
+        // reach threshold before the event ends. Release unchanged (0.06).
+        const k = driveRaw > this.driveSmooth ? 0.60 : 0.06;
         this.driveSmooth += k * (driveRaw - this.driveSmooth);
         // Cooldown after active burst — prevents flicker on edge cases
         if (this.cooldown > 0) {
@@ -941,7 +942,7 @@ class StrobeEngine {
             : 0;
         // If drive drops below deactivation threshold, enter cooldown
         if (!active && this.driveSmooth < StrobeEngine.DEACTIVATION_THRESH && this.cooldown <= 0) {
-            this.cooldown = 200; // 200ms cooldown before reactivation
+            this.cooldown = 150; // 150ms cooldown before reactivation
         }
         return {
             active,
@@ -967,24 +968,35 @@ class StrobeEngine {
 }
 StrobeEngine.MAX_RATE_HZ = 12; // Photosensitive safety cap
 StrobeEngine.MIN_RATE_HZ = 2; // Below this, not a strobe
-// WAVE 8005 R3: Roll-validated weights — transient density carries roll
-// detection, noise weight cut (melodic exploits flatness), flux compensates.
-StrobeEngine.WEIGHT_TRANSIENT = 0.50;
-StrobeEngine.WEIGHT_NOISE = 0.15;
-StrobeEngine.WEIGHT_FLUX = 0.35;
-// Normalized flux saturates near 1.0 for any real signal; expand [0.95, 1.0].
-StrobeEngine.FLUX_FLOOR = 0.95;
-StrobeEngine.FLUX_RANGE = 0.05;
-// R3: Grid search on 27 roll samples + 63 kicks + 37 melodic.
-// 0% kicks fire, 44% all rolls, 55% pure rolls, 16% melodic, 3% snare.
-StrobeEngine.ACTIVATION_THRESHOLD = 0.60;
-StrobeEngine.DEACTIVATION_THRESH = 0.30;
+// R4: Recalibrated for real-world activation. R3 weights (0.50/0.15/0.35)
+// made the strobe unreachable — driveSmooth peaked at 0.35 vs threshold 0.55.
+// Noise weight raised so white noise alone can trigger. Flux reduced to
+// supporting role. Transient slightly lowered to keep rolls primary but not
+// dominant. Equal-weight transient+noise = both can independently fire.
+StrobeEngine.WEIGHT_TRANSIENT = 0.40;
+StrobeEngine.WEIGHT_NOISE = 0.40;
+StrobeEngine.WEIGHT_FLUX = 0.20;
+// computeSpectralFlux returns totalFlux / numBins — each per-bin term is ≤1.0
+// and only a fraction of bins change per frame. Realistic range: 0.01-0.10.
+// Previous FLUX_FLOOR=0.95 was calibrated for a different normalization and
+// made fluxNorm always 0, killing 35% of the drive weight.
+StrobeEngine.FLUX_FLOOR = 0.02;
+StrobeEngine.FLUX_RANGE = 0.15;
+// R4: Threshold lowered from 0.55 to 0.32 — R3 threshold was unreachable
+// (driveSmooth peaked at 0.35 in real logs). With R4 weights + faster attack:
+//   Kick only:     driveRaw ≈ 0.10, driveSmooth ≈ 0.08 (well below)
+//   White noise:   driveRaw ≈ 0.32-0.35 (at threshold, fires on sustained noise)
+//   Roll (3+ onsets): driveRaw ≈ 0.37-0.47 (above threshold, fires)
+//   Roll + noise:  driveRaw ≈ 0.39-0.71 (well above, fires immediately)
+//   Melodic:       driveRaw ≈ 0.04 (well below)
+StrobeEngine.ACTIVATION_THRESHOLD = 0.32;
+StrobeEngine.DEACTIVATION_THRESH = 0.12;
 // Tonal gate: when tonalRatio is high (bass/synth dominates highs),
 // sustained notes fool the onset detector into inflating transientDensity.
 // Gate scales down the transientDensity contribution to prevent false strobe.
 StrobeEngine.TONAL_GATE_KNEE = 3.0; // Below: no penalty
 StrobeEngine.TONAL_GATE_RATIO = 5.0; // Above: full penalty
-StrobeEngine.HOLD_DURATION_MS = 250;
+StrobeEngine.HOLD_DURATION_MS = 350;
 // ═══════════════════════════════════════════════════════════════════════════════
 // WAVE 8004: CHROMA COUPLER — Maps harmonic content to hue + colorSnap
 // Consumes the 12-bin chromagram (pitch classes C→B, normalized 0-1).
@@ -1243,6 +1255,7 @@ class SlopeBasedOnsetDetector {
         this.onsetTimes = new Float64Array(SlopeBasedOnsetDetector.DENSITY_CAPACITY);
         this.onsetCount = 0;
         this.elapsedMs = 0;
+        this.lastOnsetTime = { kick: 0, snare: 0, hihat: 0 };
         for (const band of ['kick', 'snare', 'hihat']) {
             this.history[band] = new Float32Array(this.historyLength);
             this.historyIndex[band] = 0;
@@ -1252,7 +1265,7 @@ class SlopeBasedOnsetDetector {
      * Advance the internal clock, register an onset if one fired this frame,
      * evict onsets older than the window, and return the resulting density.
      *
-     * Mapping: 0 hits → 0.0 | 1 hit → 0.15 | 6+ hits → 1.0 (linear in between).
+     * Mapping: 0 hits → 0.0 | 1 hit → 0.15 | 12+ hits → 1.0 (linear in between).
      *
      * @param onsetDetected true when any band reported an onset this frame
      * @param deltaMs       frame delta in milliseconds
@@ -1318,7 +1331,17 @@ class SlopeBasedOnsetDetector {
         const avgEnergy = sum / len;
         // Onset = rapid positive slope
         const slopeThreshold = Math.max(avgEnergy * 0.05, avgEnergy * 0.3);
-        return shortTermSlope > slopeThreshold && longTermSlope > slopeThreshold * 0.5;
+        const isOnset = shortTermSlope > slopeThreshold && longTermSlope > slopeThreshold * 0.5;
+        // Refractory period: suppress re-triggering within REFRACTORY_MS for the same band.
+        // Without this, continuous energy fluctuations fire on consecutive frames,
+        // saturating the density window and making td=1.0 permanently.
+        if (isOnset) {
+            if (this.elapsedMs - this.lastOnsetTime[band] < SlopeBasedOnsetDetector.REFRACTORY_MS) {
+                return false;
+            }
+            this.lastOnsetTime[band] = this.elapsedMs;
+        }
+        return isOnset;
     }
     /**
      * Reset detector state
@@ -1339,11 +1362,13 @@ class SlopeBasedOnsetDetector {
 // snare roll from an isolated kick.
 SlopeBasedOnsetDetector.DENSITY_WINDOW_MS = 500;
 /** Onsets within the window that map to full density (1.0) */
-SlopeBasedOnsetDetector.DENSITY_SATURATION_HITS = 6;
+SlopeBasedOnsetDetector.DENSITY_SATURATION_HITS = 12;
 /** Density produced by a single isolated onset */
 SlopeBasedOnsetDetector.DENSITY_BASE = 0.15;
 /** Ring capacity — 500ms @ 60fps can hold at most 30 onsets */
 SlopeBasedOnsetDetector.DENSITY_CAPACITY = 32;
+// Per-band refractory period (ms) — prevents multiple fires for a single onset event
+SlopeBasedOnsetDetector.REFRACTORY_MS = 80;
 // ═══════════════════════════════════════════════════════════════════════════════
 // SECTION 11: MAIN GOD EAR ANALYZER CLASS
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1769,6 +1794,14 @@ export class GodEarAnalyzer {
         // which fools the onset detector into inflating transientDensity.
         const tonalRatio = kickSignal / (scaledBands.treble + 1e-6);
         const strobeState = this.strobeEngine.process(transientDensity, whiteNoiseScore, spectralFluxV3, deltaMs, tonalRatio);
+        // Diagnostic: log StrobeEngine inputs every 60 frames (same cadence as RADIX2)
+        if (telemetryFrame % RADIX2_RAW_TELEMETRY_INTERVAL_FRAMES === 0) {
+            const fluxNorm = Math.max(0, Math.min(1, (spectralFluxV3 - 0.02) / 0.15));
+            console.log(`[STROBE] td=${transientDensity.toFixed(3)} wn=${whiteNoiseScore.toFixed(3)} ` +
+                `flux=${spectralFluxV3.toFixed(4)} fluxN=${fluxNorm.toFixed(3)} ` +
+                `tr=${tonalRatio.toFixed(2)} drive=${strobeState.drive.toFixed(3)} ` +
+                `driveRaw=${this.strobeEngine.driveRaw.toFixed(3)} active=${strobeState.active}`);
+        }
         // WAVE 8004: ChromaCoupler — maps chromagram to hue + colorSnap + chromaFlux
         this.chromaCoupler.process(this.chromaBuffer, deltaMs);
         // WAVE 8008: Rhythmic Percussion Tracker — sub-band snare/HH isolation + void

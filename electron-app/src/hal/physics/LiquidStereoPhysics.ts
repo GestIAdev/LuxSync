@@ -285,9 +285,14 @@ export class LiquidStereoPhysics {
     const kickSignal = isKickEdge ? bands.bass : 0
     let frontRight = this.envKick.process(kickSignal, morphFactor, now, isBreakdown)
 
-    // WAVE 8005.2: PHOTON STROBE BYPASS — Front Channel "Modo Ceguera"
+    // WAVE 8005.2: PHOTON STROBE — Front Channel modulation (overlay, not replace)
+    // On-phase: flash to full brightness on top of normal physics.
+    // Off-phase: normal physics preserved (no override).
     if (input.photon?.strobe?.active) {
-      frontRight = 1.0
+      const _strobe = input.photon.strobe
+      const _periodMs = 1000 / Math.max(0.1, _strobe.rateHz)
+      const _phase = (now % _periodMs) / _periodMs
+      if (_phase < _strobe.duty) frontRight = Math.max(frontRight, 1.0)
     }
 
     // --- KICK VETO: Silencio post-kick para Mover R (voces) ---
@@ -338,11 +343,7 @@ export class LiquidStereoPhysics {
     )
     let backLeft = this.envHighMid.process(midSynthInput, morphFactor, now, isBreakdown)
 
-    // WAVE 8005.2: PHOTON STROBE BYPASS — Back Channel "Ceguera Total"
-    if (input.photon?.strobe?.active) {
-      backLeft = 1.0
-      backRight = 1.0
-    }
+    // WAVE 8005.2: PHOTON STROBE — Back channels preserved (strobe only affects front)
 
     // --- MOVER L (Melodías / Presencia): WAVE 2417 RESURRECTION ---
     // Monte Carlo: hMid multiplicado a ×1.0 (era ×0.6), bass subtractor bajado a ×0.1.

@@ -39,8 +39,8 @@ import { laserPhysics, washerPhysics,
 liquidEngine41, liquidEngine71, 
 // 🌊 WAVE 2432: THE GREAT WIRING — Profile hot-swap
 PROFILE_REGISTRY, DEFAULT_LIQUID_PROFILE, 
-// 🌊 WAVE 2434: TELEMETRY ENGINE — swap in/out de liquidEngine41
-omniEngine41Telemetry, } from '../../hal/physics';
+// WAVE 9001: PASSIVE TELEMETRY OBSERVER — replaces LiquidEngine41Telemetry
+liquidTelemetryObserver, } from '../../hal/physics';
 import { isEnergyOverrideActive, } from '../protocol/ConsciousnessOutput';
 // ═══════════════════════════════════════════════════════════════════════════
 // SELENE LUX CLASS
@@ -171,7 +171,7 @@ export class SeleneLux {
         const profile = PROFILE_REGISTRY[normalizedKey] ?? DEFAULT_LIQUID_PROFILE;
         liquidEngine41.setProfile(profile);
         liquidEngine71.setProfile(profile);
-        omniEngine41Telemetry.setProfile(profile);
+        liquidTelemetryObserver.setProfile(profile);
         this._activeProfileId = profile.id;
         console.log(`[SeleneLux 🌊] Profile hot-swapped: ${normalizedKey} → ${profile.id} (${profile.name})`);
     }
@@ -289,7 +289,6 @@ export class SeleneLux {
                 photon: audioMetrics.photon,
             };
             // 🌊 WAVE 2432: THE SWITCH BIFURCADO — 4.1 o 7.1, sin legacy
-            // 🌊 WAVE 2434: TELEMETRY HOOK — si telemetry activo en 4.1, usa omniEngine41Telemetry
             // 🌊 WAVE 2470 HOTFIX V4: Chill SIEMPRE usa liquidEngine71, sin importar liquidLayout.
             // LiquidEngine41 no tiene oscilladores primos (isChill branch) — usa envelopes de
             // transientes que en chill silencioso quedan en 0 → PARs apagados, sin pulso.
@@ -297,22 +296,23 @@ export class SeleneLux {
             // El liquidLayout ('4.1'/'7.1') solo es relevante para los otros vibes.
             const isChill = vibeNormalized.includes('chill') || vibeNormalized.includes('lounge') ||
                 vibeNormalized.includes('ambient') || vibeNormalized.includes('jazz');
+            // WAVE 9001: No telemetry swap. The real motor is always the sole DMX producer.
             const liquidEngine = (this.liquidLayout === '7.1' || isChill)
                 ? liquidEngine71
-                : (omniEngine41Telemetry.isTelemetryEnabled() ? omniEngine41Telemetry : liquidEngine41);
+                : liquidEngine41;
             this._lastActiveLiquidEngine = liquidEngine;
             // 🩺 WAVE 4655-DIAG: log engine switch (once per change, not every frame)
-            const engineName = liquidEngine === liquidEngine71 ? '71' : (liquidEngine === omniEngine41Telemetry ? '41T' : '41');
+            const engineName = liquidEngine === liquidEngine71 ? '71' : '41';
             if (engineName !== this._lastLoggedEngine) {
                 // ENGINE switch diagnostic log silenced
                 this._lastLoggedEngine = engineName;
             }
-            // 🩺 WAVE 4655-DIAG-V2: Si telemetry está activo pero el motor real es otro
-            // (ej. layout 7.1), forzamos una pasada de captura en 4.1 para no perder datos.
-            if (liquidEngine !== omniEngine41Telemetry && omniEngine41Telemetry.isTelemetryEnabled()) {
-                omniEngine41Telemetry.applyBands(liquidInput);
-            }
+            // WAVE 9001: Passive telemetry — capture photon before applyBands, then capture results after.
+            liquidTelemetryObserver.setEngine(liquidEngine);
+            liquidTelemetryObserver.capturePhoton(liquidInput);
             const liquidResult = liquidEngine.applyBands(liquidInput);
+            // WAVE 9001: Passive capture — reads engine.lastFrame + engine.lastResult. Zero DMX side effects.
+            liquidTelemetryObserver.capture(liquidInput, liquidResult);
             isStrobeActive = liquidResult.strobeActive;
             physicsApplied = 'liquid-stereo';
             // 🛡️ NaN ANTIDOTE — No NaN reaches zones or hardware. Ever.

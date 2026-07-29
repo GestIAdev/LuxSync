@@ -127,8 +127,8 @@ describe('🌊 LiquidStereoPhysics', () => {
 
   describe('Kick Response (Front Zones)', () => {
     it('should fire Front R (bass) on kick', () => {
-      // isKickEdge requiere: isKick=true AND _kickIntervalMs > kickEdgeMinInterval (80ms)
-      // 1er kick: establece _lastKickTime   2do kick (>80ms después): primer edge real
+      // isKickEdge requiere: isKick=true AND _kickIntervalMs > kickEdgeMinInterval (180ms)
+      // 1er kick: establece _lastKickTime   2do kick (>180ms después): primer edge real
       engine.applyBands(makeInput(silentBands()))
       vi.advanceTimersByTime(100)
       engine.applyBands(makeInput(kickBands(0.40), { isKick: true }))

@@ -155,8 +155,8 @@ describe('🎲 Monte Carlo Regression: TECHNO_PROFILE', () => {
     expect(TECHNO_PROFILE.layout41Strategy).toBe('strict-split')
   })
 
-  it('should preserve kickEdgeMinInterval = 80', () => {
-    expect(TECHNO_PROFILE.kickEdgeMinInterval).toBe(80)
+  it('should preserve kickEdgeMinInterval = 180', () => {
+    expect(TECHNO_PROFILE.kickEdgeMinInterval).toBe(180)
   })
 
   it('should preserve kickVetoFrames = 0', () => {

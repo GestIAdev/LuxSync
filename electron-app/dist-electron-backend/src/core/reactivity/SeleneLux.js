@@ -285,6 +285,8 @@ export class SeleneLux {
                 // WAVE 8008: Rhythmic percussion isolated energies
                 snare_energy: audioMetrics.snare_energy,
                 hh_energy: audioMetrics.hh_energy,
+                // WAVE 8005.2: Photon block for front channel strobe bypass
+                photon: audioMetrics.photon,
             };
             // 🌊 WAVE 2432: THE SWITCH BIFURCADO — 4.1 o 7.1, sin legacy
             // 🌊 WAVE 2434: TELEMETRY HOOK — si telemetry activo en 4.1, usa omniEngine41Telemetry
@@ -806,6 +808,11 @@ export class SeleneLux {
             };
             // Photon strobe takes priority over physics-engine strobe flag
             isStrobeActive = true;
+            // WAVE 8005.2: Aislamiento Shutter vs Dimmer — bloquear el dimmer al
+            // máximo durante el redoble para que el parpadeo DMX dependa 100% del
+            // hardware shutter. Sin esto, el dimmer decae entre impactos y produce
+            // fundidos a negro visibles.
+            dimmerOverride = 1.0;
         }
         this.lastOutput = {
             palette: outputPalette,

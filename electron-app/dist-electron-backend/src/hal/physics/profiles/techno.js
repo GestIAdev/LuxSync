@@ -83,9 +83,9 @@ export const TECHNO_PROFILE = {
     envelopeSnare: {
         name: 'Back R (Percussion Slap)',
         gateOn: 0.35, // WAVE 3460: aislamiento extremo para conservar caja y aniquilar hihat/reverb media
-        boost: 1.0, // WAVE 3457: cap anti-spike para evitar estrobo por hits marginales
+        boost: 2.5, // WAVE 8009.3: 1.0→2.5 — igualar ganancia efectiva del Latino para cruce visual
         crushExponent: 1.0,
-        decayBase: 0.05,
+        decayBase: 0.20, // WAVE 8009.3: 0.05→0.20 — ventana visual ~150-200ms, eliminar micro-blip
         decayRange: 0.40, // WAVE 2451: INTOCABLE — morfología líquida de los Back Pars preservada
         maxIntensity: 1.0, // WAVE 2439.5: 0.80→1.0 — el Látigo sin cap
         squelchBase: 0.20, // WAVE 6066: 0.52→0.20 — limpieza se hará matemáticamente pre-envelope
@@ -110,6 +110,8 @@ export const TECHNO_PROFILE = {
         squelchSlope: 0.10,
         ghostCap: 0.00, // WAVE 3492: 0.05->0.00 — negro entre golpes
         gateMargin: 0.005,
+        adaptiveNoiseAlpha: 0.0, // WAVE 8009.3: anti-freeze — sin deriva adaptativa de ruido
+        sustainedSquelchMaxBoost: 0.0, // WAVE 8009.3: anti-freeze — sin escalada de squelch por synths sostenidos
     },
     // Mover L — Melodías tonales (WAVE 2417: MONTE CARLO RESURRECTION)
     // WAVE 3491: Bozal de Mover — arpegios agudos pasan, colchón de graves NO.
@@ -146,7 +148,7 @@ export const TECHNO_PROFILE = {
     // ═══════════════════════════════════════════════════════════════
     backLLowMidWeight: 0.0, // WAVE 2430: original no usaba lowMid
     backLMidWeight: 0.85, // OPERACIÓN: Devolvemos el cuerpo del sinte — potencia sin asfixia
-    backLTrebleSub: 0.0, // WAVE 2430: original no restaba treble
+    backLTrebleSub: -0.3, // WAVE 8009.3: 0.0→-0.3 — inyectar 30% treble para hi-hats sutiles del minimal
     backLBassSub: 0.0, // OPERACIÓN: Aislamiento estricto del bajo (0.0) para evitar fuga de bombo
     // ═══════════════════════════════════════════════════════════════
     // MOVER L (MELODÍAS): Cross-filter + tonal gate (WAVE 2411 → 2430)
@@ -196,7 +198,7 @@ export const TECHNO_PROFILE = {
     // Techno industrial: energía media-alta, rango estándar
     morphFloor: 0.30, // avgMid mínimo para arrancar el morph (30%)
     morphCeiling: 0.70, // avgMid máximo = morph pleno (70%)
-    kickEdgeMinInterval: 80,
+    kickEdgeMinInterval: 180, // WAVE 8005.2: 80→180 — subbass rodante dispara armónicos cada ~120ms, 180ms los filtra
     kickVetoFrames: 0, // WAVE 2419: 5→0 (veto ON 48% del tiempo, asfixiaba Mover R)
     // WAVE 4826.5: La Guillotina Techno — Ambient ultra-reactivo y cortante
     // Attack 30ms: dispara instantáneo con el bombo. Release 120ms: corte brutal entre kicks.

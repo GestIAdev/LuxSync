@@ -200,6 +200,7 @@ export abstract class LiquidEngineBase {
   private _prevSnareEnergy: number = 0
   private _lastSnareOnset: number = 0
   private _snareImpulse: number = 0
+  protected _lastHybridSnare: number = 0
 
   // Kick Veto state
   private _kickVetoFrames = 0
@@ -482,6 +483,15 @@ export abstract class LiquidEngineBase {
     const kickSignal = isKick ? pureBassEnergy : 0
     let frontRight = this.envKick.process(kickSignal, morphFactor, now, isBreakdown)
 
+    // WAVE 8005.2: PHOTON STROBE BYPASS — Front Channel "Modo Ceguera"
+    // Cuando el StrobeEngine (FFT V3) detecta un redoble (6+ onsets/500ms),
+    // anclamos frontRight a 1.0 para eliminar los fotogramas negros entre
+    // impactos de kick. El parpadeo visual lo provee el hardware shutter
+    // vía strobeOverride, no el dimmer.
+    if (input.photon?.strobe?.active) {
+      frontRight = 1.0
+    }
+
     // --- BACK R (El Látigo): WAVE 2449 MORPHOLOGIC CENTROID SHIELD ---
     // WAVE 2441 Monte Carlo: fitness=6260 | 0 leaks | coefs verificados en 616 frames reales.
     // WAVE 2443: Centroid Shield 5000Hz → demasiado alto.
@@ -553,8 +563,9 @@ export abstract class LiquidEngineBase {
       this._snareImpulse *= 0.04
       this._prevSnareEnergy = rawSnareEnergy
 
-      // Sobreescribir hybridSnare con el impulso adaptado
-      hybridSnare = this._snareImpulse
+      // WAVE 8009.4: Max-blend en lugar de reemplazo — el transient shaper original
+      // sobrevive como respaldo cuando GodEarFFT no detecta snare (techno: body saturado por bombo)
+      hybridSnare = Math.max(percRaw, this._snareImpulse)
     }
 
     // 2. THE MORPHOLOGIC CENTROID SHIELD (WAVE 2449)
@@ -577,6 +588,7 @@ export abstract class LiquidEngineBase {
       }
     }
 
+    this._lastHybridSnare = hybridSnare
     const snareAttack = hybridSnare
     // WAVE 2451: morphFactor real (antes 1.0 hardcodeado).
     // En Anyma (morph≈0.8) el decay = decayBase + decayRange×0.8 → más flote, más relleno.
@@ -652,6 +664,15 @@ export abstract class LiquidEngineBase {
     let backLeft = Math.min(1.0, this.envHighMid.process(midSynthInput, morphFactor, now, isBreakdown) * backLeftGain) // OPERACIÓN: Gain para cruzar el umbral hacia 1.0 en pico
 
     // moverLeft y moverRight calculados por envelopes cross-filter arriba
+
+    // WAVE 8005.2: PHOTON STROBE BYPASS — Back Channel "Ceguera Total"
+    // Cuando el StrobeEngine (FFT V3) detecta un redoble de caja/hi-hat
+    // (densidad de transientes alta), anclamos backLeft y backRight a 1.0
+    // para que el envelopeSnare.decayBase no apague la luz entre golpes.
+    if (input.photon?.strobe?.active) {
+      backLeft = 1.0
+      backRight = 1.0
+    }
 
     // ═══════════════════════════════════════════════════════════════════
     // 7. APOCALYPSE MODE (universal)

@@ -241,18 +241,18 @@ describe('⚡ LiquidEngine41', () => {
 
   describe('Kick Edge + Veto', () => {
     it('should veto consecutive kicks within kickEdgeMinInterval', () => {
-      // Techno: kickEdgeMinInterval = 80ms
-      // Dos kicks en rápida sucesión (< 80ms) — el segundo no es "edge"
+      // Techno: kickEdgeMinInterval = 180ms
+      // Dos kicks en rápida sucesión (< 180ms) — el segundo no es "edge"
       engine.applyBands(makeInput(silentBands()))
       vi.advanceTimersByTime(50)
       const first = engine.applyBands(makeInput(kickBands(0.90), { isKick: true }))
-      // Solo 40ms después — menor que kickEdgeMinInterval (80)
+      // Solo 40ms después — menor que kickEdgeMinInterval (180)
       vi.advanceTimersByTime(40)
       const second = engine.applyBands(makeInput(kickBands(0.90), { isKick: true }))
 
       // El segundo kick no es "edge" — isKickEdge = false → envKick recibe 0
       // en strict-split, porque kickSignal requiere isKickEdge = true
-      // Para el segundo, el intervalo (40ms) < kickEdgeMinInterval (80ms)
+      // Para el segundo, el intervalo (40ms) < kickEdgeMinInterval (180ms)
       // → isKickEdge = false → los frontPars deberían ser menores (decay only)
       expect(second.frontParIntensity).toBeLessThanOrEqual(first.frontParIntensity)
     })
@@ -261,7 +261,7 @@ describe('⚡ LiquidEngine41', () => {
       engine.applyBands(makeInput(silentBands()))
       vi.advanceTimersByTime(50)
       engine.applyBands(makeInput(kickBands(0.80), { isKick: true }))
-      // 200ms después — muy mayor que kickEdgeMinInterval (80)
+      // 200ms después — mayor que kickEdgeMinInterval (180)
       vi.advanceTimersByTime(200)
       const result = engine.applyBands(makeInput(kickBands(0.85), { isKick: true }))
 

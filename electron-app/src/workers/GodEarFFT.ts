@@ -1273,6 +1273,8 @@ class StrobeEngine {
   private rateSmooth = 0;
   private cooldown = 0;
   private _lastDriveRaw = 0;
+  private holdTimer = 0;
+  private static readonly HOLD_DURATION_MS = 250;
 
   /**
    * Process transient density + white noise score into a strobe state.
@@ -1322,7 +1324,17 @@ class StrobeEngine {
     }
 
     // Activate when drive exceeds threshold and cooldown expired
-    const active = this.driveSmooth > StrobeEngine.ACTIVATION_THRESHOLD && this.cooldown <= 0;
+    let active = this.driveSmooth > StrobeEngine.ACTIVATION_THRESHOLD && this.cooldown <= 0;
+
+    // HOLD LATCH: Keep strobe active for HOLD_DURATION_MS after activation
+    // to prevent choppy flicker on brief single-frame input drops.
+    if (active) {
+      this.holdTimer = StrobeEngine.HOLD_DURATION_MS;
+    }
+    if (this.holdTimer > 0) {
+      this.holdTimer -= deltaMs;
+      active = true;
+    }
 
     // Rate: map drive [ACTIVATION_THRESHOLD, 1.0] → [MIN_RATE, MAX_RATE] Hz
     let targetRate = 0;
@@ -1368,6 +1380,7 @@ class StrobeEngine {
     this.rateSmooth = 0;
     this.cooldown = 0;
     this._lastDriveRaw = 0;
+    this.holdTimer = 0;
   }
 }
 

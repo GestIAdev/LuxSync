@@ -36,6 +36,11 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
         this._buffer = [];
         this._bufferHead = 0;
     }
+    /** WAVE 8005.2: Override para capturar photon antes de routeZones. */
+    applyBands(input) {
+        this._lastPhoton = input.photon;
+        return super.applyBands(input);
+    }
     /** Activa o desactiva el logging. En producción: siempre false. */
     setTelemetryEnabled(enabled) {
         this._telemetryEnabled = enabled;
@@ -112,10 +117,15 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
                 ` hmPow:${r.highMidPower.toFixed(3)}` +
                 ` hmPass:${r.highMidGatePassed ? 1 : 0}` +
                 ` hmIgn:${r.highMidIgnited ? 1 : 0}` +
-                ` | fPar:${r.frontPar.toFixed(3)}` +
+                ` | fL:${r.frontLeft.toFixed(3)}` +
+                ` fR:${r.frontRight.toFixed(3)}` +
+                ` fPar:${r.frontPar.toFixed(3)}` +
                 ` bPar:${r.backPar.toFixed(3)}` +
                 ` mL:${r.moverL.toFixed(3)}` +
                 ` mR:${r.moverR.toFixed(3)}` +
+                ` | strA:${r.photonStrobeActive ? 1 : 0}` +
+                ` strHz:${r.photonStrobeRateHz.toFixed(1)}` +
+                ` strDuty:${r.photonStrobeDuty.toFixed(2)}` +
                 ` | sc:${r.sidechainFired ? 1 : 0}` +
                 ` scDuck:${r.duckingApplied.toFixed(3)}`);
         }
@@ -151,7 +161,7 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
         const currentTreble = bands.treble;
         const trebleDelta = Math.max(0, currentTreble - this._lastTrebleForDelta);
         this._lastTrebleForDelta = currentTreble;
-        const percRaw = trebleDelta * 4.0;
+        const percRaw = this._lastHybridSnare;
         // ── TELEMETRY RECORD ─────────────────────────────────────────────
         if (this._telemetryEnabled) {
             // DIAG: confirmar en consola que estamos capturando (solo 1 de cada 44 frames ~1s)
@@ -167,6 +177,7 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
             const kickRaw = kickProbe.signal;
             const snareInput = snareProbe.signal;
             const highMidInput = highMidProbe.signal;
+            const photonStrobe = this._lastPhoton?.strobe;
             const record = {
                 subBass: bands.subBass,
                 mid: bands.mid,
@@ -195,10 +206,15 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
                 highMidPower: highMidProbe.kickPower,
                 highMidGatePassed: highMidProbe.gatePassed,
                 highMidIgnited: highMidProbe.ignited,
+                frontLeft: frontLeft,
+                frontRight: frontRight,
                 frontPar,
                 backPar,
                 moverL: mL,
                 moverR: mR,
+                photonStrobeActive: photonStrobe?.active ?? false,
+                photonStrobeRateHz: photonStrobe?.rateHz ?? 0,
+                photonStrobeDuty: photonStrobe?.duty ?? 0,
                 sidechainFired,
                 duckingApplied,
                 isBreakdown,
@@ -241,9 +257,15 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
                 ` bR_sq:${snareProbe.squelch.toFixed(3)}` +
                 ` bR_pow:${snareProbe.kickPower.toFixed(3)}` +
                 ` bR_ign:${snareProbe.ignited ? 1 : 0}` +
-                ` | outBL:${backLeft.toFixed(3)}` +
+                ` | outFL:${frontLeft.toFixed(3)}` +
+                ` outFR:${frontRight.toFixed(3)}` +
+                ` outFPar:${frontPar.toFixed(3)}` +
+                ` outBL:${backLeft.toFixed(3)}` +
                 ` outBR:${backRight.toFixed(3)}` +
-                ` outPar:${backPar.toFixed(3)}`);
+                ` outPar:${backPar.toFixed(3)}` +
+                ` | strA:${photonStrobe?.active ? 1 : 0}` +
+                ` strHz:${(photonStrobe?.rateHz ?? 0).toFixed(1)}` +
+                ` strDuty:${(photonStrobe?.duty ?? 0).toFixed(2)}`);
             this._frameCount++;
         }
         return {

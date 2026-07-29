@@ -876,6 +876,7 @@ class StrobeEngine {
         this.rateSmooth = 0;
         this.cooldown = 0;
         this._lastDriveRaw = 0;
+        this.holdTimer = 0;
     }
     /**
      * Process transient density + white noise score into a strobe state.
@@ -914,7 +915,16 @@ class StrobeEngine {
             this.cooldown -= deltaMs;
         }
         // Activate when drive exceeds threshold and cooldown expired
-        const active = this.driveSmooth > StrobeEngine.ACTIVATION_THRESHOLD && this.cooldown <= 0;
+        let active = this.driveSmooth > StrobeEngine.ACTIVATION_THRESHOLD && this.cooldown <= 0;
+        // HOLD LATCH: Keep strobe active for HOLD_DURATION_MS after activation
+        // to prevent choppy flicker on brief single-frame input drops.
+        if (active) {
+            this.holdTimer = StrobeEngine.HOLD_DURATION_MS;
+        }
+        if (this.holdTimer > 0) {
+            this.holdTimer -= deltaMs;
+            active = true;
+        }
         // Rate: map drive [ACTIVATION_THRESHOLD, 1.0] → [MIN_RATE, MAX_RATE] Hz
         let targetRate = 0;
         if (active) {
@@ -952,6 +962,7 @@ class StrobeEngine {
         this.rateSmooth = 0;
         this.cooldown = 0;
         this._lastDriveRaw = 0;
+        this.holdTimer = 0;
     }
 }
 StrobeEngine.MAX_RATE_HZ = 12; // Photosensitive safety cap
@@ -973,6 +984,7 @@ StrobeEngine.DEACTIVATION_THRESH = 0.30;
 // Gate scales down the transientDensity contribution to prevent false strobe.
 StrobeEngine.TONAL_GATE_KNEE = 3.0; // Below: no penalty
 StrobeEngine.TONAL_GATE_RATIO = 5.0; // Above: full penalty
+StrobeEngine.HOLD_DURATION_MS = 250;
 // ═══════════════════════════════════════════════════════════════════════════════
 // WAVE 8004: CHROMA COUPLER — Maps harmonic content to hue + colorSnap
 // Consumes the 12-bin chromagram (pitch classes C→B, normalized 0-1).

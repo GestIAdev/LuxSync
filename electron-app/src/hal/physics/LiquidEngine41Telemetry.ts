@@ -24,7 +24,8 @@
 import { writeFileSync, existsSync, mkdirSync } from 'fs'
 import { join, dirname } from 'path'
 import { LiquidEngineBase, type ProcessedFrame } from './LiquidEngineBase'
-import type { LiquidStereoResult } from './LiquidStereoPhysics'
+import type { LiquidStereoResult, LiquidStereoInput } from './LiquidStereoPhysics'
+import type { GodEarPhoton } from '../../workers/GodEarFFT'
 import type { ILiquidProfile } from './profiles/ILiquidProfile'
 import { DEFAULT_LIQUID_PROFILE } from './profiles'
 // LiquidEnvelopeConfig no longer needed — probe reads directly from envelope instances
@@ -64,10 +65,16 @@ export interface Omni41TelemetryRecord {
   highMidGatePassed: boolean
   highMidIgnited: boolean
   // Outputs 4.1 (post-routeZones, post-sidechain)
+  frontLeft: number
+  frontRight: number
   frontPar: number
   backPar: number
   moverL: number
   moverR: number
+  // Photon strobe (FFT V3 StrobeEngine)
+  photonStrobeActive: boolean
+  photonStrobeRateHz: number
+  photonStrobeDuty: number
   // Flags
   sidechainFired: boolean
   duckingApplied: number  // 1.0 = sin ducking, <1.0 = atenuación real
@@ -87,6 +94,10 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
   private _telemetryEnabled = false
   private _frameCount = 0
   private _lastTrebleForDelta = 0
+  private _frontParSmooth = 0
+  private static readonly FRONTPAR_RELEASE = 0.88
+  // WAVE 8005.2: Photon strobe capturado en applyBands para telemetría
+  private _lastPhoton: GodEarPhoton | undefined
 
   // Buffer circular para análisis posterior sin escribir a disco en hot path
   // 600 frames = 30s de telemetría a 20fps
@@ -95,6 +106,17 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
   private _bufferHead = 0
   constructor(profile: ILiquidProfile = DEFAULT_LIQUID_PROFILE) {
     super(profile, '4.1')
+  }
+
+  /** WAVE 8005.2: Override para capturar photon antes de routeZones. */
+  override applyBands(input: LiquidStereoInput): LiquidStereoResult {
+    this._lastPhoton = input.photon
+    return super.applyBands(input)
+  }
+
+  reset(): void {
+    super.reset()
+    this._frontParSmooth = 0
   }
 
   /** Activa o desactiva el logging. En producción: siempre false. */
@@ -179,10 +201,15 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
         ` hmPow:${r.highMidPower.toFixed(3)}` +
         ` hmPass:${r.highMidGatePassed ? 1 : 0}` +
         ` hmIgn:${r.highMidIgnited ? 1 : 0}` +
-        ` | fPar:${r.frontPar.toFixed(3)}` +
+        ` | fL:${r.frontLeft.toFixed(3)}` +
+        ` fR:${r.frontRight.toFixed(3)}` +
+        ` fPar:${r.frontPar.toFixed(3)}` +
         ` bPar:${r.backPar.toFixed(3)}` +
         ` mL:${r.moverL.toFixed(3)}` +
         ` mR:${r.moverR.toFixed(3)}` +
+        ` | strA:${r.photonStrobeActive ? 1 : 0}` +
+        ` strHz:${r.photonStrobeRateHz.toFixed(1)}` +
+        ` strDuty:${r.photonStrobeDuty.toFixed(2)}` +
         ` | sc:${r.sidechainFired ? 1 : 0}` +
         ` scDuck:${r.duckingApplied.toFixed(3)}`
       )
@@ -214,7 +241,9 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
 
     // ── 4.1 COMPACTION ──────────────────────────────────────────────
     const isStrict = this.profile.layout41Strategy === 'strict-split'
-    const frontPar = isStrict ? frontRight : Math.max(frontLeft, frontRight)
+    const frontParTarget = isStrict ? frontRight : Math.max(frontLeft, frontRight)
+    this._frontParSmooth = Math.max(frontParTarget, this._frontParSmooth * LiquidEngine41Telemetry.FRONTPAR_RELEASE)
+    const frontPar = this._frontParSmooth
     const backPar  = Math.max(backLeft, backRight) // FIX: strict-split solo afecta front; back siempre usa ambos canales
 
     // ── SIDECHAIN DETECTION (replicar lógica del Base para telemetría) ──
@@ -234,7 +263,7 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
     const currentTreble = bands.treble
     const trebleDelta = Math.max(0, currentTreble - this._lastTrebleForDelta)
     this._lastTrebleForDelta = currentTreble
-    const percRaw = trebleDelta * 4.0
+    const percRaw = this._lastHybridSnare
 
     // ── TELEMETRY RECORD ─────────────────────────────────────────────
     if (this._telemetryEnabled) {
@@ -252,6 +281,8 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
       const kickRaw = kickProbe.signal
       const snareInput = snareProbe.signal
       const highMidInput = highMidProbe.signal
+
+      const photonStrobe = this._lastPhoton?.strobe
 
       const record: Omni41TelemetryRecord = {
         subBass:        bands.subBass,
@@ -281,10 +312,15 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
         highMidPower: highMidProbe.kickPower,
         highMidGatePassed: highMidProbe.gatePassed,
         highMidIgnited: highMidProbe.ignited,
+        frontLeft:      frontLeft,
+        frontRight:     frontRight,
         frontPar,
         backPar,
         moverL:         mL,
         moverR:         mR,
+        photonStrobeActive: photonStrobe?.active ?? false,
+        photonStrobeRateHz: photonStrobe?.rateHz ?? 0,
+        photonStrobeDuty: photonStrobe?.duty ?? 0,
         sidechainFired,
         duckingApplied,
         isBreakdown,
@@ -330,9 +366,15 @@ export class LiquidEngine41Telemetry extends LiquidEngineBase {
           ` bR_sq:${snareProbe.squelch.toFixed(3)}` +
           ` bR_pow:${snareProbe.kickPower.toFixed(3)}` +
           ` bR_ign:${snareProbe.ignited ? 1 : 0}` +
-          ` | outBL:${backLeft.toFixed(3)}` +
+          ` | outFL:${frontLeft.toFixed(3)}` +
+          ` outFR:${frontRight.toFixed(3)}` +
+          ` outFPar:${frontPar.toFixed(3)}` +
+          ` outBL:${backLeft.toFixed(3)}` +
           ` outBR:${backRight.toFixed(3)}` +
-          ` outPar:${backPar.toFixed(3)}`
+          ` outPar:${backPar.toFixed(3)}` +
+          ` | strA:${photonStrobe?.active ? 1 : 0}` +
+          ` strHz:${(photonStrobe?.rateHz ?? 0).toFixed(1)}` +
+          ` strDuty:${(photonStrobe?.duty ?? 0).toFixed(2)}`
         )
 
       this._frameCount++

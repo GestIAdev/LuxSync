@@ -26,6 +26,11 @@ import { TECHNO_PROFILE } from './profiles/techno';
 export class LiquidEngine41 extends LiquidEngineBase {
     constructor(profile = TECHNO_PROFILE) {
         super(profile, '4.1');
+        this._frontParSmooth = 0;
+    }
+    reset() {
+        super.reset();
+        this._frontParSmooth = 0;
     }
     routeZones(frame) {
         const { frontLeft, frontRight, backLeft, backRight, moverLeft, moverRight, strobeActive, strobeIntensity, acidMode, noiseMode, floorIntensity, ambientIntensity, airIntensity, } = frame;
@@ -33,7 +38,12 @@ export class LiquidEngine41 extends LiquidEngineBase {
         // strict-split (techno): Front = kick puro, Back = snare puro.
         // default (latino/pop/etc.): Front = max(subBass, kick), Back = max(snare, highMid).
         const isStrict = this.profile.layout41Strategy === 'strict-split';
-        const frontPar = isStrict ? frontRight : Math.max(frontLeft, frontRight);
+        const frontParTarget = isStrict ? frontRight : Math.max(frontLeft, frontRight);
+        // RELEASE ENVELOPE: Fast attack (jump to target), slow release (decay at 0.88/frame).
+        // Prevents mini-strobo on kick channel — bridges the gap between kick frames
+        // with smooth fading instead of 1-frame flash + 19-frame darkness.
+        this._frontParSmooth = Math.max(frontParTarget, this._frontParSmooth * LiquidEngine41.FRONTPAR_RELEASE);
+        const frontPar = this._frontParSmooth;
         const backPar = Math.max(backLeft, backRight); // FIX: strict-split solo afecta front; back siempre usa ambos canales
         const outMoverL = moverLeft;
         const outMoverR = moverRight;
@@ -75,6 +85,7 @@ export class LiquidEngine41 extends LiquidEngineBase {
         };
     }
 }
+LiquidEngine41.FRONTPAR_RELEASE = 0.88;
 // ═══════════════════════════════════════════════════════════════════════════
 // SINGLETON — Default TECHNO_PROFILE
 // ═══════════════════════════════════════════════════════════════════════════

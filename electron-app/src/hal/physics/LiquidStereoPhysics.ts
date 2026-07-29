@@ -24,7 +24,7 @@
  */
 
 import { LiquidEnvelope } from './LiquidEnvelope'
-import type { GodEarBands } from '../../workers/GodEarFFT'
+import type { GodEarBands, GodEarPhoton } from '../../workers/GodEarFFT'
 import type { ILiquidProfile } from './profiles/ILiquidProfile'
 import { TECHNO_PROFILE } from './profiles/techno'
 
@@ -65,6 +65,8 @@ export interface LiquidStereoInput {
   // WAVE 8008: Rhythmic percussion isolated energies from GodEarFFT
   snare_energy?: number  // 0-1 — geometric mean of body (150-250Hz) + crack (2-5kHz)
   hh_energy?: number     // 0-1 — high band (5-15kHz)
+  // WAVE 8005.2: Photon block — para bypass frontal durante strobe FFT V3
+  photon?: GodEarPhoton
 }
 
 export interface LiquidStereoResult {
@@ -283,6 +285,11 @@ export class LiquidStereoPhysics {
     const kickSignal = isKickEdge ? bands.bass : 0
     let frontRight = this.envKick.process(kickSignal, morphFactor, now, isBreakdown)
 
+    // WAVE 8005.2: PHOTON STROBE BYPASS — Front Channel "Modo Ceguera"
+    if (input.photon?.strobe?.active) {
+      frontRight = 1.0
+    }
+
     // --- KICK VETO: Silencio post-kick para Mover R (voces) ---
     if (isKick) {
       this._kickVetoFrames = p.kickVetoFrames
@@ -330,6 +337,12 @@ export class LiquidStereoPhysics {
       - bands.bass * 0.2
     )
     let backLeft = this.envHighMid.process(midSynthInput, morphFactor, now, isBreakdown)
+
+    // WAVE 8005.2: PHOTON STROBE BYPASS — Back Channel "Ceguera Total"
+    if (input.photon?.strobe?.active) {
+      backLeft = 1.0
+      backRight = 1.0
+    }
 
     // --- MOVER L (Melodías / Presencia): WAVE 2417 RESURRECTION ---
     // Monte Carlo: hMid multiplicado a ×1.0 (era ×0.6), bass subtractor bajado a ×0.1.

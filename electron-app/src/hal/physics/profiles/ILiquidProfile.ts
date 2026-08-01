@@ -220,6 +220,23 @@ export interface ILiquidProfile {
   /** Release/decay time constant for ambient EMA (ms). Higher = slower fall. */
   readonly ambientReleaseMs?: number
 
+  /**
+   * WAVE 2522: AMBIENT MID INJECTION — peso de la banda mid en la mezcla
+   * del ambient EMA. Default 0 = solo subBass (comportamiento WAVE 4812 M2).
+   * > 0 inyecta energía de medios (guitarras, teclados) en el ambient.
+   * Fórmula: _ambMix = bands.subBass + bands.mid × ambientMidWeight
+   * Útil para géneros donde el "rugido constante" vive en medios, no graves.
+   */
+  readonly ambientMidWeight?: number
+
+  /**
+   * WAVE 2522: AMBIENT GAIN — ganancia global post-crush del ambient.
+   * Default 1.35 (valor hardcodeado WAVE 4812 M2). > 1.35 boostea la
+   * intensidad ambiental para perfiles que necesitan más presencia.
+   * Fórmula: preGainAmbient = min(1.0, _ambientCrushed × ambientGain)
+   */
+  readonly ambientGain?: number
+
   // ═══════════════════════════════════════════════════════════════
   // WAVE 2435: OVERRIDES DE LAYOUT 4.1
   //

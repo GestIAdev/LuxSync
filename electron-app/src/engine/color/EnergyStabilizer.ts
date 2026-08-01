@@ -147,6 +147,18 @@ export class EnergyStabilizer {
   // 🔌 WAVE 65: Histéresis para BREAKDOWN - evita falsas detecciones en pausas cortas
   private lowEnergyFrameCount = 0;
   private readonly BREAKDOWN_HYSTERESIS_FRAMES = 150;  // 2.5 segundos de baja energía sostenida
+
+  // 🛡️ SEEK GUARD: Previene envenenamiento del búfer durante seeks/cortes
+  // Cuando se detecta un cliff de energía (EMA alto → ~0), se escribe un
+  // floor decayente al búfer en vez de puros ceros, dando tiempo al
+  // EMA para recuperarse cuando el audio reanuda.
+  private seekGuardActive = false;
+  private seekGuardFloor = 0;
+  private seekGuardFrames = 0;
+  private readonly SEEK_GUARD_MAX_FRAMES = 180; // 3s @ 60fps, ~4s @ 44Hz
+  private readonly SEEK_GUARD_DECAY = 0.97;     // Floor decae 3%/frame (era 5%)
+  private readonly SEEK_DETECT_EMA_MIN = 0.05;  // EMA mínimo para considerar cliff (era 0.08)
+  private readonly SEEK_DETECT_ENERGY_MAX = 0.02; // Energy máximo para considerar cliff
   
   // Callbacks para reset
   private onSilenceReset: SilenceResetCallback[] = [];
@@ -204,8 +216,32 @@ export class EnergyStabilizer {
     // Clamp energía a 0-1
     const energy = Math.max(0, Math.min(1, instantEnergy));
     
+    // === PASO 0: SEEK GUARD — Prevenir envenenamiento del búfer ===
+    // Detectar cliff: EMA significativo que cae a ~0 en un frame = seek/corte
+    if (!this.seekGuardActive && this.emaEnergy > this.SEEK_DETECT_EMA_MIN && energy < this.SEEK_DETECT_ENERGY_MAX) {
+      this.seekGuardActive = true;
+      this.seekGuardFloor = this.emaEnergy * 0.7;  // Era 0.5 — mantener más energía
+      this.seekGuardFrames = 0;
+    }
+
+    let effectiveEnergy = energy;
+    if (this.seekGuardActive) {
+      this.seekGuardFrames++;
+      // Escribir el floor decayente al búfer en vez de puros ceros
+      effectiveEnergy = Math.max(energy, this.seekGuardFloor);
+      this.seekGuardFloor *= this.SEEK_GUARD_DECAY;
+      // Salir del seek guard cuando:
+      // 1. Audio real regresa (energy > 0.03)
+      // 2. El floor ha decaído naturalmente
+      // 3. Duración máxima alcanzada
+      if (energy > 0.03 || this.seekGuardFloor < 0.005 || this.seekGuardFrames >= this.SEEK_GUARD_MAX_FRAMES) {
+        this.seekGuardActive = false;
+        this.seekGuardFloor = 0;
+      }
+    }
+
     // === PASO 1: Rolling Average ===
-    this.energyBuffer[this.bufferIndex] = energy;
+    this.energyBuffer[this.bufferIndex] = effectiveEnergy;
     this.bufferIndex = (this.bufferIndex + 1) % this.config.smoothingWindowFrames;
     
     const rollingAvg = this.energyBuffer.reduce((a, b) => a + b, 0) / this.config.smoothingWindowFrames;
@@ -355,6 +391,9 @@ export class EnergyStabilizer {
     this.lastLogFrame = 0;
     this.lastResetFrame = 0;
     this.lowEnergyFrameCount = 0;  // 🔌 WAVE 65: Reset histéresis de breakdown
+    this.seekGuardActive = false;   // 🛡️ Reset seek guard
+    this.seekGuardFloor = 0;
+    this.seekGuardFrames = 0;
     
     console.log('[EnergyStabilizer] 🧹 Manual RESET: All buffers cleared');
   }

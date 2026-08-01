@@ -132,6 +132,8 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set())
+  const [activeVibeFilters, setActiveVibeFilters] = useState<Set<string>>(new Set())
+  const [groupByVibe, setGroupByVibe] = useState(false)
   const [showAddParamDropdown, setShowAddParamDropdown] = useState(false)
   const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({})
   const [clipboardCount, setClipboardCount] = useState(0)
@@ -190,29 +192,57 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
     if (activeFilters.size > 0) {
       result = result.filter(item => activeFilters.has(item.category))
     }
+    // WAVE 2524: Vibe filtering — filter by vibeCompat matches
+    if (activeVibeFilters.size > 0) {
+      result = result.filter(item =>
+        (item.vibeCompat ?? []).some(v => activeVibeFilters.has(v))
+      )
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase()
       result = result.filter(item =>
         item.name.toLowerCase().includes(q) ||
         item.category.toLowerCase().includes(q) ||
-        item.author.toLowerCase().includes(q)
+        item.author.toLowerCase().includes(q) ||
+        (item.vibeCompat ?? []).some(v => v.toLowerCase().includes(q))
       )
     }
     return result
-  }, [library, searchQuery, activeFilters])
+  }, [library, searchQuery, activeFilters, activeVibeFilters])
+
+  // WAVE 2524: Collect all unique vibes from library for filter chips
+  const allVibes = useMemo(() => {
+    const vibes = new Set<string>()
+    for (const item of library) {
+      for (const v of (item.vibeCompat ?? [])) {
+        vibes.add(v)
+      }
+    }
+    return Array.from(vibes).sort()
+  }, [library])
 
   const groupedLibrary = useMemo(() => {
     const groups = new Map<string, LibraryClip[]>()
     for (const item of filteredLibrary) {
-      const hephTag = item.tags?.find(t => t.startsWith('heph:'))
-      const category = hephTag ? hephTag.replace('heph:', '') : (item.category || 'uncategorized')
-      if (!groups.has(category)) {
-        groups.set(category, [])
+      // WAVE 2524: Group by vibe when toggle is on, else by category (original behavior)
+      let groupKeys: string[]
+      if (groupByVibe) {
+        const vibes = (item.vibeCompat ?? []).filter(v => v.length > 0)
+        groupKeys = vibes.length > 0 ? vibes : ['uncategorized']
+      } else {
+        const hephTag = item.tags?.find(t => t.startsWith('heph:'))
+        const category = hephTag ? hephTag.replace('heph:', '') : (item.category || 'uncategorized')
+        groupKeys = [category]
       }
-      groups.get(category)!.push(item)
+      for (const key of groupKeys) {
+        if (!groups.has(key)) {
+          groups.set(key, [])
+        }
+        groups.get(key)!.push(item)
+      }
     }
     return new Map([...groups.entries()].sort((a, b) => a[0].localeCompare(b[0])))
-  }, [filteredLibrary])
+  }, [filteredLibrary, groupByVibe])
 
   // ═══════════════════════════════════════════════════════════════════════
   // EFFECTS
@@ -267,9 +297,15 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
     }
   }, [temporalActions])
 
-  const handleDelete = useCallback(async (clipId: string) => {
+  const handleDelete = useCallback(async (clipId: string, isBuiltin?: boolean) => {
     if (!window.luxsync?.hephaestus?.delete) {
       console.warn('[ForgeTab] IPC not available, cannot delete')
+      return
+    }
+
+    // WAVE 2524: Builtin clips are factory effects — undeletable
+    if (isBuiltin) {
+      alert('This is a factory builtin clip and cannot be deleted.\nIt is a core file that ships with LuxSync.')
       return
     }
 
@@ -280,6 +316,9 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
       if (result.success && result.deleted) {
         console.log(`[ForgeTab] Deleted clip: ${clipId}`)
         await refreshMetadata()
+      } else if (result.success && !result.deleted) {
+        // Backend rejected deletion (builtin protection)
+        alert('This clip is protected and cannot be deleted.')
       }
     } catch (error) {
       console.error('[ForgeTab] Delete error:', error)
@@ -309,6 +348,19 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
         next.delete(category)
       } else {
         next.add(category)
+      }
+      return next
+    })
+  }, [])
+
+  // WAVE 2524: Vibe filter toggle
+  const handleVibeFilterToggle = useCallback((vibe: string) => {
+    setActiveVibeFilters(prev => {
+      const next = new Set(prev)
+      if (next.has(vibe)) {
+        next.delete(vibe)
+      } else {
+        next.add(vibe)
       }
       return next
     })
@@ -971,6 +1023,42 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
                 )}
               </div>
 
+              {/* WAVE 2524: Group by Vibe toggle */}
+              <div className="heph-library__vibe-toggle">
+                <button
+                  className={`heph-library__vibe-btn ${groupByVibe ? 'heph-library__vibe-btn--active' : ''}`}
+                  onClick={() => setGroupByVibe(prev => !prev)}
+                  title="Group clips by vibe instead of category"
+                >
+                  🎵 Vibe
+                </button>
+              </div>
+
+              {/* WAVE 2524: Vibe filter chips */}
+              {allVibes.length > 0 && (
+                <div className="heph-library__vibe-filters">
+                  {allVibes.map(vibe => (
+                    <button
+                      key={vibe}
+                      className={`heph-library__vibe-chip ${activeVibeFilters.has(vibe) ? 'heph-library__vibe-chip--active' : ''}`}
+                      onClick={() => handleVibeFilterToggle(vibe)}
+                      title={`Filter by vibe: ${vibe}`}
+                    >
+                      {vibe}
+                    </button>
+                  ))}
+                  {activeVibeFilters.size > 0 && (
+                    <button
+                      className="heph-library__vibe-chip-clear"
+                      onClick={() => setActiveVibeFilters(new Set())}
+                      title="Clear vibe filters"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              )}
+
               <div className="heph-library__search">
                 <input
                   type="text"
@@ -1037,7 +1125,12 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
                                   {getLuxCategoryIcon(item.category)}
                                 </span>
                                 <div className="heph-library__item-details">
-                                  <span className="heph-library__item-name">{item.name}</span>
+                                  <span className="heph-library__item-name">
+                                    {item.name}
+                                    {item.isBuiltin && (
+                                      <span className="heph-library__item-builtin" title="Factory builtin — undeletable"> 🔒</span>
+                                    )}
+                                  </span>
                                   <span className="heph-library__item-meta">
                                     {item.paramCount} params • {(item.durationMs / 1000).toFixed(1)}s
                                   </span>
@@ -1046,16 +1139,19 @@ export const ForgeTab: React.FC<ForgeTabProps> = ({ temporalActions, showAssetBr
                                   ⋮⋮
                                 </span>
                               </div>
-                              <button
-                                className="heph-library__item-delete"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleDelete(item.id)
-                                }}
-                                title="Delete"
-                              >
-                                <TrashIcon size={14} color="rgba(255, 255, 255, 0.3)" />
-                              </button>
+                              {/* WAVE 2524: Hide delete button for builtin clips */}
+                              {!item.isBuiltin && (
+                                <button
+                                  className="heph-library__item-delete"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDelete(item.id, item.isBuiltin)
+                                  }}
+                                  title="Delete"
+                                >
+                                  <TrashIcon size={14} color="rgba(255, 255, 255, 0.3)" />
+                                </button>
+                              )}
                             </div>
                           ))}
                         </div>

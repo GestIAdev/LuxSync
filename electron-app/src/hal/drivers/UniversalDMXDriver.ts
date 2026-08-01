@@ -308,9 +308,21 @@ export class UniversalDMXDriver extends EventEmitter {
         return false
       }
 
+      // 🛡️ WAVE 5036: CONFIDENCE THRESHOLD — filtrar puertos que no son DMX real.
+      // Bluetooth y otros puertos seriales virtuales reciben 30% confidence.
+      // Solo conectar dispositivos con ≥50% confidence (FTDI, CH340, CP210x, etc.)
+      const MIN_CONFIDENCE = 50
+      const dmxDevices = devices.filter(d => d.confidence >= MIN_CONFIDENCE)
+
+      if (dmxDevices.length === 0) {
+        this.log(`⚠️ No DMX devices found (all ${devices.length} ports below ${MIN_CONFIDENCE}% confidence)`)
+        this.emit('no-devices')
+        return false
+      }
+
       // Filtrar dispositivos que ya están conectados
       const connectedPaths = Array.from(this.connectedDevices.values()).map(d => d.path)
-      const newDevices = devices.filter(d => !connectedPaths.includes(d.path))
+      const newDevices = dmxDevices.filter(d => !connectedPaths.includes(d.path))
 
       if (newDevices.length === 0 && this.ports.size > 0) {
         this.log('✅ All available devices already connected')
@@ -645,11 +657,17 @@ export class UniversalDMXDriver extends EventEmitter {
     if (this.watchdogTimer) return
     
     this.watchdogTimer = setInterval(() => {
-      // Verificar que todos los puertos siguen abiertos
+      // Verificar puertos driver-managed
       for (const [universe, port] of this.ports) {
         if (!port || !port.isOpen) {
           this.log(`🐕 Watchdog: Universe ${universe} port not open!`)
           this.disconnectUniverse(universe)
+        }
+      }
+      // Verificar estrategias self-managed (OpenDMX)
+      for (const [universe, strategy] of this.strategies) {
+        if (strategy.selfManaged && strategy.isAlive && !strategy.isAlive()) {
+          this.log(`🐕 Watchdog: Universe ${universe} self-managed strategy NOT alive — strategy will auto-reconnect`)
         }
       }
     }, this.config.watchdogInterval)

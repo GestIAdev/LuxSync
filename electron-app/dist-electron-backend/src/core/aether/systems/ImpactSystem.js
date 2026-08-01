@@ -153,6 +153,7 @@ export class ImpactSystem extends BaseSystem {
         super();
         this.name = 'ImpactSystem';
         this.family = NodeFamily.IMPACT;
+        this._frameCount = 0;
         // Establecer el source del scratch intent una sola vez
         this._intentScratch.source = 'impact_system';
         this._intentScratch.priority = IMPACT_INTENT_PRIORITY;
@@ -228,7 +229,16 @@ export class ImpactSystem extends BaseSystem {
             // ── 8. Push al bus ────────────────────────────────────────────────────
             // bus.push copia valores antes de retornar → safe reutilizar el scratch.
             bus.push(this._intentScratch);
+            // 🔬 DIAGNOSTIC: Trace ImpactSystem dimmer pipeline (every ~120 frames)
+            if (this._frameCount % 120 === 0) {
+                console.log(`[Impact-DIAG] ${node.nodeId.split(':').slice(-2).join(':')} ` +
+                    `rawE=${rawEnergy.toFixed(3)} shaped=${shapedValue.toFixed(3)} ` +
+                    `env=${envelopeValue.toFixed(3)} floor=${dimmer.toFixed(3)} ` +
+                    `vibeInt=${context.vibe.intensity.toFixed(3)} ` +
+                    `FINAL=${finalDimmer.toFixed(3)}`);
+            }
         });
+        this._frameCount++;
     }
     // ═════════════════════════════════════════════════════════════════════════
     // PRIVATE HELPERS — Lógica pura, solo usada en el hot path

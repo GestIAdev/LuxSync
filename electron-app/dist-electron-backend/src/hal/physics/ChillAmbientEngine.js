@@ -20,12 +20,12 @@
  *      Intensidad zonal ∈ [BASE−AMP, BASE+AMP] = [0.10, 0.60].
  *      Enrutado a liquidStereoOverrides en SeleneLux (chill path).
  *
- *   3. MICRO-DRIFT BOREAL (Caústicas de Agua)
- *      WAVE 7129.3: Reemplaza el Lissajous amplio por un Micro-Drift sutil.
- *      Pan:  0.50 + sin(t / 120) × 0.015  → ±1.5% alrededor del centro
- *      Tilt: 0.70 + cos(t / 180) × 0.010  → ±1.0% alrededor del reposo elevado
- *      Períodos: 120s pan (2π×120 ≈ 754s), 180s tilt (2π×180 ≈ 1131s).
- *      Simula reflejos de agua — caústicas que se mueven imperceptiblemente.
+ *   3. GLACIAR SWEEP (Barridos Lentos Visibles)
+ *      WAVE 2523: Reemplaza el Micro-Drift imperceptible por barridos reales.
+ *      Pan:  0.50 + sin(t / 15) × 0.20  → ±20% alrededor del centro
+ *      Tilt: 0.70 + cos(t / 25) × 0.15  → ±15% alrededor del reposo elevado
+ *      Períodos: 15s pan (2π×15 ≈ 94s), 25s tilt (2π×25 ≈ 157s).
+ *      Barridos visibles en ~1.6 min (pan) y ~2.6 min (tilt).
  *      Mover R: offset +2/3 ciclo en pan, +1/2 ciclo en tilt.
  *      Salida normalizada [0, 1] para buildMechanicsBypassIntent (WAVE 1046).
  *      Enrutado a deepFieldMechanics en SeleneLux (chill path).
@@ -77,26 +77,37 @@ const WAVE_PHASE_FRONT_L = 0.0;
 const WAVE_PHASE_FRONT_R = 0.5;
 const WAVE_PHASE_BACK_L = 1.0;
 const WAVE_PHASE_BACK_R = 1.2;
-// ── 3. MICRO-DRIFT BOREAL — Caústicas ─────────────────────────────────────
+// ── 3. GLACIAR SWEEP — Barridos lentos visibles ────────────────────────────
 /**
- * Constante de tiempo del pan (s) — WAVE 7129: Micro-Drift.
- * sin(t / 120) → período = 2π × 120 ≈ 754 s (~12.6 min por ciclo completo).
+ * Constante de tiempo del pan (s) — WAVE 2523: GLACIAR SWEEP.
+ * sin(t / 15) → período = 2π × 15 ≈ 94 s (~1.6 min por ciclo completo).
+ * Antes (WAVE 7129): t/120 = 754s (~12.6 min) — imperceptible.
+ * Ahora: barrido completo en ~1.6 min, visible y hipnótico.
  */
-const MOVER_PAN_TAU = 120.0;
+const MOVER_PAN_TAU = 15.0;
 /**
- * Constante de tiempo del tilt (s) — WAVE 7129: Micro-Drift.
- * cos(t / 180) → período = 2π × 180 ≈ 1131 s (~18.8 min por ciclo completo).
- * Ratio pan/tilt = 180/120 = 3/2 → deriva lenta nunca repetitiva.
+ * Constante de tiempo del tilt (s) — WAVE 2523: GLACIAR SWEEP.
+ * cos(t / 25) → período = 2π × 25 ≈ 157 s (~2.6 min por ciclo completo).
+ * Ratio pan/tilt = 25/15 = 5/3 → deriva nunca repetitiva.
+ * Antes (WAVE 7129): t/180 = 1131s (~18.8 min) — estático.
  */
-const MOVER_TILT_TAU = 180.0;
+const MOVER_TILT_TAU = 25.0;
 /** Reposo elevado del pan — los beams apuntan ligeramente al centro-superior */
 const MOVER_PAN_REST = 0.50;
 /** Reposo elevado del tilt — caústicas desde arriba */
 const MOVER_TILT_REST = 0.70;
-/** Amplitud del micro-drift en pan: ±1.5% (reflejos de agua) */
-const MOVER_PAN_AMPLITUDE = 0.015;
-/** Amplitud del micro-drift en tilt: ±1.0% (reflejos de agua) */
-const MOVER_TILT_AMPLITUDE = 0.010;
+/**
+ * Amplitud del barrido en pan: ±20% — WAVE 2523: GLACIAR SWEEP.
+ * Antes (WAVE 7129): 0.015 (±1.5%) — imperceptible.
+ * Ahora: 0.20 (±20%) → barrido de 40% del rango total, visible y fluido.
+ */
+const MOVER_PAN_AMPLITUDE = 0.20;
+/**
+ * Amplitud del barrido en tilt: ±15% — WAVE 2523: GLACIAR SWEEP.
+ * Antes (WAVE 7129): 0.010 (±1.0%) — imperceptible.
+ * Ahora: 0.15 (±15%) → barrido de 30% del rango total.
+ */
+const MOVER_TILT_AMPLITUDE = 0.15;
 /**
  * Offset de fase del mover R respecto al mover L (rad).
  * TWO_PI × 0.667 ≈ 4.19 rad → los beams se cruzan en el aire dos veces
@@ -136,9 +147,10 @@ export class ChillAmbientEngine {
         const frontR = WAVE_BASE + WAVE_AMPLITUDE * Math.sin(wavePh + WAVE_PHASE_FRONT_R);
         const backL = WAVE_BASE + WAVE_AMPLITUDE * Math.sin(wavePh + WAVE_PHASE_BACK_L);
         const backR = WAVE_BASE + WAVE_AMPLITUDE * Math.sin(wavePh + WAVE_PHASE_BACK_R);
-        // ── 3. MICRO-DRIFT BOREAL — Caústicas de agua ───────────────────────────
-        // WAVE 7129.3: Reposo elevado + micro-oscilación ±1.5% pan / ±1.0% tilt.
-        // Simula reflejos de agua moviéndose imperceptiblemente.
+        // ── 3. GLACIAR SWEEP — Barridos lentos visibles ───────────────────────
+        // WAVE 2523: Reemplaza el Micro-Drift imperceptible (±1.5%/±1.0% en 12min)
+        // por barridos reales (±20%/±15% en ~1.6min/~2.6min). Los movers ahora
+        // se mueven visiblemente, manteniendo el carácter hipnótico del chill.
         const panL_raw = Math.sin(t / MOVER_PAN_TAU);
         const tiltL_raw = Math.cos(t / MOVER_TILT_TAU);
         const panR_raw = Math.sin(t / MOVER_PAN_TAU + MOVER_R_PAN_OFFSET);

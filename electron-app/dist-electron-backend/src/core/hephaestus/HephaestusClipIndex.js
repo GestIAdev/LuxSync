@@ -47,14 +47,18 @@ function _normalizeClipCurves(clip) {
 }
 /**
  * Construye un objeto HephClipMetadata a partir de un clip V3.
+ * WAVE 2524: Incluye vibeCompat (para filtrado por vibe en la UI) y
+ * isBuiltin (para proteger clips factory del borrado).
  */
-function _buildMetadata(clip, filePath, modifiedAt) {
+function _buildMetadata(clip, filePath, modifiedAt, source) {
     return {
         id: clip.id,
         name: clip.name,
         author: clip.author,
         category: clip.category,
         tags: [...clip.tags],
+        vibeCompat: [...clip.vibeCompat],
+        isBuiltin: source === 'builtin',
         durationMs: clip.durationMs,
         effectType: clip.effectType,
         paramCount: clip.tracks.length,
@@ -178,7 +182,7 @@ class HephaestusClipIndex {
                 // stat falló — usar Date.now() como fallback
             }
             // ── Build LoadedClip ─────────────────────────────────────────────────
-            const metadata = _buildMetadata(clip, filePath, modifiedAt);
+            const metadata = _buildMetadata(clip, filePath, modifiedAt, source);
             const loaded = {
                 id: clip.id,
                 filePath,

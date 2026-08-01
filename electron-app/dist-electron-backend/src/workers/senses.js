@@ -57,6 +57,7 @@ let dropLegacyIpcUntilTimestamp = 0;
 // WAVE 3418: RAW PEAK TELEMETRY — Counters por path de entrada
 // ============================================
 let _sabPeakFrameCount = 0;
+let _sabEmptyCount = 0;
 let _legacyPeakFrameCount = 0;
 const PEAK_LOG_INTERVAL = 94; // ~2s a 47fps
 function _calcPeakAbs(buf, len) {
@@ -88,8 +89,14 @@ function pollSharedRingBuffer() {
     if (!sabReader || !state.isRunning)
         return;
     const available = sabReader.available;
-    if (available === 0)
+    if (available === 0) {
+        // WAVE 3424: Diagnostic — log when SAB is empty (seek/starvation indicator)
+        _sabEmptyCount++;
+        if (_sabEmptyCount % 100 === 1) {
+            console.log(`[🔬 SAB-EMPTY] poll #${_sabEmptyCount} — no samples available (seek/starvation?)`);
+        }
         return;
+    }
     const toRead = Math.min(available, OMNI_CONSTANTS.FFT_SIZE);
     const samplesRead = sabReader.read(sabReadBuffer, toRead);
     if (samplesRead > 0) {
@@ -102,7 +109,13 @@ function pollSharedRingBuffer() {
             console.log(`[🔬 PEAK-SAB] frame=${_sabPeakFrameCount} ` +
                 `samples=${samplesRead} ` +
                 `peak=${peakAbs.toFixed(5)} ` +
-                `rms=${rms.toFixed(5)}`);
+                `rms=${rms.toFixed(5)}` +
+                ` avail=${available}`);
+        }
+        // WAVE 3424: Diagnostic — log first non-empty poll after empty streak
+        if (_sabEmptyCount > 0) {
+            console.log(`[🔬 SAB-RECOVERY] ${_sabEmptyCount} empty polls resolved, ${samplesRead} samples now available`);
+            _sabEmptyCount = 0;
         }
         state.frameCount++;
         const analysis = pipeline.processFrame(slice);

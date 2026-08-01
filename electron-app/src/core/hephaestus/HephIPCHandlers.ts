@@ -168,6 +168,17 @@ export function setupHephIPCHandlers(): void {
         clipId = idOrPath
       }
 
+      // WAVE 2524: Check if clip is builtin before attempting deletion
+      const loadedClip = clipId ? index.getById(clipId) : undefined
+      if (loadedClip?.metadata.isBuiltin) {
+        console.warn(`[HephIPC] ❌ Rejected delete — builtin clip: ${clipId}`)
+        return {
+          success: true,
+          deleted: false,
+          reason: 'builtin',
+        }
+      }
+
       const deleted = await hephFileIO.deleteClip(idOrPath)
 
       // ⚒️ WAVE 7034: Unregister from DynamicEffectRegistry so Selene

@@ -605,6 +605,90 @@
   background: transparent;
 }
 
+/* ── WAVE 2524: Vibe Toggle + Vibe Filter Chips ── */
+
+.heph-library__vibe-toggle {
+  display: flex;
+  padding: 4px 12px;
+  border-bottom: 1px solid rgba(255, 107, 43, 0.08);
+}
+
+.heph-library__vibe-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 107, 43, 0.2);
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  letter-spacing: 0.5px;
+}
+
+.heph-library__vibe-btn--active {
+  background: rgba(255, 107, 43, 0.15);
+  border-color: rgba(255, 107, 43, 0.5);
+  color: #ff6b2b;
+}
+
+.heph-library__vibe-btn:hover {
+  border-color: rgba(255, 107, 43, 0.4);
+  color: rgba(255, 107, 43, 0.8);
+}
+
+.heph-library__vibe-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 12px;
+  border-bottom: 1px solid rgba(255, 107, 43, 0.08);
+  max-height: 80px;
+  overflow-y: auto;
+}
+
+.heph-library__vibe-chip {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 9px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.heph-library__vibe-chip--active {
+  background: rgba(255, 107, 43, 0.2);
+  border-color: rgba(255, 107, 43, 0.6);
+  color: #ff6b2b;
+}
+
+.heph-library__vibe-chip:hover {
+  border-color: rgba(255, 107, 43, 0.3);
+  color: rgba(255, 107, 43, 0.7);
+}
+
+.heph-library__vibe-chip-clear {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 10px;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.heph-library__vibe-chip-clear:hover {
+  color: rgba(255, 107, 43, 0.8);
+}
+
+.heph-library__item-builtin {
+  font-size: 10px;
+  opacity: 0.6;
+}
+
 .heph-library__search-input {
   flex: 1;
   background: rgba(255, 255, 255, 0.03);

@@ -28,7 +28,7 @@ import { TECHNO_PROFILE } from './profiles/techno';
 // ═══════════════════════════════════════════════════════════════════════════
 // AGC REBOUND — Constante de hardware, invariante entre perfiles
 // ═══════════════════════════════════════════════════════════════════════════
-const RECOVERY_DURATION = 2000;
+const RECOVERY_DURATION = 250;
 /**
  * Fusiona un envelope config base con overrides parciales.
  * Retorna el config original si no hay overrides para este bloque.
@@ -122,6 +122,10 @@ export class LiquidEngineBase {
         // WAVE 2439.9: Frame Hold — extiende el pulso del bombo ~110ms para hardware DMX
         // Un único fotograma (22ms) es indigerible para dimmers/LEDs físicos.
         this._kickHoldCounter = 0;
+        // WAVE 8010: Kick debounce temporal — después del hold counter, esperar
+        // KICK_COOLDOWN_MS antes de permitir un nuevo impacto. Evita que el tail
+        // del bombo o un sinte re-disparen el detector en el mismo beat.
+        this._lastKickImpactTime = 0;
         // WAVE 6070: Frame Hold para snare — extiende el pulso de la caja ~90ms para hardware DMX
         this._snareHoldCounter = 0;
         // WAVE 6070.2: Debounce Anti-Jitter — cooldown de 80ms para evitar re-triggers del mismo clap
@@ -253,7 +257,7 @@ export class LiquidEngineBase {
             else {
                 this.avgMidProfiler = this.avgMidProfiler * 0.98 + bands.mid * 0.02;
             }
-            morphFactor = Math.min(1.0, Math.max(0.0, (this.avgMidProfiler - p.morphFloor) / (p.morphCeiling - p.morphFloor)));
+            morphFactor = Math.min(1.0, Math.max(0.0, (this.avgMidProfiler - p.morphFloor) / Math.max(0.0001, (p.morphCeiling - p.morphFloor))));
         }
         // ═══════════════════════════════════════════════════════════════════
         // WAVE 4845 — THE ABSOLUTE ZERO (CHILLOUT ISOLATION)
@@ -281,9 +285,13 @@ export class LiquidEngineBase {
         // WAVE 4812 M2: EL OCÉANO — El ambient se alimenta exclusivamente de subBass.
         // Antes: bass×0.40 + mid×0.60 (contaminado por vocales).
         // Ahora: subBass puro — late con el graves del reguetón, invisáble a voces.
+        // WAVE 2522: AMBIENT MID INJECTION — perfiles con ambientMidWeight > 0
+        // inyectan energía de medios (guitarras rock, teclados) en el ambient.
+        // Default 0 = comportamiento WAVE 4812 M2 (solo subBass).
         const _ambAttackAlpha = Math.min(1.0, 1000 / ((p.ambientAttackMs ?? 800) * 44));
         const _ambReleaseAlpha = Math.min(1.0, 1000 / ((p.ambientReleaseMs ?? 10000) * 44));
-        const _ambMix = bands.subBass;
+        const _ambMidWeight = p.ambientMidWeight ?? 0;
+        const _ambMix = bands.subBass + bands.mid * _ambMidWeight;
         if (_ambMix > this._ambientEMA) {
             this._ambientEMA = this._ambientEMA * (1 - _ambAttackAlpha) + _ambMix * _ambAttackAlpha;
         }
@@ -345,15 +353,16 @@ export class LiquidEngineBase {
         // ADAPTIVE DELTA: Curva inversa de compresión sobre señal purificada.
         // Bass 1.0 → delta 0.040 | Bass 0.5 → delta 0.080. Evita falsos positivos en build-ups.
         let isImpact = false;
-        if (this._kickHoldCounter === 0) {
-            // Curva dinámica para emular headroom real:
-            // pureBass a 1.0 -> exige delta de 0.040
-            // pureBass a 0.5 -> exige delta de 0.080
+        // WAVE 8010: Cooldown temporal además del hold counter.
+        // El hold counter (6 frames ~136ms) bloquea re-detección durante el pulso,
+        // pero tras expirar, el tail del bombo o un sinte pueden re-disparar.
+        // 150ms de cooldown asegura un único disparo por beat (>400ms a 130 BPM).
+        if (this._kickHoldCounter === 0 && (now - this._lastKickImpactTime > LiquidEngineBase.KICK_COOLDOWN_MS)) {
             const dynamicDelta = 0.120 - (pureBassEnergy * 0.080);
-            // Evaluamos con pureBassEnergy — voces y cajas ya fueron anuladas
             isImpact = pureBassEnergy > p.envelopeKick.gateOn && bassDelta > dynamicDelta;
             if (isImpact) {
                 this._kickHoldCounter = 6;
+                this._lastKickImpactTime = now;
             }
         }
         const isKick = this._kickHoldCounter > 0;
@@ -589,7 +598,10 @@ export class LiquidEngineBase {
         // WAVE 4826.3 — PRE-GAIN + CONTRASTE EXTREMO
         // Ganancia pre-curva para compensar falta de graves en latino (1.35x boost)
         // Luego expansión ^1.3 para contraste más suave (es ^1.6 era demasiado agresivo)
-        let preGainAmbient = Math.min(1.0, _ambientCrushed * 1.35);
+        // WAVE 2522: ambientGain configurable — default 1.35 (valor WAVE 4826.3).
+        // Perfiles con ambientGain > 1.35 boostean la intensidad ambiental.
+        const _ambientGain = p.ambientGain ?? 1.35;
+        let preGainAmbient = Math.min(1.0, _ambientCrushed * _ambientGain);
         let ambientIntensity = Math.pow(preGainAmbient, 1.3);
         // WAVE 4826.1 — Reemplazar gate binario por fade exponencial suave para Tungsten en Ambient
         if (ambientIntensity < 0.03) {
@@ -719,6 +731,7 @@ export class LiquidEngineBase {
         this._kickVetoFrames = 0;
         this._kickIntervalMs = 0;
         this._lastKickTime = 0;
+        this._lastKickImpactTime = 0;
         this._strobeActive = false;
         this.strobeStartTime = 0;
         this.lastTreble = 0;
@@ -779,3 +792,4 @@ export class LiquidEngineBase {
         };
     }
 }
+LiquidEngineBase.KICK_COOLDOWN_MS = 150;

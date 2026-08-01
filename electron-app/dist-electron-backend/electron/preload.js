@@ -206,6 +206,7 @@ const api = {
         getDiagnostics: () => ipcRenderer.invoke('audio-matrix:get-diagnostics'),
         forceSource: (sourceType) => ipcRenderer.invoke('audio-matrix:force-source', sourceType),
         releaseForce: () => ipcRenderer.invoke('audio-matrix:release-force'),
+        stopActiveSource: () => ipcRenderer.invoke('audio-matrix:stop-active-source'),
     },
     // ============================================
     // SELENE

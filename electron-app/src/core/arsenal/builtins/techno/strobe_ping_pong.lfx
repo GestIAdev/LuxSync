@@ -1,89 +1,125 @@
-﻿{
-    "$schema":  "luxsync.lfx/3.0",
-    "clip":  {
-                 "id":  "strobe_ping_pong",
-                 "name":  "Strobe Ping Pong",
-                 "author":  "LuxSync Factory",
-                 "category":  "physical",
-                 "tags":  [
-                              "strobe",
-                              "techno",
-                              "ping-pong",
-                              "spatial"
-                          ],
-                 "vibeCompat":  [
-                                    "techno",
-                                    "hardstyle"
-                                ],
-                 "durationMs":  400,
-                 "effectType":  "heph_custom",
-                 "cognitiveDNA":  {
-                                      "genome":  {
-                                                     "aggression":  0.9,
-                                                     "chaos":  0.8,
-                                                     "organicity":  0.1
-                                                 },
-                                      "textureAffinity":  "dirty",
-                                      "compatibleVibes":  [
-                                                              "techno",
-                                                              "hardstyle"
-                                                          ],
-                                      "validSections":  [
-                                                            "drop",
-                                                            "peak"
-                                                        ],
-                                      "energyZone":  {
-                                                         "min":  "intense",
-                                                         "max":  "peak"
-                                                     },
-                                      "aggressionRange":  {
-                                                              "min":  0.5,
-                                                              "max":  1
-                                                          },
-                                      "spatialBehavior":  "dynamic"
-                                  },
-                 "simulationMeta":  {
-                                        "beautyWeights":  {
-                                                              "base":  0.8,
-                                                              "energyMultiplier":  1,
-                                                              "vibeBonus":  0.1
-                                                          },
-                                        "gpuCost":  0.2,
-                                        "fatigueImpact":  0.3,
-                                        "minDurationMs":  400,
-                                        "cooldownMs":  2000,
-                                        "isStrobe":  true,
-                                        "isDivineCandidate":  false,
-                                        "isHeavyCandidate":  true,
-                                        "zScoreGuards":  {
-                                                             "requireRising":  false,
-                                                             "minimumZ":  1,
-                                                             "minimumEnergy":  0.7
-                                                         }
-                                    },
-                 "tracks":  [
-                                {
-                                    "id":  "blackout-movers",
-                                    "paramId":  "intensity",
-                                    "zones":  [
-                                                  "all-movers",
-                                                  "air"
-                                              ],
-                                    "blendMode":  "replace",
-                                    "curve":  {
-                                                  "paramId":  "intensity",
-                                                  "valueType":  "number",
-                                                  "defaultValue":  0,
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  0,
-                                                                        "interpolation":  "hold"
-                                                                    }
-                                                                ]
-                                              }
-                                }
-                            ],
-                 "schemaVersion":  "3.0"
-             }
+{
+  "$schema": "luxsync.lfx/3.0",
+  "clip": {
+    "id": "strobe_ping_pong",
+    "name": "Strobe Ping Pong",
+    "author": "LuxSync Factory",
+    "category": "physical",
+    "tags": [
+      "strobe",
+      "techno",
+      "ping-pong",
+      "spatial"
+    ],
+    "vibeCompat": [
+      "techno",
+      "hardstyle"
+    ],
+    "durationMs": 400,
+    "effectType": "heph_custom",
+    "cognitiveDNA": {
+      "genome": {
+        "aggression": 0.9,
+        "chaos": 0.8,
+        "organicity": 0.1
+      },
+      "textureAffinity": "dirty",
+      "compatibleVibes": [
+        "techno",
+        "hardstyle"
+      ],
+      "validSections": [
+        "drop",
+        "peak"
+      ],
+      "energyZone": {
+        "min": "intense",
+        "max": "peak"
+      },
+      "aggressionRange": {
+        "min": 0.5,
+        "max": 1
+      },
+      "spatialBehavior": "dynamic"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.8,
+        "energyMultiplier": 1,
+        "vibeBonus": 0.1
+      },
+      "gpuCost": 0.2,
+      "fatigueImpact": 0.3,
+      "minDurationMs": 400,
+      "cooldownMs": 2000,
+      "isStrobe": true,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": true,
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": 1,
+        "minimumEnergy": 0.7
+      }
+    },
+    "tracks": [
+      {
+        "id": "blackout-movers",
+        "paramId": "intensity",
+        "zones": [
+          "all-movers",
+          "air"
+        ],
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ]
+        }
+      },
+      {
+        "id": "d9b2ab10-3433-466a-b3d6-0e84dca6e6da",
+        "paramId": "strobe",
+        "zones": [
+          "all"
+        ],
+        "curve": {
+          "paramId": "strobe",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 1,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0.95,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 400,
+              "value": 0.95,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      }
+    ],
+    "schemaVersion": "3.0",
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 25,
+      "containsRapidFlash": true,
+      "communityTrusted": false
+    }
+  },
+  "checksum": "sha256:dc164476f903248a00d84efb8aa9535cbffba4c26fda03b628bb35b983b3d32f"
 }

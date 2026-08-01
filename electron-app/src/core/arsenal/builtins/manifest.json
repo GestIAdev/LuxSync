@@ -1,0 +1,263 @@
+{
+  "schema": 1,
+  "version": "0.8.0-beta.1",
+  "generatedAt": "2026-08-01T09:38:57.161Z",
+  "count": 51,
+  "files": {
+    "chill/solar_caustics.lfx": {
+      "relPath": "chill/solar_caustics.lfx",
+      "checksum": "c5c6ee851702c223",
+      "size": 19764
+    },
+    "chill-lounge/surface_shimmer.lfx": {
+      "relPath": "chill-lounge/surface_shimmer.lfx",
+      "checksum": "1e095b64a483d5da",
+      "size": 8386
+    },
+    "custom/Feral Wave Omega.lfx": {
+      "relPath": "custom/Feral Wave Omega.lfx",
+      "checksum": "8fac29c9be768720",
+      "size": 14223
+    },
+    "custom/heph_1782553308617_cgkagj.lfx": {
+      "relPath": "custom/heph_1782553308617_cgkagj.lfx",
+      "checksum": "bb4b33056b8d38e5",
+      "size": 5064
+    },
+    "custom/heph_1782560366284_rfs6bw.lfx": {
+      "relPath": "custom/heph_1782560366284_rfs6bw.lfx",
+      "checksum": "2e0ff6de7eeef74b",
+      "size": 6917
+    },
+    "custom/heph_1782609140553_bto9fn.lfx": {
+      "relPath": "custom/heph_1782609140553_bto9fn.lfx",
+      "checksum": "46fa06395292cbf3",
+      "size": 25811
+    },
+    "custom/heph_1782928865838_apewm8.lfx": {
+      "relPath": "custom/heph_1782928865838_apewm8.lfx",
+      "checksum": "9c2f50a3adafdcb5",
+      "size": 12188
+    },
+    "custom/heph_1782937097650_pjisyy.lfx": {
+      "relPath": "custom/heph_1782937097650_pjisyy.lfx",
+      "checksum": "12ca8de2a47a362b",
+      "size": 20044
+    },
+    "custom/heph_1784931422617_tpox7b.lfx": {
+      "relPath": "custom/heph_1784931422617_tpox7b.lfx",
+      "checksum": "f45b152cb5e08ca0",
+      "size": 29686
+    },
+    "custom/heph_1784952802805_jigk8a.lfx": {
+      "relPath": "custom/heph_1784952802805_jigk8a.lfx",
+      "checksum": "544b2f51138e0500",
+      "size": 27123
+    },
+    "latin/amazon_mist.lfx": {
+      "relPath": "latin/amazon_mist.lfx",
+      "checksum": "19aa551554d32db1",
+      "size": 12619
+    },
+    "latin/arena_sweep.lfx": {
+      "relPath": "latin/arena_sweep.lfx",
+      "checksum": "e4bd5bc87b8bfb22",
+      "size": 11838
+    },
+    "latin/corazon_latino.lfx": {
+      "relPath": "latin/corazon_latino.lfx",
+      "checksum": "f8cf90adca06c9e3",
+      "size": 44136
+    },
+    "latin/cumbia_moon.lfx": {
+      "relPath": "latin/cumbia_moon.lfx",
+      "checksum": "c17dcfbfcb0f7ec3",
+      "size": 13602
+    },
+    "latin/divine_obliteration.lfx": {
+      "relPath": "latin/divine_obliteration.lfx",
+      "checksum": "4b43d1c83351b2bd",
+      "size": 14876
+    },
+    "latin/ghost_breath.lfx": {
+      "relPath": "latin/ghost_breath.lfx",
+      "checksum": "a755be9edeffe2c0",
+      "size": 12744
+    },
+    "latin/kitt_scanner.lfx": {
+      "relPath": "latin/kitt_scanner.lfx",
+      "checksum": "438b22d8dd783932",
+      "size": 21214
+    },
+    "latin/latina_meltdown.lfx": {
+      "relPath": "latin/latina_meltdown.lfx",
+      "checksum": "b7cb06f91de2c959",
+      "size": 11368
+    },
+    "latin/salsa_fire.lfx": {
+      "relPath": "latin/salsa_fire.lfx",
+      "checksum": "3736961ef4930cb4",
+      "size": 5392
+    },
+    "latin/solar_flare.lfx": {
+      "relPath": "latin/solar_flare.lfx",
+      "checksum": "5f2bb5616929634c",
+      "size": 12087
+    },
+    "latin/tidal_wave.lfx": {
+      "relPath": "latin/tidal_wave.lfx",
+      "checksum": "71d6d7e52af1efb3",
+      "size": 27680
+    },
+    "rock/amp_heat.lfx": {
+      "relPath": "rock/amp_heat.lfx",
+      "checksum": "b3331124ecac92fa",
+      "size": 11922
+    },
+    "rock/liquid_solo.lfx": {
+      "relPath": "rock/liquid_solo.lfx",
+      "checksum": "fa20866c3588b9f0",
+      "size": 11058
+    },
+    "rock/power_chord.lfx": {
+      "relPath": "rock/power_chord.lfx",
+      "checksum": "0dfb89fad4eadc35",
+      "size": 4536
+    },
+    "rock/spotlight_pulse.lfx": {
+      "relPath": "rock/spotlight_pulse.lfx",
+      "checksum": "640591f407fd7a9e",
+      "size": 11030
+    },
+    "rock/stage_wash.lfx": {
+      "relPath": "rock/stage_wash.lfx",
+      "checksum": "c2842352238ddea8",
+      "size": 11111
+    },
+    "rock/thunder_struck.lfx": {
+      "relPath": "rock/thunder_struck.lfx",
+      "checksum": "b99ea43422443d87",
+      "size": 11859
+    },
+    "techno/abyssal_rise.lfx": {
+      "relPath": "techno/abyssal_rise.lfx",
+      "checksum": "bce07c6b39eec8b8",
+      "size": 4109
+    },
+    "techno/acid_sweep.lfx": {
+      "relPath": "techno/acid_sweep.lfx",
+      "checksum": "a73ae6ac2e6e8a54",
+      "size": 27085
+    },
+    "techno/ambient_strobe.lfx": {
+      "relPath": "techno/ambient_strobe.lfx",
+      "checksum": "01558e5bee416d0e",
+      "size": 4551
+    },
+    "techno/binary_glitch.lfx": {
+      "relPath": "techno/binary_glitch.lfx",
+      "checksum": "bbb11294c1a65c42",
+      "size": 7535
+    },
+    "techno/cascade_strike.lfx": {
+      "relPath": "techno/cascade_strike.lfx",
+      "checksum": "13ebca7ac66cdaeb",
+      "size": 5306
+    },
+    "techno/core_meltdown.lfx": {
+      "relPath": "techno/core_meltdown.lfx",
+      "checksum": "9c9763b082016b5e",
+      "size": 4490
+    },
+    "techno/cyber_dualism.lfx": {
+      "relPath": "techno/cyber_dualism.lfx",
+      "checksum": "a1a087833da1163e",
+      "size": 14714
+    },
+    "techno/cyber_scanner.lfx": {
+      "relPath": "techno/cyber_scanner.lfx",
+      "checksum": "eee95de0a6cb9c67",
+      "size": 14042
+    },
+    "techno/deep_breath.lfx": {
+      "relPath": "techno/deep_breath.lfx",
+      "checksum": "eff57ae120175fc3",
+      "size": 12119
+    },
+    "techno/gatling_raid.lfx": {
+      "relPath": "techno/gatling_raid.lfx",
+      "checksum": "16643686a5b9c0ad",
+      "size": 5046
+    },
+    "techno/ghost_chase.lfx": {
+      "relPath": "techno/ghost_chase.lfx",
+      "checksum": "f16623c443c5f3b1",
+      "size": 11314
+    },
+    "techno/industrial_strobe.lfx": {
+      "relPath": "techno/industrial_strobe.lfx",
+      "checksum": "51d98430bf47cb40",
+      "size": 4794
+    },
+    "techno/lateral_frag.lfx": {
+      "relPath": "techno/lateral_frag.lfx",
+      "checksum": "2d327b685c8ffea0",
+      "size": 5509
+    },
+    "techno/machine_gun.lfx": {
+      "relPath": "techno/machine_gun.lfx",
+      "checksum": "8edd3e6a6c6b10fc",
+      "size": 4431
+    },
+    "techno/neon_blinder.lfx": {
+      "relPath": "techno/neon_blinder.lfx",
+      "checksum": "68ac0dce1b60845e",
+      "size": 5167
+    },
+    "techno/red_surge.lfx": {
+      "relPath": "techno/red_surge.lfx",
+      "checksum": "da5d74f37f112ae5",
+      "size": 4658
+    },
+    "techno/seismic_snap.lfx": {
+      "relPath": "techno/seismic_snap.lfx",
+      "checksum": "bfb1309dd8b3cd9e",
+      "size": 6530
+    },
+    "techno/static_pulse.lfx": {
+      "relPath": "techno/static_pulse.lfx",
+      "checksum": "3d67733e2d77d38c",
+      "size": 5075
+    },
+    "techno/strobe_burst.lfx": {
+      "relPath": "techno/strobe_burst.lfx",
+      "checksum": "b93cf30a170b0ccd",
+      "size": 3826
+    },
+    "techno/strobe_ping_pong.lfx": {
+      "relPath": "techno/strobe_ping_pong.lfx",
+      "checksum": "dd9cc0ba2446ddf9",
+      "size": 2731
+    },
+    "techno/strobe_storm.lfx": {
+      "relPath": "techno/strobe_storm.lfx",
+      "checksum": "2d79a52c8b9f8771",
+      "size": 4078
+    },
+    "techno/void_mist.lfx": {
+      "relPath": "techno/void_mist.lfx",
+      "checksum": "f3dc832723757dcf",
+      "size": 12034
+    },
+    "techno/wraht_of_the_titans.lfx": {
+      "relPath": "techno/wraht_of_the_titans.lfx",
+      "checksum": "9e072b432e4cdbe9",
+      "size": 4933
+    },
+    "_EFECTO_BASE.lfx": {
+      "relPath": "_EFECTO_BASE.lfx",
+      "checksum": "bb2dc35cc4c3aa62",
+      "size": 10509
+    }
+  }
+}

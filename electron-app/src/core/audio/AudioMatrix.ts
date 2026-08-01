@@ -418,6 +418,40 @@ export class AudioMatrix implements IAudioMatrix {
     this.evaluateActiveSource()
   }
 
+  /**
+   * WAVE 7140: STOP the currently active provider — actually halts native
+   * WASAPI capture (unlike releaseForce which only clears the forced flag
+   * and re-evaluates the priority chain, leaving the provider streaming).
+   *
+   * Called by the SystemsCheck OFF button to give the user absolute manual
+   * control over audio capture.
+   */
+  async stopActiveSource(): Promise<void> {
+    this.forcedSource = null
+    this.clearCrossfadeInterval()
+
+    if (this.hotSwapTimer) {
+      clearTimeout(this.hotSwapTimer)
+      this.hotSwapTimer = null
+    }
+    this.hotSwapPhase = 'none'
+    this.hotSwapTarget = null
+
+    const sourceToStop = this.activeSource
+    this.activeSource = null
+
+    if (sourceToStop) {
+      const provider = this.providers.get(sourceToStop)
+      if (provider && (provider.status.state === 'streaming' || provider.status.state === 'ready')) {
+        try {
+          await provider.stop()
+        } catch (e) {
+          console.error(`[AudioMatrix] WAVE 7140: Error stopping provider ${sourceToStop}:`, e)
+        }
+      }
+    }
+  }
+
   getSharedBuffer(): SharedArrayBuffer {
     return this.ringWriter.buffer
   }

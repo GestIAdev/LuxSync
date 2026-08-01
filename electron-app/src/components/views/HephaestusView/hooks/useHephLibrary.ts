@@ -30,6 +30,8 @@ export interface LibraryClip {
   author: string
   category: string
   tags?: string[]
+  vibeCompat?: string[]
+  isBuiltin?: boolean
   durationMs: number
   paramCount: number
   modifiedAt: number

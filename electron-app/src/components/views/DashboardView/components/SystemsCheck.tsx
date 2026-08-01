@@ -572,9 +572,13 @@ export const SystemsCheck: React.FC = () => {
           trinity.stopAudio()
           trinity.setSimulating(false)
         }
-        // WAVE 3403: Release AudioMatrix force when turning off
+        // WAVE 7140: stopActiveSource HALTS the native WASAPI provider —
+        // releaseForce() alone only clears the forced flag and re-evaluates
+        // the priority chain, leaving the provider streaming. We need both:
+        // stopActiveSource to kill native capture, releaseForce as belt-and-suspenders.
         const matrixApi = getAudioMatrixApi()
         if (matrixApi) {
+          await matrixApi.stopActiveSource?.().catch(() => {})
           matrixApi.releaseForce().catch(() => {})
         }
         setAudioSource('off')

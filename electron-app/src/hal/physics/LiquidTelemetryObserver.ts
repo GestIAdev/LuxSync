@@ -214,6 +214,8 @@ export class LiquidTelemetryObserver {
     }
 
     // Console log (same format as legacy BACK-TEL)
+    // WAVE 3424: Temporarily disabled for seek diagnostics — re-enable after debugging
+    /*
     console.log(
       `[BACK-TEL]` +
       ` sB:${frame.bands.subBass.toFixed(3)}` +
@@ -251,6 +253,7 @@ export class LiquidTelemetryObserver {
       ` wn:${(this._lastPhoton?.whiteNoiseScore ?? 0).toFixed(3)}` +
       ` flux:${(this._lastPhoton?.spectralFlux ?? 0).toFixed(4)}`
     )
+    */
 
     this._frameCount++
   }

@@ -141,41 +141,46 @@ export class LiquidTelemetryObserver {
             this._bufferHead = (this._bufferHead + 1) % LiquidTelemetryObserver.BUFFER_SIZE;
         }
         // Console log (same format as legacy BACK-TEL)
-        console.log(`[BACK-TEL]` +
-            ` sB:${frame.bands.subBass.toFixed(3)}` +
-            ` bass:${frame.bands.bass.toFixed(3)}` +
-            ` mid:${frame.bands.mid.toFixed(3)}` +
-            ` hM:${frame.bands.highMid.toFixed(3)}` +
-            ` tr:${frame.bands.treble.toFixed(3)}` +
-            ` | isK:${frame.isKick ? 1 : 0}` +
-            ` isKE:${frame.isKickEdge ? 1 : 0}` +
-            ` percRaw:${percRaw.toFixed(3)}` +
-            ` | morph:${frame.morphFactor.toFixed(3)}` +
-            ` brk:${frame.isBreakdown ? 1 : 0}` +
-            ` strict:${isStrict ? 1 : 0}` +
-            ` | bL_in:${highMidProbe.signal.toFixed(3)}` +
-            ` bL_gate:${highMidProbe.dynamicGate.toFixed(3)}` +
-            ` bL_sq:${highMidProbe.squelch.toFixed(3)}` +
-            ` bL_pow:${highMidProbe.kickPower.toFixed(3)}` +
-            ` bL_ign:${highMidProbe.ignited ? 1 : 0}` +
-            ` | bR_in:${snareProbe.signal.toFixed(3)}` +
-            ` bR_gate:${snareProbe.dynamicGate.toFixed(3)}` +
-            ` bR_sq:${snareProbe.squelch.toFixed(3)}` +
-            ` bR_pow:${snareProbe.kickPower.toFixed(3)}` +
-            ` bR_ign:${snareProbe.ignited ? 1 : 0}` +
-            ` | outFL:${frame.frontLeft.toFixed(3)}` +
-            ` outFR:${frame.frontRight.toFixed(3)}` +
-            ` outFPar:${result.frontParIntensity.toFixed(3)}` +
-            ` outBL:${frame.backLeft.toFixed(3)}` +
-            ` outBR:${frame.backRight.toFixed(3)}` +
-            ` outPar:${result.backParIntensity.toFixed(3)}` +
-            ` | strA:${photonStrobe?.active ? 1 : 0}` +
-            ` strHz:${(photonStrobe?.rateHz ?? 0).toFixed(1)}` +
-            ` strDuty:${(photonStrobe?.duty ?? 0).toFixed(2)}` +
-            ` strDrv:${(photonStrobe?.drive ?? 0).toFixed(3)}` +
-            ` td:${(this._lastPhoton?.transientDensity ?? 0).toFixed(3)}` +
-            ` wn:${(this._lastPhoton?.whiteNoiseScore ?? 0).toFixed(3)}` +
-            ` flux:${(this._lastPhoton?.spectralFlux ?? 0).toFixed(4)}`);
+        // WAVE 3424: Temporarily disabled for seek diagnostics — re-enable after debugging
+        /*
+        console.log(
+          `[BACK-TEL]` +
+          ` sB:${frame.bands.subBass.toFixed(3)}` +
+          ` bass:${frame.bands.bass.toFixed(3)}` +
+          ` mid:${frame.bands.mid.toFixed(3)}` +
+          ` hM:${frame.bands.highMid.toFixed(3)}` +
+          ` tr:${frame.bands.treble.toFixed(3)}` +
+          ` | isK:${frame.isKick ? 1 : 0}` +
+          ` isKE:${frame.isKickEdge ? 1 : 0}` +
+          ` percRaw:${percRaw.toFixed(3)}` +
+          ` | morph:${frame.morphFactor.toFixed(3)}` +
+          ` brk:${frame.isBreakdown ? 1 : 0}` +
+          ` strict:${isStrict ? 1 : 0}` +
+          ` | bL_in:${highMidProbe.signal.toFixed(3)}` +
+          ` bL_gate:${highMidProbe.dynamicGate.toFixed(3)}` +
+          ` bL_sq:${highMidProbe.squelch.toFixed(3)}` +
+          ` bL_pow:${highMidProbe.kickPower.toFixed(3)}` +
+          ` bL_ign:${highMidProbe.ignited ? 1 : 0}` +
+          ` | bR_in:${snareProbe.signal.toFixed(3)}` +
+          ` bR_gate:${snareProbe.dynamicGate.toFixed(3)}` +
+          ` bR_sq:${snareProbe.squelch.toFixed(3)}` +
+          ` bR_pow:${snareProbe.kickPower.toFixed(3)}` +
+          ` bR_ign:${snareProbe.ignited ? 1 : 0}` +
+          ` | outFL:${frame.frontLeft.toFixed(3)}` +
+          ` outFR:${frame.frontRight.toFixed(3)}` +
+          ` outFPar:${result.frontParIntensity.toFixed(3)}` +
+          ` outBL:${frame.backLeft.toFixed(3)}` +
+          ` outBR:${frame.backRight.toFixed(3)}` +
+          ` outPar:${result.backParIntensity.toFixed(3)}` +
+          ` | strA:${photonStrobe?.active ? 1 : 0}` +
+          ` strHz:${(photonStrobe?.rateHz ?? 0).toFixed(1)}` +
+          ` strDuty:${(photonStrobe?.duty ?? 0).toFixed(2)}` +
+          ` strDrv:${(photonStrobe?.drive ?? 0).toFixed(3)}` +
+          ` td:${(this._lastPhoton?.transientDensity ?? 0).toFixed(3)}` +
+          ` wn:${(this._lastPhoton?.whiteNoiseScore ?? 0).toFixed(3)}` +
+          ` flux:${(this._lastPhoton?.spectralFlux ?? 0).toFixed(4)}`
+        )
+        */
         this._frameCount++;
     }
     exportToFile(outputPath) {

@@ -39,6 +39,7 @@ import { useNavigationStore } from '../stores/navigationStore'
 import type { TabId } from '../stores/navigationStore'
 import { useEffectsStore } from '../stores/effectsStore'
 import { useStageStore } from '../stores/stageStore'
+import type { FixtureGroup } from '../core/stage/ShowFileV2'
 import type {
   ActionPayload,
   ResolvedAction,
@@ -211,6 +212,9 @@ function dispatchSelAction(actionId: string): boolean {
   // sel-assign-group-N : RTS-style group assignment.
   // Current selection → assigned to group N (create if not exists, replace if exists).
   // Ctrl+1..9 in the `cmd` layer triggers this.
+  // WAVE 2526: Si el grupo existente es del sistema (isSystem: true), se convierte
+  // a grupo de usuario (isSystem: false) para que ensureSystemGroups no lo
+  // sobreescriba al recargar el show.
   const assignMatch = sub.match(/^assign-group-(\d+)$/)
   if (assignMatch) {
     const groupIndex = parseInt(assignMatch[1], 10)
@@ -225,8 +229,14 @@ function dispatchSelAction(actionId: string): boolean {
     const byIndex  = groups[groupIndex - 1]
     const existing = byHotkey ?? byIndex
     if (existing !== undefined) {
-      stageState.updateGroup(existing.id, { fixtureIds: selectedIds })
-      console.log(`[KeyForge] ✅ Group ${groupIndex} updated (${selectedIds.length} fixtures)`)
+      // WAVE 2526: Si es grupo del sistema, convertirlo a usuario para persistir
+      const updates: Partial<FixtureGroup> = { fixtureIds: selectedIds }
+      if (existing.isSystem) {
+        updates.isSystem = false
+        updates.hotkey = String(groupIndex)
+      }
+      stageState.updateGroup(existing.id, updates)
+      console.log(`[KeyForge] ✅ Group ${groupIndex} updated (${selectedIds.length} fixtures)${existing.isSystem ? ' [system→user]' : ''}`)
     } else {
       const created = stageState.createGroup(`Group ${groupIndex}`, selectedIds)
       stageState.updateGroup(created.id, { hotkey: String(groupIndex), order: groupIndex - 1 })

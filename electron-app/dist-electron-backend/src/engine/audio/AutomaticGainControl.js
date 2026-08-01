@@ -50,11 +50,11 @@ export class AutomaticGainControl {
      */
     update(rawEnergy, rawBass, rawMid, rawTreble) {
         this.frameCount++;
-        // Clamp inputs
-        const energy = Math.max(0, Math.min(1, rawEnergy));
-        const bass = Math.max(0, Math.min(1, rawBass));
-        const mid = Math.max(0, Math.min(1, rawMid));
-        const treble = Math.max(0, Math.min(1, rawTreble));
+        // Clamp inputs — NaN/Infinity → 0 (Math.max(0, NaN) = NaN, so must guard explicitly)
+        const energy = Number.isFinite(rawEnergy) ? Math.max(0, Math.min(1, rawEnergy)) : 0;
+        const bass = Number.isFinite(rawBass) ? Math.max(0, Math.min(1, rawBass)) : 0;
+        const mid = Number.isFinite(rawMid) ? Math.max(0, Math.min(1, rawMid)) : 0;
+        const treble = Number.isFinite(rawTreble) ? Math.max(0, Math.min(1, rawTreble)) : 0;
         // ═══════════════════════════════════════════════════════════════════
         // PASO 1: PEAK TRACKING (Subida instantánea, bajada lenta)
         // ═══════════════════════════════════════════════════════════════════

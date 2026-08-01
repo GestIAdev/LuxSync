@@ -62,4 +62,11 @@ export interface DMXSendStrategy {
    * Nadie sobrevive al cambio de show.
    */
   resetBuffer?(log: (msg: string) => void): void
+
+  /**
+   * Health check para self-managed strategies. Returns true if the strategy
+   * has an open serial port and an active output loop.
+   * The driver's watchdog calls this to detect dead self-managed strategies.
+   */
+  isAlive?(): boolean
 }

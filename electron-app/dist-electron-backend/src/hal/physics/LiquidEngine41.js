@@ -39,11 +39,24 @@ export class LiquidEngine41 extends LiquidEngineBase {
         // default (latino/pop/etc.): Front = max(subBass, kick), Back = max(snare, highMid).
         const isStrict = this.profile.layout41Strategy === 'strict-split';
         const frontParTarget = isStrict ? frontRight : Math.max(frontLeft, frontRight);
-        // RELEASE ENVELOPE: Fast attack (jump to target), slow release (decay at 0.88/frame).
-        // Prevents mini-strobo on kick channel — bridges the gap between kick frames
-        // with smooth fading instead of 1-frame flash + 19-frame darkness.
-        this._frontParSmooth = Math.max(frontParTarget, this._frontParSmooth * LiquidEngine41.FRONTPAR_RELEASE);
-        const frontPar = this._frontParSmooth;
+        // WAVE 2520: ANTI-MELAZA — strict-split NO aplica release smoothing.
+        // El smoothing 0.88 original tendía un puente entre frames de kick para
+        // hardware DMX, pero con envKick decayBase=0.08 (corte limpio de 2-3 frames)
+        // ese puente es REDUNDANTE y se convierte en inercia: aplasta los redobles
+        // a alta velocidad (16th/32th notes) arrastrando pulso residual.
+        // 'default' mantiene el smoothing porque max(subBass,kick) sí se beneficia
+        // del bridge (subBass es continuo, kick es impulsivo).
+        let frontPar;
+        if (isStrict) {
+            frontPar = frontParTarget;
+        }
+        else {
+            // RELEASE ENVELOPE: Fast attack (jump to target), slow release (decay at 0.88/frame).
+            // Prevents mini-strobo on kick channel — bridges the gap between kick frames
+            // with smooth fading instead of 1-frame flash + 19-frame darkness.
+            this._frontParSmooth = Math.max(frontParTarget, this._frontParSmooth * LiquidEngine41.FRONTPAR_RELEASE);
+            frontPar = this._frontParSmooth;
+        }
         const backPar = Math.max(backLeft, backRight); // FIX: strict-split solo afecta front; back siempre usa ambos canales
         const outMoverL = moverLeft;
         const outMoverR = moverRight;

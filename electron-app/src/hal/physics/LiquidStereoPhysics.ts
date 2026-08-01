@@ -182,6 +182,10 @@ export class LiquidStereoPhysics {
   // Kick edge detection state
   private _lastKickTime = 0
   private _kickIntervalMs = 0
+  // WAVE 8010: Hard cooldown after kick edge fires — previene double-trigger
+  // cuando isKick del GodEarFFT oscila (true→false→true) dentro del mismo beat.
+  private _lastKickEdgeTime = 0
+  private static readonly KICK_EDGE_COOLDOWN_MS = 200
 
   // Kick Veto state
   private _kickVetoFrames = 0
@@ -280,7 +284,14 @@ export class LiquidStereoPhysics {
       this._kickIntervalMs = now - this._lastKickTime
     }
     if (isKick) this._lastKickTime = now
-    const isKickEdge = isKick && this._kickIntervalMs > p.kickEdgeMinInterval
+    // WAVE 8010: Doble gate — intervalo + cooldown hard. El intervalo solo
+    // compara con el último frame isKick=true, pero si el flag oscila con un
+    // gap >180ms dentro del mismo beat, el intervalo lo deja pasar. El cooldown
+    // de 200ms garantiza un único disparo por beat.
+    const isKickEdge = isKick
+      && this._kickIntervalMs > p.kickEdgeMinInterval
+      && (now - this._lastKickEdgeTime > LiquidStereoPhysics.KICK_EDGE_COOLDOWN_MS)
+    if (isKickEdge) this._lastKickEdgeTime = now
 
     const kickSignal = isKickEdge ? bands.bass : 0
     let frontRight = this.envKick.process(kickSignal, morphFactor, now, isBreakdown)
@@ -309,7 +320,14 @@ export class LiquidStereoPhysics {
     const currentTreble = bands.treble
     const trebleDelta = Math.max(0, currentTreble - this.lastTreble)
     this.lastTreble = currentTreble
-    const rawRight = trebleDelta * 4.0
+
+    // WAVE 8010: TONAL GATE — spectral flatness separa percusión de sintes.
+    // flatness alta = ruido (percusión, cymbals) → pasa sin penalty.
+    // flatness baja = tonal (sintes, voces) → penalty escalado elimina el bleed.
+    const tonalPenalty = flatness < 0.15
+      ? (flatness / 0.15)  // 0.0→0x, 0.15→1x
+      : 1.0
+    const rawRight = trebleDelta * 4.0 * tonalPenalty
 
     let trImp = 0.0
     if (rawRight > p.percGate) {
@@ -478,6 +496,7 @@ export class LiquidStereoPhysics {
     this.inSilence = false
     this.strobeActive = false
     this.strobeStartTime = 0
+    this._lastKickEdgeTime = 0
   }
 
   // ─────────────────────────────────────────────────────────────────────

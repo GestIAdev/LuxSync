@@ -1,201 +1,236 @@
-﻿{
-    "$schema":  "luxsync.lfx/3.0",
-    "clip":  {
-                 "id":  "gatling_raid",
-                 "name":  "Gatling Raid",
-                 "author":  "LuxSync Factory",
-                 "category":  "physical",
-                 "tags":  [
-                              "gatling",
-                              "machine-gun",
-                              "peak",
-                              "techno"
-                          ],
-                 "vibeCompat":  [
-                                    "techno-club"
-                                ],
-                 "durationMs":  1760,
-                 "effectType":  "heph_custom",
-                 "cognitiveDNA":  {
-                                      "genome":  {
-                                                     "aggression":  0.93,
-                                                     "chaos":  0.75,
-                                                     "organicity":  0.1
-                                                 },
-                                      "textureAffinity":  "dirty",
-                                      "compatibleVibes":  [
-                                                              "techno-club"
-                                                          ],
-                                      "validSections":  [
-                                                            "drop",
-                                                            "peak"
-                                                        ],
-                                      "energyZone":  {
-                                                         "min":  "intense",
-                                                         "max":  "peak"
-                                                     },
-                                      "aggressionRange":  {
-                                                              "min":  0.8,
-                                                              "max":  1
-                                                          },
-                                      "spatialBehavior":  "static",
-                                      "pressureRange":  {
-                                                            "min":  0.5,
-                                                            "max":  1
-                                                        }
-                                  },
-                 "simulationMeta":  {
-                                        "beautyWeights":  {
-                                                              "base":  0.84,
-                                                              "energyMultiplier":  1.05,
-                                                              "vibeBonus":  0.05
-                                                          },
-                                        "gpuCost":  0.3,
-                                        "fatigueImpact":  0.8,
-                                        "minDurationMs":  1760,
-                                        "cooldownMs":  15000,
-                                        "isStrobe":  true,
-                                        "isDivineCandidate":  true,
-                                        "isHeavyCandidate":  true,
-                                        "zScoreGuards":  {
-                                                             "requireRising":  true,
-                                                             "minimumZ":  2.2,
-                                                             "minimumEnergy":  0.7
-                                                         }
-                                    },
-                 "tracks":  [
-                                {
-                                    "id":  "gatling-color-front-red",
-                                    "paramId":  "color",
-                                    "zones":  [
-                                                  "front"
-                                              ],
-                                    "blendMode":  "replace",
-                                    "curve":  {
-                                                  "paramId":  "color",
-                                                  "valueType":  "color",
-                                                  "defaultValue":  {
-                                                                       "h":  0,
-                                                                       "s":  100,
-                                                                       "l":  50
-                                                                   },
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  {
-                                                                                      "h":  0,
-                                                                                      "s":  100,
-                                                                                      "l":  50
-                                                                                  },
-                                                                        "interpolation":  "hold"
-                                                                    }
-                                                                ],
-                                                  "range":  [
-                                                                0,
-                                                                360
-                                                            ]
-                                              }
-                                },
-                                {
-                                    "id":  "gatling-color-back-cyan",
-                                    "paramId":  "color",
-                                    "zones":  [
-                                                  "back"
-                                              ],
-                                    "blendMode":  "replace",
-                                    "curve":  {
-                                                  "paramId":  "color",
-                                                  "valueType":  "color",
-                                                  "defaultValue":  {
-                                                                       "h":  185,
-                                                                       "s":  100,
-                                                                       "l":  50
-                                                                   },
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  {
-                                                                                      "h":  185,
-                                                                                      "s":  100,
-                                                                                      "l":  50
-                                                                                  },
-                                                                        "interpolation":  "hold"
-                                                                    }
-                                                                ],
-                                                  "range":  [
-                                                                0,
-                                                                360
-                                                            ]
-                                              }
-                                },
-                                {
-                                    "id":  "gatling-intensity",
-                                    "paramId":  "intensity",
-                                    "zones":  [
-                                                  "front",
-                                                  "back"
-                                              ],
-                                    "blendMode":  "replace",
-                                    "curve":  {
-                                                  "paramId":  "intensity",
-                                                  "valueType":  "number",
-                                                  "defaultValue":  0,
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  1,
-                                                                        "interpolation":  "hold"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  1560,
-                                                                        "value":  1,
-                                                                        "interpolation":  "hold"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  1760,
-                                                                        "value":  0,
-                                                                        "interpolation":  "linear"
-                                                                    }
-                                                                ],
-                                                  "range":  [
-                                                                0,
-                                                                1
-                                                            ]
-                                              }
-                                },
-                                {
-                                    "id":  "movers-blackout",
-                                    "paramId":  "intensity",
-                                    "zones":  [
-                                                  "all-movers",
-                                                  "air"
-                                              ],
-                                    "blendMode":  "replace",
-                                    "curve":  {
-                                                  "paramId":  "intensity",
-                                                  "valueType":  "number",
-                                                  "defaultValue":  0,
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  0,
-                                                                        "interpolation":  "hold"
-                                                                    }
-                                                                ],
-                                                  "range":  [
-                                                                0,
-                                                                1
-                                                            ]
-                                              }
-                                }
-                            ],
-                 "spatialZones":  [
-                                      "front",
-                                      "back",
-                                      "all-movers",
-                                      "air"
-                                  ],
-                 "schemaVersion":  "3.0"
-             },
-    "checksum":  "fb359596846326cee5b50d22898f55a6ee07b1c4893e20bfdc4747978462a014"
+{
+  "$schema": "luxsync.lfx/3.0",
+  "clip": {
+    "id": "gatling_raid",
+    "name": "Gatling Raid",
+    "author": "LuxSync Factory",
+    "category": "physical",
+    "tags": [
+      "gatling",
+      "machine-gun",
+      "peak",
+      "techno"
+    ],
+    "vibeCompat": [
+      "techno-club"
+    ],
+    "durationMs": 1760,
+    "effectType": "heph_custom",
+    "cognitiveDNA": {
+      "genome": {
+        "aggression": 0.93,
+        "chaos": 0.75,
+        "organicity": 0.1
+      },
+      "textureAffinity": "dirty",
+      "compatibleVibes": [
+        "techno-club"
+      ],
+      "validSections": [
+        "drop",
+        "peak"
+      ],
+      "energyZone": {
+        "min": "intense",
+        "max": "peak"
+      },
+      "aggressionRange": {
+        "min": 0.8,
+        "max": 1
+      },
+      "spatialBehavior": "static",
+      "pressureRange": {
+        "min": 0.5,
+        "max": 1
+      }
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.84,
+        "energyMultiplier": 1.05,
+        "vibeBonus": 0.05
+      },
+      "gpuCost": 0.3,
+      "fatigueImpact": 0.8,
+      "minDurationMs": 1760,
+      "cooldownMs": 15000,
+      "isStrobe": true,
+      "isDivineCandidate": true,
+      "isHeavyCandidate": true,
+      "zScoreGuards": {
+        "requireRising": true,
+        "minimumZ": 2.2,
+        "minimumEnergy": 0.7
+      }
+    },
+    "tracks": [
+      {
+        "id": "gatling-color-front-red",
+        "paramId": "color",
+        "zones": [
+          "front"
+        ],
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "defaultValue": {
+            "h": 0,
+            "s": 100,
+            "l": 50
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 0,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "range": [
+            0,
+            360
+          ]
+        }
+      },
+      {
+        "id": "gatling-color-back-cyan",
+        "paramId": "color",
+        "zones": [
+          "back"
+        ],
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "defaultValue": {
+            "h": 185,
+            "s": 100,
+            "l": 50
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 185,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "range": [
+            0,
+            360
+          ]
+        }
+      },
+      {
+        "id": "gatling-intensity",
+        "paramId": "intensity",
+        "zones": [
+          "front",
+          "back"
+        ],
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1560,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1760,
+              "value": 0,
+              "interpolation": "linear"
+            }
+          ],
+          "range": [
+            0,
+            1
+          ]
+        }
+      },
+      {
+        "id": "movers-blackout",
+        "paramId": "intensity",
+        "zones": [
+          "all-movers",
+          "air"
+        ],
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ],
+          "range": [
+            0,
+            1
+          ]
+        }
+      },
+      {
+        "id": "49abfffd-9d57-449d-987a-58fdd042eee2",
+        "paramId": "strobe",
+        "zones": [
+          "all"
+        ],
+        "curve": {
+          "paramId": "strobe",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 1,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0.95,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1760,
+              "value": 0.95,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      }
+    ],
+    "spatialZones": [
+      "front",
+      "back",
+      "all-movers",
+      "air"
+    ],
+    "schemaVersion": "3.0",
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 25,
+      "containsRapidFlash": true,
+      "communityTrusted": false
+    }
+  },
+  "checksum": "sha256:e8a6bf60fc2846e83dbc480b3572297faa0caf06bedc3ae6e60e22a84a1ce204"
 }

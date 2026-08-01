@@ -583,13 +583,23 @@ export function serializeHephClip(clip: HephAutomationClipV3): HephAutomationCli
     phaseOverrides: track.phaseOverrides ? JSON.parse(JSON.stringify(track.phaseOverrides)) : undefined,
   }));
 
+  // WAVE 2524: Derivar vibeCompat desde cognitiveDNA.compatibleVibes si el clip
+  // tiene DNA. El DnaRail guarda los vibes bridged (techno-club, fiesta-latina)
+  // en cognitiveDNA.compatibleVibes, pero el clip.vibeCompat se quedaba vacío
+  // porque nunca se sincronizaba. Ahora, al serializar, si cognitiveDNA tiene
+  // compatibleVibes, estos se usan como fuente de verdad para vibeCompat.
+  const dnaVibes = clip.cognitiveDNA?.compatibleVibes
+  const resolvedVibeCompat = Array.isArray(dnaVibes) && dnaVibes.length > 0
+    ? [...dnaVibes]
+    : (Array.isArray(clip.vibeCompat) ? [...clip.vibeCompat] : [])
+
   return {
     id: clip.id,
     name: clip.name,
     author: clip.author,
     category: clip.category,
     tags: Array.isArray(clip.tags) ? [...clip.tags] : [],
-    vibeCompat: Array.isArray(clip.vibeCompat) ? [...clip.vibeCompat] : [],
+    vibeCompat: resolvedVibeCompat,
     spatialZones: Array.isArray(clip.spatialZones) ? [...clip.spatialZones] : [],
     mixBus: clip.mixBus,
     priority: clip.priority,

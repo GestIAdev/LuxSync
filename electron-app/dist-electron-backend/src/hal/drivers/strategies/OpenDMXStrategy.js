@@ -49,8 +49,14 @@ export class OpenDMXStrategy {
         this.dmxBuffer = Buffer.alloc(513, 0);
         this.isSending = false;
         this.isRunning = false;
+        this._destroyed = false;
+        this._portPath = null;
+        this._reconnectAttempts = 0;
+        this._reconnecting = false;
+        this._portOpening = false;
         this.lastSniffLog = 0;
-        this.lastPayloadLog = 0;
+        this._sendWatchdog = null;
+        this._sendStartedAt = 0;
     }
     sniff(log, msg) {
         const now = Date.now();
@@ -58,21 +64,6 @@ export class OpenDMXStrategy {
             log(`[SNIFFER] ${msg}`);
             this.lastSniffLog = now;
         }
-    }
-    logPayload(log) {
-        const now = Date.now();
-        if (now - this.lastPayloadLog < 1000)
-            return;
-        this.lastPayloadLog = now;
-        let nonZero = 0;
-        for (let i = 0; i < this.dmxBuffer.length; i++) {
-            if (this.dmxBuffer[i] !== 0)
-                nonZero++;
-        }
-        const head = Array.from(this.dmxBuffer.subarray(1, 6))
-            .map(v => v.toString().padStart(3, ' '))
-            .join(',');
-        log(`[SNIFFER] PAYLOAD DIAG: nonZero=${nonZero}/513 | ch1-5=[${head}]`);
     }
     resetBuffer(log) {
         this.lastFrameId = -1;
@@ -83,22 +74,136 @@ export class OpenDMXStrategy {
             log('[OpenDMX] Conexion previa detectada — destruyendo...');
             await this.destroy(log);
         }
+        this._destroyed = false;
+        this._portPath = portPath;
+        this._reconnectAttempts = 0;
         const sab = getDmxSab();
         this.reader = new DmxUniverseReader(sab);
         this.universe = universe;
         this.lastFrameId = -1;
         log(`[OpenDMX] Abriendo ${portPath} (universo ${universe}, ${DMX_OUTPUT_HZ}Hz)`);
+        const portOk = this._openPort(portPath, log);
+        // 🛡️ WAVE 8010: WATCHDOG — si isSending queda en true > 300ms, forzar reset.
+        // Esto cubre el caso donde un callback de port.update/port.write nunca firea.
+        this._sendWatchdog = setInterval(() => {
+            if (this._destroyed)
+                return;
+            if (this.isSending && this._sendStartedAt > 0) {
+                const stuckMs = Date.now() - this._sendStartedAt;
+                if (stuckMs > 300) {
+                    log(`[OpenDMX] 🔥 WATCHDOG: isSending stuck for ${stuckMs}ms — force resetting`);
+                    this.isSending = false;
+                    if (this.port?.isOpen) {
+                        setTimeout(() => this.runTick(log), 25);
+                    }
+                    else {
+                        this._attemptReconnect(log);
+                    }
+                }
+            }
+            // If port is closed but NOT destroyed, force reconnect
+            if (!this.port?.isOpen && !this.isSending && !this._reconnecting && !this._portOpening) {
+                this._attemptReconnect(log);
+            }
+        }, 100);
+        if (portOk && this.port?.isOpen) {
+            this.startOutputLoop(log);
+            log(`[OpenDMX] Puerto abierto — loop activo @${DMX_OUTPUT_HZ}Hz`);
+        }
+        else if (portOk) {
+            log(`[OpenDMX] Puerto en apertura — loop iniciará cuando el puerto esté listo`);
+        }
+        else {
+            log(`[OpenDMX] ⚠️ Puerto NO abierto — loop en modo reconexión automática`);
+        }
+        return true;
+    }
+    _openPort(portPath, log) {
         try {
-            this.port = new SerialPort({ path: portPath, baudRate: DMX_BAUD, dataBits: 8, stopBits: 2, parity: 'none' });
+            this.port = new SerialPort({ path: portPath, baudRate: DMX_BAUD, dataBits: 8, stopBits: 2, parity: 'none', autoOpen: false });
         }
         catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
-            log(`[OpenDMX] ERROR al abrir SerialPort: ${msg}`);
+            log(`[OpenDMX] ERROR al crear SerialPort: ${msg}`);
             return false;
         }
-        this.startOutputLoop(log);
-        log(`[OpenDMX] Puerto abierto — loop activo @${DMX_OUTPUT_HZ}Hz`);
+        this.port.on('error', (err) => {
+            log(`[OpenDMX] ⚠️ Port error event: ${err.message}`);
+            this.isSending = false;
+            if (!this._destroyed)
+                setTimeout(() => this.runTick(log), 50);
+        });
+        this.port.on('close', () => {
+            log(`[OpenDMX] ⚠️ Port closed unexpectedly — will auto-reconnect...`);
+            this.isSending = false;
+            if (!this._destroyed) {
+                setTimeout(() => this._attemptReconnect(log), 200);
+            }
+        });
+        // Explicit open with callback — ensures we know when the port is ready
+        this._portOpening = true;
+        this.port.open((openErr) => {
+            this._portOpening = false;
+            if (openErr) {
+                log(`[OpenDMX] ⚠️ Port open failed: ${openErr.message} — will retry via watchdog`);
+                return;
+            }
+            log(`[OpenDMX] ✅ Port opened successfully: ${portPath}`);
+            // Kick the loop now that the port is ready
+            if (!this._destroyed)
+                this.startOutputLoop(log);
+        });
         return true;
+    }
+    _attemptReconnect(log) {
+        if (this._destroyed)
+            return;
+        if (this._portOpening)
+            return;
+        if (this.port?.isOpen) {
+            // Port is already open — if loop isn't running, restart it
+            if (!this.isSending) {
+                log(`[OpenDMX] 🔄 Port already open — restarting output loop`);
+                this.startOutputLoop(log);
+            }
+            return;
+        }
+        if (!this._portPath)
+            return;
+        if (this._reconnecting)
+            return;
+        this._reconnecting = true;
+        this._reconnectAttempts++;
+        const delay = Math.min(2000, 200 + this._reconnectAttempts * 200);
+        log(`[OpenDMX] 🔄 Reconnect attempt ${this._reconnectAttempts} in ${delay}ms...`);
+        setTimeout(() => {
+            this._reconnecting = false;
+            if (this._destroyed)
+                return;
+            if (this.port?.isOpen) {
+                log(`[OpenDMX] ✅ Port recovered on attempt ${this._reconnectAttempts} — loop reactivado`);
+                this._reconnectAttempts = 0;
+                this.isSending = false;
+                this.startOutputLoop(log);
+                return;
+            }
+            if (this.port) {
+                try {
+                    this.port.close();
+                }
+                catch { }
+                this.port = null;
+            }
+            const ok = this._openPort(this._portPath, log);
+            if (ok) {
+                log(`[OpenDMX] ✅ Port recovering on attempt ${this._reconnectAttempts} — waiting for open callback`);
+                this._reconnectAttempts = 0;
+                this.isSending = false;
+            }
+            else {
+                log(`[OpenDMX] ❌ Reconnect attempt ${this._reconnectAttempts} failed — will retry...`);
+            }
+        }, delay);
     }
     startOutputLoop(log) {
         this.isSending = false;
@@ -108,20 +213,15 @@ export class OpenDMXStrategy {
         setTimeout(tick, 0);
     }
     runTick(log) {
-        // const sniff = (msg: string) => this.sniff(log, msg)
-        // sniff('runTick: START')
-        if (!this.isRunning) { /* sniff('runTick: !isRunning') */
+        if (this._destroyed)
             return;
-        }
-        if (!this.port?.isOpen) { /* sniff('runTick: !port.isOpen, retrying...') */
+        if (!this.port?.isOpen)
+            return; // Port closed — watchdog & close handler manage reconnect
+        if (!this.reader) {
             setTimeout(() => this.runTick(log), 25);
             return;
         }
-        if (!this.reader) { /* sniff('runTick: !reader, retrying...') */
-            setTimeout(() => this.runTick(log), 25);
-            return;
-        }
-        if (this.isSending) { /* sniff('runTick: isSending (waiting)') */
+        if (this.isSending) {
             setTimeout(() => this.runTick(log), 5);
             return;
         }
@@ -141,68 +241,101 @@ export class OpenDMXStrategy {
             // sniff('runTick: SAB No new frame, reusing old buffer.')
         }
         this.isSending = true;
-        // this.logPayload(log)
-        // sniff('runTick: Calling sendFrame')
+        this._sendStartedAt = Date.now();
         this.sendFrame(log);
     }
     sendFrame(log) {
-        // const sniff = (msg: string) => this.sniff(log, msg)
-        // sniff('sendFrame: START')
         const port = this.port;
-        if (!port?.isOpen) { /* sniff('sendFrame: !port.isOpen') */
+        if (!port?.isOpen) {
             this.isSending = false;
+            this._attemptReconnect(log);
             return;
         }
-        // sniff('sendFrame: Calling port.update for BREAK_BAUD')
-        port.update({ baudRate: BREAK_BAUD }, (err) => {
-            if (err) {
-                log(`[OpenDMX] ERROR BREAK update: ${err.message}`);
-                this.isSending = false;
-                return;
-            }
-            if (!this.isRunning) { /* sniff('sendFrame: !isRunning in BREAK callback') */
-                this.isSending = false;
-                return;
-            }
-            // sniff('sendFrame: BREAK_BAUD updated, writing 0x00')
-            port.write(Buffer.from([0x00]), (writeErr1) => {
-                if (writeErr1) {
-                    log(`[OpenDMX] ERROR BREAK write: ${writeErr1.message}`);
+        const scheduleNext = () => {
+            this.isSending = false;
+            if (!this._destroyed)
+                setTimeout(() => this.runTick(log), 25);
+        };
+        // PASO 1: Bajar baud para generar BREAK
+        try {
+            port.update({ baudRate: BREAK_BAUD }, (err) => {
+                if (err) {
+                    log(`[OpenDMX] ERROR BREAK update: ${err.message}`);
+                    scheduleNext();
+                    return;
                 }
-                spinWaitNs(BREAK_HOLD_NS);
-                // sniff('sendFrame: Calling port.update for DMX_BAUD')
-                port.update({ baudRate: DMX_BAUD }, (err) => {
-                    if (err) {
-                        log(`[OpenDMX] ERROR MAB update: ${err.message}`);
-                        this.isSending = false;
-                        return;
-                    }
-                    if (!this.isRunning) { /* sniff('sendFrame: !isRunning in MAB callback') */
-                        this.isSending = false;
-                        return;
-                    }
-                    // sniff('sendFrame: DMX_BAUD updated, spinning for MAB')
-                    spinWaitNs(MAB_NS);
-                    // sniff('sendFrame: Writing DMX payload')
-                    port.write(this.dmxBuffer, (writeErr) => {
-                        if (writeErr)
-                            log(`[OpenDMX] ERROR payload: ${writeErr.message}`);
-                        this.isSending = false;
-                        // sniff('sendFrame: Payload written, scheduling next tick')
-                        if (this.isRunning)
-                            setTimeout(() => this.runTick(log), 25);
+                if (this._destroyed) {
+                    this.isSending = false;
+                    return;
+                }
+                // PASO 2: Emitir 0x00 → BREAK
+                try {
+                    port.write(Buffer.from([0x00]), (writeErr1) => {
+                        if (writeErr1) {
+                            log(`[OpenDMX] ERROR BREAK write: ${writeErr1.message}`);
+                            scheduleNext();
+                            return;
+                        }
+                        spinWaitNs(BREAK_HOLD_NS);
+                        // PASO 3: Volver a 250000 baud
+                        try {
+                            port.update({ baudRate: DMX_BAUD }, (err2) => {
+                                if (err2) {
+                                    log(`[OpenDMX] ERROR MAB update: ${err2.message}`);
+                                    scheduleNext();
+                                    return;
+                                }
+                                if (this._destroyed) {
+                                    this.isSending = false;
+                                    return;
+                                }
+                                spinWaitNs(MAB_NS);
+                                // PASO 4: Emitir los 513 bytes del universo DMX
+                                try {
+                                    port.write(this.dmxBuffer, (writeErr) => {
+                                        if (writeErr)
+                                            log(`[OpenDMX] ERROR payload: ${writeErr.message}`);
+                                        scheduleNext();
+                                    });
+                                }
+                                catch (syncErr) {
+                                    log(`[OpenDMX] SYNC THROW payload write: ${syncErr instanceof Error ? syncErr.message : String(syncErr)}`);
+                                    scheduleNext();
+                                }
+                            });
+                        }
+                        catch (syncErr) {
+                            log(`[OpenDMX] SYNC THROW MAB update: ${syncErr instanceof Error ? syncErr.message : String(syncErr)}`);
+                            scheduleNext();
+                        }
                     });
-                });
+                }
+                catch (syncErr) {
+                    log(`[OpenDMX] SYNC THROW BREAK write: ${syncErr instanceof Error ? syncErr.message : String(syncErr)}`);
+                    scheduleNext();
+                }
             });
-        });
+        }
+        catch (syncErr) {
+            log(`[OpenDMX] SYNC THROW BREAK update: ${syncErr instanceof Error ? syncErr.message : String(syncErr)}`);
+            scheduleNext();
+        }
     }
     async send(_port, _buffer, _universe, _log) {
         // No-op: el loop interno lee directamente del SAB.
         // TickEngine ya escribió en el SAB via DmxUniverseWriter.commitFrame().
     }
+    isAlive() {
+        return !this._destroyed && this.port?.isOpen === true;
+    }
     async destroy(log) {
+        this._destroyed = true;
         this.isRunning = false;
         this.isSending = false;
+        if (this._sendWatchdog) {
+            clearInterval(this._sendWatchdog);
+            this._sendWatchdog = null;
+        }
         if (this.port) {
             try {
                 this.port.close();

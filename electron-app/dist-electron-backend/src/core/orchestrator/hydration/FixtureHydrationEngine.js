@@ -271,8 +271,6 @@ export class FixtureHydrationEngine {
         for (const { deviceDef, forgeGraph } of staged) {
             this.registerAetherDevice(deviceDef, forgeGraph);
             registered++;
-            // Per-fixture hydration log silenced — fires 16× per setFixtures call
-            // Tungsten compound zones diagnostic silenced
         }
         ctx.zoneNodeRouter = new ZoneNodeRouter(ctx.aetherGraph);
         ctx.seleneAetherAdapter = new SeleneAetherAdapter(ctx.zoneNodeRouter);

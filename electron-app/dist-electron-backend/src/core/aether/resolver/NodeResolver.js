@@ -445,26 +445,6 @@ export class NodeResolver {
      */
     resolve(arbitrated) {
         this._resolveFrameIndex++;
-        // 🚨 WAVE 4735.5 AUTO-DIAGNOSTIC: DISABLED — no hardware connected in dev,
-        // UI simulates lights by bypassing the output gate. This warning was
-        // irrelevant noise that confused the architect AI. Goodbye. 👋
-        // if (this._safetyMiddleware && this._resolveFrameIndex % 200 === 0) {
-        //   const gateOpen = this._safetyMiddleware.isOutputEnabled()
-        //   if (!gateOpen && arbitrated.size > 0) {
-        //     let manualCount = 0
-        //     for (const [nid] of arbitrated) {
-        //       if (this._safetyMiddleware.isManualNode(nid)) manualCount++
-        //     }
-        //     if (manualCount === 0) {
-        //       console.warn(
-        //         `[NodeResolver 🚨 SILENT-BLACKOUT?] f=${this._resolveFrameIndex} | ` +
-        //         `gateOpen=false, manualNodes=0, arbitrated.size=${arbitrated.size} → ` +
-        //         `Smart Gate is blocking ALL non-KINETIC nodes. ` +
-        //         `Check TitanOrchestrator._outputEnabled (boot default = false).`
-        //       )
-        //     }
-        //   }
-        // }
         // 1. Zero-fill y marcar universos como inactivos
         this._activeUniverses.clear();
         for (const [, buf] of this._universeBuffers) {
@@ -1047,6 +1027,19 @@ export class NodeResolver {
             if (normalized < 0)
                 normalized = 0;
             // Escalar a DMX: [0, 255]
+            // WAVE 2523.3: DITHERING ELIMINADO — cuantización directa determinista.
+            //
+            // El dithering (WAVE 2523.1/2523.2) fue removido porque:
+            //   1. Los LEDs responden instantáneamente (sin inercia térmica) → cualquier
+            //      oscilación entre steps DMX adyacentes es visible como temblequeo.
+            //   2. El modo chill es 100% desacoplado del audio (senos puros de 200s/240s)
+            //      → los valores son siempre casi-estacionarios → el dithering siempre
+            //      se activaba → temblequeo constante en air/ambient/PARs.
+            //   3. Para un modo ambiental de cenas/previas, los steps de 8-bit (0.39%
+            //      cada ~2s) son imperceptibles y preferibles al temblequeo del dithering.
+            //
+            // Los steps de 8-bit son inherentes al protocolo DMX. La única forma de
+            // eliminarlos sería usar dimming 16-bit (canal fine), que depende del hardware.
             let dmxValue = sanitizeDmxByte(Math.round(normalized * 255));
             // Aplicar calibración específica de canal
             if (calibration) {
@@ -1122,6 +1115,7 @@ export class NodeResolver {
                 // DYE rotation DMX write log silenced
             }
             buf[bufIdx] = safeDmxValue;
+            // Strobe trace diagnostic removed (WAVE 2526)
             // 🩸 WAVE 6040-DIAG: Classic kinetic path — log pan/tilt writes
             // if (node.family === NodeFamily.KINETIC && (chDef.type === PAN_COARSE || chDef.type === TILT_COARSE) && this._resolveFrameIndex % 44 === 0) {
             //   console.log(`[KINETIC-DIAG] ${node.nodeId}: CLASSIC-WRITE ${chDef.type}=${safeDmxValue} rawSource=${rawSource} nodeBlocked=${nodeBlocked}`)
@@ -1254,11 +1248,7 @@ export class NodeResolver {
                 }
             }
             if (killed > 0) {
-                // Log only once when a device newly enters transit (not every frame)
-                if (!this._darkSpinActiveDevices.has(deviceId)) {
-                    console.log(`[DarkSpin 🌑 WAVE 4685] device=${String(deviceId)} ` +
-                        `IMPACT dimmer/shutter zeroed (${killed} channels) — wheel in transit`);
-                }
+                // Log silenced — non-essential startup/transit noise
                 this._darkSpinActiveDevices.add(deviceId);
             }
         }

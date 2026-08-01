@@ -175,6 +175,8 @@ export class ImpactSystem
   readonly name = 'ImpactSystem'
   readonly family = NodeFamily.IMPACT
 
+  private _frameCount: number = 0
+
   constructor() {
     super()
     // Establecer el source del scratch intent una sola vez
@@ -267,7 +269,19 @@ export class ImpactSystem
       // ── 8. Push al bus ────────────────────────────────────────────────────
       // bus.push copia valores antes de retornar → safe reutilizar el scratch.
       bus.push(this._intentScratch as INodeIntent)
+
+      // 🔬 DIAGNOSTIC: Trace ImpactSystem dimmer pipeline (every ~120 frames)
+      if (this._frameCount % 120 === 0) {
+        console.log(
+          `[Impact-DIAG] ${node.nodeId.split(':').slice(-2).join(':')} ` +
+          `rawE=${rawEnergy.toFixed(3)} shaped=${shapedValue.toFixed(3)} ` +
+          `env=${envelopeValue.toFixed(3)} floor=${dimmer.toFixed(3)} ` +
+          `vibeInt=${context.vibe.intensity.toFixed(3)} ` +
+          `FINAL=${finalDimmer.toFixed(3)}`
+        )
+      }
     })
+    this._frameCount++
   }
 
   // ═════════════════════════════════════════════════════════════════════════

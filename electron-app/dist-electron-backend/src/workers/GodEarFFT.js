@@ -919,7 +919,12 @@ class StrobeEngine {
         let active = this.driveSmooth > StrobeEngine.ACTIVATION_THRESHOLD && this.cooldown <= 0;
         // HOLD LATCH: Keep strobe active for HOLD_DURATION_MS after activation
         // to prevent choppy flicker on brief single-frame input drops.
+        // R5: On first activation (holdTimer was 0), snap rateSmooth to MIN_RATE_HZ
+        // to eliminate the metronome ramp-up from 0Hz that took ~15 frames (340ms).
         if (active) {
+            if (this.holdTimer <= 0) {
+                this.rateSmooth = StrobeEngine.MIN_RATE_HZ;
+            }
             this.holdTimer = StrobeEngine.HOLD_DURATION_MS;
         }
         if (this.holdTimer > 0) {
@@ -982,21 +987,27 @@ StrobeEngine.WEIGHT_FLUX = 0.20;
 // made fluxNorm always 0, killing 35% of the drive weight.
 StrobeEngine.FLUX_FLOOR = 0.02;
 StrobeEngine.FLUX_RANGE = 0.15;
-// R4: Threshold lowered from 0.55 to 0.32 — R3 threshold was unreachable
-// (driveSmooth peaked at 0.35 in real logs). With R4 weights + faster attack:
+// R5: Threshold raised from 0.32 to 0.38 — R4 threshold allowed normal
+// percussion (snare hits without white noise) to trigger the strobe.
+// Telemetry showed driveSmooth carrying over from previous hits + hold
+// timer keeping it alive, causing false re-activation on weak transients.
 //   Kick only:     driveRaw ≈ 0.10, driveSmooth ≈ 0.08 (well below)
-//   White noise:   driveRaw ≈ 0.32-0.35 (at threshold, fires on sustained noise)
-//   Roll (3+ onsets): driveRaw ≈ 0.37-0.47 (above threshold, fires)
+//   White noise:   driveRaw ≈ 0.32-0.35 (below — needs sustained noise)
+//   Roll (3+ onsets): driveRaw ≈ 0.37-0.47 (at threshold, fires on genuine rolls)
 //   Roll + noise:  driveRaw ≈ 0.39-0.71 (well above, fires immediately)
 //   Melodic:       driveRaw ≈ 0.04 (well below)
-StrobeEngine.ACTIVATION_THRESHOLD = 0.32;
+StrobeEngine.ACTIVATION_THRESHOLD = 0.38;
 StrobeEngine.DEACTIVATION_THRESH = 0.12;
 // Tonal gate: when tonalRatio is high (bass/synth dominates highs),
 // sustained notes fool the onset detector into inflating transientDensity.
 // Gate scales down the transientDensity contribution to prevent false strobe.
 StrobeEngine.TONAL_GATE_KNEE = 3.0; // Below: no penalty
 StrobeEngine.TONAL_GATE_RATIO = 5.0; // Above: full penalty
-StrobeEngine.HOLD_DURATION_MS = 350;
+// R5: Reduced from 350 to 200ms — 350ms hold extended strobe into periods
+// where audio content had changed (bass-heavy sections), causing front channel
+// envelopes to decay with no new transients. When strobe finally released,
+// all channels were dark = visible "dead zone" that looked like hardware desync.
+StrobeEngine.HOLD_DURATION_MS = 200;
 // ═══════════════════════════════════════════════════════════════════════════════
 // WAVE 8004: CHROMA COUPLER — Maps harmonic content to hue + colorSnap
 // Consumes the 12-bin chromagram (pitch classes C→B, normalized 0-1).
@@ -1793,7 +1804,12 @@ export class GodEarAnalyzer {
         // Tonal gate: high kick/highs ratio means sustained tonal content (bass/synth),
         // which fools the onset detector into inflating transientDensity.
         const tonalRatio = kickSignal / (scaledBands.treble + 1e-6);
-        const strobeState = this.strobeEngine.process(transientDensity, whiteNoiseScore, spectralFluxV3, deltaMs, tonalRatio);
+        // ⛔ TEMPORARY STROBE DISABLE — Diagnostic: test if FFT strobe causes hardware desync.
+        // Re-enable by removing this override and restoring the strobeEngine.process call below.
+        const strobeState = { active: false, rateHz: 0, duty: 0, drive: 0 };
+        // const strobeState = this.strobeEngine.process(
+        //   transientDensity, whiteNoiseScore, spectralFluxV3, deltaMs, tonalRatio
+        // );
         // Diagnostic: log StrobeEngine inputs every 60 frames (same cadence as RADIX2)
         if (telemetryFrame % RADIX2_RAW_TELEMETRY_INTERVAL_FRAMES === 0) {
             const fluxNorm = Math.max(0, Math.min(1, (spectralFluxV3 - 0.02) / 0.15));
@@ -2096,7 +2112,7 @@ export function benchmarkPerformance(iterations = 100) {
     console.log(`   Target:  <2ms ← ${avgTime < 2.0 ? '✅ ACHIEVED' : '⚠️ NEEDS OPTIMIZATION'}`);
 }
 function softClip01(value) {
-    if (value <= 0)
+    if (!Number.isFinite(value) || value <= 0)
         return 0;
     return value / (1 + value);
 }

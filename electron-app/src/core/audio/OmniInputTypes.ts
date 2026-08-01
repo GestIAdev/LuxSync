@@ -144,6 +144,8 @@ export interface IAudioMatrix {
   setPriorityChain(chain: readonly InputSourceType[]): void
   forceSource(type: InputSourceType): Promise<void>
   releaseForce(): void
+  /** WAVE 7140: Stop the active provider — halts native capture, not just the forced flag */
+  stopActiveSource(): Promise<void>
 
   getSharedBuffer(): SharedArrayBuffer
   getStatus(): AudioMatrixStatus

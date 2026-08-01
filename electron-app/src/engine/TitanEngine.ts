@@ -695,14 +695,6 @@ export class TitanEngine extends EventEmitter {
       thermalTemperature: moodOutput.thermalTemperature,
     }
     
-    // Log cambios importantes de estabilización (cada 60 frames si cambio relevante)
-    // 🌡️ WAVE 283: Añadido thermalTemperature al log
-    if (this.state.frameCount % 60 === 0 && processedContext.energy > 0.05) {
-      if (keyOutput.isChanging || moodOutput.emotionChanged || strategyOutput.strategyChanged) {
-        // console.log(`[TitanEngine 🧠] Stabilization: Key=${keyOutput.stableKey ?? '?'} Emotion=${moodOutput.stableEmotion} Strategy=${strategyOutput.stableStrategy} Temp=${moodOutput.thermalTemperature.toFixed(0)}K`)
-      }
-    }
-
     // ─────────────────────────────────────────────────────────────────────
     // 1. 🔥 WAVE 269: CALCULAR PALETA CON SELENE COLOR ENGINE (EL FERRARI)
     //    🧠 WAVE 271: Ahora usa datos ESTABILIZADOS
@@ -915,11 +907,6 @@ export class TitanEngine extends EventEmitter {
       },
       elementalMods
     )
-    
-    // Log del sistema nervioso (cada 60 frames si hay energía)
-    if (this.state.frameCount % 60 === 0 && audio.energy > 0.05) {
-      // console.log(`[TitanEngine ⚡] NervousSystem: Physics=${nervousOutput.physicsApplied} Strobe=${nervousOutput.isStrobeActive} Element=${elementalMods.elementName}`)
-    }
     
     // ─────────────────────────────────────────────────────────────────────
     // 2. CALCULAR INTENSIDAD GLOBAL  (⚡ WAVE 3504-EXT.2: pure module)
@@ -1212,7 +1199,7 @@ export class TitanEngine extends EventEmitter {
     if (nervousOutput.dimmerOverride !== null && nervousOutput.dimmerOverride !== undefined) {
       finalMasterIntensity = nervousOutput.dimmerOverride
     }
-    
+
     // 🌊 WAVE 1080: FLUID DYNAMICS - Global Composition con alpha variable
     // El globalComposition (0-1) determina cuánto "pesa" el efecto global
     // La mezcla real se hace en TitanOrchestrator con LERP

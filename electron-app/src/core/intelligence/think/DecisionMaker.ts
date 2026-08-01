@@ -684,26 +684,47 @@ function generateDropPreparationDecision(
     if (dropArsenal.length === 0) {
       console.warn(`[DecisionMaker 🔴] DROP registry empty for vibe=${vibeId} — no drop effect possible.`)
     } else {
-      const suggestedEffect = selectFromArsenalWithDiversity(dropArsenal)
-      const currentZ = zScore ?? 0
+      // 🩸 WAVE 2531: DROP EPICNESS FLOOR
+      // The DROP path is hierarchically BELOW Divine and Sovereign Clock.
+      // It should NOT require divine-level epicness (0.60+). However, it
+      // needs a moderate floor to prevent autotuned vocals and compressed
+      // drums from triggering drop effects. A floor of 0.25 blocks the
+      // "voz de nariz tapada" case (epicness ~0.18) while allowing real
+      // drops (epicness > 0.30) to fire freely.
+      // Divine effects that share the drop arsenal (like Latina Meltdown)
+      // are allowed to fire via DROP at this lower tier — the DROP
+      // prediction itself is the authority, not the divine gate.
+      const v3EpicForDrop = inputs.v3Epicness ?? 0
+      const DROP_EPICNESS_FLOOR = 0.25
 
-      output.effectDecision = {
-        effectType: suggestedEffect,
-        effectName: getDynamicEffectRegistry().getEntry(suggestedEffect)?.name,
-        intensity: 0.8 + prediction.probability * 0.2,
-        zones: ['all'],
-        reason: `🔴 DROP: prob=${prediction.probability.toFixed(2)} | winner=${effectDisplayName(suggestedEffect)} | full arsenal=${dropArsenal.map(effectDisplayName).join(', ')}`,
-        confidence: prediction.probability,
-        divineArsenal: [suggestedEffect],
-      } as any
-      
-      console.log(
-        `[DecisionMaker 🔴] DROP EFFECT: ${effectDisplayName(suggestedEffect)} | prob=${prediction.probability.toFixed(2)} ` +
-        `vibe=${vibeId} | Z=${currentZ.toFixed(2)}`
-      )
+      if (v3EpicForDrop < DROP_EPICNESS_FLOOR) {
+        console.log(
+          `[DecisionMaker 🛡️] DROP EPICNESS FLOOR: epicness=${v3EpicForDrop.toFixed(3)} < ${DROP_EPICNESS_FLOOR}` +
+          ` — drop prediction preserved but effect suppressed (autotune/vocal transient)` +
+          ` → falling through to hold`
+        )
+      } else {
+        const suggestedEffect = selectFromArsenalWithDiversity(dropArsenal)
+        const currentZ = zScore ?? 0
+
+        output.effectDecision = {
+          effectType: suggestedEffect,
+          effectName: getDynamicEffectRegistry().getEntry(suggestedEffect)?.name,
+          intensity: 0.8 + prediction.probability * 0.2,
+          zones: ['all'],
+          reason: `🔴 DROP: prob=${prediction.probability.toFixed(2)} | winner=${effectDisplayName(suggestedEffect)} | full arsenal=${dropArsenal.map(effectDisplayName).join(', ')}`,
+          confidence: prediction.probability,
+          divineArsenal: [suggestedEffect],
+        } as any
+
+        console.log(
+          `[DecisionMaker 🔴] DROP EFFECT: ${effectDisplayName(suggestedEffect)} | prob=${prediction.probability.toFixed(2)} ` +
+          `vibe=${vibeId} | Z=${currentZ.toFixed(2)} | epicness=${v3EpicForDrop.toFixed(3)}`
+        )
+      }
     }
   }
-  
+
   // Color decision: Preparar transición
   output.colorDecision = {
     saturationMod: 1.05,

@@ -506,6 +506,14 @@ export class SeleneTitanConscious extends EventEmitter {
       }
     })
     
+    // 🩸 WAVE 2530: Invalidate cached dream result on mood change.
+    // lastDreamIntegrationResult is reused when global cooldown blocks the
+    // pipeline. Without this, switching from CALM to BALANCED would keep
+    // serving the CALM-filtered result until the cooldown expired.
+    MoodController.getInstance().onMoodChange(() => {
+      this.lastDreamIntegrationResult = null
+    })
+
     // Inicializar estado interno
     this.state = this.createInitialState()
     
@@ -749,6 +757,65 @@ export class SeleneTitanConscious extends EventEmitter {
               }
             }
 
+            // ── HEAVY EPICNESS FLOOR: Dynamic gate for non-divine heavy effects ──
+            // WAVE 2527: Autotuned vocals and compressed drums in reggaetón/cumbia
+            // generate high energy (E>0.9) and high Z-score (Z>2.0) but low epicness
+            // (<0.25) because the spectral tension doesn't rise — only the RMS does.
+            // Without this gate, a strobe fires on a vocal transient, which is
+            // musically wrong. The floor scales with RMS10s so it's more permissive
+            // in sustained high-energy contexts (real drops) and stricter in
+            // transient-only contexts (isolated vocal peaks).
+            // Divine effects are exempt — they have their own epicness gate (0.50+).
+            //
+            // RE-ROUTING (WAVE 2527.B): When the heavy effect is blocked by the
+            // epicness floor, we DON'T abort the Cassandra prediction. Instead we
+            // re-route to a lighter effect (aggression ≤ 0.70) from the same vibe.
+            // The prediction was correct (there IS an energy event) — only the
+            // effect choice was too heavy for the spectral context.
+            let heavyRerouted = false
+            let reroutedEffectId: string | null = null
+            if (!aborted && registryEntry && !registryEntry.simMeta.isDivineCandidate && isHeavyEffect) {
+              const sovereignRms10sForHeavy = this.energyConsciousness.getRmsAverage10s()
+              const HEAVY_EPICNESS_FLOOR = Math.max(0.25, sovereignRms10sForHeavy * 0.35)
+              if (v3EpicnessNow < HEAVY_EPICNESS_FLOOR) {
+                // Re-route: find a lighter effect from the same vibe
+                const vibeArsenal = getDynamicEffectRegistry().getEffectsForVibe(sovereignVibeId)
+                const lighterCandidates = vibeArsenal.filter(e =>
+                  !e.simMeta.isDivineCandidate &&
+                  !e.simMeta.isHeavyCandidate &&
+                  (e.dna.aggression ?? 0) <= 0.70 &&
+                  (!e.organismId || e.organismStatus !== 'alive')
+                )
+                if (lighterCandidates.length > 0) {
+                  // Pick the one with highest aggression (most energetic lighter effect)
+                  // that isn't in cooldown — diversity-aware selection
+                  const sorted = lighterCandidates.sort((a, b) => (b.dna.aggression ?? 0) - (a.dna.aggression ?? 0))
+                  for (const light of sorted) {
+                    if (!this.effectHistory.some(h => h.type === light.id && (nowSovereign - h.timestamp) < 8000)) {
+                      reroutedEffectId = light.id
+                      break
+                    }
+                  }
+                  // Fallback: if all in cooldown, take the first one
+                  if (!reroutedEffectId) reroutedEffectId = sorted[0].id
+                  heavyRerouted = true
+                  console.log(
+                    `[Sovereign Clock 🔄] HEAVY RE-ROUTE: "${candidate.effectName ?? candidate.effect}" → "${effectDisplayName(reroutedEffectId)}"` +
+                    ` | epicness=${v3EpicnessNow.toFixed(3)} < floor=${HEAVY_EPICNESS_FLOOR.toFixed(3)}` +
+                    ` (rms10s=${sovereignRms10sForHeavy.toFixed(2)})` +
+                    ` — autotune/vocal transient: prediction preserved, effect downgraded`
+                  )
+                } else {
+                  aborted = true
+                  abortReason =
+                    `HEAVY EPICNESS FLOOR: epicness=${v3EpicnessNow.toFixed(3)} < floor=${HEAVY_EPICNESS_FLOOR.toFixed(3)}` +
+                    ` (rms10s=${sovereignRms10sForHeavy.toFixed(2)})` +
+                    ` — heavy effect "${candidate.effectName ?? candidate.effect}" suppressed` +
+                    ` (no lighter candidates available for vibe=${sovereignVibeId})`
+                }
+              }
+            }
+
             // ── DIVINE ABORT: Enhanced with ARS zone check ──
             // 🩸 WAVE 7171: TWO-PATH DIVINE GATE — A) brutal isolated peak OR
             // B) sustained epicness with high acoustic pressure base.
@@ -774,14 +841,43 @@ export class SeleneTitanConscious extends EventEmitter {
               const divineZPassed = currentZScore >= SOVEREIGN_DIVINE_MIN_Z
               const divineEpicnessBlocked = (!divinePeakPassed && !divineSustainedPassed) || !divineZPassed
               if (divineEpicnessBlocked || energyTooLow || divineZoneVeto) {
-                aborted = true
-                abortReason =
-                  `DIVINE ABORT: V3 epicness=${v3EpicnessNow.toFixed(3)}` +
-                  ` (peak>${V3_EPSILON_DIVINE}? ${divinePeakPassed}; sustained>${SOVEREIGN_DIVINE_EPICNESS}+rms>${SOVEREIGN_DIVINE_RMS_FLOOR}? ${divineSustainedPassed})` +
-                  ` Z=${currentZScore.toFixed(2)}σ ≥ ${SOVEREIGN_DIVINE_MIN_Z}? ${divineZPassed}` +
-                  `${energyTooLow ? ` OR energy=${titanState.rawEnergy.toFixed(2)} < 0.50` : ''}` +
-                  `${divineZoneVeto ? ` OR ARS zone=${ars!.zone.label}` : ''}` +
-                  ` → buffer cleared, divine effect suppressed`
+                // WAVE 2531: DIVINE RE-ROUTE — same logic as heavy re-route.
+                // The prediction was correct (there IS an energy event), but the
+                // effect is too divine for the spectral context. Re-route to a
+                // lighter effect instead of losing the Cassandra prediction.
+                const vibeArsenalDivine = getDynamicEffectRegistry().getEffectsForVibe(sovereignVibeId)
+                const lighterCandidatesDivine = vibeArsenalDivine.filter(e =>
+                  !e.simMeta.isDivineCandidate &&
+                  !e.simMeta.isHeavyCandidate &&
+                  (e.dna.aggression ?? 0) <= 0.70 &&
+                  (!e.organismId || e.organismStatus !== 'alive')
+                )
+                if (lighterCandidatesDivine.length > 0) {
+                  const sortedDivine = lighterCandidatesDivine.sort((a, b) => (b.dna.aggression ?? 0) - (a.dna.aggression ?? 0))
+                  for (const light of sortedDivine) {
+                    if (!this.effectHistory.some(h => h.type === light.id && (nowSovereign - h.timestamp) < 8000)) {
+                      reroutedEffectId = light.id
+                      break
+                    }
+                  }
+                  if (!reroutedEffectId) reroutedEffectId = sortedDivine[0].id
+                  heavyRerouted = true
+                  console.log(
+                    `[Sovereign Clock 🔄] DIVINE RE-ROUTE: "${candidate.effectName ?? candidate.effect}" → "${effectDisplayName(reroutedEffectId)}"` +
+                    ` | epicness=${v3EpicnessNow.toFixed(3)} (peak>${V3_EPSILON_DIVINE}? ${divinePeakPassed}; sustained>${SOVEREIGN_DIVINE_EPICNESS}+rms>${SOVEREIGN_DIVINE_RMS_FLOOR}? ${divineSustainedPassed})` +
+                    ` Z=${currentZScore.toFixed(2)}σ ≥ ${SOVEREIGN_DIVINE_MIN_Z}? ${divineZPassed}` +
+                    ` — divine gate blocked, prediction preserved, effect downgraded`
+                  )
+                } else {
+                  aborted = true
+                  abortReason =
+                    `DIVINE ABORT: V3 epicness=${v3EpicnessNow.toFixed(3)}` +
+                    ` (peak>${V3_EPSILON_DIVINE}? ${divinePeakPassed}; sustained>${SOVEREIGN_DIVINE_EPICNESS}+rms>${SOVEREIGN_DIVINE_RMS_FLOOR}? ${divineSustainedPassed})` +
+                    ` Z=${currentZScore.toFixed(2)}σ ≥ ${SOVEREIGN_DIVINE_MIN_Z}? ${divineZPassed}` +
+                    `${energyTooLow ? ` OR energy=${titanState.rawEnergy.toFixed(2)} < 0.50` : ''}` +
+                    `${divineZoneVeto ? ` OR ARS zone=${ars!.zone.label}` : ''}` +
+                    ` → buffer cleared, divine effect suppressed (no lighter candidates for vibe=${sovereignVibeId})`
+                }
               }
             }
 
@@ -837,33 +933,41 @@ export class SeleneTitanConscious extends EventEmitter {
             }
 
             if (!aborted) {
+            // WAVE 2527.B: If heavy effect was re-routed, use the lighter effect
+            const fireEffectId = heavyRerouted && reroutedEffectId ? reroutedEffectId : candidate.effect
+            const fireEffectName = heavyRerouted && reroutedEffectId ? effectDisplayName(reroutedEffectId) : candidate.effectName
+            const fireIntensity = heavyRerouted ? Math.min(candidate.intensity, 0.75) : candidate.intensity
+
             if (glassBreak) {
               console.log(
-                `[SeleneTitanConscious] 🪟💥 CASSANDRA GLASS BREAK: firing "${candidate.effectName ?? candidate.effect}" ` +
+                `[SeleneTitanConscious] 🪟💥 CASSANDRA GLASS BREAK: firing "${fireEffectName ?? fireEffectId}" ` +
                 `| drop landed EARLY (Z=${currentZScore.toFixed(2)} ≥ ${GLASS_BREAK_Z}, E=${titanState.rawEnergy.toFixed(2)}) ` +
                 `| ${timeToEvent}ms remained on the clock — countdown ABORTED`
               )
             } else {
               console.log(
-                `[SeleneTitanConscious] 🔮👑 CASSANDRA SOVEREIGN CLOCK: firing "${candidate.effectName ?? candidate.effect}" ` +
+                `[SeleneTitanConscious] 🔮👑 CASSANDRA SOVEREIGN CLOCK: firing "${fireEffectName ?? fireEffectId}" ` +
                 `| overdue=${Math.abs(timeToEvent)}ms | confidence=${candidate.confidence.toFixed(2)} ` +
                 `| epicness=${v3EpicnessNow.toFixed(3)} rms10s=${sovereignRms10s.toFixed(2)} ` +
                 `floor_abs=${SOVEREIGN_EPICNESS_ABSOLUTE_FLOOR.toFixed(3)} floor_combined=${SOVEREIGN_EPICNESS_FLOOR.toFixed(3)} ` +
+                `${heavyRerouted ? ' | 🔄 HEAVY RE-ROUTED' : ''}` +
                 `| bypassing HuntEngine + Fuzzy + EnergyOverride`
               )
             }
 
             const reason = glassBreak
               ? `🪟💥 CASSANDRA GLASS BREAK (WAVE 5016): drop collision Z=${currentZScore.toFixed(2)}`
-              : '🔮👑 CASSANDRA SOVEREIGN CLOCK (WAVE 5011)'
+              : heavyRerouted
+                ? `🔮👑 CASSANDRA SOVEREIGN CLOCK (WAVE 5011) 🔄 HEAVY RE-ROUTE: epicness too low for heavy, downgraded to lighter effect`
+                : '🔮👑 CASSANDRA SOVEREIGN CLOCK (WAVE 5011)'
 
             const sovereignOutput: ConsciousnessOutput = {
               ...createEmptyOutput(),
               confidence: Math.max(candidate.confidence, 0.85),
               effectDecision: {
-                effectType: candidate.effect,
-                effectName: candidate.effectName,
-                intensity: candidate.intensity,
+                effectType: fireEffectId,
+                effectName: fireEffectName,
+                intensity: fireIntensity,
                 zones: (candidate.zones.length > 0 ? candidate.zones : ['all']) as any,
                 confidence: Math.max(candidate.confidence, 0.85),
                 reason,
@@ -876,7 +980,7 @@ export class SeleneTitanConscious extends EventEmitter {
             this.lastGlobalEffectTimestamp = nowSovereign
             this.lastEffectTimestamp = nowSovereign
             this.minEnergySinceLastEffect = 1.0  // 🩸 WAVE 6040: Reset valley tracker
-            this.lastEffectType = candidate.effect
+            this.lastEffectType = fireEffectId
             this.effectHistory.push({ type: candidate.effect, timestamp: nowSovereign })
             if (this.effectHistory.length > 20) this.effectHistory.shift()
 
@@ -1723,11 +1827,20 @@ export class SeleneTitanConscious extends EventEmitter {
       // bypass regular cooldown (but NOT HARD_COOLDOWN). This is the V3 equivalent of
       // Cassandra's Sovereign Clock bypass, but for the normal pipeline.
       // Allows ambient/non-epic effects to fire without requiring allowEthicsOverride.
+      //
+      // 🩸 WAVE 2528: MOOD-AWARE BYPASS INTERVALS — the V3 bypass intervals now scale
+      // with the MoodController's cooldownMultiplier. This means:
+      //   CALM:    8s × 4.0 = 32s between bypasses, 15s × 4.0 = 60s for same effect
+      //   BALANCED: 8s × 2.2 = 17.6s between bypasses, 15s × 2.2 = 33s for same effect
+      //   PUNK:    8s × 0.7 = 5.6s between bypasses, 15s × 0.7 = 10.5s for same effect
+      // Without this, the V3 bypass ignored the mood entirely, making CALM mode
+      // fire as frequently as PUNK — defeating the purpose of the mood system.
+      const _moodProfileForBypass = MoodController.getInstance().getCurrentProfile()
       const timeSinceLastV3Bypass = now - this.lastV3BypassTimestamp
       const isSameEffectAsLastV3Bypass = intent === this.lastV3BypassEffect
-      const v3BypassTemporalMinimum = isSameEffectAsLastV3Bypass
+      const v3BypassTemporalMinimum = Math.round((isSameEffectAsLastV3Bypass
         ? this.V3_BYPASS_SAME_EFFECT_INTERVAL_MS
-        : this.V3_BYPASS_MIN_INTERVAL_MS
+        : this.V3_BYPASS_MIN_INTERVAL_MS) * _moodProfileForBypass.cooldownMultiplier)
       const v3BypassTemporalReady = timeSinceLastV3Bypass >= v3BypassTemporalMinimum
       // V3 TUNE: Epicness available for gating decisions
       const v3Epic = this._lastLiquidVerdict?.epicness ?? 0

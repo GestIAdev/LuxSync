@@ -1,180 +1,208 @@
-﻿{
-    "$schema":  "luxsync.lfx/3.0",
-    "clip":  {
-                 "id":  "machine_gun",
-                 "name":  "Machine Gun",
-                 "author":  "LuxSync Factory",
-                 "category":  "physical",
-                 "tags":  [
-                              "strobe",
-                              "techno",
-                              "brutal",
-                              "drop",
-                              "maxrate"
-                          ],
-                 "vibeCompat":  [
-                                    "techno-club"
-                                ],
-                 "spatialZones":  [
-                                      "all-pars",
-                                      "ambient",
-                                      "flash",
-                                      "all-movers",
-                                      "air"
-                                  ],
-                 "durationMs":  800,
-                 "effectType":  "heph_custom",
-                 "tracks":  [
-                                {
-                                    "id":  "par-white",
-                                    "paramId":  "color",
-                                    "zones":  [
-                                                  "all-pars",
-                                                  "ambient",
-                                                  "flash"
-                                              ],
-                                    "curve":  {
-                                                  "paramId":  "color",
-                                                  "valueType":  "color",
-                                                  "range":  [
-                                                                0,
-                                                                360
-                                                            ],
-                                                  "defaultValue":  {
-                                                                       "h":  0,
-                                                                       "s":  0,
-                                                                       "l":  100
-                                                                   },
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  {
-                                                                                      "h":  0,
-                                                                                      "s":  0,
-                                                                                      "l":  100
-                                                                                  },
-                                                                        "interpolation":  "hold"
-                                                                    }
-                                                                ],
-                                                  "mode":  "absolute"
-                                              },
-                                    "blendMode":  "replace"
-                                },
-                                {
-                                    "id":  "par-intensity",
-                                    "paramId":  "intensity",
-                                    "zones":  [
-                                                  "all-pars",
-                                                  "ambient",
-                                                  "flash"
-                                              ],
-                                    "curve":  {
-                                                  "paramId":  "intensity",
-                                                  "valueType":  "number",
-                                                  "range":  [
-                                                                0,
-                                                                1
-                                                            ],
-                                                  "defaultValue":  1,
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  1,
-                                                                        "interpolation":  "hold"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  800,
-                                                                        "value":  0.991,
-                                                                        "interpolation":  "linear"
-                                                                    }
-                                                                ],
-                                                  "mode":  "absolute"
-                                              },
-                                    "blendMode":  "replace"
-                                },
-                                {
-                                    "id":  "movers-blackout",
-                                    "paramId":  "intensity",
-                                    "zones":  [
-                                                  "all-movers",
-                                                  "air"
-                                              ],
-                                    "curve":  {
-                                                  "paramId":  "intensity",
-                                                  "valueType":  "number",
-                                                  "range":  [
-                                                                0,
-                                                                1
-                                                            ],
-                                                  "defaultValue":  0,
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  0,
-                                                                        "interpolation":  "hold"
-                                                                    }
-                                                                ],
-                                                  "mode":  "absolute"
-                                              },
-                                    "blendMode":  "replace"
-                                }
-                            ],
-                 "staticParams":  {
-
-                                  },
-                 "cognitiveDNA":  {
-                                      "genome":  {
-                                                     "aggression":  1,
-                                                     "chaos":  0.9,
-                                                     "organicity":  0
-                                                 },
-                                      "textureAffinity":  "dirty",
-                                      "compatibleVibes":  [
-                                                              "techno-club"
-                                                          ],
-                                      "validSections":  [
-                                                            "drop",
-                                                            "peak"
-                                                        ],
-                                      "energyZone":  {
-                                                         "min":  "intense",
-                                                         "max":  "peak"
-                                                     },
-                                      "aggressionRange":  {
-                                                              "min":  1,
-                                                              "max":  1
-                                                          },
-                                      "pressureRange":  {
-                                                            "min":  0.65,
-                                                            "max":  1
-                                                        },
-                                      "spatialBehavior":  "static"
-                                  },
-                 "simulationMeta":  {
-                                        "beautyWeights":  {
-                                                              "base":  0.9,
-                                                              "energyMultiplier":  1.3,
-                                                              "vibeBonus":  0.1
-                                                          },
-                                        "gpuCost":  0.3,
-                                        "fatigueImpact":  0.65,
-                                        "minDurationMs":  800,
-                                        "cooldownMs":  3500,
-                                        "isStrobe":  true,
-                                        "isDivineCandidate":  false,
-                                        "isHeavyCandidate":  true,
-                                        "zScoreGuards":  {
-                                                             "requireRising":  true,
-                                                             "minimumZ":  2,
-                                                             "minimumEnergy":  0.92
-                                                         }
-                                    },
-                 "safetyDeclaration":  {
-                                           "maxStrobeFreqHz":  25,
-                                           "containsRapidFlash":  true,
-                                           "communityTrusted":  false
-                                       },
-                 "schemaVersion":  "3.0"
-             },
-    "checksum":  "sha256:1ed882d61a51494d537e4755ef98169783acee77e1484cbc2a598ca280430aa5"
+{
+  "$schema": "luxsync.lfx/3.0",
+  "clip": {
+    "id": "machine_gun",
+    "name": "Machine Gun",
+    "author": "LuxSync Factory",
+    "category": "physical",
+    "tags": [
+      "strobe",
+      "techno",
+      "brutal",
+      "drop",
+      "maxrate"
+    ],
+    "vibeCompat": [
+      "techno-club"
+    ],
+    "spatialZones": [
+      "all-pars",
+      "ambient",
+      "flash",
+      "all-movers",
+      "air"
+    ],
+    "durationMs": 800,
+    "effectType": "heph_custom",
+    "tracks": [
+      {
+        "id": "par-white",
+        "paramId": "color",
+        "zones": [
+          "all-pars",
+          "ambient",
+          "flash"
+        ],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
+          "defaultValue": {
+            "h": 0,
+            "s": 0,
+            "l": 100
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 0,
+                "s": 0,
+                "l": 100
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      },
+      {
+        "id": "par-intensity",
+        "paramId": "intensity",
+        "zones": [
+          "all-pars",
+          "ambient",
+          "flash"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 1,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 800,
+              "value": 0.991,
+              "interpolation": "linear"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      },
+      {
+        "id": "movers-blackout",
+        "paramId": "intensity",
+        "zones": [
+          "all-movers",
+          "air"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      },
+      {
+        "id": "74458193-29f0-4322-8161-c2ec7918f02d",
+        "paramId": "strobe",
+        "zones": [
+          "all"
+        ],
+        "curve": {
+          "paramId": "strobe",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 1,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0.95,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 800,
+              "value": 0.95,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      }
+    ],
+    "staticParams": {},
+    "cognitiveDNA": {
+      "genome": {
+        "aggression": 1,
+        "chaos": 0.9,
+        "organicity": 0
+      },
+      "textureAffinity": "dirty",
+      "compatibleVibes": [
+        "techno-club"
+      ],
+      "validSections": [
+        "drop",
+        "peak"
+      ],
+      "energyZone": {
+        "min": "intense",
+        "max": "peak"
+      },
+      "aggressionRange": {
+        "min": 1,
+        "max": 1
+      },
+      "pressureRange": {
+        "min": 0.65,
+        "max": 1
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.9,
+        "energyMultiplier": 1.3,
+        "vibeBonus": 0.1
+      },
+      "gpuCost": 0.3,
+      "fatigueImpact": 0.65,
+      "minDurationMs": 800,
+      "cooldownMs": 3500,
+      "isStrobe": true,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": true,
+      "zScoreGuards": {
+        "requireRising": true,
+        "minimumZ": 2,
+        "minimumEnergy": 0.92
+      }
+    },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 25,
+      "containsRapidFlash": true,
+      "communityTrusted": false
+    },
+    "schemaVersion": "3.0"
+  },
+  "checksum": "sha256:cc190d4b7678ba05965480e9cc743d402696c5289bb2b5fcecfc5ba010e569d0"
 }

@@ -133,9 +133,13 @@ export class ForgeNodeEvaluator {
       const out = outputs[o]
       let normalized = wire[out.wireIndex]
 
-      // Clamp to [0, 1]
-      if (normalized < 0) normalized = 0
-      if (normalized > 1) normalized = 1
+      // 🛡️ NaN/Infinity firewall — NaN comparisons are always false in JS,
+      // so `if (x < 0)` / `if (x > 1)` silently let NaN through.
+      // Uint8Array coerces NaN to 0, but we sanitize explicitly to prevent
+      // any downstream propagation through 16-bit paths or SAB writes.
+      if (!Number.isFinite(normalized)) normalized = 0
+      else if (normalized < 0) normalized = 0
+      else if (normalized > 1) normalized = 1
 
       const bufIdx = baseAddr + out.dmxOffset
       if (bufIdx < 0 || bufIdx >= DMX_UNIVERSE_SIZE) continue  // safety

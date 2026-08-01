@@ -18,6 +18,7 @@ import { getArtNetDiscovery } from '../../hal/drivers/ArtNetDiscovery'
 import { getDmxSab } from '../aether/glass/GlassMemory'
 // WAVE 3403: AudioMatrix IPC bridge
 import { getTrinity } from '../../workers/TrinityOrchestrator'
+import { liquidEngine41, liquidEngine71 } from '../../hal/physics'
 import type { InputSourceType } from '../audio/OmniInputTypes'
 import { TickEngine } from './tick/TickEngine'
 import { NodeGraphBuilder } from '../forge/NodeGraphBuilder'
@@ -1957,7 +1958,13 @@ function setupAudioMatrixHandlers(_deps: IPCDependencies): void {
     // para la fuente previa. Eso mata los kicks de la nueva fuente via PEAK_DISCRIMINATOR.
     // Mandamos RESET_PACEMAKER para que el Worker arranque con pizarra en blanco.
     trinity!.resetPacemaker()
-    console.log(`[IPCHandlers] 🔄 WAVE 3414/3415: source → "${sourceType}" — Pacemaker reset (Amnesia Protocol)`)
+    // WAVE 3414.5: Reset liquid engine state — clear AGC silence timestamps,
+    // envelope peaks, and EMA state from the previous track. Without this,
+    // avgSignalPeak from the old track keeps the dynamic gate high, preventing
+    // the new track's transients from igniting → gradual dimming to 0.
+    liquidEngine41.reset()
+    liquidEngine71.reset()
+    console.log(`[IPCHandlers] 🔄 WAVE 3414/3415: source → "${sourceType}" — Pacemaker + LiquidEngine reset (Amnesia Protocol)`)
     return { success: true }
   })
 
@@ -1968,6 +1975,19 @@ function setupAudioMatrixHandlers(_deps: IPCDependencies): void {
     matrix.releaseForce()
     _deps.mainWindow?.webContents.send('audio-matrix:active-source', {
       sourceType: matrix.getStatus().activeSource,
+      timestamp: Date.now(),
+    })
+    return { success: true }
+  })
+
+  // WAVE 7140: STOP active source — actually halts native WASAPI capture
+  ipcMain.handle('audio-matrix:stop-active-source', async () => {
+    const trinity = getTrinity()
+    const matrix = trinity?.getAudioMatrix()
+    if (!matrix) return { success: false, error: 'AudioMatrix not initialized' }
+    await matrix.stopActiveSource()
+    _deps.mainWindow?.webContents.send('audio-matrix:active-source', {
+      sourceType: null,
       timestamp: Date.now(),
     })
     return { success: true }

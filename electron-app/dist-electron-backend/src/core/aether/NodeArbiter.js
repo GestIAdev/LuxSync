@@ -785,15 +785,15 @@ export class NodeArbiter {
             }
         }
         // 3. Aplicar Grand Master sobre canales de intensidad.
-        // dimmer y brightness son ahora LTP (no están en STRICT_PRIORITY_CHANNELS)
-        // pero sí escalan con el Grand Master.
+        // dimmer y brightness escalan con el Grand Master (brillo del operador).
+        // WAVE 2526 FIX: strobe y shutter NO escalan con el Grand Master.
+        //   - strobe controla frecuencia de flash (0-255 = lento→rápido), no brillo.
+        //     Escalarlo hace que un strobe rápido (DMX 254) se convierta en lento (DMX 86).
+        //   - shutter es un obturador mecánico on/off; escalarlo lo cierra parcialmente
+        //     y apaga el haz en vez de atenuarlo.
+        //   El Grand Master es un control de intensidad, no de frecuencia ni de obturación.
         if (this._grandMaster !== 1.0) {
             for (const record of this._result.values()) {
-                for (const ch of STRICT_PRIORITY_CHANNELS) {
-                    if (ch in record) {
-                        record[ch] = record[ch] * this._grandMaster;
-                    }
-                }
                 if ('dimmer' in record)
                     record['dimmer'] = record['dimmer'] * this._grandMaster;
                 if ('brightness' in record)

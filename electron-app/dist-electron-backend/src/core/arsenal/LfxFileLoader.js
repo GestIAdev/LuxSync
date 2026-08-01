@@ -23,8 +23,10 @@ import { getDynamicEffectRegistry, } from './DynamicEffectRegistry';
 import { getHephaestusClipIndex } from '../hephaestus/HephaestusClipIndex';
 /** Política de safety aplicada a archivos `user`. */
 const USER_SAFETY_POLICY = Object.freeze({
-    /** Aggression máxima permitida en clips de comunidad. */
-    MAX_AGGRESSION: 0.95,
+    /** Aggression máxima permitida en clips de comunidad.
+     *  WAVE 2526 FIX: Cap eliminado — todos los efectos son USER ahora (se guardan
+     *  en local), y efectos con aggression=1.0 eran rechazados silenciosamente. */
+    MAX_AGGRESSION: 1.0,
     /** Frecuencia de strobe declarable máxima (Hz). */
     MAX_STROBE_HZ: 25,
     /** Tamaño máximo de archivo (bytes). 256KB de holgura. */
@@ -98,23 +100,45 @@ export class LfxFileLoader {
             console.log(`[LfxFileLoader 🏛️] Directory not present: ${spec.absolutePath} (skip)`);
             return Object.freeze({ scanned: 0, accepted: 0, rejected: 0, errors: 0, entries: [] });
         }
+        // WAVE 2524: Recursive scan — descends into subfolders (e.g. arsenal/techno/, arsenal/latin/)
+        // so effects can be organized by vibe without breaking the loader.
+        const report = await this._loadDirectoryRecursive(spec.absolutePath, spec.source);
+        return report;
+    }
+    /**
+     * WAVE 2524: Recursive helper for _loadDirectory.
+     * Scans a directory for .lfx files, descending into subfolders.
+     */
+    async _loadDirectoryRecursive(dirPath, source) {
+        const entries = [];
+        let scanned = 0, accepted = 0, rejected = 0, errors = 0;
         let dirEntries;
         try {
-            dirEntries = await fs.readdir(spec.absolutePath, { withFileTypes: true });
+            dirEntries = await fs.readdir(dirPath, { withFileTypes: true });
         }
         catch (err) {
-            console.warn(`[LfxFileLoader ⚠️] readdir failed for ${spec.absolutePath}:`, err);
+            console.warn(`[LfxFileLoader ⚠️] readdir failed for ${dirPath}:`, err);
             return Object.freeze({ scanned: 0, accepted: 0, rejected: 0, errors: 1, entries: [] });
         }
         for (const dirent of dirEntries) {
+            if (dirent.isDirectory()) {
+                // WAVE 2524: Recurse into subfolders (vibe organization)
+                const subReport = await this._loadDirectoryRecursive(path.join(dirPath, dirent.name), source);
+                scanned += subReport.scanned;
+                accepted += subReport.accepted;
+                rejected += subReport.rejected;
+                errors += subReport.errors;
+                entries.push(...subReport.entries);
+                continue;
+            }
             if (!dirent.isFile())
                 continue;
             if (!dirent.name.toLowerCase().endsWith('.lfx'))
                 continue;
             scanned++;
-            const filePath = path.join(spec.absolutePath, dirent.name);
+            const filePath = path.join(dirPath, dirent.name);
             try {
-                const ok = await this.loadFile(filePath, spec.source);
+                const ok = await this.loadFile(filePath, source);
                 if (ok) {
                     accepted++;
                     entries.push(filePath);
@@ -139,7 +163,7 @@ export class LfxFileLoader {
      *   G5: cada track tiene zones[] y curve.keyframes[] no vacíos.
      *   DNA: genome ∈ [0,1], compatibleVibes, textureAffinity válida.
      *   G2: checksum SHA-256 sobre clip (si declarado y no vacío).
-     *   USER: aggression ≤ 0.95.
+     *   USER: aggression ≤ 1.0 (cap removed WAVE 2526).
      *
      * `curves{}` NO es requerido. `staticParams`, `mixBus`, `priority` opcionales.
      */

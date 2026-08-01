@@ -477,6 +477,14 @@ export const useHephaestusEditorStore = create<HephaestusEditorStore>()(
           draft.cognitiveDNA = { ...DEFAULT_COGNITIVE_DNA } as CognitiveDNA
         }
         recipe(draft.cognitiveDNA as NonNullable<HephAutomationClipV3['cognitiveDNA']>)
+        // WAVE 2524: Sync vibeCompat from cognitiveDNA.compatibleVibes so the
+        // library grouping/filtering by vibe works. The DnaRail stores bridged
+        // vibes (techno-club, fiesta-latina) in cognitiveDNA.compatibleVibes.
+        // Without this sync, clip.vibeCompat stays empty [] from NewClipModal.
+        const dnaVibes = draft.cognitiveDNA?.compatibleVibes
+        if (Array.isArray(dnaVibes) && dnaVibes.length > 0) {
+          draft.vibeCompat = [...dnaVibes]
+        }
       }),
 
     enableDNA: () =>

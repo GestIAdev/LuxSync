@@ -45,7 +45,11 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   },
 
   // Front R — El Francotirador (WAVE 2437: Monte Carlo 15k iter, fitness=756, 100% kick, 0 FP)
-  // decayBase 0.04→0.0077 — el killer fix: decay ultrarrápido, fR muere entre kicks.
+  // WAVE 2520: ANTI-MICRO-STROBE — decayBase 0.0077→0.08.
+  //   0.0077 mataba la intensidad en 1 frame (0.77% residual) → parpadeo errático
+  //   ante micro-transitorientes. 0.08 da un corte limpio de 2-3 frames (~45-65ms):
+  //   chasquido seco sin melaza, pero el dimmer/LED digiere el pulso en lugar de
+  //   ver un flash de 1 frame + 19 frames de oscuridad.
   // decayRange 0.10→0.0329 — rango estrecho, comportamiento uniforme.
   // gateOn 0.15→0.1098 — gate más bajo, captura kicks débiles sin abrir en basura.
   // maxIntensity 0.85→1.0 — hits al máximo, contraste máximo con el silencio.
@@ -56,7 +60,7 @@ export const TECHNO_PROFILE: ILiquidProfile = {
     gateOn: 0.28,
     boost: 3.3013,
     crushExponent: 1.0,
-    decayBase: 0.0077,
+    decayBase: 0.08,
     decayRange: 0.0329,
     maxIntensity: 0.80,   // WAVE 2439.2 Cap de Dimmer — headroom para el slap del Snare
     squelchBase: 0.0388,
@@ -67,15 +71,20 @@ export const TECHNO_PROFILE: ILiquidProfile = {
 
   // Mover R — El Coro / Voces (WAVE 2419 MONTE CARLO RIGHT HEMISPHERE)
   // WAVE 3491: Bozal de Mover — solo picos afilados de synth/arpegio pasan.
+  // WAVE 2520: DESBOZALADO PARCIAL — crushExponent 3.5→1.8, squelchBase 0.30→0.15.
+  //   El Bozal original guillotinaba arpegios progresivos (Opus / Eric Prydz)
+  //   tratándolos como ruido. Curva más lineal + piso más bajo deja respirar
+  //   las progresiones tonales y sintetizadores envolventes disparando las
+  //   luces con naturalidad, sin perder la limpieza contra colchón de graves.
   envelopeVocal: {
     name: 'Mover R (Vocal & Synth Wash)',
     gateOn: 0.25,          // WAVE 3491: 0.01→0.25 — mínimo obligatorio Bozal
     boost: 1.5,
-    crushExponent: 3.5,    // WAVE 3491: Bozal — aplasta colchón de graves/medios
+    crushExponent: 1.8,    // WAVE 2520: 3.5→1.8 — curva menos convexa, arpegios respiran
     decayBase: 0.70,
     decayRange: 0.05,
     maxIntensity: 0.80,
-    squelchBase: 0.30,     // WAVE 3491: 0.02→0.30 — piso estricto
+    squelchBase: 0.15,     // WAVE 2520: 0.30→0.15 — piso relajado, progresiones pasan
     squelchSlope: 0.10,
     ghostCap: 0.00,
     gateMargin: 0.01,
@@ -90,10 +99,10 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   //   Subimos gate+percGate para requerir un hit de percusión real.
   envelopeSnare: {
     name: 'Back R (Percussion Slap)',
-    gateOn: 0.35,   // WAVE 3460: aislamiento extremo para conservar caja y aniquilar hihat/reverb media
+    gateOn: 0.28,   // BACK-PAR TUNE: 0.35→0.28 — re-disparar más fácil entre hits del redoble
     boost: 2.5,     // WAVE 8009.3: 1.0→2.5 — igualar ganancia efectiva del Latino para cruce visual
     crushExponent: 1.0,
-    decayBase: 0.20, // WAVE 8009.3: 0.05→0.20 — ventana visual ~150-200ms, eliminar micro-blip
+    decayBase: 0.30, // BACK-PAR TUNE: 0.20→0.30 — ~200-250ms, respirar entre hits del roll
     decayRange: 0.40,      // WAVE 2451: INTOCABLE — morfología líquida de los Back Pars preservada
     maxIntensity: 1.0,     // WAVE 2439.5: 0.80→1.0 — el Látigo sin cap
     squelchBase: 0.20,     // WAVE 6066: 0.52→0.20 — limpieza se hará matemáticamente pre-envelope
@@ -125,15 +134,19 @@ export const TECHNO_PROFILE: ILiquidProfile = {
 
   // Mover L — Melodías tonales (WAVE 2417: MONTE CARLO RESURRECTION)
   // WAVE 3491: Bozal de Mover — arpegios agudos pasan, colchón de graves NO.
+  // WAVE 2520: DESBOZALADO PARCIAL — crushExponent 3.5→1.8, squelchBase 0.30→0.15.
+  //   Mismo razonamiento que envelopeVocal: las melodías progresivas de synth
+  //   (Opus, Eric Prydz) eran guillotinadas por el Bozal original. Curva más
+  //   lineal + piso más bajo deja disparar los arpegios suaves con naturalidad.
   envelopeTreble: {
     name: 'Mover L (Tonal Melodies)',
     gateOn: 0.25,          // WAVE 3491: 0.02→0.25 — mínimo obligatorio Bozal
     boost: 4.0,
-    crushExponent: 3.5,    // WAVE 3491: Bozal — solo picos afilados de arpegio
+    crushExponent: 1.8,    // WAVE 2520: 3.5→1.8 — arpegios suaves respiran
     decayBase: 0.78,
     decayRange: 0.03,
     maxIntensity: 1.0,
-    squelchBase: 0.30,     // WAVE 3491: 0.02→0.30 — piso estricto
+    squelchBase: 0.15,     // WAVE 2520: 0.30→0.15 — piso relajado
     squelchSlope: 0.10,
     ghostCap: 0.00,        // WAVE 3491: 0.04→0.00 — negro absoluto entre arpegios
     gateMargin: 0.005,
@@ -144,7 +157,7 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   // ═══════════════════════════════════════════════════════════════
 
   percMidSubtract: 1.0,   // WAVE 2424: Escudo Absoluto — relación 1:1, ningún sinte puede engañar al Látigo
-  percGate: 0.06,          // WAVE 3311: 0.01→0.06 — transient shaper filtra variaciones de treble pequeñas (voces)
+  percGate: 0.04,          // BACK-PAR TUNE: 0.06→0.04 — dejar pasar hits suaves del redoble de caja
   percBoost: 5.0,          // WAVE 2419: 8.0→5.0
   percExponent: 0.5,       // WAVE 2419: 1.2→0.5 (raíz cuadrada, suaviza transitorio)
 
@@ -236,5 +249,51 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   // Attack 30ms: dispara instantáneo con el bombo. Release 120ms: corte brutal entre kicks.
   ambientAttackMs: 30,
   ambientReleaseMs: 120,
+
+  // ═══════════════════════════════════════════════════════════════
+  // WAVE 2520: OVERRIDES 4.1 — CALIBRACIÓN EXTREMA ANTI-MELAZA
+  //
+  // PROBLEMA 1: Aislamiento Back PAR.
+  //   backPar = max(backLeft, backRight) = max(envHighMid, envSnare).
+  //   El colchón de sintes (envHighMid) es CONTINUO y satura ~0.85 constante;
+  //   el Látigo (envSnare) es impulsivo. max() deja ganar al colchón casi
+  //   siempre → el snare desaparece visualmente tras el muro de mid synths.
+  //
+  //   CONTRAMEDIDA: capar envHighMid.maxIntensity a 0.60 (por debajo del
+  //   pico del Látigo) + acelerar su decayBase (0.62→0.45) para que el
+  //   colchón libere entre golpes y deje campo al snare en el max().
+  //   Además bajamos envSnare.gateOn (0.28→0.22) para capturar hits más
+  //   sutiles del redoble que el compactado 4.1 tiende a tragarse.
+  //
+  // PROBLEMA 2: Pulso del Metrónomo en 4.1.
+  //   El Front PAR en strict-split = envKick solo. El decayBase base ya
+  //   subió a 0.08 (anti-micro-strobe). En 4.1 apretamos decayRange
+  //   (0.0329→0.02) para comportamiento aún más uniforme entre frames,
+  //   ya que el smoothing 0.88 del motor ha sido neutralizado para
+  //   strict-split (ver LiquidEngine41.routeZones) — el envelope crudo
+  //   es ahora el único responsable del pulso.
+  //
+  // PROBLEMA 3: Movers en compactación.
+  //   Los movers NO se compactan en 4.1 (pasan directos), así que heredan
+  //   el desbozalado del base (crushExponent 1.8, squelchBase 0.15). No
+  //   requieren override adicional aquí.
+  // ═══════════════════════════════════════════════════════════════
+  overrides41: {
+    // ── BACK PAR: el Látigo debe ganarle al Coro en max() ──────────
+    envelopeHighMid: {
+      maxIntensity: 0.60,   // WAVE 2520: 0.85→0.60 — cap por debajo del pico del snare
+      decayBase: 0.45,      // WAVE 2520: 0.62→0.45 — colchón libera entre golpes
+    },
+    envelopeSnare: {
+      gateOn: 0.22,         // WAVE 2520: 0.28→0.22 — más sensible en compactación
+    },
+
+    // ── FRONT PAR: Metrónomo uniforme sin inercia del motor ────────
+    envelopeKick: {
+      decayRange: 0.02,     // WAVE 2520: 0.0329→0.02 — uniforme (smoothing neutralizado)
+    },
+
+    layout41Strategy: 'strict-split' as const,
+  },
 }
 

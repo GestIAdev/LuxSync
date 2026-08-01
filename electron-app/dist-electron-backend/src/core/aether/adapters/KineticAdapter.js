@@ -193,6 +193,16 @@ export class KineticAdapter extends BaseSystem {
             if (node.isContinuous) {
                 return;
             }
+            // ── WAVE 2523: CHILL LOCKDOWN — Early return para chill ──────────────
+            // El ChillAmbientEngine (GLACIAR SWEEP) controla 100% del movimiento de
+            // los movers en chill via deepFieldMechanics → bypass priority 50 (LTP).
+            // Si el KineticAdapter emite pan_offset/tilt_offset aquí (priority 10),
+            // el NodeArbiter los SUMA al pan/tilt absoluto del bypass, generando
+            // movimiento no deseado + contaminación de audio si el VIBE_ID_MAP no
+            // reconoce el vibe chill activo. Early return = cero intents = cero fuga.
+            if (isChillVibe) {
+                return;
+            }
             // ── 4c. Obtener intención 2D del VMM para este nodo ───────────────
             // 🎭 WAVE 4645: Left/Right phase asymmetry
             // Fixtures on the right side (x > 0) get π phase offset for counterpoint motion

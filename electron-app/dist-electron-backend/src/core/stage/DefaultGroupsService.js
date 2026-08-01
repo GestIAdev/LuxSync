@@ -34,6 +34,10 @@ export function ensureSystemGroups(fixtures, existingGroups) {
     const userGroups = existingGroups.filter(g => !g.isSystem);
     if (fixtures.length === 0)
         return userGroups;
+    // WAVE 2526: Si un grupo de usuario tiene el mismo ID que un grupo del sistema
+    // (porque el operador hizo Ctrl+N sobre un grupo del sistema), no regenerar
+    // ese grupo del sistema — el grupo de usuario tiene prioridad.
+    const userIds = new Set(userGroups.map(g => g.id));
     const generated = [];
     let order = 0;
     // ── Grupos por zona ────────────────────────────────────────────────────
@@ -45,7 +49,7 @@ export function ensureSystemGroups(fixtures, existingGroups) {
         byZone.get(zone).push(f.id);
     }
     for (const [zone, ids] of byZone) {
-        if (ids.length > 1) {
+        if (ids.length > 1 && !userIds.has(`group-zone-${zone}`)) {
             generated.push({
                 id: `group-zone-${zone}`,
                 name: zone.replace(/-/g, ' ').toUpperCase(),
@@ -65,7 +69,7 @@ export function ensureSystemGroups(fixtures, existingGroups) {
         byType.get(type).push(f.id);
     }
     for (const [type, ids] of byType) {
-        if (ids.length > 1 && type !== 'generic') {
+        if (ids.length > 1 && type !== 'generic' && !userIds.has(`group-type-${type}`)) {
             generated.push({
                 id: `group-type-${type}`,
                 name: `All ${type.replace(/-/g, ' ')}s`,
@@ -77,15 +81,17 @@ export function ensureSystemGroups(fixtures, existingGroups) {
         }
     }
     // ── Grupo universal ────────────────────────────────────────────────────
-    generated.push({
-        id: 'group-all',
-        name: 'ALL FIXTURES',
-        fixtureIds: fixtures.map(f => f.id),
-        color: '#ffffff',
-        hotkey: '0',
-        isSystem: true,
-        order: 999,
-    });
+    if (!userIds.has('group-all')) {
+        generated.push({
+            id: 'group-all',
+            name: 'ALL FIXTURES',
+            fixtureIds: fixtures.map(f => f.id),
+            color: '#ffffff',
+            hotkey: '0',
+            isSystem: true,
+            order: 999,
+        });
+    }
     // Grupos de usuario al final (order 1000+) para no colisionar con sistema
     const userGroupsWithOrder = userGroups.map((g, i) => ({ ...g, order: 1000 + i }));
     return [...generated, ...userGroupsWithOrder];

@@ -54,6 +54,16 @@ import { isEnergyOverrideActive, } from '../protocol/ConsciousnessOutput';
 export class SeleneLux {
     constructor(config = {}) {
         this.frameCount = 0;
+        // 🛡️ SUSTAINED SILENCE HYSTERESIS — Reemplaza el umbral instantáneo < 0.01
+        // que causaba deadlock permanente tras seeks. Requiere 90 frames (~1.5s)
+        // de energía baja sostenida para ENTRAR en silencio, pero sale inmediatamente
+        // cuando la energía supera 0.02. Esto evita que pasajes minimalistas o
+        // la recuperación lenta del EMA atrapen al motor en buildSilenceResult().
+        this.silenceFrameCount = 0;
+        this.silenceActive = false;
+        this.SILENCE_ENTER_FRAMES = 180; // 3s @ 60fps, ~4s @ 44Hz para entrar (era 90)
+        this.SILENCE_ENTER_THRESHOLD = 0.005; // avgNormEnergy < esto para contar (era 0.01)
+        this.SILENCE_EXIT_THRESHOLD = 0.02; // avgNormEnergy >= esto para salir
         this.lastStrobeActive = false;
         this.lastForceMovement = false;
         // 🆕 WAVE 288.1: Throttling de logs para latino
@@ -133,6 +143,31 @@ export class SeleneLux {
             energyOverrideActive: false, // 🧠 WAVE 450
         };
         // WAVE 2098: Boot silence
+    }
+    // 🛡️ SUSTAINED SILENCE HYSTERESIS
+    // Reemplaza el umbral instantáneo avgNormEnergy < 0.01 que causaba deadlock.
+    // Entrada: requiere 90 frames (~1.5s) de energía < 0.01 sostenida.
+    // Salida: inmediata cuando energía >= 0.02 (barra más baja para salir).
+    computeIsRealSilence(avgNormEnergy) {
+        const energy = Number.isFinite(avgNormEnergy) ? avgNormEnergy : 0;
+        if (this.silenceActive) {
+            if (energy >= this.SILENCE_EXIT_THRESHOLD) {
+                this.silenceActive = false;
+                this.silenceFrameCount = 0;
+            }
+        }
+        else {
+            if (energy < this.SILENCE_ENTER_THRESHOLD) {
+                this.silenceFrameCount++;
+                if (this.silenceFrameCount >= this.SILENCE_ENTER_FRAMES) {
+                    this.silenceActive = true;
+                }
+            }
+            else {
+                this.silenceFrameCount = 0;
+            }
+        }
+        return this.silenceActive;
     }
     // ═══════════════════════════════════════════════════════════════════════════
     // API PÚBLICA
@@ -275,7 +310,7 @@ export class SeleneLux {
             const liquidInput = {
                 bands,
                 sectionType: vibeContext.section,
-                isRealSilence: audioMetrics.avgNormEnergy < 0.01,
+                isRealSilence: this.computeIsRealSilence(audioMetrics.avgNormEnergy),
                 isAGCTrap: false,
                 harshness: audioMetrics.harshness,
                 flatness: audioMetrics.spectralFlatness,
@@ -371,7 +406,7 @@ export class SeleneLux {
                 treble: audioMetrics.normalizedTreble,
                 bpm: vibeContext.bpm ?? 120,
                 melodyThreshold: 0.4,
-                isRealSilence: audioMetrics.avgNormEnergy < 0.01,
+                isRealSilence: this.computeIsRealSilence(audioMetrics.avgNormEnergy),
                 isAGCTrap: false,
                 isKick: audioMetrics.kickDetected ?? false,
                 isPLLBeat: audioMetrics.isPLLBeat ?? false, // 🎯 WAVE 2305: EL CABLE CONECTADO
@@ -790,12 +825,14 @@ export class SeleneLux {
         // 🌊 WAVE 8003: PHOTON ANTI-COLLAPSE — wallIntensity as dimmer lower-bound
         // When brickwall limiter compresses dynamics, wallIntensity ensures
         // a minimum intensity floor so fixtures don't go dark.
-        // If photon is undefined (V2 fallback), behavior is unchanged.
+        // Only apply as a lower bound to EXISTING effect overrides (blackout/flash/chill).
+        // Do NOT set dimmerOverride from wallIntensity when no effect is active —
+        // wallIntensity decays to ~0 during silence (SaturationMeter.lPeak is sticky)
+        // and would replace the healthy energy-based masterIntensity in TitanEngine,
+        // killing the lights for ~23s after song transitions.
         const photon = audioMetrics.photon;
-        if (photon && photon.wallIntensity > 0) {
-            dimmerOverride = dimmerOverride !== null
-                ? Math.max(dimmerOverride, photon.wallIntensity)
-                : photon.wallIntensity;
+        if (photon && photon.wallIntensity > 0 && dimmerOverride !== null) {
+            dimmerOverride = Math.max(dimmerOverride, photon.wallIntensity);
         }
         // 🌊 WAVE 8004: PHOTON STROBE — StrobeEngine output drives strobeOverride
         // When active, provides rate + duty for HAL to use native strobe channel

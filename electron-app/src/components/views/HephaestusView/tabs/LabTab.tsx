@@ -149,7 +149,14 @@ export const LabTab: React.FC<LabTabProps> = ({ temporalActions, isSaving = fals
   }, [clip?.cognitiveDNA, setClip])
 
   const handleDnaChange = useCallback((dna: CognitiveDNA) => {
-    setClip(prev => ({ ...prev, cognitiveDNA: dna }))
+    // WAVE 2524: Sync vibeCompat from dna.compatibleVibes so the library
+    // grouping/filtering by vibe works. The DnaRail stores bridged vibes
+    // (techno-club, fiesta-latina) in dna.compatibleVibes.
+    setClip(prev => ({
+      ...prev,
+      cognitiveDNA: dna,
+      vibeCompat: Array.isArray(dna.compatibleVibes) ? [...dna.compatibleVibes] : prev.vibeCompat,
+    }))
   }, [setClip])
 
   const handleSimMetaChange = useCallback((meta: SimulationMeta) => {

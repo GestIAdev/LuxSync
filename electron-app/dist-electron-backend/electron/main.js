@@ -458,37 +458,135 @@ async function initTitan() {
     // ⚡ INFINITE ARSENAL — BOOT INGESTION (Single Source of Truth)
     // userData/arsenal/ es la única fuente de verdad para .lfx.
     // Si está vacío, se copia desde builtins/ (fábrica) al primer arranque.
+    // WAVE 2529: Manifest-based incremental sync — solo copia builtins nuevos
+    // o actualizados, preservando efectos custom del usuario.
     // ════════════════════════════════════════════════════════════
     try {
         const _arsenalPath = path.join(app.getPath('userData'), 'arsenal');
         const _builtinPath = app.isPackaged
             ? path.join(process.resourcesPath, 'builtins')
             : path.join(__dirname, '..', 'src', 'core', 'arsenal', 'builtins');
-        // ── Bootstrapper: si userData/arsenal/ está vacío, copiar desde builtins/ ──
-        let _arsenalIsEmpty = true;
-        try {
-            const _existing = fs.readdirSync(_arsenalPath);
-            _arsenalIsEmpty = !_existing.some(f => f.toLowerCase().endsWith('.lfx'));
-        }
-        catch { /* dir doesn't exist yet */ }
-        if (_arsenalIsEmpty && fs.existsSync(_builtinPath)) {
-            fs.mkdirSync(_arsenalPath, { recursive: true });
-            const _copyRecursive = (srcDir) => {
-                const entries = fs.readdirSync(srcDir, { withFileTypes: true });
-                for (const entry of entries) {
-                    const src = path.join(srcDir, entry.name);
-                    if (entry.isDirectory()) {
-                        _copyRecursive(src);
-                    }
-                    else if (entry.name.toLowerCase().endsWith('.lfx')) {
-                        const dest = path.join(_arsenalPath, entry.name);
-                        fs.copyFileSync(src, dest);
-                    }
+        // ── Helper: compute SHA-256 checksum (first 16 chars) ──
+        const _checksum = (filePath) => {
+            const content = fs.readFileSync(filePath);
+            return require('crypto').createHash('sha256').update(content).digest('hex').slice(0, 16);
+        };
+        // ── Helper: recursive copy .lfx files preserving subfolder structure ──
+        const _copyRecursive = (srcDir, destDir) => {
+            fs.mkdirSync(destDir, { recursive: true });
+            const entries = fs.readdirSync(srcDir, { withFileTypes: true });
+            for (const entry of entries) {
+                const src = path.join(srcDir, entry.name);
+                const dest = path.join(destDir, entry.name);
+                if (entry.isDirectory()) {
+                    _copyRecursive(src, dest);
                 }
-            };
-            _copyRecursive(_builtinPath);
-            const _copiedCount = fs.readdirSync(_arsenalPath).filter(f => f.toLowerCase().endsWith('.lfx')).length;
-            console.log(`[TitanOrchestrator] 📦 Bootstrapped arsenal: ${_copiedCount} .lfx copied from builtins → userData/arsenal/`);
+                else if (entry.name.toLowerCase().endsWith('.lfx')) {
+                    fs.copyFileSync(src, dest);
+                }
+            }
+        };
+        // ── Helper: count .lfx recursively ──
+        const _countLfx = (dir) => {
+            let count = 0;
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+                if (entry.isDirectory()) {
+                    count += _countLfx(path.join(dir, entry.name));
+                }
+                else if (entry.name.toLowerCase().endsWith('.lfx')) {
+                    count++;
+                }
+            }
+            return count;
+        };
+        // ── WAVE 2529: Manifest-based incremental sync ──
+        // The manifest.json in builtins/ lists every .lfx with a checksum.
+        // We compare it against the installed manifest in userData/arsenal/.
+        // New/updated files are copied; user-created effects are never touched.
+        const _builtinManifestPath = path.join(_builtinPath, 'manifest.json');
+        const _installedManifestPath = path.join(_arsenalPath, '.builtin-manifest.json');
+        let _builtinManifest = null;
+        let _installedManifest = null;
+        try {
+            if (fs.existsSync(_builtinManifestPath)) {
+                _builtinManifest = JSON.parse(fs.readFileSync(_builtinManifestPath, 'utf-8'));
+            }
+        }
+        catch { /* malformed manifest — treat as null */ }
+        try {
+            if (fs.existsSync(_installedManifestPath)) {
+                _installedManifest = JSON.parse(fs.readFileSync(_installedManifestPath, 'utf-8'));
+            }
+        }
+        catch { /* malformed — treat as null */ }
+        if (_builtinManifest && fs.existsSync(_builtinPath)) {
+            fs.mkdirSync(_arsenalPath, { recursive: true });
+            const _builtinFiles = _builtinManifest.files;
+            const _installedFiles = _installedManifest?.files ?? {};
+            let _syncedCount = 0;
+            let _skippedCount = 0;
+            let _newCount = 0;
+            for (const [relPath, entry] of Object.entries(_builtinFiles)) {
+                const _destFile = path.join(_arsenalPath, relPath);
+                const _srcFile = path.join(_builtinPath, relPath);
+                // Ensure source exists (manifest could be stale if build was partial)
+                if (!fs.existsSync(_srcFile))
+                    continue;
+                // Ensure parent directory exists
+                const _destDir = path.dirname(_destFile);
+                fs.mkdirSync(_destDir, { recursive: true });
+                const _installedEntry = _installedFiles[relPath];
+                if (!fs.existsSync(_destFile)) {
+                    // New file — copy it
+                    fs.copyFileSync(_srcFile, _destFile);
+                    _syncedCount++;
+                    _newCount++;
+                }
+                else if (!_installedEntry || _installedEntry.checksum !== entry.checksum) {
+                    // Updated builtin — overwrite (user effects have no manifest entry)
+                    fs.copyFileSync(_srcFile, _destFile);
+                    _syncedCount++;
+                }
+                else {
+                    // Already installed and unchanged — skip
+                    _skippedCount++;
+                }
+            }
+            // Write the installed manifest for next boot's comparison
+            fs.writeFileSync(_installedManifestPath, JSON.stringify(_builtinManifest, null, 2));
+            if (_syncedCount > 0) {
+                console.log(`[TitanOrchestrator] 📦 Arsenal sync (v${_builtinManifest.version}): ` +
+                    `${_syncedCount} .lfx synced (${_newCount} new), ${_skippedCount} unchanged`);
+            }
+            else {
+                console.log(`[TitanOrchestrator] 📦 Arsenal up-to-date: ${_skippedCount} builtins (v${_builtinManifest.version})`);
+            }
+        }
+        else {
+            // Fallback: no manifest — use legacy full copy if arsenal is empty
+            let _arsenalIsEmpty = true;
+            try {
+                const _hasLfx = (dir) => {
+                    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+                        if (entry.isDirectory()) {
+                            if (_hasLfx(path.join(dir, entry.name)))
+                                return true;
+                        }
+                        else if (entry.name.toLowerCase().endsWith('.lfx')) {
+                            return true;
+                        }
+                    }
+                    return false;
+                };
+                _arsenalIsEmpty = !_hasLfx(_arsenalPath);
+            }
+            catch { /* dir doesn't exist yet */ }
+            if (_arsenalIsEmpty && fs.existsSync(_builtinPath)) {
+                fs.mkdirSync(_arsenalPath, { recursive: true });
+                _copyRecursive(_builtinPath, _arsenalPath);
+                const _copiedCount = _countLfx(_arsenalPath);
+                console.log(`[TitanOrchestrator] 📦 Bootstrapped arsenal (legacy): ${_copiedCount} .lfx copied from builtins → userData/arsenal/`);
+            }
         }
         // ── Load ONLY from userData/arsenal/ (single source of truth) ──
         const _loadDirs = [

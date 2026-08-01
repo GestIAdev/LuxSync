@@ -282,41 +282,66 @@ function sendFrameBaudrateBreak(): void {
 
   if (typeof portAny.update !== 'function') {
     // Chip sin soporte de baudrate update — envío directo sin BREAK (último recurso)
-    port.write(dmxSendBuffer, (err: Error | null) => {
-      if (err) log(`Write error (no-break fallback): ${err.message}`)
+    try {
+      port.write(dmxSendBuffer, (err: Error | null) => {
+        if (err) log(`Write error (no-break fallback): ${err.message}`)
+        scheduleNextFrame()
+      })
+    } catch (syncErr) {
+      log(`SYNC THROW (no-break fallback): ${syncErr instanceof Error ? syncErr.message : String(syncErr)}`)
       scheduleNextFrame()
-    })
+    }
     return
   }
 
   // PASO 1: Bajar baud para generar BREAK
-  portAny.update({ baudRate: 76923 }, (err1: Error | null) => {
-    if (err1 || !port || !isOpen) { scheduleNextFrame(); return }
+  try {
+    portAny.update({ baudRate: 76923 }, (err1: Error | null) => {
+      if (err1 || !port || !isOpen) { scheduleNextFrame(); return }
 
-    // PASO 2: Emitir 0x00 → señal LOW ~130µs en la línea = BREAK DMX512
-    port.write(BREAK_BYTE, (err2: Error | null) => {
-      if (err2 || !port || !isOpen) { scheduleNextFrame(); return }
+      // PASO 2: Emitir 0x00 → señal LOW ~130µs en la línea = BREAK DMX512
+      try {
+        port.write(BREAK_BYTE, (err2: Error | null) => {
+          if (err2 || !port || !isOpen) { scheduleNextFrame(); return }
 
-      // Drain: esperar que el UART vacíe el byte antes de cambiar baud
-      port.drain((err3: Error | null) => {
-        if (err3 || !port || !isOpen) { scheduleNextFrame(); return }
+          // Drain: esperar que el UART vacíe el byte antes de cambiar baud
+          port.drain((err3: Error | null) => {
+            if (err3 || !port || !isOpen) { scheduleNextFrame(); return }
 
-        // PASO 3: Volver a 250000 baud
-        portAny.update({ baudRate: 250000 }, (err4: Error | null) => {
-          if (err4 || !port || !isOpen) { scheduleNextFrame(); return }
+            // PASO 3: Volver a 250000 baud
+            try {
+              portAny.update({ baudRate: 250000 }, (err4: Error | null) => {
+                if (err4 || !port || !isOpen) { scheduleNextFrame(); return }
 
-          // PASO 4: MAB — 20µs mínimo via spin-wait preciso
-          spinWaitNs(MAB_NS)
+                // PASO 4: MAB — 20µs mínimo via spin-wait preciso
+                spinWaitNs(MAB_NS)
 
-          // PASO 5: Emitir los 513 bytes del universo DMX
-          port.write(dmxSendBuffer, (err5: Error | null) => {
-            if (err5) log(`Write error: ${err5.message}`)
-            scheduleNextFrame()
+                // PASO 5: Emitir los 513 bytes del universo DMX
+                try {
+                  port.write(dmxSendBuffer, (err5: Error | null) => {
+                    if (err5) log(`Write error: ${err5.message}`)
+                    scheduleNextFrame()
+                  })
+                } catch (syncErr) {
+                  log(`SYNC THROW payload write: ${syncErr instanceof Error ? syncErr.message : String(syncErr)}`)
+                  scheduleNextFrame()
+                }
+              })
+            } catch (syncErr) {
+              log(`SYNC THROW MAB update: ${syncErr instanceof Error ? syncErr.message : String(syncErr)}`)
+              scheduleNextFrame()
+            }
           })
         })
-      })
+      } catch (syncErr) {
+        log(`SYNC THROW BREAK write: ${syncErr instanceof Error ? syncErr.message : String(syncErr)}`)
+        scheduleNextFrame()
+      }
     })
-  })
+  } catch (syncErr) {
+    log(`SYNC THROW BREAK update: ${syncErr instanceof Error ? syncErr.message : String(syncErr)}`)
+    scheduleNextFrame()
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

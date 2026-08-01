@@ -124,6 +124,8 @@ interface LiquidEnvelopeState {
   sustainedSquelchBoost: number
   /** WAVE 8009.2: Contador de frames consecutivos de silencio para reset de gate */
   silenceFrames: number
+  /** Contador de frames donde signal < avgSignalPeak * 0.55 (peak stale) */
+  stalePeakFrames: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -232,7 +234,24 @@ export class LiquidEnvelope {
     }
 
     // Peak decay: normal 0.993 (~4.7s half-life), dry spell 0.985 (~1.5s)
-    const peakDecay = isDrySpell ? 0.985 : 0.993
+    // Stale peak release: when signal is consistently well below the peak
+    // (e.g. after a track change/seek), accelerate the decay so the gate
+    // drops to match the new signal level within ~340ms instead of ~4.7s.
+    const STALE_PEAK_THRESHOLD = 15  // ~340ms at 44Hz
+    const STALE_PEAK_DECAY = 0.95     // ~15 frames to drop 50%
+    if (signal < s.avgSignalPeak * 0.55) {
+      s.stalePeakFrames++
+    } else {
+      s.stalePeakFrames = 0
+    }
+    let peakDecay: number
+    if (s.stalePeakFrames > STALE_PEAK_THRESHOLD) {
+      peakDecay = STALE_PEAK_DECAY
+    } else if (isDrySpell) {
+      peakDecay = 0.985
+    } else {
+      peakDecay = 0.993
+    }
     if (s.avgSignal > s.avgSignalPeak) {
       s.avgSignalPeak = s.avgSignal
     } else {
@@ -308,7 +327,7 @@ export class LiquidEnvelope {
 
     if (signal > dynamicGate && isAttacking && signal > 0.15 && velocity >= attackSlopeMin) {
       // Above gate + attacking → main power path
-      const requiredJump = 0.14 - 0.07 * morphFactor + breakdownPenalty
+      const requiredJump = Math.max(0.0001, 0.14 - 0.07 * morphFactor + breakdownPenalty)
       let rawPower = (signal - dynamicGate) / requiredJump
       rawPower = Math.min(1.0, Math.max(0, rawPower))
 
@@ -320,7 +339,7 @@ export class LiquidEnvelope {
       // Herencia: WAVE 2383/2393 (ghostCap × morphFactor)
       // WAVE 2990: Removed Math.max(morphFactor, 0.1) floor — ghostCap scales to 0 at morph=0.
       const ghostCapDynamic = c.ghostCap * morphFactor
-      const proximity = (signal - avgEffective) / 0.02
+      const proximity = (signal - avgEffective) / Math.max(0.0001, 0.02)
       ghostPower = Math.max(ghostCapDynamic, Math.min(ghostCapDynamic, proximity * ghostCapDynamic))
     }
 
@@ -390,6 +409,7 @@ export class LiquidEnvelope {
       sustainedFrames: 0,
       sustainedSquelchBoost: 0,
       silenceFrames: 0,
+      stalePeakFrames: 0,
     }
   }
 

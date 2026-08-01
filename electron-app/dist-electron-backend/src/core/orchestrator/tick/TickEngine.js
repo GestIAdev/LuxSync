@@ -20,8 +20,6 @@ const ZONE_MAP = {
     'LASER': 'effects', 'UV': 'effects',
 };
 const DMX_OUTPUT_ZEROS = Object.freeze(new Array(512).fill(0));
-// 🛠️ WAVE 5034: Module-level constant to eliminate per-frame Set allocation
-const OMNI_SOURCES_STALENESS = new Set(['virtual-wire', 'usb-directlink', 'osc-nexus']);
 export class TickEngine {
     get brain() { return this.ctx.brain; }
     get engine() { return this.ctx.engine; }
@@ -193,44 +191,12 @@ export class TickEngine {
         // }
         // 1. Brain produces MusicalContext
         const context = this.brain.getCurrentContext();
-        // ðŸ—¡ï¸ WAVE 265: STALENESS DETECTION - Verificar frescura del audio
-        // Si el Ãºltimo audio llegÃ³ hace mÃ¡s de AUDIO_STALENESS_THRESHOLD_MS, es stale
-        // âš¡ WAVE 3050: UNIFIED FRAME TIMESTAMP â€” one syscall per frame, not 9
-        //
-        // WAVE 3423: Omni sources (VW/USB) usan threshold extendido de 2000ms.
-        // VW entrega ~10fps pero el SAB puede tener gaps de 200-400ms durante
-        // silencios largos (intro, pausa entre drops). Con 500ms el staleness
-        // se dispara en cualquier intro silenciosa y mata las luces en plena mÃºsica.
+        // WAVE 3424: GRACE HOLD — Staleness detection with grace period.
+        // Replaces inline staleness check with AudioPipelineManager.checkStaleness().
+        // During grace: hasRealAudio stays true, bands decay gradually (no black cut).
+        // After grace: hasRealAudio = false, full zero-out.
         const now = Date.now();
-        const matrixStatusForStaleness = this.trinity?.getAudioMatrix()?.getStatus();
-        const activeSourceForStaleness = matrixStatusForStaleness?.activeSource ?? null;
-        const isOmniForStaleness = activeSourceForStaleness ? OMNI_SOURCES_STALENESS.has(activeSourceForStaleness) : false;
-        const effectiveStalenessThreshold = isOmniForStaleness ? 2000 : this.audioPipeline.AUDIO_STALENESS_THRESHOLD_MS;
-        if (this.audioPipeline.hasRealAudio && (now - this.audioPipeline.lastAudioTimestamp) > effectiveStalenessThreshold) {
-            if (shouldLog) {
-                console.warn(`[TitanOrchestrator] âš ï¸ AUDIO STALE - no data for ${now - this.audioPipeline.lastAudioTimestamp}ms, switching to silence`);
-            }
-            this.audioPipeline.hasRealAudio = false;
-            // Reset lastAudioData para no mentir con datos viejos
-            // ðŸŽ›ï¸ WAVE 661: Incluir reset de textura espectral
-            // ðŸŽ¸ WAVE 1011: Incluir reset de bandas extendidas y transientes
-            // ðŸ”¥ WAVE 1162.2: Incluir reset de rawBassEnergy
-            this.audioPipeline.lastAudioData = {
-                bass: 0, mid: 0, high: 0, energy: 0,
-                harshness: undefined, spectralFlatness: undefined, spectralCentroid: undefined,
-                subBass: undefined, lowMid: undefined, highMid: undefined,
-                kickDetected: undefined, snareDetected: undefined, hihatDetected: undefined,
-                rawBassEnergy: undefined, // ðŸ”¥ WAVE 1162.2: Reset tambiÃ©n el bypass
-                // ðŸ”¥ WAVE 2213: PRESERVAR MEMORIA DEL WORKER DURANTE EL SILENCIO
-                // Sin esto: workerBpm â†’ undefined â†’ zombie BeatDetector â†’ 200 BPM hardcodeado
-                workerBpm: this.audioPipeline.lastAudioData.workerBpm,
-                workerBpmConfidence: this.audioPipeline.lastAudioData.workerBpmConfidence,
-                workerOnBeat: false, // Es silencio, no hay beat activo
-                workerBeatPhase: this.audioPipeline.lastAudioData.workerBeatPhase,
-                workerBeatStrength: 0,
-                workerKickCount: this.audioPipeline.lastAudioData.workerKickCount,
-            };
-        }
+        this.audioPipeline.checkStaleness(this.frameCount, shouldLog);
         // 2. WAVE 255: Use real audio if available, otherwise silence (IDLE mode)
         let bass, mid, high, energy;
         if (this.audioPipeline.hasRealAudio) {
@@ -1045,7 +1011,17 @@ export class TickEngine {
                 _v.name = this.engine.getCurrentVibe();
                 _v.palette = (intent.palette.colors ?? [{ h: 0, s: 0, l: 1 }]);
                 _v.movementSpeed = 0.5;
-                _v.intensity = intent.masterIntensity ?? engineAudioMetrics.energy;
+                // WAVE 2523: CHILL LOCKDOWN — vibe.intensity forzado a 1.0 en chill.
+                // Antes: intent.masterIntensity ?? engineAudioMetrics.energy
+                // Si masterIntensity no llegaba, caía al fallback de energía del audio,
+                // y el ImpactAdapter multiplicaba el dimmer neutral por la energía →
+                // los PARs laten con la música. En chill, el dimmerOverride del
+                // chillFrame ya controla el dimmer final por la ruta de effects.
+                // Forzar 1.0 = el ImpactAdapter pasa el zoneIntensity sin modulación.
+                const _vibeName = _v.name ?? '';
+                const _isChillVibe = _vibeName.includes('chill') || _vibeName.includes('lounge') ||
+                    _vibeName.includes('ambient') || _vibeName.includes('jazz');
+                _v.intensity = _isChillVibe ? 1.0 : (intent.masterIntensity ?? engineAudioMetrics.energy);
                 _v.beamExpressiveness = 0.5;
                 // nowMs y frameIndex del scope
                 this._aetherCtx.nowMs = now;
@@ -1083,10 +1059,12 @@ export class TickEngine {
                 }
                 colorAdapter.process(this._aetherGraph.getView(NodeFamily.COLOR), ctx, this._aetherBus);
                 kineticAdapter.process(this._aetherGraph.getView(NodeFamily.KINETIC), ctx, this._aetherBus);
-                // WAVE 6055: MECHANICS BYPASS — ChillAmbientEngine Lissajous override.
-                // intent.movement.mechanicsL/R llevan pan/tilt [0,1] del ChillAmbientEngine.
+                // WAVE 6055+2523: MECHANICS BYPASS — ChillAmbientEngine Glaciar Sweep override.
+                // intent.movement.mechanicsL/R llevan pan/tilt [0,1] + intensity del ChillAmbientEngine.
                 // Se inyectan como intents absolutos pan/tilt con priority 50 (> L0=10).
-                // Aplasta el LFO de hielo del KineticAdapter para chill vibe.
+                // WAVE 2523: También emite dimmer = intensity para sobreescribir el neutral
+                // 0.5 del LiquidAetherAdapter (L0). Sin esto, los movers reciben dimmer del
+                // motor líquido en lugar del chillFrame.dimmer del ChillAmbientEngine.
                 if (intent.movement?.mechanicsL && intent.movement?.mechanicsR) {
                     const _mechL = intent.movement.mechanicsL;
                     const _mechR = intent.movement.mechanicsR;
@@ -1095,11 +1073,13 @@ export class TickEngine {
                             return;
                         const _posX = node.physicalPosition?.x ?? node.position?.x ?? 0;
                         const _mech = (_posX < 0) ? _mechL : _mechR;
+                        const _dimmer = Math.max(0, Math.min(1, _mech.intensity ?? 0));
                         this._aetherBus.push({
                             nodeId: node.nodeId,
                             values: {
                                 pan: Math.max(0, Math.min(1, _mech.pan)),
                                 tilt: Math.max(0, Math.min(1, _mech.tilt)),
+                                dimmer: _dimmer, // WAVE 2523: sobreescribir neutral 0.5 del L0
                             },
                             priority: 50,
                             confidence: 1.0,

@@ -136,7 +136,7 @@ describe('🎲 Monte Carlo Regression: TECHNO_PROFILE', () => {
     expect(TECHNO_PROFILE.envelopeKick.gateOn).toBeCloseTo(0.28, 2)
     expect(TECHNO_PROFILE.envelopeKick.boost).toBeCloseTo(3.3013, 3)
     expect(TECHNO_PROFILE.envelopeKick.crushExponent).toBeCloseTo(1.0, 1)
-    expect(TECHNO_PROFILE.envelopeKick.decayBase).toBeCloseTo(0.0077, 3)
+    expect(TECHNO_PROFILE.envelopeKick.decayBase).toBeCloseTo(0.08, 2)
     expect(TECHNO_PROFILE.envelopeKick.decayRange).toBeCloseTo(0.0329, 3)
     expect(TECHNO_PROFILE.envelopeKick.maxIntensity).toBeCloseTo(0.80, 2)
   })
@@ -144,6 +144,36 @@ describe('🎲 Monte Carlo Regression: TECHNO_PROFILE', () => {
   it('should preserve envelopeTreble calibrated values', () => {
     expect(TECHNO_PROFILE.envelopeTreble.gateOn).toBeCloseTo(0.25, 2)
     expect(TECHNO_PROFILE.envelopeTreble.boost).toBeCloseTo(4.0, 1)
+  })
+
+  // WAVE 2520 — Anti-Melaza + Desbozalado Movers + overrides41
+  it('should preserve desbozalado envelopeTreble (crushExponent 1.8, squelchBase 0.15)', () => {
+    expect(TECHNO_PROFILE.envelopeTreble.crushExponent).toBeCloseTo(1.8, 2)
+    expect(TECHNO_PROFILE.envelopeTreble.squelchBase).toBeCloseTo(0.15, 2)
+  })
+
+  it('should preserve desbozalado envelopeVocal (crushExponent 1.8, squelchBase 0.15)', () => {
+    expect(TECHNO_PROFILE.envelopeVocal.crushExponent).toBeCloseTo(1.8, 2)
+    expect(TECHNO_PROFILE.envelopeVocal.squelchBase).toBeCloseTo(0.15, 2)
+  })
+
+  it('should preserve anti-micro-strobe envelopeKick.decayBase = 0.08', () => {
+    expect(TECHNO_PROFILE.envelopeKick.decayBase).toBeCloseTo(0.08, 2)
+  })
+
+  it('should have overrides41 for 4.1 independence', () => {
+    expect(TECHNO_PROFILE.overrides41).toBeDefined()
+    if (TECHNO_PROFILE.overrides41) {
+      // Back PAR isolation: Coro capped below Látigo peak
+      expect(TECHNO_PROFILE.overrides41.envelopeHighMid?.maxIntensity).toBeCloseTo(0.60, 2)
+      expect(TECHNO_PROFILE.overrides41.envelopeHighMid?.decayBase).toBeCloseTo(0.45, 2)
+      // Látigo más sensible en compactación
+      expect(TECHNO_PROFILE.overrides41.envelopeSnare?.gateOn).toBeCloseTo(0.22, 2)
+      // Metrónomo uniforme (smoothing del motor neutralizado)
+      expect(TECHNO_PROFILE.overrides41.envelopeKick?.decayRange).toBeCloseTo(0.02, 2)
+      // Estrategia explícita
+      expect(TECHNO_PROFILE.overrides41.layout41Strategy).toBe('strict-split')
+    }
   })
 
   it('should preserve sidechain values', () => {
@@ -268,16 +298,75 @@ describe('🎲 Monte Carlo Regression: POPROCK_PROFILE', () => {
     expect(POPROCK_PROFILE.morphCeiling).toBeCloseTo(0.60, 2)
   })
 
-  it('should preserve sidechainDepth = 0.05 (gentle duck)', () => {
+  it('should preserve sidechainDepth = 0.00 (exterminado)', () => {
     expect(POPROCK_PROFILE.sidechainDepth).toBeCloseTo(0.00, 2)
   })
 
-  it('should have empty or absent overrides41', () => {
+  // WAVE 2521 — SOAD MODE + ANTI-MELAZA + SEPARACIÓN QUIRÚRGICA
+  it('should preserve SOAD mode thresholds (flatness 0.60, apocalypse 0.65)', () => {
+    expect(POPROCK_PROFILE.flatnessNoiseThreshold).toBeCloseTo(0.60, 2)
+    expect(POPROCK_PROFILE.apocalypseHarshness).toBeCloseTo(0.65, 2)
+  })
+
+  it('should preserve SOAD percGate = 0.04 (anti-hat-burst)', () => {
+    expect(POPROCK_PROFILE.percGate).toBeCloseTo(0.04, 2)
+  })
+
+  it('should preserve anti-melaza envelopeKick.decayBase = 0.04', () => {
+    expect(POPROCK_PROFILE.envelopeKick.decayBase).toBeCloseTo(0.04, 2)
+  })
+
+  it('should preserve SOAD envelopeSnare (squelchBase 0.10, ghostCap 0.00)', () => {
+    expect(POPROCK_PROFILE.envelopeSnare.squelchBase).toBeCloseTo(0.10, 2)
+    expect(POPROCK_PROFILE.envelopeSnare.ghostCap).toBeCloseTo(0.00, 2)
+  })
+
+  it('should preserve anti-melaza ambient (attack 80ms, release 300ms)', () => {
+    expect(POPROCK_PROFILE.ambientAttackMs).toBe(80)
+    expect(POPROCK_PROFILE.ambientReleaseMs).toBe(300)
+  })
+
+  // WAVE 2522 — VITAMINAS PARA EL TUNGSTENO
+  it('should preserve ambient mid injection (midWeight 0.50, gain 2.0)', () => {
+    expect(POPROCK_PROFILE.ambientMidWeight).toBeCloseTo(0.50, 2)
+    expect(POPROCK_PROFILE.ambientGain).toBeCloseTo(2.0, 2)
+  })
+
+  // WAVE 2522 — ANTI-MELAZA FRONTAL Y TRASERA
+  it('should preserve anti-melaza envelopeSubBass.decayBase = 0.25', () => {
+    expect(POPROCK_PROFILE.envelopeSubBass.decayBase).toBeCloseTo(0.25, 2)
+  })
+
+  it('should preserve anti-melaza envelopeHighMid.decayBase = 0.35 (base)', () => {
+    expect(POPROCK_PROFILE.envelopeHighMid.decayBase).toBeCloseTo(0.35, 2)
+  })
+
+  it('should preserve layout41Strategy = strict-split (anti-smoothing)', () => {
+    expect(POPROCK_PROFILE.layout41Strategy).toBe('strict-split')
+  })
+
+  // WAVE 2521 — SEPARACIÓN QUIRÚRGICA: Mover L = voz (mid puro), Mover R = lead (treble)
+  it('should preserve Mover L voice-focused cross-filter (mid 0.90, highMid 0.30, treble 0.0, tonal 0.55)', () => {
+    expect(POPROCK_PROFILE.moverLMidWeight).toBeCloseTo(0.90, 2)
+    expect(POPROCK_PROFILE.moverLHighMidWeight).toBeCloseTo(0.30, 2)
+    expect(POPROCK_PROFILE.moverLTrebleWeight).toBeCloseTo(0.0, 2)
+    expect(POPROCK_PROFILE.moverLTonalThreshold).toBeCloseTo(0.55, 2)
+  })
+
+  it('should preserve Mover R lead-focused cross-filter (bassSubtract 0.60, trebleSub -0.40)', () => {
+    expect(POPROCK_PROFILE.bassSubtractBase).toBeCloseTo(0.60, 2)
+    expect(POPROCK_PROFILE.bassSubtractRange).toBeCloseTo(0.20, 2)
+    expect(POPROCK_PROFILE.moverRTrebleSub).toBeCloseTo(-0.40, 2)
+  })
+
+  // WAVE 2521+2522 — OVERRIDES 4.1: Back PAR Rescue
+  it('should have overrides41 for Back PAR rescue', () => {
+    expect(POPROCK_PROFILE.overrides41).toBeDefined()
     if (POPROCK_PROFILE.overrides41) {
-      // Si existe, debería estar vacío o no tener envelopes
-      const keys = Object.keys(POPROCK_PROFILE.overrides41)
-      // PopRock no necesita overrides pesados para 4.1
-      expect(keys.length).toBeLessThanOrEqual(10)
+      expect(POPROCK_PROFILE.overrides41.envelopeHighMid?.maxIntensity).toBeCloseTo(0.65, 2)
+      expect(POPROCK_PROFILE.overrides41.envelopeHighMid?.decayBase).toBeCloseTo(0.30, 2)
+      expect(POPROCK_PROFILE.overrides41.envelopeHighMid?.gateOn).toBeCloseTo(0.10, 2)
+      expect(POPROCK_PROFILE.overrides41.envelopeSnare?.gateOn).toBeCloseTo(0.06, 2)
     }
   })
 })

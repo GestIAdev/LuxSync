@@ -66,8 +66,9 @@ const STROBE_BLOCKED_ZONES = new Set<string>([
 // HELPERS INLINE
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Clamp inline [0, 1]. Sin alloc. */
+/** Clamp inline [0, 1]. NaN/Infinity → 0. Sin alloc. */
 function clamp01(v: number): number {
+  if (!Number.isFinite(v)) return 0
   return v < 0 ? 0 : v > 1 ? 1 : v
 }
 

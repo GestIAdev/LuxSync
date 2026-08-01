@@ -30,14 +30,22 @@ import { getArsenalRepository } from '../../effects/ContextualEffectSelector';
 // ═══════════════════════════════════════════════════════════════════════════
 export class DreamEngineIntegrator {
     constructor() {
+        // 🔧 WAVE 1003.15: Comentado para reducir spam de logs
+        // console.log('[INTEGRATOR] 🌀 Dream Engine Integrator initialized')
         this.dreamCache = new Map();
         this.dreamCacheTTL = 5000;
         this.executionHistory = [];
         this.maxHistorySize = 100;
         // Timeout para dream simulation (evita hangs)
         this.dreamTimeoutMs = 3000;
-        // 🔧 WAVE 1003.15: Comentado para reducir spam de logs
-        // console.log('[INTEGRATOR] 🌀 Dream Engine Integrator initialized')
+        // 🩸 WAVE 2530: Invalidate dream cache on mood change.
+        // The mood's blockList filters the effect pool, so a mood switch must
+        // force a fresh simulation. Without this, switching from CALM (which
+        // blocks strobes) to BALANCED would keep serving cached CALM-filtered
+        // results for up to 5s (the cache TTL).
+        MoodController.getInstance().onMoodChange(() => {
+            this.dreamCache.clear();
+        });
     }
     /**
      * Ejecuta pipeline COMPLETO: Hunt → Dream → Decide → Filter → Execute
@@ -494,15 +502,19 @@ export class DreamEngineIntegrator {
         // Cache key incluye factores que afectan decisión ética
         // NO cachear si epilepsyMode diferente (cambia completamente los resultados)
         // 🔥 WAVE 996.5: INCLUIR recentEffects para que Diversity Engine funcione correctamente
+        // 🩸 WAVE 2530: INCLUIR mood — el blockList del mood filtra el pool de efectos,
+        //   así que un cambio de mood debe invalidar la cache. Sin esto, al pasar de
+        //   CALM a BALANCED se seguían usando los efectos filtrados de CALM.
         const energy = Math.round((context.pattern.energy ?? 0.5) * 10);
         const worthiness = (context.huntDecision?.worthiness ?? 0).toFixed(1);
         const gpuBucket = Math.round(context.gpuLoad * 5); // 0, 0.2, 0.4, 0.6, 0.8, 1.0
         const epilepsy = context.epilepsyMode ? '1' : '0';
+        const mood = MoodController.getInstance().getCurrentMood();
         // 🎯 WAVE 996.5: Hash de efectos recientes para invalidar cache cuando cambia el historial
         const recentEffectsHash = context.recentEffects
             .map(e => e.effect)
             .join(',');
-        return `${context.pattern.vibe}:e${energy}:w${worthiness}:g${gpuBucket}:ep${epilepsy}:h${recentEffectsHash}`;
+        return `${context.pattern.vibe}:e${energy}:w${worthiness}:g${gpuBucket}:ep${epilepsy}:m${mood}:h${recentEffectsHash}`;
     }
     recordDecision(decision) {
         this.executionHistory.push(decision);

@@ -91,6 +91,13 @@ export class AudioPipelineManager {
   hasRealAudio = false
   lastAudioTimestamp = 0
   private readonly AUDIO_STALENESS_THRESHOLD_MS = 500
+  // WAVE 3424: GRACE HOLD — Seek/Hot-Swap Resilience
+  // After staleness threshold is exceeded, hold last valid audio with gradual
+  // decay instead of hard-zeroing. Grace period absorbs seek gaps (200-1500ms)
+  // and provider hiccups without collapsing DMX to black.
+  private readonly AUDIO_GRACE_PERIOD_MS = 3000
+  private _staleSince = 0
+  private _lastValidSnapshot: AudioDataSnapshot | null = null
 
   // ---- Beat Detection ----
   beatDetector: BeatDetector | null = null
@@ -215,6 +222,9 @@ export class AudioPipelineManager {
         const wasActive = this.hasRealAudio
         this.hasRealAudio = true
         this.lastAudioTimestamp = Date.now()
+        // WAVE 3424: Reset grace hold state on fresh audio
+        this._staleSince = 0
+        this._lastValidSnapshot = null
         if (!wasActive && !this.hasLoggedFirstAudio) {
           this.hasLoggedFirstAudio = true
           this.ctx.log('System', `WAVE 3416: Audio LIVE via ${activeSource} — Selene is now listening!`)
@@ -297,6 +307,9 @@ export class AudioPipelineManager {
 
     const wasAudioActive = this.hasRealAudio
     this.hasRealAudio = energy > 0.01
+    // WAVE 3424: Reset grace hold state on fresh audio
+    this._staleSince = 0
+    this._lastValidSnapshot = null
 
     if (this.hasRealAudio && !this.hasLoggedFirstAudio) {
       this.hasLoggedFirstAudio = true
@@ -323,6 +336,9 @@ export class AudioPipelineManager {
     }
 
     this.lastAudioTimestamp = Date.now()
+    // WAVE 3424: Reset grace hold state on fresh audio
+    this._staleSince = 0
+    this._lastValidSnapshot = null
 
     if (this.ctx.trinity) {
       const _matrix = this.ctx.trinity.getAudioMatrix()
@@ -352,9 +368,16 @@ export class AudioPipelineManager {
   }
 
   /**
-   * Check audio staleness and reset if stale.
+   * WAVE 3424: GRACE HOLD — Check audio staleness with grace period.
+   *
+   * Phase 1 (staleness threshold exceeded): Record grace start, snapshot last
+   *   valid audio. hasRealAudio stays true. Bands are decayed gradually.
+   * Phase 2 (grace period active): decay = 1 - (elapsed / GRACE_PERIOD).
+   *   bass/mid/high/energy scaled by decay. Lights dim smoothly, don't cut.
+   * Phase 3 (grace expired): hasRealAudio = false, full zero-out.
+   *
    * Called at the beginning of each processFrame tick.
-   * Returns true if audio was just marked stale this frame.
+   * Returns true if audio was just marked stale (grace expired) this frame.
    */
   checkStaleness(frameCount: number, shouldLog: boolean): boolean {
     const now = Date.now()
@@ -364,11 +387,31 @@ export class AudioPipelineManager {
     const isOmniForStaleness = activeSourceForStaleness ? OMNI_SOURCES_STALENESS.has(activeSourceForStaleness) : false
     const effectiveStalenessThreshold = isOmniForStaleness ? 2000 : this.AUDIO_STALENESS_THRESHOLD_MS
 
-    if (this.hasRealAudio && (now - this.lastAudioTimestamp) > effectiveStalenessThreshold) {
+    const silenceMs = now - this.lastAudioTimestamp
+
+    if (!this.hasRealAudio || silenceMs <= effectiveStalenessThreshold) {
+      return false
+    }
+
+    // Staleness threshold exceeded — enter or continue grace period
+    if (this._staleSince === 0) {
+      this._staleSince = now
+      this._lastValidSnapshot = { ...this.lastAudioData }
       if (shouldLog) {
-        console.warn(`[AudioPipeline] AUDIO STALE - no data for ${now - this.lastAudioTimestamp}ms, switching to silence`)
+        console.warn(`[AudioPipeline] GRACE HOLD — no audio for ${silenceMs}ms, holding last state with decay (grace: ${this.AUDIO_GRACE_PERIOD_MS}ms)`)
+      }
+    }
+
+    const graceElapsed = now - this._staleSince
+
+    if (graceElapsed >= this.AUDIO_GRACE_PERIOD_MS) {
+      // Grace expired — declare brain death
+      if (shouldLog) {
+        console.warn(`[AudioPipeline] GRACE EXPIRED — no audio for ${silenceMs}ms (grace: ${graceElapsed}ms), switching to silence`)
       }
       this.hasRealAudio = false
+      this._staleSince = 0
+      this._lastValidSnapshot = null
       this.lastAudioData = {
         bass: 0, mid: 0, high: 0, energy: 0,
         harshness: undefined, spectralFlatness: undefined, spectralCentroid: undefined,
@@ -384,6 +427,31 @@ export class AudioPipelineManager {
       }
       return true
     }
+
+    // Grace period active — apply gradual decay to held snapshot
+    const decay = 1.0 - (graceElapsed / this.AUDIO_GRACE_PERIOD_MS)
+    const snap = this._lastValidSnapshot
+    if (snap) {
+      this.lastAudioData = {
+        ...this.lastAudioData,
+        bass:   snap.bass   * decay,
+        mid:    snap.mid    * decay,
+        high:   snap.high   * decay,
+        energy: snap.energy * decay,
+        // Zero out transient info during grace — no fake kicks
+        workerOnBeat: false,
+        workerBeatStrength: 0,
+        kickDetected: false,
+        snareDetected: false,
+        hihatDetected: false,
+      }
+    }
+
+    // Log grace status every ~1s
+    if (shouldLog && frameCount % 30 === 0) {
+      console.warn(`[AudioPipeline] GRACE HOLD — ${graceElapsed}/${this.AUDIO_GRACE_PERIOD_MS}ms elapsed, decay=${decay.toFixed(2)}, bass=${(this.lastAudioData.bass).toFixed(3)}`)
+    }
+
     return false
   }
 

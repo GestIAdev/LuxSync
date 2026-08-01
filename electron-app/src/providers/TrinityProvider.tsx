@@ -648,8 +648,14 @@ export function TrinityProvider({ children }: TrinityProviderProps) {
   // B2 FIX: stopAudio wrapper que para captura Y refleja isAudioActive=false en el estado.
   // Antes: stopAudio: stopCapture → stopCapture no toca state.isAudioActive
   // Ahora: el estado se actualiza aquí, SystemsCheck detecta el cambio via useEffect
+  // WAVE 7140: También detiene fuentes nativas (WASAPI) vía AudioMatrix IPC —
+  // stopCapture() solo para WebAudio; las fuentes Omni necesitan stopActiveSource.
   const stopAudio = useCallback(() => {
     stopCapture()
+    const matrixApi = (window as any).luxsync?.audioMatrix
+    if (matrixApi?.stopActiveSource) {
+      matrixApi.stopActiveSource().catch(() => {})
+    }
     setState(prev => ({ ...prev, isAudioActive: false }))
   }, [stopCapture])
 

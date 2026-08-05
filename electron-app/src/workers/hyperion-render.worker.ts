@@ -602,6 +602,16 @@ self.onmessage = (e: MessageEvent<WorkerInboundMessage>) => {
           fixtureCount: number
           onBeat: boolean
         }
+
+        // 🏓 OOM-FIX: Return the PREVIOUS frame's buffer to the main thread.
+        // The render loop (60fps) has already consumed it at least once since
+        // the last frame arrived (44Hz < 60fps), so it's safe to transfer back.
+        // This completes the ping-pong: main → worker → main → worker → ...
+        if (currentFrameData) {
+          const oldBuffer = currentFrameData.buffer
+          glassPort.postMessage({ type: 'BUFFER_RETURN', buffer: oldBuffer }, [oldBuffer])
+        }
+
         currentFrameData = frameData
         currentFixtureCount = fixtureCount
         currentFrameNumber++
@@ -624,9 +634,17 @@ self.onmessage = (e: MessageEvent<WorkerInboundMessage>) => {
       physicsStore.clear()
       prevIntensity.clear()
       if (glassPort) {
+        // 🏓 Return any held buffer before closing the port
+        if (currentFrameData) {
+          const heldBuffer = currentFrameData.buffer
+          try {
+            glassPort.postMessage({ type: 'BUFFER_RETURN', buffer: heldBuffer }, [heldBuffer])
+          } catch {}
+        }
         glassPort.close()
         glassPort = null
       }
+      currentFrameData = null
       break
     }
   }

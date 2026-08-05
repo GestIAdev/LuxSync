@@ -66,18 +66,21 @@ const VALID_TIERS = ['DJ_FOUNDER', 'FULL_SUITE']
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Captura la MAC address de la primera interfaz de red no-interna.
- * Node.js nativo: os.networkInterfaces(). Zero dependencias externas.
- * @returns {string} MAC normalizada (lowercase, separada por ':')
+ * 🔒 V-04 FIX: Multi-metric hardware fingerprint.
+ *
+ * ANTES: Solo MAC address (trivialmente spoofeable con un comando del SO).
+ * AHORA: SHA-256(MAC + hostname + CPU model + platform) — requiere spoofear
+ *        4 métricas simultáneamente para clonar el fingerprint.
+ *
+ * @returns {string} SHA-256 hex hash del fingerprint compuesto
  */
 function getHardwareId() {
+  // 1. Primary MAC address (primera IPv4 no-internal)
+  let mac = 'UNKNOWN_MAC'
   const interfaces = os.networkInterfaces()
-  const names = Object.keys(interfaces)
-
-  for (const name of names) {
+  for (const name of Object.keys(interfaces)) {
     const addrs = interfaces[name]
     if (!addrs) continue
-
     for (const addr of addrs) {
       if (
         addr.family === 'IPv4' &&
@@ -85,13 +88,25 @@ function getHardwareId() {
         addr.mac &&
         addr.mac !== '00:00:00:00:00:00'
       ) {
-        return addr.mac.toLowerCase()
+        mac = addr.mac.toLowerCase()
+        break
       }
     }
+    if (mac !== 'UNKNOWN_MAC') break
   }
 
-  // Fallback: ninguna interfaz encontrada
-  return 'UNKNOWN_HARDWARE'
+  // 2. Hostname
+  const hostname = os.hostname() || 'UNKNOWN_HOST'
+
+  // 3. CPU model
+  const cpuModel = (os.cpus()[0] && os.cpus()[0].model) || 'UNKNOWN_CPU'
+
+  // 4. Platform
+  const platform = os.platform() || 'UNKNOWN_PLATFORM'
+
+  // Concatenar y hashear — el orden es fijo y determinista
+  const combined = `${mac}|${hostname}|${cpuModel}|${platform}`
+  return crypto.createHash('sha256').update(combined).digest('hex')
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -160,6 +175,11 @@ function isValidStructure(data) {
   if (typeof data.tier !== 'string' || !VALID_TIERS.includes(data.tier)) return false
   if (typeof data.issuedAt !== 'string' || isNaN(Date.parse(data.issuedAt))) return false
   if (typeof data.signature !== 'string' || data.signature.length === 0) return false
+  // 🔒 V-03: expiresAt is OPTIONAL — perpetual licenses omit it.
+  // If present, it must be a valid ISO timestamp. Expiration is checked in validateLicense().
+  if (data.expiresAt !== undefined && (typeof data.expiresAt !== 'string' || isNaN(Date.parse(data.expiresAt)))) {
+    return false
+  }
   return true
 }
 
@@ -258,6 +278,27 @@ function validateLicense(licensePath) {
   }
 
   // ═══════════════════════════
+  // 🔒 V-03: EXPIRATION CHECK — Optional expiresAt field
+  // Perpetual licenses omit expiresAt (current behavior preserved).
+  // Time-bounded licenses include it; if expired, reject immediately.
+  // ═══════════════════════════
+  if (license.expiresAt !== undefined) {
+    const expiryMs = Date.parse(license.expiresAt)
+    if (Date.now() > expiryMs) {
+      return {
+        valid: false,
+        gate1: false,
+        gate2: false,
+        phantomGate: true,
+        detectedHwId,
+        client: license.client,
+        tier: license.tier,
+        error: 'LICENSE_EXPIRED: License expired on ' + license.expiresAt
+      }
+    }
+  }
+
+  // ═══════════════════════════
   // GATE 1 — Hardware ID Match
   // ═══════════════════════════
   const gate1 = license.hardwareId.toLowerCase() === detectedHwId
@@ -265,6 +306,8 @@ function validateLicense(licensePath) {
   // ═══════════════════════════
   // GATE 2 — RSA Signature
   // ═══════════════════════════
+  // The signed payload includes expiresAt if present, so it is cryptographically
+  // bound — an attacker cannot add/remove expiresAt without invalidating the signature.
   let gate2 = false
   try {
     const payload = {
@@ -272,6 +315,9 @@ function validateLicense(licensePath) {
       hardwareId: license.hardwareId,
       tier: license.tier,
       issuedAt: license.issuedAt
+    }
+    if (license.expiresAt !== undefined) {
+      payload.expiresAt = license.expiresAt
     }
     const dataHash = hashPayload(payload)
     gate2 = rsaVerify(dataHash, license.signature, PUBLIC_KEY)

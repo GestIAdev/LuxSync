@@ -182,8 +182,13 @@ export const TacticalCanvas = memo(function TacticalCanvas({
     lastRenderTime: 0,
   })
 
-  // Pre-allocated Glass→Worker translation buffer — grows to maxFixtureCount, then reused
-  const frameBufferRef = useRef<Float32Array | null>(null)
+  // 🏓 OOM-FIX: Double-Buffer Ping-Pong pool — zero allocation in the hot path.
+  // Two Float32Array slots alternate: one is transferred to the worker, the other
+  // is ready for the next frame. The worker returns the consumed buffer via
+  // BUFFER_RETURN, which is placed back into the pool.
+  // If a slot is null (buffer in-flight), a new one is allocated as fallback.
+  const bufferPool = useRef<(Float32Array | null)[]>([null, null])
+  const poolIdx = useRef(0)
 
   // ── State ───────────────────────────────────────────────────────────────
   
@@ -491,7 +496,21 @@ export const TacticalCanvas = memo(function TacticalCanvas({
     const channel = new MessageChannel()
     worker.postMessage({ type: 'GLASS_PORT', port: channel.port2 }, [channel.port2])
 
-    // Pre-allocated Glass→Worker translation buffer (reused every frame, zero GC)
+    // 🏓 OOM-FIX: Listen for BUFFER_RETURN from worker — reclaim transferred buffers.
+    // The worker returns the previous frame's buffer when a new frame arrives.
+    // We wrap it back into a Float32Array view and place it in the first null pool slot.
+    channel.port1.onmessage = (e: MessageEvent) => {
+      if (e.data?.type === 'BUFFER_RETURN' && e.data.buffer instanceof ArrayBuffer) {
+        const view = new Float32Array(e.data.buffer)
+        for (let i = 0; i < bufferPool.current.length; i++) {
+          if (bufferPool.current[i] === null) {
+            bufferPool.current[i] = view
+            break
+          }
+        }
+      }
+    }
+
     let glassUnsub: (() => void) | null = null
 
     const startGlassPipeline = () => {
@@ -505,10 +524,12 @@ export const TacticalCanvas = memo(function TacticalCanvas({
         // (e.g. at 0 from bootstrap). When fixtures load later, the canvas
         // stays blank because Math.min(scaffoldFixtures.length, 0) = 0.
         const needed = count * FLOATS_PER_FIXTURE
-        let buf = frameBufferRef.current
+
+        // 🏓 Ping-Pong: take the current slot from the pool.
+        // If it's null (buffer in-flight) or too small, allocate a fresh one.
+        let buf = bufferPool.current[poolIdx.current]
         if (!buf || buf.length < needed) {
           buf = new Float32Array(needed)
-          frameBufferRef.current = buf
         }
 
         if (count > 0) {
@@ -517,8 +538,12 @@ export const TacticalCanvas = memo(function TacticalCanvas({
         }
         const onBeat = view.length > 4 && view[4] > 0.5
 
-        // Forward to worker via dedicated port (structured clone ≈ 4KB @ 44Hz = trivial)
-        channel.port1.postMessage({ frameData: buf, fixtureCount: count, onBeat })
+        // 🏓 Transfer the buffer to the worker (zero-copy).
+        // Mark this pool slot as in-flight (null) and advance to the next slot.
+        // The worker will return it via BUFFER_RETURN when the next frame arrives.
+        channel.port1.postMessage({ frameData: buf, fixtureCount: count, onBeat }, [buf.buffer])
+        bufferPool.current[poolIdx.current] = null
+        poolIdx.current = (poolIdx.current + 1) % 2
       })
     }
 

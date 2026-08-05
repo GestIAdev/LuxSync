@@ -206,8 +206,8 @@
 
     <div class="row">
       <div class="field">
-        <label>Hardware ID (MAC)</label>
-        <input type="text" id="hardwareId" placeholder="a1:b2:c3:d4:e5:f6" autocomplete="off">
+        <label>Hardware ID (SHA-256)</label>
+        <input type="text" id="hardwareId" placeholder="0e755bca3719eb3aafe5b8f88cb5b2c7e303f98ee1a7c4b8d9f2a6e3c1d0f4b" autocomplete="off" spellcheck="false" style="font-family:'Cascadia Code','Fira Code','Consolas',monospace; font-size:0.68rem;">
       </div>
       <div class="field">
         <label>Tier</label>
@@ -216,6 +216,11 @@
           <option value="FULL_SUITE">FULL_SUITE</option>
         </select>
       </div>
+    </div>
+
+    <div class="field">
+      <label>Fecha de Caducidad / Expiration (Opcional)</label>
+      <input type="datetime-local" id="expiresAt" autocomplete="off">
     </div>
 
     <div class="field">
@@ -237,7 +242,9 @@
     // Compatible con Node.js crypto.verify('sha256', ...) del LicenseValidator
     //
     // El flujo:
-    //   1. Construir payload {client, hardwareId, tier, issuedAt}
+    //   1. Construir payload {client, hardwareId, tier, issuedAt, [expiresAt]}
+    //      🔒 V-03: expiresAt es opcional — si se omite, la licencia es vitalicia
+    //      🔒 V-04: hardwareId es un hash SHA-256 (64 hex chars), no una MAC
     //   2. Serialización determinista (claves ordenadas alfabéticamente)
     //   3. SHA-256 del payload serializado → dataHash (hex string)
     //   4. Firmar el dataHash (como raw bytes, NO hex string) con RSA
@@ -333,13 +340,20 @@
       const client = $('clientName').value.trim()
       const hwid = $('hardwareId').value.trim()
       const pk = $('privateKey').value.trim()
+      const expiresAt = $('expiresAt').value
 
       if (!client) return 'Falta el nombre del cliente'
       if (client.length > 128) return 'Nombre demasiado largo (máx 128 chars)'
       if (!hwid) return 'Falta el Hardware ID'
-      if (!/^([0-9a-f]{2}:){5}[0-9a-f]{2}$/i.test(hwid)) return 'Hardware ID inválido (formato: aa:bb:cc:dd:ee:ff)'
+      // 🔒 V-04: HWID is now a SHA-256 hex hash (64 chars), not a MAC address
+      if (!/^[0-9a-f]{64}$/i.test(hwid)) return 'Hardware ID inválido (debe ser un hash SHA-256 de 64 caracteres hex)'
       if (!pk) return 'Falta la clave privada RSA'
       if (!pk.includes('PRIVATE KEY')) return 'La clave no parece ser PEM válida'
+      // 🔒 V-03: expiresAt is optional — if provided, validate it parses as a date
+      if (expiresAt) {
+        const parsed = new Date(expiresAt)
+        if (isNaN(parsed.getTime())) return 'Fecha de caducidad inválida'
+      }
 
       return null
     }
@@ -367,11 +381,16 @@
         const hardwareId = $('hardwareId').value.trim().toLowerCase()
         const tier = $('tier').value
         const issuedAt = new Date().toISOString()
+        const expiresAtInput = $('expiresAt').value
 
-        // 1. Construir payload
+        // 1. Construir payload — 🔒 V-03: expiresAt is optional (perpetual if omitted)
         const payload = { client, hardwareId, tier, issuedAt }
+        if (expiresAtInput) {
+          payload.expiresAt = new Date(expiresAtInput).toISOString()
+        }
 
-        // 2. Hash determinista
+        // 2. Hash determinista (serializePayload sorts keys alphabetically —
+        //    expiresAt is included automatically if present, matching LicenseValidator)
         const dataHash = await hashPayload(payload)
 
         // 3. Importar clave privada
@@ -390,7 +409,8 @@
 
         btn.classList.add('success')
         btn.textContent = '✓ LICENCIA FORJADA'
-        status.textContent = `${filename} descargado — Hash: ${dataHash.substring(0, 16)}...`
+        const expiryLabel = expiresAtInput ? ` | Expira: ${payload.expiresAt}` : ' | Vitalicia'
+        status.textContent = `${filename} descargado — Hash: ${dataHash.substring(0, 16)}...${expiryLabel}`
         status.className = 'status ok'
 
         setTimeout(() => {

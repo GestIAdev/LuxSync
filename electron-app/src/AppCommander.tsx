@@ -9,10 +9,10 @@
  * WAVE 4800: KeyForge Cortex replaces legacy KeyboardProvider
  */
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import MainLayout from './components/layout/MainLayout'
-import GlassCanvas from './components/GlassCanvas' 
+import GlassCanvas from './components/GlassCanvas'
 import { TrinityProvider } from './providers/TrinityProvider'
 import { TitanSyncBridge } from './core/sync'
 import { useMidiLearn } from './hooks/useMidiLearn' // 🎹 WAVE 2047: MIDI Input Runtime
@@ -29,7 +29,12 @@ import './styles/globals.css'
 function AppContent() {
   // 🛡️ WAVE 2042.13.8: useShallow for stable reference
   const { startSession, addLogEntry } = useSeleneStore(useShallow(selectAppCommanderActions))
-  
+
+  // 🔒 V-06 FIX: License hydration gate — prevents UI flicker where a DJ_FOUNDER
+  // briefly sees FULL_SUITE components (Chronos/Hephaestus) before the tier arrives.
+  // MainLayout is not rendered until the license tier has been hydrated from main process.
+  const [licenseReady, setLicenseReady] = useState(false)
+
   // Connect to Universal Truth Protocol (SeleneBroadcast @ 30fps)
   useSeleneTruth()
 
@@ -44,13 +49,17 @@ function AppContent() {
     // 📜 WAVE 1198: Initialize War Log IPC listener
     const cleanupLogs = initializeLogIPC()
 
-    // 🔒 WAVE 2490: Hydrate license tier from main process
-    useLicenseStore.getState().hydrate()
+    // 🔒 V-06 FIX: AWAIT license hydration before rendering MainLayout.
+    // This blocks the tier-gated tabs (Chronos/Hephaestus) from rendering with
+    // the default FULL_SUITE tier while the real tier hasn't arrived from main.
+    useLicenseStore.getState().hydrate().finally(() => {
+      setLicenseReady(true)
+    })
 
     // Start Selene session
     startSession()
     addLogEntry({ type: 'INIT', message: 'LuxSync Commander started' })
-    
+
     // ⌨ WAVE 4800-F: Load stadium-default bindings on fresh install
     initStadiumLoadoutIfEmpty()
     // ⌨ WAVE 4914: Migrate any missing stadium defaults to existing user stores
@@ -62,15 +71,15 @@ function AppContent() {
 
     // 🔌 WAVE 438: Setup stageStore IPC listeners
     const unsubscribeStageListeners = setupStageStoreListeners()
-    
+
     // 🌊 WAVE 6060: El layout se sincroniza bidireccionalmente vía TitanSyncBridge
     // tras setFixtures (backend detecta por fixtures) + botón manual del usuario.
     // NO forzar persistedLayout al boot — evita desfase cuando el backend detecta
     // 7.1 por posición de fixtures pero el store persistió 4.1.
-    
+
     // 🧹 WAVE 63.7: Single clean log
     console.log('[Selene UI] 🚀 System Ready')
-    
+
     // Cleanup on unmount
     return () => {
       cleanupLogs()
@@ -115,9 +124,14 @@ function AppContent() {
       {/* 🌉 WAVE 377: Invisible Sync Bridge - stageStore → Backend */}
       <TitanSyncBridge />
       <GlassCanvas />
-      
-      {/* 🎯 WAVE 2049: MainLayout now includes TitleBar with NetIndicator + MidiLearnOverlay */}
-      <MainLayout />
+
+      {/* 🔒 V-06 FIX: Gate MainLayout behind license hydration.
+          Prevents DJ_FOUNDER from briefly seeing FULL_SUITE tabs (Chronos/Hephaestus)
+          before the real tier arrives from the main process via IPC.
+          GlassCanvas + TitanSyncBridge run regardless — they don't render tier-gated UI. */}
+      {licenseReady ? (
+        <MainLayout />
+      ) : null}
     </>
   )
 }

@@ -588,15 +588,32 @@ async function initTitan() {
                 console.log(`[TitanOrchestrator] 📦 Bootstrapped arsenal (legacy): ${_copiedCount} .lfx copied from builtins → userData/arsenal/`);
             }
         }
-        // ── Load ONLY from userData/arsenal/ (single source of truth) ──
-        const _loadDirs = [
-            { absolutePath: _arsenalPath, source: 'user' }
-        ];
+        // ── Load from builtins directly in DEV, userData in PROD ──
+        // DEV MODE: Read directly from source (no copy/sync overhead)
+        // PROD MODE: Read from userData/arsenal (single source of truth)
+        const _loadDirs = app.isPackaged
+            ? [
+                // Production: load from userData only
+                { absolutePath: _arsenalPath, source: 'user' }
+            ]
+            : [
+                // Development: load from builtins (source) first, then userData (user edits)
+                { absolutePath: _builtinPath, source: 'builtin' },
+                { absolutePath: _arsenalPath, source: 'user' }
+            ];
         const _lfxLoader = new LfxFileLoader(getDynamicEffectRegistry());
         const _arsenalReport = await _lfxLoader.loadAll(_loadDirs);
+        const _sourceLabel = app.isPackaged ? 'userData/arsenal/' : 'builtins + userData';
         console.log(`[TitanOrchestrator] ⚡ Infinite Arsenal: ` +
-            `${_arsenalReport.accepted}/${_arsenalReport.scanned} .lfx cargados desde userData/arsenal/ ` +
+            `${_arsenalReport.accepted}/${_arsenalReport.scanned} .lfx cargados desde ${_sourceLabel} ` +
             `(rechazados: ${_arsenalReport.rejected}, errores: ${_arsenalReport.errors})`);
+        // ☢️ DUMP DE RAM: EFECTOS REALMENTE VIVOS EN REGISTRY
+        const _allLiveEffects = getDynamicEffectRegistry().getAllEntries();
+        console.log(`\n=== ☢️ DUMP DE RAM: EFECTOS REALMENTE VIVOS (${_allLiveEffects.length}) ===`);
+        _allLiveEffects.forEach(e => {
+            console.log(`- ID: ${e.id} | Name: ${e.name} | Vibes: ${JSON.stringify(e.compatibleVibes)} | Path: ${e.filePath || 'unknown'}`);
+        });
+        console.log(`====================================================\n`);
     }
     catch (_arsenalErr) {
         console.error('[TitanOrchestrator] ❌ Arsenal boot failed (non-fatal):', _arsenalErr);
@@ -762,12 +779,35 @@ async function initTitan() {
 // (those are only for browser Service Workers / cross-origin isolation).
 // This switch ensures SAB is available in the V8 isolate backing worker_threads.
 app.commandLine.appendSwitch('enable-features', 'SharedArrayBuffer');
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔒 V-01 FIX: SINGLE-INSTANCE LOCK — Obsidian Vault Containment
+// Prevents N simultaneous instances of LuxSync on the same machine.
+// If the lock is not obtained (another instance is already running), quit immediately.
+// The second-instance handler focuses the existing window when a user tries to re-launch.
+// ═══════════════════════════════════════════════════════════════════════════
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+    console.log('[SINGLE-INSTANCE] Another instance is already running — quitting.');
+    app.quit();
+}
+else {
+    app.on('second-instance', () => {
+        // Focus or restore the existing mainWindow
+        if (mainWindow) {
+            if (mainWindow.isMinimized())
+                mainWindow.restore();
+            mainWindow.focus();
+        }
+    });
+}
 app.whenReady().then(async () => {
     // ═══════════════════════════════════════════════════════════════════════════
     // 🛡️ WAVE 2489 + 2491: THE OBSIDIAN VAULT — Two-Gate License Validation
     // Si falla, abre la pantalla de activación en lugar de un diálogo nativo.
+    // 🔒 V-05 FIX: Security gate relies strictly on app.isPackaged — NOT on NODE_ENV,
+    //    which is an injectable environment variable. Only app.isPackaged is trustworthy.
     // ═══════════════════════════════════════════════════════════════════════════
-    if (!isDev) {
+    if (app.isPackaged) {
         const fs = await import('fs');
         let licenseValidator;
         let validatorLoadError = false;
@@ -776,36 +816,36 @@ app.whenReady().then(async () => {
         const jscPath = app.isPackaged
             ? path.join(process.resourcesPath, 'app.asar.unpacked', 'dist-electron', 'license', 'LicenseValidator.jsc')
             : path.join(__dirname, 'license', 'LicenseValidator.jsc');
+        // 🔒 V-02 FIX: FAIL-CLOSED — No JS plaintext fallback.
+        // The .jsc bytecode contains the embedded RSA public key and main.js hash.
+        // The plaintext .js has only placeholders (%%LUXSYNC_PUBLIC_KEY%%) and MUST NOT
+        // be loaded. If the .jsc fails to load, we fail immediately with validatorLoadError.
+        // An attacker who drops a modified LicenseValidator.js next to the .jsc can no longer
+        // hijack the fallback path.
         try {
             licenseValidator = require(jscPath);
             console.log('[LICENSE] Validator loaded OK');
         }
         catch (jscErr) {
-            console.error('[LICENSE] JSC load failed:', jscErr?.message || jscErr, 'Path:', jscPath);
+            console.error('[LICENSE] JSC load failed — FAIL-CLOSED:', jscErr?.message || jscErr, 'Path:', jscPath);
+            validatorLoadError = true;
+            licenseValidator = null;
+            // Compute fallback HW ID for the activation screen error display
             try {
-                licenseValidator = require('./license/LicenseValidator.js');
-                console.warn('[LICENSE] Using JS fallback');
-            }
-            catch (jsErr) {
-                console.error('[LICENSE] JS fallback also failed:', jsErr?.message || jsErr);
-                validatorLoadError = true;
-                licenseValidator = null;
-                try {
-                    const os = require('os');
-                    const ifaces = os.networkInterfaces();
-                    for (const name of Object.keys(ifaces)) {
-                        for (const addr of (ifaces[name] || [])) {
-                            if (addr.family === 'IPv4' && !addr.internal && addr.mac !== '00:00:00:00:00:00') {
-                                fallbackHwId = addr.mac.toLowerCase();
-                                break;
-                            }
-                        }
-                        if (fallbackHwId !== 'UNKNOWN')
+                const os = require('os');
+                const ifaces = os.networkInterfaces();
+                for (const name of Object.keys(ifaces)) {
+                    for (const addr of (ifaces[name] || [])) {
+                        if (addr.family === 'IPv4' && !addr.internal && addr.mac !== '00:00:00:00:00:00') {
+                            fallbackHwId = addr.mac.toLowerCase();
                             break;
+                        }
                     }
+                    if (fallbackHwId !== 'UNKNOWN')
+                        break;
                 }
-                catch { }
             }
+            catch { }
         }
         const licensePath = path.join(app.getPath('userData'), 'license', 'license.luxlicense');
         const licenseDir = path.dirname(licensePath);

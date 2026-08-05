@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "version": "0.8.0-beta.1",
-  "generatedAt": "2026-08-01T09:38:57.161Z",
-  "count": 51,
+  "generatedAt": "2026-08-05T16:56:01.749Z",
+  "count": 52,
   "files": {
     "chill/solar_caustics.lfx": {
       "relPath": "chill/solar_caustics.lfx",
@@ -16,7 +16,7 @@
     },
     "custom/Feral Wave Omega.lfx": {
       "relPath": "custom/Feral Wave Omega.lfx",
-      "checksum": "8fac29c9be768720",
+      "checksum": "3a972fddcb2aeb4a",
       "size": 14223
     },
     "custom/heph_1782553308617_cgkagj.lfx": {
@@ -53,6 +53,11 @@
       "relPath": "custom/heph_1784952802805_jigk8a.lfx",
       "checksum": "544b2f51138e0500",
       "size": 27123
+    },
+    "custom/heph_Feral Wave Omega.lfx": {
+      "relPath": "custom/heph_Feral Wave Omega.lfx",
+      "checksum": "4dc94d1394288edc",
+      "size": 14219
     },
     "latin/amazon_mist.lfx": {
       "relPath": "latin/amazon_mist.lfx",

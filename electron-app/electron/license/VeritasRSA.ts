@@ -20,6 +20,8 @@ export interface LuxLicense {
   hardwareId: string
   tier: LicenseTier
   issuedAt: string
+  /** 🔒 V-03: Optional expiration timestamp (ISO string). Omitted = perpetual license. */
+  expiresAt?: string
   signature: string
 }
 

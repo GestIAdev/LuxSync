@@ -12,7 +12,7 @@
     "forge:manifest": "npx tsx scripts/generate-arsenal-manifest.ts",
     "copy:phantom": "node -e \"require('fs').copyFileSync('electron/workers/phantomWorker.html', 'dist-electron/phantomWorker.html')\"",
     "preview": "vite preview",
-    "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "electron:dev": "npx tsx scripts/generate-arsenal-manifest.ts && concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "electron:build": "vite build && npm run copy:phantom && npm run forge:jsc && npm run forge:manifest && electron-builder",
     "test": "vitest run",
     "test:watch": "vitest",

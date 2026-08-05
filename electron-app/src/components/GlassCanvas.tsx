@@ -47,7 +47,12 @@ export default function GlassCanvas() {
           const tFix: any = getTransientFixture(id)
           if (!tFix) continue
 
-          tFix.color = { r: view[off], g: view[off+1], b: view[off+2] }
+          // OOM-FIX: Mutate color in-place — zero allocation per frame.
+          // Antes: tFix.color = { r, g, b } → 1 new object/fixture/frame (2,200 objs/sec @ 50 fixtures).
+          if (!tFix.color) tFix.color = { r: 0, g: 0, b: 0 }
+          tFix.color.r = view[off]
+          tFix.color.g = view[off + 1]
+          tFix.color.b = view[off + 2]
           tFix.dimmer = view[off+5] / 255
           tFix.intensity = view[off+5] / 255
           tFix.physicalPan = view[off+8] / 255

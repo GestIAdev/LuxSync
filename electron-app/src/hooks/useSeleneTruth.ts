@@ -79,7 +79,10 @@ export function useSeleneTruth(options: UseSeleneTruthOptions = {}) {
   //   This preserves UI responsiveness while R3F reads physics from transient.
   // ═══════════════════════════════════════════════════════════════════════
   const truthThrottleCountRef = useRef(0)
-  const TRUTH_THROTTLE_INTERVAL = 1  // WAVE-6018: Cambiado de 6 a 1. main.ts ya aplica throttle a ~2Hz, no hay necesidad de re-throttlear aquí (causaba lag de 36 segundos).
+  const TRUTH_THROTTLE_INTERVAL = 22  // WAVE-6018 / OOM-FIX: Throttle React reconciler a ~2Hz.
+  // El backend (TickEngine) bypassea su propio throttle a 44Hz durante Chronos playback
+  // (TickEngine.ts:908 chronosPlaying || ...). Sin este throttle, setTruth() + updateMetrics()
+  // disparan 44 re-renders/sec → saturación del main thread → GC starvation → OOM silencioso.
   
   useEffect(() => {
     // Verificar que window.lux existe (preload cargado)

@@ -116,16 +116,22 @@
       border: 1px solid #222;
       border-radius: 6px;
       padding: 12px 14px;
+      min-height: 48px;
     }
 
     .hwid-value {
       flex: 1;
       font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
-      font-size: 1.1rem;
+      font-size: 0.7rem;
       font-weight: 600;
       color: #f97316;
-      letter-spacing: 2px;
+      letter-spacing: 0.5px;
       text-shadow: 0 0 10px rgba(249, 115, 22, 0.3);
+      /* 🔒 V-04 FIX: SHA-256 hash is 64 chars — allow wrapping + ellipsis */
+      word-break: break-all;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.4;
     }
 
     .btn-copy {

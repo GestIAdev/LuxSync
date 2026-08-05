@@ -33,6 +33,7 @@ interface CLIArgs {
   hwid: string
   tier: LicenseTier
   out: string
+  expiresAt?: string  // 🔒 V-03: Optional expiration (ISO string). Omitted = perpetual.
 }
 
 function parseArgs(): CLIArgs {
@@ -53,13 +54,15 @@ function parseArgs(): CLIArgs {
   const hwid = map.get('hwid')
   const tier = map.get('tier')
   const out = map.get('out')
+  const expiresAt = map.get('expiresAt')  // 🔒 V-03: Optional
 
   if (!client || !hwid || !tier || !out) {
-    console.error('❌ Uso: npx tsx scripts/generate-license.ts --client "nombre" --hwid "mac:addr" --tier DJ_FOUNDER --out ./ruta.luxlicense')
-    console.error('   --client  Nombre/alias del DJ')
-    console.error('   --hwid    Hardware ID (MAC address, lowercase, : separada)')
-    console.error('   --tier    DJ_FOUNDER | FULL_SUITE')
-    console.error('   --out     Ruta del archivo .luxlicense a generar')
+    console.error('❌ Uso: npx tsx scripts/generate-license.ts --client "nombre" --hwid "fingerprint-hash" --tier DJ_FOUNDER --out ./ruta.luxlicense [--expiresAt 2026-12-31T23:59:59Z]')
+    console.error('   --client     Nombre/alias del DJ')
+    console.error('   --hwid       Hardware ID (SHA-256 fingerprint hash from getHardwareId())')
+    console.error('   --tier       DJ_FOUNDER | FULL_SUITE')
+    console.error('   --out        Ruta del archivo .luxlicense a generar')
+    console.error('   --expiresAt  (Opcional) Fecha de expiración ISO. Sin este flag = licencia vitalicia')
     process.exit(1)
   }
 
@@ -69,7 +72,13 @@ function parseArgs(): CLIArgs {
     process.exit(1)
   }
 
-  return { client, hwid, tier: tier as LicenseTier, out }
+  // 🔒 V-03: Validate expiresAt format if provided
+  if (expiresAt && isNaN(Date.parse(expiresAt))) {
+    console.error(`❌ expiresAt inválido: "${expiresAt}". Debe ser una fecha ISO válida.`)
+    process.exit(1)
+  }
+
+  return { client, hwid, tier: tier as LicenseTier, out, expiresAt }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -98,6 +107,10 @@ function forge(): void {
     tier: args.tier,
     issuedAt: new Date().toISOString()
   }
+  // 🔒 V-03: Include expiresAt in the signed payload if provided (perpetual if omitted)
+  if (args.expiresAt) {
+    (payload as any).expiresAt = args.expiresAt
+  }
 
   // 3. Hash determinista
   const dataHash = hashPayload(payload)
@@ -120,12 +133,17 @@ function forge(): void {
 
   // 7. Verificación cruzada: releer y comprobar estructura
   const written = JSON.parse(fs.readFileSync(args.out, 'utf-8'))
-  const verifyHash = hashPayload({
+  const verifyPayload: any = {
     client: written.client,
     hardwareId: written.hardwareId,
     tier: written.tier,
     issuedAt: written.issuedAt
-  })
+  }
+  // 🔒 V-03: Include expiresAt in cross-verification if present
+  if (written.expiresAt) {
+    verifyPayload.expiresAt = written.expiresAt
+  }
+  const verifyHash = hashPayload(verifyPayload)
 
   // Cargar clave pública para verificación cruzada
   const publicKeyPath = path.join(__dirname, 'keys', 'luxsync-public.pem')
@@ -149,8 +167,9 @@ function forge(): void {
   console.log('  ║        🛡️  OBSIDIAN VAULT — FORJA           ║')
   console.log('  ╠══════════════════════════════════════════════╣')
   console.log(`  ║  Cliente:    ${args.client.padEnd(30)}║`)
-  console.log(`  ║  Hardware:   ${args.hwid.padEnd(30)}║`)
+  console.log(`  ║  Hardware:   ${args.hwid.substring(0, 30).padEnd(30)}║`)
   console.log(`  ║  Tier:       ${args.tier.padEnd(30)}║`)
+  console.log(`  ║  Expira:     ${(args.expiresAt || 'Vitalicia').padEnd(30)}║`)
   console.log(`  ║  Hash:       ${dataHash.substring(0, 28)}... ║`)
   console.log(`  ║  Firma:      ${signature.substring(0, 28)}... ║`)
   console.log(`  ║  Archivo:    ${path.basename(args.out).padEnd(30)}║`)

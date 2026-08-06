@@ -136,9 +136,9 @@ export interface MovementIntent {
   // MasterArbiter las usa para routing estéreo de movers
   // ═══════════════════════════════════════════════════════════════════════════
   /** Coordenadas explícitas del mover izquierdo (0-1) */
-  mechanicsL?: { pan: number; tilt: number }
+  mechanicsL?: { pan: number; tilt: number; intensity?: number }
   /** Coordenadas explícitas del mover derecho (0-1) */
-  mechanicsR?: { pan: number; tilt: number }
+  mechanicsR?: { pan: number; tilt: number; intensity?: number }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

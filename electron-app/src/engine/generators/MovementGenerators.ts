@@ -157,12 +157,16 @@ export function generateStereoMovement(
   vibeId: string,
   audio: MovementAudioInput,
   musical: MovementMusicalInput,
+  /** 🔒 TOTEM FIX: Mount orientation threaded from TickEngine → TitanEngine.
+   * Enables VMM to apply the correct tiltOffset per orientation (e.g. totem -0.45
+   * audience bias). When undefined, VMM defaults to 'floor' (legacy behavior). */
+  mountOrientation?: string,
 ): ProtocolMovementIntent {
   const vmmContext   = buildVMMContext(audio, musical)
   const gearboxSpeed = calculateGearboxBudget(vibeId)
 
-  const intentL = vibeMovementManager.generateIntent(vibeId, vmmContext, 0, STEREO_TOTAL, gearboxSpeed)
-  const intentR = vibeMovementManager.generateIntent(vibeId, vmmContext, 1, STEREO_TOTAL, gearboxSpeed)
+  const intentL = vibeMovementManager.generateIntent(vibeId, vmmContext, 0, STEREO_TOTAL, gearboxSpeed, 0, mountOrientation)
+  const intentR = vibeMovementManager.generateIntent(vibeId, vmmContext, 1, STEREO_TOTAL, gearboxSpeed, 0, mountOrientation)
 
   return assembleStereoMovementIntent(intentL, intentR)
 }
@@ -180,8 +184,8 @@ export function generateStereoMovement(
  * @pure
  */
 export function buildMechanicsBypassIntent(
-  mechL: { pan: number; tilt: number },
-  mechR: { pan: number; tilt: number },
+  mechL: { pan: number; tilt: number; intensity?: number },
+  mechR: { pan: number; tilt: number; intensity?: number },
 ): ProtocolMovementIntent {
   const avgPan  = Math.max(0, Math.min(1, (mechL.pan  + mechR.pan)  / 2))
   const avgTilt = Math.max(0, Math.min(1, (mechL.tilt + mechR.tilt) / 2))
@@ -193,7 +197,11 @@ export function buildMechanicsBypassIntent(
     centerX: avgPan,
     centerY: avgTilt,
     beatSync: false, // THE DEEP FIELD no usa beatSync
-    mechanicsL: { pan: Math.max(0, Math.min(1, mechL.pan)),  tilt: Math.max(0, Math.min(1, mechL.tilt))  },
-    mechanicsR: { pan: Math.max(0, Math.min(1, mechR.pan)),  tilt: Math.max(0, Math.min(1, mechR.tilt))  },
+    // 🔒 BOREAL OCEAN FIX: intensity MUST be threaded through so that
+    // TickEngine:1127 can read _mech.intensity and emit dimmer to the bus.
+    // Without this, the bypass emits dimmer=0 at priority 50 (LTP) and
+    // kills the movers in chill mode (frozen movement bug).
+    mechanicsL: { pan: Math.max(0, Math.min(1, mechL.pan)),  tilt: Math.max(0, Math.min(1, mechL.tilt)),  intensity: mechL.intensity },
+    mechanicsR: { pan: Math.max(0, Math.min(1, mechR.pan)),  tilt: Math.max(0, Math.min(1, mechR.tilt)),  intensity: mechR.intensity },
   }
 }

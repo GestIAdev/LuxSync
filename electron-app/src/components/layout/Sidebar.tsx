@@ -47,6 +47,7 @@ const TAB_COLORS: Record<TabId, string> = {
   'core': '#f59e0b',         // Amber (AI Monitor)
   'nexus': '#ef4444',
   'theia': '#06b6d4',    // Cyan-500 (Theia Video Engine) - WAVE 4863
+  'vibe-lab-kit': '#00e5ff',  // 🧬 FASE 2 (temporal) Vibe Lab Kit Playground
 }
 
 // WAVE 1110: Custom SVG Icons mapping (added forge)

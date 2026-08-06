@@ -1,0 +1,63 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🧬 kit-variables.css — Shared CSS custom properties for the Instrument Kit
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Variables globales del kit. Los componentes individuales importan este file
+ * y leen las variables. El padre inyecta `--accent-color` para el acento del
+ * tab activo.
+ *
+ * @module components/vibeLab/kit/kit-variables.css
+ * @version FASE 2 — The Instrument Kit
+ */
+
+:root {
+  /* ── Acento (inyectado por el padre) ──────────────────────────────── */
+  --vl-accent: var(--accent-color, #00e5ff);
+  --vl-accent-glow: color-mix(in srgb, var(--vl-accent) 40%, transparent);
+  --vl-accent-dim: color-mix(in srgb, var(--vl-accent) 15%, transparent);
+
+  /* ── Superficies ──────────────────────────────────────────────────── */
+  --vl-bg-panel: rgba(20, 22, 30, 0.85);
+  --vl-bg-track: rgba(255, 255, 255, 0.06);
+  --vl-bg-track-filled: rgba(255, 255, 255, 0.12);
+  --vl-bg-thumb: rgba(255, 255, 255, 0.85);
+  --vl-bg-ghost: rgba(255, 255, 255, 0.25);
+
+  /* ── Texto ────────────────────────────────────────────────────────── */
+  --vl-text-primary: rgba(255, 255, 255, 0.92);
+  --vl-text-secondary: rgba(255, 255, 255, 0.55);
+  --vl-text-muted: rgba(255, 255, 255, 0.35);
+  --vl-text-danger: #ff3b30;
+  --vl-text-sealed: rgba(255, 255, 255, 0.30);
+
+  /* ── Bordes ───────────────────────────────────────────────────────── */
+  --vl-border: rgba(255, 255, 255, 0.08);
+  --vl-border-hover: rgba(255, 255, 255, 0.18);
+  --vl-border-danger: rgba(255, 59, 48, 0.5);
+  --vl-border-sealed: rgba(255, 255, 255, 0.04);
+
+  /* ── Peligro ──────────────────────────────────────────────────────── */
+  --vl-danger: #ff3b30;
+  --vl-danger-bg: rgba(255, 59, 48, 0.15);
+  --vl-danger-glow: rgba(255, 59, 48, 0.3);
+
+  /* ── Sellado ──────────────────────────────────────────────────────── */
+  --vl-sealed: rgba(255, 255, 255, 0.20);
+
+  /* ── Radios ───────────────────────────────────────────────────────── */
+  --vl-radius-sm: 4px;
+  --vl-radius-md: 6px;
+  --vl-radius-lg: 10px;
+
+  /* ── Tipografía ───────────────────────────────────────────────────── */
+  --vl-font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --vl-font-size-xs: 9px;
+  --vl-font-size-sm: 10px;
+  --vl-font-size-md: 11px;
+  --vl-font-size-lg: 13px;
+
+  /* ── Transiciones ─────────────────────────────────────────────────── */
+  --vl-transition: 150ms ease-out;
+  --vl-transition-fast: 80ms ease-out;
+}

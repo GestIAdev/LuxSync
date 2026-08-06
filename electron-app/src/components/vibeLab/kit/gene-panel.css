@@ -1,0 +1,102 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 📦 gene-panel.css — GenePanel styles
+ * ═══════════════════════════════════════════════════════════════════════════
+ * @module components/vibeLab/kit/gene-panel.css
+ * @version FASE 2 — The Instrument Kit
+ */
+
+.gene-panel {
+  margin-bottom: 6px;
+  border-radius: var(--vl-radius-md);
+  overflow: hidden;
+  background: var(--vl-bg-panel);
+  border: 1px solid var(--vl-border);
+  transition: border-color var(--vl-transition);
+  font-family: var(--vl-font-mono);
+}
+
+.gene-panel.expanded {
+  border-left: 2px solid var(--vl-accent);
+}
+
+.gene-panel.tier-raw {
+  border-style: dashed;
+}
+
+/* ── HEADER ───────────────────────────────────────────────────────────── */
+.gene-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 10px;
+  background: rgba(40, 42, 50, 0.6);
+  border: none;
+  cursor: pointer;
+  transition: background var(--vl-transition);
+}
+
+.gene-panel-header:hover {
+  background: rgba(50, 52, 60, 0.8);
+}
+
+.gene-panel-header:focus-visible {
+  outline: 2px solid var(--vl-accent);
+  outline-offset: -2px;
+}
+
+.gene-panel-header-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gene-panel-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--vl-accent);
+}
+
+.gene-panel-title {
+  font-size: var(--vl-font-size-md);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--vl-text-primary);
+}
+
+.gene-panel-raw-tag {
+  font-size: var(--vl-font-size-xs);
+  font-weight: 700;
+  color: var(--vl-text-danger);
+  background: var(--vl-danger-bg);
+  border: 1px solid var(--vl-border-danger);
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+
+.gene-panel-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gene-panel-chevron {
+  display: flex;
+  align-items: center;
+  color: var(--vl-text-muted);
+}
+
+/* ── CONTENT ──────────────────────────────────────────────────────────── */
+.gene-panel-content {
+  overflow: hidden;
+}
+
+.gene-panel-content-inner {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}

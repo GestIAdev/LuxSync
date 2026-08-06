@@ -1,0 +1,71 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🎛️ macro-gene-dial.css — MacroGeneDial styles
+ * ═══════════════════════════════════════════════════════════════════════════
+ * @module components/vibeLab/kit/macro-gene-dial.css
+ * @version FASE 2 — The Instrument Kit
+ */
+
+.macro-gene-dial {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  border-radius: var(--vl-radius-md);
+  background: var(--vl-bg-panel);
+  border: 1px solid var(--vl-border);
+  transition: border-color var(--vl-transition), box-shadow var(--vl-transition);
+  font-family: var(--vl-font-mono);
+  user-select: none;
+}
+
+.macro-gene-dial:hover {
+  border-color: var(--vl-accent-dim);
+  box-shadow: 0 0 8px var(--vl-accent-glow);
+}
+
+.macro-gene-dial-svg-wrapper {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+.macro-gene-dial-svg-wrapper svg {
+  display: block;
+}
+
+.macro-gene-dial-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 16px;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.macro-gene-dial-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.macro-gene-dial-label {
+  font-size: var(--vl-font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--vl-text-secondary);
+  text-align: center;
+}
+
+.macro-gene-dial-value {
+  font-size: var(--vl-font-size-sm);
+  font-weight: 700;
+  color: var(--vl-accent);
+  font-variant-numeric: tabular-nums;
+}

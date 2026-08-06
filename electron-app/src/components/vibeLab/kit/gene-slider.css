@@ -1,0 +1,239 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🎚️ gene-slider.css — GeneSlider styles
+ * ═══════════════════════════════════════════════════════════════════════════
+ * @module components/vibeLab/kit/gene-slider.css
+ * @version FASE 2 — The Instrument Kit
+ */
+
+.gene-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: var(--vl-radius-md);
+  background: var(--vl-bg-panel);
+  border: 1px solid var(--vl-border);
+  transition: border-color var(--vl-transition), box-shadow var(--vl-transition);
+  font-family: var(--vl-font-mono);
+}
+
+/* ── HEADER ──────────────────────────────────────────────────────────── */
+.gene-slider-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 16px;
+}
+
+.gene-slider-label {
+  font-size: var(--vl-font-size-md);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--vl-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gene-slider-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gene-slider-revert {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: var(--vl-radius-sm);
+  background: transparent;
+  color: var(--vl-text-secondary);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--vl-transition), background var(--vl-transition), color var(--vl-transition);
+}
+
+.gene-slider:hover .gene-slider-revert,
+.gene-slider[data-mutated="true"] .gene-slider-revert {
+  opacity: 1;
+}
+
+.gene-slider-revert:hover {
+  background: var(--vl-accent-dim);
+  color: var(--vl-accent);
+}
+
+.gene-slider-sealed-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--vl-text-sealed);
+}
+
+/* ── TRACK ───────────────────────────────────────────────────────────── */
+.gene-slider-track-wrapper {
+  position: relative;
+  height: 18px;
+  display: flex;
+  align-items: center;
+}
+
+.gene-slider-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--vl-bg-track);
+  overflow: hidden;
+}
+
+.gene-slider-fill {
+  position: absolute;
+  left: 0;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--vl-bg-track-filled);
+  transition: width var(--vl-transition), background var(--vl-transition);
+  pointer-events: none;
+}
+
+.gene-slider-ghost {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 10px;
+  border-radius: 1px;
+  background: var(--vl-bg-ghost);
+  pointer-events: none;
+  opacity: 0.6;
+  transition: left var(--vl-transition);
+}
+
+.gene-slider-danger-zone {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 8px;
+  border-radius: 2px;
+  background: var(--vl-danger-bg);
+  border: 1px solid var(--vl-border-danger);
+  pointer-events: none;
+}
+
+/* ── NATIVE INPUT (overlay transparente) ─────────────────────────────── */
+.gene-slider-input {
+  position: absolute;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.gene-slider-input:focus-visible {
+  outline: 2px solid var(--vl-accent);
+  outline-offset: 2px;
+  border-radius: var(--vl-radius-sm);
+  opacity: 0.3;
+}
+
+/* ── FOOTER ──────────────────────────────────────────────────────────── */
+.gene-slider-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--vl-font-size-xs);
+  color: var(--vl-text-muted);
+}
+
+.gene-slider-value {
+  font-weight: 700;
+  color: var(--vl-text-primary);
+  font-size: var(--vl-font-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.gene-slider-min,
+.gene-slider-max {
+  font-size: var(--vl-font-size-xs);
+  color: var(--vl-text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ESTADOS VISUALES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── INHERITED ────────────────────────────────────────────────────────── */
+.gene-slider.inherited .gene-slider-fill {
+  background: var(--vl-bg-track-filled);
+}
+
+/* ── MUTATED ──────────────────────────────────────────────────────────── */
+.gene-slider.mutated {
+  border-color: var(--vl-accent-dim);
+  box-shadow: 0 0 8px var(--vl-accent-glow);
+}
+
+.gene-slider.mutated .gene-slider-fill {
+  background: var(--vl-accent);
+  box-shadow: 0 0 6px var(--vl-accent-glow);
+}
+
+.gene-slider.mutated .gene-slider-label {
+  color: var(--vl-accent);
+}
+
+.gene-slider.mutated .gene-slider-value {
+  color: var(--vl-accent);
+}
+
+/* ── DANGER ───────────────────────────────────────────────────────────── */
+.gene-slider.danger {
+  border-color: var(--vl-border-danger);
+  box-shadow: 0 0 8px var(--vl-danger-glow);
+}
+
+.gene-slider.danger .gene-slider-fill {
+  background: var(--vl-danger);
+  box-shadow: 0 0 6px var(--vl-danger-glow);
+}
+
+.gene-slider.danger .gene-slider-value {
+  color: var(--vl-danger);
+}
+
+/* ── SEALED ───────────────────────────────────────────────────────────── */
+.gene-slider.sealed {
+  opacity: 0.5;
+  border-color: var(--vl-border-sealed);
+}
+
+.gene-slider.sealed .gene-slider-input {
+  cursor: not-allowed;
+}
+
+.gene-slider.sealed .gene-slider-label {
+  color: var(--vl-text-sealed);
+}
+
+.gene-slider.sealed .gene-slider-fill {
+  background: var(--vl-sealed);
+}
+
+/* ── LOCKED-BY-BASIC ──────────────────────────────────────────────────── */
+.gene-slider.locked-by-basic {
+  display: none;
+}

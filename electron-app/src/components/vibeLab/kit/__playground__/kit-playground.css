@@ -1,0 +1,139 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🎮 kit-playground.css — KitPlayground styles
+ * ═══════════════════════════════════════════════════════════════════════════
+ * @module components/vibeLab/kit/__playground__/kit-playground.css
+ * @version FASE 2 — The Instrument Kit
+ */
+
+.kit-playground {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: var(--vl-font-mono);
+  color: var(--vl-text-primary);
+  background: rgba(15, 16, 22, 0.95);
+  min-height: 100vh;
+}
+
+/* ── HEADER ───────────────────────────────────────────────────────────── */
+.kit-playground-header {
+  margin-bottom: 24px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--vl-border);
+}
+
+.kit-playground-header h1 {
+  margin: 0 0 4px 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--vl-accent);
+}
+
+.kit-playground-header p {
+  margin: 0;
+  font-size: var(--vl-font-size-md);
+  color: var(--vl-text-secondary);
+}
+
+/* ── SECTIONS ─────────────────────────────────────────────────────────── */
+.kit-playground-section {
+  margin-bottom: 24px;
+}
+
+.kit-playground-section h2 {
+  margin: 0 0 8px 0;
+  font-size: var(--vl-font-size-lg);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--vl-text-secondary);
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--vl-border);
+}
+
+/* ── ROW ──────────────────────────────────────────────────────────────── */
+.kit-playground-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.kit-playground-row.badges {
+  gap: 16px;
+  padding: 12px;
+  background: var(--vl-bg-panel);
+  border-radius: var(--vl-radius-md);
+  border: 1px solid var(--vl-border);
+}
+
+/* ── GRID ─────────────────────────────────────────────────────────────── */
+.kit-playground-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.kit-playground-cell {
+  position: relative;
+  padding: 4px;
+}
+
+.kit-playground-cell[data-state-label]::before {
+  content: attr(data-state-label);
+  display: block;
+  font-size: var(--vl-font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--vl-text-muted);
+  margin-bottom: 4px;
+  padding: 2px 6px;
+  background: var(--vl-bg-track);
+  border-radius: var(--vl-radius-sm);
+}
+
+.kit-playground-note {
+  display: block;
+  margin-top: 4px;
+  font-size: var(--vl-font-size-xs);
+  color: var(--vl-text-muted);
+  font-style: italic;
+}
+
+/* ── DIALS ────────────────────────────────────────────────────────────── */
+.kit-playground-dials {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── PANELS ───────────────────────────────────────────────────────────── */
+.kit-playground-panels {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kit-playground-placeholder {
+  margin: 0;
+  padding: 12px;
+  font-size: var(--vl-font-size-md);
+  color: var(--vl-text-muted);
+  text-align: center;
+  font-style: italic;
+}
+
+/* ── FOOTER ───────────────────────────────────────────────────────────── */
+.kit-playground-footer {
+  margin-top: 24px;
+  padding-top: 12px;
+  border-top: 1px solid var(--vl-border);
+  font-size: var(--vl-font-size-md);
+  color: var(--vl-text-secondary);
+}
+
+.kit-playground-footer strong {
+  color: var(--vl-accent);
+}

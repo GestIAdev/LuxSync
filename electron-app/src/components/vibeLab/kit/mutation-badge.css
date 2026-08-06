@@ -1,0 +1,34 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ⬢ mutation-badge.css — MutationBadge styles
+ * ═══════════════════════════════════════════════════════════════════════════
+ * @module components/vibeLab/kit/mutation-badge.css
+ * @version FASE 2 — The Instrument Kit
+ */
+
+.mutation-badge {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.mutation-badge-hex {
+  position: absolute;
+  inset: 0;
+  filter: drop-shadow(0 0 3px var(--vl-accent-glow));
+}
+
+.mutation-badge-count {
+  position: relative;
+  z-index: 1;
+  font-family: var(--vl-font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--vl-accent);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}

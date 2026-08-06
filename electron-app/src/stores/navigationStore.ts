@@ -21,7 +21,7 @@ import { create } from 'zustand'
 // ============================================
 
 export type StageId = 'dashboard' | 'live' | 'calibration' | 'chronos'
-export type ToolId = 'constructor' | 'forge' | 'keyforge' | 'hephaestus' | 'nexus' | 'core' | 'theia'
+export type ToolId = 'constructor' | 'forge' | 'keyforge' | 'hephaestus' | 'nexus' | 'core' | 'theia' | 'vibe-lab-kit'
 export type TabId = StageId | ToolId
 
 export interface TabConfig {
@@ -180,9 +180,17 @@ export const TABS: TabConfig[] = [
     shortcut: 'Alt+-',
     description: 'Theia Video Engine — Frame Analysis & Sync',
   },
+  {
+    id: 'vibe-lab-kit',
+    label: 'VIBE LAB',
+    icon: '🧬',
+    type: 'tool',
+    shortcut: 'Alt+=',
+    description: '🧬 FASE 2 (temporal) Vibe Lab Kit Playground',
+  },
 ]
 
-const TAB_ORDER: TabId[] = ['dashboard', 'live', 'calibration', 'chronos', 'constructor', 'forge', 'keyforge', 'hephaestus', 'nexus', 'core', 'theia']
+const TAB_ORDER: TabId[] = ['dashboard', 'live', 'calibration', 'chronos', 'constructor', 'forge', 'keyforge', 'hephaestus', 'nexus', 'core', 'theia', 'vibe-lab-kit']
 
 // ============================================
 // STORE - WAVE 1112: Added targetFixtureId for Builder -> Forge bridge

@@ -1,0 +1,159 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔘 gene-toggle.css — GeneToggle styles
+ * ═══════════════════════════════════════════════════════════════════════════
+ * @module components/vibeLab/kit/gene-toggle.css
+ * @version FASE 2 — The Instrument Kit
+ */
+
+.gene-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--vl-radius-md);
+  background: var(--vl-bg-panel);
+  border: 1px solid var(--vl-border);
+  transition: border-color var(--vl-transition), box-shadow var(--vl-transition);
+  font-family: var(--vl-font-mono);
+}
+
+.gene-toggle-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  min-width: 0;
+}
+
+.gene-toggle-label {
+  font-size: var(--vl-font-size-md);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--vl-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gene-toggle-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gene-toggle-revert {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: var(--vl-radius-sm);
+  background: transparent;
+  color: var(--vl-text-secondary);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--vl-transition), background var(--vl-transition), color var(--vl-transition);
+}
+
+.gene-toggle:hover .gene-toggle-revert {
+  opacity: 1;
+}
+
+.gene-toggle-revert:hover {
+  background: var(--vl-accent-dim);
+  color: var(--vl-accent);
+}
+
+.gene-toggle-sealed-icon {
+  color: var(--vl-text-sealed);
+}
+
+/* ── SWITCH ───────────────────────────────────────────────────────────── */
+.gene-toggle-switch {
+  position: relative;
+  width: 36px;
+  height: 18px;
+  border: none;
+  border-radius: 9px;
+  background: var(--vl-bg-track);
+  cursor: pointer;
+  transition: background var(--vl-transition), box-shadow var(--vl-transition);
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.gene-toggle-switch.on {
+  background: var(--vl-accent);
+  box-shadow: 0 0 6px var(--vl-accent-glow);
+}
+
+.gene-toggle-switch:focus-visible {
+  outline: 2px solid var(--vl-accent);
+  outline-offset: 2px;
+}
+
+.gene-toggle-switch:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.gene-toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--vl-bg-thumb);
+  transition: transform var(--vl-transition);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.gene-toggle-switch.on .gene-toggle-knob {
+  transform: translateX(18px);
+}
+
+/* Ghost mark: indica dónde estaba el valor base */
+.gene-toggle-ghost {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px dashed var(--vl-bg-ghost);
+  background: transparent;
+  transform: translateY(-50%);
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.gene-toggle-ghost[data-base="true"] {
+  right: 4px;
+}
+
+.gene-toggle-ghost[data-base="false"] {
+  left: 4px;
+}
+
+/* ── ESTADOS ─────────────────────────────────────────────────────────── */
+.gene-toggle.mutated {
+  border-color: var(--vl-accent-dim);
+  box-shadow: 0 0 8px var(--vl-accent-glow);
+}
+
+.gene-toggle.mutated .gene-toggle-label {
+  color: var(--vl-accent);
+}
+
+.gene-toggle.sealed {
+  opacity: 0.5;
+  border-color: var(--vl-border-sealed);
+}
+
+.gene-toggle.sealed .gene-toggle-label {
+  color: var(--vl-text-sealed);
+}

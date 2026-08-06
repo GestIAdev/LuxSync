@@ -1,0 +1,152 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔘 gene-segmented.css — GeneSegmented styles
+ * ═══════════════════════════════════════════════════════════════════════════
+ * @module components/vibeLab/kit/gene-segmented.css
+ * @version FASE 2 — The Instrument Kit
+ */
+
+.gene-segmented {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: var(--vl-radius-md);
+  background: var(--vl-bg-panel);
+  border: 1px solid var(--vl-border);
+  transition: border-color var(--vl-transition), box-shadow var(--vl-transition);
+  font-family: var(--vl-font-mono);
+}
+
+.gene-segmented-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 16px;
+}
+
+.gene-segmented-label {
+  font-size: var(--vl-font-size-md);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--vl-text-secondary);
+}
+
+.gene-segmented-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gene-segmented-revert {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: var(--vl-radius-sm);
+  background: transparent;
+  color: var(--vl-text-secondary);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--vl-transition), background var(--vl-transition), color var(--vl-transition);
+}
+
+.gene-segmented:hover .gene-segmented-revert {
+  opacity: 1;
+}
+
+.gene-segmented-revert:hover {
+  background: var(--vl-accent-dim);
+  color: var(--vl-accent);
+}
+
+.gene-segmented-sealed-icon {
+  color: var(--vl-text-sealed);
+}
+
+/* ── GROUP ────────────────────────────────────────────────────────────── */
+.gene-segmented-group {
+  display: flex;
+  gap: 2px;
+  background: var(--vl-bg-track);
+  border-radius: var(--vl-radius-sm);
+  padding: 2px;
+}
+
+.gene-segmented-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex: 1;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--vl-text-secondary);
+  font-family: var(--vl-font-mono);
+  font-size: var(--vl-font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--vl-transition), color var(--vl-transition);
+}
+
+.gene-segmented-btn:hover:not(:disabled) {
+  background: var(--vl-bg-track-filled);
+  color: var(--vl-text-primary);
+}
+
+.gene-segmented-btn.selected {
+  background: var(--vl-accent);
+  color: #000;
+  box-shadow: 0 0 6px var(--vl-accent-glow);
+}
+
+.gene-segmented-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.gene-segmented-btn:focus-visible {
+  outline: 2px solid var(--vl-accent);
+  outline-offset: 1px;
+}
+
+.gene-segmented-icon {
+  font-size: var(--vl-font-size-md);
+}
+
+.gene-segmented-base-dot {
+  position: absolute;
+  bottom: 1px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--vl-bg-ghost);
+  pointer-events: none;
+}
+
+/* ── ESTADOS ─────────────────────────────────────────────────────────── */
+.gene-segmented.mutated {
+  border-color: var(--vl-accent-dim);
+  box-shadow: 0 0 8px var(--vl-accent-glow);
+}
+
+.gene-segmented.mutated .gene-segmented-label {
+  color: var(--vl-accent);
+}
+
+.gene-segmented.sealed {
+  opacity: 0.5;
+  border-color: var(--vl-border-sealed);
+}
+
+.gene-segmented.sealed .gene-segmented-label {
+  color: var(--vl-text-sealed);
+}

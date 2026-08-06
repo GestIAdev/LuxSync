@@ -1,0 +1,130 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔢 gene-number-field.css — GeneNumberField styles
+ * ═══════════════════════════════════════════════════════════════════════════
+ * @module components/vibeLab/kit/gene-number-field.css
+ * @version FASE 2 — The Instrument Kit
+ */
+
+.gene-number-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: var(--vl-radius-md);
+  background: var(--vl-bg-panel);
+  border: 1px solid var(--vl-border);
+  transition: border-color var(--vl-transition), box-shadow var(--vl-transition);
+  font-family: var(--vl-font-mono);
+}
+
+.gene-number-field-label {
+  font-size: var(--vl-font-size-md);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--vl-text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.gene-number-field-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.gene-number-field-input {
+  width: 100%;
+  min-width: 40px;
+  padding: 2px 6px;
+  border: 1px solid var(--vl-border);
+  border-radius: var(--vl-radius-sm);
+  background: var(--vl-bg-track);
+  color: var(--vl-text-primary);
+  font-family: var(--vl-font-mono);
+  font-size: var(--vl-font-size-sm);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  transition: border-color var(--vl-transition), background var(--vl-transition);
+}
+
+.gene-number-field-input::placeholder {
+  color: var(--vl-bg-ghost);
+  font-weight: 400;
+}
+
+.gene-number-field-input:focus {
+  outline: none;
+  border-color: var(--vl-accent);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.gene-number-field-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.gene-number-field-unit {
+  font-size: var(--vl-font-size-xs);
+  color: var(--vl-text-muted);
+  flex-shrink: 0;
+}
+
+.gene-number-field-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.gene-number-field-revert {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: var(--vl-radius-sm);
+  background: transparent;
+  color: var(--vl-text-secondary);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--vl-transition), background var(--vl-transition), color var(--vl-transition);
+}
+
+.gene-number-field:hover .gene-number-field-revert {
+  opacity: 1;
+}
+
+.gene-number-field-revert:hover {
+  background: var(--vl-accent-dim);
+  color: var(--vl-accent);
+}
+
+.gene-number-field-sealed-icon {
+  color: var(--vl-text-sealed);
+}
+
+/* ── ESTADOS ─────────────────────────────────────────────────────────── */
+.gene-number-field.mutated {
+  border-color: var(--vl-accent-dim);
+  box-shadow: 0 0 8px var(--vl-accent-glow);
+}
+
+.gene-number-field.mutated .gene-number-field-label,
+.gene-number-field.mutated .gene-number-field-input {
+  color: var(--vl-accent);
+}
+
+.gene-number-field.sealed {
+  opacity: 0.5;
+  border-color: var(--vl-border-sealed);
+}
+
+.gene-number-field.sealed .gene-number-field-label {
+  color: var(--vl-text-sealed);
+}

@@ -21,6 +21,48 @@ interface OrbitThumbnailProps {
   animated?: boolean
 }
 
+/**
+ * Normaliza cualquier color CSS (hex #rgb / #rrggbb / #rrggbbaa, rgba(), rgb(),
+ * hsl()) a `rgba(r, g, b, a)`. Soporta alpha opcional.
+ * Devuelve null si no puede parsearlo.
+ */
+function toRgba(color: string): string | null {
+  const c = color.trim()
+  // #rgb / #rgba
+  if (/^#([0-9a-f]{3,4})$/i.test(c)) {
+    const h = c.slice(1)
+    const r = parseInt(h[0] + h[0], 16)
+    const g = parseInt(h[1] + h[1], 16)
+    const b = parseInt(h[2] + h[2], 16)
+    const a = h[3] ? parseInt(h[3] + h[3], 16) / 255 : 1
+    return `rgba(${r},${g},${b},${a})`
+  }
+  // #rrggbb / #rrggbbaa
+  if (/^#([0-9a-f]{6,8})$/i.test(c)) {
+    const h = c.slice(1)
+    const r = parseInt(h.slice(0, 2), 16)
+    const g = parseInt(h.slice(2, 4), 16)
+    const b = parseInt(h.slice(4, 6), 16)
+    const a = h.length >= 8 ? parseInt(h.slice(6, 8), 16) / 255 : 1
+    return `rgba(${r},${g},${b},${a})`
+  }
+  // rgba(...) / rgb(...)
+  const m = c.match(/^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)$/i)
+  if (m) {
+    const r = Math.round(parseFloat(m[1]))
+    const g = Math.round(parseFloat(m[2]))
+    const b = Math.round(parseFloat(m[3]))
+    const a = m[4] !== undefined ? parseFloat(m[4]) : 1
+    return `rgba(${r},${g},${b},${a})`
+  }
+  return null
+}
+
+/** Devuelve el color con alpha reemplazado (0..1). Fallback a `transparent`. */
+function withAlpha(color: string, alpha: number): string {
+  return toRgba(color)?.replace(/,\s*[\d.]+\s*\)$/, `,${alpha})`) ?? 'transparent'
+}
+
 export const OrbitThumbnail: React.FC<OrbitThumbnailProps> = memo(
   ({ patternId, size = 80, accent = '#ffb020', isSelected = false, animated = true }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -59,7 +101,7 @@ export const OrbitThumbnail: React.FC<OrbitThumbnailProps> = memo(
 
         // ── Trayectoria completa (línea tenue) ─────────────────────────
         ctx.strokeStyle = isSelected
-          ? `${accent}99`
+          ? withAlpha(accent, 0.6)
           : 'rgba(255,255,255,0.15)'
         ctx.lineWidth = isSelected ? 1.2 : 0.8
         ctx.beginPath()
@@ -82,8 +124,8 @@ export const OrbitThumbnail: React.FC<OrbitThumbnailProps> = memo(
 
           // Glow
           const grad = ctx.createRadialGradient(px, py, 0, px, py, 6)
-          grad.addColorStop(0, accent)
-          grad.addColorStop(1, `${accent}00`)
+          grad.addColorStop(0, withAlpha(accent, 1))
+          grad.addColorStop(1, withAlpha(accent, 0))
           ctx.fillStyle = grad
           ctx.beginPath()
           ctx.arc(px, py, 6, 0, Math.PI * 2)

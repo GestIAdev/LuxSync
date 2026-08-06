@@ -186,7 +186,10 @@ const TILT_FLOOR_LIMIT = 0.50
 // 69% del ciclo activo oscilando entre -0.50 y -0.15: haz siempre en semiesfera inferior.
 const TILT_OFFSET_CEILING = -0.325
 
-const TILT_OFFSET_BY_VIBE: Readonly<Record<string, number>> = {
+// 🧬 FASE 1B: exportado para que VibeGraftRegistry pueda injertar vibes custom.
+// El tipo Readonly es sólo a nivel TS; el cast a Record<string, number> en el
+// graft registry es seguro porque el backup/restore garantiza la reversibilidad.
+export const TILT_OFFSET_BY_VIBE: Readonly<Record<string, number>> = {
   'techno-club': -0.35,
   'fiesta-latina': -0.15, // Subido de -0.35. Levanta la cabeza para hacer círculos amplios.
   'pop-rock': -0.30,
@@ -196,7 +199,8 @@ const TILT_OFFSET_BY_VIBE: Readonly<Record<string, number>> = {
 
 // VIBE CONFIGURATIONS
 
-const VIBE_CONFIG: Record<string, VibeConfig> = {
+// 🧬 FASE 1B: exportado para que VibeGraftRegistry pueda injertar vibes custom.
+export const VIBE_CONFIG: Record<string, VibeConfig> = {
   // TECHNO: Geometría dura, cortes precisos — CATEDRAL industrial
   //  WAVE 4730 TRÍADA: panScale 0.72→0.92, tiltScale 0.68→0.85, freq 0.22→0.10
   //   Barrido enorme (92% del pan = ~497°), frecuencia sostenible para hardware real.
@@ -311,7 +315,9 @@ const PATTERN_PERIOD: Record<GoldenPattern, number> = {
 // hardDeadlineExtra = cycleBeats (1 ciclo extra de gracia anti-bloqueo).
 // PATTERN_PERIOD permanece como fallback para código legacy hasta ASALTO 2.
 // ═══════════════════════════════════════════════════════════════════════════
-const PATTERN_CONFIG: Record<GoldenPattern, PatternConfig> = {
+// 🧬 FASE 1B: exportado para que VibeGraftRegistry pueda injertar vibes custom.
+// PATTERN_CONFIG es GLOBAL (no por vibe): el graft registry hace backup/restore.
+export const PATTERN_CONFIG: Record<GoldenPattern, PatternConfig> = {
   // ── TECHNO — geometría industrial, majestuosa (CALIBRACIÓN DE FÁBRICA) ───
   // cycleBeats duplicados → mitad de velocidad física con GM=1.0x
   // phraseDuration extendido → 4-8 compases para que el show respire
@@ -365,7 +371,8 @@ interface StereoConfig {
   type: 'sync' | 'snake' | 'mirror'
 }
 
-const STEREO_CONFIG: Record<string, StereoConfig> = {
+// 🧬 FASE 1B: exportado para que VibeGraftRegistry pueda injertar vibes custom.
+export const STEREO_CONFIG: Record<string, StereoConfig> = {
   'techno-club':    { offset: Math.PI,     type: 'mirror' },   // L/R espejos (puertas abren/cierran)
   'fiesta-latina':  { offset: Math.PI / 4, type: 'snake' },    // 45° cadena de caderas
   'pop-rock':       { offset: Math.PI / 3, type: 'snake' },    // 60° wall ondulante

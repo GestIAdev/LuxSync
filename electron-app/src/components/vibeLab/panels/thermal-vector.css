@@ -1,0 +1,36 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🎨 thermal-vector.css
+ * ═══════════════════════════════════════════════════════════════════════════
+ * @module components/vibeLab/panels/thermal-vector.css
+ * @version FASE 3.2
+ */
+
+.thermal-vector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+}
+
+.thermal-vector-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+}
+
+.tv-label {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.tv-strength {
+  color: rgba(255, 255, 255, 0.4);
+}

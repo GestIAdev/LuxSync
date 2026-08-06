@@ -13,6 +13,7 @@ import React, { memo, useMemo, useState, useCallback } from 'react'
 import { Orbit, Grid, Calendar, Maximize, Users, Cog, Focus, Brain, Fan, Gauge } from 'lucide-react'
 import { GenePanel } from '../kit'
 import { GeneRenderer } from '../GeneRenderer'
+import { OrbitVault } from '../panels/OrbitVault'
 import { getGenesByPanel, getPanelsByTab, PANEL_META } from '../geneRegistry'
 import { useVibeLabStore, useInterlock } from '../../../stores/vibeLabStore'
 import type { InterlockMode } from '../../../stores/vibeLabStore'
@@ -85,21 +86,20 @@ export const MovementBench: React.FC<BenchProps> = memo(({ interlock }) => {
             isExpanded={expanded}
             onToggle={() => handleToggle(panelId)}
           >
-            {genes.map((gene) => (
-              <GeneRenderer
-                key={gene.path}
-                descriptor={gene}
-                baseDNA={baseDNA}
-              />
-            ))}
-            {genes.length === 0 && (
-              <p className="bench-panel-empty">
-                {panelId === 'patterns'
-                  ? 'OrbitVault component (Fase 3.2)'
-                  : panelId === 'scheduler'
-                    ? 'SchedulerDeck component (Fase 3.2)'
-                    : 'No genes in this panel for current mode'}
-              </p>
+            {panelId === 'patterns' ? (
+              <OrbitVault />
+            ) : panelId === 'scheduler' ? (
+              <p className="bench-panel-empty">SchedulerDeck component (Fase 3.2+)</p>
+            ) : genes.length === 0 ? (
+              <p className="bench-panel-empty">No genes in this panel for current mode</p>
+            ) : (
+              genes.map((gene) => (
+                <GeneRenderer
+                  key={gene.path}
+                  descriptor={gene}
+                  baseDNA={baseDNA}
+                />
+              ))
             )}
           </GenePanel>
         )

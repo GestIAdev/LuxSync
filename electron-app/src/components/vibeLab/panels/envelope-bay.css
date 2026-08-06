@@ -1,0 +1,63 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ⚡ envelope-bay.css
+ * ═══════════════════════════════════════════════════════════════════════════
+ * @module components/vibeLab/panels/envelope-bay.css
+ * @version FASE 3.2
+ */
+
+.envelope-bay {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+  overflow: hidden;
+  transition: border-color 150ms ease;
+}
+
+.envelope-bay.expanded {
+  border-color: rgba(0, 229, 255, 0.2);
+}
+
+.envelope-bay-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: background 100ms ease;
+}
+
+.envelope-bay-header:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.envelope-bay-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+  min-width: 60px;
+}
+
+.envelope-bay-chevron {
+  color: rgba(255, 255, 255, 0.3);
+  transition: transform 150ms ease;
+  margin-left: auto;
+}
+
+.envelope-bay-chevron.open {
+  transform: rotate(180deg);
+}
+
+.envelope-bay-genes {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 8px 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}

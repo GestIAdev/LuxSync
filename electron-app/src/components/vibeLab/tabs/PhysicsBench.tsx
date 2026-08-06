@@ -13,7 +13,9 @@ import React, { memo, useMemo, useState, useCallback } from 'react'
 import { Zap, Activity, Waves, Scissors, Gauge, Bolt, Flame, Timer, Droplets, Route, Copy } from 'lucide-react'
 import { GenePanel } from '../kit'
 import { GeneRenderer } from '../GeneRenderer'
+import { EnvelopeBay } from '../panels/EnvelopeBay'
 import { getGenesByPanel, getPanelsByTab, PANEL_META } from '../geneRegistry'
+import { ENVELOPE_SLOTS } from '../../../types/CustomVibe'
 import { useVibeLabStore, useInterlock } from '../../../stores/vibeLabStore'
 import type { InterlockMode } from '../../../stores/vibeLabStore'
 
@@ -97,21 +99,33 @@ export const PhysicsBench: React.FC<BenchProps> = memo(({ interlock }) => {
             isExpanded={expanded}
             onToggle={() => handleToggle(panelId)}
           >
-            {genes.map((gene) => (
-              <GeneRenderer
-                key={gene.path}
-                descriptor={gene}
-                baseDNA={baseDNA}
-              />
-            ))}
-            {genes.length === 0 && (
+            {panelId === 'envelopes' ? (
+              <div className="bench-envelope-bays">
+                {ENVELOPE_SLOTS.map((slot) => (
+                  <EnvelopeBay
+                    key={slot}
+                    slot={slot}
+                    slotLabel={slot.toUpperCase()}
+                    accent="#00e5ff"
+                    isExpanded={isExpanded(`env-${slot}`)}
+                    onToggle={() => handleToggle(`env-${slot}`)}
+                  />
+                ))}
+              </div>
+            ) : genes.length === 0 ? (
               <p className="bench-panel-empty">
-                {panelId === 'envelopes'
-                  ? '6 envelope chambers — EnvelopeBay component (Fase 3.2)'
-                  : panelId === 'routing'
-                    ? 'Routing toggles — custom component'
-                    : 'No genes in this panel for current mode'}
+                {panelId === 'routing'
+                  ? 'Routing toggles — custom component'
+                  : 'No genes in this panel for current mode'}
               </p>
+            ) : (
+              genes.map((gene) => (
+                <GeneRenderer
+                  key={gene.path}
+                  descriptor={gene}
+                  baseDNA={baseDNA}
+                />
+              ))
             )}
           </GenePanel>
         )

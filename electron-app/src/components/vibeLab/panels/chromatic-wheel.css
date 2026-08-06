@@ -1,0 +1,42 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🎨 chromatic-wheel.css
+ * ═══════════════════════════════════════════════════════════════════════════
+ * @module components/vibeLab/panels/chromatic-wheel.css
+ * @version FASE 3.2
+ */
+
+.chromatic-wheel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  user-select: none;
+}
+
+.chromatic-wheel svg {
+  cursor: crosshair;
+}
+
+.chromatic-wheel-legend {
+  display: flex;
+  gap: 12px;
+  font-size: 9px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.cw-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.cw-legend-item.forbidden {
+  color: rgba(255, 80, 80, 0.8);
+}
+
+.cw-legend-item.allowed {
+  color: rgba(80, 255, 120, 0.8);
+}

@@ -13,6 +13,8 @@ import React, { memo, useMemo, useState, useCallback } from 'react'
 import { Palette, Circle, Thermometer, Repeat, Sliders, Shield, Sparkles, Zap, Clock, Waves } from 'lucide-react'
 import { GenePanel } from '../kit'
 import { GeneRenderer } from '../GeneRenderer'
+import { ChromaticWheel } from '../panels/ChromaticWheel'
+import { ThermalVector } from '../panels/ThermalVector'
 import { getGenesByPanel, getPanelsByTab, PANEL_META } from '../geneRegistry'
 import { useVibeLabStore, useInterlock } from '../../../stores/vibeLabStore'
 import type { InterlockMode } from '../../../stores/vibeLabStore'
@@ -86,23 +88,33 @@ export const ColorBench: React.FC<BenchProps> = memo(({ interlock }) => {
             isExpanded={expanded}
             onToggle={() => handleToggle(panelId)}
           >
-            {genes.map((gene) => (
-              <GeneRenderer
-                key={gene.path}
-                descriptor={gene}
-                baseDNA={baseDNA}
-              />
-            ))}
-            {genes.length === 0 && (
-              <p className="bench-panel-empty">
-                {panelId === 'wheel'
-                  ? 'ChromaticWheel component (Fase 3.2)'
-                  : panelId === 'remapping'
-                    ? 'TransmutationTable component (Fase 3.2)'
-                    : panelId === 'sidereal'
-                      ? 'SiderealCarousel component (Fase 3.2)'
-                      : 'No genes in this panel for current mode'}
-              </p>
+            {panelId === 'wheel' ? (
+              <ChromaticWheel size={220} accent="#ff2fd0" />
+            ) : panelId === 'thermal' ? (
+              <div className="bench-thermal-row">
+                <ThermalVector size={120} />
+                {genes.map((gene) => (
+                  <GeneRenderer
+                    key={gene.path}
+                    descriptor={gene}
+                    baseDNA={baseDNA}
+                  />
+                ))}
+              </div>
+            ) : panelId === 'remapping' ? (
+              <p className="bench-panel-empty">TransmutationTable component (Fase 3.2+)</p>
+            ) : panelId === 'sidereal' ? (
+              <p className="bench-panel-empty">SiderealCarousel component (Fase 3.2+)</p>
+            ) : genes.length === 0 ? (
+              <p className="bench-panel-empty">No genes in this panel for current mode</p>
+            ) : (
+              genes.map((gene) => (
+                <GeneRenderer
+                  key={gene.path}
+                  descriptor={gene}
+                  baseDNA={baseDNA}
+                />
+              ))
             )}
           </GenePanel>
         )

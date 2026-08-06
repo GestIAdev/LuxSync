@@ -1,0 +1,146 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🛰 orbit-vault.css
+ * ═══════════════════════════════════════════════════════════════════════════
+ * @module components/vibeLab/panels/orbit-vault.css
+ * @version FASE 3.2
+ */
+
+.orbit-vault {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+}
+
+.orbit-vault-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px;
+}
+
+.orbit-vault-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.orbit-vault-count {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.orbit-vault-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 4px;
+}
+
+/* ── Item ─────────────────────────────────────────────────────────────── */
+.orbit-vault-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.orbit-vault-item:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.orbit-vault-item.selected {
+  border-color: #ffb020;
+  background: rgba(255, 176, 32, 0.08);
+  box-shadow: 0 0 8px rgba(255, 176, 32, 0.15);
+}
+
+.orbit-vault-item.scheduled {
+  border-color: rgba(255, 176, 32, 0.3);
+}
+
+/* ── Drag handle ──────────────────────────────────────────────────────── */
+.orbit-vault-drag-handle {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.2);
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 100ms ease;
+}
+
+.orbit-vault-item:hover .orbit-vault-drag-handle {
+  opacity: 1;
+}
+
+.orbit-vault-drag-handle:active {
+  cursor: grabbing;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* ── Thumbnail ────────────────────────────────────────────────────────── */
+.orbit-vault-thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.orbit-thumbnail {
+  border-radius: 4px;
+}
+
+/* ── Label ────────────────────────────────────────────────────────────── */
+.orbit-vault-label {
+  font-size: 8px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80px;
+  cursor: pointer;
+}
+
+.orbit-vault-item.selected .orbit-vault-label {
+  color: #ffb020;
+}
+
+/* ── Order badge ──────────────────────────────────────────────────────── */
+.orbit-vault-order {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(255, 176, 32, 0.2);
+  color: #ffb020;
+  font-size: 8px;
+  font-weight: 700;
+}

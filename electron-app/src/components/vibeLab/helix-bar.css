@@ -1,0 +1,139 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🧬 helix-bar.css — HelixBar styles
+ * ═══════════════════════════════════════════════════════════════════════════
+ * @module components/vibeLab/helix-bar.css
+ * @version FASE 3
+ */
+
+.helix-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
+  background: rgba(18, 20, 28, 0.95);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  flex-shrink: 0;
+  min-height: 48px;
+}
+
+/* ── LEFT ─────────────────────────────────────────────────────────────── */
+.helix-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.helix-bar-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.helix-bar-name-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.helix-bar-dna-icon {
+  color: rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
+}
+
+.helix-bar-name-input {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.95);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 2px 4px;
+  border-radius: 3px;
+  min-width: 100px;
+  max-width: 200px;
+  transition: background 150ms ease;
+}
+
+.helix-bar-name-input:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.helix-bar-name-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.helix-bar-dirty-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffaa00;
+  box-shadow: 0 0 4px rgba(255, 170, 0, 0.6);
+  flex-shrink: 0;
+}
+
+.helix-bar-author {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.35);
+  padding-left: 18px;
+}
+
+/* ── CENTER ───────────────────────────────────────────────────────────── */
+.helix-bar-center {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.helix-bar-mutation-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ── RIGHT ────────────────────────────────────────────────────────────── */
+.helix-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.helix-bar-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.helix-bar-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.helix-bar-action-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.helix-bar-action-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}

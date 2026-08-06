@@ -1,0 +1,56 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🧬 bench.css — Shared styles for the 3 benches
+ * ═══════════════════════════════════════════════════════════════════════════
+ * @module components/vibeLab/tabs/bench.css
+ * @version FASE 3
+ */
+
+.physics-bench,
+.color-bench,
+.movement-bench {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* ── Bench content area ───────────────────────────────────────────────── */
+.vibe-lab-bench-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ── Empty panel placeholder ──────────────────────────────────────────── */
+.bench-panel-empty {
+  padding: 12px 16px;
+  margin: 0;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.3);
+  font-style: italic;
+  text-align: center;
+}
+
+/* ── Scrollbar styling ────────────────────────────────────────────────── */
+.vibe-lab-bench-content::-webkit-scrollbar,
+.vibe-lab-bench::-webkit-scrollbar {
+  width: 6px;
+}
+
+.vibe-lab-bench-content::-webkit-scrollbar-track,
+.vibe-lab-bench::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.vibe-lab-bench-content::-webkit-scrollbar-thumb,
+.vibe-lab-bench::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+}
+
+.vibe-lab-bench-content::-webkit-scrollbar-thumb:hover,
+.vibe-lab-bench::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}

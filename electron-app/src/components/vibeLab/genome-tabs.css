@@ -1,0 +1,53 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🧬 genome-tabs.css
+ * ═══════════════════════════════════════════════════════════════════════════
+ * @module components/vibeLab/genome-tabs.css
+ * @version FASE 3
+ */
+
+.genome-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 8px;
+  background: rgba(15, 16, 22, 0.6);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.genome-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+
+.genome-tab:hover {
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.genome-tab.active {
+  color: var(--tab-accent, #00e5ff);
+  border-bottom-color: var(--tab-accent, #00e5ff);
+}
+
+.genome-tab-icon {
+  display: flex;
+  align-items: center;
+}
+
+.genome-tab-label {
+  white-space: nowrap;
+}

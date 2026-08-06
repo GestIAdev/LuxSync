@@ -75,6 +75,18 @@ export class FixturePhysicsDriver {
                 limits: { tiltMin: 0, tiltMax: 255 },
                 tiltOffset: 0,
             },
+            //  TOTEM: Fixtures en totem (poste vertical) mirando hacia arriba
+            //  🔒 TOTEM FIX: Misma física que floor (facing up, no tilt invert),
+            //  pero con tiltOffset hacia el audience aplicado por el VMM (-0.45).
+            //  Sin este preset, 'totem' caía al defaultConfig (ceiling) causando
+            //  tilt invertido y home/limits incorrectos en el path legacy HAL.
+            totem: {
+                description: 'En totem (poste vertical), mirando hacia arriba con bias al audience',
+                defaultHome: { pan: 127, tilt: 127 },
+                invert: { pan: false, tilt: false },
+                limits: { tiltMin: 0, tiltMax: 255 },
+                tiltOffset: 0,
+            },
             //  TRUSS_FRONT: En truss frontal (escenario típico)
             truss_front: {
                 description: 'En truss frontal, iluminando hacia el público',

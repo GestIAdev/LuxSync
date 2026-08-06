@@ -107,11 +107,15 @@ export function assembleStereoMovementIntent(vmmIntentL, vmmIntentR) {
  * @pure (delegada — vibeMovementManager tiene estado, pero esta función
  *        no muta nada ni guarda resultado entre llamadas)
  */
-export function generateStereoMovement(vibeId, audio, musical) {
+export function generateStereoMovement(vibeId, audio, musical, 
+/** 🔒 TOTEM FIX: Mount orientation threaded from TickEngine → TitanEngine.
+ * Enables VMM to apply the correct tiltOffset per orientation (e.g. totem -0.45
+ * audience bias). When undefined, VMM defaults to 'floor' (legacy behavior). */
+mountOrientation) {
     const vmmContext = buildVMMContext(audio, musical);
     const gearboxSpeed = calculateGearboxBudget(vibeId);
-    const intentL = vibeMovementManager.generateIntent(vibeId, vmmContext, 0, STEREO_TOTAL, gearboxSpeed);
-    const intentR = vibeMovementManager.generateIntent(vibeId, vmmContext, 1, STEREO_TOTAL, gearboxSpeed);
+    const intentL = vibeMovementManager.generateIntent(vibeId, vmmContext, 0, STEREO_TOTAL, gearboxSpeed, 0, mountOrientation);
+    const intentR = vibeMovementManager.generateIntent(vibeId, vmmContext, 1, STEREO_TOTAL, gearboxSpeed, 0, mountOrientation);
     return assembleStereoMovementIntent(intentL, intentR);
 }
 /**
@@ -136,7 +140,11 @@ export function buildMechanicsBypassIntent(mechL, mechR) {
         centerX: avgPan,
         centerY: avgTilt,
         beatSync: false, // THE DEEP FIELD no usa beatSync
-        mechanicsL: { pan: Math.max(0, Math.min(1, mechL.pan)), tilt: Math.max(0, Math.min(1, mechL.tilt)) },
-        mechanicsR: { pan: Math.max(0, Math.min(1, mechR.pan)), tilt: Math.max(0, Math.min(1, mechR.tilt)) },
+        // 🔒 BOREAL OCEAN FIX: intensity MUST be threaded through so that
+        // TickEngine:1127 can read _mech.intensity and emit dimmer to the bus.
+        // Without this, the bypass emits dimmer=0 at priority 50 (LTP) and
+        // kills the movers in chill mode (frozen movement bug).
+        mechanicsL: { pan: Math.max(0, Math.min(1, mechL.pan)), tilt: Math.max(0, Math.min(1, mechL.tilt)), intensity: mechL.intensity },
+        mechanicsR: { pan: Math.max(0, Math.min(1, mechR.pan)), tilt: Math.max(0, Math.min(1, mechR.tilt)), intensity: mechR.intensity },
     };
 }

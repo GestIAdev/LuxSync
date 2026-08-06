@@ -33,6 +33,8 @@ import { registerAetherIPCHandlers } from '../src/core/aether/AetherIPCHandlers'
 import { stagePersistence, setupStageIPCHandlers } from '../src/core/stage';
 // ⌨ WAVE 4805: KeyForge Loadout IPC
 import { setupKeyForgeIPCHandlers } from '../src/core/keyforge/KeyForgeIPCHandlers';
+// 🧬 FASE 4.3: Vibe Lab — .luxvibe persistence IPC
+import { registerVibeLabIPCHandlers } from '../src/core/vibe/VibeLabIPCHandlers';
 // ⚒️ Hephaestus File I/O (WAVE 2030.5)
 import { setupHephIPCHandlers } from '../src/core/hephaestus';
 // 🧬 WAVE 5000.V3: Genesis Engine IPC (Era V)
@@ -382,6 +384,10 @@ async function initTitan() {
     // ⌨ WAVE 4805: KeyForge Loadout persistence
     // ═══════════════════════════════════════════════════════════════════════════
     setupKeyForgeIPCHandlers(() => mainWindow);
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🧬 FASE 4.3: Vibe Lab — .luxvibe persistence
+    // ═══════════════════════════════════════════════════════════════════════════
+    registerVibeLabIPCHandlers();
     // ═══════════════════════════════════════════════════════════════════════════
     // 🎬 WAVE 4910.6: Theia Asset export — Native Save As dialog
     // ═══════════════════════════════════════════════════════════════════════════

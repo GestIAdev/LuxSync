@@ -92,9 +92,20 @@ class VibeLabPersistence {
           const stat = await fsp.stat(fullPath)
           const content = await fsp.readFile(fullPath, 'utf-8')
           const data = JSON.parse(content) as CustomVibeOverride
+          const fallbackKey = filenameToKey(filename)
           entries.push({
-            key: filenameToKey(filename),
-            meta: data.meta ?? { name: filename, author: 'unknown', key: filenameToKey(filename) },
+            key: fallbackKey,
+            meta: data.meta ?? {
+              key: fallbackKey,
+              name: filename,
+              description: '',
+              icon: '🧬',
+              author: 'unknown',
+              createdAt: stat.mtimeMs,
+              updatedAt: stat.mtimeMs,
+              tags: [],
+              accentHex: '#00e5ff',
+            },
             filename,
             fullPath,
             sizeBytes: stat.size,

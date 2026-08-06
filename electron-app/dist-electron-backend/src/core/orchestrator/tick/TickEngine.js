@@ -518,6 +518,32 @@ export class TickEngine {
             engineAudioMetrics.lowMid = _phantomAudioPre.lowMid;
             engineAudioMetrics.highMid = _phantomAudioPre.highMid;
         }
+        // 🔒 TOTEM FIX: Compute dominant mount orientation from KINETIC nodes.
+        // The VMM needs this to apply the correct tiltOffset per orientation
+        // (e.g. totem -0.45 audience bias). Without this, all fixtures get the
+        // floor offset in the automatic VMM path.
+        if (this.engine && this._aetherGraph) {
+            const kineticNodes = this._aetherGraph.getView(NodeFamily.KINETIC);
+            let dominantOrientation = undefined;
+            if (kineticNodes.length > 0) {
+                const orientationCounts = new Map();
+                for (const node of kineticNodes) {
+                    const inst = node.ikOrientation?.installation;
+                    if (inst) {
+                        orientationCounts.set(inst, (orientationCounts.get(inst) ?? 0) + 1);
+                    }
+                }
+                // Pick the most common orientation
+                let maxCount = 0;
+                for (const [ori, count] of orientationCounts) {
+                    if (count > maxCount) {
+                        maxCount = count;
+                        dominantOrientation = ori;
+                    }
+                }
+            }
+            this.engine.setDominantMountOrientation(dominantOrientation);
+        }
         const intent = await this.engine.update(context, engineAudioMetrics);
         // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         // ðŸª“ WAVE 4592 â†’ WAVE 4703: AETHER PIPELINE ONLY
@@ -691,9 +717,10 @@ export class TickEngine {
         const hephRuntime = getHephaestusRuntime();
         const hephOutputs = hephRuntime.tick(now); // âš¡ WAVE 3050: unified timestamp
         // ðŸ”’ WAVE 2490: THE TIER SEPARATION PROTOCOL â€” Hephaestus DMX Gate
-        // DJ_FOUNDER: Hephaestus runtime ticks are silently discarded.
-        // The engine runs but its output never reaches fixtures.
-        if (hephOutputs.length > 0 && this._licenseTier !== 'DJ_FOUNDER') {
+        // ENGINE UNCHAINED: DMX output gate removed — DJ_FOUNDER now has full playback.
+        // Tier restriction is enforced at the UI level (Chronos/Hephaestus studios locked).
+        // All trigger sources (MIDI, Keyboard, Selene IA, loaded Chronos shows) flow through.
+        if (hephOutputs.length > 0) {
             // WAVE 3190: Reutilizar buffers pre-asignados â€” cero new Map() por frame
             // ðŸŽ¯ WAVE 2544.3: Separate outputs into two buckets:
             //   - fixtureId bucket: output targets a specific fixture by ID (new tickLegacy path)
@@ -1114,7 +1141,8 @@ export class TickEngine {
                 // Reuses `hephOutputs` from the legacy block above (SINGLE tick per frame).
                 // The adapter only processes fixtures registered in NodeGraph (isCustomClip === true).
                 // Legacy post-HAL block still handles fixtures NOT in NodeGraph (backward compat).
-                if (hephOutputs.length > 0 && this._licenseTier !== 'DJ_FOUNDER') {
+                // ENGINE UNCHAINED: DMX output gate removed — all tiers get full L3+ output.
+                if (hephOutputs.length > 0) {
                     this._hephaestusAetherAdapter.ingest(hephOutputs, aetherArbiter);
                 }
                 else {

@@ -107,6 +107,12 @@ export class TitanEngine extends EventEmitter {
         // -1 means no playback active.
         this.chronosPlayheadMs = -1;
         this.chronosPlaybackActive = false;
+        // 🔒 TOTEM FIX: Dominant mount orientation across KINETIC nodes.
+        // Set by TickEngine before each update() from the Aether graph's KINETIC view.
+        // Threaded to generateStereoMovement → VMM.generateIntent so the VMM can apply
+        // the correct tiltOffset per orientation (e.g. totem -0.45 audience bias).
+        // Undefined = no KINETIC nodes or mixed orientations → VMM defaults to 'floor'.
+        this._dominantMountOrientation = undefined;
         // ═══════════════════════════════════════════════════════════════════════
         // 📜 WAVE 560: TACTICAL LOG EMISSION
         // ═══════════════════════════════════════════════════════════════════════
@@ -748,7 +754,7 @@ export class TitanEngine extends EventEmitter {
                 energy: processedContext.energy,
                 bpm: processedContext.bpm,
             };
-            movement = generateStereoMovement(this.vibeManager.getActiveVibe().id, movAudio, movMusical);
+            movement = generateStereoMovement(this.vibeManager.getActiveVibe().id, movAudio, movMusical, this._dominantMountOrientation);
         }
         // ─────────────────────────────────────────────────────────────────────
         // ─────────────────────────────────────────────────────────────────────
@@ -1096,6 +1102,19 @@ export class TitanEngine extends EventEmitter {
     setLiquidLayout(mode) {
         this.nervousSystem.setLiquidLayout(mode);
         // TitanEngine Layout log silenced
+    }
+    /**
+     * 🔒 TOTEM FIX: Sets the dominant mount orientation across all KINETIC nodes.
+     *
+     * Called by TickEngine before each update() from the Aether graph's KINETIC view.
+     * Threaded to generateStereoMovement → VMM.generateIntent so the VMM can apply
+     * the correct tiltOffset per orientation (e.g. totem -0.45 audience bias).
+     *
+     * @param orientation - Dominant orientation ('totem', 'ceiling', 'floor', etc.)
+     *                      or undefined if no KINETIC nodes exist.
+     */
+    setDominantMountOrientation(orientation) {
+        this._dominantMountOrientation = orientation;
     }
     getActiveLiquidEngine() {
         return this.nervousSystem.getLastActiveLiquidEngine();

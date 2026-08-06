@@ -35,9 +35,7 @@
 }
 
 /* ── Right: MutationScope ─────────────────────────────────────────────── */
-.vibe-lab-body > .mutation-scope {
-  /* definido en mutation-scope.css */
-}
+/* .mutation-scope styles live in mutation-scope.css */
 
 /* ── Vault drawer (overlay deslizable desde la izquierda) ─────────────── */
 .vibe-lab-vault-drawer {

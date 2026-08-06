@@ -837,8 +837,14 @@ export class SeleneLux {
         // 🌊 WAVE 8004: PHOTON STROBE — StrobeEngine output drives strobeOverride
         // When active, provides rate + duty for HAL to use native strobe channel
         // or modulate dimmer. Falls back to physics-engine strobe if photon inactive.
+        // 🔒 BOREAL OCEAN FIX: Strobe is suppressed for chill/lounge/ambient/jazz vibes.
+        // The ChillAmbientEngine owns the dimmer in chill (200s/600s morph sine).
+        // Photon strobe override (dimmerOverride=1.0) was snapping movers to full
+        // brightness on transient hits, producing intermittent blinking.
         let strobeOverride = null;
-        if (photon?.strobe?.active) {
+        const isChillVibeStrobe = vibeNormalized.includes('chill') || vibeNormalized.includes('lounge') ||
+            vibeNormalized.includes('ambient') || vibeNormalized.includes('jazz');
+        if (photon?.strobe?.active && !isChillVibeStrobe) {
             strobeOverride = {
                 rate: photon.strobe.rateHz,
                 duty: photon.strobe.duty,

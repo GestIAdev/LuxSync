@@ -429,6 +429,23 @@ const api = {
         setPaused: (paused) => ipcRenderer.invoke('genesis:setPaused', paused),
         getPaused: () => ipcRenderer.invoke('genesis:getPaused'),
     },
+    // ============================================
+    // 🧬 FASE 4.3: VIBE LAB — .luxvibe persistence
+    // ============================================
+    vibeLab: {
+        /** Lista todos los .luxvibe del vault (userData/vibes/). */
+        list: () => ipcRenderer.invoke('vibeLab:list'),
+        /** Lee un .luxvibe por key. */
+        read: (key) => ipcRenderer.invoke('vibeLab:read', key),
+        /** Guarda (mint) un CustomVibeOverride a disco. */
+        save: (data) => ipcRenderer.invoke('vibeLab:save', data),
+        /** Elimina un .luxvibe por key. */
+        delete: (key) => ipcRenderer.invoke('vibeLab:delete', key),
+        /** Exporta un .luxvibe a una ruta elegida (diálogo save-as). */
+        export: (data) => ipcRenderer.invoke('vibeLab:export', data),
+        /** Importa un .luxvibe externo al vault (diálogo open). */
+        import: () => ipcRenderer.invoke('vibeLab:import'),
+    },
 };
 // ============================================================================
 // 🌙 LUX API - Selene Lux Core Bridge (WAVE 2)

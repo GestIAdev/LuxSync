@@ -1,0 +1,145 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🏦 genome-vault.css
+ * ═══════════════════════════════════════════════════════════════════════════
+ * @module components/vibeLab/genome-vault.css
+ * @version FASE 4.2
+ */
+
+.genome-vault {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.genome-vault-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.genome-vault-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.genome-vault-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.genome-vault-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: background 100ms ease;
+}
+
+.genome-vault-actions button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.genome-vault-empty {
+  padding: 16px;
+  text-align: center;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.25);
+  font-style: italic;
+}
+
+.genome-vault-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* ── Item ─────────────────────────────────────────────────────────────── */
+.genome-vault-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.02);
+  transition: border-color 100ms ease, background 100ms ease;
+}
+
+.genome-vault-item:hover {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.genome-vault-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+}
+
+.genome-vault-item-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.genome-vault-item-meta {
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.35);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.genome-vault-item-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.genome-vault-item-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: background 100ms ease, color 100ms ease;
+}
+
+.genome-vault-item-actions button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.genome-vault-item-actions button.danger:hover {
+  background: rgba(255, 80, 80, 0.15);
+  color: #ff5555;
+}

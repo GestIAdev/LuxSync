@@ -152,8 +152,28 @@ function countMutations(draft: CustomVibeOverride | null): number {
 // STUBS DE PERSISTENCIA (Fase 4)
 // ═══════════════════════════════════════════════════════════════════════════
 
-const persistNotImplemented = (): never => {
-  throw new Error('[vibeLabStore] Persistencia no implementada — Fase 4.')
+// ═══════════════════════════════════════════════════════════════════════════
+// PUENTE IPC (renderer → main → VibeLabPersistence)
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface VibeLabIPC {
+  list: () => Promise<unknown[]>
+  read: (key: CustomVibeKey) => Promise<{ ok: boolean; data?: CustomVibeOverride; error?: string }>
+  save: (data: CustomVibeOverride) => Promise<{ ok: boolean; path?: string; error?: string }>
+  delete: (key: CustomVibeKey) => Promise<{ ok: boolean; error?: string }>
+  export: (data: CustomVibeOverride) => Promise<{ ok: boolean; path?: string; error?: string }>
+  import: () => Promise<{ ok: boolean; data?: CustomVibeOverride; error?: string }>
+}
+
+/** Acceso lazy al bridge IPC expuesto por preload (window.luxsync.vibeLab). */
+function getVibeLabIPC(): VibeLabIPC | null {
+  const w = window as unknown as { luxsync?: { vibeLab?: VibeLabIPC } }
+  const ipc = w.luxsync?.vibeLab
+  if (!ipc) {
+    console.warn('[vibeLabStore] window.luxsync.vibeLab no disponible — ¿preload?')
+    return null
+  }
+  return ipc
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -202,11 +222,33 @@ export const useVibeLabStore = create<VibeLabState>()(
         })
       },
 
-      openFromVault: async (_key) => {
-        // Stub — Fase 4 implementará carga desde disco vía IPC.
-        // Por ahora, no hace nada (el caller debe manejar el caso).
+      openFromVault: async (key) => {
+        const ipc = getVibeLabIPC()
+        if (!ipc) return
         set({ vaultLoading: true })
-        set({ vaultLoading: false })
+        try {
+          const result = await ipc.read(key)
+          if (result.ok && result.data) {
+            const data = result.data
+            set((state) => {
+              state.draft = data as WritableDraft<CustomVibeOverride>
+              state.pristine = structuredCloneSafe(data) as WritableDraft<CustomVibeOverride>
+              state.isDirty = false
+              state.mutationCount = countMutations(data)
+              state.diagnostics = []
+              state.activeTab = 'physics'
+              state.interlock = 'shielded'
+              state.expandedPanels = { physics: [], color: [], movement: [] }
+              state.focusedEnvelope = null
+              state.focusedPattern = null
+              state.abMode = 'mutation'
+            })
+          } else {
+            console.error('[vibeLabStore] openFromVault failed:', result.error)
+          }
+        } finally {
+          set({ vaultLoading: false })
+        }
       },
 
       closeSession: (discard) => {
@@ -355,30 +397,94 @@ export const useVibeLabStore = create<VibeLabState>()(
         // Aquí sólo marcamos que el draft cambió; el coalescer hace el flush.
       },
 
-      // ── ACCIONES: persistencia (stubs — Fase 4) ────────────────────
+      // ── ACCIONES: persistencia (Fase 4.3 — vía IPC) ───────────────
       loadVault: async () => {
+        const ipc = getVibeLabIPC()
+        if (!ipc) { set({ vaultLoading: false }); return }
         set({ vaultLoading: true })
-        // Stub: en Fase 4, leer archivos .luxvibe de userData/vibes/ vía IPC.
-        set({ vaultLoading: false })
+        try {
+          const entries = await ipc.list() as CustomVibeMeta[]
+          set({ vault: entries ?? [] })
+        } catch (err) {
+          console.error('[vibeLabStore] loadVault failed:', err)
+          set({ vault: [] })
+        } finally {
+          set({ vaultLoading: false })
+        }
       },
       mint: async () => {
-        // Stub — Fase 4 implementará escritura a disco vía IPC.
-        return { ok: false, error: 'Persistencia no implementada — Fase 4.' }
+        const { draft } = get()
+        if (!draft) return { ok: false, error: 'No active draft' }
+        const ipc = getVibeLabIPC()
+        if (!ipc) return { ok: false, error: 'IPC bridge unavailable' }
+        // Asegurar updatedAt fresco
+        const toSave: CustomVibeOverride = {
+          ...draft,
+          meta: { ...draft.meta, updatedAt: Date.now() },
+        }
+        const result = await ipc.save(toSave)
+        if (result.ok) {
+          // Refrescar vault y marcar pristine
+          set((state) => {
+            state.pristine = structuredCloneSafe(toSave) as WritableDraft<CustomVibeOverride>
+            state.isDirty = false
+          })
+          void get().loadVault()
+        }
+        return result
       },
-      deleteFromVault: async () => {
-        persistNotImplemented()
+      deleteFromVault: async (key) => {
+        const ipc = getVibeLabIPC()
+        if (!ipc) return
+        await ipc.delete(key)
+        // Refrescar vault
+        void get().loadVault()
       },
-      duplicate: async (): Promise<CustomVibeKey | null> => {
-        persistNotImplemented()
-        return null
+      duplicate: async (key): Promise<CustomVibeKey | null> => {
+        const ipc = getVibeLabIPC()
+        if (!ipc) return null
+        const readResult = await ipc.read(key)
+        if (!readResult.ok || !readResult.data) return null
+        const original = readResult.data
+        // Generar nueva key y nombre
+        const newKey = generateKey(original.meta.name + '-copy')
+        const copy: CustomVibeOverride = {
+          ...original,
+          meta: {
+            ...original.meta,
+            key: newKey,
+            name: `${original.meta.name} (copy)`,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          },
+        }
+        const saveResult = await ipc.save(copy)
+        if (!saveResult.ok) return null
+        void get().loadVault()
+        return newKey
       },
       importFromFile: async (): Promise<boolean> => {
-        persistNotImplemented()
-        return false
+        const ipc = getVibeLabIPC()
+        if (!ipc) return false
+        const result = await ipc.import()
+        if (!result.ok || !result.data) return false
+        // Cargar el importado como draft activo
+        set((state) => {
+          state.draft = result.data! as WritableDraft<CustomVibeOverride>
+          state.pristine = structuredCloneSafe(result.data!) as WritableDraft<CustomVibeOverride>
+          state.isDirty = false
+          state.mutationCount = countMutations(result.data!)
+        })
+        void get().loadVault()
+        return true
       },
-      exportToFile: async (): Promise<boolean> => {
-        persistNotImplemented()
-        return false
+      exportToFile: async (key): Promise<boolean> => {
+        const ipc = getVibeLabIPC()
+        if (!ipc) return false
+        const readResult = await ipc.read(key)
+        if (!readResult.ok || !readResult.data) return false
+        const result = await ipc.export(readResult.data)
+        return result.ok
       },
     }),
     ),

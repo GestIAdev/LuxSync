@@ -1,0 +1,74 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 📡 mutation-scope.css
+ * ═══════════════════════════════════════════════════════════════════════════
+ * @module components/vibeLab/mutation-scope.css
+ * @version FASE 4.1
+ */
+
+.mutation-scope {
+  display: flex;
+  flex-direction: column;
+  width: 260px;
+  flex-shrink: 0;
+  background: rgba(20, 22, 30, 0.9);
+  border-left: 1px solid rgba(255, 255, 255, 0.06);
+  overflow-y: auto;
+}
+
+.mutation-scope-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  flex-shrink: 0;
+}
+
+.mutation-scope-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.mutation-scope-status {
+  font-size: 9px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.mutation-scope-status.live {
+  color: #00ff88;
+}
+
+.mutation-scope-status.idle {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.mutation-scope-canvases {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+}
+
+/* ── Canvas wrapper ───────────────────────────────────────────────────── */
+.scope-canvas-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.scope-canvas-title {
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.3);
+  font-family: 'JetBrains Mono', monospace;
+}

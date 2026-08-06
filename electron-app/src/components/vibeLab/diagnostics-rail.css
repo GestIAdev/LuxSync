@@ -1,0 +1,118 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔬 diagnostics-rail.css
+ * ═══════════════════════════════════════════════════════════════════════════
+ * @module components/vibeLab/diagnostics-rail.css
+ * @version FASE 4.2
+ */
+
+.diagnostics-rail {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 16px;
+  background: rgba(18, 20, 28, 0.95);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  flex-shrink: 0;
+  min-height: 32px;
+}
+
+/* ── LEFT ─────────────────────────────────────────────────────────────── */
+.diagnostics-rail-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dr-mutation-count {
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.dr-dirty-badge {
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(255, 170, 0, 0.15);
+  color: #ffaa00;
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* ── CENTER ───────────────────────────────────────────────────────────── */
+.diagnostics-rail-center {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dr-diagnostic-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  cursor: help;
+}
+
+.dr-diagnostic-group.error {
+  color: #ff5555;
+}
+
+.dr-diagnostic-group.warn {
+  color: #ffaa00;
+}
+
+.dr-diagnostic-ok {
+  color: rgba(0, 255, 136, 0.6);
+  font-weight: 600;
+}
+
+/* ── RIGHT ────────────────────────────────────────────────────────────── */
+.diagnostics-rail-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dr-ab-button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.6);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.dr-ab-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.dr-ab-button.active-base {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.dr-ab-button.active-mutation {
+  border-color: #00e5ff;
+  color: #00e5ff;
+  background: rgba(0, 229, 255, 0.08);
+  box-shadow: 0 0 6px rgba(0, 229, 255, 0.15);
+}
+
+.dr-ab-mode {
+  font-size: 9px;
+  opacity: 0.8;
+}

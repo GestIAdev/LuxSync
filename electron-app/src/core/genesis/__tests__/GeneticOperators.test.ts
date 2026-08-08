@@ -12,6 +12,8 @@ import {
   focalMutation,
   geneAugmentation,
   applyDelta,
+  blendCognitiveDNA,
+  crossover,
   type JsonPatchOp,
 } from '../operators/GeneticOperators'
 import type { HephAutomationClipV3, HephTrack, HephKeyframe } from '../../hephaestus/types'
@@ -287,6 +289,107 @@ describe('🧬 GeneticOperators — Delta Robustness', () => {
 
       expect(result).not.toBe(parent)
       expect(JSON.stringify(result)).toBe(JSON.stringify(parent))
+    })
+  })
+
+  // ── 4. blendCognitiveDNA — malformed DNA regression (WAVE 6000.V3 hardening) ─
+
+  describe('blendCognitiveDNA — malformed DNA hardening', () => {
+    const goodDna: CognitiveDNA = {
+      genome: { aggression: 0.6, chaos: 0.4, organicity: 0.5 },
+      textureAffinity: 'universal',
+      compatibleVibes: ['techno-club'],
+      validSections: ['drop', 'verse'],
+      energyZone: { min: 'ambient', max: 'peak' },
+      aggressionRange: { min: 0.3, max: 0.8 },
+      pressureRange: { min: 0.2, max: 0.9 },
+      spatialBehavior: 'static',
+    }
+
+    it('should not throw when submissive parent is missing tolerance ranges', () => {
+      const malformedSub = {
+        ...goodDna,
+        aggressionRange: undefined as unknown as CognitiveDNA['aggressionRange'],
+        pressureRange: undefined as unknown as CognitiveDNA['pressureRange'],
+      }
+      expect(() => blendCognitiveDNA(goodDna, malformedSub, 'A')).not.toThrow()
+    })
+
+    it('should not throw when submissive parent is missing energyZone', () => {
+      const malformedSub = {
+        ...goodDna,
+        energyZone: undefined as unknown as CognitiveDNA['energyZone'],
+      }
+      expect(() => blendCognitiveDNA(goodDna, malformedSub, 'A')).not.toThrow()
+    })
+
+    it('should not throw when submissive parent is missing genome', () => {
+      const malformedSub = {
+        ...goodDna,
+        genome: undefined as unknown as CognitiveDNA['genome'],
+      }
+      expect(() => blendCognitiveDNA(goodDna, malformedSub, 'A')).not.toThrow()
+    })
+
+    it('should inherit dominant energyZone verbatim when sub zone is unusable', () => {
+      const malformedSub = {
+        ...goodDna,
+        energyZone: { min: 'nope', max: 'also-nope' } as unknown as CognitiveDNA['energyZone'],
+      }
+      const blended = blendCognitiveDNA(goodDna, malformedSub, 'A')
+      expect(blended.energyZone).toEqual(goodDna.energyZone)
+    })
+
+    it('should inherit dominant tolerance ranges when sub is missing them', () => {
+      const malformedSub = {
+        ...goodDna,
+        aggressionRange: undefined as unknown as CognitiveDNA['aggressionRange'],
+        pressureRange: undefined as unknown as CognitiveDNA['pressureRange'],
+      }
+      const blended = blendCognitiveDNA(goodDna, malformedSub, 'A')
+      expect(blended.aggressionRange).toEqual(goodDna.aggressionRange)
+      expect(blended.pressureRange).toEqual(goodDna.pressureRange)
+    })
+
+    it('should not throw when BOTH parents are missing tolerance ranges', () => {
+      const malformedA = {
+        ...goodDna,
+        aggressionRange: undefined as unknown as CognitiveDNA['aggressionRange'],
+        pressureRange: undefined as unknown as CognitiveDNA['pressureRange'],
+      }
+      const malformedB = { ...malformedA }
+      expect(() => blendCognitiveDNA(malformedA, malformedB, 'A')).not.toThrow()
+    })
+
+    it('should not throw when dominant parent has no genome (extreme legacy)', () => {
+      const brokenDom = {
+        ...goodDna,
+        genome: undefined as unknown as CognitiveDNA['genome'],
+      }
+      expect(() => blendCognitiveDNA(brokenDom, goodDna, 'A')).not.toThrow()
+    })
+  })
+
+  // ── 5. crossover — end-to-end with malformed DNA parents ────────────────────
+
+  describe('crossover — malformed DNA end-to-end', () => {
+    it('should not throw when one parent carries malformed cognitiveDNA', () => {
+      const parentA = makeMockClip()
+      const parentB = makeMockClip()
+      // Corrupt parentB's DNA: drop tolerance ranges + energyZone
+      parentB.cognitiveDNA = {
+        ...parentB.cognitiveDNA!,
+        energyZone: undefined as unknown as CognitiveDNA['energyZone'],
+        aggressionRange: undefined as unknown as CognitiveDNA['aggressionRange'],
+        pressureRange: undefined as unknown as CognitiveDNA['pressureRange'],
+      }
+
+      expect(() => crossover(parentA, parentB, 0.9, 0.5, 42)).not.toThrow()
+      const result = crossover(parentA, parentB, 0.9, 0.5, 42)
+      expect(result.clip.cognitiveDNA).toBeDefined()
+      expect(result.clip.cognitiveDNA!.aggressionRange).toBeDefined()
+      expect(result.clip.cognitiveDNA!.pressureRange).toBeDefined()
+      expect(result.clip.cognitiveDNA!.energyZone).toBeDefined()
     })
   })
 })

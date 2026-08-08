@@ -16,13 +16,22 @@
  */
 
 import React from 'react'
-import { useNavigationStore, TABS, TabId, TabConfig, selectSidebarNav } from '../../stores/navigationStore'
+import {
+  useNavigationStore,
+  TABS,
+  TabId,
+  TabConfig,
+  selectSidebarNav,
+  SIDEBAR_GROUPS,
+  SIDEBAR_LABELS,
+  ALPHA_LOCKED_TABS,
+} from '../../stores/navigationStore'
 import { useLicenseStore } from '../../stores/licenseStore' // 🔒 WAVE 2500: Still needed for tab access control
 import { useShallow } from 'zustand/shallow'
-import { 
-  IconDashboard, 
+import {
+  IconDashboard,
   IconConstruct,
-  IconLiveStage, 
+  IconLiveStage,
   IconCalibration,
   IconSetup,
   IconLuxCore,
@@ -30,6 +39,7 @@ import {
   IconChronos,      // ⏱️ WAVE 2004: Chronos icon
   IconHephaestus,   // ⚒️ WAVE 2030.3: Hephaestus icon
   IconTheia,        // 🎬 WAVE 4863: Theia Video Engine icon
+  IconProteus,      // 🧬 FASE 4.3: Proteus Lab icon
 } from './NavigationIcons'
 import './Sidebar.css'
 
@@ -47,7 +57,6 @@ const TAB_COLORS: Record<TabId, string> = {
   'core': '#f59e0b',         // Amber (AI Monitor)
   'nexus': '#ef4444',
   'theia': '#06b6d4',    // Cyan-500 (Theia Video Engine) - WAVE 4863
-  'vibe-lab-kit': '#00e5ff',  // 🧬 FASE 2 (temporal) Vibe Lab Kit Playground
   'vibe-lab': '#00e5ff',  // 🧬 FASE 3 Vibe Lab
 }
 
@@ -64,11 +73,17 @@ const TAB_ICONS: Record<string, React.FC<{ size?: number; className?: string }>>
   'forge': IconForge,         // Forge (hammer + anvil) - WAVE 1110
   'hephaestus': IconHephaestus, // Hephaestus (anvil + bezier curves) - WAVE 2030.3
   'theia': IconTheia,             // Theia (camera aperture + scan eye) - WAVE 4863
+  'proteus': IconProteus,         // Proteus Lab (DNA helix) - FASE 4.3
 }
 
-// Separar tabs por tipo
+// Separar tabs por tipo (still exported for any legacy consumers)
 const STAGE_TABS = TABS.filter(t => t.type === 'stage')
 const TOOL_TABS = TABS.filter(t => t.type === 'tool')
+
+// Lookup map: tab id → TabConfig (for quick access by group)
+const TAB_MAP: Record<string, TabConfig> = Object.fromEntries(
+  TABS.map((t) => [t.id, t]),
+)
 
 // Componente de Tab Individual
 interface NavTabProps {
@@ -76,27 +91,38 @@ interface NavTabProps {
   isActive: boolean
   onClick: () => void
   variant: 'stage' | 'tool'
-  locked?: boolean // 🔒 WAVE 2490: Tier-locked tab
+  locked?: boolean // 🔒 WAVE 2490: Tier-locked tab (license)
+  alphaLocked?: boolean // 🧪 ALPHA-locked tab (experimental, not yet available)
 }
 
-const NavTab: React.FC<NavTabProps> = ({ tab, isActive, onClick, variant, locked }) => {
+const NavTab: React.FC<NavTabProps> = ({ tab, isActive, onClick, variant, locked, alphaLocked }) => {
   const IconComponent = TAB_ICONS[tab.icon]
-  
+  // Use the display label override if available, otherwise fall back to tab.label
+  const displayLabel = SIDEBAR_LABELS[tab.id] ?? tab.label
+  const isDisabled = locked || alphaLocked
+
   return (
     <button
-      className={`nav-tab ${variant} ${isActive ? 'active' : ''} ${locked ? 'locked' : ''}`}
-      onClick={locked ? undefined : onClick}
-      title={locked ? `🔒 ${tab.label} — Requiere Full Suite` : `${tab.description} (${tab.shortcut})`}
-      style={{ '--tab-color': locked ? '#444' : TAB_COLORS[tab.id] } as React.CSSProperties}
-      disabled={locked}
+      className={`nav-tab ${variant} ${isActive ? 'active' : ''} ${locked ? 'locked' : ''} ${alphaLocked ? 'alpha-locked' : ''}`}
+      onClick={isDisabled ? undefined : onClick}
+      title={
+        alphaLocked
+          ? `🧪 ${displayLabel} — ALPHA (Próximamente)`
+          : locked
+            ? `🔒 ${displayLabel} — Requiere Full Suite`
+            : `${tab.description} (${tab.shortcut})`
+      }
+      style={{ '--tab-color': isDisabled ? '#444' : TAB_COLORS[tab.id] } as React.CSSProperties}
+      disabled={isDisabled}
     >
       <span className="nav-glow" />
       <span className="nav-icon">
         {IconComponent ? <IconComponent size={18} /> : tab.icon}
       </span>
-      <span className="nav-label">{tab.label}</span>
+      <span className="nav-label">{displayLabel}</span>
+      {alphaLocked && <span className="alpha-badge">ALPHA</span>}
       {locked && <span className="nav-lock">🔒</span>}
-      {isActive && !locked && <span className="nav-indicator" />}
+      {isActive && !isDisabled && <span className="nav-indicator" />}
     </button>
   )
 }
@@ -580,45 +606,36 @@ const Sidebar: React.FC = () => {
       {/* ═══ NAV SCROLL WRAPPER ═══ */}
       <div className="sidebar-nav-scroll" style={{ flex: 1, overflowY: 'auto' }}>
 
-      {/* ═══ STAGES (Primary Navigation) ═══ */}
-      <nav className="nav-block stages">
-        <div className="nav-block-header">
-          <span className="block-label">STAGES</span>
-          <span className="block-line" />
-        </div>
-        <div className="nav-items">
-          {STAGE_TABS.map((tab) => (
-            <NavTab
-              key={tab.id}
-              tab={tab}
-              isActive={activeTab === tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              variant="stage"
-              locked={!isTabAllowed(tab.id)}
-            />
-          ))}
-        </div>
-      </nav>
-
-      {/* ═══ TOOLS (Secondary Navigation) ═══ */}
-      <nav className="nav-block tools">
-        <div className="nav-block-header">
-          <span className="block-label">TOOLS</span>
-          <span className="block-line" />
-        </div>
-        <div className="nav-items">
-          {TOOL_TABS.map((tab) => (
-            <NavTab
-              key={tab.id}
-              tab={tab}
-              isActive={activeTab === tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              variant="tool"
-              locked={!isTabAllowed(tab.id)}
-            />
-          ))}
-        </div>
-      </nav>
+      {/* ═══ SIDEBAR GROUPS — 4 Workflow Phases ═══ */}
+      {SIDEBAR_GROUPS.map((group, groupIdx) => (
+        <nav
+          key={group.id}
+          className={`nav-block ${groupIdx === 0 ? 'stages' : 'tools'}`}
+        >
+          <div className="nav-block-header">
+            <span className="block-label">{group.header}</span>
+            <span className="block-line" />
+          </div>
+          <div className="nav-items">
+            {group.tabs.map((tabId) => {
+              const tab = TAB_MAP[tabId]
+              if (!tab) return null
+              const isAlpha = (ALPHA_LOCKED_TABS as readonly TabId[]).includes(tabId)
+              return (
+                <NavTab
+                  key={tab.id}
+                  tab={tab}
+                  isActive={activeTab === tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  variant={tab.type === 'stage' ? 'stage' : 'tool'}
+                  locked={!isTabAllowed(tab.id)}
+                  alphaLocked={isAlpha}
+                />
+              )
+            })}
+          </div>
+        </nav>
+      ))}
 
       </div>{/* fin sidebar-nav-scroll */}
 

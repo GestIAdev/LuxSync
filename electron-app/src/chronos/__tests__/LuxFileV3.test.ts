@@ -152,7 +152,12 @@ describe('LuxFileV3 — factories', () => {
     const file = createEmptyLuxFileV3('My Show')
     expect(file.$schema).toBe(LUX_V3_SCHEMA)
     expect(file.meta.name).toBe('My Show')
-    expect(file.tracks).toEqual([])
+    // Factory intentionally scaffolds a locked GLOBAL track (targetZone 'global')
+    // so the timeline always has a valid routing target. The test previously
+    // asserted tracks: [], which was stale after the GLOBAL scaffold was added.
+    expect(file.tracks).toHaveLength(1)
+    expect(file.tracks[0].targetZone).toBe('global')
+    expect(file.tracks[0].clips).toEqual([])
     expect(validateLuxFileV3(file).valid).toBe(true)
   })
 
@@ -253,9 +258,14 @@ describe('LuxFileV3 — checksum integrity', () => {
     const json = await serializeLuxV3(createPopulatedFile())
     const tampered = json.replace('"detectedBpm": 128', '"detectedBpm": 175')
     const result = await deserializeLuxV3(tampered)
-    expect(result.file).not.toBeNull()
+    // LAZARUS B-4: a wrong checksum is now a HARD ERROR (corruption detected),
+    //   not a warning. The file is refused (file === null) so the operator
+    //   cannot accidentally load a corrupt show. The previous behavior
+    //   (load anyway with a warning) was the inverted threat model.
+    expect(result.file).toBeNull()
     expect(result.checksumValid).toBe(false)
-    expect(result.validation.warnings.some((w) => w.includes('Checksum mismatch'))).toBe(true)
+    expect(result.validation.valid).toBe(false)
+    expect(result.validation.errors.some((e) => e.includes('Checksum mismatch'))).toBe(true)
   })
 
   test('verifyLuxChecksum validates a freshly serialized file', async () => {

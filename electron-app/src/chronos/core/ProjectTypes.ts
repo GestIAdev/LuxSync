@@ -157,10 +157,7 @@ export {
   toVibeType,
 } from './TimelineClip'
 
-// ─── Legacy compat shims (re-export from demolished ChronosProject.ts) ─
-export {
-  createEmptyProject,
-  serializeProject,
-  deserializeProject,
-  validateProject,
-} from './ChronosProject'
+// ─── Legacy compat shims (R4: redirected from demolished ChronosProject.ts to source) ─
+export { createEmptyLuxFileV3 as createEmptyProject } from './LuxFileV3.factories'
+export { serializeLuxV3 as serializeProject, deserializeLuxV3 as deserializeProject } from './LuxFileV3.serializer'
+export { validateLuxFileV3 as validateProject } from './LuxFileV3.schema'

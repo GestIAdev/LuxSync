@@ -29,7 +29,6 @@ const NeuralCommandView = lazy(() => import('../views/NeuralCommandView'))  // �
 const ChronosStudio = lazy(() => import('../../chronos/ui/ChronosLayout'))  // ⏱️ WAVE 2004
 const HephaestusView = lazy(() => import('../views/HephaestusView'))  // ⚒️ WAVE 2030.3
 const TheiaEngineView = lazy(() => import('../views/TheiaEngineView'))  // 🎬 WAVE 4863
-const VibeLabKitPlayground = lazy(() => import('../vibeLab/kit/__playground__/KitPlayground'))  // 🧬 FASE 2 (temporal)
 const VibeLabView = lazy(() => import('../vibeLab/VibeLabView'))  // 🧬 FASE 3
 
 // Loading fallback
@@ -151,8 +150,6 @@ const ContentArea: React.FC = () => {
         return <NeuralCommandView />  // 🧠 WAVE 1167
       case 'theia':
         return <TheiaEngineView />   // 🎬 WAVE 4863
-      case 'vibe-lab-kit':
-        return <VibeLabKitPlayground />  // 🧬 FASE 2 (temporal)
       case 'vibe-lab':
         return <VibeLabView />  // 🧬 FASE 3
       default:

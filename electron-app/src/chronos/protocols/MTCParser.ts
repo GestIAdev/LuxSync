@@ -285,6 +285,20 @@ export class MTCParser extends BaseClockSource {
 
   /**
    * Assemble the 8 nibbles into a full SMPTE timecode.
+   *
+   * P2.12 FIX: BCD range validation — if hours > 23, minutes > 59, or
+   * seconds > 59, the frame is dropped and we wait for the next valid one.
+   * This prevents wrong timecode displays from corrupted MIDI data.
+   *
+   * VALKYRIE H-1 FIX: +2 frame offset. MTC transmits a full timecode across
+   *   8 quarter-frame messages spanning exactly 2 frames of wall time. The
+   *   value encoded in the nibbles describes the instant transmission BEGAN.
+   *   When assembly completes on piece 7, real time has advanced 2 frames
+   *   beyond the assembled value. A conformant receiver must add 2 frames so
+   *   its output does not systematically lag the true timecode by 67–80 ms.
+   *   Frame-rate wrap-around is handled (frames + 2 may carry into seconds,
+   *   minutes, hours). The SysEx full-frame path is NOT offset — it is an
+   *   instant locate, not a streaming assembly.
    */
   private assembleTimecode(): void {
     const frames   = (this.pieces[0]) | ((this.pieces[1] & 0x01) << 4)
@@ -299,7 +313,35 @@ export class MTCParser extends BaseClockSource {
     const rateFlags = (hourHigh >> 1) & 0x03
     const frameRate = FRAME_RATE_MAP[rateFlags] ?? 25
 
-    this.currentTimecode = { hours, minutes, seconds, frames, frameRate }
+    // P2.12 FIX: BCD range validation — drop invalid frames
+    if (hours > 23 || minutes > 59 || seconds > 59 || frames >= frameRate) {
+      console.warn(
+        `[MTCParser] ⚠️ Invalid timecode dropped: ${hours}:${minutes}:${seconds}:${frames} ` +
+        `(BCD range violation) — waiting for next valid frame`
+      )
+      return // Drop this frame, wait for the next valid one
+    }
+
+    // VALKYRIE H-1: add 2 frames to compensate for MTC transmission delay.
+    const nominalRate = Math.round(frameRate === 29.97 ? 30 : frameRate)
+    let adjFrames = frames + 2
+    let adjSeconds = seconds
+    let adjMinutes = minutes
+    let adjHours = hours
+    if (adjFrames >= nominalRate) {
+      adjFrames -= nominalRate
+      adjSeconds += 1
+      if (adjSeconds >= 60) {
+        adjSeconds = 0
+        adjMinutes += 1
+        if (adjMinutes >= 60) {
+          adjMinutes = 0
+          adjHours = (adjHours + 1) % 24
+        }
+      }
+    }
+
+    this.currentTimecode = { hours: adjHours, minutes: adjMinutes, seconds: adjSeconds, frames: adjFrames, frameRate }
     this.currentTimeMs = smpteToMs(this.currentTimecode)
 
     this.emit('sync', { timeMs: this.currentTimeMs, source: 'mtc' })
@@ -329,6 +371,15 @@ export class MTCParser extends BaseClockSource {
     const seconds = data[7] & 0x3F
     const frames = data[8] & 0x1F
     const frameRate = FRAME_RATE_MAP[rateFlags] ?? 25
+
+    // P2.12 FIX: BCD range validation for SysEx full-frame — drop invalid
+    if (hours > 23 || minutes > 59 || seconds > 59 || frames >= frameRate) {
+      console.warn(
+        `[MTCParser] ⚠️ Invalid SysEx timecode dropped: ${hours}:${minutes}:${seconds}:${frames} ` +
+        `(BCD range violation)`
+      )
+      return
+    }
 
     this.currentTimecode = { hours, minutes, seconds, frames, frameRate }
     this.currentTimeMs = smpteToMs(this.currentTimecode)

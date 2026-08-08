@@ -261,8 +261,10 @@ describe('🚀 ChronosStageDispatcher — Timeline → Stage Bridge', () => {
       const listener = vi.fn()
       dispatcher.subscribe(listener)
 
-      const fxA = makeFXClip({ id: 'fx-A', fxType: 'strobe', label: 'Strobe', startMs: 1000, endMs: 5000 })
-      const fxB = makeFXClip({ id: 'fx-B', fxType: 'chase', label: 'Chase', startMs: 2000, endMs: 6000 })
+      // HEIMDALL H-6: FX clips on DIFFERENT tracks trigger independently.
+      // Clips on the same track are subject to LTP (Latest Takes Precedence).
+      const fxA = makeFXClip({ id: 'fx-A', fxType: 'strobe', label: 'Strobe', startMs: 1000, endMs: 5000, trackId: 'track-A' })
+      const fxB = makeFXClip({ id: 'fx-B', fxType: 'chase', label: 'Chase', startMs: 2000, endMs: 6000, trackId: 'track-B' })
 
       dispatcher.tick([fxA], 1500) // Only fxA
       expect(listener).toHaveBeenCalledTimes(1)
@@ -340,8 +342,10 @@ describe('🚀 ChronosStageDispatcher — Timeline → Stage Bridge', () => {
       const listener = vi.fn()
       dispatcher.subscribe(listener)
 
-      const fxA = makeFXClip({ id: 'fx-A', fxType: 'strobe' })
-      const fxB = makeFXClip({ id: 'fx-B', fxType: 'chase', startMs: 1000, endMs: 4000 })
+      // HEIMDALL H-6: Use different trackIds so both clips are dominant on
+      // their respective tracks. Same-track clips would be LTP-filtered.
+      const fxA = makeFXClip({ id: 'fx-A', fxType: 'strobe', trackId: 'track-A' })
+      const fxB = makeFXClip({ id: 'fx-B', fxType: 'chase', startMs: 1000, endMs: 4000, trackId: 'track-B' })
       dispatcher.tick([fxA, fxB], 1500) // Both trigger
       listener.mockClear()
 
@@ -407,8 +411,9 @@ describe('🚀 ChronosStageDispatcher — Timeline → Stage Bridge', () => {
       expect(listener.mock.calls[0][0].type).toBe('fx-trigger')
 
       listener.mockClear()
-      dispatcher.tick([fx], 2000) // Exactly at endMs → NOT active (exclusive)
-      // The clip won't be in activeClips → fx-stop emitted
+      // OPERATION STARDUST (R2): tick() now receives pre-filtered active clips.
+      // At endMs the clip is NOT active (exclusive), so pass empty array.
+      dispatcher.tick([], 2000)
       expect(listener).toHaveBeenCalledTimes(1)
       expect(listener.mock.calls[0][0].type).toBe('fx-stop')
     })

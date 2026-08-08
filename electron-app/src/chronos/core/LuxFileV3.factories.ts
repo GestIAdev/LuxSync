@@ -347,6 +347,7 @@ export function toChronosProjectV3(file: LuxFileV3): ChronosProjectV3 {
     markers: file.markers.map((m) => ({ ...m })),
     safety: file.safety ? { ...file.safety } : null,
     checksum: file.checksum,
+    automationLanes: file.automationLanes ? file.automationLanes.map(l => ({ ...l, points: [...l.points] })) : [],
 
     // ── ephemeral ──
     playheadMs: 0,
@@ -407,6 +408,7 @@ export function toLuxFileV3(project: ChronosProjectV3): LuxFileV3 {
     })),
     markers: project.markers,
     safety: project.safety,
+    automationLanes: project.automationLanes.length > 0 ? project.automationLanes.map(l => ({ ...l, points: [...l.points] })) : undefined,
     checksum: project.checksum,
   }
 }

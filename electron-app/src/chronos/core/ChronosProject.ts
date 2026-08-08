@@ -1,68 +1,16 @@
 ﻿/**
  * ═══════════════════════════════════════════════════════════════════════════
- * DEMOLISHED — V2 CODE REMOVED IN FASE 2
+ * DEPRECATED — OPERATION STARDUST (R4)
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * WAVE 7100 FASE 2: All V2 types and functions have been demolished.
- * The incorruptible V3 core lives in:
+ * This shim has been superseded. All consumers now import directly from:
  *   - LuxFileV3.ts           (schema interfaces)
  *   - LuxFileV3.schema.ts    (type guards)
  *   - LuxFileV3.factories.ts (factories + bridges)
  *   - LuxFileV3.serializer.ts(serialize/deserialize + checksum)
  *
- * This file is kept as a thin re-export shim so that consumers importing
- * from './ChronosProject' get V3 types during the FASE 3 transition.
- * Consumers WILL have type errors — that's expected. Fix them in FASE 3.
+ * This file is safe to delete. It remains only as a marker for git history.
  *
  * @module chronos/core/ChronosProject
- * @status DEMOLISHED — see LuxFileV3.ts
+ * @status DEPRECATED — do not import from this file
  */
-
-export {
-  LUX_V3_SCHEMA,
-  LUX_V3_EXTENSION,
-  LUX_V3_MIME,
-  LUX_DEFAULT_BPM,
-  type LuxFileV3,
-  type ChronosProjectV3,
-  type LuxMetaV3,
-  type LuxAudioV3,
-  type LuxTrackV3,
-  type LuxClipV3,
-  type LuxMarkerV3,
-  type LuxMarkerType,
-  type LuxClipType,
-  type LuxMixBus,
-  type LuxTargetZone,
-  type LuxTrackUpdateV3,
-  type VibeBaseV3,
-  type LuxSafetyV3,
-  type LuxAnalysisV3,
-  type LuxSectionV3,
-  type LuxTransientV3,
-  type LuxTransientType,
-} from './LuxFileV3'
-
-export {
-  createEmptyLuxFileV3 as createEmptyProject,
-  createEmptyChronosProjectV3,
-  toChronosProjectV3,
-  toLuxFileV3,
-  createTrackV3,
-  createVibeClipV3,
-  createFXClipV3,
-  createMarkerV3,
-  createVibeBaseV3,
-  generateLuxId,
-  generateTrackLabelV3,
-} from './LuxFileV3.factories'
-
-export {
-  serializeLuxV3 as serializeProject,
-  deserializeLuxV3 as deserializeProject,
-  computeLuxChecksum,
-  verifyLuxChecksum,
-  canonicalStringify,
-} from './LuxFileV3.serializer'
-
-export { validateLuxFileV3 as validateProject, isLuxFileV3 } from './LuxFileV3.schema'

@@ -296,4 +296,58 @@
   text-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   ALPHA-LOCKED TABS — Experimental / Upcoming Features
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.nav-tab.alpha-locked {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+.nav-tab.alpha-locked .nav-icon {
+  opacity: 0.4;
+  filter: grayscale(0.6);
+}
+
+/* 🧪 ALPHA Badge — small neon pill to build hype */
+.alpha-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  padding: 1px 6px;
+  font-size: 0.45rem;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: #06b6d4;
+  background: rgba(6, 182, 212, 0.12);
+  border: 1px solid rgba(6, 182, 212, 0.45);
+  border-radius: 3px;
+  text-shadow: 0 0 6px rgba(6, 182, 212, 0.7);
+  box-shadow:
+    0 0 6px rgba(6, 182, 212, 0.35),
+    inset 0 0 4px rgba(6, 182, 212, 0.15);
+  animation: alphaPulse 2.5s ease-in-out infinite;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+@keyframes alphaPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 6px rgba(6, 182, 212, 0.35),
+      inset 0 0 4px rgba(6, 182, 212, 0.15);
+    opacity: 1;
+  }
+  50% {
+    box-shadow:
+      0 0 12px rgba(6, 182, 212, 0.6),
+      inset 0 0 6px rgba(6, 182, 212, 0.25);
+    opacity: 0.85;
+  }
+}
+
 /* DEBUG: CSS LOADED AT 01/14/2026 16:17:28 */

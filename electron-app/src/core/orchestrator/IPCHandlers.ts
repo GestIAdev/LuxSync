@@ -293,6 +293,13 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
     if (titanOrchestrator) {
       titanOrchestrator.setVibe(vibeId as any)
     }
+    // 🧬 Notify the renderer that the vibe changed so the Command Deck
+    // (useSeleneVibe → vibeStore) stays in sync with the engine.
+    // Without this, the Vibe Lab can setVibe but the Command Deck never
+    // updates its active button, creating a visible desync.
+    const win = getMainWindow()
+    safeWebSend(win, 'lux:vibe-changed', { vibeId, timestamp: Date.now() })
+    safeWebSend(win, 'selene:vibe-changed', { vibeId, timestamp: Date.now() })
     return { success: true }
   })
   
@@ -328,6 +335,10 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
     } else {
       console.error('[Chronosâ†’Stage] âŒ titanOrchestrator is NULL!')
     }
+    // 🧬 Notify the renderer (same as lux:setVibe above)
+    const win = getMainWindow()
+    safeWebSend(win, 'lux:vibe-changed', { vibeId, timestamp: Date.now() })
+    safeWebSend(win, 'selene:vibe-changed', { vibeId, timestamp: Date.now() })
     return { success: true }
   })
   

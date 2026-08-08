@@ -1498,45 +1498,92 @@ export function blendCognitiveDNA(
   const dom = dominant === 'A' ? dnaA : dnaB
   const sub = dominant === 'A' ? dnaB : dnaA
 
+  // WAVE 6000.V3 hardening: legacy/corrupt organisms may carry cognitiveDNA
+  // missing required ranges (energyZone / aggressionRange / pressureRange).
+  // If the dominant parent itself is missing the genome, we cannot blend
+  // safely — bail out with a minimal clone of whatever dominant has.
+  if (!dom || !dom.genome) {
+    return { ...(dom ?? sub) } as CognitiveDNA
+  }
+
+  // Defensive genome blending — sub may be missing genome fields.
+  const subGenome = sub?.genome
   const genome: FrozenGenome = {
-    aggression: clamp3(0.7 * dom.genome.aggression + 0.3 * sub.genome.aggression, 0, 1),
-    chaos: clamp3(0.7 * dom.genome.chaos + 0.3 * sub.genome.chaos, 0, 1),
-    organicity: clamp3(0.7 * dom.genome.organicity + 0.3 * sub.genome.organicity, 0, 1),
+    aggression: clamp3(
+      0.7 * dom.genome.aggression + 0.3 * (subGenome?.aggression ?? dom.genome.aggression),
+      0, 1,
+    ),
+    chaos: clamp3(
+      0.7 * dom.genome.chaos + 0.3 * (subGenome?.chaos ?? dom.genome.chaos),
+      0, 1,
+    ),
+    organicity: clamp3(
+      0.7 * dom.genome.organicity + 0.3 * (subGenome?.organicity ?? dom.genome.organicity),
+      0, 1,
+    ),
   }
 
   const textureAffinity: TextureAffinity = dom.textureAffinity
   const spatialBehavior: SpatialBehavior = dom.spatialBehavior
 
-  const compatibleVibes = [...new Set([...dnaA.compatibleVibes, ...dnaB.compatibleVibes])]
-  const validSections = [...new Set([...dnaA.validSections, ...dnaB.validSections])]
+  const compatibleVibes = [...new Set([
+    ...(dnaA?.compatibleVibes ?? []),
+    ...(dnaB?.compatibleVibes ?? []),
+  ])]
+  const validSections = [...new Set([
+    ...(dnaA?.validSections ?? []),
+    ...(dnaB?.validSections ?? []),
+  ])]
 
-  // G4 PRE-SCREENING: check zoneSpan of unioned range
-  const unionMinIdx = Math.min(
-    ENERGY_ZONES.indexOf(dnaA.energyZone.min as typeof ENERGY_ZONES[number]),
-    ENERGY_ZONES.indexOf(dnaB.energyZone.min as typeof ENERGY_ZONES[number]),
-  )
-  const unionMaxIdx = Math.max(
-    ENERGY_ZONES.indexOf(dnaA.energyZone.max as typeof ENERGY_ZONES[number]),
-    ENERGY_ZONES.indexOf(dnaB.energyZone.max as typeof ENERGY_ZONES[number]),
-  )
-  const unionSpan = unionMaxIdx - unionMinIdx + 1
+  // G4 PRE-SCREENING: check zoneSpan of unioned range.
+  // Fall back to dominant's energyZone if either parent is missing it or
+  // carries an out-of-index zone label.
+  const domZone = dom.energyZone
+  const subZone = sub?.energyZone
+  const domMinIdx = domZone ? ENERGY_ZONES.indexOf(domZone.min as typeof ENERGY_ZONES[number]) : -1
+  const domMaxIdx = domZone ? ENERGY_ZONES.indexOf(domZone.max as typeof ENERGY_ZONES[number]) : -1
+  const subMinIdx = subZone ? ENERGY_ZONES.indexOf(subZone.min as typeof ENERGY_ZONES[number]) : -1
+  const subMaxIdx = subZone ? ENERGY_ZONES.indexOf(subZone.max as typeof ENERGY_ZONES[number]) : -1
 
-  const energyZone: EnergyZoneRange =
-    unionSpan > 2 ? dom.energyZone : {
-      min: ENERGY_ZONES[Math.max(0, unionMinIdx)] as EnergyZoneRange['min'],
-      max: ENERGY_ZONES[Math.min(ENERGY_ZONES.length - 1, unionMaxIdx)] as EnergyZoneRange['max'],
-    }
-
-  // AVERAGE tolerance ranges — prevents inflation across generations
-  const aggressionRange = {
-    min: (dnaA.aggressionRange.min + dnaB.aggressionRange.min) / 2,
-    max: (dnaA.aggressionRange.max + dnaB.aggressionRange.max) / 2,
+  let energyZone: EnergyZoneRange
+  if (domMinIdx < 0 || domMaxIdx < 0) {
+    // Dominant's energyZone is unusable — use a conservative default.
+    energyZone = domZone ?? { min: ENERGY_ZONES[0] as EnergyZoneRange['min'], max: ENERGY_ZONES[0] as EnergyZoneRange['min'] }
+  } else if (subMinIdx < 0 || subMaxIdx < 0) {
+    // Sub missing/unusable energyZone — inherit dominant's verbatim.
+    energyZone = domZone
+  } else {
+    const unionMinIdx = Math.min(domMinIdx, subMinIdx)
+    const unionMaxIdx = Math.max(domMaxIdx, subMaxIdx)
+    const unionSpan = unionMaxIdx - unionMinIdx + 1
+    energyZone = unionSpan > 2
+      ? domZone
+      : {
+          min: ENERGY_ZONES[Math.max(0, unionMinIdx)] as EnergyZoneRange['min'],
+          max: ENERGY_ZONES[Math.min(ENERGY_ZONES.length - 1, unionMaxIdx)] as EnergyZoneRange['max'],
+        }
   }
 
-  const pressureRange = {
-    min: (dnaA.pressureRange.min + dnaB.pressureRange.min) / 2,
-    max: (dnaA.pressureRange.max + dnaB.pressureRange.max) / 2,
-  }
+  // AVERAGE tolerance ranges — prevents inflation across generations.
+  // If either parent is missing a range, inherit the dominant's verbatim
+  // rather than crashing or fabricating values from undefined.
+  const domAgg = dom.aggressionRange
+  const subAgg = sub?.aggressionRange
+  const aggressionRange = domAgg && subAgg
+    ? {
+        min: (domAgg.min + subAgg.min) / 2,
+        max: (domAgg.max + subAgg.max) / 2,
+      }
+    : { ...(domAgg ?? { min: 0, max: 1 }) }
+
+  const domPres = dom.pressureRange
+  const subPres = sub?.pressureRange
+  const pressureRange = domPres && subPres
+    ? {
+        min: (domPres.min + subPres.min) / 2,
+        max: (domPres.max + subPres.max) / 2,
+      }
+    : { ...(domPres ?? { min: 0, max: 1 }) }
 
   return {
     genome,

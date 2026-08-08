@@ -163,18 +163,44 @@ const AURORA_COLORS = {
  * 🌊 WAVE 2040.14: Create AURORA gradient for waveform fill
  * Deep Purple → Violet/Magenta → White/Pink center, mirrored symmetrically
  */
+/**
+ * VALKYRIE H-5a: Gradient cache.
+ * createLinearGradient + addColorStop allocate a fresh CanvasGradient every
+ * call. The spectral gradient depends only on (ctx, height, intensity) and is
+ * reconstructed every frame in the render loop — a per-frame allocation that
+ * is pure waste. We cache the last gradient and reuse it when the key matches.
+ * The vignette gradient (height-only) is cached the same way.
+ */
+interface GradientCacheEntry {
+  ctx: CanvasRenderingContext2D
+  height: number
+  intensity: number
+  gradient: CanvasGradient
+}
+let _spectralGradientCache: GradientCacheEntry | null = null
+
 function createSpectralGradient(
   ctx: CanvasRenderingContext2D,
   height: number,
   intensity: number = 1
 ): CanvasGradient {
+  // Cache hit — same context, height, and intensity → reuse.
+  if (
+    _spectralGradientCache &&
+    _spectralGradientCache.ctx === ctx &&
+    _spectralGradientCache.height === height &&
+    _spectralGradientCache.intensity === intensity
+  ) {
+    return _spectralGradientCache.gradient
+  }
+
   const gradient = ctx.createLinearGradient(0, 0, 0, height)
-  
+
   // Edge opacity scales with intensity
   const edgeOpacity = 0.6 + intensity * 0.3
   const middleOpacity = 0.8 + intensity * 0.2
   const centerOpacity = 0.9 + intensity * 0.1
-  
+
   // Top → Center → Bottom (mirrored aurora)
   gradient.addColorStop(0, `rgba(76, 29, 149, ${edgeOpacity})`)       // Deep purple edge
   gradient.addColorStop(0.20, `rgba(139, 92, 246, ${middleOpacity})`) // Violet transition
@@ -185,7 +211,22 @@ function createSpectralGradient(
   gradient.addColorStop(0.65, `rgba(217, 70, 239, ${middleOpacity})`) // Fuchsia/Magenta
   gradient.addColorStop(0.80, `rgba(139, 92, 246, ${middleOpacity})`) // Violet transition
   gradient.addColorStop(1, `rgba(76, 29, 149, ${edgeOpacity})`)       // Deep purple edge
-  
+
+  _spectralGradientCache = { ctx, height, intensity, gradient }
+  return gradient
+}
+
+/** Vignette gradient cache (depends only on ctx + height). */
+let _vignetteGradientCache: { ctx: CanvasRenderingContext2D; height: number; gradient: CanvasGradient } | null = null
+function getVignetteGradient(ctx: CanvasRenderingContext2D, height: number): CanvasGradient {
+  if (_vignetteGradientCache && _vignetteGradientCache.ctx === ctx && _vignetteGradientCache.height === height) {
+    return _vignetteGradientCache.gradient
+  }
+  const gradient = ctx.createLinearGradient(0, 0, 0, height)
+  gradient.addColorStop(0, 'rgba(0, 0, 0, 0.20)')
+  gradient.addColorStop(0.5, 'rgba(0, 0, 0, 0)')
+  gradient.addColorStop(1, 'rgba(0, 0, 0, 0.20)')
+  _vignetteGradientCache = { ctx, height, gradient }
   return gradient
 }
 
@@ -306,11 +347,8 @@ function renderWaveform(
       ctx.fillRect(x, 0, stripWidth, height)
     }
 
-    // Vignette gradient for depth (darker top/bottom edges)
-    const vGrad = ctx.createLinearGradient(0, 0, 0, height)
-    vGrad.addColorStop(0, 'rgba(0, 0, 0, 0.20)')
-    vGrad.addColorStop(0.5, 'rgba(0, 0, 0, 0)')
-    vGrad.addColorStop(1, 'rgba(0, 0, 0, 0.20)')
+    // Vignette gradient for depth (darker top/bottom edges) — VALKYRIE H-5a: cached
+    const vGrad = getVignetteGradient(ctx, height)
     ctx.fillStyle = vGrad
     ctx.fillRect(leftOffset, 0, visibleWidth, height)
   }

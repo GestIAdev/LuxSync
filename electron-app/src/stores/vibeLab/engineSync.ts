@@ -39,6 +39,7 @@ import type { VibeLabState } from '../vibeLabStore'
 
 let pending = false
 let lastGrafted: CustomVibeKey | null = null
+let lastBaseDNA: string | null = null
 let unsubscribe: (() => void) | null = null
 let initialized = false
 
@@ -76,8 +77,13 @@ function flush(): void {
       ungraftAll()
       lastGrafted = null
     }
-    // El motor se activa con el baseDNA puro. El caller (UI) debe llamar
-    // a vibeManager.setActiveVibe(draft.baseDNA) por separado.
+    // 🧬 STATE HIJACK: Activar el baseDNA puro en el motor via IPC directo.
+    try {
+      window.lux?.setVibe?.(draft.baseDNA)
+    } catch (e) {
+      console.warn('[engineSync] setVibe(base) IPC failed:', e)
+    }
+    lastBaseDNA = draft.baseDNA
     return
   }
 
@@ -91,7 +97,33 @@ function flush(): void {
   if (!result.ok || !result.bundle) return
 
   graft(result.bundle)
-  lastGrafted = result.bundle.key
+  const newKey = result.bundle.key
+
+  // 🧬 PROTEUS GRAFT: Si la key cambió (nueva sesión) O el baseDNA cambió
+  // (rebase con misma key pero diferente ADN), enviar el bundle al backend
+  // para que injerte el custom vibe en los registrios del MAIN PROCESS,
+  // y LUEGO activar el vibe. Sin el graft al backend, VibeManager no
+  // encuentra la key 'custom:...' → 404 → fallback a idle → cero telemetry.
+  const baseChanged = lastBaseDNA !== draft.baseDNA
+  if (lastGrafted !== newKey || baseChanged) {
+    // Fire-and-forget: el graft IPC es async pero no podemos bloquear el
+    // rAF loop. El setVibe se envía justo después; si el graft llega
+    // primero (normal, IPC es rápido), VibeManager encontrará la key.
+    // Si llega después (race), VibeManager hará 404 en este tick pero
+    // el próximo flush reintentará.
+    if (window.lux?.graftVibe) {
+      window.lux.graftVibe(result.bundle).catch((e: unknown) =>
+        console.warn('[engineSync] graftVibe IPC failed:', e),
+      )
+    }
+    try {
+      window.lux?.setVibe?.(newKey)
+    } catch (e) {
+      console.warn('[engineSync] setVibe IPC failed:', e)
+    }
+  }
+  lastGrafted = newKey
+  lastBaseDNA = draft.baseDNA
 }
 
 /**
@@ -137,6 +169,7 @@ export function initVibeLabEngineSync(): () => void {
       ungraftAll()
       lastGrafted = null
     }
+    lastBaseDNA = null
     pending = false
     initialized = false
   }

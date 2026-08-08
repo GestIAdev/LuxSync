@@ -188,7 +188,7 @@ export const useVibeLabStore = create<VibeLabState>()(
       pristine: null,
       isDirty: false,
       activeTab: 'physics',
-      interlock: 'shielded',
+      interlock: 'raw',
       expandedPanels: { physics: [], color: [], movement: [] },
       focusedEnvelope: null,
       focusedPattern: null,
@@ -214,7 +214,7 @@ export const useVibeLabStore = create<VibeLabState>()(
           state.mutationCount = 0
           state.diagnostics = []
           state.activeTab = 'physics'
-          state.interlock = 'shielded'
+          state.interlock = 'raw'
           state.expandedPanels = { physics: [], color: [], movement: [] }
           state.focusedEnvelope = null
           state.focusedPattern = null
@@ -237,7 +237,7 @@ export const useVibeLabStore = create<VibeLabState>()(
               state.mutationCount = countMutations(data)
               state.diagnostics = []
               state.activeTab = 'physics'
-              state.interlock = 'shielded'
+              state.interlock = 'raw'
               state.expandedPanels = { physics: [], color: [], movement: [] }
               state.focusedEnvelope = null
               state.focusedPattern = null
@@ -403,8 +403,24 @@ export const useVibeLabStore = create<VibeLabState>()(
         if (!ipc) { set({ vaultLoading: false }); return }
         set({ vaultLoading: true })
         try {
-          const entries = await ipc.list() as CustomVibeMeta[]
-          set({ vault: entries ?? [] })
+          // The backend returns VibeVaultEntry[] ({ key, meta, filename, ... }).
+          // The store expects CustomVibeMeta[] for the vault array so GenomeVault
+          // can access entry.name, entry.author, etc. directly.
+          const entries = await ipc.list() as Array<{ meta?: CustomVibeMeta } & Partial<CustomVibeMeta>>
+          const metas: CustomVibeMeta[] = (entries ?? []).map((e) =>
+            e.meta ?? {
+              key: (e as any).key ?? 'custom:unknown',
+              name: (e as any).name ?? 'Unknown',
+              description: (e as any).description ?? '',
+              icon: (e as any).icon ?? '🧬',
+              author: (e as any).author ?? 'unknown',
+              createdAt: (e as any).createdAt ?? 0,
+              updatedAt: (e as any).updatedAt ?? 0,
+              tags: (e as any).tags ?? [],
+              accentHex: (e as any).accentHex ?? '#00e5ff',
+            },
+          )
+          set({ vault: metas })
         } catch (err) {
           console.error('[vibeLabStore] loadVault failed:', err)
           set({ vault: [] })

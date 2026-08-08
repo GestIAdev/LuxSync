@@ -12,7 +12,7 @@
 import React, { memo, useMemo, useState, useCallback } from 'react'
 import { Palette, Circle, Thermometer, Repeat, Sliders, Shield, Sparkles, Zap, Clock, Waves } from 'lucide-react'
 import { GenePanel } from '../kit'
-import { GeneRenderer } from '../GeneRenderer'
+import { PanelGeneList } from '../PanelGeneList'
 import { ChromaticWheel } from '../panels/ChromaticWheel'
 import { ThermalVector } from '../panels/ThermalVector'
 import { getGenesByPanel, getPanelsByTab, PANEL_META } from '../geneRegistry'
@@ -93,28 +93,14 @@ export const ColorBench: React.FC<BenchProps> = memo(({ interlock }) => {
             ) : panelId === 'thermal' ? (
               <div className="bench-thermal-row">
                 <ThermalVector size={120} />
-                {genes.map((gene) => (
-                  <GeneRenderer
-                    key={gene.path}
-                    descriptor={gene}
-                    baseDNA={baseDNA}
-                  />
-                ))}
+                <PanelGeneList genes={genes} baseDNA={baseDNA} />
               </div>
             ) : panelId === 'remapping' ? (
               <p className="bench-panel-empty">TransmutationTable component (Fase 3.2+)</p>
-            ) : panelId === 'sidereal' ? (
-              <p className="bench-panel-empty">SiderealCarousel component (Fase 3.2+)</p>
             ) : genes.length === 0 ? (
               <p className="bench-panel-empty">No genes in this panel for current mode</p>
             ) : (
-              genes.map((gene) => (
-                <GeneRenderer
-                  key={gene.path}
-                  descriptor={gene}
-                  baseDNA={baseDNA}
-                />
-              ))
+              <PanelGeneList genes={genes} baseDNA={baseDNA} />
             )}
           </GenePanel>
         )

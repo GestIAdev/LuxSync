@@ -1358,24 +1358,50 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
         })}
         
         {/* WAVE 2006 + 2013.6: Render Clips (with live duration for growing clip) */}
-        {clips.map(clip => {
+        {/* VALKYRIE H-5b: Precompute sorted vibe clips per track ONCE before
+            the render loop. The previous code ran filter()+sort() for EVERY
+            clip on EVERY render — O(n² log n) with two array allocations per
+            clip per frame. Now we build a Map<trackId, vibeStartMs[]> once
+            and binary-search it per clip → O(n log n) total, zero allocations. */}
+        {(() => {
+          const vibeStartsByTrack = new Map<string, number[]>()
+          for (const c of clips) {
+            if (c.type !== 'vibe') continue
+            const arr = vibeStartsByTrack.get(c.trackId)
+            if (arr) arr.push(c.startMs)
+            else vibeStartsByTrack.set(c.trackId, [c.startMs])
+          }
+          for (const arr of vibeStartsByTrack.values()) arr.sort((a, b) => a - b)
+
+          // Binary search: find the smallest startMs in `arr` that is > `after`.
+          function nextVibeStart(arr: number[], after: number): number | null {
+            let lo = 0, hi = arr.length
+            while (lo < hi) {
+              const mid = (lo + hi) >> 1
+              if (arr[mid] <= after) lo = mid + 1
+              else hi = mid
+            }
+            return lo < arr.length ? arr[lo] : null
+          }
+
+          return clips.map(clip => {
           // WAVE 2013.6: THE ADRENALINE SHOT
           // If this is the growing clip and we have a live endMs, use it instead of stale state
           const isThisClipGrowing = growingClipId === clip.id
-          let liveEndMs = (isThisClipGrowing && growingClipEndMs !== null) 
-            ? growingClipEndMs 
+          let liveEndMs = (isThisClipGrowing && growingClipEndMs !== null)
+            ? growingClipEndMs
             : clip.endMs
-          
+
           // 🎭 WAVE 2040.10b: INFINITE VIBE RENDER
           // Make VIBE clips render continuously until next VIBE clip on same track (or viewport end)
           if (clip.type === 'vibe' && !isThisClipGrowing) {
-            // Find next VIBE clip on same track
-            const nextVibeClip = clips
-              .filter(c => c.type === 'vibe' && c.trackId === clip.trackId && c.startMs > clip.startMs)
-              .sort((a, b) => a.startMs - b.startMs)[0]
-            
-            if (nextVibeClip) {
-              liveEndMs = nextVibeClip.startMs // Extend to next VIBE
+            // VALKYRIE H-5b: binary search the precomputed sorted array instead
+            // of filter()+sort() per clip per frame.
+            const vibeStarts = vibeStartsByTrack.get(clip.trackId)
+            const nextStart = vibeStarts ? nextVibeStart(vibeStarts, clip.startMs) : null
+
+            if (nextStart !== null) {
+              liveEndMs = nextStart // Extend to next VIBE
             } else {
               // No next VIBE — extend to viewport end + 10 seconds (infinite feel)
               liveEndMs = viewport.startTime + (dimensions.width * 1000 / viewport.pixelsPerSecond) + 10000
@@ -1412,8 +1438,8 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
               onDoubleClick={onClipDoubleClick}  // WAVE 2044.3
             />
           )
-        })}
-        
+        })})()}
+
         {/* ⚡ WAVE 2045.1: CLONE WARS — Ghost clone preview during Alt+Drag */}
         {isCloning && cloneGhostPosition && draggingClipId && (
           (() => {

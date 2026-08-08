@@ -4,14 +4,14 @@
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * Cabecera del Vibe Lab: DNA donor selector, nombre del vibe, autor,
- * SafetyInterlock, y acciones (save, export, etc — Fase 4).
+ * SafetyInterlock, y acciones (save, export, import — Fase 4).
  *
  * @module components/vibeLab/HelixBar
- * @version FASE 3
+ * @version FASE 4.3
  */
 
-import React, { memo } from 'react'
-import { Dna, Save, Upload, Download } from 'lucide-react'
+import React, { memo, useCallback } from 'react'
+import { Dna, Save, Upload, FolderOpen } from 'lucide-react'
 import { DnaDonorSelector } from './DnaDonorSelector'
 import { SafetyInterlock, MutationBadge } from './kit'
 import {
@@ -26,12 +26,28 @@ export const HelixBar: React.FC = memo(() => {
   const draft = useVibeLabStore((s) => s.draft)
   const setInterlock = useVibeLabStore((s) => s.setInterlock)
   const setMeta = useVibeLabStore((s) => s.setMeta)
+  const importFromFile = useVibeLabStore((s) => s.importFromFile)
   const interlock = useInterlock()
   const mutationCount = useMutationCount()
   const isDirty = useIsDirty()
 
   const vibeName = draft?.meta?.name ?? 'Untitled Vibe'
   const author = draft?.meta?.author ?? 'Unknown'
+
+  // Save → opens the MintDialog (which calls mint() on confirm)
+  const handleSave = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('vibeLab:openMint'))
+  }, [])
+
+  // Vault → opens the GenomeVault drawer (which has export per-item + import)
+  const handleOpenVault = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('vibeLab:toggleVault'))
+  }, [])
+
+  // Import → directly calls the IPC import dialog
+  const handleImport = useCallback(() => {
+    void importFromFile()
+  }, [importFromFile])
 
   return (
     <header className="helix-bar">
@@ -66,13 +82,28 @@ export const HelixBar: React.FC = memo(() => {
       <div className="helix-bar-right">
         <SafetyInterlock mode={interlock} onChange={setInterlock} />
         <div className="helix-bar-actions">
-          <button className="helix-bar-action-btn" title="Save to Vault (Fase 4)" disabled type="button">
+          <button
+            className="helix-bar-action-btn"
+            title="Save to Vault"
+            onClick={handleSave}
+            type="button"
+          >
             <Save size={14} />
           </button>
-          <button className="helix-bar-action-btn" title="Export (Fase 4)" disabled type="button">
-            <Download size={14} />
+          <button
+            className="helix-bar-action-btn"
+            title="Open Genome Vault"
+            onClick={handleOpenVault}
+            type="button"
+          >
+            <FolderOpen size={14} />
           </button>
-          <button className="helix-bar-action-btn" title="Import (Fase 4)" disabled type="button">
+          <button
+            className="helix-bar-action-btn"
+            title="Import .luxvibe"
+            onClick={handleImport}
+            type="button"
+          >
             <Upload size={14} />
           </button>
         </div>

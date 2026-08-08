@@ -168,7 +168,9 @@ export function useLiveAudioInput(): UseLiveAudioInputReturn {
   // CLEANUP
   // ═══════════════════════════════════════════════════════════════════════
   
-  const cleanup = useCallback(() => {
+  // P2.14 FIX: cleanup is now async so AudioContext.close() can be awaited.
+  // This prevents phantom AudioContext instances that consume CPU after stop.
+  const cleanup = useCallback(async () => {
     // Stop processing loops
     if (processLoopRef.current) {
       clearInterval(processLoopRef.current)
@@ -178,31 +180,35 @@ export function useLiveAudioInput(): UseLiveAudioInputReturn {
       clearInterval(metricsLoopRef.current)
       metricsLoopRef.current = null
     }
-    
+
     // Disconnect audio nodes
     if (sourceNodeRef.current) {
       try { sourceNodeRef.current.disconnect() } catch { /* already disconnected */ }
       sourceNodeRef.current = null
     }
-    
+
     // Stop media stream tracks
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop())
       streamRef.current = null
     }
-    
-    // Close audio context
+
+    // P2.14 FIX: Await AudioContext.close() to ensure full release before null
     if (audioContextRef.current) {
-      audioContextRef.current.close()
+      try {
+        await audioContextRef.current.close()
+      } catch {
+        // Context may already be closed
+      }
       audioContextRef.current = null
     }
-    
+
     analyserRef.current = null
     timeDomainBufferRef.current = null
     frequencyBufferRef.current = null
     peakRef.current = 0
     isBufferBusyRef.current = false
-    
+
     setIsActive(false)
     setMetrics({ level: 0, hasSignal: false, peak: 0 })
   }, [])
@@ -303,8 +309,9 @@ export function useLiveAudioInput(): UseLiveAudioInputReturn {
   // ═══════════════════════════════════════════════════════════════════════
   
   const start = useCallback(async (type: LiveSourceType = 'microphone') => {
-    // Cleanup any existing capture
-    cleanup()
+    // P2.14 FIX: Await cleanup to ensure AudioContext is fully closed before
+    // creating a new one. Prevents phantom AudioContext instances.
+    await cleanup()
     setError(null)
     setSourceType(type)
     
@@ -426,8 +433,10 @@ export function useLiveAudioInput(): UseLiveAudioInputReturn {
   }, [])
   
   // ── Cleanup on unmount ──
+  // P2.14 FIX: Fire-and-forget the async cleanup (useEffect destructors
+  // cannot return a Promise). The AudioContext.close() will still execute.
   useEffect(() => {
-    return () => cleanup()
+    return () => { void cleanup() }
   }, [cleanup])
   
   return {

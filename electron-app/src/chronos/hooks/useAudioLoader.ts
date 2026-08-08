@@ -14,7 +14,7 @@
  * @version WAVE 2005
  */
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { analyzeAudioFile, type AnalysisProgress } from '../analysis/GodEarOffline'
 import type { AnalysisData } from '../core/types'
 
@@ -68,13 +68,16 @@ export interface AudioLoaderState {
 export interface UseAudioLoaderReturn extends AudioLoaderState {
   /** Load audio from File object */
   loadFile: (file: File) => Promise<AudioLoadResult | null>
-  
+
   /** Load audio from ArrayBuffer */
   loadBuffer: (buffer: ArrayBuffer, fileName?: string) => Promise<AudioLoadResult | null>
-  
-  /** Reset loader state */
-  reset: () => void
-  
+
+  /** Reset loader state. If releaseContext is true, also closes the AudioContext. */
+  reset: (releaseContext?: boolean) => void
+
+  /** P1.8 FIX: Close the singleton AudioContext to release driver resources */
+  closeAudioContext: () => Promise<void>
+
   /** Supported file extensions */
   supportedFormats: string[]
 }
@@ -119,6 +122,24 @@ function getAudioContext(): AudioContext {
     audioContextInstance = new AudioContext()
   }
   return audioContextInstance
+}
+
+/**
+ * P1.8 FIX: Close and release the singleton AudioContext.
+ * Should be called when switching projects or unmounting the host component
+ * to prevent phantom AudioContext instances that consume CPU and hold
+ * audio driver resources.
+ */
+export async function closeAudioContext(): Promise<void> {
+  if (audioContextInstance) {
+    try {
+      await audioContextInstance.close()
+    } catch {
+      // Context may already be closed
+    }
+    audioContextInstance = null
+    console.log('[useAudioLoader] 🔒 AudioContext singleton closed')
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -414,9 +435,12 @@ export function useAudioLoader(): UseAudioLoaderReturn {
   }, [loadBuffer, updateState])
   
   /**
-   * Reset loader state
+   * Reset loader state.
+   * P1.8 FIX: When `releaseContext` is true, also closes the singleton
+   * AudioContext to release audio driver resources. Use this when switching
+   * projects or tearing down the host view.
    */
-  const reset = useCallback(() => {
+  const reset = useCallback((releaseContext: boolean = false) => {
     abortRef.current = true
     setState({
       isLoading: false,
@@ -426,13 +450,26 @@ export function useAudioLoader(): UseAudioLoaderReturn {
       error: null,
       result: null,
     })
+    // P1.8 FIX: Release the singleton AudioContext on explicit reset
+    if (releaseContext) {
+      void closeAudioContext()
+    }
   }, [])
-  
+
+  // P1.8 FIX: Close AudioContext on unmount to prevent phantom instances
+  useEffect(() => {
+    return () => {
+      void closeAudioContext()
+    }
+  }, [])
+
   return {
     ...state,
     loadFile,
     loadBuffer,
     reset,
+    /** P1.8 FIX: Explicitly close the AudioContext singleton */
+    closeAudioContext,
     supportedFormats: SUPPORTED_FORMATS,
   }
 }

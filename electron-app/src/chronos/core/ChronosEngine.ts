@@ -140,7 +140,12 @@ interface ClipIndexEntry {
 class ClipBoundaryIndex {
   private boundaries: ClipBoundaryEvent[] = []
   private clipEntries: ClipIndexEntry[] = []
-  private cachedActiveClips: LuxClipV3[] | null = null
+  // HEIMDALL H-4: Cache the full {clip, track} pairing, not just LuxClipV3[].
+  //   The previous cache stored only clips and rebuilt the track pairing on
+  //   every cache hit via clipEntries.find() — O(m × n) per frame. Now we
+  //   cache the resolved pairs directly, making the cache-hit path strictly
+  //   O(m) with zero searching.
+  private cachedActivePairs: Array<{ clip: LuxClipV3; track: LuxTrackV3 }> | null = null
   private lastQueryTimeMs: number = -1
   private tracksRef: readonly LuxTrackV3[] | null = null
 
@@ -148,7 +153,7 @@ class ClipBoundaryIndex {
     this.tracksRef = tracks
     this.boundaries = []
     this.clipEntries = []
-    this.cachedActiveClips = null
+    this.cachedActivePairs = null
     this.lastQueryTimeMs = -1
 
     for (let ti = 0; ti < tracks.length; ti++) {
@@ -177,16 +182,13 @@ class ClipBoundaryIndex {
 
   // Returns active clips with their V3 track for routing context
   queryWithTrack(timeMs: number): Array<{ clip: LuxClipV3; track: LuxTrackV3 }> {
-    if (this.cachedActiveClips !== null && !this.hasCrossedBoundary(this.lastQueryTimeMs, timeMs)) {
-      // Rebuild pairing from cached clips — O(m) where m = active clips (tiny)
-      return this.cachedActiveClips.map(clip => ({
-        clip,
-        track: this.clipEntries.find(e => e.clip === clip)!.track,
-      }))
+    // HEIMDALL H-4: Cache-hit path is now strictly O(m) — return the cached
+    //   pairs directly, no find() search needed.
+    if (this.cachedActivePairs !== null && !this.hasCrossedBoundary(this.lastQueryTimeMs, timeMs)) {
+      return this.cachedActivePairs
     }
 
     const active: Array<{ clip: LuxClipV3; track: LuxTrackV3 }> = []
-    const activeClips: LuxClipV3[] = []
 
     for (const entry of this.clipEntries) {
       if (entry.startMs > timeMs) break
@@ -194,15 +196,13 @@ class ClipBoundaryIndex {
       if (entry.startMs === entry.endMs) {
         if (Math.abs(timeMs - entry.startMs) < 16) {
           active.push({ clip: entry.clip, track: entry.track })
-          activeClips.push(entry.clip)
         }
       } else if (timeMs >= entry.startMs && timeMs < entry.endMs) {
         active.push({ clip: entry.clip, track: entry.track })
-        activeClips.push(entry.clip)
       }
     }
 
-    this.cachedActiveClips = activeClips
+    this.cachedActivePairs = active
     this.lastQueryTimeMs = timeMs
     return active
   }
@@ -223,7 +223,7 @@ class ClipBoundaryIndex {
   }
 
   invalidate(): void {
-    this.cachedActiveClips = null
+    this.cachedActivePairs = null
     this.lastQueryTimeMs = -1
   }
 }
@@ -1106,7 +1106,19 @@ export class ChronosEngine {
     project: ChronosProjectV3
   ): Map<AutomationTarget, number> {
     const values = new Map<AutomationTarget, number>()
-    // WAVE 7100 FASE 3: V3 has no globalAutomation — return empty map
+
+    // OPERATION STARDUST (R1): Evaluate project-level automation lanes.
+    // Each enabled lane is evaluated at timeMs using the cached binary-search
+    // interpolation (evaluateAutomationLane — O(log n) per lane, cached sort).
+    const lanes = project.automationLanes
+    if (!lanes || lanes.length === 0) return values
+
+    for (const lane of lanes) {
+      if (!lane.enabled) continue
+      const value = evaluateAutomationLane(lane, timeMs)
+      values.set(lane.target, value)
+    }
+
     return values
   }
 

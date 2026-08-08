@@ -1355,7 +1355,11 @@ export class TitanEngine extends EventEmitter {
    * Cambia el vibe activo del motor.
    */
   public setVibe(vibeId: VibeId): void {
-    this.vibeManager.setActiveVibe(vibeId)
+    const ok = this.vibeManager.setActiveVibe(vibeId)
+    if (!ok) {
+      console.warn(`[TitanEngine] ⚠️ Vibe change REJECTED (404): '${vibeId}' — not in registry. Maintaining: '${this.vibeManager.getActiveVibe().id}'`)
+      return
+    }
     console.log(`[TitanEngine] 🎭 Vibe changed to: ${vibeId}`)
     this.emit('vibe-changed', vibeId)
   }

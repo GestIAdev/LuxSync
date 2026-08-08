@@ -31,6 +31,7 @@
 import type { HephAutomationClipV3 } from '../../core/hephaestus/types'
 import type { CanonicalZone } from '../../core/stage/ShowFileV2'
 import type { EnergyZone } from '../../core/protocol/MusicalContext'
+import type { AutomationLane } from './types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -385,6 +386,9 @@ export interface LuxFileV3 {
   /** Show-level safety declaration. */
   readonly safety: LuxSafetyV3 | null
 
+  /** Project-level automation lanes (Bézier curves for global parameters). */
+  readonly automationLanes?: readonly AutomationLane[]
+
   /** SHA-256 checksum over the canonical content (excludes this field). */
   readonly checksum: string
 }
@@ -431,6 +435,9 @@ export interface ChronosProjectV3 {
   markers: LuxMarkerV3[]
   safety: LuxSafetyV3 | null
   checksum: string
+
+  /** Project-level automation lanes (mutable in runtime for editing). */
+  automationLanes: AutomationLane[]
 
   // ── EPHEMERAL RUNTIME STATE (not serialized) ──
   /** Playhead position (ms). */

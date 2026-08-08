@@ -67,6 +67,11 @@ export interface UseFreeRunClockReturn extends FreeRunClockState {
 
 const UPDATE_INTERVAL_MS = 16.67 // ~60fps for smooth playhead
 
+/** Throttle interval for React state updates (UI playhead sync).
+ *  The ref updates at 60fps for real-time consumers (injector, recorder).
+ *  State updates at ~20fps to move the UI playhead without excessive re-renders. */
+const UI_SYNC_INTERVAL_MS = 50
+
 // ═══════════════════════════════════════════════════════════════════════════
 // HOOK
 // ═══════════════════════════════════════════════════════════════════════════
@@ -79,6 +84,7 @@ export function useFreeRunClock(): UseFreeRunClockReturn {
   const pauseStartTimeRef = useRef<number>(0)      // performance.now() when paused
   const baseTimeOffsetRef = useRef<number>(0)      // Offset for resume after pause
   const currentTimeMsRef = useRef<number>(0)       // WAVE 7106: Real-time ref — no React re-render
+  const lastUiSyncRef = useRef<number>(0)            // R3: Throttle state updates for UI sync
   
   // React state for UI updates
   const [state, setState] = useState<FreeRunClockState>({
@@ -106,6 +112,14 @@ export function useFreeRunClock(): UseFreeRunClockReturn {
         
         currentTimeMsRef.current = elapsed // WAVE 7106: Update ref (no re-render)
         
+        // R3: Throttled state update for UI consumers (TransportBar, TimelineCanvas).
+        // The ref updates every frame for real-time consumers (injector, recorder).
+        // State updates at ~20fps to move the visible playhead without excessive re-renders.
+        if (now - lastUiSyncRef.current >= UI_SYNC_INTERVAL_MS) {
+          lastUiSyncRef.current = now
+          setState(prev => prev.isRunning ? { ...prev, currentTimeMs: elapsed } : prev)
+        }
+        
         animationFrameRef.current = requestAnimationFrame(tick)
       }
     }
@@ -131,6 +145,7 @@ export function useFreeRunClock(): UseFreeRunClockReturn {
     const now = performance.now()
     clockStartTimeRef.current = now
     isRunningRef.current = true
+    lastUiSyncRef.current = 0
     
     updateState({ 
       isRunning: true,
@@ -179,6 +194,7 @@ export function useFreeRunClock(): UseFreeRunClockReturn {
     
     clockStartTimeRef.current = now
     isRunningRef.current = true
+    lastUiSyncRef.current = 0
     
     updateState({ 
       isRunning: true,
@@ -200,6 +216,7 @@ export function useFreeRunClock(): UseFreeRunClockReturn {
     clockStartTimeRef.current = 0
     pauseStartTimeRef.current = 0
     baseTimeOffsetRef.current = 0
+    lastUiSyncRef.current = 0
     
     updateState({ 
       isRunning: false,

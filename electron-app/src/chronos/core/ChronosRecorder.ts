@@ -327,11 +327,17 @@ export class ChronosRecorder {
     if (!this.state.quantizeEnabled) {
       return timeMs
     }
-    
-    const beatDurationMs = 60000 / this.state.bpm
+
+    // P1.2 FIX: Guard against BPM=0 or non-finite BPM → Infinity/NaN
+    const bpm = this.state.bpm
+    if (!Number.isFinite(bpm) || bpm <= 0) {
+      return Math.max(0, timeMs) // Skip quantization, return raw time
+    }
+
+    const beatDurationMs = 60000 / bpm
     const beatIndex = Math.round(timeMs / beatDurationMs)
     const snappedTime = beatIndex * beatDurationMs
-    
+
     return Math.max(0, snappedTime)
   }
   
@@ -422,11 +428,21 @@ export class ChronosRecorder {
       console.warn('[ChronosRecorder] Cannot record FX - not in recording mode')
       return null
     }
-    
+
     const startMs = this.snapToGrid(this.state.playheadMs)
+    const endMs = startMs + defaultDurationMs
     const mixBus = hephClip.mixBus ?? 'htp'
     const color = MIXBUS_CLIP_COLORS[mixBus] ?? '#ff6b2b'
-    
+
+    // P1.10 FIX: Collision detection — find an available take-lane for the zone.
+    // Instead of naively assigning `zone-${zones[0]}`, check if any existing
+    // clip on that track overlaps with [startMs, endMs]. If so, try the next
+    // take-lane (zone-X-2, zone-X-3, ...). This matches the UI's collision
+    // logic from ChronosLayout.tsx and prevents overlapping clips during
+    // live recording.
+    const baseZone = zones?.[0] ?? 'all'
+    const trackId = this.resolveTakeLane(baseZone, startMs, endMs)
+
     const clip: RecordedClip = {
       id: `rec-fx-${hephClip.id}-${Date.now()}`,
       clipType: 'fx',
@@ -437,20 +453,43 @@ export class ChronosRecorder {
       color,
       icon: '⬡',
       recordedAt: Date.now(),
-      trackId: `zone-${zones?.[0] ?? 'all'}`,
+      trackId,
       hephClip,
       hephFilePath,
       zones,
       priority,
     }
-    
+
     this.state.clips.push(clip)
     this.state.recordCount++
-    
-    console.log(`🔴 [ChronosRecorder] Recorded FX: ${displayName} at ${startMs}ms (${defaultDurationMs}ms, mixBus: ${mixBus})`)
+
+    console.log(`🔴 [ChronosRecorder] Recorded FX: ${displayName} at ${startMs}ms (${defaultDurationMs}ms, mixBus: ${mixBus}, track: ${trackId})`)
     this.emit('clip-added', { clip })
-    
+
     return clip
+  }
+
+  /**
+   * P1.10 FIX: Find an available take-lane for a zone that doesn't overlap
+   * with existing clips. Tries `zone-X` first, then `zone-X-2`, `zone-X-3`, etc.
+   * Caps at 8 take-lanes to prevent runaway track creation.
+   */
+  private resolveTakeLane(baseZone: string, startMs: number, endMs: number): string {
+    const MAX_TAKE_LANES = 8
+    for (let lane = 1; lane <= MAX_TAKE_LANES; lane++) {
+      const candidateTrack = lane === 1 ? `zone-${baseZone}` : `zone-${baseZone}-${lane}`
+      // Check if any existing clip on this track overlaps [startMs, endMs]
+      const hasCollision = this.state.clips.some((c) => {
+        if (c.trackId !== candidateTrack) return false
+        const cEnd = c.startMs + c.durationMs
+        // Overlap: [startMs, endMs) ∩ [c.startMs, cEnd) ≠ ∅
+        return startMs < cEnd && c.startMs < endMs
+      })
+      if (!hasCollision) return candidateTrack
+    }
+    // All lanes full — return the last lane (collision accepted, matching
+    // the UI's "GLOBAL fallback (collision accepted)" behavior)
+    return `zone-${baseZone}-${MAX_TAKE_LANES}`
   }
   
   /**

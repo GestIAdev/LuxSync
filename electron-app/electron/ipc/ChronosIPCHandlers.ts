@@ -35,6 +35,9 @@ const PROJECT_FILTER = {
   extensions: ['lux'],
 }
 
+// P1.1 FIX: Maximum .lux file size for read (50MB) — prevents OOM on corrupted/malicious files
+const MAX_PROJECT_FILE_SIZE = 50 * 1024 * 1024
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
@@ -318,9 +321,13 @@ function setupProjectIPCHandlers(mainWindow: BrowserWindow): void {
         }
       }
       
-      // Write file
-      await fs.promises.writeFile(filePath, request.json, 'utf-8')
-      console.log(`[ChronosIPC] ✅ Project saved: ${filePath}`)
+      // P1.1 FIX: Atomic write — write to .tmp file first, then rename.
+      // If the process crashes during writeFile, the original .lux file
+      // remains intact. fs.rename() is atomic on most filesystems.
+      const tmpPath = filePath + '.tmp'
+      await fs.promises.writeFile(tmpPath, request.json, 'utf-8')
+      await fs.promises.rename(tmpPath, filePath)
+      console.log(`[ChronosIPC] ✅ Project saved (atomic): ${filePath}`)
       
       return { success: true, path: filePath }
       
@@ -363,7 +370,13 @@ function setupProjectIPCHandlers(mainWindow: BrowserWindow): void {
       if (!fs.existsSync(filePath)) {
         return { success: false, error: `File not found: ${filePath}` }
       }
-      
+
+      // P1.1 FIX: Check file size before reading to prevent OOM on huge files
+      const stat = await fs.promises.stat(filePath)
+      if (stat.size > MAX_PROJECT_FILE_SIZE) {
+        return { success: false, error: `File too large (${(stat.size / 1024 / 1024).toFixed(1)}MB). Max is ${MAX_PROJECT_FILE_SIZE / 1024 / 1024}MB.` }
+      }
+
       // Read file
       const json = await fs.promises.readFile(filePath, 'utf-8')
       console.log(`[ChronosIPC] ✅ Project loaded: ${filePath}`)
@@ -431,13 +444,19 @@ function setupProjectIPCHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle('chronos:write-auto-save', async (_event, request: { path: string; json: string }) => {
     try {
       // If path is just a filename, put it in the auto-save directory
-      const filePath = path.isAbsolute(request.path) 
-        ? request.path 
+      const filePath = path.isAbsolute(request.path)
+        ? request.path
         : path.join(autoSaveDir, request.path)
-      
-      await fs.promises.writeFile(filePath, request.json, 'utf-8')
-      console.log(`[ChronosIPC] 🛡️ Auto-save written: ${filePath}`)
-      
+
+      // LAZARUS B-5 FIX: Atomic write — same .tmp + rename pattern as manual
+      //   save. Autosave fires every 60s during a live show; a crash mid-write
+      //   on the non-atomic path truncated the recovery file, defeating the
+      //   entire purpose of autosave. fs.rename() is atomic on most filesystems.
+      const tmpPath = filePath + '.tmp'
+      await fs.promises.writeFile(tmpPath, request.json, 'utf-8')
+      await fs.promises.rename(tmpPath, filePath)
+      console.log(`[ChronosIPC] 🛡️ Auto-save written (atomic): ${filePath}`)
+
       return { success: true, path: filePath }
     } catch (err) {
       console.error('[ChronosIPC] ❌ Auto-save write failed:', err)

@@ -28,6 +28,15 @@ import {
   type ClockSourceType,
 } from '../core/ClockSource'
 import type { TimeMs } from '../core/types'
+import {
+  PPQ,
+  BPM_WINDOW_SIZE,
+  createBpmDerivationState,
+  deriveBpm,
+  computeBeatInterval,
+  resetBpmDerivation,
+  type BpmDerivationState,
+} from '../utils/bpmDerivation'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -39,18 +48,10 @@ const MIDI_START = 0xFA
 const MIDI_CONTINUE = 0xFB
 const MIDI_STOP = 0xFC
 
-/** Pulses Per Quarter Note (MIDI standard) */
-const PPQ = 24
-
-/** Sliding window for BPM calculation (beats) */
-const BPM_WINDOW_SIZE = 8
-
-/** Minimum BPM change to trigger update (hysteresis) */
-const BPM_HYSTERESIS = 0.5
-
-/** Valid BPM range */
-const BPM_MIN = 20
-const BPM_MAX = 300
+/** VALKYRIE H-2: Song Position Pointer — 0xF2 (follow DAW playhead jumps). */
+const MIDI_SPP = 0xF2
+/** SPP measures 16th notes; each 16th = 6 MIDI clocks (24 PPQ / 4). */
+const SPP_CLOCKS_PER_UNIT = 6
 
 /** Signal timeout — no clock pulse for 2 seconds = signal lost */
 const SIGNAL_TIMEOUT_MS = 2000
@@ -75,8 +76,7 @@ export class MIDIClockSlave extends BaseClockSource {
   // ── BPM derivation ──
   private currentBpm = 120
   private clockTimestamps: number[] = []
-  private beatIntervals: number[] = []
-  private lastReportedBpm = 0
+  private bpmState: BpmDerivationState = createBpmDerivationState()
 
   // ── Timeout ──
   private timeoutHandle: ReturnType<typeof setTimeout> | null = null
@@ -125,7 +125,11 @@ export class MIDIClockSlave extends BaseClockSource {
   getTimeMs(): TimeMs | null {
     if (!this.connected || !this.isExternalPlaying) return null
 
-    const beatDurationMs = 60000 / this.currentBpm
+    // P1.2 FIX: Guard against BPM=0 or non-finite BPM producing Infinity/NaN
+    const bpm = this.currentBpm
+    if (!Number.isFinite(bpm) || bpm <= 0) return null
+
+    const beatDurationMs = 60000 / bpm
     const pulseDurationMs = beatDurationMs / PPQ
     const partialPulses = this.pulseCount % PPQ
 
@@ -183,6 +187,30 @@ export class MIDIClockSlave extends BaseClockSource {
 
     const status = data[0]
 
+    // VALKYRIE H-2: Song Position Pointer (0xF2) — 3 bytes: status, LSB, MSB.
+    //   SPP encodes position in 16th-note units (6 MIDI clocks each). When a
+    //   DAW locates to an arbitrary bar, it sends SPP so slaves can jump.
+    //   We convert to pulse count and update the timeline position so Chronos
+    //   follows the jump instead of resuming from the wrong place.
+    if (status === MIDI_SPP && data.length >= 3) {
+      const lsb = data[1] & 0x7F
+      const msb = data[2] & 0x7F
+      const sppUnits = (msb << 7) | lsb          // 0–16383 (16th notes)
+      const targetPulses = sppUnits * SPP_CLOCKS_PER_UNIT
+      this.pulseCount = targetPulses
+      this.totalBeats = Math.floor(targetPulses / PPQ)
+      // Clear BPM derivation timestamps — the locate is a discontinuity, not
+      // a tempo change, so prior pulse intervals are no longer meaningful.
+      this.clockTimestamps = []
+      resetBpmDerivation(this.bpmState)
+      this.emit('sync', { timeMs: this.getTimeMs() ?? 0, source: this.type })
+      console.log(
+        `[MIDIClockSlave] 📍 SPP locate: ${sppUnits} 16th-notes → ` +
+        `pulse ${targetPulses} (beat ${this.totalBeats})`
+      )
+      return
+    }
+
     switch (status) {
       case MIDI_CLOCK: {
         const now = performance.now()
@@ -215,7 +243,7 @@ export class MIDIClockSlave extends BaseClockSource {
         this.pulseCount = 0
         this.totalBeats = 0
         this.clockTimestamps = []
-        this.beatIntervals = []
+        resetBpmDerivation(this.bpmState)
         this.isExternalPlaying = true
         this.emit('transport', { command: 'play', source: this.type })
         break
@@ -240,25 +268,12 @@ export class MIDIClockSlave extends BaseClockSource {
   // ═══════════════════════════════════════════════════════════════════════
 
   private updateBpm(): void {
-    const timestamps = this.clockTimestamps
-    if (timestamps.length < PPQ + 1) return
+    const beatInterval = computeBeatInterval(this.clockTimestamps)
+    if (beatInterval === null) return
 
-    const beatInterval = timestamps[timestamps.length - 1] - timestamps[timestamps.length - 1 - PPQ]
-    this.beatIntervals.push(beatInterval)
-    if (this.beatIntervals.length > BPM_WINDOW_SIZE) {
-      this.beatIntervals.shift()
-    }
-
-    if (this.beatIntervals.length >= 2) {
-      const avgInterval = this.beatIntervals.reduce((a, b) => a + b, 0) / this.beatIntervals.length
-      const calculatedBpm = 60000 / avgInterval
-      const clampedBpm = Math.max(BPM_MIN, Math.min(BPM_MAX, calculatedBpm))
-      const roundedBpm = Math.round(clampedBpm * 10) / 10
-
-      if (Math.abs(roundedBpm - this.lastReportedBpm) >= BPM_HYSTERESIS) {
-        this.lastReportedBpm = roundedBpm
-        this.currentBpm = roundedBpm
-      }
+    const newBpm = deriveBpm(this.bpmState, beatInterval)
+    if (newBpm !== null) {
+      this.currentBpm = newBpm
     }
   }
 

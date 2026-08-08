@@ -29,6 +29,16 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react'
+import {
+  PPQ,
+  BPM_WINDOW_SIZE,
+  createBpmDerivationState,
+  deriveBpm,
+  computeBeatInterval,
+  assessSignalQuality,
+  resetBpmDerivation,
+  type BpmDerivationState,
+} from '../utils/bpmDerivation'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -40,18 +50,9 @@ const MIDI_START = 0xFA        // Start
 const MIDI_CONTINUE = 0xFB    // Continue
 const MIDI_STOP = 0xFC         // Stop
 
-/** Pulses Per Quarter Note (MIDI standard) */
-const PPQ = 24
-
-/** Number of beats to average for BPM calculation (sliding window) */
-const BPM_WINDOW_SIZE = 8
-
-/** Minimum BPM change to trigger update (hysteresis, prevents jitter) */
-const BPM_HYSTERESIS = 0.5
-
-/** Valid BPM range */
-const BPM_MIN = 20
-const BPM_MAX = 300
+/** VALKYRIE H-2: Song Position Pointer — 0xF2 (follow DAW playhead jumps). */
+const MIDI_SPP = 0xF2
+const SPP_CLOCKS_PER_UNIT = 6  // 24 PPQ / 4 = 6 clocks per 16th note
 
 /** Maximum clock interval before considering signal lost (2 seconds) */
 const CLOCK_TIMEOUT_MS = 2000
@@ -132,10 +133,9 @@ export function useMIDIClock(): UseMIDIClockReturn {
   // ── Refs (mutable state for real-time processing, no re-renders) ──
   const midiAccessRef = useRef<MIDIAccess | null>(null)
   const clockTimestampsRef = useRef<number[]>([])
-  const beatIntervalsRef = useRef<number[]>([])
+  const bpmStateRef = useRef<BpmDerivationState>(createBpmDerivationState())
   const clockCountRef = useRef(0)
   const lastClockTimeRef = useRef(0)
-  const lastReportedBpmRef = useRef(0)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const messageHandlerRef = useRef<((event: MIDIMessageEvent) => void) | null>(null)
   
@@ -151,9 +151,8 @@ export function useMIDIClock(): UseMIDIClockReturn {
       // No clock received for 2 seconds — signal lost
       setSignalQuality('none')
       setMidiBpm(0)
-      lastReportedBpmRef.current = 0
+      resetBpmDerivation(bpmStateRef.current)
       clockTimestampsRef.current = []
-      beatIntervalsRef.current = []
       clockCountRef.current = 0
       console.log('[MIDIClock] ⚠️ Clock signal lost (timeout)')
     }, CLOCK_TIMEOUT_MS)
@@ -163,9 +162,24 @@ export function useMIDIClock(): UseMIDIClockReturn {
   const handleMIDIMessage = useCallback((event: MIDIMessageEvent) => {
     const data = event.data
     if (!data || data.length === 0) return
-    
+
     const status = data[0]
-    
+
+    // VALKYRIE H-2: Song Position Pointer (0xF2) — follow DAW playhead jumps.
+    //   SPP encodes position in 16th-note units (6 MIDI clocks each). When a
+    //   DAW locates to an arbitrary bar, it sends SPP so slaves can jump.
+    if (status === MIDI_SPP && data.length >= 3) {
+      const lsb = data[1] & 0x7F
+      const msb = data[2] & 0x7F
+      const sppUnits = (msb << 7) | lsb
+      const targetPulses = sppUnits * SPP_CLOCKS_PER_UNIT
+      clockCountRef.current = targetPulses
+      clockTimestampsRef.current = []
+      resetBpmDerivation(bpmStateRef.current)
+      console.log(`[MIDIClock] 📍 SPP locate: ${sppUnits} 16th-notes → pulse ${targetPulses}`)
+      return
+    }
+
     switch (status) {
       case MIDI_CLOCK: {
         // ═══════════════════════════════════════════════════════════
@@ -185,42 +199,20 @@ export function useMIDIClock(): UseMIDIClockReturn {
         
         // Every PPQ (24) clocks = 1 beat. Calculate beat interval.
         if (clockCountRef.current % PPQ === 0 && clockTimestampsRef.current.length >= PPQ + 1) {
-          // Interval between last 24 clocks = 1 beat duration
-          const timestamps = clockTimestampsRef.current
-          const beatInterval = timestamps[timestamps.length - 1] - timestamps[timestamps.length - 1 - PPQ]
-          
-          beatIntervalsRef.current.push(beatInterval)
-          if (beatIntervalsRef.current.length > BPM_WINDOW_SIZE) {
-            beatIntervalsRef.current.shift()
-          }
-          
-          // Calculate BPM from averaged beat intervals
-          if (beatIntervalsRef.current.length >= 2) {
-            const avgInterval = beatIntervalsRef.current.reduce((a, b) => a + b, 0) 
-              / beatIntervalsRef.current.length
-            const calculatedBpm = 60000 / avgInterval
-            
-            // Clamp to valid range
-            const clampedBpm = Math.max(BPM_MIN, Math.min(BPM_MAX, calculatedBpm))
-            const roundedBpm = Math.round(clampedBpm * 10) / 10 // 1 decimal precision
-            
-            // Hysteresis: only update if change exceeds threshold
-            if (Math.abs(roundedBpm - lastReportedBpmRef.current) >= BPM_HYSTERESIS) {
-              lastReportedBpmRef.current = roundedBpm
-              setMidiBpm(roundedBpm)
-              
+          const beatInterval = computeBeatInterval(clockTimestampsRef.current)
+          if (beatInterval !== null) {
+            const newBpm = deriveBpm(bpmStateRef.current, beatInterval)
+            if (newBpm !== null) {
+              setMidiBpm(newBpm)
+
               // Log every 4 beats (not every beat — too spammy)
               if (clockCountRef.current % (PPQ * 4) === 0) {
-                console.log(`[MIDIClock] 🎹 BPM: ${roundedBpm} (${beatIntervalsRef.current.length} samples)`)
+                console.log(`[MIDIClock] 🎹 BPM: ${newBpm} (${bpmStateRef.current.beatIntervals.length} samples)`)
               }
             }
-          }
-          
-          // Signal quality assessment
-          if (beatIntervalsRef.current.length >= BPM_WINDOW_SIZE) {
-            setSignalQuality('stable')
-          } else if (beatIntervalsRef.current.length >= 2) {
-            setSignalQuality('weak')
+
+            // Signal quality assessment
+            setSignalQuality(assessSignalQuality(bpmStateRef.current.beatIntervals.length))
           }
         }
         
@@ -238,6 +230,7 @@ export function useMIDIClock(): UseMIDIClockReturn {
         // Reset clock counter on Start
         clockCountRef.current = 0
         clockTimestampsRef.current = []
+        resetBpmDerivation(bpmStateRef.current)
         break
       }
       
@@ -369,10 +362,9 @@ export function useMIDIClock(): UseMIDIClockReturn {
     // Reset state
     midiAccessRef.current = null
     clockTimestampsRef.current = []
-    beatIntervalsRef.current = []
+    resetBpmDerivation(bpmStateRef.current)
     clockCountRef.current = 0
     lastClockTimeRef.current = 0
-    lastReportedBpmRef.current = 0
     
     setSource('internal')
     setIsConnected(false)

@@ -471,15 +471,24 @@ export function createHephFXClip(
 
 /**
  * Calculate beat grid positions for snapping
+ *
+ * LAZARUS B-3 FIX: Hard guard against non-finite or non-positive BPM.
+ *   `JSON.parse('1e400')` yields `Infinity`, which made `msPerBeat = 0` and
+ *   the loop never advanced → unbounded array growth → renderer OOM. A
+ *   malformed `.lux` file could freeze the console by reaching this path
+ *   through `useTimelineClips` → `setBpm(audio.detectedBpm)`.
  */
 export function calculateBeatGrid(bpm: number, durationMs: number): number[] {
+  if (!Number.isFinite(bpm) || bpm <= 0) return []
+  if (!Number.isFinite(durationMs) || durationMs <= 0) return []
+
   const msPerBeat = 60000 / bpm
   const beats: number[] = []
-  
+
   for (let t = 0; t <= durationMs; t += msPerBeat) {
     beats.push(Math.round(t))
   }
-  
+
   return beats
 }
 

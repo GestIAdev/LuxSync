@@ -39,7 +39,6 @@ function formatValue(value: number, step: number): string {
 /** Determina el estado visual a partir de las props. */
 function deriveState(props: GeneSliderProps): GeneVisualState {
   if (props.isSealed) return 'sealed'
-  if (props.tier === 'raw') return 'locked-by-basic' // El padre decide mostrar/ocultar
   if (props.isInDanger) return 'danger'
   if (props.isMutated) return 'mutated'
   return 'inherited'

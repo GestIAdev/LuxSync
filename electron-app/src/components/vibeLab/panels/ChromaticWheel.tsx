@@ -16,8 +16,8 @@
  */
 
 import React, { memo, useState, useCallback, useMemo, useRef } from 'react'
-import { useVibeLabStore } from '../../../stores/vibeLabStore'
-import { getByPath } from '../../../engine/vibe/custom/pathUtils'
+import { useVibeLabStore, useGene } from '../../../stores/vibeLabStore'
+import { COLOR_CONSTITUTIONS } from '../../../engine/color/colorConstitutions'
 import './chromatic-wheel.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -32,6 +32,21 @@ interface HueRange {
 interface ChromaticWheelProps {
   size?: number
   accent?: string
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TUPLE ↔ HueRange CONVERSION
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Convierte [number, number][] (formato constitution) a HueRange[] (formato UI). */
+function tuplesToRanges(tuples: [number, number][] | undefined): HueRange[] {
+  if (!tuples || !Array.isArray(tuples)) return []
+  return tuples.map(([start, end]) => ({ start, end }))
+}
+
+/** Convierte HueRange[] (formato UI) a [number, number][] (formato constitution). */
+function rangesToTuples(ranges: HueRange[]): [number, number][] {
+  return ranges.map((r) => [r.start, r.end])
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -78,17 +93,26 @@ export const ChromaticWheel: React.FC<ChromaticWheelProps> = memo(
     const draft = useVibeLabStore((s) => s.draft)
     const setGene = useVibeLabStore((s) => s.setGene)
 
-    // Leer forbidden/allowed del draft override o del baseDNA
-    const { forbidden, allowed } = useMemo(() => {
-      if (draft?.color) {
-        const c = draft.color as Record<string, unknown>
-        return {
-          forbidden: (getByPath(c, 'hue.forbiddenHueRanges') as HueRange[]) ?? [],
-          allowed: (getByPath(c, 'hue.allowedHueRanges') as HueRange[]) ?? [],
-        }
-      }
-      return { forbidden: [] as HueRange[], allowed: [] as HueRange[] }
-    }, [draft])
+    // Resolver baseDNA y constitution para los valores base
+    const baseDNA = draft?.baseDNA ?? 'techno-club'
+    const constitution = COLOR_CONSTITUTIONS[baseDNA as keyof typeof COLOR_CONSTITUTIONS]
+    const baseForbidden: [number, number][] = constitution?.forbiddenHueRanges ?? []
+    const baseAllowed: [number, number][] = constitution?.allowedHueRanges ?? [[0, 360]]
+
+    // 🧬 useGene lee del draft override (color.hue.forbiddenHueRanges) o cae al base
+    // El resolver mapea color.hue.forbiddenHueRanges → colorConstitution.forbiddenHueRanges
+    const { value: forbiddenRaw } = useGene<[number, number][]>(
+      'color.hue.forbiddenHueRanges',
+      baseForbidden,
+    )
+    const { value: allowedRaw } = useGene<[number, number][]>(
+      'color.hue.allowedHueRanges',
+      baseAllowed,
+    )
+
+    // Convertir tuplas a HueRange[] para el rendering
+    const forbidden = useMemo(() => tuplesToRanges(forbiddenRaw), [forbiddenRaw])
+    const allowed = useMemo(() => tuplesToRanges(allowedRaw), [allowedRaw])
 
     const cx = size / 2
     const cy = size / 2
@@ -143,10 +167,11 @@ export const ChromaticWheel: React.FC<ChromaticWheelProps> = memo(
             end: ranges[dragState.index].start,
           }
         }
+        // Escribir de vuelta como tuplas [number, number][]
         const path = dragState.type === 'forbidden'
           ? 'color.hue.forbiddenHueRanges'
           : 'color.hue.allowedHueRanges'
-        setGene(path, ranges)
+        setGene(path, rangesToTuples(ranges))
       },
       [dragState, forbidden, allowed, cx, cy, setGene],
     )

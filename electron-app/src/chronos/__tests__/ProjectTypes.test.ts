@@ -82,7 +82,11 @@ describe('ProjectTypes — WAVE 7100 FASE 2 V3', () => {
       const file = createEmptyLuxFileV3('Test Show')
       expect(file.$schema).toBe(LUX_V3_SCHEMA)
       expect(file.meta.name).toBe('Test Show')
-      expect(file.tracks).toHaveLength(0)
+      // Factory scaffolds a locked GLOBAL track so the timeline always has a
+      // valid routing target. Tests previously asserted length 0, which was
+      // stale after the GLOBAL scaffold was added.
+      expect(file.tracks).toHaveLength(1)
+      expect(file.tracks[0].targetZone).toBe('global')
       expect(file.audio).toBeNull()
       // Checksum is computed at serialization time, not at factory creation
       expect(file.checksum).toBe('')
@@ -91,7 +95,9 @@ describe('ProjectTypes — WAVE 7100 FASE 2 V3', () => {
     test('createEmptyChronosProjectV3 produces valid ChronosProjectV3', () => {
       const project = createEmptyChronosProjectV3('Runtime Test')
       expect(project.meta.name).toBe('Runtime Test')
-      expect(project.tracks).toHaveLength(0)
+      // Inherits the GLOBAL scaffold track from createEmptyLuxFileV3.
+      expect(project.tracks).toHaveLength(1)
+      expect(project.tracks[0].targetZone).toBe('global')
       expect(project.runtimeBpm).toBe(LUX_DEFAULT_BPM)
       expect(project.manualBpmOverride).toBeNull()
       expect(project.selectedClipIds).toBeInstanceOf(Set)

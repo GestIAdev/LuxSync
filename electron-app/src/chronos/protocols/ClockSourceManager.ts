@@ -111,11 +111,14 @@ export class ClockSourceManager {
    * 'internal' means ChronosEngine uses its own AudioContext clock.
    */
   async setSource(type: ClockSourceType): Promise<void> {
-    // Stop current external source
+    // P1.7 FIX: Stop current external source and AWAIT its cleanup before
+    // switching. Previously, stop() was not awaited, causing dual-clock
+    // emissions and interleaved PLL timestamps during rapid source switching.
     if (this.activeSourceType !== 'internal') {
       const current = this.sources.get(this.activeSourceType)
       if (current) {
-        current.stop()
+        // stop() may be sync or async — await it either way
+        await current.stop()
         this.cleanupSource(this.activeSourceType)
       }
     }
@@ -378,6 +381,12 @@ export class ClockSourceManager {
    * This ensures ChronosEngine receives a continuous, jitter-free time signal.
    */
   private applyPLL(rawTime: TimeMs): TimeMs {
+    // P1.4 FIX: Reject NaN/Infinity at the PLL input to prevent propagation
+    // to ChronosEngine and the stage simulator. Return last known good value.
+    if (!Number.isFinite(rawTime)) {
+      return this.pllSmoothedTime ?? rawTime
+    }
+
     const now = performance.now()
 
     if (this.pllLastRawTime === null || this.pllSmoothedTime === null) {
@@ -393,7 +402,10 @@ export class ClockSourceManager {
     this.pllLastRawTime = rawTime
 
     // Clamp the jump to ±PLL_MAX_JUMP_MS to suppress jitter spikes
-    const clampedDelta = Math.max(-this.PLL_MAX_JUMP_MS, Math.min(this.PLL_MAX_JUMP_MS, rawDelta))
+    // P1.4 FIX: If rawDelta is NaN (shouldn't happen after guard above, but
+    // defensive), treat as zero delta
+    const safeDelta = Number.isFinite(rawDelta) ? rawDelta : 0
+    const clampedDelta = Math.max(-this.PLL_MAX_JUMP_MS, Math.min(this.PLL_MAX_JUMP_MS, safeDelta))
 
     // Extrapolate the smoothed time forward by elapsed wall-clock time
     const wallElapsed = now - this.pllLastUpdateTime

@@ -11,12 +11,14 @@
 
 import React, { memo, useMemo, useState, useCallback } from 'react'
 import { Zap, Activity, Waves, Scissors, Gauge, Bolt, Flame, Timer, Droplets, Route, Copy } from 'lucide-react'
-import { GenePanel } from '../kit'
+import { GenePanel, GeneSegmented, GeneToggle } from '../kit'
 import { GeneRenderer } from '../GeneRenderer'
+import { PanelGeneList } from '../PanelGeneList'
 import { EnvelopeBay } from '../panels/EnvelopeBay'
 import { getGenesByPanel, getPanelsByTab, PANEL_META } from '../geneRegistry'
 import { ENVELOPE_SLOTS } from '../../../types/CustomVibe'
-import { useVibeLabStore, useInterlock } from '../../../stores/vibeLabStore'
+import { useVibeLabStore, useInterlock, useGene } from '../../../stores/vibeLabStore'
+import { PROFILE_REGISTRY } from '../../../hal/physics/profiles/index'
 import type { InterlockMode } from '../../../stores/vibeLabStore'
 
 interface BenchProps {
@@ -38,11 +40,64 @@ const PANEL_ICONS: Record<string, React.ReactNode> = {
   overrides41: <Copy size={14} />,
 }
 
+// ── ROUTING BAY: layout41Strategy (GeneSegmented) + isPureAmbient (GeneToggle) ─
+const LAYOUT41_OPTIONS = [
+  { label: 'Default', value: 'default' as const },
+  { label: 'Strict Split', value: 'strict-split' as const },
+]
+
+const RoutingBayPanel: React.FC<{ baseDNA: string }> = memo(({ baseDNA }) => {
+  const setGene = useVibeLabStore((s) => s.setGene)
+  const revertGene = useVibeLabStore((s) => s.revertGene)
+
+  // Resolve base values from the active profile
+  const profile = PROFILE_REGISTRY[baseDNA as keyof typeof PROFILE_REGISTRY]
+  const baseLayout = (profile?.layout41Strategy ?? 'default') as 'default' | 'strict-split'
+  const basePureAmbient = Boolean(profile?.isPureAmbient ?? false)
+
+  // layout41Strategy is routed via VibeFusionResolver to overrides41.layout41Strategy
+  // but the UI gene path is physics.routing.layout41Strategy
+  const { value: layoutVal, isMutated: layoutMut } = useGene<'default' | 'strict-split'>(
+    'physics.routing.layout41Strategy',
+    baseLayout,
+  )
+  const { value: pureAmbientVal, isMutated: pureAmbientMut } = useGene<boolean>(
+    'physics.routing.isPureAmbient',
+    basePureAmbient,
+  )
+
+  return (
+    <>
+      <GeneSegmented
+        path="physics.routing.layout41Strategy"
+        label="Layout 4.1 Strategy"
+        baseValue={baseLayout}
+        value={layoutVal}
+        options={LAYOUT41_OPTIONS}
+        isMutated={layoutMut}
+        tier="safe"
+        onChange={(v) => setGene('physics.routing.layout41Strategy', v)}
+        onRevert={() => revertGene('physics.routing.layout41Strategy')}
+      />
+      <GeneToggle
+        path="physics.routing.isPureAmbient"
+        label="Pure Ambient (RAW)"
+        baseValue={basePureAmbient}
+        value={pureAmbientVal}
+        isMutated={pureAmbientMut}
+        tier="raw"
+        onChange={(v) => setGene('physics.routing.isPureAmbient', v)}
+        onRevert={() => revertGene('physics.routing.isPureAmbient')}
+      />
+    </>
+  )
+})
+RoutingBayPanel.displayName = 'RoutingBayPanel'
+
 export const PhysicsBench: React.FC<BenchProps> = memo(({ interlock }) => {
   const draft = useVibeLabStore((s) => s.draft)
   const expandedPanels = useVibeLabStore((s) => s.expandedPanels)
   const togglePanel = useVibeLabStore((s) => s.togglePanel)
-  const revertPanel = useVibeLabStore((s) => s.revertPanel)
 
   const baseDNA = draft?.baseDNA ?? 'techno-club'
 
@@ -80,13 +135,6 @@ export const PhysicsBench: React.FC<BenchProps> = memo(({ interlock }) => {
         const isRawOnly = genes.length > 0 && genes.every((g) => g.tier === 'raw')
         const expanded = isExpanded(panelId)
 
-        // Count mutations in this panel (simplified — counts genes that are in draft)
-        const mutatedCount = genes.filter((g) => {
-          if (!draft) return false
-          // Check if path exists in draft override
-          return draft && Object.keys(draft).length > 0
-        }).length
-
         return (
           <GenePanel
             key={panelId}
@@ -112,20 +160,12 @@ export const PhysicsBench: React.FC<BenchProps> = memo(({ interlock }) => {
                   />
                 ))}
               </div>
+            ) : panelId === 'routing' ? (
+              <RoutingBayPanel baseDNA={baseDNA} />
             ) : genes.length === 0 ? (
-              <p className="bench-panel-empty">
-                {panelId === 'routing'
-                  ? 'Routing toggles — custom component'
-                  : 'No genes in this panel for current mode'}
-              </p>
+              <p className="bench-panel-empty">No genes in this panel for current mode</p>
             ) : (
-              genes.map((gene) => (
-                <GeneRenderer
-                  key={gene.path}
-                  descriptor={gene}
-                  baseDNA={baseDNA}
-                />
-              ))
+              <PanelGeneList genes={genes} baseDNA={baseDNA} />
             )}
           </GenePanel>
         )

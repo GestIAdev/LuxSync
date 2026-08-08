@@ -306,6 +306,11 @@ declare global {
     // ⚡ WAVE 2510: HOT-FRAME CHANNEL - 44Hz lightweight fixture data
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onHotFrame: (callback: (data: any) => void) => () => void
+
+    // 🧬 FASE 1B: VIBE LAB TELEMETRY — Float32Array(27) from the engine tick
+    subscribeTelemetry: () => void
+    unsubscribeTelemetry: () => void
+    onTelemetry: (callback: (buffer: Float32Array) => void) => () => void
     
     // � WAVE 25.7: THE CHRONICLER - Log events via dedicated channel
     onLog: (callback: (logEntry: { id: string; timestamp: number; category: string; message: string; data?: any }) => void) => () => void
@@ -333,9 +338,48 @@ declare global {
     
     // 🎛️ WAVE 62: Vibe Selector
     setVibe: (vibeId: string) => Promise<{ success: boolean; vibeId?: string; error?: string }>
+    /**
+     * 🧬 PROTEUS GRAFT: Send a FusedVibeBundle to the backend so it can graft
+     * the custom vibe into the MAIN PROCESS's registries. Must be called BEFORE
+     * setVibe() for any custom:... key, otherwise VibeManager 404s.
+     */
+    graftVibe: (bundle: unknown) => Promise<{ success: boolean; error?: string }>
     getVibe: () => Promise<{ success: boolean; vibeId: string; error?: string }>
     onVibeChange: (callback: (data: { vibeId: string; timestamp: number }) => void) => () => void
-    
+
+    // 🧬 FASE 4.3: VIBE LAB — .luxvibe persistence (The Vault)
+    vibeLab: {
+      /** Lista todos los .luxvibe del vault (userData/vibes/). */
+      list: () => Promise<Array<{
+        key: string
+        meta: {
+          key: string
+          name: string
+          description: string
+          icon: string
+          author: string
+          createdAt: number
+          updatedAt: number
+          tags: string[]
+          accentHex: string
+        }
+        filename: string
+        fullPath: string
+        sizeBytes: number
+        modifiedAt: string
+      }>>
+      /** Lee un .luxvibe por key. */
+      read: (key: string) => Promise<{ ok: boolean; data?: unknown; error?: string }>
+      /** Guarda (mint) un CustomVibeOverride a disco (atomic write). */
+      save: (data: unknown) => Promise<{ ok: boolean; path?: string; error?: string }>
+      /** Elimina un .luxvibe por key. */
+      delete: (key: string) => Promise<{ ok: boolean; error?: string }>
+      /** Exporta un .luxvibe a una ruta elegida (diálogo save-as). */
+      export: (data: unknown) => Promise<{ ok: boolean; path?: string; error?: string }>
+      /** Importa un .luxvibe externo al vault (diálogo open). */
+      import: () => Promise<{ ok: boolean; data?: unknown; error?: string }>
+    }
+
     // � WAVE 4860 + 4864: THEIA ENGINE — SAB one-shot bridge + Output Window
     theia: {
       /** Returns the SharedArrayBuffer of the FrameContextRing from the main process. Called once. */

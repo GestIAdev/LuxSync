@@ -16,7 +16,7 @@
  * @version WAVE 2006
  */
 
-import React, { useState, useCallback, useRef, useMemo } from 'react'
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import { 
   type TimelineClip, 
   type VibeClip, 
@@ -111,28 +111,51 @@ export function useTimelineClips(options: UseTimelineClipsOptions): UseTimelineC
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [snapEnabled, setSnapEnabled] = useState(options.snapEnabled ?? true)
   const [snapPosition, setSnapPosition] = useState<number | null>(null)
-  
+
+  // P2.10 FIX: Ref to track the snap indicator timeout so we can clear it
+  // on rapid scrubbing (prevents zombie timeouts stacking up and causing
+  // visual flicker / unnecessary state updates).
+  const snapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // P2.10 FIX: Clear the snap timeout on unmount to prevent zombie timer
+  useEffect(() => {
+    return () => {
+      if (snapTimeoutRef.current) {
+        clearTimeout(snapTimeoutRef.current)
+        snapTimeoutRef.current = null
+      }
+    }
+  }, [])
+
   // Compute beat grid
   const beatGrid = useMemo(() => {
     return calculateBeatGrid(bpm, durationMs)
   }, [bpm, durationMs])
-  
+
   // ═══════════════════════════════════════════════════════════════════════
   // SNAPPING
   // ═══════════════════════════════════════════════════════════════════════
-  
+
   const snapTime = useCallback((timeMs: number): [number, boolean] => {
     if (!snapEnabled) {
       setSnapPosition(null)
       return [timeMs, false]
     }
-    
+
     const [snapped, didSnap, snapBeat] = snapToGrid(timeMs, beatGrid, snapThresholdMs)
-    
+
     if (didSnap && snapBeat !== null) {
       setSnapPosition(snapBeat)
-      // Clear snap indicator after 300ms
-      setTimeout(() => setSnapPosition(null), 300)
+      // P2.10 FIX: Clear any existing timeout before setting a new one.
+      // On rapid scrubbing, this prevents dozens of zombie setTimeout calls
+      // stacking up and fighting to clear the snap indicator.
+      if (snapTimeoutRef.current) {
+        clearTimeout(snapTimeoutRef.current)
+      }
+      snapTimeoutRef.current = setTimeout(() => {
+        setSnapPosition(null)
+        snapTimeoutRef.current = null
+      }, 300)
     } else {
       setSnapPosition(null)
     }

@@ -8,7 +8,7 @@
  * visual cohesivo con una curva ADSR dibujada en canvas.
  *
  * @module components/vibeLab/panels/EnvelopeBay
- * @version FASE 3.2
+ * @version FASE 4.3 — THE DEEP DIVE
  */
 
 import React, { memo, useMemo, useRef, useEffect } from 'react'
@@ -16,8 +16,7 @@ import { ChevronDown } from 'lucide-react'
 import { GeneSlider } from '../kit'
 import { ENVELOPE_GENE_RANGES, isInDangerZone } from '../../../engine/vibe/custom/GENE_RANGES'
 import { useVibeLabStore, useGene } from '../../../stores/vibeLabStore'
-import { getByPath } from '../../../engine/vibe/custom/pathUtils'
-import { PROFILE_REGISTRY } from '../../../hal/physics/profiles/index'
+import { resolveBaseValueNumber } from '../resolveBaseValue'
 import type { BaseDNA } from '../../../types/CustomVibe'
 import './envelope-bay.css'
 
@@ -42,12 +41,19 @@ const AdsrCanvas: React.FC<{ slot: string; baseDNA: string; size?: number }> = (
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  // Suscribirse a los genes clave para la curva
-  const { value: boost } = useGene<number>(`physics.envelopes.${slot}.boost`, 1)
-  const { value: decayBase } = useGene<number>(`physics.envelopes.${slot}.decayBase`, 0.5)
-  const { value: decayRange } = useGene<number>(`physics.envelopes.${slot}.decayRange`, 0.3)
-  const { value: gateOn } = useGene<number>(`physics.envelopes.${slot}.gateOn`, 0.3)
-  const { value: maxIntensity } = useGene<number>(`physics.envelopes.${slot}.maxIntensity`, 0.8)
+  // Resolve base values from the canonical profile (not hardcoded defaults)
+  const baseBoost       = useMemo(() => resolveBaseValueNumber(`physics.envelopes.${slot}.boost`, baseDNA), [slot, baseDNA])
+  const baseDecayBase   = useMemo(() => resolveBaseValueNumber(`physics.envelopes.${slot}.decayBase`, baseDNA), [slot, baseDNA])
+  const baseDecayRange  = useMemo(() => resolveBaseValueNumber(`physics.envelopes.${slot}.decayRange`, baseDNA), [slot, baseDNA])
+  const baseGateOn      = useMemo(() => resolveBaseValueNumber(`physics.envelopes.${slot}.gateOn`, baseDNA), [slot, baseDNA])
+  const baseMaxIntensity= useMemo(() => resolveBaseValueNumber(`physics.envelopes.${slot}.maxIntensity`, baseDNA), [slot, baseDNA])
+
+  // Subscribe to each gene via useGene (reflects mutations)
+  const { value: boost } = useGene<number>(`physics.envelopes.${slot}.boost`, baseBoost)
+  const { value: decayBase } = useGene<number>(`physics.envelopes.${slot}.decayBase`, baseDecayBase)
+  const { value: decayRange } = useGene<number>(`physics.envelopes.${slot}.decayRange`, baseDecayRange)
+  const { value: gateOn } = useGene<number>(`physics.envelopes.${slot}.gateOn`, baseGateOn)
+  const { value: maxIntensity } = useGene<number>(`physics.envelopes.${slot}.maxIntensity`, baseMaxIntensity)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -127,24 +133,67 @@ const AdsrCanvas: React.FC<{ slot: string; baseDNA: string; size?: number }> = (
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// ENVELOPE GENE SLIDER — one gene, subscribed to the store via useGene
+// ═══════════════════════════════════════════════════════════════════════════
+// Must be a separate component so useGene (a hook) is called once per render,
+// not inside a loop (which would violate the Rules of Hooks).
+
+interface EnvelopeGeneSliderProps {
+  path: string
+  geneName: string
+  baseDNA: string
+  range: {
+    min: number
+    max: number
+    step: number
+    unit?: string
+    tier: 'safe' | 'raw'
+    danger?: readonly [number, number]
+  }
+}
+
+const EnvelopeGeneSlider: React.FC<EnvelopeGeneSliderProps> = memo(
+  ({ path, geneName, baseDNA, range }) => {
+    const baseVal = useMemo(
+      () => resolveBaseValueNumber(path, baseDNA),
+      [path, baseDNA],
+    )
+    const { value, isMutated } = useGene<number>(path, baseVal)
+    const setGene = useVibeLabStore((s) => s.setGene)
+    const revertGene = useVibeLabStore((s) => s.revertGene)
+
+    const numValue = typeof value === 'number' ? value : baseVal
+
+    return (
+      <GeneSlider
+        path={path}
+        label={geneName.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase())}
+        baseValue={baseVal}
+        value={numValue}
+        min={range.min}
+        max={range.max}
+        step={range.step}
+        unit={range.unit}
+        danger={range.danger as [number, number] | undefined}
+        isMutated={isMutated}
+        isInDanger={isInDangerZone(path, numValue)}
+        tier={range.tier}
+        onChange={(v) => setGene(path, v)}
+        onRevert={() => revertGene(path)}
+      />
+    )
+  },
+)
+EnvelopeGeneSlider.displayName = 'EnvelopeGeneSlider'
+
+// ═══════════════════════════════════════════════════════════════════════════
 // ENVELOPE BAY
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const EnvelopeBay: React.FC<EnvelopeBayProps> = memo(
   ({ slot, slotLabel, accent = '#00e5ff', isExpanded = false, onToggle }) => {
     const draft = useVibeLabStore((s) => s.draft)
-    const setGene = useVibeLabStore((s) => s.setGene)
-    const revertGene = useVibeLabStore((s) => s.revertGene)
-
     const baseDNA = (draft?.baseDNA ?? 'techno-club') as BaseDNA
-
-    // Resolver valores base desde el profile
-    const baseValues = useMemo(() => {
-      const profile = PROFILE_REGISTRY[baseDNA as keyof typeof PROFILE_REGISTRY]
-      if (!profile) return {} as Record<string, number>
-      const envs = getByPath(profile as unknown as Record<string, unknown>, `envelopes.${slot}`) as Record<string, number>
-      return envs ?? {}
-    }, [baseDNA, slot])
 
     // Los 17 genes del envelope
     const genes = useMemo(() => Object.entries(ENVELOPE_GENE_RANGES), [])
@@ -163,24 +212,13 @@ export const EnvelopeBay: React.FC<EnvelopeBayProps> = memo(
           <div className="envelope-bay-genes">
             {genes.map(([geneName, range]) => {
               const path = `physics.envelopes.${slot}.${geneName}`
-              const baseVal = baseValues[geneName] ?? range.min
               return (
-                <GeneSlider
+                <EnvelopeGeneSlider
                   key={path}
                   path={path}
-                  label={geneName.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase())}
-                  baseValue={baseVal}
-                  value={baseVal}
-                  min={range.min}
-                  max={range.max}
-                  step={range.step}
-                  unit={range.unit}
-                  danger={range.danger as [number, number] | undefined}
-                  isMutated={false}
-                  isInDanger={isInDangerZone(path, baseVal)}
-                  tier={range.tier}
-                  onChange={(v) => setGene(path, v)}
-                  onRevert={() => revertGene(path)}
+                  geneName={geneName}
+                  baseDNA={baseDNA}
+                  range={range}
                 />
               )
             })}

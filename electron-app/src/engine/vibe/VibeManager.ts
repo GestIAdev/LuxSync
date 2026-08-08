@@ -34,6 +34,7 @@ import {
 } from './profiles/index';
 
 import { getColorConstitution as getConstitution } from '../color/colorConstitutions';
+import { isGrafted } from '../vibe/custom/VibeGraftRegistry';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MOOD PROXIMITY MAP
@@ -121,16 +122,26 @@ export class VibeManager {
    */
   public setActiveVibe(vibeId: VibeId | string, frameCount?: number): boolean {
     // 🔄 WAVE 2019.10: Normalize ID (handles legacy aliases like 'techno' → 'techno-club')
-    const normalizedId = normalizeVibeId(vibeId)
+    let normalizedId = normalizeVibeId(vibeId)
     if (!normalizedId) {
-      // 🚨 WAVE 2040.3: EL CHIVATO - Enhanced 404 warning
-      console.warn(
-        `[VibeManager] ⚠️ ERROR 404: Vibe '${vibeId}' no existe en registry.\n` +
-        `   ├─ IDs válidos: fiesta-latina, techno-club, chill-lounge, pop-rock, idle\n` +
-        `   ├─ Aliases legacy: techno → techno-club, chill → chill-lounge, rock → pop-rock\n` +
-        `   └─ Manteniendo el Vibe actual: '${this.currentVibe.id}'`
-      );
-      return false;
+      // 🧬 PROTEUS GRAFT: Defense-in-depth — if the ID is a custom:... key that
+      // has been grafted into the backend's VIBE_REGISTRY by the IPC handler,
+      // accept it even if normalizeVibeId didn't find it (race condition: the
+      // graft IPC may not have completed yet, or VIBE_REGISTRY may have been
+      // mutated but normalizeVibeId's `in` check uses a stale reference).
+      if (typeof vibeId === 'string' && vibeId.startsWith('custom:') && isGrafted(vibeId)) {
+        normalizedId = vibeId as VibeId
+      } else {
+        // 🚨 WAVE 2040.3: EL CHIVATO - Enhanced 404 warning
+        console.warn(
+          `[VibeManager] ⚠️ ERROR 404: Vibe '${vibeId}' no existe en registry.\n` +
+          `   ├─ IDs válidos: fiesta-latina, techno-club, chill-lounge, pop-rock, idle\n` +
+          `   ├─ Aliases legacy: techno → techno-club, chill → chill-lounge, rock → pop-rock\n` +
+          `   ├─ Custom vibes: must be grafted via lux:graft-vibe before activation\n` +
+          `   └─ Manteniendo el Vibe actual: '${this.currentVibe.id}'`
+        );
+        return false;
+      }
     }
 
     const newVibe = getVibePreset(normalizedId);
@@ -165,9 +176,14 @@ export class VibeManager {
    */
   public setActiveVibeImmediate(vibeId: VibeId | string): boolean {
     // 🔄 WAVE 2019.10: Normalize ID
-    const normalizedId = normalizeVibeId(vibeId)
+    let normalizedId = normalizeVibeId(vibeId)
     if (!normalizedId) {
-      return false;
+      // 🧬 PROTEUS GRAFT: same defense as setActiveVibe
+      if (typeof vibeId === 'string' && vibeId.startsWith('custom:') && isGrafted(vibeId)) {
+        normalizedId = vibeId as VibeId
+      } else {
+        return false;
+      }
     }
 
     const newVibe = getVibePreset(normalizedId);

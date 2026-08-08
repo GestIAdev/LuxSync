@@ -23,6 +23,7 @@ import {
   type LuxMixBus,
   type LuxClipType,
 } from './LuxFileV3'
+import { looksLikeV2 } from './LuxFileV2Migrator'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // VALIDATION RESULT
@@ -126,6 +127,44 @@ function validateClip(
       if (!isNonEmptyString(heph.mixBus as string)) {
         warnings.push(`${path}: hephClip missing mixBus routing`)
       }
+      // P2.4 FIX: Deep-validate hephClip internal structures.
+      // Each track must have a curve with a non-empty keyframes array.
+      if (Array.isArray(heph.tracks)) {
+        heph.tracks.forEach((track: unknown, ti: number) => {
+          const tpath = `${path}.hephClip.tracks[${ti}]`
+          if (!isObject(track)) {
+            errors.push(`${tpath}: track is not an object`)
+            return
+          }
+          if (!isNonEmptyString(track.paramId as string)) {
+            warnings.push(`${tpath}: missing paramId`)
+          }
+          if (!isObject(track.curve)) {
+            errors.push(`${tpath}: missing curve object`)
+            return
+          }
+          const curve = track.curve as Record<string, unknown>
+          // P2.4 FIX: keyframes array must exist and be non-empty
+          if (!Array.isArray(curve.keyframes) || curve.keyframes.length === 0) {
+            errors.push(`${tpath}: curve.keyframes is empty or missing (no automation points)`)
+          } else {
+            // Validate each keyframe has required fields
+            curve.keyframes.forEach((kf: unknown, ki: number) => {
+              const kfPath = `${tpath}.curve.keyframes[${ki}]`
+              if (!isObject(kf)) {
+                errors.push(`${kfPath}: keyframe is not an object`)
+                return
+              }
+              if (!isFiniteNumber(kf.timeMs)) {
+                errors.push(`${kfPath}: missing/invalid timeMs`)
+              }
+              if (kf.value === undefined || kf.value === null) {
+                errors.push(`${kfPath}: missing value`)
+              }
+            })
+          }
+        })
+      }
     }
     if (clip.mixBus !== undefined && !VALID_MIX_BUSES.has(clip.mixBus as string)) {
       errors.push(`${path}: invalid mixBus '${String(clip.mixBus)}'`)
@@ -135,6 +174,14 @@ function validateClip(
   if (clip.type === 'vibe') {
     if (!isNonEmptyString(clip.vibeType)) {
       warnings.push(`${path}: vibe clip missing vibeType`)
+    }
+    // P2.5 FIX: Intensity bounds check — must be 0 <= value <= 1
+    if (clip.intensity !== undefined) {
+      if (!isFiniteNumber(clip.intensity)) {
+        errors.push(`${path}: intensity is not a finite number (got '${String(clip.intensity)}')`)
+      } else if (clip.intensity < 0 || clip.intensity > 1) {
+        errors.push(`${path}: intensity out of bounds [0,1] (got ${clip.intensity})`)
+      }
     }
   }
 }
@@ -194,12 +241,24 @@ export function validateLuxFileV3(data: unknown): LuxValidationResult {
     return { valid: false, errors: ['Payload is not an object'], warnings }
   }
 
-  // Schema discriminator — HARD GATE.
+  // Schema discriminator — HARD GATE for unknown formats.
+  // LAZARUS B-2 FIX: legacy V2 files (no $schema, meta.version starts with "2.")
+  //   are routed through migrateV2toV3 by the deserializer BEFORE this validator
+  //   runs, so by the time we get here a missing $schema means the file is
+  //   neither V3 nor a recognizable V2 — reject it.
   if (data.$schema !== LUX_V3_SCHEMA) {
-    errors.push(
-      `Invalid $schema: expected '${LUX_V3_SCHEMA}', got '${String(data.$schema)}'`
-    )
-    // Without the right schema, no point continuing deep validation.
+    // Defensive: if a V2 file slipped past the deserializer's migration hook,
+    // surface a clear error rather than a cryptic deep-validation cascade.
+    if (looksLikeV2(data)) {
+      errors.push(
+        'Legacy V2 file was not migrated before validation (caller bug). ' +
+        'Run migrateV2toV3() before validateLuxFileV3().'
+      )
+    } else {
+      errors.push(
+        `Invalid $schema: expected '${LUX_V3_SCHEMA}', got '${String(data.$schema)}'`
+      )
+    }
     return { valid: false, errors, warnings }
   }
 
@@ -232,6 +291,58 @@ export function validateLuxFileV3(data: unknown): LuxValidationResult {
     errors.push('tracks is not an array')
   } else {
     data.tracks.forEach((t, i) => validateTrack(t, i, errors, warnings))
+
+    // P2.2 + P2.3 FIX: Cross-clip validation — ID uniqueness and temporal overlap.
+    // This pass runs AFTER per-clip validation so we only check structurally valid clips.
+    //
+    // LAZARUS B-1 FIX: The overlap check is now partitioned by clip.type.
+    // A `vibe` clip and an `fx` clip ARE allowed to overlap on the same track —
+    // that is the canonical usage pattern (an FX accent layered over a sustained
+    // base vibe). Only two clips of the SAME type overlapping on the same track
+    // is a structural error. The previous type-blind check rejected the vendor's
+    // own fixture (Vibe 0–10000 + FX 4000–6000) as corrupt, breaking save/load.
+    const seenClipIds = new Set<string>()
+
+    for (let ti = 0; ti < data.tracks.length; ti++) {
+      const track = data.tracks[ti] as Record<string, unknown>
+      if (!isObject(track) || !Array.isArray(track.clips)) continue
+
+      const trackId = (track.id as string) ?? `track-${ti}`
+      // Per-type range buckets so cross-type layering is permitted.
+      const rangesByType = new Map<string, Array<[number, number]>>()
+
+      for (let ci = 0; ci < track.clips.length; ci++) {
+        const clip = track.clips[ci] as Record<string, unknown>
+        if (!isObject(clip)) continue
+
+        // P2.2: Check clip ID uniqueness
+        if (isNonEmptyString(clip.id)) {
+          if (seenClipIds.has(clip.id)) {
+            errors.push(`Duplicate clip id '${clip.id}' (tracks[${ti}].clips[${ci}])`)
+          } else {
+            seenClipIds.add(clip.id)
+          }
+        }
+
+        // P2.3: Check temporal overlap on the same track — SAME TYPE ONLY.
+        if (isFiniteNumber(clip.startMs) && isFiniteNumber(clip.endMs) && clip.startMs < clip.endMs) {
+          const clipType = typeof clip.type === 'string' ? clip.type : 'unknown'
+          const range: [number, number] = [clip.startMs as number, clip.endMs as number]
+          const ranges = rangesByType.get(clipType) ?? []
+          for (const [prevStart, prevEnd] of ranges) {
+            if (range[0] < prevEnd && prevStart < range[1]) {
+              errors.push(
+                `Temporal overlap on track '${trackId}': ${clipType} clip '${String(clip.id)}' ` +
+                `[${range[0]}, ${range[1]}) overlaps [${prevStart}, ${prevEnd})`
+              )
+              break // Report first overlap only (avoid error spam)
+            }
+          }
+          ranges.push(range)
+          rangesByType.set(clipType, ranges)
+        }
+      }
+    }
   }
 
   // Markers (nullable array)
@@ -260,6 +371,23 @@ export function validateLuxFileV3(data: unknown): LuxValidationResult {
         if (!isFiniteNumber(a.heatmap.resolutionMs)) {
           warnings.push('analysis.heatmap missing resolutionMs')
         }
+        // P2.13 FIX: Cross-check that the 7 tactical FFT bands match the
+        // energy array length. Mismatched lengths cause TitanEngine index
+        // errors and visual artifacts.
+        const energyLen = Array.isArray(a.heatmap.energy) ? a.heatmap.energy.length : 0
+        const TACTICAL_BANDS = [
+          'subBass', 'bassReal', 'lowMid', 'mid', 'highMid', 'treble', 'ultraAir',
+        ] as const
+        if (energyLen > 0) {
+          for (const band of TACTICAL_BANDS) {
+            const bandArr = a.heatmap[band]
+            if (Array.isArray(bandArr) && bandArr.length !== energyLen) {
+              errors.push(
+                `analysis.heatmap.${band} length (${bandArr.length}) != energy length (${energyLen})`
+              )
+            }
+          }
+        }
       }
       if (!isObject(a.waveform)) {
         warnings.push('analysis.waveform is not an object (UI waveform may fail)')
@@ -271,9 +399,44 @@ export function validateLuxFileV3(data: unknown): LuxValidationResult {
     }
   }
 
-  // Checksum present
+  // HEIMDALL 7.3: Epilepsy Safety validation.
+  // The safety object is nullable (legacy/migrated files may not have one),
+  // but IF present, its fields must be validated to prevent photosensitive
+  // liabilities. maxStrobeFreqHz must be in [1, 30] Hz — values outside this
+  // range are either meaningless (0 Hz = no strobe) or dangerous (>30 Hz
+  // approaches the seizure-inducing threshold). containsRapidFlash must be a
+  // boolean so the UI can display the appropriate warning badge.
+  if (data.safety !== null && data.safety !== undefined) {
+    if (!isObject(data.safety)) {
+      warnings.push('safety is not an object (will be ignored)')
+    } else {
+      const s = data.safety
+      if (!isFiniteNumber(s.maxStrobeFreqHz)) {
+        warnings.push('safety.maxStrobeFreqHz is not a finite number')
+      } else if (s.maxStrobeFreqHz < 1 || s.maxStrobeFreqHz > 30) {
+        errors.push(
+          `safety.maxStrobeFreqHz out of range: ${s.maxStrobeFreqHz} Hz ` +
+          `(must be 1–30 Hz per photosensitive safety limits)`
+        )
+      }
+      if (typeof s.containsRapidFlash !== 'boolean') {
+        warnings.push('safety.containsRapidFlash is not a boolean')
+      }
+      if (typeof s.communityTrusted !== 'boolean') {
+        warnings.push('safety.communityTrusted is not a boolean')
+      }
+    }
+  }
+
+  // LAZARUS B-4 FIX: Inverted integrity threat model.
+  // A MISSING checksum is a WARNING (allow load) — this permits opening legacy
+  //   or migrated files that have not yet been re-saved with a checksum.
+  // A WRONG checksum is a HARD ERROR and must be enforced by the loader
+  //   (see ChronosStore.load) — that is the check that actually detects corruption.
+  // The checksum is an error-detection code, NOT a cryptographic signature; the
+  //   word "corruption" is used deliberately, never "tamper".
   if (!isNonEmptyString(data.checksum)) {
-    warnings.push('Missing checksum (integrity cannot be verified)')
+    warnings.push('Missing checksum — integrity cannot be verified (file may be incomplete or migrated)')
   }
 
   return { valid: errors.length === 0, errors, warnings }

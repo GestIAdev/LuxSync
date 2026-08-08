@@ -16,6 +16,7 @@ import React from 'react'
 import { Zap, Flame, Mic2, Sofa, Loader2 } from 'lucide-react'
 import { useSeleneVibe, VibeId, VibeInfo } from '../../../../hooks/useSeleneVibe'
 import { useSystemPower } from '../../../../hooks/useSystemPower'
+import { useNavigationStore } from '../../../../stores/navigationStore'
 
 // ============================================================================
 // ICON MAP
@@ -188,17 +189,23 @@ const VibeButton: React.FC<VibeButtonProps> = ({
 // ============================================================================
 
 export const VibeSelector: React.FC = () => {
-  const { 
-    activeVibe, 
-    isTransitioning, 
-    setVibe, 
+  const {
+    activeVibe,
+    isTransitioning,
+    setVibe,
     isGhostMode,
-    allVibes 
+    allVibes
   } = useSeleneVibe()
-  
+
   // 🔌 WAVE 63.9: Power state interlock
   const { isOnline } = useSystemPower()
-  
+
+  // 🧬 STATE HIJACK GUARD: Si el Vibe Lab está montado, el Command Deck no
+  // debe cambiar el vibe — el Vibe Lab tiene control exclusivo del motor.
+  // Keep it stupid simple: just check the active tab.
+  const activeTab = useNavigationStore((s) => s.activeTab)
+  const isVibeLabHijacking = activeTab === 'vibe-lab'
+
   // Hidden in Ghost Mode (not in Selene mode)
   if (isGhostMode) {
     return null
@@ -208,17 +215,20 @@ export const VibeSelector: React.FC = () => {
     marginTop: 'auto',
     paddingTop: '12px',
     borderTop: '1px solid rgba(255, 255, 255, 0.05)',
-    opacity: isOnline ? 1 : 0.5,
+    opacity: isOnline ? (isVibeLabHijacking ? 0.4 : 1) : 0.5,
     transition: 'opacity 300ms ease',
   }
-  
+
   const rowStyle: React.CSSProperties = {
     display: 'flex',
     gap: '8px',
   }
-  
+
   return (
-    <div style={containerStyle}>
+    <div
+      style={containerStyle}
+      title={isVibeLabHijacking ? 'Vibe Lab has engine control (live preview ON)' : undefined}
+    >
       {/* Dock Row */}
       <div style={rowStyle}>
         {allVibes.map((vibe: VibeInfo) => (
@@ -227,8 +237,11 @@ export const VibeSelector: React.FC = () => {
             vibe={vibe}
             isActive={activeVibe === vibe.id}
             isTransitioning={isTransitioning}
-            isSystemOn={isOnline}
-            onClick={() => setVibe(vibe.id)}
+            isSystemOn={isOnline && !isVibeLabHijacking}
+            onClick={() => {
+              if (isVibeLabHijacking) return
+              setVibe(vibe.id)
+            }}
           />
         ))}
       </div>

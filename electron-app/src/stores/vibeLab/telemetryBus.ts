@@ -105,6 +105,25 @@ class VibeLabTelemetryBus {
   }
 
   /**
+   * 🧬 FASE 1B: Ingesta un Float32Array(27) completo proveniente del IPC
+   * (`lux:vibe-lab:telemetry`) y hace swap atómico en una sola operación.
+   *
+   * Es la vía de entrada principal del motor al bus. Copia los 27 slots al
+   * writeBuffer (sanitizando NaN/Infinity → 0) e intercambia buffers.
+   * Notifica a los listeners una única vez por llamada.
+   *
+   * @param array Float32Array de exactamente TELEMETRY_BUFFER_SIZE slots.
+   */
+  ingest(array: Float32Array): void {
+    const len = Math.min(array.length, TELEMETRY_BUFFER_SIZE)
+    for (let i = 0; i < len; i++) {
+      const v = array[i]
+      this.writeBuffer[i] = Number.isFinite(v) ? v : 0
+    }
+    this.swap()
+  }
+
+  /**
    * Intercambia writeBuffer y readBuffer atómicamente y notifica listeners.
    * Llamado una vez por tick del motor, después de todas las escrituras.
    */

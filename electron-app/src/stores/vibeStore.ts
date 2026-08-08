@@ -22,17 +22,17 @@ export type VibeVisualId = 'techno-club' | 'fiesta-latina' | 'pop-rock' | 'chill
 interface VibeStoreState {
   // Current vibe (backend truth)
   currentVibe: VibeId
-  
+
   // UI state
   isTransitioning: boolean
   hasFetchedInitial: boolean
   lastUpdated: number
-  
+
   // Actions
   setCurrentVibe: (vibe: VibeId) => void
   setTransitioning: (transitioning: boolean) => void
   setHasFetchedInitial: (fetched: boolean) => void
-  
+
   // Computed
   getVisualVibe: () => VibeVisualId | null  // null = idle (ningún botón iluminado)
 }
@@ -47,24 +47,24 @@ export const useVibeStore = create<VibeStoreState>((set, get) => ({
   isTransitioning: false,
   hasFetchedInitial: false,
   lastUpdated: 0,
-  
+
   // Actions
   setCurrentVibe: (vibe: VibeId) => {
-    set({ 
-      currentVibe: vibe, 
+    set({
+      currentVibe: vibe,
       lastUpdated: Date.now(),
       isTransitioning: false  // Clear transitioning when vibe confirmed
     })
   },
-  
+
   setTransitioning: (transitioning: boolean) => {
     set({ isTransitioning: transitioning })
   },
-  
+
   setHasFetchedInitial: (fetched: boolean) => {
     set({ hasFetchedInitial: fetched })
   },
-  
+
   // Computed getter
   getVisualVibe: () => {
     const vibe = get().currentVibe

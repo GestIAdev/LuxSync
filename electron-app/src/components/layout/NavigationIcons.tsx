@@ -416,6 +416,45 @@ export const IconTheia: React.FC<IconProps> = ({ size = 20, className = '' }) =>
   </svg>
 )
 
+/**
+ * 🧬 PROTEUS LAB / Vibe Lab Icon
+ * DNA double helix — mutation & genetic engineering aesthetic
+ * FASE 4.3: Custom icon for the Proteus Lab sidebar entry
+ */
+export const IconProteus: React.FC<IconProps> = ({ size = 20, className = '' }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    className={className}
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    {/* Left strand of the helix */}
+    <path d="M7 2C7 2 17 6 17 12C17 18 7 22 7 22" stroke="currentColor" />
+
+    {/* Right strand of the helix */}
+    <path d="M17 2C17 2 7 6 7 12C7 18 17 22 17 22" stroke="currentColor" />
+
+    {/* Rungs (base pairs) — 4 connection points along the helix */}
+    <path d="M8.5 5.5H15.5" stroke="currentColor" opacity="0.7" />
+    <path d="M9.5 9.5H14.5" stroke="currentColor" opacity="0.7" />
+    <path d="M9.5 14.5H14.5" stroke="currentColor" opacity="0.7" />
+    <path d="M8.5 18.5H15.5" stroke="currentColor" opacity="0.7" />
+
+    {/* Mutation spark — small dot at the center crossing point */}
+    <circle cx="12" cy="12" r="1.5" stroke="currentColor" fill="currentColor" opacity="0.8" />
+
+    {/* HUD corner brackets */}
+    <path d="M1 3V1H3" stroke="currentColor" opacity="0.4" />
+    <path d="M23 3V1H21" stroke="currentColor" opacity="0.4" />
+    <path d="M1 21V23H3" stroke="currentColor" opacity="0.4" />
+    <path d="M23 21V23H21" stroke="currentColor" opacity="0.4" />
+  </svg>
+)
+
 export default {
   IconDashboard,
   IconLiveStage,
@@ -427,4 +466,5 @@ export default {
   IconChronos,      // WAVE 2004
   IconHephaestus,   // WAVE 2030.3
   IconTheia,        // WAVE 4863
+  IconProteus,      // FASE 4.3 — Proteus Lab
 }

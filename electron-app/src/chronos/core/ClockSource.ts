@@ -89,8 +89,9 @@ export interface IClockSource {
   /** Start listening / activate */
   start(): Promise<void>
 
-  /** Stop listening / deactivate */
-  stop(): void
+  /** Stop listening / deactivate.
+   *  P2.14: May return a Promise (e.g. LTCDecoder awaits AudioContext.close()). */
+  stop(): void | Promise<void>
 
   /**
    * Returns the current timecode as milliseconds.
@@ -131,7 +132,7 @@ export abstract class BaseClockSource implements IClockSource {
   >()
 
   abstract start(): Promise<void>
-  abstract stop(): void
+  abstract stop(): void | Promise<void>
   abstract getTimeMs(): TimeMs | null
 
   isConnected(): boolean {

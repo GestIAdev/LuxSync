@@ -428,7 +428,9 @@ export class LTCDecoder extends BaseClockSource {
     }
   }
 
-  stop(): void {
+  // P2.14 FIX: stop() is now async so callers can await AudioContext.close()
+  // before creating a new context. This prevents phantom AudioContext instances.
+  async stop(): Promise<void> {
     // Disconnect audio pipeline
     if (this.workletNode) {
       this.workletNode.port.onmessage = null
@@ -446,8 +448,13 @@ export class LTCDecoder extends BaseClockSource {
       this.mediaStream = null
     }
 
+    // P2.14 FIX: Await AudioContext.close() to ensure full release before null
     if (this.audioContext) {
-      this.audioContext.close()
+      try {
+        await this.audioContext.close()
+      } catch {
+        // Context may already be closed
+      }
       this.audioContext = null
     }
 

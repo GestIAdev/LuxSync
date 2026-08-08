@@ -160,23 +160,43 @@ export class ChronosStageDispatcher {
   // ─────────────────────────────────────────────────────────────────────────
   
   /**
-   * 🎬 Process clips at current time and emit stage commands
+   * 🎬 Process active clips and emit stage commands.
    * This is called every frame during playback.
    * Uses state diffing to only emit changes (not every frame).
-   * 
-   * @param clips All timeline clips
-   * @param currentTimeMs Current playhead position
+   *
+   * OPERATION STARDUST (R2): The O(n) linear filter was removed.
+   * Callers must pass ONLY clips that are active at currentTimeMs.
+   * ChronosEngine's ClipBoundaryIndex (O(log n)) or equivalent
+   * pre-filtering should be used upstream.
+   *
+   * @param activeClips Clips already filtered to be active at currentTimeMs
+   * @param currentTimeMs Current playhead position (used for command timestamps)
    */
-  tick(clips: TimelineClip[], currentTimeMs: number): void {
-    // Find clips active at current time
-    const activeClips = clips.filter(clip => 
-      currentTimeMs >= clip.startMs && currentTimeMs < clip.endMs
-    )
-    
+  tick(activeClips: TimelineClip[], currentTimeMs: number): void {
     // Separate by type
     const activeVibes = activeClips.filter((c): c is VibeClip => c.type === 'vibe')
     const activeFx = activeClips.filter((c): c is FXClip => c.type === 'fx')
-    
+
+    // HEIMDALL H-6: Overlapping-Clip Determinism — LTP (Latest Takes Precedence).
+    //   When two FX clips overlap temporally on the same track, the clip with
+    //   the latest startMs wins. Without this rule, overlapping FX clips
+    //   produce non-deterministic output: both are dispatched, and the fixture
+    //   behavior depends on which command arrives last — which is undefined
+    //   under async IPC. LTP is the standard lighting console semantics
+    //   ("latest programmer action wins").
+    //
+    //   We group active FX clips by trackId and keep only the one with the
+    //   highest startMs per track. This ensures exactly one FX clip per track
+    //   is dispatched per frame, making the output deterministic.
+    const dominantFxByTrack = new Map<string, FXClip>()
+    for (const fx of activeFx) {
+      const existing = dominantFxByTrack.get(fx.trackId)
+      if (!existing || fx.startMs > existing.startMs) {
+        dominantFxByTrack.set(fx.trackId, fx)
+      }
+    }
+    const dominantFx = Array.from(dominantFxByTrack.values())
+
     // Get current state
     const currentVibeId = activeVibes[0]?.id ?? null
     
@@ -191,7 +211,7 @@ export class ChronosStageDispatcher {
           effectId: vibe.vibeType,
           displayName: vibe.label,
           intensity: vibe.intensity,
-          timestamp: Date.now(),
+          timestamp: currentTimeMs,
         })
         
         if (this.debug) {
@@ -203,9 +223,9 @@ export class ChronosStageDispatcher {
     }
     
     // ═══════════════════════════════════════════════════════════════════════
-    // FX TRIGGER DETECTION (new FX started)
+    // FX TRIGGER DETECTION (new FX started) — HEIMDALL H-6: uses dominantFx
     // ═══════════════════════════════════════════════════════════════════════
-    for (const fx of activeFx) {
+    for (const fx of dominantFx) {
       if (!this.prevState.activeFxMap.has(fx.id)) {
         // New FX - trigger it
         // ⚒️ WAVE 2030.4 + 2030.18: Include hephClip and hephFilePath if present
@@ -215,7 +235,7 @@ export class ChronosStageDispatcher {
           displayName: fx.label,
           durationMs: fx.endMs - fx.startMs,
           color: fx.color,
-          timestamp: Date.now(),
+          timestamp: currentTimeMs,
           hephCurves: fx.hephClip,      // ⚒️ WAVE 2030.4: HEPHAESTUS CURVES
           hephFilePath: fx.hephFilePath, // ⚒️ WAVE 2030.18: Path to .lfx file
           isHephCustom: fx.isHephCustom, // ⚒️ WAVE 2030.18: Runtime bypass flag
@@ -233,9 +253,9 @@ export class ChronosStageDispatcher {
       }
     }
     
-    // Build current FX map (id → fxType)
+    // Build current FX map (id → fxType) — HEIMDALL H-6: uses dominantFx
     const currentFxMap = new Map<string, string>()
-    for (const fx of activeFx) {
+    for (const fx of dominantFx) {
       currentFxMap.set(fx.id, fx.fxType)
     }
     
@@ -252,15 +272,15 @@ export class ChronosStageDispatcher {
           type: 'fx-stop',
           effectId: prevFxType,  // ← FIX: was prevId (clipId), now prevFxType
           displayName: '',
-          timestamp: Date.now(),
+          timestamp: currentTimeMs,
           isHephCustom: wasHephCustom, // ⚒️ WAVE 2040.22: Bridge needs this to bypass FXMapper
         })
-        
+
         // Clean up tracking
         if (wasHephCustom) {
           this.prevState.hephCustomClipIds.delete(prevId)
         }
-        
+
         if (this.debug) {
           const hephTag = wasHephCustom ? ' ⚒️[HEPH]' : ''
           console.log(`[StageDispatcher] ⬛ FX OFF → ${prevFxType}${hephTag}`)
@@ -283,7 +303,7 @@ export class ChronosStageDispatcher {
         type: 'fx-stop',
         effectId: fxType,  // ← FIX: emit fxType, not clipId
         displayName: '',
-        timestamp: Date.now(),
+        timestamp: performance.now(),
         isHephCustom: wasHephCustom, // ⚒️ WAVE 2040.22: Propagate on reset too
       })
     }
@@ -304,6 +324,21 @@ export class ChronosStageDispatcher {
    */
   setDebug(enabled: boolean): void {
     this.debug = enabled
+  }
+
+  /**
+   * P2.17 FIX: Dispose the dispatcher — removes all listeners and resets
+   * state. Should be called when tearing down the host layout to prevent
+   * zombie listener references and memory leaks.
+   */
+  dispose(): void {
+    this.listeners.clear()
+    this.prevState = {
+      activeVibeId: null,
+      activeFxMap: new Map(),
+      hephCustomClipIds: new Set(),
+    }
+    console.log('[StageDispatcher] 🗑️ Disposed (listeners cleared, state reset)')
   }
 }
 

@@ -762,6 +762,18 @@ const luxApi = {
     ipcRenderer.on('selene:hot-frame', handler)
     return () => ipcRenderer.removeListener('selene:hot-frame', handler)
   },
+
+  /** 🧬 FASE 1B: VIBE LAB TELEMETRY — Float32Array(27) a ~11Hz desde el motor.
+   * El renderer llama a subscribeTelemetry() al montar el Vibe Lab y a
+   * unsubscribeTelemetry() al desmontarlo, para evitar overhead cuando el lab
+   * está cerrado. onTelemetry recibe el buffer ya construido por el main. */
+  subscribeTelemetry: () => ipcRenderer.send('lux:vibe-lab:telemetry:subscribe'),
+  unsubscribeTelemetry: () => ipcRenderer.send('lux:vibe-lab:telemetry:unsubscribe'),
+  onTelemetry: (callback: (buffer: Float32Array) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, buffer: Float32Array) => callback(buffer)
+    ipcRenderer.on('lux:vibe-lab:telemetry', handler)
+    return () => ipcRenderer.removeListener('lux:vibe-lab:telemetry', handler)
+  },
   
   /** � WAVE 25.7: THE CHRONICLER - Log events via dedicated channel
    * Logs llegan por canal separado para no interferir con el broadcast de 30fps
@@ -832,7 +844,20 @@ const luxApi = {
   
   /** Set active Vibe profile (techno-club, fiesta-latina, pop-rock, chill-lounge) */
   setVibe: (vibeId: string) => ipcRenderer.invoke('lux:setVibe', vibeId),
-  
+
+  /**
+   * 🧬 PROTEUS GRAFT: Send a FusedVibeBundle to the backend so it can graft
+   * the custom vibe into the MAIN PROCESS's copies of the 7 canonical registries
+   * (VIBE_REGISTRY, PROFILE_REGISTRY, COLOR_CONSTITUTIONS, etc.).
+   *
+   * Without this, the frontend grafts the custom vibe into the RENDERER's
+   * registries, but when setVibe('custom:...') reaches the backend, the
+   * VibeManager can't find the key → 404 → falls back to idle → zero telemetry.
+   *
+   * Must be called BEFORE setVibe() for any custom:... key.
+   */
+  graftVibe: (bundle: unknown) => ipcRenderer.invoke('lux:graft-vibe', bundle),
+
   /** Get current active Vibe */
   getVibe: () => ipcRenderer.invoke('lux:get-vibe'),
   

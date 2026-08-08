@@ -21,7 +21,7 @@ import { create } from 'zustand'
 // ============================================
 
 export type StageId = 'dashboard' | 'live' | 'calibration' | 'chronos'
-export type ToolId = 'constructor' | 'forge' | 'keyforge' | 'hephaestus' | 'nexus' | 'core' | 'theia' | 'vibe-lab-kit' | 'vibe-lab'
+export type ToolId = 'constructor' | 'forge' | 'keyforge' | 'hephaestus' | 'nexus' | 'core' | 'theia' | 'vibe-lab'
 export type TabId = StageId | ToolId
 
 export interface TabConfig {
@@ -181,24 +181,79 @@ export const TABS: TabConfig[] = [
     description: 'Theia Video Engine — Frame Analysis & Sync',
   },
   {
-    id: 'vibe-lab-kit',
-    label: 'VIBE LAB',
-    icon: '🧬',
-    type: 'tool',
-    shortcut: 'Alt+=',
-    description: '🧬 FASE 2 (temporal) Vibe Lab Kit Playground',
-  },
-  {
     id: 'vibe-lab',
     label: 'VIBE LAB',
-    icon: '🧬',
+    icon: 'proteus',        // IconProteus (custom SVG) — DNA helix
+    customIcon: true,
     type: 'tool',
     shortcut: 'Alt+Shift+=',
-    description: '🧬 Custom Vibe Creator — Phase 3',
+    description: 'Proteus Lab — Custom Vibe Creator',
   },
 ]
 
-const TAB_ORDER: TabId[] = ['dashboard', 'live', 'calibration', 'chronos', 'constructor', 'forge', 'keyforge', 'hephaestus', 'nexus', 'core', 'theia', 'vibe-lab-kit', 'vibe-lab']
+const TAB_ORDER: TabId[] = ['dashboard', 'live', 'calibration', 'chronos', 'constructor', 'forge', 'keyforge', 'hephaestus', 'nexus', 'core', 'theia', 'vibe-lab']
+
+// ============================================
+// SIDEBAR GROUPING - UX Workflow Phases
+// ============================================
+// Internal IDs are unchanged — only the visual grouping and display labels
+// change in the sidebar. ContentArea.tsx routing is unaffected.
+
+export interface SidebarGroup {
+  id: string
+  header: string
+  tabs: TabId[]
+}
+
+export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
+  {
+    id: 'live-show',
+    header: 'LIVE SHOW',
+    tabs: ['dashboard', 'live', 'chronos', 'core'],
+  },
+  {
+    id: 'creation-labs',
+    header: 'CREATION LABS',
+    tabs: ['hephaestus', 'vibe-lab', 'constructor', 'forge'],
+  },
+  {
+    id: 'rigging-system',
+    header: 'RIGGING & SYSTEM',
+    tabs: ['nexus', 'calibration', 'keyforge'],
+  },
+  {
+    id: 'experimental',
+    header: 'EXPERIMENTAL',
+    tabs: ['theia'],
+  },
+] as const
+
+/**
+ * Display label overrides for the sidebar.
+ * The `label` field in TabConfig is the internal/canonical label;
+ * this map provides the user-facing display name shown in the sidebar.
+ * Falls back to `tab.label` if no override exists.
+ */
+export const SIDEBAR_LABELS: Partial<Record<TabId, string>> = {
+  'dashboard':    'COMMAND',
+  'live':         'HYPERION STAGE',
+  'chronos':      'CHRONOS TIMELINE',
+  'core':         'LUX CORE',
+  'hephaestus':   'HEPHAESTUS FX',
+  'vibe-lab':     'PROTEUS LAB',
+  'constructor':  'EREBUS BUILDER',
+  'forge':        'FIXTURE MATRIX',
+  'nexus':        'DMX NEXUS',
+  'calibration':  'CALIBRATE',
+  'keyforge':     'KEYSTONE',
+  'theia':        'THEIA VENGINE',
+}
+
+/**
+ * Tabs that are locked as "ALPHA" — visually disabled in the sidebar
+ * with a glowing badge. The user cannot navigate to them by clicking.
+ */
+export const ALPHA_LOCKED_TABS: readonly TabId[] = ['theia'] as const
 
 // ============================================
 // STORE - WAVE 1112: Added targetFixtureId for Builder -> Forge bridge

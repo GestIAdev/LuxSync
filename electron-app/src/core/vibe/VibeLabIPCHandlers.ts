@@ -10,14 +10,16 @@
  *   - vibeLab:delete
  *   - vibeLab:export
  *   - vibeLab:import
+ *   - lux:graft-vibe  (PROTEUS GRAFT — inject custom vibe into backend registries)
  *
  * @module core/vibe/VibeLabIPCHandlers
- * @version FASE 4.3
+ * @version FASE 4.3 + PROTEUS GRAFT
  */
 
 import { ipcMain, dialog, BrowserWindow } from 'electron'
 import { vibeLabPersistence } from './VibeLabPersistence'
-import type { CustomVibeKey, CustomVibeOverride } from '../../types/CustomVibe'
+import type { CustomVibeKey, CustomVibeOverride, FusedVibeBundle } from '../../types/CustomVibe'
+import { graft as graftToBackend, ungraftAll } from '../../engine/vibe/custom/VibeGraftRegistry'
 
 const CHANNEL = {
   LIST: 'vibeLab:list',
@@ -26,6 +28,7 @@ const CHANNEL = {
   DELETE: 'vibeLab:delete',
   EXPORT: 'vibeLab:export',
   IMPORT: 'vibeLab:import',
+  GRAFT_VIBE: 'lux:graft-vibe',
 } as const
 
 let _registered = false
@@ -85,7 +88,34 @@ export function registerVibeLabIPCHandlers(): void {
     return vibeLabPersistence.importFromPath(result.filePaths[0])
   })
 
-  console.log('[VibeLabIPCHandlers] ✅ Registered 6 IPC channels')
+  // ── PROTEUS GRAFT ───────────────────────────────────────────────────
+  // 🧬 Inject a FusedVibeBundle into the MAIN PROCESS's copies of the 7
+  // canonical registries (VIBE_REGISTRY, PROFILE_REGISTRY, etc.).
+  //
+  // The frontend's VibeGraftRegistry.graft() only mutates the RENDERER's
+  // copies. When setVibe('custom:...') reaches the backend, VibeManager
+  // calls normalizeVibeId() which checks `vibeId in VIBE_REGISTRY` — but
+  // the backend's VIBE_REGISTRY doesn't have the custom key → 404 → idle.
+  //
+  // This handler grafts the bundle into the backend's registries so that
+  // normalizeVibeId() finds the key and setActiveVibe() succeeds.
+  ipcMain.handle(CHANNEL.GRAFT_VIBE, async (_evt, bundle: FusedVibeBundle) => {
+    try {
+      if (!bundle || typeof bundle !== 'object' || !bundle.key) {
+        return { success: false, error: 'Invalid bundle: missing key' }
+      }
+      const ok = graftToBackend(bundle)
+      if (!ok) {
+        return { success: false, error: `Graft failed for key: ${bundle.key}` }
+      }
+      return { success: true }
+    } catch (e) {
+      console.error('[VibeLabIPCHandlers] lux:graft-vibe error:', e)
+      return { success: false, error: String(e) }
+    }
+  })
+
+  console.log('[VibeLabIPCHandlers] ✅ Registered 7 IPC channels (incl. PROTEUS GRAFT)')
 }
 
 /** Nombres de canal expuestos para que preload.ts los consuma. */

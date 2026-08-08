@@ -57,8 +57,9 @@ import { useAutoScroll } from '../hooks/useAutoScroll'
 import { useTimelineKeyboard } from '../hooks/useTimelineKeyboard'
 // 🎬 WAVE 2010: ChronosRecorder for live recording
 import { getChronosRecorder, type RecordedClip } from '../core/ChronosRecorder'
-// 🚀 WAVE 2013: ChronosInjector for Stage Simulator link
-import { getChronosInjector, type StageCommand } from '../core/ChronosInjector'
+// 🚀 WAVE 2013: ChronosStageDispatcher for Stage Simulator link
+// P2.1 FIX: Migrated from legacy ChronosInjector.ts → ChronosStageDispatcher.ts
+import { getChronosInjector, type StageCommand } from '../core/ChronosStageDispatcher'
 // 💾 WAVE 2014: Project persistence (The Memory Core)
 import { useChronosProject } from '../hooks/useChronosProject'
 // 🧠 WAVE 2014.5: Store singleton for event subscriptions
@@ -391,74 +392,99 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
     console.log(`🧲 [ChronosLayout] Quantize: ${newState ? 'ON' : 'OFF'}`)
   }, [quantizeEnabled, recorder])
   
-  // 🎬 WAVE 2010 + 7107-A.2: Sync playhead with recorder via rAF (reads ref, not stale state)
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ⚡ P2.8 FIX: UNIFIED RAF LOOP — Consolidates 3 independent rAF loops into 1
+  //
+  // Previously, 3 separate requestAnimationFrame loops ran in parallel:
+  //   1. Recorder tick (during recording)
+  //   2. Injector tick (during playback, non-recording)
+  //   3. Playhead sync (during streaming playback)
+  //
+  // Each loop triggered its own rAF reschedule, causing 3x the GC pressure
+  // and 3x the callback overhead per frame. Now a single rAF loop sequentially
+  // calls all three tick functions per frame.
+  //
+  // Mutable state is held in refs so the effect doesn't teardown/rebuild
+  // the rAF loop on every state change (P2.9 fix).
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // P2.9 FIX: Refs to hold latest mutable state without re-subscribing listeners
+  const isRecordingRef = useRef(isRecording)
+  const isPlayingRef = useRef(false)
+  const audioSourceModeRef = useRef(audioSourceMode)
+  const timeRefHolder = useRef<{ current: number } | null>(null)
+  const clipsRef = useRef(clipState.clips)
+  const recorderRef = useRef(recorder)
+  const injectorRef = useRef(injector)
+  const streamingAudioRef = useRef(streaming.audioRef)
+  const streamingCurrentTimeMsRef = useRef(streaming.currentTimeMs)
+
+  // Keep refs in sync with state on every render (cheap, no effect needed)
+  isRecordingRef.current = isRecording
+  audioSourceModeRef.current = audioSourceMode
+  clipsRef.current = clipState.clips
+  recorderRef.current = recorder
+  injectorRef.current = injector
+  streamingAudioRef.current = streaming.audioRef
+  streamingCurrentTimeMsRef.current = streaming.currentTimeMs
+
+  // Compute isPlaying and timeRef from current state
+  const isLive = audioSourceMode === 'live'
+  const isPlaying = isLive ? freeRunClock.isRunning : streaming.isPlaying
+  const currentTimeRef = isLive ? freeRunClock.currentTimeMsRef : streaming.currentTimeMsRef
+  isPlayingRef.current = isPlaying
+  timeRefHolder.current = currentTimeRef ?? null
+
+  // Single unified rAF loop — only re-subscribes when isPlaying changes
   useEffect(() => {
-    if (!isRecording) return
-    const isLive = audioSourceMode === 'live'
-    const isPlaying = isLive ? freeRunClock.isRunning : streaming.isPlaying
     if (!isPlaying) return
 
-    const timeRef = isLive ? freeRunClock.currentTimeMsRef : streaming.currentTimeMsRef
-    if (!timeRef) return
-
-    let rafId = 0
-    const tick = () => {
-      recorder.updatePlayhead(timeRef.current)
-      rafId = requestAnimationFrame(tick)
-    }
-    rafId = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(rafId)
-  }, [isRecording, audioSourceMode, streaming.isPlaying, streaming.currentTimeMsRef, freeRunClock.isRunning, freeRunClock.currentTimeMsRef, recorder])
-
-  // 🚀 WAVE 2013 + 7107-A.2: Tick the injector during playback via rAF (reads ref)
-  useEffect(() => {
-    if (isRecording) return // Only inject during playback (not during recording)
-    const isLive = audioSourceMode === 'live'
-    const isPlaying = isLive ? freeRunClock.isRunning : streaming.isPlaying
-    if (!isPlaying) return
-
-    const timeRef = isLive ? freeRunClock.currentTimeMsRef : streaming.currentTimeMsRef
-    if (!timeRef) return
-
-    let rafId = 0
-    const tick = () => {
-      injector.tick(clipState.clips, timeRef.current)
-      rafId = requestAnimationFrame(tick)
-    }
-    rafId = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(rafId)
-  }, [isRecording, audioSourceMode, streaming.isPlaying, streaming.currentTimeMsRef, freeRunClock.isRunning, freeRunClock.currentTimeMsRef, injector, clipState.clips])
-  
-  // ⚡ WAVE 2540.6: 60FPS PLAYHEAD PIPELINE
-  // The old useEffect depended on streaming.currentTimeMs (React state) which
-  // only fires ~1fps due to React setState batching under render pressure.
-  // This rAF loop reads the HTMLAudioElement.currentTime DIRECTLY from the DOM,
-  // completely bypassing React's render cycle. Result: true 60fps IPC to backend.
-  useEffect(() => {
     const lux = (window as any).lux
-    if (!lux?.chronos?.syncPlayhead) return
-
     let rafId = 0
 
-    const tick = () => {
-      const audio = streaming.audioRef?.current
-      if (audio && !audio.paused) {
-        lux.chronos.syncPlayhead(audio.currentTime * 1000, true)
+    const unifiedTick = () => {
+      const timeRef = timeRefHolder.current
+      const recording = isRecordingRef.current
+
+      // 1. Recorder tick (only during recording)
+      if (recording && timeRef) {
+        recorderRef.current.updatePlayhead(timeRef.current)
       }
-      rafId = requestAnimationFrame(tick)
+
+      // 2. Injector tick (only during playback, NOT during recording)
+      // OPERATION STARDUST (R2): Pre-filter active clips here so the dispatcher
+      // receives only active clips (O(log n) via index, not O(n) inside tick).
+      if (!recording && timeRef) {
+        const t = timeRef.current
+        const activeClips = clipsRef.current.filter(c => t >= c.startMs && t < c.endMs)
+        injectorRef.current.tick(activeClips, t)
+      }
+
+      // 3. Playhead sync (during streaming playback)
+      if (lux?.chronos?.syncPlayhead) {
+        const audio = streamingAudioRef.current?.current
+        if (audio && !audio.paused) {
+          lux.chronos.syncPlayhead(audio.currentTime * 1000, true)
+        }
+      }
+
+      rafId = requestAnimationFrame(unifiedTick)
     }
 
-    if (streaming.isPlaying) {
-      rafId = requestAnimationFrame(tick)
-    } else {
-      // One final sync when paused to deactivate phantom
-      lux.chronos.syncPlayhead(streaming.currentTimeMs, false)
-    }
+    rafId = requestAnimationFrame(unifiedTick)
 
     return () => {
-      if (rafId) cancelAnimationFrame(rafId)
+      cancelAnimationFrame(rafId)
     }
-  }, [streaming.isPlaying]) // Only re-run when play/pause state changes
+  }, [isPlaying]) // Only re-run when play/pause state changes
+
+  // ⚡ WAVE 2540.6: One final sync when paused to deactivate phantom
+  useEffect(() => {
+    if (streaming.isPlaying) return
+    const lux = (window as any).lux
+    if (!lux?.chronos?.syncPlayhead) return
+    lux.chronos.syncPlayhead(streaming.currentTimeMs, false)
+  }, [streaming.isPlaying, streaming.currentTimeMs])
   
   // 🚀 WAVE 2013: Reset injector when playback stops or seeks
   useEffect(() => {
@@ -659,9 +685,11 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
     console.log('[ProjectLazarus] 🛡️ Auto-save started (60s interval)')
     
     return () => {
-      // Stop auto-save when leaving Chronos
-      store.stopAutoSave()
-      console.log('[ProjectLazarus] 🛡️ Auto-save stopped')
+      // P1.9 FIX: Dispose store — stops auto-save interval AND clears listeners
+      store.dispose()
+      // P2.17 FIX: Dispose the stage dispatcher — clears listener references
+      injector.dispose()
+      console.log('[ProjectLazarus] 🛡️ Auto-save stopped + store + dispatcher disposed')
     }
   }, [])
   
@@ -873,9 +901,12 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
       )
 
       // d) Iterate candidate tracks — find first without collision
+      // P2.9 FIX: Use clipsRef.current instead of clipState.clips so the
+      // handler always sees the latest clips without the effect needing
+      // to re-subscribe on every clip change.
       let resolvedTrackId: string | null = null
       for (const track of candidateTracks) {
-        const existingClips = clipState.clips.filter(c => c.trackId === track.id)
+        const existingClips = clipsRef.current.filter(c => c.trackId === track.id)
         const hasCollision = existingClips.some(c =>
           newStart < c.endMs && newEnd > c.startMs
         )
@@ -887,24 +918,26 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
       }
 
       // e) Auto-create new track if all candidate tracks have collision
-      //    WAVE 7108: CAP — max 2 tracks per energy zone (primary + #2).
-      //    If both collide → fall back to GLOBAL, do NOT create #3.
+      //    P2.11 FIX: Removed hardcoded cap of 2. Now allows up to MAX_TAKE_LANES (8)
+      //    tracks per energy zone, so users can stack multiple clips in the same zone.
+      //    If all 8 lanes collide → fall back to GLOBAL.
+      const MAX_TAKE_LANES = 8
       if (!resolvedTrackId) {
         if (primaryZone === 'global') {
           // GLOBAL track is locked and singleton — just use it even if colliding
           const globalTrack = store.tracks.find(t => t.targetZone === 'global')
           resolvedTrackId = globalTrack?.id ?? 'global'
           console.log(`[ChronosLayout] WAVE 7108: GLOBAL fallback (collision accepted)`)
-        } else if (candidateTracks.length < 2) {
-          // Only 0 or 1 tracks exist for this zone → create #2 (the cap)
+        } else if (candidateTracks.length < MAX_TAKE_LANES) {
+          // Create a new take lane (up to MAX_TAKE_LANES)
           const newTrack = store.addTrack(primaryZone)
           resolvedTrackId = newTrack.id
-          console.log(`[ChronosLayout] WAVE 7108: Auto-created track "${newTrack.visualLabel}" for ${primaryZone} (Take Lane ${candidateTracks.length + 1})`)
+          console.log(`[ChronosLayout] WAVE 7108: Auto-created track "${newTrack.visualLabel}" for ${primaryZone} (Take Lane ${candidateTracks.length + 1}/${MAX_TAKE_LANES})`)
         } else {
-          // Both primary and #2 collide → GLOBAL fallback, no #3
+          // All MAX_TAKE_LANES lanes collide → GLOBAL fallback
           const globalTrack = store.tracks.find(t => t.targetZone === 'global')
           resolvedTrackId = globalTrack?.id ?? 'global'
-          console.log(`[ChronosLayout] WAVE 7108: Take Lane cap reached for ${primaryZone} → GLOBAL fallback (no #3)`)
+          console.log(`[ChronosLayout] WAVE 7108: Take Lane cap (${MAX_TAKE_LANES}) reached for ${primaryZone} → GLOBAL fallback`)
         }
       }
 
@@ -965,13 +998,17 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
     recorder.on('clip-added', handleClipRecorded)
     recorder.on('clip-updated', handleClipUpdated)
     recorder.on('clip-growing', handleClipGrowing)
-    
+
     return () => {
       recorder.off('clip-added', handleClipRecorded)
       recorder.off('clip-updated', handleClipUpdated)
       recorder.off('clip-growing', handleClipGrowing)
     }
-  }, [recorder, clipState, clipState.clips])
+    // P2.9 FIX: Use refs for clipState.clips so the effect doesn't
+    // teardown/rebuild listeners on every clip change. clipsRef is
+    // updated on every render (see P2.8 fix above), so the handlers
+    // always see the latest clips without re-subscribing.
+  }, [recorder, clipState, clipState.addClip, clipState.updateClip])
   
   // 🎬 WAVE 2010: Connect recording toggle to ChronosRecorder
   const handleRecord = useCallback(() => {

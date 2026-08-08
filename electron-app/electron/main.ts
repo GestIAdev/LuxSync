@@ -787,13 +787,94 @@ async function initTitan(): Promise<void> {
   // 🛡️ WAVE 2005.1: Added try-catch for "Render frame disposed" errors
   // 🩸 WAVE-6060: TickEngine.TRUTH_BROADCAST_DIVIDER=4 controla la tasa (~11Hz).
   // Throttle eliminado del callback — una sola fuente de verdad.
+  //
+  // 🧬 FASE 1B: VIBE LAB TELEMETRY IGNITION
+  // Al final de cada tick (cuando se broadcastea el SeleneTruth), construimos
+  // un Float32Array(27) mapeando exactamente a TELEMETRY_LAYOUT del bus y lo
+  // enviamos por IPC 'lux:vibe-lab:telemetry' — PERO sólo si hay un suscriptor
+  // activo (renderer con el Vibe Lab montado). Sin suscriptores = cero overhead.
+  let _vibeLabTelemetrySubscribed = false
+  const _vibeLabTelemetryBuffer = new Float32Array(27)
+
   titanOrchestrator.setBroadcastCallback((truth) => {
     try {
       if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
         truth.hardware.dmx.outputEnabled = titanOrchestrator.isOutputEnabled()
         mainWindow.webContents.send('selene:truth', truth)
+
+        // 🧬 Vibe Lab telemetry — sólo si el renderer pidió suscripción
+        if (_vibeLabTelemetrySubscribed) {
+          const buf = _vibeLabTelemetryBuffer
+          const zones = truth.intent.zones || {}
+          // 0-6: zone intensities (Front L/R, Mover L/R, Back L/R, Ambient)
+          buf[0]  = zones.frontL?.intensity ?? zones.front?.intensity ?? 0
+          buf[1]  = zones.frontR?.intensity ?? zones.front?.intensity ?? 0
+          buf[2]  = zones.left?.intensity ?? 0
+          buf[3]  = zones.right?.intensity ?? 0
+          buf[4]  = zones.backL?.intensity ?? zones.back?.intensity ?? 0
+          buf[5]  = zones.backR?.intensity ?? zones.back?.intensity ?? 0
+          buf[6]  = zones.ambient?.intensity ?? 0
+          // 7-21: palette HSL (Primary, Secondary, Ambient, Accent, Strobe/Contrast)
+          // HSLColor en el protocolo es 0-1 → convertir a H:0-360, S:0-100, L:0-100
+          const pal = truth.intent.palette as Record<string, any> | undefined
+          if (pal) {
+            // 5 slots: primary, secondary, ambient, accent, contrast(strobe)
+            const slots: Array<{ h: number; s: number; l: number } | undefined> = [
+              pal.primary, pal.secondary, pal.ambient, pal.accent, pal.contrast,
+            ]
+            for (let i = 0; i < 5; i++) {
+              const c = slots[i]
+              buf[7 + i]  = c ? c.h * 360 : 0    // H: 0-360
+              buf[12 + i] = c ? c.s * 100 : 0    // S: 0-100
+              buf[17 + i] = c ? c.l * 100 : 50   // L: 0-100
+            }
+          } else {
+            for (let i = 0; i < 5; i++) {
+              buf[7 + i] = 0; buf[12 + i] = 0; buf[17 + i] = 50
+            }
+          }
+          // 22: pan, 23: tilt — INTENT-BASED TELEMETRY (PROTEUS)
+          // The Proteus Lab is a sandbox UI — it must show the mathematical
+          // movement intent calculated by the choreo engine (Hephaestus /
+          // MovementEngine / SeleneLux), DECOUPLED from the actual hardware
+          // fixtures array. If the user has no moving heads patched, the
+          // fixtures array is empty or has no movers — but the intent tree
+          // still carries the calculated pan/tilt geometry.
+          //
+          // Source priority (all values are 0-1 normalized, 0.5 = center):
+          //   1. intent.movement.mechanicsL  — explicit L mover coords from Deep Field
+          //   2. intent.mechanics.moverL     — WAVE 1060 physics-driven override
+          //   3. intent.movement.centerX/Y   — abstract movement center
+          //   4. 0.5 (center)                — static fallback
+          const intent = (truth.intent as any) || {}
+          const mvmt = intent.movement || {}
+          const mech = intent.mechanics || {}
+          // Grab the first virtual mover's intent (L mover preferred — it's
+          // the lead in stereo choreography)
+          const virtualMover = mvmt.mechanicsL || mech.moverL || null
+          const pan01 = virtualMover?.pan  ?? mvmt.centerX ?? 0.5
+          const tilt01 = virtualMover?.tilt ?? mvmt.centerY ?? 0.5
+          // Convert 0-1 normalized → [-1, 1] (0.5 = center = 0.0)
+          buf[22] = Math.max(-1, Math.min(1, (pan01  - 0.5) * 2))
+          buf[23] = Math.max(-1, Math.min(1, (tilt01 - 0.5) * 2))
+          // 24: morphFactor (no disponible en truth → 0; el canvas lo muestra neutro)
+          buf[24] = 0
+          // 25: beat phase
+          buf[25] = truth.sensory.beat?.beatPhase ?? 0
+          // 26: energy
+          buf[26] = truth.sensory.audio?.energy ?? 0
+          mainWindow.webContents.send('lux:vibe-lab:telemetry', buf)
+        }
       }
     } catch (err) { /* renderer destroyed, ignore */ }
+  })
+
+  // 🧬 Vibe Lab telemetry subscription IPC — el renderer avisa cuando monta/desmonta
+  ipcMain.on('lux:vibe-lab:telemetry:subscribe', () => {
+    _vibeLabTelemetrySubscribed = true
+  })
+  ipcMain.on('lux:vibe-lab:telemetry:unsubscribe', () => {
+    _vibeLabTelemetrySubscribed = false
   })
 
   // �️ WAVE-6060 FALLBACK: selene:hot-frame como paracaídas si GlassBridge no levanta.

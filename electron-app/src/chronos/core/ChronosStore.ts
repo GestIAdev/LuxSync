@@ -40,12 +40,24 @@ import type { AnalysisData } from './types'
 
 /**
  * Convert an absolute audio path to a path relative to the .lux file directory.
- * Works with both Windows (\\) and Unix (/) separators.
+ * Works with both Windows (\\) and Unix (/) separators, including mixed
+ * separators (routine in Electron on Windows, e.g. `C:/proj\test.lux`).
+ *
+ * LAZARUS M-2 FIX: The previous implementation had an operator-precedence bug —
+ *   `luxFilePath.lastIndexOf('/') + 1 || luxFilePath.lastIndexOf('\\') + 1`
+ *   bound the `||` INSIDE substring's second argument, so for a mixed-separator
+ *   path it took the forward-slash index and produced a truncated directory.
+ *   Now we find the last separator of EITHER kind explicitly.
  */
 function toRelativePath(luxFilePath: string, absoluteAudioPath: string): string {
   if (!luxFilePath || !absoluteAudioPath) return absoluteAudioPath
 
-  const luxDir = luxFilePath.substring(0, luxFilePath.lastIndexOf('/') + 1 || luxFilePath.lastIndexOf('\\') + 1)
+  const lastFwd = luxFilePath.lastIndexOf('/')
+  const lastBack = luxFilePath.lastIndexOf('\\')
+  const lastSep = Math.max(lastFwd, lastBack)
+  if (lastSep === -1) return absoluteAudioPath
+
+  const luxDir = luxFilePath.substring(0, lastSep + 1)
   if (!luxDir) return absoluteAudioPath
 
   // Normalize both to forward slashes for comparison
@@ -450,7 +462,13 @@ export class ChronosStore {
   }
 
   reorderTrack(trackId: string, newOrder: number): void {
-    const tracks = [...this.project.tracks].sort((a, b) => a.order - b.order)
+    // P2.18 FIX: Guard against NaN/Infinity order values corrupting the sort.
+    // If a track has a non-finite order, it's placed at the end (order = tracks.length).
+    const tracks = [...this.project.tracks].sort((a, b) => {
+      const aOrder = Number.isFinite(a.order) ? a.order : Number.MAX_SAFE_INTEGER
+      const bOrder = Number.isFinite(b.order) ? b.order : Number.MAX_SAFE_INTEGER
+      return aOrder - bOrder
+    })
     const idx = tracks.findIndex(t => t.id === trackId)
     if (idx === -1) {
       console.warn(`[ChronosStore] reorderTrack: id "${trackId}" not found`)
@@ -600,18 +618,25 @@ export class ChronosStore {
     const needsPath = !this.projectPath || forceNewPath
     
     try {
-      // ── FASE 4: Convert audio path to relative before serializing ──
+      // ── FASE 4: Convert audio path to relative for serialization ONLY ──
+      // LAZARUS M-2 FIX: Do NOT mutate this.project.audio.relativePath in
+      //   memory. The previous implementation left the live runtime holding a
+      //   relative path, so any post-save consumer of getAudioInfo() (audio
+      //   reload, checkFileExists, re-analysis) received a path that would not
+      //   resolve from the process working directory → false "audio missing".
+      //   We now build a shallow-cloned project for serialization with the
+      //   relative audio path, leaving the live state's absolute path intact.
+      let projectForSave = this.project
       if (this.projectPath && this.project.audio) {
-        const absoluteAudioPath = this.project.audio.relativePath
-        const relativePath = toRelativePath(this.projectPath, absoluteAudioPath)
-        this.project.audio = {
-          ...this.project.audio,
-          relativePath,
+        const relativePath = toRelativePath(this.projectPath, this.project.audio.relativePath)
+        projectForSave = {
+          ...this.project,
+          audio: { ...this.project.audio, relativePath },
         }
       }
-      
+
       // Prepare project data — strip runtime state → LuxFileV3 → serialize (+checksum)
-      const json = await serializeLuxV3(toLuxFileV3(this.project))
+      const json = await serializeLuxV3(toLuxFileV3(projectForSave))
       
       // Check if we're in Electron environment via luxsync.chronos
       const chronosAPI = (window as any).luxsync?.chronos
@@ -682,14 +707,19 @@ export class ChronosStore {
         const des = await deserializeLuxV3(result.json)
         if (!des.file) {
           console.warn('[ChronosStore] ❌ Project validation errors:', des.validation.errors)
-          return { success: false, error: 'Invalid project file format' }
+          const checksumCorruption = des.validation.errors.some((e) => e.includes('Checksum mismatch'))
+          return {
+            success: false,
+            error: checksumCorruption
+              ? 'Project file is corrupt (checksum mismatch) — refused to load'
+              : 'Invalid project file format',
+          }
         }
         if (des.validation.warnings.length > 0) {
           console.warn('[ChronosStore] ⚠️ Project validation warnings:', des.validation.warnings)
         }
-        if (!des.checksumValid) {
-          console.warn('[ChronosStore] ⚠️ Checksum mismatch — loading anyway')
-        }
+        // LAZARUS B-4: a wrong checksum now hard-rejects in deserializeLuxV3
+        //   (file === null). A missing checksum is a warning and is permitted.
         
         const project = toChronosProjectV3(des.file)
         this.project = project
@@ -848,9 +878,16 @@ export class ChronosStore {
     for (const track of this.project.tracks) {
       const found = track.clips.find(c => c.id === clipId)
       if (found) {
+        // VALKYRIE M-3: A getter must NOT mutate persisted state. The previous
+        //   implementation wrote `clip.trackId = ...` directly onto the stored
+        //   clip object, bypassing the readonly contract and leaving a
+        //   runtime-only field injected into the persisted tree. We now return
+        //   a shallow clone with trackId injected, leaving the stored object
+        //   untouched. The `as unknown as TimelineClip` cast is still needed
+        //   because LuxClipV3 does not carry trackId (it's runtime-only), but
+        //   the clone ensures the persisted reference is never written to.
         const clip = found as unknown as TimelineClip
-        clip.trackId = clip.type === 'vibe' ? 'vibe' : track.id
-        return clip
+        return { ...clip, trackId: clip.type === 'vibe' ? 'vibe' : track.id }
       }
     }
     return undefined
@@ -1099,6 +1136,17 @@ export class ChronosStore {
       lastSave: this.lastAutoSave,
       isRunning: this.isAutoSaving,
     }
+  }
+
+  /**
+   * P1.9 FIX: Dispose the store — stops the auto-save interval and clears
+   * all event listeners. Should be called when closing a project or tearing
+   * down the host component to prevent zombie timers and listener leaks.
+   */
+  dispose(): void {
+    this.stopAutoSave()
+    this.listeners.clear()
+    console.log('[ChronosStore] 🗑️ Disposed (auto-save stopped, listeners cleared)')
   }
 }
 

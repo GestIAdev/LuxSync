@@ -368,10 +368,20 @@ function estimateBpm(onsets: number[]): number {
     }
   }
   
+  // P1.3 FIX: Guard against mostCommonInterval=0 → Infinity or NaN
+  if (!Number.isFinite(mostCommonInterval) || mostCommonInterval <= 0) {
+    return 120
+  }
   let bpm = 60000 / mostCommonInterval
-  while (bpm < 80) bpm *= 2
-  while (bpm > 180) bpm /= 2
-  
+  // P1.3 FIX: If bpm is not finite, fallback immediately (don't enter while loops)
+  if (!Number.isFinite(bpm)) return 120
+
+  // Ajustar a rango razonable (80-180) — with iteration cap to prevent infinite loops
+  let iterations = 0
+  while (bpm < 80 && iterations < 10) { bpm *= 2; iterations++ }
+  iterations = 0
+  while (bpm > 180 && iterations < 10) { bpm /= 2; iterations++ }
+
   return Math.round(bpm * 10) / 10
 }
 

@@ -27,6 +27,8 @@ import { DiagnosticsRail } from './DiagnosticsRail'
 import { GenomeVault } from './GenomeVault'
 import { MintDialog } from './MintDialog'
 import { useVibeLabStore } from '../../stores/vibeLabStore'
+import { vibeLabTelemetryBus } from '../../stores/vibeLab/telemetryBus'
+import { initVibeLabEngineSync } from '../../stores/vibeLab/engineSync'
 import './vibe-lab-view.css'
 
 export const VibeLabView: React.FC = () => {
@@ -41,6 +43,25 @@ export const VibeLabView: React.FC = () => {
       beginSession('techno-club' as never, 'Untitled Vibe')
     }
   }, [draft, beginSession])
+
+  // 🧬 FASE 1B: TELEMETRY IGNITION — suscribirse al IPC del motor al montar,
+  // alimentar el telemetryBus con cada Float32Array(27), y desuscribir al
+  // desmontar para que el main deje de broadcastear (cero overhead con lab cerrado).
+  useEffect(() => {
+    vibeLabTelemetryBus.reset()
+    window.lux?.subscribeTelemetry?.()
+    const removeTelemetry = window.lux?.onTelemetry?.((buffer: Float32Array) => {
+      vibeLabTelemetryBus.ingest(buffer)
+    })
+    // Inicializar el coalescer del motor (Canal A: draft → graft)
+    const teardownEngineSync = initVibeLabEngineSync()
+    return () => {
+      window.lux?.unsubscribeTelemetry?.()
+      removeTelemetry?.()
+      teardownEngineSync?.()
+      vibeLabTelemetryBus.reset()
+    }
+  }, [])
 
   // Escuchar eventos globales para abrir overlays
   useEffect(() => {

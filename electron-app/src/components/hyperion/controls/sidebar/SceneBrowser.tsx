@@ -18,7 +18,7 @@
 
 import React, { useState, useCallback, useRef } from 'react'
 import { useScenePlayer, type PlayerState } from '../../../../hooks/useScenePlayer'
-import { deserializeProject } from '../../../../chronos/core/ChronosProject'
+import { deserializeLuxV3 as deserializeProject } from '../../../../chronos/core/LuxFileV3.serializer'
 import { toChronosProjectV3 } from '../../../../chronos/core/LuxFileV3.factories'
 import type { ChronosProjectV3 } from '../../../../chronos/core/LuxFileV3'
 import {

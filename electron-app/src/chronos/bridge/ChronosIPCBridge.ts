@@ -22,8 +22,23 @@
  * @version WAVE 2019 / WAVE 2030.4
  */
 
-import { getChronosInjector, type StageCommand } from '../core/ChronosInjector'
+// P2.1 FIX: Migrated from legacy ChronosInjector.ts → ChronosStageDispatcher.ts
+import { getChronosInjector, type StageCommand } from '../core/ChronosStageDispatcher'
 import type { HephAutomationClipV3 } from '../../core/hephaestus/types'
+import { VALID_FX_TYPES, toFXType } from '../core/TimelineClip'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HEIMDALL 7.3: EPILEPSY SAFETY LIMITS
+// ═══════════════════════════════════════════════════════════════════════════
+// Photosensitive epilepsy risk is highest in the 3–30 Hz flash range, with
+// peak sensitivity around 10–20 Hz. We enforce a hard ceiling of 25 Hz on
+// any strobe-type effect dispatched through the IPC frontier. This is below
+// the 30 Hz schema maximum and provides a safety margin. The backend effect
+// manager may interpret durationMs as the strobe period; if so, we clamp the
+// effective frequency to SAFE_MAX_STROBE_HZ.
+const SAFE_MAX_STROBE_HZ = 25
+/** Minimum strobe period in ms that satisfies the safety ceiling. */
+const SAFE_MIN_STROBE_PERIOD_MS = 1000 / SAFE_MAX_STROBE_HZ // 40ms
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -99,26 +114,79 @@ async function handleVibeChange(command: StageCommand): Promise<void> {
  * ⚒️ WAVE 2030.18: Routes isHephCustom to HephaestusRuntime
  */
 async function handleFXTrigger(command: StageCommand): Promise<void> {
-  const fxType = command.effectId
+  const rawFxType = command.effectId
   const intensity = command.intensity ?? 1.0
   const durationMs = command.durationMs
-  
-  if (!fxType) {
+
+  if (!rawFxType) {
     console.warn('[ChronosBridge] ⚠️ FX trigger without fxType:', command)
     return
   }
-  
+
+  // VALKYRIE H-3: The IPC frontier is the boundary that touches hardware.
+  //   It must be the STRICTEST layer in the system, not the loosest. A
+  //   malformed .lux file or a buggy dispatcher must not be able to drive
+  //   out-of-range values directly at the fixture output layer.
+  //
+  //   1. Clamp intensity to [0, 1] — values outside this range can blow
+  //      out dimmer channels or trigger undefined behavior in effect managers.
+  //   2. Validate fxType against the canonical VALID_FX_TYPES set. An
+  //      unknown type falls back to 'pulse' (a safe, bounded effect) rather
+  //      than being forwarded raw to the backend.
+  //   3. Bounds-check durationMs — must be a finite, positive number. A
+  //      non-finite or zero/negative duration can hang effect loops or
+  //      produce no output at all.
+  const clampedIntensity = Math.max(0, Math.min(1, intensity))
+  if (clampedIntensity !== intensity) {
+    console.warn(
+      `[ChronosBridge] ⚠️ Intensity clamped to [0,1]: ${intensity} → ${clampedIntensity}`
+    )
+  }
+
+  // 'heph-custom' is a valid runtime type but is not in VALID_FX_TYPES for
+  // the standard path — it is handled via the isHephCustom branch below, so
+  // we only validate non-heph types here.
+  const isHephType = command.isHephCustom || rawFxType === 'heph-custom'
+  const fxType = isHephType ? rawFxType : toFXType(rawFxType)
+  if (!isHephType && !VALID_FX_TYPES.has(rawFxType)) {
+    console.warn(
+      `[ChronosBridge] ⚠️ Invalid fxType '${rawFxType}' — falling back to '${fxType}'`
+    )
+  }
+
+  if (durationMs !== undefined && (!Number.isFinite(durationMs) || durationMs <= 0)) {
+    console.warn(
+      `[ChronosBridge] ⚠️ Invalid durationMs (${durationMs}) — dropping FX trigger`
+    )
+    return
+  }
+
+  // HEIMDALL 7.3: Epilepsy Safety — strobe frequency clamp.
+  //   If this is a strobe effect, the durationMs may represent the strobe
+  //   period (ms per flash). If the period implies a frequency above
+  //   SAFE_MAX_STROBE_HZ (25 Hz), we clamp it to the safe minimum period.
+  //   This prevents photosensitive seizure triggers from reaching the fixture
+  //   output layer, regardless of what the .lux file or dispatcher encoded.
+  let safeDurationMs = durationMs
+  if (fxType === 'strobe' && safeDurationMs !== undefined && safeDurationMs < SAFE_MIN_STROBE_PERIOD_MS) {
+    console.warn(
+      `[ChronosBridge] ⚠️ EPILEPSY GUARD: strobe period ${safeDurationMs}ms ` +
+      `exceeds ${SAFE_MAX_STROBE_HZ}Hz limit — clamped to ${SAFE_MIN_STROBE_PERIOD_MS}ms`
+    )
+    safeDurationMs = SAFE_MIN_STROBE_PERIOD_MS
+  }
+
   // ⚒️ WAVE 2030.18 → WAVE 2040.17: HEPHAESTUS CUSTOM PATH
   // Priority 1: Use inline Diamond Data (hephCurves) — portable, no file dependency
   // Priority 2: Fall back to file path (legacy, requires absolute path on disk)
   if (command.isHephCustom && command.hephCurves) {
     // WAVE 2040.17: Diamond Data path — curvas inline, no necesita archivo
-    console.log(`[ChronosBridge] ⚒️💎 HEPH DIAMOND: inline curves @ ${(intensity * 100).toFixed(0)}%`)
-    
+    console.log(`[ChronosBridge] ⚒️💎 HEPH DIAMOND: inline curves @ ${(clampedIntensity * 100).toFixed(0)}%`)
+
     try {
       const hephCurvesSerialized = command.hephCurves as HephAutomationClipV3
       const result = await (window as any).lux.chronos?.triggerFX?.(
-        'heph-custom', intensity, durationMs, hephCurvesSerialized
+        'heph-custom', clampedIntensity, safeDurationMs, hephCurvesSerialized
       ) || { success: false }
       
       if (result.success) {
@@ -134,13 +202,13 @@ async function handleFXTrigger(command: StageCommand): Promise<void> {
 
   if (command.isHephCustom && command.hephFilePath) {
     // Legacy path — requires absolute file path on disk
-    console.log(`[ChronosBridge] ⚒️ HEPH FILE: ${command.hephFilePath} @ ${(intensity * 100).toFixed(0)}%`)
-    
+    console.log(`[ChronosBridge] ⚒️ HEPH FILE: ${command.hephFilePath} @ ${(clampedIntensity * 100).toFixed(0)}%`)
+
     try {
       const result = await (window as any).lux.chronos?.triggerHeph?.(
         command.hephFilePath,
-        intensity,
-        durationMs,
+        clampedIntensity,
+        safeDurationMs,
         false  // No loop for timeline clips
       ) || { success: false }
       
@@ -167,12 +235,12 @@ async function handleFXTrigger(command: StageCommand): Promise<void> {
   console.log(`[ChronosBridge] 🧨 FX: ${fxType}${hephTag}`)
   
   try {
-    const result = await (window as any).lux.chronos?.triggerFX?.(fxType, intensity, durationMs, hephCurvesSerialized)
-      || await (window as any).lux?.forceStrike?.({ effect: fxType, intensity })
+    const result = await (window as any).lux.chronos?.triggerFX?.(fxType, clampedIntensity, safeDurationMs, hephCurvesSerialized)
+      || await (window as any).lux?.forceStrike?.({ effect: fxType, intensity: clampedIntensity })
       || { success: false }
-    
+
     if (result.success) {
-      console.log(`[ChronosBridge] ✅ FX triggered: ${fxType} @ ${(intensity * 100).toFixed(0)}%${hephTag}`)
+      console.log(`[ChronosBridge] ✅ FX triggered: ${fxType} @ ${(clampedIntensity * 100).toFixed(0)}%${hephTag}`)
     }
   } catch (err) {
     console.error('[ChronosBridge] ❌ Failed to trigger FX:', err)

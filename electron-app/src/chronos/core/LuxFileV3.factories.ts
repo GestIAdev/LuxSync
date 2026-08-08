@@ -463,6 +463,11 @@ export function analysisDataToLuxAnalysisV3(data: AnalysisData): LuxAnalysisV3 {
   if (hm.ultraAir) heatmap.ultraAir = hm.ultraAir
   if (hm.spectralCentroid) heatmap.spectralCentroid = hm.spectralCentroid
   if (hm.spectralFlatness) heatmap.spectralFlatness = hm.spectralFlatness
+  // GODEAR UNLEASHED Phase 3: pass through semantic enrichment telemetry
+  if (hm.saturation) heatmap.saturation = hm.saturation
+  if (hm.whiteNoise) heatmap.whiteNoise = hm.whiteNoise
+  if (hm.rhythmicVoid) heatmap.rhythmicVoid = hm.rhythmicVoid
+  if (hm.rolloff) heatmap.rolloff = hm.rolloff
 
   const waveform: LuxWaveformV3 = {
     samplesPerSecond: data.waveform.samplesPerSecond,
@@ -477,7 +482,15 @@ export function analysisDataToLuxAnalysisV3(data: AnalysisData): LuxAnalysisV3 {
     energy: s.avgEnergy,
   }))
 
-  const transients: LuxTransientV3[] = normalizeTransients(data.transients)
+  // GODEAR UNLEASHED Phase 2: prefer 3-band transientEvents when available;
+  // fall back to legacy transients (timestamps only) for backwards compat.
+  const transients: LuxTransientV3[] = data.transientEvents
+    ? data.transientEvents.map((e) => ({
+        timeMs: e.timeMs,
+        type: e.type as LuxTransientType,
+        intensity: e.strength,
+      }))
+    : normalizeTransients(data.transients)
 
   return {
     detectedBpm: data.beatGrid.bpm,
@@ -539,6 +552,11 @@ export function luxHeatmapToHeatmapData(hm: LuxHeatmapV3): HeatmapData {
   if (hm.ultraAir) result.ultraAir = [...hm.ultraAir]
   if (hm.spectralCentroid) result.spectralCentroid = [...hm.spectralCentroid]
   if (hm.spectralFlatness) result.spectralFlatness = [...hm.spectralFlatness]
+  // GODEAR UNLEASHED Phase 3: reconstruct semantic enrichment telemetry
+  if (hm.saturation) result.saturation = [...hm.saturation]
+  if (hm.whiteNoise) result.whiteNoise = [...hm.whiteNoise]
+  if (hm.rhythmicVoid) result.rhythmicVoid = [...hm.rhythmicVoid]
+  if (hm.rolloff) result.rolloff = [...hm.rolloff]
   return result
 }
 

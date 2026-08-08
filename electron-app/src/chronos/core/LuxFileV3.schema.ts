@@ -387,6 +387,20 @@ export function validateLuxFileV3(data: unknown): LuxValidationResult {
               )
             }
           }
+          // GODEAR UNLEASHED Phase 3: validate semantic enrichment arrays
+          // match energy length (same cross-check as tactical bands).
+          const ENRICHMENT_BANDS = [
+            'saturation', 'whiteNoise', 'rhythmicVoid', 'rolloff',
+            'spectralCentroid', 'spectralFlatness',
+          ] as const
+          for (const band of ENRICHMENT_BANDS) {
+            const bandArr = a.heatmap[band]
+            if (Array.isArray(bandArr) && bandArr.length !== energyLen) {
+              errors.push(
+                `analysis.heatmap.${band} length (${bandArr.length}) != energy length (${energyLen})`
+              )
+            }
+          }
         }
       }
       if (!isObject(a.waveform)) {

@@ -261,21 +261,45 @@ export interface ChronosMarker {
 export interface AnalysisData {
   /** Duration of audio in milliseconds */
   durationMs: TimeMs
-  
+
   /** Waveform overview (para visualización) */
   waveform: WaveformData
-  
+
   /** Energy heatmap */
   energyHeatmap: HeatmapData
-  
+
   /** Grid de beats */
   beatGrid: BeatGridData
-  
+
   /** Secciones detectadas */
   sections: DetectedSection[]
-  
-  /** Transients (para snap a hits) */
+
+  /** Transients (para snap a hits) — legacy: timestamps only */
   transients: TimeMs[]
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🩻 GODEAR UNLEASHED Phase 2: 3-Band Instrument-Classified Transients
+  // Optional for backwards compatibility — populated when GodEar V3
+  // transient detection is available (kick/snare/hihat isolation).
+  // ═══════════════════════════════════════════════════════════════════════
+  /** Instrument-classified transient events from GodEar V3's 3-band
+   *  onset detector. Each event has a timestamp, instrument type, and
+   *  strength [0-1]. Supersedes the legacy `transients` array. */
+  transientEvents?: TransientEvent[]
+}
+
+/**
+ * 🩻 GODEAR UNLEASHED Phase 2: Instrument-classified transient event.
+ * Produced by GodEar V3's SlopeBasedOnsetDetector with 3-band isolation
+ * (kick = subBass+bass, snare = mid+lowMid, hihat = treble+highMid).
+ */
+export interface TransientEvent {
+  /** Timestamp in milliseconds */
+  timeMs: TimeMs
+  /** Instrument classification: 'kick' | 'snare' | 'hihat' */
+  type: 'kick' | 'snare' | 'hihat'
+  /** Strength [0-1] — max band energy at onset */
+  strength: number
 }
 
 /**
@@ -339,9 +363,31 @@ export interface HeatmapData {
   
   /** Hz — Centro de masa espectral per frame (brillo tonal) */
   spectralCentroid?: number[]
-  
+
   /** 0-1 — Spectral flatness per frame (tonal vs noise) */
   spectralFlatness?: number[]
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🩻 GODEAR UNLEASHED Phase 3: Semantic Enrichment Telemetry
+  // Optional for backwards compatibility — populated when GodEar V3
+  // photon block + rhythmic tracker are available.
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /** 0-1 — Saturation Index per frame (0=dynamic, 1=brickwalled).
+   *  From GodEar V3's SaturationMeter — detects loud war compression. */
+  saturation?: number[]
+
+  /** 0-1 — White noise score per frame (high flatness in high freq bands).
+   *  From GodEar V3's photon block — quantifies broadband noise content. */
+  whiteNoise?: number[]
+
+  /** 0-1 — Rhythmic void per frame (0=dense percussion, 1=total absence).
+   *  From GodEar V3's RhythmicPercussionTracker — detects silence/breaks. */
+  rhythmicVoid?: number[]
+
+  /** Hz — Spectral rolloff per frame (frequency below which 85% of
+   *  energy is contained). From GodEar V3's spectral metrics. */
+  rolloff?: number[]
 }
 
 /**

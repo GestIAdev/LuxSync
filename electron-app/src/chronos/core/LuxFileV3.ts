@@ -274,6 +274,20 @@ export interface LuxHeatmapV3 {
 
   /** Spectral flatness per frame (0-1). */
   spectralFlatness?: readonly number[]
+
+  // ── GODEAR UNLEASHED Phase 3: Semantic enrichment telemetry (optional) ──
+
+  /** Saturation Index per frame (0=dynamic, 1=brickwalled). */
+  saturation?: readonly number[]
+
+  /** White noise score per frame (0-1, broadband noise). */
+  whiteNoise?: readonly number[]
+
+  /** Rhythmic void per frame (0=dense, 1=absence). */
+  rhythmicVoid?: readonly number[]
+
+  /** Spectral rolloff per frame (Hz, 85% energy boundary). */
+  rolloff?: readonly number[]
 }
 
 export interface LuxWaveformV3 {

@@ -290,7 +290,7 @@ export class MTCParser extends BaseClockSource {
    * seconds > 59, the frame is dropped and we wait for the next valid one.
    * This prevents wrong timecode displays from corrupted MIDI data.
    *
-   * VALKYRIE H-1 FIX: +2 frame offset. MTC transmits a full timecode across
+   * VALKYRIE H-1 FIX: ±2 frame offset. MTC transmits a full timecode across
    *   8 quarter-frame messages spanning exactly 2 frames of wall time. The
    *   value encoded in the nibbles describes the instant transmission BEGAN.
    *   When assembly completes on piece 7, real time has advanced 2 frames
@@ -299,6 +299,15 @@ export class MTCParser extends BaseClockSource {
    *   Frame-rate wrap-around is handled (frames + 2 may carry into seconds,
    *   minutes, hours). The SysEx full-frame path is NOT offset — it is an
    *   instant locate, not a streaming assembly.
+   *
+   * VALKYRIE H-2 FIX: Reverse-direction offset. When the transport is
+   *   shuttling backwards, quarter-frames arrive in reverse order (7→0) and
+   *   assembly completes on piece 0. By that time real time has RETREATED 2
+   *   frames from the assembled value, so the receiver must SUBTRACT 2 frames
+   *   instead of adding them. The previous unconditional +2 produced a 4-frame
+   *   error under reverse shuttle (2 frames too far forward). Negative
+   *   wrap-around is handled (frames - 2 may borrow from seconds, minutes,
+   *   hours).
    */
   private assembleTimecode(): void {
     const frames   = (this.pieces[0]) | ((this.pieces[1] & 0x01) << 4)
@@ -322,9 +331,14 @@ export class MTCParser extends BaseClockSource {
       return // Drop this frame, wait for the next valid one
     }
 
-    // VALKYRIE H-1: add 2 frames to compensate for MTC transmission delay.
+    // VALKYRIE H-1/H-2: ±2 frames to compensate for MTC transmission delay.
+    // Forward: +2 (assembly completes 2 frames after transmission began).
+    // Reverse: -2 (assembly completes 2 frames after transmission began,
+    //           but transport is moving backwards, so true time is 2 frames
+    //           BEFORE the assembled value).
     const nominalRate = Math.round(frameRate === 29.97 ? 30 : frameRate)
-    let adjFrames = frames + 2
+    const offset = this.direction === 'reverse' ? -2 : 2
+    let adjFrames = frames + offset
     let adjSeconds = seconds
     let adjMinutes = minutes
     let adjHours = hours
@@ -337,6 +351,17 @@ export class MTCParser extends BaseClockSource {
         if (adjMinutes >= 60) {
           adjMinutes = 0
           adjHours = (adjHours + 1) % 24
+        }
+      }
+    } else if (adjFrames < 0) {
+      adjFrames += nominalRate
+      adjSeconds -= 1
+      if (adjSeconds < 0) {
+        adjSeconds = 59
+        adjMinutes -= 1
+        if (adjMinutes < 0) {
+          adjMinutes = 59
+          adjHours = (adjHours - 1 + 24) % 24
         }
       }
     }

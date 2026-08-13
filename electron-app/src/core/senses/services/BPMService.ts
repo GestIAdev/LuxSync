@@ -88,22 +88,23 @@ export class BPMService {
     });
 
     // WAVE 2169: Diagnóstico INTERVAL cada 20 frames (~0.9s a 20fps)
-    if (this.frameCount % 20 === 0) {
-      console.log(
-        `[INTERVAL] F${this.frameCount}` +
-        ` bpm=${track.musicalBpm}` +
-        ` raw=${track.rawBpm}` +
-        ` conf=${track.confidence.toFixed(3)}` +
-        ` kick=${track.kickDetected}` +
-        ` phase=${track.beatPhase.toFixed(2)}` +
-        ` needle=${track.needle.toFixed(4)}` +
-        ` bassFlux=${track.rawBassFlux.toFixed(4)}` +
-        ` floor=${track.currentFloor.toFixed(4)}` +
-        ` midFlux=${track.rawMidFlux.toFixed(4)}` +
-        ` centroid=${Math.round(spectrum.spectralCentroid)}Hz` +
-        ` kicks=${track.kickCount}`
-      );
-    }
+    // [DISABLED WAVE 9001] — debug traces no longer needed after FFT cleanup
+    // if (this.frameCount % 20 === 0) {
+    //   console.log(
+    //     `[INTERVAL] F${this.frameCount}` +
+    //     ` bpm=${track.musicalBpm}` +
+    //     ` raw=${track.rawBpm}` +
+    //     ` conf=${track.confidence.toFixed(3)}` +
+    //     ` kick=${track.kickDetected}` +
+    //     ` phase=${track.beatPhase.toFixed(2)}` +
+    //     ` needle=${track.needle.toFixed(4)}` +
+    //     ` bassFlux=${track.rawBassFlux.toFixed(4)}` +
+    //     ` floor=${track.currentFloor.toFixed(4)}` +
+    //     ` midFlux=${track.rawMidFlux.toFixed(4)}` +
+    //     ` centroid=${Math.round(spectrum.spectralCentroid)}Hz` +
+    //     ` kicks=${track.kickCount}`
+    //   );
+    // }
 
     this.lastResult = {
       bpm: track.musicalBpm,

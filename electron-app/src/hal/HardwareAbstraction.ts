@@ -245,8 +245,8 @@ export class HardwareAbstraction {
     // Configure mapper
     this.mapper.setInstallationType(this.config.installationType)
     
-    // Initialize universe 1 (extract Uint8Array from DMXUniverse)
-    this.universeBuffers.set(1, createEmptyUniverse(1).channels)
+    // Initialize universe 0 (0-based, ArtNet convention — matches FixtureV2.universe)
+    this.universeBuffers.set(0, createEmptyUniverse(0).channels)
     
     // WAVE 2098: Boot silence
   }

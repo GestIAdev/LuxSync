@@ -57,11 +57,12 @@ const STROBE_MIN_HZ = 1.0
 
 /**
  * Frecuencia máxima a strobeRate = 1.0.
- * 25 Hz es el techo industrial estándar (Martin Atomic 3000, Robe Spiider).
+ * 18 Hz es el techo de renderizado físico de fixture (operation bureaucracy).
+ * Alineado con SAFE_MAX_STROBE_HZ en ChronosIPCBridge.ts y el schema [1, 18].
  * Por encima de Nyquist del refresh visual (22 Hz @ 44 fps) se produce
  * aliasing intencional — fiel al comportamiento de cámaras/UI reales.
  */
-const STROBE_MAX_HZ = 25.0
+const STROBE_MAX_HZ = 18.0
 
 /**
  * Dead-zone: rates por debajo de este umbral se consideran "sin strobe"

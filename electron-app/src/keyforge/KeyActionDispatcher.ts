@@ -39,6 +39,8 @@ import { useNavigationStore } from '../stores/navigationStore'
 import type { TabId } from '../stores/navigationStore'
 import { useEffectsStore } from '../stores/effectsStore'
 import { useStageStore } from '../stores/stageStore'
+import { useControlStore } from '../stores/controlStore'
+import { useAudioStore } from '../stores/audioStore'
 import type { FixtureGroup } from '../core/stage/ShowFileV2'
 import type {
   ActionPayload,
@@ -490,6 +492,172 @@ function dispatchKinAction(actionId: string, payload: ActionPayload): boolean {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// CTRL-* HANDLER — Control & Audio Stores (KEYSTONE POLISH K1)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Intensity nudge step per repeat tick (0-1 range). */
+const CTRL_INTENSITY_STEP = 0.05
+
+/** Tempo nudge step per repeat tick (BPM). */
+const CTRL_TEMPO_STEP = 1
+
+/** Tap-tempo: max intervals kept for averaging. */
+const TAP_TEMPO_MAX_INTERVALS = 4
+
+/** Tap-tempo: timeout to reset tap history (ms). */
+const TAP_TEMPO_RESET_MS = 2000
+
+/** Module-level tap-tempo state (persists across dispatches). */
+let _tapTimestamps: number[] = []
+let _lastTapTime = 0
+
+/**
+ * Dispatch a `ctrl-*` action against controlStore / audioStore.
+ *
+ * Supported sub-actions:
+ *   ctrl-intensity-up     → nudge globalIntensity +step
+ *   ctrl-intensity-down   → nudge globalIntensity -step
+ *   ctrl-tap-tempo        → tap tempo (averages intervals → audioStore.bpm)
+ *   ctrl-tempo-nudge-up   → nudge audioStore.bpm +1
+ *   ctrl-tempo-nudge-down → nudge audioStore.bpm -1
+ *   ctrl-ai-toggle        → toggleAI()
+ *   ctrl-output-toggle    → toggleOutput()
+ *   ctrl-saturation       → setGlobalSaturation(intensity)
+ */
+function dispatchCtrlAction(actionId: string, payload: ActionPayload): boolean {
+  const ctrlStore = useControlStore.getState()
+  const sub = actionId.slice(5) // 'ctrl-intensity-up' → 'intensity-up'
+
+  switch (sub) {
+    case 'intensity-up': {
+      if (payload.phase === 'release') return true
+      const next = Math.min(1, ctrlStore.globalIntensity + CTRL_INTENSITY_STEP)
+      ctrlStore.setGlobalIntensity(next)
+      return true
+    }
+    case 'intensity-down': {
+      if (payload.phase === 'release') return true
+      const next = Math.max(0, ctrlStore.globalIntensity - CTRL_INTENSITY_STEP)
+      ctrlStore.setGlobalIntensity(next)
+      return true
+    }
+    case 'tap-tempo': {
+      if (payload.phase === 'release') return true
+      const now = performance.now()
+      if (now - _lastTapTime > TAP_TEMPO_RESET_MS) {
+        _tapTimestamps = []
+      }
+      _tapTimestamps.push(now)
+      if (_tapTimestamps.length > TAP_TEMPO_MAX_INTERVALS + 1) {
+        _tapTimestamps.shift()
+      }
+      _lastTapTime = now
+      if (_tapTimestamps.length >= 2) {
+        const intervals: number[] = []
+        for (let i = 1; i < _tapTimestamps.length; i++) {
+          intervals.push(_tapTimestamps[i] - _tapTimestamps[i - 1])
+        }
+        const avgMs = intervals.reduce((a, b) => a + b, 0) / intervals.length
+        if (avgMs > 0) {
+          const bpm = Math.round(60000 / avgMs)
+          const clamped = Math.max(40, Math.min(300, bpm))
+          useAudioStore.getState().updateMetrics({ bpm: clamped, bpmConfidence: 0.8 })
+        }
+      }
+      return true
+    }
+    case 'tempo-nudge-up': {
+      if (payload.phase === 'release') return true
+      const audioStore = useAudioStore.getState()
+      const next = Math.min(300, (audioStore.bpm || 120) + CTRL_TEMPO_STEP)
+      audioStore.updateMetrics({ bpm: next })
+      return true
+    }
+    case 'tempo-nudge-down': {
+      if (payload.phase === 'release') return true
+      const audioStore = useAudioStore.getState()
+      const next = Math.max(40, (audioStore.bpm || 120) - CTRL_TEMPO_STEP)
+      audioStore.updateMetrics({ bpm: next })
+      return true
+    }
+    case 'ai-toggle': {
+      if (payload.phase === 'release') return true
+      ctrlStore.toggleAI()
+      return true
+    }
+    case 'output-toggle': {
+      if (payload.phase === 'release') return true
+      ctrlStore.toggleOutput()
+      return true
+    }
+    case 'saturation': {
+      if (payload.phase === 'release') return true
+      ctrlStore.setGlobalSaturation(payload.intensity)
+      return true
+    }
+    default:
+      console.warn(`[KeyForge] ⚠️ Unknown ctrl-* sub-action: ${actionId}`)
+      return false
+  }
+}
+
+/**
+ * Dispatch a `flow-*` action against controlStore flowParams.
+ *
+ * Supported sub-actions:
+ *   flow-speed   → setFlowParams({ speed })
+ *   flow-spread  → setFlowParams({ spread })
+ */
+function dispatchFlowAction(actionId: string, payload: ActionPayload): boolean {
+  const ctrlStore = useControlStore.getState()
+  const sub = actionId.slice(5) // 'flow-speed' → 'speed'
+
+  switch (sub) {
+    case 'speed': {
+      if (payload.phase === 'release') return true
+      ctrlStore.setFlowParams({ speed: Math.round(payload.intensity * 100) })
+      return true
+    }
+    case 'spread': {
+      if (payload.phase === 'release') return true
+      ctrlStore.setFlowParams({ spread: Math.round(payload.intensity * 100) })
+      return true
+    }
+    default:
+      console.warn(`[KeyForge] ⚠️ Unknown flow-* sub-action: ${actionId}`)
+      return false
+  }
+}
+
+/**
+ * Dispatch a `lux-*` action via the lux bridge.
+ *
+ * Supported sub-actions:
+ *   lux-blackout → toggle blackout via IPC + effectsStore sync
+ */
+function dispatchLuxAction(actionId: string, payload: ActionPayload): boolean {
+  const lux = getLuxBridge()
+  const sub = actionId.slice(4) // 'lux-blackout' → 'blackout'
+
+  switch (sub) {
+    case 'blackout': {
+      if (payload.phase === 'release') return true
+      const currentBlackout = useEffectsStore.getState().blackout
+      const targetBlackout = !currentBlackout
+      lux?.aether?.setBlackout?.(targetBlackout).then((result) => {
+        if (result?.success) {
+          useEffectsStore.getState().setBlackout(result.blackoutActive ?? targetBlackout)
+        }
+      }).catch(() => {})
+      return true
+    }
+    default:
+      console.warn(`[KeyForge] ⚠️ Unknown lux-* sub-action: ${actionId}`)
+      return false
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // MAIN DISPATCH
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -576,19 +744,19 @@ export function dispatchAction(actionId: string, payload: ActionPayload): boolea
     }
   }
 
-  // ── ctrl-* / flow-* / lux-* → log only (continuous store wiring = Batch 3) ──
-  if (
-    actionId.startsWith('ctrl-')
-    || actionId.startsWith('flow-')
-    || actionId.startsWith('lux-')
-  ) {
-    if (payload.phase !== 'release') {
-      console.log(
-        `[KeyForge] 🎚️ ${actionId} (intensity=${payload.intensity.toFixed(2)}) — `
-        + `ctrl/flow/lux store wiring pending Batch 3.`,
-      )
-    }
-    return true
+  // ── ctrl-* → Control / Audio stores ──
+  if (actionId.startsWith('ctrl-')) {
+    return dispatchCtrlAction(actionId, payload)
+  }
+
+  // ── flow-* → Flow params (controlStore) ──
+  if (actionId.startsWith('flow-')) {
+    return dispatchFlowAction(actionId, payload)
+  }
+
+  // ── lux-* → Lux bridge passthrough ──
+  if (actionId.startsWith('lux-')) {
+    return dispatchLuxAction(actionId, payload)
   }
 
   // ── sel-* → Selection Store ──

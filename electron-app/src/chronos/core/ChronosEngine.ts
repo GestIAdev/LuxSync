@@ -149,12 +149,21 @@ class ClipBoundaryIndex {
   private lastQueryTimeMs: number = -1
   private tracksRef: readonly LuxTrackV3[] | null = null
 
+  // HEIMDALL H-5: Prefix-max-endMs array for O(log n + m) cache-miss queries.
+  //   prefixMaxEndMs[i] = max(clipEntries[0..i].endMs). Since clipEntries is
+  //   sorted by startMs, scanning backwards from the binary-search insertion
+  //   point we can terminate as soon as prefixMaxEndMs[i] < timeMs — no earlier
+  //   entry can still be active. This replaces the previous O(k) linear scan
+  //   from index 0 (worst case: the entire show on a late-timeline seek).
+  private prefixMaxEndMs: number[] = []
+
   rebuild(tracks: readonly LuxTrackV3[]): void {
     this.tracksRef = tracks
     this.boundaries = []
     this.clipEntries = []
     this.cachedActivePairs = null
     this.lastQueryTimeMs = -1
+    this.prefixMaxEndMs = []
 
     for (let ti = 0; ti < tracks.length; ti++) {
       const track = tracks[ti]
@@ -174,6 +183,17 @@ class ClipBoundaryIndex {
 
     this.boundaries.sort((a, b) => a.timeMs - b.timeMs)
     this.clipEntries.sort((a, b) => a.startMs - b.startMs)
+
+    // Build prefix-max-endMs array in one pass after sort.
+    if (this.clipEntries.length > 0) {
+      this.prefixMaxEndMs = new Array<number>(this.clipEntries.length)
+      let runningMax = this.clipEntries[0].endMs
+      this.prefixMaxEndMs[0] = runningMax
+      for (let i = 1; i < this.clipEntries.length; i++) {
+        if (this.clipEntries[i].endMs > runningMax) runningMax = this.clipEntries[i].endMs
+        this.prefixMaxEndMs[i] = runningMax
+      }
+    }
   }
 
   isStale(tracks: readonly LuxTrackV3[]): boolean {
@@ -190,15 +210,36 @@ class ClipBoundaryIndex {
 
     const active: Array<{ clip: LuxClipV3; track: LuxTrackV3 }> = []
 
-    for (const entry of this.clipEntries) {
-      if (entry.startMs > timeMs) break
+    // HEIMDALL H-5: O(log n + m) cache-miss path.
+    //   1. Binary-search clipEntries (sorted by startMs) for the largest index
+    //      whose startMs <= timeMs — the exclusive upper bound for candidates.
+    //   2. Scan backwards from there. Terminate early once prefixMaxEndMs[i]
+    //      < timeMs: no entry at or before i can have endMs > timeMs, so none
+    //      can still be active. This bounds the scan to entries that actually
+    //      have a chance of being active, not the entire prefix.
+    if (this.clipEntries.length > 0) {
+      // Binary search: find rightmost index where startMs <= timeMs.
+      // Result `hi` is the exclusive upper bound (one past the last candidate).
+      let lo = 0
+      let hi = this.clipEntries.length
+      while (lo < hi) {
+        const mid = (lo + hi) >>> 1
+        if (this.clipEntries[mid].startMs <= timeMs) { lo = mid + 1 } else { hi = mid }
+      }
+      // Scan backwards from hi-1 down to 0, with prefix-max early termination.
+      for (let i = hi - 1; i >= 0; i--) {
+        const entry = this.clipEntries[i]
+        // If the maximum endMs among entries[0..i] is before timeMs, no
+        // earlier entry can still be active — terminate.
+        if (this.prefixMaxEndMs[i] < timeMs) break
 
-      if (entry.startMs === entry.endMs) {
-        if (Math.abs(timeMs - entry.startMs) < 16) {
+        if (entry.startMs === entry.endMs) {
+          if (Math.abs(timeMs - entry.startMs) < 16) {
+            active.push({ clip: entry.clip, track: entry.track })
+          }
+        } else if (timeMs >= entry.startMs && timeMs < entry.endMs) {
           active.push({ clip: entry.clip, track: entry.track })
         }
-      } else if (timeMs >= entry.startMs && timeMs < entry.endMs) {
-        active.push({ clip: entry.clip, track: entry.track })
       }
     }
 

@@ -586,37 +586,39 @@ export class IntervalBPMTracker {
 
     // ─── 9. Diagnostic Log (every ~1 second) ──────────────────────
     // Kept sparse to avoid IPC choking (lesson from WAVE 2125)
-    if (this.totalKicks > 0 && kickDetected) {
-      // WAVE 2170: dump bpmHistory snapshot for conf=0 diagnostics
-      const histSnapshot = Array.from(this.bpmHistory.slice(0, this.bpmHistoryCount))
-        .map(v => Math.round(v))
-        .join(',')
-      console.log(
-        `[🥁 INTERVAL BPM] KICK #${this.totalKicks} ` +
-        `bpm=${this.stableBpm} conf=${this.currentConfidence.toFixed(2)} ` +
-        `energy=${rawBassEnergy.toFixed(4)} avg=${rollingAvg.toFixed(4)} ` +
-        `ratio=${rollingAvg > 0 ? (rawBassEnergy / rollingAvg).toFixed(2) : 'N/A'} ` +
-        `delta=${delta.toFixed(4)} ` +
-        `history=${this.bpmHistoryCount}/${BPM_HISTORY_SIZE} ` +
-        `bpmBuf=[${histSnapshot}]`
-      )
-    }
+    // [DISABLED WAVE 9001] — debug traces no longer needed after FFT cleanup
+    // if (this.totalKicks > 0 && kickDetected) {
+    //   // WAVE 2170: dump bpmHistory snapshot for conf=0 diagnostics
+    //   const histSnapshot = Array.from(this.bpmHistory.slice(0, this.bpmHistoryCount))
+    //     .map(v => Math.round(v))
+    //     .join(',')
+    //   console.log(
+    //     `[🥁 INTERVAL BPM] KICK #${this.totalKicks} ` +
+    //     `bpm=${this.stableBpm} conf=${this.currentConfidence.toFixed(2)} ` +
+    //     `energy=${rawBassEnergy.toFixed(4)} avg=${rollingAvg.toFixed(4)} ` +
+    //     `ratio=${rollingAvg > 0 ? (rawBassEnergy / rollingAvg).toFixed(2) : 'N/A'} ` +
+    //     `delta=${delta.toFixed(4)} ` +
+    //     `history=${this.bpmHistoryCount}/${BPM_HISTORY_SIZE} ` +
+    //     `bpmBuf=[${histSnapshot}]`
+    //   )
+    // }
 
     // ─── WAVE 3418: Periodic no-kick telemetry (~2s cadence) ──────
     // Visible incluso cuando el ratio NUNCA supera el threshold.
     // Diagnóstico clave: si ratio < 1.6 siempre → señal demasiado débil.
-    this._periodicLogCounter++
-    if (this._periodicLogCounter % 95 === 0) {
-      const ratio = rollingAvg > 0 ? rawBassEnergy / rollingAvg : 0
-      console.log(
-        `[🔬 BPM-TELEMETRY] frame=${this._periodicLogCounter} ` +
-        `energy=${rawBassEnergy.toFixed(5)} avg=${rollingAvg.toFixed(5)} ` +
-        `ratio=${ratio.toFixed(3)} threshold=1.60 ` +
-        `delta=${delta.toFixed(5)} ` +
-        `peak_est=${this.peakEnergyEstimate.toFixed(5)} ` +
-        `kicks=${this.totalKicks} bpm=${this.stableBpm}`
-      )
-    }
+    // [DISABLED WAVE 9001] — debug traces no longer needed after FFT cleanup
+    // this._periodicLogCounter++
+    // if (this._periodicLogCounter % 95 === 0) {
+    //   const ratio = rollingAvg > 0 ? rawBassEnergy / rollingAvg : 0
+    //   console.log(
+    //     `[🔬 BPM-TELEMETRY] frame=${this._periodicLogCounter} ` +
+    //     `energy=${rawBassEnergy.toFixed(5)} avg=${rollingAvg.toFixed(5)} ` +
+    //     `ratio=${ratio.toFixed(3)} threshold=1.60 ` +
+    //     `delta=${delta.toFixed(5)} ` +
+    //     `peak_est=${this.peakEnergyEstimate.toFixed(5)} ` +
+    //     `kicks=${this.totalKicks} bpm=${this.stableBpm}`
+    //   )
+    // }
 
     // 🔧 WAVE 7002.4 (REC-12): Run autocorrelation validator periodically.
     // Cross-validates interval-based BPM with spectral autocorrelation.

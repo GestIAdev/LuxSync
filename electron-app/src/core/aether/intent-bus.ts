@@ -162,7 +162,7 @@ export type ArbitratedNodeMap = ReadonlyMap<NodeId, Readonly<Record<string, numb
  * la estructura de nodos — solo ve bytes DMX.
  */
 export interface IDMXPacket {
-  /** Universo DMX (1-based) */
+  /** Universo DMX (0-based, ArtNet convention — matches FixtureV2.universe) */
   readonly universe: number
   /** Dirección DMX base del Device (1-512) */
   readonly address: number

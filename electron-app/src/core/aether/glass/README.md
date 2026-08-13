@@ -77,8 +77,7 @@ Un `setInterval` de 2s en `TitanOrchestrator.start()` loguea estas metricas en c
 | Archivo | Rol |
 |---|---|
 | `layout.ts` | Constantes y offsets del SAB |
-| `GlassMemory.ts` | `FixtureStateWriter` / `FixtureStateReader` con seqlock |
-| `DmxSabHandlers.ts` | `DmxUniverseWriter` / `DmxUniverseReader` para DMX |
+| `DmxSabHandlers.ts` | `DmxUniverseWriter` / `DmxUniverseReader` + `FixtureStateWriter` / `FixtureStateReader` + factory helpers (consolidated) |
 | `BufferPoolManager.ts` | Pool de buffers transferibles + ping-pong |
 | `dmxPhantomWorker.ts` | Worker thread que lee SAB y escribe SerialPort |
 | `glassPreload.ts` | `window.glass` API en el Renderer |

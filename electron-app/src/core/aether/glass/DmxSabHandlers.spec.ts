@@ -1,5 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// WAVE 6005 — GLASS MEMORY: Test suite exhaustiva (Vitest)
+// DmxSabHandlers — Test suite exhaustiva (Vitest)
+// Retargeted from GlassMemory.spec.ts to test the consolidated production API.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { describe, it, expect, beforeEach } from 'vitest'
@@ -26,7 +27,7 @@ import {
   FixtureStateReader,
   createDmxSab,
   createFixtureSab,
-} from './GlassMemory'
+} from './DmxSabHandlers'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // BLOQUE 1: Verificación de tamaños en bytes (layout matemático)
@@ -113,13 +114,11 @@ describe('DmxUniverseWriter + DmxUniverseReader — hot-path básico', () => {
   let sab: SharedArrayBuffer
   let writer: DmxUniverseWriter
   let reader: DmxUniverseReader
-  let dest: Uint8Array
 
   beforeEach(() => {
     sab    = createDmxSab()
     writer = new DmxUniverseWriter(sab)
     reader = new DmxUniverseReader(sab)
-    dest   = new Uint8Array(MAX_UNIVERSES * CHANNELS_PER_UNI)
   })
 
   it('seqlock empieza en 0 (estado par / estable)', () => {
@@ -129,22 +128,23 @@ describe('DmxUniverseWriter + DmxUniverseReader — hot-path básico', () => {
 
   it('commitFrame incrementa el seqlock en 2 (par→par)', () => {
     const u0 = new Uint8Array(CHANNELS_PER_UNI).fill(42)
-    writer.commitFrame(1, [u0], 1000)
+    writer.commitFrame(1, [u0], 1, 0)
     expect(writer.peekSeqlock()).toBe(2)
   })
 
   it('readCoherent devuelve el frameId correcto después de un commit', () => {
     const u0 = new Uint8Array(CHANNELS_PER_UNI).fill(77)
-    writer.commitFrame(5, [u0], 2000)
-    const frameId = reader.readCoherent(dest, 0)
-    expect(frameId).toBe(5)
+    writer.commitFrame(5, [u0], 1, 0)
+    const result = reader.readCoherent(0)
+    expect(result).not.toBeNull()
+    expect(result!.frameId).toBe(5)
   })
 
   it('readCoherent devuelve null si el frameId no cambió', () => {
     const u0 = new Uint8Array(CHANNELS_PER_UNI).fill(77)
-    writer.commitFrame(5, [u0], 2000)
-    const frameId = reader.readCoherent(dest, 5)
-    expect(frameId).toBeNull()
+    writer.commitFrame(5, [u0], 1, 0)
+    const result = reader.readCoherent(5)
+    expect(result).toBeNull()
   })
 
   it('los datos del universo 0 se leen correctamente', () => {
@@ -153,45 +153,55 @@ describe('DmxUniverseWriter + DmxUniverseReader — hot-path básico', () => {
     u0[1]   = 128
     u0[511] = 33
 
-    writer.commitFrame(1, [u0], 1000)
-    reader.readCoherent(dest, 0)
+    writer.commitFrame(1, [u0], 1, 0)
+    const result = reader.readCoherent(0)
+    expect(result).not.toBeNull()
+    const data = result!.data
 
-    expect(dest[0]).toBe(255)
-    expect(dest[1]).toBe(128)
-    expect(dest[511]).toBe(33)
+    expect(data[0]).toBe(255)
+    expect(data[1]).toBe(128)
+    expect(data[511]).toBe(33)
   })
 
   it('los datos del universo 49 se ubican en el offset correcto', () => {
-    const universes: Array<null | Uint8Array> = Array(50).fill(null)
+    const universes: (Uint8Array | undefined)[] = new Array(MAX_UNIVERSES).fill(undefined)
     universes[49] = new Uint8Array(CHANNELS_PER_UNI).fill(99)
 
-    writer.commitFrame(1, universes, 1000)
-    reader.readCoherent(dest, 0)
+    // Universe 49 → bit 18 in maskHi (49 - 31 = 18)
+    const maskHi = (1 << 18) >>> 0
+    writer.commitFrame(1, universes, 0, maskHi)
+    const result = reader.readCoherent(0)
+    expect(result).not.toBeNull()
+    const data = result!.data
 
     const offset = 49 * CHANNELS_PER_UNI
-    expect(dest[offset]).toBe(99)
-    expect(dest[offset + 511]).toBe(99)
+    expect(data[offset]).toBe(99)
+    expect(data[offset + 511]).toBe(99)
   })
 
   it('actualizar mismo SAB desde writer y reader produce datos coherentes en N frames', () => {
     for (let frame = 1; frame <= 100; frame++) {
       const u0 = new Uint8Array(CHANNELS_PER_UNI).fill(frame & 0xff)
-      writer.commitFrame(frame, [u0], frame * 22)
-      const gotFrame = reader.readCoherent(dest, frame - 1)
-      expect(gotFrame).toBe(frame)
-      expect(dest[0]).toBe(frame & 0xff)
+      writer.commitFrame(frame, [u0], 1, 0)
+      const result = reader.readCoherent(frame - 1)
+      expect(result).not.toBeNull()
+      expect(result!.frameId).toBe(frame)
+      expect(result!.data[0]).toBe(frame & 0xff)
     }
   })
 
-  it('peekHeader devuelve activeUnis y maskLo correctos', () => {
+  it('peekHeader devuelve maskLo y maskHi correctos', () => {
     const u0 = new Uint8Array(CHANNELS_PER_UNI).fill(1)
     const u2 = new Uint8Array(CHANNELS_PER_UNI).fill(2)
-    writer.commitFrame(1, [u0, null, u2], 1000)
+    const universes: (Uint8Array | undefined)[] = new Array(3).fill(undefined)
+    universes[0] = u0
+    universes[2] = u2
+    // bit 0 and bit 2 in maskLo
+    const maskLo = 0b101
+    writer.commitFrame(1, universes, maskLo, 0)
 
     const h = reader.peekHeader()
     expect(h.frameId).toBe(1)
-    expect(h.activeUnis).toBe(2)
-    // bit 0 y bit 2 activos
     expect(h.maskLo & 0b101).toBe(0b101)
   })
 })
@@ -296,27 +306,17 @@ describe('FixtureStateWriter + FixtureStateReader — hot-path básico', () => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe('SEQLOCK — invariantes de concurrencia (single-realm simulado)', () => {
-  /**
-   * En JS de un solo hilo no podemos interrumpir mid-write, pero sí podemos:
-   *  1. Verificar la paridad par/impar correcta antes/durante/después de commit.
-   *  2. Simular un seqlock "congelado impar" con Atomics.store y verificar
-   *     que tryReadIfStable devuelve null (lector rechaza tearing).
-   *  3. Verificar que después de resolver el seqlock (par), tryReadIfStable
-   *     entrega el dato correcto.
-   */
 
   describe('DmxUniverseWriter — paridad SEQLOCK', () => {
     it('seqlock es par antes del commit, impar no observable post-commit (par final)', () => {
       const sab    = createDmxSab()
       const writer = new DmxUniverseWriter(sab)
 
-      // Antes: par (0)
       expect(writer.peekSeqlock() & 1).toBe(0)
 
       const u0 = new Uint8Array(CHANNELS_PER_UNI).fill(1)
-      writer.commitFrame(1, [u0], 1000)
+      writer.commitFrame(1, [u0], 1, 0)
 
-      // Después: par (2) — jamás termina en impar
       const seq = writer.peekSeqlock()
       expect(seq & 1).toBe(0)
       expect(seq).toBe(2)
@@ -328,7 +328,7 @@ describe('SEQLOCK — invariantes de concurrencia (single-realm simulado)', () =
       const u0 = new Uint8Array(CHANNELS_PER_UNI)
 
       for (let n = 1; n <= 10; n++) {
-        writer.commitFrame(n, [u0], n * 22)
+        writer.commitFrame(n, [u0], 1, 0)
         expect(writer.peekSeqlock()).toBe(n * 2)
         expect(writer.peekSeqlock() & 1).toBe(0)
       }
@@ -339,55 +339,47 @@ describe('SEQLOCK — invariantes de concurrencia (single-realm simulado)', () =
     it('retorna null cuando seqlock es impar (simulación de escritura en curso)', () => {
       const sab    = createDmxSab()
       const reader = new DmxUniverseReader(sab)
-      const dest   = new Uint8Array(MAX_UNIVERSES * CHANNELS_PER_UNI)
 
-      // Simular seqlock congelado en impar (escritor interrumpido)
       const hdr = new Int32Array(sab, 0, 16)
-      Atomics.store(hdr, DmxHdr.SEQLOCK, 1)  // ← seqlock impar
+      Atomics.store(hdr, DmxHdr.SEQLOCK, 1)
 
       expect(reader.peekSeqlock() & 1).toBe(1)
-
-      const result = reader.tryReadIfStable(dest)
-      expect(result).toBeNull()
+      expect(reader.tryReadIfStable(0)).toBeNull()
     })
 
     it('retorna frameId cuando seqlock es par (escritura completa)', () => {
       const sab    = createDmxSab()
       const writer = new DmxUniverseWriter(sab)
       const reader = new DmxUniverseReader(sab)
-      const dest   = new Uint8Array(MAX_UNIVERSES * CHANNELS_PER_UNI)
 
       const u0 = new Uint8Array(CHANNELS_PER_UNI).fill(55)
-      writer.commitFrame(3, [u0], 1000)
+      writer.commitFrame(3, [u0], 1, 0)
 
-      // seqlock debe ser par
       expect(reader.peekSeqlock() & 1).toBe(0)
 
-      const frameId = reader.tryReadIfStable(dest)
-      expect(frameId).toBe(3)
-      expect(dest[0]).toBe(55)
+      const result = reader.tryReadIfStable(0)
+      expect(result).not.toBeNull()
+      expect(result!.frameId).toBe(3)
+      expect(result!.data[0]).toBe(55)
     })
 
     it('resolver seqlock de impar a par permite lectura exitosa', () => {
       const sab    = createDmxSab()
       const reader = new DmxUniverseReader(sab)
-      const dest   = new Uint8Array(MAX_UNIVERSES * CHANNELS_PER_UNI)
 
-      // Escribir directamente el dato
       const data = new Uint8Array(sab, DMX_HEADER_BYTES)
       data[0] = 123
       const hdr = new Int32Array(sab, 0, 16)
 
-      // Congelar en impar y verificar que tryReadIfStable falla
       Atomics.store(hdr, DmxHdr.SEQLOCK, 1)
       hdr[DmxHdr.FRAME_ID] = 9
-      expect(reader.tryReadIfStable(dest)).toBeNull()
+      expect(reader.tryReadIfStable(0)).toBeNull()
 
-      // Resolver a par (simula finalización del escritor)
       Atomics.store(hdr, DmxHdr.SEQLOCK, 2)
-      const frameId = reader.tryReadIfStable(dest)
-      expect(frameId).toBe(9)
-      expect(dest[0]).toBe(123)
+      const result = reader.tryReadIfStable(0)
+      expect(result).not.toBeNull()
+      expect(result!.frameId).toBe(9)
+      expect(result!.data[0]).toBe(123)
     })
   })
 
@@ -425,21 +417,20 @@ describe('SEQLOCK — invariantes de concurrencia (single-realm simulado)', () =
       const sab    = createDmxSab()
       const writer = new DmxUniverseWriter(sab)
       const reader = new DmxUniverseReader(sab)
-      const dest   = new Uint8Array(MAX_UNIVERSES * CHANNELS_PER_UNI)
 
       for (let frame = 1; frame <= 1000; frame++) {
         const u0 = new Uint8Array(CHANNELS_PER_UNI).fill(frame & 0xff)
-        writer.commitFrame(frame, [u0], frame)
-        const gotFrame = reader.readCoherent(dest, frame - 1)
-        expect(gotFrame).toBe(frame)
-        // Verificar coherencia: todos los bytes deben tener el mismo valor
+        writer.commitFrame(frame, [u0], 1, 0)
+        const result = reader.readCoherent(frame - 1)
+        expect(result).not.toBeNull()
+        expect(result!.frameId).toBe(frame)
+        const data = result!.data
         for (let ch = 0; ch < CHANNELS_PER_UNI; ch++) {
-          if (dest[ch] !== (frame & 0xff)) {
-            throw new Error(`Tearing detectado en frame ${frame}, canal ${ch}: valor ${dest[ch]}`)
+          if (data[ch] !== (frame & 0xff)) {
+            throw new Error(`Tearing detectado en frame ${frame}, canal ${ch}: valor ${data[ch]}`)
           }
         }
       }
-      // seqlock final = 2000 (siempre par)
       expect(writer.peekSeqlock()).toBe(2000)
     })
 

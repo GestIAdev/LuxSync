@@ -80,15 +80,15 @@ export interface DMXChannelDefinition {
  * @example
  * ```typescript
  * const packet: DMXPacket = {
- *   universe: 1,
- *   address: 1,
+ *   universe: 0,   // 0-based (ArtNet convention, matches FixtureV2)
+ *   address: 1,    // 1-based (DMX512 standard)
  *   channels: [255, 255, 0, 0, 0, 128, 64],  // Dimmer, R, G, B, W, Pan, Tilt
  *   fixtureId: 'par-front-1'
  * }
  * ```
  */
 export interface DMXPacket {
-  /** Universo DMX (1-based) */
+  /** Universo DMX (0-based, ArtNet convention — matches FixtureV2.universe) */
   universe: number
   
   /** Dirección base del fixture (1-512) */
@@ -109,7 +109,7 @@ export interface DMXPacket {
  * Estado completo de un universo DMX (512 canales)
  */
 export interface DMXUniverse {
-  /** Número del universo (1-based) */
+  /** Número del universo (0-based, ArtNet convention) */
   number: number
   
   /** 512 canales (índice 0-511) */
@@ -129,8 +129,8 @@ export interface DMXUniverse {
  * ```typescript
  * const output: DMXOutput = {
  *   universes: new Map([
- *     [1, new Uint8Array(512)],  // Universo 1
- *     [2, new Uint8Array(512)],  // Universo 2
+ *     [0, new Uint8Array(512)],  // Universe 0
+ *     [1, new Uint8Array(512)],  // Universe 1
  *   ]),
  *   timestamp: Date.now()
  * }

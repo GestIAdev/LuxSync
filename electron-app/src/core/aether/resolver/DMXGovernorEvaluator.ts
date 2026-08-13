@@ -34,16 +34,39 @@ const CHANNEL_TO_INTENT: Record<string, GovernorIntentType> = {
 }
 
 /**
+ * Precomputa un mapa O(1) de gobernadores indexado por channelOffset.
+ *
+ * Construido en patch time (registerDevice). El array resultante tiene
+ * 512 slots; cada slot contiene el IDMXGovernor cuyo channelIndex coincide
+ * con ese offset, o undefined si no hay gobernador para ese canal.
+ *
+ * @param governors  Array desde IDeviceDefinition.dmxGovernors (congelado en patch time).
+ * @returns          Array de 512 slots con IDMXGovernor | undefined.
+ */
+export function buildGovernorLookupMap(
+  governors: readonly IDMXGovernor[],
+): readonly (IDMXGovernor | undefined)[] {
+  const map = new Array<IDMXGovernor | undefined>(512).fill(undefined)
+  for (let gi = 0; gi < governors.length; gi++) {
+    const gov = governors[gi]
+    if (gov.channelIndex >= 0 && gov.channelIndex < 512 && map[gov.channelIndex] === undefined) {
+      map[gov.channelIndex] = gov
+    }
+  }
+  return map
+}
+
+/**
  * Evalúa la cadena de gobernadores DMX para un único write de canal.
  *
- * Algoritmo (sin allocations, todos O(n) loops secuenciales):
+ * Algoritmo (sin allocations, O(1) lookup + O(rules) evaluación):
  *  1. Derivar intentType desde channelType via lookup O(1).
- *  2. Recorrer governors[] buscando channelOffset coincidente.
- *  3. Al primer gobernador con match de canal, evaluar sus rules[].
+ *  2. Indexar govMap[channelOffset] — O(1) en lugar de scan lineal.
+ *  3. Si hay gobernador, evaluar sus rules[] en orden.
  *  4. Primera regla cuya condición pase → aplicar acción y retornar.
  *  5. Si ningún match → retornar computedByte sin modificar.
  *
- * @param governors     Array desde IDeviceDefinition.dmxGovernors (congelado en patch time).
+ * @param govMap        Precomputed lookup map from buildGovernorLookupMap().
  * @param channelOffset chDef.dmxOffset (0-based, relativo a la dirección base del device).
  * @param channelType   chDef.type (tipo semántico del canal).
  * @param normalized    rawNormalized (0.0-1.0, valor semántico pre-calibración).
@@ -51,7 +74,7 @@ const CHANNEL_TO_INTENT: Record<string, GovernorIntentType> = {
  * @returns             Byte DMX final [0-255].
  */
 export function applyDMXGovernors(
-  governors:     readonly IDMXGovernor[],
+  govMap:        readonly (IDMXGovernor | undefined)[],
   channelOffset: number,
   channelType:   string,
   normalized:    number,
@@ -59,12 +82,11 @@ export function applyDMXGovernors(
 ): number {
   const intentType: GovernorIntentType = CHANNEL_TO_INTENT[channelType] ?? 'fallback'
 
-  for (let gi = 0; gi < governors.length; gi++) {
-    const gov = governors[gi]
-    if (gov.channelIndex !== channelOffset) continue
+  const gov = govMap[channelOffset]
+  if (gov === undefined) return computedByte
 
-    // Primer gobernador con channelIndex coincidente — evaluar sus reglas.
-    for (let ri = 0; ri < gov.rules.length; ri++) {
+  // Gobernador encontrado — evaluar sus reglas.
+  for (let ri = 0; ri < gov.rules.length; ri++) {
       const rule = gov.rules[ri]
       const cond = rule.when
 
@@ -94,10 +116,6 @@ export function applyDMXGovernors(
 
       return result
     }
-
-    break  // El primer gobernador que coincide con channelOffset es autoritativo.
-           // Ningún otro gobernador del mismo índice se evalúa.
-  }
 
   return computedByte
 }

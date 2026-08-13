@@ -42,7 +42,7 @@
  * @version WAVE 4522.4
  */
 
-import { applyDMXGovernors } from './DMXGovernorEvaluator'
+import { applyDMXGovernors, buildGovernorLookupMap } from './DMXGovernorEvaluator'
 import type { NodeId, DeviceId, ColorMixingType, ColorWheelDefinition } from '../types'
 import type { INodeGraph } from '../node-graph'
 import type { ArbitratedNodeMap, IDMXPacket, INodeResolver } from '../intent-bus'
@@ -55,7 +55,7 @@ import { getHarmonicQuantizer } from '../../../hal/translation/HarmonicQuantizer
 // ColorWheelDefinition en el Aether (slots[]) vs el formato legacy (colors[]) del ColorTranslator.
 // El adaptador _aetherWheelToLegacy convierte entre ellos sin alloc en hot path.
 import type { ColorWheelDefinition as HalColorWheelDefinition } from '../../../hal/translation/FixtureProfiles'
-import type { IDeviceCalibration } from '../device'
+import type { IDeviceCalibration, IDMXGovernor } from '../device'
 import { solve, solveInto, buildProfile } from '../../../engine/movement/InverseKinematicsEngine'
 import type { IKFixtureProfile } from '../../../engine/movement/InverseKinematicsEngine'
 // WAVE 4548.6: Forge Node Evaluator bypass
@@ -260,7 +260,7 @@ export class NodeResolver implements INodeResolver {
   private readonly _cmyProfile  = Object.freeze({ colorEngine: { mixing: 'cmy'  as const } })
 
   // ── Buffers por universo ───────────────────────────────────────────────
-  // Map<universe (1-based), Uint8Array(512)>
+  // Map<universe (0-based, ArtNet convention), Uint8Array(512)>
   // Pre-allocated en registerDevice(), re-usado frame a frame.
   private readonly _universeBuffers = new Map<number, Uint8Array>()
 
@@ -317,7 +317,11 @@ export class NodeResolver implements INodeResolver {
   // ZERO ALLOC in hot path — all arrays created at patch time.
   private readonly _ignitionMap = new Map<DeviceId, IgnitionInjection[]>()
 
-  // 🌑 WAVE 4685.1: DarkSpin buffer sweep — pre-computed wheel device entries.
+  // �️ F9: Precomputed governor lookup maps — O(1) channelOffset → IDMXGovernor.
+  // Built at patch time in registerDevice(). Zero-alloc in hot path.
+  private readonly _governorMaps = new Map<DeviceId, readonly (IDMXGovernor | undefined)[]>()
+
+  // �� WAVE 4685.1: DarkSpin buffer sweep — pre-computed wheel device entries.
   // Built at patch time in _precomputeWheelDeviceEntry().
   // Iterated zero-alloc in hot path — no new arrays, no spreads.
   private readonly _wheelDeviceEntries: WheelDeviceEntry[] = []
@@ -391,6 +395,7 @@ export class NodeResolver implements INodeResolver {
     this._ignitionMap.delete(deviceId)  // limpiar si re-patch
     this._precomputeIgnitionMap(deviceId)
     this._precomputeWheelDeviceEntry(deviceId)
+    this._precomputeGovernorMap(deviceId)
   }
 
   /**
@@ -420,7 +425,7 @@ export class NodeResolver implements INodeResolver {
    * El buffer pertenece al NodeResolver — NO modificar desde fuera.
    * Es válido solo hasta el próximo tick de resolve() (siguiente frame).
    *
-   * @param universe — Número de universo (1-based)
+   * @param universe — Número de universo (0-based, ArtNet convention)
    * @returns Uint8Array(512) o undefined si el universo no está registrado
    */
   getUniverseBuffer(universe: number): Uint8Array | undefined {
@@ -517,7 +522,7 @@ export class NodeResolver implements INodeResolver {
    * PATCH TIME — llamar cuando se registra un Device en el NodeGraph.
    * Si el universo ya existe, no hace nada.
    *
-   * @param universe — Número de universo (1-based)
+   * @param universe — Número de universo (0-based, ArtNet convention)
    */
   registerUniverse(universe: number): void {
     if (this._universeBuffers.has(universe)) return
@@ -751,6 +756,24 @@ export class NodeResolver implements INodeResolver {
         return  // One entry per device is sufficient
       }
     }
+  }
+
+  /**
+   * 🏛️ F9: Precomputa el mapa O(1) de gobernadores para un device.
+   *
+   * Construye un array de 512 slots indexado por channelOffset, donde cada
+   * slot contiene el IDMXGovernor cuyo channelIndex coincide, o undefined.
+   * Esto elimina el scan lineal O(governors) en el hot path de _writeNode().
+   *
+   * PATCH TIME — cero alloc en hot path.
+   */
+  private _precomputeGovernorMap(deviceId: DeviceId): void {
+    const device = this._graph.getDevice(deviceId)
+    if (!device || !device.dmxGovernors || device.dmxGovernors.length === 0) {
+      this._governorMaps.delete(deviceId)
+      return
+    }
+    this._governorMaps.set(deviceId, buildGovernorLookupMap(device.dmxGovernors))
   }
 
   /**
@@ -1323,11 +1346,12 @@ export class NodeResolver implements INodeResolver {
       }
 
       // 🏛️ DMX GOVERNOR ENGINE — evaluación declarativa de última milla. Zero-alloc.
-      const _govs = device.dmxGovernors
+      // F9: O(1) lookup via precomputed map — no linear scan.
+      const _govMap = this._governorMaps.get(device.deviceId)
       let finalByte = safeDmxValue
 
-      if (_govs !== undefined && _govs.length > 0) {
-        finalByte = sanitizeDmxByte(applyDMXGovernors(_govs, chDef.dmxOffset, chDef.type, rawNormalized, safeDmxValue))
+      if (_govMap !== undefined) {
+        finalByte = sanitizeDmxByte(applyDMXGovernors(_govMap, chDef.dmxOffset, chDef.type, rawNormalized, safeDmxValue))
 
         // // 🚨 EL SONAR DEL GOBERNADOR (Loguea SOLO si altera el byte físico)
         // // Usamos Math.random() < 0.02 para que a 44Hz solo escupa el log aprox 1 vez por segundo y no congele la terminal.

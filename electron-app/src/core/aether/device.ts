@@ -188,7 +188,7 @@ export interface IDeviceDefinition {
   readonly type: string
   /** Dirección DMX base (1-512) */
   readonly dmxAddress: number
-  /** Universo DMX (1-based) */
+  /** Universo DMX (0-based, ArtNet convention — matches FixtureV2.universe) */
   readonly universe: number
   /** Número total de canales DMX que ocupa este Device */
   readonly channelCount: number

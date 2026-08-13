@@ -93,8 +93,8 @@ const STADIUM_BINDINGS: readonly KeyBinding[] = [
   { layer: 'base', key: 'X', actionId: 'grp-5-blackout', behavior: { kind: 'tap' } },
 
   // ── GRAND MASTER NUDGE ───────────────────────────────────────────────────
-  { layer: 'base', key: 'Q', actionId: 'ctrl-intensity', behavior: { kind: 'repeat', periodMs: 80 } },
-  { layer: 'base', key: 'E', actionId: 'ctrl-intensity', behavior: { kind: 'repeat', periodMs: 80 } },
+  { layer: 'base', key: 'Q', actionId: 'ctrl-intensity-down', behavior: { kind: 'repeat', periodMs: 80 } },
+  { layer: 'base', key: 'E', actionId: 'ctrl-intensity-up', behavior: { kind: 'repeat', periodMs: 80 } },
 
   // ── VIBE CYCLE ───────────────────────────────────────────────────────────
   { layer: 'base', key: 'V', actionId: 'vibe-fiesta-latina', behavior: { kind: 'tap' } },

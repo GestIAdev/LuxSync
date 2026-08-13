@@ -3,7 +3,16 @@ import {
   DMX_DATA_BYTES,
   DMX_HEADER_BYTES,
   DMX_HEADER_I32,
-  DmxHdr
+  DMX_SAB_BYTES,
+  DmxHdr,
+  MAX_UNIVERSES,
+  FIX_HEADER_I32,
+  FIX_HEADER_BYTES,
+  FIX_SAB_BYTES,
+  FIX_DATA_FLOATS,
+  FixHdr,
+  MAX_FIXTURES,
+  FLOATS_PER_FIX,
 } from './layout'
 
 /**
@@ -16,8 +25,19 @@ export class DmxUniverseWriter {
   private readonly u8: Uint8Array
 
   constructor(sab: SharedArrayBuffer) {
+    if (sab.byteLength < DMX_SAB_BYTES) {
+      throw new RangeError(
+        `DmxUniverseWriter: SAB demasiado pequeño. Mínimo ${DMX_SAB_BYTES} bytes, ` +
+        `recibido ${sab.byteLength}.`
+      )
+    }
     this.i32 = new Int32Array(sab, 0, DMX_HEADER_I32)
     this.u8 = new Uint8Array(sab, DMX_HEADER_BYTES, DMX_DATA_BYTES)
+  }
+
+  /** Retorna el valor actual del seqlock (diagnóstico / tests). */
+  public peekSeqlock(): number {
+    return Atomics.load(this.i32, DmxHdr.SEQLOCK)
   }
 
   /**
@@ -25,28 +45,37 @@ export class DmxUniverseWriter {
    *
    * @param frameId Identificador monotónico del frame.
    * @param universes Array de Uint8Array con los universos a volcar.
-   * @param dirtyMask Máscara de 64 bits indicando qué universos cambiaron.
+   * @param maskLo   Máscara de 32 bits para universos 0–30.
+   * @param maskHi   Máscara de 32 bits para universes 31–63.
    */
-  public commitFrame(frameId: number, universes: Uint8Array[], dirtyMask: bigint): void {
+  public commitFrame(frameId: number, universes: (Uint8Array | undefined)[], maskLo: number, maskHi: number): void {
     // 1. Iniciar escritura: incrementar SEQLOCK a impar
     Atomics.add(this.i32, DmxHdr.SEQLOCK, 1)
 
-    // 2. Volcar datos binarios (zero-allocation)
-    for (let u = 0; u < universes.length; u++) {
+    // 2. Volcar datos binarios — P1: Bitwise mask-driven iteration.
+    //    Only write universes whose bit is set in maskLo/maskHi.
+    //    maskLo: bits 0-30 → universes 0-30
+    let mLo = maskLo >>> 0
+    while (mLo !== 0) {
+      const i = Math.clz32(mLo & -mLo) ^ 31
+      const uBuf = universes[i]
+      if (uBuf) this.u8.set(uBuf, i * CHANNELS_PER_UNI)
+      mLo &= mLo - 1
+    }
+    //    maskHi: bits 0-31 → universes 31-62
+    let mHi = maskHi >>> 0
+    while (mHi !== 0) {
+      const i = Math.clz32(mHi & -mHi) ^ 31
+      const u = i + 31
       const uBuf = universes[u]
-      const offset = u * CHANNELS_PER_UNI
-      if (uBuf) {
-        this.u8.set(uBuf, offset)
-      } else {
-        // Rellenar con ceros si el universo no existe pero está en el loop
-        this.u8.fill(0, offset, offset + CHANNELS_PER_UNI)
-      }
+      if (uBuf) this.u8.set(uBuf, u * CHANNELS_PER_UNI)
+      mHi &= mHi - 1
     }
 
     // 3. Actualizar metadata del header
     this.i32[DmxHdr.FRAME_ID] = frameId
-    this.i32[DmxHdr.UNIVERSE_MASK] = Number(dirtyMask & BigInt(0xffffffff))
-    this.i32[DmxHdr.UNIVERSE_MASK_HI] = Number(dirtyMask >> BigInt(32))
+    this.i32[DmxHdr.UNIVERSE_MASK] = maskLo
+    this.i32[DmxHdr.UNIVERSE_MASK_HI] = maskHi
 
     // 4. Finalizar escritura: incrementar SEQLOCK a par
     Atomics.add(this.i32, DmxHdr.SEQLOCK, 1)
@@ -61,47 +90,249 @@ export class DmxUniverseWriter {
  * Vive en el DMX Phantom Worker (worker_thread).
  */
 export class DmxUniverseReader {
+  private static readonly MAX_SEQLOCK_RETRIES = 64
+
   private readonly i32: Int32Array
   private readonly u8: Uint8Array
   private readonly scratch = new Uint8Array(DMX_DATA_BYTES)
 
   constructor(sab: SharedArrayBuffer) {
+    if (sab.byteLength < DMX_SAB_BYTES) {
+      throw new RangeError(
+        `DmxUniverseReader: SAB demasiado pequeño. Mínimo ${DMX_SAB_BYTES} bytes, ` +
+        `recibido ${sab.byteLength}.`
+      )
+    }
     this.i32 = new Int32Array(sab, 0, DMX_HEADER_I32)
     this.u8 = new Uint8Array(sab, DMX_HEADER_BYTES, DMX_DATA_BYTES)
+  }
+
+  /** Retorna el valor actual del seqlock (diagnóstico / tests). */
+  public peekSeqlock(): number {
+    return Atomics.load(this.i32, DmxHdr.SEQLOCK)
+  }
+
+  /** Lee solo la cabecera sin copiar datos de universo. */
+  public peekHeader(): { frameId: number; activeUnis: number; maskLo: number; maskHi: number } {
+    const hdr = this.i32
+    return {
+      frameId:   hdr[DmxHdr.FRAME_ID],
+      activeUnis: hdr[DmxHdr.ACTIVE_UNIS],
+      maskLo:    hdr[DmxHdr.UNIVERSE_MASK],
+      maskHi:    hdr[DmxHdr.UNIVERSE_MASK_HI],
+    }
+  }
+
+  /**
+   * Lee el snapshot si el seqlock está en estado estable.
+   * Retorna null inmediatamente si seqlock es impar (escritura en curso).
+   * Útil para tests y para contextos donde el spin no es aceptable.
+   */
+  public tryReadIfStable(lastFrameId: number): { frameId: number; data: Uint8Array } | null {
+    const s1 = Atomics.load(this.i32, DmxHdr.SEQLOCK)
+    if ((s1 & 1) !== 0) return null
+
+    const frameId = this.i32[DmxHdr.FRAME_ID]
+    if (frameId === lastFrameId) return null
+
+    this.scratch.set(this.u8)
+
+    const s2 = Atomics.load(this.i32, DmxHdr.SEQLOCK)
+    if (s1 !== s2) return null
+
+    return { frameId, data: this.scratch }
   }
 
   /**
    * Lee un frame completo garantizando coherencia (evita el tearing).
    * Usa un scratch buffer interno preasignado (zero-allocation).
-   * Devuelve null si no hay un frame nuevo.
+   * Devuelve null si no hay un frame nuevo o si se excede el límite de reintentos.
+   *
+   * NOTA DE VOLATILIDAD: `data` apunta al scratch buffer interno.
+   * El caller debe consumir los datos antes de llamar readCoherent() nuevamente,
+   * ya que la próxima llamada sobrescribirá el mismo buffer.
    */
   public readCoherent(lastFrameId: number): { frameId: number; data: Uint8Array } | null {
     let s1: number = 0
     let s2: number = -1
+    let frameId = 0
+    let retries = 0
 
     do {
       s1 = Atomics.load(this.i32, DmxHdr.SEQLOCK)
 
       // Si es impar, el Main Process está escribiendo. Reintentamos.
       if ((s1 & 1) !== 0) {
+        if (++retries > DmxUniverseReader.MAX_SEQLOCK_RETRIES) return null
         s2 = -1 // Garantiza que s1 !== s2 para repetir el bucle
         continue
       }
 
-      const frameId = this.i32[DmxHdr.FRAME_ID]
-      
+      // Capturar frameId DENTRO de la ventana seqlock válida (s1 es par aquí)
+      frameId = this.i32[DmxHdr.FRAME_ID]
+
       // Si el frame no ha cambiado, no copiamos nada.
       if (frameId === lastFrameId) return null
 
-      // Tomamos el snapshot atómico de los 25.600 bytes en el buffer scratch
+      // Tomamos el snapshot atómico de los bytes en el buffer scratch
       this.scratch.set(this.u8)
 
       s2 = Atomics.load(this.i32, DmxHdr.SEQLOCK)
 
-      // Si el seqlock cambió durante nuestra lectura, hubo una re-escritura simultánea (tearing).
-      // El do-while se repite.
+      // Si el seqlock cambió durante nuestra lectura, hubo tearing.
+      if (s1 !== s2) {
+        if (++retries > DmxUniverseReader.MAX_SEQLOCK_RETRIES) return null
+      }
     } while (s1 !== s2)
 
-    return { frameId: this.i32[DmxHdr.FRAME_ID], data: this.scratch }
+    // frameId fue capturado dentro de la ventana seqlock validada.
+    return { frameId, data: this.scratch }
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fixture State Buffer — WRITER (migrated from GlassMemory.ts)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export class FixtureStateWriter {
+  private readonly _hdr:  Int32Array
+  private readonly _data: Float32Array
+
+  constructor(sab: SharedArrayBuffer) {
+    if (sab.byteLength < FIX_SAB_BYTES) {
+      throw new RangeError(
+        `FixtureStateWriter: SAB demasiado pequeño. Mínimo ${FIX_SAB_BYTES} bytes, ` +
+        `recibido ${sab.byteLength}.`
+      )
+    }
+    this._hdr  = new Int32Array(sab, 0, FIX_HEADER_I32)
+    this._data = new Float32Array(sab, FIX_HEADER_BYTES, FIX_DATA_FLOATS)
+  }
+
+  public commitFixtures(
+    frameId: number,
+    fixtureData: Float32Array,
+    count: number,
+    timestamp: number,
+  ): void {
+    const hdr  = this._hdr
+    const data = this._data
+    const clampedCount = Math.min(count, MAX_FIXTURES)
+
+    Atomics.add(hdr, FixHdr.SEQLOCK, 1)
+
+    hdr[FixHdr.FRAME_ID]      = frameId | 0
+    hdr[FixHdr.FIXTURE_COUNT] = clampedCount
+    hdr[FixHdr.TIMESTAMP_LO]  = timestamp | 0
+    hdr[FixHdr.TIMESTAMP_HI]  = 0
+
+    const floatsToCopy = clampedCount * FLOATS_PER_FIX
+    data.set(fixtureData.subarray(0, floatsToCopy))
+
+    Atomics.add(hdr, FixHdr.SEQLOCK, 1)
+  }
+
+  public writeFixtureField(fixtureIndex: number, field: number, value: number): void {
+    if (fixtureIndex < 0 || fixtureIndex >= MAX_FIXTURES) return
+    this._data[fixtureIndex * FLOATS_PER_FIX + field] = value
+  }
+
+  public peekSeqlock(): number {
+    return Atomics.load(this._hdr, FixHdr.SEQLOCK)
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fixture State Buffer — READER (migrated from GlassMemory.ts)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export class FixtureStateReader {
+  private readonly _hdr:  Int32Array
+  private readonly _data: Float32Array
+
+  constructor(sab: SharedArrayBuffer) {
+    if (sab.byteLength < FIX_SAB_BYTES) {
+      throw new RangeError(
+        `FixtureStateReader: SAB demasiado pequeño. Mínimo ${FIX_SAB_BYTES} bytes, ` +
+        `recibido ${sab.byteLength}.`
+      )
+    }
+    this._hdr  = new Int32Array(sab, 0, FIX_HEADER_I32)
+    this._data = new Float32Array(sab, FIX_HEADER_BYTES, FIX_DATA_FLOATS)
+  }
+
+  public readCoherent(
+    destFixtures: Float32Array,
+    lastFrameId: number,
+  ): { frameId: number; count: number } | null {
+    const hdr  = this._hdr
+    const data = this._data
+
+    let s1: number = 0, s2: number = -1
+    let frameId = 0
+    let count = 0
+
+    do {
+      s1 = Atomics.load(hdr, FixHdr.SEQLOCK)
+      if ((s1 & 1) !== 0) { s2 = -1; continue }
+
+      frameId = hdr[FixHdr.FRAME_ID]
+      if (frameId === lastFrameId) return null
+
+      count = hdr[FixHdr.FIXTURE_COUNT]
+      const floatsToCopy = Math.min(count, MAX_FIXTURES) * FLOATS_PER_FIX
+      destFixtures.set(data.subarray(0, floatsToCopy))
+
+      s2 = Atomics.load(hdr, FixHdr.SEQLOCK)
+    } while (s1 !== s2)
+
+    return { frameId, count }
+  }
+
+  public readFixtureField(fixtureIndex: number, field: number): number {
+    if (fixtureIndex < 0 || fixtureIndex >= MAX_FIXTURES) return 0
+    return this._data[fixtureIndex * FLOATS_PER_FIX + field]
+  }
+
+  public tryReadIfStable(
+    destFixtures: Float32Array,
+  ): { frameId: number; count: number } | null {
+    const hdr  = this._hdr
+    const data = this._data
+
+    const s1 = Atomics.load(hdr, FixHdr.SEQLOCK)
+    if (s1 & 1) return null
+
+    const frameId = hdr[FixHdr.FRAME_ID]
+    const count   = hdr[FixHdr.FIXTURE_COUNT]
+    const floatsToCopy = Math.min(count, MAX_FIXTURES) * FLOATS_PER_FIX
+    destFixtures.set(data.subarray(0, floatsToCopy))
+
+    const s2 = Atomics.load(hdr, FixHdr.SEQLOCK)
+    if (s1 !== s2) return null
+
+    return { frameId, count }
+  }
+
+  public peekSeqlock(): number {
+    return Atomics.load(this._hdr, FixHdr.SEQLOCK)
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Factory helpers — instanciación canónica de los SABs (migrated from GlassMemory.ts)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function createDmxSab(): SharedArrayBuffer {
+  return new SharedArrayBuffer(DMX_SAB_BYTES)
+}
+
+export function createFixtureSab(): SharedArrayBuffer {
+  return new SharedArrayBuffer(FIX_SAB_BYTES)
+}
+
+let _dmxSab: SharedArrayBuffer | null = null
+export function getDmxSab(): SharedArrayBuffer {
+  if (!_dmxSab) _dmxSab = createDmxSab()
+  return _dmxSab
 }

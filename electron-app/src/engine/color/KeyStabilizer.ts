@@ -217,7 +217,8 @@ export class KeyStabilizer {
     // Si no hay key estable todavía, usar la dominante directamente
     if (this.stableKey === null && dominantKey !== null && isDominant) {
       this.stableKey = dominantKey;
-      console.log(`[KeyStabilizer] 🎵 Initial key detected: ${this.stableKey}`);
+      // [DISABLED WAVE 9001] — debug traces no longer needed after FFT cleanup
+      // console.log(`[KeyStabilizer] 🎵 Initial key detected: ${this.stableKey}`);
     }
     
     // === PASO 6: Log periódico ===

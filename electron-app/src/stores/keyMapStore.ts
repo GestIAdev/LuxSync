@@ -41,6 +41,7 @@ import {
   type ChordBinding,
   type KeyBinding,
   type KeyCode,
+  type KeyBehavior,
   type KeyForgeLoadout,
   type ModifierState,
   type LayerId,
@@ -85,7 +86,7 @@ export interface KeyMapState {
 
   // ── Actions: bindings CRUD ──
   bindKey:     (binding: KeyBinding) => void
-  setMapping:  (keyCombo: string, actionId: string) => boolean
+  setMapping:  (keyCombo: string, actionId: string, behavior?: KeyBehavior) => boolean
   unbindKey:   (layer: LayerId, key: KeyCode) => void
   getBinding:  (layer: LayerId, key: KeyCode) => KeyBinding | undefined
   clearLayer:  (layer: LayerId) => void
@@ -272,7 +273,7 @@ export const useKeyMapStore = create<KeyMapState>()(
         }
       },
 
-      setMapping: (keyCombo, actionId) => {
+      setMapping: (keyCombo, actionId, behavior?) => {
         const parsed = parseKeyCombo(keyCombo)
         if (parsed === null) {
           const warning = `[KeyForge] Invalid key combo: ${keyCombo}`
@@ -299,11 +300,18 @@ export const useKeyMapStore = create<KeyMapState>()(
           )
         }
 
+        // KEYSTONE POLISH K6: Preserve behavior on remap.
+        // Priority: explicit behavior param > existing binding's behavior > default tap.
+        const resolvedBehavior: KeyBehavior =
+          behavior
+          ?? (current !== undefined && current.actionId === actionId ? current.behavior : undefined)
+          ?? { kind: 'tap' }
+
         get().bindKey({
           layer,
           key: parsed.key,
           actionId,
-          behavior: { kind: 'tap' },
+          behavior: resolvedBehavior,
           ...(parsed.requiredMods !== undefined ? { requiredMods: parsed.requiredMods } : {}),
         })
 

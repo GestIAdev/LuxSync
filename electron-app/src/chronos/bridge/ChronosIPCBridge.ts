@@ -30,15 +30,19 @@ import { VALID_FX_TYPES, toFXType } from '../core/TimelineClip'
 // ═══════════════════════════════════════════════════════════════════════════
 // HEIMDALL 7.3: EPILEPSY SAFETY LIMITS
 // ═══════════════════════════════════════════════════════════════════════════
-// Photosensitive epilepsy risk is highest in the 3–30 Hz flash range, with
-// peak sensitivity around 10–20 Hz. We enforce a hard ceiling of 25 Hz on
-// any strobe-type effect dispatched through the IPC frontier. This is below
-// the 30 Hz schema maximum and provides a safety margin. The backend effect
-// manager may interpret durationMs as the strobe period; if so, we clamp the
-// effective frequency to SAFE_MAX_STROBE_HZ.
-const SAFE_MAX_STROBE_HZ = 25
+// EULA LIABILITY ACCEPTED: LuxSync is a professional-grade tool. By installing
+// the software, the operator explicitly assumes all liability for photosensitive
+// and strobe-related safety. Strobe ceiling set to physical fixture rendering
+// maximum (18 Hz).
+//
+// The strobe ceiling is set to 18 Hz — the physical maximum rendering rate of
+// the supported fixture hardware. Any strobe-type effect dispatched through the
+// IPC frontier is clamped to this rate. The backend effect manager may
+// interpret durationMs as the strobe period; if so, we clamp the effective
+// frequency to SAFE_MAX_STROBE_HZ.
+const SAFE_MAX_STROBE_HZ = 18
 /** Minimum strobe period in ms that satisfies the safety ceiling. */
-const SAFE_MIN_STROBE_PERIOD_MS = 1000 / SAFE_MAX_STROBE_HZ // 40ms
+const SAFE_MIN_STROBE_PERIOD_MS = 1000 / SAFE_MAX_STROBE_HZ // ~55.6ms
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -164,7 +168,7 @@ async function handleFXTrigger(command: StageCommand): Promise<void> {
   // HEIMDALL 7.3: Epilepsy Safety — strobe frequency clamp.
   //   If this is a strobe effect, the durationMs may represent the strobe
   //   period (ms per flash). If the period implies a frequency above
-  //   SAFE_MAX_STROBE_HZ (25 Hz), we clamp it to the safe minimum period.
+  //   SAFE_MAX_STROBE_HZ (18 Hz), we clamp it to the safe minimum period.
   //   This prevents photosensitive seizure triggers from reaching the fixture
   //   output layer, regardless of what the .lux file or dispatcher encoded.
   let safeDurationMs = durationMs

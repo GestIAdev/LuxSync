@@ -23,7 +23,7 @@ const ErebusShell = lazy(() => import('../views/erebus/ErebusShell'))
 const LiveStageView = lazy(() => import('../hyperion'))
 const CalibrationView = lazy(() => import('../views/CalibrationView'))
 const ForgeView = lazy(() => import('../views/ForgeView'))  // 🔨 WAVE 1110
-const KeyForgeView = lazy(() => import('../KeyForgeView'))
+const KeyForgeView = lazy(() => import('../KeyForgeOverlay'))  // ⌨ KEYSTONE POLISH K3: direct import (was shim)
 const VisualPatcher = lazy(() => import('../views/VisualPatcher/VisualPatcher'))
 const NeuralCommandView = lazy(() => import('../views/NeuralCommandView'))  // 🧠 WAVE 1167
 const ChronosStudio = lazy(() => import('../../chronos/ui/ChronosLayout'))  // ⏱️ WAVE 2004

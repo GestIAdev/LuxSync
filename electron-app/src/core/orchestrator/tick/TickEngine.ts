@@ -10,13 +10,92 @@ import { getHephaestusRuntime } from '../IPCHandlers'
 import { getEffectManager } from '../../effects/EffectManager'
 import { aetherKineticEngine } from '../../aether/AetherKineticEngine'
 import { NodeFamily } from '../../aether'
-import type { AudioMetrics, MusicalContext, VibeProfile } from '../../aether'
+import type { AudioMetrics, MusicalContext, VibeProfile, FrameContext, NodeGraph, IntentBus, NodeArbiter, NodeResolver, PhysicsPostProcessor, VMMAdapter, LiquidImpactAdapter, AetherSafetyMiddleware } from '../../aether'
 import { FIX_DATA_FLOATS, CHANNELS_PER_UNI, MAX_UNIVERSES } from '../../aether/glass/layout'
-import { DmxUniverseWriter } from '../../aether/glass/DmxSabHandlers'
-import { getDmxSab } from '../../aether/glass/GlassMemory'
+import { DmxUniverseWriter, getDmxSab } from '../../aether/glass/DmxSabHandlers'
 import type { CalibrationEntry } from '../../aether/glass/CalibrationSAB'
 import type { INodeIntent } from '../../aether/intent-bus'
 import { SeleneTruth, createDefaultCognitive } from '../../protocol/SeleneProtocol'
+import type { TrinityBrain } from '../../../brain/TrinityBrain'
+import type { TitanEngine } from '../../../engine/TitanEngine'
+import type { HardwareAbstraction } from '../../../hal/HardwareAbstraction'
+import type { TrinityOrchestrator } from '../../../workers/TrinityOrchestrator'
+import type { AudioPipelineManager } from '../audio/AudioPipelineManager'
+import type { ColorAdapter } from '../../aether/adapters/ColorAdapter'
+import type { BeamAdapter } from '../../aether/adapters/BeamAdapter'
+import type { AtmosphereAdapter } from '../../aether/adapters/AtmosphereAdapter'
+import type { LiquidAetherAdapter } from '../../aether/adapters/LiquidAetherAdapter'
+import type { SeleneAetherAdapter } from '../../aether/adapters/selene-aether-adapter'
+import type { ChronosAetherAdapter } from '../../aether/adapters/ChronosAetherAdapter'
+import type { HephaestusAetherAdapter } from '../../aether/adapters/HephaestusAetherAdapter'
+import type { AetherCanvasManager } from '../../aether/canvas/AetherCanvasManager'
+import type { PixelMapAetherAdapter } from '../../aether/canvas/PixelMapAetherAdapter'
+import type { AetherUIProjector } from '../../aether/resolver/AetherUIProjector'
+import type { MutableForgeFrameContext } from '../../forge/compiler/types'
+import type { BufferPoolManager } from '../../aether/glass/BufferPoolManager'
+import type { OSCNexusProvider } from '../../audio/OSCNexusProvider'
+import type { SeleneTheiaBridge } from '../../../theia/SeleneTheiaBridge'
+import type { TimelineEngine } from '../../engine/TimelineEngine'
+
+export interface TickContext {
+  brain: TrinityBrain | null
+  engine: TitanEngine | null
+  hal: HardwareAbstraction | null
+  trinity: TrinityOrchestrator | null
+  audioPipeline: AudioPipelineManager
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  fixtures: any[]
+  onHotFrame: ((hotFrame: any) => void) | null
+  onBroadcast: ((truth: any) => void) | null
+  _aetherHasDevices: boolean
+  _outputEnabled: boolean
+  _isHydrating: boolean
+  _showGeneration: number
+  _aetherArbiter: NodeArbiter | null
+  _aetherResolver: NodeResolver | null
+  _colorAdapter: ColorAdapter | null
+  _kineticAdapter: InstanceType<typeof VMMAdapter> | null
+  _beamAdapter: BeamAdapter | null
+  _atmosphereAdapter: AtmosphereAdapter | null
+  _liquidAetherAdapter: LiquidAetherAdapter | null
+  _seleneAetherAdapter: SeleneAetherAdapter | null
+  _chronosAetherAdapter: ChronosAetherAdapter
+  _hephaestusAetherAdapter: HephaestusAetherAdapter
+  _aetherCanvasManager: AetherCanvasManager
+  _pixelMapAdapter: PixelMapAetherAdapter
+  _physicsPostProcessor: PhysicsPostProcessor
+  _aetherSafety: AetherSafetyMiddleware
+  _forgeFrameCtx: MutableForgeFrameContext
+  _forgeAudioBands: Float64Array
+  _aetherUIProjector: AetherUIProjector
+  _goldenNukeLocks: Map<string, { universe: number; dmxAddress: number }>
+  _aetherGraph: NodeGraph
+  _aetherBus: IntentBus
+  _seleneBus: IntentBus
+  _effectBus: IntentBus
+  _impactAdapter: LiquidImpactAdapter
+  _aetherAudio: AudioMetrics
+  _aetherMusical: MusicalContext
+  _aetherVibe: VibeProfile
+  _aetherCtx: FrameContext
+  _aetherStageBounds: { width: number; height: number; depth: number; centerY: number }
+  _hephByFixtureId: Map<string, HephFixtureOutput[]>
+  _hephByZone: Map<string, HephFixtureOutput[]>
+  _hephOutputPool: Map<string, HephFixtureOutput[]>
+  peakHoldMap: Map<string, number>
+  _seleneThetaBridge: SeleneTheiaBridge | null
+  _timelineEngine: TimelineEngine
+  EMPTY_FFT_BUFFER: readonly number[]
+  oscProvider: OSCNexusProvider | null
+  _licenseTier: 'DJ_FOUNDER' | 'FULL_SUITE'
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  lastConsciousnessOutput: any
+  mode: 'auto' | 'manual'
+  inputGain: number
+  useBrain: boolean
+  glassPool: BufferPoolManager | null
+  log: (category: string, message: string, data?: Record<string, unknown>) => void
+}
 
 const ZONE_MAP: Readonly<Record<string, string>> = {
   'FRONT_PARS': 'front', 'BACK_PARS': 'back', 'LEFT_PARS': 'left', 'RIGHT_PARS': 'right',
@@ -33,7 +112,7 @@ export class TickEngine {
   private static readonly TRUTH_BROADCAST_DIVIDER = 4
   private static readonly HOT_FRAME_DIVIDER = 1
   frameCount = 0; warlogHeartbeatFrame = 0; _lastLoggedEngine = ''
-  private ctx: any
+  private ctx: TickContext
 
   // ðŸ› ï¸ WAVE 5032: Pre-allocated mutable caches to eliminate .map() / {} / [] in hot path
   private _cachedFixtureStates: any[] = []
@@ -44,6 +123,10 @@ export class TickEngine {
   private _glassView = new Float32Array(FIX_DATA_FLOATS)
   private dmxWriter = new DmxUniverseWriter(getDmxSab())
   private _universeSnapshots = new Map<number, Uint8Array>()
+
+  // P2: Pre-allocated Set/Array for commitFrame egress — zero-alloc per frame.
+  private _universesToProcess = new Set<number>()
+  private _uniList: Uint8Array[] = []
 
   // WAVE 7120: L3++ Calibration — plain entries stored directly (no SAB needed, both sides in main)
   private static _calibEntries: readonly INodeIntent[] = []
@@ -78,7 +161,7 @@ export class TickEngine {
   get _aetherHasDevices() { return this.ctx._aetherHasDevices }
   get _outputEnabled() { return this.ctx._outputEnabled }
   get _isHydrating() { return this.ctx._isHydrating }
-  get _showGeneration() { return this.ctx._showGeneration as number }
+  get _showGeneration() { return this.ctx._showGeneration }
   get _aetherArbiter() { return this.ctx._aetherArbiter }
   get _aetherResolver() { return this.ctx._aetherResolver }
   get _colorAdapter() { return this.ctx._colorAdapter }
@@ -122,7 +205,7 @@ export class TickEngine {
   get useBrain() { return this.ctx.useBrain }
 
   log(category: string, message: string, data?: Record<string, unknown>) { this.ctx.log(category, message, data) }
-  constructor(ctx: any) { this.ctx = ctx
+  constructor(ctx: TickContext) { this.ctx = ctx
     TickEngine._instances.add(this)
   }
 
@@ -575,14 +658,14 @@ export class TickEngine {
     if (this.engine && this._aetherGraph) {
       const kineticNodes = this._aetherGraph.getView(NodeFamily.KINETIC)
       let dominantOrientation: string | undefined = undefined
-      if (kineticNodes.length > 0) {
+      if (kineticNodes.count > 0) {
         const orientationCounts = new Map<string, number>()
-        for (const node of kineticNodes) {
+        kineticNodes.forEach((node) => {
           const inst = (node as any).ikOrientation?.installation
           if (inst) {
             orientationCounts.set(inst, (orientationCounts.get(inst) ?? 0) + 1)
           }
-        }
+        })
         // Pick the most common orientation
         let maxCount = 0
         for (const [ori, count] of orientationCounts) {
@@ -1332,71 +1415,43 @@ export class TickEngine {
           ? aetherResolver.getSoftBlackoutUniverseBuffer(universe, rawBuf)
           : rawBuf
 
-        // ðŸ”¥ WAVE 4835 â€” DMX BYPASS: InyecciÃ³n directa para Golden Nuke
-        // Si el Tungsteno estÃ¡ lockeado, clava 255 en CH2-6 (GM, Strobe, G1, G2, G3)
-        for (const [deviceId, lockInfo] of this._goldenNukeLocks) {
-          if (lockInfo.universe === universe && Array.isArray(egressBuf)) {
-            const base = lockInfo.dmxAddress - 1  // 0-based
-            // CH2: Golden Master Dimmer â†’ 255
-            egressBuf[base + 1] = 255
-            // CH3: Strobe â†’ 255
-            egressBuf[base + 2] = 255
-            // CH4: Gold 1 â†’ 255
-            egressBuf[base + 3] = 255
-            // CH5: Gold 2 â†’ 255
-            egressBuf[base + 4] = 255
-            // CH6: Gold 3 â†’ 255
-            egressBuf[base + 5] = 255
-          }
+        // WAVE 6010 PATCH 2b: Egress SAB — reuse snapshot buffer in-place (zero-alloc)
+        let uniArr = this._universeSnapshots.get(universe)
+        if (!uniArr) {
+          uniArr = new Uint8Array(CHANNELS_PER_UNI)
+          this._universeSnapshots.set(universe, uniArr)
         }
-
-        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-        // ðŸ”¬ WAVE 4832 â€” DMX SNIFFER (TUNGSTEN)
-        // Imprime los bytes exactos del Tungsteno en el buffer final,
-        // ANTES de que salgan al adaptador fÃ­sico.
-        // Eliminar cuando se confirme el diagnÃ³stico.
-        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-        if (this.frameCount % 30 === 0) {
-          const tungstenFixture = (this.fixtures as Array<{ name?: string; dmxAddress?: number; address?: number }>)
-            .find(f => typeof f.name === 'string' && f.name.toLowerCase().includes('tungsten'))
-          if (tungstenFixture) {
-            const base = (tungstenFixture.dmxAddress ?? (tungstenFixture.address ?? 1)) - 1 // 0-based
-            // console.log(
-            //   `[DMX-SNIFFER] universe=${universe} | base=${base + 1} (1-based) | ` +
-            //   `CH1(StartCode/Pan?)=${egressBuf[base]} | ` +
-            //   `CH2(GM)=${egressBuf[base + 1]} | ` +
-            //   `CH3(Strobe)=${egressBuf[base + 2]} | ` +
-            //   `CH4(G1)=${egressBuf[base + 3]} | ` +
-            //   `CH5(G2)=${egressBuf[base + 4]} | ` +
-            //   `CH6(G3)=${egressBuf[base + 5]} | ` +
-            //   `CH7=${egressBuf[base + 6]}`,
-            // )
-          }
-        }
-        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-        // WAVE 6010 PATCH 2b: Egress SAB — escribir universo al writer en vez de HAL legacy
-        const uniArr = new Uint8Array(CHANNELS_PER_UNI)
         uniArr.set(egressBuf.subarray(0, CHANNELS_PER_UNI))
-        this._universeSnapshots.set(universe, uniArr)
       }
 
       // WAVE 6013 PATCH 2: commitFrame atómico al SAB con Universo 0 forzado
-      const uniList: Uint8Array[] = []
-      let dirtyMask = BigInt(0)
+      // AETHER PURITY: maskLo/maskHi replace BigInt — zero heap allocations.
+      // P2 ABSOLUTE ZERO: Reuse pre-allocated Set/Array — zero alloc per frame.
+      const uniList = this._uniList
+      uniList.length = 0
+      let maskLo = 0
+      let maskHi = 0
 
-      const universesToProcess = new Set<number>(aetherResolver.registeredUniverses as number[])
+      const universesToProcess = this._universesToProcess
+      universesToProcess.clear()
+      for (const u of aetherResolver.registeredUniverses) {
+        universesToProcess.add(u)
+      }
       universesToProcess.add(0)
 
       for (const universe of universesToProcess) {
         const buf = this._universeSnapshots.get(universe)
         if (buf) {
           uniList[universe] = buf
-          dirtyMask |= BigInt(1) << BigInt(universe)
+          if (universe < 31) {
+            maskLo |= (1 << universe) >>> 0
+          } else {
+            maskHi |= (1 << (universe - 31)) >>> 0
+          }
         }
       }
       if (uniList.length > 0) {
-        this.dmxWriter.commitFrame(this.frameCount, uniList, dirtyMask)
+        this.dmxWriter.commitFrame(this.frameCount, uniList, maskLo, maskHi)
       }
       _t_hal_end = performance.now()
 

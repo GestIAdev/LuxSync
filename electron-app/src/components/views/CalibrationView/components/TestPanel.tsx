@@ -16,6 +16,7 @@
 
 import React, { useCallback, useState, useMemo, useRef, useEffect } from 'react'
 import { useStageStore } from '../../../../stores/stageStore'
+import { useControlStore, selectOutputEnabled, selectSystemArmed } from '../../../../stores/controlStore'
 import './TestPanel.css'
 
 export interface TestPanelProps {
@@ -104,6 +105,11 @@ export const TestPanel: React.FC<TestPanelProps> = ({
   const [activeTest, setActiveTest] = useState<TestType>(null)
   const [scannerValues, setScannerValues] = useState<Record<number, number>>({})
   const [showScanner, setShowScanner] = useState(false)
+
+  // 🏳️ F-SAB: Detect live engine state — warn operator about SAB race condition
+  const outputEnabled = useControlStore(selectOutputEnabled)
+  const systemArmed = useControlStore(selectSystemArmed)
+  const isEngineLive = outputEnabled && systemArmed
   
   // Throttle: el slider React actualiza el DOM a 60fps pero el IPC al backend
   // sólo dispara cada THROTTLE_MS. Coincide con el loop de TitanOrchestrator (40ms/25fps).
@@ -371,6 +377,26 @@ export const TestPanel: React.FC<TestPanelProps> = ({
           <span className="dmx-badge">DMX {dmxBaseAddress}</span>
         )}
       </div>
+
+      {/* 🏳️ F-SAB: Live Engine Warning — SAB race condition alert */}
+      {isEngineLive && (
+        <div className="engine-live-warning" role="alert" style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          padding: '6px 10px',
+          margin: '4px 0 8px',
+          borderRadius: '4px',
+          backgroundColor: 'rgba(245, 158, 11, 0.15)',
+          border: '1px solid rgba(245, 158, 11, 0.5)',
+          color: '#fbbf24',
+          fontSize: '11px',
+          fontWeight: 500,
+        }}>
+          <span style={{ fontSize: '14px' }}>⚠️</span>
+          <span>Warning: Live Engine Active. Manual probe values will be immediately overridden by the running show.</span>
+        </div>
+      )}
       
       {/* � WAVE 1008: DMX SCANNER */}
       <div className="scanner-section">

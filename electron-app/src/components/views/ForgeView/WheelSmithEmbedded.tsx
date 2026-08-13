@@ -40,6 +40,7 @@ import {
   GoboIcon,
 } from '../../icons/LuxIcons'
 import { useStageStore } from '../../../stores/stageStore'
+import { useControlStore, selectOutputEnabled, selectSystemArmed } from '../../../stores/controlStore'
 import './WheelSmithEmbedded.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -303,6 +304,11 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
   // canSendLive: tiene motor DMX Y hay un fixture real para apuntar
   const canSendLive = hasDmxEngine && !!effectiveTestFixtureId
   const isMoldTest = !effectiveTestFixtureId || dmxBaseAddress === null
+
+  // 🏳️ F-SAB: Detect live engine state — warn operator about SAB race condition
+  const outputEnabled = useControlStore(selectOutputEnabled)
+  const systemArmed = useControlStore(selectSystemArmed)
+  const isEngineLive = outputEnabled && systemArmed
 
   // ═══════════════════════════════════════════════════════════════════════
   // WAVE 2072 Phase 2: DMX INJECTION — 3-tier fallback
@@ -669,6 +675,26 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
           <div className="probe-offline-warning">
             <AlertIcon size={14} />
             <span>DMX Engine Offline — Open show from Stage to enable</span>
+          </div>
+        )}
+
+        {/* 🏳️ F-SAB: Live Engine Warning — SAB race condition alert */}
+        {isEngineLive && (
+          <div className="probe-engine-live-warning" role="alert" style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 10px',
+            marginTop: '6px',
+            borderRadius: '4px',
+            backgroundColor: 'rgba(245, 158, 11, 0.15)',
+            border: '1px solid rgba(245, 158, 11, 0.5)',
+            color: '#fbbf24',
+            fontSize: '11px',
+            fontWeight: 500,
+          }}>
+            <AlertIcon size={14} />
+            <span>Warning: Live Engine Active. Manual probe values will be immediately overridden by the running show.</span>
           </div>
         )}
       </div>

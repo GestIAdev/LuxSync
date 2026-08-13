@@ -27,6 +27,7 @@ import type {
 } from '../core/types'
 
 import { GodEarAnalyzer } from '../../workers/GodEarFFT'
+import { IntervalBPMTracker, type GodEarBPMResult } from '../../workers/IntervalBPMTracker'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🎯 CONFIGURATION
@@ -81,6 +82,22 @@ export interface HeatmapExtractionResult {
   transientEvents: TransientEvent[]
   /** Legacy transient timestamps (timeMs of any transient event) */
   transients: TimeMs[]
+  /**
+   * Result from IntervalBPMTracker (median-smoothed, IQR-confidence,
+   * Kalman-filtered, autocorrelation-cross-validated, musical-octave-folded).
+   * Fed per-frame pre-normalization raw bass energy (subBass + bassReal),
+   * matching the tracker's documented 20-150 Hz input contract.
+   * Undefined when insufficient kicks were detected for a stable estimate.
+   */
+  bpmTrackerResult?: GodEarBPMResult
+  /**
+   * Octave-folded "dance pocket" BPM from IntervalBPMTracker.getMusicalBpm().
+   * The tracker's raw `stableBpm` counts rhythmic EVENTS per minute, which is
+   * mathematically correct but musically wrong for polyrhythmic material
+   * (tresillo 3:2, dotted 4:3, half/double-time). This is the folded value.
+   * 0 when no stable signal.
+   */
+  musicalBpm?: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -146,7 +163,7 @@ export function extractWaveform(
  * Reemplaza el zero-crossing rate fake con:
  * - Cooley-Tukey Radix-2 FFT (4096 bins)
  * - Blackman-Harris 4-term windowing (-92dB sidelobes)
- * - Linkwitz-Riley 4th order digital crossovers (24dB/oct)
+ * - LR4-equivalent magnitude-response band masks (frequency-domain, 24dB/oct)
  * - 7 bandas tácticas con ZERO overlap
  * - Spectral centroid + flatness per frame
  *
@@ -164,7 +181,7 @@ export function extractEnergyHeatmap(
   const resolutionSamples = Math.floor(sampleRate * config.heatmapResolutionMs / 1000)
   const numPoints = Math.ceil(samples.length / resolutionSamples)
 
-  // 🩻 Instantiate GodEarFFT analyzer (LR4 filters initialized once, reused)
+  // 🩻 Instantiate GodEarFFT analyzer (LR4-equivalent band masks initialized once, reused)
   const fftSize = config.fftWindowSize > 0 ? config.fftWindowSize : 2048
   // Use power-of-2 FFT size, minimum 2048 for decent frequency resolution
   const actualFftSize = Math.max(2048, nearestPowerOf2(fftSize))
@@ -224,6 +241,26 @@ export function extractEnergyHeatmap(
   // ═══════════════════════════════════════════════════════════════════════
   const windowBuffer = new Float32Array(actualFftSize)
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🥁 GODEAR UNLEASHED Phase 4: IntervalBPMTracker — replaces the naive
+  // 10ms modal-bin histogram (estimateBpm) with the production-grade tracker
+  // already used by the live Senses worker. The tracker performs its own
+  // ratio-based kick detection on raw bass energy, so we feed it the
+  // PRE-NORMALIZATION subBass + bassReal sum each frame (matching its
+  // documented 20-150 Hz input contract) using the deterministic frame
+  // timestamp as the musical clock. Median smoothing, IQR confidence,
+  // 1-D Kalman filtering, autocorrelation cross-validation, and musical
+  // octave folding (dotted 4:3, tresillo 3:2, double/triple/quad-time)
+  // all run inside the tracker. Zero extra allocation — the tracker owns
+  // its own pre-allocated buffers.
+  // ═══════════════════════════════════════════════════════════════════════
+  const bpmTracker = new IntervalBPMTracker(
+    sampleRate,
+    actualFftSize,
+    config.heatmapResolutionMs, // overrideFrameDurationMs — deterministic offline clock
+  )
+  let bpmTrackerResult: GodEarBPMResult | undefined
+
   for (let i = 0; i < numPoints; i++) {
     const start = i * resolutionSamples
     const end = Math.min(start + actualFftSize, samples.length)
@@ -236,7 +273,7 @@ export function extractEnergyHeatmap(
     // 🩻 Run REAL FFT analysis through GodEarAnalyzer
     const spectrum = analyzer.analyze(windowBuffer)
 
-    // Extract 7 tactical bands (already LR4 filtered, zero overlap)
+    // Extract 7 tactical bands (already LR4-equivalent masked, zero overlap)
     subBassArr[i] = spectrum.bands.subBass
     bassRealArr[i] = spectrum.bands.bass
     lowMidArr[i] = spectrum.bands.lowMid
@@ -261,6 +298,18 @@ export function extractEnergyHeatmap(
     // internally, so consecutive frames won't double-fire. We apply an
     // additional heatmap-resolution-aware debounce for safety.
     const frameTimeMs = i * config.heatmapResolutionMs
+
+    // 🥁 GODEAR UNLEASHED Phase 4: Feed IntervalBPMTracker with PRE-NORMALIZATION
+    // raw bass energy (subBass + bassReal = 20-250 Hz, matching the tracker's
+    // documented input contract). The tracker does its own ratio-based kick
+    // detection, median smoothing, Kalman filtering, and autocorrelation
+    // cross-validation internally. Deterministic timestamp = offline clock.
+    bpmTrackerResult = bpmTracker.process(
+      spectrum.bands.subBass + spectrum.bands.bass,
+      false, // _externalKickDetected — ignored by the tracker
+      frameTimeMs,
+    )
+
     if (spectrum.transients.kick && frameTimeMs - lastKickMs >= refractoryMs) {
       transientEvents.push({ timeMs: frameTimeMs, type: 'kick', strength: spectrum.transients.strength })
       lastKickMs = frameTimeMs
@@ -402,11 +451,25 @@ export function extractEnergyHeatmap(
     heatmap,
     transientEvents,
     transients: transientsLegacy,
+    // 🥁 Phase 4: Only expose a tracker result once it has stabilized
+    // (MIN_KICKS_FOR_BPM reached). The tracker's process() returns
+    // confidence=0 until then; we forward the last result regardless so
+    // detectBeats can decide, but undefined when no frame ever fired.
+    bpmTrackerResult,
+    // Musical (octave-folded) BPM — queried ONCE after the full pass, when the
+    // tracker's median/Kalman state has converged over the entire track.
+    musicalBpm: bpmTrackerResult ? bpmTracker.getMusicalBpm() : undefined,
   }
 }
 
 /**
- * Estima BPM desde intervalos entre onsets
+ * Estima BPM desde intervalos entre onsets.
+ *
+ * @deprecated GODEAR UNLEASHED Phase 4 — replaced by IntervalBPMTracker
+ * (median smoothing, IQR confidence, Kalman filtering, autocorrelation
+ * cross-validation, musical octave folding). Retained as a fallback for
+ * callers that do not pass a `bpmTrackerResult` into `detectBeats`.
+ * Do not extend; new work should consume the tracker.
  */
 export function estimateBpm(onsets: TimeMs[]): number {
   if (onsets.length < 4) {
@@ -473,7 +536,11 @@ export function detectBeats(
   samples: Float32Array,
   sampleRate: number,
   heatmap: HeatmapData,
-  config: OfflineAnalysisConfig
+  config: OfflineAnalysisConfig,
+  /** Optional Phase 4 tracker result — preferred over the legacy histogram. */
+  bpmTrackerResult?: GodEarBPMResult,
+  /** Optional octave-folded musical BPM from IntervalBPMTracker.getMusicalBpm(). */
+  musicalBpm?: number,
 ): BeatGridData {
   // Usar onset detection sobre el heatmap
   const onsets: TimeMs[] = []
@@ -499,8 +566,18 @@ export function detectBeats(
     }
   }
 
-  // Estimar BPM desde intervalos entre onsets
-  const bpm = estimateBpm(onsets)
+  // 🥁 GODEAR UNLEASHED Phase 4: Prefer the IntervalBPMTracker's musical-BPM
+  // estimate (median-smoothed, Kalman-filtered, autocorrelation-validated,
+  // octave-folded into the dance pocket) over the deprecated 10ms modal-bin
+  // histogram. Fall back to estimateBpm() only when no stable tracker result
+  // is available (e.g. ambient tracks with < MIN_KICKS_FOR_BPM kicks).
+  // Prefer the octave-folded musical BPM (dance pocket) over the tracker's raw
+  // event-rate stableBpm — a tresillo bassline firing at 185 events/min is a
+  // 123 BPM track, and the beat grid must be built on the musical tempo.
+  const trackerBpm = bpmTrackerResult && bpmTrackerResult.confidence > 0
+    ? (musicalBpm && musicalBpm > 0 ? musicalBpm : bpmTrackerResult.bpm)
+    : 0
+  const bpm = trackerBpm > 0 ? trackerBpm : estimateBpm(onsets)
 
   // Construir beat grid desde el BPM estimado
   const msPerBeat = 60000 / bpm
@@ -551,7 +628,14 @@ export function detectBeats(
       alignedOnsets++
     }
   }
-  const confidence = onsets.length > 0 ? alignedOnsets / onsets.length : 0.5
+  const onsetConfidence = onsets.length > 0 ? alignedOnsets / onsets.length : 0.5
+  // 🥁 Phase 4: Prefer the tracker's IQR/Kalman/autocorrelation-derived
+  // confidence when available; it is statistically better grounded than the
+  // onset-alignment heuristic. Blend (max) so a strong tracker reading is
+  // never dragged down by a noisy onset set, but a weak tracker reading
+  // does not erase a clearly-aligned grid.
+  const trackerConfidence = bpmTrackerResult?.confidence ?? 0
+  const confidence = Math.max(onsetConfidence, trackerConfidence)
 
   return {
     bpm,
@@ -917,8 +1001,14 @@ export function runAnalysisPipeline(
   onProgress?.('energy', 100, 'Heatmap generated')
 
   // Phase 3: Beat Detection
+  // 🥁 GODEAR UNLEASHED Phase 4: Pass the IntervalBPMTracker result from the
+  // heatmap pass into detectBeats so it can use the median/Kalman/autocorr
+  // estimate instead of the deprecated 10ms modal-bin histogram.
   onProgress?.('beats', 0, 'Detecting beats...')
-  const beatGrid = detectBeats(monoSamples, sampleRate, energyHeatmap, config)
+  const beatGrid = detectBeats(
+    monoSamples, sampleRate, energyHeatmap, config,
+    heatmapResult.bpmTrackerResult, heatmapResult.musicalBpm,
+  )
   onProgress?.('beats', 100, 'Beat grid detected')
 
   // Phase 4: Section Detection

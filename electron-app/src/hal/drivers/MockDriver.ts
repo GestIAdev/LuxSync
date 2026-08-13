@@ -44,8 +44,8 @@ export class MockDMXDriver implements IDMXDriver {
     // WAVE 252: Only log in verbose mode
     this.verbose = config.debug === true
     
-    // Initialize with one universe
-    this.universeBuffers.set(1, new Uint8Array(512))
+    // Initialize with universe 0 (0-based, ArtNet convention)
+    this.universeBuffers.set(0, new Uint8Array(512))
     
     // WAVE 252: Single silent init message
     if (this.verbose) {
@@ -86,7 +86,7 @@ export class MockDMXDriver implements IDMXDriver {
       return false
     }
     
-    const universe = packet.universe || 1
+    const universe = packet.universe ?? 0
     let buffer = this.universeBuffers.get(universe)
     
     if (!buffer) {

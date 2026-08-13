@@ -61,10 +61,38 @@ describe('SMPTE Utilities', () => {
       expect(smpteToMs(tc)).toBeCloseTo(41.67, 1)
     })
 
-    it('should handle 29.97fps (drop-frame)', () => {
+    it('should handle 29.97fps drop-frame at 00:00:01:00 (no drops yet)', () => {
       const tc: SMPTETimecode = { hours: 0, minutes: 0, seconds: 1, frames: 0, frameRate: 29.97 }
-      // At 29.97fps: 30000/1001 frames per second → 1 second
-      expect(smpteToMs(tc)).toBeCloseTo(1000, 0)
+      // At 29.97 DF, 00:00:01:00 is within minute 0 — no frames dropped yet.
+      // 30 nominal frames × (1001/30) ms/frame = 1001 ms.  (The old fake
+      // approximation returned ~1000 ms; true SMPTE 12M returns 1001.)
+      // toBeCloseTo absorbs the IEEE-754 rounding of 1001*1001/30*1/1000.
+      expect(smpteToMs(tc)).toBeCloseTo(1001, 0)
+    })
+
+    it('29.97 DF: 00:01:00:02 is the first valid frame after the minute-1 drop', () => {
+      // SMPTE 12M: frames 00 and 01 are skipped at the start of every minute
+      // except minutes divisible by 10. So 00:01:00:02 is the first real frame
+      // of minute 1. nominal = 1802, droppedFrames = 2, actual = 1800.
+      // ms = 1800 × (1001/30) = 60060.
+      const tc: SMPTETimecode = { hours: 0, minutes: 1, seconds: 0, frames: 2, frameRate: 29.97 }
+      expect(smpteToMs(tc)).toBe(60060)
+    })
+
+    it('29.97 DF: 00:10:00:00 maps to 599999.4 ms (10-min boundary)', () => {
+      // At the 10-minute boundary, drop-frame timecode is very close to real
+      // time but not exact (NTSC rate is 30000/1001, not 30 fps).
+      // totalMinutes = 10, droppedFrames = 2×(10−1) = 18, nominal = 18000,
+      // actual = 17982, ms = 17982 × (1001/30) = 599999.4.
+      const tc: SMPTETimecode = { hours: 0, minutes: 10, seconds: 0, frames: 0, frameRate: 29.97 }
+      expect(smpteToMs(tc)).toBe(599999.4)
+    })
+
+    it('29.97 DF: 01:00:00:00 maps to ~3599996 ms (1-hour boundary)', () => {
+      // totalMinutes = 60, droppedFrames = 2×(60−6) = 108, nominal = 108000,
+      // actual = 107892, ms = 107892 × (1001/30) = 3599996.4.
+      const tc: SMPTETimecode = { hours: 1, minutes: 0, seconds: 0, frames: 0, frameRate: 29.97 }
+      expect(smpteToMs(tc)).toBeCloseTo(3599996.4, 1)
     })
 
     it('should convert complex timecode 01:23:45:12 @25fps', () => {
@@ -102,6 +130,32 @@ describe('SMPTE Utilities', () => {
       expect(back.minutes).toBe(original.minutes)
       expect(back.seconds).toBe(original.seconds)
       expect(back.frames).toBe(original.frames)
+    })
+
+    it('29.97 DF round-trip: 00:10:00:00 → ms → 00:10:00:00', () => {
+      // At the 10-minute boundary, the reverse algorithm must correctly add
+      // back 18 dropped frames to recover the nominal frame index 18000,
+      // which decomposes to 00:10:00:00.
+      const original: SMPTETimecode = { hours: 0, minutes: 10, seconds: 0, frames: 0, frameRate: 29.97 }
+      const ms = smpteToMs(original)
+      expect(ms).toBe(599999.4)
+      const back = msToSmpte(ms, 29.97)
+      expect(back.hours).toBe(0)
+      expect(back.minutes).toBe(10)
+      expect(back.seconds).toBe(0)
+      expect(back.frames).toBe(0)
+    })
+
+    it('29.97 DF round-trip: 00:01:00:02 → ms → 00:01:00:02', () => {
+      // First valid frame after the minute-1 drop. Proves the reverse
+      // algorithm correctly handles the intra-10-min-block case.
+      const original: SMPTETimecode = { hours: 0, minutes: 1, seconds: 0, frames: 2, frameRate: 29.97 }
+      const ms = smpteToMs(original)
+      const back = msToSmpte(ms, 29.97)
+      expect(back.hours).toBe(0)
+      expect(back.minutes).toBe(1)
+      expect(back.seconds).toBe(0)
+      expect(back.frames).toBe(2)
     })
   })
 })

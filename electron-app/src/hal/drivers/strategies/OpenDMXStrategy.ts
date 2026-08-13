@@ -30,7 +30,7 @@ import { DmxUniverseReader } from '../../../core/aether/glass/DmxSabHandlers'
 import { CHANNELS_PER_UNI } from '../../../core/aether/glass/layout'
 import type { DMXSendStrategy } from './DMXSendStrategy'
 import type { SerialPortInstance } from '../UniversalDMXDriver'
-import { getDmxSab } from '../../../core/aether/glass/GlassMemory'
+import { getDmxSab } from '../../../core/aether/glass/DmxSabHandlers'
 
 const DMX_OUTPUT_HZ = 33
 const BREAK_BAUD = 76923

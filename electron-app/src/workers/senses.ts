@@ -146,23 +146,25 @@ function pollSharedRingBuffer(): void {
 
     // WAVE 3418: Peak crudo del buffer SAB antes del ring/FFT
     _sabPeakFrameCount++;
-    if (_sabPeakFrameCount % PEAK_LOG_INTERVAL === 0) {
-      const peakAbs = _calcPeakAbs(slice, samplesRead);
-      const rms = Math.sqrt(slice.reduce((acc, s) => acc + s * s, 0) / samplesRead);
-      console.log(
-        `[🔬 PEAK-SAB] frame=${_sabPeakFrameCount} ` +
-        `samples=${samplesRead} ` +
-        `peak=${peakAbs.toFixed(5)} ` +
-        `rms=${rms.toFixed(5)}` +
-        ` avail=${available}`
-      );
-    }
+    // [DISABLED WAVE 9001] — debug traces no longer needed after FFT cleanup
+    // if (_sabPeakFrameCount % PEAK_LOG_INTERVAL === 0) {
+    //   const peakAbs = _calcPeakAbs(slice, samplesRead);
+    //   const rms = Math.sqrt(slice.reduce((acc, s) => acc + s * s, 0) / samplesRead);
+    //   console.log(
+    //     `[🔬 PEAK-SAB] frame=${_sabPeakFrameCount} ` +
+    //     `samples=${samplesRead} ` +
+    //     `peak=${peakAbs.toFixed(5)} ` +
+    //     `rms=${rms.toFixed(5)}` +
+    //     ` avail=${available}`
+    //   );
+    // }
 
     // WAVE 3424: Diagnostic — log first non-empty poll after empty streak
-    if (_sabEmptyCount > 0) {
-      console.log(`[🔬 SAB-RECOVERY] ${_sabEmptyCount} empty polls resolved, ${samplesRead} samples now available`);
-      _sabEmptyCount = 0;
-    }
+    // [DISABLED WAVE 9001] — debug traces no longer needed after FFT cleanup
+    // if (_sabEmptyCount > 0) {
+    //   console.log(`[🔬 SAB-RECOVERY] ${_sabEmptyCount} empty polls resolved, ${samplesRead} samples now available`);
+    //   _sabEmptyCount = 0;
+    // }
 
     state.frameCount++;
     const analysis = pipeline.processFrame(slice);

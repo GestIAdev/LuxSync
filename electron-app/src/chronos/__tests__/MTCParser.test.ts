@@ -187,3 +187,127 @@ describe('🎹 MTCParser Conformance — VALKYRIE H-1 (+2 Frame Offset)', () => 
     expect(tc.frameRate).toBe(29.97)
   })
 })
+
+describe('🎹 MTCParser Conformance — VALKYRIE H-2 (Reverse -2 Frame Offset)', () => {
+  /**
+   * Send 8 quarter-frame pieces in REVERSE order (7→0) to simulate
+   * reverse shuttle. Assembly triggers on piece 0.
+   */
+  function sendFullTimecodeReverse(
+    parser: MTCParserInternals,
+    hours: number,
+    minutes: number,
+    seconds: number,
+    frames: number,
+    rateFlags: number,
+  ): void {
+    const framesLS = frames & 0x0F
+    const framesMS = (frames >> 4) & 0x01
+    const secondsLS = seconds & 0x0F
+    const secondsMS = (seconds >> 4) & 0x03
+    const minutesLS = minutes & 0x0F
+    const minutesMS = (minutes >> 4) & 0x03
+    const hoursLS = hours & 0x0F
+    const hoursMS = ((hours >> 4) & 0x01) | ((rateFlags & 0x03) << 1)
+
+    const nibbles = [framesLS, framesMS, secondsLS, secondsMS, minutesLS, minutesMS, hoursLS, hoursMS]
+
+    // Send pieces 7→0 (reverse order)
+    for (let i = 7; i >= 0; i--) {
+      const dataByte = (i << 4) | (nibbles[i] & 0x0F)
+      parser.handleQuarterFrame(dataByte)
+    }
+  }
+
+  test('H-2: -2 frame offset applied on reverse assembly (25fps, no wrap)', () => {
+    const parser = new MTCParser() as MTCParserInternals
+    ;(parser as any).connected = true
+
+    // Send 01:02:03:10 @ 25fps in reverse
+    // Expected after -2 offset: 01:02:03:08
+    sendFullTimecodeReverse(parser, 1, 2, 3, 10, 1)
+
+    const tc = parser.getTimecode()
+    expect(tc.hours).toBe(1)
+    expect(tc.minutes).toBe(2)
+    expect(tc.seconds).toBe(3)
+    expect(tc.frames).toBe(8) // 10 - 2 = 8
+    expect(tc.frameRate).toBe(25)
+  })
+
+  test('H-2: -2 frame offset borrows from seconds (25fps)', () => {
+    const parser = new MTCParser() as MTCParserInternals
+    ;(parser as any).connected = true
+
+    // Send 00:00:01:01 @ 25fps in reverse — frames=1, -2 = -1 → borrow → 00:00:00:24
+    sendFullTimecodeReverse(parser, 0, 0, 1, 1, 1)
+
+    const tc = parser.getTimecode()
+    expect(tc.hours).toBe(0)
+    expect(tc.minutes).toBe(0)
+    expect(tc.seconds).toBe(0) // borrowed from seconds
+    expect(tc.frames).toBe(24) // 1 - 2 + 25 = 24
+    expect(tc.frameRate).toBe(25)
+  })
+
+  test('H-2: -2 frame offset borrows seconds→minutes (30fps)', () => {
+    const parser = new MTCParser() as MTCParserInternals
+    ;(parser as any).connected = true
+
+    // Send 00:01:00:00 @ 30fps in reverse — frames=0, -2 = -2 → borrow → 00:00:59:28
+    sendFullTimecodeReverse(parser, 0, 1, 0, 0, 3)
+
+    const tc = parser.getTimecode()
+    expect(tc.hours).toBe(0)
+    expect(tc.minutes).toBe(0)  // borrowed from minutes
+    expect(tc.seconds).toBe(59) // borrowed from seconds
+    expect(tc.frames).toBe(28)  // 0 - 2 + 30 = 28
+    expect(tc.frameRate).toBe(30)
+  })
+
+  test('H-2: -2 frame offset borrows minutes→hours (24fps)', () => {
+    const parser = new MTCParser() as MTCParserInternals
+    ;(parser as any).connected = true
+
+    // Send 01:00:00:00 @ 24fps in reverse — frames=0, -2 → borrow all the way → 00:59:59:22
+    sendFullTimecodeReverse(parser, 1, 0, 0, 0, 0)
+
+    const tc = parser.getTimecode()
+    expect(tc.hours).toBe(0)    // borrowed from hours
+    expect(tc.minutes).toBe(59)
+    expect(tc.seconds).toBe(59)
+    expect(tc.frames).toBe(22)  // 0 - 2 + 24 = 22
+    expect(tc.frameRate).toBe(24)
+  })
+
+  test('H-2: -2 frame offset wraps hours→23 (24-hour cycle, reverse)', () => {
+    const parser = new MTCParser() as MTCParserInternals
+    ;(parser as any).connected = true
+
+    // Send 00:00:00:00 @ 24fps in reverse — -2 borrows to 23:59:59:22
+    sendFullTimecodeReverse(parser, 0, 0, 0, 0, 0)
+
+    const tc = parser.getTimecode()
+    expect(tc.hours).toBe(23)   // 0 - 1 + 24 = 23
+    expect(tc.minutes).toBe(59)
+    expect(tc.seconds).toBe(59)
+    expect(tc.frames).toBe(22)
+    expect(tc.frameRate).toBe(24)
+  })
+
+  test('H-2: reverse offset is exactly -2 frames in milliseconds (25fps)', () => {
+    const parser = new MTCParser() as MTCParserInternals
+    ;(parser as any).connected = true
+
+    // Send 00:00:00:02 @ 25fps in reverse — -2 → 00:00:00:00 = 0ms
+    sendFullTimecodeReverse(parser, 0, 0, 0, 2, 1)
+
+    const tc = parser.getTimecode()
+    const msWithOffset = parser.getTimeMs()
+    expect(msWithOffset).not.toBeNull()
+
+    const expectedMs = smpteToMs({ hours: 0, minutes: 0, seconds: 0, frames: 0, frameRate: 25 })
+    expect(msWithOffset).toBe(expectedMs)
+    expect(tc.frames).toBe(0)
+  })
+})

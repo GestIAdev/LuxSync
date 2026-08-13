@@ -416,10 +416,11 @@ export function validateLuxFileV3(data: unknown): LuxValidationResult {
   // HEIMDALL 7.3: Epilepsy Safety validation.
   // The safety object is nullable (legacy/migrated files may not have one),
   // but IF present, its fields must be validated to prevent photosensitive
-  // liabilities. maxStrobeFreqHz must be in [1, 30] Hz — values outside this
-  // range are either meaningless (0 Hz = no strobe) or dangerous (>30 Hz
-  // approaches the seizure-inducing threshold). containsRapidFlash must be a
-  // boolean so the UI can display the appropriate warning badge.
+  // liabilities. maxStrobeFreqHz must be in [1, 18] Hz — the physical fixture
+  // rendering maximum enforced by the IPC bridge. Values above 18 Hz would be
+  // silently clamped at the bridge layer; values below 1 Hz are meaningless
+  // (0 Hz = no strobe). containsRapidFlash must be a boolean so the UI can
+  // display the appropriate warning badge.
   if (data.safety !== null && data.safety !== undefined) {
     if (!isObject(data.safety)) {
       warnings.push('safety is not an object (will be ignored)')
@@ -427,10 +428,10 @@ export function validateLuxFileV3(data: unknown): LuxValidationResult {
       const s = data.safety
       if (!isFiniteNumber(s.maxStrobeFreqHz)) {
         warnings.push('safety.maxStrobeFreqHz is not a finite number')
-      } else if (s.maxStrobeFreqHz < 1 || s.maxStrobeFreqHz > 30) {
+      } else if (s.maxStrobeFreqHz < 1 || s.maxStrobeFreqHz > 18) {
         errors.push(
           `safety.maxStrobeFreqHz out of range: ${s.maxStrobeFreqHz} Hz ` +
-          `(must be 1–30 Hz per photosensitive safety limits)`
+          `(must be 1–18 Hz per photosensitive safety limits)`
         )
       }
       if (typeof s.containsRapidFlash !== 'boolean') {

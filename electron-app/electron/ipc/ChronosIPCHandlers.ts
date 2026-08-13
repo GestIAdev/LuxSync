@@ -324,10 +324,23 @@ function setupProjectIPCHandlers(mainWindow: BrowserWindow): void {
       // P1.1 FIX: Atomic write — write to .tmp file first, then rename.
       // If the process crashes during writeFile, the original .lux file
       // remains intact. fs.rename() is atomic on most filesystems.
+      //
+      // OPERATION BUREAUCRACY: fsync hardening. writeFile returns once data
+      // is in the OS page cache; a hard power loss or kernel panic after
+      // rename can leave the renamed inode with zero-length or partial
+      // content. We open a file handle, write, call fileHandle.sync() to
+      // flush to the physical disk, close, THEN rename — so the rename
+      // only points at data that is already durable on the platter.
       const tmpPath = filePath + '.tmp'
-      await fs.promises.writeFile(tmpPath, request.json, 'utf-8')
+      const fileHandle = await fs.promises.open(tmpPath, 'w', 0o664)
+      try {
+        await fileHandle.writeFile(request.json, 'utf-8')
+        await fileHandle.sync()
+      } finally {
+        await fileHandle.close()
+      }
       await fs.promises.rename(tmpPath, filePath)
-      console.log(`[ChronosIPC] ✅ Project saved (atomic): ${filePath}`)
+      console.log(`[ChronosIPC] ✅ Project saved (atomic+fsync): ${filePath}`)
       
       return { success: true, path: filePath }
       
@@ -452,10 +465,20 @@ function setupProjectIPCHandlers(mainWindow: BrowserWindow): void {
       //   save. Autosave fires every 60s during a live show; a crash mid-write
       //   on the non-atomic path truncated the recovery file, defeating the
       //   entire purpose of autosave. fs.rename() is atomic on most filesystems.
+      //
+      // OPERATION BUREAUCRACY: fsync hardening (same as manual save). The
+      // autosave exists specifically to survive catastrophe — without fsync
+      // a power loss after rename can still produce a truncated recovery file.
       const tmpPath = filePath + '.tmp'
-      await fs.promises.writeFile(tmpPath, request.json, 'utf-8')
+      const fileHandle = await fs.promises.open(tmpPath, 'w', 0o664)
+      try {
+        await fileHandle.writeFile(request.json, 'utf-8')
+        await fileHandle.sync()
+      } finally {
+        await fileHandle.close()
+      }
       await fs.promises.rename(tmpPath, filePath)
-      console.log(`[ChronosIPC] 🛡️ Auto-save written (atomic): ${filePath}`)
+      console.log(`[ChronosIPC] 🛡️ Auto-save written (atomic+fsync): ${filePath}`)
 
       return { success: true, path: filePath }
     } catch (err) {

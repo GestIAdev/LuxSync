@@ -382,6 +382,40 @@ export const STEREO_CONFIG: Record<string, StereoConfig> = {
 
 // THE GOLDEN DOZEN - Implementaciones Matematicas Puras
 
+// ─────────────────────────────────────────────────────────────────────────────
+// K0-BATCH-1: Pre-allocated static pattern lookup tables (zero-alloc @ 44Hz)
+// These arrays are constant — allocated once at module load, never recreated.
+// ─────────────────────────────────────────────────────────────────────────────
+const _SQUARE_CORNERS = [
+  { x:  1, y:  1 },
+  { x:  1, y: -1 },
+  { x: -1, y: -1 },
+  { x: -1, y:  1 },
+]
+
+const _DIAMOND_VERTICES = [
+  { x:  0, y:  1 },  // Top
+  { x:  1, y:  0 },  // Right
+  { x:  0, y: -1 },  // Bottom
+  { x: -1, y:  0 },  // Left
+]
+
+const _LASER_GRID_NODES = [
+  { x:  0.90, y:  0.60 },  // arriba-der
+  { x:  0.00, y:  0.80 },  // arriba-centro
+  { x: -0.90, y:  0.60 },  // arriba-izq
+  { x: -0.90, y: -0.60 },  // abajo-izq
+  { x:  0.00, y: -0.80 },  // abajo-centro
+  { x:  0.90, y: -0.60 },  // abajo-der
+]
+
+const _CHASE_POSITIONS = [
+  { x: -0.7, y:  0   },  // Izquierda
+  { x:  0,   y:  0.7 },  // Arriba
+  { x:  0.7, y:  0   },  // Derecha
+  { x:  0,   y: -0.7 },  // Abajo
+]
+
 type PatternFunction = (
   phase: number,
   audio: AudioContext,
@@ -412,19 +446,13 @@ const PATTERNS: Record<GoldenPattern, PatternFunction> = {
   //   hace que el fixture no llegue exactamente al vértice, sino que lo roce
   //   con un leve desvío — como un robot con personalidad.
   square: (phase, audio, outPos) => {
-    const corners = [
-      { x: 1, y: 1 },
-      { x: 1, y: -1 },
-      { x: -1, y: -1 },
-      { x: -1, y: 1 },
-    ]
     const normalizedPhase = (phase / (Math.PI * 2)) * 4
     const currentCorner = Math.floor(normalizedPhase) % 4
     const nextCorner = (currentCorner + 1) % 4
     const t = normalizedPhase - Math.floor(normalizedPhase)
     
-    const from = corners[currentCorner]
-    const to = corners[nextCorner]
+    const from = _SQUARE_CORNERS[currentCorner]
+    const to = _SQUARE_CORNERS[nextCorner]
     // Micro-wobble: desvío senoidal de baja frecuencia en cada arista
     const wobble = Math.sin(phase * 7.3) * 0.02
     outPos.x = from.x + (to.x - from.x) * t + wobble
@@ -437,19 +465,13 @@ const PATTERNS: Record<GoldenPattern, PatternFunction> = {
   //   lineal a velocidad constante. Vértices: Top(0,1)→Right(1,0)→Bot(0,-1)→Left(-1,0).
   //   Es square rotado 45°: las aristas son diagonales, no horizontales.
   diamond: (phase, audio, outPos) => {
-    const vertices = [
-      { x:  0, y:  1 },  // Top
-      { x:  1, y:  0 },  // Right
-      { x:  0, y: -1 },  // Bottom
-      { x: -1, y:  0 },  // Left
-    ]
     const normalizedPhase = (phase / (Math.PI * 2)) * 4
     const currentVertex = Math.floor(normalizedPhase) % 4
     const nextVertex = (currentVertex + 1) % 4
     const t = normalizedPhase - Math.floor(normalizedPhase)
 
-    const from = vertices[currentVertex]
-    const to = vertices[nextVertex]
+    const from = _DIAMOND_VERTICES[currentVertex]
+    const to = _DIAMOND_VERTICES[nextVertex]
     outPos.x = from.x + (to.x - from.x) * t
     outPos.y = from.y + (to.y - from.y) * t
   },
@@ -496,18 +518,8 @@ const PATTERNS: Record<GoldenPattern, PatternFunction> = {
     let t = normalizedPhase - Math.floor(normalizedPhase)
     t = t * t * t  // t³ — llega rápido, espera
 
-    // 6 nodos distribuidos en elipse (pan ±0.90, tilt ±0.65)
-    const nodes = [
-      { x:  0.90, y:  0.60 },  // arriba-der
-      { x:  0.00, y:  0.80 },  // arriba-centro
-      { x: -0.90, y:  0.60 },  // arriba-izq
-      { x: -0.90, y: -0.60 },  // abajo-izq
-      { x:  0.00, y: -0.80 },  // abajo-centro
-      { x:  0.90, y: -0.60 },  // abajo-der
-    ]
-
-    const from = nodes[currentNode]
-    const to   = nodes[nextNode]
+    const from = _LASER_GRID_NODES[currentNode]
+    const to   = _LASER_GRID_NODES[nextNode]
     // Micro-dither: el láser "tiembla" sobre el nodo (no durante el viaje)
     const holdFraction = 1 - t  // mayor cuando está llegando al nodo
     const dither = (Math.sin(phase * 47.3 + index) * 0.015) * holdFraction
@@ -693,20 +705,14 @@ const PATTERNS: Record<GoldenPattern, PatternFunction> = {
   // CHASE_POSITION: 4 posiciones cardinales con interpolación lineal
   // 🔧 WAVE 2088.7: THE PHYSICS UNCHAINING — Target lineal puro.
   chase_position: (phase, _audio, outPos) => {
-    const positions: Array<{ x: number; y: number }> = [
-      { x: -0.7, y: 0 },     // Izquierda
-      { x: 0, y: 0.7 },      // Arriba
-      { x: 0.7, y: 0 },      // Derecha
-      { x: 0, y: -0.7 },     // Abajo
-    ]
     const totalSteps = 4
     const normalizedPhase = (phase / (2 * Math.PI)) * totalSteps
     const currentStep = Math.floor(normalizedPhase) % totalSteps
     const nextStep = (currentStep + 1) % totalSteps
     const t = normalizedPhase - Math.floor(normalizedPhase)
     
-    const from = positions[currentStep]
-    const to = positions[nextStep]
+    const from = _CHASE_POSITIONS[currentStep]
+    const to = _CHASE_POSITIONS[nextStep]
     outPos.x = from.x + (to.x - from.x) * t
     outPos.y = from.y + (to.y - from.y) * t
   },

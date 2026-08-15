@@ -247,10 +247,6 @@ export class LiquidAetherAdapter {
       const hasShutter = node.channels.some((ch) => ch.type === 'shutter')
       if (!hasShutter) return
 
-      // ── Zero-alloc stale cleanup ──────────────────────────────────
-      this._strobeValues['shutter']    = undefined as unknown as number
-      this._strobeValues['strobeRate'] = undefined as unknown as number
-
       // ── Intent L0 — strobe binario modulado por intensidad ─────────
       this._strobeValues['shutter']    = 1.0               // abre el obturador
       this._strobeValues['strobeRate'] = strobeIntensity   // 0-1 normalizado
@@ -274,8 +270,6 @@ export class LiquidAetherAdapter {
     )
 
     if (hasPhysicalDimmer) {
-      this._impactValues['dimmer'] = undefined as unknown as number
-      this._impactValues['brightness'] = undefined as unknown as number
       this._impactValues['dimmer'] = zoneIntensity
       this._impactScratch.nodeId = node.nodeId
       bus.push(this._impactScratch as INodeIntent)
@@ -283,7 +277,6 @@ export class LiquidAetherAdapter {
     }
 
     if (hasColorCh) {
-      this._colorValues['brightness'] = undefined as unknown as number
       this._colorValues['brightness'] = zoneIntensity
       this._colorScratch.nodeId = node.nodeId
       bus.push(this._colorScratch as INodeIntent)

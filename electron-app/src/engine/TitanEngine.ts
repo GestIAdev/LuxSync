@@ -68,9 +68,9 @@ import {
   type MovementMusicalInput,
 } from './generators/MovementGenerators'
 import {
-  selenePaletteToColorPalette,
-  applyConsciousnessColorDecision,
-  applyConsciousnessPhysicsModifier,
+  selenePaletteToColorPaletteMutate as selenePaletteToColorPalette,
+  applyConsciousnessColorDecisionMutate as applyConsciousnessColorDecision,
+  applyConsciousnessPhysicsModifierMutate as applyConsciousnessPhysicsModifier,
   calculateMasterIntensity,
   calculateZoneIntents,
   normalizeSectionType,

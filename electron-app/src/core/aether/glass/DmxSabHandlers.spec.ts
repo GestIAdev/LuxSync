@@ -10,23 +10,13 @@ import {
   DMX_HEADER_BYTES,
   MAX_UNIVERSES,
   CHANNELS_PER_UNI,
-  FIX_SAB_BYTES,
-  FIX_HEADER_BYTES,
-  MAX_FIXTURES,
-  FLOATS_PER_FIX,
-  FIX_DATA_FLOATS,
   DmxHdr,
-  FixHdr,
-  FixField,
 } from './layout'
 
 import {
   DmxUniverseWriter,
   DmxUniverseReader,
-  FixtureStateWriter,
-  FixtureStateReader,
   createDmxSab,
-  createFixtureSab,
 } from './DmxSabHandlers'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -46,26 +36,6 @@ describe('Layout — tamaños de SharedArrayBuffer', () => {
     expect(DMX_SAB_BYTES - DMX_HEADER_BYTES).toBe(MAX_UNIVERSES * CHANNELS_PER_UNI)
   })
 
-  it('FIX_SAB_BYTES es exactamente 131 200 bytes', () => {
-    expect(FIX_SAB_BYTES).toBe(131_200)
-  })
-
-  it('FIX: header ocupa exactamente 128 bytes', () => {
-    expect(FIX_HEADER_BYTES).toBe(128)
-  })
-
-  it('FIX: data ocupa exactamente MAX_FIXTURES × FLOATS_PER_FIX × 4 bytes', () => {
-    const expectedDataBytes = MAX_FIXTURES * FLOATS_PER_FIX * 4
-    expect(FIX_SAB_BYTES - FIX_HEADER_BYTES).toBe(expectedDataBytes)
-  })
-
-  it('FIX: cada fixture ocupa exactamente 64 bytes (FLOATS_PER_FIX = 16)', () => {
-    expect(FLOATS_PER_FIX * 4).toBe(64)
-  })
-
-  it('FIX: FIX_DATA_FLOATS = MAX_FIXTURES × FLOATS_PER_FIX', () => {
-    expect(FIX_DATA_FLOATS).toBe(MAX_FIXTURES * FLOATS_PER_FIX)
-  })
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -79,12 +49,6 @@ describe('Factory helpers', () => {
     expect(sab.byteLength).toBe(DMX_SAB_BYTES)
   })
 
-  it('createFixtureSab() produce un SAB del tamaño correcto', () => {
-    const sab = createFixtureSab()
-    expect(sab).toBeInstanceOf(SharedArrayBuffer)
-    expect(sab.byteLength).toBe(FIX_SAB_BYTES)
-  })
-
   it('DmxUniverseWriter lanza si el SAB es demasiado pequeño', () => {
     const tiny = new SharedArrayBuffer(4)
     expect(() => new DmxUniverseWriter(tiny)).toThrow(RangeError)
@@ -95,15 +59,6 @@ describe('Factory helpers', () => {
     expect(() => new DmxUniverseReader(tiny)).toThrow(RangeError)
   })
 
-  it('FixtureStateWriter lanza si el SAB es demasiado pequeño', () => {
-    const tiny = new SharedArrayBuffer(4)
-    expect(() => new FixtureStateWriter(tiny)).toThrow(RangeError)
-  })
-
-  it('FixtureStateReader lanza si el SAB es demasiado pequeño', () => {
-    const tiny = new SharedArrayBuffer(4)
-    expect(() => new FixtureStateReader(tiny)).toThrow(RangeError)
-  })
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -207,101 +162,6 @@ describe('DmxUniverseWriter + DmxUniverseReader — hot-path básico', () => {
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
-// BLOQUE 4: FixtureStateWriter / Reader — escritura y lectura correctas
-// ═══════════════════════════════════════════════════════════════════════════
-
-describe('FixtureStateWriter + FixtureStateReader — hot-path básico', () => {
-  let sab: SharedArrayBuffer
-  let writer: FixtureStateWriter
-  let reader: FixtureStateReader
-  let dest: Float32Array
-  let fixtureData: Float32Array
-
-  beforeEach(() => {
-    sab         = createFixtureSab()
-    writer      = new FixtureStateWriter(sab)
-    reader      = new FixtureStateReader(sab)
-    dest        = new Float32Array(MAX_FIXTURES * FLOATS_PER_FIX)
-    fixtureData = new Float32Array(MAX_FIXTURES * FLOATS_PER_FIX)
-  })
-
-  it('seqlock empieza en 0', () => {
-    expect(writer.peekSeqlock()).toBe(0)
-  })
-
-  it('commitFixtures incrementa seqlock en 2', () => {
-    writer.commitFixtures(1, fixtureData, 1, 1000)
-    expect(writer.peekSeqlock()).toBe(2)
-  })
-
-  it('readCoherent devuelve frameId y count correctos', () => {
-    fixtureData[FixField.R] = 255
-    fixtureData[FixField.G] = 128
-    writer.commitFixtures(7, fixtureData, 10, 3000)
-
-    const result = reader.readCoherent(dest, 0)
-    expect(result).not.toBeNull()
-    expect(result!.frameId).toBe(7)
-    expect(result!.count).toBe(10)
-  })
-
-  it('readCoherent devuelve null si frameId no cambió', () => {
-    writer.commitFixtures(7, fixtureData, 10, 3000)
-    const r = reader.readCoherent(dest, 7)
-    expect(r).toBeNull()
-  })
-
-  it('los campos de fixture 0 se leen correctamente', () => {
-    fixtureData[FixField.R]      = 1.0
-    fixtureData[FixField.G]      = 0.5
-    fixtureData[FixField.B]      = 0.25
-    fixtureData[FixField.DIMMER] = 0.8
-    fixtureData[FixField.PAN]    = 128
-    fixtureData[FixField.FLAGS]  = 1
-
-    writer.commitFixtures(1, fixtureData, 1, 1000)
-    reader.readCoherent(dest, 0)
-
-    expect(dest[FixField.R]).toBeCloseTo(1.0)
-    expect(dest[FixField.G]).toBeCloseTo(0.5)
-    expect(dest[FixField.B]).toBeCloseTo(0.25)
-    expect(dest[FixField.DIMMER]).toBeCloseTo(0.8)
-    expect(dest[FixField.PAN]).toBe(128)
-    expect(dest[FixField.FLAGS]).toBe(1)
-  })
-
-  it('los campos del fixture 2047 se ubican en el offset correcto', () => {
-    const lastIdx = (MAX_FIXTURES - 1) * FLOATS_PER_FIX
-    fixtureData[lastIdx + FixField.R] = 0.99
-    fixtureData[lastIdx + FixField.G] = 0.11
-
-    writer.commitFixtures(1, fixtureData, MAX_FIXTURES, 1000)
-    reader.readCoherent(dest, 0)
-
-    expect(dest[lastIdx + FixField.R]).toBeCloseTo(0.99)
-    expect(dest[lastIdx + FixField.G]).toBeCloseTo(0.11)
-  })
-
-  it('readFixtureField retorna el valor correcto sin copiar buffer completo', () => {
-    fixtureData[3 * FLOATS_PER_FIX + FixField.B] = 0.42
-    writer.commitFixtures(1, fixtureData, 10, 1000)
-
-    const val = reader.readFixtureField(3, FixField.B)
-    expect(val).toBeCloseTo(0.42)
-  })
-
-  it('N frames consecutivos producen snapshots coherentes', () => {
-    for (let frame = 1; frame <= 50; frame++) {
-      fixtureData[FixField.DIMMER] = frame / 50
-      writer.commitFixtures(frame, fixtureData, 4, frame * 22)
-      const r = reader.readCoherent(dest, frame - 1)
-      expect(r).not.toBeNull()
-      expect(dest[FixField.DIMMER]).toBeCloseTo(frame / 50, 5)
-    }
-  })
-})
-
-// ═══════════════════════════════════════════════════════════════════════════
 // BLOQUE 5: SEQLOCK — invariantes del protocolo de concurrencia
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -383,35 +243,6 @@ describe('SEQLOCK — invariantes de concurrencia (single-realm simulado)', () =
     })
   })
 
-  describe('FixtureStateReader — tryReadIfStable rechaza seqlock impar', () => {
-    it('retorna null cuando seqlock es impar', () => {
-      const sab    = createFixtureSab()
-      const reader = new FixtureStateReader(sab)
-      const dest   = new Float32Array(MAX_FIXTURES * FLOATS_PER_FIX)
-
-      const hdr = new Int32Array(sab, 0, 32)
-      Atomics.store(hdr, FixHdr.SEQLOCK, 1)
-
-      expect(reader.tryReadIfStable(dest)).toBeNull()
-    })
-
-    it('retorna datos cuando seqlock es par', () => {
-      const sab    = createFixtureSab()
-      const writer = new FixtureStateWriter(sab)
-      const reader = new FixtureStateReader(sab)
-      const dest   = new Float32Array(MAX_FIXTURES * FLOATS_PER_FIX)
-
-      const fixtureData = new Float32Array(MAX_FIXTURES * FLOATS_PER_FIX)
-      fixtureData[FixField.R] = 0.75
-      writer.commitFixtures(11, fixtureData, 1, 5000)
-
-      const result = reader.tryReadIfStable(dest)
-      expect(result).not.toBeNull()
-      expect(result!.frameId).toBe(11)
-      expect(dest[FixField.R]).toBeCloseTo(0.75)
-    })
-  })
-
   describe('Integridad de datos bajo N commits rápidos consecutivos', () => {
     it('DMX: 1000 commits sin tearing de datos', () => {
       const sab    = createDmxSab()
@@ -434,23 +265,5 @@ describe('SEQLOCK — invariantes de concurrencia (single-realm simulado)', () =
       expect(writer.peekSeqlock()).toBe(2000)
     })
 
-    it('FIX: 500 commits sin tearing de fixtures', () => {
-      const sab    = createFixtureSab()
-      const writer = new FixtureStateWriter(sab)
-      const reader = new FixtureStateReader(sab)
-      const dest   = new Float32Array(MAX_FIXTURES * FLOATS_PER_FIX)
-      const src    = new Float32Array(FLOATS_PER_FIX * 4)
-
-      for (let frame = 1; frame <= 500; frame++) {
-        const val = frame / 500
-        src[FixField.DIMMER]                 = val
-        src[FLOATS_PER_FIX + FixField.DIMMER] = val
-        writer.commitFixtures(frame, src, 2, frame)
-        const r = reader.readCoherent(dest, frame - 1)
-        expect(r).not.toBeNull()
-        expect(dest[FixField.DIMMER]).toBeCloseTo(val, 5)
-        expect(dest[FLOATS_PER_FIX + FixField.DIMMER]).toBeCloseTo(val, 5)
-      }
-    })
   })
 })

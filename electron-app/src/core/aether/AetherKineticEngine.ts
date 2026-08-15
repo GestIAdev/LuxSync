@@ -172,6 +172,9 @@ export type NativeKineticPattern =
 /** Posición normalizada en [-1, 1] */
 interface PatternXY { x: number; y: number }
 
+// K0-BATCH-2: Pre-allocated scratch for pattern output — zero alloc @ 44Hz.
+const _patternScratch: PatternXY = { x: 0, y: 0 }
+
 /**
  * WAVE 4712: Configuración por nodo (multitrack).
  * Cada nodeId tiene su propia pista — pattern, speed, amplitude y dispersión
@@ -225,14 +228,15 @@ export interface KineticNodeStateSnapshot {
 // → con amplitude=1 el patrón barre 100% del eje DMX (0..255) alrededor del
 //   ancla. Equivalente exacto a "salida * amplitude * 127" en escala DMX.
 
-type PatternFn = (phase: number) => PatternXY
+// K0-BATCH-2: Pattern functions mutate `out` in place — zero alloc @ 44Hz.
+type PatternFn = (phase: number, out: PatternXY) => void
 
 const PATTERN_FNS: Record<NativeKineticPattern, PatternFn> = {
 
   // ── STATIC ─────────────────────────────────────────────────────────────
   // Guardia defensiva: si llega 'static' (no debería; el IPC lo intercepta),
   // la cabeza permanece exactamente en su ancla.
-  static: (_p) => ({ x: 0, y: 0 }),
+  static: (_p, out) => { out.x = 0; out.y = 0 },
 
   // ── CIRCLE — Lissajous 1:1 con 90° de offset ───────────────────
   // Círculo trigonométrico perfecto. Radio constante = 1.
@@ -242,10 +246,10 @@ const PATTERN_FNS: Record<NativeKineticPattern, PatternFn> = {
   //   el eje Y (sin cap) clipea arriba/abajo generando "lóbulos" de 8.
   //   FIX: Pattern emite [-1,1] simétrico. La compensación angular se aplica
   //   FUERA (en tick() con PAN_ASPECT_RATIO) donde hay contexto de rango.
-  circle: (p) => ({
-    x: Math.sin(p),
-    y: Math.cos(p),
-  }),
+  circle: (p, out) => {
+    out.x = Math.sin(p)
+    out.y = Math.cos(p)
+  },
 
   // ── EIGHT — Lissajous 1:2 canónico (infinito horizontal) ─────────────
   // Tumbado: x oscila a frecuencia base, y al doble → "∞" acostado.
@@ -255,18 +259,18 @@ const PATTERN_FNS: Record<NativeKineticPattern, PatternFn> = {
   //   Ese clipping se resuelve cambiando 0.5→0.45 en tick().
   //   La forma del eight (sin/sin) es idéntica en ambos (solo cambia fase
   //   inicial). Restoreamos sin(p) como Lissajous canónico.
-  eight: (p) => ({
-    x: Math.sin(p),
-    y: Math.sin(p * 2),
-  }),
+  eight: (p, out) => {
+    out.x = Math.sin(p)
+    out.y = Math.sin(p * 2)
+  },
 
   // ── SWEEP — Barrido horizontal puro ────────────────────────────────────
   // Senoidal acotada solo en X. Punta-a-punta del escenario.
   // No hay deriva en Y → la cabeza se queda en la altura del ancla.
-  sweep: (p) => ({
-    x: Math.sin(p),
-    y: 0,
-  }),
+  sweep: (p, out) => {
+    out.x = Math.sin(p)
+    out.y = 0
+  },
 
   // ── BOUNCE — Rebote parabólico (bote físico en Y) ──────────────────────
   // |sin(p)| genera "joroba" rectificada en [0,1]; remapeada a [-1,1]
@@ -283,42 +287,38 @@ const PATTERN_FNS: Record<NativeKineticPattern, PatternFn> = {
   //   p=π   → (0, 1)   top-centro
   //   p=3π/2 → (-1,-1) left-bottom
   // = arco péndulo / pelota rebotando entre dos paredes bajo gravedad.
-  bounce: (p) => ({
-    x: Math.sin(p),
-    y: 1 - 2 * Math.abs(Math.sin(p)),
-  }),
+  bounce: (p, out) => {
+    out.x = Math.sin(p)
+    out.y = 1 - 2 * Math.abs(Math.sin(p))
+  },
 
   // ── BUTTERFLY — Lissajous 1:3 simétrico ────────────────────────────────
   // Patrón en cuatro pétalos cuadrados. La asimetría visual de 1:3
   // produce el efecto "alas batiendo" característico.
-  butterfly: (p) => ({
-    x: Math.sin(p),
-    y: Math.cos(p * 3),
-  }),
+  butterfly: (p, out) => {
+    out.x = Math.sin(p)
+    out.y = Math.cos(p * 3)
+  },
 
   // ── PULSE — Roseta r=cos(2θ) (cuatro pétalos pulsantes) ────────────────
   // Una rosa polar de 4 pétalos. El "latido" sale de que el radio
   // (cos(2p)) cae a 0 cuatro veces por ciclo y rebota agresivamente
   // hacia ±1 en los lóbulos. Puro y matemático — sin Math.random.
-  pulse: (p) => {
+  pulse: (p, out) => {
     const r = Math.cos(p * 2)        // ∈ [-1, 1] — radio firmado
-    return {
-      x: r * Math.cos(p),
-      y: r * Math.sin(p),
-    }
+    out.x = r * Math.cos(p)
+    out.y = r * Math.sin(p)
   },
 
   // ── DARKSPIN — Epitrocoide (círculo con bucle interno) ─────────────────
   // Órbita base más una secundaria al triple de frecuencia → la cabeza
   // dibuja "loops" hacia el centro mientras gira. Espiral desfasada,
   // perfecta para climaxes oscuros.
-  darkspin: (p) => {
+  darkspin: (p, out) => {
     // Coeficientes dimensionados para que el envelope quede en [-1, 1].
     const k = 0.75
-    return {
-      x: k * Math.sin(p) - (1 - k) * Math.sin(p * 3),
-      y: k * Math.cos(p) - (1 - k) * Math.cos(p * 3),
-    }
+    out.x = k * Math.sin(p) - (1 - k) * Math.sin(p * 3)
+    out.y = k * Math.cos(p) - (1 - k) * Math.cos(p * 3)
   },
 }
 
@@ -623,7 +623,9 @@ export class AetherKineticEngine {
       const fanOffset = cfg.fanTotal > 1
         ? (fanRange * cfg.fanIndex) / (cfg.fanTotal - 1)
         : 0
-      const { x, y } = patternFn(phase + fanOffset)
+      patternFn(phase + fanOffset, _patternScratch)
+      const x = _patternScratch.x
+      const y = _patternScratch.y
 
       // ── WAVE 4713 — AMPLITUDE BOOST + CLAMP DE SEGURIDAD ─────────────────
       // El factor 0.5 mapea el envelope nativo [-1,1] al rango DMX completo:

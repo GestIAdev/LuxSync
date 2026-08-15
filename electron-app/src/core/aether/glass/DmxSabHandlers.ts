@@ -6,13 +6,6 @@ import {
   DMX_SAB_BYTES,
   DmxHdr,
   MAX_UNIVERSES,
-  FIX_HEADER_I32,
-  FIX_HEADER_BYTES,
-  FIX_SAB_BYTES,
-  FIX_DATA_FLOATS,
-  FixHdr,
-  MAX_FIXTURES,
-  FLOATS_PER_FIX,
 } from './layout'
 
 /**
@@ -191,144 +184,11 @@ export class DmxUniverseReader {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fixture State Buffer — WRITER (migrated from GlassMemory.ts)
-// ─────────────────────────────────────────────────────────────────────────────
-
-export class FixtureStateWriter {
-  private readonly _hdr:  Int32Array
-  private readonly _data: Float32Array
-
-  constructor(sab: SharedArrayBuffer) {
-    if (sab.byteLength < FIX_SAB_BYTES) {
-      throw new RangeError(
-        `FixtureStateWriter: SAB demasiado pequeño. Mínimo ${FIX_SAB_BYTES} bytes, ` +
-        `recibido ${sab.byteLength}.`
-      )
-    }
-    this._hdr  = new Int32Array(sab, 0, FIX_HEADER_I32)
-    this._data = new Float32Array(sab, FIX_HEADER_BYTES, FIX_DATA_FLOATS)
-  }
-
-  public commitFixtures(
-    frameId: number,
-    fixtureData: Float32Array,
-    count: number,
-    timestamp: number,
-  ): void {
-    const hdr  = this._hdr
-    const data = this._data
-    const clampedCount = Math.min(count, MAX_FIXTURES)
-
-    Atomics.add(hdr, FixHdr.SEQLOCK, 1)
-
-    hdr[FixHdr.FRAME_ID]      = frameId | 0
-    hdr[FixHdr.FIXTURE_COUNT] = clampedCount
-    hdr[FixHdr.TIMESTAMP_LO]  = timestamp | 0
-    hdr[FixHdr.TIMESTAMP_HI]  = 0
-
-    const floatsToCopy = clampedCount * FLOATS_PER_FIX
-    data.set(fixtureData.subarray(0, floatsToCopy))
-
-    Atomics.add(hdr, FixHdr.SEQLOCK, 1)
-  }
-
-  public writeFixtureField(fixtureIndex: number, field: number, value: number): void {
-    if (fixtureIndex < 0 || fixtureIndex >= MAX_FIXTURES) return
-    this._data[fixtureIndex * FLOATS_PER_FIX + field] = value
-  }
-
-  public peekSeqlock(): number {
-    return Atomics.load(this._hdr, FixHdr.SEQLOCK)
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Fixture State Buffer — READER (migrated from GlassMemory.ts)
-// ─────────────────────────────────────────────────────────────────────────────
-
-export class FixtureStateReader {
-  private readonly _hdr:  Int32Array
-  private readonly _data: Float32Array
-
-  constructor(sab: SharedArrayBuffer) {
-    if (sab.byteLength < FIX_SAB_BYTES) {
-      throw new RangeError(
-        `FixtureStateReader: SAB demasiado pequeño. Mínimo ${FIX_SAB_BYTES} bytes, ` +
-        `recibido ${sab.byteLength}.`
-      )
-    }
-    this._hdr  = new Int32Array(sab, 0, FIX_HEADER_I32)
-    this._data = new Float32Array(sab, FIX_HEADER_BYTES, FIX_DATA_FLOATS)
-  }
-
-  public readCoherent(
-    destFixtures: Float32Array,
-    lastFrameId: number,
-  ): { frameId: number; count: number } | null {
-    const hdr  = this._hdr
-    const data = this._data
-
-    let s1: number = 0, s2: number = -1
-    let frameId = 0
-    let count = 0
-
-    do {
-      s1 = Atomics.load(hdr, FixHdr.SEQLOCK)
-      if ((s1 & 1) !== 0) { s2 = -1; continue }
-
-      frameId = hdr[FixHdr.FRAME_ID]
-      if (frameId === lastFrameId) return null
-
-      count = hdr[FixHdr.FIXTURE_COUNT]
-      const floatsToCopy = Math.min(count, MAX_FIXTURES) * FLOATS_PER_FIX
-      destFixtures.set(data.subarray(0, floatsToCopy))
-
-      s2 = Atomics.load(hdr, FixHdr.SEQLOCK)
-    } while (s1 !== s2)
-
-    return { frameId, count }
-  }
-
-  public readFixtureField(fixtureIndex: number, field: number): number {
-    if (fixtureIndex < 0 || fixtureIndex >= MAX_FIXTURES) return 0
-    return this._data[fixtureIndex * FLOATS_PER_FIX + field]
-  }
-
-  public tryReadIfStable(
-    destFixtures: Float32Array,
-  ): { frameId: number; count: number } | null {
-    const hdr  = this._hdr
-    const data = this._data
-
-    const s1 = Atomics.load(hdr, FixHdr.SEQLOCK)
-    if (s1 & 1) return null
-
-    const frameId = hdr[FixHdr.FRAME_ID]
-    const count   = hdr[FixHdr.FIXTURE_COUNT]
-    const floatsToCopy = Math.min(count, MAX_FIXTURES) * FLOATS_PER_FIX
-    destFixtures.set(data.subarray(0, floatsToCopy))
-
-    const s2 = Atomics.load(hdr, FixHdr.SEQLOCK)
-    if (s1 !== s2) return null
-
-    return { frameId, count }
-  }
-
-  public peekSeqlock(): number {
-    return Atomics.load(this._hdr, FixHdr.SEQLOCK)
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Factory helpers — instanciación canónica de los SABs (migrated from GlassMemory.ts)
+// Factory helpers — instanciación canónica del DMX SAB
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function createDmxSab(): SharedArrayBuffer {
   return new SharedArrayBuffer(DMX_SAB_BYTES)
-}
-
-export function createFixtureSab(): SharedArrayBuffer {
-  return new SharedArrayBuffer(FIX_SAB_BYTES)
 }
 
 let _dmxSab: SharedArrayBuffer | null = null

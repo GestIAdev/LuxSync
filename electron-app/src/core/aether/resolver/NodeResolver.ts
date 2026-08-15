@@ -57,7 +57,7 @@ import { getHarmonicQuantizer } from '../../../hal/translation/HarmonicQuantizer
 import type { ColorWheelDefinition as HalColorWheelDefinition } from '../../../hal/translation/FixtureProfiles'
 import type { IDeviceCalibration, IDMXGovernor } from '../device'
 import { solve, solveInto, buildProfile } from '../../../engine/movement/InverseKinematicsEngine'
-import type { IKFixtureProfile } from '../../../engine/movement/InverseKinematicsEngine'
+import type { IKFixtureProfile, Target3D } from '../../../engine/movement/InverseKinematicsEngine'
 // WAVE 4548.6: Forge Node Evaluator bypass
 import type { CompiledForgeGraph, ForgeFrameContext } from '../../forge/compiler/types'
 import { DEFAULT_FORGE_FRAME_CONTEXT } from '../../forge/compiler/types'
@@ -235,6 +235,8 @@ export class NodeResolver implements INodeResolver {
   private readonly _ikResultScratch: import('../../../engine/movement/InverseKinematicsEngine').IKResult = { pan: 0, tilt: 0, reachable: false, antiFlipApplied: false }
   // 🛠️ WAVE 5034: Pre-allocated kinetic clamp scratch — zero alloc en hot path.
   private readonly _kineticClampScratch: { pan: number; tilt: number } = { pan: 0, tilt: 0 }
+  // K0-BATCH-3c: Pre-allocated IK target scratch — zero alloc en hot path.
+  private readonly _ikTargetScratch: Target3D = { x: 0, y: 0, z: 0 }
 
   // ── Scratch RGB — reutilizado en hot path sin alloc ──────────────────
   // Mutable in-place, pasado al ColorTranslator por referencia.
@@ -310,6 +312,9 @@ export class NodeResolver implements INodeResolver {
   // �� WAVE 4703: Tracks devices currently in DarkSpin transit to suppress per-frame log spam.
   // Cleared each sweep — log fires only on the first frame a device enters transit.
   private readonly _darkSpinActiveDevices = new Set<DeviceId>()
+
+  // HS-2: Pre-allocated transit devices scratch — zero alloc @ 44Hz.
+  private readonly _transitDevicesScratch = new Set<DeviceId>()
 
   // 🔥 WAVE 4720: IGNITION ENGINE — Pre-computed injection map (patch-time only)
   // Key: DeviceId  Value: array of IgnitionInjection rules
@@ -1424,8 +1429,9 @@ export class NodeResolver implements INodeResolver {
     const transitNodeIds = sm.getDarkSpinTransitNodeIds()
     if (transitNodeIds.length === 0) return
 
-    // Collect unique deviceIds in transit
-    const transitDevices = new Set<DeviceId>()
+    // HS-2: Reuse pre-allocated scratch — zero Set alloc per frame.
+    const transitDevices = this._transitDevicesScratch
+    transitDevices.clear()
     for (const nodeId of transitNodeIds) {
       const node = this._graph.getNodeData(nodeId)
       if (!node || node.family !== NodeFamily.COLOR) continue
@@ -1491,8 +1497,9 @@ export class NodeResolver implements INodeResolver {
     const transitNodeIds = sm.getDarkSpinTransitNodeIds()
     if (transitNodeIds.length === 0) return
 
-    // Collect unique deviceIds in transit
-    const transitDevices = new Set<DeviceId>()
+    // HS-2: Reuse pre-allocated scratch — zero Set alloc per frame.
+    const transitDevices = this._transitDevicesScratch
+    transitDevices.clear()
     for (const nodeId of transitNodeIds) {
       const node = this._graph.getNodeData(nodeId)
       if (!node || node.family !== NodeFamily.COLOR) continue
@@ -1563,7 +1570,11 @@ export class NodeResolver implements INodeResolver {
     const profile      = this._getOrBuildIKProfile(node, calibration)
     const currentPanDMX = node.currentPosition.pan * 255
 
-    solveInto(this._ikResultScratch, profile, { x: tx, y: ty, z: tz }, currentPanDMX)
+    // K0-BATCH-3c: Mutate pre-allocated scratch instead of creating {x:tx, y:ty, z:tz} literal.
+    this._ikTargetScratch.x = tx
+    this._ikTargetScratch.y = ty
+    this._ikTargetScratch.z = tz
+    solveInto(this._ikResultScratch, profile, this._ikTargetScratch, currentPanDMX)
     const ikResult = this._ikResultScratch
     const reachable = ikResult.reachable !== false
     this._ikReachability.set(node.nodeId, reachable)

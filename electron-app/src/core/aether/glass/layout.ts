@@ -37,56 +37,12 @@ export const enum DmxHdr {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// FIXTURE_STATE_SAB
-// Layout: [Header Int32 × 32][Data Float32 × (2048 × 16)]
-// Total : 128 + 131 072 = 131 200 bytes (~128 KB)
+// GLASS VIEW — Float32Array layout constants
+// Used by TickEngine._glassView and BufferPoolManager for the UI mirror.
+// The fixture SAB (SharedArrayBuffer) infrastructure was removed (F3/F4):
+// the UI mirror uses transferable ArrayBuffer ping-pong, not SAB.
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const MAX_FIXTURES     = 2048
 export const FLOATS_PER_FIX   = 16                                   // 64 bytes/fixture
 export const FIX_DATA_FLOATS  = MAX_FIXTURES * FLOATS_PER_FIX        // 32 768 floats
-
-export const FIX_HEADER_I32   = 32                                   // slots Int32
-export const FIX_HEADER_BYTES = FIX_HEADER_I32 * 4                   // 128 bytes
-export const FIX_DATA_BYTES   = FIX_DATA_FLOATS * 4                  // 131 072 bytes
-export const FIX_SAB_BYTES    = FIX_HEADER_BYTES + FIX_DATA_BYTES    // 131 200 bytes
-
-/**
- * Offsets del header del FIXTURE_STATE_SAB (índices sobre Int32Array).
- *
- * FIXTURE_COUNT: número de fixtures activos escritos en este frame.
- * SEQLOCK sigue el mismo protocolo par/impar que DmxHdr.
- */
-export const enum FixHdr {
-  SEQLOCK        = 0,
-  FRAME_ID       = 1,
-  FIXTURE_COUNT  = 2,
-  TIMESTAMP_LO   = 3,
-  TIMESTAMP_HI   = 4,
-  // 5..31 reservados
-}
-
-/**
- * Offsets de cada campo dentro del bloque de un fixture
- * (índices sobre Float32Array, relativo al inicio del fixture).
- *
- * Tamaño total: FLOATS_PER_FIX = 16 floats = 64 bytes por fixture.
- */
-export const enum FixField {
-  R        = 0,   // red   0-255
-  G        = 1,   // green 0-255
-  B        = 2,   // blue  0-255
-  W        = 3,   // white 0-255
-  A        = 4,   // amber 0-255
-  DIMMER   = 5,   // 0-1 normalizado
-  PAN      = 6,   // DMX 0-255
-  TILT     = 7,   // DMX 0-255
-  PHYS_PAN = 8,   // 0-1 normalizado (para visualizer 3D)
-  PHYS_TILT= 9,   // 0-1 normalizado
-  ZOOM     = 10,  // DMX 0-255
-  FOCUS    = 11,  // DMX 0-255
-  PAN_VEL  = 12,  // firmado, rad/s estimado
-  TILT_VEL = 13,  // firmado, rad/s estimado
-  STROBE   = 14,  // DMX 0-255
-  FLAGS    = 15,  // bit0=active, bit1=blackout, bit2..15 reservados
-}

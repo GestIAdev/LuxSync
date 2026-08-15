@@ -55,7 +55,7 @@ import {
   type FixtureProfile 
 } from './translation'
 import { getHardwareSafetyLayer } from './translation/HardwareSafetyLayer'
-import { getDarkSpinFilter } from './translation/DarkSpinFilter'
+import { getDarkSpinFilter, DarkSpinFilter } from './translation/DarkSpinFilter'
 // 🎵 WAVE 2720: LA LEY UNIVERSAL DEL PÉNDULO — HarmonicQuantizer universal en HAL
 import { getHarmonicQuantizer } from './translation/HarmonicQuantizer'
 
@@ -1547,6 +1547,7 @@ export class HardwareAbstraction {
     // Si el color cambió, el fixture se apaga durante minChangeTimeMs.
     // Bajo ninguna circunstancia el público debe ver el cristal intermedio.
     // ─────────────────────────────────────────────────────────────────
+    // WAVE 0-ALLOC: Use pre-allocated fallback instead of object literal
     const darkSpin = profile.safety?.blackoutOnColorChange
       ? this.darkSpinFilter.filter(
           fixtureId,
@@ -1554,7 +1555,7 @@ export class HardwareAbstraction {
           profile,
           state.dimmer
         )
-      : { dimmer: state.dimmer, inTransit: false, transitRemainingMs: 0 }
+      : DarkSpinFilter._passThrough(state.dimmer);
     
     // Return translated state
     return {

@@ -137,6 +137,9 @@ export interface AudioAnalysis {
   beatStrength: number;       // 0-1
   /** WAVE 2213: Cumulative kick counter from IntervalBPMTracker (used for phrase detection) */
   kickCount?: number;         // Total kicks detected since reset
+  /** KILL THE POCKETS: Raw Oracle BPM (pre-Kalman, post-NSDF) for telemetry.
+   *  Lets the orchestrator log raw vs smoothed to prove sub-frame precision. */
+  rawBpm?: number;
   
   // Rhythm
   syncopation: number;        // 0-1 (off-beat emphasis)

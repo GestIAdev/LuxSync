@@ -1,0 +1,25 @@
+feat(bpm): KILL THE POCKETS & FREE THE DECIMALS
+
+The TempoOracle + MPM rule resolves octaves mathematically, making the
+genre-based foldToPocket logic obsolete. Brejcha at 128 BPM was being
+mutilated to 96 BPM via ×0.75 fold because the vibe stayed fiesta-latina
+(pocket [85,105]) after switching tracks.
+
+- RhythmTracker.ts: bypass foldToPocket + applyDembowCeiling in hot path.
+  Kalman-smoothed BPM is now the final musicalBpm, no genre constraints.
+  Legacy functions remain exported for tests and Chronos offline.
+- WorkerProtocol.ts: add rawBpm? to AudioAnalysis interface.
+- AnalysisResponseBuilder.ts: add rawBpm to AnalysisBuildInput + output.
+- SensesPipeline.ts: propagate bpmOutput.rawBpm through buildPayload.
+- TrinityBrain.ts: emit rawBpm in audio-levels event.
+- AudioPipelineManager.ts: add workerRawBpm to AudioDataSnapshot,
+  propagate from levels.rawBpm in all 3 paths (omni, ipc, silence guard).
+- TickEngine.ts: logger now shows BPM with .toFixed(2) and includes
+  raw Oracle BPM (pre-Kalman) alongside smoothed BPM.
+- AudioPipelineManager.ts: logger also .toFixed(2).
+
+CONF_FLOOR/CONF_CEIL untouched (confidence healthy at 0.43-0.75).
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

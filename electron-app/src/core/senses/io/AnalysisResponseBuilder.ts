@@ -90,6 +90,8 @@ export interface AnalysisBuildInput {
   bpmConfidence: number;
   beatPhase: number;
   lastBeatTime: number;
+  /** KILL THE POCKETS: Raw Oracle BPM (pre-Kalman) for telemetry. */
+  rawBpm?: number;
 
   // -- Raw flux telemetry (para ZeroCrossing y energía) --
   /** Raw buffer linealizado de 4096 samples (snapshot del ring — ZERO-ALLOC) */
@@ -153,6 +155,7 @@ export function buildPayload(input: AnalysisBuildInput): ExtendedAudioAnalysis {
     musicalBpm,
     bpmConfidence,
     beatPhase,
+    rawBpm,
     snapshotBuffer,
     normalizedEnergy,
     rhythmOutput,
@@ -184,6 +187,8 @@ export function buildPayload(input: AnalysisBuildInput): ExtendedAudioAnalysis {
     beatStrength: bpmResult.kickDetected ? 1 : 0,
     // 🥁 WAVE 2213: Cumulative kick counter
     kickCount: bpmResult.kickCount,
+    // ðŸ”¬ KILL THE POCKETS: Raw Oracle BPM (pre-Kalman) for telemetry
+    rawBpm,
 
     // -- Wave 8 Rhythm (REGLA 3: Syncopation is king) --
     syncopation: rhythmOutput.syncopation,

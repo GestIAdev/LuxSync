@@ -210,6 +210,8 @@ export class TrinityBrain extends EventEmitter {
             // 🥁 WAVE 2213: EL TERCER CABLE — Contador monotónico de kicks
             // Sin esto: kickCount no cruza el puente IPC → workerKickCount=undefined → Bar:0 para siempre
             kickCount: analysis.kickCount,
+            // ðŸ”¬ KILL THE POCKETS: Raw Oracle BPM (pre-Kalman) for telemetry
+            rawBpm: analysis.rawBpm,
             // 🔬 WAVE 3418: Telemetría raw del buffer de entrada — peak/RMS pre-ring pre-FFT
             inputPeakAbs: analysis.inputPeakAbs,
             inputRMS: analysis.inputRMS,

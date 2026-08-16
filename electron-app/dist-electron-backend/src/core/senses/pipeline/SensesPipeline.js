@@ -138,6 +138,7 @@ export class SensesPipeline {
             bpmConfidence: bpmOutput.confidence,
             beatPhase: bpmOutput.beatPhase,
             lastBeatTime: bpmOutput.lastBeatTime,
+            rawBpm: bpmOutput.rawBpm,
             snapshotBuffer: snapshot,
             normalizedEnergy,
             rhythmOutput: wave8Output.rhythm,

@@ -5,7 +5,7 @@
  * 
  * 🔥 WAVE 2213 FÉNIX: OPERACIÓN FÉNIX — RESTAURACIÓN DEL MOTOR DORADO
  *   Base code restored from commit 8123c08 (WAVE 2088.9-2088.12).
- *   The monotonic phase accumulator with smoothedBPM is the heart of this engine.
+ *   The monotonic phase accumulator with activeBpm is the heart of this engine.
  *   WAVES 2206-2210 castrated the system trying to fix stutter caused by IPC/renderer
  *   throttling (fixed in WAVE 2211). This is the TRUE engine, restored and enhanced.
  * 
@@ -747,8 +747,12 @@ export class VibeMovementManager {
   // Último vibeId procesado — detecta cambios de vibe para resetear el scheduler
   private lastVibeId: string | null = null
 
-  private smoothedBPM: number = 120
-  private readonly BPM_SMOOTH_FACTOR = 0.05  // Very slow BPM tracking (20 frames to converge)
+  // 🛡️ CLEAN THE CHASSIS: The TickEngine already smooths BPM via EMA (α=0.15).
+  // The VMM previously applied a second EMA (α=0.05) causing ~2s lag. Now the
+  // VMM just clamps the incoming (already-smoothed) audio.bpm via getSafeBPM()
+  // and uses it directly. Renamed from smoothedBPM to activeBpm to reflect
+  // that no smoothing happens here anymore.
+  private activeBpm: number = 120
   
   // 🎚️ WAVE 2472: GRANDMASTER SPEED — multiplicador global de la IA
   // Escala el flujo de fase del motor generativo (0.1 = cámara lenta, 2.0 = doble velocidad)
@@ -1028,9 +1032,10 @@ export class VibeMovementManager {
       this.lastVibeId = vibeId
     }
 
-    // Smooth BPM con filtro paso-bajo pesado (solo en la primera llamada del frame)
+    // 🛡️ CLEAN THE CHASSIS: No more double EMA. The TickEngine already smooths
+    // context.bpm (EMA α=0.15). We just clamp it to [60, 200] and use directly.
     if (!isSameFrame) {
-      this.smoothedBPM += (safeBPM - this.smoothedBPM) * this.BPM_SMOOTH_FACTOR
+      this.activeBpm = safeBPM
     }
 
     // ── Lookup patrón ACTUAL (previo a la posible rotación de este frame) ────────────
@@ -1043,7 +1048,7 @@ export class VibeMovementManager {
       : (PATTERN_PERIOD[currentPatternName as GoldenPattern] || 8)
 
     if (!isSameFrame) {
-      const beatsPerSecond = this.smoothedBPM / 60
+      const beatsPerSecond = this.activeBpm / 60
       const beatsThisFrame = beatsPerSecond * frameDeltaTime
       const chillSedationFactor = vibeId === 'chill-lounge' ? 0.80 : 1.0
       const manualSpeedFactor = this.manualSpeedOverride !== null
@@ -1140,17 +1145,17 @@ export class VibeMovementManager {
     const rawPosition = this._tempRawPos
     
     // THE GEARBOX - Dynamic Amplitude Scaling
-    // 🔥 WAVE 2088.10: Use smoothedBPM for stable gearbox calculations
+    // 🔥 WAVE 2088.10: Use activeBpm for stable gearbox calculations
     const effectivePanAmplitude = this.calculateEffectiveAmplitude(
       config.panScale,
-      this.smoothedBPM,
+      this.activeBpm,
       patternPeriod,
       audio.energy,
       fixtureMaxSpeed
     )
     const effectiveTiltAmplitude = this.calculateEffectiveAmplitude(
       config.tiltScale,
-      this.smoothedBPM,
+      this.activeBpm,
       patternPeriod,
       audio.energy,
       fixtureMaxSpeed
@@ -1324,7 +1329,7 @@ export class VibeMovementManager {
       const sceneB = Math.round(this.schedulerState.sceneBeatsElapsed)
       console.log(
         `[CHOREO] ${vibeId} | #${this.schedulerState.patternIndex}:${patternName}${manualTag}${xfadeTag}${stereoTag}` +
-        ` | scene:${sceneB}b | Pan:${panDeg} Tilt:${tiltDeg} | sBPM:${Math.round(this.smoothedBPM)} phase:${phaseDeg}°`
+        ` | scene:${sceneB}b | Pan:${panDeg} Tilt:${tiltDeg} | sBPM:${Math.round(this.activeBpm)} phase:${phaseDeg}°`
       )
     }
     
@@ -1478,7 +1483,7 @@ export class VibeMovementManager {
     this.lastVibeId = null
     this.kineticTransition = { active: false, fromPattern: 'breath', fromPhaseSnapshot: 0, progressBeats: 0, totalBeats: 0 }
     this.lastPosition = { x: 0, y: 0 }
-    this.smoothedBPM = 120
+    this.activeBpm = 120
   }
   
   getTime(): number {

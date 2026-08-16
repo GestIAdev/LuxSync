@@ -335,14 +335,18 @@ export class TickEngine {
                 const syncInfo = this.audioPipeline.syncSmoother.currentSyncopation.toFixed(2);
                 const _framesSinceLog = this.frameCount - this.audioPipeline.lastStableWorkerBpmFrame;
                 const freewheelTag = (!beatState.pllLocked && this.audioPipeline.lastStableWorkerBpm > 0 && _framesSinceLog <= this.audioPipeline.FREEWHEEL_TIMEOUT_FRAMES)
-                    ? ` [mem=${this.audioPipeline.lastStableWorkerBpm.toFixed(0)}@-${_framesSinceLog}f]`
+                    ? ` [mem=${this.audioPipeline.lastStableWorkerBpm.toFixed(2)}@-${_framesSinceLog}f]`
                     : '';
                 const rawEnergy = (this.audioPipeline.lastAudioData.rawBassEnergy ?? 0).toFixed(4);
                 const sabFill = this.trinity?.getAudioMatrix()?.getStatus()?.ringBufferFillLevel?.toFixed(3) ?? 'n/a';
                 // ðŸ”¬ WAVE 3418: Peak/RMS del buffer crudo que llega al Worker
                 const inputPeak = (this.audioPipeline.lastAudioData.inputPeakAbs ?? 0).toFixed(5);
                 const inputRms = (this.audioPipeline.lastAudioData.inputRMS ?? 0).toFixed(5);
-                console.log(`[TitanOrchestrator] ðŸŽ§ WORKER BPM=${workerBpm.toFixed(0)} conf=${workerConfidence.toFixed(2)} | PLL=${pllInfo}${freewheelTag} phase=${beatState.pllPhase.toFixed(2)} sync=${syncInfo} | beat #${this.audioPipeline.lastAudioData.workerKickCount ?? 0} | bass=${rawEnergy} sab=${sabFill} | ðŸ”¬in_peak=${inputPeak} in_rms=${inputRms}`);
+                // ðŸ”¬ KILL THE POCKETS: BPM con 2 decimales para probar la precisión sub-frame
+                // del ACF engine. rawBpm = salida cruda del Oracle (pre-Kalman),
+                // workerBpm = post-Kalman (ahora = musicalBpm, sin pocket fold).
+                const workerRawBpm = this.audioPipeline.lastAudioData.workerRawBpm ?? 0;
+                console.log(`[TitanOrchestrator] ðŸŽ§ WORKER BPM=${workerBpm.toFixed(2)} (raw=${workerRawBpm.toFixed(2)}) conf=${workerConfidence.toFixed(2)} | PLL=${pllInfo}${freewheelTag} phase=${beatState.pllPhase.toFixed(2)} sync=${syncInfo} | beat #${this.audioPipeline.lastAudioData.workerKickCount ?? 0} | bass=${rawEnergy} sab=${sabFill} | ðŸ”¬in_peak=${inputPeak} in_rms=${inputRms}`);
             }
         }
         else if (this.audioPipeline.beatDetector) {

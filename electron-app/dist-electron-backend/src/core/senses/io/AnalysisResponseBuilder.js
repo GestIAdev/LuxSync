@@ -45,7 +45,7 @@ export function calculateZeroCrossingRate(buffer) {
  * (senses.ts) — este builder no toca el hilo ni el puerto.
  */
 export function buildPayload(input) {
-    const { frameId, spectrum, agcResult, bpmResult, musicalBpm, bpmConfidence, beatPhase, snapshotBuffer, normalizedEnergy, rhythmOutput, harmonyOutput, sectionOutput, genreOutput, moodOutput, inputPeakAbs, inputRMS, } = input;
+    const { frameId, spectrum, agcResult, bpmResult, musicalBpm, bpmConfidence, beatPhase, rawBpm, snapshotBuffer, normalizedEnergy, rhythmOutput, harmonyOutput, sectionOutput, genreOutput, moodOutput, inputPeakAbs, inputRMS, } = input;
     // 🎵 WAVE 1228: Temperature field neutered — mood computed in mind.ts
     // harmonyOutput.temperature era decoration-only (nunca consumido por TitanEngine)
     const mood = 'neutral';
@@ -63,6 +63,8 @@ export function buildPayload(input) {
         beatStrength: bpmResult.kickDetected ? 1 : 0,
         // 🥁 WAVE 2213: Cumulative kick counter
         kickCount: bpmResult.kickCount,
+        // ðŸ”¬ KILL THE POCKETS: Raw Oracle BPM (pre-Kalman) for telemetry
+        rawBpm,
         // -- Wave 8 Rhythm (REGLA 3: Syncopation is king) --
         syncopation: rhythmOutput.syncopation,
         groove: rhythmOutput.groove,

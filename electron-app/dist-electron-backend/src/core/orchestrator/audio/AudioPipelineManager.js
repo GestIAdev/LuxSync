@@ -99,6 +99,7 @@ export class AudioPipelineManager {
                     rawBassEnergy: levels.rawBassEnergy ?? this.lastAudioData.rawBassEnergy,
                     workerBpm: (levels.bpm != null && levels.bpm > 0) ? levels.bpm : this.lastAudioData.workerBpm,
                     workerBpmConfidence: (levels.bpmConfidence != null && levels.bpmConfidence > 0) ? levels.bpmConfidence : this.lastAudioData.workerBpmConfidence,
+                    workerRawBpm: levels.rawBpm ?? this.lastAudioData.workerRawBpm,
                     workerOnBeat: levels.onBeat ?? this.lastAudioData.workerOnBeat,
                     workerBeatPhase: levels.beatPhase ?? this.lastAudioData.workerBeatPhase,
                     workerBeatStrength: levels.beatStrength ?? this.lastAudioData.workerBeatStrength,
@@ -144,6 +145,7 @@ export class AudioPipelineManager {
                     rawBassEnergy: levels.rawBassEnergy ?? this.lastAudioData.rawBassEnergy,
                     workerBpm: (levels.bpm != null && levels.bpm > 0) ? levels.bpm : this.lastAudioData.workerBpm,
                     workerBpmConfidence: (levels.bpmConfidence != null && levels.bpmConfidence > 0) ? levels.bpmConfidence : this.lastAudioData.workerBpmConfidence,
+                    workerRawBpm: levels.rawBpm ?? this.lastAudioData.workerRawBpm,
                     workerOnBeat: levels.onBeat ?? this.lastAudioData.workerOnBeat,
                     workerBeatPhase: levels.beatPhase ?? this.lastAudioData.workerBeatPhase,
                     workerBeatStrength: levels.beatStrength ?? this.lastAudioData.workerBeatStrength,
@@ -193,6 +195,7 @@ export class AudioPipelineManager {
             crestFactor: this.lastAudioData.crestFactor,
             workerBpm: this.lastAudioData.workerBpm,
             workerBpmConfidence: this.lastAudioData.workerBpmConfidence,
+            workerRawBpm: this.lastAudioData.workerRawBpm,
             workerOnBeat: this.lastAudioData.workerOnBeat,
             workerBeatPhase: this.lastAudioData.workerBeatPhase,
             workerBeatStrength: this.lastAudioData.workerBeatStrength,
@@ -303,6 +306,7 @@ export class AudioPipelineManager {
                 rawBassEnergy: undefined,
                 workerBpm: this.lastAudioData.workerBpm,
                 workerBpmConfidence: this.lastAudioData.workerBpmConfidence,
+                workerRawBpm: this.lastAudioData.workerRawBpm,
                 workerOnBeat: false,
                 workerBeatPhase: this.lastAudioData.workerBeatPhase,
                 workerBeatStrength: 0,
@@ -389,7 +393,7 @@ export class AudioPipelineManager {
                 const sabFill = this.ctx.trinity?.getAudioMatrix()?.getStatus()?.ringBufferFillLevel?.toFixed(3) ?? 'n/a';
                 const inputPeak = (this.lastAudioData.inputPeakAbs ?? 0).toFixed(5);
                 const inputRms = (this.lastAudioData.inputRMS ?? 0).toFixed(5);
-                console.log(`[AudioPipeline] WORKER BPM=${workerBpm.toFixed(0)} conf=${workerConfidence.toFixed(2)} | PLL=${pllInfo}${freewheelTag} phase=${beatState.pllPhase.toFixed(2)} sync=${syncInfo} | beat #${this.lastAudioData.workerKickCount ?? 0} | bass=${rawEnergy} sab=${sabFill} | in_peak=${inputPeak} in_rms=${inputRms}`);
+                console.log(`[AudioPipeline] WORKER BPM=${workerBpm.toFixed(2)} conf=${workerConfidence.toFixed(2)} | PLL=${pllInfo}${freewheelTag} phase=${beatState.pllPhase.toFixed(2)} sync=${syncInfo} | beat #${this.lastAudioData.workerKickCount ?? 0} | bass=${rawEnergy} sab=${sabFill} | in_peak=${inputPeak} in_rms=${inputRms}`);
             }
         }
         else if (this.beatDetector) {

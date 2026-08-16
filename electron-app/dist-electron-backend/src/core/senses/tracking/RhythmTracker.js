@@ -39,6 +39,14 @@
  * como estado escalar / función pura en vez de dentro del tracker legacy.
  * Contrato de salida (RhythmTrackResult) sin cambios.
  *
+ * ───── KILL THE POCKETS & FREE THE DECIMALS ─────────────────────────────────
+ * El pocket folder y el Dembow Ceiling están BYPASS en el hot path. El
+ * TempoOracle usa la regla MPM (shortest-peak) para resolver octavas
+ * matemáticamente, making the genre-based fold logic obsolete. El BPM
+ * Kalman-smoothed es ahora el BPM musical final, sin restricciones de
+ * género. Las funciones foldToPocket / applyDembowCeiling / getPocketBounds
+ * permanecen exportadas para tests y Chronos offline.
+ *
  * @see docs/technical_audits/AUTOCORRELATION_BLUEPRINT.md
  * ────────────────────────────────────────────────────────────────────────────
  */
@@ -277,12 +285,16 @@ export class RhythmTracker {
         //    Produce kickDetected / kickCount / beatPhase; NO produce BPM.
         this.phaseGate.process(needleOut.needle, currentFloor, smoothedBpm, deterministicTimestampMs);
         const kickDetected = this.phaseGate.kickDetected;
-        // 6. Dance Pocket Folder + Dembow Ceiling
-        const [pocketMin, pocketMax] = getPocketBounds(this.currentVibeId);
+        // 6. KILL THE POCKETS — TempoOracle + MPM ya resuelve octavas matemáticamente.
+        //    El legacy foldToPocket mutilaba 128→96 vía ×0.75 cuando el vibe estaba
+        //    desactualizado (fiesta-latina escuchando techno). El Kalman-smoothed BPM
+        //    es ahora el BPM musical final, sin restricciones de género.
+        //    (getPocketBounds / foldToPocket / applyDembowCeiling permanecen
+        //    exportados para tests y Chronos offline, pero no participan en el
+        //    hot path. Ver DIRECTIVA "KILL THE POCKETS & FREE THE DECIMALS".)
         let musicalBpm = 0;
         if (confidence > 0.05) {
-            musicalBpm = foldToPocket(smoothedBpm, pocketMin, pocketMax, this.lastMusicalBpm);
-            musicalBpm = applyDembowCeiling(musicalBpm, this.currentVibeId);
+            musicalBpm = smoothedBpm;
             this.lastMusicalBpm = musicalBpm;
         }
         // 7. Actualizar lastBeatTime si hubo kick en este frame

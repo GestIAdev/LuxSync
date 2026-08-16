@@ -455,25 +455,10 @@ export class TickEngine {
           this.audioPipeline.beatDetector.feedKick(now)
         }
       }
-      
-      if (this.frameCount % 60 === 0) {
-        const pllInfo = beatState.pllLocked ? 'LOCKED' : 'FREEWHEEL'
-        const syncInfo = this.audioPipeline.syncSmoother.currentSyncopation.toFixed(2)
-        const _framesSinceLog = this.frameCount - this.audioPipeline.lastStableWorkerBpmFrame
-        const freewheelTag = (!beatState.pllLocked && this.audioPipeline.lastStableWorkerBpm > 0 && _framesSinceLog <= this.audioPipeline.FREEWHEEL_TIMEOUT_FRAMES)
-          ? ` [mem=${this.audioPipeline.lastStableWorkerBpm.toFixed(2)}@-${_framesSinceLog}f]`
-          : ''
-        const rawEnergy = (this.audioPipeline.lastAudioData.rawBassEnergy ?? 0).toFixed(4)
-        const sabFill = this.trinity?.getAudioMatrix()?.getStatus()?.ringBufferFillLevel?.toFixed(3) ?? 'n/a'
-        // ðŸ”¬ WAVE 3418: Peak/RMS del buffer crudo que llega al Worker
-        const inputPeak = (this.audioPipeline.lastAudioData.inputPeakAbs ?? 0).toFixed(5)
-        const inputRms  = (this.audioPipeline.lastAudioData.inputRMS ?? 0).toFixed(5)
-        // ðŸ”¬ KILL THE POCKETS: BPM con 2 decimales para probar la precisión sub-frame
-        // del ACF engine. rawBpm = salida cruda del Oracle (pre-Kalman),
-        // workerBpm = post-Kalman (ahora = musicalBpm, sin pocket fold).
-        const workerRawBpm = this.audioPipeline.lastAudioData.workerRawBpm ?? 0
-        console.log(`[TitanOrchestrator] ðŸŽ§ WORKER BPM=${workerBpm.toFixed(2)} (raw=${workerRawBpm.toFixed(2)}) conf=${workerConfidence.toFixed(2)} | PLL=${pllInfo}${freewheelTag} phase=${beatState.pllPhase.toFixed(2)} sync=${syncInfo} | beat #${this.audioPipeline.lastAudioData.workerKickCount ?? 0} | bass=${rawEnergy} sab=${sabFill} | ðŸ”¬in_peak=${inputPeak} in_rms=${inputRms}`)
-      }
+      // NOTE: The [TitanOrchestrator] BPM logger was moved to AFTER the
+      // hysteresis gate + EMA shield (see "CLEAN THE CHASSIS" block below)
+      // so it reports the post-shield context.bpm actually sent downstream,
+      // not the pre-shield workerBpm that caused false alarms.
     } else if (this.audioPipeline.beatDetector) {
       // WAVE 2090.3: THE FLYWHEEL - tick even without audio
       // The metronome keeps spinning on inertia (freewheel mode)
@@ -551,6 +536,31 @@ export class TickEngine {
       this._smoothedBpm = (TickEngine.BPM_EMA_ALPHA * context.bpm) + (1 - TickEngine.BPM_EMA_ALPHA) * this._smoothedBpm
     }
     context.bpm = this._smoothedBpm
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 📊 CLEAN THE CHASSIS: Post-shield BPM logger
+    // Reports the FINAL context.bpm (post-hysteresis + post-EMA) that is
+    // actually sent to TitanEngine/VMM, alongside the raw Oracle value for
+    // debugging. This replaces the old pre-shield logger that caused false
+    // alarms by printing workerBpm before the hysteresis gate could reject
+    // octave-down jumps (e.g., 124→62).
+    // ═══════════════════════════════════════════════════════════════════
+    if (this.frameCount % 60 === 0) {
+      const pllInfo = beatState.pllLocked ? 'LOCKED' : 'FREEWHEEL'
+      const syncInfo = this.audioPipeline.syncSmoother.currentSyncopation.toFixed(2)
+      const _framesSinceLog = this.frameCount - this.audioPipeline.lastStableWorkerBpmFrame
+      const freewheelTag = (!beatState.pllLocked && this.audioPipeline.lastStableWorkerBpm > 0 && _framesSinceLog <= this.audioPipeline.FREEWHEEL_TIMEOUT_FRAMES)
+        ? ` [mem=${this.audioPipeline.lastStableWorkerBpm.toFixed(2)}@-${_framesSinceLog}f]`
+        : ''
+      const rawEnergy = (this.audioPipeline.lastAudioData.rawBassEnergy ?? 0).toFixed(4)
+      const sabFill = this.trinity?.getAudioMatrix()?.getStatus()?.ringBufferFillLevel?.toFixed(3) ?? 'n/a'
+      const inputPeak = (this.audioPipeline.lastAudioData.inputPeakAbs ?? 0).toFixed(5)
+      const inputRms  = (this.audioPipeline.lastAudioData.inputRMS ?? 0).toFixed(5)
+      // rawBpm = raw Oracle output (pre-Kalman, pre-shield) for debugging
+      const workerRawBpm = this.audioPipeline.lastAudioData.workerRawBpm ?? 0
+      // context.bpm = post-hysteresis + post-EMA = value sent to TitanEngine/VMM
+      console.log(`[TitanOrchestrator] ðŸŽ§ BPM=${context.bpm.toFixed(2)} (raw=${workerRawBpm.toFixed(2)}) conf=${workerConfidence.toFixed(2)} | PLL=${pllInfo}${freewheelTag} phase=${beatState.pllPhase.toFixed(2)} sync=${syncInfo} | beat #${this.audioPipeline.lastAudioData.workerKickCount ?? 0} | bass=${rawEnergy} sab=${sabFill} | ðŸ”¬in_peak=${inputPeak} in_rms=${inputRms}`)
+    }
 
     // For TitanEngine
     // ðŸŽ›ï¸ WAVE 661: Incluir textura espectral

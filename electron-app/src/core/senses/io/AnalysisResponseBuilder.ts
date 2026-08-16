@@ -92,6 +92,11 @@ export interface AnalysisBuildInput {
   lastBeatTime: number;
   /** KILL THE POCKETS: Raw Oracle BPM (pre-Kalman) for telemetry. */
   rawBpm?: number;
+  /** 🔬 TRUTH TELLER: True pre-Kalman Oracle BPM (the actual detector output).
+   *  rawBpm above is a legacy alias = Kalman-smoothed; this is the raw detector. */
+  oracleRawBpm?: number;
+  /** 🔬 Raw NSDF peak height at the winning lag — for confidence auditing. */
+  oraclePeakHeight?: number;
 
   // -- Raw flux telemetry (para ZeroCrossing y energía) --
   /** Raw buffer linealizado de 4096 samples (snapshot del ring — ZERO-ALLOC) */
@@ -156,6 +161,8 @@ export function buildPayload(input: AnalysisBuildInput): ExtendedAudioAnalysis {
     bpmConfidence,
     beatPhase,
     rawBpm,
+    oracleRawBpm,
+    oraclePeakHeight,
     snapshotBuffer,
     normalizedEnergy,
     rhythmOutput,
@@ -189,6 +196,9 @@ export function buildPayload(input: AnalysisBuildInput): ExtendedAudioAnalysis {
     kickCount: bpmResult.kickCount,
     // ðŸ”¬ KILL THE POCKETS: Raw Oracle BPM (pre-Kalman) for telemetry
     rawBpm,
+    // 🔬 TRUTH TELLER: True pre-Kalman Oracle BPM + raw NSDF peak height
+    oracleRawBpm,
+    oraclePeakHeight,
 
     // -- Wave 8 Rhythm (REGLA 3: Syncopation is king) --
     syncopation: rhythmOutput.syncopation,

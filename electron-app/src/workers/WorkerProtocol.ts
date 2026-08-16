@@ -140,6 +140,11 @@ export interface AudioAnalysis {
   /** KILL THE POCKETS: Raw Oracle BPM (pre-Kalman, post-NSDF) for telemetry.
    *  Lets the orchestrator log raw vs smoothed to prove sub-frame precision. */
   rawBpm?: number;
+  /** 🔬 TRUTH TELLER: True pre-Kalman Oracle BPM (the actual detector output).
+   *  rawBpm above is a legacy alias = Kalman-smoothed; this is the raw detector. */
+  oracleRawBpm?: number;
+  /** 🔬 Raw NSDF peak height at the winning lag — for confidence auditing. */
+  oraclePeakHeight?: number;
   
   // Rhythm
   syncopation: number;        // 0-1 (off-beat emphasis)

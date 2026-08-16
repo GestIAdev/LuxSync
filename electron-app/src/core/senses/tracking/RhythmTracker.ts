@@ -81,6 +81,13 @@ export interface RhythmTrackResult {
   kickCount: number;
   /** BPM raw del tracker (sin Dance Pocket Folder) — solo para telemetría */
   rawBpm: number;
+  /** 🔬 TRUTH TELLER: True pre-Kalman Oracle BPM (the actual detector output).
+   *  rawBpm above is a legacy alias that equals the Kalman-smoothed value;
+   *  this field exposes the raw detector reading so downstream can see if
+   *  the Kalman is masking a hard octave jump as a gradual drift. */
+  oracleRawBpm: number;
+  /** 🔬 Raw NSDF peak height at the winning lag — for confidence auditing. */
+  oraclePeakHeight: number;
   // Telemetría del needle para ShadowLogger
   rawLowFlux: number;
   rawMidFlux: number;
@@ -341,6 +348,7 @@ export class RhythmTracker {
     this.tempoOracle.process(needleOut.needle, deterministicTimestampMs);
     const oracleBpm = this.tempoOracle.bpm;
     const confidence = this.tempoOracle.confidence;
+    const oraclePeakHeight = this.tempoOracle.peakHeight;
 
     // 4. Kalman 1D sobre la medida del Oracle (soft-gate, sin frontera dura)
     const smoothedBpm = this.kalmanUpdate(oracleBpm, confidence);
@@ -381,6 +389,8 @@ export class RhythmTracker {
       kickDetected,
       kickCount: this.phaseGate.kickCount,
       rawBpm: smoothedBpm,
+      oracleRawBpm: oracleBpm,
+      oraclePeakHeight,
       // Telemetría para ShadowLogger / diagnóstico
       rawLowFlux: needleOut.rawLowFlux,
       rawMidFlux: needleOut.rawMidFlux,

@@ -40,6 +40,10 @@ export interface AudioDataSnapshot {
   workerBpmConfidence?: number
   /** KILL THE POCKETS: Raw Oracle BPM (pre-Kalman) for telemetry. */
   workerRawBpm?: number
+  /** 🔬 TRUTH TELLER: True pre-Kalman Oracle BPM (raw detector output). */
+  workerOracleRawBpm?: number
+  /** 🔬 Raw NSDF peak height at the winning lag. */
+  workerOraclePeakHeight?: number
   workerOnBeat?: boolean
   workerBeatPhase?: number
   workerBeatStrength?: number
@@ -164,6 +168,10 @@ export class AudioPipelineManager {
       inputPeakAbs?: number; inputRMS?: number;
       /** KILL THE POCKETS: Raw Oracle BPM (pre-Kalman) for telemetry. */
       rawBpm?: number;
+      /** 🔬 TRUTH TELLER: True pre-Kalman Oracle BPM (raw detector output). */
+      oracleRawBpm?: number;
+      /** 🔬 Raw NSDF peak height at the winning lag. */
+      oraclePeakHeight?: number;
       // WAVE 8002: Spectral Flux V3
       spectralFluxV3?: number;
       // WAVE 8003: Photon block
@@ -208,6 +216,8 @@ export class AudioPipelineManager {
           workerBpm: (levels.bpm != null && levels.bpm > 0) ? levels.bpm : this.lastAudioData.workerBpm,
           workerBpmConfidence: (levels.bpmConfidence != null && levels.bpmConfidence > 0) ? levels.bpmConfidence : this.lastAudioData.workerBpmConfidence,
           workerRawBpm: levels.rawBpm ?? this.lastAudioData.workerRawBpm,
+          workerOracleRawBpm: levels.oracleRawBpm ?? this.lastAudioData.workerOracleRawBpm,
+          workerOraclePeakHeight: levels.oraclePeakHeight ?? this.lastAudioData.workerOraclePeakHeight,
           workerOnBeat: levels.onBeat ?? this.lastAudioData.workerOnBeat,
           workerBeatPhase: levels.beatPhase ?? this.lastAudioData.workerBeatPhase,
           workerBeatStrength: levels.beatStrength ?? this.lastAudioData.workerBeatStrength,
@@ -305,6 +315,8 @@ export class AudioPipelineManager {
       workerBpm: this.lastAudioData.workerBpm,
       workerBpmConfidence: this.lastAudioData.workerBpmConfidence,
       workerRawBpm: this.lastAudioData.workerRawBpm,
+      workerOracleRawBpm: this.lastAudioData.workerOracleRawBpm,
+      workerOraclePeakHeight: this.lastAudioData.workerOraclePeakHeight,
       workerOnBeat: this.lastAudioData.workerOnBeat,
       workerBeatPhase: this.lastAudioData.workerBeatPhase,
       workerBeatStrength: this.lastAudioData.workerBeatStrength,
@@ -428,6 +440,8 @@ export class AudioPipelineManager {
         workerBpm: this.lastAudioData.workerBpm,
         workerBpmConfidence: this.lastAudioData.workerBpmConfidence,
         workerRawBpm: this.lastAudioData.workerRawBpm,
+        workerOracleRawBpm: this.lastAudioData.workerOracleRawBpm,
+        workerOraclePeakHeight: this.lastAudioData.workerOraclePeakHeight,
         workerOnBeat: false,
         workerBeatPhase: this.lastAudioData.workerBeatPhase,
         workerBeatStrength: 0,

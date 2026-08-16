@@ -36,6 +36,10 @@ export interface BPMOutput {
   lastBeatTime: number;
   /** BPM raw del tracker interno — solo para telemetría */
   rawBpm: number;
+  /** 🔬 TRUTH TELLER: True pre-Kalman Oracle BPM */
+  oracleRawBpm: number;
+  /** 🔬 Raw NSDF peak height at the winning lag */
+  oraclePeakHeight: number;
 }
 
 // ============================================
@@ -64,6 +68,8 @@ export class BPMService {
     kickCount: 0,
     lastBeatTime: 0,
     rawBpm: 0,
+    oracleRawBpm: 0,
+    oraclePeakHeight: 0,
   };
 
   /**
@@ -114,6 +120,8 @@ export class BPMService {
       kickCount: track.kickCount,
       lastBeatTime: track.lastBeatTime,
       rawBpm: track.rawBpm,
+      oracleRawBpm: track.oracleRawBpm,
+      oraclePeakHeight: track.oraclePeakHeight,
     };
 
     return this.lastResult;
@@ -152,6 +160,8 @@ export class BPMService {
       kickCount: 0,
       lastBeatTime: 0,
       rawBpm: 0,
+      oracleRawBpm: 0,
+      oraclePeakHeight: 0,
     };
   }
 }

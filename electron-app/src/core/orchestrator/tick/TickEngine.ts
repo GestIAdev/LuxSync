@@ -149,6 +149,11 @@ export class TickEngine {
   private static readonly BPM_CANDIDATE_MIN_CONFIDENCE = 0.7
   private static readonly BPM_CANDIDATE_TOLERANCE = 2
   private static readonly BPM_EMA_ALPHA = 0.15
+  // 🛡️ Shield status tag for the BPM logger — set each frame by the
+  // hysteresis gate so the post-shield log line can show whether the
+  // gate accepted, rejected, or was bypassed (low confidence / freewheel).
+  // Values: '' | '🛡️REJECT' | '🛡️HOLD' | '🛡️ACCEPT' | '⚠️OCT-DOWN' | '⚠️OCT-UP'
+  private _shieldTag: string = ''
 
   get brain() { return this.ctx.brain }
   get engine() { return this.ctx.engine }
@@ -383,6 +388,7 @@ export class TickEngine {
     const workerOnBeat = this.audioPipeline.lastAudioData.workerOnBeat ?? false
     const workerBeatPhase = this.audioPipeline.lastAudioData.workerBeatPhase ?? 0
     let acceptedBpm = workerBpm  // 🛡️ May be overridden by hysteresis gate
+    this._shieldTag = ''  // reset each frame; set by hysteresis gate below
     
     if (this.audioPipeline.beatDetector && this.audioPipeline.hasRealAudio) {
       // ðŸ”¥ WAVE 2112 + WAVE 2179: WORKER BPM â†’ PLL
@@ -400,6 +406,10 @@ export class TickEngine {
           const delta = Math.abs(workerBpm - this._stableBpm) / this._stableBpm
           if (delta > TickEngine.BPM_HYSTERESIS_PCT) {
             // Large change — require confirmation
+            // 🛡️ Detect octave jumps (×2 or ÷2) for the logger tag
+            const ratio = workerBpm / this._stableBpm
+            const isOctaveDown = ratio < 0.55 && ratio > 0.45  // ~÷2
+            const isOctaveUp = ratio > 1.85 && ratio < 2.15    // ~×2
             if (Math.abs(workerBpm - this._bpmCandidate) <= TickEngine.BPM_CANDIDATE_TOLERANCE
                 && workerConfidence > TickEngine.BPM_CANDIDATE_MIN_CONFIDENCE) {
               this._bpmCandidateFrames++
@@ -407,13 +417,16 @@ export class TickEngine {
                 this._stableBpm = workerBpm
                 this._bpmCandidate = 0
                 this._bpmCandidateFrames = 0
+                this._shieldTag = isOctaveDown ? '⚠️OCT-DOWN✅' : (isOctaveUp ? '⚠️OCT-UP✅' : '🛡️ACCEPT')
               } else {
                 acceptedBpm = this._stableBpm
+                this._shieldTag = isOctaveDown ? '⚠️OCT-DOWN🛡️' : (isOctaveUp ? '⚠️OCT-UP🛡️' : '🛡️HOLD')
               }
             } else {
               this._bpmCandidate = workerBpm
               this._bpmCandidateFrames = 0
               acceptedBpm = this._stableBpm
+              this._shieldTag = isOctaveDown ? '⚠️OCT-DOWN🛡️' : (isOctaveUp ? '⚠️OCT-UP🛡️' : '🛡️REJECT')
             }
           } else {
             // Small change — accept and update stable
@@ -559,7 +572,10 @@ export class TickEngine {
       // rawBpm = raw Oracle output (pre-Kalman, pre-shield) for debugging
       const workerRawBpm = this.audioPipeline.lastAudioData.workerRawBpm ?? 0
       // context.bpm = post-hysteresis + post-EMA = value sent to TitanEngine/VMM
-      console.log(`[TitanOrchestrator] ðŸŽ§ BPM=${context.bpm.toFixed(2)} (raw=${workerRawBpm.toFixed(2)}) conf=${workerConfidence.toFixed(2)} | PLL=${pllInfo}${freewheelTag} phase=${beatState.pllPhase.toFixed(2)} sync=${syncInfo} | beat #${this.audioPipeline.lastAudioData.workerKickCount ?? 0} | bass=${rawEnergy} sab=${sabFill} | ðŸ”¬in_peak=${inputPeak} in_rms=${inputRms}`)
+      // _shieldTag = 🛡️HOLD/🛡️REJECT/🛡️ACCEPT/⚠️OCT-DOWN🛡️/⚠️OCT-UP🛡️ when the
+      // hysteresis gate acted on a large BPM jump this frame (empty = small/none)
+      const shieldTagStr = this._shieldTag ? ` ${this._shieldTag}` : ''
+      console.log(`[TitanOrchestrator] ðŸŽ§ BPM=${context.bpm.toFixed(2)} (raw=${workerRawBpm.toFixed(2)}) conf=${workerConfidence.toFixed(2)}${shieldTagStr} | PLL=${pllInfo}${freewheelTag} phase=${beatState.pllPhase.toFixed(2)} sync=${syncInfo} | beat #${this.audioPipeline.lastAudioData.workerKickCount ?? 0} | bass=${rawEnergy} sab=${sabFill} | ðŸ”¬in_peak=${inputPeak} in_rms=${inputRms}`)
     }
 
     // For TitanEngine

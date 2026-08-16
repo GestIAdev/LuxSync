@@ -1,0 +1,24 @@
+feat(bpm): add shield status tag to BPM logger
+
+The post-shield BPM logger now shows a visual tag when the hysteresis
+gate acts on a large BPM jump, so you can see at a glance whether the
+shield is working:
+
+  BPM=124.07 (raw=62.53) conf=0.14 ⚠️OCT-DOWN🛡️ | PLL=LOCKED ...
+  BPM=124.07 (raw=124.07) conf=0.72                | PLL=LOCKED ...
+
+Tags:
+  (empty)        = small/normal change, accepted
+  🛡️ACCEPT       = large change confirmed after 60f, accepted
+  🛡️HOLD         = large change pending confirmation, holding stable
+  🛡️REJECT       = large change, new candidate (reset counter)
+  ⚠️OCT-DOWN🛡️   = octave-down (÷2) rejected/holding
+  ⚠️OCT-DOWN✅    = octave-down confirmed after 60f @ conf>0.7 (rare)
+  ⚠️OCT-UP🛡️     = octave-up (×2) rejected/holding
+  ⚠️OCT-UP✅      = octave-up confirmed after 60f @ conf>0.7 (rare)
+
+Octave detection uses ratio thresholds 0.45-0.55 (÷2) and 1.85-2.15 (×2).
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

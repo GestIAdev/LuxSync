@@ -133,12 +133,18 @@ export const SEALED_PARAMS_INFO = [
             'indeterminado y el pan da un latigazo de 180°.',
     },
     {
+        // 🛡️ CLEAN THE CHASSIS: BPM_SMOOTH_FACTOR was REMOVED from VMM.
+        // The TickEngine already smooths BPM via EMA (α=0.15). The VMM's second
+        // EMA (α=0.05) caused ~2s lag. VMM now uses the clamped incoming BPM
+        // directly (activeBpm = getSafeBPM(audio.bpm)). Entry kept for audit
+        // trail — do not re-add smoothing here.
         path: 'movement.BPM_SMOOTH_FACTOR',
         value: 0.05,
-        owner: 'engine/movement/VibeMovementManager.ts',
+        owner: 'engine/movement/VibeMovementManager.ts [REMOVED]',
         category: 'math-integrity',
-        reason: 'Alpha del filtro paso-bajo del BPM. Subirlo hace que el acumulador de ' +
-            'fase salte al re-detectar tempo, provocando stutter mecánico.',
+        reason: 'Alpha del filtro paso-bajo del BPM. REMOVIDO en CLEAN THE CHASSIS: ' +
+            'TickEngine ya suaviza con EMA α=0.15. Doble EMA causaba ~2s de lag. ' +
+            'No re-añadir suavizado en el VMM.',
     },
     {
         path: 'physics.envelope.EMA_ALPHA_SLOW',

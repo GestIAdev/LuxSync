@@ -100,6 +100,11 @@ export class TickEngine {
         this._bpmCandidate = 0;
         this._bpmCandidateFrames = 0;
         this._smoothedBpm = 0;
+        // 🛡️ Shield status tag for the BPM logger — set each frame by the
+        // hysteresis gate so the post-shield log line can show whether the
+        // gate accepted, rejected, or was bypassed (low confidence / freewheel).
+        // Values: '' | '🛡️REJECT' | '🛡️HOLD' | '🛡️ACCEPT' | '⚠️OCT-DOWN' | '⚠️OCT-UP'
+        this._shieldTag = '';
         this.ctx = ctx;
         TickEngine._instances.add(this);
     }
@@ -256,6 +261,7 @@ export class TickEngine {
         const workerOnBeat = this.audioPipeline.lastAudioData.workerOnBeat ?? false;
         const workerBeatPhase = this.audioPipeline.lastAudioData.workerBeatPhase ?? 0;
         let acceptedBpm = workerBpm; // 🛡️ May be overridden by hysteresis gate
+        this._shieldTag = ''; // reset each frame; set by hysteresis gate below
         if (this.audioPipeline.beatDetector && this.audioPipeline.hasRealAudio) {
             // ðŸ”¥ WAVE 2112 + WAVE 2179: WORKER BPM â†’ PLL
             // Worker con seÃ±al â†’ setBpm() = lock real (PLL anclado a la verdad fÃ­sica)
@@ -272,6 +278,10 @@ export class TickEngine {
                     const delta = Math.abs(workerBpm - this._stableBpm) / this._stableBpm;
                     if (delta > TickEngine.BPM_HYSTERESIS_PCT) {
                         // Large change — require confirmation
+                        // 🛡️ Detect octave jumps (×2 or ÷2) for the logger tag
+                        const ratio = workerBpm / this._stableBpm;
+                        const isOctaveDown = ratio < 0.55 && ratio > 0.45; // ~÷2
+                        const isOctaveUp = ratio > 1.85 && ratio < 2.15; // ~×2
                         if (Math.abs(workerBpm - this._bpmCandidate) <= TickEngine.BPM_CANDIDATE_TOLERANCE
                             && workerConfidence > TickEngine.BPM_CANDIDATE_MIN_CONFIDENCE) {
                             this._bpmCandidateFrames++;
@@ -279,15 +289,18 @@ export class TickEngine {
                                 this._stableBpm = workerBpm;
                                 this._bpmCandidate = 0;
                                 this._bpmCandidateFrames = 0;
+                                this._shieldTag = isOctaveDown ? '⚠️OCT-DOWN✅' : (isOctaveUp ? '⚠️OCT-UP✅' : '🛡️ACCEPT');
                             }
                             else {
                                 acceptedBpm = this._stableBpm;
+                                this._shieldTag = isOctaveDown ? '⚠️OCT-DOWN🛡️' : (isOctaveUp ? '⚠️OCT-UP🛡️' : '🛡️HOLD');
                             }
                         }
                         else {
                             this._bpmCandidate = workerBpm;
                             this._bpmCandidateFrames = 0;
                             acceptedBpm = this._stableBpm;
+                            this._shieldTag = isOctaveDown ? '⚠️OCT-DOWN🛡️' : (isOctaveUp ? '⚠️OCT-UP🛡️' : '🛡️REJECT');
                         }
                     }
                     else {
@@ -330,24 +343,10 @@ export class TickEngine {
                     this.audioPipeline.beatDetector.feedKick(now);
                 }
             }
-            if (this.frameCount % 60 === 0) {
-                const pllInfo = beatState.pllLocked ? 'LOCKED' : 'FREEWHEEL';
-                const syncInfo = this.audioPipeline.syncSmoother.currentSyncopation.toFixed(2);
-                const _framesSinceLog = this.frameCount - this.audioPipeline.lastStableWorkerBpmFrame;
-                const freewheelTag = (!beatState.pllLocked && this.audioPipeline.lastStableWorkerBpm > 0 && _framesSinceLog <= this.audioPipeline.FREEWHEEL_TIMEOUT_FRAMES)
-                    ? ` [mem=${this.audioPipeline.lastStableWorkerBpm.toFixed(2)}@-${_framesSinceLog}f]`
-                    : '';
-                const rawEnergy = (this.audioPipeline.lastAudioData.rawBassEnergy ?? 0).toFixed(4);
-                const sabFill = this.trinity?.getAudioMatrix()?.getStatus()?.ringBufferFillLevel?.toFixed(3) ?? 'n/a';
-                // ðŸ”¬ WAVE 3418: Peak/RMS del buffer crudo que llega al Worker
-                const inputPeak = (this.audioPipeline.lastAudioData.inputPeakAbs ?? 0).toFixed(5);
-                const inputRms = (this.audioPipeline.lastAudioData.inputRMS ?? 0).toFixed(5);
-                // ðŸ”¬ KILL THE POCKETS: BPM con 2 decimales para probar la precisión sub-frame
-                // del ACF engine. rawBpm = salida cruda del Oracle (pre-Kalman),
-                // workerBpm = post-Kalman (ahora = musicalBpm, sin pocket fold).
-                const workerRawBpm = this.audioPipeline.lastAudioData.workerRawBpm ?? 0;
-                console.log(`[TitanOrchestrator] ðŸŽ§ WORKER BPM=${workerBpm.toFixed(2)} (raw=${workerRawBpm.toFixed(2)}) conf=${workerConfidence.toFixed(2)} | PLL=${pllInfo}${freewheelTag} phase=${beatState.pllPhase.toFixed(2)} sync=${syncInfo} | beat #${this.audioPipeline.lastAudioData.workerKickCount ?? 0} | bass=${rawEnergy} sab=${sabFill} | ðŸ”¬in_peak=${inputPeak} in_rms=${inputRms}`);
-            }
+            // NOTE: The [TitanOrchestrator] BPM logger was moved to AFTER the
+            // hysteresis gate + EMA shield (see "CLEAN THE CHASSIS" block below)
+            // so it reports the post-shield context.bpm actually sent downstream,
+            // not the pre-shield workerBpm that caused false alarms.
         }
         else if (this.audioPipeline.beatDetector) {
             // WAVE 2090.3: THE FLYWHEEL - tick even without audio
@@ -426,6 +425,33 @@ export class TickEngine {
             this._smoothedBpm = (TickEngine.BPM_EMA_ALPHA * context.bpm) + (1 - TickEngine.BPM_EMA_ALPHA) * this._smoothedBpm;
         }
         context.bpm = this._smoothedBpm;
+        // ═══════════════════════════════════════════════════════════════════
+        // 📊 CLEAN THE CHASSIS: Post-shield BPM logger
+        // Reports the FINAL context.bpm (post-hysteresis + post-EMA) that is
+        // actually sent to TitanEngine/VMM, alongside the raw Oracle value for
+        // debugging. This replaces the old pre-shield logger that caused false
+        // alarms by printing workerBpm before the hysteresis gate could reject
+        // octave-down jumps (e.g., 124→62).
+        // ═══════════════════════════════════════════════════════════════════
+        if (this.frameCount % 60 === 0) {
+            const pllInfo = beatState.pllLocked ? 'LOCKED' : 'FREEWHEEL';
+            const syncInfo = this.audioPipeline.syncSmoother.currentSyncopation.toFixed(2);
+            const _framesSinceLog = this.frameCount - this.audioPipeline.lastStableWorkerBpmFrame;
+            const freewheelTag = (!beatState.pllLocked && this.audioPipeline.lastStableWorkerBpm > 0 && _framesSinceLog <= this.audioPipeline.FREEWHEEL_TIMEOUT_FRAMES)
+                ? ` [mem=${this.audioPipeline.lastStableWorkerBpm.toFixed(2)}@-${_framesSinceLog}f]`
+                : '';
+            const rawEnergy = (this.audioPipeline.lastAudioData.rawBassEnergy ?? 0).toFixed(4);
+            const sabFill = this.trinity?.getAudioMatrix()?.getStatus()?.ringBufferFillLevel?.toFixed(3) ?? 'n/a';
+            const inputPeak = (this.audioPipeline.lastAudioData.inputPeakAbs ?? 0).toFixed(5);
+            const inputRms = (this.audioPipeline.lastAudioData.inputRMS ?? 0).toFixed(5);
+            // rawBpm = raw Oracle output (pre-Kalman, pre-shield) for debugging
+            const workerRawBpm = this.audioPipeline.lastAudioData.workerRawBpm ?? 0;
+            // context.bpm = post-hysteresis + post-EMA = value sent to TitanEngine/VMM
+            // _shieldTag = 🛡️HOLD/🛡️REJECT/🛡️ACCEPT/⚠️OCT-DOWN🛡️/⚠️OCT-UP🛡️ when the
+            // hysteresis gate acted on a large BPM jump this frame (empty = small/none)
+            const shieldTagStr = this._shieldTag ? ` ${this._shieldTag}` : '';
+            console.log(`[TitanOrchestrator] ðŸŽ§ BPM=${context.bpm.toFixed(2)} (raw=${workerRawBpm.toFixed(2)}) conf=${workerConfidence.toFixed(2)}${shieldTagStr} | PLL=${pllInfo}${freewheelTag} phase=${beatState.pllPhase.toFixed(2)} sync=${syncInfo} | beat #${this.audioPipeline.lastAudioData.workerKickCount ?? 0} | bass=${rawEnergy} sab=${sabFill} | ðŸ”¬in_peak=${inputPeak} in_rms=${inputRms}`);
+        }
         // For TitanEngine
         // ðŸŽ›ï¸ WAVE 661: Incluir textura espectral
         // ðŸŽ¸ WAVE 1011.5: Usar mÃ©tricas SUAVIZADAS (no crudas) para evitar parpadeo

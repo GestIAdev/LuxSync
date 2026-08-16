@@ -49,6 +49,34 @@
  * deleted — it's a mathematical jewel with potential future applications
  * (tempo mapping, polyrhythm analysis, long-form structure detection).
  *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ⚠️  SUPERSEDED IN THE REAL-TIME PATH — TEMPO ORACLE TRANSPLANT
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * This tracker no longer participates in the live worker chain. RhythmTracker
+ * now runs `TempoOracle` (zero-alloc NSDF autocorrelation on the needle ODF)
+ * for FREQUENCY and `KickPhaseGate` for PHASE.
+ *
+ * WHY IT WAS REPLACED — interval estimation is a DIFFERENTIATOR. It subtracts
+ * two frame-quantized kick timestamps, so quantization noise propagates as
+ * σ_bpm ≈ (BPM²/60000)·√2·(T_f/2) ≈ ±4.5 BPM @128 BPM at a 21.5 Hz ODF rate.
+ * The median-of-8 could not fix it, because the median of 8 samples is itself
+ * quantized — that is the origin of the characteristic ±4 BPM snapping.
+ *
+ * STILL LIVE — OFFLINE ONLY. `chronos/analysis/analysisPipeline.ts` uses this
+ * class for whole-track offline analysis, where the entire signal is available
+ * in advance and the deterministic frame clock removes the wall-clock jitter.
+ * It is therefore NOT dead code and NOT archived. `GodEarBPMResult` also
+ * remains the shared result shape consumed by `AnalysisResponseBuilder`.
+ *
+ * Do not re-wire this class into the real-time path. Porting the Oracle to the
+ * offline pipeline (global autocorrelation over the full track) is the natural
+ * next step there.
+ *
+ * @deprecated For real-time BPM use `core/senses/bpm/TempoOracle.ts`.
+ *             Retained and supported for the offline Chronos analysis path.
+ * @see docs/technical_audits/AUTOCORRELATION_BLUEPRINT.md
+ *
  * @author PunkOpus
  * @wave 2168
  */
@@ -489,32 +517,38 @@ export class IntervalBPMTracker {
         }
         // ─── 9. Diagnostic Log (every ~1 second) ──────────────────────
         // Kept sparse to avoid IPC choking (lesson from WAVE 2125)
-        if (this.totalKicks > 0 && kickDetected) {
-            // WAVE 2170: dump bpmHistory snapshot for conf=0 diagnostics
-            const histSnapshot = Array.from(this.bpmHistory.slice(0, this.bpmHistoryCount))
-                .map(v => Math.round(v))
-                .join(',');
-            console.log(`[🥁 INTERVAL BPM] KICK #${this.totalKicks} ` +
-                `bpm=${this.stableBpm} conf=${this.currentConfidence.toFixed(2)} ` +
-                `energy=${rawBassEnergy.toFixed(4)} avg=${rollingAvg.toFixed(4)} ` +
-                `ratio=${rollingAvg > 0 ? (rawBassEnergy / rollingAvg).toFixed(2) : 'N/A'} ` +
-                `delta=${delta.toFixed(4)} ` +
-                `history=${this.bpmHistoryCount}/${BPM_HISTORY_SIZE} ` +
-                `bpmBuf=[${histSnapshot}]`);
-        }
+        // [DISABLED WAVE 9001] — debug traces no longer needed after FFT cleanup
+        // if (this.totalKicks > 0 && kickDetected) {
+        //   // WAVE 2170: dump bpmHistory snapshot for conf=0 diagnostics
+        //   const histSnapshot = Array.from(this.bpmHistory.slice(0, this.bpmHistoryCount))
+        //     .map(v => Math.round(v))
+        //     .join(',')
+        //   console.log(
+        //     `[🥁 INTERVAL BPM] KICK #${this.totalKicks} ` +
+        //     `bpm=${this.stableBpm} conf=${this.currentConfidence.toFixed(2)} ` +
+        //     `energy=${rawBassEnergy.toFixed(4)} avg=${rollingAvg.toFixed(4)} ` +
+        //     `ratio=${rollingAvg > 0 ? (rawBassEnergy / rollingAvg).toFixed(2) : 'N/A'} ` +
+        //     `delta=${delta.toFixed(4)} ` +
+        //     `history=${this.bpmHistoryCount}/${BPM_HISTORY_SIZE} ` +
+        //     `bpmBuf=[${histSnapshot}]`
+        //   )
+        // }
         // ─── WAVE 3418: Periodic no-kick telemetry (~2s cadence) ──────
         // Visible incluso cuando el ratio NUNCA supera el threshold.
         // Diagnóstico clave: si ratio < 1.6 siempre → señal demasiado débil.
-        this._periodicLogCounter++;
-        if (this._periodicLogCounter % 95 === 0) {
-            const ratio = rollingAvg > 0 ? rawBassEnergy / rollingAvg : 0;
-            console.log(`[🔬 BPM-TELEMETRY] frame=${this._periodicLogCounter} ` +
-                `energy=${rawBassEnergy.toFixed(5)} avg=${rollingAvg.toFixed(5)} ` +
-                `ratio=${ratio.toFixed(3)} threshold=1.60 ` +
-                `delta=${delta.toFixed(5)} ` +
-                `peak_est=${this.peakEnergyEstimate.toFixed(5)} ` +
-                `kicks=${this.totalKicks} bpm=${this.stableBpm}`);
-        }
+        // [DISABLED WAVE 9001] — debug traces no longer needed after FFT cleanup
+        // this._periodicLogCounter++
+        // if (this._periodicLogCounter % 95 === 0) {
+        //   const ratio = rollingAvg > 0 ? rawBassEnergy / rollingAvg : 0
+        //   console.log(
+        //     `[🔬 BPM-TELEMETRY] frame=${this._periodicLogCounter} ` +
+        //     `energy=${rawBassEnergy.toFixed(5)} avg=${rollingAvg.toFixed(5)} ` +
+        //     `ratio=${ratio.toFixed(3)} threshold=1.60 ` +
+        //     `delta=${delta.toFixed(5)} ` +
+        //     `peak_est=${this.peakEnergyEstimate.toFixed(5)} ` +
+        //     `kicks=${this.totalKicks} bpm=${this.stableBpm}`
+        //   )
+        // }
         // 🔧 WAVE 7002.4 (REC-12): Run autocorrelation validator periodically.
         // Cross-validates interval-based BPM with spectral autocorrelation.
         this.runAutocorrelationValidation();

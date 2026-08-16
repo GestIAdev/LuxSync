@@ -12,7 +12,7 @@ import { ipcMain } from 'electron';
 import { HephaestusRuntime } from '../hephaestus/runtime/HephaestusRuntime';
 // ðŸ“¡ WAVE 2048: Art-Net Network Discovery
 import { getArtNetDiscovery } from '../../hal/drivers/ArtNetDiscovery';
-import { getDmxSab } from '../aether/glass/GlassMemory';
+import { getDmxSab } from '../aether/glass/DmxSabHandlers';
 // WAVE 3403: AudioMatrix IPC bridge
 import { getTrinity } from '../../workers/TrinityOrchestrator';
 import { liquidEngine41, liquidEngine71 } from '../../hal/physics';
@@ -1502,7 +1502,7 @@ function setupDMXHandlers(deps) {
             const clampedValue = Math.max(0, Math.min(255, Math.floor(value)));
             const clampedAddress = Math.max(1, Math.min(512, Math.floor(address)));
             // Universe 0 = USB (universalDMX), Universe 1+ = ArtNet
-            if (universe === 0 || universe === 1) {
+            if (universe === 0) {
                 // Primary universe - send via USB/Serial
                 if (universalDMX?.isConnected) {
                     universalDMX.setChannel(clampedAddress, clampedValue);

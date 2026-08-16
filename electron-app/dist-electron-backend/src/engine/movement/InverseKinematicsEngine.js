@@ -107,6 +107,8 @@ export function solve(fixture, target, currentPanDMX = null) {
  * 🛠️ WAVE 5034: Zero-alloc variant — mutates `out` in-place.
  * Elimina la creación de un nuevo IKResult cada frame en el hot path.
  */
+// K0-BATCH-3a: Pre-allocated local frame scratch — zero alloc @ 44Hz.
+const _localFrameScratch = { x: 0, y: 0, z: 0 };
 export function solveInto(out, fixture, target, currentPanDMX = null) {
     const dx = target.x - fixture.position.x;
     const dy = target.y - fixture.position.y;
@@ -115,7 +117,9 @@ export function solveInto(out, fixture, target, currentPanDMX = null) {
     const totalPitchRad = mountAngles.pitchRad + fixture.orientation.rotation.pitch * DEG_TO_RAD;
     const totalYawRad = mountAngles.yawRad + fixture.orientation.rotation.yaw * DEG_TO_RAD;
     const totalRollRad = mountAngles.rollRad + fixture.orientation.rotation.roll * DEG_TO_RAD;
-    const local = rotateToLocalFrame(dx, dy, dz, totalPitchRad, totalYawRad, totalRollRad);
+    // K0-BATCH-3a: Mutate pre-allocated scratch instead of allocating new object.
+    const local = _localFrameScratch;
+    rotateToLocalFrameInto(local, dx, dy, dz, totalPitchRad, totalYawRad, totalRollRad);
     let horizontalDist = Math.sqrt(local.x * local.x + local.z * local.z);
     // WAVE 6020 DEFLECTOR: Si el target cruza demasiado cerca del eje Y del
     // fixture, empujamos artificialmente hacia adelante (Z local) para evitar
@@ -456,6 +460,30 @@ function rotateToLocalFrame(dx, dy, dz, pitchRad, yawRad, rollRad) {
     };
 }
 /**
+ * K0-BATCH-3a: Zero-alloc variant — mutates `out` in place.
+ * Same math as rotateToLocalFrame, but writes to a pre-allocated object.
+ */
+function rotateToLocalFrameInto(out, dx, dy, dz, pitchRad, yawRad, rollRad) {
+    // Rotación inversa de Yaw (eje Y)
+    const cy = Math.cos(-yawRad);
+    const sy = Math.sin(-yawRad);
+    const x1 = dx * cy + dz * sy;
+    const y1 = dy;
+    const z1 = -dx * sy + dz * cy;
+    // Rotación inversa de Pitch (eje X)
+    const cp = Math.cos(-pitchRad);
+    const sp = Math.sin(-pitchRad);
+    const x2 = x1;
+    const y2 = y1 * cp - z1 * sp;
+    const z2 = y1 * sp + z1 * cp;
+    // Rotación inversa de Roll (eje Z)
+    const cr = Math.cos(-rollRad);
+    const sr = Math.sin(-rollRad);
+    out.x = x2 * cr - y2 * sr;
+    out.y = x2 * sr + y2 * cr;
+    out.z = z2;
+}
+/**
  * Resuelve la ruta más corta de pan para evitar el "Pan Flip".
  *
  * El problema: el rango de pan es 0-540°. Cuando un target cruza de un
@@ -478,29 +506,35 @@ function resolveShortestPanPath(rawDMX, currentDMX, panRange) {
     const candidate0 = rawDMX;
     const candidate1 = rawDMX + fullRotationDMX;
     const candidate2 = rawDMX - fullRotationDMX;
-    const delta0 = Math.abs(candidate0 - currentDMX);
-    const delta1 = Math.abs(candidate1 - currentDMX);
-    const delta2 = Math.abs(candidate2 - currentDMX);
-    // Elegir el candidato más cercano QUE CAIGA dentro del rango DMX válido (con margen)
-    const candidates = [
-        { dmx: candidate0, delta: delta0 },
-        { dmx: candidate1, delta: delta1 },
-        { dmx: candidate2, delta: delta2 },
-    ];
-    // Filtrar candidatos que están dentro del rango alcanzable
-    const validRange = { min: -PAN_SAFETY_MARGIN, max: DMX_MAX + PAN_SAFETY_MARGIN };
-    const valid = candidates.filter(c => c.dmx >= validRange.min && c.dmx <= validRange.max);
-    if (valid.length === 0) {
-        // Ningún candidato válido — usar el raw (será clamped después)
-        return { dmx: rawDMX, flipped: false };
+    // K0-BATCH-3b: Inline candidate selection — zero array alloc.
+    // Valid range with safety margin
+    const minValid = -PAN_SAFETY_MARGIN;
+    const maxValid = DMX_MAX + PAN_SAFETY_MARGIN;
+    // Start with candidate0 as best
+    let bestDmx = rawDMX;
+    let bestDelta = Math.abs(candidate0 - currentDMX);
+    let flipped = false;
+    // Check candidate1 (+360°)
+    if (candidate1 >= minValid && candidate1 <= maxValid) {
+        const d1 = Math.abs(candidate1 - currentDMX);
+        if (d1 < bestDelta) {
+            bestDmx = candidate1;
+            bestDelta = d1;
+            flipped = true;
+        }
     }
-    // Seleccionar por distancia mínima
-    valid.sort((a, b) => a.delta - b.delta);
-    const best = valid[0];
-    return {
-        dmx: best.dmx,
-        flipped: best.dmx !== candidate0,
-    };
+    // Check candidate2 (-360°)
+    if (candidate2 >= minValid && candidate2 <= maxValid) {
+        const d2 = Math.abs(candidate2 - currentDMX);
+        if (d2 < bestDelta) {
+            bestDmx = candidate2;
+            bestDelta = d2;
+            flipped = true;
+        }
+    }
+    // If bestDmx is still rawDMX but it's out of range, and no valid candidate was found,
+    // the raw value will be clamped downstream — same behavior as the old code.
+    return { dmx: bestDmx, flipped };
 }
 /**
  * Convierte un valor DMX (0-255) a grados relativos al centro mecánico.

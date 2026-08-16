@@ -675,6 +675,11 @@ export class NodeArbiter {
         }
         // L1: Chronos (WAVE 7110-B — fused into L1 alongside Selene)
         // Same priority layer. Both sources can write; LTP per channel.
+        // DESIGN NOTE: Chronos is applied AFTER Selene, so on overlapping channels
+        // Chronos wins (LTP — last writer wins). This is intentional: deterministic
+        // playback (Chronos) takes precedence over AI improvisation (Selene) when
+        // both target the same channel. Do NOT swap this order without explicit
+        // architectural approval — it changes the show's behavioral contract.
         if (this._chronosBus !== null) {
             const chronosCount = this._chronosBus.count;
             for (let i = 0; i < chronosCount; i++) {
@@ -854,7 +859,16 @@ export class NodeArbiter {
         const amp = this._relativeOffsetAmplitude;
         const ampPan = amp * RELATIVE_OFFSET_SCALE_PAN;
         const ampTilt = amp * RELATIVE_OFFSET_SCALE_TILT;
-        const intentsByFixture = Object.fromEntries(this._result);
+        // F1/F2 FIX: Capture first fixtureId once for diagnostic log filter.
+        // Replaces Object.fromEntries(this._result) + Object.keys()[0] per-node.
+        let _firstLogFixtureId = null;
+        {
+            const firstKey = this._result.keys().next();
+            if (!firstKey.done) {
+                const sep = firstKey.value.indexOf(':');
+                _firstLogFixtureId = sep >= 0 ? firstKey.value.slice(0, sep) : firstKey.value;
+            }
+        }
         // Tracker para telemetría throttled.
         let sampleNodeId = null;
         let samplePan = 0;
@@ -913,7 +927,7 @@ export class NodeArbiter {
             // [WAVE 4936] RADAR TELEMETRY TRAP
             if (manual && (manual['pan'] !== undefined || manual['pan_base'] !== undefined)) {
                 // Filtramos para loguear solo un fixture y evitar spam en consola
-                if (fixtureId === Object.keys(intentsByFixture)[0]) {
+                if (fixtureId === _firstLogFixtureId) {
                     console.warn(`[ARBITER DIAG] Fixture: ${fixtureId}`, {
                         payload_pan: manual['pan'],
                         payload_base: manual['pan_base'],
@@ -1387,7 +1401,7 @@ export class NodeArbiter {
             // crear un registro vacío para que el fade no aborte. Sin esto, el
             // nodo desaparece del output y el resolver envía DMX 0 → techo.
             if (!record) {
-                record = {};
+                record = this._acquireRecord();
                 this._result.set(nodeId, record);
             }
             let fadeCompleted = true;

@@ -38,7 +38,7 @@ import { getModifiersFromKey } from './physics/ElementalModifiers';
 import { getOpticsConfig } from './movement/VibeMovementPresets';
 // ⚡ WAVE 3504-EXT.2: Pure math modules — replace inline private methods
 import { generateStereoMovement, buildMechanicsBypassIntent, } from './generators/MovementGenerators';
-import { selenePaletteToColorPalette, applyConsciousnessColorDecision, applyConsciousnessPhysicsModifier, calculateMasterIntensity, calculateZoneIntents, normalizeSectionType, } from './color/ColorProcessors';
+import { selenePaletteToColorPaletteMutate as selenePaletteToColorPalette, applyConsciousnessColorDecisionMutate as applyConsciousnessColorDecision, applyConsciousnessPhysicsModifierMutate as applyConsciousnessPhysicsModifier, calculateMasterIntensity, calculateZoneIntents, normalizeSectionType, } from './color/ColorProcessors';
 // 🧬 WAVE 500: PROJECT GENESIS - Consciencia Nativa
 import { SeleneTitanConscious, 
 // 🧠 WAVE 1195: BACKEND TELEMETRY EXPANSION

@@ -56,6 +56,8 @@ export class HarmonicQuantizer {
     constructor() {
         /** Estado por fixture */
         this.fixtureStates = new Map();
+        // WAVE 0-ALLOC: Pre-allocated singleton result — mutated and returned every frame
+        this._result = { colorAllowed: true, harmonicPeriodMs: 0, beatMultiplier: 0, timeUntilNextChangeMs: 0 };
     }
     /**
      * 🎯 findResonantPeriod — El corazón del Péndulo Armónico
@@ -107,22 +109,22 @@ export class HarmonicQuantizer {
         const now = Date.now();
         // Sin color → nada que cuantizar
         if (!newColor) {
-            return {
-                colorAllowed: true,
-                harmonicPeriodMs: 0,
-                beatMultiplier: 0,
-                timeUntilNextChangeMs: 0,
-            };
+            // WAVE 0-ALLOC: Mutate singleton result
+            this._result.colorAllowed = true;
+            this._result.harmonicPeriodMs = 0;
+            this._result.beatMultiplier = 0;
+            this._result.timeUntilNextChangeMs = 0;
+            return this._result;
         }
         // Confianza de BPM demasiado baja → fallback a debounce simple
         // (dejar que HardwareSafetyLayer se encargue)
         if (bpmConfidence < MIN_BPM_CONFIDENCE) {
-            return {
-                colorAllowed: true,
-                harmonicPeriodMs: 0,
-                beatMultiplier: 0,
-                timeUntilNextChangeMs: 0,
-            };
+            // WAVE 0-ALLOC: Mutate singleton result
+            this._result.colorAllowed = true;
+            this._result.harmonicPeriodMs = 0;
+            this._result.beatMultiplier = 0;
+            this._result.timeUntilNextChangeMs = 0;
+            return this._result;
         }
         // Obtener o crear estado
         let state = this.fixtureStates.get(fixtureId);
@@ -146,12 +148,12 @@ export class HarmonicQuantizer {
         const elapsed = now - state.lastColorChangeTime;
         // ¿Es el mismo color? → no consume el gate
         if (state.lastAllowedColor && this.colorsEqual(newColor, state.lastAllowedColor)) {
-            return {
-                colorAllowed: true,
-                harmonicPeriodMs,
-                beatMultiplier: this.getCurrentMultiplier(effectiveBpm, harmonicPeriodMs),
-                timeUntilNextChangeMs: Math.max(0, harmonicPeriodMs - elapsed),
-            };
+            // WAVE 0-ALLOC: Mutate singleton result
+            this._result.colorAllowed = true;
+            this._result.harmonicPeriodMs = harmonicPeriodMs;
+            this._result.beatMultiplier = this.getCurrentMultiplier(effectiveBpm, harmonicPeriodMs);
+            this._result.timeUntilNextChangeMs = Math.max(0, harmonicPeriodMs - elapsed);
+            return this._result;
         }
         // ¿Ha pasado el período armónico?
         if (elapsed >= harmonicPeriodMs) {
@@ -164,20 +166,20 @@ export class HarmonicQuantizer {
             state.lastAllowedColor.r = newColor.r;
             state.lastAllowedColor.g = newColor.g;
             state.lastAllowedColor.b = newColor.b;
-            return {
-                colorAllowed: true,
-                harmonicPeriodMs,
-                beatMultiplier: this.getCurrentMultiplier(effectiveBpm, harmonicPeriodMs),
-                timeUntilNextChangeMs: 0,
-            };
+            // WAVE 0-ALLOC: Mutate singleton result
+            this._result.colorAllowed = true;
+            this._result.harmonicPeriodMs = harmonicPeriodMs;
+            this._result.beatMultiplier = this.getCurrentMultiplier(effectiveBpm, harmonicPeriodMs);
+            this._result.timeUntilNextChangeMs = 0;
+            return this._result;
         }
         // GATE CERRADO → color no permitido en este tick
-        return {
-            colorAllowed: false,
-            harmonicPeriodMs,
-            beatMultiplier: this.getCurrentMultiplier(effectiveBpm, harmonicPeriodMs),
-            timeUntilNextChangeMs: harmonicPeriodMs - elapsed,
-        };
+        // WAVE 0-ALLOC: Mutate singleton result
+        this._result.colorAllowed = false;
+        this._result.harmonicPeriodMs = harmonicPeriodMs;
+        this._result.beatMultiplier = this.getCurrentMultiplier(effectiveBpm, harmonicPeriodMs);
+        this._result.timeUntilNextChangeMs = harmonicPeriodMs - elapsed;
+        return this._result;
     }
     // ═══════════════════════════════════════════════════════════════════════
     // API PÚBLICA

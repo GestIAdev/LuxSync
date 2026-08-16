@@ -15,14 +15,11 @@ export const DMX_HEADER_I32 = 16; // slots Int32
 export const DMX_HEADER_BYTES = DMX_HEADER_I32 * 4; // 64 bytes
 export const DMX_SAB_BYTES = DMX_HEADER_BYTES + DMX_DATA_BYTES; // 25 664 bytes
 // ═══════════════════════════════════════════════════════════════════════════
-// FIXTURE_STATE_SAB
-// Layout: [Header Int32 × 32][Data Float32 × (2048 × 16)]
-// Total : 128 + 131 072 = 131 200 bytes (~128 KB)
+// GLASS VIEW — Float32Array layout constants
+// Used by TickEngine._glassView and BufferPoolManager for the UI mirror.
+// The fixture SAB (SharedArrayBuffer) infrastructure was removed (F3/F4):
+// the UI mirror uses transferable ArrayBuffer ping-pong, not SAB.
 // ═══════════════════════════════════════════════════════════════════════════
 export const MAX_FIXTURES = 2048;
 export const FLOATS_PER_FIX = 16; // 64 bytes/fixture
 export const FIX_DATA_FLOATS = MAX_FIXTURES * FLOATS_PER_FIX; // 32 768 floats
-export const FIX_HEADER_I32 = 32; // slots Int32
-export const FIX_HEADER_BYTES = FIX_HEADER_I32 * 4; // 128 bytes
-export const FIX_DATA_BYTES = FIX_DATA_FLOATS * 4; // 131 072 bytes
-export const FIX_SAB_BYTES = FIX_HEADER_BYTES + FIX_DATA_BYTES; // 131 200 bytes

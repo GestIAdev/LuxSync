@@ -377,6 +377,46 @@ export class NodeExtractionPipeline {
      * Esta ruta es la ÚNICA fuente de verdad cuando nodeGraph está presente.
      * Reemplaza _buildAllNodes para fixtures con topología multi-cell
      * (e.g. Tungsten: kinetic + golden-master + petal-l/c/r + wash + wash-color + beam-color).
+     *
+     * ═══════════════════════════════════════════════════════════════════════════
+     * 🏗️ ARCHITECTURAL DIRECTIVE: MULTICELL / SHARED-CHANNEL HARDWARE
+     * ═══════════════════════════════════════════════════════════════════════════
+     *
+     * The ONLY sanctioned pattern for multicell and/or shared-channel hardware
+     * is **Forge-time Cross-Cell Isolation**. Each physical cell (e.g. golden-
+     * master, petal-l, petal-c, petal-r, wash, beam-color) is compiled into a
+     * distinct ICapabilityNode with its own non-overlapping DMX channel range.
+     * The Forge editor (La Forja) is responsible for ensuring that no two cells
+     * share the same DMX offset within a single device.
+     *
+     * **Runtime HTP/LTP channel merging is STRUCTURALLY FORBIDDEN by design.**
+     *
+     * The Aether runtime (NodeArbiter → NodeResolver pipeline) operates under the
+     * invariant that each DMX channel maps to exactly one ICapabilityNode per
+     * device. There is no merge arbitration layer at the channel level. Any
+     * attempt to implement runtime HTP (Highest Takes Precedence) or LTP
+     * (Latest Takes Precedence) channel merging would:
+     *
+     *   1. Violate the zero-allocation hot-path contract (44Hz egress loop).
+     *   2. Introduce non-deterministic output ordering dependent on node
+     *      iteration sequence — unacceptable for reproducible show playback.
+     *   3. Break the Forge → Aether 1:1 channel isolation guarantee that
+     *      downstream systems (DarkSpin, Ignition Injection, Governor Engine)
+     *      rely on for correctness.
+     *
+     * If a fixture requires shared-channel behavior (e.g. two cells that must
+     * drive the same DMX channel), the correct solution is to subdivide the
+     * fixture at Forge compile time into separate devices, each with its own
+     * DMX address. The NodeGraph will then register them as independent
+     * IDeviceDefinitions with non-overlapping channel ranges.
+     *
+     * Future developers: DO NOT implement runtime channel merging. If you
+     * believe you need it, re-examine your Forge graph topology — the isolation
+     * must happen at compile time, not at runtime.
+     *
+     * @see ForgeNodeGraph compiler for the authoritative cell isolation logic.
+     * @see NodeResolver._writeNode() for the 1:1 channel → node write invariant.
+     * ═══════════════════════════════════════════════════════════════════════════
      */
     _buildNodesFromForgeGraph(deviceId, fallbackZone, fixtureDef, graph, position, orientation) {
         const outputNodes = graph.nodes.filter((n) => n.type === 'output_dmx' && n.config.nodeType === 'output_dmx');

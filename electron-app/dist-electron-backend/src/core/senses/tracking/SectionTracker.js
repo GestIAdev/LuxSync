@@ -90,17 +90,21 @@ export class SectionTracker {
         };
         const moodOutput = this.moodSynthesizer.process(metricsForMood, beatState);
         // WAVE 272: Log de key detection cada 60 frames (~6s @ 10fps)
-        if (frameIndex % 60 === 0) {
-            if (harmonyOutput.key) {
-                console.log(`[BETA 🎵] Key Detected: ${harmonyOutput.key} ${harmonyOutput.mode}` +
-                    ` (Confidence: ${harmonyOutput.confidence.toFixed(2)})`);
-            }
-            else {
-                console.log(`[BETA ❌] Key NULL | DomFreq: ${metrics.dominantFrequency?.toFixed(0) ?? 'N/A'}Hz` +
-                    ` | Energy: ${(energy * 100).toFixed(0)}%` +
-                    ` | Conf: ${harmonyOutput.confidence.toFixed(2)}`);
-            }
-        }
+        // [DISABLED WAVE 9001] — debug traces no longer needed after FFT cleanup
+        // if (frameIndex % 60 === 0) {
+        //   if (harmonyOutput.key) {
+        //     console.log(
+        //       `[BETA 🎵] Key Detected: ${harmonyOutput.key} ${harmonyOutput.mode}` +
+        //       ` (Confidence: ${harmonyOutput.confidence.toFixed(2)})`
+        //     );
+        //   } else {
+        //     console.log(
+        //       `[BETA ❌] Key NULL | DomFreq: ${metrics.dominantFrequency?.toFixed(0) ?? 'N/A'}Hz` +
+        //       ` | Energy: ${(energy * 100).toFixed(0)}%` +
+        //       ` | Conf: ${harmonyOutput.confidence.toFixed(2)}`
+        //     );
+        //   }
+        // }
         // WAVE 61: GenreOutput neutro (clasificador eliminado)
         const genreOutput = buildNeutralGenre(metrics.bpm, rhythmOutput.syncopation ?? 0, rhythmOutput.pattern === 'four_on_floor', energy);
         return {

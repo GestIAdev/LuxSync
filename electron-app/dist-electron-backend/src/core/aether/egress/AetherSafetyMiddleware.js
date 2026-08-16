@@ -53,6 +53,8 @@ export class AetherSafetyMiddleware {
         // getDarkSpinTransitNodeIds() includes these nodes so cross-node/final
         // sweeps zero the dimmer BEFORE the wheel moves, preventing the 1-tick flash.
         this._pendingColorChangeNodes = new Set();
+        // ── HS-1: Pre-allocated scratch for getDarkSpinTransitNodeIds() — zero alloc @ 44Hz.
+        this._transitNodeIdsScratch = [];
         // ── Output gate ────────────────────────────────────────────────────────
         this._outputEnabled = true;
         this._manualNodeIds = new Set();
@@ -279,7 +281,9 @@ export class AetherSafetyMiddleware {
      * Used by NodeResolver for cross-node DarkSpin sweep (COLOR→IMPACT dimmer kill).
      */
     getDarkSpinTransitNodeIds() {
-        const out = [];
+        // HS-1: Reuse pre-allocated scratch — zero array alloc per call.
+        const out = this._transitNodeIdsScratch;
+        out.length = 0;
         for (const [nodeId, s] of this._darkSpinState) {
             if (s.inTransit)
                 out.push(nodeId);

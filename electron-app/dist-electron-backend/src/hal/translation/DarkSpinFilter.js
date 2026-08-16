@@ -33,9 +33,18 @@
 // DARK-SPIN FILTER CLASS
 // ═══════════════════════════════════════════════════════════════════════════
 export class DarkSpinFilter {
+    /** Returns a pre-allocated pass-through result for fixtures without blackoutOnColorChange */
+    static _passThrough(dimmer) {
+        DarkSpinFilter._passThroughResult.dimmer = dimmer;
+        DarkSpinFilter._passThroughResult.inTransit = false;
+        DarkSpinFilter._passThroughResult.transitRemainingMs = 0;
+        return DarkSpinFilter._passThroughResult;
+    }
     constructor(safetyMargin = 1.1) {
         /** Estado por fixture */
         this.fixtureStates = new Map();
+        // WAVE 0-ALLOC: Pre-allocated singleton result — mutated and returned every frame
+        this._result = { dimmer: 0, inTransit: false, transitRemainingMs: 0 };
         this.safetyMargin = safetyMargin;
     }
     /**
@@ -64,7 +73,11 @@ export class DarkSpinFilter {
             };
             this.fixtureStates.set(fixtureId, state);
             // Primer frame — no hay tránsito
-            return { dimmer: requestedDimmer, inTransit: false, transitRemainingMs: 0 };
+            // WAVE 0-ALLOC: Mutate singleton result
+            this._result.dimmer = requestedDimmer;
+            this._result.inTransit = false;
+            this._result.transitRemainingMs = 0;
+            return this._result;
         }
         // ═══════════════════════════════════════════════════════════════════
         // CHECK 1: ¿Estamos en tránsito activo?
@@ -86,7 +99,11 @@ export class DarkSpinFilter {
                 // Tránsito en progreso → BLACKOUT
                 // El colorWheel (pendingColorDmx) YA fue enviado al hardware en el frame de inicio.
                 // Forzamos dimmer=0 para enmascarar el cristal intermedio.
-                return { dimmer: 0, inTransit: true, transitRemainingMs: remaining };
+                // WAVE 0-ALLOC: Mutate singleton result
+                this._result.dimmer = 0;
+                this._result.inTransit = true;
+                this._result.transitRemainingMs = remaining;
+                return this._result;
             }
             else {
                 // Tránsito terminado normalmente → liberar
@@ -112,12 +129,20 @@ export class DarkSpinFilter {
             // El color estable se actualiza cuando el tránsito TERMINA (arriba en CHECK 1).
             // pendingColorDmx == currentColorDmx, así que los frames siguientes entran
             // directamente por CHECK 1 (inTransit=true) sin re-disparar CHECK 2.
-            return { dimmer: 0, inTransit: true, transitRemainingMs: transitDuration };
+            // WAVE 0-ALLOC: Mutate singleton result
+            this._result.dimmer = 0;
+            this._result.inTransit = true;
+            this._result.transitRemainingMs = transitDuration;
+            return this._result;
         }
         // ═══════════════════════════════════════════════════════════════════
         // SIN CAMBIO: Pass-through
         // ═══════════════════════════════════════════════════════════════════
-        return { dimmer: requestedDimmer, inTransit: false, transitRemainingMs: 0 };
+        // WAVE 0-ALLOC: Mutate singleton result
+        this._result.dimmer = requestedDimmer;
+        this._result.inTransit = false;
+        this._result.transitRemainingMs = 0;
+        return this._result;
     }
     /**
      * Resetea el estado de un fixture
@@ -143,6 +168,8 @@ export class DarkSpinFilter {
         return { activeFixtures: this.fixtureStates.size, fixturesInTransit: inTransit };
     }
 }
+// WAVE 0-ALLOC: Static pass-through for non-blackout fixtures (no instance needed)
+DarkSpinFilter._passThroughResult = { dimmer: 0, inTransit: false, transitRemainingMs: 0 };
 // ═══════════════════════════════════════════════════════════════════════════
 // SINGLETON EXPORT
 // ═══════════════════════════════════════════════════════════════════════════

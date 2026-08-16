@@ -1,4 +1,5 @@
-import { FIX_DATA_BYTES } from './layout';
+import { FIX_DATA_FLOATS } from './layout';
+const FIX_DATA_BYTES = FIX_DATA_FLOATS * 4;
 const POOL_SIZE = 3;
 /**
  * Gestiona un pool de ArrayBuffers transferibles para la Vía UI (Espejo Fluido).

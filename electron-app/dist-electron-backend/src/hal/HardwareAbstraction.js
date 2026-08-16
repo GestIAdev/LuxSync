@@ -36,7 +36,7 @@ import { USBDMXDriverAdapter } from './drivers/USBDMXDriverAdapter';
 import { getColorTranslator } from './translation/ColorTranslator';
 import { getProfile, getProfileByModel, needsColorTranslation, generateProfileFromDefinition, isMechanicalFixture } from './translation';
 import { getHardwareSafetyLayer } from './translation/HardwareSafetyLayer';
-import { getDarkSpinFilter } from './translation/DarkSpinFilter';
+import { getDarkSpinFilter, DarkSpinFilter } from './translation/DarkSpinFilter';
 // 🎵 WAVE 2720: LA LEY UNIVERSAL DEL PÉNDULO — HarmonicQuantizer universal en HAL
 import { getHarmonicQuantizer } from './translation/HarmonicQuantizer';
 // 🔧 WAVE 338: Movement Physics Driver
@@ -146,8 +146,8 @@ export class HardwareAbstraction {
         }
         // Configure mapper
         this.mapper.setInstallationType(this.config.installationType);
-        // Initialize universe 1 (extract Uint8Array from DMXUniverse)
-        this.universeBuffers.set(1, createEmptyUniverse(1).channels);
+        // Initialize universe 0 (0-based, ArtNet convention — matches FixtureV2.universe)
+        this.universeBuffers.set(0, createEmptyUniverse(0).channels);
         // WAVE 2098: Boot silence
     }
     /**
@@ -1214,9 +1214,10 @@ export class HardwareAbstraction {
         // Si el color cambió, el fixture se apaga durante minChangeTimeMs.
         // Bajo ninguna circunstancia el público debe ver el cristal intermedio.
         // ─────────────────────────────────────────────────────────────────
+        // WAVE 0-ALLOC: Use pre-allocated fallback instead of object literal
         const darkSpin = profile.safety?.blackoutOnColorChange
             ? this.darkSpinFilter.filter(fixtureId, safetyResult.finalColorDmx, profile, state.dimmer)
-            : { dimmer: state.dimmer, inTransit: false, transitRemainingMs: 0 };
+            : DarkSpinFilter._passThrough(state.dimmer);
         // Return translated state
         return {
             ...state,

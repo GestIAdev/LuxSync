@@ -207,7 +207,7 @@ function applyNeonProtocol(hsl, options) {
         return hsl; // Fuera de peligro, devolver original
     }
     // ═══════════════════════════════════════════════════════════════════
-    // DENTRO DE LA DANGER ZONE: Aplicar reglas de transformación
+    // DENTRO DE LA DANGER ZONE: Aplicar reglas de transformación (IN-PLACE)
     // ═══════════════════════════════════════════════════════════════════
     // 
     // WAVE 287.2: COLD ESCAPE ALWAYS - En Techno, SIEMPRE rotar a frío
@@ -222,11 +222,11 @@ function applyNeonProtocol(hsl, options) {
     const dangerRange = dangerMax - dangerMin; // 80 - 15 = 65
     const positionInDanger = (hue - dangerMin) / dangerRange; // 0.0 - 1.0
     const coldHue = 170 + positionInDanger * 40; // 170° - 210° (cyan-turquesa)
-    return {
-        h: normalizeHue(coldHue),
-        s: Math.max(hsl.s, 85), // Asegurar saturación neón
-        l: hsl.l, // Mantener luminosidad original (oscuridad)
-    };
+    // WAVE 0-ALLOC: Mutate hsl in place instead of returning new object
+    hsl.h = normalizeHue(coldHue);
+    hsl.s = Math.max(hsl.s, 85); // Asegurar saturación neón
+    // hsl.l unchanged — keep original luminosity
+    return hsl;
 }
 /**
  * Mapea un valor de un rango a otro
@@ -235,42 +235,51 @@ function mapRange(value, inMin, inMax, outMin, outMax) {
     return outMin + ((value - inMin) * (outMax - outMin)) / (inMax - inMin);
 }
 /**
- * Convierte HSL a RGB
+ * WAVE 0-ALLOC: Hoisted hue2rgb — eliminates per-call closure allocation.
+ * Module-level function, no captured variables.
+ */
+function _hue2rgb(p, q, t) {
+    if (t < 0)
+        t += 1;
+    if (t > 1)
+        t -= 1;
+    if (t < 1 / 6)
+        return p + (q - p) * 6 * t;
+    if (t < 1 / 2)
+        return q;
+    if (t < 2 / 3)
+        return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+}
+/**
+ * Convierte HSL a RGB (zero-alloc variant)
+ * Writes directly into `out` — no object or closure allocation.
  * @see https://www.w3.org/TR/css-color-4/#hsl-to-rgb
  */
-export function hslToRgb(hsl) {
+export function hslToRgbMutate(hsl, out) {
     const h = hsl.h / 360;
     const s = hsl.s / 100;
     const l = hsl.l / 100;
-    let r, g, b;
     if (s === 0) {
-        r = g = b = l;
+        out.r = Math.round(l * 255);
+        out.g = out.r;
+        out.b = out.r;
     }
     else {
-        const hue2rgb = (p, q, t) => {
-            if (t < 0)
-                t += 1;
-            if (t > 1)
-                t -= 1;
-            if (t < 1 / 6)
-                return p + (q - p) * 6 * t;
-            if (t < 1 / 2)
-                return q;
-            if (t < 2 / 3)
-                return p + (q - p) * (2 / 3 - t) * 6;
-            return p;
-        };
         const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
         const p = 2 * l - q;
-        r = hue2rgb(p, q, h + 1 / 3);
-        g = hue2rgb(p, q, h);
-        b = hue2rgb(p, q, h - 1 / 3);
+        out.r = Math.round(_hue2rgb(p, q, h + 1 / 3) * 255);
+        out.g = Math.round(_hue2rgb(p, q, h) * 255);
+        out.b = Math.round(_hue2rgb(p, q, h - 1 / 3) * 255);
     }
-    return {
-        r: Math.round(r * 255),
-        g: Math.round(g * 255),
-        b: Math.round(b * 255),
-    };
+    return out;
+}
+/**
+ * Convierte HSL a RGB (allocating — use hslToRgbMutate in hot paths)
+ * @see https://www.w3.org/TR/css-color-4/#hsl-to-rgb
+ */
+export function hslToRgb(hsl) {
+    return hslToRgbMutate(hsl, { r: 0, g: 0, b: 0 });
 }
 /**
  * Convierte RGB a HSL
@@ -305,8 +314,25 @@ export function rgbToHsl(rgb) {
         l: Math.round(l * 100),
     };
 }
+/** Pre-allocated RGB palette for zero-alloc paletteToRgbMutate */
+const _rgbPaletteScratch = {
+    primary: { r: 0, g: 0, b: 0 }, secondary: { r: 0, g: 0, b: 0 },
+    accent: { r: 0, g: 0, b: 0 }, ambient: { r: 0, g: 0, b: 0 },
+    contrast: { r: 0, g: 0, b: 0 },
+};
 /**
- * Convierte paleta HSL completa a RGB
+ * Convierte paleta HSL completa a RGB (zero-alloc — mutates pre-allocated scratch)
+ */
+export function paletteToRgbMutate(palette) {
+    hslToRgbMutate(palette.primary, _rgbPaletteScratch.primary);
+    hslToRgbMutate(palette.secondary, _rgbPaletteScratch.secondary);
+    hslToRgbMutate(palette.accent, _rgbPaletteScratch.accent);
+    hslToRgbMutate(palette.ambient, _rgbPaletteScratch.ambient);
+    hslToRgbMutate(palette.contrast, _rgbPaletteScratch.contrast);
+    return _rgbPaletteScratch;
+}
+/**
+ * Convierte paleta HSL completa a RGB (allocating — use paletteToRgbMutate in hot paths)
  */
 export function paletteToRgb(palette) {
     return {
@@ -509,12 +535,8 @@ export class SeleneColorEngine {
         // 🎯 WAVE 2096.1: Deterministic frame counter (replaces Math.random for log throttling)
         this.generateCallCount++;
         // === A. EXTRAER DATOS CON FALLBACKS ===
-        const wave8 = data.wave8 || {
-            harmony: { key: null, mode: 'minor', mood: 'universal' },
-            rhythm: { syncopation: 0 },
-            genre: { primary: 'unknown' },
-            section: { type: 'unknown' },
-        };
+        // WAVE 0-ALLOC: Use static _wave8Fallback instead of creating new object
+        const wave8 = data.wave8 || SeleneColorEngine._wave8Fallback;
         const key = wave8.harmony.key || data.key || null;
         const mode = wave8.harmony.mode || 'minor';
         // 🎭 WAVE 2204: PURGA LEGACY — data.mood (MoodArbiter, ventana 2s) tiene prioridad absoluta
@@ -533,7 +555,9 @@ export class SeleneColorEngine {
         // 🔥 WAVE 74: MOOD OVERRIDE - Si mood es 'bright', forzar Hue cálido
         // 🎯 WAVE 161.5: LATINO EXCEPTION - No restringir hue para permitir triadic
         let baseHue = 120; // Default: Verde (neutro)
-        let hueSource = 'default';
+        // WAVE 0-ALLOC: hueSource as numeric code instead of template literal
+        // 0=default, 1=key, 2=key(tropical-bias), 3=mood
+        let hueSourceCode = 0;
         // 🎯 WAVE 161.5 / WAVE 4760: Hue libre cuando la constitución suprime el tropical bias
         // (o cuando el Sidereal Clock gestiona la zona cromática).
         // Se deriva de la constitución, no del nombre del vibe.
@@ -574,11 +598,11 @@ export class SeleneColorEngine {
                     baseHue = 300 + (baseHue % 30); // 300-329°
                 }
             }
-            hueSource = isLatinoHueFree ? `key:${key}(tropical-bias)` : `key:${key}`;
+            hueSourceCode = isLatinoHueFree ? 2 : 1;
         }
         else if (activeMood && MOOD_HUES[activeMood] !== undefined) {
             baseHue = MOOD_HUES[activeMood];
-            hueSource = `mood:${activeMood}`;
+            hueSourceCode = 3;
         }
         // === C. APLICAR MODIFICADORES DE MODO ===
         const modeMod = MODE_MODIFIERS[mode] || MODE_MODIFIERS['minor'];
@@ -670,7 +694,10 @@ export class SeleneColorEngine {
             });
             if (!isFullCircle) {
                 let isAllowed = false;
-                let closestRange = null;
+                // WAVE 0-ALLOC: Use scalars instead of [number, number] tuple
+                let closestRangeMin = 0;
+                let closestRangeMax = 0;
+                let hasClosestRange = false;
                 let minDistance = Infinity;
                 for (const [min, max] of options.allowedHueRanges) {
                     const normalizedMin = normalizeHue(min);
@@ -688,15 +715,16 @@ export class SeleneColorEngine {
                     const distance = Math.min(distToMin, distToMax);
                     if (distance < minDistance) {
                         minDistance = distance;
-                        closestRange = [normalizedMin, normalizedMax];
+                        closestRangeMin = normalizedMin;
+                        closestRangeMax = normalizedMax;
+                        hasClosestRange = true;
                     }
                 }
-                if (!isAllowed && closestRange) {
+                if (!isAllowed && hasClosestRange) {
                     // Rotar al punto más cercano del rango permitido más cercano
-                    const [rangeMin, rangeMax] = closestRange;
-                    const distToMin = Math.min(Math.abs(finalHue - rangeMin), 360 - Math.abs(finalHue - rangeMin));
-                    const distToMax = Math.min(Math.abs(finalHue - rangeMax), 360 - Math.abs(finalHue - rangeMax));
-                    finalHue = distToMin <= distToMax ? rangeMin : rangeMax;
+                    const distToMin = Math.min(Math.abs(finalHue - closestRangeMin), 360 - Math.abs(finalHue - closestRangeMin));
+                    const distToMax = Math.min(Math.abs(finalHue - closestRangeMax), 360 - Math.abs(finalHue - closestRangeMax));
+                    finalHue = distToMin <= distToMax ? closestRangeMin : closestRangeMax;
                 }
             }
         }
@@ -762,17 +790,36 @@ export class SeleneColorEngine {
         // ⏱️ WAVE 3490: SIDEREAL CLOCK — override de allowedHueRanges y lightnessRange
         // Se resuelve aquí, justo antes de los clamps, para que el slot activo
         // determine el espacio cromático real sin tocar el resto del pipeline.
+        // WAVE 0-ALLOC: Mutate static _effectiveOptions instead of spread
         let effectiveOptions = options;
         if (options?.siderealClock) {
             const clock = options.siderealClock;
             if (clock.slots && clock.slots.length > 0) {
                 const slotIndex = Math.floor(performance.now() / clock.slotDurationMs) % clock.slots.length;
                 const slot = clock.slots[slotIndex];
-                effectiveOptions = {
-                    ...options,
-                    allowedHueRanges: slot.allowedHueRanges,
-                    lightnessRange: slot.lightnessRange,
-                };
+                // Copy all fields from options into _effectiveOptions without spread
+                const eo = SeleneColorEngine._effectiveOptions;
+                eo.forbiddenHueRanges = options.forbiddenHueRanges;
+                eo.allowedHueRanges = slot.allowedHueRanges;
+                eo.saturationRange = options.saturationRange;
+                eo.lightnessRange = slot.lightnessRange;
+                eo.atmosphericTemp = options.atmosphericTemp;
+                eo.thermalGravityStrength = options.thermalGravityStrength;
+                eo.elasticRotation = options.elasticRotation;
+                eo.hueRemapping = options.hueRemapping;
+                eo.forceStrategy = options.forceStrategy;
+                eo.neonProtocol = options.neonProtocol;
+                eo.mudGuard = options.mudGuard;
+                eo.ambientLock = options.ambientLock;
+                eo.tropicalMirror = options.tropicalMirror;
+                eo.tropicalAmbientBias = options.tropicalAmbientBias;
+                eo.suppressTropicalBias = options.suppressTropicalBias;
+                eo.fibonacciRotationDeg = options.fibonacciRotationDeg;
+                eo.saltChromaticKeys = options.saltChromaticKeys;
+                eo.luxurySignatures = options.luxurySignatures;
+                eo.oceanicModulation = options.oceanicModulation;
+                eo.transitionConfig = options.transitionConfig;
+                effectiveOptions = eo;
                 // Aplicar allowedHueRanges del slot al finalHue ahora mismo
                 // (el bloque Constitutional ya pasó, así que aplicamos aquí el snap)
                 // El snap dirige al CENTRO del rango más cercano, no al borde,
@@ -847,11 +894,11 @@ export class SeleneColorEngine {
         }
         // === E. COLOR PRIMARIO ===
         // 🛡️ WAVE 81: Usar valores corregidos por Anti-Mud Protocol
-        const primary = {
-            h: finalHue,
-            s: correctedSat,
-            l: correctedLight,
-        };
+        // WAVE 0-ALLOC: Mutate scratch palette in place
+        const pal = SeleneColorEngine._scratchPalette;
+        pal.primary.h = finalHue;
+        pal.primary.s = correctedSat;
+        pal.primary.l = correctedLight;
         // === F. COLOR SECUNDARIO (Rotación Fibonacci) ===
         // 🎨 WAVE 90 / WAVE 4760: Rotación configurable vía constitución.
         // fibonacciRotationDeg en GenerationOptions sobreescribe el default (PHI_ROTATION ≈222.5°).
@@ -866,11 +913,10 @@ export class SeleneColorEngine {
             }
         }
         const secondaryHue = normalizeHue(finalHue + fibonacciRotation + saltRotation);
-        const secondary = {
-            h: secondaryHue,
-            s: clamp(correctedSat + 5, 20, 100), // Ligeramente más saturado
-            l: clamp(correctedLight - 10, 20, 80), // Ligeramente más oscuro
-        };
+        // WAVE 0-ALLOC: Mutate scratch palette
+        pal.secondary.h = secondaryHue;
+        pal.secondary.s = clamp(correctedSat + 5, 20, 100); // Ligeramente más saturado
+        pal.secondary.l = clamp(correctedLight - 10, 20, 80); // Ligeramente más oscuro
         // 🏛️ WAVE 94.3 / WAVE 4760: Luxury Signature Overrides configurables vía constitución.
         // luxurySignatures es un Record<rootIndex, {h, maxS?}> — sin detección por nombre de vibe.
         if (key && options?.luxurySignatures) {
@@ -878,9 +924,9 @@ export class SeleneColorEngine {
             if (keyIndex !== undefined) {
                 const sig = options.luxurySignatures[keyIndex];
                 if (sig !== undefined) {
-                    secondary.h = sig.h;
+                    pal.secondary.h = sig.h;
                     if (sig.maxS !== undefined) {
-                        secondary.s = Math.min(secondary.s, sig.maxS);
+                        pal.secondary.s = Math.min(pal.secondary.s, sig.maxS);
                     }
                 }
             }
@@ -927,11 +973,10 @@ export class SeleneColorEngine {
                 accentHue = finalHue + 180; // Opuesto
             }
         }
-        const accent = {
-            h: normalizeHue(accentHue),
-            s: 100, // Beams siempre a máxima saturación
-            l: Math.max(70, primaryLight + 20), // Siempre brillante
-        };
+        // WAVE 0-ALLOC: Mutate scratch palette
+        pal.accent.h = normalizeHue(accentHue);
+        pal.accent.s = 100; // Beams siempre a máxima saturación
+        pal.accent.l = Math.max(70, primaryLight + 20); // Siempre brillante
         // ═══════════════════════════════════════════════════════════════════════
         // 🌴 WAVE 84: AMBIENT STEREO MODE + PALETA CARIBEÑA
         // ═══════════════════════════════════════════════════════════════════════
@@ -971,21 +1016,22 @@ export class SeleneColorEngine {
             if (isPrimaryWarm) {
                 // Primary es cálido (naranja/rojo) → Ambient va a VERDE/TURQUESA/MAGENTA
                 // Rotar hacia zona fría (150°-200° = verde/turquesa) o (280°-320° = magenta)
-                const tropicalOptions = [
-                    normalizeHue(finalHue + 150), // Hacia verde
-                    normalizeHue(finalHue + 180), // Hacia turquesa
-                    normalizeHue(finalHue + 270), // Hacia magenta
-                ];
-                // Elegir según energía (más energía = más magenta/contraste)
-                const optionIndex = energy > 0.7 ? 2 : (energy > 0.4 ? 1 : 0);
-                ambientHue = tropicalOptions[optionIndex];
+                // WAVE 0-ALLOC: Inline if/else instead of array allocation
+                if (energy > 0.7) {
+                    ambientHue = normalizeHue(finalHue + 270); // Hacia magenta
+                }
+                else if (energy > 0.4) {
+                    ambientHue = normalizeHue(finalHue + 180); // Hacia turquesa
+                }
+                else {
+                    ambientHue = normalizeHue(finalHue + 150); // Hacia verde
+                }
             }
         }
-        const ambient = {
-            h: ambientHue,
-            s: clamp(correctedSat - 10, 40, 90), // Saturación media-alta (no lavado)
-            l: clamp(correctedLight - 5, 30, 70), // Luminosidad media
-        };
+        // WAVE 0-ALLOC: Mutate scratch palette
+        pal.ambient.h = ambientHue;
+        pal.ambient.s = clamp(correctedSat - 10, 40, 90); // Saturación media-alta (no lavado)
+        pal.ambient.l = clamp(correctedLight - 5, 30, 70); // Luminosidad media
         // ═══════════════════════════════════════════════════════════════════════
         // 🏛️ WAVE 144: SMART PRISM LOGIC (4th Color Algorithm)
         // ═══════════════════════════════════════════════════════════════════════
@@ -995,21 +1041,21 @@ export class SeleneColorEngine {
         // 1️⃣ PRISM MODE: Si strategy es 'prism', recalcular ambient como tetraédrico
         if (options?.forceStrategy === 'prism') {
             // Tetraedro cromático: Primary → +90° → +180° → +270°
-            ambient.h = normalizeHue(finalHue + 90); // 90° del primary (no del secondary)
-            ambient.s = 100; // Saturación máxima para prisma
-            ambient.l = 35; // Oscuro para "suelo UV"
+            pal.ambient.h = normalizeHue(finalHue + 90); // 90° del primary (no del secondary)
+            pal.ambient.s = 100; // Saturación máxima para prisma
+            pal.ambient.l = 35; // Oscuro para "suelo UV"
         }
         // 2️⃣ AMBIENT LOCK: Bloquear ambient en color fijo (UV Floor de Techno)
         if (options?.ambientLock) {
-            ambient.h = options.ambientLock.h;
-            ambient.s = options.ambientLock.s;
-            ambient.l = options.ambientLock.l;
+            pal.ambient.h = options.ambientLock.h;
+            pal.ambient.s = options.ambientLock.s;
+            pal.ambient.l = options.ambientLock.l;
         }
         // 3️⃣ TROPICAL MIRROR: Ambient = Secondary + 180° (máximo contraste Latino)
         if (options?.tropicalMirror) {
-            ambient.h = normalizeHue(secondary.h + 180);
-            ambient.s = Math.max(secondary.s, 70); // Mantener saturado
-            ambient.l = clamp(secondary.l * 1.1, 40, 60); // Variación sutil
+            pal.ambient.h = normalizeHue(pal.secondary.h + 180);
+            pal.ambient.s = Math.max(pal.secondary.s, 70); // Mantener saturado
+            pal.ambient.l = clamp(pal.secondary.l * 1.1, 40, 60); // Variación sutil
         }
         // 4️⃣ ELASTIC ROTATION para Ambient (si hay zonas prohibidas)
         if (options?.forbiddenHueRanges && !options?.ambientLock) {
@@ -1023,10 +1069,10 @@ export class SeleneColorEngine {
                     const normalizedMin = normalizeHue(min);
                     const normalizedMax = normalizeHue(max);
                     const isInRange = normalizedMin <= normalizedMax
-                        ? (ambient.h >= normalizedMin && ambient.h <= normalizedMax)
-                        : (ambient.h >= normalizedMin || ambient.h <= normalizedMax);
+                        ? (pal.ambient.h >= normalizedMin && pal.ambient.h <= normalizedMax)
+                        : (pal.ambient.h >= normalizedMin || pal.ambient.h <= normalizedMax);
                     if (isInRange) {
-                        ambient.h = normalizeHue(ambient.h + elasticStep);
+                        pal.ambient.h = normalizeHue(pal.ambient.h + elasticStep);
                         isInForbidden = true;
                         iterations++;
                         break;
@@ -1035,18 +1081,17 @@ export class SeleneColorEngine {
             }
         }
         // 5️⃣ MINIMUM SEPARATION: Ambient debe estar a mínimo 30° del Secondary
-        const hueDistance = Math.abs(ambient.h - secondary.h);
+        const hueDistance = Math.abs(pal.ambient.h - pal.secondary.h);
         const shortestDistance = Math.min(hueDistance, 360 - hueDistance);
         if (shortestDistance < 30 && !options?.ambientLock && !options?.tropicalMirror) {
             // Rotar ambient +45° para separarse
-            ambient.h = normalizeHue(ambient.h + 45);
+            pal.ambient.h = normalizeHue(pal.ambient.h + 45);
         }
         // === I. COLOR CONTRASTE (Siluetas, muy oscuro) ===
-        const contrast = {
-            h: normalizeHue(finalHue + 180),
-            s: 30,
-            l: 10,
-        };
+        // WAVE 0-ALLOC: Mutate scratch palette
+        pal.contrast.h = normalizeHue(finalHue + 180);
+        pal.contrast.s = 30;
+        pal.contrast.l = 10;
         // === J. DETERMINAR TEMPERATURA VISUAL ===
         // 🌡️ WAVE 68.5: Temperatura PURA basada solo en HUE
         // Hue 0-60 y 300-360 = warm (reds, oranges, magentas)
@@ -1071,12 +1116,9 @@ export class SeleneColorEngine {
         );
         // === L. CONSTRUIR DESCRIPCIÓN ===
         // 🎨 WAVE 68.5: Descripción PURA sin género
-        const description = [
-            key ? `${key} ${mode}` : activeMood,
-            `${temperature}`,
-            `E=${(energy * 100).toFixed(0)}%`,
-            `S=${(syncopation * 100).toFixed(0)}%`,
-        ].join(' ');
+        // WAVE 0-ALLOC: String concatenation instead of array+join
+        const description = (key ? key + ' ' + mode : activeMood) + ' ' +
+            temperature + ' E=' + (energy * 100).toFixed(0) + '% S=' + (syncopation * 100).toFixed(0) + '%';
         // ═══════════════════════════════════════════════════════════════════════
         // 🌴 WAVE 85 / WAVE 4760: TROPICAL PRO - Post-procesamiento constitucional
         // Activado por mudGuard.enabled + tropicalMirror en GenerationOptions.
@@ -1096,21 +1138,21 @@ export class SeleneColorEngine {
                         c.s = Math.max(c.s, mg.minSaturation);
                     }
                 };
-                fixDirtyColor(primary);
-                fixDirtyColor(secondary);
-                fixDirtyColor(ambient);
+                fixDirtyColor(pal.primary);
+                fixDirtyColor(pal.secondary);
+                fixDirtyColor(pal.ambient);
             }
             // 🪞 2. TROPICAL MIRROR — solo si tropicalMirror: true
             if (hasTropicalMirror) {
                 // Ambient = Complementario exacto del Secondary
                 // Garantiza Verde↔Magenta, Turquesa↔Coral, Azul↔Naranja
-                ambient.h = normalizeHue(secondary.h + 180);
-                ambient.l = clamp(secondary.l * 1.1, 40, 60);
-                ambient.s = Math.max(secondary.s, 70);
+                pal.ambient.h = normalizeHue(pal.secondary.h + 180);
+                pal.ambient.l = clamp(pal.secondary.l * 1.1, 40, 60);
+                pal.ambient.s = Math.max(pal.secondary.s, 70);
                 // ☀️ WAVE 288.9: ACCENT = COLOR VIBRANTE (no blanco)
-                accent.h = normalizeHue(primary.h + 30);
-                accent.s = Math.max(80, primary.s);
-                accent.l = clamp(primary.l * 1.1, 55, 75);
+                pal.accent.h = normalizeHue(pal.primary.h + 30);
+                pal.accent.s = Math.max(80, pal.primary.s);
+                pal.accent.l = clamp(pal.primary.l * 1.1, 55, 75);
             }
         }
         // ═══════════════════════════════════════════════════════════════════════
@@ -1164,55 +1206,22 @@ export class SeleneColorEngine {
             const elasticStep = options.elasticRotation ?? 15;
             const maxIterations = Math.ceil(360 / elasticStep);
             // 1️⃣ POLICÍA DE ZONAS PROHIBIDAS - Revisar CADA color
-            [primary, secondary, ambient, accent].forEach(color => {
-                let iterations = 0;
-                let isInForbidden = true;
-                while (isInForbidden && iterations < maxIterations) {
-                    isInForbidden = false;
-                    for (const [min, max] of options.forbiddenHueRanges) {
-                        const normalizedMin = normalizeHue(min);
-                        const normalizedMax = normalizeHue(max);
-                        const isInRange = normalizedMin <= normalizedMax
-                            ? (color.h >= normalizedMin && color.h <= normalizedMax)
-                            : (color.h >= normalizedMin || color.h <= normalizedMax);
-                        if (isInRange) {
-                            // 🚨 ILEGAL - Expulsar con rotación elástica
-                            color.h = normalizeHue(color.h + elasticStep);
-                            isInForbidden = true;
-                            iterations++;
-                            break;
-                        }
-                    }
-                }
-            });
+            // WAVE 0-ALLOC: Inline enforcement instead of [array].forEach()
+            this._enforceForbiddenHue(pal.primary, options.forbiddenHueRanges, elasticStep, maxIterations);
+            this._enforceForbiddenHue(pal.secondary, options.forbiddenHueRanges, elasticStep, maxIterations);
+            this._enforceForbiddenHue(pal.ambient, options.forbiddenHueRanges, elasticStep, maxIterations);
+            this._enforceForbiddenHue(pal.accent, options.forbiddenHueRanges, elasticStep, maxIterations);
             // 2️⃣ RESOLUCIÓN DE COLISIONES - Evitar "verde sobre verde"
             // Si Ambient está demasiado cerca de Secondary (< 30°), separarlos
             const minDistance = 30;
-            let ambientSecondaryDiff = Math.abs(ambient.h - secondary.h);
+            let ambientSecondaryDiff = Math.abs(pal.ambient.h - pal.secondary.h);
             if (ambientSecondaryDiff > 180)
                 ambientSecondaryDiff = 360 - ambientSecondaryDiff;
             if (ambientSecondaryDiff < minDistance) {
                 // Empujar Ambient +60° para crear contraste real
-                ambient.h = normalizeHue(ambient.h + 60);
+                pal.ambient.h = normalizeHue(pal.ambient.h + 60);
                 // Re-validar que no cayó en zona prohibida tras el empujón
-                let iterations = 0;
-                let isInForbidden = true;
-                while (isInForbidden && iterations < maxIterations) {
-                    isInForbidden = false;
-                    for (const [min, max] of options.forbiddenHueRanges) {
-                        const normalizedMin = normalizeHue(min);
-                        const normalizedMax = normalizeHue(max);
-                        const isInRange = normalizedMin <= normalizedMax
-                            ? (ambient.h >= normalizedMin && ambient.h <= normalizedMax)
-                            : (ambient.h >= normalizedMin || ambient.h <= normalizedMax);
-                        if (isInRange) {
-                            ambient.h = normalizeHue(ambient.h + elasticStep);
-                            isInForbidden = true;
-                            iterations++;
-                            break;
-                        }
-                    }
-                }
+                this._enforceForbiddenHue(pal.ambient, options.forbiddenHueRanges, elasticStep, maxIterations);
             }
         }
         // ═══════════════════════════════════════════════════════════════════════
@@ -1262,11 +1271,15 @@ export class SeleneColorEngine {
                 }
                 return normalizeHue(nearestHue);
             };
-            [primary, secondary, ambient, accent].forEach(color => {
-                if (!isInAllowedRange(color.h)) {
-                    color.h = findNearestAllowedHue(color.h);
-                }
-            });
+            // WAVE 0-ALLOC: Inline enforcement instead of [array].forEach()
+            if (!isInAllowedRange(pal.primary.h))
+                pal.primary.h = findNearestAllowedHue(pal.primary.h);
+            if (!isInAllowedRange(pal.secondary.h))
+                pal.secondary.h = findNearestAllowedHue(pal.secondary.h);
+            if (!isInAllowedRange(pal.ambient.h))
+                pal.ambient.h = findNearestAllowedHue(pal.ambient.h);
+            if (!isInAllowedRange(pal.accent.h))
+                pal.accent.h = findNearestAllowedHue(pal.accent.h);
         }
         // ═══════════════════════════════════════════════════════════════════════
         // 🗺️ WAVE 150.5: HUE REMAPPING - Transformación de zonas
@@ -1275,14 +1288,11 @@ export class SeleneColorEngine {
         // Cualquier verde césped (90-110) debería transformarse en verde láser (130).
         // ═══════════════════════════════════════════════════════════════════════
         if (options?.hueRemapping && options.hueRemapping.length > 0) {
-            [primary, secondary, ambient, accent].forEach(color => {
-                for (const mapping of options.hueRemapping) {
-                    if (color.h >= mapping.from && color.h <= mapping.to) {
-                        color.h = mapping.target;
-                        break; // Solo aplicar el primer match
-                    }
-                }
-            });
+            // WAVE 0-ALLOC: Inline enforcement instead of [array].forEach()
+            this._applyHueRemap(pal.primary, options.hueRemapping);
+            this._applyHueRemap(pal.secondary, options.hueRemapping);
+            this._applyHueRemap(pal.ambient, options.hueRemapping);
+            this._applyHueRemap(pal.accent, options.hueRemapping);
         }
         // ═══════════════════════════════════════════════════════════════════════
         // 🌡️ WAVE 150.5: THERMAL GRAVITY PARA TODOS
@@ -1296,9 +1306,9 @@ export class SeleneColorEngine {
         // ═══════════════════════════════════════════════════════════════════════
         if (options?.atmosphericTemp) {
             const gravityStrength = options.thermalGravityStrength;
-            secondary.h = applyThermalGravity(secondary.h, options.atmosphericTemp, gravityStrength);
-            ambient.h = applyThermalGravity(ambient.h, options.atmosphericTemp, gravityStrength);
-            accent.h = applyThermalGravity(accent.h, options.atmosphericTemp, gravityStrength);
+            pal.secondary.h = applyThermalGravity(pal.secondary.h, options.atmosphericTemp, gravityStrength);
+            pal.ambient.h = applyThermalGravity(pal.ambient.h, options.atmosphericTemp, gravityStrength);
+            pal.accent.h = applyThermalGravity(pal.accent.h, options.atmosphericTemp, gravityStrength);
         }
         // ═══════════════════════════════════════════════════════════════════════
         // ═══════════════════════════════════════════════════════════════════════
@@ -1309,26 +1319,53 @@ export class SeleneColorEngine {
         //   1. NEÓN EXTREMO (alta saturación + luminosidad)
         //   2. BLANCO HIELO (si no pueden ser neón)
         // ═══════════════════════════════════════════════════════════════════════
-        const sanitizedPrimary = applyNeonProtocol(primary, options);
-        const sanitizedSecondary = applyNeonProtocol(secondary, options);
-        const sanitizedAmbient = applyNeonProtocol(ambient, options);
-        const sanitizedAccent = applyNeonProtocol(accent, options);
+        // WAVE 0-ALLOC: applyNeonProtocol mutates in place — no new objects
+        applyNeonProtocol(pal.primary, options);
+        applyNeonProtocol(pal.secondary, options);
+        applyNeonProtocol(pal.ambient, options);
+        applyNeonProtocol(pal.accent, options);
         // ═══════════════════════════════════════════════════════════════════════
         // === M. RETORNAR PALETA COMPLETA ===
-        return {
-            primary: sanitizedPrimary,
-            secondary: sanitizedSecondary,
-            accent: sanitizedAccent,
-            ambient: sanitizedAmbient,
-            contrast,
-            meta: {
-                strategy: strategy,
-                temperature,
-                description,
-                confidence: 1.0, // 🎨 WAVE 68.5: Confianza siempre 100% (matemática determinista)
-                transitionSpeed: Math.round(transitionSpeed),
-            },
-        };
+        // WAVE 0-ALLOC: Return the scratch palette directly — no new object
+        pal.meta.strategy = strategy;
+        pal.meta.temperature = temperature;
+        pal.meta.description = description;
+        pal.meta.confidence = 1.0;
+        pal.meta.transitionSpeed = Math.round(transitionSpeed);
+        return pal;
+    }
+    // ═══════════════════════════════════════════════════════════════════
+    // WAVE 0-ALLOC: Inline enforcement helpers (replace .forEach() arrays)
+    // ═══════════════════════════════════════════════════════════════════
+    /** Elastic rotation away from forbidden hue zones — mutates color in place */
+    static _enforceForbiddenHue(color, forbiddenRanges, elasticStep, maxIterations) {
+        let iterations = 0;
+        let isInForbidden = true;
+        while (isInForbidden && iterations < maxIterations) {
+            isInForbidden = false;
+            for (const [min, max] of forbiddenRanges) {
+                const normalizedMin = normalizeHue(min);
+                const normalizedMax = normalizeHue(max);
+                const isInRange = normalizedMin <= normalizedMax
+                    ? (color.h >= normalizedMin && color.h <= normalizedMax)
+                    : (color.h >= normalizedMin || color.h <= normalizedMax);
+                if (isInRange) {
+                    color.h = normalizeHue(color.h + elasticStep);
+                    isInForbidden = true;
+                    iterations++;
+                    break;
+                }
+            }
+        }
+    }
+    /** Apply hue remapping to a single color — mutates in place */
+    static _applyHueRemap(color, remappings) {
+        for (const mapping of remappings) {
+            if (color.h >= mapping.from && color.h <= mapping.to) {
+                color.h = mapping.target;
+                break;
+            }
+        }
     }
     /**
      * Genera paleta y convierte a RGB en un solo paso
@@ -1337,8 +1374,14 @@ export class SeleneColorEngine {
      */
     static generateRgb(data, options) {
         const palette = this.generate(data, options);
+        // WAVE 0-ALLOC: Use paletteToRgbMutate + mutate meta in place
+        const rgb = paletteToRgbMutate(palette);
         return {
-            ...paletteToRgb(palette),
+            primary: rgb.primary,
+            secondary: rgb.secondary,
+            accent: rgb.accent,
+            ambient: rgb.ambient,
+            contrast: rgb.contrast,
             meta: palette.meta,
         };
     }
@@ -1363,6 +1406,30 @@ SeleneColorEngine.lastLoggedStrategy = null;
 SeleneColorEngine.lastLoggedVibe = null;
 SeleneColorEngine.logCooldownFrames = 0;
 SeleneColorEngine.LOG_COOLDOWN = 180; // 3 segundos entre logs similares
+// ═══════════════════════════════════════════════════════════════════
+// WAVE 0-ALLOC: Static pre-allocated scratch objects for generate()
+// ═══════════════════════════════════════════════════════════════════
+SeleneColorEngine._scratchPalette = {
+    primary: { h: 0, s: 0, l: 0 },
+    secondary: { h: 0, s: 0, l: 0 },
+    accent: { h: 0, s: 0, l: 0 },
+    ambient: { h: 0, s: 0, l: 0 },
+    contrast: { h: 0, s: 0, l: 0 },
+    meta: {
+        strategy: 'analogous',
+        temperature: 'neutral',
+        description: '',
+        confidence: 1.0,
+        transitionSpeed: 1200,
+    },
+};
+SeleneColorEngine._effectiveOptions = {};
+SeleneColorEngine._wave8Fallback = {
+    harmony: { key: null, mode: 'minor', mood: 'universal' },
+    rhythm: { syncopation: 0 },
+    genre: { primary: 'unknown' },
+    section: { type: 'unknown' },
+};
 // ============================================================
 // 6. EXPORTS
 // ============================================================
@@ -1388,6 +1455,15 @@ export class SeleneColorInterpolator {
         this.currentPalette = null;
         // Estado objetivo (hacia donde interpolamos)
         this.targetPalette = null;
+        // WAVE 0-ALLOC: Pre-allocated scratch palette for lerpPalette output
+        this._lerpScratch = {
+            primary: { h: 0, s: 0, l: 0 },
+            secondary: { h: 0, s: 0, l: 0 },
+            accent: { h: 0, s: 0, l: 0 },
+            ambient: { h: 0, s: 0, l: 0 },
+            contrast: { h: 0, s: 0, l: 0 },
+            meta: { strategy: 'analogous', temperature: 'neutral', description: '', confidence: 1.0, transitionSpeed: 1200 },
+        };
         // Progreso de interpolación (0 = inicio, 1 = completado)
         this.transitionProgress = 1.0;
         // Velocidad de transición (incremento por frame)
@@ -1480,11 +1556,9 @@ export class SeleneColorInterpolator {
             // ⚡ WAVE 3455: MOVER LIVE-TRACK — transición completa pero la paleta sigue cambiando.
             // secondary/ambient usan snap (t=1.0) en lerpPalette, así que aplicar el newTarget
             // directamente para esos canales. primary/accent/contrast no cambian (isRealChange=false).
-            this.currentPalette = {
-                ...this.currentPalette,
-                secondary: this.targetPalette.secondary,
-                ambient: this.targetPalette.ambient,
-            };
+            // WAVE 0-ALLOC: Mutate currentPalette in place instead of spread
+            this.currentPalette.secondary = this.targetPalette.secondary;
+            this.currentPalette.ambient = this.targetPalette.ambient;
         }
         return this.currentPalette;
     }
@@ -1502,14 +1576,15 @@ export class SeleneColorInterpolator {
      * Con snap, el Quantizer muestrea siempre el color destino → 1 blackout → limpio.
      */
     lerpPalette(from, to, t) {
-        return {
-            primary: this.lerpHSL(from.primary, to.primary, t), // Rampa suave
-            secondary: this.lerpHSL(from.secondary, to.secondary, 1.0), // ⚡ Snap Mover
-            accent: this.lerpHSL(from.accent, to.accent, t), // Rampa suave
-            ambient: this.lerpHSL(from.ambient, to.ambient, 1.0), // ⚡ Snap Mover
-            contrast: this.lerpHSL(from.contrast, to.contrast, t), // Rampa suave
-            meta: t >= 0.5 ? to.meta : from.meta, // Metadata cambia a mitad de transición
-        };
+        // WAVE 0-ALLOC: Mutate pre-allocated _lerpScratch in place
+        const out = this._lerpScratch;
+        this.lerpHSL(from.primary, to.primary, t, out.primary); // Rampa suave
+        this.lerpHSL(from.secondary, to.secondary, 1.0, out.secondary); // ⚡ Snap Mover
+        this.lerpHSL(from.accent, to.accent, t, out.accent); // Rampa suave
+        this.lerpHSL(from.ambient, to.ambient, 1.0, out.ambient); // ⚡ Snap Mover
+        this.lerpHSL(from.contrast, to.contrast, t, out.contrast); // Rampa suave
+        out.meta = t >= 0.5 ? to.meta : from.meta; // Metadata cambia a mitad de transición
+        return out;
     }
     hasSignificantPaletteDifference(from, to) {
         return this.hasSignificantColorDifference(from.primary, to.primary)
@@ -1580,17 +1655,17 @@ export class SeleneColorInterpolator {
      * Si la diferencia de Hue es > 60°, desaturamos en el punto medio (t ≈ 0.5)
      * Esto crea un efecto de 'lavado' (blanco/gris) en el cruce, evitando el efecto arcoíris sucio
      */
-    lerpHSL(from, to, t) {
+    lerpHSL(from, to, t, out) {
         // Hue: usar el camino más corto en el círculo
         let hueDiff = to.h - from.h;
         if (hueDiff > 180)
             hueDiff -= 360;
         if (hueDiff < -180)
             hueDiff += 360;
-        const h = normalizeHue(from.h + hueDiff * t);
+        out.h = normalizeHue(from.h + hueDiff * t);
         // S y L: interpolación lineal simple
         let s = from.s + (to.s - from.s) * t;
-        const l = from.l + (to.l - from.l) * t;
+        out.l = from.l + (to.l - from.l) * t;
         // 🔥 WAVE 67.5: DESATURATION DIP
         // Si el salto de hue es grande (> 60°), desaturar en el punto medio
         // Esto evita ver "todos los colores intermedios" (arcoíris sucio)
@@ -1611,7 +1686,8 @@ export class SeleneColorInterpolator {
                 s = s * dipFactor;
             }
         }
-        return { h, s, l };
+        out.s = s;
+        return out;
     }
     /**
      * 🧹 WAVE 49: HARD RESET - Limpiar estado para nueva canción

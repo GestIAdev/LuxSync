@@ -562,9 +562,10 @@ export class SimpleHarmonyDetector {
             else {
                 // 📝 WAVE 272: La frecuencia está fuera de rango (<65Hz o >4000Hz)
                 // Log cada ~60 frames para no spamear
-                if (Math.random() < 0.02) {
-                    console.log(`[Harmony ⚠️] Freq ${audio.dominantFrequency.toFixed(0)}Hz fuera de rango musical`);
-                }
+                // [DISABLED WAVE 9001] — debug traces no longer needed after FFT cleanup
+                // if (Math.random() < 0.02) {
+                //   console.log(`[Harmony ⚠️] Freq ${audio.dominantFrequency.toFixed(0)}Hz fuera de rango musical`);
+                // }
             }
         }
         const detectedKey = this.detectKey();

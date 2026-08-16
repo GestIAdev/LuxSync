@@ -27,7 +27,7 @@
 import { SerialPort } from 'serialport';
 import { DmxUniverseReader } from '../../../core/aether/glass/DmxSabHandlers';
 import { CHANNELS_PER_UNI } from '../../../core/aether/glass/layout';
-import { getDmxSab } from '../../../core/aether/glass/GlassMemory';
+import { getDmxSab } from '../../../core/aether/glass/DmxSabHandlers';
 const DMX_OUTPUT_HZ = 33;
 const BREAK_BAUD = 76923;
 const DMX_BAUD = 250000;

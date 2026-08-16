@@ -6,7 +6,7 @@
  *
  * Features:
  * - Blackman-Harris 4-term windowing (-92dB sidelobes)
- * - Linkwitz-Riley 4th order digital filters (24dB/octave)
+ * - LR4-equivalent magnitude-response band masks (frequency-domain, 24dB/octave)
  * - 7 tactical bands with ZERO overlap
  * - Per-band AGC Trust Zones
  * - Advanced spectral metrics
@@ -18,10 +18,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // SECTION 2: CONSTANTS & CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════════════════
-// 🔇 WAVE 3290: GOD EAR FFT WORKER — Blackout del hilo FFT.
-// DEBUG PROBE — Comentar para auditoría del espectroscopio FFT.
-;
-(function () { const _n = () => { }; console.log = _n; console.info = _n; console.debug = _n; console.warn = _n; console.error = _n; })();
+// WAVE 3290: Console blackout removed — logging now controlled by debugMode flag.
 /** FFT Configuration */
 const FFT_SIZE = 4096;
 const DEFAULT_SAMPLE_RATE = 44100;
@@ -30,7 +27,7 @@ const NYQUIST = DEFAULT_SAMPLE_RATE / 2; // 22050Hz
 /**
  * 7 TACTICAL BAND DEFINITIONS
  *
- * Designed for ZERO OVERLAP with Linkwitz-Riley 4th order filters.
+ * Designed for ZERO OVERLAP using LR4-equivalent magnitude-response band masks.
  * Each band has specific purpose for lighting control.
  */
 const GOD_EAR_BAND_CONFIG = {
@@ -403,21 +400,21 @@ function computePowerSpectrum(real, imag, output, numBins) {
         output[i] = (real[i] * real[i] + imag[i] * imag[i]) * nf2;
     }
 }
-// ═══════════════════════════════════════════════════════════════════════════════
-// SECTION 6: LINKWITZ-RILEY 4th ORDER DIGITAL FILTERS
-// ═══════════════════════════════════════════════════════════════════════════════
+const LR4_FILTER_CACHE = new Map();
 /**
- * Pre-computed LR4 filter masks for each band
- */
-let LR4_FILTER_MASKS = null;
-let LR4_FILTER_WEIGHT_SUMS = null;
-/**
- * Calculate Linkwitz-Riley 4th order response at a specific frequency.
+ * Calculate LR4-equivalent magnitude response at a specific frequency.
  *
- * LR4 provides:
+ * NOTE: This is a FREQUENCY-DOMAIN magnitude mask applied to the power
+ * spectrum, NOT a time-domain biquad cascade. It reproduces the LR4
+ * (cascaded Butterworth) magnitude-squared response — which is the
+ * correct and sufficient property for energy/band-power extraction —
+ * but does NOT provide LR4's defining time-domain phase-coherent
+ * summation. Bands are consumed as |X(f)|^2 only; no reconstruction
+ * of a time-domain signal from filtered bands is performed.
+ *
+ * LR4-equivalent magnitude provides:
  * - 24dB/octave slope (vs 12dB for Butterworth 2nd order)
  * - Flat response at crossover (-6dB each = 0dB summed)
- * - Zero phase shift at crossover
  *
  * @param binFreq - Frequency of the bin being evaluated
  * @param crossoverFreq - Crossover frequency
@@ -472,30 +469,36 @@ function generateBandMask(fftSize, sampleRate, lowCrossover, highCrossover) {
  * Initialize or get pre-computed LR4 filter masks for all bands.
  */
 function getLR4FilterMasks(fftSize, sampleRate) {
-    if (LR4_FILTER_MASKS && LR4_FILTER_WEIGHT_SUMS) {
-        return LR4_FILTER_MASKS;
+    const cacheKey = `${fftSize}-${sampleRate}`;
+    const cached = LR4_FILTER_CACHE.get(cacheKey);
+    if (cached) {
+        return cached.masks;
     }
     // WAVE 2098: Boot silence — LR4 filter generation logs removed
-    LR4_FILTER_MASKS = new Map();
-    LR4_FILTER_WEIGHT_SUMS = new Map();
+    const masks = new Map();
+    const weightSums = new Map();
     for (const [key, config] of Object.entries(GOD_EAR_BAND_CONFIG)) {
         const mask = generateBandMask(fftSize, sampleRate, config.freqLow, config.freqHigh);
-        LR4_FILTER_MASKS.set(config.id, mask);
+        masks.set(config.id, mask);
         let weightSum = 0;
         for (let i = 0; i < mask.length; i++) {
             if (mask[i] > 0.001) {
                 weightSum += mask[i];
             }
         }
-        LR4_FILTER_WEIGHT_SUMS.set(config.id, weightSum);
+        weightSums.set(config.id, weightSum);
     }
-    return LR4_FILTER_MASKS;
+    LR4_FILTER_CACHE.set(cacheKey, { masks, weightSums });
+    return masks;
 }
 function getLR4FilterWeightSums(fftSize, sampleRate) {
-    if (!LR4_FILTER_MASKS || !LR4_FILTER_WEIGHT_SUMS) {
-        getLR4FilterMasks(fftSize, sampleRate);
+    const cacheKey = `${fftSize}-${sampleRate}`;
+    const cached = LR4_FILTER_CACHE.get(cacheKey);
+    if (cached) {
+        return cached.weightSums;
     }
-    return LR4_FILTER_WEIGHT_SUMS;
+    getLR4FilterMasks(fftSize, sampleRate);
+    return LR4_FILTER_CACHE.get(cacheKey).weightSums;
 }
 function scaleBandEnergyForVisual(rawRms, weightSum) {
     if (rawRms <= 0)
@@ -1136,7 +1139,11 @@ ChromaCoupler.TONAL_GATE_RATIO = 3.0;
 class AGCTrustZone {
     constructor() {
         this.gains = {};
+        // Zero-allocation: circular buffer + rolling sum instead of push/shift/reduce
         this.rmsHistory = {};
+        this.rmsHistoryIndex = {};
+        this.rmsHistorySum = {};
+        this.rmsHistoryCount = {};
         this.historyLength = 20; // ~1 second @ 20fps
         this.isActive = true;
         // WAVE 8003: AGC Freeze — when SI > 0.6, prevent gain reduction (brickwall anti-compensate)
@@ -1144,7 +1151,10 @@ class AGCTrustZone {
         // Initialize gains to 1.0 for all bands
         for (const config of Object.values(GOD_EAR_BAND_CONFIG)) {
             this.gains[config.id] = 1.0;
-            this.rmsHistory[config.id] = [];
+            this.rmsHistory[config.id] = new Float32Array(this.historyLength);
+            this.rmsHistoryIndex[config.id] = 0;
+            this.rmsHistorySum[config.id] = 0;
+            this.rmsHistoryCount[config.id] = 0;
         }
     }
     /**
@@ -1162,17 +1172,19 @@ class AGCTrustZone {
         const config = AGC_CONFIG[bandId];
         if (!config)
             return rawValue;
-        // Update RMS history
-        if (!this.rmsHistory[bandId]) {
-            this.rmsHistory[bandId] = [];
-        }
-        this.rmsHistory[bandId].push(rawValue);
-        if (this.rmsHistory[bandId].length > this.historyLength) {
-            this.rmsHistory[bandId].shift();
+        // Update RMS history — circular buffer with rolling sum (zero-allocation)
+        const histBuf = this.rmsHistory[bandId];
+        const histIdx = this.rmsHistoryIndex[bandId];
+        const evicted = histBuf[histIdx];
+        histBuf[histIdx] = rawValue;
+        this.rmsHistoryIndex[bandId] = (histIdx + 1) % this.historyLength;
+        this.rmsHistorySum[bandId] += rawValue - evicted;
+        const count = this.rmsHistoryCount[bandId];
+        if (count < this.historyLength) {
+            this.rmsHistoryCount[bandId] = count + 1;
         }
         // Calculate average RMS over history
-        const avgRMS = this.rmsHistory[bandId].reduce((a, b) => a + b, 0) /
-            this.rmsHistory[bandId].length;
+        const avgRMS = this.rmsHistorySum[bandId] / this.rmsHistoryCount[bandId];
         // Calculate target gain
         let targetGain = 1.0;
         if (avgRMS > 0.001) {
@@ -1244,7 +1256,10 @@ class AGCTrustZone {
     reset() {
         for (const config of Object.values(GOD_EAR_BAND_CONFIG)) {
             this.gains[config.id] = 1.0;
-            this.rmsHistory[config.id] = [];
+            this.rmsHistory[config.id].fill(0);
+            this.rmsHistoryIndex[config.id] = 0;
+            this.rmsHistorySum[config.id] = 0;
+            this.rmsHistoryCount[config.id] = 0;
         }
     }
 }
@@ -1341,7 +1356,7 @@ class SlopeBasedOnsetDetector {
         }
         const avgEnergy = sum / len;
         // Onset = rapid positive slope
-        const slopeThreshold = Math.max(avgEnergy * 0.05, avgEnergy * 0.3);
+        const slopeThreshold = avgEnergy * 0.3;
         const isOnset = shortTermSlope > slopeThreshold && longTermSlope > slopeThreshold * 0.5;
         // Refractory period: suppress re-triggering within REFRACTORY_MS for the same band.
         // Without this, continuous energy fluctuations fire on consecutive frames,
@@ -1395,7 +1410,7 @@ SlopeBasedOnsetDetector.REFRACTORY_MS = 80;
  *
  * Features:
  * - Blackman-Harris windowing (-92dB sidelobes)
- * - Linkwitz-Riley 4th order digital crossovers
+ * - LR4-equivalent magnitude-response band masks (frequency-domain)
  * - 7 tactical bands with ZERO overlap
  * - Per-band AGC Trust Zones
  * - Advanced spectral metrics
@@ -1546,16 +1561,19 @@ class RhythmicPercussionTracker {
             this._hhEnergyEMA += RhythmicPercussionTracker.ENERGY_RELEASE * (hhEnergyRaw - this._hhEnergyEMA);
         }
         // WAVE 8008 diagnostic: log raw sub-band values every ~44 frames (1s)
-        this._diagCounter++;
-        if (this._diagCounter % 44 === 0) {
-            console.log(`[🥁 RAW] body=${snareBody.toFixed(5)} crack=${snareCrack.toFixed(5)} ` +
-                `hh=${hhRaw.toFixed(5)} | sqrt(body*crack)=${snareEnergyRaw.toFixed(5)} ` +
-                `EMA_snare=${this._snareEnergyEMA.toFixed(5)} EMA_hh=${this._hhEnergyEMA.toFixed(5)} ` +
-                `| bodyEMA=${this._snareBodyEMA.toFixed(5)} bodyThresh=${(this._snareBodyEMA * RhythmicPercussionTracker.SNARE_BODY_MULT).toFixed(5)} ` +
-                `crackEMA=${this._snareCrackEMA.toFixed(5)} crackThresh=${(this._snareCrackEMA * RhythmicPercussionTracker.SNARE_CRACK_MULT).toFixed(5)} ` +
-                `hhEMA=${this._hhEMA.toFixed(5)} hhThresh=${(this._hhEMA * RhythmicPercussionTracker.HH_MULT).toFixed(5)} ` +
-                `| snareHit=${snareHit ? 1 : 0} hhHit=${hhHit ? 1 : 0} snareAbove=${snareAboveThresh ? 1 : 0} hhAbove=${hhAboveThresh ? 1 : 0}`);
-        }
+        // [DISABLED WAVE 9001] — debug traces no longer needed after FFT cleanup
+        // this._diagCounter++;
+        // if (this._diagCounter % 44 === 0) {
+        //   console.log(
+        //     `[🥁 RAW] body=${snareBody.toFixed(5)} crack=${snareCrack.toFixed(5)} ` +
+        //     `hh=${hhRaw.toFixed(5)} | sqrt(body*crack)=${snareEnergyRaw.toFixed(5)} ` +
+        //     `EMA_snare=${this._snareEnergyEMA.toFixed(5)} EMA_hh=${this._hhEnergyEMA.toFixed(5)} ` +
+        //     `| bodyEMA=${this._snareBodyEMA.toFixed(5)} bodyThresh=${(this._snareBodyEMA * RhythmicPercussionTracker.SNARE_BODY_MULT).toFixed(5)} ` +
+        //     `crackEMA=${this._snareCrackEMA.toFixed(5)} crackThresh=${(this._snareCrackEMA * RhythmicPercussionTracker.SNARE_CRACK_MULT).toFixed(5)} ` +
+        //     `hhEMA=${this._hhEMA.toFixed(5)} hhThresh=${(this._hhEMA * RhythmicPercussionTracker.HH_MULT).toFixed(5)} ` +
+        //     `| snareHit=${snareHit ? 1 : 0} hhHit=${hhHit ? 1 : 0} snareAbove=${snareAboveThresh ? 1 : 0} hhAbove=${hhAboveThresh ? 1 : 0}`
+        //   );
+        // }
         // ── 6. Absence counters ──
         const snareAbsenceMs = this._elapsedMs - this._lastSnareHitMs;
         const hhAbsenceMs = this._elapsedMs - this._lastHHHitMs;
@@ -1637,6 +1655,9 @@ export class GodEarAnalyzer {
         // WAVE 8002: Spectral Flux V3 buffers
         this.prevPower = new Float32Array(this.numBins + 1);
         this.fluxWhitening = new Float32Array(this.numBins + 1);
+        // Zero-alloc output buffers (avoid Array.from + spread per frame)
+        this.chromaOutput = new Array(12).fill(0);
+        this.bandsRawOutput = { subBass: 0, bass: 0, lowMid: 0, mid: 0, highMid: 0, treble: 0, ultraAir: 0 };
         // ════════════════════════════════════════════════════════════
         // Initialize LR4 filter masks (also one-time)
         getLR4FilterMasks(fftSize, sampleRate);
@@ -1707,14 +1728,25 @@ export class GodEarAnalyzer {
             ultraAir: scaleBandEnergyForVisual(rawBands.ultraAir, filterWeightSums.get('ultraAir') ?? 1),
         };
         const telemetryFrame = this.frameIndex + 1;
-        if (telemetryFrame % RADIX2_RAW_TELEMETRY_INTERVAL_FRAMES === 0) {
-            const rawPeak = Math.max(scaledBands.subBass, scaledBands.bass, scaledBands.lowMid, scaledBands.mid, scaledBands.highMid, scaledBands.treble, scaledBands.ultraAir);
-            console.log(`[RADIX2 RAW] Peak: ${rawPeak.toFixed(6)} | Bands: ` +
-                `sub=${scaledBands.subBass.toFixed(6)} ` +
-                `bass=${scaledBands.bass.toFixed(6)} ` +
-                `mid=${scaledBands.mid.toFixed(6)} ` +
-                `highMid=${scaledBands.highMid.toFixed(6)}`);
-        }
+        // [DISABLED WAVE 9001] — debug traces no longer needed after FFT cleanup
+        // if (telemetryFrame % RADIX2_RAW_TELEMETRY_INTERVAL_FRAMES === 0) {
+        //   const rawPeak = Math.max(
+        //     scaledBands.subBass,
+        //     scaledBands.bass,
+        //     scaledBands.lowMid,
+        //     scaledBands.mid,
+        //     scaledBands.highMid,
+        //     scaledBands.treble,
+        //     scaledBands.ultraAir
+        //   );
+        //   console.log(
+        //     `[RADIX2 RAW] Peak: ${rawPeak.toFixed(6)} | Bands: ` +
+        //     `sub=${scaledBands.subBass.toFixed(6)} ` +
+        //     `bass=${scaledBands.bass.toFixed(6)} ` +
+        //     `mid=${scaledBands.mid.toFixed(6)} ` +
+        //     `highMid=${scaledBands.highMid.toFixed(6)}`
+        //   );
+        // }
         // ═══ STAGE 6: AGC Trust Zones ═══
         // WAVE 8003: AGC Freeze — use previous frame's SI to prevent gain reduction under brickwall
         this.agc.setFreezeReduction(this.lastSI > 0.6);
@@ -1804,20 +1836,24 @@ export class GodEarAnalyzer {
         // Tonal gate: high kick/highs ratio means sustained tonal content (bass/synth),
         // which fools the onset detector into inflating transientDensity.
         const tonalRatio = kickSignal / (scaledBands.treble + 1e-6);
-        // ⛔ TEMPORARY STROBE DISABLE — Diagnostic: test if FFT strobe causes hardware desync.
-        // Re-enable by removing this override and restoring the strobeEngine.process call below.
+        // DESIGN DECISION: Strobe via FFT permanently disabled to avoid visual noise and
+        // hardware desync on double-kicks/fast BPMs. Strobe responsibility is deferred to
+        // Selene's cognitive layer pending future precise calibration.
         const strobeState = { active: false, rateHz: 0, duty: 0, drive: 0 };
         // const strobeState = this.strobeEngine.process(
         //   transientDensity, whiteNoiseScore, spectralFluxV3, deltaMs, tonalRatio
         // );
         // Diagnostic: log StrobeEngine inputs every 60 frames (same cadence as RADIX2)
-        if (telemetryFrame % RADIX2_RAW_TELEMETRY_INTERVAL_FRAMES === 0) {
-            const fluxNorm = Math.max(0, Math.min(1, (spectralFluxV3 - 0.02) / 0.15));
-            console.log(`[STROBE] td=${transientDensity.toFixed(3)} wn=${whiteNoiseScore.toFixed(3)} ` +
-                `flux=${spectralFluxV3.toFixed(4)} fluxN=${fluxNorm.toFixed(3)} ` +
-                `tr=${tonalRatio.toFixed(2)} drive=${strobeState.drive.toFixed(3)} ` +
-                `driveRaw=${this.strobeEngine.driveRaw.toFixed(3)} active=${strobeState.active}`);
-        }
+        // [DISABLED WAVE 9001] — debug traces no longer needed after FFT cleanup
+        // if (telemetryFrame % RADIX2_RAW_TELEMETRY_INTERVAL_FRAMES === 0) {
+        //   const fluxNorm = Math.max(0, Math.min(1, (spectralFluxV3 - 0.02) / 0.15));
+        //   console.log(
+        //     `[STROBE] td=${transientDensity.toFixed(3)} wn=${whiteNoiseScore.toFixed(3)} ` +
+        //     `flux=${spectralFluxV3.toFixed(4)} fluxN=${fluxNorm.toFixed(3)} ` +
+        //     `tr=${tonalRatio.toFixed(2)} drive=${strobeState.drive.toFixed(3)} ` +
+        //     `driveRaw=${this.strobeEngine.driveRaw.toFixed(3)} active=${strobeState.active}`
+        //   );
+        // }
         // WAVE 8004: ChromaCoupler — maps chromagram to hue + colorSnap + chromaFlux
         this.chromaCoupler.process(this.chromaBuffer, deltaMs);
         // WAVE 8008: Rhythmic Percussion Tracker — sub-band snare/HH isolation + void
@@ -1872,17 +1908,23 @@ export class GodEarAnalyzer {
                 },
             };
         }
+        // Zero-allocation: copy chroma into pre-allocated output array (12 assignments)
+        for (let i = 0; i < 12; i++)
+            this.chromaOutput[i] = this.chromaBuffer[i];
+        // Zero-allocation: populate pre-allocated bandsRaw output (no spread)
+        this.bandsRawOutput.subBass = crossfadeSubBass;
+        this.bandsRawOutput.bass = crossfadeBass;
+        this.bandsRawOutput.lowMid = scaledBands.lowMid;
+        this.bandsRawOutput.mid = scaledBands.mid;
+        this.bandsRawOutput.highMid = scaledBands.highMid;
+        this.bandsRawOutput.treble = scaledBands.treble;
+        this.bandsRawOutput.ultraAir = scaledBands.ultraAir;
         const processingLatency = performance.now() - startTime;
         this.frameIndex++;
         // ═══ STAGE 7: Output ═══
         return {
             bands,
-            bandsRaw: {
-                ...scaledBands,
-                // WAVE 8002: crossfade subBass/bass with flux for BPM tracker stability
-                subBass: crossfadeSubBass,
-                bass: crossfadeBass,
-            },
+            bandsRaw: this.bandsRawOutput,
             spectral,
             stereo: null, // Mono analysis
             transients,
@@ -1900,8 +1942,7 @@ export class GodEarAnalyzer {
             dominantFrequency,
             totalEnergy,
             // 🎹 WAVE 2301: 12-bin chromagram (C through B, normalized 0-1)
-            // Array.from is a one-time 12-element copy — negligible at 20fps.
-            chroma: Array.from(this.chromaBuffer),
+            chroma: this.chromaOutput,
             // WAVE 8002: Spectral Flux V3 (normalized, whitened)
             spectralFluxV3,
             // WAVE 8003: Photon block

@@ -49,6 +49,34 @@
  * deleted — it's a mathematical jewel with potential future applications
  * (tempo mapping, polyrhythm analysis, long-form structure detection).
  *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ⚠️  SUPERSEDED IN THE REAL-TIME PATH — TEMPO ORACLE TRANSPLANT
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * This tracker no longer participates in the live worker chain. RhythmTracker
+ * now runs `TempoOracle` (zero-alloc NSDF autocorrelation on the needle ODF)
+ * for FREQUENCY and `KickPhaseGate` for PHASE.
+ *
+ * WHY IT WAS REPLACED — interval estimation is a DIFFERENTIATOR. It subtracts
+ * two frame-quantized kick timestamps, so quantization noise propagates as
+ * σ_bpm ≈ (BPM²/60000)·√2·(T_f/2) ≈ ±4.5 BPM @128 BPM at a 21.5 Hz ODF rate.
+ * The median-of-8 could not fix it, because the median of 8 samples is itself
+ * quantized — that is the origin of the characteristic ±4 BPM snapping.
+ *
+ * STILL LIVE — OFFLINE ONLY. `chronos/analysis/analysisPipeline.ts` uses this
+ * class for whole-track offline analysis, where the entire signal is available
+ * in advance and the deterministic frame clock removes the wall-clock jitter.
+ * It is therefore NOT dead code and NOT archived. `GodEarBPMResult` also
+ * remains the shared result shape consumed by `AnalysisResponseBuilder`.
+ *
+ * Do not re-wire this class into the real-time path. Porting the Oracle to the
+ * offline pipeline (global autocorrelation over the full track) is the natural
+ * next step there.
+ *
+ * @deprecated For real-time BPM use `core/senses/bpm/TempoOracle.ts`.
+ *             Retained and supported for the offline Chronos analysis path.
+ * @see docs/technical_audits/AUTOCORRELATION_BLUEPRINT.md
+ *
  * @author PunkOpus
  * @wave 2168
  */

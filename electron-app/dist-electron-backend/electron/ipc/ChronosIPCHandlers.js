@@ -31,6 +31,8 @@ const PROJECT_FILTER = {
     name: 'LuxSync Project',
     extensions: ['lux'],
 };
+// P1.1 FIX: Maximum .lux file size for read (50MB) — prevents OOM on corrupted/malicious files
+const MAX_PROJECT_FILE_SIZE = 50 * 1024 * 1024;
 // ═══════════════════════════════════════════════════════════════════════════
 // TEMP FILE MANAGEMENT
 // ═══════════════════════════════════════════════════════════════════════════
@@ -219,9 +221,27 @@ function setupProjectIPCHandlers(mainWindow) {
                     filePath += PROJECT_EXTENSION;
                 }
             }
-            // Write file
-            await fs.promises.writeFile(filePath, request.json, 'utf-8');
-            console.log(`[ChronosIPC] ✅ Project saved: ${filePath}`);
+            // P1.1 FIX: Atomic write — write to .tmp file first, then rename.
+            // If the process crashes during writeFile, the original .lux file
+            // remains intact. fs.rename() is atomic on most filesystems.
+            //
+            // OPERATION BUREAUCRACY: fsync hardening. writeFile returns once data
+            // is in the OS page cache; a hard power loss or kernel panic after
+            // rename can leave the renamed inode with zero-length or partial
+            // content. We open a file handle, write, call fileHandle.sync() to
+            // flush to the physical disk, close, THEN rename — so the rename
+            // only points at data that is already durable on the platter.
+            const tmpPath = filePath + '.tmp';
+            const fileHandle = await fs.promises.open(tmpPath, 'w', 0o664);
+            try {
+                await fileHandle.writeFile(request.json, 'utf-8');
+                await fileHandle.sync();
+            }
+            finally {
+                await fileHandle.close();
+            }
+            await fs.promises.rename(tmpPath, filePath);
+            console.log(`[ChronosIPC] ✅ Project saved (atomic+fsync): ${filePath}`);
             return { success: true, path: filePath };
         }
         catch (err) {
@@ -255,6 +275,11 @@ function setupProjectIPCHandlers(mainWindow) {
             // Verify file exists
             if (!fs.existsSync(filePath)) {
                 return { success: false, error: `File not found: ${filePath}` };
+            }
+            // P1.1 FIX: Check file size before reading to prevent OOM on huge files
+            const stat = await fs.promises.stat(filePath);
+            if (stat.size > MAX_PROJECT_FILE_SIZE) {
+                return { success: false, error: `File too large (${(stat.size / 1024 / 1024).toFixed(1)}MB). Max is ${MAX_PROJECT_FILE_SIZE / 1024 / 1024}MB.` };
             }
             // Read file
             const json = await fs.promises.readFile(filePath, 'utf-8');
@@ -316,8 +341,25 @@ function setupProjectIPCHandlers(mainWindow) {
             const filePath = path.isAbsolute(request.path)
                 ? request.path
                 : path.join(autoSaveDir, request.path);
-            await fs.promises.writeFile(filePath, request.json, 'utf-8');
-            console.log(`[ChronosIPC] 🛡️ Auto-save written: ${filePath}`);
+            // LAZARUS B-5 FIX: Atomic write — same .tmp + rename pattern as manual
+            //   save. Autosave fires every 60s during a live show; a crash mid-write
+            //   on the non-atomic path truncated the recovery file, defeating the
+            //   entire purpose of autosave. fs.rename() is atomic on most filesystems.
+            //
+            // OPERATION BUREAUCRACY: fsync hardening (same as manual save). The
+            // autosave exists specifically to survive catastrophe — without fsync
+            // a power loss after rename can still produce a truncated recovery file.
+            const tmpPath = filePath + '.tmp';
+            const fileHandle = await fs.promises.open(tmpPath, 'w', 0o664);
+            try {
+                await fileHandle.writeFile(request.json, 'utf-8');
+                await fileHandle.sync();
+            }
+            finally {
+                await fileHandle.close();
+            }
+            await fs.promises.rename(tmpPath, filePath);
+            console.log(`[ChronosIPC] 🛡️ Auto-save written (atomic+fsync): ${filePath}`);
             return { success: true, path: filePath };
         }
         catch (err) {

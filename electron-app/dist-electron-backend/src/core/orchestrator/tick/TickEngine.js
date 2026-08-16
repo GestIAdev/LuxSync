@@ -8,8 +8,7 @@ import { getEffectManager } from '../../effects/EffectManager';
 import { aetherKineticEngine } from '../../aether/AetherKineticEngine';
 import { NodeFamily } from '../../aether';
 import { FIX_DATA_FLOATS, CHANNELS_PER_UNI } from '../../aether/glass/layout';
-import { DmxUniverseWriter } from '../../aether/glass/DmxSabHandlers';
-import { getDmxSab } from '../../aether/glass/GlassMemory';
+import { DmxUniverseWriter, getDmxSab } from '../../aether/glass/DmxSabHandlers';
 import { createDefaultCognitive } from '../../protocol/SeleneProtocol';
 const ZONE_MAP = {
     'FRONT_PARS': 'front', 'BACK_PARS': 'back', 'LEFT_PARS': 'left', 'RIGHT_PARS': 'right',
@@ -88,6 +87,9 @@ export class TickEngine {
         this._glassView = new Float32Array(FIX_DATA_FLOATS);
         this.dmxWriter = new DmxUniverseWriter(getDmxSab());
         this._universeSnapshots = new Map();
+        // P2: Pre-allocated Set/Array for commitFrame egress — zero-alloc per frame.
+        this._universesToProcess = new Set();
+        this._uniList = [];
         // 🔧 WAVE 7002.4 (T3): Phase crossfade — smooth transition between PLL and worker phase.
         // When pllLocked changes state, crossfade over PHASE_CROSSFADE_FRAMES frames
         // to avoid instantaneous phase jumps that cause visual discontinuities.
@@ -525,14 +527,14 @@ export class TickEngine {
         if (this.engine && this._aetherGraph) {
             const kineticNodes = this._aetherGraph.getView(NodeFamily.KINETIC);
             let dominantOrientation = undefined;
-            if (kineticNodes.length > 0) {
+            if (kineticNodes.count > 0) {
                 const orientationCounts = new Map();
-                for (const node of kineticNodes) {
+                kineticNodes.forEach((node) => {
                     const inst = node.ikOrientation?.installation;
                     if (inst) {
                         orientationCounts.set(inst, (orientationCounts.get(inst) ?? 0) + 1);
                     }
-                }
+                });
                 // Pick the most common orientation
                 let maxCount = 0;
                 for (const [ori, count] of orientationCounts) {
@@ -1239,66 +1241,41 @@ export class TickEngine {
                     const egressBuf = blackoutActive
                         ? aetherResolver.getSoftBlackoutUniverseBuffer(universe, rawBuf)
                         : rawBuf;
-                    // ðŸ”¥ WAVE 4835 â€” DMX BYPASS: InyecciÃ³n directa para Golden Nuke
-                    // Si el Tungsteno estÃ¡ lockeado, clava 255 en CH2-6 (GM, Strobe, G1, G2, G3)
-                    for (const [deviceId, lockInfo] of this._goldenNukeLocks) {
-                        if (lockInfo.universe === universe && Array.isArray(egressBuf)) {
-                            const base = lockInfo.dmxAddress - 1; // 0-based
-                            // CH2: Golden Master Dimmer â†’ 255
-                            egressBuf[base + 1] = 255;
-                            // CH3: Strobe â†’ 255
-                            egressBuf[base + 2] = 255;
-                            // CH4: Gold 1 â†’ 255
-                            egressBuf[base + 3] = 255;
-                            // CH5: Gold 2 â†’ 255
-                            egressBuf[base + 4] = 255;
-                            // CH6: Gold 3 â†’ 255
-                            egressBuf[base + 5] = 255;
-                        }
+                    // WAVE 6010 PATCH 2b: Egress SAB — reuse snapshot buffer in-place (zero-alloc)
+                    let uniArr = this._universeSnapshots.get(universe);
+                    if (!uniArr) {
+                        uniArr = new Uint8Array(CHANNELS_PER_UNI);
+                        this._universeSnapshots.set(universe, uniArr);
                     }
-                    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-                    // ðŸ”¬ WAVE 4832 â€” DMX SNIFFER (TUNGSTEN)
-                    // Imprime los bytes exactos del Tungsteno en el buffer final,
-                    // ANTES de que salgan al adaptador fÃ­sico.
-                    // Eliminar cuando se confirme el diagnÃ³stico.
-                    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-                    if (this.frameCount % 30 === 0) {
-                        const tungstenFixture = this.fixtures
-                            .find(f => typeof f.name === 'string' && f.name.toLowerCase().includes('tungsten'));
-                        if (tungstenFixture) {
-                            const base = (tungstenFixture.dmxAddress ?? (tungstenFixture.address ?? 1)) - 1; // 0-based
-                            // console.log(
-                            //   `[DMX-SNIFFER] universe=${universe} | base=${base + 1} (1-based) | ` +
-                            //   `CH1(StartCode/Pan?)=${egressBuf[base]} | ` +
-                            //   `CH2(GM)=${egressBuf[base + 1]} | ` +
-                            //   `CH3(Strobe)=${egressBuf[base + 2]} | ` +
-                            //   `CH4(G1)=${egressBuf[base + 3]} | ` +
-                            //   `CH5(G2)=${egressBuf[base + 4]} | ` +
-                            //   `CH6(G3)=${egressBuf[base + 5]} | ` +
-                            //   `CH7=${egressBuf[base + 6]}`,
-                            // )
-                        }
-                    }
-                    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-                    // WAVE 6010 PATCH 2b: Egress SAB — escribir universo al writer en vez de HAL legacy
-                    const uniArr = new Uint8Array(CHANNELS_PER_UNI);
                     uniArr.set(egressBuf.subarray(0, CHANNELS_PER_UNI));
-                    this._universeSnapshots.set(universe, uniArr);
                 }
                 // WAVE 6013 PATCH 2: commitFrame atómico al SAB con Universo 0 forzado
-                const uniList = [];
-                let dirtyMask = BigInt(0);
-                const universesToProcess = new Set(aetherResolver.registeredUniverses);
+                // AETHER PURITY: maskLo/maskHi replace BigInt — zero heap allocations.
+                // P2 ABSOLUTE ZERO: Reuse pre-allocated Set/Array — zero alloc per frame.
+                const uniList = this._uniList;
+                uniList.length = 0;
+                let maskLo = 0;
+                let maskHi = 0;
+                const universesToProcess = this._universesToProcess;
+                universesToProcess.clear();
+                for (const u of aetherResolver.registeredUniverses) {
+                    universesToProcess.add(u);
+                }
                 universesToProcess.add(0);
                 for (const universe of universesToProcess) {
                     const buf = this._universeSnapshots.get(universe);
                     if (buf) {
                         uniList[universe] = buf;
-                        dirtyMask |= BigInt(1) << BigInt(universe);
+                        if (universe < 31) {
+                            maskLo |= (1 << universe) >>> 0;
+                        }
+                        else {
+                            maskHi |= (1 << (universe - 31)) >>> 0;
+                        }
                     }
                 }
                 if (uniList.length > 0) {
-                    this.dmxWriter.commitFrame(this.frameCount, uniList, dirtyMask);
+                    this.dmxWriter.commitFrame(this.frameCount, uniList, maskLo, maskHi);
                 }
                 _t_hal_end = performance.now();
                 // ðŸ›‚ WAVE 4557: Safety telemetry (~1Hz)

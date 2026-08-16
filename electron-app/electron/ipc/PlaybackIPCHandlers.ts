@@ -26,7 +26,7 @@ import { ipcMain } from 'electron'
 import { timelineEngine } from '../../src/core/engine/TimelineEngine'
 import { getTitanOrchestrator } from '../../src/core/orchestrator/TitanOrchestrator'
 import { universalDMX } from '../../src/hal/drivers/UniversalDMXDriver'
-import type { ChronosProjectV3 } from '../../src/chronos/core/ChronosProject'
+import type { ChronosProjectV3 } from '../../src/chronos/core/LuxFileV3'
 import type { BrowserWindow } from 'electron'
 
 // ═══════════════════════════════════════════════════════════════════════════

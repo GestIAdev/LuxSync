@@ -41,7 +41,7 @@
  * @module core/aether/resolver/NodeResolver
  * @version WAVE 4522.4
  */
-import { applyDMXGovernors } from './DMXGovernorEvaluator';
+import { applyDMXGovernors, buildGovernorLookupMap } from './DMXGovernorEvaluator';
 import { NodeFamily } from '../types';
 import { getColorTranslator } from '../../../hal/translation/ColorTranslator';
 import { getHarmonicQuantizer } from '../../../hal/translation/HarmonicQuantizer';
@@ -167,6 +167,8 @@ export class NodeResolver {
         this._ikResultScratch = { pan: 0, tilt: 0, reachable: false, antiFlipApplied: false };
         // 🛠️ WAVE 5034: Pre-allocated kinetic clamp scratch — zero alloc en hot path.
         this._kineticClampScratch = { pan: 0, tilt: 0 };
+        // K0-BATCH-3c: Pre-allocated IK target scratch — zero alloc en hot path.
+        this._ikTargetScratch = { x: 0, y: 0, z: 0 };
         // ── Scratch RGB — reutilizado en hot path sin alloc ──────────────────
         // Mutable in-place, pasado al ColorTranslator por referencia.
         // INVARIANTE: solo válido durante _translateColor(); no exponer.
@@ -188,7 +190,7 @@ export class NodeResolver {
         this._rgbwProfile = Object.freeze({ colorEngine: { mixing: 'rgbw' } });
         this._cmyProfile = Object.freeze({ colorEngine: { mixing: 'cmy' } });
         // ── Buffers por universo ───────────────────────────────────────────────
-        // Map<universe (1-based), Uint8Array(512)>
+        // Map<universe (0-based, ArtNet convention), Uint8Array(512)>
         // Pre-allocated en registerDevice(), re-usado frame a frame.
         this._universeBuffers = new Map();
         // Lleva registro de qué universos tienen datos reales este frame
@@ -232,12 +234,17 @@ export class NodeResolver {
         // �� WAVE 4703: Tracks devices currently in DarkSpin transit to suppress per-frame log spam.
         // Cleared each sweep — log fires only on the first frame a device enters transit.
         this._darkSpinActiveDevices = new Set();
+        // HS-2: Pre-allocated transit devices scratch — zero alloc @ 44Hz.
+        this._transitDevicesScratch = new Set();
         // 🔥 WAVE 4720: IGNITION ENGINE — Pre-computed injection map (patch-time only)
         // Key: DeviceId  Value: array of IgnitionInjection rules
         // Built once in _precomputeIgnitionMap(); iterated O(2-4) times per frame in resolve().
         // ZERO ALLOC in hot path — all arrays created at patch time.
         this._ignitionMap = new Map();
-        // 🌑 WAVE 4685.1: DarkSpin buffer sweep — pre-computed wheel device entries.
+        // �️ F9: Precomputed governor lookup maps — O(1) channelOffset → IDMXGovernor.
+        // Built at patch time in registerDevice(). Zero-alloc in hot path.
+        this._governorMaps = new Map();
+        // �� WAVE 4685.1: DarkSpin buffer sweep — pre-computed wheel device entries.
         // Built at patch time in _precomputeWheelDeviceEntry().
         // Iterated zero-alloc in hot path — no new arrays, no spreads.
         this._wheelDeviceEntries = [];
@@ -305,6 +312,7 @@ export class NodeResolver {
         this._ignitionMap.delete(deviceId); // limpiar si re-patch
         this._precomputeIgnitionMap(deviceId);
         this._precomputeWheelDeviceEntry(deviceId);
+        this._precomputeGovernorMap(deviceId);
     }
     /**
      * WAVE 4522.4: Inyectar contexto musical antes de cada resolve().
@@ -332,7 +340,7 @@ export class NodeResolver {
      * El buffer pertenece al NodeResolver — NO modificar desde fuera.
      * Es válido solo hasta el próximo tick de resolve() (siguiente frame).
      *
-     * @param universe — Número de universo (1-based)
+     * @param universe — Número de universo (0-based, ArtNet convention)
      * @returns Uint8Array(512) o undefined si el universo no está registrado
      */
     getUniverseBuffer(universe) {
@@ -418,7 +426,7 @@ export class NodeResolver {
      * PATCH TIME — llamar cuando se registra un Device en el NodeGraph.
      * Si el universo ya existe, no hace nada.
      *
-     * @param universe — Número de universo (1-based)
+     * @param universe — Número de universo (0-based, ArtNet convention)
      */
     registerUniverse(universe) {
         if (this._universeBuffers.has(universe))
@@ -625,6 +633,23 @@ export class NodeResolver {
                 return; // One entry per device is sufficient
             }
         }
+    }
+    /**
+     * 🏛️ F9: Precomputa el mapa O(1) de gobernadores para un device.
+     *
+     * Construye un array de 512 slots indexado por channelOffset, donde cada
+     * slot contiene el IDMXGovernor cuyo channelIndex coincide, o undefined.
+     * Esto elimina el scan lineal O(governors) en el hot path de _writeNode().
+     *
+     * PATCH TIME — cero alloc en hot path.
+     */
+    _precomputeGovernorMap(deviceId) {
+        const device = this._graph.getDevice(deviceId);
+        if (!device || !device.dmxGovernors || device.dmxGovernors.length === 0) {
+            this._governorMaps.delete(deviceId);
+            return;
+        }
+        this._governorMaps.set(deviceId, buildGovernorLookupMap(device.dmxGovernors));
     }
     /**
      * 🔥 WAVE 4720: Inyecta valores de ignición en el buffer DMX — HOT PATH.
@@ -1135,10 +1160,11 @@ export class NodeResolver {
                 }
             }
             // 🏛️ DMX GOVERNOR ENGINE — evaluación declarativa de última milla. Zero-alloc.
-            const _govs = device.dmxGovernors;
+            // F9: O(1) lookup via precomputed map — no linear scan.
+            const _govMap = this._governorMaps.get(device.deviceId);
             let finalByte = safeDmxValue;
-            if (_govs !== undefined && _govs.length > 0) {
-                finalByte = sanitizeDmxByte(applyDMXGovernors(_govs, chDef.dmxOffset, chDef.type, rawNormalized, safeDmxValue));
+            if (_govMap !== undefined) {
+                finalByte = sanitizeDmxByte(applyDMXGovernors(_govMap, chDef.dmxOffset, chDef.type, rawNormalized, safeDmxValue));
                 // // 🚨 EL SONAR DEL GOBERNADOR (Loguea SOLO si altera el byte físico)
                 // // Usamos Math.random() < 0.02 para que a 44Hz solo escupa el log aprox 1 vez por segundo y no congele la terminal.
                 // if (finalByte !== safeDmxValue && Math.random() < 0.02) {
@@ -1206,8 +1232,9 @@ export class NodeResolver {
         const transitNodeIds = sm.getDarkSpinTransitNodeIds();
         if (transitNodeIds.length === 0)
             return;
-        // Collect unique deviceIds in transit
-        const transitDevices = new Set();
+        // HS-2: Reuse pre-allocated scratch — zero Set alloc per frame.
+        const transitDevices = this._transitDevicesScratch;
+        transitDevices.clear();
         for (const nodeId of transitNodeIds) {
             const node = this._graph.getNodeData(nodeId);
             if (!node || node.family !== NodeFamily.COLOR)
@@ -1276,8 +1303,9 @@ export class NodeResolver {
         const transitNodeIds = sm.getDarkSpinTransitNodeIds();
         if (transitNodeIds.length === 0)
             return;
-        // Collect unique deviceIds in transit
-        const transitDevices = new Set();
+        // HS-2: Reuse pre-allocated scratch — zero Set alloc per frame.
+        const transitDevices = this._transitDevicesScratch;
+        transitDevices.clear();
         for (const nodeId of transitNodeIds) {
             const node = this._graph.getNodeData(nodeId);
             if (!node || node.family !== NodeFamily.COLOR)
@@ -1341,7 +1369,11 @@ export class NodeResolver {
         }
         const profile = this._getOrBuildIKProfile(node, calibration);
         const currentPanDMX = node.currentPosition.pan * 255;
-        solveInto(this._ikResultScratch, profile, { x: tx, y: ty, z: tz }, currentPanDMX);
+        // K0-BATCH-3c: Mutate pre-allocated scratch instead of creating {x:tx, y:ty, z:tz} literal.
+        this._ikTargetScratch.x = tx;
+        this._ikTargetScratch.y = ty;
+        this._ikTargetScratch.z = tz;
+        solveInto(this._ikResultScratch, profile, this._ikTargetScratch, currentPanDMX);
         const ikResult = this._ikResultScratch;
         const reachable = ikResult.reachable !== false;
         this._ikReachability.set(node.nodeId, reachable);

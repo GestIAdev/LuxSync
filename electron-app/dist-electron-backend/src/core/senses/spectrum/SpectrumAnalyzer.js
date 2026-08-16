@@ -56,16 +56,17 @@ export class SpectrumAnalyzer {
         this.lastGodEarResult = godEarResult;
         this.frameCount++;
         // SHADOW MODE TELEMETRY — cada ~2 segundos (40 frames @ ~20fps)
-        if (this.frameCount % 40 === 0) {
-            console.log(`[GOD EAR 🩻] SHADOW MODE TELEMETRY:`);
-            console.log(`   Clarity:     ${godEarResult.spectral.clarity.toFixed(3)} (Rock target: >0.7)`);
-            console.log(`   Flatness:    ${godEarResult.spectral.flatness.toFixed(3)} (Tonal<0.3, Noise>0.7)`);
-            console.log(`   Centroid:    ${godEarResult.spectral.centroid.toFixed(0)}Hz (Bright>2000, Dark<1200)`);
-            console.log(`   CrestFactor: ${godEarResult.spectral.crestFactor.toFixed(2)} (Dynamics)`);
-            console.log(`   Rolloff:     ${godEarResult.spectral.rolloff.toFixed(0)}Hz (85% energy)`);
-            console.log(`   Latency:     ${godEarResult.meta.processingLatencyMs.toFixed(2)}ms`);
-            console.log(`   UltraAir:    ${godEarResult.bands.ultraAir.toFixed(3)} (16-22kHz sizzle)`);
-        }
+        // [DISABLED WAVE 9001] — debug traces no longer needed after FFT cleanup
+        // if (this.frameCount % 40 === 0) {
+        //   console.log(`[GOD EAR 🩻] SHADOW MODE TELEMETRY:`);
+        //   console.log(`   Clarity:     ${godEarResult.spectral.clarity.toFixed(3)} (Rock target: >0.7)`);
+        //   console.log(`   Flatness:    ${godEarResult.spectral.flatness.toFixed(3)} (Tonal<0.3, Noise>0.7)`);
+        //   console.log(`   Centroid:    ${godEarResult.spectral.centroid.toFixed(0)}Hz (Bright>2000, Dark<1200)`);
+        //   console.log(`   CrestFactor: ${godEarResult.spectral.crestFactor.toFixed(2)} (Dynamics)`);
+        //   console.log(`   Rolloff:     ${godEarResult.spectral.rolloff.toFixed(0)}Hz (85% energy)`);
+        //   console.log(`   Latency:     ${godEarResult.meta.processingLatencyMs.toFixed(2)}ms`);
+        //   console.log(`   UltraAir:    ${godEarResult.bands.ultraAir.toFixed(3)} (16-22kHz sizzle)`);
+        // }
         // Legacy Adapter — convierte al formato viejo para compatibilidad downstream
         const legacy = toLegacyFormat(godEarResult);
         // WAVE 3431: Psychoacoustic scaling (WebAudio AnalyserNode-compatible)

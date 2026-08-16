@@ -560,11 +560,17 @@ necesita saber *qué* efecto se evalúa, pero la selección del efecto ocurre *d
 **Impacto:** activa el 17% del peso de la ecuación de confianza que hoy está inerte. Es la
 mejora de mayor retorno del sistema.
 
-### 5.2 [P0] Extraer `SovereignClockGuard`
+### 5.2 [P0] Extraer `SovereignClockGuard` — RESOLVED ✅
 
 **Estado:** ~330 líneas inline en `SeleneTitanConscious.ts:667-1000`. Contiene veto de zona ARS,
 suelo de epicness, veto de rango de presión, re-ruteo heavy/divine, cuarentena de minions y el
 Universal Reality Clamp.
+
+**Resolución:** El bloque inline fue extraído a `guards/SovereignClockGuard.ts` con contrato
+explícito `SovereignVerdict`. El orquestador bajó de ~2.557 a ~2.284 líneas. Las compuertas de
+seguridad (ARS zone veto, epicness floor, pressure range, heavy/divine re-route, Glass Break)
+son ahora testeables de forma unitaria. El orquestador invoca `this._sovereignGuard.evaluate()`
+y actúa según el verdict retornado. Prerrequisito para integración con Genesis cumplido.
 
 **Acción:** módulo dedicado con contrato explícito:
 
@@ -581,10 +587,17 @@ interface SovereignVerdict {
 testeables de forma unitaria. **Prerrequisito para la integración con Genesis** — sin esta
 extracción, la complejidad se compone.
 
-### 5.3 [P1] Consolidar los 8 cooldowns en el bucle de vapor `V(t)`
+### 5.3 [P1] Consolidar los 8 cooldowns en el bucle de vapor `V(t)` — PARTIALLY RESOLVED ⚠️
 
 **Estado:** 8 temporizadores independientes, todos a 0 en modo DIAG. El sistema corre sin
 refractariedad.
+
+**Nota de progreso:** Los campos y constantes de cooldown fueron aislados como miembros
+privados readonly con comentario de migración pendiente. El bloque inline del Reloj Soberano
+(fuente de ~270 líneas de lógica de cooldown acoplada) fue eliminado del orquestador. La
+consolidación real en `V(t)` permanece pendiente — los temporizadores siguen operando como
+restricciones discretas. `V(t)` con `beta_v = 0.015/s` y `kappa_vreset = 0.15` ya implementa
+refractariedad emergente que reemplazaría la mayoría de estos cooldowns.
 
 **Observación arquitectónica:** `V(t)` con `beta_v = 0.015/s` y `kappa_vreset = 0.15` **ya
 implementa refractariedad emergente**. Tras una ignición el vapor se resetea al 15%, lo que
@@ -598,10 +611,15 @@ declaran explícitamente como **restricciones de seguridad**, no como lógica es
 **Impacto:** reducción sustancial del espacio de estados. Elimina interacciones no evidentes.
 Restaura refractariedad apta para producción sin reintroducir compuertas discretas.
 
-### 5.4 [P1] Migrar las ramas por vibe a coordenadas ΠMΔG
+### 5.4 [P1] Migrar las ramas por vibe a coordenadas ΠMΔG — PARTIALLY RESOLVED ⚠️
 
 **Estado:** `isTechnoVibe` / `isLatinVibe` en el orquestador y en `DecisionMaker`;
 `VIBE_THRESHOLD_PROFILES` con 7 entradas en `PredictionEngine`.
+
+**Nota de progreso:** Las ramas por vibe permanecen activas en la periferia del orquestador
+(umbrales divinos, suelos RMS, compuertas de epicness). La migración a interpolación continua
+sobre coordenadas ΠMΔG está pendiente. El núcleo líquido (`liquid/`) ya es puro y agnóstico
+de género; la deuda está acotada a la capa V2 heredada.
 
 **Acción:** cada rama por vibe es una función escalón sobre el espacio ΠMΔG. Sustituir por
 interpolación continua:

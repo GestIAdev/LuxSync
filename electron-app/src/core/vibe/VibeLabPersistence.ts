@@ -17,6 +17,7 @@ import * as fs from 'fs'
 import * as fsp from 'fs/promises'
 import * as path from 'path'
 import type { CustomVibeOverride, CustomVibeKey, CustomVibeMeta } from '../../types/CustomVibe'
+import { migrateAndValidate } from '../../engine/vibe/custom/migrateVibe'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -123,6 +124,11 @@ class VibeLabPersistence {
 
   /**
    * Lee un .luxvibe específico por key.
+   *
+   * PROTEUS §6.9: Runs the document through the schema migration pipeline
+   * before returning it. If the file was saved with an older schema version,
+   * `migrateAndValidate()` upgrades it to the current version. If migration
+   * fails (e.g., unsupported version gap), returns `ok: false`.
    */
   async read(key: CustomVibeKey): Promise<VibeReadResult> {
     const dir = getVibesDir()
@@ -130,8 +136,18 @@ class VibeLabPersistence {
     const fullPath = path.join(dir, filename)
     try {
       const content = await fsp.readFile(fullPath, 'utf-8')
-      const data = JSON.parse(content) as CustomVibeOverride
-      return { ok: true, data }
+      const raw = JSON.parse(content)
+      // PROTEUS §6.9: Migrate schema before type-guarding
+      const result = migrateAndValidate(raw)
+      if (!result.ok || !result.data) {
+        return { ok: false, error: `Failed to migrate ${filename}: ${result.error}` }
+      }
+      if (result.migrationsApplied && result.migrationsApplied.length > 0) {
+        console.log(`[VibeLabPersistence] Applied ${result.migrationsApplied.length} migration(s) to ${filename}:`, result.migrationsApplied)
+        // Re-save the migrated document so future loads skip migration
+        void this.save(result.data)
+      }
+      return { ok: true, data: result.data }
     } catch (err) {
       return { ok: false, error: `Failed to read ${filename}: ${err}` }
     }
@@ -193,7 +209,13 @@ class VibeLabPersistence {
   async importFromPath(sourcePath: string): Promise<VibeReadResult> {
     try {
       const content = await fsp.readFile(sourcePath, 'utf-8')
-      const data = JSON.parse(content) as CustomVibeOverride
+      const raw = JSON.parse(content)
+      // PROTEUS §6.9: Migrate schema before using the document
+      const migrateResult = migrateAndValidate(raw)
+      if (!migrateResult.ok || !migrateResult.data) {
+        return { ok: false, error: `Import migration failed: ${migrateResult.error}` }
+      }
+      const data = migrateResult.data
       // Regenerar key con hash del nombre + timestamp para evitar colisiones
       const slug = (data.meta?.name ?? 'imported')
         .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30)

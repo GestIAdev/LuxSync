@@ -57,6 +57,66 @@
   color: rgba(255, 255, 255, 0.8);
 }
 
+/* ── PROTEUS §6.8: Search/Filter bar ──────────────────────────────────── */
+.genome-vault-search {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  margin: 2px 0 4px;
+  border: 1px solid rgba(168, 85, 247, 0.15);
+  border-radius: 4px;
+  background: rgba(10, 8, 20, 0.5);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.genome-vault-search:focus-within {
+  border-color: rgba(168, 85, 247, 0.4);
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.12);
+}
+
+.genome-vault-search-icon {
+  color: rgba(168, 85, 247, 0.4);
+  flex-shrink: 0;
+}
+
+.genome-vault-search-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.85);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.3px;
+}
+
+.genome-vault-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.25);
+  font-style: italic;
+}
+
+.genome-vault-search-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 100ms ease, color 100ms ease;
+}
+
+.genome-vault-search-clear:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+}
+
 .genome-vault-empty {
   padding: 16px;
   text-align: center;

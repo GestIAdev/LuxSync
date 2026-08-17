@@ -6,12 +6,14 @@
  * Lista los vibes custom guardados en userData/vibes/. Permite cargar,
  * duplicar, borrar, exportar e importar.
  *
+ * PROTEUS §6.8: Search/filter bar — filters the vault list by name and tags.
+ *
  * @module components/vibeLab/GenomeVault
- * @version FASE 4.2
+ * @version FASE 4.2 + PROTEUS §6.8
  */
 
-import React, { memo, useEffect, useCallback } from 'react'
-import { FolderOpen, Copy, Trash2, FileDown, FileUp } from 'lucide-react'
+import React, { memo, useEffect, useCallback, useState, useMemo } from 'react'
+import { FolderOpen, Copy, Trash2, FileDown, FileUp, Search, X } from 'lucide-react'
 import { useVibeLabStore } from '../../stores/vibeLabStore'
 import type { CustomVibeKey, CustomVibeMeta } from '../../types/CustomVibe'
 import './genome-vault.css'
@@ -25,6 +27,9 @@ export const GenomeVault: React.FC = memo(() => {
   const duplicate = useVibeLabStore((s) => s.duplicate)
   const exportToFile = useVibeLabStore((s) => s.exportToFile)
   const importFromFile = useVibeLabStore((s) => s.importFromFile)
+
+  // PROTEUS §6.8: Search query state
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     loadVault()
@@ -54,6 +59,22 @@ export const GenomeVault: React.FC = memo(() => {
     [exportToFile],
   )
 
+  // PROTEUS §6.8: Filter vault by search query against name + tags + author
+  const filteredVault = useMemo(() => {
+    if (!searchQuery.trim()) return vault
+    const query = searchQuery.toLowerCase().trim()
+    return vault.filter((entry) => {
+      const nameMatch = entry.name.toLowerCase().includes(query)
+      const tagMatch = entry.tags?.some((tag) => tag.toLowerCase().includes(query))
+      const authorMatch = entry.author?.toLowerCase().includes(query)
+      return nameMatch || tagMatch || authorMatch
+    })
+  }, [vault, searchQuery])
+
+  const hasVault = vault.length > 0
+  const hasResults = filteredVault.length > 0
+  const isSearching = searchQuery.trim().length > 0
+
   return (
     <div className="genome-vault">
       <div className="genome-vault-header">
@@ -67,15 +88,46 @@ export const GenomeVault: React.FC = memo(() => {
         </div>
       </div>
 
+      {/* PROTEUS §6.8: Search/Filter bar — only shown when vault has items */}
+      {hasVault && (
+        <div className="genome-vault-search">
+          <Search size={11} className="genome-vault-search-icon" />
+          <input
+            type="text"
+            className="genome-vault-search-input"
+            placeholder="Search name, tags, author..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            aria-label="Search genome vault"
+          />
+          {searchQuery && (
+            <button
+              className="genome-vault-search-clear"
+              onClick={() => setSearchQuery('')}
+              type="button"
+              title="Clear search"
+              aria-label="Clear search"
+            >
+              <X size={11} />
+            </button>
+          )}
+        </div>
+      )}
+
       {vaultLoading && <p className="genome-vault-empty">Loading...</p>}
 
-      {!vaultLoading && vault.length === 0 && (
+      {!vaultLoading && !hasVault && (
         <p className="genome-vault-empty">No saved vibes yet. Mint one to get started.</p>
       )}
 
-      {!vaultLoading && vault.length > 0 && (
+      {/* PROTEUS §6.8: No results from search filter */}
+      {!vaultLoading && hasVault && isSearching && !hasResults && (
+        <p className="genome-vault-empty">No vibes match "{searchQuery}".</p>
+      )}
+
+      {!vaultLoading && hasResults && (
         <div className="genome-vault-list">
-          {vault.map((entry: CustomVibeMeta) => (
+          {filteredVault.map((entry: CustomVibeMeta) => (
             <div key={entry.key} className="genome-vault-item">
               <div
                 className="genome-vault-item-info"
@@ -84,6 +136,7 @@ export const GenomeVault: React.FC = memo(() => {
                 <span className="genome-vault-item-name">{entry.name}</span>
                 <span className="genome-vault-item-meta">
                   {entry.author} · {new Date(entry.updatedAt).toLocaleDateString()}
+                  {entry.tags && entry.tags.length > 0 && ` · ${entry.tags.join(', ')}`}
                 </span>
               </div>
               <div className="genome-vault-item-actions">

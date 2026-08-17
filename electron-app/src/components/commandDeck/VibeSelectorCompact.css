@@ -106,3 +106,41 @@
 .vibe-btn-compact.vibe-teal:hover:not(.disabled):not(.active) {
   border-color: rgba(45, 212, 191, 0.4);
 }
+
+/* ═
+   🧬 PROTEUS: CUSTOM VIBE BUTTON — purple-magenta aura
+   Distinct from the 4 canonical vibes to signal "user-created content"
+    */
+
+.vibe-btn-compact.vibe-custom {
+  --vibe-color: #A855F7;
+}
+
+.vibe-btn-compact.vibe-custom.active {
+  background: linear-gradient(180deg,
+    rgba(40, 15, 70, 0.7) 0%,
+    rgba(25, 8, 50, 0.8) 100%
+  );
+  border-color: #a855f7;
+  color: #c084fc;
+  box-shadow:
+    0 0 20px rgba(168, 85, 247, 0.5),
+    inset 0 0 15px rgba(168, 85, 247, 0.1);
+}
+
+.vibe-btn-compact.vibe-custom.popover-open:not(.active) {
+  border-color: rgba(168, 85, 247, 0.5);
+  background: linear-gradient(180deg,
+    rgba(40, 20, 70, 0.5) 0%,
+    rgba(25, 10, 50, 0.6) 100%
+  );
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.2);
+}
+
+.vibe-btn-compact.vibe-custom:hover:not(.disabled):not(.active):not(.popover-open) {
+  border-color: rgba(168, 85, 247, 0.3);
+  background: linear-gradient(180deg,
+    rgba(30, 15, 55, 0.6) 0%,
+    rgba(20, 8, 40, 0.7) 100%
+  );
+}

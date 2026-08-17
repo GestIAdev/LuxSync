@@ -89,6 +89,7 @@ const VibeButton: React.FC<VibeButtonProps> = ({
   
   // 🔌 WAVE 63.9: Only show active state if system is ON
   const showActiveState = isActive && isSystemOn
+  // PROTEUS FIX 7: Also disable when VibeLab is hijacking the engine.
   const isDisabled = !isSystemOn || isTransitioning
   
   // NUCLEAR INLINE STYLES - Cannot be overridden

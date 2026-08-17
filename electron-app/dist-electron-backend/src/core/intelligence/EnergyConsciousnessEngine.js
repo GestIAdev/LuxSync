@@ -175,13 +175,14 @@ export class EnergyConsciousnessEngine {
         let newZone;
         let multiSpectralZone;
         if (evidence) {
-            // 🩸 WAVE 7175: For Latin vibes, use smoothed energy (not effectiveEnergy with peak hold).
-            // Reggaeton/cumbia have transients on every beat — peak hold is chronically active,
-            // inflating effectiveEnergy to 0.90+ and defeating the -0.15 genre offset.
-            // Smoothed energy reflects the true cruising energy of the genre.
-            const zoneEnergy = vibe && (vibe.includes('latina') || vibe.includes('latino') || vibe.includes('fiesta'))
-                ? smoothed
-                : effectiveEnergy;
+            // §5.4: Vibe branch PURGED — groove-based interpolation replaces isLatinVibe.
+            // High-groove contexts (latin reggaeton) have transients on every beat,
+            // making peak hold chronically active. Use smoothed energy when groove
+            // is high, effective energy when groove is low.
+            //   grooveProxy = 0.7 if (E>0.4 && tension>0.3), else 0.3
+            //   zoneEnergy = smoothed · grooveProxy + effectiveEnergy · (1 − grooveProxy)
+            const grooveProxy = (evidence.eTotal > 0.4 && evidence.spectralTension > 0.3) ? 0.7 : 0.3;
+            const zoneEnergy = grooveProxy * smoothed + (1 - grooveProxy) * effectiveEnergy;
             multiSpectralZone = this.msLadder.classify(evidence, zoneEnergy, vibe);
             newZone = multiSpectralZone.label;
             this.lastMultiSpectralZone = multiSpectralZone;
@@ -652,20 +653,23 @@ export class MultiSpectralEnergyLadder {
      * 3. Final zone = baseZone + tensionElevation (clamped to 'peak')
      */
     classify(evidence, smoothedEnergy, vibe) {
-        const isLatinVibe = vibe?.includes('latina') || vibe?.includes('latino') || vibe?.includes('fiesta');
+        // §5.4: Vibe branches PURGED — replaced with continuous ΠMΔG interpolation.
+        // The energy remapping offset is now a function of groove (G):
+        //   offset = 0.15 · G
+        //     High groove (latin reggaeton, G→1) → -0.15 shift (cruising energy)
+        //     Low groove (ambient, G→0) → no shift (strict EDM thresholds)
+        // The tension elevation is suppressed proportionally to groove:
+        //   elevationScaled = elevation · (1 − G)
+        //     High groove → tension is genre characteristic, not momentary → suppressed
+        //     Low groove → tension is momentary event → full elevation
+        const grooveProxy = (evidence.eTotal > 0.4 && evidence.spectralTension > 0.3) ? 0.7 : 0.3;
+        void vibe; // §5.4: vibe string no longer used — ΠMΔG interpolation replaces it
         // 1. Base zone from smoothed total energy
-        // 🩸 WAVE 7174: Genre-aware energy remapping for Latin vibes.
-        // Reggaeton/cumbia sustain E=0.65-0.85 as normal cruising energy.
-        // EDM thresholds classify this as 'intense'/'peak', filtering out
-        // effects like corazon_latino (0.38 aggression) and tidal_wave (0.55).
-        // Offset of -0.15 shifts the ladder so E=0.75→'active' (not 'intense'),
-        // E=0.90→'intense' (not 'peak'). Only genuine peaks >0.95 reach 'peak'.
-        const adjustedEnergy = isLatinVibe ? Math.max(0, smoothedEnergy - 0.15) : smoothedEnergy;
+        const adjustedEnergy = Math.max(0, smoothedEnergy - 0.15 * grooveProxy);
         const baseZone = this.classifyByEnergy(adjustedEnergy);
-        // 2. Tension elevation — ZERO for Latin vibes.
-        // Reggaeton's spectral tension is a genre characteristic (bass+
-        // percussion+vocals), not a momentary event. Any elevation is artificial.
-        const tensionElevation = isLatinVibe ? 0 : this.computeTensionElevation(evidence);
+        // 2. Tension elevation — scaled down proportionally to groove proxy.
+        const rawElevation = this.computeTensionElevation(evidence);
+        const tensionElevation = Math.round(rawElevation * (1 - grooveProxy));
         // 3. Final zone = base + elevation
         const finalOrdinal = Math.min(baseZone.ordinal + tensionElevation, ENERGY_ZONE_ORDINAL['peak']);
         const finalLabel = ORDINAL_TO_ZONE[finalOrdinal];

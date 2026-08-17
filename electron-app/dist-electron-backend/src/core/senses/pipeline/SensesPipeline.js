@@ -139,6 +139,8 @@ export class SensesPipeline {
             beatPhase: bpmOutput.beatPhase,
             lastBeatTime: bpmOutput.lastBeatTime,
             rawBpm: bpmOutput.rawBpm,
+            oracleRawBpm: bpmOutput.oracleRawBpm,
+            oraclePeakHeight: bpmOutput.oraclePeakHeight,
             snapshotBuffer: snapshot,
             normalizedEnergy,
             rhythmOutput: wave8Output.rhythm,

@@ -29,6 +29,7 @@ import { VISUAL_ETHICAL_VALUES, SEVERITY_PENALTIES } from './VisualEthicalValues
 import { CircuitBreaker, TimeoutWrapper } from './CircuitBreaker';
 // 🎭 WAVE 920.2: MOOD COMPLIANCE
 import { MoodController } from '../../mood/MoodController';
+import { getDynamicEffectRegistry } from '../../arsenal/DynamicEffectRegistry';
 // ═══════════════════════════════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════
@@ -156,23 +157,19 @@ export class VisualConscienceEngine {
         });
         // Alternativa 2: Efecto de misma categoría pero diferente
         // (simplificado - en producción usar EffectDreamSimulator.exploreAlternatives)
-        // Alternativa 3: Fallback seguro basado en vibe
-        if (context.vibe.includes('techno')) {
+        // §5.4: Vibe branches PURGED — registry-based fallback replaces genre strings.
+        // Query the DynamicEffectRegistry for a light effect compatible with the
+        // current vibe. Falls back to a universal safe effect if none found.
+        const vibeEffects = getDynamicEffectRegistry().getEffectsForVibe(context.vibe);
+        const safeCandidate = vibeEffects.find(e => !e.simMeta.isDivineCandidate &&
+            !e.simMeta.isHeavyCandidate &&
+            (e.dna.aggression ?? 0) <= 0.60);
+        if (safeCandidate) {
             alternatives.push({
-                effect: 'acid_sweep',
+                effect: safeCandidate.id,
                 intensity: 0.6,
                 zones: ['all'],
-                reasoning: 'Safe Techno fallback',
-                confidence: 0.7
-            });
-        }
-        else if (context.vibe.includes('latino')) {
-            // WAVE 902: SYNCED with real effect
-            alternatives.push({
-                effect: 'tropical_pulse',
-                intensity: 0.6,
-                zones: ['all'],
-                reasoning: 'Safe Latino fallback',
+                reasoning: `Registry safe fallback for ${context.vibe}`,
                 confidence: 0.7
             });
         }

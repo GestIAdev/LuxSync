@@ -42,6 +42,10 @@ import { setupKeyForgeIPCHandlers } from '../src/core/keyforge/KeyForgeIPCHandle
 
 // 🧬 FASE 4.3: Vibe Lab — .luxvibe persistence IPC
 import { registerVibeLabIPCHandlers } from '../src/core/vibe/VibeLabIPCHandlers'
+// 🧬 PROTEUS FIX 2: Boot-time regraft of custom vibes
+import { vibeLabPersistence } from '../src/core/vibe/VibeLabPersistence'
+import { resolveCustomVibe } from '../src/engine/vibe/custom/VibeFusionResolver'
+import { graft as graftToBackend } from '../src/engine/vibe/custom/VibeGraftRegistry'
 
 // ⚒️ Hephaestus File I/O (WAVE 2030.5)
 import { setupHephIPCHandlers } from '../src/core/hephaestus'
@@ -97,6 +101,52 @@ export const glassPoolManager = new BufferPoolManager()
 
 const fixturePhysicsDriver = new FixturePhysicsDriver()
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
+
+// =============================================================================
+// 🧬 PROTEUS FIX 2: Boot-time regraft of custom vibes
+// =============================================================================
+// Reads all .luxvibe files from userData/vibes/, resolves each one via
+// VibeFusionResolver, and grafts the FusedVibeBundle into the backend's 7
+// canonical registries. This ensures normalizeVibeId('custom:...') finds the
+// key immediately when the renderer requests setVibe after a restart.
+// =============================================================================
+
+async function regraftCustomVibesOnBoot(): Promise<void> {
+  try {
+    const entries = await vibeLabPersistence.list()
+    if (entries.length === 0) {
+      console.log('[Boot] No custom vibes to regraft.')
+      return
+    }
+
+    let grafted = 0
+    let failed = 0
+    for (const entry of entries) {
+      try {
+        const readResult = await vibeLabPersistence.read(entry.key)
+        if (!readResult.ok || !readResult.data) {
+          console.warn(`[Boot] Failed to read ${entry.key}: ${readResult.error}`)
+          failed++
+          continue
+        }
+        const resolved = resolveCustomVibe(readResult.data)
+        if (!resolved.ok || !resolved.bundle) {
+          console.warn(`[Boot] Failed to resolve ${entry.key}:`, resolved.diagnostics)
+          failed++
+          continue
+        }
+        graftToBackend(resolved.bundle)
+        grafted++
+      } catch (err) {
+        console.warn(`[Boot] Exception regrafting ${entry.key}:`, err)
+        failed++
+      }
+    }
+    console.log(`[Boot] 🧬 Regrafted ${grafted} custom vibe(s)${failed > 0 ? `, ${failed} failed` : ''}.`)
+  } catch (err) {
+    console.error('[Boot] regraftCustomVibesOnBoot error:', err)
+  }
+}
 
 // 🥁 WAVE 7103: MIDI Master Clock — high-resolution timer in Main Process
 const midiMasterClock = new MidiMasterClock()
@@ -500,6 +550,16 @@ async function initTitan(): Promise<void> {
   // 🧬 FASE 4.3: Vibe Lab — .luxvibe persistence
   // ═══════════════════════════════════════════════════════════════════════════
   registerVibeLabIPCHandlers()
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🧬 PROTEUS FIX 2: Boot-time regraft of custom vibes
+  // Read all .luxvibe files from disk, resolve them, and graft into the
+  // backend registries so normalizeVibeId('custom:...') finds them
+  // immediately when the renderer requests setVibe after a restart.
+  // ═══════════════════════════════════════════════════════════════════════════
+  regraftCustomVibesOnBoot().catch((err) => {
+    console.error('[Boot] Failed to regraft custom vibes:', err)
+  })
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 🎬 WAVE 4910.6: Theia Asset export — Native Save As dialog

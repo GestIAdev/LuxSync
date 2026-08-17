@@ -4,97 +4,370 @@
 //  WAVE 500 - PROJECT GENESIS - PHASE 3
 //  "Predice el futuro analizando el pasado"
 // ═══════════════════════════════════════════════════════════════════════════
-const PROGRESSION_PATTERNS = [
-    // Buildup prolongado → Drop inminente (90%)
-    {
-        trigger: ['buildup', 'buildup'],
-        nextSection: 'drop',
-        probability: 0.90,
-        predictionType: 'drop_incoming',
-        actions: [
-            { type: 'prepare', effect: 'intensity_ramp', intensity: 0.8, durationMs: 2000, timingOffsetMs: -2000 },
-            { type: 'execute', effect: 'flash', intensity: 1.0, durationMs: 200, timingOffsetMs: 0 },
-            { type: 'recover', effect: 'strobe', intensity: 0.9, durationMs: 4000, timingOffsetMs: 200 },
-        ],
-    },
-    // Buildup simple → Drop probable (75%)
-    {
-        trigger: ['buildup'],
-        nextSection: 'drop',
-        probability: 0.75,
-        predictionType: 'drop_incoming',
-        actions: [
-            { type: 'prepare', effect: 'intensity_ramp', intensity: 0.6, durationMs: 1500, timingOffsetMs: -1500 },
-            { type: 'execute', effect: 'flash', intensity: 1.0, durationMs: 150, timingOffsetMs: 0 },
-        ],
-    },
-    // Verse + Buildup → Chorus probable (85%)
-    {
-        trigger: ['verse', 'buildup'],
-        nextSection: 'chorus',
-        probability: 0.85,
-        predictionType: 'transition_beat',
-        actions: [
-            { type: 'prepare', effect: 'color_shift', intensity: 0.5, durationMs: 1000, timingOffsetMs: -1000 },
-            { type: 'execute', effect: 'pulse', intensity: 0.8, durationMs: 500, timingOffsetMs: 0 },
-        ],
-    },
-    // Chorus doble → Verse/Breakdown probable (70%)
-    {
-        trigger: ['chorus', 'chorus'],
-        nextSection: 'verse',
-        probability: 0.70,
-        predictionType: 'transition_beat',
-        actions: [
-            { type: 'prepare', effect: 'breathe', intensity: 0.6, durationMs: 800, timingOffsetMs: -800 },
-        ],
-    },
-    // Drop doble → Breakdown probable (75%)
-    {
-        trigger: ['drop', 'drop'],
-        nextSection: 'breakdown',
-        probability: 0.75,
-        predictionType: 'breakdown_imminent',
-        actions: [
-            { type: 'execute', effect: 'intensity_ramp', intensity: 0.3, durationMs: 2000, timingOffsetMs: 0 },
-            { type: 'recover', effect: 'breathe', intensity: 0.4, durationMs: 3000, timingOffsetMs: 2000 },
-        ],
-    },
-    // Breakdown → Buildup probable (80%)
-    {
-        trigger: ['breakdown'],
-        nextSection: 'buildup',
-        probability: 0.80,
-        predictionType: 'buildup_starting',
-        actions: [
-            { type: 'prepare', effect: 'color_shift', intensity: 0.4, durationMs: 500, timingOffsetMs: -500 },
-            { type: 'execute', effect: 'intensity_ramp', intensity: 0.5, durationMs: 2000, timingOffsetMs: 0 },
-        ],
-    },
-    // Intro → Verse probable (85%)
-    {
-        trigger: ['intro'],
-        nextSection: 'verse',
-        probability: 0.85,
-        predictionType: 'transition_beat',
-        actions: [
-            { type: 'execute', effect: 'pulse', intensity: 0.6, durationMs: 300, timingOffsetMs: 0 },
-        ],
-    },
-    // Verse doble → Buildup probable (65%)
-    {
-        trigger: ['verse', 'verse'],
-        nextSection: 'buildup',
-        probability: 0.65,
-        predictionType: 'buildup_starting',
-        actions: [
-            { type: 'prepare', effect: 'intensity_ramp', intensity: 0.4, durationMs: 1000, timingOffsetMs: -1000 },
-        ],
-    },
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔮 CASSANDRA 2.0 — CADENA DE MARKOV DE 2º ORDEN, ZERO-ALLOC
+// ═══════════════════════════════════════════════════════════════════════════
+// Reemplaza PROGRESSION_PATTERNS (8 reglas hardcodeadas) por un estimador
+// bayesiano jerárquico con aprendizaje online.
+//
+// HALLAZGO FORENSE QUE MOTIVA EL REDISEÑO (F1):
+//   El legacy `updateHistory()` solo empujaba al historial cuando la sección
+//   CAMBIABA. Por tanto dos entradas idénticas consecutivas eran imposibles y
+//   los triggers ['buildup','buildup'], ['chorus','chorus'], ['drop','drop'] y
+//   ['verse','verse'] eran SIEMPRE falsos. 4 de 8 patrones eran código muerto,
+//   incluido el de mayor confianza del sistema (buildup,buildup → drop @0.90).
+//   Cassandra era de facto una cadena de 1er orden con 5 reglas vivas.
+//
+// CONSECUENCIA DE DISEÑO:
+//   El alfabeto es a nivel de SEGMENTO ⇒ los self-loops son estructuralmente
+//   imposibles, no meramente raros. `next === prev1` es un cero estructural.
+//   La semántica de "buildup prolongado" pertenece al DWELL, que ya modelan
+//   FLUID 2 (estimateTimeToEvent) y ORGANIC 2 (computeOrganicConfidence).
+//   Separación limpia: Markov decide QUÉ; el dwell decide CUÁNDO y CON CUÁNTA
+//   CERTEZA. El trigrama breakdown→buildup→drop recupera la intención del
+//   patrón muerto y sí es alcanzable.
+//
+// LAYOUT: stride 16 (potencia de 2).
+//   idx2 = (p2<<8)|(p1<<4)|n     idx1 = (p1<<4)|n     row2 = (p2<<8)|(p1<<4)
+//   (a) aritmética puramente bitwise — sin multiplicaciones enteras, índices
+//       SMI que nunca deoptimizan a double.
+//   (b) cada fila de 16 float32 = 64 B = UNA línea de caché, y toda fila queda
+//       alineada a línea de caché: un scan O(10) es un miss, no dos.
+//   (c) 4096 × 4 B = 16 KB — residente en L1.
+//
+// ESTIMADOR: Dirichlet jerárquico de dos niveles con cuentas con fuga.
+//   p̂₁(n) = (C₁[p₁,n] + κ₁·T₁[p₁,n]) / (N₁[p₁] + κ₁)
+//   m₂(n) = β·T₂[p₂,p₁,n] + (1−β)·p̂₁(n)
+//   p̂₂(n) = (C₂[p₂,p₁,n] + κ₂·m₂(n)) / (N₂[p₂,p₁] + κ₂)
+//
+//   El posterior de nivel 1 ES la media a priori del nivel 2. La masa de
+//   evidencia N gobierna la interpolación sola: sin λ de backoff a mano, sin
+//   umbrales. Los 8 patrones legacy no se borran: se reexpresan como
+//   pseudo-cuentas en T₁/T₂, así que el arranque en frío es equivalente al
+//   Cassandra legacy y el aprendizaje lo domina monótonamente.
+//
+//   La no estacionariedad (un set de DJ no es i.i.d.) se maneja con fuga
+//   multiplicativa perezosa por fila en cada visita: la masa está acotada por
+//   1/(1−λ) y se actualiza en O(1) precisamente porque la fuga es
+//   multiplicativa — N ← λN + w.
+// ═══════════════════════════════════════════════════════════════════════════
+/** Tamaño del alfabeto MSST */
+const S = 10;
+/** 'unknown' — transparente: nunca se aprende ni se predice */
+const UNK = 9;
+/** Stride de fila (potencia de 2) */
+const STRIDE = 16;
+/** Cuentas de 2º orden con fuga. 4096 × f32 = 16 KB */
+const C2 = new Float32Array(STRIDE * STRIDE * STRIDE);
+/** Cuentas de 1er orden con fuga. 256 × f32 = 1 KB */
+const C1 = new Float32Array(STRIDE * STRIDE);
+/** Masa de evidencia por fila — exacta bajo fuga multiplicativa, O(1) */
+const N2 = new Float32Array(STRIDE * STRIDE); // indexado por (p2<<4)|p1
+const N1 = new Float32Array(STRIDE); // indexado por p1
+/** Priors musicales estáticos (construidos una vez, luego read-only) */
+const T1 = new Float32Array(STRIDE * STRIDE);
+const T2 = new Float32Array(STRIDE * STRIDE * STRIDE);
+/** Posterior scratch — pre-asignado, reutilizado en cada predict() */
+const POST = new Float32Array(STRIDE);
+/** Fuerza del prior, 1er orden (pseudo-observaciones) */
+const KAPPA_1 = 2.5;
+/** Fuerza del prior, 2º orden */
+const KAPPA_2 = 3.0;
+/** Plantilla musical vs marginal aprendida, en el nivel 2 */
+const BETA = 0.55;
+/** Olvido con fuga, 1er orden (~40 visitas de vida media) */
+const LAMBDA_1 = 0.975;
+/** Olvido con fuga, 2º orden (~11 visitas de vida media) */
+const LAMBDA_2 = 0.940;
+/** 1/ln(10) — normalizador de entropía */
+const LN_S_INV = 1 / Math.log(S);
+/** Registros de contexto. -1 = frío. Nivel segmento: prev1 !== prev2 siempre */
+let prev1 = -1;
+let prev2 = -1;
+/** Telemetría de calibración — NO muta la matriz (ver validatePrediction) */
+let hitRateEMA = 0.5;
+const ALPHA_HIT = 0.05;
+/** Salidas de predicción, escritas in-place (sin alloc) */
+let pSection = -1; // índice argmax, -1 = sin predicción
+let pProb = 0; // masa posterior normalizada del argmax
+let pMargin = 0; // p_max − p_second — nitidez de la decisión
+let pEntropyConf = 0; // p_max · (1 − H/ln S) — confianza epistémica
+/** Índice → nombre (alfabeto MSST canónico, orden de MSST_SECTION_KEYS) */
+const SECTION_NAMES = [
+    'intro', 'verse', 'buildup', 'chorus', 'drop',
+    'textural_drop', 'breakdown', 'bridge', 'outro', 'unknown',
 ];
+/**
+ * String → índice sin hashing. Un `Map.get()` hashea; un `switch` sobre
+ * literales compila a tabla de salto por puntero interno y devuelve un SMI.
+ */
+function sectionIndex(s) {
+    switch (s) {
+        case 'intro': return 0;
+        case 'verse': return 1;
+        case 'buildup': return 2;
+        case 'chorus': return 3;
+        case 'drop': return 4;
+        case 'textural_drop': return 5;
+        case 'breakdown': return 6;
+        case 'bridge': return 7;
+        case 'outro': return 8;
+        default: return UNK;
+    }
+}
+/** Índice de sección predicha → PredictionType (LUT, sin cadena de branches) */
+const PTYPE = [
+    'transition_beat', // 0 intro
+    'transition_beat', // 1 verse
+    'buildup_starting', // 2 buildup
+    'transition_beat', // 3 chorus
+    'drop_incoming', // 4 drop
+    'drop_incoming', // 5 textural_drop
+    'breakdown_imminent', // 6 breakdown
+    'transition_beat', // 7 bridge
+    'transition_beat', // 8 outro
+    'none', // 9 unknown (nunca se predice)
+];
+/**
+ * Acciones sugeridas por sección predicha. Arrays congelados y compartidos:
+ * cero asignaciones por predicción. Contenido preservado literalmente de
+ * PROGRESSION_PATTERNS.actions (el conocimiento de iluminación no se pierde,
+ * solo deja de estar acoplado al matching de patrones).
+ */
+const SECTION_ACTIONS = [
+    // 0 intro
+    Object.freeze([
+        { type: 'execute', effect: 'pulse', intensity: 0.6, durationMs: 300, timingOffsetMs: 0 },
+    ]),
+    // 1 verse
+    Object.freeze([
+        { type: 'prepare', effect: 'breathe', intensity: 0.6, durationMs: 800, timingOffsetMs: -800 },
+    ]),
+    // 2 buildup
+    Object.freeze([
+        { type: 'prepare', effect: 'color_shift', intensity: 0.4, durationMs: 500, timingOffsetMs: -500 },
+        { type: 'execute', effect: 'intensity_ramp', intensity: 0.5, durationMs: 2000, timingOffsetMs: 0 },
+    ]),
+    // 3 chorus
+    Object.freeze([
+        { type: 'prepare', effect: 'color_shift', intensity: 0.5, durationMs: 1000, timingOffsetMs: -1000 },
+        { type: 'execute', effect: 'pulse', intensity: 0.8, durationMs: 500, timingOffsetMs: 0 },
+    ]),
+    // 4 drop
+    Object.freeze([
+        { type: 'prepare', effect: 'intensity_ramp', intensity: 0.8, durationMs: 2000, timingOffsetMs: -2000 },
+        { type: 'execute', effect: 'flash', intensity: 1.0, durationMs: 200, timingOffsetMs: 0 },
+        { type: 'recover', effect: 'strobe', intensity: 0.9, durationMs: 4000, timingOffsetMs: 200 },
+    ]),
+    // 5 textural_drop
+    Object.freeze([
+        { type: 'prepare', effect: 'intensity_ramp', intensity: 0.6, durationMs: 1500, timingOffsetMs: -1500 },
+        { type: 'execute', effect: 'flash', intensity: 0.85, durationMs: 200, timingOffsetMs: 0 },
+    ]),
+    // 6 breakdown
+    Object.freeze([
+        { type: 'execute', effect: 'intensity_ramp', intensity: 0.3, durationMs: 2000, timingOffsetMs: 0 },
+        { type: 'recover', effect: 'breathe', intensity: 0.4, durationMs: 3000, timingOffsetMs: 2000 },
+    ]),
+    // 7 bridge
+    Object.freeze([
+        { type: 'prepare', effect: 'color_shift', intensity: 0.45, durationMs: 900, timingOffsetMs: -900 },
+    ]),
+    // 8 outro
+    Object.freeze([
+        { type: 'recover', effect: 'breathe', intensity: 0.35, durationMs: 3000, timingOffsetMs: 0 },
+    ]),
+    // 9 unknown
+    Object.freeze([]),
+];
+// ── Plantilla de plausibilidad musical de 1er orden (filas suman 1, diagonal 0) ──
+// Filas: 0 intro 1 verse 2 buildup 3 chorus 4 drop 5 textural_drop
+//        6 breakdown 7 bridge 8 outro 9 unknown
+const T1_ROWS = [
+    [0, .55, .25, .08, .04, .02, .03, .03, 0, 0], // intro
+    [0, 0, .40, .30, .06, .03, .08, .10, .03, 0], // verse
+    [0, .03, 0, .22, .62, .08, .05, 0, 0, 0], // buildup
+    [0, .35, .20, 0, .08, .03, .15, .12, .07, 0], // chorus
+    [0, .15, .12, .20, 0, .10, .35, .03, .05, 0], // drop
+    [0, .15, .22, .18, .10, 0, .30, .05, 0, 0], // textural_drop
+    [0, .18, .55, .12, .06, 0, 0, .05, .04, 0], // breakdown
+    [0, .15, .25, .40, .10, 0, .06, 0, .04, 0], // bridge
+    [.30, .25, 0, .10, 0, 0, .15, 0, 0, .20], // outro
+    [.08, .30, .20, .20, .12, 0, .10, 0, 0, 0], // unknown
+];
+/**
+ * Afilado de 2º orden: T₂[p2,p1,·] = (1−s)·T₁[p1,·] + s·e_next
+ * `s` ≈ confianza del patrón legacy equivalente.
+ */
+const T2_SPEC = [
+    // [p2, p1, next, s]
+    [6, 2, 4, 0.85], // breakdown→buildup→DROP     ← recupera el 0.90 muerto
+    [1, 2, 3, 0.80], // verse→buildup→CHORUS       ← legacy 0.85
+    [3, 2, 4, 0.70], // chorus→buildup→DROP
+    [2, 4, 6, 0.65], // buildup→drop→BREAKDOWN     ← legacy drop,drop→breakdown 0.75
+    [4, 6, 2, 0.80], // drop→breakdown→BUILDUP     ← legacy 0.80
+    [0, 1, 2, 0.50], // intro→verse→BUILDUP        ← legacy intro→verse 0.85
+    [3, 1, 2, 0.55], // chorus→verse→BUILDUP       ← legacy verse,verse→buildup 0.65
+    [4, 5, 6, 0.70], // drop→textural_drop→BREAKDOWN
+];
+/** Construye T₁/T₂ una sola vez al cargar el módulo (fuera del hot path) */
+function buildPriors() {
+    for (let p1 = 0; p1 < S; p1++) {
+        const row = T1_ROWS[p1];
+        for (let n = 0; n < S; n++)
+            T1[(p1 << 4) | n] = row[n];
+        // Por defecto: fila de T₂ = fila de T₁ (el 2º orden no sabe nada extra)
+        for (let p2 = 0; p2 < S; p2++) {
+            const base = (p2 << 8) | (p1 << 4);
+            for (let n = 0; n < S; n++)
+                T2[base + n] = row[n];
+        }
+    }
+    for (let i = 0; i < T2_SPEC.length; i++) {
+        const spec = T2_SPEC[i];
+        const base = (spec[0] << 8) | (spec[1] << 4);
+        const s = spec[3];
+        const one = 1 - s;
+        for (let n = 0; n < S; n++)
+            T2[base + n] *= one;
+        T2[base + spec[2]] += s;
+    }
+}
+buildPriors();
+// ═══════════════════════════════════════════════════════════════════════════
+// ESTADO INTERNO — dwell y anillo de segmentos (zero-alloc)
+// ═══════════════════════════════════════════════════════════════════════════
 const MAX_HISTORY = 8;
-let sectionHistory = [];
+/** Anillo de índices de sección observados (telemetría + dwell) */
+const histSection = new Int8Array(MAX_HISTORY).fill(-1);
+const histTimestamp = new Float64Array(MAX_HISTORY);
+let histWrite = 0;
+let histCount = 0;
+/** Timestamp de entrada en la sección actual (dwell) */
+let sectionStartedAt = 0;
+/** Última sección vista en crudo (incluye 'unknown', para detectar cambios) */
+let lastRawSection = -1;
 let lastPrediction = null;
+// ═══════════════════════════════════════════════════════════════════════════
+// APRENDIZAJE ONLINE — O(10), zero-alloc
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Ingiere una transición de segmento OBSERVADA y aprende de ella.
+ * Llamar solo en cambio de sección (mismo disparador que el legacy).
+ *
+ * @param section    Sección MSST
+ * @param confidence Confianza del detector (SectionOutput.confidence) — filtra
+ *                   el aprendizaje. Una detección de baja confianza NO es
+ *                   evidencia.
+ */
+export function observeSection(section, confidence = 1) {
+    const s = sectionIndex(section);
+    // F2 — 'unknown' es transparente: no aprende, no desplaza contexto.
+    // Ingerirlo destruiría el bigrama real Y quemaría un contexto de 2º orden.
+    if (s === UNK || confidence < 0.5)
+        return;
+    // F1 — alfabeto de segmento: los self-loops no existen. No-op defensivo.
+    if (s === prev1)
+        return;
+    // ── Nivel 1: fuga de la fila visitada, luego refuerzo ──
+    if (prev1 >= 0) {
+        const r1 = prev1 << 4;
+        for (let n = 0; n < S; n++)
+            C1[r1 + n] *= LAMBDA_1;
+        C1[r1 + s] += 1;
+        N1[prev1] = N1[prev1] * LAMBDA_1 + 1; // exacto: la fuga es multiplicativa
+        // ── Nivel 2: solo con contexto de 2º orden completo ──
+        if (prev2 >= 0) {
+            const r2 = (prev2 << 8) | (prev1 << 4);
+            for (let n = 0; n < S; n++)
+                C2[r2 + n] *= LAMBDA_2;
+            C2[r2 + s] += 1;
+            const m = (prev2 << 4) | prev1;
+            N2[m] = N2[m] * LAMBDA_2 + 1;
+        }
+    }
+    // ── Desplazar registros de contexto ──
+    prev2 = prev1;
+    prev1 = s;
+}
+// ═══════════════════════════════════════════════════════════════════════════
+// PREDICCIÓN — argmax O(10) sobre el posterior jerárquico
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Predicción estructural rápida. Dos pasadas O(10): acumular y normalizar.
+ * Escribe pSection/pProb/pMargin/pEntropyConf in-place. Zero-alloc.
+ *
+ * @returns true si existe predicción
+ */
+function predictStructural() {
+    pSection = -1;
+    pProb = 0;
+    pMargin = 0;
+    pEntropyConf = 0;
+    if (prev1 < 0)
+        return false;
+    const r1 = prev1 << 4;
+    const inv1 = 1 / (N1[prev1] + KAPPA_1);
+    // Un contexto de 2º orden frío degrada con gracia al posterior de nivel 1.
+    const has2 = prev2 >= 0;
+    const r2 = has2 ? ((prev2 << 8) | r1) : 0;
+    const inv2 = has2 ? 1 / (N2[(prev2 << 4) | prev1] + KAPPA_2) : 0;
+    // ── Pasada 1: posterior sin normalizar sobre el soporte admisible ──
+    // Ceros estructurales: n === prev1 (sin self-loops, F1) y n === UNK (F2).
+    let Z = 0;
+    let best = -1;
+    let bestV = -1;
+    let secondV = 0;
+    for (let n = 0; n < S; n++) {
+        if (n === prev1 || n === UNK) {
+            POST[n] = 0;
+            continue;
+        }
+        const q1 = (C1[r1 + n] + KAPPA_1 * T1[r1 + n]) * inv1;
+        const v = has2
+            ? (C2[r2 + n] + KAPPA_2 * (BETA * T2[r2 + n] + (1 - BETA) * q1)) * inv2
+            : q1;
+        POST[n] = v;
+        Z += v;
+        if (v > bestV) {
+            secondV = bestV;
+            best = n;
+            bestV = v;
+        }
+        else if (v > secondV) {
+            secondV = v;
+        }
+    }
+    if (Z <= 0 || best < 0)
+        return false;
+    // ── Pasada 2: normalizar sobre el soporte admisible + entropía de Shannon ──
+    const invZ = 1 / Z;
+    let H = 0;
+    for (let n = 0; n < S; n++) {
+        const p = POST[n] * invZ;
+        POST[n] = p;
+        if (p > 1e-6)
+            H -= p * Math.log(p);
+    }
+    pSection = best;
+    pProb = bestV * invZ;
+    pMargin = (bestV - (secondV > 0 ? secondV : 0)) * invZ;
+    // Confianza epistémica: masa del pico descontada por la planitud de la
+    // distribución. Un pico de 0.35 en una distribución plana no es conocimiento
+    // — y el sistema lo declara. Complementa ORGANIC 1 (incertidumbre TEMPORAL
+    // por lock del PLL) con incertidumbre ESTRUCTURAL.
+    pEntropyConf = pProb * (1 - H * LN_S_INV);
+    return true;
+}
+/**
+ * Ganancia de fiabilidad del oráculo derivada del hit-rate empírico.
+ * Sin penalización en arranque en frío (hitRate = 0.5 → 1.0); un oráculo
+ * demostrablemente equivocado se descuenta hasta 0.75. El descuento es
+ * modesto porque s_P ya tiene suelo 0.5 en la cámara de fusión.
+ */
+function oracleTrust() {
+    return hitRateEMA >= 0.5 ? 1 : 0.75 + 0.5 * hitRateEMA;
+}
 // ═══════════════════════════════════════════════════════════════════════════
 // FUNCIONES PÚBLICAS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -106,39 +379,43 @@ let lastPrediction = null;
  */
 export function predict(pattern) {
     const timestamp = pattern.timestamp;
-    // Actualizar historial si cambió de sección
+    // Actualizar dwell/anillo y aprender la transición si cambió de sección
     updateHistory(pattern);
-    // Buscar patrones de progresión que matcheen
-    const matchedPattern = findMatchingPattern();
-    if (matchedPattern) {
+    // 🔮 CASSANDRA 2.0: lookup O(10) sobre el posterior jerárquico
+    if (predictStructural()) {
+        const predictionType = PTYPE[pSection];
         // 🌊 WAVE 5016: FLUID TIMING ENGINE — el tiempo es orgánico, no un número mágico.
         // Deriva el ETA del evento desde la aceleración de energía, el tiempo en sección
         // y el anclaje de fase del PLL en vez de un lookup fijo de 4/8 beats.
-        const { beats: beatsToEvent, ms: estimatedTimeMs } = estimateTimeToEvent(pattern, matchedPattern);
+        const { beats: beatsToEvent, ms: estimatedTimeMs } = estimateTimeToEvent(pattern, predictionType);
+        // Base = media geométrica de la masa del argmax y la confianza epistémica.
+        // Mantiene semántica de t-norma: si la distribución es plana, la base cae
+        // aunque el pico sea alto. Escalada por la fiabilidad empírica del oráculo.
+        const baseProbability = Math.sqrt(pProb * pEntropyConf) * oracleTrust();
         // 📈 WAVE 5016: ORGANIC CONFIDENCE — la confianza refleja el estado real del
         // motor sensorial (lock del PLL, histéresis de sección, alineación de energía).
-        const adjustedProbability = computeOrganicConfidence(matchedPattern.probability, pattern, matchedPattern);
+        const adjustedProbability = computeOrganicConfidence(baseProbability, pattern, predictionType);
         const prediction = {
-            type: matchedPattern.predictionType,
-            probableSection: matchedPattern.nextSection,
+            type: predictionType,
+            probableSection: SECTION_NAMES[pSection],
             probability: adjustedProbability,
             estimatedTimeMs,
             estimatedBeats: beatsToEvent,
-            reasoning: buildReasoning(matchedPattern, pattern),
-            suggestedActions: matchedPattern.actions,
+            reasoning: buildReasoning(pattern),
+            suggestedActions: SECTION_ACTIONS[pSection],
             timestamp,
         };
         lastPrediction = prediction;
         return prediction;
     }
-    // Sin predicción clara
+    // Sin contexto suficiente (arranque en frío: ninguna sección válida observada)
     const noPrediction = {
         type: 'none',
         probableSection: null,
         probability: 0,
         estimatedTimeMs: 0,
         estimatedBeats: 0,
-        reasoning: 'No hay patrón de progresión reconocido',
+        reasoning: 'Cassandra en frío: sin contexto de sección válido',
         suggestedActions: [],
         timestamp,
     };
@@ -152,76 +429,131 @@ export function getLastPrediction() {
     return lastPrediction;
 }
 /**
- * Obtiene el historial de secciones
+ * Obtiene el historial de secciones.
+ * Solo telemetría — asigna en la llamada, NO usar en el hot path.
  */
 export function getSectionHistory() {
-    return sectionHistory;
+    const out = [];
+    for (let i = 0; i < histCount; i++) {
+        const slot = (histWrite - histCount + i + MAX_HISTORY) % MAX_HISTORY;
+        const idx = histSection[slot];
+        if (idx < 0)
+            continue;
+        const ts = histTimestamp[slot];
+        const nextSlot = (slot + 1) % MAX_HISTORY;
+        const hasNext = i < histCount - 1;
+        out.push({
+            section: SECTION_NAMES[idx],
+            timestamp: ts,
+            durationMs: hasNext ? Math.max(0, histTimestamp[nextSlot] - ts) : 0,
+            energyLevel: 0,
+        });
+    }
+    return out;
 }
 /**
- * Verifica si una predicción previa fue correcta
- * (para aprendizaje futuro)
+ * Verifica si una predicción previa fue correcta.
+ *
+ * ⚠️ SOLO calibración/telemetría: NUNCA muta C1/C2.
+ * El conteo de frecuencias en observeSection() ya ES el estimador de máxima
+ * verosimilitud de la matriz de transición. Reforzar además las predicciones
+ * ACERTADAS crearía un bucle rich-get-richer: el argmax recibiría masa extra
+ * *por ser* el argmax, el estimador dejaría de ser consistente y la cadena se
+ * bloquearía en lo primero que viese. Toda observación aporta peso 1 exacto,
+ * haya sido predicha o no.
  */
 export function validatePrediction(prediction, actualSection) {
-    return prediction.probableSection === actualSection;
+    const hit = prediction.probableSection === actualSection;
+    hitRateEMA += ALPHA_HIT * ((hit ? 1 : 0) - hitRateEMA);
+    return hit;
 }
 /**
- * Resetea el estado de predicción
+ * Estado interno de Cassandra 2.0 (telemetría / caja negra).
+ */
+export function getCassandraState() {
+    return {
+        prev1: prev1 >= 0 ? SECTION_NAMES[prev1] : null,
+        prev2: prev2 >= 0 ? SECTION_NAMES[prev2] : null,
+        probableSection: pSection >= 0 ? SECTION_NAMES[pSection] : null,
+        probability: pProb,
+        margin: pMargin,
+        epistemicConfidence: pEntropyConf,
+        evidenceMass1: prev1 >= 0 ? N1[prev1] : 0,
+        evidenceMass2: (prev1 >= 0 && prev2 >= 0) ? N2[(prev2 << 4) | prev1] : 0,
+        hitRate: hitRateEMA,
+    };
+}
+/**
+ * Frontera de track: descarga el contexto y HALVA la evidencia.
+ * Conserva la estructura a nivel de estilo/género y descarta las
+ * idiosincrasias del track concreto. ~4 µs, una vez por track.
+ */
+export function onTrackChange() {
+    prev1 = -1;
+    prev2 = -1;
+    lastRawSection = -1;
+    histWrite = 0;
+    histCount = 0;
+    histSection.fill(-1);
+    for (let i = 0; i < C2.length; i++)
+        C2[i] *= 0.5;
+    for (let i = 0; i < C1.length; i++)
+        C1[i] *= 0.5;
+    for (let i = 0; i < N2.length; i++)
+        N2[i] *= 0.5;
+    for (let i = 0; i < N1.length; i++)
+        N1[i] *= 0.5;
+}
+/**
+ * Resetea el estado de predicción (arranque en frío: solo priors).
  */
 export function resetPredictionEngine() {
-    sectionHistory = [];
+    C2.fill(0);
+    C1.fill(0);
+    N2.fill(0);
+    N1.fill(0);
+    POST.fill(0);
+    prev1 = -1;
+    prev2 = -1;
+    hitRateEMA = 0.5;
+    pSection = -1;
+    pProb = 0;
+    pMargin = 0;
+    pEntropyConf = 0;
+    histSection.fill(-1);
+    histTimestamp.fill(0);
+    histWrite = 0;
+    histCount = 0;
+    sectionStartedAt = 0;
+    lastRawSection = -1;
     lastPrediction = null;
     energyHistory = []; // 🔮 WAVE 1169: Reset energy history too
 }
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Ingiere el frame: detecta cambio de segmento, actualiza dwell y anillo, y
+ * delega el aprendizaje en observeSection(). Zero-alloc.
+ */
 function updateHistory(pattern) {
-    const currentSection = pattern.section;
-    // Si el historial está vacío o cambió de sección
-    if (sectionHistory.length === 0 ||
-        sectionHistory[sectionHistory.length - 1].section !== currentSection) {
-        // Calcular duración de la sección anterior
-        if (sectionHistory.length > 0) {
-            const lastEntry = sectionHistory[sectionHistory.length - 1];
-            lastEntry.durationMs = pattern.timestamp - lastEntry.timestamp;
-        }
-        // Agregar nueva entrada
-        sectionHistory.push({
-            section: currentSection,
-            timestamp: pattern.timestamp,
-            durationMs: 0, // Se calculará cuando termine la sección
-            energyLevel: pattern.rhythmicIntensity,
-        });
-        // Mantener tamaño máximo
-        if (sectionHistory.length > MAX_HISTORY) {
-            sectionHistory.shift();
-        }
+    const idx = sectionIndex(pattern.section);
+    if (idx === lastRawSection)
+        return;
+    lastRawSection = idx;
+    // El dwell se reinicia en CUALQUIER cambio observado (incluido 'unknown'):
+    // es un hecho temporal, no una hipótesis estructural.
+    sectionStartedAt = pattern.timestamp;
+    // Anillo de telemetría — solo secciones estructuralmente válidas
+    if (idx !== UNK) {
+        histSection[histWrite] = idx;
+        histTimestamp[histWrite] = pattern.timestamp;
+        histWrite = (histWrite + 1) % MAX_HISTORY;
+        if (histCount < MAX_HISTORY)
+            histCount++;
     }
-}
-function findMatchingPattern() {
-    if (sectionHistory.length === 0)
-        return null;
-    // Ordenar patrones por longitud de trigger (más específicos primero)
-    const sortedPatterns = [...PROGRESSION_PATTERNS].sort((a, b) => b.trigger.length - a.trigger.length);
-    // Buscar match
-    for (const pattern of sortedPatterns) {
-        if (matchesTrigger(pattern.trigger)) {
-            return pattern;
-        }
-    }
-    return null;
-}
-function matchesTrigger(trigger) {
-    if (trigger.length > sectionHistory.length)
-        return false;
-    // Comparar últimas N secciones con el trigger
-    const recentSections = sectionHistory.slice(-trigger.length);
-    for (let i = 0; i < trigger.length; i++) {
-        if (recentSections[i].section !== trigger[i]) {
-            return false;
-        }
-    }
-    return true;
+    // Aprendizaje online de la transición de 2º orden
+    observeSection(pattern.section, 1);
 }
 // ═══════════════════════════════════════════════════════════════════════════
 // 🌊 WAVE 5016: FLUID TIMING ENGINE + 📈 ORGANIC CONFIDENCE
@@ -248,17 +580,17 @@ function matchesTrigger(trigger) {
 // 🔧 WAVE 7002 (F10): estimatePllLock() and bpmHistory REMOVED.
 // Cassandra now uses pattern.pllLocked (real PLL state) directly.
 // ═══════════════════════════════════════════════════════════════════════════
-/** 🌊 WAVE 5016: ms transcurridos en la sección actual (más reciente del historial) */
+/** 🌊 WAVE 5016: ms transcurridos en la sección actual (dwell) */
 function timeInCurrentSectionMs(now) {
-    if (sectionHistory.length === 0)
+    if (sectionStartedAt <= 0)
         return 0;
-    return Math.max(0, now - sectionHistory[sectionHistory.length - 1].timestamp);
+    return Math.max(0, now - sectionStartedAt);
 }
 /**
  * 🌊 WAVE 5016: FLUID TIMING — deriva el tiempo hasta el evento de forma orgánica.
  * Reemplaza el lookup fijo de 4/8 beats por una física de aceleración + dwell + fase.
  */
-function estimateTimeToEvent(pattern, matchedPattern) {
+function estimateTimeToEvent(pattern, predictionType) {
     const safeBpm = (pattern.bpm > 0 && Number.isFinite(pattern.bpm)) ? pattern.bpm : 120;
     const msPerBeat = 60000 / safeBpm;
     const velocity = calculateEnergyVelocity(); // delta de energía por frame
@@ -268,7 +600,7 @@ function estimateTimeToEvent(pattern, matchedPattern) {
     const velocityFactor = Math.max(0, Math.min(1, velocity / 0.02));
     // Baseline de beats por tipo de predicción (punto de partida, no destino fijo)
     let baseBeats;
-    switch (matchedPattern.predictionType) {
+    switch (predictionType) {
         case 'drop_incoming':
             baseBeats = 8;
             break;
@@ -311,7 +643,7 @@ function estimateTimeToEvent(pattern, matchedPattern) {
  * 📈 WAVE 5016: ORGANIC CONFIDENCE — la confianza es un reflejo del estado sensorial.
  * Reemplaza los multiplicadores hardcodeados por un cálculo verdaderamente reactivo.
  */
-function computeOrganicConfidence(baseProbability, pattern, matchedPattern) {
+function computeOrganicConfidence(baseProbability, pattern, predictionType) {
     const safeBpm = (pattern.bpm > 0 && Number.isFinite(pattern.bpm)) ? pattern.bpm : 120;
     const msPerBeat = 60000 / safeBpm;
     // 🔧 WAVE 7002 (F10): Use REAL pllLocked from pattern instead of re-derived estimatePllLock()
@@ -332,9 +664,9 @@ function computeOrganicConfidence(baseProbability, pattern, matchedPattern) {
     confidence += hysteresisBoost;
     // 📈 ORGANIC 3: ALINEACIÓN DE ENERGÍA — para predicciones de build/drop, una
     // velocity creciente confirma el relato. Suma hasta +0.12.
-    const isEnergeticType = matchedPattern.predictionType === 'drop_incoming'
-        || matchedPattern.predictionType === 'buildup_starting'
-        || matchedPattern.predictionType === 'energy_spike';
+    const isEnergeticType = predictionType === 'drop_incoming'
+        || predictionType === 'buildup_starting'
+        || predictionType === 'energy_spike';
     if (isEnergeticType && pattern.isBuilding) {
         confidence += velocityFactor * 0.12;
     }
@@ -344,10 +676,15 @@ function computeOrganicConfidence(baseProbability, pattern, matchedPattern) {
     }
     return Math.max(0, Math.min(1, confidence));
 }
-function buildReasoning(matchedPattern, pattern) {
-    const triggerStr = matchedPattern.trigger.join(' → ');
-    const prob = (matchedPattern.probability * 100).toFixed(0);
-    let reason = `Patrón [${triggerStr}] detectado → ${matchedPattern.nextSection} (${prob}%)`;
+function buildReasoning(pattern) {
+    const ctx = prev2 >= 0
+        ? `${SECTION_NAMES[prev2]} → ${SECTION_NAMES[prev1]}`
+        : `${SECTION_NAMES[prev1]}`;
+    const prob = (pProb * 100).toFixed(0);
+    const mass = prev2 >= 0 ? N2[(prev2 << 4) | prev1] : N1[prev1];
+    let reason = `🔮 Markov²[${ctx}] → ${SECTION_NAMES[pSection]} (${prob}%` +
+        `, margen ${(pMargin * 100).toFixed(0)}%, H⁻¹ ${(pEntropyConf * 100).toFixed(0)}%` +
+        `, evidencia ${mass.toFixed(1)})`;
     if (pattern.isBuilding) {
         reason += ', energía subiendo';
     }

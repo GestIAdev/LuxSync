@@ -200,9 +200,14 @@ export class CognitiveFluidState {
         // Impact must genuinely exceed 85% of current tension to generate epicness.
         // At effectiveTension=0.595 (tension=0.70), impact needs >0.595 for any epicness.
         //
-        // Vibe Friction: Hard genres (techno/industrial/hardstyle/dark) apply
-        // epicness^1.8 — suppresses mid-range epicness, only true peaks break through.
-        // Soft genres (ambient/latina/chill) apply epicness^1.0 — no friction.
+        // §5.4: Vibe Friction PURGED — replaced with continuous ΠMΔG interpolation.
+        // The friction exponent is now a function of the fluid descriptors:
+        //   frictionExp = 1.0 + 0.3 · Π·(1−M)
+        //     High percussiveness + low melodicity (techno-like) → 1.3 (compresses)
+        //     Low percussiveness or high melodicity (ambient-like) → 1.0 (no friction)
+        //   sustainedEpic = clamp01((temperature - 0.55) / 0.35)
+        //     Active when groove G is high (latin-like sustained energy), blended
+        //     via max() with the impact-based path.
         //
         // Fase 1B (PRECISION TUNING): Energy factor gate.
         // Fase D (ARCHITECTURAL): Contextual Memory injection.
@@ -232,24 +237,19 @@ export class CognitiveFluidState {
             this._smoothedPhaseMod += ALPHA_PHASE_MOD * (targetPhaseMod - this._smoothedPhaseMod);
             const phaseModifier = this._smoothedPhaseMod;
             let epic = clamp01(baseEpicness * energyFactor * phaseModifier);
-            // Vibe friction: hard genres compress epicness curve
-            const vibe = input.vibe ?? '';
-            const isHardVibe = vibe.includes('techno') || vibe.includes('industrial')
-                || vibe.includes('hardstyle') || vibe.includes('dark');
-            if (isHardVibe) {
-                epic = Math.pow(epic, 1.3);
+            // ΠMΔG friction: percussive + non-melodic contexts compress the epicness curve.
+            // No genre strings — pure fluid descriptor interpolation.
+            const d = input.descriptors;
+            const frictionExp = 1.0 + 0.3 * clamp01(d.percussiveness * (1 - clamp01(d.melodicity)));
+            if (frictionExp > 1.001) {
+                epic = Math.pow(epic, frictionExp);
             }
-            // 🩸 WAVE 7173: Sustained-energy epicness for Latin vibes.
-            // Reggaeton/cumbia sustain energy at 0.72-0.85 without dramatic spectral
-            // spikes → z-scores stay low → impact can't exceed tension → baseEpicness
-            // near zero. But sustained high temperature IS the epic moment in Latin
-            // music. This parallel path uses temperature directly instead of requiring
-            // impact > tension.
-            const isLatinVibe = vibe.includes('latina') || vibe.includes('latino') || vibe.includes('fiesta');
-            if (isLatinVibe) {
-                const sustainedEpic = clamp01((this._temperature - 0.55) / 0.35);
-                epic = Math.max(epic, sustainedEpic * energyFactor * phaseModifier);
-            }
+            // Sustained-energy epicness: high-groove contexts (latin-like) sustain energy
+            // without spectral spikes. Temperature directly represents the epic moment.
+            // Blended via max() — the dominant path wins.
+            const sustainedEpic = clamp01((this._temperature - 0.55) / 0.35);
+            const grooveGate = clamp01(d.groove * 2.0); // groove > 0.5 fully activates
+            epic = Math.max(epic, sustainedEpic * energyFactor * phaseModifier * grooveGate);
             // EMA asimétrica: subida moderada, bajada lenta — estabiliza sin perder respuesta
             const alphaE = epic > this._epicness ? ALPHA_EPIC_UP : ALPHA_EPIC_DOWN;
             this._epicness += alphaE * (epic - this._epicness);

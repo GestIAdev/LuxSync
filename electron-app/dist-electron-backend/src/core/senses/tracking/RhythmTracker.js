@@ -279,6 +279,7 @@ export class RhythmTracker {
         this.tempoOracle.process(needleOut.needle, deterministicTimestampMs);
         const oracleBpm = this.tempoOracle.bpm;
         const confidence = this.tempoOracle.confidence;
+        const oraclePeakHeight = this.tempoOracle.peakHeight;
         // 4. Kalman 1D sobre la medida del Oracle (soft-gate, sin frontera dura)
         const smoothedBpm = this.kalmanUpdate(oracleBpm, confidence);
         // 5. FASE — onset gate alimentado con el tempo ya suavizado.
@@ -309,6 +310,8 @@ export class RhythmTracker {
             kickDetected,
             kickCount: this.phaseGate.kickCount,
             rawBpm: smoothedBpm,
+            oracleRawBpm: oracleBpm,
+            oraclePeakHeight,
             // Telemetría para ShadowLogger / diagnóstico
             rawLowFlux: needleOut.rawLowFlux,
             rawMidFlux: needleOut.rawMidFlux,

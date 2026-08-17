@@ -16,14 +16,6 @@ import { CognitiveFluidState } from './CognitiveFluidState';
 import { SensorFusionChamber } from './SensorFusionChamber';
 import { IgnitionChamber } from './IgnitionChamber';
 // ═══════════════════════════════════════════════════════════════════════════
-// Genoma neutral para Shadow Mode (sin candidato específico)
-// ═══════════════════════════════════════════════════════════════════════════
-export const NEUTRAL_GENOME = {
-    aggression: 0.5,
-    chaos: 0.5,
-    organicity: 0.5,
-};
-// ═══════════════════════════════════════════════════════════════════════════
 // Núcleo orquestador — zero-alloc, determinístico
 // ═══════════════════════════════════════════════════════════════════════════
 export class LiquidCognitionCore {
@@ -41,7 +33,7 @@ export class LiquidCognitionCore {
             tension: 0, impact: 0, crestFactor: 0, excitability: 1,
             vaporPressure: 0, rawEnergy: 0, energyMaxHistoric: 1,
             percussiveness: 0, dirtiness: 0, bassPresence: 0, midPresence: 0,
-            effectGenome: NEUTRAL_GENOME, predictionProbability: 0,
+            predictionProbability: 0,
             predictionAlignment: 0, totalBeauty: 0.5, consonance: 0.7,
         });
         this._verdict = {
@@ -84,6 +76,10 @@ export class LiquidCognitionCore {
     get mood() { return this._mood; }
     /** V3.4.4: Acceso directo a descriptores ΠMΔG para telemetría */
     get descriptors() { return this._descriptors.getDescriptors(); }
+    /** 🪟 Transitorio real (CF>2) en el frame actual — evidencia para Glass Break */
+    get crestEvent() { return this._descriptors.crestEvent; }
+    /** R(t) — crestas CF>2 por segundo (telemetría) */
+    get crestRate() { return this._descriptors.crestRate; }
     /**
      * Ejecuta el pipeline fluídico completo para un frame.
      * Hot path 44Hz — sin allocs, sin branches de género, determinístico.
@@ -94,6 +90,7 @@ export class LiquidCognitionCore {
      */
     process(input, now) {
         // ── 1. Actualizar descriptores ΠMΔG (EMA lenta 8s) ──
+        // Π ahora viene del TRUE CREST DETECTOR: necesita rawEnergy + reloj.
         this._descriptors.update({
             midPresence: input.midPresence,
             harshness: input.harshness,
@@ -101,7 +98,9 @@ export class LiquidCognitionCore {
             harmonicDensity: input.harmonicDensity,
             syncopation: input.syncopation,
             rhythmicIntensity: input.rhythmicIntensity,
-        });
+            rawEnergy: input.rawEnergy,
+            bandEnergies: input.bandEnergies,
+        }, now);
         // ── 1b. TEXTURE RADAR — throttled logger (~2s) — DISABLED (noisy) ──
         // this._textureLogFrame++
         // if (this._textureLogFrame >= 90) {
@@ -139,7 +138,6 @@ export class LiquidCognitionCore {
             contextualPhase: input.contextualPhase,
             isWarmedUp: input.isWarmedUp,
             acousticReality: input.acousticReality,
-            vibe: input.vibe,
             descriptors: {
                 percussiveness: this._descriptors.percussiveness,
                 melodicity: this._descriptors.melodicity,
@@ -161,7 +159,6 @@ export class LiquidCognitionCore {
             dirtiness: this._descriptors.dirtiness,
             bassPresence: input.bassPresence,
             midPresence: input.midPresence,
-            effectGenome: input.effectGenome,
             predictionProbability: input.predictionProbability,
             predictionAlignment: input.predictionAlignment,
             totalBeauty: input.totalBeauty,

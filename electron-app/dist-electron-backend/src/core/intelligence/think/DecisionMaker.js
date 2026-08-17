@@ -35,6 +35,10 @@ function throttledLog(reason, message, limitMs = 1000) {
         logThrottles.set(reason, now);
     }
 }
+/** Clamp x to [0, 1] without branches (ΠMΔG interpolation helper) */
+function clamp01(x) {
+    return x < 0 ? 0 : x > 1 ? 1 : x;
+}
 // ═══════════════════════════════════════════════════════════════════════════
 // 🔪 WAVE 1010: DIVINE THRESHOLD & VIBE-AWARE ARSENAL
 // ═══════════════════════════════════════════════════════════════════════════
@@ -141,34 +145,31 @@ function determineDecisionType(inputs) {
     // 🌩️ PRIORIDAD -1: DIVINE MOMENT — V3.4: epicness > epsilon_divine
     // Static Z-score thresholds extirpated. V3 Liquid Cognition's epicness
     // is the sole authority for Divine arsenal routing.
-    // 🩸 WAVE 7159: Vibe-adjusted threshold — techno minimal sustains energy
-    // but lacks spectral divergence for massive impact spikes. Lowering the
-    // divine gate to 0.50 for techno/industrial/hardstyle lets Selene access
-    // her divine arsenal without breaking epicness doctrine. Other genres
-    // keep the strict 0.60 threshold.
+    //
+    // §5.4: Vibe branches (isTechnoVibe / isLatinVibe) PURGED — replaced with
+    // continuous ΠMΔG interpolation. The divine threshold is now a function of
+    // the fluid descriptors, not a genre string:
+    //   V3_EPSILON_DIVINE = 0.60 - 0.10 · Π·(1−M)
+    //     High percussiveness + low melodicity (techno) → 0.50 (permissive)
+    //     Low percussiveness or high melodicity (ambient) → 0.60 (strict)
+    //   DIVINE_SUSTAINED_RMS_FLOOR = 0.75 - 0.10 · G
+    //     High groove (latin reggaeton) → 0.65 (lower floor)
+    //     Low groove (ambient) → 0.75 (strict floor)
     // ═══════════════════════════════════════════════════════════════════════
-    const vibeId = pattern.vibeId ?? '';
-    const isTechnoVibe = vibeId.includes('techno') || vibeId.includes('industrial') || vibeId.includes('hardstyle');
-    const isLatinVibe = vibeId.includes('latina') || vibeId.includes('latino') || vibeId.includes('fiesta');
-    const V3_EPSILON_DIVINE = isTechnoVibe ? 0.50 : 0.60;
     const v3Epicness = inputs.v3Epicness ?? 0;
+    // ΠMΔG interpolation — no genre strings, pure fluid descriptors
+    const Π = pattern.rhythmicIntensity ?? 0; // percussiveness proxy (pattern-level)
+    const M = pattern.harmonicDensity ?? 0.5; // melodicity proxy
+    const G = pattern.syncopation ?? 0; // groove
+    const V3_EPSILON_DIVINE = 0.60 - 0.10 * clamp01(Π * (1 - clamp01(M)));
     // 🩸 WAVE 7171: Two-path divine gate — A) brutal isolated peak OR B) sustained epicness
-    // 🩸 WAVE 7172: Latin vibes use lower RMS10s floor (0.65 vs 0.75) — reggaeton's
-    // oscillating bass keeps RMS10s at 0.62-0.67, never reaching 0.75. This would
-    // permanently block divine effects like Latina Meltdown in Latin genres.
     const rms10s = inputs.rmsAverage10s ?? 0;
-    const DIVINE_SUSTAINED_RMS_FLOOR = isLatinVibe ? 0.65 : 0.75;
+    const DIVINE_SUSTAINED_RMS_FLOOR = 0.75 - 0.10 * clamp01(G);
     // 🩸 WAVE 7186: Sustained epicness threshold raised to 0.50 for ALL vibes.
-    // The previous 0.35 for Latin allowed divines at epicness=0.37 which is
-    // merely "energetic", not "divine". With Z ≥ 2.10 + epicness ≥ 0.50 the
-    // divine is truly rare.
     const DIVINE_SUSTAINED_EPICNESS = 0.50;
     const divinePeakPassed = v3Epicness > V3_EPSILON_DIVINE;
     const divineSustainedPassed = v3Epicness > DIVINE_SUSTAINED_EPICNESS && rms10s > DIVINE_SUSTAINED_RMS_FLOOR;
     // 🩸 WAVE 7186: Z-SCORE FLOOR — Divine is a rare event by definition.
-    // V2 experience set this at 2.2σ. We relax to 2.10σ to give Latin genres
-    // a sliver of headroom while still preventing divines at 1.6-1.7σ which
-    // are merely "energetic", not "divine".
     const DIVINE_MIN_Z_SCORE = 2.10;
     const divineZPassed = (zScore ?? 0) >= DIVINE_MIN_Z_SCORE;
     const divineGatePassed = (divinePeakPassed || divineSustainedPassed) && divineZPassed;
@@ -177,7 +178,7 @@ function determineDecisionType(inputs) {
     }
     else if (divineGatePassed) {
         console.log(`[DecisionMaker 🌩️] DIVINE MOMENT: V3 epicness=${v3Epicness.toFixed(3)}` +
-            ` (peak>${V3_EPSILON_DIVINE}? ${divinePeakPassed}; sustained>${DIVINE_SUSTAINED_EPICNESS}+rms>${DIVINE_SUSTAINED_RMS_FLOOR}? ${divineSustainedPassed})` +
+            ` (peak>${V3_EPSILON_DIVINE.toFixed(2)}? ${divinePeakPassed}; sustained>${DIVINE_SUSTAINED_EPICNESS}+rms>${DIVINE_SUSTAINED_RMS_FLOOR.toFixed(2)}? ${divineSustainedPassed})` +
             ` Z=${(zScore ?? 0).toFixed(2)}σ ≥ ${DIVINE_MIN_Z_SCORE}? ${divineZPassed}` +
             ` → MANDATORY FIRE`);
         return 'divine_strike';
@@ -195,7 +196,7 @@ function determineDecisionType(inputs) {
         else if (divineLeakBlocked) {
             throttledLog(`divineLeak:${proposedEffect}`, `[DecisionMaker 🛡️] DIVINE LEAK BLOCKED: "${proposedEffect}" is divine ` +
                 `but V3 epicness=${v3Epicness.toFixed(3)} ` +
-                `(peak>${V3_EPSILON_DIVINE}? ${divinePeakPassed}; sustained>${DIVINE_SUSTAINED_EPICNESS}+rms>${DIVINE_SUSTAINED_RMS_FLOOR}? ${divineSustainedPassed})` +
+                `(peak>${V3_EPSILON_DIVINE.toFixed(2)}? ${divinePeakPassed}; sustained>${DIVINE_SUSTAINED_EPICNESS}+rms>${DIVINE_SUSTAINED_RMS_FLOOR.toFixed(2)}? ${divineSustainedPassed})` +
                 ` → falling through`, 5000);
         }
         else {

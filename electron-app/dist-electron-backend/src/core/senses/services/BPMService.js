@@ -38,6 +38,8 @@ export class BPMService {
             kickCount: 0,
             lastBeatTime: 0,
             rawBpm: 0,
+            oracleRawBpm: 0,
+            oraclePeakHeight: 0,
         };
     }
     /**
@@ -84,6 +86,8 @@ export class BPMService {
             kickCount: track.kickCount,
             lastBeatTime: track.lastBeatTime,
             rawBpm: track.rawBpm,
+            oracleRawBpm: track.oracleRawBpm,
+            oraclePeakHeight: track.oraclePeakHeight,
         };
         return this.lastResult;
     }
@@ -118,6 +122,8 @@ export class BPMService {
             kickCount: 0,
             lastBeatTime: 0,
             rawBpm: 0,
+            oracleRawBpm: 0,
+            oraclePeakHeight: 0,
         };
     }
 }

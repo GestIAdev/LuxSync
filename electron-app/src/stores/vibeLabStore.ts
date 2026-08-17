@@ -41,6 +41,7 @@ import { createEmptyCustomVibe, isBaseDNA } from '../types/CustomVibe'
 
 import { setByPath, deleteByPath, deleteByPrefix, countLeaves, getByPath } from '../engine/vibe/custom/pathUtils'
 import { expandMacroClamped } from '../engine/vibe/custom/macroGenes'
+import { resetGraftCache } from './vibeLab/engineSync'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TIPOS
@@ -87,7 +88,7 @@ export interface VibeLabState {
   // ── ACCIONES: sesión ──────────────────────────────────────────────
   beginSession: (baseDNA: BaseDNA, name: string) => void
   openFromVault: (key: CustomVibeKey) => Promise<void>
-  closeSession: (discard: boolean) => void
+  closeSession: (discard: boolean) => Promise<void>
   rebase: (newBase: BaseDNA, keepMutations: boolean) => void
 
   // ── ACCIONES: genes ───────────────────────────────────────────────
@@ -225,6 +226,9 @@ export const useVibeLabStore = create<VibeLabState>()(
       openFromVault: async (key) => {
         const ipc = getVibeLabIPC()
         if (!ipc) return
+        // PROTEUS FIX 4: Reset the graft cache so the engine re-applies this
+        // vibe even if it was the last grafted key (avoids the re-load no-op).
+        resetGraftCache()
         set({ vaultLoading: true })
         try {
           const result = await ipc.read(key)
@@ -251,11 +255,13 @@ export const useVibeLabStore = create<VibeLabState>()(
         }
       },
 
-      closeSession: (discard) => {
-        const { pristine, draft } = get()
-        if (!discard && pristine && draft) {
-          // Guardar implícito: restaurar pristine como draft actual.
-          // En Fase 4, esto disparará mint() si isDirty.
+      closeSession: async (discard) => {
+        const { pristine, draft, isDirty } = get()
+        // PROTEUS FIX 5: If !discard && isDirty && draft, auto-mint before
+        // closing to prevent silent data loss. The mint() action saves the
+        // draft to disk and refreshes the vault.
+        if (!discard && isDirty && draft) {
+          await get().mint()
         }
         set((state) => {
           state.draft = null

@@ -23,7 +23,10 @@ export { processHunt, forcePhaseTransition, getHuntState, resetHuntEngine, getHu
 export { predict, predictCombined, // 🔮 WAVE 1169: Combinado sección + energía
 predictFromEnergy, // 🔮 WAVE 1169: Solo por tendencia de energía
 getLastPrediction, getSectionHistory, getEnergyPredictionState, // 🔮 WAVE 1169: Debug del historial de energía
-validatePrediction, resetPredictionEngine, resetEnergyHistory } from './PredictionEngine';
+validatePrediction, resetPredictionEngine, resetEnergyHistory, // 🔮 WAVE 1169: Reset historial energía
+observeSection, // 🔮 CASSANDRA 2.0: aprendizaje online explícito
+getCassandraState, // 🔮 CASSANDRA 2.0: telemetría del posterior
+onTrackChange } from './PredictionEngine';
 // Decision Maker - Síntesis final
 // V3.4: DIVINE_THRESHOLD purged — V3 epicness is the sole authority.
 export { makeDecision, mergeDecisions, isSignificantDecision } from './DecisionMaker';

@@ -19,18 +19,19 @@
  * El store persiste el vibe actual incluso cuando DashboardView se desmonta.
  */
 
-import { useEffect, useCallback, useRef } from 'react'
+import { useEffect, useCallback, useRef, useMemo } from 'react'
 import { useControlStore } from '../stores/controlStore'
 import { useVibeStore } from '../stores/vibeStore'
+import { useVibeLabStore } from '../stores/vibeLabStore'
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
-// B4 FIX: VibeId = 4 vibes visuales (sin 'idle').
-// VibeIdWithIdle = tipo extendido para setVibe, que permite el toggle-off desde UI.
-// VIBE_PRESETS usa solo VibeId — no hay preset visual para 'idle'.
-export type VibeId = 'techno-club' | 'fiesta-latina' | 'pop-rock' | 'chill-lounge'
+// PROTEUS FIX 1: VibeId widened to string so custom:* keys are accepted.
+// The canonical 4 vibes are still the "base" set; custom vibes are merged in
+// dynamically from the VibeLab vault at runtime.
+export type VibeId = string
 export type VibeIdWithIdle = VibeId | 'idle'
 
 export interface VibeInfo {
@@ -42,7 +43,8 @@ export interface VibeInfo {
   glowColor: string    // CSS glow shadow
 }
 
-export const VIBE_PRESETS: Record<VibeId, VibeInfo> = {
+// The 4 canonical presets — static, never changes.
+export const VIBE_PRESETS: Record<string, VibeInfo> = {
   'techno-club': {
     id: 'techno-club',
     name: 'Techno',
@@ -83,11 +85,11 @@ export interface UseSeleneVibeReturn {
   isTransitioning: boolean
   vibeInfo: VibeInfo | null
   isLoading: boolean
-  
+
   // Actions
   // B3 FIX: setVibe acepta 'idle' para toggle-off desde UI
   setVibe: (vibeId: VibeIdWithIdle) => Promise<void>
-  
+
   // Computed
   isGhostMode: boolean
   allVibes: VibeInfo[]
@@ -107,7 +109,12 @@ export function useSeleneVibe(): UseSeleneVibeReturn {
   const setCurrentVibe = useVibeStore(state => state.setCurrentVibe)
   const setHasFetchedInitial = useVibeStore(state => state.setHasFetchedInitial)
   const setTransitioning = useVibeStore(state => state.setTransitioning)
-  
+
+  // PROTEUS FIX 1: Subscribe to the VibeLab vault so custom vibes appear
+  // in the main VibeSelector dynamically. The vault is loaded by GenomeVault
+  // on mount, and refreshed after every mint/delete/duplicate/import.
+  const vault = useVibeLabStore(state => state.vault)
+
   const unsubscribeRef = useRef<(() => void) | null>(null)
   
   // Check global mode for ghost mode (hide when not in Selene mode)
@@ -194,15 +201,38 @@ export function useSeleneVibe(): UseSeleneVibeReturn {
   // Computed values
   const activeVibe = getVisualVibe()  // null if currentVibe === 'idle'
   const isLoading = !hasFetchedInitial
-  
+
+  // PROTEUS FIX 1: Merge canonical presets with custom vibes from the vault.
+  // Custom vibes get a VibeInfo derived from their CustomVibeMeta.
+  const allVibes = useMemo(() => {
+    const canonical = Object.values(VIBE_PRESETS)
+    const custom: VibeInfo[] = vault.map((meta) => ({
+      id: meta.key,
+      name: meta.name,
+      icon: meta.icon || '🧬',
+      description: meta.description || `Custom vibe by ${meta.author || 'unknown'}`,
+      accentColor: 'cyan',  // custom vibes use the cyan style by default
+      glowColor: `${meta.accentHex || '#00e5ff'}99`,  // hex + alpha
+    }))
+    return [...canonical, ...custom]
+  }, [vault])
+
+  // PROTEUS FIX 1: vibeInfo lookup must check custom vibes too, not just VIBE_PRESETS.
+  const vibeInfo = useMemo(() => {
+    if (!activeVibe) return null
+    if (VIBE_PRESETS[activeVibe]) return VIBE_PRESETS[activeVibe]
+    // Look up in the merged list for custom vibes
+    return allVibes.find((v) => v.id === activeVibe) ?? null
+  }, [activeVibe, allVibes])
+
   return {
     activeVibe,
     isTransitioning,
-    vibeInfo: activeVibe ? VIBE_PRESETS[activeVibe] : null,
+    vibeInfo,
     isLoading,
     setVibe,
     isGhostMode,
-    allVibes: Object.values(VIBE_PRESETS)
+    allVibes
   }
 }
 

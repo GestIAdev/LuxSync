@@ -16,8 +16,8 @@ import { create } from 'zustand'
 // TYPES
 // ============================================================================
 
-export type VibeId = 'idle' | 'techno-club' | 'fiesta-latina' | 'pop-rock' | 'chill-lounge'
-export type VibeVisualId = 'techno-club' | 'fiesta-latina' | 'pop-rock' | 'chill-lounge'
+export type VibeId = string  // 'idle' | canonical vibe IDs | 'custom:...' keys
+export type VibeVisualId = string  // canonical vibe IDs | 'custom:...' keys (never 'idle')
 
 interface VibeStoreState {
   // Current vibe (backend truth)
@@ -69,7 +69,7 @@ export const useVibeStore = create<VibeStoreState>((set, get) => ({
   getVisualVibe: () => {
     const vibe = get().currentVibe
     // 'idle' se mapea a null visual (ningún botón iluminado)
-    return vibe === 'idle' ? null : vibe as VibeVisualId
+    return vibe === 'idle' ? null : vibe
   }
 }))
 

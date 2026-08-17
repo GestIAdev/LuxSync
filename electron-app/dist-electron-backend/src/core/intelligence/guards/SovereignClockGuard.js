@@ -33,8 +33,14 @@ export class SovereignClockGuard {
         }
         const timeToEvent = bufferStatus.predictedEventAt - ctx.now;
         // ── Glass Break Sensor (WAVE 5016 + WAVE 6040 Regla del Valle) ──
+        // 🪟 TRUE CREST DETECTOR: un Z-Score se calcula sobre una ventana de 30s y
+        // difumina los transitorios; un evento de cresta CF>2 es evidencia física
+        // de que ALGO acaba de golpear en este frame. Corrobora la anomalía, así que
+        // relaja el umbral Z medio sigma — nunca lo bypasea (una cresta sola ocurre
+        // ~4 veces por segundo en techno; no es un drop).
         const valleyBreath = ctx.minEnergySinceLastEffect <= 0.45;
-        const GLASS_BREAK_Z = valleyBreath ? 2.5 : 3.5;
+        const crestCorroboration = ctx.crestEvent === true ? 0.5 : 0;
+        const GLASS_BREAK_Z = Math.max(2.0, (valleyBreath ? 2.5 : 3.5) - crestCorroboration);
         const glassBreak = timeToEvent > 0 &&
             ctx.isWarmedUp &&
             ctx.currentZScore >= GLASS_BREAK_Z &&

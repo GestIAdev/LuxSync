@@ -212,6 +212,9 @@ export class TrinityBrain extends EventEmitter {
             kickCount: analysis.kickCount,
             // ðŸ”¬ KILL THE POCKETS: Raw Oracle BPM (pre-Kalman) for telemetry
             rawBpm: analysis.rawBpm,
+            // 🔬 TRUTH TELLER: True pre-Kalman Oracle BPM + raw NSDF peak height
+            oracleRawBpm: analysis.oracleRawBpm,
+            oraclePeakHeight: analysis.oraclePeakHeight,
             // 🔬 WAVE 3418: Telemetría raw del buffer de entrada — peak/RMS pre-ring pre-FFT
             inputPeakAbs: analysis.inputPeakAbs,
             inputRMS: analysis.inputRMS,

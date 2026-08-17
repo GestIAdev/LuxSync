@@ -25,6 +25,8 @@
  * @author PunkOpus (Opus 4.5)
  * @date 2026-01-20
  */
+// 🛡️ WAVE 1030: DNA registry for texture affinity checking
+import { getDynamicEffectRegistry } from '../../arsenal/DynamicEffectRegistry';
 // ═══════════════════════════════════════════════════════════════
 // SEVERITY PENALTIES
 // ═══════════════════════════════════════════════════════════════
@@ -216,37 +218,38 @@ const VIBE_COHERENCE = {
             id: 'vibe_effect_match',
             severity: 'critical',
             check: (context, effect) => {
-                // TECHNO NO DEBE USAR SOLAR_FLARE (HEREJÍA ABSOLUTA)
-                if (context.vibe.includes('techno') && effect.effect === 'solar_flare') {
-                    // ⏳ FIX 3: WAVE 5008 - Falsa Rebeldía del Modo PUNK
-                    // En modo PUNK, vibe_coherence se degrada a warning (penalty=0.1) en lugar de crítico
+                // §5.4: Vibe branches PURGED — registry-based compatibility replaces genre strings.
+                // The .lfx files declare compatibleVibes for each effect. If the current vibe
+                // is NOT in the effect's compatibleVibes, it's a heresy (critical penalty).
+                // PUNK mode degrades heresy to warning (per WAVE 5008).
+                const entry = getDynamicEffectRegistry().getEntry(effect.effect);
+                if (entry && entry.compatibleVibes.length > 0 && !entry.compatibleVibes.includes(context.vibe)) {
                     const moodController = MoodController.getInstance();
                     const currentProfile = moodController.getCurrentProfile();
                     const isPunk = currentProfile.name.toUpperCase() === 'PUNK' || currentProfile.allowEthicsOverride;
                     return {
                         passed: false,
-                        reason: isPunk ? 'HERESY: solar_flare forbidden in Techno (OVERRIDDEN BY PUNK)' : 'HERESY: solar_flare forbidden in Techno',
+                        reason: isPunk
+                            ? `HERESY: ${effect.effect} not compatible with ${context.vibe} (OVERRIDDEN BY PUNK)`
+                            : `HERESY: ${effect.effect} not compatible with ${context.vibe}`,
                         penalty: isPunk ? 0.1 : 1.0,
                         severity: isPunk ? 'low' : 'critical'
                     };
                 }
-                // Latino NO debe usar industrial_strobe (a menos que sea drop épico)
-                if (context.vibe.includes('latino') &&
-                    effect.effect === 'industrial_strobe' &&
-                    context.energy < 0.85) {
+                // High-aggression effects in low-energy contexts are suppressed regardless of vibe
+                const aggression = entry?.dna.aggression ?? 0;
+                if (aggression > 0.8 && context.energy < 0.85) {
                     return {
                         passed: false,
-                        reason: 'industrial_strobe too aggressive for Latino (energy < 0.85)',
+                        reason: `${effect.effect} too aggressive for current energy (aggression=${aggression.toFixed(2)}, energy < 0.85)`,
                         penalty: 0.6
                     };
                 }
-                // Chill NO debe usar strobes agresivos
-                if (context.vibe.includes('chill') &&
-                    effect.effect.includes('strobe') &&
-                    effect.intensity > 0.5) {
+                // Strobes at high intensity in any low-energy context are suppressed
+                if (effect.effect.includes('strobe') && effect.intensity > 0.5 && context.energy < 0.40) {
                     return {
                         passed: false,
-                        reason: 'Strobe too aggressive for Chill vibe',
+                        reason: 'Strobe too aggressive for low energy context',
                         penalty: 0.6
                     };
                 }
@@ -257,29 +260,16 @@ const VIBE_COHERENCE = {
             id: 'vibe_category_bonus',
             severity: 'low',
             check: (context, effect) => {
-                // Boost efectos que matchen perfectamente con vibe
-                // Techno + industrial effects (WAVE 902.1: TRUTH - 3 effects)
-                if (context.vibe.includes('techno')) {
-                    const technoEffects = ['industrial_strobe', 'acid_sweep', 'cyber_dualism'];
-                    if (technoEffects.includes(effect.effect)) {
-                        return {
-                            passed: true,
-                            boost: 0.15,
-                            reason: 'Perfect Techno match'
-                        };
-                    }
-                }
-                // Latino + organic effects (WAVE 902.1: TRUTH - 10 effects)
-                if (context.vibe.includes('latino')) {
-                    const latinoEffects = ['solar_flare', 'strobe_storm', 'strobe_burst', 'tidal_wave', 'ghost_breath',
-                        'tropical_pulse', 'salsa_fire', 'cumbia_moon', 'clave_rhythm', 'corazon_latino'];
-                    if (latinoEffects.includes(effect.effect)) {
-                        return {
-                            passed: true,
-                            boost: 0.15,
-                            reason: 'Perfect Latino match'
-                        };
-                    }
+                // §5.4: Vibe branches PURGED — registry-based bonus replaces hardcoded family lists.
+                // If the effect's compatibleVibes explicitly includes the current vibe,
+                // it's a perfect match (boost 0.15). No genre strings needed.
+                const entry = getDynamicEffectRegistry().getEntry(effect.effect);
+                if (entry && entry.compatibleVibes.includes(context.vibe)) {
+                    return {
+                        passed: true,
+                        boost: 0.15,
+                        reason: `Perfect vibe match: ${effect.effect} ↔ ${context.vibe}`
+                    };
                 }
                 return { passed: true };
             }

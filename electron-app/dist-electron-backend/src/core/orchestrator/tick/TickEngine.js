@@ -278,14 +278,24 @@ export class TickEngine {
                     const delta = Math.abs(workerBpm - this._stableBpm) / this._stableBpm;
                     if (delta > TickEngine.BPM_HYSTERESIS_PCT) {
                         // Large change — require confirmation
-                        // 🛡️ Detect octave jumps (×2 or ÷2) for the logger tag
+                        // 🛡️ Detect octave jumps (×2 or ÷2) for asymmetric validation
                         const ratio = workerBpm / this._stableBpm;
                         const isOctaveDown = ratio < 0.55 && ratio > 0.45; // ~÷2
                         const isOctaveUp = ratio > 1.85 && ratio < 2.15; // ~×2
+                        // 🛡️ ASYMMETRIC OCTAVE RULE:
+                        //   ÷2 (octave-down): 180f @ conf>0.9 — extreme defense vs breakdowns
+                        //   ×2 (octave-up):    20f @ conf>0.6 — fast recovery when kick returns
+                        //   other large jump:  60f @ conf>0.7 — default hysteresis
+                        const confirmFrames = isOctaveDown ? TickEngine.BPM_CANDIDATE_CONFIRM_FRAMES_OCT_DOWN
+                            : isOctaveUp ? TickEngine.BPM_CANDIDATE_CONFIRM_FRAMES_OCT_UP
+                                : TickEngine.BPM_CANDIDATE_CONFIRM_FRAMES;
+                        const minConfidence = isOctaveDown ? TickEngine.BPM_CANDIDATE_MIN_CONFIDENCE_OCT_DOWN
+                            : isOctaveUp ? TickEngine.BPM_CANDIDATE_MIN_CONFIDENCE_OCT_UP
+                                : TickEngine.BPM_CANDIDATE_MIN_CONFIDENCE;
                         if (Math.abs(workerBpm - this._bpmCandidate) <= TickEngine.BPM_CANDIDATE_TOLERANCE
-                            && workerConfidence > TickEngine.BPM_CANDIDATE_MIN_CONFIDENCE) {
+                            && workerConfidence > minConfidence) {
                             this._bpmCandidateFrames++;
-                            if (this._bpmCandidateFrames >= TickEngine.BPM_CANDIDATE_CONFIRM_FRAMES) {
+                            if (this._bpmCandidateFrames >= confirmFrames) {
                                 this._stableBpm = workerBpm;
                                 this._bpmCandidate = 0;
                                 this._bpmCandidateFrames = 0;
@@ -444,13 +454,16 @@ export class TickEngine {
             const sabFill = this.trinity?.getAudioMatrix()?.getStatus()?.ringBufferFillLevel?.toFixed(3) ?? 'n/a';
             const inputPeak = (this.audioPipeline.lastAudioData.inputPeakAbs ?? 0).toFixed(5);
             const inputRms = (this.audioPipeline.lastAudioData.inputRMS ?? 0).toFixed(5);
-            // rawBpm = raw Oracle output (pre-Kalman, pre-shield) for debugging
-            const workerRawBpm = this.audioPipeline.lastAudioData.workerRawBpm ?? 0;
+            // rawBpm = Kalman-smoothed BPM (legacy "raw" alias — NOT the raw Oracle)
+            // oracleRawBpm = TRUE pre-Kalman Oracle BPM (the actual detector output)
             // context.bpm = post-hysteresis + post-EMA = value sent to TitanEngine/VMM
             // _shieldTag = 🛡️HOLD/🛡️REJECT/🛡️ACCEPT/⚠️OCT-DOWN🛡️/⚠️OCT-UP🛡️ when the
             // hysteresis gate acted on a large BPM jump this frame (empty = small/none)
+            const workerRawBpm = this.audioPipeline.lastAudioData.workerRawBpm ?? 0;
+            const workerOracleRawBpm = this.audioPipeline.lastAudioData.workerOracleRawBpm ?? 0;
+            const workerOraclePeak = this.audioPipeline.lastAudioData.workerOraclePeakHeight ?? 0;
             const shieldTagStr = this._shieldTag ? ` ${this._shieldTag}` : '';
-            console.log(`[TitanOrchestrator] ðŸŽ§ BPM=${context.bpm.toFixed(2)} (raw=${workerRawBpm.toFixed(2)}) conf=${workerConfidence.toFixed(2)}${shieldTagStr} | PLL=${pllInfo}${freewheelTag} phase=${beatState.pllPhase.toFixed(2)} sync=${syncInfo} | beat #${this.audioPipeline.lastAudioData.workerKickCount ?? 0} | bass=${rawEnergy} sab=${sabFill} | ðŸ”¬in_peak=${inputPeak} in_rms=${inputRms}`);
+            console.log(`[TitanOrchestrator] ðŸŽ§ BPM=${context.bpm.toFixed(2)} (oracle=${workerOracleRawBpm.toFixed(2)}) (kalman=${workerRawBpm.toFixed(2)}) conf=${workerConfidence.toFixed(2)} peak=${workerOraclePeak.toFixed(3)}${shieldTagStr} | PLL=${pllInfo}${freewheelTag} phase=${beatState.pllPhase.toFixed(2)} sync=${syncInfo} | beat #${this.audioPipeline.lastAudioData.workerKickCount ?? 0} | bass=${rawEnergy} sab=${sabFill} | ðŸ”¬in_peak=${inputPeak} in_rms=${inputRms}`);
         }
         // For TitanEngine
         // ðŸŽ›ï¸ WAVE 661: Incluir textura espectral
@@ -1598,4 +1611,13 @@ TickEngine.BPM_HYSTERESIS_PCT = 0.08;
 TickEngine.BPM_CANDIDATE_CONFIRM_FRAMES = 60;
 TickEngine.BPM_CANDIDATE_MIN_CONFIDENCE = 0.7;
 TickEngine.BPM_CANDIDATE_TOLERANCE = 2;
+// 🛡️ ASYMMETRIC OCTAVE SHIELD — ÷2 is the #1 DSP failure mode (half-time
+// lock during breakdowns). ×2 is usually a correction from a previous
+// half-time lock. Demand extreme authority for ÷2, accept fast for ×2.
+// OCT_DOWN: 180 frames (~8.4s @ 21.5Hz) @ conf>0.9 — breakdowns <8.4s rejected
+// OCT_UP:   20 frames  (~0.9s)         @ conf>0.6 — fast recovery when kick returns
+TickEngine.BPM_CANDIDATE_CONFIRM_FRAMES_OCT_DOWN = 180;
+TickEngine.BPM_CANDIDATE_CONFIRM_FRAMES_OCT_UP = 20;
+TickEngine.BPM_CANDIDATE_MIN_CONFIDENCE_OCT_DOWN = 0.9;
+TickEngine.BPM_CANDIDATE_MIN_CONFIDENCE_OCT_UP = 0.6;
 TickEngine.BPM_EMA_ALPHA = 0.15;

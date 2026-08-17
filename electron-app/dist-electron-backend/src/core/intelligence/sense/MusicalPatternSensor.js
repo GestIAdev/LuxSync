@@ -21,7 +21,16 @@ const ENERGY_THRESHOLDS = {
 };
 // 🎛️ WAVE 661: Frame counter para logging de textura espectral
 let spectralLogFrameCount = 0;
-/** Mapa de sección original → clasificación interna */
+/**
+ * Mapa de sección original → clasificación interna.
+ *
+ * 🔮 CASSANDRA 2.0: alfabeto MSST completo (10 estados). El down-mapping
+ * anterior colapsaba `bridge`→`breakdown`, `textural_drop`→(ausente) y
+ * `unknown`→`verse`. Ese último era el más dañino: convertía una detección
+ * de baja confianza en una observación estructural falsa que envenenaba
+ * cualquier estimador n-grama. Ahora `unknown` se propaga como `unknown`
+ * y la cadena de Markov lo trata como skip transparente.
+ */
 const SECTION_MAP = {
     'intro': 'intro',
     'verse': 'verse',
@@ -29,12 +38,14 @@ const SECTION_MAP = {
     'build': 'buildup',
     'pre-chorus': 'buildup',
     'prechorus': 'buildup',
+    'pre_chorus': 'buildup',
     'chorus': 'chorus',
     'drop': 'drop',
+    'textural_drop': 'textural_drop',
     'breakdown': 'breakdown',
-    'bridge': 'breakdown',
+    'bridge': 'bridge',
     'outro': 'outro',
-    'unknown': 'verse', // Default conservador
+    'unknown': 'unknown',
 };
 const MAX_HISTORY = 30; // ~500ms a 60fps
 const patternHistory = [];
@@ -157,7 +168,7 @@ export function resetPatternHistory() {
 // ═══════════════════════════════════════════════════════════════════════════
 function classifySection(sectionType) {
     const normalized = sectionType.toLowerCase().trim();
-    return SECTION_MAP[normalized] ?? 'verse';
+    return SECTION_MAP[normalized] ?? 'unknown';
 }
 function classifyEnergyPhase(energy) {
     if (energy >= ENERGY_THRESHOLDS.DROP)

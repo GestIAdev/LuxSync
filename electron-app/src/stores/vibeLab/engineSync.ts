@@ -59,8 +59,13 @@ const raf =
 /**
  * Ejecuta un resolve+graft del draft actual. Se llama desde el rAF,
  * como máximo una vez por frame.
+ *
+ * PROTEUS FIX 3: This function is now async. It awaits the graftVibe IPC
+ * BEFORE calling setVibe, eliminating the non-deterministic 404 race.
+ * The rAF callback does not await this — the `pending` flag is cleared
+ * synchronously at the top, so coalescing still works correctly.
  */
-function flush(): void {
+async function flush(): Promise<void> {
   pending = false
   const state = useVibeLabStore.getState()
   const { draft, livePreview, abMode } = state
@@ -104,17 +109,22 @@ function flush(): void {
   // para que injerte el custom vibe en los registrios del MAIN PROCESS,
   // y LUEGO activar el vibe. Sin el graft al backend, VibeManager no
   // encuentra la key 'custom:...' → 404 → fallback a idle → cero telemetry.
+  //
+  // PROTEUS FIX 3: Await graftVibe BEFORE setVibe. This eliminates the
+  // race where setVibe reaches the backend before the graft is applied,
+  // causing a 404 → idle fallback.
   const baseChanged = lastBaseDNA !== draft.baseDNA
   if (lastGrafted !== newKey || baseChanged) {
-    // Fire-and-forget: el graft IPC es async pero no podemos bloquear el
-    // rAF loop. El setVibe se envía justo después; si el graft llega
-    // primero (normal, IPC es rápido), VibeManager encontrará la key.
-    // Si llega después (race), VibeManager hará 404 en este tick pero
-    // el próximo flush reintentará.
     if (window.lux?.graftVibe) {
-      window.lux.graftVibe(result.bundle).catch((e: unknown) =>
-        console.warn('[engineSync] graftVibe IPC failed:', e),
-      )
+      try {
+        await window.lux.graftVibe(result.bundle)
+      } catch (e) {
+        console.warn('[engineSync] graftVibe IPC failed:', e)
+        // Don't call setVibe if the graft failed — it would 404.
+        lastGrafted = newKey
+        lastBaseDNA = draft.baseDNA
+        return
+      }
     }
     try {
       window.lux?.setVibe?.(newKey)
@@ -133,7 +143,10 @@ function flush(): void {
 function scheduleSync(): void {
   if (pending) return
   pending = true
-  raf(() => flush())
+  // PROTEUS FIX 3: flush() is now async. We don't await it here (rAF
+  // callbacks can't be async), but the `pending` flag is cleared
+  // synchronously at the top of flush(), so coalescing still works.
+  raf(() => { void flush() })
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -153,10 +166,19 @@ export function initVibeLabEngineSync(): () => void {
   }
   initialized = true
 
-  // Suscripción selectiva: sólo se dispara cuando cambian draft/livePreview/abMode.
-  // subscribeWithSelector permite esto sin montar un componente React.
+  // Suscripción selectiva: sólo se dispara cuando cambian las capas de genes
+  // (physics/color/movement), livePreview o abMode.
+  // PROTEUS FIX 6: Excluimos draft.meta y otros campos de UI del selector
+  // para que editar metadatos en el MintDialog no dispare un resolve+graft
+  // innecesario (la meta no afecta el bundle fusionado).
   unsubscribe = useVibeLabStore.subscribe(
-    (s: VibeLabState) => ({ draft: s.draft, livePreview: s.livePreview, abMode: s.abMode }),
+    (s: VibeLabState) => ({
+      physics: s.draft?.physics,
+      color: s.draft?.color,
+      movement: s.draft?.movement,
+      livePreview: s.livePreview,
+      abMode: s.abMode,
+    }),
     () => scheduleSync(),
   )
 
@@ -183,7 +205,19 @@ export function forceFlush(): void {
   if (pending) {
     pending = false
   }
-  flush()
+  void flush()
+}
+
+/**
+ * PROTEUS FIX 4: Resets the graft cache so the next flush() will re-graft
+ * and re-activate the vibe even if it was the "last grafted" key.
+ *
+ * Called by vibeLabStore.openFromVault() to ensure that re-loading a vibe
+ * from the vault actually applies it to the engine, instead of being a no-op.
+ */
+export function resetGraftCache(): void {
+  lastGrafted = null
+  lastBaseDNA = null
 }
 
 /**

@@ -41,7 +41,8 @@ export {
 // Hunt Engine — V3.3.B: Candidate generator
 processHunt, forcePhaseTransition, getHuntState, resetHuntEngine, getHuntStats, getEligibleCandidates, 
 // Prediction Engine
-predict, getLastPrediction, getSectionHistory, validatePrediction, resetPredictionEngine, 
+predict, getLastPrediction, getSectionHistory, validatePrediction, resetPredictionEngine, observeSection, // 🔮 CASSANDRA 2.0
+getCassandraState, 
 // Decision Maker
 makeDecision, mergeDecisions, isSignificantDecision, } from './think';
 // ═══════════════════════════════════════════════════════════════════════════

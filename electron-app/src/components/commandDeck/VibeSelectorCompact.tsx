@@ -15,6 +15,7 @@ import React from 'react'
 import { Zap, Flame, Mic2, Sofa, Loader2 } from 'lucide-react'
 import { useSeleneVibe, VibeId, VibeInfo } from '../../hooks/useSeleneVibe'
 import { useSystemPower } from '../../hooks/useSystemPower'
+import { useNavigationStore } from '../../stores/navigationStore'
 import './VibeSelectorCompact.css'
 
 // ============================================================================
@@ -88,7 +89,11 @@ export const VibeSelectorCompact: React.FC = () => {
   } = useSeleneVibe()
   
   const { isOnline } = useSystemPower()
-  
+
+  // PROTEUS FIX 7: Disable vibe switching when VibeLab is hijacking the engine.
+  const activeTab = useNavigationStore((s) => s.activeTab)
+  const isVibeLabHijacking = activeTab === 'vibe-lab'
+
   // WAVE 428: Vibes are ALWAYS visible - they're show constraints, not mode-dependent
   // Removed isGhostMode check - vibes apply regardless of manual/selene mode
   
@@ -102,8 +107,11 @@ export const VibeSelectorCompact: React.FC = () => {
             vibe={vibe}
             isActive={activeVibe === vibe.id}
             isTransitioning={isTransitioning}
-            isSystemOn={isOnline}
-            onClick={() => setVibe(vibe.id)}
+            isSystemOn={isOnline && !isVibeLabHijacking}
+            onClick={() => {
+              if (isVibeLabHijacking) return
+              setVibe(vibe.id)
+            }}
           />
         ))}
       </div>

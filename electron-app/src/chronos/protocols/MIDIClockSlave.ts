@@ -33,7 +33,6 @@ import {
   BPM_WINDOW_SIZE,
   createBpmDerivationState,
   deriveBpm,
-  computeBeatInterval,
   resetBpmDerivation,
   type BpmDerivationState,
 } from '../utils/bpmDerivation'
@@ -57,6 +56,60 @@ const SPP_CLOCKS_PER_UNIT = 6
 const SIGNAL_TIMEOUT_MS = 2000
 
 // ═══════════════════════════════════════════════════════════════════════════
+// REV. 2 — ZERO-ALLOCATION CIRCULAR TIMESTAMP BUFFER
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Replaces the Array.push() + Array.shift() pattern that was O(N) per pulse
+// (192 element moves at capacity). This circular buffer is O(1) push, O(1)
+// beat-interval computation, zero allocations after construction.
+
+class TimestampRing {
+  private readonly _buf: Float64Array
+  private _head = 0   // next write position
+  private _count = 0  // number of valid elements
+  private readonly _capacity: number
+
+  constructor(capacity: number) {
+    this._capacity = capacity
+    this._buf = new Float64Array(capacity)
+  }
+
+  get length(): number {
+    return this._count
+  }
+
+  /** Push a timestamp. O(1). Overwrites oldest if full. */
+  push(value: number): void {
+    this._buf[this._head] = value
+    this._head = (this._head + 1) % this._capacity
+    if (this._count < this._capacity) this._count++
+  }
+
+  /** Clear all entries. O(1). */
+  clear(): void {
+    this._head = 0
+    this._count = 0
+  }
+
+  /**
+   * Compute the beat interval (newest - PPQ-ago) directly from the ring.
+   * O(1). Returns null if insufficient data (< PPQ+1 entries).
+   *
+   * This replaces the call to computeBeatInterval(timestamps) which required
+   * Array-like bracket access. The ring computes the interval internally
+   * using modular arithmetic on its Float64Array backing store.
+   */
+  beatInterval(ppq: number): number | null {
+    if (this._count < ppq + 1) return null
+    // newest is at (head - 1 + capacity) % capacity
+    const newestIdx = (this._head - 1 + this._capacity) % this._capacity
+    // PPQ-ago is at (head - 1 - PPQ + capacity) % capacity
+    const oldIdx = (this._head - 1 - ppq + this._capacity * 2) % this._capacity
+    return this._buf[newestIdx] - this._buf[oldIdx]
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // MIDI CLOCK SLAVE
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -75,7 +128,9 @@ export class MIDIClockSlave extends BaseClockSource {
 
   // ── BPM derivation ──
   private currentBpm = 120
-  private clockTimestamps: number[] = []
+  // REV. 2: Circular buffer replaces number[] + shift(). O(1) per pulse.
+  // Capacity = PPQ * BPM_WINDOW_SIZE + 1 = 193 (same as before).
+  private clockTimestamps: TimestampRing = new TimestampRing(PPQ * BPM_WINDOW_SIZE + 1)
   private bpmState: BpmDerivationState = createBpmDerivationState()
 
   // ── Timeout ──
@@ -201,7 +256,7 @@ export class MIDIClockSlave extends BaseClockSource {
       this.totalBeats = Math.floor(targetPulses / PPQ)
       // Clear BPM derivation timestamps — the locate is a discontinuity, not
       // a tempo change, so prior pulse intervals are no longer meaningful.
-      this.clockTimestamps = []
+      this.clockTimestamps.clear()
       resetBpmDerivation(this.bpmState)
       this.emit('sync', { timeMs: this.getTimeMs() ?? 0, source: this.type })
       console.log(
@@ -215,13 +270,8 @@ export class MIDIClockSlave extends BaseClockSource {
       case MIDI_CLOCK: {
         const now = performance.now()
         this.pulseCount++
+        // REV. 2: O(1) circular buffer push — no shift(), no element moves
         this.clockTimestamps.push(now)
-
-        // Keep enough timestamps for BPM_WINDOW_SIZE beats
-        const maxClocks = PPQ * BPM_WINDOW_SIZE + 1
-        if (this.clockTimestamps.length > maxClocks) {
-          this.clockTimestamps.shift()
-        }
 
         // Every PPQ (24) pulses = 1 beat
         if (this.pulseCount % PPQ === 0 && this.clockTimestamps.length >= PPQ + 1) {
@@ -242,7 +292,7 @@ export class MIDIClockSlave extends BaseClockSource {
       case MIDI_START: {
         this.pulseCount = 0
         this.totalBeats = 0
-        this.clockTimestamps = []
+        this.clockTimestamps.clear()
         resetBpmDerivation(this.bpmState)
         this.isExternalPlaying = true
         this.emit('transport', { command: 'play', source: this.type })
@@ -268,7 +318,9 @@ export class MIDIClockSlave extends BaseClockSource {
   // ═══════════════════════════════════════════════════════════════════════
 
   private updateBpm(): void {
-    const beatInterval = computeBeatInterval(this.clockTimestamps)
+    // REV. 2: Compute beat interval directly from the circular buffer.
+    // No Array allocation, no index access — O(1) modular arithmetic.
+    const beatInterval = this.clockTimestamps.beatInterval(PPQ)
     if (beatInterval === null) return
 
     const newBpm = deriveBpm(this.bpmState, beatInterval)

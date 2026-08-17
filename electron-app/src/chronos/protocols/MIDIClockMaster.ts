@@ -29,6 +29,18 @@ const BPM_MIN = 20
 const BPM_MAX = 300
 
 // ═══════════════════════════════════════════════════════════════════════════
+// REV. 2 — ZERO-ALLOCATION PULSE BUFFERS
+// Pre-allocated Uint8Array messages for high-frequency MIDI Clock output.
+// output.send() does not mutate the buffer, so reuse is safe.
+// Eliminates 48-120 allocations/sec (one per pulse).
+// ═══════════════════════════════════════════════════════════════════════════
+
+const CLOCK_BUFFER = new Uint8Array([MIDI_CLOCK])
+const START_BUFFER = new Uint8Array([MIDI_START])
+const CONTINUE_BUFFER = new Uint8Array([MIDI_CONTINUE])
+const STOP_BUFFER = new Uint8Array([MIDI_STOP])
+
+// ═══════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -123,8 +135,8 @@ export class MIDIClockMaster {
     this.isRunning = true
     this.pulsesSent = 0
 
-    const msg = fromZero ? MIDI_START : MIDI_CONTINUE
-    this.sendToOutputs(new Uint8Array([msg]))
+    const msg = fromZero ? START_BUFFER : CONTINUE_BUFFER
+    this.sendToOutputs(msg)
 
     this.ipc?.start(fromZero)
 
@@ -136,7 +148,7 @@ export class MIDIClockMaster {
     if (!this.isRunning) return
     this.isRunning = false
 
-    this.sendToOutputs(new Uint8Array([MIDI_STOP]))
+    this.sendToOutputs(STOP_BUFFER)
     this.ipc?.stop()
 
     this.emitEvent({ type: 'stopped' })
@@ -242,13 +254,19 @@ export class MIDIClockMaster {
 
     this.ipcPulseCleanup = this.ipc.onPulse((midiByte: number) => {
       if (midiByte === MIDI_CLOCK) {
-        this.sendToOutputs(new Uint8Array([MIDI_CLOCK]))
+        // REV. 2: Reuse pre-allocated CLOCK_BUFFER — zero allocation per pulse
+        this.sendToOutputs(CLOCK_BUFFER)
         this.pulsesSent++
       }
     })
 
     this.ipcTransportCleanup = this.ipc.onTransport((midiByte: number) => {
-      this.sendToOutputs(new Uint8Array([midiByte]))
+      // Transport messages are one-shot (start/continue/stop) — use pre-allocated buffers
+      const buf = midiByte === MIDI_START ? START_BUFFER
+                : midiByte === MIDI_CONTINUE ? CONTINUE_BUFFER
+                : midiByte === MIDI_STOP ? STOP_BUFFER
+                : new Uint8Array([midiByte]) // unknown — fallback alloc
+      this.sendToOutputs(buf)
     })
   }
 

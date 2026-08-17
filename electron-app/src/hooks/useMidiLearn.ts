@@ -49,6 +49,7 @@ import {
   type MidiMessage,
   type MidiBinding,
   type MappableControlId,
+  softTakeoverState,
 } from '../stores/midiMapStore'
 import { useControlStore } from '../stores/controlStore'
 import { useLuxSyncStore } from '../stores/luxsyncStore'
@@ -67,12 +68,31 @@ const STATUS_CC = 0xB0
 const SOFT_TAKEOVER_THRESHOLD = 5
 
 // ═══════════════════════════════════════════════════════════════════════════
-// MIDI MESSAGE PARSER
+// MIDI MESSAGE PARSER — ZERO-ALLOCATION HOT PATH
 // ═══════════════════════════════════════════════════════════════════════════
+//
+// A single module-level MidiMessage is pre-allocated and mutated in place.
+// parseMidiMessage returns a reference to this object (or null for system
+// messages). Downstream consumers (handleMidiMessage → dispatchToStore)
+// read the fields synchronously and MUST NOT retain the reference across
+// calls — the next MIDI message will overwrite it.
+//
+// This eliminates the per-message object allocation that was generating
+// ~800 bytes/sec of short-lived garbage during fast fader movements.
+
+const _reusableMsg: MidiMessage = {
+  type: 'cc',
+  channel: 0,
+  control: 0,
+  value: 0,
+}
 
 /**
- * Parse raw MIDI bytes into structured message.
- * Returns null for system messages (clock, sysex, etc.)
+ * Parse raw MIDI bytes into a pre-allocated MidiMessage.
+ * Returns null for system messages (clock, sysex, etc.).
+ *
+ * ⚠️ The returned reference is reused across calls — do not retain.
+ * Read fields synchronously and dispatch immediately.
  */
 function parseMidiMessage(data: Uint8Array): MidiMessage | null {
   if (!data || data.length < 2) return null
@@ -87,20 +107,36 @@ function parseMidiMessage(data: Uint8Array): MidiMessage | null {
       const velocity = data.length > 2 ? data[2] : 0
       // Velocity 0 = Note Off (MIDI convention)
       if (velocity === 0) {
-        return { type: 'note_off', channel, control: note, value: 0 }
+        _reusableMsg.type = 'note_off'
+        _reusableMsg.channel = channel
+        _reusableMsg.control = note
+        _reusableMsg.value = 0
+        return _reusableMsg
       }
-      return { type: 'note_on', channel, control: note, value: velocity }
+      _reusableMsg.type = 'note_on'
+      _reusableMsg.channel = channel
+      _reusableMsg.control = note
+      _reusableMsg.value = velocity
+      return _reusableMsg
     }
 
     case STATUS_NOTE_OFF: {
       const note = data[1]
-      return { type: 'note_off', channel, control: note, value: 0 }
+      _reusableMsg.type = 'note_off'
+      _reusableMsg.channel = channel
+      _reusableMsg.control = note
+      _reusableMsg.value = 0
+      return _reusableMsg
     }
 
     case STATUS_CC: {
       const cc = data[1]
       const value = data.length > 2 ? data[2] : 0
-      return { type: 'cc', channel, control: cc, value }
+      _reusableMsg.type = 'cc'
+      _reusableMsg.channel = channel
+      _reusableMsg.control = cc
+      _reusableMsg.value = value
+      return _reusableMsg
     }
 
     default:
@@ -135,12 +171,17 @@ export function useMidiLearn() {
   const dispatchRef = useRef<(controlId: MappableControlId, msg: MidiMessage) => void>(() => {})
 
   // ═══════════════════════════════════════════════════════════════════════
-  // SOFT TAKEOVER CHECK
+  // SOFT TAKEOVER CHECK — REV. 2: Module-level Map, zero allocation
   // ═══════════════════════════════════════════════════════════════════════
+  //
+  // REV. 2: softTakeoverState is now a module-level Map exported from
+  // midiMapStore. It is mutated in place — no Zustand set(), no object
+  // spread, no React subscriber notification. This is internal tracking
+  // data, not UI state.
 
   /**
    * Check if a CC value should be accepted (soft takeover).
-   * 
+   *
    * Returns true if:
    * 1. No previous physical value recorded (first touch)
    * 2. Physical value is within threshold of digital value
@@ -151,19 +192,18 @@ export function useMidiLearn() {
     incomingValue: number,
     digitalValue: number,
   ): boolean => {
-    const state = midiMapStoreRef.current()
-    const lastPhysical = state.softTakeoverState[bindingKeyStr]
+    const lastPhysical = softTakeoverState.get(bindingKeyStr)
 
     // First touch: always accept (no previous reference)
     if (lastPhysical === undefined) {
-      state.updateSoftTakeover(bindingKeyStr, incomingValue)
+      softTakeoverState.set(bindingKeyStr, incomingValue)
       return true
     }
 
     // Within threshold of digital value: accept (caught up)
     const digitalMidi = Math.round(digitalValue * 127)
     if (Math.abs(incomingValue - digitalMidi) <= SOFT_TAKEOVER_THRESHOLD) {
-      state.updateSoftTakeover(bindingKeyStr, incomingValue)
+      softTakeoverState.set(bindingKeyStr, incomingValue)
       return true
     }
 
@@ -174,12 +214,12 @@ export function useMidiLearn() {
     const isNowBelowDigital = incomingValue <= digitalMidi
 
     if ((wasBelowDigital && isNowAboveDigital) || (wasAboveDigital && isNowBelowDigital)) {
-      state.updateSoftTakeover(bindingKeyStr, incomingValue)
+      softTakeoverState.set(bindingKeyStr, incomingValue)
       return true
     }
 
     // Not caught up yet: update tracking but reject
-    state.updateSoftTakeover(bindingKeyStr, incomingValue)
+    softTakeoverState.set(bindingKeyStr, incomingValue)
     return false
   }, [])
 

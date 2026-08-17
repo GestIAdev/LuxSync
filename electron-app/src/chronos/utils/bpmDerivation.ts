@@ -129,10 +129,13 @@ export function deriveBpm(
 /**
  * Compute the beat interval from a ring buffer of clock timestamps.
  *
- * @param timestamps - Array of performance.now() timestamps for each clock pulse
+ * REV. 2: Accepts `ArrayLike<number>` to support circular buffer implementations
+ * that expose `.length` and numeric index access without being a true `number[]`.
+ *
+ * @param timestamps - Array-like of performance.now() timestamps for each clock pulse
  * @returns Beat interval in ms, or null if insufficient data
  */
-export function computeBeatInterval(timestamps: number[]): number | null {
+export function computeBeatInterval(timestamps: ArrayLike<number>): number | null {
   if (timestamps.length < PPQ + 1) return null
   return timestamps[timestamps.length - 1] - timestamps[timestamps.length - 1 - PPQ]
 }

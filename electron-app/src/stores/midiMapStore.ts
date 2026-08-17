@@ -109,6 +109,44 @@ export const MAPPABLE_CONTROLS: MappableControlMeta[] = getAllActions().map(
 export { getAllActions, getEffectsByZone, getVibeActions, getArbiterActions, getSystemActions, getTungstenActions } from '../midi/MidiActionRegistry'
 
 // ═══════════════════════════════════════════════════════════════════════════
+// ZERO-ALLOCATION REVERSE INDEX & SOFT TAKEOVER (REV. 2 — TACTICAL HUB FIX)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// PROBLEM (per TACTICAL_HUB_DUE_DILIGENCE §2.2, §2.3):
+//   findControlForMessage() called Object.entries() on every MIDI tick,
+//   allocating O(N) arrays + strings per message. softTakeoverState lived
+//   in the Zustand store, triggering object spreads + subscriber notifications
+//   on every accepted CC value.
+//
+// SOLUTION:
+//   1. A module-level Map<string, MappableControlId> reverse index, rebuilt
+//      ONLY when mappings change (setMapping/removeMapping/clearAll).
+//      findControlForMessage is now O(1) with zero hot-path allocation.
+//   2. softTakeoverState is evicted from Zustand entirely. It lives in a
+//      module-level Map<string, number>, mutated in place. No React
+//      subscriber notifications, no object spreads.
+//
+// Both structures are internal tracking data, not UI state. They do not
+// need immutable updates or React reactivity.
+
+/** Reverse index: bindingKey → controlId. Rebuilt on mapping change only. */
+let _reverseIndex: Map<string, MappableControlId> = new Map()
+
+/** Soft takeover tracking: bindingKey → last known physical value (0-127).
+ *  REV. 2: Evicted from Zustand — module-level Map, mutated in place.
+ *  No React subscriber notifications, no object spreads. */
+export const softTakeoverState: Map<string, number> = new Map()
+
+/** Rebuild the reverse index from the current mappings record. */
+function _rebuildReverseIndex(mappings: Record<string, MidiBinding>): void {
+  _reverseIndex = new Map()
+  for (const controlId in mappings) {
+    const b = mappings[controlId]
+    _reverseIndex.set(bindingKeyFromBinding(b), controlId)
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // STORE STATE
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -127,9 +165,6 @@ interface MidiMapState {
 
   /** Last successfully mapped control (for flash feedback) */
   lastMapped: MappableControlId | null
-
-  /** Soft Takeover tracking: last known physical value per binding key */
-  softTakeoverState: Record<string, number>
 
   // ── Actions ──
 
@@ -160,11 +195,11 @@ interface MidiMapState {
   /**
    * Reverse lookup: given a MIDI message, find which control it maps to.
    * Returns null if no mapping exists.
+   *
+   * REV. 2: O(1) Map lookup, zero allocation. The reverse index is rebuilt
+   * only when mappings change (setMapping/removeMapping/clearAll).
    */
   findControlForMessage: (msg: MidiMessage) => MappableControlId | null
-
-  /** Update soft takeover state */
-  updateSoftTakeover: (bindingKey: string, value: number) => void
 
   /** Clear last mapped (after animation) */
   clearLastMapped: () => void
@@ -196,7 +231,6 @@ export const useMidiMapStore = create<MidiMapState>()(
       learnMode: false,
       listeningControl: null,
       lastMapped: null,
-      softTakeoverState: {},
 
       // ── Learn Mode ──
       enterLearnMode: () => {
@@ -226,8 +260,8 @@ export const useMidiMapStore = create<MidiMapState>()(
         // Remove any existing mapping that uses the same MIDI signal
         // (one MIDI control → one UI control, no conflicts)
         const newKey = bindingKeyFromBinding(binding)
-        for (const [existingId, existingBinding] of Object.entries(newMappings)) {
-          if (bindingKeyFromBinding(existingBinding) === newKey && existingId !== controlId) {
+        for (const existingId in newMappings) {
+          if (bindingKeyFromBinding(newMappings[existingId]) === newKey && existingId !== controlId) {
             console.log(`[MidiMap] ⚠️ Replacing mapping: ${existingId} → ${controlId} for ${newKey}`)
             delete newMappings[existingId]
           }
@@ -235,6 +269,9 @@ export const useMidiMapStore = create<MidiMapState>()(
 
         newMappings[controlId] = binding
         console.log(`[MidiMap] ✅ Mapped: ${controlId} → ${binding.type} ch${binding.channel} #${binding.control}`)
+
+        // REV. 2: Rebuild reverse index (rare — user-driven MIDI Learn event)
+        _rebuildReverseIndex(newMappings)
 
         set({
           mappings: newMappings,
@@ -254,12 +291,18 @@ export const useMidiMapStore = create<MidiMapState>()(
         const newMappings = { ...get().mappings }
         delete newMappings[controlId]
         console.log(`[MidiMap] 🗑️ Removed mapping: ${controlId}`)
+
+        // REV. 2: Rebuild reverse index
+        _rebuildReverseIndex(newMappings)
+
         set({ mappings: newMappings })
       },
 
       clearAll: () => {
         console.log('[MidiMap] 🗑️ All mappings cleared')
-        set({ mappings: {}, softTakeoverState: {} })
+        _reverseIndex = new Map()
+        softTakeoverState.clear()
+        set({ mappings: {} })
       },
 
       // ── Lookups ──
@@ -268,23 +311,11 @@ export const useMidiMapStore = create<MidiMapState>()(
       },
 
       findControlForMessage: (msg) => {
+        // REV. 2: O(1) Map lookup — zero allocation on the hot path.
+        // The reverse index is rebuilt only when mappings change.
         const type = msg.type === 'cc' ? 'cc' : 'note'
         const searchKey = bindingKey(type, msg.channel, msg.control)
-
-        for (const [controlId, binding] of Object.entries(get().mappings)) {
-          if (bindingKeyFromBinding(binding) === searchKey) {
-            return controlId as MappableControlId
-          }
-        }
-
-        return null
-      },
-
-      // ── Soft Takeover ──
-      updateSoftTakeover: (key, value) => {
-        set((state) => ({
-          softTakeoverState: { ...state.softTakeoverState, [key]: value },
-        }))
+        return _reverseIndex.get(searchKey) ?? null
       },
 
       clearLastMapped: () => set({ lastMapped: null }),
@@ -295,6 +326,12 @@ export const useMidiMapStore = create<MidiMapState>()(
       partialize: (state) => ({
         mappings: state.mappings,
       }),
+      // REV. 2: Rebuild reverse index when mappings are rehydrated from localStorage
+      onRehydrateStorage: () => (state) => {
+        if (state?.mappings) {
+          _rebuildReverseIndex(state.mappings)
+        }
+      },
     }
   )
 )

@@ -9,7 +9,6 @@
  */
 
 import type { ILiquidCognitionProfile } from './ILiquidCognitionProfile'
-import type { FrozenGenome } from '../../arsenal/lfxTypes'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Contratos de datos
@@ -59,9 +58,6 @@ export interface SensorFusionInput {
   // — Espectrales —
   readonly bassPresence: number
   readonly midPresence: number
-
-  // — Genoma del efecto candidato (para s_DNA) —
-  readonly effectGenome: FrozenGenome
 
   // — Cassandra (Oráculo) —
   readonly predictionProbability: number  // 0-1
@@ -120,17 +116,26 @@ export class SensorFusionChamber {
   fuse(input: SensorFusionInput): SensorFusionResult {
     const p = this.profile
 
-    // ── s_DNA — Kernel gaussiano en espacio ACO ──
-    // g_ctx = ⟨Ê·CF̂, Δ, 1−Π⟩
-    // s_DNA = exp(−‖g_fx − g_ctx‖² / (2σ_g²))
+    // ── s_DNA — Internal coherence of the Projected Context Genome ──
+    // g_ctx = ⟨Ê·CF̂, Δ, 1−Π⟩  (Energy×Crest, Harshness, 1−Percussiveness)
+    //
+    // The legacy code compared g_ctx to a hardcoded NEUTRAL_GENOME (0.5/0.5/0.5),
+    // measuring "distance from neutral" — a short-circuit that penalised any
+    // context far from the arbitrary midpoint. The refactored s_DNA measures
+    // the INTERNAL COHERENCE of the acoustic context itself: the geometric mean
+    // of the three g_ctx components in log-domain. High when all three are
+    // present (a clear, formed acoustic signature), low when the context is
+    // weak or undefined. No external reference genome required.
+    //
+    // s_DNA = (a · c · o)^(1/3)  where  a=Ê·CF̂, c=Δ, o=1−Π
     const ctxA = input.rawEnergy * input.crestFactor
     const ctxC = input.dirtiness
     const ctxO = 1 - input.percussiveness
-    const dA = input.effectGenome.aggression - ctxA
-    const dC = input.effectGenome.chaos - ctxC
-    const dO = input.effectGenome.organicity - ctxO
-    const distSq = dA * dA + dC * dC + dO * dO
-    const s_DNA = Math.exp(-distSq / (2 * p.sigma_g * p.sigma_g))
+    const s_DNA = Math.exp(
+      (Math.log(Math.max(ctxA, EPSILON)) +
+       Math.log(Math.max(ctxC, EPSILON)) +
+       Math.log(Math.max(ctxO, EPSILON))) / 3,
+    )
 
     // ── s_Z — Anomalía normalizada por tensión ──
     // s_Z = σ(κ_z · (I/T − 1) + b_z)

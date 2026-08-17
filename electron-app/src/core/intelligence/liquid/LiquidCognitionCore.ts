@@ -17,7 +17,6 @@ import { FluidDescriptorEngine, type FluidDescriptors } from './FluidDescriptors
 import { CognitiveFluidState, type FluidStateSnapshot } from './CognitiveFluidState'
 import { SensorFusionChamber, type SensorReadout } from './SensorFusionChamber'
 import { IgnitionChamber } from './IgnitionChamber'
-import type { FrozenGenome } from '../../arsenal/lfxTypes'
 import type { MoodId } from '../../mood/types'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -81,10 +80,6 @@ export interface LiquidProcessInput {
   readonly totalBeauty: number
   readonly consonance: number
 
-  // — Genoma del efecto candidato (para s_DNA) —
-  // En Shadow Mode, usar NEUTRAL_GENOME si no hay candidato
-  readonly effectGenome: FrozenGenome
-
   // — Contextual Memory injection (Fase D: phase-aware epicness) —
   /** Fase narrativa actual de ContextualMemory (BUILDING, CLIMAX, RELEASE, etc.) */
   readonly contextualPhase: string
@@ -93,19 +88,6 @@ export interface LiquidProcessInput {
 
   // 🌊 M-SARFE Phase 4: Multi-spectral acoustic reality
   readonly acousticReality?: import('../perception/StateCouplingEnforcer').AcousticRealityState
-
-  /** Active vibe string for genre-aware epicness friction */
-  readonly vibe?: string
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Genoma neutral para Shadow Mode (sin candidato específico)
-// ═══════════════════════════════════════════════════════════════════════════
-
-export const NEUTRAL_GENOME: FrozenGenome = {
-  aggression: 0.5,
-  chaos: 0.5,
-  organicity: 0.5,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -152,7 +134,7 @@ export class LiquidCognitionCore {
       tension: 0, impact: 0, crestFactor: 0, excitability: 1,
       vaporPressure: 0, rawEnergy: 0, energyMaxHistoric: 1,
       percussiveness: 0, dirtiness: 0, bassPresence: 0, midPresence: 0,
-      effectGenome: NEUTRAL_GENOME, predictionProbability: 0,
+      predictionProbability: 0,
       predictionAlignment: 0, totalBeauty: 0.5, consonance: 0.7,
     })
 
@@ -271,7 +253,6 @@ export class LiquidCognitionCore {
       contextualPhase: input.contextualPhase,
       isWarmedUp: input.isWarmedUp,
       acousticReality: input.acousticReality,
-      vibe: input.vibe,
       descriptors: {
         percussiveness: this._descriptors.percussiveness,
         melodicity: this._descriptors.melodicity,
@@ -294,7 +275,6 @@ export class LiquidCognitionCore {
       dirtiness: this._descriptors.dirtiness,
       bassPresence: input.bassPresence,
       midPresence: input.midPresence,
-      effectGenome: input.effectGenome,
       predictionProbability: input.predictionProbability,
       predictionAlignment: input.predictionAlignment,
       totalBeauty: input.totalBeauty,

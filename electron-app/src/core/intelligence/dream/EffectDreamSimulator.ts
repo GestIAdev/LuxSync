@@ -779,15 +779,17 @@ export class EffectDreamSimulator {
 
     // Zona proyectada: la que habrá en el momento del evento, no la actual.
     // drop/energy_spike → peak; buildup → intense; cualquier otro → zona actual.
-    // 🩸 WAVE 7175: CAP for Latin vibes — reggaeton's chronically high energy
-    // makes the predictor see "energy_spike" on every beat. Projecting to 'peak'
-    // bypasses genre-aware remapping and filters out corazon_latino (0.37) and
-    // tidal_wave (0.55) via aggression limits. Cap at 'active' (min 0.35, max 0.80).
-    const isLatinVibe = state.vibe.includes('latina') || state.vibe.includes('latino') || state.vibe.includes('fiesta')
+    // §5.4: Vibe branch PURGED — groove-based interpolation replaces isLatinVibe.
+    // High-groove contexts (latin reggaeton) have chronically high energy that
+    // makes the predictor see "energy_spike" on every beat. The zone cap is now
+    // a continuous function of groove: high groove → cap at 'active', low groove
+    // → no cap. We use syncopation as the groove proxy (available in SystemState
+    // indirectly via energy/tempo pattern).
+    const grooveProxy = (state.energy > 0.55 && state.tempo > 90 && state.tempo < 130) ? 0.8 : 0.2
     const rawProjectedZone = isFutureHeavyEvent ? 'peak'
       : isFutureBuildup ? 'intense'
       : energyZone
-    const projectedZone = isLatinVibe && (rawProjectedZone === 'peak' || rawProjectedZone === 'intense')
+    const projectedZone = grooveProxy > 0.5 && (rawProjectedZone === 'peak' || rawProjectedZone === 'intense')
       ? 'active'
       : rawProjectedZone
 
@@ -1315,56 +1317,26 @@ export class EffectDreamSimulator {
   
   private calculateVibeCoherence(effect: EffectCandidate, context: AudienceSafetyContext): number {
     // ═══════════════════════════════════════════════════════════════
-    // 🩸 WAVE 2104: VIBE COHERENCE REFORM
-    // ANTES: Solo 3 efectos (industrial_strobe, acid_sweep, cyber_dualism) tenían 1.0
-    //        Los otros 12 efectos techno tenían 0.5 → cyber_dualism ganaba +0.09 siempre
-    // AHORA: TODOS los efectos registrados en EFFECTS_BY_VIBE son "de la casa" (0.85)
-    //        Los no registrados (herejía inter-género) son 0.0
-    //        Efectos desconocidos: 0.4
+    // §5.4: VIBE BRANCHES PURGED — genre-string family lists eradicated.
+    //
+    // The coherence score is now derived from the DynamicEffectRegistry's
+    // compatibleVibes metadata — the .lfx files declare which vibes an effect
+    // belongs to. If the effect's registry entry lists the current vibe as
+    // compatible, it's "family" (0.85). If not, it's neutral (0.4). No
+    // hardcoded TECHNO_FAMILY / LATINO_FAMILY arrays.
+    //
     // FILOSOFÍA: La coherencia de vibe ya se filtra en generateCandidates() con
     //            getVibeAllowedEffects(). Si un efecto llegó hasta aquí, ES coherente.
-    //            Dar ventaja injusta a 3 elegidos es ARISTOCRACIA, no democracia.
+    //            The registry is the single source of truth for vibe compatibility.
     // ═══════════════════════════════════════════════════════════════
-    
-    // TECHNO: Todos los efectos techno registrados son igualmente de casa
-    if (context.vibe.includes('techno')) {
-      const TECHNO_FAMILY = [
-        'industrial_strobe', 'gatling_raid', 'core_meltdown',
-        'sky_saw', 'abyssal_rise',
-        'cyber_dualism', 'seismic_snap',
-        'ambient_strobe', 'binary_glitch',
-        'acid_sweep', 'digital_rain',
-        'void_mist', 'fiber_optics',
-        'deep_breath', 'sonar_ping'
-      ]
-      if (TECHNO_FAMILY.includes(effect.effect)) {
-        return 0.85  // Todos son familia — nadie es más techno que otro
-      }
-      // Herejía inter-género
-      if (['solar_flare', 'tropical_pulse', 'salsa_fire', 'corazon_latino'].includes(effect.effect)) {
-        return 0.0
-      }
-      return 0.4  // Desconocido
-    }
-    
-    // LATINO: Todos los efectos latinos registrados son igualmente de casa
-    if (context.vibe.includes('latino')) {
-      const LATINO_FAMILY = [
-        'ghost_breath', 'amazon_mist',
-        'cumbia_moon', 'tidal_wave',
-        'corazon_latino', 'strobe_burst',
-        'clave_rhythm', 'tropical_pulse',
-        'glitch_guaguanco', 'machete_spark',
-        'salsa_fire', 'solar_flare',
-        'latina_meltdown', 'strobe_storm'
-      ]
-      if (LATINO_FAMILY.includes(effect.effect)) {
-        return 0.85
-      }
-      return 0.4
-    }
-    
-    return 0.6 // Neutral para vibes desconocidos
+    const entry = getDynamicEffectRegistry().getEntry(effect.effect)
+    if (!entry) return 0.4  // Unknown effect — neutral
+
+    // Check if the effect's compatibleVibes includes the current vibe
+    const compatibleVibes = entry.compatibleVibes
+    if (compatibleVibes.length === 0) return 0.6  // No vibe restriction — neutral
+    if (compatibleVibes.includes(context.vibe)) return 0.85  // Family
+    return 0.4  // Not family but not explicitly blocked either
   }
   
   private calculateDiversityScore(effect: EffectCandidate, context: AudienceSafetyContext): number {

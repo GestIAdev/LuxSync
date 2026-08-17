@@ -97,11 +97,19 @@ export class MTCParser extends BaseClockSource {
   private receivedPieces = 0  // bitmask of received pieces
   private lastPieceIndex = -1
 
-  // ── Decoded timecode ──
+  // ── Decoded timecode (mutated in place — REV. 2 zero-alloc) ──
   private currentTimecode: SMPTETimecode = {
     hours: 0, minutes: 0, seconds: 0, frames: 0, frameRate: 25,
   }
+  // Pre-allocated return buffer for getTimecode() — avoids spread copy per call
+  private _timecodeReturnBuf: SMPTETimecode = {
+    hours: 0, minutes: 0, seconds: 0, frames: 0, frameRate: 25,
+  }
   private currentTimeMs: TimeMs = 0
+
+  // REV. 2: Pre-allocated event payloads — zero allocation per emit
+  private _syncPayload = { timeMs: 0 as TimeMs, source: 'mtc' as const }
+  private _statusPayload = { connected: true, quality: 'stable' as const, source: 'mtc' as const }
 
   // ── Direction detection (for shuttle/rewind) ──
   private direction: 'forward' | 'reverse' = 'forward'
@@ -184,10 +192,20 @@ export class MTCParser extends BaseClockSource {
   }
 
   /**
-   * Last decoded SMPTE timecode
+   * Last decoded SMPTE timecode.
+   *
+   * REV. 2: Returns a reference to a pre-allocated return buffer, not a spread
+   * copy. The buffer is overwritten on the next call. Callers that need to
+   * retain the value across calls should copy the fields explicitly.
    */
   getTimecode(): SMPTETimecode {
-    return { ...this.currentTimecode }
+    const buf = this._timecodeReturnBuf
+    buf.hours = this.currentTimecode.hours
+    buf.minutes = this.currentTimecode.minutes
+    buf.seconds = this.currentTimecode.seconds
+    buf.frames = this.currentTimecode.frames
+    buf.frameRate = this.currentTimecode.frameRate
+    return buf
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -366,11 +384,19 @@ export class MTCParser extends BaseClockSource {
       }
     }
 
-    this.currentTimecode = { hours: adjHours, minutes: adjMinutes, seconds: adjSeconds, frames: adjFrames, frameRate }
-    this.currentTimeMs = smpteToMs(this.currentTimecode)
+    // REV. 2: Mutate currentTimecode in place — zero allocation
+    const tc = this.currentTimecode
+    tc.hours = adjHours
+    tc.minutes = adjMinutes
+    tc.seconds = adjSeconds
+    tc.frames = adjFrames
+    tc.frameRate = frameRate
+    this.currentTimeMs = smpteToMs(tc)
 
-    this.emit('sync', { timeMs: this.currentTimeMs, source: 'mtc' })
-    this.emit('status', { connected: true, quality: 'stable', source: 'mtc' })
+    // REV. 2: Reuse pre-allocated event payloads — zero allocation
+    this._syncPayload.timeMs = this.currentTimeMs
+    this.emit('sync', this._syncPayload)
+    this.emit('status', this._statusPayload)
   }
 
   /**
@@ -406,8 +432,14 @@ export class MTCParser extends BaseClockSource {
       return
     }
 
-    this.currentTimecode = { hours, minutes, seconds, frames, frameRate }
-    this.currentTimeMs = smpteToMs(this.currentTimecode)
+    // REV. 2: Mutate currentTimecode in place — zero allocation
+    const tc = this.currentTimecode
+    tc.hours = hours
+    tc.minutes = minutes
+    tc.seconds = seconds
+    tc.frames = frames
+    tc.frameRate = frameRate
+    this.currentTimeMs = smpteToMs(tc)
 
     // Reset quarter-frame state (full frame overrides)
     this.receivedPieces = 0
@@ -417,8 +449,10 @@ export class MTCParser extends BaseClockSource {
     this.lastReceiveTime = performance.now()
     this.resetTimeout()
 
-    this.emit('sync', { timeMs: this.currentTimeMs, source: 'mtc' })
-    this.emit('status', { connected: true, quality: 'stable', source: 'mtc' })
+    // REV. 2: Reuse pre-allocated event payloads — zero allocation
+    this._syncPayload.timeMs = this.currentTimeMs
+    this.emit('sync', this._syncPayload)
+    this.emit('status', this._statusPayload)
 
     console.log(
       `[MTCParser] 📍 Full-frame locate: ` +

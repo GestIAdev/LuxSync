@@ -205,6 +205,14 @@ export class ArtNetTimecodeReceiver extends BaseClockSource {
   private timeoutHandle: ReturnType<typeof setTimeout> | null = null
   private ipcCleanup: (() => void) | null = null
 
+  // REV. 2: Pre-allocated event payloads — zero allocation per emit
+  private _syncPayload = { timeMs: 0 as TimeMs, source: 'artnet-tc' as const }
+  private _statusPayload = {
+    connected: false,
+    quality: 'none' as 'none' | 'weak' | 'stable',
+    source: 'artnet-tc' as const,
+  }
+
   async start(): Promise<void> {
     // Guard: only works in browser/Electron renderer
     if (typeof window === 'undefined') {
@@ -246,7 +254,9 @@ export class ArtNetTimecodeReceiver extends BaseClockSource {
     // Timecode packets are multiplexed on the same socket via opcode routing.
 
     this.connected = false // will become true on first packet
-    this.emit('status', { connected: false, quality: 'none', source: 'artnet-tc' })
+    this._statusPayload.connected = false
+    this._statusPayload.quality = 'none'
+    this.emit('status', this._statusPayload)
     console.log('[ArtNetTC] 📡 Renderer proxy started, waiting for packets...')
   }
 
@@ -261,7 +271,9 @@ export class ArtNetTimecodeReceiver extends BaseClockSource {
 
     this.clearTimeout()
     this.connected = false
-    this.emit('status', { connected: false, quality: 'none', source: 'artnet-tc' })
+    this._statusPayload.connected = false
+    this._statusPayload.quality = 'none'
+    this.emit('status', this._statusPayload)
     console.log('[ArtNetTC] 📡 Renderer proxy stopped')
   }
 
@@ -279,7 +291,9 @@ export class ArtNetTimecodeReceiver extends BaseClockSource {
 
     if (!this.connected) {
       this.connected = true
-      this.emit('status', { connected: true, quality: 'stable', source: 'artnet-tc' })
+      this._statusPayload.connected = true
+      this._statusPayload.quality = 'stable'
+      this.emit('status', this._statusPayload)
       console.log(
         `[ArtNetTC] ✅ First packet received: ` +
         `${packet.hours}:${String(packet.minutes).padStart(2, '0')}:` +
@@ -288,7 +302,8 @@ export class ArtNetTimecodeReceiver extends BaseClockSource {
       )
     }
 
-    this.emit('sync', { timeMs: this.currentTimeMs, source: 'artnet-tc' })
+    this._syncPayload.timeMs = this.currentTimeMs
+    this.emit('sync', this._syncPayload)
     this.resetTimeout()
   }
 
@@ -296,7 +311,9 @@ export class ArtNetTimecodeReceiver extends BaseClockSource {
     this.clearTimeout()
     this.timeoutHandle = setTimeout(() => {
       this.connected = false
-      this.emit('status', { connected: false, quality: 'none', source: 'artnet-tc' })
+      this._statusPayload.connected = false
+      this._statusPayload.quality = 'none'
+      this.emit('status', this._statusPayload)
       console.log('[ArtNetTC] ⚠️ Art-Net Timecode signal lost (timeout)')
     }, ARTNET_SIGNAL_TIMEOUT_MS)
   }

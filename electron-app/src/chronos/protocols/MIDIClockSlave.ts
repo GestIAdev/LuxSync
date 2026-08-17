@@ -136,6 +136,17 @@ export class MIDIClockSlave extends BaseClockSource {
   // ── Timeout ──
   private timeoutHandle: ReturnType<typeof setTimeout> | null = null
 
+  // REV. 2: Pre-allocated event payloads — zero allocation per emit
+  private _syncPayload = { timeMs: 0 as TimeMs, source: 'midi-clock-slave' as const }
+  private _statusPayload = {
+    connected: false,
+    quality: 'none' as 'none' | 'weak' | 'stable',
+    source: 'midi-clock-slave' as const,
+  }
+  private _transportPlay = { command: 'play' as const, source: 'midi-clock-slave' as const }
+  private _transportContinue = { command: 'continue' as const, source: 'midi-clock-slave' as const }
+  private _transportStop = { command: 'stop' as const, source: 'midi-clock-slave' as const }
+
   // ═══════════════════════════════════════════════════════════════════════
   // IClockSource IMPLEMENTATION
   // ═══════════════════════════════════════════════════════════════════════
@@ -154,7 +165,9 @@ export class MIDIClockSlave extends BaseClockSource {
       this.wireInputs()
       this.midiAccess.onstatechange = () => this.wireInputs()
       this.connected = false
-      this.emit('status', { connected: false, quality: 'none', source: this.type })
+      this._statusPayload.connected = false
+      this._statusPayload.quality = 'none'
+      this.emit('status', this._statusPayload)
       console.log('[MIDIClockSlave] 🎚️ Started, listening for MIDI Clock...')
     } catch (err) {
       this.emit('error', {
@@ -173,7 +186,9 @@ export class MIDIClockSlave extends BaseClockSource {
     this.clearTimeout()
     this.isExternalPlaying = false
     this.connected = false
-    this.emit('status', { connected: false, quality: 'none', source: this.type })
+    this._statusPayload.connected = false
+    this._statusPayload.quality = 'none'
+    this.emit('status', this._statusPayload)
     console.log('[MIDIClockSlave] 🎚️ Stopped')
   }
 
@@ -258,7 +273,8 @@ export class MIDIClockSlave extends BaseClockSource {
       // a tempo change, so prior pulse intervals are no longer meaningful.
       this.clockTimestamps.clear()
       resetBpmDerivation(this.bpmState)
-      this.emit('sync', { timeMs: this.getTimeMs() ?? 0, source: this.type })
+      this._syncPayload.timeMs = this.getTimeMs() ?? 0
+      this.emit('sync', this._syncPayload)
       console.log(
         `[MIDIClockSlave] 📍 SPP locate: ${sppUnits} 16th-notes → ` +
         `pulse ${targetPulses} (beat ${this.totalBeats})`
@@ -281,10 +297,13 @@ export class MIDIClockSlave extends BaseClockSource {
 
         if (!this.connected) {
           this.connected = true
-          this.emit('status', { connected: true, quality: 'stable', source: this.type })
+          this._statusPayload.connected = true
+          this._statusPayload.quality = 'stable'
+          this.emit('status', this._statusPayload)
         }
 
-        this.emit('sync', { timeMs: this.getTimeMs() ?? 0, source: this.type })
+        this._syncPayload.timeMs = this.getTimeMs() ?? 0
+        this.emit('sync', this._syncPayload)
         this.resetTimeout()
         break
       }
@@ -295,19 +314,19 @@ export class MIDIClockSlave extends BaseClockSource {
         this.clockTimestamps.clear()
         resetBpmDerivation(this.bpmState)
         this.isExternalPlaying = true
-        this.emit('transport', { command: 'play', source: this.type })
+        this.emit('transport', this._transportPlay)
         break
       }
 
       case MIDI_CONTINUE: {
         this.isExternalPlaying = true
-        this.emit('transport', { command: 'continue', source: this.type })
+        this.emit('transport', this._transportContinue)
         break
       }
 
       case MIDI_STOP: {
         this.isExternalPlaying = false
-        this.emit('transport', { command: 'stop', source: this.type })
+        this.emit('transport', this._transportStop)
         break
       }
     }
@@ -338,7 +357,9 @@ export class MIDIClockSlave extends BaseClockSource {
     this.timeoutHandle = setTimeout(() => {
       this.connected = false
       this.isExternalPlaying = false
-      this.emit('status', { connected: false, quality: 'none', source: this.type })
+      this._statusPayload.connected = false
+      this._statusPayload.quality = 'none'
+      this.emit('status', this._statusPayload)
       console.log('[MIDIClockSlave] ⚠️ Signal lost (timeout)')
     }, SIGNAL_TIMEOUT_MS)
   }

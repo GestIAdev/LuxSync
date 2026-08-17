@@ -94,6 +94,11 @@ class LTCDecoderProcessor extends AudioWorkletProcessor {
     this.avgBitPeriod = 0         // Running average of a full bit period
     this.decoding = false         // Have we locked onto the signal?
     this.frameCount = 0           // Frames decoded since start
+    // ── REV. 2: Pre-allocated postMessage buffer (reused per frame) ──
+    this._msgBuf = {
+      type: 'ltc-frame', hours: 0, minutes: 0, seconds: 0, frames: 0,
+      dropFrame: false, frameNumber: 0, direction: 1, speed: 1.0,
+    }
     // ── WAVE 7104: Reverse & shuttle detection ──
     this.lastFrameTime = 0        // Timestamp of last decoded frame (performance.now)
     this.nominalBitPeriod = 0     // Expected bit period at 1x speed (samples)
@@ -269,17 +274,18 @@ class LTCDecoderProcessor extends AudioWorkletProcessor {
 
     // Sanity checks
     if (hours < 24 && minutes < 60 && seconds < 60 && frames < 30) {
-      this.port.postMessage({
-        type: 'ltc-frame',
-        hours,
-        minutes,
-        seconds,
-        frames,
-        dropFrame: dropFrame === 1,
-        frameNumber: this.frameCount++,
-        direction: this.direction,
-        speed: this.speed,
-      })
+      // REV. 2: Reuse pre-allocated message object — structured clone still
+      // copies on the main thread, but we avoid allocating the source object.
+      this._msgBuf.type = 'ltc-frame'
+      this._msgBuf.hours = hours
+      this._msgBuf.minutes = minutes
+      this._msgBuf.seconds = seconds
+      this._msgBuf.frames = frames
+      this._msgBuf.dropFrame = dropFrame === 1
+      this._msgBuf.frameNumber = this.frameCount++
+      this._msgBuf.direction = this.direction
+      this._msgBuf.speed = this.speed
+      this.port.postMessage(this._msgBuf)
     }
 
     // Clear buffer after successful decode
@@ -313,8 +319,12 @@ export class LTCDecoder extends BaseClockSource {
   private sourceNode: MediaStreamAudioSourceNode | null = null
   private workletNode: AudioWorkletNode | null = null
 
-  // ── Decoded state ──
+  // ── Decoded state (mutated in place — REV. 2 zero-alloc) ──
   private currentTimecode: SMPTETimecode = {
+    hours: 0, minutes: 0, seconds: 0, frames: 0, frameRate: 25,
+  }
+  // Pre-allocated return buffer for getTimecode()
+  private _timecodeReturnBuf: SMPTETimecode = {
     hours: 0, minutes: 0, seconds: 0, frames: 0, frameRate: 25,
   }
   private currentTimeMs: TimeMs = 0
@@ -324,6 +334,19 @@ export class LTCDecoder extends BaseClockSource {
   // ── WAVE 7104: Shuttle/reverse state ──
   private currentDirection: 1 | -1 = 1
   private currentSpeed = 1.0
+
+  // REV. 2: Pre-allocated event payloads — zero allocation per emit
+  private _syncPayload = {
+    timeMs: 0 as TimeMs,
+    source: 'ltc-smpte' as const,
+    direction: 1 as 1 | -1,
+    speed: 1.0,
+  }
+  private _statusPayload = {
+    connected: true,
+    quality: 'stable' as 'none' | 'weak' | 'stable',
+    source: 'ltc-smpte' as const,
+  }
 
   // ── Signal timeout ──
   private timeoutHandle: ReturnType<typeof setTimeout> | null = null
@@ -417,7 +440,9 @@ export class LTCDecoder extends BaseClockSource {
         `${this.selectedDeviceId ?? 'default input'} @${this.frameRate}fps expected`
       )
 
-      this.emit('status', { connected: false, quality: 'none', source: 'ltc-smpte' })
+      this._statusPayload.connected = false
+      this._statusPayload.quality = 'none'
+      this.emit('status', this._statusPayload)
 
     } catch (err) {
       this.emit('error', {
@@ -464,7 +489,9 @@ export class LTCDecoder extends BaseClockSource {
     this.currentDirection = 1
     this.currentSpeed = 1.0
 
-    this.emit('status', { connected: false, quality: 'none', source: 'ltc-smpte' })
+    this._statusPayload.connected = false
+    this._statusPayload.quality = 'none'
+    this.emit('status', this._statusPayload)
     console.log('[LTCDecoder] 🔊 Stopped')
   }
 
@@ -473,10 +500,19 @@ export class LTCDecoder extends BaseClockSource {
   }
 
   /**
-   * Last decoded SMPTE timecode
+   * Last decoded SMPTE timecode.
+   *
+   * REV. 2: Returns a reference to a pre-allocated return buffer, not a spread
+   * copy. The buffer is overwritten on the next call.
    */
   getTimecode(): SMPTETimecode {
-    return { ...this.currentTimecode }
+    const buf = this._timecodeReturnBuf
+    buf.hours = this.currentTimecode.hours
+    buf.minutes = this.currentTimecode.minutes
+    buf.seconds = this.currentTimecode.seconds
+    buf.frames = this.currentTimecode.frames
+    buf.frameRate = this.currentTimecode.frameRate
+    return buf
   }
 
   /**
@@ -511,14 +547,14 @@ export class LTCDecoder extends BaseClockSource {
   }): void {
     const frameRate: SMPTEFrameRate = msg.dropFrame ? 29.97 : this.frameRate
 
-    this.currentTimecode = {
-      hours: msg.hours,
-      minutes: msg.minutes,
-      seconds: msg.seconds,
-      frames: msg.frames,
-      frameRate,
-    }
-    this.currentTimeMs = smpteToMs(this.currentTimecode)
+    // REV. 2: Mutate currentTimecode in place — zero allocation
+    const tc = this.currentTimecode
+    tc.hours = msg.hours
+    tc.minutes = msg.minutes
+    tc.seconds = msg.seconds
+    tc.frames = msg.frames
+    tc.frameRate = frameRate
+    this.currentTimeMs = smpteToMs(tc)
     this.framesDecoded++
 
     // WAVE 7104: Store direction and speed for shuttle/reverse awareness
@@ -536,16 +572,16 @@ export class LTCDecoder extends BaseClockSource {
       )
     }
 
-    this.emit('sync', {
-      timeMs: this.currentTimeMs,
-      source: 'ltc-smpte',
-      direction: this.currentDirection,
-      speed: this.currentSpeed,
-    } as any)
+    // REV. 2: Reuse pre-allocated event payloads — zero allocation
+    this._syncPayload.timeMs = this.currentTimeMs
+    this._syncPayload.direction = this.currentDirection
+    this._syncPayload.speed = this.currentSpeed
+    this.emit('sync', this._syncPayload as any)
 
     // Signal quality based on decode success rate
-    const quality = this.framesDecoded > 10 ? 'stable' : 'weak'
-    this.emit('status', { connected: true, quality, source: 'ltc-smpte' })
+    this._statusPayload.connected = true
+    this._statusPayload.quality = this.framesDecoded > 10 ? 'stable' : 'weak'
+    this.emit('status', this._statusPayload)
 
     this.resetTimeout()
   }
@@ -555,7 +591,10 @@ export class LTCDecoder extends BaseClockSource {
     this.timeoutHandle = setTimeout(() => {
       this.connected = false
       this.framesDecoded = 0
-      this.emit('status', { connected: false, quality: 'none', source: 'ltc-smpte' })
+      // REV. 2: Reuse pre-allocated status payload
+      this._statusPayload.connected = false
+      this._statusPayload.quality = 'none'
+      this.emit('status', this._statusPayload)
       console.log('[LTCDecoder] ⚠️ LTC signal lost (timeout)')
     }, LTC_SIGNAL_TIMEOUT_MS)
   }

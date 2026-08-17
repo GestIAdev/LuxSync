@@ -87,6 +87,8 @@ export {
   getSectionHistory,
   validatePrediction,
   resetPredictionEngine,
+  observeSection,            // 🔮 CASSANDRA 2.0
+  getCassandraState,         // 🔮 CASSANDRA 2.0
   type PredictionType,
   type MusicalPrediction,
   type PredictionAction,

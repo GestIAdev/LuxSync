@@ -40,9 +40,13 @@ export {
   validatePrediction,
   resetPredictionEngine,
   resetEnergyHistory,        // 🔮 WAVE 1169: Reset historial energía
+  observeSection,            // 🔮 CASSANDRA 2.0: aprendizaje online explícito
+  getCassandraState,         // 🔮 CASSANDRA 2.0: telemetría del posterior
+  onTrackChange,             // 🔮 CASSANDRA 2.0: frontera de track (halva evidencia)
   type PredictionType,
   type MusicalPrediction,
-  type PredictionAction
+  type PredictionAction,
+  type HistoryEntry
 } from './PredictionEngine'
 
 // Decision Maker - Síntesis final

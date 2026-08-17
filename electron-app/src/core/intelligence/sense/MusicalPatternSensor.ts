@@ -6,7 +6,7 @@
 //  "Convierte el caos del audio en patrones que Selene puede cazar"
 // ═══════════════════════════════════════════════════════════════════════════
 
-import type { TitanStabilizedState, SeleneMusicalPattern } from '../types'
+import type { TitanStabilizedState, SeleneMusicalPattern, SectionClassification } from '../types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTES - Matemática pura, sin magia
@@ -27,10 +27,16 @@ const ENERGY_THRESHOLDS = {
 // 🎛️ WAVE 661: Frame counter para logging de textura espectral
 let spectralLogFrameCount = 0
 
-/** Clasificación de secciones musicales */
-type SectionClassification = 'intro' | 'verse' | 'buildup' | 'chorus' | 'drop' | 'breakdown' | 'outro'
-
-/** Mapa de sección original → clasificación interna */
+/**
+ * Mapa de sección original → clasificación interna.
+ *
+ * 🔮 CASSANDRA 2.0: alfabeto MSST completo (10 estados). El down-mapping
+ * anterior colapsaba `bridge`→`breakdown`, `textural_drop`→(ausente) y
+ * `unknown`→`verse`. Ese último era el más dañino: convertía una detección
+ * de baja confianza en una observación estructural falsa que envenenaba
+ * cualquier estimador n-grama. Ahora `unknown` se propaga como `unknown`
+ * y la cadena de Markov lo trata como skip transparente.
+ */
 const SECTION_MAP: Record<string, SectionClassification> = {
   'intro': 'intro',
   'verse': 'verse',
@@ -38,12 +44,14 @@ const SECTION_MAP: Record<string, SectionClassification> = {
   'build': 'buildup',
   'pre-chorus': 'buildup',
   'prechorus': 'buildup',
+  'pre_chorus': 'buildup',
   'chorus': 'chorus',
   'drop': 'drop',
+  'textural_drop': 'textural_drop',
   'breakdown': 'breakdown',
-  'bridge': 'breakdown',
+  'bridge': 'bridge',
   'outro': 'outro',
-  'unknown': 'verse', // Default conservador
+  'unknown': 'unknown',
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -201,7 +209,7 @@ export function resetPatternHistory(): void {
 
 function classifySection(sectionType: string): SectionClassification {
   const normalized = sectionType.toLowerCase().trim()
-  return SECTION_MAP[normalized] ?? 'verse'
+  return SECTION_MAP[normalized] ?? 'unknown'
 }
 
 function classifyEnergyPhase(energy: number): 'valley' | 'building' | 'peak' | 'drop' {

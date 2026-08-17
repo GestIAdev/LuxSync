@@ -70,6 +70,8 @@ export interface LiquidProcessInput {
   // — Ritmo —
   readonly syncopation: number
   readonly rhythmicIntensity: number
+  /** Energías por banda [low, mid, high] (0-1) — opcional, activa Π multibanda */
+  readonly bandEnergies?: ArrayLike<number>
 
   // — Cassandra (Oráculo) —
   readonly predictionProbability: number
@@ -204,6 +206,11 @@ export class LiquidCognitionCore {
   /** V3.4.4: Acceso directo a descriptores ΠMΔG para telemetría */
   get descriptors(): FluidDescriptors { return this._descriptors.getDescriptors() }
 
+  /** 🪟 Transitorio real (CF>2) en el frame actual — evidencia para Glass Break */
+  get crestEvent(): boolean { return this._descriptors.crestEvent }
+  /** R(t) — crestas CF>2 por segundo (telemetría) */
+  get crestRate(): number { return this._descriptors.crestRate }
+
   /**
    * Ejecuta el pipeline fluídico completo para un frame.
    * Hot path 44Hz — sin allocs, sin branches de género, determinístico.
@@ -214,6 +221,7 @@ export class LiquidCognitionCore {
    */
   process(input: LiquidProcessInput, now: number): LiquidVerdict {
     // ── 1. Actualizar descriptores ΠMΔG (EMA lenta 8s) ──
+    // Π ahora viene del TRUE CREST DETECTOR: necesita rawEnergy + reloj.
     this._descriptors.update({
       midPresence: input.midPresence,
       harshness: input.harshness,
@@ -221,7 +229,9 @@ export class LiquidCognitionCore {
       harmonicDensity: input.harmonicDensity,
       syncopation: input.syncopation,
       rhythmicIntensity: input.rhythmicIntensity,
-    })
+      rawEnergy: input.rawEnergy,
+      bandEnergies: input.bandEnergies,
+    }, now)
 
     // ── 1b. TEXTURE RADAR — throttled logger (~2s) — DISABLED (noisy) ──
     // this._textureLogFrame++

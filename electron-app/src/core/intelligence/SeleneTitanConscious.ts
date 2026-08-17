@@ -414,6 +414,13 @@ export class SeleneTitanConscious extends EventEmitter {
   // ═══════════════════════════════════════════════════════════════════════
   private _liquidCore: LiquidCognitionCore = new LiquidCognitionCore()
   private _lastLiquidVerdict: LiquidVerdict | null = null
+  /**
+   * Buffer pre-asignado [low, mid, high] para el TRUE CREST DETECTOR de Π.
+   * La intensidad de Poisson de una superposición de procesos independientes
+   * es la suma de intensidades: un kick y un hi-hat son DOS transitorios, y
+   * una única envolvente de banda ancha solo registraría uno.
+   */
+  private readonly _bandEnergies = new Float32Array(3)
   private _liquidRecorder: LiquidTelemetryRecorder = new LiquidTelemetryRecorder()
   private _v3Ignite: boolean = false
   private _lastSuppressedLog: number = 0
@@ -556,6 +563,11 @@ export class SeleneTitanConscious extends EventEmitter {
       const predProb = this.state.activePrediction?.probability ?? 0
       const predAlign = this.state.activePrediction ? 0.7 : 0.0
 
+      // Bandas para el detector de crestas de Π (escritura in-place, zero-alloc)
+      this._bandEnergies[0] = titanState.bass
+      this._bandEnergies[1] = titanState.mid
+      this._bandEnergies[2] = titanState.high
+
       this._lastLiquidVerdict = this._liquidCore.process({
         rawEnergy: titanState.rawEnergy,
         zScore,
@@ -567,6 +579,7 @@ export class SeleneTitanConscious extends EventEmitter {
         harmonicDensity: pattern.harmonicDensity,
         syncopation: pattern.syncopation,
         rhythmicIntensity: pattern.rhythmicIntensity,
+        bandEnergies: this._bandEnergies,
         predictionProbability: predProb,
         predictionAlignment: predAlign,
         totalBeauty: beauty,
@@ -653,6 +666,7 @@ export class SeleneTitanConscious extends EventEmitter {
             dirtiness: fd.dirtiness,
             groove: fd.groove,
           },
+          crestEvent: this._liquidCore.crestEvent,
         })
 
         if (verdict.action === 'clear') {

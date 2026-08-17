@@ -221,15 +221,24 @@ export {
 
 /**
  * Clasificación de secciones musicales (normalizada)
+ *
+ * 🔮 CASSANDRA 2.0: Alfabeto MSST completo (10 estados). El orden coincide
+ * exactamente con MSST_SECTION_KEYS (TrinityBridge) y con el índice 0-9 que
+ * usa la cadena de Markov de 2º orden. Antes eran 7 estados y el down-mapping
+ * de MusicalPatternSensor destruía `textural_drop`, `bridge` y `unknown`
+ * — precisamente los estados con estructura de 2º orden más nítida.
  */
-export type SectionClassification = 
-  | 'intro' 
-  | 'verse' 
-  | 'buildup' 
-  | 'chorus' 
-  | 'drop' 
-  | 'breakdown' 
-  | 'outro'
+export type SectionClassification =
+  | 'intro'          // 0
+  | 'verse'          // 1
+  | 'buildup'        // 2
+  | 'chorus'         // 3
+  | 'drop'           // 4
+  | 'textural_drop'  // 5
+  | 'breakdown'      // 6
+  | 'bridge'         // 7
+  | 'outro'          // 8
+  | 'unknown'        // 9
 
 /**
  * Fase de energía detectada

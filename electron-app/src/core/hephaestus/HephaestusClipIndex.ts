@@ -18,6 +18,7 @@ import type {
   HephAutomationClipV3,
 } from './types'
 import type { HephClipMetadata } from './HephFileIO'
+import { computeLfxChecksum } from '../arsenal/LfxFileLoader'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -31,6 +32,8 @@ export interface LoadedClip {
   schemaVersion: HephSchemaVersion
   metadata: HephClipMetadata
   clip: HephAutomationClipV3
+  /** Declared SHA-256 checksum from the `.lfx` wrapper (propagated to the registry). */
+  checksum: string
   modifiedAt: number
   source: 'builtin' | 'user'
 }
@@ -211,6 +214,34 @@ class HephaestusClipIndex {
 
       if (!clip) return null
 
+      // ── G2: Checksum integrity (mirrors Chronos `.lux` LAZARUS B-4) ───────
+      // A **wrong** checksum is a HARD ERROR (corruption detected) — refuse the
+      // file. An **empty/missing** checksum is permitted (warning) so legacy /
+      // migrated files can still load. The hash is computed over the RAW clip
+      // payload as it appears on disk, BEFORE `_normalizeClipCurves` mutates it
+      // (otherwise the hash would never match the on-disk signature).
+      const declaredChecksum =
+        typeof parsed.checksum === 'string' ? parsed.checksum : ''
+      // WAVE 7520.1: Normalize `sha256:` prefix — builtins may store bare hex
+      // while computeLfxChecksum() returns `sha256:<hex>`. Both are valid.
+      const stripSha256Prefix = (s: string): string =>
+        s.startsWith('sha256:') ? s.slice(7) : s
+      if (declaredChecksum.length > 0) {
+        const recomputed = computeLfxChecksum(parsed.clip)
+        if (stripSha256Prefix(recomputed) !== stripSha256Prefix(declaredChecksum)) {
+          console.error(
+            `[HephClipIndex] ❌ Checksum mismatch (corruption detected) in ${filePath}: ` +
+            `declared '${declaredChecksum}', recomputed '${recomputed}'`,
+          )
+          return null
+        }
+      } else {
+        console.warn(
+          `[HephClipIndex] ⚠️ Missing checksum in ${filePath} — allowed for ` +
+          `legacy migration; re-save to embed an integrity signature.`,
+        )
+      }
+
       // ── Normalize: ensure all curves have range and mode ────────────────
       _normalizeClipCurves(clip)
 
@@ -231,6 +262,7 @@ class HephaestusClipIndex {
         schemaVersion,
         metadata,
         clip,
+        checksum: declaredChecksum,
         modifiedAt,
         source,
       }

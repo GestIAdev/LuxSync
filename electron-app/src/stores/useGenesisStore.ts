@@ -115,7 +115,8 @@ export const useGenesisStore = create<GenesisStoreState>((set, get) => ({
   isLoading: false,
   error: null,
   lastMaintenanceAt: null,
-  isPaused: false,
+  // 🔒 WAVE 7527: Default PAUSED — ecosystem is OPT-IN per session.
+  isPaused: true,
 
   // Filter
   filterRarityTier: null,

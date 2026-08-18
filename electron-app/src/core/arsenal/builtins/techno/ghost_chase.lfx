@@ -1,174 +1,174 @@
-﻿{
-    "$schema":  "luxsync.lfx/3.0",
-    "clip":  {
-                 "id":  "ghost_chase",
-                 "name":  "Ghost Chase",
-                 "author":  "LuxSync-Migrator-v3 / WAVE 4848",
-                 "category":  "physical",
-                 "tags":  [
-                              "ghost",
-                              "ambient",
-                              "valley",
-                              "techno"
-                          ],
-                 "vibeCompat":  [
-                                    "techno-club"
-                                ],
-                 "spatialZones":  [
-                                      "all"
-                                  ],
-                 "mixBus":  "global",
-                 "priority":  50,
-                 "durationMs":  4000,
-                 "effectType":  "heph_custom",
-                 "tracks":  [
-                                {
-                                    "id":  "2aafef13-23c4-4c7b-9ab1-a44ad3242b07",
-                                    "paramId":  "intensity",
-                                    "zones":  [
-                                                  "all"
-                                              ],
-                                    "blendMode":  "replace",
-                                    "curve":  {
-                                                  "paramId":  "intensity",
-                                                  "valueType":  "number",
-                                                  "range":  [
-                                                                0,
-                                                                1
-                                                            ],
-                                                  "defaultValue":  0.08,
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  0.08,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  600,
-                                                                        "value":  0.35,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.42,
-                                                                                              0,
-                                                                                              0.58,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  3400,
-                                                                        "value":  0.35,
-                                                                        "interpolation":  "hold"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  4000,
-                                                                        "value":  0.08,
-                                                                        "interpolation":  "bezier",
-                                                                        "bezierHandles":  [
-                                                                                              0.42,
-                                                                                              0,
-                                                                                              0.58,
-                                                                                              1
-                                                                                          ]
-                                                                    }
-                                                                ],
-                                                  "mode":  "absolute"
-                                              }
-                                },
-                                {
-                                    "id":  "63cbe0ef-ccbb-45f0-81fe-0728e72c5725",
-                                    "paramId":  "color",
-                                    "zones":  [
-                                                  "all"
-                                              ],
-                                    "blendMode":  "replace",
-                                    "curve":  {
-                                                  "paramId":  "color",
-                                                  "valueType":  "color",
-                                                  "range":  [
-                                                                0,
-                                                                360
-                                                            ],
-                                                  "defaultValue":  {
-                                                                       "h":  250,
-                                                                       "s":  80,
-                                                                       "l":  20
-                                                                   },
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  {
-                                                                                      "h":  250,
-                                                                                      "s":  80,
-                                                                                      "l":  20
-                                                                                  },
-                                                                        "interpolation":  "hold"
-                                                                    }
-                                                                ],
-                                                  "mode":  "absolute"
-                                              }
-                                }
-                            ],
-                 "staticParams":  {
-                                      "dominantColorH":  250,
-                                      "dominantColorS":  80,
-                                      "dominantColorL":  20,
-                                      "isOneShot":  false,
-                                      "legacyMixBus":  "global",
-                                      "bpmRef":  128,
-                                      "parBreathHz":  0.3,
-                                      "moverGhostHz":  0.2,
-                                      "moverMaxDimmer":  0.3
-                                  },
-                 "cognitiveDNA":  {
-                                      "genome":  {
-                                                     "aggression":  0.5,
-                                                     "chaos":  0.3,
-                                                     "organicity":  0.1
-                                                 },
-                                      "textureAffinity":  "universal",
-                                      "compatibleVibes":  [
-                                                              "techno-club"
-                                                          ],
-                                      "validSections":  [
-                                                            "intro",
-                                                            "breakdown",
-                                                            "valley",
-                                                            "outro"
-                                                        ],
-                                      "energyZone":  {
-                                                         "min":  "gentle",
-                                                         "max":  "active"
-                                                     },
-                                      "aggressionRange":  {
-                                                              "min":  0,
-                                                              "max":  0.65
-                                                          },
-                                      "spatialBehavior":  "static",
-                                      "pressureRange":  {
-                                                            "min":  0,
-                                                            "max":  1
-                                                        }
-                                  },
-                 "simulationMeta":  {
-                                        "beautyWeights":  {
-                                                              "base":  0.65,
-                                                              "energyMultiplier":  1.05,
-                                                              "vibeBonus":  0.05
-                                                          },
-                                        "gpuCost":  0.3,
-                                        "fatigueImpact":  0.06,
-                                        "minDurationMs":  1000,
-                                        "cooldownMs":  6000,
-                                        "isStrobe":  false,
-                                        "isDivineCandidate":  false,
-                                        "isHeavyCandidate":  false,
-                                        "zScoreGuards":  {
-                                                             "requireRising":  false,
-                                                             "minimumZ":  null,
-                                                             "minimumEnergy":  null
-                                                         }
-                                    },
-                 "schemaVersion":  "3.0"
-             },
-    "checksum":  "90d2192663d6ffc733afaf8f801780bff2984e7093fe8605d8e66dd1638faea8"
+{
+  "$schema": "luxsync.lfx/3.0",
+  "clip": {
+    "id": "ghost_chase",
+    "name": "Ghost Chase",
+    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "category": "physical",
+    "tags": [
+      "ghost",
+      "ambient",
+      "valley",
+      "techno"
+    ],
+    "vibeCompat": [
+      "techno-club"
+    ],
+    "spatialZones": [
+      "all"
+    ],
+    "mixBus": "global",
+    "priority": 50,
+    "durationMs": 4000,
+    "effectType": "heph_custom",
+    "tracks": [
+      {
+        "id": "2aafef13-23c4-4c7b-9ab1-a44ad3242b07",
+        "paramId": "intensity",
+        "zones": [
+          "all"
+        ],
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0.08,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0.08,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 600,
+              "value": 0.35,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.42,
+                0,
+                0.58,
+                1
+              ]
+            },
+            {
+              "timeMs": 3400,
+              "value": 0.35,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 4000,
+              "value": 0.08,
+              "interpolation": "bezier",
+              "bezierHandles": [
+                0.42,
+                0,
+                0.58,
+                1
+              ]
+            }
+          ],
+          "mode": "absolute"
+        }
+      },
+      {
+        "id": "63cbe0ef-ccbb-45f0-81fe-0728e72c5725",
+        "paramId": "color",
+        "zones": [
+          "all"
+        ],
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
+          "defaultValue": {
+            "h": 250,
+            "s": 80,
+            "l": 20
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 250,
+                "s": 80,
+                "l": 20
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        }
+      }
+    ],
+    "staticParams": {
+      "dominantColorH": 250,
+      "dominantColorS": 80,
+      "dominantColorL": 20,
+      "isOneShot": false,
+      "legacyMixBus": "global",
+      "bpmRef": 128,
+      "parBreathHz": 0.3,
+      "moverGhostHz": 0.2,
+      "moverMaxDimmer": 0.3
+    },
+    "cognitiveDNA": {
+      "genome": {
+        "aggression": 0.5,
+        "chaos": 0.3,
+        "organicity": 0.1
+      },
+      "textureAffinity": "universal",
+      "compatibleVibes": [
+        "techno-club"
+      ],
+      "validSections": [
+        "intro",
+        "breakdown",
+        "valley",
+        "outro"
+      ],
+      "energyZone": {
+        "min": "gentle",
+        "max": "active"
+      },
+      "aggressionRange": {
+        "min": 0,
+        "max": 0.65
+      },
+      "spatialBehavior": "static",
+      "pressureRange": {
+        "min": 0,
+        "max": 1
+      }
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.65,
+        "energyMultiplier": 1.05,
+        "vibeBonus": 0.05
+      },
+      "gpuCost": 0.3,
+      "fatigueImpact": 0.06,
+      "minDurationMs": 1000,
+      "cooldownMs": 6000,
+      "isStrobe": false,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": false,
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": null,
+        "minimumEnergy": null
+      }
+    },
+    "schemaVersion": "3.0"
+  },
+  "checksum": "sha256:90d2192663d6ffc733afaf8f801780bff2984e7093fe8605d8e66dd1638faea8"
 }

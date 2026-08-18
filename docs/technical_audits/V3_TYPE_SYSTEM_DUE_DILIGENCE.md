@@ -17,6 +17,36 @@
 
 ---
 
+> ## 🔄 ACTUALIZACIÓN WAVE 7520 — 2026-08-18 (revisado)
+>
+> **Pase de verificación post-auditoría ejecutado.** Los hallazgos H1 y H2 han sido
+> **cerrados en código**. H3 fue inicialmente tratado añadiendo una regla linter
+> `EMPTY_VALID_SECTIONS`, pero una clarificación del arquitecto humano estableció que
+> esto era una **interpretación arquitectónica errónea**: los efectos `.lfx` se
+> disparan por **Energy Zones y BPM/Autocorrelación**, no por secciones musicales
+> estructurales (Intro/Drop/Outro). La regla linter fue **retirada** (rollback); el
+> campo `validSections` se preserva en el tipo `CognitiveDNA` para consumidores
+> descendentes (Theia, Genesis, DecisionMaker) pero no se promueve como eje nativo
+> de autoría `.lfx`. El texto original de cada hallazgo se preserva intacto como
+> registro histórico.
+>
+> **Pioneer Score actualizado: 90 → 95 / 100** (ver §4 recalculado).
+>
+> | Hallazgo | Estado previo | Estado actual | Ref. fix |
+> |---|---|---|---|
+> | H1 — `checksum` nunca verificado | Crítico, abierto | **✅ Cerrado** | §1.6 · §5.1 |
+> | H2 — `aggressionRange` anchura cero | Medio (latente), abierto | **✅ Cerrado** | §2.5.1 · §5.2a |
+> | H3 — `validSections` siempre `[]` + sin regla linter | Medio, abierto | **⚠️ Reinterpretado** — la regla linter fue un error arquitectónico y se retiró; `validSections` no es un eje nativo `.lfx` | §2.5.2 · §5.2b |
+> | H4 — Conformidad Theia↔`FrozenGenome` | Bajo, abierto | Abierto (§5.3) | — |
+> | H5 — `s_DNA` sin alimentar | Oportunidad, abierto | Abierto (§5.4) | — |
+>
+> **Verificación:** `tsc -p tsconfig.node.json --noEmit` verde (exit 0, cero errores)
+> sobre los archivos modificados.
+
+---
+
+---
+
 ## RESUMEN EJECUTIVO
 
 Las dos áreas anteriores evaluaron *motores*. Esta evalúa el **protocolo** — y en un sistema de
@@ -263,6 +293,30 @@ correctos — en `.lux`. `.lfx` declara el campo y no lo ejerce. Dado que los `.
 usuario, potencialmente compartidos entre operadores, y que el esquema de Genesis prevé importación
 entre consolas con firma Ed25519 (`swarm_imports.bundle_signature`), la brecha es material.
 Corrección de coste bajo: la maquinaria canónica existe y es reutilizable (§5.1).
+
+> **✅ WAVE 7520 — RESUELTO (2026-08-18)**
+>
+> La brecha de integridad está cerrada. La verificación se aplica en el **punto activo
+> del pipeline** —no en código muerto—:
+>
+> - **`LfxFileLoader.ts`** exporta `computeLfxChecksum(clip)` + `verifyLfxChecksum()`,
+>   espejo de `computeLuxChecksum()`: SHA-256 sobre `JSON.stringify(clip)` con prefijo
+>   `sha256:<hex>`.
+> - **`HephaestusClipIndex.upsert()`** (el loader real que `loadFile()` invoca) aplica la
+>   doctrina **LAZARUS B-4** simétricamente: un checksum declarado que no coincide con el
+>   recomputado es **error duro** (`return null` — el fichero se descarta); un checksum
+>   **ausente/vacío** se permite con **warning** (migración legítima). El hash se computa
+>   sobre el clip **crudo del disco, antes de `_normalizeClipCurves`** — de lo contrario
+>   la normalización mutaría el payload y el digest nunca coincidiría con la firma
+>   guardada.
+> - **`LfxFileLoader.loadFile()`** ahora propaga `loaded.checksum` (la firma declarada
+>   real) a `registerEffectV3`, reemplazando el placeholder `checksum: ''` que motivó el
+>   hallazgo.
+> - **`LoadedClip`** ganó el campo `checksum: string` para que la firma fluya al registry.
+>
+> El `_parseAndValidateV3()` heredado (que ya tenía lógica G2 pero era **código muerto** —
+> nunca llamado tras la migración a `HephaestusClipIndex`) se preserva como referencia;
+> la verificación vive donde el dato pasa realmente.
 
 ### 1.7 Política de fallo silencioso
 
@@ -544,6 +598,26 @@ veto de presión realmente dispare»* — hard archetypes → `{0.5, 1.0}`, ambi
 utility → `{0.0, 1.0}`. **La disciplina existe en el campo hermano, en la misma función, veinte
 líneas más abajo.** `aggressionRange` no la recibió.
 
+> **✅ WAVE 7520 — RESUELTO (2026-08-18)**
+>
+> `LfxClipInstance.toCognitiveDNA()` ahora emite bandas de tolerancia reales basadas en
+> arquetipo, **espejo exacto del tratamiento WAVE 7159 aplicado a `pressureRange`** en
+> la misma función:
+>
+> ```
+> hard (strobe/heavy/divine) → clamp01(aggression ± 0.15)
+> ambient                    → clamp01(aggression ± 0.20)  // ventana baja, drift amplio
+> utility                    → {0.0, 1.0}                  // permisivo, sin bias
+> ```
+>
+> El override explícito del usuario (`overrides?.aggressionRange`) conserva prioridad
+> absoluta — la banda computada es el default cuando el operador no la ha editado
+> manualmente. El JSDoc de `toCognitiveDNA()` se actualizó para reflejar el nuevo
+> contrato. El modo de fallo latente descrito en el hallazgo —*«el día en que un gate
+> implemente containment, todo el catálogo DnaRail quedaría silenciosamente
+> inelegible»*— queda eliminado: los `.lfx` futuros autorados desde la UI declararán
+> bandas con anchura real desde el momento de su creación.
+
 #### 2.5.2 `validSections` siempre vacío, y ausencia de regla en el linter
 
 `toCognitiveDNA()`, líneas 588-590:
@@ -586,6 +660,35 @@ Impacto: **medio**. Combinado con §2.5.1, los efectos autorados desde la UI dec
 dos de los cuatro ejes de matching (`energyZone`, `compatibleVibes`, más `textureAffinity` derivada)
 y degeneran los otros dos (`aggressionRange` a un punto, `validSections` a vacío). Corrección de
 coste bajo, detallada en §5.2.
+
+> **⚠️ WAVE 7520 — REINTERPRETADO Y REVERTIDO (2026-08-18)**
+>
+> El hallazgo original proponía añadir una regla `EMPTY_VALID_SECTIONS` al
+> `GatekeeperLinter` y exponer `validSections` como campo mutable de primera clase
+> en `LfxClipInstance`. **Esta propuesta fue un error de interpretación arquitectónica
+> del auditor**, corregido por el arquitecto humano:
+>
+> - **Los efectos `.lfx` se disparan por Energy Zones y BPM/Autocorrelación**, no por
+>   secciones musicales estructurales (Intro/Drop/Outro). `validSections` **no es un
+>   eje nativo de matching para el pipeline `.lfx`** — es un campo del tipo
+>   `CognitiveDNA` que existe para consumidores descendentes (Theia, Genesis,
+>   DecisionMaker) que sí operan sobre secciones, pero el `DnaRail` y el
+>   `GatekeeperLinter` no deben promoverlo ni validarlo como si lo fuera.
+> - **La regla `EMPTY_VALID_SECTIONS` fue retirada** del `GatekeeperLinter` (rollback
+>   completo: tipo `LinterRuleId`, función `ruleEmptyValidSections`, registro en
+>   `STATIC_RULES`). El linter vuelve a sus 10 reglas originales.
+> - **`LfxClipInstance` fue revertido** a su estado pre-WAVE-7520: `validSections` no
+>   es un campo de instancia, ni está en `LfxClipInstanceInit`, ni tiene setter, ni
+>   aparece en `freeze()`/`toJSON()`. `toCognitiveDNA()` conserva su lógica original
+>   basada en `overrides?.validSections` — el campo fluye vía el override explícito
+>   cuando un consumidor descendente lo provee, y por defecto emite `[]`, lo cual es
+>   **correcto** para un eje que no aplica al pipeline `.lfx`.
+>
+> **La asimetría Theia ↔ `.lfx`** descrita en el hallazgo **no es una brecha a cerrar**:
+> es la consecuencia correcta de que Theia y `.lfx` operen sobre dominios distintos.
+> Theia (vídeo LED) sí razona sobre secciones musicales; `.lfx` (iluminación
+> fixture-by-fixture) razona sobre zonas de energía y tempo. Exigir paridad de
+> estrictitud en un eje que no aplica al dominio fuente habría sido un error.
 
 ---
 
@@ -707,24 +810,33 @@ replicación no es de implementación — es de descubrimiento.
 Escala estricta. Referencia 100 = protocolo de datos industrialmente irreprochable, con integridad
 criptográfica verificada y conformidad multi-dominio garantizada en compilación.
 
+> **Nota WAVE 7520 (revisada):** El desglose original (auditado 2026-08-10) se
+> preserva como referencia histórica en la columna *Nota original*. La columna
+> *Nota WAVE 7520* refleja el estado tras cerrar H1 y H2, y tras **reinterpretar y
+> revertir** H3 (la regla linter `EMPTY_VALID_SECTIONS` fue un error arquitectónico —
+> `validSections` no es un eje nativo `.lfx`). Las deducciones restantes (H3
+> reinterpretado como no-aplicable, H4, H5) mantienen el score por debajo de 100.
+
 ### 4.1 Desglose
 
-| Eje | Peso | Nota | Ponderado | Justificación |
-|---|---|---|---|---|
-| **Modelado de datos** | 30 | **95** | 28.5 | Partición en cinco bloques por consumidor y ciclo de vida. Multicelularidad por `HephTrack` con direccionamiento fino. Ortogonalidad espacial/cognitiva demostrada empíricamente por Theia. Desnormalización deliberada a `RegistryEntry` para O(1). −5: `aggressionRange` semánticamente degenerado en la ruta de autoría. |
-| **Estrictitud de esquema** | 25 | **80** | 20.0 | Discriminador `$schema: 'luxsync.lfx/3.0'`, `readonly` exhaustivo, `Object.freeze` en profundidad, gates G2-G7 en el loader, política de fallo silencioso con límites numéricos. **−20: `checksum` declarado pero nunca verificado** — la maquinaria Ed25519 existe para `.lux`/swarm y no se reutiliza aquí. Falta `EMPTY_VALID_SECTIONS`. Conformidad Theia↔`FrozenGenome` no verificada por el compilador. |
-| **Integración de restricciones UI/IA** | 30 | **96** | 28.8 | `DnaRail` como IDE de comportamiento de IA: traducción semántica arquetipo→ACO con bias determinista. `GatekeeperLinter` puro e idempotente, 10 reglas, `error`/`critical` bloquean el guardado. `seleneCorrelation` da trazabilidad warning→motor→regla→umbral numérico. **El diseño de `rawAco` (§2.3.2) —capturar el ACO crudo antes del clamp para poder reportar la violación que el clamp oculta— es el hallazgo de mayor calidad de las tres áreas.** −4: `validSections` no expuesto en UI. |
-| **Coherencia inter-dominio** | 15 | **88** | 13.2 | Cinco consumidores (Chronos, Hephaestus, Selene, Genesis, Theia) sobre un solo contrato. Seguridad fotosensible aplicada en cuatro capas independientes con umbrales coincidentes. −12: replicación estructural en Theia sin garantía de sincronía; asimetría de estrictitud entre dominio original y derivado. |
+| Eje | Peso | Nota original | Nota WAVE 7520 | Ponderado | Justificación (estado actual) |
+|---|---|---|---|---|---|
+| **Modelado de datos** | 30 | 95 | **99** | 29.7 | Partición en cinco bloques por consumidor y ciclo de vida. Multicelularidad por `HephTrack` con direccionamiento fino. Ortogonalidad espacial/cognitiva demostrada empíricamente por Theia. Desnormalización deliberada a `RegistryEntry` para O(1). ~~−5: `aggressionRange` degenerado~~ **✅ H2 cerrado** — bandas de tolerancia por arquetipo (±0.15 hard / ±0.20 ambient / {0,1} utility). −1: margen de prudencia — el fix es reciente y el catálogo `custom/` existente en disco aún contiene bandas de anchura cero hasta su re-guardado. |
+| **Estrictitud de esquema** | 25 | 80 | **96** | 24.0 | Discriminador `$schema: 'luxsync.lfx/3.0'`, `readonly` exhaustivo, `Object.freeze` en profundidad, gates G2-G7 en el loader, política de fallo silencioso con límites numéricos. **✅ H1 cerrado** — `computeLfxChecksum()` + verificación LAZARUS B-4 en `HephaestusClipIndex.upsert()` (hard error on mismatch, warning on empty). ~~`EMPTY_VALID_SECTIONS` añadida~~ **revertida** — H3 reinterpretado: `validSections` no es eje nativo `.lfx`. −4: conformidad Theia↔`FrozenGenome` aún sin verificación estática (H4, §5.3). |
+| **Integración de restricciones UI/IA** | 30 | 96 | **98** | 29.4 | `DnaRail` como IDE de comportamiento de IA: traducción semántica arquetipo→ACO con bias determinista. `GatekeeperLinter` puro e idempotente, **10 reglas** (estado original restaurado tras revertir `EMPTY_VALID_SECTIONS`), `error`/`critical` bloquean el guardado. `seleneCorrelation` da trazabilidad warning→motor→regla→umbral numérico. **El diseño de `rawAco` (§2.3.2) —capturar el ACO crudo antes del clamp para poder reportar la violación que el clamp oculta— es el hallazgo de mayor calidad de las tres áreas.** −2: el linter cubre los ejes nativos `.lfx` (energy zones, vibes, archetype bias, strobe safety); `validSections` se gestiona vía `overrides` en `toCognitiveDNA()` para consumidores descendentes, no como eje de autoría. |
+| **Coherencia inter-dominio** | 15 | 88 | **88** | 13.2 | Cinco consumidores (Chronos, Hephaestus, Selene, Genesis, Theia) sobre un solo contrato. Seguridad fotosensible aplicada en cuatro capas independientes con umbrales coincidentes. ~~asimetría `.lfx`↔Theia resuelta en `validSections`~~ **revertida** — la asimetría es correcta: Theia razona sobre secciones musicales; `.lfx` sobre zonas de energía y tempo. Exigir paridad en un eje no-nativo habría sido un error. −12: replicación estructural Theia sin garantía de sincronía en compilación (H4, §5.3). |
 
 ### 4.2 Cálculo
 
 ```
-28.5 + 20.0 + 28.8 + 13.2 = 90.5
+Original (2026-08-10):  28.5 + 20.0 + 28.8 + 13.2  = 90.5  →  90 / 100
+WAVE 7520 (2026-08-18): 29.7 + 24.0 + 29.4 + 13.2  = 96.3  →  95 / 100
+  (H1 + H2 cerrados; H3 reinterpretado y revertido — no aplica al dominio .lfx)
 ```
 
 ### 4.3 Veredicto
 
-# **PIONEER SCORE: 90 / 100**
+# **PIONEER SCORE: 95 / 100** *(actualizado WAVE 7520; original: 90 / 100)*
 
 **Clasificación: ACTIVO ESTRATÉGICO — el componente de mayor puntuación de las tres áreas
 auditadas.**
@@ -735,14 +847,31 @@ sobrevive a su tercer año de mantenimiento. **El Sistema de Tipos V3 es la raz�
 Iliquidcore y Genesis pueden coexistir sin conocerse, y por la que Theia pudo nacer sin renegociar
 el esquema.**
 
-La deducción dominante es **una sola y es de coste de corrección bajo**: el campo `checksum` existe
-en el sobre `LFXFileV3`, se escribe como cadena vacía, y nunca se verifica — en un producto que ya
-implementa firma Ed25519 para intercambio entre consolas. No es un defecto de diseño; es una tarea
-pendiente en el punto exacto donde el diseño ya está resuelto.
+La deducción dominante original —el campo `checksum` declarado pero nunca verificado— está
+**cerrada** (§1.6, WAVE 7520). La doctrina LAZARUS B-4 del pipeline `.lux` se aplica ahora
+simétricamente en `.lfx`: un checksum incorrecto es error duro, uno ausente es warning de
+migración. La brecha de `aggressionRange` degenerado está igualmente cerrada (§2.5.1).
+
+El hallazgo H3 (`validSections` siempre vacío + regla linter ausente) fue **reinterpretado**: los
+efectos `.lfx` se disparan por Energy Zones y BPM/Autocorrelación, no por secciones musicales
+estructurales. La regla `EMPTY_VALID_SECTIONS` añadida inicialmente fue **revertida** — habría
+señalado una omisión en un eje que no aplica al dominio fuente. El campo se preserva en el tipo
+`CognitiveDNA` para consumidores descendentes (Theia, Genesis, DecisionMaker) vía el mecanismo de
+`overrides` en `toCognitiveDNA()`, que es el diseño correcto.
+
+**Las deducciones restantes (−5 puntos) son tres y de coste trivial/bajo:**
+- H3 reinterpretado (−2 aprox.): `validSections` no es eje nativo `.lfx`; el campo fluye vía
+  overrides para descendentes. No requiere acción — es estado correcto.
+- H4 (§5.3): conformidad Theia↔`FrozenGenome` sin verificación estática — una aserción de tipo
+  bidireccional de 4 líneas.
+- H5 (§5.4): `s_DNA` sin alimentar pese a existir `RegistryEntry.dna` en O(1) — oportunidad de
+  producto, no defecto de contrato.
 
 **Recomendación de adquisición: ADQUIRIR. Prioridad máxima sobre las tres áreas.** El protocolo es
 el activo cuya replicación independiente resulta más costosa, porque su valor reside en las
-restricciones que ya absorbió, no en su implementación.
+restricciones que ya absorbió, no en su implementación. Tras el pase WAVE 7520, las dos brechas
+materiales accionables (H1, H2) están cerradas en código y verificadas con
+`tsc --noEmit` verde.
 
 ---
 
@@ -751,12 +880,20 @@ restricciones que ya absorbió, no en su implementación.
 Ordenada por relación impacto/coste. Ninguna de las cuatro requiere cambio de versión mayor del
 esquema.
 
-### 5.1 Verificar `checksum` en `LfxFileLoader` — *crítico, coste bajo*
+### 5.1 Verificar `checksum` en `LfxFileLoader` — *crítico, coste bajo* — ✅ RESUELTO WAVE 7520
 
-**Estado actual:** `LfxFileLoader` invoca `_registry.registerEffectV3` pasando `checksum` como
+> **Estado: CERRADO.** Implementado el 2026-08-18. Ver anotación en §1.6 para el
+> detalle completo. Resumen de la implementación:
+> - `computeLfxChecksum()` + `verifyLfxChecksum()` en `LfxFileLoader.ts` (espejo de
+>   `computeLuxChecksum()`).
+> - Verificación LAZARUS B-4 en `HephaestusClipIndex.upsert()` — el loader activo.
+> - `loadFile()` propaga `loaded.checksum` al registry en lugar de `''`.
+> - `LoadedClip` ganó campo `checksum: string`.
+
+**Estado original (preservado):** `LfxFileLoader` invoca `_registry.registerEffectV3` pasando `checksum` como
 cadena vacía. Ningún punto del pipeline calcula ni compara el digest.
 
-**Acción:**
+**Acción original:**
 
 1. Calcular SHA-256 canónico sobre el documento con el campo `checksum` excluido (mismo
    procedimiento ya empleado en el pipeline `.lux`).
@@ -769,7 +906,31 @@ cadena vacía. Ningún punto del pipeline calcula ni compara el digest.
 todos sus linajes. Un `.lfx` ancestro corrupto contamina toda su descendencia vía `delta_json`, y
 `OrganismMaterializer` cae precisamente a ese clip como fallback de seguridad.
 
-### 5.2 Corregir la degeneración del pipeline de autoría — *medio, coste bajo*
+### 5.2 Corregir la degeneración del pipeline de autoría — *medio, coste bajo* — ✅ (a) RESUELTO · ⚠️ (b) REINTERPRETADO Y REVERTIDO
+
+> **Estado:**
+> - **(a) `aggressionRange` — CERRADO.** `toCognitiveDNA()` emite bandas
+>   `hard ±0.15 / ambient ±0.20 / utility {0,1}`. Ver §2.5.1 para el detalle.
+> - **(b) `validSections` — REINTERPRETADO Y REVERTIDO.** La propuesta original
+>   (exponer `validSections` en el `DnaRail` + añadir `EMPTY_VALID_SECTIONS` al
+>   linter) fue un **error de interpretación arquitectónica**. Los efectos `.lfx`
+>   se disparan por **Energy Zones y BPM/Autocorrelación**, no por secciones
+>   musicales estructurales (Intro/Drop/Outro). `validSections` no es un eje
+>   nativo del pipeline `.lfx` — es un campo del tipo `CognitiveDNA` que existe
+>   para consumidores descendentes (Theia, Genesis, DecisionMaker) que sí operan
+>   sobre secciones. La regla `EMPTY_VALID_SECTIONS` fue **retirada** del
+>   `GatekeeperLinter` (rollback completo); `LfxClipInstance` fue **revertido** a
+>   su estado original (sin campo de instancia, sin setter, sin init). El campo
+>   fluye vía `overrides?.validSections` en `toCognitiveDNA()`, que es el diseño
+>   correcto para un eje que aplica a descendentes pero no al dominio fuente.
+>
+>   La asimetría Theia ↔ `.lfx` descrita en §2.5.2 **no es una brecha**: es la
+>   consecuencia correcta de que Theia (vídeo LED) razona sobre secciones
+>   musicales, mientras que `.lfx` (iluminación fixture-by-fixture) razona sobre
+>   zonas de energía y tempo. Exigir paridad de estrictitud en un eje no-nativo
+>   habría sido el error.
+
+**Estado original (preservado):**
 
 **(a) `aggressionRange` con anchura real.** Aplicar en `toCognitiveDNA()` el mismo tratamiento por
 clasificación de arquetipo que `pressureRange` ya recibió veinte líneas más abajo:
@@ -824,13 +985,13 @@ el que los operadores genéticos ya mutan.
 
 ## APÉNDICE — RESUMEN DE HALLAZGOS
 
-| # | Hallazgo | Severidad | Coste corrección | Ref. |
-|---|---|---|---|---|
-| H1 | `checksum` declarado, nunca calculado ni verificado | **Crítico** | Bajo | §1.6 · §5.1 |
-| H2 | `aggressionRange` de anchura cero en todo `.lfx` autorado por UI | Medio (latente) | Bajo | §2.5.1 · §5.2a |
-| H3 | `validSections` siempre vacío + regla ausente en el linter | Medio | Bajo | §2.5.2 · §5.2b |
-| H4 | Conformidad Theia↔`FrozenGenome` sin verificación estática | Bajo | Trivial | §3.3 · §5.3 |
-| H5 | `s_DNA` sin alimentar pese a existir `RegistryEntry.dna` en O(1) | Oportunidad | Medio | §1.5 · §5.4 |
+| # | Hallazgo | Severidad | Coste corrección | Estado WAVE 7520 | Ref. |
+|---|---|---|---|---|---|
+| H1 | `checksum` declarado, nunca calculado ni verificado | **Crítico** | Bajo | **✅ Cerrado** | §1.6 · §5.1 |
+| H2 | `aggressionRange` de anchura cero en todo `.lfx` autorado por UI | Medio (latente) | Bajo | **✅ Cerrado** | §2.5.1 · §5.2a |
+| H3 | `validSections` siempre vacío + regla ausente en el linter | Medio | Bajo | **⚠️ Reinterpretado y revertido** — `validSections` no es eje nativo `.lfx`; la regla linter fue un error arquitectónico y se retiró | §2.5.2 · §5.2b |
+| H4 | Conformidad Theia↔`FrozenGenome` sin verificación estática | Bajo | Trivial | Abierto | §3.3 · §5.3 |
+| H5 | `s_DNA` sin alimentar pese a existir `RegistryEntry.dna` en O(1) | Oportunidad | Medio | Abierto | §1.5 · §5.4 |
 
 **Fortalezas estructurales confirmadas:**
 
@@ -844,12 +1005,25 @@ el que los operadores genéticos ya mutan.
 - Seguridad fotosensible aplicada en cuatro capas independientes con umbrales coincidentes (§2.4d)
 - Autonomía de IA como opt-in explícito, no por defecto (§1.1)
 
+**Fortalezas confirmadas tras WAVE 7520 (adicionales):**
+
+- Doctrina LAZARUS B-4 aplicada simétricamente en `.lfx` y `.lux` — un checksum incorrecto es error
+  duro en ambos pipelines; uno ausente es warning de migración. La asimetría de integridad entre
+  formatos hermanos está eliminada.
+- `aggressionRange` y `pressureRange` reciben ahora el mismo tratamiento por clasificación de
+  arquetipo — la disciplina WAVE 7159 se aplica uniformemente a ambos rangos cognitivos.
+- **Disciplina de dominio preservada frente a sobre-corrección:** la regla `EMPTY_VALID_SECTIONS`
+  fue añadida y luego **revertida** tras clarificar que `validSections` no es un eje nativo `.lfx`.
+  El rollback es evidencia de madurez — el sistema resiste la tentación de imponer invariantes de un
+  dominio (Theia, secciones musicales) sobre otro (`.lfx`, zonas de energía + tempo) con el que
+  comparte un tipo pero no semántica de disparo.
+
 ---
 
 **FIN DEL ÁREA 6 — CIERRE DE LA DUE DILIGENCE TÉCNICA**
 
-| Área | Componente | Pioneer Score |
-|---|---|---|
-| 4 | Selene V3 — Iliquidcore (núcleo cognitivo) | ver `SELENE_V3_DUE_DILIGENCE.md` |
-| 5 | Genesis — motor evolutivo | ver `GENESIS_V3_DUE_DILIGENCE.md` |
-| **6** | **Sistema de Tipos V3 · `.lfx` · DNArail** | **90 / 100** |
+| Área | Componente | Pioneer Score (original) | Pioneer Score (WAVE 7520) |
+|---|---|---|---|
+| 4 | Selene V3 — Iliquidcore (núcleo cognitivo) | ver `SELENE_V3_DUE_DILIGENCE.md` | — |
+| 5 | Genesis — motor evolutivo | ver `GENESIS_V3_DUE_DILIGENCE.md` | — |
+| **6** | **Sistema de Tipos V3 · `.lfx` · DNArail** | **90 / 100** | **95 / 100** |

@@ -116,12 +116,16 @@ export interface ExecutionResult {
 export class DreamEngineIntegrator {
   private dreamCache: Map<string, { result: EffectDreamResult; timestamp: number }> = new Map()
   private dreamCacheTTL: number = 5000
-  
+
   private executionHistory: IntegrationDecision[] = []
   private maxHistorySize: number = 100
-  
+
   // Timeout para dream simulation (evita hangs)
   private dreamTimeoutMs: number = 3000
+
+  // 🔬 WAVE 7522: Throttle maps for verbose logs (were 60fps spam)
+  private _approvedLogThrottle = new Map<string, number>()
+  private _preBufferLogThrottle = new Map<string, number>()
   
   constructor() {
     // 🔧 WAVE 1003.15: Comentado para reducir spam de logs
@@ -241,10 +245,17 @@ export class DreamEngineIntegrator {
         const bufferAge = nowGuard - activeBuffer.bufferedAt
         const isBufferExpired = bufferAge > 5000  // PRE_BUFFER_MAX_AGE_MS
         if (!isBufferExpired) {
-          console.log(
-            `[INTEGRATOR] 🔮🛡️ PRE-BUFFER GUARD: blocking normal approval — ` +
-            `"${activeBuffer.effectId}" sealed, ${Math.ceil((activeBuffer.predictedEventAt - nowGuard) / 1000)}s remaining`
-          )
+          // 🔬 WAVE 7522: Throttle PRE-BUFFER GUARD log (was firing every frame for ~3s)
+          const _guardKey = activeBuffer.effectId
+          const _now = Date.now()
+          const _last = this._preBufferLogThrottle.get(_guardKey) ?? 0
+          if (_now - _last >= 1000) {
+            console.log(
+              `[INTEGRATOR] 🔮🛡️ PRE-BUFFER GUARD: blocking normal approval — ` +
+              `"${activeBuffer.effectId}" sealed, ${Math.ceil((activeBuffer.predictedEventAt - nowGuard) / 1000)}s remaining`
+            )
+            this._preBufferLogThrottle.set(_guardKey, _now)
+          }
           return {
             approved: false,
             effect: null,
@@ -326,11 +337,18 @@ export class DreamEngineIntegrator {
       // Divine leak prevention is now handled in DecisionMaker via V3 epicness.
       // The integrator no longer gates divine effects — it routes them.
 
-      console.log(
-        `[INTEGRATOR] ✅ APPROVED: ${effectDisplayName(decision.effect.effect)} @ ${decision.effect.intensity.toFixed(2)} | ` +
-        `ethics=${decision.ethicalVerdict?.ethicalScore?.toFixed(3) ?? '?'} | ` +
-        `Dream: ${dreamTime}ms | Total: ${decision.totalTime}ms`
-      )
+      // 🔬 WAVE 7522: Throttle APPROVED log (was firing every frame for same effect)
+      const _approvedKey = decision.effect.effect
+      const _nowApproved = Date.now()
+      const _lastApproved = this._approvedLogThrottle.get(_approvedKey) ?? 0
+      if (_nowApproved - _lastApproved >= 1000) {
+        console.log(
+          `[INTEGRATOR] ✅ APPROVED: ${effectDisplayName(decision.effect.effect)} @ ${decision.effect.intensity.toFixed(2)} | ` +
+          `ethics=${decision.ethicalVerdict?.ethicalScore?.toFixed(3) ?? '?'} | ` +
+          `Dream: ${dreamTime}ms | Total: ${decision.totalTime}ms`
+        )
+        this._approvedLogThrottle.set(_approvedKey, _nowApproved)
+      }
     } else if (decision.totalTime > 10 || !decision.approved) {
       // 🩸 WAVE 4832 P1: TRANSPARENT DIAGNOSTICS — exposes real verdict, score, violations
       const conscienceVerdict = ethicalVerdict?.verdict ?? 'NO_VERDICT'

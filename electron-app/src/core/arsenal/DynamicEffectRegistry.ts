@@ -311,6 +311,20 @@ export class DynamicEffectRegistry {
   }
 
   /**
+   * 🔍 WAVE 7522: VIBE INDEX DIAGNOSTIC — Returns a map of vibe → count
+   * showing how many effects are indexed per vibe bucket. Used at boot to
+   * detect index corruption (e.g. effects alive in registry but missing
+   * from the vibe index).
+   */
+  public getVibeIndexDiagnostic(): Record<string, number> {
+    const result: Record<string, number> = {}
+    for (const [vibe, entries] of this._byVibe) {
+      result[vibe] = entries.length
+    }
+    return result
+  }
+
+  /**
    * Catálogo serializable para IPC renderer → MidiLearn / KeyForge.
    *
    * Devuelve solo los campos necesarios para construir la lista de acciones

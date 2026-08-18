@@ -23,7 +23,10 @@ const MAINTENANCE_INTERVAL_MS = 60_000  // 60 seconds — geological time
 
 let _maintenanceTimer: ReturnType<typeof setInterval> | null = null
 let _ignited = false
-let _genesisPaused = false
+// 🔒 WAVE 7527: Default PAUSED — ecosystem is OPT-IN per session.
+// The geological loop (maintenance + heatmap) does NOT auto-start on boot.
+// The operator must explicitly press "▶ START ECOSYSTEM" in the Genesis Lab.
+let _genesisPaused = true
 
 /**
  * Ignites the Genesis Engine's geological loop.
@@ -34,19 +37,19 @@ let _genesisPaused = false
  * BIG BANG FIX: Awaits AncestralIngestor.ingestAll() BEFORE cold-start seeding
  * to guarantee lfx_blueprints is populated. Without this, the cold-start query
  * sees an empty table and skips seeding entirely.
+ *
+ * 🔒 WAVE 7527: This function NO LONGER starts the HeatmapLogger or the
+ * maintenance timer. Those are deferred to resumeGenesisEngine(), which the
+ * UI calls when the operator explicitly starts the ecosystem. This prevents
+ * mutant organism flooding during routine Selene testing.
  */
 export async function igniteGenesisEngine(): Promise<void> {
   if (_ignited) return
   _ignited = true
 
-  // 1. Start the HeatmapLogger flush timer (10s)
-  try {
-    getHeatmapLogger().start()
-  } catch (err) {
-    console.warn('[GenesisIgnition ⚠️] HeatmapLogger start failed:', err)
-  }
-
-  // 2. Ancestral ingestion — populate lfx_blueprints from .lfx catalog BEFORE seeding
+  // 1. Ancestral ingestion — populate lfx_blueprints from .lfx catalog.
+  // This is a one-time bootstrap operation, NOT an interval. It must run
+  // regardless of ecosystem paused state so the arsenal is available.
   try {
     const report = await getAncestralIngestor().ingestAll()
     // Ancestral ingestion summary log silenced
@@ -54,12 +57,33 @@ export async function igniteGenesisEngine(): Promise<void> {
     console.warn('[GenesisIgnition ⚠️] Ancestral ingestion failed:', err)
   }
 
-  // 3. WAVE 6000.V6: Cold-start seeding PURGED.
+  // 2. WAVE 6000.V6: Cold-start seeding PURGED.
   // The ecosystem boots with zero artificial organisms. Spawns happen
   // exclusively via the natural live-fire event in EffectManager.ts.
-  // (Previous _seedColdStart() call removed — no bureaucratic seeding.)
 
-  // 4. Geological maintenance timer (60s) + Arena Gates refresh
+  // 🔒 WAVE 7527: HeatmapLogger and maintenance timer are NOT started here.
+  // They are started in resumeGenesisEngine() when the operator explicitly
+  // enables the ecosystem via the Genesis Lab UI.
+
+  console.log('[GenesisIgnition 🧬] Bootstrap complete — ecosystem PAUSED (opt-in). Press ▶ START in Genesis Lab to activate.')
+}
+
+/**
+ * 🔒 WAVE 7527: Starts the geological loop timers (HeatmapLogger + maintenance).
+ * Called by resumeGenesisEngine() when the operator explicitly enables the ecosystem.
+ * Safe to call multiple times — if timers are already running, this is a no-op.
+ */
+function _startEcosystemTimers(): void {
+  if (_maintenanceTimer != null) return  // Already running
+
+  // Start the HeatmapLogger flush timer (10s)
+  try {
+    getHeatmapLogger().start()
+  } catch (err) {
+    console.warn('[GenesisIgnition ⚠️] HeatmapLogger start failed:', err)
+  }
+
+  // Geological maintenance timer (60s) + Arena Gates refresh
   _maintenanceTimer = setInterval(() => {
     if (_genesisPaused) return
     getColiseumService()
@@ -84,14 +108,13 @@ export async function igniteGenesisEngine(): Promise<void> {
       })
   }, MAINTENANCE_INTERVAL_MS)
   _maintenanceTimer.unref()
-
-  // Geological loop ignited log silenced
 }
 
 /**
- * Shuts down the geological loop. Call during app shutdown.
+ * 🔒 WAVE 7527: Stops the geological loop timers.
+ * Called by pauseGenesisEngine() when the operator pauses the ecosystem.
  */
-export function shutdownGenesisEngine(): void {
+function _stopEcosystemTimers(): void {
   if (_maintenanceTimer != null) {
     clearInterval(_maintenanceTimer)
     _maintenanceTimer = null
@@ -99,26 +122,39 @@ export function shutdownGenesisEngine(): void {
   getHeatmapLogger()
     .stop()
     .catch(() => {})
+}
+
+/**
+ * Shuts down the geological loop. Call during app shutdown.
+ */
+export function shutdownGenesisEngine(): void {
+  _stopEcosystemTimers()
   _ignited = false
   console.log('[GenesisIgnition 🧬] Geological loop stopped.')
 }
 
 /**
  * Pauses the Genesis ecosystem — stops spawning/mutating organisms.
- * The maintenance timer keeps running but skips all work.
+ * 🔒 WAVE 7527: Now also stops the timers (HeatmapLogger + maintenance)
+ * instead of letting them idle. This fully halts the geological loop.
  */
 export function pauseGenesisEngine(): void {
   if (_genesisPaused) return
   _genesisPaused = true
-  console.log('[GenesisIgnition 🧬] Ecosystem PAUSED — no new spawns/mutations.')
+  _stopEcosystemTimers()
+  console.log('[GenesisIgnition 🧬] Ecosystem PAUSED — geological loop halted.')
 }
 
 /**
  * Resumes the Genesis ecosystem — organisms will spawn/mutate again.
+ * 🔒 WAVE 7527: Now starts the timers (HeatmapLogger + maintenance)
+ * that were deferred from igniteGenesisEngine(). This is the ONLY path
+ * that activates the geological loop.
  */
 export function resumeGenesisEngine(): void {
   if (!_genesisPaused) return
   _genesisPaused = false
+  _startEcosystemTimers()
   console.log('[GenesisIgnition 🧬] Ecosystem RESUMED — geological loop active.')
 }
 

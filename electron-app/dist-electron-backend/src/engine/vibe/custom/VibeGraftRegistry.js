@@ -43,6 +43,19 @@ import { MOVEMENT_PRESETS } from '../../movement/VibeMovementPresets';
 /**
  * Mapa de injertos activos: `custom:...` → GraftRecord.
  * Múltiples custom vibes pueden estar injertados simultáneamente.
+ *
+ * PROTEUS §6.10: To prevent unbounded growth in the 7 backend registries,
+ * we enforce a MAX_ACTIVE_GRAFTS limit. When a new graft would exceed the
+ * limit, the oldest previously-grafted custom vibe is evicted via ungraft().
+ * Since only one custom vibe is active at a time (VibeManager is singleton),
+ * a limit of 2 is sufficient: the currently-active vibe + one "standby"
+ * for rapid A/B switching without re-graft overhead.
+ */
+const MAX_ACTIVE_GRAFTS = 2;
+/**
+ * Mapa de injertos activos: `custom:...` → GraftRecord.
+ * Insertion order is preserved (Map iterates in insertion order), so the
+ * first entry is the oldest and the one evicted when the limit is exceeded.
  */
 const graftedKeys = new Map();
 // ═══════════════════════════════════════════════════════════════════════════
@@ -68,6 +81,17 @@ export function graft(bundle) {
     // Si ya estaba injertada, primero la desaplicamos (restore de PATTERN_CONFIG).
     if (graftedKeys.has(bundle.key)) {
         ungraft(bundle.key);
+    }
+    // ── PROTEUS §6.10: Eviction policy ──────────────────────────────────
+    // If we're at the graft limit, evict the oldest custom vibe (FIFO).
+    // Map preserves insertion order, so the first key is the oldest.
+    // We evict BEFORE grafting the new one to keep registry size bounded.
+    while (graftedKeys.size >= MAX_ACTIVE_GRAFTS) {
+        const oldestKey = graftedKeys.keys().next().value;
+        if (oldestKey === undefined)
+            break;
+        console.log(`[VibeGraftRegistry] Evicting graft "${oldestKey}" (limit ${MAX_ACTIVE_GRAFTS} reached)`);
+        ungraft(oldestKey);
     }
     // ── 1. BACKUP de PatternConfigs que se van a sobrescribir ────────────
     const patternConfigBackup = new Map();
@@ -166,4 +190,11 @@ export function isKeyNormalized(key) {
  */
 export function getGraftRecord(key) {
     return graftedKeys.get(key);
+}
+/**
+ * PROTEUS §6.10: Returns the maximum number of concurrent custom vibe grafts
+ * allowed before eviction kicks in.
+ */
+export function getMaxActiveGrafts() {
+    return MAX_ACTIVE_GRAFTS;
 }

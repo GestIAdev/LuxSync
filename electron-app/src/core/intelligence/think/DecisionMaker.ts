@@ -675,16 +675,21 @@ function generateDropPreparationDecision(
   
   if (prediction.probability > 0.7 && isDropImminent) {
     const vibeId = pattern.vibeId
-    let _registryDivineForDrop = getDynamicEffectRegistry().getDivineArsenal(vibeId)
-    if (_registryDivineForDrop.length < 2) {
-      const heavyFallback = getDynamicEffectRegistry().getHeavyArsenal(vibeId)
-      const merged = [..._registryDivineForDrop, ...heavyFallback]
-      _registryDivineForDrop = Array.from(new Map(merged.map(item => [item.id, item])).values())
-    }
-    const dropArsenal: string[] = _registryDivineForDrop.map(e => e.id)
+    // 🔒 WAVE 7526: DIVINE ARSENAL DECOUPLING — Drop pool is HEAVY ONLY.
+    // Divine effects must NEVER cannibalize the drop path. They are exclusively
+    // locked behind the Sovereign Clock (epicness > 0.60) or Divine Moment logic
+    // (generateDivineStrikeDecision). The old code merged divineArsenal into the
+    // drop pool when divine < 2, allowing divine effects to fire at the DROP
+    // epicness floor of 0.25 — bypassing the divine gate entirely via v3Bypass.
+    //
+    // The liquid V3 engine no longer uses fixed cooldowns and the pool consistently
+    // evaluates 20+ candidates, so there is no shortage risk. Heavy arsenal is
+    // sufficient for drop protection.
+    const _registryHeavyForDrop = getDynamicEffectRegistry().getHeavyArsenal(vibeId)
+    const dropArsenal: string[] = _registryHeavyForDrop.map(e => e.id)
 
     if (dropArsenal.length === 0) {
-      console.warn(`[DecisionMaker 🔴] DROP registry empty for vibe=${vibeId} — no drop effect possible.`)
+      console.warn(`[DecisionMaker 🔴] DROP heavy registry empty for vibe=${vibeId} — no drop effect possible.`)
     } else {
       // 🩸 WAVE 2531: DROP EPICNESS FLOOR
       // The DROP path is hierarchically BELOW Divine and Sovereign Clock.
@@ -693,9 +698,8 @@ function generateDropPreparationDecision(
       // drums from triggering drop effects. A floor of 0.25 blocks the
       // "voz de nariz tapada" case (epicness ~0.18) while allowing real
       // drops (epicness > 0.30) to fire freely.
-      // Divine effects that share the drop arsenal (like Latina Meltdown)
-      // are allowed to fire via DROP at this lower tier — the DROP
-      // prediction itself is the authority, not the divine gate.
+      // 🔒 WAVE 7526: This floor now applies ONLY to Heavy effects protecting
+      // the drop. Divine effects are no longer in this pool.
       const v3EpicForDrop = inputs.v3Epicness ?? 0
       const DROP_EPICNESS_FLOOR = 0.25
 

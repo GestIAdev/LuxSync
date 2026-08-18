@@ -396,9 +396,20 @@ export class TickEngine {
     const workerConfidence = this.audioPipeline.lastAudioData.workerBpmConfidence ?? 0
     const workerOnBeat = this.audioPipeline.lastAudioData.workerOnBeat ?? false
     const workerBeatPhase = this.audioPipeline.lastAudioData.workerBeatPhase ?? 0
+    // 🔬 WAVE 7525: Oracle raw BPM — pre-hysteresis ground truth from the detector.
+    // Used for octave correction when workerBpm is stuck at wrong octave (e.g. 149
+    // while oracle consistently reports 72). The worker's own hysteresis can trap
+    // the BPM at 2× the true value; the oracle raw is the only escape hatch.
+    const workerOracleRawBpm = this.audioPipeline.lastAudioData.workerOracleRawBpm ?? 0
     let acceptedBpm = workerBpm  // 🛡️ May be overridden by hysteresis gate
     this._shieldTag = ''  // reset each frame; set by hysteresis gate below
-    
+
+    // 🔬 WAVE 7522: Silence detection — reset freewheel memory on content change
+    // When the user switches videos, the audio stream goes silent briefly.
+    // After ~1.4s of silence, clear stale BPM so it doesn't persist into the
+    // new content (e.g. 199 BPM from video 1 bleeding into video 2 at 99 BPM).
+    this.audioPipeline.checkSilenceReset(bass + mid + high > 0.001 ? 1 : 0, this.frameCount)
+
     if (this.audioPipeline.beatDetector && this.audioPipeline.hasRealAudio) {
       // ðŸ”¥ WAVE 2112 + WAVE 2179: WORKER BPM â†’ PLL
       // Worker con seÃ±al â†’ setBpm() = lock real (PLL anclado a la verdad fÃ­sica)
@@ -543,9 +554,49 @@ export class TickEngine {
       }
       context.syncopation = this.audioPipeline.syncSmoother.estimateSyncopation(context.beatPhase, bass, mid)
     } else if (hasFreewheelMemory) {
-      // ðŸ”¥ WAVE 2179: Priority 2 â€” FREEWHEEL MEMORY
+      // ðŸ”¥ WAVE 2179: Priority 2 â€" FREEWHEEL MEMORY
       // Las luces no se enteran del break. El show continÃºa en el BPM real.
-      context.bpm = this.audioPipeline.lastStableWorkerBpm
+      // 🔬 WAVE 7522/7525: FREEWHEEL OCTAVE CORRECTION — If the oracle raw is
+      // consistently reporting a BPM at ~½ or ~2× the freewheel memory, the
+      // stale memory has an octave error. This happens when a brief high-conf
+      // detection locked an octave-up value (e.g. 149 instead of 72) and then
+      // confidence dropped below 0.5, trapping us in freewheel at the wrong
+      // octave.
+      //
+      // WAVE 7525 FIX: Use workerOracleRawBpm (pre-hysteresis) instead of
+      // workerBpm (post-hysteresis). The worker's own hysteresis can ALSO be
+      // stuck at the wrong octave, making the old comparison 149/149=1.0 —
+      // a no-op. The oracle raw is the only ground truth that escapes both
+      // hysteresis gates.
+      let freewheelBpm = this.audioPipeline.lastStableWorkerBpm
+      const octaveRef = workerOracleRawBpm > 0 ? workerOracleRawBpm : workerBpm
+      if (octaveRef > 0 && workerConfidence > 0.2) {
+        const ratio = freewheelBpm / octaveRef
+        if (ratio > 1.85 && ratio < 2.15) {
+          // Freewheel is ~2× oracle → octave-up error in stale memory
+          console.log(
+            `[TickEngine] 🔬 WAVE 7525: FREEWHEEL OCTAVE-DOWN correction: ` +
+            `stale=${freewheelBpm.toFixed(2)} → oracle=${octaveRef.toFixed(2)} ` +
+            `(ratio=${ratio.toFixed(3)}, conf=${workerConfidence.toFixed(3)})`
+          )
+          freewheelBpm = octaveRef
+          this.audioPipeline.lastStableWorkerBpm = octaveRef
+          this._stableBpm = octaveRef
+          this._smoothedBpm = octaveRef
+        } else if (ratio > 0.45 && ratio < 0.55) {
+          // Freewheel is ~½ oracle → octave-down error in stale memory
+          console.log(
+            `[TickEngine] 🔬 WAVE 7525: FREEWHEEL OCTAVE-UP correction: ` +
+            `stale=${freewheelBpm.toFixed(2)} → oracle=${octaveRef.toFixed(2)} ` +
+            `(ratio=${ratio.toFixed(3)}, conf=${workerConfidence.toFixed(3)})`
+          )
+          freewheelBpm = octaveRef
+          this.audioPipeline.lastStableWorkerBpm = octaveRef
+          this._stableBpm = octaveRef
+          this._smoothedBpm = octaveRef
+        }
+      }
+      context.bpm = freewheelBpm
       context.beatPhase = beatState.pllPhase ?? beatState.phase
       context.syncopation = this.audioPipeline.syncSmoother.estimateSyncopation(context.beatPhase, bass, mid)
     } else if (beatState.bpm > 0 && beatState.confidence > 0) {

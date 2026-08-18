@@ -106,8 +106,11 @@ export class ThermodynamicVetoEngine {
       // ⬇ Thresholds lowered: zTotal > 0.3 (was 0.5), zLow > 0.1 (was 0.3)
       // Techno minimal has moderate z-scores due to rolling baseline adaptation
       const isClassicalClimax = ev.zTotal > +0.3 && ev.zLow > +0.1
-      // Sustained energy climax: raw energy high regardless of z-scores
-      const isSustainedClimax = ev.eTotal > 0.65
+      // 🔬 WAVE 7523: Sustained energy climax — now requires Z-score confirmation
+      // Raw energy alone (eTotal > 0.65) produces false climax in techno minimal
+      // plateaus where energy is high but flat (Z ~0). Requiring zTotal > +0.3
+      // aligns with isClassicalClimax and preserves genre-agnosticism (§1.7).
+      const isSustainedClimax = ev.eTotal > 0.65 && ev.zTotal > +0.3
       const isTexturalClimax = ev.spectralTension > 0.8 && ev.zHigh > +1.5 && ev.cfHigh > 5.0
 
       if (isClassicalClimax || isSustainedClimax) {
@@ -145,18 +148,18 @@ export class ThermodynamicVetoEngine {
     // ─────────────────────────────────────────────────────────────
     if (proposed === 'buildup') {
       if (ev.energyDelta > 0.02 && ev.zTotal > -0.5) {
-        // Sustained energy override: if raw energy is high, this is a climax not a buildup
-        if (ev.eTotal > 0.65) {
+        // 🔬 WAVE 7523: Sustained energy override now requires Z-score confirmation
+        if (ev.eTotal > 0.65 && ev.zTotal > +0.3) {
           return this.accept(proposed, 'climax', ev,
-            `Buildup overridden to climax: sustained E=${ev.eTotal.toFixed(2)} despite rising ΔE`)
+            `Buildup overridden to climax: sustained E=${ev.eTotal.toFixed(2)} Z=${ev.zTotal.toFixed(1)} despite rising ΔE`)
         }
         return this.accept(proposed, 'building', ev,
           `Buildup validated: ΔE=${ev.energyDelta.toFixed(3)} Z_total=${ev.zTotal.toFixed(1)}`)
       }
-      // Sustained energy override for non-rising buildup
-      if (ev.eTotal > 0.65) {
+      // 🔬 WAVE 7523: Sustained energy override for non-rising buildup — Z required
+      if (ev.eTotal > 0.65 && ev.zTotal > +0.3) {
         return this.accept(proposed, 'climax', ev,
-          `Buildup overridden to climax: sustained E=${ev.eTotal.toFixed(2)} with stable ΔE`)
+          `Buildup overridden to climax: sustained E=${ev.eTotal.toFixed(2)} Z=${ev.zTotal.toFixed(1)} with stable ΔE`)
       }
       return {
         phase: ev.zTotal < -0.5 ? 'valley' : 'building',
@@ -203,13 +206,14 @@ export class ThermodynamicVetoEngine {
           evidence: ev,
         }
       }
-      // Sustained energy climax: high raw energy = climax regardless of z-scores
-      if (ev.eTotal > 0.65) {
+      // 🔬 WAVE 7523: Sustained energy climax — Z-score required to prevent
+      // false climax in techno minimal plateaus (high raw E, flat Z ~0)
+      if (ev.eTotal > 0.65 && ev.zTotal > +0.3) {
         return {
           phase: 'climax',
           proposedSection: proposed,
           verdict: 'UPGRADED',
-          reason: `Verse upgraded to climax: sustained E=${ev.eTotal.toFixed(2)}. High energy plateau detected.`,
+          reason: `Verse upgraded to climax: sustained E=${ev.eTotal.toFixed(2)} Z=${ev.zTotal.toFixed(1)}. High energy above context baseline.`,
           confidence: 0.70,
           evidence: ev,
         }
@@ -234,9 +238,9 @@ export class ThermodynamicVetoEngine {
     if (proposed === 'intro') return this.accept(proposed, 'intro', ev, 'Intro passthrough')
     if (proposed === 'outro') return this.accept(proposed, 'outro', ev, 'Outro passthrough')
 
-    // Default: sustained energy → climax, otherwise building
-    if (ev.eTotal > 0.65) {
-      return this.accept(proposed, 'climax', ev, `Default upgraded to climax: sustained E=${ev.eTotal.toFixed(2)}`)
+    // 🔬 WAVE 7523: Default sustained energy → climax only if Z confirms
+    if (ev.eTotal > 0.65 && ev.zTotal > +0.3) {
+      return this.accept(proposed, 'climax', ev, `Default upgraded to climax: sustained E=${ev.eTotal.toFixed(2)} Z=${ev.zTotal.toFixed(1)}`)
     }
     return this.accept(proposed, 'building', ev, 'Default accept as building')
   }
@@ -266,13 +270,13 @@ export class ThermodynamicVetoEngine {
     ev: SectionEvidence,
     zone: MultiSpectralZone,
   ): ValidatedNarrativePhase {
-    // Sustained energy override: high raw energy = climax even in downgrade
-    if (ev.eTotal > 0.65) {
+    // 🔬 WAVE 7523: Sustained energy override — Z-score required
+    if (ev.eTotal > 0.65 && ev.zTotal > +0.3) {
       return {
         phase: 'climax' as NarrativePhase,
         proposedSection: proposed,
         verdict: 'OVERRIDDEN' as VetoVerdict,
-        reason: `Section "${proposed}" DOWNGRADED but sustained E=${ev.eTotal.toFixed(2)} → climax override.`,
+        reason: `Section "${proposed}" DOWNGRADED but sustained E=${ev.eTotal.toFixed(2)} Z=${ev.zTotal.toFixed(1)} → climax override.`,
         confidence: 0.75,
         evidence: ev,
       }

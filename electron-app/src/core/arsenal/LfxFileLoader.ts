@@ -115,7 +115,9 @@ export class LfxFileLoader {
       const index = getHephaestusClipIndex();
       const loadSource = source === 'builtin' ? 'builtin' : 'user';
 
-      // El índice hace el fs.readFile, valida y guarda en RAM (O(1) para el futuro)
+      // El índice hace el fs.readFile, valida (incluyendo G2 checksum) y guarda
+      // en RAM (O(1) para el futuro). La verificación de integridad SHA-256 se
+      // aplica dentro de upsert() antes de que el clip sea normalizado.
       const loaded = await index.upsert(filePath, loadSource);
       if (!loaded) return false;
 
@@ -126,8 +128,11 @@ export class LfxFileLoader {
       };
 
       // FASE 3: V2.1 path demolished — only V3 (luxsync.lfx/3.0) is accepted.
+      // WAVE 7520 (Area 6 fix): el checksum declarado se propaga al registry en
+      // lugar del placeholder '' previo. La verificación de integridad ya ocurrió
+      // en HephaestusClipIndex.upsert() (hard error on mismatch, warning on empty).
       const entry = this._registry.registerEffectV3(
-        { $schema: 'luxsync.lfx/3.0', clip: loaded.clip as any, checksum: '' } as any,
+        { $schema: 'luxsync.lfx/3.0', clip: loaded.clip as any, checksum: loaded.checksum } as any,
         opts,
       );
 
@@ -468,6 +473,45 @@ function _validateSpatialRanges(
     }
   }
   return true
+}
+
+// ─── CHECKSUM INTEGRITY (mirrors Chronos `.lux` LAZARUS B-4) ─────────────────
+
+/**
+ * Compute the canonical SHA-256 checksum for an `.lfx` clip payload.
+ *
+ * Mirrors `computeLuxChecksum()` from `chronos/core/LuxFileV3.serializer.ts`:
+ *   - SHA-256 over `JSON.stringify(clip)` (the clip payload ONLY — the
+ *     `checksum` field is excluded by design: callers pass `parsed.clip`).
+ *   - Returns a `sha256:<hex>` prefixed string, matching the format written
+ *     by `HephFileIO.saveClip()`.
+ *
+ * Doctrine (LAZARUS B-4, applied symmetrically to `.lfx`):
+ *   - A **wrong** checksum is a HARD ERROR (corruption detected) — the loader
+ *     refuses the file.
+ *   - An **empty/missing** checksum is permitted (warning) so legacy/migrated
+ *     files can load. Distinguishes legitimate migration from corruption.
+ *
+ * The hash is computed over the raw clip as it appears on disk (before
+ * `_normalizeClipCurves` mutates it), so it is stable across save/load
+ * round-trips — `serializeHephClip()` produces deterministic key order.
+ */
+export function computeLfxChecksum(clip: unknown): string {
+  const canonical = JSON.stringify(clip)
+  const hex = createHash('sha256').update(canonical).digest('hex')
+  return `sha256:${hex}`
+}
+
+/**
+ * Verify a declared checksum against the recomputed hash of the clip payload.
+ *
+ * @returns `true` if the declared checksum matches; `false` on mismatch;
+ *          `null` if the declared checksum is empty/missing (legacy migration
+ *          — caller should warn, not reject).
+ */
+export function verifyLfxChecksum(declared: string, clip: unknown): boolean | null {
+  if (typeof declared !== 'string' || declared.length === 0) return null
+  return computeLfxChecksum(clip) === declared
 }
 
 // ─── SINGLETON ──────────────────────────────────────────────────────────────

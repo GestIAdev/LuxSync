@@ -156,6 +156,13 @@ export class ArtNetTimecodeReceiver extends BaseClockSource {
         this.lastPacketTime = 0;
         this.timeoutHandle = null;
         this.ipcCleanup = null;
+        // REV. 2: Pre-allocated event payloads — zero allocation per emit
+        this._syncPayload = { timeMs: 0, source: 'artnet-tc' };
+        this._statusPayload = {
+            connected: false,
+            quality: 'none',
+            source: 'artnet-tc',
+        };
     }
     async start() {
         // Guard: only works in browser/Electron renderer
@@ -191,7 +198,9 @@ export class ArtNetTimecodeReceiver extends BaseClockSource {
         // WAVE 7102: No artnet:start IPC — the Art-Net DMX driver already manages the UDP socket.
         // Timecode packets are multiplexed on the same socket via opcode routing.
         this.connected = false; // will become true on first packet
-        this.emit('status', { connected: false, quality: 'none', source: 'artnet-tc' });
+        this._statusPayload.connected = false;
+        this._statusPayload.quality = 'none';
+        this.emit('status', this._statusPayload);
         console.log('[ArtNetTC] 📡 Renderer proxy started, waiting for packets...');
     }
     stop() {
@@ -203,7 +212,9 @@ export class ArtNetTimecodeReceiver extends BaseClockSource {
         // Only clean up the renderer-side IPC listener.
         this.clearTimeout();
         this.connected = false;
-        this.emit('status', { connected: false, quality: 'none', source: 'artnet-tc' });
+        this._statusPayload.connected = false;
+        this._statusPayload.quality = 'none';
+        this.emit('status', this._statusPayload);
         console.log('[ArtNetTC] 📡 Renderer proxy stopped');
     }
     getTimeMs() {
@@ -217,20 +228,25 @@ export class ArtNetTimecodeReceiver extends BaseClockSource {
         this.lastPacketTime = performance.now();
         if (!this.connected) {
             this.connected = true;
-            this.emit('status', { connected: true, quality: 'stable', source: 'artnet-tc' });
+            this._statusPayload.connected = true;
+            this._statusPayload.quality = 'stable';
+            this.emit('status', this._statusPayload);
             console.log(`[ArtNetTC] ✅ First packet received: ` +
                 `${packet.hours}:${String(packet.minutes).padStart(2, '0')}:` +
                 `${String(packet.seconds).padStart(2, '0')}:` +
                 `${String(packet.frames).padStart(2, '0')} @${packet.frameRate}fps`);
         }
-        this.emit('sync', { timeMs: this.currentTimeMs, source: 'artnet-tc' });
+        this._syncPayload.timeMs = this.currentTimeMs;
+        this.emit('sync', this._syncPayload);
         this.resetTimeout();
     }
     resetTimeout() {
         this.clearTimeout();
         this.timeoutHandle = setTimeout(() => {
             this.connected = false;
-            this.emit('status', { connected: false, quality: 'none', source: 'artnet-tc' });
+            this._statusPayload.connected = false;
+            this._statusPayload.quality = 'none';
+            this.emit('status', this._statusPayload);
             console.log('[ArtNetTC] ⚠️ Art-Net Timecode signal lost (timeout)');
         }, ARTNET_SIGNAL_TIMEOUT_MS);
     }

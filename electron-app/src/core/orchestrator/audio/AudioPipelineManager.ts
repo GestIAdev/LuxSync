@@ -113,7 +113,46 @@ export class AudioPipelineManager {
   lastStableWorkerBpm = 0
   lastStableWorkerBpmFrame = 0
   readonly FREEWHEEL_TIMEOUT_FRAMES = 125  // ~5s a 25fps
-  // 🔧 WAVE 7002.4 (T2): Track last BPM passed to setBpm() to avoid redundant calls
+  // � WAVE 7522: Track audio silence to detect content changes (video switch)
+  private _silenceFrameCount = 0
+  private static readonly SILENCE_RESET_FRAMES = 30  // ~1.4s of silence → reset
+
+  /**
+   * 🔬 WAVE 7522: Reset freewheel memory — called when audio content changes
+   * (e.g. user switches video). Clears stale BPM so it doesn't persist across
+   * content boundaries. Also resets the TickEngine's stable/smoothed BPM.
+   */
+  resetFreewheelMemory(): void {
+    if (this.lastStableWorkerBpm === 0 && this._silenceFrameCount === 0) return  // already reset
+    this.lastStableWorkerBpm = 0
+    this.lastStableWorkerBpmFrame = 0
+    this.lastSetBpm = 0
+    this._silenceFrameCount = 0
+    if (this.beatDetector) {
+      this.beatDetector.reset()
+    }
+    console.log('[AudioPipeline] 🔄 Freewheel memory reset (content change detected)')
+  }
+
+  /**
+   * 🔬 WAVE 7522: Detect audio silence (SAB fill = 0) and reset freewheel
+   * memory after sustained silence. This catches video changes where the
+   * audio stream goes quiet briefly before the new content starts.
+   * Called every frame from TickEngine.
+   */
+  checkSilenceReset(sabFill: number, frameCount: number): void {
+    if (sabFill <= 0.001) {
+      this._silenceFrameCount++
+      if (this._silenceFrameCount === AudioPipelineManager.SILENCE_RESET_FRAMES) {
+        this.resetFreewheelMemory()
+      }
+    } else {
+      if (this._silenceFrameCount > 0) {
+        this._silenceFrameCount = 0  // audio returned — reset counter only
+      }
+    }
+  }
+  // �🔧 WAVE 7002.4 (T2): Track last BPM passed to setBpm() to avoid redundant calls
   lastSetBpm = 0
 
   // ---- Diagnostics ----

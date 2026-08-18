@@ -103,6 +103,46 @@ const ALPHA_RMS_3S = 1 - Math.pow(2, -1 / (3.0 * 44.0))
 // during genuine silence→drop transitions which sustain >10s.
 const ALPHA_RMS_10S = 1 - Math.pow(2, -1 / (10.0 * 44.0))
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🌊 WAVE 7521: DYNAMIC NOISE FLOOR — Dead Zone Recovery
+// ═══════════════════════════════════════════════════════════════════════════
+// PROBLEM: Highly compressed music (EDM, Latin, reggaeton) has a noise floor
+// of 0.35-0.50. The absolute zone thresholds (silence<0.15, valley<0.30) are
+// NEVER reached. Low-aggression effects (A<0.35) are permanently starved.
+//
+// SOLUTION: Track the rolling minimum (noise floor) and rolling maximum (peak)
+// over the last ~30s. Normalize energy relative to the track's actual dynamic
+// range before mapping to zones. This brings silence/valley/ambient back to
+// life for compressed tracks while preserving absolute behavior for dynamic
+// tracks (classical, jazz) where rollingMin ≈ 0.
+//
+// Asymmetric EMA:
+//   Rolling MIN: fast attack (capture new lows instantly), slow release
+//     → If raw < rollingMin: rollingMin = raw (instant)
+//     → If raw > rollingMin: rollingMin += ALPHA_MIN * (raw - rollingMin)
+//   Rolling MAX: fast attack (capture new peaks instantly), slow decay
+//     → If raw > rollingMax: rollingMax = raw (instant)
+//     → If raw < rollingMax: rollingMax += ALPHA_MAX * (raw - rollingMax)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// EMA α for 30s rolling minimum (half-life ~30s @ 44Hz) — slow rise.
+// Rolling MIN (noise floor): FAST drop (instant when raw < rollingMin) +
+// SLOW rise via this EMA, so loud choruses don't artificially raise the
+// noise floor over time.
+const ALPHA_ROLLING_MIN = 1 - Math.pow(2, -1 / (30.0 * 44.0))
+
+// EMA α for 150s rolling maximum (half-life ~2.5min @ 44Hz) — VERY slow decay.
+// Rolling MAX (peak ceiling): FAST attack (instant when raw > rollingMax) +
+// VERY SLOW decay via this EMA, so the track's true peak is remembered across
+// long breakdowns (2-3 min) and the relative floor doesn't drift up, which
+// would cause clipping when the drop finally hits.
+const ALPHA_ROLLING_MAX = 1 - Math.pow(2, -1 / (150.0 * 44.0))
+
+// Minimum dynamic range guard added to the denominator of the relative
+// normalization. Prevents division by near-zero when the track's rolling
+// range collapses (e.g. sustained silence or fully limited brick-wall mixes).
+const DYNAMIC_RANGE_EPSILON = 0.001
+
 const DEFAULT_CONFIG: EnergyConsciousnessConfig = {
   // ═══════════════════════════════════════════════════════════════════════════
   // � WAVE 996: THE 7-ZONE EXPANSION - THE LADDER
@@ -210,7 +250,15 @@ export class EnergyConsciousnessEngine {
   // and dynamic epicness floors. Filters techno minimal oscillations.
   private _rmsAverage10s: number = 0
 
-  // 🌋 WAVE 960 TUNE: Flashbang cooldown — prevent false positives from zone oscillation
+  // � WAVE 7521: DYNAMIC NOISE FLOOR — Rolling min/max for relative energy
+  // _rollingMinEnergy tracks the noise floor (instant drop, 30s slow rise)
+  // _rollingMaxEnergy tracks the peak ceiling (instant attack, ~2.5min slow decay)
+  // Together they define the track's actual dynamic range for normalization.
+  private _rollingMinEnergy: number = 0
+  private _rollingMaxEnergy: number = 0.15  // Initial: assume some headroom
+  private _relativeEnergy: number = 0       // Last computed relative energy (0-1)
+
+  // �🌋 WAVE 960 TUNE: Flashbang cooldown — prevent false positives from zone oscillation
   private _lastFlashbangTimestamp: number = 0
   private readonly FLASHBANG_COOLDOWN_MS = 500  // min 500ms between detections
   
@@ -249,12 +297,21 @@ export class EnergyConsciousnessEngine {
     this._rmsAverage3s += ALPHA_RMS_3S * (rawEnergy - this._rmsAverage3s)
     // 10s moving average RMS — slower low-pass for flashbang + dynamic floors
     this._rmsAverage10s += ALPHA_RMS_10S * (rawEnergy - this._rmsAverage10s)
-    
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 🌊 WAVE 7521: ASYMMETRIC DYNAMIC NOISE FLOOR (Envelope Followers)
+    // ═══════════════════════════════════════════════════════════════════
+    // Update rolling min (noise floor) and max (peak ceiling) with asymmetric
+    // EMA before any zone mapping. This is what lets compressed tracks (EDM,
+    // Latin) reach silence/valley/ambient again: the zone ladder is fed
+    // RELATIVE energy, not absolute.
+    this.updateDynamicNoiseFloor(rawEnergy)
+
     // ═══════════════════════════════════════════════════════════════════
     // 🔥 WAVE 979: PEAK HOLD - Preservar transitorios
     // ═══════════════════════════════════════════════════════════════════
     const peakHeldEnergy = this.updatePeakHold(rawEnergy, now, debugData)
-    
+
     // 🔥 WAVE 980.3: FIX DEFINITIVO - Time-based + Delta detection
     // PROBLEMA: Threshold fijo +0.15 demasiado alto (imposible si smooth=1.0)
     // SOLUCIÓN: Peak hold activo durante 1.5s post-peak O si hay delta significativo
@@ -263,7 +320,19 @@ export class EnergyConsciousnessEngine {
     const energyDelta = rawEnergy - smoothed
     const isTransient = energyDelta > 0.05 || peakHoldActive
     const effectiveEnergy = isTransient ? peakHeldEnergy : smoothed
-    
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 🌊 WAVE 7521: RELATIVE ENERGY NORMALIZATION
+    // ═══════════════════════════════════════════════════════════════════
+    // Map absolute energies into the track's actual dynamic range using the
+    // rolling envelope. The zone ladder (silence<0.15, valley<0.30, ...) is
+    // fed these RELATIVE values so a compressed track whose noise floor sits
+    // at 0.40 can still hit silence/valley when it dips to its own floor.
+    const relativeRaw = this.normalizeEnergy(rawEnergy)
+    const relativeSmoothed = this.normalizeEnergy(smoothed)
+    const relativeEffective = this.normalizeEnergy(effectiveEnergy)
+    this._relativeEnergy = relativeEffective
+
     // ═══════════════════════════════════════════════════════════════════
     // 2. DETERMINAR ZONA
     // ═══════════════════════════════════════════════════════════════════
@@ -273,7 +342,7 @@ export class EnergyConsciousnessEngine {
     // Falls back to legacy determineZone() when no evidence (backward compatibility).
     let newZone: EnergyZone
     let multiSpectralZone: MultiSpectralZone | undefined
-    
+
     if (evidence) {
       // §5.4: Vibe branch PURGED — groove-based interpolation replaces isLatinVibe.
       // High-groove contexts (latin reggaeton) have transients on every beat,
@@ -281,8 +350,10 @@ export class EnergyConsciousnessEngine {
       // is high, effective energy when groove is low.
       //   grooveProxy = 0.7 if (E>0.4 && tension>0.3), else 0.3
       //   zoneEnergy = smoothed · grooveProxy + effectiveEnergy · (1 − grooveProxy)
+      // 🌊 WAVE 7521: Interpolation now happens in RELATIVE energy space so the
+      // groove proxy shift is consistent with the normalized dynamic range.
       const grooveProxy = (evidence.eTotal > 0.4 && evidence.spectralTension > 0.3) ? 0.7 : 0.3
-      const zoneEnergy = grooveProxy * smoothed + (1 - grooveProxy) * effectiveEnergy
+      const zoneEnergy = grooveProxy * relativeSmoothed + (1 - grooveProxy) * relativeEffective
       multiSpectralZone = this.msLadder.classify(evidence, zoneEnergy, vibe)
       newZone = multiSpectralZone.label
       this.lastMultiSpectralZone = multiSpectralZone
@@ -290,7 +361,8 @@ export class EnergyConsciousnessEngine {
       // CRITICAL: Para SALIR de zonas bajas, usamos energía RAW (instantánea)
       // Para ENTRAR en zonas bajas, usamos energía SMOOTHED (suavizada)
       // 🔥 WAVE 979: Ahora usamos effectiveEnergy (con peak hold) en lugar de smoothed
-      newZone = this.determineZone(rawEnergy, effectiveEnergy)
+      // 🌊 WAVE 7521: Ambas entradas ahora son RELATIVAS al noise floor/ceiling.
+      newZone = this.determineZone(relativeRaw, relativeEffective)
     }
     
     // Detectar cambio de zona
@@ -385,10 +457,61 @@ export class EnergyConsciousnessEngine {
     
     // Exponential Moving Average con factor asimétrico
     this.smoothedEnergy = this.smoothedEnergy * factor + rawEnergy * (1 - factor)
-    
+
     return this.smoothedEnergy
   }
-  
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🌊 WAVE 7521: ASYMMETRIC DYNAMIC NOISE FLOOR (Envelope Followers)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * Updates the rolling minimum (noise floor) and rolling maximum (peak
+   * ceiling) using asymmetric envelope-follower logic.
+   *
+   * rollingMin (Floor):
+   *   - FAST drop:  when raw < rollingMin → snap instantly (true silence)
+   *   - SLOW rise:  otherwise EMA toward raw with ALPHA_ROLLING_MIN (30s)
+   *                 → loud choruses can't artificially raise the floor
+   *
+   * rollingMax (Ceiling):
+   *   - FAST attack: when raw > rollingMax → snap instantly (loud drops)
+   *   - VERY SLOW decay: otherwise EMA toward raw with ALPHA_ROLLING_MAX
+   *                      (150s / ~2.5min half-life) → remembers the track's
+   *                      true peak across long breakdowns, preventing the
+   *                      "amnesia" that causes clipping when the drop hits.
+   */
+  private updateDynamicNoiseFloor(rawEnergy: number): void {
+    // Rolling MIN — noise floor
+    if (rawEnergy < this._rollingMinEnergy) {
+      this._rollingMinEnergy = rawEnergy  // instant drop
+    } else {
+      this._rollingMinEnergy += ALPHA_ROLLING_MIN * (rawEnergy - this._rollingMinEnergy)
+    }
+    // Rolling MAX — peak ceiling
+    if (rawEnergy > this._rollingMaxEnergy) {
+      this._rollingMaxEnergy = rawEnergy  // instant attack
+    } else {
+      this._rollingMaxEnergy += ALPHA_ROLLING_MAX * (rawEnergy - this._rollingMaxEnergy)
+    }
+  }
+
+  /**
+   * Maps an absolute energy value into the track's relative dynamic range
+   * (0-1) using the rolling noise floor and peak ceiling.
+   *
+   *   relativeEnergy = clamp((raw - rollingMin) / ((rollingMax - rollingMin) + ε), 0, 1)
+   *
+   * For dynamic tracks (classical, jazz) rollingMin ≈ 0 and rollingMax ≈ 1,
+   * so this is a near-identity transform. For compressed tracks (EDM, Latin)
+   * with a 0.40 noise floor, a raw dip to 0.42 maps to ~0.05 → SILENCE,
+   * unlocking the low-aggression effects that were previously starved.
+   */
+  private normalizeEnergy(raw: number): number {
+    const range = (this._rollingMaxEnergy - this._rollingMinEnergy) + DYNAMIC_RANGE_EPSILON
+    return Math.max(0, Math.min(1, (raw - this._rollingMinEnergy) / range))
+  }
+
   // ═══════════════════════════════════════════════════════════════════════
   // 🔥 WAVE 979: PEAK HOLD - TRANSIENT PRESERVATION
   // ═══════════════════════════════════════════════════════════════════════
@@ -676,6 +799,29 @@ export class EnergyConsciousnessEngine {
   getRmsAverage10s(): number {
     return this._rmsAverage10s
   }
+
+  /**
+   * 🌊 WAVE 7521: Last computed relative energy (0-1) — the value actually
+   * fed into the zone ladder after Asymmetric Dynamic Noise Floor normalization.
+   * Exposed for telemetry/debug so callers can observe the envelope follower.
+   */
+  getRelativeEnergy(): number {
+    return this._relativeEnergy
+  }
+
+  /**
+   * 🌊 WAVE 7521: Current rolling noise floor (asymmetric envelope minimum).
+   */
+  getRollingMinEnergy(): number {
+    return this._rollingMinEnergy
+  }
+
+  /**
+   * 🌊 WAVE 7521: Current rolling peak ceiling (asymmetric envelope maximum).
+   */
+  getRollingMaxEnergy(): number {
+    return this._rollingMaxEnergy
+  }
   
   /**
    * Reset del motor (para nueva canción)
@@ -692,6 +838,10 @@ export class EnergyConsciousnessEngine {
     this.lastMultiSpectralZone = null
     this._rmsAverage3s = 0
     this._rmsAverage10s = 0
+    // 🌊 WAVE 7521: Reset asymmetric dynamic noise floor trackers
+    this._rollingMinEnergy = 0
+    this._rollingMaxEnergy = 0.15
+    this._relativeEnergy = 0
   }
   
   /**

@@ -196,6 +196,7 @@ interface PreBufferedEffect {
 
 export class EffectDreamSimulator {
   private simulationCount: number = 0
+  private _lastFilterAuditTs: number = 0
   
   // 🔮 WAVE 1190: PROJECT CASSANDRA - Pre-buffer system
   private preBuffer: PreBufferedEffect | null = null
@@ -785,7 +786,12 @@ export class EffectDreamSimulator {
     // a continuous function of groove: high groove → cap at 'active', low groove
     // → no cap. We use syncopation as the groove proxy (available in SystemState
     // indirectly via energy/tempo pattern).
-    const grooveProxy = (state.energy > 0.55 && state.tempo > 90 && state.tempo < 130) ? 0.8 : 0.2
+    // 🔬 WAVE 7522: Solo aplicar el cap cuando la energía es moderada (< 0.85).
+    //   Con energy ≥ 0.85 (pleno climax), proyectar peak/intense → active elimina
+    //   16 de 18 efectos en fiesta-latina porque el pressure filter (pressure≈1.0)
+    //   descarta los efectos con pressureRange.max < 1.0. Solo sobrevivían
+    //   tidal_wave (max=1.0) y latin_bubbles (max=0, permissive).
+    const grooveProxy = (state.energy > 0.55 && state.energy < 0.85 && state.tempo > 90 && state.tempo < 130) ? 0.8 : 0.2
     const rawProjectedZone = isFutureHeavyEvent ? 'peak'
       : isFutureBuildup ? 'intense'
       : energyZone
@@ -812,6 +818,16 @@ export class EffectDreamSimulator {
     // 🎯 pressureRange gate — filter by acoustic pressure envelope
     const currentPressure = context.energy ?? state.energy
     const pressureFilteredEffects = this.filterByPressure(zoneFilteredEffects, currentPressure, relaxGuardsForFuture)
+
+    // 🔍 WAVE 7522: FILTER AUDIT — Log once every 30s to see where effects are lost
+    if (!this._lastFilterAuditTs || Date.now() - this._lastFilterAuditTs > 30000) {
+      this._lastFilterAuditTs = Date.now()
+      console.log(
+        `[DREAM_AUDIT 🔍] vibe="${state.vibe}" zone=${projectedZone} pressure=${currentPressure.toFixed(3)} | ` +
+        `vibeAllowed=${vibeAllowedEffects.length} → zoneFiltered=${zoneFilteredEffects.length} → pressureFiltered=${pressureFilteredEffects.length} | ` +
+        `cooldowns=${state.activeCooldowns.size} | phase=${context.narrativePhase ?? 'n/a'}`
+      )
+    }
 
     // 🎯 WAVE 4865: Muestreo sin reemplazo por effect id.
     // Evita clones en ranking cuando múltiples aliases/vías aportan el mismo efecto.
@@ -1652,11 +1668,8 @@ export class EffectDreamSimulator {
       // AHORA: Max +0.18 → influencia significativa pero no dictatorial
       const urgencyBoost = Math.min(0.18, (2000 - timeToEvent) / 2000 * 0.18)
       score += urgencyBoost
-      
-      // Log para debugging de Cassandra urgency
-      if (urgencyBoost > 0.10) {
-        console.log(`[DREAM_SIMULATOR] ⚡ CASSANDRA URGENCY: "${effectName}" +${urgencyBoost.toFixed(3)} (${timeToEvent}ms to event, prob: ${oracleProbability.toFixed(3)})`)
-      }
+      // 🔇 WAVE 7524: Per-effect urgency log removed — fired 20x per frame (one per candidate).
+      // The CASSANDRA prediction log above already shows urgent=true + timeToEvent + prob.
     }
     
     // 🔮 CASSANDRA: Boost adicional si alta probabilidad del Oráculo (> 0.7)

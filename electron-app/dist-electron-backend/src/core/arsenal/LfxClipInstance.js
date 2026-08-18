@@ -340,7 +340,9 @@ export class LfxClipInstance {
      *   (vía `VIBE_BRIDGE`).
      * - `energyZone`: rango [min..max] derivado del primer y último elemento
      *   de `energyZones` ordenados por la lista canónica `ENERGY_ZONES`.
-     * - `aggressionRange`: rango [agg, agg] cerrado sobre el valor actual.
+     * - `aggressionRange`: banda de tolerancia basada en arquetipo (WAVE 7520):
+     *   `hard` ±0.15, `ambient` ±0.20, `utility` {0.0, 1.0}. Ya no degenerada
+     *   a anchura cero.
      * - `textureAffinity`: derivada del arquetipo (`strobe`/`heavy`→`dirty`,
      *   `ambient`/`divine`→`clean`, `utility`→`universal`).
      * - `spatialBehavior`: mapeado al subset de `lfxTypes` (`'static'`
@@ -379,8 +381,30 @@ export class LfxClipInstance {
                 ? 'clean'
                 : 'universal';
         const compatibleVibes = Object.freeze(this.compatibleVibes.map(v => VIBE_BRIDGE[v]));
+        // 🩸 WAVE 7520 (Area 6 fix): aggressionRange tolerance bands.
+        // Previously this emitted a zero-width band {agg, agg} — not a tolerance
+        // but an equality, which would silently render every DnaRail-authored clip
+        // inelegible the moment a downstream gate implements
+        // `aggressionRange.min ≤ runtimeAggression ≤ aggressionRange.max`.
+        // Mirrors the WAVE 7159 treatment applied to `pressureRange` twenty lines
+        // below: archetype-based bands instead of a degenerate point.
+        //   - hard (strobe/heavy/divine): ±0.15 around the baked aggression
+        //   - ambient:                    ±0.20 (wider — ambient lives in a narrow
+        //                                  low-aggression window, allow drift)
+        //   - utility:                    {0.0, 1.0} (permissive — no bias)
         const aggression = this.acoTriad.aggression;
-        const aggressionRange = Object.freeze({ min: aggression, max: aggression });
+        const isHardAggressionArchetype = this._userArchetype === 'strobe' ||
+            this._userArchetype === 'heavy' ||
+            this._userArchetype === 'divine';
+        const isAmbientAggressionArchetype = this._userArchetype === 'ambient';
+        const computedAggressionRange = Object.freeze(isAmbientAggressionArchetype
+            ? { min: clamp01(aggression - 0.20), max: clamp01(aggression + 0.20) }
+            : isHardAggressionArchetype
+                ? { min: clamp01(aggression - 0.15), max: clamp01(aggression + 0.15) }
+                : { min: 0.0, max: 1.0 });
+        const aggressionRange = Object.freeze(overrides?.aggressionRange
+            ? { min: overrides.aggressionRange.min, max: overrides.aggressionRange.max }
+            : computedAggressionRange);
         // 🩸 WAVE 7159: Acoustic pressure gating — replace permissive {0,0} default
         // with classification-based ranges so the pressure veto actually fires.
         // Hard effects (strobe/heavy/divine archetype OR aggression > 0.7) require
@@ -415,9 +439,7 @@ export class LfxClipInstance {
             energyZone: overrides?.energyZone
                 ? { min: overrides.energyZone.min, max: overrides.energyZone.max }
                 : energyZone,
-            aggressionRange: overrides?.aggressionRange
-                ? { min: overrides.aggressionRange.min, max: overrides.aggressionRange.max }
-                : aggressionRange,
+            aggressionRange,
             pressureRange,
             spatialBehavior: overrides?.spatialBehavior ?? spatialBehavior,
             ikCompatibility: overrides?.ikCompatibility,

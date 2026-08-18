@@ -1,214 +1,214 @@
-﻿{
-    "$schema":  "luxsync.lfx/3.0",
-    "clip":  {
-                 "id":  "cyber_scanner",
-                 "name":  "Cyber Scanner",
-                 "author":  "LuxSync Factory",
-                 "category":  "physical",
-                 "tags":  [
-                              "divine",
-                              "scanner",
-                              "phase",
-                              "techno",
-                              "laser"
-                          ],
-                 "vibeCompat":  [
-                                    "techno-club"
-                                ],
-                 "durationMs":  3000,
-                 "effectType":  "heph_custom",
-                 "cognitiveDNA":  {
-                                      "genome":  {
-                                                     "aggression":  0.9,
-                                                     "chaos":  0.2,
-                                                     "organicity":  0.1
-                                                 },
-                                      "textureAffinity":  "clean",
-                                      "compatibleVibes":  [
-                                                              "techno-club"
-                                                          ],
-                                      "validSections":  [
-                                                            "drop",
-                                                            "active"
-                                                        ],
-                                      "energyZone":  {
-                                                         "min":  "intense",
-                                                         "max":  "peak"
-                                                     },
-                                      "aggressionRange":  {
-                                                              "min":  0.7,
-                                                              "max":  1
-                                                          },
-                                      "spatialBehavior":  "dynamic",
-                                      "pressureRange":  {
-                                                            "min":  0.5,
-                                                            "max":  1
-                                                        }
-                                  },
-                 "simulationMeta":  {
-                                        "beautyWeights":  {
-                                                              "base":  0.9,
-                                                              "energyMultiplier":  1.2,
-                                                              "vibeBonus":  0.3
-                                                          },
-                                        "gpuCost":  0.4,
-                                        "fatigueImpact":  0.85,
-                                        "minDurationMs":  3000,
-                                        "cooldownMs":  18000,
-                                        "isStrobe":  false,
-                                        "isDivineCandidate":  false,
-                                        "isHeavyCandidate":  true,
-                                        "zScoreGuards":  {
-                                                             "requireRising":  false,
-                                                             "minimumZ":  4,
-                                                             "minimumEnergy":  0.8
-                                                         }
-                                    },
-                 "tracks":  [
-                                {
-                                    "id":  "scanner-intensity-kitt",
-                                    "paramId":  "intensity",
-                                    "zones":  [
-                                                  "all-movers",
-                                                  "air"
-                                              ],
-                                    "blendMode":  "replace",
-                                    "phaseConfig":  {
-                                                        "spread":  0.22,
-                                                        "symmetry":  "linear",
-                                                        "wings":  1,
-                                                        "direction":  1
-                                                    },
-                                    "curve":  {
-                                                  "paramId":  "intensity",
-                                                  "valueType":  "number",
-                                                  "defaultValue":  0,
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  0,
-                                                                        "interpolation":  "hold"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  40,
-                                                                        "value":  1,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  540,
-                                                                        "value":  0,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  980,
-                                                                        "value":  0,
-                                                                        "interpolation":  "hold"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  1120,
-                                                                        "value":  1,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  1620,
-                                                                        "value":  0,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  1960,
-                                                                        "value":  0,
-                                                                        "interpolation":  "hold"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  2100,
-                                                                        "value":  1,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  2600,
-                                                                        "value":  0,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  3000,
-                                                                        "value":  0,
-                                                                        "interpolation":  "hold"
-                                                                    }
-                                                                ],
-                                                  "range":  [
-                                                                0,
-                                                                1
-                                                            ]
-                                              }
-                                },
-                                {
-                                    "id":  "scanner-color",
-                                    "paramId":  "color",
-                                    "zones":  [
-                                                  "all-movers",
-                                                  "air"
-                                              ],
-                                    "blendMode":  "replace",
-                                    "curve":  {
-                                                  "paramId":  "color",
-                                                  "valueType":  "color",
-                                                  "defaultValue":  {
-                                                                       "h":  0,
-                                                                       "s":  100,
-                                                                       "l":  50
-                                                                   },
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  {
-                                                                                      "h":  0,
-                                                                                      "s":  100,
-                                                                                      "l":  50
-                                                                                  },
-                                                                        "interpolation":  "hold"
-                                                                    }
-                                                                ],
-                                                  "range":  [
-                                                                0,
-                                                                360
-                                                            ]
-                                              }
-                                },
-                                {
-                                    "id":  "scanner-blackout-pars",
-                                    "paramId":  "intensity",
-                                    "zones":  [
-                                                  "all-pars",
-                                                  "ambient",
-                                                  "flash"
-                                              ],
-                                    "blendMode":  "replace",
-                                    "curve":  {
-                                                  "paramId":  "intensity",
-                                                  "valueType":  "number",
-                                                  "defaultValue":  0,
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  0,
-                                                                        "interpolation":  "hold"
-                                                                    }
-                                                                ],
-                                                  "range":  [
-                                                                0,
-                                                                1
-                                                            ]
-                                              }
-                                }
-                            ],
-                 "spatialZones":  [
-                                      "all-movers",
-                                      "air",
-                                      "all-pars",
-                                      "ambient",
-                                      "flash"
-                                  ],
-                 "schemaVersion":  "3.0"
-             },
-    "checksum":  "0a0cc1b18b95683195ead5432b5a77ae044e4f1abb9ef581a43f14cce5d87bd9"
+{
+  "$schema": "luxsync.lfx/3.0",
+  "clip": {
+    "id": "cyber_scanner",
+    "name": "Cyber Scanner",
+    "author": "LuxSync Factory",
+    "category": "physical",
+    "tags": [
+      "divine",
+      "scanner",
+      "phase",
+      "techno",
+      "laser"
+    ],
+    "vibeCompat": [
+      "techno-club"
+    ],
+    "durationMs": 3000,
+    "effectType": "heph_custom",
+    "cognitiveDNA": {
+      "genome": {
+        "aggression": 0.9,
+        "chaos": 0.2,
+        "organicity": 0.1
+      },
+      "textureAffinity": "clean",
+      "compatibleVibes": [
+        "techno-club"
+      ],
+      "validSections": [
+        "drop",
+        "active"
+      ],
+      "energyZone": {
+        "min": "intense",
+        "max": "peak"
+      },
+      "aggressionRange": {
+        "min": 0.7,
+        "max": 1
+      },
+      "spatialBehavior": "dynamic",
+      "pressureRange": {
+        "min": 0.5,
+        "max": 1
+      }
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.9,
+        "energyMultiplier": 1.2,
+        "vibeBonus": 0.3
+      },
+      "gpuCost": 0.4,
+      "fatigueImpact": 0.85,
+      "minDurationMs": 3000,
+      "cooldownMs": 18000,
+      "isStrobe": false,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": true,
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": 4,
+        "minimumEnergy": 0.8
+      }
+    },
+    "tracks": [
+      {
+        "id": "scanner-intensity-kitt",
+        "paramId": "intensity",
+        "zones": [
+          "all-movers",
+          "air"
+        ],
+        "blendMode": "replace",
+        "phaseConfig": {
+          "spread": 0.22,
+          "symmetry": "linear",
+          "wings": 1,
+          "direction": 1
+        },
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 40,
+              "value": 1,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 540,
+              "value": 0,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 980,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 1120,
+              "value": 1,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 1620,
+              "value": 0,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 1960,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 2100,
+              "value": 1,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2600,
+              "value": 0,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 3000,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ],
+          "range": [
+            0,
+            1
+          ]
+        }
+      },
+      {
+        "id": "scanner-color",
+        "paramId": "color",
+        "zones": [
+          "all-movers",
+          "air"
+        ],
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "defaultValue": {
+            "h": 0,
+            "s": 100,
+            "l": 50
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 0,
+                "s": 100,
+                "l": 50
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "range": [
+            0,
+            360
+          ]
+        }
+      },
+      {
+        "id": "scanner-blackout-pars",
+        "paramId": "intensity",
+        "zones": [
+          "all-pars",
+          "ambient",
+          "flash"
+        ],
+        "blendMode": "replace",
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ],
+          "range": [
+            0,
+            1
+          ]
+        }
+      }
+    ],
+    "spatialZones": [
+      "all-movers",
+      "air",
+      "all-pars",
+      "ambient",
+      "flash"
+    ],
+    "schemaVersion": "3.0"
+  },
+  "checksum": "sha256:0a0cc1b18b95683195ead5432b5a77ae044e4f1abb9ef581a43f14cce5d87bd9"
 }

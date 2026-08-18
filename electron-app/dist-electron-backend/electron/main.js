@@ -35,6 +35,10 @@ import { stagePersistence, setupStageIPCHandlers } from '../src/core/stage';
 import { setupKeyForgeIPCHandlers } from '../src/core/keyforge/KeyForgeIPCHandlers';
 // 🧬 FASE 4.3: Vibe Lab — .luxvibe persistence IPC
 import { registerVibeLabIPCHandlers } from '../src/core/vibe/VibeLabIPCHandlers';
+// 🧬 PROTEUS FIX 2: Boot-time regraft of custom vibes
+import { vibeLabPersistence } from '../src/core/vibe/VibeLabPersistence';
+import { resolveCustomVibe } from '../src/engine/vibe/custom/VibeFusionResolver';
+import { graft as graftToBackend } from '../src/engine/vibe/custom/VibeGraftRegistry';
 // ⚒️ Hephaestus File I/O (WAVE 2030.5)
 import { setupHephIPCHandlers } from '../src/core/hephaestus';
 // 🧬 WAVE 5000.V3: Genesis Engine IPC (Era V)
@@ -80,6 +84,51 @@ let titanOrchestrator = null;
 export const glassPoolManager = new BufferPoolManager();
 const fixturePhysicsDriver = new FixturePhysicsDriver();
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+// =============================================================================
+// 🧬 PROTEUS FIX 2: Boot-time regraft of custom vibes
+// =============================================================================
+// Reads all .luxvibe files from userData/vibes/, resolves each one via
+// VibeFusionResolver, and grafts the FusedVibeBundle into the backend's 7
+// canonical registries. This ensures normalizeVibeId('custom:...') finds the
+// key immediately when the renderer requests setVibe after a restart.
+// =============================================================================
+async function regraftCustomVibesOnBoot() {
+    try {
+        const entries = await vibeLabPersistence.list();
+        if (entries.length === 0) {
+            console.log('[Boot] No custom vibes to regraft.');
+            return;
+        }
+        let grafted = 0;
+        let failed = 0;
+        for (const entry of entries) {
+            try {
+                const readResult = await vibeLabPersistence.read(entry.key);
+                if (!readResult.ok || !readResult.data) {
+                    console.warn(`[Boot] Failed to read ${entry.key}: ${readResult.error}`);
+                    failed++;
+                    continue;
+                }
+                const resolved = resolveCustomVibe(readResult.data);
+                if (!resolved.ok || !resolved.bundle) {
+                    console.warn(`[Boot] Failed to resolve ${entry.key}:`, resolved.diagnostics);
+                    failed++;
+                    continue;
+                }
+                graftToBackend(resolved.bundle);
+                grafted++;
+            }
+            catch (err) {
+                console.warn(`[Boot] Exception regrafting ${entry.key}:`, err);
+                failed++;
+            }
+        }
+        console.log(`[Boot] 🧬 Regrafted ${grafted} custom vibe(s)${failed > 0 ? `, ${failed} failed` : ''}.`);
+    }
+    catch (err) {
+        console.error('[Boot] regraftCustomVibesOnBoot error:', err);
+    }
+}
 // 🥁 WAVE 7103: MIDI Master Clock — high-resolution timer in Main Process
 const midiMasterClock = new MidiMasterClock();
 // ═══════════════════════════════════════════════════════════════════════════
@@ -389,6 +438,15 @@ async function initTitan() {
     // ═══════════════════════════════════════════════════════════════════════════
     registerVibeLabIPCHandlers();
     // ═══════════════════════════════════════════════════════════════════════════
+    // 🧬 PROTEUS FIX 2: Boot-time regraft of custom vibes
+    // Read all .luxvibe files from disk, resolve them, and graft into the
+    // backend registries so normalizeVibeId('custom:...') finds them
+    // immediately when the renderer requests setVibe after a restart.
+    // ═══════════════════════════════════════════════════════════════════════════
+    regraftCustomVibesOnBoot().catch((err) => {
+        console.error('[Boot] Failed to regraft custom vibes:', err);
+    });
+    // ═══════════════════════════════════════════════════════════════════════════
     // 🎬 WAVE 4910.6: Theia Asset export — Native Save As dialog
     // ═══════════════════════════════════════════════════════════════════════════
     ipcMain.handle('lux:theia:exportAsset', async (_event, asset, suggestedName) => {
@@ -594,22 +652,22 @@ async function initTitan() {
                 console.log(`[TitanOrchestrator] 📦 Bootstrapped arsenal (legacy): ${_copiedCount} .lfx copied from builtins → userData/arsenal/`);
             }
         }
-        // ── Load from builtins directly in DEV, userData in PROD ──
-        // DEV MODE: Read directly from source (no copy/sync overhead)
-        // PROD MODE: Read from userData/arsenal (single source of truth)
-        const _loadDirs = app.isPackaged
-            ? [
-                // Production: load from userData only
-                { absolutePath: _arsenalPath, source: 'user' }
-            ]
-            : [
-                // Development: load from builtins (source) first, then userData (user edits)
-                { absolutePath: _builtinPath, source: 'builtin' },
-                { absolutePath: _arsenalPath, source: 'user' }
-            ];
+        // ── WAVE 7522: UNIFIED LOAD PATH — dev == prod ──
+        // Both dev and prod load ONLY from userData/arsenal/. The manifest sync
+        // above already copies new/updated builtins into userData/arsenal/,
+        // preserving user edits. Loading directly from builtins/ in dev was
+        // creating a shadow entry with stale DNA (e.g. corazon_latino aggression=0.3
+        // from the builtin overwriting the user's 0.527 edit).
+        //
+        // PREREQUISITE: `npm run build` must be run to regenerate manifest.json
+        // and compile the stripSha256Prefix fix. Without it, the manifest sync
+        // is stale and the checksum validation rejects valid files.
+        const _loadDirs = [
+            { absolutePath: _arsenalPath, source: 'user' }
+        ];
         const _lfxLoader = new LfxFileLoader(getDynamicEffectRegistry());
         const _arsenalReport = await _lfxLoader.loadAll(_loadDirs);
-        const _sourceLabel = app.isPackaged ? 'userData/arsenal/' : 'builtins + userData';
+        const _sourceLabel = 'userData/arsenal/';
         console.log(`[TitanOrchestrator] ⚡ Infinite Arsenal: ` +
             `${_arsenalReport.accepted}/${_arsenalReport.scanned} .lfx cargados desde ${_sourceLabel} ` +
             `(rechazados: ${_arsenalReport.rejected}, errores: ${_arsenalReport.errors})`);
@@ -617,9 +675,31 @@ async function initTitan() {
         const _allLiveEffects = getDynamicEffectRegistry().getAllEntries();
         console.log(`\n=== ☢️ DUMP DE RAM: EFECTOS REALMENTE VIVOS (${_allLiveEffects.length}) ===`);
         _allLiveEffects.forEach(e => {
-            console.log(`- ID: ${e.id} | Name: ${e.name} | Vibes: ${JSON.stringify(e.compatibleVibes)} | Path: ${e.filePath || 'unknown'}`);
+            console.log(`- ID: ${e.id} | Name: ${e.name} | Aggr: ${e.dna.aggression.toFixed(3)} | Zone: ${e.energyZone.min}→${e.energyZone.max} | Press: ${e.pressureRange.min}→${e.pressureRange.max} | Vibes: ${JSON.stringify(e.compatibleVibes)} | Path: ${e.filePath || 'unknown'}`);
         });
         console.log(`====================================================\n`);
+        // 🔍 WAVE 7522: DNA PERSISTENCE AUDIT — Verifica que las ediciones de ADN
+        // hechas desde la UI sobreescriban los builtins en el registry.
+        // Si el archivo userData tiene aggression=0.527 pero el registry dice 0.3,
+        // el upsert-by-ID falló silenciosamente.
+        const _auditIds = ['corazon_latino'];
+        for (const _aid of _auditIds) {
+            const _entry = getDynamicEffectRegistry().getEntry(_aid);
+            if (!_entry) {
+                console.warn(`[DNA AUDIT 🔍] ⚠️ "${_aid}" NOT FOUND in registry — was it rejected by a gate?`);
+            }
+            else {
+                console.log(`[DNA AUDIT 🔍] "${_aid}" → aggression=${_entry.dna.aggression.toFixed(3)} | zone=${_entry.energyZone.min}→${_entry.energyZone.max} | pressure=${_entry.pressureRange.min}→${_entry.pressureRange.max} | source=${_entry.isBuiltin ? 'BUILTIN' : 'USER'} | path=${_entry.filePath ?? 'null'}`);
+            }
+        }
+        // 🔍 WAVE 7522: VIBE INDEX DIAGNOSTIC — Dump the vibe bucket sizes.
+        // If the registry has 49 effects but the vibe index only has 2 per vibe,
+        // the _appendToIndices / _removeFromIndices upsert logic is broken.
+        const _vibeIndex = getDynamicEffectRegistry().getVibeIndexDiagnostic();
+        console.log(`[VIBE INDEX 🔍] Bucket counts:`);
+        for (const [_v, _c] of Object.entries(_vibeIndex).sort((a, b) => b[1] - a[1])) {
+            console.log(`  ${_v}: ${_c} effects`);
+        }
     }
     catch (_arsenalErr) {
         console.error('[TitanOrchestrator] ❌ Arsenal boot failed (non-fatal):', _arsenalErr);

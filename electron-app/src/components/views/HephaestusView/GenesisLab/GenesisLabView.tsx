@@ -158,7 +158,7 @@ export const GenesisLabView: React.FC = () => {
               minWidth: '140px',
             }}
           >
-            {isPaused ? '⏸ ECOSYSTEM PAUSED' : '▶ ECOSYSTEM ACTIVE'}
+            {isPaused ? '▶ START ECOSYSTEM' : '⏸ ECOSYSTEM ACTIVE'}
           </button>
           <button
             type="button"

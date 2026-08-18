@@ -27,7 +27,7 @@ import type {
 } from '../core/types'
 
 import { GodEarAnalyzer } from '../../workers/GodEarFFT'
-import { IntervalBPMTracker, type GodEarBPMResult } from '../../workers/IntervalBPMTracker'
+import { TempoOracle, CONF_FLOOR } from '../../core/senses/bpm/TempoOracle'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🎯 CONFIGURATION
@@ -83,21 +83,19 @@ export interface HeatmapExtractionResult {
   /** Legacy transient timestamps (timeMs of any transient event) */
   transients: TimeMs[]
   /**
-   * Result from IntervalBPMTracker (median-smoothed, IQR-confidence,
-   * Kalman-filtered, autocorrelation-cross-validated, musical-octave-folded).
-   * Fed per-frame pre-normalization raw bass energy (subBass + bassReal),
-   * matching the tracker's documented 20-150 Hz input contract.
-   * Undefined when insufficient kicks were detected for a stable estimate.
+   * CHRONOS PURE MEDIAN ANALYSER — definitive global BPM scalar.
+   *
+   * Computed by running the entire track through the standalone TempoOracle
+   * (NSDF autocorrelation, sub-frame parabolic interpolation), accumulating
+   * per-frame BPM estimates only when oracle.confidence > CONF_FLOOR, then
+   * reducing the collected array via a confidence-weighted median at track
+   * end. This yields a single rock-solid value (e.g. 126.04) identical in
+   * spirit to Serato/VirtualDJ static analysis — no musical-pocket folding,
+   * no live-runtime defense mechanisms. 0 when no frame cleared the gate.
    */
-  bpmTrackerResult?: GodEarBPMResult
-  /**
-   * Octave-folded "dance pocket" BPM from IntervalBPMTracker.getMusicalBpm().
-   * The tracker's raw `stableBpm` counts rhythmic EVENTS per minute, which is
-   * mathematically correct but musically wrong for polyrhythmic material
-   * (tresillo 3:2, dotted 4:3, half/double-time). This is the folded value.
-   * 0 when no stable signal.
-   */
-  musicalBpm?: number
+  oracleBpm: number
+  /** Aggregate confidence of the oracle BPM (0-1). 0 when no samples collected. */
+  oracleConfidence: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -242,24 +240,29 @@ export function extractEnergyHeatmap(
   const windowBuffer = new Float32Array(actualFftSize)
 
   // ═══════════════════════════════════════════════════════════════════════
-  // 🥁 GODEAR UNLEASHED Phase 4: IntervalBPMTracker — replaces the naive
-  // 10ms modal-bin histogram (estimateBpm) with the production-grade tracker
-  // already used by the live Senses worker. The tracker performs its own
-  // ratio-based kick detection on raw bass energy, so we feed it the
-  // PRE-NORMALIZATION subBass + bassReal sum each frame (matching its
-  // documented 20-150 Hz input contract) using the deterministic frame
-  // timestamp as the musical clock. Median smoothing, IQR confidence,
-  // 1-D Kalman filtering, autocorrelation cross-validation, and musical
-  // octave folding (dotted 4:3, tresillo 3:2, double/triple/quad-time)
-  // all run inside the tracker. Zero extra allocation — the tracker owns
-  // its own pre-allocated buffers.
+  // 🔮 CHRONOS PURE MEDIAN ANALYSER — TempoOracle ingestion loop
   // ═══════════════════════════════════════════════════════════════════════
-  const bpmTracker = new IntervalBPMTracker(
-    sampleRate,
-    actualFftSize,
-    config.heatmapResolutionMs, // overrideFrameDurationMs — deterministic offline clock
-  )
-  let bpmTrackerResult: GodEarBPMResult | undefined
+  // Replaces the IntervalBPMTracker bridge. Musical pockets are a LIVE
+  // runtime defense mechanism; for the Chronos timeline we require a true
+  // global static BPM analysis identical to Serato/VirtualDJ.
+  //
+  // The TempoOracle runs standalone: NSDF autocorrelation + harmonic ladder
+  // + sub-frame parabolic interpolation, zero allocation on the hot path
+  // (all buffers allocated once in the constructor). We feed it the
+  // PRE-NORMALIZATION subBass + bassReal sum (20-250 Hz ODF proxy) each
+  // frame with a deterministic timestamp as the offline clock.
+  //
+  // Per-frame BPM estimates are accumulated into pre-allocated Float64Array
+  // buffers ONLY when oracle.confidence > CONF_FLOOR. At track end a
+  // confidence-weighted median reduces the array to a single scalar.
+  // ═══════════════════════════════════════════════════════════════════════
+  const odfRateHz = 1000 / config.heatmapResolutionMs
+  const oracle = new TempoOracle(odfRateHz)
+  // Pre-allocated collection buffers — zero per-frame allocation.
+  // Sized to numPoints (worst case: every frame clears the gate).
+  const bpmSamples = new Float64Array(numPoints)
+  const confSamples = new Float64Array(numPoints)
+  let sampleCount = 0
 
   for (let i = 0; i < numPoints; i++) {
     const start = i * resolutionSamples
@@ -299,16 +302,24 @@ export function extractEnergyHeatmap(
     // additional heatmap-resolution-aware debounce for safety.
     const frameTimeMs = i * config.heatmapResolutionMs
 
-    // 🥁 GODEAR UNLEASHED Phase 4: Feed IntervalBPMTracker with PRE-NORMALIZATION
-    // raw bass energy (subBass + bassReal = 20-250 Hz, matching the tracker's
-    // documented input contract). The tracker does its own ratio-based kick
-    // detection, median smoothing, Kalman filtering, and autocorrelation
-    // cross-validation internally. Deterministic timestamp = offline clock.
-    bpmTrackerResult = bpmTracker.process(
+    // 🔮 CHRONOS PURE MEDIAN ANALYSER: Feed TempoOracle with the per-frame
+    // ODF needle (subBass + bassReal = 20-250 Hz onset detection function
+    // proxy). The Oracle runs NSDF autocorrelation + harmonic ladder +
+    // sub-frame parabolic interpolation internally, zero allocation.
+    // Deterministic timestamp = offline clock.
+    oracle.process(
       spectrum.bands.subBass + spectrum.bands.bass,
-      false, // _externalKickDetected — ignored by the tracker
       frameTimeMs,
     )
+
+    // Accumulate BPM only when the Oracle's confidence exceeds CONF_FLOOR.
+    // This rejects intro/outro silence and low-periodicity noise frames
+    // from the statistical reduction at track end.
+    if (oracle.confidence > CONF_FLOOR && oracle.bpm > 0) {
+      bpmSamples[sampleCount] = oracle.bpm
+      confSamples[sampleCount] = oracle.confidence
+      sampleCount++
+    }
 
     if (spectrum.transients.kick && frameTimeMs - lastKickMs >= refractoryMs) {
       transientEvents.push({ timeMs: frameTimeMs, type: 'kick', strength: spectrum.transients.strength })
@@ -447,29 +458,110 @@ export function extractEnergyHeatmap(
     rolloff: rolloffArr,
   }
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔮 SERATO-TIER RESOLVER — Confidence-Weighted Median
+  // ═══════════════════════════════════════════════════════════════════════
+  // At track end: reduce the collected BPM array to a single rock-solid
+  // scalar. The median rejects intro/outro silent outliers and one-off
+  // octave errors; confidence weighting ensures high-confidence frames
+  // dominate the central tendency. No IntervalBPMTracker, no musical
+  // pocket folding — pure statistical reduction.
+  // ═══════════════════════════════════════════════════════════════════════
+  const { bpm: oracleBpm, confidence: oracleConfidence } =
+    computeConfidenceWeightedMedian(bpmSamples, confSamples, sampleCount)
+
   return {
     heatmap,
     transientEvents,
     transients: transientsLegacy,
-    // 🥁 Phase 4: Only expose a tracker result once it has stabilized
-    // (MIN_KICKS_FOR_BPM reached). The tracker's process() returns
-    // confidence=0 until then; we forward the last result regardless so
-    // detectBeats can decide, but undefined when no frame ever fired.
-    bpmTrackerResult,
-    // Musical (octave-folded) BPM — queried ONCE after the full pass, when the
-    // tracker's median/Kalman state has converged over the entire track.
-    musicalBpm: bpmTrackerResult ? bpmTracker.getMusicalBpm() : undefined,
+    oracleBpm,
+    oracleConfidence,
   }
+}
+
+/**
+ * 🔮 SERATO-TIER RESOLVER — Confidence-Weighted Median
+ *
+ * Reduces the per-frame BPM collection to a single scalar. The median
+ * rejects intro/outro silence outliers and sporadic octave errors;
+ * confidence weighting ensures high-certainty frames dominate.
+ *
+ * Algorithm:
+ * 1. Build (bpm, conf) pairs for the valid samples only.
+ * 2. Sort by BPM ascending.
+ * 3. Walk the sorted array accumulating confidence weights.
+ * 4. The BPM at which cumulative weight crosses 50% of total weight
+ *    is the confidence-weighted median.
+ *
+ * Falls back to 120 BPM (LUX_DEFAULT_BPM) when no frame cleared the
+ * CONF_FLOOR gate — e.g. ambient tracks with no periodic bass content.
+ *
+ * @param bpmSamples  Pre-allocated Float64Array of per-frame BPM estimates.
+ * @param confSamples Pre-allocated Float64Array of per-frame confidences.
+ * @param count       Number of valid samples (only [0..count) are read).
+ * @returns `{ bpm, confidence }` — the definitive scalar BPM and its
+ *          aggregate confidence (mean of the collected confidences).
+ */
+function computeConfidenceWeightedMedian(
+  bpmSamples: Float64Array,
+  confSamples: Float64Array,
+  count: number,
+): { bpm: number; confidence: number } {
+  if (count === 0) {
+    return { bpm: 0, confidence: 0 }
+  }
+
+  // Collect valid (bpm, conf) pairs into a sortable array.
+  // This allocation happens ONCE at track end — not in the hot loop.
+  const pairs: Array<{ bpm: number; conf: number }> = new Array(count)
+  let totalConf = 0
+  for (let i = 0; i < count; i++) {
+    const bpm = bpmSamples[i]
+    const conf = confSamples[i]
+    pairs[i] = { bpm, conf }
+    totalConf += conf
+  }
+
+  if (totalConf <= 0) {
+    // All-zero confidence edge case: unweighted median.
+    pairs.sort((a, b) => a.bpm - b.bpm)
+    const mid = count >> 1
+    const medianBpm = count % 2 === 0
+      ? (pairs[mid - 1].bpm + pairs[mid].bpm) / 2
+      : pairs[mid].bpm
+    return { bpm: medianBpm, confidence: 0 }
+  }
+
+  // Sort by BPM ascending — enables the weighted-median walk.
+  pairs.sort((a, b) => a.bpm - b.bpm)
+
+  // Walk until cumulative confidence crosses 50% of total.
+  const halfConf = totalConf / 2
+  let cumConf = 0
+  let weightedMedianBpm = pairs[0].bpm
+  for (let i = 0; i < count; i++) {
+    cumConf += pairs[i].conf
+    if (cumConf >= halfConf) {
+      weightedMedianBpm = pairs[i].bpm
+      break
+    }
+  }
+
+  // Aggregate confidence = mean of collected confidences.
+  const aggregateConfidence = totalConf / count
+
+  return { bpm: weightedMedianBpm, confidence: aggregateConfidence }
 }
 
 /**
  * Estima BPM desde intervalos entre onsets.
  *
- * @deprecated GODEAR UNLEASHED Phase 4 — replaced by IntervalBPMTracker
- * (median smoothing, IQR confidence, Kalman filtering, autocorrelation
- * cross-validation, musical octave folding). Retained as a fallback for
- * callers that do not pass a `bpmTrackerResult` into `detectBeats`.
- * Do not extend; new work should consume the tracker.
+ * @deprecated CHRONOS PURE MEDIAN ANALYSER — replaced by the TempoOracle
+ * (NSDF autocorrelation, harmonic ladder, sub-frame parabolic interpolation,
+ * confidence-weighted median reduction). Retained as a last-resort fallback
+ * for tracks where the Oracle produces zero confident frames (ambient,
+ * atonal, or purely textural material with no periodic bass content).
+ * Do not extend; new work should consume the Oracle.
  */
 export function estimateBpm(onsets: TimeMs[]): number {
   if (onsets.length < 4) {
@@ -537,10 +629,10 @@ export function detectBeats(
   sampleRate: number,
   heatmap: HeatmapData,
   config: OfflineAnalysisConfig,
-  /** Optional Phase 4 tracker result — preferred over the legacy histogram. */
-  bpmTrackerResult?: GodEarBPMResult,
-  /** Optional octave-folded musical BPM from IntervalBPMTracker.getMusicalBpm(). */
-  musicalBpm?: number,
+  /** Definitive scalar BPM from the TempoOracle confidence-weighted median. */
+  oracleBpm: number,
+  /** Aggregate confidence of the oracle BPM (0-1). */
+  oracleConfidence: number,
 ): BeatGridData {
   // Usar onset detection sobre el heatmap
   const onsets: TimeMs[] = []
@@ -566,18 +658,12 @@ export function detectBeats(
     }
   }
 
-  // 🥁 GODEAR UNLEASHED Phase 4: Prefer the IntervalBPMTracker's musical-BPM
-  // estimate (median-smoothed, Kalman-filtered, autocorrelation-validated,
-  // octave-folded into the dance pocket) over the deprecated 10ms modal-bin
-  // histogram. Fall back to estimateBpm() only when no stable tracker result
-  // is available (e.g. ambient tracks with < MIN_KICKS_FOR_BPM kicks).
-  // Prefer the octave-folded musical BPM (dance pocket) over the tracker's raw
-  // event-rate stableBpm — a tresillo bassline firing at 185 events/min is a
-  // 123 BPM track, and the beat grid must be built on the musical tempo.
-  const trackerBpm = bpmTrackerResult && bpmTrackerResult.confidence > 0
-    ? (musicalBpm && musicalBpm > 0 ? musicalBpm : bpmTrackerResult.bpm)
-    : 0
-  const bpm = trackerBpm > 0 ? trackerBpm : estimateBpm(onsets)
+  // 🔮 CHRONOS PURE MEDIAN ANALYSER: The oracleBpm is the single mathematical
+  // truth — a confidence-weighted median of all per-frame NSDF estimates that
+  // cleared CONF_FLOOR. No musical-pocket folding, no live-runtime defense.
+  // Fall back to the deprecated estimateBpm() histogram only when the Oracle
+  // produced zero confident frames (e.g. ambient/atonal material).
+  const bpm = oracleBpm > 0 ? oracleBpm : estimateBpm(onsets)
 
   // Construir beat grid desde el BPM estimado
   const msPerBeat = 60000 / bpm
@@ -629,13 +715,11 @@ export function detectBeats(
     }
   }
   const onsetConfidence = onsets.length > 0 ? alignedOnsets / onsets.length : 0.5
-  // 🥁 Phase 4: Prefer the tracker's IQR/Kalman/autocorrelation-derived
-  // confidence when available; it is statistically better grounded than the
-  // onset-alignment heuristic. Blend (max) so a strong tracker reading is
-  // never dragged down by a noisy onset set, but a weak tracker reading
-  // does not erase a clearly-aligned grid.
-  const trackerConfidence = bpmTrackerResult?.confidence ?? 0
-  const confidence = Math.max(onsetConfidence, trackerConfidence)
+  // 🔮 CHRONOS PURE MEDIAN ANALYSER: Blend the oracle's aggregate confidence
+  // with the onset-alignment heuristic (max). A strong oracle reading is
+  // never dragged down by a noisy onset set; a weak oracle reading does not
+  // erase a clearly-aligned grid.
+  const confidence = Math.max(onsetConfidence, oracleConfidence)
 
   return {
     bpm,
@@ -1001,13 +1085,13 @@ export function runAnalysisPipeline(
   onProgress?.('energy', 100, 'Heatmap generated')
 
   // Phase 3: Beat Detection
-  // 🥁 GODEAR UNLEASHED Phase 4: Pass the IntervalBPMTracker result from the
-  // heatmap pass into detectBeats so it can use the median/Kalman/autocorr
-  // estimate instead of the deprecated 10ms modal-bin histogram.
+  // 🔮 CHRONOS PURE MEDIAN ANALYSER: Pass the TempoOracle's definitive scalar
+  // BPM (confidence-weighted median) into detectBeats. The beat grid is built
+  // as a perfectly linear, uniform grid from this single mathematical truth.
   onProgress?.('beats', 0, 'Detecting beats...')
   const beatGrid = detectBeats(
     monoSamples, sampleRate, energyHeatmap, config,
-    heatmapResult.bpmTrackerResult, heatmapResult.musicalBpm,
+    heatmapResult.oracleBpm, heatmapResult.oracleConfidence,
   )
   onProgress?.('beats', 100, 'Beat grid detected')
 

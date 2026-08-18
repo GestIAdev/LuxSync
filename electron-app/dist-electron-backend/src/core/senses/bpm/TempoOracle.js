@@ -195,7 +195,7 @@ const DC_TAU_SECONDS = 4.0;
  *  observed on non-rhythmic material, CONF_CEIL at the height observed on a
  *  clean four-on-the-floor. Downstream gates already calibrated for [0,1]
  *  (RhythmTracker > 0.05, PLL > 0.5, TickEngine > 0.7) then need no re-tuning. */
-const CONF_FLOOR = 0.10;
+export const CONF_FLOOR = 0.10;
 const CONF_CEIL = 0.70;
 /** Ring fill fraction required before confidence is published un-attenuated.
  *  Below this the NSDF denominator is diluted by the zero-filled tail, so we

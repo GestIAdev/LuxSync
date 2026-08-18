@@ -369,6 +369,8 @@ export class SeleneTitanConscious extends EventEmitter {
 
   // 🔮 WAVE 1168: NEURAL BRIDGE - Dream/Energy state for UI telemetry
   private lastDreamIntegrationResult: IntegrationDecision | null = null
+  // 🔬 WAVE 7522: Throttle map for DNA simulation log (was 60fps spam)
+  private _dnaLogThrottle = new Map<string, number>()
   private lastEnergyZone: 'silence' | 'valley' | 'ambient' | 'gentle' | 'active' | 'intense' | 'peak' = 'ambient'
 
   // 🩸 WAVE 2102: Evitar spam logs
@@ -1283,13 +1285,20 @@ export class SeleneTitanConscious extends EventEmitter {
         // 🔮 WAVE 1168: NEURAL BRIDGE - Cache dream result for UI telemetry
         this.lastDreamIntegrationResult = dreamIntegrationData?.approved ? dreamIntegrationData : null
 
-        // ⚡ WAVE 2093.3: DNA SIMULATION LOG restaurado (información vital para debug)
+        // ⚡ WAVE 2093.3: DNA SIMULATION LOG — throttled by state+effect (WAVE 7522)
+        // Was firing every frame (60fps). Now: 1 log/sec per unique state+effect combo.
         if (dreamIntegrationData) {
-          console.log(
-            `[SeleneTitanConscious] 🧬 DNA: ${dreamIntegrationData.approved ? '✅' : '❌'} ${effectDisplayName(dreamIntegrationData.effect?.effectName ?? dreamIntegrationData.effect?.effect ?? 'none')} | ` +
-            `ethics=${dreamIntegrationData.ethicalVerdict?.ethicalScore?.toFixed(3) ?? 'N/A'} | ` +
-            `dream=${dreamIntegrationData.dreamTime}ms | ${dreamIntegrationData.dreamRecommendation?.substring(0, 50) ?? ''}`
-          )
+          const _dnaState = `${dreamIntegrationData.approved ? 'ok' : 'no'}_${dreamIntegrationData.effect?.effect ?? 'none'}_${dreamIntegrationData.dreamRecommendation ?? ''}`
+          const _now = Date.now()
+          const _last = this._dnaLogThrottle.get(_dnaState) ?? 0
+          if (_now - _last >= 1000) {
+            console.log(
+              `[SeleneTitanConscious] 🧬 DNA: ${dreamIntegrationData.approved ? '✅' : '❌'} ${effectDisplayName(dreamIntegrationData.effect?.effectName ?? dreamIntegrationData.effect?.effect ?? 'none')} | ` +
+              `ethics=${dreamIntegrationData.ethicalVerdict?.ethicalScore?.toFixed(3) ?? 'N/A'} | ` +
+              `dream=${dreamIntegrationData.dreamTime}ms | ${dreamIntegrationData.dreamRecommendation?.substring(0, 50) ?? ''}`
+            )
+            this._dnaLogThrottle.set(_dnaState, _now)
+          }
         }
       } catch (err: any) {
         console.warn('[SeleneTitanConscious] 🧬 DNA Simulation timeout/error:', err?.message || err)
@@ -1476,12 +1485,22 @@ export class SeleneTitanConscious extends EventEmitter {
       // the lower floor, but aggressive effects must clear a stricter bar.
       // This separates hard from ambient via acoustic pressure, not genre strings.
       const candidateEntry = getDynamicEffectRegistry().getEntry(intent)
+      const isDivineCandidate = candidateEntry?.simMeta.isDivineCandidate ?? false
       const isHardForBypass = candidateEntry?.simMeta.isHeavyCandidate
-        || candidateEntry?.simMeta.isDivineCandidate
+        || isDivineCandidate
         || (candidateEntry?.dna.aggression ?? 0) > 0.7
       const v3EpicnessFloor = isHardForBypass
         ? Math.max(0.15, this.energyConsciousness.getRmsAverage10s() * 0.20)
         : Math.max(0.05, this.energyConsciousness.getRmsAverage10s() * 0.10)
+
+      // 🔒 WAVE 7526: DIVINE DECOUPLING — Divine effects must NEVER fire via the
+      // DROP path's v3Bypass at the reduced epicness floor (0.15-0.25). They are
+      // exclusively locked behind the Sovereign Clock (epicness > 0.60) or the
+      // Divine Moment logic (generateDivineStrikeDecision). This defensive guard
+      // ensures that even if a divine effect somehow enters the DROP arsenal
+      // (e.g. via a misconfigured registry), it cannot bypass the divine gate.
+      const isDropOrigin = output.effectDecision?.reason?.includes('🔴 DROP')
+      const isDivineInDropPath = isDivineCandidate && isDropOrigin
 
       // V3 IGNITE is the sole authority. V(t) vapor pressure provides the refractory
       // period: after each fire, notifyIgnition() resets V(t), raising Q(t) squelch.
@@ -1492,6 +1511,7 @@ export class SeleneTitanConscious extends EventEmitter {
         && !isHardMinimumBlocked
         && !oceanicProtection
         && !alreadyValidatedByArsenal
+        && !isDivineInDropPath
         && v3Epic >= v3EpicnessFloor
 
       // 🎯 WAVE 7158: RESOURCE MASKING — Prevent effect overlap on spatial resources
@@ -1533,7 +1553,7 @@ export class SeleneTitanConscious extends EventEmitter {
 
       // V3 TUNE: Ambient DNA classification — DNA-approved but NOT divine/drop origin.
       // These are the "normal" effects that overfire. They must respect V3 ignition.
-      const isDropOrigin = output.effectDecision?.reason?.includes('🔴 DROP')
+      // NOTE: isDropOrigin is now computed earlier (WAVE 7526) for the divine guard.
       const isAmbientDNA = isDNADecision && !isDropOrigin && !alreadyValidatedByArsenal
 
       // V3 TUNE: Drop reservation window — when Cassandra predicts a drop within 3s,

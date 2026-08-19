@@ -61,6 +61,9 @@ resetPredictionEngine, getEnergyPredictionState, // 🔥 WAVE 1176: OPERATION SN
 import { makeDecision, } from './think/DecisionMaker';
 // ⚡ WAVE 4843: COGNITIVE BRIDGE — isHighSeverityEffect() reemplaza HEAVY_ARSENAL_EFFECTS
 import { getDynamicEffectRegistry, effectDisplayName } from '../arsenal/DynamicEffectRegistry';
+// 🔬 WAVE 7539: getSpeciesQuotaSelector removed — semantic gating means we no
+// longer query the DB for a fallback genome. Only Cassandra pre-buffer DNA is
+// semantically valid for s_DNA Context-Genome Resonance.
 // ═══════════════════════════════════════════════════════════════════════════
 // WAVE 973.3: MOOD CONTROLLER - Para ethics threshold
 // ═══════════════════════════════════════════════════════════════════════════
@@ -172,6 +175,10 @@ const DEFAULT_CONFIG = {
  * ```
  */
 export class SeleneTitanConscious extends EventEmitter {
+    // 🧬 WAVE 7535 → WAVE 7539: Candidate DNA resolution for s_DNA Context-Genome
+    // Resonance. Semantic gating: only Cassandra pre-buffer DNA is used.
+    // The SpeciesQuotaSelector fallback fields were removed (Option C).
+    // FrozenGenome import retained for the return type of _resolveCandidateGenome.
     constructor(config = {}) {
         super();
         this.lastMemoryOutput = null;
@@ -347,6 +354,48 @@ export class SeleneTitanConscious extends EventEmitter {
      * @param titanState Estado estabilizado de TitanEngine
      * @returns Decisión de consciencia
      */
+    /**
+     * 🧬 WAVE 7535 → WAVE 7539: Resolves the candidate effect genome for s_DNA
+     * Context-Genome Resonance.
+     *
+     * 🔬 WAVE 7539: SEMANTIC GATING (Option C — Confidence Resuscitation).
+     *
+     * The genome is ONLY returned when it comes directly from Cassandra's
+     * pre-buffer — i.e., when there IS a concrete candidate effect that Selene
+     * is about to evaluate. In that case, measuring context-genome resonance
+     * is semantically valid: we're asking "does this SPECIFIC effect's DNA
+     * match the room right now?"
+     *
+     * The previous SpeciesQuotaSelector fallback was semantically invalid: the
+     * top organism in the DB is NOT the candidate for an ambient tick. Feeding
+     * its DNA into the Gaussian kernel produced low s_DNA values on every
+     * non-Cassandra frame, which suppressed C(t) below Q_base and silently
+     * killed Selene's ignition capability.
+     *
+     * When no pre-buffer is active, returns null → s_DNA falls back to the
+     * internal coherence formula (geometric mean of acoustic descriptors),
+     * which was the original behavior before WAVE 7535 and is semantically
+     * correct for general ambient frames.
+     *
+     * This closes Bucle 1 of the Area 5 audit: the candidate genome now
+     * influences the ignition DECISION, not just the selection — but only
+     * when there IS a candidate.
+     */
+    _resolveCandidateGenome(_now) {
+        // Cassandra pre-buffer — the ONLY semantically valid source.
+        // The pre-buffered effect IS the candidate Selene is about to evaluate.
+        const bufferStatus = dreamEngineIntegrator.getPreBufferStatus();
+        if (bufferStatus) {
+            const entry = getDynamicEffectRegistry().getEntry(bufferStatus.effectId);
+            if (entry?.dna) {
+                return entry.dna;
+            }
+        }
+        // No pre-buffer active → no candidate → return null.
+        // s_DNA will use the internal coherence fallback (geometric mean),
+        // which is the correct formula for general ambient frames.
+        return null;
+    }
     async process(titanState) {
         this.state.framesProcessed++;
         this.stats.framesProcessed++;
@@ -374,6 +423,9 @@ export class SeleneTitanConscious extends EventEmitter {
             const consonance = this.currentConsonance?.totalConsonance ?? 0.7;
             const predProb = this.state.activePrediction?.probability ?? 0;
             const predAlign = this.state.activePrediction ? 0.7 : 0.0;
+            // 🧬 WAVE 7535: Resolve candidate effect genome for s_DNA resonance.
+            // Priority: Cassandra pre-buffer → SpeciesQuotaSelector fallback (cached 2s).
+            const effectGenome = this._resolveCandidateGenome(now);
             // Bandas para el detector de crestas de Π (escritura in-place, zero-alloc)
             this._bandEnergies[0] = titanState.bass;
             this._bandEnergies[1] = titanState.mid;
@@ -397,6 +449,7 @@ export class SeleneTitanConscious extends EventEmitter {
                 contextualPhase: this.lastMemoryOutput?.narrative?.narrativePhase ?? 'building',
                 isWarmedUp: this.lastMemoryOutput?.isWarmedUp ?? false,
                 acousticReality: this.lastMemoryOutput?.acousticReality,
+                effectGenome,
             }, now);
             this._v3Ignite = SELENE_V3_AUTHORITY && this._lastLiquidVerdict.ignite;
             if (this._v3Ignite) {
@@ -557,6 +610,37 @@ export class SeleneTitanConscious extends EventEmitter {
         // 5. 📜 VALIDATE: Asegurar que respeta la Constitución
         // ─────────────────────────────────────────────────────────────────────
         const finalOutput = this.validate(titanState, dreamValidated);
+        // ─────────────────────────────────────────────────────────────────────
+        // 🩸 WAVE 7543: UNIVERSAL BASS GATE — V3 Ignition Anti-Autotune Veto
+        // 🩸 WAVE 7553: REVERTED to simple bass <= 0.35 veto. Removed zL checks,
+        //   vocal dominance, and ratio checks (WAVE 7550-7552 bloat purged).
+        //   The .lfx zScoreGuards.minimumZ system was also eradicated — Z-floor
+        //   is now centralized in code (Z >= 1.0 for heavy effects).
+        // ─────────────────────────────────────────────────────────────────────
+        if (finalOutput.effectDecision && this._v3Ignite) {
+            const effectId = finalOutput.effectDecision.effectType;
+            if (isHighSeverityEffect(effectId)) {
+                const V3_BASS_GATE_THRESHOLD = 0.35;
+                const v3BassEnergy = titanState.bass;
+                // 🩸 WAVE 7553: CENTRALIZED HEAVY Z-FLOOR — Z >= 1.0 for heavy effects
+                const V3_HEAVY_MIN_Z = 1.0;
+                const v3ZScore = this.contextualMemory.getEnergyZScore();
+                if (v3BassEnergy <= V3_BASS_GATE_THRESHOLD) {
+                    console.log(`[SeleneTitanConscious 🌊🛡️] V3 BASS GATE VETO: ` +
+                        `"${finalOutput.effectDecision.effectName ?? effectId}" suppressed ` +
+                        `(bass=${v3BassEnergy.toFixed(3)} ≤ ${V3_BASS_GATE_THRESHOLD}) — ` +
+                        `vocal/autotune false positive, no sub-bass foundation`);
+                    finalOutput.effectDecision = null;
+                }
+                else if (v3ZScore < V3_HEAVY_MIN_Z) {
+                    console.log(`[SeleneTitanConscious 🌊🛡️] V3 HEAVY Z-FLOOR VETO: ` +
+                        `"${finalOutput.effectDecision.effectName ?? effectId}" suppressed ` +
+                        `(Z=${v3ZScore.toFixed(2)}σ < ${V3_HEAVY_MIN_Z}) — ` +
+                        `energy not statistically unusual enough for heavy effect`);
+                    finalOutput.effectDecision = null;
+                }
+            }
+        }
         // ─────────────────────────────────────────────────────────────────────
         // 🌊 WAVE 7004.5: LIQUID COGNITION V3 — POST-VALIDATE TELEMETRY
         // El veredicto V3 ya fue computado antes de think(). Aquí solo
@@ -1035,6 +1119,8 @@ export class SeleneTitanConscious extends EventEmitter {
             harshness: state.harshness,
             flatness: state.spectralFlatness,
             centroid: state.spectralCentroid,
+            // 🩸 WAVE 7543: Bass energy for Universal Spectral Bass Gate (anti-autotune)
+            bassEnergy: state.bass,
         };
         const inputs = {
             pattern,
@@ -1188,6 +1274,13 @@ export class SeleneTitanConscious extends EventEmitter {
             const v3EpicnessFloor = isHardForBypass
                 ? Math.max(0.15, this.energyConsciousness.getRmsAverage10s() * 0.20)
                 : Math.max(0.05, this.energyConsciousness.getRmsAverage10s() * 0.10);
+            // ═══════════════════════════════════════════════════════════════════════
+            // 🩸 WAVE 7543: UNIVERSAL SPECTRAL BASS GATE (Anti-Autotune Veto)
+            // 🩸 WAVE 7553: REVERTED to simple bass <= 0.35. Purgado de zL/vocal/ratio.
+            // ═══════════════════════════════════════════════════════════════════════
+            const BASS_GATE_THRESHOLD = 0.35;
+            const hasSubstantialBass = state.bass > BASS_GATE_THRESHOLD;
+            const bassGateVetoed = isHardForBypass && !hasSubstantialBass;
             // 🔒 WAVE 7526: DIVINE DECOUPLING — Divine effects must NEVER fire via the
             // DROP path's v3Bypass at the reduced epicness floor (0.15-0.25). They are
             // exclusively locked behind the Sovereign Clock (epicness > 0.60) or the
@@ -1206,7 +1299,21 @@ export class SeleneTitanConscious extends EventEmitter {
                 && !oceanicProtection
                 && !alreadyValidatedByArsenal
                 && !isDivineInDropPath
+                && !bassGateVetoed
                 && v3Epic >= v3EpicnessFloor;
+            // 🩸 WAVE 7543: Log bass gate veto (throttled to avoid spam)
+            if (bassGateVetoed && isDNADecision && this._v3Ignite) {
+                const _bassKey = `${intent}|bass-gate`;
+                const _bassNow = Date.now();
+                const _bassLast = this._dnaLogThrottle.get(_bassKey) ?? 0;
+                if (_bassNow - _bassLast >= 2000) {
+                    const _vetoReason = `bass=${state.bass.toFixed(3)} ≤ ${BASS_GATE_THRESHOLD}`;
+                    console.log(`[SeleneTitanConscious 🛡️] BASS GATE VETO: "${effectDisplayName(intent)}" ` +
+                        `(aggression=${(candidateEntry?.dna.aggression ?? 0).toFixed(2)}) blocked — ` +
+                        `${_vetoReason} (vocal/autotune false positive)`);
+                    this._dnaLogThrottle.set(_bassKey, _bassNow);
+                }
+            }
             // 🎯 WAVE 7158: RESOURCE MASKING — Prevent effect overlap on spatial resources
             // Interrogates actual output vectors of active effects (not static maps).
             // If the candidate will control spatial resources (pan/tilt/movement) AND
@@ -1252,17 +1359,19 @@ export class SeleneTitanConscious extends EventEmitter {
             // refractory organically. Epicness floor provides acoustic justification gate.
             const availability = isHardMinimumBlocked
                 ? hardMinimumCheck // 🔒 HARD_COOLDOWN is LEY ABSOLUTA (epilepsy compliance)
-                : alreadyValidatedByArsenal
-                    ? { available: true, reason: 'DIVINE arsenal pre-validated' }
-                    : v3IgniteBypass
-                        ? { available: true, reason: `V3 IGNITE (ethics=${ethicsScore.toFixed(2)}, V(t) refractory active)` }
-                        : isAmbientDNA && v3Epic < 0.10
-                            ? { available: false, reason: `Epicness too low for ambient DNA (${v3Epic.toFixed(3)} < 0.10)` }
-                            : isAmbientDNA && isDropImminent
-                                ? { available: false, reason: 'Drop reservation — saving Selene for imminent drop' }
-                                : isHardForBypass && v3Epic < v3EpicnessFloor
-                                    ? { available: false, reason: `Epicness floor for hard/strobe effect (${v3Epic.toFixed(3)} < ${v3EpicnessFloor.toFixed(3)})` }
-                                    : hardMinimumCheck;
+                : bassGateVetoed
+                    ? { available: false, reason: `Bass Gate veto (bass=${state.bass.toFixed(3)} ≤ ${BASS_GATE_THRESHOLD}: vocal/autotune false positive)` }
+                    : alreadyValidatedByArsenal
+                        ? { available: true, reason: 'DIVINE arsenal pre-validated' }
+                        : v3IgniteBypass
+                            ? { available: true, reason: `V3 IGNITE (ethics=${ethicsScore.toFixed(2)}, V(t) refractory active)` }
+                            : isAmbientDNA && v3Epic < 0.10
+                                ? { available: false, reason: `Epicness too low for ambient DNA (${v3Epic.toFixed(3)} < 0.10)` }
+                                : isAmbientDNA && isDropImminent
+                                    ? { available: false, reason: 'Drop reservation — saving Selene for imminent drop' }
+                                    : isHardForBypass && v3Epic < v3EpicnessFloor
+                                        ? { available: false, reason: `Epicness floor for hard/strobe effect (${v3Epic.toFixed(3)} < ${v3EpicnessFloor.toFixed(3)})` }
+                                        : hardMinimumCheck;
             if (availability.available && output.effectDecision) {
                 finalEffectDecision = output.effectDecision;
                 // 🌊 V(t) REFRACTORY: Notify the liquid core that an ignition was materialized.
@@ -1333,9 +1442,11 @@ export class SeleneTitanConscious extends EventEmitter {
             this.lastEffectType = finalEffectDecision.effectType;
             // 🔧 DIAG: Log detallado en cada disparo para ver por qué se dispara
             const _v = this._lastLiquidVerdict;
+            const _zL = this.lastMemoryOutput?.acousticReality?.zScores.low ?? 0;
             console.log(`[FIRE-DIAG] ${effectDisplayName(finalEffectDecision.effectName ?? finalEffectDecision.effectType)} | ` +
                 `reason=${finalEffectDecision.reason ?? 'none'} | ` +
                 `E=${state.rawEnergy.toFixed(3)} Z=${zScore.toFixed(2)}σ | ` +
+                `bass=${state.bass.toFixed(3)} mid=${state.mid.toFixed(3)} high=${state.high.toFixed(3)} zL=${_zL.toFixed(2)}σ | ` +
                 `epicness=${(_v?.epicness ?? 0).toFixed(3)} v3Ignite=${this._v3Ignite} | ` +
                 `I(t)=${(_v?.fluid.impact ?? 0).toFixed(3)} T=${(_v?.fluid.tension ?? 0).toFixed(3)} | ` +
                 `phase=${this.lastMemoryOutput?.narrative?.narrativePhase ?? '?'} | ` +

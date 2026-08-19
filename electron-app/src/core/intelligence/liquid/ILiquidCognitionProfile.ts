@@ -193,7 +193,15 @@ export const DEFAULT_LIQUID_PROFILE: Readonly<ILiquidCognitionProfile> = Object.
   w5: 0.0273,  // ⬇ 0.12 (MC) — s_X
   w6: 0.1500,  // ⬇ 0.2766 → 0.15 (Fase 5: Cassandra inflated base confidence)
   w7: 0.0204,  // ⬇ 0.08 (MC) — s_B
-  sigma_g: 0.35,
+  // 🔬 WAVE 7539: Widened from 0.35 → 0.65 (Confidence Resuscitation, Option A).
+  // The original 0.35 was calibrated for the ACO (Acoustic Coherence Operator)
+  // where both vectors were acoustic descriptors. The new Context-Genome
+  // Resonance pairs acoustic g_ctx with genetic g_fx — semantically different
+  // axes that naturally produce larger distances. With σ_g=0.35, any distSq>0.56
+  // collapsed s_DNA to the EPSILON floor, suppressing C(t) below Q_base.
+  // σ_g=0.65 gives 2σ_g²≈0.845, so a moderate distSq=0.5 yields s_DNA≈0.55
+  // instead of 0.13 — a healthy resonance that doesn't kill ignition.
+  sigma_g: 0.65,
   kappa_z: 4.0,
   b_z: 0.0,
   gamma_e: 0.7,

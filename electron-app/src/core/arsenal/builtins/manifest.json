@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "version": "0.8.0-beta.1",
-  "generatedAt": "2026-08-18T21:24:48.750Z",
-  "count": 49,
+  "generatedAt": "2026-08-19T20:57:23.960Z",
+  "count": 42,
   "files": {
     "chill/solar_caustics.lfx": {
       "relPath": "chill/solar_caustics.lfx",
@@ -14,40 +14,10 @@
       "checksum": "e011d48a5ded2bba",
       "size": 2931
     },
-    "custom/Feral Wave Omega.lfx": {
-      "relPath": "custom/Feral Wave Omega.lfx",
-      "checksum": "4d4d6842dc9a29ff",
-      "size": 4763
-    },
-    "custom/heph_1782609140553_bto9fn.lfx": {
-      "relPath": "custom/heph_1782609140553_bto9fn.lfx",
-      "checksum": "46fa06395292cbf3",
-      "size": 25811
-    },
-    "custom/heph_1782937097650_pjisyy.lfx": {
-      "relPath": "custom/heph_1782937097650_pjisyy.lfx",
-      "checksum": "12ca8de2a47a362b",
-      "size": 20044
-    },
-    "custom/heph_1784931422617_tpox7b.lfx": {
-      "relPath": "custom/heph_1784931422617_tpox7b.lfx",
-      "checksum": "f45b152cb5e08ca0",
-      "size": 29686
-    },
-    "custom/heph_1784952802805_jigk8a.lfx": {
-      "relPath": "custom/heph_1784952802805_jigk8a.lfx",
-      "checksum": "544b2f51138e0500",
-      "size": 27123
-    },
-    "custom/heph_Feral Wave Omega.lfx": {
-      "relPath": "custom/heph_Feral Wave Omega.lfx",
-      "checksum": "875aec408613e8ae",
-      "size": 4759
-    },
     "latin/amazon_mist.lfx": {
       "relPath": "latin/amazon_mist.lfx",
-      "checksum": "19aa551554d32db1",
-      "size": 12619
+      "checksum": "60ca3cb0b7e84859",
+      "size": 12616
     },
     "latin/arena_sweep.lfx": {
       "relPath": "latin/arena_sweep.lfx",
@@ -56,48 +26,48 @@
     },
     "latin/corazon_latino.lfx": {
       "relPath": "latin/corazon_latino.lfx",
-      "checksum": "f8cf90adca06c9e3",
-      "size": 44136
+      "checksum": "b7890d8095159446",
+      "size": 44132
     },
     "latin/cumbia_moon.lfx": {
       "relPath": "latin/cumbia_moon.lfx",
-      "checksum": "c17dcfbfcb0f7ec3",
-      "size": 13602
+      "checksum": "461595212dceb19c",
+      "size": 13599
     },
     "latin/divine_obliteration.lfx": {
       "relPath": "latin/divine_obliteration.lfx",
-      "checksum": "fa6a0c522a04d254",
-      "size": 4856
+      "checksum": "74f4849dafe7dd34",
+      "size": 4857
     },
     "latin/ghost_breath.lfx": {
       "relPath": "latin/ghost_breath.lfx",
-      "checksum": "a755be9edeffe2c0",
-      "size": 12744
+      "checksum": "382db2aa3ab148bb",
+      "size": 12741
     },
     "latin/kitt_scanner.lfx": {
       "relPath": "latin/kitt_scanner.lfx",
-      "checksum": "438b22d8dd783932",
-      "size": 21214
+      "checksum": "e9d742f2a49a46de",
+      "size": 21211
     },
     "latin/latina_meltdown.lfx": {
       "relPath": "latin/latina_meltdown.lfx",
-      "checksum": "b7cb06f91de2c959",
-      "size": 11368
+      "checksum": "9e2db84510e2ce79",
+      "size": 11365
     },
     "latin/salsa_fire.lfx": {
       "relPath": "latin/salsa_fire.lfx",
-      "checksum": "3736961ef4930cb4",
-      "size": 5392
+      "checksum": "91ebbe0f4b9efa85",
+      "size": 5395
     },
     "latin/solar_flare.lfx": {
       "relPath": "latin/solar_flare.lfx",
-      "checksum": "5f2bb5616929634c",
-      "size": 12087
+      "checksum": "3c621ba6cfeea521",
+      "size": 12084
     },
     "latin/tidal_wave.lfx": {
       "relPath": "latin/tidal_wave.lfx",
-      "checksum": "71d6d7e52af1efb3",
-      "size": 27680
+      "checksum": "996faa2f41224f20",
+      "size": 27677
     },
     "rock/amp_heat.lfx": {
       "relPath": "rock/amp_heat.lfx",
@@ -111,8 +81,8 @@
     },
     "rock/power_chord.lfx": {
       "relPath": "rock/power_chord.lfx",
-      "checksum": "0dfb89fad4eadc35",
-      "size": 4536
+      "checksum": "7360aa593fb41f0a",
+      "size": 4537
     },
     "rock/spotlight_pulse.lfx": {
       "relPath": "rock/spotlight_pulse.lfx",
@@ -131,8 +101,8 @@
     },
     "techno/abyssal_rise.lfx": {
       "relPath": "techno/abyssal_rise.lfx",
-      "checksum": "bce07c6b39eec8b8",
-      "size": 4109
+      "checksum": "31e622ae64fade77",
+      "size": 4112
     },
     "techno/acid_sweep.lfx": {
       "relPath": "techno/acid_sweep.lfx",
@@ -141,33 +111,33 @@
     },
     "techno/ambient_strobe.lfx": {
       "relPath": "techno/ambient_strobe.lfx",
-      "checksum": "01558e5bee416d0e",
-      "size": 4551
+      "checksum": "a371ba74c1f5c3e6",
+      "size": 4552
     },
     "techno/binary_glitch.lfx": {
       "relPath": "techno/binary_glitch.lfx",
-      "checksum": "bbb11294c1a65c42",
-      "size": 7535
+      "checksum": "cf130cfcee968193",
+      "size": 7536
     },
     "techno/cascade_strike.lfx": {
       "relPath": "techno/cascade_strike.lfx",
-      "checksum": "13ebca7ac66cdaeb",
-      "size": 5306
+      "checksum": "3e25af39303645a4",
+      "size": 5307
     },
     "techno/core_meltdown.lfx": {
       "relPath": "techno/core_meltdown.lfx",
-      "checksum": "9c9763b082016b5e",
-      "size": 4490
+      "checksum": "d28f2dd3140a2a49",
+      "size": 4491
     },
     "techno/cyber_dualism.lfx": {
       "relPath": "techno/cyber_dualism.lfx",
-      "checksum": "a1a087833da1163e",
-      "size": 14714
+      "checksum": "4cb2e87052e81b23",
+      "size": 14713
     },
     "techno/cyber_scanner.lfx": {
       "relPath": "techno/cyber_scanner.lfx",
-      "checksum": "b7f1f4a0d02ed51a",
-      "size": 4655
+      "checksum": "04e6709308b8e6bf",
+      "size": 4658
     },
     "techno/deep_breath.lfx": {
       "relPath": "techno/deep_breath.lfx",
@@ -176,8 +146,8 @@
     },
     "techno/gatling_raid.lfx": {
       "relPath": "techno/gatling_raid.lfx",
-      "checksum": "16643686a5b9c0ad",
-      "size": 5046
+      "checksum": "de4b6cd3b9fa7087",
+      "size": 5047
     },
     "techno/ghost_chase.lfx": {
       "relPath": "techno/ghost_chase.lfx",
@@ -186,53 +156,53 @@
     },
     "techno/industrial_strobe.lfx": {
       "relPath": "techno/industrial_strobe.lfx",
-      "checksum": "51d98430bf47cb40",
-      "size": 4794
+      "checksum": "bcc636dc2faadae0",
+      "size": 4795
     },
     "techno/lateral_frag.lfx": {
       "relPath": "techno/lateral_frag.lfx",
-      "checksum": "2d327b685c8ffea0",
-      "size": 5509
+      "checksum": "e747895a49c0f954",
+      "size": 5510
     },
     "techno/machine_gun.lfx": {
       "relPath": "techno/machine_gun.lfx",
-      "checksum": "8edd3e6a6c6b10fc",
-      "size": 4431
+      "checksum": "f0f444c8513b39c1",
+      "size": 4434
     },
     "techno/neon_blinder.lfx": {
       "relPath": "techno/neon_blinder.lfx",
-      "checksum": "68ac0dce1b60845e",
-      "size": 5167
+      "checksum": "66d3883598de341c",
+      "size": 5168
     },
     "techno/red_surge.lfx": {
       "relPath": "techno/red_surge.lfx",
-      "checksum": "da5d74f37f112ae5",
-      "size": 4658
+      "checksum": "c8d41ac85daa0b5b",
+      "size": 4659
     },
     "techno/seismic_snap.lfx": {
       "relPath": "techno/seismic_snap.lfx",
-      "checksum": "bfb1309dd8b3cd9e",
-      "size": 6530
+      "checksum": "2398fe10b2d62d7c",
+      "size": 6533
     },
     "techno/static_pulse.lfx": {
       "relPath": "techno/static_pulse.lfx",
-      "checksum": "3d67733e2d77d38c",
-      "size": 5075
+      "checksum": "72e35bd744f4578d",
+      "size": 5078
     },
     "techno/strobe_burst.lfx": {
       "relPath": "techno/strobe_burst.lfx",
-      "checksum": "b93cf30a170b0ccd",
-      "size": 3826
+      "checksum": "f1a4f4c445a77286",
+      "size": 3829
     },
     "techno/strobe_ping_pong.lfx": {
       "relPath": "techno/strobe_ping_pong.lfx",
-      "checksum": "dd9cc0ba2446ddf9",
-      "size": 2731
+      "checksum": "7a19f1ecd51536c4",
+      "size": 2734
     },
     "techno/strobe_storm.lfx": {
       "relPath": "techno/strobe_storm.lfx",
-      "checksum": "2d79a52c8b9f8771",
-      "size": 4078
+      "checksum": "881c36e40fe368ad",
+      "size": 4079
     },
     "techno/void_mist.lfx": {
       "relPath": "techno/void_mist.lfx",
@@ -241,13 +211,8 @@
     },
     "techno/wraht_of_the_titans.lfx": {
       "relPath": "techno/wraht_of_the_titans.lfx",
-      "checksum": "9e072b432e4cdbe9",
-      "size": 4933
-    },
-    "_EFECTO_BASE.lfx": {
-      "relPath": "_EFECTO_BASE.lfx",
-      "checksum": "0feea0376271a646",
-      "size": 4015
+      "checksum": "5fbbd1de837a0cb6",
+      "size": 4934
     }
   }
 }

@@ -78,7 +78,10 @@ const SUFFIXES_COMMON = ['', '', '', '', 'Mk.II', 'Mk.III', 'Beta', 'Raw'];
 const SUFFIXES_RARE = ['', '', 'Mk.IV', 'Prime', 'X', 'Plus', 'Alpha', 'EX'];
 const SUFFIXES_EPIC = ['', 'Prime', 'X', 'Ultra', 'Apex', 'Omega', 'Z', 'REX'];
 const SUFFIXES_LEGENDARY = ['Prime', 'Omega', 'Apex', 'Ultra', 'MAX', 'Z', 'REX', 'Nova'];
-const SUFFIXES_MYTHIC = ['Omega', 'Apex', 'MAX', 'REX', 'Nova', 'Zero', 'Alpha', 'NULL'];
+// 🔬 WAVE 7540: 'NULL' literal removed — was propagating to the UI as the
+// literal string "NULL" for MYTHIC organisms. Replaced with 'Prime' to
+// keep the pool at 8 entries and maintain combinatorial space integrity.
+const SUFFIXES_MYTHIC = ['Omega', 'Apex', 'MAX', 'REX', 'Nova', 'Zero', 'Alpha', 'Prime'];
 // ─── CORE ALGORITHM ─────────────────────────────────────────────────────────
 /**
  * Generate a deterministic, compact name for a Genesis organism.
@@ -130,7 +133,7 @@ export function generateOrganismName(organism, blueprint) {
     }
     else {
         // Use operator type as a proxy for chaos
-        const chaosLikeOps = ['gene_augmentation', 'transposition', 'crossover', 'proportional_stretch'];
+        const chaosLikeOps = ['gene_augmentation', 'crossover', 'proportional_stretch'];
         const isChaotic = chaosLikeOps.includes(organism.operatorUsed);
         nounPool = isChaotic ? NOUNS_HIGH_CHAOS : NOUNS_LOW_CHAOS;
     }
@@ -138,9 +141,9 @@ export function generateOrganismName(organism, blueprint) {
     const nounSeed = fnv1aHash(`${organism.organismId}:noun:${organism.generation}`);
     const noun = nounPool[nounSeed % nounPool.length];
     // ── Suffix selection (by rarity + generation) ──
-    const suffixPool = getSuffixPool(organism.rarityTier);
+    // 🔬 WAVE 7540: Use resolveSuffix() for null-safe suffix resolution.
     const suffixSeed = fnv1aHash(`${organism.organismId}:suffix:${organism.rarityTier}`);
-    const suffix = suffixPool[suffixSeed % suffixPool.length];
+    const suffix = resolveSuffix(organism.rarityTier, suffixSeed);
     // ── Assemble ──
     const base = `${adjective} ${noun}`;
     const fullName = suffix ? `${base} ${suffix}` : base;
@@ -161,6 +164,22 @@ function getSuffixPool(tier) {
         case 'MYTHIC': return SUFFIXES_MYTHIC;
         default: return SUFFIXES_COMMON;
     }
+}
+/**
+ * 🔬 WAVE 7540: Safe suffix resolver — guarantees a non-null, non-empty
+ * string suffix for any tier. If the suffix pool returns an empty string
+ * or an invalid value, this falls back to "Variant" so the UI never
+ * displays "NULL" or "undefined".
+ */
+function resolveSuffix(tier, seed) {
+    const pool = getSuffixPool(tier);
+    if (pool.length === 0)
+        return 'Variant';
+    const suffix = pool[seed % pool.length];
+    // Empty string is valid (means no suffix) — but null/undefined is not
+    if (suffix == null)
+        return 'Variant';
+    return suffix;
 }
 // ─── COMBINATORIAL SPACE VERIFICATION ───────────────────────────────────────
 /**

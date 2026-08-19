@@ -27,10 +27,7 @@ export class SpeciesQuotaSelector {
      * @returns SelectionResult with diverse candidates across species
      */
     selectCandidates(poolSize = 12, rng = Math.random) {
-        const db = this._vault._db;
-        if (!db) {
-            throw new Error('[QuotaSelector] GenesisVault not initialized');
-        }
+        const db = this._vault.getDb();
         // 1. Fetch all alive + champion organisms
         const rows = db.prepare(`SELECT organism_id, blueprint_id, species_id, fitness_score,
               rarity_tier, trials_count, neonatal_shield_until, status

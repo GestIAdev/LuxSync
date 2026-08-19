@@ -64,6 +64,7 @@ import { getHeatmapLogger } from '../genesis/fitness/HeatmapLogger'
 import { getGenesisVault } from '../genesis/GenesisVaultService'
 import { getColiseumService } from '../genesis/ColiseumService'
 import { getOrganismTag } from '../genesis/naming/OrganismTag'
+import type { ContextVector6D } from '../genesis/types'
 
 // ⚰️ WAVE 3450: isOceanicEffectValidForDepth eliminado junto con ChillStereoPhysics.
 
@@ -516,13 +517,11 @@ export class EffectManager extends EventEmitter {
     const organismTag = (() => {
       try {
         const vault = getGenesisVault()
-        const db = (vault as any)._db
-        if (db) {
-          const org = db.prepare(
-            'SELECT organism_id, custom_name, rarity_tier FROM lfx_organisms WHERE organism_id = ?',
-          ).get(config.effectType) as { organism_id: string; custom_name: string | null; rarity_tier: string } | undefined
-          if (org) return getOrganismTag(org)
-        }
+        const db = vault.getDb()
+        const org = db.prepare(
+          'SELECT organism_id, custom_name, rarity_tier FROM lfx_organisms WHERE organism_id = ?',
+        ).get(config.effectType) as { organism_id: string; custom_name: string | null; rarity_tier: string } | undefined
+        if (org) return getOrganismTag(org)
       } catch { /* not a genesis organism */ }
       return null
     })()
@@ -548,13 +547,14 @@ export class EffectManager extends EventEmitter {
     try {
       const heatmapLogger = getHeatmapLogger()
       const vault = getGenesisVault()
-      const db = (vault as any)._db
-      if (db) {
+      const db = vault.getDb()
         const mc = config.musicalContext
         const now = Date.now()
 
         // Build a ContextVector6D from available musical context
-        const ctx = {
+        // 🔬 WAVE 7534: This vector is now passed to spawnInitialCohort as
+        // the birth context — organisms record WHERE they were born.
+        const ctx: ContextVector6D = {
           zScoreAvg3s: mc?.zScore ?? 0,
           lowBandAvg3s: mc?.energy ?? 0,
           energyPhaseEncoded: mc?.inDrop ? 1 : 0,
@@ -585,7 +585,7 @@ export class EffectManager extends EventEmitter {
             // Non-blocking: fire-and-forget cohort spawn
             queueMicrotask(() => {
               try {
-                const results = getColiseumService().spawnInitialCohort(config.effectType)
+                const results = getColiseumService().spawnInitialCohort(config.effectType, ctx)
                 const viable = results.filter((r) => r.success).length
                 if (viable > 0) {
                   console.log(
@@ -627,7 +627,6 @@ export class EffectManager extends EventEmitter {
             id: org.organism_id,
           })
         }
-      }
     } catch (_) {
       // Genesis vault not initialized — fail silently
     }

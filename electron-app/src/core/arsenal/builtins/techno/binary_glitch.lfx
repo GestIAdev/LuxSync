@@ -323,7 +323,7 @@
       "isHeavyCandidate": false,
       "zScoreGuards": {
         "requireRising": true,
-        "minimumZ": 2.5,
+        "minimumZ": null,
         "minimumEnergy": 0.75
       }
     },

@@ -1,4 +1,4 @@
-﻿{
+{
     "$schema":  "luxsync.lfx/3.0",
     "clip":  {
                  "id":  "cyber_dualism",
@@ -206,7 +206,7 @@
                                         "isHeavyCandidate":  false,
                                         "zScoreGuards":  {
                                                              "requireRising":  false,
-                                                             "minimumZ":  2,
+                                                             "minimumZ": null,
                                                              "minimumEnergy":  null
                                                          }
                                     },

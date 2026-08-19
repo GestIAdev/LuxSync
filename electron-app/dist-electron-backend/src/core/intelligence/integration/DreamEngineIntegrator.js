@@ -176,8 +176,41 @@ export class DreamEngineIntegrator {
         // ═════════════════════════════════════════════════════════════════════
         const filterStartTime = Date.now();
         const safetyContext = this.buildAudienceSafetyContext(context);
-        const ethicalVerdict = await visualConscienceEngine.evaluate(candidates, safetyContext);
-        const filterTime = Date.now() - filterStartTime;
+        let ethicalVerdict = await visualConscienceEngine.evaluate(candidates, safetyContext);
+        let filterTime = Date.now() - filterStartTime;
+        // ═════════════════════════════════════════════════════════════════════
+        // 🔬 WAVE 7541: FAST PATH FALLBACK (Climax Blackout Prevention, Fix B)
+        // ═════════════════════════════════════════════════════════════════════
+        // ROOT CAUSE: The Cassandra FAST PATH returns only 1 scenario (the
+        // pre-buffered effect). If Ethics rejects it (e.g. HERESY), there are
+        // zero alternatives in the candidate list → approvedEffect = null →
+        // total blackout during the drop.
+        //
+        // FIX: If the FAST PATH candidate was REJECTED by ethics, re-invoke
+        // the Dream Simulator. The pre-buffer was already consumed (set to null
+        // by the FAST PATH), so the second invocation runs the NORMAL path,
+        // producing the full ranked scenario list with all vibe-compatible
+        // candidates (#2, #3, etc.). Ethics then evaluates the full pool.
+        //
+        // This is a synchronous fallback — it adds ~2-5ms to one frame, but
+        // only fires when the FAST PATH fails (rare with Fix A in place).
+        if (isFastPath && ethicalVerdict.verdict === 'REJECTED') {
+            console.log(`[INTEGRATOR] 🔮🔄 FAST PATH FALLBACK: pre-buffered "${effectDisplayName(dreamResult.bestScenario?.effect.effectName ?? dreamResult.bestScenario?.effect.effect ?? '?')}" was REJECTED by ethics ` +
+                `(score=${ethicalVerdict.ethicalScore.toFixed(3)}, violations=[${ethicalVerdict.violations.map(v => v.value).join(', ')}]) → re-simulating with full candidate pool`);
+            // Re-invoke dream simulation (pre-buffer is null → normal path)
+            const fallbackDreamStart = Date.now();
+            const fallbackDreamResult = await this.dreamEffects(context);
+            const fallbackCandidates = this.generateCandidates(fallbackDreamResult);
+            if (fallbackCandidates.length > 0) {
+                const fallbackVerdict = await visualConscienceEngine.evaluate(fallbackCandidates, safetyContext);
+                filterTime += Date.now() - fallbackDreamStart;
+                if (fallbackVerdict.verdict === 'APPROVED') {
+                    console.log(`[INTEGRATOR] 🔮✅ FAST PATH FALLBACK SUCCESS: "${effectDisplayName(fallbackVerdict.approvedEffect?.effectName ?? fallbackVerdict.approvedEffect?.effect ?? '?')}" approved from fallback pool`);
+                }
+                // Replace the rejected verdict with the fallback result
+                ethicalVerdict = fallbackVerdict;
+            }
+        }
         // ═════════════════════════════════════════════════════════════════════
         // STEP 4: DECIDE (APPROVED/REJECTED/DEFERRED)
         // ═════════════════════════════════════════════════════════════════════

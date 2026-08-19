@@ -54,6 +54,10 @@ function scanDirectory(dir: string, basePath: string, files: Record<string, Mani
   for (const entry of entries) {
     const fullPath = path.join(dir, entry.name)
     if (entry.isDirectory()) {
+      // 🛡️ WAVE 7545: custom/ is exclusive user-space — never bundle into factory manifest.
+      // This prevents user-created/canonized effects from being treated as builtins
+      // and regenerated on every boot by the manifest sync.
+      if (entry.name === 'custom') continue
       count += scanDirectory(fullPath, basePath, files)
     } else if (entry.name.toLowerCase().endsWith('.lfx')) {
       const relPath = path.relative(basePath, fullPath).replace(/\\/g, '/')

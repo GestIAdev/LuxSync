@@ -137,6 +137,8 @@ export interface DecisionInputs {
     harshness: number
     flatness: number
     centroid: number
+    /** 🩸 WAVE 7543: Bass energy (0-1) from FFT low band — for Bass Gate anti-autotune veto */
+    bassEnergy?: number
   }
   
   /** 🔒 WAVE 1177: CALIBRATION - Dictador activo (efecto global en ejecución) */
@@ -287,38 +289,66 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
   // §5.4: Vibe branches (isTechnoVibe / isLatinVibe) PURGED — replaced with
   // continuous ΠMΔG interpolation. The divine threshold is now a function of
   // the fluid descriptors, not a genre string:
-  //   V3_EPSILON_DIVINE = 0.60 - 0.10 · Π·(1−M)
-  //     High percussiveness + low melodicity (techno) → 0.50 (permissive)
-  //     Low percussiveness or high melodicity (ambient) → 0.60 (strict)
+  //   V3_EPSILON_DIVINE = 0.50 - 0.10 · Π·(1−M)
+  //     High percussiveness + low melodicity (techno) → 0.40 (permissive)
+  //     Low percussiveness or high melodicity (ambient) → 0.50 (strict)
   //   DIVINE_SUSTAINED_RMS_FLOOR = 0.75 - 0.10 · G
   //     High groove (latin reggaeton) → 0.65 (lower floor)
   //     Low groove (ambient) → 0.75 (strict floor)
+  //
+  // 🔬 WAVE 7542: DIVINE RESUSCITATION.
+  //   V3_EPSILON_DIVINE base lowered 0.60 → 0.50: the old base made the
+  //   peak path unreachable in fiesta-latina (epicness rarely > 0.55).
+  //   With the epicness recalibration in CognitiveFluidState (effectiveTension
+  //   0.50→0.35, phaseMod α 0.08→0.15, sustained threshold 0.55→0.45),
+  //   epicness now reaches 0.40-0.60 during real climaxes. The divine
+  //   threshold must match this new dynamic range.
+  //   DIVINE_SUSTAINED_EPICNESS lowered 0.50 → 0.40: the sustained path
+  //   was marginal — epicness hovered at 0.48-0.52 but the threshold was
+  //   exactly 0.50, missing by fractions. 0.40 gives breathing room.
   // ═══════════════════════════════════════════════════════════════════════
   const v3Epicness = inputs.v3Epicness ?? 0
   // ΠMΔG interpolation — no genre strings, pure fluid descriptors
   const Π = pattern.rhythmicIntensity ?? 0  // percussiveness proxy (pattern-level)
   const M = pattern.harmonicDensity ?? 0.5   // melodicity proxy
   const G = pattern.syncopation ?? 0         // groove
-  const V3_EPSILON_DIVINE = 0.60 - 0.10 * clamp01(Π * (1 - clamp01(M)))
+  const V3_EPSILON_DIVINE = 0.50 - 0.10 * clamp01(Π * (1 - clamp01(M)))
   // 🩸 WAVE 7171: Two-path divine gate — A) brutal isolated peak OR B) sustained epicness
   const rms10s = inputs.rmsAverage10s ?? 0
   const DIVINE_SUSTAINED_RMS_FLOOR = 0.75 - 0.10 * clamp01(G)
-  // 🩸 WAVE 7186: Sustained epicness threshold raised to 0.50 for ALL vibes.
-  const DIVINE_SUSTAINED_EPICNESS = 0.50
+  // 🔬 WAVE 7542: Lowered from 0.50 → 0.40 (Divine Resuscitation).
+  const DIVINE_SUSTAINED_EPICNESS = 0.40
   const divinePeakPassed = v3Epicness > V3_EPSILON_DIVINE
   const divineSustainedPassed = v3Epicness > DIVINE_SUSTAINED_EPICNESS && rms10s > DIVINE_SUSTAINED_RMS_FLOOR
   // 🩸 WAVE 7186: Z-SCORE FLOOR — Divine is a rare event by definition.
+  // 🔬 WAVE 7542: Z-score left at 2.10 — user confirmed it's well calibrated.
   const DIVINE_MIN_Z_SCORE = 2.10
   const divineZPassed = (zScore ?? 0) >= DIVINE_MIN_Z_SCORE
-  const divineGatePassed = (divinePeakPassed || divineSustainedPassed) && divineZPassed
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🩸 WAVE 7543: UNIVERSAL SPECTRAL BASS GATE (Anti-Autotune Veto)
+  // 🩸 WAVE 7553: REVERTED to simple bass <= 0.35. Purgado de zL/vocal/ratio.
+  // ═══════════════════════════════════════════════════════════════════════
+  const BASS_GATE_THRESHOLD = 0.35
+  const bassEnergy = inputs.spectralContext?.bassEnergy ?? 0
+  const hasSubstantialBass = bassEnergy > BASS_GATE_THRESHOLD
+  const divineBassVetoed = (divinePeakPassed || divineSustainedPassed) && divineZPassed && !hasSubstantialBass
+  const divineGatePassed = (divinePeakPassed || divineSustainedPassed) && divineZPassed && hasSubstantialBass
 
   if (activeDictator) {
     // No loggear nada - silencio total para evitar spam
+  } else if (divineBassVetoed) {
+    console.log(
+      `[DecisionMaker 🌩️🛡️] VETO Divine strike rejected: Insufficient low-end weight ` +
+      `(bass=${bassEnergy.toFixed(3)} ≤ ${BASS_GATE_THRESHOLD}) — vocal/autotune false positive | ` +
+      `epicness=${v3Epicness.toFixed(3)} Z=${(zScore ?? 0).toFixed(2)}σ`
+    )
   } else if (divineGatePassed) {
     console.log(
       `[DecisionMaker 🌩️] DIVINE MOMENT: V3 epicness=${v3Epicness.toFixed(3)}` +
       ` (peak>${V3_EPSILON_DIVINE.toFixed(2)}? ${divinePeakPassed}; sustained>${DIVINE_SUSTAINED_EPICNESS}+rms>${DIVINE_SUSTAINED_RMS_FLOOR.toFixed(2)}? ${divineSustainedPassed})` +
       ` Z=${(zScore ?? 0).toFixed(2)}σ ≥ ${DIVINE_MIN_Z_SCORE}? ${divineZPassed}` +
+      ` bass=${bassEnergy.toFixed(3)} > ${BASS_GATE_THRESHOLD}? ${hasSubstantialBass}` +
       ` → MANDATORY FIRE`
     )
     return 'divine_strike'
@@ -703,10 +733,24 @@ function generateDropPreparationDecision(
       const v3EpicForDrop = inputs.v3Epicness ?? 0
       const DROP_EPICNESS_FLOOR = 0.25
 
+      // 🩸 WAVE 7543: BASS GATE — Drop pool is HEAVY ONLY (WAVE 7526), so it
+      // inherits the same anti-autotune veto as divine_strike and
+      // SovereignClockGuard. A drop without sub-bass is a vocal transient.
+      // 🩸 WAVE 7553: REVERTED to simple bass <= 0.35. Purgado de zL/vocal/ratio.
+      const DROP_BASS_GATE_THRESHOLD = 0.35
+      const dropBassEnergy = inputs.spectralContext?.bassEnergy ?? 0
+      const dropHasSubstantialBass = dropBassEnergy > DROP_BASS_GATE_THRESHOLD
+
       if (v3EpicForDrop < DROP_EPICNESS_FLOOR) {
         console.log(
           `[DecisionMaker 🛡️] DROP EPICNESS FLOOR: epicness=${v3EpicForDrop.toFixed(3)} < ${DROP_EPICNESS_FLOOR}` +
           ` — drop prediction preserved but effect suppressed (autotune/vocal transient)` +
+          ` → falling through to hold`
+        )
+      } else if (!dropHasSubstantialBass) {
+        console.log(
+          `[DecisionMaker 🛡️] DROP BASS GATE: bass=${dropBassEnergy.toFixed(3)} ≤ ${DROP_BASS_GATE_THRESHOLD}` +
+          ` — drop effect suppressed (vocal/autotune false positive, no sub-bass foundation)` +
           ` → falling through to hold`
         )
       } else {
@@ -725,7 +769,7 @@ function generateDropPreparationDecision(
 
         console.log(
           `[DecisionMaker 🔴] DROP EFFECT: ${effectDisplayName(suggestedEffect)} | prob=${prediction.probability.toFixed(2)} ` +
-          `vibe=${vibeId} | Z=${currentZ.toFixed(2)} | epicness=${v3EpicForDrop.toFixed(3)}`
+          `vibe=${vibeId} | Z=${currentZ.toFixed(2)} | epicness=${v3EpicForDrop.toFixed(3)} | bass=${dropBassEnergy.toFixed(3)}`
         )
       }
     }

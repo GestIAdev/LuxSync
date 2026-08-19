@@ -224,10 +224,7 @@ export function updateFitnessInDB(
   newFitness: number,
   survived: boolean,
 ): void {
-  const db = (vault as any)._db
-  if (!db) {
-    throw new Error('[FitnessEvaluator] GenesisVault not initialized')
-  }
+  const db = vault.getDb()
 
   const now = Date.now()
 
@@ -270,10 +267,7 @@ export function evaluateFireEvent(
   vault?: GenesisVaultService,
 ): FitnessUpdate {
   const v = vault ?? getGenesisVault()
-  const db = (v as any)._db
-  if (!db) {
-    throw new Error('[FitnessEvaluator] GenesisVault not initialized')
-  }
+  const db = v.getDb()
 
   const row = db.prepare(
     'SELECT fitness_score, trials_count, passes_count, last_evaluated_at FROM lfx_organisms WHERE organism_id = ?',

@@ -9,22 +9,42 @@
 //  novelty    = 1 − max_cosine_similarity(signature, all_alive)  [0 if no population]
 //  operator_w = per-operator weight table
 //
-//  Tier mapping (WAVE 7166 V3 RE-SCALE — V3 L2 max ~0.34):
-//    COMMON     [0.00, 0.12)   shield = 3
-//    RARE       [0.12, 0.20)   shield = 6
-//    EPIC       [0.20, 0.28)   shield = 10
-//    LEGENDARY  [0.28, 0.33)   shield = 15
-//    MYTHIC     [0.33, 1.00]   shield = 20
+//  🔬 WAVE 7540: FULL-SPECTRUM TIER REBALANCE.
+//  The old thresholds (COMMON<0.18, MYTHIC≥0.40) compressed 60% of the
+//  theoretical [0,1] range into MYTHIC, producing a bimodal distribution
+//  (only COMMON and MYTHIC). High-weight operators like crossover (0.85)
+//  mathematically bypassed RARE/EPIC/LEGENDARY because:
+//    0.30·novelty + 0.20·0.85 = 0.47 > 0.40 → MYTHIC with ANY σ_norm > 0.
+//
+//  New thresholds stretch across the full [0,1] spectrum so every tier has
+//  a meaningful probability mass. With DRIFT_MAX=0.70, σ_norm grows more
+//  gradually, and the operator_weight floor (0.47 for crossover) now lands
+//  in EPIC [0.45, 0.65) instead of MYTHIC — requiring genuine L2 divergence
+//  + novelty to reach MYTHIC.
+//
+//  Tier mapping (WAVE 7540 — FULL-SPECTRUM):
+//    COMMON     [0.00, 0.30)   shield = 3
+//    RARE       [0.30, 0.45)   shield = 6
+//    EPIC       [0.45, 0.65)   shield = 10
+//    LEGENDARY  [0.65, 0.85)   shield = 15
+//    MYTHIC     [0.85, 1.00]   shield = 20
 // ═══════════════════════════════════════════════════════════════════════════
 // ─── CONSTANTS ──────────────────────────────────────────────────────────────
-// WAVE 7166: Lowered from 0.55 → 0.40 — V3 L2 distances are compressed
-// because D_structural weight is only 0.05 and mutations are surgical.
-const DRIFT_MAX = 0.40;
-// WAVE 7166: Lowered from 0.18 → 0.08 — trivial mutations stay COMMON.
-const COMMON_FORCE_L2_THRESHOLD = 0.08;
+// 🔬 WAVE 7540: Raised from 0.40 → 0.70.
+// The L2 metric now includes D_temporal (15%) and D_interp (10%) components
+// (WAVE 7530), making typical L2 distances significantly higher than when
+// only D_curve + D_phase dominated. A DRIFT_MAX of 0.40 was normalizing
+// σ_norm to 1.0 too quickly (L2=0.40 → σ_norm=1.0), compressing the entire
+// dynamic range into the top of the scale. With 0.70, σ_norm grows more
+// gradually, giving the tier thresholds room to breathe.
+const DRIFT_MAX = 0.70;
+// 🔬 WAVE 7540: Lowered from 0.12 → 0.10.
+// Only true micro-mutations (L2 < 0.10) are force-clamped to COMMON.
+// The old 0.12 threshold was capturing mutations that, with the new
+// DRIFT_MAX=0.70, would produce σ_norm=0.17 — a legitimate RARE candidate.
+const COMMON_FORCE_L2_THRESHOLD = 0.10;
 const OPERATOR_WEIGHTS = Object.freeze({
     focal_mutation: 0.15,
-    hue_drift: 0.15,
     spatial_resonance: 0.20,
     gene_augmentation: 0.50,
     adaptive_pruning: 0.55,
@@ -32,8 +52,7 @@ const OPERATOR_WEIGHTS = Object.freeze({
     proportional_stretch: 0.35,
     curve_adaptation: 0.25,
     crossover: 0.85,
-    transposition: 0.85,
-    context_drift: 0.65,
+    color_hue_shift: 0.30,
 });
 const NEONATAL_SHIELD = Object.freeze({
     COMMON: 3,
@@ -88,16 +107,36 @@ function computeNovelty(signature, population) {
 }
 /**
  * Maps a raw ρ score [0,1] to a RarityTier.
+ *
+ * 🔬 WAVE 7540: FULL-SPECTRUM REBALANCE.
+ *
+ * The old thresholds (WAVE 7528) compressed 60% of the [0,1] range into
+ * MYTHIC [0.40, 1.00], causing a bimodal distribution where only COMMON
+ * (via force-gate) and MYTHIC (via high operator_weight) were reachable.
+ *
+ * New thresholds stretch across the full spectrum so every tier has
+ * meaningful probability mass:
+ *   COMMON     [0.00, 0.30)   — minor mutations, low novelty, low-weight ops
+ *   RARE       [0.30, 0.45)   — moderate mutations with some novelty
+ *   EPIC       [0.45, 0.65)   — significant structural changes + good novelty
+ *   LEGENDARY  [0.65, 0.85)   — rare, highly novel organisms from heavy ops
+ *   MYTHIC     [0.85, 1.00]   — extreme divergence + max novelty + heavy op
+ *
+ * With these thresholds, crossover (op_w=0.85) + novelty=1.0 gives:
+ *   ρ = 0.50·σ_norm + 0.30 + 0.17 = 0.50·σ_norm + 0.47
+ *   σ_norm=0.00 → ρ=0.47 (EPIC, not MYTHIC)
+ *   σ_norm=0.36 → ρ=0.65 (LEGENDARY)
+ *   σ_norm=0.76 → ρ=0.85 (MYTHIC — requires L2 ≈ 0.53, real divergence)
  */
 export function tierFromScore(score) {
-    // WAVE 7166: Re-scaled for V3 L2 distribution (max ~0.34)
-    if (score < 0.12)
+    // WAVE 7540: Full-spectrum thresholds
+    if (score < 0.30)
         return 'COMMON';
-    if (score < 0.20)
+    if (score < 0.45)
         return 'RARE';
-    if (score < 0.28)
+    if (score < 0.65)
         return 'EPIC';
-    if (score < 0.33)
+    if (score < 0.85)
         return 'LEGENDARY';
     return 'MYTHIC';
 }

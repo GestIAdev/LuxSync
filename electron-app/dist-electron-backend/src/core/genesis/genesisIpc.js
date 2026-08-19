@@ -34,10 +34,7 @@ export function setupGenesisIPCHandlers() {
     ipcMain.handle('genesis:getOrganisms', async (_event, filter) => {
         try {
             const vault = getGenesisVault();
-            const db = vault._db;
-            if (!db) {
-                return { success: false, error: 'Vault not initialized', organisms: [] };
-            }
+            const db = vault.getDb();
             let query = 'SELECT * FROM lfx_organisms';
             const conditions = [];
             const params = {};
@@ -79,10 +76,7 @@ export function setupGenesisIPCHandlers() {
     ipcMain.handle('genesis:getHallOfFame', async () => {
         try {
             const vault = getGenesisVault();
-            const db = vault._db;
-            if (!db) {
-                return { success: false, error: 'Vault not initialized', candidates: [] };
-            }
+            const db = vault.getDb();
             const rows = db.prepare(`SELECT * FROM v_hall_of_fame`).all();
             return { success: true, candidates: rows };
         }
@@ -101,10 +95,7 @@ export function setupGenesisIPCHandlers() {
     ipcMain.handle('genesis:getLineageTree', async (_event, organismId) => {
         try {
             const vault = getGenesisVault();
-            const db = vault._db;
-            if (!db) {
-                return { success: false, error: 'Vault not initialized', lineage: [] };
-            }
+            const db = vault.getDb();
             // Get the node for this organism
             const node = db.prepare('SELECT * FROM lineage_tree WHERE organism_id = ?').get(organismId);
             if (!node) {
@@ -136,10 +127,7 @@ export function setupGenesisIPCHandlers() {
     ipcMain.handle('genesis:cullOrganism', async (_event, organismId) => {
         try {
             const vault = getGenesisVault();
-            const db = vault._db;
-            if (!db) {
-                return { success: false, error: 'Vault not initialized' };
-            }
+            const db = vault.getDb();
             const result = db.prepare(`UPDATE lfx_organisms
          SET status = 'culled'
          WHERE organism_id = ? AND status IN ('alive', 'champion')`).run(organismId);
@@ -163,10 +151,7 @@ export function setupGenesisIPCHandlers() {
     ipcMain.handle('genesis:suggestName', async (_event, organismId) => {
         try {
             const vault = getGenesisVault();
-            const db = vault._db;
-            if (!db) {
-                return { success: false, error: 'Vault not initialized' };
-            }
+            const db = vault.getDb();
             const org = db.prepare(`SELECT * FROM lfx_organisms WHERE organism_id = ?`).get(organismId);
             if (!org) {
                 return { success: false, error: 'Organism not found' };
@@ -234,10 +219,7 @@ export function setupGenesisIPCHandlers() {
     ipcMain.handle('genesis:getSpecies', async () => {
         try {
             const vault = getGenesisVault();
-            const db = vault._db;
-            if (!db) {
-                return { success: false, error: 'Vault not initialized', species: [] };
-            }
+            const db = vault.getDb();
             const rows = db.prepare(`SELECT species_id, COUNT(*) as count,
                 AVG(fitness_score) as avg_fitness,
                 MAX(fitness_score) as max_fitness
@@ -286,10 +268,7 @@ export function setupGenesisIPCHandlers() {
     ipcMain.handle('genesis:canonizeMutant', async (_event, organismId, customName) => {
         try {
             const vault = getGenesisVault();
-            const db = vault._db;
-            if (!db) {
-                return { success: false, error: 'Vault not initialized' };
-            }
+            const db = vault.getDb();
             // 1. Fetch the organism
             const org = db.prepare(`SELECT * FROM lfx_organisms WHERE organism_id = ?`).get(organismId);
             if (!org) {
@@ -346,7 +325,12 @@ export function setupGenesisIPCHandlers() {
             const mat = materializer.materialize(organismId);
             const clip = mat.clip;
             clip.name = baptismName;
-            // 5. Write .lfx to userData/arsenal/
+            // 5. Write .lfx to userData/arsenal/{vibe}/
+            // 📂 WAVE 7545: Auto-sort canonized organisms into their vibe subfolder.
+            // Previously all canonized effects were dumped into the arsenal root,
+            // creating a flat directory with no vibe organization. Now the primary
+            // vibe from the clip's DNA determines the subfolder (e.g. fiesta-latina/,
+            // techno-club/), matching the builtin arsenal layout.
             const arsenalDir = path.join(app.getPath('userData'), 'arsenal');
             if (!fs.existsSync(arsenalDir)) {
                 fs.mkdirSync(arsenalDir, { recursive: true });
@@ -359,7 +343,13 @@ export function setupGenesisIPCHandlers() {
             }, null, 2);
             const safeName = baptismName.replace(/[:<>|"*?/\\]/g, '_');
             const fileName = `${safeName}.lfx`;
-            const filePath = path.join(arsenalDir, fileName);
+            // 📂 WAVE 7545: Extract primary vibe for subfolder organization
+            const primaryVibe = clip.vibeCompat?.[0]
+                ?? clip.cognitiveDNA?.compatibleVibes?.[0]
+                ?? 'custom';
+            const vibeDir = path.join(arsenalDir, primaryVibe);
+            fs.mkdirSync(vibeDir, { recursive: true });
+            const filePath = path.join(vibeDir, fileName);
             fs.writeFileSync(filePath, lfxContent, 'utf-8');
             // 6. Insert as a new immutable blueprint with source_origin = 'canonized'
             const newBlueprintId = `canonized:${organismId}`;
@@ -462,10 +452,7 @@ export function setupGenesisIPCHandlers() {
 ipcMain.handle('genesis:purgeEcosystem', async () => {
     try {
         const vault = getGenesisVault();
-        const db = vault._db;
-        if (!db) {
-            return { success: false, error: 'Vault not initialized' };
-        }
+        const db = vault.getDb();
         const info = db.prepare("DELETE FROM lfx_organisms WHERE status != 'canonized'").run();
         console.log(`[GenesisIPC 🧬] Purge: ${info.changes} organisms deleted (canonized preserved)`);
         // ☢️ WAVE 6000.V3 FIX: Clear evolved organisms from the live registry.
@@ -503,10 +490,7 @@ ipcMain.handle('genesis:purgeEcosystem', async () => {
 ipcMain.handle('genesis:deleteCanonized', async (_event, organismId) => {
     try {
         const vault = getGenesisVault();
-        const db = vault._db;
-        if (!db) {
-            return { success: false, error: 'Vault not initialized' };
-        }
+        const db = vault.getDb();
         // 1. Verify organism is canonized and get its blueprint_id
         const org = db.prepare('SELECT organism_id, custom_name, blueprint_id FROM lfx_organisms WHERE organism_id = ? AND status = ?').get(organismId, 'canonized');
         if (!org) {
@@ -537,10 +521,29 @@ ipcMain.handle('genesis:deleteCanonized', async (_event, organismId) => {
             console.log(`[GenesisIPC] 🗑️ Unregistered "${clipId}" from arsenal + library`);
         }
         else {
-            // Fallback: try to find by sanitized name
+            // Fallback: try to find by sanitized name — search root AND all subfolders
+            // 📂 WAVE 7545: Canonized effects are now saved in vibe subfolders, but
+            // legacy effects may still be in the root. Search both locations.
             const nameToUse = org.custom_name ?? clipId;
             const safeName = nameToUse.replace(/[:<>|"*?/\\]/g, '_');
-            const fallbackPath = path.join(arsenalDir, `${safeName}.lfx`);
+            const fileName = `${safeName}.lfx`;
+            // Try root first (legacy location)
+            let fallbackPath = path.join(arsenalDir, fileName);
+            // If not in root, search subfolders (vibe-organized location)
+            if (!fs.existsSync(fallbackPath)) {
+                try {
+                    const subdirs = fs.readdirSync(arsenalDir, { withFileTypes: true })
+                        .filter(d => d.isDirectory());
+                    for (const subdir of subdirs) {
+                        const candidate = path.join(arsenalDir, subdir.name, fileName);
+                        if (fs.existsSync(candidate)) {
+                            fallbackPath = candidate;
+                            break;
+                        }
+                    }
+                }
+                catch { /* arsenal dir doesn't exist */ }
+            }
             if (fs.existsSync(fallbackPath)) {
                 try {
                     fs.unlinkSync(fallbackPath);

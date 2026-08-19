@@ -61,7 +61,7 @@
       "isHeavyCandidate": true,
       "zScoreGuards": {
         "requireRising": false,
-        "minimumZ": 1.5,
+        "minimumZ": null,
         "minimumEnergy": 0.8
       }
     },

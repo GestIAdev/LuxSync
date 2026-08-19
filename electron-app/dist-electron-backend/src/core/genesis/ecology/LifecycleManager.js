@@ -32,10 +32,7 @@ export class LifecycleManager {
      * Evaluates per-species fitness averages and applies promotions/demotions/culling.
      */
     runTransitions() {
-        const db = this._vault._db;
-        if (!db) {
-            throw new Error('[Lifecycle] GenesisVault not initialized');
-        }
+        const db = this._vault.getDb();
         // 1. Fetch all alive + champion organisms
         const rows = db.prepare(`SELECT organism_id, species_id, status, fitness_score,
               trials_count, passes_count, neonatal_shield_until, rarity_tier,
@@ -184,10 +181,7 @@ export class LifecycleManager {
      * Returns organism IDs that are LEGENDARY/MYTHIC with high survival.
      */
     getHallOfFameCandidates() {
-        const db = this._vault._db;
-        if (!db) {
-            throw new Error('[Lifecycle] GenesisVault not initialized');
-        }
+        const db = this._vault.getDb();
         const rows = db.prepare(`SELECT organism_id FROM v_hall_of_fame`).all();
         return rows.map((r) => r.organism_id);
     }

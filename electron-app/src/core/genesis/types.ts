@@ -16,7 +16,6 @@ export type OrganismStatus = 'alive' | 'champion' | 'culled' | 'quarantined' | '
 
 export type MutationOperator =
   | 'focal_mutation'
-  | 'hue_drift'
   | 'spatial_resonance'
   | 'gene_augmentation'
   | 'adaptive_pruning'
@@ -24,8 +23,7 @@ export type MutationOperator =
   | 'crossover'
   | 'proportional_stretch'
   | 'curve_adaptation'
-  | 'context_drift'
-  | 'transposition'
+  | 'color_hue_shift'
 
 export type SourceOrigin = 'hephaestus' | 'swarm' | 'builtin' | 'canonized'
 

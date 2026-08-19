@@ -15,8 +15,8 @@ import type { LfxOrganism, RarityTier, MutationOperator } from '../types'
 
 const RARITY_TIERS: RarityTier[] = ['COMMON', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHIC']
 const OPERATORS: MutationOperator[] = [
-  'focal_mutation', 'hue_drift', 'spatial_resonance', 'gene_augmentation',
-  'adaptive_pruning', 'crossover', 'proportional_stretch', 'context_drift', 'transposition',
+  'focal_mutation', 'spatial_resonance', 'gene_augmentation',
+  'adaptive_pruning', 'crossover', 'proportional_stretch', 'curve_adaptation', 'macro_splice',
 ]
 
 function makeOrganism(

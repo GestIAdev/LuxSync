@@ -413,6 +413,44 @@ export class GenesisVaultService {
         };
     }
     // ─── INTERNALS ───────────────────────────────────────────────────────────
+    /**
+     * 🔬 WAVE 7533: Returns the underlying better-sqlite3 Database instance.
+     *
+     * This is the **single sanctioned escape hatch** for ecology modules that
+     * need direct SQL access (ColiseumService, SpeciationEngine,
+     * LifecycleManager, SpeciesQuotaSelector, OrganismMaterializer,
+     * HeatmapLogger). It replaces the previous `(this._vault as any)._db`
+     * bypass with a typed, audited public API.
+     *
+     * **Contract:** the returned Database is for read/write queries only.
+     * Schema modifications (CREATE/ALTER/DROP) must go through the Vault's
+     * own migration logic. The caller must NOT close the database or modify
+     * pragmas — those are lifecycle concerns owned by the Vault.
+     *
+     * @throws if the Vault is not initialized
+     */
+    getDb() {
+        this._ensureReady();
+        return this._db;
+    }
+    /**
+     * 🔬 WAVE 7533: Executes a function inside a synchronous transaction.
+     *
+     * Wraps `better-sqlite3`'s `db.transaction()` — if the function throws,
+     * the transaction is rolled back automatically. This is the atomic
+     * boundary for the metabolic pipeline (§5.6 of the Due Diligence).
+     *
+     * @example
+     * const result = vault.executeTransaction(() => {
+     *   vault.getDb().prepare('UPDATE ...').run(...)
+     *   return 42
+     * })
+     */
+    executeTransaction(fn) {
+        this._ensureReady();
+        const tx = this._db.transaction(fn);
+        return tx();
+    }
     _ensureReady() {
         if (!this._isInitialized || !this._db || !this._stmts) {
             throw new Error('[GenesisVault] Not initialized. Call initialize() first.');

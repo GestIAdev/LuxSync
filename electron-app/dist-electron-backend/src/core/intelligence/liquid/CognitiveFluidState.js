@@ -31,16 +31,32 @@ const ALPHA_RMS = 1 - Math.pow(2, -1 / 15.4);
 // Pero 3 frames sostenidos llegan a 0.54 — drops reales pasan
 const ALPHA_IMPACT_UP = 0.35;
 const ALPHA_IMPACT_DOWN = 0.08;
-// EMA asimétrica para epicness — subida moderada, bajada lenta
-// α_up = 0.15: half-life ~92ms (4 frames) — captura crescendos reales sin spike transitorio
+// EMA asimétrica para epicness — subida rápida, bajada lenta
+// 🔬 WAVE 7542: Raised from 0.15 → 0.45 (Divine Resuscitation).
+//   PROBLEM: The epicness EMA was the second filter in a cascade.
+//   _impact already filters transients (ALPHA_IMPACT_UP=0.35, half-life
+//   ~49ms / 2.2 frames). The epicness EMA at α=0.15 was re-filtering the
+//   already-filtered signal, creating a cascade attenuation of 0.35×0.15
+//   = 5.25% per frame. A divine spike (I(t)=0.70, T=0.43, CLIMAX) produced
+//   epicness_target=0.556 but the EMA only reached 0.211 in frame 0 —
+//   62% attenuation. By the time epicness caught up (~10 frames / 167ms),
+//   the divine moment had passed.
+//   FIX: α=0.45 (half-life ~36ms / 1.6 frames). The impact EMA is the
+//   sole transient filter. The epicness EMA tracks the filtered impact
+//   closely, reaching ~70% of target in 2 frames (~33ms) and ~90% in
+//   4 frames (~67ms). Divine moments are detected within 50ms of the
+//   impact spike, well within the 2-3 frame window of a real drop.
 // α_down = 0.06: half-life ~231ms (10 frames) — mantiene epicness durante micro-valles
-// Un flip de phase building→climax ya NO duplica el epicness en 1 frame: se asienta en ~4
-const ALPHA_EPIC_UP = 0.15;
+const ALPHA_EPIC_UP = 0.45;
 const ALPHA_EPIC_DOWN = 0.06;
-// EMA para phase modifier — suaviza transiciones building↔climax
-// α = 0.08: half-life ~173ms (7.6 frames) — la fase necesita sostenerse ~300ms para afectar el epicness
-// Esto previene que un flip transitorio de phase doble o halve el epicness instantáneamente
-const ALPHA_PHASE_MOD = 0.08;
+// 🔬 WAVE 7542: Raised from 0.08 → 0.15 (Divine Resuscitation).
+// The old α=0.08 (half-life ~173ms) was too slow for genres with rapid
+// section oscillations (fiesta-latina verse↔chorus every 15-20s). The
+// smoothedPhaseMod never reached 1.0 during CLIMAX because the EMA was
+// still catching up when the phase flipped back. With α=0.15 (half-life
+// ~89ms / ~4 frames), the phaseModifier reaches ~0.95 within ~500ms of
+// sustained CLIMAX, allowing epicness to reach its full potential.
+const ALPHA_PHASE_MOD = 0.15;
 // ═══════════════════════════════════════════════════════════════════════════
 // CognitiveFluidState — el vector Ψ(t) vivo
 // ═══════════════════════════════════════════════════════════════════════════
@@ -76,6 +92,24 @@ export class CognitiveFluidState {
             epicness: 0,
         };
         this._tension = profile.T_base;
+    }
+    /**
+     * 🩸 WAVE 7549: Updates the profile WITHOUT resetting accumulated state.
+     *
+     * The problem: setMood() recreated CognitiveFluidState from scratch, losing
+     * all accumulated fluid memory (tension, vapor pressure, excitability,
+     * temperature, etc.). After a mood switch, the system needed to "warm up"
+     * again from zero → minutes of SILENCE.
+     *
+     * This method swaps the profile in-place, preserving Ψ(t). Only T_base is
+     * re-applied to tension (since it's a profile-derived baseline).
+     */
+    updateProfile(newProfile) {
+        const oldTBase = this.profile.T_base;
+        this.profile = newProfile;
+        // Adjust tension baseline: shift tension by the delta in T_base
+        // so the accumulated tension above baseline is preserved.
+        this._tension += (newProfile.T_base - oldTBase);
     }
     /**
      * Actualiza todo el vector Ψ(t) un frame.
@@ -195,19 +229,26 @@ export class CognitiveFluidState {
         this._excitability = clamp01(this._excitability);
         // ─────────────────────────────────────────────────────────
         // 8. Epicness — ruptura relativa de la superficie, tethered to energy
-        // REWRITE: effectiveTension = tension * 0.85.
-        // baseEpicness = clamp01((impact - effectiveTension) / (1.0 - effectiveTension))
-        // Impact must genuinely exceed 85% of current tension to generate epicness.
-        // At effectiveTension=0.595 (tension=0.70), impact needs >0.595 for any epicness.
+        //
+        // 🔬 WAVE 7542: DIVINE RESUSCITATION — recalibración del epicness.
+        //   PROBLEM: epicness rara vez superaba 0.50 en climaxes reales de
+        //   fiesta-latina. Tres factores lo aplastaban:
+        //     1. effectiveTension = tension × 0.50 → baseEpicness bajo
+        //     2. phaseModifier EMA α=0.08 → nunca llegaba a 1.0 en climaxes
+        //        oscilantes (verse↔chorus cada 15-20s)
+        //     3. sustainedEpic threshold = 0.55 → temperature rara vez > 0.55
+        //        en dembow donde T oscila 0.40-0.50
+        //   FIX:
+        //     1. effectiveTension = tension × 0.35 (era 0.50) → baseEpicness sube
+        //     2. ALPHA_PHASE_MOD = 0.15 (era 0.08) → phaseModifier llega a ~0.95
+        //        en ~500ms de CLIMAX sostenido
+        //     3. sustainedEpic threshold = 0.45 (era 0.55) → temperature > 0.45
+        //        activa la ruta sustained en high-groove contexts
         //
         // §5.4: Vibe Friction PURGED — replaced with continuous ΠMΔG interpolation.
-        // The friction exponent is now a function of the fluid descriptors:
         //   frictionExp = 1.0 + 0.3 · Π·(1−M)
         //     High percussiveness + low melodicity (techno-like) → 1.3 (compresses)
         //     Low percussiveness or high melodicity (ambient-like) → 1.0 (no friction)
-        //   sustainedEpic = clamp01((temperature - 0.55) / 0.35)
-        //     Active when groove G is high (latin-like sustained energy), blended
-        //     via max() with the impact-based path.
         //
         // Fase 1B (PRECISION TUNING): Energy factor gate.
         // Fase D (ARCHITECTURAL): Contextual Memory injection.
@@ -218,7 +259,11 @@ export class CognitiveFluidState {
         }
         else {
             const energyFactor = clamp01((input.rawEnergy - 0.30) / 0.40);
-            const effectiveTension = this._tension * 0.50;
+            // 🔬 WAVE 7542: Lowered from 0.50 → 0.35.
+            // With tension=0.45 (typical climax), effectiveTension was 0.225.
+            // baseEpicness = (impact - 0.225) / (1 - 0.225) = (0.42 - 0.225) / 0.775 = 0.252
+            // Now: (0.42 - 0.157) / (1 - 0.157) = 0.263 / 0.843 = 0.312 — 24% higher.
+            const effectiveTension = this._tension * 0.35;
             const denom = 1.0 - effectiveTension;
             const baseEpicness = denom > 0.001
                 ? clamp01((this._impact - effectiveTension) / denom)
@@ -247,7 +292,12 @@ export class CognitiveFluidState {
             // Sustained-energy epicness: high-groove contexts (latin-like) sustain energy
             // without spectral spikes. Temperature directly represents the epic moment.
             // Blended via max() — the dominant path wins.
-            const sustainedEpic = clamp01((this._temperature - 0.55) / 0.35);
+            // 🔬 WAVE 7542: Lowered threshold from 0.55 → 0.45.
+            // In dembow, temperature oscillates 0.40-0.50 during climaxes. The old
+            // 0.55 threshold meant the sustained path NEVER activated for latin
+            // genres — only techno with sustained energy > 0.55 could use it.
+            // 0.45 opens the door for high-groove contexts where T=0.46-0.50.
+            const sustainedEpic = clamp01((this._temperature - 0.45) / 0.35);
             const grooveGate = clamp01(d.groove * 2.0); // groove > 0.5 fully activates
             epic = Math.max(epic, sustainedEpic * energyFactor * phaseModifier * grooveGate);
             // EMA asimétrica: subida moderada, bajada lenta — estabiliza sin perder respuesta

@@ -77,8 +77,11 @@ export class HeatmapLogger {
     async flush() {
         if (this._queue.length === 0)
             return;
-        const db = this._vault._db;
-        if (!db) {
+        let db;
+        try {
+            db = this._vault.getDb();
+        }
+        catch {
             console.warn('[HeatmapLogger ⚠️] Vault not initialized — skipping flush');
             return;
         }

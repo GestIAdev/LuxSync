@@ -143,6 +143,17 @@ export interface MoodProfile {
    */
   blockList: string[];
   
+  /**
+   * 🩸 WAVE 7550: Patrones de bloqueo — substrings que bloquean un efecto
+   * si aparecen en su ID. Evita tener que listar cada strobe nuevo a mano.
+   * 
+   * Ejemplo: ['strobe'] bloquea cualquier efecto con "strobe" en el ID
+   * (strobe_storm, latin_strobe, ambient_strobe, etc.)
+   * 
+   * undefined = sin bloqueo por patrón
+   */
+  blockPatterns?: string[];
+  
   /** 
    * Efectos SIEMPRE disponibles (ignora cooldown)
    * Solo PUNK tiene esto - CAOS TOTAL

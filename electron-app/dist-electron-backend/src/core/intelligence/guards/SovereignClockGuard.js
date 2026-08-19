@@ -72,24 +72,39 @@ export class SovereignClockGuard {
         const Π = ctx.descriptors.percussiveness;
         const M = ctx.descriptors.melodicity;
         const G = ctx.descriptors.groove;
-        // Divine threshold: lower for percussive+non-melodic (techno), higher for ambient
-        const V3_EPSILON_DIVINE = 0.60 - 0.10 * clamp01(Π * (1 - M));
+        // 🔬 WAVE 7542: Divine threshold lowered 0.60 → 0.50 (Divine Resuscitation).
+        const V3_EPSILON_DIVINE = 0.50 - 0.10 * clamp01(Π * (1 - M));
         // Divine RMS floor: lower for high-groove (latin), higher for ambient
         const SOVEREIGN_DIVINE_RMS_FLOOR = 0.75 - 0.10 * clamp01(G);
-        const SOVEREIGN_DIVINE_EPICNESS = 0.50;
+        // 🔬 WAVE 7542: Sustained epicness lowered 0.50 → 0.40.
+        const SOVEREIGN_DIVINE_EPICNESS = 0.40;
         const SOVEREIGN_DIVINE_MIN_Z = 2.10;
         const v3EpicnessNow = ctx.epicness;
         const ars = ctx.acousticReality;
         const isHeavyEffect = registryEntry?.simMeta.isHeavyCandidate
             || registryEntry?.simMeta.isDivineCandidate
             || (registryEntry?.dna.aggression ?? 0) > 0.7;
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🩸 WAVE 7543: UNIVERSAL SPECTRAL BASS GATE (Anti-Autotune Veto)
+        // 🩸 WAVE 7553: REVERTED to simple bass <= 0.35. Purgado de zL/vocal/ratio.
+        // ═══════════════════════════════════════════════════════════════════════
+        const BASS_GATE_THRESHOLD = 0.35;
+        const hasSubstantialBass = ctx.titanState.bass > BASS_GATE_THRESHOLD;
         let aborted = false;
         let abortReason = '';
         let heavyRerouted = false;
         let reroutedEffectId = null;
         // ── UNIVERSAL CLAMP: Heavy effect in silence/valley = ABORT ──
+        // 🩸 WAVE 7543: Also abort if bass gate fails (vocal/autotune false positive)
         if (isHeavyEffect) {
-            if (ars) {
+            // Bass Gate veto — applies to ALL heavy effects (heavy, divine, aggression > 0.7)
+            if (!hasSubstantialBass) {
+                aborted = true;
+                abortReason =
+                    `Bass Gate veto (bass=${ctx.titanState.bass.toFixed(3)} ≤ ${BASS_GATE_THRESHOLD})` +
+                        ` — heavy effect "${candidate.effectName ?? candidate.effect}" suppressed (vocal/autotune false positive)`;
+            }
+            else if (ars) {
                 const zoneLabel = ars.zone.label;
                 const phaseLabel = ars.phase.phase;
                 const inLowZone = zoneLabel === 'silence' || zoneLabel === 'valley';
@@ -103,13 +118,14 @@ export class SovereignClockGuard {
             }
             else {
                 const energyTooLow = ctx.titanState.rawEnergy < 0.35;
-                const zTooLow = ctx.currentZScore < -0.5;
+                // 🩸 WAVE 7543: Raised from -0.5 to 1.0 — heavy effects need statistical significance.
+                const zTooLow = ctx.currentZScore < 1.0;
                 if (energyTooLow || zTooLow) {
                     aborted = true;
                     abortReason =
                         `Fallback energy veto (E=${ctx.titanState.rawEnergy.toFixed(2)}` +
                             `${energyTooLow ? ' < 0.35' : ''}` +
-                            `${zTooLow ? ` OR Z=${ctx.currentZScore.toFixed(2)} < -0.5` : ''})` +
+                            `${zTooLow ? ` OR Z=${ctx.currentZScore.toFixed(2)} < 1.0` : ''})` +
                             ` — heavy effect "${candidate.effectName ?? candidate.effect}" suppressed`;
                 }
             }
@@ -117,7 +133,15 @@ export class SovereignClockGuard {
         // ── HEAVY EPICNESS FLOOR + RE-ROUTE ──
         if (!aborted && registryEntry && !registryEntry.simMeta.isDivineCandidate && isHeavyEffect) {
             const HEAVY_EPICNESS_FLOOR = Math.max(0.25, ctx.rmsAverage10s * 0.35);
-            if (v3EpicnessNow < HEAVY_EPICNESS_FLOOR) {
+            // 🩸 WAVE 7543: HEAVY Z-SCORE FLOOR — heavy effects require statistical significance.
+            // A heavy effect fired by the Sovereign Clock must have Z >= 1.0 (notable).
+            // Z < 1.0 means the energy is barely above the rolling mean — this is a VERSE,
+            // not a drop. Vocal/autotune transients can produce RMS spikes that Cassandra
+            // misinterprets as buildup_starting, but the Z-score reveals the truth: the
+            // energy is not statistically unusual.
+            const SOVEREIGN_HEAVY_MIN_Z = 1.0;
+            const heavyZBlocked = ctx.currentZScore < SOVEREIGN_HEAVY_MIN_Z;
+            if (v3EpicnessNow < HEAVY_EPICNESS_FLOOR || heavyZBlocked) {
                 const vibeArsenal = getDynamicEffectRegistry().getEffectsForVibe(ctx.titanState.vibeId ?? '');
                 const lighterCandidates = vibeArsenal.filter(e => !e.simMeta.isDivineCandidate &&
                     !e.simMeta.isHeavyCandidate &&
@@ -136,13 +160,15 @@ export class SovereignClockGuard {
                     heavyRerouted = true;
                     console.log(`[Sovereign Clock 🔄] HEAVY RE-ROUTE: "${candidate.effectName ?? candidate.effect}" → "${effectDisplayName(reroutedEffectId)}"` +
                         ` | epicness=${v3EpicnessNow.toFixed(3)} < floor=${HEAVY_EPICNESS_FLOOR.toFixed(3)}` +
+                        `${heavyZBlocked ? ` OR Z=${ctx.currentZScore.toFixed(2)}σ < ${SOVEREIGN_HEAVY_MIN_Z}` : ''}` +
                         ` (rms10s=${ctx.rmsAverage10s.toFixed(2)})` +
                         ` — autotune/vocal transient: prediction preserved, effect downgraded`);
                 }
                 else {
                     aborted = true;
                     abortReason =
-                        `HEAVY EPICNESS FLOOR: epicness=${v3EpicnessNow.toFixed(3)} < floor=${HEAVY_EPICNESS_FLOOR.toFixed(3)}` +
+                        `HEAVY FLOOR: epicness=${v3EpicnessNow.toFixed(3)} < floor=${HEAVY_EPICNESS_FLOOR.toFixed(3)}` +
+                            `${heavyZBlocked ? ` OR Z=${ctx.currentZScore.toFixed(2)}σ < ${SOVEREIGN_HEAVY_MIN_Z}` : ''}` +
                             ` (rms10s=${ctx.rmsAverage10s.toFixed(2)})` +
                             ` — heavy effect "${candidate.effectName ?? candidate.effect}" suppressed` +
                             ` (no lighter candidates available)`;
@@ -160,6 +186,8 @@ export class SovereignClockGuard {
             const divineSustainedPassed = v3EpicnessNow > SOVEREIGN_DIVINE_EPICNESS && ctx.rmsAverage10s > SOVEREIGN_DIVINE_RMS_FLOOR;
             const divineZPassed = ctx.currentZScore >= SOVEREIGN_DIVINE_MIN_Z;
             const divineEpicnessBlocked = (!divinePeakPassed && !divineSustainedPassed) || !divineZPassed;
+            // 🩸 WAVE 7543: Bass gate already checked in isHeavyEffect block above,
+            // but we include it in the divine gate log for diagnostic completeness.
             if (divineEpicnessBlocked || energyTooLow || divineZoneVeto) {
                 const vibeArsenalDivine = getDynamicEffectRegistry().getEffectsForVibe(ctx.titanState.vibeId ?? '');
                 const lighterCandidatesDivine = vibeArsenalDivine.filter(e => !e.simMeta.isDivineCandidate &&

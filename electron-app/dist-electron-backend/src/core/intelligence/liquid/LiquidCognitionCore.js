@@ -54,7 +54,13 @@ export class LiquidCognitionCore {
     /**
      * V3.4: Sets mood and applies scalar multipliers to Q_base and tau_r.
      * Called only on mood change (user-driven, rare) — not in hot path.
-     * Recreates sub-modules with scaled profile (zero hot-path cost).
+     *
+     * 🩸 WAVE 7549: PRESERVE FLUID STATE on mood change.
+     *   Before: recreated CognitiveFluidState from scratch → lost all accumulated
+     *   Ψ(t) (tension, vapor pressure, excitability, temperature) → system needed
+     *   to "warm up" again → minutes of SILENCE after switching mood.
+     *   Now: updateProfile() swaps the profile in-place, preserving Ψ(t).
+     *   Only IgnitionChamber is recreated (it has no accumulated state).
      */
     setMood(mood) {
         if (mood === this._mood)
@@ -69,7 +75,9 @@ export class LiquidCognitionCore {
             tau_max: base.tau_max * mult.tauScale,
         };
         this._profile = scaledProfile;
-        this._fluidState = new CognitiveFluidState(scaledProfile);
+        // 🩸 WAVE 7549: Preserve fluid state — only swap profile, don't recreate
+        this._fluidState.updateProfile(scaledProfile);
+        // IgnitionChamber has no accumulated state — safe to recreate
         this._ignition = new IgnitionChamber(scaledProfile);
         // SensorFusionChamber and FluidDescriptors are mood-agnostic — no recreation needed
     }
@@ -163,6 +171,7 @@ export class LiquidCognitionCore {
             predictionAlignment: input.predictionAlignment,
             totalBeauty: input.totalBeauty,
             consonance: input.consonance,
+            effectGenome: input.effectGenome,
         });
         // ── 4. Ignición → Q(t), predicado, intensidad ──
         const verdict = this._ignition.evaluate({
@@ -208,8 +217,12 @@ export class LiquidCognitionCore {
     }
 }
 // Mood multipliers — V3.4 Blueprint §14
+// 🩸 WAVE 7549: CALM qScale 1.25→1.10 — 1.25 era CRIMINAL. Subía el squelch
+//   25% haciendo V3 ignite casi imposible en música latina (E=0.68, C(t)
+//   borderline). Resultado: 3 minutos de SILENCE total sin ni una simulación.
+//   1.10 es un "respira un pelín más" gentil, no un apagón total.
 LiquidCognitionCore.MOOD_MULTIPLIERS = {
-    calm: { qScale: 1.25, tauScale: 1.5 },
+    calm: { qScale: 1.10, tauScale: 1.3 },
     balanced: { qScale: 1.0, tauScale: 1.0 },
     punk: { qScale: 0.75, tauScale: 0.5 },
 };

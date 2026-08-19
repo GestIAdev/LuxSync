@@ -122,8 +122,10 @@ export class HeatmapLogger {
   async flush(): Promise<void> {
     if (this._queue.length === 0) return
 
-    const db = (this._vault as any)._db
-    if (!db) {
+    let db: ReturnType<GenesisVaultService['getDb']>
+    try {
+      db = this._vault.getDb()
+    } catch {
       console.warn('[HeatmapLogger ⚠️] Vault not initialized — skipping flush')
       return
     }

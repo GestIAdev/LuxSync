@@ -63,6 +63,9 @@ export const MOOD_PROFILES = {
             'seismic_snap', // Snap muy agresivo
         ],
         forceUnlock: undefined, // Cooldowns normales
+        // 🩸 WAVE 7550: Block by pattern — any effect with 'strobe' in ID is blocked.
+        // Catches latin_strobe, strobe_storm, ambient_strobe, etc. automatically.
+        blockPatterns: ['strobe'],
     },
     // ═══════════════════════════════════════════════════════════════════════
     // ⚖️ BALANCED - "Fiesta normal, el DJ está sobrio"
@@ -309,7 +312,18 @@ export class MoodController {
      */
     isEffectBlocked(effectId) {
         const profile = this.getCurrentProfile();
-        return profile.blockList.includes(effectId);
+        // Exact ID match
+        if (profile.blockList.includes(effectId))
+            return true;
+        // 🩸 WAVE 7550: Pattern match — block any effect whose ID contains a blocked pattern
+        if (profile.blockPatterns) {
+            const idLower = effectId.toLowerCase();
+            for (const pattern of profile.blockPatterns) {
+                if (idLower.includes(pattern))
+                    return true;
+            }
+        }
+        return false;
     }
     /**
      * ¿Está este efecto desbloqueado forzosamente? (ignora cooldown)

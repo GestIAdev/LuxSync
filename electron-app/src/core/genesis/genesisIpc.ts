@@ -85,10 +85,7 @@ export function setupGenesisIPCHandlers(): void {
   ipcMain.handle('genesis:getOrganisms', async (_event, filter?: OrganismListFilter) => {
     try {
       const vault = getGenesisVault()
-      const db = (vault as any)._db
-      if (!db) {
-        return { success: false, error: 'Vault not initialized', organisms: [] }
-      }
+      const db = vault.getDb()
 
       let query = 'SELECT * FROM lfx_organisms'
       const conditions: string[] = []
@@ -137,10 +134,7 @@ export function setupGenesisIPCHandlers(): void {
   ipcMain.handle('genesis:getHallOfFame', async () => {
     try {
       const vault = getGenesisVault()
-      const db = (vault as any)._db
-      if (!db) {
-        return { success: false, error: 'Vault not initialized', candidates: [] }
-      }
+      const db = vault.getDb()
 
       const rows = db.prepare(
         `SELECT * FROM v_hall_of_fame`,
@@ -163,10 +157,7 @@ export function setupGenesisIPCHandlers(): void {
   ipcMain.handle('genesis:getLineageTree', async (_event, organismId: string) => {
     try {
       const vault = getGenesisVault()
-      const db = (vault as any)._db
-      if (!db) {
-        return { success: false, error: 'Vault not initialized', lineage: [] }
-      }
+      const db = vault.getDb()
 
       // Get the node for this organism
       const node = db.prepare(
@@ -215,10 +206,7 @@ export function setupGenesisIPCHandlers(): void {
   ipcMain.handle('genesis:cullOrganism', async (_event, organismId: string) => {
     try {
       const vault = getGenesisVault()
-      const db = (vault as any)._db
-      if (!db) {
-        return { success: false, error: 'Vault not initialized' }
-      }
+      const db = vault.getDb()
 
       const result = db.prepare(
         `UPDATE lfx_organisms
@@ -249,10 +237,7 @@ export function setupGenesisIPCHandlers(): void {
     async (_event, organismId: string) => {
       try {
         const vault = getGenesisVault()
-        const db = (vault as any)._db
-        if (!db) {
-          return { success: false, error: 'Vault not initialized' }
-        }
+        const db = vault.getDb()
 
         const org = db.prepare(
           `SELECT * FROM lfx_organisms WHERE organism_id = ?`,
@@ -347,10 +332,7 @@ export function setupGenesisIPCHandlers(): void {
   ipcMain.handle('genesis:getSpecies', async () => {
     try {
       const vault = getGenesisVault()
-      const db = (vault as any)._db
-      if (!db) {
-        return { success: false, error: 'Vault not initialized', species: [] }
-      }
+      const db = vault.getDb()
 
       const rows = db.prepare(
         `SELECT species_id, COUNT(*) as count,
@@ -412,10 +394,7 @@ export function setupGenesisIPCHandlers(): void {
     async (_event, organismId: string, customName?: string) => {
       try {
         const vault = getGenesisVault()
-        const db = (vault as any)._db
-        if (!db) {
-          return { success: false, error: 'Vault not initialized' }
-        }
+        const db = vault.getDb()
 
         // 1. Fetch the organism
         const org = db.prepare(
@@ -516,7 +495,12 @@ export function setupGenesisIPCHandlers(): void {
         const clip = mat.clip as HephAutomationClipV3
         clip.name = baptismName
 
-        // 5. Write .lfx to userData/arsenal/
+        // 5. Write .lfx to userData/arsenal/{vibe}/
+        // 📂 WAVE 7545: Auto-sort canonized organisms into their vibe subfolder.
+        // Previously all canonized effects were dumped into the arsenal root,
+        // creating a flat directory with no vibe organization. Now the primary
+        // vibe from the clip's DNA determines the subfolder (e.g. fiesta-latina/,
+        // techno-club/), matching the builtin arsenal layout.
         const arsenalDir = path.join(app.getPath('userData'), 'arsenal')
         if (!fs.existsSync(arsenalDir)) {
           fs.mkdirSync(arsenalDir, { recursive: true })
@@ -531,7 +515,14 @@ export function setupGenesisIPCHandlers(): void {
 
         const safeName = baptismName.replace(/[:<>|"*?/\\]/g, '_')
         const fileName = `${safeName}.lfx`
-        const filePath = path.join(arsenalDir, fileName)
+
+        // 📂 WAVE 7545: Extract primary vibe for subfolder organization
+        const primaryVibe = clip.vibeCompat?.[0]
+          ?? (clip as any).cognitiveDNA?.compatibleVibes?.[0]
+          ?? 'custom'
+        const vibeDir = path.join(arsenalDir, primaryVibe)
+        fs.mkdirSync(vibeDir, { recursive: true })
+        const filePath = path.join(vibeDir, fileName)
         fs.writeFileSync(filePath, lfxContent, 'utf-8')
 
         // 6. Insert as a new immutable blueprint with source_origin = 'canonized'
@@ -649,10 +640,7 @@ export function setupGenesisIPCHandlers(): void {
 ipcMain.handle('genesis:purgeEcosystem', async () => {
   try {
     const vault = getGenesisVault()
-    const db = (vault as any)._db
-    if (!db) {
-      return { success: false, error: 'Vault not initialized' }
-    }
+    const db = vault.getDb()
 
     const info = db.prepare(
       "DELETE FROM lfx_organisms WHERE status != 'canonized'",
@@ -700,10 +688,7 @@ ipcMain.handle(
   async (_event, organismId: string) => {
     try {
       const vault = getGenesisVault()
-      const db = (vault as any)._db
-      if (!db) {
-        return { success: false, error: 'Vault not initialized' }
-      }
+      const db = vault.getDb()
 
       // 1. Verify organism is canonized and get its blueprint_id
       const org = db.prepare(
@@ -741,10 +726,31 @@ ipcMain.handle(
         getDynamicEffectRegistry().unregisterEffect(clipId)
         console.log(`[GenesisIPC] 🗑️ Unregistered "${clipId}" from arsenal + library`)
       } else {
-        // Fallback: try to find by sanitized name
+        // Fallback: try to find by sanitized name — search root AND all subfolders
+        // 📂 WAVE 7545: Canonized effects are now saved in vibe subfolders, but
+        // legacy effects may still be in the root. Search both locations.
         const nameToUse = org.custom_name ?? clipId
         const safeName = nameToUse.replace(/[:<>|"*?/\\]/g, '_')
-        const fallbackPath = path.join(arsenalDir, `${safeName}.lfx`)
+        const fileName = `${safeName}.lfx`
+
+        // Try root first (legacy location)
+        let fallbackPath = path.join(arsenalDir, fileName)
+
+        // If not in root, search subfolders (vibe-organized location)
+        if (!fs.existsSync(fallbackPath)) {
+          try {
+            const subdirs = fs.readdirSync(arsenalDir, { withFileTypes: true })
+              .filter(d => d.isDirectory())
+            for (const subdir of subdirs) {
+              const candidate = path.join(arsenalDir, subdir.name, fileName)
+              if (fs.existsSync(candidate)) {
+                fallbackPath = candidate
+                break
+              }
+            }
+          } catch { /* arsenal dir doesn't exist */ }
+        }
+
         if (fs.existsSync(fallbackPath)) {
           try {
             fs.unlinkSync(fallbackPath)

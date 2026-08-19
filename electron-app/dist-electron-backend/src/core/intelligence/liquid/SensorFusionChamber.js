@@ -39,24 +39,47 @@ export class SensorFusionChamber {
      */
     fuse(input) {
         const p = this.profile;
-        // ── s_DNA — Internal coherence of the Projected Context Genome ──
-        // g_ctx = ⟨Ê·CF̂, Δ, 1−Π⟩  (Energy×Crest, Harshness, 1−Percussiveness)
+        // ── s_DNA — Context-Genome Resonance (WAVE 7535: Bucle 1 closure) ──
         //
-        // The legacy code compared g_ctx to a hardcoded NEUTRAL_GENOME (0.5/0.5/0.5),
-        // measuring "distance from neutral" — a short-circuit that penalised any
-        // context far from the arbitrary midpoint. The refactored s_DNA measures
-        // the INTERNAL COHERENCE of the acoustic context itself: the geometric mean
-        // of the three g_ctx components in log-domain. High when all three are
-        // present (a clear, formed acoustic signature), low when the context is
-        // weak or undefined. No external reference genome required.
+        // g_ctx = ⟨Ê·CF̂, Δ, 1−Π⟩  (Energy×Crest, Dirtiness, 1−Percussiveness)
+        // g_fx  = ⟨aggression, chaos, organicity⟩  (the candidate effect's DNA)
         //
-        // s_DNA = (a · c · o)^(1/3)  where  a=Ê·CF̂, c=Δ, o=1−Π
+        // When a candidate genome is provided (from Cassandra pre-buffer or
+        // SpeciesQuotaSelector fallback), s_DNA measures the Gaussian similarity
+        // between the acoustic context and the effect's genetic material:
+        //
+        //   s_DNA = exp(−|g_ctx − g_fx|² / (2·σ_g²))
+        //
+        // This peaks at 1.0 when the effect perfectly matches the room — an
+        // aggressive effect in an aggressive context, an organic effect in a
+        // melodic context. The sigma_g parameter (0.35) controls how forgiving
+        // the match is. This closes Bucle 1: the genome now influences the
+        // ignition DECISION, not just the selection.
+        //
+        // FALLBACK (Option A, WAVE 7527): When no genome is available (cold start,
+        // no pre-buffer, empty ecosystem), s_DNA measures internal coherence —
+        // the geometric mean of g_ctx components. This ensures the system never
+        // starves for a genome reference.
         const ctxA = input.rawEnergy * input.crestFactor;
         const ctxC = input.dirtiness;
         const ctxO = 1 - input.percussiveness;
-        const s_DNA = Math.exp((Math.log(Math.max(ctxA, EPSILON)) +
-            Math.log(Math.max(ctxC, EPSILON)) +
-            Math.log(Math.max(ctxO, EPSILON))) / 3);
+        let s_DNA;
+        if (input.effectGenome) {
+            // 🧬 WAVE 7535: Context-Genome Resonance (Gaussian similarity)
+            const fx = input.effectGenome;
+            const dA = ctxA - fx.aggression;
+            const dC = ctxC - fx.chaos;
+            const dO = ctxO - fx.organicity;
+            const distSq = dA * dA + dC * dC + dO * dO;
+            const twoSigmaSq = 2 * p.sigma_g * p.sigma_g;
+            s_DNA = Math.exp(-distSq / twoSigmaSq);
+        }
+        else {
+            // FALLBACK: Internal coherence (Option A, WAVE 7527)
+            s_DNA = Math.exp((Math.log(Math.max(ctxA, EPSILON)) +
+                Math.log(Math.max(ctxC, EPSILON)) +
+                Math.log(Math.max(ctxO, EPSILON))) / 3);
+        }
         // ── s_Z — Anomalía normalizada por tensión ──
         // s_Z = σ(κ_z · (I/T − 1) + b_z)
         const ratioIT = input.tension > 0.001 ? input.impact / input.tension : 0;

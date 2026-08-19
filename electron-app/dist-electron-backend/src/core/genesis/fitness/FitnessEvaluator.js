@@ -152,10 +152,7 @@ export function computeBirthFitness(parentFitness, childTier) {
  * Also increments trials/passes counters.
  */
 export function updateFitnessInDB(vault, organismId, newFitness, survived) {
-    const db = vault._db;
-    if (!db) {
-        throw new Error('[FitnessEvaluator] GenesisVault not initialized');
-    }
+    const db = vault.getDb();
     const now = Date.now();
     db.prepare(`UPDATE lfx_organisms
      SET fitness_score = @fitness,
@@ -186,10 +183,7 @@ export function updateFitnessInDB(vault, organismId, newFitness, survived) {
  */
 export function evaluateFireEvent(organismId, customs, currentCtx, heatmaps, vault) {
     const v = vault ?? getGenesisVault();
-    const db = v._db;
-    if (!db) {
-        throw new Error('[FitnessEvaluator] GenesisVault not initialized');
-    }
+    const db = v.getDb();
     const row = db.prepare('SELECT fitness_score, trials_count, passes_count, last_evaluated_at FROM lfx_organisms WHERE organism_id = ?').get(organismId);
     if (!row) {
         throw new Error(`[FitnessEvaluator] Organism not found: ${organismId}`);

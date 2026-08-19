@@ -27,6 +27,20 @@
  */
 // 🛡️ WAVE 1030: DNA registry for texture affinity checking
 import { getDynamicEffectRegistry } from '../../arsenal/DynamicEffectRegistry';
+// 🩸 WAVE 7548: VIBE ALIAS NORMALIZATION — same fix as EffectDreamSimulator
+import { VIBE_ALIAS_MAP } from '../../../engine/vibe/profiles/index';
+/**
+ * 🩸 WAVE 7548: Checks if any of the effect's compatibleVibes matches the
+ * current vibe, normalizing legacy aliases via VIBE_ALIAS_MAP.
+ */
+function vibeMatches(compatibleVibes, currentVibe) {
+    for (const rawVibe of compatibleVibes) {
+        const canonical = VIBE_ALIAS_MAP[rawVibe] ?? rawVibe;
+        if (canonical === currentVibe)
+            return true;
+    }
+    return false;
+}
 // ═══════════════════════════════════════════════════════════════
 // SEVERITY PENALTIES
 // ═══════════════════════════════════════════════════════════════
@@ -223,7 +237,8 @@ const VIBE_COHERENCE = {
                 // is NOT in the effect's compatibleVibes, it's a heresy (critical penalty).
                 // PUNK mode degrades heresy to warning (per WAVE 5008).
                 const entry = getDynamicEffectRegistry().getEntry(effect.effect);
-                if (entry && entry.compatibleVibes.length > 0 && !entry.compatibleVibes.includes(context.vibe)) {
+                // 🩸 WAVE 7548: Normalize aliases — 'latin' should match 'fiesta-latina'
+                if (entry && entry.compatibleVibes.length > 0 && !vibeMatches(entry.compatibleVibes, context.vibe)) {
                     const moodController = MoodController.getInstance();
                     const currentProfile = moodController.getCurrentProfile();
                     const isPunk = currentProfile.name.toUpperCase() === 'PUNK' || currentProfile.allowEthicsOverride;
@@ -237,11 +252,21 @@ const VIBE_COHERENCE = {
                     };
                 }
                 // High-aggression effects in low-energy contexts are suppressed regardless of vibe
+                // 🔬 WAVE 7544: NARRATIVE-PHASE-AWARE AGGRESSION GATE
+                // The old fixed 0.85 threshold was criminal for latin music, which naturally
+                // lives in 0.70-0.85 energy. latin_strobe (aggression=0.972) was blocked
+                // during legitimate CLIMAX moments at 75% energy — the system knew it was
+                // a climax (DROP MODE active, Phase: CLIMAX) but the conscience engine
+                // vetoed the strobe anyway. Now: if ContextualMemory says CLIMAX or RELEASE,
+                // high-aggression effects are allowed down to 0.65 energy. BUILDING and
+                // other phases keep the strict 0.85 floor to prevent premature climax.
                 const aggression = entry?.dna.aggression ?? 0;
-                if (aggression > 0.8 && context.energy < 0.85) {
+                const isClimaxPhase = context.narrativePhase === 'climax' || context.narrativePhase === 'release';
+                const AGGRESSION_ENERGY_FLOOR = isClimaxPhase ? 0.65 : 0.85;
+                if (aggression > 0.8 && context.energy < AGGRESSION_ENERGY_FLOOR) {
                     return {
                         passed: false,
-                        reason: `${effect.effect} too aggressive for current energy (aggression=${aggression.toFixed(2)}, energy < 0.85)`,
+                        reason: `${effect.effect} too aggressive for current energy (aggression=${aggression.toFixed(2)}, energy < ${AGGRESSION_ENERGY_FLOOR}${isClimaxPhase ? ' (climax floor)' : ''})`,
                         penalty: 0.6
                     };
                 }
@@ -264,7 +289,8 @@ const VIBE_COHERENCE = {
                 // If the effect's compatibleVibes explicitly includes the current vibe,
                 // it's a perfect match (boost 0.15). No genre strings needed.
                 const entry = getDynamicEffectRegistry().getEntry(effect.effect);
-                if (entry && entry.compatibleVibes.includes(context.vibe)) {
+                // 🩸 WAVE 7548: Normalize aliases — 'latin' should match 'fiesta-latina'
+                if (entry && vibeMatches(entry.compatibleVibes, context.vibe)) {
                     return {
                         passed: true,
                         boost: 0.15,

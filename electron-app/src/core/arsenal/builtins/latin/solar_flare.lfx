@@ -1,4 +1,4 @@
-﻿{
+{
     "$schema":  "luxsync.lfx/3.0",
     "clip":  {
                  "id":  "solar_flare",
@@ -171,7 +171,7 @@
                                         "isHeavyCandidate":  true,
                                         "zScoreGuards":  {
                                                              "requireRising":  false,
-                                                             "minimumZ":  2.2,
+                                                             "minimumZ": null,
                                                              "minimumEnergy":  0.7
                                                          }
                                     },

@@ -161,10 +161,7 @@ export class SpeciationEngine {
    * Organisms that are alone in their cluster get a singleton species.
    */
   runSpeciation(): SpeciationResult {
-    const db = (this._vault as any)._db
-    if (!db) {
-      throw new Error('[Speciation] GenesisVault not initialized')
-    }
+    const db = this._vault.getDb()
 
     // 1. Fetch all alive + champion organisms with their signatures
     const rows = db.prepare(

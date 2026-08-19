@@ -280,6 +280,45 @@ export class TickEngine {
             // PunkArchytect doctrine: Worker = OÃ­dos (honesto). Cerebro = Memoria (inerte).
             // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
             if (workerBpm > 0 && workerConfidence > 0.5) {
+                // ═══════════════════════════════════════════════════════════════════════
+                // 🔬 WAVE 7544: DUAL-DETECTOR OCTAVE CORRECTION
+                //
+                // PROBLEM: Reggaeton with heavy vocals/autotune produces inconsistent
+                // peak detection → low confidence → the hysteresis shield traps the
+                // BPM at 2× the true value (e.g. 181.77 instead of ~90). The oracle
+                // and kalman BOTH report the correct ~90, but the shield's OCT-DOWN
+                // gate demands conf>0.9 for 180 frames — unreachable with vocal-heavy
+                // music. The WAVE 7525 freewheel correction only fires when conf<0.5,
+                // leaving the conf 0.5-0.9 range unprotected.
+                //
+                // FIX: When TWO independent detectors (oracle raw + kalman) AGREE on
+                // a BPM that's ~½ of _stableBpm, the stableBpm has an octave-up error.
+                // Dual-detector consensus is strong evidence — bypass the hysteresis
+                // and correct immediately. This is NOT a breakdown half-time lock
+                // (which the shield was designed to prevent) — it's a correction FROM
+                // an erroneous octave-up lock TO the true BPM.
+                //
+                // Conditions:
+                //   1. oracleRaw > 0 AND kalman (workerBpm) > 0
+                //   2. |oracleRaw - kalman| < 4 BPM (detectors agree)
+                //   3. _stableBpm / oracleRaw ∈ [1.75, 2.25] (stable is ~2× oracle)
+                //   4. workerConfidence > 0.5 (already passed the outer gate)
+                // ═══════════════════════════════════════════════════════════════════════
+                if (this._stableBpm > 0 && workerOracleRawBpm > 0) {
+                    const oracleKalmanAgree = Math.abs(workerOracleRawBpm - workerBpm) < 4.0;
+                    const stableOverOracle = this._stableBpm / workerOracleRawBpm;
+                    const stableIsOctaveUp = stableOverOracle > 1.75 && stableOverOracle < 2.25;
+                    if (oracleKalmanAgree && stableIsOctaveUp) {
+                        console.log(`[TickEngine] 🔬 WAVE 7544: DUAL-DETECTOR OCTAVE-DOWN correction: ` +
+                            `stable=${this._stableBpm.toFixed(2)} → oracle=${workerOracleRawBpm.toFixed(2)} ` +
+                            `(kalman=${workerBpm.toFixed(2)}, ratio=${stableOverOracle.toFixed(3)}, conf=${workerConfidence.toFixed(2)})`);
+                        this._stableBpm = workerOracleRawBpm;
+                        this._bpmCandidate = 0;
+                        this._bpmCandidateFrames = 0;
+                        acceptedBpm = this._stableBpm;
+                        this._shieldTag = '⚠️OCT-DOWN✅';
+                    }
+                }
                 // 🛡️ BPM STABILIZATION SHIELD — Hysteresis Gate
                 // If workerBpm differs from stable BPM by >8%, require 60 consecutive
                 // frames at conf>0.7 before accepting. Prevents dembow ghost-kick
@@ -439,7 +478,9 @@ export class TickEngine {
             // hysteresis gates.
             let freewheelBpm = this.audioPipeline.lastStableWorkerBpm;
             const octaveRef = workerOracleRawBpm > 0 ? workerOracleRawBpm : workerBpm;
-            if (octaveRef > 0 && workerConfidence > 0.2) {
+            // 🔬 WAVE 7544: Lowered from 0.2 → 0.1 — vocal-heavy reggaeton can produce
+            // conf as low as 0.18 while the oracle still reports the correct BPM.
+            if (octaveRef > 0 && workerConfidence > 0.1) {
                 const ratio = freewheelBpm / octaveRef;
                 if (ratio > 1.85 && ratio < 2.15) {
                     // Freewheel is ~2× oracle → octave-up error in stale memory

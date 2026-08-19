@@ -47,6 +47,25 @@ import {
 
 // ⚡ WAVE 4824: DYNAMIC EFFECT REGISTRY — fuente única de verdad del arsenal
 import { getDynamicEffectRegistry, effectDisplayName } from '../../arsenal/DynamicEffectRegistry'
+// 🩸 WAVE 7548: VIBE ALIAS NORMALIZATION — mutantes pueden tener compatibleVibes
+// con alias legacy ('latin' en vez de 'fiesta-latina'). El _appendToIndices del
+// registry normaliza al insertar al bucket, pero los checks de coherencia
+// (calculateVibeCoherence, pre-buffer, conscience engine) comparaban sin
+// normalizar → HERESY false positive → VIB=0.400 → DEFERRED.
+import { VIBE_ALIAS_MAP } from '../../../engine/vibe/profiles/index'
+
+/**
+ * 🩸 WAVE 7548: Checks if any of the effect's compatibleVibes matches the
+ * current vibe, normalizing legacy aliases via VIBE_ALIAS_MAP.
+ * Example: compatibleVibes=['latin'], currentVibe='fiesta-latina' → true
+ */
+function vibeMatches(compatibleVibes: readonly string[], currentVibe: string): boolean {
+  for (const rawVibe of compatibleVibes) {
+    const canonical = (VIBE_ALIAS_MAP as Record<string, string>)[rawVibe] ?? rawVibe
+    if (canonical === currentVibe) return true
+  }
+  return false
+}
 
 // ⚡ WAVE 4846: SPATIAL COGNITION — Hardware Guard
 import { getTitanOrchestrator } from '../../orchestrator/TitanOrchestrator'
@@ -313,16 +332,42 @@ export class EffectDreamSimulator {
     //   They remain in rankedScenarios for fitness scoring ONLY.
     //   Only champion/canonized organisms can be pre-buffered for live fire.
     // ═══════════════════════════════════════════════════════════════
-    
-    const preBufferScenario = bestScenario
-    
-    if (preBufferScenario && 
-        oracleProbability >= this.PRE_BUFFER_MIN_PROBABILITY && 
+
+    // 🔬 WAVE 7541: VIBE-AWARE PRE-BUFFER (Climax Blackout Prevention, Fix A).
+    // The old code pre-buffered bestScenario unconditionally. If the #1 ranked
+    // candidate was a vibe HERETIC (high DNA score but incompatible
+    // compatibleVibes), Cassandra sealed it for 3s. When the FAST PATH
+    // released it, the Conscience Engine rejected it for HERESY (penalty=1.0,
+    // score=0.000) with no fallback → total blackout during the drop.
+    //
+    // FIX: Iterate liveCandidates and pick the first one whose
+    // compatibleVibes includes the current vibe. This guarantees that
+    // whatever Cassandra seals will pass the Conscience Engine's
+    // vibe_coherence/vibe_effect_match rule.
+    const currentVibe = context.vibe
+    const preBufferScenario = liveCandidates.find(s => {
+      const entry = registry.getEntry(s.effect.effect)
+      if (!entry) return false
+      // No vibe restriction = universally compatible
+      if (entry.compatibleVibes.length === 0) return true
+      // 🩸 WAVE 7548: Normalize aliases — mutantes pueden tener 'latin' en vez de 'fiesta-latina'
+      return vibeMatches(entry.compatibleVibes, currentVibe)
+    }) ?? null
+
+    if (preBufferScenario && preBufferScenario !== bestScenario) {
+      console.log(
+        `[DREAM_SIMULATOR] 🔮🛡️ VIBE-AWARE PRE-BUFFER: #1 "${effectDisplayName(bestScenario?.effect.effectName ?? bestScenario?.effect.effect ?? '?')}" was vibe-incompatible, ` +
+        `selected "${effectDisplayName(preBufferScenario.effect.effectName ?? preBufferScenario.effect.effect)}" instead (vibe=${currentVibe})`
+      )
+    }
+
+    if (preBufferScenario &&
+        oracleProbability >= this.PRE_BUFFER_MIN_PROBABILITY &&
         timeToEvent >= this.PRE_BUFFER_MIN_TIME_MS &&
         !this.preBuffer) {  // Solo si no hay buffer ya
-      
+
       const predictionType = musicalPrediction.predictionType ?? 'none'
-      
+
       if (predictionType !== 'none') {
         this.preBuffer = {
           effect: preBufferScenario.effect,
@@ -332,7 +377,7 @@ export class EffectDreamSimulator {
           predictionType,
           oracleProbability,
         }
-        
+
         console.log(`[DREAM_SIMULATOR] 🔮📦 CASSANDRA PRE-BUFFER: "${preBufferScenario.effect.effectName ?? preBufferScenario.effect.effect}" stored for ${predictionType} in ~${(timeToEvent / 1000).toFixed(1)}s (${(oracleProbability * 100).toFixed(0)}% confidence)`)
       }
     }
@@ -547,8 +592,18 @@ export class EffectDreamSimulator {
   private getVibeAllowedEffects(vibe: string): string[] {
     // ⚡ WAVE 4824: Registry exclusivo — EFFECTS_BY_VIBE exterminado
     const entries = getDynamicEffectRegistry().getEffectsForVibe(vibe)
-    if (entries.length > 0) return entries.map(e => e.id)
-    return []
+    if (entries.length === 0) return []
+    // 🩸 WAVE 7550: MOOD BLOCKLIST FILTER — filter out blocked effects BEFORE
+    // simulation. Without this, CALM blocks strobes in generateCandidates()
+    // (Integrator) but the dream simulator already only simulated that one
+    // strobe → no alternatives → SILENCE. By filtering here, the simulator
+    // only sees mood-allowed effects → always has valid candidates → natural
+    // degradation to softer effects instead of silence.
+    const mood = MoodController.getInstance()
+    const filtered = entries.filter(e => !mood.isEffectBlocked(e.id))
+    // Fallback: if ALL effects are blocked (unlikely), return unfiltered
+    // rather than producing zero candidates.
+    return (filtered.length > 0 ? filtered : entries).map(e => e.id)
   }
   
   /**
@@ -791,12 +846,44 @@ export class EffectDreamSimulator {
     //   16 de 18 efectos en fiesta-latina porque el pressure filter (pressure≈1.0)
     //   descarta los efectos con pressureRange.max < 1.0. Solo sobrevivían
     //   tidal_wave (max=1.0) y latin_bubbles (max=0, permissive).
-    const grooveProxy = (state.energy > 0.55 && state.energy < 0.85 && state.tempo > 90 && state.tempo < 130) ? 0.8 : 0.2
+    //
+    // 🎨 WAVE 7547: GRADUAL GROOVE PROXY — replaces binary 0.8/0.2 with a
+    // continuous cosine curve. The old binary proxy degraded peak/intense →
+    // 'active' whenever tempo ∈ [90,130] AND energy ∈ [0.55,0.85], which
+    // killed heavy effects (aggression > 0.80) like latin_strobe (A=0.972)
+    // in almost all fiesta-latina contexts. They only escaped during true
+    // climax (energy ≥ 0.85), firing ~1/150 times.
+    //
+    // The new gradual proxy:
+    //   - tempoGroove: cosine curve, peak=1.0 at 110 BPM, zero at 90/130
+    //   - energyGroove: cosine curve, peak=1.0 at 0.70, zero at 0.55/0.85
+    //   - grooveProxy = tempoGroove × energyGroove ∈ [0, 1]
+    //
+    // Zone degradation is now two-tier:
+    //   grooveProxy > 0.85 (extreme groove, center of latin range):
+    //     peak/intense → 'active' (original behavior, anti-energy-spike)
+    //   grooveProxy > 0.50 (moderate groove, edges of latin range):
+    //     peak → 'intense' (NOT 'active' — allows heavy effects with
+    //     aggression up to 1.00 to pass the zone filter)
+    //   grooveProxy ≤ 0.50: no cap, zone stays as-is
+    //
+    // This allows latin_strobe (A=0.972) to fire during moderate-groove
+    // latin contexts (tempo ~95-105 or ~120-130, energy ~0.58-0.65 or
+    // ~0.75-0.82) where the zone degrades to 'intense' (max=1.00) instead
+    // of 'active' (max=0.80). Only in the exact center of the latin range
+    // (tempo ~110, energy ~0.70) does the cap reach 'active'.
+    const tempoGroove = state.tempo >= 90 && state.tempo <= 130
+      ? Math.cos((state.tempo - 110) * Math.PI / 40)  // peak at 110, zero at 90/130
+      : 0
+    const energyGroove = state.energy > 0.55 && state.energy < 0.85
+      ? Math.cos((state.energy - 0.70) * Math.PI / 0.30)  // peak at 0.70, zero at 0.55/0.85
+      : 0
+    const grooveProxy = Math.max(0, Math.min(1, tempoGroove * energyGroove))
     const rawProjectedZone = isFutureHeavyEvent ? 'peak'
       : isFutureBuildup ? 'intense'
       : energyZone
     const projectedZone = grooveProxy > 0.5 && (rawProjectedZone === 'peak' || rawProjectedZone === 'intense')
-      ? 'active'
+      ? grooveProxy > 0.85 ? 'active' : 'intense'
       : rawProjectedZone
 
     // Relajar guards predictivos: si el evento está garantizado, el Z y la energía
@@ -914,8 +1001,9 @@ export class EffectDreamSimulator {
           continue
         }
 
-        const { isStrobe, zScoreGuards } = entry.simMeta
+        const { isStrobe } = entry.simMeta
         const { energy } = context
+        const aggression = entry.dna.aggression ?? 0
 
         // Guard 1: Strobe en energía descendente
         // 🔮 WAVE 5014: Solo se aplica si NO es una predicción futura garantizada
@@ -923,19 +1011,15 @@ export class EffectDreamSimulator {
           continue
         }
 
-        // Guard 2: minimumZ declarado en el .lfx
+        // Guard 2: HEAVY Z-FLOOR (WAVE 7553 — centralized, replaces .lfx minimumZ)
+        // Any effect with aggression > 0.80 MUST have Z >= 1.0 to fire.
+        // This is the single source of truth for heavy Z-gating.
         // 🔮 WAVE 5014: Omitido en predicciones futuras — el Z subirá en el evento
-        if (!relaxGuardsForFuture && zScoreGuards.minimumZ !== null && zScore < zScoreGuards.minimumZ) {
+        if (!relaxGuardsForFuture && aggression > 0.80 && zScore < 1.0) {
           continue
         }
 
-        // Guard 3: minimumEnergy declarado en el .lfx
-        // 🔮 WAVE 5014: Omitido en predicciones futuras — la energía subirá en el evento
-        if (!relaxGuardsForFuture && zScoreGuards.minimumEnergy !== null && energy < zScoreGuards.minimumEnergy) {
-          continue
-        }
-
-        // Guard 4: Hardware Compatibility — fixtureTargeting vs active manifest
+        // Guard 3: Hardware Compatibility — fixtureTargeting vs active manifest
         // ⚡ WAVE 4846: Si el .lfx exige un hardware específico (movers, strobes, pars…)
         // que no está presente en el rig actual, el candidato se descarta aquí.
         // 'all' = universal, siempre pasa. Fail-open: targeting desconocido → no bloquea.
@@ -981,43 +1065,13 @@ export class EffectDreamSimulator {
       )
     }
 
-    // ⏳ WAVE 5009 FIX 4: THE MINIMAL RESCUE
-    // Si todos los efectos fueron bloqueados por guards (como pasa en Techno Minimal
-    // donde Z-Score es muy bajo < 1.0 pero la zona es Peak/Intense).
-    // 🔮 WAVE 5014: Si la projectedZone amplió el pool pero todos siguen bloqueados,
-    //   el Rescue parte desde todos los efectos del vibe (no solo los filtrados por zona)
-    //   para garantizar candidatos en cualquier escenario predictivo.
-    if (candidates.length === 0 && pressureFilteredEffects.length > 0) {
-      console.log(`[DREAM_SIMULATOR] ⚠️ All effects blocked by Z-guards! (Z=${zScore.toFixed(3)} projectedZone=${projectedZone}). Attempting Minimal Rescue...`)
-      
-      const registry = getDynamicEffectRegistry()
-      for (const effect of pressureFilteredEffects) {
-        if (moodController.isEffectBlocked(effect)) continue
-        const entry = registry.getEntry(effect)
-        if (!entry) continue
-        
-        if (!this._isTargetingAvailable(entry.execHints.fixtureTargeting, activeZoneSet)) continue
-        
-        // Strobe guard: solo bloquear si Z <= 0 Y no es predicción futura garantizada
-        if (entry.simMeta.isStrobe && zScore <= 0 && !relaxGuardsForFuture) continue
-        
-        const intensity = this.calculateIntensity(prediction.predictedEnergy, effect)
-        const isSuggestedByOracle = prediction.suggestedEffects?.some(
-          suggested => effect.includes(suggested) || suggested.includes(effect)
-        ) ?? false
-        
-        const finalConfidence = Math.min(1, prediction.confidence * 0.9 + (isSuggestedByOracle ? 0.08 : 0))
-        
-        candidates.push({
-          effect,
-          intensity,
-          zones: ['all'],
-          reasoning: `⚠️ MINIMAL RESCUE (Guards bypassed) | vibe=${state.vibe} projectedZone=${projectedZone}`,
-          confidence: finalConfidence
-        })
-      }
-    }
-    
+    // 🩸 WAVE 7553: MINIMAL RESCUE ERADICATED.
+    // The old WAVE 5009 rescue bypassed zScoreGuards.minimumZ when all candidates
+    // were blocked, forcing bypassed shots. Now that zScoreGuards.minimumZ is
+    // null everywhere and the heavy Z-floor (Z >= 1.0) is centralized in code,
+    // there is no need for a rescue. If all effects are blocked by valid
+    // constraints, the system gracefully degrades to silence or CALM ambient.
+
     return candidates
   }
   
@@ -1351,7 +1405,8 @@ export class EffectDreamSimulator {
     // Check if the effect's compatibleVibes includes the current vibe
     const compatibleVibes = entry.compatibleVibes
     if (compatibleVibes.length === 0) return 0.6  // No vibe restriction — neutral
-    if (compatibleVibes.includes(context.vibe)) return 0.85  // Family
+    // 🩸 WAVE 7548: Normalize aliases — 'latin' should match 'fiesta-latina'
+    if (vibeMatches(compatibleVibes, context.vibe)) return 0.85  // Family
     return 0.4  // Not family but not explicitly blocked either
   }
   

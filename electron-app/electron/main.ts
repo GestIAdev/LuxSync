@@ -726,6 +726,12 @@ async function initTitan(): Promise<void> {
       let _newCount = 0
 
       for (const [relPath, entry] of Object.entries(_builtinFiles)) {
+        // 🛡️ WAVE 7545: custom/ is exclusive user-space — never sync as builtin.
+        // Even if a stale manifest.json contains custom/ entries (generated before
+        // Fix A), this guard prevents them from being copied into userData/arsenal/,
+        // protecting user deletions from being undone on every boot.
+        if (relPath.startsWith('custom/')) continue
+
         const _destFile = path.join(_arsenalPath, relPath)
         const _srcFile = path.join(_builtinPath, relPath)
 

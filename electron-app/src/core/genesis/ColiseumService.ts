@@ -14,6 +14,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { randomUUID } from 'crypto'
+import type { Database as DatabaseType } from 'better-sqlite3'
 
 import type { GenesisVaultService } from './GenesisVaultService'
 import { getGenesisVault } from './GenesisVaultService'
@@ -34,7 +35,7 @@ import {
   type CrossoverResult,
 } from './operators/GeneticOperators'
 import { prenatalScreening, type ScreeningResult } from './screening/PrenatalScreening'
-import { computeRaritySimple, type RarityOutput } from './loot/RarityEngine'
+import { computeRarity, computeRaritySimple, type RarityOutput } from './loot/RarityEngine'
 import { getHeatmapLogger } from './fitness/HeatmapLogger'
 import { getSpeciationEngine, type SpeciationResult } from './ecology/SpeciationEngine'
 import { getLifecycleManager, type LifecycleResult } from './ecology/LifecycleManager'
@@ -44,14 +45,20 @@ import { getOrganismMaterializer } from './OrganismMaterializer'
 // WAVE 6000.V4: Weighted selection favors structural innovation.
 // Without this, focal_mutation dominates and structural operators
 // (macro_splice, adaptive_pruning) are never selected.
+// 🔬 WAVE 7530: adaptive_pruning raised from 0.05 → 0.10 to improve garbage
+// collection of dead tracks. Total still sums to 1.05 → normalized at runtime
+// by pickWeightedOperator (which divides by the cumulative sum).
+// 🎨 WAVE 7546: color_hue_shift added at 0.08 weight — enables color palette
+// evolution across generations. Total now 1.13 → still normalized at runtime.
 const OPERATOR_WEIGHTS_ROULETTE: ReadonlyArray<[MutationOperator, number]> = Object.freeze([
-  ['focal_mutation',        0.20],
+  ['focal_mutation',        0.18],
   ['macro_splice',          0.15],
   ['proportional_stretch',  0.15],
-  ['gene_augmentation',     0.18],
-  ['spatial_resonance',     0.15],
+  ['gene_augmentation',     0.17],
+  ['spatial_resonance',     0.13],
   ['curve_adaptation',      0.12],
-  ['adaptive_pruning',      0.05],
+  ['adaptive_pruning',      0.10],
+  ['color_hue_shift',       0.08],
 ])
 
 function pickWeightedOperator(rng: () => number): MutationOperator {
@@ -118,12 +125,56 @@ export interface SpawnHybridResult {
 // ─── RARITY (delegated to RarityEngine) ─────────────────────────────────────
 
 /**
- * Computes rarity using the RarityEngine module.
- * Uses simplified mode (no population signatures for now —
- * full mode will be wired when speciation is implemented in Era IV).
+ * 🔬 WAVE 7528: FULL NOVELTY ACTIVATION.
+ *
+ * Computes rarity using the full RarityEngine.computeRarity() which includes
+ * the 30% novelty weight via cosine similarity against the living population's
+ * bezier signatures. This punishes clones — an organism structurally identical
+ * to 40 living organisms receives low novelty (high cosine similarity) and thus
+ * a lower rarity score, even if its L2 distance from the parent is large.
+ *
+ * Falls back to computeRaritySimple() only if the population query fails or
+ * returns zero organisms (cold-start scenario).
+ *
+ * @param db        The GenesisVault DB handle (better-sqlite3)
+ * @param l2Distance  L2 distance from parent
+ * @param operator    Genetic operator used
+ * @param newSignature  The newborn's bezier signature (for novelty comparison)
  */
-function estimateRarity(l2Distance: number, operator: MutationOperator): RarityOutput {
-  return computeRaritySimple(l2Distance, operator)
+function estimateRarity(
+  db: DatabaseType,
+  l2Distance: number,
+  operator: MutationOperator,
+  newSignature: Float32Array,
+): RarityOutput {
+  // Fetch living population signatures for novelty computation
+  let populationSignatures: Float32Array[] = []
+  try {
+    const rows = db.prepare(
+      `SELECT bezier_signature FROM lfx_organisms
+       WHERE status IN ('alive', 'champion') AND bezier_signature IS NOT NULL
+       LIMIT 200`,
+    ).all() as { bezier_signature: Buffer }[]
+
+    populationSignatures = rows.map((row) => {
+      const buf = row.bezier_signature
+      return new Float32Array(buf.buffer, buf.byteOffset, buf.byteLength / 4)
+    })
+  } catch (err) {
+    console.warn('[Coliseum ⚠️] Population signature query failed, using simple rarity:', err)
+  }
+
+  // If no population (cold start) or query failed, use simple mode
+  if (populationSignatures.length === 0) {
+    return computeRaritySimple(l2Distance, operator)
+  }
+
+  return computeRarity({
+    l2Distance,
+    operator,
+    bezierSignature: newSignature,
+    populationSignatures,
+  })
 }
 
 // ─── BEZIER SIGNATURE (compressed feature vector) ───────────────────────────
@@ -131,16 +182,33 @@ function estimateRarity(l2Distance: number, operator: MutationOperator): RarityO
 /**
  * Computes a compact Float32Array signature from the clip's keyframes
  * for similarity/speciation. Used as `bezier_signature` BLOB in DB.
+ *
+ * 🔬 WAVE 7528: NORMALIZED BY SPAN — Each kf.value and bezierHandle is
+ * normalized to [0,1] via (value - range[0]) / span, consistent with
+ * computeDCurve() in GeneticOperators.ts. Without this, pan ∈ [0,255]
+ * dominates the euclidean distance over intensity ∈ [0,1] by ~255×,
+ * making K-means cluster by "has pan/color track" instead of structural
+ * similarity. Bezier handles are also normalized by the same span to
+ * preserve their relative shape contribution.
  */
 function computeBezierSignature(clip: HephAutomationClipV3): Float32Array {
   const values: number[] = []
   for (const track of clip.tracks) {
+    const range = track.curve.range
+    const span = range[1] - range[0]
+    const safeSpan = span !== 0 ? span : 1
+    const offset = range[0]
     for (const kf of track.curve.keyframes) {
       if (typeof kf.value === 'number') {
-        values.push(kf.value)
+        values.push((kf.value - offset) / safeSpan)
       }
       if (kf.bezierHandles) {
-        values.push(...kf.bezierHandles)
+        // Normalize each handle by the same span — handles are offsets
+        // in value-space, so dividing by span preserves their relative
+        // magnitude in the normalized [0,1] domain.
+        for (const h of kf.bezierHandles) {
+          values.push((h - offset) / safeSpan)
+        }
       }
     }
   }
@@ -188,6 +256,7 @@ export class ColiseumService {
    * @param seed Optional deterministic seed for reproducibility
    * @param parentOrganismId If set, spawn from a living organism (mitosis) instead of granite ancestor
    * @param birthFitness Optional inherited fitness (from mitosis energy transfer)
+   * @param birthVector Optional real context vector at birth (🔬 WAVE 7534). If omitted, zeros.
    * @returns SpawnResult with viability + organism details
    */
   spawnOrganism(
@@ -196,6 +265,7 @@ export class ColiseumService {
     seed?: number,
     parentOrganismId?: string,
     birthFitness?: number,
+    birthVector?: ContextVector6D,
   ): SpawnResult {
     // 1. Fetch ancestor
     const blueprint = this._vault.getBlueprint(parentBlueprintId)
@@ -203,10 +273,7 @@ export class ColiseumService {
       throw new Error(`[Coliseum] Blueprint not found: ${parentBlueprintId}`)
     }
 
-    const db = (this._vault as any)._db
-    if (!db) {
-      throw new Error('[Coliseum] GenesisVault not initialized')
-    }
+    const db = this._vault.getDb()
 
     // 1b. If mitosis: materialize the parent organism's clip instead of granite ancestor
     let parentClip: HephAutomationClipV3
@@ -231,8 +298,11 @@ export class ColiseumService {
     // 3. Prenatal screening (G7 redundancy gate uses L2 distance)
     const screening = prenatalScreening(mutatedClip, opResult.l2Distance)
 
-    // Base result — compute rarity via RarityEngine
-    const rarity = estimateRarity(opResult.l2Distance, operatorType)
+    // 3b. Compute bezier signature early — needed for rarity novelty computation
+    const bezierSig = computeBezierSignature(mutatedClip)
+
+    // Base result — compute rarity via RarityEngine (full mode with population novelty)
+    const rarity = estimateRarity(db, opResult.l2Distance, operatorType, bezierSig)
     const baseResult: SpawnResult = {
       success: false,
       organismId: null,
@@ -257,10 +327,13 @@ export class ColiseumService {
 
     // 5. Viable → insert to lfx_organisms
     const organismId = generateOrganismId()
-    const bezierSig = computeBezierSignature(mutatedClip)
+    // bezierSig already computed above (before rarity estimation)
     const now = Date.now()
 
-    const birthVector: ContextVector6D = {
+    // 🔬 WAVE 7534: Capture the real birth context vector if provided by
+    // the caller (EffectManager fire event). Falls back to zeros only when
+    // the spawn is not triggered by a live fire (e.g. cold-start seeding).
+    const birthVectorFinal: ContextVector6D = birthVector ?? {
       zScoreAvg3s: 0,
       lowBandAvg3s: 0,
       energyPhaseEncoded: 0,
@@ -303,7 +376,7 @@ export class ColiseumService {
         l2_distance_parent: opResult.l2Distance,
         operator_used: operatorType,
         neonatal_shield_until: rarity.neonatalShield,
-        birth_vector_json: JSON.stringify(birthVector),
+        birth_vector_json: JSON.stringify(birthVectorFinal),
         fitness_score: birthFitness ?? 0.0,
         trials_count: 0,
         wins_count: 0,
@@ -346,21 +419,20 @@ export class ColiseumService {
    * @param parentOrganismIdA  First parent organism ID
    * @param parentOrganismIdB  Second parent organism ID (must differ from A)
    * @param seed               Optional deterministic seed
+   * @param birthVector        Optional real context vector at birth (🔬 WAVE 7534)
    * @returns SpawnHybridResult with viability + organism details
    */
   spawnHybrid(
     parentOrganismIdA: string,
     parentOrganismIdB: string,
     seed?: number,
+    birthVector?: ContextVector6D,
   ): SpawnHybridResult {
     if (parentOrganismIdA === parentOrganismIdB) {
       throw new Error('[Coliseum] Sexual reproduction requires two distinct parents')
     }
 
-    const db = (this._vault as any)._db
-    if (!db) {
-      throw new Error('[Coliseum] GenesisVault not initialized')
-    }
+    const db = this._vault.getDb()
 
     // 1. Materialize both parents
     const matA = getOrganismMaterializer().materialize(parentOrganismIdA)
@@ -393,8 +465,11 @@ export class ColiseumService {
     // 3. Prenatal screening (G7 redundancy gate uses L2 distance)
     const screening = prenatalScreening(hybridClip, xResult.l2Distance)
 
-    // 4. Rarity estimation
-    const rarity = estimateRarity(xResult.l2Distance, 'crossover')
+    // 3b. Compute bezier signature early — needed for rarity novelty computation
+    const bezierSig = computeBezierSignature(hybridClip)
+
+    // 4. Rarity estimation (full mode with population novelty)
+    const rarity = estimateRarity(db, xResult.l2Distance, 'crossover', bezierSig)
 
     const dominantId = xResult.dominantParent === 'A' ? parentOrganismIdA : parentOrganismIdB
     const secondaryId = xResult.dominantParent === 'A' ? parentOrganismIdB : parentOrganismIdA
@@ -424,10 +499,11 @@ export class ColiseumService {
 
     // 6. Viable → insert with dual lineage
     const organismId = generateOrganismId()
-    const bezierSig = computeBezierSignature(hybridClip)
+    // bezierSig already computed above (before rarity estimation)
     const now = Date.now()
 
-    const birthVector: ContextVector6D = {
+    // 🔬 WAVE 7534: Capture real birth context if provided.
+    const birthVectorFinal: ContextVector6D = birthVector ?? {
       zScoreAvg3s: 0,
       lowBandAvg3s: 0,
       energyPhaseEncoded: 0,
@@ -471,7 +547,7 @@ export class ColiseumService {
         l2_distance_parent: xResult.l2Distance,
         operator_used: 'crossover',
         neonatal_shield_until: rarity.neonatalShield,
-        birth_vector_json: JSON.stringify(birthVector),
+        birth_vector_json: JSON.stringify(birthVectorFinal),
         fitness_score: 0.0,
         trials_count: 0,
         wins_count: 0,
@@ -506,15 +582,12 @@ export class ColiseumService {
    * Spawn chance = 1.0 - (currentPop / MAX_VITAL_SPACE).
    * Empty ecosystem → 100% spawn. Full ecosystem → 0% spawn.
    */
-  spawnInitialCohort(parentBlueprintId: string): readonly SpawnResult[] {
+  spawnInitialCohort(parentBlueprintId: string, birthVector?: ContextVector6D): readonly SpawnResult[] {
     // WAVE 6000.V5: Deterministic PRNG — no Math.random()
     const rng = makeRng(stringToSeed(`${parentBlueprintId}-${Date.now()}`))
 
     // 🧬 WAVE 6000.V9: Dynamic spawn gate based on carrying capacity
-    const db = (this._vault as any)._db
-    if (!db) {
-      throw new Error('[Coliseum] GenesisVault not initialized')
-    }
+    const db = this._vault.getDb()
     const popRow = db.prepare(
       'SELECT count(*) as pop FROM lfx_organisms WHERE status = \'alive\'',
     ).get() as { pop: number }
@@ -531,7 +604,7 @@ export class ColiseumService {
     }
 
     const operator = pickWeightedOperator(rng)
-    const r1 = this.spawnOrganism(parentBlueprintId, operator, Date.now())
+    const r1 = this.spawnOrganism(parentBlueprintId, operator, Date.now(), undefined, undefined, birthVector)
 
     const viable = r1.success ? 1 : 0
     console.log(
@@ -565,50 +638,54 @@ export class ColiseumService {
     mitosisSpawns: number
     sexualSpawns: number
   }> {
-    // 1. Flush heatmap logger
+    // 1. Flush heatmap logger — OUTSIDE the transaction (async, additive)
     const logger = getHeatmapLogger()
     await logger.flush()
 
-    const db = (this._vault as any)._db
-    if (!db) {
-      throw new Error('[Coliseum] GenesisVault not initialized')
-    }
+    // 🔬 WAVE 7533: Steps 2-7 wrapped in a single atomic transaction.
+    // If any step throws, the entire metabolic cycle rolls back — the
+    // ecosystem is never observed in a zombified intermediate state.
+    // Step 1 (heatmap flush) is excluded: it is async and additive, so
+    // a rollback of steps 2-7 must not undo already-persisted heatmap rows.
+    return this._vault.executeTransaction(() => {
+      const db = this._vault.getDb()
 
-    // 2. Entropy Decay — existence consumes energy
-    const entropyDecayed = this._applyEntropyDecay(db)
+      // 2. Entropy Decay — existence consumes energy
+      const entropyDecayed = this._applyEntropyDecay(db)
 
-    // 3. Apoptosis — starvation dissolution
-    const apoptosisCulls = this._apoptosis(db)
+      // 3. Apoptosis — starvation dissolution
+      const apoptosisCulls = this._apoptosis(db)
 
-    // 4. Run speciation
-    const speciation = getSpeciationEngine().runSpeciation()
+      // 4. Run speciation
+      const speciation = getSpeciationEngine().runSpeciation()
 
-    // 5. Run lifecycle transitions
-    const lifecycle = getLifecycleManager().runTransitions()
+      // 5. Run lifecycle transitions
+      const lifecycle = getLifecycleManager().runTransitions()
 
-    // 6. Mitosis — cellular division for thriving organisms
-    const mitosisSpawns = this._mitosis(db)
+      // 6. Mitosis — cellular division for thriving organisms
+      const mitosisSpawns = this._mitosis(db)
 
-    // 7. Sexual reproduction — elite breeding with semelparity (parents die)
-    const sexualSpawns = this._sexualReproduction(db)
+      // 7. Sexual reproduction — elite breeding with semelparity (parents die)
+      const sexualSpawns = this._sexualReproduction(db)
 
-    console.log(
-      `[Coliseum 🧬] Ecological maintenance complete: ` +
-      `entropy:${entropyDecayed} ↓, apoptosis:${apoptosisCulls} ✖, ` +
-      `${speciation.speciesCount} species, ` +
-      `${lifecycle.promotions}↑ ${lifecycle.demotions}↓ ${lifecycle.culls}✂️, ` +
-      `${lifecycle.hallOfFameCandidates} HoF, mitosis:${mitosisSpawns} ⊕, sexual:${sexualSpawns} ♀`,
-    )
+      console.log(
+        `[Coliseum 🧬] Ecological maintenance complete: ` +
+        `entropy:${entropyDecayed} ↓, apoptosis:${apoptosisCulls} ✖, ` +
+        `${speciation.speciesCount} species, ` +
+        `${lifecycle.promotions}↑ ${lifecycle.demotions}↓ ${lifecycle.culls}✂️, ` +
+        `${lifecycle.hallOfFameCandidates} HoF, mitosis:${mitosisSpawns} ⊕, sexual:${sexualSpawns} ♀`,
+      )
 
-    return {
-      heatmapFlush: true,
-      entropyDecayed,
-      apoptosisCulls,
-      speciation,
-      lifecycle,
-      mitosisSpawns,
-      sexualSpawns,
-    }
+      return {
+        heatmapFlush: true,
+        entropyDecayed,
+        apoptosisCulls,
+        speciation,
+        lifecycle,
+        mitosisSpawns,
+        sexualSpawns,
+      }
+    })
   }
 
   // ─── METABOLIC LAWS ───────────────────────────────────────────────────────
@@ -622,7 +699,7 @@ export class ColiseumService {
    * When population exceeds 80% of MAX_VITAL_SPACE, an additional
    * crowding penalty is applied to cull weak organisms faster.
    */
-  private _applyEntropyDecay(db: any): number {
+  private _applyEntropyDecay(db: DatabaseType): number {
     // Query current population for crowding calculation
     const popRow = db.prepare(
       'SELECT count(*) as pop FROM lfx_organisms WHERE status = \'alive\'',
@@ -655,7 +732,7 @@ export class ColiseumService {
    * threshold are dissolved. The medium eliminated them — not a quota.
    * They simply couldn't sustain their structure without nourishment.
    */
-  private _apoptosis(db: any): number {
+  private _apoptosis(db: DatabaseType): number {
     // Only cull those past their neonatal shield (protect the young)
     const result = db.prepare(
       `UPDATE lfx_organisms
@@ -673,7 +750,7 @@ export class ColiseumService {
    * The parent transfers MITOSIS_ENERGY_TRANSFER of its vitality to the child.
    * No arbitrary cap — only abundance begets abundance.
    */
-  private _mitosis(db: any): number {
+  private _mitosis(db: DatabaseType): number {
     const candidates = db.prepare(
       `SELECT organism_id, blueprint_id, fitness_score, generation
        FROM lfx_organisms
@@ -732,7 +809,7 @@ export class ColiseumService {
    * After breeding, BOTH parents are culled (sacrificed) to free carrying capacity.
    * This prevents elite stagnation and ensures generational turnover.
    */
-  private _sexualReproduction(db: any): number {
+  private _sexualReproduction(db: DatabaseType): number {
     // Query elite candidates
     const candidates = db.prepare(
       `SELECT organism_id, blueprint_id, fitness_score, generation, species_id
@@ -794,7 +871,7 @@ export class ColiseumService {
    * Breeds two parents via spawnHybrid and sacrifices both (The Mantis Rule).
    * Returns true if the hybrid was successfully spawned.
    */
-  private _breedAndSacrifice(db: any, parentAId: string, parentBId: string): boolean {
+  private _breedAndSacrifice(db: DatabaseType, parentAId: string, parentBId: string): boolean {
     try {
       const result = this.spawnHybrid(parentAId, parentBId)
 

@@ -1,8 +1,8 @@
-﻿{
+{
     "$schema":  "luxsync.lfx/3.0",
     "clip":  {
                  "id":  "corazon_latino",
-                 "name":  "Corazón Latino",
+                 "name":  "Coraz�n Latino",
                  "author":  "LuxSync Factory",
                  "category":  "physical",
                  "tags":  [

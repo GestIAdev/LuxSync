@@ -60,10 +60,7 @@ export class SpeciesQuotaSelector {
     poolSize: number = 12,
     rng: () => number = Math.random,
   ): SelectionResult {
-    const db = (this._vault as any)._db
-    if (!db) {
-      throw new Error('[QuotaSelector] GenesisVault not initialized')
-    }
+    const db = this._vault.getDb()
 
     // 1. Fetch all alive + champion organisms
     const rows = db.prepare(

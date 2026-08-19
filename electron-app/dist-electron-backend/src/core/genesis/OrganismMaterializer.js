@@ -108,6 +108,23 @@ export class OrganismMaterializer {
             if (!childClip.cognitiveDNA && parentClip.cognitiveDNA) {
                 childClip.cognitiveDNA = JSON.parse(JSON.stringify(parentClip.cognitiveDNA));
             }
+            // 🧬 WAVE 7546: VIBE INHERITANCE — Ensure compatibleVibes is explicitly
+            // preserved from the parent. Genetic operators use { ...dna, genome: X }
+            // which SHOULD preserve compatibleVibes, but delta_json only records
+            // genome field replacements — not compatibleVibes. If a delta op somehow
+            // clobbers the full cognitiveDNA object (e.g. a malformed crossover delta),
+            // compatibleVibes would be lost, causing VIB=0.400 in the Dream Simulator.
+            // This defensive copy guarantees the child inherits the parent's vibes.
+            if (childClip.cognitiveDNA && parentClip.cognitiveDNA) {
+                const childVibes = childClip.cognitiveDNA.compatibleVibes;
+                const parentVibes = parentClip.cognitiveDNA.compatibleVibes;
+                if (!childVibes || childVibes.length === 0) {
+                    childClip.cognitiveDNA = {
+                        ...childClip.cognitiveDNA,
+                        compatibleVibes: [...parentVibes],
+                    };
+                }
+            }
             // 🧬 WAVE 6000.V5: Earned names only. No baptism at birth.
             // If the organism has a custom_name (champion baptized), use it.
             // Otherwise, use a short military tag (COMMON-e8de) — no procedural name.
@@ -173,10 +190,7 @@ export class OrganismMaterializer {
     }
     // ─── INTERNALS ───────────────────────────────────────────────────────────
     _fetchOrganism(organismId) {
-        const db = this._vault._db;
-        if (!db) {
-            throw new Error('GenesisVault not initialized');
-        }
+        const db = this._vault.getDb();
         const row = db.prepare(`SELECT organism_id, blueprint_id, parent_organism_id,
               parent_organism_id_secondary, generation,
               delta_json, status, custom_name, rarity_score, rarity_tier,

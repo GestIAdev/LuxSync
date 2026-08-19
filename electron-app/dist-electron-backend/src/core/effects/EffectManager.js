@@ -391,12 +391,10 @@ export class EffectManager extends EventEmitter {
         const organismTag = (() => {
             try {
                 const vault = getGenesisVault();
-                const db = vault._db;
-                if (db) {
-                    const org = db.prepare('SELECT organism_id, custom_name, rarity_tier FROM lfx_organisms WHERE organism_id = ?').get(config.effectType);
-                    if (org)
-                        return getOrganismTag(org);
-                }
+                const db = vault.getDb();
+                const org = db.prepare('SELECT organism_id, custom_name, rarity_tier FROM lfx_organisms WHERE organism_id = ?').get(config.effectType);
+                if (org)
+                    return getOrganismTag(org);
             }
             catch { /* not a genesis organism */ }
             return null;
@@ -422,73 +420,73 @@ export class EffectManager extends EventEmitter {
         try {
             const heatmapLogger = getHeatmapLogger();
             const vault = getGenesisVault();
-            const db = vault._db;
-            if (db) {
-                const mc = config.musicalContext;
-                const now = Date.now();
-                // Build a ContextVector6D from available musical context
-                const ctx = {
-                    zScoreAvg3s: mc?.zScore ?? 0,
-                    lowBandAvg3s: mc?.energy ?? 0,
-                    energyPhaseEncoded: mc?.inDrop ? 1 : 0,
-                    vibeHash: mc ? hashStr01(mc.vibeId) : hashStr01(vibeId),
-                    sectionEncoded: 0,
-                    textureEncoded: 0,
-                };
-                // 🧬 WAVE 7166 FIX: Query by blueprint_id, NOT organism_id.
-                // config.effectType is the blueprint ancestral ID (e.g. 'solar_flare'),
-                // not an organism_id (e.g. 'org_xxxx'). The old query matched
-                // organism_id = config.effectType which ALWAYS returned 0 rows,
-                // starving the entire ecosystem of trials and fitness.
-                const organisms = db.prepare(`SELECT organism_id FROM lfx_organisms
+            const db = vault.getDb();
+            const mc = config.musicalContext;
+            const now = Date.now();
+            // Build a ContextVector6D from available musical context
+            // 🔬 WAVE 7534: This vector is now passed to spawnInitialCohort as
+            // the birth context — organisms record WHERE they were born.
+            const ctx = {
+                zScoreAvg3s: mc?.zScore ?? 0,
+                lowBandAvg3s: mc?.energy ?? 0,
+                energyPhaseEncoded: mc?.inDrop ? 1 : 0,
+                vibeHash: mc ? hashStr01(mc.vibeId) : hashStr01(vibeId),
+                sectionEncoded: 0,
+                textureEncoded: 0,
+            };
+            // 🧬 WAVE 7166 FIX: Query by blueprint_id, NOT organism_id.
+            // config.effectType is the blueprint ancestral ID (e.g. 'solar_flare'),
+            // not an organism_id (e.g. 'org_xxxx'). The old query matched
+            // organism_id = config.effectType which ALWAYS returned 0 rows,
+            // starving the entire ecosystem of trials and fitness.
+            const organisms = db.prepare(`SELECT organism_id FROM lfx_organisms
            WHERE blueprint_id = ? AND status = 'alive'`).all(config.effectType);
-                // 🧬 BIG BANG SPARK: If the blueprint has zero living descendants, spawn
-                // an initial cohort immediately. This ensures that any effect fired in
-                // vivo — even if cold-start seeding missed it — gets its first children.
-                if (organisms.length === 0) {
-                    // Verify the blueprint exists before attempting to spawn
-                    const bpExists = db.prepare('SELECT 1 FROM lfx_blueprints WHERE blueprint_id = ?').get(config.effectType);
-                    if (bpExists) {
-                        // Non-blocking: fire-and-forget cohort spawn
-                        queueMicrotask(() => {
-                            try {
-                                const results = getColiseumService().spawnInitialCohort(config.effectType);
-                                const viable = results.filter((r) => r.success).length;
-                                if (viable > 0) {
-                                    console.log(`[EffectManager 🧬] EMERGENCY SPARK: spawned ${viable} organisms ` +
-                                        `for "${config.effectType}" (was orphaned)`);
-                                }
+            // 🧬 BIG BANG SPARK: If the blueprint has zero living descendants, spawn
+            // an initial cohort immediately. This ensures that any effect fired in
+            // vivo — even if cold-start seeding missed it — gets its first children.
+            if (organisms.length === 0) {
+                // Verify the blueprint exists before attempting to spawn
+                const bpExists = db.prepare('SELECT 1 FROM lfx_blueprints WHERE blueprint_id = ?').get(config.effectType);
+                if (bpExists) {
+                    // Non-blocking: fire-and-forget cohort spawn
+                    queueMicrotask(() => {
+                        try {
+                            const results = getColiseumService().spawnInitialCohort(config.effectType, ctx);
+                            const viable = results.filter((r) => r.success).length;
+                            if (viable > 0) {
+                                console.log(`[EffectManager 🧬] EMERGENCY SPARK: spawned ${viable} organisms ` +
+                                    `for "${config.effectType}" (was orphaned)`);
                             }
-                            catch (_) {
-                                // Spawn failure (screening abort, etc.) — non-fatal
-                            }
-                        });
-                    }
-                }
-                for (const org of organisms) {
-                    // 1. Record fire event in heatmap (O(1) queue push, zero I/O)
-                    heatmapLogger.recordFireEvent(org.organism_id, ctx, {
-                        vibeId: mc?.vibeId ?? vibeId,
-                        sectionId: 'unknown',
-                        energyZone: 'unknown',
-                        texture: 'unknown',
-                        bpm: mc?.bpm,
-                        beatPhase: mc?.beatPhase,
+                        }
+                        catch (_) {
+                            // Spawn failure (screening abort, etc.) — non-fatal
+                        }
                     });
-                    // 2. Metabolic reward: increment fitness (vitality) for surviving the show
-                    //    The organism proved viable in the live environment.
-                    db.prepare(`UPDATE lfx_organisms
+                }
+            }
+            for (const org of organisms) {
+                // 1. Record fire event in heatmap (O(1) queue push, zero I/O)
+                heatmapLogger.recordFireEvent(org.organism_id, ctx, {
+                    vibeId: mc?.vibeId ?? vibeId,
+                    sectionId: 'unknown',
+                    energyZone: 'unknown',
+                    texture: 'unknown',
+                    bpm: mc?.bpm,
+                    beatPhase: mc?.beatPhase,
+                });
+                // 2. Metabolic reward: increment fitness (vitality) for surviving the show
+                //    The organism proved viable in the live environment.
+                db.prepare(`UPDATE lfx_organisms
              SET fitness_score = MIN(fitness_score + @reward, 1.0),
                  trials_count = trials_count + 1,
                  passes_count = passes_count + 1,
                  last_fired_at = @now,
                  last_evaluated_at = @now
              WHERE organism_id = @id`).run({
-                        reward: 0.05 * decision.intensity,
-                        now,
-                        id: org.organism_id,
-                    });
-                }
+                    reward: 0.05 * decision.intensity,
+                    now,
+                    id: org.organism_id,
+                });
             }
         }
         catch (_) {

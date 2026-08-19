@@ -1,221 +1,221 @@
 {
-    "$schema":  "luxsync.lfx/3.0",
-    "clip":  {
-                 "id":  "cyber_dualism",
-                 "name":  "Cyber Dualism",
-                 "author":  "LuxSync-Migrator-v3 / WAVE 4848",
-                 "category":  "physical",
-                 "tags":  [
-                              "pingpong",
-                              "strobe",
-                              "dualism",
-                              "techno"
-                          ],
-                 "vibeCompat":  [
-                                    "techno-club"
-                                ],
-                 "spatialZones":  [
-                                      "all"
-                                  ],
-                 "mixBus":  "global",
-                 "priority":  78,
-                 "durationMs":  3000,
-                 "effectType":  "heph_custom",
-                 "tracks":  [
-                                {
-                                    "id":  "883bca85-e7dd-4b15-8da5-c3ccb3e37a8c",
-                                    "paramId":  "intensity",
-                                    "zones":  [
-                                                  "all"
-                                              ],
-                                    "curve":  {
-                                                  "paramId":  "intensity",
-                                                  "valueType":  "number",
-                                                  "range":  [
-                                                                0,
-                                                                1
-                                                            ],
-                                                  "defaultValue":  0,
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  0,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  1,
-                                                                        "value":  1,
-                                                                        "interpolation":  "linear",
-                                                                        "bezierHandles":  [
-                                                                                              0,
-                                                                                              0,
-                                                                                              1,
-                                                                                              1
-                                                                                          ]
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  2999,
-                                                                        "value":  1,
-                                                                        "interpolation":  "hold"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  3000,
-                                                                        "value":  0,
-                                                                        "interpolation":  "linear",
-                                                                        "bezierHandles":  [
-                                                                                              0,
-                                                                                              0,
-                                                                                              1,
-                                                                                              1
-                                                                                          ]
-                                                                    }
-                                                                ],
-                                                  "mode":  "absolute"
-                                              },
-                                    "blendMode":  "replace"
-                                },
-                                {
-                                    "id":  "59097805-a751-4a72-b9f3-c8569abd0e37",
-                                    "paramId":  "color",
-                                    "zones":  [
-                                                  "all"
-                                              ],
-                                    "curve":  {
-                                                  "paramId":  "color",
-                                                  "valueType":  "color",
-                                                  "range":  [
-                                                                0,
-                                                                360
-                                                            ],
-                                                  "defaultValue":  {
-                                                                       "h":  180,
-                                                                       "s":  100,
-                                                                       "l":  70
-                                                                   },
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  {
-                                                                                      "h":  180,
-                                                                                      "s":  100,
-                                                                                      "l":  70
-                                                                                  },
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  3000,
-                                                                        "value":  {
-                                                                                      "h":  300,
-                                                                                      "s":  100,
-                                                                                      "l":  70
-                                                                                  },
-                                                                        "interpolation":  "hold"
-                                                                    }
-                                                                ],
-                                                  "mode":  "absolute"
-                                              },
-                                    "blendMode":  "replace"
-                                },
-                                {
-                                    "id":  "63c35e84-b645-4549-9345-f2bb12359820",
-                                    "paramId":  "strobe",
-                                    "zones":  [
-                                                  "all"
-                                              ],
-                                    "curve":  {
-                                                  "paramId":  "strobe",
-                                                  "valueType":  "number",
-                                                  "range":  [
-                                                                0,
-                                                                1
-                                                            ],
-                                                  "defaultValue":  0,
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  0,
-                                                                        "interpolation":  "hold"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  0.8,
-                                                                        "interpolation":  "hold"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  3000,
-                                                                        "value":  0,
-                                                                        "interpolation":  "hold"
-                                                                    }
-                                                                ],
-                                                  "mode":  "absolute"
-                                              },
-                                    "blendMode":  "replace"
-                                }
-                            ],
-                 "staticParams":  {
-                                      "dominantColorH":  180,
-                                      "dominantColorS":  100,
-                                      "dominantColorL":  70,
-                                      "isOneShot":  false,
-                                      "legacyMixBus":  "global",
-                                      "bpmRef":  128,
-                                      "cycles":  6,
-                                      "flashDurationMs":  120
-                                  },
-                 "cognitiveDNA":  {
-                                      "genome":  {
-                                                     "aggression":  0.9,
-                                                     "chaos":  0.7,
-                                                     "organicity":  0.1
-                                                 },
-                                      "textureAffinity":  "dirty",
-                                      "compatibleVibes":  [
-                                                              "techno-club"
-                                                          ],
-                                      "validSections":  [
-                                                            "build",
-                                                            "drop",
-                                                            "breakdown"
-                                                        ],
-                                      "energyZone":  {
-                                                         "min":  "intense",
-                                                         "max":  "peak"
-                                                     },
-                                      "aggressionRange":  {
-                                                              "min":  0.9,
-                                                              "max":  0.9
-                                                          },
-                                      "pressureRange":  {
-                                                            "min":  0.75,
-                                                            "max":  1
-                                                        },
-                                      "spatialBehavior":  "static"
-                                  },
-                 "simulationMeta":  {
-                                        "beautyWeights":  {
-                                                              "base":  0.79,
-                                                              "energyMultiplier":  1.05,
-                                                              "vibeBonus":  0.05
-                                                          },
-                                        "gpuCost":  0.3,
-                                        "fatigueImpact":  0.18,
-                                        "minDurationMs":  1000,
-                                        "cooldownMs":  4500,
-                                        "isStrobe":  true,
-                                        "isDivineCandidate":  false,
-                                        "isHeavyCandidate":  false,
-                                        "zScoreGuards":  {
-                                                             "requireRising":  false,
-                                                             "minimumZ": null,
-                                                             "minimumEnergy":  null
-                                                         }
-                                    },
-                 "safetyDeclaration":  {
-                                           "maxStrobeFreqHz":  25,
-                                           "containsRapidFlash":  true,
-                                           "communityTrusted":  false
-                                       },
-                 "schemaVersion":  "3.0"
-             },
-    "checksum":  "sha256:70a7def209825b7acdd35863e0d06b158cf3fbe2ab3c529831d2f9dc04be3209"
+  "$schema": "luxsync.lfx/3.0",
+  "clip": {
+    "id": "cyber_dualism",
+    "name": "Cyber Dualism",
+    "author": "LuxSync-Migrator-v3 / WAVE 4848",
+    "category": "physical",
+    "tags": [
+      "pingpong",
+      "strobe",
+      "dualism",
+      "techno"
+    ],
+    "vibeCompat": [
+      "techno-club"
+    ],
+    "spatialZones": [
+      "all"
+    ],
+    "mixBus": "global",
+    "priority": 78,
+    "durationMs": 3000,
+    "effectType": "heph_custom",
+    "tracks": [
+      {
+        "id": "883bca85-e7dd-4b15-8da5-c3ccb3e37a8c",
+        "paramId": "intensity",
+        "zones": [
+          "all"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 1,
+              "value": 1,
+              "interpolation": "linear",
+              "bezierHandles": [
+                0,
+                0,
+                1,
+                1
+              ]
+            },
+            {
+              "timeMs": 2999,
+              "value": 1,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 3000,
+              "value": 0,
+              "interpolation": "linear",
+              "bezierHandles": [
+                0,
+                0,
+                1,
+                1
+              ]
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      },
+      {
+        "id": "59097805-a751-4a72-b9f3-c8569abd0e37",
+        "paramId": "color",
+        "zones": [
+          "all"
+        ],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
+          "defaultValue": {
+            "h": 180,
+            "s": 100,
+            "l": 70
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 180,
+                "s": 100,
+                "l": 70
+              },
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 3000,
+              "value": {
+                "h": 300,
+                "s": 100,
+                "l": 70
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      },
+      {
+        "id": "63c35e84-b645-4549-9345-f2bb12359820",
+        "paramId": "strobe",
+        "zones": [
+          "all"
+        ],
+        "curve": {
+          "paramId": "strobe",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 0,
+              "value": 0.8,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 3000,
+              "value": 0,
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      }
+    ],
+    "staticParams": {
+      "dominantColorH": 180,
+      "dominantColorS": 100,
+      "dominantColorL": 70,
+      "isOneShot": false,
+      "legacyMixBus": "global",
+      "bpmRef": 128,
+      "cycles": 6,
+      "flashDurationMs": 120
+    },
+    "cognitiveDNA": {
+      "genome": {
+        "aggression": 0.9,
+        "chaos": 0.7,
+        "organicity": 0.1
+      },
+      "textureAffinity": "dirty",
+      "compatibleVibes": [
+        "techno-club"
+      ],
+      "validSections": [
+        "build",
+        "drop",
+        "breakdown"
+      ],
+      "energyZone": {
+        "min": "intense",
+        "max": "peak"
+      },
+      "aggressionRange": {
+        "min": 0.9,
+        "max": 0.9
+      },
+      "pressureRange": {
+        "min": 0.75,
+        "max": 1
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.79,
+        "energyMultiplier": 1.05,
+        "vibeBonus": 0.05
+      },
+      "gpuCost": 0.3,
+      "fatigueImpact": 0.18,
+      "minDurationMs": 1000,
+      "cooldownMs": 4500,
+      "isStrobe": true,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": false,
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": null,
+        "minimumEnergy": null
+      }
+    },
+    "safetyDeclaration": {
+      "maxStrobeFreqHz": 25,
+      "containsRapidFlash": true,
+      "communityTrusted": false
+    },
+    "schemaVersion": "3.0"
+  },
+  "checksum": "sha256:276855d2737b6c0caef06312500ef12ecff9432cbd4367c061003e11afab3fb9"
 }

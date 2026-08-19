@@ -1,610 +1,608 @@
 {
-    "$schema":  "luxsync.lfx/3.0",
-    "clip":  {
-                 "id":  "corazon_latino",
-                 "name":  "Corazón Latino",
-                 "author":  "LuxSync Factory",
-                 "category":  "physical",
-                 "tags":  [
-                              "heart",
-                              "ambient",
-                              "fiesta-latina"
-                          ],
-                 "vibeCompat":  [
-                                    "fiesta-latina"
-                                ],
-                 "spatialZones":  [
-                                      "back",
-                                      "front",
-                                      "all-movers",
-                                      "air",
-                                      "floor",
-                                      "ambient"
-                                  ],
-                 "durationMs":  4000,
-                 "effectType":  "heph_custom",
-                 "tracks":  [
-                                {
-                                    "id":  "heart-back-color",
-                                    "paramId":  "color",
-                                    "zones":  [
-                                                  "back"
-                                              ],
-                                    "curve":  {
-                                                  "paramId":  "color",
-                                                  "valueType":  "color",
-                                                  "range":  [
-                                                                0,
-                                                                360
-                                                            ],
-                                                  "defaultValue":  {
-                                                                       "h":  350,
-                                                                       "s":  82,
-                                                                       "l":  42
-                                                                   },
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  {
-                                                                                      "h":  350,
-                                                                                      "s":  82,
-                                                                                      "l":  42
-                                                                                  },
-                                                                        "interpolation":  "hold"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  4000,
-                                                                        "value":  {
-                                                                                      "h":  356,
-                                                                                      "s":  88,
-                                                                                      "l":  50
-                                                                                  },
-                                                                        "interpolation":  "hold"
-                                                                    }
-                                                                ],
-                                                  "mode":  "absolute"
-                                              },
-                                    "blendMode":  "replace"
-                                },
-                                {
-                                    "id":  "heart-back-intensity",
-                                    "paramId":  "intensity",
-                                    "zones":  [
-                                                  "back"
-                                              ],
-                                    "curve":  {
-                                                  "paramId":  "intensity",
-                                                  "valueType":  "number",
-                                                  "range":  [
-                                                                0,
-                                                                1
-                                                            ],
-                                                  "defaultValue":  0.18,
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  0.18,
-                                                                        "interpolation":  "hold"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  280,
-                                                                        "value":  0.92,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  540,
-                                                                        "value":  0.38,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  860,
-                                                                        "value":  0.72,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  1260,
-                                                                        "value":  0.2,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  2200,
-                                                                        "value":  0.9,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  2460,
-                                                                        "value":  0.34,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  2820,
-                                                                        "value":  0.7,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  3300,
-                                                                        "value":  0.22,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  4000,
-                                                                        "value":  0.16,
-                                                                        "interpolation":  "linear"
-                                                                    }
-                                                                ],
-                                                  "mode":  "absolute"
-                                              },
-                                    "blendMode":  "replace"
-                                },
-                                {
-                                    "id":  "d799a1bf-5c53-444f-a82b-86c2684eadf0",
-                                    "paramId":  "intensity",
-                                    "zones":  [
-                                                  "front"
-                                              ],
-                                    "curve":  {
-                                                  "paramId":  "intensity",
-                                                  "valueType":  "number",
-                                                  "range":  [
-                                                                0,
-                                                                1
-                                                            ],
-                                                  "defaultValue":  0.18,
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  0.18,
-                                                                        "interpolation":  "hold"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  280,
-                                                                        "value":  0.92,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  540,
-                                                                        "value":  0.38,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  860,
-                                                                        "value":  0.72,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  1260,
-                                                                        "value":  0.2,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  2200,
-                                                                        "value":  0.9,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  2460,
-                                                                        "value":  0.34,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  2820,
-                                                                        "value":  0.7,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  3300,
-                                                                        "value":  0.22,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  4000,
-                                                                        "value":  0.16,
-                                                                        "interpolation":  "linear"
-                                                                    }
-                                                                ],
-                                                  "mode":  "absolute"
-                                              },
-                                    "blendMode":  "replace"
-                                },
-                                {
-                                    "id":  "front-glow-color",
-                                    "paramId":  "color",
-                                    "zones":  [
-                                                  "front"
-                                              ],
-                                    "curve":  {
-                                                  "paramId":  "color",
-                                                  "valueType":  "color",
-                                                  "range":  [
-                                                                0,
-                                                                360
-                                                            ],
-                                                  "defaultValue":  {
-                                                                       "h":  352,
-                                                                       "s":  84,
-                                                                       "l":  46
-                                                                   },
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  {
-                                                                                      "h":  352,
-                                                                                      "s":  84,
-                                                                                      "l":  46
-                                                                                  },
-                                                                        "interpolation":  "hold"
-                                                                    }
-                                                                ],
-                                                  "mode":  "absolute"
-                                              },
-                                    "blendMode":  "replace"
-                                },
-                                {
-                                    "id":  "heat-movers-color",
-                                    "paramId":  "color",
-                                    "zones":  [
-                                                  "all-movers",
-                                                  "air"
-                                              ],
-                                    "curve":  {
-                                                  "paramId":  "color",
-                                                  "valueType":  "color",
-                                                  "range":  [
-                                                                0,
-                                                                360
-                                                            ],
-                                                  "defaultValue":  {
-                                                                       "h":  40,
-                                                                       "s":  70,
-                                                                       "l":  50
-                                                                   },
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  {
-                                                                                      "h":  40,
-                                                                                      "s":  70,
-                                                                                      "l":  50
-                                                                                  },
-                                                                        "interpolation":  "hold"
-                                                                    }
-                                                                ],
-                                                  "mode":  "absolute"
-                                              },
-                                    "blendMode":  "replace"
-                                },
-                                {
-                                    "id":  "heat-movers-intensity",
-                                    "paramId":  "intensity",
-                                    "zones":  [
-                                                  "all-movers",
-                                                  "air"
-                                              ],
-                                    "curve":  {
-                                                  "paramId":  "intensity",
-                                                  "valueType":  "number",
-                                                  "range":  [
-                                                                0,
-                                                                1
-                                                            ],
-                                                  "defaultValue":  0.14,
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  0.14,
-                                                                        "interpolation":  "hold"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  280,
-                                                                        "value":  0.72,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  540,
-                                                                        "value":  0.3,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  860,
-                                                                        "value":  0.56,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  1260,
-                                                                        "value":  0.18,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  2200,
-                                                                        "value":  0.7,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  2460,
-                                                                        "value":  0.28,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  2820,
-                                                                        "value":  0.52,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  3300,
-                                                                        "value":  0.18,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  4000,
-                                                                        "value":  0.12,
-                                                                        "interpolation":  "linear"
-                                                                    }
-                                                                ],
-                                                  "mode":  "absolute"
-                                              },
-                                    "blendMode":  "replace"
-                                },
-                                {
-                                    "id":  "gold-floor-color",
-                                    "paramId":  "color",
-                                    "zones":  [
-                                                  "floor"
-                                              ],
-                                    "curve":  {
-                                                  "paramId":  "color",
-                                                  "valueType":  "color",
-                                                  "range":  [
-                                                                0,
-                                                                360
-                                                            ],
-                                                  "defaultValue":  {
-                                                                       "h":  40,
-                                                                       "s":  70,
-                                                                       "l":  50
-                                                                   },
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  {
-                                                                                      "h":  40,
-                                                                                      "s":  70,
-                                                                                      "l":  50
-                                                                                  },
-                                                                        "interpolation":  "hold"
-                                                                    }
-                                                                ],
-                                                  "mode":  "absolute"
-                                              },
-                                    "blendMode":  "replace"
-                                },
-                                {
-                                    "id":  "gold-floor-intensity",
-                                    "paramId":  "intensity",
-                                    "zones":  [
-                                                  "floor"
-                                              ],
-                                    "curve":  {
-                                                  "paramId":  "intensity",
-                                                  "valueType":  "number",
-                                                  "range":  [
-                                                                0,
-                                                                1
-                                                            ],
-                                                  "defaultValue":  0.12,
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  0.12,
-                                                                        "interpolation":  "hold"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  280,
-                                                                        "value":  0.4,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  540,
-                                                                        "value":  0.2,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  860,
-                                                                        "value":  0.34,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  1260,
-                                                                        "value":  0.16,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  2200,
-                                                                        "value":  0.38,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  2460,
-                                                                        "value":  0.18,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  2820,
-                                                                        "value":  0.3,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  3300,
-                                                                        "value":  0.16,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  4000,
-                                                                        "value":  0.1,
-                                                                        "interpolation":  "linear"
-                                                                    }
-                                                                ],
-                                                  "mode":  "absolute"
-                                              },
-                                    "blendMode":  "replace"
-                                },
-                                {
-                                    "id":  "gold-ambient-color",
-                                    "paramId":  "color",
-                                    "zones":  [
-                                                  "ambient"
-                                              ],
-                                    "curve":  {
-                                                  "paramId":  "color",
-                                                  "valueType":  "color",
-                                                  "range":  [
-                                                                0,
-                                                                360
-                                                            ],
-                                                  "defaultValue":  {
-                                                                       "h":  40,
-                                                                       "s":  70,
-                                                                       "l":  50
-                                                                   },
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  {
-                                                                                      "h":  40,
-                                                                                      "s":  70,
-                                                                                      "l":  50
-                                                                                  },
-                                                                        "interpolation":  "hold"
-                                                                    }
-                                                                ],
-                                                  "mode":  "absolute"
-                                              },
-                                    "blendMode":  "replace"
-                                },
-                                {
-                                    "id":  "gold-ambient-intensity",
-                                    "paramId":  "intensity",
-                                    "zones":  [
-                                                  "ambient"
-                                              ],
-                                    "curve":  {
-                                                  "paramId":  "intensity",
-                                                  "valueType":  "number",
-                                                  "range":  [
-                                                                0,
-                                                                1
-                                                            ],
-                                                  "defaultValue":  0.14,
-                                                  "keyframes":  [
-                                                                    {
-                                                                        "timeMs":  0,
-                                                                        "value":  0.14,
-                                                                        "interpolation":  "hold"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  280,
-                                                                        "value":  0.42,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  540,
-                                                                        "value":  0.22,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  860,
-                                                                        "value":  0.36,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  1260,
-                                                                        "value":  0.18,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  2200,
-                                                                        "value":  0.4,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  2460,
-                                                                        "value":  0.2,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  2820,
-                                                                        "value":  0.32,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  3300,
-                                                                        "value":  0.18,
-                                                                        "interpolation":  "linear"
-                                                                    },
-                                                                    {
-                                                                        "timeMs":  4000,
-                                                                        "value":  0.12,
-                                                                        "interpolation":  "linear"
-                                                                    }
-                                                                ],
-                                                  "mode":  "absolute"
-                                              },
-                                    "blendMode":  "replace"
-                                }
-                            ],
-                 "staticParams":  {
-
-                                  },
-                 "cognitiveDNA":  {
-                                      "archetype":  "utility",
-                                      "genome":  {
-                                                     "aggression":  0.3,
-                                                     "chaos":  0.25,
-                                                     "organicity":  0.65
-                                                 },
-                                      "textureAffinity":  "universal",
-                                      "compatibleVibes":  [
-                                                              "fiesta-latina"
-                                                          ],
-                                      "validSections":  [
-                                                            "ambient",
-                                                            "gentle",
-                                                            "valley",
-                                                            "breakdown"
-                                                        ],
-                                      "energyZone":  {
-                                                         "min":  "gentle",
-                                                         "max":  "active"
-                                                     },
-                                      "aggressionRange":  {
-                                                              "min":  0.3,
-                                                              "max":  0.3
-                                                          },
-                                      "pressureRange":  {
-                                                            "min":  0,
-                                                            "max":  0.58
-                                                        },
-                                      "spatialBehavior":  "static"
-                                  },
-                 "simulationMeta":  {
-                                        "beautyWeights":  {
-                                                              "base":  0.625,
-                                                              "energyMultiplier":  1.05,
-                                                              "vibeBonus":  0.05
-                                                          },
-                                        "gpuCost":  0.3,
-                                        "fatigueImpact":  0.06,
-                                        "minDurationMs":  4000,
-                                        "cooldownMs":  7000,
-                                        "isStrobe":  false,
-                                        "isDivineCandidate":  false,
-                                        "isHeavyCandidate":  false,
-                                        "zScoreGuards":  {
-                                                             "requireRising":  false,
-                                                             "minimumZ":  null,
-                                                             "minimumEnergy":  null
-                                                         }
-                                    },
-                 "schemaVersion":  "3.0"
-             },
-    "checksum":  "sha256:4fae6bdf944132dcba64893903ab3174753bb47de39a77982107a7ba8df5dd69"
+  "$schema": "luxsync.lfx/3.0",
+  "clip": {
+    "id": "corazon_latino",
+    "name": "Corazï¿½n Latino",
+    "author": "LuxSync Factory",
+    "category": "physical",
+    "tags": [
+      "heart",
+      "ambient",
+      "fiesta-latina"
+    ],
+    "vibeCompat": [
+      "fiesta-latina"
+    ],
+    "spatialZones": [
+      "back",
+      "front",
+      "all-movers",
+      "air",
+      "floor",
+      "ambient"
+    ],
+    "durationMs": 4000,
+    "effectType": "heph_custom",
+    "tracks": [
+      {
+        "id": "heart-back-color",
+        "paramId": "color",
+        "zones": [
+          "back"
+        ],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
+          "defaultValue": {
+            "h": 350,
+            "s": 82,
+            "l": 42
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 350,
+                "s": 82,
+                "l": 42
+              },
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 4000,
+              "value": {
+                "h": 356,
+                "s": 88,
+                "l": 50
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      },
+      {
+        "id": "heart-back-intensity",
+        "paramId": "intensity",
+        "zones": [
+          "back"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0.18,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0.18,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 280,
+              "value": 0.92,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 540,
+              "value": 0.38,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 860,
+              "value": 0.72,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 1260,
+              "value": 0.2,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2200,
+              "value": 0.9,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2460,
+              "value": 0.34,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2820,
+              "value": 0.7,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 3300,
+              "value": 0.22,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 4000,
+              "value": 0.16,
+              "interpolation": "linear"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      },
+      {
+        "id": "d799a1bf-5c53-444f-a82b-86c2684eadf0",
+        "paramId": "intensity",
+        "zones": [
+          "front"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0.18,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0.18,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 280,
+              "value": 0.92,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 540,
+              "value": 0.38,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 860,
+              "value": 0.72,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 1260,
+              "value": 0.2,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2200,
+              "value": 0.9,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2460,
+              "value": 0.34,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2820,
+              "value": 0.7,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 3300,
+              "value": 0.22,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 4000,
+              "value": 0.16,
+              "interpolation": "linear"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      },
+      {
+        "id": "front-glow-color",
+        "paramId": "color",
+        "zones": [
+          "front"
+        ],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
+          "defaultValue": {
+            "h": 352,
+            "s": 84,
+            "l": 46
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 352,
+                "s": 84,
+                "l": 46
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      },
+      {
+        "id": "heat-movers-color",
+        "paramId": "color",
+        "zones": [
+          "all-movers",
+          "air"
+        ],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
+          "defaultValue": {
+            "h": 40,
+            "s": 70,
+            "l": 50
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 40,
+                "s": 70,
+                "l": 50
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      },
+      {
+        "id": "heat-movers-intensity",
+        "paramId": "intensity",
+        "zones": [
+          "all-movers",
+          "air"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0.14,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0.14,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 280,
+              "value": 0.72,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 540,
+              "value": 0.3,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 860,
+              "value": 0.56,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 1260,
+              "value": 0.18,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2200,
+              "value": 0.7,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2460,
+              "value": 0.28,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2820,
+              "value": 0.52,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 3300,
+              "value": 0.18,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 4000,
+              "value": 0.12,
+              "interpolation": "linear"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      },
+      {
+        "id": "gold-floor-color",
+        "paramId": "color",
+        "zones": [
+          "floor"
+        ],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
+          "defaultValue": {
+            "h": 40,
+            "s": 70,
+            "l": 50
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 40,
+                "s": 70,
+                "l": 50
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      },
+      {
+        "id": "gold-floor-intensity",
+        "paramId": "intensity",
+        "zones": [
+          "floor"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0.12,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0.12,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 280,
+              "value": 0.4,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 540,
+              "value": 0.2,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 860,
+              "value": 0.34,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 1260,
+              "value": 0.16,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2200,
+              "value": 0.38,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2460,
+              "value": 0.18,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2820,
+              "value": 0.3,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 3300,
+              "value": 0.16,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 4000,
+              "value": 0.1,
+              "interpolation": "linear"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      },
+      {
+        "id": "gold-ambient-color",
+        "paramId": "color",
+        "zones": [
+          "ambient"
+        ],
+        "curve": {
+          "paramId": "color",
+          "valueType": "color",
+          "range": [
+            0,
+            360
+          ],
+          "defaultValue": {
+            "h": 40,
+            "s": 70,
+            "l": 50
+          },
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": {
+                "h": 40,
+                "s": 70,
+                "l": 50
+              },
+              "interpolation": "hold"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      },
+      {
+        "id": "gold-ambient-intensity",
+        "paramId": "intensity",
+        "zones": [
+          "ambient"
+        ],
+        "curve": {
+          "paramId": "intensity",
+          "valueType": "number",
+          "range": [
+            0,
+            1
+          ],
+          "defaultValue": 0.14,
+          "keyframes": [
+            {
+              "timeMs": 0,
+              "value": 0.14,
+              "interpolation": "hold"
+            },
+            {
+              "timeMs": 280,
+              "value": 0.42,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 540,
+              "value": 0.22,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 860,
+              "value": 0.36,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 1260,
+              "value": 0.18,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2200,
+              "value": 0.4,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2460,
+              "value": 0.2,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 2820,
+              "value": 0.32,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 3300,
+              "value": 0.18,
+              "interpolation": "linear"
+            },
+            {
+              "timeMs": 4000,
+              "value": 0.12,
+              "interpolation": "linear"
+            }
+          ],
+          "mode": "absolute"
+        },
+        "blendMode": "replace"
+      }
+    ],
+    "staticParams": {},
+    "cognitiveDNA": {
+      "archetype": "utility",
+      "genome": {
+        "aggression": 0.3,
+        "chaos": 0.25,
+        "organicity": 0.65
+      },
+      "textureAffinity": "universal",
+      "compatibleVibes": [
+        "fiesta-latina"
+      ],
+      "validSections": [
+        "ambient",
+        "gentle",
+        "valley",
+        "breakdown"
+      ],
+      "energyZone": {
+        "min": "gentle",
+        "max": "active"
+      },
+      "aggressionRange": {
+        "min": 0.3,
+        "max": 0.3
+      },
+      "pressureRange": {
+        "min": 0,
+        "max": 0.58
+      },
+      "spatialBehavior": "static"
+    },
+    "simulationMeta": {
+      "beautyWeights": {
+        "base": 0.625,
+        "energyMultiplier": 1.05,
+        "vibeBonus": 0.05
+      },
+      "gpuCost": 0.3,
+      "fatigueImpact": 0.06,
+      "minDurationMs": 4000,
+      "cooldownMs": 7000,
+      "isStrobe": false,
+      "isDivineCandidate": false,
+      "isHeavyCandidate": false,
+      "zScoreGuards": {
+        "requireRising": false,
+        "minimumZ": null,
+        "minimumEnergy": null
+      }
+    },
+    "schemaVersion": "3.0"
+  },
+  "checksum": "sha256:47883871e37654ed72dbe3607446e6cf931fd63fe58f6919d60924215c8c16ed"
 }

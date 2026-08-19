@@ -1,0 +1,39 @@
+feat(selene): WAVE 7550-7553 — CALM mood, anti-autotune bass gate, Great Z-Score Purge
+
+WAVE 7550: CALM mood blockPatterns + graceful degradation
+- MoodProfile extended with blockPatterns: string[]
+- CALM profile blocks ['strobe', 'heavy', 'divine'] patterns
+- isEffectBlocked() checks patterns in addition to exact IDs
+- EffectDreamSimulator.getVibeAllowedEffects() filters by mood blockList
+  BEFORE candidate generation → natural degradation to soft effects
+
+WAVE 7551-7552: Anti-autotune bass gate hardening (subsequently reverted)
+- Bass gate threshold 0.35→0.40, vocal dominance check, bass/mid ratio,
+  bass Z-score (zL) check — all added then reverted in WAVE 7553
+- FIRE-DIAG enriched with bass/mid/high bands + zL (RETAINED)
+
+WAVE 7553: THE GREAT Z-SCORE PURGE & ANTI-AUTOTUNE RESET
+- Reverted all WAVE 7550-7552 bloat: bass gate back to simple bass <= 0.35
+- Eradicated zScoreGuards.minimumZ from ALL 46 .lfx files (set to null)
+- Centralized heavy Z-floor in code: Z >= 1.0 for aggression > 0.80
+  (EffectDreamSimulator, SeleneTitanConscious, SovereignClockGuard)
+- Removed Minimal Rescue fallback (WAVE 5009) — no more bypassed shots
+- Kept strobe guard: isStrobe && Z <= 0 → skip (descending energy)
+- Kept relaxGuardsForFuture for guaranteed future predictions
+
+Genesis ecosystem updates:
+- ColiseumService, GenesisVaultService, OrganismMaterializer, ecology,
+  fitness, loot, naming, operators, types — various improvements
+- Feral Wave Omega forensic report added
+- ProceduralNamer test updated
+
+Forensic reports:
+- REPORTE_FILTRO_AUTOTUNE.md — full audit of Z-score system
+- FERAL-WAVE-OMEGA-FORENSIC.md
+- mierdatune.md, estadogenesis.md, operadoresreport.md
+
+96 files changed, 8822 insertions, 6462 deletions
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

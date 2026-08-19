@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "version": "0.8.0-beta.1",
-  "generatedAt": "2026-08-19T20:57:23.960Z",
+  "generatedAt": "2026-08-19T21:03:09.424Z",
   "count": 42,
   "files": {
     "chill/solar_caustics.lfx": {
@@ -26,8 +26,8 @@
     },
     "latin/corazon_latino.lfx": {
       "relPath": "latin/corazon_latino.lfx",
-      "checksum": "b7890d8095159446",
-      "size": 44132
+      "checksum": "2c4651a6bd028da7",
+      "size": 13956
     },
     "latin/cumbia_moon.lfx": {
       "relPath": "latin/cumbia_moon.lfx",
@@ -36,7 +36,7 @@
     },
     "latin/divine_obliteration.lfx": {
       "relPath": "latin/divine_obliteration.lfx",
-      "checksum": "74f4849dafe7dd34",
+      "checksum": "24cb8cf1f89f2b34",
       "size": 4857
     },
     "latin/ghost_breath.lfx": {
@@ -51,18 +51,18 @@
     },
     "latin/latina_meltdown.lfx": {
       "relPath": "latin/latina_meltdown.lfx",
-      "checksum": "9e2db84510e2ce79",
-      "size": 11365
+      "checksum": "4e5b1be5701f728c",
+      "size": 4038
     },
     "latin/salsa_fire.lfx": {
       "relPath": "latin/salsa_fire.lfx",
-      "checksum": "91ebbe0f4b9efa85",
+      "checksum": "fddf68697d83c97f",
       "size": 5395
     },
     "latin/solar_flare.lfx": {
       "relPath": "latin/solar_flare.lfx",
-      "checksum": "3c621ba6cfeea521",
-      "size": 12084
+      "checksum": "98d9e20c88f992b1",
+      "size": 4012
     },
     "latin/tidal_wave.lfx": {
       "relPath": "latin/tidal_wave.lfx",
@@ -81,7 +81,7 @@
     },
     "rock/power_chord.lfx": {
       "relPath": "rock/power_chord.lfx",
-      "checksum": "7360aa593fb41f0a",
+      "checksum": "3223fe1c8bac0e61",
       "size": 4537
     },
     "rock/spotlight_pulse.lfx": {
@@ -101,7 +101,7 @@
     },
     "techno/abyssal_rise.lfx": {
       "relPath": "techno/abyssal_rise.lfx",
-      "checksum": "31e622ae64fade77",
+      "checksum": "9df17899a7ade61a",
       "size": 4112
     },
     "techno/acid_sweep.lfx": {
@@ -111,32 +111,32 @@
     },
     "techno/ambient_strobe.lfx": {
       "relPath": "techno/ambient_strobe.lfx",
-      "checksum": "a371ba74c1f5c3e6",
+      "checksum": "e53575af4e61ed06",
       "size": 4552
     },
     "techno/binary_glitch.lfx": {
       "relPath": "techno/binary_glitch.lfx",
-      "checksum": "cf130cfcee968193",
+      "checksum": "945d30aadf72214e",
       "size": 7536
     },
     "techno/cascade_strike.lfx": {
       "relPath": "techno/cascade_strike.lfx",
-      "checksum": "3e25af39303645a4",
+      "checksum": "ebdfea812a97c95b",
       "size": 5307
     },
     "techno/core_meltdown.lfx": {
       "relPath": "techno/core_meltdown.lfx",
-      "checksum": "d28f2dd3140a2a49",
+      "checksum": "1a37a7d8aca32601",
       "size": 4491
     },
     "techno/cyber_dualism.lfx": {
       "relPath": "techno/cyber_dualism.lfx",
-      "checksum": "4cb2e87052e81b23",
-      "size": 14713
+      "checksum": "34bdde47b80cc779",
+      "size": 4907
     },
     "techno/cyber_scanner.lfx": {
       "relPath": "techno/cyber_scanner.lfx",
-      "checksum": "04e6709308b8e6bf",
+      "checksum": "8d1f016bab505076",
       "size": 4658
     },
     "techno/deep_breath.lfx": {
@@ -146,7 +146,7 @@
     },
     "techno/gatling_raid.lfx": {
       "relPath": "techno/gatling_raid.lfx",
-      "checksum": "de4b6cd3b9fa7087",
+      "checksum": "2c64071a010126e2",
       "size": 5047
     },
     "techno/ghost_chase.lfx": {
@@ -156,52 +156,52 @@
     },
     "techno/industrial_strobe.lfx": {
       "relPath": "techno/industrial_strobe.lfx",
-      "checksum": "bcc636dc2faadae0",
+      "checksum": "cb1d11252146c459",
       "size": 4795
     },
     "techno/lateral_frag.lfx": {
       "relPath": "techno/lateral_frag.lfx",
-      "checksum": "e747895a49c0f954",
+      "checksum": "228f1265ac63597a",
       "size": 5510
     },
     "techno/machine_gun.lfx": {
       "relPath": "techno/machine_gun.lfx",
-      "checksum": "f0f444c8513b39c1",
+      "checksum": "c3a7b84e3801b0a8",
       "size": 4434
     },
     "techno/neon_blinder.lfx": {
       "relPath": "techno/neon_blinder.lfx",
-      "checksum": "66d3883598de341c",
+      "checksum": "05bb9f5a7b732db0",
       "size": 5168
     },
     "techno/red_surge.lfx": {
       "relPath": "techno/red_surge.lfx",
-      "checksum": "c8d41ac85daa0b5b",
+      "checksum": "e668d702b53e5f72",
       "size": 4659
     },
     "techno/seismic_snap.lfx": {
       "relPath": "techno/seismic_snap.lfx",
-      "checksum": "2398fe10b2d62d7c",
+      "checksum": "7f567f19dc9df2ad",
       "size": 6533
     },
     "techno/static_pulse.lfx": {
       "relPath": "techno/static_pulse.lfx",
-      "checksum": "72e35bd744f4578d",
+      "checksum": "6335283dceffa36f",
       "size": 5078
     },
     "techno/strobe_burst.lfx": {
       "relPath": "techno/strobe_burst.lfx",
-      "checksum": "f1a4f4c445a77286",
+      "checksum": "f757dce04b4ad979",
       "size": 3829
     },
     "techno/strobe_ping_pong.lfx": {
       "relPath": "techno/strobe_ping_pong.lfx",
-      "checksum": "7a19f1ecd51536c4",
+      "checksum": "feda47a8f8f90930",
       "size": 2734
     },
     "techno/strobe_storm.lfx": {
       "relPath": "techno/strobe_storm.lfx",
-      "checksum": "881c36e40fe368ad",
+      "checksum": "c7820f2d99d525e0",
       "size": 4079
     },
     "techno/void_mist.lfx": {
@@ -211,7 +211,7 @@
     },
     "techno/wraht_of_the_titans.lfx": {
       "relPath": "techno/wraht_of_the_titans.lfx",
-      "checksum": "5fbbd1de837a0cb6",
+      "checksum": "471a678d9cf98a4f",
       "size": 4934
     }
   }

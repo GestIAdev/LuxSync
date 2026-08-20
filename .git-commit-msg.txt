@@ -1,39 +1,20 @@
-fix(selene): WAVE 7560 — TRUE CONFIDENCE & ASYMMETRIC RELAXATION
+fix(selene): WAVE 7560.1 — lower minority relaxation threshold to 0.25
 
-Field log analysis (postbuild.md) confirmed that WAVE 7559 successfully
-produces breakdown_imminent predictions and zone override → gentle, but
-ambient effects still lose to heavy effects in the ranking. Root cause:
-two gates blocking the pressure relaxation pathway.
+Field logs showed breakdown_imminent with conf=0.386 and conf=0.261
+failing to relax pressure guards (threshold was 0.40). The architect's
+reasoning: breakdowns are statistical minorities, so even 0.40 raw
+confidence is a loud signal. But computeOrganicConfidence applies PLL
+and syncopation factors that measure TEMPORAL precision, not structural
+knowledge — these can drag a legitimate breakdown prediction from 0.33
+Markov mass down to 0.26.
 
-Fix 1 — TRUE CONFIDENCE (DreamEngineIntegrator.ts:568):
-- The confidence ternary masked any realProbability < 0.5 to 0.5,
-  destroying the continuous signal for minority events. Since
-  breakdown_imminent from WAVE 7559's Markov posterior thresholding
-  has raw prob ~0.40-0.45 (based on pBreakdownMass), it was always
-  masked to 0.500.
-- For minority events (breakdown_imminent, energy_drop), the mask is
-  now bypassed: realProbability passes through directly as confidence.
-  Majority events retain the legacy mask (0.5 for weak, real for strong).
-- This preserves data entropy: the DreamSimulator now sees the true
-  0.45 confidence instead of the masked 0.500.
+The threshold is now 0.25 for minority events, aligned with the WAVE
+7559 Markov posterior threshold (P(breakdown) > 0.25). If the Markov
+says breakdown is significant enough to predict, that same signal is
+significant enough to relax the pressure guard. The PLL doesn't need
+to be perfect for the structure to be trusted.
 
-Fix 2 — ASYMMETRIC RELAXATION (EffectDreamSimulator.ts:936):
-- relaxGuardsForFuture required confidence > 0.55 for ALL event types.
-  With the masked 0.500, minority events never crossed 0.55, so the
-  MAX pressure guard was never relaxed. Ambient effects with low
-  pressureRange.max were filtered out by the current climax pressure
-  (~0.95) even when a breakdown was predicted in 4.5s.
-- The threshold is now context-aware:
-    Minority events (breakdown_imminent, energy_drop): 0.40
-    Majority events (drop, buildup, spike): 0.55
-- A breakdown_imminent with prob 0.45 now relaxes the MAX pressure
-  guard, allowing ambient effects to enter the pre-buffer during a
-  climax. Combined with Fix 1, the full pathway is:
-    Markov P(breakdown)=0.33 > 0.25 → breakdown_imminent (WAVE 7559)
-    → DreamEngineIntegrator passes 0.45 as confidence (WAVE 7560 Fix 1)
-    → 0.45 > 0.40 threshold → relaxGuardsForFuture = true (WAVE 7560 Fix 2)
-    → filterByPressure forgives currentPressure > pr.max
-    → ambient effects enter ranking → Corazon Latino wins with SCORE=0.907
+Majority events (drop, buildup, spike) remain at 0.55.
 
 tsc --noEmit green (only pre-existing hyperion-render.worker.ts error).
 

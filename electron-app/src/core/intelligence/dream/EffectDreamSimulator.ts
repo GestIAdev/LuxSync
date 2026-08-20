@@ -932,8 +932,22 @@ export class EffectDreamSimulator {
     // eventos. El parche temporal (0.40 para low-energy) fue removido porque
     // la probabilidad del energy_drop ahora es orgánica (WAVE 7557 en
     // PredictionEngine) y supera 0.55 naturalmente cuando la caída es real.
+    // 🌊 WAVE 7560: ASYMMETRIC RELAXATION — Breakdowns/valleys son minorías
+    // estadísticas (prob ~0.40-0.45). El threshold 0.55 los bloquea
+    // sistemáticamente. Ahora el threshold es context-aware:
+    //   - Minority events (breakdown_imminent, energy_drop):
+    //     0.40 — suficiente para confiar en la estructura del Markov.
+    //   - Majority events (drop, buildup, spike): 0.55 — requiere evidencia.
+    // Esto, combinado con el TRUE CONFIDENCE del DreamEngineIntegrator
+    // (WAVE 7560), permite que un breakdown_imminent con prob 0.45 relaje
+    // el MAX pressure guard y deje entrar efectos ambientales al pre-buffer
+    // durante un climax.
+    const isMinorityEvent = predType === 'breakdown_imminent'
+      || predType === 'energy_drop'
+    const requiredConfidence = isMinorityEvent ? 0.40 : 0.55
     const relaxGuardsForFuture = (isFutureHeavyEvent || isFutureBuildup || isFutureLowEnergyEvent)
-      && prediction.confidence > 0.55
+      && prediction.confidence > requiredConfidence
+      && timeToEvent > 0
 
     if (projectedZone !== energyZone) {
       console.log(

@@ -321,8 +321,13 @@ let customLibPath: string = ''
 async function rescanAllLibraries(): Promise<FixtureLibraryItem[]> {
   
   // Scan both libraries
-  const factoryDefinitions = fxtParser.scanFolder(factoryLibPath)
-  const customDefinitions = fxtParser.scanFolder(customLibPath)
+  // ðŸ›¡ï¸ WAVE 7555: UNBLOCK ALPHA â scanFolder ahora es async.
+  // Promise.all permite que ambas librerÃ­as se escaneen en paralelo
+  // sin bloquear el event loop del main thread.
+  const [factoryDefinitions, customDefinitions] = await Promise.all([
+    fxtParser.scanFolder(factoryLibPath),
+    fxtParser.scanFolder(customLibPath),
+  ])
   
   // 🧹 WAVE 671.5: Removed obsolete test_beam debug log (no longer needed)
   // WAVE 390.5 DEBUG: Log test_beam specifically (it has physics)
@@ -1453,6 +1458,22 @@ app.whenReady().then(async () => {
       createWindow()
     }
   })
+
+  // ðŸ›¡ï¸ WAVE 7555: UNBLOCK ALPHA â Watchdog de latencia del Event Loop
+  // Monitorea el lag real del event loop cada 100ms. Si el lag supera
+  // 250ms (indicando I/O bloqueante o GC pesado), emite un warning.
+  // Esto permite correlacionar freezes con falsos Phoenix de workers.
+  {
+    let _watchdogLastTick = Date.now()
+    setInterval(() => {
+      const now = Date.now()
+      const lag = now - _watchdogLastTick - 100
+      if (lag > 250) {
+        console.warn(`[ALPHA-WATCHDOG] âšï¸ Event loop congelado por ${lag}ms. Posible I/O bloqueante o GC pesado.`)
+      }
+      _watchdogLastTick = now
+    }, 100)
+  }
 })
 
 // ============================================================================

@@ -567,90 +567,41 @@ export class FXTParser {
   }
 
   /**
-   * 📂 Escanea una carpeta y parsea todos los .fxt y .json
+   * ðŸ“ Escanea una carpeta y parsea todos los .fxt y .json
    * WAVE 255: Added .json support for custom fixture definitions
+   * ðŸ›¡ï¸ WAVE 7555: UNBLOCK ALPHA â convertido a async con fs.promises
+   *   para no bloquear el event loop del main thread durante rescans.
    */
-  scanFolder(folderPath: string): ParsedFixture[] {
+  async scanFolder(folderPath: string): Promise<ParsedFixture[]> {
     const fixtures: ParsedFixture[] = []
-    
-    if (!fs.existsSync(folderPath)) {
-      console.warn(`[FXTParser] ⚠️ Folder not found: ${folderPath}`)
+
+    try {
+      await fs.promises.access(folderPath)
+    } catch {
+      console.warn(`[FXTParser] âšï¸ Folder not found: ${folderPath}`)
       return fixtures
     }
 
-    const files = fs.readdirSync(folderPath)
-    
+    const files = await fs.promises.readdir(folderPath)
+
+    // ðŸ›¡ï¸ WAVE 7555: Leer todos los archivos en paralelo con Promise.all
+    // para que el event loop pueda procesar otras tareas mientras se lee disco.
+    const parseTasks: Promise<ParsedFixture | null>[] = []
+
     for (const file of files) {
       const lowerFile = file.toLowerCase()
-      if (lowerFile.endsWith('.fxt')) {
-        const fullPath = path.join(folderPath, file)
-        const fixture = this.parseFile(fullPath)
-        if (fixture) {
-          fixtures.push(fixture)
-        }
-      } else if (lowerFile.endsWith('.json')) {
-        // WAVE 255: Support JSON fixture definitions
-        const fullPath = path.join(folderPath, file)
-        try {
-          const jsonContent = fs.readFileSync(fullPath, 'utf-8')
-          const jsonFixture = JSON.parse(jsonContent)
+      const fullPath = path.join(folderPath, file)
 
-          const fixtureNameForDye = String(jsonFixture.name || file)
-          const isTungstenFixture = fixtureNameForDye.toLowerCase().includes('tungsten')
-          if (isTungstenFixture && Array.isArray(jsonFixture.channels)) {
-            const rotationChannel = jsonFixture.channels.find((ch: any) =>
-              typeof ch?.type === 'string' && ch.type.toLowerCase() === 'rotation',
-            )
-            if (rotationChannel) {
-              // DYE Canal Rotation log silenced
-            }
-          }
-          
-          // Detect type from name or explicit type field
-          let fixtureType: FixtureType = 'generic'
-          if (jsonFixture.type) {
-            fixtureType = jsonFixture.type as FixtureType
-          } else {
-            const nameLower = (jsonFixture.name || file).toLowerCase()
-            for (const [model, type] of Object.entries(KNOWN_MODELS)) {
-              if (nameLower.includes(model)) {
-                fixtureType = type
-                break
-              }
-            }
-          }
-          
-          const fixture: ParsedFixture = {
-            id: jsonFixture.id || `json-${file.replace('.json', '')}`,
-            name: jsonFixture.name || file.replace('.json', ''),
-            manufacturer: jsonFixture.manufacturer || 'Unknown',
-            channelCount: jsonFixture.channelCount || jsonFixture.channels?.length || 1,
-            type: fixtureType,
-            filePath: fullPath,
-            channels: jsonFixture.channels || [],
-            confidence: 0.9,
-            detectionMethod: 'manual',
-            hasMovementChannels: jsonFixture.hasMovementChannels || false,
-            has16bitMovement: jsonFixture.has16bitMovement || false,
-            hasColorMixing: jsonFixture.hasColorMixing || true,
-            hasColorWheel: jsonFixture.hasColorWheel || false,
-            // WAVE 389.6: Include physics and capabilities
-            physics: jsonFixture.physics,
-            capabilities: jsonFixture.capabilities,
-            // 🔧 WAVE 4735.11: Preserve V2 Forge graph data from JSON
-            nodeGraph: jsonFixture.nodeGraph,
-            forgeGraph: jsonFixture.forgeGraph,
-            // 🏛️ WAVE 4742: Preserve DMX Governor Engine rules
-            dmxGovernors: jsonFixture.dmxGovernors,
-          }
-          fixtures.push(fixture)
-          if (this.debug) {
-            console.log(`[FXTParser] 📄 Parsed JSON: ${fixture.name} (${fixture.channelCount} ch)`)
-          }
-        } catch (err) {
-          console.warn(`[FXTParser] ⚠️ Failed to parse JSON: ${file}`, err)
-        }
+      if (lowerFile.endsWith('.fxt')) {
+        parseTasks.push(this._parseFxtFile(fullPath))
+      } else if (lowerFile.endsWith('.json')) {
+        parseTasks.push(this._parseJsonFixture(fullPath, file))
       }
+    }
+
+    const results = await Promise.all(parseTasks)
+    for (const fixture of results) {
+      if (fixture) fixtures.push(fixture)
     }
 
     // Log resumen
@@ -658,10 +609,89 @@ export class FXTParser {
     const parCount = fixtures.filter(f => f.type === 'par').length
     const strobeCount = fixtures.filter(f => f.type === 'strobe').length
     const otherCount = fixtures.length - movingCount - parCount - strobeCount
-    
-    // WAVE 2098: Boot silence — scan summary removed
+
+    // WAVE 2098: Boot silence â scan summary removed
 
     return fixtures
+  }
+
+  /**
+   * ðŸ›¡ï¸ WAVE 7555: Helper async para parsear un .fxt sin bloquear el event loop.
+   */
+  private async _parseFxtFile(fullPath: string): Promise<ParsedFixture | null> {
+    try {
+      const content = await fs.promises.readFile(fullPath, 'utf-8')
+      return this.parseContent(content, fullPath)
+    } catch (err) {
+      console.error(`[FXTParser] â Error parsing ${fullPath}:`, err)
+      return null
+    }
+  }
+
+  /**
+   * ðŸ›¡ï¸ WAVE 7555: Helper async para parsear un .json fixture sin bloquear.
+   */
+  private async _parseJsonFixture(fullPath: string, file: string): Promise<ParsedFixture | null> {
+    try {
+      const jsonContent = await fs.promises.readFile(fullPath, 'utf-8')
+      const jsonFixture = JSON.parse(jsonContent)
+
+      const fixtureNameForDye = String(jsonFixture.name || file)
+      const isTungstenFixture = fixtureNameForDye.toLowerCase().includes('tungsten')
+      if (isTungstenFixture && Array.isArray(jsonFixture.channels)) {
+        const rotationChannel = jsonFixture.channels.find((ch: any) =>
+          typeof ch?.type === 'string' && ch.type.toLowerCase() === 'rotation',
+        )
+        if (rotationChannel) {
+          // DYE Canal Rotation log silenced
+        }
+      }
+
+      // Detect type from name or explicit type field
+      let fixtureType: FixtureType = 'generic'
+      if (jsonFixture.type) {
+        fixtureType = jsonFixture.type as FixtureType
+      } else {
+        const nameLower = (jsonFixture.name || file).toLowerCase()
+        for (const [model, type] of Object.entries(KNOWN_MODELS)) {
+          if (nameLower.includes(model)) {
+            fixtureType = type
+            break
+          }
+        }
+      }
+
+      const fixture: ParsedFixture = {
+        id: jsonFixture.id || `json-${file.replace('.json', '')}`,
+        name: jsonFixture.name || file.replace('.json', ''),
+        manufacturer: jsonFixture.manufacturer || 'Unknown',
+        channelCount: jsonFixture.channelCount || jsonFixture.channels?.length || 1,
+        type: fixtureType,
+        filePath: fullPath,
+        channels: jsonFixture.channels || [],
+        confidence: 0.9,
+        detectionMethod: 'manual',
+        hasMovementChannels: jsonFixture.hasMovementChannels || false,
+        has16bitMovement: jsonFixture.has16bitMovement || false,
+        hasColorMixing: jsonFixture.hasColorMixing || true,
+        hasColorWheel: jsonFixture.hasColorWheel || false,
+        // WAVE 389.6: Include physics and capabilities
+        physics: jsonFixture.physics,
+        capabilities: jsonFixture.capabilities,
+        // ðŸ§§ WAVE 4735.11: Preserve V2 Forge graph data from JSON
+        nodeGraph: jsonFixture.nodeGraph,
+        forgeGraph: jsonFixture.forgeGraph,
+        // ðŸ WAVE 4742: Preserve DMX Governor Engine rules
+        dmxGovernors: jsonFixture.dmxGovernors,
+      }
+      if (this.debug) {
+        console.log(`[FXTParser] ðŸ„ Parsed JSON: ${fixture.name} (${fixture.channelCount} ch)`)
+      }
+      return fixture
+    } catch (err) {
+      console.warn(`[FXTParser] âšï¸ Failed to parse JSON: ${file}`, err)
+      return null
+    }
   }
 }
 

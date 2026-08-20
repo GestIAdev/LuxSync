@@ -1,38 +1,40 @@
-feat(selene): WAVE 7550-7553 — CALM mood, anti-autotune bass gate, Great Z-Score Purge
+feat(selene): WAVE 7556-7557 — YIN YANG: ambient/transit effects go proactive
 
-WAVE 7550: CALM mood blockPatterns + graceful degradation
-- MoodProfile extended with blockPatterns: string[]
-- CALM profile blocks ['strobe', 'heavy', 'divine'] patterns
-- isEffectBlocked() checks patterns in addition to exact IDs
-- EffectDreamSimulator.getVibeAllowedEffects() filters by mood blockList
-  BEFORE candidate generation → natural degradation to soft effects
+The Dream Simulator only predicted high-energy events (drop_incoming,
+buildup_starting) and its zone override only scaled UP (peak/intense).
+Ambient/transit effects (latin_bubbles, etc.) were never simulated
+proactively — they only fired as Sovereign Clock reroute consolation
+when a heavy/divine effect was aborted.
 
-WAVE 7551-7552: Anti-autotune bass gate hardening (subsequently reverted)
-- Bass gate threshold 0.35→0.40, vocal dominance check, bass/mid ratio,
-  bass Z-score (zL) check — all added then reverted in WAVE 7553
-- FIRE-DIAG enriched with bass/mid/high bands + zL (RETAINED)
+WAVE 7556 — YIN YANG (bidirectional prediction):
+- Bug 1+2: Zone override now also scales DOWN. breakdown_imminent maps
+  to gentle, energy_drop maps to ambient. The groove cap only applies
+  to ascending overrides; descending ones are uncapped to open the pool.
+- Bug 3: filterByPressure relaxGuardsForFuture is now bidirectional.
+  For drops/buildups it relaxes the MIN gate (pressure will rise).
+  For breakdowns/valleys it relaxes the MAX gate (pressure will fall).
+- Fix 4: Scoring bonus (+0.15) for archetype ambient/utility effects
+  with aggression <= 0.60 during breakdown/energy_drop predictions.
+  Symmetric to the IMPACT_EFFECTS boost that heavy candidates receive
+  during drops. Added archetype field to RegistryEntry (propagated
+  from CognitiveDNA in _buildEntryFromV3).
 
-WAVE 7553: THE GREAT Z-SCORE PURGE & ANTI-AUTOTUNE RESET
-- Reverted all WAVE 7550-7552 bloat: bass gate back to simple bass <= 0.35
-- Eradicated zScoreGuards.minimumZ from ALL 46 .lfx files (set to null)
-- Centralized heavy Z-floor in code: Z >= 1.0 for aggression > 0.80
-  (EffectDreamSimulator, SeleneTitanConscious, SovereignClockGuard)
-- Removed Minimal Rescue fallback (WAVE 5009) — no more bypassed shots
-- Kept strobe guard: isStrobe && Z <= 0 → skip (descending energy)
-- Kept relaxGuardsForFuture for guaranteed future predictions
+WAVE 7557 — Organic Kinematic Confidence:
+- Exterminated the hardcoded probability 0.50 magic number in the
+  energy_drop heuristic fallback (PredictionEngine.ts). Replaced with
+  an organic confidence derived from the energy descent velocity:
+    dropVelocity = abs(velocity)  (already computed, was unused)
+    normalizedDrop = clamp(dropVelocity / 0.05, 0, 1)
+    organicProbability = 0.45 + (normalizedDrop * 0.45)  range 0.45 to 0.90
+  Gentle drift (v near 0) gives 0.495 (below 0.55 threshold, no
+  proactive buffering — correct, not a real breakdown). Steep cliff
+  (v >= 0.05) gives 0.90 (well above threshold, full guard relaxation).
+  ETA also scales inversely with velocity (8 beats to 2 beats).
+- Reverted the WAVE 7556.1 temporary patch (threshold 0.40 for
+  low-energy). Universal threshold 0.55 restored — energy_drop now
+  crosses it naturally when the descent is real.
 
-Genesis ecosystem updates:
-- ColiseumService, GenesisVaultService, OrganismMaterializer, ecology,
-  fitness, loot, naming, operators, types — various improvements
-- Feral Wave Omega forensic report added
-- ProceduralNamer test updated
-
-Forensic reports:
-- REPORTE_FILTRO_AUTOTUNE.md — full audit of Z-score system
-- FERAL-WAVE-OMEGA-FORENSIC.md
-- mierdatune.md, estadogenesis.md, operadoresreport.md
-
-96 files changed, 8822 insertions, 6462 deletions
+tsc --noEmit green (only pre-existing hyperion-render.worker.ts error).
 
 Generated with [Devin](https://devin.ai)
 

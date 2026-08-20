@@ -232,6 +232,8 @@ export interface RegistryEntry {
 
   /** Genoma cognitivo (alias plano para acceso O(1) en hot path). */
   readonly dna: FrozenGenome
+  /** Arquetipo semántico del clip (strobe/ambient/heavy/divine/utility). */
+  readonly archetype: UserArchetype | undefined
   readonly textureAffinity: TextureAffinity
   readonly compatibleVibes: readonly string[]
   readonly validSections: readonly string[]

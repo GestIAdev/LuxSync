@@ -1122,15 +1122,45 @@ export function predictFromEnergy(
   
   // ═══════════════════════════════════════════════════════════════════════
   // FALLING ENERGY: Bajando → Recovery/Breakdown
+  // 🌊 WAVE 7557: ORGANIC KINEMATIC CONFIDENCE — Exterminated the hardcoded
+  //   probability: 0.50 magic number. The confidence now derives from the
+  //   physical kinematics of the energy descent:
+  //
+  //   dropVelocity = |velocity|  (frames-per-frame derivative, already computed)
+  //   normalizedDrop = clamp(dropVelocity / 0.05, 0, 1)
+  //     — 0.05/frame = steep drop (full range in ~20 frames ≈ 330ms @ 60fps)
+  //     — Below 0.01/frame = gentle drift, barely a breakdown
+  //
+  //   organicProbability = 0.45 + (normalizedDrop * 0.45)
+  //     — Gentle drift (v≈0): 0.45 — "maybe something is happening"
+  //     — Steep cliff (v≥0.05): 0.90 — "the floor just fell out"
+  //
+  //   This scales continuously from 0.45 to 0.90, crossing the Dream
+  //   Simulator's relaxGuardsForFuture threshold (> 0.55) whenever the
+  //   descent is real (v > ~0.012/frame), and staying below it for
+  //   negligible drifts that don't warrant proactive buffering.
   // ═══════════════════════════════════════════════════════════════════════
   if (trend === 'falling' && currentEnergy < 0.5) {
+    // 🌊 WAVE 7557: Kinematic confidence — velocity is negative when falling.
+    const dropVelocity = Math.abs(velocity)
+    const DROP_VELOCITY_STEEP = 0.05  // frames-per-frame ≈ full range in ~20 frames
+    const normalizedDrop = Math.max(0, Math.min(1, dropVelocity / DROP_VELOCITY_STEEP))
+    const organicProbability = 0.45 + (normalizedDrop * 0.45)  // 0.45 → 0.90
+
+    // ETA scales inversely with velocity: steep drops arrive sooner.
+    // Gentle drift (v≈0) → 6s; steep cliff (v≥0.05) → 2s.
+    const safeBpmFalling = (bpm > 0 && Number.isFinite(bpm)) ? bpm : 120
+    const msPerBeatFalling = 60000 / safeBpmFalling
+    const estimatedBeatsFalling = Math.max(2, Math.round(8 - (normalizedDrop * 6)))
+    const estimatedMsFalling = estimatedBeatsFalling * msPerBeatFalling
+
     return {
       type: 'energy_drop',
       probableSection: 'breakdown',
-      probability: 0.50,
-      estimatedTimeMs: 4000,
-      estimatedBeats: 8,
-      reasoning: `📉 FALLING ENERGY: ${(currentEnergy * 100).toFixed(0)}% y bajando → Recovery mode`,
+      probability: organicProbability,
+      estimatedTimeMs: estimatedMsFalling,
+      estimatedBeats: estimatedBeatsFalling,
+      reasoning: `📉 FALLING ENERGY: ${(currentEnergy * 100).toFixed(0)}% y bajando (v=${dropVelocity.toFixed(4)}/frame, prob=${organicProbability.toFixed(2)}) → Recovery mode`,
       suggestedActions: [
         { type: 'recover', effect: 'breathe', intensity: 0.4, durationMs: 3000, timingOffsetMs: 0 },
       ],

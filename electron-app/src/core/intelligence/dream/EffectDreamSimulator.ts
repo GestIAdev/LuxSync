@@ -700,12 +700,22 @@ export class EffectDreamSimulator {
    * does not contain the current real-time pressure.
    *
    * A pressureRange of {0,0} is permissive (no gate).
-   * If relaxGuardsForFuture is true, the min gate is bypassed (pressure will arrive).
+   * If relaxGuardsForFuture is true:
+   *   - For heavy/buildup events: the MIN gate is bypassed (pressure will rise).
+   *   - For breakdown/valley events: the MAX gate is bypassed (pressure will fall).
+   *
+   * 🌊 WAVE 7556: YIN YANG — relaxGuardsForFuture ahora es BIDIRECCIONAL.
+   * Antes solo perdonaba que la presión actual fuera demasiado baja (drop incoming).
+   * Ahora también perdona que sea demasiado alta (breakdown incoming) para que
+   * los efectos ambientales con pressureRange.max bajo puedan competir como
+   * candidatos cuando viene un parón, en vez de ser filtrados por la presión
+   * alta del frame actual.
    */
   private filterByPressure(
     effects: string[],
     currentPressure: number,
     relaxGuardsForFuture: boolean,
+    isFutureLowEnergyEvent: boolean = false,
   ): string[] {
     const registry = getDynamicEffectRegistry()
     const filtered = effects.filter(effect => {
@@ -713,7 +723,12 @@ export class EffectDreamSimulator {
       if (!entry) return false
       const pr = entry.pressureRange
       if (pr.min === 0 && pr.max === 0) return true
-      if (relaxGuardsForFuture && currentPressure < pr.min) return true
+      if (relaxGuardsForFuture) {
+        // Drop/buildup incoming: la presión subirá — perdonar MIN.
+        if (currentPressure < pr.min) return true
+        // 🌊 WAVE 7556: Breakdown/valley incoming: la presión bajará — perdonar MAX.
+        if (isFutureLowEnergyEvent && currentPressure > pr.max) return true
+      }
       return currentPressure >= pr.min && currentPressure <= pr.max
     })
 
@@ -832,9 +847,21 @@ export class EffectDreamSimulator {
       predType === 'energy_spike'
     ) && timeToEvent > 0
     const isFutureBuildup = predType === 'buildup_starting' && timeToEvent > 0
+    // 🌊 WAVE 7556: YIN YANG — Predicciones de BAJA energía. El oráculo ya
+    // producía breakdown_imminent/energy_drop pero el Dream Simulator los
+    // ignoraba para el zone override y el pressure relaxation. Ahora los
+    // escuchamos para que los efectos ambientales/transitorios compitan
+    // como candidatos proactivos, no solo como reroute de rescate.
+    const isFutureBreakdown = predType === 'breakdown_imminent' && timeToEvent > 0
+    const isFutureValley = predType === 'energy_drop' && timeToEvent > 0
+    const isFutureLowEnergyEvent = isFutureBreakdown || isFutureValley
 
     // Zona proyectada: la que habrá en el momento del evento, no la actual.
     // drop/energy_spike → peak; buildup → intense; cualquier otro → zona actual.
+    // 🌊 WAVE 7556: YIN YANG — Override BIDIRECCIONAL. Antes solo subía
+    // (peak/intense). Ahora también baja: breakdown → gentle, valley → ambient.
+    // Esto permite que filterByZone incluya efectos ambientales (aggression
+    // baja) como candidatos cuando viene un parón, en vez de filtrarlos.
     // §5.4: Vibe branch PURGED — groove-based interpolation replaces isLatinVibe.
     // High-groove contexts (latin reggaeton) have chronically high energy that
     // makes the predictor see "energy_spike" on every beat. The zone cap is now
@@ -879,9 +906,18 @@ export class EffectDreamSimulator {
       ? Math.cos((state.energy - 0.70) * Math.PI / 0.30)  // peak at 0.70, zero at 0.55/0.85
       : 0
     const grooveProxy = Math.max(0, Math.min(1, tempoGroove * energyGroove))
+    // 🌊 WAVE 7556: YIN YANG — rawProjectedZone ahora es bidireccional.
+    //   Sube: heavy→peak, buildup→intense (comportamiento original)
+    //   Baja: breakdown→gentle, valley→ambient (NUEVO)
+    //   Neutral: ningún evento futuro → zona actual
     const rawProjectedZone = isFutureHeavyEvent ? 'peak'
       : isFutureBuildup ? 'intense'
+      : isFutureBreakdown ? 'gentle'
+      : isFutureValley ? 'ambient'
       : energyZone
+    // El groove cap solo aplica a overrides ASCENDENTES (peak/intense).
+    // Los overrides descendentes (gentle/ambient) no se capan — el objetivo
+    // es precisamente abrir el pool a efectos suaves, no limitarlos.
     const projectedZone = grooveProxy > 0.5 && (rawProjectedZone === 'peak' || rawProjectedZone === 'intense')
       ? grooveProxy > 0.85 ? 'active' : 'intense'
       : rawProjectedZone
@@ -889,7 +925,14 @@ export class EffectDreamSimulator {
     // Relajar guards predictivos: si el evento está garantizado, el Z y la energía
     // del frame actual son irrelevantes — subirán cuando el drop rompa.
     // Solo se relaja si la predicción es de alta confianza (> 0.55).
-    const relaxGuardsForFuture = (isFutureHeavyEvent || isFutureBuildup)
+    // 🌊 WAVE 7556: YIN YANG — Ahora también se relaja para eventos de BAJA
+    // energía. Si viene un breakdown/valley, la presión actual puede ser alta
+    // pero bajará — perdonamos que currentPressure > pr.max (ver filterByPressure).
+    // 🩸 WAVE 7557: El threshold universal 0.55 se mantiene para todos los
+    // eventos. El parche temporal (0.40 para low-energy) fue removido porque
+    // la probabilidad del energy_drop ahora es orgánica (WAVE 7557 en
+    // PredictionEngine) y supera 0.55 naturalmente cuando la caída es real.
+    const relaxGuardsForFuture = (isFutureHeavyEvent || isFutureBuildup || isFutureLowEnergyEvent)
       && prediction.confidence > 0.55
 
     if (projectedZone !== energyZone) {
@@ -904,7 +947,7 @@ export class EffectDreamSimulator {
 
     // 🎯 pressureRange gate — filter by acoustic pressure envelope
     const currentPressure = context.energy ?? state.energy
-    const pressureFilteredEffects = this.filterByPressure(zoneFilteredEffects, currentPressure, relaxGuardsForFuture)
+    const pressureFilteredEffects = this.filterByPressure(zoneFilteredEffects, currentPressure, relaxGuardsForFuture, isFutureLowEnergyEvent)
 
     // 🔍 WAVE 7522: FILTER AUDIT — Log once every 30s to see where effects are lost
     if (!this._lastFilterAuditTs || Date.now() - this._lastFilterAuditTs > 30000) {
@@ -1698,9 +1741,29 @@ export class EffectDreamSimulator {
     if (predictionType === 'breakdown_imminent' || predictionType === 'energy_drop') {
       const ATMOSPHERIC_EFFECTS = ['mist', 'breath', 'ambient', 'fiber', 'drift', 'moon']
       const isAtmospheric = ATMOSPHERIC_EFFECTS.some(keyword => effectName.includes(keyword))
-      
+
       if (isAtmospheric) {
         score += 0.20
+      }
+
+      // 🌊 WAVE 7556: YIN YANG — Bonus arquetípico para candidatos ambientales.
+      // El boost por keyword solo captura efectos con nombres obvios (mist, breath).
+      // Efectos transitorios custom (latin_bubbles, etc.) con archetype 'ambient' o
+      // 'utility' y aggression baja no recibían el boost → perdían contra heavy
+      // effects que colaban por el anti-monopoly fallback.
+      // Ahora: archetype ambient/utility + aggression <= 0.60 → +0.15 bonus.
+      // Esto es simétrico al isHeavyCandidate/isDivineCandidate que ya reciben
+      // prioridad en drops via el IMPACT_EFFECTS boost.
+      const _registry = getDynamicEffectRegistry()
+      const _entry = _registry.getEntry(scenario.effect.effect)
+      if (_entry) {
+        const archetype = _entry.archetype
+        const aggression = _entry.dna.aggression ?? 0.5
+        const isAmbientArchetype = archetype === 'ambient' || archetype === 'utility'
+        const isLowAggression = aggression <= 0.60
+        if (isAmbientArchetype && isLowAggression) {
+          score += 0.15
+        }
       }
     }
     

@@ -39,6 +39,13 @@ import type { LuxTrackV3, LuxTargetZone } from '../../core/LuxFileV3'
 import { TRACK_ZONE_COLORS, ZONE_BASE_LABELS } from '../../core/LuxFileV3.factories'
 // WAVE 2552: Track Management UI overlay
 import { TrackLabelsOverlay } from './TrackLabelsOverlay'
+// 🌊 WAVE 7564: THE UNDULATING GRID — variable-tempo beat grid view model
+import {
+  buildGridMarks,
+  sliceVisibleMarks,
+  type TimelineBeatGrid,
+  type GridMark,
+} from './beatGridModel'
 import './TimelineCanvas.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -54,6 +61,15 @@ export interface TimelineCanvasProps {
   onSeek: (time: number) => void
   // WAVE 2005: Audio analysis data
   analysisData?: AnalysisData | null
+  /**
+   * 🌊 WAVE 7564: measured variable-tempo grid from the Ellis DP tracker.
+   *
+   * Supplied by ChronosLayout, which normalises it from whichever source is
+   * live — a fresh phantom analysis or the grid embedded in a loaded .lux.
+   * When null (analysis still running, or a pre-7563 project) every render
+   * site falls back to the uniform `bpm` grid automatically.
+   */
+  beatGrid?: TimelineBeatGrid | null
   durationMs?: number
   // WAVE 2006: Clips and interaction
   clips?: TimelineClip[]
@@ -138,38 +154,11 @@ const TRACK_LABEL_WIDTH = 80
 // HELPER FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * Calculate beat positions for ruler rendering
- */
-function calculateBeatPositions(
-  viewport: TimelineViewport,
-  bpm: number,
-  width: number
-): { position: number; beat: number; isBar: boolean }[] {
-  const msPerBeat = 60000 / bpm
-  const beatsPerBar = 4 // 4/4 time signature
-  
-  const positions: { position: number; beat: number; isBar: boolean }[] = []
-  
-  // Find first beat in viewport
-  const firstBeat = Math.floor(viewport.startTime / msPerBeat)
-  const lastBeat = Math.ceil(viewport.endTime / msPerBeat)
-  
-  for (let beat = firstBeat; beat <= lastBeat; beat++) {
-    const timeMs = beat * msPerBeat
-    const position = ((timeMs - viewport.startTime) / 1000) * viewport.pixelsPerSecond
-    
-    if (position >= 0 && position <= width) {
-      positions.push({
-        position,
-        beat: beat + 1, // 1-indexed for display
-        isBar: beat % beatsPerBar === 0,
-      })
-    }
-  }
-  
-  return positions
-}
+// 🌊 WAVE 7564: `calculateBeatPositions()` removed — it built a uniform
+// `t += msPerBeat` ruler and had been dead code (defined, never called) since
+// the ruler grew its own inline loop. Grid geometry now lives in
+// `beatGridModel.ts`; leaving a second, stale, constant-tempo implementation
+// in the file would be an invitation to wire the wrong one back up.
 
 /**
  * Format time for ruler labels
@@ -191,17 +180,31 @@ interface TrackRendererProps {
   bpm: number
   width: number
   yOffset: number
+  /**
+   * 🌊 WAVE 7564: pre-built measured marks for the whole track, or null to
+   * fall back to the uniform `bpm` grid. Built once in the parent and shared
+   * by every renderer — each one only pays for its own viewport slice.
+   */
+  gridMarks?: readonly GridMark[] | null
+  /** Detected metre (4 or 3). Drives bar length in the uniform fallback. */
+  timeSignature?: number
 }
 
 /**
  * 🎼 WAVE 2011: MUSICAL RULER - Bars & Beats (not seconds!)
+ * 🌊 WAVE 7564: THE UNDULATING GRID — driven by MEASURED beats
+ *
  * DAW-style musical grid:
  * - Major marks: Every BAR (compás) with bar number
  * - Minor marks: Every BEAT within the bar
- * - Based on BPM and 4/4 time signature
- * 
- * Formula: msPerBeat = 60000 / BPM
- *          msPerBar = msPerBeat * 4 (4/4 time)
+ *
+ * The ruler no longer synthesises its own `t += 60000/bpm` grid. It walks the
+ * measured beat array produced by the Ellis DP tracker, so the bar lines
+ * compress and stretch with the actual performance. Bar boundaries come from
+ * detected downbeats rather than from counting every fourth beat.
+ *
+ * Falls back to the uniform grid when `gridMarks` is null — no analysis yet,
+ * or a pre-7563 project.
  */
 const RulerTrackRenderer: React.FC<TrackRendererProps> = memo(({
   track,
@@ -209,87 +212,56 @@ const RulerTrackRenderer: React.FC<TrackRendererProps> = memo(({
   bpm,
   width,
   yOffset,
+  gridMarks,
+  timeSignature = 4,
 }) => {
-  // 🎼 MUSICAL GRID CALCULATIONS
-  const msPerBeat = 60000 / bpm
-  const msPerBar = msPerBeat * 4 // 4/4 time signature
   const pixelsPerMs = viewport.pixelsPerSecond / 1000
-  
+
   // Determine if we should show beat subdivisions based on zoom
   const showBeats = viewport.pixelsPerSecond > 30
-  const showSubBeats = viewport.pixelsPerSecond > 100
-  
-  // Build grid lines: bars and beats
-  const gridLines: { 
-    timeMs: number
-    x: number 
-    type: 'bar' | 'beat' | 'subbeat'
-    barNum: number
-    beatNum: number
-  }[] = []
-  
-  // Find first bar in viewport
-  const firstBar = Math.max(0, Math.floor(viewport.startTime / msPerBar))
-  
-  // 🔥 WAVE 2040.40: INFINITE HORIZON — Calculate last bar from SCREEN WIDTH
-  // Not from viewport.endTime (which is a logical concept, not visual limit)
+
+  // 🔥 WAVE 2040.40: INFINITE HORIZON — visible span from SCREEN WIDTH, not
+  // viewport.endTime (a logical concept, not a visual limit).
   const visibleWidth = width - TRACK_LABEL_WIDTH
   const visibleDurationMs = visibleWidth / pixelsPerMs
-  const viewportEnd = viewport.startTime + visibleDurationMs
-  const lastBar = Math.ceil(viewportEnd / msPerBar) + 1  // +1 for safety margin
-  
-  for (let bar = firstBar; bar <= lastBar; bar++) {
-    // Add bar marker
-    const barTimeMs = bar * msPerBar
-    const barX = TRACK_LABEL_WIDTH + (barTimeMs - viewport.startTime) * pixelsPerMs
-    
-    if (barX >= TRACK_LABEL_WIDTH - 50 && barX <= width + 50) {
-      gridLines.push({
-        timeMs: barTimeMs,
-        x: barX,
-        type: 'bar',
-        barNum: bar + 1, // 1-indexed for display
-        beatNum: 1,
+  // A 50 px margin either side keeps labels from popping at the edges.
+  const marginMs = 50 / pixelsPerMs
+  const spanStartMs = viewport.startTime - marginMs
+  const spanEndMs = viewport.startTime + visibleDurationMs + marginMs
+
+  // 🌊 WAVE 7564: binary-searched slice of the measured grid (or a
+  // synthesised uniform one when no analysis is available).
+  const marks = useMemo(
+    () => sliceVisibleMarks(gridMarks ?? [], spanStartMs, spanEndMs, bpm, timeSignature),
+    [gridMarks, spanStartMs, spanEndMs, bpm, timeSignature],
+  )
+
+  const gridLines = useMemo(() => {
+    const out: {
+      timeMs: number
+      x: number
+      type: 'bar' | 'beat'
+      barNum: number
+      beatNum: number
+      synthetic: boolean
+    }[] = []
+
+    for (let i = 0; i < marks.length; i++) {
+      const m = marks[i]
+      if (!m.isBar && !showBeats) continue
+      const x = TRACK_LABEL_WIDTH + (m.timeMs - viewport.startTime) * pixelsPerMs
+      if (x < TRACK_LABEL_WIDTH - 50 || x > width + 50) continue
+      out.push({
+        timeMs: m.timeMs,
+        x,
+        type: m.isBar ? 'bar' : 'beat',
+        barNum: m.barNum,
+        beatNum: m.beatNum,
+        synthetic: m.synthetic,
       })
     }
-    
-    // Add beat markers within this bar
-    if (showBeats) {
-      for (let beat = 1; beat < 4; beat++) { // Beats 2, 3, 4 (beat 1 is the bar)
-        const beatTimeMs = barTimeMs + (beat * msPerBeat)
-        const beatX = TRACK_LABEL_WIDTH + (beatTimeMs - viewport.startTime) * pixelsPerMs
-        
-        if (beatX >= TRACK_LABEL_WIDTH && beatX <= width) {
-          gridLines.push({
-            timeMs: beatTimeMs,
-            x: beatX,
-            type: 'beat',
-            barNum: bar + 1,
-            beatNum: beat + 1,
-          })
-        }
-      }
-    }
-    
-    // Add sub-beat markers (1/8th notes) if very zoomed in
-    if (showSubBeats) {
-      for (let subbeat = 0; subbeat < 8; subbeat++) {
-        if (subbeat % 2 === 0) continue // Skip quarter notes (already drawn)
-        const subbeatTimeMs = barTimeMs + (subbeat * msPerBeat / 2)
-        const subbeatX = TRACK_LABEL_WIDTH + (subbeatTimeMs - viewport.startTime) * pixelsPerMs
-        
-        if (subbeatX >= TRACK_LABEL_WIDTH && subbeatX <= width) {
-          gridLines.push({
-            timeMs: subbeatTimeMs,
-            x: subbeatX,
-            type: 'subbeat',
-            barNum: bar + 1,
-            beatNum: Math.floor(subbeat / 2) + 1,
-          })
-        }
-      }
-    }
-  }
+    return out
+  }, [marks, viewport.startTime, pixelsPerMs, width, showBeats])
   
   return (
     <g className="timeline-track ruler-track" style={{ pointerEvents: 'none' }}>
@@ -303,18 +275,25 @@ const RulerTrackRenderer: React.FC<TrackRendererProps> = memo(({
         pointerEvents="none"
       />
       
-      {/* 🎼 Musical Grid Lines */}
-      {gridLines.map(({ timeMs, x, type, barNum, beatNum }) => {
+      {/* 🎼 Musical Grid Lines — 🌊 WAVE 7564: measured, downbeat-anchored */}
+      {gridLines.map(({ timeMs, x, type, barNum, beatNum, synthetic }) => {
         const isBar = type === 'bar'
-        const isBeat = type === 'beat'
-        
-        // Colors and sizes based on type
-        const strokeColor = isBar ? '#3b82f6' : isBeat ? 'rgba(59, 130, 246, 0.5)' : 'rgba(255,255,255,0.15)'
-        const strokeWidth = isBar ? 1.5 : isBeat ? 0.75 : 0.5
-        const lineY1 = isBar ? yOffset : isBeat ? yOffset + 12 : yOffset + 20
-        
+
+        // 🌊 WAVE 7564: DOWNBEAT EMPHASIS.
+        // A detected bar start now gets a genuinely heavier stroke (2.5 vs
+        // 0.75) and a full-height line, because it means something it did not
+        // mean before: this is where the analyser found the bar, not merely
+        // every fourth tick. Synthetic marks (extrapolated past the last
+        // measured beat) are dimmed — the grid should not present a ruler as
+        // an observation.
+        const strokeColor = isBar
+          ? (synthetic ? 'rgba(59, 130, 246, 0.45)' : '#3b82f6')
+          : (synthetic ? 'rgba(59, 130, 246, 0.18)' : 'rgba(59, 130, 246, 0.5)')
+        const strokeWidth = isBar ? 2.5 : 0.75
+        const lineY1 = isBar ? yOffset : yOffset + 12
+
         return (
-          <g key={`${barNum}-${beatNum}-${type}`} style={{ pointerEvents: 'none' }}>
+          <g key={`${type}-${timeMs.toFixed(2)}`} style={{ pointerEvents: 'none' }}>
             {/* Grid line */}
             <line
               x1={x}
@@ -325,6 +304,20 @@ const RulerTrackRenderer: React.FC<TrackRendererProps> = memo(({
               strokeWidth={strokeWidth}
               pointerEvents="none"
             />
+
+            {/* 🌊 WAVE 7564: downbeat cap — a small marker at the top of each
+                measured bar line, so bar starts are findable at a glance even
+                when zoomed out far enough that the numbers are culled. */}
+            {isBar && !synthetic && (
+              <rect
+                x={x - 2.5}
+                y={yOffset}
+                width={5}
+                height={4}
+                fill="#3b82f6"
+                pointerEvents="none"
+              />
+            )}
             
             {/* Bar number label */}
             {isBar && (
@@ -342,7 +335,7 @@ const RulerTrackRenderer: React.FC<TrackRendererProps> = memo(({
             )}
             
             {/* Beat number (small, subtle) */}
-            {isBeat && viewport.pixelsPerSecond > 60 && (
+            {!isBar && viewport.pixelsPerSecond > 60 && (
               <text
                 x={x + 2}
                 y={yOffset + 22}
@@ -401,7 +394,18 @@ RulerTrackRenderer.displayName = 'RulerTrackRenderer'
 
 /**
  * 🎼 WAVE 2011: Generic Track Renderer with Musical Grid
- * Shows beat grid lines for visual quantize feedback
+ * 🌊 WAVE 7564: THE UNDULATING GRID — driven by MEASURED beats
+ *
+ * Shows beat grid lines for visual quantize feedback. The grid now breathes
+ * with the music: it walks the measured `beats[]` array from the Ellis DP
+ * tracker instead of synthesising a uniform `t += 60000/bpm` ruler, so a
+ * ritardando or a DJ pitch-ride visibly compresses and stretches the lines
+ * rather than drifting out of phase with the waveform.
+ *
+ * Falls back to the uniform grid when `gridMarks` is null — no analysis yet,
+ * or a pre-7563 project. The fallback is the same shared `sliceVisibleMarks`
+ * path the ruler uses, so the two renderers can never disagree about where
+ * the grid is even when there is no measured grid to agree with.
  */
 const GenericTrackRenderer: React.FC<TrackRendererProps> = memo(({
   track,
@@ -409,38 +413,43 @@ const GenericTrackRenderer: React.FC<TrackRendererProps> = memo(({
   bpm,
   width,
   yOffset,
+  gridMarks,
+  timeSignature = 4,
 }) => {
-  // 🎼 Calculate musical grid for visual feedback
-  const msPerBeat = 60000 / bpm
-  const msPerBar = msPerBeat * 4
   const pixelsPerMs = viewport.pixelsPerSecond / 1000
   const showBeats = viewport.pixelsPerSecond > 30
-  
-  // Build grid positions
-  const gridLines: { x: number; isBar: boolean }[] = []
-  const firstBar = Math.max(0, Math.floor(viewport.startTime / msPerBar))
-  const lastBar = Math.ceil(viewport.endTime / msPerBar)
-  
-  for (let bar = firstBar; bar <= lastBar; bar++) {
-    const barTimeMs = bar * msPerBar
-    const barX = TRACK_LABEL_WIDTH + (barTimeMs - viewport.startTime) * pixelsPerMs
-    
-    if (barX >= TRACK_LABEL_WIDTH && barX <= width) {
-      gridLines.push({ x: barX, isBar: true })
+
+  // 🔥 WAVE 2040.40 + 🌊 WAVE 7564: visible span from SCREEN WIDTH, with a
+  // margin so labels do not pop at the edges. Same span calculation as the
+  // ruler — kept inline rather than shared because the two callers want
+  // different margins and sharing a helper would couple them for no gain.
+  const visibleWidth = width - TRACK_LABEL_WIDTH
+  const visibleDurationMs = visibleWidth / pixelsPerMs
+  const marginMs = 50 / pixelsPerMs
+  const spanStartMs = viewport.startTime - marginMs
+  const spanEndMs = viewport.startTime + visibleDurationMs + marginMs
+
+  // 🌊 WAVE 7564: binary-searched slice of the measured grid (or a
+  // synthesised uniform one when no analysis is available). The full mark
+  // list is built once in the parent and memoised; this is the per-viewport
+  // cull, which is O(log n + visible).
+  const marks = useMemo(
+    () => sliceVisibleMarks(gridMarks ?? [], spanStartMs, spanEndMs, bpm, timeSignature),
+    [gridMarks, spanStartMs, spanEndMs, bpm, timeSignature],
+  )
+
+  const gridLines = useMemo(() => {
+    const out: { x: number; isBar: boolean; synthetic: boolean; timeMs: number }[] = []
+    for (let i = 0; i < marks.length; i++) {
+      const m = marks[i]
+      if (!m.isBar && !showBeats) continue
+      const x = TRACK_LABEL_WIDTH + (m.timeMs - viewport.startTime) * pixelsPerMs
+      if (x < TRACK_LABEL_WIDTH || x > width) continue
+      out.push({ x, isBar: m.isBar, synthetic: m.synthetic, timeMs: m.timeMs })
     }
-    
-    // Add beat lines
-    if (showBeats) {
-      for (let beat = 1; beat < 4; beat++) {
-        const beatTimeMs = barTimeMs + (beat * msPerBeat)
-        const beatX = TRACK_LABEL_WIDTH + (beatTimeMs - viewport.startTime) * pixelsPerMs
-        if (beatX >= TRACK_LABEL_WIDTH && beatX <= width) {
-          gridLines.push({ x: beatX, isBar: false })
-        }
-      }
-    }
-  }
-  
+    return out
+  }, [marks, viewport.startTime, pixelsPerMs, width, showBeats])
+
   return (
     <g className={`timeline-track ${track.type}-track`} style={{ pointerEvents: 'none' }}>
       {/* Background */}
@@ -453,21 +462,29 @@ const GenericTrackRenderer: React.FC<TrackRendererProps> = memo(({
         opacity="0.6"
         pointerEvents="none"
       />
-      
-      {/* 🎼 WAVE 2011: Musical Grid Lines (subtle quantize visual) */}
-      {gridLines.map(({ x, isBar }, i) => (
+
+      {/* 🎼 WAVE 2011: Musical Grid Lines (subtle quantize visual)
+          🌊 WAVE 7564: measured, downbeat-anchored. Bar lines are heavier
+          and slightly more opaque than beat lines; synthetic (extrapolated)
+          marks are dimmed so the grid does not present a ruler as an
+          observation. */}
+      {gridLines.map(({ x, isBar, synthetic, timeMs }) => (
         <line
-          key={i}
+          key={`${isBar ? 'bar' : 'beat'}-${timeMs.toFixed(2)}`}
           x1={x}
           y1={yOffset}
           x2={x}
           y2={yOffset + track.height}
-          stroke={isBar ? 'rgba(59, 130, 246, 0.15)' : 'rgba(255, 255, 255, 0.05)'}
+          stroke={
+            isBar
+              ? (synthetic ? 'rgba(59, 130, 246, 0.10)' : 'rgba(59, 130, 246, 0.18)')
+              : (synthetic ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.06)')
+          }
           strokeWidth={isBar ? 1 : 0.5}
           pointerEvents="none"
         />
       ))}
-      
+
       {/* Placeholder content indicator */}
       <text
         x={width / 2}
@@ -479,11 +496,11 @@ const GenericTrackRenderer: React.FC<TrackRendererProps> = memo(({
         opacity="0.3"
         pointerEvents="none"
       >
-        {track.type === 'waveform' ? '〰️ DROP AUDIO FILE' : 
-         track.type === 'vibe' ? '⬛ DRAG VIBES HERE' : 
+        {track.type === 'waveform' ? '〰️ DROP AUDIO FILE' :
+         track.type === 'vibe' ? '⬛ DRAG VIBES HERE' :
          `◆ ${track.label}`}
       </text>
-      
+
       {/* Track label */}
       <rect
         x={0}
@@ -600,6 +617,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   bpm,
   isPlaying,
   analysisData,
+  beatGrid,
   durationMs = 60000, // Default 1 minute if no audio
   onSeek,
   // WAVE 2006 props
@@ -843,23 +861,34 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   // Cuando el viewport es MENOR que las alturas fijas → el SVG mantiene su tamaño → scroll activo.
   const visibleCanvasHeight = Math.max(dimensions.height, totalFixedHeight + 60)
 
+  // 🌊 WAVE 7564: Build the full measured mark list ONCE per analysis.
+  // `beatGrid` changes only when the analyser finishes or a project is
+  // loaded, so this memo is effectively build-once. The per-frame cost is
+  // the viewport slice (in `sliceVisibleMarks`), not the full walk.
+  const gridMarks = useMemo(
+    () => (beatGrid ? buildGridMarks(beatGrid) : null),
+    [beatGrid],
+  )
+  const gridTimeSignature = beatGrid?.timeSignature ?? 4
+
   // ⚡ WAVE 7106: MEMOIZED GRID LINES — no longer rebuilt every frame.
   // Dependencies are all low-frequency (viewport, bpm, dimensions, drag state).
   // Zero dependency on currentTime → eliminates 400+ SVG element reconciliation per frame.
+  // 🌊 WAVE 7564: walks the MEASURED mark list instead of synthesising a
+  // uniform `t += msPerBeat` ruler, so the grid compresses and stretches
+  // with the actual performance.
   const gridLines = useMemo(() => {
     const lines: React.ReactNode[] = []
     const msPerBeat = 60000 / bpm
-    const msPerBar = msPerBeat * 4
     const pixelsPerMs = viewport.pixelsPerSecond / 1000
 
     const showBeats = viewport.pixelsPerSecond > 30
 
-    const firstBar = Math.max(0, Math.floor(viewport.startTime / msPerBar))
-
     const visibleWidth = dimensions.width - TRACK_LABEL_WIDTH
     const visibleDurationMs = visibleWidth / pixelsPerMs
-    const viewportEnd = viewport.startTime + visibleDurationMs
-    const lastBar = Math.ceil(viewportEnd / msPerBar) + 1
+    const marginMs = 50 / pixelsPerMs
+    const spanStartMs = viewport.startTime - marginMs
+    const spanEndMs = viewport.startTime + visibleDurationMs + marginMs
 
     const isDragging = draggingClipId !== null || resizingClip !== null
     const dragClip = draggingClipId
@@ -870,63 +899,43 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     const dragTimeMs = dragClip?.startMs ?? null
     const dragEndMs = dragClip?.endMs ?? null
 
-    for (let bar = firstBar; bar <= lastBar; bar++) {
-      const barTimeMs = bar * msPerBar
-      const barX = TRACK_LABEL_WIDTH + (barTimeMs - viewport.startTime) * pixelsPerMs
+    // 🌊 WAVE 7564: measured slice (or uniform fallback when no analysis).
+    const marks = sliceVisibleMarks(
+      gridMarks ?? [],
+      spanStartMs,
+      spanEndMs,
+      bpm,
+      gridTimeSignature,
+    )
 
-      if (barX >= TRACK_LABEL_WIDTH && barX <= dimensions.width) {
-        const isNearDrag = isDragging && dragTimeMs !== null && (
-          Math.abs(barTimeMs - dragTimeMs) < msPerBeat * 0.5 ||
-          (dragEndMs !== null && Math.abs(barTimeMs - dragEndMs) < msPerBeat * 0.5)
-        )
+    for (let i = 0; i < marks.length; i++) {
+      const m = marks[i]
+      if (!m.isBar && !showBeats) continue
+      const x = TRACK_LABEL_WIDTH + (m.timeMs - viewport.startTime) * pixelsPerMs
+      if (x < TRACK_LABEL_WIDTH || x > dimensions.width) continue
 
-        lines.push(
-          <line
-            key={`bar-${bar}`}
-            x1={barX}
-            y1={32}
-            x2={barX}
-            y2={visibleCanvasHeight}
-            stroke={isNearDrag ? '#ffffff' : 'rgba(59, 130, 246, 0.35)'}
-            strokeWidth={isNearDrag ? 2 : 1}
-            opacity={isNearDrag ? 0.9 : 1}
-            pointerEvents="none"
-            className={isNearDrag ? 'grid-line-glow' : ''}
-          />
-        )
-      }
+      const isNearDrag = isDragging && dragTimeMs !== null && (
+        Math.abs(m.timeMs - dragTimeMs) < msPerBeat * (m.isBar ? 0.5 : 0.3) ||
+        (dragEndMs !== null && Math.abs(m.timeMs - dragEndMs) < msPerBeat * (m.isBar ? 0.5 : 0.3))
+      )
 
-      if (showBeats) {
-        for (let beat = 1; beat < 4; beat++) {
-          const beatTimeMs = barTimeMs + (beat * msPerBeat)
-          const beatX = TRACK_LABEL_WIDTH + (beatTimeMs - viewport.startTime) * pixelsPerMs
-
-          if (beatX >= TRACK_LABEL_WIDTH && beatX <= dimensions.width) {
-            const isNearDrag = isDragging && dragTimeMs !== null && (
-              Math.abs(beatTimeMs - dragTimeMs) < msPerBeat * 0.3 ||
-              (dragEndMs !== null && Math.abs(beatTimeMs - dragEndMs) < msPerBeat * 0.3)
-            )
-
-            lines.push(
-              <line
-                key={`beat-${bar}-${beat}`}
-                x1={beatX}
-                y1={32}
-                x2={beatX}
-                y2={visibleCanvasHeight}
-                stroke={isNearDrag ? '#ffffff' : 'rgba(59, 130, 246, 0.12)'}
-                strokeWidth={isNearDrag ? 1.5 : 0.5}
-                opacity={isNearDrag ? 0.8 : 1}
-                pointerEvents="none"
-                className={isNearDrag ? 'grid-line-glow' : ''}
-              />
-            )
-          }
-        }
-      }
+      lines.push(
+        <line
+          key={`${m.isBar ? 'bar' : 'beat'}-${m.timeMs.toFixed(2)}`}
+          x1={x}
+          y1={32}
+          x2={x}
+          y2={visibleCanvasHeight}
+          stroke={isNearDrag ? '#ffffff' : (m.isBar ? 'rgba(59, 130, 246, 0.35)' : 'rgba(59, 130, 246, 0.12)')}
+          strokeWidth={isNearDrag ? (m.isBar ? 2 : 1.5) : (m.isBar ? 1.5 : 0.5)}
+          opacity={isNearDrag ? (m.isBar ? 0.9 : 0.8) : (m.synthetic ? 0.5 : 1)}
+          pointerEvents="none"
+          className={isNearDrag ? 'grid-line-glow' : ''}
+        />
+      )
     }
     return lines
-  }, [viewport, bpm, dimensions.width, visibleCanvasHeight, draggingClipId, resizingClip, clips])
+  }, [viewport, bpm, dimensions.width, visibleCanvasHeight, draggingClipId, resizingClip, clips, gridMarks, gridTimeSignature])
   
   // Zoom handler - Using native event listener to allow preventDefault on wheel
   // React synthetic wheel events are passive by default, which causes the console warning
@@ -1353,6 +1362,8 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
               bpm={bpm}
               width={dimensions.width}
               yOffset={yOffset}
+              gridMarks={gridMarks}
+              timeSignature={gridTimeSignature}
             />
           )
         })}

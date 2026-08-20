@@ -36,6 +36,8 @@ import { TransportBar } from './transport/TransportBar'
 // WAVE 2017: THE SESSION KEEPER - State persistence across navigation
 import { useChronosSession } from '../stores/sessionStore'
 import { TimelineCanvas } from './timeline/TimelineCanvas'
+// 🌊 WAVE 7564.2: Variable-tempo beat grid normalisation
+import { fromAnalysisData, fromPersistedAnalysis } from './timeline/beatGridModel'
 // WAVE 2040.1: THE CINEMA SIMULATOR (replaces StagePreview)
 import { StagePreview } from './stage/StageSimulatorCinema'
 // WAVE 2009: Arsenal Dock (bottom) replaces Arsenal Panel (sidebar)
@@ -195,6 +197,19 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
     const clipId = Array.from(clipState.selectedIds)[0]
     return clipState.getClipById(clipId) ?? null
   }, [clipState.selectedIds, clipState.getClipById, clipState.clips])
+
+  // 🌊 WAVE 7564.2: THE UNDULATING GRID — Normalise the beat grid for the canvas.
+  // Two sources, one shape: a freshly-analysed `AnalysisData.beatGrid` (phantom
+  // worker output) wins when present; otherwise we fall back to the analysis
+  // embedded in the loaded `.lux` project. Without this fallback the grid would
+  // appear on first analysis and silently vanish after save+reload, because
+  // loading a project deliberately skips the phantom worker (analysisData=null).
+  const beatGrid = useMemo(
+    () =>
+      fromAnalysisData(audioLoader.result?.analysisData?.beatGrid) ??
+      fromPersistedAnalysis(project.project?.analysis),
+    [audioLoader.result?.analysisData?.beatGrid, project.project?.analysis],
+  )
   
   // 🎵 WAVE 2005.4: Connect streaming to audioLoader result
   // 🎵 WAVE 2019.7: Use blobUrl instead of audioPath
@@ -1419,6 +1434,8 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
               isPlaying={audioSourceMode === 'live' ? freeRunClock.isRunning : streaming.isPlaying}
               onSeek={handleSeek}
               analysisData={audioLoader.result?.analysisData ?? null}
+              // 🌊 WAVE 7564.2: Undulating grid — measured beats (or persisted fallback)
+              beatGrid={beatGrid}
               durationMs={durationMs}
               // WAVE 2006: Clips & Interaction
               clips={clipState.clips}

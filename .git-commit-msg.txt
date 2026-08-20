@@ -1,38 +1,36 @@
-feat(selene): WAVE 7556-7557 — YIN YANG: ambient/transit effects go proactive
+fix(selene): WAVE 7557.1-7558 — kinematic velocity sign + structural breakdown bonus
 
-The Dream Simulator only predicted high-energy events (drop_incoming,
-buildup_starting) and its zone override only scaled UP (peak/intense).
-Ambient/transit effects (latin_bubbles, etc.) were never simulated
-proactively — they only fired as Sovereign Clock reroute consolation
-when a heavy/divine effect was aborted.
+WAVE 7557.1 — Kinematic velocity sign fix:
+- The organic kinematic confidence (WAVE 7557) used Math.abs(velocity)
+  which gave moderate probability even when energy was RISING (flashbang).
+  During a flashbang (valley to intense), smoothedEnergy lags behind
+  rawEnergy, so predictFromEnergy saw trend=falling + currentEnergy<0.5
+  and fired energy_drop with moderate confidence — a false positive.
+- Fix: use Math.max(0, -velocity) instead. If velocity > 0 (rising),
+  dropVelocity = 0, probability = 0.45 (below 0.55 threshold, no guard
+  relaxation). Only actual descents produce meaningful confidence.
 
-WAVE 7556 — YIN YANG (bidirectional prediction):
-- Bug 1+2: Zone override now also scales DOWN. breakdown_imminent maps
-  to gentle, energy_drop maps to ambient. The groove cap only applies
-  to ascending overrides; descending ones are uncapped to open the pool.
-- Bug 3: filterByPressure relaxGuardsForFuture is now bidirectional.
-  For drops/buildups it relaxes the MIN gate (pressure will rise).
-  For breakdowns/valleys it relaxes the MAX gate (pressure will fall).
-- Fix 4: Scoring bonus (+0.15) for archetype ambient/utility effects
-  with aggression <= 0.60 during breakdown/energy_drop predictions.
-  Symmetric to the IMPACT_EFFECTS boost that heavy candidates receive
-  during drops. Added archetype field to RegistryEntry (propagated
-  from CognitiveDNA in _buildEntryFromV3).
+WAVE 7558 — Structural Breakdown Bonus:
+- Root cause analysis of field log (buscandoambient.md): breakdown_imminent
+  from the Markov chain NEVER appeared in predictions. The energy
+  heuristic's buildup_starting (prob 0.55-0.75) always beat the Markov
+  chain's breakdown_imminent (prob ~0.40-0.50) in predictCombined
+  arbitration. The YIN YANG zone override never triggered for low-energy
+  events, so ambient/transit effects were never simulated proactively.
+- The energy heuristic can detect rising energy (velocity>0) but CANNOT
+  detect structural breakdowns — those require song structure knowledge
+  that only the Markov chain has. This is the symmetric gap to the
+  spectral buildup boost (which helps high-energy predictions).
+- Fix: +0.15 structural bonus for breakdown_imminent in predictCombined
+  when the energy heuristic predicts something else. Lets breakdown_imminent
+  (0.45) compete with buildup_starting (0.55), but not override a strong
+  buildup (0.70+). Capped at 0.85. Only applies when energy heuristic
+  agrees it's NOT already a low-energy event (no double-counting).
 
-WAVE 7557 — Organic Kinematic Confidence:
-- Exterminated the hardcoded probability 0.50 magic number in the
-  energy_drop heuristic fallback (PredictionEngine.ts). Replaced with
-  an organic confidence derived from the energy descent velocity:
-    dropVelocity = abs(velocity)  (already computed, was unused)
-    normalizedDrop = clamp(dropVelocity / 0.05, 0, 1)
-    organicProbability = 0.45 + (normalizedDrop * 0.45)  range 0.45 to 0.90
-  Gentle drift (v near 0) gives 0.495 (below 0.55 threshold, no
-  proactive buffering — correct, not a real breakdown). Steep cliff
-  (v >= 0.05) gives 0.90 (well above threshold, full guard relaxation).
-  ETA also scales inversely with velocity (8 beats to 2 beats).
-- Reverted the WAVE 7556.1 temporary patch (threshold 0.40 for
-  low-energy). Universal threshold 0.55 restored — energy_drop now
-  crosses it naturally when the descent is real.
+Field log confirmed: latin_bubbles only fired via Sovereign Clock reroute
+(downgrade from heavy effects), never proactively. With this fix,
+breakdown_imminent should surface in predictions and trigger the YIN YANG
+zone override (peak/intense to gentle/ambient) proactively.
 
 tsc --noEmit green (only pre-existing hyperion-render.worker.ts error).
 

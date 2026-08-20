@@ -1126,7 +1126,7 @@ export function predictFromEnergy(
   //   probability: 0.50 magic number. The confidence now derives from the
   //   physical kinematics of the energy descent:
   //
-  //   dropVelocity = |velocity|  (frames-per-frame derivative, already computed)
+  //   dropVelocity = max(0, -velocity)  (only counts when ACTUALLY falling)
   //   normalizedDrop = clamp(dropVelocity / 0.05, 0, 1)
   //     — 0.05/frame = steep drop (full range in ~20 frames ≈ 330ms @ 60fps)
   //     — Below 0.01/frame = gentle drift, barely a breakdown
@@ -1135,14 +1135,18 @@ export function predictFromEnergy(
   //     — Gentle drift (v≈0): 0.45 — "maybe something is happening"
   //     — Steep cliff (v≥0.05): 0.90 — "the floor just fell out"
   //
-  //   This scales continuously from 0.45 to 0.90, crossing the Dream
-  //   Simulator's relaxGuardsForFuture threshold (> 0.55) whenever the
-  //   descent is real (v > ~0.012/frame), and staying below it for
-  //   negligible drifts that don't warrant proactive buffering.
+  //   🩸 WAVE 7557.1: CRITICAL FIX — was using Math.abs(velocity) which gave
+  //   moderate probability even when energy was RISING (flashbang). Now uses
+  //   Math.max(0, -velocity): if velocity > 0 (rising), dropVelocity = 0,
+  //   probability = 0.45 (below 0.55 threshold). This prevents false
+  //   energy_drop predictions from winning the predictCombined arbitration
+  //   during flashbangs where smoothedEnergy lags behind rawEnergy.
   // ═══════════════════════════════════════════════════════════════════════
   if (trend === 'falling' && currentEnergy < 0.5) {
-    // 🌊 WAVE 7557: Kinematic confidence — velocity is negative when falling.
-    const dropVelocity = Math.abs(velocity)
+    // 🌊 WAVE 7557.1: Only count NEGATIVE velocity (actually falling).
+    // If velocity > 0 (energy rising, e.g. flashbang just happened),
+    // dropVelocity = 0 → probability = 0.45 (below threshold, no relaxation).
+    const dropVelocity = Math.max(0, -velocity)
     const DROP_VELOCITY_STEEP = 0.05  // frames-per-frame ≈ full range in ~20 frames
     const normalizedDrop = Math.max(0, Math.min(1, dropVelocity / DROP_VELOCITY_STEEP))
     const organicProbability = 0.45 + (normalizedDrop * 0.45)  // 0.45 → 0.90
@@ -1231,12 +1235,44 @@ export function predictCombined(
   // RESTORED: Standard probability-based arbitration.
   // The better prediction wins, regardless of type.
   // ═══════════════════════════════════════════════════════════════════════
-  
+
+  // 🌊 WAVE 7558: STRUCTURAL BREAKDOWN BONUS — Symmetric to the spectral
+  // buildup boost below. The energy heuristic (predictFromEnergy) can detect
+  // rising energy (buildup, drop, spike) by looking at velocity/trend. But
+  // it CANNOT detect structural breakdowns — those require knowledge of the
+  // song's section structure, which only the Markov chain has.
+  //
+  // Without this bonus, the energy heuristic's buildup_starting (prob 0.55+)
+  // always beats the Markov chain's breakdown_imminent (prob ~0.40-0.50),
+  // so breakdown_imminent NEVER surfaces in predictCombined. The YIN YANG
+  // zone override in the Dream Simulator never triggers for low-energy
+  // events, and ambient/transit effects are never simulated proactively.
+  //
+  // The bonus is +0.15 — enough to let breakdown_imminent (0.45) compete
+  // with buildup_starting (0.55), but not enough to override a strong
+  // buildup (0.70+). The bonus only applies when:
+  //   1. The Markov chain predicts breakdown_imminent (structural knowledge)
+  //   2. The energy heuristic predicts something ELSE (not energy_drop,
+  //      which would be redundant — both agree on low energy)
   let bestPrediction: MusicalPrediction
-  if (energyPrediction.probability > sectionPrediction.probability) {
-    bestPrediction = energyPrediction
+  if (sectionPrediction.type === 'breakdown_imminent'
+      && energyPrediction.type !== 'energy_drop'
+      && energyPrediction.type !== 'breakdown_imminent') {
+    const structuralBonus = 0.15
+    const boostedSectionProb = Math.min(0.85, sectionPrediction.probability + structuralBonus)
+    if (boostedSectionProb >= energyPrediction.probability) {
+      bestPrediction = {
+        ...sectionPrediction,
+        probability: boostedSectionProb,
+        reasoning: `${sectionPrediction.reasoning} | 🌊 STRUCTURAL BREAKDOWN BONUS: +${structuralBonus.toFixed(2)} (Markov chain overrides energy heuristic)`,
+      }
+    } else {
+      bestPrediction = energyPrediction
+    }
   } else {
-    bestPrediction = sectionPrediction
+    bestPrediction = energyPrediction.probability > sectionPrediction.probability
+      ? energyPrediction
+      : sectionPrediction
   }
   
   // Si spectral buildup > 0.4, BOOST a la predicción

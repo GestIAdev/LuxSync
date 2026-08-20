@@ -314,6 +314,47 @@ export interface LuxAnalysisV3 {
   /** Beat grid: timestamps in ms of each beat. */
   beatGrid: readonly number[]
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🌊 WAVE 7563: VARIABLE-TEMPO MAP
+  // ═══════════════════════════════════════════════════════════════════════
+  // Optional for backwards compatibility: .lux files written before WAVE 7563
+  // deserialize cleanly with these absent, and consumers must treat a missing
+  // curve as "constant tempo at detectedBpm".
+
+  /**
+   * Per-frame tempo map (BPM), gap-filled and median-smoothed from the
+   * TempoOracle's raw per-frame NSDF estimates.
+   *
+   * `tempoCurve[i]` is the instantaneous tempo at `i * tempoCurveResolutionMs`,
+   * co-indexable with every array in `heatmap`. This is what lets Hephaestus
+   * phase-lock a curve's duration to the LOCAL tempo instead of extrapolating
+   * one global average across a track that ritardandos, drifts, or gets
+   * pitch-ridden by a DJ.
+   */
+  tempoCurve?: readonly number[]
+
+  /** Frame duration of `tempoCurve` in ms. Mirrors `heatmap.resolutionMs`. */
+  tempoCurveResolutionMs?: number
+
+  /**
+   * Detected bar starts (ms), from kick/snare metrical contrast — not from
+   * counting every fourth beat.
+   */
+  downbeatGrid?: readonly number[]
+
+  /** Detected metre: 4 (4/4) or 3 (3/4). */
+  timeSignature?: number
+
+  /** 0-1 — decisiveness of the downbeat phase estimate. 0 = no evidence. */
+  downbeatConfidence?: number
+
+  /**
+   * True when `beatGrid` was tracked by the Ellis DP tracker (variable
+   * tempo). False when the tracker could not lock and a uniform grid was
+   * synthesised from `detectedBpm` instead.
+   */
+  variableTempo?: boolean
+
   /** Detected sections (verse, chorus, drop, etc.). */
   sections: readonly LuxSectionV3[]
 

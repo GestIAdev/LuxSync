@@ -492,7 +492,7 @@ export function analysisDataToLuxAnalysisV3(data: AnalysisData): LuxAnalysisV3 {
       }))
     : normalizeTransients(data.transients)
 
-  return {
+  const analysis: LuxAnalysisV3 = {
     detectedBpm: data.beatGrid.bpm,
     bpmConfidence: data.beatGrid.confidence,
     firstBeatMs: data.beatGrid.firstBeatMs,
@@ -502,6 +502,24 @@ export function analysisDataToLuxAnalysisV3(data: AnalysisData): LuxAnalysisV3 {
     heatmap,
     waveform,
   }
+
+  // 🌊 WAVE 7563: variable-tempo map. Written only when the analyser actually
+  // produced it — an older analysis path leaves these undefined and the file
+  // stays byte-identical to a pre-7563 save, which keeps the canonical
+  // SHA-256 checksum stable for unchanged projects.
+  const bg = data.beatGrid
+  if (bg.tempoCurve && bg.tempoCurve.length > 0) {
+    analysis.tempoCurve = bg.tempoCurve
+    if (bg.tempoCurveResolutionMs !== undefined) {
+      analysis.tempoCurveResolutionMs = bg.tempoCurveResolutionMs
+    }
+  }
+  if (bg.downbeats && bg.downbeats.length > 0) analysis.downbeatGrid = bg.downbeats
+  if (bg.timeSignature !== undefined) analysis.timeSignature = bg.timeSignature
+  if (bg.downbeatConfidence !== undefined) analysis.downbeatConfidence = bg.downbeatConfidence
+  if (bg.variableTempo !== undefined) analysis.variableTempo = bg.variableTempo
+
+  return analysis
 }
 
 /**

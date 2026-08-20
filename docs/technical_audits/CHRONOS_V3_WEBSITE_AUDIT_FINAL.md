@@ -242,7 +242,25 @@ The 7 tactical bands (`GodEarFFT.ts:265-315`), adjacent and non-overlapping:
 
 Separation is explicitly tested (`chronos/__tests__/GodEarFFT.test.ts:311-322`).
 
-### 3.3 Rhythmic intelligence — `IntervalBPMTracker` (rebuilt)
+### 3.3 Rhythmic intelligence — `IntervalBPMTracker` (rebuilt) → `TempoOracle` (superseded)
+
+> **ACTUALIZACIÓN WAVE 7562 (Code Reconciliation):** This section was written against the `IntervalBPMTracker`-based pipeline (Operation "Shut Up Opus"). The `IntervalBPMTracker` has since been **superseded** as the primary BPM engine by the `TempoOracle` — a standalone NSDF autocorrelation estimator (`core/senses/bpm/TempoOracle.ts`, 737 lines) implementing the `AUTOCORRELATION_BLUEPRINT.md` specification. The tracker remains in-tree as a `@deprecated` fallback for ambient/atonal material only.
+>
+> **What changed:**
+> - `analysisPipeline.ts:30` now imports `TempoOracle, CONF_FLOOR` from `core/senses/bpm/TempoOracle`.
+> - `analysisPipeline.ts:260` instantiates `new TempoOracle(odfRateHz)` inside the heatmap extraction loop.
+> - `analysisPipeline.ts:310-313` feeds each frame's pre-normalization `subBass + bass` (20–250 Hz ODF proxy) into `oracle.process()` with a deterministic offline timestamp.
+> - `analysisPipeline.ts:318-321` accumulates per-frame BPM estimates into pre-allocated `Float64Array` buffers **only when `oracle.confidence > CONF_FLOOR`** — rejecting intro/outro silence and non-periodic noise frames.
+> - `analysisPipeline.ts:470-471` reduces the collected array via `computeConfidenceWeightedMedian()` at track end — a confidence-weighted median that yields a single rock-solid scalar (e.g. 126.04), identical in spirit to Serato/VirtualDJ static analysis.
+> - `analysisPipeline.ts:666` uses `oracleBpm > 0 ? oracleBpm : estimateBpm(onsets)` — the Oracle is primary, the deprecated histogram is last-resort fallback.
+> - `analysisPipeline.ts:1092-1094` passes `oracleBpm` and `oracleConfidence` into `detectBeats()`, which builds a uniform beat grid from this single mathematical truth.
+> - The result is persisted in `LuxAnalysisV3.detectedBpm` and `LuxAnalysisV3.bpmConfidence` via `LuxFileV3.factories.ts:496-497`, embedded in the `.lux` file. On reload, `ChronosLayout.tsx:793` detects the embedded analysis and **skips re-analysis**.
+>
+> **Phantom worker confirmed.** The Oracle runs inside the `godear-offline.worker.ts` Web Worker (the "phantom" background thread). `GodEarOffline.ts:120-123` creates the worker via Vite's `?worker` import pattern. `GodEarOffline.ts:183-192` transfers the `Float32Array` audio buffer as a **Transferable Object (zero-copy)** — the main thread retains a `.slice()` clone because transfer empties the original. A 60-second watchdog (`:130-133`) terminates the worker on timeout. If worker construction fails (CSP, bundler constraints), `GodEarOffline.ts:93` falls back to `analyzeOnMainThread()` with identical code — both paths import the same `analysisPipeline.ts`, so the Oracle lands in both simultaneously.
+>
+> **What this closes:** The "Global autocorrelation" item from §7.1 — the single most difficult piece of the tempo-map roadmap — is **CLOSED**. The Oracle's NSDF runs over the entire track (not windowed), with a harmonic ladder (1 + 0.50·NSDF(2τ) + 0.33·NSDF(3τ) + 0.25·NSDF(4τ)) that resolves dembow/DnB octave errors in-estimator, and sub-frame parabolic interpolation that defeats the ±4 BPM quantization grid of integer-lag ACF.
+>
+> **What remains open** is listed in the updated §7.1 below.
 
 This was the weakest link in the prior audit. It is now the most improved subsystem.
 
@@ -537,13 +555,17 @@ The BPM engine, cache-miss bottleneck, and LR4 naming are closed. What follows i
 
 ### 7.1 Variable-tempo beat tracking (tempo map)
 
-The tracker gives an excellent *scalar*; the grid is still constant-tempo (`analysisPipeline.ts:582-600`) with `timeSignature: 4` hard-coded (`:606`) and downbeats counted, not detected. The natural next step, and now cheap because the hard part is done:
+> **ACTUALIZACIÓN WAVE 7562 (Code Reconciliation):** The "Global autocorrelation" item listed below as open has been **CLOSED**. Code forensics confirm that `TempoOracle` (NSDF autocorrelation + harmonic ladder + sub-frame parabolic interpolation) is fully integrated into `GodEarOffline` via `analysisPipeline.ts:30,260,310,470`, running globally inside the phantom Web Worker with zero-copy `Float32Array` transfer. The confidence-weighted median reduction (`computeConfidenceWeightedMedian`) produces a single scalar persisted in `LuxAnalysisV3.detectedBpm`. See §3.3 addendum for the full chain.
+>
+> The remaining four items are **genuinely still open** — verified by source search (`tempoCurve`, `tempoMap`, `variableTempo`, `bpmCurve`, `ellis`, `dynamic.*programming.*beat`, `novelty.*curve`, `self.*similarity` — all return zero matches across `electron-app/src/`).
 
-- **Dynamic-programming beat tracking** (Ellis-style) over the onset envelope, seeded by the tracker's high-confidence scalar as the tempo prior. Produces a variable-tempo beat sequence rather than one BPM extrapolated to infinity — handles live recordings, tempo ramps, and DJ pitch-rides.
-- **Global autocorrelation** over the whole onset envelope. The tracker already has a windowed autocorrelation validator (`IntervalBPMTracker.ts:695-757`); offline, the entire track is available, so run it globally.
-- **Downbeat detection** from per-band onset periodicity, replacing `(beats.length − 1) % 4 === 0` (`:604`).
-- **Metre detection** beyond the `timeSignature: 4` literal — at minimum discriminating 3/4 and 6/8 via autocorrelation peak ratios at bar level.
-- **Persist a tempo curve** in `LuxAnalysisV3` rather than a scalar `bpm`, so Hephaestus can phase-lock curve durations to local tempo instead of a global average.
+The Oracle gives an excellent *scalar*; the grid is still constant-tempo (`analysisPipeline.ts:700`: `for (t = firstBeatMs; t < durationMs; t += msPerBeat)`) with `timeSignature: 4` hard-coded (`:727`) and downbeats counted, not detected. The natural next steps:
+
+- ~~**Global autocorrelation** over the whole onset envelope.~~ **CLOSED (WAVE 7562).** `TempoOracle` runs NSDF globally across the entire track inside the phantom worker. Confidence-weighted median reduction yields the persisted scalar.
+- **Tempo curve persistence** (scalar → array). The Oracle already produces per-frame BPM estimates (`bpmSamples: Float64Array`) that are discarded after median reduction. Persisting this curve as `tempoCurve: number[]` in `LuxAnalysisV3` would let Hephaestus phase-lock curve durations to local tempo instead of a global average. **Lowest cost, highest value** — the data already exists, only the schema field and serialization are missing.
+- **Dynamic-programming beat tracking** (Ellis-style) over the onset envelope, seeded by the Oracle's high-confidence scalar as the tempo prior. Produces a variable-tempo beat sequence rather than one BPM extrapolated to infinity — handles live recordings, tempo ramps, and DJ pitch-rides. `BeatGridData.beats: TimeMs[]` is already an array, so the schema is compatible.
+- **Downbeat detection** from per-band onset periodicity, replacing `(beats.length − 1) % 4 === 0` (`:704`). The heatmap already has `subBass` (kicks) and `transientEvents` with `kick`/`snare` classification — a post-hoc rhythmic analysis (~50 lines) could detect 4/4 vs 3/4 from kick/snare periodicity.
+- **Metre detection** beyond the `timeSignature: 4` literal — at minimum discriminating 3/4 and 6/8 via autocorrelation peak ratios at bar level. The `TempoOracle` harmonic ladder operates at beat level; a bar-level estimator would require a separate lag band (4×, 3×, 6× the beat lag).
 
 ### 7.2 Global novelty-curve segmentation
 
@@ -592,22 +614,24 @@ The clock stack currently assumes one machine following one external source. For
 
 Scored strictly on DSP sophistication, architectural cleanliness, and data integrity. Product maturity, fixture-library breadth, and operational hardening are excluded. Deltas are against the prior audit (Operation "Shut Up Opus" → 86/100, Operation "Academic Exorcism" → 88/100).
 
-| Dimension | Weight | Initial | Opus | Exorcism | Rationale for change |
-|---|---:|---:|---:|---:|---|
-| **FFT / spectral core** | 15 | 12.5 | 12.5 | **13.5** | **+1.0 (Exorcism).** Prior audit incorrectly deducted for "unapplied coherent gain." The gain was already correctly applied at `GodEarFFT.ts:670` (`nf = 1 / (real.length * BLACKMAN_HARRIS_COHERENT_GAIN)`). Deduction reversed. Remaining deduction: no real-input optimization (full complex FFT on zero-imaginary input). |
-| **Band separation & features** | 12 | 9.5 | 10.5 | 10.5 | **+1.0 (Opus).** LR4 naming corrected; false "zero phase shift" claim removed. Residual: power-domain flatness scale is a consumer trap. |
-| **Transient & onset detection** | 10 | 6.5 | 6.5 | 6.5 | Unchanged. Fixed thresholds, uncalibrated constants, unused whitened-flux function. |
-| **Rhythmic / tempo intelligence** | 10 | 4.5 | 8.5 | 8.5 | **+4.0 (Opus).** Median, IQR, Kalman, autocorrelation, octave folding — all active offline. Held below 10: still constant-tempo, hard-coded 4/4, counted downbeats. |
-| **Semantic enrichment** | 8 | 7.5 | 7.5 | 7.5 | Unchanged. 8-beat boundary quantization. |
-| **Architectural cleanliness** | 15 | 13.5 | 14.0 | 14.0 | **+0.5 (Opus).** Suite decomposition verified as structurally enforced. Residual: multiple RAF loops, OffscreenCanvas comment drift. |
-| **Runtime performance engineering** | 12 | 10 | 11.0 | 11.0 | **+1.0 (Opus).** `prefixMaxEndMs` + binary search → `O(log n + m)`. Residual: single-entry caches, per-frame grid rebuild. |
-| **Data integrity** | 13 | 12.5 | 12.5 | 12.5 | Unchanged. Best-in-class: canonical SHA-256, atomic fsync writes, deep validation. |
-| **Protocol correctness** | 10 | 8 | 8 | **8.5** | **+0.5 (Exorcism).** Reverse MTC offset fixed: `direction === 'reverse' ? -2 : +2` with full negative wrap cascade, 7 new tests. Residual: PLL mislabelled, no freewheel, no failover, SPP tempo discontinuity, LTC 48 kHz pin. |
-| **Testing rigor** | 5 | 3.5 | 3.5 | **4.0** | **+0.5 (Exorcism).** 15 new tests: 7 reverse MTC (no-wrap, 3 borrow boundaries, 24-hour wrap, ms equivalence) + 8 bpmDerivation (steady-state, single/dual outlier, gradual drift, all-rejected fallback, hysteresis, reset, insufficient data). Residual: `prefixMaxEndMs` and `IntervalBPMTracker` integration still untested. |
+> **ACTUALIZACIÓN WAVE 7562:** The "Rhythmic / tempo intelligence" dimension has been re-scored. Code forensics confirmed that `TempoOracle` (global NSDF autocorrelation + harmonic ladder + sub-frame parabolic interpolation + confidence-weighted median) is fully operational inside the phantom worker, superseding the `IntervalBPMTracker` as primary BPM engine. This closes the "global autocorrelation" gap that held the score at 8.5. The dimension increases from 8.5 → **9.5** (+1.0). It remains below 10 because the beat grid is still constant-tempo, `timeSignature: 4` is still a literal, and downbeats are still counted — see updated §7.1 for the genuine remainder.
 
-### **Composite: 96.5 / 110 → 88 / 100** *(Opus: 94.5/110 → 86/100; Initial: 88/110 → 80/100)*
+| Dimension | Weight | Initial | Opus | Exorcism | **WAVE 7562** | Rationale for change |
+|---|---:|---:|---:|---:|---:|---|
+| **FFT / spectral core** | 15 | 12.5 | 12.5 | 13.5 | **13.5** | Unchanged since Exorcism. Remaining deduction: no real-input optimization (full complex FFT on zero-imaginary input). |
+| **Band separation & features** | 12 | 9.5 | 10.5 | 10.5 | **10.5** | Unchanged since Opus. Residual: power-domain flatness scale is a consumer trap. |
+| **Transient & onset detection** | 10 | 6.5 | 6.5 | 6.5 | **6.5** | Unchanged. Fixed thresholds, uncalibrated constants, unused whitened-flux function. |
+| **Rhythmic / tempo intelligence** | 10 | 4.5 | 8.5 | 8.5 | **9.5** | **+1.0 (WAVE 7562).** Global NSDF autocorrelation via `TempoOracle` confirmed operational in phantom worker. Confidence-weighted median reduction persisted in `LuxAnalysisV3`. The `IntervalBPMTracker` (median, IQR, Kalman, octave folding) is now `@deprecated` fallback. Held below 10: still constant-tempo grid, hard-coded 4/4, counted downbeats, no tempo curve persistence. |
+| **Semantic enrichment** | 8 | 7.5 | 7.5 | 7.5 | **7.5** | Unchanged. 8-beat boundary quantization. |
+| **Architectural cleanliness** | 15 | 13.5 | 14.0 | 14.0 | **14.0** | Unchanged since Opus. Residual: multiple RAF loops, OffscreenCanvas comment drift. |
+| **Runtime performance engineering** | 12 | 10 | 11.0 | 11.0 | **11.0** | Unchanged since Opus. Residual: single-entry caches, per-frame grid rebuild. |
+| **Data integrity** | 13 | 12.5 | 12.5 | 12.5 | **12.5** | Unchanged. Best-in-class: canonical SHA-256, atomic fsync writes, deep validation. |
+| **Protocol correctness** | 10 | 8 | 8 | 8.5 | **8.5** | Unchanged since Exorcism. Residual: PLL mislabelled, no freewheel, no failover, SPP tempo discontinuity, LTC 48 kHz pin. |
+| **Testing rigor** | 5 | 3.5 | 3.5 | 4.0 | **4.0** | Unchanged since Exorcism. Residual: `prefixMaxEndMs` and `TempoOracle` integration still untested. |
 
-**+2 points (Exorcism), +8 total from initial.**
+### **Composite: 97.5 / 110 → 88.6 / 100** *(Exorcism: 96.5/110 → 88/100; Opus: 94.5/110 → 86/100; Initial: 88/110 → 80/100)*
+
+**+0.6 points (WAVE 7562), +2.6 from Exorcism, +8.6 total from initial.**
 
 **What earned the Exorcism increase.** Two real fixes and one audit correction:
 
@@ -619,8 +643,8 @@ Scored strictly on DSP sophistication, architectural cleanliness, and data integ
 
 **What holds it below 90.** Two things remain, both still open:
 
-1. **Constant-tempo assumption.** A much better scalar is not a tempo map. `timeSignature: 4` is still a literal and downbeats are still counted rather than detected. This is the single largest remaining DSP gap.
-2. **Untested `prefixMaxEndMs` and `IntervalBPMTracker` integration.** Both Opus changes are correct by inspection but unverified by test. The `prefixMaxEndMs` path especially warrants a property test asserting equivalence with a naive full scan across randomized topologies — an optimized index that silently disagrees with the brute-force answer on an edge case is worse than the `O(k)` scan it replaced.
+1. **Constant-tempo assumption.** The `TempoOracle` now produces a globally-autocorrelated, confidence-weighted scalar BPM — a significant upgrade over the `IntervalBPMTracker` median. But a scalar is still not a tempo *map*. `timeSignature: 4` is still a literal (`analysisPipeline.ts:727`) and downbeats are still counted every 4 beats rather than detected (`:704`). The per-frame BPM estimates the Oracle collects are discarded after median reduction rather than persisted as a tempo curve. This is the single largest remaining DSP gap. See updated §7.1.
+2. **Untested `prefixMaxEndMs` and `TempoOracle` integration.** Both are correct by inspection but unverified by test. The `prefixMaxEndMs` path especially warrants a property test asserting equivalence with a naive full scan across randomized topologies — an optimized index that silently disagrees with the brute-force answer on an edge case is worse than the `O(k)` scan it replaced. The `TempoOracle` integration deserves at minimum a regression test against a synthetic sweep with known BPM (the `AUTOCORRELATION_BLUEPRINT.md` §9.1 test vectors would serve).
 
 Also still present, though now reduced: the protocol stack retains the PLL mislabelled as "second-order" (it is a first-order IIR blend, not a PLL), the absent freewheel on signal loss, and the absent automatic source failover. The reverse-MTC 4-frame error — the most concrete protocol bug — is now closed.
 

@@ -1,20 +1,72 @@
-fix(selene): WAVE 7560.1 — lower minority relaxation threshold to 0.25
+feat(chronos): WAVE 7563 — Ellis tempo map & spectral downbeat engine
 
-Field logs showed breakdown_imminent with conf=0.386 and conf=0.261
-failing to relax pressure guards (threshold was 0.40). The architect's
-reasoning: breakdowns are statistical minorities, so even 0.40 raw
-confidence is a loud signal. But computeOrganicConfidence applies PLL
-and syncopation factors that measure TEMPORAL precision, not structural
-knowledge — these can drag a legitimate breakdown prediction from 0.33
-Markov mass down to 0.26.
+Eradicates the constant-tempo assumption from the offline pipeline. The
+beat grid is no longer synthesised from a scalar; it is TRACKED.
 
-The threshold is now 0.25 for minority events, aligned with the WAVE
-7559 Markov posterior threshold (P(breakdown) > 0.25). If the Markov
-says breakdown is significant enough to predict, that same signal is
-significant enough to relax the pressure guard. The PLL doesn't need
-to be perfect for the structure to be trusted.
+1. TEMPO CURVE PERSISTENCE (analysisPipeline.ts)
+The TempoOracle already produced a per-frame BPM estimate; it was being
+discarded after the confidence-weighted median reduced it to a scalar.
+Note that the existing `bpmSamples` array could NOT be reused: it is
+packed (confident frames only, contiguous), so index k has no relation
+to frame k. Added `tempoRaw`, a sparse-by-index companion that preserves
+the time axis, then `buildTempoCurve()`:
+  - Stage 1 gap fill: zero-order hold across sub-CONF_FLOOR frames.
+    Interpolating would invent a tempo ramp the music does not contain;
+    absent evidence, the correct prior is "tempo unchanged".
+  - Stage 2 sliding median (21 frames ≈ 1.05 s). A mean would smear a
+    single octave flip by +6 BPM across the window; the median is immune.
+Persisted as LuxAnalysisV3.tempoCurve so Hephaestus can phase-lock curve
+durations to LOCAL tempo instead of a global average.
 
-Majority events (drop, buildup, spike) remain at 0.55.
+2. ELLIS DP BEAT TRACKER (trackBeatsDP)
+Replaces `for (t = first; t < end; t += msPerBeat)` with the Ellis 2007
+dynamic program maximising  Σ O(bᵢ) + α·Σ −log²((bᵢ−bᵢ₋₁)/P).
+Deviation from the paper: P is indexed per frame from the tempo curve
+rather than being a single global estimate. That is the substantive
+difference between "constant-tempo grid" and "tempo map" — a ritardando
+or DJ pitch-ride moves P with it, so the transition cost stops fighting
+the music.
+Also added `buildOnsetEnvelope`: heatmap.flux is FULL-wave rectified, so
+an energy collapse reads identically to an attack and would plant a
+phantom beat on every release. The new envelope is half-wave rectified
+and kick-weighted, normalised to unit variance so Ellis's published
+tightness=100 transfers without retuning.
+Sub-frame parabolic refinement recovers the ±25 ms frame quantisation.
+Falls back to the legacy uniform grid when the DP cannot lock (ambient
+material), surfaced via BeatGridData.variableTempo.
+
+3. SPECTRAL DOWNBEAT & METRE (detectDownbeats)
+Replaces `(beats.length − 1) % 4 === 0`, which detected nothing — it
+counted, and declared beat 1 to be wherever the tracker happened to
+start. Now scores metrical CONTRAST per hypothesis:
+    S(m,p) = (kick[down] − kick[other]) + (snare[back] − snare[down])
+Contrast rather than raw energy is essential: four-on-the-floor has high
+kick energy at every phase, so only the difference between hypothesised
+strong and weak positions carries the metre. Metre detection (3 vs 4) is
+included but deliberately biased toward 4/4 — a false waltz corrupts the
+whole grid, so 3/4 must win by 15%.
+Documented a genuine limit: a perfectly symmetric kick|snare|kick|snare
+bar makes phase p and p+2 score identically. That information is not
+present in the percussion; it is an idiom property, not an estimator bug.
+
+VERIFICATION — 24 new tests, 273/273 chronos suite passing.
+The load-bearing one is the CONTROL test: the same synthetic 120→140 BPM
+ramp, the same DP, differing only in whether the target period comes from
+the tempo curve or is pinned flat.
+    with curve → tracks 121.2 → 137.9  (truth 120 → 140)
+    flat prior → tracks 121.2 → 122.5
+This isolates the curve's contribution and proves it is load-bearing
+rather than decorative. Constant-tempo lock is exact (120.000 BPM,
+60/60 beats on-click); downbeat phase is recovered for all four phases
+and for the four-on-the-floor case where kick contrast is zero.
+
+Schema additions are all optional, so pre-7563 .lux files deserialize
+unchanged and the canonical SHA-256 stays stable for untouched projects.
+
+KNOWN INTEGRATION GAP: the timeline UI still renders its grid from the
+scalar `beatGrid.bpm` (ChronosLayout.tsx:211). The variable-tempo beats
+are computed and persisted correctly but will not be visible until the
+canvas is wired to the beats array. Tracked as follow-up.
 
 tsc --noEmit green (only pre-existing hyperion-render.worker.ts error).
 

@@ -411,6 +411,38 @@ export interface BeatGridData {
   
   /** Confidence del beat tracking (0-1) */
   confidence: NormalizedValue
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🌊 WAVE 7563: VARIABLE-TEMPO PAYLOAD
+  // ═══════════════════════════════════════════════════════════════════════
+  // All optional — a legacy .lux deserialized through an older path simply
+  // omits them, and every existing consumer (which only ever read `bpm`)
+  // keeps working untouched.
+
+  /**
+   * Per-frame BPM from the TempoOracle, gap-filled and median-smoothed.
+   * Index `i` ↔ `i * tempoCurveResolutionMs`, co-indexable with HeatmapData.
+   * Lets Hephaestus phase-lock curve durations to LOCAL tempo instead of a
+   * global average.
+   */
+  tempoCurve?: number[]
+
+  /** Frame duration of `tempoCurve` in ms (mirrors heatmap resolutionMs). */
+  tempoCurveResolutionMs?: TimeMs
+
+  /** Index within `beats` of the first detected downbeat (0 … timeSignature−1). */
+  downbeatPhase?: number
+
+  /** 0-1 — decisiveness of the downbeat phase estimate. 0 = no evidence. */
+  downbeatConfidence?: NormalizedValue
+
+  /**
+   * True when `beats` came from the Ellis DP tracker (genuinely variable
+   * tempo). False when the DP could not track and the legacy uniform grid
+   * was synthesised from the scalar BPM instead — worth surfacing, because
+   * the two carry very different trust levels.
+   */
+  variableTempo?: boolean
 }
 
 /**

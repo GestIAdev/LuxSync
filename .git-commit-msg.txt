@@ -1,36 +1,39 @@
-fix(selene): WAVE 7557.1-7558 — kinematic velocity sign + structural breakdown bonus
+fix(selene): WAVE 7559 — YIN YANG 2.0: Markov posterior thresholding + heuristic reorder
 
-WAVE 7557.1 — Kinematic velocity sign fix:
-- The organic kinematic confidence (WAVE 7557) used Math.abs(velocity)
-  which gave moderate probability even when energy was RISING (flashbang).
-  During a flashbang (valley to intense), smoothedEnergy lags behind
-  rawEnergy, so predictFromEnergy saw trend=falling + currentEnergy<0.5
-  and fired energy_drop with moderate confidence — a false positive.
-- Fix: use Math.max(0, -velocity) instead. If velocity > 0 (rising),
-  dropVelocity = 0, probability = 0.45 (below 0.55 threshold, no guard
-  relaxation). Only actual descents produce meaningful confidence.
+Field log analysis (buscandoambient2.md, 602 lines) revealed that
+breakdown_imminent and energy_drop NEVER fired, so the YIN YANG zone
+override (peak/intense to gentle/ambient) never triggered proactively.
+Two root causes:
 
-WAVE 7558 — Structural Breakdown Bonus:
-- Root cause analysis of field log (buscandoambient.md): breakdown_imminent
-  from the Markov chain NEVER appeared in predictions. The energy
-  heuristic's buildup_starting (prob 0.55-0.75) always beat the Markov
-  chain's breakdown_imminent (prob ~0.40-0.50) in predictCombined
-  arbitration. The YIN YANG zone override never triggered for low-energy
-  events, so ambient/transit effects were never simulated proactively.
-- The energy heuristic can detect rising energy (velocity>0) but CANNOT
-  detect structural breakdowns — those require song structure knowledge
-  that only the Markov chain has. This is the symmetric gap to the
-  spectral buildup boost (which helps high-energy predictions).
-- Fix: +0.15 structural bonus for breakdown_imminent in predictCombined
-  when the energy heuristic predicts something else. Lets breakdown_imminent
-  (0.45) compete with buildup_starting (0.55), but not override a strong
-  buildup (0.70+). Capped at 0.85. Only applies when energy heuristic
-  agrees it's NOT already a low-energy event (no double-counting).
+Fix 1 — Markov Posterior Thresholding:
+- breakdown is never the argmax of the Markov posterior. In fiesta-latina,
+  chorus to buildup wins 67% vs chorus to breakdown 33%. The argmax is
+  ALWAYS buildup or chorus, so PTYPE[argmax] was never breakdown_imminent.
+- The WAVE 7558 structural bonus (+0.15) was structurally broken: it
+  assumed breakdown_imminent lost the predictCombined arbitration, but
+  in reality predict() never returned breakdown_imminent at all.
+- Fix: expose pBreakdownMass (POST[6] after normalization). If
+  P(breakdown) > 0.25 (minority significance threshold), force
+  predictionType = breakdown_imminent even when breakdown is not the
+  argmax. The probability is calculated from the breakdown mass (not
+  the argmax mass), reflecting real confidence. The WAVE 7558 bonus
+  then boosts it further in predictCombined arbitration.
+- The 0.25 threshold is conservative: breakdowns are more common than
+  pure spectral buildups (which need spectralScore > 0.4), but
+  0.25 is enough to surface breakdown_imminent without false-positiving
+  on noise.
 
-Field log confirmed: latin_bubbles only fired via Sovereign Clock reroute
-(downgrade from heavy effects), never proactively. With this fix,
-breakdown_imminent should surface in predictions and trigger the YIN YANG
-zone override (peak/intense to gentle/ambient) proactively.
+Fix 2 — Heuristic Evaluation Order (predictFromEnergy):
+- DROP DETECTION (tension > 0.4 + trend falling) was evaluated BEFORE
+  FALLING ENERGY (trend falling + E < 0.5). In Latin music (constant
+  high tension), DROP DETECTION hijacked every falling-energy state,
+  returning drop_incoming even when energy was at 0.30.
+- Fix: moved FALLING ENERGY check ABOVE DROP DETECTION. Additionally
+  constrained DROP DETECTION to require currentEnergy > 0.5 — a real
+  drop implies falling FROM A HIGH POINT. If energy is already below
+  0.5, a falling trend is an energy_drop (breakdown), regardless of
+  tension. This restores the energy_drop heuristic path that was
+  completely unreachable in high-tension vibes.
 
 tsc --noEmit green (only pre-existing hyperion-render.worker.ts error).
 

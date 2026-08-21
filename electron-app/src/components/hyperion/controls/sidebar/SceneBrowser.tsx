@@ -1,23 +1,24 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎬 SCENE BROWSER - WAVE 2050: HYPERION SCENE PLAYER
+ * 🎬 SCENE BROWSER - WAVE 7566.2: HYPERION SCENE DECK
  * ═══════════════════════════════════════════════════════════════════════════
- * 
- * Player de escenas .lux en Hyperion:
- * - Importar archivos .lux desde Chronos
- * - Lista de escenas cargadas
- * - Controles de transporte: PLAY | PAUSE | STOP | LOOP
- * - Barra de progreso con tiempo actual/total
- * - Inyección directa al MasterArbiter vía useScenePlayer
- * 
- * NO graba. Eso es Chronos. Aquí se REPRODUCE.
- * 
+ *
+ * Compact "Live Deck" layout for the Scene Player.
+ * - Active Deck (top): track name, transport, KILL, progress
+ * - Queue / Load Area (bottom): inactive scenes list + compact import
+ *
+ * Typography unified with CONTROLS tab (uppercase, monospace, tight).
+ *
  * @module components/hyperion/controls/sidebar/SceneBrowser
- * @version 2050.0.0
+ * @version WAVE 7566.2
  */
 
 import React, { useState, useCallback, useRef } from 'react'
-import { useScenePlayer, type PlayerState } from '../../../../hooks/useScenePlayer'
+// ⚡ WAVE 7566.3: Use context instead of calling hook directly
+// ⚡ WAVE 7566.4: Context now also holds the scene library (scenes[] + selectedId)
+import { useScenePlayerContext } from './ScenePlayerContext'
+import type { LoadedScene } from './ScenePlayerContext'
+import type { PlayerState } from '../../../../hooks/useScenePlayer'
 import { deserializeLuxV3 as deserializeProject } from '../../../../chronos/core/LuxFileV3.serializer'
 import { toChronosProjectV3 } from '../../../../chronos/core/LuxFileV3.factories'
 import type { ChronosProjectV3 } from '../../../../chronos/core/LuxFileV3'
@@ -28,19 +29,6 @@ import {
   BoltIcon,
 } from '../../../icons/LuxIcons'
 import './SceneBrowser.css'
-
-// ═══════════════════════════════════════════════════════════════════════════
-// TYPES
-// ═══════════════════════════════════════════════════════════════════════════
-
-interface LoadedScene {
-  id: string
-  project: ChronosProjectV3
-  audioUrl: string | null
-  fileName: string
-  /** WAVE 2050.1: Resolved display name (smart title parsing) */
-  displayName: string
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TRANSPORT ICONS — Custom SVG (no lucide, no emoji)
@@ -112,12 +100,19 @@ const AudioOnIcon: React.FC<{ size?: number; className?: string }> = ({ size = 1
   </svg>
 )
 
+const KillIcon: React.FC<{ size?: number; className?: string }> = ({ size = 16, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <circle cx="12" cy="12" r="10" />
+    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+  </svg>
+)
+
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const SceneBrowser: React.FC = () => {
-  // ── Scene Player Engine ──
+  // ── Scene Player Engine + Library (via Context — persists across remounts) ──
   const {
     status,
     loadScene,
@@ -125,20 +120,30 @@ export const SceneBrowser: React.FC = () => {
     play,
     pause,
     stop,
+    kill,
     toggleLoop,
-  } = useScenePlayer()
+    // WAVE 7566.4: Scene library lifted to context — survives tab/mode switches
+    scenes,
+    selectedId,
+    addScene,
+    removeScene,
+    updateScene,
+    setSelectedId,
+  } = useScenePlayerContext()
 
-  // ── Local UI State ──
-  const [scenes, setScenes] = useState<LoadedScene[]>([])
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  // ── Local UI State (drag-only, ephemeral) ──
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const audioFileInputRef = useRef<HTMLInputElement>(null)  // WAVE 2051: Audio picker
 
   // ── Derived ──
-  const selectedScene = scenes.find(s => s.id === selectedId)
+  // WAVE 7566.4: selectedScene derived from context's selectedId + scenes.
+  // Falls back to status.project reconstruction if selectedId is stale
+  // (e.g., context was reset but engine still has a project loaded).
+  const selectedScene = scenes.find(s => s.id === selectedId) ?? null
   const isPlaying = status.state === 'playing'
   const isLoaded = status.state !== 'idle'
+  const inactiveScenes = scenes.filter(s => s.id !== selectedId)
 
   // ─────────────────────────────────────────────────────────────────────────
   // 📂 IMPORT — File picker + processor
@@ -173,7 +178,7 @@ export const SceneBrowser: React.FC = () => {
         displayName: resolveProjectName(project, file.name),
       }
 
-      setScenes(prev => [...prev, newScene])
+      addScene(newScene)
       setSelectedId(newScene.id)
 
       // Auto-load into player engine
@@ -246,8 +251,18 @@ export const SceneBrowser: React.FC = () => {
       setSelectedId(null)
     }
 
-    setScenes(prev => prev.filter(s => s.id !== sceneId))
-  }, [selectedId, unloadScene])
+    removeScene(sceneId)
+  }, [selectedId, unloadScene, removeScene])
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // ⚡ WAVE 7566.3: KILL — Local blackout (zero DMX) WITHOUT unloading project
+  // The scene stays loaded; user can press PLAY to resume.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const handleKill = useCallback(() => {
+    kill()
+    console.log('[SceneBrowser] ⚡ KILL — Blackout (project stays loaded)')
+  }, [kill])
 
   // ─────────────────────────────────────────────────────────────────────────
   // 💿 WAVE 2051: LINK AUDIO — Manual audio file selection for scene
@@ -265,13 +280,8 @@ export const SceneBrowser: React.FC = () => {
       // Create Blob URL for audio file
       const audioUrl = URL.createObjectURL(file)
 
-      // Update scene with new audio URL
-      setScenes(prev => prev.map(scene => {
-        if (scene.id === selectedId) {
-          return { ...scene, audioUrl }
-        }
-        return scene
-      }))
+      // Update scene with new audio URL (via context — persists)
+      updateScene(selectedId, { audioUrl })
 
       // Reload scene with new audio
       const updatedScene = scenes.find(s => s.id === selectedId)
@@ -285,7 +295,7 @@ export const SceneBrowser: React.FC = () => {
 
     // Reset input
     if (audioFileInputRef.current) audioFileInputRef.current.value = ''
-  }, [selectedId, scenes, loadScene])
+  }, [selectedId, scenes, loadScene, updateScene])
 
   // ─────────────────────────────────────────────────────────────────────────
   // 🎨 RENDER
@@ -306,163 +316,207 @@ export const SceneBrowser: React.FC = () => {
         </span>
       </div>
 
-      {/* ══════════ IMPORT ZONE ══════════ */}
-      <div
-        className={`import-zone ${isDragging ? 'dragging' : ''}`}
-        onClick={handleImportClick}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
-        <ImportIcon size={20} className="import-icon" />
-        <span className="import-text">IMPORT SCENE</span>
-        <span className="import-hint">Click or drop .lux file</span>
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".lux,.json"
-          multiple
-          onChange={handleFileChange}
-          className="import-input-hidden"
-        />
-      </div>
-
-      {/* ══════════ SCENES LIST ══════════ */}
-      {scenes.length > 0 && (
-        <div className="scene-list">
-          {scenes.map(scene => (
-            <div
-              key={scene.id}
-              className={`scene-item ${selectedId === scene.id ? 'selected' : ''} ${isPlaying && selectedId === scene.id ? 'playing' : ''}`}
-              onClick={() => handleSelectScene(scene)}
-            >
-              {selectedId === scene.id && <div className="scene-item-indicator" />}
-
-              <div className="scene-item-icon">
-                <FileIcon size={14} />
-              </div>
-              <div className="scene-item-info">
-                <span className="scene-item-name">{scene.displayName}</span>
-                <span className="scene-item-meta">
-                  {scene.project.tracks.flatMap(t => t.clips).length} clips · {formatTime(scene.project.meta.durationMs)}
-                </span>
-              </div>
+      {/* ══════════ ACTIVE DECK (Top) ══════════ */}
+      {selectedScene ? (
+        <div className="active-deck">
+          {/* ── Track Name Header ── */}
+          <div className="deck-header">
+            <div className="deck-title-row">
+              <BoltIcon size={12} className="deck-bolt" />
+              <span className="deck-title" title={selectedScene.displayName}>
+                {selectedScene.displayName}
+              </span>
+            </div>
+            <div className="deck-meta-row">
+              {status.hasAudio ? (
+                <AudioOnIcon size={11} className="audio-badge on" />
+              ) : (
+                <MuteIcon size={11} className="audio-badge mute" />
+              )}
               <button
-                className="scene-item-delete"
-                onClick={(e) => { e.stopPropagation(); handleDeleteScene(scene.id) }}
-                title="Remove scene"
+                className="link-audio-btn"
+                onClick={handleLinkAudioClick}
+                title={status.hasAudio ? 'Replace audio file' : 'Link audio file'}
               >
-                <TrashIcon size={12} />
+                AUDIO
+              </button>
+              <input
+                ref={audioFileInputRef}
+                type="file"
+                accept="audio/*,.mp3,.wav,.ogg,.m4a"
+                onChange={handleAudioFileChange}
+                style={{ display: 'none' }}
+              />
+              <button
+                className="deck-eject"
+                onClick={() => { unloadScene(); setSelectedId(null) }}
+                title="Eject scene"
+              >
+                <EjectIcon size={10} />
               </button>
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* ══════════ EMPTY STATE ══════════ */}
-      {scenes.length === 0 && (
-        <div className="empty-state">
-          <PlayCircleIcon size={28} className="empty-icon-svg" />
-          <span className="empty-text">No scenes loaded</span>
-          <span className="empty-hint">Import .lux files from Chronos</span>
-        </div>
-      )}
-
-      {/* ══════════ NOW PLAYING ══════════ */}
-      {selectedScene && (
-        <div className="now-playing">
-          {/* Title */}
-          <div className="now-playing-header">
-            <BoltIcon size={12} className="now-playing-bolt" />
-            <span className="now-playing-title">{selectedScene.displayName}</span>
-            {/* Audio status indicator */}
-            {status.hasAudio ? (
-              <AudioOnIcon size={12} className="audio-badge on" />
-            ) : (
-              <MuteIcon size={12} className="audio-badge mute" />
-            )}
-            {/* WAVE 2051: Link Audio Button */}
-            <button
-              className="link-audio-btn"
-              onClick={handleLinkAudioClick}
-              title={status.hasAudio ? "Replace audio file" : "Link audio file"}
-            >
-              {status.hasAudio ? '🔄' : '💿'} AUDIO
-            </button>
-            <input
-              ref={audioFileInputRef}
-              type="file"
-              accept="audio/*,.mp3,.wav,.ogg,.m4a"
-              onChange={handleAudioFileChange}
-              style={{ display: 'none' }}
-            />
-            <button
-              className="now-playing-eject"
-              onClick={() => { unloadScene(); setSelectedId(null) }}
-              title="Eject scene"
-            >
-              <EjectIcon size={10} />
-            </button>
           </div>
 
-          {/* Progress Bar */}
-          <div className="progress-container">
-            <div className="progress-bar">
+          {/* ── Progress Bar (thick, compact) ── */}
+          <div className="deck-progress">
+            <div className="deck-progress-bar">
               <div
-                className="progress-fill"
+                className="deck-progress-fill"
                 style={{ width: `${status.progress * 100}%` }}
               />
             </div>
-            <div className="progress-time">
+            <div className="deck-progress-time">
               <span>{formatTime(status.currentTimeMs)}</span>
               <span>{formatTime(status.durationMs)}</span>
             </div>
           </div>
 
-          {/* Active Clip Info */}
+          {/* ── Active Clip Count (if any) ── */}
           {status.activeClipCount > 0 && (
-            <div className="active-info">
-              <span className="active-clips">
-                {status.activeClipCount} clip{status.activeClipCount !== 1 ? 's' : ''} active
-              </span>
+            <div className="deck-active-clips">
+              {status.activeClipCount} CLIP{status.activeClipCount !== 1 ? 'S' : ''} ACTIVE
             </div>
           )}
 
-          {/* Transport Controls */}
-          <div className="transport-controls">
-            {/* PLAY / PAUSE */}
-            {isPlaying ? (
-              <button className="transport-btn pause" onClick={pause} title="Pause">
-                <PauseIcon size={16} />
-              </button>
-            ) : (
-              <button className="transport-btn play" onClick={play} title="Play">
-                <PlayIcon size={16} />
-              </button>
-            )}
-
-            {/* STOP */}
+          {/* ── Transport Row (rectangular hit areas, all separate) ── */}
+          <div className="deck-transport">
+            {/* PLAY */}
             <button
-              className="transport-btn stop"
+              className="deck-btn deck-btn-play"
+              onClick={play}
+              disabled={isPlaying}
+              title="Play"
+            >
+              <PlayIcon size={16} />
+              <span className="deck-btn-label">PLAY</span>
+            </button>
+
+            {/* PAUSE */}
+            <button
+              className="deck-btn deck-btn-pause"
+              onClick={pause}
+              disabled={!isPlaying}
+              title="Pause"
+            >
+              <PauseIcon size={16} />
+              <span className="deck-btn-label">PAUSE</span>
+            </button>
+
+            {/* STOP — pause + reset playhead to 0, keeps project loaded */}
+            <button
+              className="deck-btn deck-btn-stop"
               onClick={stop}
               disabled={!isLoaded}
-              title="Stop"
+              title="Stop (reset to 0)"
             >
               <StopIcon size={14} />
+              <span className="deck-btn-label">STOP</span>
             </button>
 
             {/* LOOP */}
             <button
-              className={`transport-btn loop ${status.loop ? 'active' : ''}`}
+              className={`deck-btn deck-btn-loop ${status.loop ? 'active' : ''}`}
               onClick={toggleLoop}
               title={status.loop ? 'Loop ON' : 'Loop OFF'}
             >
               <LoopIcon size={14} />
+              <span className="deck-btn-label">LOOP</span>
+            </button>
+
+            {/* KILL — Local blackout (zero DMX), project stays loaded */}
+            <button
+              className="deck-btn deck-btn-kill"
+              onClick={handleKill}
+              title="KILL — Blackout (zero DMX, project stays loaded)"
+            >
+              <KillIcon size={14} />
+              <span className="deck-btn-label">KILL</span>
             </button>
           </div>
         </div>
+      ) : (
+        /* ══════════ EMPTY STATE ══════════ */
+        <div className="empty-state">
+          <PlayCircleIcon size={28} className="empty-icon-svg" />
+          <span className="empty-text">NO SCENE LOADED</span>
+          <span className="empty-hint">Import .lux files from Chronos</span>
+        </div>
       )}
+
+      {/* ══════════ QUEUE / LOAD AREA (Bottom) ══════════ */}
+      <div className="deck-queue">
+        {/* Inactive scenes list */}
+        {inactiveScenes.length > 0 && (
+          <div className="scene-list">
+            {inactiveScenes.map(scene => (
+              <div
+                key={scene.id}
+                className="scene-item"
+                onClick={() => handleSelectScene(scene)}
+              >
+                <div className="scene-item-icon">
+                  <FileIcon size={12} />
+                </div>
+                <div className="scene-item-info">
+                  <span className="scene-item-name">{scene.displayName}</span>
+                  <span className="scene-item-meta">
+                    {scene.project.tracks.flatMap(t => t.clips).length} CLIPS · {formatTime(scene.project.meta.durationMs)}
+                  </span>
+                </div>
+                <button
+                  className="scene-item-delete"
+                  onClick={(e) => { e.stopPropagation(); handleDeleteScene(scene.id) }}
+                  title="Remove scene"
+                >
+                  <TrashIcon size={11} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* WAVE 7566.3: Compact Import Dropzone — only when no scene loaded
+            (when a scene IS loaded, import is available via the queue list
+            above; no redundant placeholder). Still allows drag-drop anywhere. */}
+        {!selectedScene && (
+          <div
+            className={`import-zone-compact ${isDragging ? 'dragging' : ''}`}
+            onClick={handleImportClick}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <ImportIcon size={14} className="import-icon" />
+            <span className="import-text">IMPORT SCENE</span>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".lux,.json"
+              multiple
+              onChange={handleFileChange}
+              className="import-input-hidden"
+            />
+          </div>
+        )}
+
+        {/* WAVE 7566.3: When scene IS loaded, show a minimal import hint
+            at the bottom of the queue (not a full dropzone). Drag-drop still
+            works on the whole queue area. */}
+        {selectedScene && (
+          <div
+            className="import-zone-minimal"
+            onClick={handleImportClick}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            title="Click or drop .lux file to add more scenes"
+          >
+            <ImportIcon size={12} />
+            <span>+ ADD SCENE</span>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -488,9 +542,13 @@ function getStateLabel(state: PlayerState): string {
 }
 
 /**
- * WAVE 2050.1: Smart Title Parsing
+ * WAVE 2050.1 → 7566.2: Smart Title Parsing
  * Busca el nombre en múltiples rutas del JSON del proyecto.
  * Diferentes versiones de .lux pueden tener el nombre en distintos campos.
+ *
+ * WAVE 7566.2 FIX: Now also filters 'Untitled Show' (the default from
+ * createEmptyLuxFileV3 / createEmptyChronosProjectV3) so it falls through
+ * to the filename instead of showing the placeholder.
  */
 function resolveProjectName(project: ChronosProjectV3, fileName: string): string {
   // Cast through unknown for safe property probing on variant JSON shapes
@@ -506,8 +564,16 @@ function resolveProjectName(project: ChronosProjectV3, fileName: string): string
     meta?.title,
   ]
 
+  // WAVE 7566.2: Also filter 'Untitled Show' (default placeholder)
+  const PLACEHOLDER_NAMES = new Set([
+    'Untitled Project',
+    'Untitled',
+    'Untitled Show',
+    'New Project',
+  ])
+
   for (const c of candidates) {
-    if (typeof c === 'string' && c.trim() && c !== 'Untitled Project' && c !== 'Untitled') {
+    if (typeof c === 'string' && c.trim() && !PLACEHOLDER_NAMES.has(c.trim())) {
       return c.trim()
     }
   }

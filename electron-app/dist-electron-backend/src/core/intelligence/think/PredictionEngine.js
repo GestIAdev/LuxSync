@@ -55,6 +55,8 @@
 const S = 10;
 /** 'unknown' — transparente: nunca se aprende ni se predice */
 const UNK = 9;
+/** 🌊 WAVE 7559: Índice de breakdown en SECTION_NAMES / PTYPE */
+const BREAKDOWN_IDX = 6;
 /** Stride de fila (potencia de 2) */
 const STRIDE = 16;
 /** Cuentas de 2º orden con fuga. 4096 × f32 = 16 KB */
@@ -92,6 +94,10 @@ let pSection = -1; // índice argmax, -1 = sin predicción
 let pProb = 0; // masa posterior normalizada del argmax
 let pMargin = 0; // p_max − p_second — nitidez de la decisión
 let pEntropyConf = 0; // p_max · (1 − H/ln S) — confianza epistémica
+/** 🌊 WAVE 7559: Masa posterior normalizada de breakdown (índice 6).
+ *  Escrita por predictStructural en la pasada 2. Permite detectar breakdown
+ *  como minoría estadística aunque no sea el argmax. */
+let pBreakdownMass = 0;
 /** Índice → nombre (alfabeto MSST canónico, orden de MSST_SECTION_KEYS) */
 const SECTION_NAMES = [
     'intro', 'verse', 'buildup', 'chorus', 'drop',
@@ -304,6 +310,7 @@ function predictStructural() {
     pProb = 0;
     pMargin = 0;
     pEntropyConf = 0;
+    pBreakdownMass = 0;
     if (prev1 < 0)
         return false;
     const r1 = prev1 << 4;
@@ -357,6 +364,11 @@ function predictStructural() {
     // — y el sistema lo declara. Complementa ORGANIC 1 (incertidumbre TEMPORAL
     // por lock del PLL) con incertidumbre ESTRUCTURAL.
     pEntropyConf = pProb * (1 - H * LN_S_INV);
+    // 🌊 WAVE 7559: Capturar masa posterior de breakdown (índice 6).
+    // Breakdown es minoría estadística (20-33% vs 67-80% de chorus/buildup).
+    // Sin este campo, breakdown_imminent nunca supera el argmax y el YIN YANG
+    // zone override descendente nunca se activa.
+    pBreakdownMass = POST[BREAKDOWN_IDX] || 0;
     return true;
 }
 /**
@@ -383,7 +395,27 @@ export function predict(pattern) {
     updateHistory(pattern);
     // 🔮 CASSANDRA 2.0: lookup O(10) sobre el posterior jerárquico
     if (predictStructural()) {
-        const predictionType = PTYPE[pSection];
+        // 🌊 WAVE 7559: POSTERIOR THRESHOLDING — Breakdown es minoría estadística.
+        // En fiesta-latina, chorus→buildup gana 67% vs chorus→breakdown 33%.
+        // El argmax SIEMPRE es buildup/chorus, así que breakdown_imminent NUNCA
+        // se predice y el YIN YANG zone override descendente nunca se activa.
+        //
+        // Solución: si la masa posterior de breakdown > 0.25 (umbral de minoría
+        // significativa), forzar predictionType = breakdown_imminent aunque no
+        // sea el argmax. La probabilidad se calcula desde la masa de breakdown
+        // (no la del argmax), reflejando la confianza REAL en el breakdown.
+        //
+        // El umbral 0.25 es simétrico al spectral buildup boost (que requiere
+        // spectralScore > 0.4 para crear predicciones de alta energía). Los
+        // breakdowns son más comunes que los buildups espectrales puros, así
+        // que 0.25 es conservador pero suficiente para superar el arbitraje
+        // contra la heurística de energía (que típicamente da 0.55-0.65).
+        const BREAKDOWN_MINORITY_THRESHOLD = 0.25;
+        const isBreakdownArgmax = pSection === BREAKDOWN_IDX;
+        const isBreakdownSignificant = pBreakdownMass > BREAKDOWN_MINORITY_THRESHOLD;
+        const useBreakdownOverride = !isBreakdownArgmax && isBreakdownSignificant;
+        const effectiveSection = useBreakdownOverride ? BREAKDOWN_IDX : pSection;
+        const predictionType = PTYPE[effectiveSection];
         // 🌊 WAVE 5016: FLUID TIMING ENGINE — el tiempo es orgánico, no un número mágico.
         // Deriva el ETA del evento desde la aceleración de energía, el tiempo en sección
         // y el anclaje de fase del PLL en vez de un lookup fijo de 4/8 beats.
@@ -391,18 +423,25 @@ export function predict(pattern) {
         // Base = media geométrica de la masa del argmax y la confianza epistémica.
         // Mantiene semántica de t-norma: si la distribución es plana, la base cae
         // aunque el pico sea alto. Escalada por la fiabilidad empírica del oráculo.
-        const baseProbability = Math.sqrt(pProb * pEntropyConf) * oracleTrust();
+        // 🌊 WAVE 7559: Si usamos el override de breakdown, la masa base es la de
+        // breakdown (no la del argmax). Esto reduce la probabilidad proporcionalmente,
+        // reflejando que breakdown es una minoría — pero el YIN YANG bonus en
+        // predictCombined la compensará.
+        const effectiveMass = useBreakdownOverride ? pBreakdownMass : pProb;
+        const baseProbability = Math.sqrt(effectiveMass * pEntropyConf) * oracleTrust();
         // 📈 WAVE 5016: ORGANIC CONFIDENCE — la confianza refleja el estado real del
         // motor sensorial (lock del PLL, histéresis de sección, alineación de energía).
         const adjustedProbability = computeOrganicConfidence(baseProbability, pattern, predictionType);
         const prediction = {
             type: predictionType,
-            probableSection: SECTION_NAMES[pSection],
+            probableSection: SECTION_NAMES[effectiveSection],
             probability: adjustedProbability,
             estimatedTimeMs,
             estimatedBeats: beatsToEvent,
-            reasoning: buildReasoning(pattern),
-            suggestedActions: SECTION_ACTIONS[pSection],
+            reasoning: useBreakdownOverride
+                ? `${buildReasoning(pattern)} | 🌊 WAVE 7559: BREAKDOWN MINORITY OVERRIDE (P(breakdown)=${pBreakdownMass.toFixed(2)} > 0.25, argmax was ${SECTION_NAMES[pSection]})`
+                : buildReasoning(pattern),
+            suggestedActions: SECTION_ACTIONS[effectiveSection],
             timestamp,
         };
         lastPrediction = prediction;
@@ -520,6 +559,7 @@ export function resetPredictionEngine() {
     pProb = 0;
     pMargin = 0;
     pEntropyConf = 0;
+    pBreakdownMass = 0; // 🌊 WAVE 7559
     histSection.fill(-1);
     histTimestamp.fill(0);
     histWrite = 0;
@@ -929,37 +969,82 @@ export function predictFromEnergy(pattern, currentEnergy, bpm = 120) {
         };
     }
     // ═══════════════════════════════════════════════════════════════════════
+    // 🌊 WAVE 7559: FALLING ENERGY — MOVED ABOVE DROP DETECTION
+    //
+    // Previously, DROP DETECTION (tension > 0.4 + falling) fired BEFORE this
+    // check. In Latin music (constant high tension), this hijacked every
+    // falling-energy state, returning drop_incoming even when energy was at
+    // 0.30. A real drop implies falling FROM A HIGH POINT — if energy is
+    // already below 0.5, a falling trend is an energy_drop (breakdown),
+    // regardless of tension.
+    //
+    // 🌊 WAVE 7557: ORGANIC KINEMATIC CONFIDENCE — Exterminated the hardcoded
+    //   probability: 0.50 magic number. The confidence now derives from the
+    //   physical kinematics of the energy descent:
+    //
+    //   dropVelocity = max(0, -velocity)  (only counts when ACTUALLY falling)
+    //   normalizedDrop = clamp(dropVelocity / 0.05, 0, 1)
+    //     — 0.05/frame = steep drop (full range in ~20 frames ≈ 330ms @ 60fps)
+    //     — Below 0.01/frame = gentle drift, barely a breakdown
+    //
+    //   organicProbability = 0.45 + (normalizedDrop * 0.45)
+    //     — Gentle drift (v≈0): 0.45 — "maybe something is happening"
+    //     — Steep cliff (v≥0.05): 0.90 — "the floor just fell out"
+    //
+    //   🩸 WAVE 7557.1: CRITICAL FIX — was using Math.abs(velocity) which gave
+    //   moderate probability even when energy was RISING (flashbang). Now uses
+    //   Math.max(0, -velocity): if velocity > 0 (rising), dropVelocity = 0,
+    //   probability = 0.45 (below 0.55 threshold). This prevents false
+    //   energy_drop predictions from winning the predictCombined arbitration
+    //   during flashbangs where smoothedEnergy lags behind rawEnergy.
+    // ═══════════════════════════════════════════════════════════════════════
+    if (trend === 'falling' && currentEnergy < 0.5) {
+        // 🌊 WAVE 7557.1: Only count NEGATIVE velocity (actually falling).
+        // If velocity > 0 (energy rising, e.g. flashbang just happened),
+        // dropVelocity = 0 → probability = 0.45 (below threshold, no relaxation).
+        const dropVelocity = Math.max(0, -velocity);
+        const DROP_VELOCITY_STEEP = 0.05; // frames-per-frame ≈ full range in ~20 frames
+        const normalizedDrop = Math.max(0, Math.min(1, dropVelocity / DROP_VELOCITY_STEEP));
+        const organicProbability = 0.45 + (normalizedDrop * 0.45); // 0.45 → 0.90
+        // ETA scales inversely with velocity: steep drops arrive sooner.
+        // Gentle drift (v≈0) → 6s; steep cliff (v≥0.05) → 2s.
+        const safeBpmFalling = (bpm > 0 && Number.isFinite(bpm)) ? bpm : 120;
+        const msPerBeatFalling = 60000 / safeBpmFalling;
+        const estimatedBeatsFalling = Math.max(2, Math.round(8 - (normalizedDrop * 6)));
+        const estimatedMsFalling = estimatedBeatsFalling * msPerBeatFalling;
+        return {
+            type: 'energy_drop',
+            probableSection: 'breakdown',
+            probability: organicProbability,
+            estimatedTimeMs: estimatedMsFalling,
+            estimatedBeats: estimatedBeatsFalling,
+            reasoning: `📉 FALLING ENERGY: ${(currentEnergy * 100).toFixed(0)}% y bajando (v=${dropVelocity.toFixed(4)}/frame, prob=${organicProbability.toFixed(2)}) → Recovery mode`,
+            suggestedActions: [
+                { type: 'recover', effect: 'breathe', intensity: 0.4, durationMs: 3000, timingOffsetMs: 0 },
+            ],
+            timestamp,
+        };
+    }
+    // ═══════════════════════════════════════════════════════════════════════
     // DROP DETECTION: Tensión alta + energía cayendo → Drop incoming
     // WAVE 1172: Umbral de tensión bajado a 0.5
+    // 🌊 WAVE 7559: Ahora requiere currentEnergy > 0.5 — un drop real implica
+    //   caer DESDE un punto alto. Si la energía ya está baja, el check
+    //   anterior (FALLING ENERGY) lo captura como energy_drop. Esto evita
+    //   que la tensión constante de la música latina secuestre las
+    //   predicciones de baja energía.
     // ═══════════════════════════════════════════════════════════════════════
-    if (pattern.emotionalTension > dropTensionThreshold && trend === 'falling') {
+    if (pattern.emotionalTension > dropTensionThreshold && trend === 'falling' && currentEnergy > 0.5) {
         return {
             type: 'drop_incoming',
             probableSection: 'drop',
             probability: 0.60 + (pattern.emotionalTension * 0.2),
             estimatedTimeMs: 4000,
             estimatedBeats: 4,
-            reasoning: `🎯 DROP INCOMING: Tension ${(pattern.emotionalTension * 100).toFixed(0)}% + Energy falling`,
+            reasoning: `🎯 DROP INCOMING: Tension ${(pattern.emotionalTension * 100).toFixed(0)}% + Energy falling from ${(currentEnergy * 100).toFixed(0)}%`,
             suggestedActions: [
                 { type: 'prepare', effect: 'intensity_ramp', intensity: 0.7, durationMs: 2000, timingOffsetMs: -2000 },
                 { type: 'execute', effect: 'flash', intensity: 1.0, durationMs: 150, timingOffsetMs: 0 },
-            ],
-            timestamp,
-        };
-    }
-    // ═══════════════════════════════════════════════════════════════════════
-    // FALLING ENERGY: Bajando → Recovery/Breakdown
-    // ═══════════════════════════════════════════════════════════════════════
-    if (trend === 'falling' && currentEnergy < 0.5) {
-        return {
-            type: 'energy_drop',
-            probableSection: 'breakdown',
-            probability: 0.50,
-            estimatedTimeMs: 4000,
-            estimatedBeats: 8,
-            reasoning: `📉 FALLING ENERGY: ${(currentEnergy * 100).toFixed(0)}% y bajando → Recovery mode`,
-            suggestedActions: [
-                { type: 'recover', effect: 'breathe', intensity: 0.4, durationMs: 3000, timingOffsetMs: 0 },
             ],
             timestamp,
         };
@@ -1018,12 +1103,45 @@ export function predictCombined(pattern, currentEnergy, spectralBuildupScore) {
     // RESTORED: Standard probability-based arbitration.
     // The better prediction wins, regardless of type.
     // ═══════════════════════════════════════════════════════════════════════
+    // 🌊 WAVE 7558: STRUCTURAL BREAKDOWN BONUS — Symmetric to the spectral
+    // buildup boost below. The energy heuristic (predictFromEnergy) can detect
+    // rising energy (buildup, drop, spike) by looking at velocity/trend. But
+    // it CANNOT detect structural breakdowns — those require knowledge of the
+    // song's section structure, which only the Markov chain has.
+    //
+    // Without this bonus, the energy heuristic's buildup_starting (prob 0.55+)
+    // always beats the Markov chain's breakdown_imminent (prob ~0.40-0.50),
+    // so breakdown_imminent NEVER surfaces in predictCombined. The YIN YANG
+    // zone override in the Dream Simulator never triggers for low-energy
+    // events, and ambient/transit effects are never simulated proactively.
+    //
+    // The bonus is +0.15 — enough to let breakdown_imminent (0.45) compete
+    // with buildup_starting (0.55), but not enough to override a strong
+    // buildup (0.70+). The bonus only applies when:
+    //   1. The Markov chain predicts breakdown_imminent (structural knowledge)
+    //   2. The energy heuristic predicts something ELSE (not energy_drop,
+    //      which would be redundant — both agree on low energy)
     let bestPrediction;
-    if (energyPrediction.probability > sectionPrediction.probability) {
-        bestPrediction = energyPrediction;
+    if (sectionPrediction.type === 'breakdown_imminent'
+        && energyPrediction.type !== 'energy_drop'
+        && energyPrediction.type !== 'breakdown_imminent') {
+        const structuralBonus = 0.15;
+        const boostedSectionProb = Math.min(0.85, sectionPrediction.probability + structuralBonus);
+        if (boostedSectionProb >= energyPrediction.probability) {
+            bestPrediction = {
+                ...sectionPrediction,
+                probability: boostedSectionProb,
+                reasoning: `${sectionPrediction.reasoning} | 🌊 STRUCTURAL BREAKDOWN BONUS: +${structuralBonus.toFixed(2)} (Markov chain overrides energy heuristic)`,
+            };
+        }
+        else {
+            bestPrediction = energyPrediction;
+        }
     }
     else {
-        bestPrediction = sectionPrediction;
+        bestPrediction = energyPrediction.probability > sectionPrediction.probability
+            ? energyPrediction
+            : sectionPrediction;
     }
     // Si spectral buildup > 0.4, BOOST a la predicción
     if (spectralScore > 0.4) {

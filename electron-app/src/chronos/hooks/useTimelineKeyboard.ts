@@ -51,6 +51,11 @@ export interface UseTimelineKeyboardOptions {
   
   /** Optional: split at playhead */
   onSplitAtPlayhead?: () => void
+
+  /** ⏮️ WAVE 7565.4: Undo */
+  onUndo?: () => void
+  /** ⏭️ WAVE 7565.4: Redo */
+  onRedo?: () => void
 }
 
 export interface UseTimelineKeyboardReturn {
@@ -82,6 +87,8 @@ export function useTimelineKeyboard(
     onPlayPause,
     onRenameSelected,
     onSplitAtPlayhead,
+    onUndo,
+    onRedo,
   } = options
   
   // Internal clipboard
@@ -213,6 +220,31 @@ export function useTimelineKeyboard(
             console.log('[Keyboard] ✂️ Split at playhead')
           }
           break
+
+        // ═══════════════════════════════════════════════════════════════════
+        // ⏮️ UNDO (Ctrl+Z) / ⏭️ REDO (Ctrl+Y or Ctrl+Shift+Z) — WAVE 7565.4
+        // ═══════════════════════════════════════════════════════════════════
+        case 'z':
+        case 'Z':
+          if (ctrl && onUndo && !shift) {
+            e.preventDefault()
+            onUndo()
+            console.log('[Keyboard] ⏮️ Undo')
+          } else if (ctrl && shift && onRedo) {
+            e.preventDefault()
+            onRedo()
+            console.log('[Keyboard] ⏭️ Redo (Ctrl+Shift+Z)')
+          }
+          break
+
+        case 'y':
+        case 'Y':
+          if (ctrl && onRedo) {
+            e.preventDefault()
+            onRedo()
+            console.log('[Keyboard] ⏭️ Redo (Ctrl+Y)')
+          }
+          break
       }
     }
     
@@ -235,6 +267,8 @@ export function useTimelineKeyboard(
     onPlayPause,
     onRenameSelected,
     onSplitAtPlayhead,
+    onUndo,
+    onRedo,
   ])
   
   return {

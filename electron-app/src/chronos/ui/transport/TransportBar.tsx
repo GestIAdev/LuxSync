@@ -94,6 +94,11 @@ export interface TransportBarProps {
   // 🎛️ WAVE 2046.2: Live Rack toggle (TheProgrammer in Chronos)
   showLiveControls?: boolean
   onToggleLiveControls?: () => void
+  // ⏮️⏭️ WAVE 7565.4: Undo/Redo
+  onUndo?: () => void
+  onRedo?: () => void
+  canUndo?: boolean
+  canRedo?: boolean
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -302,6 +307,11 @@ export const TransportBar: React.FC<TransportBarProps> = memo(({
   // 🎛️ WAVE 2046.2: Live Rack
   showLiveControls = false,
   onToggleLiveControls,
+  // ⏮️⏭️ WAVE 7565.4: Undo/Redo
+  onUndo,
+  onRedo,
+  canUndo = false,
+  canRedo = false,
 }) => {
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -610,6 +620,28 @@ export const TransportBar: React.FC<TransportBarProps> = memo(({
           </div>
           <button className="ct-bpm-adj" onClick={handleBpmIncrease} title="Increase BPM">+</button>
         </div>
+
+        {/* ⏮️⏭️ WAVE 7565.4: Undo/Redo buttons */}
+        {onUndo && onRedo && (
+          <div className="ct-history-group">
+            <button
+              className="ct-history-btn"
+              onClick={onUndo}
+              disabled={!canUndo}
+              title="Undo (Ctrl+Z)"
+            >
+              {'\u23EA'}
+            </button>
+            <button
+              className="ct-history-btn"
+              onClick={onRedo}
+              disabled={!canRedo}
+              title="Redo (Ctrl+Y)"
+            >
+              {'\u23E9'}
+            </button>
+          </div>
+        )}
 
         {/* 🎹 WAVE 2045: MIDI Clock Source Toggle */}
         {onToggleMidiClock && (

@@ -68,7 +68,9 @@ export var MessagePriority;
 })(MessagePriority || (MessagePriority = {}));
 export const DEFAULT_CONFIG = {
     heartbeatInterval: 1000,
-    heartbeatTimeout: 3000,
+    // 🛡️ WAVE 7554: 3000→6000 — tolerar pausas largas del GC del OS bajo
+    // presión de memoria externa sin declarar falsamente muertos a los workers.
+    heartbeatTimeout: 6000,
     maxResurrections: 5,
     resurrectionDelay: 500,
     audioBufferSize: 2048,

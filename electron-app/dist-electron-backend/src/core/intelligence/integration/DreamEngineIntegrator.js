@@ -400,6 +400,19 @@ export class DreamEngineIntegrator {
             const isBreakdownComing = predictionType === 'breakdown_imminent' ||
                 predictionType === 'energy_drop' ||
                 (energy < 0.3 && energyTrend === 'falling');
+            // 🌊 WAVE 7560: TRUE CONFIDENCE — Erradicate masking for minority events.
+            // Breakdowns/valleys are statistical minorities (raw prob ~0.40-0.45).
+            // The old ternary masked any prob < 0.5 to 0.5, destroying the continuous
+            // signal. The DreamSimulator's relaxGuardsForFuture then saw 0.500 < 0.55
+            // and refused to relax the MAX pressure guard, so ambient effects were
+            // filtered out by the current climax pressure even when a breakdown was
+            // predicted. Now: for minority event types, pass realProbability directly.
+            const isMinorityEvent = predictionType === 'breakdown_imminent'
+                || predictionType === 'energy_drop';
+            const confidence = isMinorityEvent
+                ? realProbability // minority: pass-through (no mask)
+                : hasStrongPrediction ? realProbability // majority strong: real
+                    : (predictionType !== 'none' ? 0.5 : 0.3); // majority weak: legacy mask
             // 🔮 CASSANDRA: Calcular tiempo de anticipación para el Dreamer
             // Si el Oráculo predice algo en <2s, el Dreamer tiene que actuar YA
             const timeToEvent = context.predictionTimeMs ?? 8000;
@@ -408,8 +421,8 @@ export class DreamEngineIntegrator {
                 predictedEnergy: energy,
                 predictedSection: this.deriveSectionFromPrediction(predictionType, energy),
                 predictedTempo: context.pattern.tempo ?? 120,
-                // 🔮 CASSANDRA: Usar probabilidad REAL del Oráculo
-                confidence: hasStrongPrediction ? realProbability : (predictionType !== 'none' ? 0.5 : 0.3),
+                // 🌊 WAVE 7560: TRUE CONFIDENCE — minority events pass real probability.
+                confidence,
                 isDropComing,
                 isBreakdownComing,
                 energyTrend: energyTrend === 'spike' ? 'rising' : energyTrend,

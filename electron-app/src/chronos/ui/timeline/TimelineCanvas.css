@@ -63,6 +63,11 @@
   cursor: grabbing;
 }
 
+/* 🖐️ WAVE 7565.4: Middle-mouse pan cursor */
+.timeline-canvas-container.panning .timeline-canvas {
+  cursor: grabbing !important;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
  * TRACK STYLES
  * ═══════════════════════════════════════════════════════════════════════════ */

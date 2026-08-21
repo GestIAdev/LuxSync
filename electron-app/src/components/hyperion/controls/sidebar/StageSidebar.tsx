@@ -18,6 +18,8 @@ import { useSelectionStore } from '../../../../stores/selectionStore'
 import { useSceneStore, selectSceneCount } from '../../../../stores/sceneStore'
 import { TheProgrammer, GroupsPanel } from '../index'
 import { SceneBrowser } from './SceneBrowser'
+// ⚡ WAVE 7566.3: ScenePlayerProvider now lives in HyperionView (above both
+// sidebar modes). StageSidebar just consumes the context via SceneBrowser.
 import { ControlsIcon, GroupIcon, ScenesIcon } from '../../../icons/LuxIcons'
 import './StageSidebar.css'
 
@@ -95,6 +97,8 @@ export const StageSidebar: React.FC<StageSidebarProps> = ({
       </div>
       
       {/* CONTENT */}
+      {/* ⚡ WAVE 7566.3: ScenePlayerProvider is now in HyperionView (wraps
+          both StageSidebar and KineticsCathedral). No provider needed here. */}
       <div className="sidebar-content">
         {/* WAVE 2051: IMMORTALITY — Keep all tabs mounted, toggle visibility
             Scene player must stay alive when switching tabs (audio/clock persist) */}

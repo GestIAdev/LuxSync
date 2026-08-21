@@ -38,6 +38,8 @@ import {
   CANONICAL_ZONES,
   normalizeZone,
 } from '../stage/ShowFileV2'
+import type { EnergyZone } from '../protocol/MusicalContext'
+import type { CognitiveDNA } from '../arsenal/lfxTypes'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -592,6 +594,116 @@ export function isClipZoneCompatible(
   // Track has a non-canonical zone (e.g. energy zone 'intense', 'peak')
   // and the clip doesn't explicitly mention it or use 'all' — not compatible
   return false
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🧬 WAVE 7565.3: THE TRUE DNA ROUTER — Primary Track Zone Resolver
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 7565.2 failed because it searched the flat `spatialZones` array for
+// energy keywords. This caused false positives: 'ambient' appears in
+// spatialZones as a HARDWARE zone (fixtures in the ambient zone, e.g.
+// Tungsten fans targeting ambient+air+flash), but it was being parsed as
+// an ENERGY zone (the musical context 'ambient' = soft/calm). A clip with
+// cognitiveDNA.energyZone.max = 'peak' was routing to the AMBIENT energy
+// track because 'ambient' appeared in its spatialZones.
+//
+// The .lfx schema separates these concerns cleanly:
+//   - clip.spatialZones → WHERE (hardware zones: 'front', 'all-pars', 'ambient')
+//   - clip.cognitiveDNA.energyZone → WHEN (energy context: 'peak', 'intense')
+//
+// The resolver now reads cognitiveDNA.energyZone.max FIRST — this is the
+// absolute source of truth for which Energetic Track the clip belongs to.
+// Only if cognitiveDNA is absent (legacy clips without DNA) does it fall
+// back to parsing spatialZones through normalizeTagsToCanonical.
+//
+// Resolution priority:
+//   1. cognitiveDNA.energyZone.max → return it (THE source of truth)
+//   2. cognitiveDNA.energyZone.min → return it (fallback within DNA)
+//   3. 'all' wildcard or empty spatialZones → 'global'
+//   4. normalizeTagsToCanonical(spatialZones) → if single CanonicalZone, use it
+//   5. Otherwise → 'global' (safe fallback, no phantom tracks)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** The set of valid EnergyZone strings, for fast lookup. */
+const ENERGY_ZONE_SET: ReadonlySet<string> = new Set<string>([
+  'silence', 'valley', 'ambient', 'gentle', 'active', 'intense', 'peak',
+])
+
+/**
+ * Input shape for the resolver — accepts the clip's cognitive DNA and
+ * spatial zones separately to avoid the false-positive trap of WAVE 7565.2.
+ */
+export interface ClipZoneInput {
+  /** The clip's cognitive DNA — the absolute source of truth for energy zone. */
+  cognitiveDNA?: CognitiveDNA | null
+  /** The clip's spatial zones (hardware targets: 'front', 'all-pars', 'ambient'). */
+  spatialZones?: string[] | null
+}
+
+/**
+ * Resolve a clip's DNA into a single valid `LuxTargetZone` for track
+ * assignment. Reads `cognitiveDNA.energyZone` FIRST — this is the true
+ * source of truth for which Energetic Track the clip belongs to.
+ *
+ * Only if `cognitiveDNA` is absent (legacy clips) does it fall back to
+ * parsing `spatialZones` through `normalizeTagsToCanonical`.
+ *
+ * @param input — The clip's `cognitiveDNA` and `spatialZones`
+ * @returns A valid `LuxTargetZone` string — never a composite like `'all-pars'`.
+ */
+export function resolvePrimaryTrackZone(
+  input: ClipZoneInput | string[] | undefined | null,
+): CanonicalZone | EnergyZone | 'global' {
+  // ── Backwards compat: accept a raw string array (old callers) ──
+  // If a string array is passed, treat it as spatialZones with no DNA.
+  const cognitiveDNA: CognitiveDNA | null | undefined =
+    Array.isArray(input) ? null : input?.cognitiveDNA
+  const spatialZones: string[] | null =
+    Array.isArray(input) ? input : input?.spatialZones ?? null
+
+  // ── Priority 1: cognitiveDNA.energyZone.max — THE source of truth ──
+  // This is the 'peak' in "this clip fires at peak energy". It comes from
+  // the .lfx file's cognitiveDNA block, authored by Hephaestus/Genesis.
+  // It is NEVER a spatial zone — the .lfx schema enforces separation
+  // (LfxFileLoader rejects EnergyZoneId in spatialZones).
+  const dnaMax = cognitiveDNA?.energyZone?.max
+  if (dnaMax && ENERGY_ZONE_SET.has(dnaMax)) {
+    return dnaMax as EnergyZone
+  }
+
+  // ── Priority 2: cognitiveDNA.energyZone.min — fallback within DNA ──
+  // If max is missing/invalid but min is present, use min. This handles
+  // edge cases where a clip's energy range is [ambient, ambient] (min only).
+  const dnaMin = cognitiveDNA?.energyZone?.min
+  if (dnaMin && ENERGY_ZONE_SET.has(dnaMin)) {
+    return dnaMin as EnergyZone
+  }
+
+  // ── Priority 3: 'all' wildcard or empty spatialZones → 'global' ──
+  if (!spatialZones || spatialZones.length === 0) return 'global'
+  if (spatialZones.some(z => z.toLowerCase() === 'all' || z === '*')) return 'global'
+
+  // ── Priority 4: Normalize spatialZones to a single canonical zone ──
+  // This is the LEGACY fallback for clips without cognitiveDNA.
+  // normalizeTagsToCanonical collapses composites like 'all-pars' → 'all-pars'
+  // (NOT a single CanonicalZone). We check if the result is a valid single
+  // canonical zone.
+  //
+  // IMPORTANT: We do NOT search spatialZones for energy keywords here.
+  // 'ambient' in spatialZones means "fixtures in the ambient hardware zone"
+  // (e.g. Tungsten fans), NOT "this clip belongs on the AMBIENT energy track".
+  // Conflating them was the WAVE 7565.2 bug.
+  const normalized = normalizeTagsToCanonical(spatialZones)
+
+  if (CANONICAL_ZONES.includes(normalized as CanonicalZone)) {
+    return normalized as CanonicalZone
+  }
+
+  // ── Priority 5: Composite/compound/modifier → 'global' ──
+  // 'all-pars', 'front-back', 'all-left' etc. are not valid single track
+  // zones. Fall back to 'global' so the clip lands on the GLOBAL track
+  // instead of creating a phantom.
+  return 'global'
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

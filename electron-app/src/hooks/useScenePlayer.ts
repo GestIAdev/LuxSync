@@ -106,8 +106,17 @@ export function useScenePlayer() {
   // ═══════════════════════════════════════════════════════════════════════
 
   const loadScene = useCallback(async (project: ChronosProjectV3, audioUrl?: string) => {
-    // Stop current playback
-    stopPlayback()
+    // Stop current playback (halt backend to clear old scene's effects)
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current)
+      rafRef.current = null
+    }
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.src = ''
+      audioRef.current = null
+    }
+    haltBackend()
 
     projectRef.current = project
     silentModeRef.current = true
@@ -234,7 +243,18 @@ export function useScenePlayer() {
         }
         currentTimeMs = 0
       } else {
-        stopPlayback()
+        haltBackend()
+        if (rafRef.current) {
+          cancelAnimationFrame(rafRef.current)
+          rafRef.current = null
+        }
+        setStatus(prev => ({
+          ...prev,
+          state: prev.project ? 'loaded' : 'idle',
+          currentTimeMs: 0,
+          progress: 0,
+          activeClipCount: 0,
+        }))
         return
       }
     }
@@ -349,23 +369,12 @@ export function useScenePlayer() {
     console.log('[ScenePlayer] ⏸ Pause')
   }, [])
 
-  const stopPlayback = useCallback(() => {
-    const audio = audioRef.current
-    if (audio) {
-      audio.pause()
-      audio.currentTime = 0
-    }
+  // ═══════════════════════════════════════════════════════════════════════
+  // WAVE 7566.3: HALT BACKEND — Internal helper: clears effects + arbiter
+  // Used by KILL (blackout) and unloadScene (eject). NOT used by STOP.
+  // ═══════════════════════════════════════════════════════════════════════
 
-    // Reset silent clock
-    clockStartRef.current = 0
-    clockOffsetRef.current = 0
-
-    if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current)
-      rafRef.current = null
-    }
-
-    // ── Tell backend to stop (clears effects + arbiter) ──
+  const haltBackend = useCallback(() => {
     const api = getPlaybackApi()
     if (api?.setClockMode) {
       api.setClockMode('internal')
@@ -373,8 +382,40 @@ export function useScenePlayer() {
     if (api?.stop) {
       api.stop().catch(() => {})
     }
-
     // ── Deactivate phantom audio playback in TitanEngine ──
+    const chronosApi = getChronosApi()
+    if (chronosApi?.syncPlayhead) {
+      chronosApi.syncPlayhead(0, false)
+    }
+  }, [])
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // WAVE 7566.3: STOP — Pause + reset playhead to 0, DON'T destroy player
+  // The project stays loaded in the backend. Audio is paused and rewound.
+  // ═══════════════════════════════════════════════════════════════════════
+
+  const stop = useCallback(() => {
+    const audio = audioRef.current
+    if (audio) {
+      audio.pause()
+      audio.currentTime = 0
+    }
+
+    // Reset silent clock to 0
+    clockStartRef.current = 0
+    clockOffsetRef.current = 0
+
+    // Cancel RAF — foolproof: always null the ref after cancel
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current)
+      rafRef.current = null
+    }
+
+    // ── Tell backend we're at time 0 (keeps project loaded, just shows t=0) ──
+    const api = getPlaybackApi()
+    if (api?.tick) {
+      api.tick(0)
+    }
     const chronosApi = getChronosApi()
     if (chronosApi?.syncPlayhead) {
       chronosApi.syncPlayhead(0, false)
@@ -388,10 +429,49 @@ export function useScenePlayer() {
       activeClipCount: 0,
     }))
 
-    console.log('[ScenePlayer] ⏹ Stop')
+    console.log('[ScenePlayer] ⏹ Stop (playhead reset to 0, project stays loaded)')
   }, [])
 
-  const stop = stopPlayback
+  // ═══════════════════════════════════════════════════════════════════════
+  // WAVE 7566.3: KILL — Local blackout (zero DMX) WITHOUT unloading project
+  // Stops playback + clears all effects from arbiter = instant blackout.
+  // The project file stays loaded; user can PLAY again to resume.
+  // ═══════════════════════════════════════════════════════════════════════
+
+  const kill = useCallback(() => {
+    const audio = audioRef.current
+    if (audio) {
+      audio.pause()
+    }
+
+    // Cancel RAF
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current)
+      rafRef.current = null
+    }
+
+    // Reset clock
+    clockStartRef.current = 0
+    clockOffsetRef.current = 0
+
+    // ── Blackout: clear all effects from arbiter (zeroes DMX output) ──
+    haltBackend()
+
+    // ── Also trigger Aether-level blackout for safety ──
+    try {
+      ;(window as any).lux?.aether?.setBlackout?.(true)
+    } catch { /* noop */ }
+
+    setStatus(prev => ({
+      ...prev,
+      state: prev.project ? 'loaded' : 'idle',
+      currentTimeMs: 0,
+      progress: 0,
+      activeClipCount: 0,
+    }))
+
+    console.log('[ScenePlayer] ⚡ KILL — Blackout (DMX zeroed, project stays loaded)')
+  }, [haltBackend])
 
   const seek = useCallback((timeMs: number) => {
     const audio = audioRef.current
@@ -424,14 +504,26 @@ export function useScenePlayer() {
   }, [])
 
   const unloadScene = useCallback(() => {
-    stopPlayback()
+    // Cancel RAF + pause audio
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current)
+      rafRef.current = null
+    }
     if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.currentTime = 0
       audioRef.current.src = ''
       audioRef.current = null
     }
+    clockStartRef.current = 0
+    clockOffsetRef.current = 0
+
+    // Clear backend effects (full eject)
+    haltBackend()
+
     projectRef.current = null
     silentModeRef.current = false
-    
+
     setStatus({
       state: 'idle',
       project: null,
@@ -442,7 +534,9 @@ export function useScenePlayer() {
       activeClipCount: 0,
       hasAudio: false,
     })
-  }, [stopPlayback])
+
+    console.log('[ScenePlayer] ⏏ Eject — Scene fully unloaded')
+  }, [haltBackend])
 
   // ═══════════════════════════════════════════════════════════════════════
   // CLEANUP
@@ -450,18 +544,19 @@ export function useScenePlayer() {
 
   useEffect(() => {
     return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      // WAVE 7566.3: Foolproof cleanup — cancel RAF, free audio, halt backend
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
+        rafRef.current = null
+      }
       if (audioRef.current) {
         audioRef.current.pause()
         audioRef.current.src = ''
+        audioRef.current = null
       }
-      // Tell backend to stop on unmount
-      const api = getPlaybackApi()
-      if (api?.stop) {
-        api.stop().catch(() => {})
-      }
+      haltBackend()
     }
-  }, [])
+  }, [haltBackend])
 
   // ═══════════════════════════════════════════════════════════════════════
   // RETURN
@@ -474,6 +569,7 @@ export function useScenePlayer() {
     play,
     pause,
     stop,
+    kill,
     seek,
     toggleLoop,
   }

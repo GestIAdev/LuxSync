@@ -332,12 +332,33 @@ export function extractEnergyHeatmap(
   // buffers ONLY when oracle.confidence > CONF_FLOOR. At track end a
   // confidence-weighted median reduces the array to a single scalar.
   // ═══════════════════════════════════════════════════════════════════════
-  const odfRateHz = 1000 / config.heatmapResolutionMs
-  const oracle = new TempoOracle(odfRateHz)
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🌊 WAVE 7564.6: DECOUPLED ORACLE RATE — The 20Hz Aliasing Fix
+  // ═══════════════════════════════════════════════════════════════════════
+  // WAVE 7564.5 diagnosed that coupling the Oracle to 50ms (20 Hz) placed
+  // 150 BPM on an exact integer lag (8.0 frames), letting it unfairly beat
+  // 126 BPM (9.52 frames) in the harmonic ladder. At 43 Hz neither tempo
+  // lands on an integer lag (150 → 17.2, 126 → 20.48), so the Gaussian
+  // smear + parabolic interpolation resolve both correctly.
+  //
+  // 43 Hz is the Oracle's designed operating point (see TempoOracle
+  // blueprint: RING_SIZE/EVAL_INTERVAL/MAX_LAG all sized for it). The
+  // persistent heatmap arrays stay at 50ms; only the Oracle's internal
+  // loop accelerates. The FFT also runs at the internal rate so the ODF
+  // needle the Oracle consumes is a genuine per-frame reading, not an
+  // interpolation.
+  // ═══════════════════════════════════════════════════════════════════════
+  const ORACLE_INTERNAL_RATE_HZ = 43
+  const internalResolutionSamples = Math.floor(sampleRate / ORACLE_INTERNAL_RATE_HZ)
+  const internalResolutionMs = (1000 * internalResolutionSamples) / sampleRate
+  const numInternalPoints = Math.ceil(samples.length / internalResolutionSamples)
+  const oracleOdfRateHz = sampleRate / internalResolutionSamples
+  const oracle = new TempoOracle(oracleOdfRateHz)
   // Pre-allocated collection buffers — zero per-frame allocation.
-  // Sized to numPoints (worst case: every frame clears the gate).
-  const bpmSamples = new Float64Array(numPoints)
-  const confSamples = new Float64Array(numPoints)
+  // Sized to numInternalPoints (the Oracle now runs at the internal rate,
+  // not the heatmap rate, so worst case is every internal frame clears gate).
+  const bpmSamples = new Float64Array(numInternalPoints)
+  const confSamples = new Float64Array(numInternalPoints)
   let sampleCount = 0
 
   // 🌊 WAVE 7563: TEMPO CURVE collection buffer.
@@ -347,13 +368,19 @@ export function extractEnergyHeatmap(
   // relationship to frame k. It exists purely to be reduced to a scalar.
   //
   // `tempoRaw` is SPARSE-BY-INDEX: `tempoRaw[i]` is the Oracle's reading at
-  // frame i, or 0 if that frame failed the confidence gate. Preserving the
-  // time axis is the whole point — a tempo curve that is not co-indexable
-  // with the heatmap is useless to Hephaestus.
+  // heatmap frame i, or 0 if that frame failed the confidence gate. Preserving
+  // the time axis is the whole point — a tempo curve that is not co-indexable
+  // with the heatmap is useless to Hephaestus. It stays sized to numPoints
+  // (50ms resolution) even though the Oracle runs faster internally.
   const tempoRaw = new Float64Array(numPoints)
 
-  for (let i = 0; i < numPoints; i++) {
-    const start = i * resolutionSamples
+  // 🌊 WAVE 7564.6: Heatmap frame cursor. The internal loop writes to the
+  // persistent arrays only when the internal frame time crosses the next
+  // 50ms boundary, keeping the .lux file size identical to pre-7564.6.
+  let heatmapIdx = 0
+
+  for (let i = 0; i < numInternalPoints; i++) {
+    const start = i * internalResolutionSamples
     const end = Math.min(start + actualFftSize, samples.length)
 
     // Reuse pre-allocated window buffer — zero out then copy new samples
@@ -364,37 +391,23 @@ export function extractEnergyHeatmap(
     // 🩻 Run REAL FFT analysis through GodEarAnalyzer
     const spectrum = analyzer.analyze(windowBuffer)
 
-    // Extract 7 tactical bands (already LR4-equivalent masked, zero overlap)
-    subBassArr[i] = spectrum.bands.subBass
-    bassRealArr[i] = spectrum.bands.bass
-    lowMidArr[i] = spectrum.bands.lowMid
-    midArr[i] = spectrum.bands.mid
-    highMidArr[i] = spectrum.bands.highMid
-    trebleArr[i] = spectrum.bands.treble
-    ultraAirArr[i] = spectrum.bands.ultraAir
-
-    // Spectral metrics
-    centroidArr[i] = spectrum.spectral.centroid
-    flatnessArr[i] = spectrum.spectral.flatness
-
-    // 🩻 GODEAR UNLEASHED Phase 3: Semantic enrichment telemetry
-    // photon block is optional (undefined on V2 fallback) — guard with ?.
-    saturationArr[i] = spectrum.photon?.saturation ?? 0
-    whiteNoiseArr[i] = spectrum.photon?.whiteNoiseScore ?? 0
-    rhythmicVoidArr[i] = spectrum.rhythmic?.rhythmic_void ?? 0
-    rolloffArr[i] = spectrum.spectral.rolloff
-
     // 🩻 GODEAR UNLEASHED Phase 2: 3-band transient event collection
     // GodEar's SlopeBasedOnsetDetector already applies 80ms refractory
     // internally, so consecutive frames won't double-fire. We apply an
     // additional heatmap-resolution-aware debounce for safety.
-    const frameTimeMs = i * config.heatmapResolutionMs
+    // 🌊 WAVE 7564.6: Transients now collected at the internal frame rate
+    // (43 Hz) for finer temporal resolution — the refractory debounce
+    // still prevents duplicates.
+    const frameTimeMs = i * internalResolutionMs
 
     // 🔮 CHRONOS PURE MEDIAN ANALYSER: Feed TempoOracle with the per-frame
     // ODF needle (subBass + bassReal = 20-250 Hz onset detection function
     // proxy). The Oracle runs NSDF autocorrelation + harmonic ladder +
     // sub-frame parabolic interpolation internally, zero allocation.
     // Deterministic timestamp = offline clock.
+    // 🌊 WAVE 7564.6: Now fed at 43 Hz (internal rate), not 20 Hz. This is
+    // the core fix — at 43 Hz the lag band has 2.15× more resolution and
+    // neither 126 BPM nor 150 BPM falls on an integer lag.
     oracle.process(
       spectrum.bands.subBass + spectrum.bands.bass,
       frameTimeMs,
@@ -403,12 +416,12 @@ export function extractEnergyHeatmap(
     // Accumulate BPM only when the Oracle's confidence exceeds CONF_FLOOR.
     // This rejects intro/outro silence and low-periodicity noise frames
     // from the statistical reduction at track end.
+    // 🌊 WAVE 7564.6: Accumulation now happens at the internal rate too,
+    // giving the confidence-weighted median ~2.15× more samples to reduce.
     if (oracle.confidence > CONF_FLOOR && oracle.bpm > 0) {
       bpmSamples[sampleCount] = oracle.bpm
       confSamples[sampleCount] = oracle.confidence
       sampleCount++
-      // 🌊 WAVE 7563: same reading, stored against the TIME axis this time.
-      tempoRaw[i] = oracle.bpm
     }
 
     if (spectrum.transients.kick && frameTimeMs - lastKickMs >= refractoryMs) {
@@ -431,22 +444,82 @@ export function extractEnergyHeatmap(
       }
     }
 
-    // Legacy fields (combine bands for backwards compatibility)
-    // bass = subBass + bass (what the old zero-crossing tried to approximate)
-    bass[i] = Math.min(1, (spectrum.bands.subBass + spectrum.bands.bass) * 2)
-    // high = treble + ultraAir
-    high[i] = Math.min(1, (spectrum.bands.treble + spectrum.bands.ultraAir) * 2)
-    // total energy
-    energy[i] = Math.min(1, spectrum.totalEnergy * 3)
+    // 🌊 WAVE 7564.6: Write persistent arrays only when the internal frame
+    // time crosses the next 50ms heatmap boundary. This keeps the .lux file
+    // size identical — the arrays are still numPoints long at 50ms spacing.
+    // The `while` handles the rare case where a single internal frame
+    // straddles two heatmap boundaries (it can't at 43 Hz > 20 Hz, but the
+    // guard is cheap and correct for any rate ratio).
+    while (heatmapIdx < numPoints && frameTimeMs >= heatmapIdx * config.heatmapResolutionMs) {
+      // Extract 7 tactical bands (already LR4-equivalent masked, zero overlap)
+      subBassArr[heatmapIdx] = spectrum.bands.subBass
+      bassRealArr[heatmapIdx] = spectrum.bands.bass
+      lowMidArr[heatmapIdx] = spectrum.bands.lowMid
+      midArr[heatmapIdx] = spectrum.bands.mid
+      highMidArr[heatmapIdx] = spectrum.bands.highMid
+      trebleArr[heatmapIdx] = spectrum.bands.treble
+      ultraAirArr[heatmapIdx] = spectrum.bands.ultraAir
 
-    // Spectral flux — real change in total energy between frames
-    flux[i] = Math.abs(spectrum.totalEnergy - prevTotalEnergy)
-    prevTotalEnergy = spectrum.totalEnergy
+      // Spectral metrics
+      centroidArr[heatmapIdx] = spectrum.spectral.centroid
+      flatnessArr[heatmapIdx] = spectrum.spectral.flatness
+
+      // 🩻 GODEAR UNLEASHED Phase 3: Semantic enrichment telemetry
+      // photon block is optional (undefined on V2 fallback) — guard with ?.
+      saturationArr[heatmapIdx] = spectrum.photon?.saturation ?? 0
+      whiteNoiseArr[heatmapIdx] = spectrum.photon?.whiteNoiseScore ?? 0
+      rhythmicVoidArr[heatmapIdx] = spectrum.rhythmic?.rhythmic_void ?? 0
+      rolloffArr[heatmapIdx] = spectrum.spectral.rolloff
+
+      // 🌊 WAVE 7563: Oracle reading stored against the heatmap TIME axis.
+      tempoRaw[heatmapIdx] = oracle.bpm > 0 && oracle.confidence > CONF_FLOOR
+        ? oracle.bpm
+        : 0
+
+      // Legacy fields (combine bands for backwards compatibility)
+      // bass = subBass + bass (what the old zero-crossing tried to approximate)
+      bass[heatmapIdx] = Math.min(1, (spectrum.bands.subBass + spectrum.bands.bass) * 2)
+      // high = treble + ultraAir
+      high[heatmapIdx] = Math.min(1, (spectrum.bands.treble + spectrum.bands.ultraAir) * 2)
+      // total energy
+      energy[heatmapIdx] = Math.min(1, spectrum.totalEnergy * 3)
+
+      // Spectral flux — real change in total energy between heatmap frames
+      flux[heatmapIdx] = Math.abs(spectrum.totalEnergy - prevTotalEnergy)
+      prevTotalEnergy = spectrum.totalEnergy
+
+      heatmapIdx++
+    }
 
     // Report progress every ~5% (worker only — no-op on main thread)
-    if (onProgress && i % Math.max(1, Math.ceil(numPoints / 20)) === 0) {
-      onProgress('energy', Math.round((i / numPoints) * 100), `FFT analysis ${Math.round((i / numPoints) * 100)}%...`)
+    if (onProgress && i % Math.max(1, Math.ceil(numInternalPoints / 20)) === 0) {
+      onProgress('energy', Math.round((i / numInternalPoints) * 100), `FFT analysis ${Math.round((i / numInternalPoints) * 100)}%...`)
     }
+  }
+
+  // 🌊 WAVE 7564.6: Fill any trailing heatmap frames that the internal loop
+  // didn't reach (track length not an exact multiple of the 50ms grid).
+  // Zero-fill is correct — these frames are past the audio end.
+  while (heatmapIdx < numPoints) {
+    subBassArr[heatmapIdx] = 0
+    bassRealArr[heatmapIdx] = 0
+    lowMidArr[heatmapIdx] = 0
+    midArr[heatmapIdx] = 0
+    highMidArr[heatmapIdx] = 0
+    trebleArr[heatmapIdx] = 0
+    ultraAirArr[heatmapIdx] = 0
+    centroidArr[heatmapIdx] = 0
+    flatnessArr[heatmapIdx] = 0
+    saturationArr[heatmapIdx] = 0
+    whiteNoiseArr[heatmapIdx] = 0
+    rhythmicVoidArr[heatmapIdx] = 0
+    rolloffArr[heatmapIdx] = 0
+    tempoRaw[heatmapIdx] = 0
+    bass[heatmapIdx] = 0
+    high[heatmapIdx] = 0
+    energy[heatmapIdx] = 0
+    flux[heatmapIdx] = 0
+    heatmapIdx++
   }
 
   // Normalize flux to 0-1
@@ -1753,6 +1826,16 @@ export function runAnalysisPipeline(
     heatmapResult.tempoCurve,
   )
   onProgress?.('beats', 100, 'Beat grid detected')
+
+  // 🐀 WAVE 7564.7: THE PHANTOM CHIVATO — log the final scalar BPM so we can
+  // verify the 43Hz aliasing fix from the worker console. This is the single
+  // number that propagates to LuxAnalysisV3.detectedBpm and the TransportBar.
+  console.log(
+    `[Phantom Worker] 🔮 FINAL OFFLINE BPM: ${heatmapResult.oracleBpm.toFixed(2)} ` +
+    `(conf: ${heatmapResult.oracleConfidence.toFixed(2)}, ` +
+    `samples: ${heatmapResult.tempoCurve.length} frames @ 50ms, ` +
+    `variable: ${(beatGrid as any).variableTempo ?? false})`
+  )
 
   // Phase 4: Section Detection
   // GODEAR UNLEASHED Phase 3: detectSections now uses saturation,

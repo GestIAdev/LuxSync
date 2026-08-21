@@ -135,7 +135,12 @@ console.log('  ║  LicenseValidator.js inyectado ✅              ║')
   // PASO 7: Destruir el .js intermedio
   // ═══════════════════════════════════════════════════════════════════════════
 
-  fs.unlinkSync(LICENSE_DIST_JS)
+  // 🩸 WAVE 7567: bytenode.compileFile({ electron: true }) may already remove
+  // the source .js in some versions. Guard the unlink — if the file is already
+  // gone, that's the desired state (source destroyed = forge objective met).
+  if (fs.existsSync(LICENSE_DIST_JS)) {
+    fs.unlinkSync(LICENSE_DIST_JS)
+  }
   console.log('  ║  LicenseValidator.js destruido  🔥             ║')
 
   // ═══════════════════════════════════════════════════════════════════════════

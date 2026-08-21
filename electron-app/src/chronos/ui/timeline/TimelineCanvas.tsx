@@ -697,6 +697,10 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   const [draggingClipId, setDraggingClipId] = useState<string | null>(null)
   const [resizingClip, setResizingClip] = useState<{ id: string; edge: 'left' | 'right' } | null>(null)
   const dragStartRef = useRef<{ x: number; startMs: number; originalEdgeMs: number } | null>(null)
+
+  // 🖐️ WAVE 7565.4: Middle-mouse pan state — button 1 (middle) + drag to pan freely
+  const [isPanning, setIsPanning] = useState(false)
+  const panStartRef = useRef<{ x: number; startTime: number } | null>(null)
   
   // ⚡ WAVE 2045.1: CLONE WARS — Alt+Drag ghost clone state
   const [isCloning, setIsCloning] = useState(false)
@@ -985,6 +989,18 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     return () => container.removeEventListener('wheel', handleWheel)
   }, [dimensions.width])
   
+  // 🖐️ WAVE 7565.4: Middle-mouse pan — start panning on button 1 (middle click)
+  const handleMouseDown = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+    if (e.button === 1) {
+      // Middle-click → start panning
+      e.preventDefault()
+      panStartRef.current = { x: e.clientX, startTime: viewport.startTime }
+      setIsPanning(true)
+      lastUserScrollRef.current = Date.now()
+    }
+    // Left-click (button 0) → falls through to handleClick for seek / clip select
+  }, [viewport.startTime])
+
   // Click to seek
   const handleClick = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
     const svg = e.currentTarget
@@ -1286,7 +1302,46 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
       document.removeEventListener('mouseup', handleMouseUp)
     }
   }, [draggingClipId, resizingClip, viewport.pixelsPerSecond, clips, onClipMove, onClipResize])
-  
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🖐️ WAVE 7565.4: MIDDLE-MOUSE PAN — Global mousemove/mouseup for panning
+  // Activated by middle-click (button 1) on the SVG. Translates horizontal
+  // drag delta into viewport.startTime shift. Does NOT interfere with
+  // left-click clip drag (separate state, separate effect).
+  // ═══════════════════════════════════════════════════════════════════════
+  useEffect(() => {
+    if (!isPanning) return
+
+    const handlePanMove = (e: MouseEvent) => {
+      const panStart = panStartRef.current
+      if (!panStart) return
+      const deltaX = e.clientX - panStart.x
+      // Convert pixel delta to time delta (inverted: drag right → view left)
+      const deltaMs = (deltaX / viewport.pixelsPerSecond) * 1000
+      lastUserScrollRef.current = Date.now()
+      // Capture startTime into a local — panStartRef.current may be null
+      // by the time the setViewport updater runs (handlePanUp clears it).
+      const startStartTime = panStart.startTime
+      setViewport(prev => {
+        const newStart = Math.max(0, startStartTime - deltaMs)
+        const duration = prev.endTime - prev.startTime
+        return { ...prev, startTime: newStart, endTime: newStart + duration }
+      })
+    }
+
+    const handlePanUp = () => {
+      setIsPanning(false)
+      panStartRef.current = null
+    }
+
+    document.addEventListener('mousemove', handlePanMove)
+    document.addEventListener('mouseup', handlePanUp)
+    return () => {
+      document.removeEventListener('mousemove', handlePanMove)
+      document.removeEventListener('mouseup', handlePanUp)
+    }
+  }, [isPanning, viewport.pixelsPerSecond])
+
   // ═══════════════════════════════════════════════════════════════════════
   // WAVE 2006: CLIP RENDERING HELPERS (WAVE 2040.12: Use elastic tracks)
   // ═══════════════════════════════════════════════════════════════════════
@@ -1318,7 +1373,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
       className="timeline-outer-wrapper"
     >
     <div 
-      className={`timeline-canvas-container ${isDragOver ? 'drag-over' : ''}`}
+      className={`timeline-canvas-container ${isDragOver ? 'drag-over' : ''} ${isPanning ? 'panning' : ''}`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -1328,6 +1383,8 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
         width={dimensions.width}
         height={visibleCanvasHeight}
         onClick={handleClick}
+        onMouseDown={handleMouseDown}
+        onAuxClick={(e) => e.preventDefault()}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
       >
@@ -1656,7 +1713,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
         
         {/* Zoom indicator */}
         <span className="zoom-value">{Math.round(viewport.pixelsPerSecond)}px/s</span>
-        <span className="zoom-hint">Ctrl+Scroll to zoom</span>
+        <span className="zoom-hint">Ctrl+Scroll to zoom · Shift+Scroll / Middle-drag to pan</span>
       </div>
     </div>
 

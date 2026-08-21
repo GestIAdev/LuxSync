@@ -32,73 +32,66 @@
      * ═══════════════════════════════════════════════════════════════════════════
      * 👻 PHANTOM ANALYZER - WAVE 2005.3: THE PHANTOM WORKER
      * 🩻 WAVE 2077: THE TRANSPLANT — Real GodEarFFT Integration
-     * 
+     * 👻 WAVE 7564.9: THE PHANTOM PURGE — Inline analysis logic DELETED.
+     *   The phantom now delegates to runAnalysisPipeline() from the compiled
+     *   CJS bundle (phantomPipeline.js), which contains the TempoOracle,
+     *   43Hz decoupled rate, Ellis DP tracker, and variable-tempo support.
+     *   This is the SAME function godear-offline.worker.ts uses — single
+     *   source of truth. ~500 lines of duplicated inline JS eliminated.
+     *
      * Este script corre en una BrowserWindow OCULTA.
      * Procesa audio sin afectar la UI principal.
-     * 
-     * WAVE 2077: Now uses REAL Cooley-Tukey FFT with:
-     * - Blackman-Harris 4-term windowing (-92dB sidelobes)
-     * - Linkwitz-Riley 4th order digital crossovers (24dB/oct)
-     * - 7 tactical bands with ZERO overlap
-     * - Spectral centroid + flatness per frame
-     * 
-     * @version WAVE 2077
+     *
+     * @version WAVE 7564.9
      */
     
     const { ipcRenderer } = require('electron')
     
     // ═══════════════════════════════════════════════════════════════════════════
-    // 🩻 WAVE 2077: Load GodEarFFT from compiled backend
-    // The phantom has nodeIntegration: true, so require() works
+    // 👻 WAVE 7564.9: Load the PHANTOM PIPELINE bundle (single source of truth)
+    // This CJS bundle contains runAnalysisPipeline + TempoOracle + GodEarFFT +
+    // Ellis DP tracker — everything analysisPipeline.ts exports, compiled by
+    // Vite into one self-contained module. The phantom no longer has any
+    // inline analysis logic.
     // ═══════════════════════════════════════════════════════════════════════════
     
-    let GodEarAnalyzer = null
+    let runAnalysisPipeline = null
+    let PIPELINE_CONFIG = null
     try {
       const path = require('path')
-      
-      // Vamos a chivarle al log dónde estamos parados exactamente
-      console.log(`🔍 Buscando GodEarFFT desde: ${__dirname}`)
+      console.log(`🔍 [Phantom] Buscando phantomPipeline desde: ${__dirname}`)
       
       const possiblePaths = [
-        // WAVE 2541.3: Ruta primaria — dist-electron/GodEarFFT.js (nuevo entry en vite.config.ts)
-        // phantomWorker.html está en dist-electron/workers/ en runtime, así que:
-        //   __dirname = .../dist-electron/workers (o similar)
-        path.join(__dirname, '..', 'GodEarFFT.js'),         // dist-electron/GodEarFFT.js
-        path.join(__dirname, 'GodEarFFT.js'),               // mismo directorio
-        path.join(__dirname, '..', 'workers', 'GodEarFFT.js'),
-        path.join(__dirname, '..', 'dist-electron', 'GodEarFFT.js'),
-        path.join(__dirname, '..', '..', 'dist-electron', 'GodEarFFT.js'),
-        
-        // Rutas legacy por si acaso
-        path.join(__dirname, '..', '..', 'dist-electron-backend', 'src', 'workers', 'GodEarFFT.js'),
-        path.join(__dirname, '..', 'dist-electron-backend', 'src', 'workers', 'GodEarFFT.js')
+        path.join(__dirname, '..', 'phantomPipeline.js'),         // dist-electron/phantomPipeline.js
+        path.join(__dirname, 'phantomPipeline.js'),               // mismo directorio
+        path.join(__dirname, '..', 'workers', 'phantomPipeline.js'),
+        path.join(__dirname, '..', 'dist-electron', 'phantomPipeline.js'),
+        path.join(__dirname, '..', '..', 'dist-electron', 'phantomPipeline.js'),
       ]
       
       for (const p of possiblePaths) {
         try {
           const fs = require('fs')
           if (fs.existsSync(p)) {
-            const godEarModule = require(p)
-            // El bundle CJS mezcla named + default exports — cubrir ambos casos
-            GodEarAnalyzer = godEarModule.GodEarAnalyzer 
-              || (godEarModule.default && godEarModule.default.GodEarAnalyzer)
-              || godEarModule.default
-            console.log(`🩻 ¡GodEarFFT ENCONTRADO y cargado desde!: ${p}`)
-            console.log(`🔬 GodEarAnalyzer resuelto:`, typeof GodEarAnalyzer)
+            const mod = require(p)
+            runAnalysisPipeline = mod.runAnalysisPipeline
+            PIPELINE_CONFIG = mod.DEFAULT_CONFIG
+            console.log(`👻 [Phantom] ¡phantomPipeline ENCONTRADO y cargado desde!: ${p}`)
+            console.log(`🔬 [Phantom] runAnalysisPipeline:`, typeof runAnalysisPipeline)
             break
           } else {
-            console.log(`❌ No existe en: ${p}`) // Activado para diagnosticar rutas
+            console.log(`❌ [Phantom] No existe en: ${p}`)
           }
         } catch (e) {
-          console.log(`⚠️ Error intentando requerir ${p}: ${e.message}`)
+          console.log(`⚠️ [Phantom] Error intentando requerir ${p}: ${e.message}`)
         }
       }
       
-      if (!GodEarAnalyzer) {
-        console.warn('[PhantomAnalyzer] ⚠️ GodEarFFT not found, falling back to zero-crossing')
+      if (!runAnalysisPipeline) {
+        console.error('[Phantom] ❌ CRITICAL: phantomPipeline not found! Analysis will fail.')
       }
     } catch (e) {
-      console.warn('[PhantomAnalyzer] ⚠️ Cannot load GodEarFFT:', e.message)
+      console.error('[Phantom] ❌ Cannot load phantomPipeline:', e.message)
     }
     
     // ═══════════════════════════════════════════════════════════════════════════
@@ -121,32 +114,27 @@
     }
     
     // ═══════════════════════════════════════════════════════════════════════════
-    // GODEAR OFFLINE ANALYSIS (Embedded for isolation)
+    // 👻 WAVE 7564.9: PHANTOM ANALYSIS — Delegated to analysisPipeline.ts
+    // The inline analysis functions (extractWaveform, extractEnergyHeatmap,
+    // detectBeats, estimateBpm, detectSections, detectTransients) have been
+    // PURGED. The phantom now calls runAnalysisPipeline() from the compiled
+    // CJS bundle — the SAME function godear-offline.worker.ts uses.
     // ═══════════════════════════════════════════════════════════════════════════
-    
+
     /**
-     * Configuration for offline analysis
-     */
-    const DEFAULT_CONFIG = {
-      waveformSamplesPerSecond: 100,
-      heatmapResolutionMs: 50,
-      fftWindowSize: 2048,
-      beatSensitivity: 0.3,
-      sectionMinDurationMs: 5000,
-      transientThreshold: 0.6,
-    }
-    
-    /**
-     * Get mono samples from AudioBuffer
+     * Get mono samples from AudioBuffer.
+     * This is the ONLY function that stays inline — it needs the AudioBuffer
+     * from AudioContext.decodeAudioData, which is a browser API only available
+     * in the BrowserWindow context. Everything else runs in the pipeline.
      */
     function getMonoSamples(buffer) {
       const numChannels = buffer.numberOfChannels
       const length = buffer.length
       const mono = new Float32Array(length)
-      
+
       // Get first channel
       buffer.copyFromChannel(mono, 0)
-      
+
       // If stereo+, average channels
       if (numChannels > 1) {
         const temp = new Float32Array(length)
@@ -160,518 +148,88 @@
           mono[i] /= numChannels
         }
       }
-      
+
       return mono
     }
     
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 👻 WAVE 7564.9: ALL INLINE ANALYSIS FUNCTIONS PURGED
+    //
+    // The following functions have been DELETED (replaced by runAnalysisPipeline
+    // from the compiled CJS bundle):
+    //   - extractWaveform()           → now inside runAnalysisPipeline (Phase 1)
+    //   - extractEnergyHeatmap()      → now inside runAnalysisPipeline (Phase 2,
+    //                                    with TempoOracle + 43Hz decoupled rate)
+    //   - detectBeats()               → now inside runAnalysisPipeline (Phase 3,
+    //                                    with Ellis DP tracker + variable tempo)
+    //   - estimateBpm()               → DEPRECATED, only used as fallback inside
+    //                                    detectBeats() in analysisPipeline.ts
+    //   - detectSections()            → now inside runAnalysisPipeline (Phase 4)
+    //   - detectTransients()          → now inside runAnalysisPipeline (Phase 5,
+    //                                    collected during FFT loop, not separate pass)
+    //
+    // The phantom worker is now a thin shell:
+    //   1. Receive ArrayBuffer via IPC
+    //   2. Decode with AudioContext.decodeAudioData (browser API, needs BrowserWindow)
+    //   3. Extract mono Float32Array
+    //   4. Call runAnalysisPipeline() — the SAME function godear-offline.worker.ts uses
+    //   5. Return the AnalysisPipelineResult via IPC
+    // ═══════════════════════════════════════════════════════════════════════════
+
     /**
-     * Extract waveform peaks and RMS
-     */
-    function extractWaveform(samples, sampleRate, config, reportProgress) {
-      const samplesPerPoint = Math.floor(sampleRate / config.waveformSamplesPerSecond)
-      const numPoints = Math.ceil(samples.length / samplesPerPoint)
-      
-      const peaks = new Array(numPoints)
-      const rms = new Array(numPoints)
-      
-      for (let i = 0; i < numPoints; i++) {
-        const start = i * samplesPerPoint
-        const end = Math.min(start + samplesPerPoint, samples.length)
-        
-        let maxPeak = 0
-        let sumSquares = 0
-        
-        for (let j = start; j < end; j++) {
-          const val = Math.abs(samples[j])
-          if (val > maxPeak) maxPeak = val
-          sumSquares += samples[j] * samples[j]
-        }
-        
-        peaks[i] = Math.min(1, maxPeak)
-        rms[i] = Math.min(1, Math.sqrt(sumSquares / (end - start)))
-        
-        // Report progress every 10%
-        if (i % Math.ceil(numPoints / 10) === 0) {
-          reportProgress('waveform', Math.round((i / numPoints) * 100))
-        }
-      }
-      
-      return {
-        samplesPerSecond: config.waveformSamplesPerSecond,
-        peaks,
-        rms,
-      }
-    }
-    
-    /**
-     * 🩻 WAVE 2077: Extract energy heatmap with REAL FFT (GodEarAnalyzer)
-     * Falls back to zero-crossing if GodEarFFT not available
-     */
-    function extractEnergyHeatmap(samples, sampleRate, config, reportProgress) {
-      const resolutionSamples = Math.floor(sampleRate * config.heatmapResolutionMs / 1000)
-      const numPoints = Math.ceil(samples.length / resolutionSamples)
-      
-      const energy = new Array(numPoints)
-      const bass = new Array(numPoints)
-      const high = new Array(numPoints)
-      const flux = new Array(numPoints)
-      
-      // 🩻 WAVE 2077: Tactical band arrays (only when GodEarFFT available)
-      let subBass, bassReal, lowMid, mid, highMid, treble, ultraAir
-      let spectralCentroid, spectralFlatness
-      
-      if (GodEarAnalyzer) {
-        // ═══════════════════════════════════════════════════════════════
-        // 🩻 REAL FFT PATH — Cooley-Tukey + Blackman-Harris + LR4
-        // ═══════════════════════════════════════════════════════════════
-        const fftSize = 2048
-        const analyzer = new GodEarAnalyzer(sampleRate, fftSize)
-        analyzer.configure({ useAGC: false, useStereo: false })
-        
-        subBass = new Array(numPoints)
-        bassReal = new Array(numPoints)
-        lowMid = new Array(numPoints)
-        mid = new Array(numPoints)
-        highMid = new Array(numPoints)
-        treble = new Array(numPoints)
-        ultraAir = new Array(numPoints)
-        spectralCentroid = new Array(numPoints)
-        spectralFlatness = new Array(numPoints)
-        
-        let prevTotalEnergy = 0
-        
-        for (let i = 0; i < numPoints; i++) {
-          const start = i * resolutionSamples
-          
-          // Extract window for FFT
-          const window = new Float32Array(fftSize)
-          const copyEnd = Math.min(start + fftSize, samples.length)
-          for (let j = start; j < copyEnd; j++) {
-            window[j - start] = samples[j]
-          }
-          
-          // Run REAL FFT
-          const spectrum = analyzer.analyze(window)
-          
-          // 7 tactical bands
-          subBass[i] = spectrum.bands.subBass
-          bassReal[i] = spectrum.bands.bass
-          lowMid[i] = spectrum.bands.lowMid
-          mid[i] = spectrum.bands.mid
-          highMid[i] = spectrum.bands.highMid
-          treble[i] = spectrum.bands.treble
-          ultraAir[i] = spectrum.bands.ultraAir
-          
-          // Spectral metrics
-          spectralCentroid[i] = spectrum.spectral.centroid
-          spectralFlatness[i] = spectrum.spectral.flatness
-          
-          // Legacy fields
-          bass[i] = Math.min(1, (spectrum.bands.subBass + spectrum.bands.bass) * 2)
-          high[i] = Math.min(1, (spectrum.bands.treble + spectrum.bands.ultraAir) * 2)
-          energy[i] = Math.min(1, spectrum.totalEnergy * 3)
-          flux[i] = Math.abs(spectrum.totalEnergy - prevTotalEnergy)
-          prevTotalEnergy = spectrum.totalEnergy
-          
-          if (i % Math.ceil(numPoints / 10) === 0) {
-            reportProgress('energy', Math.round((i / numPoints) * 100))
-          }
-        }
-        
-        analyzer.reset()
-        log('🩻 Energy heatmap extracted with REAL GodEarFFT (7 tactical bands)')
-        
-      } else {
-        // ═══════════════════════════════════════════════════════════════
-        // FALLBACK: Zero-crossing approximation (pre-WAVE 2077)
-        // ═══════════════════════════════════════════════════════════════
-        let prevEnergy = 0
-        
-        for (let i = 0; i < numPoints; i++) {
-          const start = i * resolutionSamples
-          const end = Math.min(start + resolutionSamples, samples.length)
-          
-          let sumSquares = 0
-          let prevSample = 0
-          let zeroCrossings = 0
-          
-          for (let j = start; j < end; j++) {
-            const val = samples[j]
-            sumSquares += val * val
-            if ((val >= 0 && prevSample < 0) || (val < 0 && prevSample >= 0)) {
-              zeroCrossings++
-            }
-            prevSample = val
-          }
-          
-          const blockSize = end - start
-          const blockEnergy = Math.sqrt(sumSquares / blockSize)
-          
-          energy[i] = Math.min(1, blockEnergy * 3)
-          const zcRate = zeroCrossings / blockSize
-          bass[i] = Math.min(1, blockEnergy * 3 * Math.max(0, 1 - zcRate * 50))
-          high[i] = Math.min(1, blockEnergy * 3 * Math.min(1, zcRate * 20))
-          flux[i] = Math.abs(blockEnergy - prevEnergy)
-          prevEnergy = blockEnergy
-          
-          if (i % Math.ceil(numPoints / 10) === 0) {
-            reportProgress('energy', Math.round((i / numPoints) * 100))
-          }
-        }
-        
-        log('⚠️ Energy heatmap extracted with FALLBACK zero-crossing (GodEarFFT not loaded)')
-      }
-      
-      // Normalize flux
-      const maxFlux = Math.max(...flux)
-      if (maxFlux > 0) {
-        for (let i = 0; i < flux.length; i++) {
-          flux[i] /= maxFlux
-        }
-      }
-      
-      // ═══════════════════════════════════════════════════════════════════
-      // 🩻 WAVE 2541.3: PEAK NORMALIZATION — Synced from godear-offline.worker.ts
-      //
-      // Without this, phantom buffer feeds raw RMS values (0.001-0.05)
-      // instead of the 0-1 range that TitanEngine expects.
-      // ═══════════════════════════════════════════════════════════════════
-      const normalizeBand = (arr) => {
-        if (!arr) return
-        let peak = 0
-        for (let i = 0; i < arr.length; i++) {
-          if (arr[i] > peak) peak = arr[i]
-        }
-        if (peak > 0) {
-          const inv = 1 / peak
-          for (let i = 0; i < arr.length; i++) {
-            arr[i] *= inv
-          }
-        }
-      }
-      
-      // Normalize legacy combined fields
-      normalizeBand(energy)
-      normalizeBand(bass)
-      normalizeBand(high)
-      
-      // Normalize 7 tactical bands (if available)
-      if (subBass) {
-        normalizeBand(subBass)
-        normalizeBand(bassReal)
-        normalizeBand(lowMid)
-        normalizeBand(mid)
-        normalizeBand(highMid)
-        normalizeBand(treble)
-        normalizeBand(ultraAir)
-        
-        // 🩻 WAVE 2541.3: Diagnostic log — raw peaks before normalization already applied
-        // This log helps verify that all bands have real energy content
-        log('🩻 Band peaks after normalization: ' + 
-          'subBass=' + (subBass ? Math.max(...subBass).toFixed(3) : 'N/A') + 
-          ' bass=' + (bassReal ? Math.max(...bassReal).toFixed(3) : 'N/A') + 
-          ' mid=' + (mid ? Math.max(...mid).toFixed(3) : 'N/A') + 
-          ' highMid=' + (highMid ? Math.max(...highMid).toFixed(3) : 'N/A') + 
-          ' treble=' + (treble ? Math.max(...treble).toFixed(3) : 'N/A'))
-      }
-      
-      const result = {
-        resolutionMs: config.heatmapResolutionMs,
-        energy,
-        bass,
-        high,
-        flux,
-      }
-      
-      // Add tactical bands if available
-      if (subBass) {
-        result.subBass = subBass
-        result.bassReal = bassReal
-        result.lowMid = lowMid
-        result.mid = mid
-        result.highMid = highMid
-        result.treble = treble
-        result.ultraAir = ultraAir
-        result.spectralCentroid = spectralCentroid
-        result.spectralFlatness = spectralFlatness
-      }
-      
-      return result
-    }
-    
-    /**
-     * 🩻 WAVE 2077: Detect beats using real FFT bands when available
-     */
-    function detectBeats(samples, sampleRate, heatmap, config, reportProgress) {
-      reportProgress('beats', 0)
-      
-      const onsets = []
-      const threshold = config.beatSensitivity
-      
-      for (let i = 1; i < heatmap.flux.length - 1; i++) {
-        const curr = heatmap.flux[i]
-        const prev = heatmap.flux[i - 1]
-        const next = heatmap.flux[i + 1]
-        
-        if (curr > prev && curr > next && curr > threshold) {
-          // 🩻 WAVE 2077: Use real subBass (20-60Hz kicks) when available
-          const kickWeight = heatmap.subBass
-            ? 1 + (heatmap.subBass[i] + (heatmap.bassReal ? heatmap.bassReal[i] : 0)) * 0.8
-            : 1 + heatmap.bass[i] * 0.5
-          
-          if (curr * kickWeight > threshold) {
-            onsets.push(i * heatmap.resolutionMs)
-          }
-        }
-      }
-      
-      reportProgress('beats', 50)
-      
-      // Estimate BPM
-      const bpm = estimateBpm(onsets)
-      const msPerBeat = 60000 / bpm
-      const durationMs = (samples.length / sampleRate) * 1000
-      
-      // Build beat grid
-      let firstBeatMs = 0
-      if (onsets.length > 0) {
-        let bestAlign = Infinity
-        for (const onset of onsets.slice(0, 20)) {
-          const align = onset % msPerBeat
-          if (align < bestAlign) {
-            bestAlign = align
-            firstBeatMs = onset
-          }
-        }
-      }
-      
-      const grid = []
-      for (let t = firstBeatMs; t < durationMs; t += msPerBeat) {
-        grid.push(t)
-      }
-      
-      reportProgress('beats', 100)
-      
-      return {
-        bpm,
-        confidence: Math.min(1, onsets.length / 50),
-        firstBeatMs,
-        grid,
-      }
-    }
-    
-    /**
-     * Estimate BPM from onset times
-     */
-    function estimateBpm(onsets) {
-      if (onsets.length < 2) return 120
-      
-      const intervals = []
-      for (let i = 1; i < Math.min(onsets.length, 100); i++) {
-        intervals.push(onsets[i] - onsets[i - 1])
-      }
-      
-      intervals.sort((a, b) => a - b)
-      const median = intervals[Math.floor(intervals.length / 2)]
-      
-      if (median <= 0) return 120
-      
-      let bpm = 60000 / median
-      
-      // Normalize to 60-180 range
-      while (bpm < 60) bpm *= 2
-      while (bpm > 180) bpm /= 2
-      
-      return Math.round(bpm * 10) / 10
-    }
-    
-    /**
-     * 🩻 WAVE 2077: Detect sections with spectral metrics when available
-     */
-    function detectSections(heatmap, beatGrid, duration, config, reportProgress) {
-      reportProgress('sections', 0)
-      
-      const sections = []
-      const minDuration = config.sectionMinDurationMs
-      const hasSubBass = heatmap.subBass && heatmap.subBass.length > 0
-      
-      // Simple section detection based on energy changes
-      const smoothedEnergy = []
-      const windowSize = Math.ceil(2000 / heatmap.resolutionMs)
-      
-      for (let i = 0; i < heatmap.energy.length; i++) {
-        let sum = 0
-        let count = 0
-        for (let j = Math.max(0, i - windowSize); j < Math.min(heatmap.energy.length, i + windowSize); j++) {
-          sum += heatmap.energy[j]
-          count++
-        }
-        smoothedEnergy.push(sum / count)
-      }
-      
-      reportProgress('sections', 50)
-      
-      // Find significant changes
-      const changes = [0]
-      for (let i = 1; i < smoothedEnergy.length; i++) {
-        const diff = Math.abs(smoothedEnergy[i] - smoothedEnergy[i - 1])
-        const timeMs = i * heatmap.resolutionMs
-        
-        if (diff > 0.15 && (changes.length === 0 || timeMs - changes[changes.length - 1] > minDuration)) {
-          changes.push(timeMs)
-        }
-      }
-      changes.push(duration)
-      
-      // Create sections
-      for (let i = 0; i < changes.length - 1; i++) {
-        const startMs = changes[i]
-        const endMs = changes[i + 1]
-        
-        // Calculate average energy for this section
-        const startIdx = Math.floor(startMs / heatmap.resolutionMs)
-        const endIdx = Math.ceil(endMs / heatmap.resolutionMs)
-        let avgEnergy = 0
-        let avgSubBass = 0
-        for (let j = startIdx; j < endIdx && j < heatmap.energy.length; j++) {
-          avgEnergy += heatmap.energy[j]
-          if (hasSubBass) avgSubBass += heatmap.subBass[j]
-        }
-        const count = (endIdx - startIdx) || 1
-        avgEnergy /= count
-        avgSubBass /= count
-        
-        // 🩻 WAVE 2077: Enhanced section type detection
-        let type = 'verse'
-        if (avgEnergy > 0.7) {
-          // High energy: drop (heavy subBass) or chorus
-          type = (hasSubBass && avgSubBass > 0.3) ? 'drop' : 'chorus'
-        } else if (avgEnergy > 0.5) {
-          type = 'chorus'
-        } else if (avgEnergy < 0.2) {
-          type = i === 0 ? 'intro' : 'breakdown'
-        }
-        
-        sections.push({
-          startMs,
-          endMs,
-          type,
-          intensity: avgEnergy,
-        })
-      }
-      
-      reportProgress('sections', 100)
-      
-      return sections
-    }
-    
-    /**
-     * 🩻 WAVE 2077: Slope-based transient detection
-     */
-    function detectTransients(samples, sampleRate, config, reportProgress) {
-      reportProgress('transients', 0)
-      
-      const transients = []
-      const windowSize = Math.floor(sampleRate * 0.01) // 10ms windows
-      const hopSize = Math.floor(windowSize / 2)
-      const numWindows = Math.floor(samples.length / hopSize)
-      
-      // Circular history buffer for slope detection
-      const historyLength = 8
-      const energyHistory = new Float32Array(historyLength)
-      let historyIndex = 0
-      
-      for (let i = 0; i < numWindows; i++) {
-        const start = i * hopSize
-        const end = Math.min(start + windowSize, samples.length)
-        
-        let sum = 0
-        for (let j = start; j < end; j++) {
-          sum += samples[j] * samples[j]
-        }
-        const currentEnergy = Math.sqrt(sum / (end - start))
-        
-        // Store in circular buffer
-        energyHistory[historyIndex] = currentEnergy
-        historyIndex = (historyIndex + 1) % historyLength
-        
-        // Slope-based detection (need a few frames of history)
-        if (i >= 4) {
-          const previous = energyHistory[(historyIndex + historyLength - 2) % historyLength]
-          const older = energyHistory[(historyIndex + historyLength - 4) % historyLength]
-          
-          const shortSlope = currentEnergy - previous
-          const longSlope = currentEnergy - older
-          
-          // Average energy from history
-          let avgEnergy = 0
-          for (let h = 0; h < historyLength; h++) avgEnergy += energyHistory[h]
-          avgEnergy /= historyLength
-          
-          const slopeThreshold = Math.max(0.05, avgEnergy * 0.3)
-          
-          if (shortSlope > slopeThreshold && longSlope > slopeThreshold * 0.5) {
-            const timeMs = (start / sampleRate) * 1000
-            // Debounce 50ms
-            if (transients.length === 0 || timeMs - transients[transients.length - 1].timeMs > 50) {
-              transients.push({
-                timeMs,
-                strength: Math.min(1, shortSlope * 5),
-              })
-            }
-          }
-        }
-        
-        if (i % Math.ceil(numWindows / 10) === 0) {
-          reportProgress('transients', Math.round((i / numWindows) * 100))
-        }
-      }
-      
-      return transients.slice(0, 1000) // Limit to 1000 transients
-    }
-    
-    /**
-     * Main analysis function
+     * Main analysis function — delegates to runAnalysisPipeline from the CJS bundle.
+     * The only logic that stays here is AudioBuffer → mono Float32Array extraction,
+     * because AudioContext is a browser API only available in the BrowserWindow.
      */
     async function analyzeAudioBuffer(buffer, sampleRate, reportProgress) {
-      const config = DEFAULT_CONFIG
-      const duration = buffer.duration
-      
-      // Get mono samples
-      const monoSamples = getMonoSamples(buffer)
-      
-      // Yield to event loop
-      await new Promise(r => setTimeout(r, 0))
-      
-      // Extract waveform
-      const waveform = extractWaveform(monoSamples, sampleRate, config, reportProgress)
-      await new Promise(r => setTimeout(r, 0))
-      
-      // Extract energy heatmap
-      const energyHeatmap = extractEnergyHeatmap(monoSamples, sampleRate, config, reportProgress)
-      await new Promise(r => setTimeout(r, 0))
-      
-      // Detect beats
-      const beatGrid = detectBeats(monoSamples, sampleRate, energyHeatmap, config, reportProgress)
-      await new Promise(r => setTimeout(r, 0))
-      
-      // Detect sections
-      const sections = detectSections(energyHeatmap, beatGrid, duration * 1000, config, reportProgress)
-      await new Promise(r => setTimeout(r, 0))
-      
-      // Detect transients
-      const transients = detectTransients(monoSamples, sampleRate, config, reportProgress)
-      
-      reportProgress('complete', 100)
-      
-      return {
-        durationMs: duration * 1000,
-        waveform,
-        energyHeatmap,
-        beatGrid,
-        sections,
-        transients,
+      if (!runAnalysisPipeline) {
+        throw new Error('[Phantom] phantomPipeline bundle not loaded — cannot analyze. Check dist-electron/phantomPipeline.js exists.')
       }
+
+      const duration = buffer.duration
+      const config = PIPELINE_CONFIG || {}
+
+      // Get mono samples — the only browser-API-dependent step
+      const monoSamples = getMonoSamples(buffer)
+
+      // Yield to event loop before the heavy synchronous pipeline call
+      await new Promise(r => setTimeout(r, 0))
+
+      log(`🔮 [Phantom] Calling runAnalysisPipeline (${monoSamples.length} samples, ${sampleRate} Hz, ${duration.toFixed(2)}s)...`)
+
+      // 🌊 WAVE 7564.9: THE SINGLE SOURCE OF TRUTH CALL
+      // This runs the full 5-phase pipeline:
+      //   Phase 1: Waveform extraction
+      //   Phase 2: Energy heatmap + TempoOracle (43Hz decoupled rate, WAVE 7564.6)
+      //   Phase 3: Beat detection (Ellis DP tracker + variable tempo, WAVE 7563)
+      //   Phase 4: Section detection
+      //   Phase 5: Transient collection (already done during Phase 2 FFT loop)
+      //
+      // The TempoOracle's NSDF autocorrelation + harmonic ladder + parabolic
+      // interpolation now runs in the phantom worker. The 150 BPM aliasing bug
+      // is fixed here — at 43 Hz, neither 126 BPM nor 150 BPM falls on an
+      // integer lag.
+      const result = runAnalysisPipeline(
+        monoSamples,
+        sampleRate,
+        duration,
+        config,
+        (phase, progress, message) => {
+          reportProgress(phase, progress)
+          if (message) log(`📊 ${phase}: ${progress}% — ${message}`)
+        },
+      )
+
+      // 🐀 WAVE 7564.7: THE PHANTOM CHIVATO — log the final scalar BPM.
+      // This is the number that propagates to LuxAnalysisV3.detectedBpm and
+      // the TransportBar. Expected after 43Hz fix: 126.xx for the techno track.
+      const finalBpm = result.beatGrid?.bpm ?? 0
+      const finalConf = result.beatGrid?.confidence ?? 0
+      log(`🔮 [Phantom] FINAL OFFLINE BPM: ${finalBpm.toFixed(2)} (conf: ${finalConf.toFixed(2)}, variable: ${result.beatGrid?.variableTempo ?? false})`)
+
+      reportProgress('complete', 100)
+
+      return result
     }
     
     // ═══════════════════════════════════════════════════════════════════════════

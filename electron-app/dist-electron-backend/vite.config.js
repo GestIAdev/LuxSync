@@ -112,6 +112,30 @@ export default defineConfig({
                     },
                 },
             },
+            // 👻 WAVE 7564.9: PHANTOM PIPELINE — standalone CJS bundle for the phantom worker.
+            // Bundles analysisPipeline.ts + TempoOracle + GodEarFFT + Ellis DP tracker into
+            // one self-contained module. The phantom worker BrowserWindow require()s this
+            // after decoding audio with AudioContext, replacing 500 lines of duplicated
+            // inline JS with the single source of truth.
+            {
+                entry: 'src/chronos/analysis/phantomPipeline.ts',
+                vite: {
+                    build: {
+                        outDir: 'dist-electron',
+                        lib: {
+                            entry: 'src/chronos/analysis/phantomPipeline.ts',
+                            formats: ['cjs'],
+                            fileName: () => 'phantomPipeline.js',
+                        },
+                        rollupOptions: {
+                            external: [...nodeBuiltins],
+                            output: {
+                                exports: 'named',
+                            },
+                        },
+                    },
+                },
+            },
         ]),
     ],
     resolve: {

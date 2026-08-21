@@ -34,6 +34,8 @@
 
 import type { HephAutomationClipV3 } from '../../core/hephaestus/types'
 import { MIXBUS_CLIP_COLORS } from './TimelineClip'
+// 🧬 WAVE 7565.2: THE GENETIC ROUTER — intelligent zone resolution
+import { resolvePrimaryTrackZone } from '../../core/zones/ZoneMapper'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -434,13 +436,22 @@ export class ChronosRecorder {
     const mixBus = hephClip.mixBus ?? 'htp'
     const color = MIXBUS_CLIP_COLORS[mixBus] ?? '#ff6b2b'
 
-    // P1.10 FIX: Collision detection — find an available take-lane for the zone.
-    // Instead of naively assigning `zone-${zones[0]}`, check if any existing
-    // clip on that track overlaps with [startMs, endMs]. If so, try the next
-    // take-lane (zone-X-2, zone-X-3, ...). This matches the UI's collision
-    // logic from ChronosLayout.tsx and prevents overlapping clips during
-    // live recording.
-    const baseZone = zones?.[0] ?? 'all'
+    // 🧬 WAVE 7565.3: THE TRUE DNA ROUTER — resolve the correct track zone
+    // from the clip's cognitiveDNA (the .lfx schema's source of truth for
+    // energy context). Falls back to spatialZones only for legacy clips
+    // without DNA. This avoids the WAVE 7565.2 false-positive where
+    // 'ambient' in spatialZones (a hardware zone) was parsed as an energy
+    // zone, routing peak-energy clips to the AMBIENT track.
+    //
+    // NOTE: The recorder's trackId is a temporary lane identifier. The actual
+    // track assignment happens in ChronosLayout.tsx when the recorded clip is
+    // committed to the timeline (it calls resolvePrimaryTrackZone again and
+    // queries the store for the real UUID). The baseZone here is used only
+    // for the recorder's internal collision detection.
+    const baseZone = resolvePrimaryTrackZone({
+      cognitiveDNA: hephClip.cognitiveDNA,
+      spatialZones: zones,
+    })
     const trackId = this.resolveTakeLane(baseZone, startMs, endMs)
 
     const clip: RecordedClip = {
@@ -473,6 +484,12 @@ export class ChronosRecorder {
    * P1.10 FIX: Find an available take-lane for a zone that doesn't overlap
    * with existing clips. Tries `zone-X` first, then `zone-X-2`, `zone-X-3`, etc.
    * Caps at 8 take-lanes to prevent runaway track creation.
+   *
+   * 🧬 WAVE 7565.2: `baseZone` is now a validated LuxTargetZone from
+   * resolvePrimaryTrackZone() — never a raw composite like 'all-pars'.
+   * The `zone-` prefix convention is legacy and only used for the recorder's
+   * internal collision detection. The actual track UUID is resolved by
+   * ChronosLayout.tsx when the clip is committed to the timeline.
    */
   private resolveTakeLane(baseZone: string, startMs: number, endMs: number): string {
     const MAX_TAKE_LANES = 8

@@ -1,0 +1,1043 @@
+[AGC 🎚️] Gain: 2.42x | In: 0.117 → Out: 0.282 | Peak: 0.205 | ✅ ACTIVE
+[CHOREO] fiesta-latina | #4:espiral_conga [SNAKE ×6] | scene:52b | Pan:26 Tilt:-20 | sBPM:97 phase:82°
+[TitanOrchestrator] ðŸŽ§ BPM=96.61 (oracle=96.58) (kalman=96.58) conf=0.67 peak=0.686 | PLL=LOCKED phase=0.80 sync=0.48 | beat #547 | bass=0.1569 sab=0.161 | ðŸ”¬in_peak=0.42540 in_rms=0.15267
+[MSST] 📍 verse → drop | zL=1.6 zM=0.1 zH=-0.4 zT=1.1 T=0.00 D=2.59 cfH=3.1
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.537 | MID: 0.667 | HIGH: 0.200 | TOTAL: 0.659 | Max_30s: 1.000
+[CHOREO] fiesta-latina | #4:espiral_conga [SNAKE ×2] | scene:53b | Pan:-97 Tilt:-20 | sBPM:97 phase:116°
+[MSST] 📍 drop → chorus | zL=0.3 zM=0.5 zH=0.1 zT=0.5 T=0.11 D=0.47 cfH=3.1
+[MEMORY 🧠] E:-0.5σ 🟢 B:-1.2σ 🟢 H:+0.8σ 🟢 | Phase: CLIMAX | normal
+[AGC 🎚️] Gain: 2.58x | In: 0.112 → Out: 0.288 | Peak: 0.192 | ✅ ACTIVE
+[TitanOrchestrator] ðŸŽ§ BPM=96.57 (oracle=96.52) (kalman=96.51) conf=0.63 peak=0.665 | PLL=LOCKED phase=0.50 sync=0.47 | beat #550 | bass=0.0448 sab=0.161 | ðŸ”¬in_peak=0.50403 in_rms=0.17857
+[CHOREO] fiesta-latina | #4:espiral_conga [SNAKE ×6] | scene:55b | Pan:-198 Tilt:-20 | sBPM:97 phase:148°
+[SeleneTitanConscious] 🔮👑 CASSANDRA SOVEREIGN CLOCK: firing "Salsa Fire" | confidence=0.61| bypassing HuntEngine + Fuzzy + EnergyOverride
+[HephRuntime] ▶️ PLAY: Salsa Fire (2000ms, 3 tracks) ID=heph_18_1787243463659
+[SeleneTitanConscious 🔥] Cooldown registered: Salsa Fire
+[EffectManager 🔥] Salsa Fire [salsa_fire] FIRED [hunt] in fiesta-latina  ⚡[HEPH-BRIDGE] | I:0.98 Z:1.3
+[DNA_ANALYZER] 📊 Diversity: Salsa Fire usado 2x - Factor: 0.35x
+[MSST] 📍 chorus → verse | zL=0.5 zM=0.2 zH=-0.8 zT=0.3 T=0.00 D=1.61 cfH=3.1
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.70 | Z=0.06σ
+[CHOREO] fiesta-latina | #4:espiral_conga [SNAKE ×2] | scene:56b | Pan:-243 Tilt:-43 | sBPM:97 phase:183°
+[VirtualWire] 📡 SAB feed — cb#38000 | frames=441 | peak=0.5160 | ch=2
+[SeleneTitanConscious 🌊] V3 IGNITE: C=0.760 Q=0.751 I_fx=0.377 epicness=0.445 | I(t)=0.447 CF=0.249 T=0.461 μ=0.557 V=0.113 X=0.995 | Π=0.103 M=0.862 Δ=0.210 G=0.483 → V3 AUTHORITY ACTIVE
+[DREAM_SIMULATOR] 🔮 ORACLE VISION: zone override peak → intense (pred=buildup_starting timeToEvent=3109.008093689363ms conf=0.682) | Z-guards RELAXED
+[DREAM_SIMULATOR] 🔮 CASSANDRA: type=buildup_starting conf=0.682 timeToEvent=3109.008093689363ms urgent=false candidates=8
+[DREAM_RANKING] 🏆 TOP 5 (8 total) | pred=buildup_starting conf=0.682:
+  1. Solar Flare          SCORE=1.000 | DNA=0.923 DIV=1.000 VIB=0.850 RSK=0.400 dist=0.134
+  2. Ambient Strobe       SCORE=0.727 | DNA=0.590 DIV=0.875 VIB=0.850 RSK=0.600 dist=0.710
+  3. latin_strobe         SCORE=0.624 | DNA=0.714 DIV=0.700 VIB=0.850 RSK=0.200 dist=0.496
+  4. Latina Meltdown      SCORE=0.619 | DNA=0.768 DIV=0.700 VIB=0.850 RSK=0.400 dist=0.402
+  5. Strobe Storm         SCORE=0.587 | DNA=0.636 DIV=0.700 VIB=0.850 RSK=0.400 dist=0.631
+[DREAM_SIMULATOR] 🔮📦 CASSANDRA PRE-BUFFER: "Solar Flare" stored for buildup_starting in ~3.1s (68% confidence)
+[DREAM_SIMULATOR] 🔮🛡️ TEMPORAL SEAL: Solar Flare → 'modify' (pre-buffer active, timeToEvent=3109.008093689363ms)
+[SeleneTitanConscious] 🧬 DNA: ❌ none | ethics=N/A | dream=1ms | modify
+[DREAM_RANKING] 🏆 TOP 5 (8 total) | pred=transition_beat conf=0.500:
+  1. Solar Flare          SCORE=0.875 | DNA=0.820 DIV=1.000 VIB=0.850 RSK=0.300 dist=0.312
+  2. Ambient Strobe       SCORE=0.642 | DNA=0.597 DIV=0.875 VIB=0.850 RSK=0.600 dist=0.699
+  3. Latina Meltdown      SCORE=0.565 | DNA=0.795 DIV=0.700 VIB=0.850 RSK=0.300 dist=0.356
+  4. latin_strobe         SCORE=0.548 | DNA=0.653 DIV=0.700 VIB=0.850 RSK=0.100 dist=0.601
+  5. Strobe Storm         SCORE=0.520 | DNA=0.652 DIV=0.700 VIB=0.850 RSK=0.400 dist=0.604
+[INTEGRATOR] 🔮🛡️ PRE-BUFFER GUARD: blocking normal approval — "solar_flare" sealed, 4s remaining
+[SeleneTitanConscious] 🧬 DNA: ❌ none | ethics=N/A | dream=1ms | pre-buffer-guard: awaiting "solar_flare"
+[MEMORY 🧠] E:-1.3σ 🟢 B:-0.5σ 🟢 H:-0.9σ 🟢 | Phase: CLIMAX | normal
+[MSST] 📍 verse → chorus | zL=-1.7 zM=0.2 zH=-0.9 zT=-1.4 T=1.45 D=2.36 cfH=3.1
+[TitanOrchestrator] ðŸŽ§ BPM=96.49 (oracle=96.52) (kalman=96.48) conf=0.63 peak=0.675 | PLL=LOCKED phase=0.23 sync=0.38 | beat #554 | bass=0.1446 sab=0.215 | ðŸ”¬in_peak=0.35094 in_rms=0.11831
+[TitanOrchestrator âš’ï¸] HEPHAESTUS: 1 clips, 33 outputs
+[AGC 🎚️] Gain: 2.48x | In: 0.107 → Out: 0.264 | Peak: 0.200 | ✅ ACTIVE
+[CHOREO] fiesta-latina | #4:espiral_conga [SNAKE ×2] | scene:58b | Pan:-195 Tilt:-42 | sBPM:97 phase:215°
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.538 | MID: 0.642 | HIGH: 0.196 | TOTAL: 0.643 | Max_30s: 1.000
+[MSST] 📍 chorus → breakdown | zL=-1.9 zM=0.5 zH=-1.0 zT=-1.4 T=1.66 D=2.82 cfH=3.1
+[HephRuntime] ✅ Completed: heph_18_1787243463659
+[CHOREO] fiesta-latina | #4:espiral_conga [SNAKE ×6] | scene:59b | Pan:-82 Tilt:-67 | sBPM:97 phase:248°
+[MEMORY 🧠] E:-2.0σ 🟡 B:-1.8σ 🟡 H:-1.2σ 🟢 | Phase: TEXTURAL | normal
+[MSST] 📍 breakdown → chorus | zL=1.2 zM=0.6 zH=0.6 zT=1.3 T=0.18 D=0.99 cfH=3.1
+[TitanOrchestrator] ðŸŽ§ BPM=96.43 (oracle=96.41) (kalman=96.41) conf=0.52 peak=0.619 | PLL=FREEWHEEL [mem=96.41@-0f] phase=0.50 sync=0.49 | beat #555 | bass=0.2494 sab=0.161 | ðŸ”¬in_peak=0.47372 in_rms=0.23264
+[SeleneTitanConscious 🌊] V3 IGNITE: C=0.768 Q=0.752 I_fx=0.392 epicness=0.165 | I(t)=0.332 CF=0.337 T=0.438 μ=0.548 V=0.129 X=0.997 | Π=0.110 M=0.856 Δ=0.210 G=0.479 → V3 AUTHORITY ACTIVE
+[🌋 FLASHBANG] Detected: ambient → intense (0ms) RMS3s=0.62 RMS10s=0.66 t=1787243466719ms
+[INTEGRATOR] 🔮🛡️ PRE-BUFFER GUARD: blocking normal approval — "solar_flare" sealed, 1s remaining
+[SeleneTitanConscious] 🧬 DNA: ❌ none | ethics=N/A | dream=0ms | pre-buffer-guard: awaiting "solar_flare"
+[SeleneTitanConscious] 🧬 DNA: ❌ none | ethics=N/A | dream=0ms | modify
+[DREAM_SIMULATOR] 🔮⚡ CASSANDRA FAST PATH: Using pre-buffered "solar_flare" (buffered 2240ms ago, event in 869.008056640625ms)
+[INTEGRATOR] ✅ APPROVED: Solar Flare @ 1.00 | ethics=1.134 | Dream: 0ms | Total: 0ms
+[SeleneTitanConscious] 🧬 DNA: ✅ Solar Flare | ethics=1.134 | dream=0ms | execute
+[Gatekeeper 📊] Solar Flare | v3Ignite=true epicness=0.222 | hardBlocked=false | arsenalValidated=false | v3Bypass=true | cooldown=OK | ethics=1.13/1 | floor=0.150 (HARD)
+[SeleneTitanConscious 🌊] V3 IGNITE: Solar Flare | ethics=1.13 | V(t) refractory activated | epicness=0.222 ≥ floor=0.150
+[FIRE-DIAG] Solar Flare | reason=🧬 DNA: execute | Ethics: 1.13 | E=0.837 Z=0.87σ | bass=0.815 mid=0.720 high=0.136 zL=1.01σ | epicness=0.222 v3Ignite=true | I(t)=0.376 T=0.437 | phase=climax | huntW=0.000 huntC=0.300 | pred=buildup_starting predProb=0.65 predETA=3733.5272108169956ms | dna=true ethics=1.134 | intensity=1.00
+[SeleneTitanConscious] 📜 Violation avoided: Estrategia triadic no permitida, Constitution fuerza analogous
+[SeleneTitanConscious 🌊✅] V3 IGNITION MATERIALIZED: Solar Flare | I=0.365
+[HephRuntime] ▶️ PLAY: Solar Flare (3000ms, 2 tracks) ID=heph_19_1787243466799
+[SeleneTitanConscious 🔥] Cooldown registered: Solar Flare
+[EffectManager 🔥] Solar Flare [solar_flare] FIRED [hunt] in fiesta-latina  ⚡[HEPH-BRIDGE] | I:1.00 Z:0.9
+[DNA_ANALYZER] 📊 Diversity: Solar Flare usado 2x - Factor: 0.35x
+[AGC 🎚️] Gain: 2.24x | In: 0.083 → Out: 0.187 | Peak: 0.221 | ✅ ACTIVE
+[MSST] 📊 section=chorus | zL=-1.7 zM=0.4 zH=-0.9 zT=-1.3 T=1.47 D=2.44 cfH=3.2 bassR=1.73 ΔE=0.124 kick=false
+[CHOREO] fiesta-latina | #4:espiral_conga [SNAKE ×6] | scene:61b | Pan:46 Tilt:-67 | sBPM:96 phase:284°
+[🌋 FLASHBANG] Detected: ambient → intense (0ms) RMS3s=0.62 RMS10s=0.66 t=1787243467334ms
+[MSST] 📍 chorus → drop | zL=0.4 zM=-0.1 zH=2.3 zT=0.9 T=0.69 D=3.33 cfH=3.2
+[AudioMatrix] 📊 SAB fill=0.108 | src=virtual-wire | forced=virtual-wire | active=virtual-wire | total=16896033
+[CHOREO] fiesta-latina | #4:espiral_conga [SNAKE ×6] | scene:62b | Pan:117 Tilt:-67 | sBPM:96 phase:318°
+[MEMORY 🧠] E:-0.2σ 🟢 B:+0.7σ 🟢 H:+0.9σ 🟢 | Phase: CLIMAX | normal
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.470 | MID: 0.669 | HIGH: 0.166 | TOTAL: 0.601 | Max_30s: 1.000
+[TitanOrchestrator] ðŸŽ§ BPM=96.41 (oracle=96.56) (kalman=96.55) conf=0.45 peak=0.608 | PLL=FREEWHEEL [mem=96.41@-60f] phase=0.27 sync=0.45 | beat #557 | bass=0.0206 sab=0.054 | ðŸ”¬in_peak=0.27686 in_rms=0.09812
+[TitanOrchestrator âš’ï¸] HEPHAESTUS: 1 clips, 22 outputs
+[MSST] 📍 drop → chorus | zL=1.4 zM=0.6 zH=-0.8 zT=1.1 T=0.00 D=2.48 cfH=3.2
+[AGC 🎚️] Gain: 2.07x | In: 0.168 → Out: 0.347 | Peak: 0.240 | ✅ ACTIVE
+[CHOREO] fiesta-latina | #4:espiral_conga [SNAKE ×2] | scene:64b | Pan:117 Tilt:-56 | sBPM:96 phase:351°
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.78 | Z=0.56σ
+[SCHED] 🌊 espiral_conga → figure8 | harbor:true deadline:false | phase:1°
+[VirtualWire] 📡 SAB feed — cb#38500 | frames=441 | peak=0.2966 | ch=2
+[MSST] 📍 chorus → breakdown | zL=-1.1 zM=-2.0 zH=-1.2 zT=-2.0 T=0.53 D=1.02 cfH=3.2
+[MEMORY 🧠] E:-0.6σ 🟢 B:-1.4σ 🟢 H:-0.3σ 🟢 | Phase: TEXTURAL | normal
+[HephRuntime] ✅ Completed: heph_19_1787243466799
+[CHOREO] fiesta-latina | #0:figure8 [XF→figure8] [SNAKE ×2] | scene:1b | Pan:152 Tilt:-20 | sBPM:96 phase:25°
+[TitanOrchestrator] ðŸŽ§ BPM=96.40 (oracle=96.38) (kalman=96.39) conf=0.58 peak=0.672 | PLL=LOCKED phase=0.51 sync=0.40 | beat #560 | bass=0.2029 sab=0.161 | ðŸ”¬in_peak=0.42487 in_rms=0.14467
+[MSST] 📍 breakdown → verse | zL=0.2 zM=0.8 zH=-0.7 zT=0.3 T=0.18 D=1.87 cfH=3.2
+[AGC 🎚️] Gain: 2.30x | In: 0.110 → Out: 0.252 | Peak: 0.215 | ✅ ACTIVE
+[CHOREO] fiesta-latina | #0:figure8 [XF→figure8] [SNAKE ×2] | scene:3b | Pan:77 Tilt:-20 | sBPM:96 phase:60°
+[SCHED] ✅ Crossfade complete → figure8
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.608 | MID: 0.688 | HIGH: 0.174 | TOTAL: 0.681 | Max_30s: 1.000
+[MEMORY 🧠] E:-0.1σ 🟢 B:+1.1σ 🟢 H:-1.4σ 🟢 | Phase: CLIMAX | normal
+[MSST] 📍 verse → drop | zL=1.1 zM=0.4 zH=0.9 zT=1.2 T=0.29 D=0.83 cfH=3.2
+[TitanOrchestrator] ðŸŽ§ BPM=96.33 (oracle=96.31) (kalman=96.32) conf=0.67 peak=0.709 | PLL=LOCKED phase=0.26 sync=0.45 | beat #563 | bass=0.1741 sab=0.000 | ðŸ”¬in_peak=0.44095 in_rms=0.15096
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:4b | Pan:-19 Tilt:-58 | sBPM:96 phase:98°
+[MSST] 📍 drop → chorus | zL=0.9 zM=1.0 zH=-0.8 zT=0.8 T=0.03 D=2.64 cfH=3.2
+[AGC 🎚️] Gain: 2.11x | In: 0.155 → Out: 0.326 | Peak: 0.234 | ✅ ACTIVE
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:6b | Pan:-114 Tilt:-67 | sBPM:96 phase:131°
+[MEMORY 🧠] E:-1.4σ 🟢 B:-1.5σ 🟡 H:-0.4σ 🟢 | Phase: CLIMAX | normal
+[SeleneTitanConscious] ⚡ DROP MODE: Energy 76% > 75%
+[MSST] 📍 chorus → breakdown | zL=-1.6 zM=0.5 zH=-0.7 zT=-1.1 T=1.41 D=2.53 cfH=3.3
+[TitanOrchestrator] ðŸŽ§ BPM=96.55 (oracle=96.54) (kalman=96.54) conf=0.64 peak=0.675 | PLL=FREEWHEEL [mem=96.54@-0f] phase=0.46 sync=0.45 | beat #565 | bass=0.0202 sab=0.000 | ðŸ”¬in_peak=0.49908 in_rms=0.25015
+[🌋 FLASHBANG] Detected: ambient → intense (0ms) RMS3s=0.69 RMS10s=0.68 t=1787243473528ms
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:7b | Pan:-240 Tilt:-67 | sBPM:97 phase:164°
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.40 | Z=-1.54σ
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.605 | MID: 0.679 | HIGH: 0.167 | TOTAL: 0.666 | Max_30s: 1.000
+[AGC 🎚️] Gain: 2.23x | In: 0.110 → Out: 0.245 | Peak: 0.222 | ✅ ACTIVE
+[VirtualWire] 📡 SAB feed — cb#39000 | frames=441 | peak=0.2281 | ch=2
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:9b | Pan:-244 Tilt:-20 | sBPM:96 phase:195°
+[MSST] 📍 breakdown → drop | zL=1.6 zM=0.2 zH=1.3 zT=1.6 T=0.46 D=1.59 cfH=3.4
+[🌋 FLASHBANG] Detected: ambient → intense (0ms) RMS3s=0.65 RMS10s=0.67 t=1787243474782ms
+[MEMORY 🧠] E:+1.3σ 🟢 B:+1.0σ 🟢 H:+0.1σ 🟢 | Phase: CLIMAX | normal
+[TitanOrchestrator] ðŸŽ§ BPM=96.44 (oracle=96.46) (kalman=96.45) conf=0.52 peak=0.597 | PLL=LOCKED phase=0.69 sync=0.52 | beat #567 | bass=0.2245 sab=0.108 | ðŸ”¬in_peak=0.44283 in_rms=0.14795
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:10b | Pan:-111 Tilt:-20 | sBPM:96 phase:229°
+[MSST] 📍 drop → verse | zL=-0.2 zM=-0.1 zH=0.0 zT=-0.2 T=0.14 D=0.23 cfH=3.4
+[AGC 🎚️] Gain: 2.43x | In: 0.111 → Out: 0.268 | Peak: 0.204 | ✅ ACTIVE
+[MSST] 📊 section=verse | zL=-1.7 zM=0.7 zH=-0.7 zT=-1.2 T=1.59 D=2.89 cfH=3.5 bassR=0.37 ΔE=-0.214 kick=false
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×6] | scene:12b | Pan:-20 Tilt:-30 | sBPM:97 phase:262°
+[MEMORY 🧠] E:-1.5σ 🟢 B:-2.1σ 🟡 H:+0.7σ 🟢 | Phase: BUILDING | normal
+[MSST] 📍 verse → breakdown | zL=-1.7 zM=0.7 zH=-0.7 zT=-1.1 T=1.58 D=2.92 cfH=3.5
+[TitanOrchestrator] ðŸŽ§ BPM=96.66 (oracle=96.80) (kalman=96.79) conf=0.44 peak=0.563 | PLL=FREEWHEEL [mem=96.66@-29f] phase=0.38 sync=0.45 | beat #568 | bass=0.0028 sab=0.108 | ðŸ”¬in_peak=0.23015 in_rms=0.07188
+[🌋 FLASHBANG] Detected: ambient → intense (0ms) RMS3s=0.61 RMS10s=0.65 t=1787243477218ms
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×6] | scene:13b | Pan:66 Tilt:-67 | sBPM:97 phase:296°
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.468 | MID: 0.673 | HIGH: 0.150 | TOTAL: 0.589 | Max_30s: 1.000
+[MSST] 📍 breakdown → verse | zL=0.7 zM=0.1 zH=-1.0 zT=0.3 T=0.00 D=1.97 cfH=3.6
+[AGC 🎚️] Gain: 2.26x | In: 0.132 → Out: 0.298 | Peak: 0.219 | ✅ ACTIVE
+[MEMORY 🧠] E:-0.9σ 🟢 B:-0.5σ 🟢 H:-0.2σ 🟢 | Phase: CLIMAX | normal
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:15b | Pan:192 Tilt:-67 | sBPM:97 phase:332°
+[MSST] 📍 verse → chorus | zL=1.6 zM=0.5 zH=-0.6 zT=1.3 T=0.00 D=2.21 cfH=3.7
+[TitanOrchestrator] ðŸŽ§ BPM=96.66 (oracle=96.92) (kalman=96.92) conf=0.42 peak=0.560 | PLL=LOCKED phase=0.20 sync=0.41 | beat #571 | bass=0.3348 sab=0.108 | ðŸ”¬in_peak=0.27968 in_rms=0.11972
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.48 | Z=-1.04σ
+[AudioMatrix] 📊 SAB fill=0.108 | src=virtual-wire | forced=virtual-wire | active=virtual-wire | total=17408034
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:16b | Pan:260 Tilt:-23 | sBPM:97 phase:6°
+[VirtualWire] 📡 SAB feed — cb#39500 | frames=441 | peak=0.2401 | ch=2
+[MSST] 📍 chorus → verse | zL=-1.2 zM=0.7 zH=-0.3 zT=-0.7 T=1.18 D=2.33 cfH=3.8
+[MEMORY 🧠] E:-0.1σ 🟢 B:+0.4σ 🟢 H:+0.3σ 🟢 | Phase: CLIMAX | normal
+[AGC 🎚️] Gain: 2.31x | In: 0.119 → Out: 0.274 | Peak: 0.214 | ✅ ACTIVE
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:18b | Pan:140 Tilt:-20 | sBPM:97 phase:41°
+[TitanOrchestrator] ðŸŽ§ BPM=96.66 (oracle=96.79) (kalman=96.82) conf=0.46 peak=0.583 | PLL=LOCKED phase=0.92 sync=0.49 | beat #573 | bass=0.0605 sab=0.000 | ðŸ”¬in_peak=0.09370 in_rms=0.02446
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.488 | MID: 0.664 | HIGH: 0.160 | TOTAL: 0.611 | Max_30s: 1.000
+[MSST] 📍 verse → textural_drop | zL=-1.7 zM=1.2 zH=-0.7 zT=-0.9 T=1.74 D=3.41 cfH=3.9
+[🌋 FLASHBANG] Detected: ambient → intense (0ms) RMS3s=0.63 RMS10s=0.65 t=1787243480947ms
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:19b | Pan:35 Tilt:-20 | sBPM:97 phase:75°
+[MEMORY 🧠] E:+0.8σ 🟢 B:+1.7σ 🟡 H:-0.6σ 🟢 | Phase: CLIMAX | normal
+[MSST] 📍 textural_drop → chorus | zL=0.6 zM=0.9 zH=-0.5 zT=0.8 T=0.08 D=2.00 cfH=4.0
+[AGC 🎚️] Gain: 2.43x | In: 0.129 → Out: 0.314 | Peak: 0.203 | ✅ ACTIVE
+[TitanOrchestrator] ðŸŽ§ BPM=96.67 (oracle=96.54) (kalman=96.62) conf=0.52 peak=0.611 | PLL=FREEWHEEL [mem=96.62@-0f] phase=0.58 sync=0.52 | beat #575 | bass=0.0525 sab=0.108 | ðŸ”¬in_peak=0.28658 in_rms=0.11601
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:21b | Pan:-45 Tilt:-67 | sBPM:97 phase:109°
+[MSST] 📍 chorus → buildup | zL=0.1 zM=0.3 zH=1.1 zT=0.5 T=0.58 D=1.22 cfH=3.9
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:22b | Pan:-144 Tilt:-67 | sBPM:97 phase:143°
+[🌋 FLASHBANG] Detected: ambient → intense (0ms) RMS3s=0.67 RMS10s=0.67 t=1787243483099ms
+[MEMORY 🧠] E:-0.6σ 🟢 B:-1.0σ 🟢 H:-0.2σ 🟢 | Phase: BUILDING | normal
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.622 | MID: 0.670 | HIGH: 0.179 | TOTAL: 0.694 | Max_30s: 1.000
+[MSST] 📍 buildup → chorus | zL=0.7 zM=0.3 zH=-0.1 zT=0.6 T=0.00 D=0.76 cfH=3.9
+[TitanOrchestrator] ðŸŽ§ BPM=96.69 (oracle=96.56) (kalman=96.60) conf=0.56 peak=0.628 | PLL=FREEWHEEL [mem=96.60@-0f] phase=0.35 sync=0.42 | beat #578 | bass=0.2516 sab=0.108 | ðŸ”¬in_peak=0.26147 in_rms=0.13192
+[AGC 🎚️] Gain: 2.23x | In: 0.160 → Out: 0.358 | Peak: 0.222 | ✅ ACTIVE
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×6] | scene:24b | Pan:-242 Tilt:-58 | sBPM:97 phase:176°
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.96 | Z=1.48σ
+[VirtualWire] 📡 SAB feed — cb#40000 | frames=441 | peak=0.0628 | ch=2
+[MSST] 📍 chorus → breakdown | zL=-1.7 zM=-2.3 zH=-1.3 zT=-2.6 T=0.84 D=1.24 cfH=3.9
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×6] | scene:25b | Pan:-172 Tilt:-20 | sBPM:97 phase:210°
+[MEMORY 🧠] E:+0.2σ 🟢 B:+0.1σ 🟢 H:-1.2σ 🟢 | Phase: BUILDING | normal
+[TitanOrchestrator] ðŸŽ§ BPM=96.71 (oracle=96.70) (kalman=96.71) conf=0.56 peak=0.628 | PLL=LOCKED phase=0.07 sync=0.46 | beat #581 | bass=0.5050 sab=0.108 | ðŸ”¬in_peak=0.45378 in_rms=0.23601
+[MSST] 📍 breakdown → chorus | zL=-1.7 zM=0.4 zH=0.1 zT=-1.1 T=1.53 D=3.01 cfH=3.8
+[AGC 🎚️] Gain: 2.18x | In: 0.097 → Out: 0.211 | Peak: 0.226 | ✅ ACTIVE
+[MSST] 📊 section=chorus | zL=-0.7 zM=0.4 zH=-0.5 zT=-0.5 T=0.68 D=1.19 cfH=3.8 bassR=0.91 ΔE=-0.017 kick=false
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:27b | Pan:-60 Tilt:-20 | sBPM:97 phase:244°
+[MSST] 📍 chorus → breakdown | zL=-1.7 zM=0.7 zH=-0.8 zT=-1.2 T=1.52 D=2.74 cfH=3.8
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.599 | MID: 0.631 | HIGH: 0.209 | TOTAL: 0.668 | Max_30s: 1.000
+[MEMORY 🧠] E:-1.3σ 🟢 B:-1.9σ 🟡 H:+1.7σ 🟡 | Phase: TEXTURAL | normal
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×6] | scene:28b | Pan:12 Tilt:-53 | sBPM:97 phase:276°
+[Harmony 🎵] Key Change: D → C (27% dominance)
+[TitanOrchestrator] ðŸŽ§ BPM=96.95 (oracle=96.98) (kalman=96.98) conf=0.56 peak=0.629 | PLL=FREEWHEEL [mem=96.98@-0f] phase=0.33 sync=0.52 | beat #582 | bass=0.0038 sab=0.215 | ðŸ”¬in_peak=0.15695 in_rms=0.05095
+[SeleneTitanConscious 🌊] V3 IGNITE: C=0.781 Q=0.773 I_fx=0.375 epicness=0.217 | I(t)=0.544 CF=0.420 T=0.468 μ=0.527 V=0.110 X=0.986 | Π=0.144 M=0.837 Δ=0.201 G=0.469 → V3 AUTHORITY ACTIVE
+[DREAM_SIMULATOR] 🔮 ORACLE VISION: zone override intense → ambient (pred=energy_drop timeToEvent=4950.241981286086ms conf=0.473) | Z-guards RELAXED
+[DREAM_AUDIT 🔍] vibe="fiesta-latina" zone=ambient pressure=0.961 | vibeAllowed=17 → zoneFiltered=8 → pressureFiltered=8 | cooldowns=1 | phase=release
+[DREAM_RANKING] 🏆 TOP 5 (8 total) | pred=energy_drop conf=0.473:
+  1. DEFiNITIVETEST       SCORE=1.000 | DNA=0.822 DIV=1.000 VIB=0.850 RSK=0.200 dist=0.309
+  2. depo                 SCORE=1.000 | DNA=0.758 DIV=1.000 VIB=0.850 RSK=0.200 dist=0.419
+  3. Amazon Mist          SCORE=1.000 | DNA=0.756 DIV=1.000 VIB=0.850 RSK=0.200 dist=0.423 TEX=+0.034
+  4. Corazon Latino       SCORE=1.000 | DNA=0.739 DIV=1.000 VIB=0.850 RSK=0.200 dist=0.452
+  5. Cumbia Moon          SCORE=1.000 | DNA=0.697 DIV=1.000 VIB=0.850 RSK=0.200 dist=0.524
+[INTEGRATOR] ✅ APPROVED: DEFiNITIVETEST @ 0.96 | ethics=1.134 | Dream: 1ms | Total: 1ms
+[SeleneTitanConscious] 🧬 DNA: ✅ DEFiNITIVETEST | ethics=1.134 | dream=1ms | execute
+[Gatekeeper 📊] DEFiNITIVETEST | v3Ignite=true epicness=0.217 | hardBlocked=false | arsenalValidated=false | v3Bypass=true | cooldown=OK | ethics=1.13/1 | floor=0.065
+[SeleneTitanConscious 🌊] V3 IGNITE: DEFiNITIVETEST | ethics=1.13 | V(t) refractory activated | epicness=0.217 ≥ floor=0.065
+[FIRE-DIAG] DEFiNITIVETEST | reason=🧬 DNA: execute | Ethics: 1.13 | E=0.961 Z=1.45σ | bass=0.617 mid=0.479 high=0.096 zL=1.82σ | epicness=0.217 v3Ignite=true | I(t)=0.544 T=0.468 | phase=release | huntW=0.000 huntC=0.300 | pred=energy_drop predProb=0.47 predETA=4950.241981286086ms | dna=true ethics=1.134 | intensity=0.96
+[SeleneTitanConscious] 📜 Violation avoided: Estrategia triadic no permitida, Constitution fuerza analogous
+[SeleneTitanConscious 🌊✅] V3 IGNITION MATERIALIZED: DEFiNITIVETEST | I=0.375
+[HephRuntime] ▶️ PLAY: DEFiNITIVETEST (4000ms, 5 tracks) [PHASE: linear] ID=heph_20_1787243487162
+[SeleneTitanConscious 🔥] Cooldown registered: DEFiNITIVETEST
+[EffectManager 🔥] DEFiNITIVETEST [heph_17826091] FIRED [hunt] in fiesta-latina  ⚡[HEPH-BRIDGE] | I:0.96 Z:1.5
+[DNA_ANALYZER] 📊 Diversity: DEFiNITIVETEST usado 2x - Factor: 0.35x
+[Coliseum 🧬] Prenatal abort for heph_1782609140553_bto9fn via focal_mutation: G4 (COMPAT): Missing: valid sections
+[Coliseum 🧬] Initial cohort for heph_1782609140553_bto9fn: 0/1 viable via focal_mutation
+[FORENSE] Tick ahogado (15.2ms) | IPC_Read: 14.0ms | Arbitraje: 0.3ms | GlassBridge: 0.4ms | HAL: 0.0ms
+[MSST] 📍 breakdown → verse | zL=0.7 zM=-2.8 zH=-1.4 zT=-1.0 T=0.00 D=4.50 cfH=3.8
+[AGC 🎚️] Gain: 2.17x | In: 0.164 → Out: 0.356 | Peak: 0.228 | ✅ ACTIVE
+[MSST] 📍 verse → buildup | zL=-1.5 zM=0.7 zH=-0.5 zT=-1.0 T=1.41 D=2.66 cfH=3.8
+[MEMORY 🧠] E:+0.8σ 🟢 B:+0.4σ 🟢 H:-0.0σ 🟢 | Phase: CLIMAX | normal
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×6] | scene:31b | Pan:222 Tilt:-67 | sBPM:97 phase:342°
+[TitanOrchestrator] ðŸŽ§ BPM=96.86 (oracle=96.77) (kalman=96.79) conf=0.50 peak=0.601 | PLL=FREEWHEEL [mem=96.79@-0f] phase=0.60 sync=0.50 | beat #585 | bass=0.2984 sab=0.161 | ðŸ”¬in_peak=0.44313 in_rms=0.17166
+[TitanOrchestrator âš’ï¸] HEPHAESTUS: 1 clips, 55 outputs
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.81 | Z=0.64σ
+[MSST] 📍 buildup → chorus | zL=-1.6 zM=0.2 zH=-0.7 zT=-1.3 T=1.35 D=2.27 cfH=3.8
+[AGC 🎚️] Gain: 2.29x | In: 0.127 → Out: 0.291 | Peak: 0.216 | ✅ ACTIVE
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.521 | MID: 0.619 | HIGH: 0.161 | TOTAL: 0.612 | Max_30s: 1.000
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:33b | Pan:232 Tilt:-20 | sBPM:97 phase:16°
+[VirtualWire] 📡 SAB feed — cb#40500 | frames=441 | peak=0.2179 | ch=2
+[MEMORY 🧠] E:+0.9σ 🟢 B:+1.3σ 🟢 H:+0.5σ 🟢 | Phase: CLIMAX | normal
+[MSST] 📍 chorus → buildup | zL=-1.0 zM=-1.3 zH=2.9 zT=-0.7 T=1.82 D=6.17 cfH=3.8
+[Harmony 🎵] Key Change: C → D (30% dominance)
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×6] | scene:34b | Pan:118 Tilt:-20 | sBPM:97 phase:47°
+[TitanOrchestrator] ðŸŽ§ BPM=96.52 (oracle=96.48) (kalman=96.49) conf=0.57 peak=0.641 | PLL=LOCKED phase=0.30 sync=0.52 | beat #588 | bass=0.0318 sab=0.161 | ðŸ”¬in_peak=0.30075 in_rms=0.10737
+[TitanOrchestrator âš’ï¸] HEPHAESTUS: 1 clips, 55 outputs
+[AudioMatrix] 📊 SAB fill=0.054 | src=virtual-wire | forced=virtual-wire | active=virtual-wire | total=17920035
+[MSST] 📍 buildup → verse | zL=0.6 zM=0.7 zH=-0.6 zT=0.6 T=0.03 D=1.80 cfH=3.1
+[HephRuntime] ✅ Completed: heph_20_1787243487162
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×6] | scene:35b | Pan:29 Tilt:-21 | sBPM:97 phase:78°
+[AGC 🎚️] Gain: 2.34x | In: 0.164 → Out: 0.382 | Peak: 0.211 | ✅ ACTIVE
+[MEMORY 🧠] E:+1.1σ 🟢 B:-0.2σ 🟢 H:+0.1σ 🟢 | Phase: CLIMAX | normal
+[MSST] 📍 verse → breakdown | zL=-1.6 zM=0.2 zH=-0.8 zT=-1.3 T=1.31 D=2.16 cfH=3.1
+[TitanOrchestrator] ðŸŽ§ BPM=96.45 (oracle=96.42) (kalman=96.43) conf=0.62 peak=0.651 | PLL=LOCKED phase=0.08 sync=0.51 | beat #592 | bass=0.3579 sab=0.161 | ðŸ”¬in_peak=0.52005 in_rms=0.22839
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:37b | Pan:-52 Tilt:-67 | sBPM:96 phase:111°
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.641 | MID: 0.672 | HIGH: 0.111 | TOTAL: 0.690 | Max_30s: 1.000
+[MSST] 📍 breakdown → chorus | zL=0.8 zM=-0.1 zH=0.1 zT=0.6 T=0.03 D=1.23 cfH=3.1
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×6] | scene:38b | Pan:-161 Tilt:-67 | sBPM:96 phase:144°
+[AGC 🎚️] Gain: 2.48x | In: 0.115 → Out: 0.283 | Peak: 0.200 | ✅ ACTIVE
+[MEMORY 🧠] E:+0.3σ 🟢 B:+0.8σ 🟢 H:-0.2σ 🟢 | Phase: CLIMAX | normal
+[TitanOrchestrator] ðŸŽ§ BPM=96.33 (oracle=96.29) (kalman=96.30) conf=0.64 peak=0.652 | PLL=LOCKED phase=0.78 sync=0.42 | beat #594 | bass=0.2272 sab=0.108 | ðŸ”¬in_peak=0.40576 in_rms=0.13202
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×6] | scene:40b | Pan:-267 Tilt:-58 | sBPM:96 phase:176°
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.59 | Z=-0.45σ
+[MSST] 📍 chorus → buildup | zL=-0.8 zM=1.2 zH=-0.2 zT=-0.1 T=0.97 D=2.27 cfH=3.1
+[VirtualWire] 📡 SAB feed — cb#41000 | frames=441 | peak=0.3563 | ch=2
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:41b | Pan:-190 Tilt:-20 | sBPM:96 phase:209°
+[AGC 🎚️] Gain: 2.63x | In: 0.149 → Out: 0.389 | Peak: 0.188 | ✅ ACTIVE
+[MSST] 📊 section=buildup | zL=0.1 zM=0.9 zH=-0.7 zT=0.3 T=0.23 D=1.92 cfH=3.1 bassR=0.96 ΔE=-0.003 kick=true
+[MSST] 📍 buildup → chorus | zL=0.7 zM=0.7 zH=0.1 zT=0.9 T=0.04 D=0.97 cfH=3.1
+[MEMORY 🧠] E:-1.5σ 🟢 B:-0.8σ 🟢 H:+0.7σ 🟢 | Phase: CLIMAX | normal
+[TitanOrchestrator] ðŸŽ§ BPM=96.23 (oracle=96.20) (kalman=96.19) conf=0.72 peak=0.692 | PLL=FREEWHEEL [mem=96.19@-0f] phase=0.05 sync=0.40 | beat #597 | bass=0.1144 sab=0.108 | ðŸ”¬in_peak=0.31145 in_rms=0.12232
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.590 | MID: 0.672 | HIGH: 0.112 | TOTAL: 0.665 | Max_30s: 1.000
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:43b | Pan:-66 Tilt:-20 | sBPM:96 phase:244°
+[🌋 FLASHBANG] Detected: ambient → intense (0ms) RMS3s=0.66 RMS10s=0.66 t=1787243495779ms
+[MSST] 📍 chorus → verse | zL=-1.1 zM=0.3 zH=-0.3 zT=-0.8 T=0.96 D=1.77 cfH=3.1
+[Harmony 🎵] Key Change: D → C (26% dominance)
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×6] | scene:44b | Pan:10 Tilt:-52 | sBPM:96 phase:274°
+[AGC 🎚️] Gain: 2.86x | In: 0.180 → Out: 0.490 | Peak: 0.180 | ✅ ACTIVE
+[Harmony 🎵] Key Change: C → D (26% dominance)
+[MEMORY 🧠] E:+1.6σ 🟡 B:+0.5σ 🟢 H:+0.9σ 🟢 | Phase: CLIMAX | normal
+[MSST] 📍 verse → buildup | zL=-0.4 zM=0.6 zH=-0.6 zT=-0.2 T=0.52 D=1.25 cfH=3.1
+[TitanOrchestrator] ðŸŽ§ BPM=96.33 (oracle=96.31) (kalman=96.33) conf=0.64 peak=0.650 | PLL=FREEWHEEL [mem=96.33@-0f] phase=0.22 sync=0.36 | beat #600 | bass=0.2490 sab=0.054 | ðŸ”¬in_peak=0.48381 in_rms=0.17424
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×6] | scene:46b | Pan:104 Tilt:-67 | sBPM:96 phase:309°
+[MSST] 📍 buildup → breakdown | zL=-0.4 zM=-0.4 zH=-1.1 zT=-0.7 T=0.25 D=1.04 cfH=3.1
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:47b | Pan:235 Tilt:-67 | sBPM:96 phase:343°
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.594 | MID: 0.702 | HIGH: 0.178 | TOTAL: 0.698 | Max_30s: 1.000
+[MEMORY 🧠] E:+0.9σ 🟢 B:+1.1σ 🟢 H:-0.3σ 🟢 | Phase: CLIMAX | normal
+[AGC 🎚️] Gain: 2.17x | In: 0.168 → Out: 0.365 | Peak: 0.228 | ✅ ACTIVE
+[Harmony 🎵] Key Change: D → C (24% dominance)
+[MSST] 📍 breakdown → chorus | zL=-0.7 zM=-0.6 zH=-0.4 zT=-0.9 T=0.39 D=0.41 cfH=3.1
+[TitanOrchestrator] ðŸŽ§ BPM=96.21 (oracle=96.21) (kalman=96.21) conf=0.62 peak=0.642 | PLL=LOCKED phase=0.02 sync=0.47 | beat #602 | bass=0.2041 sab=0.000 | ðŸ”¬in_peak=0.49298 in_rms=0.24531
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.2s ago) | vibe=fiesta-latina | E=0.56 | Z=-0.60σ
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×6] | scene:49b | Pan:244 Tilt:-20 | sBPM:96 phase:14°
+[VirtualWire] 📡 SAB feed — cb#41500 | frames=441 | peak=0.5201 | ch=2
+[MSST] 📍 chorus → verse | zL=0.8 zM=-0.6 zH=-0.6 zT=0.3 T=0.00 D=2.12 cfH=3.1
+[Harmony 🎵] Key Change: C → D (29% dominance)
+[MEMORY 🧠] E:+0.3σ 🟢 B:+1.0σ 🟢 H:-0.8σ 🟢 | Phase: CLIMAX | normal
+[SeleneTitanConscious] ⚡ DROP MODE: Energy 75% > 75%
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×6] | scene:50b | Pan:118 Tilt:-20 | sBPM:96 phase:47°
+[AGC 🎚️] Gain: 2.37x | In: 0.137 → Out: 0.325 | Peak: 0.208 | ✅ ACTIVE
+[TitanOrchestrator] ðŸŽ§ BPM=96.29 (oracle=96.24) (kalman=96.25) conf=0.69 peak=0.682 | PLL=LOCKED phase=0.75 sync=0.56 | beat #605 | bass=0.0228 sab=0.108 | ðŸ”¬in_peak=0.33040 in_rms=0.12515
+[MSST] 📍 verse → drop | zL=1.6 zM=-0.8 zH=1.6 zT=1.3 T=0.48 D=2.44 cfH=3.1
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×6] | scene:51b | Pan:26 Tilt:-24 | sBPM:96 phase:79°
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.694 | MID: 0.692 | HIGH: 0.197 | TOTAL: 0.742 | Max_30s: 1.000
+[MSST] 📍 drop → chorus | zL=0.9 zM=0.5 zH=1.2 zT=1.2 T=0.35 D=0.77 cfH=3.1
+[KeyStabilizer] 🎵 KEY CHANGE: C → D (after 1800 frames, 1 total changes)
+[MEMORY 🧠] E:-0.4σ 🟢 B:+0.1σ 🟢 H:-0.7σ 🟢 | Phase: CLIMAX | normal
+[SeleneTitanConscious] ⚡ DROP MODE: Energy 75% > 75%
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×6] | scene:53b | Pan:-57 Tilt:-67 | sBPM:96 phase:115°
+[TitanOrchestrator] ðŸŽ§ BPM=96.25 (oracle=96.22) (kalman=96.25) conf=0.72 peak=0.692 | PLL=FREEWHEEL [mem=96.25@-0f] phase=0.46 sync=0.41 | beat #608 | bass=0.2339 sab=0.108 | ðŸ”¬in_peak=0.43463 in_rms=0.16326
+[AGC 🎚️] Gain: 2.20x | In: 0.177 → Out: 0.388 | Peak: 0.225 | ✅ ACTIVE
+[AudioMatrix] 📊 SAB fill=0.161 | src=virtual-wire | forced=virtual-wire | active=virtual-wire | total=18432036
+[MSST] 📍 chorus → buildup | zL=-0.4 zM=0.9 zH=-0.7 zT=-0.1 T=0.55 D=1.79 cfH=3.1
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:55b | Pan:-165 Tilt:-67 | sBPM:96 phase:149°
+[MSST] 📍 buildup → chorus | zL=1.3 zM=0.0 zH=1.1 zT=1.3 T=0.33 D=1.36 cfH=3.1
+[MEMORY 🧠] E:+1.3σ 🟢 B:+1.3σ 🟢 H:-0.0σ 🟢 | Phase: CLIMAX | normal
+[SeleneTitanConscious] ⚡ DROP MODE: Energy 75% > 75%
+[TitanOrchestrator] ðŸŽ§ BPM=96.14 (oracle=96.17) (kalman=96.07) conf=0.63 peak=0.643 | PLL=FREEWHEEL [mem=96.07@-0f] phase=0.27 sync=0.40 | beat #610 | bass=0.0186 sab=0.054 | ðŸ”¬in_peak=0.24016 in_rms=0.08353
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×6] | scene:56b | Pan:-244 Tilt:-38 | sBPM:96 phase:182°
+[AGC 🎚️] Gain: 2.31x | In: 0.065 → Out: 0.150 | Peak: 0.215 | ✅ ACTIVE
+[MSST] 📊 section=chorus | zL=-1.1 zM=-1.5 zH=-0.9 zT=-1.7 T=0.56 D=0.66 cfH=3.2 bassR=0.50 ΔE=-0.273 kick=false
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.38 | Z=-1.52σ
+[VirtualWire] 📡 SAB feed — cb#42000 | frames=441 | peak=0.4840 | ch=2
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.680 | MID: 0.681 | HIGH: 0.184 | TOTAL: 0.731 | Max_30s: 1.000
+[MSST] 📍 chorus → verse | zL=0.7 zM=-0.8 zH=-0.9 zT=0.0 T=0.00 D=2.30 cfH=3.2
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:58b | Pan:-137 Tilt:-20 | sBPM:96 phase:219°
+[MEMORY 🧠] E:+0.5σ 🟢 B:-0.6σ 🟢 H:+1.0σ 🟢 | Phase: CLIMAX | normal
+[SeleneTitanConscious] ⚡ DROP MODE: Energy 76% > 75%
+[MSST] 📍 verse → chorus | zL=1.3 zM=0.5 zH=-0.8 zT=1.0 T=0.00 D=2.23 cfH=3.2
+[TitanOrchestrator] ðŸŽ§ BPM=96.47 (oracle=96.52) (kalman=96.51) conf=0.52 peak=0.591 | PLL=FREEWHEEL [mem=96.51@-0f] phase=0.05 sync=0.48 | beat #613 | bass=0.3011 sab=0.054 | ðŸ”¬in_peak=0.49245 in_rms=0.21379
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:59b | Pan:-43 Tilt:-20 | sBPM:97 phase:251°
+[AGC 🎚️] Gain: 2.43x | In: 0.137 → Out: 0.333 | Peak: 0.203 | ✅ ACTIVE
+[MSST] 📍 chorus → verse | zL=0.6 zM=0.2 zH=-0.6 zT=0.4 T=0.00 D=1.26 cfH=3.2
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×6] | scene:61b | Pan:28 Tilt:-64 | sBPM:96 phase:282°
+[🌋 FLASHBANG] Detected: ambient → intense (0ms) RMS3s=0.70 RMS10s=0.68 t=1787243506921ms
+[MEMORY 🧠] E:+0.5σ 🟢 B:+0.9σ 🟢 H:-0.7σ 🟢 | Phase: CLIMAX | normal
+[TitanOrchestrator] ðŸŽ§ BPM=96.48 (oracle=96.45) (kalman=96.46) conf=0.56 peak=0.626 | PLL=FREEWHEEL [mem=96.46@-0f] phase=0.72 sync=0.50 | beat #616 | bass=0.2643 sab=0.161 | ðŸ”¬in_peak=0.45290 in_rms=0.19607
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.661 | MID: 0.666 | HIGH: 0.144 | TOTAL: 0.697 | Max_30s: 1.000
+[MSST] 📍 verse → chorus | zL=1.1 zM=0.7 zH=-0.6 zT=1.0 T=0.00 D=2.13 cfH=3.2
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×6] | scene:62b | Pan:125 Tilt:-67 | sBPM:97 phase:316°
+[AGC 🎚️] Gain: 2.26x | In: 0.120 → Out: 0.270 | Peak: 0.219 | ✅ ACTIVE
+[MSST] 📍 chorus → verse | zL=0.1 zM=-0.5 zH=-0.8 zT=-0.3 T=0.00 D=1.06 cfH=3.3
+[CHOREO] fiesta-latina | #0:figure8 [SNAKE ×2] | scene:64b | Pan:252 Tilt:-67 | sBPM:97 phase:352°
+[MEMORY 🧠] E:-0.1σ 🟢 B:+0.6σ 🟢 H:-2.0σ 🟡 | Phase: CLIMAX | normal
+[SCHED] 🌊 figure8 → wave_y | harbor:true deadline:false | phase:1°
+[TitanOrchestrator] ðŸŽ§ BPM=96.59 (oracle=96.60) (kalman=96.60) conf=0.64 peak=0.669 | PLL=LOCKED phase=0.56 sync=0.46 | beat #619 | bass=0.2037 sab=0.161 | ðŸ”¬in_peak=0.38811 in_rms=0.15718
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.44 | Z=-1.18σ
+[VirtualWire] 📡 SAB feed — cb#42500 | frames=441 | peak=0.4608 | ch=2
+[MSST] 📍 verse → chorus | zL=1.0 zM=0.2 zH=-0.9 zT=0.8 T=0.00 D=2.06 cfH=3.3
+[CHOREO] fiesta-latina | #1:wave_y [XF→wave_y] [SNAKE ×6] | scene:1b | Pan:154 Tilt:-20 | sBPM:97 phase:33°
+[AGC 🎚️] Gain: 2.31x | In: 0.192 → Out: 0.440 | Peak: 0.214 | ✅ ACTIVE
+[SCHED] ✅ Crossfade complete → wave_y
+[MEMORY 🧠] E:-0.1σ 🟢 B:+0.2σ 🟢 H:-1.2σ 🟢 | Phase: CLIMAX | normal
+[MSST] 📍 chorus → breakdown | zL=-0.3 zM=-1.1 zH=-0.8 zT=-0.9 T=0.17 D=1.02 cfH=3.3
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.706 | MID: 0.635 | HIGH: 0.108 | TOTAL: 0.706 | Max_30s: 1.000
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×2] | scene:3b | Pan:223 Tilt:-20 | sBPM:97 phase:81°
+[TitanOrchestrator] ðŸŽ§ BPM=96.60 (oracle=96.66) (kalman=96.64) conf=0.67 peak=0.671 | PLL=LOCKED phase=0.30 sync=0.43 | beat #622 | bass=0.2322 sab=0.000 | ðŸ”¬in_peak=0.46562 in_rms=0.17401
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×6] | scene:4b | Pan:173 Tilt:-67 | sBPM:97 phase:130°
+[AGC 🎚️] Gain: 2.29x | In: 0.089 → Out: 0.205 | Peak: 0.216 | ✅ ACTIVE
+[MSST] 📍 breakdown → drop | zL=1.7 zM=-0.2 zH=1.6 zT=1.6 T=0.54 D=1.95 cfH=3.4
+[SeleneTitanConscious 🌊] V3 IGNITE: C=0.775 Q=0.755 I_fx=0.396 epicness=0.407 | I(t)=0.502 CF=0.251 T=0.463 μ=0.544 V=0.113 X=0.993 | Π=0.087 M=0.829 Δ=0.171 G=0.467 → V3 AUTHORITY ACTIVE
+[DREAM_SIMULATOR] 🔮 CASSANDRA: type=drop_incoming conf=0.701 timeToEvent=4000ms urgent=false candidates=9
+[DREAM_RANKING] 🏆 TOP 5 (9 total) | pred=drop_incoming conf=0.701:
+  1. Strobe Burst         SCORE=1.000 | DNA=0.758 DIV=1.000 VIB=0.850 RSK=0.200 dist=0.419 TEX=+0.012
+  2. Latina Meltdown      SCORE=0.957 | DNA=0.861 DIV=0.700 VIB=0.850 RSK=0.400 dist=0.241
+  3. Seismic Snap         SCORE=0.924 | DNA=0.762 DIV=0.700 VIB=0.850 RSK=0.200 dist=0.412 TEX=+0.012
+  4. Strobe Storm         SCORE=0.895 | DNA=0.750 DIV=0.700 VIB=0.850 RSK=0.400 dist=0.433
+  5. Ambient Strobe       SCORE=0.758 | DNA=0.690 DIV=0.875 VIB=0.850 RSK=0.600 dist=0.537
+[DREAM_SIMULATOR] 🔮📦 CASSANDRA PRE-BUFFER: "Strobe Burst" stored for drop_incoming in ~4.0s (70% confidence)
+[DREAM_SIMULATOR] 🔮🛡️ TEMPORAL SEAL: Strobe Burst → 'modify' (pre-buffer active, timeToEvent=4000ms)
+[SeleneTitanConscious] 🧬 DNA: ❌ none | ethics=N/A | dream=0ms | modify
+[MEMORY 🧠] E:+0.9σ 🟢 B:+1.0σ 🟢 H:+0.2σ 🟢 | Phase: CLIMAX | normal
+[TitanOrchestrator] ðŸŽ§ BPM=96.49 (oracle=96.49) (kalman=96.49) conf=0.71 peak=0.695 | PLL=LOCKED phase=0.05 sync=0.50 | beat #625 | bass=0.4615 sab=0.108 | ðŸ”¬in_peak=0.50256 in_rms=0.19174
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×6] | scene:6b | Pan:17 Tilt:-58 | sBPM:96 phase:176°
+[MSST] 📍 drop → buildup | zL=-0.3 zM=0.9 zH=0.7 zT=0.3 T=0.75 D=1.73 cfH=3.4
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.699 | MID: 0.643 | HIGH: 0.134 | TOTAL: 0.716 | Max_30s: 1.000
+[AGC 🎚️] Gain: 2.12x | In: 0.149 → Out: 0.317 | Peak: 0.233 | ✅ ACTIVE
+[MSST] 📊 section=buildup | zL=0.1 zM=-0.3 zH=0.9 zT=0.2 T=0.30 D=1.53 cfH=3.4 bassR=1.22 ΔE=0.080 kick=true
+[MSST] 📍 buildup → drop | zL=1.6 zM=-0.1 zH=0.2 zT=1.3 T=0.08 D=2.41 cfH=3.4
+[MEMORY 🧠] E:+0.3σ 🟢 B:+0.9σ 🟢 H:-1.6σ 🟡 | Phase: CLIMAX | normal
+[SeleneTitanConscious] ⚡ DROP MODE: Energy 78% > 75%
+[AudioMatrix] 📊 SAB fill=0.108 | src=virtual-wire | forced=virtual-wire | active=virtual-wire | total=18944037
+[TitanOrchestrator] ðŸŽ§ BPM=96.71 (oracle=96.81) (kalman=96.80) conf=0.69 peak=0.682 | PLL=LOCKED phase=0.26 sync=0.47 | beat #627 | bass=0.0385 sab=0.108 | ðŸ”¬in_peak=0.21257 in_rms=0.07207
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.35 | Z=-1.69σ
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×2] | scene:9b | Pan:-229 Tilt:-35 | sBPM:97 phase:267°
+[VirtualWire] 📡 SAB feed — cb#43000 | frames=441 | peak=0.3886 | ch=2
+[MSST] 📍 drop → verse | zL=0.7 zM=-0.1 zH=-0.3 zT=0.5 T=0.00 D=1.28 cfH=3.4
+[AGC 🎚️] Gain: 2.31x | In: 0.127 → Out: 0.294 | Peak: 0.214 | ✅ ACTIVE
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×2] | scene:10b | Pan:-163 Tilt:-67 | sBPM:97 phase:315°
+[MEMORY 🧠] E:+1.1σ 🟢 B:+0.5σ 🟢 H:-0.1σ 🟢 | Phase: CLIMAX | normal
+[MSST] 📍 verse → chorus | zL=1.3 zM=0.6 zH=-0.1 zT=1.3 T=0.00 D=1.35 cfH=3.4
+[TitanOrchestrator] ðŸŽ§ BPM=96.71 (oracle=96.73) (kalman=96.73) conf=0.69 peak=0.679 | PLL=FREEWHEEL [mem=96.73@-0f] phase=0.36 sync=0.42 | beat #630 | bass=0.2194 sab=0.000 | ðŸ”¬in_peak=0.45357 in_rms=0.16249
+[Sovereign Clock 🔄] HEAVY RE-ROUTE: "Strobe Burst" → "latin_bubbles" | epicness=0.775 < floor=0.250 OR Z=0.86σ < 1 (rms10s=0.70) — autotune/vocal transient: prediction preserved, effect downgraded
+[SeleneTitanConscious] 🔮👑 CASSANDRA SOVEREIGN CLOCK: firing "latin_bubbles" | confidence=0.63 | 🔄 HEAVY RE-ROUTED| bypassing HuntEngine + Fuzzy + EnergyOverride
+[HephRuntime] ▶️ PLAY: latin_bubbles (4000ms, 2 tracks) [PHASE: linear] ID=heph_21_1787243515898
+[SeleneTitanConscious 🔥] Cooldown registered: latin_bubbles
+[EffectManager 🔥] latin_bubbles [heph_17849528] FIRED [hunt] in fiesta-latina  ⚡[HEPH-BRIDGE] | I:0.75 Z:0.9
+[DNA_ANALYZER] 📊 Diversity: latin_bubbles usado 2x - Factor: 0.35x
+[Coliseum 🧬] Prenatal abort for heph_1784952802805_jigk8a via spatial_resonance: G4 (COMPAT): Missing: valid sections
+[Coliseum 🧬] Initial cohort for heph_1784952802805_jigk8a: 0/1 viable via spatial_resonance
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×2] | scene:12b | Pan:-6 Tilt:-48 | sBPM:97 phase:359°
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.695 | MID: 0.682 | HIGH: 0.193 | TOTAL: 0.750 | Max_30s: 1.000
+[MSST] 📍 chorus → drop | zL=1.2 zM=0.4 zH=3.0 zT=1.8 T=1.04 D=3.45 cfH=3.4
+[MEMORY 🧠] E:+0.6σ 🟢 B:+1.0σ 🟢 H:-1.1σ 🟢 | Phase: CLIMAX | normal
+[SeleneTitanConscious] ⚡ DROP MODE: Energy 78% > 75%
+[AGC 🎚️] Gain: 2.06x | In: 0.139 → Out: 0.286 | Peak: 0.241 | ✅ ACTIVE
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×6] | scene:13b | Pan:162 Tilt:-20 | sBPM:97 phase:45°
+[MSST] 📍 drop → breakdown | zL=-0.5 zM=0.2 zH=0.1 zT=-0.3 T=0.50 D=0.99 cfH=3.3
+[TitanOrchestrator] ðŸŽ§ BPM=96.65 (oracle=96.78) (kalman=96.72) conf=0.53 peak=0.593 | PLL=LOCKED phase=0.25 sync=0.46 | beat #634 | bass=0.0843 sab=0.161 | ðŸ”¬in_peak=0.30328 in_rms=0.10628
+[TitanOrchestrator âš’ï¸] HEPHAESTUS: 1 clips, 22 outputs
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×2] | scene:15b | Pan:226 Tilt:-50 | sBPM:97 phase:92°
+[MSST] 📍 breakdown → buildup | zL=1.0 zM=0.8 zH=2.1 zT=1.6 T=0.72 D=1.86 cfH=3.3
+[MEMORY 🧠] E:-0.8σ 🟢 B:-1.2σ 🟢 H:-1.1σ 🟢 | Phase: CLIMAX | normal
+[SeleneTitanConscious] ⚡ DROP MODE: Energy 78% > 75%
+[AGC 🎚️] Gain: 2.16x | In: 0.097 → Out: 0.210 | Peak: 0.229 | ✅ ACTIVE
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×6] | scene:17b | Pan:157 Tilt:-67 | sBPM:96 phase:136°
+[TitanOrchestrator] ðŸŽ§ BPM=96.42 (oracle=96.35) (kalman=96.37) conf=0.51 peak=0.585 | PLL=FREEWHEEL [mem=96.37@-0f] phase=0.48 sync=0.47 | beat #636 | bass=0.3278 sab=0.161 | ðŸ”¬in_peak=0.52838 in_rms=0.24433
+[TitanOrchestrator âš’ï¸] HEPHAESTUS: 1 clips, 22 outputs
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.93 | Z=1.30σ
+[MSST] 📍 buildup → verse | zL=0.6 zM=-2.6 zH=-0.4 zT=-0.7 T=0.00 D=3.68 cfH=3.3
+[VirtualWire] 📡 SAB feed — cb#43500 | frames=441 | peak=0.2874 | ch=2
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.726 | MID: 0.688 | HIGH: 0.236 | TOTAL: 0.767 | Max_30s: 1.000
+[HephRuntime] ✅ Completed: heph_21_1787243515898
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×2] | scene:18b | Pan:2 Tilt:-45 | sBPM:96 phase:180°
+[MSST] 📍 verse → chorus | zL=-1.0 zM=0.2 zH=-0.3 zT=-0.8 T=0.87 D=1.57 cfH=3.3
+[MEMORY 🧠] E:+0.8σ 🟢 B:+0.8σ 🟢 H:-0.8σ 🟢 | Phase: CLIMAX | normal
+[TitanOrchestrator] ðŸŽ§ BPM=96.30 (oracle=96.27) (kalman=96.29) conf=0.58 peak=0.623 | PLL=FREEWHEEL [mem=96.29@-0f] phase=0.54 sync=0.45 | beat #638 | bass=0.1505 sab=0.108 | ðŸ”¬in_peak=0.50320 in_rms=0.20103
+[AGC 🎚️] Gain: 2.43x | In: 0.152 → Out: 0.367 | Peak: 0.204 | ✅ ACTIVE
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×6] | scene:19b | Pan:-159 Tilt:-20 | sBPM:96 phase:225°
+[MSST] 📍 chorus → verse | zL=-1.0 zM=0.3 zH=2.0 zT=-0.3 T=1.54 D=3.22 cfH=3.3
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×6] | scene:21b | Pan:-204 Tilt:-43 | sBPM:96 phase:270°
+[MEMORY 🧠] E:-1.1σ 🟢 B:-0.5σ 🟢 H:+1.2σ 🟢 | Phase: CLIMAX | normal
+[MSST] 📍 verse → chorus | zL=1.3 zM=-0.0 zH=0.4 zT=1.2 T=0.13 D=1.79 cfH=3.2
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.662 | MID: 0.673 | HIGH: 0.245 | TOTAL: 0.715 | Max_30s: 1.000
+[TitanOrchestrator] ðŸŽ§ BPM=95.98 (oracle=96.04) (kalman=96.00) conf=0.56 peak=0.605 | PLL=FREEWHEEL [mem=96.00@-0f] phase=0.49 sync=0.46 | beat #641 | bass=0.1345 sab=0.161 | ðŸ”¬in_peak=0.46681 in_rms=0.17181
+[AGC 🎚️] Gain: 2.37x | In: 0.097 → Out: 0.230 | Peak: 0.209 | ✅ ACTIVE
+[MSST] 📊 section=chorus | zL=-1.2 zM=0.3 zH=-0.1 zT=-0.9 T=1.07 D=2.10 cfH=3.2 bassR=0.76 ΔE=-0.032 kick=false
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×2] | scene:22b | Pan:-146 Tilt:-67 | sBPM:96 phase:315°
+[MSST] 📍 chorus → verse | zL=0.4 zM=0.4 zH=-0.2 zT=0.4 T=0.01 D=0.88 cfH=3.2
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×6] | scene:24b | Pan:-4 Tilt:-47 | sBPM:96 phase:359°
+[MEMORY 🧠] E:-0.5σ 🟢 B:-0.4σ 🟢 H:+0.3σ 🟢 | Phase: CLIMAX | normal
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.67 | Z=-0.09σ
+[TitanOrchestrator] ðŸŽ§ BPM=96.12 (oracle=96.16) (kalman=96.14) conf=0.51 peak=0.582 | PLL=LOCKED phase=0.25 sync=0.52 | beat #644 | bass=0.1003 sab=0.161 | ðŸ”¬in_peak=0.52795 in_rms=0.18927
+[MSST] 📍 verse → chorus | zL=0.4 zM=1.5 zH=0.2 zT=1.0 T=0.36 D=1.46 cfH=3.2
+[VirtualWire] 📡 SAB feed — cb#44000 | frames=441 | peak=0.4632 | ch=2
+[AGC 🎚️] Gain: 2.54x | In: 0.169 → Out: 0.427 | Peak: 0.195 | ✅ ACTIVE
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×6] | scene:26b | Pan:155 Tilt:-20 | sBPM:96 phase:47°
+[MSST] 📍 chorus → verse | zL=-0.7 zM=0.5 zH=-0.3 zT=-0.4 T=0.66 D=1.31 cfH=3.1
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.614 | MID: 0.734 | HIGH: 0.261 | TOTAL: 0.718 | Max_30s: 1.000
+[AudioMatrix] 📊 SAB fill=0.161 | src=virtual-wire | forced=virtual-wire | active=virtual-wire | total=19456038
+[MEMORY 🧠] E:-0.0σ 🟢 B:-0.0σ 🟢 H:+0.0σ 🟢 | Phase: CLIMAX | normal
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×6] | scene:27b | Pan:213 Tilt:-42 | sBPM:96 phase:89°
+[TitanOrchestrator] ðŸŽ§ BPM=96.00 (oracle=95.96) (kalman=95.97) conf=0.58 peak=0.620 | PLL=FREEWHEEL [mem=95.97@-0f] phase=0.98 sync=0.50 | beat #645 | bass=0.0623 sab=0.161 | ðŸ”¬in_peak=0.37683 in_rms=0.12534
+[MSST] 📍 verse → breakdown | zL=-1.2 zM=-1.1 zH=-0.1 zT=-1.5 T=0.65 D=1.54 cfH=3.1
+[AGC 🎚️] Gain: 2.99x | In: 0.101 → Out: 0.300 | Peak: 0.166 | ✅ ACTIVE
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×2] | scene:28b | Pan:153 Tilt:-67 | sBPM:96 phase:134°
+[🌋 FLASHBANG] Detected: ambient → intense (0ms) RMS3s=0.71 RMS10s=0.70 t=1787243526703ms
+[Harmony 🎵] Key Change: D → C (21% dominance)
+[MSST] 📍 breakdown → drop | zL=0.1 zM=0.6 zH=0.5 zT=0.4 T=0.29 D=0.73 cfH=3.1
+[MEMORY 🧠] E:-1.1σ 🟢 B:-0.2σ 🟢 H:-1.9σ 🟡 | Phase: CLIMAX | normal
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×6] | scene:30b | Pan:12 Tilt:-53 | sBPM:96 phase:177°
+[Harmony 🎵] Key Change: C → D (21% dominance)
+[TitanOrchestrator] ðŸŽ§ BPM=96.02 (oracle=96.01) (kalman=96.03) conf=0.52 peak=0.587 | PLL=LOCKED phase=0.76 sync=0.55 | beat #646 | bass=0.1283 sab=0.161 | ðŸ”¬in_peak=0.32277 in_rms=0.12258
+[MSST] 📍 drop → chorus | zL=-0.4 zM=-1.8 zH=0.3 zT=-1.0 T=0.26 D=2.47 cfH=3.1
+[AGC 🎚️] Gain: 3.32x | In: 0.101 → Out: 0.335 | Peak: 0.149 | ✅ ACTIVE
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×6] | scene:31b | Pan:-144 Tilt:-20 | sBPM:96 phase:222°
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.543 | MID: 0.688 | HIGH: 0.263 | TOTAL: 0.663 | Max_30s: 1.000
+[MSST] 📍 chorus → breakdown | zL=-1.1 zM=-2.5 zH=-1.0 zT=-2.2 T=0.56 D=1.55 cfH=3.1
+[MEMORY 🧠] E:-0.9σ 🟢 B:-1.4σ 🟢 H:-1.6σ 🟡 | Phase: RELEASE | normal
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.77 | Z=0.44σ
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×2] | scene:33b | Pan:-215 Tilt:-26 | sBPM:96 phase:264°
+[Harmony 🎵] Key Change (fallback): D → G#
+[TitanOrchestrator] ðŸŽ§ BPM=95.85 (oracle=95.80) (kalman=95.81) conf=0.50 peak=0.590 | PLL=LOCKED phase=0.48 sync=0.44 | beat #647 | bass=0.1530 sab=0.108 | ðŸ”¬in_peak=0.16959 in_rms=0.09194
+[VirtualWire] 📡 SAB feed — cb#44500 | frames=441 | peak=0.1276 | ch=2
+[MSST] 📍 breakdown → verse | zL=0.1 zM=0.2 zH=-0.2 zT=0.1 T=0.01 D=0.56 cfH=3.1
+[Harmony 🎵] Key Change: G# → D (21% dominance)
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×6] | scene:34b | Pan:-165 Tilt:-67 | sBPM:96 phase:310°
+[AGC 🎚️] Gain: 3.46x | In: 0.099 → Out: 0.339 | Peak: 0.143 | ✅ ACTIVE
+[MEMORY 🧠] E:+0.4σ 🟢 B:-0.0σ 🟢 H:-1.1σ 🟢 | Phase: CLIMAX | normal
+[MSST] 📍 verse → chorus | zL=-0.4 zM=-2.4 zH=0.8 zT=-1.2 T=0.41 D=3.80 cfH=3.1
+[TitanOrchestrator] ðŸŽ§ BPM=95.85 (oracle=95.93) (kalman=95.93) conf=0.44 peak=0.553 | PLL=LOCKED phase=0.23 sync=0.50 | beat #647 | bass=0.1453 sab=0.161 | ðŸ”¬in_peak=0.45233 in_rms=0.11680
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×2] | scene:36b | Pan:-17 Tilt:-57 | sBPM:96 phase:356°
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.558 | MID: 0.540 | HIGH: 0.216 | TOTAL: 0.615 | Max_30s: 1.000
+[Harmony 🎵] Key Change (fallback): D → F
+[MSST] 📍 chorus → drop | zL=0.4 zM=1.8 zH=2.1 zT=1.7 T=1.00 D=2.25 cfH=3.0
+[AGC 🎚️] Gain: 2.86x | In: 0.131 → Out: 0.373 | Peak: 0.178 | ✅ ACTIVE
+[MSST] 📊 section=drop | zL=0.3 zM=0.3 zH=0.6 zT=0.5 T=0.15 D=0.42 cfH=3.0 bassR=1.25 ΔE=0.179 kick=true
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×2] | scene:37b | Pan:148 Tilt:-20 | sBPM:96 phase:43°
+[MEMORY 🧠] E:+0.1σ 🟢 B:+0.2σ 🟢 H:-0.1σ 🟢 | Phase: CLIMAX | normal
+[Harmony 🎵] Key Change: F → D (21% dominance)
+[TitanOrchestrator] ðŸŽ§ BPM=95.85 (oracle=95.70) (kalman=95.75) conf=0.37 peak=0.511 | PLL=LOCKED phase=0.92 sync=0.55 | beat #648 | bass=0.1469 sab=0.161 | ðŸ”¬in_peak=0.53072 in_rms=0.18949
+[MSST] 📍 drop → verse | zL=-1.0 zM=1.3 zH=0.0 zT=-0.2 T=1.18 D=2.76 cfH=3.0
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×6] | scene:39b | Pan:219 Tilt:-39 | sBPM:96 phase:88°
+[Harmony 🎵] Key Change (fallback): D → G#
+[🌋 FLASHBANG] Detected: ambient → intense (0ms) RMS3s=0.66 RMS10s=0.68 t=1787243533818ms
+[MSST] 📍 verse → breakdown | zL=-1.9 zM=-2.6 zH=-1.1 zT=-3.0 T=0.95 D=1.92 cfH=3.0
+[AGC 🎚️] Gain: 2.81x | In: 0.142 → Out: 0.383 | Peak: 0.176 | ✅ ACTIVE
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×2] | scene:41b | Pan:152 Tilt:-67 | sBPM:96 phase:136°
+[Harmony 🎵] Key Change: G# → G (21% dominance)
+[MEMORY 🧠] E:-1.2σ 🟢 B:-1.2σ 🟢 H:+1.3σ 🟢 | Phase: CLIMAX | normal
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.41 | Z=-1.63σ
+[VirtualWire] 📡 SAB feed — cb#45000 | frames=441 | peak=0.2431 | ch=2
+[TitanOrchestrator] ðŸŽ§ BPM=95.85 (oracle=95.92) (kalman=95.97) conf=0.29 peak=0.456 | PLL=LOCKED phase=0.79 sync=0.53 | beat #651 | bass=0.2021 sab=0.161 | ðŸ”¬in_peak=0.54399 in_rms=0.18765
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.557 | MID: 0.587 | HIGH: 0.225 | TOTAL: 0.634 | Max_30s: 1.000
+[MSST] 📍 breakdown → textural_drop | zL=-0.2 zM=1.8 zH=2.1 zT=1.2 T=1.23 D=3.11 cfH=3.0
+[🌋 FLASHBANG] Detected: ambient → intense (0ms) RMS3s=0.63 RMS10s=0.67 t=1787243535047ms
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×2] | scene:42b | Pan:-14 Tilt:-33 | sBPM:96 phase:183°
+[SeleneTitanConscious 🌊] V3 IGNITE: C=0.749 Q=0.716 I_fx=0.432 epicness=0.420 | I(t)=0.555 CF=0.234 T=0.458 μ=0.564 V=0.223 X=1.000 | Π=0.092 M=0.785 Δ=0.178 G=0.485 → V3 AUTHORITY ACTIVE
+[DREAM_AUDIT 🔍] vibe="fiesta-latina" zone=intense pressure=0.955 | vibeAllowed=17 → zoneFiltered=9 → pressureFiltered=9 | cooldowns=0 | phase=climax
+[DREAM_SIMULATOR] 🔮 CASSANDRA: type=buildup_starting conf=0.661 timeToEvent=3755.7058287732607ms urgent=false candidates=9
+[DREAM_RANKING] 🏆 TOP 5 (9 total) | pred=buildup_starting conf=0.661:
+  1. Latina Meltdown      SCORE=1.000 | DNA=0.861 DIV=1.000 VIB=0.850 RSK=0.400 dist=0.240
+  2. Ambient Strobe       SCORE=0.760 | DNA=0.697 DIV=0.875 VIB=0.850 RSK=0.600 dist=0.525
+  3. Solar Flare          SCORE=0.681 | DNA=0.878 DIV=0.700 VIB=0.850 RSK=0.400 dist=0.211
+  4. Seismic Snap         SCORE=0.649 | DNA=0.770 DIV=0.700 VIB=0.850 RSK=0.200 dist=0.398 TEX=+0.016
+  5. latin_strobe         SCORE=0.625 | DNA=0.717 DIV=0.700 VIB=0.850 RSK=0.200 dist=0.490
+[DREAM_SIMULATOR] 🔮📦 CASSANDRA PRE-BUFFER: "Latina Meltdown" stored for buildup_starting in ~3.8s (66% confidence)
+[DREAM_SIMULATOR] 🔮🛡️ TEMPORAL SEAL: Latina Meltdown → 'modify' (pre-buffer active, timeToEvent=3755.7058287732607ms)
+[SeleneTitanConscious] 🧬 DNA: ❌ none | ethics=N/A | dream=0ms | modify
+[AGC 🎚️] Gain: 2.75x | In: 0.138 → Out: 0.378 | Peak: 0.180 | ✅ ACTIVE
+[MSST] 📍 textural_drop → drop | zL=0.6 zM=-0.5 zH=2.8 zT=0.9 T=0.74 D=4.47 cfH=3.0
+[MEMORY 🧠] E:+0.7σ 🟢 B:+0.9σ 🟢 H:-0.4σ 🟢 | Phase: CLIMAX | normal
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×2] | scene:44b | Pan:-174 Tilt:-20 | sBPM:96 phase:231°
+[TitanOrchestrator] ðŸŽ§ BPM=95.85 (oracle=96.03) (kalman=95.96) conf=0.10 peak=0.276 | PLL=LOCKED phase=0.56 sync=0.49 | beat #652 | bass=0.2260 sab=0.054 | ðŸ”¬in_peak=0.42114 in_rms=0.15864
+[MSST] 📍 drop → verse | zL=-0.5 zM=-0.3 zH=1.6 zT=-0.1 T=0.73 D=2.93 cfH=3.0
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×6] | scene:45b | Pan:-223 Tilt:-64 | sBPM:96 phase:276°
+[AudioMatrix] 📊 SAB fill=0.108 | src=virtual-wire | forced=virtual-wire | active=virtual-wire | total=19968039
+[Harmony 🎵] Key Change: G → F (23% dominance)
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.530 | MID: 0.638 | HIGH: 0.269 | TOTAL: 0.642 | Max_30s: 1.000
+[MEMORY 🧠] E:-0.8σ 🟢 B:-1.2σ 🟢 H:+1.4σ 🟢 | Phase: CLIMAX | normal
+[AGC 🎚️] Gain: 2.89x | In: 0.158 → Out: 0.451 | Peak: 0.171 | ✅ ACTIVE
+[MSST] 📍 verse → textural_drop | zL=0.5 zM=0.3 zH=3.5 zT=1.5 T=0.95 D=4.67 cfH=3.0
+[TitanOrchestrator] ðŸŽ§ BPM=95.85 (oracle=97.56) (kalman=97.06) conf=0.01 peak=0.137 | PLL=LOCKED phase=0.24 sync=0.46 | beat #655 | bass=0.1410 sab=0.161 | ðŸ”¬in_peak=0.41135 in_rms=0.12873
+[CHOREO] fiesta-latina | #1:wave_y [SNAKE ×6] | scene:47b | Pan:-151 Tilt:-67 | sBPM:96 phase:318°
+[MSST] 📍 textural_drop → breakdown | zL=-1.1 zM=-2.0 zH=-0.8 zT=-2.0 T=0.55 D=1.36 cfH=3.0
+[SCHED] 🌊 wave_y → ballyhoo | harbor:true deadline:false | phase:2°
+[SeleneTitanConscious] 🔮🚫 CASSANDRA SOVEREIGN ABORT: "latina_meltdown" | Fallback energy veto (E=0.67 OR Z=-0.13 < 1.0) — heavy effect "Latina Meltdown" suppressed
+[MEMORY 🧠] E:+0.1σ 🟢 B:-0.0σ 🟢 H:+0.8σ 🟢 | Phase: BUILDING | normal
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.71 | Z=0.11σ
+[VirtualWire] 📡 SAB feed — cb#45500 | frames=441 | peak=0.4082 | ch=2
+[SeleneTitanConscious 🌊] V3 IGNITE: C=0.730 Q=0.718 I_fx=0.396 epicness=0.348 | I(t)=0.459 CF=0.163 T=0.465 μ=0.549 V=0.244 X=1.000 | Π=0.084 M=0.761 Δ=0.184 G=0.488 → V3 AUTHORITY ACTIVE
+[DREAM_SIMULATOR] 🔮 CASSANDRA: type=buildup_starting conf=0.673 timeToEvent=3755.7058287732607ms urgent=false candidates=9
+[DREAM_RANKING] 🏆 TOP 5 (9 total) | pred=buildup_starting conf=0.673:
+  1. Latina Meltdown      SCORE=1.000 | DNA=0.857 DIV=1.000 VIB=0.850 RSK=0.400 dist=0.247
+  2. Ambient Strobe       SCORE=0.757 | DNA=0.688 DIV=0.875 VIB=0.850 RSK=0.600 dist=0.540
+  3. Solar Flare          SCORE=0.680 | DNA=0.875 DIV=0.700 VIB=0.850 RSK=0.400 dist=0.216
+  4. Seismic Snap         SCORE=0.649 | DNA=0.761 DIV=0.700 VIB=0.850 RSK=0.200 dist=0.413 TEX=+0.019
+  5. latin_strobe         SCORE=0.625 | DNA=0.719 DIV=0.700 VIB=0.850 RSK=0.200 dist=0.486
+[DREAM_SIMULATOR] 🔮📦 CASSANDRA PRE-BUFFER: "Latina Meltdown" stored for buildup_starting in ~3.8s (67% confidence)
+[DREAM_SIMULATOR] 🔮🛡️ TEMPORAL SEAL: Latina Meltdown → 'modify' (pre-buffer active, timeToEvent=3755.7058287732607ms)
+[SeleneTitanConscious] 🧬 DNA: ❌ none | ethics=N/A | dream=0ms | modify
+[AGC 🎚️] Gain: 2.97x | In: 0.080 → Out: 0.239 | Peak: 0.169 | ✅ ACTIVE
+[MSST] 📍 breakdown → buildup | zL=-1.1 zM=-0.4 zH=0.2 zT=-1.0 T=0.78 D=1.29 cfH=3.0
+[TitanOrchestrator] ðŸŽ§ BPM=95.85 (oracle=190.18) (kalman=97.06) conf=0.01 peak=0.130 | PLL=FREEWHEEL phase=0.92 sync=0.52 | beat #657 | bass=0.0512 sab=0.108 | ðŸ”¬in_peak=0.21034 in_rms=0.07160
+[Harmony 🎵] Key Change: F → D (23% dominance)
+[CHOREO] fiesta-latina | #2:ballyhoo [XF→ballyhoo] [SNAKE ×2] | scene:2b | Pan:123 Tilt:-20 | sBPM:96 phase:35°
+[SCHED] ✅ Crossfade complete → ballyhoo
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.570 | MID: 0.589 | HIGH: 0.286 | TOTAL: 0.664 | Max_30s: 1.000
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×6] | scene:3b | Pan:154 Tilt:-20 | sBPM:96 phase:68°
+[MSST] 📍 buildup → verse | zL=0.0 zM=-1.0 zH=-0.3 zT=-0.5 T=0.00 D=1.20 cfH=3.0
+[MEMORY 🧠] E:-1.0σ 🟢 B:-2.1σ 🟡 H:+0.3σ 🟢 | Phase: CLIMAX | normal
+[TitanOrchestrator] ðŸŽ§ BPM=95.85 (oracle=128.98) (kalman=128.96) conf=0.07 peak=0.336 | PLL=FREEWHEEL phase=0.65 sync=0.50 | beat #659 | bass=0.0666 sab=0.108 | ðŸ”¬in_peak=0.27859 in_rms=0.08237
+[AGC 🎚️] Gain: 3.08x | In: 0.158 → Out: 0.481 | Peak: 0.161 | ✅ ACTIVE
+[MSST] 📊 section=verse | zL=1.1 zM=-1.4 zH=2.1 zT=0.8 T=0.57 D=4.00 cfH=3.0 bassR=0.66 ΔE=-0.064 kick=true
+[MSST] 📍 verse → breakdown | zL=-0.7 zM=-1.9 zH=-0.6 zT=-1.6 T=0.36 D=1.34 cfH=3.0
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×6] | scene:4b | Pan:242 Tilt:-67 | sBPM:96 phase:102°
+[Harmony 🎵] Key Change: D → F (24% dominance)
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×6] | scene:6b | Pan:179 Tilt:-67 | sBPM:96 phase:135°
+[MSST] 📍 breakdown → textural_drop | zL=-1.1 zM=-0.0 zH=2.3 zT=-0.3 T=1.47 D=3.98 cfH=3.0
+[MEMORY 🧠] E:-0.4σ 🟢 B:-1.8σ 🟡 H:+0.8σ 🟢 | Phase: CLIMAX | normal
+[TitanOrchestrator] ðŸŽ§ BPM=95.85 (oracle=128.84) (kalman=128.81) conf=0.07 peak=0.363 | PLL=FREEWHEEL phase=0.33 sync=0.51 | beat #662 | bass=0.1453 sab=0.108 | ðŸ”¬in_peak=0.32289 in_rms=0.13063
+[Sovereign Clock 🔄] DIVINE RE-ROUTE: "Latina Meltdown" → "latin_bubbles" | epicness=0.481 (peak>0.50? false; sustained>0.4+rms>0.70? false) Z=-0.25σ ≥ 2.1? false — divine gate blocked, prediction preserved, effect downgraded
+[SeleneTitanConscious] 🔮🚫 CASSANDRA SOVEREIGN ABORT: "latina_meltdown" | Pressure veto (Pressure=0.64 outside allowed range [0.8, 1])
+[AGC 🎚️] Gain: 2.89x | In: 0.116 → Out: 0.334 | Peak: 0.171 | ✅ ACTIVE
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×2] | scene:8b | Pan:25 Tilt:-67 | sBPM:96 phase:171°
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.459 | MID: 0.589 | HIGH: 0.253 | TOTAL: 0.609 | Max_30s: 1.000
+[MSST] 📍 textural_drop → chorus | zL=0.9 zM=1.4 zH=1.1 zT=1.6 T=0.41 D=0.52 cfH=3.0
+[SeleneTitanConscious 🌊] V3 IGNITE: C=0.720 Q=0.711 I_fx=0.392 epicness=0.335 | I(t)=0.622 CF=0.253 T=0.466 μ=0.530 V=0.271 X=1.000 | Π=0.088 M=0.741 Δ=0.188 G=0.496 → V3 AUTHORITY ACTIVE
+[SeleneTitanConscious] 🧬 DNA: ❌ none | ethics=N/A | dream=0ms | modify
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.71 | Z=0.11σ
+[MEMORY 🧠] E:-0.5σ 🟢 B:+0.5σ 🟢 H:-1.3σ 🟢 | Phase: CLIMAX | normal
+[VirtualWire] 📡 SAB feed — cb#46000 | frames=441 | peak=0.2061 | ch=2
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×2] | scene:9b | Pan:-84 Tilt:-28 | sBPM:96 phase:205°
+[MSST] 📍 chorus → verse | zL=0.4 zM=-0.1 zH=-0.5 zT=0.1 T=0.00 D=1.03 cfH=2.9
+[TitanOrchestrator] ðŸŽ§ BPM=95.85 (oracle=129.06) (kalman=128.81) conf=0.06 peak=0.352 | PLL=FREEWHEEL phase=0.09 sync=0.51 | beat #664 | bass=0.1950 sab=0.000 | ðŸ”¬in_peak=0.42970 in_rms=0.14533
+[AGC 🎚️] Gain: 2.77x | In: 0.120 → Out: 0.332 | Peak: 0.179 | ✅ ACTIVE
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×6] | scene:10b | Pan:-226 Tilt:-20 | sBPM:96 phase:237°
+[MSST] 📍 verse → breakdown | zL=-1.2 zM=-0.5 zH=0.4 zT=-1.0 T=0.90 D=1.69 cfH=2.9
+[MEMORY 🧠] E:-0.6σ 🟢 B:-1.6σ 🟡 H:-0.3σ 🟢 | Phase: TEXTURAL | normal
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×2] | scene:12b | Pan:-211 Tilt:-46 | sBPM:96 phase:272°
+[TitanOrchestrator] ðŸŽ§ BPM=95.85 (oracle=128.98) (kalman=128.98) conf=0.06 peak=0.352 | PLL=FREEWHEEL phase=0.77 sync=0.56 | beat #665 | bass=0.3220 sab=0.000 | ðŸ”¬in_peak=0.39597 in_rms=0.16277
+[SeleneTitanConscious 🌊] V3 IGNITE: C=0.703 Q=0.697 I_fx=0.389 epicness=0.314 | I(t)=0.423 CF=0.242 T=0.446 μ=0.492 V=0.284 X=1.000 | Π=0.088 M=0.739 Δ=0.182 G=0.497 → V3 AUTHORITY ACTIVE
+[DREAM_SIMULATOR] 🔮 CASSANDRA: type=drop_incoming conf=0.684 timeToEvent=4000ms urgent=false candidates=9
+[DREAM_RANKING] 🏆 TOP 5 (9 total) | pred=drop_incoming conf=0.684:
+  1. Latina Meltdown      SCORE=1.000 | DNA=0.805 DIV=1.000 VIB=0.850 RSK=0.400 dist=0.337
+  2. Seismic Snap         SCORE=0.901 | DNA=0.663 DIV=0.700 VIB=0.850 RSK=0.200 dist=0.584 TEX=+0.013
+  3. Strobe Storm         SCORE=0.870 | DNA=0.650 DIV=0.700 VIB=0.850 RSK=0.400 dist=0.607
+  4. Strobe Burst         SCORE=0.815 | DNA=0.657 DIV=0.700 VIB=0.850 RSK=0.200 dist=0.593 TEX=+0.013
+  5. Ambient Strobe       SCORE=0.729 | DNA=0.596 DIV=0.875 VIB=0.850 RSK=0.600 dist=0.700
+[DREAM_SIMULATOR] 🔮📦 CASSANDRA PRE-BUFFER: "Latina Meltdown" stored for drop_incoming in ~4.0s (68% confidence)
+[DREAM_SIMULATOR] 🔮🛡️ TEMPORAL SEAL: Latina Meltdown → 'modify' (pre-buffer active, timeToEvent=4000ms)
+[SeleneTitanConscious] 🧬 DNA: ❌ none | ethics=N/A | dream=1ms | modify
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.481 | MID: 0.569 | HIGH: 0.228 | TOTAL: 0.607 | Max_30s: 1.000
+[MSST] 📍 breakdown → chorus | zL=0.6 zM=-0.8 zH=0.8 zT=0.3 T=0.21 D=1.70 cfH=2.9
+[AGC 🎚️] Gain: 2.67x | In: 0.179 → Out: 0.475 | Peak: 0.203 | ✅ ACTIVE
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×2] | scene:14b | Pan:-130 Tilt:-67 | sBPM:96 phase:307°
+[SeleneTitanConscious 🌊] V3 IGNITE: C=0.698 Q=0.686 I_fx=0.401 epicness=0.355 | I(t)=0.482 CF=0.281 T=0.436 μ=0.474 V=0.292 X=1.000 | Π=0.089 M=0.715 Δ=0.183 G=0.497 → V3 AUTHORITY ACTIVE
+[SeleneTitanConscious] 🧬 DNA: ❌ none | ethics=N/A | dream=1ms | modify
+[MEMORY 🧠] E:+0.1σ 🟢 B:+0.4σ 🟢 H:-0.2σ 🟢 | Phase: CLIMAX | normal
+[MSST] 📍 chorus → buildup | zL=-1.6 zM=-0.2 zH=1.5 zT=-0.9 T=1.57 D=3.23 cfH=2.9
+[TitanOrchestrator] ðŸŽ§ BPM=95.85 (oracle=129.56) (kalman=129.37) conf=0.03 peak=0.264 | PLL=FREEWHEEL phase=0.45 sync=0.44 | beat #668 | bass=0.0391 sab=0.161 | ðŸ”¬in_peak=0.47821 in_rms=0.27260
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×2] | scene:15b | Pan:-76 Tilt:-48 | sBPM:96 phase:342°
+[MSST] 📍 buildup → chorus | zL=-1.7 zM=0.1 zH=-0.6 zT=-1.3 T=1.40 D=2.39 cfH=2.9
+[AudioMatrix] 📊 SAB fill=0.054 | src=virtual-wire | forced=virtual-wire | active=virtual-wire | total=20480040
+[AGC 🎚️] Gain: 2.41x | In: 0.124 → Out: 0.298 | Peak: 0.206 | ✅ ACTIVE
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×6] | scene:17b | Pan:68 Tilt:-20 | sBPM:96 phase:16°
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.42 | Z=-1.41σ
+[VirtualWire] 📡 SAB feed — cb#46500 | frames=441 | peak=0.1739 | ch=2
+[MEMORY 🧠] E:-0.9σ 🟢 B:-0.0σ 🟢 H:-0.3σ 🟢 | Phase: CLIMAX | normal
+[Harmony 🎵] Key Change: F → D (21% dominance)
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.461 | MID: 0.522 | HIGH: 0.189 | TOTAL: 0.574 | Max_30s: 1.000
+[MSST] 📍 chorus → buildup | zL=-1.4 zM=-0.6 zH=-0.3 zT=-1.4 T=0.90 D=1.25 cfH=2.9
+[TitanOrchestrator] ðŸŽ§ BPM=95.85 (oracle=96.47) (kalman=123.70) conf=0.06 peak=0.215 | PLL=FREEWHEEL phase=0.14 sync=0.49 | beat #671 | bass=0.0211 sab=0.161 | ðŸ”¬in_peak=0.50038 in_rms=0.20982
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×6] | scene:18b | Pan:117 Tilt:-20 | sBPM:96 phase:50°
+[SeleneTitanConscious] 🔮🚫 CASSANDRA SOVEREIGN ABORT: "latina_meltdown" | Bass Gate veto (bass=0.160 ≤ 0.35) — heavy effect "Latina Meltdown" suppressed (vocal/autotune false positive)
+[MSST] 📍 buildup → verse | zL=1.8 zM=-1.6 zH=-0.9 zT=0.4 T=0.00 D=4.82 cfH=2.9
+[SeleneTitanConscious 🌊] V3 IGNITE: C=0.704 Q=0.687 I_fx=0.414 epicness=0.241 | I(t)=0.410 CF=0.274 T=0.435 μ=0.432 V=0.313 X=1.000 | Π=0.104 M=0.664 Δ=0.174 G=0.492 → V3 AUTHORITY ACTIVE
+[🌋 FLASHBANG] Detected: ambient → intense (0ms) RMS3s=0.58 RMS10s=0.63 t=1787243550686ms
+[DREAM_SIMULATOR] 🔮 ORACLE VISION: zone override intense → peak (pred=drop_incoming timeToEvent=4000ms conf=0.683) | Z-guards RELAXED
+[DREAM_SIMULATOR] 🔮 CASSANDRA: type=drop_incoming conf=0.683 timeToEvent=4000ms urgent=false candidates=9
+[DREAM_RANKING] 🏆 TOP 5 (9 total) | pred=drop_incoming conf=0.683:
+  1. Latina Meltdown      SCORE=1.000 | DNA=0.678 DIV=1.000 VIB=0.850 RSK=0.300 dist=0.558
+  2. Seismic Snap         SCORE=0.865 | DNA=0.595 DIV=0.700 VIB=0.850 RSK=0.100 dist=0.702 TEX=-0.027
+  3. Strobe Storm         SCORE=0.849 | DNA=0.564 DIV=0.700 VIB=0.850 RSK=0.400 dist=0.756
+  4. Strobe Burst         SCORE=0.769 | DNA=0.582 DIV=0.700 VIB=0.850 RSK=0.200 dist=0.724 TEX=-0.027
+  5. Ambient Strobe       SCORE=0.731 | DNA=0.530 DIV=0.875 VIB=0.850 RSK=0.400 dist=0.815
+[DREAM_SIMULATOR] 🔮📦 CASSANDRA PRE-BUFFER: "Latina Meltdown" stored for drop_incoming in ~4.0s (68% confidence)
+[DREAM_SIMULATOR] 🔮🛡️ TEMPORAL SEAL: Latina Meltdown → 'modify' (pre-buffer active, timeToEvent=4000ms)
+[SeleneTitanConscious] 🧬 DNA: ❌ none | ethics=N/A | dream=1ms | modify
+[DREAM_SIMULATOR] 🔮 ORACLE VISION: zone override peak → intense (pred=buildup_starting timeToEvent=3290.4416248891753ms conf=0.500)
+[DREAM_RANKING] 🏆 TOP 5 (9 total) | pred=buildup_starting conf=0.500:
+  1. Latina Meltdown      SCORE=0.801 | DNA=0.645 DIV=1.000 VIB=0.850 RSK=0.400 dist=0.615
+  2. Ambient Strobe       SCORE=0.621 | DNA=0.529 DIV=0.875 VIB=0.850 RSK=0.600 dist=0.815
+  3. Solar Flare          SCORE=0.606 | DNA=0.859 DIV=0.700 VIB=0.850 RSK=0.400 dist=0.244
+  4. latin_strobe         SCORE=0.535 | DNA=0.635 DIV=0.700 VIB=0.850 RSK=0.200 dist=0.633
+  5. Seismic Snap         SCORE=0.510 | DNA=0.598 DIV=0.700 VIB=0.850 RSK=0.200 dist=0.697 TEX=-0.022
+[INTEGRATOR] 🔮🛡️ PRE-BUFFER GUARD: blocking normal approval — "latina_meltdown" sealed, 4s remaining
+[SeleneTitanConscious] 🧬 DNA: ❌ none | ethics=N/A | dream=1ms | pre-buffer-guard: awaiting "latina_meltdown"
+[AGC 🎚️] Gain: 2.45x | In: 0.176 → Out: 0.431 | Peak: 0.220 | ✅ ACTIVE
+[MSST] 📊 section=verse | zL=0.8 zM=0.8 zH=-0.2 zT=0.9 T=0.00 D=1.48 cfH=2.9 bassR=0.97 ΔE=-0.024 kick=true
+[Harmony 🎵] Key Change (fallback): D → G
+[MEMORY 🧠] E:-0.0σ 🟢 B:-0.0σ 🟢 H:+0.1σ 🟢 | Phase: CLIMAX | normal
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×2] | scene:20b | Pan:181 Tilt:-30 | sBPM:96 phase:85°
+[TitanOrchestrator] ðŸŽ§ BPM=95.85 (oracle=96.70) (kalman=96.59) conf=0.15 peak=0.313 | PLL=FREEWHEEL phase=0.83 sync=0.51 | beat #675 | bass=0.1390 sab=0.161 | ðŸ”¬in_peak=0.11713 in_rms=0.03654
+[MSST] 📍 verse → breakdown | zL=-1.7 zM=-2.0 zH=-1.0 zT=-2.4 T=0.87 D=1.33 cfH=2.9
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×6] | scene:21b | Pan:219 Tilt:-67 | sBPM:96 phase:118°
+[SeleneTitanConscious 🌊] V3 IGNITE: C=0.707 Q=0.694 I_fx=0.407 epicness=0.111 | I(t)=0.359 CF=0.363 T=0.439 μ=0.426 V=0.325 X=1.000 | Π=0.113 M=0.626 Δ=0.168 G=0.491 → V3 AUTHORITY ACTIVE
+[DREAM_SIMULATOR] 🔮 ORACLE VISION: zone override intense → ambient (pred=energy_drop timeToEvent=4381.656800235471ms conf=0.530) | Z-guards RELAXED
+[DREAM_RANKING] 🏆 TOP 5 (8 total) | pred=energy_drop conf=0.530:
+  1. depo                 SCORE=1.000 | DNA=0.761 DIV=1.000 VIB=0.850 RSK=0.200 dist=0.413
+  2. Amazon Mist          SCORE=1.000 | DNA=0.768 DIV=1.000 VIB=0.850 RSK=0.200 dist=0.403 TEX=+0.034
+  3. Corazon Latino       SCORE=1.000 | DNA=0.769 DIV=1.000 VIB=0.850 RSK=0.200 dist=0.399
+  4. Cumbia Moon          SCORE=1.000 | DNA=0.758 DIV=1.000 VIB=0.850 RSK=0.200 dist=0.420
+  5. Ghost Breath         SCORE=1.000 | DNA=0.748 DIV=1.000 VIB=0.850 RSK=0.200 dist=0.437
+[INTEGRATOR] 🔮🛡️ PRE-BUFFER GUARD: blocking normal approval — "latina_meltdown" sealed, 3s remaining
+[SeleneTitanConscious] 🧬 DNA: ❌ none | ethics=N/A | dream=1ms | pre-buffer-guard: awaiting "latina_meltdown"
+[MSST] 📍 breakdown → chorus | zL=1.9 zM=-0.7 zH=-0.8 zT=0.8 T=0.00 D=3.90 cfH=2.9
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.438 | MID: 0.459 | HIGH: 0.133 | TOTAL: 0.530 | Max_30s: 1.000
+[AGC 🎚️] Gain: 2.46x | In: 0.160 → Out: 0.392 | Peak: 0.218 | ✅ ACTIVE
+[MEMORY 🧠] E:-1.0σ 🟢 B:-1.5σ 🟡 H:+0.1σ 🟢 | Phase: CLIMAX | normal
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×2] | scene:23b | Pan:101 Tilt:-67 | sBPM:96 phase:150°
+[TitanOrchestrator] ðŸŽ§ BPM=95.85 (oracle=96.31) (kalman=96.28) conf=0.22 peak=0.375 | PLL=FREEWHEEL phase=0.52 sync=0.48 | beat #678 | bass=0.0641 sab=0.161 | ðŸ”¬in_peak=0.10925 in_rms=0.03891
+[Harmony 🎵] Key Change (fallback): G → G#
+[MSST] 📍 chorus → buildup | zL=0.0 zM=0.1 zH=0.1 zT=0.1 T=0.05 D=0.09 cfH=2.9
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×6] | scene:24b | Pan:-20 Tilt:-62 | sBPM:96 phase:187°
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.87 | Z=1.14σ
+[VirtualWire] 📡 SAB feed — cb#47000 | frames=441 | peak=0.4322 | ch=2
+[MSST] 📍 buildup → chorus | zL=0.8 zM=0.1 zH=-1.1 zT=0.4 T=0.00 D=2.13 cfH=2.9
+[MEMORY 🧠] E:+0.8σ 🟢 B:+1.1σ 🟢 H:-1.3σ 🟢 | Phase: CLIMAX | normal
+[AGC 🎚️] Gain: 2.53x | In: 0.135 → Out: 0.341 | Peak: 0.201 | ✅ ACTIVE
+[Sovereign Clock 🔄] DIVINE RE-ROUTE: "Latina Meltdown" → "latin_bubbles" | epicness=0.195 (peak>0.50? false; sustained>0.4+rms>0.70? false) Z=-0.88σ ≥ 2.1? false — divine gate blocked, prediction preserved, effect downgraded
+[SeleneTitanConscious] 🔮🚫 CASSANDRA SOVEREIGN ABORT: "latina_meltdown" | Pressure veto (Pressure=0.49 outside allowed range [0.8, 1])
+[SeleneTitanConscious 🌊] V3 IGNITE: C=0.683 Q=0.673 I_fx=0.404 epicness=0.249 | I(t)=0.382 CF=0.174 T=0.426 μ=0.428 V=0.341 X=1.000 | Π=0.128 M=0.633 Δ=0.165 G=0.493 → V3 AUTHORITY ACTIVE
+[INTEGRATOR] ✅ APPROVED: depo @ 0.93 | ethics=1.134 | Dream: 0ms | Total: 1ms
+[SeleneTitanConscious] 🧬 DNA: ✅ depo | ethics=1.134 | dream=0ms | execute
+[Gatekeeper 📊] depo | v3Ignite=true epicness=0.249 | hardBlocked=false | arsenalValidated=false | v3Bypass=true | cooldown=OK | ethics=1.13/1 | floor=0.061
+[SeleneTitanConscious 🌊] V3 IGNITE: depo | ethics=1.13 | V(t) refractory activated | epicness=0.249 ≥ floor=0.061
+[FIRE-DIAG] depo | reason=🧬 DNA: execute | Ethics: 1.13 | E=0.879 Z=1.20σ | bass=0.612 mid=0.689 high=0.068 zL=1.22σ | epicness=0.249 v3Ignite=true | I(t)=0.382 T=0.426 | phase=climax | huntW=0.000 huntC=0.300 | pred=buildup_starting predProb=0.66 predETA=3755.7058287732607ms | dna=true ethics=1.134 | intensity=0.93
+[SeleneTitanConscious] 📜 Violation avoided: Estrategia triadic no permitida, Constitution fuerza analogous
+[SeleneTitanConscious 🌊✅] V3 IGNITION MATERIALIZED: depo | I=0.404
+[HephRuntime] ▶️ PLAY: depo (6000ms, 2 tracks) [PHASE: linear] ID=heph_22_1787243554878
+[SeleneTitanConscious 🔥] Cooldown registered: depo
+[EffectManager 🔥] depo [heph_17829370] FIRED [hunt] in fiesta-latina  ⚡[HEPH-BRIDGE] | I:0.93 Z:1.2
+[DNA_ANALYZER] 📊 Diversity: depo usado 2x - Factor: 0.35x
+[Coliseum 🧬] Prenatal abort for heph_1782937097650_pjisyy via spatial_resonance: G4 (COMPAT): Missing: valid sections
+[Coliseum 🧬] Initial cohort for heph_1782937097650_pjisyy: 0/1 viable via spatial_resonance
+[TitanOrchestrator] ðŸŽ§ BPM=95.85 (oracle=96.42) (kalman=96.46) conf=0.30 peak=0.427 | PLL=FREEWHEEL phase=0.25 sync=0.46 | beat #682 | bass=0.0384 sab=0.161 | ðŸ”¬in_peak=0.17636 in_rms=0.08286
+[TitanOrchestrator âš’ï¸] HEPHAESTUS: 1 clips, 22 outputs
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×6] | scene:26b | Pan:-159 Tilt:-20 | sBPM:96 phase:222°
+[Harmony 🎵] Key Change (fallback): G# → D
+[MSST] 📍 chorus → verse | zL=-1.0 zM=0.3 zH=-0.4 zT=-0.7 T=0.93 D=1.71 cfH=3.0
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.425 | MID: 0.532 | HIGH: 0.127 | TOTAL: 0.551 | Max_30s: 1.000
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×2] | scene:27b | Pan:-236 Tilt:-24 | sBPM:96 phase:257°
+[MEMORY 🧠] E:-1.1σ 🟢 B:-1.5σ 🟡 H:-1.2σ 🟢 | Phase: BUILDING | normal
+[🌋 FLASHBANG] Detected: ambient → peak (0ms) RMS3s=0.56 RMS10s=0.61 t=1787243556387ms
+[AGC 🎚️] Gain: 2.70x | In: 0.126 → Out: 0.341 | Peak: 0.198 | ✅ ACTIVE
+[Harmony 🎵] Key Change (fallback): D → C
+[TitanOrchestrator] ðŸŽ§ BPM=95.85 (oracle=96.46) (kalman=96.45) conf=0.27 peak=0.409 | PLL=FREEWHEEL phase=0.41 sync=0.41 | beat #684 | bass=0.1242 sab=0.161 | ðŸ”¬in_peak=0.16806 in_rms=0.07300
+[TitanOrchestrator âš’ï¸] HEPHAESTUS: 1 clips, 22 outputs
+[MSST] 📍 verse → drop | zL=0.7 zM=1.7 zH=1.1 zT=1.6 T=0.59 D=1.17 cfH=3.0
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×2] | scene:29b | Pan:-158 Tilt:-67 | sBPM:96 phase:289°
+[MSST] 📍 drop → buildup | zL=0.0 zM=-0.3 zH=0.1 zT=-0.1 T=0.03 D=0.45 cfH=3.0
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×6] | scene:30b | Pan:-115 Tilt:-67 | sBPM:96 phase:324°
+[MEMORY 🧠] E:+0.2σ 🟢 B:-0.0σ 🟢 H:-1.3σ 🟢 | Phase: CLIMAX | normal
+[AGC 🎚️] Gain: 2.57x | In: 0.101 → Out: 0.259 | Peak: 0.197 | ✅ ACTIVE
+[TitanOrchestrator] ðŸŽ§ BPM=95.85 (oracle=96.33) (kalman=96.34) conf=0.30 peak=0.431 | PLL=FREEWHEEL phase=0.17 sync=0.49 | beat #686 | bass=0.0783 sab=0.161 | ðŸ”¬in_peak=0.25482 in_rms=0.09994
+[TitanOrchestrator âš’ï¸] HEPHAESTUS: 1 clips, 22 outputs
+[MSST] 📍 buildup → chorus | zL=-1.5 zM=-0.5 zH=-0.6 zT=-1.5 T=1.05 D=1.43 cfH=2.9
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.438 | MID: 0.574 | HIGH: 0.161 | TOTAL: 0.584 | Max_30s: 1.000
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×6] | scene:32b | Pan:-2 Tilt:-20 | sBPM:96 phase:360°
+[Harmony 🎵] Key Change (fallback): C → D
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.29 | Z=-1.84σ
+[VirtualWire] 📡 SAB feed — cb#47500 | frames=441 | peak=0.2102 | ch=2
+[MEMORY 🧠] E:-1.3σ 🟢 B:-1.2σ 🟢 H:-0.9σ 🟢 | Phase: CLIMAX | normal
+[MSST] 📍 chorus → textural_drop | zL=-0.7 zM=1.5 zH=1.8 zT=0.6 T=1.49 D=3.46 cfH=2.9
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×6] | scene:33b | Pan:111 Tilt:-20 | sBPM:96 phase:32°
+[TitanOrchestrator] ðŸŽ§ BPM=95.85 (oracle=96.28) (kalman=96.29) conf=0.38 peak=0.488 | PLL=FREEWHEEL phase=0.40 sync=0.46 | beat #689 | bass=0.0168 sab=0.161 | ðŸ”¬in_peak=0.48320 in_rms=0.14241
+[TitanOrchestrator âš’ï¸] HEPHAESTUS: 1 clips, 22 outputs
+[AGC 🎚️] Gain: 2.70x | In: 0.072 → Out: 0.194 | Peak: 0.186 | ✅ ACTIVE
+[MSST] 📊 section=textural_drop | zL=-0.4 zM=-1.9 zH=-1.2 zT=-1.4 T=0.19 D=1.90 cfH=2.9 bassR=1.07 ΔE=0.070 kick=false
+[AudioMatrix] 📊 SAB fill=0.108 | src=virtual-wire | forced=virtual-wire | active=virtual-wire | total=20992041
+[MSST] 📍 textural_drop → drop | zL=1.3 zM=0.3 zH=3.1 zT=1.8 T=0.80 D=3.74 cfH=2.9
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×6] | scene:35b | Pan:150 Tilt:-20 | sBPM:96 phase:66°
+[Harmony 🎵] Key Change (fallback): D → G
+[HephRuntime] ✅ Completed: heph_22_1787243554878
+[🌋 FLASHBANG] Detected: ambient → intense (0ms) RMS3s=0.58 RMS10s=0.60 t=1787243561034ms
+[MEMORY 🧠] E:+1.1σ 🟢 B:+1.2σ 🟢 H:-1.0σ 🟢 | Phase: CLIMAX | normal
+[MSST] 📍 drop → verse | zL=-0.0 zM=-0.5 zH=-0.5 zT=-0.4 T=0.01 D=0.72 cfH=2.9
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×2] | scene:36b | Pan:238 Tilt:-67 | sBPM:96 phase:99°
+[TitanOrchestrator] ðŸŽ§ BPM=95.85 (oracle=96.40) (kalman=96.44) conf=0.46 peak=0.542 | PLL=FREEWHEEL phase=0.63 sync=0.42 | beat #692 | bass=0.1442 sab=0.108 | ðŸ”¬in_peak=0.27544 in_rms=0.09901
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.510 | MID: 0.523 | HIGH: 0.185 | TOTAL: 0.595 | Max_30s: 1.000
+[AGC 🎚️] Gain: 2.60x | In: 0.072 → Out: 0.188 | Peak: 0.190 | ✅ ACTIVE
+[MSST] 📍 verse → drop | zL=1.3 zM=0.2 zH=3.0 zT=1.7 T=0.74 D=3.57 cfH=2.9
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×2] | scene:38b | Pan:185 Tilt:-67 | sBPM:96 phase:134°
+[MEMORY 🧠] E:+0.4σ 🟢 B:+0.9σ 🟢 H:+1.7σ 🟡 | Phase: CLIMAX | normal
+[TitanOrchestrator] ðŸŽ§ BPM=96.33 (oracle=96.28) (kalman=96.26) conf=0.49 peak=0.557 | PLL=LOCKED phase=0.43 sync=0.41 | beat #694 | bass=0.0265 sab=0.000 | ðŸ”¬in_peak=0.51939 in_rms=0.18934
+[MSST] 📍 drop → chorus | zL=0.7 zM=0.7 zH=0.1 zT=0.9 T=0.03 D=0.91 cfH=2.9
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×2] | scene:39b | Pan:33 Tilt:-67 | sBPM:96 phase:169°
+[AGC 🎚️] Gain: 2.72x | In: 0.178 → Out: 0.483 | Peak: 0.184 | ✅ ACTIVE
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.61 | Z=-0.14σ
+[MSST] 📍 chorus → verse | zL=-0.4 zM=-1.5 zH=-1.2 zT=-1.2 T=0.19 D=1.51 cfH=2.9
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×2] | scene:41b | Pan:-66 Tilt:-36 | sBPM:96 phase:200°
+[VirtualWire] 📡 SAB feed — cb#48000 | frames=441 | peak=0.2762 | ch=2
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.525 | MID: 0.535 | HIGH: 0.193 | TOTAL: 0.604 | Max_30s: 1.000
+[MEMORY 🧠] E:-1.8σ 🟡 B:-1.1σ 🟢 H:-1.6σ 🟡 | Phase: SILENCE | normal
+[TitanOrchestrator] ðŸŽ§ BPM=96.34 (oracle=96.35) (kalman=96.33) conf=0.41 peak=0.511 | PLL=LOCKED phase=0.08 sync=0.50 | beat #695 | bass=0.0223 sab=0.161 | ðŸ”¬in_peak=0.17941 in_rms=0.06988
+[MSST] 📍 verse → breakdown | zL=-1.6 zM=0.4 zH=0.2 zT=-0.9 T=1.43 D=2.86 cfH=2.9
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×6] | scene:42b | Pan:-216 Tilt:-20 | sBPM:96 phase:234°
+[AGC 🎚️] Gain: 3.12x | In: 0.097 → Out: 0.303 | Peak: 0.159 | ✅ ACTIVE
+[MSST] 📍 breakdown → chorus | zL=1.4 zM=-0.9 zH=0.6 zT=0.7 T=0.14 D=2.61 cfH=2.9
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×2] | scene:44b | Pan:-221 Tilt:-41 | sBPM:96 phase:268°
+[MEMORY 🧠] E:+0.6σ 🟢 B:+0.7σ 🟢 H:-0.6σ 🟢 | Phase: CLIMAX | normal
+[TitanOrchestrator] ðŸŽ§ BPM=96.34 (oracle=96.35) (kalman=96.31) conf=0.31 peak=0.461 | PLL=FREEWHEEL phase=0.80 sync=0.44 | beat #696 | bass=0.1103 sab=0.108 | ðŸ”¬in_peak=0.27119 in_rms=0.08876
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×6] | scene:45b | Pan:-139 Tilt:-67 | sBPM:96 phase:300°
+[MSST] 📍 chorus → verse | zL=0.1 zM=-0.9 zH=0.1 zT=-0.4 T=0.02 D=1.01 cfH=2.8
+[Harmony 🎵] Key Change (fallback): G → D#
+[AGC 🎚️] Gain: 2.75x | In: 0.133 → Out: 0.365 | Peak: 0.197 | ✅ ACTIVE
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.434 | MID: 0.495 | HIGH: 0.181 | TOTAL: 0.535 | Max_30s: 1.000
+[MEMORY 🧠] E:-0.7σ 🟢 B:-0.2σ 🟢 H:-1.6σ 🟡 | Phase: CLIMAX | normal
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×6] | scene:47b | Pan:-98 Tilt:-61 | sBPM:96 phase:334°
+[MSST] 📍 verse → breakdown | zL=-1.5 zM=-1.2 zH=-1.1 zT=-1.8 T=0.82 D=0.46 cfH=2.8
+[TitanOrchestrator] ðŸŽ§ BPM=96.34 (oracle=96.35) (kalman=96.31) conf=0.32 peak=0.499 | PLL=FREEWHEEL phase=0.23 sync=0.47 | beat #698 | bass=0.1375 sab=0.000 | ðŸ”¬in_peak=0.29710 in_rms=0.11547
+[Harmony 🎵] Key Change (fallback): D# → G#
+[Harmony 🎵] Key Change (fallback): G# → D
+[MSST] 📍 breakdown → chorus | zL=-0.8 zM=-1.9 zH=-1.3 zT=-1.8 T=0.42 D=1.28 cfH=2.8
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×2] | scene:48b | Pan:49 Tilt:-20 | sBPM:96 phase:11°
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.92 | Z=1.62σ
+[VirtualWire] 📡 SAB feed — cb#48500 | frames=441 | peak=0.0510 | ch=2
+[AGC 🎚️] Gain: 2.83x | In: 0.063 → Out: 0.179 | Peak: 0.175 | ✅ ACTIVE
+[MSST] 📊 section=chorus | zL=-0.6 zM=-2.3 zH=-1.3 zT=-1.8 T=0.32 D=1.95 cfH=2.8 bassR=1.07 ΔE=0.061 kick=false
+[MEMORY 🧠] E:-0.9σ 🟢 B:+0.2σ 🟢 H:-0.3σ 🟢 | Phase: CLIMAX | normal
+[Harmony 🎵] Key Change (fallback): D → F
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×6] | scene:50b | Pan:122 Tilt:-20 | sBPM:96 phase:45°
+[MSST] 📍 chorus → verse | zL=0.6 zM=-0.1 zH=-1.1 zT=0.1 T=0.00 D=1.84 cfH=2.8
+[TitanOrchestrator] ðŸŽ§ BPM=96.34 (oracle=95.85) (kalman=95.89) conf=0.33 peak=0.494 | PLL=LOCKED phase=0.18 sync=0.59 | beat #701 | bass=0.1678 sab=0.108 | ðŸ”¬in_peak=0.21432 in_rms=0.07989
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.470 | MID: 0.451 | HIGH: 0.204 | TOTAL: 0.550 | Max_30s: 1.000
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×2] | scene:51b | Pan:175 Tilt:-20 | sBPM:96 phase:78°
+[MSST] 📍 verse → buildup | zL=-0.3 zM=0.2 zH=-0.5 zT=-0.2 T=0.27 D=0.81 cfH=2.8
+[Harmony 🎵] Key Change (fallback): F → C
+[AGC 🎚️] Gain: 2.81x | In: 0.151 → Out: 0.420 | Peak: 0.194 | ✅ ACTIVE
+[MEMORY 🧠] E:+0.4σ 🟢 B:+0.8σ 🟢 H:+0.1σ 🟢 | Phase: CLIMAX | normal
+[TitanOrchestrator] ðŸŽ§ BPM=96.34 (oracle=95.73) (kalman=95.74) conf=0.43 peak=0.556 | PLL=LOCKED phase=0.91 sync=0.52 | beat #703 | bass=0.0429 sab=0.108 | ðŸ”¬in_peak=0.32738 in_rms=0.06189
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×6] | scene:53b | Pan:219 Tilt:-67 | sBPM:96 phase:112°
+[MSST] 📍 buildup → verse | zL=-0.2 zM=-0.6 zH=0.3 zT=-0.3 T=0.16 D=1.08 cfH=2.8
+[AudioMatrix] 📊 SAB fill=0.108 | src=virtual-wire | forced=virtual-wire | active=virtual-wire | total=21504042
+[Harmony 🎵] Key Change (fallback): C → D#
+[MSST] 📍 verse → chorus | zL=0.2 zM=1.0 zH=-0.5 zT=0.5 T=0.25 D=1.96 cfH=2.8
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×2] | scene:55b | Pan:104 Tilt:-67 | sBPM:96 phase:148°
+[MEMORY 🧠] E:+0.9σ 🟢 B:+1.2σ 🟢 H:-0.5σ 🟢 | Phase: CLIMAX | normal
+[AGC 🎚️] Gain: 2.81x | In: 0.108 → Out: 0.304 | Peak: 0.176 | ✅ ACTIVE
+[TitanOrchestrator] ðŸŽ§ BPM=95.81 (oracle=95.89) (kalman=95.86) conf=0.63 peak=0.673 | PLL=LOCKED phase=0.18 sync=0.51 | beat #706 | bass=0.0812 sab=0.161 | ðŸ”¬in_peak=0.20891 in_rms=0.08278
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.509 | MID: 0.501 | HIGH: 0.243 | TOTAL: 0.602 | Max_30s: 1.000
+[MSST] 📍 chorus → verse | zL=1.6 zM=-0.9 zH=-1.1 zT=0.4 T=0.00 D=3.73 cfH=2.8
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×2] | scene:56b | Pan:-8 Tilt:-67 | sBPM:96 phase:183°
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.61 | Z=0.07σ
+[VirtualWire] 📡 SAB feed — cb#49000 | frames=441 | peak=0.2675 | ch=2
+[MSST] 📍 verse → breakdown | zL=-1.0 zM=-2.0 zH=1.4 zT=-1.4 T=0.82 D=4.59 cfH=2.8
+[MEMORY 🧠] E:-0.3σ 🟢 B:-1.3σ 🟢 H:-0.5σ 🟢 | Phase: CLIMAX | normal
+[AGC 🎚️] Gain: 2.79x | In: 0.103 → Out: 0.287 | Peak: 0.178 | ✅ ACTIVE
+[TitanOrchestrator] ðŸŽ§ BPM=95.34 (oracle=95.35) (kalman=95.33) conf=0.47 peak=0.597 | PLL=LOCKED phase=0.31 sync=0.44 | beat #707 | bass=0.0121 sab=0.161 | ðŸ”¬in_peak=0.13069 in_rms=0.03022
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×2] | scene:59b | Pan:-225 Tilt:-20 | sBPM:95 phase:252°
+[MSST] 📍 breakdown → buildup | zL=-0.2 zM=0.6 zH=2.5 zT=0.7 T=0.94 D=3.25 cfH=2.8
+[MEMORY 🧠] E:+0.8σ 🟢 B:+0.4σ 🟢 H:-0.7σ 🟢 | Phase: CLIMAX | normal
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.423 | MID: 0.530 | HIGH: 0.223 | TOTAL: 0.562 | Max_30s: 1.000
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×6] | scene:61b | Pan:-152 Tilt:-67 | sBPM:95 phase:287°
+[AGC 🎚️] Gain: 2.62x | In: 0.196 → Out: 0.511 | Peak: 0.196 | ✅ ACTIVE
+[TitanOrchestrator] ðŸŽ§ BPM=95.34 (oracle=95.17) (kalman=95.11) conf=0.37 peak=0.547 | PLL=LOCKED phase=0.10 sync=0.45 | beat #709 | bass=0.2840 sab=0.108 | ðŸ”¬in_peak=0.32820 in_rms=0.11537
+[MSST] 📍 buildup → drop | zL=0.8 zM=2.0 zH=0.8 zT=1.7 T=0.55 D=1.29 cfH=2.8
+[MSST] 📍 drop → verse | zL=0.2 zM=0.9 zH=-0.8 zT=0.4 T=0.22 D=2.18 cfH=2.9
+[MEMORY 🧠] E:-0.1σ 🟢 B:+0.3σ 🟢 H:-0.1σ 🟢 | Phase: CLIMAX | normal
+[TitanOrchestrator] ðŸŽ§ BPM=95.34 (oracle=95.67) (kalman=95.67) conf=0.38 peak=0.566 | PLL=FREEWHEEL phase=0.25 sync=0.44 | beat #711 | bass=0.0346 sab=0.000 | ðŸ”¬in_peak=0.07358 in_rms=0.02481
+[CHOREO] fiesta-latina | #2:ballyhoo [SNAKE ×2] | scene:64b | Pan:-34 Tilt:-27 | sBPM:95 phase:352°
+[AGC 🎚️] Gain: 2.54x | In: 0.201 → Out: 0.507 | Peak: 0.201 | ✅ ACTIVE
+[MSST] 📊 section=verse | zL=2.3 zM=-0.1 zH=1.1 zT=1.7 T=0.26 D=2.91 cfH=2.9 bassR=1.00 ΔE=-0.047 kick=true
+[SCHED] 🌊 ballyhoo → cadera_libre | harbor:true deadline:false | phase:2°
+[Harmony 🎵] Key Change: D# → G (21% dominance)
+[MSST] 📍 verse → chorus | zL=-0.7 zM=-2.1 zH=-1.4 zT=-1.8 T=0.34 D=1.79 cfH=2.9
+[VirtualWire] 📡 SAB feed — cb#49500 | frames=441 | peak=0.0820 | ch=2
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.73 | Z=0.69σ
+[CHOREO] fiesta-latina | #3:cadera_libre [XF→cadera_libre] [SNAKE ×2] | scene:1b | Pan:93 Tilt:-20 | sBPM:95 phase:21°
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.421 | MID: 0.543 | HIGH: 0.193 | TOTAL: 0.553 | Max_30s: 1.000
+[MEMORY 🧠] E:-1.6σ 🟡 B:-1.5σ 🟢 H:-0.3σ 🟢 | Phase: CLIMAX | normal
+[MSST] 📍 chorus → verse | zL=1.0 zM=-0.4 zH=-1.0 zT=0.3 T=0.00 D=2.48 cfH=2.9
+[TitanOrchestrator] ðŸŽ§ BPM=95.34 (oracle=95.32) (kalman=95.30) conf=0.36 peak=0.531 | PLL=LOCKED phase=0.48 sync=0.39 | beat #713 | bass=0.0978 sab=0.108 | ðŸ”¬in_peak=0.23389 in_rms=0.08423
+[CHOREO] fiesta-latina | #3:cadera_libre [XF→cadera_libre] [SNAKE ×2] | scene:3b | Pan:195 Tilt:-36 | sBPM:95 phase:47°
+[AGC 🎚️] Gain: 2.62x | In: 0.196 → Out: 0.510 | Peak: 0.196 | ✅ ACTIVE
+[SCHED] ✅ Crossfade complete → cadera_libre
+[MSST] 📍 verse → buildup | zL=-0.3 zM=1.0 zH=-0.8 zT=0.1 T=0.56 D=2.08 cfH=2.9
+[SeleneTitanConscious 🌊] V3 IGNITE: C=0.733 Q=0.730 I_fx=0.372 epicness=0.436 | I(t)=0.588 CF=0.192 T=0.458 μ=0.444 V=0.177 X=0.998 | Π=0.146 M=0.565 Δ=0.142 G=0.460 → V3 AUTHORITY ACTIVE
+[DREAM_AUDIT 🔍] vibe="fiesta-latina" zone=intense pressure=0.905 | vibeAllowed=17 → zoneFiltered=9 → pressureFiltered=9 | cooldowns=0 | phase=climax
+[DREAM_SIMULATOR] 🔮 CASSANDRA: type=buildup_starting conf=0.736 timeToEvent=3146.5711536511844ms urgent=false candidates=9
+[DREAM_RANKING] 🏆 TOP 5 (9 total) | pred=buildup_starting conf=0.736:
+  1. Latina Meltdown      SCORE=1.000 | DNA=0.878 DIV=1.000 VIB=0.850 RSK=0.400 dist=0.211
+  2. Strobe Storm         SCORE=0.959 | DNA=0.800 DIV=1.000 VIB=0.850 RSK=0.400 dist=0.346
+  3. Ambient Strobe       SCORE=0.775 | DNA=0.737 DIV=0.875 VIB=0.850 RSK=0.600 dist=0.455
+  4. Solar Flare          SCORE=0.685 | DNA=0.883 DIV=0.700 VIB=0.850 RSK=0.400 dist=0.203
+  5. Seismic Snap         SCORE=0.660 | DNA=0.812 DIV=0.700 VIB=0.850 RSK=0.200 dist=0.325 TEX=+0.014
+[DREAM_SIMULATOR] 🔮📦 CASSANDRA PRE-BUFFER: "Latina Meltdown" stored for buildup_starting in ~3.1s (74% confidence)
+[DREAM_SIMULATOR] 🔮🛡️ TEMPORAL SEAL: Latina Meltdown → 'modify' (pre-buffer active, timeToEvent=3146.5711536511844ms)
+[SeleneTitanConscious] 🧬 DNA: ❌ none | ethics=N/A | dream=1ms | modify
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×2] | scene:4b | Pan:270 Tilt:-67 | sBPM:95 phase:72°
+[MEMORY 🧠] E:-0.1σ 🟢 B:+0.6σ 🟢 H:-1.2σ 🟢 | Phase: CLIMAX | normal
+[MSST] 📍 buildup → verse | zL=-0.2 zM=-1.3 zH=1.0 zT=-0.6 T=0.38 D=3.01 cfH=2.9
+[TitanOrchestrator] ðŸŽ§ BPM=95.34 (oracle=95.43) (kalman=95.41) conf=0.38 peak=0.521 | PLL=LOCKED phase=0.19 sync=0.48 | beat #716 | bass=0.0543 sab=0.000 | ðŸ”¬in_peak=0.17250 in_rms=0.07428
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×2] | scene:5b | Pan:270 Tilt:-67 | sBPM:95 phase:98°
+[AGC 🎚️] Gain: 2.68x | In: 0.194 → Out: 0.511 | Peak: 0.194 | ✅ ACTIVE
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.546 | MID: 0.499 | HIGH: 0.176 | TOTAL: 0.590 | Max_30s: 1.000
+[MSST] 📍 verse → chorus | zL=1.3 zM=1.8 zH=0.7 zT=1.9 T=0.34 D=1.44 cfH=2.9
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×6] | scene:7b | Pan:229 Tilt:-28 | sBPM:95 phase:127°
+[MEMORY 🧠] E:-1.2σ 🟢 B:-1.2σ 🟢 H:-0.5σ 🟢 | Phase: CLIMAX | normal
+[AudioMatrix] 📊 SAB fill=0.054 | src=virtual-wire | forced=virtual-wire | active=virtual-wire | total=22016043
+[TitanOrchestrator] ðŸŽ§ BPM=95.34 (oracle=95.54) (kalman=95.55) conf=0.41 peak=0.539 | PLL=FREEWHEEL phase=0.40 sync=0.46 | beat #719 | bass=0.0072 sab=0.161 | ðŸ”¬in_peak=0.43880 in_rms=0.13841
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×6] | scene:8b | Pan:119 Tilt:-20 | sBPM:95 phase:153°
+[MSST] 📍 chorus → verse | zL=0.5 zM=0.6 zH=-0.7 zT=0.5 T=0.06 D=1.85 cfH=2.9
+[AGC 🎚️] Gain: 2.87x | In: 0.112 → Out: 0.321 | Peak: 0.172 | ✅ ACTIVE
+[SeleneTitanConscious] 🔮🚫 CASSANDRA SOVEREIGN ABORT: "latina_meltdown" | Fallback energy veto (E=0.48 OR Z=-0.49 < 1.0) — heavy effect "Latina Meltdown" suppressed
+[VirtualWire] 📡 SAB feed — cb#50000 | frames=441 | peak=0.2900 | ch=2
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.48 | Z=-0.49σ
+[MEMORY 🧠] E:-1.1σ 🟢 B:-1.3σ 🟢 H:+0.5σ 🟢 | Phase: CLIMAX | normal
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×2] | scene:10b | Pan:0 Tilt:-20 | sBPM:95 phase:180°
+[MSST] 📍 verse → breakdown | zL=-1.2 zM=-0.5 zH=-0.2 zT=-1.1 T=0.78 D=1.15 cfH=3.0
+[TitanOrchestrator] ðŸŽ§ BPM=95.34 (oracle=95.48) (kalman=95.46) conf=0.39 peak=0.536 | PLL=LOCKED phase=0.58 sync=0.48 | beat #720 | bass=0.0107 sab=0.108 | ðŸ”¬in_peak=0.18596 in_rms=0.05943
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.472 | MID: 0.513 | HIGH: 0.167 | TOTAL: 0.546 | Max_30s: 1.000
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×2] | scene:11b | Pan:-119 Tilt:-20 | sBPM:95 phase:207°
+[MSST] 📍 breakdown → chorus | zL=-0.3 zM=-1.7 zH=-1.0 zT=-1.2 T=0.15 D=1.78 cfH=3.0
+[AGC 🎚️] Gain: 3.35x | In: 0.185 → Out: 0.548 | Peak: 0.185 | ✅ ACTIVE
+[MEMORY 🧠] E:+1.0σ 🟢 B:+1.3σ 🟢 H:-1.0σ 🟢 | Phase: CLIMAX | normal
+[SeleneTitanConscious 🌊] V3 IGNITE: C=0.736 Q=0.709 I_fx=0.420 epicness=0.304 | I(t)=0.480 CF=0.277 T=0.429 μ=0.369 V=0.216 X=1.000 | Π=0.142 M=0.520 Δ=0.141 G=0.460 → V3 AUTHORITY ACTIVE
+[DREAM_SIMULATOR] 🔮 CASSANDRA: type=buildup_starting conf=0.654 timeToEvent=3775.8853843814213ms urgent=false candidates=9
+[DREAM_RANKING] 🏆 TOP 5 (9 total) | pred=buildup_starting conf=0.654:
+  1. Latina Meltdown      SCORE=1.000 | DNA=0.875 DIV=1.000 VIB=0.850 RSK=0.300 dist=0.216
+  2. Strobe Storm         SCORE=0.953 | DNA=0.793 DIV=1.000 VIB=0.850 RSK=0.400 dist=0.358
+  3. Ambient Strobe       SCORE=0.771 | DNA=0.734 DIV=0.875 VIB=0.850 RSK=0.600 dist=0.461
+  4. Solar Flare          SCORE=0.691 | DNA=0.881 DIV=0.700 VIB=0.850 RSK=0.300 dist=0.205
+  5. latin_strobe         SCORE=0.645 | DNA=0.763 DIV=0.700 VIB=0.850 RSK=0.100 dist=0.410
+[DREAM_SIMULATOR] 🔮📦 CASSANDRA PRE-BUFFER: "Latina Meltdown" stored for buildup_starting in ~3.8s (65% confidence)
+[DREAM_SIMULATOR] 🔮🛡️ TEMPORAL SEAL: Latina Meltdown → 'modify' (pre-buffer active, timeToEvent=3775.8853843814213ms)
+[SeleneTitanConscious] 🧬 DNA: ❌ none | ethics=N/A | dream=1ms | modify
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×6] | scene:13b | Pan:-233 Tilt:-67 | sBPM:95 phase:234°
+[TitanOrchestrator] ðŸŽ§ BPM=95.34 (oracle=95.55) (kalman=95.55) conf=0.35 peak=0.534 | PLL=FREEWHEEL phase=0.35 sync=0.48 | beat #722 | bass=0.0160 sab=0.161 | ðŸ”¬in_peak=0.02585 in_rms=0.00854
+[MSST] 📍 chorus → breakdown | zL=-1.4 zM=-1.8 zH=-1.2 zT=-2.1 T=0.70 D=0.72 cfH=3.0
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×6] | scene:14b | Pan:-270 Tilt:-67 | sBPM:95 phase:259°
+[AGC 🎚️] Gain: 2.39x | In: 0.199 → Out: 0.472 | Peak: 0.207 | ✅ ACTIVE
+[MSST] 📍 breakdown → chorus | zL=2.2 zM=-0.6 zH=-0.3 zT=1.2 T=0.00 D=4.06 cfH=3.0
+[MSST] 📊 section=chorus | zL=2.2 zM=-0.6 zH=-0.3 zT=1.2 T=0.00 D=4.06 cfH=3.0 bassR=0.88 ΔE=-0.019 kick=true
+[MEMORY 🧠] E:+0.2σ 🟢 B:-0.2σ 🟢 H:-1.4σ 🟢 | Phase: CLIMAX | normal
+[TitanOrchestrator] ðŸŽ§ BPM=95.34 (oracle=95.72) (kalman=95.73) conf=0.33 peak=0.515 | PLL=FREEWHEEL phase=0.04 sync=0.48 | beat #727 | bass=0.3815 sab=0.108 | ðŸ”¬in_peak=0.40192 in_rms=0.17199
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×2] | scene:16b | Pan:-270 Tilt:-63 | sBPM:95 phase:284°
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.446 | MID: 0.429 | HIGH: 0.155 | TOTAL: 0.504 | Max_30s: 1.000
+[MSST] 📍 chorus → breakdown | zL=-0.9 zM=-0.4 zH=-0.4 zT=-0.9 T=0.56 D=0.67 cfH=3.0
+[VirtualWire] 📡 SAB feed — cb#50500 | frames=441 | peak=0.1508 | ch=2
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.57 | Z=0.00σ
+[AGC 🎚️] Gain: 2.44x | In: 0.168 → Out: 0.401 | Peak: 0.203 | ✅ ACTIVE
+[🌋 FLASHBANG] Detected: ambient → intense (0ms) RMS3s=0.52 RMS10s=0.56 t=1787243590077ms
+[MSST] 📍 breakdown → chorus | zL=2.1 zM=-0.6 zH=0.2 zT=1.3 T=0.06 D=3.73 cfH=3.0
+[MEMORY 🧠] E:-0.2σ 🟢 B:+0.9σ 🟢 H:-1.0σ 🟢 | Phase: CLIMAX | normal
+[TitanOrchestrator] ðŸŽ§ BPM=95.34 (oracle=95.61) (kalman=95.57) conf=0.41 peak=0.542 | PLL=LOCKED phase=0.75 sync=0.43 | beat #730 | bass=0.1470 sab=0.161 | ðŸ”¬in_peak=0.49998 in_rms=0.22902
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×2] | scene:19b | Pan:-98 Tilt:-20 | sBPM:95 phase:337°
+[Sovereign Clock 🔄] DIVINE RE-ROUTE: "Latina Meltdown" → "latin_bubbles" | epicness=0.238 (peak>0.49? false; sustained>0.4+rms>0.70? false) Z=1.29σ ≥ 2.1? false — divine gate blocked, prediction preserved, effect downgraded
+[SeleneTitanConscious] 🔮👑 CASSANDRA SOVEREIGN CLOCK: firing "latin_bubbles" | confidence=0.59 | 🔄 HEAVY RE-ROUTED| bypassing HuntEngine + Fuzzy + EnergyOverride
+[HephRuntime] ▶️ PLAY: latin_bubbles (4000ms, 2 tracks) [PHASE: linear] ID=heph_23_1787243590759
+[SeleneTitanConscious 🔥] Cooldown registered: latin_bubbles
+[EffectManager 🔥] latin_bubbles [heph_17849528] FIRED [hunt] in fiesta-latina  ⚡[HEPH-BRIDGE] | I:0.75 Z:1.3
+[DNA_ANALYZER] 📊 Diversity: latin_bubbles usado 2x - Factor: 0.35x
+[Coliseum 🧬] Prenatal abort for heph_1784952802805_jigk8a via macro_splice: G4 (COMPAT): Missing: valid sections
+[Coliseum 🧬] Initial cohort for heph_1784952802805_jigk8a: 0/1 viable via macro_splice
+[MSST] 📍 chorus → verse | zL=1.4 zM=-0.8 zH=-0.6 zT=0.5 T=0.00 D=3.23 cfH=3.1
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×6] | scene:20b | Pan:15 Tilt:-20 | sBPM:95 phase:4°
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.470 | MID: 0.356 | HIGH: 0.149 | TOTAL: 0.485 | Max_30s: 1.000
+[AGC 🎚️] Gain: 2.41x | In: 0.095 → Out: 0.225 | Peak: 0.205 | ✅ ACTIVE
+[MEMORY 🧠] E:-1.2σ 🟢 B:+0.2σ 🟢 H:-1.4σ 🟢 | Phase: BUILDING | normal
+[SeleneTitanConscious 🌊] V3 IGNITE: C=0.718 Q=0.709 I_fx=0.392 epicness=0.158 | I(t)=0.434 CF=0.320 T=0.433 μ=0.320 V=0.255 X=1.000 | Π=0.153 M=0.421 Δ=0.117 G=0.455 → V3 AUTHORITY ACTIVE
+[DREAM_SIMULATOR] 🔮 ORACLE VISION: zone override intense → ambient (pred=energy_drop timeToEvent=5034.513845841895ms conf=0.453) | Z-guards RELAXED
+[DREAM_RANKING] 🏆 TOP 5 (8 total) | pred=energy_drop conf=0.453:
+  1. Amazon Mist          SCORE=1.000 | DNA=0.848 DIV=1.000 VIB=0.850 RSK=0.100 dist=0.264 TEX=+0.036
+  2. Corazon Latino       SCORE=1.000 | DNA=0.825 DIV=1.000 VIB=0.850 RSK=0.100 dist=0.304
+  3. Cumbia Moon          SCORE=1.000 | DNA=0.748 DIV=1.000 VIB=0.850 RSK=0.100 dist=0.436
+  4. Ghost Breath         SCORE=1.000 | DNA=0.632 DIV=1.000 VIB=0.850 RSK=0.100 dist=0.638
+  5. Tidal Wa             SCORE=0.823 | DNA=0.812 DIV=1.000 VIB=0.850 RSK=0.300 dist=0.325
+[INTEGRATOR] ✅ APPROVED: Amazon Mist @ 0.88 | ethics=1.134 | Dream: 1ms | Total: 1ms
+[SeleneTitanConscious] 🧬 DNA: ✅ Amazon Mist | ethics=1.134 | dream=1ms | execute
+[Gatekeeper 📊] Amazon Mist | v3Ignite=true epicness=0.158 | hardBlocked=false | arsenalValidated=false | v3Bypass=true | cooldown=OK | ethics=1.13/1 | floor=0.055
+[SeleneTitanConscious 🌊] V3 IGNITE: Amazon Mist | ethics=1.13 | V(t) refractory activated | epicness=0.158 ≥ floor=0.055
+[FIRE-DIAG] Amazon Mist | reason=🧬 DNA: execute | Ethics: 1.13 | E=0.882 Z=1.58σ | bass=0.796 mid=0.412 high=0.121 zL=1.96σ | epicness=0.158 v3Ignite=true | I(t)=0.434 T=0.433 | phase=climax | huntW=0.000 huntC=0.300 | pred=energy_drop predProb=0.45 predETA=5034.513845841895ms | dna=true ethics=1.134 | intensity=0.88
+[SeleneTitanConscious] 📜 Violation avoided: Estrategia triadic no permitida, Constitution fuerza analogous
+[SeleneTitanConscious 🌊✅] V3 IGNITION MATERIALIZED: Amazon Mist | I=0.392
+[HephRuntime] ▶️ PLAY: Amazon Mist (3500ms, 2 tracks) [PHASE: linear] ID=heph_24_1787243591980
+[SeleneTitanConscious 🔥] Cooldown registered: Amazon Mist
+[EffectManager 🔥] Amazon Mist [amazon_mist] FIRED [hunt] in fiesta-latina  ⚡[HEPH-BRIDGE] | I:0.88 Z:1.6
+[DNA_ANALYZER] 📊 Diversity: Amazon Mist usado 2x - Factor: 0.35x
+[MSST] 📍 verse → chorus | zL=1.6 zM=0.4 zH=-0.2 zT=1.2 T=0.00 D=2.10 cfH=3.1
+[TitanOrchestrator] ðŸŽ§ BPM=95.34 (oracle=95.63) (kalman=95.62) conf=0.44 peak=0.540 | PLL=FREEWHEEL phase=0.49 sync=0.37 | beat #734 | bass=0.1459 sab=0.161 | ðŸ”¬in_peak=0.46027 in_rms=0.19608
+[TitanOrchestrator âš’ï¸] HEPHAESTUS: 2 clips, 44 outputs
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×2] | scene:22b | Pan:130 Tilt:-26 | sBPM:95 phase:31°
+[Harmony 🎵] Key Change (fallback): G → C
+[MSST] 📍 chorus → breakdown | zL=-1.0 zM=-1.8 zH=-1.3 zT=-1.8 T=0.51 D=0.91 cfH=3.1
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×6] | scene:23b | Pan:214 Tilt:-67 | sBPM:95 phase:56°
+[MEMORY 🧠] E:-0.3σ 🟢 B:+0.3σ 🟢 H:-0.3σ 🟢 | Phase: BUILDING | normal
+[AGC 🎚️] Gain: 2.53x | In: 0.140 → Out: 0.351 | Peak: 0.196 | ✅ ACTIVE
+[MSST] 📍 breakdown → chorus | zL=1.8 zM=0.2 zH=-0.2 zT=1.3 T=0.00 D=2.58 cfH=3.2
+[TitanOrchestrator] ðŸŽ§ BPM=95.34 (oracle=95.73) (kalman=95.70) conf=0.42 peak=0.516 | PLL=FREEWHEEL phase=0.22 sync=0.36 | beat #738 | bass=0.0685 sab=0.108 | ðŸ”¬in_peak=0.13292 in_rms=0.05760
+[TitanOrchestrator âš’ï¸] HEPHAESTUS: 2 clips, 44 outputs
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×6] | scene:24b | Pan:270 Tilt:-67 | sBPM:95 phase:83°
+[Harmony 🎵] Key Change (fallback): C → F
+[VirtualWire] 📡 SAB feed — cb#51000 | frames=441 | peak=0.0719 | ch=2
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.30 | Z=-1.27σ
+[MSST] 📍 chorus → verse | zL=1.9 zM=-1.3 zH=-1.0 zT=0.6 T=0.00 D=4.71 cfH=3.2
+[HephRuntime] ✅ Completed: heph_23_1787243590759
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.476 | MID: 0.354 | HIGH: 0.133 | TOTAL: 0.496 | Max_30s: 1.000
+[MEMORY 🧠] E:-2.2σ 🟡 B:-1.3σ 🟢 H:-1.7σ 🟡 | Phase: SILENCE | normal
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×6] | scene:26b | Pan:261 Tilt:-51 | sBPM:95 phase:109°
+[AudioMatrix] 📊 SAB fill=0.161 | src=virtual-wire | forced=virtual-wire | active=virtual-wire | total=22528044
+[HephRuntime] ✅ Completed: heph_24_1787243591980
+[AGC 🎚️] Gain: 2.38x | In: 0.061 → Out: 0.146 | Peak: 0.208 | ✅ ACTIVE
+[TitanOrchestrator] ðŸŽ§ BPM=95.34 (oracle=95.28) (kalman=95.29) conf=0.39 peak=0.507 | PLL=FREEWHEEL phase=0.44 sync=0.40 | beat #742 | bass=0.0119 sab=0.108 | ðŸ”¬in_peak=0.23845 in_rms=0.09679
+[MSST] 📍 verse → breakdown | zL=-1.4 zM=-1.6 zH=-1.2 zT=-2.0 T=0.69 D=0.50 cfH=3.3
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×2] | scene:27b | Pan:183 Tilt:-20 | sBPM:95 phase:136°
+[Harmony 🎵] Key Change (fallback): F → D
+[MSST] 📍 breakdown → textural_drop | zL=-1.1 zM=1.3 zH=-0.5 zT=-0.3 T=1.28 D=2.71 cfH=3.3
+[MEMORY 🧠] E:-0.4σ 🟢 B:-1.6σ 🟡 H:+0.3σ 🟢 | Phase: BUILDING | normal
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×2] | scene:29b | Pan:71 Tilt:-20 | sBPM:95 phase:162°
+[TitanOrchestrator] ðŸŽ§ BPM=95.34 (oracle=95.09) (kalman=95.11) conf=0.33 peak=0.493 | PLL=LOCKED phase=0.66 sync=0.33 | beat #742 | bass=0.0048 sab=0.161 | ðŸ”¬in_peak=0.08206 in_rms=0.02101
+[AGC 🎚️] Gain: 2.85x | In: 0.019 → Out: 0.053 | Peak: 0.174 | ✅ ACTIVE
+[MSST] 📊 section=textural_drop | zL=-1.3 zM=-1.4 zH=-1.3 zT=-1.8 T=0.67 D=0.14 cfH=3.3 bassR=0.57 ΔE=-0.098 kick=false
+[MSST] 📍 textural_drop → verse | zL=-0.2 zM=-1.0 zH=-0.6 zT=-0.7 T=0.09 D=1.03 cfH=3.3
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.343 | MID: 0.382 | HIGH: 0.104 | TOTAL: 0.428 | Max_30s: 1.000
+[Harmony 🎵] Key Change (fallback): D → C
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×2] | scene:30b | Pan:-31 Tilt:-20 | sBPM:95 phase:188°
+[🌋 FLASHBANG] Detected: ambient → intense (0ms) RMS3s=0.45 RMS10s=0.51 t=1787243598448ms
+[MEMORY 🧠] E:-0.4σ 🟢 B:+0.8σ 🟢 H:+0.3σ 🟢 | Phase: CLIMAX | normal
+[MSST] 📍 verse → drop | zL=1.5 zM=1.2 zH=3.9 zT=2.3 T=1.35 D=3.94 cfH=3.4
+[SeleneTitanConscious 🌊] V3 IGNITE: C=0.754 Q=0.745 I_fx=0.371 epicness=0.490 | I(t)=0.700 CF=0.259 T=0.430 μ=0.351 V=0.060 X=0.844 | Π=0.162 M=0.378 Δ=0.101 G=0.431 → V3 AUTHORITY ACTIVE
+[DREAM_SIMULATOR] 🔮 ORACLE VISION: zone override peak → intense (pred=buildup_starting timeToEvent=3775.8853843814213ms conf=0.673) | Z-guards RELAXED
+[DREAM_SIMULATOR] 🔮 CASSANDRA: type=buildup_starting conf=0.673 timeToEvent=3775.8853843814213ms urgent=false candidates=9
+[DREAM_RANKING] 🏆 TOP 5 (9 total) | pred=buildup_starting conf=0.673:
+  1. Seismic Snap         SCORE=1.000 | DNA=0.811 DIV=1.000 VIB=0.850 RSK=0.200 dist=0.327 TEX=+0.018
+  2. latin_strobe         SCORE=0.963 | DNA=0.746 DIV=1.000 VIB=0.850 RSK=0.200 dist=0.439
+  3. Strobe Storm         SCORE=0.958 | DNA=0.806 DIV=1.000 VIB=0.850 RSK=0.400 dist=0.336
+  4. Ambient Strobe       SCORE=0.773 | DNA=0.740 DIV=0.875 VIB=0.850 RSK=0.600 dist=0.450
+  5. Latina Meltdown      SCORE=0.683 | DNA=0.888 DIV=0.700 VIB=0.850 RSK=0.400 dist=0.194
+[DREAM_SIMULATOR] 🔮📦 CASSANDRA PRE-BUFFER: "Seismic Snap" stored for buildup_starting in ~3.8s (67% confidence)
+[DREAM_SIMULATOR] 🔮🛡️ TEMPORAL SEAL: Seismic Snap → 'modify' (pre-buffer active, timeToEvent=3775.8853843814213ms)
+[SeleneTitanConscious] 🧬 DNA: ❌ none | ethics=N/A | dream=1ms | modify
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×2] | scene:32b | Pan:-142 Tilt:-22 | sBPM:95 phase:214°
+[TitanOrchestrator] ðŸŽ§ BPM=95.34 (oracle=95.10) (kalman=95.10) conf=0.24 peak=0.438 | PLL=FREEWHEEL phase=0.94 sync=0.47 | beat #744 | bass=0.1383 sab=0.108 | ðŸ”¬in_peak=0.22888 in_rms=0.08984
+[AGC 🎚️] Gain: 1.95x | In: 0.146 → Out: 0.284 | Peak: 0.253 | ✅ ACTIVE
+[VirtualWire] 📡 SAB feed — cb#51500 | frames=441 | peak=0.0865 | ch=2
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.31 | Z=-1.12σ
+[MSST] 📍 drop → textural_drop | zL=-0.7 zM=0.9 zH=2.3 zT=0.3 T=1.59 D=3.01 cfH=3.4
+[SeleneTitanConscious] 🪟💥 CASSANDRA GLASS BREAK: firing "Seismic Snap" | drop landed EARLY |
+[HephRuntime] ▶️ PLAY: Seismic Snap (2500ms, 4 tracks) ID=heph_25_1787243599773
+[SeleneTitanConscious 🔥] Cooldown registered: Seismic Snap
+[EffectManager 🔥] Seismic Snap [seismic_snap] FIRED [hunt] in fiesta-latina  ⚡[HEPH-BRIDGE] | I:1.00 Z:2.1
+[DNA_ANALYZER] 📊 Diversity: Seismic Snap usado 2x - Factor: 0.35x
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×6] | scene:33b | Pan:-245 Tilt:-67 | sBPM:95 phase:240°
+[MEMORY 🧠] E:+1.1σ 🟢 B:+0.6σ 🟢 H:+0.9σ 🟢 | Phase: CLIMAX | normal
+[MSST] 📍 textural_drop → buildup | zL=-0.5 zM=0.6 zH=1.6 zT=0.2 T=1.17 D=2.21 cfH=3.3
+[TitanOrchestrator] ðŸŽ§ BPM=95.34 (oracle=94.63) (kalman=94.59) conf=0.18 peak=0.383 | PLL=FREEWHEEL phase=0.61 sync=0.49 | beat #748 | bass=0.2668 sab=0.108 | ðŸ”¬in_peak=0.43431 in_rms=0.18311
+[TitanOrchestrator âš’ï¸] HEPHAESTUS: 1 clips, 27 outputs
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×6] | scene:35b | Pan:-270 Tilt:-67 | sBPM:95 phase:266°
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.382 | MID: 0.458 | HIGH: 0.175 | TOTAL: 0.495 | Max_30s: 1.000
+[Harmony 🎵] Key Change (fallback): C → G#
+[AGC 🎚️] Gain: 2.34x | In: 0.031 → Out: 0.073 | Peak: 0.211 | ✅ ACTIVE
+[MSST] 📍 buildup → breakdown | zL=-0.5 zM=-0.3 zH=-0.6 zT=-0.7 T=0.33 D=0.36 cfH=3.3
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×2] | scene:36b | Pan:-270 Tilt:-63 | sBPM:95 phase:292°
+[🌋 FLASHBANG] Detected: ambient → intense (0ms) RMS3s=0.51 RMS10s=0.53 t=1787243601779ms
+[SeleneTitanConscious 🌊] V3 IGNITE: C=0.768 Q=0.756 I_fx=0.378 epicness=0.497 | I(t)=0.648 CF=0.300 T=0.459 μ=0.362 V=0.080 X=0.931 | Π=0.159 M=0.400 Δ=0.113 G=0.448 → V3 AUTHORITY ACTIVE
+[DREAM_RANKING] 🏆 TOP 5 (8 total) | pred=transition_beat conf=0.500:
+  1. Salsa Fire           SCORE=0.970 | DNA=0.869 DIV=1.000 VIB=0.850 RSK=0.200 dist=0.227 TEX=+0.014
+  2. latin_strobe         SCORE=0.864 | DNA=0.750 DIV=1.000 VIB=0.850 RSK=0.200 dist=0.433
+  3. Strobe Storm         SCORE=0.833 | DNA=0.737 DIV=1.000 VIB=0.850 RSK=0.400 dist=0.456
+  4. Ambient Strobe       SCORE=0.667 | DNA=0.678 DIV=0.875 VIB=0.850 RSK=0.600 dist=0.557
+  5. Latina Meltdown      SCORE=0.609 | DNA=0.872 DIV=0.700 VIB=0.850 RSK=0.400 dist=0.222
+[INTEGRATOR] ✅ APPROVED: Salsa Fire @ 1.00 | ethics=1.134 | Dream: 1ms | Total: 1ms
+[SeleneTitanConscious] 🧬 DNA: ✅ Salsa Fire | ethics=1.134 | dream=1ms | execute
+[DecisionMaker 🌩️] DIVINE MOMENT: V3 epicness=0.497 (peak>0.49? true; sustained>0.4+rms>0.70? false) Z=2.14σ ≥ 2.1? true bass=0.773 > 0.35? true → MANDATORY FIRE
+[DecisionMaker 🎲] DIVERSITY SELECT: winner=Latina Meltdown score=0.876 from [latin_strobe, Divine Obliteration, Latina Meltdown, Strobe Storm]
+[DecisionMaker 🌩️] DIVINE STRIKE: Z=2.14σ | vibe=fiesta-latina | zone=intense | texture=clean | arsenal=[latin_strobe, Divine Obliteration, Latina Meltdown, Strobe Storm]
+[EffectRepository 🔪] Arsenal selection: Latina Meltdown AVAILABLE (from [Latina Meltdown, Strobe Storm, latin_strobe, Divine Obliteration])
+[SeleneTitanConscious 🌩️] DIVINE ARSENAL: Selected Latina Meltdown from [Latina Meltdown, Strobe Storm, latin_strobe, Divine Obliteration]
+[Gatekeeper 📊] Latina Meltdown | v3Ignite=true epicness=0.497 | hardBlocked=false | arsenalValidated=true | v3Bypass=false | cooldown=OK | ethics=1.13/1 | floor=0.150 (HARD)
+[SeleneTitanConscious] 🧠 DECISION MAKER APPROVED: Latina Meltdown | confidence=0.99 | 🌩️ DIVINE: epicness=0.497 | Ranked: Latina Meltdown > Strobe Storm > latin_strobe > Divine Obliteration | Full arsenal: latin_strobe, Divine Obliteration, Latina Meltdown, Strobe Storm
+[FIRE-DIAG] Latina Meltdown | reason=🌩️ DIVINE: epicness=0.497 | Ranked: Latina Meltdown > Strobe Storm > latin_strobe > Divine Obliteration | Full arsenal: latin_strobe, Divine Obliteration, Latina Meltdown, Strobe Storm | E=1.000 Z=2.14σ | bass=0.773 mid=0.528 high=0.373 zL=2.30σ | epicness=0.497 v3Ignite=true | I(t)=0.648 T=0.459 | phase=climax | huntW=0.000 huntC=0.300 | pred=transition_beat predProb=0.12 predETA=2133.0420572818903ms | dna=true ethics=1.134 | intensity=1.00
+[SeleneTitanConscious] 📜 Violation avoided: Saturación modifier 1.25 fuera de rango [0.8-1.2], corregido a 1.20
+[SeleneTitanConscious] 📜 Violation avoided: Estrategia complementary no permitida, Constitution fuerza analogous
+[SeleneTitanConscious 🌊✅] V3 IGNITION MATERIALIZED: Latina Meltdown | I=0.378
+[HephRuntime] ▶️ PLAY: Latina Meltdown (4000ms, 3 tracks) ID=heph_26_1787243601980
+[SeleneTitanConscious 🔥] Cooldown registered: Latina Meltdown
+[EffectManager 🔥] Latina Meltdown [latina_meltdo] FIRED [hunt] in fiesta-latina  ⚡[HEPH-BRIDGE] | I:1.00 Z:2.1
+[DNA_ANALYZER] 📊 Diversity: Latina Meltdown usado 2x - Factor: 0.35x
+[MEMORY 🧠] E:+0.0σ 🟢 B:+0.6σ 🟢 H:+0.0σ 🟢 | Phase: CLIMAX | normal
+[HephRuntime] ✅ Completed: heph_25_1787243599773
+[TitanOrchestrator] ðŸŽ§ BPM=95.34 (oracle=94.59) (kalman=94.59) conf=0.17 peak=0.374 | PLL=FREEWHEEL phase=0.31 sync=0.48 | beat #750 | bass=0.0097 sab=0.161 | ðŸ”¬in_peak=0.18770 in_rms=0.07101
+[TitanOrchestrator âš’ï¸] HEPHAESTUS: 1 clips, 33 outputs
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×6] | scene:37b | Pan:-193 Tilt:-20 | sBPM:95 phase:316°
+[MSST] 📍 breakdown → drop | zL=1.1 zM=1.1 zH=4.1 zT=2.0 T=1.37 D=4.52 cfH=3.3
+[Harmony 🎵] Key Change (fallback): G# → D
+[🌋 FLASHBANG] Detected: ambient → intense (0ms) RMS3s=0.51 RMS10s=0.53 t=1787243603039ms
+[AGC 🎚️] Gain: 2.50x | In: 0.152 → Out: 0.376 | Peak: 0.198 | ✅ ACTIVE
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×2] | scene:39b | Pan:-79 Tilt:-20 | sBPM:95 phase:341°
+[MSST] 📍 drop → buildup | zL=-0.4 zM=0.4 zH=2.0 zT=0.3 T=1.11 D=2.85 cfH=3.3
+[MEMORY 🧠] E:-0.0σ 🟢 B:-1.1σ 🟢 H:+1.2σ 🟢 | Phase: CLIMAX | normal
+[FFT X-RAY 🎧] 3s Avg -> LOW: 0.501 | MID: 0.491 | HIGH: 0.229 | TOTAL: 0.565 | Max_30s: 1.000
+[TitanOrchestrator] ðŸŽ§ BPM=95.34 (oracle=94.86) (kalman=94.86) conf=0.25 peak=0.437 | PLL=FREEWHEEL phase=0.03 sync=0.54 | beat #754 | bass=0.1299 sab=0.054 | ðŸ”¬in_peak=0.41037 in_rms=0.13898
+[TitanOrchestrator âš’ï¸] HEPHAESTUS: 1 clips, 33 outputs
+[Harmony 🎵] Key Change (fallback): D → G
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×2] | scene:40b | Pan:32 Tilt:-20 | sBPM:95 phase:8°
+[MSST] 📍 buildup → drop | zL=1.5 zM=0.5 zH=3.3 zT=1.9 T=1.08 D=3.71 cfH=3.3
+[VirtualWire] 📡 SAB feed — cb#52000 | frames=441 | peak=0.0945 | ch=2
+[SeleneTitanConscious] 🧘 SILENCE (throttled, last 5.0s ago) | vibe=fiesta-latina | E=0.29 | Z=-1.21σ
+[AGC 🎚️] Gain: 2.66x | In: 0.087 → Out: 0.231 | Peak: 0.187 | ✅ ACTIVE
+[CHOREO] fiesta-latina | #3:cadera_libre [SNAKE ×2] | scene:42b | Pan:148 Tilt:-20 | sBPM:95 phase:33°
+[MSST] 📍 drop → chorus | zL=0.4 zM=1.1 zH=-0.5 zT=0.6 T=0.21 D=1.98 cfH=3.3
+[MEMORY 🧠] E:+1.9σ 🟡 B:+1.0σ 🟢 H:+1.9σ 🟡 | Phase: CLIMAX | normal
+[Harmony 🎵] Key Change (fallback): G → G#
+[TitanOrchestrator] ðŸŽ§ BPM=95.34 (oracle=94.92) (kalman=95.00) conf=0.23 peak=0.414 | PLL=FREEWHEEL phase=0.77 sync=0.55 | beat #756 | bass=0.0272 sab=0.161 | ðŸ”¬in_peak=0.25180 in_rms=0.08414
+[TitanOrchestrator âš’ï¸] HEPHAESTUS: 1 clips, 33 outputs
+[HephRuntime] ✅ Completed: heph_26_1787243601980

@@ -147,7 +147,8 @@ export class TrinityOrchestrator extends EventEmitter {
                 lastHeartbeatLatency: 0,
                 heartbeatSequence: 0,
                 isReady: false,
-                stateSnapshot: null
+                stateSnapshot: null,
+                isResurrecting: false
             });
         }
         // WAVE 2098: Boot silence
@@ -269,6 +270,14 @@ export class TrinityOrchestrator extends EventEmitter {
                 ...(nodeId === 'beta' && this.sharedAudioBuffer
                     ? { sharedAudioBuffer: this.sharedAudioBuffer }
                     : {})
+            },
+            // 🛡️ WAVE 7554: resourceLimits — previene OOM silencioso en los workers.
+            // BETA es el más hambriento: FFT 4096 + ring buffers + MSST (1800 frames
+            // × 4 bandas). 256MB old generation es generoso pero acotado.
+            resourceLimits: {
+                maxOldGenerationSizeMb: 256,
+                maxYoungGenerationSizeMb: 32,
+                stackSizeMb: 8,
             }
         });
         // Set up message handler
@@ -457,10 +466,14 @@ export class TrinityOrchestrator extends EventEmitter {
             console.log(`[ALPHA] Circuit OPEN for ${nodeId} after ${node.circuit.failures} failures`);
         }
         // Trigger resurrection if not too many
-        if (node.resurrections < this.config.maxResurrections) {
+        // 🛡️ WAVE 7554: Anti-fratricidio — si ya hay una resurrección en curso,
+        // NO re-entrar. El exit event del worker muerto disparará handleWorkerDeath
+        // que llamará aquí otra vez; sin este guard se duplica la resurrección.
+        if (node.resurrections < this.config.maxResurrections && !node.isResurrecting) {
+            node.isResurrecting = true;
             this.resurrectWorker(nodeId);
         }
-        else {
+        else if (node.resurrections >= this.config.maxResurrections) {
             console.error(`[ALPHA] ${nodeId} exceeded max resurrections (${this.config.maxResurrections})`);
             this.emit('worker-died', nodeId);
         }
@@ -478,28 +491,39 @@ export class TrinityOrchestrator extends EventEmitter {
         const node = this.nodes.get(nodeId);
         if (!node)
             return;
-        // Save state snapshot before killing
-        if (node.worker) {
-            try {
-                await node.worker.terminate();
+        // 🛡️ WAVE 7554: El flag isResurrecting lo setea handleWorkerFailure antes
+        // de llamar aquí. Lo limpiamos SIEMPRE al salir (éxito o fallo) para que
+        // el próximo ciclo de muerte pueda reintentar.
+        try {
+            // Save state snapshot before killing
+            if (node.worker) {
+                try {
+                    await node.worker.terminate();
+                }
+                catch (e) {
+                    // Worker may already be dead
+                }
+                node.worker = null;
             }
-            catch (e) {
-                // Worker may already be dead
+            node.resurrections++;
+            console.log(`[ALPHA] 🔥 PHOENIX: Resurrecting ${NODE_NAMES[nodeId]} (attempt ${node.resurrections})`);
+            // Wait before respawn
+            await new Promise(resolve => setTimeout(resolve, this.config.resurrectionDelay));
+            await this.spawnWorker(nodeId);
+            // Restore state if available
+            if (node.stateSnapshot) {
+                this.sendToWorker(nodeId, MessageType.STATE_RESTORE, {
+                    state: node.stateSnapshot
+                });
             }
-            node.worker = null;
+            this.emit('worker-resurrected', nodeId);
         }
-        node.resurrections++;
-        console.log(`[ALPHA] 🔥 PHOENIX: Resurrecting ${NODE_NAMES[nodeId]} (attempt ${node.resurrections})`);
-        // Wait before respawn
-        await new Promise(resolve => setTimeout(resolve, this.config.resurrectionDelay));
-        await this.spawnWorker(nodeId);
-        // Restore state if available
-        if (node.stateSnapshot) {
-            this.sendToWorker(nodeId, MessageType.STATE_RESTORE, {
-                state: node.stateSnapshot
-            });
+        finally {
+            // 🛡️ WAVE 7554: Liberar el candado tanto en éxito como en fallo.
+            // Si spawnWorker lanza, el worker queda null y isReady=false — el próximo
+            // heartbeat no lo tocará, pero si muere de nuevo sí podrá re-resucitar.
+            node.isResurrecting = false;
         }
-        this.emit('worker-resurrected', nodeId);
     }
     feedAudioBuffer(buffer) {
         if (!this.isRunning) {

@@ -79,6 +79,11 @@ import { setupPlaybackIPCHandlers, cleanupPlaybackIPC } from './ipc/PlaybackIPCH
 // GLOBAL STATE
 // =============================================================================
 let mainWindow = null;
+// 🩸 WAVE 7567: Renderer liveness flag — prevents infinite "Render frame was disposed"
+// error flood when the renderer crashes/reloads but webContents.isDestroyed() still
+// returns false. All tick-driven broadcast callbacks check this before calling .send().
+// Set true on did-finish-load, false on render-process-gone.
+let rendererAlive = false;
 let effectsEngine = null;
 let titanOrchestrator = null;
 export const glassPoolManager = new BufferPoolManager();
@@ -233,8 +238,13 @@ let customLibPath = '';
  */
 async function rescanAllLibraries() {
     // Scan both libraries
-    const factoryDefinitions = fxtParser.scanFolder(factoryLibPath);
-    const customDefinitions = fxtParser.scanFolder(customLibPath);
+    // ðŸ›¡ï¸ WAVE 7555: UNBLOCK ALPHA â scanFolder ahora es async.
+    // Promise.all permite que ambas librerÃ­as se escaneen en paralelo
+    // sin bloquear el event loop del main thread.
+    const [factoryDefinitions, customDefinitions] = await Promise.all([
+        fxtParser.scanFolder(factoryLibPath),
+        fxtParser.scanFolder(customLibPath),
+    ]);
     // 🧹 WAVE 671.5: Removed obsolete test_beam debug log (no longer needed)
     // WAVE 390.5 DEBUG: Log test_beam specifically (it has physics)
     // const testBeam = customDefinitions.find(f => f.name.toLowerCase().includes('test'))
@@ -387,16 +397,31 @@ function createWindow() {
         mainWindow.webContents.on('did-finish-load', () => {
             if (!mainWindow)
                 return;
+            // 🩸 WAVE 7567: Renderer is alive — re-enable broadcast callbacks
+            rendererAlive = true;
             const { port1, port2 } = new MessageChannelMain();
             glassPoolManager.attach(port1);
             mainWindow.webContents.postMessage('glass:port', null, [port2]);
             // WAVE 7120: Calibration SAB is created in setupCalibrationHandlers (IPCHandlers.ts)
+            // Broadcast fixtures if loaded
+            if (patchedFixtures.length > 0 && mainWindow) {
+                mainWindow.webContents.send('lux:fixtures-loaded', patchedFixtures);
+            }
         });
-        // Broadcast fixtures if loaded
-        if (patchedFixtures.length > 0 && mainWindow) {
-            mainWindow.webContents.send('lux:fixtures-loaded', patchedFixtures);
-        }
-    });
+        // 🩸 WAVE 7567: Kill broadcast flood at the source. When the renderer process
+        // crashes or the render frame is disposed (e.g. HMR hot reload in dev), the
+        // webContents.isDestroyed() check still returns false — but .send() throws
+        // "Render frame was disposed before WebFrameMain could be accessed". Electron
+        // logs this to stderr BEFORE the try-catch can swallow it, and the TickEngine
+        // keeps firing at 44Hz → infinite error flood. This handler flips rendererAlive
+        // to false so all broadcast callbacks skip .send() entirely until the renderer
+        // comes back (did-finish-load re-enables it). The TickEngine keeps running,
+        // lights stay on — only the UI broadcast is paused.
+        mainWindow.webContents.on('render-process-gone', (_event, details) => {
+            rendererAlive = false;
+            console.error(`[Main] 🩸 WAVE 7567: Renderer process gone (reason=${details.reason}). Broadcast callbacks paused — lights keep running.`);
+        });
+    }); // close ready-to-show
     if (isDev) {
         mainWindow.loadURL('http://localhost:5173');
     }
@@ -408,6 +433,7 @@ function createWindow() {
         // window-all-closed NO es fiable cuando hay ventanas ocultas (phantomWorker,
         // background renderers). Este hook dispara SIN EXCUSAS cuando el usuario
         // cierra la ventana visible. No hay ventana secundaria que lo bloquee.
+        rendererAlive = false;
         mainWindow = null;
         doShutdown();
     });
@@ -743,7 +769,7 @@ async function initTitan() {
     const _vibeLabTelemetryBuffer = new Float32Array(27);
     titanOrchestrator.setBroadcastCallback((truth) => {
         try {
-            if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+            if (rendererAlive && mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
                 truth.hardware.dmx.outputEnabled = titanOrchestrator.isOutputEnabled();
                 mainWindow.webContents.send('selene:truth', truth);
                 // 🧬 Vibe Lab telemetry — sólo si el renderer pidió suscripción
@@ -828,7 +854,7 @@ async function initTitan() {
     titanOrchestrator.setHotFrameCallback((hotFrame) => {
         _lastHotFrame++;
         try {
-            if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+            if (rendererAlive && mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
                 const glassActive = glassPoolManager.getMetrics().framesSent > 0;
                 if (!glassActive) {
                     mainWindow.webContents.send('selene:hot-frame', hotFrame);
@@ -841,7 +867,7 @@ async function initTitan() {
     // 🛡️ WAVE 2005.1: Added try-catch for "Render frame disposed" errors
     titanOrchestrator.setLogCallback((entry) => {
         try {
-            if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+            if (rendererAlive && mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
                 mainWindow.webContents.send('lux:log', entry);
             }
         }
@@ -912,11 +938,22 @@ async function initTitan() {
         }
     });
     // 🥁 WAVE 7103: MIDI Clock Master IPC — high-resolution timer in Main Process
+    // 🩸 WAVE 7567: Guard with rendererAlive — MIDI pulse runs at ~56Hz (24ppq @140BPM)
     midiMasterClock.setPulseCallback((midiByte) => {
-        mainWindow?.webContents.send('midi-master:pulse', midiByte);
+        if (rendererAlive) {
+            try {
+                mainWindow?.webContents.send('midi-master:pulse', midiByte);
+            }
+            catch { /* renderer gone */ }
+        }
     });
     midiMasterClock.setTransportCallback((midiByte) => {
-        mainWindow?.webContents.send('midi-master:transport', midiByte);
+        if (rendererAlive) {
+            try {
+                mainWindow?.webContents.send('midi-master:transport', midiByte);
+            }
+            catch { /* renderer gone */ }
+        }
     });
     ipcMain.on('midi-master:start', (_event, data) => {
         midiMasterClock.start(data?.fromZero ?? true);
@@ -1271,6 +1308,21 @@ app.whenReady().then(async () => {
             createWindow();
         }
     });
+    // ðŸ›¡ï¸ WAVE 7555: UNBLOCK ALPHA â Watchdog de latencia del Event Loop
+    // Monitorea el lag real del event loop cada 100ms. Si el lag supera
+    // 250ms (indicando I/O bloqueante o GC pesado), emite un warning.
+    // Esto permite correlacionar freezes con falsos Phoenix de workers.
+    {
+        let _watchdogLastTick = Date.now();
+        setInterval(() => {
+            const now = Date.now();
+            const lag = now - _watchdogLastTick - 100;
+            if (lag > 250) {
+                console.warn(`[ALPHA-WATCHDOG] âšï¸ Event loop congelado por ${lag}ms. Posible I/O bloqueante o GC pesado.`);
+            }
+            _watchdogLastTick = now;
+        }, 100);
+    }
 });
 // ============================================================================
 // ============================================================================

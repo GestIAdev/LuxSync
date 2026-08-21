@@ -368,6 +368,7 @@ function _buildEntryFromV3(clip, options) {
             chaos: dna.genome.chaos,
             organicity: dna.genome.organicity,
         }),
+        archetype: dna.archetype,
         textureAffinity: dna.textureAffinity,
         compatibleVibes,
         validSections,

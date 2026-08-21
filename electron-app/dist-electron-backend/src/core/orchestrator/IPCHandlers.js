@@ -292,28 +292,12 @@ function setupSeleneLuxHandlers(deps) {
      *
      * This is THE RUNTIME - evaluates Bezier curves at 60fps for user-created effects.
      */
-    ipcMain.handle('chronos:triggerHeph', (_event, config) => {
-        console.log(`[Chronosâ†’Stage] âš’ï¸ HEPH TRIGGER: ${config.filePath} @ ${(config.intensity * 100).toFixed(0)}%`);
-        // ðŸ” DEBUG: Check file before loading
-        const fs = require('fs');
-        if (!fs.existsSync(config.filePath)) {
-            console.error(`[Chronosâ†’Stage] âš’ï¸ HEPH FILE NOT FOUND: ${config.filePath}`);
-            return { success: false, error: 'File not found' };
-        }
-        const stats = fs.statSync(config.filePath);
-        console.log(`[Chronosâ†’Stage] âš’ï¸ HEPH FILE SIZE: ${stats.size} bytes`);
-        if (stats.size === 0) {
-            console.error(`[Chronosâ†’Stage] âš’ï¸ HEPH FILE EMPTY: ${config.filePath}`);
-            return { success: false, error: 'Empty file' };
-        }
-        // Try to read raw content
-        try {
-            const content = fs.readFileSync(config.filePath, 'utf-8');
-            console.log(`[Chronosâ†’Stage] âš’ï¸ HEPH FILE PREVIEW: ${content.substring(0, 200)}...`);
-        }
-        catch (readErr) {
-            console.error(`[Chronosâ†’Stage] âš’ï¸ HEPH READ ERROR:`, readErr);
-        }
+    ipcMain.handle('chronos:triggerHeph', async (_event, config) => {
+        console.log(`[ChronosâStage] âï¸ HEPH TRIGGER: ${config.filePath} @ ${(config.intensity * 100).toFixed(0)}%`);
+        // ðŸ›¡ï¸ WAVE 7555: UNBLOCK ALPHA — eliminadas 3 ops sÃ­ncronas (existsSync,
+        // statSync, readFileSync) que bloqueaban el event loop en cada trigger.
+        // El runtime.play() usa el Ã­ndice en memoria (HephaestusClipIndex O(1));
+        // si el archivo no estÃ¡ en el Ã­ndice, play() retorna null y lo manejamos.
         const runtime = getHephaestusRuntime();
         const instanceId = runtime.play(config.filePath, {
             intensity: config.intensity,
@@ -321,11 +305,11 @@ function setupSeleneLuxHandlers(deps) {
             loop: config.loop ?? false,
         });
         if (instanceId) {
-            console.log(`[Chronosâ†’Stage] âš’ï¸ HEPH PLAYING: ${instanceId}`);
+            console.log(`[ChronosâStage] âï¸ HEPH PLAYING: ${instanceId}`);
             return { success: true, instanceId };
         }
         else {
-            console.error(`[Chronosâ†’Stage] âš’ï¸ HEPH FAILED: Could not load ${config.filePath}`);
+            console.error(`[ChronosâStage] âï¸ HEPH FAILED: Could not load ${config.filePath}`);
             return { success: false, error: 'Failed to load .lfx file' };
         }
     });

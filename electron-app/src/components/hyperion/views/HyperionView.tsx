@@ -23,6 +23,9 @@ import { QUALITY_PRESETS, type QualityMode, type ViewMode } from '../shared/type
 import { TacticalCanvas } from './tactical'
 import { VisualizerCanvas } from './visualizer'
 import { StageSidebar } from '../controls/sidebar/StageSidebar'
+// ⚡ WAVE 7566.3: ScenePlayerProvider lifted to HyperionView level so the
+// playback engine persists across sidebar mode switches (controls ↔ kinetics).
+import { ScenePlayerProvider } from '../controls/sidebar/ScenePlayerContext'
 import { KineticsCathedral } from '../kinetics'
 import './HyperionView.css'
 
@@ -434,12 +437,17 @@ const HyperionView = React.memo(function HyperionView({
         {/* ═══════════════════════════════════════════════════════════════════
          * SIDEBAR — The Commander (Controles)
          * ═══════════════════════════════════════════════════════════════════ */}
+        {/* ⚡ WAVE 7566.3: ScenePlayerProvider wraps BOTH sidebar modes so the
+            playback engine survives the controls↔kinetics switch. Previously
+            the provider was inside StageSidebar, which unmounted on kinetics. */}
+        <ScenePlayerProvider>
         <div className={`hyperion-sidebar-container${sidebarMode === 'kinetics' ? ' cathedral-expanded' : ''}`}>
           {sidebarMode === 'controls'
             ? <StageSidebar />
             : <KineticsCathedral onClose={() => setSidebarMode('controls')} />
           }
         </div>
+        </ScenePlayerProvider>
       </div>
     </div>
   )

@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "version": "0.8.0-beta.1",
-  "generatedAt": "2026-08-19T21:17:36.239Z",
+  "generatedAt": "2026-08-21T21:22:18.514Z",
   "count": 42,
   "files": {
     "chill/solar_caustics.lfx": {
@@ -56,8 +56,8 @@
     },
     "latin/salsa_fire.lfx": {
       "relPath": "latin/salsa_fire.lfx",
-      "checksum": "33bcd60ff834f42f",
-      "size": 5391
+      "checksum": "6b59968297330b26",
+      "size": 5630
     },
     "latin/solar_flare.lfx": {
       "relPath": "latin/solar_flare.lfx",

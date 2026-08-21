@@ -53,7 +53,8 @@ import { useAudioLoaderPhantom } from '../hooks/useAudioLoaderPhantom'
 // 🎵 WAVE 2005.4: Streaming playback (no RAM bloat)
 import { useStreamingPlayback } from '../hooks/useStreamingPlayback'
 // 🧲 WAVE 2006: Clips state management and auto-scroll
-import { useTimelineClips } from '../hooks/useTimelineClips'
+// ⏮️ WAVE 7565.4: Undo/Redo history wrapper
+import { useChronosHistory } from '../hooks/useChronosHistory'
 import { useAutoScroll } from '../hooks/useAutoScroll'
 // ⌨️ WAVE 2007: Keyboard shortcuts
 import { useTimelineKeyboard } from '../hooks/useTimelineKeyboard'
@@ -67,6 +68,8 @@ import { useChronosProject } from '../hooks/useChronosProject'
 // 🧠 WAVE 2014.5: Store singleton for event subscriptions
 import { getChronosStore } from '../core/ChronosStore'
 import type { LuxTargetZone } from '../core/LuxFileV3'
+// 🧬 WAVE 7565.2: THE GENETIC ROUTER — intelligent zone resolution
+import { resolvePrimaryTrackZone } from '../../core/zones/ZoneMapper'
 // ⚡ WAVE 2015.5: ENGINE IGNITION - Control store for phantom mode
 import { useControlStore, type LivingPaletteId } from '../../stores/controlStore'
 import { useOverrideStore } from '../../stores/overrideStore'
@@ -170,7 +173,7 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
   
   // 🧲 WAVE 2006: Clips state management (needs bpm/duration from above)
   const durationMs = audioLoader.result?.durationMs ?? 60000
-  const clipState = useTimelineClips({ bpm, durationMs })
+  const clipState = useChronosHistory({ bpm, durationMs })
   
   // 🧲 WAVE 2006: Auto-scroll follows playhead when playing
   const [followEnabled, setFollowEnabled] = useState(true)
@@ -637,44 +640,58 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
   }, []) // Empty deps - run only on mount
   
   // 🧠 SAVE: On unmount, save the current session
-  // Using ref to avoid stale closures - cleanup always has latest values
-  useEffect(() => {
-    // Keep ref in sync with current state
-    stateRef.current = {
-      audioResult: audioLoader.result,
-      clips: clipState.clips,
-      selectedIds: clipState.selectedIds,
-      playheadMs: streaming.currentTimeMs,
-      bpm,
-      stageVisible,
-    }
-  })
-  
+  // ⚠️ WAVE 7565.5: STALE CLOSURE FIX — Assign ref DURING RENDER (not in effect).
+  // Effects run after render, so on unmount the effect never fires and the ref
+  // keeps stale values from the initial render. Assigning during render
+  // guarantees the ref always holds the latest values when cleanup runs.
+  stateRef.current = {
+    audioResult: audioLoader.result,
+    clips: clipState.clips,
+    selectedIds: clipState.selectedIds,
+    playheadMs: streaming.currentTimeMs,
+    bpm,
+    stageVisible,
+  }
+
   // Actual unmount cleanup - only runs once when component truly unmounts
   useEffect(() => {
     return () => {
-      // Save session when leaving Chronos
+      // ⚠️ WAVE 7565.5: Read from the GLOBAL Zustand store (survives unmount)
+      // instead of trusting stateRef which may be stale. The periodic sync
+      // effect (line ~688) keeps sessionStore.clips updated, so we merge:
+      // - clips/playhead from sessionStore (already synced, always fresh)
+      // - audio/bpm/stage from stateRef (not in periodic sync, but ref is
+      //   now assigned during render so it's fresh too)
+      const sessionState = useChronosSession.getState()
       const state = stateRef.current
+
+      // Prefer stateRef clips if non-empty (most recent render), fall back
+      // to sessionStore clips (kept in sync by periodic effect)
+      const clipsToSave = state.clips.length > 0
+        ? state.clips
+        : sessionState.clips
+
       console.log('[SessionKeeper] 💾 Saving session on unmount', {
         audioPath: state.audioResult?.realPath,
-        clipCount: state.clips.length,
+        clipCount: clipsToSave.length,
         playhead: state.playheadMs,
+        sessionStoreClips: sessionState.clips.length,
       })
-      
+
       sessionStore.saveSession({
         // Audio
         audioRealPath: state.audioResult?.realPath || null,
         audioFileName: state.audioResult?.fileName || null,
         audioDurationMs: state.audioResult?.durationMs || 60000,
         analysisData: state.audioResult?.analysisData || null,
-        
-        // Timeline
-        clips: state.clips,
+
+        // Timeline — use the freshest clips available
+        clips: clipsToSave,
         playheadMs: state.playheadMs,
         bpm: state.bpm,
-        
+
         // Meta
-        isDirty: state.clips.length > 0 || state.audioResult !== null,
+        isDirty: clipsToSave.length > 0 || state.audioResult !== null,
         stageVisible: state.stageVisible,
         selectedClipIds: Array.from(state.selectedIds),
       })
@@ -904,8 +921,16 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
       // f) Assign clip to found or created track
       const store = getChronosStore()
       const zones = clip.zones ?? []
-      const isAllZone = zones.includes('all') || zones.length === 0
-      const primaryZone: LuxTargetZone = isAllZone ? 'global' : ((zones[0] || 'global') as LuxTargetZone)
+      // 🧬 WAVE 7565.3: THE TRUE DNA ROUTER — resolve the correct track zone
+      // from the clip's cognitiveDNA (the .lfx schema's source of truth for
+      // energy context). Falls back to spatialZones only for legacy clips
+      // without DNA. This avoids the WAVE 7565.2 false-positive where
+      // 'ambient' in spatialZones (a hardware zone) was parsed as an energy
+      // zone, routing peak-energy clips to the AMBIENT track.
+      const primaryZone: LuxTargetZone = resolvePrimaryTrackZone({
+        cognitiveDNA: clip.hephClip?.cognitiveDNA,
+        spatialZones: zones,
+      })
 
       const newStart = clip.startMs
       const newEnd = clip.startMs + clip.durationMs
@@ -1291,6 +1316,9 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
         clipState.splitClipAtTime(id, streaming.currentTimeMs)
       })
     },
+    // ⏮️⏭️ WAVE 7565.4: Undo/Redo
+    onUndo: clipState.undo,
+    onRedo: clipState.redo,
   })
   
   // Click on background deselects
@@ -1363,6 +1391,11 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
         // 🎛️ WAVE 2046.2: Live Rack toggle
         showLiveControls={showLiveControls}
         onToggleLiveControls={handleToggleLiveControls}
+        // ⏮️⏭️ WAVE 7565.4: Undo/Redo
+        onUndo={clipState.undo}
+        onRedo={clipState.redo}
+        canUndo={clipState.canUndo}
+        canRedo={clipState.canRedo}
       />
       
       {/* ═══════════════════════════════════════════════════════════════════

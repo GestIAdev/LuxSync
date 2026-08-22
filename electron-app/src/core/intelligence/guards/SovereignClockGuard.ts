@@ -261,7 +261,7 @@ export class SovereignClockGuard {
     //   en 0.30-0.40. Un bombo real de reggaeton/techno dispara a 0.75-0.90.
     //   0.45 deja la voz nasal fuera y solo deja pasar golpes físicos reales.
     // ═══════════════════════════════════════════════════════════════════════
-    const BASS_GATE_THRESHOLD = 0.45
+    const BASS_GATE_THRESHOLD = 0.42
     const hasSubstantialBass = ctx.titanState.bass > BASS_GATE_THRESHOLD
 
     let aborted = false

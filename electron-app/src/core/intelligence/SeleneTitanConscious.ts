@@ -866,7 +866,7 @@ export class SeleneTitanConscious extends EventEmitter {
     if (finalOutput.effectDecision && this._v3Ignite) {
       const effectId = finalOutput.effectDecision.effectType
       if (isHighSeverityEffect(effectId)) {
-        const V3_BASS_GATE_THRESHOLD = 0.45
+        const V3_BASS_GATE_THRESHOLD = 0.42
         const v3BassEnergy = titanState.bass
         // 🩸 WAVE 7574: CENTRALIZED HEAVY Z-FLOOR — Z >= 1.5 for heavy effects
         const V3_HEAVY_MIN_Z = 1.5
@@ -1648,7 +1648,7 @@ export class SeleneTitanConscious extends EventEmitter {
       // 🩸 WAVE 7553: REVERTED to simple bass <= 0.35. Purgado de zL/vocal/ratio.
       // 🩸 WAVE 7574: ENDURECIDO 0.35→0.45 — muro anti-autotune grave.
       // ═══════════════════════════════════════════════════════════════════════
-      const BASS_GATE_THRESHOLD = 0.45
+      const BASS_GATE_THRESHOLD = 0.42
       const hasSubstantialBass = state.bass > BASS_GATE_THRESHOLD
       const bassGateVetoed = isHardForBypass && !hasSubstantialBass
 

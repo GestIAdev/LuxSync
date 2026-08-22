@@ -199,6 +199,21 @@ function catmullRom(
   )
 }
 
+// 🛡️ WAVE 7570.3: Cache the wave fill gradient — depends only on yBaseline
+// (canvas height). Colors are constants (WAVE_FILL_TOP/BOTTOM). Creating it
+// every frame at 44fps leaks CanvasGradient C++ objects.
+let _fillGradCache: { ctx: CanvasRenderingContext2D; yBaseline: number; gradient: CanvasGradient } | null = null
+function getFillGradient(ctx: CanvasRenderingContext2D, yBaseline: number): CanvasGradient {
+  if (_fillGradCache && _fillGradCache.ctx === ctx && _fillGradCache.yBaseline === yBaseline) {
+    return _fillGradCache.gradient
+  }
+  const gradient = ctx.createLinearGradient(0, 0, 0, yBaseline)
+  gradient.addColorStop(0, WAVE_FILL_TOP)
+  gradient.addColorStop(1, WAVE_FILL_BOTTOM)
+  _fillGradCache = { ctx, yBaseline, gradient }
+  return gradient
+}
+
 function drawAriadneThread(
   buf: SpectrometerBuffers,
   ctx: CanvasRenderingContext2D,
@@ -256,9 +271,7 @@ function drawAriadneThread(
   }
   ctx.lineTo(buf.sampleX[buf.sampleCount - 1], yBaseline)
   ctx.closePath()
-  const fillGrad = ctx.createLinearGradient(0, 0, 0, yBaseline)
-  fillGrad.addColorStop(0, WAVE_FILL_TOP)
-  fillGrad.addColorStop(1, WAVE_FILL_BOTTOM)
+  const fillGrad = getFillGradient(ctx, yBaseline)
   ctx.fillStyle = fillGrad
   ctx.globalAlpha = Math.min(1, flashBoost)
   ctx.fill()
@@ -715,6 +728,11 @@ export const QuantumSpectrometer: React.FC<QuantumSpectrometerProps> = ({
 
       // ── P1-B: Skip render entirely if paused and not dirty ──
       if (!isPlaying && !dirtyRef.current) {
+        rafRef.current = requestAnimationFrame(render)
+        return
+      }
+      // 🛡️ WAVE 7570.3: Pause render when document is hidden — zero burn in background.
+      if (document.hidden) {
         rafRef.current = requestAnimationFrame(render)
         return
       }

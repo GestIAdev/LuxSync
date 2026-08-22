@@ -68,18 +68,21 @@ const TheiaTrimmer: React.FC = () => {
     const THROTTLE_MS = 1000 / 30
 
     const loop = () => {
-      const vid = getThetaOrchestrator().getVideoElement()
-      if (vid) {
-        const now = performance.now()
-        if (now - lastUpdate >= THROTTLE_MS) {
-          const ms = vid.currentTime * 1000
-          playheadMsRef.current = ms
-          setPlayheadMs(ms)
-          setIsPlaying(!vid.paused)
-          if (isFinite(vid.duration) && vid.duration > 0) {
-            setVideoDurationMs(vid.duration * 1000)
+      // 🛡️ WAVE 7570.3: Skip when document hidden — video playhead doesn't move in background.
+      if (!document.hidden) {
+        const vid = getThetaOrchestrator().getVideoElement()
+        if (vid) {
+          const now = performance.now()
+          if (now - lastUpdate >= THROTTLE_MS) {
+            const ms = vid.currentTime * 1000
+            playheadMsRef.current = ms
+            setPlayheadMs(ms)
+            setIsPlaying(!vid.paused)
+            if (isFinite(vid.duration) && vid.duration > 0) {
+              setVideoDurationMs(vid.duration * 1000)
+            }
+            lastUpdate = now
           }
-          lastUpdate = now
         }
       }
       rafRef.current = requestAnimationFrame(loop)

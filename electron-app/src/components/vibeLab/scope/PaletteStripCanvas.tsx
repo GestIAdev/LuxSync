@@ -60,6 +60,8 @@ export const PaletteStripCanvas: React.FC<PaletteStripCanvasProps> = memo(
       const swatchH = height - 20
 
       const draw = () => {
+        // 🛡️ WAVE 7570.3: Skip when document hidden — palette doesn't change in background.
+        if (document.hidden) { rafRef.current = requestAnimationFrame(draw); return }
         const buf = vibeLabTelemetryBus.read()
         ctx.clearRect(0, 0, width, height)
 

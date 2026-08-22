@@ -32,8 +32,8 @@ export const StatusRibbon: React.FC = () => {
     let currentZ = 0
 
     const updateCoords = () => {
-      // Read from global cursor state (set by DragDropController2D/3D via CustomEvent)
-      if (coordsRef.current) {
+      // 🛡️ WAVE 7570.3: Skip when document hidden — no need to update coords in background.
+      if (!document.hidden && coordsRef.current) {
         coordsRef.current.textContent =
           `x:${currentX.toFixed(2)} y:${currentY.toFixed(2)} z:${currentZ.toFixed(2)}`
       }

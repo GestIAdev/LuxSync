@@ -163,7 +163,9 @@ export const AudioSpectrumTitan: React.FC = memo(() => {
     let frameId: number
 
     const tick = (now: number) => {
-      // 🔥 WAVE 2405: Read TRANSIENT store — updated every IPC frame
+      // �️ WAVE 7570.3: Skip when document hidden — no visual updates in background.
+      if (document.hidden) { frameId = requestAnimationFrame(tick); return }
+      // �🔥 WAVE 2405: Read TRANSIENT store — updated every IPC frame
       // 🎵 WAVE 3250: Ahora actualizado a 22Hz (hot-frame incluye audio bands)
       const truth = getTransientTruth()
       if (!truth) { frameId = requestAnimationFrame(tick); return }

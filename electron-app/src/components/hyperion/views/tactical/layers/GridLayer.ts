@@ -147,20 +147,22 @@ export function renderGridLayer(
   
   if (showStereoDivision) {
     const centerX = width * STEREO_LINE_X
-    
-    // Subtle purple gradient line in center
-    const grad = ctx.createLinearGradient(centerX, 0, centerX, height)
-    grad.addColorStop(0, `rgba(176, 38, 255, 0)`)
-    grad.addColorStop(0.3, `rgba(176, 38, 255, ${0.08 * opacity})`)
-    grad.addColorStop(0.7, `rgba(176, 38, 255, ${0.08 * opacity})`)
-    grad.addColorStop(1, `rgba(176, 38, 255, 0)`)
 
-    ctx.strokeStyle = grad
+    // 🛡️ WAVE 7570.3: Replaced createLinearGradient with 3 solid segments.
+    // The gradient had alpha 0 at edges and 0.08*opacity in the middle 40%.
+    // Three solid strokes with different alpha achieve the same fade effect
+    // without allocating a CanvasGradient C++ object every frame.
+    const a = 0.08 * opacity
     ctx.lineWidth = 1
-    ctx.beginPath()
-    ctx.moveTo(centerX, 0)
-    ctx.lineTo(centerX, height)
-    ctx.stroke()
+    // Top fade (0% → 30%)
+    ctx.strokeStyle = `rgba(176, 38, 255, ${a * 0.5})`
+    ctx.beginPath(); ctx.moveTo(centerX, 0); ctx.lineTo(centerX, height * 0.3); ctx.stroke()
+    // Middle solid (30% → 70%)
+    ctx.strokeStyle = `rgba(176, 38, 255, ${a})`
+    ctx.beginPath(); ctx.moveTo(centerX, height * 0.3); ctx.lineTo(centerX, height * 0.7); ctx.stroke()
+    // Bottom fade (70% → 100%)
+    ctx.strokeStyle = `rgba(176, 38, 255, ${a * 0.5})`
+    ctx.beginPath(); ctx.moveTo(centerX, height * 0.7); ctx.lineTo(centerX, height); ctx.stroke()
   }
 }
 

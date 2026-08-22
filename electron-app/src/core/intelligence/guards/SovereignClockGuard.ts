@@ -80,6 +80,57 @@ function clamp01(x: number): number {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// WAVE 7574: RE-ROUTE VARIETY — selección aleatoria controlada
+// En lugar de elegir siempre el primero de la lista ordenada (que produce
+// re-routes repetitivos al mismo efecto), selecciona aleatoriamente entre
+// los 3 primeros candidatos válidos (no en cooldown).
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface RerouteCandidate {
+  readonly id: string
+  readonly dna: { readonly aggression?: number }
+  readonly organismId?: string
+  readonly organismStatus?: string
+  readonly simMeta: { readonly isDivineCandidate?: boolean; readonly isHeavyCandidate?: boolean }
+}
+
+/**
+ * Selecciona un candidato de re-route con variedad controlada.
+ * 1. Filtra: no divine, no heavy, aggression <= 0.70, no minion vivo
+ * 2. Ordena por aggression descendente
+ * 3. Descarta los que están en cooldown (disparados en los últimos 8s)
+ * 4. Selecciona aleatoriamente entre los 3 primeros válidos
+ * 5. Si todos están en cooldown, selecciona aleatoriamente entre los 3 primeros
+ * @returns effectId del candidato seleccionado, o null si no hay candidatos
+ */
+function selectRerouteCandidate(
+  arsenal: readonly RerouteCandidate[],
+  effectHistory: readonly { type: string; timestamp: number }[],
+  now: number,
+): string | null {
+  const lighter = arsenal.filter(e =>
+    !e.simMeta.isDivineCandidate &&
+    !e.simMeta.isHeavyCandidate &&
+    (e.dna.aggression ?? 0) <= 0.70 &&
+    (!e.organismId || e.organismStatus !== 'alive')
+  )
+  if (lighter.length === 0) return null
+
+  const sorted = [...lighter].sort((a, b) => (b.dna.aggression ?? 0) - (a.dna.aggression ?? 0))
+
+  // Candidatos no en cooldown (no disparados en los últimos 8s)
+  const notInCooldown = sorted.filter(e =>
+    !effectHistory.some(h => h.type === e.id && (now - h.timestamp) < 8000)
+  )
+
+  const pool = notInCooldown.length > 0 ? notInCooldown : sorted
+  // Seleccionar aleatoriamente entre los 3 primeros del pool
+  const topN = Math.min(3, pool.length)
+  const pick = pool[Math.floor(Math.random() * topN)]
+  return pick.id
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Sovereign Clock Guard
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -161,8 +212,11 @@ export class SovereignClockGuard {
     // ═══════════════════════════════════════════════════════════════════════
     // 🩸 WAVE 7543: UNIVERSAL SPECTRAL BASS GATE (Anti-Autotune Veto)
     // 🩸 WAVE 7553: REVERTED to simple bass <= 0.35. Purgado de zL/vocal/ratio.
+    // 🩸 WAVE 7574: ENDURECIDO 0.35→0.45 — la resonancia del autotune grave vive
+    //   en 0.30-0.40. Un bombo real de reggaeton/techno dispara a 0.75-0.90.
+    //   0.45 deja la voz nasal fuera y solo deja pasar golpes físicos reales.
     // ═══════════════════════════════════════════════════════════════════════
-    const BASS_GATE_THRESHOLD = 0.35
+    const BASS_GATE_THRESHOLD = 0.45
     const hasSubstantialBass = ctx.titanState.bass > BASS_GATE_THRESHOLD
 
     let aborted = false
@@ -210,30 +264,16 @@ export class SovereignClockGuard {
     if (!aborted && registryEntry && !registryEntry.simMeta.isDivineCandidate && isHeavyEffect) {
       const HEAVY_EPICNESS_FLOOR = Math.max(0.25, ctx.rmsAverage10s * 0.35)
       // 🩸 WAVE 7543: HEAVY Z-SCORE FLOOR — heavy effects require statistical significance.
-      // A heavy effect fired by the Sovereign Clock must have Z >= 1.0 (notable).
-      // Z < 1.0 means the energy is barely above the rolling mean — this is a VERSE,
-      // not a drop. Vocal/autotune transients can produce RMS spikes that Cassandra
-      // misinterprets as buildup_starting, but the Z-score reveals the truth: the
-      // energy is not statistically unusual.
-      const SOVEREIGN_HEAVY_MIN_Z = 1.0
+      // 🩸 WAVE 7574: ENDURECIDO 1.0→1.5 — exige que el golpe sea una anomalía real
+      //   (un drop), no un ruido sostenido. Z=1.0 es "un poquito above average";
+      //   Z=1.5 es "claramente inusual".
+      const SOVEREIGN_HEAVY_MIN_Z = 1.5
       const heavyZBlocked = ctx.currentZScore < SOVEREIGN_HEAVY_MIN_Z
       if (v3EpicnessNow < HEAVY_EPICNESS_FLOOR || heavyZBlocked) {
         const vibeArsenal = getDynamicEffectRegistry().getEffectsForVibe(ctx.titanState.vibeId ?? '')
-        const lighterCandidates = vibeArsenal.filter(e =>
-          !e.simMeta.isDivineCandidate &&
-          !e.simMeta.isHeavyCandidate &&
-          (e.dna.aggression ?? 0) <= 0.70 &&
-          (!e.organismId || e.organismStatus !== 'alive')
-        )
-        if (lighterCandidates.length > 0) {
-          const sorted = lighterCandidates.sort((a, b) => (b.dna.aggression ?? 0) - (a.dna.aggression ?? 0))
-          for (const light of sorted) {
-            if (!ctx.effectHistory.some(h => h.type === light.id && (ctx.now - h.timestamp) < 8000)) {
-              reroutedEffectId = light.id
-              break
-            }
-          }
-          if (!reroutedEffectId) reroutedEffectId = sorted[0].id
+        // 🩸 WAVE 7574: RE-ROUTE VARIETY — selección aleatoria entre top 3
+        reroutedEffectId = selectRerouteCandidate(vibeArsenal, ctx.effectHistory, ctx.now)
+        if (reroutedEffectId) {
           heavyRerouted = true
           console.log(
             `[Sovereign Clock 🔄] HEAVY RE-ROUTE: "${candidate.effectName ?? candidate.effect}" → "${effectDisplayName(reroutedEffectId)}"` +
@@ -269,21 +309,9 @@ export class SovereignClockGuard {
       // but we include it in the divine gate log for diagnostic completeness.
       if (divineEpicnessBlocked || energyTooLow || divineZoneVeto) {
         const vibeArsenalDivine = getDynamicEffectRegistry().getEffectsForVibe(ctx.titanState.vibeId ?? '')
-        const lighterCandidatesDivine = vibeArsenalDivine.filter(e =>
-          !e.simMeta.isDivineCandidate &&
-          !e.simMeta.isHeavyCandidate &&
-          (e.dna.aggression ?? 0) <= 0.70 &&
-          (!e.organismId || e.organismStatus !== 'alive')
-        )
-        if (lighterCandidatesDivine.length > 0) {
-          const sortedDivine = lighterCandidatesDivine.sort((a, b) => (b.dna.aggression ?? 0) - (a.dna.aggression ?? 0))
-          for (const light of sortedDivine) {
-            if (!ctx.effectHistory.some(h => h.type === light.id && (ctx.now - h.timestamp) < 8000)) {
-              reroutedEffectId = light.id
-              break
-            }
-          }
-          if (!reroutedEffectId) reroutedEffectId = sortedDivine[0].id
+        // 🩸 WAVE 7574: RE-ROUTE VARIETY — selección aleatoria entre top 3
+        reroutedEffectId = selectRerouteCandidate(vibeArsenalDivine, ctx.effectHistory, ctx.now)
+        if (reroutedEffectId) {
           heavyRerouted = true
           console.log(
             `[Sovereign Clock 🔄] DIVINE RE-ROUTE: "${candidate.effectName ?? candidate.effect}" → "${effectDisplayName(reroutedEffectId)}"` +

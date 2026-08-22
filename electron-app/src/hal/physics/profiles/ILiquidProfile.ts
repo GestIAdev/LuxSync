@@ -237,6 +237,24 @@ export interface ILiquidProfile {
    */
   readonly ambientGain?: number
 
+  /**
+   * WAVE 7573: AMBIENT CRUSH EXPONENT — exponente de compresión de la
+   * señal EMA del ambient antes del gain. Default 2.0 (WAVE 4814).
+   * Valores más bajos (1.0-1.3) = menos compresión = más luz visible
+   * con señales débiles. Valores más altos = más contraste (oscuridad
+   * absoluta en pasajes suaves, brillo solo en picos).
+   * Fórmula: _ambientCrushed = Math.pow(_ambientRaw, ambientCrushExponent)
+   */
+  readonly ambientCrushExponent?: number
+
+  /**
+   * WAVE 7573: AMBIENT OUTPUT EXPONENT — exponente final post-gain.
+   * Default 1.3 (WAVE 4826.3). Valores más bajos = más lineal = más
+   * luz en el rango medio. Valores más altos = más contraste.
+   * Fórmula: ambientIntensity = Math.pow(preGainAmbient, ambientOutputExponent)
+   */
+  readonly ambientOutputExponent?: number
+
   // ═══════════════════════════════════════════════════════════════
   // WAVE 2435: OVERRIDES DE LAYOUT 4.1
   //

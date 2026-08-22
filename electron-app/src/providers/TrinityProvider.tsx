@@ -438,15 +438,15 @@ export function TrinityProvider({ children }: TrinityProviderProps) {
       return
     }
     _hasInitializedHandshake = true
-    
+
     const syncInitialState = async () => {
       if (!window.lux?.getFullState) {
         return
       }
-      
+
       try {
         const fullState = await window.lux.getFullState()
-        
+
         // Sync DMX Store
         if (fullState.dmx) {
           if (fullState.dmx.isConnected && fullState.dmx.driver && fullState.dmx.port) {
@@ -458,48 +458,64 @@ export function TrinityProvider({ children }: TrinityProviderProps) {
             useDMXStore.getState().disconnect()
           }
         }
-        
+
         // Sync Selene Store
         if (fullState.selene) {
           if (fullState.selene.isRunning) {
             setConnected(true)
             setInitialized(true)
-            
+
             if (fullState.selene.mode) {
               // 🔥 WAVE 427: FORCED SELENE MODE - 'flow' no longer exists
               // Backend may still send 'flow' at startup - always map to 'selene'
               const backendMode = fullState.selene.mode as string
               const initialMode: 'selene' | 'locked' = (backendMode === 'locked') ? 'locked' : 'selene'
-              
+
               if (backendMode === 'flow') {
                 console.log('[TrinityProvider] ⚠️ Backend in legacy Flow mode at startup - Forcing SELENE...')
                 window.lux.setMode('selene')  // ← Force backend to Selene
               }
-              
+
               // 1. Update brain state with forced mode
               useSeleneStore.getState().setMode(initialMode)
-              
+
               // 2. 🔥 WAVE 427: Always use 'selene' for GlobalMode (AI control)
               const globalMode: GlobalMode = 'selene'
               useControlStore.getState().setGlobalMode(globalMode)
               console.log(`[TrinityProvider] 🔥 WAVE 427: Startup Complete → System locked to '${globalMode}'`)
             }
-            
+
             if (fullState.selene.brainMode) {
-              updateBrainMetrics({ 
+              updateBrainMetrics({
                 currentMode: fullState.selene.brainMode as 'reactive' | 'intelligent',
                 paletteSource: (fullState.selene.paletteSource || 'fallback') as 'memory' | 'procedural' | 'fallback'
               })
             }
           }
         }
-        
+
+        // 🩸 WAVE 7571: IMMORTALITY — Pull fixtures after mount.
+        // After Ctrl+R, the main process sends 'lux:fixtures-loaded' via
+        // did-finish-load BEFORE React mounts → message is lost (race
+        // condition). Fix: pull fixtures explicitly here so they're
+        // available regardless of timing.
+        if (window.lux?.getPatchedFixtures) {
+          try {
+            const result = await window.lux.getPatchedFixtures()
+            if (result?.success && result.fixtures?.length > 0) {
+              useDMXStore.getState().setFixtures(result.fixtures)
+            }
+          } catch {
+            // Fixtures not loaded yet — normal on first boot
+          }
+        }
+
         // 🧹 WAVE 63.7: Logs silenciados
       } catch (error) {
         console.error('[Trinity] ❌ Initial State Handshake failed:', error)
       }
     }
-    
+
     syncInitialState()
   }, [])
   

@@ -504,7 +504,8 @@ self.onmessage = (e) => {
                 glassPort.close();
             }
             glassPort = typedMsg.port;
-            glassPort.onmessage = (e) => {
+            const port = glassPort;
+            port.onmessage = (e) => {
                 const { frameData, fixtureCount, onBeat } = e.data;
                 // 🏓 OOM-FIX: Return the PREVIOUS frame's buffer to the main thread.
                 // The render loop (60fps) has already consumed it at least once since
@@ -512,7 +513,7 @@ self.onmessage = (e) => {
                 // This completes the ping-pong: main → worker → main → worker → ...
                 if (currentFrameData) {
                     const oldBuffer = currentFrameData.buffer;
-                    glassPort.postMessage({ type: 'BUFFER_RETURN', buffer: oldBuffer }, [oldBuffer]);
+                    port.postMessage({ type: 'BUFFER_RETURN', buffer: oldBuffer }, [oldBuffer]);
                 }
                 currentFrameData = frameData;
                 currentFixtureCount = fixtureCount;

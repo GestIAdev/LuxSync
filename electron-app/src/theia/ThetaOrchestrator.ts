@@ -906,6 +906,12 @@ export class ThetaOrchestrator {
 let _instance: ThetaOrchestrator | null = null
 
 export function getThetaOrchestrator(): ThetaOrchestrator {
+  // 🛡️ WAVE 7569: ZOMBIE QUARANTINE — The singleton is safe to instantiate
+  // because start(), spawnWorker(), and loadVideo() all check
+  // ENABLE_THETA_ORCHESTRATOR (currently false) and bail early. The singleton
+  // itself does NOT spawn a worker, create SABs, or allocate canvases — those
+  // only happen inside start(). Callers using getVideoElement() or
+  // setClipUrlResolver() get a dormant object that does nothing.
   if (!_instance) _instance = new ThetaOrchestrator()
   return _instance
 }

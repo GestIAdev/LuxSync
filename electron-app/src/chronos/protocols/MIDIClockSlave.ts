@@ -121,6 +121,12 @@ export class MIDIClockSlave extends BaseClockSource {
   private midiAccess: MIDIAccess | null = null
   private selectedDeviceId: string | null = null
 
+  // 🩸 WAVE 7568: Track wired inputs + their handlers for proper cleanup.
+  // Using addEventListener instead of onmidimessage allows multiple consumers
+  // (useMidiLearn + useMIDIClock + MIDIClockSlave) to coexist on the same input.
+  private wiredInputs: Map<MIDIInput, (event: MIDIMessageEvent) => void> = new Map()
+  private stateChangeHandler: (() => void) | null = null
+
   // ── Pulse counting ──
   private pulseCount = 0
   private totalBeats = 0
@@ -134,7 +140,11 @@ export class MIDIClockSlave extends BaseClockSource {
   private bpmState: BpmDerivationState = createBpmDerivationState()
 
   // ── Timeout ──
-  private timeoutHandle: ReturnType<typeof setTimeout> | null = null
+  // 🩸 WAVE 7568: Passive watchdog replaces per-pulse clearTimeout+setTimeout.
+  // Old code: 56 clearTimeout + 56 setTimeout per second (112 C++ timer objects/sec).
+  // New code: a single setInterval at 10Hz checks if lastPulseTime is stale.
+  private lastPulseTime = 0
+  private watchdogHandle: ReturnType<typeof setInterval> | null = null
 
   // REV. 2: Pre-allocated event payloads — zero allocation per emit
   private _syncPayload = { timeMs: 0 as TimeMs, source: 'midi-clock-slave' as const }
@@ -163,7 +173,9 @@ export class MIDIClockSlave extends BaseClockSource {
     try {
       this.midiAccess = await navigator.requestMIDIAccess({ sysex: false })
       this.wireInputs()
-      this.midiAccess.onstatechange = () => this.wireInputs()
+      const stateHandler = () => this.wireInputs()
+      this.stateChangeHandler = stateHandler
+      this.midiAccess.addEventListener('statechange', stateHandler)
       this.connected = false
       this._statusPayload.connected = false
       this._statusPayload.quality = 'none'
@@ -180,7 +192,10 @@ export class MIDIClockSlave extends BaseClockSource {
   stop(): void {
     this.unwireInputs()
     if (this.midiAccess) {
-      this.midiAccess.onstatechange = null
+      if (this.stateChangeHandler) {
+        this.midiAccess.removeEventListener('statechange', this.stateChangeHandler)
+        this.stateChangeHandler = null
+      }
       this.midiAccess = null
     }
     this.clearTimeout()
@@ -236,15 +251,18 @@ export class MIDIClockSlave extends BaseClockSource {
 
     this.midiAccess.inputs.forEach(input => {
       if (this.selectedDeviceId && input.id !== this.selectedDeviceId) return
-      input.onmidimessage = (event: MIDIMessageEvent) => this.handleMessage(event)
+      const handler = (event: MIDIMessageEvent) => this.handleMessage(event)
+      input.addEventListener('midimessage', handler)
+      this.wiredInputs.set(input, handler)
     })
   }
 
   private unwireInputs(): void {
     if (!this.midiAccess) return
-    this.midiAccess.inputs.forEach(input => {
-      input.onmidimessage = null
-    })
+    for (const [input, handler] of this.wiredInputs) {
+      input.removeEventListener('midimessage', handler)
+    }
+    this.wiredInputs.clear()
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -349,25 +367,38 @@ export class MIDIClockSlave extends BaseClockSource {
   }
 
   // ═══════════════════════════════════════════════════════════════════════
-  // PRIVATE — TIMEOUT
+  // PRIVATE — TIMEOUT (WAVE 7568: passive watchdog)
   // ═══════════════════════════════════════════════════════════════════════
 
   private resetTimeout(): void {
-    this.clearTimeout()
-    this.timeoutHandle = setTimeout(() => {
-      this.connected = false
-      this.isExternalPlaying = false
-      this._statusPayload.connected = false
-      this._statusPayload.quality = 'none'
-      this.emit('status', this._statusPayload)
-      console.log('[MIDIClockSlave] ⚠️ Signal lost (timeout)')
-    }, SIGNAL_TIMEOUT_MS)
+    // Just stamp the last pulse time — the watchdog interval checks it.
+    this.lastPulseTime = performance.now()
+    if (this.watchdogHandle === null) {
+      this.startWatchdog()
+    }
+  }
+
+  private startWatchdog(): void {
+    // 10Hz poll — checks if lastPulseTime is older than SIGNAL_TIMEOUT_MS.
+    // One setInterval = one C++ timer object total, vs 112/sec with the old approach.
+    this.watchdogHandle = setInterval(() => {
+      if (this.lastPulseTime > 0 && performance.now() - this.lastPulseTime > SIGNAL_TIMEOUT_MS) {
+        this.connected = false
+        this.isExternalPlaying = false
+        this._statusPayload.connected = false
+        this._statusPayload.quality = 'none'
+        this.emit('status', this._statusPayload)
+        this.lastPulseTime = 0
+        console.log('[MIDIClockSlave] ⚠️ Signal lost (timeout)')
+      }
+    }, 100)
   }
 
   private clearTimeout(): void {
-    if (this.timeoutHandle !== null) {
-      clearTimeout(this.timeoutHandle)
-      this.timeoutHandle = null
+    if (this.watchdogHandle !== null) {
+      clearInterval(this.watchdogHandle)
+      this.watchdogHandle = null
     }
+    this.lastPulseTime = 0
   }
 }

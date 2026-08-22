@@ -43,6 +43,10 @@ export const AudioReactorRing: React.FC<AudioReactorRingProps> = ({
     const centerX = W / 2
     const centerY = H / 2
     const baseRadius = Math.min(W, H) * 0.35
+
+    // 🛡️ WAVE 7569: NaN SHIELD — createRadialGradient throws TypeError on
+    // non-finite coordinates in Chromium. Guard all gradient inputs upfront.
+    if (!Number.isFinite(centerX) || !Number.isFinite(centerY) || !Number.isFinite(baseRadius) || baseRadius <= 0) return
     
     // Clear with fade trail
     ctx.fillStyle = 'rgba(10, 10, 20, 0.15)'
@@ -66,6 +70,7 @@ export const AudioReactorRing: React.FC<AudioReactorRingProps> = ({
     // ═══════════════════════════════════════════════════════════════════════
     
     const outerRadius = baseRadius * (1.3 + pulse * 0.2)
+    if (!Number.isFinite(outerRadius) || outerRadius <= 0) return
     const segments = 64
     
     ctx.beginPath()
@@ -96,6 +101,7 @@ export const AudioReactorRing: React.FC<AudioReactorRingProps> = ({
     // ═══════════════════════════════════════════════════════════════════════
     
     const midRadius = baseRadius * (0.9 + pulse * 0.15)
+    if (!Number.isFinite(midRadius) || midRadius <= 0) return
     
     ctx.beginPath()
     ctx.arc(centerX, centerY, midRadius, 0, Math.PI * 2)
@@ -119,6 +125,7 @@ export const AudioReactorRing: React.FC<AudioReactorRingProps> = ({
     // ═══════════════════════════════════════════════════════════════════════
     
     const coreRadius = baseRadius * (0.25 + pulse * 0.1)
+    if (!Number.isFinite(coreRadius) || coreRadius <= 0) return
     
     // Core glow
     const coreGlow = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, coreRadius * 2)

@@ -24,9 +24,8 @@ import { TacticalCanvas } from './tactical'
 import { VisualizerCanvas } from './visualizer'
 import { StageSidebar } from '../controls/sidebar/StageSidebar'
 // ⚡ WAVE 7566.3: ScenePlayerProvider lifted to HyperionView level so the
-// playback engine persists across sidebar mode switches (controls ↔ kinetics).
+// playback engine persists across sidebar tab switches.
 import { ScenePlayerProvider } from '../controls/sidebar/ScenePlayerContext'
-import { KineticsCathedral } from '../kinetics'
 import './HyperionView.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -117,10 +116,6 @@ const HyperionView = React.memo(function HyperionView({
   // 🌊 WAVE 2432: Omni-Liquid Layout switch (4.1 / 7.1)
   const liquidLayout = useControlStore(state => state.liquidLayout)
   const setLiquidLayout = useControlStore(state => state.setLiquidLayout)
-
-  // 🏛️ WAVE 4561: Kinetics Cathedral sidebar mode
-  const sidebarMode = useControlStore(state => state.sidebarMode)
-  const setSidebarMode = useControlStore(state => state.setSidebarMode)
 
   // ── Derived State ─────────────────────────────────────────────────────────
   const fixtureCount = useMemo(() => fixtures.length, [fixtures])
@@ -230,16 +225,6 @@ const HyperionView = React.memo(function HyperionView({
                 3D
               </button>
             </div>
-
-            {/* 🏛️ WAVE 4561: KINETICS toggle */}
-            <button
-              className={`hyperion-view-toggle__btn ${sidebarMode === 'kinetics' ? 'active' : ''}`}
-              onClick={() => setSidebarMode(sidebarMode === 'kinetics' ? 'controls' : 'kinetics')}
-              title="Kinetics Cathedral — Movement Control"
-              style={{ marginLeft: 8 }}
-            >
-              ⊕ KIN
-            </button>
 
             {/* Selection Info (si hay selección) */}
             {selectedCount > 0 && (
@@ -437,15 +422,11 @@ const HyperionView = React.memo(function HyperionView({
         {/* ═══════════════════════════════════════════════════════════════════
          * SIDEBAR — The Commander (Controles)
          * ═══════════════════════════════════════════════════════════════════ */}
-        {/* ⚡ WAVE 7566.3: ScenePlayerProvider wraps BOTH sidebar modes so the
-            playback engine survives the controls↔kinetics switch. Previously
-            the provider was inside StageSidebar, which unmounted on kinetics. */}
+        {/* ⚡ WAVE 7566.3: ScenePlayerProvider wraps the sidebar so the
+            playback engine survives tab switches inside StageSidebar. */}
         <ScenePlayerProvider>
-        <div className={`hyperion-sidebar-container${sidebarMode === 'kinetics' ? ' cathedral-expanded' : ''}`}>
-          {sidebarMode === 'controls'
-            ? <StageSidebar />
-            : <KineticsCathedral onClose={() => setSidebarMode('controls')} />
-          }
+        <div className="hyperion-sidebar-container">
+          <StageSidebar />
         </div>
         </ScenePlayerProvider>
       </div>

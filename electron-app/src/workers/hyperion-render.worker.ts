@@ -596,7 +596,8 @@ self.onmessage = (e: MessageEvent<WorkerInboundMessage>) => {
         glassPort.close()
       }
       glassPort = typedMsg.port
-      glassPort.onmessage = (e: MessageEvent) => {
+      const port = glassPort
+      port.onmessage = (e: MessageEvent) => {
         const { frameData, fixtureCount, onBeat } = e.data as {
           frameData: Float32Array
           fixtureCount: number
@@ -609,7 +610,7 @@ self.onmessage = (e: MessageEvent<WorkerInboundMessage>) => {
         // This completes the ping-pong: main → worker → main → worker → ...
         if (currentFrameData) {
           const oldBuffer = currentFrameData.buffer
-          glassPort.postMessage({ type: 'BUFFER_RETURN', buffer: oldBuffer }, [oldBuffer])
+          port.postMessage({ type: 'BUFFER_RETURN', buffer: oldBuffer }, [oldBuffer])
         }
 
         currentFrameData = frameData

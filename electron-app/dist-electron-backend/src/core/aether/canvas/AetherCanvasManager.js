@@ -48,6 +48,12 @@ export class AetherCanvasManager {
         if (!Number.isInteger(height) || height < 1) {
             throw new RangeError(`AetherCanvasManager.acquire: height must be positive integer, got ${height}`);
         }
+        // 🛡️ WAVE 7569: OILPAN GUARD — Reject dimensions that would allocate >64MB
+        // per buffer (front+back = 128MB). 4096×4096×4 = 67MB → just over the limit.
+        // This prevents runaway canvas sizes from causing Oilpan OOM.
+        if (width > 4096 || height > 4096) {
+            throw new RangeError(`AetherCanvasManager.acquire: dimensions exceed safety limit (max 4096×4096), got ${width}×${height}`);
+        }
         const existing = this._buffers.get(canvasId);
         if (existing && existing.width === width && existing.height === height) {
             return existing;

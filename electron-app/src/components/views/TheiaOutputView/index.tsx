@@ -80,6 +80,13 @@ const TheiaOutputView: React.FC = () => {
 
     function ensureImageData(w: number, h: number): ImageData {
       if (imageData && imageDataDims.w === w && imageDataDims.h === h) return imageData
+      // 🛡️ WAVE 7569: OILPAN GUARD — Reject dimensions that would allocate
+      // excessive memory. createImageData(w, h) allocates w*h*4 bytes.
+      // 4096×4096×4 = 67MB — anything larger is almost certainly a corruption.
+      if (w > 4096 || h > 4096 || w < 1 || h < 1) {
+        console.error(`[TheiaOutput] ensureImageData rejected unsafe dimensions: ${w}×${h}`)
+        return imageData ?? ctx!.createImageData(1, 1)
+      }
       // Use ctx.createImageData to allocate an ImageData backed by a fresh
       // (non-shared) ArrayBuffer — required because `new ImageData(uint8, w, h)`
       // rejects SharedArrayBuffer-backed Uint8ClampedArray.

@@ -96,6 +96,9 @@ export class MIDIClockMaster {
   private ipcPulseCleanup: (() => void) | null = null
   private ipcTransportCleanup: (() => void) | null = null
 
+  // 🩸 WAVE 7568: Track statechange handler for proper cleanup via removeEventListener
+  private stateChangeHandler: (() => void) | null = null
+
   private listeners = new Set<MIDIClockMasterEventHandler>()
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -111,9 +114,11 @@ export class MIDIClockMaster {
 
     try {
       this.midiAccess = await navigator.requestMIDIAccess({ sysex: false })
-      this.midiAccess.onstatechange = () => {
+      const stateHandler = () => {
         this.emitEvent({ type: 'output-changed' })
       }
+      this.stateChangeHandler = stateHandler
+      this.midiAccess.addEventListener('statechange', stateHandler)
       this.error = null
       console.log('[MIDIClockMaster] 🥁 MIDI access granted (IPC proxy mode)')
     } catch (err) {
@@ -167,7 +172,10 @@ export class MIDIClockMaster {
     this.ipcPulseCleanup = null
     this.ipcTransportCleanup = null
     if (this.midiAccess) {
-      this.midiAccess.onstatechange = null
+      if (this.stateChangeHandler) {
+        this.midiAccess.removeEventListener('statechange', this.stateChangeHandler)
+        this.stateChangeHandler = null
+      }
       this.midiAccess = null
     }
     this.listeners.clear()

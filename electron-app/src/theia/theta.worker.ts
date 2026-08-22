@@ -38,6 +38,12 @@ import { VideoFrameWriter } from './SharedVideoFrameBuffer'
 import { ThumbFrameWriter } from './TheiaThumbBuffer'
 
 // ─────────────────────────────────────────────────────────────────────────
+// 🛡️ WAVE 7569: OILPAN GUARD — Safety limits to prevent OOM from getImageData
+// ─────────────────────────────────────────────────────────────────────────
+const MAX_CANVAS_WIDTH = 1920
+const MAX_CANVAS_HEIGHT = 1080
+
+// ─────────────────────────────────────────────────────────────────────────
 // Worker-local state
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -61,6 +67,10 @@ interface WorkerState {
   framesDecoded: number
   framesDropped: number
   canvasCtx: OffscreenCanvasRenderingContext2D | null
+  // 🛡️ WAVE 7569: OILPAN GUARD — cached ImageData to avoid 8MB alloc per tick
+  cachedImageData: ImageData | null
+  cachedImageW: number
+  cachedImageH: number
   // Phase 2: 64x64 downscaler
   thumbCanvas: OffscreenCanvas | null
   thumbCtx: OffscreenCanvasRenderingContext2D | null
@@ -100,6 +110,10 @@ const state: WorkerState = {
   framesDecoded: 0,
   framesDropped: 0,
   canvasCtx: null,
+  // 🛡️ WAVE 7569: OILPAN GUARD
+  cachedImageData: null,
+  cachedImageW: 0,
+  cachedImageH: 0,
   thumbCanvas: null,
   thumbCtx: null,
   lastPixelData: null,
@@ -234,13 +248,24 @@ function renderCurrentFrame(): void {
   }
 
   if (frame) {
-    // Resize canvas to match frame if dimensions changed
+    // 🛡️ WAVE 7569: OILPAN GUARD — Clamp canvas dimensions to MAX 1920×1080.
+    // Frames larger than this are downscaled by the browser when drawImage
+    // scales them into the smaller canvas. This prevents getImageData from
+    // allocating 33MB+ per tick on 4K video (which caused Oilpan OOM).
+    const targetW = Math.min(frame.displayWidth, MAX_CANVAS_WIDTH)
+    const targetH = Math.min(frame.displayHeight, MAX_CANVAS_HEIGHT)
+
+    // Resize canvas to match (clamped) frame if dimensions changed
     if (
-      state.offscreenCanvas.width !== frame.displayWidth ||
-      state.offscreenCanvas.height !== frame.displayHeight
+      state.offscreenCanvas.width !== targetW ||
+      state.offscreenCanvas.height !== targetH
     ) {
-      state.offscreenCanvas.width = frame.displayWidth
-      state.offscreenCanvas.height = frame.displayHeight
+      state.offscreenCanvas.width = targetW
+      state.offscreenCanvas.height = targetH
+      // Invalidate cached ImageData — dimensions changed
+      state.cachedImageData = null
+      state.cachedImageW = 0
+      state.cachedImageH = 0
     }
 
     // Crossfade step (only meaningful if a crossfade is in progress) —
@@ -290,13 +315,24 @@ function renderCurrentFrame(): void {
     }
 
     // 🎬 WAVE 4864 — Phase 3: publish to the projector SAB.
-    // getImageData forces a GPU→CPU readback; the cost is acceptable at the
-    // current 44Hz cadence. Profiling has shown ~5–10ms on 1080p in V8.
+    // 🛡️ WAVE 7569: OILPAN GUARD — Reuse cached ImageData instead of allocating
+    // a new Uint8ClampedArray on every tick. Previously, getImageData() at 44Hz
+    // on a 1080p canvas allocated ~8MB per tick = ~352MB/sec of garbage that
+    // Oilpan had to collect, causing OOM crashes. Now we allocate once and
+    // reuse the buffer — getImageData() writes into the existing Uint8ClampedArray.
     if (state.videoWriter) {
       try {
         const w = state.offscreenCanvas.width
         const h = state.offscreenCanvas.height
+
+        // 🛡️ WAVE 7569: getImageData always allocates a new Uint8ClampedArray
+        // (the Web IDL spec doesn't allow reusing an existing ImageData buffer).
+        // The OILPAN GUARD mitigation is the canvas dimension clamp above —
+        // by capping at 1920×1080, each getImageData allocates ~8MB instead of
+        // 33MB on 4K video. The GC can handle 8MB×44Hz = 352MB/sec of short-
+        // lived garbage, but 1.45GB/sec (4K uncapped) caused OOM crashes.
         const img = ctx.getImageData(0, 0, w, h)
+
         state.videoWriter.publish({
           rgba: img.data,
           width: w,

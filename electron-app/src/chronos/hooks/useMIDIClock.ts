@@ -136,26 +136,36 @@ export function useMIDIClock(): UseMIDIClockReturn {
   const bpmStateRef = useRef<BpmDerivationState>(createBpmDerivationState())
   const clockCountRef = useRef(0)
   const lastClockTimeRef = useRef(0)
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // 🩸 WAVE 7568: Passive watchdog replaces per-pulse clearTimeout+setTimeout.
+  // Old code: 56 clearTimeout + 56 setTimeout per second (112 C++ timer objects/sec).
+  // New code: a single setInterval at 10Hz checks if lastPulseTime is stale.
+  const lastPulseTimeRef = useRef(0)
+  const watchdogRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const messageHandlerRef = useRef<((event: MIDIMessageEvent) => void) | null>(null)
-  
+
   // ── Check browser support ──
   const isSupported = typeof navigator !== 'undefined' && 'requestMIDIAccess' in navigator
 
-  // ── Clock timeout: detect signal loss ──
+  // ── Clock timeout: detect signal loss (passive watchdog) ──
   const resetClockTimeout = useCallback(() => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current)
+    // Just stamp the last pulse time — the watchdog interval checks it.
+    lastPulseTimeRef.current = performance.now()
+    if (watchdogRef.current === null) {
+      // 10Hz poll — checks if lastPulseTime is older than CLOCK_TIMEOUT_MS.
+      // One setInterval = one C++ timer object total, vs 112/sec with the old approach.
+      watchdogRef.current = setInterval(() => {
+        if (lastPulseTimeRef.current > 0 && performance.now() - lastPulseTimeRef.current > CLOCK_TIMEOUT_MS) {
+          // No clock received for 2 seconds — signal lost
+          setSignalQuality('none')
+          setMidiBpm(0)
+          resetBpmDerivation(bpmStateRef.current)
+          clockTimestampsRef.current = []
+          clockCountRef.current = 0
+          lastPulseTimeRef.current = 0
+          console.log('[MIDIClock] ⚠️ Clock signal lost (timeout)')
+        }
+      }, 100)
     }
-    timeoutRef.current = setTimeout(() => {
-      // No clock received for 2 seconds — signal lost
-      setSignalQuality('none')
-      setMidiBpm(0)
-      resetBpmDerivation(bpmStateRef.current)
-      clockTimestampsRef.current = []
-      clockCountRef.current = 0
-      console.log('[MIDIClock] ⚠️ Clock signal lost (timeout)')
-    }, CLOCK_TIMEOUT_MS)
   }, [])
 
   // ── Core MIDI message handler ──
@@ -278,27 +288,36 @@ export function useMIDIClock(): UseMIDIClockReturn {
       devices.map(d => d.name).join(', ') || 'none')
   }, [])
 
+  // 🩸 WAVE 7568: Track wired inputs + their handlers for proper cleanup.
+  // Using addEventListener instead of onmidimessage allows multiple consumers
+  // (useMidiLearn + useMIDIClock + MIDIClockSlave) to coexist on the same input.
+  const wiredInputsRef = useRef<Map<MIDIInput, (event: Event) => void>>(new Map())
+  const stateChangeHandlerRef = useRef<(() => void) | null>(null)
+
   // ── Wire/unwire message listeners on inputs ──
   const wireInputs = useCallback((access: MIDIAccess, deviceId: string | null) => {
-    // Remove old listeners first
-    access.inputs.forEach((input) => {
-      input.onmidimessage = null
-    })
-    
-    // Attach new listeners
+    // Remove old listeners first (only the ones WE wired)
+    for (const [input, handler] of wiredInputsRef.current) {
+      input.removeEventListener('midimessage', handler)
+    }
+    wiredInputsRef.current.clear()
+
+    // Attach new listeners using addEventListener
     let connectedCount = 0
     access.inputs.forEach((input) => {
       if (deviceId === null || input.id === deviceId) {
-        input.onmidimessage = (event: Event) => {
+        const handler = (event: Event) => {
           // Web MIDI API types are imprecise — cast safely
           if (messageHandlerRef.current) {
             messageHandlerRef.current(event as MIDIMessageEvent)
           }
         }
+        input.addEventListener('midimessage', handler)
+        wiredInputsRef.current.set(input, handler)
         connectedCount++
       }
     })
-    
+
     setIsConnected(connectedCount > 0)
     console.log(`[MIDIClock] 🔌 Wired ${connectedCount} MIDI input(s)`)
   }, [])
@@ -324,13 +343,15 @@ export function useMIDIClock(): UseMIDIClockReturn {
       
       // Wire listeners
       wireInputs(access, selectedDeviceId)
-      
-      // Listen for device changes (hot-plug)
-      access.onstatechange = () => {
+
+      // Listen for device changes (hot-plug) via addEventListener
+      const stateHandler = () => {
         console.log('[MIDIClock] 🔄 MIDI device change detected')
         refreshDevices()
         wireInputs(access, selectedDeviceId)
       }
+      stateChangeHandlerRef.current = stateHandler
+      access.addEventListener('statechange', stateHandler)
       
       setSource('midi')
       console.log('[MIDIClock] 🎹 MIDI Clock mode ENABLED')
@@ -344,20 +365,25 @@ export function useMIDIClock(): UseMIDIClockReturn {
 
   // ── Disable MIDI Clock ──
   const disableMIDI = useCallback(() => {
-    // Remove all listeners
+    // Remove all listeners via removeEventListener (only the ones WE wired)
     const access = midiAccessRef.current
     if (access) {
-      access.inputs.forEach((input) => {
-        input.onmidimessage = null
-      })
-      access.onstatechange = null
+      for (const [input, handler] of wiredInputsRef.current) {
+        input.removeEventListener('midimessage', handler)
+      }
+      wiredInputsRef.current.clear()
+      if (stateChangeHandlerRef.current) {
+        access.removeEventListener('statechange', stateChangeHandlerRef.current)
+        stateChangeHandlerRef.current = null
+      }
     }
     
-    // Clear timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current)
-      timeoutRef.current = null
+    // Clear watchdog (WAVE 7568: replaces per-pulse setTimeout)
+    if (watchdogRef.current) {
+      clearInterval(watchdogRef.current)
+      watchdogRef.current = null
     }
+    lastPulseTimeRef.current = 0
     
     // Reset state
     midiAccessRef.current = null

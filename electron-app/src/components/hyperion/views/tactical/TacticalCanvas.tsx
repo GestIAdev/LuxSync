@@ -121,6 +121,11 @@ const GF_PAN_VEL = 12, GF_TILT_VEL = 13
  * Translate Aether Glass Float32Array (16 floats/fixture, raw DMX scale)
  * into the Worker's 10-float packed buffer (normalizes intensity/pan/tilt to 0-1).
  * Zero-allocation — writes into pre-allocated destBuffer.
+ *
+ * 🛡️ WAVE 7569: NaN SHIELD — every value is sanitized to 0 if non-finite
+ * before writing to destBuffer. This prevents poisoned memory from reaching
+ * the render worker, where NaN would silently disable fixture drawing
+ * (ctx.lineTo(NaN, ...) is a silent no-op in Chromium).
  */
 function packGlassFrameInto(
   destBuffer: Float32Array,
@@ -130,16 +135,26 @@ function packGlassFrameInto(
   for (let i = 0; i < fixtureCount; i++) {
     const gOff = GLASS_HEADER_FLOATS + i * GLASS_FLOATS_PER_FIX
     const wOff = i * FLOATS_PER_FIXTURE
-    destBuffer[wOff + FIXTURE_FIELD.R]             = glassView[gOff + GF_R]
-    destBuffer[wOff + FIXTURE_FIELD.G]             = glassView[gOff + GF_G]
-    destBuffer[wOff + FIXTURE_FIELD.B]             = glassView[gOff + GF_B]
-    destBuffer[wOff + FIXTURE_FIELD.INTENSITY]     = glassView[gOff + GF_DIMMER] / 255
-    destBuffer[wOff + FIXTURE_FIELD.PHYSICAL_PAN]  = glassView[gOff + GF_PHYS_PAN] / 255
-    destBuffer[wOff + FIXTURE_FIELD.PHYSICAL_TILT] = glassView[gOff + GF_PHYS_TILT] / 255
-    destBuffer[wOff + FIXTURE_FIELD.ZOOM]          = glassView[gOff + GF_ZOOM]
-    destBuffer[wOff + FIXTURE_FIELD.FOCUS]         = glassView[gOff + GF_FOCUS]
-    destBuffer[wOff + FIXTURE_FIELD.PAN_VELOCITY]  = glassView[gOff + GF_PAN_VEL]
-    destBuffer[wOff + FIXTURE_FIELD.TILT_VELOCITY] = glassView[gOff + GF_TILT_VEL]
+    const r   = glassView[gOff + GF_R]
+    const g   = glassView[gOff + GF_G]
+    const b   = glassView[gOff + GF_B]
+    const dim = glassView[gOff + GF_DIMMER]
+    const pPan  = glassView[gOff + GF_PHYS_PAN]
+    const pTilt = glassView[gOff + GF_PHYS_TILT]
+    const zoom  = glassView[gOff + GF_ZOOM]
+    const focus = glassView[gOff + GF_FOCUS]
+    const panV  = glassView[gOff + GF_PAN_VEL]
+    const tiltV = glassView[gOff + GF_TILT_VEL]
+    destBuffer[wOff + FIXTURE_FIELD.R]             = Number.isFinite(r) ? r : 0
+    destBuffer[wOff + FIXTURE_FIELD.G]             = Number.isFinite(g) ? g : 0
+    destBuffer[wOff + FIXTURE_FIELD.B]             = Number.isFinite(b) ? b : 0
+    destBuffer[wOff + FIXTURE_FIELD.INTENSITY]     = Number.isFinite(dim) ? dim / 255 : 0
+    destBuffer[wOff + FIXTURE_FIELD.PHYSICAL_PAN]  = Number.isFinite(pPan) ? pPan / 255 : 0
+    destBuffer[wOff + FIXTURE_FIELD.PHYSICAL_TILT] = Number.isFinite(pTilt) ? pTilt / 255 : 0
+    destBuffer[wOff + FIXTURE_FIELD.ZOOM]          = Number.isFinite(zoom) ? zoom : 0
+    destBuffer[wOff + FIXTURE_FIELD.FOCUS]         = Number.isFinite(focus) ? focus : 0
+    destBuffer[wOff + FIXTURE_FIELD.PAN_VELOCITY]  = Number.isFinite(panV) ? panV : 0
+    destBuffer[wOff + FIXTURE_FIELD.TILT_VELOCITY] = Number.isFinite(tiltV) ? tiltV : 0
   }
 }
 

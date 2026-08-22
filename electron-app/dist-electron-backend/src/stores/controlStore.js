@@ -54,8 +54,6 @@ const DEFAULT_STATE = {
     // 🌊 WAVE 2432: Omni-Liquid always active, default 4.1 layout
     useLiquidStereo: true,
     liquidLayout: '4.1',
-    // 🏛️ WAVE 4561: Sidebar mode — empieza en controls (normal)
-    sidebarMode: 'controls',
 };
 // ═══════════════════════════════════════════════════════════════════════════
 // STORE
@@ -86,7 +84,8 @@ export const useControlStore = create()(persist((set, get) => ({
     setFlowParams: (params) => {
         const current = get().flowParams;
         const updated = { ...current, ...params };
-        console.log('[ControlStore] 🌊 Flow params updated:', updated);
+        // 🩸 WAVE 7568: Silent update — faders can fire 300+ CC/sec.
+        // console.log here generated ~300 C++ strings/sec in Oilpan.
         set({ flowParams: updated });
     },
     toggleAI: () => {
@@ -179,12 +178,14 @@ export const useControlStore = create()(persist((set, get) => ({
     },
     setGlobalSaturation: (value) => {
         const clamped = Math.max(0, Math.min(1, value));
-        console.log(`[ControlStore] 🌈 Saturation: ${clamped.toFixed(2)}`);
+        // 🩸 WAVE 7568: Silent update — faders can fire 300+ CC/sec.
+        // console.log here generated ~300 C++ strings/sec in Oilpan.
         set({ globalSaturation: clamped });
     },
     setGlobalIntensity: (value) => {
         const clamped = Math.max(0, Math.min(1, value));
-        console.log(`[ControlStore] 💡 Intensity: ${clamped.toFixed(2)}`);
+        // 🩸 WAVE 7568: Silent update — faders can fire 300+ CC/sec.
+        // console.log here generated ~300 C++ strings/sec in Oilpan.
         set({ globalIntensity: clamped });
     },
     // ═══════════════════════════════════════════════════════════════════
@@ -201,13 +202,6 @@ export const useControlStore = create()(persist((set, get) => ({
     reset: () => {
         console.log('[ControlStore] 🔄 Reset to defaults');
         set(DEFAULT_STATE);
-    },
-    // ═══════════════════════════════════════════════════════════════════
-    // 🏛️ WAVE 4561: SIDEBAR MODE — KINETICS CATHEDRAL
-    // ═══════════════════════════════════════════════════════════════════
-    setSidebarMode: (mode) => {
-        console.log(`[ControlStore] 🏛️ Sidebar mode: ${mode}`);
-        set({ sidebarMode: mode });
     },
 }), {
     name: 'luxsync-control-store',

@@ -1098,7 +1098,10 @@ export class EffectDreamSimulator {
       }
       
       // Calcular intensidad basada en energía predicha
-      const intensity = this.calculateIntensity(prediction.predictedEnergy, effect)
+      // 🌊 WAVE 7575: Intensity Cap por zona proyectada — evita que efectos suaves
+      // (ambient/gentle) disparen a intensidad de clímax cuando el zone override
+      // los selecciona durante un pico energético pre-breakdown.
+      const intensity = this.calculateIntensity(prediction.predictedEnergy, effect, projectedZone)
       
       // 🔮 WAVE 1190: PROYECTO CASSANDRA - Boost para efectos sugeridos por el Oráculo
       const isSuggestedByOracle = prediction.suggestedEffects?.some(
@@ -1176,13 +1179,13 @@ export class EffectDreamSimulator {
     }
   }
 
-  private calculateIntensity(predictedEnergy: number, effect: string): number {
+  private calculateIntensity(predictedEnergy: number, effect: string, projectedZone?: string): number {
     // ⚡ WAVE 4997: SELENE INTENSITY FLOOR & DE-GHOSTING
     const MIN_VISIBLE_INTENSITY = 0.80
-    
+
     // Intensidad base: la energía predicha o el suelo garantizado
     let intensity = Math.max(MIN_VISIBLE_INTENSITY, predictedEnergy)
-    
+
     // Ajustar por tipo de efecto (usando la intensidad base con suelo)
     if (effect.includes('strobe') || effect.includes('laser')) {
       // Efectos agresivos usan full energy
@@ -1191,7 +1194,29 @@ export class EffectDreamSimulator {
       // Efectos suaves usan menos energy
       intensity = intensity * 0.8
     }
-    
+
+    // 🌊 WAVE 7575: ZONE INTENSITY CAP
+    // Cuando un zone override proyecta una zona baja (ambient/gentle) durante
+    // un pico energético pre-breakdown, la intensidad calculada puede ser 0.96+.
+    // Esto hace que "Ghost Breath" se dispare como un strobe a máxima potencia.
+    // El cap limita la intensidad al rango natural de la zona proyectada,
+    // convirtiendo el efecto suave en un preludio elegante al breakdown.
+    const ZONE_INTENSITY_CAP: Record<string, number> = {
+      silence: 0.35,
+      valley:  0.50,
+      ambient: 0.65,
+      gentle:  0.75,
+      active:  0.85,
+      intense: 0.95,
+      peak:    1.00,
+    }
+    if (projectedZone) {
+      const cap = ZONE_INTENSITY_CAP[projectedZone]
+      if (cap !== undefined) {
+        intensity = Math.min(intensity, cap)
+      }
+    }
+
     return Math.max(0, Math.min(1, intensity))
   }
   

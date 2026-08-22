@@ -755,13 +755,19 @@ export class SeleneTitanConscious extends EventEmitter {
         } else if (verdict.action === 'fire' && verdict.candidate) {
           dreamEngineIntegrator.clearPreBuffer()
           const candidate = verdict.candidate
-          const fireEffectId = verdict.reroutedEffectId ?? candidate.effect
-          const fireEffectName = verdict.reroutedEffectId
-            ? effectDisplayName(verdict.reroutedEffectId)
-            : candidate.effectName
-          const fireIntensity = verdict.reroutedEffectId
-            ? Math.min(candidate.intensity, 0.75)
-            : candidate.intensity
+          // 🌊 WAVE 7575: ETA-Aware Upgrade tiene prioridad sobre el reroute y el candidato original
+          const fireEffectId = verdict.upgradedEffectId ?? verdict.reroutedEffectId ?? candidate.effect
+          const fireEffectName = verdict.upgradedEffectId
+            ? effectDisplayName(verdict.upgradedEffectId)
+            : verdict.reroutedEffectId
+              ? effectDisplayName(verdict.reroutedEffectId)
+              : candidate.effectName
+          // Upgrade: intensidad full (clímax real). Reroute: capado a 0.75. Original: como viene.
+          const fireIntensity = verdict.upgradedEffectId
+            ? Math.min(1.0, Math.max(candidate.intensity, 0.90))
+            : verdict.reroutedEffectId
+              ? Math.min(candidate.intensity, 0.75)
+              : candidate.intensity
 
           if (verdict.trigger === 'glass_break') {
             console.log(
@@ -772,6 +778,7 @@ export class SeleneTitanConscious extends EventEmitter {
             console.log(
               `[SeleneTitanConscious] 🔮👑 CASSANDRA SOVEREIGN CLOCK: firing "${fireEffectName ?? fireEffectId}" ` +
               `| confidence=${candidate.confidence.toFixed(2)}` +
+              `${verdict.upgradedEffectId ? ' | ⚡ ETA-AWARE UPGRADE' : ''}` +
               `${verdict.reroutedEffectId ? ' | 🔄 HEAVY RE-ROUTED' : ''}` +
               `| bypassing HuntEngine + Fuzzy + EnergyOverride`
             )
@@ -779,9 +786,11 @@ export class SeleneTitanConscious extends EventEmitter {
 
           const reason = verdict.trigger === 'glass_break'
             ? `🪟💥 CASSANDRA GLASS BREAK (WAVE 5016)`
-            : verdict.reroutedEffectId
-              ? `🔮👑 CASSANDRA SOVEREIGN CLOCK (WAVE 5011) 🔄 HEAVY RE-ROUTE`
-              : '🔮👑 CASSANDRA SOVEREIGN CLOCK (WAVE 5011)'
+            : verdict.upgradedEffectId
+              ? `🔮👑 CASSANDRA SOVEREIGN CLOCK (WAVE 5011) ⚡ ETA-AWARE UPGRADE (WAVE 7575)`
+              : verdict.reroutedEffectId
+                ? `🔮👑 CASSANDRA SOVEREIGN CLOCK (WAVE 5011) 🔄 HEAVY RE-ROUTE`
+                : '🔮👑 CASSANDRA SOVEREIGN CLOCK (WAVE 5011)'
 
           const sovereignOutput: ConsciousnessOutput = {
             ...createEmptyOutput(),

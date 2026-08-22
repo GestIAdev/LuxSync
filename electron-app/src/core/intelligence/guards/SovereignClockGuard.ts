@@ -36,6 +36,8 @@ export interface SovereignVerdict {
   readonly action: SovereignAction
   readonly candidate: PreBufferedCandidate | null
   readonly reroutedEffectId: string | null
+  /** 🌊 WAVE 7575: ETA-Aware Upgrade — efecto heavy/peak que reemplaza al gentle pre-buffered */
+  readonly upgradedEffectId: string | null
   readonly reason: string | null
   readonly trigger: 'sovereign_window' | 'glass_break' | null
 }
@@ -131,6 +133,48 @@ function selectRerouteCandidate(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🌊 WAVE 7575: ETA-AWARE UPGRADE — selección de candidato heavy/peak
+// Espejo del selectRerouteCandidate pero en sentido inverso: cuando el
+// DreamSimulator pre-bufferizó un efecto gentle/ambient (porque Cassandra
+// predijo breakdown_imminent/energy_drop) PERO en el momento del disparo
+// hay clímax real (bass > 0.55, Z > 1.5, ETA > 2500ms), selecciona un
+// efecto heavy/peak para aprovechar el pico energético en vez de desperdiciarlo.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Selecciona un candidato heavy/peak para el upgrade.
+ * 1. Filtra: isHeavyCandidate OR isDivineCandidate OR aggression > 0.80
+ * 2. Ordena por aggression descendente (más agresivo primero)
+ * 3. Descarta los que están en cooldown (disparados en los últimos 8s)
+ * 4. Selecciona aleatoriamente entre los 3 primeros válidos
+ * @returns effectId del candidato seleccionado, o null si no hay candidatos
+ */
+function selectUpgradeCandidate(
+  arsenal: readonly RerouteCandidate[],
+  effectHistory: readonly { type: string; timestamp: number }[],
+  now: number,
+): string | null {
+  const heavier = arsenal.filter(e =>
+    (e.simMeta.isHeavyCandidate || e.simMeta.isDivineCandidate || (e.dna.aggression ?? 0) > 0.80)
+    && (!e.organismId || e.organismStatus !== 'alive')
+  )
+  if (heavier.length === 0) return null
+
+  const sorted = [...heavier].sort((a, b) => (b.dna.aggression ?? 0) - (a.dna.aggression ?? 0))
+
+  // Candidatos no en cooldown (no disparados en los últimos 8s)
+  const notInCooldown = sorted.filter(e =>
+    !effectHistory.some(h => h.type === e.id && (now - h.timestamp) < 8000)
+  )
+
+  const pool = notInCooldown.length > 0 ? notInCooldown : sorted
+  // Seleccionar aleatoriamente entre los 3 primeros del pool
+  const topN = Math.min(3, pool.length)
+  const pick = pool[Math.floor(Math.random() * topN)]
+  return pick.id
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Sovereign Clock Guard
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -144,7 +188,7 @@ export class SovereignClockGuard {
   evaluate(ctx: SovereignClockContext): SovereignVerdict {
     const { bufferStatus } = ctx
     if (!bufferStatus) {
-      return { action: 'wait', candidate: null, reroutedEffectId: null, reason: null, trigger: null }
+      return { action: 'wait', candidate: null, reroutedEffectId: null, upgradedEffectId: null, reason: null, trigger: null }
     }
 
     const timeToEvent = bufferStatus.predictedEventAt - ctx.now
@@ -168,15 +212,15 @@ export class SovereignClockGuard {
 
     if (!withinSovereignWindow && !glassBreak) {
       if (timeToEvent < -this.SOVEREIGN_WINDOW_MS) {
-        return { action: 'clear', candidate: null, reroutedEffectId: null, reason: null, trigger: null }
+        return { action: 'clear', candidate: null, reroutedEffectId: null, upgradedEffectId: null, reason: null, trigger: null }
       }
-      return { action: 'wait', candidate: null, reroutedEffectId: null, reason: null, trigger: null }
+      return { action: 'wait', candidate: null, reroutedEffectId: null, upgradedEffectId: null, reason: null, trigger: null }
     }
 
     const trigger: 'sovereign_window' | 'glass_break' = glassBreak ? 'glass_break' : 'sovereign_window'
     const candidate = ctx.candidate
     if (!candidate) {
-      return { action: 'clear', candidate: null, reroutedEffectId: null, reason: null, trigger: null }
+      return { action: 'clear', candidate: null, reroutedEffectId: null, upgradedEffectId: null, reason: null, trigger: null }
     }
 
     // ── Minion Quarantine ──
@@ -186,6 +230,7 @@ export class SovereignClockGuard {
         action: 'abort',
         candidate: null,
         reroutedEffectId: null,
+        upgradedEffectId: null,
         reason: `Minion quarantine enforced — "${candidate.effectName ?? candidate.effect}" blocked from live fire`,
         trigger,
       }
@@ -371,8 +416,59 @@ export class SovereignClockGuard {
         action: 'abort',
         candidate: null,
         reroutedEffectId: null,
+        upgradedEffectId: null,
         reason: abortReason,
         trigger,
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🌊 WAVE 7575: ETA-AWARE UPGRADE — Light → Heavy cuando el clímax es real
+    // ═══════════════════════════════════════════════════════════════════════
+    // El DreamSimulator pre-bufferizó un efecto gentle/ambient porque Cassandra
+    // predijo breakdown_imminent/energy_drop. PERO a veces el DJ lanza el clímax
+    // JUSTO en el momento del disparo. Si hay bass real (>0.55, no vocal), Z alto
+    // (>1.5), y el breakdown aún está lejos (ETA > 2500ms), aprovechamos el pico
+    // y disparamos un heavy/peak en vez de desperdiciar el clímax con un gentle.
+    //
+    // Condiciones (TODAS deben cumplirse):
+    //   1. El candidato es gentle/ambient (aggression <= 0.70, no heavy, no divine)
+    //   2. ETA > 2500ms (el breakdown NO es inminente — hay margen para el heavy)
+    //   3. bass > 0.55 (bombo real, no autotune — más estricto que el gate de 0.45)
+    //   4. Z > 1.5 (anomalía estadística real)
+    //   5. rawEnergy > 0.70 (energía física alta)
+    // ═══════════════════════════════════════════════════════════════════════
+    let upgradedEffectId: string | null = null
+    if (!heavyRerouted && registryEntry) {
+      const isGentleCandidate = !registryEntry.simMeta.isHeavyCandidate
+        && !registryEntry.simMeta.isDivineCandidate
+        && (registryEntry.dna.aggression ?? 0) <= 0.70
+
+      const UPGRADE_ETA_MIN_MS = 2500
+      const UPGRADE_BASS_MIN = 0.55
+      const UPGRADE_Z_MIN = 1.5
+      const UPGRADE_ENERGY_MIN = 0.70
+
+      const etaMs = bufferStatus.predictedEventAt - ctx.now
+      const canUpgrade = isGentleCandidate
+        && etaMs > UPGRADE_ETA_MIN_MS
+        && ctx.titanState.bass > UPGRADE_BASS_MIN
+        && ctx.currentZScore > UPGRADE_Z_MIN
+        && ctx.titanState.rawEnergy > UPGRADE_ENERGY_MIN
+
+      if (canUpgrade) {
+        const vibeArsenal = getDynamicEffectRegistry().getEffectsForVibe(ctx.titanState.vibeId ?? '')
+        upgradedEffectId = selectUpgradeCandidate(vibeArsenal, ctx.effectHistory, ctx.now)
+        if (upgradedEffectId) {
+          console.log(
+            `[Sovereign Clock ⚡] ETA-AWARE UPGRADE: "${candidate.effectName ?? candidate.effect}" → "${effectDisplayName(upgradedEffectId)}"` +
+            ` | ETA=${etaMs.toFixed(0)}ms > ${UPGRADE_ETA_MIN_MS}` +
+            ` bass=${ctx.titanState.bass.toFixed(3)} > ${UPGRADE_BASS_MIN}` +
+            ` Z=${ctx.currentZScore.toFixed(2)}σ > ${UPGRADE_Z_MIN}` +
+            ` E=${ctx.titanState.rawEnergy.toFixed(3)} > ${UPGRADE_ENERGY_MIN}` +
+            ` — clímax real detectado, breakdown lejos, aprovechar el pico`
+          )
+        }
       }
     }
 
@@ -381,6 +477,7 @@ export class SovereignClockGuard {
       action: 'fire',
       candidate,
       reroutedEffectId: heavyRerouted ? reroutedEffectId : null,
+      upgradedEffectId,
       reason: null,
       trigger,
     }

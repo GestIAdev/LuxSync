@@ -44,8 +44,13 @@ export const OrbitTrailCanvas: React.FC<OrbitTrailCanvasProps> = memo(
 
       const draw = () => {
         const buf = vibeLabTelemetryBus.read()
-        const pan = buf[TELEMETRY_INDICES.panPosition] ?? 0
-        const tilt = buf[TELEMETRY_INDICES.tiltPosition] ?? 0
+        const rawPan = buf[TELEMETRY_INDICES.panPosition] ?? 0
+        const rawTilt = buf[TELEMETRY_INDICES.tiltPosition] ?? 0
+        // 🛡️ WAVE 7569: NaN SHIELD — telemetry can carry NaN from the Aether
+        // engine if a fixture has corrupted pan/tilt. createRadialGradient
+        // throws TypeError on non-finite coordinates in Chromium.
+        const pan = Number.isFinite(rawPan) ? rawPan : 0
+        const tilt = Number.isFinite(rawTilt) ? rawTilt : 0
 
         // Push to trail
         const trail = trailRef.current
@@ -84,13 +89,22 @@ export const OrbitTrailCanvas: React.FC<OrbitTrailCanvasProps> = memo(
         // ── Current position (glow dot) ─────────────────────────────────
         const px = cx + pan * scale
         const py = cy - tilt * scale
-        const grad = ctx.createRadialGradient(px, py, 0, px, py, 8)
-        grad.addColorStop(0, 'rgba(255, 176, 32, 0.9)')
-        grad.addColorStop(1, 'rgba(255, 176, 32, 0)')
-        ctx.fillStyle = grad
-        ctx.beginPath()
-        ctx.arc(px, py, 8, 0, Math.PI * 2)
-        ctx.fill()
+        // 🛡️ WAVE 7569: Guard before createRadialGradient — throws on NaN
+        if (!Number.isFinite(px) || !Number.isFinite(py)) {
+          rafRef.current = requestAnimationFrame(draw)
+          return
+        }
+        // 🛡️ WAVE 7570: Solid-fill concentric circles instead of
+        // createRadialGradient. Position changes every frame so gradient
+        // can't be cached. Solid circles = zero CanvasGradient C++ objects.
+        for (let s = 4; s >= 1; s--) {
+          const r = (8 * s) / 4
+          const alpha = 0.9 * (1 - (s - 1) / 4) * 0.4
+          ctx.fillStyle = `rgba(255, 176, 32, ${alpha})`
+          ctx.beginPath()
+          ctx.arc(px, py, r, 0, Math.PI * 2)
+          ctx.fill()
+        }
 
         ctx.fillStyle = '#ffffff'
         ctx.beginPath()

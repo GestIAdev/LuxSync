@@ -86,15 +86,18 @@ export const ThermalVector: React.FC<ThermalVectorProps> = memo(({ size = 120 })
     const cy = size / 2
     let phase = 0
 
+    // 🛡️ WAVE 7570: Cache the background gradient — fixed dimensions and
+    // fixed kelvin colors. Creating it every frame at 60fps leaks C++ objects.
+    const bgGradient = ctx.createLinearGradient(0, 0, 0, size)
+    bgGradient.addColorStop(0, kelvinToRGB(10000)) // frío arriba
+    bgGradient.addColorStop(0.5, kelvinToRGB(6000)) // neutral centro
+    bgGradient.addColorStop(1, kelvinToRGB(2000)) // cálido abajo
+
     const draw = () => {
       ctx.clearRect(0, 0, size, size)
 
-      // ── Gradiente de temperatura de fondo ───────────────────────────
-      const grad = ctx.createLinearGradient(0, 0, 0, size)
-      grad.addColorStop(0, kelvinToRGB(10000)) // frío arriba
-      grad.addColorStop(0.5, kelvinToRGB(6000)) // neutral centro
-      grad.addColorStop(1, kelvinToRGB(2000)) // cálido abajo
-      ctx.fillStyle = grad
+      // ── Gradiente de temperatura de fondo (cached) ──────────────────
+      ctx.fillStyle = bgGradient
       ctx.globalAlpha = 0.15
       ctx.beginPath()
       ctx.arc(cx, cy, size / 2 - 2, 0, Math.PI * 2)

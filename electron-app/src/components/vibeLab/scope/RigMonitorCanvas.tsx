@@ -65,22 +65,30 @@ export const RigMonitorCanvas: React.FC<RigMonitorCanvasProps> = memo(({ size = 
 
       // ── Draw zones ──────────────────────────────────────────────────
       for (let i = 0; i < 7; i++) {
-        const intensity = buf[ZONE_INDICES[i]] ?? 0
+        const rawIntensity = buf[ZONE_INDICES[i]] ?? 0
+        // 🛡️ WAVE 7569: NaN SHIELD — telemetry can carry NaN from the Aether
+        // engine. createRadialGradient throws TypeError on non-finite radius.
+        const intensity = Number.isFinite(rawIntensity) ? rawIntensity : 0
         const pos = ZONE_POS[i]
         const cx = pos.x * size
         const cy = pos.y * size
         const baseR = size * 0.06
         const glowR = baseR + intensity * baseR * 2
 
-        // Glow
-        if (intensity > 0.01) {
-          const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowR)
-          grad.addColorStop(0, `rgba(0, 229, 255, ${0.6 * intensity})`)
-          grad.addColorStop(1, 'rgba(0, 229, 255, 0)')
-          ctx.fillStyle = grad
-          ctx.beginPath()
-          ctx.arc(cx, cy, glowR, 0, Math.PI * 2)
-          ctx.fill()
+        // Glow — 🛡️ WAVE 7570: Solid-fill concentric circles instead of
+        // createRadialGradient. The gradient radius changes every frame
+        // (depends on intensity), so it can't be cached. Solid circles
+        // achieve the same glow effect with zero CanvasGradient C++ objects.
+        if (intensity > 0.01 && Number.isFinite(glowR) && glowR > 0) {
+          const steps = 4
+          for (let s = steps; s >= 1; s--) {
+            const r = (glowR * s) / steps
+            const alpha = (0.6 * intensity) * (1 - (s - 1) / steps) * 0.4
+            ctx.fillStyle = `rgba(0, 229, 255, ${alpha})`
+            ctx.beginPath()
+            ctx.arc(cx, cy, r, 0, Math.PI * 2)
+            ctx.fill()
+          }
         }
 
         // Core circle

@@ -573,6 +573,21 @@ export class SeleneTitanConscious extends EventEmitter {
   async process(titanState: TitanStabilizedState): Promise<ConsciousnessOutput> {
     this.state.framesProcessed++
     this.stats.framesProcessed++
+    // 🛡️ WAVE 7570: Periodic throttle cleanup — every ~10s (600 frames @ 60fps).
+    // Prevents _dnaLogThrottle, lastGatekeeperLogs, _constitutionLogThrottle
+    // from growing unboundedly with unique state+effect combos.
+    if (this.stats.framesProcessed % 600 === 0) {
+      const cutoff = Date.now() - 60000 // Remove entries older than 60s
+      for (const [key, ts] of this._dnaLogThrottle) {
+        if (ts < cutoff) this._dnaLogThrottle.delete(key)
+      }
+      for (const key in this.lastGatekeeperLogs) {
+        if (this.lastGatekeeperLogs[key] < cutoff) delete this.lastGatekeeperLogs[key]
+      }
+      for (const key in this._constitutionLogThrottle) {
+        if (this._constitutionLogThrottle[key] < cutoff) delete this._constitutionLogThrottle[key]
+      }
+    }
     // 🩸 WAVE 6040: REGLA DEL VALLE — rastrear valle de energía post-disparo
     this.minEnergySinceLastEffect = Math.min(this.minEnergySinceLastEffect, titanState.rawEnergy)
     
@@ -2066,7 +2081,14 @@ export class SeleneTitanConscious extends EventEmitter {
     
     this.dropBridge.reset()
     this.lastDropBridgeResult = null
-    
+
+    // 🛡️ WAVE 7570: Clear throttle Maps/Records — they grow unboundedly
+    // with unique state+effect combos. Minor leak (~310KB over 40min) but
+    // good hygiene.
+    this._dnaLogThrottle.clear()
+    this.lastGatekeeperLogs = {}
+    this._constitutionLogThrottle = {}
+
     if (this.config.debug) {
       console.log('[SeleneTitanConscious] 🔄 Reset complete (PHASES 2-4 + Memory + Fuzzy)')
     }

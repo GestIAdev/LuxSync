@@ -122,14 +122,17 @@ export const OrbitThumbnail: React.FC<OrbitThumbnailProps> = memo(
           const px = cx + p.x * scale
           const py = cy - p.y * scale
 
-          // Glow
-          const grad = ctx.createRadialGradient(px, py, 0, px, py, 6)
-          grad.addColorStop(0, withAlpha(accent, 1))
-          grad.addColorStop(1, withAlpha(accent, 0))
-          ctx.fillStyle = grad
-          ctx.beginPath()
-          ctx.arc(px, py, 6, 0, Math.PI * 2)
-          ctx.fill()
+          // 🛡️ WAVE 7570: Solid-fill concentric circles instead of
+          // createRadialGradient. 22 instances × 60fps = 1320 gradients/sec
+          // eliminated. Position is dynamic so gradient can't be cached.
+          for (let s = 4; s >= 1; s--) {
+            const r = (6 * s) / 4
+            const alpha = 1 * (1 - (s - 1) / 4) * 0.4
+            ctx.fillStyle = withAlpha(accent, alpha)
+            ctx.beginPath()
+            ctx.arc(px, py, r, 0, Math.PI * 2)
+            ctx.fill()
+          }
 
           // Núcleo
           ctx.fillStyle = '#ffffff'

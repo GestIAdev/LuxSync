@@ -476,7 +476,10 @@ function renderBeatGrid(
   leftOffset: number
 ): void {
   const ctx = canvas.getContext('2d')
-  if (!ctx || bpm <= 0) return
+  // 🛡️ WAVE 7569: NaN SHIELD — bpm <= 0 is false for NaN (NaN comparisons
+  // always return false), so NaN would pass this guard and produce
+  // 60000/NaN = NaN → all downstream calculations poisoned.
+  if (!ctx || !Number.isFinite(bpm) || bpm <= 0) return
   
   const { width, height } = canvas
   const msPerBeat = 60000 / bpm
@@ -603,17 +606,12 @@ export const WaveformLayer: React.FC<WaveformLayerProps> = memo(({
     
     // 🔧 WAVE 2018: Skip render if canvas has zero dimensions (wait for resize)
     if (canvas.width === 0 || canvas.height === 0) {
-      console.log('[WaveformLayer] ⏸️ Skipping render - canvas not sized yet')
       return
     }
-    
-    console.log('[WaveformLayer] 🎨 Rendering waveform', {
-      canvasWidth: canvas.width,
-      canvasHeight: canvas.height,
-      viewportStart: viewportStartMs,
-      viewportEnd: viewportEndMs
-    })
-    
+
+    // 🛡️ WAVE 7570.4: Removed per-render console.log — fired at 60fps during
+    // drag/scroll, generating ~120 log objects/sec in devtools console buffer.
+
     // Use requestAnimationFrame for smooth rendering
     const rafId = requestAnimationFrame(() => {
       renderWaveform(

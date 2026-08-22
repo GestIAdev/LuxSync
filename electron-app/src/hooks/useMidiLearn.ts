@@ -67,6 +67,9 @@ const STATUS_CC = 0xB0
 /** Soft takeover threshold (±5 out of 127) */
 const SOFT_TAKEOVER_THRESHOLD = 5
 
+// 🛡️ WAVE 7570.4: Throttle for Grand Master CC log — faders fire 300+/sec.
+let _lastGrandMasterLog = 0
+
 // ═══════════════════════════════════════════════════════════════════════════
 // MIDI MESSAGE PARSER — ZERO-ALLOCATION HOT PATH
 // ═══════════════════════════════════════════════════════════════════════════
@@ -331,7 +334,15 @@ export function useMidiLearn() {
         case 'grand-master':
           if (msg.type !== 'cc') return
           window.lux.aether.setGrandMaster(msg.value / 127)
-          console.log(`[MidiLearn] 🎛️ ARBITER: Grand Master → ${(msg.value / 127 * 100).toFixed(0)}%`)
+          // 🛡️ WAVE 7570.4: Throttle Grand Master log — CC faders fire 300+/sec.
+          // Each console.log generates a C++ string + devtools console buffer entry.
+          {
+            const _now = Date.now()
+            if (!_lastGrandMasterLog || _now - _lastGrandMasterLog > 500) {
+              console.log(`[MidiLearn] 🎛️ ARBITER: Grand Master → ${(msg.value / 127 * 100).toFixed(0)}%`)
+              _lastGrandMasterLog = _now
+            }
+          }
           return
         case 'kill-effects':
           if (msg.type !== 'note_on') return
@@ -455,6 +466,12 @@ export function useMidiLearn() {
   // MIDI INITIALIZATION
   // ═══════════════════════════════════════════════════════════════════════
 
+  // 🩸 WAVE 7568: Track wired inputs + statechange handler for proper cleanup.
+  // Using addEventListener instead of onmidimessage allows multiple consumers
+  // (useMidiLearn + useMIDIClock + MIDIClockSlave) to coexist on the same input.
+  const wiredInputsRef = useRef<Set<MIDIInput>>(new Set())
+  const stateChangeHandlerRef = useRef<(() => void) | null>(null)
+
   const initMidi = useCallback(async () => {
     if (isInitializedRef.current) return
     if (typeof navigator === 'undefined' || !('requestMIDIAccess' in navigator)) {
@@ -469,21 +486,34 @@ export function useMidiLearn() {
 
       console.log('[MidiLearn] 🎹 MIDI Access granted — Ghost Limbs ACTIVE')
 
-      // Wire all current inputs
+      // Wire all current inputs using addEventListener (coexists with other consumers)
       const wireInputs = () => {
         access.inputs.forEach((input) => {
-          input.onmidimessage = handleMidiMessage
+          if (wiredInputsRef.current.has(input)) return
+          input.addEventListener('midimessage', handleMidiMessage)
+          wiredInputsRef.current.add(input)
         })
-        console.log(`[MidiLearn] 🔌 Wired ${access.inputs.size} MIDI input(s)`)
+        // Prune disconnected inputs
+        const currentIds = new Set<string>()
+        access.inputs.forEach((input) => currentIds.add(input.id))
+        for (const input of wiredInputsRef.current) {
+          if (!currentIds.has(input.id)) {
+            input.removeEventListener('midimessage', handleMidiMessage)
+            wiredInputsRef.current.delete(input)
+          }
+        }
+        console.log(`[MidiLearn] 🔌 Wired ${wiredInputsRef.current.size} MIDI input(s)`)
       }
 
       wireInputs()
 
       // Re-wire on hot-plug
-      access.onstatechange = () => {
+      const stateHandler = () => {
         console.log('[MidiLearn] 🔄 MIDI device change')
         wireInputs()
       }
+      stateChangeHandlerRef.current = stateHandler
+      access.addEventListener('statechange', stateHandler)
     } catch (err) {
       console.error('[MidiLearn] ❌ MIDI access denied:', err)
     }
@@ -497,18 +527,22 @@ export function useMidiLearn() {
     initMidi()
 
     return () => {
-      // Cleanup on unmount — kill all listeners
+      // Cleanup on unmount — remove all listeners via removeEventListener
       const access = midiAccessRef.current
       if (access) {
-        access.inputs.forEach((input) => {
-          input.onmidimessage = null
-        })
-        access.onstatechange = null
+        for (const input of wiredInputsRef.current) {
+          input.removeEventListener('midimessage', handleMidiMessage)
+        }
+        wiredInputsRef.current.clear()
+        if (stateChangeHandlerRef.current) {
+          access.removeEventListener('statechange', stateChangeHandlerRef.current)
+          stateChangeHandlerRef.current = null
+        }
       }
       // WAVE 3302: Do NOT reset isInitializedRef here.
       // The old code set isInitializedRef.current = false in cleanup,
       // allowing re-init on re-renders → double listeners during race.
       // Since initMidi is now stable (zero deps), this effect runs ONCE.
     }
-  }, [initMidi])
+  }, [initMidi, handleMidiMessage])
 }

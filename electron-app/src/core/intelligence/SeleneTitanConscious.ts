@@ -415,6 +415,12 @@ export class SeleneTitanConscious extends EventEmitter {
   private _liquidRecorder: LiquidTelemetryRecorder = new LiquidTelemetryRecorder()
   private _v3Ignite: boolean = false
   private _lastSuppressedLog: number = 0
+  // 🛡️ WAVE 7570.4: Throttle timestamps for unthrottled logs
+  private _lastCooldownLog: number = 0
+  private _lastV3BassGateLog: number = 0
+  private _lastV3ZFloorLog: number = 0
+  private _lastV3IgnitionLog: number = 0
+  private _lastFireDiagLog: number = 0
   private _sovereignGuard: SovereignClockGuard = new SovereignClockGuard()
 
   // 🧬 WAVE 7535 → WAVE 7539: Candidate DNA resolution for s_DNA Context-Genome
@@ -460,7 +466,14 @@ export class SeleneTitanConscious extends EventEmitter {
     const effectManager = getEffectManager()
     effectManager.on('effectTriggered', (event: any) => {
       this.effectSelector.registerEffectFired(event.effectType)
-      console.log(`[SeleneTitanConscious 🔥] Cooldown registered: ${effectDisplayName(event.effectType)}`)
+      // 🛡️ WAVE 7570.4: Throttle cooldown log — can fire 10-20/sec during drops.
+      {
+        const _now = Date.now()
+        if (this._lastCooldownLog === 0 || _now - this._lastCooldownLog > 1000) {
+          console.log(`[SeleneTitanConscious 🔥] Cooldown registered: ${effectDisplayName(event.effectType)}`)
+          this._lastCooldownLog = _now
+        }
+      }
       
       // 🔒 WAVE 1177: CALIBRATION - Solo pushear al historial cuando REALMENTE se ejecuta
       // Esto evita que efectos bloqueados por GLOBAL_LOCK contaminen el historial
@@ -847,20 +860,30 @@ export class SeleneTitanConscious extends EventEmitter {
         const V3_HEAVY_MIN_Z = 1.0
         const v3ZScore = this.contextualMemory.getEnergyZScore()
         if (v3BassEnergy <= V3_BASS_GATE_THRESHOLD) {
-          console.log(
-            `[SeleneTitanConscious 🌊🛡️] V3 BASS GATE VETO: ` +
-            `"${finalOutput.effectDecision.effectName ?? effectId}" suppressed ` +
-            `(bass=${v3BassEnergy.toFixed(3)} ≤ ${V3_BASS_GATE_THRESHOLD}) — ` +
-            `vocal/autotune false positive, no sub-bass foundation`
-          )
+          // 🛡️ WAVE 7570.4: Throttle — can fire at 44Hz without this.
+          const _gateNow = Date.now()
+          if (this._lastV3BassGateLog === 0 || _gateNow - this._lastV3BassGateLog > 1000) {
+            console.log(
+              `[SeleneTitanConscious 🌊🛡️] V3 BASS GATE VETO: ` +
+              `"${finalOutput.effectDecision.effectName ?? effectId}" suppressed ` +
+              `(bass=${v3BassEnergy.toFixed(3)} ≤ ${V3_BASS_GATE_THRESHOLD}) — ` +
+              `vocal/autotune false positive, no sub-bass foundation`
+            )
+            this._lastV3BassGateLog = _gateNow
+          }
           finalOutput.effectDecision = null
         } else if (v3ZScore < V3_HEAVY_MIN_Z) {
-          console.log(
-            `[SeleneTitanConscious 🌊🛡️] V3 HEAVY Z-FLOOR VETO: ` +
-            `"${finalOutput.effectDecision.effectName ?? effectId}" suppressed ` +
-            `(Z=${v3ZScore.toFixed(2)}σ < ${V3_HEAVY_MIN_Z}) — ` +
-            `energy not statistically unusual enough for heavy effect`
-          )
+          // 🛡️ WAVE 7570.4: Throttle — can fire at 44Hz without this.
+          const _zFloorNow = Date.now()
+          if (this._lastV3ZFloorLog === 0 || _zFloorNow - this._lastV3ZFloorLog > 1000) {
+            console.log(
+              `[SeleneTitanConscious 🌊🛡️] V3 HEAVY Z-FLOOR VETO: ` +
+              `"${finalOutput.effectDecision.effectName ?? effectId}" suppressed ` +
+              `(Z=${v3ZScore.toFixed(2)}σ < ${V3_HEAVY_MIN_Z}) — ` +
+              `energy not statistically unusual enough for heavy effect`
+            )
+            this._lastV3ZFloorLog = _zFloorNow
+          }
           finalOutput.effectDecision = null
         }
       }
@@ -877,11 +900,15 @@ export class SeleneTitanConscious extends EventEmitter {
       // Si V3 ignite Y un efecto pasó todos los gates → notificar ignición materializada
       if (this._lastLiquidVerdict.ignite && finalOutput.effectDecision) {
         this._liquidCore.notifyIgnition(this._lastLiquidVerdict.intensity, now)
-        console.log(
-          `[SeleneTitanConscious 🌊✅] V3 IGNITION MATERIALIZED: ` +
-          `${finalOutput.effectDecision.effectName ?? finalOutput.effectDecision.effectType} ` +
-          `| I=${this._lastLiquidVerdict.intensity.toFixed(3)}`
-        )
+        // 🛡️ WAVE 7570.4: Throttle — can fire 5-10/sec during drops.
+        if (now - this._lastV3IgnitionLog > 1000) {
+          console.log(
+            `[SeleneTitanConscious 🌊✅] V3 IGNITION MATERIALIZED: ` +
+            `${finalOutput.effectDecision.effectName ?? finalOutput.effectDecision.effectType} ` +
+            `| I=${this._lastLiquidVerdict.intensity.toFixed(3)}`
+          )
+          this._lastV3IgnitionLog = now
+        }
       } else if (this._v3Ignite && !finalOutput.effectDecision) {
         // V3 quiso disparar pero V2/safety no produjo un candidato válido
         if (now - this._lastSuppressedLog > 1000) {
@@ -1797,21 +1824,27 @@ export class SeleneTitanConscious extends EventEmitter {
       this.lastEffectType = finalEffectDecision.effectType
 
       // 🔧 DIAG: Log detallado en cada disparo para ver por qué se dispara
+      // 🛡️ WAVE 7570.4: Throttle to 2s — this log has 12 .toFixed() interpolations
+      // and can fire 5-10/sec during drops, generating ~500 bytes/log of GC pressure.
       const _v = this._lastLiquidVerdict
       const _zL = this.lastMemoryOutput?.acousticReality?.zScores.low ?? 0
-      console.log(
-        `[FIRE-DIAG] ${effectDisplayName(finalEffectDecision.effectName ?? finalEffectDecision.effectType)} | ` +
-        `reason=${finalEffectDecision.reason ?? 'none'} | ` +
-        `E=${state.rawEnergy.toFixed(3)} Z=${zScore.toFixed(2)}σ | ` +
-        `bass=${state.bass.toFixed(3)} mid=${state.mid.toFixed(3)} high=${state.high.toFixed(3)} zL=${_zL.toFixed(2)}σ | ` +
-        `epicness=${(_v?.epicness ?? 0).toFixed(3)} v3Ignite=${this._v3Ignite} | ` +
-        `I(t)=${(_v?.fluid.impact ?? 0).toFixed(3)} T=${(_v?.fluid.tension ?? 0).toFixed(3)} | ` +
-        `phase=${this.lastMemoryOutput?.narrative?.narrativePhase ?? '?'} | ` +
-        `huntW=${huntDecision.worthiness.toFixed(3)} huntC=${huntDecision.confidence.toFixed(3)} | ` +
-        `pred=${prediction.type} predProb=${prediction.probability.toFixed(2)} predETA=${prediction.estimatedTimeMs}ms | ` +
-        `dna=${!!dreamIntegrationData?.approved} ethics=${dreamIntegrationData?.ethicalVerdict?.ethicalScore?.toFixed(3) ?? 'N/A'} | ` +
-        `intensity=${finalEffectDecision.intensity?.toFixed(2) ?? 'N/A'}`
-      )
+      const _fireDiagNow = Date.now()
+      if (_fireDiagNow - this._lastFireDiagLog > 2000) {
+        console.log(
+          `[FIRE-DIAG] ${effectDisplayName(finalEffectDecision.effectName ?? finalEffectDecision.effectType)} | ` +
+          `reason=${finalEffectDecision.reason ?? 'none'} | ` +
+          `E=${state.rawEnergy.toFixed(3)} Z=${zScore.toFixed(2)}σ | ` +
+          `bass=${state.bass.toFixed(3)} mid=${state.mid.toFixed(3)} high=${state.high.toFixed(3)} zL=${_zL.toFixed(2)}σ | ` +
+          `epicness=${(_v?.epicness ?? 0).toFixed(3)} v3Ignite=${this._v3Ignite} | ` +
+          `I(t)=${(_v?.fluid.impact ?? 0).toFixed(3)} T=${(_v?.fluid.tension ?? 0).toFixed(3)} | ` +
+          `phase=${this.lastMemoryOutput?.narrative?.narrativePhase ?? '?'} | ` +
+          `huntW=${huntDecision.worthiness.toFixed(3)} huntC=${huntDecision.confidence.toFixed(3)} | ` +
+          `pred=${prediction.type} predProb=${prediction.probability.toFixed(2)} predETA=${prediction.estimatedTimeMs}ms | ` +
+          `dna=${!!dreamIntegrationData?.approved} ethics=${dreamIntegrationData?.ethicalVerdict?.ethicalScore?.toFixed(3) ?? 'N/A'} | ` +
+          `intensity=${finalEffectDecision.intensity?.toFixed(2) ?? 'N/A'}`
+        )
+        this._lastFireDiagLog = _fireDiagNow
+      }
       
       // ⚡ WAVE 2093.2: Invalidar Dream cache para forzar diversidad
       // Sin esto, el cache devuelve el mismo efecto 3s seguidos → monotonía

@@ -82,7 +82,7 @@ export const LATINO_PROFILE: ILiquidProfile = {
   //   ghostCap 0.00->0.04: hilo tenue de sustain para que el ritmo sea fluido
   envelopeVocal: {
     name: 'Mover R (La Dama — Brillo)',
-    gateOn: 0.02,           // WAVE 6050: casi abierto permanentemente
+    gateOn: 0.08,           // WAVE 7572: 0.02→0.08 — suelo real, la Dama no escucha moscas
     boost: 5.0,             // WAVE 6100: reducido para evitar saturación de siseos vocales
     crushExponent: 1.0,    // WAVE 6100: lineal — elimina inflado de susurros en estrobo
     decayBase: 0.72,       // WAVE 3494: 0.80->0.72 — más contraste sin perder fluidez
@@ -92,7 +92,7 @@ export const LATINO_PROFILE: ILiquidProfile = {
     squelchSlope: 0.15,
     ghostCap: 0.04,        // WAVE 3492: 0.00->0.04 — hilo de sustain rítmico
     gateMargin: 0.01,
-    attackSlopeMin: -0.05,     // WAVE 6050: seda el Velocity Gate, señales lentas pasan
+    attackSlopeMin: 0.02,      // WAVE 7572: -0.05→0.02 — exige transitorio real, ignora colchón
     sustainedFlatVelocityMax: 0.50,  // WAVE 6050: umbral absurdo, nunca considera "plano"
     sustainedSquelchStartFrames: 9999 // WAVE 6050: nunca penaliza notas sostenidas
     // WAVE 6050: riseRate ELIMINADO — comportamiento instantáneo como Techno strict-split
@@ -155,9 +155,9 @@ export const LATINO_PROFILE: ILiquidProfile = {
   //   ghostCap 0.00->0.06: suelo ligerisimo para que no muera entre notas de pad.
   envelopeTreble: {
     name: 'Mover L (El Galán — Melodía & Conga)',
-    gateOn: 0.02,               // WAVE 6050: casi abierto permanentemente
-    boost: 12.0,                // WAVE 6050: Terminator Boost al máximo
-    crushExponent: 0.60,        // WAVE 6050: más cóncava aún, valores bajos explotan a altos
+    gateOn: 0.08,               // WAVE 7572: 0.02→0.08 — suelo real, moscas fuera de la fiesta
+    boost: 9.0,                 // WAVE 7572: 12.0→9.0 — recortar el megáfono del Galán
+    crushExponent: 0.90,        // WAVE 7572: 0.60→0.90 — menos inflación de susurros, dinámica respetada
     decayBase: 0.72,           // WAVE 3494: 0.70->0.62 — contraste real entre notas
     decayRange: 0.05,
     maxIntensity: 0.85,
@@ -165,7 +165,7 @@ export const LATINO_PROFILE: ILiquidProfile = {
     squelchSlope: 0.15,
     ghostCap: 0.06,            // WAVE 3492: 0.00->0.06 — suelo ligerisimo entre notas
     gateMargin: 0.01,
-    attackSlopeMin: -0.05,     // WAVE 6050: seda el Velocity Gate, señales lentas pasan
+    attackSlopeMin: 0.02,      // WAVE 7572: -0.05→0.02 — exige transitorio real, ignora colchón sostenido
     sustainedFlatVelocityMax: 0.50,  // WAVE 6050: umbral absurdo, nunca considera "plano"
     sustainedSquelchStartFrames: 9999 // WAVE 6050: nunca penaliza notas sostenidas
     // WAVE 6050: riseRate ELIMINADO — comportamiento instantáneo como Techno strict-split
@@ -340,28 +340,28 @@ export const LATINO_PROFILE: ILiquidProfile = {
     backLLowMidWeight: 0.45,
     backLTrebleSub: -0.8,      // WAVE 6070: conservar inyección de agudos, no quemar
 
-    // ── WAVE 6050: overrides41 de movers alineados con base (Turbomegaboost + Anestesia) ─────────
+    // ── WAVE 7572: overrides41 de movers alineados con base domada ─────────
     envelopeTreble: {
-      gateOn: 0.02,        // WAVE 6050: casi abierto permanentemente
+      gateOn: 0.08,        // WAVE 7572: 0.02→0.08 — suelo real
       squelchBase: 0.12,   // WAVE 3492: igual que base
-      boost: 12.0,         // WAVE 6050: Terminator Boost al máximo
-      crushExponent: 0.60, // WAVE 6050: curva convexa — infla valores bajos al instante
+      boost: 9.0,          // WAVE 7572: 12.0→9.0 — megáfono recortado
+      crushExponent: 0.90, // WAVE 7572: 0.60→0.90 — dinámica respetada
       decayBase: 0.72,     // WAVE 4945: transferimos inercia viscosa al mover
       ghostCap: 0.06,
-      attackSlopeMin: -0.05,     // WAVE 6050: seda el Velocity Gate
+      attackSlopeMin: 0.02,      // WAVE 7572: -0.05→0.02 — exige transitorio real
       sustainedFlatVelocityMax: 0.50,  // WAVE 6050: umbral absurdo
       sustainedSquelchStartFrames: 9999, // WAVE 6050: nunca penaliza
       // WAVE 6050: riseRate ELIMINADO — comportamiento instantáneo como Techno
     },
 
     envelopeVocal: {
-      gateOn: 0.02,        // WAVE 6050: casi abierto permanentemente
+      gateOn: 0.08,        // WAVE 7572: 0.02→0.08 — suelo real
       squelchBase: 0.08,   // WAVE 3492: piso moderado
       boost: 5.0,          // WAVE 6100: reducido para evitar saturación de siseos vocales
       crushExponent: 1.0,  // WAVE 6100: lineal — elimina inflado de susurros en estrobo
       decayBase: 0.72,     // WAVE 3494: alineado con base
       ghostCap: 0.04,
-      attackSlopeMin: -0.05,     // WAVE 6050: seda el Velocity Gate
+      attackSlopeMin: 0.02,      // WAVE 7572: -0.05→0.02 — exige transitorio real
       sustainedFlatVelocityMax: 0.50,  // WAVE 6050: umbral absurdo
       sustainedSquelchStartFrames: 9999, // WAVE 6050: nunca penaliza
       // WAVE 6050: riseRate ELIMINADO — comportamiento instantáneo como Techno

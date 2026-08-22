@@ -19,10 +19,14 @@
  *   ~240,000 addColorStop C++ objects/second. The Oilpan GC cannot keep
  *   up → CppHeap fills → "Large allocation" OOM crash.
  *
- *   FIX: Replace every gradient with concentric solid-fill circles (radial)
- *   or stacked solid-fill triangles (linear). Each fillStyle='rgba(...)' +
- *   ctx.fill() is a single paint op — zero persistent C++ allocations.
- *   Visual difference is imperceptible for sub-24px fixture glows.
+ * 🎨 WAVE 7571: BEAUTIFUL RADAR — Sprite Cache Restoration.
+ *   Replaced the WAVE 7568 concentric-circle hack with pre-rendered
+ *   OffscreenCanvas sprites cached by color string. The radial gradients
+ *   are created ONCE per unique color (lazy init), then stamped via
+ *   drawImage() at 60fps — zero CanvasGradient C++ allocs in the hot loop.
+ *   Visual quality is back to the original cyberpunk aesthetic, with the
+ *   Oilpan safety of WAVE 7568. The GPU (RTX 3060) handles drawImage
+ *   scaling trivially.
  *
  * @module components/hyperion/views/tactical/layers/FixtureLayer
  * @since WAVE 2042.5 (Project Hyperion — Phase 3)
@@ -75,14 +79,90 @@ const mapRange = (v, inMin, inMax, outMin, outMax) => {
 };
 const deg2rad = (d) => d * (Math.PI / 180);
 // ═══════════════════════════════════════════════════════════════════════════
+// 🎨 WAVE 7571: SPRITE CACHE — Zero-Alloc Gradient Restoration
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Pre-rendered OffscreenCanvas sprites keyed by CSS color string.
+// The radial/linear gradients are created ONCE per unique color (lazy init),
+// then stamped via drawImage() at 60fps. Zero CanvasGradient C++ allocs
+// in the hot loop — the Oilpan GC never sees a gradient object.
+//
+// Sprite sizes:
+//   GLOW_SPRITE_SIZE = 128  (aura + halo — radial, square)
+//   BEAM_SPRITE_W    = 64   (beam body — linear, narrow)
+//   BEAM_SPRITE_H    = 256  (beam body — linear, tall)
+//
+// Safety valve: if cache exceeds 150 entries (unlikely with discrete
+// palettes), clear it to prevent unbounded growth from color fades.
+const GLOW_SPRITE_SIZE = 128;
+const BEAM_SPRITE_W = 64;
+const BEAM_SPRITE_H = 256;
+const SPRITE_CACHE_LIMIT = 150;
+const glowSpriteCache = new Map();
+const beamSpriteCache = new Map();
+/**
+ * Build a radial gradient glow sprite (white-hot center → color → transparent edge).
+ * Cached per color string. Used for both aura and halo (scaled differently).
+ */
+function getGlowSprite(r, g, b) {
+    const colorKey = `rgb(${r},${g},${b})`;
+    const cached = glowSpriteCache.get(colorKey);
+    if (cached)
+        return cached;
+    // Safety valve: clear if too many unique colors (color fades etc.)
+    if (glowSpriteCache.size >= SPRITE_CACHE_LIMIT) {
+        glowSpriteCache.clear();
+    }
+    const sprite = new OffscreenCanvas(GLOW_SPRITE_SIZE, GLOW_SPRITE_SIZE);
+    const sctx = sprite.getContext('2d');
+    const cx = GLOW_SPRITE_SIZE / 2;
+    const cy = GLOW_SPRITE_SIZE / 2;
+    const grad = sctx.createRadialGradient(cx, cy, 0, cx, cy, cx);
+    // White-hot center → solid color → transparent edge
+    grad.addColorStop(0.0, `rgba(255, 255, 255, 1.0)`);
+    grad.addColorStop(0.15, `rgba(${r}, ${g}, ${b}, 0.9)`);
+    grad.addColorStop(0.40, `rgba(${r}, ${g}, ${b}, 0.4)`);
+    grad.addColorStop(0.70, `rgba(${r}, ${g}, ${b}, 0.10)`);
+    grad.addColorStop(1.0, `rgba(${r}, ${g}, ${b}, 0)`);
+    sctx.fillStyle = grad;
+    sctx.fillRect(0, 0, GLOW_SPRITE_SIZE, GLOW_SPRITE_SIZE);
+    glowSpriteCache.set(colorKey, sprite);
+    return sprite;
+}
+/**
+ * Build a linear gradient beam sprite (bright at top → transparent at bottom).
+ * Cached per color string. Stamped and rotated/scaled for beam cones.
+ */
+function getBeamSprite(r, g, b) {
+    const colorKey = `rgb(${r},${g},${b})`;
+    const cached = beamSpriteCache.get(colorKey);
+    if (cached)
+        return cached;
+    if (beamSpriteCache.size >= SPRITE_CACHE_LIMIT) {
+        beamSpriteCache.clear();
+    }
+    const sprite = new OffscreenCanvas(BEAM_SPRITE_W, BEAM_SPRITE_H);
+    const sctx = sprite.getContext('2d');
+    const grad = sctx.createLinearGradient(0, 0, 0, BEAM_SPRITE_H);
+    // Bright at top (fixture source) → transparent at bottom (beam tip)
+    grad.addColorStop(0.0, `rgba(${r}, ${g}, ${b}, 1.0)`);
+    grad.addColorStop(0.15, `rgba(${r}, ${g}, ${b}, 0.85)`);
+    grad.addColorStop(0.50, `rgba(${r}, ${g}, ${b}, 0.40)`);
+    grad.addColorStop(0.85, `rgba(${r}, ${g}, ${b}, 0.08)`);
+    grad.addColorStop(1.0, `rgba(${r}, ${g}, ${b}, 0)`);
+    sctx.fillStyle = grad;
+    sctx.fillRect(0, 0, BEAM_SPRITE_W, BEAM_SPRITE_H);
+    beamSpriteCache.set(colorKey, sprite);
+    return sprite;
+}
+// ═══════════════════════════════════════════════════════════════════════════
 // INDIVIDUAL FIXTURE RENDER FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════
 /**
  * Draw outer atmospheric aura (only in HQ mode, high intensity).
  *
- * 🩸 WAVE 7568: Replaced createRadialGradient with 4 concentric solid-fill
- * circles. Drawn outer→inner so smaller circles overwrite the center of
- * larger ones, creating a stepped radial fade. Zero CanvasGradient C++ allocs.
+ * 🎨 WAVE 7571: Uses pre-rendered glow sprite (cached per color).
+ * drawImage stamps the radial gradient texture — zero CanvasGradient allocs.
  */
 function drawAura(ctx, x, y, fixture, baseRadius) {
     const { r, g, b, intensity } = fixture;
@@ -91,32 +171,18 @@ function drawAura(ctx, x, y, fixture, baseRadius) {
         return;
     const auraRadius = baseRadius * FIXTURE_CONFIG.AURA_RADIUS * (0.8 + intensity * 0.4);
     const alpha = intensity * 0.12;
-    // 4 concentric circles, outer→inner, alpha increasing toward center.
-    // Matches the original gradient stops: 1.0→0, 0.6→0.15α, 0.3→0.5α, 0→α
-    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha * 0.04})`;
-    ctx.beginPath();
-    ctx.arc(x, y, auraRadius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha * 0.15})`;
-    ctx.beginPath();
-    ctx.arc(x, y, auraRadius * 0.6, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha * 0.5})`;
-    ctx.beginPath();
-    ctx.arc(x, y, auraRadius * 0.3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
-    ctx.beginPath();
-    ctx.arc(x, y, auraRadius * 0.12, 0, Math.PI * 2);
-    ctx.fill();
+    // Stamp the cached glow sprite, scaled to aura diameter
+    const sprite = getGlowSprite(r, g, b);
+    const prevAlpha = ctx.globalAlpha;
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(sprite, x - auraRadius, y - auraRadius, auraRadius * 2, auraRadius * 2);
+    ctx.globalAlpha = prevAlpha;
 }
 /**
  * Draw neon halo (main glow effect).
  *
- * 🩸 WAVE 7568: Replaced 2 createRadialGradient calls with concentric
- * solid-fill circles. Outer glow = 4 circles (outer→inner, alpha rising).
- * Inner ring = 2 circles (ring effect via slightly different alpha).
- * Zero CanvasGradient C++ allocs.
+ * 🎨 WAVE 7571: Uses pre-rendered glow sprite (cached per color).
+ * Two passes: outer diffuse glow + inner sharp ring, both via drawImage.
  */
 function drawHalo(ctx, x, y, fixture, baseRadius, beatScale) {
     const { r, g, b, intensity, type } = fixture;
@@ -127,38 +193,17 @@ function drawHalo(ctx, x, y, fixture, baseRadius, beatScale) {
     // Halo radius: base + intensity + beat pulse
     const haloRadius = baseRadius * glowMultiplier * (0.6 + intensity * 0.5) * beatScale;
     const outerAlpha = isPar ? intensity * 0.40 : intensity * 0.50;
-    // ── Pass 1: Diffuse outer glow — 4 concentric circles ───────────────
-    // Matches original gradient: 1.0→0, 0.7→0.15α, 0.35→0.55α, 0→α
-    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${outerAlpha * 0.04})`;
-    ctx.beginPath();
-    ctx.arc(x, y, haloRadius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${outerAlpha * 0.15})`;
-    ctx.beginPath();
-    ctx.arc(x, y, haloRadius * 0.7, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${outerAlpha * 0.55})`;
-    ctx.beginPath();
-    ctx.arc(x, y, haloRadius * 0.35, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${outerAlpha})`;
-    ctx.beginPath();
-    ctx.arc(x, y, haloRadius * 0.12, 0, Math.PI * 2);
-    ctx.fill();
-    // ── Pass 2: Sharp inner ring (neon edge) — 2 circles ────────────────
-    // Original gradient: 0→transparent, 0.7→innerAlpha, 1→innerAlpha*0.3
-    // Simulated: a filled circle at innerAlpha, then a smaller darker one
-    // on top to create the ring "hole" effect.
+    const sprite = getGlowSprite(r, g, b);
+    const prevAlpha = ctx.globalAlpha;
+    // ── Pass 1: Diffuse outer glow ──────────────────────────────────────
+    ctx.globalAlpha = outerAlpha;
+    ctx.drawImage(sprite, x - haloRadius, y - haloRadius, haloRadius * 2, haloRadius * 2);
+    // ── Pass 2: Sharp inner ring (neon edge) ────────────────────────────
     const innerRadius = haloRadius * 0.35;
     const innerAlpha = intensity * 0.25;
-    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${innerAlpha * 0.3})`;
-    ctx.beginPath();
-    ctx.arc(x, y, innerRadius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${innerAlpha})`;
-    ctx.beginPath();
-    ctx.arc(x, y, innerRadius * 0.75, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.globalAlpha = innerAlpha;
+    ctx.drawImage(sprite, x - innerRadius, y - innerRadius, innerRadius * 2, innerRadius * 2);
+    ctx.globalAlpha = prevAlpha;
 }
 /**
  * Draw beam projection cone (movers only).
@@ -167,10 +212,9 @@ function drawHalo(ctx, x, y, fixture, baseRadius, beatScale) {
  * - Layer 1: Color body (full width)
  * - Layer 2: White hot core (20% width)
  *
- * 🩸 WAVE 7568: Replaced 2 createLinearGradient calls with stacked
- * solid-fill triangles. Each triangle is shorter (closer to the fixture)
- * and has higher alpha, simulating the linear fade from fixture→tip.
- * Zero CanvasGradient C++ allocs.
+ * 🎨 WAVE 7571: Uses pre-rendered beam sprite (cached per color) clipped
+ * to a cone path. drawImage stamps the linear gradient texture — zero
+ * CanvasGradient allocs in the hot loop.
  */
 function drawBeam(ctx, x, y, fixture, canvasHeight) {
     const { r, g, b, intensity, physicalPan, physicalTilt, zoom, focus, type } = fixture;
@@ -178,14 +222,6 @@ function drawBeam(ctx, x, y, fixture, canvasHeight) {
     if (type === 'par' || type === 'wash' || intensity < 0.03)
         return;
     // Pan angle: 0→ +45°, 0.5→ 0°, 1→ -45°
-    // WAVE 4620-B: Invertido el signo para alinear el radar 2D con el visualizador 3D.
-    // En 3D, pan=0 → yoke gira -135° → beam apunta derecha (+X) desde vista top-down.
-    // En 2D era pan=0 → angle=-81° → beam apuntaba izquierda. Mirror invertido.
-    // Con el mapRange invertido, pan=0 → +81° → endX = x + sin(81°)·L → beam apunta derecha.
-    // WAVE 4887: FASE 1 — FIX ESPEJO ROTO.
-    // El IK (ceiling): target a +X → panDeg > 0 → physicalPan > 0.5.
-    // Con slope POSITIVA: physicalPan > 0.5 → panAngle > 0 → endX = x + sin(pos)·L → beam a +X (derecha). ✓
-    // WAVE 4620-B usaba slope negativa alineando 2D con 3D, pero AMBOS estaban en espejo vs el IK.
     const panAngle = mapRange(physicalPan, 0, 1, -Math.PI * 0.45, Math.PI * 0.45);
     // Tilt affects throw length: parabolic (max at 0.5)
     const tiltFactor = 1 - Math.abs(physicalTilt - 0.5) * 2;
@@ -201,48 +237,46 @@ function drawBeam(ctx, x, y, fixture, canvasHeight) {
     // Perpendicular (for cone width)
     const perpX = Math.cos(panAngle);
     const perpY = -Math.sin(panAngle);
-    // Full cone half-width at the tip (used for core width calculation)
+    // Full cone half-width at the tip
     const baseHalf = Math.tan(halfCone) * throwLength;
-    // Helper: draw a triangle from (x,y) to a point at fraction `t` along the beam,
-    // with cone half-width scaled by `t` (cone widens with distance).
+    // ── LAYER 1: COLOR BODY — clip cone + drawImage beam sprite ──────────
     const bodyAlpha = intensity * 0.65;
-    const drawBeamTri = (t, alpha) => {
-        const endXt = x + dirX * throwLength * t;
-        const endYt = y + dirY * throwLength * t;
-        const halfW = Math.tan(halfCone) * throwLength * t;
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(endXt - perpX * halfW, endYt - perpY * halfW);
-        ctx.lineTo(endXt + perpX * halfW, endYt + perpY * halfW);
-        ctx.closePath();
-        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
-        ctx.fill();
-    };
-    // ── LAYER 1: COLOR BODY — 4 stacked triangles (longest→shortest) ──────
-    // Matches original gradient stops: 1.0→edge, 0.85→0.20α, 0.5→0.55α, 0→α
-    drawBeamTri(1.0, edgeSharpness);
-    drawBeamTri(0.85, bodyAlpha * 0.20);
-    drawBeamTri(0.50, bodyAlpha * 0.55);
-    drawBeamTri(0.20, bodyAlpha);
-    // ── LAYER 2: WHITE HOT CORE (20% width) — 3 stacked triangles ─────────
+    const sprite = getBeamSprite(r, g, b);
+    const prevAlpha = ctx.globalAlpha;
+    ctx.save();
+    // Clip to the full cone triangle
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + dirX * throwLength - perpX * baseHalf, y + dirY * throwLength - perpY * baseHalf);
+    ctx.lineTo(x + dirX * throwLength + perpX * baseHalf, y + dirY * throwLength + perpY * baseHalf);
+    ctx.closePath();
+    ctx.clip();
+    // Stamp the beam sprite: stretch to throw length × 2× cone width
+    // Position so the top of the sprite (bright end) is at the fixture (x, y)
+    ctx.globalAlpha = bodyAlpha;
+    ctx.translate(x, y);
+    ctx.rotate(panAngle);
+    // After rotation, draw the sprite downward from origin
+    // Width = 2 × baseHalf (covers full cone), Height = throwLength
+    ctx.drawImage(sprite, -baseHalf, 0, baseHalf * 2, throwLength);
+    ctx.restore();
+    // ── LAYER 2: WHITE HOT CORE (20% width) — same technique, white sprite ──
     const coreAlpha = intensity * 0.85;
     const coreHalf = baseHalf * 0.20;
-    const drawCoreTri = (t, alpha) => {
-        const endXt = x + dirX * throwLength * t;
-        const endYt = y + dirY * throwLength * t;
-        const halfW = coreHalf * t;
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(endXt - perpX * halfW, endYt - perpY * halfW);
-        ctx.lineTo(endXt + perpX * halfW, endYt + perpY * halfW);
-        ctx.closePath();
-        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-        ctx.fill();
-    };
-    // Matches original: 1.0→0, 0.8→0.25α, 0.4→0.65α, 0→α
-    drawCoreTri(0.80, coreAlpha * 0.25);
-    drawCoreTri(0.40, coreAlpha * 0.65);
-    drawCoreTri(0.15, coreAlpha);
+    const coreSprite = getBeamSprite(255, 255, 255);
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + dirX * throwLength - perpX * coreHalf, y + dirY * throwLength - perpY * coreHalf);
+    ctx.lineTo(x + dirX * throwLength + perpX * coreHalf, y + dirY * throwLength + perpY * coreHalf);
+    ctx.closePath();
+    ctx.clip();
+    ctx.globalAlpha = coreAlpha;
+    ctx.translate(x, y);
+    ctx.rotate(panAngle);
+    ctx.drawImage(coreSprite, -coreHalf, 0, coreHalf * 2, throwLength);
+    ctx.restore();
+    ctx.globalAlpha = prevAlpha;
 }
 /**
  * Draw fixture core (solid color center).

@@ -146,5 +146,11 @@ export const DEFAULT_ARBITER_CONFIG = {
     maxManualOverrides: 64,
     maxActiveEffects: 8,
     consciousnessEnabled: false, // Will be true in CORE 3
-    debug: true, // ⛺ WAVE 2790: Activado para diagnóstico de cambios de zona oceánica
+    // 🩸 WAVE 7571: Silenced in production — was hardcoded `true` since WAVE 2790.
+    // The Arbiter logs every zone change at 44Hz in debug mode. In production,
+    // this generates ~44 console.log/sec of zone diagnostics that nobody reads.
+    // `as const` requires literal types, so we use a runtime check instead of
+    // `process.env.NODE_ENV` (which is stripped by bundlers and would make
+    // this `false` at compile time, breaking the `as const` type).
+    debug: !(typeof process !== 'undefined' && process.env?.NODE_ENV === 'production'),
 };

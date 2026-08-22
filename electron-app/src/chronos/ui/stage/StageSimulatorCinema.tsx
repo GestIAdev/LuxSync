@@ -67,10 +67,13 @@ export const StagePreview = memo(function StagePreview({
       </div>
 
       {/* TacticalCanvas - el corazon del rendering */}
+      {/* 🛡️ WAVE 7570: Pass isVisible so the worker hibernates when the
+          stage preview is CSS-hidden (visible prop from ChronosLayout). */}
       <TacticalCanvas
         quality="HQ"
         showGrid={false}
         showZoneLabels={false}
+        isVisible={visible}
         className="stage-cinema__tactical"
       />
     </div>

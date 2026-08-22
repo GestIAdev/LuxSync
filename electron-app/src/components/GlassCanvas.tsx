@@ -75,7 +75,19 @@ export default function GlassCanvas() {
       window.addEventListener('glass:ready', connect)
     }
 
+    // 🛡️ WAVE 7570: Cache the gradient — it's identical every frame (same
+    // colors, same dimensions). Creating a new CanvasGradient C++ object at
+    // 60fps leaks ~162k C++ objects in 45min. Cache it once per canvas size.
+    let cachedGradient: CanvasGradient | null = null
+    let cachedW = 0
+
     const loop = () => {
+      // 🛡️ WAVE 7570: Pause rAF when document is hidden — zero burn in background.
+      if (document.hidden) {
+        rafId.current = requestAnimationFrame(loop)
+        return
+      }
+
       const canvas = canvasRef.current
       if (!canvas) return
 
@@ -93,11 +105,15 @@ export default function GlassCanvas() {
         const intensity = Math.min(1, Math.max(0, view[0] / 255))
         const barW = w * intensity
 
-        const gradient = ctx.createLinearGradient(0, 0, w, 0)
-        gradient.addColorStop(0, '#00ff88')
-        gradient.addColorStop(0.5, '#ffcc00')
-        gradient.addColorStop(1, '#ff3344')
-        ctx.fillStyle = gradient
+        // 🛡️ WAVE 7570: Reuse cached gradient if width hasn't changed.
+        if (!cachedGradient || cachedW !== w) {
+          cachedGradient = ctx.createLinearGradient(0, 0, w, 0)
+          cachedGradient.addColorStop(0, '#00ff88')
+          cachedGradient.addColorStop(0.5, '#ffcc00')
+          cachedGradient.addColorStop(1, '#ff3344')
+          cachedW = w
+        }
+        ctx.fillStyle = cachedGradient
         ctx.fillRect(0, h * 0.3, barW, h * 0.4)
 
         ctx.strokeStyle = '#333'

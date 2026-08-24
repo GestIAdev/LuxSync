@@ -567,13 +567,19 @@ export class SeleneTitanConscious extends EventEmitter {
                 else if (verdict.action === 'fire' && verdict.candidate) {
                     dreamEngineIntegrator.clearPreBuffer();
                     const candidate = verdict.candidate;
-                    const fireEffectId = verdict.reroutedEffectId ?? candidate.effect;
-                    const fireEffectName = verdict.reroutedEffectId
-                        ? effectDisplayName(verdict.reroutedEffectId)
-                        : candidate.effectName;
-                    const fireIntensity = verdict.reroutedEffectId
-                        ? Math.min(candidate.intensity, 0.75)
-                        : candidate.intensity;
+                    // 🌊 WAVE 7575: ETA-Aware Upgrade tiene prioridad sobre el reroute y el candidato original
+                    const fireEffectId = verdict.upgradedEffectId ?? verdict.reroutedEffectId ?? candidate.effect;
+                    const fireEffectName = verdict.upgradedEffectId
+                        ? effectDisplayName(verdict.upgradedEffectId)
+                        : verdict.reroutedEffectId
+                            ? effectDisplayName(verdict.reroutedEffectId)
+                            : candidate.effectName;
+                    // Upgrade: intensidad full (clímax real). Reroute: capado a 0.75. Original: como viene.
+                    const fireIntensity = verdict.upgradedEffectId
+                        ? Math.min(1.0, Math.max(candidate.intensity, 0.90))
+                        : verdict.reroutedEffectId
+                            ? Math.min(candidate.intensity, 0.75)
+                            : candidate.intensity;
                     if (verdict.trigger === 'glass_break') {
                         console.log(`[SeleneTitanConscious] 🪟💥 CASSANDRA GLASS BREAK: firing "${fireEffectName ?? fireEffectId}" ` +
                             `| drop landed EARLY | ${verdict.reason ?? ''}`);
@@ -581,14 +587,17 @@ export class SeleneTitanConscious extends EventEmitter {
                     else {
                         console.log(`[SeleneTitanConscious] 🔮👑 CASSANDRA SOVEREIGN CLOCK: firing "${fireEffectName ?? fireEffectId}" ` +
                             `| confidence=${candidate.confidence.toFixed(2)}` +
+                            `${verdict.upgradedEffectId ? ' | ⚡ ETA-AWARE UPGRADE' : ''}` +
                             `${verdict.reroutedEffectId ? ' | 🔄 HEAVY RE-ROUTED' : ''}` +
                             `| bypassing HuntEngine + Fuzzy + EnergyOverride`);
                     }
                     const reason = verdict.trigger === 'glass_break'
                         ? `🪟💥 CASSANDRA GLASS BREAK (WAVE 5016)`
-                        : verdict.reroutedEffectId
-                            ? `🔮👑 CASSANDRA SOVEREIGN CLOCK (WAVE 5011) 🔄 HEAVY RE-ROUTE`
-                            : '🔮👑 CASSANDRA SOVEREIGN CLOCK (WAVE 5011)';
+                        : verdict.upgradedEffectId
+                            ? `🔮👑 CASSANDRA SOVEREIGN CLOCK (WAVE 5011) ⚡ ETA-AWARE UPGRADE (WAVE 7575)`
+                            : verdict.reroutedEffectId
+                                ? `🔮👑 CASSANDRA SOVEREIGN CLOCK (WAVE 5011) 🔄 HEAVY RE-ROUTE`
+                                : '🔮👑 CASSANDRA SOVEREIGN CLOCK (WAVE 5011)';
                     const sovereignOutput = {
                         ...createEmptyOutput(),
                         confidence: Math.max(candidate.confidence, 0.85),
@@ -647,14 +656,17 @@ export class SeleneTitanConscious extends EventEmitter {
         //   vocal dominance, and ratio checks (WAVE 7550-7552 bloat purged).
         //   The .lfx zScoreGuards.minimumZ system was also eradicated — Z-floor
         //   is now centralized in code (Z >= 1.0 for heavy effects).
+        // 🩸 WAVE 7574: ENDURECIDO — bass gate 0.35→0.45, Z-floor 1.0→1.5.
+        //   0.35 es mantequilla: la resonancia del autotune grave vive ahí.
+        //   0.45 deja la voz nasal fuera. Z=1.5 exige anomalía real (drop).
         // ─────────────────────────────────────────────────────────────────────
         if (finalOutput.effectDecision && this._v3Ignite) {
             const effectId = finalOutput.effectDecision.effectType;
             if (isHighSeverityEffect(effectId)) {
-                const V3_BASS_GATE_THRESHOLD = 0.35;
+                const V3_BASS_GATE_THRESHOLD = 0.42;
                 const v3BassEnergy = titanState.bass;
-                // 🩸 WAVE 7553: CENTRALIZED HEAVY Z-FLOOR — Z >= 1.0 for heavy effects
-                const V3_HEAVY_MIN_Z = 1.0;
+                // 🩸 WAVE 7574: CENTRALIZED HEAVY Z-FLOOR — Z >= 1.5 for heavy effects
+                const V3_HEAVY_MIN_Z = 1.5;
                 const v3ZScore = this.contextualMemory.getEnergyZScore();
                 if (v3BassEnergy <= V3_BASS_GATE_THRESHOLD) {
                     // 🛡️ WAVE 7570.4: Throttle — can fire at 44Hz without this.
@@ -1322,8 +1334,9 @@ export class SeleneTitanConscious extends EventEmitter {
             // ═══════════════════════════════════════════════════════════════════════
             // 🩸 WAVE 7543: UNIVERSAL SPECTRAL BASS GATE (Anti-Autotune Veto)
             // 🩸 WAVE 7553: REVERTED to simple bass <= 0.35. Purgado de zL/vocal/ratio.
+            // 🩸 WAVE 7574: ENDURECIDO 0.35→0.45 — muro anti-autotune grave.
             // ═══════════════════════════════════════════════════════════════════════
-            const BASS_GATE_THRESHOLD = 0.35;
+            const BASS_GATE_THRESHOLD = 0.42;
             const hasSubstantialBass = state.bass > BASS_GATE_THRESHOLD;
             const bassGateVetoed = isHardForBypass && !hasSubstantialBass;
             // 🔒 WAVE 7526: DIVINE DECOUPLING — Divine effects must NEVER fire via the

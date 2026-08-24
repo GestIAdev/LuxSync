@@ -14,13 +14,14 @@
   user-select: none;
 }
 
-/* ── Drag region ── */
+/* ── Drag region — WAVE 7568: declarar explícitamente, no hereda ── */
 .title-bar-drag {
   flex: 1;
   display: flex;
   align-items: center;
   padding-left: 12px;
   height: 100%;
+  -webkit-app-region: drag;
 }
 
 .title-bar-text {
@@ -30,6 +31,7 @@
   letter-spacing: 3px;
   color: rgba(255, 255, 255, 0.35);
   text-transform: uppercase;
+  -webkit-app-region: drag;
 }
 
 /* ── Window control buttons ── */

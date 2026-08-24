@@ -182,7 +182,8 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
-/* TABS - Embedded mode */
+/* TABS - Embedded mode
+   WAVE 7575: Reverted horizontal scroll — compress via media query instead. */
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
 .forge-tabs.embedded {
@@ -191,6 +192,8 @@
   padding: 0 24px;
   background: rgba(0, 0, 0, 0.3);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  flex-wrap: nowrap;
 }
 
 .forge-tabs.embedded .forge-tab {
@@ -208,6 +211,8 @@
   transition: all 0.2s ease;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .forge-tabs.embedded .forge-tab:hover {
@@ -1034,4 +1039,22 @@
 @keyframes slideDownDrawer {
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * WAVE 7575: TABS COMPACT MODE — 1366px screens
+ * Aggressive padding/font compression so all 9 tabs fit without scroll.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 1399px) {
+  .forge-tabs.embedded {
+    gap: 2px;
+    padding: 0 12px;
+  }
+
+  .forge-tabs.embedded .forge-tab {
+    padding: 8px 10px;
+    gap: 4px;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+  }
 }

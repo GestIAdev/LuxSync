@@ -99,14 +99,16 @@ const MAX_RECENT_SHOWS = 10
 // ═══════════════════════════════════════════════════════════════════════════
 
 export class StagePersistence {
-  private userDataPath: string
-  private showsPath: string
+  private userDataPath!: string
+  private showsPath!: string
   private initialized: boolean = false
   private recentShows: string[] = []
 
   constructor() {
-    this.userDataPath = app.getPath('userData')
-    this.showsPath = path.join(this.userDataPath, 'shows')
+    // WAVE 7568: Defer app.getPath('userData') to init() — the singleton is
+    // created at module load time, before app.whenReady(). Calling app.getPath()
+    // in the constructor crashes Electron on startup with "Cannot read properties
+    // of undefined (reading 'getPath')" because app is not yet initialized.
   }
 
   /**
@@ -115,6 +117,10 @@ export class StagePersistence {
    */
   async init(): Promise<void> {
     if (this.initialized) return
+
+    // WAVE 7568: Resolve paths here (deferred from constructor — see comment there)
+    this.userDataPath = app.getPath('userData')
+    this.showsPath = path.join(this.userDataPath, 'shows')
 
     // Ensure shows directory exists
     if (!fs.existsSync(this.showsPath)) {

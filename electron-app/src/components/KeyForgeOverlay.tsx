@@ -480,7 +480,12 @@ const LegendRow: React.FC = () => (
 /** Dedicated KeyForge view shell */
 
 const LAYER_ORDER: LayerId[] = ['base', 'alt', 'kinetic', 'select', 'cmd', 'forge']
-const UNIT_PX = 74   // 1 key-unit = 74px — fit to 65% panel without horizontal scroll
+// WAVE 7569-BIS: UNIT_PX is now dynamic — calculated from container width.
+// Fallback constant used only for initial render before ResizeObserver fires.
+const UNIT_PX_FALLBACK = 74
+// Keyboard has ~15 key-units per row (e.g. 14 keys + gaps). We compute the
+// unit size so the full keyboard fits within the container without overflow.
+const KEYBOARD_MAX_UNITS_PER_ROW = 15.5 // accounts for gaps + padding
 
 const KEYFORGE_CORE_ACTIONS: readonly PaletteActionItem[] = [
   { id: 'cue-go', label: 'Cue Go', category: 'Playback' },
@@ -580,6 +585,32 @@ const KeyForgeView: React.FC = () => {
   const [viewLayer, setViewLayer] = useState<LayerId>('base')
   const [searchQuery, setSearchQuery] = useState('')
   const overlayRef                = useRef<HTMLDivElement>(null)
+  // WAVE 7569-BIS: Dynamic key unit size — liquid keyboard
+  const [unitPx, setUnitPx] = useState(UNIT_PX_FALLBACK)
+
+  // Calculate key unit size from container width so keyboard never overflows.
+  useEffect(() => {
+    const el = overlayRef.current
+    if (!el) return
+
+    const computeUnit = (width: number) => {
+      // Available width minus padding (32px) divided by max units per row.
+      // Clamp between 36px (minimum usable key) and 74px (original max).
+      const available = width - 32
+      const computed = available / KEYBOARD_MAX_UNITS_PER_ROW
+      return Math.max(36, Math.min(74, Math.round(computed)))
+    }
+
+    setUnitPx(computeUnit(el.clientWidth))
+
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setUnitPx(computeUnit(entry.contentRect.width))
+      }
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   const paletteActions = useMemo<PaletteActionItem[]>(() => {
     const merged = new Map<string, PaletteActionItem>()
@@ -731,7 +762,10 @@ const KeyForgeView: React.FC = () => {
       `}</style>
 
       <div className="w-full max-w-none h-full flex flex-row bg-black/95">
-        <div className="w-[65%] flex flex-col h-full flex-shrink-0 border-r border-gray-800">
+        {/* WAVE 7569-BIS: Fluid left panel — clamp ensures keyboard panel
+            never starves the right-side binding/action panel.
+            min 55% / preferred 65% / max 70% — right panel gets 30-45%. */}
+        <div className="flex flex-col h-full flex-shrink-0 border-r border-gray-800" style={{ width: 'clamp(55%, 65%, 70%)' }}>
           {/* ── Header ─────────────────────────────────────────────────── */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', padding: '16px 16px 12px' }}>
             {/* Glowing title */}
@@ -997,7 +1031,7 @@ const KeyForgeView: React.FC = () => {
                           onBind={handleBind}
                           onUnbind={handleUnbind}
                           onDropAction={handleDropAction}
-                          unitPx={UNIT_PX}
+                          unitPx={unitPx}
                         />
                       ))}
                     </div>
@@ -1042,7 +1076,10 @@ const KeyForgeView: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col h-full bg-gray-900" style={{ background: '#111827' }}>
+        {/* WAVE 7569-BIS: Right panel — flex-1 with min-width to guarantee
+            binding/action panel never overflows off-screen. min-width: 300px
+            ensures it's always usable even on 1280px. */}
+        <div className="flex-1 flex flex-col h-full bg-gray-900" style={{ background: '#111827', minWidth: '300px', maxWidth: '45%' }}>
           <ActionPalette
             actions={paletteActions}
             bindings={bindings}

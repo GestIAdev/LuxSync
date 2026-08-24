@@ -8,8 +8,10 @@
   flex-direction: column;
   gap: 8px;
   padding: 10px;
-  height: 100%;
-  overflow-y: auto;
+  /* WAVE 7571: height: 100% → auto — let content define height.
+     The dashboard root scrolls, not the systems-check. */
+  height: auto;
+  overflow-y: visible;
   overflow-x: hidden;
 }
 

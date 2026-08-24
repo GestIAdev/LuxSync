@@ -29,10 +29,15 @@
   background: var(--bg-primary, #0a0a0f);
 }
 
-/* 🧘 WAVE 375: Sidebar Container with Zen Mode collapse */
+/* 🧘 WAVE 375: Sidebar Container with Zen Mode collapse
+   WAVE 7572: STRICT CAGE — flex: 0 0 clamp() prevents the sidebar from
+   growing uncontrollably. max-width is the hard ceiling. */
 .sidebar-container {
-  width: 280px;
-  flex-shrink: 0;
+  flex: 0 0 clamp(200px, 18vw, 250px);
+  max-width: 250px;
+  width: clamp(200px, 18vw, 250px);
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
               opacity 0.2s ease;
@@ -44,10 +49,10 @@
   pointer-events: none;
 }
 
-/* Ensure Sidebar inside container fills it */
+/* Ensure Sidebar inside container fills it — WAVE 7569-BIS: match clamp */
 .sidebar-container > * {
-  width: 280px;
-  min-width: 280px;
+  width: 100%;
+  min-width: 0;
 }
 
 .layout-content {
@@ -91,5 +96,26 @@
   50% {
     box-shadow: inset 0 0 20px 4px rgba(239, 68, 68, 0.25);
     border-color: rgba(239, 68, 68, 0.35);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WAVE 7572: RESPONSIVE BRIDGE — 1366px / 1280px gap coverage
+   Sidebar is caged with flex: 0 0 clamp() — these breakpoints tighten
+   the cage further on smaller screens.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 1399px) {
+  .sidebar-container {
+    flex-basis: clamp(180px, 16vw, 220px);
+    max-width: 220px;
+    width: clamp(180px, 16vw, 220px);
+  }
+}
+
+@media (max-width: 1280px) {
+  .sidebar-container {
+    flex-basis: clamp(160px, 14vw, 200px);
+    max-width: 200px;
+    width: clamp(160px, 14vw, 200px);
   }
 }

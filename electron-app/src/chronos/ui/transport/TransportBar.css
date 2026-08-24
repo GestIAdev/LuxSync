@@ -19,7 +19,6 @@
 .ct-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
   padding: 0 16px;
   height: 48px;
@@ -29,6 +28,10 @@
   border-bottom: 2px solid rgba(168, 85, 247, 0.25);
   flex-shrink: 0;
   position: relative;
+  /* WAVE 7575: Reverted horizontal scroll — compress instead.
+     justify-content: space-between kept off to allow flex shrinking. */
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 /* Glow line — bottom edge, Hephaestus-style */
@@ -58,10 +61,11 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;   /* WAVE 7574: never crush zones */
 }
 
 .ct-zone-left {
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   min-width: 0;
 }
 
@@ -70,7 +74,7 @@
 }
 
 .ct-zone-right {
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   min-width: 0;
   justify-content: flex-end;
 }
@@ -142,6 +146,7 @@
   gap: 3px;
   padding: 3px 6px;
   background: rgba(15, 15, 20, 0.6);
+  flex-shrink: 0;   /* WAVE 7574 */
   border-radius: 8px;
   border: 1px solid rgba(100, 116, 139, 0.15);
 }
@@ -271,6 +276,7 @@
   display: flex;
   align-items: center;
   gap: 3px;
+  flex-shrink: 0;   /* WAVE 7574 */
 }
 
 .ct-project-btn {
@@ -361,9 +367,10 @@
   color: var(--text-tertiary);
   padding: 0 4px;
   max-width: 120px;
+  /* WAVE 7576: Truncation — reclaim space for LOAD AUDIO */
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -378,6 +385,7 @@
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: 6px;
+  flex-shrink: 0;   /* WAVE 7574 */
 }
 
 .ct-transport-btn {
@@ -452,6 +460,8 @@
   border-radius: 4px;
   min-width: 150px;
   justify-content: center;
+  /* WAVE 7576: Allow shrinking — was rigid min-width only */
+  flex-shrink: 0;
 }
 
 .ct-timecode-value {
@@ -587,6 +597,7 @@
   display: flex;
   align-items: center;
   gap: 3px;
+  flex-shrink: 0;   /* WAVE 7574: ST INT / QUANT never overlap */
 }
 
 .ct-mode-btn {
@@ -600,6 +611,8 @@
   cursor: pointer;
   transition: all 0.15s ease;
   color: var(--text-tertiary);
+  flex-shrink: 0;   /* WAVE 7574: defend button space */
+  white-space: nowrap;
 }
 
 .ct-mode-btn:hover {
@@ -690,6 +703,7 @@
 .ct-audio-group {
   display: flex;
   align-items: center;
+  flex-shrink: 0;   /* WAVE 7574 */
 }
 
 .ct-audio-loaded {
@@ -905,7 +919,113 @@
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * RESPONSIVE — Compact mode for small viewports
+ * WAVE 7575: Added 1399px breakpoint — aggressive compression for 1366px.
+ * No horizontal scroll — everything fits at once.
  * ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 1399px) {
+  /* Main bar: tighter gap + padding */
+  .ct-bar {
+    gap: 4px;
+    padding: 0 8px;
+  }
+
+  /* Zones: tighter inter-group gap */
+  .ct-zone {
+    gap: 4px;
+  }
+
+  /* Engine group: minimal padding */
+  .ct-engine-group {
+    gap: 2px;
+    padding: 2px 4px;
+  }
+
+  /* Project group: tighter */
+  .ct-project-group {
+    gap: 2px;
+  }
+
+  /* Transport group: tighter padding */
+  .ct-transport-group {
+    gap: 2px;
+    padding: 2px;
+  }
+
+  /* Mode buttons (ST INT / QUANT): compress padding + font */
+  .ct-modes-group {
+    gap: 2px;
+  }
+
+  .ct-mode-btn {
+    padding: 3px 5px;
+    gap: 3px;
+  }
+
+  .ct-mode-label {
+    font-size: 7px;
+    letter-spacing: 0.5px;
+  }
+
+  /* Timecode: smaller font + padding + reduced min-width */
+  .ct-timecode {
+    padding: 3px 6px;
+    min-width: 120px;
+  }
+
+  .ct-timecode-value {
+    font-size: 13px;
+    letter-spacing: 0.5px;
+  }
+
+  /* WAVE 7576: Project name — truncate harder to reclaim ~40px */
+  .ct-project-name {
+    max-width: 60px;
+    font-size: 9px;
+  }
+
+  /* WAVE 7577: Audio source button — compress padding + min-width */
+  .ct-source-btn {
+    padding: 3px 6px;
+    min-width: 48px;
+    font-size: 8px;
+    gap: 2px;
+  }
+
+  .ct-source-group {
+    gap: 2px;
+  }
+
+  /* WAVE 7577: Hide "CHRONOS" text — keep only the clock icon.
+     Reclaims ~80px for LOAD AUDIO. */
+  .ct-logo {
+    padding: 4px 4px 4px 0;
+    gap: 0;
+  }
+
+  .ct-logo-text {
+    display: none;
+  }
+
+  /* BPM: tighter */
+  .ct-bpm-group {
+    gap: 2px;
+    padding: 2px 4px;
+  }
+
+  .ct-bpm-input {
+    width: 36px;
+  }
+
+  .ct-bpm-label {
+    font-size: 8px;
+  }
+
+  /* Audio group: tighter */
+  .ct-audio-group {
+    gap: 4px;
+  }
+}
 
 @media (max-width: 1100px) {
   .ct-project-name {

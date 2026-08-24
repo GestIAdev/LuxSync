@@ -8,7 +8,7 @@
  * Layout: [ZEN] [MIDI] [HUB] ——— LUXSYNC ——— [─][□][✕]
  */
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Maximize2, Minimize2 } from 'lucide-react'
 import MidiLearnOverlay from '../MidiLearnOverlay'
 import TacticalHub from './TacticalHub'
@@ -28,6 +28,11 @@ const lux = (window as any).luxsync as {
     close: () => Promise<void>
     isMaximized: () => Promise<boolean>
     onMaximizeChange: (cb: (isMax: boolean) => void) => () => void
+    // WAVE 7568: Manual drag IPC
+    dragStart: (cursorPos: { x: number; y: number }) => void
+    dragMove: (cursorPos: { x: number; y: number }) => void
+    dragEnd: () => void
+    dragDoubleClick: () => Promise<void>
   }
 } | undefined
 
@@ -51,9 +56,71 @@ const TitleBar: React.FC<TitleBarProps> = ({
   const handleMaximize = useCallback(() => lux?.window?.maximize(), [])
   const handleClose    = useCallback(() => lux?.window?.close(),    [])
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🪟 WAVE 7568: MANUAL DRAG — Workaround for Electron 31/32 Windows bug
+  // -webkit-app-region: drag is broken on Electron 31+ on Windows (issue #43371).
+  // This uses Pointer Events + setPointerCapture to drag the window via IPC,
+  // bypassing the broken CSS region entirely.
+  // ═══════════════════════════════════════════════════════════════════════
+  const dragRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = dragRef.current
+    if (!el || !lux?.window) return
+
+    let dragging = false
+    let pointerId = 0
+
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.button !== 0) return // left button only
+      // Don't start drag if clicking on interactive elements (buttons, pills)
+      const target = e.target as HTMLElement
+      if (target.closest('button') || target.closest('.title-bar-pills') || target.closest('.title-bar-wc')) {
+        return
+      }
+      dragging = true
+      pointerId = e.pointerId
+      el.setPointerCapture(pointerId)
+      const cursor = { x: e.screenX, y: e.screenY }
+      lux!.window!.dragStart(cursor)
+    }
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (!dragging) return
+      const cursor = { x: e.screenX, y: e.screenY }
+      lux!.window!.dragMove(cursor)
+    }
+
+    const onPointerUp = (e: PointerEvent) => {
+      if (!dragging) return
+      dragging = false
+      try { el.releasePointerCapture(pointerId) } catch { /* already released */ }
+      lux!.window!.dragEnd()
+    }
+
+    const onDoubleClick = () => {
+      lux!.window!.dragDoubleClick()
+    }
+
+    el.addEventListener('pointerdown', onPointerDown)
+    el.addEventListener('pointermove', onPointerMove)
+    el.addEventListener('pointerup', onPointerUp)
+    el.addEventListener('pointercancel', onPointerUp)
+    el.addEventListener('dblclick', onDoubleClick)
+
+    return () => {
+      el.removeEventListener('pointerdown', onPointerDown)
+      el.removeEventListener('pointermove', onPointerMove)
+      el.removeEventListener('pointerup', onPointerUp)
+      el.removeEventListener('pointercancel', onPointerUp)
+      el.removeEventListener('dblclick', onDoubleClick)
+    }
+  }, [])
+
   return (
     <>
-      <div className="global-title-bar">
+      {/* WAVE 7568: ref for manual drag — -webkit-app-region is broken in Electron 31+ */}
+      <div className="global-title-bar" ref={dragRef}>
         {/* 🔧 WAVE UX-1: Left pill cluster — ZEN → MIDI → KF → HUB */}
         <div className="title-bar-pills">
           {/* 🧘 ZEN pill */}

@@ -40,8 +40,10 @@ export class StagePersistence {
     constructor() {
         this.initialized = false;
         this.recentShows = [];
-        this.userDataPath = app.getPath('userData');
-        this.showsPath = path.join(this.userDataPath, 'shows');
+        // WAVE 7568: Defer app.getPath('userData') to init() — the singleton is
+        // created at module load time, before app.whenReady(). Calling app.getPath()
+        // in the constructor crashes Electron on startup with "Cannot read properties
+        // of undefined (reading 'getPath')" because app is not yet initialized.
     }
     /**
      * Initialize the persistence layer
@@ -50,6 +52,9 @@ export class StagePersistence {
     async init() {
         if (this.initialized)
             return;
+        // WAVE 7568: Resolve paths here (deferred from constructor — see comment there)
+        this.userDataPath = app.getPath('userData');
+        this.showsPath = path.join(this.userDataPath, 'shows');
         // Ensure shows directory exists
         if (!fs.existsSync(this.showsPath)) {
             fs.mkdirSync(this.showsPath, { recursive: true });

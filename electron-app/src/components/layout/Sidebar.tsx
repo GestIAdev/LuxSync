@@ -135,13 +135,13 @@ const Sidebar: React.FC = () => {
 
   return (
     <>
-      {/* WAVE 428.6: INLINE CSS - Zen Mode compatible */}
+      {/* WAVE 428.6: INLINE CSS - Zen Mode compatible
+          WAVE 7571: Fixed height: 100vh → 100% (was overlapping CommandDeck) */}
       <style>{`
 /* ═══ WAVE 428.6: ANCLAJE FORZADO + ZEN MODE FIX ═══ */
+/* WAVE 7571: Removed !important width overrides — clamp() in MainLayout.css
+   handles fluid width. Only keep Zen Mode collapse !important. */
 .sidebar-container {
-  width: 240px !important;
-  min-width: 240px !important;
-  max-width: 240px !important;
   margin: 0 !important;
   padding: 0 !important;
   border: none !important;
@@ -157,11 +157,7 @@ const Sidebar: React.FC = () => {
   pointer-events: none !important;
 }
 
-.sidebar-container > * {
-  width: 240px !important;
-  min-width: 240px !important;
-  max-width: 240px !important;
-}
+/* WAVE 7571: Removed .sidebar-container > * width !important — fluid now */
 
 .main-layout {
   gap: 0 !important;
@@ -183,12 +179,12 @@ const Sidebar: React.FC = () => {
 }
 
 /* ═══ SIDEBAR - CYBERPUNK INDUSTRIAL (WAVE 428.5: NO SCANNER) ═══ */
+/* WAVE 7571: height: 100vh → 100% — the sidebar lives inside .main-layout
+   which is already bounded by .app-layout (100vh - TitleBar - CommandDeck).
+   100vh made it overflow behind the CommandDeck, hiding bottom nav items. */
 .sidebar {
-  width: 240px !important;
-  min-width: 240px !important;
-  max-width: 240px !important;
   flex-shrink: 0;
-  height: 100vh;
+  height: 100%;
   background: #0a0a0a;
   border-right: 1px solid #1a1a1a;
   display: flex;
@@ -205,9 +201,11 @@ const Sidebar: React.FC = () => {
 
 /* ⚡ WAVE 2497: Wrapper scrollable para los nav blocks.
    flex:1 consume todo el espacio sobrante entre el logo y el footer.
-   El footer queda SIEMPRE visible en el último pixel sin scroll. */
+   El footer queda SIEMPRE visible en el último pixel sin scroll.
+   WAVE 7571: min-height: 0 critical for flex:1 scroll to work. */
 .sidebar-nav-scroll {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -592,7 +590,7 @@ const Sidebar: React.FC = () => {
   border-radius: 50%;
 }
       `}</style>
-      <aside className="sidebar" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+      <aside className="sidebar" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       
       {/* ═══ HEADER (Imagen completa con texto integrado) ═══ */}
       <div className="sidebar-header" style={{ padding: '20px', display: 'flex', justifyContent: 'center' }}>
@@ -604,7 +602,7 @@ const Sidebar: React.FC = () => {
       </div>
 
       {/* ═══ NAV SCROLL WRAPPER ═══ */}
-      <div className="sidebar-nav-scroll" style={{ flex: 1, overflowY: 'auto' }}>
+      <div className="sidebar-nav-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
 
       {/* ═══ SIDEBAR GROUPS — 4 Workflow Phases ═══ */}
       {SIDEBAR_GROUPS.map((group, groupIdx) => (

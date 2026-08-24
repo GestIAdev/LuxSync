@@ -16,13 +16,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(
-    180deg,
-    rgba(10, 10, 15, 0.95) 0%,
-    rgba(10, 10, 15, 0.85) 100%
-  );
+  /* WAVE 7568: linear-gradient REMOVIDO — color sólido. */
+  background: rgba(10, 10, 15, 0.95);
   border-bottom: 1px solid rgba(0, 255, 255, 0.1);
-  -webkit-app-region: drag;
+  /* WAVE 7568: -webkit-app-region: drag REMOVIDO — roto en Electron 31+ Windows.
+     El drag manual se implementa via Pointer Events + IPC en TitleBar.tsx. */
+  cursor: default;
+  user-select: none;
 }
 
 /* ═══════════════════════════════════════════════════════════════ */
@@ -33,7 +33,7 @@
   align-items: center;
   gap: 6px;
   padding: 0 8px;
-  -webkit-app-region: no-drag;
+  /* WAVE 7568: no-drag REMOVIDO — ya no usamos -webkit-app-region */
   flex-shrink: 0;
 }
 
@@ -43,7 +43,10 @@
   align-items: center;
   gap: 5px;
   background: transparent;
-  backdrop-filter: blur(6px);
+  /* WAVE 7568: backdrop-filter REMOVIDO — crea un compositor layer que rompe
+     -webkit-app-region: drag del padre (.global-title-bar) en Chromium.
+     El blur en un hijo del title bar hace que toda la región drag deje de
+     funcionar, incluso aunque el pill本身 esté marcado como no-drag. */
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
   padding: 3px 10px;
@@ -54,17 +57,18 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   color: rgba(255, 255, 255, 0.4);
-  transition: all 0.2s ease;
+  /* WAVE 7568: transition: all → específico. `all` puede animar propiedades
+     que crean compositor layers y rompen -webkit-app-region: drag del padre. */
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .tb-pill:hover {
   background: rgba(255, 255, 255, 0.04);
-  transform: translateY(-1px);
+  /* WAVE 7568: transform REMOVIDO — rompe -webkit-app-region: drag del padre */
 }
 
 .tb-pill-icon {
   flex-shrink: 0;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .tb-pill-label {
@@ -91,9 +95,8 @@
   box-shadow: 0 0 20px rgba(0, 255, 255, 0.15);
 }
 
-.tb-pill--zen.active .tb-pill-icon {
-  transform: rotate(180deg);
-}
+/* WAVE 7568: .tb-pill--zen.active .tb-pill-icon transform REMOVIDO —
+   rompe -webkit-app-region: drag del padre. Icon rotation handled via JS. */
 
 .tb-pill--zen.active .tb-pill-label {
   text-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
@@ -123,7 +126,7 @@
   text-shadow: 0 0 8px rgba(251, 146, 60, 0.6);
 }
 
-/* Drag region */
+/* Drag region — WAVE 7568: Manual drag via Pointer Events, no CSS app-region */
 .title-bar-drag {
   flex: 1;
   display: flex;
@@ -153,7 +156,7 @@
   align-items: stretch;
   height: 100%;
   flex-shrink: 0;
-  -webkit-app-region: no-drag;
+  /* WAVE 7568: no-drag REMOVIDO — ya no usamos -webkit-app-region */
 }
 
 .tb-wc-btn {
@@ -169,7 +172,7 @@
   transition: background 0.15s ease, color 0.15s ease;
   padding: 0;
   outline: none;
-  -webkit-app-region: no-drag;
+  /* WAVE 7568: no-drag REMOVIDO — ya no usamos -webkit-app-region */
 }
 
 .tb-wc-btn:hover {

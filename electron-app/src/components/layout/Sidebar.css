@@ -14,8 +14,9 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .sidebar {
-  width: 220px;
-  min-width: 220px;
+  /* WAVE 7569-BIS: Fluid width — clamp matches MainLayout sidebar-container */
+  width: 100%;
+  min-width: 0;
   flex-shrink: 0;
   height: 100%;
   background: linear-gradient(180deg, 
@@ -28,8 +29,12 @@
   flex-direction: column;
   padding: 0;
   box-sizing: border-box;
-  position: relative;
+  /* WAVE 7569-BIS: Vertical scroll — flex parent needs min-height:0 */
+  min-height: 0;
+  /* WAVE 7571: overflow: hidden on root — scroll goes in .sidebar-nav-scroll.
+     The inline <style> in Sidebar.tsx enforces this architecture. */
   overflow: hidden;
+  position: relative;
 }
 
 /* Scanline overlay effect */

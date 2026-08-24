@@ -262,6 +262,25 @@ export const LATINO_PROFILE = {
     ambientAttackMs: 65,
     ambientReleaseMs: 135,
     // ═══════════════════════════════════════════════════════════════
+    // WAVE 7573: AMBIENT INTENSITY BOOST — Washer Tungsten necesita LUZ
+    //
+    // PROBLEMA: La doble guillotina ^2.0 + ^1.3 (hardcoded WAVE 4814/4826.3)
+    // destrozaba la señal. Con subBass latino típico (0.30): ambient llegaba
+    // al 7.5%. Con el DJ recortando graves 70% (subBass 0.09): 0.5% — muerto.
+    // El washer Tungsten no es ninguna maravilla → necesita al menos 50%.
+    //
+    // FIX: Exponentes configurables (WAVE 7573). Latino usa curva más suave
+    // + gain más alto. El comportamiento del pulso (EMA 65ms/135ms) se
+    // preserva intacto — solo sube la intensidad.
+    //
+    // subBass=0.30 → 0.30^1.3 × 2.5 ^1.1 = 53%  ✓
+    // subBass=0.09 → 0.09^1.3 × 2.5 ^1.1 = 11%  (pulse visible)
+    // subBass=0.50 → clamp 1.0 = 100%           (picos saturan)
+    // ═══════════════════════════════════════════════════════════════
+    ambientCrushExponent: 1.3, // WAVE 7573: 2.0→1.3 — menos compresión, más luz
+    ambientGain: 2.5, // WAVE 7573: 1.35→2.5 — compensar curva suave
+    ambientOutputExponent: 1.1, // WAVE 7573: 1.3→1.1 — más lineal, más rango medio
+    // ═══════════════════════════════════════════════════════════════
     // WAVE 2436: OVERRIDES 4.1 — Anti-Autotune + Compactación max()
     //
     // PROBLEMA 1 (WAVE 2435): compactación max()

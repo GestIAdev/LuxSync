@@ -16,10 +16,12 @@
   left: 0;
   right: 0;
   bottom: 0;
-  display: grid;
-  grid-template-rows: auto 1fr auto;
+  display: flex;
+  flex-direction: column;
   background: #0a0a0f;
   color: #ffffff;
+  /* WAVE 7573-BIS: Root is a flex column — NO overflow here.
+     Only the mission-grid scrolls. Header and footer stay in flow. */
   overflow: hidden;
   font-family: 'Rajdhani', 'Segoe UI', sans-serif;
 }
@@ -36,7 +38,7 @@
   padding: 6px 16px;
   background: rgba(0, 0, 0, 0.3);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  flex-shrink: 0;
+  flex-shrink: 0;   /* WAVE 7573-BIS: never compress header */
 }
 
 .header-left {
@@ -100,24 +102,33 @@
   gap: 16px;
   padding: 8px 12px;
   min-height: 0;
-  overflow: hidden;
+  flex: 1;
+  /* WAVE 7573-BIS: This is the ONLY scroll container — header and footer
+     stay fixed above/below it. Content scrolls here, not the root. */
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
-/* Left Column: Hardware Stack (Systems + Launchpad Dock) */
+/* Left Column: Hardware Stack (Systems + Launchpad Dock)
+   WAVE 7571: flex-shrink: 0 on children prevents crushing. */
 .grid-column-left {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-height: 0;
+  /* WAVE 7573-BIS: let content define height — mission-grid scrolls */
+  min-height: max-content;
+  align-content: start;
 }
 
-/* Right Column: WAVE 1205 NEON GAMMA - Data Stack (Cyan/Teal Neon Glass) */
+/* Right Column: WAVE 1205 NEON GAMMA - Data Stack (Cyan/Teal Neon Glass)
+   WAVE 7573-BIS: min-height: max-content so Active Session / Patch Bay
+   can stretch to full height without being crushed. */
 .grid-column-right {
   display: flex;
   flex-direction: column;
   gap: 12px;
   padding: 12px;
-  min-height: 0;
+  min-height: max-content;
   background: linear-gradient(180deg, rgba(8, 20, 30, 0.8) 0%, rgba(5, 10, 15, 0.9) 100%);
   backdrop-filter: blur(12px);
   border: 1px solid rgba(34, 211, 238, 0.4);
@@ -135,8 +146,10 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  /* WAVE 7573-BIS: overflow: visible — content expands naturally.
+     The mission-grid scrolls, not the cells. */
   border-radius: 12px;
-  overflow: hidden;
+  overflow: visible;
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
@@ -145,11 +158,12 @@
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
 }
 
-/* 🎛️ WAVE 1205: ZONE 1 CONTROL (Systems Check) - Cyan Neon Glass */
+/* 🎛️ WAVE 1205: ZONE 1 CONTROL (Systems Check) - Cyan Neon Glass
+   WAVE 7571: Removed max-height: 78% — was crushing Audio In/DMX Out.
+   Now flex-shrink: 0 so it keeps natural height, dashboard scrolls. */
 .cell-systems {
-  flex: 1;
-  min-height: 0;
-  max-height: 78%;
+  flex: 0 0 auto;
+  min-height: max-content;
   background: linear-gradient(180deg, rgba(15, 23, 42, 0.8) 0%, rgba(10, 10, 15, 0.9) 100%);
   backdrop-filter: blur(12px);
   border: 1px solid rgba(34, 211, 238, 0.4);
@@ -188,12 +202,14 @@
 }
 
 /* ═══════════════════════════════════════════════════════
-   MISSION DECK (Footer)
+   MISSION DECK (Footer) — WAVE 7573-BIS: Normal flow, never floats
    ═══════════════════════════════════════════════════════ */
 
 .mission-deck {
   padding: 8px 16px 12px;
   flex-shrink: 0;
+  position: relative;
+  z-index: 10;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -241,7 +257,20 @@
 
 /* ═══════════════════════════════════════════════════════
    RESPONSIVE
+   WAVE 7571: Added 1399px breakpoint for 1366px screens.
    ═══════════════════════════════════════════════════════ */
+
+@media (max-width: 1399px) {
+  .mission-grid {
+    gap: 10px;
+    padding: 6px 8px;
+  }
+  
+  .grid-column-right {
+    padding: 8px;
+    gap: 8px;
+  }
+}
 
 @media (max-width: 1100px) {
   .mission-grid {

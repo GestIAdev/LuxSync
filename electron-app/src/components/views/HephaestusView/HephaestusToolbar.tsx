@@ -126,12 +126,17 @@ export const HephaestusToolbar: React.FC<HephaestusToolbarProps> = ({
       boxSizing: 'border-box',
       overflow: 'hidden',
       userSelect: 'none',
+      /* WAVE 7576: CSS var hooks so media queries can override inline gaps */
+      ['--heph-tb-gap' as string]: '24px',
+      ['--heph-tb-group-gap' as string]: '8px',
+      ['--heph-tb-label-size' as string]: '10px',
+      gap: 'var(--heph-tb-gap)',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '24px', minWidth: 0, flex: '1 1 0', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--heph-tb-gap)', minWidth: 0, flex: '1 1 0', overflow: 'hidden' }}>
 
         {/* GRUPO 1: Micro-Interpolación */}
-        <div className="heph-toolbar__group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ color: '#666', fontSize: '10px', fontWeight: 800, letterSpacing: '0.1em' }}>INTERPOLATION</span>
+        <div className="heph-toolbar__group" style={{ display: 'flex', alignItems: 'center', gap: 'var(--heph-tb-group-gap)' }}>
+          <span style={{ color: '#666', fontSize: 'var(--heph-tb-label-size)', fontWeight: 800, letterSpacing: '0.1em' }}>INTERPOLATION</span>
           <div style={{ display: 'flex', gap: '2px', background: '#0a0a0a', padding: '2px', borderRadius: '4px', border: '1px solid #222' }}>
             {INTERP_OPTIONS.map(opt => (
               <button
@@ -154,8 +159,8 @@ export const HephaestusToolbar: React.FC<HephaestusToolbarProps> = ({
         <span style={{ color: '#262626' }}>│</span>
 
         {/* GRUPO 2: Presets Bézier */}
-        <div className="heph-toolbar__group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ color: '#666', fontSize: '10px', fontWeight: 800, letterSpacing: '0.1em' }}>BEZIER</span>
+        <div className="heph-toolbar__group" style={{ display: 'flex', alignItems: 'center', gap: 'var(--heph-tb-group-gap)' }}>
+          <span style={{ color: '#666', fontSize: 'var(--heph-tb-label-size)', fontWeight: 800, letterSpacing: '0.1em' }}>BEZIER</span>
           <select
             className="heph-toolbar__select"
             disabled={selectedKeyframeIdx === null || selectedKf?.interpolation !== 'bezier'}
@@ -173,8 +178,8 @@ export const HephaestusToolbar: React.FC<HephaestusToolbarProps> = ({
         <span style={{ color: '#262626' }}>│</span>
 
         {/* GRUPO 3: Macro Shapes */}
-        <div className="heph-toolbar__group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ color: '#666', fontSize: '10px', fontWeight: 800, letterSpacing: '0.1em' }}>MACRO</span>
+        <div className="heph-toolbar__group" style={{ display: 'flex', alignItems: 'center', gap: 'var(--heph-tb-group-gap)' }}>
+          <span style={{ color: '#666', fontSize: 'var(--heph-tb-label-size)', fontWeight: 800, letterSpacing: '0.1em' }}>MACRO</span>
           <select
             className="heph-toolbar__select heph-toolbar__select--template"
             disabled={!activeCurve}
@@ -198,8 +203,8 @@ export const HephaestusToolbar: React.FC<HephaestusToolbarProps> = ({
         <span style={{ color: '#262626' }}>│</span>
 
         {/* GRUPO 4: Modos */}
-        <div className="heph-toolbar__group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ color: '#666', fontSize: '10px', fontWeight: 800, letterSpacing: '0.1em' }}>MODE</span>
+        <div className="heph-toolbar__group" style={{ display: 'flex', alignItems: 'center', gap: 'var(--heph-tb-group-gap)' }}>
+          <span style={{ color: '#666', fontSize: 'var(--heph-tb-label-size)', fontWeight: 800, letterSpacing: '0.1em' }}>MODE</span>
           <div style={{ display: 'flex', gap: '2px', background: '#0a0a0a', padding: '2px', borderRadius: '4px', border: '1px solid #222' }}>
             {MODE_OPTIONS.map(opt => (
               <button

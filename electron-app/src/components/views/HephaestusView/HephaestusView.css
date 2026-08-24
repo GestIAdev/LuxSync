@@ -1438,6 +1438,7 @@
  * TOOLBAR
  * ═══════════════════════════════════════════════════════════════════════════ */
 
+/* WAVE 7575: Reverted horizontal scroll — compress via media query instead. */
 .heph-toolbar {
   display: flex;
   align-items: center;
@@ -1447,12 +1448,15 @@
   background: rgba(0, 0, 0, 0.4);
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   flex-shrink: 0;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .heph-toolbar__group {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .heph-toolbar__group-label {
@@ -1467,6 +1471,7 @@
 .heph-toolbar__buttons {
   display: flex;
   gap: 2px;
+  flex-shrink: 0;   /* WAVE 7574 */
 }
 
 .heph-toolbar__btn {
@@ -1483,6 +1488,8 @@
   letter-spacing: 1px;
   cursor: pointer;
   transition: all 0.15s ease;
+  flex-shrink: 0;   /* WAVE 7574 */
+  white-space: nowrap;
 }
 
 .heph-toolbar__btn:hover:not(:disabled) {
@@ -1514,6 +1521,7 @@
   width: 1px;
   height: 28px;
   background: rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;   /* WAVE 7574 */
 }
 
 .heph-toolbar__select {
@@ -1526,6 +1534,7 @@
   font-family: var(--font-mono, monospace);
   cursor: pointer;
   outline: none;
+  flex-shrink: 0;   /* WAVE 7574 */
 }
 
 .heph-toolbar__select:focus {
@@ -2562,4 +2571,174 @@
 }
 .heph-lab-phase-scroll::-webkit-scrollbar {
   display: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * WAVE 7576: HEADER + TOOLBAR COMPACT MODE — 1366px screens
+ * Reclaim 150px+ from header. No scroll — everything fits at once.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 1399px) {
+  /* ── OVERRIDE inline style CSS vars on toolbar ── */
+  .heph-toolbar {
+    --heph-tb-gap: 4px;
+    --heph-tb-group-gap: 4px;
+    --heph-tb-label-size: 8px;
+  }
+
+  /* ── HEADER ── */
+  .heph-header {
+    padding: 0 8px;
+    height: 48px;
+  }
+
+  .heph-header__left {
+    gap: 4px;
+  }
+
+  /* Hide the "HEPHAESTUS" title text — icon alone is enough */
+  .heph-header__title {
+    display: none;
+  }
+
+  .heph-header__subtitle {
+    display: none;
+  }
+
+  .heph-header__center {
+    gap: 4px;
+  }
+
+  /* Clip name: truncate hard */
+  .heph-header__clip-name {
+    max-width: 80px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Duration: tighter */
+  .heph-header__duration {
+    font-size: 0.6rem;
+  }
+
+  /* Hide "X PARAMS" text — non-essential */
+  .heph-header__param-count {
+    display: none;
+  }
+
+  /* Safety strip: crush gap between badges to near-zero */
+  .heph-safety__strip {
+    gap: 1px;
+    padding: 0 2px;
+  }
+
+  .heph-safety__badge {
+    padding: 2px 3px;
+    gap: 1px;
+  }
+
+  .heph-safety__badge-id {
+    font-size: 0.5rem;
+  }
+
+  .heph-safety__summary {
+    margin-left: 2px;
+    font-size: 0.55rem;
+    min-width: 16px;
+  }
+
+  /* Hide save message in compact mode */
+  .heph-header__save-message {
+    display: none;
+  }
+
+  /* Right block: tighter gap */
+  .heph-header__right,
+  .heph-header__btn {
+    gap: 4px;
+    font-size: 0.6rem;
+    padding: 4px 6px;
+  }
+
+  .heph-header__btn--temporal {
+    padding: 3px 6px;
+    min-width: 26px;
+    font-size: 0.85rem;
+  }
+
+  .heph-header__btn-label {
+    font-size: 0.55rem;
+  }
+
+  /* Show name: truncate */
+  .heph-header__show-name {
+    max-width: 60px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.55rem;
+  }
+
+  /* ── TOOLBAR (bottom bar) ── */
+  .heph-toolbar {
+    gap: 4px;
+    padding: 0 8px;
+  }
+
+  .heph-toolbar__group {
+    gap: 4px;
+  }
+
+  .heph-toolbar__group-label {
+    font-size: 0.45rem;
+    letter-spacing: 1px;
+  }
+
+  .heph-toolbar__buttons {
+    gap: 1px;
+  }
+
+  .heph-toolbar__btn {
+    padding: 3px 6px;
+    font-size: 0.6rem;
+    gap: 2px;
+  }
+
+  .heph-toolbar__btn-icon {
+    font-size: 0.75rem;
+  }
+
+  .heph-toolbar__divider {
+    height: 20px;
+  }
+
+  .heph-toolbar__select {
+    padding: 3px 5px;
+    font-size: 0.6rem;
+  }
+
+  .heph-toolbar__info {
+    gap: 8px;
+    font-size: 0.65rem;
+  }
+
+  /* Hide the "Double-click to add keyframe" hint in compact mode */
+  .heph-toolbar__hint {
+    display: none !important;
+  }
+
+  /* WAVE 7577: Hide "Select a keyframe to edit" — was overlapping Mode buttons */
+  .heph-toolbar__info-hint {
+    display: none !important;
+  }
+
+  /* WAVE 7577: Mode buttons (ABS/REL/ADD) must never be crushed */
+  .heph-toolbar__group:last-child {
+    flex-shrink: 0;
+  }
+
+  .heph-toolbar__btn-label {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
 }

@@ -459,7 +459,19 @@ self.onmessage = (e: MessageEvent<WorkerInboundMessage>) => {
 
   switch (msg.type) {
     case 'INIT': {
-      canvas = msg.canvas
+      // 🛡️ WAVE 7568: OffscreenCanvas nullability guard.
+      // The contract types msg.canvas as non-null, but on legacy/low-VRAM GPUs
+      // (e.g. Intel HD 3000 on a 13-year-old i3) transferControlToOffscreen()
+      // can silently yield a null/detached canvas. Without this guard the very
+      // next line (canvas.width = ...) throws a null reference that kills the
+      // worker before it can report ERROR back to the main thread — leaving
+      // TacticalCanvas stuck on "INITIALIZING..." forever.
+      const offscreen = msg.canvas as OffscreenCanvas | null
+      if (!offscreen) {
+        sendMessage({ type: 'ERROR', message: 'INIT received null OffscreenCanvas — transferControlToOffscreen failed on this GPU' })
+        return
+      }
+      canvas = offscreen
       canvasWidth = msg.width
       canvasHeight = msg.height
       dpr = msg.dpr

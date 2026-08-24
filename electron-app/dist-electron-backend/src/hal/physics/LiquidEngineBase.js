@@ -594,7 +594,9 @@ export class LiquidEngineBase {
         // 🌊 WAVE 4814: Curva cuadrática (antes cúbica ^3.5) + noise-gate bajado.
         // ^2.0: subBass=0.40 → 0.16, subBass=0.60 → 0.36. El sub-grave real brilla.
         // gate=0.03 (antes 0.15): valores típicos de subBass (0.25-0.50) ahora pasan.
-        const _ambientCrushed = Math.pow(_ambientRaw, 2.0);
+        // WAVE 7573: exponentes configurables via perfil (defaults 2.0 / 1.3).
+        const _ambientCrushExp = p.ambientCrushExponent ?? 2.0;
+        const _ambientCrushed = Math.pow(_ambientRaw, _ambientCrushExp);
         // WAVE 4826.3 — PRE-GAIN + CONTRASTE EXTREMO
         // Ganancia pre-curva para compensar falta de graves en latino (1.35x boost)
         // Luego expansión ^1.3 para contraste más suave (es ^1.6 era demasiado agresivo)
@@ -602,7 +604,8 @@ export class LiquidEngineBase {
         // Perfiles con ambientGain > 1.35 boostean la intensidad ambiental.
         const _ambientGain = p.ambientGain ?? 1.35;
         let preGainAmbient = Math.min(1.0, _ambientCrushed * _ambientGain);
-        let ambientIntensity = Math.pow(preGainAmbient, 1.3);
+        const _ambientOutputExp = p.ambientOutputExponent ?? 1.3;
+        let ambientIntensity = Math.pow(preGainAmbient, _ambientOutputExp);
         // WAVE 4826.1 — Reemplazar gate binario por fade exponencial suave para Tungsten en Ambient
         if (ambientIntensity < 0.03) {
             ambientIntensity *= 0.85;

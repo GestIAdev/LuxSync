@@ -42,6 +42,11 @@ const api = {
             ipcRenderer.on('window:maximized', handler);
             return () => ipcRenderer.removeListener('window:maximized', handler);
         },
+        // WAVE 7568: Manual drag — workaround for Electron 31/32 Windows bug
+        dragStart: (cursorPos) => ipcRenderer.send('window:drag:start', cursorPos),
+        dragMove: (cursorPos) => ipcRenderer.send('window:drag:move', cursorPos),
+        dragEnd: () => ipcRenderer.send('window:drag:end'),
+        dragDoubleClick: () => ipcRenderer.invoke('window:drag:doubleClick'),
     },
     // ============================================
     // 🎛️ WAVE 1007: THE NERVE LINK - Top-level DMX injection

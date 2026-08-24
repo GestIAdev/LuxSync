@@ -15,6 +15,61 @@ import { getDynamicEffectRegistry, effectDisplayName } from '../../arsenal/Dynam
 function clamp01(x) {
     return x < 0 ? 0 : x > 1 ? 1 : x;
 }
+/**
+ * Selecciona un candidato de re-route con variedad controlada.
+ * 1. Filtra: no divine, no heavy, aggression <= 0.70, no minion vivo
+ * 2. Ordena por aggression descendente
+ * 3. Descarta los que están en cooldown (disparados en los últimos 8s)
+ * 4. Selecciona aleatoriamente entre los 3 primeros válidos
+ * 5. Si todos están en cooldown, selecciona aleatoriamente entre los 3 primeros
+ * @returns effectId del candidato seleccionado, o null si no hay candidatos
+ */
+function selectRerouteCandidate(arsenal, effectHistory, now) {
+    const lighter = arsenal.filter(e => !e.simMeta.isDivineCandidate &&
+        !e.simMeta.isHeavyCandidate &&
+        (e.dna.aggression ?? 0) <= 0.70 &&
+        (!e.organismId || e.organismStatus !== 'alive'));
+    if (lighter.length === 0)
+        return null;
+    const sorted = [...lighter].sort((a, b) => (b.dna.aggression ?? 0) - (a.dna.aggression ?? 0));
+    // Candidatos no en cooldown (no disparados en los últimos 8s)
+    const notInCooldown = sorted.filter(e => !effectHistory.some(h => h.type === e.id && (now - h.timestamp) < 8000));
+    const pool = notInCooldown.length > 0 ? notInCooldown : sorted;
+    // Seleccionar aleatoriamente entre los 3 primeros del pool
+    const topN = Math.min(3, pool.length);
+    const pick = pool[Math.floor(Math.random() * topN)];
+    return pick.id;
+}
+// ═══════════════════════════════════════════════════════════════════════════
+// 🌊 WAVE 7575: ETA-AWARE UPGRADE — selección de candidato heavy/peak
+// Espejo del selectRerouteCandidate pero en sentido inverso: cuando el
+// DreamSimulator pre-bufferizó un efecto gentle/ambient (porque Cassandra
+// predijo breakdown_imminent/energy_drop) PERO en el momento del disparo
+// hay clímax real (bass > 0.55, Z > 1.5, ETA > 2500ms), selecciona un
+// efecto heavy/peak para aprovechar el pico energético en vez de desperdiciarlo.
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Selecciona un candidato heavy/peak para el upgrade.
+ * 1. Filtra: isHeavyCandidate OR isDivineCandidate OR aggression > 0.80
+ * 2. Ordena por aggression descendente (más agresivo primero)
+ * 3. Descarta los que están en cooldown (disparados en los últimos 8s)
+ * 4. Selecciona aleatoriamente entre los 3 primeros válidos
+ * @returns effectId del candidato seleccionado, o null si no hay candidatos
+ */
+function selectUpgradeCandidate(arsenal, effectHistory, now) {
+    const heavier = arsenal.filter(e => (e.simMeta.isHeavyCandidate || e.simMeta.isDivineCandidate || (e.dna.aggression ?? 0) > 0.80)
+        && (!e.organismId || e.organismStatus !== 'alive'));
+    if (heavier.length === 0)
+        return null;
+    const sorted = [...heavier].sort((a, b) => (b.dna.aggression ?? 0) - (a.dna.aggression ?? 0));
+    // Candidatos no en cooldown (no disparados en los últimos 8s)
+    const notInCooldown = sorted.filter(e => !effectHistory.some(h => h.type === e.id && (now - h.timestamp) < 8000));
+    const pool = notInCooldown.length > 0 ? notInCooldown : sorted;
+    // Seleccionar aleatoriamente entre los 3 primeros del pool
+    const topN = Math.min(3, pool.length);
+    const pick = pool[Math.floor(Math.random() * topN)];
+    return pick.id;
+}
 // ═══════════════════════════════════════════════════════════════════════════
 // Sovereign Clock Guard
 // ═══════════════════════════════════════════════════════════════════════════
@@ -29,7 +84,7 @@ export class SovereignClockGuard {
     evaluate(ctx) {
         const { bufferStatus } = ctx;
         if (!bufferStatus) {
-            return { action: 'wait', candidate: null, reroutedEffectId: null, reason: null, trigger: null };
+            return { action: 'wait', candidate: null, reroutedEffectId: null, upgradedEffectId: null, reason: null, trigger: null };
         }
         const timeToEvent = bufferStatus.predictedEventAt - ctx.now;
         // ── Glass Break Sensor (WAVE 5016 + WAVE 6040 Regla del Valle) ──
@@ -48,14 +103,14 @@ export class SovereignClockGuard {
         const withinSovereignWindow = timeToEvent <= 0 && timeToEvent >= -this.SOVEREIGN_WINDOW_MS;
         if (!withinSovereignWindow && !glassBreak) {
             if (timeToEvent < -this.SOVEREIGN_WINDOW_MS) {
-                return { action: 'clear', candidate: null, reroutedEffectId: null, reason: null, trigger: null };
+                return { action: 'clear', candidate: null, reroutedEffectId: null, upgradedEffectId: null, reason: null, trigger: null };
             }
-            return { action: 'wait', candidate: null, reroutedEffectId: null, reason: null, trigger: null };
+            return { action: 'wait', candidate: null, reroutedEffectId: null, upgradedEffectId: null, reason: null, trigger: null };
         }
         const trigger = glassBreak ? 'glass_break' : 'sovereign_window';
         const candidate = ctx.candidate;
         if (!candidate) {
-            return { action: 'clear', candidate: null, reroutedEffectId: null, reason: null, trigger: null };
+            return { action: 'clear', candidate: null, reroutedEffectId: null, upgradedEffectId: null, reason: null, trigger: null };
         }
         // ── Minion Quarantine ──
         const registryEntry = getDynamicEffectRegistry().getEntry(candidate.effect);
@@ -64,6 +119,7 @@ export class SovereignClockGuard {
                 action: 'abort',
                 candidate: null,
                 reroutedEffectId: null,
+                upgradedEffectId: null,
                 reason: `Minion quarantine enforced — "${candidate.effectName ?? candidate.effect}" blocked from live fire`,
                 trigger,
             };
@@ -87,8 +143,11 @@ export class SovereignClockGuard {
         // ═══════════════════════════════════════════════════════════════════════
         // 🩸 WAVE 7543: UNIVERSAL SPECTRAL BASS GATE (Anti-Autotune Veto)
         // 🩸 WAVE 7553: REVERTED to simple bass <= 0.35. Purgado de zL/vocal/ratio.
+        // 🩸 WAVE 7574: ENDURECIDO 0.35→0.45 — la resonancia del autotune grave vive
+        //   en 0.30-0.40. Un bombo real de reggaeton/techno dispara a 0.75-0.90.
+        //   0.45 deja la voz nasal fuera y solo deja pasar golpes físicos reales.
         // ═══════════════════════════════════════════════════════════════════════
-        const BASS_GATE_THRESHOLD = 0.35;
+        const BASS_GATE_THRESHOLD = 0.42;
         const hasSubstantialBass = ctx.titanState.bass > BASS_GATE_THRESHOLD;
         let aborted = false;
         let abortReason = '';
@@ -134,29 +193,16 @@ export class SovereignClockGuard {
         if (!aborted && registryEntry && !registryEntry.simMeta.isDivineCandidate && isHeavyEffect) {
             const HEAVY_EPICNESS_FLOOR = Math.max(0.25, ctx.rmsAverage10s * 0.35);
             // 🩸 WAVE 7543: HEAVY Z-SCORE FLOOR — heavy effects require statistical significance.
-            // A heavy effect fired by the Sovereign Clock must have Z >= 1.0 (notable).
-            // Z < 1.0 means the energy is barely above the rolling mean — this is a VERSE,
-            // not a drop. Vocal/autotune transients can produce RMS spikes that Cassandra
-            // misinterprets as buildup_starting, but the Z-score reveals the truth: the
-            // energy is not statistically unusual.
-            const SOVEREIGN_HEAVY_MIN_Z = 1.0;
+            // 🩸 WAVE 7574: ENDURECIDO 1.0→1.5 — exige que el golpe sea una anomalía real
+            //   (un drop), no un ruido sostenido. Z=1.0 es "un poquito above average";
+            //   Z=1.5 es "claramente inusual".
+            const SOVEREIGN_HEAVY_MIN_Z = 1.5;
             const heavyZBlocked = ctx.currentZScore < SOVEREIGN_HEAVY_MIN_Z;
             if (v3EpicnessNow < HEAVY_EPICNESS_FLOOR || heavyZBlocked) {
                 const vibeArsenal = getDynamicEffectRegistry().getEffectsForVibe(ctx.titanState.vibeId ?? '');
-                const lighterCandidates = vibeArsenal.filter(e => !e.simMeta.isDivineCandidate &&
-                    !e.simMeta.isHeavyCandidate &&
-                    (e.dna.aggression ?? 0) <= 0.70 &&
-                    (!e.organismId || e.organismStatus !== 'alive'));
-                if (lighterCandidates.length > 0) {
-                    const sorted = lighterCandidates.sort((a, b) => (b.dna.aggression ?? 0) - (a.dna.aggression ?? 0));
-                    for (const light of sorted) {
-                        if (!ctx.effectHistory.some(h => h.type === light.id && (ctx.now - h.timestamp) < 8000)) {
-                            reroutedEffectId = light.id;
-                            break;
-                        }
-                    }
-                    if (!reroutedEffectId)
-                        reroutedEffectId = sorted[0].id;
+                // 🩸 WAVE 7574: RE-ROUTE VARIETY — selección aleatoria entre top 3
+                reroutedEffectId = selectRerouteCandidate(vibeArsenal, ctx.effectHistory, ctx.now);
+                if (reroutedEffectId) {
                     heavyRerouted = true;
                     console.log(`[Sovereign Clock 🔄] HEAVY RE-ROUTE: "${candidate.effectName ?? candidate.effect}" → "${effectDisplayName(reroutedEffectId)}"` +
                         ` | epicness=${v3EpicnessNow.toFixed(3)} < floor=${HEAVY_EPICNESS_FLOOR.toFixed(3)}` +
@@ -190,20 +236,9 @@ export class SovereignClockGuard {
             // but we include it in the divine gate log for diagnostic completeness.
             if (divineEpicnessBlocked || energyTooLow || divineZoneVeto) {
                 const vibeArsenalDivine = getDynamicEffectRegistry().getEffectsForVibe(ctx.titanState.vibeId ?? '');
-                const lighterCandidatesDivine = vibeArsenalDivine.filter(e => !e.simMeta.isDivineCandidate &&
-                    !e.simMeta.isHeavyCandidate &&
-                    (e.dna.aggression ?? 0) <= 0.70 &&
-                    (!e.organismId || e.organismStatus !== 'alive'));
-                if (lighterCandidatesDivine.length > 0) {
-                    const sortedDivine = lighterCandidatesDivine.sort((a, b) => (b.dna.aggression ?? 0) - (a.dna.aggression ?? 0));
-                    for (const light of sortedDivine) {
-                        if (!ctx.effectHistory.some(h => h.type === light.id && (ctx.now - h.timestamp) < 8000)) {
-                            reroutedEffectId = light.id;
-                            break;
-                        }
-                    }
-                    if (!reroutedEffectId)
-                        reroutedEffectId = sortedDivine[0].id;
+                // 🩸 WAVE 7574: RE-ROUTE VARIETY — selección aleatoria entre top 3
+                reroutedEffectId = selectRerouteCandidate(vibeArsenalDivine, ctx.effectHistory, ctx.now);
+                if (reroutedEffectId) {
                     heavyRerouted = true;
                     console.log(`[Sovereign Clock 🔄] DIVINE RE-ROUTE: "${candidate.effectName ?? candidate.effect}" → "${effectDisplayName(reroutedEffectId)}"` +
                         ` | epicness=${v3EpicnessNow.toFixed(3)} (peak>${V3_EPSILON_DIVINE.toFixed(2)}? ${divinePeakPassed}; sustained>${SOVEREIGN_DIVINE_EPICNESS}+rms>${SOVEREIGN_DIVINE_RMS_FLOOR.toFixed(2)}? ${divineSustainedPassed})` +
@@ -259,15 +294,61 @@ export class SovereignClockGuard {
                 action: 'abort',
                 candidate: null,
                 reroutedEffectId: null,
+                upgradedEffectId: null,
                 reason: abortReason,
                 trigger,
             };
+        }
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🌊 WAVE 7575: ETA-AWARE UPGRADE — Light → Heavy cuando el clímax es real
+        // ═══════════════════════════════════════════════════════════════════════
+        // El DreamSimulator pre-bufferizó un efecto gentle/ambient porque Cassandra
+        // predijo breakdown_imminent/energy_drop. PERO a veces el DJ lanza el clímax
+        // JUSTO en el momento del disparo. Si hay bass real (>0.55, no vocal), Z alto
+        // (>1.5), y el breakdown aún está lejos (ETA > 2500ms), aprovechamos el pico
+        // y disparamos un heavy/peak en vez de desperdiciar el clímax con un gentle.
+        //
+        // Condiciones (TODAS deben cumplirse):
+        //   1. El candidato es gentle/ambient (aggression <= 0.70, no heavy, no divine)
+        //   2. ETA > 2500ms (el breakdown NO es inminente — hay margen para el heavy)
+        //   3. bass > 0.55 (bombo real, no autotune — más estricto que el gate de 0.45)
+        //   4. Z > 1.5 (anomalía estadística real)
+        //   5. rawEnergy > 0.70 (energía física alta)
+        // ═══════════════════════════════════════════════════════════════════════
+        let upgradedEffectId = null;
+        if (!heavyRerouted && registryEntry) {
+            const isGentleCandidate = !registryEntry.simMeta.isHeavyCandidate
+                && !registryEntry.simMeta.isDivineCandidate
+                && (registryEntry.dna.aggression ?? 0) <= 0.70;
+            const UPGRADE_ETA_MIN_MS = 2500;
+            const UPGRADE_BASS_MIN = 0.55;
+            const UPGRADE_Z_MIN = 1.5;
+            const UPGRADE_ENERGY_MIN = 0.70;
+            const etaMs = bufferStatus.predictedEventAt - ctx.now;
+            const canUpgrade = isGentleCandidate
+                && etaMs > UPGRADE_ETA_MIN_MS
+                && ctx.titanState.bass > UPGRADE_BASS_MIN
+                && ctx.currentZScore > UPGRADE_Z_MIN
+                && ctx.titanState.rawEnergy > UPGRADE_ENERGY_MIN;
+            if (canUpgrade) {
+                const vibeArsenal = getDynamicEffectRegistry().getEffectsForVibe(ctx.titanState.vibeId ?? '');
+                upgradedEffectId = selectUpgradeCandidate(vibeArsenal, ctx.effectHistory, ctx.now);
+                if (upgradedEffectId) {
+                    console.log(`[Sovereign Clock ⚡] ETA-AWARE UPGRADE: "${candidate.effectName ?? candidate.effect}" → "${effectDisplayName(upgradedEffectId)}"` +
+                        ` | ETA=${etaMs.toFixed(0)}ms > ${UPGRADE_ETA_MIN_MS}` +
+                        ` bass=${ctx.titanState.bass.toFixed(3)} > ${UPGRADE_BASS_MIN}` +
+                        ` Z=${ctx.currentZScore.toFixed(2)}σ > ${UPGRADE_Z_MIN}` +
+                        ` E=${ctx.titanState.rawEnergy.toFixed(3)} > ${UPGRADE_ENERGY_MIN}` +
+                        ` — clímax real detectado, breakdown lejos, aprovechar el pico`);
+                }
+            }
         }
         // ── FIRE ──
         return {
             action: 'fire',
             candidate,
             reroutedEffectId: heavyRerouted ? reroutedEffectId : null,
+            upgradedEffectId,
             reason: null,
             trigger,
         };

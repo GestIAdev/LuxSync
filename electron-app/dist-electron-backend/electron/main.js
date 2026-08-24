@@ -1404,6 +1404,41 @@ ipcMain.handle('window:close', () => {
 ipcMain.handle('window:isMaximized', () => {
     return mainWindow?.isMaximized() ?? false;
 });
+// ═══════════════════════════════════════════════════════════════════════════
+// 🪟 WAVE 7568: MANUAL DRAG — Workaround for Electron 31/32 Windows bug
+// -webkit-app-region: drag is broken on Electron 31+ on Windows (issue #43371).
+// This IPC-based manual drag uses screen.getCursorScreenPoint() to move the
+// window, triggered by pointerdown on the title bar in the renderer.
+// ═══════════════════════════════════════════════════════════════════════════
+let dragOffset = null;
+ipcMain.on('window:drag:start', (_event, startPos) => {
+    if (!mainWindow)
+        return;
+    const winPos = mainWindow.getPosition();
+    dragOffset = { x: startPos.x - winPos[0], y: startPos.y - winPos[1] };
+});
+ipcMain.on('window:drag:move', (_event, cursorPos) => {
+    if (!mainWindow || !dragOffset)
+        return;
+    // Don't drag if window is maximized — would jump across screens
+    if (mainWindow.isMaximized())
+        return;
+    mainWindow.setPosition(Math.round(cursorPos.x - dragOffset.x), Math.round(cursorPos.y - dragOffset.y));
+});
+ipcMain.on('window:drag:end', () => {
+    dragOffset = null;
+});
+// Double-click on title bar toggles maximize
+ipcMain.handle('window:drag:doubleClick', () => {
+    if (!mainWindow)
+        return;
+    if (mainWindow.isMaximized()) {
+        mainWindow.unmaximize();
+    }
+    else {
+        mainWindow.maximize();
+    }
+});
 // Notify renderer when maximize state changes
 app.on('ready', () => {
     // Listeners are added after mainWindow is created — see createWindow setup below

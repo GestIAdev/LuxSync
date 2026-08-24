@@ -11,9 +11,12 @@
 
 .command-deck {
   display: grid;
-  grid-template-columns: 140px 260px 1fr 320px 180px 130px;
-  gap: 12px;
-  padding: 10px 16px;
+  /* WAVE 7570: STRICT GRID — sides are max-content (never crush),
+     center is 1fr (absorbs all free space, can shrink to 0).
+     This guarantees ARM/AI and BLACKOUT/GO never lose their text. */
+  grid-template-columns: max-content 1fr max-content max-content;
+  gap: clamp(6px, 0.8vw, 12px);
+  padding: 10px clamp(8px, 1vw, 16px);
   height: 140px;
   min-height: 140px;
   align-items: center;
@@ -27,12 +30,14 @@
 
 /* WAVE 1131.2: SQUARES & SWAPS */
 .command-deck.command-deck-reforged {
-  /* [ INTELLIGENCE (ARM+AI) ] [ VIBES (Flex) ] [ GM (Capped) ] [ TRIGGERS (Fixed) ] */
-  grid-template-columns: 200px 1fr minmax(300px, 450px) 240px;
+  /* [ INTELLIGENCE ] [ VIBES_MOOD (1fr) ] [ GRAND_MASTER ] [ TRIGGERS ]
+     WAVE 7570: max-content on sides — they take only what they need.
+     Center 1fr absorbs the rest and can shrink. */
+  grid-template-columns: max-content 1fr max-content max-content;
   height: 140px;
   min-height: 140px;
-  padding: 12px 16px;
-  gap: 16px;
+  padding: 12px clamp(8px, 1vw, 16px);
+  gap: clamp(8px, 1vw, 16px);
 }
 
 .command-deck.blackout-active {
@@ -54,15 +59,20 @@
   background: rgba(255, 255, 255, 0.02);
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.04);
+  /* WAVE 7569-BIS: Allow zones to shrink — prevents overflow push */
+  min-width: 0;
+  overflow: hidden;
 }
 
-/* ZONE 1: INTELLIGENCE (ARM + AI dual badges) */
+/* ZONE 1: INTELLIGENCE (ARM + AI dual badges) — WAVE 7570: protected from crushing */
 .zone-intelligence {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   justify-content: center;
   padding: 8px;
+  flex-shrink: 0;          /* Never shrink — ARM/AI must stay readable */
+  min-width: 0;
 }
 
 /* ARM Badge — DISARMED (output blocked) */
@@ -101,12 +111,12 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
   width: 100%;
   height: 100%;
   aspect-ratio: 1 / 1;
-  max-width: 94px;
-  max-height: 94px;
+  max-width: clamp(60px, 7vw, 94px);
+  max-height: clamp(60px, 7vw, 94px);
   background: rgba(30, 30, 40, 0.8);
   border: 2px solid rgba(100, 100, 120, 0.3);
   border-radius: 12px;
@@ -115,14 +125,14 @@
 }
 
 .intelligence-badge .intel-icon {
-  width: 32px;
-  height: 32px;
+  width: clamp(20px, 2.5vw, 32px);
+  height: clamp(20px, 2.5vw, 32px);
   transition: all 0.2s ease;
 }
 
 .intelligence-badge .intel-label {
   font-family: 'Orbitron', 'JetBrains Mono', monospace;
-  font-size: 12px;
+  font-size: clamp(9px, 1vw, 12px);
   font-weight: 700;
   letter-spacing: 1px;
   transition: all 0.2s ease;
@@ -169,13 +179,15 @@
   box-shadow: 0 0 30px rgba(168, 85, 247, 0.4);
 }
 
-/* ZONE 2: VIBES + MOOD (Side by side) */
+/* ZONE 2: VIBES + MOOD (Side by side) — WAVE 7570: compressible center */
 .zone-vibes-mood {
-  gap: 16px;
-  padding: 8px 16px;
+  gap: clamp(4px, 0.5vw, 16px);
+  padding: 8px clamp(4px, 0.5vw, 16px);
   background: rgba(255, 255, 255, 0.02);
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.04);
+  min-width: 0;            /* Critical: allow shrinking in grid */
+  overflow: hidden;
 }
 
 .zone-divider {
@@ -184,49 +196,56 @@
   background: rgba(255, 255, 255, 0.1);
 }
 
-/* ZONE 3: GRAND MASTERS (Intensity + Speed) — WAVE 2472 */
+/* ZONE 3: GRAND MASTERS (Intensity + Speed) — WAVE 2472
+   WAVE 7570: compressible — min-width:0 so grid can shrink it */
 .zone-grandmaster {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 8px 16px;
+  padding: 8px clamp(6px, 0.8vw, 16px);
   background: rgba(0, 255, 255, 0.02);
   border-radius: 8px;
   border: 1px solid rgba(0, 255, 255, 0.08);
+  min-width: 0;
+  flex-shrink: 0;
 }
 
-/* ZONE 4: TRIGGERS (The Gate) - 240px, dual squares */
+/* ZONE 4: TRIGGERS (The Gate) - WAVE 7570: protected, never crush */
 .zone-triggers {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: clamp(6px, 0.5vw, 12px);
   padding: 8px;
   justify-items: center;
   align-items: center;
+  flex-shrink: 0;          /* BLACKOUT/GO must never be crushed */
+  min-width: 0;
 }
 
-/* Base Trigger Square */
+/* Base Trigger Square — WAVE 7570: protected from crushing */
 .trigger-sq {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
   width: 100%;
   height: 100%;
   aspect-ratio: 1 / 1;
-  max-width: 94px;
-  max-height: 94px;
+  max-width: clamp(60px, 7vw, 94px);
+  max-height: clamp(60px, 7vw, 94px);
   background: rgba(30, 30, 40, 0.8);
   border: 2px solid rgba(100, 100, 120, 0.3);
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.15s ease;
   font-family: 'Orbitron', 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: clamp(9px, 1vw, 11px);
   font-weight: 700;
   letter-spacing: 1px;
   text-transform: uppercase;
+  white-space: nowrap;     /* Prevent "LACKOL" — never wrap BLACKOUT */
+  flex-shrink: 0;
 }
 
 /* Legacy trigger-btn → mapped to trigger-sq */
@@ -273,52 +292,57 @@
 
 /* GO Button - Base styles (overridden by .zone-triggers specific rules below) */
 
-/* Blackout in Triggers - Square matching GO - WAVE 1131.2 */
+/* Blackout in Triggers - Square matching GO - WAVE 1131.2
+   WAVE 7570: Fluid sizing with clamp — never crush the BLACKOUT text */
 .zone-triggers .blackout-master {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
   width: 100%;
   height: 100%;
   aspect-ratio: 1 / 1;
-  max-width: 94px;
-  max-height: 94px;
+  max-width: clamp(60px, 7vw, 94px);
+  max-height: clamp(60px, 7vw, 94px);
   min-width: unset;
   padding: 0;
   border-radius: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .zone-triggers .blackout-master .blackout-icon {
-  width: 28px;
-  height: 28px;
+  width: clamp(20px, 2.5vw, 28px);
+  height: clamp(20px, 2.5vw, 28px);
 }
 
 .zone-triggers .blackout-master .blackout-text {
-  font-size: 10px;
+  font-size: clamp(8px, 0.9vw, 10px);
   letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 
 .zone-triggers .blackout-master .blackout-shortcut {
   display: none;
 }
 
-/* GO in Triggers - BRUTAL RESET - Same structure as Blackout */
+/* GO in Triggers - BRUTAL RESET - Same structure as Blackout
+   WAVE 7570: Fluid sizing with clamp — match blackout-master */
 .zone-triggers .trigger-sq.trigger-go {
   /* LAYOUT RESET - Nuclear option */
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
   justify-content: center !important;
-  gap: 6px !important;
+  gap: 4px !important;
   
-  /* SIZE - Fixed square */
+  /* SIZE - Fluid square */
   width: 100% !important;
   height: 100% !important;
   aspect-ratio: 1 / 1 !important;
-  max-width: 94px !important;
-  max-height: 94px !important;
+  max-width: clamp(60px, 7vw, 94px) !important;
+  max-height: clamp(60px, 7vw, 94px) !important;
   
   /* SPACING - Zero everything */
   padding: 0 !important;
@@ -331,6 +355,8 @@
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.15s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .zone-triggers .trigger-sq.trigger-go:hover {
@@ -814,7 +840,7 @@
 .zone-vibes-mood .vibe-btn-compact {
   flex: 1;
   height: 100%;
-  min-width: 60px;
+  min-width: clamp(36px, 4vw, 60px);  /* WAVE 7570: fluid — was 60px rigid */
   min-height: unset;
   padding: 6px;
   border-radius: 8px;
@@ -1280,14 +1306,11 @@
 
 /* 
    RESPONSIVE - Smaller screens
-    */
+   WAVE 7570: Grid is now max-content/1fr/max-content/max-content.
+   Media queries only need to compress internal element sizes, not columns.
+   */
 
 @media (max-width: 1600px) {
-  .command-deck {
-    grid-template-columns: 120px 220px 1fr 280px 160px 110px;
-    gap: 10px;
-  }
-  
   .vibe-btn-compact {
     height: 70px;
   }
@@ -1313,12 +1336,6 @@
 }
 
 @media (max-width: 1400px) {
-  .command-deck {
-    grid-template-columns: 100px 180px 1fr 240px 140px 100px;
-    gap: 8px;
-    padding: 8px 12px;
-  }
-  
   .vibe-btn-compact {
     height: 60px;
   }
@@ -1335,6 +1352,103 @@
   .gms-value-display {
     font-size: 14px;
     min-width: 42px;
+  }
+}
+
+/* WAVE 7570: 1366px / 1280px — compress internals, stack moods vertically */
+@media (max-width: 1399px) {
+  .command-deck {
+    gap: 6px;
+    padding: 8px 8px;
+  }
+
+  .vibe-btn-compact {
+    height: 54px;
+  }
+  
+  .quick-btn {
+    height: 54px;
+  }
+  
+  .gm-value-display {
+    font-size: 18px;
+    min-width: 44px;
+  }
+
+  /* Stack mood buttons vertically to save horizontal space.
+     WAVE 7572: Pure flexbox distribution — no hardcoded max-height.
+     The parent is a strict flex column; buttons share space evenly. */
+  .zone-vibes-mood .mood-toggle {
+    flex-direction: column;
+    gap: 2px;
+    height: 100%;
+  }
+  
+  .zone-vibes-mood .mood-toggle-buttons {
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 2px;
+    padding: 2px;
+    height: 100%;
+  }
+  
+  .zone-vibes-mood .mood-btn {
+    flex: 1 1 0;
+    min-height: 0;
+    min-width: 36px;
+    padding: 2px 4px;
+    flex-direction: row;
+    gap: 3px;
+  }
+  
+  .zone-vibes-mood .mood-icon {
+    width: 14px;
+    height: 14px;
+  }
+  
+  .zone-vibes-mood .mood-label {
+    display: none;
+  }
+
+  /* Compress vibe buttons padding */
+  .vibe-btn-compact {
+    padding: 4px 6px;
+  }
+}
+
+@media (max-width: 1280px) {
+  .command-deck {
+    gap: 4px;
+    padding: 6px 6px;
+  }
+
+  .vibe-btn-compact {
+    height: 48px;
+  }
+  
+  .quick-btn {
+    height: 48px;
+  }
+  
+  .gm-value-display {
+    font-size: 16px;
+    min-width: 40px;
+  }
+  
+  .gms-value-display {
+    font-size: 12px;
+    min-width: 36px;
+  }
+
+  /* WAVE 7572: Icon-only, flex-distributed — no hardcoded heights */
+  .zone-vibes-mood .mood-btn {
+    min-width: 28px;
+    padding: 2px 3px;
+  }
+  
+  .zone-vibes-mood .mood-icon {
+    width: 12px;
+    height: 12px;
   }
 }
 

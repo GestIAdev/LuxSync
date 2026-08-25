@@ -343,7 +343,11 @@ function handleMessage(message: WorkerMessage): void {
     }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
+    // 🩸 WAVE 7597-CLEANUP: Cap error log to prevent unbounded string accumulation
+    // in worker memory. A recurring error at 60fps would otherwise grow this
+    // array by ~65MB over 3 hours.
     state.errors.push(errorMsg);
+    if (state.errors.length > 50) state.errors.shift();
     console.error(`[BETA] Error handling ${message.type}:`, errorMsg);
     sendMessage(
       MessageType.WORKER_ERROR,

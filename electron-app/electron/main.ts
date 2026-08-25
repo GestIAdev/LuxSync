@@ -1232,7 +1232,50 @@ if (!gotTheLock) {
   })
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🏛️ WAVE 7591: initializeVaults() — Ley Marcial del Filesystem
+// ═══════════════════════════════════════════════════════════════════════════
+// Synchronously creates ALL canonical userData subdirectories in one pass,
+// BEFORE any IPC handler or window initialization. This guarantees that every
+// subsystem (StagePersistence, VibeLabPersistence, Chronos, Genesis, etc.)
+// finds its vault ready — no more scattered mkdirSync calls across modules.
+//
+// All paths are under app.getPath('userData') → 100% compliance.
+// Old ~/.luxsync/autosave/ is left in place (no migration); new autosaves
+// go to userData/autosave/.
+function initializeVaults(): void {
+  const fs = require('fs') as typeof import('fs')
+  const userData = app.getPath('userData')
+
+  const vaults: string[] = [
+    path.join(userData, 'arsenal'),
+    path.join(userData, 'license'),
+    path.join(userData, 'shows'),
+    path.join(userData, 'vibes'),
+    path.join(userData, 'autosave'),
+    path.join(userData, 'ingenios', 'system'),
+    path.join(userData, 'ingenios', 'user'),
+    // WAVE 7591: Unified fixture nomenclature — replaces librerias/ + fixtures/
+    path.join(userData, 'fixtures', 'factory'),
+    path.join(userData, 'fixtures', 'custom'),
+  ]
+
+  for (const dir of vaults) {
+    try {
+      fs.mkdirSync(dir, { recursive: true })
+    } catch (err) {
+      console.warn(`[initializeVaults] ⚠️ Failed to create ${dir}:`, err)
+    }
+  }
+
+  console.log(`[initializeVaults] 🏛️ ${vaults.length} vaults initialized under ${userData}`)
+}
+
 app.whenReady().then(async () => {
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🏛️ WAVE 7591: Initialize ALL vaults BEFORE anything else
+  // ═══════════════════════════════════════════════════════════════════════════
+  initializeVaults()
   // ═══════════════════════════════════════════════════════════════════════════
   // 🛡️ WAVE 2489 + 2491: THE OBSIDIAN VAULT — Two-Gate License Validation
   // Si falla, abre la pantalla de activación en lugar de un diálogo nativo.
@@ -1466,26 +1509,25 @@ app.whenReady().then(async () => {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // WAVE 255: LA BIBLIOTECA - Load fixture definitions from luxsync/librerias
-  // WAVE 387: THE LIBRARY PATHFINDER - Setup custom library path in userData
-  // WAVE 1114: PATHFINDER V2 - Multi-path search for system library
+  // WAVE 7591: LIBRARY PATHFINDER (PRUNED) + UNIFIED NOMENCLATURE
   // ═══════════════════════════════════════════════════════════════════════════
-  
+  // Old 6-fallback pathfinder replaced with 2 strict paths:
+  //   1. process.resourcesPath/librerias (Production bundled)
+  //   2. app.getAppPath()/librerias (Development fallback)
+  //
+  // Old dual nomenclature (librerias/ + fixtures/) unified under:
+  //   userData/fixtures/factory/  (replaces librerias/ — factory definitions)
+  //   userData/fixtures/custom/   (replaces fixtures/ — user definitions)
+  // ═══════════════════════════════════════════════════════════════════════════
+
   const fs = await import('fs')
-  
-  // WAVE 1114: PATHFINDER - Search multiple locations for system library
-  // Order: Root librerias → Legacy dev → Electron packaged → Dev fallbacks
+
+  // ── Pruned pathfinder: 2 strict candidates only ──────────────────────────
   const candidatePaths = [
-    path.join(process.cwd(), '../librerias'),                 // Root: LuxSync/librerias (desde electron-app)
-    path.join(process.cwd(), 'librerias'),                    // Legacy Prod/Dev
-    path.join(process.cwd(), 'resources/librerias'),          // Electron Packaged
-    path.join(__dirname, '../../librerias'),                  // Dev fallback (from dist-electron)
-    path.join(__dirname, '../../../librerias'),               // Another dev fallback
-    path.join(app.getPath('userData'), 'librerias'),          // Prod: userData copy
+    path.join(process.resourcesPath, 'librerias'),  // Production bundled
+    path.join(app.getAppPath(), 'librerias'),        // Development fallback
   ]
-  
-  // WAVE 2098: Boot silence — PATHFINDER verbose scan removed
-  
+
   let factoryLibraryPath: string = ''
   for (const candidate of candidatePaths) {
     if (fs.existsSync(candidate)) {
@@ -1496,42 +1538,49 @@ app.whenReady().then(async () => {
       }
     }
   }
-  
+
   if (!factoryLibraryPath) {
-    console.error('[Library] ⛔ CRITICAL: No system library found in any candidate path!')
+    console.error('[Library] ⛔ CRITICAL: No system library found!')
     console.error('[Library] ⛔ Candidates searched:', candidatePaths)
-    // Fallback to first candidate for error display purposes
-    factoryLibraryPath = candidatePaths[0]
+    factoryLibraryPath = candidatePaths[0] // Fallback for error display
   }
-  
-  // Custom library path (user's custom fixtures and edited definitions)
-  const customLibraryPath = path.join(app.getPath('userData'), 'fixtures')
-  
-  // WAVE 390.5: Store paths globally for rescanAllLibraries()
-  factoryLibPath = factoryLibraryPath
-  customLibPath = customLibraryPath
-  
-  // WAVE 387 STEP 2: Auto-create custom library folder
-  // (fs already imported above in PATHFINDER section)
-  if (!fs.existsSync(customLibraryPath)) {
-    fs.mkdirSync(customLibraryPath, { recursive: true })
-    
-    // WAVE 387 STEP 2 BONUS: Copy factory fixtures to custom library if empty
-    if (fs.existsSync(factoryLibraryPath)) {
+
+  // ── Unified nomenclature: fixtures/factory + fixtures/custom ─────────────
+  // These directories were already created by initializeVaults() above.
+  const userDataPath = app.getPath('userData')
+  const factoryUserDataPath = path.join(userDataPath, 'fixtures', 'factory')
+  const customLibraryPath = path.join(userDataPath, 'fixtures', 'custom')
+
+  // WAVE 7591: Copy factory fixtures into userData/fixtures/factory/ on first boot
+  // (seeds the writable factory copy so users can inspect/reset definitions)
+  if (fs.existsSync(factoryLibraryPath)) {
+    const existingFactoryFiles = fs.existsSync(factoryUserDataPath)
+      ? fs.readdirSync(factoryUserDataPath).filter((f: string) => f.endsWith('.fxt') || f.endsWith('.json'))
+      : []
+    if (existingFactoryFiles.length === 0) {
       const factoryFiles = fs.readdirSync(factoryLibraryPath)
       let copiedCount = 0
       for (const file of factoryFiles) {
         if (file.endsWith('.fxt') || file.endsWith('.json')) {
           fs.copyFileSync(
             path.join(factoryLibraryPath, file),
-            path.join(customLibraryPath, file)
+            path.join(factoryUserDataPath, file)
           )
           copiedCount++
         }
       }
+      if (copiedCount > 0) {
+        console.log(`[Library] 📦 Seeded ${copiedCount} factory fixtures → userData/fixtures/factory/`)
+      }
     }
   }
-  
+
+  // WAVE 390.5: Store paths globally for rescanAllLibraries()
+  // factoryLibPath points to the BUNDLED factory library (read-only source).
+  // customLibPath points to userData/fixtures/custom/ (user's custom definitions).
+  factoryLibPath = factoryLibraryPath
+  customLibPath = customLibraryPath
+
   // WAVE 387 STEP 3: Configure FXTParser with custom library path
   fxtParser.setLibraryPath(customLibraryPath)
   

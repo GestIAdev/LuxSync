@@ -919,14 +919,7 @@ declare global {
         error?: string
       }>
 
-      /**
-       * E11b WAVE 4717.2 → WAVE 4700: Canal legacy — no-op.
-       * El fan se pasa directamente en setManualPattern como parámetro `fan`.
-       * Mantenido para compatibilidad con KineticsBridge legacy.
-       */
-      setKineticFanOffsets: (offsets: Record<string, number>) =>
-        Promise<{ success: boolean; error?: string }>
-
+      // 🪦 WAVE 7594: setKineticFanOffsets eliminado — no-op desde WAVE 4718.
       /**
        * WAVE 4708 T3: Propaga ChaosOrderSlider (amount 0..1, seed uint16)
        * al motor IA (L0). El KineticAdapter lo aplica como desfase de fase

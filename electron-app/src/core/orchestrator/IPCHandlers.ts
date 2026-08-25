@@ -271,12 +271,11 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
   
   // 🧨 WAVE 610: FORCE STRIKE - Manual Effect Detonator
   // ⌨ WAVE 4802-D: scope field threaded through for chord scoped dispatch
-  ipcMain.handle('lux:forceStrike', (_event, config: { effect: string; intensity: number; scope?: string[] }) => {
+  ipcMain.on('lux:forceStrike', (_event, config: { effect: string; intensity: number; scope?: string[] }) => {
     console.log('[IPC] ðŸ§¨ lux:forceStrike:', config)
     if (titanOrchestrator) {
       titanOrchestrator.forceStrikeNextFrame(config)
     }
-    return { success: true }
   })
   
   ipcMain.handle('lux:setInputGain', (_event, gain: number) => {
@@ -288,7 +287,7 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
     return { success: true }
   })
   
-  ipcMain.handle('lux:setVibe', (_event, vibeId: string) => {
+  ipcMain.on('lux:setVibe', (_event, vibeId: string) => {
     console.log('[IPC] lux:setVibe:', vibeId)
     if (titanOrchestrator) {
       titanOrchestrator.setVibe(vibeId as any)
@@ -300,7 +299,6 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
     const win = getMainWindow()
     safeWebSend(win, 'lux:vibe-changed', { vibeId, timestamp: Date.now() })
     safeWebSend(win, 'selene:vibe-changed', { vibeId, timestamp: Date.now() })
-    return { success: true }
   })
   
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -688,11 +686,10 @@ function setupEffectHandlers(deps: IPCDependencies): void {
     return { success: true }
   })
   
-  ipcMain.handle('lux:cancelAllEffects', () => {
+  ipcMain.on('lux:cancelAllEffects', () => {
     if (effectsEngine?.cancelAllEffects) {
       effectsEngine.cancelAllEffects()
     }
-    return { success: true }
   })
   
   ipcMain.handle('lux:blackout', (_event, enabled: boolean) => {

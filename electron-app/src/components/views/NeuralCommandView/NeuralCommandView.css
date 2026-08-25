@@ -110,6 +110,7 @@
   height: 100%;
   padding: 16px 20px;
   overflow: hidden;
+  min-height: 0;
 }
 
 .ncv-view--sensory {
@@ -180,8 +181,23 @@
     gap: 12px;
     padding: 12px;
   }
-  
+
   .ncv-header__stats {
     gap: 16px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WAVE 7590: 1366×768 VERTICAL COMPRESSION — allow scroll fallback
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-height: 800px) {
+  .ncv-header {
+    padding: 6px 16px;
+  }
+
+  .ncv-view {
+    padding: 8px 14px;
+    overflow-y: auto;
   }
 }

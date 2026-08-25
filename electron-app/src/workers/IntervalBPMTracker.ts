@@ -514,6 +514,12 @@ export class IntervalBPMTracker {
                 // around a new tempo (within ±10% of their mean), accept the
                 // tempo change: flush history and seed with the new tempo.
                 this.rejectedBpmHistory.push(instantBpm)
+                // 🩸 WAVE 7597-CLEANUP: Cap rejected history to prevent unbounded
+                // O(n) reduce/every scans when rejections never cluster. Without
+                // this, a sustained outlier stream grows the array by 1/frame.
+                if (this.rejectedBpmHistory.length > 100) {
+                  this.rejectedBpmHistory.shift()
+                }
                 if (this.rejectedBpmHistory.length >= this.TEMPO_CHANGE_THRESHOLD) {
                   // Compute mean of rejected BPMs
                   const meanRejected = this.rejectedBpmHistory.reduce((a, b) => a + b, 0) / this.rejectedBpmHistory.length

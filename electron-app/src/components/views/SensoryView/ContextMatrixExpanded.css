@@ -115,18 +115,46 @@
     grid-template-columns: 1fr;
     grid-template-rows: auto;
   }
-  
+
   .context-matrix-expanded__card {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
   }
-  
+
   .context-matrix-expanded__card-header {
     margin-bottom: 0;
   }
-  
+
   .context-matrix-expanded__card-sparkline {
     display: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WAVE 7590: 1366×768 VERTICAL COMPRESSION — prevent text clipping
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-height: 800px) {
+  .context-matrix-expanded__grid {
+    gap: 4px;
+    padding: 4px 8px 6px;
+  }
+
+  .context-matrix-expanded__card {
+    padding: 4px 8px;
+  }
+
+  .context-matrix-expanded__card-header {
+    margin-bottom: 2px;
+  }
+
+  .context-matrix-expanded__card-value {
+    font-size: 0.85rem;
+  }
+
+  .context-matrix-expanded__card-sparkline {
+    height: 14px;
+    padding-top: 2px;
   }
 }

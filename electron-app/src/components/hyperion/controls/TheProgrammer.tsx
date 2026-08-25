@@ -213,7 +213,7 @@ export const TheProgrammer: React.FC<{ isActive?: boolean }> = ({ isActive = tru
       speed: 50,
       amplitude: 50,
     })
-    void window.lux?.aether?.setKineticFanOffsets({})
+    // 🪦 WAVE 7594: setKineticFanOffsets eliminado — no-op desde WAVE 4718.
     useMovementStore.getState().setActivePattern('none')
     useMovementStore.getState().setManualOverrideForFixtures(selectedIds, false)
     useMovementStore.getState().setLockedFixtures(new Set())

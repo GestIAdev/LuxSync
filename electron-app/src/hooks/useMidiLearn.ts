@@ -54,6 +54,7 @@ import {
 import { useControlStore } from '../stores/controlStore'
 import { useLuxSyncStore } from '../stores/luxsyncStore'
 import { useEffectsStore } from '../stores/effectsStore'
+import { throttleFn } from '../utils/throttleIpc'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -69,6 +70,35 @@ const SOFT_TAKEOVER_THRESHOLD = 5
 
 // 🛡️ WAVE 7570.4: Throttle for Grand Master CC log — faders fire 300+/sec.
 let _lastGrandMasterLog = 0
+
+// 🛡️ WAVE 7594: Silk Throttle — Category A live triggers (25ms leading-edge)
+// Prevents IPC flooding from MIDI CC faders and rapid Note On/Off.
+const throttledForceStrike = throttleFn(
+  (effect: string, intensity: number) => {
+    window.lux?.forceStrike?.({ effect, intensity })
+  },
+)
+const throttledSetVibe = throttleFn(
+  (vibeId: string) => { window.lux?.setVibe?.(vibeId) },
+)
+const throttledSetGrandMaster = throttleFn(
+  (value: number) => { window.lux?.aether?.setGrandMaster?.(value) },
+)
+const throttledCancelAllEffects = throttleFn(
+  () => { window.lux?.cancelAllEffects?.() },
+)
+// 🛡️ WAVE 7594: throttled 25ms blackout send — fire-and-forget (ipcRenderer.send)
+const throttledSetBlackout = throttleFn(
+  (active: boolean) => { window.lux?.aether?.setBlackout?.(active) },
+)
+function fireBlackoutToggleMidi(): void {
+  const currentBlackout = useEffectsStore.getState().blackout
+  const targetState = !currentBlackout
+  // Optimistic update — immediate visual feedback (selene:truth confirms @7Hz)
+  useEffectsStore.getState().setBlackout(targetState)
+  // Fire-and-forget — throttled 25ms, no .then(), no .catch()
+  throttledSetBlackout(targetState)
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MIDI MESSAGE PARSER — ZERO-ALLOCATION HOT PATH
@@ -257,7 +287,8 @@ export function useMidiLearn() {
       // Velocity from nanoPAD2 pads is physically inconsistent (0.42–0.78 range).
       // A manual trigger intent is binary: either fired or not. No half-measures.
       const intensity = 1.0
-      window.lux.forceStrike({ effect: effectId, intensity })
+      // 🛡️ WAVE 7594: throttled 25ms
+      throttledForceStrike(effectId, intensity)
       console.log(`[MidiLearn] ⚡ FORCE STRIKE: ${effectId} @ 100% (manual — velocity ignored)`)
       return
     }
@@ -266,48 +297,9 @@ export function useMidiLearn() {
     if (controlId.startsWith('vibe-')) {
       if (msg.type !== 'note_on') return
       const vibeId = controlId.slice(5) // 'vibe-fiesta-latina' → 'fiesta-latina'
-      window.lux.setVibe(vibeId)
+      // 🛡️ WAVE 7594: throttled 25ms
+      throttledSetVibe(vibeId)
       console.log(`[MidiLearn] 🎭 VIBE CHANGE: ${vibeId}`)
-      return
-    }
-
-    // ── tung-* → Tungsten Golden Nuke (WAVE 4699.2) ──
-    if (controlId.startsWith('tung-')) {
-      const fireTungsten = (payload: { target: string; release?: boolean; value?: number }) => {
-        window.lux.aether.fireTungstenNuke(payload)
-      }
-      const tungAction = controlId.slice(5) // 'tung-spin' → 'spin', etc.
-
-      if (tungAction === 'spin') {
-        if (msg.type !== 'cc') return
-        // CC 0-127 → bipolar norm 0-1 (64=stopped, 0=left max, 127=right max)
-        const norm = msg.value / 127
-        fireTungsten({ target: 'spin', value: norm })
-        return
-      }
-
-      // Pad actions: Note On = fire, Note Off = release
-      const target = tungAction === 'nuke-all'  ? 'all'
-                   : tungAction === 'nuke-gold' ? 'gold'
-                   : tungAction // 'petal-l', 'petal-c', 'petal-r'
-      if (msg.type === 'note_on') {
-        // WAVE 4825 hotfix: nuke-gold va a full para evitar apagones por velocity baja del pad.
-        const intensity = 1.0
-        fireTungsten({ target, value: intensity })
-        console.log(`[MidiLearn] 💛 TUNGSTEN NUKE: ${target} ON (int=${(intensity * 100).toFixed(0)}%)`)
-      } else if (msg.type === 'note_off') {
-        fireTungsten({ target, release: true })
-        console.log(`[MidiLearn] 💛 TUNGSTEN NUKE: ${target} OFF`)
-      } else if (msg.type === 'cc') {
-        // Compat controladores: algunos pads envian CC toggle/momentary.
-        if (msg.value > 0) {
-          fireTungsten({ target, value: 1.0 })
-          console.log(`[MidiLearn] 💛 TUNGSTEN NUKE: ${target} ON (cc=${msg.value})`)
-        } else {
-          fireTungsten({ target, release: true })
-          console.log(`[MidiLearn] 💛 TUNGSTEN NUKE: ${target} OFF (cc=0)`)
-        }
-      }
       return
     }
 
@@ -317,23 +309,14 @@ export function useMidiLearn() {
       switch (arbAction) {
         case 'blackout':
           if (msg.type !== 'note_on') return
-          // 🔴 WAVE 4652: Ruta Aether — NodeArbiter L4 + HAL legacy en paralelo
-          {
-            const currentBlackout = useEffectsStore.getState().blackout
-            const targetState = !currentBlackout
-            window.lux.aether.setBlackout(targetState)
-              .then((result: { success?: boolean; blackoutActive?: boolean }) => {
-                if (result?.success) {
-                  useEffectsStore.getState().setBlackout(result.blackoutActive ?? targetState)
-                }
-              })
-              .catch(() => {})
-            console.log(`[MidiLearn] 🎛️ ARBITER: Blackout → ${targetState ? 'ON' : 'OFF'}`)
-          }
+          // �️ WAVE 7594: optimistic update + fire-and-forget
+          fireBlackoutToggleMidi()
+          console.log(`[MidiLearn] 🎛️ ARBITER: Blackout toggle`)
           return
         case 'grand-master':
           if (msg.type !== 'cc') return
-          window.lux.aether.setGrandMaster(msg.value / 127)
+          // 🛡️ WAVE 7594: throttled 25ms — CC faders fire 300+/sec
+          throttledSetGrandMaster(msg.value / 127)
           // 🛡️ WAVE 7570.4: Throttle Grand Master log — CC faders fire 300+/sec.
           // Each console.log generates a C++ string + devtools console buffer entry.
           {
@@ -346,7 +329,8 @@ export function useMidiLearn() {
           return
         case 'kill-effects':
           if (msg.type !== 'note_on') return
-          window.lux.cancelAllEffects()
+          // 🛡️ WAVE 7594: throttled 25ms
+          throttledCancelAllEffects()
           console.log('[MidiLearn] 🎛️ ARBITER: Kill All Effects')
           return
         default:
@@ -408,17 +392,11 @@ export function useMidiLearn() {
 
       case 'lux-blackout': {
         if (msg.type !== 'note_on') return
-        // 🔴 WAVE 3304: Absolute setter — lee estado, envía opuesto, sincroniza desde backend
-        const currentBlackoutState = useEffectsStore.getState().blackout
-        const targetBlackout = !currentBlackoutState
-        window.lux.aether.setBlackout(targetBlackout)
-          .then((result: { success?: boolean; blackoutActive?: boolean }) => {
-            if (result?.success) {
-              useEffectsStore.getState().setBlackout(result.blackoutActive ?? targetBlackout)
-              luxSyncStore.setBlackout(result.blackoutActive ?? targetBlackout)
-            }
-          })
-          .catch(() => {})
+        // �️ WAVE 7594: optimistic update + throttled fire-and-forget (send, not invoke).
+        // The backend no longer returns { blackoutActive }; selene:truth broadcast
+        // (~7Hz) confirms or corrects the authoritative state.
+        fireBlackoutToggleMidi()
+        console.log(`[MidiLearn] 🔴 LUX BLACKOUT toggle`)
         break
       }
     }

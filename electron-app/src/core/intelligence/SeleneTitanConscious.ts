@@ -2072,6 +2072,15 @@ export class SeleneTitanConscious extends EventEmitter {
   
   /** Habilita/deshabilita */
   setEnabled(enabled: boolean): void {
+    // 🩸 WAVE 7598-TOGGLE-RESET: Purge stale cognitive fluid on wake-up.
+    // When Selene is toggled OFF→ON, her CognitiveFluidState retains saturated
+    // V(t) (vapor pressure) values from the pre-silence period. Without this
+    // reset, the resumed V(t) depresses Q(t) and triggers immediate erratic
+    // rapid-fire behavior. The full reset() purges _liquidCore, _liquidRecorder,
+    // contextualMemory, dropBridge, and throttle maps.
+    if (enabled && !this.config.enabled) {
+      this.reset()
+    }
     this.config.enabled = enabled
     if (this.config.debug) {
       console.log(`[SeleneTitanConscious] ${enabled ? '✅ Enabled' : '⏸️ Disabled'}`)

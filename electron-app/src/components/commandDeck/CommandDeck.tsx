@@ -22,7 +22,16 @@ import { GrandMasterSpeedSlider } from './GrandMasterSpeedSlider'
 import { VibeSelectorCompact } from './VibeSelectorCompact'
 import { MoodToggle } from './MoodToggle'
 import { BlackoutButton } from './BlackoutButton'
+import { throttleFn } from '../../utils/throttleIpc'
 import './CommandDeck.css'
+
+// 🛡️ WAVE 7594: throttle 25ms — sliders can fire 60+ events/sec
+const throttledSetGrandMaster = throttleFn(
+  (value: number) => { window.lux?.aether?.setGrandMaster?.(value) },
+)
+const throttledSetGrandMasterSpeed = throttleFn(
+  (value: number) => { window.lux?.aether?.setGrandMasterSpeed?.(value) },
+)
 
 export const CommandDeck: React.FC = () => {
   // 🛡️ WAVE 2042.13.8: Primitive selector (stable)
@@ -98,26 +107,20 @@ export const CommandDeck: React.FC = () => {
     }
   }, [setBlackout, setOutputEnabled])
   
-  // Grand Master change handler
-  const handleGrandMasterChange = useCallback(async (value: number) => {
-    try {
-      // WAVE 4652: Ruta Aether — NodeArbiter + masterArbiter en paralelo
-      await window.lux?.aether?.setGrandMaster(value)
-      setArbiterStatus(prev => ({ ...prev, grandMaster: value }))
-    } catch (err) {
-      console.error('[CommandDeck] Grand Master error:', err)
-    }
+  // Grand Master change handler — WAVE 7594: fire-and-forget + throttle
+  const handleGrandMasterChange = useCallback((value: number) => {
+    // Optimistic update — immediate slider feedback
+    setArbiterStatus(prev => ({ ...prev, grandMaster: value }))
+    // Fire-and-forget — throttled 25ms
+    throttledSetGrandMaster(value)
   }, [])
-  
-  // 🎚️ WAVE 2472: Grand Master Speed handler (AI only)
-  const handleGrandMasterSpeedChange = useCallback(async (value: number) => {
-    try {
-      // WAVE 4652: Ruta Aether
-      await window.lux?.aether?.setGrandMasterSpeed(value)
-      setArbiterStatus(prev => ({ ...prev, grandMasterSpeed: value }))
-    } catch (err) {
-      console.error('[CommandDeck] Grand Master Speed error:', err)
-    }
+
+  // 🎚️ WAVE 2472: Grand Master Speed handler (AI only) — WAVE 7594: fire-and-forget + throttle
+  const handleGrandMasterSpeedChange = useCallback((value: number) => {
+    // Optimistic update
+    setArbiterStatus(prev => ({ ...prev, grandMasterSpeed: value }))
+    // Fire-and-forget — throttled 25ms
+    throttledSetGrandMasterSpeed(value)
   }, [])
   
   // 🧬 Consciousness toggle handler
@@ -148,13 +151,10 @@ export const CommandDeck: React.FC = () => {
       
       // If disarming, also close the DMX gate (safety)
       if (!willBeArmed && outputEnabled) {
-        try {
-          await window.lux?.aether?.setOutputEnabled(false)
-          setOutputEnabled(false)
-          console.log('[CommandDeck] ⚛️ Safety: DMX gate closed on disarm')
-        } catch (e) {
-          // Best effort
-        }
+        // WAVE 7594: fire-and-forget — no await needed
+        setOutputEnabled(false)
+        window.lux?.aether?.setOutputEnabled?.(false)
+        console.log('[CommandDeck] ⚛️ Safety: DMX gate closed on disarm')
       }
     } catch (err) {
       console.error('[CommandDeck] ARM toggle error:', err)
@@ -164,24 +164,13 @@ export const CommandDeck: React.FC = () => {
   // �🚦 WAVE 1132: Output GO toggle handler - THE DMX GATE
   // Opens/closes the DMX output valve via MasterArbiter
   // This is the VALVE — it lets the calculated light flow to physical fixtures
-  const handleOutputToggle = useCallback(async () => {
+  const handleOutputToggle = useCallback(() => {
     const newState = !outputEnabled
-    
-    try {
-      const result = await window.lux?.aether?.setOutputEnabled(newState)
-      
-      if (result?.success) {
-        // Update local store to match backend
-        setOutputEnabled(result.outputEnabled ?? newState)
-        console.log(`[CommandDeck] 🚦 DMX Gate ${newState ? '🟢 OPEN' : '🔴 CLOSED'} - DMX ${newState ? 'flowing' : 'blocked'}`)
-      } else {
-        console.error('[CommandDeck] Failed to set output enabled:', result)
-      }
-    } catch (err) {
-      console.error('[CommandDeck] Output toggle error:', err)
-      // Fallback: at least update local state
-      setOutputEnabled(newState)
-    }
+    // Optimistic update — immediate visual feedback
+    setOutputEnabled(newState)
+    // Fire-and-forget — no .then(), no .catch()
+    window.lux?.aether?.setOutputEnabled?.(newState)
+    console.log(`[CommandDeck] 🚦 DMX Gate ${newState ? '🟢 OPEN' : '🔴 CLOSED'} - DMX ${newState ? 'flowing' : 'blocked'}`)
   }, [outputEnabled, setOutputEnabled])
 
   return (

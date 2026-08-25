@@ -38,6 +38,7 @@ import { useSceneStore } from '../stores/sceneStore'
 import { useNavigationStore } from '../stores/navigationStore'
 import type { TabId } from '../stores/navigationStore'
 import { useEffectsStore } from '../stores/effectsStore'
+import { throttleFn } from '../utils/throttleIpc'
 import { useStageStore } from '../stores/stageStore'
 import { useControlStore } from '../stores/controlStore'
 import { useAudioStore } from '../stores/audioStore'
@@ -79,6 +80,66 @@ interface LuxBridgeSubset {
 function getLuxBridge(): LuxBridgeSubset | null {
   const w = globalThis as unknown as { lux?: LuxBridgeSubset }
   return w.lux ?? null
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🛡️ WAVE 7594: SILK THROTTLE — Category A live triggers
+// ═══════════════════════════════════════════════════════════════════════════
+// Leading-edge 25ms throttle. OS keyboard autorepeat fires 30+ keydown/sec;
+// without this, each event floods the main process with IPC sends.
+// The first tap executes immediately (zero-latency); excess within 25ms is dropped.
+
+const throttledForceStrike = throttleFn(
+  (effect: string, intensity: number, scope: string[] | undefined) => {
+    getLuxBridge()?.forceStrike?.({ effect, intensity, scope })
+  },
+)
+
+const throttledSetVibe = throttleFn(
+  (vibeId: string) => {
+    getLuxBridge()?.setVibe?.(vibeId)
+  },
+)
+
+const throttledSetGrandMaster = throttleFn(
+  (value: number) => {
+    const bridge = getLuxBridge()?.aether
+    // fire-and-forget — send returns void, no .catch needed
+    bridge?.setGrandMaster?.(value)
+  },
+)
+
+const throttledFireTungstenNuke = throttleFn(
+  (target: string, release: boolean | undefined, value: number | undefined) => {
+    getLuxBridge()?.aether?.fireTungstenNuke?.({ target, release, value })
+  },
+)
+
+const throttledCancelAllEffects = throttleFn(
+  () => {
+    getLuxBridge()?.cancelAllEffects?.()
+  },
+)
+
+const throttledSetSelInhibit = throttleFn(
+  (fixtureIds: string[], active: boolean) => {
+    getLuxBridge()?.aether?.setSelInhibit?.(fixtureIds, active)
+  },
+)
+
+/**
+ * Blackout toggle — optimistic update + fire-and-forget IPC.
+ * WAVE 7594: The backend no longer returns { blackoutActive }.
+ * We set the Zustand state BEFORE the send so the UI reflects the toggle
+ * immediately. The ~7Hz selene:truth broadcast will confirm or correct.
+ */
+function fireBlackoutToggle(): void {
+  const currentBlackout = useEffectsStore.getState().blackout
+  const targetBlackout = !currentBlackout
+  // Optimistic update — immediate visual feedback
+  useEffectsStore.getState().setBlackout(targetBlackout)
+  // Fire-and-forget — no .then(), no .catch()
+  getLuxBridge()?.aether?.setBlackout?.(targetBlackout)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -193,19 +254,13 @@ function dispatchSelAction(actionId: string): boolean {
     const selectedIds = Array.from(selStore.selectedIds)
     if (selectedIds.length === 0) {
       // PANIC MODE — comportamiento idéntico a arb-blackout
-      const currentBlackout = useEffectsStore.getState().blackout
-      const targetBlackout = !currentBlackout
-      getLuxBridge()?.aether?.setBlackout?.(targetBlackout).then((result) => {
-        if (result?.success) {
-          useEffectsStore.getState().setBlackout(result.blackoutActive ?? targetBlackout)
-        }
-      }).catch(() => {})
+      fireBlackoutToggle()
       console.log('[KeyForge] 🚨 sel-blackout PANIC — no selection, firing global blackout')
     } else {
       // SELECTION KILL — toggle latch sobre los fixtures seleccionados
       const action = selStore.toggleMute(selectedIds)
       const active = action === 'muted'
-      getLuxBridge()?.aether?.setSelInhibit?.(selectedIds, active).catch(() => {})
+      throttledSetSelInhibit(selectedIds, active)
       console.log(`[KeyForge] 🔇 sel-blackout ${action.toUpperCase()} — ${selectedIds.length} fixture(s)`)
     }
     return true
@@ -291,17 +346,8 @@ function dispatchGrpAction(actionId: string): boolean {
 
     const bridge = getLuxBridge()?.aether
     if (bridge?.setSelInhibit) {
-      bridge.setSelInhibit(fixtureIds, active)
-        .then((res) => {
-          if (!res?.success) {
-            console.warn(`[KeyForge] ⚠️ grp-${groupIndex}-blackout setSelInhibit failed:`, res)
-          } else {
-            console.log(`[KeyForge] 🔇 grp-${groupIndex}-blackout setSelInhibit OK (${fixtureIds.length} fixtures)`)
-          }
-        })
-        .catch((err) => {
-          console.error(`[KeyForge] ❌ grp-${groupIndex}-blackout setSelInhibit threw:`, err)
-        })
+      throttledSetSelInhibit(fixtureIds, active)
+      console.log(`[KeyForge] 🔇 grp-${groupIndex}-blackout setSelInhibit OK (${fixtureIds.length} fixtures)`)
     } else {
       console.warn(`[KeyForge] ⚠️ setSelInhibit unavailable on lux bridge — blackout will not reach DMX`)
     }
@@ -642,13 +688,7 @@ function dispatchLuxAction(actionId: string, payload: ActionPayload): boolean {
   switch (sub) {
     case 'blackout': {
       if (payload.phase === 'release') return true
-      const currentBlackout = useEffectsStore.getState().blackout
-      const targetBlackout = !currentBlackout
-      lux?.aether?.setBlackout?.(targetBlackout).then((result) => {
-        if (result?.success) {
-          useEffectsStore.getState().setBlackout(result.blackoutActive ?? targetBlackout)
-        }
-      }).catch(() => {})
+      fireBlackoutToggle()
       return true
     }
     default:
@@ -685,7 +725,8 @@ export function dispatchAction(actionId: string, payload: ActionPayload): boolea
     if (payload.phase === 'release') return true  // only fire on press
     const effectId = actionId.slice(3)
     // ⌨ WAVE 4802-D: pass scope when present so the backend targets only those fixtures
-    lux?.forceStrike?.({ effect: effectId, intensity: payload.intensity, scope: payload.scope })
+    // 🛡️ WAVE 7594: throttled 25ms to prevent IPC flooding from keyboard autorepeat
+    throttledForceStrike(effectId, payload.intensity, payload.scope)
     return true
   }
 
@@ -693,7 +734,8 @@ export function dispatchAction(actionId: string, payload: ActionPayload): boolea
   if (actionId.startsWith('vibe-')) {
     if (payload.phase === 'release') return true
     const vibeId = actionId.slice(5)
-    lux?.setVibe?.(vibeId)
+    // 🛡️ WAVE 7594: throttled 25ms
+    throttledSetVibe(vibeId)
     return true
   }
 
@@ -702,16 +744,18 @@ export function dispatchAction(actionId: string, payload: ActionPayload): boolea
     const sub = actionId.slice(5)
     if (sub === 'spin') {
       // Spin is a fader-style action; intensity is bipolar 0..1
-      lux?.aether?.fireTungstenNuke?.({ target: 'spin', value: payload.intensity })
+      // 🛡️ WAVE 7594: throttled 25ms
+      throttledFireTungstenNuke('spin', undefined, payload.intensity)
       return true
     }
     const target = sub === 'nuke-all'  ? 'all'
                  : sub === 'nuke-gold' ? 'gold'
                  : sub
+    // 🛡️ WAVE 7594: throttled 25ms
     if (payload.phase === 'release') {
-      lux?.aether?.fireTungstenNuke?.({ target, release: true })
+      throttledFireTungstenNuke(target, true, undefined)
     } else {
-      lux?.aether?.fireTungstenNuke?.({ target, value: payload.intensity })
+      throttledFireTungstenNuke(target, undefined, payload.intensity)
     }
     return true
   }
@@ -722,21 +766,17 @@ export function dispatchAction(actionId: string, payload: ActionPayload): boolea
     const sub = actionId.slice(4)
     switch (sub) {
       case 'blackout': {
-        // Read authoritative state from effectsStore and send the opposite.
-        const currentBlackout = useEffectsStore.getState().blackout
-        const targetBlackout = !currentBlackout
-        lux?.aether?.setBlackout?.(targetBlackout).then((result) => {
-          if (result?.success) {
-            useEffectsStore.getState().setBlackout(result.blackoutActive ?? targetBlackout)
-          }
-        }).catch(() => {})
+        // 🛡️ WAVE 7594: optimistic update + fire-and-forget (throttled via fireBlackoutToggle)
+        fireBlackoutToggle()
         return true
       }
       case 'grand-master':
-        lux?.aether?.setGrandMaster?.(payload.intensity)?.catch?.(() => {})
+        // 🛡️ WAVE 7594: throttled 25ms — MIDI CC fader can fire 300+ events/sec
+        throttledSetGrandMaster(payload.intensity)
         return true
       case 'kill-effects':
-        lux?.cancelAllEffects?.()
+        // 🛡️ WAVE 7594: throttled 25ms
+        throttledCancelAllEffects()
         return true
       default:
         console.warn(`[KeyForge] ⚠️ Unknown arb-* action: ${actionId}`)

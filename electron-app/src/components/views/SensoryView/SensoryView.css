@@ -11,6 +11,7 @@
   height: 100%;
   gap: 16px;
   overflow: hidden;
+  min-height: 0;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -68,16 +69,36 @@
   .sensory-view__main {
     flex-direction: column;
   }
-  
+
   .sensory-view__chromatic {
     max-width: none;
     min-width: 0;
     flex: 1;
   }
-  
+
   .sensory-view__context {
     height: auto;
     min-height: 200px;
     max-height: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WAVE 7590: 1366×768 VERTICAL COMPRESSION — prevent panel clipping
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-height: 800px) {
+  .sensory-view {
+    gap: 8px;
+  }
+
+  .sensory-view__main {
+    gap: 8px;
+  }
+
+  .sensory-view__context {
+    height: 30%;
+    min-height: 140px;
+    max-height: 200px;
   }
 }

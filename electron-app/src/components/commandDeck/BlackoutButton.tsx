@@ -2,39 +2,42 @@
  * 🔴 BLACKOUT BUTTON — WAVE 3304: ABSOLUTE SETTER
  * Emergency kill switch - big, red, isolated
  * Always accessible with SPACE key
- * 
+ *
  * WAVE 3304 FIX: Replaced toggle-relative logic with absolute setBlackout(true/false).
  * - Reads current store state → sends the opposite explicitly
  * - No optimistic toggle → no rollback needed → no desync possible
  * - Fire-and-forget with .then() → no UI deadlock from await
  * - Backend returns authoritative state → store syncs from truth
+ *
+ * WAVE 7594: Fire-and-forget IPC (send, not invoke).
+ * - Optimistic update: setBlackout(targetState) BEFORE the send.
+ * - selene:truth broadcast (~7Hz) confirms or corrects the state.
  */
 
 import React, { useCallback } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { BlackoutIcon } from '../icons/LuxIcons'
 import { useEffectsStore, selectBlackoutButton } from '../../stores/effectsStore'
+import { throttleFn } from '../../utils/throttleIpc'
 import './CommandDeck.css'
+
+// 🛡️ WAVE 7594: throttle 25ms — prevents IPC flooding from rapid clicks
+const throttledSetBlackout = throttleFn(
+  (active: boolean) => {
+    window.lux?.aether?.setBlackout?.(active)
+  },
+)
 
 export const BlackoutButton: React.FC = () => {
   const { blackout, setBlackout } = useEffectsStore(useShallow(selectBlackoutButton))
-  
+
   const handleBlackout = useCallback(() => {
     const targetState = !blackout
-    
-    // 🔴 WAVE 4652: Ruta Aether — NodeArbiter L4 + HAL legacy en paralelo
-    window.lux?.aether?.setBlackout(targetState)
-      .then((result: { success?: boolean; blackoutActive?: boolean }) => {
-        if (result?.success) {
-          setBlackout(result.blackoutActive ?? targetState)
-          console.log(`[BlackoutButton] 🔴 Blackout: ${result.blackoutActive ? 'ON' : 'OFF'}`)
-        } else {
-          console.error('[BlackoutButton] setBlackout failed:', result)
-        }
-      })
-      .catch((err: unknown) => {
-        console.error('[BlackoutButton] Blackout IPC error:', err)
-      })
+    // Optimistic update — immediate visual feedback
+    setBlackout(targetState)
+    // Fire-and-forget — no .then(), no .catch()
+    throttledSetBlackout(targetState)
+    console.log(`[BlackoutButton] 🔴 Blackout: ${targetState ? 'ON' : 'OFF'}`)
   }, [blackout, setBlackout])
   
   return (

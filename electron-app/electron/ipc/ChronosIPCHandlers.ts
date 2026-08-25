@@ -19,7 +19,7 @@
  * @version WAVE 2014
  */
 
-import { ipcMain, BrowserWindow, dialog } from 'electron'
+import { ipcMain, BrowserWindow, dialog, app } from 'electron'
 import { getPhantomWorker, type AnalysisRequest, type AnalysisProgress } from '../workers/PhantomWorkerManager'
 import * as fs from 'fs'
 import * as path from 'path'
@@ -445,8 +445,9 @@ function setupProjectIPCHandlers(mainWindow: BrowserWindow): void {
   // 🛡️ WAVE 2017: PROJECT LAZARUS - Auto-Save Handlers
   // ═══════════════════════════════════════════════════════════════════════════
   
-  // Auto-save directory (in user data folder)
-  const autoSaveDir = path.join(os.homedir(), '.luxsync', 'autosave')
+  // Auto-save directory — WAVE 7591: moved from os.homedir()/.luxsync/autosave
+  // to app.getPath('userData')/autosave for 100% userData compliance.
+  const autoSaveDir = path.join(app.getPath('userData'), 'autosave')
   
   // Ensure auto-save directory exists
   fs.promises.mkdir(autoSaveDir, { recursive: true }).catch(() => {})

@@ -87,11 +87,11 @@ export function registerAetherIPCHandlers(): void {
    * El bridge envía máximo 1 batch por tick de 44Hz.
    * Cada payload escribe directamente en L2 del NodeArbiter.
    */
-  ipcMain.handle(
+  ipcMain.on(
     'lux:aether:setManualOverrides',
     (_event, payloads: ManualOverridePayload[]) => {
       if (!Array.isArray(payloads) || payloads.length === 0) {
-        return { success: false, error: 'Empty or invalid payloads' }
+        return
       }
 
       try {
@@ -113,10 +113,8 @@ export function registerAetherIPCHandlers(): void {
         // 🔬 WAVE 4735.6 DIAG: confirmar que _manualOverrides tiene las entradas
         const manualCount = arbiter.getManualOverrideNodeIds().length
         console.log(`[Aether IPC] 📥 Overrides aplicados. Total L2 nodes: ${manualCount}`)
-        return { success: true }
       } catch (err) {
         console.error('[AetherIPC] setManualOverrides error:', err)
-        return { success: false, error: String(err) }
       }
     }
   )
@@ -126,11 +124,11 @@ export function registerAetherIPCHandlers(): void {
    * El bridge lo llama cuando un fixture pierde todos sus overrides
    * activos en el store (release por familia o release individual).
    */
-  ipcMain.handle(
+  ipcMain.on(
     'lux:aether:clearManualOverrides',
     (_event, nodeIds: string[]) => {
       if (!Array.isArray(nodeIds)) {
-        return { success: false, error: 'nodeIds must be an array' }
+        return
       }
 
       try {
@@ -152,10 +150,8 @@ export function registerAetherIPCHandlers(): void {
             arbiter.clearManualOverride(resolved)
           }
         }
-        return { success: true }
       } catch (err) {
         console.error('[AetherIPC] clearManualOverrides error:', err)
-        return { success: false, error: String(err) }
       }
     }
   )
@@ -165,15 +161,13 @@ export function registerAetherIPCHandlers(): void {
    * El L2 del NodeArbiter queda completamente vacío.
    * L0/L1/L3/LP fluyen sin impedimento.
    */
-  ipcMain.handle(
+  ipcMain.on(
     'lux:aether:clearAllManualOverrides',
     () => {
       try {
         getTitanOrchestrator().getAetherArbiter().clearAllManualOverrides()
-        return { success: true }
       } catch (err) {
         console.error('[AetherIPC] clearAllManualOverrides error:', err)
-        return { success: false, error: String(err) }
       }
     }
   )
@@ -185,7 +179,7 @@ export function registerAetherIPCHandlers(): void {
    * unificando el comportamiento del caos entre patrones manuales y IA.
    * Payload: { amount: 0..1, seed: uint16 }
    */
-  ipcMain.handle(
+  ipcMain.on(
     'lux:aether:setGlobalKineticChaos',
     (_event, { amount, seed }: { amount: number; seed: number }) => {
       try {
@@ -193,10 +187,8 @@ export function registerAetherIPCHandlers(): void {
           typeof amount === 'number' && Number.isFinite(amount) ? amount : 0,
           typeof seed === 'number' && Number.isFinite(seed) ? seed : 0,
         )
-        return { success: true }
       } catch (err) {
         console.error('[AetherIPC] setGlobalKineticChaos error:', err)
-        return { success: false, error: String(err) }
       }
     }
   )
@@ -208,7 +200,7 @@ export function registerAetherIPCHandlers(): void {
    * Útil como safety net al hacer Unlock cuando el motor fue detenido
    * sin arbiter (stop() sin argumento) y quedan overrides huérfanos.
    */
-  ipcMain.handle(
+  ipcMain.on(
     'lux:aether:clearAllMotorKineticOverrides',
     () => {
       console.log('[ZOMBIE-DIAG] IPC clearAllMotorKineticOverrides called')
@@ -217,10 +209,8 @@ export function registerAetherIPCHandlers(): void {
         const preCount = (arbiter as any)._motorKineticOverrides?.size ?? 'unknown'
         arbiter.clearAllMotorKineticOverrides()
         console.log(`[ZOMBIE-DIAG] clearAllMotorKineticOverrides: ${preCount} entries cleared`)
-        return { success: true }
       } catch (err) {
         console.error('[AetherIPC] clearAllMotorKineticOverrides error:', err)
-        return { success: false, error: String(err) }
       }
     }
   )
@@ -232,11 +222,11 @@ export function registerAetherIPCHandlers(): void {
    * (orphan diffing) para evitar movers congelados en la última coordenada
    * L2 que el engine les calculó antes del despido.
    */
-  ipcMain.handle(
+  ipcMain.on(
     'lux:aether:clearMotorKineticOverrides',
     (_event, nodeIds: string[]) => {
       if (!Array.isArray(nodeIds)) {
-        return { success: false, error: 'nodeIds must be an array' }
+        return
       }
       try {
         const arbiter = getTitanOrchestrator().getAetherArbiter()
@@ -245,10 +235,8 @@ export function registerAetherIPCHandlers(): void {
             arbiter.clearMotorKineticOverride(nodeId)
           }
         }
-        return { success: true }
       } catch (err) {
         console.error('[AetherIPC] clearMotorKineticOverrides error:', err)
-        return { success: false, error: String(err) }
       }
     }
   )
@@ -262,14 +250,14 @@ export function registerAetherIPCHandlers(): void {
    *
    * Payload: { nodeIds: string[], limit: number }
    */
-  ipcMain.handle(
+  ipcMain.on(
     'lux:aether:setInhibitLimit',
     (_event, { nodeIds, limit }: { nodeIds: string[], limit: number }) => {
       if (!Array.isArray(nodeIds) || nodeIds.length === 0) {
-        return { success: false, error: 'nodeIds must be a non-empty array' }
+        return
       }
       if (typeof limit !== 'number') {
-        return { success: false, error: 'limit must be a number' }
+        return
       }
 
       try {
@@ -279,10 +267,8 @@ export function registerAetherIPCHandlers(): void {
             arbiter.setInhibitLimit(nodeId, limit)
           }
         }
-        return { success: true }
       } catch (err) {
         console.error('[AetherIPC] setInhibitLimit error:', err)
-        return { success: false, error: String(err) }
       }
     }
   )
@@ -291,11 +277,11 @@ export function registerAetherIPCHandlers(): void {
    * Clear inhibit limits para un array de nodeIds.
    * El canal `dimmer` vuelve a fluir sin cap.
    */
-  ipcMain.handle(
+  ipcMain.on(
     'lux:aether:clearInhibitLimit',
     (_event, nodeIds: string[]) => {
       if (!Array.isArray(nodeIds)) {
-        return { success: false, error: 'nodeIds must be an array' }
+        return
       }
 
       try {
@@ -305,10 +291,8 @@ export function registerAetherIPCHandlers(): void {
             arbiter.clearInhibitLimit(nodeId)
           }
         }
-        return { success: true }
       } catch (err) {
         console.error('[AetherIPC] clearInhibitLimit error:', err)
-        return { success: false, error: String(err) }
       }
     }
   )
@@ -323,7 +307,7 @@ export function registerAetherIPCHandlers(): void {
    * Payload: { fixtureIds: string[], active: boolean }
    * Devuelve: { success }
    */
-  ipcMain.handle(
+  ipcMain.on(
     'lux:aether:setSelInhibit',
     (_event, { fixtureIds, active }: { fixtureIds: string[]; active: boolean }) => {
       try {
@@ -343,10 +327,8 @@ export function registerAetherIPCHandlers(): void {
             }
           }
         }
-        return { success: true }
       } catch (err) {
         console.error('[AetherIPC] setSelInhibit error:', err)
-        return { success: false, error: String(err) }
       }
     }
   )
@@ -355,18 +337,16 @@ export function registerAetherIPCHandlers(): void {
    * G1: Set blackout global.
    * Escribe en NodeArbiter L4.
    * Payload: active boolean
-   * Devuelve: { success, blackoutActive }
+   * WAVE 7594: fire-and-forget — no return value.
    */
-  ipcMain.handle(
+  ipcMain.on(
     'lux:aether:setBlackout',
     (_event, { active }: { active: boolean }) => {
       try {
         const arbiter = getTitanOrchestrator().getAetherArbiter()
         arbiter.setBlackout(active)
-        return { success: true, blackoutActive: active }
       } catch (err) {
         console.error('[AetherIPC] setBlackout error:', err)
-        return { success: false, error: String(err) }
       }
     }
   )
@@ -374,17 +354,16 @@ export function registerAetherIPCHandlers(): void {
   /**
    * G1b: Set output gate global (ARM/LIVE) para pipeline Aether.
    * Payload: enabled boolean
+   * WAVE 7594: fire-and-forget — no return value.
    */
-  ipcMain.handle(
+  ipcMain.on(
     'lux:aether:setOutputEnabled',
     (_event, { enabled }: { enabled: boolean }) => {
       try {
         const orchestrator = getTitanOrchestrator()
         orchestrator.setOutputEnabled(!!enabled)
-        return { success: true, outputEnabled: orchestrator.isOutputEnabled() }
       } catch (err) {
         console.error('[AetherIPC] setOutputEnabled error:', err)
-        return { success: false, error: String(err) }
       }
     }
   )
@@ -435,16 +414,14 @@ export function registerAetherIPCHandlers(): void {
    * Escribe en NodeArbiter L4.
    * Payload: value (0-1)
    */
-  ipcMain.handle(
+  ipcMain.on(
     'lux:aether:setGrandMaster',
     (_event, { value }: { value: number }) => {
       try {
         const clamped = value < 0 ? 0 : value > 1 ? 1 : value
         getTitanOrchestrator().getAetherArbiter().setGrandMaster(clamped)
-        return { success: true, grandMaster: clamped }
       } catch (err) {
         console.error('[AetherIPC] setGrandMaster error:', err)
-        return { success: false, error: String(err) }
       }
     }
   )
@@ -453,8 +430,9 @@ export function registerAetherIPCHandlers(): void {
    * G3: Set grand master speed (0.1-2.0) — escala velocidad AI global.
    * Controla VMM nativo del pipeline Aether.
    * Payload: value (0.1-2.0)
+   * WAVE 7594: fire-and-forget — no return value.
    */
-  ipcMain.handle(
+  ipcMain.on(
     'lux:aether:setGrandMasterSpeed',
     (_event, { value }: { value: number }) => {
       try {
@@ -463,10 +441,8 @@ export function registerAetherIPCHandlers(): void {
         vibeMovementManager.setGlobalSpeedMultiplier(clamped)
         // 🔥 WAVE 4731 PASO 3: GM también escala L2 (AetherKineticEngine).
         aetherKineticEngine.setGrandMasterSpeed(clamped)
-        return { success: true, grandMasterSpeed: vibeMovementManager.getGlobalSpeedMultiplier() }
       } catch (err) {
         console.error('[AetherIPC] setGrandMasterSpeed error:', err)
-        return { success: false, error: String(err) }
       }
     }
   )
@@ -493,7 +469,7 @@ export function registerAetherIPCHandlers(): void {
    * El VMM se desactiva (setManualPattern(null)) para evitar doble oscilación:
    * el L0 queda en home (0.5) y el orbit math del Arbiter pasa pan_base sin suma.
    */
-  ipcMain.handle(
+  ipcMain.on(
     'lux:aether:setManualPattern',
     (_event, { fixtureIds, pattern, speed, amplitude, fan, anchorPan, anchorTilt }: {
       fixtureIds: string[]
@@ -844,11 +820,8 @@ export function registerAetherIPCHandlers(): void {
         arbiter.setManualPatternLock(nodeIds)
 
         aetherKineticEngine.setManualKinetics(nodeIds, nativePattern, speedNorm, amplitudeNorm, fanNorm, arbiter, mountOrientations)
-
-        return { success: true, pattern: nativePattern }
       } catch (err) {
         console.error('[AetherIPC] setManualPattern error:', err)
-        return { success: false, error: String(err) }
       }
     }
   )
@@ -859,7 +832,7 @@ export function registerAetherIPCHandlers(): void {
    * Para cambios en tiempo real de los sliders de UI sin glitch de fase.
    * Payload: { speed (0-100), amplitude (0-100), fan (-100..100) }
    */
-  ipcMain.handle(
+  ipcMain.on(
     'lux:aether:updateKineticScalars',
     (_event, payload: {
       fixtureIds?: string[]  // WAVE 4712: opcional; si falta o vacío aplica a TODOS los nodos activos
@@ -888,10 +861,8 @@ export function registerAetherIPCHandlers(): void {
           nodeIds = aetherKineticEngine.getState().nodeIds
         }
         aetherKineticEngine.updateScalars(nodeIds, speed, amplitude, fan)
-        return { success: true }
       } catch (err) {
         console.error('[AetherIPC] updateKineticScalars error:', err)
-        return { success: false, error: String(err) }
       }
     }
   )
@@ -938,19 +909,7 @@ export function registerAetherIPCHandlers(): void {
     }
   })
 
-  /**
-   * E11c: Canal legacy para compatibilidad con WAVE 4717.2.
-   * El fan ahora se pasa directamente en setManualPattern como parámetro `fan`.
-   * Este handler queda como no-op (el motor nativo ignora el mapa de offsets VMM).
-   */
-  ipcMain.handle(
-    'lux:aether:setKineticFanOffsets',
-    (_event, _offsets: Record<string, number>) => {
-      // No-op: los fan offsets se calculan nativamente en AetherKineticEngine.tick().
-      // El canal IPC se mantiene para no romper llamadas desde KineticsBridge legacy.
-      return { success: true }
-    }
-  )
+  // ── B7 setKineticFanOffsets: ELIMINADO WAVE 7594 (tráfico fantasma — no-op desde WAVE 4718) ──
 
   /**
    * E12: Apply spatial target para fixtures.
@@ -1081,11 +1040,11 @@ export function registerAetherIPCHandlers(): void {
    * Ruta: lux:aether:releaseSpatialTarget (Aether IPC)
    * Engine: NodeArbiter.clearManualOverride — WAVE 4704 (masterArbiter eliminado)
    */
-  ipcMain.handle(
+  ipcMain.on(
     'lux:aether:releaseSpatialTarget',
     (_event, { fixtureIds }: { fixtureIds: string[] }) => {
       if (!Array.isArray(fixtureIds)) {
-        return { success: false, error: 'fixtureIds must be an array' }
+        return
       }
 
       try {
@@ -1129,10 +1088,8 @@ export function registerAetherIPCHandlers(): void {
           arbiter.clearAllMotorKineticOverrides()
           arbiter.clearAllSpatialDistanceScales()
         }
-        return { success: true }
       } catch (err) {
         console.error('[AetherIPC] releaseSpatialTarget error:', err)
-        return { success: false, error: String(err) }
       }
     }
   )
@@ -1142,16 +1099,14 @@ export function registerAetherIPCHandlers(): void {
    * Called by the Calibration Dock when calibration offsets change at runtime.
    * The resolver will rebuild the IKFixtureProfile on the next frame.
    */
-  ipcMain.handle(
+  ipcMain.on(
     'lux:aether:invalidateIKProfile',
     (_event, { nodeId }: { nodeId: string }) => {
       try {
         const resolver = getTitanOrchestrator().getAetherResolver()
         resolver.invalidateIKProfile(nodeId)
-        return { success: true }
       } catch (err) {
         console.error('[AetherIPC] invalidateIKProfile error:', err)
-        return { success: false, error: String(err) }
       }
     }
   )
@@ -1197,7 +1152,7 @@ export function registerAetherIPCHandlers(): void {
    * Color dorado puro = #FFD700 → r=1.0, g=0.843, b=0.0
    * Zona flash es aditiva (WAVE 4696) → "quema" sobre la luz actual.
    */
-  ipcMain.handle(
+  ipcMain.on(
     'lux:aether:fireTungstenNuke',
     (_event, { target, release, value }: { target: string; release?: boolean; value?: number }) => {
       try {
@@ -1206,7 +1161,7 @@ export function registerAetherIPCHandlers(): void {
         const tungstenList = orchestrator.getTungstenNodeIds()
 
         if (tungstenList.length === 0) {
-          return { success: false, error: 'No Tungsten fixture registered in NodeGraph' }
+          return
         }
 
         for (const t of tungstenList) {
@@ -1280,14 +1235,11 @@ export function registerAetherIPCHandlers(): void {
               arbiter.setManualOverride(nodeId, { dimmer: intensity })
             }
           } else {
-            return { success: false, error: `Unknown target: ${target}` }
+            return
           }
         }
-
-        return { success: true }
       } catch (err) {
         console.error('[AetherIPC] fireTungstenNuke error:', err)
-        return { success: false, error: String(err) }
       }
     }
   )

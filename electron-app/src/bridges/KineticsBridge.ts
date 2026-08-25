@@ -479,11 +479,11 @@ class KineticsBridgeClass {
    *   1. fanValue (-100..100): spread lineal simetrico +/-0.25 norm
    *   2. chaosAmount (0-1): spread caotico FNV-1a +/-0.35 norm
    */
-  private async _flushClassic(
+  private _flushClassic(
     pan: number,
     tilt: number,
     fanValue: number,
-  ): Promise<void> {
+  ): void {
     const fixtureIds = getSelectedIds()
     if (fixtureIds.length === 0) return
     // WAVE 4719: GUARD ELIMINADO. Pan/tilt no son causa de bloqueo.
@@ -520,11 +520,7 @@ class KineticsBridgeClass {
     // 🩸 WAVE 6040-DIAG: trace radar classic flush
     console.log(`[ZOMBIE-DIAG] _flushClassic sending ${payloads.length} payloads:`, payloads.map(p => `${p.nodeId}=[${Object.entries(p.channels).map(([k,v])=>`${k}:${(v as number).toFixed(3)}`).join(',')}]`).join(' | '))
 
-    try {
-      await window.lux?.aether?.setManualOverrides(payloads)
-    } catch (err) {
-      console.error('[KineticsBridge] setManualOverrides (classic) error:', err)
-    }
+    window.lux?.aether?.setManualOverrides(payloads)
   }
 
   private _schedulePatternFlush(
@@ -540,12 +536,12 @@ class KineticsBridgeClass {
     )
   }
 
-  private async _flushPattern(
+  private _flushPattern(
     activePattern: string,
     patternSpeed: number,
     patternAmplitude: number,
     fanValue: number,
-  ): Promise<void> {
+  ): void {
     // WAVE 6020: Escudo anti-doble-disparo durante Unlock.
     // Si el operador acaba de pulsar Unlock, setActivePattern('none')
     // intentaría enviar 'hold' inmediatamente después del RELEASE.
@@ -592,18 +588,14 @@ class KineticsBridgeClass {
       fixtureKey === this._lastFixtureKeysSent
 
     if (samePatternAndFixtures) {
-      try {
-        // WAVE 4712: pasar fixtureIds para scope per-fixture en multitrack.
-        // Sin nodeIds, el engine actualizaría TODAS sus pistas activas (bleed).
-        await window.lux?.aether?.updateKineticScalars({
-          fixtureIds,
-          speed: patternSpeed,
-          amplitude: patternAmplitude,
-          fan: fanValue,
-        })
-      } catch (err) {
-        console.error('[KineticsBridge] updateKineticScalars error:', err)
-      }
+      // WAVE 4712: pasar fixtureIds para scope per-fixture en multitrack.
+      // Sin nodeIds, el engine actualizaría TODAS sus pistas activas (bleed).
+      window.lux?.aether?.updateKineticScalars({
+        fixtureIds,
+        speed: patternSpeed,
+        amplitude: patternAmplitude,
+        fan: fanValue,
+      })
       return
     }
 
@@ -630,22 +622,15 @@ class KineticsBridgeClass {
     // en _manualOverrides vía setManualOverrides — esa es la ruta correcta para el anchor.
     console.log('[ZOMBIE-DIAG] _flushPattern payload:', { enginePattern, fixtureIds: fixtureIds.length, isStop, samePatternAndFixtures, activePattern })
     console.log('[SONDA L2-FRONT] Enviando patrón:', enginePattern, 'Fixtures:', fixtureIds.length, '(anchor delegado al backend)')
-    try {
-      await window.lux?.aether?.setManualPattern({
-        fixtureIds,
-        pattern: enginePattern,
-        speed: patternSpeed,
-        amplitude: patternAmplitude,
-        fan: fanValue,        // [-100, 100] — el handler IPC normaliza a [0, 1]
-        anchorPan:  undefined, // WAVE 4986: sin anchor tóxico — backend resuelve
-        anchorTilt: undefined, // WAVE 4986: sin anchor tóxico — backend resuelve
-      })
-    } catch (err) {
-      // Si el setManualPattern falla, invalidar caché para forzar reintento completo
-      this._lastPatternSent = null
-      this._lastFixtureKeysSent = null
-      console.error('[KineticsBridge] setManualPattern error:', err)
-    }
+    window.lux?.aether?.setManualPattern({
+      fixtureIds,
+      pattern: enginePattern,
+      speed: patternSpeed,
+      amplitude: patternAmplitude,
+      fan: fanValue,        // [-100, 100] — el handler IPC normaliza a [0, 1]
+      anchorPan:  undefined, // WAVE 4986: sin anchor tóxico — backend resuelve
+      anchorTilt: undefined, // WAVE 4986: sin anchor tóxico — backend resuelve
+    })
   }
 
   // 🪦 WAVE 4718: _scheduleFanPhaseFlush / _flushFanPhase eliminados.

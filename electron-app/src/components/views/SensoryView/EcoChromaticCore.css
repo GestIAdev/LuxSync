@@ -57,7 +57,8 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 4px;
-  height: 48px;
+  min-height: 40px;
+  height: min-content;
 }
 
 .eco-chromatic__swatch {
@@ -142,4 +143,31 @@
   font-weight: 700;
   letter-spacing: 0.12em;
   color: var(--text-secondary, #a0a0b0);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   WAVE 7590: 1366×768 VERTICAL COMPRESSION — prevent text slicing
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+@media (max-height: 800px) {
+  .eco-chromatic {
+    gap: 6px;
+    padding: 10px 12px;
+  }
+
+  .eco-chromatic__swatches {
+    min-height: 32px;
+  }
+
+  .eco-chromatic__info-item {
+    padding: 4px 6px;
+  }
+
+  .eco-chromatic__info-v {
+    font-size: 0.75rem;
+  }
+
+  .eco-chromatic__mood {
+    padding: 4px 6px;
+  }
 }

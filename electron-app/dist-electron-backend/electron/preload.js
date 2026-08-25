@@ -476,8 +476,8 @@ const luxApi = {
     triggerEffect: (effectName, params, duration) => ipcRenderer.invoke('lux:trigger-effect', { effectName, params, duration }),
     /** Cancelar efecto por ID o nombre */
     cancelEffect: (effectIdOrName) => ipcRenderer.invoke('lux:cancel-effect', effectIdOrName),
-    /** Cancelar todos los efectos */
-    cancelAllEffects: () => ipcRenderer.invoke('lux:cancel-all-effects'),
+    /** Cancelar todos los efectos — WAVE 7594: fire-and-forget + bugfix channel name */
+    cancelAllEffects: () => ipcRenderer.send('lux:cancelAllEffects'),
     /** Blackout master - todas las luces apagadas */
     setBlackout: (active) => ipcRenderer.invoke('lux:set-blackout', active),
     /** 🗡️ WAVE 15.3 REAL: Enviar buffer de audio CRUDO a Trinity
@@ -641,12 +641,12 @@ const luxApi = {
      *
      * @param config - { effect: 'solar_flare', intensity: 0-1 }
      */
-    forceStrike: (config) => ipcRenderer.invoke('lux:forceStrike', config),
+    forceStrike: (config) => ipcRenderer.send('lux:forceStrike', config),
     // ============================================
     // 🎛️ WAVE 62 + WAVE 250: VIBE SELECTOR (Standardized to lux:)
     // ============================================
-    /** Set active Vibe profile (techno-club, fiesta-latina, pop-rock, chill-lounge) */
-    setVibe: (vibeId) => ipcRenderer.invoke('lux:setVibe', vibeId),
+    /** Set active Vibe profile — WAVE 7594: fire-and-forget */
+    setVibe: (vibeId) => ipcRenderer.send('lux:setVibe', vibeId),
     /**
      * 🧬 PROTEUS GRAFT: Send a FusedVibeBundle to the backend so it can graft
      * the custom vibe into the MAIN PROCESS's copies of the 7 canonical registries
@@ -870,7 +870,7 @@ const luxApi = {
         /** Toggle blackout state */
         toggleBlackout: () => ipcRenderer.invoke('lux:arbiter:toggleBlackout'),
         /** Set blackout state — WAVE 4633-OMEGA: redirigido a lux:aether:setBlackout (fuente de verdad única) */
-        setBlackout: (active) => ipcRenderer.invoke('lux:aether:setBlackout', { active }),
+        setBlackout: (active) => ipcRenderer.send('lux:aether:setBlackout', { active }),
         // ============================================
         // 🚦 WAVE 1132: OUTPUT GATE - THE COLD START PROTOCOL
         // ============================================
@@ -991,48 +991,48 @@ const luxApi = {
          * Llamado por el ProgrammerAetherBridge a 44Hz.
          * Los valores en `channels` deben estar normalizados (0-1).
          */
-        setManualOverrides: (payloads) => ipcRenderer.invoke('lux:aether:setManualOverrides', payloads),
+        setManualOverrides: (payloads) => ipcRenderer.send('lux:aether:setManualOverrides', payloads),
         /**
          * Limpia los overrides manuales de los nodeIds especificados.
          * Llamado cuando una familia queda sin canales activos.
          */
-        clearManualOverrides: (nodeIds) => ipcRenderer.invoke('lux:aether:clearManualOverrides', nodeIds),
+        clearManualOverrides: (nodeIds) => ipcRenderer.send('lux:aether:clearManualOverrides', nodeIds),
         /**
          * UNLOCK ALL global — limpia TODO el L2 del NodeArbiter.
          * L0/L1/L3/LP fluyen sin impedimento.
          */
-        clearAllManualOverrides: () => ipcRenderer.invoke('lux:aether:clearAllManualOverrides'),
+        clearAllManualOverrides: () => ipcRenderer.send('lux:aether:clearAllManualOverrides'),
         /**
          * WAVE 4531: Registra un inhibit limit (cap 0-1 sobre dimmer) para un
          * array de nodeIds. Semánticamente: Grand Master per-fixture en el Arbiter.
          */
-        setInhibitLimit: (nodeIds, limit) => ipcRenderer.invoke('lux:aether:setInhibitLimit', { nodeIds, limit }),
+        setInhibitLimit: (nodeIds, limit) => ipcRenderer.send('lux:aether:setInhibitLimit', { nodeIds, limit }),
         /**
          * WAVE L2-SUPREMACY: Limpia todos los overrides del motor cinético nativo
          * (dual-map _motorKineticOverrides del NodeArbiter). Safety net para unlock
          * cuando el motor tiene overrides huérfanos tras un stop() sin arbiter.
          */
-        clearAllMotorKineticOverrides: () => ipcRenderer.invoke('lux:aether:clearAllMotorKineticOverrides'),
+        clearAllMotorKineticOverrides: () => ipcRenderer.send('lux:aether:clearAllMotorKineticOverrides'),
         /**
          * WAVE 4709 T1: Exorcismo selectivo del Dual-Map del motor cinético.
          * Limpia _motorKineticOverrides solo para los nodeIds dados (orphans).
          */
-        clearMotorKineticOverrides: (nodeIds) => ipcRenderer.invoke('lux:aether:clearMotorKineticOverrides', nodeIds),
+        clearMotorKineticOverrides: (nodeIds) => ipcRenderer.send('lux:aether:clearMotorKineticOverrides', nodeIds),
         /**
          * WAVE 4531: Elimina el inhibit limit de los nodeIds indicados.
          */
-        clearInhibitLimit: (nodeIds) => ipcRenderer.invoke('lux:aether:clearInhibitLimit', nodeIds),
+        clearInhibitLimit: (nodeIds) => ipcRenderer.send('lux:aether:clearInhibitLimit', nodeIds),
         /**
          * E11 WAVE 4531: Set manual kinetic pattern para fixtures.
          * WAVE 4700: Motor cinético nativo L2 (AetherKineticEngine).
          * Reemplaza masterArbiter.setPattern() + VMM para patrones manuales.
          */
-        setManualPattern: (args) => ipcRenderer.invoke('lux:aether:setManualPattern', args),
+        setManualPattern: (args) => ipcRenderer.send('lux:aether:setManualPattern', args),
         /**
          * WAVE 4700: Actualizar scalares (speed/amplitude/fan) sin reiniciar la fase.
          * Para cambios en tiempo real desde sliders UI — no produce glitch de fase.
          */
-        updateKineticScalars: (args) => ipcRenderer.invoke('lux:aether:updateKineticScalars', args),
+        updateKineticScalars: (args) => ipcRenderer.send('lux:aether:updateKineticScalars', args),
         /**
          * WAVE 4701: Snapshot del estado manual del motor cinético nativo (legacy global).
          * Fuente de verdad para hidratar pattern/speed/amplitude/fan en UI.
@@ -1052,17 +1052,11 @@ const luxApi = {
             ipcRenderer.send('lux:aether:purgeBaseSpatial', fixtureIds);
         },
         /**
-         * E11b WAVE 4717.2: Set L2 phase offsets para fan distribute.
-         * WAVE 4700: No-op legacy — el fan se pasa directamente en setManualPattern.
-         * Canal mantenido para no romper llamadas desde KineticsBridge legacy.
-         */
-        setKineticFanOffsets: (offsets) => ipcRenderer.invoke('lux:aether:setKineticFanOffsets', offsets),
-        /**
          * WAVE 4708 T3: Propaga ChaosOrderSlider al motor IA (L0).
          * El KineticAdapter usa amount+seed para distribuir fase por nodo,
          * unificando el caos entre patrones manuales y patrones automáticos.
          */
-        setGlobalKineticChaos: (args) => ipcRenderer.invoke('lux:aether:setGlobalKineticChaos', args),
+        setGlobalKineticChaos: (args) => ipcRenderer.send('lux:aether:setGlobalKineticChaos', args),
         /**
          * E12 WAVE 4531: IK solve y apply spatial target para fixtures.
          * Stub → MasterArbiter legacy hasta que Aether tenga IK Resolver propio.
@@ -1071,26 +1065,26 @@ const luxApi = {
         /**
          * E12 WAVE 4531: Release spatial target — devuelve fixtures al control AI.
          */
-        releaseSpatialTarget: (args) => ipcRenderer.invoke('lux:aether:releaseSpatialTarget', args),
+        releaseSpatialTarget: (args) => ipcRenderer.send('lux:aether:releaseSpatialTarget', args),
         /**
          * 🏗️ WAVE 7179 (M5): Invalidate IK profile cache for a node.
          * Called by the Calibration Dock when calibration offsets change.
          */
-        invalidateIKProfile: (args) => ipcRenderer.invoke('lux:aether:invalidateIKProfile', args),
+        invalidateIKProfile: (args) => ipcRenderer.send('lux:aether:invalidateIKProfile', args),
         /**
          * WAVE 5020: Selection Kill — inhibit 0.0 solo en nodos :impact de los fixtures indicados.
          * Pan/Tilt siguen vivos. Toggle latch desde el dispatcher.
          */
-        setSelInhibit: (fixtureIds, active) => ipcRenderer.invoke('lux:aether:setSelInhibit', { fixtureIds, active }),
+        setSelInhibit: (fixtureIds, active) => ipcRenderer.send('lux:aether:setSelInhibit', { fixtureIds, active }),
         /**
          * WAVE 4652: Set blackout global — NodeArbiter L4.
          * Canal canónico post WAVE 4702.
          */
-        setBlackout: (active) => ipcRenderer.invoke('lux:aether:setBlackout', { active }),
+        setBlackout: (active) => ipcRenderer.send('lux:aether:setBlackout', { active }),
         /**
          * WAVE 4656: Set output gate global (ARM/LIVE) en pipeline Aether.
          */
-        setOutputEnabled: (enabled) => ipcRenderer.invoke('lux:aether:setOutputEnabled', { enabled }),
+        setOutputEnabled: (enabled) => ipcRenderer.send('lux:aether:setOutputEnabled', { enabled }),
         /**
          * WAVE 4656: Estado de control para hidratar CommandDeck.
          */
@@ -1099,12 +1093,12 @@ const luxApi = {
          * WAVE 4652: Set grand master dimmer global (0-1).
          * Canal canónico post WAVE 4702.
          */
-        setGrandMaster: (value) => ipcRenderer.invoke('lux:aether:setGrandMaster', { value }),
+        setGrandMaster: (value) => ipcRenderer.send('lux:aether:setGrandMaster', { value }),
         /**
          * WAVE 4652: Set grand master speed (0.1-2.0).
          * Canal canónico post WAVE 4702.
          */
-        setGrandMasterSpeed: (value) => ipcRenderer.invoke('lux:aether:setGrandMasterSpeed', { value }),
+        setGrandMasterSpeed: (value) => ipcRenderer.send('lux:aether:setGrandMasterSpeed', { value }),
         /**
          * WAVE 4653: Snapshot L2 para hidratar UI al seleccionar fixtures.
          */
@@ -1130,7 +1124,7 @@ const luxApi = {
          * release: true = libera el override (Note Off)
          * value: intensidad 0-1 o valor bipolar norm 0-1 para spin
          */
-        fireTungstenNuke: (args) => ipcRenderer.invoke('lux:aether:fireTungstenNuke', args),
+        fireTungstenNuke: (args) => ipcRenderer.send('lux:aether:fireTungstenNuke', args),
     },
     // ============================================
     // 🔌 WAVE 369.5: STAGE PERSISTENCE V2 + FILE DIALOGS

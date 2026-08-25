@@ -89,6 +89,12 @@ let prev2 = -1;
 /** Telemetría de calibración — NO muta la matriz (ver validatePrediction) */
 let hitRateEMA = 0.5;
 const ALPHA_HIT = 0.05;
+/** 🩸 WAVE 7597-CLEANUP: Dedicated frame counter for log throttles.
+ *  Replaces the broken `energyHistory.length % N` checks — energyHistory is
+ *  capped at MAX_ENERGY_HISTORY=30, so its length never reaches 60 or 600 and
+ *  the modulo conditions never fired after the first 0.5s. This counter
+ *  increments once per predict() call and is reset in resetPredictionState(). */
+let logFrameCount = 0;
 /** Salidas de predicción, escritas in-place (sin alloc) */
 let pSection = -1; // índice argmax, -1 = sin predicción
 let pProb = 0; // masa posterior normalizada del argmax
@@ -568,6 +574,7 @@ export function resetPredictionEngine() {
     lastRawSection = -1;
     lastPrediction = null;
     energyHistory = []; // 🔮 WAVE 1169: Reset energy history too
+    logFrameCount = 0; // 🩸 WAVE 7597-CLEANUP: Reset log throttle counter
 }
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPERS
@@ -846,6 +853,8 @@ export function predictFromEnergy(pattern, currentEnergy, bpm = 120) {
     const timestamp = Date.now();
     // Actualizar historial
     updateEnergyHistory(currentEnergy);
+    // 🩸 WAVE 7597-CLEANUP: Increment log throttle counter (replaces dead length-modulo).
+    logFrameCount++;
     // 🧬 WAVE 2093 COG-5: Threshold scaling por vibe
     const vibeMultiplier = getVibeThresholdMultiplier(pattern.vibeId);
     const trend = calculateEnergyTrend(vibeMultiplier);
@@ -894,7 +903,8 @@ export function predictFromEnergy(pattern, currentEnergy, bpm = 120) {
     const texturalTensionOk = pattern.emotionalTension > 0.35;
     const texturalTrendOk = trend === 'rising'; // Only rising, NOT stable
     // 🔧 WAVE 2096.1: Throttled diagnostic — every ~10 seconds (600 frames) instead of 2s
-    if (energyHistory.length % 600 === 0 && currentEnergy > 0.50) {
+    // 🩸 WAVE 7597-CLEANUP: Use logFrameCount, not energyHistory.length (capped at 30).
+    if (logFrameCount % 600 === 0 && currentEnergy > 0.50) {
         console.log(`[PREDICTION 🔮] TEXTURAL DROP CHECK: ` +
             `E=${currentEnergy.toFixed(2)}${texturalEnergyOk ? '✅' : '❌>0.65'} | ` +
             `R=${pattern.rhythmicIntensity.toFixed(2)}${texturalRhythmOk ? '✅' : '❌>0.40'} | ` +
@@ -905,7 +915,8 @@ export function predictFromEnergy(pattern, currentEnergy, bpm = 120) {
         const texturalProb = 0.55 + (currentEnergy * 0.12) + (pattern.emotionalTension * 0.08);
         // 🩸 WAVE 2101.5: Throttle TEXTURAL DROP — máximo 1 log cada 60 frames (~1s)
         // Antes: spammeaba CADA frame. 30 líneas de TEXTURAL DROP ACTIVATED en 2 segundos.
-        if (energyHistory.length % 60 === 0) {
+        // 🩸 WAVE 7597-CLEANUP: Use logFrameCount, not energyHistory.length (capped at 30).
+        if (logFrameCount % 60 === 0) {
             console.log(`[PREDICTION 🔮] 🎭 TEXTURAL DROP ACTIVATED! ` +
                 `E=${(currentEnergy * 100).toFixed(0)}% R=${(pattern.rhythmicIntensity * 100).toFixed(0)}% ` +
                 `T=${(pattern.emotionalTension * 100).toFixed(0)}% Trend=${trend} → prob=${texturalProb.toFixed(2)}`);

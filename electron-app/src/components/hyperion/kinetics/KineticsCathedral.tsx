@@ -174,8 +174,8 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
         amplitude: 50,
       })
       // 3) VMM: limpiar phase offsets del fan residuales
-      console.log('[ZOMBIE-DIAG] Step 4: IPC setKineticFanOffsets({})')
-      void window.lux?.aether?.setKineticFanOffsets({})
+      // 🪦 WAVE 7594: setKineticFanOffsets eliminado — no-op desde WAVE 4718.
+      // El fan se pasa directamente en setManualPattern como parámetro `fan`.
     }
     // 4) Safety net: barrer Dual-Map global del motor por si quedaron huérfanos
     console.log('[ZOMBIE-DIAG] Step 5: IPC clearAllMotorKineticOverrides')

@@ -185,12 +185,11 @@ function setupSeleneLuxHandlers(deps) {
     });
     // 🧨 WAVE 610: FORCE STRIKE - Manual Effect Detonator
     // ⌨ WAVE 4802-D: scope field threaded through for chord scoped dispatch
-    ipcMain.handle('lux:forceStrike', (_event, config) => {
+    ipcMain.on('lux:forceStrike', (_event, config) => {
         console.log('[IPC] ðŸ§¨ lux:forceStrike:', config);
         if (titanOrchestrator) {
             titanOrchestrator.forceStrikeNextFrame(config);
         }
-        return { success: true };
     });
     ipcMain.handle('lux:setInputGain', (_event, gain) => {
         console.log('[IPC] lux:setInputGain:', gain);
@@ -200,7 +199,7 @@ function setupSeleneLuxHandlers(deps) {
         configManager.updateConfig({ audio: { inputGain: gain } });
         return { success: true };
     });
-    ipcMain.handle('lux:setVibe', (_event, vibeId) => {
+    ipcMain.on('lux:setVibe', (_event, vibeId) => {
         console.log('[IPC] lux:setVibe:', vibeId);
         if (titanOrchestrator) {
             titanOrchestrator.setVibe(vibeId);
@@ -212,7 +211,6 @@ function setupSeleneLuxHandlers(deps) {
         const win = getMainWindow();
         safeWebSend(win, 'lux:vibe-changed', { vibeId, timestamp: Date.now() });
         safeWebSend(win, 'selene:vibe-changed', { vibeId, timestamp: Date.now() });
-        return { success: true };
     });
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // ðŸŽ¯ WAVE 2019: THE PULSE - Chronos Timeline â†’ Stage Commands
@@ -551,11 +549,10 @@ function setupEffectHandlers(deps) {
         }
         return { success: true };
     });
-    ipcMain.handle('lux:cancelAllEffects', () => {
+    ipcMain.on('lux:cancelAllEffects', () => {
         if (effectsEngine?.cancelAllEffects) {
             effectsEngine.cancelAllEffects();
         }
-        return { success: true };
     });
     ipcMain.handle('lux:blackout', (_event, enabled) => {
         console.log('[IPC] lux:blackout:', enabled);

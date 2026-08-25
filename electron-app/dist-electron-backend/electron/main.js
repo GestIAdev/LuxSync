@@ -1344,20 +1344,27 @@ app.whenReady().then(async () => {
     }
     // ═══════════════════════════════════════════════════════════════════════════
     // WAVE 7591: LIBRARY PATHFINDER (PRUNED) + UNIFIED NOMENCLATURE
+    // 🩸 WAVE 7603: LIBRARY RESCUE — added project root candidates for dev mode.
+    // The factory library lives at LuxSync/librerias/ (project root), NOT at
+    // electron-app/librerias/ (which only has barato.json). User fixtures live
+    // at LuxSync/fixtures/ (project root), NOT at userData/fixtures/custom/.
     // ═══════════════════════════════════════════════════════════════════════════
-    // Old 6-fallback pathfinder replaced with 2 strict paths:
+    // Old 6-fallback pathfinder replaced with strict paths:
     //   1. process.resourcesPath/librerias (Production bundled)
-    //   2. app.getAppPath()/librerias (Development fallback)
+    //   2. app.getAppPath()/librerias (Development — electron-app dir)
+    //   3. app.getAppPath()/../librerias (Development — project root) 🩸 WAVE 7603
     //
     // Old dual nomenclature (librerias/ + fixtures/) unified under:
     //   userData/fixtures/factory/  (replaces librerias/ — factory definitions)
     //   userData/fixtures/custom/   (replaces fixtures/ — user definitions)
+    //   app.getAppPath()/../fixtures/ (Development — project root) 🩸 WAVE 7603
     // ═══════════════════════════════════════════════════════════════════════════
     const fs = await import('fs');
-    // ── Pruned pathfinder: 2 strict candidates only ──────────────────────────
+    // ── Pruned pathfinder: 3 candidates (added project root for dev) ─────────
     const candidatePaths = [
         path.join(process.resourcesPath, 'librerias'), // Production bundled
-        path.join(app.getAppPath(), 'librerias'), // Development fallback
+        path.join(app.getAppPath(), 'librerias'), // Development — electron-app/
+        path.resolve(app.getAppPath(), '..', 'librerias'), // 🩸 WAVE 7603: project root
     ];
     let factoryLibraryPath = '';
     for (const candidate of candidatePaths) {
@@ -1378,7 +1385,30 @@ app.whenReady().then(async () => {
     // These directories were already created by initializeVaults() above.
     const userDataPath = app.getPath('userData');
     const factoryUserDataPath = path.join(userDataPath, 'fixtures', 'factory');
-    const customLibraryPath = path.join(userDataPath, 'fixtures', 'custom');
+    let customLibraryPath = path.join(userDataPath, 'fixtures', 'custom');
+    // 🩸 WAVE 7603: In development, user fixtures may live at the project root
+    // (LuxSync/fixtures/) instead of userData/fixtures/custom/. Scan both —
+    // userData takes priority (unified nomenclature), project root is fallback.
+    const projectRootFixturesPath = path.resolve(app.getAppPath(), '..', 'fixtures');
+    if (fs.existsSync(projectRootFixturesPath)) {
+        const userFiles = fs.readdirSync(projectRootFixturesPath).filter((f) => f.endsWith('.json') && f.startsWith('user-'));
+        if (userFiles.length > 0) {
+            // Seed userData/fixtures/custom/ from project root on first boot
+            const existingCustom = fs.existsSync(customLibraryPath)
+                ? fs.readdirSync(customLibraryPath).filter((f) => f.endsWith('.json'))
+                : [];
+            if (existingCustom.length === 0) {
+                let copiedCount = 0;
+                for (const file of userFiles) {
+                    fs.copyFileSync(path.join(projectRootFixturesPath, file), path.join(customLibraryPath, file));
+                    copiedCount++;
+                }
+                if (copiedCount > 0) {
+                    console.log(`[Library] 📦 Seeded ${copiedCount} user fixtures → userData/fixtures/custom/`);
+                }
+            }
+        }
+    }
     // WAVE 7591: Copy factory fixtures into userData/fixtures/factory/ on first boot
     // (seeds the writable factory copy so users can inspect/reset definitions)
     if (fs.existsSync(factoryLibraryPath)) {

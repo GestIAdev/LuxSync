@@ -58,9 +58,12 @@ export const LassoSelection: React.FC<LassoSelectionProps> = ({
       // Only active in select mode
       if (toolMode !== 'select') return
 
-      // Check if clicking on empty space (not on a fixture circle)
+      // 🩸 WAVE 7604: STRICT target filter — only start lasso on the SVG root
+      // or the background rect (marked with data-bg). Fixture symbols are <g>
+      // elements, so the old filter (allowing any <g>/<rect>) caused accidental
+      // lasso rectangles when clicking fixtures in select mode.
       const target = e.target as SVGElement
-      if (target.tagName !== 'svg' && target.tagName !== 'rect' && target.tagName !== 'g') return
+      if (target.tagName !== 'svg' && !(target.tagName === 'rect' && target.getAttribute('data-bg'))) return
 
       e.preventDefault()
       e.stopPropagation()

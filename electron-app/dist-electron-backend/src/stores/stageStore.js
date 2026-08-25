@@ -457,7 +457,13 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
             orientation: result.orientation,
             rigId: result.rigId,
             placementMode: result.placementMode,
-            isPlaced: false, // legacy: 2D sigue siendo el universo "isPlaced=false" — ver StageCanvas2D
+            // 🩸 WAVE 7603: MICRO-PATCH — isPlaced: true (was false).
+            // The 2D-placed fixture IS placed — it has real X/Z coordinates.
+            // Y is inferred from orientation via DEFAULT_ORIENTATION_HEIGHT,
+            // so the 3D visualizer (useFixture3DData.ts:186) renders it
+            // correctly. Setting false caused moved fixtures to fall back to
+            // zone-based layout in the 3D view, losing their authored position.
+            isPlaced: true,
         });
     },
     // 🏗️ WAVE 7179 (M2): ajusta SOLO el eje Y, clampeado al Crystal Box.

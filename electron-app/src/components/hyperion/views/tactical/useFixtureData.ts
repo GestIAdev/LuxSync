@@ -174,19 +174,34 @@ export function useFixtureData(): TacticalFixture[] {
         const stageFixture = fixtureArray[globalIdx]
 
         // 🎯 Spatial Truth: project 3D→2D when explicitly placed
-        if (stageFixture?.isPlaced === true && stageFixture.position) {
+        // 🩸 WAVE 7600: TACTICAL CANVAS FIX — bypass isPlaced for 2D-placed
+        // fixtures. The isPlaced flag was designed for the 3D visualizer
+        // (which needs Y/height). The tactical canvas is top-down 2D and
+        // only needs X/Z — so 2D-placed fixtures (isPlaced=false but with
+        // real position.x/z) should project correctly instead of falling
+        // through to zone-based distribution that ignores their coordinates.
+        const hasRealPosition = stageFixture?.position
+          && !(stageFixture.position.x === 0
+               && stageFixture.position.y === 3
+               && stageFixture.position.z === 0)
+
+        if (hasRealPosition && stageFixture.position) {
           // 🏗️ WAVE 4576 M2: Corrected projection math
           // Worker renders at fx = fixture.x * canvasWidth, so x must be in [0,1].
           // position.x ∈ [-stageW/2, +stageW/2] → normalize to [-0.5,+0.5] → shift to [0,1]
           // position.z: +Z = front/audience = bottom of canvas (y=1), -Z = back/upstage = top (y=0)
           //   → NO negation: rawY = +z/stageD maps front→high y (bottom) correctly.
+          // 🩸 WAVE 7601: VIRTUAL CAMERA — clamps REMOVED. Fixtures placed
+          // outside the nominal stage bounds (e.g., X=15 on a 12m stage)
+          // must yield rawX > 1.0 so the virtual camera can pan/zoom to
+          // reveal them. The grid layer also expands to cover the visible
+          // virtual viewport, not just the stage dimensions.
           const stageW = stageDimensions?.width ?? 12
           const stageD = stageDimensions?.depth ?? 8
-          const MARGIN = 0.05  // 5% safety margin — fixtures stay inside canvas
-          const rawX = stageFixture.position.x / stageW        // [-0.5, +0.5]
-          const rawY = stageFixture.position.z / stageD         // [-0.5, +0.5], +Z → high y
-          fixture.x = Math.max(MARGIN, Math.min(1 - MARGIN, rawX + 0.5))
-          fixture.y = Math.max(MARGIN, Math.min(1 - MARGIN, rawY + 0.5))
+          const rawX = stageFixture.position.x / stageW        // [-0.5, +0.5] nominal, unbounded
+          const rawY = stageFixture.position.z / stageD         // [-0.5, +0.5] nominal, unbounded
+          fixture.x = rawX + 0.5
+          fixture.y = rawY + 0.5
           return
         }
         

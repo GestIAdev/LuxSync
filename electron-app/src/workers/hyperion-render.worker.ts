@@ -76,6 +76,14 @@ let quality: QualityMode = 'HQ'
 let showGrid = true
 let showZoneLabels = false
 
+// 🩸 WAVE 7601: VIRTUAL CAMERA — Pan/Zoom applied to ctx, not CSS.
+// The canvas DOM element stays at 100% width/height; the camera transform
+// is applied inside the render loop so fixtures can render outside the
+// nominal stage bounds and the grid expands to fill the visible viewport.
+let cameraZoom = 1
+let cameraPanX = 0
+let cameraPanY = 0
+
 // ── Scaffold (structural, rarely changes) ─────────────────────────────────
 let scaffoldFixtures: WorkerFixtureScaffold[] = []
 let zoneCounts: Map<CanonicalZone, number> = new Map()
@@ -258,15 +266,43 @@ function render(timestamp: number): void {
 
   // ═══════════════════════════════════════════════════════════════════════
   // RENDER LAYERS — Exact same pipeline as the old main-thread RAF loop
+  // 🩸 WAVE 7601: VIRTUAL CAMERA — ctx transform applied for all world-space
+  // layers (grid, zones, fixtures, selection). HUD stays in screen space.
+  // 🩸 WAVE 7602: CENTERED ORIGIN — stage center (0.5*canvasW, 0.5*canvasH
+  // in world space) maps to canvas center at zoom=1, pan=0. Zoom scales
+  // around the canvas center, revealing extra space symmetrically.
   // ═══════════════════════════════════════════════════════════════════════
   ctx.save()
   ctx.clearRect(0, 0, canvasWidth, canvasHeight)
 
-  // LAYER 1: GRID
+  // ── 🩸 WAVE 7602: Centered camera transform ────────────────────────────
+  // Transform chain (applied right-to-left to world coords):
+  //   1. translate(-canvasW/2, -canvasH/2): move stage center to origin
+  //   2. scale(zoom): zoom around origin
+  //   3. translate(canvasW/2 + panX, canvasH/2 + panY): move to canvas center + pan
+  // Result: screen = (world - canvasCenter) * zoom + canvasCenter + pan
+  // At zoom=1, pan=0: screen = world (stage center at canvas center). ✓
+  // At zoom=2, pan=0: scales around canvas center. ✓
+  const cx = canvasWidth / 2
+  const cy = canvasHeight / 2
+  ctx.translate(cx + cameraPanX, cy + cameraPanY)
+  ctx.scale(cameraZoom, cameraZoom)
+  ctx.translate(-cx, -cy)
+
+  // ── Compute visible world bounds for grid (inverse transform) ──────────
+  // Inverse: world = (screen - canvasCenter - pan) / zoom + canvasCenter
+  const worldLeft = (0 - cx - cameraPanX) / cameraZoom + cx
+  const worldTop = (0 - cy - cameraPanY) / cameraZoom + cy
+  const worldRight = (canvasWidth - cx - cameraPanX) / cameraZoom + cx
+  const worldBottom = (canvasHeight - cy - cameraPanY) / cameraZoom + cy
+
+  // LAYER 1: GRID (world space — ctx transform handles centering/zoom)
   if (showGrid) {
     renderGridLayer(ctx as unknown as CanvasRenderingContext2D, canvasWidth, canvasHeight, {
       showReferenceLines: true,
       showStereoDivision: true,
+      // 🩸 WAVE 7602: visible world bounds for grid extent
+      viewport: { left: worldLeft, top: worldTop, right: worldRight, bottom: worldBottom },
     })
   }
 
@@ -294,9 +330,11 @@ function render(timestamp: number): void {
     animationPhase: (timestamp % 1000) / 1000,
   })
 
-  // LAYER 5: HUD
-  renderHUDLayer(ctx as unknown as CanvasRenderingContext2D, canvasWidth, canvasHeight, metrics, quality)
+  ctx.restore()
 
+  // LAYER 5: HUD (screen space — restore for HUD so it stays fixed)
+  ctx.save()
+  renderHUDLayer(ctx as unknown as CanvasRenderingContext2D, canvasWidth, canvasHeight, metrics, quality)
   ctx.restore()
 
   // ── Metrics report ──────────────────────────────────────────────────────
@@ -317,6 +355,15 @@ function render(timestamp: number): void {
 function handleMouse(msg: { action: string; x: number; y: number; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }): void {
   const fixtures = buildCurrentFixtures()
 
+  // 🩸 WAVE 7601: VIRTUAL CAMERA — inverse-transform mouse coords from
+  // screen space to world space.
+  // 🩸 WAVE 7602: Centered origin — inverse: world = (screen - canvasCenter - pan) / zoom + canvasCenter
+  // Hit testing and lasso operate in world space (same as fixture.x*canvasWidth).
+  const cx = canvasWidth / 2
+  const cy = canvasHeight / 2
+  const worldX = (msg.x - cx - cameraPanX) / cameraZoom + cx
+  const worldY = (msg.y - cy - cameraPanY) / cameraZoom + cy
+
   if (msg.action === 'leave') {
     hoveredId = null
     isLassoActive = false
@@ -326,16 +373,18 @@ function handleMouse(msg: { action: string; x: number; y: number; shiftKey: bool
     return
   }
 
+  // 🩸 WAVE 7601: baseRadius must be scaled by zoom so hit targets grow
+  // when zoomed in and shrink when zoomed out, matching visual size.
   const baseRadius = Math.max(
     FIXTURE_CONFIG.MIN_RADIUS,
     Math.min(FIXTURE_CONFIG.MAX_RADIUS, Math.min(canvasWidth, canvasHeight) * FIXTURE_CONFIG.BASE_RADIUS_RATIO)
-  )
+  ) * cameraZoom
 
   if (msg.action === 'move') {
     if (isLassoActive && lassoStart) {
-      // Update lasso bounds
-      const normX = msg.x / canvasWidth
-      const normY = msg.y / canvasHeight
+      // Update lasso bounds (normalized 0-1 in world space)
+      const normX = worldX / canvasWidth
+      const normY = worldY / canvasHeight
       lassoBounds = {
         startX: lassoStart.x,
         startY: lassoStart.y,
@@ -345,7 +394,7 @@ function handleMouse(msg: { action: string; x: number; y: number; shiftKey: bool
       return
     }
 
-    const hit = hitTestFixtures(msg.x, msg.y, fixtures, canvasWidth, canvasHeight, baseRadius)
+    const hit = hitTestFixtures(worldX, worldY, fixtures, canvasWidth, canvasHeight, baseRadius)
     hoveredId = hit.fixtureId
     sendMessage({
       type: 'HIT_TEST',
@@ -360,7 +409,7 @@ function handleMouse(msg: { action: string; x: number; y: number; shiftKey: bool
       metaKey: msg.metaKey,
     })
   } else if (msg.action === 'down') {
-    const hit = hitTestFixtures(msg.x, msg.y, fixtures, canvasWidth, canvasHeight, baseRadius)
+    const hit = hitTestFixtures(worldX, worldY, fixtures, canvasWidth, canvasHeight, baseRadius)
 
     if (hit.fixtureId) {
       // Click on fixture — let main thread handle selection logic
@@ -377,10 +426,10 @@ function handleMouse(msg: { action: string; x: number; y: number; shiftKey: bool
         metaKey: msg.metaKey,
       })
     } else {
-      // Start lasso
+      // Start lasso (normalized 0-1 in world space)
       isLassoActive = true
-      const normX = msg.x / canvasWidth
-      const normY = msg.y / canvasHeight
+      const normX = worldX / canvasWidth
+      const normY = worldY / canvasHeight
       lassoStart = { x: normX, y: normY }
       lassoBounds = { startX: normX, startY: normY, endX: normX, endY: normY }
       // Notify main thread of click on empty space
@@ -577,6 +626,15 @@ self.onmessage = (e: MessageEvent<WorkerInboundMessage>) => {
       if (msg.quality !== undefined) quality = msg.quality
       if (msg.showGrid !== undefined) showGrid = msg.showGrid
       if (msg.showZoneLabels !== undefined) showZoneLabels = msg.showZoneLabels
+      break
+    }
+
+    case 'CAMERA': {
+      // 🩸 WAVE 7601: VIRTUAL CAMERA — update pan/zoom state.
+      // Applied in the render loop via ctx.translate/ctx.scale.
+      cameraZoom = msg.zoom
+      cameraPanX = msg.panX
+      cameraPanY = msg.panY
       break
     }
 

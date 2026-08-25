@@ -31,11 +31,11 @@
   display: block;
   width: 100%;
   height: 100%;
-  
+
   /* Crisp rendering */
   image-rendering: -webkit-optimize-contrast;
   image-rendering: crisp-edges;
-  
+
   /* Cursor states handled by JS */
   cursor: crosshair;
 }
@@ -51,6 +51,16 @@
 .tactical-canvas.selecting {
   cursor: crosshair;
 }
+
+.tactical-canvas.panning {
+  cursor: grab;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * WAVE 7601: VIRTUAL CAMERA — canvas stays at 100% width/height.
+ * Pan/Zoom is applied inside the worker's ctx transform, NOT via CSS.
+ * No viewport wrapper needed.
+ * ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * TOOLTIP OVERLAY LAYER
@@ -198,4 +208,71 @@
   font-size: 32px;
   margin-bottom: 12px;
   color: rgba(0, 240, 255, 0.15);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * WAVE 7600: FLOATING ZOOM CONTROLS — bottom-right corner
+ * Dark minimalist aesthetic matching Hyperion UI.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.tactical-zoom-controls {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(2, 8, 12, 0.85);
+  border: 1px solid rgba(0, 240, 255, 0.18);
+  border-radius: 6px;
+  backdrop-filter: blur(8px);
+  z-index: 20;
+  user-select: none;
+}
+
+.tactical-zoom-btn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid rgba(0, 240, 255, 0.12);
+  border-radius: 4px;
+  color: rgba(0, 240, 255, 0.7);
+  font-family: var(--hyperion-font-primary, 'JetBrains Mono', monospace);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease, background-color 0.12s ease;
+}
+
+.tactical-zoom-btn:hover {
+  border-color: rgba(0, 240, 255, 0.45);
+  color: rgba(0, 240, 255, 1);
+  background: rgba(0, 240, 255, 0.08);
+}
+
+.tactical-zoom-btn:active {
+  background: rgba(0, 240, 255, 0.15);
+}
+
+.tactical-zoom-btn:focus-visible {
+  outline: none;
+  border-color: var(--accent-secondary, #00E5FF);
+}
+
+.tactical-zoom-btn--reset {
+  font-size: 12px;
+}
+
+.tactical-zoom-level {
+  min-width: 38px;
+  text-align: center;
+  font-family: var(--hyperion-font-primary, 'JetBrains Mono', monospace);
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(0, 240, 255, 0.6);
+  letter-spacing: 0.5px;
 }

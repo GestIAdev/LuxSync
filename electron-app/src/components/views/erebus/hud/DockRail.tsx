@@ -22,13 +22,16 @@ const CATEGORIES = [
 export const DockRail: React.FC = () => {
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null)
   const [pinnedCategory, setPinnedCategory] = useState<string | null>(null)
+  // 🩸 WAVE 7604: forceOpen — set by onClick or restore-after-drag to keep
+  // the flyout visible even when the mouse is no longer over the rail.
+  const [forceOpen, setForceOpen] = useState<string | null>(null)
   const hoverTimerRef = useRef<number | null>(null)
   const closeTimerRef = useRef<number | null>(null)
 
-  const activeCategory = pinnedCategory ?? hoveredCategory
+  const activeCategory = pinnedCategory ?? hoveredCategory ?? forceOpen
   const isPinned = pinnedCategory !== null
 
-  // ── Hover with 150ms open delay ────────────────────────────────────────────
+  // ── Hover with 100ms open delay ────────────────────────────────────────────
   const handleMouseEnter = useCallback((catId: string) => {
     if (closeTimerRef.current) {
       clearTimeout(closeTimerRef.current)
@@ -41,13 +44,17 @@ export const DockRail: React.FC = () => {
     hoverTimerRef.current = window.setTimeout(() => setHoveredCategory(catId), 100)
   }, [])
 
-  // ── Delayed close (300ms) so user can move from rail to flyout ─────────────
+  // ── 🩸 WAVE 7604: Delayed close (400ms, was 300ms) for better transit tolerance
   const handleMouseLeave = useCallback(() => {
     if (hoverTimerRef.current) {
       clearTimeout(hoverTimerRef.current)
       hoverTimerRef.current = null
     }
-    closeTimerRef.current = window.setTimeout(() => setHoveredCategory(null), 300)
+    closeTimerRef.current = window.setTimeout(() => {
+      setHoveredCategory(null)
+      // 🩸 WAVE 7604: Don't clear forceOpen on mouse leave — it's only cleared
+      // by explicit user action (clicking another category, or closing).
+    }, 400)
   }, [])
 
   // ── Cancel close when entering the flyout area ─────────────────────────────
@@ -58,10 +65,49 @@ export const DockRail: React.FC = () => {
     }
   }, [])
 
+  // ── 🩸 WAVE 7604: Single click opens flyout immediately (bypasses 100ms timer)
+  // This gives click-preferring users instant access without waiting for hover.
+  const handleClick = useCallback((catId: string) => {
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current)
+      hoverTimerRef.current = null
+    }
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+    setHoveredCategory(catId)
+    setForceOpen(catId)
+  }, [])
+
   // ── Double click to pin/unpin ─────────────────────────────────────────────
   const handleDoubleClick = useCallback((catId: string) => {
     setPinnedCategory(prev => (prev === catId ? null : catId))
   }, [])
+
+  // ── 🩸 WAVE 7604: Restore flyout after drag-and-drop ──────────────────────
+  // The FixtureCard dispatches 'erebus:dock-flyout-restore' on dragEnd. We
+  // re-show the flyout by setting forceOpen to the last active category,
+  // even if the mouse is no longer over the rail. A close timer will hide
+  // it after 400ms if the user doesn't move the mouse back to the rail/flyout.
+  useEffect(() => {
+    const handleRestore = () => {
+      if (pinnedCategory) {
+        // Pinned flyout is always visible — nothing to do
+        return
+      }
+      const cat = hoveredCategory ?? forceOpen
+      if (cat) {
+        setForceOpen(cat)
+        // Auto-clear forceOpen after 600ms if user doesn't re-enter rail/flyout
+        closeTimerRef.current = window.setTimeout(() => {
+          setForceOpen(null)
+        }, 600)
+      }
+    }
+    window.addEventListener('erebus:dock-flyout-restore', handleRestore)
+    return () => window.removeEventListener('erebus:dock-flyout-restore', handleRestore)
+  }, [pinnedCategory, hoveredCategory, forceOpen])
 
   // ── Cleanup timers on unmount ──────────────────────────────────────────────
   useEffect(() => {
@@ -83,6 +129,7 @@ export const DockRail: React.FC = () => {
               title={cat.label}
               onMouseEnter={() => handleMouseEnter(cat.id)}
               onMouseLeave={handleMouseLeave}
+              onClick={() => handleClick(cat.id)}
               onDoubleClick={() => handleDoubleClick(cat.id)}
             >
               <span style={{ fontSize: 16 }}>{cat.icon}</span>
@@ -92,7 +139,9 @@ export const DockRail: React.FC = () => {
         ))}
       </div>
 
-      {/* DockFlyout — shown when hovering or pinned */}
+      {/* DockFlyout — shown when hovering, pinned, or force-opened.
+          🩸 WAVE 7604: left: 48px (was 60px) — eliminates the 12px dead-zone
+          gap between the rail and the flyout that caused mouseleave to fire. */}
       {activeCategory && (
         <div
           onMouseEnter={handleFlyoutEnter}
@@ -100,7 +149,7 @@ export const DockRail: React.FC = () => {
           style={{
             position: 'absolute',
             top: 64,
-            left: 60,
+            left: 48,
             width: 280,
             height: 'calc(100% - 100px)',
             zIndex: 99,
@@ -109,7 +158,7 @@ export const DockRail: React.FC = () => {
           <DockFlyout
             categoryId={activeCategory}
             pinned={isPinned}
-            visible={hoveredCategory !== null || isPinned}
+            visible={hoveredCategory !== null || isPinned || forceOpen !== null}
           />
         </div>
       )}

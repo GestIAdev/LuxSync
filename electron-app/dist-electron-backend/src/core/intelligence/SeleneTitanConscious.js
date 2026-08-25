@@ -123,7 +123,7 @@ import { getEffectManager } from '../effects/EffectManager';
 // ═══════════════════════════════════════════════════════════════════════════
 import { LiquidCognitionCore, } from './liquid/LiquidCognitionCore';
 import { LiquidTelemetryRecorder } from './liquid/LiquidTelemetryRecorder';
-import { SovereignClockGuard } from './guards/SovereignClockGuard';
+import { SovereignClockGuard, selectUpgradeCandidate } from './guards/SovereignClockGuard';
 // ═══════════════════════════════════════════════════════════════════════════
 // CONFIGURACIÓN
 // ═══════════════════════════════════════════════════════════════════════════
@@ -264,6 +264,7 @@ export class SeleneTitanConscious extends EventEmitter {
         this._lastV3ZFloorLog = 0;
         this._lastV3IgnitionLog = 0;
         this._lastFireDiagLog = 0;
+        this._lastHuntUpgradeLog = 0;
         this._sovereignGuard = new SovereignClockGuard();
         // ═══════════════════════════════════════════════════════════════════════
         // SENSE: Percepción - USANDO SENSORES REALES
@@ -691,6 +692,81 @@ export class SeleneTitanConscious extends EventEmitter {
                         this._lastV3ZFloorLog = _zFloorNow;
                     }
                     finalOutput.effectDecision = null;
+                }
+            }
+        }
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🩸 WAVE 7599: HUNT UPGRADE — Gentle → Heavy cuando el clímax es real
+        // ═══════════════════════════════════════════════════════════════════════
+        // Espejo inverso del HEAVY RE-ROUTE del Sovereign Clock, pero para el
+        // NORMAL HUNT PATH (no pre-bufferizado).
+        //
+        // PROBLEMA: El DreamSimulator hace zone override (peak→gentle) cuando
+        // Cassandra predice breakdown_imminent. Pero entre la predicción y el
+        // disparo, el DJ puede lanzar el clímax real — bass y Z explotan. El
+        // DreamSimulator ya filtró el arsenal a solo gentle, así que Amazon Mist
+        // dispara con E=0.97 y Z=1.8 — un efecto chof para un momento heavy.
+        //
+        // SOLUCIÓN: Si el efecto aprobado es gentle PERO la energía física es
+        // extrema (E > 0.90, bass > 0.55, Z > 1.5, epicness > 0.15), buscar un
+        // candidato heavy/peak y reemplazar el efecto antes del fire.
+        //
+        // NOTA: E > 0.90 (no 0.70) porque en fiesta-latina 0.70 es casi silencio.
+        //       El umbral de 0.90 garantiza que solo upgrade en clímax REALES.
+        // ═══════════════════════════════════════════════════════════════════════
+        if (finalOutput.effectDecision && this._v3Ignite) {
+            const _upgradeEffectId = finalOutput.effectDecision.effectType;
+            const _upgradeEntry = getDynamicEffectRegistry().getEntry(_upgradeEffectId);
+            if (_upgradeEntry) {
+                const _isGentleForUpgrade = !_upgradeEntry.simMeta.isHeavyCandidate
+                    && !_upgradeEntry.simMeta.isDivineCandidate
+                    && (_upgradeEntry.dna.aggression ?? 0) <= 0.70;
+                if (_isGentleForUpgrade) {
+                    const _upgradeEpicness = this._lastLiquidVerdict?.epicness ?? 0;
+                    const _upgradeBass = titanState.bass;
+                    const _upgradeZ = this.contextualMemory.getEnergyZScore();
+                    const _upgradeEnergy = titanState.rawEnergy;
+                    // Umbrales — E > 0.90 (latino), bass > 0.58, Z > 1.5, epicness > 0.35
+                    // 🩸 WAVE 7599.2: bass 0.55→0.57, epicness 0.15→0.35. Un strobo es un
+                    // strobo: epicness 0.4 mola, 0.3 puede ser un chillido vocal para el
+                    // que ya otros efectos mejores. Bass 0.57 filtra autotune pegando al sub.
+                    const HUNT_UPGRADE_ENERGY_MIN = 0.90;
+                    const HUNT_UPGRADE_BASS_MIN = 0.57;
+                    const HUNT_UPGRADE_Z_MIN = 1.5;
+                    const HUNT_UPGRADE_EPICNESS_MIN = 0.35;
+                    const _canHuntUpgrade = _upgradeEnergy > HUNT_UPGRADE_ENERGY_MIN
+                        && _upgradeBass > HUNT_UPGRADE_BASS_MIN
+                        && _upgradeZ > HUNT_UPGRADE_Z_MIN
+                        && _upgradeEpicness > HUNT_UPGRADE_EPICNESS_MIN;
+                    if (_canHuntUpgrade) {
+                        const _vibeArsenal = getDynamicEffectRegistry().getEffectsForVibe(titanState.vibeId ?? '');
+                        const _upgradedId = selectUpgradeCandidate(_vibeArsenal, this.effectHistory, Date.now());
+                        if (_upgradedId && _upgradedId !== _upgradeEffectId) {
+                            const _originalName = finalOutput.effectDecision.effectName ?? effectDisplayName(_upgradeEffectId);
+                            const _upgradedName = effectDisplayName(_upgradedId);
+                            // Swap effect
+                            finalOutput.effectDecision.effectType = _upgradedId;
+                            finalOutput.effectDecision.effectName = _upgradedName;
+                            // Bump intensity to near-full (clímax real)
+                            const _origIntensity = finalOutput.effectDecision.intensity;
+                            finalOutput.effectDecision.intensity = Math.min(1.0, Math.max(_origIntensity, 0.90));
+                            // Append reason
+                            finalOutput.effectDecision.reason =
+                                (finalOutput.effectDecision.reason ?? '') + ' | ⚡ HUNT UPGRADE (WAVE 7599)';
+                            // Throttled log
+                            const _upgradeNow = Date.now();
+                            if (this._lastHuntUpgradeLog === 0 || _upgradeNow - this._lastHuntUpgradeLog > 1000) {
+                                console.log(`[SeleneTitanConscious ⚡] HUNT UPGRADE: "${_originalName}" → "${_upgradedName}"` +
+                                    ` | E=${_upgradeEnergy.toFixed(3)} > ${HUNT_UPGRADE_ENERGY_MIN}` +
+                                    ` bass=${_upgradeBass.toFixed(3)} > ${HUNT_UPGRADE_BASS_MIN}` +
+                                    ` Z=${_upgradeZ.toFixed(2)}σ > ${HUNT_UPGRADE_Z_MIN}` +
+                                    ` epicness=${_upgradeEpicness.toFixed(3)} > ${HUNT_UPGRADE_EPICNESS_MIN}` +
+                                    ` | I: ${_origIntensity.toFixed(2)} → ${finalOutput.effectDecision.intensity.toFixed(2)}` +
+                                    ` — clímax real detectado en hunt path, gentle desperdiciado`);
+                                this._lastHuntUpgradeLog = _upgradeNow;
+                            }
+                        }
+                    }
                 }
             }
         }

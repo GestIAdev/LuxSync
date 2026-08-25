@@ -110,6 +110,36 @@
       align-items: center;
       gap: 12px;
       margin-bottom: 18px;
+      position: relative;
+    }
+
+    /* Close button — frameless window has no OS chrome, so we paint our own.
+       Sits at the top-right of the shell. No-drag so clicks register. */
+    .vg-close {
+      -webkit-app-region: no-drag;
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      width: 24px;
+      height: 24px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: 1px solid var(--border-subtle);
+      border-radius: 50%;
+      color: var(--text-muted);
+      font: 500 0.9rem/1 var(--font-mono);
+      cursor: pointer;
+      transition: border-color 0.12s ease, color 0.12s ease;
+    }
+    .vg-close:hover {
+      border-color: var(--accent-danger);
+      color: var(--accent-danger);
+    }
+    .vg-close:focus-visible {
+      outline: none;
+      border-color: var(--accent-secondary);
     }
 
     .vg-mark {
@@ -327,6 +357,7 @@
         <h1 class="vg-title">LUXSYNC VANGUARD</h1>
         <p class="vg-sub">Render Fidelity Configuration</p>
       </div>
+      <button type="button" class="vg-close" id="closeBtn" aria-label="Close launcher" title="Close (Esc)">&times;</button>
     </header>
 
     <!-- ── Hardware probe readout ── -->
@@ -528,12 +559,19 @@
 
       // Esc dismisses without persisting. Main boots on the stored tier and
       // must NEVER app.quit() from here (blueprint invariant #6).
-      document.addEventListener('keydown', function (event) {
-        if (event.key !== 'Escape') return
+      function dismiss() {
         if (window.vanguard && typeof window.vanguard.cancel === 'function') {
           window.vanguard.cancel()
         }
+      }
+      document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Escape') return
+        dismiss()
       })
+
+      // Close button — same dismiss path as Esc.
+      var closeBtn = document.getElementById('closeBtn')
+      if (closeBtn) closeBtn.addEventListener('click', dismiss)
 
       // The script is at the end of <body>, so the DOM is already parsed;
       // guard anyway in case that ever changes.

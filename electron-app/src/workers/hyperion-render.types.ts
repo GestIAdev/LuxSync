@@ -150,6 +150,22 @@ export interface WorkerMsgOptions {
   showZoneLabels?: boolean
 }
 
+/**
+ * 🩸 WAVE 7601: VIRTUAL CAMERA — Pan/Zoom state for the render context.
+ * The canvas DOM element stays at 100% width/height; the camera transform
+ * is applied to the ctx inside the worker render loop. This avoids the
+ * dead black space problem of CSS-based scaling.
+ */
+export interface WorkerMsgCamera {
+  type: 'CAMERA'
+  /** Zoom factor (1 = default, 0.5 = zoomed out, 5 = zoomed in) */
+  zoom: number
+  /** Pan offset in CSS pixels */
+  panX: number
+  /** Pan offset in CSS pixels */
+  panY: number
+}
+
 /** Shutdown — stop RAF loop and cleanup */
 export interface WorkerMsgShutdown {
   type: 'SHUTDOWN'
@@ -186,6 +202,7 @@ export type WorkerInboundMessage =
   | WorkerMsgSelection
   | WorkerMsgMouse
   | WorkerMsgOptions
+  | WorkerMsgCamera
   | WorkerMsgShutdown
   | WorkerMsgHibernate
   | WorkerMsgGlassPort

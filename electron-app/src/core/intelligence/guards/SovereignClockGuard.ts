@@ -118,17 +118,16 @@ function selectRerouteCandidate(
   )
   if (lighter.length === 0) return null
 
-  const sorted = [...lighter].sort((a, b) => (b.dna.aggression ?? 0) - (a.dna.aggression ?? 0))
-
-  // Candidatos no en cooldown (no disparados en los últimos 8s)
-  const notInCooldown = sorted.filter(e =>
+  // 🩸 WAVE 7599.1: Selección aleatoria de TODO el pool, no solo top 3.
+  // Antes: sort por aggression DESC + pick entre top 3 → siempre el más
+  // agresivo de los light → no es downgrade real + repetitivo.
+  // Ahora: pick aleatorio de todos los candidatos válidos (no en cooldown).
+  const notInCooldown = lighter.filter(e =>
     !effectHistory.some(h => h.type === e.id && (now - h.timestamp) < 8000)
   )
 
-  const pool = notInCooldown.length > 0 ? notInCooldown : sorted
-  // Seleccionar aleatoriamente entre los 3 primeros del pool
-  const topN = Math.min(3, pool.length)
-  const pick = pool[Math.floor(Math.random() * topN)]
+  const pool = notInCooldown.length > 0 ? notInCooldown : lighter
+  const pick = pool[Math.floor(Math.random() * pool.length)]
   return pick.id
 }
 
@@ -148,8 +147,12 @@ function selectRerouteCandidate(
  * 3. Descarta los que están en cooldown (disparados en los últimos 8s)
  * 4. Selecciona aleatoriamente entre los 3 primeros válidos
  * @returns effectId del candidato seleccionado, o null si no hay candidatos
+ *
+ * 🩸 WAVE 7599: Exported for reuse by the HUNT UPGRADE path in
+ * SeleneTitanConscious — the normal hunt path needs the same heavy/peak
+ * selector as the Sovereign Clock's ETA-Aware Upgrade.
  */
-function selectUpgradeCandidate(
+export function selectUpgradeCandidate(
   arsenal: readonly RerouteCandidate[],
   effectHistory: readonly { type: string; timestamp: number }[],
   now: number,

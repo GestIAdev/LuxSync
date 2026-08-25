@@ -1220,80 +1220,74 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
    * 
    * WAVE 1115 FIX: Use paths resolved by PATHFINDER, not hardcoded
    */
+  // 🩸 WAVE 7604c: RECURSIVE SCAN — reads ALL subfolders, user organizes freely.
+  // Same pattern as the ingenio arsenal: the user can create whatever subfolder
+  // structure they want (by brand, by type, by venue...) and the system finds
+  // everything. No more hardcoded custom/ vs factory/ split.
+  async function scanFixtureFolderRecursive(
+    dirPath: string,
+    source: 'system' | 'user',
+  ): Promise<any[]> {
+    const fs = await import('fs')
+    const path = await import('path')
+    const results: any[] = []
+    if (!fs.existsSync(dirPath)) return results
+
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true })
+    for (const entry of entries) {
+      const fullPath = path.join(dirPath, entry.name)
+      if (entry.isDirectory()) {
+        // Recurse into subfolders — skip factory/ and custom/ to avoid
+        // double-scanning legacy subfolders that may contain duplicates.
+        if (entry.name === 'factory' || entry.name === 'custom') continue
+        const subResults = await scanFixtureFolderRecursive(fullPath, source)
+        results.push(...subResults)
+      } else if (entry.isFile()) {
+        if (entry.name.endsWith('.json')) {
+          try {
+            const content = fs.readFileSync(fullPath, 'utf-8')
+            const fixture = JSON.parse(content)
+            results.push({ ...fixture, source, filePath: fullPath })
+          } catch {
+            console.warn(`[Library] Skipped corrupt JSON: ${fullPath}`)
+          }
+        } else if (entry.name.endsWith('.fxt')) {
+          const parsed = fxtParser.parseFile(fullPath)
+          if (parsed) {
+            results.push({ ...parsed, source, filePath: fullPath })
+          }
+        }
+      }
+    }
+    return results
+  }
+
   ipcMain.handle('lux:library:list-all', async () => {
     try {
       const fs = await import('fs')
-      const path = await import('path')
-      
+
       // WAVE 1115 FIX: Get paths from main.ts (resolved by PATHFINDER)
       const factoryPath = getFactoryLibPath()
       const userPath = getCustomLibPath()
-      
-      console.log(`[Library IPC] ðŸ“‚ Factory path: ${factoryPath}`)
-      console.log(`[Library IPC] ðŸ“‚ User path: ${userPath}`)
-      
+
+      console.log(`[Library IPC] Factory path: ${factoryPath}`)
+      console.log(`[Library IPC] User path: ${userPath}`)
+
       // Ensure user path exists
       if (!fs.existsSync(userPath)) {
+        const path = await import('path')
         fs.mkdirSync(userPath, { recursive: true })
       }
-      
-      const systemFixtures: any[] = []
-      const userFixtures: any[] = []
-      
-      // Scan factory library
-      if (fs.existsSync(factoryPath)) {
-        const factoryFiles = fs.readdirSync(factoryPath)
-        for (const file of factoryFiles) {
-          if (file.endsWith('.json')) {
-            try {
-              const content = fs.readFileSync(path.join(factoryPath, file), 'utf-8')
-              const fixture = JSON.parse(content)
-              systemFixtures.push({
-                ...fixture,
-                source: 'system',
-                filePath: path.join(factoryPath, file),
-              })
-            } catch (e) {
-              console.warn(`[Library] âš ï¸ Failed to parse factory fixture: ${file}`)
-            }
-          } else if (file.endsWith('.fxt')) {
-            // Parse FXT files via parser
-            const parsed = fxtParser.parseFile(path.join(factoryPath, file))
-            if (parsed) {
-              systemFixtures.push({
-                ...parsed,
-                source: 'system',
-                filePath: path.join(factoryPath, file),
-              })
-            }
-          }
-        }
-      } else {
-        console.warn(`[Library IPC] âš ï¸ Factory path does not exist: ${factoryPath}`)
-      }
-      
-      // Scan user library
-      if (fs.existsSync(userPath)) {
-        const userFiles = fs.readdirSync(userPath)
-        for (const file of userFiles) {
-          if (file.endsWith('.json')) {
-            try {
-              const content = fs.readFileSync(path.join(userPath, file), 'utf-8')
-              const fixture = JSON.parse(content)
-              userFixtures.push({
-                ...fixture,
-                source: 'user',
-                filePath: path.join(userPath, file),
-              })
-            } catch (e) {
-              console.warn(`[Library] âš ï¸ Failed to parse user fixture: ${file}`)
-            }
-          }
-        }
-      }
-      
-      console.log(`[Library IPC] âœ… Loaded ${systemFixtures.length} system + ${userFixtures.length} user fixtures`)
-      
+
+      // 🩸 WAVE 7604c: Recursive scan — finds fixtures in ANY subfolder.
+      // User can organize: fixtures/moving-heads/, fixtures/par/, fixtures/brand-x/...
+      const [systemFixtures, userFixtures] = await Promise.all([
+        scanFixtureFolderRecursive(factoryPath, 'system'),
+        scanFixtureFolderRecursive(userPath, 'user'),
+      ])
+
+      console.log(`[Library IPC] Loaded ${systemFixtures.length} system + ${userFixtures.length} user fixtures`)
+
       return {
         success: true,
         systemFixtures,
@@ -1304,7 +1298,7 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
         },
       }
     } catch (err) {
-      console.error('[Library] âŒ Failed to list fixtures:', err)
+      console.error('[Library] Failed to list fixtures:', err)
       return { success: false, error: String(err) }
     }
   })
@@ -1367,25 +1361,12 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
       }
       
       // WAVE 1114 FIX: Check if fixture already exists (by ID)
-      // If exists, update the same file instead of creating new
-      let existingFilePath: string | null = null
-      
-      const existingFiles = fs.readdirSync(userPath)
-      for (const file of existingFiles) {
-        if (!file.endsWith('.json')) continue
-        
-        try {
-          const content = fs.readFileSync(path.join(userPath, file), 'utf-8')
-          const existingFixture = JSON.parse(content)
-          
-          if (existingFixture.id === payload.id) {
-            existingFilePath = path.join(userPath, file)
-            console.log(`[Library] ðŸ”„ Updating existing fixture file: ${file}`)
-            break
-          }
-        } catch (e) {
-          continue
-        }
+      // 🩸 WAVE 7604c: Search recursively through all subfolders.
+      const existingFixtures = await scanFixtureFolderRecursive(userPath, 'user')
+      const existing = existingFixtures.find((f: any) => f.id === payload.id)
+      const existingFilePath: string | null = existing?.filePath ?? null
+      if (existingFilePath) {
+        console.log(`[Library] Updating existing fixture file: ${existingFilePath}`)
       }
       
       // Determine file path
@@ -1448,30 +1429,15 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
       
       // WAVE 1116: Use PATHFINDER-resolved path
       const userPath = getCustomLibPath()
-      
+
       if (!fs.existsSync(userPath)) {
         return { success: false, error: 'User fixtures folder does not exist' }
       }
-      
-      // Find the fixture file
-      const files = fs.readdirSync(userPath)
-      let fileToDelete: string | null = null
-      
-      for (const file of files) {
-        if (!file.endsWith('.json')) continue
-        
-        try {
-          const content = fs.readFileSync(path.join(userPath, file), 'utf-8')
-          const fixture = JSON.parse(content)
-          
-          if (fixture.id === fixtureId) {
-            fileToDelete = path.join(userPath, file)
-            break
-          }
-        } catch (e) {
-          continue
-        }
-      }
+
+      // 🩸 WAVE 7604c: Search recursively through all subfolders.
+      const allUserFixtures = await scanFixtureFolderRecursive(userPath, 'user')
+      const target = allUserFixtures.find((f: any) => f.id === fixtureId)
+      const fileToDelete = target?.filePath ?? null
       
       if (!fileToDelete) {
         return { success: false, error: `Fixture "${fixtureId}" not found in user library` }

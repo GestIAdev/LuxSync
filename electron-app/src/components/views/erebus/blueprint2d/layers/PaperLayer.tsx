@@ -19,8 +19,9 @@ interface PaperLayerProps {
 export const PaperLayer: React.FC<PaperLayerProps> = ({ x, y, width, height }) => {
   return (
     <>
-      {/* Base fill */}
+      {/* Base fill — data-bg marks this as the lasso-clickable background */}
       <rect
+        data-bg="true"
         x={x}
         y={y}
         width={width}

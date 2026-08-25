@@ -206,10 +206,21 @@ export const TacticalCanvas = memo(function TacticalCanvas({
   const poolIdx = useRef(0)
 
   // ── State ───────────────────────────────────────────────────────────────
-  
+
   const [isReady, setIsReady] = useState(false)
   const [hoveredFixtureId, setHoveredFixtureId] = useState<string | null>(null)
   const [isLassoActive, setIsLassoActive] = useState(false)
+
+  // 🩸 WAVE 7600: TACTICAL ZOOM & PAN — for high-density fixture counts.
+  // zoom: 1 = default, 0.5 = zoomed out, 5 = zoomed in
+  // pan: {x, y} pixel offset for panning the viewport
+  const [zoom, setZoom] = useState(1)
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  // Refs for pan-drag (middle-click or spacebar+drag) — avoid re-renders during drag
+  const isPanningRef = useRef(false)
+  const panStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 })
+  const [isSpaceDown, setIsSpaceDown] = useState(false)
+  const [isPanning, setIsPanning] = useState(false)
 
   // ── Store Subscriptions ─────────────────────────────────────────────────
   
@@ -486,6 +497,14 @@ export const TacticalCanvas = memo(function TacticalCanvas({
     postToWorker({ type: 'OPTIONS', quality, showGrid, showZoneLabels })
   }, [quality, showGrid, showZoneLabels, isReady, postToWorker])
 
+  // ── 🩸 WAVE 7601: Send camera state (zoom/pan) to worker ──────────────
+  // The worker applies ctx.translate/ctx.scale inside its render loop.
+  // This keeps the canvas DOM element at 100% width/height (no dead space).
+  useEffect(() => {
+    if (!isReady) return
+    postToWorker({ type: 'CAMERA', zoom, panX: pan.x, panY: pan.y })
+  }, [zoom, pan, isReady, postToWorker])
+
   // ── WAVE 2515: Hibernation Protocol ───────────────────────────────────
   // When the 2D view is CSS-hidden, pause the worker RAF and stop the
   // main-thread data pump. Zero GPU/CPU burn in background.
@@ -576,10 +595,22 @@ export const TacticalCanvas = memo(function TacticalCanvas({
   }, [isReady])
 
   // ── Mouse Handlers (DOM → Worker) ─────────────────────────────────────
-  
+  // 🩸 WAVE 7601: VIRTUAL CAMERA — mouse coords are now in raw canvas space
+  // (0..canvasWidth). The worker applies the inverse camera transform
+  // internally to map them into the virtual world space for hit testing.
+
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current
     if (!canvas) return
+
+    // 🩸 WAVE 7600: Pan-drag takes priority over worker mouse events
+    if (isPanningRef.current) {
+      const dx = e.clientX - panStartRef.current.x
+      const dy = e.clientY - panStartRef.current.y
+      setPan({ x: panStartRef.current.panX + dx, y: panStartRef.current.panY + dy })
+      return
+    }
+
     const pos = getCanvasMousePosition(e.nativeEvent, canvas)
     postToWorker({
       type: 'MOUSE',
@@ -595,6 +626,21 @@ export const TacticalCanvas = memo(function TacticalCanvas({
   const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current
     if (!canvas) return
+
+    // 🩸 WAVE 7600: Middle-click OR spacebar+click → start panning
+    if (e.button === 1 || isSpaceDown) {
+      e.preventDefault()
+      isPanningRef.current = true
+      setIsPanning(true)
+      panStartRef.current = {
+        x: e.clientX,
+        y: e.clientY,
+        panX: pan.x,
+        panY: pan.y,
+      }
+      return
+    }
+
     const pos = getCanvasMousePosition(e.nativeEvent, canvas)
     postToWorker({
       type: 'MOUSE',
@@ -605,9 +651,15 @@ export const TacticalCanvas = memo(function TacticalCanvas({
       ctrlKey: e.ctrlKey,
       metaKey: e.metaKey,
     })
-  }, [postToWorker])
+  }, [postToWorker, isSpaceDown, pan])
 
   const handleMouseUp = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    // 🩸 WAVE 7600: End pan-drag
+    if (isPanningRef.current) {
+      isPanningRef.current = false
+      setIsPanning(false)
+      return
+    }
     postToWorker({
       type: 'MOUSE',
       action: 'up',
@@ -621,6 +673,8 @@ export const TacticalCanvas = memo(function TacticalCanvas({
   }, [postToWorker])
 
   const handleMouseLeave = useCallback(() => {
+    // 🩸 WAVE 7600: Don't fire leave if panning
+    if (isPanningRef.current) return
     postToWorker({
       type: 'MOUSE',
       action: 'leave',
@@ -635,21 +689,104 @@ export const TacticalCanvas = memo(function TacticalCanvas({
     setIsLassoActive(false)
   }, [postToWorker, tooltip])
 
+  // ── Zoom & Pan Handlers (WAVE 7600) ────────────────────────────────────
+
+  const ZOOM_MIN = 0.5
+  const ZOOM_MAX = 5
+  const ZOOM_STEP = 0.25
+
+  const clampZoom = useCallback((z: number) => {
+    return Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z))
+  }, [])
+
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    // 🩸 WAVE 7600: Ctrl+wheel = zoom (prevent default page scroll)
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault()
+      const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP
+      setZoom(prev => clampZoom(prev + delta))
+    }
+  }, [clampZoom])
+
+  // Non-passive wheel listener — React's onWheel is passive by default in
+  // some browsers, so we need a native listener to call preventDefault().
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+    const nativeWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault()
+        const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP
+        setZoom(prev => Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, prev + delta)))
+      }
+    }
+    container.addEventListener('wheel', nativeWheel, { passive: false })
+    return () => container.removeEventListener('wheel', nativeWheel)
+  }, [])
+
+  // Spacebar pan mode
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !e.repeat) {
+        // Don't intercept if focus is in an input/textarea
+        const target = e.target as HTMLElement
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
+        e.preventDefault()
+        setIsSpaceDown(true)
+      }
+    }
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        setIsSpaceDown(false)
+        // Also end any active pan
+        if (isPanningRef.current) {
+          isPanningRef.current = false
+          setIsPanning(false)
+        }
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup', onKeyUp)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup', onKeyUp)
+    }
+  }, [])
+
+  // Floating UI button handlers
+  const handleZoomIn = useCallback(() => {
+    setZoom(prev => clampZoom(prev + ZOOM_STEP))
+  }, [clampZoom])
+
+  const handleZoomOut = useCallback(() => {
+    setZoom(prev => clampZoom(prev - ZOOM_STEP))
+  }, [clampZoom])
+
+  const handleZoomReset = useCallback(() => {
+    setZoom(1)
+    setPan({ x: 0, y: 0 })
+  }, [])
+
   // ── Cursor Class ────────────────────────────────────────────────────────
   
   const cursorClass = useMemo(() => {
+    if (isPanning || isSpaceDown) return 'panning'
     if (isLassoActive) return 'selecting'
     if (hoveredFixtureId) return 'hovering'
     return ''
-  }, [isLassoActive, hoveredFixtureId])
+  }, [isLassoActive, hoveredFixtureId, isPanning, isSpaceDown])
 
   // ── Render ──────────────────────────────────────────────────────────────
   
   return (
-    <div 
+    <div
       ref={containerRef}
       className={`tactical-canvas-container ${isReady ? '' : 'loading'} ${className}`}
+      onWheel={handleWheel}
     >
+      {/* 🩸 WAVE 7601: VIRTUAL CAMERA — canvas stays at 100% width/height.
+          Pan/Zoom is applied inside the worker's ctx transform, NOT via CSS.
+          This avoids dead black space when zooming out. */}
       <canvas
         ref={canvasRef}
         className={`tactical-canvas ${cursorClass}`}
@@ -691,6 +828,36 @@ export const TacticalCanvas = memo(function TacticalCanvas({
           position={tooltip.position}
           visible={tooltip.visible}
         />
+      </div>
+
+      {/* 🩸 WAVE 7600: Floating Zoom Controls — bottom-right corner.
+          Dark minimalist aesthetic matching Hyperion UI. */}
+      <div className="tactical-zoom-controls">
+        <button
+          className="tactical-zoom-btn"
+          onClick={handleZoomIn}
+          aria-label="Zoom in"
+          title="Zoom in (Ctrl+Scroll)"
+        >
+          +
+        </button>
+        <span className="tactical-zoom-level">{Math.round(zoom * 100)}%</span>
+        <button
+          className="tactical-zoom-btn"
+          onClick={handleZoomOut}
+          aria-label="Zoom out"
+          title="Zoom out (Ctrl+Scroll)"
+        >
+          −
+        </button>
+        <button
+          className="tactical-zoom-btn tactical-zoom-btn--reset"
+          onClick={handleZoomReset}
+          aria-label="Reset zoom and pan"
+          title="Reset (1:1)"
+        >
+          ⟲
+        </button>
       </div>
 
       {/* Empty State */}

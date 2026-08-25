@@ -1,0 +1,137 @@
+/**
+ * 🌿 EcoDreamForge — WAVE 7585: ECO-MODE FALLBACK STYLES
+ * Plain text + flat DOM blocks. No box-shadow, no animation, no transition: all.
+ */
+
+.eco-dream {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--bg-deepest, #0a0a0f);
+  border: 1px solid var(--border-subtle, #2a2a3a);
+  border-radius: 8px;
+  box-sizing: border-box;
+  font-family: var(--font-mono, 'JetBrains Mono', 'Consolas', monospace);
+  color: var(--text-primary, #ffffff);
+  overflow: hidden;
+}
+
+.eco-dream__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.eco-dream__title {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.eco-dream__status {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  /* color set inline — no glow */
+}
+
+.eco-dream__current {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  background: var(--bg-deep, #12121a);
+  border: 2px solid var(--border-subtle, #2a2a3a);
+  border-radius: 6px;
+  /* border-color set inline — cheap compositor op */
+}
+
+.eco-dream__current-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary, #ffffff);
+}
+
+.eco-dream__current-meta {
+  display: flex;
+  gap: 12px;
+}
+
+.eco-dream__meta-item {
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary, #a0a0b0);
+}
+
+.eco-dream__reason {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 8px;
+  background: var(--bg-deep, #12121a);
+  border: 1px solid var(--border-subtle, #2a2a3a);
+  border-radius: 4px;
+}
+
+.eco-dream__reason-k {
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--text-muted, #6a6a7a);
+}
+
+.eco-dream__reason-v {
+  font-size: 0.6rem;
+  color: var(--text-secondary, #a0a0b0);
+  line-height: 1.4;
+}
+
+.eco-dream__history {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: auto;
+  overflow: hidden;
+}
+
+.eco-dream__history-k {
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--text-muted, #6a6a7a);
+}
+
+.eco-dream__history-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 6px;
+  background: var(--bg-deep, #12121a);
+  border: 1px solid var(--border-subtle, #2a2a3a);
+  border-radius: 3px;
+  /* NO transition: all */
+}
+
+.eco-dream__history-name {
+  font-size: 0.55rem;
+  font-weight: 600;
+  color: var(--text-secondary, #a0a0b0);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.eco-dream__history-score {
+  font-size: 0.5rem;
+  color: var(--accent-secondary, #00e5ff);
+}
+
+.eco-dream__history-time {
+  font-size: 0.5rem;
+  color: var(--text-muted, #6a6a7a);
+}

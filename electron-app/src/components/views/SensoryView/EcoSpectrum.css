@@ -1,0 +1,141 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 🌿 EcoSpectrum — WAVE 7583: ECO-MODE FALLBACK STYLES
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * Plain background colors only. Deliberately NO:
+ *   • box-shadow / drop-shadow
+ *   • filter / backdrop-filter
+ *   • will-change
+ *   • animation: ... infinite
+ *   • transition: all
+ *
+ * The component is cheap even if the global eco-mode.css override layer is not
+ * loaded. Transitions are limited to `width` (the bar fill) and `background-color`
+ * (the LED) — both are cheap compositor operations, no blur re-raster.
+ *
+ * @module components/views/SensoryView/EcoSpectrum
+ * @version 7583.0.0
+ */
+
+.eco-spectrum {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 24px;
+  background: var(--bg-deepest, #0a0a0f);
+  border: 1px solid var(--border-subtle, #2a2a3a);
+  border-radius: 8px;
+  box-sizing: border-box;
+  font-family: var(--font-mono, 'JetBrains Mono', 'Consolas', monospace);
+  color: var(--text-primary, #ffffff);
+}
+
+/* ─── BPM readout ─────────────────────────────────────────────────────────── */
+
+.eco-spectrum__bpm {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.eco-spectrum__bpm-value {
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--text-primary, #ffffff);
+  line-height: 1;
+}
+
+.eco-spectrum__bpm-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--text-muted, #6a6a7a);
+}
+
+/* ─── SYNC LED ────────────────────────────────────────────────────────────── */
+/* A 6px solid-color circle. The only "animation" is a background-color class
+   toggle driven by beat.onBeat at 5 Hz — no shadow, no blur, no keyframes. */
+
+.eco-spectrum__led-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.eco-spectrum__led {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted, #6a6a7a);
+  transition: background-color 0.08s linear;
+}
+
+.eco-spectrum__led.led--on {
+  background: var(--accent-success, #22c55e);
+}
+
+.eco-spectrum__led.led--off {
+  background: var(--border-medium, #3a3a4a);
+}
+
+.eco-spectrum__led-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--text-muted, #6a6a7a);
+}
+
+/* ─── Bars (energy + confidence) ──────────────────────────────────────────── */
+/* Single `<div>` per bar with `width: %` — one style mutation per 200ms
+   instead of 64 per frame. Track is a flat recessed channel; fill is a solid
+   color. No glow, no gradient. */
+
+.eco-spectrum__bars {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.eco-spectrum__bar-track {
+  position: relative;
+  width: 100%;
+  height: 18px;
+  background: var(--bg-deep, #12121a);
+  border: 1px solid var(--border-subtle, #2a2a3a);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.eco-spectrum__bar-fill {
+  height: 100%;
+  /* width is set inline by React — the single style mutation per tick */
+  transition: width 0.2s linear;
+  /* Solid color only — no gradient, no box-shadow */
+}
+
+.eco-spectrum__bar-fill--energy {
+  background: var(--accent-primary, #7c4dff);
+}
+
+.eco-spectrum__bar-fill--confidence {
+  background: var(--accent-secondary, #00e5ff);
+}
+
+.eco-spectrum__bar-label {
+  position: absolute;
+  top: 50%;
+  left: 8px;
+  transform: translateY(-50%);
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--text-secondary, #a0a0b0);
+  pointer-events: none;
+  /* Mix-blend so the label stays readable over the fill without a shadow */
+  mix-blend-mode: difference;
+}

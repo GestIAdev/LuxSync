@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <!--
+    WAVE 7580 — VANGUARD LAUNCHER
+    Pre-boot render fidelity selector.
+
+    SELF-CONTAINED BY DESIGN: no bundler, no framework, no network requests.
+    This window's whole purpose is to protect legacy hardware from the heavy
+    React bundle, so it must paint in well under 50ms on a 13-year-old i3.
+
+    HARD RULES (do not "improve" these):
+      - NO external resources. No font CDN, no images. The CSP below blocks them,
+        and a pre-boot window that stalls on fonts.googleapis.com would hang for
+        seconds in a venue with bad wifi.
+      - NO box-shadow / filter transitions, NO `transition: all`, NO infinite
+        animations. Per hyperion_performance_audit2.md §1.1 those are exactly the
+        properties that burn CPU on a software compositor. This window paints
+        once and must then idle at 0% CPU.
+      - Design tokens are copied verbatim from src/styles/globals.css. They are
+        NOT imported — pulling that file in would drag in the Vite pipeline.
+  -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LuxSync — Vanguard</title>
+  <style>
+    /* ═══════════════════════════════════════════════════════════════════════
+       DESIGN TOKENS — verbatim from src/styles/globals.css :root
+       ═══════════════════════════════════════════════════════════════════════ */
+    :root {
+      --bg-deepest:  #0a0a0f;
+      --bg-deep:     #12121a;
+      --bg-surface:  #1a1a24;
+
+      --accent-primary:     #7C4DFF;
+      --accent-primary-dim: #5c35cc;
+      --accent-secondary:   #00E5FF;
+      --accent-success:     #4ADE80;
+      --accent-warning:     #FBBF24;
+      --accent-danger:      #FF4444;
+
+      --text-primary:   #FFFFFF;
+      --text-secondary: #A0A0B0;
+      /* WAVE 1167 raised this from the darker legacy value specifically for
+         legibility in dark venues. Do not darken it back. */
+      --text-muted:     #8080A0;
+
+      --border-subtle: #2a2a3a;
+      --border-medium: #3a3a4a;
+
+      /* System stack only — see the CSP note above. */
+      --font-mono: 'JetBrains Mono', 'Cascadia Mono', 'Consolas', 'DejaVu Sans Mono', monospace;
+      --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       SHELL
+       Vertical budget for a 620x460 frameless window (measured):
+         shell padding 52 + header 72 + readout 124 + tiers 84
+         + options row 36 + button 54  ≈ 422px
+       ~38px of slack. If you add a row, raise the window height in main.ts.
+       ═══════════════════════════════════════════════════════════════════════ */
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-deepest);
+      color: var(--text-primary);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      /* Frameless drag, mirroring electron/license/activation.html */
+      -webkit-app-region: drag;
+      user-select: none;
+    }
+
+    .vg-shell {
+      /* Everything interactive must sit inside a no-drag region or the drag
+         handler swallows the clicks. */
+      -webkit-app-region: no-drag;
+      width: 560px;
+      padding: 26px 30px;
+      background: var(--bg-deep);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      position: relative;
+      /* Single STATIC shadow. Never transitioned, never animated. */
+      box-shadow: 0 0 60px rgba(124, 77, 255, 0.06);
+    }
+
+    /* Top accent hairline */
+    .vg-shell::before {
+      content: '';
+      position: absolute;
+      top: -1px; left: -1px; right: -1px;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
+      border-radius: 12px 12px 0 0;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       HEADER
+       ═══════════════════════════════════════════════════════════════════════ */
+    .vg-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .vg-mark {
+      flex-shrink: 0;
+      width: 34px; height: 34px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+      /* Hexagon, matching the activation window's isotype */
+      clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    }
+    .vg-mark span {
+      font: 900 15px/1 var(--font-mono);
+      color: var(--bg-deepest);
+    }
+
+    .vg-head__text { min-width: 0; }
+
+    .vg-title {
+      font: 800 0.95rem/1.2 var(--font-mono);
+      letter-spacing: 0.22em;
+      color: var(--text-primary);
+    }
+    .vg-sub {
+      margin-top: 3px;
+      font: 600 0.55rem/1 var(--font-mono);
+      letter-spacing: 0.16em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       HARDWARE READOUT — 3x2 grid, hairline separators via background bleed
+       ═══════════════════════════════════════════════════════════════════════ */
+    .vg-readout {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--border-subtle);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 18px;
+    }
+
+    .vg-cell {
+      background: var(--bg-deepest);
+      padding: 9px 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .vg-cell__k {
+      font: 700 0.5rem/1 var(--font-mono);
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .vg-cell__v {
+      font: 500 0.72rem/1.2 var(--font-mono);
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Status colouring, applied by JS */
+    .vg-cell__v--ok   { color: var(--accent-success); }
+    .vg-cell__v--warn { color: var(--accent-warning); }
+    .vg-cell__v--bad  { color: var(--accent-danger); }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       TIER CARDS
+       ═══════════════════════════════════════════════════════════════════════ */
+    .vg-tiers {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .vg-tier {
+      -webkit-app-region: no-drag;
+      position: relative;      /* anchor for the absolutely-placed badge */
+      cursor: pointer;
+      text-align: left;
+      padding: 11px 13px;
+      background: var(--bg-deepest);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      font-family: inherit;
+      /* Cheap properties ONLY. Never box-shadow, never `all`. */
+      transition: border-color 0.12s ease, background-color 0.12s ease;
+    }
+
+    .vg-tier:hover {
+      border-color: var(--border-medium);
+      background: var(--bg-surface);
+    }
+
+    .vg-tier:focus-visible {
+      outline: none;
+      border-color: var(--accent-secondary);
+    }
+
+    .vg-tier[aria-checked="true"] {
+      border-color: var(--accent-primary);
+      background: rgba(124, 77, 255, 0.08);
+    }
+
+    .vg-tier__name {
+      display: block;
+      font: 800 0.75rem/1 var(--font-mono);
+      letter-spacing: 0.1em;
+      color: var(--text-primary);
+      margin-bottom: 5px;
+    }
+
+    .vg-tier__desc {
+      display: block;
+      font-size: 0.6rem;
+      line-height: 1.45;
+      color: var(--text-secondary);
+    }
+
+    /* RECOMMENDED pill. Absolutely positioned so showing it does NOT change
+       the card's height and reflow the grid. */
+    .vg-tier__badge {
+      display: none;
+      position: absolute;
+      top: -1px;
+      right: -1px;
+      padding: 2px 5px;
+      font: 700 0.45rem/1 var(--font-mono);
+      letter-spacing: 0.06em;
+      color: var(--bg-deepest);
+      background: var(--accent-secondary);
+      border-radius: 0 5px 0 5px;
+    }
+    .vg-tier__badge--visible { display: block; }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       OPTIONS ROW + ACTION
+       ═══════════════════════════════════════════════════════════════════════ */
+    .vg-options {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .vg-remember {
+      -webkit-app-region: no-drag;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+      font-size: 0.62rem;
+      color: var(--text-secondary);
+    }
+    .vg-remember input {
+      -webkit-app-region: no-drag;
+      width: 13px; height: 13px;
+      accent-color: var(--accent-primary);
+      cursor: pointer;
+    }
+
+    .vg-version {
+      font: 500 0.55rem/1 var(--font-mono);
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .vg-go {
+      -webkit-app-region: no-drag;
+      width: 100%;
+      margin-top: 16px;
+      padding: 12px;
+      font: 800 0.72rem/1 var(--font-mono);
+      letter-spacing: 0.18em;
+      color: #ffffff;
+      background: var(--accent-primary);
+      border: 1px solid var(--accent-primary);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.12s ease;
+    }
+    .vg-go:hover:not(:disabled) { background: var(--accent-primary-dim); }
+    .vg-go:disabled { opacity: 0.45; cursor: wait; }
+
+    /* Error banner — hidden until a commit fails */
+    .vg-error {
+      display: none;
+      margin-top: 10px;
+      padding: 8px 10px;
+      font: 500 0.6rem/1.4 var(--font-mono);
+      color: var(--accent-danger);
+      background: rgba(255, 68, 68, 0.08);
+      border: 1px solid rgba(255, 68, 68, 0.35);
+      border-radius: 5px;
+    }
+    .vg-error--visible { display: block; }
+  </style>
+</head>
+<body class="vanguard">
+  <main class="vg-shell">
+
+    <header class="vg-head">
+      <div class="vg-mark" aria-hidden="true"><span>V</span></div>
+      <div class="vg-head__text">
+        <h1 class="vg-title">LUXSYNC VANGUARD</h1>
+        <p class="vg-sub">Render Fidelity Configuration</p>
+      </div>
+    </header>
+
+    <!-- ── Hardware probe readout ── -->
+    <section class="vg-readout" aria-label="Detected hardware">
+      <div class="vg-cell">
+        <span class="vg-cell__k">CPU</span>
+        <span class="vg-cell__v" id="hwCpu">—</span>
+      </div>
+      <div class="vg-cell">
+        <span class="vg-cell__k">MEMORY</span>
+        <span class="vg-cell__v" id="hwMem">—</span>
+      </div>
+      <div class="vg-cell">
+        <span class="vg-cell__k">DISPLAY</span>
+        <span class="vg-cell__v" id="hwRes">—</span>
+      </div>
+      <div class="vg-cell">
+        <span class="vg-cell__k">GPU COMP</span>
+        <span class="vg-cell__v" id="hwGpu">—</span>
+      </div>
+      <div class="vg-cell">
+        <span class="vg-cell__k">2D CANVAS</span>
+        <span class="vg-cell__v" id="hwCanvas">—</span>
+      </div>
+      <div class="vg-cell">
+        <span class="vg-cell__k">VERDICT</span>
+        <span class="vg-cell__v" id="hwVerdict">—</span>
+      </div>
+    </section>
+
+    <!-- ── Tier selection ── -->
+    <section class="vg-tiers" role="radiogroup" aria-label="Render fidelity tier">
+      <button type="button" class="vg-tier" role="radio" aria-checked="false" data-tier="hq">
+        <span class="vg-tier__name">HQ</span>
+        <span class="vg-tier__desc">Full glow, blur and animation. GPU canvas worker. For modern hardware.</span>
+        <span class="vg-tier__badge" data-badge="hq">RECOMMENDED</span>
+      </button>
+
+      <button type="button" class="vg-tier" role="radio" aria-checked="false" data-tier="balanced">
+        <span class="vg-tier__name">BALANCED</span>
+        <span class="vg-tier__desc">Blur and glow effects removed. All panels retained.</span>
+        <span class="vg-tier__badge" data-badge="balanced">RECOMMENDED</span>
+      </button>
+
+      <button type="button" class="vg-tier" role="radio" aria-checked="false" data-tier="eco">
+        <span class="vg-tier__name">ECO</span>
+        <span class="vg-tier__desc">Simplified panels, throttled telemetry, DOM stage view. Maximum stability.</span>
+        <span class="vg-tier__badge" data-badge="eco">RECOMMENDED</span>
+      </button>
+    </section>
+
+    <!-- ── Options ── -->
+    <div class="vg-options">
+      <label class="vg-remember">
+        <input type="checkbox" id="rememberChk">
+        <span>Don't ask again on this machine</span>
+      </label>
+      <span class="vg-version" id="appVersion"></span>
+    </div>
+
+    <button type="button" class="vg-go" id="initBtn">INITIALIZE LUXSYNC &#9656;</button>
+
+    <div class="vg-error" id="errorBox" role="alert"></div>
+
+  </main>
+
+  <script>
+    (function () {
+      'use strict'
+
+      // ─── Element refs ───────────────────────────────────────────────────
+      var el = {
+        cpu:      document.getElementById('hwCpu'),
+        mem:      document.getElementById('hwMem'),
+        res:      document.getElementById('hwRes'),
+        gpu:      document.getElementById('hwGpu'),
+        canvas:   document.getElementById('hwCanvas'),
+        verdict:  document.getElementById('hwVerdict'),
+        version:  document.getElementById('appVersion'),
+        remember: document.getElementById('rememberChk'),
+        initBtn:  document.getElementById('initBtn'),
+        error:    document.getElementById('errorBox')
+      }
+
+      var cards = Array.prototype.slice.call(document.querySelectorAll('.vg-tier'))
+
+      /** The operator's current selection. Never trusted by main — revalidated there. */
+      var selectedTier = 'hq'
+
+      // ─── Helpers ────────────────────────────────────────────────────────
+
+      function setStatusCell(node, isOk, okText, badText) {
+        node.textContent = isOk ? okText : badText
+        node.classList.remove('vg-cell__v--ok', 'vg-cell__v--bad')
+        node.classList.add(isOk ? 'vg-cell__v--ok' : 'vg-cell__v--bad')
+      }
+
+      function selectTier(tier) {
+        selectedTier = tier
+        for (var i = 0; i < cards.length; i++) {
+          cards[i].setAttribute('aria-checked', String(cards[i].dataset.tier === tier))
+        }
+      }
+
+      function showError(message) {
+        el.error.textContent = message
+        el.error.classList.add('vg-error--visible')
+      }
+
+      function clearError() {
+        el.error.textContent = ''
+        el.error.classList.remove('vg-error--visible')
+      }
+
+      // ─── Boot: probe and paint ──────────────────────────────────────────
+
+      function paint(payload) {
+        var hw = payload.hardware
+
+        el.cpu.textContent = hw.cpuCores + (hw.cpuCores === 1 ? ' core' : ' cores')
+        el.mem.textContent = hw.totalMemoryGB + ' GB'
+        el.res.textContent = hw.screenWidth + 'x' + hw.screenHeight
+
+        setStatusCell(el.gpu, hw.gpuCompositing, 'ENABLED', 'SOFTWARE')
+        setStatusCell(el.canvas, hw.accelerated2dCanvas, 'ENABLED', 'SOFTWARE')
+
+        el.verdict.textContent = String(payload.recommendedTier).toUpperCase()
+        el.verdict.classList.add(
+          payload.recommendedTier === 'eco' ? 'vg-cell__v--warn' : 'vg-cell__v--ok'
+        )
+
+        el.version.textContent = 'v' + payload.appVersion
+
+        // RECOMMENDED pill on exactly one card.
+        var badge = document.querySelector('[data-badge="' + payload.recommendedTier + '"]')
+        if (badge) badge.classList.add('vg-tier__badge--visible')
+
+        // Default selection: whatever is persisted, falling back to the
+        // recommendation if the stored value is somehow not one of our cards.
+        var initial = payload.currentTier
+        var known = cards.some(function (c) { return c.dataset.tier === initial })
+        selectTier(known ? initial : payload.recommendedTier)
+      }
+
+      function boot() {
+        if (!window.vanguard || typeof window.vanguard.probe !== 'function') {
+          // Preload failed to load — almost always a missing/misplaced
+          // preload-launcher.js in the packaged build (blueprint risk #3).
+          showError('Launcher bridge unavailable. Press Esc to continue with defaults.')
+          selectTier('hq')
+          return
+        }
+
+        window.vanguard.probe().then(paint).catch(function (err) {
+          showError('Hardware probe failed: ' + (err && err.message ? err.message : String(err)))
+          selectTier('hq')
+        })
+      }
+
+      // ─── Interaction ────────────────────────────────────────────────────
+
+      cards.forEach(function (card) {
+        card.addEventListener('click', function () {
+          clearError()
+          selectTier(card.dataset.tier)
+        })
+      })
+
+      el.initBtn.addEventListener('click', function () {
+        if (!window.vanguard || typeof window.vanguard.commit !== 'function') {
+          showError('Launcher bridge unavailable. Press Esc to continue with defaults.')
+          return
+        }
+
+        clearError()
+        // Guard against a double-commit while the disk write is in flight.
+        el.initBtn.disabled = true
+        el.initBtn.textContent = 'INITIALIZING...'
+
+        window.vanguard
+          .commit({ tier: selectedTier, skipLauncher: el.remember.checked })
+          .then(function (result) {
+            if (result && result.ok) {
+              // Main closes this window. Nothing further to do here.
+              return
+            }
+            // Write failed — main deliberately left the window open so the
+            // operator can retry.
+            el.initBtn.disabled = false
+            el.initBtn.textContent = 'INITIALIZE LUXSYNC \u25B8'
+            showError((result && result.error) || 'Could not save the configuration.')
+          })
+          .catch(function (err) {
+            el.initBtn.disabled = false
+            el.initBtn.textContent = 'INITIALIZE LUXSYNC \u25B8'
+            showError('Commit failed: ' + (err && err.message ? err.message : String(err)))
+          })
+      })
+
+      // Esc dismisses without persisting. Main boots on the stored tier and
+      // must NEVER app.quit() from here (blueprint invariant #6).
+      document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Escape') return
+        if (window.vanguard && typeof window.vanguard.cancel === 'function') {
+          window.vanguard.cancel()
+        }
+      })
+
+      // The script is at the end of <body>, so the DOM is already parsed;
+      // guard anyway in case that ever changes.
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', boot)
+      } else {
+        boot()
+      }
+    })()
+  </script>
+</body>
+</html>

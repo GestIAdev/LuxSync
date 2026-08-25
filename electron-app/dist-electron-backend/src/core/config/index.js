@@ -6,3 +6,7 @@
 export { FLAGS } from './FeatureFlags';
 // WAVE 367: ConfigManagerV2 - App Preferences Only (no fixtures!)
 export { configManager } from './ConfigManagerV2';
+// 🚀 WAVE 7580: Vanguard Launcher — render fidelity tiers.
+// Exported from the pure module rather than via ConfigManagerV2 so that
+// importing the scoring helpers never drags in `electron` at runtime.
+export { scoreHardware, shouldShowLauncher, isPerformanceTier, coercePerformanceTier, createDefaultPerformanceProfile, PERFORMANCE_TIERS, FORCE_LAUNCHER_FLAG } from './performanceTiers';

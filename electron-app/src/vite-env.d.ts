@@ -605,6 +605,22 @@ declare global {
     getConfig: () => Promise<{ success: boolean; config: LuxSyncConfig }>
     saveConfig: (config: Partial<LuxSyncConfig>) => Promise<{ success: boolean }>
     resetConfig: () => Promise<{ success: boolean; config?: LuxSyncConfig }>
+
+    // 🚀 WAVE 7580: VANGUARD LAUNCHER — performance profile
+    /** Read the tier chosen in the pre-boot Launcher (hydrates usePerformanceStore) */
+    getPerformanceProfile: () => Promise<{
+      tier: 'hq' | 'balanced' | 'eco'
+      hardware: {
+        cpuCores: number
+        totalMemoryGB: number
+        gpuCompositing: boolean
+        accelerated2dCanvas: boolean
+        gpuFeatures: Record<string, string>
+        screenWidth: number
+        screenHeight: number
+        probedAt: string
+      } | null
+    }>
     
     // ============================================
     // 🎛️ WAVE 375: MASTER ARBITER API

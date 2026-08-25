@@ -19,12 +19,18 @@ import { useMidiLearn } from './hooks/useMidiLearn' // 🎹 WAVE 2047: MIDI Inpu
 import { useKeyboardCortex } from './hooks/useKeyboardCortex' // ⌨ WAVE 4800: KeyForge Cortex
 import { useSeleneStore, selectAppCommanderActions } from './stores/seleneStore'
 import { useSeleneTruth } from './hooks/useSeleneTruth'
+import { usePerformanceHydration } from './hooks/usePerformanceHydration' // 🚀 WAVE 7580: Vanguard Launcher hydration
+import { usePerformanceStore, selectIsBlurDisabled } from './stores/performanceStore' // 🌿 WAVE 7582: Blur Killer
 import { setupStageStoreListeners } from './stores/stageStore'
 import { initializeLogIPC } from './stores/logStore' // 📜 WAVE 1198: THE WARLOG HEARTBEAT
 import { useLicenseStore } from './stores/licenseStore' // 🔒 WAVE 2490: THE TIER SEPARATION PROTOCOL
 import { initStadiumLoadoutIfEmpty, patchMissingStadiumBindings } from './keyforge/stadiumLoadout' // ⌨ WAVE 4800-F
 import { initArsenalCatalog } from './midi/MidiActionRegistry' // ⚡ WAVE 4914: Live effect catalog
 import './styles/globals.css'
+// 🌿 WAVE 7582: ECO-MODE — imported LAST so it sits at the bottom of the
+// cascade and wins over every component stylesheet (audit §3.3). All rules
+// are scoped under `body.eco-mode`, so this is a no-op in HQ/balanced modes.
+import './styles/eco-mode.css'
 
 function AppContent() {
   // 🛡️ WAVE 2042.13.8: useShallow for stable reference
@@ -38,7 +44,34 @@ function AppContent() {
   // Connect to Universal Truth Protocol (SeleneBroadcast @ 30fps)
   useSeleneTruth()
 
-  // 🎹 WAVE 2047: Global MIDI input handler (Learn + Runtime dispatch)
+  // 🚀 WAVE 7580: VANGUARD LAUNCHER — hydrate the render fidelity tier chosen
+  // pre-boot into usePerformanceStore. Runs once; the module-scoped
+  // `_hasHydrated` flag inside the hook survives React 19 Strict Mode remount.
+  usePerformanceHydration()
+
+  // � WAVE 7582: THE BLUR KILLER — toggle the `eco-mode` class on <body>
+  // based on the hydrated performance tier. `selectIsBlurDisabled` is true for
+  // both 'balanced' and 'eco' (tier !== 'hq'), so the blur tax is stripped the
+  // moment the operator picks anything other than HQ in the Vanguard Launcher.
+  // The class gates every rule in eco-mode.css; when it's absent the sheet is
+  // a complete no-op, so HQ mode is byte-for-byte unaffected.
+  const isBlurDisabled = usePerformanceStore(selectIsBlurDisabled)
+  useEffect(() => {
+    const body = document.body
+    if (isBlurDisabled) {
+      body.classList.add('eco-mode')
+    } else {
+      body.classList.remove('eco-mode')
+    }
+    // Cleanup on unmount — AppContent is always-mounted, but Strict Mode's
+    // mount → unmount → mount cycle in dev would otherwise leave a stale class
+    // if the toggle ran before hydration resolved.
+    return () => {
+      body.classList.remove('eco-mode')
+    }
+  }, [isBlurDisabled])
+
+  // �🎹 WAVE 2047: Global MIDI input handler (Learn + Runtime dispatch)
   useMidiLearn()
 
   // ⌨ WAVE 4800: KeyForge global keyboard cortex (replaces KeyboardProvider)

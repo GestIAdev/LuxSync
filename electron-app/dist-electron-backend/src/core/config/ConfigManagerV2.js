@@ -28,6 +28,7 @@ import { app } from 'electron';
 import * as fs from 'fs';
 import * as fsp from 'fs/promises';
 import * as path from 'path';
+import { createDefaultPerformanceProfile } from './performanceTiers';
 // ═══════════════════════════════════════════════════════════════════════════════
 // DEFAULT CONFIG
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -55,6 +56,8 @@ const DEFAULT_CONFIG_V2 = {
         showZoneLabels: true,
         theme: 'dark',
     },
+    // 🚀 WAVE 7580: userConfirmed=false ⇒ the Launcher appears on first run
+    performance: createDefaultPerformanceProfile(),
     v1MigrationComplete: false,
     localStorageScenesMigrated: false,
 };
@@ -98,6 +101,11 @@ class ConfigManagerV2 {
                 dmx: { ...DEFAULT_CONFIG_V2.dmx, ...loadedV2.dmx },
                 audio: { ...DEFAULT_CONFIG_V2.audio, ...loadedV2.audio },
                 ui: { ...DEFAULT_CONFIG_V2.ui, ...loadedV2.ui },
+                // 🚀 WAVE 7580: MANDATORY deep merge. Every config written before this
+                // wave has no `performance` key; without this line the spread above
+                // leaves it undefined and every downstream `.tier` read throws for
+                // every existing install.
+                performance: { ...DEFAULT_CONFIG_V2.performance, ...loadedV2.performance },
             };
             return { config: this.config, legacyFixtures: [] };
         }
@@ -138,6 +146,9 @@ class ConfigManagerV2 {
                 showZoneLabels: v1Config.ui?.showZoneLabels ?? DEFAULT_CONFIG_V2.ui.showZoneLabels,
                 theme: v1Config.ui?.theme || DEFAULT_CONFIG_V2.ui.theme,
             },
+            // 🚀 WAVE 7580: V1 predates the Launcher entirely — start from defaults so
+            // the operator is prompted once after migrating.
+            performance: createDefaultPerformanceProfile(),
             v1MigrationComplete: false, // Will be set true after StagePersistence consumes fixtures
             localStorageScenesMigrated: false,
         };
@@ -264,6 +275,28 @@ class ConfigManagerV2 {
     setUIPreferences(ui) {
         this.config.ui = { ...this.config.ui, ...ui };
         this.saveDebounced();
+    }
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🚀 WAVE 7580: VANGUARD LAUNCHER
+    //
+    // Strongly typed on purpose. Do NOT route the performance profile through
+    // `updateConfig()` — that method is the `any`-typed legacy shim whose loose
+    // contract is what allowed the dead `lux:save-config` handler (which calls a
+    // non-existent `configManager.saveConfig`) to ship unnoticed.
+    // ═══════════════════════════════════════════════════════════════════════════
+    getPerformanceProfile() {
+        return this.config.performance;
+    }
+    /**
+     * Persist the Launcher's decision.
+     *
+     * Awaits the atomic write rather than debouncing: the renderer reads this
+     * value straight back over `launcher:getProfile` immediately after mount, so
+     * an unflushed debounce would hand back a stale tier (blueprint invariant #4).
+     */
+    async setPerformanceProfile(patch) {
+        this.config.performance = { ...this.config.performance, ...patch };
+        return this.saveAsync();
     }
     // ═══════════════════════════════════════════════════════════════════════════
     // MIGRATION FLAGS

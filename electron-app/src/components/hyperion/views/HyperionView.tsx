@@ -22,6 +22,8 @@ import { FolderIcon, NetworkIcon } from '../../icons/LuxIcons'
 import { QUALITY_PRESETS, type QualityMode, type ViewMode } from '../shared/types'
 import { TacticalCanvas } from './tactical'
 import { VisualizerCanvas } from './visualizer'
+import { EcoTacticalStage } from './tactical/EcoTacticalStage' // 🌿 WAVE 7585: Canvas Killer
+import { usePerformanceStore, selectIsCanvasWorkerDisabled } from '../../../stores/performanceStore'
 import { StageSidebar } from '../controls/sidebar/StageSidebar'
 // ⚡ WAVE 7566.3: ScenePlayerProvider lifted to HyperionView level so the
 // playback engine persists across sidebar tab switches.
@@ -116,6 +118,12 @@ const HyperionView = React.memo(function HyperionView({
   // 🌊 WAVE 2432: Omni-Liquid Layout switch (4.1 / 7.1)
   const liquidLayout = useControlStore(state => state.liquidLayout)
   const setLiquidLayout = useControlStore(state => state.setLiquidLayout)
+
+  // 🌿 WAVE 7585: Canvas Killer — when true, mount <EcoTacticalStage> (flat DOM
+  // grid) instead of <TacticalCanvas> + <VisualizerCanvas>. No OffscreenCanvas
+  // worker, no WebGL context, no transferControlToOffscreen. Single primitive
+  // selector — stable reference, no object allocation (blueprint §2.3).
+  const isCanvasWorkerDisabled = usePerformanceStore(selectIsCanvasWorkerDisabled)
 
   // ── Derived State ─────────────────────────────────────────────────────────
   const fixtureCount = useMemo(() => fixtures.length, [fixtures])
@@ -373,7 +381,22 @@ const HyperionView = React.memo(function HyperionView({
            * the race where TacticalCanvas mounts AFTER a show is loaded and the
            * worker's currentFixtureCount stays at 0 because the glass pipeline
            * callback was never registered during the 0-fixture bootstrap phase.
+           *
+           * 🌿 WAVE 7585: CANVAS KILLER — when isCanvasWorkerDisabled is true
+           * (Eco tier), mount <EcoTacticalStage> (flat DOM grid, 5 Hz) INSTEAD
+           * of both canvases. No OffscreenCanvas worker, no WebGL context, no
+           * transferControlToOffscreen. The heavy canvas components are never
+           * in the React tree — their worker init, RAF loops, and Glass
+           * subscriptions never run. This frees a full CPU core on potato
+           * hardware (audit §3.2). The EcoTacticalStage reads fixture colors
+           * from the transient store at 5 Hz via useThrottledTruthSelector.
            * ═══════════════════════════════════════════════════════════════════ */}
+          {isCanvasWorkerDisabled ? (
+            /* 🌿 WAVE 7585: Eco DOM grid — no canvas, no worker, no WebGL */
+            <div className="hyperion-canvas-container">
+              <EcoTacticalStage />
+            </div>
+          ) : (
           <>
             {/* ── Canvas 2D (siempre montado, CSS-oculto en 3D) ── */}
             <div
@@ -405,6 +428,7 @@ const HyperionView = React.memo(function HyperionView({
               />
             </div>
           </>
+          )}
 
           {/* Mode Badge */}
           <div className="hyperion-mode-badge">

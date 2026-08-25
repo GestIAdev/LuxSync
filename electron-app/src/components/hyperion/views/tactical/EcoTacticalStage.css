@@ -1,0 +1,179 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 🌿 EcoTacticalStage — WAVE 7587: CANVAS KILLER STYLES (DENSE GRID)
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * Flat DOM grid, grouped by canonical zone. No OffscreenCanvas, no WebGL, no
+ * will-change, no box-shadow, no filter, no backdrop-filter. Background-color
+ * changes only — driven by direct DOM mutation at 22 Hz (zero React re-renders).
+ *
+ * Dense grid: auto-fill minmax(48px, 1fr) with strict 1:1 aspect-ratio cells.
+ * Container scrolls vertically for shows with 100+ fixtures.
+ *
+ * @module components/hyperion/views/tactical/EcoTacticalStage
+ * @version 7587.1.0
+ */
+
+.eco-tactical {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 14px;
+  background: var(--bg-deepest, #0a0a0f);
+  border: 1px solid var(--border-subtle, #2a2a3a);
+  border-radius: 8px;
+  box-sizing: border-box;
+  font-family: var(--font-mono, 'JetBrains Mono', 'Consolas', monospace);
+  color: var(--text-primary, #ffffff);
+  overflow: hidden;
+}
+
+/* ─── Header ──────────────────────────────────────────────────────────────── */
+
+.eco-tactical__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-subtle, #2a2a3a);
+}
+
+.eco-tactical__title {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--text-primary, #ffffff);
+}
+
+.eco-tactical__count {
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary, #a0a0b0);
+  /* textContent updated via direct DOM mutation at 22 Hz — no React */
+}
+
+/* ─── Zones container — vertical stack, scrollable ────────────────────────── */
+/* overflow-y: auto so 100+ fixtures across many zones don't break the UI. */
+
+.eco-tactical__zones {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  /* Internal padding so zones don't touch the absolute edges */
+  padding: 4px 4px 8px 4px;
+}
+
+/* ─── Zone group — header + grid ──────────────────────────────────────────── */
+
+.eco-tactical__zone {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.eco-tactical__zone-label {
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-muted, #6a6a7a);
+  padding: 2px 4px;
+  background: var(--bg-deep, #12121a);
+  border-left: 2px solid var(--border-medium, #4a4a5a);
+  border-radius: 2px;
+  /* NO text-shadow, NO box-shadow */
+}
+
+/* ─── Grid — per zone, dense auto-fill ────────────────────────────────────── */
+/* CSS Grid of flat colored squares. background-color is mutated directly by
+   the 22 Hz interval pump — NOT by React state. No will-change, no box-shadow,
+   no filter.
+
+   Dense auto-fill: cells are at least 48px wide and stretch to fill the row.
+   This packs as many cells as possible per row, wrapping naturally for any
+   fixture count without inline gridTemplateColumns overrides. */
+
+.eco-tactical__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+  gap: 4px;
+  align-content: start;
+}
+
+.eco-tactical__cell {
+  aspect-ratio: 1 / 1;
+  border-radius: 2px;
+  border: 1px solid var(--border-subtle, #2a2a3a);
+  /* background-color is set inline on mount (dim base) and then mutated
+     directly by the 22 Hz interval pump — React never touches it again. */
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  /* NO will-change, NO box-shadow, NO filter */
+  transition: border-color 0.1s linear;
+}
+
+.eco-tactical__cell:hover {
+  border-color: var(--text-muted, #6a6a7a);
+}
+
+/* 🌿 WAVE 7586-V2: Selected state — highly visible border */
+.eco-tactical__cell--selected {
+  border: 2px solid var(--accent-primary, #7c4dff);
+}
+
+/* 🌿 WAVE 7586-V2: Fixture label inside each cell */
+/* Extremely small, centered, bold. Overflow is clipped with ellipsis so long
+   names never stretch or break the strict 1:1 square aspect ratio. */
+.eco-tactical__cell-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-muted, #6a6a7a);
+  text-align: center;
+  padding: 1px;
+  pointer-events: none;
+  user-select: none;
+  /* Truncate long names — never break the square */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  line-height: 1;
+  /* NO text-shadow */
+  /* mix-blend so the label stays readable over any background color */
+  mix-blend-mode: difference;
+}
+
+/* ─── Empty state ─────────────────────────────────────────────────────────── */
+
+.eco-tactical--empty {
+  align-items: center;
+  justify-content: center;
+}
+
+.eco-tactical__empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: 8px;
+}
+
+.eco-tactical__empty-title {
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--text-primary, #ffffff);
+  margin-bottom: 4px;
+}
+
+.eco-tactical__empty-sub {
+  font-size: 0.6rem;
+  color: var(--text-muted, #6a6a7a);
+}

@@ -1,0 +1,145 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 🌿 EcoChromaticCore — WAVE 7584: ECO-MODE FALLBACK STYLES
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * Plain background colors only. NO conic-gradient, NO radial-gradient, NO mask,
+ * NO box-shadow, NO text-shadow, NO filter, NO backdrop-filter.
+ *
+ * @module components/views/SensoryView/EcoChromaticCore
+ * @version 7584.0.0
+ */
+
+.eco-chromatic {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  background: var(--bg-deepest, #0a0a0f);
+  border: 1px solid var(--border-subtle, #2a2a3a);
+  border-radius: 8px;
+  box-sizing: border-box;
+  font-family: var(--font-mono, 'JetBrains Mono', 'Consolas', monospace);
+  color: var(--text-primary, #ffffff);
+}
+
+/* ─── Header ──────────────────────────────────────────────────────────────── */
+
+.eco-chromatic__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.eco-chromatic__title {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--text-primary, #ffffff);
+}
+
+.eco-chromatic__strategy {
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--accent-secondary, #00e5ff);
+  padding: 2px 6px;
+  border: 1px solid var(--border-medium, #3a3a4a);
+  border-radius: 3px;
+}
+
+/* ─── 4-swatch row ────────────────────────────────────────────────────────── */
+/* Flat background-color blocks. No gradient, no mask, no shadow. */
+
+.eco-chromatic__swatches {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  height: 48px;
+}
+
+.eco-chromatic__swatch {
+  position: relative;
+  border-radius: 4px;
+  border: 1px solid var(--border-subtle, #2a2a3a);
+  /* background-color set inline by React — flat color only */
+  transition: background-color 0.2s linear;
+}
+
+.eco-chromatic__swatch-label {
+  position: absolute;
+  bottom: 3px;
+  left: 4px;
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #ffffff;
+  mix-blend-mode: difference;
+  pointer-events: none;
+}
+
+/* ─── Info (Kelvin + Key) ─────────────────────────────────────────────────── */
+
+.eco-chromatic__info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.eco-chromatic__info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  background: var(--bg-deep, #12121a);
+  border: 1px solid var(--border-subtle, #2a2a3a);
+  border-radius: 4px;
+}
+
+.eco-chromatic__info-k {
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-muted, #6a6a7a);
+}
+
+.eco-chromatic__info-v {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary, #ffffff);
+  /* NO text-shadow */
+}
+
+.eco-chromatic__info-d {
+  font-size: 0.55rem;
+  color: var(--text-secondary, #a0a0b0);
+}
+
+/* ─── Mood — single 6px dot + text ────────────────────────────────────────── */
+
+.eco-chromatic__mood {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--bg-deep, #12121a);
+  border: 1px solid var(--border-subtle, #2a2a3a);
+  border-radius: 4px;
+}
+
+.eco-chromatic__mood-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  /* background-color set inline — flat color, no glow */
+  flex-shrink: 0;
+}
+
+.eco-chromatic__mood-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-secondary, #a0a0b0);
+}

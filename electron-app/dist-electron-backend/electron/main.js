@@ -47,6 +47,9 @@ import { getGenesisVault } from '../src/core/genesis/GenesisVaultService';
 import { igniteGenesisEngine, shutdownGenesisEngine } from '../src/core/genesis/GenesisIgnition';
 // 🎬 WAVE 4864: Theia Output Window manager (Phase 3)
 import { setupTheiaWindowManager } from './TheiaWindowManager';
+// 🚀 WAVE 7580: VANGUARD LAUNCHER — pre-boot render fidelity gate
+import { probeHardware, shouldShowLauncher } from './launcher/probeHardware';
+import { registerLauncherIpc } from './launcher/launcherIpc';
 // ⚡ WAVE 4822: INFINITE ARSENAL — Boot ingestion
 import { LfxFileLoader } from '../src/core/arsenal/LfxFileLoader';
 import { getDynamicEffectRegistry } from '../src/core/arsenal/DynamicEffectRegistry';
@@ -79,6 +82,10 @@ import { setupPlaybackIPCHandlers, cleanupPlaybackIPC } from './ipc/PlaybackIPCH
 // GLOBAL STATE
 // =============================================================================
 let mainWindow = null;
+// 🚀 WAVE 7580: VANGUARD LAUNCHER — kept SEPARATE from mainWindow so the
+// module-level `mainWindow.on('closed') → doShutdown()` (line ~539) cannot
+// tear down the backend when the launcher closes (blueprint invariant #3 / risk #1).
+let launcherWindow = null;
 // 🩸 WAVE 7567: Renderer liveness flag — prevents infinite "Render frame was disposed"
 // error flood when the renderer crashes/reloads but webContents.isDestroyed() still
 // returns false. All tick-driven broadcast callbacks check this before calling .send().
@@ -331,6 +338,52 @@ function autoAssignZone(fixtureType, fixtureName) {
 // =============================================================================
 // WINDOW CREATION
 // =============================================================================
+/**
+ * 🚀 WAVE 7580: VANGUARD LAUNCHER — open the pre-boot render fidelity window.
+ *
+ * Returns a Promise that resolves ONLY when the window emits its `'closed'`
+ * event. That event is the single funnel for every exit path:
+ *   - `launcher:commit` → main calls `win.close()` after the awaited write
+ *   - `launcher:cancel` (Esc) → main calls `win.close()`, no write
+ *   - OS close button → Electron fires `'closed'` directly
+ * Resolving on `'closed'` (not on `launcher:commit`) guarantees boot resumes
+ * exactly once regardless of how the operator dismissed the window
+ * (blueprint invariant #3 / §1.3 #3).
+ *
+ * The window is assigned to the module-scoped `launcherWindow` ref — NEVER to
+ * `mainWindow`. `mainWindow.on('closed')` triggers `doShutdown()` (line ~539),
+ * which would tear down the backend the instant the launcher closes
+ * (blueprint risk #1).
+ *
+ * Never calls `app.quit()` on close — dismissing the launcher must never be
+ * able to block startup (blueprint invariant #6, deliberate divergence from
+ * the license activation window).
+ */
+function showLauncherWindow() {
+    return new Promise((resolve) => {
+        const iconExt = process.platform === 'darwin' ? 'icns' : process.platform === 'linux' ? 'png' : 'ico';
+        const appIcon = path.join(__dirname, `../build/icon.${iconExt}`);
+        launcherWindow = new BrowserWindow({
+            width: 620,
+            height: 460,
+            frame: false,
+            resizable: false,
+            title: 'LuxSync — Vanguard',
+            icon: appIcon,
+            webPreferences: {
+                nodeIntegration: false,
+                contextIsolation: true,
+                preload: path.join(__dirname, 'launcher', 'preload-launcher.js'),
+            },
+        });
+        launcherWindow.loadFile(path.join(__dirname, 'launcher', 'launcher.html'));
+        // Single resume funnel — fires for commit, cancel, and OS close alike.
+        launcherWindow.once('closed', () => {
+            launcherWindow = null;
+            resolve();
+        });
+    });
+}
 function createWindow() {
     // 🌟 WAVE 2497: icon multiplataforma — .ico en Windows, .icns en macOS
     const iconExt = process.platform === 'darwin' ? 'icns' : process.platform === 'linux' ? 'png' : 'ico';
@@ -1197,6 +1250,44 @@ app.whenReady().then(async () => {
         console.warn(`[Main] MIGRATION: ${legacyFixtures.length} legacy fixtures detected — will migrate to ShowFileV2`);
         // Legacy fixtures are now extracted - ConfigManagerV2 has already saved without them
         // The renderer will handle migration via stageStore.loadFromDisk() → autoMigrate()
+    }
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🚀 WAVE 7580: VANGUARD LAUNCHER — pre-boot render fidelity gate
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Placement invariants (blueprint §1.3):
+    //   1. AFTER license validation (the `if (app.isPackaged)` block above returns
+    //      early on failure, so an unlicensed user never reaches here).
+    //   2. BEFORE `initTitan()` (further down) — initTitan boots DMX drivers,
+    //      audio workers, Genesis and the effects engine. Doing that before the
+    //      operator has picked a tier wastes 2-4 s on slow hardware.
+    //   3. Config is already loaded above (WAVE 367), so `getPerformanceProfile()`
+    //      is safe to read here without a second `configManager.load()`.
+    // The launcher:* IPC handlers are registered UNCONDITIONALLY — `launcher:getProfile`
+    // is consumed by the main app renderer long after this window is gone, so it must
+    // survive even when the launcher is skipped (blueprint risk #5).
+    // ═══════════════════════════════════════════════════════════════════════════
+    {
+        const hardware = probeHardware();
+        const profile = configManager.getPerformanceProfile();
+        // Registered outside the `if` — launcher:getProfile must outlive the window.
+        registerLauncherIpc({
+            getLauncherWindow: () => launcherWindow,
+            onDecided: (outcome) => {
+                console.log(`[Vanguard] Launcher ${outcome} — resuming boot`);
+            },
+        });
+        if (shouldShowLauncher(profile)) {
+            // Resolves ONLY on the window's 'closed' event — the single funnel for
+            // every exit path (commit, cancel, OS close). Awaited so initTitan()
+            // cannot race the config write (invariant #4).
+            await showLauncherWindow();
+        }
+        else {
+            // Refresh the hardware snapshot even when skipping, so support can read
+            // the operator's real hardware from the config file after a RAM/GPU
+            // upgrade. Fire-and-forget is fine here — no renderer is waiting yet.
+            void configManager.setPerformanceProfile({ hardware });
+        }
     }
     // ═══════════════════════════════════════════════════════════════════════════
     // WAVE 255: LA BIBLIOTECA - Load fixture definitions from luxsync/librerias

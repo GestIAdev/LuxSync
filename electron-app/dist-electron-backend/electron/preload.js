@@ -820,6 +820,11 @@ const luxApi = {
     /** Resetear configuración */
     resetConfig: () => ipcRenderer.invoke('lux:reset-config'),
     // ============================================
+    // 🚀 WAVE 7580: VANGUARD LAUNCHER — performance profile
+    // ============================================
+    /** Read the tier chosen in the pre-boot Launcher (hydrates usePerformanceStore) */
+    getPerformanceProfile: () => ipcRenderer.invoke('launcher:getProfile'),
+    // ============================================
     // 🎛️ WAVE 375: MASTER ARBITER API
     // ============================================
     arbiter: {

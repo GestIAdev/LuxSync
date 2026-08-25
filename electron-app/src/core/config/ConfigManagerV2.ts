@@ -30,6 +30,12 @@ import * as fs from 'fs'
 import * as fsp from 'fs/promises'
 import * as path from 'path'
 
+// 🚀 WAVE 7580: Vanguard Launcher — render fidelity profile.
+// `import type` is erased at compile time, so the pure `performanceTiers`
+// module never gains a runtime dependency on this electron-importing file.
+import type { PerformanceProfile } from './performanceTiers'
+import { createDefaultPerformanceProfile } from './performanceTiers'
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPES - V2 SCHEMA (NO FIXTURES!)
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -115,6 +121,13 @@ export interface LuxSyncPreferencesV2 {
   ui: UIPreferences
   
   // ═══════════════════════════════════════════════════════════════════════════
+  // 🚀 WAVE 7580: VANGUARD LAUNCHER
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  /** Render fidelity decision made in the pre-boot Vanguard Launcher */
+  performance: PerformanceProfile
+  
+  // ═══════════════════════════════════════════════════════════════════════════
   // MIGRATION FLAGS
   // ═══════════════════════════════════════════════════════════════════════════
   
@@ -158,6 +171,9 @@ const DEFAULT_CONFIG_V2: LuxSyncPreferencesV2 = {
     showZoneLabels: true,
     theme: 'dark',
   },
+  
+  // 🚀 WAVE 7580: userConfirmed=false ⇒ the Launcher appears on first run
+  performance: createDefaultPerformanceProfile(),
   
   v1MigrationComplete: false,
   localStorageScenesMigrated: false,
@@ -239,6 +255,11 @@ class ConfigManagerV2 {
         dmx: { ...DEFAULT_CONFIG_V2.dmx, ...loadedV2.dmx },
         audio: { ...DEFAULT_CONFIG_V2.audio, ...loadedV2.audio },
         ui: { ...DEFAULT_CONFIG_V2.ui, ...loadedV2.ui },
+        // 🚀 WAVE 7580: MANDATORY deep merge. Every config written before this
+        // wave has no `performance` key; without this line the spread above
+        // leaves it undefined and every downstream `.tier` read throws for
+        // every existing install.
+        performance: { ...DEFAULT_CONFIG_V2.performance, ...loadedV2.performance },
       }
       
       return { config: this.config, legacyFixtures: [] }
@@ -286,6 +307,10 @@ class ConfigManagerV2 {
         showZoneLabels: v1Config.ui?.showZoneLabels ?? DEFAULT_CONFIG_V2.ui.showZoneLabels,
         theme: (v1Config.ui as UIPreferences)?.theme || DEFAULT_CONFIG_V2.ui.theme,
       },
+      
+      // 🚀 WAVE 7580: V1 predates the Launcher entirely — start from defaults so
+      // the operator is prompted once after migrating.
+      performance: createDefaultPerformanceProfile(),
       
       v1MigrationComplete: false, // Will be set true after StagePersistence consumes fixtures
       localStorageScenesMigrated: false,
@@ -441,6 +466,31 @@ class ConfigManagerV2 {
   }
   
   // ═══════════════════════════════════════════════════════════════════════════
+  // 🚀 WAVE 7580: VANGUARD LAUNCHER
+  //
+  // Strongly typed on purpose. Do NOT route the performance profile through
+  // `updateConfig()` — that method is the `any`-typed legacy shim whose loose
+  // contract is what allowed the dead `lux:save-config` handler (which calls a
+  // non-existent `configManager.saveConfig`) to ship unnoticed.
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  getPerformanceProfile(): PerformanceProfile {
+    return this.config.performance
+  }
+  
+  /**
+   * Persist the Launcher's decision.
+   *
+   * Awaits the atomic write rather than debouncing: the renderer reads this
+   * value straight back over `launcher:getProfile` immediately after mount, so
+   * an unflushed debounce would hand back a stale tier (blueprint invariant #4).
+   */
+  async setPerformanceProfile(patch: Partial<PerformanceProfile>): Promise<boolean> {
+    this.config.performance = { ...this.config.performance, ...patch }
+    return this.saveAsync()
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════════
   // MIGRATION FLAGS
   // ═══════════════════════════════════════════════════════════════════════════
   
@@ -518,3 +568,12 @@ export default configManager
 
 // Re-export types for compatibility
 export type { LegacyPatchedFixture as PatchedFixtureConfig }
+
+// 🚀 WAVE 7580: Re-export the Launcher types from here so consumers can keep
+// importing them alongside LuxSyncPreferencesV2, per the blueprint contract.
+// The canonical definitions live in ./performanceTiers (a pure, import-free module).
+export type {
+  PerformanceTier,
+  HardwareProfile,
+  PerformanceProfile,
+} from './performanceTiers'

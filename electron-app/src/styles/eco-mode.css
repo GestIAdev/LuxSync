@@ -1,0 +1,148 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 🌿 ECO-MODE — WAVE 7582: THE BLUR KILLER
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * Global CSS override layer that strips the expensive compositing properties
+ * identified in `hyperion_performance_audit2.md` §1.1 / §3.3.
+ *
+ * Activation: the React root toggles `body.eco-mode` based on
+ * `usePerformanceStore(selectIsBlurDisabled)` (tier !== 'hq'). When the class
+ * is absent this sheet is a no-op — every selector is scoped under
+ * `body.eco-mode`, so HQ and balanced modes are byte-for-byte unaffected.
+ *
+ * Cascade strategy (audit §3.3): this file is imported LAST, after every
+ * component stylesheet, so it sits at the bottom of the cascade. `!important`
+ * is used deliberately and only here — the audit's finding is that the neon
+ * aesthetic is the design language (874 matches across the codebase), so a
+ * non-`!important` override would lose to the per-component rules that define
+ * the glows. Specificity is kept low (`body.eco-mode *`) so a future component
+ * can still opt out with a higher-specificity rule if strictly necessary.
+ *
+ * What this sheet does NOT touch:
+ *  - Layout (flex/grid/positioning) — only paint/composite cost is attacked.
+ *  - Color values — the palette stays; only the blur/glow tax is removed.
+ *  - Functional spinners needed for loading states are kept via `.eco-keep-spin`.
+ *
+ * @module styles/eco-mode
+ * @version 7582.0.0 - The Blur Killer
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * 1. THE BLUR TAX — backdrop-filter, filter, box-shadow, text-shadow
+ *    (audit §1.1: 874 matches across the codebase; 37 files for backdrop-filter
+ *    alone. On a software compositor each is a per-repaint CPU Gaussian blur.)
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Kill every backdrop-filter in one rule — the single highest-value override
+   in the sheet. erebus.css (15), ArsenalDock.css (14), HephaestusView.css (6),
+   globals.css (3), DashboardView.css (3), ChronosLayout.css (4) all collapse. */
+body.eco-mode *,
+body.eco-mode *::before,
+body.eco-mode *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  /* drop-shadow / blur() / brightness() on the `filter` property — same
+     Gaussian-blur cost as box-shadow (audit §1.1 row 3, §1.4.1 finding 2). */
+  filter: none !important;
+  /* Multi-layer glow shadows — the dominant offender (699 of 874 matches).
+     Replaced with nothing; the element's border/background still defines its
+     shape. A 1px outline is added below only where a border already exists,
+     to preserve a minimal edge. */
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * 2. INFINITE ANIMATIONS — stop the perpetual compositor repaint
+ *    (audit §1.1 row 5: pulse-glow, pulse-badge, tactical-pulse, spin, plus
+ *    the per-component infinite keyframes found in the grep — ct-pulse-*,
+ *    indicatorPulse, alphaPulse, quickPulse, blackoutPulse, iconPulse,
+ *    dangerPulse, heph-ring-pulse, blackout-border-pulse, btn-connecting,
+ *    pulse-dirty, pulse-gate-blocked, pulse-calib. All are decorative; none
+ *    carry information the operator can't read from the static state.)
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Named infinite animations — killed by name so we don't blanket-disable
+   functional one-shot animations (slideIn, fade-in, popovers). */
+body.eco-mode .pulse-glow,
+body.eco-mode .animate-pulse-glow,
+body.eco-mode .pulse-badge,
+body.eco-mode .tactical-pulse,
+body.eco-mode .alert-pulse,
+body.eco-mode .spin,
+body.eco-mode .spinning,
+body.eco-mode .ct-pulse-starting,
+body.eco-mode .ct-data-pulse,
+body.eco-mode .ct-synapse-pulse,
+body.eco-mode .ct-pulse-save,
+body.eco-mode .ct-record-pulse,
+body.eco-mode .ct-midi-pulse,
+body.eco-mode .indicatorPulse,
+body.eco-mode .alphaPulse,
+body.eco-mode .quickPulse,
+body.eco-mode .blackoutPulse,
+body.eco-mode .iconPulse,
+body.eco-mode .dangerPulse,
+body.eco-mode .heph-ring-pulse,
+body.eco-mode .blackout-border-pulse,
+body.eco-mode .btn-connecting,
+body.eco-mode .pulse-dirty,
+body.eco-mode .pulse-gate-blocked,
+body.eco-mode .pulse-calib {
+  animation: none !important;
+}
+
+/* Catch-all for any element whose inline or stylesheet animation is literally
+   infinite — without this, a future `animation: foo 2s infinite` would restart
+   the compositor repaint. Scoped to `infinite` so one-shot entrance animations
+   (slideIn, fade-in, heph-popover-in) still play once and stop. */
+body.eco-mode *[class*='pulse'],
+body.eco-mode *[class*='glow'],
+body.eco-mode *[class*='spin']:not(.eco-keep-spin) {
+  animation: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * 3. TRANSITIONS — collapse `transition: all` to cheap properties only
+ *    (audit §1.1 row 4: `transition: all` is the amplifier that makes every
+ *    glow property re-raster every frame. Animating `all` means a state toggle
+ *    interpolates box-shadow/filter/backdrop-filter across N frames. We keep
+ *    opacity + background-color — both are cheap compositing ops — and drop
+ *    everything else. Duration clamped to 0.15s so even retained transitions
+ *    don't linger.)
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+
+body.eco-mode * {
+  /* Override `transition: all ...` and any transition that includes a
+     blur/shadow property. `!important` is required: SystemsCheck.css alone
+     has ~16 `transition: all` declarations. */
+  transition: opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * 4. WILL-CHANGE — drop compositor layer promotions
+ *    (audit §1.4.1 finding 3: 32 bars × will-change: height = 64 promoted
+ *    layers on a single component, exhausting legacy VRAM and forcing
+ *    software compositing for the whole window. Revoke the promotion; the
+ *    element reverts to the default non-promoted paint path.)
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+
+body.eco-mode * {
+  will-change: auto !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * 5. OPT-OUT HOOK — `.eco-keep-spin`
+ *    A component that genuinely needs a functional loading spinner (e.g. a
+ *    DMX-connect progress indicator) can add `eco-keep-spin` to opt back into
+ *    `animation` for that one element. Use sparingly — every opt-out is a
+ *    repaint we chose to keep.
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+
+body.eco-mode .eco-keep-spin {
+  animation: spin 1s linear infinite !important;
+  /* But still no glow on the spinner itself — border-only, per audit §3.3. */
+  box-shadow: none !important;
+  filter: none !important;
+}

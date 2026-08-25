@@ -853,113 +853,62 @@ function setupFixtureHandlers(deps) {
         try {
             const fs = await import('fs');
             const path = await import('path');
-            const libraryPath = fxtParser.getLibraryPath ? fxtParser.getLibraryPath() : '';
-            if (!libraryPath) {
-                console.error('[IPC] Library path not configured!');
-                return { success: false, error: 'Library path not configured' };
+            const fixturesPath = getFixturesPath();
+            if (!fs.existsSync(fixturesPath)) {
+                fs.mkdirSync(fixturesPath, { recursive: true });
             }
-            // WAVE 388 EXT: Sanitize filename
             const safeName = (definition.name || 'custom')
-                .replace(/[^a-z0-9Ã¡Ã©Ã­Ã³ÃºÃ±Ã¼\s-]/gi, '')
+                .replace(/[^a-z0-9\s-]/gi, '')
                 .replace(/\s+/g, '_')
                 .substring(0, 50);
-            const fileName = `${safeName}.json`;
-            const filePath = path.join(libraryPath, fileName);
-            // WAVE 388 EXT: Pretty print with 2 spaces
+            const filePath = path.join(fixturesPath, `${safeName}.json`);
             fs.writeFileSync(filePath, JSON.stringify(definition, null, 2), 'utf-8');
-            console.log(`[IPC] âœ… Saved fixture definition: ${filePath}`);
-            // WAVE 390.5: Rescan ALL libraries (factory + custom) with proper merge
-            try {
-                const updatedLibrary = await rescanAllLibraries();
-                console.log(`[IPC] ðŸ”„ WAVE 390.5 Library rescanned: ${updatedLibrary.length} fixtures (factory + custom merged)`);
-            }
-            catch (rescanErr) {
-                console.warn('[IPC] âš ï¸ Failed to rescan libraries after save:', rescanErr);
-            }
-            // WAVE 388 EXT: Return BOTH path and filePath for compatibility
+            console.log(`[IPC] Saved fixture definition: ${filePath}`);
             return { success: true, path: filePath, filePath };
         }
         catch (err) {
-            console.error('[IPC] âŒ Failed to save fixture definition:', err);
+            console.error('[IPC] Failed to save fixture definition:', err);
             return { success: false, error: String(err) };
         }
     });
     // WAVE 388 EXT: Delete fixture definition from library
     // WAVE 389: Rescan library after delete to invalidate cache
     // WAVE 2185: Accept paths from BOTH factory and custom library folders
-    // Accepts either full filePath or fixture name to search
+    // WAVE 7605: Legacy delete handler — now uses single path.
+    // Accepts either full filePath or fixture name/id to search
     ipcMain.handle('lux:delete-fixture-definition', async (_event, identifier) => {
         try {
             const fs = await import('fs');
             const path = await import('path');
-            const customPath = getCustomLibPath();
-            const factoryPath = getFactoryLibPath();
-            if (!customPath && !factoryPath) {
-                return { success: false, error: 'Library paths not configured' };
+            const fixturesPath = getFixturesPath();
+            if (!fs.existsSync(fixturesPath)) {
+                return { success: false, error: 'Fixtures folder does not exist' };
             }
             let fileToDelete = null;
-            // WAVE 388.7: Check if identifier is already a full path
+            // Check if identifier is already a full path
             if (identifier.includes(path.sep) && fs.existsSync(identifier)) {
-                // It's a full path â€” verify it's inside EITHER library folder
-                // ðŸ”¥ WAVE 2185: The old code only checked customPath (via fxtParser.getLibraryPath()),
-                // so factory fixtures with paths like "C:\...\librerias\user-xxx.json" were rejected
-                // with "File path outside library folder" â€” even though they ARE library files.
                 const normalizedId = path.normalize(identifier);
-                const isInCustom = customPath && normalizedId.startsWith(path.normalize(customPath));
-                const isInFactory = factoryPath && normalizedId.startsWith(path.normalize(factoryPath));
-                if (isInCustom || isInFactory) {
+                if (normalizedId.startsWith(path.normalize(fixturesPath))) {
                     fileToDelete = identifier;
                 }
                 else {
-                    return { success: false, error: 'File path outside library folder' };
+                    return { success: false, error: 'File path outside fixtures folder' };
                 }
             }
             else {
-                // Search by scanning BOTH library folders
-                const searchFolders = [customPath, factoryPath].filter(Boolean);
-                for (const folder of searchFolders) {
-                    if (!fs.existsSync(folder))
-                        continue;
-                    const files = fs.readdirSync(folder);
-                    for (const file of files) {
-                        if (!file.endsWith('.json'))
-                            continue;
-                        const filePath = path.join(folder, file);
-                        try {
-                            const content = fs.readFileSync(filePath, 'utf-8');
-                            const fixture = JSON.parse(content);
-                            // Match by id OR by name OR by filename
-                            if (fixture.id === identifier ||
-                                fixture.name === identifier ||
-                                file === identifier ||
-                                file === `${identifier}.json`) {
-                                fileToDelete = filePath;
-                                break;
-                            }
-                        }
-                        catch (parseErr) {
-                            // Skip files that can't be parsed
-                            continue;
-                        }
-                    }
-                    if (fileToDelete)
-                        break;
-                }
+                // Search recursively by id, name, or filename
+                const allFixtures = await scanFixtureFolderRecursive(fixturesPath);
+                const target = allFixtures.find((f) => f.id === identifier ||
+                    f.name === identifier ||
+                    path.basename(f.filePath) === identifier ||
+                    path.basename(f.filePath) === `${identifier}.json`);
+                fileToDelete = target?.filePath ?? null;
             }
             if (!fileToDelete) {
-                return { success: false, error: `Fixture "${identifier}" not found in library` };
+                return { success: false, error: `Fixture "${identifier}" not found` };
             }
-            // Delete the file
             fs.unlinkSync(fileToDelete);
-            console.log(`[IPC] ðŸ—‘ï¸ Deleted fixture: ${fileToDelete}`);
-            // WAVE 390.5: Rescan ALL libraries (factory + custom) with proper merge
-            try {
-                const updatedLibrary = await rescanAllLibraries();
-                console.log(`[IPC] ðŸ”„ WAVE 390.5 Library rescanned: ${updatedLibrary.length} fixtures remain (factory + custom merged)`);
-            }
-            catch (rescanErr) {
-                console.warn('[IPC] âš ï¸ Failed to rescan libraries after delete:', rescanErr);
-            }
+            console.log(`[IPC] Deleted fixture: ${fileToDelete}`);
             return { success: true, deletedPath: fileToDelete };
         }
         catch (err) {
@@ -978,88 +927,69 @@ function setupFixtureHandlers(deps) {
      *
      * WAVE 1115 FIX: Use paths resolved by PATHFINDER, not hardcoded
      */
+    // 🩸 WAVE 7604c: RECURSIVE SCAN — reads ALL subfolders, user organizes freely.
+    // Same pattern as the ingenio arsenal: the user can create whatever subfolder
+    // structure they want (by brand, by type, by venue...) and the system finds
+    // everything. No more hardcoded custom/ vs factory/ split.
+    // WAVE 7605: SCORCHED EARTH — .json ONLY. No .fxt in live scan.
+    // fxtParser is retained for the OFL import tool but NEVER called here.
+    async function scanFixtureFolderRecursive(dirPath) {
+        const fs = await import('fs');
+        const path = await import('path');
+        const results = [];
+        if (!fs.existsSync(dirPath))
+            return results;
+        const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+        for (const entry of entries) {
+            const fullPath = path.join(dirPath, entry.name);
+            if (entry.isDirectory()) {
+                if (entry.name === 'factory' || entry.name === 'custom')
+                    continue;
+                const subResults = await scanFixtureFolderRecursive(fullPath);
+                results.push(...subResults);
+            }
+            else if (entry.isFile() && entry.name.endsWith('.json')) {
+                try {
+                    const content = fs.readFileSync(fullPath, 'utf-8');
+                    const fixture = JSON.parse(content);
+                    results.push({ ...fixture, filePath: fullPath });
+                }
+                catch {
+                    console.warn(`[Library] Skipped corrupt JSON: ${fullPath}`);
+                }
+            }
+            // .fxt files are intentionally IGNORED — only processed via OFL import tool
+        }
+        return results;
+    }
+    /** WAVE 7605: The single fixture path. Dev = Prod. */
+    function getFixturesPath() {
+        const { app } = require('electron');
+        const path = require('path');
+        return path.join(app.getPath('userData'), 'fixtures');
+    }
     ipcMain.handle('lux:library:list-all', async () => {
         try {
             const fs = await import('fs');
-            const path = await import('path');
-            // WAVE 1115 FIX: Get paths from main.ts (resolved by PATHFINDER)
-            const factoryPath = getFactoryLibPath();
-            const userPath = getCustomLibPath();
-            console.log(`[Library IPC] ðŸ“‚ Factory path: ${factoryPath}`);
-            console.log(`[Library IPC] ðŸ“‚ User path: ${userPath}`);
-            // Ensure user path exists
-            if (!fs.existsSync(userPath)) {
-                fs.mkdirSync(userPath, { recursive: true });
+            const fixturesPath = getFixturesPath();
+            if (!fs.existsSync(fixturesPath)) {
+                const path = await import('path');
+                fs.mkdirSync(fixturesPath, { recursive: true });
             }
-            const systemFixtures = [];
-            const userFixtures = [];
-            // Scan factory library
-            if (fs.existsSync(factoryPath)) {
-                const factoryFiles = fs.readdirSync(factoryPath);
-                for (const file of factoryFiles) {
-                    if (file.endsWith('.json')) {
-                        try {
-                            const content = fs.readFileSync(path.join(factoryPath, file), 'utf-8');
-                            const fixture = JSON.parse(content);
-                            systemFixtures.push({
-                                ...fixture,
-                                source: 'system',
-                                filePath: path.join(factoryPath, file),
-                            });
-                        }
-                        catch (e) {
-                            console.warn(`[Library] âš ï¸ Failed to parse factory fixture: ${file}`);
-                        }
-                    }
-                    else if (file.endsWith('.fxt')) {
-                        // Parse FXT files via parser
-                        const parsed = fxtParser.parseFile(path.join(factoryPath, file));
-                        if (parsed) {
-                            systemFixtures.push({
-                                ...parsed,
-                                source: 'system',
-                                filePath: path.join(factoryPath, file),
-                            });
-                        }
-                    }
-                }
-            }
-            else {
-                console.warn(`[Library IPC] âš ï¸ Factory path does not exist: ${factoryPath}`);
-            }
-            // Scan user library
-            if (fs.existsSync(userPath)) {
-                const userFiles = fs.readdirSync(userPath);
-                for (const file of userFiles) {
-                    if (file.endsWith('.json')) {
-                        try {
-                            const content = fs.readFileSync(path.join(userPath, file), 'utf-8');
-                            const fixture = JSON.parse(content);
-                            userFixtures.push({
-                                ...fixture,
-                                source: 'user',
-                                filePath: path.join(userPath, file),
-                            });
-                        }
-                        catch (e) {
-                            console.warn(`[Library] âš ï¸ Failed to parse user fixture: ${file}`);
-                        }
-                    }
-                }
-            }
-            console.log(`[Library IPC] âœ… Loaded ${systemFixtures.length} system + ${userFixtures.length} user fixtures`);
+            // WAVE 7605: Single scan — no system/user split. Everything is a fixture.
+            const allFixtures = await scanFixtureFolderRecursive(fixturesPath);
+            console.log(`[Library IPC] Loaded ${allFixtures.length} fixtures from ${fixturesPath}`);
+            // Backward-compatible response: systemFixtures empty (no factory),
+            // userFixtures has everything. Frontend treats them the same.
             return {
                 success: true,
-                systemFixtures,
-                userFixtures,
-                paths: {
-                    system: factoryPath,
-                    user: userPath,
-                },
+                systemFixtures: [],
+                userFixtures: allFixtures,
+                paths: { system: fixturesPath, user: fixturesPath },
             };
         }
         catch (err) {
-            console.error('[Library] âŒ Failed to list fixtures:', err);
+            console.error('[Library] Failed to list fixtures:', err);
             return { success: false, error: String(err) };
         }
     });
@@ -1075,19 +1005,10 @@ function setupFixtureHandlers(deps) {
             if (!fixture || typeof fixture !== 'object') {
                 return { success: false, error: 'Invalid fixture payload' };
             }
-            // Deep clone para desacoplar referencia IPC y evitar writes parciales.
             const payload = JSON.parse(JSON.stringify(fixture));
-            // Runtime-only fields no deben persistirse en disco.
             delete payload.filePath;
             delete payload.source;
-            // WAVE 4829 — FORGE SAVIOR: El frontend envía payload.channels como fuente de verdad.
-            // buildCompleteFixture() + syncGraphOutputsWithChannels() ya propagaron los cambios
-            // del canvas (borrar conexiones, eliminar ignitionDeps) a channels[] antes del IPC.
-            // Re-derivar channels desde nodeGraph aquí sobreescribía esos cambios con datos stale
-            // del grafo, restaurando ignitionDeps eliminados y revirtiendo edits del Channel Rack.
-            //
-            // Regla: si channels[] llegó del frontend, es la fuente de verdad — no tocar.
-            // Solo derivamos desde nodeGraph cuando channels está ausente (fixture legacy sin array).
+            // WAVE 4829: channels from frontend is source of truth.
             if (!Array.isArray(payload.channels) || payload.channels.length === 0) {
                 if (payload.nodeGraph && typeof payload.nodeGraph === 'object') {
                     try {
@@ -1095,137 +1016,73 @@ function setupFixtureHandlers(deps) {
                     }
                     catch (graphErr) {
                         const msg = graphErr instanceof Error ? graphErr.message : String(graphErr);
-                        return { success: false, error: `Invalid nodeGraph for save-user: ${msg}` };
+                        return { success: false, error: `Invalid nodeGraph for save: ${msg}` };
                     }
                 }
                 else {
                     payload.channels = [];
                 }
             }
-            // WAVE 1116.2: Use PATHFINDER-resolved path
-            const userPath = getCustomLibPath();
-            console.log(`[Library Save] ðŸ“‚ User path: ${userPath}`);
-            // Ensure directory exists
-            if (!fs.existsSync(userPath)) {
-                fs.mkdirSync(userPath, { recursive: true });
+            const fixturesPath = getFixturesPath();
+            if (!fs.existsSync(fixturesPath)) {
+                fs.mkdirSync(fixturesPath, { recursive: true });
             }
-            // Ensure fixture has an ID
             if (!payload.id) {
                 payload.id = `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
             }
-            // WAVE 1114 FIX: Check if fixture already exists (by ID)
-            // If exists, update the same file instead of creating new
-            let existingFilePath = null;
-            const existingFiles = fs.readdirSync(userPath);
-            for (const file of existingFiles) {
-                if (!file.endsWith('.json'))
-                    continue;
-                try {
-                    const content = fs.readFileSync(path.join(userPath, file), 'utf-8');
-                    const existingFixture = JSON.parse(content);
-                    if (existingFixture.id === payload.id) {
-                        existingFilePath = path.join(userPath, file);
-                        console.log(`[Library] ðŸ”„ Updating existing fixture file: ${file}`);
-                        break;
-                    }
-                }
-                catch (e) {
-                    continue;
-                }
-            }
-            // Determine file path
+            // Search recursively for existing fixture with same ID
+            const existingFixtures = await scanFixtureFolderRecursive(fixturesPath);
+            const existing = existingFixtures.find((f) => f.id === payload.id);
+            const existingFilePath = existing?.filePath ?? null;
             let filePath;
             if (existingFilePath) {
-                // Update existing file
                 filePath = existingFilePath;
+                console.log(`[Library] Updating existing fixture: ${existingFilePath}`);
             }
             else {
-                // Create new file with safe name from fixture id
                 const safeId = String(payload.id)
-                    .replace(/[^a-z0-9Ã¡Ã©Ã­Ã³ÃºÃ±Ã¼\s-]/gi, '')
+                    .replace(/[^a-z0-9\s-]/gi, '')
                     .replace(/\s+/g, '_')
                     .substring(0, 50);
-                const fileName = `${safeId}.json`;
-                filePath = path.join(userPath, fileName);
+                filePath = path.join(fixturesPath, `${safeId}.json`);
             }
-            // Add metadata
             payload.savedAt = new Date().toISOString();
-            payload.source = 'user';
-            // Write file
             fs.writeFileSync(filePath, JSON.stringify(payload, null, 2), 'utf-8');
             const nodeCount = Array.isArray(payload?.nodeGraph?.nodes) ? payload.nodeGraph.nodes.length : 0;
             const edgeCount = Array.isArray(payload?.nodeGraph?.edges) ? payload.nodeGraph.edges.length : 0;
             const channelCount = Array.isArray(payload.channels) ? payload.channels.length : 0;
-            console.log(`[FORGE] JSON guardado exitosamente en: ${filePath} | nodes=${nodeCount} edges=${edgeCount} channels=${channelCount}`);
-            // Rescan to update cache
-            await rescanAllLibraries();
-            // 🔥 WAVE 2241: THE FORGE HOT-RELOAD
-            // Push the updated profile to the renderer so TitanSyncBridge can
-            // force a backend resync without waiting for a full show reload.
+            console.log(`[FORGE] Saved: ${filePath} | nodes=${nodeCount} edges=${edgeCount} channels=${channelCount}`);
+            // WAVE 2241: THE FORGE HOT-RELOAD
             safeWebSend(getMainWindow(), 'lux:profile:updated', payload);
-            return {
-                success: true,
-                filePath,
-                fixture: payload,
-            };
+            return { success: true, filePath, fixture: payload };
         }
         catch (err) {
-            console.error('[Library] âŒ Failed to save user fixture:', err);
+            console.error('[Library] Failed to save fixture:', err);
             return { success: false, error: String(err) };
         }
     });
-    /**
-     * Delete a user fixture from userData/fixtures
-     * Only user fixtures can be deleted (not system)
-     * WAVE 1116 FIX: Use PATHFINDER-resolved custom library path
-     */
     ipcMain.handle('lux:library:delete-user', async (_event, fixtureId) => {
         try {
             const fs = await import('fs');
-            const path = await import('path');
-            // WAVE 1116: Use PATHFINDER-resolved path
-            const userPath = getCustomLibPath();
-            if (!fs.existsSync(userPath)) {
-                return { success: false, error: 'User fixtures folder does not exist' };
+            const fixturesPath = getFixturesPath();
+            if (!fs.existsSync(fixturesPath)) {
+                return { success: false, error: 'Fixtures folder does not exist' };
             }
-            // Find the fixture file
-            const files = fs.readdirSync(userPath);
-            let fileToDelete = null;
-            for (const file of files) {
-                if (!file.endsWith('.json'))
-                    continue;
-                try {
-                    const content = fs.readFileSync(path.join(userPath, file), 'utf-8');
-                    const fixture = JSON.parse(content);
-                    if (fixture.id === fixtureId) {
-                        fileToDelete = path.join(userPath, file);
-                        break;
-                    }
-                }
-                catch (e) {
-                    continue;
-                }
-            }
+            const allFixtures = await scanFixtureFolderRecursive(fixturesPath);
+            const target = allFixtures.find((f) => f.id === fixtureId);
+            const fileToDelete = target?.filePath ?? null;
             if (!fileToDelete) {
-                return { success: false, error: `Fixture "${fixtureId}" not found in user library` };
+                return { success: false, error: 'Fixture "' + fixtureId + '" not found' };
             }
-            // Delete the file
             fs.unlinkSync(fileToDelete);
-            console.log(`[Library] ðŸ—‘ï¸ WAVE 1113: Deleted user fixture: ${fileToDelete}`);
-            // Rescan to update cache
-            await rescanAllLibraries();
+            console.log('[Library] Deleted: ' + fileToDelete);
             return { success: true, deletedPath: fileToDelete };
         }
         catch (err) {
-            console.error('[Library] âŒ Failed to delete user fixture:', err);
+            console.error('[Library] Failed to delete fixture:', err);
             return { success: false, error: String(err) };
         }
     });
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🧠 WAVE 4549.2: INGENIO IPC BRIDGE
-    // Gestiona archivos .luxingenio en userData/ingenios/{system,user}/
-    // ═══════════════════════════════════════════════════════════════════════════
-    /** Helper: resolve ingenio paths */
     function getIngenioPaths() {
         const { app } = require('electron');
         const path = require('path');

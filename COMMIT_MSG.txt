@@ -1,10 +1,18 @@
-WAVE 7600-7604: Tactical Canvas, Erebus UI fixes, library path attempts
+WAVE 7605: SCORCHED EARTH — Single fixture path, .json only, no factory
 
-Pre-scorched-earth safety commit. Includes:
-- WAVE 7600-7602: Tactical Canvas pan/zoom + centered origin + Spatial Truth
-- WAVE 7603: placeFixture2D isPlaced fix, library pathfinder attempts
-- WAVE 7604: Lasso/Select collision fix, DockRail UI fixes
-- WAVE 7604c: Recursive scan attempt (to be replaced by WAVE 7605)
+Architect-directed unification of the fixture library system:
+- Eliminated factoryLibPath/customLibPath pathfinder (3 candidates → 1 path)
+- Removed all factory seeding logic (no more first-boot copy of .fxt files)
+- Removed librerias/ from extraResources (ships with ZERO factory fixtures)
+- scanFixtureFolderRecursive: .json ONLY, .fxt parsing reserved for OFL import tool
+- rescanAllLibraries(): single recursive scan, no factory+custom merge
+- initializeVaults(): only creates userData/fixtures/ (no factory/custom subfolders)
+- All IPC handlers (list-all, save-user, delete-user, save/delete-definition)
+  now use getFixturesPath() = userData/fixtures/ — dev = prod, no exceptions
+- Backward-compatible: systemFixtures:[] in response, frontend merges normally
+- Fix: ForgeView index.tsx null-safe physics.motorType access (post-save crash)
+
+Result: 1 path, 1 format, 0 factory fixtures, dev = prod.
 
 Generated with [Devin](https://devin.ai)
 

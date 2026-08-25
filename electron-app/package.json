@@ -96,10 +96,6 @@
       {
         "from": "src/core/arsenal/builtins",
         "to": "builtins"
-      },
-      {
-        "from": "../librerias",
-        "to": "librerias"
       }
     ],
     "win": {

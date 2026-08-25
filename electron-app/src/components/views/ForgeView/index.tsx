@@ -57,11 +57,11 @@ const ForgeView: React.FC = () => {
   // Handle save from Forge
   const handleSave = useCallback((
     fixture: FixtureDefinition,
-    physics: PhysicsProfile,
+    physics: PhysicsProfile | null,
     patchData?: { dmxAddress?: number; universe?: number }
   ) => {
     console.log('[ForgeView] 🔨 Fixture forged:', fixture.name)
-    console.log('[ForgeView] 📦 Physics profile:', physics.motorType, 'maxVel:', physics.maxVelocity)
+    console.log('[ForgeView] 📦 Physics profile:', physics?.motorType ?? 'none', 'maxVel:', physics?.maxVelocity ?? 'none')
     
     // If editing, update the existing fixture
     // If new, add to stage (optional, user might just want to export)

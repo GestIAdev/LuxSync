@@ -339,50 +339,42 @@ let customLibPath: string = ''
  * This is the ONLY function that should update fixtureLibrary after save/delete
  */
 async function rescanAllLibraries(): Promise<FixtureLibraryItem[]> {
-  
-  // Scan both libraries
-  // ðŸ›¡ï¸ WAVE 7555: UNBLOCK ALPHA â scanFolder ahora es async.
-  // Promise.all permite que ambas librerÃ­as se escaneen en paralelo
-  // sin bloquear el event loop del main thread.
-  const [factoryDefinitions, customDefinitions] = await Promise.all([
-    fxtParser.scanFolder(factoryLibPath),
-    fxtParser.scanFolder(customLibPath),
-  ])
-  
-  // 🧹 WAVE 671.5: Removed obsolete test_beam debug log (no longer needed)
-  // WAVE 390.5 DEBUG: Log test_beam specifically (it has physics)
-  // const testBeam = customDefinitions.find(f => f.name.toLowerCase().includes('test'))
-  // if (testBeam) {
-  //   console.log('[Library] 🔬 test_beam fixture data:', {
-  //     name: testBeam.name,
-  //     channelCount: testBeam.channelCount,
-  //     hasChannels: !!testBeam.channels,
-  //     channelsLength: testBeam.channels?.length,
-  //     firstChannel: testBeam.channels?.[0],
-  //     hasPhysics: !!testBeam.physics,
-  //     physics: testBeam.physics
-  //   })
-  // } else {
-  //   console.log('[Library] ℹ️ test_beam not found in custom folder')
-  // }
-  
-  // Merge: custom overrides factory by name (not ID, IDs are unreliable for .fxt files)
-  const mergedLibrary: FixtureLibraryItem[] = [...factoryDefinitions]
-  for (const customFix of customDefinitions) {
-    // Match by name (case-insensitive) since IDs are generated
-    const existingIndex = mergedLibrary.findIndex(
-      f => f.name.toLowerCase() === customFix.name.toLowerCase()
-    )
-    if (existingIndex >= 0) {
-      mergedLibrary[existingIndex] = customFix // Custom overrides factory
-    } else {
-      mergedLibrary.push(customFix) // New custom fixture
+  // 🔥 WAVE 7605: SCORCHED EARTH — single path, .json only.
+  // No factory/custom merge. No .fxt scanning. Just read .json files
+  // recursively from userData/fixtures/.
+  const fs = await import('fs')
+  const path = await import('path')
+
+  const fixturesPath = customLibPath // WAVE 7605: single path (same as factoryLibPath)
+  const results: FixtureLibraryItem[] = []
+
+  if (fs.existsSync(fixturesPath)) {
+    const scanDir = (dirPath: string) => {
+      const entries = fs.readdirSync(dirPath, { withFileTypes: true })
+      for (const entry of entries) {
+        const fullPath = path.join(dirPath, entry.name)
+        if (entry.isDirectory()) {
+          // Skip legacy subfolders
+          if (entry.name === 'factory' || entry.name === 'custom') continue
+          scanDir(fullPath)
+        } else if (entry.isFile() && entry.name.endsWith('.json')) {
+          try {
+            const content = fs.readFileSync(fullPath, 'utf-8')
+            const fixture = JSON.parse(content)
+            results.push({ ...fixture, filePath: fullPath } as FixtureLibraryItem)
+          } catch {
+            console.warn(`[Library] Skipped corrupt JSON: ${fullPath}`)
+          }
+        }
+        // .fxt files intentionally ignored — only OFL import tool processes them
+      }
     }
+    scanDir(fixturesPath)
   }
-  
-  fixtureLibrary = mergedLibrary
-  setRuntimeFixtureLibrary(mergedLibrary as import('../src/core/library/RuntimeFixtureLibrary').RuntimeFixtureDefinition[])
-  
+
+  fixtureLibrary = results
+  setRuntimeFixtureLibrary(results as import('../src/core/library/RuntimeFixtureLibrary').RuntimeFixtureDefinition[])
+
   return fixtureLibrary
 }
 
@@ -1255,9 +1247,8 @@ function initializeVaults(): void {
     path.join(userData, 'autosave'),
     path.join(userData, 'ingenios', 'system'),
     path.join(userData, 'ingenios', 'user'),
-    // WAVE 7591: Unified fixture nomenclature — replaces librerias/ + fixtures/
-    path.join(userData, 'fixtures', 'factory'),
-    path.join(userData, 'fixtures', 'custom'),
+    // WAVE 7605: Single fixtures path — no factory/custom subfolders
+    path.join(userData, 'fixtures'),
   ]
 
   for (const dir of vaults) {
@@ -1509,146 +1500,38 @@ app.whenReady().then(async () => {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // WAVE 7591: LIBRARY PATHFINDER (PRUNED) + UNIFIED NOMENCLATURE
-  // 🩸 WAVE 7603: LIBRARY RESCUE — added project root candidates for dev mode.
-  // The factory library lives at LuxSync/librerias/ (project root), NOT at
-  // electron-app/librerias/ (which only has barato.json). User fixtures live
-  // at LuxSync/fixtures/ (project root), NOT at userData/fixtures/custom/.
+  // 🔥 WAVE 7605: SCORCHED EARTH — SINGLE SOURCE OF TRUTH
   // ═══════════════════════════════════════════════════════════════════════════
-  // Old 6-fallback pathfinder replaced with strict paths:
-  //   1. process.resourcesPath/librerias (Production bundled)
-  //   2. app.getAppPath()/librerias (Development — electron-app dir)
-  //   3. app.getAppPath()/../librerias (Development — project root) 🩸 WAVE 7603
-  //
-  // Old dual nomenclature (librerias/ + fixtures/) unified under:
-  //   userData/fixtures/factory/  (replaces librerias/ — factory definitions)
-  //   userData/fixtures/custom/   (replaces fixtures/ — user definitions)
-  //   app.getAppPath()/../fixtures/ (Development — project root) 🩸 WAVE 7603
+  // NO pathfinder. NO factory library. NO seeding. NO system vs user split.
+  // ONE path: userData/fixtures/ — for ALL fixtures (.json only).
+  // The fxtParser is retained for the OFL import tool but is NEVER used
+  // during live library scanning. Dev = Prod. No exceptions.
   // ═══════════════════════════════════════════════════════════════════════════
 
   const fs = await import('fs')
 
-  // ── 🩸 WAVE 7604d: PRODUCTION-SAFE PATHFINDER
-  // In PRODUCTION (packaged app):
-  //   - process.resourcesPath = <install>/resources/  (extraResources copies librerias/ here)
-  //   - app.getAppPath() = <install>/resources/app.asar  (inside asar — useless for file scanning)
-  //   - app.isPackaged = true
-  // In DEVELOPMENT:
-  //   - process.resourcesPath = node_modules/electron/dist/resources/  (empty)
-  //   - app.getAppPath() = electron-app/dist-electron/  (dir containing main.js)
-  //   - app.isPackaged = false
-  //
-  // Strategy: check process.resourcesPath FIRST (works in both prod & dev if
-  // extraResources is configured). Then add dev-only fallbacks that go up from
-  // dist-electron/ to the project root.
-  const isPackaged = app.isPackaged
-  const candidatePaths: string[] = [
-    path.join(process.resourcesPath, 'librerias'),           // #1: Production (extraResources) + dev fallback
-  ]
-  if (!isPackaged) {
-    // Dev-only: project root has the real library (16 files).
-    // app.getAppPath() = electron-app/dist-electron/, so ../../ = project root.
-    candidatePaths.push(
-      path.resolve(app.getAppPath(), '..', '..', 'librerias'),  // #2: project root (16 files)
-      path.resolve(app.getAppPath(), '..', 'librerias'),        // #3: electron-app/ (1 stray file — last resort)
-    )
-  }
-
-  let factoryLibraryPath: string = ''
-  for (const candidate of candidatePaths) {
-    if (fs.existsSync(candidate)) {
-      const files = fs.readdirSync(candidate).filter((f: string) => f.endsWith('.fxt') || f.endsWith('.json'))
-      if (files.length > 0) {
-        factoryLibraryPath = candidate
-        break
-      }
-    }
-  }
-
-  if (!factoryLibraryPath) {
-    console.error('[Library] ⛔ CRITICAL: No system library found!')
-    console.error('[Library] ⛔ Candidates searched:', candidatePaths)
-    factoryLibraryPath = candidatePaths[0] // Fallback for error display
-  }
-
-  // ── 🩸 WAVE 7604c: SIMPLIFIED — just scan userData/fixtures/ directly.
-  // The old custom/ subfolder caused 7 of 11 user fixtures to be invisible
-  // because they lived in fixtures/ (direct) but the IPC only scanned custom/.
-  // Now customLibraryPath = userData/fixtures/ — readdirSync only reads direct
-  // files (subdirectories like custom/ and factory/ are skipped by the .json filter).
   const userDataPath = app.getPath('userData')
-  const factoryUserDataPath = path.join(userDataPath, 'fixtures', 'factory')
-  let customLibraryPath = path.join(userDataPath, 'fixtures')
+  const fixturesPath = path.join(userDataPath, 'fixtures')
 
-  // 🩸 WAVE 7603: In development, user fixtures may live at the project root
-  // (LuxSync/fixtures/). Seed them into userData/fixtures/ on first boot.
-  // 🩸 WAVE 7604d: Only seed in DEV — in production there's no project root,
-  // and user fixtures already live in userData/fixtures/ (persisted across updates).
-  if (!isPackaged) {
-    const projectRootFixturesPath = path.resolve(app.getAppPath(), '..', '..', 'fixtures')
-    if (fs.existsSync(projectRootFixturesPath)) {
-      const userFiles = fs.readdirSync(projectRootFixturesPath).filter(
-        (f: string) => f.endsWith('.json') && f.startsWith('user-')
-      )
-      if (userFiles.length > 0) {
-        // Seed userData/fixtures/ from project root (copy any missing files)
-        let copiedCount = 0
-        for (const file of userFiles) {
-          const destPath = path.join(customLibraryPath, file)
-          if (!fs.existsSync(destPath)) {
-            fs.copyFileSync(
-              path.join(projectRootFixturesPath, file),
-              destPath
-            )
-            copiedCount++
-          }
-        }
-        if (copiedCount > 0) {
-          console.log(`[Library] 📦 Seeded ${copiedCount} user fixtures → userData/fixtures/`)
-        }
-      }
-    }
+  // Ensure the single fixtures directory exists
+  if (!fs.existsSync(fixturesPath)) {
+    fs.mkdirSync(fixturesPath, { recursive: true })
   }
 
-  // WAVE 7591: Copy factory fixtures into userData/fixtures/factory/ on first boot
-  // (seeds the writable factory copy so users can inspect/reset definitions)
-  if (fs.existsSync(factoryLibraryPath)) {
-    const existingFactoryFiles = fs.existsSync(factoryUserDataPath)
-      ? fs.readdirSync(factoryUserDataPath).filter((f: string) => f.endsWith('.fxt') || f.endsWith('.json'))
-      : []
-    if (existingFactoryFiles.length === 0) {
-      const factoryFiles = fs.readdirSync(factoryLibraryPath)
-      let copiedCount = 0
-      for (const file of factoryFiles) {
-        if (file.endsWith('.fxt') || file.endsWith('.json')) {
-          fs.copyFileSync(
-            path.join(factoryLibraryPath, file),
-            path.join(factoryUserDataPath, file)
-          )
-          copiedCount++
-        }
-      }
-      if (copiedCount > 0) {
-        console.log(`[Library] 📦 Seeded ${copiedCount} factory fixtures → userData/fixtures/factory/`)
-      }
-    }
-  }
+  // WAVE 7605: Both paths point to the SAME directory. No factory, no custom.
+  factoryLibPath = fixturesPath
+  customLibPath = fixturesPath
 
-  // WAVE 390.5: Store paths globally for rescanAllLibraries()
-  // 🩸 WAVE 7604c: customLibPath now = userData/fixtures/ (was userData/fixtures/custom/)
-  // factoryLibPath = bundled factory library (resources/librerias in prod, project root in dev)
-  // customLibPath = userData/fixtures/ (user's custom definitions, recursive scan)
-  factoryLibPath = factoryLibraryPath
-  customLibPath = customLibraryPath
+  // Configure FXTParser with the single path (for OFL import tool only)
+  fxtParser.setLibraryPath(fixturesPath)
 
-  // WAVE 387 STEP 3: Configure FXTParser with custom library path
-  fxtParser.setLibraryPath(customLibraryPath)
-  
-  // WAVE 390.5: Use unified rescanAllLibraries() for initial load
+  // WAVE 390.5: Rescan to populate the in-memory cache
   await rescanAllLibraries()
-  
+
   if (fixtureLibrary.length === 0) {
-    console.warn('[Library] ⚠️ No fixture definitions found in any library')
+    console.log('[Library] No fixtures found — user starts with an empty library')
+  } else {
+    console.log(`[Library] Loaded ${fixtureLibrary.length} fixtures from ${fixturesPath}`)
   }
   
   // ═══════════════════════════════════════════════════════════════════════════

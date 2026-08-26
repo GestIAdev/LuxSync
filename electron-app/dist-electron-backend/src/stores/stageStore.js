@@ -432,6 +432,10 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
         // Object.assign mutates in place - shallow comparison misses it
         const updatedFixture = { ...showFile.fixtures[fixtureIndex], ...updates };
         showFile.fixtures[fixtureIndex] = updatedFixture;
+        // WAVE 7631-DIAG: Trace position edits to find the Amnesia Bug culprit
+        if (updates.position) {
+            console.log(`[updateFixture] 📝 ${id} position →`, updates.position, '| caller:', new Error().stack?.split('\n')[2]?.trim());
+        }
         get()._syncDerivedState();
         get()._setDirty();
         // WAVE 7631: Sync position/rotation/orientation changes to the backend.
@@ -630,6 +634,9 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
     syncFixturesFromTruth: (truthFixtures) => {
         const { showFile } = get();
         if (showFile) {
+            // WAVE 7631-DIAG: Trace when syncFixturesFromTruth fires
+            console.log(`[syncFixturesFromTruth] 🔄 FIRED! truth=${truthFixtures.length} current=${showFile.fixtures.length} | caller:`, new Error().stack?.split('\n')[2]?.trim());
+            truthFixtures.slice(0, 3).forEach(f => console.log(`  truth ${f.id}: pos=`, f.position));
             // WAVE 7631: MERGE instead of blind overwrite.
             // The previous code blindly replaced all fixtures with the backend's
             // truth data, which has STALE positions (the backend was hydrated on
@@ -967,7 +974,7 @@ export function setupStageStoreListeners() {
     if (!lux?.stage?.onLoaded)
         return () => { };
     const unsubscribe = lux.stage.onLoaded((data) => {
-        console.log('[stageStore] 📨 Received show from main process:', data.showFile.name);
+        console.log('[stageStore] 📨 Received show from main process:', data.showFile.name, '| caller:', new Error().stack?.split('\n')[2]?.trim());
         console.log('[stageStore] 📂 File path:', data.filePath || '(active)');
         if (data.migrated) {
             console.log('[stageStore] 🔄 Show was migrated from legacy format');

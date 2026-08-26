@@ -1,21 +1,34 @@
-WAVE 7631-DIAG: Add diagnostic logs to trace Amnesia Bug culprit
+WAVE 7632: Fix Amnesia Bug — last-active-show pointer file
 
-The save works (logs confirm), but the in-memory position reverts to
-the old value after saving. Added diagnostic console.logs to trace
-exactly what overwrites the position:
+The diagnostic logs revealed the true root cause:
 
-1. updateFixture — logs position edits with caller stack trace
-2. syncFixturesFromTruth — logs when it fires with truth positions
-3. onLoaded listener — logs when show is reloaded from backend
-4. FixtureInspector — logs what position it reads from the store
+  Save writes to: 6testNUEVO.v2.luxshow ✓
+  loadActive loads from: current-show.v2.luxshow ✗ (DIFFERENT FILE!)
 
-User should:
-1. Edit a fixture's position (e.g. Y from 4 to 6)
-2. Click Save
-3. Re-select the fixture
-4. Check console for the sequence of logs
+The user opened a named show file (6testNUEVO.v2.luxshow), edited
+positions, and saved. The save correctly wrote to the named file.
+But on app restart, loadActive() always loads current-show.v2.luxshow
+(the default active show), which has the OLD positions. There was no
+mechanism to track which named show was last active.
 
-The logs will reveal which code path overwrites the position back to 4.
+Fix: Added a last-active-show.json pointer file in the shows directory.
+
+1. StagePersistence.getActiveShowPath() — now checks the pointer file
+   first. If it exists and points to a valid file, returns that path.
+   Otherwise falls back to current-show.v2.luxshow.
+
+2. StagePersistence.saveShow() — after saving, writes the target path
+   to the pointer file. So the next loadActive() picks up the right
+   file.
+
+3. StagePersistence.loadShow() — after loading, writes the loaded path
+   to the pointer file.
+
+4. StageIPCHandlers load/loadActive — now send the actual filePath in
+   the lux:stage:loaded event. Without this, the frontend defaults
+   showFilePath to 'active', causing saves to go to the wrong file.
+
+Also removed the WAVE 7631-DIAG diagnostic logs (culprit found).
 
 Generated with [Devin](https://devin.ai)
 

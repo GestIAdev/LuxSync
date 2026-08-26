@@ -68,9 +68,9 @@ export function setupStageIPCHandlers(getMainWindow: () => BrowserWindow | null)
    */
   ipcMain.handle('lux:stage:load', async (_event, filePath?: string) => {
     console.log('[StageIPC] Load show:', filePath || '(active)')
-    
+
     const result = await stagePersistence.loadShow(filePath)
-    
+
     if (result.success && result.showFile) {
       // F1: Hydrate backend BEFORE notifying renderer — eliminates round-trip race
       hydrateBackendFromShow(result.showFile)
@@ -79,8 +79,13 @@ export function setupStageIPCHandlers(getMainWindow: () => BrowserWindow | null)
       const mainWindow = getMainWindow()
       if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
         try {
+          // WAVE 7632: Send the actual filePath so the frontend knows which
+          // file was loaded. Without this, showFilePath defaults to 'active'
+          // and saves go to current-show.v2.luxshow instead of the named file.
+          const activePath = filePath || stagePersistence.getActiveShowPath()
           mainWindow.webContents.send('lux:stage:loaded', {
             showFile: result.showFile,
+            filePath: activePath,
             migrated: result.migrated,
             warnings: result.warnings
           })
@@ -89,13 +94,14 @@ export function setupStageIPCHandlers(getMainWindow: () => BrowserWindow | null)
         }
       }
     }
-    
+
     return result
   })
 
   /**
    * Load the active show (called at startup)
    * WAVE 4718: Emits lux:stage:loaded broadcast so setupStageStoreListeners hydrates the store
+   * WAVE 7632: Now sends filePath in the event so frontend saves to the right file.
    */
   ipcMain.handle('lux:stage:loadActive', async () => {
     // 'Load active show' log silenced
@@ -108,8 +114,11 @@ export function setupStageIPCHandlers(getMainWindow: () => BrowserWindow | null)
       const mainWindow = getMainWindow()
       if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
         try {
+          // WAVE 7632: Send the actual filePath (from the pointer file or default)
+          const activePath = stagePersistence.getActiveShowPath()
           mainWindow.webContents.send('lux:stage:loaded', {
             showFile: result.showFile,
+            filePath: activePath,
             migrated: result.migrated,
             warnings: result.warnings
           })

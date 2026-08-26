@@ -134,8 +134,16 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
     setViewMode(mode)
     // Sincronizar radarModeOverride en el store para que KinRadarViewport
     // monte el pad correcto. 'spatial' activa el IK 3D; el resto = clásico.
-    setRadarModeOverride(mode === 'spatial' ? 'spatial' : null)
-  }, [setRadarModeOverride])
+    const isSpatial = mode === 'spatial'
+    setRadarModeOverride(isSpatial ? 'spatial' : null)
+
+    // WAVE 7613: Al salir del modo spatial, limpiar targetX/Y/Z del programmerStore.
+    // Si no lo hacemos, ProgrammerAetherBridge seguirá inyectando targets espaciales
+    // en el arbiter aunque el operador haya cambiado al radar clásico (pan/tilt).
+    if (!isSpatial && selectedIds.length > 0) {
+      useProgrammerStore.getState().clearSpatialTargets(selectedIds)
+    }
+  }, [setRadarModeOverride, selectedIds])
 
   const handleUnlockKinetics = useCallback(() => {
     // 🔬 WAVE 6020 DIAG: Logging completo del Unlock

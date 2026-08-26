@@ -224,11 +224,23 @@ export const KinRadarViewport: React.FC = () => {
   }, [handlePanTiltChange])
 
   const handleTargetChange = useCallback((t: Target3D) => {
-    // WAVE 4884 Fase 1A: canal único — solo movementStore.
-    // setManualOverrideForFixtures(true) fue eliminado: activaba el guard de
-    // KineticsBridge que silenciaba la propia emisión del target (Dead Loop).
-    // Con Aether L2 la supremacía IK espacial es automática.
+    // WAVE 7613: Dual-channel dispatch.
+    //
+    // 1. movementStore.setSpatialTarget(t) — keeps the UI crosshair position
+    //    and feeds KineticsBridge._flushSpatial() for fan sub-target computation
+    //    and spatial distance scale setup in the backend.
+    //
+    // 2. programmerStore.setSpatialPosition(t) — writes targetX/Y/Z (camelCase)
+    //    to fixtureOverrides for ALL active fixtures. ProgrammerAetherBridge
+    //    extracts these at 44Hz and injects them into NodeArbiter._manualOverrides
+    //    as `targetX` (camelCase), which NodeResolver._writeNode() reads via
+    //    CH_TARGET_X = 'targetX' to trigger the IK solve path.
+    //
+    // This dual route replaces the broken applySpatialTarget-only path
+    // (WAVE 7612 forensic: arbiter stored target_x snake_case but never
+    // propagated it to the result record, so NodeResolver never saw it).
     setSpatialTarget(t)
+    useProgrammerStore.getState().setSpatialPosition(t)
   }, [setSpatialTarget])
 
   const handleFanModeChange = useCallback((mode: SpatialFanMode) => {

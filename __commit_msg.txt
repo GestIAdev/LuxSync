@@ -1,23 +1,36 @@
-WAVE 7611: Hyperion Spatial Radar unlock
+WAVE 7613: Spatial Radar Programmer Route — wire UI to programmerStore
 
-Remove the intentional UI freeze on the SPATIAL radar tab. The calibration
-pipeline was fully repaired in WAVE 7610 (16-bit IK, live hot-reload,
-node.ikCalibration populated), so the "frozen until calibration" safeguard
-is no longer necessary.
+Following the WAVE 7612 forensic audit, the applySpatialTarget engine route
+was found broken: the arbiter stored target_x (snake_case) in
+_motorKineticOverrides but never propagated it to the result record, so
+NodeResolver never saw targetX (camelCase) and the IK path was never taken.
 
-- KineticsCathedral.tsx: Remove disabled attribute, frozen class, and
-  [CALIBRATION REQ] lock label from the SPATIAL paradigm button
-- KineticsCathedral.css: Remove .kc-paradigm-btn--frozen and
-  .kc-paradigm-btn__lock styles
+This commit implements Option B from the forensic report: wire the
+SpatialTargetPad directly to programmerStore.setSpatialPosition(), which
+writes targetX/Y/Z (camelCase) to fixtureOverrides. ProgrammerAetherBridge
+extracts these at 44Hz and injects them into NodeArbiter._manualOverrides
+as targetX (camelCase), which NodeResolver reads via CH_TARGET_X to
+trigger the IK solve path.
 
-The SpatialTargetPad already:
-- Reads stage dimensions dynamically from stageStore (adapts to 50x25x15m)
-- Maps pad X to world X (-width/2 to +width/2)
-- Maps pad Y to world Z (-depth/2 to +depth/2)
-- Maps slider to world Y (0 to height)
-- Dispatches Target3D via setSpatialTarget to KineticsBridge to Aether IPC
+Changes:
+- KinRadarViewport.tsx: handleTargetChange now calls both
+  movementStore.setSpatialTarget(t) [for UI/fan] AND
+  programmerStore.setSpatialPosition(t) [for IK engine]
+- KineticsCathedral.tsx: handleViewMode clears programmerStore
+  spatial targets when leaving SPATIAL mode, preventing ProgrammerAetherBridge
+  from injecting stale targets after switching to classic radar
 
-No new wiring needed — the pipeline was already built, just locked.
+Pipeline (repaired):
+  SpatialTargetPad drag
+    -> movementStore.setSpatialTarget()     [UI crosshair + fan sub-targets]
+    -> programmerStore.setSpatialPosition() [targetX/Y/Z to fixtureOverrides]
+    -> ProgrammerAetherBridge.extractKinetic() at 44Hz
+    -> ch['targetX'] = ov.targetX           [camelCase, matches CH_TARGET_X]
+    -> IPC: lux:aether:setManualOverrides
+    -> arbiter.setManualOverride(nodeId, { targetX, targetY, targetZ })
+    -> arbiter.arbitrate() -> record['targetX'] = manual['targetX']
+    -> NodeResolver: channelValues['targetX'] !== undefined -> IK PATH
+    -> solveInto() -> DMX pan/tilt -> moving head moves
 
 Generated with [Devin](https://devin.ai)
 

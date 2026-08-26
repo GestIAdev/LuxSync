@@ -21,6 +21,8 @@ interface FixtureInspectorProps {
 
 export const FixtureInspector: React.FC<FixtureInspectorProps> = ({ fixtureId }) => {
   const fixture = useStageStore(s => s.fixtures.find(f => f.id === fixtureId))
+  // WAVE 7631-DIAG: Log what position the inspector reads
+  console.log(`[FixtureInspector] 📖 ${fixtureId} position=`, fixture?.position)
   const updateFixturePosition = useStageStore(s => s.updateFixturePosition)
   const updateFixture = useStageStore(s => s.updateFixture)
   const setFixtureZone = useStageStore(s => s.setFixtureZone)

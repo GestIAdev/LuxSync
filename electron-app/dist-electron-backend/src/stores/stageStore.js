@@ -434,6 +434,19 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
         showFile.fixtures[fixtureIndex] = updatedFixture;
         get()._syncDerivedState();
         get()._setDirty();
+        // WAVE 7631: Sync position/rotation/orientation changes to the backend.
+        // Without this, the backend's TitanOrchestrator keeps STALE positions
+        // from load time. When useSeleneTruth detects a count mismatch, it
+        // calls syncFixturesFromTruth which would overwrite the frontend's
+        // edited positions with the backend's stale data → Amnesia Bug.
+        if (updates.position || updates.rotation || updates.orientation) {
+            const lux = window.lux;
+            if (lux?.aether?.setFixtures) {
+                const allFixtures = get().fixtures;
+                lux.aether.setFixtures(allFixtures, null)
+                    .catch((err) => console.warn('[updateFixture] Backend sync failed:', err));
+            }
+        }
     },
     updateFixturePosition: (id, position) => {
         const { stage } = get();
@@ -617,15 +630,44 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
     syncFixturesFromTruth: (truthFixtures) => {
         const { showFile } = get();
         if (showFile) {
-            showFile.fixtures = truthFixtures.map(f => ({
-                ...f,
-                id: f.id,
-                name: f.name || 'Backend Fixture',
-                position: f.position || { x: 0, y: 0, z: 0 }
-            }));
+            // WAVE 7631: MERGE instead of blind overwrite.
+            // The previous code blindly replaced all fixtures with the backend's
+            // truth data, which has STALE positions (the backend was hydrated on
+            // load and position edits in the UI were never synced back). This
+            // caused the "Amnesia Bug": user edits position to 6, saves, then
+            // syncFixturesFromTruth overwrites it back to 4 (the backend's stale
+            // value from load time).
+            //
+            // Now we MERGE: for fixtures that exist in BOTH frontend and backend,
+            // keep the FRONTEND version (it has the user's edits). Only add
+            // fixtures that exist in the backend but not the frontend, and remove
+            // fixtures that exist in the frontend but not the backend.
+            const existingMap = new Map(showFile.fixtures.map(f => [f.id, f]));
+            const truthIds = new Set(truthFixtures.map(f => f.id));
+            const merged = truthFixtures.map(f => {
+                const existing = existingMap.get(f.id);
+                if (existing) {
+                    // Keep frontend version — it has the user's position edits.
+                    // Only update fields the backend is authoritative for (e.g. live
+                    // physics state if needed in the future).
+                    return existing;
+                }
+                // New fixture from backend — use backend data
+                return {
+                    ...f,
+                    id: f.id,
+                    name: f.name || 'Backend Fixture',
+                    position: f.position || { x: 0, y: 0, z: 0 }
+                };
+            });
+            // Note: fixtures that exist in frontend but NOT in backend are dropped
+            // by this merge. This is intentional — the backend is the source of
+            // truth for fixture COUNT. But their positions are preserved for the
+            // ones that survive.
+            showFile.fixtures = merged;
             set({ fixtures: [...showFile.fixtures] });
             get()._syncDerivedState();
-            console.log(`[stageStore] 🔄 Censo Sincronizado desde el Backend: ahora hay ${truthFixtures.length} fixtures.`);
+            console.log(`[stageStore] 🔄 Censo Sincronizado desde el Backend (MERGE): ${truthFixtures.length} fixtures.`);
         }
     },
     // ═══════════════════════════════════════════════════════════════════════

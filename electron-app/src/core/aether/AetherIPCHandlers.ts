@@ -834,6 +834,18 @@ export function registerAetherIPCHandlers(): void {
         arbiter.setManualPatternLock(nodeIds)
 
         aetherKineticEngine.setManualKinetics(nodeIds, nativePattern, speedNorm, amplitudeNorm, fanNorm, arbiter, mountOrientations)
+
+        // WAVE 7626: Reset the AetherSafetyMiddleware velocity-clamp state for
+        // all affected nodes. Without this, the clamp's KS_LAST_PAN/TILT is
+        // stuck at the old offset-polluted position and slowly tracks back to
+        // the new pure-IK + EMA-smoothed position, causing the "airbag panic"
+        // desync where fixtures point randomly at the ceiling/sides.
+        try {
+          const sm = getTitanOrchestrator().getAetherResolver().getSafetyMiddleware()
+          if (sm) {
+            for (const nodeId of nodeIds) sm.resetKineticState(nodeId)
+          }
+        } catch { /* resolver/middleware not ready — EMA handles smoothing */ }
       } catch (err) {
         console.error('[AetherIPC] setManualPattern error:', err)
       }

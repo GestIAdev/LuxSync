@@ -153,6 +153,21 @@ export class AetherSafetyMiddleware {
     for (const state of this._kineticState.values()) state[KS_INIT] = 0
   }
 
+  /**
+   * WAVE 7626: Reset the kinetic velocity-clamp state for a single node.
+   * Called when a manual pattern is switched (setManualKinetics) to let the
+   * fixture snap to the new pure-IK + EMA-smoothed position without the
+   * velocity clamp fighting the transition. Without this, the clamp's
+   * KS_LAST_PAN/TILT is stuck at the old offset-polluted value and slowly
+   * tracks back, causing the "airbag panic" desync.
+   */
+  resetKineticState(nodeId: NodeId): void {
+    const state = this._kineticState.get(nodeId)
+    if (state) {
+      state[KS_INIT] = 0
+    }
+  }
+
   // ═════════════════════════════════════════════════════════════════════════
   // FASE 0: PRE-RESOLVE — Aduana Output Gate
   // ═════════════════════════════════════════════════════════════════════════

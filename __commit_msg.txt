@@ -1,35 +1,39 @@
-WAVE 7624: Defeat the final bosses — IK flip + ceiling spike
+WAVE 7626: The Final Polish — DMX clamp + EMA smoothing + airbag reset
 
-Bug 1: IK Auto-Flip (Teleportation Ghost)
-- Root cause: solveInto's resolveShortestPanPath uses currentPanDMX to
-  choose between Solution A (normal) and Solution B (flipped ±360°).
-  The resolver fed node.currentPosition.pan (the OFFSET-POLLUTED value)
-  as currentPanDMX. When the L0 pan_offset pushed the physical head
-  past the midpoint, the next tick's solver saw the flipped solution as
-  mathematically closer and triggered a 180° jump.
-- Fix: Added _ikPurePanMemory Map<NodeId, number> in NodeResolver. After
-  solveInto, the PURE IK pan (before any offset) is saved. On the next
-  tick, this pure value is passed as currentPanDMX instead of the
-  polluted currentPosition.pan. The solver's flip heuristic now only
-  remembers the pure 3D target trajectory, not the orbital offset.
-  currentPosition.pan still receives the offset-polluted safePan for
-  the UI/RELEASE engine — only the solver's memory is isolated.
+Three fixes addressing the clipping and airbag panic issues identified
+by forensic report WAVE 7625:
 
-Bug 2: Ceiling Spike on Pattern Switch
-- Root cause: setManualKinetics resets _phaseMap to 0 on every pattern
-  change. The pattern function at phase=0 produces its initial position,
-  causing a full-amplitude offset in a single frame (up to ~64 DMX steps
-  for tilt). For ceiling fixtures with tilt inversion, this spikes to
-  the ceiling.
-- Fix: Added _offsetFadeIn Map<NodeId, number> in AetherKineticEngine.
-  Reset to 0 on every setManualKinetics call. In tick(), ramps from 0
-  to 1 over ~1 second (using real dtSeconds). Multiplied into the
-  pan_offset/tilt_offset output in IK mode only, smoothly blending the
-  new pattern's offsets from zero to full amplitude. Classic mode base
-  computation is unaffected.
+1. DMX DELTA CLAMP (NodeResolver.ts)
+   - Added MAX_OFFSET_DMX = 100 (±100 DMX, ~40% of 255 range) and
+     MAX_OFFSET_DMX_16 = 25700 for 16-bit path.
+   - In _writeNodeIK, after computing panDelta/tiltDelta, clamp to
+     ±MAX_OFFSET_DMX before adding to logicalPan/logicalTilt.
+   - This prevents distScale amplification (up to 2.0x) from pushing
+     the L2 pattern offsets into the 0/255 boundary clamp, which
+     caused the "20% clip" where fixtures stuck at the sweep range
+     end for a couple of seconds before joining the return path.
 
-Both fixes are zero-alloc (pre-allocated Maps) and preserve the WAVE
-7621 offset-fusion architecture.
+2. EMA OFFSET SMOOTHING (AetherKineticEngine.ts)
+   - Replaced the WAVE 7624 _offsetFadeIn (reset to 0 + linear ramp)
+     with an Exponential Moving Average (_smoothOffsetX/_smoothOffsetY).
+   - EMA_ALPHA = 0.05 → time constant ~20 frames ≈ 0.45s at 44Hz.
+   - The EMA smoothly interpolates from the previous offset value to
+     the new pattern's target, acting as a low-pass filter. Pattern
+     switches, amplitude changes, and phase resets all produce a
+     smooth transition with no single-frame spike.
+   - The fade-in's step function (reset to 0) triggered the
+     AetherSafetyMiddleware velocity clamp, causing the "airbag panic"
+     where fixtures pointed randomly at the ceiling/sides.
+
+3. AIRBAG STATE RESET (AetherSafetyMiddleware.ts + AetherIPCHandlers.ts)
+   - Added resetKineticState(nodeId) method to AetherSafetyMiddleware
+     that sets KS_INIT = 0, letting the fixture snap to a new position
+     without the velocity clamp fighting the transition.
+   - Added getSafetyMiddleware() getter to NodeResolver.
+   - In setManualPattern IPC handler, after setManualKinetics, calls
+     resetKineticState for all affected nodes. This prevents the
+     clamp's KS_LAST_PAN/TILT from being stuck at the old offset-
+     polluted position and slowly tracking back.
 
 Generated with [Devin](https://devin.ai)
 

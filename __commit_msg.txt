@@ -1,25 +1,21 @@
-WAVE 7622: Spatial gate — prevent setManualPattern from sabotaging IK
+WAVE 7622.1: Fix stale variable order in arbiter fusion loop
 
-When a manual pattern (sweep, circle, etc.) was activated from the UI,
-setManualPattern forcefully injected pan_base/tilt_base into
-_manualOverrides, even when a spatial target was actively commanding
-the fixtures via _motorKineticOverrides. This dropped the fixtures
-out of IK mode and forced them to a flat 0.5/0.5 anchor.
+The WAVE 7621 Fix C block (copying targetX/Y/Z and pan_offset/tilt_offset
+from motor to record) was running AFTER the panOffset/tiltOffset variables
+were captured from the record. In IK mode:
 
-Root cause: The anchor resolution loop (lines 730-796) checked
-motor['pan_base']/motor['tilt_base'] for the IK anchor, but after
-WAVE 7621 Phase 3, the motor override in IK mode contains
-targetX/Y/Z + pan_offset/tilt_offset, NOT pan_base/tilt_base. So
-ikPan/ikTilt were null, and the code fell back to 0.5, writing
-pan_base=0.5/tilt_base=0.5 to _manualOverrides — sabotaging the IK.
+1. VMM (L0) is silenced by the L2 SUPREMACY GATE → record['pan_offset']
+   is undefined from the intent bus
+2. panOffset/hasPanOffset captured at line 992 → false (stale)
+3. Fix C copies motor['pan_offset'] to record['pan_offset'] → record updated
+4. Skip check at line 1039 uses hasPanOffset (stale variable) → false
+5. hasBasePan/hasBaseTilt also false (no pan_base/tilt_base in IK mode)
+6. Node is SKIPPED entirely — no fusion happens, no offsets reach resolver
 
-Fix: Added a spatial gate at the top of the per-node anchor loop.
-If motor['targetX'] !== undefined (spatial target active), skip the
-anchor injection entirely (continue). The L2 engine emits
-pan_offset/tilt_offset in IK mode (WAVE 7621 Phase 3), and the IK
-solver handles the center. Only the classic mode path (no spatial
-target) proceeds with the anchor resolution and pan_base/tilt_base
-injection as before.
+Fix: Moved the Fix C block BEFORE the panOffset/tiltOffset read. Now the
+variables capture the motor's offsets, the skip check passes, and the
+node proceeds through the fusion loop. The resolver sees targetX/Y/Z
+(triggers IK path) and pan_offset/tilt_offset (WAVE 7179 post-solve fusion).
 
 Generated with [Devin](https://devin.ai)
 

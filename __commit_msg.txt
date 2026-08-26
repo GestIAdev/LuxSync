@@ -1,23 +1,30 @@
-WAVE 7630: Force Global Save — purge 'Save As' hijack in CommandStrip
+WAVE 7631: Fix Amnesia Bug — syncFixturesFromTruth overwrites edited positions
 
-The Amnesia Bug: changes to fixture coordinates were lost on reload.
+The save was working (logs confirmed), but the in-memory state reverted
+to the old position after saving. Root cause: TWO bugs working together.
 
-Root cause: CommandStrip.handleSave had a conditional branch — when
-showFilePath === 'active' (the default after loadActive), clicking Save
-opened a saveAsDialog instead of calling saveShow(). This saved to a
-user-chosen path (e.g. 'my-show.v2.luxshow') and updated showFilePath
-to that path. The default active show file (current-show.v2.luxshow)
-was NEVER updated. On reload, loadActive() loads from
-current-show.v2.luxshow → stale coordinates.
+Bug 1: syncFixturesFromTruth blind overwrite
+  When useSeleneTruth detected a fixture count mismatch between the
+  frontend and backend, it called syncFixturesFromTruth which blindly
+  replaced ALL fixtures with the backend's truth data. The backend's
+  fixtures had STALE positions (hydrated on load, never updated). This
+  overwrote the user's position edits (6m) with the backend's stale
+  data (4m).
 
-Fix: Purged the conditional. handleSave now unconditionally calls
-await saveShow(), which writes to the active path
-(current-show.v2.luxshow when showFilePath === 'active'). The saveShow
-function already performs a full Global Save of the entire showFile
-(fixtures, groups, scenes, stage, rigs) via atomic write
-(tmp → rename → backup cleanup).
+  Fix: syncFixturesFromTruth now MERGES instead of overwrites. For
+  fixtures that exist in both frontend and backend, it keeps the
+  FRONTEND version (which has the user's edits). Only new fixtures from
+  the backend are added.
 
-Removed the now-unused showFilePath selector from CommandStrip.
+Bug 2: updateFixture never synced to backend
+  When the user edited a fixture position in the UI, updateFixture
+  updated the stageStore but never told the backend. The backend's
+  TitanOrchestrator kept the stale positions from load time. This made
+  Bug 1 worse — the backend's truth data was always stale.
+
+  Fix: updateFixture now calls lux.aether.setFixtures() to sync
+  position/rotation/orientation changes to the backend. This keeps the
+  truth data in sync with the frontend's edits.
 
 Generated with [Devin](https://devin.ai)
 

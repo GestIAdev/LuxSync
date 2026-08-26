@@ -201,7 +201,10 @@ export const ExtrasAggregator: React.FC<ExtrasAggregatorProps> = ({ groups }) =>
   const atmosphereGroups = groups.filter(g => g.family === NodeFamily.ATMOSPHERE)
 
   // B) Canales phantom orfanos de los fixtures seleccionados
-  const orphanPhantoms = useOrphanPhantomChannels(groups)
+  // WAVE 7629 FIX: useOrphanPhantomChannels() takes no arguments — the
+  // previous call passed `groups` which was silently ignored, masking a
+  // signature mismatch.
+  const orphanPhantoms = useOrphanPhantomChannels()
 
   // Nada que renderizar
   if (atmosphereGroups.length === 0 && orphanPhantoms.length === 0) return null

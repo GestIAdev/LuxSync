@@ -1,27 +1,24 @@
-WAVE 7628: Dynamic soft-clipper (tanh compressor) for IK offset fusion
+WAVE 7629: Fix infinite loop in ExtrasAggregator (getSnapshot not cached)
 
-The WAVE 7627 distScale cap fixed the amplification, but the fundamental
-problem remains: when the IK base is off-center (e.g. pan=200) and the
-L2 offset is large (e.g. +63 DMX), the final value (263) mechanically
-clips at 255, truncating the waveform. Hard-clamping creates a pause;
-removing the clamp creates flatlining.
+Two bugs caused the "Maximum update depth exceeded" crash when changing
+fixture X separation:
 
-The Architect's solution: a Dynamic Headroom Compressor using tanh.
+1. UNSTABLE SELECTOR (useOrphanPhantomChannels.ts)
+   The useStageStore selector used `useShallow` with a fallback of
+   `return [] as unknown[]`. This created a NEW empty array on every
+   getSnapshot call. React's useSyncExternalStore detected the
+   reference change and re-rendered, which called getSnapshot again,
+   which returned another new [] — infinite loop.
+   Fix: Replaced useShallow with direct selection of state.fixtures
+   (stable reference between store updates) and a module-level
+   EMPTY_FIXTURES constant for the fallback case. Removed the unused
+   useShallow import.
 
-Math:
-  headroom = (delta > 0) ? (255 - base) : base
-  safeDelta = tanh(|delta| / headroom) * headroom * sign(delta)
-
-- tanh(0) = 0 → small deltas pass through uncompressed (waveform preserved)
-- tanh(1) ≈ 0.76 → delta = headroom compresses to 76% (leaves 24% margin)
-- tanh(∞) = 1 → asymptotically approaches the boundary, never flatlines
-- headroom = 0 (base exactly at 0 or 255) → safeDelta = 0 (no movement)
-
-Implemented in both 8-bit and 16-bit paths of NodeResolver._writeNodeIK.
-The pure IK base (before offset) is saved as the anchor for headroom
-computation. The tanh curve smoothly compresses the delta as it
-approaches the boundary, preserving the waveform shape regardless of
-amplitude or base position.
+2. SIGNATURE MISMATCH (ExtrasAggregator.tsx)
+   useOrphanPhantomChannels(groups) was called with a `groups` argument
+   that the hook doesn't accept (signature is `useOrphanPhantomChannels()`).
+   The extra arg was silently ignored, masking the mismatch.
+   Fix: Removed the `groups` argument from the call site.
 
 Generated with [Devin](https://devin.ai)
 

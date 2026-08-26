@@ -31,7 +31,6 @@
  */
 
 import { useMemo } from 'react'
-import { useShallow } from 'zustand/shallow'
 
 import { useStageStore } from '../stores/stageStore'
 import { useLibraryStore } from '../stores/libraryStore'
@@ -125,6 +124,13 @@ interface RawFixture {
   fixtureDefId?: string
   channels?: RawChannel[]
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STABLE CONSTANTS — avoid creating new array references in selectors
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Module-level frozen empty array — stable reference for useSyncExternalStore. */
+const EMPTY_FIXTURES: readonly unknown[] = Object.freeze([])
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS — extracción defensiva
@@ -229,17 +235,19 @@ function buildOrphanFromChannel(
 export function useOrphanPhantomChannels(): readonly OrphanPhantom[] {
   const selectedIds = useSelectedArray()
 
-  // Selector estable sobre stageFixtures — copia el patrón ya usado en
-  // useCapabilityCells.ts y ExtrasSection.tsx.
-  const stageFixtures = useStageStore(
-    useShallow(state => {
-      if (state.fixtures && state.fixtures.length > 0) return state.fixtures
-      if (state.showFile?.fixtures && state.showFile.fixtures.length > 0) {
-        return state.showFile.fixtures
-      }
-      return [] as unknown[]
-    }),
-  )
+  // Selector estable sobre stageFixtures — WAVE 7629 FIX: replaced useShallow
+  // with direct selection. The previous useShallow + `[] as unknown[]` fallback
+  // created a new array reference on every getSnapshot call, triggering React's
+  // "getSnapshot should be cached" warning → Maximum update depth exceeded.
+  // Now we select state.fixtures directly (stable reference between store
+  // updates) and use a module-level EMPTY_FIXTURES constant for the fallback.
+  const stageFixtures = useStageStore(state => {
+    if (state.fixtures && state.fixtures.length > 0) return state.fixtures
+    if (state.showFile?.fixtures && state.showFile.fixtures.length > 0) {
+      return state.showFile.fixtures
+    }
+    return EMPTY_FIXTURES
+  })
 
   // Solo necesitamos la función — referencia estable.
   const getLibraryFixtureById = useLibraryStore(state => state.getFixtureById)

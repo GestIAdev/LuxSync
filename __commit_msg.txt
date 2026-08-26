@@ -1,34 +1,26 @@
-WAVE 7632: Fix Amnesia Bug — last-active-show pointer file
+WAVE 7633: Fix Amnesia Bug — 2D click resets Y via placeFixture2D
 
-The diagnostic logs revealed the true root cause:
+ROOT CAUSE FOUND: DragDropController2D.handleUp called placeFixture2D
+on EVERY pointer up, even for a simple click-to-select (no drag).
 
-  Save writes to: 6testNUEVO.v2.luxshow ✓
-  loadActive loads from: current-show.v2.luxshow ✗ (DIFFERENT FILE!)
+placeFixture2D → computePlanarPlacement → sets Y to
+DEFAULT_ORIENTATION_HEIGHT[orientation] (e.g. 4 for 'ceiling').
 
-The user opened a named show file (6testNUEVO.v2.luxshow), edited
-positions, and saved. The save correctly wrote to the named file.
-But on app restart, loadActive() always loads current-show.v2.luxshow
-(the default active show), which has the OLD positions. There was no
-mechanism to track which named show was last active.
+So the sequence was:
+1. User edits Y from 4 to 6 in FixtureInspector
+2. User clicks the fixture in 2D to reselect it
+3. handlePointerDown sets dragRef.current
+4. handleUp fires → placeFixture2D → computePlanarPlacement → Y=4
+5. FixtureInspector shows Y=4 again
 
-Fix: Added a last-active-show.json pointer file in the shows directory.
+Fix: handleUp now checks if the fixture ACTUALLY moved before calling
+placeFixture2D. If the drag position equals the fixture's current
+position (within 0.001m tolerance), it skips the placeFixture2D call.
+This preserves Y edits made via the FixtureInspector.
 
-1. StagePersistence.getActiveShowPath() — now checks the pointer file
-   first. If it exists and points to a valid file, returns that path.
-   Otherwise falls back to current-show.v2.luxshow.
-
-2. StagePersistence.saveShow() — after saving, writes the target path
-   to the pointer file. So the next loadActive() picks up the right
-   file.
-
-3. StagePersistence.loadShow() — after loading, writes the loaded path
-   to the pointer file.
-
-4. StageIPCHandlers load/loadActive — now send the actual filePath in
-   the lux:stage:loaded event. Without this, the frontend defaults
-   showFilePath to 'active', causing saves to go to the wrong file.
-
-Also removed the WAVE 7631-DIAG diagnostic logs (culprit found).
+The 3D DragDropController was already safe — it uses
+updateFixturePosition (preserves Y) and checks draggedFixtureRef.current
+which is only set when a real drag starts.
 
 Generated with [Devin](https://devin.ai)
 

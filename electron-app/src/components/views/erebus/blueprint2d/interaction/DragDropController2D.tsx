@@ -234,8 +234,17 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
       const ds = dragRef.current
       const fixture = fixtures.find(f => f.id === ds.fixtureId)
       if (fixture) {
-        // Use placeFixture2D for the unified pipeline
-        placeFixture2D(ds.fixtureId, ds.x, ds.z, fixture.orientation, fixture.rigId)
+        // WAVE 7633: Only call placeFixture2D if the fixture ACTUALLY moved.
+        // Previously, every click (even without dragging) called placeFixture2D
+        // on pointer up, which reset Y to DEFAULT_ORIENTATION_HEIGHT[orientation].
+        // This was the Amnesia Bug: user edits Y to 6 in FixtureInspector,
+        // clicks the fixture in 2D to reselect it, and placeFixture2D resets
+        // Y back to 4 (the default ceiling height).
+        const moved = Math.abs(ds.x - fixture.position.x) > 0.001 ||
+                      Math.abs(ds.z - fixture.position.z) > 0.001
+        if (moved) {
+          placeFixture2D(ds.fixtureId, ds.x, ds.z, fixture.orientation, fixture.rigId)
+        }
       }
       dragRef.current = null
       setDragging(null)

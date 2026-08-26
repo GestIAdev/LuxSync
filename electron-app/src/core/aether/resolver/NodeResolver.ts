@@ -1186,7 +1186,7 @@ export class NodeResolver implements INodeResolver {
       //   console.log(`[WAVE-6020.9-SURVIVAL] NodeResolver ${node.nodeId}: hasSpatialTarget=${hasSpatialTarget} targetX=${channelValues[CH_TARGET_X] ?? 'undefined'} isContinuous=${kineticNode.isContinuous} → ${!kineticNode.isContinuous && hasSpatialTarget ? 'IK-PATH' : 'CLASSIC-PATH'}`)
       // }
       if (!kineticNode.isContinuous && hasSpatialTarget) {
-        this._writeNodeIK(kineticNode, channelValues, baseAddr, buf, calibration, !nodeBlocked)
+        this._writeNodeIK(kineticNode, channelValues, baseAddr, buf, calibration, !nodeBlocked, device.orientation)
         return
       }
       // 🩸 WAVE 6040-DIAG: Diagnostic log para tracear el bug "movers no responden al radar cuando hay color"
@@ -1585,6 +1585,7 @@ export class NodeResolver implements INodeResolver {
     buf: Uint8Array,
     calibration: IDeviceCalibration | undefined,
     nodeWriteEnabled: boolean,
+    deviceOrientation: string | undefined,
   ): void {
     const txRaw = channelValues[CH_TARGET_X]
     if (!Number.isFinite(txRaw)) {
@@ -1670,8 +1671,27 @@ export class NodeResolver implements INodeResolver {
       safeTilt = sm.applyAirbag(this._kineticClampScratch.tilt, false)
     }
 
+    // WAVE 7616: Apply orientation-based tilt inversion for ceiling/truss mounts.
+    // The IK solver (solveInto) computes tilt in a coordinate frame where 0° = straight
+    // down for floor mounts. For ceiling mounts, the physical tilt axis is inverted —
+    // DMX 0 = straight up, DMX 255 = straight down. Without this inversion, ceiling
+    // fixtures point in the opposite direction of the target.
+    // Previously (WAVE 4547.1) this was skipped in the IK path to "avoid double
+    // negation", but the IK solver never applied the inversion internally — only
+    // calibration.tiltInvert (a separate per-fixture flag) was applied. This left
+    // ceiling fixtures uncorrected, requiring a hacky `1.0 - safeTilt` compensation
+    // in the RELEASE snapshot engine (AetherIPCHandlers.ts). Now that the IK path
+    // applies the inversion natively, that hack has been removed.
+    const invertIKTilt = this._shouldInvertClassicKineticAxes(deviceOrientation, node)
+    if (invertIKTilt) {
+      safeTilt = sanitizeDmxByte(255 - safeTilt)
+    }
+
     // WAVE 4616: Pre-Vis rescue — siempre actualizar currentPosition con el
     // resultado matemático real, aunque la salida física esté desarmada.
+    // WAVE 7616: currentPosition ahora refleja el valor POST-INVERSIÓN, para
+    // que el snapshot del RELEASE engine capture el DMX correcto sin necesitar
+    // la compensación `1.0 - safeTilt` que existía antes.
     node.currentPosition.pan  = safePan  / 255
     node.currentPosition.tilt = safeTilt / 255
 
@@ -1711,6 +1731,11 @@ export class NodeResolver implements INodeResolver {
     // Clamp 16-bit values to valid range
     safePan16 = Math.max(0, Math.min(65535, Math.round(safePan16)))
     safeTilt16 = Math.max(0, Math.min(65535, Math.round(safeTilt16)))
+
+    // WAVE 7616: Apply the same orientation inversion to 16-bit tilt.
+    if (invertIKTilt) {
+      safeTilt16 = Math.max(0, Math.min(65535, 65535 - safeTilt16))
+    }
 
     for (let ci = 0; ci < node.channels.length; ci++) {
       const chDef  = node.channels[ci]

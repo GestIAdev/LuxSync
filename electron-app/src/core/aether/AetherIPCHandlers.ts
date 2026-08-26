@@ -571,12 +571,13 @@ export function registerAetherIPCHandlers(): void {
                 (installation === 'ceiling' || installation === 'truss-front' || installation === 'truss-back') ||
                 (Number.isFinite(pitch) && Math.abs(Math.abs(pitch as number) - 180) < 0.001)
 
-              // Solo aplicar traducción IK→Clásico si el fixture venía de modo IK.
-              // En modo VMM clásico NO hay que invertir: NodeResolver ya lo hace.
+              // WAVE 7616: La compensación `1.0 - safeTilt` fue ELIMINADA.
+              // Ahora el IK path (NodeResolver._writeNodeIK) aplica la inversión
+              // de orientación nativamente, por lo que currentPosition.tilt ya
+              // contiene el valor DMX correcto (post-inversión). Aplicar la
+              // compensación aquí causaría doble inversión durante el fade.
+              // El flag isClassicInverted se conserva solo para logging.
               const wasInIKMode = ikActiveNodes.has(nodeId)
-              if (isClassicInverted && wasInIKMode) {
-                safeTilt = 1.0 - safeTilt
-              }
 
               if (Number.isFinite(safePan) && Number.isFinite(safeTilt)) {
                 arbiter.setManualOverride(nodeId, { pan: safePan, tilt: safeTilt })

@@ -351,6 +351,14 @@ class ProgrammerAetherBridgeClass {
   private _intervalId: ReturnType<typeof setInterval> | null = null
   private _started = false
 
+  // WAVE 7616: Cache del último payload enviado para suprimir IPC spam.
+  // Cuando el SpatialTargetPad está idle (sin drag), el bridge a 44Hz extrae
+  // los mismos targetX/Y/Z del programmerStore y los re-envía sin cambios.
+  // Esto genera un flujo infinito de setManualOverride MERGE en el backend.
+  // Comparando el payload serializado con el último enviado, podemos saltar
+  // el IPC cuando nada ha cambiado y simplemente drenar la dirty queue.
+  private _lastPayloadHash: string = ''
+
   /**
    * Inicia el puente. Sólo puede llamarse una vez.
    * Debe llamarse tras la creación del renderer (después de que
@@ -564,6 +572,56 @@ class ProgrammerAetherBridgeClass {
 
     const requests: Array<Promise<unknown>> = []
 
+    // Helper: consumir TODAS las dirty queues (legacy + cell) tras éxito.
+    // WAVE 4724: las tres queues son independientes y se drenan por separado.
+    // WAVE 7616: Movido ANTES del value-equality guard para que el guard
+    // pueda llamar drainDirtyQueues() sin errores de hoisting.
+    const drainDirtyQueues = () => {
+      const store = useProgrammerStore.getState()
+      if (hasLegacyWork) {
+        store.consumeDirtyFamilies(Array.from(dirtySnapshot))
+      }
+      if (dirtyCellsSnapshot.length > 0) {
+        store.consumeDirtyCells(dirtyCellsSnapshot)
+      }
+      if (pendingClearsSnapshot.length > 0) {
+        store.consumePendingClearNodeIds(pendingClearsSnapshot)
+      }
+    }
+
+    // WAVE 7616: Value-equality guard — suprime IPC spam cuando el payload
+    // es idéntico al último enviado. Esto ocurre cuando el SpatialTargetPad
+    // está idle (sin drag) pero programmerStore sigue marcando KINETIC como
+    // dirty porque setSpatialPosition fue llamado en el último frame del drag
+    // y el bridge aún no ha drenado la flag.
+    //
+    // Sin este guard, el bridge re-envía los mismos targetX/Y/Z a 44Hz
+    // indefinidamente, generando el bucle infinito de `setManualOverride MERGE`
+    // observado en el forensic WAVE 7615.
+    //
+    // Los clears (finalClearNodeIds) siempre se envían — son explícitos y raros.
+    if (finalClearNodeIds.length === 0) {
+      let payloadHash = ''
+      for (let i = 0; i < finalSetPayloads.length; i++) {
+        const p = finalSetPayloads[i]
+        payloadHash += p.nodeId + ':'
+        const chKeys = Object.keys(p.channels)
+        for (let j = 0; j < chKeys.length; j++) {
+          payloadHash += chKeys[j] + '=' + p.channels[chKeys[j]] + ','
+        }
+        payloadHash += '|'
+      }
+      if (payloadHash === this._lastPayloadHash) {
+        // Payload idéntico — drenar dirty sin enviar IPC.
+        drainDirtyQueues()
+        return
+      }
+      this._lastPayloadHash = payloadHash
+    } else {
+      // Hay clears — resetear el hash para que el próximo set se envíe.
+      this._lastPayloadHash = ''
+    }
+
     if (finalSetPayloads.length > 0) {
       // 🔬 WAVE 4735.6 BRIDGE DIAG: exact payload about to be sent via IPC
       const spatialPayloads = finalSetPayloads.filter(p =>
@@ -589,21 +647,6 @@ class ProgrammerAetherBridgeClass {
         console.log(`[ZOMBIE-DIAG] 🚨 Bridge CLEARING KINETIC nodes: ${kineticClears.join(', ')} | allClears=[${finalClearNodeIds.join(', ')}]`)
       }
       requests.push(aether.clearManualOverrides(finalClearNodeIds))
-    }
-
-    // Helper: consumir TODAS las dirty queues (legacy + cell) tras éxito.
-    // WAVE 4724: las tres queues son independientes y se drenan por separado.
-    const drainDirtyQueues = () => {
-      const store = useProgrammerStore.getState()
-      if (hasLegacyWork) {
-        store.consumeDirtyFamilies(Array.from(dirtySnapshot))
-      }
-      if (dirtyCellsSnapshot.length > 0) {
-        store.consumeDirtyCells(dirtyCellsSnapshot)
-      }
-      if (pendingClearsSnapshot.length > 0) {
-        store.consumePendingClearNodeIds(pendingClearsSnapshot)
-      }
     }
 
     // Nada que enviar: limpiar el snapshot para no dejar dirty zombie.

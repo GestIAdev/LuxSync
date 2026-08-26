@@ -1,36 +1,38 @@
-WAVE 7613: Spatial Radar Programmer Route — wire UI to programmerStore
+WAVE 7616: Fix IK ceiling inversion + remove snapshot hack + choke IPC spam
 
-Following the WAVE 7612 forensic audit, the applySpatialTarget engine route
-was found broken: the arbiter stored target_x (snake_case) in
-_motorKineticOverrides but never propagated it to the result record, so
-NodeResolver never saw targetX (camelCase) and the IK path was never taken.
+Three fixes from the WAVE 7615 forensic report:
 
-This commit implements Option B from the forensic report: wire the
-SpatialTargetPad directly to programmerStore.setSpatialPosition(), which
-writes targetX/Y/Z (camelCase) to fixtureOverrides. ProgrammerAetherBridge
-extracts these at 44Hz and injects them into NodeArbiter._manualOverrides
-as targetX (camelCase), which NodeResolver reads via CH_TARGET_X to
-trigger the IK solve path.
+1. IK Path Inversion (NodeResolver._writeNodeIK):
+   The IK path explicitly skipped the orientation-based tilt inversion
+   (WAVE 4547.1: "IK NO pasa por este camino para evitar doble negación"),
+   assuming solveInto() would handle it internally. It didn't — only
+   calibration.tiltInvert (a separate per-fixture flag) was applied.
+   This left ceiling-mounted fixtures pointing in the opposite direction.
 
-Changes:
-- KinRadarViewport.tsx: handleTargetChange now calls both
-  movementStore.setSpatialTarget(t) [for UI/fan] AND
-  programmerStore.setSpatialPosition(t) [for IK engine]
-- KineticsCathedral.tsx: handleViewMode clears programmerStore
-  spatial targets when leaving SPATIAL mode, preventing ProgrammerAetherBridge
-  from injecting stale targets after switching to classic radar
+   Fix: Apply _shouldInvertClassicKineticAxes() in _writeNodeIK before
+   writing to the DMX buffer. If true, invert tilt: safeTilt = 255 - safeTilt
+   (and the 16-bit equivalent). currentPosition.tilt now stores the
+   post-inversion value so the RELEASE snapshot captures correct DMX.
 
-Pipeline (repaired):
-  SpatialTargetPad drag
-    -> movementStore.setSpatialTarget()     [UI crosshair + fan sub-targets]
-    -> programmerStore.setSpatialPosition() [targetX/Y/Z to fixtureOverrides]
-    -> ProgrammerAetherBridge.extractKinetic() at 44Hz
-    -> ch['targetX'] = ov.targetX           [camelCase, matches CH_TARGET_X]
-    -> IPC: lux:aether:setManualOverrides
-    -> arbiter.setManualOverride(nodeId, { targetX, targetY, targetZ })
-    -> arbiter.arbitrate() -> record['targetX'] = manual['targetX']
-    -> NodeResolver: channelValues['targetX'] !== undefined -> IK PATH
-    -> solveInto() -> DMX pan/tilt -> moving head moves
+2. Remove Snapshot Hack (AetherIPCHandlers.ts):
+   The RELEASE/NULL branch had a compensation hack:
+     if (isClassicInverted && wasInIKMode) safeTilt = 1.0 - safeTilt
+   This was needed because currentPosition.tilt stored the pre-inversion
+   value, and the classic path would re-invert it during the fade.
+   Now that the IK path applies the inversion natively, currentPosition
+   already contains the correct DMX value. The hack would cause double
+   inversion. Removed.
+
+3. IPC Spam Guard (ProgrammerAetherBridge._flush):
+   The bridge at 44Hz re-sent identical targetX/Y/Z payloads every tick
+   because setSpatialPosition dirtied KINETIC on every drag frame and
+   the bridge had no value-equality check. This caused the infinite
+   `setManualOverride MERGE` loop observed in the backend logs.
+
+   Fix: Added _lastPayloadHash field. Before sending, serialize the
+   finalSetPayloads into a hash string. If identical to the last sent
+   hash and there are no clears, drain the dirty queue without sending
+   the IPC message. Clears always reset the hash and are always sent.
 
 Generated with [Devin](https://devin.ai)
 

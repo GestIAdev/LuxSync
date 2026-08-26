@@ -1408,6 +1408,10 @@ export class NodeResolver {
         const profile = this._getOrBuildIKProfile(node, calibration);
         const currentPanDMX = node.currentPosition.pan * 255;
         // K0-BATCH-3c: Mutate pre-allocated scratch instead of creating {x:tx, y:ty, z:tz} literal.
+        // WAVE 7621: Pure IK — no target mutation, no pattern fusion. The resolver
+        // reads targetX/Y/Z directly and calls solveInto. Pattern offsets arrive
+        // via pan_offset/tilt_offset (emitted by AetherKineticEngine in IK mode)
+        // and are fused by the WAVE 7179 post-solve fusion below.
         this._ikTargetScratch.x = tx;
         this._ikTargetScratch.y = ty;
         this._ikTargetScratch.z = tz;
@@ -1424,33 +1428,22 @@ export class NodeResolver {
         }
         // 🏗️ WAVE 7179 (M4): VMM Post-Solve Fusion — aplica offsets del VMM en dominio DMX.
         // Los offsets (pan_offset, tilt_offset) provienen del L0 (VibeMovementManager)
-        // y están en espacio normalizado [-1, +1]. Se escalan por amplitude, dist_scale
-        // y el factor de gimbal lock fade, luego se convierten a DMX (0-255) y se suman
-        // al resultado lógico del IK. Esto reemplaza la fusión que hacía NodeArbiter
+        // o del L2 Engine (AetherKineticEngine en modo IK) y están en espacio
+        // normalizado [-1, +1]. Se escalan por amplitude, dist_scale y el factor
+        // de gimbal lock fade, luego se convierten a DMX (0-255) y se suman al
+        // resultado lógico del IK. Esto reemplaza la fusión que hacía NodeArbiter
         // en el dominio normalizado 0-1.
         //
-        // WAVE 7617: L2 PATTERN FUSION — Además de los offsets L0, ahora también
-        // fusionamos la salida del patrón L2 (AetherKineticEngine). El arbiter
-        // escribe el resultado fusionado del patrón en channelValues['pan']/'tilt']
-        // (pan_base + offset L0). La diferencia entre este valor y 0.5 (centro
-        // neutro) representa la órbita del patrón alrededor del centro. La sumamos
-        // al resultado IK como un offset orbital DMX, escalado por la amplitud
-        // relativa para que el patrón orbite alrededor del target 3D en lugar
-        // de reemplazarlo.
+        // WAVE 7621: This is Opus's intended merge path. The L2 engine emits
+        // pan_offset/tilt_offset when a spatial target is active (IK mode), so
+        // the pattern naturally orbits around the IK-solved position.
         let logicalPan = ikResult.pan;
         let logicalTilt = ikResult.tilt;
         const panOffset = channelValues['pan_offset'];
         const tiltOffset = channelValues['tilt_offset'];
         const hasPanOffset = panOffset !== undefined && Number.isFinite(panOffset);
         const hasTiltOffset = tiltOffset !== undefined && Number.isFinite(tiltOffset);
-        // WAVE 7617: Extract L2 pattern output from the arbiter's fused pan/tilt.
-        // channelValues['pan']/'tilt'] contain the pattern's base + L0 offset fusion.
-        // The deviation from 0.5 (neutral center) is the orbital displacement.
-        const patternPan = channelValues['pan'];
-        const patternTilt = channelValues['tilt'];
-        const hasPatternPan = patternPan !== undefined && Number.isFinite(patternPan);
-        const hasPatternTilt = patternTilt !== undefined && Number.isFinite(patternTilt);
-        if (hasPanOffset || hasTiltOffset || hasPatternPan || hasPatternTilt) {
+        if (hasPanOffset || hasTiltOffset) {
             const amp = this._relativeOffsetAmplitude;
             const distScale = this._spatialDistanceScales.get(node.nodeId) ?? 1.0;
             if (hasPanOffset) {
@@ -1466,26 +1459,6 @@ export class NodeResolver {
             if (hasTiltOffset) {
                 const tiltDelta = tiltOffset * amp * VMM_OFFSET_SCALE_TILT * distScale * 255;
                 logicalTilt = logicalTilt + tiltDelta;
-            }
-            // WAVE 7617: L2 pattern orbital fusion — add the pattern's deviation from
-            // center as an offset on top of the IK solution. This makes Sweep/Circle
-            // orbit around the 3D target instead of ignoring it.
-            // patternDeviation = (patternOutput - 0.5) * 2  → normalizes to [-1, +1]
-            // dmxDelta = patternDeviation * amp * distScale * 255
-            if (hasPatternPan) {
-                const panDeviation = (patternPan - 0.5) * 2; // [-1, +1]
-                const gimbalFactorPan = logicalTilt / 255;
-                const tiltDistPan = Math.abs(gimbalFactorPan - VMM_GIMBAL_TILT_CENTER);
-                const gimbalFade = tiltDistPan >= VMM_GIMBAL_TILT_FADE_HALFWIDTH
-                    ? 1
-                    : tiltDistPan / VMM_GIMBAL_TILT_FADE_HALFWIDTH;
-                const patternPanDelta = panDeviation * amp * VMM_OFFSET_SCALE_PAN * distScale * gimbalFade * 255;
-                logicalPan = logicalPan + patternPanDelta;
-            }
-            if (hasPatternTilt) {
-                const tiltDeviation = (patternTilt - 0.5) * 2; // [-1, +1]
-                const patternTiltDelta = tiltDeviation * amp * VMM_OFFSET_SCALE_TILT * distScale * 255;
-                logicalTilt = logicalTilt + patternTiltDelta;
             }
         }
         // ★ WAVE 4557: Velocity clamp + Airbag via AetherSafetyMiddleware
@@ -1533,8 +1506,9 @@ export class NodeResolver {
         let safePan16 = ikResult.pan16;
         let safeTilt16 = ikResult.tilt16;
         // Apply VMM offsets in 16-bit domain (scale 255→65535 = ×257)
-        // WAVE 7617: Also apply L2 pattern orbital fusion in 16-bit domain.
-        if (hasPanOffset || hasTiltOffset || hasPatternPan || hasPatternTilt) {
+        // WAVE 7621: L2 pattern offsets (pan_offset/tilt_offset) emitted by
+        // AetherKineticEngine in IK mode are fused here alongside L0 VMM offsets.
+        if (hasPanOffset || hasTiltOffset) {
             const amp = this._relativeOffsetAmplitude;
             const distScale = this._spatialDistanceScales.get(node.nodeId) ?? 1.0;
             if (hasPanOffset) {
@@ -1549,22 +1523,6 @@ export class NodeResolver {
             if (hasTiltOffset) {
                 const tiltDelta16 = tiltOffset * amp * VMM_OFFSET_SCALE_TILT * distScale * 65535;
                 safeTilt16 = safeTilt16 + tiltDelta16;
-            }
-            // WAVE 7617: L2 pattern orbital fusion (16-bit)
-            if (hasPatternPan) {
-                const panDeviation16 = (patternPan - 0.5) * 2;
-                const tiltNorm16p = safeTilt16 / 65535;
-                const tiltDist16p = Math.abs(tiltNorm16p - VMM_GIMBAL_TILT_CENTER);
-                const gimbalFade16 = tiltDist16p >= VMM_GIMBAL_TILT_FADE_HALFWIDTH
-                    ? 1
-                    : tiltDist16p / VMM_GIMBAL_TILT_FADE_HALFWIDTH;
-                const patternPanDelta16 = panDeviation16 * amp * VMM_OFFSET_SCALE_PAN * distScale * gimbalFade16 * 65535;
-                safePan16 = safePan16 + patternPanDelta16;
-            }
-            if (hasPatternTilt) {
-                const tiltDeviation16 = (patternTilt - 0.5) * 2;
-                const patternTiltDelta16 = tiltDeviation16 * amp * VMM_OFFSET_SCALE_TILT * distScale * 65535;
-                safeTilt16 = safeTilt16 + patternTiltDelta16;
             }
         }
         // Clamp 16-bit values to valid range

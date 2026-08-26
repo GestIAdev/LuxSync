@@ -1,44 +1,25 @@
-WAVE 7621: The Opus Resurrection — restore original IK + pattern merge
+WAVE 7622: Spatial gate — prevent setManualPattern from sabotaging IK
 
-Reverts WAVE 7613/7617/7618 hacks and applies the three surgical fixes
-identified by forensic reports WAVE 7619/7620, restoring Opus's original
-offset-fusion architecture where L2 patterns naturally orbit around
-the IK-solved 3D target.
+When a manual pattern (sweep, circle, etc.) was activated from the UI,
+setManualPattern forcefully injected pan_base/tilt_base into
+_manualOverrides, even when a spatial target was actively commanding
+the fixtures via _motorKineticOverrides. This dropped the fixtures
+out of IK mode and forced them to a flat 0.5/0.5 anchor.
 
-PHASE 1 — GREAT ROLLBACK:
-- NodeResolver._writeNodeIK: Removed target mutation (WAVE 7618) and
-  DMX-space pattern fusion (WAVE 7617). The resolver now reads targetX/Y/Z
-  directly and calls solveInto purely. Pattern offsets arrive via
-  pan_offset/tilt_offset through the existing WAVE 7179 post-solve fusion.
-- KinRadarViewport.tsx: Removed programmerStore.setSpatialPosition() bypass
-  (WAVE 7613). Spatial targets flow exclusively through movementStore →
-  KineticsBridge → applySpatialTarget IPC (E12).
-- KineticsCathedral.tsx: Removed programmerStore.clearSpatialTargets() calls
-  (WAVE 7613). Spatial target cleanup is handled by the backend.
+Root cause: The anchor resolution loop (lines 730-796) checked
+motor['pan_base']/motor['tilt_base'] for the IK anchor, but after
+WAVE 7621 Phase 3, the motor override in IK mode contains
+targetX/Y/Z + pan_offset/tilt_offset, NOT pan_base/tilt_base. So
+ikPan/ikTilt were null, and the code fell back to 0.5, writing
+pan_base=0.5/tilt_base=0.5 to _manualOverrides — sabotaging the IK.
 
-PHASE 2 — SURGICAL FIXES (WAVE 7619):
-- Fix A (AetherIPCHandlers.ts): applySpatialTarget now writes targetX/Y/Z
-  (camelCase) instead of target_x/y/z (snake_case). The resolver reads
-  CH_TARGET_X = 'targetX' — the case mismatch was the root cause.
-- Fix B (AetherKineticEngine.ts): tick() no longer destroys the spatial
-  target on the first tick. Reads the existing motor override via
-  arbiter.getMotorKineticOverride() and spreads it before setting
-  pan_base/tilt_base, preserving targetX/Y/Z.
-- Fix C (NodeArbiter.ts): _applyRelativeOffsetFusion now copies targetX/Y/Z
-  and pan_offset/tilt_offset from _motorKineticOverrides to the result
-  record, so NodeResolver can actually see them.
-
-PHASE 3 — L2 OFFSET BRIDGE (WAVE 7620 Option A):
-- AetherKineticEngine.tick(): When a spatial target is active (IK mode),
-  the pattern is emitted as pan_offset/tilt_offset (relative [-1,+1])
-  instead of pan_base/tilt_base (absolute [0,1]). The resolver's WAVE 7179
-  post-solve fusion applies these offsets to the IK-solved position,
-  making the pattern orbit around the 3D target. When no spatial target
-  is active (classic mode), pan_base/tilt_base are emitted as before.
-
-This restores Opus's intended architecture: patterns as offsets (not
-bases) when IK is active, flowing through the same pan_offset/tilt_offset
-channels that the VMM (L0) uses via KineticAdapter.
+Fix: Added a spatial gate at the top of the per-node anchor loop.
+If motor['targetX'] !== undefined (spatial target active), skip the
+anchor injection entirely (continue). The L2 engine emits
+pan_offset/tilt_offset in IK mode (WAVE 7621 Phase 3), and the IK
+solver handles the center. Only the classic mode path (no spatial
+target) proceeds with the anchor resolution and pan_base/tilt_base
+injection as before.
 
 Generated with [Devin](https://devin.ai)
 

@@ -864,10 +864,13 @@ export function registerAetherIPCHandlers() {
             const serialized = {};
             for (const [id, subTarget] of subTargets) {
                 const nodeId = resolveKineticNodeId(`${id}:kinetic`);
+                // WAVE 7621 Fix A: camelCase — the resolver reads CH_TARGET_X = 'targetX'.
+                // The original snake_case (target_x) was invisible to NodeResolver,
+                // breaking the entire IK spatial target flow.
                 arbiter.setMotorKineticOverride(nodeId, {
-                    target_x: subTarget.x,
-                    target_y: subTarget.y,
-                    target_z: subTarget.z,
+                    targetX: subTarget.x,
+                    targetY: subTarget.y,
+                    targetZ: subTarget.z,
                 });
                 serialized[id] = subTarget;
             }

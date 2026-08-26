@@ -1642,18 +1642,19 @@ export class NodeResolver implements INodeResolver {
     const hasLiveTilt = liveTilt !== undefined && Number.isFinite(liveTilt)
 
     // ORBIT_RADIUS: meters of orbital displacement at full pattern amplitude.
-    // 6.0m gives a visible sweep on a typical 12m-wide stage. The L2 engine
-    // scales pattern output differently for pan vs tilt:
-    //   pan:  scaledX = x * PAN_ASPECT_RATIO(0.5) * amplitude * 0.45
-    //   tilt: scaledY = y * amplitude * 0.45
-    // So pan deviation is half of tilt deviation at the same amplitude.
-    // We normalize each axis by its own max scale to get [-1,+1], then
-    // multiply by ORBIT_RADIUS to get meters.
+    // 8.0m gives a dramatic sweep on a typical 12m-wide stage.
     //
-    // WAVE 7618.2: Mapped tilt_base → Y (height) instead of Z (depth).
-    // Moving the target vertically produces visible tilt changes, while
-    // moving it in depth has minimal angular effect for ceiling fixtures.
-    const ORBIT_RADIUS = 6.0
+    // WAVE 7618.3: Mapped tilt→Z (depth) instead of Y (height).
+    // The L2 engine adds a constant orientation offset (tiltOffsetNorm) to
+    // tilt_base for ceiling mounts. This is a tilt-space adjustment, NOT a
+    // pattern oscillation. Mapping it to Y (height) caused a constant vertical
+    // shift that looked like a vertical sweep. Mapping tilt→Z (depth) makes
+    // the constant offset a harmless depth shift, while oscillating tilt
+    // patterns (circle, bounce) still produce visible movement.
+    //
+    // Pan deviation maps to X (horizontal) — this is the primary sweep axis.
+    // For sweep (y=0), only X moves → pure horizontal sweep, matching classic.
+    const ORBIT_RADIUS = 8.0
     const L2_AMP_SCALE_PAN  = 0.5 * 0.45  // PAN_ASPECT_RATIO * 0.45 = 0.225
     const L2_AMP_SCALE_TILT = 0.45
 
@@ -1687,9 +1688,10 @@ export class NodeResolver implements INodeResolver {
         const anchorVal = (anchorTilt !== undefined && Number.isFinite(anchorTilt)) ? anchorTilt : 0.5
         const deviation = (liveTilt as number) - anchorVal
         // Normalize by tilt's max scale (0.45) → [-1,+1], then scale to meters.
-        // Map tilt → Y (height) so vertical sweep produces visible tilt changes.
-        const dy = (deviation / L2_AMP_SCALE_TILT) * ORBIT_RADIUS * lerpFactor
-        mutatedY = ty + dy
+        // Map tilt → Z (depth) so the constant orientation offset becomes a
+        // harmless depth shift, not a vertical sweep.
+        const dz = (deviation / L2_AMP_SCALE_TILT) * ORBIT_RADIUS * lerpFactor
+        mutatedZ = tz + dz
       }
     } else {
       // No pattern active — reset the lerp factor so the next pattern activation

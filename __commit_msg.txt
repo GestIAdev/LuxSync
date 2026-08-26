@@ -1,26 +1,20 @@
-WAVE 7618.2: Fix amplitude — correct pan/tilt scaling + map tilt to Y axis
+WAVE 7618.3: Fix vertical sweep — map tilt to Z (depth) + increase radius to 8m
 
-The target mutation was producing tiny angular changes ("amplitud de
-chiste") even at 100% amplitude. Three issues fixed:
+The sweep pattern (y=0, only pan oscillates) was producing a vertical
+sweep because the L2 engine adds a constant orientation offset
+(tiltOffsetNorm) to tilt_base for ceiling mounts. This constant offset
+was being treated as pattern deviation and mapped to Y (height),
+causing a visible vertical shift that looked like a vertical sweep.
 
-1. PAN SCALING: The L2 engine scales pan by PAN_ASPECT_RATIO(0.5) *
-   amplitude * 0.45, but tilt by just amplitude * 0.45. Pan deviation
-   is half of tilt deviation at the same amplitude. Was dividing both
-   by 0.45, under-scaling pan by 2x. Now uses separate scales:
-   - L2_AMP_SCALE_PAN  = 0.5 * 0.45 = 0.225
-   - L2_AMP_SCALE_TILT = 0.45
+Fix: Map tilt deviation to Z (depth) instead of Y (height).
+- The constant orientation offset becomes a harmless depth shift
+- Sweep (y=0): only pan deviation → pure horizontal X movement,
+  matching classic sweep behavior
+- Circle/bounce: tilt oscillation → Z (depth) movement, still visible
+- ORBIT_RADIUS increased from 6.0m to 8.0m for more amplitude
 
-2. ORBIT_RADIUS: Increased from 3.0m to 6.0m. At 3m, the angular
-   change for a fixture 6m up was only ~8° at 50% amplitude. At 6m,
-   it's ~16° at 50% and ~30° at 100% — visible and dramatic.
-
-3. TILT → Y MAPPING: Was mapping tilt_base to Z (depth), which
-   produces minimal angular change for ceiling fixtures. Now maps
-   tilt_base to Y (height), so vertical sweep moves the target
-   up/down → fixtures tilt up/down visibly.
-
-At 50/50 (default): pan sweeps ±3m on X, tilt sweeps ±3m on Y.
-At 100/100: pan sweeps ±6m, tilt sweeps ±6m — full stage coverage.
+At 50/50: pan sweeps ±4m on X, tilt shifts ~1.3m on Z (constant).
+At 100/100: pan sweeps ±8m, full stage width coverage.
 
 Generated with [Devin](https://devin.ai)
 

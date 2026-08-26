@@ -707,6 +707,17 @@ export class AetherKineticEngine {
         // spatial target keys (targetX/Y/Z) written by applySpatialTarget.
         rec = existingMotor ? { ...existingMotor } : {}
         this._overridePool.set(nodeId, rec)
+      } else if (hasSpatialTarget) {
+        // WAVE 7622.2 FIX: The pool entry was created in a previous tick (possibly
+        // classic mode) and does NOT have targetX/Y/Z — those were written by
+        // applySpatialTarget directly to the arbiter's motor override, not to
+        // the pool. Without merging them here, arbiter.setMotorKineticOverride
+        // would overwrite the motor override with a rec that has pan_offset but
+        // NO targetX — destroying the spatial target and dropping the fixture
+        // out of IK mode. Merge the spatial target keys from existingMotor.
+        rec['targetX'] = existingMotor!['targetX']
+        rec['targetY'] = existingMotor!['targetY']
+        rec['targetZ'] = existingMotor!['targetZ']
       }
 
       if (hasSpatialTarget) {
@@ -731,6 +742,10 @@ export class AetherKineticEngine {
         // Clean up any stale offset keys from a previous IK mode session.
         delete rec['pan_offset']
         delete rec['tilt_offset']
+        // Clean up stale spatial target keys from a previous IK session.
+        delete rec['targetX']
+        delete rec['targetY']
+        delete rec['targetZ']
       }
 
       arbiter.setMotorKineticOverride(nodeId, rec)
@@ -746,16 +761,20 @@ export class AetherKineticEngine {
     if (this._heartbeatCounter >= 44 && sampleCfg) {
       this._heartbeatCounter = 0
       const sampleRec = this._overridePool.get(sampleNodeId)
+      // WAVE 7622.2: Log mode (IK vs Classic) and actual output keys.
+      const mode = sampleRec && sampleRec['targetX'] !== undefined ? 'IK' : 'CLASSIC'
+      const keys = sampleRec ? Object.keys(sampleRec).join(',') : 'null'
+      const panVal  = sampleRec ? (sampleRec['pan_base'] ?? sampleRec['pan_offset'] ?? NaN) : NaN
+      const tiltVal = sampleRec ? (sampleRec['tilt_base'] ?? sampleRec['tilt_offset'] ?? NaN) : NaN
       console.log(
         `[KineticEngine L2] Pistas activas: ${this._nodeConfigs.size}` +
         ` | Muestra[${sampleNodeId}]: ${sampleCfg.pattern}` +
         ` | Speed: ${sampleCfg.speed.toFixed(3)}` +
         ` | Amplitude: ${sampleCfg.amplitude.toFixed(3)}` +
         ` | Fan: ${sampleCfg.fan.toFixed(3)} (${sampleCfg.fanIndex}/${sampleCfg.fanTotal})` +
-        ` | Output: ` +
-        (sampleRec
-          ? `{pan: ${sampleRec['pan_base'].toFixed(3)}, tilt: ${sampleRec['tilt_base'].toFixed(3)}}`
-          : 'null')
+        ` | Mode: ${mode}` +
+        ` | Keys: [${keys}]` +
+        ` | Output: {pan: ${panVal.toFixed(3)}, tilt: ${tiltVal.toFixed(3)}}`
       )
     }
   }

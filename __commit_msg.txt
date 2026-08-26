@@ -1,21 +1,20 @@
-WAVE 7622.1: Fix stale variable order in arbiter fusion loop
+WAVE 7622.2: Fix stale pool entry destroying spatial target in L2 tick
 
-The WAVE 7621 Fix C block (copying targetX/Y/Z and pan_offset/tilt_offset
-from motor to record) was running AFTER the panOffset/tiltOffset variables
-were captured from the record. In IK mode:
+The _overridePool entry was created in a previous tick (possibly classic
+mode) and did NOT have targetX/Y/Z — those were written by
+applySpatialTarget directly to the arbiter's motor override, not to the
+pool. When the L2 engine reused the pool entry in IK mode, it wrote
+pan_offset/tilt_offset but NO targetX to the arbiter via
+setMotorKineticOverride — destroying the spatial target and dropping
+the fixture out of IK mode.
 
-1. VMM (L0) is silenced by the L2 SUPREMACY GATE → record['pan_offset']
-   is undefined from the intent bus
-2. panOffset/hasPanOffset captured at line 992 → false (stale)
-3. Fix C copies motor['pan_offset'] to record['pan_offset'] → record updated
-4. Skip check at line 1039 uses hasPanOffset (stale variable) → false
-5. hasBasePan/hasBaseTilt also false (no pan_base/tilt_base in IK mode)
-6. Node is SKIPPED entirely — no fusion happens, no offsets reach resolver
+Fix: When reusing the pool entry in IK mode (hasSpatialTarget=true),
+merge targetX/Y/Z from existingMotor (the arbiter's current motor
+override) into the pool entry before writing it back. Also clean up
+stale spatial target keys in classic mode.
 
-Fix: Moved the Fix C block BEFORE the panOffset/tiltOffset read. Now the
-variables capture the motor's offsets, the skip check passes, and the
-node proceeds through the fusion loop. The resolver sees targetX/Y/Z
-(triggers IK path) and pan_offset/tilt_offset (WAVE 7179 post-solve fusion).
+Also updated telemetry to log the actual mode (IK/CLASSIC), rec keys,
+and the correct output values (pan_base for classic, pan_offset for IK).
 
 Generated with [Devin](https://devin.ai)
 

@@ -886,25 +886,26 @@ export class NodeArbiter {
             }
         }
         for (const [nodeId, record] of this._result) {
-            const panOffset = record['pan_offset'];
-            const tiltOffset = record['tilt_offset'];
-            const hasPanOffset = isFiniteChannelValue(panOffset);
-            const hasTiltOffset = isFiniteChannelValue(tiltOffset);
             const manual = this._manualOverrides.get(nodeId);
             // Motor override (AetherKineticEngine live output) — pan_base/tilt_base
             // with the moving pattern. Manual override has the static radar anchor.
             // Motor takes priority: when the engine is active, the fixture must move
             // with the motor output, not freeze at the manual anchor.
             const motor = this._motorKineticOverrides.get(nodeId);
-            const motorPan = motor ? motor['pan_base'] : undefined;
-            const motorTilt = motor ? motor['tilt_base'] : undefined;
-            const hasMotorPan = isFiniteChannelValue(motorPan);
-            const hasMotorTilt = isFiniteChannelValue(motorTilt);
             // WAVE 7621 Fix C: Copy spatial target keys from the motor override to
             // the record so NodeResolver can read them via channelValues['targetX'].
             // Without this, the resolver never sees the spatial target even though
             // applySpatialTarget wrote it to _motorKineticOverrides. This is the
             // missing link that broke Opus's original IK + pattern merge.
+            //
+            // WAVE 7622 FIX: This block MUST run BEFORE reading panOffset/tiltOffset
+            // and the skip check. In IK mode, the L2 engine emits pan_offset/tilt_offset
+            // (not pan_base/tilt_base) to the motor override. The VMM (L0) is silenced
+            // by the L2 SUPREMACY GATE, so record['pan_offset'] is undefined from the
+            // intent bus. If we read panOffset before copying from motor, the skip
+            // check sees hasPanOffset=false and skips the node entirely — even though
+            // the motor has valid offsets. Moving this block first ensures the skip
+            // check sees the motor's offsets.
             if (motor) {
                 const mtx = motor['targetX'];
                 const mty = motor['targetY'];
@@ -925,6 +926,16 @@ export class NodeArbiter {
                 if (isFiniteChannelValue(mto))
                     record['tilt_offset'] = mto;
             }
+            // Read panOffset/tiltOffset AFTER Fix C — the motor's offsets are now
+            // in the record. This ensures the skip check sees them.
+            const panOffset = record['pan_offset'];
+            const tiltOffset = record['tilt_offset'];
+            const hasPanOffset = isFiniteChannelValue(panOffset);
+            const hasTiltOffset = isFiniteChannelValue(tiltOffset);
+            const motorPan = motor ? motor['pan_base'] : undefined;
+            const motorTilt = motor ? motor['tilt_base'] : undefined;
+            const hasMotorPan = isFiniteChannelValue(motorPan);
+            const hasMotorTilt = isFiniteChannelValue(motorTilt);
             const manualPan = manual ? manual['pan_base'] : undefined;
             const manualTilt = manual ? manual['tilt_base'] : undefined;
             const hasManualPan = isFiniteChannelValue(manualPan);
@@ -932,6 +943,9 @@ export class NodeArbiter {
             const hasBasePan = hasMotorPan || hasManualPan;
             const hasBaseTilt = hasMotorTilt || hasManualTilt;
             // Skip nodos sin base ni offset — no son cinéticos en este frame.
+            // WAVE 7622: In IK mode, hasBasePan/hasBaseTilt are false (no pan_base/
+            // tilt_base), but hasPanOffset/hasTiltOffset are true (motor's offsets
+            // copied by Fix C above). So the node is NOT skipped.
             if (!hasBasePan && !hasBaseTilt && !hasPanOffset && !hasTiltOffset) {
                 continue;
             }

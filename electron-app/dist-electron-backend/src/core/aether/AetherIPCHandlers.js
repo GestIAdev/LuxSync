@@ -639,6 +639,18 @@ export function registerAetherIPCHandlers() {
                 //   5. 0.5                         — fallback absoluto neutro
                 const manual = arbiter.getManualOverride(nodeId);
                 const motor = arbiter.getMotorKineticOverride(nodeId);
+                // WAVE 7622: SPATIAL GATE — If this node has an active spatial target
+                // (targetX in motor override), do NOT inject pan_base/tilt_base into
+                // _manualOverrides. The L2 engine emits pan_offset/tilt_offset in IK
+                // mode (WAVE 7621 Phase 3), and the IK solver handles the center.
+                // Writing pan_base/tilt_base here would sabotage the IK path by
+                // forcing a flat 0.5/0.5 anchor that drops the fixtures out of 3D
+                // tracking. Only write speed to keep the pattern engine alive.
+                const hasSpatialTarget = motor !== undefined && motor['targetX'] !== undefined;
+                if (hasSpatialTarget) {
+                    ikPreservedCount++;
+                    continue; // Skip anchor injection — let IK + L2 offsets handle it
+                }
                 // Posición viva absoluta (canal directo pan/tilt, sin sufijo _base)
                 const livePan = manual && Number.isFinite(manual['pan']) ? manual['pan'] : null;
                 const liveTilt = manual && Number.isFinite(manual['tilt']) ? manual['tilt'] : null;

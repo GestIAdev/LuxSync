@@ -250,8 +250,8 @@ export class NodeExtractionPipeline {
         const hasForgeGraph = fixtureGraph && fixtureGraph.nodes.length > 0;
         // V2 path log silenced
         const nodes = hasForgeGraph
-            ? this._buildNodesFromForgeGraph(resolvedDeviceId, resolvedZone, fixtureDef, fixtureGraph, resolvedPosition, resolvedOrientation)
-            : this._sanitizeOverlappingChannels(resolvedDeviceId, this._buildAllNodes(resolvedDeviceId, resolvedZone, fixtureDef, topology, resolvedPosition, resolvedOrientation));
+            ? this._buildNodesFromForgeGraph(resolvedDeviceId, resolvedZone, fixtureDef, fixtureGraph, resolvedPosition, resolvedOrientation, v2CalibOverride)
+            : this._sanitizeOverlappingChannels(resolvedDeviceId, this._buildAllNodes(resolvedDeviceId, resolvedZone, fixtureDef, topology, resolvedPosition, resolvedOrientation, v2CalibOverride));
         const calibration = this._buildCalibration(fixtureDef, v2CalibOverride);
         // 🏛️ Ping A: Prueba de Carga — chivato de hidratación del GovernorEngine
         const _govs = fixtureDef.dmxGovernors ?? [];
@@ -418,7 +418,7 @@ export class NodeExtractionPipeline {
      * @see NodeResolver._writeNode() for the 1:1 channel → node write invariant.
      * ═══════════════════════════════════════════════════════════════════════════
      */
-    _buildNodesFromForgeGraph(deviceId, fallbackZone, fixtureDef, graph, position, orientation) {
+    _buildNodesFromForgeGraph(deviceId, fallbackZone, fixtureDef, graph, position, orientation, v2Calibration) {
         const outputNodes = graph.nodes.filter((n) => n.type === 'output_dmx' && n.config.nodeType === 'output_dmx');
         if (outputNodes.length === 0)
             return [];
@@ -461,7 +461,7 @@ export class NodeExtractionPipeline {
             const nodeId = `${deviceId}:${suffix}`;
             const channels = this._mapForgeNodes(group.nodes.map(n => n.config), legacyDefaultByOffset);
             const typeSet = new Set(group.nodes.map(n => this._normalizeChannelType(n.config.channelType)));
-            const node = this._buildForgeGroupNode(nodeId, group.zone, fixtureDef, channels, typeSet, position, orientation);
+            const node = this._buildForgeGroupNode(nodeId, group.zone, fixtureDef, channels, typeSet, position, orientation, v2Calibration);
             if (node) {
                 // WAVE 4738: inyectar label custom en profileMeta → sobrevive roundtrip JSON.
                 nodes.push(group.customLabel
@@ -528,7 +528,7 @@ export class NodeExtractionPipeline {
      * Construye el ICapabilityNode correcto según los tipos de canal del grupo.
      * Motor de decisión: familia determinada por mayoría de tipos presentes.
      */
-    _buildForgeGroupNode(nodeId, zoneId, fixtureDef, channels, typeSet, position, orientation) {
+    _buildForgeGroupNode(nodeId, zoneId, fixtureDef, channels, typeSet, position, orientation, v2Calibration) {
         const deviceId = nodeId.split(':')[0];
         // COLOR: hay al menos un canal de mezcla cromática.
         // WAVE 4737 WASH FIX: grupos mixtos (color + dimmer) también van a COLOR.
@@ -613,6 +613,15 @@ export class NodeExtractionPipeline {
                         rotation: { pitch: 0, yaw: 0, roll: 0 },
                     },
                 }),
+                // WAVE 7610: Populate ikCalibration in Forge Graph path too.
+                ...(v2Calibration && {
+                    ikCalibration: {
+                        panOffset: v2Calibration.panOffset ?? 0,
+                        tiltOffset: v2Calibration.tiltOffset ?? 0,
+                        panInvert: v2Calibration.panInvert ?? false,
+                        tiltInvert: v2Calibration.tiltInvert ?? false,
+                    },
+                }),
             };
         }
         // BEAM: has beam-shaping channels
@@ -669,7 +678,7 @@ export class NodeExtractionPipeline {
             return 'rgb';
         return 'rgb';
     }
-    _buildAllNodes(deviceId, zoneId, fixtureDef, topology, position, orientation) {
+    _buildAllNodes(deviceId, zoneId, fixtureDef, topology, position, orientation, v2Calibration) {
         const nodes = [];
         // WAVE 7031: Detect indexing convention ONCE from the full fixture channel list.
         // Per-group detection was buggy — see _mapChannels docs.
@@ -681,7 +690,7 @@ export class NodeExtractionPipeline {
             nodes.push(this._buildImpactNode(deviceId, zoneId, fixtureDef, topology.impactChannels, position, isZeroBased));
         }
         if (topology.kineticChannels.length > 0) {
-            nodes.push(this._buildKineticNode(deviceId, zoneId, fixtureDef, topology.kineticChannels, position, orientation, isZeroBased));
+            nodes.push(this._buildKineticNode(deviceId, zoneId, fixtureDef, topology.kineticChannels, position, orientation, isZeroBased, v2Calibration));
         }
         if (topology.beamChannels.length > 0) {
             nodes.push(this._buildBeamNode(deviceId, zoneId, topology.beamChannels, position, isZeroBased));
@@ -785,7 +794,7 @@ export class NodeExtractionPipeline {
         };
     }
     // ── KINETIC NODE ──────────────────────────────────────────────────────────
-    _buildKineticNode(deviceId, zoneId, fixtureDef, kineticChs, position, orientation, isZeroBased = false) {
+    _buildKineticNode(deviceId, zoneId, fixtureDef, kineticChs, position, orientation, isZeroBased = false, v2Calibration) {
         const nodeId = `${deviceId}:kinetic`;
         const motorType = this._mapMotorType(fixtureDef.physics?.motorType);
         const maxSpeed = fixtureDef.physics?.maxVelocity ?? 540;
@@ -824,6 +833,17 @@ export class NodeExtractionPipeline {
                 ikOrientation: {
                     installation: orientation,
                     rotation: { pitch: 0, yaw: 0, roll: 0 },
+                },
+            }),
+            // WAVE 7610: Populate ikCalibration from FixtureV2.calibration (degrees domain).
+            // Both FixtureV2.calibration.panOffset and IKCalibration.panOffset are in degrees,
+            // so this is a direct 1:1 mapping — no unit conversion needed.
+            ...(v2Calibration && {
+                ikCalibration: {
+                    panOffset: v2Calibration.panOffset ?? 0,
+                    tiltOffset: v2Calibration.tiltOffset ?? 0,
+                    panInvert: v2Calibration.panInvert ?? false,
+                    tiltInvert: v2Calibration.tiltInvert ?? false,
                 },
             }),
         };

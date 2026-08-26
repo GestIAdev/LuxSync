@@ -478,12 +478,13 @@ export function registerAetherIPCHandlers() {
                         const isClassicInverted = (deviceOrientation?.includes('ceiling') || deviceOrientation?.startsWith('truss')) ||
                             (installation === 'ceiling' || installation === 'truss-front' || installation === 'truss-back') ||
                             (Number.isFinite(pitch) && Math.abs(Math.abs(pitch) - 180) < 0.001);
-                        // Solo aplicar traducción IK→Clásico si el fixture venía de modo IK.
-                        // En modo VMM clásico NO hay que invertir: NodeResolver ya lo hace.
+                        // WAVE 7616: La compensación `1.0 - safeTilt` fue ELIMINADA.
+                        // Ahora el IK path (NodeResolver._writeNodeIK) aplica la inversión
+                        // de orientación nativamente, por lo que currentPosition.tilt ya
+                        // contiene el valor DMX correcto (post-inversión). Aplicar la
+                        // compensación aquí causaría doble inversión durante el fade.
+                        // El flag isClassicInverted se conserva solo para logging.
                         const wasInIKMode = ikActiveNodes.has(nodeId);
-                        if (isClassicInverted && wasInIKMode) {
-                            safeTilt = 1.0 - safeTilt;
-                        }
                         if (Number.isFinite(safePan) && Number.isFinite(safeTilt)) {
                             arbiter.setManualOverride(nodeId, { pan: safePan, tilt: safeTilt });
                             // WAVE 6020.6 FIX: Sembrar el estado de física del PPP con el
@@ -953,6 +954,30 @@ export function registerAetherIPCHandlers() {
         }
         catch (err) {
             console.error('[AetherIPC] invalidateIKProfile error:', err);
+        }
+    });
+    // ── WAVE 7610: LIVE CALIBRATION HOT-RELOAD ──────────────────────────────
+    /**
+     * Directly updates node.ikCalibration in the NodeGraph and invalidates
+     * the IK profile cache. The next TickEngine frame rebuilds the profile
+     * with the new offsets — producing immediate DMX output changes.
+     *
+     * Called by the Calibration Dock when the user drags Offset Trim sliders.
+     * Values are in DEGREES (panOffset, tiltOffset) and booleans (panInvert, tiltInvert).
+     */
+    ipcMain.on('lux:aether:updateLiveCalibration', (_event, { nodeId, calibration }) => {
+        try {
+            const resolver = getTitanOrchestrator().getAetherResolver();
+            if (resolver.updateLiveCalibration) {
+                resolver.updateLiveCalibration(nodeId, calibration);
+            }
+            else {
+                // Fallback for older compiled resolvers — just invalidate cache
+                resolver.invalidateIKProfile(nodeId);
+            }
+        }
+        catch (err) {
+            console.error('[AetherIPC] updateLiveCalibration error:', err);
         }
     });
     // ── F1: FIXTURE SYNC — Canal canónico → TitanOrchestrator (WAVE 4702) ───────

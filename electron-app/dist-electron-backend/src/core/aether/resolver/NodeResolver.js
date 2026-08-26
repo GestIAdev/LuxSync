@@ -164,7 +164,7 @@ export class NodeResolver {
         this._ikLastWarnFrame = new Map();
         this._resolveFrameIndex = 0;
         // 🛠️ WAVE 5034: Pre-allocated IKResult scratch — zero alloc en hot path.
-        this._ikResultScratch = { pan: 0, tilt: 0, reachable: false, antiFlipApplied: false };
+        this._ikResultScratch = { pan: 0, tilt: 0, pan16: 0, tilt16: 0, reachable: false, antiFlipApplied: false };
         // 🛠️ WAVE 5034: Pre-allocated kinetic clamp scratch — zero alloc en hot path.
         this._kineticClampScratch = { pan: 0, tilt: 0 };
         // K0-BATCH-3c: Pre-allocated IK target scratch — zero alloc en hot path.
@@ -296,6 +296,40 @@ export class NodeResolver {
      * El siguiente frame re-construirá el perfil con la nueva calibración.
      */
     invalidateIKProfile(nodeId) {
+        this._ikProfiles.delete(nodeId);
+    }
+    /**
+     * WAVE 7610: Live calibration hot-reload.
+     *
+     * Directly mutates `node.ikCalibration` in the NodeGraph and invalidates
+     * the IK profile cache. The very next TickEngine frame will rebuild the
+     * IKFixtureProfile with the new calibration offsets — producing immediate
+     * DMX output changes without requiring a full re-patch.
+     *
+     * Called by the Calibration Dock when the user drags the Offset Trim sliders.
+     * Values are in DEGREES (panOffset, tiltOffset) and booleans (panInvert, tiltInvert).
+     *
+     * @param nodeId      - Target kinetic node ID (e.g. "fixture-01:kinetic")
+     * @param calibration - New calibration values in degree domain
+     */
+    updateLiveCalibration(nodeId, calibration) {
+        const node = this._graph.getNodeData(nodeId);
+        if (!node || node.family !== NodeFamily.KINETIC) {
+            console.warn(`[NodeResolver] updateLiveCalibration: node ${nodeId} not found or not KINETIC`);
+            return;
+        }
+        // Direct mutation — getNodeData returns a live reference, not a copy.
+        // The `readonly` on IKineticNodeData is a compile-time constraint; at runtime
+        // the object is a plain mutable JS object. This is the same pattern used by
+        // currentPosition updates in _writeNodeIK (line 1638).
+        ;
+        node.ikCalibration = {
+            panOffset: calibration.panOffset,
+            tiltOffset: calibration.tiltOffset,
+            panInvert: calibration.panInvert,
+            tiltInvert: calibration.tiltInvert,
+        };
+        // Invalidate cache so next frame rebuilds the profile with new calibration
         this._ikProfiles.delete(nodeId);
     }
     /**
@@ -978,7 +1012,7 @@ export class NodeResolver {
             //   console.log(`[WAVE-6020.9-SURVIVAL] NodeResolver ${node.nodeId}: hasSpatialTarget=${hasSpatialTarget} targetX=${channelValues[CH_TARGET_X] ?? 'undefined'} isContinuous=${kineticNode.isContinuous} → ${!kineticNode.isContinuous && hasSpatialTarget ? 'IK-PATH' : 'CLASSIC-PATH'}`)
             // }
             if (!kineticNode.isContinuous && hasSpatialTarget) {
-                this._writeNodeIK(kineticNode, channelValues, baseAddr, buf, calibration, !nodeBlocked);
+                this._writeNodeIK(kineticNode, channelValues, baseAddr, buf, calibration, !nodeBlocked, device.orientation);
                 return;
             }
             // 🩸 WAVE 6040-DIAG: Diagnostic log para tracear el bug "movers no responden al radar cuando hay color"
@@ -1352,7 +1386,7 @@ export class NodeResolver {
      * _applyCalibration() — el IKEngine integra calibración en grados
      * internamente (anti-double-calibration).
      */
-    _writeNodeIK(node, channelValues, baseAddr, buf, calibration, nodeWriteEnabled) {
+    _writeNodeIK(node, channelValues, baseAddr, buf, calibration, nodeWriteEnabled, deviceOrientation) {
         const txRaw = channelValues[CH_TARGET_X];
         if (!Number.isFinite(txRaw)) {
             // 🩸 WAVE 6040-DIAG: Early return diagnostic
@@ -1364,9 +1398,13 @@ export class NodeResolver {
         const tx = txRaw;
         const ty = sanitizeNormalizedValue(channelValues[CH_TARGET_Y], 1.5);
         const tz = sanitizeNormalizedValue(channelValues[CH_TARGET_Z], 2.0);
-        if (this._resolveFrameIndex % MATH_TELEMETRY_EVERY_FRAMES === 0) {
-            console.log(`[MATH-INPUT] id: ${String(node.deviceId)} | targetXYZ: ${tx.toFixed(3)},${ty.toFixed(3)},${tz.toFixed(3)}`);
-        }
+        // WAVE 7617: MATH-INPUT telemetry silenced — was flooding backend logs at 44Hz.
+        // Re-enable with: if (DEBUG_IK && this._resolveFrameIndex % MATH_TELEMETRY_EVERY_FRAMES === 0) { ... }
+        // if (this._resolveFrameIndex % MATH_TELEMETRY_EVERY_FRAMES === 0) {
+        //   console.log(
+        //     `[MATH-INPUT] id: ${String(node.deviceId)} | targetXYZ: ${tx.toFixed(3)},${ty.toFixed(3)},${tz.toFixed(3)}`,
+        //   )
+        // }
         const profile = this._getOrBuildIKProfile(node, calibration);
         const currentPanDMX = node.currentPosition.pan * 255;
         // K0-BATCH-3c: Mutate pre-allocated scratch instead of creating {x:tx, y:ty, z:tz} literal.
@@ -1390,13 +1428,29 @@ export class NodeResolver {
         // y el factor de gimbal lock fade, luego se convierten a DMX (0-255) y se suman
         // al resultado lógico del IK. Esto reemplaza la fusión que hacía NodeArbiter
         // en el dominio normalizado 0-1.
+        //
+        // WAVE 7617: L2 PATTERN FUSION — Además de los offsets L0, ahora también
+        // fusionamos la salida del patrón L2 (AetherKineticEngine). El arbiter
+        // escribe el resultado fusionado del patrón en channelValues['pan']/'tilt']
+        // (pan_base + offset L0). La diferencia entre este valor y 0.5 (centro
+        // neutro) representa la órbita del patrón alrededor del centro. La sumamos
+        // al resultado IK como un offset orbital DMX, escalado por la amplitud
+        // relativa para que el patrón orbite alrededor del target 3D en lugar
+        // de reemplazarlo.
         let logicalPan = ikResult.pan;
         let logicalTilt = ikResult.tilt;
         const panOffset = channelValues['pan_offset'];
         const tiltOffset = channelValues['tilt_offset'];
         const hasPanOffset = panOffset !== undefined && Number.isFinite(panOffset);
         const hasTiltOffset = tiltOffset !== undefined && Number.isFinite(tiltOffset);
-        if (hasPanOffset || hasTiltOffset) {
+        // WAVE 7617: Extract L2 pattern output from the arbiter's fused pan/tilt.
+        // channelValues['pan']/'tilt'] contain the pattern's base + L0 offset fusion.
+        // The deviation from 0.5 (neutral center) is the orbital displacement.
+        const patternPan = channelValues['pan'];
+        const patternTilt = channelValues['tilt'];
+        const hasPatternPan = patternPan !== undefined && Number.isFinite(patternPan);
+        const hasPatternTilt = patternTilt !== undefined && Number.isFinite(patternTilt);
+        if (hasPanOffset || hasTiltOffset || hasPatternPan || hasPatternTilt) {
             const amp = this._relativeOffsetAmplitude;
             const distScale = this._spatialDistanceScales.get(node.nodeId) ?? 1.0;
             if (hasPanOffset) {
@@ -1413,6 +1467,26 @@ export class NodeResolver {
                 const tiltDelta = tiltOffset * amp * VMM_OFFSET_SCALE_TILT * distScale * 255;
                 logicalTilt = logicalTilt + tiltDelta;
             }
+            // WAVE 7617: L2 pattern orbital fusion — add the pattern's deviation from
+            // center as an offset on top of the IK solution. This makes Sweep/Circle
+            // orbit around the 3D target instead of ignoring it.
+            // patternDeviation = (patternOutput - 0.5) * 2  → normalizes to [-1, +1]
+            // dmxDelta = patternDeviation * amp * distScale * 255
+            if (hasPatternPan) {
+                const panDeviation = (patternPan - 0.5) * 2; // [-1, +1]
+                const gimbalFactorPan = logicalTilt / 255;
+                const tiltDistPan = Math.abs(gimbalFactorPan - VMM_GIMBAL_TILT_CENTER);
+                const gimbalFade = tiltDistPan >= VMM_GIMBAL_TILT_FADE_HALFWIDTH
+                    ? 1
+                    : tiltDistPan / VMM_GIMBAL_TILT_FADE_HALFWIDTH;
+                const patternPanDelta = panDeviation * amp * VMM_OFFSET_SCALE_PAN * distScale * gimbalFade * 255;
+                logicalPan = logicalPan + patternPanDelta;
+            }
+            if (hasPatternTilt) {
+                const tiltDeviation = (patternTilt - 0.5) * 2; // [-1, +1]
+                const patternTiltDelta = tiltDeviation * amp * VMM_OFFSET_SCALE_TILT * distScale * 255;
+                logicalTilt = logicalTilt + patternTiltDelta;
+            }
         }
         // ★ WAVE 4557: Velocity clamp + Airbag via AetherSafetyMiddleware
         let safePan = sanitizeDmxByte(logicalPan);
@@ -1423,16 +1497,83 @@ export class NodeResolver {
             safePan = sm.applyAirbag(this._kineticClampScratch.pan, true);
             safeTilt = sm.applyAirbag(this._kineticClampScratch.tilt, false);
         }
+        // WAVE 7616: Apply orientation-based tilt inversion for ceiling/truss mounts.
+        // The IK solver (solveInto) computes tilt in a coordinate frame where 0° = straight
+        // down for floor mounts. For ceiling mounts, the physical tilt axis is inverted —
+        // DMX 0 = straight up, DMX 255 = straight down. Without this inversion, ceiling
+        // fixtures point in the opposite direction of the target.
+        // Previously (WAVE 4547.1) this was skipped in the IK path to "avoid double
+        // negation", but the IK solver never applied the inversion internally — only
+        // calibration.tiltInvert (a separate per-fixture flag) was applied. This left
+        // ceiling fixtures uncorrected, requiring a hacky `1.0 - safeTilt` compensation
+        // in the RELEASE snapshot engine (AetherIPCHandlers.ts). Now that the IK path
+        // applies the inversion natively, that hack has been removed.
+        const invertIKTilt = this._shouldInvertClassicKineticAxes(deviceOrientation, node);
+        if (invertIKTilt) {
+            safeTilt = sanitizeDmxByte(255 - safeTilt);
+        }
         // WAVE 4616: Pre-Vis rescue — siempre actualizar currentPosition con el
         // resultado matemático real, aunque la salida física esté desarmada.
+        // WAVE 7616: currentPosition ahora refleja el valor POST-INVERSIÓN, para
+        // que el snapshot del RELEASE engine capture el DMX correcto sin necesitar
+        // la compensación `1.0 - safeTilt` que existía antes.
         node.currentPosition.pan = safePan / 255;
         node.currentPosition.tilt = safeTilt / 255;
-        if (this._resolveFrameIndex % MATH_TELEMETRY_EVERY_FRAMES === 0) {
-            console.log(`[MATH-OUTPUT] id: ${String(node.deviceId)} | IK-Result: ${safePan.toFixed(1)}/${safeTilt.toFixed(1)} | currentPos: ${(node.currentPosition.pan * 255).toFixed(1)}/${(node.currentPosition.tilt * 255).toFixed(1)}`);
-        }
+        // WAVE 7617: MATH-OUTPUT telemetry silenced — was flooding backend logs at 44Hz.
+        // if (this._resolveFrameIndex % MATH_TELEMETRY_EVERY_FRAMES === 0) {
+        //   console.log(
+        //     `[MATH-OUTPUT] id: ${String(node.deviceId)} | IK-Result: ${safePan.toFixed(1)}/${safeTilt.toFixed(1)} | currentPos: ${(node.currentPosition.pan * 255).toFixed(1)}/${(node.currentPosition.tilt * 255).toFixed(1)}`,
+        //   )
+        // }
         // WAVE 4616: Gate final absoluto en el write DMX.
         if (!nodeWriteEnabled)
             return;
+        // WAVE 7608: 16-bit IK precision — extract 16-bit values from IK result
+        // and apply the same VMM offsets + safety clamps in 16-bit domain.
+        let safePan16 = ikResult.pan16;
+        let safeTilt16 = ikResult.tilt16;
+        // Apply VMM offsets in 16-bit domain (scale 255→65535 = ×257)
+        // WAVE 7617: Also apply L2 pattern orbital fusion in 16-bit domain.
+        if (hasPanOffset || hasTiltOffset || hasPatternPan || hasPatternTilt) {
+            const amp = this._relativeOffsetAmplitude;
+            const distScale = this._spatialDistanceScales.get(node.nodeId) ?? 1.0;
+            if (hasPanOffset) {
+                const tiltNorm16 = safeTilt16 / 65535;
+                const tiltDist16 = Math.abs(tiltNorm16 - VMM_GIMBAL_TILT_CENTER);
+                const gimbalFactor16 = tiltDist16 >= VMM_GIMBAL_TILT_FADE_HALFWIDTH
+                    ? 1
+                    : tiltDist16 / VMM_GIMBAL_TILT_FADE_HALFWIDTH;
+                const panDelta16 = panOffset * amp * VMM_OFFSET_SCALE_PAN * distScale * gimbalFactor16 * 65535;
+                safePan16 = safePan16 + panDelta16;
+            }
+            if (hasTiltOffset) {
+                const tiltDelta16 = tiltOffset * amp * VMM_OFFSET_SCALE_TILT * distScale * 65535;
+                safeTilt16 = safeTilt16 + tiltDelta16;
+            }
+            // WAVE 7617: L2 pattern orbital fusion (16-bit)
+            if (hasPatternPan) {
+                const panDeviation16 = (patternPan - 0.5) * 2;
+                const tiltNorm16p = safeTilt16 / 65535;
+                const tiltDist16p = Math.abs(tiltNorm16p - VMM_GIMBAL_TILT_CENTER);
+                const gimbalFade16 = tiltDist16p >= VMM_GIMBAL_TILT_FADE_HALFWIDTH
+                    ? 1
+                    : tiltDist16p / VMM_GIMBAL_TILT_FADE_HALFWIDTH;
+                const patternPanDelta16 = panDeviation16 * amp * VMM_OFFSET_SCALE_PAN * distScale * gimbalFade16 * 65535;
+                safePan16 = safePan16 + patternPanDelta16;
+            }
+            if (hasPatternTilt) {
+                const tiltDeviation16 = (patternTilt - 0.5) * 2;
+                const patternTiltDelta16 = tiltDeviation16 * amp * VMM_OFFSET_SCALE_TILT * distScale * 65535;
+                safeTilt16 = safeTilt16 + patternTiltDelta16;
+            }
+        }
+        // Clamp 16-bit values to valid range
+        safePan16 = Math.max(0, Math.min(65535, Math.round(safePan16)));
+        safeTilt16 = Math.max(0, Math.min(65535, Math.round(safeTilt16)));
+        // WAVE 7616: Apply the same orientation inversion to 16-bit tilt.
+        if (invertIKTilt) {
+            safeTilt16 = Math.max(0, Math.min(65535, 65535 - safeTilt16));
+        }
         for (let ci = 0; ci < node.channels.length; ci++) {
             const chDef = node.channels[ci];
             const isPan = chDef.type === 'pan';
@@ -1442,13 +1583,21 @@ export class NodeResolver {
             const bufIdx = baseAddr + chDef.dmxOffset;
             if (bufIdx < 0 || bufIdx >= DMX_UNIVERSE_SIZE)
                 continue;
-            const dmxValue = isPan ? safePan : safeTilt;
-            buf[bufIdx] = dmxValue;
             if (chDef.is16bit) {
+                // WAVE 7608: Split 16-bit value into MSB (coarse) and LSB (fine)
+                const val16 = isPan ? safePan16 : safeTilt16;
+                const coarse = (val16 >> 8) & 0xFF; // MSB → pan/tilt channel
+                const fine = val16 & 0xFF; // LSB → pan_fine/tilt_fine channel
+                buf[bufIdx] = coarse;
                 const fineIdx = bufIdx + 1;
                 if (fineIdx < DMX_UNIVERSE_SIZE) {
-                    buf[fineIdx] = 0; // IKEngine produce resolución 8-bit; fine byte = 0
+                    buf[fineIdx] = fine;
                 }
+            }
+            else {
+                // 8-bit fixture — use coarse value only
+                const dmxValue = isPan ? safePan : safeTilt;
+                buf[bufIdx] = dmxValue;
             }
         }
         // 🩸 WAVE 6040-DIAG: Confirm IK path actually wrote to buffer

@@ -529,6 +529,24 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
         get()._syncDerivedState();
         get()._setDirty();
     },
+    // WAVE 7606: Batch edit — apply same partial to multiple fixtures
+    updateMultipleFixtures: (ids, changes) => {
+        const { showFile } = get();
+        if (!showFile)
+            return;
+        // Normalize zone if zone is in the changes
+        const appliedChanges = changes.zone
+            ? { ...changes, zone: normalizeZone(changes.zone) }
+            : changes;
+        for (const id of ids) {
+            const fixture = showFile.fixtures.find(f => f.id === id);
+            if (fixture) {
+                Object.assign(fixture, appliedChanges);
+            }
+        }
+        get()._syncDerivedState();
+        get()._setDirty();
+    },
     reconcileFixturesWithProfile: (updatedProfile, previousProfileId) => {
         const { showFile } = get();
         if (!showFile)

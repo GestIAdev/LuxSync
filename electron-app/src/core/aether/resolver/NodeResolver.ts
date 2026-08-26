@@ -230,6 +230,10 @@ export class NodeResolver implements INodeResolver {
   private readonly _ikProfiles = new Map<NodeId, IKFixtureProfile>()
   private readonly _ikReachability = new Map<NodeId, boolean>()
   private readonly _ikLastWarnFrame = new Map<NodeId, number>()
+  // WAVE 7618: Per-node pattern lerp factor [0,1] — ramps from 0→1 over ~1s
+  // when a pattern first becomes active, preventing the Phase-0 spike that
+  // violently jumps the mutated target to the pattern's initial position.
+  private readonly _ikPatternLerp = new Map<NodeId, number>()
   private _resolveFrameIndex = 0
   // 🛠️ WAVE 5034: Pre-allocated IKResult scratch — zero alloc en hot path.
   private readonly _ikResultScratch: import('../../../engine/movement/InverseKinematicsEngine').IKResult = { pan: 0, tilt: 0, pan16: 0, tilt16: 0, reachable: false, antiFlipApplied: false }
@@ -1611,9 +1615,67 @@ export class NodeResolver implements INodeResolver {
     const currentPanDMX = node.currentPosition.pan * 255
 
     // K0-BATCH-3c: Mutate pre-allocated scratch instead of creating {x:tx, y:ty, z:tz} literal.
-    this._ikTargetScratch.x = tx
-    this._ikTargetScratch.y = ty
-    this._ikTargetScratch.z = tz
+    //
+    // WAVE 7618: TARGET MUTATION — Instead of post-processing DMX offsets (WAVE 7617,
+    // which broke geometric coherence because the same DMX delta means different
+    // spatial directions for different fixtures), we now mutate the 3D target
+    // coordinates BEFORE calling solveInto. The L2 pattern's pan_base/tilt_base
+    // deviation from neutral (0.5) is converted to a 3D metric offset and added
+    // to the target. The IK solver then computes per-fixture pan/tilt for the
+    // mutated target, preserving geometric coherence across all fixtures.
+    const patternPanBase  = channelValues['pan_base']
+    const patternTiltBase = channelValues['tilt_base']
+    const hasPatternPan  = patternPanBase !== undefined && Number.isFinite(patternPanBase)
+    const hasPatternTilt = patternTiltBase !== undefined && Number.isFinite(patternTiltBase)
+
+    // ORBIT_RADIUS: meters of orbital displacement at full pattern amplitude.
+    // 3.0m gives a visible sweep on a typical 12m-wide stage without sending
+    // the target into unreachable zones. The pattern's amplitude is already
+    // baked into pan_base/tilt_base by AetherKineticEngine.tick().
+    const ORBIT_RADIUS_PAN  = 3.0
+    const ORBIT_RADIUS_TILT = 3.0
+
+    let mutatedX = tx
+    let mutatedY = ty
+    let mutatedZ = tz
+
+    if (hasPatternPan || hasPatternTilt) {
+      // WAVE 7618: Phase-0 spike mitigation — lerp the orbital offset from 0
+      // to full amplitude over ~1 second (44 frames at 44Hz). This prevents
+      // the violent jump when a pattern starts and phase resets to 0, which
+      // would instantly move the mutated target to the pattern's initial edge.
+      // The lerp factor ramps up each frame; when the pattern deactivates, it
+      // resets to 0 on the next frame (no pattern → no offset → no lerp needed).
+      const PATTERN_LERP_FRAMES = 44  // ~1 second at 44Hz
+      let lerpFactor = this._ikPatternLerp.get(node.nodeId) ?? 0
+      if (lerpFactor < 1) {
+        lerpFactor = Math.min(1, lerpFactor + (1 / PATTERN_LERP_FRAMES))
+        this._ikPatternLerp.set(node.nodeId, lerpFactor)
+      }
+
+      // Convert DMX-normalized [0,1] deviation to 3D metric offset.
+      // (value - 0.5) * 2 maps [0,1] → [-1,+1], then scale by orbit radius
+      // and the lerp factor for smooth pattern entry.
+      if (hasPatternPan) {
+        const dx = ((patternPanBase as number) - 0.5) * 2 * ORBIT_RADIUS_PAN * lerpFactor
+        mutatedX = tx + dx
+      }
+      if (hasPatternTilt) {
+        // tilt_base maps to the Z (depth) axis — sweep up/down the stage.
+        const dz = ((patternTiltBase as number) - 0.5) * 2 * ORBIT_RADIUS_TILT * lerpFactor
+        mutatedZ = tz + dz
+      }
+    } else {
+      // No pattern active — reset the lerp factor so the next pattern activation
+      // starts a fresh ramp-in.
+      if (this._ikPatternLerp.has(node.nodeId)) {
+        this._ikPatternLerp.set(node.nodeId, 0)
+      }
+    }
+
+    this._ikTargetScratch.x = mutatedX
+    this._ikTargetScratch.y = mutatedY
+    this._ikTargetScratch.z = mutatedZ
     solveInto(this._ikResultScratch, profile, this._ikTargetScratch, currentPanDMX)
     const ikResult = this._ikResultScratch
     const reachable = ikResult.reachable !== false
@@ -1624,7 +1686,7 @@ export class NodeResolver implements INodeResolver {
       if ((this._resolveFrameIndex - lastWarnFrame) >= IK_WARN_INTERVAL_FRAMES) {
         this._ikLastWarnFrame.set(node.nodeId, this._resolveFrameIndex)
         console.warn(
-          `[NodeResolver] IK unreachable | node=${String(node.nodeId)} device=${String(node.deviceId)} target=(${tx.toFixed(2)},${ty.toFixed(2)},${tz.toFixed(2)})`,
+          `[NodeResolver] IK unreachable | node=${String(node.nodeId)} device=${String(node.deviceId)} target=(${mutatedX.toFixed(2)},${mutatedY.toFixed(2)},${mutatedZ.toFixed(2)})`,
         )
       }
     }
@@ -1636,14 +1698,9 @@ export class NodeResolver implements INodeResolver {
     // al resultado lógico del IK. Esto reemplaza la fusión que hacía NodeArbiter
     // en el dominio normalizado 0-1.
     //
-    // WAVE 7617: L2 PATTERN FUSION — Además de los offsets L0, ahora también
-    // fusionamos la salida del patrón L2 (AetherKineticEngine). El arbiter
-    // escribe el resultado fusionado del patrón en channelValues['pan']/'tilt']
-    // (pan_base + offset L0). La diferencia entre este valor y 0.5 (centro
-    // neutro) representa la órbita del patrón alrededor del centro. La sumamos
-    // al resultado IK como un offset orbital DMX, escalado por la amplitud
-    // relativa para que el patrón orbite alrededor del target 3D en lugar
-    // de reemplazarlo.
+    // WAVE 7618: L2 pattern fusion moved to target-mutation (above). Only L0
+    // VMM offsets remain in DMX-space post-solve fusion. The L2 pattern now
+    // mutates the 3D target before solveInto, preserving geometric coherence.
     let logicalPan  = ikResult.pan
     let logicalTilt = ikResult.tilt
 
@@ -1652,15 +1709,7 @@ export class NodeResolver implements INodeResolver {
     const hasPanOffset  = panOffset !== undefined && Number.isFinite(panOffset)
     const hasTiltOffset = tiltOffset !== undefined && Number.isFinite(tiltOffset)
 
-    // WAVE 7617: Extract L2 pattern output from the arbiter's fused pan/tilt.
-    // channelValues['pan']/'tilt'] contain the pattern's base + L0 offset fusion.
-    // The deviation from 0.5 (neutral center) is the orbital displacement.
-    const patternPan  = channelValues['pan']
-    const patternTilt = channelValues['tilt']
-    const hasPatternPan  = patternPan !== undefined && Number.isFinite(patternPan)
-    const hasPatternTilt = patternTilt !== undefined && Number.isFinite(patternTilt)
-
-    if (hasPanOffset || hasTiltOffset || hasPatternPan || hasPatternTilt) {
+    if (hasPanOffset || hasTiltOffset) {
       const amp = this._relativeOffsetAmplitude
       const distScale = this._spatialDistanceScales.get(node.nodeId) ?? 1.0
 
@@ -1677,27 +1726,6 @@ export class NodeResolver implements INodeResolver {
       if (hasTiltOffset) {
         const tiltDelta = (tiltOffset as number) * amp * VMM_OFFSET_SCALE_TILT * distScale * 255
         logicalTilt = logicalTilt + tiltDelta
-      }
-
-      // WAVE 7617: L2 pattern orbital fusion — add the pattern's deviation from
-      // center as an offset on top of the IK solution. This makes Sweep/Circle
-      // orbit around the 3D target instead of ignoring it.
-      // patternDeviation = (patternOutput - 0.5) * 2  → normalizes to [-1, +1]
-      // dmxDelta = patternDeviation * amp * distScale * 255
-      if (hasPatternPan) {
-        const panDeviation = ((patternPan as number) - 0.5) * 2  // [-1, +1]
-        const gimbalFactorPan = logicalTilt / 255
-        const tiltDistPan = Math.abs(gimbalFactorPan - VMM_GIMBAL_TILT_CENTER)
-        const gimbalFade = tiltDistPan >= VMM_GIMBAL_TILT_FADE_HALFWIDTH
-          ? 1
-          : tiltDistPan / VMM_GIMBAL_TILT_FADE_HALFWIDTH
-        const patternPanDelta = panDeviation * amp * VMM_OFFSET_SCALE_PAN * distScale * gimbalFade * 255
-        logicalPan = logicalPan + patternPanDelta
-      }
-      if (hasPatternTilt) {
-        const tiltDeviation = ((patternTilt as number) - 0.5) * 2  // [-1, +1]
-        const patternTiltDelta = tiltDeviation * amp * VMM_OFFSET_SCALE_TILT * distScale * 255
-        logicalTilt = logicalTilt + patternTiltDelta
       }
     }
 
@@ -1751,8 +1779,9 @@ export class NodeResolver implements INodeResolver {
     let safeTilt16 = ikResult.tilt16
 
     // Apply VMM offsets in 16-bit domain (scale 255→65535 = ×257)
-    // WAVE 7617: Also apply L2 pattern orbital fusion in 16-bit domain.
-    if (hasPanOffset || hasTiltOffset || hasPatternPan || hasPatternTilt) {
+    // WAVE 7618: L2 pattern fusion removed from 16-bit path — now handled
+    // by target mutation before solveInto (3D space, not DMX space).
+    if (hasPanOffset || hasTiltOffset) {
       const amp = this._relativeOffsetAmplitude
       const distScale = this._spatialDistanceScales.get(node.nodeId) ?? 1.0
       if (hasPanOffset) {
@@ -1767,22 +1796,6 @@ export class NodeResolver implements INodeResolver {
       if (hasTiltOffset) {
         const tiltDelta16 = (tiltOffset as number) * amp * VMM_OFFSET_SCALE_TILT * distScale * 65535
         safeTilt16 = safeTilt16 + tiltDelta16
-      }
-      // WAVE 7617: L2 pattern orbital fusion (16-bit)
-      if (hasPatternPan) {
-        const panDeviation16 = ((patternPan as number) - 0.5) * 2
-        const tiltNorm16p = safeTilt16 / 65535
-        const tiltDist16p = Math.abs(tiltNorm16p - VMM_GIMBAL_TILT_CENTER)
-        const gimbalFade16 = tiltDist16p >= VMM_GIMBAL_TILT_FADE_HALFWIDTH
-          ? 1
-          : tiltDist16p / VMM_GIMBAL_TILT_FADE_HALFWIDTH
-        const patternPanDelta16 = panDeviation16 * amp * VMM_OFFSET_SCALE_PAN * distScale * gimbalFade16 * 65535
-        safePan16 = safePan16 + patternPanDelta16
-      }
-      if (hasPatternTilt) {
-        const tiltDeviation16 = ((patternTilt as number) - 0.5) * 2
-        const patternTiltDelta16 = tiltDeviation16 * amp * VMM_OFFSET_SCALE_TILT * distScale * 65535
-        safeTilt16 = safeTilt16 + patternTiltDelta16
       }
     }
 

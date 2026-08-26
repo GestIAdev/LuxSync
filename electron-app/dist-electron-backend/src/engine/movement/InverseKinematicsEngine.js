@@ -31,6 +31,8 @@ const DEFAULT_PAN_RANGE_DEG = 540;
 const DEFAULT_TILT_RANGE_DEG = 270;
 /** DMX resolution */
 const DMX_MAX = 255;
+/** WAVE 7608: 16-bit DMX resolution for pan_fine/tilt_fine channels */
+const DMX_16BIT_MAX = 65535;
 /**
  * Umbral de distancia horizontal para detección de Gimbal Lock (metros).
  * Cuando el target está directamente arriba/abajo del fixture (dx≈0, dz≈0),
@@ -99,7 +101,7 @@ export function isIKDebug() { return DEBUG_IK; }
  * @returns IKResult con pan/tilt DMX listos para inyectar en MasterArbiter
  */
 export function solve(fixture, target, currentPanDMX = null) {
-    const out = { pan: 0, tilt: 0, reachable: false, antiFlipApplied: false };
+    const out = { pan: 0, tilt: 0, pan16: 0, tilt16: 0, reachable: false, antiFlipApplied: false };
     solveInto(out, fixture, target, currentPanDMX);
     return out;
 }
@@ -146,26 +148,51 @@ export function solveInto(out, fixture, target, currentPanDMX = null) {
     let calibratedTiltDeg = tiltDeg + fixture.calibration.tiltOffset;
     const panRange = fixture.limits.panRangeDeg || DEFAULT_PAN_RANGE_DEG;
     const tiltRange = fixture.limits.tiltRangeDeg || DEFAULT_TILT_RANGE_DEG;
-    let panDMXRaw = ((calibratedPanDeg + panRange / 2) / panRange) * DMX_MAX;
-    let tiltDMXRaw = ((calibratedTiltDeg + tiltRange / 2) / tiltRange) * DMX_MAX;
+    // WAVE 7608: Compute BOTH 8-bit and 16-bit DMX values from the same normalized angle.
+    // The normalized position (0.0 to 1.0) is identical — only the output scale differs.
+    // This ensures 8-bit and 16-bit channels are always coherent.
+    const panNorm = (calibratedPanDeg + panRange / 2) / panRange; // 0.0 to 1.0
+    const tiltNorm = (calibratedTiltDeg + tiltRange / 2) / tiltRange; // 0.0 to 1.0
+    let panDMXRaw = panNorm * DMX_MAX;
+    let tiltDMXRaw = tiltNorm * DMX_MAX;
+    // WAVE 7608: 16-bit versions (same normalization, higher resolution)
+    let panDMX16Raw = panNorm * DMX_16BIT_MAX;
+    let tiltDMX16Raw = tiltNorm * DMX_16BIT_MAX;
     let antiFlipApplied = false;
     if (currentPanDMX !== null) {
         const resolved = resolveShortestPanPath(panDMXRaw, currentPanDMX, panRange);
         panDMXRaw = resolved.dmx;
         antiFlipApplied = resolved.flipped;
+        // WAVE 7608: Apply the same flip delta to 16-bit (scaled by 257 = 65535/255)
+        const flipDelta16 = (resolved.dmx - panNorm * DMX_MAX) * 257;
+        panDMX16Raw = panDMX16Raw + flipDelta16;
     }
     let panDMX = fixture.calibration.panInvert ? (DMX_MAX - panDMXRaw) : panDMXRaw;
     let tiltDMX = fixture.calibration.tiltInvert ? (DMX_MAX - tiltDMXRaw) : tiltDMXRaw;
+    // WAVE 7608: 16-bit inversion
+    let panDMX16 = fixture.calibration.panInvert ? (DMX_16BIT_MAX - panDMX16Raw) : panDMX16Raw;
+    let tiltDMX16 = fixture.calibration.tiltInvert ? (DMX_16BIT_MAX - tiltDMX16Raw) : tiltDMX16Raw;
     const panInRange = panDMXRaw >= -PAN_SAFETY_MARGIN && panDMXRaw <= DMX_MAX + PAN_SAFETY_MARGIN;
     const tiltInRange = tiltDMXRaw >= -PAN_SAFETY_MARGIN && tiltDMXRaw <= DMX_MAX + PAN_SAFETY_MARGIN;
     if (fixture.limits.tiltLimits) {
         tiltDMX = Math.max(fixture.limits.tiltLimits.min, Math.min(fixture.limits.tiltLimits.max, tiltDMX));
+        // WAVE 7608: Scale tilt limits to 16-bit
+        const tiltMin16 = fixture.limits.tiltLimits.min * 257;
+        const tiltMax16 = fixture.limits.tiltLimits.max * 257;
+        tiltDMX16 = Math.max(tiltMin16, Math.min(tiltMax16, tiltDMX16));
     }
     panDMX = Math.max(PAN_SAFETY_MARGIN, Math.min(DMX_MAX - PAN_SAFETY_MARGIN, panDMX));
+    // WAVE 7608: Scale safety margin to 16-bit
+    const PAN_SAFETY_MARGIN_16 = PAN_SAFETY_MARGIN * 257;
+    panDMX16 = Math.max(PAN_SAFETY_MARGIN_16, Math.min(DMX_16BIT_MAX - PAN_SAFETY_MARGIN_16, panDMX16));
     panDMX = Math.max(0, Math.min(DMX_MAX, Math.round(panDMX)));
     tiltDMX = Math.max(0, Math.min(DMX_MAX, Math.round(tiltDMX)));
+    panDMX16 = Math.max(0, Math.min(DMX_16BIT_MAX, Math.round(panDMX16)));
+    tiltDMX16 = Math.max(0, Math.min(DMX_16BIT_MAX, Math.round(tiltDMX16)));
     out.pan = panDMX;
     out.tilt = tiltDMX;
+    out.pan16 = panDMX16;
+    out.tilt16 = tiltDMX16;
     out.reachable = panInRange && tiltInRange;
     out.antiFlipApplied = antiFlipApplied;
 }

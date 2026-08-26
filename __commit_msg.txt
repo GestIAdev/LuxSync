@@ -1,28 +1,35 @@
-WAVE 7617: Silence telemetry + fuse L2 patterns with IK spatial aiming
+WAVE 7618: Target mutation architecture — L2 patterns orbit in 3D space
 
-1. Silenced backend telemetry that was flooding logs at 44Hz:
-   - [MATH-INPUT] in NodeResolver._writeNodeIK (commented out)
-   - [MATH-OUTPUT] in NodeResolver._writeNodeIK (commented out)
-   - [PHYSICS-3D] in PhysicsPostProcessor (commented out)
-   All three can be re-enabled with debug flags if needed.
+Replaces the broken WAVE 7617 DMX-space fusion with proper 3D target
+mutation. The forensic report (WAVE 7617-DIAGNOSTIC) confirmed that
+adding flat DMX offsets to IK solver output breaks geometric coherence
+because the same DMX delta means different spatial directions for
+fixtures at different positions.
 
-2. L2 Pattern Fusion in NodeResolver._writeNodeIK:
-   When a Spatial Target is active, the IK path was completely bypassing
-   the L2 pattern output (Sweep, Circle, etc.) from AetherKineticEngine.
-   The arbiter writes the pattern's fused pan/tilt to channelValues['pan']
-   and channelValues['tilt'], but _writeNodeIK only read targetX/Y/Z and
-   pan_offset/tilt_offset (L0 VMM), ignoring the L2 pattern entirely.
+ARCHITECTURE CHANGE:
+- L2 pattern output (pan_base/tilt_base) is now converted to a 3D
+  metric offset and added to the target coordinates BEFORE solveInto
+  runs. The IK solver computes per-fixture pan/tilt for the mutated
+  target, preserving geometric coherence across all fixtures.
+- ORBIT_RADIUS = 3.0 meters — the pattern moves the target point
+  across a 6m diameter circle on stage, and each fixture tracks it
+  individually via the IK solver.
 
-   Fix: Extract channelValues['pan']/'tilt'] (the arbiter's fused pattern
-   output) and compute the orbital deviation from neutral center (0.5):
-     patternDeviation = (patternOutput - 0.5) * 2  → [-1, +1]
-   Add this as a DMX delta on top of the IK solution, scaled by amplitude,
-   distance scale, and gimbal lock fade factor. This makes Sweep/Circle
-   orbit around the 3D target instead of ignoring it.
+PHASE-0 SPIKE MITIGATION:
+- Added per-node _ikPatternLerp factor that ramps from 0→1 over ~1
+  second (44 frames at 44Hz) when a pattern first becomes active.
+- This prevents the violent jump when phase resets to 0 and the
+  pattern outputs its initial edge position. The orbital offset
+  smoothly blends in from zero to full amplitude.
+- Resets to 0 when no pattern is active, so each activation gets a
+  fresh ramp-in.
 
-   The same fusion is applied in both 8-bit and 16-bit domains, with
-   the gimbal lock fade applied to the pan deviation based on the
-   current tilt position.
+REVERTED:
+- Removed WAVE 7617 patternDeviation DMX fusion from both 8-bit and
+  16-bit paths in _writeNodeIK.
+- L0 VMM offsets (pan_offset/tilt_offset) remain in DMX-space
+  post-solve fusion — they are per-fixture relative offsets, not
+  absolute pattern positions, so DMX-space fusion is correct for L0.
 
 Generated with [Devin](https://devin.ai)
 

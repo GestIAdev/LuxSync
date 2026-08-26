@@ -685,13 +685,52 @@ export class AetherKineticEngine {
       const finalPanBase  = clamp01(panBase  + ditherPan)
       const finalTiltBase = clamp01(tiltBase + ditherTilt)
 
+      // WAVE 7621 Fix B: Preserve spatial target keys from the arbiter's existing
+      // entry. applySpatialTarget writes targetX/Y/Z to _motorKineticOverrides.
+      // If we create a fresh rec here, we'd destroy them. Read the existing entry
+      // first and spread it.
+      //
+      // WAVE 7621 Phase 3 (L2 Offset Bridge): When a spatial target is active
+      // (IK mode), emit the pattern as pan_offset/tilt_offset (relative [-1,+1])
+      // instead of pan_base/tilt_base (absolute [0,1]). The resolver's IK path
+      // reads pan_offset/tilt_offset and applies them via WAVE 7179 post-solve
+      // fusion, making the pattern orbit around the IK-solved position.
+      // When no spatial target is active (classic mode), emit pan_base/tilt_base
+      // as before — the arbiter fuses them into record['pan']/'tilt'] for the
+      // classic resolver path.
+      const existingMotor = arbiter.getMotorKineticOverride(nodeId)
+      const hasSpatialTarget = existingMotor !== undefined && existingMotor['targetX'] !== undefined
+
       let rec = this._overridePool.get(nodeId)
       if (!rec) {
-        rec = { pan_base: finalPanBase, tilt_base: finalTiltBase }
+        // WAVE 7621 Fix B: Start from the existing motor override to preserve
+        // spatial target keys (targetX/Y/Z) written by applySpatialTarget.
+        rec = existingMotor ? { ...existingMotor } : {}
         this._overridePool.set(nodeId, rec)
+      }
+
+      if (hasSpatialTarget) {
+        // IK MODE: Emit pattern as relative offsets [-1,+1].
+        // The raw pattern output (x, y) is already in [-1,+1].
+        // Scale by amplitude (0-1) so amplitude=0 → offset=0 → no movement.
+        // Do NOT apply PAN_ASPECT_RATIO or 0.45 here — those scales are for
+        // the DMX-space base path. The resolver's WAVE 7179 fusion applies
+        // VMM_OFFSET_SCALE_PAN (0.5) and VMM_OFFSET_SCALE_TILT (1.0) itself.
+        rec['pan_offset']  = x * cfg.amplitude
+        rec['tilt_offset'] = y * cfg.amplitude
+        // Remove base keys — in IK mode, the pattern is an offset, not a base.
+        // The arbiter's fusion loop will skip this node for base computation
+        // (no pan_base/tilt_base in motor override), but will still copy
+        // targetX/Y/Z to the record (WAVE 7621 Fix C).
+        delete rec['pan_base']
+        delete rec['tilt_base']
       } else {
+        // CLASSIC MODE: Emit pattern as absolute bases [0,1].
         rec['pan_base']  = finalPanBase
         rec['tilt_base'] = finalTiltBase
+        // Clean up any stale offset keys from a previous IK mode session.
+        delete rec['pan_offset']
+        delete rec['tilt_offset']
       }
 
       arbiter.setMotorKineticOverride(nodeId, rec)

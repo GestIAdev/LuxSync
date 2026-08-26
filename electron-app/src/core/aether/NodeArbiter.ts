@@ -1006,6 +1006,27 @@ export class NodeArbiter implements INodeArbiter {
       const hasMotorPan  = isFiniteChannelValue(motorPan)
       const hasMotorTilt = isFiniteChannelValue(motorTilt)
 
+      // WAVE 7621 Fix C: Copy spatial target keys from the motor override to
+      // the record so NodeResolver can read them via channelValues['targetX'].
+      // Without this, the resolver never sees the spatial target even though
+      // applySpatialTarget wrote it to _motorKineticOverrides. This is the
+      // missing link that broke Opus's original IK + pattern merge.
+      if (motor) {
+        const mtx = motor['targetX']
+        const mty = motor['targetY']
+        const mtz = motor['targetZ']
+        if (isFiniteChannelValue(mtx)) record['targetX'] = mtx as number
+        if (isFiniteChannelValue(mty)) record['targetY'] = mty as number
+        if (isFiniteChannelValue(mtz)) record['targetZ'] = mtz as number
+        // WAVE 7621 Phase 3: Also copy pan_offset/tilt_offset emitted by the
+        // L2 engine in IK mode. These are relative offsets [-1,+1] that the
+        // resolver's WAVE 7179 post-solve fusion will apply to the IK result.
+        const mpo = motor['pan_offset']
+        const mto = motor['tilt_offset']
+        if (isFiniteChannelValue(mpo)) record['pan_offset'] = mpo as number
+        if (isFiniteChannelValue(mto)) record['tilt_offset'] = mto as number
+      }
+
       const manualPan  = manual ? manual['pan_base']  : undefined
       const manualTilt = manual ? manual['tilt_base'] : undefined
 

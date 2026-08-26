@@ -137,13 +137,10 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
     const isSpatial = mode === 'spatial'
     setRadarModeOverride(isSpatial ? 'spatial' : null)
 
-    // WAVE 7613: Al salir del modo spatial, limpiar targetX/Y/Z del programmerStore.
-    // Si no lo hacemos, ProgrammerAetherBridge seguirá inyectando targets espaciales
-    // en el arbiter aunque el operador haya cambiado al radar clásico (pan/tilt).
-    if (!isSpatial && selectedIds.length > 0) {
-      useProgrammerStore.getState().clearSpatialTargets(selectedIds)
-    }
-  }, [setRadarModeOverride, selectedIds])
+    // WAVE 7621: Spatial target cleanup is handled by the backend
+    // (clearMotorKineticOverride in releaseSpatialTarget). The WAVE 7613
+    // programmerStore.clearSpatialTargets bypass has been removed.
+  }, [setRadarModeOverride])
 
   const handleUnlockKinetics = useCallback(() => {
     // 🔬 WAVE 6020 DIAG: Logging completo del Unlock
@@ -158,12 +155,10 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
 
     // WAVE 4868: unlock de Cathedral debe ser estrictamente cinético.
     // Limpia solo KINETIC + motor cinético + estado UI asociado.
-    // WAVE 6019.6 FIX: purgar targets espaciales ANTES de releaseKinetics
-    // para que ProgrammerAetherBridge no re-inyecte targetX/Y/Z zombis
-    // en el frame siguiente al Unlock.
+    // WAVE 7621: Spatial target purge is handled atomically by the backend
+    // in setManualPattern RELEASE/NULL (AetherIPCHandlers.ts). The WAVE 7613
+    // programmerStore.clearSpatialTargets bypass has been removed.
     if (selectedIds.length > 0) {
-      console.log('[ZOMBIE-DIAG] Step 1: clearSpatialTargets')
-      useProgrammerStore.getState().clearSpatialTargets(selectedIds)
       // WAVE 6020.10: purgeBaseSpatial eliminado — la purga IK de nodo base
       // ahora ocurre de forma atómica dentro de setManualPattern RELEASE/NULL
       // (AetherIPCHandlers.ts), garantizando que el snapshot se capture ANTES

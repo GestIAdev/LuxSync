@@ -230,10 +230,6 @@ export class NodeResolver implements INodeResolver {
   private readonly _ikProfiles = new Map<NodeId, IKFixtureProfile>()
   private readonly _ikReachability = new Map<NodeId, boolean>()
   private readonly _ikLastWarnFrame = new Map<NodeId, number>()
-  // WAVE 7618: Per-node pattern lerp factor [0,1] — ramps from 0→1 over ~1s
-  // when a pattern first becomes active, preventing the Phase-0 spike that
-  // violently jumps the mutated target to the pattern's initial position.
-  private readonly _ikPatternLerp = new Map<NodeId, number>()
   private _resolveFrameIndex = 0
   // 🛠️ WAVE 5034: Pre-allocated IKResult scratch — zero alloc en hot path.
   private readonly _ikResultScratch: import('../../../engine/movement/InverseKinematicsEngine').IKResult = { pan: 0, tilt: 0, pan16: 0, tilt16: 0, reachable: false, antiFlipApplied: false }
@@ -1615,95 +1611,13 @@ export class NodeResolver implements INodeResolver {
     const currentPanDMX = node.currentPosition.pan * 255
 
     // K0-BATCH-3c: Mutate pre-allocated scratch instead of creating {x:tx, y:ty, z:tz} literal.
-    //
-    // WAVE 7618: TARGET MUTATION — Instead of post-processing DMX offsets (WAVE 7617,
-    // which broke geometric coherence because the same DMX delta means different
-    // spatial directions for different fixtures), we now mutate the 3D target
-    // coordinates BEFORE calling solveInto. The L2 pattern's live output (written
-    // by AetherKineticEngine.tick() to _motorKineticOverrides, then fused by the
-    // arbiter into channelValues['pan']/'tilt']) is converted to a 3D metric
-    // offset and added to the target. The IK solver then computes per-fixture
-    // pan/tilt for the mutated target, preserving geometric coherence.
-    //
-    // KEY INSIGHT: channelValues['pan_base']/'tilt_base'] contain the STATIC
-    // anchor (from _manualOverrides, typically 0.5). channelValues['pan']/'tilt']
-    // contain the FUSED live output (motor's pan_base + L0 offset). The PATTERN
-    // DEVIATION = live - anchor. This isolates the orbital displacement from
-    // the anchor position, so amplitude=0 → deviation=0 → no mutation.
-    const livePan  = channelValues['pan']
-    const liveTilt = channelValues['tilt']
-    const anchorPan  = channelValues['pan_base']
-    const anchorTilt = channelValues['tilt_base']
-
-    // Pattern is active only when the arbiter's fusion produced live pan/tilt
-    // (i.e., the motor is running). When no pattern is active, the fusion skips
-    // this node entirely, so channelValues['pan']/'tilt'] are undefined.
-    const hasLivePan  = livePan  !== undefined && Number.isFinite(livePan)
-    const hasLiveTilt = liveTilt !== undefined && Number.isFinite(liveTilt)
-
-    // ORBIT_RADIUS: meters of orbital displacement at full pattern amplitude.
-    // 8.0m gives a dramatic sweep on a typical 12m-wide stage.
-    //
-    // WAVE 7618.3: Mapped tilt→Z (depth) instead of Y (height).
-    // The L2 engine adds a constant orientation offset (tiltOffsetNorm) to
-    // tilt_base for ceiling mounts. This is a tilt-space adjustment, NOT a
-    // pattern oscillation. Mapping it to Y (height) caused a constant vertical
-    // shift that looked like a vertical sweep. Mapping tilt→Z (depth) makes
-    // the constant offset a harmless depth shift, while oscillating tilt
-    // patterns (circle, bounce) still produce visible movement.
-    //
-    // Pan deviation maps to X (horizontal) — this is the primary sweep axis.
-    // For sweep (y=0), only X moves → pure horizontal sweep, matching classic.
-    const ORBIT_RADIUS = 8.0
-    const L2_AMP_SCALE_PAN  = 0.5 * 0.45  // PAN_ASPECT_RATIO * 0.45 = 0.225
-    const L2_AMP_SCALE_TILT = 0.45
-
-    let mutatedX = tx
-    let mutatedY = ty
-    let mutatedZ = tz
-
-    if (hasLivePan || hasLiveTilt) {
-      // WAVE 7618: Phase-0 spike mitigation — lerp the orbital offset from 0
-      // to full amplitude over ~1 second (44 frames at 44Hz). This prevents
-      // the violent jump when a pattern starts and phase resets to 0, which
-      // would instantly move the mutated target to the pattern's initial edge.
-      const PATTERN_LERP_FRAMES = 44  // ~1 second at 44Hz
-      let lerpFactor = this._ikPatternLerp.get(node.nodeId) ?? 0
-      if (lerpFactor < 1) {
-        lerpFactor = Math.min(1, lerpFactor + (1 / PATTERN_LERP_FRAMES))
-        this._ikPatternLerp.set(node.nodeId, lerpFactor)
-      }
-
-      // Pattern deviation = live output - static anchor.
-      // This isolates the orbital displacement from the anchor position.
-      // When amplitude=0, live == anchor → deviation=0 → no mutation.
-      if (hasLivePan) {
-        const anchorVal = (anchorPan !== undefined && Number.isFinite(anchorPan)) ? anchorPan : 0.5
-        const deviation = (livePan as number) - anchorVal
-        // Normalize by pan's max scale (0.225) → [-1,+1], then scale to meters.
-        const dx = (deviation / L2_AMP_SCALE_PAN) * ORBIT_RADIUS * lerpFactor
-        mutatedX = tx + dx
-      }
-      if (hasLiveTilt) {
-        const anchorVal = (anchorTilt !== undefined && Number.isFinite(anchorTilt)) ? anchorTilt : 0.5
-        const deviation = (liveTilt as number) - anchorVal
-        // Normalize by tilt's max scale (0.45) → [-1,+1], then scale to meters.
-        // Map tilt → Z (depth) so the constant orientation offset becomes a
-        // harmless depth shift, not a vertical sweep.
-        const dz = (deviation / L2_AMP_SCALE_TILT) * ORBIT_RADIUS * lerpFactor
-        mutatedZ = tz + dz
-      }
-    } else {
-      // No pattern active — reset the lerp factor so the next pattern activation
-      // starts a fresh ramp-in.
-      if (this._ikPatternLerp.has(node.nodeId)) {
-        this._ikPatternLerp.set(node.nodeId, 0)
-      }
-    }
-
-    this._ikTargetScratch.x = mutatedX
-    this._ikTargetScratch.y = mutatedY
-    this._ikTargetScratch.z = mutatedZ
+    // WAVE 7621: Pure IK — no target mutation, no pattern fusion. The resolver
+    // reads targetX/Y/Z directly and calls solveInto. Pattern offsets arrive
+    // via pan_offset/tilt_offset (emitted by AetherKineticEngine in IK mode)
+    // and are fused by the WAVE 7179 post-solve fusion below.
+    this._ikTargetScratch.x = tx
+    this._ikTargetScratch.y = ty
+    this._ikTargetScratch.z = tz
     solveInto(this._ikResultScratch, profile, this._ikTargetScratch, currentPanDMX)
     const ikResult = this._ikResultScratch
     const reachable = ikResult.reachable !== false
@@ -1714,21 +1628,22 @@ export class NodeResolver implements INodeResolver {
       if ((this._resolveFrameIndex - lastWarnFrame) >= IK_WARN_INTERVAL_FRAMES) {
         this._ikLastWarnFrame.set(node.nodeId, this._resolveFrameIndex)
         console.warn(
-          `[NodeResolver] IK unreachable | node=${String(node.nodeId)} device=${String(node.deviceId)} target=(${mutatedX.toFixed(2)},${mutatedY.toFixed(2)},${mutatedZ.toFixed(2)})`,
+          `[NodeResolver] IK unreachable | node=${String(node.nodeId)} device=${String(node.deviceId)} target=(${tx.toFixed(2)},${ty.toFixed(2)},${tz.toFixed(2)})`,
         )
       }
     }
 
     // 🏗️ WAVE 7179 (M4): VMM Post-Solve Fusion — aplica offsets del VMM en dominio DMX.
     // Los offsets (pan_offset, tilt_offset) provienen del L0 (VibeMovementManager)
-    // y están en espacio normalizado [-1, +1]. Se escalan por amplitude, dist_scale
-    // y el factor de gimbal lock fade, luego se convierten a DMX (0-255) y se suman
-    // al resultado lógico del IK. Esto reemplaza la fusión que hacía NodeArbiter
+    // o del L2 Engine (AetherKineticEngine en modo IK) y están en espacio
+    // normalizado [-1, +1]. Se escalan por amplitude, dist_scale y el factor
+    // de gimbal lock fade, luego se convierten a DMX (0-255) y se suman al
+    // resultado lógico del IK. Esto reemplaza la fusión que hacía NodeArbiter
     // en el dominio normalizado 0-1.
     //
-    // WAVE 7618: L2 pattern fusion moved to target-mutation (above). Only L0
-    // VMM offsets remain in DMX-space post-solve fusion. The L2 pattern now
-    // mutates the 3D target before solveInto, preserving geometric coherence.
+    // WAVE 7621: This is Opus's intended merge path. The L2 engine emits
+    // pan_offset/tilt_offset when a spatial target is active (IK mode), so
+    // the pattern naturally orbits around the IK-solved position.
     let logicalPan  = ikResult.pan
     let logicalTilt = ikResult.tilt
 
@@ -1807,8 +1722,8 @@ export class NodeResolver implements INodeResolver {
     let safeTilt16 = ikResult.tilt16
 
     // Apply VMM offsets in 16-bit domain (scale 255→65535 = ×257)
-    // WAVE 7618: L2 pattern fusion removed from 16-bit path — now handled
-    // by target mutation before solveInto (3D space, not DMX space).
+    // WAVE 7621: L2 pattern offsets (pan_offset/tilt_offset) emitted by
+    // AetherKineticEngine in IK mode are fused here alongside L0 VMM offsets.
     if (hasPanOffset || hasTiltOffset) {
       const amp = this._relativeOffsetAmplitude
       const distScale = this._spatialDistanceScales.get(node.nodeId) ?? 1.0

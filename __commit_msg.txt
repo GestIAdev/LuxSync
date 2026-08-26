@@ -1,20 +1,44 @@
-WAVE 7618.3: Fix vertical sweep — map tilt to Z (depth) + increase radius to 8m
+WAVE 7621: The Opus Resurrection — restore original IK + pattern merge
 
-The sweep pattern (y=0, only pan oscillates) was producing a vertical
-sweep because the L2 engine adds a constant orientation offset
-(tiltOffsetNorm) to tilt_base for ceiling mounts. This constant offset
-was being treated as pattern deviation and mapped to Y (height),
-causing a visible vertical shift that looked like a vertical sweep.
+Reverts WAVE 7613/7617/7618 hacks and applies the three surgical fixes
+identified by forensic reports WAVE 7619/7620, restoring Opus's original
+offset-fusion architecture where L2 patterns naturally orbit around
+the IK-solved 3D target.
 
-Fix: Map tilt deviation to Z (depth) instead of Y (height).
-- The constant orientation offset becomes a harmless depth shift
-- Sweep (y=0): only pan deviation → pure horizontal X movement,
-  matching classic sweep behavior
-- Circle/bounce: tilt oscillation → Z (depth) movement, still visible
-- ORBIT_RADIUS increased from 6.0m to 8.0m for more amplitude
+PHASE 1 — GREAT ROLLBACK:
+- NodeResolver._writeNodeIK: Removed target mutation (WAVE 7618) and
+  DMX-space pattern fusion (WAVE 7617). The resolver now reads targetX/Y/Z
+  directly and calls solveInto purely. Pattern offsets arrive via
+  pan_offset/tilt_offset through the existing WAVE 7179 post-solve fusion.
+- KinRadarViewport.tsx: Removed programmerStore.setSpatialPosition() bypass
+  (WAVE 7613). Spatial targets flow exclusively through movementStore →
+  KineticsBridge → applySpatialTarget IPC (E12).
+- KineticsCathedral.tsx: Removed programmerStore.clearSpatialTargets() calls
+  (WAVE 7613). Spatial target cleanup is handled by the backend.
 
-At 50/50: pan sweeps ±4m on X, tilt shifts ~1.3m on Z (constant).
-At 100/100: pan sweeps ±8m, full stage width coverage.
+PHASE 2 — SURGICAL FIXES (WAVE 7619):
+- Fix A (AetherIPCHandlers.ts): applySpatialTarget now writes targetX/Y/Z
+  (camelCase) instead of target_x/y/z (snake_case). The resolver reads
+  CH_TARGET_X = 'targetX' — the case mismatch was the root cause.
+- Fix B (AetherKineticEngine.ts): tick() no longer destroys the spatial
+  target on the first tick. Reads the existing motor override via
+  arbiter.getMotorKineticOverride() and spreads it before setting
+  pan_base/tilt_base, preserving targetX/Y/Z.
+- Fix C (NodeArbiter.ts): _applyRelativeOffsetFusion now copies targetX/Y/Z
+  and pan_offset/tilt_offset from _motorKineticOverrides to the result
+  record, so NodeResolver can actually see them.
+
+PHASE 3 — L2 OFFSET BRIDGE (WAVE 7620 Option A):
+- AetherKineticEngine.tick(): When a spatial target is active (IK mode),
+  the pattern is emitted as pan_offset/tilt_offset (relative [-1,+1])
+  instead of pan_base/tilt_base (absolute [0,1]). The resolver's WAVE 7179
+  post-solve fusion applies these offsets to the IK-solved position,
+  making the pattern orbit around the 3D target. When no spatial target
+  is active (classic mode), pan_base/tilt_base are emitted as before.
+
+This restores Opus's intended architecture: patterns as offsets (not
+bases) when IK is active, flowing through the same pan_offset/tilt_offset
+channels that the VMM (L0) uses via KineticAdapter.
 
 Generated with [Devin](https://devin.ai)
 

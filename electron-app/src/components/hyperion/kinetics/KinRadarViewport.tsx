@@ -224,23 +224,12 @@ export const KinRadarViewport: React.FC = () => {
   }, [handlePanTiltChange])
 
   const handleTargetChange = useCallback((t: Target3D) => {
-    // WAVE 7613: Dual-channel dispatch.
-    //
-    // 1. movementStore.setSpatialTarget(t) — keeps the UI crosshair position
-    //    and feeds KineticsBridge._flushSpatial() for fan sub-target computation
-    //    and spatial distance scale setup in the backend.
-    //
-    // 2. programmerStore.setSpatialPosition(t) — writes targetX/Y/Z (camelCase)
-    //    to fixtureOverrides for ALL active fixtures. ProgrammerAetherBridge
-    //    extracts these at 44Hz and injects them into NodeArbiter._manualOverrides
-    //    as `targetX` (camelCase), which NodeResolver._writeNode() reads via
-    //    CH_TARGET_X = 'targetX' to trigger the IK solve path.
-    //
-    // This dual route replaces the broken applySpatialTarget-only path
-    // (WAVE 7612 forensic: arbiter stored target_x snake_case but never
-    // propagated it to the result record, so NodeResolver never saw it).
+    // WAVE 7621: Single-channel dispatch — spatial targets flow exclusively
+    // through movementStore → KineticsBridge → applySpatialTarget IPC (E12)
+    // → arbiter.setMotorKineticOverride({ targetX, targetY, targetZ }).
+    // The WAVE 7613 bypass via programmerStore.setSpatialPosition has been
+    // removed to restore Opus's single-path architecture.
     setSpatialTarget(t)
-    useProgrammerStore.getState().setSpatialPosition(t)
   }, [setSpatialTarget])
 
   const handleFanModeChange = useCallback((mode: SpatialFanMode) => {

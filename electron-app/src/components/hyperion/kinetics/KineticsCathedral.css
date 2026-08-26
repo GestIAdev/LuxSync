@@ -271,28 +271,8 @@
   display: block;
 }
 
-/* WAVE 7172: SPATIAL tab frozen — calibration required */
-.kc-paradigm-btn--frozen {
-  opacity: 0.4;
-  cursor: not-allowed;
-  filter: grayscale(0.6);
-}
-
-.kc-paradigm-btn--frozen.kc-paradigm-btn--active {
-  background: transparent;
-  border-color: var(--kc-muted, #555);
-  color: var(--kc-muted, #555);
-  box-shadow: none;
-}
-
-.kc-paradigm-btn__lock {
-  font-size: 6px;
-  letter-spacing: 0.5px;
-  color: var(--kc-warning, #e8820c);
-  display: block;
-  margin-top: 2px;
-  text-shadow: 0 0 4px rgba(232, 130, 12, 0.4);
-}
+/* WAVE 7611: SPATIAL tab unlocked — calibration pipeline repaired */
+/* Frozen/lock styles removed — button is now fully interactive */
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * FADERS ROW — WAVE 4564: Radar relocado al Main Viewport

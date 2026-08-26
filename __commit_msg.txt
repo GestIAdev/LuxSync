@@ -1,26 +1,26 @@
-WAVE 7633: Fix Amnesia Bug — 2D click resets Y via placeFixture2D
+WAVE 7634-TELEMETRY: Inject soft-clipper diagnostic sonda
 
-ROOT CAUSE FOUND: DragDropController2D.handleUp called placeFixture2D
-on EVERY pointer up, even for a simple click-to-select (no drag).
+Added temporary telemetry logs in NodeResolver._writeNodeIK pan
+soft-clipper block (both 8-bit and 16-bit paths).
 
-placeFixture2D → computePlanarPlacement → sets Y to
-DEFAULT_ORIENTATION_HEIGHT[orientation] (e.g. 4 for 'ceiling').
+The sonda fires ONLY when Math.abs(panDelta) / panHeadroom > 0.5
+(i.e., the offset is eating more than 50% of the headroom —
+compression is actively distorting the waveform).
 
-So the sequence was:
-1. User edits Y from 4 to 6 in FixtureInspector
-2. User clicks the fixture in 2D to reselect it
-3. handlePointerDown sets dragRef.current
-4. handleUp fires → placeFixture2D → computePlanarPlacement → Y=4
-5. FixtureInspector shows Y=4 again
+Each log line outputs:
+  nodeId, purePanMemory, basePan, gimbalFactor, distScale, amp,
+  panOffset, rawDelta, headroom, ratio, safeDelta, out
 
-Fix: handleUp now checks if the fixture ACTUALLY moved before calling
-placeFixture2D. If the drag position equals the fixture's current
-position (within 0.001m tolerance), it skips the placeFixture2D call.
-This preserves Y edits made via the FixtureInspector.
+This will reveal which variable is blowing up the delta and causing
+the ~70% amplitude soft-clip on the top-center fixture.
 
-The 3D DragDropController was already safe — it uses
-updateFixturePosition (preserves Y) and checks draggedFixtureRef.current
-which is only set when a real drag starts.
+HYPOTHESIS: The gimbalFactor fade is NOT the culprit (it only reduces
+the delta, never amplifies). The likely culprit is that basePan is
+already near a boundary (0 or 255) after the IK solve, leaving very
+little headroom. Even a modest panDelta gets heavily compressed by
+tanh when headroom is small. The fix would be to bias the IK solver
+to keep the base pan away from the boundaries when L2 offsets are
+active, or to increase the headroom by allowing slight overshoot.
 
 Generated with [Devin](https://devin.ai)
 

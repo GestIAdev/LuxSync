@@ -1718,6 +1718,26 @@ export class NodeResolver implements INodeResolver {
         } else {
           safePanDelta = 0
         }
+        // WAVE 7634-TELEMETRY: Diagnostic sonda — fires only when the offset
+        // eats more than 50% of the headroom (i.e., compression is active).
+        // Log reveals whether gimbalFactor, distScale, or amp is blowing up
+        // the delta and causing the ~70% amplitude soft-clip on top-center.
+        if (panHeadroom > 0 && Math.abs(panDelta) / panHeadroom > 0.5) {
+          console.log(
+            `[CLIPPER🔍] ${node.nodeId}`,
+            `| purePanMem=${purePanMemory.toFixed(1)}`,
+            `| basePan=${basePan.toFixed(1)}`,
+            `| gimbalF=${gimbalFactor.toFixed(3)}`,
+            `| distScale=${effectiveDistScale.toFixed(3)}`,
+            `| amp=${amp.toFixed(3)}`,
+            `| panOffset=${(panOffset as number).toFixed(3)}`,
+            `| rawDelta=${panDelta.toFixed(1)}`,
+            `| headroom=${panHeadroom.toFixed(1)}`,
+            `| ratio=${(Math.abs(panDelta) / panHeadroom).toFixed(3)}`,
+            `| safeDelta=${safePanDelta.toFixed(1)}`,
+            `| out=${(basePan + safePanDelta).toFixed(1)}`,
+          )
+        }
         logicalPan = basePan + safePanDelta
       }
       if (hasTiltOffset) {
@@ -1808,6 +1828,23 @@ export class NodeResolver implements INodeResolver {
           safePanDelta16 = Math.tanh(Math.abs(panDelta16) / panHeadroom16) * panHeadroom16 * Math.sign(panDelta16)
         } else {
           safePanDelta16 = 0
+        }
+        // WAVE 7634-TELEMETRY: 16-bit path sonda — same threshold as 8-bit.
+        if (panHeadroom16 > 0 && Math.abs(panDelta16) / panHeadroom16 > 0.5) {
+          console.log(
+            `[CLIPPER🔍16] ${node.nodeId}`,
+            `| purePanMem=${purePanMemory.toFixed(0)}`,
+            `| basePan16=${basePan16.toFixed(0)}`,
+            `| gimbalF=${gimbalFactor16.toFixed(3)}`,
+            `| distScale=${effectiveDistScale.toFixed(3)}`,
+            `| amp=${amp.toFixed(3)}`,
+            `| panOffset=${(panOffset as number).toFixed(3)}`,
+            `| rawDelta16=${panDelta16.toFixed(0)}`,
+            `| headroom16=${panHeadroom16.toFixed(0)}`,
+            `| ratio=${(Math.abs(panDelta16) / panHeadroom16).toFixed(3)}`,
+            `| safeDelta16=${safePanDelta16.toFixed(0)}`,
+            `| out16=${(basePan16 + safePanDelta16).toFixed(0)}`,
+          )
         }
         safePan16 = basePan16 + safePanDelta16
       }

@@ -1,20 +1,35 @@
-WAVE 7622.2: Fix stale pool entry destroying spatial target in L2 tick
+WAVE 7624: Defeat the final bosses — IK flip + ceiling spike
 
-The _overridePool entry was created in a previous tick (possibly classic
-mode) and did NOT have targetX/Y/Z — those were written by
-applySpatialTarget directly to the arbiter's motor override, not to the
-pool. When the L2 engine reused the pool entry in IK mode, it wrote
-pan_offset/tilt_offset but NO targetX to the arbiter via
-setMotorKineticOverride — destroying the spatial target and dropping
-the fixture out of IK mode.
+Bug 1: IK Auto-Flip (Teleportation Ghost)
+- Root cause: solveInto's resolveShortestPanPath uses currentPanDMX to
+  choose between Solution A (normal) and Solution B (flipped ±360°).
+  The resolver fed node.currentPosition.pan (the OFFSET-POLLUTED value)
+  as currentPanDMX. When the L0 pan_offset pushed the physical head
+  past the midpoint, the next tick's solver saw the flipped solution as
+  mathematically closer and triggered a 180° jump.
+- Fix: Added _ikPurePanMemory Map<NodeId, number> in NodeResolver. After
+  solveInto, the PURE IK pan (before any offset) is saved. On the next
+  tick, this pure value is passed as currentPanDMX instead of the
+  polluted currentPosition.pan. The solver's flip heuristic now only
+  remembers the pure 3D target trajectory, not the orbital offset.
+  currentPosition.pan still receives the offset-polluted safePan for
+  the UI/RELEASE engine — only the solver's memory is isolated.
 
-Fix: When reusing the pool entry in IK mode (hasSpatialTarget=true),
-merge targetX/Y/Z from existingMotor (the arbiter's current motor
-override) into the pool entry before writing it back. Also clean up
-stale spatial target keys in classic mode.
+Bug 2: Ceiling Spike on Pattern Switch
+- Root cause: setManualKinetics resets _phaseMap to 0 on every pattern
+  change. The pattern function at phase=0 produces its initial position,
+  causing a full-amplitude offset in a single frame (up to ~64 DMX steps
+  for tilt). For ceiling fixtures with tilt inversion, this spikes to
+  the ceiling.
+- Fix: Added _offsetFadeIn Map<NodeId, number> in AetherKineticEngine.
+  Reset to 0 on every setManualKinetics call. In tick(), ramps from 0
+  to 1 over ~1 second (using real dtSeconds). Multiplied into the
+  pan_offset/tilt_offset output in IK mode only, smoothly blending the
+  new pattern's offsets from zero to full amplitude. Classic mode base
+  computation is unaffected.
 
-Also updated telemetry to log the actual mode (IK/CLASSIC), rec keys,
-and the correct output values (pan_base for classic, pan_offset for IK).
+Both fixes are zero-alloc (pre-allocated Maps) and preserve the WAVE
+7621 offset-fusion architecture.
 
 Generated with [Devin](https://devin.ai)
 

@@ -358,6 +358,16 @@ export class AetherKineticEngine {
    */
   private readonly _prevPositionMap = new Map<string, Float64Array>()
 
+  /**
+   * WAVE 7624: PATTERN OFFSET FADE-IN — Per-node factor [0,1] that ramps from
+   * 0 to 1 over ~1 second when a pattern starts or changes. Multiplied into
+   * the pan_offset/tilt_offset output to prevent the single-frame spike caused
+   * by the phase-0 reset in setManualKinetics. Without this, switching patterns
+   * mid-flight produces a violent jump to the ceiling (tilt_offset delta of
+   * ~64 DMX steps in one tick).
+   */
+  private readonly _offsetFadeIn = new Map<string, number>()
+
   /** WAVE 4706 TELEMETRÍA — contador de frames para heartbeat rate-limited */
   private _heartbeatCounter = 0
 
@@ -415,6 +425,12 @@ export class AetherKineticEngine {
       // El guard anterior heredaba la fase acumulada del patrón anterior,
       // causando saltos bruscos al cambiar de patrón (ej. circle → eight).
       this._phaseMap.set(nodeId, 0)
+      // WAVE 7624: Reset the offset fade-in on every pattern change/start.
+      // The fade-in ramps from 0 to 1 over ~1 second, smoothly blending the
+      // new pattern's offsets from zero to full amplitude. This prevents the
+      // ceiling spike caused by the phase-0 reset producing a full-amplitude
+      // offset in a single frame.
+      this._offsetFadeIn.set(nodeId, 0)
       if (!this._overridePool.has(nodeId)) {
         this._overridePool.set(nodeId, { pan_base: 0.5, tilt_base: 0.5 })
       }
@@ -445,6 +461,8 @@ export class AetherKineticEngine {
         // el cálculo de velocidad compara contra un valor potencialmente stale
         // (segundos/minutos atrás), activando el dither de forma incorrecta.
         this._prevPositionMap.delete(nodeId)
+        // WAVE 7624: Purgar el fade-in para que la próxima activación arranque limpio.
+        this._offsetFadeIn.delete(nodeId)
         // _overridePool y _manualOverrides: PRESERVADOS — paradigma Programmer.
       }
     }
@@ -627,6 +645,19 @@ export class AetherKineticEngine {
       const x = _patternScratch.x
       const y = _patternScratch.y
 
+      // WAVE 7624: PATTERN OFFSET FADE-IN — Ramp the offset amplitude from 0
+      // to 1 over ~1 second after a pattern change/start. This prevents the
+      // ceiling spike caused by the phase-0 reset in setManualKinetics
+      // producing a full-amplitude offset in a single frame. The fade factor
+      // multiplies only the offset output (pan_offset/tilt_offset in IK mode),
+      // not the classic-mode base computation.
+      let fadeIn = this._offsetFadeIn.get(nodeId) ?? 1
+      if (fadeIn < 1) {
+        // dtSeconds is the real frame delta — fade over 1.0 second.
+        fadeIn = Math.min(1, fadeIn + dtSeconds / 1.0)
+        this._offsetFadeIn.set(nodeId, fadeIn)
+      }
+
       // ── WAVE 4713 — AMPLITUDE BOOST + CLAMP DE SEGURIDAD ─────────────────
       // El factor 0.5 mapea el envelope nativo [-1,1] al rango DMX completo:
       //   amplitude=1 ⇒ excursión nominal de ±0.5 sobre el ancla en escala
@@ -727,8 +758,10 @@ export class AetherKineticEngine {
         // Do NOT apply PAN_ASPECT_RATIO or 0.45 here — those scales are for
         // the DMX-space base path. The resolver's WAVE 7179 fusion applies
         // VMM_OFFSET_SCALE_PAN (0.5) and VMM_OFFSET_SCALE_TILT (1.0) itself.
-        rec['pan_offset']  = x * cfg.amplitude
-        rec['tilt_offset'] = y * cfg.amplitude
+        // WAVE 7624: Multiply by fadeIn to smoothly blend from zero on
+        // pattern switch, preventing the ceiling spike from phase-0 reset.
+        rec['pan_offset']  = x * cfg.amplitude * fadeIn
+        rec['tilt_offset'] = y * cfg.amplitude * fadeIn
         // Remove base keys — in IK mode, the pattern is an offset, not a base.
         // The arbiter's fusion loop will skip this node for base computation
         // (no pan_base/tilt_base in motor override), but will still copy

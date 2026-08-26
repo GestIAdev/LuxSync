@@ -230,6 +230,11 @@ export class NodeResolver implements INodeResolver {
   private readonly _ikProfiles = new Map<NodeId, IKFixtureProfile>()
   private readonly _ikReachability = new Map<NodeId, boolean>()
   private readonly _ikLastWarnFrame = new Map<NodeId, number>()
+  // WAVE 7624: IK MEMORY ISOLATION — stores the PURE IK pan (before L0 offset)
+  // for the anti-flip shortest-path heuristic. Without this, the offset-polluted
+  // currentPosition.pan feeds back into solveInto's resolveShortestPanPath,
+  // corrupting the flip decision when the offset pushes past the midpoint.
+  private readonly _ikPurePanMemory = new Map<NodeId, number>()
   private _resolveFrameIndex = 0
   // 🛠️ WAVE 5034: Pre-allocated IKResult scratch — zero alloc en hot path.
   private readonly _ikResultScratch: import('../../../engine/movement/InverseKinematicsEngine').IKResult = { pan: 0, tilt: 0, pan16: 0, tilt16: 0, reachable: false, antiFlipApplied: false }
@@ -375,6 +380,9 @@ export class NodeResolver implements INodeResolver {
   /** 🏗️ WAVE 7179 (M4): Limpiar la escala de distancia de un nodo (release). */
   clearSpatialDistanceScale(nodeId: NodeId): void {
     this._spatialDistanceScales.delete(nodeId)
+    // WAVE 7624: Clear the pure pan memory on release to avoid stale flip
+    // heuristic on re-activation.
+    this._ikPurePanMemory.delete(nodeId)
   }
 
   /**
@@ -1608,7 +1616,14 @@ export class NodeResolver implements INodeResolver {
     // }
 
     const profile      = this._getOrBuildIKProfile(node, calibration)
-    const currentPanDMX = node.currentPosition.pan * 255
+
+    // WAVE 7624: IK MEMORY ISOLATION — Feed the PURE IK pan (from last frame's
+    // solveInto, before any L0 offset was applied) to the anti-flip heuristic.
+    // The offset-polluted currentPosition.pan must NOT influence the flip
+    // decision — it corrupts resolveShortestPanPath when the offset pushes
+    // the physical head past the midpoint, causing a 180° teleport.
+    // First frame fallback: currentPosition.pan (no pure memory yet).
+    const purePanMemory = this._ikPurePanMemory.get(node.nodeId) ?? (node.currentPosition.pan * 255)
 
     // K0-BATCH-3c: Mutate pre-allocated scratch instead of creating {x:tx, y:ty, z:tz} literal.
     // WAVE 7621: Pure IK — no target mutation, no pattern fusion. The resolver
@@ -1618,8 +1633,13 @@ export class NodeResolver implements INodeResolver {
     this._ikTargetScratch.x = tx
     this._ikTargetScratch.y = ty
     this._ikTargetScratch.z = tz
-    solveInto(this._ikResultScratch, profile, this._ikTargetScratch, currentPanDMX)
+    solveInto(this._ikResultScratch, profile, this._ikTargetScratch, purePanMemory)
     const ikResult = this._ikResultScratch
+
+    // WAVE 7624: Save the PURE IK pan for next frame's anti-flip heuristic.
+    // This is the solver's output BEFORE any L0/L2 offset is applied — it
+    // reflects only the 3D target trajectory, not the orbital offset.
+    this._ikPurePanMemory.set(node.nodeId, ikResult.pan)
     const reachable = ikResult.reachable !== false
     this._ikReachability.set(node.nodeId, reachable)
 

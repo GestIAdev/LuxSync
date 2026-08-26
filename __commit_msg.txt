@@ -1,26 +1,32 @@
-WAVE 7634-TELEMETRY: Inject soft-clipper diagnostic sonda
+WAVE 7635: Fix soft-clipper — soft limiter replaces tanh compressor
 
-Added temporary telemetry logs in NodeResolver._writeNodeIK pan
-soft-clipper block (both 8-bit and 16-bit paths).
+TELEMETRY ANALYSIS (WAVE 7634):
 
-The sonda fires ONLY when Math.abs(panDelta) / panHeadroom > 0.5
-(i.e., the offset is eating more than 50% of the headroom —
-compression is actively distorting the waveform).
+  Fixture top-center: basePan=53, headroom=53, rawDelta=-48, ratio=0.905
+  53 - 48 = 5 ≥ 0  →  The signal FITS within the DMX range!
 
-Each log line outputs:
-  nodeId, purePanMemory, basePan, gimbalFactor, distScale, amp,
-  panOffset, rawDelta, headroom, ratio, safeDelta, out
+  But tanh(0.905) = 0.719 → safeDelta = -38.1 (21% compression)
+  The tanh compressor was compressing signals that didn't need
+  compression. tanh starts compressing from ratio=0, not from
+  ratio=1. At ratio=0.5, tanh(0.5)=0.462 → 7.6% compression.
+  At ratio=0.9, tanh(0.9)=0.716 → 20.4% compression.
 
-This will reveal which variable is blowing up the delta and causing
-the ~70% amplitude soft-clip on the top-center fixture.
+  This was the "70% amplitude soft-clip" on the top-center fixture.
 
-HYPOTHESIS: The gimbalFactor fade is NOT the culprit (it only reduces
-the delta, never amplifies). The likely culprit is that basePan is
-already near a boundary (0 or 255) after the IK solve, leaving very
-little headroom. Even a modest panDelta gets heavily compressed by
-tanh when headroom is small. The fix would be to bias the IK solver
-to keep the base pan away from the boundaries when L2 offsets are
-active, or to increase the headroom by allowing slight overshoot.
+FIX: Replace tanh compressor with a hard-knee soft limiter.
+
+  if |delta| <= headroom:
+    safeDelta = delta          // LINEAR — no compression, waveform preserved
+  else:
+    safeDelta = tanh(|delta|/headroom) * headroom * sign(delta)  // smooth limit
+
+  At ratio=0.905 (top-center): absDelta=48 <= headroom=53
+  → safeDelta = -48.0 (ZERO compression!)
+  At ratio=1.5 (overflow): tanh(1.5)=0.905 → safeDelta = 0.905*headroom
+  → smooth approach to boundary, no hard clip
+
+Applied to both 8-bit and 16-bit paths, pan and tilt.
+Also removed the WAVE 7634-TELEMETRY diagnostic logs.
 
 Generated with [Devin](https://devin.ai)
 

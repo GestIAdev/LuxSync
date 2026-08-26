@@ -1707,46 +1707,43 @@ export class NodeResolver implements INodeResolver {
           ? 1
           : tiltDist / VMM_GIMBAL_TILT_FADE_HALFWIDTH
         const panDelta = (panOffset as number) * amp * VMM_OFFSET_SCALE_PAN * effectiveDistScale * gimbalFactor * 255
-        // WAVE 7628: Soft-clip the delta based on available headroom.
-        // tanh(|delta|/headroom) * headroom → asymptotically approaches the
-        // boundary but never flatlines. For small deltas (delta << headroom),
-        // tanh(x) ≈ x → no compression, waveform preserved.
+        // WAVE 7635: SOFT LIMITER (replaces tanh compressor).
+        // The old tanh compressor compressed the delta even when it fit within
+        // the headroom — at ratio=0.9, tanh(0.9)=0.716 → 20% compression of a
+        // signal that didn't need any. This caused the "70% amplitude" visual
+        // soft-clip on the top-center fixture (basePan=53, headroom=53, ratio=0.905).
+        //
+        // The fix: apply the delta LINEARLY when it fits within headroom.
+        // Only when |delta| > headroom, use tanh to smoothly approach the
+        // boundary. This is a hard-knee limiter, not a compressor.
         const panHeadroom = panDelta > 0 ? (255 - basePan) : basePan
         let safePanDelta: number
         if (panHeadroom > 0) {
-          safePanDelta = Math.tanh(Math.abs(panDelta) / panHeadroom) * panHeadroom * Math.sign(panDelta)
+          const absDelta = Math.abs(panDelta)
+          if (absDelta <= panHeadroom) {
+            // Signal fits — no compression needed
+            safePanDelta = panDelta
+          } else {
+            // Exceeds headroom — tanh smoothly approaches the boundary
+            safePanDelta = Math.tanh(absDelta / panHeadroom) * panHeadroom * Math.sign(panDelta)
+          }
         } else {
           safePanDelta = 0
-        }
-        // WAVE 7634-TELEMETRY: Diagnostic sonda — fires only when the offset
-        // eats more than 50% of the headroom (i.e., compression is active).
-        // Log reveals whether gimbalFactor, distScale, or amp is blowing up
-        // the delta and causing the ~70% amplitude soft-clip on top-center.
-        if (panHeadroom > 0 && Math.abs(panDelta) / panHeadroom > 0.5) {
-          console.log(
-            `[CLIPPER🔍] ${node.nodeId}`,
-            `| purePanMem=${purePanMemory.toFixed(1)}`,
-            `| basePan=${basePan.toFixed(1)}`,
-            `| gimbalF=${gimbalFactor.toFixed(3)}`,
-            `| distScale=${effectiveDistScale.toFixed(3)}`,
-            `| amp=${amp.toFixed(3)}`,
-            `| panOffset=${(panOffset as number).toFixed(3)}`,
-            `| rawDelta=${panDelta.toFixed(1)}`,
-            `| headroom=${panHeadroom.toFixed(1)}`,
-            `| ratio=${(Math.abs(panDelta) / panHeadroom).toFixed(3)}`,
-            `| safeDelta=${safePanDelta.toFixed(1)}`,
-            `| out=${(basePan + safePanDelta).toFixed(1)}`,
-          )
         }
         logicalPan = basePan + safePanDelta
       }
       if (hasTiltOffset) {
         const tiltDelta = (tiltOffset as number) * amp * VMM_OFFSET_SCALE_TILT * effectiveDistScale * 255
-        // WAVE 7628: Same tanh soft-clip for tilt.
+        // WAVE 7635: Same soft limiter for tilt.
         const tiltHeadroom = tiltDelta > 0 ? (255 - baseTilt) : baseTilt
         let safeTiltDelta: number
         if (tiltHeadroom > 0) {
-          safeTiltDelta = Math.tanh(Math.abs(tiltDelta) / tiltHeadroom) * tiltHeadroom * Math.sign(tiltDelta)
+          const absTiltDelta = Math.abs(tiltDelta)
+          if (absTiltDelta <= tiltHeadroom) {
+            safeTiltDelta = tiltDelta
+          } else {
+            safeTiltDelta = Math.tanh(absTiltDelta / tiltHeadroom) * tiltHeadroom * Math.sign(tiltDelta)
+          }
         } else {
           safeTiltDelta = 0
         }
@@ -1821,40 +1818,33 @@ export class NodeResolver implements INodeResolver {
           ? 1
           : tiltDist16 / VMM_GIMBAL_TILT_FADE_HALFWIDTH
         const panDelta16 = (panOffset as number) * amp * VMM_OFFSET_SCALE_PAN * effectiveDistScale * gimbalFactor16 * 65535
-        // WAVE 7628: tanh soft-clip in 16-bit domain.
+        // WAVE 7635: Soft limiter (replaces tanh compressor) — 16-bit domain.
         const panHeadroom16 = panDelta16 > 0 ? (65535 - basePan16) : basePan16
         let safePanDelta16: number
         if (panHeadroom16 > 0) {
-          safePanDelta16 = Math.tanh(Math.abs(panDelta16) / panHeadroom16) * panHeadroom16 * Math.sign(panDelta16)
+          const absDelta16 = Math.abs(panDelta16)
+          if (absDelta16 <= panHeadroom16) {
+            safePanDelta16 = panDelta16
+          } else {
+            safePanDelta16 = Math.tanh(absDelta16 / panHeadroom16) * panHeadroom16 * Math.sign(panDelta16)
+          }
         } else {
           safePanDelta16 = 0
-        }
-        // WAVE 7634-TELEMETRY: 16-bit path sonda — same threshold as 8-bit.
-        if (panHeadroom16 > 0 && Math.abs(panDelta16) / panHeadroom16 > 0.5) {
-          console.log(
-            `[CLIPPER🔍16] ${node.nodeId}`,
-            `| purePanMem=${purePanMemory.toFixed(0)}`,
-            `| basePan16=${basePan16.toFixed(0)}`,
-            `| gimbalF=${gimbalFactor16.toFixed(3)}`,
-            `| distScale=${effectiveDistScale.toFixed(3)}`,
-            `| amp=${amp.toFixed(3)}`,
-            `| panOffset=${(panOffset as number).toFixed(3)}`,
-            `| rawDelta16=${panDelta16.toFixed(0)}`,
-            `| headroom16=${panHeadroom16.toFixed(0)}`,
-            `| ratio=${(Math.abs(panDelta16) / panHeadroom16).toFixed(3)}`,
-            `| safeDelta16=${safePanDelta16.toFixed(0)}`,
-            `| out16=${(basePan16 + safePanDelta16).toFixed(0)}`,
-          )
         }
         safePan16 = basePan16 + safePanDelta16
       }
       if (hasTiltOffset) {
         const tiltDelta16 = (tiltOffset as number) * amp * VMM_OFFSET_SCALE_TILT * effectiveDistScale * 65535
-        // WAVE 7628: Same tanh soft-clip for tilt 16-bit.
+        // WAVE 7635: Same soft limiter for tilt 16-bit.
         const tiltHeadroom16 = tiltDelta16 > 0 ? (65535 - baseTilt16) : baseTilt16
         let safeTiltDelta16: number
         if (tiltHeadroom16 > 0) {
-          safeTiltDelta16 = Math.tanh(Math.abs(tiltDelta16) / tiltHeadroom16) * tiltHeadroom16 * Math.sign(tiltDelta16)
+          const absTiltDelta16 = Math.abs(tiltDelta16)
+          if (absTiltDelta16 <= tiltHeadroom16) {
+            safeTiltDelta16 = tiltDelta16
+          } else {
+            safeTiltDelta16 = Math.tanh(absTiltDelta16 / tiltHeadroom16) * tiltHeadroom16 * Math.sign(tiltDelta16)
+          }
         } else {
           safeTiltDelta16 = 0
         }

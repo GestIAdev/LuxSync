@@ -1690,6 +1690,15 @@ export class NodeResolver implements INodeResolver {
       const rawDistScale = this._spatialDistanceScales.get(node.nodeId) ?? 1.0
       const effectiveDistScale = rawDistScale > 1 ? 1 : rawDistScale
 
+      // WAVE 7628: DYNAMIC SOFT-CLPER (tanh compressor)
+      // Save the pure IK base before applying any offset — this is the anchor
+      // the IK solver computed. The headroom is the distance from this base
+      // to the nearest DMX boundary (0 or 255). The tanh curve smoothly
+      // compresses the delta as it approaches the boundary, preserving the
+      // waveform shape without hard-clipping or flatlining.
+      const basePan  = logicalPan
+      const baseTilt = logicalTilt
+
       if (hasPanOffset) {
         // Gimbal lock fade: atenuar pan_offset cuando tilt ≈ centro (0.5 norm = ~127 DMX)
         const tiltNorm = logicalTilt / 255
@@ -1698,11 +1707,30 @@ export class NodeResolver implements INodeResolver {
           ? 1
           : tiltDist / VMM_GIMBAL_TILT_FADE_HALFWIDTH
         const panDelta = (panOffset as number) * amp * VMM_OFFSET_SCALE_PAN * effectiveDistScale * gimbalFactor * 255
-        logicalPan = logicalPan + panDelta
+        // WAVE 7628: Soft-clip the delta based on available headroom.
+        // tanh(|delta|/headroom) * headroom → asymptotically approaches the
+        // boundary but never flatlines. For small deltas (delta << headroom),
+        // tanh(x) ≈ x → no compression, waveform preserved.
+        const panHeadroom = panDelta > 0 ? (255 - basePan) : basePan
+        let safePanDelta: number
+        if (panHeadroom > 0) {
+          safePanDelta = Math.tanh(Math.abs(panDelta) / panHeadroom) * panHeadroom * Math.sign(panDelta)
+        } else {
+          safePanDelta = 0
+        }
+        logicalPan = basePan + safePanDelta
       }
       if (hasTiltOffset) {
         const tiltDelta = (tiltOffset as number) * amp * VMM_OFFSET_SCALE_TILT * effectiveDistScale * 255
-        logicalTilt = logicalTilt + tiltDelta
+        // WAVE 7628: Same tanh soft-clip for tilt.
+        const tiltHeadroom = tiltDelta > 0 ? (255 - baseTilt) : baseTilt
+        let safeTiltDelta: number
+        if (tiltHeadroom > 0) {
+          safeTiltDelta = Math.tanh(Math.abs(tiltDelta) / tiltHeadroom) * tiltHeadroom * Math.sign(tiltDelta)
+        } else {
+          safeTiltDelta = 0
+        }
+        logicalTilt = baseTilt + safeTiltDelta
       }
     }
 
@@ -1763,6 +1791,9 @@ export class NodeResolver implements INodeResolver {
       // WAVE 7627: Same distScale cap as 8-bit path — never amplify, only reduce.
       const rawDistScale = this._spatialDistanceScales.get(node.nodeId) ?? 1.0
       const effectiveDistScale = rawDistScale > 1 ? 1 : rawDistScale
+      // WAVE 7628: Save the pure IK 16-bit base for headroom computation.
+      const basePan16  = safePan16
+      const baseTilt16 = safeTilt16
       if (hasPanOffset) {
         const tiltNorm16 = safeTilt16 / 65535
         const tiltDist16 = Math.abs(tiltNorm16 - VMM_GIMBAL_TILT_CENTER)
@@ -1770,11 +1801,27 @@ export class NodeResolver implements INodeResolver {
           ? 1
           : tiltDist16 / VMM_GIMBAL_TILT_FADE_HALFWIDTH
         const panDelta16 = (panOffset as number) * amp * VMM_OFFSET_SCALE_PAN * effectiveDistScale * gimbalFactor16 * 65535
-        safePan16 = safePan16 + panDelta16
+        // WAVE 7628: tanh soft-clip in 16-bit domain.
+        const panHeadroom16 = panDelta16 > 0 ? (65535 - basePan16) : basePan16
+        let safePanDelta16: number
+        if (panHeadroom16 > 0) {
+          safePanDelta16 = Math.tanh(Math.abs(panDelta16) / panHeadroom16) * panHeadroom16 * Math.sign(panDelta16)
+        } else {
+          safePanDelta16 = 0
+        }
+        safePan16 = basePan16 + safePanDelta16
       }
       if (hasTiltOffset) {
         const tiltDelta16 = (tiltOffset as number) * amp * VMM_OFFSET_SCALE_TILT * effectiveDistScale * 65535
-        safeTilt16 = safeTilt16 + tiltDelta16
+        // WAVE 7628: Same tanh soft-clip for tilt 16-bit.
+        const tiltHeadroom16 = tiltDelta16 > 0 ? (65535 - baseTilt16) : baseTilt16
+        let safeTiltDelta16: number
+        if (tiltHeadroom16 > 0) {
+          safeTiltDelta16 = Math.tanh(Math.abs(tiltDelta16) / tiltHeadroom16) * tiltHeadroom16 * Math.sign(tiltDelta16)
+        } else {
+          safeTiltDelta16 = 0
+        }
+        safeTilt16 = baseTilt16 + safeTiltDelta16
       }
     }
 

@@ -1,21 +1,27 @@
-WAVE 7627: Remove hard clamp, cap distScale at 1.0
+WAVE 7628: Dynamic soft-clipper (tanh compressor) for IK offset fusion
 
-The WAVE 7626 MAX_OFFSET_DMX hard clamp created a "chopped sine wave"
-artifact — the top-center fixture hit the artificial software ceiling
-of 100 DMX, paused while the underlying math exceeded it, then returned,
-visually chopping off ~30° of the sweep arc.
+The WAVE 7627 distScale cap fixed the amplification, but the fundamental
+problem remains: when the IK base is off-center (e.g. pan=200) and the
+L2 offset is large (e.g. +63 DMX), the final value (263) mechanically
+clips at 255, truncating the waveform. Hard-clamping creates a pause;
+removing the clamp creates flatlining.
 
-Root cause: distScale (from _spatialDistanceScales) can reach 2.0 for
-overhead fixtures, doubling the already-massive L2 pattern amplitude.
-The distScale was designed for the VMM's gentle L0 offsets (±0.3), not
-the L2 engine's full ±1.0 offsets.
+The Architect's solution: a Dynamic Headroom Compressor using tanh.
 
-Fix: Removed the MAX_OFFSET_DMX / MAX_OFFSET_DMX_16 hard clamps entirely.
-Instead, cap the effective distScale to 1.0 (Math.min(rawDistScale, 1))
-in both the 8-bit and 16-bit offset paths. This ensures distScale never
-amplifies offsets — it only reduces them for far fixtures (its original
-purpose). The L2 pattern amplitude is already user-controlled via the
-amplitude slider, so distScale amplification is redundant.
+Math:
+  headroom = (delta > 0) ? (255 - base) : base
+  safeDelta = tanh(|delta| / headroom) * headroom * sign(delta)
+
+- tanh(0) = 0 → small deltas pass through uncompressed (waveform preserved)
+- tanh(1) ≈ 0.76 → delta = headroom compresses to 76% (leaves 24% margin)
+- tanh(∞) = 1 → asymptotically approaches the boundary, never flatlines
+- headroom = 0 (base exactly at 0 or 255) → safeDelta = 0 (no movement)
+
+Implemented in both 8-bit and 16-bit paths of NodeResolver._writeNodeIK.
+The pure IK base (before offset) is saved as the anchor for headroom
+computation. The tanh curve smoothly compresses the delta as it
+approaches the boundary, preserving the waveform shape regardless of
+amplitude or base position.
 
 Generated with [Devin](https://devin.ai)
 

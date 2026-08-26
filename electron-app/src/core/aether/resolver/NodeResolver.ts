@@ -1619,33 +1619,45 @@ export class NodeResolver implements INodeResolver {
     // WAVE 7618: TARGET MUTATION — Instead of post-processing DMX offsets (WAVE 7617,
     // which broke geometric coherence because the same DMX delta means different
     // spatial directions for different fixtures), we now mutate the 3D target
-    // coordinates BEFORE calling solveInto. The L2 pattern's pan_base/tilt_base
-    // deviation from neutral (0.5) is converted to a 3D metric offset and added
-    // to the target. The IK solver then computes per-fixture pan/tilt for the
-    // mutated target, preserving geometric coherence across all fixtures.
-    const patternPanBase  = channelValues['pan_base']
-    const patternTiltBase = channelValues['tilt_base']
-    const hasPatternPan  = patternPanBase !== undefined && Number.isFinite(patternPanBase)
-    const hasPatternTilt = patternTiltBase !== undefined && Number.isFinite(patternTiltBase)
+    // coordinates BEFORE calling solveInto. The L2 pattern's live output (written
+    // by AetherKineticEngine.tick() to _motorKineticOverrides, then fused by the
+    // arbiter into channelValues['pan']/'tilt']) is converted to a 3D metric
+    // offset and added to the target. The IK solver then computes per-fixture
+    // pan/tilt for the mutated target, preserving geometric coherence.
+    //
+    // KEY INSIGHT: channelValues['pan_base']/'tilt_base'] contain the STATIC
+    // anchor (from _manualOverrides, typically 0.5). channelValues['pan']/'tilt']
+    // contain the FUSED live output (motor's pan_base + L0 offset). The PATTERN
+    // DEVIATION = live - anchor. This isolates the orbital displacement from
+    // the anchor position, so amplitude=0 → deviation=0 → no mutation.
+    const livePan  = channelValues['pan']
+    const liveTilt = channelValues['tilt']
+    const anchorPan  = channelValues['pan_base']
+    const anchorTilt = channelValues['tilt_base']
+
+    // Pattern is active only when the arbiter's fusion produced live pan/tilt
+    // (i.e., the motor is running). When no pattern is active, the fusion skips
+    // this node entirely, so channelValues['pan']/'tilt'] are undefined.
+    const hasLivePan  = livePan  !== undefined && Number.isFinite(livePan)
+    const hasLiveTilt = liveTilt !== undefined && Number.isFinite(liveTilt)
 
     // ORBIT_RADIUS: meters of orbital displacement at full pattern amplitude.
-    // 3.0m gives a visible sweep on a typical 12m-wide stage without sending
-    // the target into unreachable zones. The pattern's amplitude is already
-    // baked into pan_base/tilt_base by AetherKineticEngine.tick().
+    // The L2 engine scales pattern output by 0.45 * amplitude, so max deviation
+    // in DMX-normalized space is ~0.45. We divide by 0.45 to normalize to [-1,+1]
+    // then multiply by ORBIT_RADIUS to get meters.
     const ORBIT_RADIUS_PAN  = 3.0
     const ORBIT_RADIUS_TILT = 3.0
+    const L2_AMP_SCALE = 0.45  // matches AetherKineticEngine.tick() scaling
 
     let mutatedX = tx
     let mutatedY = ty
     let mutatedZ = tz
 
-    if (hasPatternPan || hasPatternTilt) {
+    if (hasLivePan || hasLiveTilt) {
       // WAVE 7618: Phase-0 spike mitigation — lerp the orbital offset from 0
       // to full amplitude over ~1 second (44 frames at 44Hz). This prevents
       // the violent jump when a pattern starts and phase resets to 0, which
       // would instantly move the mutated target to the pattern's initial edge.
-      // The lerp factor ramps up each frame; when the pattern deactivates, it
-      // resets to 0 on the next frame (no pattern → no offset → no lerp needed).
       const PATTERN_LERP_FRAMES = 44  // ~1 second at 44Hz
       let lerpFactor = this._ikPatternLerp.get(node.nodeId) ?? 0
       if (lerpFactor < 1) {
@@ -1653,16 +1665,19 @@ export class NodeResolver implements INodeResolver {
         this._ikPatternLerp.set(node.nodeId, lerpFactor)
       }
 
-      // Convert DMX-normalized [0,1] deviation to 3D metric offset.
-      // (value - 0.5) * 2 maps [0,1] → [-1,+1], then scale by orbit radius
-      // and the lerp factor for smooth pattern entry.
-      if (hasPatternPan) {
-        const dx = ((patternPanBase as number) - 0.5) * 2 * ORBIT_RADIUS_PAN * lerpFactor
+      // Pattern deviation = live output - static anchor.
+      // This isolates the orbital displacement from the anchor position.
+      // When amplitude=0, live == anchor → deviation=0 → no mutation.
+      if (hasLivePan) {
+        const anchorVal = (anchorPan !== undefined && Number.isFinite(anchorPan)) ? anchorPan : 0.5
+        const deviation = (livePan as number) - anchorVal  // [-0.45, +0.45] at amp=1
+        const dx = (deviation / L2_AMP_SCALE) * ORBIT_RADIUS_PAN * lerpFactor
         mutatedX = tx + dx
       }
-      if (hasPatternTilt) {
-        // tilt_base maps to the Z (depth) axis — sweep up/down the stage.
-        const dz = ((patternTiltBase as number) - 0.5) * 2 * ORBIT_RADIUS_TILT * lerpFactor
+      if (hasLiveTilt) {
+        const anchorVal = (anchorTilt !== undefined && Number.isFinite(anchorTilt)) ? anchorTilt : 0.5
+        const deviation = (liveTilt as number) - anchorVal  // [-0.45, +0.45] at amp=1
+        const dz = (deviation / L2_AMP_SCALE) * ORBIT_RADIUS_TILT * lerpFactor
         mutatedZ = tz + dz
       }
     } else {

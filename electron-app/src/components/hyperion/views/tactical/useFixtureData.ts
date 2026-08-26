@@ -196,8 +196,8 @@ export function useFixtureData(): TacticalFixture[] {
           // must yield rawX > 1.0 so the virtual camera can pan/zoom to
           // reveal them. The grid layer also expands to cover the visible
           // virtual viewport, not just the stage dimensions.
-          const stageW = stageDimensions?.width ?? 12
-          const stageD = stageDimensions?.depth ?? 8
+          const stageW = stageDimensions?.width ?? 50
+          const stageD = stageDimensions?.depth ?? 25
           const rawX = stageFixture.position.x / stageW        // [-0.5, +0.5] nominal, unbounded
           const rawY = stageFixture.position.z / stageD         // [-0.5, +0.5] nominal, unbounded
           fixture.x = rawX + 0.5

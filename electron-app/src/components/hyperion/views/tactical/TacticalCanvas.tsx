@@ -232,8 +232,8 @@ export const TacticalCanvas = memo(function TacticalCanvas({
   const deselectAll = useSelectionStore(state => state.deselectAll)
   const stageDims = useStageStore(selectStageDimensions)
 
-  const stageWidthMeters = stageDims?.width ?? 12
-  const stageDepthMeters = stageDims?.depth ?? 8
+  const stageWidthMeters = stageDims?.width ?? 50
+  const stageDepthMeters = stageDims?.depth ?? 25
   const rulerTicksX = useMemo(() => buildRulerTicks(stageWidthMeters), [stageWidthMeters])
   const rulerTicksY = useMemo(() => buildRulerTicks(stageDepthMeters), [stageDepthMeters])
 

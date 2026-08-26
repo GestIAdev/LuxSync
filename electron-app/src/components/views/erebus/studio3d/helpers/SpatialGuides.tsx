@@ -65,8 +65,8 @@ export const SpatialGuides: React.FC = () => {
     return { storePos: null, hasSelection: false }
   }, [selectedIds, fixtures, rigs])
 
-  const stageW = stage?.width ?? 12
-  const stageD = stage?.depth ?? 8
+  const stageW = stage?.width ?? 50
+  const stageD = stage?.depth ?? 25
   const halfW = stageW / 2
   const halfD = stageD / 2
 

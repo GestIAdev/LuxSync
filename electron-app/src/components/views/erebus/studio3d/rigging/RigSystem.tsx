@@ -94,7 +94,7 @@ export const RigSystem: React.FC<RigSystemProps> = ({
       const rigId = `rig-${Date.now()}`
       const clamped = clampToCrystalBox(
         { x: snap(hit.x), y: 0, z: snap(hit.z) },
-        stageDims ?? { width: 12, depth: 8, height: 6, gridSize: 0.25 },
+        stageDims ?? { width: 50, depth: 25, height: 15, gridSize: 0.25 },
       )
       const newRig: RigV2 = {
         id: rigId,
@@ -200,7 +200,7 @@ const RigRenderer: React.FC<RigRendererProps> = ({
 
       const deltaY = e.deltaY > 0 ? -0.25 : 0.25
       const currentHeight = rig.height
-      const maxH = stageDims?.height ?? 6
+      const maxH = stageDims?.height ?? 15
       const newHeight = Math.max(0.5, Math.min(maxH, currentHeight + deltaY))
 
       if (newHeight !== currentHeight) {
@@ -239,7 +239,7 @@ const RigRenderer: React.FC<RigRendererProps> = ({
       // Clamp to crystal box
       const clamped = clampToCrystalBox(
         { x: rawX, y: rig.height, z: rawZ },
-        stageDims ?? { width: 12, depth: 8, height: 6, gridSize: 0.25 },
+        stageDims ?? { width: 50, depth: 25, height: 15, gridSize: 0.25 },
       )
       const x = clamped.x
       const z = clamped.z

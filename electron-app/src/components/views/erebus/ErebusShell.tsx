@@ -48,8 +48,8 @@ export const ErebusShell: React.FC = () => {
   const canvasMountRef = useRef<HTMLDivElement>(null)
 
   // Stage dimensions for coordinate mapping
-  const stageWidth = showFile?.stage?.width ?? 12
-  const stageDepth = showFile?.stage?.depth ?? 8
+  const stageWidth = showFile?.stage?.width ?? 50
+  const stageDepth = showFile?.stage?.depth ?? 25
 
   useEffect(() => {
     loadFromDisk(true)

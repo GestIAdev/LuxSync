@@ -1111,6 +1111,35 @@ export function registerAetherIPCHandlers(): void {
     }
   )
 
+  // ── WAVE 7610: LIVE CALIBRATION HOT-RELOAD ──────────────────────────────
+  /**
+   * Directly updates node.ikCalibration in the NodeGraph and invalidates
+   * the IK profile cache. The next TickEngine frame rebuilds the profile
+   * with the new offsets — producing immediate DMX output changes.
+   *
+   * Called by the Calibration Dock when the user drags Offset Trim sliders.
+   * Values are in DEGREES (panOffset, tiltOffset) and booleans (panInvert, tiltInvert).
+   */
+  ipcMain.on(
+    'lux:aether:updateLiveCalibration',
+    (_event, { nodeId, calibration }: {
+      nodeId: string
+      calibration: { panOffset: number; tiltOffset: number; panInvert: boolean; tiltInvert: boolean }
+    }) => {
+      try {
+        const resolver = getTitanOrchestrator().getAetherResolver()
+        if (resolver.updateLiveCalibration) {
+          resolver.updateLiveCalibration(nodeId, calibration)
+        } else {
+          // Fallback for older compiled resolvers — just invalidate cache
+          resolver.invalidateIKProfile(nodeId)
+        }
+      } catch (err) {
+        console.error('[AetherIPC] updateLiveCalibration error:', err)
+      }
+    }
+  )
+
   // ── F1: FIXTURE SYNC — Canal canónico → TitanOrchestrator (WAVE 4702) ───────
   /**
    * F1: Sync fixtures desde stageStore al NodeGraph de Aether.

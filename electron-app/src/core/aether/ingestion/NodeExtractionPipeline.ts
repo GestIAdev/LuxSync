@@ -78,7 +78,7 @@ import type {
 } from '../../../types/FixtureDefinition'
 import type { IForgeNodeGraph, IForgeNode, IOutputDmxConfig } from '../../forge/types'
 import type { FixtureV2, InstallationOrientation } from '../../stage/ShowFileV2'
-import type { FixtureOrientation as IKOrientation } from '../../../engine/movement/InverseKinematicsEngine'
+import type { FixtureOrientation as IKOrientation, FixtureCalibration as IKCalibration } from '../../../engine/movement/InverseKinematicsEngine'
 import { normalizeZoneId } from '../adapters/zoneUtils'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -393,6 +393,7 @@ export class NodeExtractionPipeline {
           fixtureGraph,
           resolvedPosition,
           resolvedOrientation,
+          v2CalibOverride,
         )
       : this._sanitizeOverlappingChannels(
           resolvedDeviceId,
@@ -403,6 +404,7 @@ export class NodeExtractionPipeline {
             topology,
             resolvedPosition,
             resolvedOrientation,
+            v2CalibOverride,
           ),
         )
     const calibration = this._buildCalibration(fixtureDef, v2CalibOverride)
@@ -586,12 +588,13 @@ export class NodeExtractionPipeline {
    * ═══════════════════════════════════════════════════════════════════════════
    */
   private _buildNodesFromForgeGraph(
-    deviceId:     DeviceId,
-    fallbackZone: ZoneId,
-    fixtureDef:   Readonly<FixtureDefinition>,
-    graph:        IForgeNodeGraph,
-    position?:    Position3D,
-    orientation?: string,
+    deviceId:       DeviceId,
+    fallbackZone:   ZoneId,
+    fixtureDef:     Readonly<FixtureDefinition>,
+    graph:          IForgeNodeGraph,
+    position?:      Position3D,
+    orientation?:   string,
+    v2Calibration?: Readonly<FixtureV2['calibration']>,
   ): ICapabilityNode[] {
     // 1. Recopilar todos los output_dmx nodes
     type OutputNode = IForgeNode & { config: IOutputDmxConfig }
@@ -649,7 +652,7 @@ export class NodeExtractionPipeline {
         group.nodes.map(n => this._normalizeChannelType(n.config.channelType)),
       )
       const node = this._buildForgeGroupNode(
-        nodeId, group.zone, fixtureDef, channels, typeSet, position, orientation,
+        nodeId, group.zone, fixtureDef, channels, typeSet, position, orientation, v2Calibration,
       )
       if (node) {
         // WAVE 4738: inyectar label custom en profileMeta → sobrevive roundtrip JSON.
@@ -725,13 +728,14 @@ export class NodeExtractionPipeline {
    * Motor de decisión: familia determinada por mayoría de tipos presentes.
    */
   private _buildForgeGroupNode(
-    nodeId:       NodeId,
-    zoneId:       ZoneId,
-    fixtureDef:   Readonly<FixtureDefinition>,
-    channels:     INodeChannelDef[],
-    typeSet:      Set<string>,
-    position?:    Position3D,
-    orientation?: string,
+    nodeId:         NodeId,
+    zoneId:         ZoneId,
+    fixtureDef:     Readonly<FixtureDefinition>,
+    channels:       INodeChannelDef[],
+    typeSet:        Set<string>,
+    position?:      Position3D,
+    orientation?:   string,
+    v2Calibration?: Readonly<FixtureV2['calibration']>,
   ): IColorNodeData | IImpactNodeData | IKineticNodeData | IBeamNodeData | IAtmosphereNodeData | null {
     const deviceId = nodeId.split(':')[0] as DeviceId
 
@@ -820,6 +824,15 @@ export class NodeExtractionPipeline {
             rotation:     { pitch: 0, yaw: 0, roll: 0 },
           } satisfies IKOrientation,
         }),
+        // WAVE 7610: Populate ikCalibration in Forge Graph path too.
+        ...(v2Calibration && {
+          ikCalibration: {
+            panOffset:  v2Calibration.panOffset  ?? 0,
+            tiltOffset: v2Calibration.tiltOffset ?? 0,
+            panInvert:  v2Calibration.panInvert  ?? false,
+            tiltInvert: v2Calibration.tiltInvert ?? false,
+          } satisfies IKCalibration,
+        }),
       } satisfies IKineticNodeData
     }
 
@@ -877,12 +890,13 @@ export class NodeExtractionPipeline {
   }
 
   private _buildAllNodes(
-    deviceId:     DeviceId,
-    zoneId:       ZoneId,
-    fixtureDef:   Readonly<FixtureDefinition>,
-    topology:     TopologyAnalysis,
-    position?:    Position3D,
-    orientation?: string,
+    deviceId:       DeviceId,
+    zoneId:         ZoneId,
+    fixtureDef:     Readonly<FixtureDefinition>,
+    topology:       TopologyAnalysis,
+    position?:      Position3D,
+    orientation?:   string,
+    v2Calibration?: Readonly<FixtureV2['calibration']>,
   ): ICapabilityNode[] {
     const nodes: ICapabilityNode[] = []
 
@@ -897,7 +911,7 @@ export class NodeExtractionPipeline {
       nodes.push(this._buildImpactNode(deviceId, zoneId, fixtureDef, topology.impactChannels, position, isZeroBased))
     }
     if (topology.kineticChannels.length > 0) {
-      nodes.push(this._buildKineticNode(deviceId, zoneId, fixtureDef, topology.kineticChannels, position, orientation, isZeroBased))
+      nodes.push(this._buildKineticNode(deviceId, zoneId, fixtureDef, topology.kineticChannels, position, orientation, isZeroBased, v2Calibration))
     }
     if (topology.beamChannels.length > 0) {
       nodes.push(this._buildBeamNode(deviceId, zoneId, topology.beamChannels, position, isZeroBased))
@@ -1051,13 +1065,14 @@ export class NodeExtractionPipeline {
   // ── KINETIC NODE ──────────────────────────────────────────────────────────
 
   private _buildKineticNode(
-    deviceId:     DeviceId,
-    zoneId:       ZoneId,
-    fixtureDef:   Readonly<FixtureDefinition>,
-    kineticChs:   readonly FixtureChannel[],
-    position?:    Position3D,
-    orientation?: string,
-    isZeroBased = false,
+    deviceId:       DeviceId,
+    zoneId:         ZoneId,
+    fixtureDef:     Readonly<FixtureDefinition>,
+    kineticChs:     readonly FixtureChannel[],
+    position?:      Position3D,
+    orientation?:   string,
+    isZeroBased =   false,
+    v2Calibration?: Readonly<FixtureV2['calibration']>,
   ): IKineticNodeData {
     const nodeId: NodeId = `${deviceId}:kinetic`
 
@@ -1101,6 +1116,17 @@ export class NodeExtractionPipeline {
           installation: orientation as InstallationOrientation,
           rotation:     { pitch: 0, yaw: 0, roll: 0 },
         } satisfies IKOrientation,
+      }),
+      // WAVE 7610: Populate ikCalibration from FixtureV2.calibration (degrees domain).
+      // Both FixtureV2.calibration.panOffset and IKCalibration.panOffset are in degrees,
+      // so this is a direct 1:1 mapping — no unit conversion needed.
+      ...(v2Calibration && {
+        ikCalibration: {
+          panOffset:  v2Calibration.panOffset  ?? 0,
+          tiltOffset: v2Calibration.tiltOffset ?? 0,
+          panInvert:  v2Calibration.panInvert  ?? false,
+          tiltInvert: v2Calibration.tiltInvert ?? false,
+        } satisfies IKCalibration,
       }),
     } satisfies IKineticNodeData
   }

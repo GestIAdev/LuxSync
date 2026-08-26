@@ -182,9 +182,12 @@ interface StageStoreActions {
   
   /** Set fixture zone */
   setFixtureZone: (id: string, zone: FixtureZone) => void
-  
+
   /** Batch update fixtures (for undo/redo operations) */
   batchUpdateFixtures: (updates: Array<{ id: string; changes: Partial<FixtureV2> }>) => void
+
+  /** WAVE 7606: Update multiple fixtures with the same partial change (batch edit) */
+  updateMultipleFixtures: (ids: string[], changes: Partial<FixtureV2>) => void
   
   /** 🔄 WAVE 384: Hot-reload fixtures when fixture profile is updated
    *  @param previousProfileId — If the profile was cloned (system→user), pass the OLD profileId
@@ -818,14 +821,35 @@ export const useStageStore = create<StageStore>()(
     batchUpdateFixtures: (updates) => {
       const { showFile } = get()
       if (!showFile) return
-      
+
       for (const { id, changes } of updates) {
         const fixture = showFile.fixtures.find(f => f.id === id)
         if (fixture) {
           Object.assign(fixture, changes)
         }
       }
-      
+
+      get()._syncDerivedState()
+      get()._setDirty()
+    },
+
+    // WAVE 7606: Batch edit — apply same partial to multiple fixtures
+    updateMultipleFixtures: (ids, changes) => {
+      const { showFile } = get()
+      if (!showFile) return
+
+      // Normalize zone if zone is in the changes
+      const appliedChanges = changes.zone
+        ? { ...changes, zone: normalizeZone(changes.zone) }
+        : changes
+
+      for (const id of ids) {
+        const fixture = showFile.fixtures.find(f => f.id === id)
+        if (fixture) {
+          Object.assign(fixture, appliedChanges)
+        }
+      }
+
       get()._syncDerivedState()
       get()._setDirty()
     },

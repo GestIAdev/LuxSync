@@ -50,7 +50,9 @@ export const FixtureInspector: React.FC<FixtureInspectorProps> = ({ fixtureId })
 
   const handlePosChange = (axis: 'x' | 'y' | 'z', value: number) => {
     const newPos = { ...position, [axis]: snapToVoxel(value) }
-    const clamped = clampToCrystalBox(newPos, { width: 12, depth: 8, height: 6, gridSize: VOXEL_SIZE })
+    // WAVE 7608: Use dynamic stage dimensions from store (was hardcoded 12×8×6)
+    const stage = useStageStore.getState().showFile?.stage
+    const clamped = clampToCrystalBox(newPos, stage ?? { width: 50, depth: 25, height: 15, gridSize: VOXEL_SIZE })
     updateFixturePosition(fixture.id, clamped)
   }
 

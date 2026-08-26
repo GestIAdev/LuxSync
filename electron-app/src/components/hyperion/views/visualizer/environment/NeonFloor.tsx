@@ -42,8 +42,8 @@ interface NeonFloorProps {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const NeonFloor: React.FC<NeonFloorProps> = ({
-  width = 12,
-  depth = 8,
+  width = 50,   // WAVE 7609: Warehouse-scale default
+  depth = 25,   // WAVE 7609: Warehouse-scale default
   showGrid = true,
   primaryColor = '#00F0FF',
   secondaryColor = '#FF00E5',

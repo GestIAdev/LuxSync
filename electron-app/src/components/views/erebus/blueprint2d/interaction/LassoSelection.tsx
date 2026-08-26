@@ -58,12 +58,16 @@ export const LassoSelection: React.FC<LassoSelectionProps> = ({
       // Only active in select mode
       if (toolMode !== 'select') return
 
-      // 🩸 WAVE 7604: STRICT target filter — only start lasso on the SVG root
-      // or the background rect (marked with data-bg). Fixture symbols are <g>
-      // elements, so the old filter (allowing any <g>/<rect>) caused accidental
-      // lasso rectangles when clicking fixtures in select mode.
+      // 🩸 WAVE 7604: STRICT target filter — only start lasso on the SVG root,
+      // the background rect (data-bg), or THIS component's own capture rect.
+      // Fixture symbols are <g> elements with their own pointer handlers, so
+      // they won't reach here. But our own transparent capture rect WILL reach
+      // here, and it must be allowed through.
       const target = e.target as SVGElement
-      if (target.tagName !== 'svg' && !(target.tagName === 'rect' && target.getAttribute('data-bg'))) return
+      const isSvgRoot = target.tagName === 'svg'
+      const isBgRect = target.tagName === 'rect' && target.getAttribute('data-bg')
+      const isOwnCaptureRect = target.tagName === 'rect' && target.getAttribute('data-lasso-capture')
+      if (!isSvgRoot && !isBgRect && !isOwnCaptureRect) return
 
       e.preventDefault()
       e.stopPropagation()
@@ -72,7 +76,7 @@ export const LassoSelection: React.FC<LassoSelectionProps> = ({
       isLassoingRef.current = true
       setLasso({ startX: x, startY: y, endX: x, endY: y })
     },
-    [screenToSVG],
+    [screenToSVG, toolMode],
   )
 
   // ── Update lasso on pointer move ───────────────────────────────────────────
@@ -100,8 +104,10 @@ export const LassoSelection: React.FC<LassoSelectionProps> = ({
       // Only select if lasso is big enough (avoid accidental clicks)
       const MIN_SIZE = 0.1
       if (maxX - minX < MIN_SIZE || maxY - minY < MIN_SIZE) {
+        // WAVE 7606: Click without drag on empty space → deselect all
         isLassoingRef.current = false
         setLasso(null)
+        deselectAll()
         return
       }
 
@@ -140,6 +146,7 @@ export const LassoSelection: React.FC<LassoSelectionProps> = ({
     // Render invisible capture rect for pointer down in empty space
     return (
       <rect
+        data-lasso-capture="true"
         x={-padding}
         y={-padding}
         width={stageWidth + padding * 2}
@@ -160,6 +167,7 @@ export const LassoSelection: React.FC<LassoSelectionProps> = ({
     <>
       {/* Invisible capture rect */}
       <rect
+        data-lasso-capture="true"
         x={-padding}
         y={-padding}
         width={stageWidth + padding * 2}

@@ -100,11 +100,24 @@ export function useCalibrationSession(
         })
 
         // Throttled IK profile invalidation — 100ms per blueprint §4.5
+        // WAVE 7610: Now sends live calibration values directly to the resolver.
+        // The resolver mutates node.ikCalibration in-place and invalidates the
+        // profile cache, so the very next TickEngine frame uses the new offsets.
         if (invalidateTimerRef.current) clearTimeout(invalidateTimerRef.current)
         invalidateTimerRef.current = setTimeout(() => {
           if (fixtureId) {
             const nodeId = `${fixtureId}:kinetic`
-            window.lux?.aether?.invalidateIKProfile({ nodeId }).catch(() => {})
+            // WAVE 7610: Send the actual calibration values, not just an invalidation.
+            // This updates node.ikCalibration directly — no re-patch required.
+            window.lux?.aether?.updateLiveCalibration({
+              nodeId,
+              calibration: {
+                panOffset:  next.panOffset,
+                tiltOffset: next.tiltOffset,
+                panInvert:  next.panInvert,
+                tiltInvert: next.tiltInvert,
+              },
+            })
           }
         }, 100)
 
@@ -130,9 +143,17 @@ export function useCalibrationSession(
         tiltInvert: liveCalibration.tiltInvert,
       },
     })
-    // Immediate IK invalidation on apply
+    // WAVE 7610: Immediate live calibration update on apply
     const nodeId = `${fixtureId}:kinetic`
-    window.lux?.aether?.invalidateIKProfile({ nodeId }).catch(() => {})
+    window.lux?.aether?.updateLiveCalibration({
+      nodeId,
+      calibration: {
+        panOffset:  liveCalibration.panOffset,
+        tiltOffset: liveCalibration.tiltOffset,
+        panInvert:  liveCalibration.panInvert,
+        tiltInvert: liveCalibration.tiltInvert,
+      },
+    })
     setSession(prev => ({ ...prev, snapshot: { ...liveCalibration }, isDirty: false }))
   }, [fixtureId, liveCalibration, updateFixture])
 
@@ -143,7 +164,16 @@ export function useCalibrationSession(
     setSession(prev => ({ ...prev, isDirty: false }))
     if (fixtureId) {
       const nodeId = `${fixtureId}:kinetic`
-      window.lux?.aether?.invalidateIKProfile({ nodeId }).catch(() => {})
+      // WAVE 7610: Send reverted calibration values to resolver
+      window.lux?.aether?.updateLiveCalibration({
+        nodeId,
+        calibration: {
+          panOffset:  session.snapshot.panOffset,
+          tiltOffset: session.snapshot.tiltOffset,
+          panInvert:  session.snapshot.panInvert,
+          tiltInvert: session.snapshot.tiltInvert,
+        },
+      })
     }
   }, [session.snapshot, fixtureId])
 
@@ -153,7 +183,11 @@ export function useCalibrationSession(
     setSession(prev => ({ ...prev, isDirty: prev.snapshot !== null }))
     if (fixtureId) {
       const nodeId = `${fixtureId}:kinetic`
-      window.lux?.aether?.invalidateIKProfile({ nodeId }).catch(() => {})
+      // WAVE 7610: Send zeroed calibration to resolver
+      window.lux?.aether?.updateLiveCalibration({
+        nodeId,
+        calibration: { ...DEFAULT_CALIBRATION },
+      })
     }
   }, [fixtureId])
 

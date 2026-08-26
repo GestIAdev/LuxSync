@@ -56,7 +56,7 @@ interface DragDropController2DProps {
   onDragUpdate?: (state: DragState2D) => void
   /** Called when drag ends */
   onDragEnd?: () => void
-  /** Active tool mode — 'move' enables dragging, 'select' only selects */
+  /** Active tool mode — 'select' and 'move' both enable dragging (WAVE 7606) */
   toolMode?: ToolMode
   /** Called with drag handlers when the controller mounts — pass these to SymbolLayer */
   onHandlersReady?: (handlers: DragHandlers) => void
@@ -135,8 +135,11 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
         select(fixtureId, 'replace')
       }
 
-      // Only start drag in 'move' mode
-      if (toolMode !== 'move') return
+      // WAVE 7606: SMART POINTER — allow drag-to-move in both 'select' and 'move' modes.
+      // The 'move'-only restriction is a 3D concern. In 2D, clicking a fixture should
+      // both select it AND allow immediate dragging (fluid UX).
+      // Other modes ('rig', 'calibrate', 'measure') still block dragging.
+      if (toolMode !== 'select' && toolMode !== 'move') return
 
       e.preventDefault()
 

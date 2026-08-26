@@ -1516,6 +1516,18 @@ const luxApi = {
       ipcRenderer.send('lux:aether:invalidateIKProfile', args),
 
     /**
+     * WAVE 7610: Live calibration hot-reload.
+     * Directly updates node.ikCalibration and invalidates IK profile cache.
+     * The next frame rebuilds the profile with the new offsets — immediate DMX response.
+     * Values are in DEGREES (panOffset, tiltOffset) and booleans (panInvert, tiltInvert).
+     */
+    updateLiveCalibration: (args: {
+      nodeId: string
+      calibration: { panOffset: number; tiltOffset: number; panInvert: boolean; tiltInvert: boolean }
+    }) =>
+      ipcRenderer.send('lux:aether:updateLiveCalibration', args),
+
+    /**
      * WAVE 5020: Selection Kill — inhibit 0.0 solo en nodos :impact de los fixtures indicados.
      * Pan/Tilt siguen vivos. Toggle latch desde el dispatcher.
      */

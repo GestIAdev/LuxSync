@@ -134,6 +134,30 @@ export const GridLayer: React.FC<GridLayerProps> = ({
       {/* Master grid (on top of fine) */}
       {masterLines}
 
+      {/* WAVE 7606: Visual Center Line — X=0 (stage center in SVG coords) */}
+      {/* Highly visible vertical line separating Left from Right */}
+      <line
+        x1={stageWidth / 2} y1={-(padding + GRID_OVERSCAN)}
+        x2={stageWidth / 2} y2={stageDepth + padding + GRID_OVERSCAN}
+        stroke="var(--obs-accent, #5EEAD4)"
+        strokeWidth={2.5}
+        opacity={0.45}
+        strokeDasharray="0.5 0.25"
+        vectorEffect="non-scaling-stroke"
+      />
+      {/* Center line label */}
+      <text
+        x={stageWidth / 2 + 0.15}
+        y={-(padding + GRID_OVERSCAN) + 0.3}
+        fill="var(--obs-accent, #5EEAD4)"
+        fontSize={0.18}
+        fontFamily="monospace"
+        opacity={0.6}
+        pointerEvents="none"
+      >
+        CENTER
+      </text>
+
       {/* Crosshair markers (top) */}
       {crosshairs}
     </g>

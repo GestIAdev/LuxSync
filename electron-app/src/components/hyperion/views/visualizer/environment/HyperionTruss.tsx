@@ -89,9 +89,9 @@ const TrussBeam: React.FC<TrussBeamProps> = ({
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const HyperionTruss: React.FC<HyperionTrussProps> = ({
-  width = 12,
-  depth = 8,
-  height = 5,
+  width = 50,   // WAVE 7609: Warehouse-scale default
+  depth = 25,   // WAVE 7609: Warehouse-scale default
+  height = 15,  // WAVE 7609: Warehouse-scale default
   showGlow = true,
 }) => {
   const halfWidth = width / 2

@@ -30,9 +30,9 @@ const BASE_OPACITY = 0.25 // opacidad en reposo
 const ACTIVE_OPACITY = 0.85 // opacidad cuando se acerca el fixture
 
 export const CrystalEdges: React.FC<CrystalEdgesProps> = ({
-  width = 12,
-  depth = 8,
-  height = 6,
+  width = 50,   // WAVE 7609: Warehouse-scale default
+  depth = 25,   // WAVE 7609: Warehouse-scale default
+  height = 15,  // WAVE 7609: Warehouse-scale default
   draggedPosition = null,
 }) => {
   const groupRef = useRef<THREE.Group>(null)

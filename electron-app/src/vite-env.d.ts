@@ -969,6 +969,16 @@ declare global {
       invalidateIKProfile: (args: { nodeId: string }) => Promise<{ success: boolean; error?: string }>
 
       /**
+       * WAVE 7610: Live calibration hot-reload.
+       * Directly updates node.ikCalibration and invalidates IK profile cache.
+       * Values are in DEGREES (panOffset, tiltOffset) and booleans (panInvert, tiltInvert).
+       */
+      updateLiveCalibration: (args: {
+        nodeId: string
+        calibration: { panOffset: number; tiltOffset: number; panInvert: boolean; tiltInvert: boolean }
+      }) => void
+
+      /**
        * WAVE 4702: Sync fixtures al backend (TitanOrchestrator via Aether).
        * Canal canónico post WAVE 4702.
        */

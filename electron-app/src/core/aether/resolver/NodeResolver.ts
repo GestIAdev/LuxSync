@@ -232,7 +232,7 @@ export class NodeResolver implements INodeResolver {
   private readonly _ikLastWarnFrame = new Map<NodeId, number>()
   private _resolveFrameIndex = 0
   // 🛠️ WAVE 5034: Pre-allocated IKResult scratch — zero alloc en hot path.
-  private readonly _ikResultScratch: import('../../../engine/movement/InverseKinematicsEngine').IKResult = { pan: 0, tilt: 0, reachable: false, antiFlipApplied: false }
+  private readonly _ikResultScratch: import('../../../engine/movement/InverseKinematicsEngine').IKResult = { pan: 0, tilt: 0, pan16: 0, tilt16: 0, reachable: false, antiFlipApplied: false }
   // 🛠️ WAVE 5034: Pre-allocated kinetic clamp scratch — zero alloc en hot path.
   private readonly _kineticClampScratch: { pan: number; tilt: number } = { pan: 0, tilt: 0 }
   // K0-BATCH-3c: Pre-allocated IK target scratch — zero alloc en hot path.
@@ -383,6 +383,43 @@ export class NodeResolver implements INodeResolver {
    * El siguiente frame re-construirá el perfil con la nueva calibración.
    */
   invalidateIKProfile(nodeId: NodeId): void {
+    this._ikProfiles.delete(nodeId)
+  }
+
+  /**
+   * WAVE 7610: Live calibration hot-reload.
+   *
+   * Directly mutates `node.ikCalibration` in the NodeGraph and invalidates
+   * the IK profile cache. The very next TickEngine frame will rebuild the
+   * IKFixtureProfile with the new calibration offsets — producing immediate
+   * DMX output changes without requiring a full re-patch.
+   *
+   * Called by the Calibration Dock when the user drags the Offset Trim sliders.
+   * Values are in DEGREES (panOffset, tiltOffset) and booleans (panInvert, tiltInvert).
+   *
+   * @param nodeId      - Target kinetic node ID (e.g. "fixture-01:kinetic")
+   * @param calibration - New calibration values in degree domain
+   */
+  updateLiveCalibration(
+    nodeId: NodeId,
+    calibration: { panOffset: number; tiltOffset: number; panInvert: boolean; tiltInvert: boolean },
+  ): void {
+    const node = this._graph.getNodeData(nodeId) as IKineticNodeData | undefined
+    if (!node || node.family !== NodeFamily.KINETIC) {
+      console.warn(`[NodeResolver] updateLiveCalibration: node ${nodeId} not found or not KINETIC`)
+      return
+    }
+    // Direct mutation — getNodeData returns a live reference, not a copy.
+    // The `readonly` on IKineticNodeData is a compile-time constraint; at runtime
+    // the object is a plain mutable JS object. This is the same pattern used by
+    // currentPosition updates in _writeNodeIK (line 1638).
+    ;(node as any).ikCalibration = {
+      panOffset:  calibration.panOffset,
+      tiltOffset: calibration.tiltOffset,
+      panInvert:  calibration.panInvert,
+      tiltInvert: calibration.tiltInvert,
+    }
+    // Invalidate cache so next frame rebuilds the profile with new calibration
     this._ikProfiles.delete(nodeId)
   }
 
@@ -1647,6 +1684,34 @@ export class NodeResolver implements INodeResolver {
     // WAVE 4616: Gate final absoluto en el write DMX.
     if (!nodeWriteEnabled) return
 
+    // WAVE 7608: 16-bit IK precision — extract 16-bit values from IK result
+    // and apply the same VMM offsets + safety clamps in 16-bit domain.
+    let safePan16 = ikResult.pan16
+    let safeTilt16 = ikResult.tilt16
+
+    // Apply VMM offsets in 16-bit domain (scale 255→65535 = ×257)
+    if (hasPanOffset || hasTiltOffset) {
+      const amp = this._relativeOffsetAmplitude
+      const distScale = this._spatialDistanceScales.get(node.nodeId) ?? 1.0
+      if (hasPanOffset) {
+        const tiltNorm16 = safeTilt16 / 65535
+        const tiltDist16 = Math.abs(tiltNorm16 - VMM_GIMBAL_TILT_CENTER)
+        const gimbalFactor16 = tiltDist16 >= VMM_GIMBAL_TILT_FADE_HALFWIDTH
+          ? 1
+          : tiltDist16 / VMM_GIMBAL_TILT_FADE_HALFWIDTH
+        const panDelta16 = (panOffset as number) * amp * VMM_OFFSET_SCALE_PAN * distScale * gimbalFactor16 * 65535
+        safePan16 = safePan16 + panDelta16
+      }
+      if (hasTiltOffset) {
+        const tiltDelta16 = (tiltOffset as number) * amp * VMM_OFFSET_SCALE_TILT * distScale * 65535
+        safeTilt16 = safeTilt16 + tiltDelta16
+      }
+    }
+
+    // Clamp 16-bit values to valid range
+    safePan16 = Math.max(0, Math.min(65535, Math.round(safePan16)))
+    safeTilt16 = Math.max(0, Math.min(65535, Math.round(safeTilt16)))
+
     for (let ci = 0; ci < node.channels.length; ci++) {
       const chDef  = node.channels[ci]
       const isPan  = chDef.type === 'pan'
@@ -1656,14 +1721,20 @@ export class NodeResolver implements INodeResolver {
       const bufIdx = baseAddr + chDef.dmxOffset
       if (bufIdx < 0 || bufIdx >= DMX_UNIVERSE_SIZE) continue
 
-      const dmxValue = isPan ? safePan : safeTilt
-      buf[bufIdx] = dmxValue
-
       if (chDef.is16bit) {
+        // WAVE 7608: Split 16-bit value into MSB (coarse) and LSB (fine)
+        const val16 = isPan ? safePan16 : safeTilt16
+        const coarse = (val16 >> 8) & 0xFF   // MSB → pan/tilt channel
+        const fine   = val16 & 0xFF          // LSB → pan_fine/tilt_fine channel
+        buf[bufIdx] = coarse
         const fineIdx = bufIdx + 1
         if (fineIdx < DMX_UNIVERSE_SIZE) {
-          buf[fineIdx] = 0  // IKEngine produce resolución 8-bit; fine byte = 0
+          buf[fineIdx] = fine
         }
+      } else {
+        // 8-bit fixture — use coarse value only
+        const dmxValue = isPan ? safePan : safeTilt
+        buf[bufIdx] = dmxValue
       }
     }
     // 🩸 WAVE 6040-DIAG: Confirm IK path actually wrote to buffer

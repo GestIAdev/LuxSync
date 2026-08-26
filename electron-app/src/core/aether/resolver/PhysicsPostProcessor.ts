@@ -396,17 +396,18 @@ export class PhysicsPostProcessor implements IPhysicsPostProcessor {
         this._maxAcc3d  = Math.min(Math.max(this._maxVelX3d, this._maxVelY3d) * 4, safetyMaxAcc)
 
         // WAVE 4621-A: TELEMETRY — Spatial 3D physics limits (cada 60 frames)
-        if ((++this._telemetryFrame % 60) === 0) {
-          console.log(
-            `[PHYSICS-3D] node=${String(node.nodeId)} mode=${this._mode} ` +
-            `stageHalf=(${this._stageHalfW.toFixed(2)},${this._stageHalfH.toFixed(2)},${this._stageHalfD.toFixed(2)}) ` +
-            `diag=${this._stageDiag.toFixed(2)} stageScale=${stageScale.toFixed(2)} ` +
-            `motorSpeeds=(pan=${node.maxPanSpeed},tilt=${node.maxTiltSpeed}) ` +
-            `maxVel3D=(${this._maxVelX3d.toFixed(4)},${this._maxVelY3d.toFixed(4)},${this._maxVelZ3d.toFixed(4)}) ` +
-            `maxAcc3D=${this._maxAcc3d.toFixed(4)} dt=${this._dt.toFixed(4)} ` +
-            `target=(${this._x3dTarget.toFixed(2)},${this._y3dTarget.toFixed(2)},${this._z3dTarget.toFixed(2)})`,
-          )
-        }
+        // WAVE 7617: Silenced — was flooding backend logs. Re-enable with a debug flag if needed.
+        // if ((++this._telemetryFrame % 60) === 0) {
+        //   console.log(
+        //     `[PHYSICS-3D] node=${String(node.nodeId)} mode=${this._mode} ` +
+        //     `stageHalf=(${this._stageHalfW.toFixed(2)},${this._stageHalfH.toFixed(2)},${this._stageHalfD.toFixed(2)}) ` +
+        //     `diag=${this._stageDiag.toFixed(2)} stageScale=${stageScale.toFixed(2)} ` +
+        //     `motorSpeeds=(pan=${node.maxPanSpeed},tilt=${node.maxTiltSpeed}) ` +
+        //     `maxVel3D=(${this._maxVelX3d.toFixed(4)},${this._maxVelY3d.toFixed(4)},${this._maxVelZ3d.toFixed(4)}) ` +
+        //     `maxAcc3D=${this._maxAcc3d.toFixed(4)} dt=${this._dt.toFixed(4)} ` +
+        //     `target=(${this._x3dTarget.toFixed(2)},${this._y3dTarget.toFixed(2)},${this._z3dTarget.toFixed(2)})`,
+        //   )
+        // }
 
         if (this._mode === 'snap') {
           const dxSnap  = this._snapFactor * (this._x3dTarget - state[SLOT_X3D_POS])

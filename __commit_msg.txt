@@ -1,38 +1,28 @@
-WAVE 7616: Fix IK ceiling inversion + remove snapshot hack + choke IPC spam
+WAVE 7617: Silence telemetry + fuse L2 patterns with IK spatial aiming
 
-Three fixes from the WAVE 7615 forensic report:
+1. Silenced backend telemetry that was flooding logs at 44Hz:
+   - [MATH-INPUT] in NodeResolver._writeNodeIK (commented out)
+   - [MATH-OUTPUT] in NodeResolver._writeNodeIK (commented out)
+   - [PHYSICS-3D] in PhysicsPostProcessor (commented out)
+   All three can be re-enabled with debug flags if needed.
 
-1. IK Path Inversion (NodeResolver._writeNodeIK):
-   The IK path explicitly skipped the orientation-based tilt inversion
-   (WAVE 4547.1: "IK NO pasa por este camino para evitar doble negación"),
-   assuming solveInto() would handle it internally. It didn't — only
-   calibration.tiltInvert (a separate per-fixture flag) was applied.
-   This left ceiling-mounted fixtures pointing in the opposite direction.
+2. L2 Pattern Fusion in NodeResolver._writeNodeIK:
+   When a Spatial Target is active, the IK path was completely bypassing
+   the L2 pattern output (Sweep, Circle, etc.) from AetherKineticEngine.
+   The arbiter writes the pattern's fused pan/tilt to channelValues['pan']
+   and channelValues['tilt'], but _writeNodeIK only read targetX/Y/Z and
+   pan_offset/tilt_offset (L0 VMM), ignoring the L2 pattern entirely.
 
-   Fix: Apply _shouldInvertClassicKineticAxes() in _writeNodeIK before
-   writing to the DMX buffer. If true, invert tilt: safeTilt = 255 - safeTilt
-   (and the 16-bit equivalent). currentPosition.tilt now stores the
-   post-inversion value so the RELEASE snapshot captures correct DMX.
+   Fix: Extract channelValues['pan']/'tilt'] (the arbiter's fused pattern
+   output) and compute the orbital deviation from neutral center (0.5):
+     patternDeviation = (patternOutput - 0.5) * 2  → [-1, +1]
+   Add this as a DMX delta on top of the IK solution, scaled by amplitude,
+   distance scale, and gimbal lock fade factor. This makes Sweep/Circle
+   orbit around the 3D target instead of ignoring it.
 
-2. Remove Snapshot Hack (AetherIPCHandlers.ts):
-   The RELEASE/NULL branch had a compensation hack:
-     if (isClassicInverted && wasInIKMode) safeTilt = 1.0 - safeTilt
-   This was needed because currentPosition.tilt stored the pre-inversion
-   value, and the classic path would re-invert it during the fade.
-   Now that the IK path applies the inversion natively, currentPosition
-   already contains the correct DMX value. The hack would cause double
-   inversion. Removed.
-
-3. IPC Spam Guard (ProgrammerAetherBridge._flush):
-   The bridge at 44Hz re-sent identical targetX/Y/Z payloads every tick
-   because setSpatialPosition dirtied KINETIC on every drag frame and
-   the bridge had no value-equality check. This caused the infinite
-   `setManualOverride MERGE` loop observed in the backend logs.
-
-   Fix: Added _lastPayloadHash field. Before sending, serialize the
-   finalSetPayloads into a hash string. If identical to the last sent
-   hash and there are no clears, drain the dirty queue without sending
-   the IPC message. Clears always reset the hash and are always sent.
+   The same fusion is applied in both 8-bit and 16-bit domains, with
+   the gimbal lock fade applied to the pan deviation based on the
+   current tilt position.
 
 Generated with [Devin](https://devin.ai)
 

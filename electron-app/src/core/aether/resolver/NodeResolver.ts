@@ -1599,11 +1599,13 @@ export class NodeResolver implements INodeResolver {
     const ty = sanitizeNormalizedValue(channelValues[CH_TARGET_Y], 1.5)
     const tz = sanitizeNormalizedValue(channelValues[CH_TARGET_Z], 2.0)
 
-    if (this._resolveFrameIndex % MATH_TELEMETRY_EVERY_FRAMES === 0) {
-      console.log(
-        `[MATH-INPUT] id: ${String(node.deviceId)} | targetXYZ: ${tx.toFixed(3)},${ty.toFixed(3)},${tz.toFixed(3)}`,
-      )
-    }
+    // WAVE 7617: MATH-INPUT telemetry silenced — was flooding backend logs at 44Hz.
+    // Re-enable with: if (DEBUG_IK && this._resolveFrameIndex % MATH_TELEMETRY_EVERY_FRAMES === 0) { ... }
+    // if (this._resolveFrameIndex % MATH_TELEMETRY_EVERY_FRAMES === 0) {
+    //   console.log(
+    //     `[MATH-INPUT] id: ${String(node.deviceId)} | targetXYZ: ${tx.toFixed(3)},${ty.toFixed(3)},${tz.toFixed(3)}`,
+    //   )
+    // }
 
     const profile      = this._getOrBuildIKProfile(node, calibration)
     const currentPanDMX = node.currentPosition.pan * 255
@@ -1633,6 +1635,15 @@ export class NodeResolver implements INodeResolver {
     // y el factor de gimbal lock fade, luego se convierten a DMX (0-255) y se suman
     // al resultado lógico del IK. Esto reemplaza la fusión que hacía NodeArbiter
     // en el dominio normalizado 0-1.
+    //
+    // WAVE 7617: L2 PATTERN FUSION — Además de los offsets L0, ahora también
+    // fusionamos la salida del patrón L2 (AetherKineticEngine). El arbiter
+    // escribe el resultado fusionado del patrón en channelValues['pan']/'tilt']
+    // (pan_base + offset L0). La diferencia entre este valor y 0.5 (centro
+    // neutro) representa la órbita del patrón alrededor del centro. La sumamos
+    // al resultado IK como un offset orbital DMX, escalado por la amplitud
+    // relativa para que el patrón orbite alrededor del target 3D en lugar
+    // de reemplazarlo.
     let logicalPan  = ikResult.pan
     let logicalTilt = ikResult.tilt
 
@@ -1641,7 +1652,15 @@ export class NodeResolver implements INodeResolver {
     const hasPanOffset  = panOffset !== undefined && Number.isFinite(panOffset)
     const hasTiltOffset = tiltOffset !== undefined && Number.isFinite(tiltOffset)
 
-    if (hasPanOffset || hasTiltOffset) {
+    // WAVE 7617: Extract L2 pattern output from the arbiter's fused pan/tilt.
+    // channelValues['pan']/'tilt'] contain the pattern's base + L0 offset fusion.
+    // The deviation from 0.5 (neutral center) is the orbital displacement.
+    const patternPan  = channelValues['pan']
+    const patternTilt = channelValues['tilt']
+    const hasPatternPan  = patternPan !== undefined && Number.isFinite(patternPan)
+    const hasPatternTilt = patternTilt !== undefined && Number.isFinite(patternTilt)
+
+    if (hasPanOffset || hasTiltOffset || hasPatternPan || hasPatternTilt) {
       const amp = this._relativeOffsetAmplitude
       const distScale = this._spatialDistanceScales.get(node.nodeId) ?? 1.0
 
@@ -1658,6 +1677,27 @@ export class NodeResolver implements INodeResolver {
       if (hasTiltOffset) {
         const tiltDelta = (tiltOffset as number) * amp * VMM_OFFSET_SCALE_TILT * distScale * 255
         logicalTilt = logicalTilt + tiltDelta
+      }
+
+      // WAVE 7617: L2 pattern orbital fusion — add the pattern's deviation from
+      // center as an offset on top of the IK solution. This makes Sweep/Circle
+      // orbit around the 3D target instead of ignoring it.
+      // patternDeviation = (patternOutput - 0.5) * 2  → normalizes to [-1, +1]
+      // dmxDelta = patternDeviation * amp * distScale * 255
+      if (hasPatternPan) {
+        const panDeviation = ((patternPan as number) - 0.5) * 2  // [-1, +1]
+        const gimbalFactorPan = logicalTilt / 255
+        const tiltDistPan = Math.abs(gimbalFactorPan - VMM_GIMBAL_TILT_CENTER)
+        const gimbalFade = tiltDistPan >= VMM_GIMBAL_TILT_FADE_HALFWIDTH
+          ? 1
+          : tiltDistPan / VMM_GIMBAL_TILT_FADE_HALFWIDTH
+        const patternPanDelta = panDeviation * amp * VMM_OFFSET_SCALE_PAN * distScale * gimbalFade * 255
+        logicalPan = logicalPan + patternPanDelta
+      }
+      if (hasPatternTilt) {
+        const tiltDeviation = ((patternTilt as number) - 0.5) * 2  // [-1, +1]
+        const patternTiltDelta = tiltDeviation * amp * VMM_OFFSET_SCALE_TILT * distScale * 255
+        logicalTilt = logicalTilt + patternTiltDelta
       }
     }
 
@@ -1695,11 +1735,12 @@ export class NodeResolver implements INodeResolver {
     node.currentPosition.pan  = safePan  / 255
     node.currentPosition.tilt = safeTilt / 255
 
-    if (this._resolveFrameIndex % MATH_TELEMETRY_EVERY_FRAMES === 0) {
-      console.log(
-        `[MATH-OUTPUT] id: ${String(node.deviceId)} | IK-Result: ${safePan.toFixed(1)}/${safeTilt.toFixed(1)} | currentPos: ${(node.currentPosition.pan * 255).toFixed(1)}/${(node.currentPosition.tilt * 255).toFixed(1)}`,
-      )
-    }
+    // WAVE 7617: MATH-OUTPUT telemetry silenced — was flooding backend logs at 44Hz.
+    // if (this._resolveFrameIndex % MATH_TELEMETRY_EVERY_FRAMES === 0) {
+    //   console.log(
+    //     `[MATH-OUTPUT] id: ${String(node.deviceId)} | IK-Result: ${safePan.toFixed(1)}/${safeTilt.toFixed(1)} | currentPos: ${(node.currentPosition.pan * 255).toFixed(1)}/${(node.currentPosition.tilt * 255).toFixed(1)}`,
+    //   )
+    // }
 
     // WAVE 4616: Gate final absoluto en el write DMX.
     if (!nodeWriteEnabled) return
@@ -1710,7 +1751,8 @@ export class NodeResolver implements INodeResolver {
     let safeTilt16 = ikResult.tilt16
 
     // Apply VMM offsets in 16-bit domain (scale 255→65535 = ×257)
-    if (hasPanOffset || hasTiltOffset) {
+    // WAVE 7617: Also apply L2 pattern orbital fusion in 16-bit domain.
+    if (hasPanOffset || hasTiltOffset || hasPatternPan || hasPatternTilt) {
       const amp = this._relativeOffsetAmplitude
       const distScale = this._spatialDistanceScales.get(node.nodeId) ?? 1.0
       if (hasPanOffset) {
@@ -1725,6 +1767,22 @@ export class NodeResolver implements INodeResolver {
       if (hasTiltOffset) {
         const tiltDelta16 = (tiltOffset as number) * amp * VMM_OFFSET_SCALE_TILT * distScale * 65535
         safeTilt16 = safeTilt16 + tiltDelta16
+      }
+      // WAVE 7617: L2 pattern orbital fusion (16-bit)
+      if (hasPatternPan) {
+        const panDeviation16 = ((patternPan as number) - 0.5) * 2
+        const tiltNorm16p = safeTilt16 / 65535
+        const tiltDist16p = Math.abs(tiltNorm16p - VMM_GIMBAL_TILT_CENTER)
+        const gimbalFade16 = tiltDist16p >= VMM_GIMBAL_TILT_FADE_HALFWIDTH
+          ? 1
+          : tiltDist16p / VMM_GIMBAL_TILT_FADE_HALFWIDTH
+        const patternPanDelta16 = panDeviation16 * amp * VMM_OFFSET_SCALE_PAN * distScale * gimbalFade16 * 65535
+        safePan16 = safePan16 + patternPanDelta16
+      }
+      if (hasPatternTilt) {
+        const tiltDeviation16 = ((patternTilt as number) - 0.5) * 2
+        const patternTiltDelta16 = tiltDeviation16 * amp * VMM_OFFSET_SCALE_TILT * distScale * 65535
+        safeTilt16 = safeTilt16 + patternTiltDelta16
       }
     }
 

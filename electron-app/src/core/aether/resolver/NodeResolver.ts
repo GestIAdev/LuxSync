@@ -1642,12 +1642,20 @@ export class NodeResolver implements INodeResolver {
     const hasLiveTilt = liveTilt !== undefined && Number.isFinite(liveTilt)
 
     // ORBIT_RADIUS: meters of orbital displacement at full pattern amplitude.
-    // The L2 engine scales pattern output by 0.45 * amplitude, so max deviation
-    // in DMX-normalized space is ~0.45. We divide by 0.45 to normalize to [-1,+1]
-    // then multiply by ORBIT_RADIUS to get meters.
-    const ORBIT_RADIUS_PAN  = 3.0
-    const ORBIT_RADIUS_TILT = 3.0
-    const L2_AMP_SCALE = 0.45  // matches AetherKineticEngine.tick() scaling
+    // 6.0m gives a visible sweep on a typical 12m-wide stage. The L2 engine
+    // scales pattern output differently for pan vs tilt:
+    //   pan:  scaledX = x * PAN_ASPECT_RATIO(0.5) * amplitude * 0.45
+    //   tilt: scaledY = y * amplitude * 0.45
+    // So pan deviation is half of tilt deviation at the same amplitude.
+    // We normalize each axis by its own max scale to get [-1,+1], then
+    // multiply by ORBIT_RADIUS to get meters.
+    //
+    // WAVE 7618.2: Mapped tilt_base → Y (height) instead of Z (depth).
+    // Moving the target vertically produces visible tilt changes, while
+    // moving it in depth has minimal angular effect for ceiling fixtures.
+    const ORBIT_RADIUS = 6.0
+    const L2_AMP_SCALE_PAN  = 0.5 * 0.45  // PAN_ASPECT_RATIO * 0.45 = 0.225
+    const L2_AMP_SCALE_TILT = 0.45
 
     let mutatedX = tx
     let mutatedY = ty
@@ -1670,15 +1678,18 @@ export class NodeResolver implements INodeResolver {
       // When amplitude=0, live == anchor → deviation=0 → no mutation.
       if (hasLivePan) {
         const anchorVal = (anchorPan !== undefined && Number.isFinite(anchorPan)) ? anchorPan : 0.5
-        const deviation = (livePan as number) - anchorVal  // [-0.45, +0.45] at amp=1
-        const dx = (deviation / L2_AMP_SCALE) * ORBIT_RADIUS_PAN * lerpFactor
+        const deviation = (livePan as number) - anchorVal
+        // Normalize by pan's max scale (0.225) → [-1,+1], then scale to meters.
+        const dx = (deviation / L2_AMP_SCALE_PAN) * ORBIT_RADIUS * lerpFactor
         mutatedX = tx + dx
       }
       if (hasLiveTilt) {
         const anchorVal = (anchorTilt !== undefined && Number.isFinite(anchorTilt)) ? anchorTilt : 0.5
-        const deviation = (liveTilt as number) - anchorVal  // [-0.45, +0.45] at amp=1
-        const dz = (deviation / L2_AMP_SCALE) * ORBIT_RADIUS_TILT * lerpFactor
-        mutatedZ = tz + dz
+        const deviation = (liveTilt as number) - anchorVal
+        // Normalize by tilt's max scale (0.45) → [-1,+1], then scale to meters.
+        // Map tilt → Y (height) so vertical sweep produces visible tilt changes.
+        const dy = (deviation / L2_AMP_SCALE_TILT) * ORBIT_RADIUS * lerpFactor
+        mutatedY = ty + dy
       }
     } else {
       // No pattern active — reset the lerp factor so the next pattern activation

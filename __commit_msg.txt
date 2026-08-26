@@ -1,22 +1,26 @@
-WAVE 7618.1: Fix target mutation — read live motor output, not static anchor
+WAVE 7618.2: Fix amplitude — correct pan/tilt scaling + map tilt to Y axis
 
-The WAVE 7618 target mutation was reading channelValues['pan_base']/
-['tilt_base'] which contain the STATIC anchor (0.5) from
-_manualOverrides, not the live pattern output. This caused the
-mutated target to never change → fixtures didn't move.
+The target mutation was producing tiny angular changes ("amplitud de
+chiste") even at 100% amplitude. Three issues fixed:
 
-Fix: Read channelValues['pan']/'tilt'] (the arbiter's fused live
-output from _motorKineticOverrides) and compute the pattern deviation
-as (live - anchor). This isolates the orbital displacement from the
-anchor position, so:
-- amplitude=0 → live == anchor → deviation=0 → no mutation (correct)
-- amplitude>0 → live ≠ anchor → deviation produces 3D offset (correct)
-- no pattern active → channelValues['pan'] undefined → no mutation
+1. PAN SCALING: The L2 engine scales pan by PAN_ASPECT_RATIO(0.5) *
+   amplitude * 0.45, but tilt by just amplitude * 0.45. Pan deviation
+   is half of tilt deviation at the same amplitude. Was dividing both
+   by 0.45, under-scaling pan by 2x. Now uses separate scales:
+   - L2_AMP_SCALE_PAN  = 0.5 * 0.45 = 0.225
+   - L2_AMP_SCALE_TILT = 0.45
 
-The L2 engine scales pattern output by 0.45 * amplitude, so max
-deviation in DMX-normalized space is ~0.45. Dividing by L2_AMP_SCALE
-(0.45) normalizes to [-1,+1], then multiplying by ORBIT_RADIUS (3.0m)
-gives the metric offset.
+2. ORBIT_RADIUS: Increased from 3.0m to 6.0m. At 3m, the angular
+   change for a fixture 6m up was only ~8° at 50% amplitude. At 6m,
+   it's ~16° at 50% and ~30° at 100% — visible and dramatic.
+
+3. TILT → Y MAPPING: Was mapping tilt_base to Z (depth), which
+   produces minimal angular change for ceiling fixtures. Now maps
+   tilt_base to Y (height), so vertical sweep moves the target
+   up/down → fixtures tilt up/down visibly.
+
+At 50/50 (default): pan sweeps ±3m on X, tilt sweeps ±3m on Y.
+At 100/100: pan sweeps ±6m, tilt sweeps ±6m — full stage coverage.
 
 Generated with [Devin](https://devin.ai)
 

@@ -1,24 +1,23 @@
-WAVE 7629: Fix infinite loop in ExtrasAggregator (getSnapshot not cached)
+WAVE 7630: Force Global Save — purge 'Save As' hijack in CommandStrip
 
-Two bugs caused the "Maximum update depth exceeded" crash when changing
-fixture X separation:
+The Amnesia Bug: changes to fixture coordinates were lost on reload.
 
-1. UNSTABLE SELECTOR (useOrphanPhantomChannels.ts)
-   The useStageStore selector used `useShallow` with a fallback of
-   `return [] as unknown[]`. This created a NEW empty array on every
-   getSnapshot call. React's useSyncExternalStore detected the
-   reference change and re-rendered, which called getSnapshot again,
-   which returned another new [] — infinite loop.
-   Fix: Replaced useShallow with direct selection of state.fixtures
-   (stable reference between store updates) and a module-level
-   EMPTY_FIXTURES constant for the fallback case. Removed the unused
-   useShallow import.
+Root cause: CommandStrip.handleSave had a conditional branch — when
+showFilePath === 'active' (the default after loadActive), clicking Save
+opened a saveAsDialog instead of calling saveShow(). This saved to a
+user-chosen path (e.g. 'my-show.v2.luxshow') and updated showFilePath
+to that path. The default active show file (current-show.v2.luxshow)
+was NEVER updated. On reload, loadActive() loads from
+current-show.v2.luxshow → stale coordinates.
 
-2. SIGNATURE MISMATCH (ExtrasAggregator.tsx)
-   useOrphanPhantomChannels(groups) was called with a `groups` argument
-   that the hook doesn't accept (signature is `useOrphanPhantomChannels()`).
-   The extra arg was silently ignored, masking the mismatch.
-   Fix: Removed the `groups` argument from the call site.
+Fix: Purged the conditional. handleSave now unconditionally calls
+await saveShow(), which writes to the active path
+(current-show.v2.luxshow when showFilePath === 'active'). The saveShow
+function already performs a full Global Save of the entire showFile
+(fixtures, groups, scenes, stage, rigs) via atomic write
+(tmp → rename → backup cleanup).
+
+Removed the now-unused showFilePath selector from CommandStrip.
 
 Generated with [Devin](https://devin.ai)
 

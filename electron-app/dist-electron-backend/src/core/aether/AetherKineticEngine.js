@@ -253,6 +253,20 @@ export class AetherKineticEngine {
          * activar el spatial dithering. Float64Array(2) = [prevPan, prevTilt].
          */
         this._prevPositionMap = new Map();
+        /**
+         * WAVE 7626: EMA OFFSET SMOOTHING — Per-node Exponential Moving Average of
+         * the emitted pan_offset/tilt_offset. Replaces the WAVE 7624 fade-in.
+         * Instead of resetting to 0 and ramping up (which created a step function
+         * that triggered the AetherSafetyMiddleware velocity clamp), the EMA
+         * smoothly interpolates from the previous offset value to the new pattern's
+         * target. This acts as a low-pass filter: pattern switches, amplitude
+         * changes, and phase resets all produce a smooth transition with no
+         * single-frame spike.
+         *
+         * EMA_ALPHA = 0.05 → time constant ~20 frames ≈ 0.45s at 44Hz.
+         */
+        this._smoothOffsetX = new Map();
+        this._smoothOffsetY = new Map();
         /** WAVE 4706 TELEMETRÍA — contador de frames para heartbeat rate-limited */
         this._heartbeatCounter = 0;
         /** WAVE 4938: Referencia al último NodeArbiter pasado en tick() */
@@ -298,6 +312,16 @@ export class AetherKineticEngine {
             // El guard anterior heredaba la fase acumulada del patrón anterior,
             // causando saltos bruscos al cambiar de patrón (ej. circle → eight).
             this._phaseMap.set(nodeId, 0);
+            // WAVE 7626: Reset the EMA smoother on pattern change. The EMA will
+            // smoothly interpolate from the previous offset value to the new
+            // pattern's target, preventing the single-frame spike that the
+            // WAVE 7624 fade-in caused (reset to 0 → step function → airbag panic).
+            // We do NOT reset to 0 — we let the EMA naturally converge.
+            // However, if the node is new (no previous EMA state), it starts at 0.
+            if (!this._smoothOffsetX.has(nodeId))
+                this._smoothOffsetX.set(nodeId, 0);
+            if (!this._smoothOffsetY.has(nodeId))
+                this._smoothOffsetY.set(nodeId, 0);
             if (!this._overridePool.has(nodeId)) {
                 this._overridePool.set(nodeId, { pan_base: 0.5, tilt_base: 0.5 });
             }
@@ -327,6 +351,9 @@ export class AetherKineticEngine {
                 // el cálculo de velocidad compara contra un valor potencialmente stale
                 // (segundos/minutos atrás), activando el dither de forma incorrecta.
                 this._prevPositionMap.delete(nodeId);
+                // WAVE 7626: Purgar el EMA smoother para que la próxima activación arranque limpio.
+                this._smoothOffsetX.delete(nodeId);
+                this._smoothOffsetY.delete(nodeId);
                 // _overridePool y _manualOverrides: PRESERVADOS — paradigma Programmer.
             }
         }
@@ -492,6 +519,21 @@ export class AetherKineticEngine {
             patternFn(phase + fanOffset, _patternScratch);
             const x = _patternScratch.x;
             const y = _patternScratch.y;
+            // WAVE 7626: EMA OFFSET SMOOTHING — Exponential Moving Average on the
+            // raw pattern output. Replaces the WAVE 7624 fade-in. Instead of
+            // resetting to 0 and ramping up (step function → airbag panic), the
+            // EMA smoothly interpolates from the previous offset value to the new
+            // target. This acts as a low-pass filter: pattern switches, amplitude
+            // changes, and phase resets all produce a smooth transition.
+            // EMA_ALPHA = 0.05 → time constant ~20 frames ≈ 0.45s at 44Hz.
+            const targetOffsetX = x * cfg.amplitude;
+            const targetOffsetY = y * cfg.amplitude;
+            const prevX = this._smoothOffsetX.get(nodeId) ?? 0;
+            const prevY = this._smoothOffsetY.get(nodeId) ?? 0;
+            const smoothX = prevX + (targetOffsetX - prevX) * AetherKineticEngine.EMA_ALPHA;
+            const smoothY = prevY + (targetOffsetY - prevY) * AetherKineticEngine.EMA_ALPHA;
+            this._smoothOffsetX.set(nodeId, smoothX);
+            this._smoothOffsetY.set(nodeId, smoothY);
             // ── WAVE 4713 — AMPLITUDE BOOST + CLAMP DE SEGURIDAD ─────────────────
             // El factor 0.5 mapea el envelope nativo [-1,1] al rango DMX completo:
             //   amplitude=1 ⇒ excursión nominal de ±0.5 sobre el ancla en escala
@@ -565,6 +607,18 @@ export class AetherKineticEngine {
                 rec = existingMotor ? { ...existingMotor } : {};
                 this._overridePool.set(nodeId, rec);
             }
+            else if (hasSpatialTarget) {
+                // WAVE 7622.2 FIX: The pool entry was created in a previous tick (possibly
+                // classic mode) and does NOT have targetX/Y/Z — those were written by
+                // applySpatialTarget directly to the arbiter's motor override, not to
+                // the pool. Without merging them here, arbiter.setMotorKineticOverride
+                // would overwrite the motor override with a rec that has pan_offset but
+                // NO targetX — destroying the spatial target and dropping the fixture
+                // out of IK mode. Merge the spatial target keys from existingMotor.
+                rec['targetX'] = existingMotor['targetX'];
+                rec['targetY'] = existingMotor['targetY'];
+                rec['targetZ'] = existingMotor['targetZ'];
+            }
             if (hasSpatialTarget) {
                 // IK MODE: Emit pattern as relative offsets [-1,+1].
                 // The raw pattern output (x, y) is already in [-1,+1].
@@ -572,8 +626,11 @@ export class AetherKineticEngine {
                 // Do NOT apply PAN_ASPECT_RATIO or 0.45 here — those scales are for
                 // the DMX-space base path. The resolver's WAVE 7179 fusion applies
                 // VMM_OFFSET_SCALE_PAN (0.5) and VMM_OFFSET_SCALE_TILT (1.0) itself.
-                rec['pan_offset'] = x * cfg.amplitude;
-                rec['tilt_offset'] = y * cfg.amplitude;
+                // WAVE 7626: Use EMA-smoothed offsets instead of raw x*y*fadeIn.
+                // The EMA smoothly transitions from the previous pattern's offset
+                // to the new pattern's target, preventing the airbag panic.
+                rec['pan_offset'] = smoothX;
+                rec['tilt_offset'] = smoothY;
                 // Remove base keys — in IK mode, the pattern is an offset, not a base.
                 // The arbiter's fusion loop will skip this node for base computation
                 // (no pan_base/tilt_base in motor override), but will still copy
@@ -588,6 +645,10 @@ export class AetherKineticEngine {
                 // Clean up any stale offset keys from a previous IK mode session.
                 delete rec['pan_offset'];
                 delete rec['tilt_offset'];
+                // Clean up stale spatial target keys from a previous IK session.
+                delete rec['targetX'];
+                delete rec['targetY'];
+                delete rec['targetZ'];
             }
             arbiter.setMotorKineticOverride(nodeId, rec);
             if (!sampleNodeId) {
@@ -600,18 +661,23 @@ export class AetherKineticEngine {
         if (this._heartbeatCounter >= 44 && sampleCfg) {
             this._heartbeatCounter = 0;
             const sampleRec = this._overridePool.get(sampleNodeId);
+            // WAVE 7622.2: Log mode (IK vs Classic) and actual output keys.
+            const mode = sampleRec && sampleRec['targetX'] !== undefined ? 'IK' : 'CLASSIC';
+            const keys = sampleRec ? Object.keys(sampleRec).join(',') : 'null';
+            const panVal = sampleRec ? (sampleRec['pan_base'] ?? sampleRec['pan_offset'] ?? NaN) : NaN;
+            const tiltVal = sampleRec ? (sampleRec['tilt_base'] ?? sampleRec['tilt_offset'] ?? NaN) : NaN;
             console.log(`[KineticEngine L2] Pistas activas: ${this._nodeConfigs.size}` +
                 ` | Muestra[${sampleNodeId}]: ${sampleCfg.pattern}` +
                 ` | Speed: ${sampleCfg.speed.toFixed(3)}` +
                 ` | Amplitude: ${sampleCfg.amplitude.toFixed(3)}` +
                 ` | Fan: ${sampleCfg.fan.toFixed(3)} (${sampleCfg.fanIndex}/${sampleCfg.fanTotal})` +
-                ` | Output: ` +
-                (sampleRec
-                    ? `{pan: ${sampleRec['pan_base'].toFixed(3)}, tilt: ${sampleRec['tilt_base'].toFixed(3)}}`
-                    : 'null'));
+                ` | Mode: ${mode}` +
+                ` | Keys: [${keys}]` +
+                ` | Output: {pan: ${panVal.toFixed(3)}, tilt: ${tiltVal.toFixed(3)}}`);
         }
     }
 }
+AetherKineticEngine.EMA_ALPHA = 0.05;
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────────────────────────

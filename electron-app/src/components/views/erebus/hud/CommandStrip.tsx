@@ -42,7 +42,7 @@ export const CommandStrip: React.FC<CommandStripProps> = ({
 
   // ── I/O: stage store ──────────────────────────────────────────────────────
   const showFile = useStageStore(s => s.showFile)
-  const showFilePath = useStageStore(s => s.showFilePath)
+  // WAVE 7630: showFilePath no longer needed — handleSave is unconditional.
   const isDirty = useStageStore(s => s.isDirty)
   const newShow = useStageStore(s => s.newShow)
   const saveShow = useStageStore(s => s.saveShow)
@@ -59,23 +59,19 @@ export const CommandStrip: React.FC<CommandStripProps> = ({
   }, [snapOpen])
 
   // ── I/O handlers ──────────────────────────────────────────────────────────
+  // WAVE 7630: Unconditional Global Save. The previous conditional hijacked
+  // the Save button into a 'Save As' dialog when showFilePath === 'active',
+  // which saved to a user-chosen path and NEVER updated current-show.v2.luxshow.
+  // On reload, loadActive() loaded the stale default show → Amnesia Bug.
+  // Now Save always calls saveShow(), which writes to the active path
+  // (current-show.v2.luxshow when showFilePath === 'active').
   const handleSave = useCallback(async () => {
     try {
-      if (showFilePath && showFilePath !== 'active') {
-        await saveShow()
-      } else {
-        const lux = (window as any).lux
-        if (lux?.stage?.saveAsDialog && showFile) {
-          const result = await lux.stage.saveAsDialog(showFile, showFile.name)
-          if (result?.success && result?.path) {
-            useStageStore.setState({ showFilePath: result.path, isDirty: false })
-          }
-        }
-      }
+      await saveShow()
     } catch (err) {
       console.error('[CommandStrip] Save failed:', err)
     }
-  }, [showFilePath, showFile, saveShow])
+  }, [saveShow])
 
   const confirmDiscard = useCallback(async (): Promise<boolean> => {
     if (!isDirty) return true

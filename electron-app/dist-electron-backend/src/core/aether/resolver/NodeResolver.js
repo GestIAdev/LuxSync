@@ -162,6 +162,11 @@ export class NodeResolver {
         this._ikProfiles = new Map();
         this._ikReachability = new Map();
         this._ikLastWarnFrame = new Map();
+        // WAVE 7624: IK MEMORY ISOLATION — stores the PURE IK pan (before L0 offset)
+        // for the anti-flip shortest-path heuristic. Without this, the offset-polluted
+        // currentPosition.pan feeds back into solveInto's resolveShortestPanPath,
+        // corrupting the flip decision when the offset pushes past the midpoint.
+        this._ikPurePanMemory = new Map();
         this._resolveFrameIndex = 0;
         // 🛠️ WAVE 5034: Pre-allocated IKResult scratch — zero alloc en hot path.
         this._ikResultScratch = { pan: 0, tilt: 0, pan16: 0, tilt16: 0, reachable: false, antiFlipApplied: false };
@@ -268,6 +273,13 @@ export class NodeResolver {
         this._safetyMiddleware = middleware;
     }
     /**
+     * WAVE 7626: Getter for the safety middleware. Used by AetherIPCHandlers
+     * to reset the velocity-clamp state on pattern switch.
+     */
+    getSafetyMiddleware() {
+        return this._safetyMiddleware;
+    }
+    /**
      * 🏗️ WAVE 7179 (M4): Setter de la escala de distancia por nodo.
      * Espejo de NodeArbiter.setSpatialDistanceScale — llamado desde AetherIPCHandlers.
      */
@@ -289,6 +301,9 @@ export class NodeResolver {
     /** 🏗️ WAVE 7179 (M4): Limpiar la escala de distancia de un nodo (release). */
     clearSpatialDistanceScale(nodeId) {
         this._spatialDistanceScales.delete(nodeId);
+        // WAVE 7624: Clear the pure pan memory on release to avoid stale flip
+        // heuristic on re-activation.
+        this._ikPurePanMemory.delete(nodeId);
     }
     /**
      * 🏗️ WAVE 7179 (M5): Invalida el cache del IKFixtureProfile para un nodo.
@@ -1406,7 +1421,13 @@ export class NodeResolver {
         //   )
         // }
         const profile = this._getOrBuildIKProfile(node, calibration);
-        const currentPanDMX = node.currentPosition.pan * 255;
+        // WAVE 7624: IK MEMORY ISOLATION — Feed the PURE IK pan (from last frame's
+        // solveInto, before any L0 offset was applied) to the anti-flip heuristic.
+        // The offset-polluted currentPosition.pan must NOT influence the flip
+        // decision — it corrupts resolveShortestPanPath when the offset pushes
+        // the physical head past the midpoint, causing a 180° teleport.
+        // First frame fallback: currentPosition.pan (no pure memory yet).
+        const purePanMemory = this._ikPurePanMemory.get(node.nodeId) ?? (node.currentPosition.pan * 255);
         // K0-BATCH-3c: Mutate pre-allocated scratch instead of creating {x:tx, y:ty, z:tz} literal.
         // WAVE 7621: Pure IK — no target mutation, no pattern fusion. The resolver
         // reads targetX/Y/Z directly and calls solveInto. Pattern offsets arrive
@@ -1415,8 +1436,12 @@ export class NodeResolver {
         this._ikTargetScratch.x = tx;
         this._ikTargetScratch.y = ty;
         this._ikTargetScratch.z = tz;
-        solveInto(this._ikResultScratch, profile, this._ikTargetScratch, currentPanDMX);
+        solveInto(this._ikResultScratch, profile, this._ikTargetScratch, purePanMemory);
         const ikResult = this._ikResultScratch;
+        // WAVE 7624: Save the PURE IK pan for next frame's anti-flip heuristic.
+        // This is the solver's output BEFORE any L0/L2 offset is applied — it
+        // reflects only the 3D target trajectory, not the orbital offset.
+        this._ikPurePanMemory.set(node.nodeId, ikResult.pan);
         const reachable = ikResult.reachable !== false;
         this._ikReachability.set(node.nodeId, reachable);
         if (!reachable) {
@@ -1445,7 +1470,21 @@ export class NodeResolver {
         const hasTiltOffset = tiltOffset !== undefined && Number.isFinite(tiltOffset);
         if (hasPanOffset || hasTiltOffset) {
             const amp = this._relativeOffsetAmplitude;
-            const distScale = this._spatialDistanceScales.get(node.nodeId) ?? 1.0;
+            // WAVE 7627: Cap distScale to 1.0 so it never amplifies offsets — only
+            // reduces them for far fixtures. The original distScale (up to 2.0) was
+            // designed for the VMM's gentle L0 offsets, not the L2 engine's full
+            // ±1.0 offsets. With distScale=2.0, the delta could reach ±127 DMX,
+            // hitting the 0/255 boundary and causing the "chopped sine wave" clip.
+            const rawDistScale = this._spatialDistanceScales.get(node.nodeId) ?? 1.0;
+            const effectiveDistScale = rawDistScale > 1 ? 1 : rawDistScale;
+            // WAVE 7628: DYNAMIC SOFT-CLPER (tanh compressor)
+            // Save the pure IK base before applying any offset — this is the anchor
+            // the IK solver computed. The headroom is the distance from this base
+            // to the nearest DMX boundary (0 or 255). The tanh curve smoothly
+            // compresses the delta as it approaches the boundary, preserving the
+            // waveform shape without hard-clipping or flatlining.
+            const basePan = logicalPan;
+            const baseTilt = logicalTilt;
             if (hasPanOffset) {
                 // Gimbal lock fade: atenuar pan_offset cuando tilt ≈ centro (0.5 norm = ~127 DMX)
                 const tiltNorm = logicalTilt / 255;
@@ -1453,12 +1492,33 @@ export class NodeResolver {
                 const gimbalFactor = tiltDist >= VMM_GIMBAL_TILT_FADE_HALFWIDTH
                     ? 1
                     : tiltDist / VMM_GIMBAL_TILT_FADE_HALFWIDTH;
-                const panDelta = panOffset * amp * VMM_OFFSET_SCALE_PAN * distScale * gimbalFactor * 255;
-                logicalPan = logicalPan + panDelta;
+                const panDelta = panOffset * amp * VMM_OFFSET_SCALE_PAN * effectiveDistScale * gimbalFactor * 255;
+                // WAVE 7628: Soft-clip the delta based on available headroom.
+                // tanh(|delta|/headroom) * headroom → asymptotically approaches the
+                // boundary but never flatlines. For small deltas (delta << headroom),
+                // tanh(x) ≈ x → no compression, waveform preserved.
+                const panHeadroom = panDelta > 0 ? (255 - basePan) : basePan;
+                let safePanDelta;
+                if (panHeadroom > 0) {
+                    safePanDelta = Math.tanh(Math.abs(panDelta) / panHeadroom) * panHeadroom * Math.sign(panDelta);
+                }
+                else {
+                    safePanDelta = 0;
+                }
+                logicalPan = basePan + safePanDelta;
             }
             if (hasTiltOffset) {
-                const tiltDelta = tiltOffset * amp * VMM_OFFSET_SCALE_TILT * distScale * 255;
-                logicalTilt = logicalTilt + tiltDelta;
+                const tiltDelta = tiltOffset * amp * VMM_OFFSET_SCALE_TILT * effectiveDistScale * 255;
+                // WAVE 7628: Same tanh soft-clip for tilt.
+                const tiltHeadroom = tiltDelta > 0 ? (255 - baseTilt) : baseTilt;
+                let safeTiltDelta;
+                if (tiltHeadroom > 0) {
+                    safeTiltDelta = Math.tanh(Math.abs(tiltDelta) / tiltHeadroom) * tiltHeadroom * Math.sign(tiltDelta);
+                }
+                else {
+                    safeTiltDelta = 0;
+                }
+                logicalTilt = baseTilt + safeTiltDelta;
             }
         }
         // ★ WAVE 4557: Velocity clamp + Airbag via AetherSafetyMiddleware
@@ -1510,19 +1570,42 @@ export class NodeResolver {
         // AetherKineticEngine in IK mode are fused here alongside L0 VMM offsets.
         if (hasPanOffset || hasTiltOffset) {
             const amp = this._relativeOffsetAmplitude;
-            const distScale = this._spatialDistanceScales.get(node.nodeId) ?? 1.0;
+            // WAVE 7627: Same distScale cap as 8-bit path — never amplify, only reduce.
+            const rawDistScale = this._spatialDistanceScales.get(node.nodeId) ?? 1.0;
+            const effectiveDistScale = rawDistScale > 1 ? 1 : rawDistScale;
+            // WAVE 7628: Save the pure IK 16-bit base for headroom computation.
+            const basePan16 = safePan16;
+            const baseTilt16 = safeTilt16;
             if (hasPanOffset) {
                 const tiltNorm16 = safeTilt16 / 65535;
                 const tiltDist16 = Math.abs(tiltNorm16 - VMM_GIMBAL_TILT_CENTER);
                 const gimbalFactor16 = tiltDist16 >= VMM_GIMBAL_TILT_FADE_HALFWIDTH
                     ? 1
                     : tiltDist16 / VMM_GIMBAL_TILT_FADE_HALFWIDTH;
-                const panDelta16 = panOffset * amp * VMM_OFFSET_SCALE_PAN * distScale * gimbalFactor16 * 65535;
-                safePan16 = safePan16 + panDelta16;
+                const panDelta16 = panOffset * amp * VMM_OFFSET_SCALE_PAN * effectiveDistScale * gimbalFactor16 * 65535;
+                // WAVE 7628: tanh soft-clip in 16-bit domain.
+                const panHeadroom16 = panDelta16 > 0 ? (65535 - basePan16) : basePan16;
+                let safePanDelta16;
+                if (panHeadroom16 > 0) {
+                    safePanDelta16 = Math.tanh(Math.abs(panDelta16) / panHeadroom16) * panHeadroom16 * Math.sign(panDelta16);
+                }
+                else {
+                    safePanDelta16 = 0;
+                }
+                safePan16 = basePan16 + safePanDelta16;
             }
             if (hasTiltOffset) {
-                const tiltDelta16 = tiltOffset * amp * VMM_OFFSET_SCALE_TILT * distScale * 65535;
-                safeTilt16 = safeTilt16 + tiltDelta16;
+                const tiltDelta16 = tiltOffset * amp * VMM_OFFSET_SCALE_TILT * effectiveDistScale * 65535;
+                // WAVE 7628: Same tanh soft-clip for tilt 16-bit.
+                const tiltHeadroom16 = tiltDelta16 > 0 ? (65535 - baseTilt16) : baseTilt16;
+                let safeTiltDelta16;
+                if (tiltHeadroom16 > 0) {
+                    safeTiltDelta16 = Math.tanh(Math.abs(tiltDelta16) / tiltHeadroom16) * tiltHeadroom16 * Math.sign(tiltDelta16);
+                }
+                else {
+                    safeTiltDelta16 = 0;
+                }
+                safeTilt16 = baseTilt16 + safeTiltDelta16;
             }
         }
         // Clamp 16-bit values to valid range

@@ -112,12 +112,6 @@ const VMM_OFFSET_SCALE_PAN  = 0.5
 const VMM_OFFSET_SCALE_TILT = 0.5
 const VMM_GIMBAL_TILT_CENTER         = 0.5
 const VMM_GIMBAL_TILT_FADE_HALFWIDTH = 10 / 255
-// WAVE 7626: Maximum offset delta in DMX units. Prevents distScale amplification
-// from pushing the L2 pattern offsets into the 0/255 boundary clamp, which
-// caused the "20% clip" where fixtures stuck at the sweep range end.
-// 100 DMX ≈ 40% of the 255 range — enough for a dramatic sweep without clipping.
-const MAX_OFFSET_DMX = 100
-const MAX_OFFSET_DMX_16 = MAX_OFFSET_DMX * 257  // 25700 — scale 255→65535
 
 // WAVE 4735.3: auditoría de salud del tick Aether (~2.27s @ 44Hz)
 const AETHER_TICK_HEALTH_EVERY_FRAMES = 100
@@ -1688,7 +1682,13 @@ export class NodeResolver implements INodeResolver {
 
     if (hasPanOffset || hasTiltOffset) {
       const amp = this._relativeOffsetAmplitude
-      const distScale = this._spatialDistanceScales.get(node.nodeId) ?? 1.0
+      // WAVE 7627: Cap distScale to 1.0 so it never amplifies offsets — only
+      // reduces them for far fixtures. The original distScale (up to 2.0) was
+      // designed for the VMM's gentle L0 offsets, not the L2 engine's full
+      // ±1.0 offsets. With distScale=2.0, the delta could reach ±127 DMX,
+      // hitting the 0/255 boundary and causing the "chopped sine wave" clip.
+      const rawDistScale = this._spatialDistanceScales.get(node.nodeId) ?? 1.0
+      const effectiveDistScale = rawDistScale > 1 ? 1 : rawDistScale
 
       if (hasPanOffset) {
         // Gimbal lock fade: atenuar pan_offset cuando tilt ≈ centro (0.5 norm = ~127 DMX)
@@ -1697,18 +1697,11 @@ export class NodeResolver implements INodeResolver {
         const gimbalFactor = tiltDist >= VMM_GIMBAL_TILT_FADE_HALFWIDTH
           ? 1
           : tiltDist / VMM_GIMBAL_TILT_FADE_HALFWIDTH
-        // WAVE 7626: Clamp the delta to ±MAX_OFFSET_DMX to prevent distScale
-        // amplification from pushing the offset into the 0/255 boundary.
-        let panDelta = (panOffset as number) * amp * VMM_OFFSET_SCALE_PAN * distScale * gimbalFactor * 255
-        if (panDelta > MAX_OFFSET_DMX) panDelta = MAX_OFFSET_DMX
-        else if (panDelta < -MAX_OFFSET_DMX) panDelta = -MAX_OFFSET_DMX
+        const panDelta = (panOffset as number) * amp * VMM_OFFSET_SCALE_PAN * effectiveDistScale * gimbalFactor * 255
         logicalPan = logicalPan + panDelta
       }
       if (hasTiltOffset) {
-        // WAVE 7626: Same clamp for tilt.
-        let tiltDelta = (tiltOffset as number) * amp * VMM_OFFSET_SCALE_TILT * distScale * 255
-        if (tiltDelta > MAX_OFFSET_DMX) tiltDelta = MAX_OFFSET_DMX
-        else if (tiltDelta < -MAX_OFFSET_DMX) tiltDelta = -MAX_OFFSET_DMX
+        const tiltDelta = (tiltOffset as number) * amp * VMM_OFFSET_SCALE_TILT * effectiveDistScale * 255
         logicalTilt = logicalTilt + tiltDelta
       }
     }
@@ -1767,24 +1760,20 @@ export class NodeResolver implements INodeResolver {
     // AetherKineticEngine in IK mode are fused here alongside L0 VMM offsets.
     if (hasPanOffset || hasTiltOffset) {
       const amp = this._relativeOffsetAmplitude
-      const distScale = this._spatialDistanceScales.get(node.nodeId) ?? 1.0
+      // WAVE 7627: Same distScale cap as 8-bit path — never amplify, only reduce.
+      const rawDistScale = this._spatialDistanceScales.get(node.nodeId) ?? 1.0
+      const effectiveDistScale = rawDistScale > 1 ? 1 : rawDistScale
       if (hasPanOffset) {
         const tiltNorm16 = safeTilt16 / 65535
         const tiltDist16 = Math.abs(tiltNorm16 - VMM_GIMBAL_TILT_CENTER)
         const gimbalFactor16 = tiltDist16 >= VMM_GIMBAL_TILT_FADE_HALFWIDTH
           ? 1
           : tiltDist16 / VMM_GIMBAL_TILT_FADE_HALFWIDTH
-        // WAVE 7626: Clamp 16-bit delta to ±MAX_OFFSET_DMX_16.
-        let panDelta16 = (panOffset as number) * amp * VMM_OFFSET_SCALE_PAN * distScale * gimbalFactor16 * 65535
-        if (panDelta16 > MAX_OFFSET_DMX_16) panDelta16 = MAX_OFFSET_DMX_16
-        else if (panDelta16 < -MAX_OFFSET_DMX_16) panDelta16 = -MAX_OFFSET_DMX_16
+        const panDelta16 = (panOffset as number) * amp * VMM_OFFSET_SCALE_PAN * effectiveDistScale * gimbalFactor16 * 65535
         safePan16 = safePan16 + panDelta16
       }
       if (hasTiltOffset) {
-        // WAVE 7626: Same clamp for tilt 16-bit.
-        let tiltDelta16 = (tiltOffset as number) * amp * VMM_OFFSET_SCALE_TILT * distScale * 65535
-        if (tiltDelta16 > MAX_OFFSET_DMX_16) tiltDelta16 = MAX_OFFSET_DMX_16
-        else if (tiltDelta16 < -MAX_OFFSET_DMX_16) tiltDelta16 = -MAX_OFFSET_DMX_16
+        const tiltDelta16 = (tiltOffset as number) * amp * VMM_OFFSET_SCALE_TILT * effectiveDistScale * 65535
         safeTilt16 = safeTilt16 + tiltDelta16
       }
     }

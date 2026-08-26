@@ -1,39 +1,21 @@
-WAVE 7626: The Final Polish — DMX clamp + EMA smoothing + airbag reset
+WAVE 7627: Remove hard clamp, cap distScale at 1.0
 
-Three fixes addressing the clipping and airbag panic issues identified
-by forensic report WAVE 7625:
+The WAVE 7626 MAX_OFFSET_DMX hard clamp created a "chopped sine wave"
+artifact — the top-center fixture hit the artificial software ceiling
+of 100 DMX, paused while the underlying math exceeded it, then returned,
+visually chopping off ~30° of the sweep arc.
 
-1. DMX DELTA CLAMP (NodeResolver.ts)
-   - Added MAX_OFFSET_DMX = 100 (±100 DMX, ~40% of 255 range) and
-     MAX_OFFSET_DMX_16 = 25700 for 16-bit path.
-   - In _writeNodeIK, after computing panDelta/tiltDelta, clamp to
-     ±MAX_OFFSET_DMX before adding to logicalPan/logicalTilt.
-   - This prevents distScale amplification (up to 2.0x) from pushing
-     the L2 pattern offsets into the 0/255 boundary clamp, which
-     caused the "20% clip" where fixtures stuck at the sweep range
-     end for a couple of seconds before joining the return path.
+Root cause: distScale (from _spatialDistanceScales) can reach 2.0 for
+overhead fixtures, doubling the already-massive L2 pattern amplitude.
+The distScale was designed for the VMM's gentle L0 offsets (±0.3), not
+the L2 engine's full ±1.0 offsets.
 
-2. EMA OFFSET SMOOTHING (AetherKineticEngine.ts)
-   - Replaced the WAVE 7624 _offsetFadeIn (reset to 0 + linear ramp)
-     with an Exponential Moving Average (_smoothOffsetX/_smoothOffsetY).
-   - EMA_ALPHA = 0.05 → time constant ~20 frames ≈ 0.45s at 44Hz.
-   - The EMA smoothly interpolates from the previous offset value to
-     the new pattern's target, acting as a low-pass filter. Pattern
-     switches, amplitude changes, and phase resets all produce a
-     smooth transition with no single-frame spike.
-   - The fade-in's step function (reset to 0) triggered the
-     AetherSafetyMiddleware velocity clamp, causing the "airbag panic"
-     where fixtures pointed randomly at the ceiling/sides.
-
-3. AIRBAG STATE RESET (AetherSafetyMiddleware.ts + AetherIPCHandlers.ts)
-   - Added resetKineticState(nodeId) method to AetherSafetyMiddleware
-     that sets KS_INIT = 0, letting the fixture snap to a new position
-     without the velocity clamp fighting the transition.
-   - Added getSafetyMiddleware() getter to NodeResolver.
-   - In setManualPattern IPC handler, after setManualKinetics, calls
-     resetKineticState for all affected nodes. This prevents the
-     clamp's KS_LAST_PAN/TILT from being stuck at the old offset-
-     polluted position and slowly tracking back.
+Fix: Removed the MAX_OFFSET_DMX / MAX_OFFSET_DMX_16 hard clamps entirely.
+Instead, cap the effective distScale to 1.0 (Math.min(rawDistScale, 1))
+in both the 8-bit and 16-bit offset paths. This ensures distScale never
+amplifies offsets — it only reduces them for far fixtures (its original
+purpose). The L2 pattern amplitude is already user-controlled via the
+amplitude slider, so distScale amplification is redundant.
 
 Generated with [Devin](https://devin.ai)
 

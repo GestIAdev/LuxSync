@@ -1266,6 +1266,15 @@ const GRAVITY_R_MIN = 0.08;
 // (atan2(0,0)). Hold the last valid gravity hue to prevent flicker.
 let _lastValidGravityHue = 0;
 
+// ── WAVE 7690: Fast accumulator hue/confidence (for accent derivation) ─────
+// H_fast is the chord-level reactive center (α=0.15, τ≈150ms).
+// R_fast is its confidence. Both are derived per-frame and consumed by the
+// Uranus override block for the accent color.
+let _gravityHueFast = 0;
+let _gravityRFast = 0;
+// Φ(t) stored per-frame for the Uranus override block (secondary/accent/ambient)
+let _siderealPhi = 0;
+
 // ═══════════════════════════════════════════════════════════════════════════
 // 🌑 WAVE 7688 (URANUS PILLAR III): THE REPULSIVE VOID — Anti-Yellow Forcefield
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1608,6 +1617,13 @@ export class SeleneColorEngine {
       ? Math.sqrt(_slowMx * _slowMx + _slowMy * _slowMy) / _slowW
       : 0;
 
+    // Derive hue and confidence from the FAST (chord-level) accumulators
+    // Used by WAVE 7690 for the accent color (reactive chord-level center)
+    const _gravityHueFastRaw = (Math.atan2(_fastMy, _fastMx) * 180 / Math.PI + 360) % 360;
+    _gravityRFast = _fastW > 0
+      ? Math.sqrt(_fastMx * _fastMx + _fastMy * _fastMy) / _fastW
+      : 0;
+
     // ══════════════════════════════════════════════════════════════════════
     // 🌌 WAVE 7689 (URANUS PILLAR II): RELATIVISTIC SIDEREAL RING — Φ(t)
     // ══════════════════════════════════════════════════════════════════════
@@ -1639,6 +1655,8 @@ export class SeleneColorEngine {
     // Cost: 3 sin + ~5 mul/add per frame. Zero allocation.
     // ══════════════════════════════════════════════════════════════════════
     let _gravityHue = _gravityHueRaw;
+    _siderealPhi = 0;  // reset per frame (0 when gravity is off)
+    _gravityHueFast = _gravityHueFastRaw;  // unrotated fast hue (updated below if gravity on)
     if (options?.useChromagramGravity) {
       const tMin = performance.now() / 60000;
       // Φ₀ seeded from SIDEREAL_SESSION_OFFSET (WAVE 7680) — no two sessions
@@ -1649,9 +1667,13 @@ export class SeleneColorEngine {
       const w3_rad = (2 * Math.PI) / 17.2;
       // Φ(t) in degrees: linear drift (8°/min) + two incommensurable harmonics
       const Phi = Phi0 + (8 * tMin) + 25 * Math.sin(w2_rad * tMin) + 10 * Math.sin(w3_rad * tMin);
+      // Store Φ for the WAVE 7690 override block (secondary/accent/ambient)
+      _siderealPhi = Phi;
       // Apply the isometry: rotate the barycentric hue by Φ
       // Large modulo (360000) handles negative Phi safely before final % 360
       _gravityHue = (_gravityHueRaw + Phi + 360000) % 360;
+      // Also rotate the fast hue — same isometry applies to both rates
+      _gravityHueFast = (_gravityHueFastRaw + Phi + 360000) % 360;
     }
 
     // === A. EXTRAER DATOS CON FALLBACKS ===
@@ -2269,7 +2291,104 @@ export class SeleneColorEngine {
       // Rotar ambient +45° para separarse
       pal.ambient.h = normalizeHue(pal.ambient.h + 45);
     }
-    
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🌌 WAVE 7690 (URANUS — TRUE HARMONY): DERIVE PALETTE FROM HARMONIC MASS
+    // ═══════════════════════════════════════════════════════════════════════
+    // Closes WAVE 7681: the strategy label and derived colors now come from
+    // the SAME source — the chroma vector's harmonic mass. No more fixed
+    // Fibonacci offsets or syncopation-threshold labels that disagree with
+    // the actual colors.
+    //
+    // Primary:   already set from _gravityHue (H_slow + Φ) via the override
+    //            block in section B. finalHue carries it through the pipeline.
+    // Accent:    H_fast + Φ — the reactive chord-level center (α=0.15, τ≈150ms).
+    //            Responds to chord changes in real-time, distinct from the
+    //            structural primary.
+    // Ambient:   anti-mass direction (primary + 180°) — "the color of the
+    //            notes that are NOT being played." Maximum chromatic contrast.
+    // Secondary: RESIDUAL MASS — subtract the primary's contribution from the
+    //            slow vector and re-take atan2. Yields the second harmonic
+    //            center (the genuine secondary tonal region), replacing the
+    //            golden-angle constant entirely.
+    //
+    // Strategy:  MEASURED from the angular distance between primary and
+    //            secondary. The label now reflects the actual interval content
+    //            of the harmony, not a syncopation threshold.
+    //            ~30° → analogous, ~120° → triadic, ~180° → complementary.
+    //
+    // All overrides are gated behind useChromagramGravity. When OFF, the
+    // legacy Fibonacci/syncopation derivation above is untouched.
+    // ═══════════════════════════════════════════════════════════════════════
+    let _measuredStrategy: 'analogous' | 'triadic' | 'complementary' | null = null;
+    if (options?.useChromagramGravity) {
+      const Phi = _siderealPhi;
+
+      // ── Accent: H_fast (chord-level reactive center, already Φ-rotated) ──
+      if (_gravityRFast > GRAVITY_R_MIN) {
+        pal.accent.h = _gravityHueFast;
+      } else {
+        // Fast accumulator uncertain — fall back to primary (no chord change detected)
+        pal.accent.h = pal.primary.h;
+      }
+
+      // ── Ambient: anti-mass direction (primary + 180°) ──
+      pal.ambient.h = (pal.primary.h + 180) % 360;
+
+      // ── Secondary: RESIDUAL MASS ──
+      // Subtract the DOMINANT BIN's contribution from the slow mass vector,
+      // then re-take atan2 of the residual. This yields the second harmonic
+      // center — the genuine secondary tonal region, not a fixed rotation.
+      //
+      // NOTE: The original blueprint formula (R*W*û(H)) is a mathematical
+      // identity: R = |M|/W ⇒ R*W = |M|, and û(H) = M/|M|, so R*W*û(H) = M
+      // exactly. Subtracting it always yields zero. The correct approach is
+      // to subtract the DOMINANT pitch class's weighted contribution:
+      //   M_dominant = w_max * û(θ_max)
+      // where w_max = c_max^γ and θ_max is the dominant bin's angle.
+      // The residual M_res = M - M_dominant points toward the second-strongest
+      // harmonic region.
+      //
+      // We then re-apply Φ to the residual hue to maintain the isometry.
+      let dominantIdx = 0;
+      let dominantC = 0;
+      for (let i = 0; i < 12; i++) {
+        if (_chromaMirror[i] > dominantC) {
+          dominantC = _chromaMirror[i];
+          dominantIdx = i;
+        }
+      }
+      const dominantW = Math.pow(dominantC, GRAVITY_GAMMA);
+      let resMx = _slowMx - dominantW * COS_THETA[dominantIdx];
+      let resMy = _slowMy - dominantW * SIN_THETA[dominantIdx];
+
+      // Check residual magnitude — if near zero, primary dominates entirely
+      // (monophonic content). Fall back to primary + 30° (analogous default).
+      const resMag = Math.sqrt(resMx * resMx + resMy * resMy);
+      if (resMag > 0.001) {
+        const resHueRaw = (Math.atan2(resMy, resMx) * 180 / Math.PI + 360) % 360;
+        pal.secondary.h = (resHueRaw + Phi + 360000) % 360;
+      } else {
+        // Residual is zero — primary is the only harmonic center.
+        // Use analogous default (+30°) for visual variety.
+        pal.secondary.h = (pal.primary.h + 30) % 360;
+      }
+
+      // ── Measure Strategy from interval content ──
+      // The angular distance between primary and secondary IS the strategy.
+      // This is the structural fix for WAVE 7681: the label and the colors
+      // derive from one source.
+      let delta = Math.abs(pal.primary.h - pal.secondary.h);
+      if (delta > 180) delta = 360 - delta;
+      if (delta > 135) {
+        _measuredStrategy = 'complementary';
+      } else if (delta > 75) {
+        _measuredStrategy = 'triadic';
+      } else {
+        _measuredStrategy = 'analogous';
+      }
+    }
+
     // === I. COLOR CONTRASTE (Siluetas, muy oscuro) ===
     // WAVE 0-ALLOC: Mutate scratch palette
     pal.contrast.h = normalizeHue(finalHue + 180);
@@ -2537,7 +2656,11 @@ export class SeleneColorEngine {
     
     // === M. RETORNAR PALETA COMPLETA ===
     // WAVE 0-ALLOC: Return the scratch palette directly — no new object
-    pal.meta.strategy = strategy as 'analogous' | 'triadic' | 'complementary';
+    // 🌌 WAVE 7690: When useChromagramGravity is active, the strategy label
+    // is MEASURED from the actual interval content (primary↔secondary angular
+    // distance), not declared from a syncopation threshold. This closes
+    // WAVE 7681: the UI label and the colors now derive from one source.
+    pal.meta.strategy = _measuredStrategy ?? strategy as 'analogous' | 'triadic' | 'complementary';
     pal.meta.temperature = temperature;
     pal.meta.description = description;
     pal.meta.confidence = 1.0;

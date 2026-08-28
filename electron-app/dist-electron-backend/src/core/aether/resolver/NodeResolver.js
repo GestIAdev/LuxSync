@@ -271,6 +271,12 @@ export class NodeResolver {
         this._darkSpinActiveDevices = new Set();
         // HS-2: Pre-allocated transit devices scratch — zero alloc @ 44Hz.
         this._transitDevicesScratch = new Set();
+        // WAVE 7696: Sigma-delta dithering error accumulator for pan/tilt.
+        // Key: `${nodeId}:${chType}` → fractional error carried from previous frame.
+        // Only used for PAN_COARSE and TILT_COARSE — stepper motor inertia averages
+        // the 44Hz oscillation between adjacent DMX steps into a smooth sub-step.
+        // Not used for dimmer (LED responds instantly → dithering = visible jitter).
+        this._ditherError = new Map();
         // 🔥 WAVE 4720: IGNITION ENGINE — Pre-computed injection map (patch-time only)
         // Key: DeviceId  Value: array of IgnitionInjection rules
         // Built once in _precomputeIgnitionMap(); iterated O(2-4) times per frame in resolve().
@@ -1161,20 +1167,32 @@ export class NodeResolver {
             if (normalized < 0)
                 normalized = 0;
             // Escalar a DMX: [0, 255]
-            // WAVE 2523.3: DITHERING ELIMINADO — cuantización directa determinista.
+            // WAVE 7696: SIGMA-DELTA DITHERING for pan/tilt only.
             //
-            // El dithering (WAVE 2523.1/2523.2) fue removido porque:
-            //   1. Los LEDs responden instantáneamente (sin inercia térmica) → cualquier
-            //      oscilación entre steps DMX adyacentes es visible como temblequeo.
-            //   2. El modo chill es 100% desacoplado del audio (senos puros de 200s/240s)
-            //      → los valores son siempre casi-estacionarios → el dithering siempre
-            //      se activaba → temblequeo constante en air/ambient/PARs.
-            //   3. Para un modo ambiental de cenas/previas, los steps de 8-bit (0.39%
-            //      cada ~2s) son imperceptibles y preferibles al temblequeo del dithering.
+            // WAVE 2523.3 eliminó el dithering global porque los LEDs responden
+            // instantáneamente → oscilación visible como temblequeo en dimmer/color.
+            // Pero pan/tilt tienen inercia mecánica (stepper motor) — no pueden mover
+            // 1 DMX step en 23ms (un frame @ 44Hz). Si alternamos entre N y N+1 a 44Hz,
+            // el motor se asienta físicamente en el promedio → sub-step suave.
             //
-            // Los steps de 8-bit son inherentes al protocolo DMX. La única forma de
-            // eliminarlos sería usar dimming 16-bit (canal fine), que depende del hardware.
-            let dmxValue = sanitizeDmxByte(Math.round(normalized * 255));
+            // Sigma-delta modulation: el error fraccional se acumula frame a frame.
+            // Cuando el error supera ±0.5, el valor cuantizado salta al step adyacente
+            // y el error se descuenta. El promedio temporal converge al valor real.
+            // Esto elimina el diente de sierra visible en barridos lentos del chill.
+            let dmxValue;
+            if (chDef.type === PAN_COARSE || chDef.type === TILT_COARSE) {
+                const ditherKey = node.nodeId + ':' + chDef.type;
+                const error = this._ditherError.get(ditherKey) ?? 0;
+                const raw = normalized * 255 + error;
+                dmxValue = sanitizeDmxByte(Math.round(raw));
+                // Acumular el error fraccional, clampeado a [-1, 1] por seguridad
+                const newError = raw - dmxValue;
+                this._ditherError.set(ditherKey, newError > 1 ? 1 : newError < -1 ? -1 : newError);
+            }
+            else {
+                // Dimmer, color, beam, atmosphere: cuantización directa (sin dithering)
+                dmxValue = sanitizeDmxByte(Math.round(normalized * 255));
+            }
             // Aplicar calibración específica de canal
             if (calibration) {
                 dmxValue = sanitizeDmxByte(this._applyCalibration(dmxValue, chDef.type, calibration));

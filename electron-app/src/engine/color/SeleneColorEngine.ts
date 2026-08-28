@@ -1281,14 +1281,55 @@ let _fastMx = 0, _fastMy = 0, _fastW = 0;
 // making migration risk-free: ship at high γ, lower to unlock the field.
 const GRAVITY_GAMMA = 3;
 const GRAVITY_ALPHA_SLOW = 0.005;
-const GRAVITY_ALPHA_FAST = 0.15;
-// R_min: below this circular resultant length, hue is noise. Hold previous.
-const GRAVITY_R_MIN = 0.08;
+// WAVE 7701 FIX #1: Fast accumulator damping increased.
+//   α=0.15 (τ≈150ms) followed percussive transients, causing accent hue
+//   to jitter 30-60° within a single beat. α=0.04 (τ≈560ms) responds to
+//   chord changes, not kick drum noise.
+const GRAVITY_ALPHA_FAST = 0.04;
+// WAVE 7701 FIX #1: R_min gate raised from 0.08 to 0.25.
+//   At 0.08, even broadband noise produced R > R_min, so the accent
+//   always took the noisy fast hue instead of falling back to primary.
+//   0.25 requires genuine tonal content (sustained notes/chords).
+const GRAVITY_R_MIN = 0.25;
 
 // ── Hue hold state ─────────────────────────────────────────────────────────
 // When R < R_min (atonal/noise/silence), the hue is mathematically undefined
 // (atan2(0,0)). Hold the last valid gravity hue to prevent flicker.
 let _lastValidGravityHue = 0;
+
+// ── WAVE 7702: Primary hue anchor rate-limit ───────────────────────────────
+// The barycentric gravity hue still drifts every 1-2 seconds as the chroma
+// vector responds to musical changes. For a stage lighting context, the
+// PRIMARY hue anchor must be stable for multi-second stretches — otherwise
+// the entire palette churns and the audience perceives a "feria ambulante".
+//
+// Rate-limit policy: if the new gravity hue target differs from the current
+// anchor by more than ANCHOR_SHIFT_THRESHOLD degrees, AND less than
+// ANCHOR_COOLDOWN_MS milliseconds have passed since the last accepted shift,
+// reject the new target and hold the current anchor. This ensures the primary
+// hue only moves when (a) the change is large enough to be musically
+// meaningful AND (b) enough time has passed for the previous anchor to feel
+// "settled" to the audience.
+let _anchorHue = -1;            // current accepted primary anchor (-1 = unset)
+let _anchorLastShiftMs = 0;     // timestamp of last accepted anchor shift
+const ANCHOR_COOLDOWN_MS = 8000; // minimum 8 seconds between major anchor shifts
+const ANCHOR_SHIFT_THRESHOLD = 25; // degrees — ignore drifts smaller than this
+
+// ── WAVE 7701 FIX #2: Residual mass EMA accumulators ───────────────────────
+// The secondary hue is derived from the residual mass vector (slow vector
+// minus dominant bin contribution). Without EMA, the residual jitters frame
+// to frame because the dominant bin flips between pitch classes on percussive
+// content. These accumulators smooth the residual in the vector domain
+// (same principle as Pillar I — never smooth the angle, smooth the vector).
+//   α=0.02 (τ≈2.5s) — between slow (4.5s) and fast (560ms), appropriate
+//   for a secondary harmonic center that should be stable but not frozen.
+let _resMxEMA = 0, _resMyEMA = 0;
+const RESIDUAL_ALPHA = 0.02;
+// Minimum residual magnitude to accept a secondary hue derivation.
+// Below this, the primary dominates entirely (monophonic content) and
+// the secondary falls back to primary + 30° (analogous default).
+//   0.05 — 50x stricter than the original 0.001, which admitted pure noise.
+const RESIDUAL_MIN_MAG = 0.05;
 
 // ── WAVE 7690: Fast accumulator hue/confidence (for accent derivation) ─────
 // H_fast is the chord-level reactive center (α=0.15, τ≈150ms).
@@ -1347,6 +1388,10 @@ let _prevEscapeSign = 1;
 // rotations. Apply a deadband: accept a new ψ only if it improves J by a
 // margin, plus an EMA for smooth transitions.
 let _rigidPsiEMA = 0;
+// WAVE 7701 FIX #3: Cooldown counter — after accepting a new ψ, ignore
+// candidate rotations for N frames to prevent micro-adjustments chasing
+// the jittery secondary hue. 30 frames ≈ 680ms at 44Hz.
+let _rigidCooldownFrames = 0;
 
 /**
  * 🌑 WAVE 7688: Softplus Repulsion Kernel — evacuates a single hue from [25°, 80°].
@@ -1432,24 +1477,41 @@ function _evacuatePaletteRigid(pal: SelenePalette): void {
     }
   }
 
-  // ── Hysteresis + EMA ──
+  // ── Hysteresis + EMA + Cooldown (WAVE 7701 FIX #3) ──
   // Only accept a new ψ if it meaningfully improves J, otherwise hold.
   // This prevents chatter between equally-good rotations frame to frame.
-  const currentJ = _voidPenalty((pal.primary.h + _rigidPsiEMA + 360) % 360)
-    + _voidPenalty((pal.secondary.h + _rigidPsiEMA + 360) % 360)
-    + _voidPenalty((pal.accent.h + _rigidPsiEMA + 360) % 360)
-    + _voidPenalty((pal.ambient.h + _rigidPsiEMA + 360) % 360);
+  //
+  // WAVE 7701: Three damping measures to kill the "feria ambulante":
+  //   1. Cooldown: after accepting a rotation, ignore candidates for 30
+  //      frames (~680ms). The jittery secondary hue cannot trigger another
+  //      palette rotation during this window.
+  //   2. Margin: raised from 1.0 to 5.0 — only rotate when the improvement
+  //      is unambiguous, not from 1-2° of secondary jitter inside the void.
+  //   3. EMA α: lowered from 0.3 to 0.05 — palette rotation is now a slow
+  //      majestuous drift (τ≈680ms) instead of a nervous 68ms twitch.
+  if (_rigidCooldownFrames > 0) {
+    _rigidCooldownFrames--;
+    // During cooldown, skip the optimization entirely — just apply the
+    // existing smoothed ψ. This is the key inertia mechanism.
+  } else {
+    const currentJ = _voidPenalty((pal.primary.h + _rigidPsiEMA + 360) % 360)
+      + _voidPenalty((pal.secondary.h + _rigidPsiEMA + 360) % 360)
+      + _voidPenalty((pal.accent.h + _rigidPsiEMA + 360) % 360)
+      + _voidPenalty((pal.ambient.h + _rigidPsiEMA + 360) % 360);
 
-  if (bestJ < currentJ - 1.0) {
-    // Significant improvement — update target ψ
-    // EMA the ψ for smooth transition (avoid sudden palette jumps)
-    // Handle circular wrap: shortest path
-    let delta = bestPsi - _rigidPsiEMA;
-    if (delta > 180) delta -= 360;
-    if (delta < -180) delta += 360;
-    _rigidPsiEMA += delta * 0.3;  // α=0.3, smooth over ~3 frames
-    if (_rigidPsiEMA < 0) _rigidPsiEMA += 360;
-    if (_rigidPsiEMA >= 360) _rigidPsiEMA -= 360;
+    if (bestJ < currentJ - 5.0) {
+      // Significant improvement — update target ψ
+      // EMA the ψ for smooth transition (avoid sudden palette jumps)
+      // Handle circular wrap: shortest path
+      let delta = bestPsi - _rigidPsiEMA;
+      if (delta > 180) delta -= 360;
+      if (delta < -180) delta += 360;
+      _rigidPsiEMA += delta * 0.05;  // WAVE 7701: α=0.05 (was 0.3), τ≈680ms
+      if (_rigidPsiEMA < 0) _rigidPsiEMA += 360;
+      if (_rigidPsiEMA >= 360) _rigidPsiEMA -= 360;
+      // Arm cooldown — no more rotations for 30 frames
+      _rigidCooldownFrames = 30;
+    }
   }
 
   // ── Apply the smoothed ψ to all 4 colors ──
@@ -1805,12 +1867,35 @@ export class SeleneColorEngine {
     // ═══════════════════════════════════════════════════════════════════════
     if (isUranusActive) {
       if (_gravityR > GRAVITY_R_MIN) {
-        baseHue = _gravityHue;
-        _lastValidGravityHue = _gravityHue;
+        // WAVE 7702: Rate-limit the primary hue anchor.
+        // The gravity hue is mathematically valid, but we only accept it as
+        // the new anchor if (a) it differs significantly from the current
+        // anchor AND (b) the cooldown has elapsed. Small drifts are absorbed
+        // silently; large shifts are gated by the 8-second cooldown.
+        const nowMs = performance.now();
+        const targetHue = _gravityHue;
+        if (_anchorHue < 0) {
+          // First frame — accept immediately
+          _anchorHue = targetHue;
+          _anchorLastShiftMs = nowMs;
+        } else {
+          // Compute shortest circular distance to current anchor
+          let shiftDelta = Math.abs(targetHue - _anchorHue);
+          if (shiftDelta > 180) shiftDelta = 360 - shiftDelta;
+          if (shiftDelta >= ANCHOR_SHIFT_THRESHOLD &&
+              (nowMs - _anchorLastShiftMs) >= ANCHOR_COOLDOWN_MS) {
+            // Major shift AND cooldown elapsed — accept new anchor
+            _anchorHue = targetHue;
+            _anchorLastShiftMs = nowMs;
+          }
+          // Otherwise: hold the current anchor (reject the drift)
+        }
+        baseHue = _anchorHue;
+        _lastValidGravityHue = _anchorHue;
         hueSourceCode = 1;  // treat as key-derived for logging
       } else {
-        // Atonal/silence: hold the last valid gravity hue
-        baseHue = _lastValidGravityHue;
+        // Atonal/silence: hold the last valid gravity hue (and the anchor)
+        baseHue = _anchorHue >= 0 ? _anchorHue : _lastValidGravityHue;
         hueSourceCode = 1;
       }
     }
@@ -1877,22 +1962,14 @@ export class SeleneColorEngine {
       }
     }
     
-    // 2️⃣ FORBIDDEN HUE RANGES: Engine-Dependent Evacuation
+    // 2️⃣ FORBIDDEN HUE RANGES: Legacy Elastic Rotation (WAVE 7702 LOBOTOMY)
     // ═══════════════════════════════════════════════════════════════════════
-    // 🌌 WAVE 7691 (SURGICAL ISOLATION): This site was running unconditionally,
-    // mutating legacy output with Uranus Pillar III math. Now strictly gated:
-    //
-    // URANUS path: Softplus Repulsion Kernel — smooth, monotone, injective.
-    //   m(x) = w + s·ln(1 + exp((x−w)/s)) lifts the hue outside the [25°, 80°]
-    //   void. C¹ smooth, gain > 0.95 beyond ~43° from center.
-    //
-    // LEGACY path: Elastic Rotation (WAVE 144) — iteratively +elasticStep
-    //   until escaping the forbidden zone. Non-injective, quantized, up to
-    //   24 iterations. This is the ORIGINAL behaviour before Uranus.
+    // WAVE 7702: The softplusRepel (Pillar III) has been DISABLED for the
+    // primary hue. It was trapping colors exactly at the 25° and 80° void
+    // boundaries, producing muddy browns. Both Uranus and Legacy now use the
+    // original elastic rotation (WAVE 144) for forbidden zone evacuation.
     // ═══════════════════════════════════════════════════════════════════════
-    if (isUranusActive) {
-      finalHue = softplusRepel(finalHue);
-    } else {
+    {
       // LEGACY: Elastic rotation for the primary hue (WAVE 144 original)
       const elasticStep = options?.elasticRotation ?? 15;
       const maxIterations = Math.ceil(360 / elasticStep);
@@ -2338,15 +2415,13 @@ export class SeleneColorEngine {
       pal.ambient.l = clamp(pal.secondary.l * 1.1, 40, 60);  // Variación sutil
     }
     
-    // 4️⃣ AMBIENT FORBIDDEN ZONE EVACUATION (WAVE 7691 — Surgical Isolation)
+    // 4️⃣ AMBIENT FORBIDDEN ZONE EVACUATION (WAVE 7702 — Legacy Only)
     // ═══════════════════════════════════════════════════════════════════════
-    // URANUS path: Softplus repulsion — smooth, injective, C¹ continuous.
-    // LEGACY path: Elastic rotation while-loop (WAVE 144 original behaviour).
+    // WAVE 7702 LOBOTOMY: softplusRepel disabled for ambient. Both Uranus and
+    // Legacy now use the elastic rotation while-loop (WAVE 144 original).
     // ═══════════════════════════════════════════════════════════════════════
     if (!options?.ambientLock) {
-      if (isUranusActive) {
-        pal.ambient.h = softplusRepel(pal.ambient.h);
-      } else if (options?.forbiddenHueRanges) {
+      if (options?.forbiddenHueRanges) {
         // LEGACY: Elastic rotation for ambient (WAVE 144 original)
         const elasticStep = options.elasticRotation ?? 15;
         const maxIterations = Math.ceil(360 / elasticStep);
@@ -2380,101 +2455,26 @@ export class SeleneColorEngine {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // 🌌 WAVE 7690 (URANUS — TRUE HARMONY): DERIVE PALETTE FROM HARMONIC MASS
+    // 🌌 WAVE 7702 (URANUS — LOBOTOMY): DERIVATIONS DISABLED
     // ═══════════════════════════════════════════════════════════════════════
-    // Closes WAVE 7681: the strategy label and derived colors now come from
-    // the SAME source — the chroma vector's harmonic mass. No more fixed
-    // Fibonacci offsets or syncopation-threshold labels that disagree with
-    // the actual colors.
+    // WAVE 7690's independent derivation of secondary/accent/ambient from the
+    // chroma residual mass and fast accumulator has been DISABLED. These
+    // calculations produced non-cohesive hues that ignored the user's selected
+    // color strategy (Complementary, Triadic, Analogous) and jittered on
+    // percussive content, creating the "feria ambulante" effect.
     //
-    // Primary:   already set from _gravityHue (H_slow + Φ) via the override
-    //            block in section B. finalHue carries it through the pipeline.
-    // Accent:    H_fast + Φ — the reactive chord-level center (α=0.15, τ≈150ms).
-    //            Responds to chord changes in real-time, distinct from the
-    //            structural primary.
-    // Ambient:   anti-mass direction (primary + 180°) — "the color of the
-    //            notes that are NOT being played." Maximum chromatic contrast.
-    // Secondary: RESIDUAL MASS — subtract the primary's contribution from the
-    //            slow vector and re-take atan2. Yields the second harmonic
-    //            center (the genuine secondary tonal region), replacing the
-    //            golden-angle constant entirely.
+    // Uranus now acts ONLY as a slow gravitational driver for the Primary Hue
+    // (rate-limited to 8-second anchor shifts — see the override block in
+    // section B). The secondary, accent, and ambient colors are derived by
+    // the LEGACY engine using the user's selected strategy (Fibonacci rotation,
+    // syncopation threshold, etc.) based on that single anchored primary hue.
     //
-    // Strategy:  MEASURED from the angular distance between primary and
-    //            secondary. The label now reflects the actual interval content
-    //            of the harmony, not a syncopation threshold.
-    //            ~30° → analogous, ~120° → triadic, ~180° → complementary.
-    //
-    // All overrides are gated behind useChromagramGravity. When OFF, the
-    // legacy Fibonacci/syncopation derivation above is untouched.
+    // This restores structural color theory: the palette is built from ONE
+    // hue using standard harmonic intervals, not from four independent
+    // audio-driven hue calculations.
     // ═══════════════════════════════════════════════════════════════════════
     let _measuredStrategy: 'analogous' | 'triadic' | 'complementary' | null = null;
-    if (isUranusActive) {
-      const Phi = _siderealPhi;
-
-      // ── Accent: H_fast (chord-level reactive center, already Φ-rotated) ──
-      if (_gravityRFast > GRAVITY_R_MIN) {
-        pal.accent.h = _gravityHueFast;
-      } else {
-        // Fast accumulator uncertain — fall back to primary (no chord change detected)
-        pal.accent.h = pal.primary.h;
-      }
-
-      // ── Ambient: anti-mass direction (primary + 180°) ──
-      pal.ambient.h = (pal.primary.h + 180) % 360;
-
-      // ── Secondary: RESIDUAL MASS ──
-      // Subtract the DOMINANT BIN's contribution from the slow mass vector,
-      // then re-take atan2 of the residual. This yields the second harmonic
-      // center — the genuine secondary tonal region, not a fixed rotation.
-      //
-      // NOTE: The original blueprint formula (R*W*û(H)) is a mathematical
-      // identity: R = |M|/W ⇒ R*W = |M|, and û(H) = M/|M|, so R*W*û(H) = M
-      // exactly. Subtracting it always yields zero. The correct approach is
-      // to subtract the DOMINANT pitch class's weighted contribution:
-      //   M_dominant = w_max * û(θ_max)
-      // where w_max = c_max^γ and θ_max is the dominant bin's angle.
-      // The residual M_res = M - M_dominant points toward the second-strongest
-      // harmonic region.
-      //
-      // We then re-apply Φ to the residual hue to maintain the isometry.
-      let dominantIdx = 0;
-      let dominantC = 0;
-      for (let i = 0; i < 12; i++) {
-        if (_chromaMirror[i] > dominantC) {
-          dominantC = _chromaMirror[i];
-          dominantIdx = i;
-        }
-      }
-      const dominantW = Math.pow(dominantC, GRAVITY_GAMMA);
-      let resMx = _slowMx - dominantW * COS_THETA[dominantIdx];
-      let resMy = _slowMy - dominantW * SIN_THETA[dominantIdx];
-
-      // Check residual magnitude — if near zero, primary dominates entirely
-      // (monophonic content). Fall back to primary + 30° (analogous default).
-      const resMag = Math.sqrt(resMx * resMx + resMy * resMy);
-      if (resMag > 0.001) {
-        const resHueRaw = (Math.atan2(resMy, resMx) * 180 / Math.PI + 360) % 360;
-        pal.secondary.h = (resHueRaw + Phi + 360000) % 360;
-      } else {
-        // Residual is zero — primary is the only harmonic center.
-        // Use analogous default (+30°) for visual variety.
-        pal.secondary.h = (pal.primary.h + 30) % 360;
-      }
-
-      // ── Measure Strategy from interval content ──
-      // The angular distance between primary and secondary IS the strategy.
-      // This is the structural fix for WAVE 7681: the label and the colors
-      // derive from one source.
-      let delta = Math.abs(pal.primary.h - pal.secondary.h);
-      if (delta > 180) delta = 360 - delta;
-      if (delta > 135) {
-        _measuredStrategy = 'complementary';
-      } else if (delta > 75) {
-        _measuredStrategy = 'triadic';
-      } else {
-        _measuredStrategy = 'analogous';
-      }
-    }
+    // WAVE 7702: No Uranus palette overrides — legacy derivation stands.
 
     // === I. COLOR CONTRASTE (Siluetas, muy oscuro) ===
     // WAVE 0-ALLOC: Mutate scratch palette
@@ -2588,63 +2588,19 @@ export class SeleneColorEngine {
     // ═══════════════════════════════════════════════════════════════════════
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🌑 WAVE 7691 (SURGICAL ISOLATION): PALETTE-WIDE FORBIDDEN ZONE ENFORCEMENT
+    // 🌑 WAVE 7702 (URANUS LOBOTOMY): PILLAR III DISABLED — LEGACY ONLY
     // ═══════════════════════════════════════════════════════════════════════
-    // STRICT FORK: Uranus and Legacy use completely different evacuation math.
-    // No cross-contamination. The isUranusActive flag (resolved at the top of
-    // generate()) determines which path runs.
+    // The rigid-body rotation (_evacuatePaletteRigid) and softplus repulsion
+    // (softplusRepel) have been DISABLED. Pillar III was trapping colors at
+    // the exact 25° and 80° void boundaries, generating muddy browns.
     //
-    // URANUS path (WAVE 7688):
-    //   STAGE 1: Rigid-body rotation ψ — isometry, preserves intervals exactly.
-    //   STAGE 2: Softplus repulsion — injective, C¹ smooth cleanup.
-    //   STAGE 3: Non-standard constitution ranges still use _enforceForbiddenHue.
-    //
-    // LEGACY path (WAVE 149.5 original):
-    //   Per-color elastic rotation (_enforceForbiddenHue) for ALL forbidden
-    //   ranges. Non-injective, quantized, up to 96 iterations/frame.
-    //   This is the EXACT behaviour before Uranus was introduced.
+    // Both Uranus and Legacy now use the original WAVE 149.5 elastic rotation
+    // (_enforceForbiddenHue) for ALL forbidden ranges. This is the EXACT
+    // behaviour before Uranus Pillar III was introduced.
     // ═══════════════════════════════════════════════════════════════════════
-    if (isUranusActive) {
-      // ── URANUS: Rigid-body + softplus ──
-      // STAGE 1: Rigid-body palette evacuation
-      _evacuatePaletteRigid(pal);
-
-      // STAGE 2: Softplus repulsion cleanup on all 4 colors
-      pal.primary.h   = softplusRepel(pal.primary.h);
-      pal.secondary.h = softplusRepel(pal.secondary.h);
-      pal.accent.h    = softplusRepel(pal.accent.h);
-      pal.ambient.h   = softplusRepel(pal.ambient.h);
-
-      // STAGE 3: Constitution-specific non-standard ranges
-      if (options?.forbiddenHueRanges) {
-        const elasticStep = options.elasticRotation ?? 15;
-        const maxIterations = Math.ceil(360 / elasticStep);
-        const hasNonStandardRanges = options.forbiddenHueRanges.some(
-          ([min, max]) => !(min === 25 && max === 80) && !(min === 0 && max === 80)
-        );
-        if (hasNonStandardRanges) {
-          this._enforceForbiddenHue(pal.primary, options.forbiddenHueRanges, elasticStep, maxIterations);
-          this._enforceForbiddenHue(pal.secondary, options.forbiddenHueRanges, elasticStep, maxIterations);
-          this._enforceForbiddenHue(pal.ambient, options.forbiddenHueRanges, elasticStep, maxIterations);
-          this._enforceForbiddenHue(pal.accent, options.forbiddenHueRanges, elasticStep, maxIterations);
-        }
-        // Collision resolution
-        const minDistance = 30;
-        let ambientSecondaryDiff = Math.abs(pal.ambient.h - pal.secondary.h);
-        if (ambientSecondaryDiff > 180) ambientSecondaryDiff = 360 - ambientSecondaryDiff;
-        if (ambientSecondaryDiff < minDistance) {
-          pal.ambient.h = normalizeHue(pal.ambient.h + 60);
-          if (hasNonStandardRanges) {
-            this._enforceForbiddenHue(pal.ambient, options.forbiddenHueRanges, elasticStep, maxIterations);
-          } else {
-            pal.ambient.h = softplusRepel(pal.ambient.h);
-          }
-        }
-      }
-    } else {
+    {
       // ── LEGACY: WAVE 149.5 original elastic rotation ──
       // Per-color _enforceForbiddenHue for ALL forbidden ranges.
-      // This is the EXACT behaviour before Uranus Pillar III was introduced.
       if (options?.forbiddenHueRanges) {
         const elasticStep = options.elasticRotation ?? 15;
         const maxIterations = Math.ceil(360 / elasticStep);

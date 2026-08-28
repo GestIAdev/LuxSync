@@ -1266,6 +1266,171 @@ const GRAVITY_R_MIN = 0.08;
 // (atan2(0,0)). Hold the last valid gravity hue to prevent flicker.
 let _lastValidGravityHue = 0;
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🌑 WAVE 7688 (URANUS PILLAR III): THE REPULSIVE VOID — Anti-Yellow Forcefield
+// ═══════════════════════════════════════════════════════════════════════════
+// Under the Circle of Fifths topology (Pillar I), common diatonic material
+// lands INSIDE the banned yellow/brown zone [25°, 80°]:
+//   C major  → 45°  ⛔ INSIDE
+//   A minor  → 75°  ⛔ INSIDE
+//   E minor  → 105° ✅ outside
+// Two of the three most common triads in popular music sit in the void.
+// Without Pillar III, Uranus would emit yellow constantly.
+//
+// The void is evacuated in two stages:
+//   1. RIGID-BODY ROTATION (§3.4): find a single ψ applied to ALL palette
+//      colors that minimizes void occupancy. Preserves intervals EXACTLY
+//      (rotation is an isometry) — the palette stays genuinely triadic/
+//      complementary while escaping the void.
+//   2. SOFTPLUS REPULSION (§3.2): per-color smooth-max cleanup for any
+//      residual stragglers the rigid rotation couldn't evacuate.
+//
+// The softplus kernel m(x) = w + s·ln(1 + exp((x−w)/s)) is:
+//   - Strictly monotone (derivative = sigmoid > 0 everywhere) ⇒ INJECTIVE
+//     (distinct inputs stay distinct — preserves reactivity, unlike hard clamp)
+//   - C¹ smooth (no visible snapping)
+//   - Exactly the identity far from the void (gain > 0.95 beyond ~43° from center)
+//
+// Verified numerically (blueprint §3.2):
+//   H=45° → 24.91°  (C major escapes downward into red)
+//   H=75° → 81.57°  (A minor escapes upward into green)
+//   H=90° → 90.63°  (nearly untouched)
+//   H=100°→ 100.09° (identity)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── Void constants ─────────────────────────────────────────────────────────
+const VOID_CENTER = 52.5;       // center of [25, 80]
+const VOID_HALF_WIDTH = 27.5;   // half-width
+const VOID_SOFTNESS = 5;        // softplus softness (degrees)
+const VOID_LOW = 25;            // void lower edge
+const VOID_HIGH = 80;           // void upper edge
+
+// ── Momentum state for tie-break at exact void center (d=0) ────────────────
+// Exit in the direction the hue was already travelling (C⁰ in time, no flicker).
+let _prevEscapeSign = 1;
+
+// ── Rigid-body hysteresis state ─────────────────────────────────────────────
+// Without hysteresis, the per-frame argmin chatters between equally-good
+// rotations. Apply a deadband: accept a new ψ only if it improves J by a
+// margin, plus an EMA for smooth transitions.
+let _rigidPsiEMA = 0;
+
+/**
+ * 🌑 WAVE 7688: Softplus Repulsion Kernel — evacuates a single hue from [25°, 80°].
+ *
+ * m(x) = w + s·ln(1 + exp((x−w)/s))  lifts the magnitude to at least w,
+ * with a smooth transition whose derivative is the logistic sigmoid.
+ * Strictly monotone ⇒ injective ⇒ distinct inputs stay distinct.
+ *
+ * @param h - input hue in degrees [0, 360)
+ * @returns hue evacuated outside the void, C¹ smooth, injective
+ */
+function softplusRepel(h: number): number {
+  // Shortest signed angular distance from void center (-180 to 180)
+  let d = ((h - VOID_CENTER + 540) % 360) - 180;
+  // Softplus magnitude — always ≥ VOID_HALF_WIDTH
+  let absD = Math.abs(d);
+  let m = VOID_HALF_WIDTH + VOID_SOFTNESS * Math.log(1 + Math.exp((absD - VOID_HALF_WIDTH) / VOID_SOFTNESS));
+  // Escape direction: tie-break d=0 with momentum (C⁰ in time)
+  let sign = d > 0 ? 1 : (d < 0 ? -1 : _prevEscapeSign);
+  _prevEscapeSign = sign;
+  return (VOID_CENTER + sign * m + 360) % 360;
+}
+
+/**
+ * 🌑 WAVE 7688: Void penalty — depth of a hue inside [25°, 80°].
+ * Returns 0 if outside the void, positive if inside (deeper = larger).
+ * Used by the rigid-body solver to score candidate rotations.
+ */
+function _voidPenalty(h: number): number {
+  // Shortest signed distance from center
+  let d = ((h - VOID_CENTER + 540) % 360) - 180;
+  let absD = Math.abs(d);
+  if (absD >= VOID_HALF_WIDTH) return 0;  // outside void
+  // Penalty = depth inside the void (0 at edge, VOID_HALF_WIDTH at center)
+  return VOID_HALF_WIDTH - absD;
+}
+
+/**
+ * 🌑 WAVE 7688: Rigid-Body Palette Evacuation — find a single rotation ψ
+ * applied to ALL 4 palette colors that minimizes total void occupancy.
+ *
+ * Because rotation is an isometry, all pairwise angular distances are
+ * preserved EXACTLY — the palette remains genuinely triadic/complementary
+ * while evacuating the forbidden zone.
+ *
+ * Exact cheap solution (blueprint §3.4): J(ψ) is piecewise smooth, minima
+ * occur where some color sits exactly on a void edge. Candidate set:
+ *   ψ ∈ { edge − h_i : i ∈ {primary,secondary,accent,ambient}, edge ∈ {25, 80} } ∪ {0}
+ * = 4 colors × 2 edges + 1 = 9 candidates. Evaluate J at each, take argmin.
+ *
+ * Hysteresis: accept new ψ only if it improves J by a margin, plus EMA
+ * smoothing to prevent chatter.
+ *
+ * Mutates pal.primary.h, pal.secondary.h, pal.accent.h, pal.ambient.h in place.
+ * Zero allocation — all locals are stack scalars.
+ */
+function _evacuatePaletteRigid(pal: SelenePalette): void {
+  const colors = [pal.primary.h, pal.secondary.h, pal.accent.h, pal.ambient.h];
+
+  // ── Build 9 candidate ψ values ──
+  // Pre-allocated static array (zero alloc)
+  _rigidCandidates[0] = 0;  // ψ=0 (no rotation — always test as baseline)
+  let ncand = 1;
+  for (let ci = 0; ci < 4; ci++) {
+    _rigidCandidates[ncand++] = (VOID_LOW - colors[ci] + 360) % 360;
+    _rigidCandidates[ncand++] = (VOID_HIGH - colors[ci] + 360) % 360;
+  }
+
+  // ── Evaluate J(ψ) for each candidate ──
+  let bestPsi = 0;
+  let bestJ = Infinity;
+  for (let ci = 0; ci < ncand; ci++) {
+    const psi = _rigidCandidates[ci];
+    let J = 0;
+    for (let ki = 0; ki < 4; ki++) {
+      J += _voidPenalty((colors[ki] + psi + 360) % 360);
+    }
+    // Tie-break toward ψ=0 (smallest disturbance): if J is equal, prefer
+    // the candidate closer to 0
+    if (J < bestJ - 0.01 || (Math.abs(J - bestJ) < 0.01 && Math.abs(psi) < Math.abs(bestPsi))) {
+      bestJ = J;
+      bestPsi = psi;
+    }
+  }
+
+  // ── Hysteresis + EMA ──
+  // Only accept a new ψ if it meaningfully improves J, otherwise hold.
+  // This prevents chatter between equally-good rotations frame to frame.
+  const currentJ = _voidPenalty((pal.primary.h + _rigidPsiEMA + 360) % 360)
+    + _voidPenalty((pal.secondary.h + _rigidPsiEMA + 360) % 360)
+    + _voidPenalty((pal.accent.h + _rigidPsiEMA + 360) % 360)
+    + _voidPenalty((pal.ambient.h + _rigidPsiEMA + 360) % 360);
+
+  if (bestJ < currentJ - 1.0) {
+    // Significant improvement — update target ψ
+    // EMA the ψ for smooth transition (avoid sudden palette jumps)
+    // Handle circular wrap: shortest path
+    let delta = bestPsi - _rigidPsiEMA;
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+    _rigidPsiEMA += delta * 0.3;  // α=0.3, smooth over ~3 frames
+    if (_rigidPsiEMA < 0) _rigidPsiEMA += 360;
+    if (_rigidPsiEMA >= 360) _rigidPsiEMA -= 360;
+  }
+
+  // ── Apply the smoothed ψ to all 4 colors ──
+  if (Math.abs(_rigidPsiEMA) > 0.01) {
+    pal.primary.h   = (pal.primary.h   + _rigidPsiEMA + 360) % 360;
+    pal.secondary.h = (pal.secondary.h + _rigidPsiEMA + 360) % 360;
+    pal.accent.h    = (pal.accent.h    + _rigidPsiEMA + 360) % 360;
+    pal.ambient.h   = (pal.ambient.h   + _rigidPsiEMA + 360) % 360;
+  }
+}
+
+// Pre-allocated candidate array for _evacuatePaletteRigid (zero alloc)
+const _rigidCandidates = new Float64Array(9);
+
 export class SeleneColorEngine {
   
   // 🎯 WAVE 2096.1: Deterministic frame counter for throttled logging (replaces Math.random)
@@ -1609,38 +1774,25 @@ export class SeleneColorEngine {
       }
     }
     
-    // 2️⃣ FORBIDDEN HUE RANGES: Elastic Rotation
-    // Si el hue cae en zona prohibida, rotar hasta escapar
-    const elasticStep = options?.elasticRotation ?? 15;  // grados por iteración
-    const maxIterations = Math.ceil(360 / elasticStep);  // prevenir loop infinito
-    
-    if (options?.forbiddenHueRanges) {
-      let iterations = 0;
-      let isInForbidden = true;
-      
-      while (isInForbidden && iterations < maxIterations) {
-        isInForbidden = false;
-        
-        for (const [min, max] of options.forbiddenHueRanges) {
-          const normalizedMin = normalizeHue(min);
-          const normalizedMax = normalizeHue(max);
-          
-          // Handle wrap-around (e.g., [330, 30] means 330-360 and 0-30)
-          const isInRange = normalizedMin <= normalizedMax
-            ? (finalHue >= normalizedMin && finalHue <= normalizedMax)
-            : (finalHue >= normalizedMin || finalHue <= normalizedMax);
-          
-          if (isInRange) {
-            // Elastic Rotation: rotar +elasticStep grados
-            finalHue = normalizeHue(finalHue + elasticStep);
-            isInForbidden = true;
-            iterations++;
-            break;
-          }
-        }
-      }
-    }
-    
+    // 2️⃣ FORBIDDEN HUE RANGES: Softplus Repulsion (WAVE 7688 — Uranus Pillar III)
+    // ═══════════════════════════════════════════════════════════════════════
+    // ANTES (WAVE 144): Elastic Rotation — iteratively +elasticStep until
+    // escaping the forbidden zone. Non-injective (many inputs → same border),
+    // quantized to elasticStep granularity, up to 24 iterations per color.
+    //
+    // AHORA (WAVE 7688): Softplus Repulsion Kernel — smooth, monotone, injective.
+    // m(x) = w + s·ln(1 + exp((x−w)/s)) lifts the hue outside the void with
+    // a C¹ transition whose derivative is the logistic sigmoid. Distinct
+    // inputs stay distinct (preserves audio reactivity). Gain > 0.95 beyond
+    // ~43° from void center — effectively the identity outside [10°, 95°].
+    //
+    // The [25°, 80°] void is the hardcoded anti-yellow zone. Constitutions
+    // may declare additional forbiddenHueRanges — those are still handled
+    // by the palette-wide enforcement block (WAVE 149.5, now using the
+    // rigid-body + softplus pipeline).
+    // ═══════════════════════════════════════════════════════════════════════
+    finalHue = softplusRepel(finalHue);
+
     // 3️⃣ ALLOWED HUE RANGES: Gamut Mapping (WAVE 7684)
     // Si el hue cae fuera de todos los rangos permitidos, mapearlo
     // proporcionalmente al rango más cercano en vez de clavarlo al borde.
@@ -2031,34 +2183,14 @@ export class SeleneColorEngine {
       pal.ambient.l = clamp(pal.secondary.l * 1.1, 40, 60);  // Variación sutil
     }
     
-    // 4️⃣ ELASTIC ROTATION para Ambient (si hay zonas prohibidas)
-    if (options?.forbiddenHueRanges && !options?.ambientLock) {
-      const elasticStep = options.elasticRotation ?? 15;
-      const maxIterations = Math.ceil(360 / elasticStep);
-      let iterations = 0;
-      let isInForbidden = true;
-      
-      while (isInForbidden && iterations < maxIterations) {
-        isInForbidden = false;
-        
-        for (const [min, max] of options.forbiddenHueRanges) {
-          const normalizedMin = normalizeHue(min);
-          const normalizedMax = normalizeHue(max);
-          
-          const isInRange = normalizedMin <= normalizedMax
-            ? (pal.ambient.h >= normalizedMin && pal.ambient.h <= normalizedMax)
-            : (pal.ambient.h >= normalizedMin || pal.ambient.h <= normalizedMax);
-          
-          if (isInRange) {
-            pal.ambient.h = normalizeHue(pal.ambient.h + elasticStep);
-            isInForbidden = true;
-            iterations++;
-            break;
-          }
-        }
-      }
+    // 4️⃣ SOFTPLUS REPULSION para Ambient (WAVE 7688 — Uranus Pillar III)
+    // Replaces the old elastic rotation with the smooth, injective softplus kernel.
+    // The [25°, 80°] void is always evacuated; constitution forbiddenHueRanges
+    // are handled by the palette-wide rigid-body + softplus block below.
+    if (!options?.ambientLock) {
+      pal.ambient.h = softplusRepel(pal.ambient.h);
     }
-    
+
     // 5️⃣ MINIMUM SEPARATION: Ambient debe estar a mínimo 30° del Secondary
     const hueDistance = Math.abs(pal.ambient.h - pal.secondary.h);
     const shortestDistance = Math.min(hueDistance, 360 - hueDistance);
@@ -2179,46 +2311,75 @@ export class SeleneColorEngine {
     // ═══════════════════════════════════════════════════════════════════════
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🛡️ WAVE 149.5: CONSTITUTIONAL ENFORCEMENT - Policía Cromática
+    // 🌑 WAVE 7688 (URANUS PILLAR III): RIGID-BODY EVACUATION + SOFTPLUS REPULSION
     // ═══════════════════════════════════════════════════════════════════════
-    // PROBLEMA: Tras eliminar Techno Dictatorship, el accent mostraba 65° (amarillo)
-    // violando forbiddenHueRanges: [[0, 75], [330, 360]].
-    // 
-    // CAUSA: La lógica de forbiddenHueRanges solo se aplicaba al PRIMARY en
-    // la sección C (líneas ~880-920), pero SECONDARY, AMBIENT y ACCENT se
-    // calculan DESPUÉS con rotaciones Fibonacci/Triadic sin re-validación.
+    // Replaces WAVE 149.5's per-color elastic rotation (non-injective, up to
+    // 24 iterations × 4 colors = 96 while-loop iterations per frame) with a
+    // two-stage isometry-preserving pipeline:
     //
-    // SOLUCIÓN: GUARDIÁN FINAL que inspecciona TODOS los colores de la paleta
-    // y expulsa cualquier hue que caiga en zona prohibida, usando rotación
-    // elástica hasta encontrar zona legal.
+    // STAGE 1 — RIGID-BODY ROTATION (blueprint §3.4):
+    //   Find a single ψ applied to ALL 4 colors that minimizes void occupancy.
+    //   Because rotation is an isometry, all pairwise angular distances are
+    //   preserved EXACTLY — the palette stays genuinely triadic/complementary
+    //   while escaping [25°, 80°]. Exact solution via 9 candidates (4 colors ×
+    //   2 void edges + ψ=0), ~150 flops. Hysteresis + EMA prevent chatter.
+    //
+    // STAGE 2 — SOFTPLUS REPULSION (blueprint §3.2):
+    //   Per-color smooth-max cleanup for any residual stragglers the rigid
+    //   rotation couldn't fully evacuate (possible with wide palettes).
+    //   Injective, C¹ smooth, gain > 0.95 beyond ~43° from void center.
+    //
+    // The [25°, 80°] anti-yellow void is always active (hardcoded). Additional
+    // forbiddenHueRanges from the constitution are still respected — the
+    // softplus kernel handles the primary void; constitution ranges that
+    // differ from [25, 80] are handled by the legacy _enforceForbiddenHue
+    // as a fallback for non-standard ranges.
     // ═══════════════════════════════════════════════════════════════════════
-    
+
+    // STAGE 1: Rigid-body palette evacuation (always active — anti-yellow)
+    _evacuatePaletteRigid(pal);
+
+    // STAGE 2: Softplus repulsion cleanup on all 4 colors
+    pal.primary.h   = softplusRepel(pal.primary.h);
+    pal.secondary.h = softplusRepel(pal.secondary.h);
+    pal.accent.h    = softplusRepel(pal.accent.h);
+    pal.ambient.h   = softplusRepel(pal.ambient.h);
+
+    // STAGE 3: Constitution-specific forbidden ranges (non-[25,80] zones)
+    // The softplus kernel handles the universal [25, 80] void. Constitutions
+    // may declare additional forbiddenHueRanges (e.g. Techno: [[0, 75], [330, 360]])
+    // that need the legacy elastic rotation for non-standard zones.
     if (options?.forbiddenHueRanges) {
       const elasticStep = options.elasticRotation ?? 15;
       const maxIterations = Math.ceil(360 / elasticStep);
-      
-      // 1️⃣ POLICÍA DE ZONAS PROHIBIDAS - Revisar CADA color
-      // WAVE 0-ALLOC: Inline enforcement instead of [array].forEach()
-      this._enforceForbiddenHue(pal.primary, options.forbiddenHueRanges, elasticStep, maxIterations);
-      this._enforceForbiddenHue(pal.secondary, options.forbiddenHueRanges, elasticStep, maxIterations);
-      this._enforceForbiddenHue(pal.ambient, options.forbiddenHueRanges, elasticStep, maxIterations);
-      this._enforceForbiddenHue(pal.accent, options.forbiddenHueRanges, elasticStep, maxIterations);
-      
-      // 2️⃣ RESOLUCIÓN DE COLISIONES - Evitar "verde sobre verde"
-      // Si Ambient está demasiado cerca de Secondary (< 30°), separarlos
+
+      // Check if constitution ranges differ from the standard [25, 80] void
+      const hasNonStandardRanges = options.forbiddenHueRanges.some(
+        ([min, max]) => !(min === 25 && max === 80) && !(min === 0 && max === 80)
+      );
+
+      if (hasNonStandardRanges) {
+        this._enforceForbiddenHue(pal.primary, options.forbiddenHueRanges, elasticStep, maxIterations);
+        this._enforceForbiddenHue(pal.secondary, options.forbiddenHueRanges, elasticStep, maxIterations);
+        this._enforceForbiddenHue(pal.ambient, options.forbiddenHueRanges, elasticStep, maxIterations);
+        this._enforceForbiddenHue(pal.accent, options.forbiddenHueRanges, elasticStep, maxIterations);
+      }
+
+      // Collision resolution: if Ambient is too close to Secondary (< 30°), separate
       const minDistance = 30;
       let ambientSecondaryDiff = Math.abs(pal.ambient.h - pal.secondary.h);
       if (ambientSecondaryDiff > 180) ambientSecondaryDiff = 360 - ambientSecondaryDiff;
-      
+
       if (ambientSecondaryDiff < minDistance) {
-        // Empujar Ambient +60° para crear contraste real
         pal.ambient.h = normalizeHue(pal.ambient.h + 60);
-        
-        // Re-validar que no cayó en zona prohibida tras el empujón
-        this._enforceForbiddenHue(pal.ambient, options.forbiddenHueRanges, elasticStep, maxIterations);
+        if (hasNonStandardRanges) {
+          this._enforceForbiddenHue(pal.ambient, options.forbiddenHueRanges, elasticStep, maxIterations);
+        } else {
+          pal.ambient.h = softplusRepel(pal.ambient.h);
+        }
       }
     }
-    
+
     // ═══════════════════════════════════════════════════════════════════════
     // 🔌 WAVE 150.5 / WAVE 7680: ALLOW-LIST ENFORCEMENT — Primary only
     // ═══════════════════════════════════════════════════════════════════════

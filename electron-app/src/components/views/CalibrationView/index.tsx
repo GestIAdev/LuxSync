@@ -1013,38 +1013,38 @@ const CalibrationView: React.FC = () => {
                 </button>
               </div>
               
-              {/* WAVE 7669: OffsetTrimPad — precision XY drag pad */}
-              <OffsetTrimPad
-                panOffset={liveCalibration.panOffset}
-                tiltOffset={liveCalibration.tiltOffset}
-                onChange={handleTrimPadChange}
-              />
-              
-              {/* WAVE 7669: Trim D-Pad — 8-direction nudge + step selector */}
-              <div className="trim-dpad-section">
-                <div className="trim-dpad">
-                  <button className="trim-dpad-btn" onClick={() => handleTrimNudge('up-left')} disabled={!activeFixtureId}>↖</button>
-                  <button className="trim-dpad-btn" onClick={() => handleTrimNudge('up')} disabled={!activeFixtureId}>↑</button>
-                  <button className="trim-dpad-btn" onClick={() => handleTrimNudge('up-right')} disabled={!activeFixtureId}>↗</button>
-                  <button className="trim-dpad-btn" onClick={() => handleTrimNudge('left')} disabled={!activeFixtureId}>←</button>
-                  <button className="trim-dpad-btn center" onClick={() => handleTrimNudge('center')} disabled={!activeFixtureId} title="Zero offsets">⊙</button>
-                  <button className="trim-dpad-btn" onClick={() => handleTrimNudge('right')} disabled={!activeFixtureId}>→</button>
-                  <button className="trim-dpad-btn" onClick={() => handleTrimNudge('down-left')} disabled={!activeFixtureId}>↙</button>
-                  <button className="trim-dpad-btn" onClick={() => handleTrimNudge('down')} disabled={!activeFixtureId}>↓</button>
-                  <button className="trim-dpad-btn" onClick={() => handleTrimNudge('down-right')} disabled={!activeFixtureId}>↘</button>
-                </div>
-                <div className="trim-step-selector">
-                  <span className="trim-step-label">TRIM STEP</span>
-                  <div className="trim-step-options">
-                    {TRIM_STEP_OPTIONS.map(s => (
-                      <button
-                        key={s}
-                        className={`trim-step-btn ${trimStep === s ? 'active' : ''}`}
-                        onClick={() => setTrimStep(s)}
-                      >
-                        {s}°
-                      </button>
-                    ))}
+              {/* WAVE 7669/7671: OffsetTrimPad + Trim D-Pad — side-by-side row */}
+              <div className="trim-controls-row">
+                <OffsetTrimPad
+                  panOffset={liveCalibration.panOffset}
+                  tiltOffset={liveCalibration.tiltOffset}
+                  onChange={handleTrimPadChange}
+                />
+                <div className="trim-dpad-section">
+                  <div className="trim-dpad">
+                    <button className="trim-dpad-btn" onClick={() => handleTrimNudge('up-left')} disabled={!activeFixtureId}>↖</button>
+                    <button className="trim-dpad-btn" onClick={() => handleTrimNudge('up')} disabled={!activeFixtureId}>↑</button>
+                    <button className="trim-dpad-btn" onClick={() => handleTrimNudge('up-right')} disabled={!activeFixtureId}>↗</button>
+                    <button className="trim-dpad-btn" onClick={() => handleTrimNudge('left')} disabled={!activeFixtureId}>←</button>
+                    <button className="trim-dpad-btn center" onClick={() => handleTrimNudge('center')} disabled={!activeFixtureId} title="Zero offsets">⊙</button>
+                    <button className="trim-dpad-btn" onClick={() => handleTrimNudge('right')} disabled={!activeFixtureId}>→</button>
+                    <button className="trim-dpad-btn" onClick={() => handleTrimNudge('down-left')} disabled={!activeFixtureId}>↙</button>
+                    <button className="trim-dpad-btn" onClick={() => handleTrimNudge('down')} disabled={!activeFixtureId}>↓</button>
+                    <button className="trim-dpad-btn" onClick={() => handleTrimNudge('down-right')} disabled={!activeFixtureId}>↘</button>
+                  </div>
+                  <div className="trim-step-selector">
+                    <span className="trim-step-label">TRIM STEP</span>
+                    <div className="trim-step-options">
+                      {TRIM_STEP_OPTIONS.map(s => (
+                        <button
+                          key={s}
+                          className={`trim-step-btn ${trimStep === s ? 'active' : ''}`}
+                          onClick={() => setTrimStep(s)}
+                        >
+                          {s}°
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>

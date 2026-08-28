@@ -1,32 +1,21 @@
-WAVE 7670: Phase 4 legacy migration — reconcile pre-7605 fixture paths
+WAVE 7671: Phase 3.5 CSS polish — fix OffsetTrimPad + D-Pad layout collapse
 
-Main-process migrator (LegacyFixtureMigrator.ts):
-- One-shot, idempotent reconciliation of pre-WAVE-7605 fixture paths
-- Runs in StagePersistence.loadShow AFTER zone normalization, BEFORE
-  hydration (orchestrator.setFixtures → FixtureProfileResolver)
-- SKIP: fixtures that already resolve or carry inline channels
-- DETECT: .fxt extension, librerias/factory/custom folder markers
-- MATCH: basename-stem vs library id, then model/name case-insensitive,
-  then normalized name (strip _- and whitespace)
-- REWRITE on unique match: profileId, definitionPath, channels (inlined),
-  channelCount
-- NEVER guess on ambiguity (>1 candidate) — log and leave untouched
-- Safety: .pre-7605.bak backup created before first migrated persist
-- Logs: per-fixture skip/migrate/ambiguous/unmatched + summary line
+Problem: Phase 3 injected OffsetTrimPad and Trim D-Pad into the offset
+config panel, but they stacked vertically with overlapping labels,
+squished numeric inputs, and no visual separation.
 
-Wiring (StagePersistence.loadShow):
-- Import migrateLegacyFixtures
-- Call after zone normalization block, before auto-save
-- Create .pre-7605.bak via fsp.copyFile (only if not already present)
-- Persist migrated show in a single bulk write
-- Idempotent: re-running is a no-op (healthy fixtures skipped by step 1)
-
-UI empty state (CalibrationView DMX Channel Grid):
-- Replace generic "No channels" with actionable diagnostic when a fixture
-  is selected but has no channels:
-  "Profile unresolved — This fixture's definition (<path>) is missing
-  from the library. Re-assign a profile in the Forge."
-- Falls back to generic message when no fixture selected
+Fixes:
+1. Wrap OffsetTrimPad + Trim D-Pad in .trim-controls-row (flex row,
+   gap 1rem, align-items flex-start) — pad sits left, D-pad right
+2. .cal-trim-pad-label: switch to flex column so "Offset Trim" title
+   and "Pan: 0.0° / Tilt: 0.0°" values stack cleanly with display:block
+3. .cal-num-input: explicit width, padding, background, border-radius
+   matching LuxSync theme (rgba black 0.35, cyan focus border)
+4. .cal-num-field-label: fixed min-width 22px, right-aligned, mono font
+5. .trim-dpad: grid 3x3 with 4px gap, fixed 96px width, centered icons
+6. .trim-step-selector: stacked vertically (label above buttons),
+   buttons flex 1 with hover state
+7. Remove duplicate .offset-config .cal-trim-pad-* block at file end
 
 Generated with [Devin](https://devin.ai)
 

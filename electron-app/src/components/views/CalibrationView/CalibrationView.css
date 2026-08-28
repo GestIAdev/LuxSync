@@ -1333,30 +1333,133 @@
 .targeting-status--warning { color: #f5b04d; background: rgba(245, 176, 77, 0.08); }
 .targeting-status--error   { color: #ef4444; background: rgba(239, 68, 68, 0.08); }
 
-/* ── Trim D-Pad ──────────────────────────────────────────────────────────── */
-.trim-dpad-section {
+/* ── Trim Controls Row (WAVE 7671: pad + D-pad side-by-side) ─────────────── */
+.trim-controls-row {
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+  align-items: flex-start;
   margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ── OffsetTrimPad integration ───────────────────────────────────────────── */
+.offset-config .cal-trim-pad-container {
+  flex-shrink: 0;
+}
+
+.offset-config .cal-trim-pad-label {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
+.offset-config .cal-trim-pad-label > span:first-child {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  display: block;
+}
+
+.offset-config .cal-trim-pad-values {
+  display: block;
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 0.6rem;
+  color: rgba(34, 211, 238, 0.8);
+  line-height: 1.4;
+}
+
+.offset-config .cal-trim-pad {
+  width: 120px !important;
+  height: 120px !important;
+}
+
+.offset-config .cal-trim-pad-hint {
+  font-size: 0.55rem;
+  color: rgba(255, 255, 255, 0.3);
+  text-align: center;
+  margin-top: 4px;
+}
+
+.offset-config .cal-trim-pad-numinputs {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.offset-config .cal-num-field {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.offset-config .cal-num-field-label {
+  font-size: 0.55rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  min-width: 22px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.offset-config .cal-num-input {
+  width: 100%;
+  min-width: 0;
+  flex: 1;
+  padding: 3px 5px;
+  font-size: 0.65rem;
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.offset-config .cal-num-input:focus {
+  border-color: rgba(34, 211, 238, 0.4);
+}
+
+.offset-config .cal-num-input::-webkit-inner-spin-button {
+  opacity: 0.4;
+  height: 14px;
+}
+
+/* ── Trim D-Pad ──────────────────────────────────────────────────────────── */
+.trim-dpad-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex-shrink: 0;
 }
 
 .trim-dpad {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 2px;
-  max-width: 120px;
+  gap: 4px;
+  width: 96px;
 }
 
 .trim-dpad-btn {
-  padding: 0.4rem;
+  padding: 0.35rem;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 4px;
   color: rgba(255, 255, 255, 0.7);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   cursor: pointer;
   transition: all 0.12s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .trim-dpad-btn:hover:not(:disabled) {
@@ -1367,6 +1470,7 @@
 
 .trim-dpad-btn.center {
   background: rgba(0, 0, 0, 0.3);
+  font-size: 0.7rem;
 }
 
 .trim-dpad-btn:disabled {
@@ -1376,31 +1480,41 @@
 
 .trim-step-selector {
   display: flex;
-  align-items: center;
-  gap: 0.4rem;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  margin-top: 4px;
 }
 
 .trim-step-label {
-  font-size: 0.6rem;
+  font-size: 0.55rem;
   color: rgba(255, 255, 255, 0.4);
   text-transform: uppercase;
   letter-spacing: 0.3px;
+  text-align: center;
 }
 
 .trim-step-options {
   display: flex;
-  gap: 2px;
+  gap: 4px;
 }
 
 .trim-step-btn {
-  padding: 0.2rem 0.5rem;
+  flex: 1;
+  padding: 0.2rem 0.4rem;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 3px;
   color: rgba(255, 255, 255, 0.5);
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   cursor: pointer;
   transition: all 0.12s ease;
+  text-align: center;
+}
+
+.trim-step-btn:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .trim-step-btn.active {
@@ -1408,8 +1522,6 @@
   border-color: rgba(34, 211, 238, 0.3);
   color: #22d3ee;
 }
-
-/* ── Header: DMX Pill + Dirty Dot ────────────────────────────────────────── */
 .dmx-pill {
   font-size: 0.65rem;
   font-weight: 600;
@@ -1464,12 +1576,3 @@
   border: 1px solid rgba(245, 176, 77, 0.2);
 }
 
-/* ── OffsetTrimPad integration ───────────────────────────────────────────── */
-.offset-config .cal-trim-pad-container {
-  margin-top: 0.5rem;
-}
-
-.offset-config .cal-trim-pad {
-  width: 140px !important;
-  height: 140px !important;
-}

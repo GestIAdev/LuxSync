@@ -830,8 +830,15 @@ export class SeleneLux {
         // wallIntensity decays to ~0 during silence (SaturationMeter.lPeak is sticky)
         // and would replace the healthy energy-based masterIntensity in TitanEngine,
         // killing the lights for ~23s after song transitions.
+        // 🔒 WAVE 7693: Suppress wallIntensity in chill/ambient/lounge/jazz.
+        // The ChillAmbientEngine owns the dimmer in chill (morph sine of t).
+        // wallIntensity is audio-reactive (SaturationMeter) and would spike the
+        // dimmer on transients, fighting the static oceanic morph and causing
+        // intermittent brightness jumps (latent flicker source).
         const photon = audioMetrics.photon;
-        if (photon && photon.wallIntensity > 0 && dimmerOverride !== null) {
+        const isChillVibeDimmer = vibeNormalized.includes('chill') || vibeNormalized.includes('lounge') ||
+            vibeNormalized.includes('ambient') || vibeNormalized.includes('jazz');
+        if (photon && photon.wallIntensity > 0 && dimmerOverride !== null && !isChillVibeDimmer) {
             dimmerOverride = Math.max(dimmerOverride, photon.wallIntensity);
         }
         // 🌊 WAVE 8004: PHOTON STROBE — StrobeEngine output drives strobeOverride

@@ -128,6 +128,10 @@ export class TickEngine {
   private _universesToProcess = new Set<number>()
   private _uniList: Uint8Array[] = []
 
+  // WAVE 7694: Pre-allocated Map for KINETIC→IMPACT dimmer bypass routing.
+  // deviceId → impactNodeId. Cleared and rebuilt each frame in the mechanics bypass.
+  private _impactNodeByDeviceScratch = new Map<string, string>()
+
   // WAVE 7120: L3++ Calibration — plain entries stored directly (no SAB needed, both sides in main)
   private static _calibEntries: readonly INodeIntent[] = []
   private static _instances = new Set<TickEngine>()
@@ -1370,32 +1374,63 @@ export class TickEngine {
         ctx,
         this._aetherBus,
       )
-      // WAVE 6055+2523: MECHANICS BYPASS — ChillAmbientEngine Glaciar Sweep override.
+      // WAVE 6055+2523+7694: MECHANICS BYPASS — ChillAmbientEngine Glaciar Sweep override.
       // intent.movement.mechanicsL/R llevan pan/tilt [0,1] + intensity del ChillAmbientEngine.
       // Se inyectan como intents absolutos pan/tilt con priority 50 (> L0=10).
-      // WAVE 2523: También emite dimmer = intensity para sobreescribir el neutral
-      // 0.5 del LiquidAetherAdapter (L0). Sin esto, los movers reciben dimmer del
-      // motor líquido en lugar del chillFrame.dimmer del ChillAmbientEngine.
+      //
+      // WAVE 7694 FIX: El dimmer del mover vive en el nodo IMPACT (canal 'dimmer'),
+      // NO en el nodo KINETIC (que solo tiene pan/tilt/speed/rotation). La versión
+      // anterior inyectaba dimmer al KINETIC → el valor se ignoraba porque el nodo
+      // no tiene ese canal → el IMPACT recibía dimmer del LiquidAetherAdapter (L0)
+      // que sin audio es ~0 → movers oscuros en chill.
+      //
+      // Ahora: pan/tilt al KINETIC (priority 50 LTP), dimmer al IMPACT del mismo
+      // device (priority 50 LTP). Ambos sobreescriben el L0 del LiquidAetherAdapter.
       if (intent.movement?.mechanicsL && intent.movement?.mechanicsR) {
         const _mechL = intent.movement.mechanicsL
         const _mechR = intent.movement.mechanicsR
+
+        // WAVE 7694: Construir mapa deviceId → impactNodeId para el bypass del dimmer.
+        // Los movers tienen un solo nodo IMPACT con canal 'dimmer' por device.
+        const _impactNodeByDevice = this._impactNodeByDeviceScratch
+        _impactNodeByDevice.clear()
+        this._aetherGraph.getView(NodeFamily.IMPACT).forEach((node: any) => {
+          if (node.channels?.some((c: any) => c.type === 'dimmer')) {
+            _impactNodeByDevice.set(node.deviceId, node.nodeId)
+          }
+        })
+
         this._aetherGraph.getView(NodeFamily.KINETIC).forEach((node: any) => {
           if (node.isContinuous) return
           const _posX = node.physicalPosition?.x ?? node.position?.x ?? 0
           const _mech = (_posX < 0) ? _mechL : _mechR
           const _dimmer = Math.max(0, Math.min(1, _mech.intensity ?? 0))
+
+          // pan/tilt al KINETIC
           this._aetherBus.push({
             nodeId: node.nodeId,
             values: {
               pan:  Math.max(0, Math.min(1, _mech.pan)),
               tilt: Math.max(0, Math.min(1, _mech.tilt)),
-              dimmer: _dimmer,  // WAVE 2523: sobreescribir neutral 0.5 del L0
             },
             priority: 50,
             confidence: 1.0,
             source: 'selene-bypass',
             mergeStrategy: 'LTP',
           } as any)
+
+          // WAVE 7694: dimmer al IMPACT del mismo device (no al KINETIC)
+          const _impactNodeId = _impactNodeByDevice.get(node.deviceId)
+          if (_impactNodeId) {
+            this._aetherBus.push({
+              nodeId: _impactNodeId,
+              values: { dimmer: _dimmer },
+              priority: 50,
+              confidence: 1.0,
+              source: 'selene-bypass',
+              mergeStrategy: 'LTP',
+            } as any)
+          }
         })
       }
       // ðŸ”¦ WAVE 3516.4: Beam â€” Ã³pticas (gobos, prismas, zoom, focus)
@@ -1508,9 +1543,12 @@ export class TickEngine {
       // 4. NodeResolver traduce a Uint8Array(512) por universo (pre-alloc, in-place)
       // FASE 1 safety (velocity clamp, airbag, DarkSpin) runs INSIDE resolve via _safetyMiddleware
       // ðŸŽ¨ WAVE 4522.4: Inyectar contexto musical para HarmonicQuantizer (gating de ruedas)
+      // ðŸ§Š WAVE 7693: Pasar isChillVibe determinístico (del nombre del vibe, NO de
+      // bpmConfidence) para el Chill Wheel Freeze. El vibe chill es estático.
       aetherResolver.setResolveContext(
         engineAudioMetrics.bpm,
         engineAudioMetrics.beatConfidence,
+        _isChillVibe,
       )
 
       // WAVE 4548.6: Populate ForgeFrameContext in-place (zero-alloc)

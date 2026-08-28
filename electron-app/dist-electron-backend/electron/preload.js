@@ -648,6 +648,15 @@ const luxApi = {
     /** Set active Vibe profile — WAVE 7594: fire-and-forget */
     setVibe: (vibeId) => ipcRenderer.send('lux:setVibe', vibeId),
     /**
+     * 🌌 WAVE 7691: Toggle the Uranus color engine.
+     * When true: full Uranus pipeline (barycentric mass, Φ(t), softplus, harmonic derivation).
+     * When false: pure legacy mode (KEY_TO_HUE, Sidereal Clock, elastic rotation).
+     * Takes effect on the next frame.
+     */
+    setUranusEngine: (enabled) => ipcRenderer.invoke('lux:setUranusEngine', enabled),
+    /** 🌌 WAVE 7691: Query the current Uranus engine state */
+    getUranusEngine: () => ipcRenderer.invoke('lux:getUranusEngine'),
+    /**
      * 🧬 PROTEUS GRAFT: Send a FusedVibeBundle to the backend so it can graft
      * the custom vibe into the MAIN PROCESS's copies of the 7 canonical registries
      * (VIBE_REGISTRY, PROFILE_REGISTRY, COLOR_CONSTITUTIONS, etc.).

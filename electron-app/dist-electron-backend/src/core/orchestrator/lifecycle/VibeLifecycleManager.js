@@ -65,6 +65,16 @@ export class VibeLifecycleManager {
             console.log(`[TitanOrchestrator] 🎨 Palette forcefully synced to current vibe`);
         }
     }
+    // ── Uranus Engine Toggle (WAVE 7691) ────────────────────────────────────
+    setUranusEngine(enabled) {
+        if (this.engine) {
+            this.engine.setUranusEngine(enabled);
+            this.logManager.log('Mode', `🌌 Uranus Engine: ${enabled ? 'ACTIVATED' : 'DEACTIVATED (legacy)'}`);
+        }
+    }
+    isUranusEngineActive() {
+        return this.engine?.isUranusEngineActive() ?? false;
+    }
     // ── Mood ────────────────────────────────────────────────────────────────
     setMood(moodId) {
         if (this.engine) {

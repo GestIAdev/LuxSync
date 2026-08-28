@@ -877,6 +877,16 @@ export class SeleneColorEngine {
         // 🎯 WAVE 2096.1: Deterministic frame counter (replaces Math.random for log throttling)
         this.generateCallCount++;
         // ══════════════════════════════════════════════════════════════════════
+        // 🌌 WAVE 7691 (URANUS — SURGICAL ISOLATION): ENGINE TOGGLE RESOLUTION
+        // ══════════════════════════════════════════════════════════════════════
+        // Single source of truth for Uranus activation. Either flag activates it:
+        //   - useUranusEngine:    UI-facing toggle (user-controlled)
+        //   - useChromagramGravity: internal/programmatic flag (backward compat)
+        // When false: pure legacy mode (KEY_TO_HUE, Sidereal Clock, elastic rotation)
+        // When true:  full Uranus pipeline (gravity hue, Φ(t), softplus, rigid-body)
+        // ══════════════════════════════════════════════════════════════════════
+        const isUranusActive = options?.useUranusEngine === true || options?.useChromagramGravity === true;
+        // ══════════════════════════════════════════════════════════════════════
         // 🎹 WAVE 7686 (URANUS PILLAR 0): ZERO-ALLOC CHROMAGRAM MIRROR
         // Copy incoming 12-bin chroma into the module-level Float64Array.
         // 12 float stores, zero allocation. Falls back to zeros when no audio
@@ -965,7 +975,7 @@ export class SeleneColorEngine {
         let _gravityHue = _gravityHueRaw;
         _siderealPhi = 0; // reset per frame (0 when gravity is off)
         _gravityHueFast = _gravityHueFastRaw; // unrotated fast hue (updated below if gravity on)
-        if (options?.useChromagramGravity) {
+        if (isUranusActive) {
             const tMin = performance.now() / 60000;
             // Φ₀ seeded from SIDEREAL_SESSION_OFFSET (WAVE 7680) — no two sessions
             // start at the same angle. Scale ms to degrees: mod 360000 → /1000.
@@ -1069,7 +1079,7 @@ export class SeleneColorEngine {
         // When the flag is OFF (default), the legacy KEY_TO_HUE path above is
         // untouched — zero behaviour change, enabling safe A/B testing.
         // ═══════════════════════════════════════════════════════════════════════
-        if (options?.useChromagramGravity) {
+        if (isUranusActive) {
             if (_gravityR > GRAVITY_R_MIN) {
                 baseHue = _gravityHue;
                 _lastValidGravityHue = _gravityHue;
@@ -1135,31 +1145,58 @@ export class SeleneColorEngine {
                 }
             }
         }
-        // 2️⃣ FORBIDDEN HUE RANGES: Softplus Repulsion (WAVE 7688 — Uranus Pillar III)
+        // 2️⃣ FORBIDDEN HUE RANGES: Engine-Dependent Evacuation
         // ═══════════════════════════════════════════════════════════════════════
-        // ANTES (WAVE 144): Elastic Rotation — iteratively +elasticStep until
-        // escaping the forbidden zone. Non-injective (many inputs → same border),
-        // quantized to elasticStep granularity, up to 24 iterations per color.
+        // 🌌 WAVE 7691 (SURGICAL ISOLATION): This site was running unconditionally,
+        // mutating legacy output with Uranus Pillar III math. Now strictly gated:
         //
-        // AHORA (WAVE 7688): Softplus Repulsion Kernel — smooth, monotone, injective.
-        // m(x) = w + s·ln(1 + exp((x−w)/s)) lifts the hue outside the void with
-        // a C¹ transition whose derivative is the logistic sigmoid. Distinct
-        // inputs stay distinct (preserves audio reactivity). Gain > 0.95 beyond
-        // ~43° from void center — effectively the identity outside [10°, 95°].
+        // URANUS path: Softplus Repulsion Kernel — smooth, monotone, injective.
+        //   m(x) = w + s·ln(1 + exp((x−w)/s)) lifts the hue outside the [25°, 80°]
+        //   void. C¹ smooth, gain > 0.95 beyond ~43° from center.
         //
-        // The [25°, 80°] void is the hardcoded anti-yellow zone. Constitutions
-        // may declare additional forbiddenHueRanges — those are still handled
-        // by the palette-wide enforcement block (WAVE 149.5, now using the
-        // rigid-body + softplus pipeline).
+        // LEGACY path: Elastic Rotation (WAVE 144) — iteratively +elasticStep
+        //   until escaping the forbidden zone. Non-injective, quantized, up to
+        //   24 iterations. This is the ORIGINAL behaviour before Uranus.
         // ═══════════════════════════════════════════════════════════════════════
-        finalHue = softplusRepel(finalHue);
+        if (isUranusActive) {
+            finalHue = softplusRepel(finalHue);
+        }
+        else {
+            // LEGACY: Elastic rotation for the primary hue (WAVE 144 original)
+            const elasticStep = options?.elasticRotation ?? 15;
+            const maxIterations = Math.ceil(360 / elasticStep);
+            let legacyIter = 0;
+            let legacyForbidden = true;
+            while (legacyForbidden && legacyIter < maxIterations) {
+                legacyForbidden = false;
+                if (options?.forbiddenHueRanges) {
+                    for (const [min, max] of options.forbiddenHueRanges) {
+                        const nMin = normalizeHue(min);
+                        const nMax = normalizeHue(max);
+                        const inRange = nMin <= nMax
+                            ? (finalHue >= nMin && finalHue <= nMax)
+                            : (finalHue >= nMin || finalHue <= nMax);
+                        if (inRange) {
+                            finalHue = normalizeHue(finalHue + elasticStep);
+                            legacyForbidden = true;
+                            legacyIter++;
+                            break;
+                        }
+                    }
+                }
+                else {
+                    // No forbidden ranges declared — no evacuation needed
+                    break;
+                }
+            }
+        }
         // 3️⃣ ALLOWED HUE RANGES: Gamut Mapping (WAVE 7684)
         // Si el hue cae fuera de todos los rangos permitidos, mapearlo
         // proporcionalmente al rango más cercano en vez de clavarlo al borde.
         // ⚠️ WAVE 286 BUG FIX: [0, 360] debe significar "todo permitido"
         // 🌌 WAVE 7689: BYPASS cuando useChromagramGravity — Φ(t) ya rotó el hue,
         // clavarlo a un rango destruiría la isometría (G=1 → G<<1).
-        if (!options?.useChromagramGravity && options?.allowedHueRanges && options.allowedHueRanges.length > 0) {
+        if (!isUranusActive && options?.allowedHueRanges && options.allowedHueRanges.length > 0) {
             // 🛡️ CHECK: Si el rango es [0, 360] o similar (abarca todo), skip
             const isFullCircle = options.allowedHueRanges.some(([min, max]) => {
                 return (max - min) >= 359 || (min === 0 && max >= 359);
@@ -1270,15 +1307,17 @@ export class SeleneColorEngine {
                 //
                 // When the flag is OFF, legacy behaviour is preserved: slots still
                 // impose allowedHueRanges via gamutMapHue (WAVE 7684).
-                if (options?.useChromagramGravity) {
+                if (isUranusActive) {
                     // Uranus mode: no hue boundaries from slots. Φ(t) handles drift.
                     eo.allowedHueRanges = undefined;
-                    eo.useChromagramGravity = true;
+                    eo.useChromagramGravity = options?.useChromagramGravity;
+                    eo.useUranusEngine = options?.useUranusEngine;
                 }
                 else {
                     // Legacy mode: slots constrain hue via allowedHueRanges
                     eo.allowedHueRanges = slot.allowedHueRanges;
                     eo.useChromagramGravity = undefined;
+                    eo.useUranusEngine = undefined;
                 }
                 effectiveOptions = eo;
                 // 🎯 WAVE 7684: GAMUT MAPPING para el Sidereal Clock (LEGACY path only).
@@ -1289,7 +1328,7 @@ export class SeleneColorEngine {
                 //
                 // 🌌 WAVE 7689: BYPASS total cuando useChromagramGravity está activo.
                 // Φ(t) ya rotó el hue — clavarlo al slot destruiría la isometría.
-                if (!options?.useChromagramGravity && slot.allowedHueRanges && slot.allowedHueRanges.length > 0) {
+                if (!isUranusActive && slot.allowedHueRanges && slot.allowedHueRanges.length > 0) {
                     const isFullCircle = slot.allowedHueRanges.some(([mn, mx]) => (mx - mn) >= 359 || (mn === 0 && mx >= 359));
                     if (!isFullCircle) {
                         finalHue = gamutMapHue(finalHue, slot.allowedHueRanges);
@@ -1528,12 +1567,38 @@ export class SeleneColorEngine {
             pal.ambient.s = Math.max(pal.secondary.s, 70); // Mantener saturado
             pal.ambient.l = clamp(pal.secondary.l * 1.1, 40, 60); // Variación sutil
         }
-        // 4️⃣ SOFTPLUS REPULSION para Ambient (WAVE 7688 — Uranus Pillar III)
-        // Replaces the old elastic rotation with the smooth, injective softplus kernel.
-        // The [25°, 80°] void is always evacuated; constitution forbiddenHueRanges
-        // are handled by the palette-wide rigid-body + softplus block below.
+        // 4️⃣ AMBIENT FORBIDDEN ZONE EVACUATION (WAVE 7691 — Surgical Isolation)
+        // ═══════════════════════════════════════════════════════════════════════
+        // URANUS path: Softplus repulsion — smooth, injective, C¹ continuous.
+        // LEGACY path: Elastic rotation while-loop (WAVE 144 original behaviour).
+        // ═══════════════════════════════════════════════════════════════════════
         if (!options?.ambientLock) {
-            pal.ambient.h = softplusRepel(pal.ambient.h);
+            if (isUranusActive) {
+                pal.ambient.h = softplusRepel(pal.ambient.h);
+            }
+            else if (options?.forbiddenHueRanges) {
+                // LEGACY: Elastic rotation for ambient (WAVE 144 original)
+                const elasticStep = options.elasticRotation ?? 15;
+                const maxIterations = Math.ceil(360 / elasticStep);
+                let ambIter = 0;
+                let ambForbidden = true;
+                while (ambForbidden && ambIter < maxIterations) {
+                    ambForbidden = false;
+                    for (const [min, max] of options.forbiddenHueRanges) {
+                        const nMin = normalizeHue(min);
+                        const nMax = normalizeHue(max);
+                        const inRange = nMin <= nMax
+                            ? (pal.ambient.h >= nMin && pal.ambient.h <= nMax)
+                            : (pal.ambient.h >= nMin || pal.ambient.h <= nMax);
+                        if (inRange) {
+                            pal.ambient.h = normalizeHue(pal.ambient.h + elasticStep);
+                            ambForbidden = true;
+                            ambIter++;
+                            break;
+                        }
+                    }
+                }
+            }
         }
         // 5️⃣ MINIMUM SEPARATION: Ambient debe estar a mínimo 30° del Secondary
         const hueDistance = Math.abs(pal.ambient.h - pal.secondary.h);
@@ -1571,7 +1636,7 @@ export class SeleneColorEngine {
         // legacy Fibonacci/syncopation derivation above is untouched.
         // ═══════════════════════════════════════════════════════════════════════
         let _measuredStrategy = null;
-        if (options?.useChromagramGravity) {
+        if (isUranusActive) {
             const Phi = _siderealPhi;
             // ── Accent: H_fast (chord-level reactive center, already Φ-rotated) ──
             if (_gravityRFast > GRAVITY_R_MIN) {
@@ -1740,64 +1805,78 @@ export class SeleneColorEngine {
         //   ❌ if (isTechnoVibe) { ambient.h=275; primary.h=coldHue; accent.l=100; ... }
         // ═══════════════════════════════════════════════════════════════════════
         // ═══════════════════════════════════════════════════════════════════════
-        // 🌑 WAVE 7688 (URANUS PILLAR III): RIGID-BODY EVACUATION + SOFTPLUS REPULSION
+        // 🌑 WAVE 7691 (SURGICAL ISOLATION): PALETTE-WIDE FORBIDDEN ZONE ENFORCEMENT
         // ═══════════════════════════════════════════════════════════════════════
-        // Replaces WAVE 149.5's per-color elastic rotation (non-injective, up to
-        // 24 iterations × 4 colors = 96 while-loop iterations per frame) with a
-        // two-stage isometry-preserving pipeline:
+        // STRICT FORK: Uranus and Legacy use completely different evacuation math.
+        // No cross-contamination. The isUranusActive flag (resolved at the top of
+        // generate()) determines which path runs.
         //
-        // STAGE 1 — RIGID-BODY ROTATION (blueprint §3.4):
-        //   Find a single ψ applied to ALL 4 colors that minimizes void occupancy.
-        //   Because rotation is an isometry, all pairwise angular distances are
-        //   preserved EXACTLY — the palette stays genuinely triadic/complementary
-        //   while escaping [25°, 80°]. Exact solution via 9 candidates (4 colors ×
-        //   2 void edges + ψ=0), ~150 flops. Hysteresis + EMA prevent chatter.
+        // URANUS path (WAVE 7688):
+        //   STAGE 1: Rigid-body rotation ψ — isometry, preserves intervals exactly.
+        //   STAGE 2: Softplus repulsion — injective, C¹ smooth cleanup.
+        //   STAGE 3: Non-standard constitution ranges still use _enforceForbiddenHue.
         //
-        // STAGE 2 — SOFTPLUS REPULSION (blueprint §3.2):
-        //   Per-color smooth-max cleanup for any residual stragglers the rigid
-        //   rotation couldn't fully evacuate (possible with wide palettes).
-        //   Injective, C¹ smooth, gain > 0.95 beyond ~43° from void center.
-        //
-        // The [25°, 80°] anti-yellow void is always active (hardcoded). Additional
-        // forbiddenHueRanges from the constitution are still respected — the
-        // softplus kernel handles the primary void; constitution ranges that
-        // differ from [25, 80] are handled by the legacy _enforceForbiddenHue
-        // as a fallback for non-standard ranges.
+        // LEGACY path (WAVE 149.5 original):
+        //   Per-color elastic rotation (_enforceForbiddenHue) for ALL forbidden
+        //   ranges. Non-injective, quantized, up to 96 iterations/frame.
+        //   This is the EXACT behaviour before Uranus was introduced.
         // ═══════════════════════════════════════════════════════════════════════
-        // STAGE 1: Rigid-body palette evacuation (always active — anti-yellow)
-        _evacuatePaletteRigid(pal);
-        // STAGE 2: Softplus repulsion cleanup on all 4 colors
-        pal.primary.h = softplusRepel(pal.primary.h);
-        pal.secondary.h = softplusRepel(pal.secondary.h);
-        pal.accent.h = softplusRepel(pal.accent.h);
-        pal.ambient.h = softplusRepel(pal.ambient.h);
-        // STAGE 3: Constitution-specific forbidden ranges (non-[25,80] zones)
-        // The softplus kernel handles the universal [25, 80] void. Constitutions
-        // may declare additional forbiddenHueRanges (e.g. Techno: [[0, 75], [330, 360]])
-        // that need the legacy elastic rotation for non-standard zones.
-        if (options?.forbiddenHueRanges) {
-            const elasticStep = options.elasticRotation ?? 15;
-            const maxIterations = Math.ceil(360 / elasticStep);
-            // Check if constitution ranges differ from the standard [25, 80] void
-            const hasNonStandardRanges = options.forbiddenHueRanges.some(([min, max]) => !(min === 25 && max === 80) && !(min === 0 && max === 80));
-            if (hasNonStandardRanges) {
+        if (isUranusActive) {
+            // ── URANUS: Rigid-body + softplus ──
+            // STAGE 1: Rigid-body palette evacuation
+            _evacuatePaletteRigid(pal);
+            // STAGE 2: Softplus repulsion cleanup on all 4 colors
+            pal.primary.h = softplusRepel(pal.primary.h);
+            pal.secondary.h = softplusRepel(pal.secondary.h);
+            pal.accent.h = softplusRepel(pal.accent.h);
+            pal.ambient.h = softplusRepel(pal.ambient.h);
+            // STAGE 3: Constitution-specific non-standard ranges
+            if (options?.forbiddenHueRanges) {
+                const elasticStep = options.elasticRotation ?? 15;
+                const maxIterations = Math.ceil(360 / elasticStep);
+                const hasNonStandardRanges = options.forbiddenHueRanges.some(([min, max]) => !(min === 25 && max === 80) && !(min === 0 && max === 80));
+                if (hasNonStandardRanges) {
+                    this._enforceForbiddenHue(pal.primary, options.forbiddenHueRanges, elasticStep, maxIterations);
+                    this._enforceForbiddenHue(pal.secondary, options.forbiddenHueRanges, elasticStep, maxIterations);
+                    this._enforceForbiddenHue(pal.ambient, options.forbiddenHueRanges, elasticStep, maxIterations);
+                    this._enforceForbiddenHue(pal.accent, options.forbiddenHueRanges, elasticStep, maxIterations);
+                }
+                // Collision resolution
+                const minDistance = 30;
+                let ambientSecondaryDiff = Math.abs(pal.ambient.h - pal.secondary.h);
+                if (ambientSecondaryDiff > 180)
+                    ambientSecondaryDiff = 360 - ambientSecondaryDiff;
+                if (ambientSecondaryDiff < minDistance) {
+                    pal.ambient.h = normalizeHue(pal.ambient.h + 60);
+                    if (hasNonStandardRanges) {
+                        this._enforceForbiddenHue(pal.ambient, options.forbiddenHueRanges, elasticStep, maxIterations);
+                    }
+                    else {
+                        pal.ambient.h = softplusRepel(pal.ambient.h);
+                    }
+                }
+            }
+        }
+        else {
+            // ── LEGACY: WAVE 149.5 original elastic rotation ──
+            // Per-color _enforceForbiddenHue for ALL forbidden ranges.
+            // This is the EXACT behaviour before Uranus Pillar III was introduced.
+            if (options?.forbiddenHueRanges) {
+                const elasticStep = options.elasticRotation ?? 15;
+                const maxIterations = Math.ceil(360 / elasticStep);
+                // 1️⃣ POLICÍA DE ZONAS PROHIBIDAS - Revisar CADA color
                 this._enforceForbiddenHue(pal.primary, options.forbiddenHueRanges, elasticStep, maxIterations);
                 this._enforceForbiddenHue(pal.secondary, options.forbiddenHueRanges, elasticStep, maxIterations);
                 this._enforceForbiddenHue(pal.ambient, options.forbiddenHueRanges, elasticStep, maxIterations);
                 this._enforceForbiddenHue(pal.accent, options.forbiddenHueRanges, elasticStep, maxIterations);
-            }
-            // Collision resolution: if Ambient is too close to Secondary (< 30°), separate
-            const minDistance = 30;
-            let ambientSecondaryDiff = Math.abs(pal.ambient.h - pal.secondary.h);
-            if (ambientSecondaryDiff > 180)
-                ambientSecondaryDiff = 360 - ambientSecondaryDiff;
-            if (ambientSecondaryDiff < minDistance) {
-                pal.ambient.h = normalizeHue(pal.ambient.h + 60);
-                if (hasNonStandardRanges) {
+                // 2️⃣ RESOLUCIÓN DE COLISIONES - Evitar "verde sobre verde"
+                const minDistance = 30;
+                let ambientSecondaryDiff = Math.abs(pal.ambient.h - pal.secondary.h);
+                if (ambientSecondaryDiff > 180)
+                    ambientSecondaryDiff = 360 - ambientSecondaryDiff;
+                if (ambientSecondaryDiff < minDistance) {
+                    pal.ambient.h = normalizeHue(pal.ambient.h + 60);
                     this._enforceForbiddenHue(pal.ambient, options.forbiddenHueRanges, elasticStep, maxIterations);
-                }
-                else {
-                    pal.ambient.h = softplusRepel(pal.ambient.h);
                 }
             }
         }
@@ -1828,7 +1907,7 @@ export class SeleneColorEngine {
         // 🌌 WAVE 7689: BYPASS cuando useChromagramGravity — Φ(t) ya rotó el hue,
         // gamut-mapping destruiría la isometría.
         // ═══════════════════════════════════════════════════════════════════════
-        if (!options?.useChromagramGravity && options?.allowedHueRanges && options.allowedHueRanges.length > 0) {
+        if (!isUranusActive && options?.allowedHueRanges && options.allowedHueRanges.length > 0) {
             // 🛡️ Skip si el rango es [0, 360] (todo permitido)
             const isFullCircle = options.allowedHueRanges.some(([min, max]) => (max - min) >= 359 || (min === 0 && max >= 359));
             if (!isFullCircle) {

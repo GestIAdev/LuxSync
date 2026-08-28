@@ -156,12 +156,6 @@ const DMX_UNIVERSE_SIZE = 512;
 // Valores por defecto conservadores (sin cuantización activa).
 let _currentBpm = 120;
 let _currentBpmConfidence = 0.0;
-// ── WAVE 7679: CHILL WHEEL FREEZE ────────────────────────────────────────
-// Umbral de confianza de BPM por debajo del cual consideramos que estamos en
-// un vibe ambient/chill (sin gating musical). Debe coincidir con
-// HarmonicQuantizer.MIN_BPM_CONFIDENCE (0.3) — replicado aquí porque aquel
-// no es exportado.
-const CHILL_FREEZE_CONFIDENCE = 0.3;
 /**
  * NodeResolver — Traducción zero-alloc de nodos abstractos a DMX físico.
  *
@@ -255,13 +249,17 @@ export class NodeResolver {
         this._forgeFrameContext = DEFAULT_FORGE_FRAME_CONTEXT;
         // 🛂 WAVE 4557: Safety middleware for velocity clamping, airbag, DarkSpin
         this._safetyMiddleware = null;
-        // ── WAVE 7679: CHILL WHEEL FREEZE ──────────────────────────────────────
-        // Sample-and-hold por nodo para ruedas mecánicas en chill/ambient.
-        // Mantiene el primer valor de color_wheel resuelto durante la sesión de
-        // chill, ignorando el drift continuo de oceanicModulation que de otro modo
-        // forzaría flips entre slots adyacentes cada 2s (phantom beat via DarkSpin).
+        // ── WAVE 7693: DETERMINISTIC CHILL WHEEL FREEZE ─────────────────────────
+        // El vibe chill/ambient/lounge/jazz es una vibe ESTÁTICA — el
+        // ChillAmbientEngine es función pura de performance.now() y no consume
+        // FFT, beats, ni física. Acoplar el freeze a bpmConfidence < 0.3 era un
+        // hack sucio: el ruido ambiental hace oscilar la confianza alrededor del
+        // umbral, limpiando el freeze cada wobble → DarkSpin blackout = flicker.
+        // Ahora el freeze se controla deterministamente vía _isChillVibe, que
+        // proviene del nombre del vibe activo (no de métricas de audio).
         // Se limpia automáticamente al salir de chill (setResolveContext) y
         // manualmente vía clearChillWheelFreeze() en patch reload.
+        this._isChillVibe = false;
         this._chillWheelFreeze = new Map();
         // �️ WAVE 7179 (M4): VMM spatial params — dist_scale per node + global amplitude.
         // Mirrors NodeArbiter's state. Set by AetherIPCHandlers alongside the arbiter setters.
@@ -396,26 +394,29 @@ export class NodeResolver {
         this._precomputeGovernorMap(deviceId);
     }
     /**
-     * WAVE 4522.4: Inyectar contexto musical antes de cada resolve().
+     * WAVE 4522.4 + WAVE 7693: Inyectar contexto musical antes de cada resolve().
      *
      * Llamar desde el Orchestrator inmediatamente ANTES de resolve().
      * El BPM y confidence se usan por el HarmonicQuantizer para gating
      * de cambios de rueda mecánica al tempo musical.
      *
-     * Si no se llama, el resolver opera con confianza=0.0, lo que
-     * desactiva el cuantizador (pass-through sin gating).
+     * WAVE 7693: isChillVibe controla deterministamente el Chill Wheel Freeze.
+     * El vibe chill es estático (ChillAmbientEngine = función pura de t) —
+     * NO debe acoplarse a bpmConfidence, que oscila con ruido ambiental.
+     * Cuando isChillVibe transiciona de true → false, se limpian los freezes.
      *
      * @param bpm — BPM actual (del Worker, autoritativo)
      * @param bpmConfidence — Confianza del BPM (0-1, umbral activo: >0.3)
+     * @param isChillVibe — true si el vibe activo es chill/ambient/lounge/jazz
      */
-    setResolveContext(bpm, bpmConfidence) {
-        // 🧊 WAVE 7679: Al salir de chill (confianza cruza el umbral hacia arriba),
+    setResolveContext(bpm, bpmConfidence, isChillVibe = false) {
+        // 🧊 WAVE 7693: Al salir de chill (transición true → false),
         // liberar todos los valores congelados de rueda para que reanuden el
         // flujo normal (quantizer + DarkSpin en cambios de paleta reales).
-        if (_currentBpmConfidence < CHILL_FREEZE_CONFIDENCE &&
-            bpmConfidence >= CHILL_FREEZE_CONFIDENCE) {
+        if (this._isChillVibe && !isChillVibe) {
             this._chillWheelFreeze.clear();
         }
+        this._isChillVibe = isChillVibe;
         _currentBpm = bpm;
         _currentBpmConfidence = bpmConfidence;
     }
@@ -1324,10 +1325,17 @@ export class NodeResolver {
                 continue;
             const currentByte = buf[entry.wheelBufIdx];
             const lastByte = this._lastWheelBytes.get(entry.deviceId) ?? 0;
-            if (currentByte !== lastByte && entry.minTransitionMs > 0) {
-                // Wheel byte changed — trigger DarkSpin transit state.
-                // checkDarkSpin handles: new transit start, active transit blackout,
-                // transit completion, and fail-safe timeout.
+            // WAVE 7695 FIX: Llamar checkDarkSpin SIEMPRE, no solo cuando el byte cambia.
+            // checkDarkSpin evalúa tres cosas:
+            //   1. Si hay un tránsito activo → verifica si debe completarse (timeout)
+            //   2. Si el byte cambió → inicia nuevo tránsito
+            //   3. Si nada cambió → retorna false (no-op)
+            //
+            // BUG ANTERIOR: solo se llamaba cuando currentByte !== lastByte. Si el byte
+            // era estable (ej. Chill Wheel Freeze activo), checkDarkSpin nunca se llamaba
+            // → el tránsito iniciado en el frame 1 nunca se completaba → el blackout
+            // permanente zeroaba el dimmer cada frame → movers oscuros en chill.
+            if (entry.minTransitionMs > 0) {
                 sm.checkDarkSpin(entry.colorNodeId, currentByte, entry.minTransitionMs, entry.allowsContinuousSpin ?? false);
             }
             // Update last known byte in-place (zero-alloc)
@@ -1947,26 +1955,27 @@ export class NodeResolver {
                     this._wheelProfileCache.set(legacyWheel, wheelProfile);
                 }
                 // ═════════════════════════════════════════════════════════════════
-                // 🧊 WAVE 7679: CHILL WHEEL FREEZE — sample-and-hold por nodo
+                // 🧊 WAVE 7693: DETERMINISTIC CHILL WHEEL FREEZE — sample-and-hold
                 // ═════════════════════════════════════════════════════════════════
-                // En chill/ambient (bpmConfidence < 0.3), oceanicModulation genera un
-                // drift cromático continuo (sine 60s/180s) que el ColorTranslator
-                // mapea al slot de rueda más cercano. Sin hysteresis, el hue cruza
-                // fronteras entre slots adyacentes y el valor DMX flipea cada frame.
-                // El HarmonicQuantizer (debounce 2000ms) espacia esos flips en un
-                // ritmo de ~2s, cada uno con blackout DarkSpin → "phantom beat".
+                // El vibe chill/ambient/lounge/jazz es ESTÁTICO: el ChillAmbientEngine
+                // es función pura de performance.now() y no consume audio. Pero el
+                // color upstream (SeleneColorEngine) sí recibe oceanicModulation
+                // (drift cromático sine 60s/180s) que el ColorTranslator mapea al
+                // slot de rueda más cercano. Sin hysteresis, el hue cruza fronteras
+                // entre slots adyacentes y el valor DMX flipea cada frame.
                 //
-                // FIX: congelar el PRIMER valor de rueda resuelto por nodo durante
-                // la sesión de chill. El hue drift se ignora para ruedas mecánicas;
-                // dimmer/pan/tilt siguen fluyendo por sus canales independientes (este
-                // scratchpad solo toca CH_COLOR_WHEEL). RGB/CMY no entran en esta
-                // rama — su mezcla electrónica sí puede seguir el drift sin problema.
+                // WAVE 7693 FIX: congelar el PRIMER valor de rueda resuelto por nodo
+                // mientras el vibe chill esté activo (flag determinístico, NO
+                // bpmConfidence). El hue drift se ignora para ruedas mecánicas;
+                // dimmer/pan/tilt siguen fluyendo por sus canales independientes.
+                // RGB/CMY no entran en esta rama — su mezcla electrónica sí puede
+                // seguir el drift sin problema.
                 //
-                // Al salir de chill (bpmConfidence ≥ 0.3), el freeze se limpia
-                // (lazy delete aquí + clear en setResolveContext) y la rueda retoma
-                // el flujo normal: quantizer + DarkSpin en cambios de paleta reales.
+                // Al salir de chill (transición true → false en setResolveContext),
+                // el freeze se limpia y la rueda retoma el flujo normal: quantizer
+                // + DarkSpin en cambios de paleta reales.
                 // ═════════════════════════════════════════════════════════════════
-                if (_currentBpmConfidence < CHILL_FREEZE_CONFIDENCE) {
+                if (this._isChillVibe) {
                     const frozen = this._chillWheelFreeze.get(nodeId);
                     if (frozen !== undefined) {
                         // HOLD: re-emitir el slot congelado, sin quantizer ni DarkSpin.

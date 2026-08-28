@@ -173,6 +173,12 @@ export function useOrphanPhantomChannels(
     return covered
   }, [aggregatedGroups])
 
+  // WAVE 7694: Ref estable para coveredTypes — evita que el useEffect
+  // se re-ejecute cuando coveredTypes cambia de referencia sin cambiar
+  // contenido (causa del loop "Maximum update depth exceeded").
+  const coveredTypesRef = useRef(coveredTypes)
+  useEffect(() => { coveredTypesRef.current = coveredTypes }, [coveredTypes])
+
   // ── Resolución de fixtures seleccionados ──────────────────────────────────
   const resolveDefId = useCallback((f: Record<string, unknown>): string | null => {
     const id = f?.profileId || f?.definitionId || f?.fixtureDefId
@@ -199,6 +205,9 @@ export function useOrphanPhantomChannels(
         return
       }
 
+      // WAVE 7694: Leer coveredTypes del ref estable, no del closure.
+      const _coveredTypes = coveredTypesRef.current
+
       let accumulated: OrphanPhantom[] = []
       const now = Date.now()
 
@@ -209,7 +218,7 @@ export function useOrphanPhantomChannels(
         // ── PATH 1: channels[] embebido ────────────────────────────────────
         if (Array.isArray(fixture.channels) && fixture.channels.length > 0) {
           const phantoms = (fixture.channels as Record<string, unknown>[])
-            .filter(ch => PHANTOM_TYPES.has(ch?.type as string) && !coveredTypes.has(ch?.type as string))
+            .filter(ch => PHANTOM_TYPES.has(ch?.type as string) && !_coveredTypes.has(ch?.type as string))
             .map(ch => buildOrphanFromRaw(ch, fixtureId))
           accumulated = mergeNoDup(accumulated, phantoms)
           continue
@@ -222,7 +231,7 @@ export function useOrphanPhantomChannels(
           const libEntry = getLibraryFixtureById(defId)
           if (Array.isArray(libEntry?.channels) && libEntry.channels.length > 0) {
             const phantoms = (libEntry.channels as unknown as Record<string, unknown>[])
-              .filter(ch => PHANTOM_TYPES.has(ch?.type as string) && !coveredTypes.has(ch?.type as string))
+              .filter(ch => PHANTOM_TYPES.has(ch?.type as string) && !_coveredTypes.has(ch?.type as string))
               .map(ch => buildOrphanFromRaw(ch, fixtureId))
             accumulated = mergeNoDup(accumulated, phantoms)
             continue
@@ -246,7 +255,7 @@ export function useOrphanPhantomChannels(
             continue
           }
           const phantoms = (result.definition.channels as Record<string, unknown>[])
-            .filter(ch => PHANTOM_TYPES.has(ch?.type as string) && !coveredTypes.has(ch?.type as string))
+            .filter(ch => PHANTOM_TYPES.has(ch?.type as string) && !_coveredTypes.has(ch?.type as string))
             .map(ch => buildOrphanFromRaw(ch, fixtureId))
           cacheRef.current.set(defId, { phantoms, ts: now })
           accumulated = mergeNoDup(accumulated, phantoms)
@@ -263,7 +272,7 @@ export function useOrphanPhantomChannels(
 
     resolve()
     return () => { cancelled = true }
-  }, [selectionKey, resolveDefId, getLibraryFixtureById, coveredTypes]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectionKey, resolveDefId, getLibraryFixtureById]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return orphans
 }

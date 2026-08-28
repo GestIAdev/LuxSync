@@ -47,6 +47,31 @@ interface MigrationDetail {
   candidates?: string[]
 }
 
+// ── Custom Alias Dictionary (WAVE 7677) ─────────────────────────────────────
+//
+// Hardcoded overrides for known legacy UUIDs that fail standard string
+// matching but ARE valid library entries. When a fixture's profileId
+// matches a key here, we bypass the confidence-ordering and directly
+// resolve via RuntimeFixtureLibrary.
+//
+// The alias target must be an EXACT id that exists in the live library
+// (userData/fixtures/*.json). Verified against the runtime library at
+// migration time — if the target isn't loaded, we fall through to the
+// normal matching logic.
+//
+// To add a new stubborn UUID:
+//   1. Find the fixture JSON in userData/fixtures/ and read its "id" field
+//   2. Add an entry: 'legacy-uuid': 'actual-library-id'
+const CUSTOM_ALIAS_MAP: Record<string, string> = {
+  // EL 1140 TESTING (Chino moving-head, 10ch)
+  // File: userData/fixtures/user-1770473024494-gooaf830g.json
+  // Problem: shows reference this UUID as profileId but with empty
+  // definitionPath and empty channels — the migrator's Step 1 skip
+  // left them broken because resolveRuntimeFixtureDefinition found
+  // the profile but didn't rewrite the missing channels/path.
+  'user-1770473024494-gooaf830g': 'user-1770473024494-gooaf830g',
+}
+
 // ── Legacy detection ────────────────────────────────────────────────────────
 
 const LEGACY_MARKERS = ['.fxt', 'librerias', '/factory/', '/custom/', '\\factory\\', '\\custom\\']
@@ -165,8 +190,68 @@ export function migrateLegacyFixtures(fixtures: FixtureV2[]): MigrationReport {
   for (const fixture of fixtures) {
     report.scanned++
 
-    // Step 1: SKIP if fixture already resolves or has inline channels
+    // Step 0 (WAVE 7677): CUSTOM ALIAS DICTIONARY OVERRIDE
+    // Check if the profileId is in the hardcoded alias map. If so,
+    // directly resolve the target library entry and rewrite — bypassing
+    // all other logic. This handles stubborn UUIDs that have empty
+    // channels/definitionPath in shows but DO exist in the library.
     const profileId = fixture.profileId || (fixture as any).definitionId || (fixture as any).fixtureDefId
+    const aliasTarget = profileId ? CUSTOM_ALIAS_MAP[profileId] : undefined
+
+    if (aliasTarget) {
+      const aliasDef = resolveRuntimeFixtureDefinition([aliasTarget])
+      if (aliasDef) {
+        // Check if rewrite is actually needed (idempotency)
+        const needsRewrite =
+          fixture.profileId !== aliasDef.id ||
+          !fixture.definitionPath ||
+          !Array.isArray(fixture.channels) ||
+          fixture.channels.length === 0 ||
+          fixture.channelCount !== aliasDef.channels.length
+
+        if (!needsRewrite) {
+          report.details.push({
+            fixtureId: fixture.id,
+            fixtureName: fixture.name ?? fixture.id,
+            status: 'skipped',
+          })
+          continue
+        }
+
+        const oldProfileId = profileId
+        const oldDefinitionPath = fixture.definitionPath
+
+        fixture.profileId = aliasDef.id
+        fixture.definitionPath = aliasDef.filePath ?? aliasDef.id
+        fixture.channels = aliasDef.channels as any
+        fixture.channelCount = aliasDef.channels.length
+
+        console.log(
+          `[LegacyFixtureMigrator] ✓ ALIAS MIGRATED: fixture=${fixture.id} name="${fixture.name}" ` +
+          `"${oldProfileId}" → "${aliasDef.id}" (${aliasDef.channels.length}ch) [alias dict]`,
+        )
+
+        report.details.push({
+          fixtureId: fixture.id,
+          fixtureName: fixture.name ?? fixture.id,
+          status: 'migrated',
+          oldProfileId,
+          oldDefinitionPath,
+          newProfileId: aliasDef.id,
+        })
+        report.migrated++
+        continue
+      }
+      // If alias target not found in library, fall through to normal logic
+      console.warn(
+        `[LegacyFixtureMigrator] ⚠ ALIAS MISS: profileId="${profileId}" mapped to "${aliasTarget}" ` +
+        `but target not in runtime library — falling through to normal matching.`,
+      )
+    }
+
+    // Step 1: SKIP if fixture already resolves AND has inline channels
+    // WAVE 7677: Changed from OR to AND — a fixture that resolves but
+    // has empty channels still needs repair (rewrite from library).
     const existingDef = resolveRuntimeFixtureDefinition([
       profileId,
       fixture.definitionPath,
@@ -174,7 +259,9 @@ export function migrateLegacyFixtures(fixtures: FixtureV2[]): MigrationReport {
       fixture.name,
     ])
 
-    if (existingDef) {
+    const hasInlineChannels = Array.isArray(fixture.channels) && fixture.channels.length > 0
+
+    if (existingDef && hasInlineChannels) {
       report.details.push({
         fixtureId: fixture.id,
         fixtureName: fixture.name ?? fixture.id,
@@ -183,12 +270,31 @@ export function migrateLegacyFixtures(fixtures: FixtureV2[]): MigrationReport {
       continue
     }
 
-    if (Array.isArray(fixture.channels) && fixture.channels.length > 0) {
+    // WAVE 7677: If the fixture resolves but has NO channels, repair it
+    // by copying channels + definitionPath from the resolved definition.
+    if (existingDef && !hasInlineChannels) {
+      const oldProfileId = profileId
+      const oldDefinitionPath = fixture.definitionPath
+
+      fixture.profileId = existingDef.id
+      fixture.definitionPath = existingDef.filePath ?? existingDef.id
+      fixture.channels = existingDef.channels as any
+      fixture.channelCount = existingDef.channels.length
+
+      console.log(
+        `[LegacyFixtureMigrator] ✓ REPAIR: fixture=${fixture.id} name="${fixture.name}" ` +
+        `resolved but had empty channels — copied ${existingDef.channels.length}ch from "${existingDef.id}"`,
+      )
+
       report.details.push({
         fixtureId: fixture.id,
         fixtureName: fixture.name ?? fixture.id,
-        status: 'skipped',
+        status: 'migrated',
+        oldProfileId,
+        oldDefinitionPath,
+        newProfileId: existingDef.id,
       })
+      report.migrated++
       continue
     }
 

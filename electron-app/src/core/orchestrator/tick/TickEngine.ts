@@ -1404,7 +1404,6 @@ export class TickEngine {
           if (node.isContinuous) return
           const _posX = node.physicalPosition?.x ?? node.position?.x ?? 0
           const _mech = (_posX < 0) ? _mechL : _mechR
-          const _dimmer = Math.max(0, Math.min(1, _mech.intensity ?? 0))
 
           // pan/tilt al KINETIC
           this._aetherBus.push({
@@ -1420,16 +1419,24 @@ export class TickEngine {
           } as any)
 
           // WAVE 7694: dimmer al IMPACT del mismo device (no al KINETIC)
-          const _impactNodeId = _impactNodeByDevice.get(node.deviceId)
-          if (_impactNodeId) {
-            this._aetherBus.push({
-              nodeId: _impactNodeId,
-              values: { dimmer: _dimmer },
-              priority: 50,
-              confidence: 1.0,
-              source: 'selene-bypass',
-              mergeStrategy: 'LTP',
-            } as any)
+          // WAVE 7699 FIX: Solo empujar dimmer si _mech.intensity está definido.
+          //   En chill, buildMechanicsBypassIntent añade intensity (del ChillAmbientEngine).
+          //   En non-chill, assembleStereoMovementIntent NO añade intensity (VMM path).
+          //   Sin este guard, _mech.intensity ?? 0 = 0 se empuja con priority=50 LTP,
+          //   matando el dimmer del ImpactAdapter (L0) en todos los vibes non-chill.
+          if (_mech.intensity !== undefined) {
+            const _dimmer = Math.max(0, Math.min(1, _mech.intensity))
+            const _impactNodeId = _impactNodeByDevice.get(node.deviceId)
+            if (_impactNodeId) {
+              this._aetherBus.push({
+                nodeId: _impactNodeId,
+                values: { dimmer: _dimmer },
+                priority: 50,
+                confidence: 1.0,
+                source: 'selene-bypass',
+                mergeStrategy: 'LTP',
+              } as any)
+            }
           }
         })
       }

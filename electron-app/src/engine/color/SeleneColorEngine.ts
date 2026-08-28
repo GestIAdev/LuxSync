@@ -1603,10 +1603,56 @@ export class SeleneColorEngine {
     _fastW  = (1 - GRAVITY_ALPHA_FAST) * _fastW  + GRAVITY_ALPHA_FAST * rawW;
 
     // Derive hue and confidence from the SLOW (structural) accumulators
-    const _gravityHue = (Math.atan2(_slowMy, _slowMx) * 180 / Math.PI + 360) % 360;
+    const _gravityHueRaw = (Math.atan2(_slowMy, _slowMx) * 180 / Math.PI + 360) % 360;
     const _gravityR   = _slowW > 0
       ? Math.sqrt(_slowMx * _slowMx + _slowMy * _slowMy) / _slowW
       : 0;
+
+    // ══════════════════════════════════════════════════════════════════════
+    // 🌌 WAVE 7689 (URANUS PILLAR II): RELATIVISTIC SIDEREAL RING — Φ(t)
+    // ══════════════════════════════════════════════════════════════════════
+    // Quasi-periodic global angular precession applied to the barycentric hue.
+    // Rotation is an ISOMETRY of the circle: preserves all pairwise angular
+    // distances exactly → the 30°/120°/180° interval structure (analogous/
+    // triadic/complementary) is invariant under the drift. Only the absolute
+    // anchoring moves.
+    //
+    // Reactivity gain theorem (blueprint §2.1):
+    //   G_clamp      = 0        (dead — non-injective)
+    //   G_gamut(7684)= 40/360   (11.1% — compressed)
+    //   G_rotation   = 1        (100% — isometry, bijective)
+    //
+    // Φ(t) = Φ₀ + ω₁·t + A₂·sin(ω₂·t) + A₃·sin(ω₃·t)
+    //   T₁ = 45 min  (primary revolution, 8°/min)
+    //   T₂ = 27.8 min (T₁/φ, golden ratio → irrational → never closes)
+    //   T₃ = 17.2 min (T₂/φ)
+    // The golden-ratio period relationship makes the trajectory aperiodic —
+    // the combination of primary hue and act character never exactly recurs
+    // within a realistic set length (Lissajous on a torus, irrational winding).
+    //
+    // Timescale separation: |dΦ/dt| ≈ 0.13°/s vs |dH_audio/dt| ≈ 1-10°/s
+    // → 1-2 orders of magnitude separation. Audio response is instantaneous,
+    // the ring is invisible-but-cumulative (8°/min, below JND for short windows,
+    // full revolution per 45 min).
+    //
+    // Only active when useChromagramGravity is true (gated with Pillar I).
+    // Cost: 3 sin + ~5 mul/add per frame. Zero allocation.
+    // ══════════════════════════════════════════════════════════════════════
+    let _gravityHue = _gravityHueRaw;
+    if (options?.useChromagramGravity) {
+      const tMin = performance.now() / 60000;
+      // Φ₀ seeded from SIDEREAL_SESSION_OFFSET (WAVE 7680) — no two sessions
+      // start at the same angle. Scale ms to degrees: mod 360000 → /1000.
+      const Phi0 = (SIDEREAL_SESSION_OFFSET % 360000) / 1000;
+      // Angular frequencies (radians per minute) — golden ratio periods
+      const w2_rad = (2 * Math.PI) / 27.8;
+      const w3_rad = (2 * Math.PI) / 17.2;
+      // Φ(t) in degrees: linear drift (8°/min) + two incommensurable harmonics
+      const Phi = Phi0 + (8 * tMin) + 25 * Math.sin(w2_rad * tMin) + 10 * Math.sin(w3_rad * tMin);
+      // Apply the isometry: rotate the barycentric hue by Φ
+      // Large modulo (360000) handles negative Phi safely before final % 360
+      _gravityHue = (_gravityHueRaw + Phi + 360000) % 360;
+    }
 
     // === A. EXTRAER DATOS CON FALLBACKS ===
     // WAVE 0-ALLOC: Use static _wave8Fallback instead of creating new object
@@ -1797,7 +1843,9 @@ export class SeleneColorEngine {
     // Si el hue cae fuera de todos los rangos permitidos, mapearlo
     // proporcionalmente al rango más cercano en vez de clavarlo al borde.
     // ⚠️ WAVE 286 BUG FIX: [0, 360] debe significar "todo permitido"
-    if (options?.allowedHueRanges && options.allowedHueRanges.length > 0) {
+    // 🌌 WAVE 7689: BYPASS cuando useChromagramGravity — Φ(t) ya rotó el hue,
+    // clavarlo a un rango destruiría la isometría (G=1 → G<<1).
+    if (!options?.useChromagramGravity && options?.allowedHueRanges && options.allowedHueRanges.length > 0) {
       // 🛡️ CHECK: Si el rango es [0, 360] o similar (abarca todo), skip
       const isFullCircle = options.allowedHueRanges.some(([min, max]) => {
         return (max - min) >= 359 || (min === 0 && max >= 359);
@@ -1896,7 +1944,6 @@ export class SeleneColorEngine {
         // Copy all fields from options into _effectiveOptions without spread
         const eo = SeleneColorEngine._effectiveOptions;
         eo.forbiddenHueRanges = options.forbiddenHueRanges;
-        eo.allowedHueRanges = slot.allowedHueRanges;
         eo.saturationRange = options.saturationRange;
         eo.lightnessRange = slot.lightnessRange;
         eo.atmosphericTemp = options.atmosphericTemp;
@@ -1915,13 +1962,37 @@ export class SeleneColorEngine {
         eo.luxurySignatures = options.luxurySignatures;
         eo.oceanicModulation = options.oceanicModulation;
         eo.transitionConfig = options.transitionConfig;
+        // 🌌 WAVE 7689 (URANUS PILLAR II): DESTROY THE WALL
+        // When useChromagramGravity is active, the Relativistic Sidereal Ring
+        // (Φ(t) rotation, applied above to _gravityHue) replaces the slot-based
+        // hue clamping. Slots now ONLY modulate lightness, saturation, and
+        // drift rate — NEVER restrict hue boundaries.
+        //
+        // Reactivity gain: G_rotation = 1 (isometry, 100% reactivity) vs
+        // G_gamutMap = (max-min)/360 (compressed, e.g. 11% for BUNKER [170,210]).
+        // The window itself was the problem — rotation eliminates it.
+        //
+        // When the flag is OFF, legacy behaviour is preserved: slots still
+        // impose allowedHueRanges via gamutMapHue (WAVE 7684).
+        if (options?.useChromagramGravity) {
+          // Uranus mode: no hue boundaries from slots. Φ(t) handles drift.
+          eo.allowedHueRanges = undefined;
+          eo.useChromagramGravity = true;
+        } else {
+          // Legacy mode: slots constrain hue via allowedHueRanges
+          eo.allowedHueRanges = slot.allowedHueRanges;
+          eo.useChromagramGravity = undefined;
+        }
         effectiveOptions = eo;
-        // 🎯 WAVE 7684: GAMUT MAPPING para el Sidereal Clock.
+        // 🎯 WAVE 7684: GAMUT MAPPING para el Sidereal Clock (LEGACY path only).
         // ANTES: snap al CENTRO del rango más cercano → todas las keys
         // caían en el mismo grado (ej: 190°) sin importar la música.
         // AHORA: mapeo proporcional → cada key audio-derivada produce un
         // grado distinto dentro del slot, preservando la reactividad musical.
-        if (slot.allowedHueRanges && slot.allowedHueRanges.length > 0) {
+        //
+        // 🌌 WAVE 7689: BYPASS total cuando useChromagramGravity está activo.
+        // Φ(t) ya rotó el hue — clavarlo al slot destruiría la isometría.
+        if (!options?.useChromagramGravity && slot.allowedHueRanges && slot.allowedHueRanges.length > 0) {
           const isFullCircle = slot.allowedHueRanges.some(([mn, mx]) => (mx - mn) >= 359 || (mn === 0 && mx >= 359));
           if (!isFullCircle) {
             finalHue = gamutMapHue(finalHue, slot.allowedHueRanges);
@@ -2404,8 +2475,10 @@ export class SeleneColorEngine {
     // 🎯 WAVE 7684: GAMUT MAPPING reemplaza findNearestAllowedHue.
     // El primary se mapea proporcionalmente al rango del slot, no se clava
     // al borde. Cada key audio-derivada produce un grado distinto.
+    // 🌌 WAVE 7689: BYPASS cuando useChromagramGravity — Φ(t) ya rotó el hue,
+    // gamut-mapping destruiría la isometría.
     // ═══════════════════════════════════════════════════════════════════════
-    if (options?.allowedHueRanges && options.allowedHueRanges.length > 0) {
+    if (!options?.useChromagramGravity && options?.allowedHueRanges && options.allowedHueRanges.length > 0) {
       // 🛡️ Skip si el rango es [0, 360] (todo permitido)
       const isFullCircle = options.allowedHueRanges.some(([min, max]) =>
         (max - min) >= 359 || (min === 0 && max >= 359)

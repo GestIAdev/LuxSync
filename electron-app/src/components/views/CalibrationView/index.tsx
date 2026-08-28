@@ -1135,8 +1135,20 @@ const CalibrationView: React.FC = () => {
             
             {channels.length === 0 ? (
               <div className="empty-state">
-                <span className="empty-text">No channels</span>
-                <span className="empty-hint">Select a fixture with channel data</span>
+                {activeFixture ? (
+                  <>
+                    <span className="empty-text">Profile unresolved</span>
+                    <span className="empty-hint">
+                      This fixture's definition ({activeFixture.definitionPath || activeFixture.profileId || 'unknown'})
+                      {' '}is missing from the library. Re-assign a profile in the Forge.
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="empty-text">No channels</span>
+                    <span className="empty-hint">Select a fixture with channel data</span>
+                  </>
+                )}
               </div>
             ) : (
               <div className="channel-grid">

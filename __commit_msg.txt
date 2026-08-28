@@ -1,38 +1,32 @@
-WAVE 7669: Phase 3 UI construction — spatial targeting, mode switch, trim D-Pad
+WAVE 7670: Phase 4 legacy migration — reconcile pre-7605 fixture paths
 
-3a — Mode Switch & Anti-Whiplash Arbitration:
-- Add controlMode state ('spatial' | 'mechanical', default 'mechanical')
-- Segmented toggle in Zone A header
-- Spatial→Mechanical transition: hydrate pan/tilt from getFixturesState
-  THEN dispatch releaseSpatialTarget (clears Spatial Gate, prevents whiplash)
+Main-process migrator (LegacyFixtureMigrator.ts):
+- One-shot, idempotent reconciliation of pre-WAVE-7605 fixture paths
+- Runs in StagePersistence.loadShow AFTER zone normalization, BEFORE
+  hydration (orchestrator.setFixtures → FixtureProfileResolver)
+- SKIP: fixtures that already resolve or carry inline channels
+- DETECT: .fxt extension, librerias/factory/custom folder markers
+- MATCH: basename-stem vs library id, then model/name case-insensitive,
+  then normalized name (strip _- and whitespace)
+- REWRITE on unique match: profileId, definitionPath, channels (inlined),
+  channelCount
+- NEVER guess on ambiguity (>1 candidate) — log and leave untouched
+- Safety: .pre-7605.bak backup created before first migrated persist
+- Logs: per-fixture skip/migrate/ambiguous/unmatched + summary line
 
-3b — TargetingPanel (new subcomponent):
-- Numeric X/Y/Z inputs (0.25m steps) replacing 2D pad + elevation slider
-- Presets: Centre / Downstage / Upstage
-- Aim Target + Release buttons with status line (aimed/warning/error)
-- F2 FIX: payload includes fixturePositions + fixtureIKProfiles from stageStore
-  → eliminates spatial amnesia (stale {0,0,0} Orchestrator fallback)
-- Preflight checks: block dispatch if !isPlaced, !validPosition, !IK-eligible
+Wiring (StagePersistence.loadShow):
+- Import migrateLegacyFixtures
+- Call after zone normalization block, before auto-save
+- Create .pre-7605.bak via fsp.copyFile (only if not already present)
+- Persist migrated show in a single bulk write
+- Idempotent: re-running is a no-op (healthy fixtures skipped by step 1)
 
-3c/3d — Precision Offset Upgrade:
-- Integrate OffsetTrimPad (XY drag pad, ±30°, 0.5° snap, double-click reset)
-- Build 8-direction Trim D-Pad with center zero
-- Trim step selector: 0.5° / 1° / 5° (distinct from aim D-Pad's 1/5/15/45)
-- All trim dispatches via updateCalibration → 100ms throttle → updateLiveCalibration
-
-3e — Header & Rack:
-- DMX LIVE/OFFLINE pill (useLibraryStore.dmxStatus.connected)
-- Dirty dot (session.isDirty) with pulse animation
-- Remove hardcoded misleading ⟳ ARMED badge
-- Rack IK badges: ✓IK (placed + capable) / ⚠NP (capable but not placed)
-
-3f — Keymap Mode Guard:
-- WASD/arrows only drive mechanical aim when controlMode === 'mechanical'
-- In spatial mode, pan/tilt are IK-owned — manual overrides would fight Spatial Gate
-
-3g — Cleanup:
-- Delete CalibrationTargetMini.tsx (superseded by TargetingPanel)
-- Strip dead cal-target-mini* CSS from erebus.css
+UI empty state (CalibrationView DMX Channel Grid):
+- Replace generic "No channels" with actionable diagnostic when a fixture
+  is selected but has no channels:
+  "Profile unresolved — This fixture's definition (<path>) is missing
+  from the library. Re-assign a profile in the Forge."
+- Falls back to generic message when no fixture selected
 
 Generated with [Devin](https://devin.ai)
 

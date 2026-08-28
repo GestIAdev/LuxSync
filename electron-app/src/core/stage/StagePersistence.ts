@@ -33,6 +33,7 @@ import {
   normalizeZone
 } from './ShowFileV2'
 import { autoMigrate, migrateV2ToLatest, type MigrationResult } from './ShowFileMigrator'
+import { migrateLegacyFixtures } from './LegacyFixtureMigrator'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -413,6 +414,43 @@ export class StagePersistence {
             // Auto-saved log silenced
           }
           
+          // ══════════════════════════════════════════════════════════════════
+          // WAVE 7670: LEGACY FIXTURE PATH MIGRATION (Phase 4)
+          // Reconciles pre-WAVE-7605 fixture paths (.fxt / librerias / factory)
+          // against the live userData/fixtures/*.json library.
+          // Runs AFTER zone normalization, BEFORE auto-save, BEFORE hydration.
+          // Idempotent — healthy fixtures are skipped.
+          // ══════════════════════════════════════════════════════════════════
+          const legacyReport = migrateLegacyFixtures(patchedShow.fixtures)
+          if (legacyReport.migrated > 0) {
+            console.log(
+              `[StagePersistence] 📦 Legacy fixture migration: ` +
+              `${legacyReport.scanned} scanned · ${legacyReport.migrated} migrated · ` +
+              `${legacyReport.ambiguous} ambiguous · ${legacyReport.unmatched} unmatched`,
+            )
+            // Create a pre-7605 backup BEFORE persisting migrated data
+            const targetSavePath = filePath || this.getActiveShowPath()
+            const backupPath = targetSavePath + '.pre-7605.bak'
+            try {
+              const bakExists = await fsp.access(backupPath).then(() => true, () => false)
+              if (!bakExists) {
+                await fsp.copyFile(targetSavePath, backupPath)
+                console.log(`[StagePersistence] 🛡️ Pre-7605 backup created: ${backupPath}`)
+              }
+            } catch (bakErr) {
+              console.warn(`[StagePersistence] ⚠️ Could not create pre-7605 backup: ${bakErr}`)
+            }
+            // Persist migrated show
+            patchedShow.modifiedAt = new Date().toISOString()
+            await fsp.writeFile(targetSavePath, JSON.stringify(patchedShow, null, 2), 'utf-8')
+          } else if (legacyReport.scanned > 0 && legacyReport.migrated === 0) {
+            // Log scan result even when nothing migrated (for audit trail)
+            console.log(
+              `[StagePersistence] 📦 Legacy fixture migration: ` +
+              `${legacyReport.scanned} scanned · 0 migrated (all healthy or unmatched)`,
+            )
+          }
+
           this.addToRecentShows(targetPath)
           // WAVE 7632: Update pointer so loadActive() picks up this file on restart
           this.writeLastActivePointer(targetPath)

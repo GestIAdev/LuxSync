@@ -1,0 +1,12 @@
+WAVE 7673: Conditionally render trim radar + D-Pad only in spatial mode
+
+In mechanical mode the main polar radar + aim D-Pad already cover
+pan/tilt aiming — the trim pad and trim D-Pad are redundant and cause
+vertical crowding. Wrap them in controlMode === 'spatial' conditional.
+
+Base Pan/Tilt offset range sliders and Pan/Tilt invert toggles remain
+visible in both modes (they are base configuration, not aiming tools).
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

@@ -1013,7 +1013,12 @@ const CalibrationView: React.FC = () => {
                 </button>
               </div>
               
-              {/* WAVE 7669/7671: OffsetTrimPad + Trim D-Pad — side-by-side row */}
+              {/* WAVE 7673: Trim radar + D-Pad only in SPATIAL mode.
+                  In MECHANICAL mode the main radar + aim D-Pad already cover
+                  pan/tilt aiming — showing the trim pad here is redundant and
+                  causes vertical crowding. Base sliders + invert toggles above
+                  stay visible in both modes. */}
+              {controlMode === 'spatial' && (
               <div className="trim-controls-row">
                 <OffsetTrimPad
                   panOffset={liveCalibration.panOffset}
@@ -1048,6 +1053,7 @@ const CalibrationView: React.FC = () => {
                   </div>
                 </div>
               </div>
+              )}
               
               <div className="offset-actions">
                 <button 

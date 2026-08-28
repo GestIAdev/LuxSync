@@ -159,6 +159,9 @@ export interface EngineAudioMetrics {
   hh_energy?: number     // 0-1 — high band (5-15kHz)
   // 🌊 WAVE 8003: Photon block — strobe inputs + wallIntensity from GodEarFFT
   photon?: GodEarPhoton
+  // 🎹 WAVE 7686 (URANUS PILLAR 0): 12-bin chromagram from GodEar Worker
+  // (pitch classes C→B, normalized 0-1 by max). Threaded through for SeleneColorEngine.
+  chroma?: number[]
 }
 
 /**
@@ -743,7 +746,11 @@ export class TitanEngine extends EventEmitter {
       // Energy SUAVIZADA (no la cruda que parpadea)
       energy: energyOutput.smoothedEnergy,
       vibeId: vibeProfile.id,
-      
+
+      // 🎹 WAVE 7686 (URANUS PILLAR 0): Chromagram passthrough — no smoothing,
+      // SeleneColorEngine does its own vector-domain EMA in the zero-alloc mirror.
+      chroma: audio.chroma,
+
       // Wave8 rich data (reconstruido con datos estabilizados)
       wave8: {
         harmony: {
@@ -2056,6 +2063,9 @@ export class TitanEngine extends EventEmitter {
       snare_energy: clamp01(src.snare_energy, 0),
       hh_energy: clamp01(src.hh_energy, 0),
       photon: src.photon,
+      // 🎹 WAVE 7686: Pass chroma by reference — no copy here (zero-alloc).
+      // The copy happens in SeleneColorEngine._chromaMirror.
+      chroma: src.chroma,
     }
   }
   

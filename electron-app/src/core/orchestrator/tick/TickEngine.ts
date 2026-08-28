@@ -745,6 +745,8 @@ export class TickEngine {
       photon: this.audioPipeline.lastAudioData.photon,
       // â±ï¸ WAVE 2305: THE INFALLIBLE METRONOME â€” PLL beat prediction
       isPLLBeat: beatState.pllOnBeat,
+      // 🎹 WAVE 7686 (URANUS PILLAR 0): 12-bin chromagram → SeleneColorEngine
+      chroma: this.audioPipeline.lastAudioData.chroma,
     }
     
     // For HAL

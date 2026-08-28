@@ -192,6 +192,11 @@ export interface ExtendedAudioAnalysis {
     section: SectionOutput;
     genre: GenreOutput;
   };
+
+  // 🎹 WAVE 7686 (URANUS PILLAR 0): 12-bin chromagram from GodEar Worker
+  // (pitch classes C→B, normalized 0-1 by max). Consumed by the Chromagram
+  // Gravity Engine via the zero-alloc _chromaMirror. Undefined when no audio.
+  chroma?: number[];
 }
 
 /**
@@ -554,6 +559,24 @@ const PHI = 1.618033988749895;
 const PHI_ROTATION = (PHI * 360) % 360; // ≈ 222.5°
 
 /**
+ * ⏳ WAVE 7680: SIDEREAL SESSION OFFSET — Safe clock randomization.
+ *
+ * PROBLEM: The Sidereal Clock uses `performance.now()` as its time base.
+ * `performance.now()` starts at ~0 on every app launch, so the active slot
+ * always defaults to slot 0. Every session begins in the same "act".
+ *
+ * FIX: Add a one-time random offset (up to 24h) computed at module load.
+ * This shifts the slot index deterministically per session without touching
+ * the physics engine's time base.
+ *
+ * WHY NOT Date.now(): Date.now() is epoch-based and causes the "Woodstock"
+ * bug — the physics oscillators (ChillAmbientEngine, LiquidEngine71) use
+ * performance.now() and would desync from the color engine if we mixed
+ * clocks. performance.now() + offset keeps a single clock domain.
+ */
+const SIDEREAL_SESSION_OFFSET = Math.random() * 86_400_000; // Random ms up to 24h
+
+/**
  * 🎵 CÍRCULO DE QUINTAS → CÍRCULO CROMÁTICO
  * 
  * Mapeo sinestésico de notas musicales a ángulos HSL.
@@ -718,6 +741,86 @@ function normalizeHue(h: number): number {
  */
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+/**
+ * 🎯 WAVE 7684: GAMUT MAPPING — Proportional hue projection.
+ *
+ * PROBLEM: The old snap-to-nearest-border logic (findNearestAllowedHue)
+ * acted as a hard wall. Any out-of-bound hue was clamped to the exact same
+ * border degree (e.g., 350°), so completely different audio keys (C minor
+ * vs A minor) produced identical output — zero audio-reactivity inside the
+ * slot's bounds.
+ *
+ * SOLUTION: Map the raw audio-derived hue proportionally into the target
+ * range. The raw hue's position within the full 0-360 circle is preserved
+ * as a ratio, then projected into the slot's [min, max] window. This
+ * guarantees that every distinct audio key yields a mathematically
+ * distinct shade within the active Act.
+ *
+ * If the hue is already inside one of the allowed ranges, it passes
+ * through unchanged. If not, the nearest range is found and the hue is
+ * gamut-mapped into it.
+ *
+ * @param rawHue - The audio-derived hue (0-360, will be normalized)
+ * @param ranges - Array of [min, max] allowed hue ranges
+ * @returns The gamut-mapped hue, guaranteed to fall within an allowed range
+ */
+function gamutMapHue(rawHue: number, ranges: [number, number][]): number {
+  const normalizedHue = normalizeHue(rawHue);
+
+  // 1. Already inside a range → pass through unchanged
+  for (const [min, max] of ranges) {
+    const nMin = normalizeHue(min);
+    const nMax = normalizeHue(max);
+    const inRange = nMin <= nMax
+      ? (normalizedHue >= nMin && normalizedHue <= nMax)
+      : (normalizedHue >= nMin || normalizedHue <= nMax);
+    if (inRange) return normalizedHue;
+  }
+
+  // 2. Not in any range → find the nearest range
+  let nearestMin = 0;
+  let nearestMax = 0;
+  let minDistance = Infinity;
+
+  for (const [min, max] of ranges) {
+    const nMin = normalizeHue(min);
+    const nMax = normalizeHue(max);
+
+    const distToMin = Math.min(
+      Math.abs(normalizedHue - nMin),
+      360 - Math.abs(normalizedHue - nMin),
+    );
+    const distToMax = Math.min(
+      Math.abs(normalizedHue - nMax),
+      360 - Math.abs(normalizedHue - nMax),
+    );
+    const dist = Math.min(distToMin, distToMax);
+
+    if (dist < minDistance) {
+      minDistance = dist;
+      nearestMin = nMin;
+      nearestMax = nMax;
+    }
+  }
+
+  // 3. Gamut-map proportionally into the nearest range
+  //    Range size (handles circular wrap-around, e.g. [340, 20])
+  let rangeSize: number;
+  if (nearestMax >= nearestMin) {
+    rangeSize = nearestMax - nearestMin;
+  } else {
+    rangeSize = (360 - nearestMin) + nearestMax;
+  }
+
+  if (rangeSize <= 0) return nearestMin;
+
+  // Proportional projection: rawHue's position in [0, 360) → position in [nearestMin, nearestMin + rangeSize)
+  const normalizedRaw = normalizedHue / 360;
+  let mappedHue = nearestMin + normalizedRaw * rangeSize;
+
+  return normalizeHue(mappedHue);
 }
 
 /**
@@ -1048,6 +1151,24 @@ export function applyThermalGravity(hue: number, atmosphericTemp?: number, maxFo
  * console.log(palette.meta.macroGenre); // 'ELECTRONIC_4X4'
  * ```
  */
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🎹 WAVE 7686 (URANUS PILLAR 0): ZERO-ALLOC CHROMAGRAM MIRROR
+// ═══════════════════════════════════════════════════════════════════════════
+// Module-level pre-allocated 12-bin buffer. The producer (TitanEngine) passes
+// chroma as a number[] reference; generate() copies INTO this Float64Array
+// once per frame (12 float stores, zero allocation). All downstream Uranus
+// math (Pillar I barycenter, Pillar III repulsion) reads from this mirror.
+//
+// Float64Array is chosen over Float32Array for double-precision accumulation
+// in the barycentric mass sums (Pillar I §1.3) — prevents catastrophic
+// cancellation when subtracting near-equal circular vectors.
+//
+// Normalization contract: GodEarFFT.computeChromaFromSpectrum normalizes by
+// the MAX bin (sup-norm), NOT by the sum. Therefore Σ c_i ∈ [1, 12], and
+// Pillar I formulas must divide by the explicit weight sum W = Σ w_i.
+const _chromaMirror = new Float64Array(12);
+
 export class SeleneColorEngine {
   
   // 🎯 WAVE 2096.1: Deterministic frame counter for throttled logging (replaces Math.random)
@@ -1173,7 +1294,22 @@ export class SeleneColorEngine {
   static generate(data: ExtendedAudioAnalysis, options?: GenerationOptions): SelenePalette {
     // 🎯 WAVE 2096.1: Deterministic frame counter (replaces Math.random for log throttling)
     this.generateCallCount++;
-    
+
+    // ══════════════════════════════════════════════════════════════════════
+    // 🎹 WAVE 7686 (URANUS PILLAR 0): ZERO-ALLOC CHROMAGRAM MIRROR
+    // Copy incoming 12-bin chroma into the module-level Float64Array.
+    // 12 float stores, zero allocation. Falls back to zeros when no audio
+    // (silence, Chronos phantom mode, or pre-audio initialization).
+    // Downstream Uranus math (Pillar I/III) reads exclusively from this mirror.
+    // ══════════════════════════════════════════════════════════════════════
+    if (data.chroma && data.chroma.length === 12) {
+      for (let i = 0; i < 12; i++) {
+        _chromaMirror[i] = data.chroma[i];
+      }
+    } else {
+      _chromaMirror.fill(0);
+    }
+
     // === A. EXTRAER DATOS CON FALLBACKS ===
     // WAVE 0-ALLOC: Use static _wave8Fallback instead of creating new object
     const wave8 = data.wave8 || SeleneColorEngine._wave8Fallback;
@@ -1344,68 +1480,18 @@ export class SeleneColorEngine {
       }
     }
     
-    // 3️⃣ ALLOWED HUE RANGES: Snap to nearest
-    // Si el hue cae fuera de todos los rangos permitidos, ir al más cercano
+    // 3️⃣ ALLOWED HUE RANGES: Gamut Mapping (WAVE 7684)
+    // Si el hue cae fuera de todos los rangos permitidos, mapearlo
+    // proporcionalmente al rango más cercano en vez de clavarlo al borde.
     // ⚠️ WAVE 286 BUG FIX: [0, 360] debe significar "todo permitido"
     if (options?.allowedHueRanges && options.allowedHueRanges.length > 0) {
       // 🛡️ CHECK: Si el rango es [0, 360] o similar (abarca todo), skip
       const isFullCircle = options.allowedHueRanges.some(([min, max]) => {
         return (max - min) >= 359 || (min === 0 && max >= 359);
       });
-      
+
       if (!isFullCircle) {
-        let isAllowed = false;
-        // WAVE 0-ALLOC: Use scalars instead of [number, number] tuple
-        let closestRangeMin = 0;
-        let closestRangeMax = 0;
-        let hasClosestRange = false;
-        let minDistance = Infinity;
-        
-        for (const [min, max] of options.allowedHueRanges) {
-          const normalizedMin = normalizeHue(min);
-          const normalizedMax = normalizeHue(max);
-          
-          const isInRange = normalizedMin <= normalizedMax
-            ? (finalHue >= normalizedMin && finalHue <= normalizedMax)
-            : (finalHue >= normalizedMin || finalHue <= normalizedMax);
-          
-          if (isInRange) {
-            isAllowed = true;
-            break;
-          }
-          
-          // Calcular distancia al rango más cercano
-          const distToMin = Math.min(
-            Math.abs(finalHue - normalizedMin),
-            360 - Math.abs(finalHue - normalizedMin)
-          );
-          const distToMax = Math.min(
-            Math.abs(finalHue - normalizedMax),
-            360 - Math.abs(finalHue - normalizedMax)
-          );
-          const distance = Math.min(distToMin, distToMax);
-          
-          if (distance < minDistance) {
-            minDistance = distance;
-            closestRangeMin = normalizedMin;
-            closestRangeMax = normalizedMax;
-            hasClosestRange = true;
-          }
-        }
-        
-        if (!isAllowed && hasClosestRange) {
-          // Rotar al punto más cercano del rango permitido más cercano
-          const distToMin = Math.min(
-            Math.abs(finalHue - closestRangeMin),
-            360 - Math.abs(finalHue - closestRangeMin)
-          );
-          const distToMax = Math.min(
-            Math.abs(finalHue - closestRangeMax),
-            360 - Math.abs(finalHue - closestRangeMax)
-          );
-          
-          finalHue = distToMin <= distToMax ? closestRangeMin : closestRangeMax;
-        }
+        finalHue = gamutMapHue(finalHue, options.allowedHueRanges);
       }
     }
     
@@ -1492,7 +1578,7 @@ export class SeleneColorEngine {
     if (options?.siderealClock) {
       const clock = options.siderealClock;
       if (clock.slots && clock.slots.length > 0) {
-        const slotIndex = Math.floor(performance.now() / clock.slotDurationMs) % clock.slots.length;
+        const slotIndex = Math.floor((performance.now() + SIDEREAL_SESSION_OFFSET) / clock.slotDurationMs) % clock.slots.length;
         const slot = clock.slots[slotIndex];
         // Copy all fields from options into _effectiveOptions without spread
         const eo = SeleneColorEngine._effectiveOptions;
@@ -1517,29 +1603,15 @@ export class SeleneColorEngine {
         eo.oceanicModulation = options.oceanicModulation;
         eo.transitionConfig = options.transitionConfig;
         effectiveOptions = eo;
-        // Aplicar allowedHueRanges del slot al finalHue ahora mismo
-        // (el bloque Constitutional ya pasó, así que aplicamos aquí el snap)
-        // El snap dirige al CENTRO del rango más cercano, no al borde,
-        // para evitar colores de frontera y generar la zona auténtica del slot.
+        // 🎯 WAVE 7684: GAMUT MAPPING para el Sidereal Clock.
+        // ANTES: snap al CENTRO del rango más cercano → todas las keys
+        // caían en el mismo grado (ej: 190°) sin importar la música.
+        // AHORA: mapeo proporcional → cada key audio-derivada produce un
+        // grado distinto dentro del slot, preservando la reactividad musical.
         if (slot.allowedHueRanges && slot.allowedHueRanges.length > 0) {
           const isFullCircle = slot.allowedHueRanges.some(([mn, mx]) => (mx - mn) >= 359 || (mn === 0 && mx >= 359));
           if (!isFullCircle) {
-            let isAllowed = false;
-            let closestCenter = finalHue;
-            let minDist = Infinity;
-            for (const [mn, mx] of slot.allowedHueRanges) {
-              const inRange = mn <= mx
-                ? (finalHue >= mn && finalHue <= mx)
-                : (finalHue >= mn || finalHue <= mx);
-              if (inRange) { isAllowed = true; break; }
-              // Calcular centro del rango (handling wrap-around)
-              const center = mn <= mx
-                ? (mn + mx) / 2
-                : normalizeHue((mn + mx + 360) / 2);
-              const d = Math.min(Math.abs(finalHue - center), 360 - Math.abs(finalHue - center));
-              if (d < minDist) { minDist = d; closestCenter = center; }
-            }
-            if (!isAllowed) finalHue = normalizeHue(closestCenter);
+            finalHue = gamutMapHue(finalHue, slot.allowedHueRanges);
           }
         }
       }
@@ -1600,13 +1672,30 @@ export class SeleneColorEngine {
     pal.primary.s = correctedSat;
     pal.primary.l = correctedLight;
     
-    // === F. COLOR SECUNDARIO (Rotación Fibonacci) ===
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎯 WAVE 7684: STRATEGY-FIRST PALETTE DERIVATION
+    // ═══════════════════════════════════════════════════════════════════════
+    // PROBLEMA: El secondary SIEMPRE usaba Fibonacci (≈222.5°) sin importar
+    // la estrategia. Cuando el UI decía "Analogous", el secondary estaba a
+    // 222.5° del primary — matemáticamente near-complementary. El label
+    // solo describía el accent, no la paleta completa.
+    //
+    // SOLUCIÓN: Resolver la estrategia PRIMERO, luego derivar el secondary
+    // según la estrategia:
+    //   - Analogous:    secondary = primary + 15°  (cluster adyacente tight)
+    //   - Triadic:      secondary = primary + Fibonacci (contraste dorado)
+    //   - Complementary: secondary = primary + Fibonacci (contraste dorado)
+    //
+    // El Fibonacci se reserva para estrategias de ALTO contraste donde la
+    // variedad infinita es deseable. En Analogous, la paleta forma un
+    // cluster verdadero: Primary + Secondary(+15°) + Accent(+30°) + Ambient(-30°).
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // === F1. CONSTANTES (Fibonacci + Salt) ===
     // 🎨 WAVE 90 / WAVE 4760: Rotación configurable vía constitución.
-    // fibonacciRotationDeg en GenerationOptions sobreescribe el default (PHI_ROTATION ≈222.5°).
     const fibonacciRotation = options?.fibonacciRotationDeg ?? PHI_ROTATION;
-    
+
     // 🧂 WAVE 94.2 / WAVE 4760: Salt cromático configurable vía constitución.
-    // saltChromaticKeys es un Record<rootIndex, deltaDeg> — sin detección por nombre de vibe.
     let saltRotation = 0;
     if (key && options?.saltChromaticKeys) {
       const keyIndex = KEY_TO_ROOT[key];
@@ -1614,36 +1703,13 @@ export class SeleneColorEngine {
         saltRotation = options.saltChromaticKeys[keyIndex] ?? 0;
       }
     }
-    
-    const secondaryHue = normalizeHue(finalHue + fibonacciRotation + saltRotation);
-    // WAVE 0-ALLOC: Mutate scratch palette
-    pal.secondary.h = secondaryHue;
-    pal.secondary.s = clamp(correctedSat + 5, 20, 100);  // Ligeramente más saturado
-    pal.secondary.l = clamp(correctedLight - 10, 20, 80); // Ligeramente más oscuro
-    
-    // 🏛️ WAVE 94.3 / WAVE 4760: Luxury Signature Overrides configurables vía constitución.
-    // luxurySignatures es un Record<rootIndex, {h, maxS?}> — sin detección por nombre de vibe.
-    if (key && options?.luxurySignatures) {
-      const keyIndex = KEY_TO_ROOT[key];
-      if (keyIndex !== undefined) {
-        const sig = options.luxurySignatures[keyIndex];
-        if (sig !== undefined) {
-          pal.secondary.h = sig.h;
-          if (sig.maxS !== undefined) {
-            pal.secondary.s = Math.min(pal.secondary.s, sig.maxS);
-          }
-        }
-      }
-    }
-    
-    // === G. COLOR DE ACENTO (Estrategia de Contraste) ===
+
+    // === F2. RESOLVER ESTRATEGIA (movido arriba, antes del secondary) ===
     // 🎨 WAVE 91: STRATEGY THRESHOLDS - Alineado con StrategyArbiter (0.40-0.65)
-    // Expandimos zona triadic para que sea más alcanzable en música latina
     // 🎛️ WAVE 142: forceStrategy puede sobrescribir la decisión
     let accentHue: number;
     let strategy: 'analogous' | 'triadic' | 'complementary';
-    
-    // WAVE 142: Si hay estrategia forzada, usarla
+
     if (options?.forceStrategy && options.forceStrategy !== 'prism') {
       strategy = options.forceStrategy;
       switch (strategy) {
@@ -1659,7 +1725,6 @@ export class SeleneColorEngine {
       }
     } else if (options?.forceStrategy === 'prism') {
       // 🔮 PRISM: Estrategia especial de Techno (Tetraédrica)
-      // Primary → Secondary (+60°) → Ambient (+120°) → Accent (+180°)
       strategy = 'complementary';  // Label para metadata
       accentHue = finalHue + 180;
     } else {
@@ -1675,8 +1740,44 @@ export class SeleneColorEngine {
         accentHue = finalHue + 180;  // Opuesto
       }
     }
-    
+
+    // === F3. COLOR SECUNDARIO (Strategy-Obedient) ===
+    // WAVE 7684: El secondary ahora obedece la estrategia.
+    //   - Analogous: +15° del primary → cluster monochromatic/adjacent tight
+    //   - Triadic/Complementary: Fibonacci (≈222.5°) + salt → contraste dorado
+    let secondaryHue: number;
+    if (strategy === 'analogous') {
+      // 🎯 Tight cluster: Secondary se mantiene adyacente al primary.
+      // El salt cromático sigue aplicándose para variedad entre keys,
+      // pero la rotación base es 15° (no 222.5°).
+      secondaryHue = normalizeHue(finalHue + 15 + saltRotation);
+    } else {
+      // Triadic / Complementary: Fibonacci unleashed — máxima variedad
+      // y contraste dorado entre primary y secondary.
+      secondaryHue = normalizeHue(finalHue + fibonacciRotation + saltRotation);
+    }
+
     // WAVE 0-ALLOC: Mutate scratch palette
+    pal.secondary.h = secondaryHue;
+    pal.secondary.s = clamp(correctedSat + 5, 20, 100);  // Ligeramente más saturado
+    pal.secondary.l = clamp(correctedLight - 10, 20, 80); // Ligeramente más oscuro
+
+    // 🏛️ WAVE 94.3 / WAVE 4760: Luxury Signature Overrides configurables vía constitución.
+    // luxurySignatures es un Record<rootIndex, {h, maxS?}> — sin detección por nombre de vibe.
+    if (key && options?.luxurySignatures) {
+      const keyIndex = KEY_TO_ROOT[key];
+      if (keyIndex !== undefined) {
+        const sig = options.luxurySignatures[keyIndex];
+        if (sig !== undefined) {
+          pal.secondary.h = sig.h;
+          if (sig.maxS !== undefined) {
+            pal.secondary.s = Math.min(pal.secondary.s, sig.maxS);
+          }
+        }
+      }
+    }
+
+    // === G. COLOR DE ACENTO (usa estrategia ya resuelta) ===
     pal.accent.h = normalizeHue(accentHue);
     pal.accent.s = 100;  // Beams siempre a máxima saturación
     pal.accent.l = Math.max(70, primaryLight + 20); // Siempre brillante
@@ -1958,58 +2059,38 @@ export class SeleneColorEngine {
     }
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🔌 WAVE 150.5: ALLOW-LIST ENFORCEMENT - Solo lo permitido vive
+    // 🔌 WAVE 150.5 / WAVE 7680: ALLOW-LIST ENFORCEMENT — Primary only
     // ═══════════════════════════════════════════════════════════════════════
     // PROBLEMA: forbiddenHueRanges bloquea [0,80] pero allowedHueRanges=[110,302]
     // significa que 86° y 98° deberían ser ILEGALES (están fuera de allowed).
     //
-    // SOLUCIÓN: Si hay allowedHueRanges, todo lo que esté FUERA es ilegal.
-    // Empujar hacia el borde más cercano del rango permitido.
+    // SOLUCIÓN ORIGINAL (WAVE 150.5): Si hay allowedHueRanges, todo lo que esté
+    // FUERA es ilegal. Empujar hacia el borde más cercano del rango permitido.
+    //
+    // 🎯 WAVE 7680: CHROMA UNLOCK — Anti-Yellow Sniper.
+    // El allow-list se aplicaba a TODA la paleta (primary, secondary, ambient,
+    // accent). Cuando el Sidereal Clock activa un slot estrecho (ej: [170, 210]),
+    // un accent triádico en 290° o complementary en 350° era snappeado de vuelta
+    // al rango del slot → la matemática procedural (triadic/complementary) moría.
+    //
+    // FIX: El allow-list ahora solo constríe al PRIMARY. Los colores derivados
+    // (secondary, ambient, accent) se rigen ÚNICAMENTE por forbiddenHueRanges
+    // (el ban duro de [25, 80] = amarillo/naranja/marrón). Esto permite que
+    // la armonía musical (triadic +120°, complementary +180°) sobreviva el
+    // pipeline mientras el ban cromático sigue siendo letal.
+    //
+    // 🎯 WAVE 7684: GAMUT MAPPING reemplaza findNearestAllowedHue.
+    // El primary se mapea proporcionalmente al rango del slot, no se clava
+    // al borde. Cada key audio-derivada produce un grado distinto.
     // ═══════════════════════════════════════════════════════════════════════
     if (options?.allowedHueRanges && options.allowedHueRanges.length > 0) {
-      const isInAllowedRange = (hue: number): boolean => {
-        for (const [min, max] of options.allowedHueRanges!) {
-          if (min <= max) {
-            if (hue >= min && hue <= max) return true;
-          } else {
-            // Rango que cruza 0° (ej: [330, 30])
-            if (hue >= min || hue <= max) return true;
-          }
-        }
-        return false;
-      };
-      
-      const findNearestAllowedHue = (hue: number): number => {
-        let nearestHue = hue;
-        let minDistance = Infinity;
-        
-        for (const [min, max] of options.allowedHueRanges!) {
-          // Distancia al borde inferior
-          let distToMin = Math.abs(hue - min);
-          if (distToMin > 180) distToMin = 360 - distToMin;
-          
-          // Distancia al borde superior
-          let distToMax = Math.abs(hue - max);
-          if (distToMax > 180) distToMax = 360 - distToMax;
-          
-          if (distToMin < minDistance) {
-            minDistance = distToMin;
-            nearestHue = min;
-          }
-          if (distToMax < minDistance) {
-            minDistance = distToMax;
-            nearestHue = max;
-          }
-        }
-        
-        return normalizeHue(nearestHue);
-      };
-      
-      // WAVE 0-ALLOC: Inline enforcement instead of [array].forEach()
-      if (!isInAllowedRange(pal.primary.h))   pal.primary.h   = findNearestAllowedHue(pal.primary.h);
-      if (!isInAllowedRange(pal.secondary.h)) pal.secondary.h = findNearestAllowedHue(pal.secondary.h);
-      if (!isInAllowedRange(pal.ambient.h))   pal.ambient.h   = findNearestAllowedHue(pal.ambient.h);
-      if (!isInAllowedRange(pal.accent.h))    pal.accent.h    = findNearestAllowedHue(pal.accent.h);
+      // 🛡️ Skip si el rango es [0, 360] (todo permitido)
+      const isFullCircle = options.allowedHueRanges.some(([min, max]) =>
+        (max - min) >= 359 || (min === 0 && max >= 359)
+      );
+      if (!isFullCircle) {
+        pal.primary.h = gamutMapHue(pal.primary.h, options.allowedHueRanges);
+      }
     }
     
     // ═══════════════════════════════════════════════════════════════════════

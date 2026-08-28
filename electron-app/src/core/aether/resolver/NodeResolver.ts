@@ -187,6 +187,13 @@ const DMX_UNIVERSE_SIZE = 512
 let _currentBpm             = 120
 let _currentBpmConfidence   = 0.0
 
+// ── WAVE 7679: CHILL WHEEL FREEZE ────────────────────────────────────────
+// Umbral de confianza de BPM por debajo del cual consideramos que estamos en
+// un vibe ambient/chill (sin gating musical). Debe coincidir con
+// HarmonicQuantizer.MIN_BPM_CONFIDENCE (0.3) — replicado aquí porque aquel
+// no es exportado.
+const CHILL_FREEZE_CONFIDENCE = 0.3
+
 // ── Mutable DMXPacket para hot path ─────────────────────────────────────
 // No usa `readonly` internamente — se muta in-place y se expone
 // como IDMXPacket (readonly por TypeScript covariance).
@@ -326,6 +333,15 @@ export class NodeResolver implements INodeResolver {
 
   // 🛂 WAVE 4557: Safety middleware for velocity clamping, airbag, DarkSpin
   private _safetyMiddleware: AetherSafetyMiddleware | null = null
+
+  // ── WAVE 7679: CHILL WHEEL FREEZE ──────────────────────────────────────
+  // Sample-and-hold por nodo para ruedas mecánicas en chill/ambient.
+  // Mantiene el primer valor de color_wheel resuelto durante la sesión de
+  // chill, ignorando el drift continuo de oceanicModulation que de otro modo
+  // forzaría flips entre slots adyacentes cada 2s (phantom beat via DarkSpin).
+  // Se limpia automáticamente al salir de chill (setResolveContext) y
+  // manualmente vía clearChillWheelFreeze() en patch reload.
+  private readonly _chillWheelFreeze = new Map<NodeId, number>()
 
   // �️ WAVE 7179 (M4): VMM spatial params — dist_scale per node + global amplitude.
   // Mirrors NodeArbiter's state. Set by AetherIPCHandlers alongside the arbiter setters.
@@ -488,8 +504,27 @@ export class NodeResolver implements INodeResolver {
    * @param bpmConfidence — Confianza del BPM (0-1, umbral activo: >0.3)
    */
   setResolveContext(bpm: number, bpmConfidence: number): void {
+    // 🧊 WAVE 7679: Al salir de chill (confianza cruza el umbral hacia arriba),
+    // liberar todos los valores congelados de rueda para que reanuden el
+    // flujo normal (quantizer + DarkSpin en cambios de paleta reales).
+    if (_currentBpmConfidence < CHILL_FREEZE_CONFIDENCE &&
+        bpmConfidence        >= CHILL_FREEZE_CONFIDENCE) {
+      this._chillWheelFreeze.clear()
+    }
     _currentBpm           = bpm
     _currentBpmConfidence = bpmConfidence
+  }
+
+  /**
+   * 🧊 WAVE 7679: CHILL WHEEL FREEZE — reset explícito.
+   *
+   * Llamar tras un patch reload (fixtures nuevos/eliminados) o un hard reset
+   * del pipeline para descartar valores congelados de nodeIds que ya no
+   * existen. El cleanup lazy en _translateColor + el clear en setResolveContext
+   * cubren los casos normales; este método es para transiciones de patch.
+   */
+  clearChillWheelFreeze(): void {
+    this._chillWheelFreeze.clear()
   }
 
   /**
@@ -2158,6 +2193,47 @@ export class NodeResolver implements INodeResolver {
           wheelProfile = { colorEngine: { mixing: 'wheel', colorWheel: legacyWheel } }
           this._wheelProfileCache.set(legacyWheel, wheelProfile)
         }
+        // ═════════════════════════════════════════════════════════════════
+        // 🧊 WAVE 7679: CHILL WHEEL FREEZE — sample-and-hold por nodo
+        // ═════════════════════════════════════════════════════════════════
+        // En chill/ambient (bpmConfidence < 0.3), oceanicModulation genera un
+        // drift cromático continuo (sine 60s/180s) que el ColorTranslator
+        // mapea al slot de rueda más cercano. Sin hysteresis, el hue cruza
+        // fronteras entre slots adyacentes y el valor DMX flipea cada frame.
+        // El HarmonicQuantizer (debounce 2000ms) espacia esos flips en un
+        // ritmo de ~2s, cada uno con blackout DarkSpin → "phantom beat".
+        //
+        // FIX: congelar el PRIMER valor de rueda resuelto por nodo durante
+        // la sesión de chill. El hue drift se ignora para ruedas mecánicas;
+        // dimmer/pan/tilt siguen fluyendo por sus canales independientes (este
+        // scratchpad solo toca CH_COLOR_WHEEL). RGB/CMY no entran en esta
+        // rama — su mezcla electrónica sí puede seguir el drift sin problema.
+        //
+        // Al salir de chill (bpmConfidence ≥ 0.3), el freeze se limpia
+        // (lazy delete aquí + clear en setResolveContext) y la rueda retoma
+        // el flujo normal: quantizer + DarkSpin en cambios de paleta reales.
+        // ═════════════════════════════════════════════════════════════════
+        if (_currentBpmConfidence < CHILL_FREEZE_CONFIDENCE) {
+          const frozen = this._chillWheelFreeze.get(nodeId)
+          if (frozen !== undefined) {
+            // HOLD: re-emitir el slot congelado, sin quantizer ni DarkSpin.
+            s[CH_COLOR_WHEEL] = frozen
+            s[CH_R] = safeR; s[CH_G] = safeG; s[CH_B] = safeB
+            return s
+          }
+          // SAMPLE: primera resolución de este nodo en la sesión de chill.
+          // Traducir el hue actual al slot más cercano y congelarlo.
+          const firstResult = getColorTranslator().translate(this._rgbScratch, wheelProfile)
+          const firstNorm = (firstResult.colorWheelDmx ?? 0) / 255
+          this._chillWheelFreeze.set(nodeId, firstNorm)
+          s[CH_COLOR_WHEEL] = firstNorm
+          s[CH_R] = safeR; s[CH_G] = safeG; s[CH_B] = safeB
+          return s
+        }
+
+        // No estamos en chill: limpiar freeze stale para este nodo (lazy).
+        this._chillWheelFreeze.delete(nodeId)
+
         const result = getColorTranslator().translate(this._rgbScratch, wheelProfile)
 
         // colorWheelDmx está en escala 0-255 — normalizar a 0-1 para el pipeline

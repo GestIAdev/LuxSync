@@ -91,8 +91,13 @@ export const TECHNO_CONSTITUTION: GenerationOptions = {
   // Saturación neón obligatoria
   saturationRange: [90, 100],
   
-  // Luminosidad sólida (evitar lavado)
-  lightnessRange: [45, 55],
+  // 🌑 WAVE 7680: CHROMA UNLOCK — Deepen the Techno darkness.
+  // Antes: [45, 55] — colores sólidos pero planos, sin profundidad de bunker.
+  // Ahora: [20, 45] — el abismo neón. Piso 20% = colores casi negros que
+  // emergen del humo del club; techo 45% = nunca lavado, siempre saturado.
+  // Los slots del Sidereal Clock ya refinan esto por acto (38-55%), pero el
+  // rango constitucional es el suelo/techo absoluto que el motor respeta.
+  lightnessRange: [20, 45],
   
   // � WAVE 287: NEON PROTOCOL - "Neon or Nothing"
   // ═══════════════════════════════════════════════════════════════════════

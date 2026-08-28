@@ -1,17 +1,24 @@
-WAVE 7667: Phase 1 cleanup — unmount CalibrationDock, delete zombies, enforce HAL
+WAVE 7668: Phase 2 state migration — live offset feedback via useCalibrationSession
 
-- ContextInspector: remove React.lazy CalibrationDock + Priority 1 branch
-  (calibrate mode now falls through to selection-based inspectors)
-- Delete Dock cluster: CalibrationDock, CalibrationFixtureList, AxisPolarityToggles
-  (last two orphaned by Dock removal)
-- Delete CalibrationView/components/ zombies: RadarXY, FixtureList, TestPanel,
-  OffsetPanel, index.ts (+ their .css)
-- TestPanel deletion destroys the lux.dmx.sendDirect raw-hardware bypass —
-  CalibrationView now routes ALL output exclusively via Aether HAL
-- Strip dead CSS: .calibration-dock*, .cal-btn*, .cal-fixture-list*,
-  .cal-polarity*, .cal-toggle* from erebus.css
-- Preserve: OffsetTrimPad, useCalibrationSession (Phase 2/3),
-  CalibrationTargetMini (Phase 3 payload reference, unmounted)
+- Relocate useCalibrationSession.ts from erebus/calibration/ to CalibrationView/
+  (import path adjusted: ../../../core/stage/ShowFileV2)
+- Delete standalone panOffset/tiltOffset/panInvert/tiltInvert useStates
+- Delete fragile OFFSET SYNC useEffect (depended on [activeFixtureId, stageFixtures]
+  → clobbered in-progress edits on any unrelated fixture mutation)
+- R1 FIX: getFixture backed by useRef(stageFixtures) → stable identity →
+  hook's fixture-load effect re-runs ONLY on fixtureId change
+- Wire offset sliders + polarity toggles to liveCalibration reads +
+  updateCalibration writes (throttled 100ms → updateLiveCalibration)
+- Rewrite handleSaveOffsets to delegate to hook.apply() (preserves
+  idle/saving/saved/error UI feedback wrapper)
+- Rewrite handleResetOffsets to delegate to hook.reset()
+- Add handleRevertOffsets + REVERT button (net new capability for the Lab)
+  — disabled when no snapshot or !isDirty
+- Add .action-btn.revert CSS (amber accent)
+
+Net effect: dragging an offset slider now produces live physical head
+movement within ~100ms via updateLiveCalibration → resolver mutates
+node.ikCalibration in-place → next TickEngine frame uses new offsets.
 
 Generated with [Devin](https://devin.ai)
 

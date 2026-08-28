@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import type { FixtureV2 } from '../../../../core/stage/ShowFileV2'
+import type { FixtureV2 } from '../../../core/stage/ShowFileV2'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -65,6 +65,8 @@ export function useCalibrationSession(
   const invalidateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // When fixtureId changes, load calibration from fixture and snapshot it
+  // WAVE 7668: getFixture is now a stable ref-backed callback (R1 fix).
+  // This effect re-runs ONLY on fixtureId change, never on stageFixtures mutation.
   useEffect(() => {
     if (!fixtureId) {
       setSession(prev => ({ ...prev, fixtureId: null, snapshot: null, isDirty: false }))

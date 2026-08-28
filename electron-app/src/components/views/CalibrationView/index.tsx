@@ -33,6 +33,7 @@ import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { useSelectionStore } from '../../../stores/selectionStore'
 import { useStageStore } from '../../../stores/stageStore'
 import { useKeyMapStore } from '../../../stores/keyMapStore'
+import { useCalibrationSession } from './useCalibrationSession'
 import './CalibrationView.css'
 
 // Icons
@@ -154,12 +155,6 @@ const CalibrationView: React.FC = () => {
   // 🏛️ WAVE 3000: Multi-channel concurrent state (all channels independent)
   const [channelValues, setChannelValues] = useState<Record<number, number>>({})
   
-  // Offset state
-  const [panOffset, setPanOffset] = useState(0)
-  const [tiltOffset, setTiltOffset] = useState(0)
-  const [panInvert, setPanInvert] = useState(false)
-  const [tiltInvert, setTiltInvert] = useState(false)
-  
   // 🔥 WAVE 1135.2: Save feedback state
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -175,6 +170,27 @@ const CalibrationView: React.FC = () => {
   
   // Get selected fixture
   const activeFixtureId = selectedIds.size > 0 ? [...selectedIds][0] : null
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔄 WAVE 7668: CALIBRATION SESSION (Phase 2 state migration)
+  // Replaces standalone panOffset/tiltOffset/panInvert/tiltInvert useStates
+  // and the fragile OFFSET SYNC useEffect that clobbered in-progress edits.
+  //
+  // R1 FIX: getFixture is backed by a ref so its identity never changes.
+  // The hook's fixture-load effect depends on [fixtureId, getFixture] —
+  // with a stable getFixture, it re-runs ONLY on fixtureId change, never
+  // on unrelated stageFixtures mutations.
+  // ═══════════════════════════════════════════════════════════════════════
+  const stageFixturesRef = useRef(stageFixtures)
+  stageFixturesRef.current = stageFixtures
+
+  const getFixture = useCallback((id: string) => {
+    return stageFixturesRef.current?.find(f => f.id === id)
+  }, [])
+
+  const { session, liveCalibration, updateCalibration, apply, revert, reset } =
+    useCalibrationSession(activeFixtureId, getFixture, updateFixture)
+
   useEffect(() => {
     if (!activeFixtureId) {
       console.warn('[CalibrationLab] ⚠️ No activeFixtureId selected (selectedIds empty)')
@@ -346,30 +362,11 @@ const CalibrationView: React.FC = () => {
   }, [activeFixtureId])
   
   // ═══════════════════════════════════════════════════════════════════════
-  // 🔄 WAVE 1135.2: OFFSET SYNC - Load saved calibration when fixture changes
+  // 🔄 WAVE 7668: OFFSET SYNC eliminated — useCalibrationSession handles
+  // fixture-load + snapshot on activeFixtureId change. The old useEffect
+  // depended on [activeFixtureId, stageFixtures] which re-ran on ANY
+  // stageFixtures mutation and clobbered in-progress offset edits.
   // ═══════════════════════════════════════════════════════════════════════
-  
-  useEffect(() => {
-    if (!activeFixtureId) return
-    
-    const fixture = stageFixtures?.find(f => f.id === activeFixtureId)
-    if (fixture?.calibration) {
-      setPanOffset(fixture.calibration.panOffset || 0)
-      setTiltOffset(fixture.calibration.tiltOffset || 0)
-      setPanInvert(fixture.calibration.panInvert || false)
-      setTiltInvert(fixture.calibration.tiltInvert || false)
-      console.log(`[CalibrationLab] 📥 Loaded calibration for ${fixture.name}:`, fixture.calibration)
-    } else {
-      // Reset to defaults if no calibration saved
-      setPanOffset(0)
-      setTiltOffset(0)
-      setPanInvert(false)
-      setTiltInvert(false)
-    }
-    
-    // Reset save status when changing fixtures
-    setSaveStatus('idle')
-  }, [activeFixtureId, stageFixtures])
   
   // ═══════════════════════════════════════════════════════════════════════
   // HANDLERS: POSITION CONTROL
@@ -556,8 +553,9 @@ const CalibrationView: React.FC = () => {
   // ═══════════════════════════════════════════════════════════════════════
   
   /**
-   * Save calibration offsets to the show file
-   * This persists to stageStore → ShowFile (saved to disk)
+   * Save calibration offsets to the show file (WAVE 7668: delegates to hook.apply)
+   * Persists to stageStore → ShowFile (saved to disk) + pushes live calibration
+   * to the resolver immediately (unthrottled).
    */
   const handleSaveOffsets = useCallback(async () => {
     if (!activeFixtureId) {
@@ -570,20 +568,8 @@ const CalibrationView: React.FC = () => {
     setSaveStatus('saving')
     
     try {
-      // Update fixture in stageStore with calibration data
-      updateFixture(activeFixtureId, {
-        calibration: {
-          panOffset,
-          tiltOffset,
-          panInvert,
-          tiltInvert,
-        }
-      })
-      
-      console.log(`[CalibrationLab] 💾 Saved calibration for fixture ${activeFixtureId}:`, {
-        panOffset, tiltOffset, panInvert, tiltInvert
-      })
-      
+      apply()
+      console.log(`[CalibrationLab] 💾 Saved calibration for fixture ${activeFixtureId}:`, liveCalibration)
       setSaveStatus('saved')
       if (saveStatusTimerRef.current) clearTimeout(saveStatusTimerRef.current)
       saveStatusTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2000)
@@ -593,18 +579,23 @@ const CalibrationView: React.FC = () => {
       if (saveStatusTimerRef.current) clearTimeout(saveStatusTimerRef.current)
       saveStatusTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2000)
     }
-  }, [activeFixtureId, updateFixture, panOffset, tiltOffset, panInvert, tiltInvert])
+  }, [activeFixtureId, apply, liveCalibration])
   
   /**
-   * Reset offsets to zero
+   * Revert offsets to the last snapshot (WAVE 7668: net new capability)
+   */
+  const handleRevertOffsets = useCallback(() => {
+    revert()
+    setSaveStatus('idle')
+  }, [revert])
+  
+  /**
+   * Reset offsets to zero (WAVE 7668: delegates to hook.reset)
    */
   const handleResetOffsets = useCallback(() => {
-    setPanOffset(0)
-    setTiltOffset(0)
-    setPanInvert(false)
-    setTiltInvert(false)
+    reset()
     setSaveStatus('idle')
-  }, [])
+  }, [reset])
   
   // ═══════════════════════════════════════════════════════════════════════
   // 🎮 WAVE 1135: KEYBOARD SHORTCUTS (WASD + Arrow Keys)
@@ -849,11 +840,11 @@ const CalibrationView: React.FC = () => {
                   type="range"
                   min="-180"
                   max="180"
-                  value={panOffset}
-                  onChange={(e) => setPanOffset(Number(e.target.value))}
+                  value={liveCalibration.panOffset}
+                  onChange={(e) => updateCalibration({ panOffset: Number(e.target.value) })}
                   disabled={!activeFixtureId}
                 />
-                <span className="offset-value">{panOffset > 0 ? '+' : ''}{panOffset}°</span>
+                <span className="offset-value">{liveCalibration.panOffset > 0 ? '+' : ''}{liveCalibration.panOffset}°</span>
               </div>
               
               <div className="offset-row">
@@ -862,24 +853,24 @@ const CalibrationView: React.FC = () => {
                   type="range"
                   min="-90"
                   max="90"
-                  value={tiltOffset}
-                  onChange={(e) => setTiltOffset(Number(e.target.value))}
+                  value={liveCalibration.tiltOffset}
+                  onChange={(e) => updateCalibration({ tiltOffset: Number(e.target.value) })}
                   disabled={!activeFixtureId}
                 />
-                <span className="offset-value">{tiltOffset > 0 ? '+' : ''}{tiltOffset}°</span>
+                <span className="offset-value">{liveCalibration.tiltOffset > 0 ? '+' : ''}{liveCalibration.tiltOffset}°</span>
               </div>
               
               <div className="offset-toggles">
                 <button 
-                  className={`toggle-btn ${panInvert ? 'active' : ''}`}
-                  onClick={() => setPanInvert(!panInvert)}
+                  className={`toggle-btn ${liveCalibration.panInvert ? 'active' : ''}`}
+                  onClick={() => updateCalibration({ panInvert: !liveCalibration.panInvert })}
                   disabled={!activeFixtureId}
                 >
                   Pan ↔
                 </button>
                 <button 
-                  className={`toggle-btn ${tiltInvert ? 'active' : ''}`}
-                  onClick={() => setTiltInvert(!tiltInvert)}
+                  className={`toggle-btn ${liveCalibration.tiltInvert ? 'active' : ''}`}
+                  onClick={() => updateCalibration({ tiltInvert: !liveCalibration.tiltInvert })}
                   disabled={!activeFixtureId}
                 >
                   Tilt ↕
@@ -893,6 +884,14 @@ const CalibrationView: React.FC = () => {
                   disabled={!activeFixtureId}
                 >
                   RESET
+                </button>
+                <button
+                  className="action-btn revert"
+                  onClick={handleRevertOffsets}
+                  disabled={!activeFixtureId || !session.snapshot || !session.isDirty}
+                  title="Revert to last saved state"
+                >
+                  REVERT
                 </button>
                 <button 
                   className={`action-btn primary ${saveStatus === 'saved' ? 'saved' : ''} ${saveStatus === 'error' ? 'error' : ''}`}

@@ -174,6 +174,14 @@ export interface TitanEngineConfig {
   debug: boolean
   /** Vibe inicial */
   initialVibe: VibeId
+  /**
+   * 🌌 WAVE 7691 (URANUS): Engine selector toggle.
+   * When true, the SeleneColorEngine runs the full Uranus pipeline
+   * (barycentric mass, Φ(t) sidereal ring, softplus repulsion, harmonic
+   * palette derivation). When false (default), pure legacy mode.
+   * @default false
+   */
+  useUranusEngine?: boolean
 }
 
 /**
@@ -305,6 +313,8 @@ export class TitanEngine extends EventEmitter {
       debug: config.debug ?? false,
       // WAVE 255: Force IDLE on startup - system starts in blackout
       initialVibe: config.initialVibe ?? 'idle',
+      // 🌌 WAVE 7691: Uranus engine toggle (default: legacy mode)
+      useUranusEngine: config.useUranusEngine ?? false,
     }
     
     // Inicializar sub-módulos
@@ -828,6 +838,11 @@ export class TitanEngine extends EventEmitter {
     // 🎨 GENERAR PALETA CON EL FERRARI (ahora con interpolación LERP suave)
     // 🎨 WAVE 2096.1: SeleneColorInterpolator envuelve SeleneColorEngine.generate()
     //    con transiciones suaves, Desaturation Dip (WAVE 67.5), y jitter tolerance (WAVE 70.5)
+    // 🌌 WAVE 7691: Inject the Uranus engine toggle into the constitution
+    //    so SeleneColorEngine.generate() can resolve isUranusActive.
+    if (this.config.useUranusEngine) {
+      constitution = { ...constitution, useUranusEngine: true }
+    }
     const selenePalette = this.colorInterpolator.update(
       audioAnalysis,
       energyOutput.isRelativeDrop ?? false,
@@ -1381,8 +1396,13 @@ export class TitanEngine extends EventEmitter {
    */
   public forcePaletteRefresh(): void {
     const vibeProfile = this.vibeManager.getActiveVibe()
-    const constitution = this.vibeManager.getColorConstitution()
-    
+    let constitution = this.vibeManager.getColorConstitution()
+
+    // 🌌 WAVE 7691: Inject Uranus toggle into forced refresh too
+    if (this.config.useUranusEngine) {
+      constitution = { ...constitution, useUranusEngine: true }
+    }
+
     // Generar paleta con energía neutral (0.3) para obtener "color base" del Vibe
     const mockAudio: ExtendedAudioAnalysis = {
       energy: 0.3,
@@ -1391,7 +1411,7 @@ export class TitanEngine extends EventEmitter {
       mid: 0.3,
       treble: 0.2,
     }
-    
+
     const selenePalette = SeleneColorEngine.generate(mockAudio, constitution)
     
     // 🎨 WAVE 2096.1: Force immediate en interpolator (sin transición LERP)
@@ -1836,6 +1856,32 @@ export class TitanEngine extends EventEmitter {
       fps: this.config.targetFps,
       vibeId: this.vibeManager.getActiveVibe().id,
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🌌 WAVE 7691 (URANUS): ENGINE TOGGLE — Runtime UI control
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * Returns true if the Uranus color engine is active.
+   * When false, the engine runs in pure legacy mode.
+   */
+  public isUranusEngineActive(): boolean {
+    return this.config.useUranusEngine === true
+  }
+
+  /**
+   * Toggle the Uranus color engine at runtime.
+   * Takes effect on the next frame — no restart needed.
+   *
+   * @param enabled - true = Uranus pipeline, false = legacy pipeline
+   */
+  public setUranusEngine(enabled: boolean): void {
+    if (this.config.useUranusEngine === enabled) return
+    this.config.useUranusEngine = enabled
+    console.log(`[TitanEngine] 🌌 Uranus Engine: ${enabled ? 'ACTIVATED' : 'DEACTIVATED (legacy mode)'}`)
+    // Force a palette refresh so the switch is immediately visible
+    this.forcePaletteRefresh()
   }
   
   // ═══════════════════════════════════════════════════════════════════════

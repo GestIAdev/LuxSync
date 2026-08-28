@@ -154,6 +154,9 @@ export class AudioPipelineManager {
                     photon: levels.photon ?? this.lastAudioData.photon,
                     // WAVE 8008: Rhythmic percussion telemetry
                     rhythmic: levels.rhythmic ?? this.lastAudioData.rhythmic,
+                    // 🎹 WAVE 7686: Chromagram passthrough (no smoothing — SeleneColorEngine
+                    // does its own vector-domain EMA per the Uranus blueprint)
+                    chroma: levels.chroma ?? this.lastAudioData.chroma,
                 };
                 const wasActive = this.hasRealAudio;
                 this.hasRealAudio = true;
@@ -202,6 +205,8 @@ export class AudioPipelineManager {
                     photon: levels.photon ?? this.lastAudioData.photon,
                     // WAVE 8008: Rhythmic percussion telemetry
                     rhythmic: levels.rhythmic ?? this.lastAudioData.rhythmic,
+                    // 🎹 WAVE 7686: Chromagram passthrough
+                    chroma: levels.chroma ?? this.lastAudioData.chroma,
                 };
             }
         });
@@ -243,6 +248,7 @@ export class AudioPipelineManager {
             workerBeatStrength: this.lastAudioData.workerBeatStrength,
             workerKickCount: this.lastAudioData.workerKickCount,
             rhythmic: this.lastAudioData.rhythmic,
+            chroma: this.lastAudioData.chroma,
         };
         const wasAudioActive = this.hasRealAudio;
         this.hasRealAudio = energy > 0.01;

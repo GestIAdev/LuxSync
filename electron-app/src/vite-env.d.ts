@@ -339,6 +339,13 @@ declare global {
     // 🎛️ WAVE 62: Vibe Selector
     setVibe: (vibeId: string) => Promise<{ success: boolean; vibeId?: string; error?: string }>
     /**
+     * 🌌 WAVE 7691: Toggle the Uranus color engine.
+     * true = full Uranus pipeline, false = legacy mode.
+     */
+    setUranusEngine: (enabled: boolean) => Promise<{ success: boolean; active: boolean }>
+    /** 🌌 WAVE 7691: Query the current Uranus engine state */
+    getUranusEngine: () => Promise<{ active: boolean }>
+    /**
      * 🧬 PROTEUS GRAFT: Send a FusedVibeBundle to the backend so it can graft
      * the custom vibe into the MAIN PROCESS's registries. Must be called BEFORE
      * setVibe() for any custom:... key, otherwise VibeManager 404s.

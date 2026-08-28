@@ -300,6 +300,23 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
     safeWebSend(win, 'lux:vibe-changed', { vibeId, timestamp: Date.now() })
     safeWebSend(win, 'selene:vibe-changed', { vibeId, timestamp: Date.now() })
   })
+
+  // 🌌 WAVE 7691: Uranus Engine toggle — switch between legacy and Uranus color pipelines
+  ipcMain.handle('lux:setUranusEngine', (_event, enabled: boolean): { success: boolean; active: boolean } => {
+    console.log('[IPC] lux:setUranusEngine:', enabled)
+    if (titanOrchestrator) {
+      titanOrchestrator.setUranusEngine(enabled)
+      return { success: true, active: titanOrchestrator.isUranusEngineActive() }
+    }
+    return { success: false, active: false }
+  })
+
+  ipcMain.handle('lux:getUranusEngine', (): { active: boolean } => {
+    if (titanOrchestrator) {
+      return { active: titanOrchestrator.isUranusEngineActive() }
+    }
+    return { active: false }
+  })
   
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // ðŸŽ¯ WAVE 2019: THE PULSE - Chronos Timeline â†’ Stage Commands

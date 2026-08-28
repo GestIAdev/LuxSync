@@ -1,0 +1,18 @@
+WAVE 7667: Phase 1 cleanup — unmount CalibrationDock, delete zombies, enforce HAL
+
+- ContextInspector: remove React.lazy CalibrationDock + Priority 1 branch
+  (calibrate mode now falls through to selection-based inspectors)
+- Delete Dock cluster: CalibrationDock, CalibrationFixtureList, AxisPolarityToggles
+  (last two orphaned by Dock removal)
+- Delete CalibrationView/components/ zombies: RadarXY, FixtureList, TestPanel,
+  OffsetPanel, index.ts (+ their .css)
+- TestPanel deletion destroys the lux.dmx.sendDirect raw-hardware bypass —
+  CalibrationView now routes ALL output exclusively via Aether HAL
+- Strip dead CSS: .calibration-dock*, .cal-btn*, .cal-fixture-list*,
+  .cal-polarity*, .cal-toggle* from erebus.css
+- Preserve: OffsetTrimPad, useCalibrationSession (Phase 2/3),
+  CalibrationTargetMini (Phase 3 payload reference, unmounted)
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

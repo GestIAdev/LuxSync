@@ -1,4 +1,4 @@
-import React, { Suspense, useMemo } from 'react'
+import React, { useMemo } from 'react'
 import { useSelectionStore } from '../../../../stores/selectionStore'
 import { useStageStore } from '../../../../stores/stageStore'
 import { FixtureInspector } from './FixtureInspector'
@@ -13,41 +13,26 @@ import type { ToolMode } from '../ErebusShell'
 // Tarjeta flotante a la derecha (320px).
 //
 // Prioridad de renderizado:
-//   1. toolMode === 'calibrate' → CalibrationDock (preserva Fase 1)
-//   2. 1 fixture seleccionado → FixtureInspector
-//   3. 1 rig seleccionado → RigInspector
-//   4. >1 elemento → MultiInspector
-//   5. Sin selección → null (se desvanece)
+//   1. 1 fixture seleccionado → FixtureInspector
+//   2. 1 rig seleccionado → RigInspector
+//   3. >1 elemento → MultiInspector
+//   4. Sin selección → null (se desvanece)
+//
+// WAVE 7667: CalibrationDock eliminado (Phase 1 cleanup). El modo 'calibrate'
+// cae al renderizado normal basado en selección. La Calibration Lab propia
+// (CalibrationView) es ahora la única superficie de calibración.
 // ═══════════════════════════════════════════════════════════════════════════
-
-const CalibrationDock = React.lazy(() => import('../calibration/CalibrationDock'))
 
 interface ContextInspectorProps {
   toolMode: ToolMode
 }
 
-export const ContextInspector: React.FC<ContextInspectorProps> = ({ toolMode }) => {
+export const ContextInspector: React.FC<ContextInspectorProps> = () => {
   const selectedIds = useSelectionStore(s => s.selectedIds)
   const fixtures = useStageStore(s => s.fixtures)
   const rigs = useStageStore(s => s.showFile?.rigs ?? [])
 
   const selectedArray = useMemo(() => [...selectedIds], [selectedIds])
-
-  // Priority 1: Calibrate mode
-  if (toolMode === 'calibrate') {
-    return (
-      <div className="erebus-context-inspector">
-        <div className="erebus-inspector-header">
-          <span className="erebus-inspector-title">Calibration</span>
-        </div>
-        <div className="erebus-inspector-body">
-          <Suspense fallback={<div style={{ color: 'var(--obs-ink)', fontSize: 11 }}>Loading...</div>}>
-            <CalibrationDock />
-          </Suspense>
-        </div>
-      </div>
-    )
-  }
 
   // No selection → hide
   if (selectedArray.length === 0) return null

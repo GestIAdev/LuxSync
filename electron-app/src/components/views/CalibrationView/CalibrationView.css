@@ -124,8 +124,10 @@
   grid-template-columns: 42fr 58fr;
   gap: 0.75rem;
   padding: 0.75rem;
-  /* Ocupa exactamente el espacio disponible bajo el header, sin scroll */
-  height: 100%;
+  /* WAVE 7675: Remove height: 100% — the grid row 1fr already sizes this.
+     height: 100% caused the content to expand beyond the grid cell and
+     pushed the header off-screen. overflow: hidden stays to clip the
+     inner zones, which handle their own scrolling. */
   min-height: 0;
   overflow: hidden;
 }

@@ -133,6 +133,7 @@ export type NodeRole =
 export type AetherChannelType =
   // ── INTENSITY ────────────────────────────────────────────────────────
   | 'dimmer'
+  | 'dimmer_fine'
   | 'strobe'
   | 'shutter'
   // ── COLOR ────────────────────────────────────────────────────────────

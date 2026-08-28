@@ -1,0 +1,161 @@
+I'll first locate the current WAVE 7635 limiter implementation to ground the math in the actual code, then perform the analysis.
+
+I have the exact WAVE 7635 logic from <ref_snippet file="C:\Users\Raulacate\Desktop\Proyectos programacion\LuxSync\electron-app\src\core\aether\resolver\NodeResolver.ts" lines="1719-1733" />. Proceeding with the mathematical validation.
+
+---
+
+# DSP DISCONTINUITY VALIDATION REPORT — WAVE 7636-DIAGNOSTIC
+
+## 0. Reference: The actual WAVE 7635 transfer function
+
+From `NodeResolver.ts:1721-1729`, the current limiter (8-bit path; 16-bit path at `1824-1830` is identical in form) is:
+
+```
+f(x) = | x                , if |x| ≤ H        (linear passthrough)
+       | H · tanh(|x|/H)  , if |x| > H        (tanh compression)
+```
+
+where `H = headroom` and the output keeps the sign of `x`. This is a **hard-knee** limiter: the compression branch only activates *after* `|x|` exceeds `H`, and at the knee it uses `tanh(|x|/H)` — i.e. the argument is **already ≥ 1** at activation.
+
+---
+
+## 1. Discontinuity Cliff — Current WAVE 7635 Logic (H = 50)
+
+### 1.1 Adjacent-input computation
+
+| absDelta | Branch | safeDelta |
+|----------|--------|-----------|
+| 50 | `50 ≤ 50` → linear | **50.000** |
+| 51 | `51 > 50` → tanh | `50·tanh(51/50)` = `50·tanh(1.02)` |
+
+Computing `tanh(1.02)`:
+- `tanh(1) = 0.761594`
+- `sech²(1) = 1 − tanh²(1) = 1 − 0.580026 = 0.419974`
+- `tanh(1.02) ≈ 0.761594 + 0.02·0.419974 = 0.769993`
+- → `safeDelta(51) ≈ 50 · 0.769993 = 38.4997`
+
+### 1.2 The delta between adjacent inputs
+
+```
+Δout = safeDelta(51) − safeDelta(50) = 38.50 − 50.00 = −11.50
+```
+
+**An input increase of +1 produces an output DECREASE of −11.5.** The transfer function is **non-monotonic across the knee**: the signal literally snaps *backwards* by ~23% of headroom the instant it crosses the threshold. This is the whiplash/bounce. ✅ Theory **confirmed**.
+
+### 1.3 Position discontinuity at the knee (formal proof)
+
+Evaluating the one-sided limits at `|x| = H`:
+
+- **Left limit** (linear branch, `x → H⁻`): `f(H⁻) = H = 50`
+- **Right limit** (tanh branch, `x → H⁺`): `f(H⁺) = H·tanh(H/H) = H·tanh(1) = 50·0.761594 = 38.0797`
+
+```
+Δposition = f(H⁺) − f(H⁻) = 38.08 − 50.00 = −11.92   (JUMP DISCONTINUITY)
+```
+
+The function is **not even C⁰ continuous** at the knee. The output has a vertical cliff of magnitude `H·(1 − tanh(1)) = H·0.23841`. For `H=50` that is **11.92 DMX units of instantaneous snap** — exactly the "chopped sine / bounce" artifact observed at >60% amplitude, where the sine crest repeatedly straddles the threshold and the rendered beam whiplashes between 50 and 38.
+
+### 1.4 Velocity (first derivative) discontinuity
+
+- Left derivative: `f'(H⁻) = 1` (pure linear)
+- Right derivative: `f'(H⁺) = d/dx[H·tanh(x/H)]|_{x=H} = sech²(x/H)|_{x=H} = sech²(1) = 0.41997`
+
+So even if the position jump were patched, the slope crashes from **1.0 → 0.42** at the knee — a velocity discontinuity that would still produce a visible "kink."
+
+### 1.5 Root cause
+
+The bug is structural: the tanh branch is entered with argument `|x|/H ≥ 1`, but `tanh(1) = 0.7616 < 1`. The compression curve therefore **starts below the linear curve's endpoint**. A correct soft-knee must (a) engage *before* the boundary so the curve has room to bend, and (b) be tangent to the linear segment at the knee. WAVE 7635 does neither.
+
+---
+
+## 2. Validation of the Proposed Piecewise Soft-Knee Limiter
+
+### 2.1 Definition (with H = 50, T = 40, R = 10)
+
+```
+T = 0.8·H = 40      (knee threshold)
+R = H − T  = 10     (soft-zone width)
+g(x) = | x                          , if |x| ≤ T
+       | T + R·tanh((|x|−T)/R)      , if |x| > T
+```
+
+### 2.2 Requested sample points
+
+| absDelta | Branch | Computation | safeDelta |
+|----------|--------|-------------|-----------|
+| 39 | linear | 39 | **39.000** |
+| 40 | linear (`>` strict, 40 ≯ 40) | 40 | **40.000** |
+| 41 | tanh | `40 + 10·tanh(1/10)` = `40 + 10·tanh(0.1)` = `40 + 10·0.099668` | **40.997** |
+| 50 | tanh | `40 + 10·tanh(10/10)` = `40 + 10·tanh(1)` = `40 + 10·0.761594` | **47.616** |
+| 100 | tanh | `40 + 10·tanh(60/10)` = `40 + 10·tanh(6)` = `40 + 10·0.999987` | **49.9999** |
+
+### 2.3 Catastrophic drop? — None.
+
+The sequence `39 → 40 → 40.997 → 47.616 → 49.9999` is **strictly monotonically increasing**. No backward step anywhere. The whiplash is gone.
+
+### 2.4 Asymptote behavior
+
+```
+lim_{|x|→∞} g(x) = T + R·tanh(∞) = T + R·1 = T + R = H = 50
+```
+
+The output asymptotes to `H = 50` from below and, since `tanh(u) < 1` for all finite `u`, **never reaches or exceeds `H`**. ✅ Bounded.
+
+### 2.5 Position continuity at the knee (C⁰)
+
+- Left: `g(T⁻) = T = 40`
+- Right: `g(T⁺) = T + R·tanh(0/R) = T + 0 = 40`
+
+```
+Δposition = 0   ✅ C⁰ continuous
+```
+
+### 2.6 Velocity continuity at the knee (C¹)
+
+- Left derivative: `g'(T⁻) = 1` (linear)
+- Right derivative: `g'(T⁺) = d/dx[T + R·tanh((x−T)/R)]|_{x=T} = sech²((x−T)/R)|_{x=T} = sech²(0) = 1`
+
+```
+Δvelocity = 1 − 1 = 0   ✅ C¹ continuous
+```
+
+The tanh branch is **tangent** to the linear branch at the knee — the slope matches exactly at 1.0 and decays smoothly (`sech²`) thereafter. This is the defining property of a proper soft-knee and is what eliminates the visible kink.
+
+### 2.7 Higher-order smoothness (advisory)
+
+The function is **C¹ but not C²**: the second derivative jumps from `0` (linear) to `2·sech²(0)·tanh(0)/R = 0` … actually `g''(T⁺) = (2/R)·sech²(0)·tanh(0) = 0` as well, so the second derivative is also continuous at the knee. The first *non-zero* mismatch appears in the third derivative. In practice C¹ is more than sufficient for a 44 Hz beam-position signal — the human eye/DMX quantization cannot resolve a C² kink here. No action needed.
+
+### 2.8 Verdict on the Architect's proposal
+
+| Property | Result |
+|----------|--------|
+| Monotonic (no bounce) | ✅ |
+| Bounded by `H`, never exceeds | ✅ |
+| C⁰ (position continuous) | ✅ |
+| C¹ (velocity continuous, no kink) | ✅ |
+| Smooth asymptote to boundary | ✅ |
+| Engages at 80% (gives bend room) | ✅ |
+
+**The proposed formula is mathematically sound and directly fixes the root cause.** It is the textbook soft-knee limiter design. No flaw detected.
+
+---
+
+## 3. Recommendation
+
+**Adopt the Architect's piecewise soft-knee limiter.** It converts the WAVE 7635 hard-knee cliff (C⁰-discontinuous, non-monotonic, −11.92 unit snap at H=50) into a C¹-continuous, monotonic, asymptotically-bounded curve.
+
+### 3.1 Implementation notes (for the eventual code change — not applied now, per read-only directive)
+
+1. The current code uses `absDelta <= panHeadroom` as the knee. Replace with `absDelta <= THRESHOLD` where `THRESHOLD = panHeadroom * 0.8`.
+2. In the compression branch, replace `Math.tanh(absDelta / panHeadroom) * panHeadroom` with `THRESHOLD + (panHeadroom - THRESHOLD) * Math.tanh((absDelta - THRESHOLD) / (panHeadroom - THRESHOLD))`.
+3. **Edge case — guard `R > 0`:** when `headroom` is very small (e.g. `basePan` near 0 or 255), `R = headroom − T = 0.2·headroom` could underflow toward 0 and cause division by zero in `tanh(excess/R)`. Add a guard: if `headroom < ε` (e.g. `< 1` DMX unit), fall back to `safeDelta = 0` (the existing `else` branch at line 1730-1732 already handles `panHeadroom <= 0`; extend the threshold to a small positive epsilon to also cover the degenerate soft-zone case).
+4. Apply the **identical** change to the 16-bit path (`NodeResolver.ts:1822-1830`) and to the tilt branches (8-bit `1738-1749`, 16-bit `1839+`), since all four share the same hard-knee defect.
+5. The `0.8` knee ratio is a tunable aesthetic parameter; `0.8` is a good default (20% soft zone). Lowering it (e.g. 0.7) gives a gentler, earlier bend; raising it (e.g. 0.9) keeps more linear range but a tighter, more abrupt soft zone. `0.8` is the conventional sweet spot.
+
+### 3.2 Optional alternative (only if C² smoothness is ever demanded)
+
+A cubic-Bezier splice across `[T, H]` with endpoints `g(T)=T, g'(T)=1` and `g(H)=H, g'(H)=0` yields full C¹ with an exactly-zero terminal slope (hard asymptote rather than tanh's soft one). But it is more code, requires clamping `x > H` to `H`, and offers no perceptible benefit over the tanh soft-knee at 44 Hz. **Not recommended** — the Architect's tanh design is the right call.
+
+---
+
+**Bottom line:** The WAVE 7635 hard-knee limiter is provably broken (C⁰ jump of `H·(1−tanh 1) ≈ 11.92` at H=50, plus a velocity kink 1.0→0.42). The proposed 80%-threshold piecewise tanh soft-knee is C¹-continuous, monotonic, and asymptotes cleanly to `H` without ever exceeding it. Approve and implement (with the `R > 0` guard) across all four pan/tilt × 8/16-bit branches.

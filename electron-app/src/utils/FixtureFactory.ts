@@ -50,6 +50,7 @@ export class FixtureFactory {
   static getChannelTypes(): ChannelType[] {
     return [
       'dimmer',
+      'dimmer_fine',
       'strobe',
       'shutter',
       'red',
@@ -77,6 +78,7 @@ export class FixtureFactory {
   static getChannelLabel(type: ChannelType): string {
     const labels: Record<ChannelType, string> = {
       'dimmer': 'Dimmer',
+      'dimmer_fine': 'Dimmer Fine',
       'strobe': 'Strobe',
       'shutter': 'Shutter',
       'red': 'Red',

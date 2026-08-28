@@ -118,14 +118,24 @@ function computeZoneLayout(
 interface ZoneLayerProps {
   stageWidth?: number
   stageDepth?: number
+  /** Screen pixels per world meter — for inverse-scaled labels */
+  pixelsPerMeter?: number
 }
 
 export const ZoneLayer: React.FC<ZoneLayerProps> = ({
   stageWidth = 12,
   stageDepth = 8,
+  pixelsPerMeter = 20,
 }) => {
   const [hoveredZone, setHoveredZone] = useState<string | null>(null)
   const [dragOverZone, setDragOverZone] = useState<string | null>(null)
+
+  // WAVE 7659: Inverse-scale zone labels for zoom legibility.
+  // Base size: 14 screen px → world meters. Clamp to a minimum world size
+  // so labels don't get absurdly large when zoomed out.
+  const pxPerM = Number.isFinite(pixelsPerMeter) && pixelsPerMeter > 0 ? pixelsPerMeter : 1
+  const zoneLabelFontSize = Math.max(14 / pxPerM, 0.12)
+  const zoneLabelOffset = Math.max(6 / pxPerM, 0.05)
 
   // ── Always show all 8 canonical zones (excluding 'unassigned') ──────────
   // The architectural plan must display the full spatial matrix regardless
@@ -178,19 +188,14 @@ export const ZoneLayer: React.FC<ZoneLayerProps> = ({
               strokeWidth={1.5}
               strokeDasharray="0.2 0.1"
               vectorEffect="non-scaling-stroke"
-              style={{
-                animation: isHighlighted
-                  ? 'none'
-                  : 'erebus-zone-dash 60s linear infinite',
-              }}
             />
 
-            {/* Zone label — technical typography, interior corner */}
+            {/* Zone label — WAVE 7659: inverse-scaled for zoom legibility */}
             <text
-              x={zone.x + 0.3}
-              y={zone.y + 0.35}
+              x={zone.x + zoneLabelOffset}
+              y={zone.y + zoneLabelOffset + zoneLabelFontSize}
               fill="var(--obs-ink, #8B94A8)"
-              fontSize={0.18}
+              fontSize={zoneLabelFontSize}
               fontFamily="'Inter', system-ui, sans-serif"
               fontWeight={600}
               letterSpacing="0.15em"

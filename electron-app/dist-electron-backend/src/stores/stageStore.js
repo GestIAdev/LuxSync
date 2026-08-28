@@ -290,6 +290,17 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
             set({ lastError: 'No show to save' });
             return false;
         }
+        // 🛡️ WAVE 7661: CRITICAL SAFETY GATE — Abort if no file path is set.
+        // This prevents the destructive overwrite bug: when the user clicks "New",
+        // showFilePath is set to null. If saveShow() proceeded with null, it would
+        // pass undefined to the backend, which falls back to getActiveShowPath()
+        // and OVERWRITES the previous show file on disk.
+        // The caller (CommandStrip) must handle this by triggering Save As instead.
+        if (!showFilePath) {
+            console.warn('[stageStore] 🛡️ saveShow aborted — no showFilePath (use Save As)');
+            set({ lastError: 'No file path — use Save As to choose a location' });
+            return false;
+        }
         try {
             // ══════════════════════════════════════════════════════════════════
             // 🛡️ WAVE 2093.2 (CW-AUDIT-8): FRONTEND VALIDATION GATE
@@ -343,6 +354,49 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
     saveShowAs: async (path) => {
         set({ showFilePath: path });
         return get().saveShow();
+    },
+    // WAVE 7661: Save As via native OS dialog. Uses the existing
+    // 'lux:stage:saveAsDialog' IPC handler. Updates showFilePath + showFile.name.
+    saveShowAsDialog: async () => {
+        const state = get();
+        const { showFile } = state;
+        if (!showFile) {
+            set({ lastError: 'No show to save' });
+            return false;
+        }
+        try {
+            const lux = window.lux;
+            if (!lux?.stage?.saveAsDialog) {
+                // Fallback: use saveShowAs with a generated path (dev mode)
+                console.warn('[stageStore] saveAsDialog not available — falling back to saveShow');
+                return get().saveShow();
+            }
+            // Update modification timestamp before save
+            showFile.modifiedAt = new Date().toISOString();
+            const result = await lux.stage.saveAsDialog(showFile, showFile.name);
+            if (!result.success || result.cancelled) {
+                console.log('[stageStore] Save As cancelled by user');
+                return false;
+            }
+            // Update the store with the new path and name
+            set({
+                showFilePath: result.filePath,
+                isDirty: false,
+            });
+            // Update showFile name if the backend changed it
+            if (result.name && showFile.name !== result.name) {
+                showFile.name = result.name;
+            }
+            get()._syncDerivedState();
+            console.log('[stageStore] 💾 Saved show via Save As dialog:', result.filePath);
+            return true;
+        }
+        catch (error) {
+            const msg = error instanceof Error ? error.message : 'Unknown error in Save As';
+            set({ lastError: msg });
+            console.error('[stageStore] ❌ Save As failed:', msg);
+            return false;
+        }
     },
     loadFromData: (data) => {
         const result = autoMigrate(data);
@@ -432,10 +486,6 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
         // Object.assign mutates in place - shallow comparison misses it
         const updatedFixture = { ...showFile.fixtures[fixtureIndex], ...updates };
         showFile.fixtures[fixtureIndex] = updatedFixture;
-        // WAVE 7631-DIAG: Trace position edits to find the Amnesia Bug culprit
-        if (updates.position) {
-            console.log(`[updateFixture] 📝 ${id} position →`, updates.position, '| caller:', new Error().stack?.split('\n')[2]?.trim());
-        }
         get()._syncDerivedState();
         get()._setDirty();
         // WAVE 7631: Sync position/rotation/orientation changes to the backend.
@@ -634,9 +684,6 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
     syncFixturesFromTruth: (truthFixtures) => {
         const { showFile } = get();
         if (showFile) {
-            // WAVE 7631-DIAG: Trace when syncFixturesFromTruth fires
-            console.log(`[syncFixturesFromTruth] 🔄 FIRED! truth=${truthFixtures.length} current=${showFile.fixtures.length} | caller:`, new Error().stack?.split('\n')[2]?.trim());
-            truthFixtures.slice(0, 3).forEach(f => console.log(`  truth ${f.id}: pos=`, f.position));
             // WAVE 7631: MERGE instead of blind overwrite.
             // The previous code blindly replaced all fixtures with the backend's
             // truth data, which has STALE positions (the backend was hydrated on
@@ -974,7 +1021,7 @@ export function setupStageStoreListeners() {
     if (!lux?.stage?.onLoaded)
         return () => { };
     const unsubscribe = lux.stage.onLoaded((data) => {
-        console.log('[stageStore] 📨 Received show from main process:', data.showFile.name, '| caller:', new Error().stack?.split('\n')[2]?.trim());
+        console.log('[stageStore] 📨 Received show from main process:', data.showFile.name);
         console.log('[stageStore] 📂 File path:', data.filePath || '(active)');
         if (data.migrated) {
             console.log('[stageStore] 🔄 Show was migrated from legacy format');

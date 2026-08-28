@@ -8,6 +8,7 @@ import type { IForgeNodeGraph } from '../core/forge/types'
 export type ChannelType =
   // INTENSITY
   | 'dimmer'
+  | 'dimmer_fine'
   | 'strobe'
   | 'shutter'
   // COLOR

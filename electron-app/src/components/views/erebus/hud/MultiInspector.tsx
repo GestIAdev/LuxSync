@@ -1,7 +1,8 @@
 import React, { useMemo, useCallback } from 'react'
 import { useStageStore } from '../../../../stores/stageStore'
 import { useSelectionStore } from '../../../../stores/selectionStore'
-import { CANONICAL_ZONES, snapToVoxel, clampToCrystalBox, VOXEL_SIZE } from '../../../../core/stage/ShowFileV2'
+import { useSnapStore } from '../../../../stores/snapStore'
+import { CANONICAL_ZONES } from '../../../../core/stage/ShowFileV2'
 import type { InstallationOrientation, CanonicalZone, FixtureV2 } from '../../../../core/stage/ShowFileV2'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -78,7 +79,8 @@ export const MultiInspector: React.FC<MultiInspectorProps> = ({ selectedIds }) =
   // WAVE 7606: Group alignment and distribution actions
   const handleAlignX = useCallback(() => {
     if (selectedFixtures.length < 2) return
-    const avgX = snapToVoxel(avgPosition.x)
+    const snap = useSnapStore.getState().snap
+    const avgX = snap(avgPosition.x)
     const updates = selectedFixtures.map(f => ({
       id: f.id,
       changes: { position: { ...f.position, x: avgX } },
@@ -88,7 +90,8 @@ export const MultiInspector: React.FC<MultiInspectorProps> = ({ selectedIds }) =
 
   const handleAlignZ = useCallback(() => {
     if (selectedFixtures.length < 2) return
-    const avgZ = snapToVoxel(avgPosition.z)
+    const snap = useSnapStore.getState().snap
+    const avgZ = snap(avgPosition.z)
     const updates = selectedFixtures.map(f => ({
       id: f.id,
       changes: { position: { ...f.position, z: avgZ } },
@@ -114,7 +117,8 @@ export const MultiInspector: React.FC<MultiInspectorProps> = ({ selectedIds }) =
     const step = (max - min) / (sorted.length - 1)
 
     const updates = sorted.map((f, i) => {
-      const newVal = snapToVoxel(min + step * i)
+      const snap = useSnapStore.getState().snap
+      const newVal = snap(min + step * i)
       return {
         id: f.id,
         changes: alongX

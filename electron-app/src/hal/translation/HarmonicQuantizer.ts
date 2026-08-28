@@ -87,6 +87,16 @@ const DEFAULT_BPM = 120
 /** Umbral mínimo de confianza del BPM para activar cuantización */
 const MIN_BPM_CONFIDENCE = 0.3
 
+/**
+ * WAVE 7645-16BIT-PHASE2: Anti-chatter debounce for low-BPM-confidence vibes.
+ * When BPM confidence < MIN_BPM_CONFIDENCE (chill/ambient/jazz), the quantizer
+ * previously was a pure pass-through, allowing every hue drift step to reach
+ * the color wheel → DarkSpin false transits → intermittent blackouts.
+ * This debounce enforces a minimum interval between color changes even when
+ * no musical gating is available, preventing rapid integer flipping.
+ */
+const AMBIENT_DEBOUNCE_MS = 2000
+
 /** Diferencia mínima de BPM para recalcular el período armónico */
 const BPM_RECALC_THRESHOLD = 2.0
 
@@ -172,14 +182,58 @@ export class HarmonicQuantizer {
       return this._result;
     }
 
-    // Confianza de BPM demasiado baja → fallback a debounce simple
-    // (dejar que HardwareSafetyLayer se encargue)
+    // Confianza de BPM demasiado baja → anti-chatter debounce.
+    // WAVE 7645-16BIT-PHASE2: Previously this was a pure pass-through, which
+    // allowed slow ambient hue drift to cause rapid color wheel integer flips
+    // → DarkSpin false transits → intermittent blackouts in chill/ambient.
+    // Now we enforce a minimum debounce (AMBIENT_DEBOUNCE_MS) between color
+    // changes, returning colorAllowed=false if the debounce window hasn't
+    // elapsed since the last change. Same-color requests always pass.
     if (bpmConfidence < MIN_BPM_CONFIDENCE) {
-      // WAVE 0-ALLOC: Mutate singleton result
-      this._result.colorAllowed = true;
+      let state = this.fixtureStates.get(fixtureId)
+      if (!state) {
+        state = {
+          lastColorChangeTime: 0,
+          lastAllowedColor: null,
+          currentHarmonicPeriodMs: 0,
+          lastBpmUsed: 0,
+        }
+        this.fixtureStates.set(fixtureId, state)
+      }
+
+      // Same color as last allowed → always pass (no gate consumed)
+      if (state.lastAllowedColor && this.colorsEqual(newColor, state.lastAllowedColor)) {
+        this._result.colorAllowed = true;
+        this._result.harmonicPeriodMs = 0;
+        this._result.beatMultiplier = 0;
+        this._result.timeUntilNextChangeMs = 0;
+        return this._result;
+      }
+
+      // Different color — check debounce window
+      const elapsed = now - state.lastColorChangeTime
+      if (elapsed >= AMBIENT_DEBOUNCE_MS) {
+        // Debounce elapsed — allow the change
+        state.lastColorChangeTime = now
+        if (!state.lastAllowedColor) {
+          state.lastAllowedColor = { r: 0, g: 0, b: 0 }
+        }
+        state.lastAllowedColor.r = newColor.r
+        state.lastAllowedColor.g = newColor.g
+        state.lastAllowedColor.b = newColor.b
+
+        this._result.colorAllowed = true;
+        this._result.harmonicPeriodMs = 0;
+        this._result.beatMultiplier = 0;
+        this._result.timeUntilNextChangeMs = 0;
+        return this._result;
+      }
+
+      // Debounce window active — block the change
+      this._result.colorAllowed = false;
       this._result.harmonicPeriodMs = 0;
       this._result.beatMultiplier = 0;
-      this._result.timeUntilNextChangeMs = 0;
+      this._result.timeUntilNextChangeMs = AMBIENT_DEBOUNCE_MS - elapsed;
       return this._result;
     }
 

@@ -31,6 +31,10 @@ export const CELL_TYPE_ADMITTANCE = Object.freeze({
     // Deben poder vivir en COLOR para nodos wash autónomos (dimmer+strobe integrados),
     // además de IMPACT/BEAM/ATMOSPHERE.
     dimmer: [NodeFamily.IMPACT, NodeFamily.COLOR, NodeFamily.BEAM, NodeFamily.ATMOSPHERE],
+    // WAVE 7644-16BIT-DIMMER: dimmer_fine is absorbed into dimmer at ingestion
+    // time (_pairDimmerFine), so it should never reach cell type admittance.
+    // Listed here only for Record<ChannelType, ...> exhaustiveness.
+    dimmer_fine: [NodeFamily.IMPACT, NodeFamily.COLOR, NodeFamily.BEAM, NodeFamily.ATMOSPHERE],
     strobe: [NodeFamily.IMPACT, NodeFamily.COLOR, NodeFamily.BEAM, NodeFamily.ATMOSPHERE],
     shutter: [NodeFamily.IMPACT, NodeFamily.COLOR, NodeFamily.BEAM, NodeFamily.ATMOSPHERE],
     // ── COLOR ─────────────────────────────────────────────────────────────

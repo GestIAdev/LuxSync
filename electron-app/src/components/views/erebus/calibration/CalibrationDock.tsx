@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react'
 import { useStageStore } from '../../../../stores/stageStore'
 import { useSelectionStore } from '../../../../stores/selectionStore'
+import { useLibraryStore } from '../../../../stores/libraryStore'
 import { useCalibrationSession } from './useCalibrationSession'
 import { CalibrationFixtureList } from './CalibrationFixtureList'
 import { OffsetTrimPad } from './OffsetTrimPad'
@@ -20,6 +21,8 @@ export const CalibrationDock: React.FC = () => {
   const fixtures = useStageStore(state => state.fixtures)
   const updateFixture = useStageStore(state => state.updateFixture)
   const selectedIds = useSelectionStore(state => state.selectedIds)
+  // WAVE 7662: DMX connection state for live calibration feedback
+  const dmxConnected = useLibraryStore(state => state.dmxStatus.connected)
 
   // Use first selected fixture as default, or allow override from list
   const [localFixtureId, setLocalFixtureId] = useState<string | null>(null)
@@ -50,6 +53,15 @@ export const CalibrationDock: React.FC = () => {
       <div className="calibration-dock-header">
         <span className="calibration-dock-title">Calibration Dock</span>
         {session.isDirty && <span className="calibration-dock-dirty">●</span>}
+        {/* WAVE 7662: Engine state indicator — warns user when live DMX won't output */}
+        <span
+          className={`cal-dmx-indicator ${dmxConnected ? 'cal-dmx-online' : 'cal-dmx-offline'}`}
+          title={dmxConnected
+            ? 'DMX connected — live calibration changes will output immediately'
+            : 'DMX offline — calibration values are stored but no physical output until DMX connects'}
+        >
+          {dmxConnected ? 'DMX LIVE' : 'DMX OFFLINE'}
+        </span>
       </div>
 
       {/* Fixture List */}

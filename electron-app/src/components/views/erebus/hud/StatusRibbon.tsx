@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { useStageStore } from '../../../../stores/stageStore'
-import { VOXEL_SIZE } from '../../../../core/stage/ShowFileV2'
+import { useSnapStore } from '../../../../stores/snapStore'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // StatusRibbon — Satélite Inferior
@@ -19,11 +19,14 @@ import { VOXEL_SIZE } from '../../../../core/stage/ShowFileV2'
 
 export const StatusRibbon: React.FC = () => {
   const fixtureCount = useStageStore(s => s.fixtures.length)
-  const showName = useStageStore(s => s.showFile?.name ?? '—')
+  const showName = useStageStore(s => s.showFile?.name ?? 'Untitled Show')
+  const isDirty = useStageStore(s => s.isDirty)
+  const showFilePath = useStageStore(s => s.showFilePath)
+  const snapEnabled = useSnapStore(s => s.snapEnabled)
+  const snapSize = useSnapStore(s => s.snapSize)
 
   // ── Live cursor coords (updated via rAF, no React re-render) ───────────────
   const coordsRef = useRef<HTMLSpanElement>(null)
-  const [snapActive] = useState(true)
 
   useEffect(() => {
     let rafId: number
@@ -58,14 +61,22 @@ export const StatusRibbon: React.FC = () => {
 
   return (
     <div className="erebus-status-ribbon">
-      <span className="erebus-status-show-name">{showName}</span>
+      <span className="erebus-status-show-name">
+        {showName}{isDirty ? ' *' : ''}
+      </span>
+      {!showFilePath && (
+        <>
+          <span className="erebus-status-sep">│</span>
+          <span style={{ color: 'var(--obs-amber, #F5B04D)', fontSize: '10px' }}>(unsaved)</span>
+        </>
+      )}
       <span className="erebus-status-sep">│</span>
       <span ref={coordsRef}>x:0.00 y:0.00 z:0.00</span>
       <span className="erebus-status-sep">│</span>
       <span>{fixtureCount} fixtures</span>
       <span className="erebus-status-sep">│</span>
       <span className="erebus-status-accent">
-        Snap {VOXEL_SIZE}m {snapActive ? 'ON' : 'OFF'}
+        Snap {snapSize}m {snapEnabled ? 'ON' : 'OFF'}
       </span>
       <span className="erebus-status-sep">│</span>
       <span className="erebus-status-accent">Erebus Engine Ready</span>

@@ -688,7 +688,20 @@ export function registerAetherIPCHandlers(): void {
         // El arbiter aplica clamp interno [0, 2] como red de seguridad.
         arbiter.setRelativeOffsetAmplitude(amplitudeNorm * 2)
         // 🏗️ WAVE 7179 (M4): Mirror amplitude to resolver for post-solve VMM fusion.
-        try { getTitanOrchestrator().getAetherResolver().setRelativeOffsetAmplitude(amplitudeNorm * 2) } catch { /* resolver not ready */ }
+        // WAVE 7641: AMPLITUDE PIPELINE REBALANCE — The resolver's IK offset path
+        // has its own scale chain (VMM_OFFSET_SCALE_PAN 0.5 / TILT 1.0 × 255), so
+        // the ×2 boost designed for the arbiter's classic fusion (where
+        // RELATIVE_OFFSET_SCALE_PAN 0.5 brings it back to 1:1) does NOT apply here.
+        // With the double-application fix in AetherKineticEngine.tick() (WAVE 7641),
+        // amplitude is now applied ONCE in the resolver. The 0.9 factor provides a
+        // linear, correctly bounded signal:
+        //   Pan:  amp × 0.5 × 255 = 0.9 × 127.5 = ±114.75 DMX (45% of range)
+        //   Tilt: amp × 1.0 × 255 = 0.9 × 255    = ±229.5 DMX (90% of range)
+        //   Physical: ±243° on both axes → true circle (WAVE 7639 aspect ratio).
+        // This is "massive but reasonable" — matches VMM's maximum panScale (0.95)
+        // while leaving soft-knee limiter headroom. The arbiter call above is left
+        // at ×2 since it serves the classic (non-IK) fusion path unchanged.
+        try { getTitanOrchestrator().getAetherResolver().setRelativeOffsetAmplitude(amplitudeNorm * 0.9) } catch { /* resolver not ready */ }
 
         // Construir nodeIds en formato Aether: `${fixtureId}:kinetic`
         const nodeIds = fixtureIds.map(id => resolveKineticNodeId(`${id}:kinetic`))

@@ -85,9 +85,27 @@ const MATH_TELEMETRY_EVERY_FRAMES = 30;
 const IK_DEFAULT_PAN_RANGE_DEG = 540;
 const IK_DEFAULT_TILT_RANGE_DEG = 270;
 // 🏗️ WAVE 7179 (M4): VMM offset scale factors for post-solve DMX-domain fusion.
-// Mirror NodeArbiter's RELATIVE_OFFSET_SCALE_PAN/TILT — preserves legacy visual behavior.
+// WAVE 7639: SPATIAL ASPECT RATIO CORRECTION for the IK offset path.
+//   Moving heads typically have 540° Pan vs 270° Tilt → 1 DMX step of Pan covers
+//   2× the physical angle of 1 DMX step of Tilt. Without correction, a 1:1 DMX
+//   offset ratio renders as a 2:1 ellipse (flattened in tilt) in physical space.
+//
+//   The classic (non-IK) path compensates upstream: AetherKineticEngine.tick()
+//   applies PAN_ASPECT_RATIO (0.5) to X before emitting pan_base/tilt_base, and
+//   NodeArbiter's RELATIVE_OFFSET_SCALE_PAN/TILT (0.5/0.5) handles the rest.
+//
+//   The IK path deliberately does NOT apply PAN_ASPECT_RATIO upstream (see
+//   AetherKineticEngine.ts:770-772) — the raw [-1,+1] pattern is emitted as
+//   pan_offset/tilt_offset. The aspect correction must therefore happen HERE:
+//     PAN  = 0.5  (halve the pan DMX excursion)
+//     TILT = 1.0  (full tilt DMX excursion)
+//   → 0.5:1.0 DMX ratio × 2:1 physical ratio = 1:1 physical circle. ✅
+//
+//   NOTE: This does NOT match NodeArbiter's RELATIVE_OFFSET_SCALE_TILT (0.5).
+//   That constant serves the classic path where PAN_ASPECT_RATIO is already
+//   applied upstream. The two paths have different correction points by design.
 const VMM_OFFSET_SCALE_PAN = 0.5;
-const VMM_OFFSET_SCALE_TILT = 0.5;
+const VMM_OFFSET_SCALE_TILT = 1.0;
 const VMM_GIMBAL_TILT_CENTER = 0.5;
 const VMM_GIMBAL_TILT_FADE_HALFWIDTH = 10 / 255;
 // WAVE 4735.3: auditoría de salud del tick Aether (~2.27s @ 44Hz)
@@ -855,6 +873,11 @@ export class NodeResolver {
                                 if (idx < 0 || idx >= DMX_UNIVERSE_SIZE)
                                     continue;
                                 buf[idx] = 0;
+                                // WAVE 7645-16BIT-PHASE2: Zero the fine byte for 16-bit dimmers
+                                // to prevent residual ghost output during DarkSpin transit.
+                                if (chDef.is16bit && idx + 1 < DMX_UNIVERSE_SIZE) {
+                                    buf[idx + 1] = 0;
+                                }
                             }
                         }
                     }
@@ -1001,6 +1024,10 @@ export class NodeResolver {
                             if (idx < 0 || idx >= DMX_UNIVERSE_SIZE)
                                 continue;
                             buf[idx] = 0;
+                            // WAVE 7645-16BIT-PHASE2: Zero the fine byte for 16-bit dimmers.
+                            if (chDef.is16bit && idx + 1 < DMX_UNIVERSE_SIZE) {
+                                buf[idx + 1] = 0;
+                            }
                         }
                     }
                 }
@@ -1188,43 +1215,51 @@ export class NodeResolver {
             if (chDef.type === 'rotation' && safeDmxValue === 127) {
                 // DYE rotation DMX write log silenced
             }
-            buf[bufIdx] = safeDmxValue;
-            // Strobe trace diagnostic removed (WAVE 2526)
-            // 🩸 WAVE 6040-DIAG: Classic kinetic path — log pan/tilt writes
-            // if (node.family === NodeFamily.KINETIC && (chDef.type === PAN_COARSE || chDef.type === TILT_COARSE) && this._resolveFrameIndex % 44 === 0) {
-            //   console.log(`[KINETIC-DIAG] ${node.nodeId}: CLASSIC-WRITE ${chDef.type}=${safeDmxValue} rawSource=${rawSource} nodeBlocked=${nodeBlocked}`)
-            // }
-            // Telemetría legacy removida.
-            // Canales 16-bit: escribir byte fine (LSB) en el slot siguiente
-            if (chDef.is16bit) {
-                const fineIdx = bufIdx + 1;
-                if (fineIdx < DMX_UNIVERSE_SIZE) {
-                    const raw16 = Math.round(normalized * 65535);
-                    const safeRaw16 = Number.isFinite(raw16) ? raw16 : 0;
-                    buf[fineIdx] = sanitizeDmxByte(safeRaw16 & 0xFF); // byte fine (LSB)
-                    // El byte coarse (MSB) ya fue escrito como (raw16 >> 8) arriba,
-                    // pero nuestro `dmxValue` ya redondeó al byte coarse.
-                    // Corregir el coarse para coherencia 16-bit:
-                    buf[bufIdx] = sanitizeDmxByte((safeRaw16 >> 8) & 0xFF);
-                }
-            }
             // 🏛️ DMX GOVERNOR ENGINE — evaluación declarativa de última milla. Zero-alloc.
             // F9: O(1) lookup via precomputed map — no linear scan.
+            // WAVE 7645-16BIT-PHASE2: Governor moved BEFORE the 16-bit split so that
+            // any coarse byte modification is reflected in the fine byte. Previously
+            // the governor ran after the split, overwriting the coarse and leaving
+            // the fine stale → ghost output on 16-bit dimmers.
             const _govMap = this._governorMaps.get(device.deviceId);
             let finalByte = safeDmxValue;
             if (_govMap !== undefined) {
                 finalByte = sanitizeDmxByte(applyDMXGovernors(_govMap, chDef.dmxOffset, chDef.type, rawNormalized, safeDmxValue));
-                // // 🚨 EL SONAR DEL GOBERNADOR (Loguea SOLO si altera el byte físico)
-                // // Usamos Math.random() < 0.02 para que a 44Hz solo escupa el log aprox 1 vez por segundo y no congele la terminal.
-                // if (finalByte !== safeDmxValue && Math.random() < 0.02) {
-                //   console.log(`[Governor MUX 🏛️] Intercept: ${device.deviceId} (CH:${chDef.dmxOffset}|${chDef.type}) | Math: ${safeDmxValue} ──► CLAMP: ${finalByte}`)
-                // }
-                // // WAVE 7031 DIAG: Trace dimmer/strobe governor evaluation at 1Hz
-                // if ((chDef.type === 'dimmer' || chDef.type === 'strobe') && this._resolveFrameIndex % 44 === 0) {
-                //   console.log(`[WAVE-7031-DIAG] ${device.deviceId} ch=${chDef.dmxOffset} type=${chDef.type} norm=${rawNormalized.toFixed(3)} byte=${safeDmxValue} → final=${finalByte} govs=${_govs.length}`)
-                // }
             }
             buf[bufIdx] = finalByte;
+            // Strobe trace diagnostic removed (WAVE 2526)
+            // 🩸 WAVE 6040-DIAG: Classic kinetic path — log pan/tilt writes
+            // if (node.family === NodeFamily.KINETIC && (chDef.type === PAN_COARSE || chDef.type === TILT_COARSE) && this._resolveFrameIndex % 44 === 0) {
+            //   console.log(`[KINETIC-DIAG] ${node.nodeId}: CLASSIC-WRITE ${chDef.type}=${safeDmxValue} rawSource=${rawSource} nodeBlocked=${nodeBlocked}`)
+            // )
+            // Telemetría legacy removida.
+            // Canales 16-bit: escribir byte fine (LSB) en el slot siguiente.
+            // WAVE 7645-16BIT-PHASE2: When the governor or personality remapper
+            // modified the coarse byte (finalByte ≠ safeDmxValue), the fine byte
+            // must be recalculated from the final coarse to maintain coherence.
+            // If the governor clamped to a fixed value (e.g. minDimmer), the fine
+            // byte is set to 0 for predictability — the governor's intent is a
+            // fixed floor, not a sub-byte-precision value.
+            if (chDef.is16bit) {
+                const fineIdx = bufIdx + 1;
+                if (fineIdx < DMX_UNIVERSE_SIZE) {
+                    if (finalByte !== safeDmxValue) {
+                        // Governor/personality modified the coarse — sync fine to 0
+                        // for deterministic governor behavior (clamps/floors are not
+                        // sub-byte-precision operations).
+                        buf[fineIdx] = 0;
+                    }
+                    else {
+                        // No governor modification — use the full 16-bit precision
+                        // from the original normalized value.
+                        const raw16 = Math.round(normalized * 65535);
+                        const safeRaw16 = Number.isFinite(raw16) ? raw16 : 0;
+                        buf[fineIdx] = sanitizeDmxByte(safeRaw16 & 0xFF); // byte fine (LSB)
+                        // Corregir el coarse para coherencia 16-bit:
+                        buf[bufIdx] = sanitizeDmxByte((safeRaw16 >> 8) & 0xFF);
+                    }
+                }
+            }
         }
     }
     /**
@@ -1321,6 +1356,10 @@ export class NodeResolver {
                         buf[idx] = 0;
                         killed++;
                     }
+                    // WAVE 7645-16BIT-PHASE2: Zero the fine byte for 16-bit dimmers.
+                    if (chDef.is16bit && idx + 1 < DMX_UNIVERSE_SIZE && buf[idx + 1] > 0) {
+                        buf[idx + 1] = 0;
+                    }
                 }
             }
             if (killed > 0) {
@@ -1389,6 +1428,10 @@ export class NodeResolver {
                     if (idx < 0 || idx >= DMX_UNIVERSE_SIZE)
                         continue;
                     buf[idx] = 0;
+                    // WAVE 7645-16BIT-PHASE2: Zero the fine byte for 16-bit dimmers.
+                    if (chDef.is16bit && idx + 1 < DMX_UNIVERSE_SIZE) {
+                        buf[idx + 1] = 0;
+                    }
                 }
             }
         }
@@ -1493,30 +1536,58 @@ export class NodeResolver {
                     ? 1
                     : tiltDist / VMM_GIMBAL_TILT_FADE_HALFWIDTH;
                 const panDelta = panOffset * amp * VMM_OFFSET_SCALE_PAN * effectiveDistScale * gimbalFactor * 255;
-                // WAVE 7628: Soft-clip the delta based on available headroom.
-                // tanh(|delta|/headroom) * headroom → asymptotically approaches the
-                // boundary but never flatlines. For small deltas (delta << headroom),
-                // tanh(x) ≈ x → no compression, waveform preserved.
+                // WAVE 7637: C1-CONTINUOUS SOFT-KNEE LIMITER (replaces WAVE 7635 hard-knee).
+                // WAVE 7635's hard-knee was C0-discontinuous: at the knee |x|=H the tanh
+                // branch evaluated tanh(1)=0.7616, producing an instantaneous snap of
+                // H·(1−tanh 1)≈11.92 DMX units (for H=50) and a velocity kink 1.0→0.42.
+                // This caused the >60% amplitude "bounce"/gimbal whiplash.
+                //
+                // The fix engages compression at 80% of headroom (THRESHOLD = 0.8·H) and
+                // compresses only the excess into the remaining 20% via tanh. The tanh
+                // branch is tangent to the linear branch at the knee (both value and
+                // first derivative match: g(T)=T, g'(T)=sech²(0)=1), so the curve is C1-
+                // continuous, monotonic, and asymptotes to H without ever exceeding it.
+                // See docs/ik/DSP7636diag.md for the full mathematical proof.
                 const panHeadroom = panDelta > 0 ? (255 - basePan) : basePan;
-                let safePanDelta;
-                if (panHeadroom > 0) {
-                    safePanDelta = Math.tanh(Math.abs(panDelta) / panHeadroom) * panHeadroom * Math.sign(panDelta);
+                let safePanDelta = panDelta;
+                const absDelta = Math.abs(panDelta);
+                // Guard against division by zero when headroom is degenerate (base near
+                // 0 or 255): remaining = 0.2·headroom would underflow and divide-by-zero
+                // in tanh(excess/remaining). Fall back to zero offset in that case.
+                if (panHeadroom < 1) {
+                    safePanDelta = 0;
                 }
                 else {
-                    safePanDelta = 0;
+                    const THRESHOLD = panHeadroom * 0.8;
+                    if (absDelta > THRESHOLD) {
+                        const excess = absDelta - THRESHOLD;
+                        const remaining = panHeadroom - THRESHOLD;
+                        // Compress only the excess into the remaining 20%
+                        safePanDelta = THRESHOLD + remaining * Math.tanh(excess / remaining);
+                        // Restore sign
+                        safePanDelta *= Math.sign(panDelta);
+                    }
                 }
                 logicalPan = basePan + safePanDelta;
             }
             if (hasTiltOffset) {
                 const tiltDelta = tiltOffset * amp * VMM_OFFSET_SCALE_TILT * effectiveDistScale * 255;
-                // WAVE 7628: Same tanh soft-clip for tilt.
+                // WAVE 7637: C1-continuous soft-knee limiter for tilt (see Pan block above
+                // and docs/ik/DSP7636diag.md for the full proof). Replaces WAVE 7635 hard-knee.
                 const tiltHeadroom = tiltDelta > 0 ? (255 - baseTilt) : baseTilt;
-                let safeTiltDelta;
-                if (tiltHeadroom > 0) {
-                    safeTiltDelta = Math.tanh(Math.abs(tiltDelta) / tiltHeadroom) * tiltHeadroom * Math.sign(tiltDelta);
+                let safeTiltDelta = tiltDelta;
+                const absTiltDelta = Math.abs(tiltDelta);
+                if (tiltHeadroom < 1) {
+                    safeTiltDelta = 0;
                 }
                 else {
-                    safeTiltDelta = 0;
+                    const THRESHOLD = tiltHeadroom * 0.8;
+                    if (absTiltDelta > THRESHOLD) {
+                        const excess = absTiltDelta - THRESHOLD;
+                        const remaining = tiltHeadroom - THRESHOLD;
+                        safeTiltDelta = THRESHOLD + remaining * Math.tanh(excess / remaining);
+                        safeTiltDelta *= Math.sign(tiltDelta);
+                    }
                 }
                 logicalTilt = baseTilt + safeTiltDelta;
             }
@@ -1583,27 +1654,47 @@ export class NodeResolver {
                     ? 1
                     : tiltDist16 / VMM_GIMBAL_TILT_FADE_HALFWIDTH;
                 const panDelta16 = panOffset * amp * VMM_OFFSET_SCALE_PAN * effectiveDistScale * gimbalFactor16 * 65535;
-                // WAVE 7628: tanh soft-clip in 16-bit domain.
+                // WAVE 7637: C1-continuous soft-knee limiter — 16-bit domain.
+                // Same logic as the 8-bit Pan path (see above and docs/ik/DSP7636diag.md).
+                // Replaces WAVE 7635 hard-knee. Guard uses < 256 (16-bit epsilon) since
+                // remaining = 0.2·headroom must stay well above the 16-bit quantization
+                // step to avoid divide-by-zero in tanh(excess/remaining).
                 const panHeadroom16 = panDelta16 > 0 ? (65535 - basePan16) : basePan16;
-                let safePanDelta16;
-                if (panHeadroom16 > 0) {
-                    safePanDelta16 = Math.tanh(Math.abs(panDelta16) / panHeadroom16) * panHeadroom16 * Math.sign(panDelta16);
+                let safePanDelta16 = panDelta16;
+                const absDelta16 = Math.abs(panDelta16);
+                if (panHeadroom16 < 256) {
+                    safePanDelta16 = 0;
                 }
                 else {
-                    safePanDelta16 = 0;
+                    const THRESHOLD16 = panHeadroom16 * 0.8;
+                    if (absDelta16 > THRESHOLD16) {
+                        const excess16 = absDelta16 - THRESHOLD16;
+                        const remaining16 = panHeadroom16 - THRESHOLD16;
+                        safePanDelta16 = THRESHOLD16 + remaining16 * Math.tanh(excess16 / remaining16);
+                        safePanDelta16 *= Math.sign(panDelta16);
+                    }
                 }
                 safePan16 = basePan16 + safePanDelta16;
             }
             if (hasTiltOffset) {
                 const tiltDelta16 = tiltOffset * amp * VMM_OFFSET_SCALE_TILT * effectiveDistScale * 65535;
-                // WAVE 7628: Same tanh soft-clip for tilt 16-bit.
+                // WAVE 7637: C1-continuous soft-knee limiter for tilt — 16-bit domain.
+                // Same logic as the 16-bit Pan path (see above and docs/ik/DSP7636diag.md).
+                // Replaces WAVE 7635 hard-knee. Guard uses < 256 (16-bit epsilon).
                 const tiltHeadroom16 = tiltDelta16 > 0 ? (65535 - baseTilt16) : baseTilt16;
-                let safeTiltDelta16;
-                if (tiltHeadroom16 > 0) {
-                    safeTiltDelta16 = Math.tanh(Math.abs(tiltDelta16) / tiltHeadroom16) * tiltHeadroom16 * Math.sign(tiltDelta16);
+                let safeTiltDelta16 = tiltDelta16;
+                const absTiltDelta16 = Math.abs(tiltDelta16);
+                if (tiltHeadroom16 < 256) {
+                    safeTiltDelta16 = 0;
                 }
                 else {
-                    safeTiltDelta16 = 0;
+                    const THRESHOLD16 = tiltHeadroom16 * 0.8;
+                    if (absTiltDelta16 > THRESHOLD16) {
+                        const excess16 = absTiltDelta16 - THRESHOLD16;
+                        const remaining16 = tiltHeadroom16 - THRESHOLD16;
+                        safeTiltDelta16 = THRESHOLD16 + remaining16 * Math.tanh(excess16 / remaining16);
+                        safeTiltDelta16 *= Math.sign(tiltDelta16);
+                    }
                 }
                 safeTilt16 = baseTilt16 + safeTiltDelta16;
             }

@@ -126,7 +126,10 @@ interface StageStoreActions {
   
   /** Save current show to disk */
   saveShow: () => Promise<boolean>
-  
+
+  /** WAVE 7661: Save As via native dialog — prompts user for path, updates showFilePath */
+  saveShowAsDialog: () => Promise<boolean>
+
   /** Save show to a new path */
   saveShowAs: (path: string) => Promise<boolean>
   
@@ -556,9 +559,21 @@ export const useStageStore = create<StageStore>()(
       // The debouncer captures stale showFile references. Force fresh read.
       const state = get()
       const { showFile, showFilePath } = state
-      
+
       if (!showFile) {
         set({ lastError: 'No show to save' })
+        return false
+      }
+
+      // 🛡️ WAVE 7661: CRITICAL SAFETY GATE — Abort if no file path is set.
+      // This prevents the destructive overwrite bug: when the user clicks "New",
+      // showFilePath is set to null. If saveShow() proceeded with null, it would
+      // pass undefined to the backend, which falls back to getActiveShowPath()
+      // and OVERWRITES the previous show file on disk.
+      // The caller (CommandStrip) must handle this by triggering Save As instead.
+      if (!showFilePath) {
+        console.warn('[stageStore] 🛡️ saveShow aborted — no showFilePath (use Save As)')
+        set({ lastError: 'No file path — use Save As to choose a location' })
         return false
       }
       
@@ -620,6 +635,57 @@ export const useStageStore = create<StageStore>()(
     saveShowAs: async (path) => {
       set({ showFilePath: path })
       return get().saveShow()
+    },
+
+    // WAVE 7661: Save As via native OS dialog. Uses the existing
+    // 'lux:stage:saveAsDialog' IPC handler. Updates showFilePath + showFile.name.
+    saveShowAsDialog: async () => {
+      const state = get()
+      const { showFile } = state
+
+      if (!showFile) {
+        set({ lastError: 'No show to save' })
+        return false
+      }
+
+      try {
+        const lux = (window as any).lux
+        if (!lux?.stage?.saveAsDialog) {
+          // Fallback: use saveShowAs with a generated path (dev mode)
+          console.warn('[stageStore] saveAsDialog not available — falling back to saveShow')
+          return get().saveShow()
+        }
+
+        // Update modification timestamp before save
+        showFile.modifiedAt = new Date().toISOString()
+
+        const result = await lux.stage.saveAsDialog(showFile, showFile.name)
+
+        if (!result.success || result.cancelled) {
+          console.log('[stageStore] Save As cancelled by user')
+          return false
+        }
+
+        // Update the store with the new path and name
+        set({
+          showFilePath: result.filePath,
+          isDirty: false,
+        })
+
+        // Update showFile name if the backend changed it
+        if (result.name && showFile.name !== result.name) {
+          showFile.name = result.name
+        }
+
+        get()._syncDerivedState()
+        console.log('[stageStore] 💾 Saved show via Save As dialog:', result.filePath)
+        return true
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : 'Unknown error in Save As'
+        set({ lastError: msg })
+        console.error('[stageStore] ❌ Save As failed:', msg)
+        return false
+      }
     },
     
     loadFromData: (data) => {

@@ -1,9 +1,12 @@
-import React, { useRef, useCallback, useEffect } from 'react'
+import React, { useRef, useCallback } from 'react'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // OffsetTrimPad — XY drag pad for pan/tilt offset degrees.
 // Drag X = panOffset (-30° to +30°), Drag Y = tiltOffset (-30° to +30°).
 // Snap to 0.5° increments. Double-click resets to 0.
+//
+// WAVE 7662: Added precision numeric inputs for Pan and Tilt below the pad.
+// Typing a number fires the same onChange flow as dragging.
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface OffsetTrimPadProps {
@@ -54,6 +57,19 @@ export const OffsetTrimPad: React.FC<OffsetTrimPadProps> = ({ panOffset, tiltOff
     onChange(0, 0)
   }, [onChange])
 
+  // ── Numeric input handlers (WAVE 7662) ────────────────────────────────────
+  const handlePanInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = parseFloat(e.target.value)
+    if (!Number.isFinite(v)) return
+    onChange(snap(Math.max(-MAX_DEG, Math.min(MAX_DEG, v))), tiltOffset)
+  }, [tiltOffset, onChange])
+
+  const handleTiltInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = parseFloat(e.target.value)
+    if (!Number.isFinite(v)) return
+    onChange(panOffset, snap(Math.max(-MAX_DEG, Math.min(MAX_DEG, v))))
+  }, [panOffset, onChange])
+
   // Crosshair position in px from center
   const crossX = (panOffset / MAX_DEG) * (PAD_SIZE / 2)
   const crossY = (tiltOffset / MAX_DEG) * (PAD_SIZE / 2)
@@ -89,6 +105,34 @@ export const OffsetTrimPad: React.FC<OffsetTrimPadProps> = ({ panOffset, tiltOff
         />
       </div>
       <div className="cal-trim-pad-hint">Drag to adjust · Double-click to reset</div>
+
+      {/* WAVE 7662: Precision numeric inputs */}
+      <div className="cal-trim-pad-numinputs">
+        <label className="cal-num-field">
+          <span className="cal-num-field-label">Pan°</span>
+          <input
+            type="number"
+            step={0.5}
+            min={-MAX_DEG}
+            max={MAX_DEG}
+            value={Number(panOffset.toFixed(1))}
+            onChange={handlePanInput}
+            className="cal-num-input"
+          />
+        </label>
+        <label className="cal-num-field">
+          <span className="cal-num-field-label">Tilt°</span>
+          <input
+            type="number"
+            step={0.5}
+            min={-MAX_DEG}
+            max={MAX_DEG}
+            value={Number(tiltOffset.toFixed(1))}
+            onChange={handleTiltInput}
+            className="cal-num-input"
+          />
+        </label>
+      </div>
     </div>
   )
 }

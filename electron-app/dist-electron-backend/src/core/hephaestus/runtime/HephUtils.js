@@ -66,8 +66,9 @@ const DMX_SCALED_PARAMS = new Set([
 /**
  * ⚒️ WAVE 2030.24: 16-bit movement params.
  * These scale 0-1 → 0-65535 and emit BOTH coarse (MSB) and fine (LSB).
+ * WAVE 7644-16BIT-DIMMER: Added 'dimmer' for 16-bit dimming support.
  */
-const DMX_16BIT_PARAMS = new Set(['pan', 'tilt']);
+const DMX_16BIT_PARAMS = new Set(['pan', 'tilt', 'dimmer']);
 /** Parameters that pass through as 0-1 floats (engine-internal) */
 const FLOAT_PASSTHROUGH_PARAMS = new Set([
     'speed', 'width', 'direction', 'globalComp',

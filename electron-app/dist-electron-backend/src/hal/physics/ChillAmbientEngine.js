@@ -48,10 +48,15 @@
 // ═══════════════════════════════════════════════════════════════════════════
 const TWO_PI = 2 * Math.PI;
 // ── 1. MORPH GLOBAL ────────────────────────────────────────────────────────
-/** Período del seno rápido (s) — pulso principal del océano (WAVE 7129: 200s) */
-const MORPH_FAST_PERIOD_S = 200.0;
-/** Período del seno lento (s) — respiración profunda (WAVE 7129: 600s = 10 min) */
-const MORPH_SLOW_PERIOD_S = 600.0;
+/** Período del seno rápido (s) — pulso principal del océano.
+ *  WAVE 7646-CHILL-SPEED: 200s → 60s. A 200s/255 steps, cada step 8-bit
+ *  dwellaba ~2.3s (visible flicker en PARs sin DIMMER_FINE). A 60s, el
+ *  dwell baja a ~0.7s — below flicker-fusion threshold en visión foveal. */
+const MORPH_FAST_PERIOD_S = 60.0;
+/** Período del seno lento (s) — respiración profunda.
+ *  WAVE 7646-CHILL-SPEED: 600s → 180s. Mantiene el carácter envolvente
+ *  sin llegar al rango de stepping visible en 8-bit. */
+const MORPH_SLOW_PERIOD_S = 180.0;
 /** Peso del seno rápido en la suma ponderada */
 const MORPH_FAST_WEIGHT = 0.60;
 /** Peso del seno lento en la suma ponderada */
@@ -61,8 +66,10 @@ const MORPH_FLOOR = 0.20;
 /** Rango dinámico sobre el piso */
 const MORPH_RANGE = 0.60; // → morphFactor ∈ [0.20, 0.80]
 // ── 2. LA OLA — Offsets Zonales ────────────────────────────────────────────
-/** Período de la ola (s) — tiempo en que la ola cruza la sala de front a back (WAVE 7129: 240s = 4 min) */
-const TIDE_PERIOD_S = 240.0;
+/** Período de la ola (s) — tiempo en que la ola cruza la sala de front a back.
+ *  WAVE 7646-CHILL-SPEED: 240s → 90s. Acelera el tránsito zonal para que
+ *  los steps 8-bit por zona no dwelleen >1s en el valle de la ola. */
+const TIDE_PERIOD_S = 90.0;
 /**
  * Velocidad de fase: v = T / (2π) → sin(t / v) tiene período exactamente T.
  * v ≈ 9.55 s/rad → sin(t / 9.55) cruza un ciclo completo en 60 segundos.

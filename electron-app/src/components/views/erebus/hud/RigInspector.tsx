@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react'
 import { useStageStore } from '../../../../stores/stageStore'
-import { snapToVoxel } from '../../../../core/stage/ShowFileV2'
+import { useSnapStore } from '../../../../stores/snapStore'
 import type { RigV2 } from '../../../../core/stage/ShowFileV2'
+import { NumberField } from './NumberField'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // RigInspector — Datos de un truss/tótem seleccionado
@@ -32,13 +33,15 @@ export const RigInspector: React.FC<RigInspectorProps> = ({ rigId }) => {
   }
 
   const handlePosChange = (axis: 'x' | 'z', value: number) => {
+    const snap = useSnapStore.getState().snap
     updateRig(rig.id, {
-      position: { ...rig.position, [axis]: snapToVoxel(value) },
+      position: { ...rig.position, [axis]: snap(value) },
     })
   }
 
   const handleHeightChange = (value: number) => {
-    updateRig(rig.id, { height: snapToVoxel(value) })
+    const snap = useSnapStore.getState().snap
+    updateRig(rig.id, { height: snap(value) })
   }
 
   return (
@@ -58,32 +61,32 @@ export const RigInspector: React.FC<RigInspectorProps> = ({ rigId }) => {
         <div className="erebus-coord-grid">
           <div className="erebus-coord">
             <span className="erebus-coord-axis">X</span>
-            <input
+            <NumberField
               className="erebus-coord-input"
-              type="number"
               step={0.25}
               value={Number(rig.position.x.toFixed(2))}
-              onChange={(e) => handlePosChange('x', parseFloat(e.target.value) || 0)}
+              onCommit={(v) => handlePosChange('x', v)}
+              aria-label="Rig X position"
             />
           </div>
           <div className="erebus-coord">
             <span className="erebus-coord-axis">Y</span>
-            <input
+            <NumberField
               className="erebus-coord-input"
-              type="number"
               step={0.25}
               value={Number(rig.height.toFixed(2))}
-              onChange={(e) => handleHeightChange(parseFloat(e.target.value) || 0)}
+              onCommit={(v) => handleHeightChange(v)}
+              aria-label="Rig height"
             />
           </div>
           <div className="erebus-coord">
             <span className="erebus-coord-axis">Z</span>
-            <input
+            <NumberField
               className="erebus-coord-input"
-              type="number"
               step={0.25}
               value={Number(rig.position.z.toFixed(2))}
-              onChange={(e) => handlePosChange('z', parseFloat(e.target.value) || 0)}
+              onCommit={(v) => handlePosChange('z', v)}
+              aria-label="Rig Z position"
             />
           </div>
         </div>

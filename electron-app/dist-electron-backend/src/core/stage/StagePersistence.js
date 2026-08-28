@@ -32,6 +32,7 @@ const SHOW_EXTENSION = '.luxshow';
 const LEGACY_CONFIG_NAME = 'luxsync-config.json';
 const ACTIVE_SHOW_NAME = 'current-show.v2.luxshow';
 const RECENT_SHOWS_FILE = 'recent-shows.json';
+const LAST_ACTIVE_POINTER = 'last-active-show.json';
 const MAX_RECENT_SHOWS = 10;
 // ═══════════════════════════════════════════════════════════════════════════
 // STAGE PERSISTENCE CLASS
@@ -65,9 +66,39 @@ export class StagePersistence {
     }
     /**
      * Get path to the "current active" show file
+     *
+     * WAVE 7632: This now checks the last-active-show.json pointer file first.
+     * If the pointer exists and points to a valid file, return that path.
+     * Otherwise, fall back to current-show.v2.luxshow.
      */
     getActiveShowPath() {
+        try {
+            const pointerPath = path.join(this.showsPath, LAST_ACTIVE_POINTER);
+            if (fs.existsSync(pointerPath)) {
+                const pointerContent = fs.readFileSync(pointerPath, 'utf-8');
+                const pointer = JSON.parse(pointerContent);
+                if (pointer.filePath && fs.existsSync(pointer.filePath)) {
+                    return pointer.filePath;
+                }
+            }
+        }
+        catch {
+            // Corrupt pointer — fall back to default
+        }
         return path.join(this.showsPath, ACTIVE_SHOW_NAME);
+    }
+    /**
+     * WAVE 7632: Write the last-active show pointer file.
+     * Called after every save and load so loadActive() picks up the right file.
+     */
+    writeLastActivePointer(filePath) {
+        try {
+            const pointerPath = path.join(this.showsPath, LAST_ACTIVE_POINTER);
+            fs.writeFileSync(pointerPath, JSON.stringify({ filePath, updatedAt: new Date().toISOString() }, null, 2), 'utf-8');
+        }
+        catch {
+            // Non-fatal — pointer is a convenience, not critical
+        }
     }
     /**
      * Get path to legacy config file
@@ -210,6 +241,11 @@ export class StagePersistence {
             }
             // Update recent shows list
             this.addToRecentShows(targetPath);
+            // WAVE 7632: Update the last-active show pointer so loadActive() picks
+            // up this file on next app restart. Without this, loadActive() loads
+            // current-show.v2.luxshow (the default) which has stale data when the
+            // user opened a named show file → Amnesia Bug.
+            this.writeLastActivePointer(targetPath);
             console.log(`[StagePersistence] 💾 Saved show: ${showFile.name} → ${targetPath}`);
             return { success: true, path: targetPath };
         }
@@ -289,6 +325,8 @@ export class StagePersistence {
                         // Auto-saved log silenced
                     }
                     this.addToRecentShows(targetPath);
+                    // WAVE 7632: Update pointer so loadActive() picks up this file on restart
+                    this.writeLastActivePointer(targetPath);
                     // 'Loaded V2 show' log silenced
                     return { success: true, showFile: patchedShow, migrated: appliedPatches.length > 0 };
                 }

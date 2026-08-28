@@ -49,6 +49,8 @@ interface SymbolLayerProps {
   onFixturePointerLeave?: () => void
   /** Context menu (right-click) on a fixture */
   onFixtureContextMenu?: (e: React.MouseEvent, fixtureId: string) => void
+  /** Screen pixels per world meter — for inverse-scaled symbols */
+  pixelsPerMeter?: number
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -70,7 +72,7 @@ function truncateName(name: string): string {
 }
 
 /** Compact multiline label: line 1 = truncated name, line 2 = DMX address */
-const FixtureLabel: React.FC<{ data: FixtureSymbolData; y: number }> = ({ data, y }) => {
+const FixtureLabel: React.FC<{ data: FixtureSymbolData; y: number; labelSize?: number; dmxSize?: number }> = ({ data, y, labelSize = LABEL_SIZE, dmxSize = DMX_SIZE }) => {
   const displayName = data.name ? truncateName(data.name) : (data.label ?? '')
   const dmx = data.dmx ?? ''
   if (!displayName && !dmx) return null
@@ -86,7 +88,7 @@ const FixtureLabel: React.FC<{ data: FixtureSymbolData; y: number }> = ({ data, 
           x={data.x}
           dy="0"
           fill="var(--obs-bright, #E4E9F2)"
-          fontSize={LABEL_SIZE}
+          fontSize={labelSize}
           fontFamily="'Inter', system-ui, sans-serif"
           fontWeight={500}
         >
@@ -96,9 +98,9 @@ const FixtureLabel: React.FC<{ data: FixtureSymbolData; y: number }> = ({ data, 
       {dmx && (
         <tspan
           x={data.x}
-          dy={LABEL_SIZE * 1.4}
+          dy={labelSize * 1.4}
           fill="var(--obs-accent, #4FC3F7)"
-          fontSize={DMX_SIZE}
+          fontSize={dmxSize}
           fontFamily="monospace"
         >
           {dmx}
@@ -118,6 +120,10 @@ interface SymbolInteractionProps {
   onPointerEnter?: () => void
   onPointerLeave?: () => void
   onContextMenu?: (e: React.MouseEvent) => void
+  /** WAVE 7659: Override label font size (inverse-scaled) */
+  labelSize?: number
+  /** WAVE 7659: Override DMX font size (inverse-scaled) */
+  dmxSize?: number
 }
 
 /** Selection ring — rendered around selected fixtures */
@@ -144,6 +150,8 @@ const MovingHeadSymbol: React.FC<{ data: FixtureSymbolData } & SymbolInteraction
   onPointerEnter,
   onPointerLeave,
   onContextMenu,
+  labelSize,
+  dmxSize,
 }) => {
   const yawRad = ((data.yaw ?? 0) * Math.PI) / 180
   const wedgeEnd = {
@@ -196,7 +204,7 @@ const MovingHeadSymbol: React.FC<{ data: FixtureSymbolData } & SymbolInteraction
         vectorEffect="non-scaling-stroke"
       />
       {/* Label — multiline: name + DMX */}
-      <FixtureLabel data={data} y={data.z + LABEL_OFFSET} />
+      <FixtureLabel data={data} y={data.z + LABEL_OFFSET} labelSize={labelSize} dmxSize={dmxSize} />
     </g>
   )
 }
@@ -210,6 +218,8 @@ const WashSymbol: React.FC<{ data: FixtureSymbolData } & SymbolInteractionProps>
   onPointerEnter,
   onPointerLeave,
   onContextMenu,
+  labelSize,
+  dmxSize,
 }) => {
   const w = SYMBOL_RADIUS * 1.6
   const h = SYMBOL_RADIUS * 1.2
@@ -289,7 +299,7 @@ const WashSymbol: React.FC<{ data: FixtureSymbolData } & SymbolInteractionProps>
         </clipPath>
       </defs>
       {/* Label — multiline: name + DMX */}
-      <FixtureLabel data={data} y={data.z + h / 2 + LABEL_OFFSET * 0.7} />
+      <FixtureLabel data={data} y={data.z + h / 2 + LABEL_OFFSET * 0.7} labelSize={labelSize} dmxSize={dmxSize} />
     </g>
   )
 }
@@ -303,6 +313,8 @@ const StrobeSymbol: React.FC<{ data: FixtureSymbolData } & SymbolInteractionProp
   onPointerEnter,
   onPointerLeave,
   onContextMenu,
+  labelSize,
+  dmxSize,
 }) => {
   const r = SYMBOL_RADIUS
   const points = `${data.x},${data.z - r} ${data.x + r},${data.z} ${data.x},${data.z + r} ${data.x - r},${data.z}`
@@ -346,7 +358,7 @@ const StrobeSymbol: React.FC<{ data: FixtureSymbolData } & SymbolInteractionProp
         vectorEffect="non-scaling-stroke"
       />
       {/* Label — multiline: name + DMX */}
-      <FixtureLabel data={data} y={data.z + LABEL_OFFSET} />
+      <FixtureLabel data={data} y={data.z + LABEL_OFFSET} labelSize={labelSize} dmxSize={dmxSize} />
     </g>
   )
 }
@@ -360,6 +372,8 @@ const LaserSymbol: React.FC<{ data: FixtureSymbolData } & SymbolInteractionProps
   onPointerEnter,
   onPointerLeave,
   onContextMenu,
+  labelSize,
+  dmxSize,
 }) => {
   const r = SYMBOL_RADIUS
   const armLen = r * 0.6
@@ -429,6 +443,8 @@ const EffectSymbol: React.FC<{ data: FixtureSymbolData } & SymbolInteractionProp
   onPointerEnter,
   onPointerLeave,
   onContextMenu,
+  labelSize,
+  dmxSize,
 }) => {
   const r = SYMBOL_RADIUS
   const innerR = r * 0.4
@@ -480,7 +496,7 @@ const EffectSymbol: React.FC<{ data: FixtureSymbolData } & SymbolInteractionProp
         vectorEffect="non-scaling-stroke"
       />
       {/* Label — multiline: name + DMX */}
-      <FixtureLabel data={data} y={data.z + r + LABEL_OFFSET * 0.7} />
+      <FixtureLabel data={data} y={data.z + r + LABEL_OFFSET * 0.7} labelSize={labelSize} dmxSize={dmxSize} />
     </g>
   )
 }
@@ -493,9 +509,19 @@ export const SymbolLayer: React.FC<SymbolLayerProps> = ({
   onFixturePointerEnter,
   onFixturePointerLeave,
   onFixtureContextMenu,
+  pixelsPerMeter = 20,
 }) => {
   const selectedIds = useSelectionStore(s => s.selectedIds)
   const hoveredId = useSelectionStore(s => s.hoveredId)
+
+  // WAVE 7659: Inverse-scale fixtures so they never render smaller than
+  // ~20 screen pixels. When zoomed out, symbols would otherwise become
+  // microscopic dots. visScale > 1 enlarges them; visScale = 1 is normal.
+  // WAVE 7660: The visScale transform already scales labels — do NOT also
+  // inflate labelSize/dmxSize, that causes double-scaling (humongous text).
+  const pxPerM = Number.isFinite(pixelsPerMeter) && pixelsPerMeter > 0 ? pixelsPerMeter : 1
+  const symbolScreenPx = SYMBOL_RADIUS * 2 * pxPerM // current symbol diameter in screen px
+  const visScale = symbolScreenPx < 20 ? 20 / symbolScreenPx : 1
 
   return (
     <g className="symbol-layer">
@@ -518,23 +544,36 @@ export const SymbolLayer: React.FC<SymbolLayerProps> = ({
             : undefined,
         }
 
-        switch (f.type) {
-          case 'moving-head':
-            return <MovingHeadSymbol key={f.id} data={f} {...interactionProps} />
-          case 'wash':
-          case 'par':
-            return <WashSymbol key={f.id} data={f} {...interactionProps} />
-          case 'strobe':
-          case 'blinder':
-            return <StrobeSymbol key={f.id} data={f} {...interactionProps} />
-          case 'laser':
-            return <LaserSymbol key={f.id} data={f} {...interactionProps} />
-          case 'effect':
-          case 'generic':
-            return <EffectSymbol key={f.id} data={f} {...interactionProps} />
-          default:
-            return <EffectSymbol key={f.id} data={f} {...interactionProps} />
-        }
+        // WAVE 7659: Apply visScale transform to the symbol wrapper.
+        // Scale around the fixture's (x,z) position so it grows from its center.
+        // This scales the symbol AND its labels uniformly — no separate label scaling needed.
+        const scaleTransform = visScale > 1
+          ? `translate(${f.x} ${f.z}) scale(${visScale}) translate(${-f.x} ${-f.z})`
+          : undefined
+
+        return (
+          <g key={f.id} transform={scaleTransform}>
+            {(() => {
+              switch (f.type) {
+                case 'moving-head':
+                  return <MovingHeadSymbol key={f.id} data={f} {...interactionProps} />
+                case 'wash':
+                case 'par':
+                  return <WashSymbol key={f.id} data={f} {...interactionProps} />
+                case 'strobe':
+                case 'blinder':
+                  return <StrobeSymbol key={f.id} data={f} {...interactionProps} />
+                case 'laser':
+                  return <LaserSymbol key={f.id} data={f} {...interactionProps} />
+                case 'effect':
+                case 'generic':
+                  return <EffectSymbol key={f.id} data={f} {...interactionProps} />
+                default:
+                  return <EffectSymbol key={f.id} data={f} {...interactionProps} />
+              }
+            })()}
+          </g>
+        )
       })}
     </g>
   )

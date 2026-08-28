@@ -270,6 +270,9 @@ export function translateOflFixture(
       let fineType: ChannelType = parentType
       if (parentType === 'pan') fineType = 'pan_fine'
       else if (parentType === 'tilt') fineType = 'tilt_fine'
+      // WAVE 7644-16BIT-DIMMER: Map dimmer fine alias → dimmer_fine so the
+      // ingestion pipeline can pair it with the coarse dimmer channel.
+      else if (parentType === 'dimmer') fineType = 'dimmer_fine'
       return {
         index: idx,
         name: chName,

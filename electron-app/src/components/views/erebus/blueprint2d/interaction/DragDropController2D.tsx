@@ -60,6 +60,8 @@ interface DragDropController2DProps {
   toolMode?: ToolMode
   /** Called with drag handlers when the controller mounts — pass these to SymbolLayer */
   onHandlersReady?: (handlers: DragHandlers) => void
+  /** Screen pixels per world meter — for inverse-scaled drag guide strokes */
+  pixelsPerMeter?: number
 }
 
 export const DragDropController2D: React.FC<DragDropController2DProps> = ({
@@ -72,6 +74,7 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
   onDragEnd,
   toolMode = 'select',
   onHandlersReady,
+  pixelsPerMeter = 20,
 }) => {
   const fixtures = useStageStore(s => s.fixtures)
   const placeFixture2D = useStageStore(s => s.placeFixture2D)
@@ -86,6 +89,13 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
 
   const [dragging, setDragging] = useState<DragState2D | null>(null)
   const dragRef = useRef<DragState2D | null>(null)
+  // WAVE 7661: Track the initial cursor position at pointer-down time.
+  // This lets us distinguish a true drag (cursor moved) from a simple click
+  // (cursor stayed roughly in place). The previous "moved" check compared
+  // the cursor position to the FIXTURE position, which was always different
+  // (the cursor rarely lands exactly on the fixture center) → placeFixture2D
+  // was called on every click → Y was reset to the default orientation height.
+  const dragStartCursorRef = useRef<{ x: number; z: number } | null>(null)
 
   const stageDims = useMemo<StageDimensions>(
     () => ({ width: stageWidth, depth: stageDepth, height: stageHeight, gridSize: VOXEL_SIZE }),
@@ -160,6 +170,12 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
         alignment: null,
       }
       dragRef.current = state
+      // WAVE 7661: Record the initial SNAPPED cursor position for the
+      // click-vs-drag distinction in handleUp. Must be snapped (not raw)
+      // because ds.x/ds.z in the drag state are also snapped — comparing
+      // raw vs snapped would always differ by up to 0.125m (half voxel),
+      // triggering placeFixture2D on every click → Y reset bug.
+      dragStartCursorRef.current = { x: snappedX, z: snappedZ }
       setDragging(state)
       onDragUpdate?.(state)
     },
@@ -234,19 +250,26 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
       const ds = dragRef.current
       const fixture = fixtures.find(f => f.id === ds.fixtureId)
       if (fixture) {
-        // WAVE 7633: Only call placeFixture2D if the fixture ACTUALLY moved.
-        // Previously, every click (even without dragging) called placeFixture2D
-        // on pointer up, which reset Y to DEFAULT_ORIENTATION_HEIGHT[orientation].
-        // This was the Amnesia Bug: user edits Y to 6 in FixtureInspector,
-        // clicks the fixture in 2D to reselect it, and placeFixture2D resets
-        // Y back to 4 (the default ceiling height).
-        const moved = Math.abs(ds.x - fixture.position.x) > 0.001 ||
-                      Math.abs(ds.z - fixture.position.z) > 0.001
-        if (moved) {
-          placeFixture2D(ds.fixtureId, ds.x, ds.z, fixture.orientation, fixture.rigId)
+        // WAVE 7633/7661: Only call placeFixture2D if the CURSOR actually moved
+        // between pointer-down and pointer-up. The previous WAVE 7633 fix compared
+        // the cursor position to the FIXTURE position, which was always different
+        // (cursor rarely lands exactly on fixture center) → placeFixture2D was
+        // called on every click → Y was reset to DEFAULT_ORIENTATION_HEIGHT.
+        //
+        // Now we compare the cursor's initial position (dragStartCursorRef) to
+        // the cursor's final position (ds.x, ds.z). If they're nearly identical,
+        // it was a click (selection), not a drag — don't call placeFixture2D.
+        const start = dragStartCursorRef.current
+        if (start) {
+          const cursorMoved = Math.abs(ds.x - start.x) > 0.05 ||
+                              Math.abs(ds.z - start.z) > 0.05
+          if (cursorMoved) {
+            placeFixture2D(ds.fixtureId, ds.x, ds.z, fixture.orientation, fixture.rigId)
+          }
         }
       }
       dragRef.current = null
+      dragStartCursorRef.current = null
       setDragging(null)
       onDragEnd?.()
     }
@@ -259,10 +282,47 @@ export const DragDropController2D: React.FC<DragDropController2DProps> = ({
     }
   }, [dragging, screenToSVG, findAlignment, stageDims, fixtures, placeFixture2D, onDragUpdate, onDragEnd, snap, offsetX, offsetZ])
 
+  // WAVE 7659: Inverse-scaled stroke width for drag guidelines
+  const pxPerM = Number.isFinite(pixelsPerMeter) && pixelsPerMeter > 0 ? pixelsPerMeter : 1
+  const guideStrokeWidth = 1 / pxPerM
+
   // ── Render: drag feedback only (alignment line + ghost symbol) ────────────
   // No overlay circles — interaction is handled by SymbolLayer's native events
   return (
     <g className="drag-drop-controller-2d" style={{ pointerEvents: 'none' }}>
+      {/* WAVE 7659: AutoCAD-style infinite drag crosshairs.
+          Red horizontal line = X-axis reference (constant Z = drag position)
+          Blue vertical line = Z-axis reference (constant X = drag position)
+          These let the user read coordinates directly off the rulers. */}
+      {dragging && (
+        <>
+          {/* Horizontal line (red) — spans full width at the drag's Z coordinate */}
+          <line
+            x1={-padding - 100}
+            y1={dragging.z + offsetZ}
+            x2={stageWidth + padding + 100}
+            y2={dragging.z + offsetZ}
+            stroke="#FF4444"
+            strokeWidth={guideStrokeWidth}
+            opacity={0.5}
+            strokeDasharray={`${0.3 / pxPerM} ${0.15 / pxPerM}`}
+            pointerEvents="none"
+          />
+          {/* Vertical line (blue) — spans full height at the drag's X coordinate */}
+          <line
+            x1={dragging.x + offsetX}
+            y1={-padding - 100}
+            x2={dragging.x + offsetX}
+            y2={stageDepth + padding + 100}
+            stroke="#4444FF"
+            strokeWidth={guideStrokeWidth}
+            opacity={0.5}
+            strokeDasharray={`${0.3 / pxPerM} ${0.15 / pxPerM}`}
+            pointerEvents="none"
+          />
+        </>
+      )}
+
       {/* Alignment line during drag (SVG coords = 3D + offset) */}
       {dragging?.alignment && (
         <line

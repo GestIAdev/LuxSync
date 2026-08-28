@@ -143,6 +143,7 @@ const CHANNEL_PRIORITY_BY_TYPE = Object.freeze({
     rotation: 86,
     speed: 85,
     dimmer: 80,
+    dimmer_fine: 79,
     shutter: 79,
     strobe: 78,
     color_wheel: 70,
@@ -483,7 +484,7 @@ export class NodeExtractionPipeline {
      *   recuperar defaultValue cuando cfg.defaultDmxValue sea undefined. WAVE 4817.
      */
     _mapForgeNodes(configs, legacyDefaultByOffset) {
-        return configs.map(cfg => {
+        const mappedNodes = configs.map(cfg => {
             // WAVE 4817: cfg.defaultDmxValue puede ser undefined si el JSON fue escrito
             // sin Forge o antes de que defaultDmxValue fuera obligatorio. Fallback al
             // top-level channels[] (keyed por dmxOffset) y, último recurso, a 0.
@@ -507,6 +508,8 @@ export class NodeExtractionPipeline {
             };
             return mapped;
         });
+        // WAVE 7644-16BIT-DIMMER: Pair dimmer_fine with coarse dimmer (forge path).
+        return this._pairDimmerFine(mappedNodes);
     }
     /**
      * Infiere el sufijo de nodo Aether para canales sin aetherNodeId declarado.
@@ -944,6 +947,66 @@ export class NodeExtractionPipeline {
     // HELPERS
     // ─────────────────────────────────────────────────────────────────────────
     /**
+     * WAVE 7644-16BIT-DIMMER: Pair dimmer_fine channels with their coarse dimmer.
+     *
+     * Mirrors the pan/pan_fine & tilt/tilt_fine pattern: the fine channel is
+     * absorbed into the coarse channel by setting is16bit=true on the coarse,
+     * and the fine channel is filtered out of the array. The NodeResolver then
+     * writes both bytes (coarse at dmxOffset, fine at dmxOffset+1) when
+     * is16bit is true.
+     *
+     * Pairing rule: a dimmer_fine at dmxOffset N pairs with the dimmer at
+     * dmxOffset N-1 (standard DMX convention: fine immediately follows coarse).
+     * If no coarse dimmer is found at N-1, the fine channel is kept as-is
+     * (defensive — shouldn't happen with well-formed profiles).
+     *
+     * @param channels — INodeChannelDef[] to process
+     * @returns New array with dimmer_fine channels absorbed into their coarse dimmer
+     */
+    _pairDimmerFine(channels) {
+        const fineOffsets = new Set();
+        const coarseByOffset = new Map(); // dmxOffset → index in array
+        // First pass: index dimmer channels and find dimmer_fine channels
+        for (let i = 0; i < channels.length; i++) {
+            const ch = channels[i];
+            if (ch.type === 'dimmer') {
+                coarseByOffset.set(ch.dmxOffset, i);
+            }
+            else if (ch.type === 'dimmer_fine') {
+                fineOffsets.add(ch.dmxOffset);
+            }
+        }
+        if (fineOffsets.size === 0)
+            return channels;
+        // Second pass: build result array, marking paired coarse dimmers as 16-bit
+        // and filtering out paired dimmer_fine channels. INodeChannelDef.is16bit
+        // is readonly, so we spread to create a mutable copy when upgrading.
+        const result = [];
+        for (let i = 0; i < channels.length; i++) {
+            const ch = channels[i];
+            if (ch.type === 'dimmer_fine') {
+                // Skip if paired (coarse dimmer exists at offset-1)
+                if (coarseByOffset.has(ch.dmxOffset - 1))
+                    continue;
+                // Unpaired fine — keep defensively
+                result.push(ch);
+            }
+            else if (ch.type === 'dimmer') {
+                // If a dimmer_fine exists at offset+1, upgrade to 16-bit
+                if (fineOffsets.has(ch.dmxOffset + 1)) {
+                    result.push({ ...ch, is16bit: true });
+                }
+                else {
+                    result.push(ch);
+                }
+            }
+            else {
+                result.push(ch);
+            }
+        }
+        return result;
+    }
+    /**
      * Convierte FixtureChannel[] a INodeChannelDef[].
      * @param kinetic — Si true, usa 128 como default para pan/tilt (centro).
      */
@@ -955,7 +1018,7 @@ export class NodeExtractionPipeline {
         // and passed down. Per-group detection was buggy: a group starting at index 1
         // (e.g. impact channels [strobe@1, dimmer@2]) would falsely conclude 1-based
         // and subtract 1, creating dmxOffset collisions with 0-based groups.
-        return channels.map(ch => {
+        const mappedChannels = channels.map(ch => {
             const chType = this._normalizeChannelType(ch.type);
             const dmxPersonality = undefined;
             const mapped = {
@@ -980,6 +1043,10 @@ export class NodeExtractionPipeline {
             };
             return mapped;
         });
+        // WAVE 7644-16BIT-DIMMER: Pair dimmer_fine with coarse dimmer before
+        // returning. This absorbs the fine channel into the coarse by setting
+        // is16bit=true, mirroring the pan/pan_fine pattern.
+        return this._pairDimmerFine(mappedChannels);
     }
     _resolveDefaultValue(ch, kinetic) {
         const type = this._normalizeChannelType(ch.type);

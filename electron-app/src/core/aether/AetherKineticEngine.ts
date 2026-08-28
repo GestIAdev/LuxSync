@@ -661,8 +661,16 @@ export class AetherKineticEngine {
       // target. This acts as a low-pass filter: pattern switches, amplitude
       // changes, and phase resets all produce a smooth transition.
       // EMA_ALPHA = 0.05 → time constant ~20 frames ≈ 0.45s at 44Hz.
-      const targetOffsetX = x * cfg.amplitude
-      const targetOffsetY = y * cfg.amplitude
+      //
+      // WAVE 7641: AMPLITUDE PIPELINE REBALANCE — Remove cfg.amplitude from the
+      // EMA target. Previously the amplitude was applied HERE (in tick) AND again
+      // in NodeResolver._writeNodeIK via _relativeOffsetAmplitude, producing a
+      // quadratic response (amplitudeNorm²) and ±510 DMX tilt at 100% UI.
+      // Now the EMA tracks the pure shape [-1,+1]; amplitude is applied ONCE in
+      // the resolver. This gives a linear slider response and lets the EMA smooth
+      // shape transitions (pattern switches) without coupling to amplitude changes.
+      const targetOffsetX = x
+      const targetOffsetY = y
       const prevX = this._smoothOffsetX.get(nodeId) ?? 0
       const prevY = this._smoothOffsetY.get(nodeId) ?? 0
       const smoothX = prevX + (targetOffsetX - prevX) * AetherKineticEngine.EMA_ALPHA

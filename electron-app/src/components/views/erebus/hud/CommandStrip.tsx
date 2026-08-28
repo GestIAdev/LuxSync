@@ -42,10 +42,11 @@ export const CommandStrip: React.FC<CommandStripProps> = ({
 
   // ── I/O: stage store ──────────────────────────────────────────────────────
   const showFile = useStageStore(s => s.showFile)
-  // WAVE 7630: showFilePath no longer needed — handleSave is unconditional.
+  const showFilePath = useStageStore(s => s.showFilePath)
   const isDirty = useStageStore(s => s.isDirty)
   const newShow = useStageStore(s => s.newShow)
   const saveShow = useStageStore(s => s.saveShow)
+  const saveShowAsDialog = useStageStore(s => s.saveShowAsDialog)
 
   useEffect(() => {
     if (!snapOpen) return
@@ -59,19 +60,30 @@ export const CommandStrip: React.FC<CommandStripProps> = ({
   }, [snapOpen])
 
   // ── I/O handlers ──────────────────────────────────────────────────────────
-  // WAVE 7630: Unconditional Global Save. The previous conditional hijacked
-  // the Save button into a 'Save As' dialog when showFilePath === 'active',
-  // which saved to a user-chosen path and NEVER updated current-show.v2.luxshow.
-  // On reload, loadActive() loaded the stale default show → Amnesia Bug.
-  // Now Save always calls saveShow(), which writes to the active path
-  // (current-show.v2.luxshow when showFilePath === 'active').
+  // WAVE 7661: Safe Save — if no file path is set (New show never saved),
+  // trigger Save As dialog instead of blindly overwriting the previous show.
+  // This prevents the destructive overwrite bug that lost shows.
   const handleSave = useCallback(async () => {
     try {
-      await saveShow()
+      if (!showFilePath) {
+        // No path → Save As dialog (user must choose a location)
+        await saveShowAsDialog()
+      } else {
+        // Path exists → direct save to the same file
+        await saveShow()
+      }
     } catch (err) {
       console.error('[CommandStrip] Save failed:', err)
     }
-  }, [saveShow])
+  }, [showFilePath, saveShow, saveShowAsDialog])
+
+  const handleSaveAs = useCallback(async () => {
+    try {
+      await saveShowAsDialog()
+    } catch (err) {
+      console.error('[CommandStrip] Save As failed:', err)
+    }
+  }, [saveShowAsDialog])
 
   const confirmDiscard = useCallback(async (): Promise<boolean> => {
     if (!isDirty) return true
@@ -110,28 +122,37 @@ export const CommandStrip: React.FC<CommandStripProps> = ({
 
   return (
     <div className="erebus-command-strip">
-      {/* I/O group — New / Open / Save */}
+      {/* I/O group — New / Open / Save / Save As */}
       <div className="erebus-cmd-group">
         <button
           className="erebus-cmd-btn"
-          title="New show"
+          title="New show (clears stage, severs link to previous file)"
           onClick={handleNew}
         >
           New
         </button>
         <button
           className="erebus-cmd-btn"
-          title="Open show"
+          title="Open show file"
           onClick={handleOpen}
         >
           Open
         </button>
         <button
           className={`erebus-cmd-btn ${isDirty ? 'erebus-cmd-btn--dirty' : ''}`}
-          title={isDirty ? 'Unsaved changes — click to save' : 'Save show'}
+          title={showFilePath
+            ? (isDirty ? 'Unsaved changes — click to save' : 'Save show')
+            : 'Save show (will prompt for file location)'}
           onClick={handleSave}
         >
           Save{isDirty ? ' *' : ''}
+        </button>
+        <button
+          className="erebus-cmd-btn"
+          title="Save As — choose a new file name/location"
+          onClick={handleSaveAs}
+        >
+          Save As
         </button>
       </div>
 

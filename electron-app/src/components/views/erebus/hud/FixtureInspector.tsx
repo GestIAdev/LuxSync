@@ -1,12 +1,13 @@
 import React, { useCallback } from 'react'
 import { useStageStore } from '../../../../stores/stageStore'
+import { useSnapStore } from '../../../../stores/snapStore'
 import {
-  snapToVoxel,
   clampToCrystalBox,
   VOXEL_SIZE,
   CANONICAL_ZONES,
 } from '../../../../core/stage/ShowFileV2'
 import type { FixtureV2, InstallationOrientation, CanonicalZone } from '../../../../core/stage/ShowFileV2'
+import { NumberField } from './NumberField'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FixtureInspector — Datos de un foco seleccionado
@@ -49,7 +50,8 @@ export const FixtureInspector: React.FC<FixtureInspectorProps> = ({ fixtureId })
   const { position, orientation, zone, type } = fixture
 
   const handlePosChange = (axis: 'x' | 'y' | 'z', value: number) => {
-    const newPos = { ...position, [axis]: snapToVoxel(value) }
+    const snap = useSnapStore.getState().snap
+    const newPos = { ...position, [axis]: snap(value) }
     // WAVE 7608: Use dynamic stage dimensions from store (was hardcoded 12×8×6)
     const stage = useStageStore.getState().showFile?.stage
     const clamped = clampToCrystalBox(newPos, stage ?? { width: 50, depth: 25, height: 15, gridSize: VOXEL_SIZE })
@@ -75,32 +77,32 @@ export const FixtureInspector: React.FC<FixtureInspectorProps> = ({ fixtureId })
         <div className="erebus-coord-grid">
           <div className="erebus-coord">
             <span className="erebus-coord-axis">X</span>
-            <input
+            <NumberField
               className="erebus-coord-input"
-              type="number"
               step={0.25}
               value={Number(position.x.toFixed(2))}
-              onChange={(e) => handlePosChange('x', parseFloat(e.target.value) || 0)}
+              onCommit={(v) => handlePosChange('x', v)}
+              aria-label="X position"
             />
           </div>
           <div className="erebus-coord">
             <span className="erebus-coord-axis">Y</span>
-            <input
+            <NumberField
               className="erebus-coord-input"
-              type="number"
               step={0.25}
               value={Number(position.y.toFixed(2))}
-              onChange={(e) => handlePosChange('y', parseFloat(e.target.value) || 0)}
+              onCommit={(v) => handlePosChange('y', v)}
+              aria-label="Y position"
             />
           </div>
           <div className="erebus-coord">
             <span className="erebus-coord-axis">Z</span>
-            <input
+            <NumberField
               className="erebus-coord-input"
-              type="number"
               step={0.25}
               value={Number(position.z.toFixed(2))}
-              onChange={(e) => handlePosChange('z', parseFloat(e.target.value) || 0)}
+              onCommit={(v) => handlePosChange('z', v)}
+              aria-label="Z position"
             />
           </div>
         </div>

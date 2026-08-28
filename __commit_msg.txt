@@ -1,24 +1,38 @@
-WAVE 7668: Phase 2 state migration — live offset feedback via useCalibrationSession
+WAVE 7669: Phase 3 UI construction — spatial targeting, mode switch, trim D-Pad
 
-- Relocate useCalibrationSession.ts from erebus/calibration/ to CalibrationView/
-  (import path adjusted: ../../../core/stage/ShowFileV2)
-- Delete standalone panOffset/tiltOffset/panInvert/tiltInvert useStates
-- Delete fragile OFFSET SYNC useEffect (depended on [activeFixtureId, stageFixtures]
-  → clobbered in-progress edits on any unrelated fixture mutation)
-- R1 FIX: getFixture backed by useRef(stageFixtures) → stable identity →
-  hook's fixture-load effect re-runs ONLY on fixtureId change
-- Wire offset sliders + polarity toggles to liveCalibration reads +
-  updateCalibration writes (throttled 100ms → updateLiveCalibration)
-- Rewrite handleSaveOffsets to delegate to hook.apply() (preserves
-  idle/saving/saved/error UI feedback wrapper)
-- Rewrite handleResetOffsets to delegate to hook.reset()
-- Add handleRevertOffsets + REVERT button (net new capability for the Lab)
-  — disabled when no snapshot or !isDirty
-- Add .action-btn.revert CSS (amber accent)
+3a — Mode Switch & Anti-Whiplash Arbitration:
+- Add controlMode state ('spatial' | 'mechanical', default 'mechanical')
+- Segmented toggle in Zone A header
+- Spatial→Mechanical transition: hydrate pan/tilt from getFixturesState
+  THEN dispatch releaseSpatialTarget (clears Spatial Gate, prevents whiplash)
 
-Net effect: dragging an offset slider now produces live physical head
-movement within ~100ms via updateLiveCalibration → resolver mutates
-node.ikCalibration in-place → next TickEngine frame uses new offsets.
+3b — TargetingPanel (new subcomponent):
+- Numeric X/Y/Z inputs (0.25m steps) replacing 2D pad + elevation slider
+- Presets: Centre / Downstage / Upstage
+- Aim Target + Release buttons with status line (aimed/warning/error)
+- F2 FIX: payload includes fixturePositions + fixtureIKProfiles from stageStore
+  → eliminates spatial amnesia (stale {0,0,0} Orchestrator fallback)
+- Preflight checks: block dispatch if !isPlaced, !validPosition, !IK-eligible
+
+3c/3d — Precision Offset Upgrade:
+- Integrate OffsetTrimPad (XY drag pad, ±30°, 0.5° snap, double-click reset)
+- Build 8-direction Trim D-Pad with center zero
+- Trim step selector: 0.5° / 1° / 5° (distinct from aim D-Pad's 1/5/15/45)
+- All trim dispatches via updateCalibration → 100ms throttle → updateLiveCalibration
+
+3e — Header & Rack:
+- DMX LIVE/OFFLINE pill (useLibraryStore.dmxStatus.connected)
+- Dirty dot (session.isDirty) with pulse animation
+- Remove hardcoded misleading ⟳ ARMED badge
+- Rack IK badges: ✓IK (placed + capable) / ⚠NP (capable but not placed)
+
+3f — Keymap Mode Guard:
+- WASD/arrows only drive mechanical aim when controlMode === 'mechanical'
+- In spatial mode, pan/tilt are IK-owned — manual overrides would fight Spatial Gate
+
+3g — Cleanup:
+- Delete CalibrationTargetMini.tsx (superseded by TargetingPanel)
+- Strip dead cal-target-mini* CSS from erebus.css
 
 Generated with [Devin](https://devin.ai)
 

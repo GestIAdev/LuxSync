@@ -33,7 +33,11 @@ import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { useSelectionStore } from '../../../stores/selectionStore'
 import { useStageStore } from '../../../stores/stageStore'
 import { useKeyMapStore } from '../../../stores/keyMapStore'
+import { useLibraryStore } from '../../../stores/libraryStore'
 import { useCalibrationSession } from './useCalibrationSession'
+import { TargetingPanel } from './TargetingPanel'
+import { OffsetTrimPad } from '../erebus/calibration/OffsetTrimPad'
+import type { FixtureV2 } from '../../../core/stage/ShowFileV2'
 import './CalibrationView.css'
 
 // Icons
@@ -126,6 +130,16 @@ function buildHydratedChannelValues(
 const SAFE_PAN_MAX = 513   // 95% of 540° - protects motor from strain
 const SAFE_TILT_MAX = 256  // 95% of 270° - protects motor from strain
 const STEP_OPTIONS = [1, 5, 15, 45]
+const TRIM_STEP_OPTIONS = [0.5, 1, 5]
+
+// WAVE 7669: IK eligibility for spatial targeting + rack badges
+const IK_ELIGIBLE_TYPES = ['moving-head', 'movinghead', 'scanner', 'spot', 'beam', 'wash-mover']
+
+function isIKEligible(fixture: FixtureV2 | null | undefined): boolean {
+  if (!fixture) return false
+  const t = (fixture.type || '').toLowerCase()
+  return IK_ELIGIBLE_TYPES.some(et => t.includes(et))
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN VIEW COMPONENT
@@ -150,14 +164,24 @@ const CalibrationView: React.FC = () => {
   const [pan, setPan] = useState(Math.round(SAFE_PAN_MAX / 2))
   const [tilt, setTilt] = useState(Math.round(SAFE_TILT_MAX / 2))
   const [step, setStep] = useState(5)  // Degrees per step
+  const [trimStep, setTrimStep] = useState(1)  // WAVE 7669: Trim D-Pad step
   const [activeTest, setActiveTest] = useState<string | null>(null)
   
-  // 🏛️ WAVE 3000: Multi-channel concurrent state (all channels independent)
+  // � WAVE 7669: Control mode arbitration (spatial vs mechanical)
+  // Default 'mechanical' preserves today's behaviour. The Spatial Gate (F3)
+  // suppresses pan_base/tilt_base injection once targetX exists on a node,
+  // so we must release the spatial target before mechanical aim can work.
+  const [controlMode, setControlMode] = useState<'spatial' | 'mechanical'>('mechanical')
+  
+  // �🏛️ WAVE 3000: Multi-channel concurrent state (all channels independent)
   const [channelValues, setChannelValues] = useState<Record<number, number>>({})
   
   // 🔥 WAVE 1135.2: Save feedback state
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // WAVE 7669: DMX connection status for header pill
+  const dmxConnected = useLibraryStore(s => s.dmxStatus.connected)
 
   // ═══════════════════════════════════════════════════════════════════════
   // COMPUTED VALUES
@@ -596,6 +620,76 @@ const CalibrationView: React.FC = () => {
     reset()
     setSaveStatus('idle')
   }, [reset])
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎯 WAVE 7669: MODE SWITCH — Anti-Whiplash Arbitration
+  //
+  // When switching from SPATIAL → MECHANICAL, we must:
+  //   1. Hydrate local pan/tilt from the fixture's current IK position
+  //      (so the radar/D-Pad reflect where the head physically is)
+  //   2. THEN release the spatial target (clears targetX/Y/Z from the
+  //      motor override, exiting IK mode via the Spatial Gate)
+  //
+  // Without step 1, the radar would show the last mechanical position
+  // (possibly stale), and the first D-Pad press would jump the head.
+  // Without step 2, the Spatial Gate keeps suppressing pan_base/tilt_base
+  // and mechanical aim is a no-op.
+  // ═══════════════════════════════════════════════════════════════════════
+  const handleModeSwitch = useCallback(async (newMode: 'spatial' | 'mechanical') => {
+    if (newMode === controlMode) return
+
+    if (newMode === 'mechanical' && controlMode === 'spatial' && activeFixtureId) {
+      // Step 1: Hydrate pan/tilt from current IK position
+      try {
+        const arbiter = (window as any).luxsync?.arbiter ?? (window as any).lux?.arbiter
+        if (arbiter?.getFixturesState) {
+          const result = await arbiter.getFixturesState([activeFixtureId])
+          if (result?.success && result.state?.pan != null) {
+            setPan(Math.max(0, Math.min(SAFE_PAN_MAX, Math.round(result.state.pan))))
+          }
+          if (result?.success && result.state?.tilt != null) {
+            setTilt(Math.max(0, Math.min(SAFE_TILT_MAX, Math.round(result.state.tilt))))
+          }
+        }
+      } catch (err) {
+        console.warn('[CalibrationLab] Mode switch hydration failed:', err)
+      }
+
+      // Step 2: Release spatial target
+      try {
+        await window.lux?.aether?.releaseSpatialTarget({ fixtureIds: [activeFixtureId] })
+        console.log(`[CalibrationLab] 🎯 Spatial target released for ${activeFixtureId}`)
+      } catch (err) {
+        console.warn('[CalibrationLab] releaseSpatialTarget failed:', err)
+      }
+    }
+
+    setControlMode(newMode)
+  }, [controlMode, activeFixtureId])
+
+  // WAVE 7669: Trim D-Pad handler — nudges offset by trimStep
+  const handleTrimNudge = useCallback((direction: string) => {
+    const snap = 0.5
+    const clampTrim = (v: number) => Math.max(-30, Math.min(30, Math.round(v / snap) * snap))
+    const p = liveCalibration.panOffset
+    const t = liveCalibration.tiltOffset
+    switch (direction) {
+      case 'up':         updateCalibration({ tiltOffset: clampTrim(t - trimStep) }); break
+      case 'down':       updateCalibration({ tiltOffset: clampTrim(t + trimStep) }); break
+      case 'left':       updateCalibration({ panOffset:  clampTrim(p - trimStep) }); break
+      case 'right':      updateCalibration({ panOffset:  clampTrim(p + trimStep) }); break
+      case 'up-left':    updateCalibration({ panOffset: clampTrim(p - trimStep), tiltOffset: clampTrim(t - trimStep) }); break
+      case 'up-right':   updateCalibration({ panOffset: clampTrim(p + trimStep), tiltOffset: clampTrim(t - trimStep) }); break
+      case 'down-left':  updateCalibration({ panOffset: clampTrim(p - trimStep), tiltOffset: clampTrim(t + trimStep) }); break
+      case 'down-right': updateCalibration({ panOffset: clampTrim(p + trimStep), tiltOffset: clampTrim(t + trimStep) }); break
+      case 'center':     updateCalibration({ panOffset: 0, tiltOffset: 0 }); break
+    }
+  }, [liveCalibration.panOffset, liveCalibration.tiltOffset, trimStep, updateCalibration])
+
+  // WAVE 7669: OffsetTrimPad onChange bridge
+  const handleTrimPadChange = useCallback((pan: number, tilt: number) => {
+    updateCalibration({ panOffset: pan, tiltOffset: tilt })
+  }, [updateCalibration])
   
   // ═══════════════════════════════════════════════════════════════════════
   // 🎮 WAVE 1135: KEYBOARD SHORTCUTS (WASD + Arrow Keys)
@@ -610,17 +704,22 @@ const CalibrationView: React.FC = () => {
       // The operator may have mapped WASD, B, F, 1-9, etc. for show control.
       if (useKeyMapStore.getState().isArmed) return
 
+      // WAVE 7669: WASD/arrows only drive mechanical aim in MECHANICAL mode.
+      // In SPATIAL mode, pan/tilt are owned by the IK solver — sending
+      // manual overrides would fight the Spatial Gate (F3).
+      const isMechanical = controlMode === 'mechanical'
+
       switch (e.key.toLowerCase()) {
-        // Movement
-        case 'w': case 'arrowup':    handleQuickPosition('up'); break
-        case 's': case 'arrowdown':  handleQuickPosition('down'); break
-        case 'a': case 'arrowleft':  handleQuickPosition('left'); break
-        case 'd': case 'arrowright': handleQuickPosition('right'); break
-        case 'q': handleQuickPosition('up-left'); break
-        case 'e': handleQuickPosition('up-right'); break
-        case 'z': handleQuickPosition('down-left'); break
-        case 'c': handleQuickPosition('down-right'); break
-        case ' ': e.preventDefault(); handleQuickPosition('center'); break
+        // Movement (mechanical mode only)
+        case 'w': case 'arrowup':    if (isMechanical) handleQuickPosition('up'); break
+        case 's': case 'arrowdown':  if (isMechanical) handleQuickPosition('down'); break
+        case 'a': case 'arrowleft':  if (isMechanical) handleQuickPosition('left'); break
+        case 'd': case 'arrowright': if (isMechanical) handleQuickPosition('right'); break
+        case 'q': if (isMechanical) handleQuickPosition('up-left'); break
+        case 'e': if (isMechanical) handleQuickPosition('up-right'); break
+        case 'z': if (isMechanical) handleQuickPosition('down-left'); break
+        case 'c': if (isMechanical) handleQuickPosition('down-right'); break
+        case ' ': if (isMechanical) { e.preventDefault(); handleQuickPosition('center'); } break
         
         // Tests
         case 'b': handleTest('blackout'); break
@@ -651,7 +750,7 @@ const CalibrationView: React.FC = () => {
     
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleQuickPosition, handleTest, handleFixtureSelect, allFixtures, activeFixtureId])
+  }, [handleQuickPosition, handleTest, handleFixtureSelect, allFixtures, activeFixtureId, controlMode])
   
   // ═══════════════════════════════════════════════════════════════════════
   // FIXTURE ICON HELPER
@@ -688,11 +787,14 @@ const CalibrationView: React.FC = () => {
         </div>
         
         <div className="header-status">
+          <span className={`dmx-pill ${dmxConnected ? 'live' : 'offline'}`}>
+            {dmxConnected ? '● DMX LIVE' : '○ DMX OFFLINE'}
+          </span>
           {activeFixture ? (
             <>
               <span className="fixture-name">{activeFixture.name}</span>
               <span className="fixture-badge">DMX {dmxBaseAddress}</span>
-              <span className="status-badge armed">⟳ ARMED</span>
+              {session.isDirty && <span className="dirty-dot" title="Unsaved calibration changes">●</span>}
             </>
           ) : (
             <span className="no-selection">Select a fixture to calibrate</span>
@@ -710,7 +812,35 @@ const CalibrationView: React.FC = () => {
             ───────────────────────────────────────────────────────────────── */}
         <div className="zone-targeting">
           
-          {/* TARGETING RADAR */}
+          {/* WAVE 7669: MODE SWITCH — Spatial vs Mechanical */}
+          <div className="mode-switch">
+            <button
+              className={`mode-btn ${controlMode === 'spatial' ? 'active' : ''}`}
+              onClick={() => handleModeSwitch('spatial')}
+              disabled={!activeFixtureId}
+            >
+              🎯 SPATIAL
+            </button>
+            <button
+              className={`mode-btn ${controlMode === 'mechanical' ? 'active' : ''}`}
+              onClick={() => handleModeSwitch('mechanical')}
+              disabled={!activeFixtureId}
+            >
+              ⊕ MECHANICAL
+            </button>
+          </div>
+
+          {/* WAVE 7669: SPATIAL TARGETING MODULE (Phase 3b) */}
+          {controlMode === 'spatial' && (
+            <TargetingPanel
+              fixtureId={activeFixtureId}
+              fixture={activeFixture}
+              allFixtures={allFixtures}
+            />
+          )}
+
+          {/* TARGETING RADAR (mechanical mode only) */}
+          {controlMode === 'mechanical' && (
           <div className="targeting-radar">
             <div className="radar-container">
               {/* Grid */}
@@ -774,8 +904,10 @@ const CalibrationView: React.FC = () => {
               </div>
             </div>
           </div>
-          
-          {/* QUICK POSITION */}
+          )}
+
+          {/* QUICK POSITION (mechanical mode only) */}
+          {controlMode === 'mechanical' && (
           <div className="quick-position">
             <div className="position-grid">
               <button className="pos-btn" onClick={() => handleQuickPosition('up-left')} title="Q">↖</button>
@@ -804,8 +936,10 @@ const CalibrationView: React.FC = () => {
               </div>
             </div>
           </div>
-          
-          {/* POSITION DATA */}
+          )}
+
+          {/* POSITION DATA (mechanical mode only) */}
+          {controlMode === 'mechanical' && (
           <div className="position-data">
             <div className="data-row">
               <span className="data-label">PAN</span>
@@ -826,8 +960,10 @@ const CalibrationView: React.FC = () => {
               <span className="data-max">/ 270°</span>
             </div>
           </div>
-          
-          {/* OFFSET CONFIG */}
+          )}
+
+          {/* OFFSET CONFIG (always visible — offsets are mode-independent) */}
+          {/* WAVE 7669: Upgraded with OffsetTrimPad + Trim D-Pad */}
           <div className="tool-panel offset-config">
             <div className="panel-header">
               <span className="panel-title">OFFSET CONFIG</span>
@@ -875,6 +1011,42 @@ const CalibrationView: React.FC = () => {
                 >
                   Tilt ↕
                 </button>
+              </div>
+              
+              {/* WAVE 7669: OffsetTrimPad — precision XY drag pad */}
+              <OffsetTrimPad
+                panOffset={liveCalibration.panOffset}
+                tiltOffset={liveCalibration.tiltOffset}
+                onChange={handleTrimPadChange}
+              />
+              
+              {/* WAVE 7669: Trim D-Pad — 8-direction nudge + step selector */}
+              <div className="trim-dpad-section">
+                <div className="trim-dpad">
+                  <button className="trim-dpad-btn" onClick={() => handleTrimNudge('up-left')} disabled={!activeFixtureId}>↖</button>
+                  <button className="trim-dpad-btn" onClick={() => handleTrimNudge('up')} disabled={!activeFixtureId}>↑</button>
+                  <button className="trim-dpad-btn" onClick={() => handleTrimNudge('up-right')} disabled={!activeFixtureId}>↗</button>
+                  <button className="trim-dpad-btn" onClick={() => handleTrimNudge('left')} disabled={!activeFixtureId}>←</button>
+                  <button className="trim-dpad-btn center" onClick={() => handleTrimNudge('center')} disabled={!activeFixtureId} title="Zero offsets">⊙</button>
+                  <button className="trim-dpad-btn" onClick={() => handleTrimNudge('right')} disabled={!activeFixtureId}>→</button>
+                  <button className="trim-dpad-btn" onClick={() => handleTrimNudge('down-left')} disabled={!activeFixtureId}>↙</button>
+                  <button className="trim-dpad-btn" onClick={() => handleTrimNudge('down')} disabled={!activeFixtureId}>↓</button>
+                  <button className="trim-dpad-btn" onClick={() => handleTrimNudge('down-right')} disabled={!activeFixtureId}>↘</button>
+                </div>
+                <div className="trim-step-selector">
+                  <span className="trim-step-label">TRIM STEP</span>
+                  <div className="trim-step-options">
+                    {TRIM_STEP_OPTIONS.map(s => (
+                      <button
+                        key={s}
+                        className={`trim-step-btn ${trimStep === s ? 'active' : ''}`}
+                        onClick={() => setTrimStep(s)}
+                      >
+                        {s}°
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
               
               <div className="offset-actions">
@@ -925,7 +1097,11 @@ const CalibrationView: React.FC = () => {
                   <span className="empty-text">No fixtures in show</span>
                 </div>
               ) : (
-                allFixtures.map((fixture, idx) => (
+                allFixtures.map((fixture, idx) => {
+                  const eligible = isIKEligible(fixture)
+                  const placed = fixture.isPlaced === true
+                  const ikBadge = eligible && placed ? '✓IK' : eligible && !placed ? '⚠NP' : null
+                  return (
                   <button
                     key={fixture.id}
                     className={`fixture-item ${activeFixtureId === fixture.id ? 'selected' : ''}`}
@@ -935,8 +1111,10 @@ const CalibrationView: React.FC = () => {
                     <span className="fixture-icon">{getFixtureIcon(fixture.type)}</span>
                     <span className="fixture-name">{fixture.name}</span>
                     <span className="fixture-dmx">CH {fixture.address}</span>
+                    {ikBadge && <span className={`fixture-ik-badge ${ikBadge === '✓IK' ? 'ik-ok' : 'ik-np'}`}>{ikBadge}</span>}
                   </button>
-                ))
+                  )
+                })
               )}
             </div>
           </div>

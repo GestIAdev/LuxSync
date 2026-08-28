@@ -1000,92 +1000,7 @@
   margin-top: 4px;
 }
 
-/* CalibrationTargetMini */
-.cal-target-mini-container {
-  box-sizing: border-box;
-  max-width: 100%;
-  overflow: hidden;
-}
-
-.cal-target-mini-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  max-width: 100%;
-}
-
-.cal-target-mini-pad {
-  position: relative;
-  flex-shrink: 0;
-  border: 1px solid var(--obs-line);
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.3);
-  touch-action: none;
-  cursor: crosshair;
-  box-sizing: border-box;
-}
-
-.cal-target-mini-grid-h,
-.cal-target-mini-grid-v {
-  position: absolute;
-  background: var(--obs-line);
-}
-.cal-target-mini-grid-h { left: 0; right: 0; top: 50%; height: 1px; }
-.cal-target-mini-grid-v { top: 0; bottom: 0; left: 50%; width: 1px; }
-
-.cal-target-mini-center {
-  position: absolute;
-  left: 50%; top: 50%;
-  width: 4px; height: 4px;
-  border-radius: 50%;
-  background: var(--obs-ink);
-  transform: translate(-50%, -50%);
-}
-
-.cal-target-mini-dot {
-  position: absolute;
-  left: 0; top: 0;
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: var(--obs-amber);
-  box-shadow: 0 0 6px rgba(245, 176, 77, 0.5);
-  pointer-events: none;
-}
-
-.cal-target-mini-z {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  flex: 1;
-  min-width: 0;
-}
-
-.cal-target-mini-z-label {
-  font-size: 10px;
-  color: var(--obs-ink);
-}
-
-.cal-target-mini-z-slider {
-  width: 100%;
-  max-width: 80px;
-}
-
-.cal-target-mini-z-value {
-  font-size: 10px;
-  color: var(--obs-bright);
-  font-family: 'JetBrains Mono', 'Consolas', monospace;
-}
-
-.cal-target-mini-coords {
-  font-size: 10px;
-  color: var(--obs-ink);
-  font-family: 'JetBrains Mono', 'Consolas', monospace;
-  margin-top: 6px;
-  text-align: center;
-}
-
-/* WAVE 7662: Precision numeric inputs — shared by OffsetTrimPad & CalibrationTargetMini */
+/* WAVE 7662: Precision numeric inputs — shared by OffsetTrimPad */
 .cal-num-field {
   display: flex;
   align-items: center;
@@ -1126,14 +1041,6 @@
 .cal-trim-pad-numinputs {
   display: flex;
   gap: 8px;
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid var(--obs-line);
-}
-
-.cal-target-mini-numinputs {
-  display: flex;
-  gap: 6px;
   margin-top: 8px;
   padding-top: 8px;
   border-top: 1px solid var(--obs-line);

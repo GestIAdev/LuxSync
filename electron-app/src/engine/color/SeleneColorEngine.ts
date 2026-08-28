@@ -506,6 +506,21 @@ export interface GenerationOptions {
   suppressTropicalBias?: boolean;
 
   /**
+   * 🎹 WAVE 7687 (URANUS PILLAR I): Chromagram Gravity Engine feature flag.
+   *
+   * When true, the primary hue is derived from the barycentric center of mass
+   * of the 12-bin chromagram (Circle of Fifths topology) instead of the
+   * discrete KEY_TO_HUE[key] lookup. Mode modifiers, mood drift, thermal
+   * gravity, and all constitutional enforcement still apply downstream.
+   *
+   * When false (default), the legacy KEY_TO_HUE path is used — zero behaviour
+   * change. This flag enables A/B testing during the Uranus rollout.
+   *
+   * @default false
+   */
+  useChromagramGravity?: boolean;
+
+  /**
    * WAVE 4760 — Ángulo de rotación Fibonacci para el color secundario.
    *
    * Reemplaza el hardcoding de 137.5° para fiesta-latina.
@@ -1169,6 +1184,88 @@ export function applyThermalGravity(hue: number, atmosphericTemp?: number, maxFo
 // Pillar I formulas must divide by the explicit weight sum W = Σ w_i.
 const _chromaMirror = new Float64Array(12);
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🌌 WAVE 7687 (URANUS PILLAR I): BARYCENTRIC CHROMATIC MASS — LUTs & STATE
+// ═══════════════════════════════════════════════════════════════════════════
+// Circle of Fifths topology: θ_i = ((7*i) % 12) * 30°
+// 7 is a generator of Z_12 (gcd(7,12)=1) → bijection, no collisions.
+// Harmonically proximate notes become chromatically proximate.
+//
+// Verified mapping (i: pitch → θ):
+//   0:C→0°  1:C#→210°  2:D→60°  3:D#→270°  4:E→120°  5:F→330°
+//   6:F#→180°  7:G→30°  8:G#→240°  9:A→90°  10:A#→300°  11:B→150°
+//
+// The three classical color strategies emerge exactly from the three most
+// structurally important musical intervals:
+//   Perfect fifth (7 semitones)  → 30°  (analogous)
+//   Major third (4 semitones)    → 120° (triadic)
+//   Tritone (6 semitones)        → 180° (complementary)
+//
+// Pre-computed as compile-time constants. Values drawn from
+// {0, ±0.5, ±0.8660254037844387, ±1} — the exact trig values at
+// multiples of 30°. No runtime Math.cos/sin calls.
+const COS_THETA = new Float64Array([
+  1.0,                   // C  →   0°
+ -0.8660254037844387,    // C# → 210°
+  0.5,                   // D  →  60°
+  0.0,                   // D# → 270°
+ -0.5,                   // E  → 120°
+  0.8660254037844387,    // F  → 330°
+ -1.0,                   // F# → 180°
+  0.8660254037844387,    // G  →  30°
+ -0.5,                   // G# → 240°
+  0.0,                   // A  →  90°
+  0.5,                   // A# → 300°
+ -0.8660254037844387,    // B  → 150°
+]);
+
+const SIN_THETA = new Float64Array([
+  0.0,                   // C  →   0°
+ -0.5,                   // C# → 210°
+  0.8660254037844387,    // D  →  60°
+ -1.0,                   // D# → 270°
+  0.8660254037844387,    // E  → 120°
+ -0.5,                   // F  → 330°
+  0.0,                   // F# → 180°
+  0.5,                   // G  →  30°
+ -0.8660254037844387,    // G# → 240°
+  1.0,                   // A  →  90°
+ -0.8660254037844387,    // A# → 300°
+  0.5,                   // B  → 150°
+]);
+
+// ── EMA accumulators (vector domain — never smooth the angle) ──────────────
+// Dual-rate architecture per blueprint §1.5:
+//   _slow* (α=0.005, τ≈4.5s) — key-level structure, drives primary hue
+//   _fast* (α=0.15,  τ≈150ms) — chord-level reactivity, reserved for WAVE 7690
+//
+// Smoothing in the vector domain is strictly superior to angle smoothing:
+//   - No wraparound pathology (EMA on angle crossing 359°→1° swings through 180°)
+//   - Destructive interference is physically correct: when harmony changes
+//     rapidly, successive M vectors cancel → |M̄| drops → R drops → system
+//     desaturates while "uncertain" and re-saturates when settled.
+//     This emergent hesitation requires no extra code.
+let _slowMx = 0, _slowMy = 0, _slowW = 0;
+let _fastMx = 0, _fastMy = 0, _fastW = 0;
+
+// ── Tuning constants ───────────────────────────────────────────────────────
+// GAMMA: sharpness exponent. w_i = c_i^γ.
+//   γ=1 → democratic, mushy. γ=2 → dominant-note emphasis (blueprint default).
+//   γ=3 → near-discrete (mimics KEY_TO_HUE, safe for initial A/B testing).
+//   γ→∞ → degenerates to argmax (back to discrete lookup).
+// γ is a continuous dial between "continuous field" and "discrete lookup",
+// making migration risk-free: ship at high γ, lower to unlock the field.
+const GRAVITY_GAMMA = 3;
+const GRAVITY_ALPHA_SLOW = 0.005;
+const GRAVITY_ALPHA_FAST = 0.15;
+// R_min: below this circular resultant length, hue is noise. Hold previous.
+const GRAVITY_R_MIN = 0.08;
+
+// ── Hue hold state ─────────────────────────────────────────────────────────
+// When R < R_min (atonal/noise/silence), the hue is mathematically undefined
+// (atan2(0,0)). Hold the last valid gravity hue to prevent flicker.
+let _lastValidGravityHue = 0;
+
 export class SeleneColorEngine {
   
   // 🎯 WAVE 2096.1: Deterministic frame counter for throttled logging (replaces Math.random)
@@ -1310,6 +1407,42 @@ export class SeleneColorEngine {
       _chromaMirror.fill(0);
     }
 
+    // ══════════════════════════════════════════════════════════════════════
+    // 🌌 WAVE 7687 (URANUS PILLAR I): BARYCENTRIC CHROMATIC MASS
+    // ══════════════════════════════════════════════════════════════════════
+    // Compute the circular first moment of the chroma energy vector over the
+    // Circle of Fifths basis. The hue is atan2(M_y, M_x); the confidence R
+    // (Rayleigh's resultant length) arrives free and measures tonal purity.
+    //
+    // Weighting: w_i = c_i^γ (γ=3 for initial stability — near-discrete).
+    // Smoothing: EMA in the VECTOR domain (never the angle) — dual-rate.
+    //
+    // Cost: 12 × (1 pow + 2 mul + 3 add) + 2 EMA updates ≈ 80 flops.
+    // Zero allocation — all state is module-level.
+    // ══════════════════════════════════════════════════════════════════════
+    let rawMx = 0, rawMy = 0, rawW = 0;
+    for (let i = 0; i < 12; i++) {
+      const c = _chromaMirror[i];
+      if (c <= 0) continue;  // skip silent bins — pow(0,γ)=0 anyway
+      const w = Math.pow(c, GRAVITY_GAMMA);
+      rawMx += w * COS_THETA[i];
+      rawMy += w * SIN_THETA[i];
+      rawW  += w;
+    }
+    // EMA the vector (not the angle) — dual-rate accumulators
+    _slowMx = (1 - GRAVITY_ALPHA_SLOW) * _slowMx + GRAVITY_ALPHA_SLOW * rawMx;
+    _slowMy = (1 - GRAVITY_ALPHA_SLOW) * _slowMy + GRAVITY_ALPHA_SLOW * rawMy;
+    _slowW  = (1 - GRAVITY_ALPHA_SLOW) * _slowW  + GRAVITY_ALPHA_SLOW * rawW;
+    _fastMx = (1 - GRAVITY_ALPHA_FAST) * _fastMx + GRAVITY_ALPHA_FAST * rawMx;
+    _fastMy = (1 - GRAVITY_ALPHA_FAST) * _fastMy + GRAVITY_ALPHA_FAST * rawMy;
+    _fastW  = (1 - GRAVITY_ALPHA_FAST) * _fastW  + GRAVITY_ALPHA_FAST * rawW;
+
+    // Derive hue and confidence from the SLOW (structural) accumulators
+    const _gravityHue = (Math.atan2(_slowMy, _slowMx) * 180 / Math.PI + 360) % 360;
+    const _gravityR   = _slowW > 0
+      ? Math.sqrt(_slowMx * _slowMx + _slowMy * _slowMy) / _slowW
+      : 0;
+
     // === A. EXTRAER DATOS CON FALLBACKS ===
     // WAVE 0-ALLOC: Use static _wave8Fallback instead of creating new object
     const wave8 = data.wave8 || SeleneColorEngine._wave8Fallback;
@@ -1385,7 +1518,35 @@ export class SeleneColorEngine {
       baseHue = MOOD_HUES[activeMood];
       hueSourceCode = 3;
     }
-    
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🌌 WAVE 7687 (URANUS PILLAR I): GRAVITY HUE OVERRIDE
+    // ═══════════════════════════════════════════════════════════════════════
+    // When useChromagramGravity is enabled, override baseHue with the
+    // barycentric hue from the chroma vector. Mode modifiers, mood drift,
+    // thermal gravity, and all constitutional enforcement still apply
+    // downstream — the gravity hue IS the new "key hue".
+    //
+    // R (Rayleigh's resultant length) gates the output:
+    //   R > R_min → tonal content present, use gravity hue
+    //   R ≤ R_min → atonal/noise/silence, hold last valid hue to prevent
+    //               flicker (atan2(0,0) is undefined and numerically unstable)
+    //
+    // When the flag is OFF (default), the legacy KEY_TO_HUE path above is
+    // untouched — zero behaviour change, enabling safe A/B testing.
+    // ═══════════════════════════════════════════════════════════════════════
+    if (options?.useChromagramGravity) {
+      if (_gravityR > GRAVITY_R_MIN) {
+        baseHue = _gravityHue;
+        _lastValidGravityHue = _gravityHue;
+        hueSourceCode = 1;  // treat as key-derived for logging
+      } else {
+        // Atonal/silence: hold the last valid gravity hue
+        baseHue = _lastValidGravityHue;
+        hueSourceCode = 1;
+      }
+    }
+
     // === C. APLICAR MODIFICADORES DE MODO ===
     const modeMod = MODE_MODIFIERS[mode] || MODE_MODIFIERS['minor'];
     

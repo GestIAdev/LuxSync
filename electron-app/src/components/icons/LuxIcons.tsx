@@ -2824,6 +2824,53 @@ export const LiquidDropIcon: React.FC<IconProps> = ({
   </svg>
 )
 
+/**
+ * 🌌 URANUS ICON - WAVE 7692
+ * Project Uranus color engine toggle.
+ * A tilted-ringed planet (Uranus's axial tilt) with a barycentric core dot,
+ * representing the three pillars:
+ *   - Ring  = Pillar II: Relativistic Sidereal Ring (Φ(t) rotation)
+ *   - Core  = Pillar I:  Barycentric chromatic mass
+ *   - Halo  = Pillar III: Repulsive Void (softplus evacuation)
+ */
+export const UranusIcon: React.FC<IconProps> = ({
+  size = 20,
+  color = 'currentColor',
+  className = ''
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Tilted elliptical ring (Uranus's 98° axial tilt) */}
+    <ellipse
+      cx="12"
+      cy="12"
+      rx="9"
+      ry="3.2"
+      stroke={color}
+      strokeWidth="1.6"
+      transform="rotate(-25 12 12)"
+    />
+    {/* Planet body */}
+    <circle cx="12" cy="12" r="4.5" stroke={color} strokeWidth="1.8" fill="none" />
+    {/* Barycentric core (Pillar I — center of mass) */}
+    <circle cx="12" cy="12" r="1.6" fill={color} />
+    {/* Repulsive halo sparks (Pillar III — void evacuation) */}
+    <path
+      d="M12 4.5V3M12 21V19.5M4.5 12H3M21 12H19.5"
+      stroke={color}
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      opacity="0.55"
+    />
+  </svg>
+)
+
 export default {
   Intensity: IntensityIcon,
   Color: ColorIcon,
@@ -2956,4 +3003,6 @@ export default {
   Star: StarIcon,
   // WAVE 7003.5: Liquid Cognition
   LiquidDrop: LiquidDropIcon,
+  // WAVE 7692: Project Uranus — color engine toggle
+  Uranus: UranusIcon,
 }

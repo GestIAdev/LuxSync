@@ -18,7 +18,8 @@ import { useSelectionStore } from '../../../stores/selectionStore'
 import { useNavigationStore } from '../../../stores/navigationStore'
 import { useControlStore } from '../../../stores/controlStore'
 import { useShallow } from 'zustand/shallow'
-import { FolderIcon, NetworkIcon } from '../../icons/LuxIcons'
+import { useSeleneStore } from '../../../stores/seleneStore'
+import { FolderIcon, NetworkIcon, UranusIcon } from '../../icons/LuxIcons'
 import { QUALITY_PRESETS, type QualityMode, type ViewMode } from '../shared/types'
 import { TacticalCanvas } from './tactical'
 import { VisualizerCanvas } from './visualizer'
@@ -176,24 +177,22 @@ const HyperionView = React.memo(function HyperionView({
     await window.lux?.setLiquidLayout?.(newMode)
   }, [liquidLayout, setLiquidLayout])
 
-  // ⚡ WAVE X-RAY: CPU Profiler — 15s V8 capture → lux-asesino.cpuprofile
-  const [isProfilerRunning, setIsProfilerRunning] = useState(false)
-  const handleStartProfiler = useCallback(async () => {
-    if (isProfilerRunning) return
-    setIsProfilerRunning(true)
+  // 🌌 WAVE 7692: URANUS ENGINE TOGGLE — replaces the obsolete CPU Profiler button.
+  // The profiler was a 15s V8 capture dev tool that was never used in production.
+  // Uranus is the new color engine selector: legacy vs. full Uranus pipeline.
+  const useUranusEngine = useSeleneStore(state => state.useUranusEngine)
+  const setUranusEngine = useSeleneStore(state => state.setUranusEngine)
+  const handleUranusToggle = useCallback(async () => {
+    const next = !useUranusEngine
+    setUranusEngine(next)
     try {
-      const result = await window.luxDebug?.startProfiler?.()
-      if (result?.success) {
-        console.log(`[PROFILER] ✅ Saved: ${result.path}`)
-      } else {
-        console.error('[PROFILER] ❌', result?.error)
-      }
+      await window.lux?.setUranusEngine?.(next)
     } catch (err) {
-      console.error('[PROFILER] ❌ IPC error:', err)
-    } finally {
-      setIsProfilerRunning(false)
+      console.error('[URANUS] ❌ IPC error:', err)
+      // Revert on failure
+      setUranusEngine(!next)
     }
-  }, [isProfilerRunning])
+  }, [useUranusEngine, setUranusEngine])
 
   // ── BPM Display ───────────────────────────────────────────────────────────
   const bpmDisplay = useMemo(() => {
@@ -326,17 +325,17 @@ const HyperionView = React.memo(function HyperionView({
             >
               {qualityMode === 'HQ' ? '✨ HQ' : '⚡ LQ'}
             </button>
-            {/* ⚡ WAVE X-RAY: CPU Profiler — 15s V8 capture */}
+            {/* 🌌 WAVE 7692: URANUS ENGINE TOGGLE — replaces obsolete PROF button */}
             <button
-              className={`hyperion-quality-toggle ${isProfilerRunning ? 'hq' : 'lq'}`}
-              onClick={handleStartProfiler}
-              disabled={isProfilerRunning}
-              title={isProfilerRunning
-                ? 'Profiling 15s… no hagas click'
-                : 'CPU Profiler — 15s V8 capture → lux-asesino.cpuprofile'}
-              style={{ opacity: isProfilerRunning ? 0.7 : 1, minWidth: 52 }}
+              className={`hyperion-quality-toggle ${useUranusEngine ? 'hq' : 'lq'}`}
+              onClick={handleUranusToggle}
+              title={useUranusEngine
+                ? '🌌 Uranus Engine ACTIVE — full pipeline (gravity hue, Φ(t) ring, softplus repulsion, harmonic derivation). Click for legacy mode.'
+                : '🌙 Legacy color engine — KEY_TO_HUE, Sidereal Clock, elastic rotation. Click to activate Uranus.'}
+              style={{ minWidth: 92 }}
             >
-              {isProfilerRunning ? '🔴 …' : '🎯 PROF'}
+              <UranusIcon size={14} />
+              <span style={{ marginLeft: 4 }}>{useUranusEngine ? 'URANUS' : 'LEGACY'}</span>
             </button>
           </div>
         </div>

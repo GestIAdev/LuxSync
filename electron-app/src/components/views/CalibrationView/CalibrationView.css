@@ -138,9 +138,12 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  /* Nunca hace scroll — todo el contenido encaja en la altura disponible */
+  /* WAVE 7675: Allow vertical scroll — content can exceed available height
+     with the 280px radar + offset config panel. Was overflow: hidden which
+     clipped the action buttons (mechanical) and trim pad (spatial). */
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 0.125rem;
 }
 
@@ -854,6 +857,12 @@
 /* ─────────────────────────────────────────────────────────────────
    OFFSET CONFIG
    ───────────────────────────────────────────────────────────────── */
+
+/* WAVE 7675: flex-shrink: 0 prevents the flex parent from compressing
+   this panel and clipping the action buttons / trim pad. */
+.offset-config {
+  flex-shrink: 0;
+}
 
 .offset-config .offset-content {
   padding: 0.75rem;

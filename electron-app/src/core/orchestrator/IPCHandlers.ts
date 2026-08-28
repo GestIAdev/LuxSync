@@ -287,7 +287,11 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
     return { success: true }
   })
   
-  ipcMain.on('lux:setVibe', (_event, vibeId: string) => {
+  // WAVE 7697: Changed from ipcMain.on (fire-and-forget) to ipcMain.handle
+  // so the renderer's `await window.lux.setVibe(...)` receives { success: true }
+  // instead of undefined (which caused "Cannot read properties of undefined
+  // (reading 'success')" in useSeleneVibe.ts:187).
+  ipcMain.handle('lux:setVibe', (_event, vibeId: string): { success: boolean } => {
     console.log('[IPC] lux:setVibe:', vibeId)
     if (titanOrchestrator) {
       titanOrchestrator.setVibe(vibeId as any)
@@ -299,6 +303,7 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
     const win = getMainWindow()
     safeWebSend(win, 'lux:vibe-changed', { vibeId, timestamp: Date.now() })
     safeWebSend(win, 'selene:vibe-changed', { vibeId, timestamp: Date.now() })
+    return { success: true }
   })
 
   // 🌌 WAVE 7691: Uranus Engine toggle — switch between legacy and Uranus color pipelines

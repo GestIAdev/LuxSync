@@ -849,8 +849,8 @@ const luxApi = {
   // 🎛️ WAVE 62 + WAVE 250: VIBE SELECTOR (Standardized to lux:)
   // ============================================
   
-  /** Set active Vibe profile — WAVE 7594: fire-and-forget */
-  setVibe: (vibeId: string) => ipcRenderer.send('lux:setVibe', vibeId),
+  /** Set active Vibe profile — WAVE 7697: invoke/handle (returns { success: boolean }) */
+  setVibe: (vibeId: string) => ipcRenderer.invoke('lux:setVibe', vibeId),
 
   /**
    * 🌌 WAVE 7691: Toggle the Uranus color engine.

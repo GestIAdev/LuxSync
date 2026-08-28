@@ -124,10 +124,10 @@
   grid-template-columns: 42fr 58fr;
   gap: 0.75rem;
   padding: 0.75rem;
-  /* WAVE 7675: Remove height: 100% — the grid row 1fr already sizes this.
-     height: 100% caused the content to expand beyond the grid cell and
-     pushed the header off-screen. overflow: hidden stays to clip the
-     inner zones, which handle their own scrolling. */
+  /* WAVE 7675: height: 100% needed for the grid 1fr to have a reference
+     height. Without it, overflow-y: auto on .zone-targeting doesn't
+     trigger because the grid cell has no definite height. */
+  height: 100%;
   min-height: 0;
   overflow: hidden;
 }
@@ -162,17 +162,19 @@
   border-radius: 12px;
   overflow: hidden;
   padding: 0.5rem;
-  /* WAVE 7672: Prevent flex collapse — min-height guarantees render */
+  /* WAVE 7675: Reduced from 280px to 200px — the previous size caused
+     the total content to exceed typical viewport heights, pushing the
+     mode-switch out of view even with overflow-y: auto. */
   flex: 1 1 auto;
   flex-shrink: 0;
-  min-height: 280px;
+  min-height: 200px;
 }
 
 .radar-container {
   position: relative;
-  /* WAVE 7672: Fixed size so it doesn't collapse to 0 */
-  width: 280px;
-  height: 280px;
+  /* WAVE 7675: Match the reduced min-height */
+  width: 200px;
+  height: 200px;
   aspect-ratio: 1;
   padding: 1.25rem;
   flex-shrink: 0;

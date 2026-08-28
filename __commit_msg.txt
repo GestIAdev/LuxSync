@@ -1,21 +1,35 @@
-WAVE 7671: Phase 3.5 CSS polish — fix OffsetTrimPad + D-Pad layout collapse
+WAVE 7672: UI overhaul — fix radar collapse, style targeting buttons, circular offset pad
 
-Problem: Phase 3 injected OffsetTrimPad and Trim D-Pad into the offset
-config panel, but they stacked vertically with overlapping labels,
-squished numeric inputs, and no visual separation.
+1. Main Polar Radar resurrection:
+   - .targeting-radar: flex: 1 1 auto, flex-shrink: 0, min-height: 280px
+   - .radar-container: fixed 280px width/height (was min(100%,320px) which
+     collapsed to 0 inside the flex column when siblings expanded)
 
-Fixes:
-1. Wrap OffsetTrimPad + Trim D-Pad in .trim-controls-row (flex row,
-   gap 1rem, align-items flex-start) — pad sits left, D-pad right
-2. .cal-trim-pad-label: switch to flex column so "Offset Trim" title
-   and "Pan: 0.0° / Tilt: 0.0°" values stack cleanly with display:block
-3. .cal-num-input: explicit width, padding, background, border-radius
-   matching LuxSync theme (rgba black 0.35, cyan focus border)
-4. .cal-num-field-label: fixed min-width 22px, right-aligned, mono font
-5. .trim-dpad: grid 3x3 with 4px gap, fixed 96px width, centered icons
-6. .trim-step-selector: stacked vertically (label above buttons),
-   buttons flex 1 with hover state
-7. Remove duplicate .offset-config .cal-trim-pad-* block at file end
+2. TargetingPanel button styling:
+   - .targeting-actions .action-btn: add base styles (padding, bg, border,
+     font, color, transition) — buttons were raw unstyled white HTML
+   - .targeting-aim-btn: cyan accent (rgba(34,211,238,0.15))
+   - .targeting-release-btn: amber accent with !important to override
+     the .action-btn.primary cyan that was bleeding through
+
+3. OffsetTrimPad → Circular Polar Radar transplant:
+   - DELETE square cartesian pad (grid-h, grid-v, crosshair div)
+   - NEW circular disc: border-radius 50%, radial-gradient background,
+     inset box-shadow for depth
+   - 3 concentric rings (outer/mid/inner at 4%/22%/40% inset)
+   - Crosshair H+V lines + 2 diagonal guides at 45°
+   - Center dot + position cursor (dot + ring, cyan glow)
+   - PAN/TILT axis labels at bottom/right
+   - Pointer math: clamp to unit circle (dist > 1 → normalize)
+   - Dot position: 5%-95% range to stay inside the disc edge
+   - Size: 130px in offset-config context (was 120px square)
+
+4. Trim layout flexbox fix:
+   - .trim-controls-row: gap 1.5rem, align-items: center,
+     justify-content: center (was flex-start with 1rem gap)
+   - .cal-trim-pad-container: flex column, align-items center,
+     gap 4px — prevents label/value overlap
+   - .cal-trim-pad-label: flex column centered, title + values stack
 
 Generated with [Devin](https://devin.ai)
 

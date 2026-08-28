@@ -157,18 +157,20 @@
   border-radius: 12px;
   overflow: hidden;
   padding: 0.5rem;
-  /* Flex shrink: cede espacio a los controles si es necesario */
-  flex: 1 1 0;
-  min-height: 0;
+  /* WAVE 7672: Prevent flex collapse — min-height guarantees render */
+  flex: 1 1 auto;
+  flex-shrink: 0;
+  min-height: 280px;
 }
 
 .radar-container {
   position: relative;
-  /* Se adapta al espacio disponible del flex padre */
-  width: min(100%, 320px);
-  height: min(100%, 320px);
+  /* WAVE 7672: Fixed size so it doesn't collapse to 0 */
+  width: 280px;
+  height: 280px;
   aspect-ratio: 1;
   padding: 1.25rem;
+  flex-shrink: 0;
 }
 
 /* Radar Grid */
@@ -1305,19 +1307,57 @@
   gap: 0.4rem;
 }
 
+/* WAVE 7672: Style targeting buttons — they were raw unstyled HTML buttons */
+.targeting-actions .action-btn {
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.targeting-actions .action-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.targeting-actions .action-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 .targeting-aim-btn {
   flex: 2;
 }
 
+.targeting-actions .action-btn.primary,
+.targeting-actions .targeting-aim-btn {
+  background: rgba(34, 211, 238, 0.15);
+  border-color: rgba(34, 211, 238, 0.3);
+  color: #22d3ee;
+}
+
+.targeting-actions .action-btn.primary:hover:not(:disabled),
+.targeting-actions .targeting-aim-btn:hover:not(:disabled) {
+  background: rgba(34, 211, 238, 0.25);
+  color: #67e8f9;
+}
+
 .targeting-release-btn {
   flex: 1;
-  background: rgba(245, 176, 77, 0.1);
-  border-color: rgba(245, 176, 77, 0.25);
-  color: #f5b04d;
+  background: rgba(245, 176, 77, 0.1) !important;
+  border-color: rgba(245, 176, 77, 0.25) !important;
+  color: #f5b04d !important;
 }
 
 .targeting-release-btn:hover:not(:disabled) {
-  background: rgba(245, 176, 77, 0.2);
+  background: rgba(245, 176, 77, 0.2) !important;
 }
 
 .targeting-status {
@@ -1333,62 +1373,68 @@
 .targeting-status--warning { color: #f5b04d; background: rgba(245, 176, 77, 0.08); }
 .targeting-status--error   { color: #ef4444; background: rgba(239, 68, 68, 0.08); }
 
-/* ── Trim Controls Row (WAVE 7671: pad + D-pad side-by-side) ─────────────── */
+/* ── Trim Controls Row (WAVE 7672: circular pad + D-pad side-by-side) ────── */
 .trim-controls-row {
   display: flex;
   flex-direction: row;
-  gap: 1rem;
-  align-items: flex-start;
+  gap: 1.5rem;
+  align-items: center;
+  justify-content: center;
   margin-top: 0.5rem;
-  padding-top: 0.5rem;
+  padding-top: 0.75rem;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-/* ── OffsetTrimPad integration ───────────────────────────────────────────── */
+/* ── OffsetTrimPad circular radar integration ────────────────────────────── */
 .offset-config .cal-trim-pad-container {
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
 }
 
 .offset-config .cal-trim-pad-label {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 2px;
-  margin-bottom: 6px;
+  margin-bottom: 2px;
+  width: 100%;
 }
 
-.offset-config .cal-trim-pad-label > span:first-child {
-  font-size: 0.65rem;
+.offset-config .cal-trim-pad-title {
+  font-size: 0.6rem;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.5);
   text-transform: uppercase;
   letter-spacing: 0.3px;
-  display: block;
 }
 
 .offset-config .cal-trim-pad-values {
-  display: block;
   font-family: 'JetBrains Mono', 'Consolas', monospace;
-  font-size: 0.6rem;
+  font-size: 0.55rem;
   color: rgba(34, 211, 238, 0.8);
-  line-height: 1.4;
+  line-height: 1.3;
 }
 
-.offset-config .cal-trim-pad {
-  width: 120px !important;
-  height: 120px !important;
+.offset-config .cal-trim-radar {
+  width: 130px !important;
+  height: 130px !important;
 }
 
 .offset-config .cal-trim-pad-hint {
-  font-size: 0.55rem;
+  font-size: 0.5rem;
   color: rgba(255, 255, 255, 0.3);
   text-align: center;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .offset-config .cal-trim-pad-numinputs {
   display: flex;
   gap: 6px;
-  margin-top: 6px;
+  margin-top: 4px;
+  width: 100%;
 }
 
 .offset-config .cal-num-field {

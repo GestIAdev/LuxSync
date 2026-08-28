@@ -125,36 +125,34 @@ export class HarmonicQuantizer {
             this._result.timeUntilNextChangeMs = 0;
             return this._result;
         }
-        // Confianza de BPM demasiado baja → anti-chatter debounce.
-        // WAVE 7645-16BIT-PHASE2: Previously this was a pure pass-through, which
-        // allowed slow ambient hue drift to cause rapid color wheel integer flips
-        // → DarkSpin false transits → intermittent blackouts in chill/ambient.
-        // Now we enforce a minimum debounce (AMBIENT_DEBOUNCE_MS) between color
-        // changes, returning colorAllowed=false if the debounce window hasn't
-        // elapsed since the last change. Same-color requests always pass.
+        // WAVE 7698: FAIL-OPEN MANDATE — pure pass-through on low confidence.
+        // Previously this branch enforced an anti-chatter debounce
+        // (AMBIENT_DEBOUNCE_MS = 2000ms) that blocked color changes when
+        // bpmConfidence < 0.3. That block caused NodeResolver to call
+        // notifyPendingColorChange() every frame → the node entered
+        // _pendingColorChangeNodes → _applyDarkSpinFinalBlackout zeroed the
+        // dimmer permanently → movers stayed dark for 20+ seconds during PLL
+        // freewheeling at the start of tracks.
+        //
+        // RULE OF THUMB: In live stage lighting, a poorly-timed color change
+        // is infinitely better than a permanently blacked-out fixture.
+        // We must FAIL OPEN (lights on). The DarkSpin transit blackout handles
+        // the visual hide of the mechanical wheel rotation — that's its job.
+        // The quantizer must NOT hold the fixture hostage waiting for a beat.
         if (bpmConfidence < MIN_BPM_CONFIDENCE) {
+            // Update last allowed color so a transition to high-confidence
+            // gating doesn't cause a false "new color" burst.
             let state = this.fixtureStates.get(fixtureId);
             if (!state) {
                 state = {
-                    lastColorChangeTime: 0,
-                    lastAllowedColor: null,
+                    lastColorChangeTime: now,
+                    lastAllowedColor: { r: newColor.r, g: newColor.g, b: newColor.b },
                     currentHarmonicPeriodMs: 0,
                     lastBpmUsed: 0,
                 };
                 this.fixtureStates.set(fixtureId, state);
             }
-            // Same color as last allowed → always pass (no gate consumed)
-            if (state.lastAllowedColor && this.colorsEqual(newColor, state.lastAllowedColor)) {
-                this._result.colorAllowed = true;
-                this._result.harmonicPeriodMs = 0;
-                this._result.beatMultiplier = 0;
-                this._result.timeUntilNextChangeMs = 0;
-                return this._result;
-            }
-            // Different color — check debounce window
-            const elapsed = now - state.lastColorChangeTime;
-            if (elapsed >= AMBIENT_DEBOUNCE_MS) {
-                // Debounce elapsed — allow the change
+            else {
                 state.lastColorChangeTime = now;
                 if (!state.lastAllowedColor) {
                     state.lastAllowedColor = { r: 0, g: 0, b: 0 };
@@ -162,17 +160,12 @@ export class HarmonicQuantizer {
                 state.lastAllowedColor.r = newColor.r;
                 state.lastAllowedColor.g = newColor.g;
                 state.lastAllowedColor.b = newColor.b;
-                this._result.colorAllowed = true;
-                this._result.harmonicPeriodMs = 0;
-                this._result.beatMultiplier = 0;
-                this._result.timeUntilNextChangeMs = 0;
-                return this._result;
             }
-            // Debounce window active — block the change
-            this._result.colorAllowed = false;
+            // PASS-THROUGH: always allow. No debounce. No gating.
+            this._result.colorAllowed = true;
             this._result.harmonicPeriodMs = 0;
             this._result.beatMultiplier = 0;
-            this._result.timeUntilNextChangeMs = AMBIENT_DEBOUNCE_MS - elapsed;
+            this._result.timeUntilNextChangeMs = 0;
             return this._result;
         }
         // Obtener o crear estado

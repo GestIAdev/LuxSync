@@ -55,6 +55,12 @@ interface DarkSpinNodeState {
 // ── Throttle defaults ────────────────────────────────────────────────────
 const THROTTLE_OPEN_DMX_MS = 33  // ~30Hz
 
+// ── WAVE 7698: Hard timeout for pending color change blackouts ───────────
+// If a node has been in pending blackout for longer than this, force-open
+// the blackout (FAIL-OPEN). A poorly-timed color change is better than a
+// permanently dark fixture.
+const PENDING_BLACKOUT_TIMEOUT_MS = 500
+
 // ═══════════════════════════════════════════════════════════════════════════
 // CLASS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -72,6 +78,13 @@ export class AetherSafetyMiddleware {
   // getDarkSpinTransitNodeIds() includes these nodes so cross-node/final
   // sweeps zero the dimmer BEFORE the wheel moves, preventing the 1-tick flash.
   private readonly _pendingColorChangeNodes = new Set<NodeId>()
+
+  // ── WAVE 7698: Hard timeout tracking for pending blackouts (FAIL-OPEN) ──
+  // Tracks when each node FIRST entered pending state. If a node has been
+  // pending for > PENDING_BLACKOUT_TIMEOUT_MS, it is excluded from the
+  // blackout list — the color is forced through. This prevents a stuck
+  // quantizer from holding a fixture dark indefinitely.
+  private readonly _pendingSinceMs = new Map<NodeId, number>()
 
   // ── HS-1: Pre-allocated scratch for getDarkSpinTransitNodeIds() — zero alloc @ 44Hz.
   private readonly _transitNodeIdsScratch: NodeId[] = []
@@ -305,24 +318,53 @@ export class AetherSafetyMiddleware {
       if (s.inTransit) out.push(nodeId)
     }
     // WAVE 7176: Include pending color change nodes (pre-emptive blackout)
+    // WAVE 7698: Clean up _pendingSinceMs for nodes no longer pending this frame
     for (const nodeId of this._pendingColorChangeNodes) {
       out.push(nodeId)
+    }
+    // Clean up _pendingSinceMs entries for nodes NOT re-notified this frame
+    // (quantizer allowed the change → no longer pending → remove tracker)
+    for (const [nodeId] of this._pendingSinceMs) {
+      if (!this._pendingColorChangeNodes.has(nodeId)) {
+        this._pendingSinceMs.delete(nodeId)
+      }
     }
     return out
   }
 
   /**
-   * WAVE 7176: Notify that a color change is pending (quantizer blocked it).
+   * WAVE 7176+7698: Notify that a color change is pending (quantizer blocked it).
    * The node will be included in getDarkSpinTransitNodeIds() so sweeps
    * zero the dimmer pre-emptively, preventing the 1-tick flash of old color.
+   *
+   * WAVE 7698: Tracks when the node FIRST entered pending state. If the node
+   * has been pending for > PENDING_BLACKOUT_TIMEOUT_MS, it is NOT added —
+   * the blackout is force-lifted (FAIL-OPEN mandate).
    */
   notifyPendingColorChange(nodeId: NodeId): void {
+    const now = this._nowMs
+    // Track first-entry time across frames (only set if not already tracked)
+    if (!this._pendingSinceMs.has(nodeId)) {
+      this._pendingSinceMs.set(nodeId, now)
+    }
+    // Check hard timeout — if exceeded, do NOT re-add to pending set
+    const pendingSince = this._pendingSinceMs.get(nodeId) ?? now
+    if (now - pendingSince >= PENDING_BLACKOUT_TIMEOUT_MS) {
+      // FAIL-OPEN: timeout exceeded, don't blackout. Also clean up tracker.
+      this._pendingSinceMs.delete(nodeId)
+      return
+    }
     this._pendingColorChangeNodes.add(nodeId)
   }
 
   /**
-   * WAVE 7176: Clear pending color change state. Called at the start of
+   * WAVE 7176+7698: Clear pending color change state. Called at the start of
    * each resolve() frame by NodeResolver.
+   *
+   * WAVE 7698: Only clears the per-frame set. The _pendingSinceMs tracker
+   * persists across frames so we can detect stuck pending states. Cleanup
+   * of stale _pendingSinceMs entries happens in getDarkSpinTransitNodeIds()
+   * (which runs after all notifyPendingColorChange calls for the frame).
    */
   clearPendingColorChanges(): void {
     this._pendingColorChangeNodes.clear()
@@ -385,6 +427,9 @@ export class AetherSafetyMiddleware {
 
       // WAVE 7176: Real transit starts — clear any pending state
       this._pendingColorChangeNodes.delete(nodeId)
+      // WAVE 7698: Also clear the pending tracker — the color change is now
+      // a real transit, no longer a pending state.
+      this._pendingSinceMs.delete(nodeId)
       s.inTransit = true
       s.transitStartMs = now
       s.transitDurationMs = dynamicTransitMs

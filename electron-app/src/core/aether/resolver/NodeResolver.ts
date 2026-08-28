@@ -517,17 +517,10 @@ export class NodeResolver implements INodeResolver {
    * @param isChillVibe — true si el vibe activo es chill/ambient/lounge/jazz
    */
   setResolveContext(bpm: number, bpmConfidence: number, isChillVibe: boolean = false): void {
-    // 🧊 WAVE 7693+7697: Limpiar freezes al salir de chill O al detectar audio.
-    // 1. Transición chill → non-chill: limpiar siempre.
-    // 2. bpmConfidence cruza de <0.3 a >=0.3 en non-chill: limpiar para que
-    //    la rueda retome el flujo normal con audio (quantizer + DarkSpin).
-    const _wasFreezeByVibe = this._isChillVibe
-    const _wasFreezeByConfidence = _currentBpmConfidence < 0.3
-    const _willFreezeByVibe = isChillVibe
-    const _willFreezeByConfidence = bpmConfidence < 0.3
-    if (_wasFreezeByVibe && !_willFreezeByVibe) {
-      this._chillWheelFreeze.clear()
-    } else if (_wasFreezeByConfidence && !_willFreezeByConfidence && !_willFreezeByVibe) {
+    // 🧊 WAVE 7698: CHILL-ONLY FREEZE. Al salir de chill (true → false),
+    // liberar todos los valores congelados de rueda para que reanuden el
+    // flujo normal. bpmConfidence ya NO participa en el freeze.
+    if (this._isChillVibe && !isChillVibe) {
       this._chillWheelFreeze.clear()
     }
     this._isChillVibe     = isChillVibe
@@ -2232,27 +2225,17 @@ export class NodeResolver implements INodeResolver {
           this._wheelProfileCache.set(legacyWheel, wheelProfile)
         }
         // ═════════════════════════════════════════════════════════════════
-        // 🧊 WAVE 7693+7697: WHEEL FREEZE — sample-and-hold
+        // 🧊 WAVE 7698: CHILL-ONLY WHEEL FREEZE — sample-and-hold
         // ═════════════════════════════════════════════════════════════════
-        // El freeze se activa en DOS condiciones:
-        //   1. _isChillVibe (chill/ambient/lounge/jazz): freeze determinístico.
-        //      El ChillAmbientEngine es función pura de t — no consume audio.
-        //      El drift cromático del SeleneColorEngine haría flipear la rueda
-        //      entre slots adyacentes cada frame.
-        //   2. bpmConfidence < 0.3 (cualquier vibe sin audio detectado):
-        //      Sin beat confidence, el HarmonicQuantizer bloquea cambios de
-        //      rueda y llama notifyPendingColorChange() → el nodo entra en
-        //      _pendingColorChangeNodes → getDarkSpinTransitNodeIds() lo
-        //      incluye → _applyDarkSpinFinalBlackout zeroa el dimmer
-        //      permanentemente. El freeze previene esto: la rueda no cambia
-        //      → el quantizer no bloquea → no hay pending → no hay blackout.
-        //
-        // WAVE 7697 FIX: WAVE 7693 reemplazó bpmConfidence < 0.3 por
-        // _isChillVibe, rompiendo non-chill sin audio. El freeze debe
-        // activarse en AMBAS condiciones: chill determinístico OR sin audio.
+        // FAIL-OPEN MANDATE: El freeze de rueda es EXCLUSIVAMENTE para chill.
+        // En non-chill, la rueda debe cambiar libremente — el HarmonicQuantizer
+        // ahora es pass-through cuando bpmConfidence < 0.3 (WAVE 7698), así que
+        // no hay riesgo de blackout por pending color change.
+        // Cualquier gating basado en bpmConfidence fue extirpado: en live stage
+        // lighting, un cambio de color mal timed es infinitamente mejor que un
+        // fixture permanently blacked-out.
         // ═════════════════════════════════════════════════════════════════
-        const _freezeActive = this._isChillVibe || _currentBpmConfidence < 0.3
-        if (_freezeActive) {
+        if (this._isChillVibe) {
           const frozen = this._chillWheelFreeze.get(nodeId)
           if (frozen !== undefined) {
             // HOLD: re-emitir el slot congelado, sin quantizer ni DarkSpin.
@@ -2260,7 +2243,7 @@ export class NodeResolver implements INodeResolver {
             s[CH_R] = safeR; s[CH_G] = safeG; s[CH_B] = safeB
             return s
           }
-          // SAMPLE: primera resolución de este nodo en la sesión de freeze.
+          // SAMPLE: primera resolución de este nodo en la sesión de chill.
           // Traducir el hue actual al slot más cercano y congelarlo.
           const firstResult = getColorTranslator().translate(this._rgbScratch, wheelProfile)
           const firstNorm = (firstResult.colorWheelDmx ?? 0) / 255
@@ -2270,7 +2253,7 @@ export class NodeResolver implements INodeResolver {
           return s
         }
 
-        // No estamos en freeze: limpiar freeze stale para este nodo (lazy).
+        // Non-chill: limpiar freeze stale para este nodo (lazy).
         this._chillWheelFreeze.delete(nodeId)
 
         const result = getColorTranslator().translate(this._rgbScratch, wheelProfile)

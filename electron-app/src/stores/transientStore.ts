@@ -49,11 +49,17 @@ const transientRef: {
 // 🗺️ WAVE 3250: FIXTURE INDEX — O(1) lookup en vez de Array.find() por frame.
 // Con 12 fixtures y 60fps useFrame: antes = 720 .find() calls/sec → ahora = 720 Map.get()
 // Se reconstruye solo cuando llega una full SeleneTruth (7Hz), no en cada hot-frame.
+// WAVE 7718: Only rebuild when fixture count changes — avoid clear+refill Map at 11Hz
+// when the fixture set is stable (the common case during playback).
 let fixtureIndex: Map<string, any> = new Map()
+let _fixtureIndexCount = -1
 
 // 🛠️ WAVE 5034: Pre-allocated Map for hot-frame ID lookup — zero alloc en 44Hz.
 // Se limpia y rellena cada hot frame en lugar de crear new Map().
+// WAVE 7718: Skip rebuild when count is unchanged — the existing Map already has
+// all fixture IDs from the last full truth. Saves O(N) clear+refill at 44Hz.
 const _hotFrameExistingById: Map<string, any> = new Map()
+let _hotFrameExistingCount = -1
 
 // WAVE 3403: AudioMatrix telemetry — piggybacked on hot-frame, read by RAF components
 const audioMatrixTelemetry = {
@@ -91,12 +97,16 @@ export function injectTransientTruth(truth: SeleneTruth): void {
   }
 
   // 🗺️ WAVE 3250: Rebuild fixture index on full truth injection
+  // WAVE 7718: Only rebuild when count changes — avoid clear+refill at 11Hz.
   const fixtures = truth?.hardware?.fixtures
   if (fixtures) {
-    fixtureIndex.clear()
-    for (let i = 0; i < fixtures.length; i++) {
-      const f = fixtures[i]
-      if (f?.id) fixtureIndex.set(f.id, f)
+    if (fixtures.length !== _fixtureIndexCount) {
+      _fixtureIndexCount = fixtures.length
+      fixtureIndex.clear()
+      for (let i = 0; i < fixtures.length; i++) {
+        const f = fixtures[i]
+        if (f?.id) fixtureIndex.set(f.id, f)
+      }
     }
 
     // WAVE 4914: Blackout mirror — zero renderer state when blackout is active.
@@ -167,10 +177,15 @@ export function injectHotFrame(hotFrame: any): void {
     // Build a Map from the existing base truth so any ordering difference
     // between the full-truth array and the hot-frame array is irrelevant.
     // O(N) construction, O(1) lookup — no regression on the hot path.
+    // WAVE 7718: Skip rebuild when count is unchanged — the Map already has
+    // all fixture IDs from the last full truth. Saves O(N) clear+refill at 44Hz.
     const existingById = _hotFrameExistingById
-    existingById.clear()
-    for (const f of existingFixtures) {
-      if (f?.id) existingById.set(f.id, f)
+    if (existingFixtures.length !== _hotFrameExistingCount) {
+      _hotFrameExistingCount = existingFixtures.length
+      existingById.clear()
+      for (const f of existingFixtures) {
+        if (f?.id) existingById.set(f.id, f)
+      }
     }
 
     for (const hot of hotFixtures) {

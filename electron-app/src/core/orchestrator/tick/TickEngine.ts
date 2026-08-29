@@ -16,6 +16,11 @@ import { DmxUniverseWriter, getDmxSab } from '../../aether/glass/DmxSabHandlers'
 import type { CalibrationEntry } from '../../aether/glass/CalibrationSAB'
 import type { INodeIntent } from '../../aether/intent-bus'
 import { SeleneTruth, createDefaultCognitive } from '../../protocol/SeleneProtocol'
+// WAVE 7718: Pre-allocated default cognitive — avoid allocating ~20 nested objects
+// + 4 arrays on every truth broadcast (11Hz / 44Hz Chronos). The spread below
+// only overrides top-level fields (stableEmotion, thermalTemperature, ai, vibe),
+// so the nested defaults can be shared by reference safely.
+const _cachedDefaultCognitive = createDefaultCognitive()
 import type { TrinityBrain } from '../../../brain/TrinityBrain'
 import type { TitanEngine } from '../../../engine/TitanEngine'
 import type { HardwareAbstraction } from '../../../hal/HardwareAbstraction'
@@ -1825,7 +1830,7 @@ export class TickEngine {
         // ðŸ§¬ WAVE 550: AÃ±adir telemetrÃ­a de IA para el HUD tÃ¡ctico
         // ðŸ”Œ WAVE 1175: DATA PIPE FIX - Inyectar vibe REAL desde el engine
         consciousness: {
-          ...createDefaultCognitive(),
+          ..._cachedDefaultCognitive,
           stableEmotion: this.engine.getStableEmotion(),
           thermalTemperature: this.engine.getThermalTemperature(),
           ai: this.engine.getConsciousnessTelemetry(),

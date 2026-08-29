@@ -1096,11 +1096,15 @@ export class TitanOrchestrator {
       // WAVE 4968 FIX: Directly update this.fixtures before delegating to hydrationEngine.
       // The hydrationCtx proxy setter should also update this, but we ensure it here
       // to prevent stale fixture IDs in the truth broadcast.
-      this.fixtures = fixtures.map(f => ({
-        ...f,
-        dmxAddress: f.dmxAddress || f.address,
-        isVirtual: f.isVirtual ?? false,
-      }))
+      // WAVE 7718: Mutate in-place instead of .map() + spread — avoids creating N new
+      // objects on every hydration. The fixtures arrive from IPC and are disposable.
+      for (let i = 0; i < fixtures.length; i++) {
+        const f = fixtures[i]
+        if (!f) continue
+        if (!f.dmxAddress) f.dmxAddress = f.address
+        if (f.isVirtual === undefined) f.isVirtual = false
+      }
+      this.fixtures = fixtures
       // setFixtures log silenced — fires 3× on startup
       const layout = this.hydrationEngine.setFixtures(this.fixtures, stageBounds)
       // PARCHE 4: Purgar todos los node refs obsoletos del Arbiter ahora que el

@@ -83,6 +83,13 @@ export function useSeleneTruth(options: UseSeleneTruthOptions = {}) {
   // El backend (TickEngine) bypassea su propio throttle a 44Hz durante Chronos playback
   // (TickEngine.ts:908 chronosPlaying || ...). Sin este throttle, setTruth() + updateMetrics()
   // disparan 44 re-renders/sec → saturación del main thread → GC starvation → OOM silencioso.
+
+  // WAVE 7718: Back-off guard for syncFixturesFromTruth. Without this, if the count
+  // mismatch persists (e.g. backend=20, frontend=19), syncFixturesFromTruth fires every
+  // 22 frames (~2Hz), each time creating new Map, Set, merged array, derived state arrays,
+  // and ensureSystemGroups maps. Track the last synced truth count and only re-fire when
+  // it actually changes, not while it stays the same.
+  const lastSyncedTruthCountRef = useRef(-1)
   
   useEffect(() => {
     // Verificar que window.lux existe (preload cargado)
@@ -131,12 +138,15 @@ export function useSeleneTruth(options: UseSeleneTruthOptions = {}) {
         truthThrottleCountRef.current = 0
         
         // 🛡️ WAVE 6018: Sincronización de Censo (Defensa contra shows fantasma)
+        // WAVE 7718: Back-off — only fire when the truth count CHANGES, not while
+        // it stays the same. Prevents repeated Map/Set/array allocations every 2Hz.
         const stageStoreState = useStageStore.getState()
         const stageFixtures = stageStoreState.fixtures || []
         const truthFixtures = data.hardware?.fixtures || []
-        
-        // Si la cantidad de focos no coincide, forzamos re-hidratación inmediata
-        if (stageFixtures.length !== truthFixtures.length) {
+        const truthCount = truthFixtures.length
+
+        if (stageFixtures.length !== truthCount && lastSyncedTruthCountRef.current !== truthCount) {
+          lastSyncedTruthCountRef.current = truthCount
           stageStoreState.syncFixturesFromTruth(truthFixtures)
         }
 
@@ -145,16 +155,14 @@ export function useSeleneTruth(options: UseSeleneTruthOptions = {}) {
         // Passing the raw array into Zustand causes React re-renders on every IPC frame
         // for every component subscribed to selectHardware/useHardware.
         // truthStore only needs metadata: BPM, vibe, genre, section, system status.
-        const metadataTruth: typeof data = {
-          ...data,
-          hardware: {
-            ...data.hardware,
-            fixtures: [],   // transientStore owns live fixture physics
-            dmxOutput: [],  // 512-byte array not needed in UI
-          },
+        // WAVE 7718: Mutate in-place instead of spread — the `data` object is disposable
+        // (arrived via IPC, never reused). Avoids 2 new objects + 2 new arrays every 2Hz.
+        if (data.hardware) {
+          data.hardware.fixtures = []
+          data.hardware.dmxOutput = []
         }
         // Zustand truthStore — metadata only (structural/contextual data for UI panels)
-        setTruth(metadataTruth)
+        setTruth(data)
         
         // Zustand audioStore — metrics for UI displays
         const beat = data.sensory?.beat

@@ -59,18 +59,33 @@ const IPC_READY_TIMEOUT_MS = 5000
  * Generate a hash from fixtures array to detect actual changes.
  * 🔥 WAVE 2241: Include channelCount + profileId so Forge profile edits
  * (channel additions, type changes, defaults) always trigger a backend resync.
+ * WAVE 7718: Optimized — no more .map().sort().join() on every store change.
+ * Uses a lightweight FNV-1a hash over fixture signatures (id:dmx:uni:zone:type:chCount:profileId)
+ * + stage bounds. O(N) with no intermediate string array, no sort, no giant join.
  */
 const generateSyncHash = (fixtureList: any[], stageBounds: { width?: number; height?: number; depth?: number } | null | undefined): string => {
   if (!fixtureList || fixtureList.length === 0) return 'empty'
 
-  const stageHash = stageBounds
-    ? `${stageBounds.width ?? 0}:${stageBounds.height ?? 0}:${stageBounds.depth ?? 0}`
-    : '0:0:0'
-  
-  return fixtureList
-    .map(f => `${f.id}:${f.dmxAddress}:${f.universe}:${f.zone}:${f.type}:${f.channelCount ?? f.channels?.length ?? 0}:${f.profileId ?? ''}`)
-    .sort()
-    .join('|') + `|stage:${stageHash}`
+  // FNV-1a hash — fast, minimal allocation
+  let hash = 2166136261
+  const stageW = stageBounds?.width ?? 0
+  const stageH = stageBounds?.height ?? 0
+  const stageD = stageBounds?.depth ?? 0
+
+  for (let i = 0; i < fixtureList.length; i++) {
+    const f = fixtureList[i]
+    if (!f) continue
+    const sig = `${f.id}:${f.dmxAddress}:${f.universe}:${f.zone}:${f.type}:${f.channelCount ?? f.channels?.length ?? 0}:${f.profileId ?? ''}`
+    for (let j = 0; j < sig.length; j++) {
+      hash ^= sig.charCodeAt(j)
+      hash = Math.imul(hash, 16777619)
+    }
+  }
+  // Mix stage bounds into the hash
+  hash ^= stageW + (stageH << 16) + (stageD << 24)
+  hash = Math.imul(hash, 16777619)
+
+  return (hash >>> 0).toString(36)
 }
 
 /**
@@ -93,41 +108,37 @@ const syncToBackend = async (
   }
   
   // Convert stageStore fixtures to ArbiterFixture format
-  const arbiterFixtures = fixtureList.map(f => {
-    // 🩸 WAVE 382: Detect movers from type string
+  // WAVE 7718: Mutate fixtures in-place instead of .map() creating N new objects.
+  // The fixtureList comes from stageStore and the objects are structural (not shared
+  // with transientStore which holds its own truth fixtures). Adding derived fields
+  // directly on the stageStore fixture objects is safe — they're already mutable.
+  for (let i = 0; i < fixtureList.length; i++) {
+    const f = fixtureList[i]
+    if (!f) continue
+    // 🩸 WAVE 382: Detect movers from type string — write directly on the fixture
     const type = (f.type || '').toLowerCase()
-    const hasMovementChannels = type.includes('moving') || 
-                                type.includes('spot') || 
+    ;(f as any).hasMovementChannels = type.includes('moving') ||
+                                type.includes('spot') ||
                                 type.includes('beam') ||
                                 Boolean(f.capabilities?.hasMovement)
-    
-    return {
-      id: f.id,
-      name: f.name || f.id,
-      dmxAddress: f.dmxAddress || (f as any).address,  // 🎨 WAVE 686.11.5: Normalize address (ShowFileV2 uses "address")
-      universe: f.universe || 0,
-      zone: f.zone || 'UNASSIGNED',
-      type: f.type || 'generic',
-      channels: f.channels || [],
-      capabilities: f.capabilities || {},
-      hasMovementChannels,  // 🩸 WAVE 382: Explicit flag
-      // 🎨 WAVE 1001: HAL Color Translation - Pass color capability flags
-      hasColorWheel: (f as any).hasColorWheel || Boolean(f.capabilities?.hasColorWheel) || false,
-      hasColorMixing: (f as any).hasColorMixing || Boolean(f.capabilities?.hasColorMixing) || false,
-      profileId: (f as any).profileId || f.id,  // Use fixture ID as default profile ID
-      // 🔧 WAVE 2221 / 🏗️ WAVE 4573: Orientation decoupled to FixtureV2 root.
-      // Read root-level first, fall back to deprecated physics.orientation for old files.
-      installationType: (f as any).orientation || f.physics?.orientation || 'ceiling',
-      position: f.position,
-      rotation: f.rotation,
-      // 🛡️ WAVE 3110: VIRTUAL FIXTURE FLAG — propagate to backend
-      isVirtual: f.isVirtual ?? false,
-      // WAVE 4626: isPlaced MUST propagate — omission here was the Silent Drop
-      // TitanOrchestrator._buildFixtureV2ForAether reads fixture.isPlaced
-      // If absent, undefined || false = false, killing IK for all placed fixtures
-      isPlaced: (f as any).isPlaced,
+    // Normalize address field
+    if (!f.dmxAddress) f.dmxAddress = (f as any).address
+    if (!f.universe) f.universe = 0
+    if (!f.zone) f.zone = 'UNASSIGNED'
+    if (!f.type) f.type = 'generic'
+    if (!f.channels) f.channels = []
+    if (!f.capabilities) f.capabilities = {}
+    // Color capability flags
+    if (!(f as any).hasColorWheel) (f as any).hasColorWheel = Boolean(f.capabilities?.hasColorWheel) || false
+    if (!(f as any).hasColorMixing) (f as any).hasColorMixing = Boolean(f.capabilities?.hasColorMixing) || false
+    if (!(f as any).profileId) (f as any).profileId = f.id
+    // Orientation
+    if (!(f as any).installationType) {
+      ;(f as any).installationType = (f as any).orientation || f.physics?.orientation || 'ceiling'
     }
-  })
+    if (f.isVirtual === undefined) f.isVirtual = false
+  }
+  const arbiterFixtures = fixtureList
   
   try {
     // 📡 WAVE 2770: THE BLACK BOX — Store Sync Monitor

@@ -168,8 +168,12 @@ export class StrategyArbiter {
   // 🔒 WAVE 1208.6: ULTRA-LOCK - NO overrides por sección/drop/breakdown
   //    Solo cambios naturales basados en síncopa promediada (rolling 15s)
   // 🐛 WAVE 1209.2: FIX - Inicializar en DURATION en lugar de 0 para que empiece bloqueado
-  private strategyCommitmentFrames = 1800;  // Empieza bloqueado por 30s
-  private readonly STRATEGY_COMMITMENT_DURATION = 1800;  // 30 segundos @ 60fps (sync con KeyStabilizer)
+  // 🔓 WAVE 7719: BUG FIX — 30s lock was keeping engine PERPETUALLY stuck in Analogous.
+  //    Initial lock reduced from 1800 (30s) to 180 (3s) so the strategy can actually
+  //    respond to the music within the first few bars. Commitment reduced from 1800
+  //    to 600 (10s) so changes happen often enough to be visible.
+  private strategyCommitmentFrames = 180;  // WAVE 7719: 3s initial (was 30s)
+  private readonly STRATEGY_COMMITMENT_DURATION = 600;  // WAVE 7719: 10s (was 30s)
   private lastCommittedStrategy: ColorStrategy = 'analogous';
   
   // Histéresis state
@@ -185,9 +189,11 @@ export class StrategyArbiter {
   // Default config
   // 🌴 WAVE 85: TROPICAL MIRROR - Expandir zona Triadic para baile latino
   // 🎭 WAVE 1208.5: CHROMATIC SYNCHRONIZATION - Igualado a KeyStabilizer (30s)
+  // 🔓 WAVE 7719: Reduced lockingFrames from 1800 to 600 (10s) to match commitment duration.
+  //    30s was too long — the strategy couldn't adapt within a single song section.
   private static readonly DEFAULT_CONFIG: StrategyArbiterConfig = {
     bufferSize: 900,           // 15 segundos @ 60fps (rolling average)
-    lockingFrames: 1800,       // 🎭 WAVE 1208.5: 30 segundos (sync con KeyStabilizer)
+    lockingFrames: 600,        // 🎭 WAVE 7719: 10 segundos (was 30s)
     lowSyncThreshold: 0.40,    // 🌴 WAVE 85: < 0.40 = ANALOGOUS (antes 0.35)
     highSyncThreshold: 0.65,   // 🌴 WAVE 85: > 0.65 = COMPLEMENTARY (antes 0.55)
     hysteresisBand: 0.05,      // Banda de histéresis

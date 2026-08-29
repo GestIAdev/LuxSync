@@ -1053,6 +1053,23 @@ export class SeleneColorEngine {
   // 🎯 WAVE 2096.1: Deterministic frame counter for throttled logging (replaces Math.random)
   private static generateCallCount = 0;
   
+  // 🌌 WAVE 7719: ACOUSTIC ENTROPY — The "Big Bang" Seed
+  // Deterministic session-level scalar initialized from the first non-zero audio frame.
+  // Uses raw energy * 104729 (10th prime) masked to 31-bit positive int.
+  // This seed offsets the Sidereal Clock's performance.now() reading so that
+  // different sessions never start on the same slot, and the Fibonacci rotation
+  // per macro-cycle ensures the palette sequence never repeats identically.
+  private static _sessionEntropy = 0;
+  private static _entropyInitialized = false;
+  
+  // 🌌 WAVE 7719: FIBONACCI MACRO-CYCLE ROTATION
+  // Tracks how many full slot-array loops have completed. Each full loop adds
+  // 137.5° (Golden Angle A) to the base hue, guaranteeing the clock never
+  // repeats the same palette sequence across macro-cycles.
+  private static _macroCycleCount = 0;
+  private static _lastSlotIndex = -1;
+  private static readonly FIBONACCI_GOLDEN_ANGLE_A = 137.5;
+  
   // 🔌 WAVE 65: Smart Logging - Tracking para evitar logs repetitivos
   private static lastLoggedKey: string | null = null;
   private static lastLoggedStrategy: string | null = null;
@@ -1173,6 +1190,14 @@ export class SeleneColorEngine {
   static generate(data: ExtendedAudioAnalysis, options?: GenerationOptions): SelenePalette {
     // 🎯 WAVE 2096.1: Deterministic frame counter (replaces Math.random for log throttling)
     this.generateCallCount++;
+    
+    // 🌌 WAVE 7719: ACOUSTIC ENTROPY — Initialize on first non-zero audio frame
+    // Uses raw energy * 104729 (10th prime) & 0x7FFFFFFF → deterministic 31-bit seed.
+    // Zero allocation, zero Math.random — pure physics.
+    if (!this._entropyInitialized && data.energy > 0.001) {
+      this._sessionEntropy = (data.energy * 104729) & 0x7FFFFFFF;
+      this._entropyInitialized = true;
+    }
     
     // === A. EXTRAER DATOS CON FALLBACKS ===
     // WAVE 0-ALLOC: Use static _wave8Fallback instead of creating new object
@@ -1492,7 +1517,24 @@ export class SeleneColorEngine {
     if (options?.siderealClock) {
       const clock = options.siderealClock;
       if (clock.slots && clock.slots.length > 0) {
-        const slotIndex = Math.floor(performance.now() / clock.slotDurationMs) % clock.slots.length;
+        // 🌌 WAVE 7719: SIDEREAL CLOCK SHIFT — Offset performance.now() by the
+        // acoustic entropy seed so different sessions start on different slots.
+        // The entropy is a deterministic 31-bit int from the first non-zero energy
+        // frame. This guarantees two sessions playing the same song don't produce
+        // identical palette sequences.
+        const shiftedTime = performance.now() + this._sessionEntropy;
+        const slotIndex = Math.floor(shiftedTime / clock.slotDurationMs) % clock.slots.length;
+        
+        // 🌌 WAVE 7719: FIBONACCI MACRO-CYCLE — Track full slot-array loops.
+        // Each time we wrap around (slotIndex < _lastSlotIndex), increment the
+        // macro-cycle counter. Each macro-cycle adds 137.5° (Golden Angle A) to
+        // the base hue, ensuring the palette never repeats identically.
+        if (this._lastSlotIndex >= 0 && slotIndex < this._lastSlotIndex) {
+          this._macroCycleCount++;
+        }
+        this._lastSlotIndex = slotIndex;
+        const macroCycleHueShift = this._macroCycleCount * this.FIBONACCI_GOLDEN_ANGLE_A;
+        
         const slot = clock.slots[slotIndex];
         // Copy all fields from options into _effectiveOptions without spread
         const eo = SeleneColorEngine._effectiveOptions;
@@ -1541,6 +1583,15 @@ export class SeleneColorEngine {
             }
             if (!isAllowed) finalHue = normalizeHue(closestCenter);
           }
+        }
+        
+        // 🌌 WAVE 7719: FIBONACCI MACRO-CYCLE ROTATION — Apply the accumulated
+        // 137.5° × macroCycleCount shift to the base hue AFTER the slot snap.
+        // This ensures each full slot-array loop produces a different palette
+        // even if the slot ranges are identical. The shift is applied to finalHue
+        // (primary) — the secondary/accent/ambient derive from it automatically.
+        if (macroCycleHueShift > 0) {
+          finalHue = normalizeHue(finalHue + macroCycleHueShift);
         }
       }
     }
@@ -2139,6 +2190,17 @@ export class SeleneColorEngine {
     };
   }
   
+  /**
+   * 🌌 WAVE 7719: Reset acoustic entropy + sidereal clock state.
+   * Call on session change / vibe reset / hard stop to re-seed the Big Bang.
+   */
+  static resetEntropy(): void {
+    this._sessionEntropy = 0;
+    this._entropyInitialized = false;
+    this._macroCycleCount = 0;
+    this._lastSlotIndex = -1;
+  }
+
   /**
    * Obtiene el hue base para una key musical
    */

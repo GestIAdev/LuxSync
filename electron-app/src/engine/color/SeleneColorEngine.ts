@@ -1656,6 +1656,14 @@ export class SeleneColorEngine {
     // fibonacciRotationDeg en GenerationOptions sobreescribe el default (PHI_ROTATION ≈222.5°).
     const fibonacciRotation = options?.fibonacciRotationDeg ?? PHI_ROTATION;
     
+    // 🌌 WAVE 7724: KNUTH PROCEDURAL MUTATION — Stable offset perturbation
+    // Uses _sessionEntropy (set once) XOR _macroCycleCount (increments every
+    // ~30 min on slot wrap) to generate a deterministic ±15° delta.
+    // Stable within a slot, varies across macro-cycles. Zero allocation.
+    // 2654435761 = Knuth's multiplicative constant (2^32 / φ) for bit-avalanche.
+    const _cycleSeed = (this._sessionEntropy ^ (this._macroCycleCount * 2654435761)) >>> 0;
+    const _cycleDelta = ((_cycleSeed >> 16) % 31) - 15;  // range: -15 to +15
+    
     // 🧂 WAVE 94.2 / WAVE 4760: Salt cromático configurable vía constitución.
     // saltChromaticKeys es un Record<rootIndex, deltaDeg> — sin detección por nombre de vibe.
     let saltRotation = 0;
@@ -1666,7 +1674,7 @@ export class SeleneColorEngine {
       }
     }
     
-    const secondaryHue = normalizeHue(finalHue + fibonacciRotation + saltRotation);
+    const secondaryHue = normalizeHue(finalHue + fibonacciRotation + saltRotation + _cycleDelta);
     // WAVE 0-ALLOC: Mutate scratch palette
     pal.secondary.h = secondaryHue;
     pal.secondary.s = clamp(correctedSat + 5, 20, 100);  // Ligeramente más saturado
@@ -1695,35 +1703,36 @@ export class SeleneColorEngine {
     let strategy: 'analogous' | 'triadic' | 'complementary';
     
     // WAVE 142: Si hay estrategia forzada, usarla
+    // 🌌 WAVE 7724: _cycleDelta applied to all accent offsets for procedural variety
     if (options?.forceStrategy && options.forceStrategy !== 'prism') {
       strategy = options.forceStrategy;
       switch (strategy) {
         case 'analogous':
-          accentHue = finalHue + 30;
+          accentHue = finalHue + 30 + _cycleDelta;
           break;
         case 'triadic':
-          accentHue = finalHue + 120;
+          accentHue = finalHue + 120 + _cycleDelta;
           break;
         case 'complementary':
-          accentHue = finalHue + 180;
+          accentHue = finalHue + 180 + _cycleDelta;
           break;
       }
     } else if (options?.forceStrategy === 'prism') {
       // 🔮 PRISM: Estrategia especial de Techno (Tetraédrica)
       // Primary → Secondary (+60°) → Ambient (+120°) → Accent (+180°)
       strategy = 'complementary';  // Label para metadata
-      accentHue = finalHue + 180;
+      accentHue = finalHue + 180 + _cycleDelta;
     } else {
       // Decisión basada solo en syncopation
       if (syncopation < 0.40) {
         strategy = 'analogous';
-        accentHue = finalHue + 30;   // Vecino
+        accentHue = finalHue + 30 + _cycleDelta;   // Vecino
       } else if (syncopation < 0.65) {
         strategy = 'triadic';
-        accentHue = finalHue + 120;  // Triángulo
+        accentHue = finalHue + 120 + _cycleDelta;  // Triángulo
       } else {
         strategy = 'complementary';
-        accentHue = finalHue + 180;  // Opuesto
+        accentHue = finalHue + 180 + _cycleDelta;  // Opuesto
       }
     }
     
@@ -1750,20 +1759,21 @@ export class SeleneColorEngine {
     const isTropicalVibe = options?.tropicalAmbientBias === true;
     
     // 🌴 WAVE 84: Calcular Ambient Hue según estrategia
+    // 🌌 WAVE 7724: _cycleDelta applied to all ambient offsets for procedural variety
     let ambientHue: number;
     switch (strategy) {
       case 'triadic':
         // 3er punto del triángulo: +240° (o -120°) del primary
-        ambientHue = normalizeHue(finalHue + 240);
+        ambientHue = normalizeHue(finalHue + 240 + _cycleDelta);
         break;
       case 'complementary':
         // Split-Complementary: Secondary +30°
-        ambientHue = normalizeHue(secondaryHue + 30);
+        ambientHue = normalizeHue(secondaryHue + 30 + _cycleDelta);
         break;
       case 'analogous':
       default:
         // Vecino opuesto: -30° del primary
-        ambientHue = normalizeHue(finalHue - 30);
+        ambientHue = normalizeHue(finalHue - 30 + _cycleDelta);
         break;
     }
     
@@ -1916,6 +1926,9 @@ export class SeleneColorEngine {
         fixDirtyColor(pal.primary);
         fixDirtyColor(pal.secondary);
         fixDirtyColor(pal.ambient);
+        // 🛡️ WAVE 7724: BUG FIX — accent was missing from the Mud Guard list.
+        // The +30° analogous offset can land accent in the 45-75° swamp zone.
+        fixDirtyColor(pal.accent);
       }
       
       // 🪞 2. TROPICAL MIRROR — solo si tropicalMirror: true
@@ -2094,6 +2107,32 @@ export class SeleneColorEngine {
       pal.accent.h    = applyThermalGravity(pal.accent.h,    options.atmosphericTemp, gravityStrength);
     }
     // ═══════════════════════════════════════════════════════════════════════
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🛡️ WAVE 7724: UNIVERSAL SWAMP-CHECK FALLBACK
+    // The WAVE 85 Mud Guard only runs when mudGuard.enabled is in the
+    // constitution. Techno, Idle, and Rock have no mudGuard, so their
+    // secondary/accent/ambient can turn brown (hue 45-90° + low S/L) with
+    // no correction. This universal fallback catches ALL colors that land
+    // in the universal brown zone [45°, 90°] with insufficient vibrancy.
+    // It pushes S and L up to minimum safe thresholds — no hue rotation,
+    // just vibrancy enforcement. Zero allocation, runs on every frame.
+    // ═══════════════════════════════════════════════════════════════════════
+    {
+      const _universalSwamp = (c: HSLColor): void => {
+        // Universal brown zone: 45-90° (yellow/ochre/mud)
+        if (c.h >= 45 && c.h <= 90) {
+          // If saturation is low or lightness is low → brown/mud appearance
+          // Push to safe vibrancy: S >= 75, L >= 45
+          if (c.s < 75) c.s = 75;
+          if (c.l < 45) c.l = 45;
+        }
+      };
+      _universalSwamp(pal.primary);
+      _universalSwamp(pal.secondary);
+      _universalSwamp(pal.accent);
+      _universalSwamp(pal.ambient);
+    }
     
     // ═══════════════════════════════════════════════════════════════════════
     // 🔥 WAVE 287: NEON PROTOCOL - "Neon or Nothing"

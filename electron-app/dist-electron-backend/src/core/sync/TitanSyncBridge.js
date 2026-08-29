@@ -53,17 +53,32 @@ const IPC_READY_TIMEOUT_MS = 5000;
  * Generate a hash from fixtures array to detect actual changes.
  * 🔥 WAVE 2241: Include channelCount + profileId so Forge profile edits
  * (channel additions, type changes, defaults) always trigger a backend resync.
+ * WAVE 7718: Optimized — no more .map().sort().join() on every store change.
+ * Uses a lightweight FNV-1a hash over fixture signatures (id:dmx:uni:zone:type:chCount:profileId)
+ * + stage bounds. O(N) with no intermediate string array, no sort, no giant join.
  */
 const generateSyncHash = (fixtureList, stageBounds) => {
     if (!fixtureList || fixtureList.length === 0)
         return 'empty';
-    const stageHash = stageBounds
-        ? `${stageBounds.width ?? 0}:${stageBounds.height ?? 0}:${stageBounds.depth ?? 0}`
-        : '0:0:0';
-    return fixtureList
-        .map(f => `${f.id}:${f.dmxAddress}:${f.universe}:${f.zone}:${f.type}:${f.channelCount ?? f.channels?.length ?? 0}:${f.profileId ?? ''}`)
-        .sort()
-        .join('|') + `|stage:${stageHash}`;
+    // FNV-1a hash — fast, minimal allocation
+    let hash = 2166136261;
+    const stageW = stageBounds?.width ?? 0;
+    const stageH = stageBounds?.height ?? 0;
+    const stageD = stageBounds?.depth ?? 0;
+    for (let i = 0; i < fixtureList.length; i++) {
+        const f = fixtureList[i];
+        if (!f)
+            continue;
+        const sig = `${f.id}:${f.dmxAddress}:${f.universe}:${f.zone}:${f.type}:${f.channelCount ?? f.channels?.length ?? 0}:${f.profileId ?? ''}`;
+        for (let j = 0; j < sig.length; j++) {
+            hash ^= sig.charCodeAt(j);
+            hash = Math.imul(hash, 16777619);
+        }
+    }
+    // Mix stage bounds into the hash
+    hash ^= stageW + (stageH << 16) + (stageD << 24);
+    hash = Math.imul(hash, 16777619);
+    return (hash >>> 0).toString(36);
 };
 /**
  * 🩸 WAVE 382: Sync fixtures to backend via IPC
@@ -78,6 +93,14 @@ const syncToBackend = async (fixtureList, stageBounds, lastSyncedHashRef, curren
         return;
     }
     // Convert stageStore fixtures to ArbiterFixture format
+    // WAVE 7728: REVERTED WAVE 7718 in-place mutation. The in-place mutation was
+    // unsafe — it wrote derived fields (hasMovementChannels, installationType,
+    // hasColorWheel, etc.) directly onto stageStore fixture objects, which are
+    // shared by reference with the backend via IPC. The backend's TitanOrchestrator
+    // then stored these same references as this.fixtures, meaning any frontend
+    // mutation (e.g. position edits, profile updates) would silently corrupt the
+    // backend's fixture graph. The .map() allocation cost (N objects per sync,
+    // debounced 200ms) is negligible compared to the correctness risk.
     const arbiterFixtures = fixtureList.map(f => {
         // 🩸 WAVE 382: Detect movers from type string
         const type = (f.type || '').toLowerCase();

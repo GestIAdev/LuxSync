@@ -128,8 +128,6 @@ export class TitanEngine extends EventEmitter {
             debug: config.debug ?? false,
             // WAVE 255: Force IDLE on startup - system starts in blackout
             initialVibe: config.initialVibe ?? 'idle',
-            // 🌌 WAVE 7691: Uranus engine toggle (default: legacy mode)
-            useUranusEngine: config.useUranusEngine ?? false,
         };
         // Inicializar sub-módulos
         // 🔥 WAVE 269: SeleneColorEngine es estático, no necesita instanciarse
@@ -515,9 +513,6 @@ export class TitanEngine extends EventEmitter {
             // Energy SUAVIZADA (no la cruda que parpadea)
             energy: energyOutput.smoothedEnergy,
             vibeId: vibeProfile.id,
-            // 🎹 WAVE 7686 (URANUS PILLAR 0): Chromagram passthrough — no smoothing,
-            // SeleneColorEngine does its own vector-domain EMA in the zero-alloc mirror.
-            chroma: audio.chroma,
             // Wave8 rich data (reconstruido con datos estabilizados)
             wave8: {
                 harmony: {
@@ -539,6 +534,9 @@ export class TitanEngine extends EventEmitter {
         };
         // Obtener la Constitución del Vibe actual
         let constitution = getColorConstitution(vibeProfile.id);
+        // WAVE 7710: Track si constitution ya es un objeto fresco (spread above)
+        // para poder mutar in-place el flag Uranus sin corrupter el cache compartido.
+        let constitutionIsFresh = false;
         // 🔒 WAVE 1209.3: ULTRA-LOCK MODE - Force StrategyArbiter's locked strategy
         // SeleneColorEngine tiene su propio cálculo de estrategia basado en syncopation crudo.
         // Forzamos la estrategia estabilizada del Arbiter (con commitment de 30s) para que
@@ -556,6 +554,7 @@ export class TitanEngine extends EventEmitter {
                 ...constitution,
                 forceStrategy: mappedStrategy,
             };
+            constitutionIsFresh = true;
         }
         // 🌊 WAVE 7129.6: OCEAN HUE DRIFT — Reactivado con ChillAmbientEngine.morphFactor.
         // El morphFactor [0.20, 0.80] con períodos 200s/600s genera un drift cromático
@@ -586,15 +585,11 @@ export class TitanEngine extends EventEmitter {
                     depth: Math.round((1 - mf) * 6000),
                 },
             };
+            constitutionIsFresh = true;
         }
         // 🎨 GENERAR PALETA CON EL FERRARI (ahora con interpolación LERP suave)
         // 🎨 WAVE 2096.1: SeleneColorInterpolator envuelve SeleneColorEngine.generate()
         //    con transiciones suaves, Desaturation Dip (WAVE 67.5), y jitter tolerance (WAVE 70.5)
-        // 🌌 WAVE 7691: Inject the Uranus engine toggle into the constitution
-        //    so SeleneColorEngine.generate() can resolve isUranusActive.
-        if (this.config.useUranusEngine) {
-            constitution = { ...constitution, useUranusEngine: true };
-        }
         const selenePalette = this.colorInterpolator.update(audioAnalysis, energyOutput.isRelativeDrop ?? false, constitution);
         // Convertir SelenePalette → ColorPalette (⚡ WAVE 3504-EXT.2: pure module)
         const palette = selenePaletteToColorPalette(selenePalette);
@@ -1074,10 +1069,6 @@ export class TitanEngine extends EventEmitter {
     forcePaletteRefresh() {
         const vibeProfile = this.vibeManager.getActiveVibe();
         let constitution = this.vibeManager.getColorConstitution();
-        // 🌌 WAVE 7691: Inject Uranus toggle into forced refresh too
-        if (this.config.useUranusEngine) {
-            constitution = { ...constitution, useUranusEngine: true };
-        }
         // Generar paleta con energía neutral (0.3) para obtener "color base" del Vibe
         const mockAudio = {
             energy: 0.3,
@@ -1429,30 +1420,6 @@ export class TitanEngine extends EventEmitter {
             vibeId: this.vibeManager.getActiveVibe().id,
         };
     }
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🌌 WAVE 7691 (URANUS): ENGINE TOGGLE — Runtime UI control
-    // ═══════════════════════════════════════════════════════════════════════
-    /**
-     * Returns true if the Uranus color engine is active.
-     * When false, the engine runs in pure legacy mode.
-     */
-    isUranusEngineActive() {
-        return this.config.useUranusEngine === true;
-    }
-    /**
-     * Toggle the Uranus color engine at runtime.
-     * Takes effect on the next frame — no restart needed.
-     *
-     * @param enabled - true = Uranus pipeline, false = legacy pipeline
-     */
-    setUranusEngine(enabled) {
-        if (this.config.useUranusEngine === enabled)
-            return;
-        this.config.useUranusEngine = enabled;
-        console.log(`[TitanEngine] 🌌 Uranus Engine: ${enabled ? 'ACTIVATED' : 'DEACTIVATED (legacy mode)'}`);
-        // Force a palette refresh so the switch is immediately visible
-        this.forcePaletteRefresh();
-    }
     /**
      * 📜 WAVE 560: Emite logs de consciencia para el Tactical Log
      *
@@ -1644,9 +1611,6 @@ export class TitanEngine extends EventEmitter {
             snare_energy: clamp01(src.snare_energy, 0),
             hh_energy: clamp01(src.hh_energy, 0),
             photon: src.photon,
-            // 🎹 WAVE 7686: Pass chroma by reference — no copy here (zero-alloc).
-            // The copy happens in SeleneColorEngine._chromaMirror.
-            chroma: src.chroma,
         };
     }
     /**

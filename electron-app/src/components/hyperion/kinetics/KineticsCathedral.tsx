@@ -301,9 +301,9 @@ export const KineticsCathedral: React.FC<KineticsCathedralProps> = ({ onClose })
               <span className="kc-paradigm-btn__label">FORMATION</span>
             </button>
             <button
-              className={`kc-paradigm-btn kc-paradigm-btn--spatial${viewMode === 'spatial' ? ' kc-paradigm-btn--active' : ''}`}
-              onClick={() => handleViewMode('spatial')}
-              title="WAVE 7611: IK 3D spatial targeting — UNLOCKED (calibration pipeline repaired)"
+              className={`kc-paradigm-btn kc-paradigm-btn--spatial kc-paradigm-btn--disabled${viewMode === 'spatial' ? ' kc-paradigm-btn--active' : ''}`}
+              disabled
+              title="SPATIAL — Pendiente de calibración. Disponible esta semana antes del show."
             >
               <span className="kc-paradigm-btn__icon">🎯</span>
               <span className="kc-paradigm-btn__label">SPATIAL</span>

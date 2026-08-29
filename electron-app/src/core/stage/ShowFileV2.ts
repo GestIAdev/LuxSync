@@ -1266,6 +1266,54 @@ export function createEmptyShowFile(name: string = 'New Show'): ShowFileV2 {
 }
 
 /**
+ * WAVE 7729: Calculate the next available DMX address for a new fixture.
+ *
+ * The old constructor used `fixtureCount * 4 + 1`, which assumes every fixture
+ * has exactly 4 channels. This caused massive DMX address overlaps when fixtures
+ * with different channel counts (10ch movers, 5ch pars, 20ch tungstens) were
+ * added — they all got addresses spaced by 4, overlapping each other.
+ *
+ * This function scans existing fixtures and finds the first free address slot
+ * that can accommodate the new fixture's channel count without overlapping.
+ *
+ * @param existingFixtures - Fixtures already in the show
+ * @param channelCount - Channel count of the new fixture to be added
+ * @param universe - Target universe (default 0)
+ * @returns First available DMX address (1-based) that fits without overlap
+ */
+export function nextAvailableAddress(
+  existingFixtures: FixtureV2[],
+  channelCount: number,
+  universe: number = 0,
+): number {
+  const chCount = Math.max(1, channelCount)
+  // Build occupied ranges for the target universe
+  const ranges: Array<{ start: number; end: number }> = []
+  for (const f of existingFixtures) {
+    if ((f.universe ?? 0) !== universe) continue
+    const fCh = Math.max(1, f.channelCount ?? 1)
+    const fAddr = f.address ?? (f as any).dmxAddress ?? 0
+    if (fAddr > 0) {
+      ranges.push({ start: fAddr, end: fAddr + fCh - 1 })
+    }
+  }
+  // Sort by start address
+  ranges.sort((a, b) => a.start - b.start)
+  // Find first gap that fits
+  let candidate = 1
+  for (const r of ranges) {
+    if (candidate + chCount - 1 < r.start) {
+      // Fits before this range
+      return candidate
+    }
+    // Move past this range
+    candidate = Math.max(candidate, r.end + 1)
+  }
+  // No overlap found — use candidate (may exceed 512, caller should handle)
+  return candidate
+}
+
+/**
  * Create a new fixture with default values
  */
 export function createDefaultFixture(

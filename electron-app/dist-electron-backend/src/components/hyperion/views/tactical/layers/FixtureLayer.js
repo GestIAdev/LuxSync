@@ -110,7 +110,15 @@ function getGlowSprite(r, g, b) {
     if (cached)
         return cached;
     // Safety valve: clear if too many unique colors (color fades etc.)
+    // 🛡️ WAVE 7713: Call .close() on evicted sprites to release GPU memory
+    // immediately instead of waiting for GC (OffscreenCanvas holds GPU textures).
     if (glowSpriteCache.size >= SPRITE_CACHE_LIMIT) {
+        for (const sprite of glowSpriteCache.values()) {
+            try {
+                sprite.close();
+            }
+            catch { }
+        }
         glowSpriteCache.clear();
     }
     const sprite = new OffscreenCanvas(GLOW_SPRITE_SIZE, GLOW_SPRITE_SIZE);
@@ -139,6 +147,13 @@ function getBeamSprite(r, g, b) {
     if (cached)
         return cached;
     if (beamSpriteCache.size >= SPRITE_CACHE_LIMIT) {
+        // 🛡️ WAVE 7713: Close evicted sprites to release GPU memory immediately.
+        for (const sprite of beamSpriteCache.values()) {
+            try {
+                sprite.close();
+            }
+            catch { }
+        }
         beamSpriteCache.clear();
     }
     const sprite = new OffscreenCanvas(BEAM_SPRITE_W, BEAM_SPRITE_H);

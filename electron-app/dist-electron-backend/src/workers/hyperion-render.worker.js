@@ -113,6 +113,29 @@ const unpackBuffer = {
 };
 // ── Previous intensity map for snap detection ─────────────────────────────
 const prevIntensity = new Map();
+// 🛡️ WAVE 7713: Pre-allocated TacticalFixture pool — zero allocation per frame.
+// Before this fix, the render loop created `new Array(N)` + N object literals
+// every frame at 60fps. With 200 fixtures: 60 × 201 = 12,060 objects/sec
+// ≈ 1.5-2MB/sec of short-lived garbage that V8 GC couldn't keep up with.
+// Now we reuse the same array and object slots, mutating in-place.
+const smoothedFixturesPool = [];
+const hitTestFixturesPool = [];
+function getOrCreatePoolSlot(pool, index) {
+    let slot = pool[index];
+    if (!slot) {
+        slot = {
+            id: '', x: 0, y: 0, type: 'moving', zone: 'center',
+            gobo: 0, prism: 0,
+            r: 0, g: 0, b: 0,
+            intensity: 0,
+            physicalPan: 0.5, physicalTilt: 0.5,
+            zoom: 127, focus: 127,
+            panVelocity: 0, tiltVelocity: 0,
+        };
+        pool[index] = slot;
+    }
+    return slot;
+}
 // ═══════════════════════════════════════════════════════════════════════════
 // RENDER LOOP
 // ═══════════════════════════════════════════════════════════════════════════
@@ -138,7 +161,8 @@ function render(timestamp) {
     // ── Build TacticalFixture[] for render layers ───────────────────────────
     const fixtureCount = Math.min(scaffoldFixtures.length, currentFixtureCount);
     metrics.fixtureCount = fixtureCount;
-    const smoothedFixtures = new Array(fixtureCount);
+    // 🛡️ WAVE 7713: Reuse pre-allocated pool — mutate in-place, zero alloc/frame.
+    const smoothedFixtures = smoothedFixturesPool;
     for (let i = 0; i < fixtureCount; i++) {
         const scaffold = scaffoldFixtures[i];
         // Unpack dynamic data from Float32Array
@@ -180,27 +204,30 @@ function render(timestamp) {
         // useSnap preserved for future strobe-specific rendering (e.g., flash frames)
         const useSnap = intDelta > INTENSITY_SNAP_THRESHOLD;
         void useSnap;
-        // Build the final TacticalFixture
-        smoothedFixtures[i] = {
-            id: scaffold.id,
-            x: scaffold.x,
-            y: scaffold.y,
-            type: scaffold.type,
-            zone: scaffold.zone,
-            gobo: scaffold.gobo,
-            prism: scaffold.prism,
-            // Dynamic data — color and intensity always pass through raw
-            r: unpackBuffer.r,
-            g: unpackBuffer.g,
-            b: unpackBuffer.b,
-            intensity: unpackBuffer.intensity,
-            physicalPan: physState.pan,
-            physicalTilt: physState.tilt,
-            zoom: physState.zoom,
-            focus: unpackBuffer.focus,
-            panVelocity: unpackBuffer.panVelocity,
-            tiltVelocity: unpackBuffer.tiltVelocity,
-        };
+        // 🛡️ WAVE 7713: Mutate pool slot in-place — zero object allocation per frame.
+        const fx = getOrCreatePoolSlot(smoothedFixturesPool, i);
+        fx.id = scaffold.id;
+        fx.x = scaffold.x;
+        fx.y = scaffold.y;
+        fx.type = scaffold.type;
+        fx.zone = scaffold.zone;
+        fx.gobo = scaffold.gobo;
+        fx.prism = scaffold.prism;
+        // Dynamic data — color and intensity always pass through raw
+        fx.r = unpackBuffer.r;
+        fx.g = unpackBuffer.g;
+        fx.b = unpackBuffer.b;
+        fx.intensity = unpackBuffer.intensity;
+        fx.physicalPan = physState.pan;
+        fx.physicalTilt = physState.tilt;
+        fx.zoom = physState.zoom;
+        fx.focus = unpackBuffer.focus;
+        fx.panVelocity = unpackBuffer.panVelocity;
+        fx.tiltVelocity = unpackBuffer.tiltVelocity;
+    }
+    // Trim pool if fixture count shrank (keep slots for reuse but fix .length)
+    if (smoothedFixturesPool.length > fixtureCount) {
+        smoothedFixturesPool.length = fixtureCount;
     }
     // ── Calculate base radius ───────────────────────────────────────────────
     const minDim = Math.min(canvasWidth, canvasHeight);
@@ -388,29 +415,34 @@ function handleMouse(msg) {
 /**
  * Build TacticalFixture[] from current scaffold + frame data.
  * Simplified version for hit testing (no physics smoothing needed).
+ * 🛡️ WAVE 7713: Reuses pre-allocated pool — zero allocation per mouse event.
  */
 function buildCurrentFixtures() {
     const count = Math.min(scaffoldFixtures.length, currentFixtureCount);
-    const result = new Array(count);
+    const result = hitTestFixturesPool;
     for (let i = 0; i < count; i++) {
         const s = scaffoldFixtures[i];
-        result[i] = {
-            id: s.id,
-            x: s.x,
-            y: s.y,
-            type: s.type,
-            zone: s.zone,
-            gobo: s.gobo,
-            prism: s.prism,
-            r: 0, g: 0, b: 0,
-            intensity: 0,
-            physicalPan: 0.5,
-            physicalTilt: 0.5,
-            zoom: 127,
-            focus: 127,
-            panVelocity: 0,
-            tiltVelocity: 0,
-        };
+        const fx = getOrCreatePoolSlot(hitTestFixturesPool, i);
+        fx.id = s.id;
+        fx.x = s.x;
+        fx.y = s.y;
+        fx.type = s.type;
+        fx.zone = s.zone;
+        fx.gobo = s.gobo;
+        fx.prism = s.prism;
+        fx.r = 0;
+        fx.g = 0;
+        fx.b = 0;
+        fx.intensity = 0;
+        fx.physicalPan = 0.5;
+        fx.physicalTilt = 0.5;
+        fx.zoom = 127;
+        fx.focus = 127;
+        fx.panVelocity = 0;
+        fx.tiltVelocity = 0;
+    }
+    if (hitTestFixturesPool.length > count) {
+        hitTestFixturesPool.length = count;
     }
     return result;
 }

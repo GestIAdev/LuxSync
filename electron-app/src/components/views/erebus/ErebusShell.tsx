@@ -9,7 +9,7 @@ import { useViewTransition } from './transition/ViewTransitionDirector'
 import { useLibraryStore } from '../../../stores/libraryStore'
 import { useStageStore } from '../../../stores/stageStore'
 import { useSelectionStore } from '../../../stores/selectionStore'
-import { createDefaultFixture } from '../../../core/stage/ShowFileV2'
+import { createDefaultFixture, nextAvailableAddress } from '../../../core/stage/ShowFileV2'
 import './erebus.css'
 
 // Lazy load the heavy canvases
@@ -106,10 +106,13 @@ export const ErebusShell: React.FC = () => {
       if (!libFixture) return
 
       // 3D mode: approximate placement at center of stage
-      const fixtureCount = useStageStore.getState().fixtures.length
+      const existingFixtures = useStageStore.getState().fixtures
+      const libChCount = libFixture.channels?.length ?? 1
+      // WAVE 7729: Use nextAvailableAddress instead of fixtureCount * 4 + 1.
+      const addr = nextAvailableAddress(existingFixtures, libChCount)
       const newFixture = createDefaultFixture(
         `fix-${Date.now()}`,
-        fixtureCount * 4 + 1,
+        addr,
         {
           name: libFixture.name,
           model: libFixture.name,
@@ -150,10 +153,13 @@ export const ErebusShell: React.FC = () => {
       )
       if (!libFixture) return
 
-      const fixtureCount = useStageStore.getState().fixtures.length
+      const existingFixtures = useStageStore.getState().fixtures
+      const libChCount = libFixture.channels?.length ?? 1
+      // WAVE 7729: Use nextAvailableAddress instead of fixtureCount * 4 + 1.
+      const addr = nextAvailableAddress(existingFixtures, libChCount)
       const newFixture = createDefaultFixture(
         `fix-${Date.now()}`,
-        fixtureCount * 4 + 1,
+        addr,
         {
           name: libFixture.name,
           model: libFixture.name,

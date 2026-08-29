@@ -663,11 +663,6 @@ export class TitanOrchestrator {
      */
     forcePaletteSync() { this.vibeLifecycleManager.forcePaletteSync(); }
     /**
-     * 🌌 WAVE 7691: Toggle the Uranus color engine at runtime.
-     */
-    setUranusEngine(enabled) { this.vibeLifecycleManager.setUranusEngine(enabled); }
-    isUranusEngineActive() { return this.vibeLifecycleManager.isUranusEngineActive(); }
-    /**
      * WAVE 700.5.4: Set the current mood (calm/balanced/punk)
      *
      * Mood controls effect frequency and intensity:
@@ -850,6 +845,11 @@ export class TitanOrchestrator {
             // WAVE 4968 FIX: Directly update this.fixtures before delegating to hydrationEngine.
             // The hydrationCtx proxy setter should also update this, but we ensure it here
             // to prevent stale fixture IDs in the truth broadcast.
+            // WAVE 7728: REVERTED WAVE 7718 in-place mutation. Storing IPC references directly
+            // as this.fixtures meant the backend held live references to frontend store objects.
+            // Any frontend mutation (position edits, profile updates, capability changes) would
+            // silently corrupt the backend's fixture graph and the Aether node graph. The .map()
+            // cost is paid only on setFixtures (show load / fixture edit), not per-frame.
             this.fixtures = fixtures.map(f => ({
                 ...f,
                 dmxAddress: f.dmxAddress || f.address,

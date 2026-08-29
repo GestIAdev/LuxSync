@@ -259,6 +259,20 @@
   box-shadow: var(--kc-glow-magenta);
 }
 
+/* 🚫 WAVE 7727: SPATIAL deshabilitado — pendiente de calibración antes del show.
+   El botón se muestra atenuado y no responde a clicks. */
+.kc-paradigm-btn--spatial.kc-paradigm-btn--disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+}
+.kc-paradigm-btn--spatial.kc-paradigm-btn--disabled:hover {
+  background: transparent;
+  border-color: var(--kc-border);
+  color: var(--kc-text-dim);
+  box-shadow: none;
+}
+
 .kc-paradigm-btn__icon {
   font-size: 16px;
   line-height: 1;

@@ -10,6 +10,11 @@ import { NodeFamily } from '../../aether';
 import { FIX_DATA_FLOATS, CHANNELS_PER_UNI } from '../../aether/glass/layout';
 import { DmxUniverseWriter, getDmxSab } from '../../aether/glass/DmxSabHandlers';
 import { createDefaultCognitive } from '../../protocol/SeleneProtocol';
+// WAVE 7718: Pre-allocated default cognitive — avoid allocating ~20 nested objects
+// + 4 arrays on every truth broadcast (11Hz / 44Hz Chronos). The spread below
+// only overrides top-level fields (stableEmotion, thermalTemperature, ai, vibe),
+// so the nested defaults can be shared by reference safely.
+const _cachedDefaultCognitive = createDefaultCognitive();
 const ZONE_MAP = {
     'FRONT_PARS': 'front', 'BACK_PARS': 'back', 'LEFT_PARS': 'left', 'RIGHT_PARS': 'right',
     'CENTER_PARS': 'center', 'TRUSS_WASH': 'truss', 'FLOOR_WASH': 'floor',
@@ -84,6 +89,10 @@ export class TickEngine {
         this._cachedHotFrameFixtures = [];
         this._cachedChronosSet = new Set();
         this._cachedTruthFixtures = [];
+        // WAVE 7728: Track show generation to detect show changes and purge stale cached states.
+        // Without this, phantomChannels/_controlSources/white/amber/strobe/etc. from the previous
+        // show bleed into the new show's DMX output, causing fixtures to malfunction.
+        this._lastShowGeneration = -1;
         this._glassView = new Float32Array(FIX_DATA_FLOATS);
         this.dmxWriter = new DmxUniverseWriter(getDmxSab());
         this._universeSnapshots = new Map();
@@ -606,8 +615,6 @@ export class TickEngine {
             photon: this.audioPipeline.lastAudioData.photon,
             // â±ï¸ WAVE 2305: THE INFALLIBLE METRONOME â€” PLL beat prediction
             isPLLBeat: beatState.pllOnBeat,
-            // 🎹 WAVE 7686 (URANUS PILLAR 0): 12-bin chromagram → SeleneColorEngine
-            chroma: this.audioPipeline.lastAudioData.chroma,
         };
         // For HAL
         // ðŸŽµ WAVE 2211: Inject REAL beatPhase + BPM from PLL/Worker
@@ -751,6 +758,23 @@ export class TickEngine {
         // hal.renderFromTarget() ya NO se llama: Aether es el productor exclusivo.
         // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         // ðŸ› ï¸ WAVE 5032: Reuse _cachedFixtureStates â€” grow array if needed, mutate in-place
+        // WAVE 7728: PURGE STALE STATES on show change. The _cachedFixtureStates array is
+        // reused across frames for zero-alloc. When a new show is loaded, only basic fields
+        // (dmxAddress, universe, name, r/g/b, pan/tilt) are updated below. But fields like
+        // phantomChannels, _controlSources, white, amber, strobe, shutter, colorWheel, gobo,
+        // prism, speed, physicalPan, physicalTilt, _ikProcessed are NOT reset — they bleed
+        // from the previous show into the new show's DMX output, causing:
+        //   - Movers stuck with white flashes (stale strobe/white=255)
+        //   - Tungsten fixtures not working (stale _controlSources marks channels as MANUAL)
+        //   - Only 1 of N movers working (stale phantomChannels conflict with new definitions)
+        // Fix: When _showGeneration changes (setFixtures was called), nuke the entire cache.
+        const _currentShowGen = this._showGeneration;
+        if (this._lastShowGeneration !== _currentShowGen) {
+            this._cachedFixtureStates.length = 0;
+            this._cachedHotFrameFixtures.length = 0;
+            this._cachedTruthFixtures.length = 0;
+            this._lastShowGeneration = _currentShowGen;
+        }
         const fixtureCount = this.fixtures.length;
         for (let _fi = 0; _fi < fixtureCount; _fi++) {
             const fix = this.fixtures[_fi];
@@ -1253,7 +1277,6 @@ export class TickEngine {
                             return;
                         const _posX = node.physicalPosition?.x ?? node.position?.x ?? 0;
                         const _mech = (_posX < 0) ? _mechL : _mechR;
-                        const _dimmer = Math.max(0, Math.min(1, _mech.intensity ?? 0));
                         // pan/tilt al KINETIC
                         this._aetherBus.push({
                             nodeId: node.nodeId,
@@ -1267,16 +1290,24 @@ export class TickEngine {
                             mergeStrategy: 'LTP',
                         });
                         // WAVE 7694: dimmer al IMPACT del mismo device (no al KINETIC)
-                        const _impactNodeId = _impactNodeByDevice.get(node.deviceId);
-                        if (_impactNodeId) {
-                            this._aetherBus.push({
-                                nodeId: _impactNodeId,
-                                values: { dimmer: _dimmer },
-                                priority: 50,
-                                confidence: 1.0,
-                                source: 'selene-bypass',
-                                mergeStrategy: 'LTP',
-                            });
+                        // WAVE 7699 FIX: Solo empujar dimmer si _mech.intensity está definido.
+                        //   En chill, buildMechanicsBypassIntent añade intensity (del ChillAmbientEngine).
+                        //   En non-chill, assembleStereoMovementIntent NO añade intensity (VMM path).
+                        //   Sin este guard, _mech.intensity ?? 0 = 0 se empuja con priority=50 LTP,
+                        //   matando el dimmer del ImpactAdapter (L0) en todos los vibes non-chill.
+                        if (_mech.intensity !== undefined) {
+                            const _dimmer = Math.max(0, Math.min(1, _mech.intensity));
+                            const _impactNodeId = _impactNodeByDevice.get(node.deviceId);
+                            if (_impactNodeId) {
+                                this._aetherBus.push({
+                                    nodeId: _impactNodeId,
+                                    values: { dimmer: _dimmer },
+                                    priority: 50,
+                                    confidence: 1.0,
+                                    source: 'selene-bypass',
+                                    mergeStrategy: 'LTP',
+                                });
+                            }
                         }
                     });
                 }
@@ -1617,7 +1648,7 @@ export class TickEngine {
                 // ðŸ§¬ WAVE 550: AÃ±adir telemetrÃ­a de IA para el HUD tÃ¡ctico
                 // ðŸ”Œ WAVE 1175: DATA PIPE FIX - Inyectar vibe REAL desde el engine
                 consciousness: {
-                    ...createDefaultCognitive(),
+                    ..._cachedDefaultCognitive,
                     stableEmotion: this.engine.getStableEmotion(),
                     thermalTemperature: this.engine.getThermalTemperature(),
                     ai: this.engine.getConsciousnessTelemetry(),

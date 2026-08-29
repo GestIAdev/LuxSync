@@ -4,7 +4,7 @@ import { useLibraryStore } from '../../../../stores/libraryStore'
 import { useStageStore } from '../../../../stores/stageStore'
 import { deriveFixtureTags } from '../../../../stores/assetAdapters'
 import type { FixtureV2 } from '../../../../core/stage/ShowFileV2'
-import { createDefaultFixture } from '../../../../core/stage/ShowFileV2'
+import { createDefaultFixture, nextAvailableAddress } from '../../../../core/stage/ShowFileV2'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CommandPalette — Spotlight de Patch
@@ -111,10 +111,12 @@ export const CommandPalette: React.FC = () => {
     (result: CommandResult) => {
       if (result.type === 'library' && result.data) {
         const libFixture = result.data
-        const fixtureCount = stageFixtures.length
+        const libChCount = libFixture.channels?.length ?? 1
+        // WAVE 7729: Use nextAvailableAddress instead of fixtureCount * 4 + 1.
+        const addr = nextAvailableAddress(stageFixtures, libChCount)
         const newFixture = createDefaultFixture(
           `fix-${Date.now()}`,
-          fixtureCount * 4 + 1,
+          addr,
           {
             name: libFixture.name,
             model: libFixture.name,

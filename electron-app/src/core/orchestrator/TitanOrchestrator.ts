@@ -1103,7 +1103,10 @@ export class TitanOrchestrator {
       // cost is paid only on setFixtures (show load / fixture edit), not per-frame.
       this.fixtures = fixtures.map(f => ({
         ...f,
-        dmxAddress: f.dmxAddress || f.address,
+        // WAVE 7729: Prefer `address` (user-corrected via Auto-Patch) over
+        // `dmxAddress` (may contain stale auto-generated values from the
+        // constructor's old `fixtureCount * 4 + 1` formula).
+        dmxAddress: (f.address != null ? f.address : f.dmxAddress) || 0,
         isVirtual: f.isVirtual ?? false,
       }))
       // setFixtures log silenced — fires 3× on startup

@@ -87,11 +87,20 @@ export const DockFlyout: React.FC<DockFlyoutProps> = ({ categoryId, pinned, visi
     window.dispatchEvent(new CustomEvent('erebus:rig-created', { detail: { rigId } }))
   }, [addRig])
 
+  // WAVE 7711 FIX: Don't unmount when retracted — hide with CSS instead.
+  // The old code did `if (!shouldShow) return null`, which unmounted all
+  // FixtureCards during drag. When a FixtureCard unmounts mid-drag, the
+  // browser's dragend event has no target (the DOM node is detached), so
+  // React's onDragEnd never fires, so 'erebus:dock-flyout-restore' is never
+  // dispatched, and `retracted` stays true forever — the flyout freezes.
+  // Keeping the DOM alive (just hidden) lets dragend fire normally.
   const shouldShow = (visible || pinned) && !retracted
-  if (!shouldShow) return null
 
   return (
-    <div className={`erebus-dock-flyout ${pinned ? 'erebus-dock-flyout--pinned' : ''}`}>
+    <div
+      className={`erebus-dock-flyout ${pinned ? 'erebus-dock-flyout--pinned' : ''}`}
+      style={shouldShow ? undefined : { display: 'none' }}
+    >
       {/* Search bar */}
       <div className="erebus-dock-flyout-search">
         <input

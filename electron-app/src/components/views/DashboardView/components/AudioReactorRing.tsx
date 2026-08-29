@@ -68,11 +68,11 @@ export const AudioReactorRing: React.FC<AudioReactorRingProps> = ({
     // ═══════════════════════════════════════════════════════════════════════
     // OUTER RING - Energy Field
     // ═══════════════════════════════════════════════════════════════════════
-    
+
     const outerRadius = baseRadius * (1.3 + pulse * 0.2)
     if (!Number.isFinite(outerRadius) || outerRadius <= 0) return
     const segments = 64
-    
+
     ctx.beginPath()
     for (let i = 0; i <= segments; i++) {
       const angle = (i / segments) * Math.PI * 2
@@ -80,124 +80,154 @@ export const AudioReactorRing: React.FC<AudioReactorRingProps> = ({
       const r = outerRadius + wobble
       const x = centerX + Math.cos(angle) * r
       const y = centerY + Math.sin(angle) * r
-      
+
       if (i === 0) ctx.moveTo(x, y)
       else ctx.lineTo(x, y)
     }
     ctx.closePath()
-    
-    // Gradient stroke
-    const gradient = ctx.createRadialGradient(centerX, centerY, baseRadius * 0.5, centerX, centerY, outerRadius * 1.2)
-    gradient.addColorStop(0, `rgba(0, 255, 255, ${0.1 + pulse * 0.3})`)
-    gradient.addColorStop(0.5, `rgba(138, 43, 226, ${0.3 + energy * 0.4})`)
-    gradient.addColorStop(1, `rgba(255, 0, 128, ${0.2 + pulse * 0.5})`)
-    
-    ctx.strokeStyle = gradient
+
+    // 🛡️ WAVE 7712: Solid stroke with globalAlpha — replaces createRadialGradient.
+    // Position/radius change every frame (depend on pulse), so gradient can't be cached.
+    // Solid color + alpha = zero CanvasGradient C++ objects.
+    ctx.globalAlpha = Math.max(0, Math.min(1, 0.2 + pulse * 0.3 + energy * 0.2))
+    ctx.strokeStyle = '#8a2be2'
     ctx.lineWidth = 2 + energy * 3
     ctx.stroke()
-    
+    ctx.globalAlpha = 1
+
     // ═══════════════════════════════════════════════════════════════════════
     // MIDDLE RING - Core Reactor
     // ═══════════════════════════════════════════════════════════════════════
-    
+
     const midRadius = baseRadius * (0.9 + pulse * 0.15)
     if (!Number.isFinite(midRadius) || midRadius <= 0) return
-    
+
     ctx.beginPath()
     ctx.arc(centerX, centerY, midRadius, 0, Math.PI * 2)
-    ctx.strokeStyle = `rgba(0, 255, 255, ${0.4 + pulse * 0.4})`
+    ctx.globalAlpha = Math.max(0, Math.min(1, 0.4 + pulse * 0.4))
+    ctx.strokeStyle = '#00ffff'
     ctx.lineWidth = 3 + pulse * 4
     ctx.stroke()
-    
-    // Inner glow
-    const innerGlow = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, midRadius)
-    innerGlow.addColorStop(0, `rgba(0, 255, 255, ${0.15 + pulse * 0.25})`)
-    innerGlow.addColorStop(0.7, `rgba(138, 43, 226, ${0.05 + energy * 0.1})`)
-    innerGlow.addColorStop(1, 'rgba(0, 0, 0, 0)')
-    
-    ctx.beginPath()
-    ctx.arc(centerX, centerY, midRadius, 0, Math.PI * 2)
-    ctx.fillStyle = innerGlow
-    ctx.fill()
-    
+    ctx.globalAlpha = 1
+
+    // 🛡️ WAVE 7712: Inner glow — concentric circles with decreasing alpha
+    // instead of createRadialGradient. Same visual effect, zero C++ objects.
+    if (midRadius > 2) {
+      for (let s = 4; s >= 1; s--) {
+        const r = (midRadius * s) / 4
+        ctx.beginPath()
+        ctx.arc(centerX, centerY, r, 0, Math.PI * 2)
+        ctx.globalAlpha = Math.max(0, Math.min(1, (0.15 + pulse * 0.25) * (1 - s / 5)))
+        ctx.fillStyle = '#00ffff'
+        ctx.fill()
+      }
+      ctx.globalAlpha = 1
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     // INNER CORE - The Heart
     // ═══════════════════════════════════════════════════════════════════════
-    
+
     const coreRadius = baseRadius * (0.25 + pulse * 0.1)
     if (!Number.isFinite(coreRadius) || coreRadius <= 0) return
-    
-    // Core glow
-    const coreGlow = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, coreRadius * 2)
-    coreGlow.addColorStop(0, `rgba(255, 255, 255, ${0.8 + pulse * 0.2})`)
-    coreGlow.addColorStop(0.3, `rgba(0, 255, 255, ${0.6 + energy * 0.3})`)
-    coreGlow.addColorStop(0.7, `rgba(138, 43, 226, ${0.3})`)
-    coreGlow.addColorStop(1, 'rgba(0, 0, 0, 0)')
-    
-    ctx.beginPath()
-    ctx.arc(centerX, centerY, coreRadius * 2, 0, Math.PI * 2)
-    ctx.fillStyle = coreGlow
-    ctx.fill()
-    
+
+    // 🛡️ WAVE 7712: Core glow — concentric circles with decreasing alpha
+    if (coreRadius > 1) {
+      for (let s = 4; s >= 1; s--) {
+        const r = (coreRadius * 2 * s) / 4
+        ctx.beginPath()
+        ctx.arc(centerX, centerY, r, 0, Math.PI * 2)
+        if (s <= 2) {
+          ctx.globalAlpha = Math.max(0, Math.min(1, (0.8 + pulse * 0.2) * (1 - (s - 1) / 4)))
+          ctx.fillStyle = '#ffffff'
+        } else {
+          ctx.globalAlpha = Math.max(0, Math.min(1, (0.6 + energy * 0.3) * (1 - (s - 1) / 4)))
+          ctx.fillStyle = '#00ffff'
+        }
+        ctx.fill()
+      }
+      ctx.globalAlpha = 1
+    }
+
     // Solid core
     ctx.beginPath()
     ctx.arc(centerX, centerY, coreRadius, 0, Math.PI * 2)
-    ctx.fillStyle = `rgba(255, 255, 255, ${0.9 + pulse * 0.1})`
+    ctx.globalAlpha = Math.max(0, Math.min(1, 0.9 + pulse * 0.1))
+    ctx.fillStyle = '#ffffff'
     ctx.fill()
-    
+    ctx.globalAlpha = 1
+
     // ═══════════════════════════════════════════════════════════════════════
     // ENERGY BARS - Rotating segments
     // ═══════════════════════════════════════════════════════════════════════
-    
+
     const barCount = 12
-    const barWidth = 0.08
-    
+
     ctx.save()
     ctx.translate(centerX, centerY)
     ctx.rotate(time * 0.5)
-    
+
+    // 🛡️ WAVE 7712: Solid fill bars with alpha modulation — replaces
+    // createLinearGradient per bar (12 gradients/frame eliminated).
     for (let i = 0; i < barCount; i++) {
       const angle = (i / barCount) * Math.PI * 2
       const barEnergy = Math.sin(time * 2 + i * 0.5) * 0.5 + 0.5
       const barLength = baseRadius * (0.5 + barEnergy * energy * 0.4)
-      
+
       ctx.save()
       ctx.rotate(angle)
-      
-      const barGradient = ctx.createLinearGradient(midRadius * 0.6, 0, midRadius * 0.6 + barLength, 0)
-      barGradient.addColorStop(0, 'rgba(0, 255, 255, 0)')
-      barGradient.addColorStop(0.3, `rgba(0, 255, 255, ${0.3 + pulse * 0.4})`)
-      barGradient.addColorStop(1, `rgba(255, 0, 128, ${0.5 + energy * 0.3})`)
-      
+
+      // Solid fill — alpha fades from base to tip
+      const baseAlpha = Math.max(0, Math.min(1, 0.3 + pulse * 0.4))
+      const tipAlpha = Math.max(0, Math.min(1, 0.5 + energy * 0.3))
+
+      // Base half (cyan)
       ctx.beginPath()
       ctx.moveTo(midRadius * 0.6, -2)
-      ctx.lineTo(midRadius * 0.6 + barLength, -1)
-      ctx.lineTo(midRadius * 0.6 + barLength, 1)
+      ctx.lineTo(midRadius * 0.6 + barLength * 0.5, -1.5)
+      ctx.lineTo(midRadius * 0.6 + barLength * 0.5, 1.5)
       ctx.lineTo(midRadius * 0.6, 2)
       ctx.closePath()
-      ctx.fillStyle = barGradient
+      ctx.globalAlpha = baseAlpha
+      ctx.fillStyle = '#00ffff'
       ctx.fill()
-      
+
+      // Tip half (magenta)
+      ctx.beginPath()
+      ctx.moveTo(midRadius * 0.6 + barLength * 0.5, -1.5)
+      ctx.lineTo(midRadius * 0.6 + barLength, -1)
+      ctx.lineTo(midRadius * 0.6 + barLength, 1)
+      ctx.lineTo(midRadius * 0.6 + barLength * 0.5, 1.5)
+      ctx.closePath()
+      ctx.globalAlpha = tipAlpha
+      ctx.fillStyle = '#ff0080'
+      ctx.fill()
+
       ctx.restore()
     }
-    
+
+    ctx.globalAlpha = 1
     ctx.restore()
     
     // ═══════════════════════════════════════════════════════════════════════
     // BPM TEXT
     // ═══════════════════════════════════════════════════════════════════════
-    
+
+    // 🛡️ WAVE 7712: Use globalAlpha + solid fillStyle instead of rgba() template
+    // literals. Eliminates 2 string allocs/frame (template literal interpolation).
     ctx.save()
     ctx.font = 'bold 32px "Orbitron", "Rajdhani", monospace'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillStyle = `rgba(255, 255, 255, ${0.9 + pulse * 0.1})`
+    ctx.globalAlpha = Math.max(0, Math.min(1, 0.9 + pulse * 0.1))
+    ctx.fillStyle = '#ffffff'
     ctx.shadowColor = '#00ffff'
     ctx.shadowBlur = 10 + pulse * 20
     ctx.fillText(Math.round(bpm).toString(), centerX, centerY - 8)
-    
+
     ctx.font = '12px "Rajdhani", sans-serif'
-    ctx.fillStyle = 'rgba(0, 255, 255, 0.7)'
+    ctx.globalAlpha = 0.7
+    ctx.fillStyle = '#00ffff'
     ctx.shadowBlur = 5
     ctx.fillText('BPM', centerX, centerY + 18)
     ctx.restore()

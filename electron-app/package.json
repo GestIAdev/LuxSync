@@ -10,6 +10,7 @@
     "build": "tsc -p tsconfig.node.json && vite build && npm run copy:phantom && npm run copy:launcher && npm run forge:jsc && npm run forge:manifest && electron-builder",
     "forge:jsc": "node ../scripts/forge-jsc.cjs",
     "forge:manifest": "npx tsx scripts/generate-arsenal-manifest.ts",
+    "sync-effects": "npx tsx scripts/sync-factory-effects.ts",
     "copy:phantom": "node -e \"require('fs').copyFileSync('electron/workers/phantomWorker.html', 'dist-electron/phantomWorker.html')\"",
     "copy:launcher": "node scripts/copy-launcher.cjs",
     "preview": "vite preview",

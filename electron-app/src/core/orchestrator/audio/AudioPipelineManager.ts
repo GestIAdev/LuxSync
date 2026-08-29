@@ -56,8 +56,6 @@ export interface AudioDataSnapshot {
   photon?: GodEarPhoton
   // WAVE 8008: Rhythmic percussion telemetry — snare/hi-hat isolated energies
   rhythmic?: GodEarRhythmicPercussion
-  // 🎹 WAVE 7686 (URANUS PILLAR 0): 12-bin chromagram from GodEar Worker
-  chroma?: number[]
 }
 
 export interface BeatState {
@@ -219,8 +217,6 @@ export class AudioPipelineManager {
       photon?: GodEarPhoton;
       // WAVE 8008: Rhythmic percussion telemetry
       rhythmic?: GodEarRhythmicPercussion;
-      // 🎹 WAVE 7686 (URANUS PILLAR 0): 12-bin chromagram
-      chroma?: number[];
     }) => {
       const matrixStatus = this.ctx.trinity?.getAudioMatrix()?.getStatus()
       const activeSource = matrixStatus?.activeSource ?? null
@@ -275,9 +271,6 @@ export class AudioPipelineManager {
           photon: levels.photon ?? this.lastAudioData.photon,
           // WAVE 8008: Rhythmic percussion telemetry
           rhythmic: levels.rhythmic ?? this.lastAudioData.rhythmic,
-          // 🎹 WAVE 7686: Chromagram passthrough (no smoothing — SeleneColorEngine
-          // does its own vector-domain EMA per the Uranus blueprint)
-          chroma: levels.chroma ?? this.lastAudioData.chroma,
         }
 
         const wasActive = this.hasRealAudio
@@ -325,8 +318,6 @@ export class AudioPipelineManager {
           photon: levels.photon ?? this.lastAudioData.photon,
           // WAVE 8008: Rhythmic percussion telemetry
           rhythmic: levels.rhythmic ?? this.lastAudioData.rhythmic,
-          // 🎹 WAVE 7686: Chromagram passthrough
-          chroma: levels.chroma ?? this.lastAudioData.chroma,
         }
       }
     })
@@ -370,7 +361,6 @@ export class AudioPipelineManager {
       workerBeatStrength: this.lastAudioData.workerBeatStrength,
       workerKickCount: this.lastAudioData.workerKickCount,
       rhythmic: this.lastAudioData.rhythmic,
-      chroma: this.lastAudioData.chroma,
     }
 
     const wasAudioActive = this.hasRealAudio

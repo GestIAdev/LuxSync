@@ -19,7 +19,7 @@ import { useNavigationStore } from '../../../stores/navigationStore'
 import { useControlStore } from '../../../stores/controlStore'
 import { useShallow } from 'zustand/shallow'
 import { useSeleneStore } from '../../../stores/seleneStore'
-import { FolderIcon, NetworkIcon, UranusIcon } from '../../icons/LuxIcons'
+import { FolderIcon, NetworkIcon } from '../../icons/LuxIcons'
 import { QUALITY_PRESETS, type QualityMode, type ViewMode } from '../shared/types'
 import { TacticalCanvas } from './tactical'
 import { VisualizerCanvas } from './visualizer'
@@ -177,23 +177,6 @@ const HyperionView = React.memo(function HyperionView({
     await window.lux?.setLiquidLayout?.(newMode)
   }, [liquidLayout, setLiquidLayout])
 
-  // 🌌 WAVE 7692: URANUS ENGINE TOGGLE — replaces the obsolete CPU Profiler button.
-  // The profiler was a 15s V8 capture dev tool that was never used in production.
-  // Uranus is the new color engine selector: legacy vs. full Uranus pipeline.
-  const useUranusEngine = useSeleneStore(state => state.useUranusEngine)
-  const setUranusEngine = useSeleneStore(state => state.setUranusEngine)
-  const handleUranusToggle = useCallback(async () => {
-    const next = !useUranusEngine
-    setUranusEngine(next)
-    try {
-      await window.lux?.setUranusEngine?.(next)
-    } catch (err) {
-      console.error('[URANUS] ❌ IPC error:', err)
-      // Revert on failure
-      setUranusEngine(!next)
-    }
-  }, [useUranusEngine, setUranusEngine])
-
   // ── BPM Display ───────────────────────────────────────────────────────────
   const bpmDisplay = useMemo(() => {
     if (bpm === 0) return '---'
@@ -324,18 +307,6 @@ const HyperionView = React.memo(function HyperionView({
               }
             >
               {qualityMode === 'HQ' ? '✨ HQ' : '⚡ LQ'}
-            </button>
-            {/* 🌌 WAVE 7692: URANUS ENGINE TOGGLE — replaces obsolete PROF button */}
-            <button
-              className={`hyperion-quality-toggle ${useUranusEngine ? 'hq' : 'lq'}`}
-              onClick={handleUranusToggle}
-              title={useUranusEngine
-                ? '🌌 Uranus Engine ACTIVE — full pipeline (gravity hue, Φ(t) ring, softplus repulsion, harmonic derivation). Click for legacy mode.'
-                : '🌙 Legacy color engine — KEY_TO_HUE, Sidereal Clock, elastic rotation. Click to activate Uranus.'}
-              style={{ minWidth: 92 }}
-            >
-              <UranusIcon size={14} />
-              <span style={{ marginLeft: 4 }}>{useUranusEngine ? 'URANUS' : 'LEGACY'}</span>
             </button>
           </div>
         </div>

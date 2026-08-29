@@ -887,12 +887,6 @@ export class TitanOrchestrator {
     forcePaletteSync(): void { this.vibeLifecycleManager.forcePaletteSync() }
 
   /**
-   * 🌌 WAVE 7691: Toggle the Uranus color engine at runtime.
-   */
-  setUranusEngine(enabled: boolean): void { this.vibeLifecycleManager.setUranusEngine(enabled) }
-  isUranusEngineActive(): boolean { return this.vibeLifecycleManager.isUranusEngineActive() }
-
-  /**
    * WAVE 700.5.4: Set the current mood (calm/balanced/punk)
    * 
    * Mood controls effect frequency and intensity:

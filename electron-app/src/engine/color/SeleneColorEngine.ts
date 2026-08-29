@@ -192,11 +192,6 @@ export interface ExtendedAudioAnalysis {
     section: SectionOutput;
     genre: GenreOutput;
   };
-
-  // 🎹 WAVE 7686 (URANUS PILLAR 0): 12-bin chromagram from GodEar Worker
-  // (pitch classes C→B, normalized 0-1 by max). Consumed by the Chromagram
-  // Gravity Engine via the zero-alloc _chromaMirror. Undefined when no audio.
-  chroma?: number[];
 }
 
 /**
@@ -506,45 +501,6 @@ export interface GenerationOptions {
   suppressTropicalBias?: boolean;
 
   /**
-   * 🎹 WAVE 7687 (URANUS PILLAR I): Chromagram Gravity Engine feature flag.
-   *
-   * When true, the primary hue is derived from the barycentric center of mass
-   * of the 12-bin chromagram (Circle of Fifths topology) instead of the
-   * discrete KEY_TO_HUE[key] lookup. Mode modifiers, mood drift, thermal
-   * gravity, and all constitutional enforcement still apply downstream.
-   *
-   * When false (default), the legacy KEY_TO_HUE path is used — zero behaviour
-   * change. This flag enables A/B testing during the Uranus rollout.
-   *
-   * @default false
-   */
-  useChromagramGravity?: boolean;
-
-  /**
-   * 🌌 WAVE 7691 (URANUS — SURGICAL ISOLATION): UI-facing engine toggle.
-   *
-   * When true, ALL Uranus subsystems activate:
-   *   - Pillar I:   Barycentric chromatic mass (hue from chroma vector)
-   *   - Pillar II:  Relativistic Sidereal Ring (Φ(t) quasi-periodic rotation)
-   *   - Pillar III: Repulsive Void (softplus repulsion + rigid-body evacuation)
-   *   - WAVE 7690:  Harmonic palette derivation + measured strategy label
-   *
-   * When false (default), the engine runs in pure legacy mode:
-   *   - KEY_TO_HUE discrete lookup
-   *   - Sidereal Clock slot-based gamut mapping
-   *   - Elastic rotation (_enforceForbiddenHue) for forbidden zones
-   *   - Fibonacci/syncopation strategy
-   *
-   * This flag is resolved together with useChromagramGravity into a single
-   * `isUranusActive` boolean at the top of generate(). Either flag activates
-   * Uranus. The UI toggle should set useUranusEngine; internal code may use
-   * useChromagramGravity for backward compatibility.
-   *
-   * @default false
-   */
-  useUranusEngine?: boolean;
-
-  /**
    * WAVE 4760 — Ángulo de rotación Fibonacci para el color secundario.
    *
    * Reemplaza el hardcoding de 137.5° para fiesta-latina.
@@ -596,24 +552,6 @@ export interface GenerationOptions {
  */
 const PHI = 1.618033988749895;
 const PHI_ROTATION = (PHI * 360) % 360; // ≈ 222.5°
-
-/**
- * ⏳ WAVE 7680: SIDEREAL SESSION OFFSET — Safe clock randomization.
- *
- * PROBLEM: The Sidereal Clock uses `performance.now()` as its time base.
- * `performance.now()` starts at ~0 on every app launch, so the active slot
- * always defaults to slot 0. Every session begins in the same "act".
- *
- * FIX: Add a one-time random offset (up to 24h) computed at module load.
- * This shifts the slot index deterministically per session without touching
- * the physics engine's time base.
- *
- * WHY NOT Date.now(): Date.now() is epoch-based and causes the "Woodstock"
- * bug — the physics oscillators (ChillAmbientEngine, LiquidEngine71) use
- * performance.now() and would desync from the color engine if we mixed
- * clocks. performance.now() + offset keeps a single clock domain.
- */
-const SIDEREAL_SESSION_OFFSET = Math.random() * 86_400_000; // Random ms up to 24h
 
 /**
  * 🎵 CÍRCULO DE QUINTAS → CÍRCULO CROMÁTICO
@@ -780,86 +718,6 @@ function normalizeHue(h: number): number {
  */
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
-}
-
-/**
- * 🎯 WAVE 7684: GAMUT MAPPING — Proportional hue projection.
- *
- * PROBLEM: The old snap-to-nearest-border logic (findNearestAllowedHue)
- * acted as a hard wall. Any out-of-bound hue was clamped to the exact same
- * border degree (e.g., 350°), so completely different audio keys (C minor
- * vs A minor) produced identical output — zero audio-reactivity inside the
- * slot's bounds.
- *
- * SOLUTION: Map the raw audio-derived hue proportionally into the target
- * range. The raw hue's position within the full 0-360 circle is preserved
- * as a ratio, then projected into the slot's [min, max] window. This
- * guarantees that every distinct audio key yields a mathematically
- * distinct shade within the active Act.
- *
- * If the hue is already inside one of the allowed ranges, it passes
- * through unchanged. If not, the nearest range is found and the hue is
- * gamut-mapped into it.
- *
- * @param rawHue - The audio-derived hue (0-360, will be normalized)
- * @param ranges - Array of [min, max] allowed hue ranges
- * @returns The gamut-mapped hue, guaranteed to fall within an allowed range
- */
-function gamutMapHue(rawHue: number, ranges: [number, number][]): number {
-  const normalizedHue = normalizeHue(rawHue);
-
-  // 1. Already inside a range → pass through unchanged
-  for (const [min, max] of ranges) {
-    const nMin = normalizeHue(min);
-    const nMax = normalizeHue(max);
-    const inRange = nMin <= nMax
-      ? (normalizedHue >= nMin && normalizedHue <= nMax)
-      : (normalizedHue >= nMin || normalizedHue <= nMax);
-    if (inRange) return normalizedHue;
-  }
-
-  // 2. Not in any range → find the nearest range
-  let nearestMin = 0;
-  let nearestMax = 0;
-  let minDistance = Infinity;
-
-  for (const [min, max] of ranges) {
-    const nMin = normalizeHue(min);
-    const nMax = normalizeHue(max);
-
-    const distToMin = Math.min(
-      Math.abs(normalizedHue - nMin),
-      360 - Math.abs(normalizedHue - nMin),
-    );
-    const distToMax = Math.min(
-      Math.abs(normalizedHue - nMax),
-      360 - Math.abs(normalizedHue - nMax),
-    );
-    const dist = Math.min(distToMin, distToMax);
-
-    if (dist < minDistance) {
-      minDistance = dist;
-      nearestMin = nMin;
-      nearestMax = nMax;
-    }
-  }
-
-  // 3. Gamut-map proportionally into the nearest range
-  //    Range size (handles circular wrap-around, e.g. [340, 20])
-  let rangeSize: number;
-  if (nearestMax >= nearestMin) {
-    rangeSize = nearestMax - nearestMin;
-  } else {
-    rangeSize = (360 - nearestMin) + nearestMax;
-  }
-
-  if (rangeSize <= 0) return nearestMin;
-
-  // Proportional projection: rawHue's position in [0, 360) → position in [nearestMin, nearestMin + rangeSize)
-  const normalizedRaw = normalizedHue / 360;
-  let mappedHue = nearestMin + normalizedRaw * rangeSize;
-
-  return normalizeHue(mappedHue);
 }
 
 /**
@@ -1190,355 +1048,10 @@ export function applyThermalGravity(hue: number, atmosphericTemp?: number, maxFo
  * console.log(palette.meta.macroGenre); // 'ELECTRONIC_4X4'
  * ```
  */
-
-// ═══════════════════════════════════════════════════════════════════════════
-// 🎹 WAVE 7686 (URANUS PILLAR 0): ZERO-ALLOC CHROMAGRAM MIRROR
-// ═══════════════════════════════════════════════════════════════════════════
-// Module-level pre-allocated 12-bin buffer. The producer (TitanEngine) passes
-// chroma as a number[] reference; generate() copies INTO this Float64Array
-// once per frame (12 float stores, zero allocation). All downstream Uranus
-// math (Pillar I barycenter, Pillar III repulsion) reads from this mirror.
-//
-// Float64Array is chosen over Float32Array for double-precision accumulation
-// in the barycentric mass sums (Pillar I §1.3) — prevents catastrophic
-// cancellation when subtracting near-equal circular vectors.
-//
-// Normalization contract: GodEarFFT.computeChromaFromSpectrum normalizes by
-// the MAX bin (sup-norm), NOT by the sum. Therefore Σ c_i ∈ [1, 12], and
-// Pillar I formulas must divide by the explicit weight sum W = Σ w_i.
-const _chromaMirror = new Float64Array(12);
-
-// ═══════════════════════════════════════════════════════════════════════════
-// 🌌 WAVE 7687 (URANUS PILLAR I): BARYCENTRIC CHROMATIC MASS — LUTs & STATE
-// ═══════════════════════════════════════════════════════════════════════════
-// Circle of Fifths topology: θ_i = ((7*i) % 12) * 30°
-// 7 is a generator of Z_12 (gcd(7,12)=1) → bijection, no collisions.
-// Harmonically proximate notes become chromatically proximate.
-//
-// Verified mapping (i: pitch → θ):
-//   0:C→0°  1:C#→210°  2:D→60°  3:D#→270°  4:E→120°  5:F→330°
-//   6:F#→180°  7:G→30°  8:G#→240°  9:A→90°  10:A#→300°  11:B→150°
-//
-// The three classical color strategies emerge exactly from the three most
-// structurally important musical intervals:
-//   Perfect fifth (7 semitones)  → 30°  (analogous)
-//   Major third (4 semitones)    → 120° (triadic)
-//   Tritone (6 semitones)        → 180° (complementary)
-//
-// Pre-computed as compile-time constants. Values drawn from
-// {0, ±0.5, ±0.8660254037844387, ±1} — the exact trig values at
-// multiples of 30°. No runtime Math.cos/sin calls.
-const COS_THETA = new Float64Array([
-  1.0,                   // C  →   0°
- -0.8660254037844387,    // C# → 210°
-  0.5,                   // D  →  60°
-  0.0,                   // D# → 270°
- -0.5,                   // E  → 120°
-  0.8660254037844387,    // F  → 330°
- -1.0,                   // F# → 180°
-  0.8660254037844387,    // G  →  30°
- -0.5,                   // G# → 240°
-  0.0,                   // A  →  90°
-  0.5,                   // A# → 300°
- -0.8660254037844387,    // B  → 150°
-]);
-
-const SIN_THETA = new Float64Array([
-  0.0,                   // C  →   0°
- -0.5,                   // C# → 210°
-  0.8660254037844387,    // D  →  60°
- -1.0,                   // D# → 270°
-  0.8660254037844387,    // E  → 120°
- -0.5,                   // F  → 330°
-  0.0,                   // F# → 180°
-  0.5,                   // G  →  30°
- -0.8660254037844387,    // G# → 240°
-  1.0,                   // A  →  90°
- -0.8660254037844387,    // A# → 300°
-  0.5,                   // B  → 150°
-]);
-
-// ── EMA accumulators (vector domain — never smooth the angle) ──────────────
-// Dual-rate architecture per blueprint §1.5:
-//   _slow* (α=0.005, τ≈4.5s) — key-level structure, drives primary hue
-//   _fast* (α=0.15,  τ≈150ms) — chord-level reactivity, reserved for WAVE 7690
-//
-// Smoothing in the vector domain is strictly superior to angle smoothing:
-//   - No wraparound pathology (EMA on angle crossing 359°→1° swings through 180°)
-//   - Destructive interference is physically correct: when harmony changes
-//     rapidly, successive M vectors cancel → |M̄| drops → R drops → system
-//     desaturates while "uncertain" and re-saturates when settled.
-//     This emergent hesitation requires no extra code.
-let _slowMx = 0, _slowMy = 0, _slowW = 0;
-let _fastMx = 0, _fastMy = 0, _fastW = 0;
-
-// ── Tuning constants ───────────────────────────────────────────────────────
-// GAMMA: sharpness exponent. w_i = c_i^γ.
-//   γ=1 → democratic, mushy. γ=2 → dominant-note emphasis (blueprint default).
-//   γ=3 → near-discrete (mimics KEY_TO_HUE, safe for initial A/B testing).
-//   γ→∞ → degenerates to argmax (back to discrete lookup).
-// γ is a continuous dial between "continuous field" and "discrete lookup",
-// making migration risk-free: ship at high γ, lower to unlock the field.
-const GRAVITY_GAMMA = 3;
-const GRAVITY_ALPHA_SLOW = 0.005;
-// WAVE 7701 FIX #1: Fast accumulator damping increased.
-//   α=0.15 (τ≈150ms) followed percussive transients, causing accent hue
-//   to jitter 30-60° within a single beat. α=0.04 (τ≈560ms) responds to
-//   chord changes, not kick drum noise.
-const GRAVITY_ALPHA_FAST = 0.04;
-// WAVE 7701 FIX #1: R_min gate raised from 0.08 to 0.25.
-//   At 0.08, even broadband noise produced R > R_min, so the accent
-//   always took the noisy fast hue instead of falling back to primary.
-//   0.25 requires genuine tonal content (sustained notes/chords).
-const GRAVITY_R_MIN = 0.25;
-
-// ── Hue hold state ─────────────────────────────────────────────────────────
-// When R < R_min (atonal/noise/silence), the hue is mathematically undefined
-// (atan2(0,0)). Hold the last valid gravity hue to prevent flicker.
-let _lastValidGravityHue = 0;
-
-// ── WAVE 7702: Primary hue anchor rate-limit ───────────────────────────────
-// The barycentric gravity hue still drifts every 1-2 seconds as the chroma
-// vector responds to musical changes. For a stage lighting context, the
-// PRIMARY hue anchor must be stable for multi-second stretches — otherwise
-// the entire palette churns and the audience perceives a "feria ambulante".
-//
-// Rate-limit policy: if the new gravity hue target differs from the current
-// anchor by more than ANCHOR_SHIFT_THRESHOLD degrees, AND less than
-// ANCHOR_COOLDOWN_MS milliseconds have passed since the last accepted shift,
-// reject the new target and hold the current anchor. This ensures the primary
-// hue only moves when (a) the change is large enough to be musically
-// meaningful AND (b) enough time has passed for the previous anchor to feel
-// "settled" to the audience.
-let _anchorHue = -1;            // current accepted primary anchor (-1 = unset)
-let _anchorLastShiftMs = 0;     // timestamp of last accepted anchor shift
-const ANCHOR_COOLDOWN_MS = 8000; // minimum 8 seconds between major anchor shifts
-const ANCHOR_SHIFT_THRESHOLD = 25; // degrees — ignore drifts smaller than this
-
-// ── WAVE 7701 FIX #2: Residual mass EMA accumulators ───────────────────────
-// The secondary hue is derived from the residual mass vector (slow vector
-// minus dominant bin contribution). Without EMA, the residual jitters frame
-// to frame because the dominant bin flips between pitch classes on percussive
-// content. These accumulators smooth the residual in the vector domain
-// (same principle as Pillar I — never smooth the angle, smooth the vector).
-//   α=0.02 (τ≈2.5s) — between slow (4.5s) and fast (560ms), appropriate
-//   for a secondary harmonic center that should be stable but not frozen.
-let _resMxEMA = 0, _resMyEMA = 0;
-const RESIDUAL_ALPHA = 0.02;
-// Minimum residual magnitude to accept a secondary hue derivation.
-// Below this, the primary dominates entirely (monophonic content) and
-// the secondary falls back to primary + 30° (analogous default).
-//   0.05 — 50x stricter than the original 0.001, which admitted pure noise.
-const RESIDUAL_MIN_MAG = 0.05;
-
-// ── WAVE 7690: Fast accumulator hue/confidence (for accent derivation) ─────
-// H_fast is the chord-level reactive center (α=0.15, τ≈150ms).
-// R_fast is its confidence. Both are derived per-frame and consumed by the
-// Uranus override block for the accent color.
-let _gravityHueFast = 0;
-let _gravityRFast = 0;
-// Φ(t) stored per-frame for the Uranus override block (secondary/accent/ambient)
-let _siderealPhi = 0;
-
-// ═══════════════════════════════════════════════════════════════════════════
-// 🌑 WAVE 7688 (URANUS PILLAR III): THE REPULSIVE VOID — Anti-Yellow Forcefield
-// ═══════════════════════════════════════════════════════════════════════════
-// Under the Circle of Fifths topology (Pillar I), common diatonic material
-// lands INSIDE the banned yellow/brown zone [25°, 80°]:
-//   C major  → 45°  ⛔ INSIDE
-//   A minor  → 75°  ⛔ INSIDE
-//   E minor  → 105° ✅ outside
-// Two of the three most common triads in popular music sit in the void.
-// Without Pillar III, Uranus would emit yellow constantly.
-//
-// The void is evacuated in two stages:
-//   1. RIGID-BODY ROTATION (§3.4): find a single ψ applied to ALL palette
-//      colors that minimizes void occupancy. Preserves intervals EXACTLY
-//      (rotation is an isometry) — the palette stays genuinely triadic/
-//      complementary while escaping the void.
-//   2. SOFTPLUS REPULSION (§3.2): per-color smooth-max cleanup for any
-//      residual stragglers the rigid rotation couldn't evacuate.
-//
-// The softplus kernel m(x) = w + s·ln(1 + exp((x−w)/s)) is:
-//   - Strictly monotone (derivative = sigmoid > 0 everywhere) ⇒ INJECTIVE
-//     (distinct inputs stay distinct — preserves reactivity, unlike hard clamp)
-//   - C¹ smooth (no visible snapping)
-//   - Exactly the identity far from the void (gain > 0.95 beyond ~43° from center)
-//
-// Verified numerically (blueprint §3.2):
-//   H=45° → 24.91°  (C major escapes downward into red)
-//   H=75° → 81.57°  (A minor escapes upward into green)
-//   H=90° → 90.63°  (nearly untouched)
-//   H=100°→ 100.09° (identity)
-// ═══════════════════════════════════════════════════════════════════════════
-
-// ── Void constants ─────────────────────────────────────────────────────────
-const VOID_CENTER = 52.5;       // center of [25, 80]
-const VOID_HALF_WIDTH = 27.5;   // half-width
-const VOID_SOFTNESS = 5;        // softplus softness (degrees)
-const VOID_LOW = 25;            // void lower edge
-const VOID_HIGH = 80;           // void upper edge
-
-// ── Momentum state for tie-break at exact void center (d=0) ────────────────
-// Exit in the direction the hue was already travelling (C⁰ in time, no flicker).
-let _prevEscapeSign = 1;
-
-// ── Rigid-body hysteresis state ─────────────────────────────────────────────
-// Without hysteresis, the per-frame argmin chatters between equally-good
-// rotations. Apply a deadband: accept a new ψ only if it improves J by a
-// margin, plus an EMA for smooth transitions.
-let _rigidPsiEMA = 0;
-// WAVE 7701 FIX #3: Cooldown counter — after accepting a new ψ, ignore
-// candidate rotations for N frames to prevent micro-adjustments chasing
-// the jittery secondary hue. 30 frames ≈ 680ms at 44Hz.
-let _rigidCooldownFrames = 0;
-
-/**
- * 🌑 WAVE 7688: Softplus Repulsion Kernel — evacuates a single hue from [25°, 80°].
- *
- * m(x) = w + s·ln(1 + exp((x−w)/s))  lifts the magnitude to at least w,
- * with a smooth transition whose derivative is the logistic sigmoid.
- * Strictly monotone ⇒ injective ⇒ distinct inputs stay distinct.
- *
- * @param h - input hue in degrees [0, 360)
- * @returns hue evacuated outside the void, C¹ smooth, injective
- */
-function softplusRepel(h: number): number {
-  // Shortest signed angular distance from void center (-180 to 180)
-  let d = ((h - VOID_CENTER + 540) % 360) - 180;
-  // Softplus magnitude — always ≥ VOID_HALF_WIDTH
-  let absD = Math.abs(d);
-  let m = VOID_HALF_WIDTH + VOID_SOFTNESS * Math.log(1 + Math.exp((absD - VOID_HALF_WIDTH) / VOID_SOFTNESS));
-  // Escape direction: tie-break d=0 with momentum (C⁰ in time)
-  let sign = d > 0 ? 1 : (d < 0 ? -1 : _prevEscapeSign);
-  _prevEscapeSign = sign;
-  return (VOID_CENTER + sign * m + 360) % 360;
-}
-
-/**
- * 🌑 WAVE 7688: Void penalty — depth of a hue inside [25°, 80°].
- * Returns 0 if outside the void, positive if inside (deeper = larger).
- * Used by the rigid-body solver to score candidate rotations.
- */
-function _voidPenalty(h: number): number {
-  // Shortest signed distance from center
-  let d = ((h - VOID_CENTER + 540) % 360) - 180;
-  let absD = Math.abs(d);
-  if (absD >= VOID_HALF_WIDTH) return 0;  // outside void
-  // Penalty = depth inside the void (0 at edge, VOID_HALF_WIDTH at center)
-  return VOID_HALF_WIDTH - absD;
-}
-
-/**
- * 🌑 WAVE 7688: Rigid-Body Palette Evacuation — find a single rotation ψ
- * applied to ALL 4 palette colors that minimizes total void occupancy.
- *
- * Because rotation is an isometry, all pairwise angular distances are
- * preserved EXACTLY — the palette remains genuinely triadic/complementary
- * while evacuating the forbidden zone.
- *
- * Exact cheap solution (blueprint §3.4): J(ψ) is piecewise smooth, minima
- * occur where some color sits exactly on a void edge. Candidate set:
- *   ψ ∈ { edge − h_i : i ∈ {primary,secondary,accent,ambient}, edge ∈ {25, 80} } ∪ {0}
- * = 4 colors × 2 edges + 1 = 9 candidates. Evaluate J at each, take argmin.
- *
- * Hysteresis: accept new ψ only if it improves J by a margin, plus EMA
- * smoothing to prevent chatter.
- *
- * Mutates pal.primary.h, pal.secondary.h, pal.accent.h, pal.ambient.h in place.
- * Zero allocation — all locals are stack scalars.
- */
-function _evacuatePaletteRigid(pal: SelenePalette): void {
-  const colors = [pal.primary.h, pal.secondary.h, pal.accent.h, pal.ambient.h];
-
-  // ── Build 9 candidate ψ values ──
-  // Pre-allocated static array (zero alloc)
-  _rigidCandidates[0] = 0;  // ψ=0 (no rotation — always test as baseline)
-  let ncand = 1;
-  for (let ci = 0; ci < 4; ci++) {
-    _rigidCandidates[ncand++] = (VOID_LOW - colors[ci] + 360) % 360;
-    _rigidCandidates[ncand++] = (VOID_HIGH - colors[ci] + 360) % 360;
-  }
-
-  // ── Evaluate J(ψ) for each candidate ──
-  let bestPsi = 0;
-  let bestJ = Infinity;
-  for (let ci = 0; ci < ncand; ci++) {
-    const psi = _rigidCandidates[ci];
-    let J = 0;
-    for (let ki = 0; ki < 4; ki++) {
-      J += _voidPenalty((colors[ki] + psi + 360) % 360);
-    }
-    // Tie-break toward ψ=0 (smallest disturbance): if J is equal, prefer
-    // the candidate closer to 0
-    if (J < bestJ - 0.01 || (Math.abs(J - bestJ) < 0.01 && Math.abs(psi) < Math.abs(bestPsi))) {
-      bestJ = J;
-      bestPsi = psi;
-    }
-  }
-
-  // ── Hysteresis + EMA + Cooldown (WAVE 7701 FIX #3) ──
-  // Only accept a new ψ if it meaningfully improves J, otherwise hold.
-  // This prevents chatter between equally-good rotations frame to frame.
-  //
-  // WAVE 7701: Three damping measures to kill the "feria ambulante":
-  //   1. Cooldown: after accepting a rotation, ignore candidates for 30
-  //      frames (~680ms). The jittery secondary hue cannot trigger another
-  //      palette rotation during this window.
-  //   2. Margin: raised from 1.0 to 5.0 — only rotate when the improvement
-  //      is unambiguous, not from 1-2° of secondary jitter inside the void.
-  //   3. EMA α: lowered from 0.3 to 0.05 — palette rotation is now a slow
-  //      majestuous drift (τ≈680ms) instead of a nervous 68ms twitch.
-  if (_rigidCooldownFrames > 0) {
-    _rigidCooldownFrames--;
-    // During cooldown, skip the optimization entirely — just apply the
-    // existing smoothed ψ. This is the key inertia mechanism.
-  } else {
-    const currentJ = _voidPenalty((pal.primary.h + _rigidPsiEMA + 360) % 360)
-      + _voidPenalty((pal.secondary.h + _rigidPsiEMA + 360) % 360)
-      + _voidPenalty((pal.accent.h + _rigidPsiEMA + 360) % 360)
-      + _voidPenalty((pal.ambient.h + _rigidPsiEMA + 360) % 360);
-
-    if (bestJ < currentJ - 5.0) {
-      // Significant improvement — update target ψ
-      // EMA the ψ for smooth transition (avoid sudden palette jumps)
-      // Handle circular wrap: shortest path
-      let delta = bestPsi - _rigidPsiEMA;
-      if (delta > 180) delta -= 360;
-      if (delta < -180) delta += 360;
-      _rigidPsiEMA += delta * 0.05;  // WAVE 7701: α=0.05 (was 0.3), τ≈680ms
-      if (_rigidPsiEMA < 0) _rigidPsiEMA += 360;
-      if (_rigidPsiEMA >= 360) _rigidPsiEMA -= 360;
-      // Arm cooldown — no more rotations for 30 frames
-      _rigidCooldownFrames = 30;
-    }
-  }
-
-  // ── Apply the smoothed ψ to all 4 colors ──
-  if (Math.abs(_rigidPsiEMA) > 0.01) {
-    pal.primary.h   = (pal.primary.h   + _rigidPsiEMA + 360) % 360;
-    pal.secondary.h = (pal.secondary.h + _rigidPsiEMA + 360) % 360;
-    pal.accent.h    = (pal.accent.h    + _rigidPsiEMA + 360) % 360;
-    pal.ambient.h   = (pal.ambient.h   + _rigidPsiEMA + 360) % 360;
-  }
-}
-
-// Pre-allocated candidate array for _evacuatePaletteRigid (zero alloc)
-const _rigidCandidates = new Float64Array(9);
-
 export class SeleneColorEngine {
   
   // 🎯 WAVE 2096.1: Deterministic frame counter for throttled logging (replaces Math.random)
   private static generateCallCount = 0;
-
-  // WAVE 7710: Description cache — rebuild only when discrete inputs change,
-  // not every frame. Scalar comparison (no signature string alloc).
-  private static _lastDescKey: string | null = null;
-  private static _lastDescMode = '';
-  private static _lastDescTemp = '';
-  private static _lastDescE = -1;
-  private static _lastDescS = -1;
-  private static _lastDesc = '';
   
   // 🔌 WAVE 65: Smart Logging - Tracking para evitar logs repetitivos
   private static lastLoggedKey: string | null = null;
@@ -1660,128 +1173,7 @@ export class SeleneColorEngine {
   static generate(data: ExtendedAudioAnalysis, options?: GenerationOptions): SelenePalette {
     // 🎯 WAVE 2096.1: Deterministic frame counter (replaces Math.random for log throttling)
     this.generateCallCount++;
-
-    // ══════════════════════════════════════════════════════════════════════
-    // 🌌 WAVE 7691 (URANUS — SURGICAL ISOLATION): ENGINE TOGGLE RESOLUTION
-    // ══════════════════════════════════════════════════════════════════════
-    // Single source of truth for Uranus activation. Either flag activates it:
-    //   - useUranusEngine:    UI-facing toggle (user-controlled)
-    //   - useChromagramGravity: internal/programmatic flag (backward compat)
-    // When false: pure legacy mode (KEY_TO_HUE, Sidereal Clock, elastic rotation)
-    // When true:  full Uranus pipeline (gravity hue, Φ(t), softplus, rigid-body)
-    // ══════════════════════════════════════════════════════════════════════
-    const isUranusActive = options?.useUranusEngine === true || options?.useChromagramGravity === true;
-
-    // ══════════════════════════════════════════════════════════════════════
-    // 🎹 WAVE 7686 (URANUS PILLAR 0): ZERO-ALLOC CHROMAGRAM MIRROR
-    // Copy incoming 12-bin chroma into the module-level Float64Array.
-    // 12 float stores, zero allocation. Falls back to zeros when no audio
-    // (silence, Chronos phantom mode, or pre-audio initialization).
-    // Downstream Uranus math (Pillar I/III) reads exclusively from this mirror.
-    // ══════════════════════════════════════════════════════════════════════
-    if (data.chroma && data.chroma.length === 12) {
-      for (let i = 0; i < 12; i++) {
-        _chromaMirror[i] = data.chroma[i];
-      }
-    } else {
-      _chromaMirror.fill(0);
-    }
-
-    // ══════════════════════════════════════════════════════════════════════
-    // 🌌 WAVE 7687 (URANUS PILLAR I): BARYCENTRIC CHROMATIC MASS
-    // ══════════════════════════════════════════════════════════════════════
-    // Compute the circular first moment of the chroma energy vector over the
-    // Circle of Fifths basis. The hue is atan2(M_y, M_x); the confidence R
-    // (Rayleigh's resultant length) arrives free and measures tonal purity.
-    //
-    // Weighting: w_i = c_i^γ (γ=3 for initial stability — near-discrete).
-    // Smoothing: EMA in the VECTOR domain (never the angle) — dual-rate.
-    //
-    // Cost: 12 × (1 pow + 2 mul + 3 add) + 2 EMA updates ≈ 80 flops.
-    // Zero allocation — all state is module-level.
-    // ══════════════════════════════════════════════════════════════════════
-    let rawMx = 0, rawMy = 0, rawW = 0;
-    for (let i = 0; i < 12; i++) {
-      const c = _chromaMirror[i];
-      if (c <= 0) continue;  // skip silent bins — pow(0,γ)=0 anyway
-      const w = Math.pow(c, GRAVITY_GAMMA);
-      rawMx += w * COS_THETA[i];
-      rawMy += w * SIN_THETA[i];
-      rawW  += w;
-    }
-    // EMA the vector (not the angle) — dual-rate accumulators
-    _slowMx = (1 - GRAVITY_ALPHA_SLOW) * _slowMx + GRAVITY_ALPHA_SLOW * rawMx;
-    _slowMy = (1 - GRAVITY_ALPHA_SLOW) * _slowMy + GRAVITY_ALPHA_SLOW * rawMy;
-    _slowW  = (1 - GRAVITY_ALPHA_SLOW) * _slowW  + GRAVITY_ALPHA_SLOW * rawW;
-    _fastMx = (1 - GRAVITY_ALPHA_FAST) * _fastMx + GRAVITY_ALPHA_FAST * rawMx;
-    _fastMy = (1 - GRAVITY_ALPHA_FAST) * _fastMy + GRAVITY_ALPHA_FAST * rawMy;
-    _fastW  = (1 - GRAVITY_ALPHA_FAST) * _fastW  + GRAVITY_ALPHA_FAST * rawW;
-
-    // Derive hue and confidence from the SLOW (structural) accumulators
-    const _gravityHueRaw = (Math.atan2(_slowMy, _slowMx) * 180 / Math.PI + 360) % 360;
-    const _gravityR   = _slowW > 0
-      ? Math.sqrt(_slowMx * _slowMx + _slowMy * _slowMy) / _slowW
-      : 0;
-
-    // Derive hue and confidence from the FAST (chord-level) accumulators
-    // Used by WAVE 7690 for the accent color (reactive chord-level center)
-    const _gravityHueFastRaw = (Math.atan2(_fastMy, _fastMx) * 180 / Math.PI + 360) % 360;
-    _gravityRFast = _fastW > 0
-      ? Math.sqrt(_fastMx * _fastMx + _fastMy * _fastMy) / _fastW
-      : 0;
-
-    // ══════════════════════════════════════════════════════════════════════
-    // 🌌 WAVE 7689 (URANUS PILLAR II): RELATIVISTIC SIDEREAL RING — Φ(t)
-    // ══════════════════════════════════════════════════════════════════════
-    // Quasi-periodic global angular precession applied to the barycentric hue.
-    // Rotation is an ISOMETRY of the circle: preserves all pairwise angular
-    // distances exactly → the 30°/120°/180° interval structure (analogous/
-    // triadic/complementary) is invariant under the drift. Only the absolute
-    // anchoring moves.
-    //
-    // Reactivity gain theorem (blueprint §2.1):
-    //   G_clamp      = 0        (dead — non-injective)
-    //   G_gamut(7684)= 40/360   (11.1% — compressed)
-    //   G_rotation   = 1        (100% — isometry, bijective)
-    //
-    // Φ(t) = Φ₀ + ω₁·t + A₂·sin(ω₂·t) + A₃·sin(ω₃·t)
-    //   T₁ = 45 min  (primary revolution, 8°/min)
-    //   T₂ = 27.8 min (T₁/φ, golden ratio → irrational → never closes)
-    //   T₃ = 17.2 min (T₂/φ)
-    // The golden-ratio period relationship makes the trajectory aperiodic —
-    // the combination of primary hue and act character never exactly recurs
-    // within a realistic set length (Lissajous on a torus, irrational winding).
-    //
-    // Timescale separation: |dΦ/dt| ≈ 0.13°/s vs |dH_audio/dt| ≈ 1-10°/s
-    // → 1-2 orders of magnitude separation. Audio response is instantaneous,
-    // the ring is invisible-but-cumulative (8°/min, below JND for short windows,
-    // full revolution per 45 min).
-    //
-    // Only active when useChromagramGravity is true (gated with Pillar I).
-    // Cost: 3 sin + ~5 mul/add per frame. Zero allocation.
-    // ══════════════════════════════════════════════════════════════════════
-    let _gravityHue = _gravityHueRaw;
-    _siderealPhi = 0;  // reset per frame (0 when gravity is off)
-    _gravityHueFast = _gravityHueFastRaw;  // unrotated fast hue (updated below if gravity on)
-    if (isUranusActive) {
-      const tMin = performance.now() / 60000;
-      // Φ₀ seeded from SIDEREAL_SESSION_OFFSET (WAVE 7680) — no two sessions
-      // start at the same angle. Scale ms to degrees: mod 360000 → /1000.
-      const Phi0 = (SIDEREAL_SESSION_OFFSET % 360000) / 1000;
-      // Angular frequencies (radians per minute) — golden ratio periods
-      const w2_rad = (2 * Math.PI) / 27.8;
-      const w3_rad = (2 * Math.PI) / 17.2;
-      // Φ(t) in degrees: linear drift (8°/min) + two incommensurable harmonics
-      const Phi = Phi0 + (8 * tMin) + 25 * Math.sin(w2_rad * tMin) + 10 * Math.sin(w3_rad * tMin);
-      // Store Φ for the WAVE 7690 override block (secondary/accent/ambient)
-      _siderealPhi = Phi;
-      // Apply the isometry: rotate the barycentric hue by Φ
-      // Large modulo (360000) handles negative Phi safely before final % 360
-      _gravityHue = (_gravityHueRaw + Phi + 360000) % 360;
-      // Also rotate the fast hue — same isometry applies to both rates
-      _gravityHueFast = (_gravityHueFastRaw + Phi + 360000) % 360;
-    }
-
+    
     // === A. EXTRAER DATOS CON FALLBACKS ===
     // WAVE 0-ALLOC: Use static _wave8Fallback instead of creating new object
     const wave8 = data.wave8 || SeleneColorEngine._wave8Fallback;
@@ -1857,58 +1249,7 @@ export class SeleneColorEngine {
       baseHue = MOOD_HUES[activeMood];
       hueSourceCode = 3;
     }
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🌌 WAVE 7687 (URANUS PILLAR I): GRAVITY HUE OVERRIDE
-    // ═══════════════════════════════════════════════════════════════════════
-    // When useChromagramGravity is enabled, override baseHue with the
-    // barycentric hue from the chroma vector. Mode modifiers, mood drift,
-    // thermal gravity, and all constitutional enforcement still apply
-    // downstream — the gravity hue IS the new "key hue".
-    //
-    // R (Rayleigh's resultant length) gates the output:
-    //   R > R_min → tonal content present, use gravity hue
-    //   R ≤ R_min → atonal/noise/silence, hold last valid hue to prevent
-    //               flicker (atan2(0,0) is undefined and numerically unstable)
-    //
-    // When the flag is OFF (default), the legacy KEY_TO_HUE path above is
-    // untouched — zero behaviour change, enabling safe A/B testing.
-    // ═══════════════════════════════════════════════════════════════════════
-    if (isUranusActive) {
-      if (_gravityR > GRAVITY_R_MIN) {
-        // WAVE 7702: Rate-limit the primary hue anchor.
-        // The gravity hue is mathematically valid, but we only accept it as
-        // the new anchor if (a) it differs significantly from the current
-        // anchor AND (b) the cooldown has elapsed. Small drifts are absorbed
-        // silently; large shifts are gated by the 8-second cooldown.
-        const nowMs = performance.now();
-        const targetHue = _gravityHue;
-        if (_anchorHue < 0) {
-          // First frame — accept immediately
-          _anchorHue = targetHue;
-          _anchorLastShiftMs = nowMs;
-        } else {
-          // Compute shortest circular distance to current anchor
-          let shiftDelta = Math.abs(targetHue - _anchorHue);
-          if (shiftDelta > 180) shiftDelta = 360 - shiftDelta;
-          if (shiftDelta >= ANCHOR_SHIFT_THRESHOLD &&
-              (nowMs - _anchorLastShiftMs) >= ANCHOR_COOLDOWN_MS) {
-            // Major shift AND cooldown elapsed — accept new anchor
-            _anchorHue = targetHue;
-            _anchorLastShiftMs = nowMs;
-          }
-          // Otherwise: hold the current anchor (reject the drift)
-        }
-        baseHue = _anchorHue;
-        _lastValidGravityHue = _anchorHue;
-        hueSourceCode = 1;  // treat as key-derived for logging
-      } else {
-        // Atonal/silence: hold the last valid gravity hue (and the anchor)
-        baseHue = _anchorHue >= 0 ? _anchorHue : _lastValidGravityHue;
-        hueSourceCode = 1;
-      }
-    }
-
+    
     // === C. APLICAR MODIFICADORES DE MODO ===
     const modeMod = MODE_MODIFIERS[mode] || MODE_MODIFIERS['minor'];
     
@@ -1971,56 +1312,100 @@ export class SeleneColorEngine {
       }
     }
     
-    // 2️⃣ FORBIDDEN HUE RANGES: Legacy Elastic Rotation (WAVE 7702 LOBOTOMY)
-    // ═══════════════════════════════════════════════════════════════════════
-    // WAVE 7702: The softplusRepel (Pillar III) has been DISABLED for the
-    // primary hue. It was trapping colors exactly at the 25° and 80° void
-    // boundaries, producing muddy browns. Both Uranus and Legacy now use the
-    // original elastic rotation (WAVE 144) for forbidden zone evacuation.
-    // ═══════════════════════════════════════════════════════════════════════
-    {
-      // LEGACY: Elastic rotation for the primary hue (WAVE 144 original)
-      const elasticStep = options?.elasticRotation ?? 15;
-      const maxIterations = Math.ceil(360 / elasticStep);
-      let legacyIter = 0;
-      let legacyForbidden = true;
-      while (legacyForbidden && legacyIter < maxIterations) {
-        legacyForbidden = false;
-        if (options?.forbiddenHueRanges) {
-          for (const [min, max] of options.forbiddenHueRanges) {
-            const nMin = normalizeHue(min);
-            const nMax = normalizeHue(max);
-            const inRange = nMin <= nMax
-              ? (finalHue >= nMin && finalHue <= nMax)
-              : (finalHue >= nMin || finalHue <= nMax);
-            if (inRange) {
-              finalHue = normalizeHue(finalHue + elasticStep);
-              legacyForbidden = true;
-              legacyIter++;
-              break;
-            }
+    // 2️⃣ FORBIDDEN HUE RANGES: Elastic Rotation
+    // Si el hue cae en zona prohibida, rotar hasta escapar
+    const elasticStep = options?.elasticRotation ?? 15;  // grados por iteración
+    const maxIterations = Math.ceil(360 / elasticStep);  // prevenir loop infinito
+    
+    if (options?.forbiddenHueRanges) {
+      let iterations = 0;
+      let isInForbidden = true;
+      
+      while (isInForbidden && iterations < maxIterations) {
+        isInForbidden = false;
+        
+        for (const [min, max] of options.forbiddenHueRanges) {
+          const normalizedMin = normalizeHue(min);
+          const normalizedMax = normalizeHue(max);
+          
+          // Handle wrap-around (e.g., [330, 30] means 330-360 and 0-30)
+          const isInRange = normalizedMin <= normalizedMax
+            ? (finalHue >= normalizedMin && finalHue <= normalizedMax)
+            : (finalHue >= normalizedMin || finalHue <= normalizedMax);
+          
+          if (isInRange) {
+            // Elastic Rotation: rotar +elasticStep grados
+            finalHue = normalizeHue(finalHue + elasticStep);
+            isInForbidden = true;
+            iterations++;
+            break;
           }
-        } else {
-          // No forbidden ranges declared — no evacuation needed
-          break;
         }
       }
     }
-
-    // 3️⃣ ALLOWED HUE RANGES: Gamut Mapping (WAVE 7684)
-    // Si el hue cae fuera de todos los rangos permitidos, mapearlo
-    // proporcionalmente al rango más cercano en vez de clavarlo al borde.
+    
+    // 3️⃣ ALLOWED HUE RANGES: Snap to nearest
+    // Si el hue cae fuera de todos los rangos permitidos, ir al más cercano
     // ⚠️ WAVE 286 BUG FIX: [0, 360] debe significar "todo permitido"
-    // 🌌 WAVE 7689: BYPASS cuando useChromagramGravity — Φ(t) ya rotó el hue,
-    // clavarlo a un rango destruiría la isometría (G=1 → G<<1).
-    if (!isUranusActive && options?.allowedHueRanges && options.allowedHueRanges.length > 0) {
+    if (options?.allowedHueRanges && options.allowedHueRanges.length > 0) {
       // 🛡️ CHECK: Si el rango es [0, 360] o similar (abarca todo), skip
       const isFullCircle = options.allowedHueRanges.some(([min, max]) => {
         return (max - min) >= 359 || (min === 0 && max >= 359);
       });
-
+      
       if (!isFullCircle) {
-        finalHue = gamutMapHue(finalHue, options.allowedHueRanges);
+        let isAllowed = false;
+        // WAVE 0-ALLOC: Use scalars instead of [number, number] tuple
+        let closestRangeMin = 0;
+        let closestRangeMax = 0;
+        let hasClosestRange = false;
+        let minDistance = Infinity;
+        
+        for (const [min, max] of options.allowedHueRanges) {
+          const normalizedMin = normalizeHue(min);
+          const normalizedMax = normalizeHue(max);
+          
+          const isInRange = normalizedMin <= normalizedMax
+            ? (finalHue >= normalizedMin && finalHue <= normalizedMax)
+            : (finalHue >= normalizedMin || finalHue <= normalizedMax);
+          
+          if (isInRange) {
+            isAllowed = true;
+            break;
+          }
+          
+          // Calcular distancia al rango más cercano
+          const distToMin = Math.min(
+            Math.abs(finalHue - normalizedMin),
+            360 - Math.abs(finalHue - normalizedMin)
+          );
+          const distToMax = Math.min(
+            Math.abs(finalHue - normalizedMax),
+            360 - Math.abs(finalHue - normalizedMax)
+          );
+          const distance = Math.min(distToMin, distToMax);
+          
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestRangeMin = normalizedMin;
+            closestRangeMax = normalizedMax;
+            hasClosestRange = true;
+          }
+        }
+        
+        if (!isAllowed && hasClosestRange) {
+          // Rotar al punto más cercano del rango permitido más cercano
+          const distToMin = Math.min(
+            Math.abs(finalHue - closestRangeMin),
+            360 - Math.abs(finalHue - closestRangeMin)
+          );
+          const distToMax = Math.min(
+            Math.abs(finalHue - closestRangeMax),
+            360 - Math.abs(finalHue - closestRangeMax)
+          );
+          
+          finalHue = distToMin <= distToMax ? closestRangeMin : closestRangeMax;
+        }
       }
     }
     
@@ -2107,11 +1492,12 @@ export class SeleneColorEngine {
     if (options?.siderealClock) {
       const clock = options.siderealClock;
       if (clock.slots && clock.slots.length > 0) {
-        const slotIndex = Math.floor((performance.now() + SIDEREAL_SESSION_OFFSET) / clock.slotDurationMs) % clock.slots.length;
+        const slotIndex = Math.floor(performance.now() / clock.slotDurationMs) % clock.slots.length;
         const slot = clock.slots[slotIndex];
         // Copy all fields from options into _effectiveOptions without spread
         const eo = SeleneColorEngine._effectiveOptions;
         eo.forbiddenHueRanges = options.forbiddenHueRanges;
+        eo.allowedHueRanges = slot.allowedHueRanges;
         eo.saturationRange = options.saturationRange;
         eo.lightnessRange = slot.lightnessRange;
         eo.atmosphericTemp = options.atmosphericTemp;
@@ -2130,42 +1516,30 @@ export class SeleneColorEngine {
         eo.luxurySignatures = options.luxurySignatures;
         eo.oceanicModulation = options.oceanicModulation;
         eo.transitionConfig = options.transitionConfig;
-        // 🌌 WAVE 7689 (URANUS PILLAR II): DESTROY THE WALL
-        // When useChromagramGravity is active, the Relativistic Sidereal Ring
-        // (Φ(t) rotation, applied above to _gravityHue) replaces the slot-based
-        // hue clamping. Slots now ONLY modulate lightness, saturation, and
-        // drift rate — NEVER restrict hue boundaries.
-        //
-        // Reactivity gain: G_rotation = 1 (isometry, 100% reactivity) vs
-        // G_gamutMap = (max-min)/360 (compressed, e.g. 11% for BUNKER [170,210]).
-        // The window itself was the problem — rotation eliminates it.
-        //
-        // When the flag is OFF, legacy behaviour is preserved: slots still
-        // impose allowedHueRanges via gamutMapHue (WAVE 7684).
-        if (isUranusActive) {
-          // Uranus mode: no hue boundaries from slots. Φ(t) handles drift.
-          eo.allowedHueRanges = undefined;
-          eo.useChromagramGravity = options?.useChromagramGravity;
-          eo.useUranusEngine = options?.useUranusEngine;
-        } else {
-          // Legacy mode: slots constrain hue via allowedHueRanges
-          eo.allowedHueRanges = slot.allowedHueRanges;
-          eo.useChromagramGravity = undefined;
-          eo.useUranusEngine = undefined;
-        }
         effectiveOptions = eo;
-        // 🎯 WAVE 7684: GAMUT MAPPING para el Sidereal Clock (LEGACY path only).
-        // ANTES: snap al CENTRO del rango más cercano → todas las keys
-        // caían en el mismo grado (ej: 190°) sin importar la música.
-        // AHORA: mapeo proporcional → cada key audio-derivada produce un
-        // grado distinto dentro del slot, preservando la reactividad musical.
-        //
-        // 🌌 WAVE 7689: BYPASS total cuando useChromagramGravity está activo.
-        // Φ(t) ya rotó el hue — clavarlo al slot destruiría la isometría.
-        if (!isUranusActive && slot.allowedHueRanges && slot.allowedHueRanges.length > 0) {
+        // Aplicar allowedHueRanges del slot al finalHue ahora mismo
+        // (el bloque Constitutional ya pasó, así que aplicamos aquí el snap)
+        // El snap dirige al CENTRO del rango más cercano, no al borde,
+        // para evitar colores de frontera y generar la zona auténtica del slot.
+        if (slot.allowedHueRanges && slot.allowedHueRanges.length > 0) {
           const isFullCircle = slot.allowedHueRanges.some(([mn, mx]) => (mx - mn) >= 359 || (mn === 0 && mx >= 359));
           if (!isFullCircle) {
-            finalHue = gamutMapHue(finalHue, slot.allowedHueRanges);
+            let isAllowed = false;
+            let closestCenter = finalHue;
+            let minDist = Infinity;
+            for (const [mn, mx] of slot.allowedHueRanges) {
+              const inRange = mn <= mx
+                ? (finalHue >= mn && finalHue <= mx)
+                : (finalHue >= mn || finalHue <= mx);
+              if (inRange) { isAllowed = true; break; }
+              // Calcular centro del rango (handling wrap-around)
+              const center = mn <= mx
+                ? (mn + mx) / 2
+                : normalizeHue((mn + mx + 360) / 2);
+              const d = Math.min(Math.abs(finalHue - center), 360 - Math.abs(finalHue - center));
+              if (d < minDist) { minDist = d; closestCenter = center; }
+            }
+            if (!isAllowed) finalHue = normalizeHue(closestCenter);
           }
         }
       }
@@ -2226,30 +1600,13 @@ export class SeleneColorEngine {
     pal.primary.s = correctedSat;
     pal.primary.l = correctedLight;
     
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🎯 WAVE 7684: STRATEGY-FIRST PALETTE DERIVATION
-    // ═══════════════════════════════════════════════════════════════════════
-    // PROBLEMA: El secondary SIEMPRE usaba Fibonacci (≈222.5°) sin importar
-    // la estrategia. Cuando el UI decía "Analogous", el secondary estaba a
-    // 222.5° del primary — matemáticamente near-complementary. El label
-    // solo describía el accent, no la paleta completa.
-    //
-    // SOLUCIÓN: Resolver la estrategia PRIMERO, luego derivar el secondary
-    // según la estrategia:
-    //   - Analogous:    secondary = primary + 15°  (cluster adyacente tight)
-    //   - Triadic:      secondary = primary + Fibonacci (contraste dorado)
-    //   - Complementary: secondary = primary + Fibonacci (contraste dorado)
-    //
-    // El Fibonacci se reserva para estrategias de ALTO contraste donde la
-    // variedad infinita es deseable. En Analogous, la paleta forma un
-    // cluster verdadero: Primary + Secondary(+15°) + Accent(+30°) + Ambient(-30°).
-    // ═══════════════════════════════════════════════════════════════════════
-
-    // === F1. CONSTANTES (Fibonacci + Salt) ===
+    // === F. COLOR SECUNDARIO (Rotación Fibonacci) ===
     // 🎨 WAVE 90 / WAVE 4760: Rotación configurable vía constitución.
+    // fibonacciRotationDeg en GenerationOptions sobreescribe el default (PHI_ROTATION ≈222.5°).
     const fibonacciRotation = options?.fibonacciRotationDeg ?? PHI_ROTATION;
-
+    
     // 🧂 WAVE 94.2 / WAVE 4760: Salt cromático configurable vía constitución.
+    // saltChromaticKeys es un Record<rootIndex, deltaDeg> — sin detección por nombre de vibe.
     let saltRotation = 0;
     if (key && options?.saltChromaticKeys) {
       const keyIndex = KEY_TO_ROOT[key];
@@ -2257,13 +1614,36 @@ export class SeleneColorEngine {
         saltRotation = options.saltChromaticKeys[keyIndex] ?? 0;
       }
     }
-
-    // === F2. RESOLVER ESTRATEGIA (movido arriba, antes del secondary) ===
+    
+    const secondaryHue = normalizeHue(finalHue + fibonacciRotation + saltRotation);
+    // WAVE 0-ALLOC: Mutate scratch palette
+    pal.secondary.h = secondaryHue;
+    pal.secondary.s = clamp(correctedSat + 5, 20, 100);  // Ligeramente más saturado
+    pal.secondary.l = clamp(correctedLight - 10, 20, 80); // Ligeramente más oscuro
+    
+    // 🏛️ WAVE 94.3 / WAVE 4760: Luxury Signature Overrides configurables vía constitución.
+    // luxurySignatures es un Record<rootIndex, {h, maxS?}> — sin detección por nombre de vibe.
+    if (key && options?.luxurySignatures) {
+      const keyIndex = KEY_TO_ROOT[key];
+      if (keyIndex !== undefined) {
+        const sig = options.luxurySignatures[keyIndex];
+        if (sig !== undefined) {
+          pal.secondary.h = sig.h;
+          if (sig.maxS !== undefined) {
+            pal.secondary.s = Math.min(pal.secondary.s, sig.maxS);
+          }
+        }
+      }
+    }
+    
+    // === G. COLOR DE ACENTO (Estrategia de Contraste) ===
     // 🎨 WAVE 91: STRATEGY THRESHOLDS - Alineado con StrategyArbiter (0.40-0.65)
+    // Expandimos zona triadic para que sea más alcanzable en música latina
     // 🎛️ WAVE 142: forceStrategy puede sobrescribir la decisión
     let accentHue: number;
     let strategy: 'analogous' | 'triadic' | 'complementary';
-
+    
+    // WAVE 142: Si hay estrategia forzada, usarla
     if (options?.forceStrategy && options.forceStrategy !== 'prism') {
       strategy = options.forceStrategy;
       switch (strategy) {
@@ -2279,6 +1659,7 @@ export class SeleneColorEngine {
       }
     } else if (options?.forceStrategy === 'prism') {
       // 🔮 PRISM: Estrategia especial de Techno (Tetraédrica)
+      // Primary → Secondary (+60°) → Ambient (+120°) → Accent (+180°)
       strategy = 'complementary';  // Label para metadata
       accentHue = finalHue + 180;
     } else {
@@ -2294,44 +1675,8 @@ export class SeleneColorEngine {
         accentHue = finalHue + 180;  // Opuesto
       }
     }
-
-    // === F3. COLOR SECUNDARIO (Strategy-Obedient) ===
-    // WAVE 7684: El secondary ahora obedece la estrategia.
-    //   - Analogous: +15° del primary → cluster monochromatic/adjacent tight
-    //   - Triadic/Complementary: Fibonacci (≈222.5°) + salt → contraste dorado
-    let secondaryHue: number;
-    if (strategy === 'analogous') {
-      // 🎯 Tight cluster: Secondary se mantiene adyacente al primary.
-      // El salt cromático sigue aplicándose para variedad entre keys,
-      // pero la rotación base es 15° (no 222.5°).
-      secondaryHue = normalizeHue(finalHue + 15 + saltRotation);
-    } else {
-      // Triadic / Complementary: Fibonacci unleashed — máxima variedad
-      // y contraste dorado entre primary y secondary.
-      secondaryHue = normalizeHue(finalHue + fibonacciRotation + saltRotation);
-    }
-
+    
     // WAVE 0-ALLOC: Mutate scratch palette
-    pal.secondary.h = secondaryHue;
-    pal.secondary.s = clamp(correctedSat + 5, 20, 100);  // Ligeramente más saturado
-    pal.secondary.l = clamp(correctedLight - 10, 20, 80); // Ligeramente más oscuro
-
-    // 🏛️ WAVE 94.3 / WAVE 4760: Luxury Signature Overrides configurables vía constitución.
-    // luxurySignatures es un Record<rootIndex, {h, maxS?}> — sin detección por nombre de vibe.
-    if (key && options?.luxurySignatures) {
-      const keyIndex = KEY_TO_ROOT[key];
-      if (keyIndex !== undefined) {
-        const sig = options.luxurySignatures[keyIndex];
-        if (sig !== undefined) {
-          pal.secondary.h = sig.h;
-          if (sig.maxS !== undefined) {
-            pal.secondary.s = Math.min(pal.secondary.s, sig.maxS);
-          }
-        }
-      }
-    }
-
-    // === G. COLOR DE ACENTO (usa estrategia ya resuelta) ===
     pal.accent.h = normalizeHue(accentHue);
     pal.accent.s = 100;  // Beams siempre a máxima saturación
     pal.accent.l = Math.max(70, primaryLight + 20); // Siempre brillante
@@ -2418,44 +1763,40 @@ export class SeleneColorEngine {
     }
     
     // 3️⃣ TROPICAL MIRROR: Ambient = Secondary + 180° (máximo contraste Latino)
-    // 🌌 WAVE 7708: Bypass en Uranus — el Prisma ya asignó ambient armónicamente.
-    if (options?.tropicalMirror && !isUranusActive) {
+    if (options?.tropicalMirror) {
       pal.ambient.h = normalizeHue(pal.secondary.h + 180);
       pal.ambient.s = Math.max(pal.secondary.s, 70);  // Mantener saturado
       pal.ambient.l = clamp(pal.secondary.l * 1.1, 40, 60);  // Variación sutil
     }
     
-    // 4️⃣ AMBIENT FORBIDDEN ZONE EVACUATION (WAVE 7702 — Legacy Only)
-    // ═══════════════════════════════════════════════════════════════════════
-    // WAVE 7702 LOBOTOMY: softplusRepel disabled for ambient. Both Uranus and
-    // Legacy now use the elastic rotation while-loop (WAVE 144 original).
-    // ═══════════════════════════════════════════════════════════════════════
-    if (!options?.ambientLock) {
-      if (options?.forbiddenHueRanges) {
-        // LEGACY: Elastic rotation for ambient (WAVE 144 original)
-        const elasticStep = options.elasticRotation ?? 15;
-        const maxIterations = Math.ceil(360 / elasticStep);
-        let ambIter = 0;
-        let ambForbidden = true;
-        while (ambForbidden && ambIter < maxIterations) {
-          ambForbidden = false;
-          for (const [min, max] of options.forbiddenHueRanges) {
-            const nMin = normalizeHue(min);
-            const nMax = normalizeHue(max);
-            const inRange = nMin <= nMax
-              ? (pal.ambient.h >= nMin && pal.ambient.h <= nMax)
-              : (pal.ambient.h >= nMin || pal.ambient.h <= nMax);
-            if (inRange) {
-              pal.ambient.h = normalizeHue(pal.ambient.h + elasticStep);
-              ambForbidden = true;
-              ambIter++;
-              break;
-            }
+    // 4️⃣ ELASTIC ROTATION para Ambient (si hay zonas prohibidas)
+    if (options?.forbiddenHueRanges && !options?.ambientLock) {
+      const elasticStep = options.elasticRotation ?? 15;
+      const maxIterations = Math.ceil(360 / elasticStep);
+      let iterations = 0;
+      let isInForbidden = true;
+      
+      while (isInForbidden && iterations < maxIterations) {
+        isInForbidden = false;
+        
+        for (const [min, max] of options.forbiddenHueRanges) {
+          const normalizedMin = normalizeHue(min);
+          const normalizedMax = normalizeHue(max);
+          
+          const isInRange = normalizedMin <= normalizedMax
+            ? (pal.ambient.h >= normalizedMin && pal.ambient.h <= normalizedMax)
+            : (pal.ambient.h >= normalizedMin || pal.ambient.h <= normalizedMax);
+          
+          if (isInRange) {
+            pal.ambient.h = normalizeHue(pal.ambient.h + elasticStep);
+            isInForbidden = true;
+            iterations++;
+            break;
           }
         }
       }
     }
-
+    
     // 5️⃣ MINIMUM SEPARATION: Ambient debe estar a mínimo 30° del Secondary
     const hueDistance = Math.abs(pal.ambient.h - pal.secondary.h);
     const shortestDistance = Math.min(hueDistance, 360 - hueDistance);
@@ -2463,29 +1804,7 @@ export class SeleneColorEngine {
       // Rotar ambient +45° para separarse
       pal.ambient.h = normalizeHue(pal.ambient.h + 45);
     }
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🌌 WAVE 7702 (URANUS — LOBOTOMY): DERIVATIONS DISABLED
-    // ═══════════════════════════════════════════════════════════════════════
-    // WAVE 7690's independent derivation of secondary/accent/ambient from the
-    // chroma residual mass and fast accumulator has been DISABLED. These
-    // calculations produced non-cohesive hues that ignored the user's selected
-    // color strategy (Complementary, Triadic, Analogous) and jittered on
-    // percussive content, creating the "feria ambulante" effect.
-    //
-    // Uranus now acts ONLY as a slow gravitational driver for the Primary Hue
-    // (rate-limited to 8-second anchor shifts — see the override block in
-    // section B). The secondary, accent, and ambient colors are derived by
-    // the LEGACY engine using the user's selected strategy (Fibonacci rotation,
-    // syncopation threshold, etc.) based on that single anchored primary hue.
-    //
-    // This restores structural color theory: the palette is built from ONE
-    // hue using standard harmonic intervals, not from four independent
-    // audio-driven hue calculations.
-    // ═══════════════════════════════════════════════════════════════════════
-    let _measuredStrategy: 'analogous' | 'triadic' | 'complementary' | null = null;
-    // WAVE 7702: No Uranus palette overrides — legacy derivation stands.
-
+    
     // === I. COLOR CONTRASTE (Siluetas, muy oscuro) ===
     // WAVE 0-ALLOC: Mutate scratch palette
     pal.contrast.h = normalizeHue(finalHue + 180);
@@ -2519,25 +1838,9 @@ export class SeleneColorEngine {
     
     // === L. CONSTRUIR DESCRIPCIÓN ===
     // 🎨 WAVE 68.5: Descripción PURA sin género
-    // WAVE 7710: Cache escalar — comparación campo por campo, zero string alloc
-    // en el check. Solo reconstruye cuando algún input discreto cambia.
-    // | 0 reemplaza toFixed(0) (evita string alloc en el valor numérico).
-    const _ePct = (energy * 100) | 0;
-    const _sPct = (syncopation * 100) | 0;
-    if (key !== SeleneColorEngine._lastDescKey ||
-        mode !== SeleneColorEngine._lastDescMode ||
-        temperature !== SeleneColorEngine._lastDescTemp ||
-        _ePct !== SeleneColorEngine._lastDescE ||
-        _sPct !== SeleneColorEngine._lastDescS) {
-      SeleneColorEngine._lastDescKey = key;
-      SeleneColorEngine._lastDescMode = mode;
-      SeleneColorEngine._lastDescTemp = temperature;
-      SeleneColorEngine._lastDescE = _ePct;
-      SeleneColorEngine._lastDescS = _sPct;
-      SeleneColorEngine._lastDesc = (key ? key + ' ' + mode : activeMood) + ' ' +
-        temperature + ' E=' + _ePct + '% S=' + _sPct + '%';
-    }
-    const description = SeleneColorEngine._lastDesc;
+    // WAVE 0-ALLOC: String concatenation instead of array+join
+    const description = (key ? key + ' ' + mode : activeMood) + ' ' +
+      temperature + ' E=' + (energy * 100).toFixed(0) + '% S=' + (syncopation * 100).toFixed(0) + '%';
     
     // ═══════════════════════════════════════════════════════════════════════
     // 🌴 WAVE 85 / WAVE 4760: TROPICAL PRO - Post-procesamiento constitucional
@@ -2565,11 +1868,7 @@ export class SeleneColorEngine {
       }
       
       // 🪞 2. TROPICAL MIRROR — solo si tropicalMirror: true
-      // 🌌 WAVE 7708: Bypass en Uranus — el Prisma ya asignó accent y ambient
-      // con offsets armónicos (secOffset/accOffset). Sin este guard, el bloque
-      // sobreescribe pal.accent.h = primary + 30°, colisionando con secondary
-      // (SEC = ACC = 122° cuando secOffset = 30°).
-      if (hasTropicalMirror && !isUranusActive) {
+      if (hasTropicalMirror) {
         // Ambient = Complementario exacto del Secondary
         // Garantiza Verde↔Magenta, Turquesa↔Coral, Azul↔Naranja
         pal.ambient.h = normalizeHue(pal.secondary.h + 180);
@@ -2618,76 +1917,99 @@ export class SeleneColorEngine {
     // ═══════════════════════════════════════════════════════════════════════
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🌑 WAVE 7702 (URANUS LOBOTOMY): PILLAR III DISABLED — LEGACY ONLY
+    // 🛡️ WAVE 149.5: CONSTITUTIONAL ENFORCEMENT - Policía Cromática
     // ═══════════════════════════════════════════════════════════════════════
-    // The rigid-body rotation (_evacuatePaletteRigid) and softplus repulsion
-    // (softplusRepel) have been DISABLED. Pillar III was trapping colors at
-    // the exact 25° and 80° void boundaries, generating muddy browns.
+    // PROBLEMA: Tras eliminar Techno Dictatorship, el accent mostraba 65° (amarillo)
+    // violando forbiddenHueRanges: [[0, 75], [330, 360]].
+    // 
+    // CAUSA: La lógica de forbiddenHueRanges solo se aplicaba al PRIMARY en
+    // la sección C (líneas ~880-920), pero SECONDARY, AMBIENT y ACCENT se
+    // calculan DESPUÉS con rotaciones Fibonacci/Triadic sin re-validación.
     //
-    // Both Uranus and Legacy now use the original WAVE 149.5 elastic rotation
-    // (_enforceForbiddenHue) for ALL forbidden ranges. This is the EXACT
-    // behaviour before Uranus Pillar III was introduced.
+    // SOLUCIÓN: GUARDIÁN FINAL que inspecciona TODOS los colores de la paleta
+    // y expulsa cualquier hue que caiga en zona prohibida, usando rotación
+    // elástica hasta encontrar zona legal.
     // ═══════════════════════════════════════════════════════════════════════
-    {
-      // ── LEGACY: WAVE 149.5 original elastic rotation ──
-      // Per-color _enforceForbiddenHue for ALL forbidden ranges.
-      if (options?.forbiddenHueRanges) {
-        const elasticStep = options.elasticRotation ?? 15;
-        const maxIterations = Math.ceil(360 / elasticStep);
-
-        // 1️⃣ POLICÍA DE ZONAS PROHIBIDAS - Revisar CADA color
-        this._enforceForbiddenHue(pal.primary, options.forbiddenHueRanges, elasticStep, maxIterations);
-        this._enforceForbiddenHue(pal.secondary, options.forbiddenHueRanges, elasticStep, maxIterations);
+    
+    if (options?.forbiddenHueRanges) {
+      const elasticStep = options.elasticRotation ?? 15;
+      const maxIterations = Math.ceil(360 / elasticStep);
+      
+      // 1️⃣ POLICÍA DE ZONAS PROHIBIDAS - Revisar CADA color
+      // WAVE 0-ALLOC: Inline enforcement instead of [array].forEach()
+      this._enforceForbiddenHue(pal.primary, options.forbiddenHueRanges, elasticStep, maxIterations);
+      this._enforceForbiddenHue(pal.secondary, options.forbiddenHueRanges, elasticStep, maxIterations);
+      this._enforceForbiddenHue(pal.ambient, options.forbiddenHueRanges, elasticStep, maxIterations);
+      this._enforceForbiddenHue(pal.accent, options.forbiddenHueRanges, elasticStep, maxIterations);
+      
+      // 2️⃣ RESOLUCIÓN DE COLISIONES - Evitar "verde sobre verde"
+      // Si Ambient está demasiado cerca de Secondary (< 30°), separarlos
+      const minDistance = 30;
+      let ambientSecondaryDiff = Math.abs(pal.ambient.h - pal.secondary.h);
+      if (ambientSecondaryDiff > 180) ambientSecondaryDiff = 360 - ambientSecondaryDiff;
+      
+      if (ambientSecondaryDiff < minDistance) {
+        // Empujar Ambient +60° para crear contraste real
+        pal.ambient.h = normalizeHue(pal.ambient.h + 60);
+        
+        // Re-validar que no cayó en zona prohibida tras el empujón
         this._enforceForbiddenHue(pal.ambient, options.forbiddenHueRanges, elasticStep, maxIterations);
-        this._enforceForbiddenHue(pal.accent, options.forbiddenHueRanges, elasticStep, maxIterations);
-
-        // 2️⃣ RESOLUCIÓN DE COLISIONES - Evitar "verde sobre verde"
-        const minDistance = 30;
-        let ambientSecondaryDiff = Math.abs(pal.ambient.h - pal.secondary.h);
-        if (ambientSecondaryDiff > 180) ambientSecondaryDiff = 360 - ambientSecondaryDiff;
-
-        if (ambientSecondaryDiff < minDistance) {
-          pal.ambient.h = normalizeHue(pal.ambient.h + 60);
-          this._enforceForbiddenHue(pal.ambient, options.forbiddenHueRanges, elasticStep, maxIterations);
-        }
       }
     }
-
+    
     // ═══════════════════════════════════════════════════════════════════════
-    // 🔌 WAVE 150.5 / WAVE 7680: ALLOW-LIST ENFORCEMENT — Primary only
+    // 🔌 WAVE 150.5: ALLOW-LIST ENFORCEMENT - Solo lo permitido vive
     // ═══════════════════════════════════════════════════════════════════════
     // PROBLEMA: forbiddenHueRanges bloquea [0,80] pero allowedHueRanges=[110,302]
     // significa que 86° y 98° deberían ser ILEGALES (están fuera de allowed).
     //
-    // SOLUCIÓN ORIGINAL (WAVE 150.5): Si hay allowedHueRanges, todo lo que esté
-    // FUERA es ilegal. Empujar hacia el borde más cercano del rango permitido.
-    //
-    // 🎯 WAVE 7680: CHROMA UNLOCK — Anti-Yellow Sniper.
-    // El allow-list se aplicaba a TODA la paleta (primary, secondary, ambient,
-    // accent). Cuando el Sidereal Clock activa un slot estrecho (ej: [170, 210]),
-    // un accent triádico en 290° o complementary en 350° era snappeado de vuelta
-    // al rango del slot → la matemática procedural (triadic/complementary) moría.
-    //
-    // FIX: El allow-list ahora solo constríe al PRIMARY. Los colores derivados
-    // (secondary, ambient, accent) se rigen ÚNICAMENTE por forbiddenHueRanges
-    // (el ban duro de [25, 80] = amarillo/naranja/marrón). Esto permite que
-    // la armonía musical (triadic +120°, complementary +180°) sobreviva el
-    // pipeline mientras el ban cromático sigue siendo letal.
-    //
-    // 🎯 WAVE 7684: GAMUT MAPPING reemplaza findNearestAllowedHue.
-    // El primary se mapea proporcionalmente al rango del slot, no se clava
-    // al borde. Cada key audio-derivada produce un grado distinto.
-    // 🌌 WAVE 7689: BYPASS cuando useChromagramGravity — Φ(t) ya rotó el hue,
-    // gamut-mapping destruiría la isometría.
+    // SOLUCIÓN: Si hay allowedHueRanges, todo lo que esté FUERA es ilegal.
+    // Empujar hacia el borde más cercano del rango permitido.
     // ═══════════════════════════════════════════════════════════════════════
-    if (!isUranusActive && options?.allowedHueRanges && options.allowedHueRanges.length > 0) {
-      // 🛡️ Skip si el rango es [0, 360] (todo permitido)
-      const isFullCircle = options.allowedHueRanges.some(([min, max]) =>
-        (max - min) >= 359 || (min === 0 && max >= 359)
-      );
-      if (!isFullCircle) {
-        pal.primary.h = gamutMapHue(pal.primary.h, options.allowedHueRanges);
-      }
+    if (options?.allowedHueRanges && options.allowedHueRanges.length > 0) {
+      const isInAllowedRange = (hue: number): boolean => {
+        for (const [min, max] of options.allowedHueRanges!) {
+          if (min <= max) {
+            if (hue >= min && hue <= max) return true;
+          } else {
+            // Rango que cruza 0° (ej: [330, 30])
+            if (hue >= min || hue <= max) return true;
+          }
+        }
+        return false;
+      };
+      
+      const findNearestAllowedHue = (hue: number): number => {
+        let nearestHue = hue;
+        let minDistance = Infinity;
+        
+        for (const [min, max] of options.allowedHueRanges!) {
+          // Distancia al borde inferior
+          let distToMin = Math.abs(hue - min);
+          if (distToMin > 180) distToMin = 360 - distToMin;
+          
+          // Distancia al borde superior
+          let distToMax = Math.abs(hue - max);
+          if (distToMax > 180) distToMax = 360 - distToMax;
+          
+          if (distToMin < minDistance) {
+            minDistance = distToMin;
+            nearestHue = min;
+          }
+          if (distToMax < minDistance) {
+            minDistance = distToMax;
+            nearestHue = max;
+          }
+        }
+        
+        return normalizeHue(nearestHue);
+      };
+      
+      // WAVE 0-ALLOC: Inline enforcement instead of [array].forEach()
+      if (!isInAllowedRange(pal.primary.h))   pal.primary.h   = findNearestAllowedHue(pal.primary.h);
+      if (!isInAllowedRange(pal.secondary.h)) pal.secondary.h = findNearestAllowedHue(pal.secondary.h);
+      if (!isInAllowedRange(pal.ambient.h))   pal.ambient.h   = findNearestAllowedHue(pal.ambient.h);
+      if (!isInAllowedRange(pal.accent.h))    pal.accent.h    = findNearestAllowedHue(pal.accent.h);
     }
     
     // ═══════════════════════════════════════════════════════════════════════
@@ -2739,11 +2061,7 @@ export class SeleneColorEngine {
     
     // === M. RETORNAR PALETA COMPLETA ===
     // WAVE 0-ALLOC: Return the scratch palette directly — no new object
-    // 🌌 WAVE 7690: When useChromagramGravity is active, the strategy label
-    // is MEASURED from the actual interval content (primary↔secondary angular
-    // distance), not declared from a syncopation threshold. This closes
-    // WAVE 7681: the UI label and the colors now derive from one source.
-    pal.meta.strategy = _measuredStrategy ?? strategy as 'analogous' | 'triadic' | 'complementary';
+    pal.meta.strategy = strategy as 'analogous' | 'triadic' | 'complementary';
     pal.meta.temperature = temperature;
     pal.meta.description = description;
     pal.meta.confidence = 1.0;

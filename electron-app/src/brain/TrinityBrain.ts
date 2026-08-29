@@ -272,8 +272,6 @@ export class TrinityBrain extends EventEmitter {
       photon: (analysis as ExtendedAudioAnalysis).photon,
       // 🥁 WAVE 8008: Rhythmic percussion telemetry — snare/hi-hat isolated energies
       rhythmic: (analysis as ExtendedAudioAnalysis).rhythmic,
-      // 🎹 WAVE 7686 (URANUS PILLAR 0): 12-bin chromagram from GodEar Worker
-      chroma: analysis.chroma,
     })
 
     // Log cada ~30 frames (1 segundo)

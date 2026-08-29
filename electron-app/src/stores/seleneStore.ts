@@ -52,19 +52,12 @@ export interface SeleneStoreState {
   logFilter: LogEntryType | 'ALL'
   maxLogEntries: number
 
-  // 🌌 WAVE 7691 (URANUS): Engine selector toggle
-  // When true, the color engine runs the full Uranus pipeline.
-  // When false (default), pure legacy mode.
-  useUranusEngine: boolean
-
   // Actions
   setConnected: (connected: boolean) => void
   setInitialized: (initialized: boolean) => void
   setMode: (mode: SeleneMode) => void
   updateBrainMetrics: (metrics: Partial<SeleneStoreState>) => void
   incrementFrames: () => void
-  // 🌌 WAVE 7691: Toggle the Uranus color engine
-  setUranusEngine: (enabled: boolean) => void
   
   // Log actions
   addLogEntry: (entry: Omit<DecisionEntry, 'id' | 'timestamp'>) => void
@@ -126,8 +119,6 @@ export const useSeleneStore = create<SeleneStoreState>((set, get) => ({
   logPaused: false,
   logFilter: 'ALL',
   maxLogEntries: 1000,
-  // 🌌 WAVE 7691: Uranus engine OFF by default (legacy mode)
-  useUranusEngine: false,
   
   // Connection actions
   setConnected: (connected) => {
@@ -184,19 +175,6 @@ export const useSeleneStore = create<SeleneStoreState>((set, get) => ({
     set((state) => ({ framesProcessed: state.framesProcessed + 1 }))
   },
 
-  // 🌌 WAVE 7691: Toggle Uranus color engine
-  setUranusEngine: (enabled) => {
-    const prev = get().useUranusEngine
-    set({ useUranusEngine: enabled })
-    if (prev !== enabled) {
-      get().addLogEntry({
-        type: 'PALETTE',
-        message: `🌌 Uranus Engine: ${enabled ? 'ACTIVATED' : 'DEACTIVATED (legacy)'}`,
-        data: { from: prev, to: enabled },
-      })
-    }
-  },
-  
   // Log actions
   addLogEntry: (entry) => {
     if (get().logPaused) return

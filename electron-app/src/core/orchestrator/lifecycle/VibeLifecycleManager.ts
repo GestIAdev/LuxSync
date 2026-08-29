@@ -87,19 +87,6 @@ export class VibeLifecycleManager {
     }
   }
 
-  // ── Uranus Engine Toggle (WAVE 7691) ────────────────────────────────────
-
-  setUranusEngine(enabled: boolean): void {
-    if (this.engine) {
-      this.engine.setUranusEngine(enabled)
-      this.logManager.log('Mode', `🌌 Uranus Engine: ${enabled ? 'ACTIVATED' : 'DEACTIVATED (legacy)'}`)
-    }
-  }
-
-  isUranusEngineActive(): boolean {
-    return this.engine?.isUranusEngineActive() ?? false
-  }
-
   // ── Mood ────────────────────────────────────────────────────────────────
 
   setMood(moodId: 'calm' | 'balanced' | 'punk'): void {

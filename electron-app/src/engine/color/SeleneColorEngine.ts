@@ -1192,10 +1192,10 @@ export class SeleneColorEngine {
     this.generateCallCount++;
     
     // 🌌 WAVE 7719: ACOUSTIC ENTROPY — Initialize on first non-zero audio frame
-    // Uses raw energy * 104729 (10th prime) & 0x7FFFFFFF → deterministic 31-bit seed.
-    // Zero allocation, zero Math.random — pure physics.
+    // Multiplicamos por un primo gigantesco que nos dé cientos de horas de desfase en milisegundos.
+    // El & 0x7FFFFFFF asegura que no nos pasemos del límite de enteros positivos de 32 bits (aprox 596 horas).
     if (!this._entropyInitialized && data.energy > 0.001) {
-      this._sessionEntropy = (data.energy * 104729) & 0x7FFFFFFF;
+      this._sessionEntropy = (data.energy * 987654321) & 0x7FFFFFFF;
       this._entropyInitialized = true;
     }
     
@@ -2112,7 +2112,26 @@ export class SeleneColorEngine {
     
     // === M. RETORNAR PALETA COMPLETA ===
     // WAVE 0-ALLOC: Return the scratch palette directly — no new object
-    pal.meta.strategy = strategy as 'analogous' | 'triadic' | 'complementary';
+    // 🔍 WAVE 7720: HONEST STRATEGY LABEL — Re-derive the strategy string from the
+    // ACTUAL accent-primary hue distance AFTER all post-processing (forbidden ranges,
+    // allowed ranges, thermal gravity, neon protocol, elastic rotation, etc).
+    // The `strategy` variable above was set from forceStrategy or syncopation BEFORE
+    // post-processing shifted the accent hue. The label was lying about the math.
+    // Now we measure the real chromatic distance and classify honestly:
+    //   < 60°  → analogous (neighbors)
+    //   60-150° → triadic (equilateral-ish)
+    //   > 150° → complementary (opposites)
+    const _accentDist = Math.abs(pal.accent.h - pal.primary.h);
+    const _shortestAccentDist = Math.min(_accentDist, 360 - _accentDist);
+    let _honestStrategy: 'analogous' | 'triadic' | 'complementary';
+    if (_shortestAccentDist < 60) {
+      _honestStrategy = 'analogous';
+    } else if (_shortestAccentDist < 150) {
+      _honestStrategy = 'triadic';
+    } else {
+      _honestStrategy = 'complementary';
+    }
+    pal.meta.strategy = _honestStrategy;
     pal.meta.temperature = temperature;
     pal.meta.description = description;
     pal.meta.confidence = 1.0;

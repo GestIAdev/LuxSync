@@ -125,6 +125,10 @@ export class FixtureHydrationEngine {
 
     if (ctx.hal) {
       ctx.hal.invalidateProfileCache()
+      // WAVE 7728: Purge DMX worker buffers + universe buffers on show change.
+      // Without this, residual DMX values from the previous show persist in the
+      // OpenDMX worker's child process buffer and bleed into the new show's fixtures.
+      ctx.hal.purgeShowState()
     }
 
     const detectedLayout = detectLiquidLayoutFromFixtures(ctx.fixtures)

@@ -129,6 +129,15 @@ export interface IDMXDriver {
    * Blackout all channels (set to 0).
    */
   blackout(): void
+
+  /**
+   * WAVE 7728: Purge all worker buffers on show change.
+   * Resets the DMX worker's internal frame buffer so residual values from
+   * the previous show don't bleed into fixtures at the same addresses in
+   * the new show. Only implemented by drivers with self-managed workers
+   * (OpenDMXStrategy). No-op for drivers that don't have stale buffers.
+   */
+  resetAllWorkerBuffers?(): void
   
   // ─────────────────────────────────────────────────────────────────────────
   // STATUS

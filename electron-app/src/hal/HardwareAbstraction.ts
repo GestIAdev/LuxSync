@@ -1309,6 +1309,38 @@ export class HardwareAbstraction {
     this.mapper.invalidateProfileCache(profileId)
     // Profile cache invalidated log silenced
   }
+
+  /**
+   * WAVE 7728: PURGE SHOW STATE — purge all DMX buffers on show change.
+   *
+   * The OpenDMX worker maintains its own DMX frame buffer in a child process.
+   * When a new show is loaded with fixtures at different addresses, the old
+   * show's residual DMX values persist in the worker buffer and are sent to
+   * fixtures that may now be at those addresses in the new show. This causes:
+   *   - Fixtures receiving phantom strobe/white/dimmer values
+   *   - Fixtures not responding because stale values conflict with new ones
+   *
+   * This method:
+   *   1. Calls driver.resetAllWorkerBuffers() to force the worker to re-read
+   *      from the SAB (which will be filled with fresh values next frame)
+   *   2. Clears the HAL's own universeBuffers Map
+   *   3. Clears _colorSnapshot so the COLOR JUMP detector starts fresh
+   *
+   * Called by FixtureHydrationEngine.setFixtures() on every show change.
+   */
+  purgeShowState(): void {
+    // 1. Reset worker buffers (OpenDMX child process)
+    if (this.driver.resetAllWorkerBuffers) {
+      this.driver.resetAllWorkerBuffers()
+    }
+    // 2. Clear HAL universe buffers
+    this.universeBuffers.clear()
+    // Re-initialize universe 0 (default)
+    this.universeBuffers.set(0, createEmptyUniverse(0).channels)
+    // 3. Clear color snapshot
+    this._colorSnapshot.clear()
+    console.log('[HAL] 🧹 WAVE 7728: Show state purged (driver buffers + universe buffers + color snapshot)')
+  }
   
   /**
    * � WAVE 2088.6: BABEL FISH PHYSICS — Traductor universal de perfiles de motor

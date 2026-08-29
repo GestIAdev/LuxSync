@@ -1096,15 +1096,16 @@ export class TitanOrchestrator {
       // WAVE 4968 FIX: Directly update this.fixtures before delegating to hydrationEngine.
       // The hydrationCtx proxy setter should also update this, but we ensure it here
       // to prevent stale fixture IDs in the truth broadcast.
-      // WAVE 7718: Mutate in-place instead of .map() + spread — avoids creating N new
-      // objects on every hydration. The fixtures arrive from IPC and are disposable.
-      for (let i = 0; i < fixtures.length; i++) {
-        const f = fixtures[i]
-        if (!f) continue
-        if (!f.dmxAddress) f.dmxAddress = f.address
-        if (f.isVirtual === undefined) f.isVirtual = false
-      }
-      this.fixtures = fixtures
+      // WAVE 7728: REVERTED WAVE 7718 in-place mutation. Storing IPC references directly
+      // as this.fixtures meant the backend held live references to frontend store objects.
+      // Any frontend mutation (position edits, profile updates, capability changes) would
+      // silently corrupt the backend's fixture graph and the Aether node graph. The .map()
+      // cost is paid only on setFixtures (show load / fixture edit), not per-frame.
+      this.fixtures = fixtures.map(f => ({
+        ...f,
+        dmxAddress: f.dmxAddress || f.address,
+        isVirtual: f.isVirtual ?? false,
+      }))
       // setFixtures log silenced — fires 3× on startup
       const layout = this.hydrationEngine.setFixtures(this.fixtures, stageBounds)
       // PARCHE 4: Purgar todos los node refs obsoletos del Arbiter ahora que el

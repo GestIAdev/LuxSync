@@ -125,6 +125,10 @@ export class TickEngine {
   private _cachedHotFrameFixtures: any[] = []
   private _cachedChronosSet = new Set<string>()
   private _cachedTruthFixtures: any[] = []
+  // WAVE 7728: Track show generation to detect show changes and purge stale cached states.
+  // Without this, phantomChannels/_controlSources/white/amber/strobe/etc. from the previous
+  // show bleed into the new show's DMX output, causing fixtures to malfunction.
+  private _lastShowGeneration = -1
   private _glassView = new Float32Array(FIX_DATA_FLOATS)
   private dmxWriter = new DmxUniverseWriter(getDmxSab())
   private _universeSnapshots = new Map<number, Uint8Array>()
@@ -910,6 +914,23 @@ export class TickEngine {
     // hal.renderFromTarget() ya NO se llama: Aether es el productor exclusivo.
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // ðŸ› ï¸ WAVE 5032: Reuse _cachedFixtureStates â€” grow array if needed, mutate in-place
+    // WAVE 7728: PURGE STALE STATES on show change. The _cachedFixtureStates array is
+    // reused across frames for zero-alloc. When a new show is loaded, only basic fields
+    // (dmxAddress, universe, name, r/g/b, pan/tilt) are updated below. But fields like
+    // phantomChannels, _controlSources, white, amber, strobe, shutter, colorWheel, gobo,
+    // prism, speed, physicalPan, physicalTilt, _ikProcessed are NOT reset — they bleed
+    // from the previous show into the new show's DMX output, causing:
+    //   - Movers stuck with white flashes (stale strobe/white=255)
+    //   - Tungsten fixtures not working (stale _controlSources marks channels as MANUAL)
+    //   - Only 1 of N movers working (stale phantomChannels conflict with new definitions)
+    // Fix: When _showGeneration changes (setFixtures was called), nuke the entire cache.
+    const _currentShowGen = this._showGeneration
+    if (this._lastShowGeneration !== _currentShowGen) {
+      this._cachedFixtureStates.length = 0
+      this._cachedHotFrameFixtures.length = 0
+      this._cachedTruthFixtures.length = 0
+      this._lastShowGeneration = _currentShowGen
+    }
     const fixtureCount = this.fixtures.length
     for (let _fi = 0; _fi < fixtureCount; _fi++) {
       const fix = this.fixtures[_fi]

@@ -1530,6 +1530,15 @@ export class SeleneColorEngine {
   
   // 🎯 WAVE 2096.1: Deterministic frame counter for throttled logging (replaces Math.random)
   private static generateCallCount = 0;
+
+  // WAVE 7710: Description cache — rebuild only when discrete inputs change,
+  // not every frame. Scalar comparison (no signature string alloc).
+  private static _lastDescKey: string | null = null;
+  private static _lastDescMode = '';
+  private static _lastDescTemp = '';
+  private static _lastDescE = -1;
+  private static _lastDescS = -1;
+  private static _lastDesc = '';
   
   // 🔌 WAVE 65: Smart Logging - Tracking para evitar logs repetitivos
   private static lastLoggedKey: string | null = null;
@@ -2509,9 +2518,25 @@ export class SeleneColorEngine {
     
     // === L. CONSTRUIR DESCRIPCIÓN ===
     // 🎨 WAVE 68.5: Descripción PURA sin género
-    // WAVE 0-ALLOC: String concatenation instead of array+join
-    const description = (key ? key + ' ' + mode : activeMood) + ' ' +
-      temperature + ' E=' + (energy * 100).toFixed(0) + '% S=' + (syncopation * 100).toFixed(0) + '%';
+    // WAVE 7710: Cache escalar — comparación campo por campo, zero string alloc
+    // en el check. Solo reconstruye cuando algún input discreto cambia.
+    // | 0 reemplaza toFixed(0) (evita string alloc en el valor numérico).
+    const _ePct = (energy * 100) | 0;
+    const _sPct = (syncopation * 100) | 0;
+    if (key !== SeleneColorEngine._lastDescKey ||
+        mode !== SeleneColorEngine._lastDescMode ||
+        temperature !== SeleneColorEngine._lastDescTemp ||
+        _ePct !== SeleneColorEngine._lastDescE ||
+        _sPct !== SeleneColorEngine._lastDescS) {
+      SeleneColorEngine._lastDescKey = key;
+      SeleneColorEngine._lastDescMode = mode;
+      SeleneColorEngine._lastDescTemp = temperature;
+      SeleneColorEngine._lastDescE = _ePct;
+      SeleneColorEngine._lastDescS = _sPct;
+      SeleneColorEngine._lastDesc = (key ? key + ' ' + mode : activeMood) + ' ' +
+        temperature + ' E=' + _ePct + '% S=' + _sPct + '%';
+    }
+    const description = SeleneColorEngine._lastDesc;
     
     // ═══════════════════════════════════════════════════════════════════════
     // 🌴 WAVE 85 / WAVE 4760: TROPICAL PRO - Post-procesamiento constitucional

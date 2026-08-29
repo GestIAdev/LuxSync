@@ -783,16 +783,19 @@ export class TitanEngine extends EventEmitter {
     
     // Obtener la Constitución del Vibe actual
     let constitution = getColorConstitution(vibeProfile.id)
-    
+    // WAVE 7710: Track si constitution ya es un objeto fresco (spread above)
+    // para poder mutar in-place el flag Uranus sin corrupter el cache compartido.
+    let constitutionIsFresh = false
+
     // 🔒 WAVE 1209.3: ULTRA-LOCK MODE - Force StrategyArbiter's locked strategy
     // SeleneColorEngine tiene su propio cálculo de estrategia basado en syncopation crudo.
     // Forzamos la estrategia estabilizada del Arbiter (con commitment de 30s) para que
     // el lock realmente funcione.
     // Map split-complementary → complementary (SeleneColorEngine no soporta split)
-    const mappedStrategy = strategyOutput.stableStrategy === 'split-complementary' 
-      ? 'complementary' 
+    const mappedStrategy = strategyOutput.stableStrategy === 'split-complementary'
+      ? 'complementary'
       : strategyOutput.stableStrategy as ('analogous' | 'triadic' | 'complementary');
-    
+
     // 🌊 WAVE 4755: BLINDAJE CONSTITUCIONAL — Si la constitución ya tiene un
     // forceStrategy definido (ej: CHILL_CONSTITUTION.forceStrategy = 'analogous'),
     // el StrategyArbiter NO puede sobreescribirlo. Las reglas del océano son inmutables.
@@ -802,6 +805,7 @@ export class TitanEngine extends EventEmitter {
         ...constitution,
         forceStrategy: mappedStrategy,
       }
+      constitutionIsFresh = true
     }
     
     // 🌊 WAVE 7129.6: OCEAN HUE DRIFT — Reactivado con ChillAmbientEngine.morphFactor.
@@ -833,15 +837,23 @@ export class TitanEngine extends EventEmitter {
           depth: Math.round((1 - mf) * 6000),
         },
       }
+      constitutionIsFresh = true
     }
-    
+
     // 🎨 GENERAR PALETA CON EL FERRARI (ahora con interpolación LERP suave)
     // 🎨 WAVE 2096.1: SeleneColorInterpolator envuelve SeleneColorEngine.generate()
     //    con transiciones suaves, Desaturation Dip (WAVE 67.5), y jitter tolerance (WAVE 70.5)
     // 🌌 WAVE 7691: Inject the Uranus engine toggle into the constitution
     //    so SeleneColorEngine.generate() can resolve isUranusActive.
+    // WAVE 7710: Mutate in-place when constitution is already a fresh object
+    // (spread above for forceStrategy or oceanicModulation). Only spread when
+    // it's still the shared cached object from getColorConstitution.
     if (this.config.useUranusEngine) {
-      constitution = { ...constitution, useUranusEngine: true }
+      if (constitutionIsFresh) {
+        constitution.useUranusEngine = true
+      } else {
+        constitution = { ...constitution, useUranusEngine: true }
+      }
     }
     const selenePalette = this.colorInterpolator.update(
       audioAnalysis,

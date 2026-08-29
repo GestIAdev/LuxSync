@@ -2418,7 +2418,8 @@ export class SeleneColorEngine {
     }
     
     // 3️⃣ TROPICAL MIRROR: Ambient = Secondary + 180° (máximo contraste Latino)
-    if (options?.tropicalMirror) {
+    // 🌌 WAVE 7708: Bypass en Uranus — el Prisma ya asignó ambient armónicamente.
+    if (options?.tropicalMirror && !isUranusActive) {
       pal.ambient.h = normalizeHue(pal.secondary.h + 180);
       pal.ambient.s = Math.max(pal.secondary.s, 70);  // Mantener saturado
       pal.ambient.l = clamp(pal.secondary.l * 1.1, 40, 60);  // Variación sutil
@@ -2564,7 +2565,11 @@ export class SeleneColorEngine {
       }
       
       // 🪞 2. TROPICAL MIRROR — solo si tropicalMirror: true
-      if (hasTropicalMirror) {
+      // 🌌 WAVE 7708: Bypass en Uranus — el Prisma ya asignó accent y ambient
+      // con offsets armónicos (secOffset/accOffset). Sin este guard, el bloque
+      // sobreescribe pal.accent.h = primary + 30°, colisionando con secondary
+      // (SEC = ACC = 122° cuando secOffset = 30°).
+      if (hasTropicalMirror && !isUranusActive) {
         // Ambient = Complementario exacto del Secondary
         // Garantiza Verde↔Magenta, Turquesa↔Coral, Azul↔Naranja
         pal.ambient.h = normalizeHue(pal.secondary.h + 180);

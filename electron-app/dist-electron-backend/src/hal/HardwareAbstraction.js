@@ -691,8 +691,9 @@ export class HardwareAbstraction {
         const fixtureStates = fixtures.map((fixture, index) => {
             const fixtureId = fixture.id || fixture.name;
             const zone = (fixture.zone || 'UNASSIGNED');
-            // 🎨 WAVE 686.11: Normalize DMX address (ShowFileV2 uses "address", legacy uses "dmxAddress")
-            const dmxAddress = fixture.dmxAddress || fixture.address;
+            // WAVE 7729: Prefer `address` (user-corrected via Auto-Patch) over
+            // `dmxAddress` (may contain stale auto-generated values).
+            const dmxAddress = fixture.address != null ? fixture.address : fixture.dmxAddress;
             // 🎨 WAVE 687: Get channel definitions for dynamic mapping
             const channels = fixture.channels || [];
             // Find this fixture's target from arbiter output

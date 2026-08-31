@@ -111,7 +111,7 @@ const syncToBackend = async (fixtureList, stageBounds, lastSyncedHashRef, curren
         return {
             id: f.id,
             name: f.name || f.id,
-            dmxAddress: f.dmxAddress || f.address, // 🎨 WAVE 686.11.5: Normalize address (ShowFileV2 uses "address")
+            dmxAddress: (f.address != null ? f.address : f.dmxAddress) || 0, // WAVE 7729: Prefer `address` (user-corrected)
             universe: f.universe || 0,
             zone: f.zone || 'UNASSIGNED',
             type: f.type || 'generic',

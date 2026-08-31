@@ -59,7 +59,12 @@ export class FixtureHydrationEngine {
         const ctx = this.ctx;
         ctx.fixtures = fixtures.map(f => ({
             ...f,
-            dmxAddress: f.dmxAddress || f.address,
+            // WAVE 7729: Prefer `address` (user-corrected via Auto-Patch) over
+            // `dmxAddress` (may contain stale auto-generated values from the
+            // constructor's old `fixtureCount * 4 + 1` formula). If `address` is
+            // present and differs from `dmxAddress`, `address` wins — it's the
+            // field the Visual Patcher and Auto-Patch write to.
+            dmxAddress: (f.address != null ? f.address : f.dmxAddress) || 0,
             isVirtual: f.isVirtual ?? false,
         }));
         ctx.stageBoundsManager.updateStageBounds(stageBounds, ctx.fixtures);

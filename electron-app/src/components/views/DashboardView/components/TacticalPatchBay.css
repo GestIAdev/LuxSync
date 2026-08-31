@@ -286,6 +286,56 @@
   text-overflow: ellipsis;
 }
 
+/* 🏗️ WAVE 7731: Spatial metadata — helps identify which fixture is which */
+.patch-bay-standalone .patch-fixture-spatial {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: rgba(34, 211, 238, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+  letter-spacing: 0.3px;
+}
+
+/* 🏗️ WAVE 7731: UNPATCHED fixture row — orange warning */
+.patch-bay-standalone .patch-row.unpatched {
+  background: rgba(251, 146, 60, 0.06);
+  border-color: rgba(251, 146, 60, 0.35);
+}
+
+.patch-bay-standalone .patch-row.unpatched:hover {
+  background: rgba(251, 146, 60, 0.1);
+  border-color: rgba(251, 146, 60, 0.5);
+}
+
+.patch-bay-standalone .patch-row.unpatched .patch-fixture-name {
+  color: rgba(251, 146, 60, 0.95);
+}
+
+.patch-bay-standalone .patch-row.unpatched .patch-address-input {
+  border-color: rgba(251, 146, 60, 0.5);
+  color: rgba(251, 146, 60, 0.8);
+  background: rgba(251, 146, 60, 0.05);
+  box-shadow: 0 0 6px rgba(251, 146, 60, 0.15);
+}
+
+.patch-bay-standalone .patch-row.unpatched .patch-address-input::placeholder {
+  color: rgba(251, 146, 60, 0.5);
+}
+
+.patch-bay-standalone .patch-row.unpatched .patch-address-input:focus {
+  border-color: rgba(251, 146, 60, 0.8);
+  background: rgba(251, 146, 60, 0.1);
+  box-shadow: 0 0 10px rgba(251, 146, 60, 0.3);
+}
+
+.unpatched-icon {
+  margin-right: 4px;
+  font-size: 11px;
+  color: #fb923c;
+}
+
 /* Input fields — Legacy style */
 .patch-bay-standalone .patch-address-input,
 .patch-bay-standalone .patch-universe-input {

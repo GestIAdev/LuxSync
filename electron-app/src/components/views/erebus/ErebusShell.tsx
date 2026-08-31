@@ -9,7 +9,7 @@ import { useViewTransition } from './transition/ViewTransitionDirector'
 import { useLibraryStore } from '../../../stores/libraryStore'
 import { useStageStore } from '../../../stores/stageStore'
 import { useSelectionStore } from '../../../stores/selectionStore'
-import { createDefaultFixture, nextAvailableAddress } from '../../../core/stage/ShowFileV2'
+import { createDefaultFixture } from '../../../core/stage/ShowFileV2'
 import './erebus.css'
 
 // Lazy load the heavy canvases
@@ -106,13 +106,12 @@ export const ErebusShell: React.FC = () => {
       if (!libFixture) return
 
       // 3D mode: approximate placement at center of stage
-      const existingFixtures = useStageStore.getState().fixtures
-      const libChCount = libFixture.channels?.length ?? 1
-      // WAVE 7729: Use nextAvailableAddress instead of fixtureCount * 4 + 1.
-      const addr = nextAvailableAddress(existingFixtures, libChCount)
+      // 🏗️ WAVE 7731: Erebus no longer auto-patches DMX addresses.
+      // Fixtures are born UNPATCHED (address=0). Routing authority lives
+      // exclusively in DMX Nexus / Patchbay.
       const newFixture = createDefaultFixture(
         `fix-${Date.now()}`,
-        addr,
+        0,
         {
           name: libFixture.name,
           model: libFixture.name,
@@ -153,13 +152,12 @@ export const ErebusShell: React.FC = () => {
       )
       if (!libFixture) return
 
-      const existingFixtures = useStageStore.getState().fixtures
-      const libChCount = libFixture.channels?.length ?? 1
-      // WAVE 7729: Use nextAvailableAddress instead of fixtureCount * 4 + 1.
-      const addr = nextAvailableAddress(existingFixtures, libChCount)
+      // 🏗️ WAVE 7731: Erebus no longer auto-patches DMX addresses.
+      // Fixtures are born UNPATCHED (address=0). Routing authority lives
+      // exclusively in DMX Nexus / Patchbay.
       const newFixture = createDefaultFixture(
         `fix-${Date.now()}`,
-        addr,
+        0,
         {
           name: libFixture.name,
           model: libFixture.name,

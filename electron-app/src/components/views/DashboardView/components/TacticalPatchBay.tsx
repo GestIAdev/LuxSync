@@ -50,8 +50,8 @@ export const TacticalPatchBay: React.FC = () => {
   }, [fixtures])
   
   const handleAddressChange = useCallback((fixtureId: string, newAddress: number) => {
-    // Clamp to valid DMX range
-    const clamped = Math.max(1, Math.min(512, newAddress))
+    // 🏗️ WAVE 7731: Allow 0 (UNPATCHED). Clamp to 0-512 range.
+    const clamped = Math.max(0, Math.min(512, newAddress))
     updateFixture(fixtureId, { address: clamped })
     setIsDirty(true)
   }, [updateFixture])
@@ -134,25 +134,35 @@ export const TacticalPatchBay: React.FC = () => {
           {/* Fixture List - Scrollable */}
           <div className="patch-list">
             {fixtures.map(fixture => (
-              <div 
+              <div
                 key={fixture.id}
-                className={`patch-row ${collisions.has(fixture.id) ? 'collision' : ''} ${fixture.isVirtual ? 'virtual' : ''}`}
+                className={`patch-row ${collisions.has(fixture.id) ? 'collision' : ''} ${fixture.isVirtual ? 'virtual' : ''} ${fixture.address === 0 ? 'unpatched' : ''}`}
               >
                 <div className="col-fixture">
                   <div className="patch-fixture-name">
                     {fixture.isVirtual && <span className="virtual-ghost-icon">👻</span>}
+                    {fixture.address === 0 && <span className="unpatched-icon" title="UNPATCHED — no DMX routing">⚠</span>}
                     {fixture.name}
                   </div>
                   <div className="patch-fixture-model">{fixture.model}</div>
+                  {/* 🏗️ WAVE 7731: Spatial metadata so user knows WHICH fixture this is */}
+                  <div className="patch-fixture-spatial">
+                    [{fixture.zone || 'unassigned'}] X:{fixture.position?.x?.toFixed(1) ?? '—'} Z:{fixture.position?.z?.toFixed(1) ?? '—'}
+                  </div>
                 </div>
-                
+
                 <input
                   type="number"
-                  className="patch-address-input"
-                  value={fixture.address ?? 1}
-                  onChange={(e) => handleAddressChange(fixture.id, parseInt(e.target.value) || 1)}
-                  min={1}
+                  className={`patch-address-input ${fixture.address === 0 ? 'unpatched' : ''}`}
+                  value={fixture.address === 0 ? '' : fixture.address}
+                  placeholder="—"
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value)
+                    handleAddressChange(fixture.id, isNaN(v) ? 0 : v)
+                  }}
+                  min={0}
                   max={512}
+                  title={fixture.address === 0 ? 'UNPATCHED — enter a DMX address (1-512) to route this fixture' : `DMX ${fixture.address}-${fixture.address + fixture.channelCount - 1}`}
                 />
                 
                 <span className="patch-channels">{fixture.channelCount}</span>

@@ -3,7 +3,7 @@ import { useStageStore } from '../../../../stores/stageStore'
 import { useSelectionStore } from '../../../../stores/selectionStore'
 import { useLibraryStore } from '../../../../stores/libraryStore'
 import { useSnapStore } from '../../../../stores/snapStore'
-import { createDefaultFixture, nextAvailableAddress } from '../../../../core/stage/ShowFileV2'
+import { createDefaultFixture } from '../../../../core/stage/ShowFileV2'
 import { PaperLayer } from './layers/PaperLayer'
 import { GridLayer } from './layers/GridLayer'
 import { RulerLayer } from './layers/RulerLayer'
@@ -402,15 +402,12 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
       const worldX = snap(svgX - stageWidth / 2)
       const worldZ = snap(svgZ - stageDepth / 2)
 
-      const existingFixtures = useStageStore.getState().fixtures
-      const libChCount = libFixture.channels?.length ?? 1
-      // WAVE 7729: Use nextAvailableAddress instead of fixtureCount * 4 + 1.
-      // The old formula assumed 4 channels per fixture, causing massive DMX
-      // address overlaps when fixtures with different channel counts were added.
-      const addr = nextAvailableAddress(existingFixtures, libChCount)
+      // 🏗️ WAVE 7731: Erebus no longer auto-patches DMX addresses.
+      // Fixtures are born UNPATCHED (address=0). Routing authority lives
+      // exclusively in DMX Nexus / Patchbay.
       const newFixture = createDefaultFixture(
         `fix-${Date.now()}`,
-        addr,
+        0,
         {
           name: libFixture.name,
           model: libFixture.name,

@@ -934,6 +934,11 @@ export class TickEngine {
     const fixtureCount = this.fixtures.length
     for (let _fi = 0; _fi < fixtureCount; _fi++) {
       const fix = this.fixtures[_fi]
+      // 🏗️ WAVE 7731: Skip UNPATCHED fixtures (address=0). They exist
+      // spatially in Erebus but have no DMX routing. Emitting DMX for them
+      // would write to address 0 (invalid) and corrupt the universe buffer.
+      // Also skip virtual fixtures (no hardware output).
+      if (fix.dmxAddress === 0 || fix.isVirtual) continue
       let state = this._cachedFixtureStates[_fi]
       if (!state) {
         state = {

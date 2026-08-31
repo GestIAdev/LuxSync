@@ -389,7 +389,19 @@ export class FixtureMapper {
 
   public statesToDMXPackets(states: FixtureState[]): DMXPacket[] {
     const packets = states.map(state => {
-      // 🎨 WAVE 687: Build channel array dynamically from fixture definition
+      // �️ WAVE 7731: Defensive skip for UNPATCHED fixtures (address=0).
+      // The HAL already filters these via isVirtual, but if a state slips
+      // through with address=0, return an empty channel array so nothing
+      // gets written to the universe buffer at the invalid address 0.
+      if (state.dmxAddress === 0 || state.dmxAddress < 1) {
+        return {
+          universe: state.universe,
+          address: 0,
+          channels: [],
+          fixtureId: state.fixtureId ?? 'unpatched'
+        }
+      }
+      // �🎨 WAVE 687: Build channel array dynamically from fixture definition
       const channels = this.buildDynamicChannels(state)
       
       return {

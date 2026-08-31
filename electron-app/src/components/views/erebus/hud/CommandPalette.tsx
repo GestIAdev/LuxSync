@@ -4,7 +4,7 @@ import { useLibraryStore } from '../../../../stores/libraryStore'
 import { useStageStore } from '../../../../stores/stageStore'
 import { deriveFixtureTags } from '../../../../stores/assetAdapters'
 import type { FixtureV2 } from '../../../../core/stage/ShowFileV2'
-import { createDefaultFixture, nextAvailableAddress } from '../../../../core/stage/ShowFileV2'
+import { createDefaultFixture } from '../../../../core/stage/ShowFileV2'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CommandPalette — Spotlight de Patch
@@ -111,12 +111,12 @@ export const CommandPalette: React.FC = () => {
     (result: CommandResult) => {
       if (result.type === 'library' && result.data) {
         const libFixture = result.data
-        const libChCount = libFixture.channels?.length ?? 1
-        // WAVE 7729: Use nextAvailableAddress instead of fixtureCount * 4 + 1.
-        const addr = nextAvailableAddress(stageFixtures, libChCount)
+        // 🏗️ WAVE 7731: Erebus no longer auto-patches DMX addresses.
+        // Fixtures are born UNPATCHED (address=0). Routing authority lives
+        // exclusively in DMX Nexus / Patchbay.
         const newFixture = createDefaultFixture(
           `fix-${Date.now()}`,
-          addr,
+          0,
           {
             name: libFixture.name,
             model: libFixture.name,
@@ -136,7 +136,8 @@ export const CommandPalette: React.FC = () => {
           new CustomEvent('erebus:select-fixture', { detail: { fixtureId: result.data.id } }),
         )
       } else if (result.type === 'action' && result.id === 'action-add') {
-        const newFixture = createDefaultFixture(`fix-${Date.now()}`, stageFixtures.length + 1, {
+        // 🏗️ WAVE 7731: Unpatched at birth.
+        const newFixture = createDefaultFixture(`fix-${Date.now()}`, 0, {
           position: { x: 6, y: 3, z: 4 },
           isPlaced: true,
           placementMode: '3d',

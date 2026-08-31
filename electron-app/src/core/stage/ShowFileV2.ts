@@ -744,9 +744,15 @@ export interface FixtureV2 {
   // DMX CONFIGURATION
   // ═══════════════════════════════════════════════════════════════════════
   
-  /** DMX address (1-512) */
+  /**
+   * DMX address (1-512), or 0 for UNPATCHED.
+   * 🏗️ WAVE 7731: address=0 means the fixture exists spatially (in Erebus)
+   * but has not yet been routed to a DMX slot. The TickEngine/HAL silently
+   * skip address=0 fixtures — no DMX output is emitted for them.
+   * Routing authority lives exclusively in DMX Nexus / Patchbay.
+   */
   address: number
-  
+
   /** DMX universe (0-based) */
   universe: number
   
@@ -1314,6 +1320,14 @@ export function nextAvailableAddress(
 }
 
 /**
+ * 🏗️ WAVE 7731: Returns true if a fixture has been routed to a DMX slot.
+ * address=0 means UNPATCHED (spatial-only, no DMX output).
+ */
+export function isFixturePatched(fixture: { address: number }): boolean {
+  return typeof fixture.address === 'number' && fixture.address >= 1 && fixture.address <= 512
+}
+
+/**
  * Create a new fixture with default values
  */
 export function createDefaultFixture(
@@ -1449,9 +1463,11 @@ export function validateShowFileDeep(data: unknown): ShowFileValidationResult {
     }
     fixtureIds.add(f.id)
 
-    // Address: integer 1-512
-    if (typeof f.address !== 'number' || !Number.isInteger(f.address) || f.address < 1 || f.address > 512) {
-      errors.push(`${prefix} (${f.id}): address must be integer 1-512, got ${f.address}`)
+    // Address: integer 0-512 (0 = UNPATCHED, WAVE 7731)
+    if (typeof f.address !== 'number' || !Number.isInteger(f.address) || f.address < 0 || f.address > 512) {
+      errors.push(`${prefix} (${f.id}): address must be integer 0-512 (0=unpatched), got ${f.address}`)
+    } else if (f.address === 0) {
+      warnings.push(`${prefix} (${f.id}): address=0 (UNPATCHED) — fixture exists spatially but has no DMX routing`)
     }
 
     // Universe: integer >= 0

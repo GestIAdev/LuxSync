@@ -54,7 +54,11 @@ export {
   createEmptyShowFile,
   createDefaultFixture,
   createFixtureGroup,
-  
+
+  // DMX Addressing (WAVE 7731)
+  isFixturePatched,
+  nextAvailableAddress,
+
   // Zone Utilities (WAVE 2040.24)
   normalizeZone,
   isCanonicalZone,

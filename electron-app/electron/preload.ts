@@ -1509,6 +1509,15 @@ const luxApi = {
       ipcRenderer.send('lux:aether:releaseSpatialTarget', args),
 
     /**
+     * WAVE 7734: ATOMIC KINETIC HAND-OFF — Spatial/Manual → VMM procedural.
+     * Operación atómica en main: captura snapshot+velocidad IK, purga motor,
+     * siembra PPP con momentum, activa pass-through, inicia fade ease-out único.
+     * Reemplaza la secuencia multi-IPC race-prone del Cathedral Unlock.
+     */
+    kineticHandoff: (args: { fixtureIds: string[] }) =>
+      ipcRenderer.invoke('lux:aether:kineticHandoff', args),
+
+    /**
      * 🏗️ WAVE 7179 (M5): Invalidate IK profile cache for a node.
      * Called by the Calibration Dock when calibration offsets change.
      */

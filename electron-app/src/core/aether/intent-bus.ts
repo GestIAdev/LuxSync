@@ -335,6 +335,20 @@ export interface INodeArbiter {
   clearManualOverride(nodeId: NodeId): void
 
   /**
+   * WAVE 7734: COUPLED-AXIS IK GATE.
+   * Registra nodeIds en modo Spatial/IK. Mientras estén registrados,
+   * setManualOverride rechaza pan/tilt absolutos clásicos que crearían
+   * un half-state incoherente (el IK solver acopla ambos ejes a un target 3D).
+   */
+  setSpatialCoupledLock(nodeIds: readonly NodeId[]): void
+
+  /** WAVE 7734: Elimina un nodeId del coupled-axis lock. */
+  clearSpatialCoupledLock(nodeId: NodeId): void
+
+  /** WAVE 7734: Query — ¿está este nodo en modo Spatial/IK acoplado? */
+  isSpatialCoupledLocked(nodeId: NodeId): boolean
+
+  /**
    * WAVE 4885: Inyecta output del motor IK en el bloque L2-MOTOR del árbitro.
    * Escribe en _motorKineticOverrides — se aplica DESPUÉS del Grand Master y el
    * Hard Lock, traduciendo pan_base/tilt_base a pan/tilt con supremacía absoluta.

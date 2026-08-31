@@ -1053,6 +1053,7 @@ export function registerAetherIPCHandlers(): void {
         // Nada de pan_base ni tilt_base en esta fase. Solo coordenadas target_x/y/z.
         // El resolver de nodos leerá estas coordenadas y hará el solve completo.
         const serialized: Record<string, { x: number; y: number; z: number }> = {}
+        const coupledLockNodeIds: string[] = []
         for (const [id, subTarget] of subTargets) {
           const nodeId = resolveKineticNodeId(`${id}:kinetic`)
           // WAVE 7621 Fix A: camelCase — the resolver reads CH_TARGET_X = 'targetX'.
@@ -1063,7 +1064,15 @@ export function registerAetherIPCHandlers(): void {
             targetY: subTarget.y,
             targetZ: subTarget.z,
           })
+          // WAVE 7734: COUPLED-AXIS IK GATE — registrar el nodo en modo spatial.
+          // Mientras esté aquí, setManualOverride rechazará pan/tilt absolutos
+          // clásicos que crearían un half-state incoherente con el solver IK.
+          coupledLockNodeIds.push(nodeId)
           serialized[id] = subTarget
+        }
+        // WAVE 7734: Activar el coupled-axis lock para todos los nodos con target.
+        if (coupledLockNodeIds.length > 0) {
+          arbiter.setSpatialCoupledLock(coupledLockNodeIds)
         }
 
         // Retornar inmediatamente los subTargets para mantener la reactividad visual
@@ -1123,6 +1132,8 @@ export function registerAetherIPCHandlers(): void {
           // ⚡ WAVE 4915: limpiar la distance scale junto con el override.
           arbiter.clearSpatialDistanceScale(nodeId)
           if (resolver) resolver.clearSpatialDistanceScale(nodeId)
+          // WAVE 7734: Liberar el coupled-axis lock al salir del modo spatial.
+          arbiter.clearSpatialCoupledLock(nodeId)
         }
         // Si el caller libera todos los fixtures (release global), limpiar las tablas
         // enteras como red de seguridad ante leaks de overrides huérfanos.
@@ -1132,6 +1143,142 @@ export function registerAetherIPCHandlers(): void {
         }
       } catch (err) {
         console.error('[AetherIPC] releaseSpatialTarget error:', err)
+      }
+    }
+  )
+
+  /**
+   * WAVE 7734: ATOMIC KINETIC HAND-OFF — Spatial/Manual → VMM procedural.
+   * Ruta: lux:aether:kineticHandoff (Aether IPC)
+   *
+   * Reemplaza la secuencia multi-IPC race-prone del Cathedral Unlock
+   * (setManualPattern(null) + clearAllMotorKineticOverrides disparados
+   * sin await) por una ÚNICA operación atómica en main:
+   *
+   *   1. Capturar snapshot IK (currentPosition post-inversión).
+   *   2. Capturar velocidad angular del PPP (momentum orgánico).
+   *   3. removeNodes + clearMotorKineticOverride + clearSpatialDistanceScale.
+   *   4. clearManualPatternLock + clearSpatialCoupledLock (salida modo IK).
+   *   5. Purgar veneno IK del manual override (targetX/Y/Z).
+   *   6. Inyectar snapshot como manual override (base del fade).
+   *   7. Sembrar PPP classic state con posición + velocidad (delta=0 + momentum).
+   *   8. Activar handoff pass-through en PPP (durante el fade del Arbiter).
+   *   9. clearManualOverride con releaseMs = HANDOFF_FADE_MS → inicia el
+   *      fade ease-out cúbico único (sin compound del PPP).
+   *  10. resetSpatialState del PPP (exorcizar coords 3D zombis).
+   *  11. setL2Active(false) — el VMM retoma el control L0.
+   *
+   * El resultado: transición orgánica ~700ms sin snapping ni freeze.
+   */
+  ipcMain.handle(
+    'lux:aether:kineticHandoff',
+    (_event, { fixtureIds }: { fixtureIds: string[] }) => {
+      if (!Array.isArray(fixtureIds) || fixtureIds.length === 0) {
+        return { success: false, error: 'fixtureIds must be a non-empty array' }
+      }
+      console.log(`[WAVE-7734] kineticHandoff ENTER. fixtures=${fixtureIds.length}`)
+      try {
+        const orchestrator = getTitanOrchestrator()
+        const arbiter = orchestrator.getAetherArbiter()
+        const nodeGraph = orchestrator.getAetherNodeGraph()
+        const physicsPP = orchestrator.getPhysicsPostProcessor()
+        let resolver: { clearSpatialDistanceScale(nodeId: string): void } | null = null
+        try { resolver = orchestrator.getAetherResolver() } catch { /* not ready */ }
+
+        const removeNodeIds = fixtureIds.map(id => resolveKineticNodeId(`${id}:kinetic`))
+
+        // WAVE 7734: HANDOFF_FADE_MS — duración del fade ease-out del Arbiter.
+        // 700ms = RELEASE_MS_SLOW (WAVE 7734). El PPP está en pass-through
+        // durante este tiempo, así que esta es la ÚNICA curva de suavizado.
+        const HANDOFF_FADE_MS = 700
+
+        // ── Step 1: Liberar manual pattern locks (permitir clearManualOverride) ──
+        for (const nodeId of removeNodeIds) {
+          arbiter.clearManualPatternLock(nodeId)
+        }
+
+        // ── Step 2: Capturar snapshot + velocidad ANTES de purgar ──
+        const snapshots: Array<{ nodeId: string; pan: number; tilt: number; panVel: number; tiltVel: number }> = []
+        for (const id of fixtureIds) {
+          const nodeId = resolveKineticNodeId(`${id}:kinetic`)
+          const kineticNode = nodeGraph.getNodeData(nodeId) as IKineticNodeData | undefined
+          const pos = kineticNode?.currentPosition
+          if (pos && Number.isFinite(pos.pan) && Number.isFinite(pos.tilt)) {
+            // WAVE 7734: Capturar velocidad angular del PPP para sembrar momentum.
+            const vel = physicsPP.captureAngularVelocity(nodeId)
+            snapshots.push({
+              nodeId,
+              pan: pos.pan,
+              tilt: pos.tilt,
+              panVel: vel.panVel,
+              tiltVel: vel.tiltVel,
+            })
+          }
+        }
+
+        // ── Step 3: Purgar motor IK + distance scales (una pasada) ──
+        aetherKineticEngine.removeNodes(removeNodeIds, arbiter)
+        for (const nodeId of removeNodeIds) {
+          arbiter.clearMotorKineticOverride(nodeId)
+          arbiter.clearSpatialDistanceScale(nodeId)
+          arbiter.clearSpatialCoupledLock(nodeId)
+          if (resolver) resolver.clearSpatialDistanceScale(nodeId)
+        }
+
+        // ── Step 4: Inyectar snapshot + purgar veneno IK + sembrar PPP + fade ──
+        for (const snap of snapshots) {
+          // 4a. Purgar claves IK del manual override existente (merge aditivo las preservaría)
+          const existingManual = arbiter.getManualOverride(snap.nodeId)
+          if (existingManual) {
+            const mutable = existingManual as Record<string, number>
+            for (const key of IK_POISON_KEYS) {
+              delete mutable[key]
+            }
+          }
+          // 4b. Inyectar snapshot como base del fade
+          arbiter.setManualOverride(snap.nodeId, { pan: snap.pan, tilt: snap.tilt })
+          // 4c. Sembrar PPP classic state con posición + VELOCIDAD (momentum orgánico)
+          physicsPP.seedClassicState(snap.nodeId, snap.pan, snap.tilt, snap.panVel, snap.tiltVel)
+          // 4d. Exorcizar estado 3D zombi del PPP
+          physicsPP.resetSpatialState(snap.nodeId)
+        }
+
+        // ── Step 5: Activar pass-through del PPP durante el fade ──
+        // Solo para nodos con snapshot (los demás no necesitan hand-off suave).
+        const passThroughNodeIds = snapshots.map(s => s.nodeId)
+        if (passThroughNodeIds.length > 0) {
+          physicsPP.setHandoffPassThrough(passThroughNodeIds, HANDOFF_FADE_MS)
+        }
+
+        // ── Step 6: Iniciar el fade ease-out del Arbiter (ÚNICA curva) ──
+        // clearManualOverride con releaseMs=HANDOFF_FADE_MS impone la duración
+        // uniforme del fade. El snapshot ya está sembrado en PPP (delta=0).
+        for (const snap of snapshots) {
+          arbiter.clearManualOverride(snap.nodeId, HANDOFF_FADE_MS)
+        }
+        // Nodos sin snapshot (no estaban en IK): release destructivo sin fade.
+        for (const nodeId of removeNodeIds) {
+          if (!snapshots.some(s => s.nodeId === nodeId)) {
+            arbiter.clearManualOverride(nodeId, 0)
+            physicsPP.resetSpatialState(nodeId)
+          }
+        }
+
+        // ── Step 7: Silenciar VMM L2 flag — el VMM retoma L0 ──
+        if (!aetherKineticEngine.isActive()) {
+          vibeMovementManager.setL2Active(false)
+          vibeMovementManager.setKineticFanOffsets({})
+        }
+
+        console.log(
+          `[WAVE-7734] kineticHandoff COMPLETE. ` +
+          `snapshots=${snapshots.length}/${removeNodeIds.length} ` +
+          `fadeMs=${HANDOFF_FADE_MS}`,
+        )
+        return { success: true }
+      } catch (err) {
+        console.error('[AetherIPC] kineticHandoff error:', err)
+        return { success: false, error: String(err) }
       }
     }
   )

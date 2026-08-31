@@ -103,11 +103,16 @@ const L3_LUMINANCE_GAG_CHANNELS = new Set<string>([
 const L3_GAG_TRIGGER_FAMILIES = new Set<string>(['impact', 'color'])
 
 // ── WAVE 4752: Canales con duración de release larga (movers) ────────────────
-// Estos canales usan RELEASE_MS_SLOW (1000ms) al soltar el override.
+// Estos canales usan RELEASE_MS_SLOW al soltar el override.
 // El resto usa RELEASE_MS_FAST (200ms).
+// WAVE 7734: RELEASE_MS_SLOW reducido 1000→700ms. La compound ~2s freeze
+// venía de este fade (1s) apilado con la inercia clásica del PPP (~1s).
+// Con el handoff pass-through del PPP (WAVE 7734), el fade del Arbiter es
+// ahora la ÚNICA curva de suavizado durante el handoff → 700ms ease-out cúbico
+// es orgánico para movers sin sentirse laggy.
 const SLOW_RELEASE_CHANNELS = new Set<string>(['pan', 'tilt', 'zoom', 'focus', 'rotation'])
 const RELEASE_MS_FAST = 200
-const RELEASE_MS_SLOW = 1000
+const RELEASE_MS_SLOW = 700
 
 // WAVE 6019.6 FIX — CORTAFUEGOS DE ENVENENAMIENTO IK:
 // Las coordenadas espaciales (targetX/Y/Z) NO pueden interpolarse
@@ -321,6 +326,18 @@ export class NodeArbiter implements INodeArbiter {
   private readonly _manualPatternLocks = new Set<NodeId>()
 
   /**
+   * WAVE 7734: COUPLED-AXIS IK GATE — nodos en modo Spatial/IK (targetX activo).
+   * Cuando un nodeId está aquí, setManualOverride RECHAZA writes de `pan` o
+   * `tilt` absolutos (clásicos) que crearían un half-state incoherente: el IK
+   * solver trata pan+tilt como par acoplado derivado de un target 3D, así que
+   * no puede resolver un eje mientras el otro es propiedad manual.
+   * Los canales `pan_base`/`tilt_base` (anchor de órbita) y `targetX/Y/Z`
+   * (target espacial) SÍ se permiten — son la entrada legítima del motor IK.
+   * Registrado por applySpatialTarget; eliminado por kineticHandoff / releaseSpatialTarget.
+   */
+  private readonly _spatialCoupledLock = new Set<NodeId>()
+
+  /**
    * WAVE 4914: Amplitud global del flujo de offset relativo (escala el offset VMM).
    * 1.0 = legacy (preserva el mapeo `(intent.x+1)/2` cuando no hay base IK).
    * <1.0 = órbitas más pequeñas. >1.0 = sobrepasa el envelope (se recorta con clamp01).
@@ -359,8 +376,28 @@ export class NodeArbiter implements INodeArbiter {
   }
 
   setManualOverride(nodeId: NodeId, channels: Readonly<Record<string, number>>): void {
-    const existing = this._manualOverrides.get(nodeId)
     const incomingKeys = Object.keys(channels)
+    // WAVE 7734: COUPLED-AXIS IK GATE. Si el nodo está en modo Spatial/IK
+    // (targetX activo en _motorKineticOverrides → registrado en _spatialCoupledLock),
+    // rechazar writes de `pan`/`tilt` absolutos clásicos. El IK solver acopla
+    // ambos ejes a un target 3D; un override de un solo eje crea un half-state
+    // que ni la fusión clásica ni el solver IK pueden resolver coherentemente.
+    // Se permiten pan_base/tilt_base (anchor) y targetX/Y/Z (target espacial).
+    if (this._spatialCoupledLock.has(nodeId)) {
+      const hasAbsoluteClassicAxis = incomingKeys.some(
+        k => (k === 'pan' || k === 'tilt')
+      )
+      if (hasAbsoluteClassicAxis) {
+        console.warn(
+          `[WAVE-7734] setManualOverride REJECTED on ${nodeId}: node is in ` +
+          `Spatial/IK coupled mode. Individual pan/tilt absolute overrides ` +
+          `would create an incoherent half-state. Use the unified hand-off ` +
+          `(kineticHandoff) to exit spatial mode. incoming=[${incomingKeys.join(',')}]`,
+        )
+        return
+      }
+    }
+    const existing = this._manualOverrides.get(nodeId)
     const hasSpatial = incomingKeys.some(k => IK_POISON_KEYS.has(k))
     if (existing !== undefined) {
       // Merge in-place: los canales entrantes actualizan los existentes sin borrar otros.
@@ -452,7 +489,13 @@ export class NodeArbiter implements INodeArbiter {
               if (key === 'pan_base') snapshotKey = 'pan'
               if (key === 'tilt_base') snapshotKey = 'tilt'
               snapshot[snapshotKey] = v
-              durationByChannel[snapshotKey] = SLOW_RELEASE_CHANNELS.has(snapshotKey) ? RELEASE_MS_SLOW : RELEASE_MS_FAST
+              // WAVE 7734: releaseMs > 0 override — el caller (kineticHandoff)
+              // puede imponer una duración de fade uniforme para coordinar con
+              // el pass-through del PPP. releaseMs===0 → skipFade (arriba).
+              // undefined → duración por defecto (SLOW/FAST por canal).
+              durationByChannel[snapshotKey] = (typeof releaseMs === 'number' && releaseMs > 0)
+                ? releaseMs
+                : (SLOW_RELEASE_CHANNELS.has(snapshotKey) ? RELEASE_MS_SLOW : RELEASE_MS_FAST)
             }
           }
           if (Object.keys(snapshot).length > 0) {
@@ -493,7 +536,10 @@ export class NodeArbiter implements INodeArbiter {
             snapshot[snapshotKey] = v
             // WAVE 6019.6: usar snapshotKey (normalizado) en lugar de key
             // para que pan_base→pan y tilt_base→tilt hereden RELEASE_MS_SLOW.
-            durationByChannel[snapshotKey] = SLOW_RELEASE_CHANNELS.has(snapshotKey) ? RELEASE_MS_SLOW : RELEASE_MS_FAST
+            // WAVE 7734: releaseMs > 0 override (ver rama PATTERN-LOCK arriba).
+            durationByChannel[snapshotKey] = (typeof releaseMs === 'number' && releaseMs > 0)
+              ? releaseMs
+              : (SLOW_RELEASE_CHANNELS.has(snapshotKey) ? RELEASE_MS_SLOW : RELEASE_MS_FAST)
           }
         }
         if (Object.keys(snapshot).length > 0) {
@@ -544,6 +590,28 @@ export class NodeArbiter implements INodeArbiter {
 
   clearManualPatternLock(nodeId: NodeId): void {
     this._manualPatternLocks.delete(nodeId)
+  }
+
+  /**
+   * WAVE 7734: COUPLED-AXIS IK GATE API.
+   * Registra nodeIds en modo Spatial/IK. Mientras estén registrados,
+   * setManualOverride rechaza pan/tilt absolutos clásicos (half-state).
+   * Llamar al activar un target espacial (applySpatialTarget).
+   */
+  setSpatialCoupledLock(nodeIds: readonly NodeId[]): void {
+    for (let i = 0; i < nodeIds.length; i++) {
+      this._spatialCoupledLock.add(nodeIds[i])
+    }
+  }
+
+  /** WAVE 7734: Elimina un nodeId del coupled-axis lock (salida de modo spatial). */
+  clearSpatialCoupledLock(nodeId: NodeId): void {
+    this._spatialCoupledLock.delete(nodeId)
+  }
+
+  /** WAVE 7734: Query — ¿está este nodo en modo Spatial/IK acoplado? */
+  isSpatialCoupledLocked(nodeId: NodeId): boolean {
+    return this._spatialCoupledLock.has(nodeId)
   }
 
   clearAllManualPatternLocks(): void {

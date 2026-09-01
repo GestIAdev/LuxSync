@@ -82,6 +82,20 @@ export type ChannelType =
   // 🔥 WAVE 2084: INGENIOS
   | 'rotation'
   | 'custom'
+  // 🟢 WAVE 7737: LASER GEOMETRY (galvos = pan/tilt, pattern = gobo — no aquí)
+  | 'scale_x'
+  | 'scale_y'
+  | 'rot_x'
+  | 'rot_y'
+  // 🚨 WAVE 7737: SAFETY INTERLOCK — fail-closed, nunca L0/L1
+  | 'emission_gate'
+  // 🌫️ WAVE 7737: ATMOSPHERE — cuarentena L2/L3 @ 4Hz
+  | 'smoke_pump'
+  | 'smoke_density'
+  | 'fan_speed'
+  // 🔥 WAVE 7737: FIRE — safety-critical, fail-closed
+  | 'fire_valve'
+  | 'fire_ignite'
   // FALLBACK
   | 'unknown'
 
@@ -138,6 +152,20 @@ export const DEFAULT_MERGE_STRATEGIES: Record<ChannelType, MergeStrategy> = {
   // 🔥 WAVE 2084: INGENIOS
   rotation: 'LTP',
   custom: 'LTP',
+  // 🟢 WAVE 7737: LASER GEOMETRY
+  scale_x: 'LTP',
+  scale_y: 'LTP',
+  rot_x: 'LTP',
+  rot_y: 'LTP',
+  // 🚨 WAVE 7737: SAFETY INTERLOCK
+  emission_gate: 'LTP',
+  // 🌫️ WAVE 7737: ATMOSPHERE
+  smoke_pump: 'LTP',
+  smoke_density: 'LTP',
+  fan_speed: 'LTP',
+  // 🔥 WAVE 7737: FIRE
+  fire_valve: 'LTP',
+  fire_ignite: 'LTP',
   // FALLBACK
   unknown: 'LTP',
 } as const
@@ -152,7 +180,7 @@ export const DEFAULT_MERGE_STRATEGIES: Record<ChannelType, MergeStrategy> = {
 // would inherit stale color channels via blind union merge.
 // ═══════════════════════════════════════════════════════════════════════════
 
-export type ChannelCategory = 'color' | 'position' | 'intensity' | 'beam' | 'control' | 'ingenios'
+export type ChannelCategory = 'color' | 'position' | 'intensity' | 'beam' | 'control' | 'ingenios' | 'atmosphere'
 
 const CHANNEL_CATEGORY_MAP: Record<ChannelType, ChannelCategory> = {
   // COLOR
@@ -190,6 +218,18 @@ const CHANNEL_CATEGORY_MAP: Record<ChannelType, ChannelCategory> = {
   // INGENIOS
   rotation: 'ingenios',
   custom: 'ingenios',
+  // 🟢 WAVE 7737: LASER GEOMETRY → beam (escala/tumble de patrón)
+  scale_x: 'beam',
+  scale_y: 'beam',
+  rot_x: 'beam',
+  rot_y: 'beam',
+  // 🚨🌫️🔥 WAVE 7737: SAFETY INTERLOCK + ATMOSPHERE + FIRE → atmosphere (cuarentena)
+  emission_gate: 'atmosphere',
+  smoke_pump: 'atmosphere',
+  smoke_density: 'atmosphere',
+  fan_speed: 'atmosphere',
+  fire_valve: 'atmosphere',
+  fire_ignite: 'atmosphere',
   // FALLBACK
   unknown: 'control',
 }

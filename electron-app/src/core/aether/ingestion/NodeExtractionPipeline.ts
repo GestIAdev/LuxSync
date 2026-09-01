@@ -119,6 +119,9 @@ const KINETIC_CHANNEL_TYPES = new Set<string>([
 const BEAM_CHANNEL_TYPES = new Set<string>([
   'focus', 'zoom', 'frost', 'iris',
   'gobo', 'gobo_rotation', 'prism', 'prism_rotation',
+  // 🟢 WAVE 7737: LASER GEOMETRY — escala/tumble 3D de patrón. Galvos y
+  // pattern bank ya viven en KINETIC (pan/tilt) y BEAM (gobo) respectivamente.
+  'scale_x', 'scale_y', 'rot_x', 'rot_y',
 ])
 
 // WAVE 4708: canales mecánicos/legacy cuarentenados.
@@ -134,17 +137,42 @@ const QUARANTINED_MECHANICAL_CHANNEL_TYPES = new Set<string>([
   'auto',
 ])
 
+// 🚨🔥 WAVE 7737: HARD SAFETY CHANNELS — nunca driveable por L0/L1, fail-closed.
+// A diferencia de QUARANTINED_MECHANICAL_CHANNEL_TYPES (canales legacy ruidosos),
+// estos son interlocks de seguridad física real (láser Class 3B/4, ignición de
+// pirotecnia/llama). defaultValue=0 se fuerza en build SIN excepción, incluso
+// si el perfil JSON del fixture especifica otro valor — ver _resolveDefaultValue.
+export const HARD_SAFETY_CHANNEL_TYPES = new Set<string>([
+  'emission_gate',
+  'fire_valve',
+  'fire_ignite',
+])
+
+// 🌫️ WAVE 7737: ATMOSPHERE FLUID — humo/niebla/ventilación, cuarentena L2/L3 @ 4Hz.
+const ATMOSPHERE_FLUID_CHANNEL_TYPES = new Set<string>([
+  'smoke_pump',
+  'smoke_density',
+  'fan_speed',
+])
+
 // WAVE 3517.1: ATMOSPHERE incluye custom/macro/control (canales de máquinas de efecto).
 // La detección semántica se refuerza con el fixture.type en _analyzeTopology().
+// WAVE 7737: + HARD_SAFETY_CHANNEL_TYPES (interlocks) + ATMOSPHERE_FLUID_CHANNEL_TYPES.
 const ATMOSPHERE_CHANNEL_TYPES = new Set<string>([
   'control', 'custom',
   ...QUARANTINED_MECHANICAL_CHANNEL_TYPES,
+  ...HARD_SAFETY_CHANNEL_TYPES,
+  ...ATMOSPHERE_FLUID_CHANNEL_TYPES,
 ])
 
 // Fixture types que por definición producen un ATMOSPHERE node aunque sus
 // canales sean 'custom' (fog output, haze pump, spark ignition, etc.).
+// WAVE 7737: 'laser' REMOVIDO — un láser ahora decompone en IMPACT/KINETIC/
+// BEAM/COLOR vía el path multicell estándar (Forge), con solo su interlock
+// `emission_gate` residual en ATMOSPHERE. Forzarlo aquí lo colapsaría a un
+// único nodo ATMOSPHERE, perdiendo el control de galvos/patrón/color.
 const ATMOSPHERE_FIXTURE_TYPES = new Set<string>([
-  'fog', 'fan', 'pyro', 'laser',
+  'fog', 'fan', 'pyro',
 ])
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1375,6 +1403,14 @@ export class NodeExtractionPipeline {
       return 0
     }
 
+    // 🚨 WAVE 7737: HARD SAFETY — fail-closed SIN excepción. A diferencia del
+    // check anterior, este NO se salta ni siquiera si el perfil JSON define
+    // un defaultValue explícito — un interlock de láser/pirotecnia nunca debe
+    // arrancar armado, sin importar lo que declare un perfil de fixture importado.
+    if (HARD_SAFETY_CHANNEL_TYPES.has(type)) {
+      return 0
+    }
+
     if (typeof ch.defaultValue === 'number') {
       return ch.defaultValue
     }
@@ -1460,7 +1496,13 @@ export class NodeExtractionPipeline {
       case 'fan':    return 'fan'
       case 'fog':    return 'fog'
       case 'pyro':   return 'pyro'
-      case 'laser':  return 'spark'
+      // 🟢 WAVE 7737 FIX: 'laser' → 'laser' (was 'spark'). Lasers are not
+      // Sparkular fireworks — they need continuous galvo/pattern/color
+      // control, not drop-only energy-gated bursts. The residual ATMOSPHERE
+      // node this produces carries only the `emission_gate` interlock; the
+      // rest of the laser decomposes into KINETIC/BEAM/COLOR/IMPACT via the
+      // standard multicell Forge path.
+      case 'laser':  return 'laser'
       default:       return 'custom'
     }
   }

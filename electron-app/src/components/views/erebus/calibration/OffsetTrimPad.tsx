@@ -104,8 +104,27 @@ export const OffsetTrimPad: React.FC<OffsetTrimPadProps> = ({ panOffset, tiltOff
   )
 
   // Cursor position in SVG coordinates
-  const cursorX = CENTER + (panOffset / MAX_DEG) * (RADIUS - 8)
-  const cursorY = CENTER + (tiltOffset / MAX_DEG) * (RADIUS - 8)
+  // WAVE 7740: Trigonometric clamping — when the offset exceeds the radar's
+  // ±MAX_DEG visual boundary (e.g. gross offsets of ±180° from the sliders
+  // above), the raw normalized coordinates would place the dot outside the
+  // circle. Instead of letting it overflow/disappear, we clamp it to the
+  // perimeter along its angle so the dot "sticks" to the edge. The actual
+  // offset value is preserved — only the visual position is clamped.
+  const rawNormX = panOffset / MAX_DEG
+  const rawNormY = tiltOffset / MAX_DEG
+  const rawDist  = Math.sqrt(rawNormX * rawNormX + rawNormY * rawNormY)
+
+  let normX = rawNormX
+  let normY = rawNormY
+  const isOutOfBounds = rawDist > 1.0
+  if (isOutOfBounds) {
+    const angle = Math.atan2(rawNormY, rawNormX)
+    normX = Math.cos(angle)
+    normY = Math.sin(angle)
+  }
+
+  const cursorX = CENTER + normX * (RADIUS - 8)
+  const cursorY = CENTER + normY * (RADIUS - 8)
 
   // Container styles (inline — no external CSS dependency)
   const containerStyle: React.CSSProperties = {
@@ -235,9 +254,24 @@ export const OffsetTrimPad: React.FC<OffsetTrimPadProps> = ({ panOffset, tiltOff
         <text x={CENTER} y={SIZE - 2} textAnchor="middle" fontSize="7" fill="rgba(255,255,255,0.25)" fontWeight="600">PAN</text>
         <text x={SIZE - 4} y={CENTER + 2} textAnchor="end" fontSize="7" fill="rgba(255,255,255,0.25)" fontWeight="600">TILT</text>
 
-        {/* Position cursor — cyan dot + ring */}
-        <circle cx={cursorX} cy={cursorY} r="9" fill="none" stroke="rgba(34,211,238,0.3)" strokeWidth="1" />
-        <circle cx={cursorX} cy={cursorY} r="5" fill="#22d3ee" stroke="rgba(0,0,0,0.4)" strokeWidth="1" style={{ filter: 'drop-shadow(0 0 4px rgba(34,211,238,0.6))' }} />
+        {/* Position cursor — cyan dot + ring.
+            WAVE 7740: When the offset exceeds the radar's ±30° boundary
+            (isOutOfBounds), the dot is clamped to the perimeter and rendered
+            as a hollow orange circle to signal that the actual value lies
+            further out than the radar's edge. The numeric inputs below still
+            show the true value. */}
+        {isOutOfBounds ? (
+          <>
+            <circle cx={cursorX} cy={cursorY} r="9" fill="none" stroke="rgba(245,158,11,0.4)" strokeWidth="1" />
+            <circle cx={cursorX} cy={cursorY} r="5" fill="none" stroke="#f59e0b" strokeWidth="1.5" style={{ filter: 'drop-shadow(0 0 4px rgba(245,158,11,0.6))' }} />
+            <circle cx={cursorX} cy={cursorY} r="1.5" fill="#f59e0b" />
+          </>
+        ) : (
+          <>
+            <circle cx={cursorX} cy={cursorY} r="9" fill="none" stroke="rgba(34,211,238,0.3)" strokeWidth="1" />
+            <circle cx={cursorX} cy={cursorY} r="5" fill="#22d3ee" stroke="rgba(0,0,0,0.4)" strokeWidth="1" style={{ filter: 'drop-shadow(0 0 4px rgba(34,211,238,0.6))' }} />
+          </>
+        )}
       </svg>
 
       <div style={hintStyle}>Drag · Dbl-click to reset</div>

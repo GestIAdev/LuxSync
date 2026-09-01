@@ -58,6 +58,11 @@ import { ColorAdapter } from '../aether/adapters/ColorAdapter'
 // WAVE 3516.4: Optic & Elemental Bridges
 import { BeamAdapter } from '../aether/adapters/BeamAdapter'
 import { AtmosphereAdapter } from '../aether/adapters/AtmosphereAdapter'
+// 🚨 WAVE 7737: THE QUARANTINE — reemplaza AtmosphereAdapter como el driver
+// activo de ATMOSPHERE. AtmosphereAdapter queda instanciado pero deja de
+// llamarse en el hot path (ver TickEngine.ts) — su .process() ya no se
+// invoca. AtmosphereCueDriver corre a 4Hz y escribe al bus L3, no L0.
+import { AtmosphereCueDriver } from '../aether/atmosphere/AtmosphereCueDriver'
 // WAVE 4521.3: LiquidAetherAdapter â€” Capa L0 del IntentBus
 import { LiquidAetherAdapter } from '../aether/adapters/LiquidAetherAdapter'
 import type { FrameContext, AudioMetrics, VibeProfile, MusicalContext } from '../aether'
@@ -349,6 +354,9 @@ export class TitanOrchestrator {
   //  WAVE 3516.4: Optic & Elemental Bridges
   private _beamAdapter: BeamAdapter | null = null
   private _atmosphereAdapter: AtmosphereAdapter | null = null
+  // 🚨 WAVE 7737: THE QUARANTINE — el driver L3/4Hz que reemplaza a
+  // _atmosphereAdapter en el hot path. Ver TickEngine.ts call site.
+  private _atmosphereCueDriver: AtmosphereCueDriver | null = null
   // WAVE 4521.3: LiquidAetherAdapter â€” Capa L0 del IntentBus
   // Se instancia con el NodeGraph y el liquidEngine71 para acceder a lastFrame
   private _liquidAetherAdapter: LiquidAetherAdapter | null = null
@@ -621,7 +629,8 @@ export class TitanOrchestrator {
     const hydrationCtx: HydrationContext = Object.assign(
       this.createMutableProxy<HydrationContext>(
         '_aetherGraph', '_aetherArbiter', '_aetherResolver', '_aetherPipeline', '_aetherHasDevices',
-        '_colorAdapter', '_kineticAdapter', '_beamAdapter', '_atmosphereAdapter', '_liquidAetherAdapter',
+        '_colorAdapter', '_kineticAdapter', '_beamAdapter', '_atmosphereAdapter', '_atmosphereCueDriver',
+        '_liquidAetherAdapter',
         '_seleneAetherAdapter', '_zoneNodeRouter', 'hal', 'fixtures',
         '_outputEnabled'
       ),
@@ -663,6 +672,8 @@ export class TitanOrchestrator {
       get _kineticAdapter() { return self._kineticAdapter },
       get _beamAdapter() { return self._beamAdapter },
       get _atmosphereAdapter() { return self._atmosphereAdapter },
+      // 🚨 WAVE 7737: THE QUARANTINE — driver activo, ver TickEngine call site.
+      get _atmosphereCueDriver() { return self._atmosphereCueDriver },
       get _liquidAetherAdapter() { return self._liquidAetherAdapter },
       get _seleneAetherAdapter() { return self._seleneAetherAdapter },
       get _chronosAetherAdapter() { return self._chronosAetherAdapter },

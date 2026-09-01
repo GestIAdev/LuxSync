@@ -21,6 +21,10 @@ import { ZoneNodeRouter } from '../../aether/adapters/helpers/zone-node-router'
 import { ColorAdapter } from '../../aether/adapters/ColorAdapter'
 import { BeamAdapter } from '../../aether/adapters/BeamAdapter'
 import { AtmosphereAdapter } from '../../aether/adapters/AtmosphereAdapter'
+// 🚨 WAVE 7737: THE QUARANTINE — driver activo de ATMOSPHERE (4Hz, bus L3).
+// AtmosphereAdapter se mantiene instanciado (línea abajo) pero ya no se
+// invoca desde el hot path de TickEngine — ver ese archivo.
+import { AtmosphereCueDriver } from '../../aether/atmosphere/AtmosphereCueDriver'
 import { LiquidAetherAdapter } from '../../aether/adapters/LiquidAetherAdapter'
 import { ChronosAetherAdapter } from '../../aether/adapters/ChronosAetherAdapter'
 import { AetherSafetyMiddleware } from '../../aether/egress/AetherSafetyMiddleware'
@@ -84,6 +88,8 @@ export interface HydrationContext {
   kineticAdapter: InstanceType<typeof VMMAdapter> | null
   beamAdapter: BeamAdapter | null
   atmosphereAdapter: AtmosphereAdapter | null
+  // 🚨 WAVE 7737: driver activo — ver comentario de import arriba.
+  atmosphereCueDriver: AtmosphereCueDriver | null
   liquidAetherAdapter: LiquidAetherAdapter | null
   seleneAetherAdapter: SeleneAetherAdapter | null
   zoneNodeRouter: ZoneNodeRouter | null
@@ -228,6 +234,7 @@ export class FixtureHydrationEngine {
       ctx.kineticAdapter &&
       ctx.beamAdapter &&
       ctx.atmosphereAdapter &&
+      ctx.atmosphereCueDriver &&
       ctx.liquidAetherAdapter &&
       ctx.seleneAetherAdapter
     ) {
@@ -250,6 +257,9 @@ export class FixtureHydrationEngine {
     ctx.kineticAdapter = ctx.kineticAdapter ?? new VMMAdapter()
     ctx.beamAdapter = ctx.beamAdapter ?? new BeamAdapter()
     ctx.atmosphereAdapter = ctx.atmosphereAdapter ?? new AtmosphereAdapter()
+    // 🚨 WAVE 7737: THE QUARANTINE — driver activo, invocado desde TickEngine
+    // en lugar de atmosphereAdapter. Ver comentario en import.
+    ctx.atmosphereCueDriver = ctx.atmosphereCueDriver ?? new AtmosphereCueDriver()
     ctx.liquidAetherAdapter = ctx.liquidAetherAdapter ?? new LiquidAetherAdapter(ctx.aetherGraph)
 
     if (!ctx.zoneNodeRouter) {

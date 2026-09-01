@@ -100,6 +100,13 @@ export type GovernorIntentType =
   | 'frost'
   | 'zoom'
   | 'focus'
+  // 🚨 WAVE 7737: SAFETY INTENTS — última milla para los interlocks de
+  // láser/pirotecnia/humo. Ver DMXGovernorEvaluator.CHANNEL_TO_INTENT para
+  // el mapeo ChannelType → intentType y HARD_SAFETY_GOVERNORS (FixtureDefinition.ts)
+  // para las 3 reglas fail-closed de referencia.
+  | 'emission'
+  | 'fire'
+  | 'smoke'
   | 'fallback'
 
 /**

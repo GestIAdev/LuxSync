@@ -171,6 +171,20 @@ export type AetherChannelType =
   | 'macro'
   | 'control'
   | 'custom'
+  // ── LASER GEOMETRY (WAVE 7737 — galvos = pan/tilt, pattern = gobo) ────
+  | 'scale_x'
+  | 'scale_y'
+  | 'rot_x'
+  | 'rot_y'
+  // ── SAFETY INTERLOCK (WAVE 7737 — fail-closed, nunca L0/L1) ───────────
+  | 'emission_gate'
+  // ── ATMOSPHERE (WAVE 7737 — cuarentena L2/L3 @ 4Hz) ───────────────────
+  | 'smoke_pump'
+  | 'smoke_density'
+  | 'fan_speed'
+  // ── FIRE (WAVE 7737 — safety-critical, fail-closed) ───────────────────
+  | 'fire_valve'
+  | 'fire_ignite'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // RESPONSE TYPE — Modelo de comportamiento físico del hardware
@@ -300,8 +314,11 @@ export type MotorType = 'stepper' | 'servo' | 'galvo'
  * - `fan`    → Ventilador direccional. Sin restricciones especiales.
  * - `pyro`   → Pirotecnia fría. Single-shot, interlock máximo.
  * - `custom` → Dispositivo no clasificado. Sin safety assumptions.
+ * - `laser`  → Residual interlock node (WAVE 7737). El grueso del láser
+ *              (galvos, pattern, color, dimmer) decompone en KINETIC/BEAM/
+ *              COLOR/IMPACT — este type solo etiqueta el nodo `emission_gate`.
  */
-export type AtmosphereType = 'fog' | 'haze' | 'spark' | 'fan' | 'pyro' | 'custom'
+export type AtmosphereType = 'fog' | 'haze' | 'spark' | 'fan' | 'pyro' | 'laser' | 'custom'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INTENT SOURCE — Origen de un NodeIntent

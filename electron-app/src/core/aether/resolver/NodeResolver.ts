@@ -100,6 +100,19 @@ const SOFT_BLACKOUT_INTENSITY_CHANNELS = new Set<string>([
   DIMMER_CHANNEL,
 ])
 
+// 🚨 WAVE 7737: HARD SAFETY CHANNELS — deben zerarse INCONDICIONALMENTE en
+// blackout, junto con el dimmer. El hard blackout (getHardBlackoutUniverseBuffer)
+// ya cubre esto trivialmente (los 512 bytes van a 0). El caso real que esto
+// cierra es el SOFT blackout: sin esta extensión, un `emission_gate` o
+// `fire_valve` armado permanecería activo mientras el show "se ve apagado"
+// (solo el dimmer va a 0), porque el mask original solo cubría DIMMER_CHANNEL.
+// Ver docs/technical_audits/Aether_Agnostic_blueprint.md §3.3 Ring 4.
+const HARD_SAFETY_CHANNELS = new Set<string>([
+  'emission_gate',
+  'fire_valve',
+  'fire_ignite',
+])
+
 const IK_WARN_INTERVAL_FRAMES = 44
 const MATH_TELEMETRY_EVERY_FRAMES = 30
 
@@ -481,6 +494,31 @@ export class NodeResolver implements INodeResolver {
     }
     // Invalidate cache so next frame rebuilds the profile with new calibration
     this._ikProfiles.delete(nodeId)
+
+    // WAVE 7739: DEGREE→DMX BRIDGE for the classic (mechanical) pan/tilt path.
+    //
+    // The IK path (_writeNodeIK → _getOrBuildIKProfile) reads node.ikCalibration
+    // in DEGREES. The classic path (the channel loop at line ~1340) reads
+    // device.calibration in DMX STEPS (0-255). Without this bridge, live offset
+    // drags in MECHANICAL mode update node.ikCalibration but the classic loop
+    // keeps reading the stale device.calibration from patch time — so the
+    // sliders move the UI but never reach the physical fixture until SAVE.
+    //
+    // We convert degrees → DMX steps using the node's declared pan/tilt range,
+    // defaulting to industry-standard 540°/270° when ikLimits is absent.
+    // Invert flags pass through directly (boolean→boolean).
+    //
+    // This mutation is safe: getDevice returns a live reference, and the
+    // classic path reads device.calibration every frame at line ~1278.
+    const device = this._graph.getDevice(node.deviceId)
+    if (device && device.calibration) {
+      const panRange  = node.ikLimits?.panRangeDeg  ?? 540
+      const tiltRange = node.ikLimits?.tiltRangeDeg ?? 270
+      ;(device.calibration as any).panOffset  = Math.round(calibration.panOffset  / panRange  * 255)
+      ;(device.calibration as any).tiltOffset = Math.round(calibration.tiltOffset / tiltRange * 255)
+      ;(device.calibration as any).invertPan  = calibration.panInvert
+      ;(device.calibration as any).invertTilt = calibration.tiltInvert
+    }
   }
 
   /**
@@ -1114,7 +1152,11 @@ export class NodeResolver implements INodeResolver {
         const baseAddr = device.dmxAddress - 1
         for (let ci = 0; ci < node.channels.length; ci++) {
           const chDef = node.channels[ci]
-          if (!SOFT_BLACKOUT_INTENSITY_CHANNELS.has(chDef.type)) continue
+          // WAVE 7737: además del dimmer, los canales de seguridad dura
+          // (emission_gate/fire_valve/fire_ignite) SIEMPRE se incluyen en
+          // el mask de soft blackout — nunca deben quedar armados mientras
+          // el show se percibe apagado.
+          if (!SOFT_BLACKOUT_INTENSITY_CHANNELS.has(chDef.type) && !HARD_SAFETY_CHANNELS.has(chDef.type)) continue
 
           const idx = baseAddr + chDef.dmxOffset
           if (idx >= 0 && idx < DMX_UNIVERSE_SIZE) {

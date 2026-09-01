@@ -108,6 +108,20 @@ export class FixtureFactory {
       'control': 'Control',
       'rotation': 'Rotation',
       'custom': 'Custom',
+      // 🟢 WAVE 7737: LASER GEOMETRY
+      'scale_x': 'Scale X',
+      'scale_y': 'Scale Y',
+      'rot_x': 'Rotate X',
+      'rot_y': 'Rotate Y',
+      // 🚨 WAVE 7737: SAFETY INTERLOCK
+      'emission_gate': 'Emission Gate',
+      // 🌫️ WAVE 7737: ATMOSPHERE
+      'smoke_pump': 'Smoke Pump',
+      'smoke_density': 'Smoke Density',
+      'fan_speed': 'Fan Speed',
+      // 🔥 WAVE 7737: FIRE
+      'fire_valve': 'Fire Valve',
+      'fire_ignite': 'Fire Ignite',
       'unknown': 'Unknown'
     };
     return labels[type] || type;

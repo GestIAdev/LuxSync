@@ -186,6 +186,9 @@ const CATEGORY_COLORS: Record<string, string> = {
   POSITION: '#22d3ee',
   BEAM: '#f59e0b',
   CONTROL: '#a855f7',
+  // WAVE 7737 PHASE 6: Laser & Atmosphere category colors
+  'LASER FX': '#00ff88',
+  ATMOSPHERE: '#6b7280',
 }
 
 export function getChannelCategory(type: ChannelType): string {
@@ -194,6 +197,10 @@ export function getChannelCategory(type: ChannelType): string {
   if (['pan', 'pan_fine', 'tilt', 'tilt_fine'].includes(type)) return 'position'
   if (['gobo', 'gobo_rotation', 'prism', 'prism_rotation', 'focus', 'zoom', 'iris', 'frost'].includes(type)) return 'beam'
   if (['speed', 'macro', 'control', 'effect', 'reset'].includes(type)) return 'control'
+  // WAVE 7737 PHASE 6: Laser galvo geometry + emission interlock
+  if (['scale_x', 'scale_y', 'rot_x', 'rot_y', 'emission_gate'].includes(type)) return 'laser fx'
+  // WAVE 7737 PHASE 6: Atmosphere fluids + pyro safety valves
+  if (['smoke_pump', 'smoke_density', 'fan_speed', 'fire_valve', 'fire_ignite'].includes(type)) return 'atmosphere'
   return ''
 }
 

@@ -133,7 +133,8 @@ export { IntentBus } from './IntentBus'
  * const systems = [new ImpactSystem(), new ColorSystem(), new KineticSystem()]
  * ```
  */
-export { BaseSystem, ImpactSystem, ColorSystem, KineticSystem, BeamSystem, AtmosphereSystem } from './systems'
+// 🚨 WAVE 7737: AtmosphereSystem no longer re-exported — see systems/index.ts.
+export { BaseSystem, ImpactSystem, ColorSystem, KineticSystem, BeamSystem } from './systems'
 export type {
   IAetherSystem,
   FrameContext,

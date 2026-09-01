@@ -16,6 +16,7 @@ import { type ForgeAction, type IForgeCellBuilder } from '../../../../core/forge
 import { NodeFamily } from '../../../../core/aether/types'
 import { canAdmit } from '../../../../core/forge/cellTypeAdmittance'
 import { type FixtureChannel, type ChannelType } from '../../../../types/FixtureDefinition'
+import { HARD_SAFETY_CHANNEL_TYPES } from '../../../../core/aether/ingestion/NodeExtractionPipeline'
 
 export interface ForgeAetherCellsTabProps {
   cells: readonly IForgeCellBuilder[]
@@ -187,6 +188,28 @@ function DroppableCellBox({
           <XIcon size={12} />
         </button>
       </div>
+
+      {/* WAVE 7737 PHASE 6: Safety quarantine badge for ATMOSPHERE cells
+          containing hard-safety channels (emission_gate / fire_valve / fire_ignite).
+          Warns the operator that these channels are never AI-driven — manual/cue only. */}
+      {String(cell.family) === 'ATMOSPHERE' &&
+        cell.channelIndices.some(idx => {
+          const ch = channels[idx]
+          return !!ch && HARD_SAFETY_CHANNEL_TYPES.has(ch.type)
+        }) && (
+        <div style={{
+          background:   '#1a0a0a',
+          borderBottom: '1px solid #ef4444',
+          padding:      '4px 8px',
+          display:      'flex',
+          alignItems:   'center',
+          gap:          '4px',
+        }}>
+          <span style={{ fontSize: '10px', color: '#fca5a5', fontWeight: 700 }}>
+            ⚠️ Quarantined — Manual/Cue Only, Never AI-Driven
+          </span>
+        </div>
+      )}
 
       {/* WAVE 4732.3 PASO 2: ID + selector de zona canónica */}
       <div style={{ padding: '4px 8px 4px 10px', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>

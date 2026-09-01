@@ -29,6 +29,8 @@ import type { AudioPipelineManager } from '../audio/AudioPipelineManager'
 import type { ColorAdapter } from '../../aether/adapters/ColorAdapter'
 import type { BeamAdapter } from '../../aether/adapters/BeamAdapter'
 import type { AtmosphereAdapter } from '../../aether/adapters/AtmosphereAdapter'
+// 🚨 WAVE 7737: THE QUARANTINE — driver activo de ATMOSPHERE (4Hz, bus L3).
+import type { AtmosphereCueDriver } from '../../aether/atmosphere/AtmosphereCueDriver'
 import type { LiquidAetherAdapter } from '../../aether/adapters/LiquidAetherAdapter'
 import type { SeleneAetherAdapter } from '../../aether/adapters/selene-aether-adapter'
 import type { ChronosAetherAdapter } from '../../aether/adapters/ChronosAetherAdapter'
@@ -62,6 +64,9 @@ export interface TickContext {
   _kineticAdapter: InstanceType<typeof VMMAdapter> | null
   _beamAdapter: BeamAdapter | null
   _atmosphereAdapter: AtmosphereAdapter | null
+  // 🚨 WAVE 7737: THE QUARANTINE — driver activo, invocado en lugar de
+  // _atmosphereAdapter. Escribe al bus L3 (_effectBus), nunca a _aetherBus.
+  _atmosphereCueDriver: AtmosphereCueDriver | null
   _liquidAetherAdapter: LiquidAetherAdapter | null
   _seleneAetherAdapter: SeleneAetherAdapter | null
   _chronosAetherAdapter: ChronosAetherAdapter
@@ -195,6 +200,7 @@ export class TickEngine {
   get _kineticAdapter() { return this.ctx._kineticAdapter }
   get _beamAdapter() { return this.ctx._beamAdapter }
   get _atmosphereAdapter() { return this.ctx._atmosphereAdapter }
+  get _atmosphereCueDriver() { return this.ctx._atmosphereCueDriver }
   get _liquidAetherAdapter() { return this.ctx._liquidAetherAdapter }
   get _seleneAetherAdapter() { return this.ctx._seleneAetherAdapter }
   get _chronosAetherAdapter() { return this.ctx._chronosAetherAdapter }
@@ -1291,6 +1297,10 @@ export class TickEngine {
       const kineticAdapter = this._kineticAdapter
       const beamAdapter = this._beamAdapter
       const atmosphereAdapter = this._atmosphereAdapter
+      // 🚨 WAVE 7737: THE QUARANTINE — driver activo, invocado más abajo en
+      // lugar de atmosphereAdapter.process(). atmosphereAdapter permanece en
+      // el guard de abajo (instanciado, nunca invocado) por compat de tipos.
+      const atmosphereCueDriver = this._atmosphereCueDriver
       const liquidAetherAdapter = this._liquidAetherAdapter
       const seleneAetherAdapter = this._seleneAetherAdapter
 
@@ -1301,6 +1311,7 @@ export class TickEngine {
         !kineticAdapter ||
         !beamAdapter ||
         !atmosphereAdapter ||
+        !atmosphereCueDriver ||
         !liquidAetherAdapter ||
         !seleneAetherAdapter
       ) {
@@ -1476,10 +1487,17 @@ export class TickEngine {
         this._aetherBus,
       )
       // ðŸŒ«ï¸ WAVE 3516.4: Atmosphere â€” elementos (fog, haze, fan, spark, pyro)
-      atmosphereAdapter.process(
+      // 🚨 WAVE 7737: THE QUARANTINE — RING 1 (THE HARD WALL).
+      // atmosphereAdapter.process() YA NO SE LLAMA. AtmosphereCueDriver corre
+      // a 4Hz internamente y escribe a `this._effectBus` (L3), NUNCA a
+      // `this._aetherBus` (L0). Esto garantiza que el Manual Hard Lock del
+      // NodeArbiter (aplicado DESPUÉS de L3) siempre pueda vetar humo/fuego —
+      // el operador es soberano, la IA nunca alcanza estos canales.
+      // Ver docs/technical_audits/Aether_Agnostic_blueprint.md §3.3.
+      atmosphereCueDriver.process(
         this._aetherGraph.getView(NodeFamily.ATMOSPHERE),
         ctx,
-        this._aetherBus,
+        this._effectBus,
       )
 
       // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•

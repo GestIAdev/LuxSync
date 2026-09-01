@@ -264,6 +264,24 @@ export const FUNCTION_PALETTE: Record<string, FunctionDef[]> = {
     { type: 'magenta',        label: 'Magenta',   color: '#ff00ff', icon: <Droplet size={13} /> },
     { type: 'yellow',         label: 'Yellow',    color: '#ffff00', icon: <Droplet size={13} /> },
   ],
+
+  // WAVE 7737 PHASE 6: LASER FX — galvo geometry + emission interlock
+  'LASER FX': [
+    { type: 'scale_x',      label: 'Scale X',      color: '#00ff88', icon: <ZoomIn size={13} /> },
+    { type: 'scale_y',      label: 'Scale Y',      color: '#00ff88', icon: <ZoomIn size={13} /> },
+    { type: 'rot_x',        label: 'Rot X',        color: '#00cc66', icon: <RotateCw size={13} /> },
+    { type: 'rot_y',        label: 'Rot Y',        color: '#00cc66', icon: <RotateCw size={13} /> },
+    { type: 'emission_gate',label: 'Emission Gate',color: '#ff0044', icon: <Lock size={13} /> },
+  ],
+
+  // WAVE 7737 PHASE 6: ATMOSPHERE — smoke/haze/fans + pyro safety valves
+  'ATMOSPHERE': [
+    { type: 'smoke_pump',   label: 'Smoke Pump',    color: '#6b7280', icon: <Droplet size={13} /> },
+    { type: 'smoke_density',label: 'Smoke Density', color: '#6b7280', icon: <Droplet size={13} /> },
+    { type: 'fan_speed',    label: 'Fan Speed',     color: '#6b7280', icon: <Snowflake size={13} /> },
+    { type: 'fire_valve',   label: 'Fire Valve',    color: '#ff0044', icon: <AlertTriangle size={13} /> },
+    { type: 'fire_ignite',  label: 'Fire Ignite',   color: '#ff0044', icon: <Zap size={13} /> },
+  ],
 }
 
 function deepClone<T>(value: T): T {
@@ -1000,6 +1018,18 @@ export function getSmartDefaultValue(type: ChannelType): number {
     case 'tilt': return 127
     case 'focus':
     case 'zoom': return 128
+    // WAVE 7737 PHASE 6: Laser galvo scale defaults to 50%
+    case 'scale_x':
+    case 'scale_y': return 128
+    // WAVE 7737 PHASE 6: All rot / safety / atmosphere channels fail-closed at 0
+    case 'rot_x':
+    case 'rot_y':
+    case 'emission_gate':
+    case 'smoke_pump':
+    case 'smoke_density':
+    case 'fan_speed':
+    case 'fire_valve':
+    case 'fire_ignite': return 0
     default: return 0
   }
 }

@@ -87,6 +87,28 @@ export const CELL_TYPE_ADMITTANCE: Readonly<Record<ChannelType, readonly NodeFam
       NodeFamily.KINETIC,
     ],
 
+    // ── LASER GEOMETRY (WAVE 7737) ──────────────────────────────────────
+    // Escala/tumble de patrón — vive en BEAM junto a gobo/gobo_rotation.
+    // Galvos (pan/tilt) y pattern bank (gobo) YA están cubiertos arriba.
+    scale_x:        [NodeFamily.BEAM],
+    scale_y:        [NodeFamily.BEAM],
+    rot_x:          [NodeFamily.BEAM],
+    rot_y:          [NodeFamily.BEAM],
+
+    // ── SAFETY INTERLOCK (WAVE 7737) ─────────────────────────────────────
+    // Single-family: el operador NO puede arrastrar esto a IMPACT/BEAM
+    // donde Omniliquid/Selene podrían encontrarlo. Cuarentena estructural.
+    emission_gate:  [NodeFamily.ATMOSPHERE],
+
+    // ── ATMOSPHERE FLUID (WAVE 7737) ─────────────────────────────────────
+    smoke_pump:     [NodeFamily.ATMOSPHERE],
+    smoke_density:  [NodeFamily.ATMOSPHERE],
+    fan_speed:      [NodeFamily.ATMOSPHERE],
+
+    // ── FIRE (WAVE 7737) — safety-critical, single-family ─────────────────
+    fire_valve:     [NodeFamily.ATMOSPHERE],
+    fire_ignite:    [NodeFamily.ATMOSPHERE],
+
     // ── BLOQUEADO ─────────────────────────────────────────────────────────
     unknown:        [],
   })

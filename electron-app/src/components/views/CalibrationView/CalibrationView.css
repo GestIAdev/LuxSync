@@ -1186,6 +1186,11 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
   overflow: hidden;
+  /* WAVE 7739: Prevent flexbox from collapsing this panel to 0 height when
+     dynamic content (e.g. the aiming status text) makes .zone-targeting
+     overflow. Without this, the mode tabs vanish and the user must exit
+     and re-enter the view to recover them. */
+  flex-shrink: 0;
 }
 
 .mode-btn {
@@ -1225,6 +1230,12 @@
   border-radius: 8px;
   padding: 0.75rem;
   margin-bottom: 0.5rem;
+  /* WAVE 7739: Prevent flexbox from squeezing this panel when the status
+     message ("Aimed — distance ...") injects ~25px of dynamic height.
+     Without this, .zone-targeting's overflow-y:auto never triggers and
+     the .offset-config panel below gets clipped by .tool-panel's
+     overflow:hidden. */
+  flex-shrink: 0;
 }
 
 .targeting-content {

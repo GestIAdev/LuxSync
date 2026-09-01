@@ -120,10 +120,21 @@ export class AutoGainProcessor {
       const alpha = (desiredGain > this.currentGain) ? atkAlpha : relAlpha
       this.currentGain += alpha * (desiredGain - this.currentGain)
 
-      // Apply gain and hard clamp
-      let output = raw * this.currentGain
-      if (output > 1.0) output = 1.0
-      if (output < -1.0) output = -1.0
+      // WAVE 7742: SOFT SATURATION — replaces hard clamp.
+      //
+      // The previous hard clamp (`if (output > 1.0) output = 1.0`) generated
+      // sharp spectral splatter when the AGC's +24dB boost collided with a
+      // loud transient. The splatter inflated spectral flatness, which the
+      // GodEar pipeline mapped to whiteNoiseScore=1.0, tricking Selene into
+      // perceiving "high chaos" and firing inappropriate strobes.
+      //
+      // tanh() provides smooth asymptotic saturation: it is near-linear for
+      // |x| < 0.5 (transparent on normal levels) and gracefully approaches
+      // ±1.0 as |x| → ∞, with no discontinuity in the derivative. This
+      // eliminates the intermodulation distortion that corrupted flatness.
+      //
+      // Cost: 1 Math.tanh per sample (~10ns). Zero allocation — in-place.
+      const output = Math.tanh(raw * this.currentGain)
 
       samples[i] = output
     }

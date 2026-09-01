@@ -450,5 +450,17 @@ export const LATINO_PROFILE: ILiquidProfile = {
 
     // WAVE 3457: sidechain exterminado también en overrides 4.1
     sidechainDepth: 0.00,
+
+    // WAVE 7749.3: Real-world desensitization — aligned with techno thresholds.
+    // Dense mastered mixes crush flatness and WNS regardless of genre.
+    // snareChokeFrames 2→4: allow longer transients before choking.
+    snareVetoFlatnessFloor: 0.02,
+    snareVetoFlatnessKnee: 0.10,
+    snareVetoWnsFloor: 0.02,
+    snareVetoWnsKnee: 0.20,
+    snareVetoFluxFloor: 0.05,
+    snareVetoFluxKnee: 0.20,
+    snareChokeFrames: 4,
+    snareChokeRate: 0.60,  // Faster choke — latino TAcka is staccato
   },
 }

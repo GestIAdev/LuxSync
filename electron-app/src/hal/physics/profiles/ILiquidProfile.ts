@@ -180,6 +180,48 @@ export interface ILiquidProfile {
   readonly apocalypseFlatness: number
 
   // ═══════════════════════════════════════════════════════════════
+  // WAVE 7749: TONALITY VETO — Snare isolation thresholds
+  // Multi-dimensional strict veto using physical properties (noise vs
+  // tonality) rather than frequency bands alone. Three orthogonal axes:
+  //   1. flatness (Wiener entropy) — tonal vs noise
+  //   2. whiteNoiseScore (HF broadband) — snare sizzle vs vocal/synth
+  //   3. spectralFlux (spectral change rate) — impulse vs sustain
+  // The veto is a multiplicative AND-gate on hybridSnare.
+  // ═══════════════════════════════════════════════════════════════
+
+  /** Flatness below this = pure tonal (vocal/synth) → hard snare veto.
+   *  Default 0.12. Techno 0.10 (allow slightly tonal claps), Latino 0.15. */
+  readonly snareVetoFlatnessFloor?: number
+  /** Flatness above this = noise-like → full snare pass.
+   *  Default 0.25. Linear ramp between floor and knee. */
+  readonly snareVetoFlatnessKnee?: number
+  /** whiteNoiseScore below this = no HF broadband (vocal consonant) → hard veto.
+   *  Default 0.15. */
+  readonly snareVetoWnsFloor?: number
+  /** whiteNoiseScore above this = strong broadband (snare/cymbal) → full pass.
+   *  Default 0.35. */
+  readonly snareVetoWnsKnee?: number
+  /** spectralFlux below this = sustained (vocal tail) → hard veto.
+   *  Default 0.10. */
+  readonly snareVetoFluxFloor?: number
+  /** spectralFlux above this = explosive (snare hit) → full pass.
+   *  Default 0.30. */
+  readonly snareVetoFluxKnee?: number
+
+  // ═══════════════════════════════════════════════════════════════
+  // WAVE 7749: SUSTAIN CHOKE — kills vocal bleed tails in envSnare
+  // A snare explodes and decays in <100ms. A vocal sustains. If
+  // snare_energy stays elevated without new onsets, choke the envelope.
+  // ═══════════════════════════════════════════════════════════════
+
+  /** Frames without new onset before sustain choke activates.
+   *  Default 2 (~45ms at 44Hz). */
+  readonly snareChokeFrames?: number
+  /** Exponential choke rate per frame after threshold.
+   *  Default 0.70 (~15ms half-life). Lower = faster choke. */
+  readonly snareChokeRate?: number
+
+  // ═══════════════════════════════════════════════════════════════
   // WAVE 2488 — DT-02: MORPHOLOGY UNCHAINED
   // El morphFactor normaliza avgMidProfiler a [0,1] usando:
   //   morphFactor = clamp((avgMid - morphFloor) / (morphCeiling - morphFloor), 0, 1)
@@ -342,5 +384,15 @@ export interface ILiquidProfile {
     readonly auraCapExponent?: number
     // WAVE 2439 — Estrategia de enrutamiento 4.1
     readonly layout41Strategy?: 'default' | 'strict-split'
+
+    // WAVE 7749: Tonality Veto + Sustain Choke (4.1 override)
+    readonly snareVetoFlatnessFloor?: number
+    readonly snareVetoFlatnessKnee?: number
+    readonly snareVetoWnsFloor?: number
+    readonly snareVetoWnsKnee?: number
+    readonly snareVetoFluxFloor?: number
+    readonly snareVetoFluxKnee?: number
+    readonly snareChokeFrames?: number
+    readonly snareChokeRate?: number
   }
 }

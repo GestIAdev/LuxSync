@@ -294,6 +294,20 @@ export const TECHNO_PROFILE: ILiquidProfile = {
     },
 
     layout41Strategy: 'strict-split' as const,
+
+    // WAVE 7749.4: Tame the Sustain Choke for dense techno.
+    // The choke was murdering the channel during continuous bass walls,
+    // dropping hybridSnare to 0.000 for seconds at a time (blackouts).
+    // snareChokeFrames 4→15: wait ~300ms before choking, preventing blackouts
+    // during fast 4/4 beats. snareChokeRate 0.70→0.85: softer exponential decay.
+    snareVetoFlatnessFloor: 0.02,
+    snareVetoFlatnessKnee: 0.10,
+    snareVetoWnsFloor: 0.02,
+    snareVetoWnsKnee: 0.20,
+    snareVetoFluxFloor: 0.05,
+    snareVetoFluxKnee: 0.20,
+    snareChokeFrames: 15,
+    snareChokeRate: 0.85,
   },
 }
 

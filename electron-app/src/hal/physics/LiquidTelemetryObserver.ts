@@ -68,6 +68,14 @@ export interface Omni41TelemetryRecord {
   sidechainFired: boolean
   duckingApplied: number
   isBreakdown: boolean
+  // WAVE 7749: Monte Carlo calibration fields
+  snare_energy: number
+  flatness: number
+  whiteNoiseScore: number
+  spectralFlux: number
+  spectralCentroid: number
+  hybridSnare: number
+  isSnareOnset: boolean
 }
 
 /** Alias backward-compatible */
@@ -203,6 +211,14 @@ export class LiquidTelemetryObserver {
       sidechainFired,
       duckingApplied,
       isBreakdown:    frame.isBreakdown,
+      // WAVE 7749: Monte Carlo calibration fields
+      snare_energy:      input.snare_energy ?? 0,
+      flatness:          input.flatness ?? 0,
+      whiteNoiseScore:   this._lastPhoton?.whiteNoiseScore ?? 0,
+      spectralFlux:      this._lastPhoton?.spectralFlux ?? 0,
+      spectralCentroid:  input.spectralCentroid ?? 0,
+      hybridSnare:       this._engine.lastHybridSnare,
+      isSnareOnset:      this._engine.lastHybridSnare > 0.5,
     }
 
     // Circular buffer

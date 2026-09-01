@@ -296,6 +296,9 @@ export class TitanOrchestrator {
         //  WAVE 3516.4: Optic & Elemental Bridges
         this._beamAdapter = null;
         this._atmosphereAdapter = null;
+        // 🚨 WAVE 7737: THE QUARANTINE — el driver L3/4Hz que reemplaza a
+        // _atmosphereAdapter en el hot path. Ver TickEngine.ts call site.
+        this._atmosphereCueDriver = null;
         // WAVE 4521.3: LiquidAetherAdapter â€” Capa L0 del IntentBus
         // Se instancia con el NodeGraph y el liquidEngine71 para acceder a lastFrame
         this._liquidAetherAdapter = null;
@@ -420,7 +423,7 @@ export class TitanOrchestrator {
             initialVibe: 'idle',
             ...config,
         };
-        const hydrationCtx = Object.assign(this.createMutableProxy('_aetherGraph', '_aetherArbiter', '_aetherResolver', '_aetherPipeline', '_aetherHasDevices', '_colorAdapter', '_kineticAdapter', '_beamAdapter', '_atmosphereAdapter', '_liquidAetherAdapter', '_seleneAetherAdapter', '_zoneNodeRouter', 'hal', 'fixtures', '_outputEnabled'), {
+        const hydrationCtx = Object.assign(this.createMutableProxy('_aetherGraph', '_aetherArbiter', '_aetherResolver', '_aetherPipeline', '_aetherHasDevices', '_colorAdapter', '_kineticAdapter', '_beamAdapter', '_atmosphereAdapter', '_atmosphereCueDriver', '_liquidAetherAdapter', '_seleneAetherAdapter', '_zoneNodeRouter', 'hal', 'fixtures', '_outputEnabled'), {
             physicsPostProcessor: this._physicsPostProcessor,
             aetherSafety: this._aetherSafety,
             chronosAetherAdapter: this._chronosAetherAdapter,
@@ -456,6 +459,8 @@ export class TitanOrchestrator {
             get _kineticAdapter() { return self._kineticAdapter; },
             get _beamAdapter() { return self._beamAdapter; },
             get _atmosphereAdapter() { return self._atmosphereAdapter; },
+            // 🚨 WAVE 7737: THE QUARANTINE — driver activo, ver TickEngine call site.
+            get _atmosphereCueDriver() { return self._atmosphereCueDriver; },
             get _liquidAetherAdapter() { return self._liquidAetherAdapter; },
             get _seleneAetherAdapter() { return self._seleneAetherAdapter; },
             get _chronosAetherAdapter() { return self._chronosAetherAdapter; },

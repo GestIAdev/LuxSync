@@ -322,10 +322,10 @@ function autoAssignZone(fixtureType, fixtureName) {
         const zone = currentCount % 2 === 0 ? 'movers-left' : 'movers-right';
         return zone;
     }
-    // Strobes → center
+    // Strobes → strobe
     if (typeUpper.includes('STROBE') || nameUpper.includes('STROBE')) {
         zoneCounters.strobe++;
-        return 'center';
+        return 'strobe';
     }
     // Lasers → air
     if (typeUpper.includes('LASER') || nameUpper.includes('LASER')) {

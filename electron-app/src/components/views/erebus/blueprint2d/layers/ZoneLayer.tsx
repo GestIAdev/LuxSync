@@ -34,7 +34,7 @@ const ZONE_DISPLAY_NAMES: Record<CanonicalZone, string> = {
   'floor': 'FLOOR',
   'movers-left': 'MOVERS LEFT',
   'movers-right': 'MOVERS RIGHT',
-  'center': 'CENTER / FLASH / STROBE',
+  'strobe': 'STROBE',
   'air': 'AIR',
   'ambient': 'AMBIENT',
   'unassigned': 'UNASSIGNED',
@@ -51,7 +51,7 @@ function computeZoneLayout(
 
   const hasMoversLeft = activeZones.includes('movers-left')
   const hasMoversRight = activeZones.includes('movers-right')
-  const hasCenter = activeZones.includes('center')
+  const hasStrobe = activeZones.includes('strobe')
   const hasAir = activeZones.includes('air')
   const hasAmbient = activeZones.includes('ambient')
   const hasFront = activeZones.includes('front')
@@ -64,7 +64,7 @@ function computeZoneLayout(
   const centerWidth = hasSides ? stageWidth - sideWidth * 2 : stageWidth
 
   // Vertical layout: back/air at top, center in middle, front/ambient at bottom
-  const verticalCount = [hasBack, hasAir, hasCenter, hasAmbient, hasFront, hasFloor].filter(Boolean).length
+  const verticalCount = [hasBack, hasAir, hasStrobe, hasAmbient, hasFront, hasFloor].filter(Boolean).length
   const sectionHeight = verticalCount > 0 ? stageDepth / verticalCount : stageDepth
 
   const defs: ZoneDef[] = []
@@ -95,8 +95,8 @@ function computeZoneLayout(
     defs.push({ id: 'air', name: ZONE_DISPLAY_NAMES['air'], x: centerStartX, y: currentY, width: centerWidth, height: sectionHeight })
     currentY += sectionHeight
   }
-  if (hasCenter) {
-    defs.push({ id: 'center', name: ZONE_DISPLAY_NAMES['center'], x: centerStartX, y: currentY, width: centerWidth, height: sectionHeight })
+  if (hasStrobe) {
+    defs.push({ id: 'strobe', name: ZONE_DISPLAY_NAMES['strobe'], x: centerStartX, y: currentY, width: centerWidth, height: sectionHeight })
     currentY += sectionHeight
   }
   if (hasAmbient) {

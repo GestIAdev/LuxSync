@@ -28,6 +28,13 @@ const CHANNEL_TO_INTENT = {
     frost: 'frost',
     zoom: 'zoom',
     focus: 'focus',
+    // 🚨 WAVE 7737: SAFETY INTENTS — habilita HARD_SAFETY_GOVERNORS
+    // (types/FixtureDefinition.ts) para estos ChannelType.
+    emission_gate: 'emission',
+    fire_valve: 'fire',
+    fire_ignite: 'fire',
+    smoke_pump: 'smoke',
+    smoke_density: 'smoke',
 };
 /**
  * Precomputa un mapa O(1) de gobernadores indexado por channelOffset.

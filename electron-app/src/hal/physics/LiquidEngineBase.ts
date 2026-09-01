@@ -208,6 +208,13 @@ export abstract class LiquidEngineBase {
   private _snareImpulse: number = 0
   protected _lastHybridSnare: number = 0
 
+  // WAVE 7748: HH ENERGY ADAPTER — Pre-allocated state for hi-hat impulse
+  // Mirrors _prevSnareEnergy/_lastSnareOnset/_snareImpulse pattern.
+  // All scalars, zero allocation in hot path.
+  private _prevHhEnergy: number = 0
+  private _lastHhOnset: number = 0
+  private _hhImpulse: number = 0
+
   // Kick Veto state
   private _kickVetoFrames = 0
 
@@ -700,8 +707,38 @@ export abstract class LiquidEngineBase {
       bands.lowMid * p.backLLowMidWeight + cleanMidL * p.backLMidWeight * (1.0 - vocalPenalty * 0.80)
       - bands.treble * p.backLTrebleSub - bands.bass * p.backLBassSub
     )
+    // WAVE 7748: HH ENERGY ADAPTER — Back L hi-hat isolation
+    // Mirror of WAVE 8008 snare adapter. Converts hh_energy EMA from
+    // RhythmicPercussionTracker into a shaped impulse and max-blends it
+    // with midSynthInput. Preserves the mid-synth pad texture while letting
+    // isolated hi-hat transients punch through Back L.
+    // ZERO-ALLOC: All state is pre-allocated on the class. No closures,
+    // no object spreading, no arrays. Only scalar math in the hot path.
+    let hhBlendInput = midSynthInput
+    if (input.hh_energy !== undefined) {
+      const rawHhEnergy = input.hh_energy
+      const hhDelta = rawHhEnergy - this._prevHhEnergy
+
+      // Onset detection: derivative + absolute threshold + 60ms cooldown
+      // Hi-hats fire faster than snares — 60ms allows 16th notes at 160 BPM
+      const hhOnset = hhDelta > 0.008 && rawHhEnergy > 0.04 && (now - this._lastHhOnset > 60)
+
+      if (hhOnset) {
+        this._lastHhOnset = now
+        this._hhImpulse = 1.0
+      }
+
+      // Fast decay — 3% retained per frame (~70ms at 44Hz)
+      // Shorter hold than snare (4% / ~90ms) — hi-hats are staccato
+      this._hhImpulse *= 0.03
+      this._prevHhEnergy = rawHhEnergy
+
+      // Max-blend: existing midSynthInput survives as pad texture,
+      // hhImpulse punches isolated hi-hat transients on top.
+      hhBlendInput = Math.max(midSynthInput, this._hhImpulse * (p.hhBlendGain ?? 0.6))
+    }
     const backLeftGain = isTechnoProfile ? 1.45 : 1.75 // WAVE 6065: gain adaptativo — latino necesita más empuje para llegar a 1.0
-    let backLeft = Math.min(1.0, this.envHighMid.process(midSynthInput, morphFactor, now, isBreakdown) * backLeftGain) // OPERACIÓN: Gain para cruzar el umbral hacia 1.0 en pico
+    let backLeft = Math.min(1.0, this.envHighMid.process(hhBlendInput, morphFactor, now, isBreakdown) * backLeftGain) // OPERACIÓN: Gain para cruzar el umbral hacia 1.0 en pico
 
     // moverLeft y moverRight calculados por envelopes cross-filter arriba
 
@@ -921,6 +958,10 @@ export abstract class LiquidEngineBase {
     this.lastTreble = 0
     this._vocalSustainEMA = 0
     this._airEMA = 0
+    // WAVE 7748: Reset HH adapter state
+    this._prevHhEnergy = 0
+    this._lastHhOnset = 0
+    this._hhImpulse = 0
   }
 
   private applyGlacierPalette(morphFactor: number): number {

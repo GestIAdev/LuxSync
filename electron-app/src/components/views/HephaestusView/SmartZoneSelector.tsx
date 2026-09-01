@@ -61,7 +61,7 @@ const POSITION_TILES: ZoneTile[] = [
   { id: 'front',        label: 'FRT',  icon: <IntensityIcon size={18} color="currentColor" />,  row: 'position' },
   { id: 'back',         label: 'BCK',  icon: <BeamIcon size={18} color="currentColor" />,       row: 'position' },
   { id: 'floor',        label: 'FLR',  icon: <BlinderIcon size={18} color="currentColor" />,    row: 'position' },
-  { id: 'center',       label: 'CTR',  icon: <StrobeIcon size={18} color="currentColor" />,     row: 'position' },
+  { id: 'strobe',       label: 'STR',  icon: <StrobeIcon size={18} color="currentColor" />,     row: 'position' },
   { id: 'ambient',      label: 'AMB',  icon: <SmokeIcon size={18} color="currentColor" />,      row: 'position' },
 ]
 

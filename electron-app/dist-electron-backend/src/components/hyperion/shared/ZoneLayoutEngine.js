@@ -26,7 +26,7 @@ export const ZONE_COLORS = {
     'floor': '#22D3EE', // Cyan floor (uplight frío)
     'movers-left': '#3B82F6', // Azul eléctrico
     'movers-right': '#F43F5E', // Rosa eléctrico
-    'center': '#FACC15', // Amarillo blinder
+    'strobe': '#FACC15', // Amarillo blinder
     'air': '#10B981', // Verde laser
     'ambient': '#94A3B8', // Gris plateado (house)
     'unassigned': '#475569', // Gris oscuro
@@ -78,10 +78,10 @@ export const ZONE_LAYOUT_2D = {
         vertical: true,
         fixedX: 0.88,
     },
-    'center': {
+    'strobe': {
         y: 0.40,
         xRange: [0.35, 0.65],
-        label: 'CENTER',
+        label: 'STROBE',
     },
     'air': {
         y: 0.18,
@@ -138,7 +138,7 @@ export const ZONE_LAYOUT_3D = {
         vertical: true,
         fixedX: 0.85,
     },
-    'center': {
+    'strobe': {
         heightFactor: 0.90,
         depthFactor: -0.30,
         xRange: [-0.30, 0.30],

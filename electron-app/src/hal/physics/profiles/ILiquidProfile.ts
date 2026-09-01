@@ -83,6 +83,12 @@ export interface ILiquidProfile {
   /** Factor de resta de bass en Back L (Techno: bass ensucia mid synths) */
   readonly backLBassSub: number
 
+  // WAVE 7748: HH Energy Adapter gain for Back L
+  /** Gain applied to hh_energy impulse when max-blending into Back L.
+   *  Default 0.6 — hi-hats are supportive, not dominant.
+   *  Techno 0.8 (driving hats), Latino 0.5 (güira textural), Chill 0.0 (no hats). */
+  readonly hhBlendGain?: number
+
   // ═══════════════════════════════════════════════════════════════
   // MOVER L (MELODÍAS): Cross-filter + tonal gate
   // input = max(0, highMid × moverLHighMidWeight + treble × moverLTrebleWeight)
@@ -311,6 +317,9 @@ export interface ILiquidProfile {
     readonly backLMidWeight?: number
     readonly backLTrebleSub?: number
     readonly backLBassSub?: number
+
+    // WAVE 7748: HH Energy Adapter gain (4.1 override)
+    readonly hhBlendGain?: number
 
     // Mover L: Melody Gate
     readonly moverLTonalThreshold?: number

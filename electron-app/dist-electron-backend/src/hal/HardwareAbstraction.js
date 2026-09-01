@@ -694,6 +694,11 @@ export class HardwareAbstraction {
             // WAVE 7729: Prefer `address` (user-corrected via Auto-Patch) over
             // `dmxAddress` (may contain stale auto-generated values).
             const dmxAddress = fixture.address != null ? fixture.address : fixture.dmxAddress;
+            // 🏗️ WAVE 7731: UNPATCHED fixtures (address=0) are skipped from DMX
+            // output. They still get a FixtureState (for UI display) but the
+            // driver flush ignores them. Mark isVirtual to reuse the existing
+            // skip path in flushToDriver.
+            const isUnpatched = dmxAddress === 0;
             // 🎨 WAVE 687: Get channel definitions for dynamic mapping
             const channels = fixture.channels || [];
             // Find this fixture's target from arbiter output
@@ -704,7 +709,7 @@ export class HardwareAbstraction {
                     fixtureId, // 🔧 WAVE 2049.1: Propagate fixtureId to state (was undefined!)
                     // 🛡️ WAVE 3110: Propagate virtual flag — virtual fixtures render for UI
                     // but are excluded from physical DMX output in sendToDriver()
-                    isVirtual: fixture.isVirtual ?? false,
+                    isVirtual: (fixture.isVirtual ?? false) || isUnpatched, // 🏗️ WAVE 7731: treat unpatched as virtual for DMX skip
                     name: fixture.name,
                     type: fixture.type || 'generic',
                     zone,
@@ -755,7 +760,7 @@ export class HardwareAbstraction {
             // Fallback: fixture not in arbiter output (shouldn't happen)
             return {
                 fixtureId, // 🔧 WAVE 2049.1: Propagate fixtureId to state
-                isVirtual: fixture.isVirtual ?? false, // 🛡️ WAVE 3110
+                isVirtual: (fixture.isVirtual ?? false) || isUnpatched, // 🛡️ WAVE 3110 + 🏗️ WAVE 7731
                 name: fixture.name,
                 type: fixture.type || 'generic',
                 zone,

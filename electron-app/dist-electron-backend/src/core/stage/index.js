@@ -16,6 +16,8 @@ export {
 DEFAULT_PHYSICS_PROFILES, CANONICAL_ZONES, ZONE_LABELS, 
 // Factory Functions
 createEmptyShowFile, createDefaultFixture, createFixtureGroup, 
+// DMX Addressing (WAVE 7731)
+isFixturePatched, nextAvailableAddress, 
 // Zone Utilities (WAVE 2040.24)
 normalizeZone, isCanonicalZone, resolveFixtureSelector, // 🔥 WAVE 2040.25 FASE 3
 // Validation

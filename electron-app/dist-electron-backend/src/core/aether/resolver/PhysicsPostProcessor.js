@@ -155,6 +155,18 @@ export class PhysicsPostProcessor {
         // centrales cercanos a X=0). Se borra al hacer Unlock (targetX desaparece)
         // para que el próximo L2 también arranque limpio.
         this._3dInitialized = new Set();
+        // ── WAVE 7734: HAND-OFF PASS-THROUGH ──────────────────────────────────
+        // nodeId → expiryMs (performance.now-based). Mientras now < expiryMs,
+        // process() trackea el valor arbitrado en SNAP factor 1.0 en lugar de
+        // aplicar la inercia clásica, para que el fade del Arbiter sea la única
+        // curva de suavizado durante el hand-off Spatial→VMM.
+        this._handoffPassThrough = new Map();
+        // ── WAVE 7734: VELOCITY CAPTURE ───────────────────────────────────────
+        // nodeId → Float32Array(3): [prevPan, prevTilt, prevMs].
+        // Actualizado al final de process() para nodos KINETIC. Permite calcular
+        // la velocidad angular (norm/s) en captureAngularVelocity() para sembrar
+        // seedClassicState con momentum durante el hand-off.
+        this._prevKineticPos = new Map();
         // ── Configuración de modo ──────────────────────────────────────────────
         this._mode = 'classic';
         // WAVE 4990 Paso 2: 0.5 → 0.8 — convergencia más rápida del target IK espacial.
@@ -345,7 +357,29 @@ export class PhysicsPostProcessor {
             // Usamos maxPanSpeed como proxy para aceleración si no hay dato explícito
             // (el FixturePhysicsDriver hace lo mismo con el physicsProfile)
             node.maxPanSpeed * DEG_PER_SEC_TO_NORM_PER_SEC * 4, SAFETY_MAX_ACCELERATION_NORM);
-            if (this._mode === 'snap') {
+            // ── WAVE 7734: HAND-OFF PASS-THROUGH ──────────────────────────────
+            // Si el nodo está en pass-through (hand-off Spatial→VMM en curso),
+            // trackear el valor arbitrado con SNAP factor 1.0 (seguimiento instantáneo)
+            // en lugar de la inercia clásica. Así el fade ease-out del Arbiter es la
+            // ÚNICA curva de suavizado → se elimina el compound ~2s freeze.
+            // Lazy cleanup: purgar entradas expiradas al tocar el nodo.
+            const handoffExpiry = this._handoffPassThrough.get(node.nodeId);
+            const inHandoff = handoffExpiry !== undefined && performance.now() < handoffExpiry;
+            if (handoffExpiry !== undefined && !inHandoff) {
+                this._handoffPassThrough.delete(node.nodeId);
+            }
+            if (inHandoff) {
+                // SNAP factor 1.0 = newPos = target (seguimiento instantáneo, sin inercia).
+                // El clamp por maxVelPerFrame sigue protegiendo el hardware.
+                const maxMovePerFrame = this._maxVelNorm * this._dt;
+                this._panDelta = this._panTarget - this._panPos;
+                this._tiltDelta = this._tiltTarget - this._tiltPos;
+                state[SLOT_PAN_POS] = this._panPos + clampAbs(this._panDelta, maxMovePerFrame);
+                state[SLOT_TILT_POS] = this._tiltPos + clampAbs(this._tiltDelta, maxMovePerFrame);
+                state[SLOT_PAN_VEL] = 0;
+                state[SLOT_TILT_VEL] = 0;
+            }
+            else if (this._mode === 'snap') {
                 this._applySnap(state);
             }
             else {
@@ -361,6 +395,18 @@ export class PhysicsPostProcessor {
             // del siguiente frame tenga la posición correcta como base de cálculo
             node.currentPosition.pan = state[SLOT_PAN_POS];
             node.currentPosition.tilt = state[SLOT_TILT_POS];
+            // ── WAVE 7734: VELOCITY CAPTURE ───────────────────────────────────
+            // Registrar la posición actual + timestamp para que captureAngularVelocity
+            // pueda computar la velocidad angular en el próximo hand-off.
+            // Reutilizar el Float32Array existente (zero-alloc tras warm-up).
+            let prev = this._prevKineticPos.get(node.nodeId);
+            if (!prev) {
+                prev = new Float32Array(3);
+                this._prevKineticPos.set(node.nodeId, prev);
+            }
+            prev[0] = state[SLOT_PAN_POS];
+            prev[1] = state[SLOT_TILT_POS];
+            prev[2] = performance.now();
         });
     }
     registerNode(nodeId) {
@@ -438,14 +484,62 @@ export class PhysicsPostProcessor {
      * Fija SLOT_PAN/TILT_POS al valor del snapshot y anula velocidad.
      * Con esto el PPP parte de delta=0 → no interpola → el fixture no se mueve.
      */
-    seedClassicState(nodeId, pan, tilt) {
+    /**
+     * WAVE 6020.6 + WAVE 7734: Siembra el estado clásico de física desde el
+     * snapshot. Fija SLOT_PAN/TILT_POS al valor del snapshot.
+     * WAVE 7734: Si se proporciona panVel/tiltVel (capturados del IK), sembrarlos
+     * en lugar de anularlos → el VMM continúa el momentum orgánicamente sin snap.
+     */
+    seedClassicState(nodeId, pan, tilt, panVel, tiltVel) {
         const state = this._states.get(nodeId);
         if (state) {
             state[SLOT_PAN_POS] = pan;
             state[SLOT_TILT_POS] = tilt;
-            state[SLOT_PAN_VEL] = 0;
-            state[SLOT_TILT_VEL] = 0;
+            state[SLOT_PAN_VEL] = (typeof panVel === 'number' && Number.isFinite(panVel)) ? panVel : 0;
+            state[SLOT_TILT_VEL] = (typeof tiltVel === 'number' && Number.isFinite(tiltVel)) ? tiltVel : 0;
         }
+    }
+    /**
+     * WAVE 7734: HAND-OFF PASS-THROUGH. Ver interface doc arriba.
+     * Registra nodeIds con un expiry basado en performance.now + durationMs.
+     * process() purga entradas expiradas automáticamente (lazy cleanup).
+     */
+    setHandoffPassThrough(nodeIds, durationMs) {
+        if (durationMs <= 0 || nodeIds.length === 0)
+            return;
+        const expiry = performance.now() + durationMs;
+        for (let i = 0; i < nodeIds.length; i++) {
+            this._handoffPassThrough.set(nodeIds[i], expiry);
+        }
+    }
+    /**
+     * WAVE 7734: Captura la velocidad angular actual (norm/s) desde el historial
+     * de currentPosition entre los dos frames más recientes. Retorna {0,0} si
+     * no hay historial suficiente (fallback seguro — equivalente al behavior pre-7734).
+     */
+    captureAngularVelocity(nodeId) {
+        const prev = this._prevKineticPos.get(nodeId);
+        if (!prev)
+            return { panVel: 0, tiltVel: 0 };
+        const prevMs = prev[2];
+        if (!Number.isFinite(prevMs) || prevMs <= 0)
+            return { panVel: 0, tiltVel: 0 };
+        const state = this._states.get(nodeId);
+        // Usar la posición actual del estado PPP (lo más fresco disponible).
+        // Si no hay state, fallback a 0.
+        const curPan = state ? state[SLOT_PAN_POS] : 0.5;
+        const curTilt = state ? state[SLOT_TILT_POS] : 0.5;
+        const dtSec = (performance.now() - prevMs) * 0.001;
+        if (dtSec <= 0)
+            return { panVel: 0, tiltVel: 0 };
+        const panVel = (curPan - prev[0]) / dtSec;
+        const tiltVel = (curTilt - prev[1]) / dtSec;
+        // Clamp de seguridad — velocidades absurdas (saltos de frame) se descartan.
+        const MAX_VEL = SAFETY_MAX_VELOCITY_NORM * 2;
+        return {
+            panVel: Math.abs(panVel) > MAX_VEL ? 0 : panVel,
+            tiltVel: Math.abs(tiltVel) > MAX_VEL ? 0 : tiltVel,
+        };
     }
     // ═════════════════════════════════════════════════════════════════════════
     // PRIVATE — Modos de física

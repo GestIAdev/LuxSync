@@ -207,7 +207,7 @@ export class ZoneNodeRouter implements IZoneNodeRouter {
     const canonicalZones: readonly EffectZone[] = [
       'front',
       'back',
-      'center',
+      'strobe',
       'floor',
       'front-left' as EffectZone,
       'front-right' as EffectZone,

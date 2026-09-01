@@ -43,6 +43,7 @@ export class TickEngine {
     get _kineticAdapter() { return this.ctx._kineticAdapter; }
     get _beamAdapter() { return this.ctx._beamAdapter; }
     get _atmosphereAdapter() { return this.ctx._atmosphereAdapter; }
+    get _atmosphereCueDriver() { return this.ctx._atmosphereCueDriver; }
     get _liquidAetherAdapter() { return this.ctx._liquidAetherAdapter; }
     get _seleneAetherAdapter() { return this.ctx._seleneAetherAdapter; }
     get _chronosAetherAdapter() { return this.ctx._chronosAetherAdapter; }
@@ -778,6 +779,12 @@ export class TickEngine {
         const fixtureCount = this.fixtures.length;
         for (let _fi = 0; _fi < fixtureCount; _fi++) {
             const fix = this.fixtures[_fi];
+            // 🏗️ WAVE 7731: Skip UNPATCHED fixtures (address=0). They exist
+            // spatially in Erebus but have no DMX routing. Emitting DMX for them
+            // would write to address 0 (invalid) and corrupt the universe buffer.
+            // Also skip virtual fixtures (no hardware output).
+            if (fix.dmxAddress === 0 || fix.isVirtual)
+                continue;
             let state = this._cachedFixtureStates[_fi];
             if (!state) {
                 state = {
@@ -1157,6 +1164,10 @@ export class TickEngine {
             const kineticAdapter = this._kineticAdapter;
             const beamAdapter = this._beamAdapter;
             const atmosphereAdapter = this._atmosphereAdapter;
+            // 🚨 WAVE 7737: THE QUARANTINE — driver activo, invocado más abajo en
+            // lugar de atmosphereAdapter.process(). atmosphereAdapter permanece en
+            // el guard de abajo (instanciado, nunca invocado) por compat de tipos.
+            const atmosphereCueDriver = this._atmosphereCueDriver;
             const liquidAetherAdapter = this._liquidAetherAdapter;
             const seleneAetherAdapter = this._seleneAetherAdapter;
             if (!aetherArbiter ||
@@ -1165,6 +1176,7 @@ export class TickEngine {
                 !kineticAdapter ||
                 !beamAdapter ||
                 !atmosphereAdapter ||
+                !atmosphereCueDriver ||
                 !liquidAetherAdapter ||
                 !seleneAetherAdapter) {
                 // Lazy-init safety guard: si la matriz no existe todavÃ­a, salimos sin tocar el pipeline legacy.
@@ -1314,7 +1326,14 @@ export class TickEngine {
                 // ðŸ”¦ WAVE 3516.4: Beam â€” Ã³pticas (gobos, prismas, zoom, focus)
                 beamAdapter.process(this._aetherGraph.getView(NodeFamily.BEAM), ctx, this._aetherBus);
                 // ðŸŒ«ï¸ WAVE 3516.4: Atmosphere â€” elementos (fog, haze, fan, spark, pyro)
-                atmosphereAdapter.process(this._aetherGraph.getView(NodeFamily.ATMOSPHERE), ctx, this._aetherBus);
+                // 🚨 WAVE 7737: THE QUARANTINE — RING 1 (THE HARD WALL).
+                // atmosphereAdapter.process() YA NO SE LLAMA. AtmosphereCueDriver corre
+                // a 4Hz internamente y escribe a `this._effectBus` (L3), NUNCA a
+                // `this._aetherBus` (L0). Esto garantiza que el Manual Hard Lock del
+                // NodeArbiter (aplicado DESPUÉS de L3) siempre pueda vetar humo/fuego —
+                // el operador es soberano, la IA nunca alcanza estos canales.
+                // Ver docs/technical_audits/Aether_Agnostic_blueprint.md §3.3.
+                atmosphereCueDriver.process(this._aetherGraph.getView(NodeFamily.ATMOSPHERE), ctx, this._effectBus);
                 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
                 // ðŸš€ WAVE 4524.3: L3 â€” Selene-Aether Adapter (Puente Cognitivo)
                 // Consume el output de Selene (effectDecision, colorDecision, physicsModifier)

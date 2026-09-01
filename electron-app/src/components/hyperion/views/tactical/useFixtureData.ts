@@ -44,7 +44,7 @@ function classifyFixtureType(
     case 'movers-left':
     case 'movers-right':
     case 'air':
-    case 'center':
+    case 'strobe':
       return 'moving'
     case 'front':
     case 'back':

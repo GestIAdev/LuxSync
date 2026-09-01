@@ -1682,11 +1682,21 @@ export class GodEarAnalyzer {
         // ═══ STAGE 0: Prepare input into pre-allocated buffer ═══
         // Zero out the input buffer (handles padding implicitly)
         this.inputBuffer.fill(0);
-        // Copy input samples (up to fftSize) — NO slice(), NO new array
+        // Copy input samples (up to fftSize) — NO slice(), NO new array.
+        // WAVE 7742: CLIPPING DETECTOR — piggyback on the copy loop (zero extra
+        // iteration, zero allocation). Counts samples pegged at the digital
+        // ceiling (|s| ≥ 0.999). The resulting clipRatio gates whiteNoiseScore
+        // downstream so Selene doesn't interpret clipping distortion products
+        // as genuine broadband noise / chaos.
         const copyLen = Math.min(buffer.length, this.fftSize);
+        let clippedSamples = 0;
         for (let i = 0; i < copyLen; i++) {
-            this.inputBuffer[i] = buffer[i];
+            const s = buffer[i];
+            this.inputBuffer[i] = s;
+            if (s >= 0.999 || s <= -0.999)
+                clippedSamples++;
         }
+        const clipRatio = copyLen > 0 ? clippedSamples / copyLen : 0;
         // ═══ STAGE 1: DC Offset Removal → dcBuffer ═══
         removeDCOffset(this.inputBuffer, this.dcBuffer);
         // ═══ STAGE 2: Blackman-Harris Windowing → windowedBuffer ═══
@@ -1827,8 +1837,21 @@ export class GodEarAnalyzer {
         // ═══ WAVE 8003+8004: Photon Block ═══
         // wallIntensity = min(1, SI^0.7 * 0.85) — lower-bound anti-collapse for DMX
         const wallIntensity = Math.min(1, Math.pow(si, 0.7) * 0.85);
-        // White noise score: high flatness indicates broadband noise
-        const whiteNoiseScore = Math.max(0, Math.min(1, (flatness - FLATNESS_OFFSET) / FLATNESS_SCALE));
+        // White noise score: high flatness indicates broadband noise.
+        // WAVE 7742: CLIPPING GATE — when samples are pegged at the digital
+        // ceiling (clipRatio > 0), the resulting intermodulation distortion
+        // spreads energy across FFT bins, inflating flatness. This makes
+        // Selene's cognitive core perceive "100% white noise / chaos" and
+        // fire aggressive strobes on what is actually just a clipped signal.
+        // We linearly suppress whiteNoiseScore as clipRatio rises from 1% to
+        // 10% of the buffer, reaching full suppression at 10%+ clipped.
+        // This protects the AI from its own input chain's clipping artifacts
+        // without affecting the genuine noise measurement on clean signals.
+        const rawWhiteNoiseScore = Math.max(0, Math.min(1, (flatness - FLATNESS_OFFSET) / FLATNESS_SCALE));
+        const clipSuppression = clipRatio > 0.01
+            ? Math.max(0, 1 - (clipRatio - 0.01) / 0.09)
+            : 1;
+        const whiteNoiseScore = rawWhiteNoiseScore * clipSuppression;
         // WAVE 8005 R2: True temporal onset density over a 500ms sliding window.
         // No longer derived from band strength — this measures event RATE.
         const transientDensity = this.onsetDetector.updateTemporalDensity(transients.any, deltaMs);

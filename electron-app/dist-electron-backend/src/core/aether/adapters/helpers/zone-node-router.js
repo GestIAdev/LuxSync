@@ -129,7 +129,7 @@ export class ZoneNodeRouter {
         const canonicalZones = [
             'front',
             'back',
-            'center',
+            'strobe',
             'floor',
             'front-left',
             'front-right',

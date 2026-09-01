@@ -41,8 +41,71 @@ export function deriveCapabilities(channels) {
         customChannelNames: channels
             .filter(ch => ch.type === 'custom' && ch.customName)
             .map(ch => ch.customName),
+        // 🟢 WAVE 7737: LASER & ATMOSPHERE capabilities detection
+        hasLaserGeometry: types.has('scale_x') || types.has('scale_y') || types.has('rot_x') || types.has('rot_y'),
+        hasAtmosphere: types.has('smoke_pump') || types.has('smoke_density') || types.has('fan_speed'),
+        hasPyro: types.has('fire_valve') || types.has('fire_ignite'),
+        hasEmissionGate: types.has('emission_gate'),
     };
 }
+// ═══════════════════════════════════════════════════════════════════════════
+// 🚨 WAVE 7737: HARD SAFETY GOVERNORS — reglas fail-closed de referencia.
+//
+// Estas NO se inyectan automáticamente en ningún perfil. Son un catálogo que
+// el Forge (o un fixture JSON de librería) debe spreadear explícitamente en
+// `dmxGovernors` al crear un perfil de láser/pirotecnia/humo, indexando cada
+// entrada al `channelIndex` real del canal en ESE fixture concreto.
+//
+// Uso típico en un builder de perfil:
+// ```ts
+// dmxGovernors: [
+//   { ...HARD_SAFETY_GOVERNORS.emissionGate, channelIndex: emissionChannelIdx },
+//   { ...HARD_SAFETY_GOVERNORS.fireIgnite,    channelIndex: igniteChannelIdx },
+//   { ...HARD_SAFETY_GOVERNORS.smokePumpCap,  channelIndex: pumpChannelIdx },
+// ]
+// ```
+//
+// Estas reglas son la ÚLTIMA MILLA: se evalúan en _writeNode() DESPUÉS de
+// todos los transforms de calibración/personality (ver DMXGovernorEvaluator).
+// Ninguna capa del Arbiter (ni siquiera L3++ Calibration) puede sortearlas.
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Cada entrada es un `IDMXGovernor` SIN `channelIndex` (se rellena en el
+ * sitio de uso, ya que depende del layout físico del fixture concreto).
+ */
+export const HARD_SAFETY_GOVERNORS = Object.freeze({
+    /**
+     * emission_gate: forzado a 0 (cerrado) salvo que el valor normalizado
+     * sea exactamente el máximo (armado explícito, sin zona gris analógica).
+     */
+    emissionGate: {
+        description: 'WAVE 7737: Emission gate fail-closed — solo 100% arma la emisión.',
+        rules: [
+            { when: { intentType: 'emission', max: 1.0 }, then: { forceByte: 0 } },
+        ],
+    },
+    /**
+     * fire_ignite: solo un comando literal a escala completa (normalizado
+     * >= 254/255) dispara la ignición. Cualquier valor intermedio —ruido,
+     * fade accidental, redondeo— se fuerza a 0.
+     */
+    fireIgnite: {
+        description: 'WAVE 7737: Fire ignite fail-closed — requiere full-scale exacto.',
+        rules: [
+            { when: { intentType: 'fire', max: 254 / 255 }, then: { forceByte: 0 } },
+        ],
+    },
+    /**
+     * smoke_pump: cap duro al 70% del rango físico, independientemente de
+     * lo que pida la capa de arbitraje — protección de duty cycle continuo.
+     */
+    smokePumpCap: {
+        description: 'WAVE 7737: Smoke pump — cap duro al 70% de duty cycle.',
+        rules: [
+            { when: { intentType: 'smoke' }, then: { mapToRange: [0, 178] } },
+        ],
+    },
+});
 // ═══════════════════════════════════════════════════════════════════════════
 // WAVE 4548.3: UNIFIED CAPABILITIES — Canales + wheels + physics
 // ═══════════════════════════════════════════════════════════════════════════

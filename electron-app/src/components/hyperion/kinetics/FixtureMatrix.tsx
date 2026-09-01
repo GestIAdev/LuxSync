@@ -124,7 +124,7 @@ function buildGroupsByZone(
   const groups = Array.from(map.values())
   // movers-left / movers-right primero, luego air/center, luego resto
   const PRIORITY: Record<string, number> = {
-    'movers-left': 0, 'movers-right': 1, 'air': 2, 'center': 3,
+    'movers-left': 0, 'movers-right': 1, 'air': 2, 'strobe': 3,
     'front': 4, 'back': 5, 'floor': 6, 'ambient': 7,
   }
   groups.sort((a, b) => {

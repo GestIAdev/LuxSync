@@ -236,7 +236,7 @@ function DroppableCellBox({
           <option value="ambient">ambient</option>
           <option value="air">air</option>
           <option value="floor">floor</option>
-          <option value="flash">flash</option>
+          <option value="strobe">strobe</option>
           <option value="front">front</option>
           <option value="back">back</option>
           <option value="movement">movement</option>

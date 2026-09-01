@@ -413,10 +413,10 @@ function autoAssignZone(fixtureType: string | undefined, fixtureName?: string): 
     return zone
   }
   
-  // Strobes → center
+  // Strobes → strobe
   if (typeUpper.includes('STROBE') || nameUpper.includes('STROBE')) {
     zoneCounters.strobe++
-    return 'center'
+    return 'strobe'
   }
   
   // Lasers → air

@@ -493,7 +493,13 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
         // from load time. When useSeleneTruth detects a count mismatch, it
         // calls syncFixturesFromTruth which would overwrite the frontend's
         // edited positions with the backend's stale data → Amnesia Bug.
-        if (updates.position || updates.rotation || updates.orientation) {
+        //
+        // 🏗️ WAVE 7731: Also sync address/universe changes so hot-patching in
+        // the DMX Nexus / Patchbay immediately reaches the TickEngine. Without
+        // this, the backend keeps emitting DMX to the OLD address until the
+        // next show load.
+        if (updates.position || updates.rotation || updates.orientation
+            || updates.address !== undefined || updates.universe !== undefined) {
             const lux = window.lux;
             if (lux?.aether?.setFixtures) {
                 const allFixtures = get().fixtures;

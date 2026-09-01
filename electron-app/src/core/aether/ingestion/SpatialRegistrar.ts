@@ -399,7 +399,7 @@ export class SpatialRegistrar implements ISpatialRegistrar {
    * Heurísticas implementadas:
    *   - IMPACT/COLOR en zona 'air' o y > 2.5m → role 'accent'
    *   - IMPACT/COLOR en zona 'floor' o y < 0.5m → role 'ambient'
-   *   - IMPACT/COLOR en zona 'front' o 'center' y 0.5 ≤ y ≤ 2.5m → role 'primary'
+   *   - IMPACT/COLOR en zona 'front' o 'strobe' y 0.5 ≤ y ≤ 2.5m → role 'primary'
    *   - KINETIC en zona 'movers-left' | 'movers-right' → role 'primary'
    *   - BEAM → role 'primary' (si zoom/focus) o 'decoration' (gobo/prism only)
    *     conservado desde la Forja — no se sobreescribe
@@ -648,8 +648,8 @@ export class SpatialRegistrar implements ISpatialRegistrar {
       return 'accent'
     }
 
-    // Front, center, back a altura media → primary
-    if (zone === 'front' || zone === 'back' || zone === 'center') {
+    // Front, strobe, back a altura media → primary
+    if (zone === 'front' || zone === 'back' || zone === 'strobe') {
       return 'primary'
     }
 

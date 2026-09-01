@@ -79,6 +79,20 @@ export const DEFAULT_MERGE_STRATEGIES = {
     // 🔥 WAVE 2084: INGENIOS
     rotation: 'LTP',
     custom: 'LTP',
+    // 🟢 WAVE 7737: LASER GEOMETRY
+    scale_x: 'LTP',
+    scale_y: 'LTP',
+    rot_x: 'LTP',
+    rot_y: 'LTP',
+    // 🚨 WAVE 7737: SAFETY INTERLOCK
+    emission_gate: 'LTP',
+    // 🌫️ WAVE 7737: ATMOSPHERE
+    smoke_pump: 'LTP',
+    smoke_density: 'LTP',
+    fan_speed: 'LTP',
+    // 🔥 WAVE 7737: FIRE
+    fire_valve: 'LTP',
+    fire_ignite: 'LTP',
     // FALLBACK
     unknown: 'LTP',
 };
@@ -118,6 +132,18 @@ const CHANNEL_CATEGORY_MAP = {
     // INGENIOS
     rotation: 'ingenios',
     custom: 'ingenios',
+    // 🟢 WAVE 7737: LASER GEOMETRY → beam (escala/tumble de patrón)
+    scale_x: 'beam',
+    scale_y: 'beam',
+    rot_x: 'beam',
+    rot_y: 'beam',
+    // 🚨🌫️🔥 WAVE 7737: SAFETY INTERLOCK + ATMOSPHERE + FIRE → atmosphere (cuarentena)
+    emission_gate: 'atmosphere',
+    smoke_pump: 'atmosphere',
+    smoke_density: 'atmosphere',
+    fan_speed: 'atmosphere',
+    fire_valve: 'atmosphere',
+    fire_ignite: 'atmosphere',
     // FALLBACK
     unknown: 'control',
 };

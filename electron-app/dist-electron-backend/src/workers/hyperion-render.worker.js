@@ -124,7 +124,7 @@ function getOrCreatePoolSlot(pool, index) {
     let slot = pool[index];
     if (!slot) {
         slot = {
-            id: '', x: 0, y: 0, type: 'moving', zone: 'center',
+            id: '', x: 0, y: 0, type: 'moving', zone: 'strobe',
             gobo: 0, prism: 0,
             r: 0, g: 0, b: 0,
             intensity: 0,

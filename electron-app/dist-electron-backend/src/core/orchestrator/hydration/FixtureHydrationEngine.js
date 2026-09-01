@@ -17,6 +17,10 @@ import { ZoneNodeRouter } from '../../aether/adapters/helpers/zone-node-router';
 import { ColorAdapter } from '../../aether/adapters/ColorAdapter';
 import { BeamAdapter } from '../../aether/adapters/BeamAdapter';
 import { AtmosphereAdapter } from '../../aether/adapters/AtmosphereAdapter';
+// 🚨 WAVE 7737: THE QUARANTINE — driver activo de ATMOSPHERE (4Hz, bus L3).
+// AtmosphereAdapter se mantiene instanciado (línea abajo) pero ya no se
+// invoca desde el hot path de TickEngine — ver ese archivo.
+import { AtmosphereCueDriver } from '../../aether/atmosphere/AtmosphereCueDriver';
 import { LiquidAetherAdapter } from '../../aether/adapters/LiquidAetherAdapter';
 // ── Local helper ───────────────────────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -151,6 +155,7 @@ export class FixtureHydrationEngine {
             ctx.kineticAdapter &&
             ctx.beamAdapter &&
             ctx.atmosphereAdapter &&
+            ctx.atmosphereCueDriver &&
             ctx.liquidAetherAdapter &&
             ctx.seleneAetherAdapter) {
             return;
@@ -171,6 +176,9 @@ export class FixtureHydrationEngine {
         ctx.kineticAdapter = ctx.kineticAdapter ?? new VMMAdapter();
         ctx.beamAdapter = ctx.beamAdapter ?? new BeamAdapter();
         ctx.atmosphereAdapter = ctx.atmosphereAdapter ?? new AtmosphereAdapter();
+        // 🚨 WAVE 7737: THE QUARANTINE — driver activo, invocado desde TickEngine
+        // en lugar de atmosphereAdapter. Ver comentario en import.
+        ctx.atmosphereCueDriver = ctx.atmosphereCueDriver ?? new AtmosphereCueDriver();
         ctx.liquidAetherAdapter = ctx.liquidAetherAdapter ?? new LiquidAetherAdapter(ctx.aetherGraph);
         if (!ctx.zoneNodeRouter) {
             ctx.zoneNodeRouter = new ZoneNodeRouter(ctx.aetherGraph);

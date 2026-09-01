@@ -49,6 +49,22 @@ const STROBE_BLOCKED_ZONES = new Set([
     'ambient',
     'air',
 ]);
+// ── WAVE 7737: THE HARD WALL ─────────────────────────────────────────────
+// Familias que Omniliquid (L0, 44Hz) tiene permitido tocar. ATMOSPHERE está
+// deliberadamente ausente: fog/haze/spark/pyro/fire/emission_gate NUNCA deben
+// ser alcanzables por el motor de física fluida ni por el envelope de audio.
+// Antes de esta wave, el loop iteraba `Object.values(NodeFamily)` (TODAS las
+// familias) — un no-op accidental porque AtmosphereSystem/Adapter no emitían
+// intents con keys alineadas a ningún ChannelType real. Ahora que WAVE 7737
+// alineó esas keys (smoke_pump/smoke_density/fan_speed), la iteración sin
+// filtro armaría a la IA para disparar humo/fuego a 44Hz. Ver blueprint
+// "Aether_Agnostic_blueprint.md" §3.2 — Ring 1.
+const L0_DRIVEN_FAMILIES = [
+    NodeFamily.COLOR,
+    NodeFamily.IMPACT,
+    NodeFamily.KINETIC,
+    NodeFamily.BEAM,
+];
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS INLINE
 // ─────────────────────────────────────────────────────────────────────────────
@@ -130,9 +146,11 @@ export class LiquidAetherAdapter {
     ingest(_frame, result, bus) {
         this._photonTracerFrame++;
         // WAVE 4818: eliminación de "lista VIP" por familias explícitas.
-        // Recorremos TODA la matriz (todas las NodeFamily registradas) y
-        // decidimos por capacidades reales del nodo (duck-typing de channels).
-        for (const family of Object.values(NodeFamily)) {
+        // WAVE 7737 REVERSAL: reintroducida como THE HARD WALL — L0_DRIVEN_FAMILIES
+        // en lugar de `Object.values(NodeFamily)`. Duck-typing de channels sigue
+        // decidiendo DENTRO de las familias permitidas; lo que cambió es que
+        // ATMOSPHERE ya no es una de ellas. Ver comentario de L0_DRIVEN_FAMILIES.
+        for (const family of L0_DRIVEN_FAMILIES) {
             const view = this._nodeGraph.getView(family);
             view.forEach((node) => {
                 this._routeUniversalIntensity(node, result, bus);

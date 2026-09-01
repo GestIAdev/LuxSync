@@ -129,7 +129,7 @@ const ZONE_RADAR_POSITIONS: Record<string, { label: string; x: number; y: number
   'front':        { label: 'FRONT',  x: 0.5,  y: 0.2  },
   'back':         { label: 'BACK',   x: 0.5,  y: 0.8  },
   'floor':        { label: 'FLOOR',  x: 0.5,  y: 0.92 },
-  'center':       { label: 'CTR',    x: 0.5,  y: 0.5  },
+  'strobe':       { label: 'STR',    x: 0.5,  y: 0.5  },
 
   // ── Side / Stereo zones ──
   'all-left':     { label: 'LEFT',   x: 0.15, y: 0.5  },

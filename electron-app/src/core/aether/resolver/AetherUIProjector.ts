@@ -49,9 +49,9 @@ function toDmx(v: number): number {
 
 // 🌊 WAVE 4696 M1: Zonas atmosféricas — nunca compiten por luminancia con zonas
 // rítmicas. Se suman aditivamente en su propio canal perceptual (ambiente / aire).
-const ATMOSPHERIC_ZONES = new Set(['ambient', 'air', 'flash'])
+const ATMOSPHERIC_ZONES = new Set(['ambient', 'air', 'strobe'])
 
-/** Devuelve true si la zona normalizada es atmosférica (ambient, air, flash). */
+/** Devuelve true si la zona normalizada es atmosférica (ambient, air, strobe). */
 function isAtmosphericZone(zoneId: string): boolean {
   const z = zoneId.toLowerCase().trim()
   return ATMOSPHERIC_ZONES.has(z)

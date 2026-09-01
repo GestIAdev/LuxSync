@@ -168,7 +168,7 @@ export const CANONICAL_ZONES = [
     'floor',
     'movers-left',
     'movers-right',
-    'center',
+    'strobe',
     'air',
     'ambient',
     'unassigned',
@@ -182,7 +182,7 @@ export const ZONE_LABELS = {
     'floor': '⬇️ FLOOR (Uplight)',
     'movers-left': '🏎️ MOVER LEFT',
     'movers-right': '🏎️ MOVER RIGHT',
-    'center': '⚡ CENTER (Strobes/Blinders)',
+    'strobe': '⚡ STROBE (Strobes/Blinders)',
     'air': '✨ AIR (Laser/Atmosphere)',
     'ambient': '🌫️ AMBIENT (House)',
     'unassigned': '❓ UNASSIGNED',
@@ -206,6 +206,7 @@ export function normalizeZone(zone) {
         return raw;
     }
     // ── Mapa exhaustivo: legacy → canonical ───────────────────────────────
+    // WAVE 7747: 'center'/'flash'/'strobes' all unified → 'strobe'
     const MAP = {
         // SCREAMING_CASE V2
         'front_pars': 'front',
@@ -213,17 +214,17 @@ export function normalizeZone(zone) {
         'floor_pars': 'floor',
         'moving_left': 'movers-left',
         'moving_right': 'movers-right',
-        'strobes': 'center',
+        'strobes': 'strobe',
         'lasers': 'air',
         // kebab-case legacy V1
         'stage-left': 'movers-left',
         'stage-right': 'movers-right',
-        'stage-center': 'center',
+        'stage-center': 'strobe',
         'ceiling-front': 'front',
         'ceiling-back': 'back',
         'ceiling-left': 'movers-left',
         'ceiling-right': 'movers-right',
-        'ceiling-center': 'center',
+        'ceiling-center': 'strobe',
         'floor-front': 'front',
         'floor-back': 'back',
         'truss-1': 'back',
@@ -236,8 +237,9 @@ export function normalizeZone(zone) {
         'front': 'front',
         'back': 'back',
         'floor': 'floor',
-        'center': 'center',
-        'ceiling': 'center',
+        'center': 'strobe',
+        'flash': 'strobe',
+        'ceiling': 'strobe',
         'truss': 'back',
         'air': 'air',
         'ambient': 'ambient',
@@ -470,6 +472,13 @@ export function nextAvailableAddress(existingFixtures, channelCount, universe = 
     return candidate;
 }
 /**
+ * 🏗️ WAVE 7731: Returns true if a fixture has been routed to a DMX slot.
+ * address=0 means UNPATCHED (spatial-only, no DMX output).
+ */
+export function isFixturePatched(fixture) {
+    return typeof fixture.address === 'number' && fixture.address >= 1 && fixture.address <= 512;
+}
+/**
  * Create a new fixture with default values
  */
 export function createDefaultFixture(id, address, options = {}) {
@@ -571,9 +580,12 @@ export function validateShowFileDeep(data) {
             errors.push(`${prefix}: duplicate fixture id '${f.id}'`);
         }
         fixtureIds.add(f.id);
-        // Address: integer 1-512
-        if (typeof f.address !== 'number' || !Number.isInteger(f.address) || f.address < 1 || f.address > 512) {
-            errors.push(`${prefix} (${f.id}): address must be integer 1-512, got ${f.address}`);
+        // Address: integer 0-512 (0 = UNPATCHED, WAVE 7731)
+        if (typeof f.address !== 'number' || !Number.isInteger(f.address) || f.address < 0 || f.address > 512) {
+            errors.push(`${prefix} (${f.id}): address must be integer 0-512 (0=unpatched), got ${f.address}`);
+        }
+        else if (f.address === 0) {
+            warnings.push(`${prefix} (${f.id}): address=0 (UNPATCHED) — fixture exists spatially but has no DMX routing`);
         }
         // Universe: integer >= 0
         const universe = f.universe;

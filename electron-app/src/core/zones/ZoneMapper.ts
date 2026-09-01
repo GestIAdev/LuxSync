@@ -302,13 +302,16 @@ export function resolveZone(zone: string, fixtures: readonly ZoneMappableFixture
   }
 
   // Direct canonical match + compound fixture channel-zone fallback
+  // WAVE 7747: normalize the target zone so legacy 'flash'/'center'/'strobes'
+  // from .lfx files match fixtures zoned as 'strobe'.
+  const zCanonical = normalizeZone(z)
   return fixtures.filter(f => {
     if (f.enabled === false) return false
-    if (normalizeZone(f.zone) === z) return true
+    if (normalizeZone(f.zone) === zCanonical) return true
     // 🧩 COMPOUND FIXTURE: parent zone doesn't match — check internal channel zones
     if (f.channelZones && f.channelZones.length > 0) {
       for (let i = 0; i < f.channelZones.length; i++) {
-        if (normalizeZone(f.channelZones[i]) === z) return true
+        if (normalizeZone(f.channelZones[i]) === zCanonical) return true
       }
     }
     return false
@@ -351,6 +354,11 @@ export function resolveZoneTags(tags: string[], fixtures: readonly ZoneMappableF
     } else if (COMPOSITE_ZONES[t] || CANONICAL_ZONES.includes(t as CanonicalZone)) {
       targetTags.push(t)
     } else {
+      // WAVE 7747: try normalizing legacy zone strings (flash/center/strobes → strobe)
+      const normalized = normalizeZone(t)
+      if (normalized !== 'unassigned' && CANONICAL_ZONES.includes(normalized)) {
+        targetTags.push(normalized)
+      }
       // Non-spatial tag (e.g. energy zones like 'intense', 'peak') — skip, don't filter
     }
   }
@@ -473,14 +481,16 @@ export function fixtureMatchesZone(
   }
 
   // Direct canonical match
-  if (fz === tz) return true
+  // WAVE 7747: normalize target zone so legacy 'flash'/'center' match 'strobe'
+  const tzCanonical = normalizeZone(tz)
+  if (fz === tzCanonical) return true
 
   // 🧩 COMPOUND FIXTURE: parent zone doesn't match — check internal channel zones.
   // A compound fixture (e.g. Tungsten with zone='unassigned') can still respond
   // to a target zone if at least one of its internal channels is assigned to it.
   if (fixture?.channelZones && fixture.channelZones.length > 0) {
     for (let i = 0; i < fixture.channelZones.length; i++) {
-      if (normalizeZone(fixture.channelZones[i]) === tz) return true
+      if (normalizeZone(fixture.channelZones[i]) === tzCanonical) return true
     }
   }
 

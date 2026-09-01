@@ -66,7 +66,8 @@ export function normalizeZoneId(zoneId: string | null | undefined): string {
     case 'strobes':
     case 'stage-center':
     case 'ceiling-center':
-      return 'center'
+    case 'flash':
+      return 'strobe'
     case 'lasers':
       return 'air'
     case 'truss-1':
@@ -186,8 +187,8 @@ export function selectZoneFromResult(
     case 'floor':       return result.floorIntensity
     case 'ambient':     return result.ambientIntensity
     case 'air':         return result.airIntensity
-    // ── Flash / Strobe trigger (WAVE 4688: Golden Strobe Link) ──────────
-    case 'flash':
+    // ── Strobe trigger (WAVE 4688: Golden Strobe Link, WAVE 7747: unified 'strobe') ──
+    case 'strobe':
       return result.strobeActive ? (result.strobeIntensity || 1.0) : 0
     // ── Zonas compuestas (WAVE 4655: fuente única de verdad) ────────────
     case 'front':
@@ -198,9 +199,8 @@ export function selectZoneFromResult(
       return (result.frontLeftIntensity + result.backLeftIntensity + result.moverLeftIntensity) / 3
     case 'right':
       return (result.frontRightIntensity + result.backRightIntensity + result.moverRightIntensity) / 3
-    // ── Zonas no asignadas / centrales → ambient sin inventar energía ────
+    // ── Zonas no asignadas → ambient sin inventar energía ───────────────
     case 'unassigned':
-    case 'center':
     case 'mid':
       return result.ambientIntensity
     // ── Zona desconocida → 0 explícito, sin promedios residuales ─────────
@@ -294,6 +294,8 @@ export function selectColorRoleFromZone(
     case 'movers-right':
       return 'ambient'
     case 'air':
+      return 'accent'
+    case 'strobe':
       return 'accent'
     case 'ambient':
     case 'floor':

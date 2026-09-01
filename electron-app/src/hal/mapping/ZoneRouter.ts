@@ -223,7 +223,9 @@ export class ZoneRouter {
       'back': ['BACK_PARS'],
       'left': ['MOVING_LEFT'],
       'right': ['MOVING_RIGHT'],
-      'center': ['FRONT_PARS', 'BACK_PARS'],
+      'strobe': ['STROBES'],
+      'center': ['STROBES'],   // WAVE 7747: legacy alias
+      'flash':  ['STROBES'],   // WAVE 7747: legacy alias
       'floor': ['FRONT_PARS', 'BACK_PARS'],
       'elevated': ['MOVING_LEFT', 'MOVING_RIGHT'],
       'ambient': ['AMBIENT'],

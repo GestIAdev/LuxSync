@@ -14,7 +14,7 @@
  *
  * ── 'strict-split' (Metrónomo/Lienzo — Techno industrial) ─────────────
  *   frontPar  = envKick                     — Solo el Metrónomo
- *   backPar   = envSnare                    — Solo el Látigo
+ *   backPar   = envSnare                    — Solo el Látigo (snare/hi-hat)
  *   moverL    = max(subBass, highMid, treble) — Lienzo L: muro atmosférico
  *   moverR    = max(subBass, highMid, vocal)  — Lienzo R: muro + aire vocal
  *
@@ -74,7 +74,11 @@ export class LiquidEngine41 extends LiquidEngineBase {
       this._frontParSmooth = Math.max(frontParTarget, this._frontParSmooth * LiquidEngine41.FRONTPAR_RELEASE)
       frontPar = this._frontParSmooth
     }
-    const backPar  = Math.max(backLeft, backRight) // FIX: strict-split solo afecta front; back siempre usa ambos canales
+    // WAVE 7748: BACK STRICT-SPLIT — In strict-split mode, backPar outputs
+    // ONLY backRight (snare/hi-hat via envSnare + WAVE 8008 + WAVE 7748 adapters),
+    // completely bypassing backLeft (mid-synth pad). No ducking — hard routing.
+    // In default mode, backPar = max(backLeft, backRight) as before.
+    const backPar = isStrict ? backRight : Math.max(backLeft, backRight)
     const outMoverL = moverLeft
     const outMoverR = moverRight
 

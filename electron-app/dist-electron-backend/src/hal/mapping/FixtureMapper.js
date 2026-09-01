@@ -168,7 +168,19 @@ export class FixtureMapper {
      */
     statesToDMXPackets(states) {
         const packets = states.map(state => {
-            // 🎨 WAVE 687: Build channel array dynamically from fixture definition
+            // �️ WAVE 7731: Defensive skip for UNPATCHED fixtures (address=0).
+            // The HAL already filters these via isVirtual, but if a state slips
+            // through with address=0, return an empty channel array so nothing
+            // gets written to the universe buffer at the invalid address 0.
+            if (state.dmxAddress === 0 || state.dmxAddress < 1) {
+                return {
+                    universe: state.universe,
+                    address: 0,
+                    channels: [],
+                    fixtureId: state.fixtureId ?? 'unpatched'
+                };
+            }
+            // �🎨 WAVE 687: Build channel array dynamically from fixture definition
             const channels = this.buildDynamicChannels(state);
             return {
                 universe: state.universe,
@@ -355,6 +367,42 @@ export class FixtureMapper {
             case 'control':
                 // Canal de control/reset: controlable manualmente
                 return state.phantomChannels?.['control'] ?? channel.defaultValue ?? 0;
+            // ═══════════════════════════════════════════════════════════════════
+            // 🟢 WAVE 7737: LASER GEOMETRY — escala/tumble 3D de patrón.
+            // Galvos = 'pan'/'tilt' (arriba), pattern bank = 'gobo' (arriba).
+            // ═══════════════════════════════════════════════════════════════════
+            case 'scale_x':
+                return state.phantomChannels?.['scale_x'] ?? channel.defaultValue ?? 128;
+            case 'scale_y':
+                return state.phantomChannels?.['scale_y'] ?? channel.defaultValue ?? 128;
+            case 'rot_x':
+                return state.phantomChannels?.['rot_x'] ?? channel.defaultValue ?? 0;
+            case 'rot_y':
+                return state.phantomChannels?.['rot_y'] ?? channel.defaultValue ?? 0;
+            // ═══════════════════════════════════════════════════════════════════
+            // 🌫️ WAVE 7737: ATMOSPHERE FLUID — cuarentena L2/L3 @ 4Hz
+            // (ver AtmosphereCueDriver). No safety-critical: usa phantomChannels
+            // como cualquier canal custom/control.
+            // ═══════════════════════════════════════════════════════════════════
+            case 'smoke_pump':
+                return state.phantomChannels?.['smoke_pump'] ?? channel.defaultValue ?? 0;
+            case 'smoke_density':
+                return state.phantomChannels?.['smoke_density'] ?? channel.defaultValue ?? 0;
+            case 'fan_speed':
+                return state.phantomChannels?.['fan_speed'] ?? channel.defaultValue ?? 0;
+            // ═══════════════════════════════════════════════════════════════════
+            // 🚨🔥 WAVE 7737: HARD SAFETY CHANNELS — fail-closed, SIN fallback a
+            // phantomChannels ni a channel.defaultValue (que ya está forzado a 0
+            // en NodeExtractionPipeline, pero no confiamos en la doble garantía
+            // aquí: la ausencia de un valor explícito en `safetyChannels` SIEMPRE
+            // resuelve a 0, punto). Ver FixtureState.safetyChannels doc arriba.
+            // ═══════════════════════════════════════════════════════════════════
+            case 'emission_gate':
+                return state.safetyChannels?.['emission_gate'] ?? 0;
+            case 'fire_valve':
+                return state.safetyChannels?.['fire_valve'] ?? 0;
+            case 'fire_ignite':
+                return state.safetyChannels?.['fire_ignite'] ?? 0;
             // ═══════════════════════════════════════════════════════════════════
             // UNKNOWN/FALLBACK CHANNELS
             // ═══════════════════════════════════════════════════════════════════

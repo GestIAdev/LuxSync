@@ -380,7 +380,7 @@ export interface Rotation3D {
  *   floor       → PARs de suelo (uplight)
  *   movers-left → Cabezas móviles lado izquierdo
  *   movers-right→ Cabezas móviles lado derecho
- *   center      → Strobes/Blinders centrales
+ *   strobe      → Strobes/Blinders centrales
  *   air         → Lásers/Aerials/Atmósfera
  *   ambient     → House lights/ambiente
  *   unassigned  → Sin asignar
@@ -391,7 +391,7 @@ export type CanonicalZone =
   | 'floor'
   | 'movers-left'
   | 'movers-right'
-  | 'center'
+  | 'strobe'
   | 'air'
   | 'ambient'
   | 'unassigned'
@@ -443,7 +443,7 @@ export const CANONICAL_ZONES: readonly CanonicalZone[] = [
   'floor',
   'movers-left',
   'movers-right',
-  'center',
+  'strobe',
   'air',
   'ambient',
   'unassigned',
@@ -458,7 +458,7 @@ export const ZONE_LABELS: Record<CanonicalZone, string> = {
   'floor':        '⬇️ FLOOR (Uplight)',
   'movers-left':  '🏎️ MOVER LEFT',
   'movers-right': '🏎️ MOVER RIGHT',
-  'center':       '⚡ CENTER (Strobes/Blinders)',
+  'strobe':       '⚡ STROBE (Strobes/Blinders)',
   'air':          '✨ AIR (Laser/Atmosphere)',
   'ambient':      '🌫️ AMBIENT (House)',
   'unassigned':   '❓ UNASSIGNED',
@@ -485,6 +485,7 @@ export function normalizeZone(zone: string | undefined | null): CanonicalZone {
   }
 
   // ── Mapa exhaustivo: legacy → canonical ───────────────────────────────
+  // WAVE 7747: 'center'/'flash'/'strobes' all unified → 'strobe'
   const MAP: Record<string, CanonicalZone> = {
     // SCREAMING_CASE V2
     'front_pars':    'front',
@@ -492,18 +493,18 @@ export function normalizeZone(zone: string | undefined | null): CanonicalZone {
     'floor_pars':    'floor',
     'moving_left':   'movers-left',
     'moving_right':  'movers-right',
-    'strobes':       'center',
+    'strobes':       'strobe',
     'lasers':        'air',
 
     // kebab-case legacy V1
     'stage-left':    'movers-left',
     'stage-right':   'movers-right',
-    'stage-center':  'center',
+    'stage-center':  'strobe',
     'ceiling-front': 'front',
     'ceiling-back':  'back',
     'ceiling-left':  'movers-left',
     'ceiling-right': 'movers-right',
-    'ceiling-center':'center',
+    'ceiling-center':'strobe',
     'floor-front':   'front',
     'floor-back':    'back',
     'truss-1':       'back',
@@ -517,8 +518,9 @@ export function normalizeZone(zone: string | undefined | null): CanonicalZone {
     'front':         'front',
     'back':          'back',
     'floor':         'floor',
-    'center':        'center',
-    'ceiling':       'center',
+    'center':        'strobe',
+    'flash':         'strobe',
+    'ceiling':       'strobe',
     'truss':         'back',
     'air':           'air',
     'ambient':       'ambient',

@@ -1832,6 +1832,17 @@ export class SeleneColorInterpolator {
                 s = s * dipFactor;
             }
         }
+        // 🛡️ WAVE 7749.40: MECHANICAL WHEEL SAFETY CLAMP
+        // La rueda mecánica de color no puede transitar suavemente por blanco:
+        // si la saturación baja del umbral cromático (0.15), el matcher de rueda
+        // hace snap a Open/White y luego de vuelta al color objetivo, creando un
+        // efecto estroboscópico en stage. Clampamos la saturación mínima a 0.2
+        // (cómodamente por encima del umbral) para que la rueda siempre reciba
+        // un target cromático y mantenga su slot de color durante toda la transición.
+        // Los LEDs aún ven una transición desaturada (wash effect preservado).
+        if (s > 0 && s < 0.2) {
+            s = 0.2;
+        }
         out.s = s;
         return out;
     }

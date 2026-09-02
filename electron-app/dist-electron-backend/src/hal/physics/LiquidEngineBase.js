@@ -183,6 +183,14 @@ export class LiquidEngineBase {
         this._lastHybridSnare = 0;
         // WAVE 7749.21: OPUS AUDIT — Slow EMA of spectralFlux to track buildup density
         this._fluxBaseline = 0;
+        // WAVE 7749.42: TCT RE-ARM DISCRIMINATOR — tracks the previous frame's rawSnareDelta
+        // to enforce that the physical energy delta has decayed before re-arming the onset
+        // detector. A sustained synth lead keeps crackDelta elevated frame after frame;
+        // a real snare transient spikes and decays within 1-2 frames. Requiring the delta
+        // to have fallen below 0.02 before allowing a new onset prevents the synth lead
+        // from re-triggering every 68ms via the _snareImpulse retrigger guard.
+        this._prevRawSnareDelta = 0;
+        this._snareReArmed = true;
         // WAVE 7748: HH ENERGY ADAPTER — Pre-allocated state for hi-hat impulse
         // Mirrors _prevSnareEnergy/_lastSnareOnset/_snareImpulse pattern.
         // All scalars, zero allocation in hot path.
@@ -553,37 +561,60 @@ export class LiquidEngineBase {
             // because their WNS stays 0 on both frames.
             const rawSnareDelta = input.raw_snare_delta ?? 0;
             const photon = input.photon;
-            const spectralFlux = photon?.spectralFlux ?? 1; // fallback: allow if no photon
-            const wns = photon?.whiteNoiseScore ?? 1; // fallback: allow if no photon
+            // WAVE 7749.42: STRICT PHOTON FALLBACK — fail-closed, not fail-open.
+            // If the photon block is missing (IPC drop, worker lag, first frame),
+            // spectralFlux and wns default to 0, blocking all onset paths. The old
+            // ?? 1 fallbacks allowed any rawSnareDelta > 0.06 to fire as a snare
+            // during photon glitches, causing burst false positives.
+            const spectralFlux = photon?.spectralFlux ?? 0; // fail-closed
+            const wns = photon?.whiteNoiseScore ?? 0; // fail-closed
             const snareEnergy = input.snare_energy ?? 0;
             // WAVE 7749.22: DYNAMIC FBL THRESHOLD — Opus Paradox resolved.
             // During massive buildups (Eric Prydz "Opus"), snare_energy EMA dies to 0
             // because white noise asphyxiates the RhythmicPercussionTracker. But
             // spectralFlux baseline (fBL) rises from 0.044 (normal) to 0.06-0.076
             // (buildup). This is the reliable density signal.
-            // Formula: threshold = 0.12 - max(0, fBL - 0.05) × 2.0, clamped to 0.06.
+            // Formula: threshold = 0.12 - max(0, fBL - 0.05) × 2.0, clamped to 0.08.
             //   fBL = 0.05 (normal) → threshold = 0.12 (strict, hi-hats blocked)
             //   fBL = 0.06 (buildup) → threshold = 0.10
             //   fBL = 0.07 (peak)    → threshold = 0.08
-            // Empirical: 8 of 10 missed roll snares (RawΔ 0.08-0.11, Flux 0.22-0.41)
-            // would pass with this scaling. Hi-hats (Flux < 0.15) still blocked by
-            // the spectralFlux gate regardless of threshold.
+            // WAVE 7749.42: Floor raised 0.06→0.08. The old 0.06 floor let synth lead
+            // crackDelta noise (0.06-0.08 from filter modulation) breach the gate
+            // during dense buildups. 0.08 sits above the synth lead noise floor and
+            // below the compressed snare roll delta (empirical min 0.08-0.11).
             this._fluxBaseline = this._fluxBaseline * 0.98 + spectralFlux * 0.02; // tau ~500ms at 44Hz
             const dynamicSnareThreshold = 0.12 - (Math.max(0, this._fluxBaseline - 0.05) * 2.0);
-            const finalSnareThreshold = Math.max(0.06, dynamicSnareThreshold);
+            const finalSnareThreshold = Math.max(0.08, dynamicSnareThreshold);
             // WAVE 7749.23: DYNAMIC FLUX GATE — Opus Paradox Part 2.
             // The delta threshold fix (7749.22) worked, but ~150 snares in the roll
             // have Flux 0.10-0.15 and are blocked by the static 0.15 Flux gate.
             // During dense buildups, the AGC compresses individual hit flux — a snare
             // that normally has Flux 0.20 gets crushed to 0.12.
             // Empirical: kicks max out at Flux 0.097. Snares in the roll: 0.10-0.15.
-            // Gap is clean at 0.10. Dynamic gate scales with fBL, clamped to 0.10.
+            // Gap is clean at 0.10. Dynamic gate scales with fBL, clamped to 0.12.
             //   fBL = 0.05 (normal)  → Flux gate = 0.15 (strict, hi-hats blocked)
             //   fBL = 0.08 (buildup) → Flux gate = 0.12
-            //   fBL = 0.10+ (peak)   → Flux gate = 0.10 (clamp — kicks still blocked)
-            const dynamicFluxGate = Math.max(0.10, 0.15 - (Math.max(0, this._fluxBaseline - 0.05) * 1.0));
+            //   fBL = 0.10+ (peak)   → Flux gate = 0.12 (clamp — kicks still blocked)
+            // WAVE 7749.42: Floor raised 0.10→0.12. The old 0.10 floor let synth
+            // leads with sustained Flux 0.10-0.12 pass the gate. 0.12 is above the
+            // synth lead Flux ceiling (0.10-0.11) and below compressed snare Flux
+            // (empirical min 0.12-0.15 in rolls).
+            const dynamicFluxGate = Math.max(0.12, 0.15 - (Math.max(0, this._fluxBaseline - 0.05) * 1.0));
+            // WAVE 7749.42: TCT RE-ARM DISCRIMINATOR — Delta Decay Test.
+            // A real snare transient spikes crackDelta and decays within 1-2 frames.
+            // A sustained synth lead keeps crackDelta elevated frame after frame.
+            // We require the PREVIOUS frame's rawSnareDelta to have fallen below
+            // 0.02 before allowing a new onset. This prevents the synth lead from
+            // re-triggering every 68ms via the _snareImpulse retrigger guard.
+            // The _snareReArmed flag is set true when the delta decays below 0.02,
+            // and consumed (set false) when an onset fires. A real snare roll has
+            // ~45-125ms between hits — the delta drops to ~0 between hits, re-arming
+            // the detector. A synth lead never drops, so the detector stays choked.
+            if (this._prevRawSnareDelta < 0.02) {
+                this._snareReArmed = true;
+            }
             let rawOnset = false;
-            if (rawSnareDelta > finalSnareThreshold && spectralFlux > dynamicFluxGate && this._snareImpulse < 0.15) {
+            if (rawSnareDelta > finalSnareThreshold && spectralFlux > dynamicFluxGate && this._snareImpulse < 0.15 && this._snareReArmed) {
                 if (wns > 0.05) {
                     // Primary path: all 4 conditions met — fire immediately.
                     rawOnset = true;
@@ -623,7 +654,7 @@ export class LiquidEngineBase {
                     this._snarePendingWns = true;
                 }
             }
-            else if (this._snarePendingWns && wns > 0.05 && this._snareImpulse < 0.15) {
+            else if (this._snarePendingWns && wns > 0.05 && this._snareImpulse < 0.15 && this._snareReArmed) {
                 // WAVE 7749.17: Confirmation only needs WNS — Flux was already validated
                 // on the pending frame. The snare body's spectral change rate decays
                 // faster than WNS: in 4/57 cases (the "negros"), Flux dropped to 0.11-0.14
@@ -640,6 +671,11 @@ export class LiquidEngineBase {
             snareOnsetThisFrame = rawOnset;
             if (rawOnset) {
                 this._snareImpulse = 1.0;
+                // WAVE 7749.42: Consume the re-arm flag — the detector is now choked
+                // until the delta decays below 0.02 again. This prevents a sustained
+                // synth lead (constant crackDelta > 0.08) from re-triggering via the
+                // _snareImpulse guard every 68ms.
+                this._snareReArmed = false;
             }
             // WAVE 7749.3: Use pre-decay impulse for THIS frame's output.
             // WAVE 7749.7: Impulse decay is now profile-tunable (snareImpulseDecay).
@@ -647,6 +683,8 @@ export class LiquidEngineBase {
             const snareImpulseThisFrame = this._snareImpulse;
             this._snareImpulse *= (p.snareImpulseDecay ?? 0.40);
             this._prevSnareEnergy = rawSnareEnergy;
+            // WAVE 7749.42: Track rawSnareDelta for the TCT re-arm discriminator.
+            this._prevRawSnareDelta = rawSnareDelta;
             // WAVE 7749.9: hybridSnare is driven EXCLUSIVELY by the pure physics
             // impulse. No max-blend with the legacy percRaw (which was exterminated).
             hybridSnare = snareImpulseThisFrame;
@@ -1100,6 +1138,9 @@ export class LiquidEngineBase {
         // WAVE 7749: Reset Sustain Choke state
         this._snareSustainFrames = 0;
         this._snareChokeFactor = 1.0;
+        // WAVE 7749.42: Reset TCT re-arm discriminator state
+        this._prevRawSnareDelta = 0;
+        this._snareReArmed = true;
     }
     applyGlacierPalette(morphFactor) {
         return Math.min(1.0, Math.max(0.0, morphFactor));

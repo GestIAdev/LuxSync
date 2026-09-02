@@ -137,13 +137,28 @@ const MOVER_R_TILT_OFFSET = TWO_PI * 0.500;
  * Cada tick es función pura de performance.now() — reproducible para el mismo t.
  */
 export class ChillAmbientEngine {
+    constructor() {
+        // ⚒️ WAVE 7749.38: GrandMaster Speed hook. Escala el tiempo interno de
+        // todos los osciladores (morph, ola, movers). 1.0 = velocidad nominal,
+        // 0.1 = 10x más lento (glaciar absoluto), 2.0 = doble velocidad.
+        // Seteado desde SeleneLux via VibeMovementManager.getGlobalSpeedMultiplier().
+        this._speedMultiplier = 1.0;
+    }
+    /** WAVE 7749.38: Setter para el GrandMaster Speed del CommandDeck. */
+    setSpeedMultiplier(mult) {
+        this._speedMultiplier = Math.max(0.1, Math.min(2.0, mult));
+    }
     /**
      * Genera un frame completo: morph global, La Ola zonal, y Glaciar Movers.
      * Llamar una vez por frame (44–60 Hz). Idempotente para el mismo ms.
+     *
+     * ⚒️ WAVE 7749.38: El tiempo interno se escala por _speedMultiplier para
+     * que el GrandMaster Speed del CommandDeck controle la velocidad de todos
+     * los osciladores del chill (morph, ola, movers) sin tocar el motor de color.
      */
     tick() {
         const tMs = performance.now();
-        const t = tMs / 1000; // base de tiempo continua en segundos
+        const t = (tMs / 1000) * this._speedMultiplier; // tiempo escalado
         // ── 1. MORPH GLOBAL — 2 senos directos, sin EMA ─────────────────────────
         // Cada seno en [0, 1]; suma ponderada en [0, 1]; mapeada a [FLOOR, FLOOR+RANGE].
         const morph1 = (Math.sin((TWO_PI * t) / MORPH_FAST_PERIOD_S) + 1) / 2;

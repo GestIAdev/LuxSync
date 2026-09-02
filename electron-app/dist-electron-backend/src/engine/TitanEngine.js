@@ -34,6 +34,8 @@ import { StrategyArbiter } from './color/StrategyArbiter';
 // ⚡ WAVE 274: ORGAN HARVEST - Sistema Nervioso (Reactivo a Género)
 import { SeleneLux } from '../core/reactivity';
 import { getModifiersFromKey } from './physics/ElementalModifiers';
+// 🎯 WAVE 343: OPERATION CLEAN SLATE - Movement Manager
+import { vibeMovementManager } from './movement/VibeMovementManager';
 // 🔦 WAVE 410: OPERATION SYNAPSE RECONNECT - Optics Config
 import { getOpticsConfig } from './movement/VibeMovementPresets';
 // ⚡ WAVE 3504-EXT.2: Pure math modules — replace inline private methods
@@ -566,6 +568,10 @@ export class TitanEngine extends EventEmitter {
             vibeProfile.id.toLowerCase().includes('ambient') ||
             vibeProfile.id.toLowerCase().includes('jazz');
         if (isChillVibe) {
+            // ⚒️ WAVE 7749.38: Sincronizar GrandMaster Speed del CommandDeck al
+            // ChillAmbientEngine antes del tick. Así el slider controla la velocidad
+            // de todos los osciladores del chill (morph, ola, movers glaciares).
+            chillAmbientEngine.setSpeedMultiplier(vibeMovementManager.getGlobalSpeedMultiplier());
             const chillFrame = chillAmbientEngine.tick();
             const mf = chillFrame.morphFactor;
             // morphFactor bajo (0.20 = abismo) → hueInfluence 260° (azul profundo/índigo)

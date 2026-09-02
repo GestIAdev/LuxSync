@@ -259,5 +259,22 @@ export const TECHNO_PROFILE = {
             decayRange: 0.02, // WAVE 2520: 0.0329→0.02 — uniforme (smoothing neutralizado)
         },
         layout41Strategy: 'strict-split',
+        // WAVE 7749.4: Tame the Sustain Choke for dense techno.
+        // The choke was murdering the channel during continuous bass walls,
+        // dropping hybridSnare to 0.000 for seconds at a time (blackouts).
+        // snareChokeFrames 4→15: wait ~300ms before choking, preventing blackouts
+        // during fast 4/4 beats. snareChokeRate 0.70→0.85: softer exponential decay.
+        snareVetoFlatnessFloor: 0.02,
+        snareVetoFlatnessKnee: 0.10,
+        snareVetoWnsFloor: 0.02,
+        snareVetoWnsKnee: 0.20,
+        snareVetoFluxFloor: 0.05,
+        snareVetoFluxKnee: 0.20,
+        snareChokeFrames: 15,
+        snareChokeRate: 0.85,
+        // WAVE 7749.7: Impulse decay — bridges micro-gaps between irregular onsets.
+        // 0.30 (vs default 0.04) sustains the impulse for ~3 frames without the
+        // sawtooth flicker that 0.60 produced. Paired with raw_snare_delta detection.
+        snareImpulseDecay: 0.30,
     },
 };

@@ -210,6 +210,11 @@ export interface GodEarRhythmicPercussion {
   hh_absence_ms: number;
   /** Normalized rhythmic void [0,1] — 0 = dense percussion, 1 = total absence */
   rhythmic_void: number;
+  /** WAVE 7749.7: Raw (pre-EMA) snare energy delta — frame-to-frame transient.
+   *  Positive = onset (energy rising), negative = decay.
+   *  Unlike snare_energy (EMA-smoothed), this preserves transient sharpness
+   *  even under heavy compression. Used by LiquidEngineBase for onset detection. */
+  raw_snare_delta: number;
 }
 
 export interface GodEarSpectrum {
@@ -1940,6 +1945,11 @@ class RhythmicPercussionTracker {
   // Snare/HH energy — attack-release envelope (peak follower)
   private _snareEnergyEMA = 0;
   private _hhEnergyEMA = 0;
+  // WAVE 7749.7: Raw (pre-EMA) snare energy — for transient delta extraction
+  private _prevSnareEnergyRaw = 0;
+  // WAVE 7749.7b: Per-band raw tracking — crack and body deltas independently
+  private _prevSnareCrackRaw = 0;
+  private _prevSnareBodyRaw = 0;
   // WAVE 8008 fix: asymmetric attack/release — instant attack, ~200ms release
   private static readonly ENERGY_ATTACK = 0.85;  // near-instant rise
   private static readonly ENERGY_RELEASE = 0.06;  // ~330ms decay @ 44Hz
@@ -1993,6 +2003,26 @@ class RhythmicPercussionTracker {
   }
 
   /**
+   * WAVE 7749.7: Extract UNCLAMPED sub-band energy for transient delta calculation.
+   * The clamped version (extractSubBand) saturates at 1.25 in dense techno, making
+   * the delta always 0. This version returns the raw integratedRms * gain WITHOUT
+   * clamping, so frame-to-frame transients are preserved even at high energy.
+   */
+  private extractSubBandRaw(power: Float32Array, loBin: number, hiBin: number): number {
+    let sum = 0;
+    let count = 0;
+    const upper = Math.min(hiBin, power.length - 1);
+    for (let bin = loBin; bin <= upper; bin++) {
+      sum += power[bin];
+      count++;
+    }
+    if (count === 0) return 0;
+    const integratedRms = Math.sqrt(sum);
+    // No clamp — preserve full dynamic range for delta calculation
+    return integratedRms * POST_FFT_LEGACY_EQ_GAIN * RhythmicPercussionTracker.RHYTHMIC_GAIN;
+  }
+
+  /**
    * Process one frame and produce rhythmic percussion telemetry.
    *
    * @param power    Pre-allocated power spectrum (Float32Array, numBins+1)
@@ -2005,8 +2035,10 @@ class RhythmicPercussionTracker {
     this._hhCooldownMs -= deltaMs;
 
     // ── 1. Extract raw sub-band energies ──
-    const snareBody = this.extractSubBand(power, this.snareBodyLoBin, this.snareBodyHiBin);
-    const snareCrack = this.extractSubBand(power, this.snareCrackLoBin, this.snareCrackHiBin);
+    // WAVE 7749.7: Use UNCLAMPED extraction for body/crack — the clamped version
+    // saturates at 1.25 in dense techno, making the transient delta always 0.
+    const snareBody = this.extractSubBandRaw(power, this.snareBodyLoBin, this.snareBodyHiBin);
+    const snareCrack = this.extractSubBandRaw(power, this.snareCrackLoBin, this.snareCrackHiBin);
     const hhRaw = this.extractSubBand(power, this.hhLoBin, this.hhHiBin);
 
     // ── 2. Update adaptive threshold EMAs ──
@@ -2050,11 +2082,42 @@ class RhythmicPercussionTracker {
     // Gate by threshold crossing (not cooldown) so energy tracks the actual
     // percussion envelope duration. Sustained vocals/melodies stay below
     // adaptive threshold (×2.0/×1.8) so their energy contribution is zero.
-    const snareEnergyRaw = snareAboveThresh ? Math.sqrt(snareBody * snareCrack) : 0;
-    if (snareEnergyRaw > this._snareEnergyEMA) {
-      this._snareEnergyEMA += RhythmicPercussionTracker.ENERGY_ATTACK * (snareEnergyRaw - this._snareEnergyEMA);
+
+    // WAVE 7749.7: UNGATED raw energy for transient delta calculation.
+    // The threshold-gated version (snareEnergyGated) is used for the EMA output
+    // to suppress sustained vocals. But for onset detection, we need the ACTUAL
+    // energy delta — including frames where the snare doesn't pass the adaptive
+    // threshold.
+    //
+    // CRITICAL FIX: In techno 4/4, the body band (150-250Hz) is SATURATED by the
+    // kick drum (fires every beat). The geometric mean sqrt(body * crack) is
+    // dominated by the constant body energy, making the delta ~0 even when a
+    // snare crack fires. The snare's distinctive transient is in the CRACK band
+    // (2-5kHz) — that's where the "snap" lives. We track the crack band delta
+    // directly, which captures snare transients even when the body is saturated.
+    // This mirrors isKick: bassDelta tracks the SPECIFIC band where the kick lives.
+    const snareEnergyUngated = Math.sqrt(snareBody * snareCrack)
+    const snareEnergyGated = snareAboveThresh ? snareEnergyUngated : 0;
+
+    // WAVE 7749.7: Raw transient delta — track the CRACK band delta directly.
+    // The crack band (2-5kHz) is where the snare "snap" lives. In techno, the
+    // body band is saturated by the kick, so sqrt(body*crack) is nearly constant.
+    // But the crack band itself has sharp transients when a snare/clap fires.
+    // WAVE 7749.8: Use ONLY crackDelta — the body band (150-250Hz) is saturated
+    // by the kick drum in techno, producing false deltas on every beat. The crack
+    // band (2-5kHz) is where the snare "snap" lives and is immune to kick bleed.
+    const crackDelta = snareCrack - this._prevSnareCrackRaw;
+    const bodyDelta = snareBody - this._prevSnareBodyRaw;
+    const rawSnareDelta = crackDelta;
+    this._prevSnareCrackRaw = snareCrack;
+    this._prevSnareBodyRaw = snareBody;
+    // Keep _prevSnareEnergyRaw for backward compat (unused now but reset() clears it)
+    this._prevSnareEnergyRaw = snareEnergyUngated;
+
+    if (snareEnergyGated > this._snareEnergyEMA) {
+      this._snareEnergyEMA += RhythmicPercussionTracker.ENERGY_ATTACK * (snareEnergyGated - this._snareEnergyEMA);
     } else {
-      this._snareEnergyEMA += RhythmicPercussionTracker.ENERGY_RELEASE * (snareEnergyRaw - this._snareEnergyEMA);
+      this._snareEnergyEMA += RhythmicPercussionTracker.ENERGY_RELEASE * (snareEnergyGated - this._snareEnergyEMA);
     }
     const hhEnergyRaw = hhAboveThresh ? hhRaw : 0;
     if (hhEnergyRaw > this._hhEnergyEMA) {
@@ -2078,6 +2141,20 @@ class RhythmicPercussionTracker {
     //   );
     // }
 
+    // WAVE 7749.22: EXTERMINATED — RAWΔ diagnostic log removed. Snare 4D is
+    // production-ready. This was spamming the console every 44 frames.
+    // Re-enable from git history if future debugging is needed.
+    // WAVE 7749.7: Diagnostic — log rawSnareDelta every ~44 frames (1s) to verify
+    // the value is non-zero before IPC transport
+    // this._diagCounter++;
+    // if (this._diagCounter % 44 === 0) {
+    //   console.log(
+    //     `[🥁 RAWΔ] body=${snareBody.toFixed(4)} crack=${snareCrack.toFixed(4)} ` +
+    //     `crackDelta=${crackDelta.toFixed(4)} bodyDelta=${bodyDelta.toFixed(4)} ` +
+    //     `rawSnareDelta=${rawSnareDelta.toFixed(4)} EMA=${this._snareEnergyEMA.toFixed(4)}`
+    //   );
+    // }
+
     // ── 6. Absence counters ──
     const snareAbsenceMs = this._elapsedMs - this._lastSnareHitMs;
     const hhAbsenceMs = this._elapsedMs - this._lastHHHitMs;
@@ -2095,6 +2172,7 @@ class RhythmicPercussionTracker {
       snare_absence_ms: snareAbsenceMs,
       hh_absence_ms: hhAbsenceMs,
       rhythmic_void: rhythmicVoid,
+      raw_snare_delta: rawSnareDelta,
     };
   }
 
@@ -2104,6 +2182,9 @@ class RhythmicPercussionTracker {
     this._hhEMA = 0;
     this._snareEnergyEMA = 0;
     this._hhEnergyEMA = 0;
+    this._prevSnareEnergyRaw = 0;
+    this._prevSnareCrackRaw = 0;
+    this._prevSnareBodyRaw = 0;
     this._elapsedMs = 0;
     this._lastSnareHitMs = 0;
     this._lastHHHitMs = 0;

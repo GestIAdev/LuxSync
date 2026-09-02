@@ -56,6 +56,7 @@ export class AudioPipelineManager {
         };
         this.hasRealAudio = false;
         this.lastAudioTimestamp = 0;
+        this.frameCount = 0;
         this.AUDIO_STALENESS_THRESHOLD_MS = 500;
         // WAVE 3424: GRACE HOLD — Seek/Hot-Swap Resilience
         // After staleness threshold is exceeded, hold last valid audio with gradual
@@ -110,6 +111,11 @@ export class AudioPipelineManager {
             const activeSource = matrixStatus?.activeSource ?? null;
             const OMNI_SOURCES = new Set(['virtual-wire', 'usb-directlink', 'osc-nexus']);
             const isOmniActive = activeSource ? OMNI_SOURCES.has(activeSource) : false;
+            // WAVE 7749.7: Diagnostic — trace raw_snare_delta arrival at AudioPipelineManager
+            if (this.frameCount % 44 === 0) {
+                console.log(`[PIPELINE] source=${activeSource} rhythmic=${levels.rhythmic ? 'YES' : 'NO'} raw_snare_delta=${levels.rhythmic?.raw_snare_delta ?? 'UNDEF'} snare_energy=${levels.rhythmic?.snare_energy ?? 'UNDEF'}`);
+            }
+            this.frameCount++;
             if (isOmniActive) {
                 const smoothedOmni = this.syncSmoother.smooth({
                     bass: levels.bass, mid: levels.mid, high: levels.treble,

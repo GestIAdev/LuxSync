@@ -35,7 +35,7 @@ export const TECHNO_PROFILE: ILiquidProfile = {
     gateOn: 0.08,
     boost: 2.7054,
     crushExponent: 1.0,
-    decayBase: 0.2218,
+    decayBase: 0.40, // WAVE 7749.22: 0.2218→0.40 — subbass respira más, groove más lleno
     decayRange: 0.166,
     maxIntensity: 0.5291,
     squelchBase: 0.0613,
@@ -102,7 +102,7 @@ export const TECHNO_PROFILE: ILiquidProfile = {
     gateOn: 0.28,   // BACK-PAR TUNE: 0.35→0.28 — re-disparar más fácil entre hits del redoble
     boost: 2.5,     // WAVE 8009.3: 1.0→2.5 — igualar ganancia efectiva del Latino para cruce visual
     crushExponent: 1.0,
-    decayBase: 0.30, // BACK-PAR TUNE: 0.20→0.30 — ~200-250ms, respirar entre hits del roll
+    decayBase: 0.32, // WAVE 7749.21: 0.40→0.32 — snap industrial más brutal. Cae a negro en ~90ms. Latino respira con 0.60.
     decayRange: 0.40,      // WAVE 2451: INTOCABLE — morfología líquida de los Back Pars preservada
     maxIntensity: 1.0,     // WAVE 2439.5: 0.80→1.0 — el Látigo sin cap
     squelchBase: 0.20,     // WAVE 6066: 0.52→0.20 — limpieza se hará matemáticamente pre-envelope
@@ -121,7 +121,7 @@ export const TECHNO_PROFILE: ILiquidProfile = {
     gateOn: 0.15,        // OPERACIÓN: Luz Líquida — baja la compuerta para capturar colas de voces
     boost: 1.5,
     crushExponent: 1.0,  // OPERACIÓN: Linealidad pura para suavizar el pulso atmosférico
-    decayBase: 0.62,       // OPERACIÓN: Onda de sierra — caída curva pronunciada para respirar entre acordes
+    decayBase: 0.50,       // WAVE 7749.22: 0.62→0.50 — colchón más ágil, libera entre acordes
     decayRange: 0.25,      // WAVE 3492: 0.35->0.25 — morph menos determinante para la caída
     maxIntensity: 0.85,
     squelchBase: 0.25,   // OPERACIÓN: Mantiene a raya el barro de los graves
@@ -300,14 +300,23 @@ export const TECHNO_PROFILE: ILiquidProfile = {
     // dropping hybridSnare to 0.000 for seconds at a time (blackouts).
     // snareChokeFrames 4→15: wait ~300ms before choking, preventing blackouts
     // during fast 4/4 beats. snareChokeRate 0.70→0.85: softer exponential decay.
-    snareVetoFlatnessFloor: 0.02,
+    // WAVE 7749.8: Veto floors raised 0.02→0.04. Now that we use RAW crackDelta
+    // (not max(crackDelta, bodyDelta)), the raw delta is clean. The 0.02 floors
+    // were letting hi-hat bleed and synth tails through. 0.04 requires real
+    // broadband noise content, vetoing weak tonal bleed.
+    snareVetoFlatnessFloor: 0.04,
     snareVetoFlatnessKnee: 0.10,
-    snareVetoWnsFloor: 0.02,
+    snareVetoWnsFloor: 0.04,
     snareVetoWnsKnee: 0.20,
     snareVetoFluxFloor: 0.05,
     snareVetoFluxKnee: 0.20,
     snareChokeFrames: 15,
     snareChokeRate: 0.85,
+    // WAVE 7749.21: Techno snap — 0.40→0.50. Refractario más largo que latino
+    // (0.25). El impulso cae 1.0→0.50→0.25→0.125→0.06 en 4 frames (~90ms).
+    // Latino con 0.25: 1.0→0.25→0.06 en 2 frames (~45ms) — re-dispara más rápido
+    // porque el dembow es más denso. Techno espera más entre hits = contraste puro.
+    snareImpulseDecay: 0.50,
   },
 }
 

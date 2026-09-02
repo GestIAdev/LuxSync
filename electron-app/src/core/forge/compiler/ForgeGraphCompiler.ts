@@ -366,6 +366,8 @@ export class ForgeGraphCompiler {
                 dmxOffset: cfg.dmxOffset,
                 defaultDmxValue: cfg.defaultDmxValue,
                 is16bit: cfg.is16bit ?? false,
+                // ⚒️ WAVE 7749.35: Propagate fineDmxOffset for non-adjacent 16-bit layouts.
+                ...(cfg.fineDmxOffset !== undefined && { fineDmxOffset: cfg.fineDmxOffset }),
               })
             }
           }

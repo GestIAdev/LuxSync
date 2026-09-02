@@ -1003,6 +1003,17 @@ const luxApi = {
          */
         clearAllManualOverrides: () => ipcRenderer.send('lux:aether:clearAllManualOverrides'),
         /**
+         * ⚒️ WAVE 7749.35: Calibration override with multi-cell fan-out.
+         * Dedicated channel for CalibrationView — does NOT touch the 44Hz hot path.
+         * Fans out to ALL cells of multi-cell fixtures (Tungsten).
+         */
+        calibrationSetOverride: (nodeId, channels) => ipcRenderer.send('lux:calibration:setOverride', { nodeId, channels }),
+        /**
+         * ⚒️ WAVE 7749.35: Calibration clear ALL 5 families for a fixture.
+         * Fans out to ALL cells. Use when leaving calibration or pressing PANIC.
+         */
+        calibrationClearFixture: (fixtureId) => ipcRenderer.send('lux:calibration:clearFixture', { fixtureId }),
+        /**
          * WAVE 4531: Registra un inhibit limit (cap 0-1 sobre dimmer) para un
          * array de nodeIds. Semánticamente: Grand Master per-fixture en el Arbiter.
          */

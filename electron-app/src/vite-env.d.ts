@@ -816,6 +816,18 @@ declare global {
       }>) => Promise<{ success: boolean; error?: string }>
 
       /**
+       * ⚒️ WAVE 7749.35: Calibration override with multi-cell fan-out.
+       * Dedicated channel — does NOT touch the 44Hz hot path.
+       */
+      calibrationSetOverride: (nodeId: string, channels: Record<string, number>) => void
+
+      /**
+       * ⚒️ WAVE 7749.35: Calibration clear ALL 5 families for a fixture.
+       * Fans out to ALL cells. Use when leaving calibration or pressing PANIC.
+       */
+      calibrationClearFixture: (fixtureId: string) => void
+
+      /**
        * Limpia overrides de los nodeIds especificados.
        */
       clearManualOverrides: (nodeIds: string[]) => Promise<{ success: boolean; error?: string }>

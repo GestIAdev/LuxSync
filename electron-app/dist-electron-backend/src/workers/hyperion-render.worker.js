@@ -28,7 +28,7 @@
  * @since WAVE 2510 (Operación Hyperion — The 4th Worker)
  */
 import { FLOATS_PER_FIXTURE, FIXTURE_FIELD, } from './hyperion-render.types';
-import { renderGridLayer, renderZoneLayer, renderFixtureLayer, renderSelectionLayer, renderHUDLayer, FIXTURE_CONFIG, } from '../components/hyperion/views/tactical/layers';
+import { renderGridLayer, renderZoneLayer, renderFixtureLayer, renderSelectionLayer, renderHUDLayer, FIXTURE_CONFIG, disposeFixtureLayerSprites, } from '../components/hyperion/views/tactical/layers';
 import { hitTestFixtures, hitTestLasso, } from '../components/hyperion/views/tactical/HitTestEngine';
 // ═══════════════════════════════════════════════════════════════════════════
 // WORKER STATE
@@ -633,6 +633,9 @@ self.onmessage = (e) => {
             canvas = null;
             physicsStore.clear();
             prevIntensity.clear();
+            // 🩸 WAVE 7749.25: Release sprite cache GPU textures on shutdown so
+            // orphaned workers (HMR reloads) don't leak OffscreenCanvas sprites.
+            disposeFixtureLayerSprites();
             if (glassPort) {
                 // 🏓 Return any held buffer before closing the port
                 if (currentFrameData) {

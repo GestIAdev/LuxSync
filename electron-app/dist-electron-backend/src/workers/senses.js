@@ -123,11 +123,12 @@ function pollSharedRingBuffer() {
         // }
         state.frameCount++;
         const analysis = pipeline.processFrame(slice);
-        // WAVE 7749.7: Diagnostic — verify raw_snare_delta survives the pipeline
-        if (state.frameCount % 44 === 0) {
-            const r = analysis.rhythmic;
-            console.log(`[SENSE-WORKER] rhythmic=${r ? 'YES' : 'NO'} raw_snare_delta=${r?.raw_snare_delta ?? 'UNDEF'} snare_energy=${r?.snare_energy ?? 'UNDEF'}`);
-        }
+        // WAVE 7749.22: EXTERMINATED — SENSE-WORKER diagnostic log removed.
+        // Snare 4D is production-ready. This was spamming every 44 frames.
+        // if (state.frameCount % 44 === 0) {
+        //   const r = (analysis as any).rhythmic;
+        //   console.log(`[SENSE-WORKER] rhythmic=${r ? 'YES' : 'NO'} raw_snare_delta=${r?.raw_snare_delta ?? 'UNDEF'} snare_energy=${r?.snare_energy ?? 'UNDEF'}`);
+        // }
         sendMessage(MessageType.AUDIO_ANALYSIS, 'alpha', analysis, analysis.onBeat ? MessagePriority.HIGH : MessagePriority.NORMAL);
     }
 }
@@ -228,11 +229,11 @@ function handleMessage(message) {
                 }
                 state.frameCount++;
                 const analysis = pipeline.processFrame(buffer);
-                // WAVE 7749.7: Diagnostic — verify raw_snare_delta survives the pipeline
-                if (state.frameCount % 44 === 0) {
-                    const r = analysis.rhythmic;
-                    console.log(`[SENSE-WORKER-IPC] rhythmic=${r ? 'YES' : 'NO'} raw_snare_delta=${r?.raw_snare_delta ?? 'UNDEF'} snare_energy=${r?.snare_energy ?? 'UNDEF'}`);
-                }
+                // WAVE 7749.22: EXTERMINATED — SENSE-WORKER-IPC diagnostic log removed.
+                // if (state.frameCount % 44 === 0) {
+                //   const r = (analysis as any).rhythmic;
+                //   console.log(`[SENSE-WORKER-IPC] rhythmic=${r ? 'YES' : 'NO'} raw_snare_delta=${r?.raw_snare_delta ?? 'UNDEF'} snare_energy=${r?.snare_energy ?? 'UNDEF'}`);
+                // }
                 sendMessage(MessageType.AUDIO_ANALYSIS, 'alpha', analysis, analysis.onBeat ? MessagePriority.HIGH : MessagePriority.NORMAL);
                 break;
             }

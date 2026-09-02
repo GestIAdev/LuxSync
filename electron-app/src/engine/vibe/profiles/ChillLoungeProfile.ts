@@ -55,8 +55,10 @@ export const VIBE_CHILL_LOUNGE: VibeProfile = {
     // Forbidden: rojos, naranjas, amarillos, verdes cálidos
     forbiddenHueRanges: [[340, 360], [0, 150]],
 
-    // Allowed: Deep Blue, Boreal Green, Dark Magenta, Violet, Cyan
-    allowedHueRanges: [[160, 260], [290, 330]],
+    // ⚒️ WAVE 7749.37: Bridged the 260°-290° gap to allow smooth transit
+    // through Royal Blue (270°) and Boreal Purple (280°) without snapping.
+    // Allowed: Boreal Green, Cyan, Deep Blue, Indigo, Royal Blue, Boreal Purple, Magenta, Pink
+    allowedHueRanges: [[160, 290], [300, 330]],
   },
 
   // ═══════════════════════════════════════════════════════════════

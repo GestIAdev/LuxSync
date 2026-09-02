@@ -1153,6 +1153,25 @@
   font-size: 14px;
 }
 
+/* 🚨 WAVE 7749.35: PANIC button — nuclear unlock */
+.lab-actions .panic {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: rgba(239, 68, 68, 0.8);
+  margin-left: 1rem;
+}
+
+.lab-actions .panic:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: rgba(239, 68, 68, 0.6);
+  color: #ef4444;
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+}
+
+.panic-icon {
+  font-size: 14px;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    RESPONSIVE
    ═══════════════════════════════════════════════════════════════════════════ */

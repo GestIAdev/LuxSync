@@ -190,6 +190,17 @@ export const TacticalCanvas = memo(function TacticalCanvas({
   // unmounted in production). The worker lives for the entire session lifetime.
   const observerRef = useRef<ResizeObserver | null>(null)
   const isTransferredRef = useRef(false)
+  // 🩸 WAVE 7749.25: DEFERRED TEARDOWN — distinguishes Strict Mode from HMR.
+  // transferControlToOffscreen() is irreversible per DOM node. React Strict Mode
+  // runs Setup→Cleanup→Setup synchronously on the SAME node. If cleanup terminates
+  // the worker synchronously, Setup 2 sees workerRef===null and tries to re-transfer
+  // the same canvas → crash → stuck on "INITIALIZING...".
+  //
+  // Fix: cleanup schedules termination via setTimeout(0). Strict Mode's Setup 2
+  // fires synchronously in the same tick and cancels the pending timeout → worker
+  // survives → the workerRef guard bails out (no re-transfer). Real unmount (HMR,
+  // navigation) lets the timeout fire → worker terminated → no orphan.
+  const cleanupTimeoutRef = useRef<number | null>(null)
   const metricsRef = useRef<RenderMetrics>({
     fps: 60,
     frameTime: 0,
@@ -281,6 +292,16 @@ export const TacticalCanvas = memo(function TacticalCanvas({
     const container = containerRef.current
     const canvas = canvasRef.current
     if (!container || !canvas) return
+
+    // 🩸 WAVE 7749.25: Cancel any pending deferred teardown. In React Strict Mode,
+    // cleanup→setup fire synchronously in the same tick. The cleanup scheduled a
+    // setTimeout(0) teardown; we cancel it here so the worker survives the fake
+    // unmount. In HMR (real unmount), this setup never runs → the timeout fires
+    // → worker is terminated properly.
+    if (cleanupTimeoutRef.current !== null) {
+      clearTimeout(cleanupTimeoutRef.current)
+      cleanupTimeoutRef.current = null
+    }
 
     // ── THE IMMORTAL GUARD ─────────────────────────────────────────────
     // Strict Mode fires Setup→Cleanup→Setup on the same DOM node.
@@ -427,30 +448,36 @@ export const TacticalCanvas = memo(function TacticalCanvas({
     observer.observe(container)
     observerRef.current = observer
 
-    // ── DETERMINISTIC CLEANUP ───────────────────────────────────────────
+    // ── DETERMINISTIC CLEANUP (DEFERRED) ────────────────────────────────
     // WAVE 3502: Explicit teardown to avoid residual queues/listeners.
+    //
+    // 🩸 WAVE 7749.25: THE HYPERION COOLING PROTOCOL — HMR WORKER CLONING FIX.
+    // The original `if (import.meta.env.DEV) return` suppressed ALL dev cleanup
+    // to survive Strict Mode — but also leaked workers on every HMR reload.
+    //
+    // Now: teardown is deferred via setTimeout(0). Strict Mode's re-setup fires
+    // synchronously in the same tick and cancels the timeout (worker survives,
+    // guard bails). Real unmount (HMR/navigation) lets the timeout fire and
+    // terminates the worker + releases sprite caches. No orphan, no double-transfer.
     return () => {
-      // En dev (React Strict Mode), el fake unmount no debe destruir el worker
-      // porque OffscreenCanvas no puede transferirse dos veces sobre el mismo nodo.
-      if (import.meta.env.DEV) {
-        return
-      }
-
-      try {
-        observerRef.current?.disconnect()
-      } catch {}
-      observerRef.current = null
-
-      const activeWorker = workerRef.current
-      if (activeWorker) {
+      cleanupTimeoutRef.current = window.setTimeout(() => {
+        cleanupTimeoutRef.current = null
         try {
-          activeWorker.postMessage({ type: 'SHUTDOWN' })
+          observerRef.current?.disconnect()
         } catch {}
-        activeWorker.onmessage = null
-        activeWorker.onerror = null
-        activeWorker.terminate()
-      }
-      workerRef.current = null
+        observerRef.current = null
+
+        const activeWorker = workerRef.current
+        if (activeWorker) {
+          try {
+            activeWorker.postMessage({ type: 'SHUTDOWN' })
+          } catch {}
+          activeWorker.onmessage = null
+          activeWorker.onerror = null
+          activeWorker.terminate()
+        }
+        workerRef.current = null
+      }, 0)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

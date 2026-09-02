@@ -130,7 +130,7 @@ export class CurveEvaluator {
         const curve = this.curves.get(paramId);
         if (!curve || curve.keyframes.length === 0) {
             if (curve && typeof curve.defaultValue === 'number') {
-                return curve.defaultValue;
+                return this._quantizeIfStepped(curve, curve.defaultValue);
             }
             return 0;
         }
@@ -139,15 +139,15 @@ export class CurveEvaluator {
         // ── Edge cases ──────────────────────────────────────────────────────
         if (kfs.length === 1) {
             const v = kfs[0].value;
-            return Number.isFinite(v) ? v : 0;
+            return Number.isFinite(v) ? this._quantizeIfStepped(curve, v) : 0;
         }
         if (t <= kfs[0].timeMs) {
             const v = kfs[0].value;
-            return Number.isFinite(v) ? v : 0;
+            return Number.isFinite(v) ? this._quantizeIfStepped(curve, v) : 0;
         }
         if (t >= kfs[kfs.length - 1].timeMs) {
             const v = kfs[kfs.length - 1].value;
-            return Number.isFinite(v) ? v : 0;
+            return Number.isFinite(v) ? this._quantizeIfStepped(curve, v) : 0;
         }
         // ── Encontrar segmento activo ───────────────────────────────────────
         const segIdx = this.findSegment(paramId, t, kfs);
@@ -157,14 +157,45 @@ export class CurveEvaluator {
         const segDuration = kf1.timeMs - kf0.timeMs;
         if (segDuration <= 0) {
             const v = kf0.value;
-            return Number.isFinite(v) ? v : 0;
+            return Number.isFinite(v) ? this._quantizeIfStepped(curve, v) : 0;
         }
         const segProgress = (t - kf0.timeMs) / segDuration;
+        // ⚒️ WAVE 7749.30: Stepped curves use hold-style evaluation (no interpolation).
+        // The output is the LEFT keyframe's value, quantized to the nearest slot.
+        // This matches the staircase rendering in the CurveEditor.
+        if (curve.curveMode === 'stepped' && (curve.quantizeSteps ?? 0) > 1) {
+            const v = kf0.value;
+            return Number.isFinite(v) ? this._quantizeIfStepped(curve, v) : 0;
+        }
         // ── Interpolar ──────────────────────────────────────────────────────
         const resultadoFinal = this.interpolateNumber(kf0.value, kf1.value, segProgress, kf0.interpolation, kf0.bezierHandles);
         if (!Number.isFinite(resultadoFinal))
             return 0;
-        return resultadoFinal;
+        return this._quantizeIfStepped(curve, resultadoFinal);
+    }
+    /**
+     * ⚒️ WAVE 7749.30: Quantizes a value to the nearest discrete step for
+     * stepped curves (gobo/pattern wheels). Returns the input unchanged for
+     * continuous curves.
+     *
+     * Quantization maps the value to the curve's range [min, max], rounds to
+     * the nearest slot index, then maps back to the range:
+     *   slot = round((v - min) / span * (steps - 1))
+     *   result = min + slot / (steps - 1) * span
+     */
+    _quantizeIfStepped(curve, value) {
+        if (curve.curveMode !== 'stepped')
+            return value;
+        const steps = curve.quantizeSteps ?? 0;
+        if (steps <= 1)
+            return value;
+        const [min, max] = curve.range;
+        const span = max - min;
+        if (span <= 0)
+            return min;
+        const normalized = (value - min) / span;
+        const slot = Math.round(normalized * (steps - 1));
+        return min + (slot / (steps - 1)) * span;
     }
     /**
      * Evalúa el valor de color de una curva en un instante de tiempo.

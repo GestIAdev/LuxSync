@@ -16,11 +16,14 @@
  * │  NAME: [ input ]                    DURATION: [ input ] ms   │
  * │  ┌─ CATEGORY (Grid) ──────────┐  ┌─ TARGET (Matrix) ──────┐│
  * │  │ [💡] [🎨] [🔄] [🔍] [🧬]  │  │ [ALL] [MOV] [PAR] [AIR]││
- * │  └────────────────────────────┘  │ [FRT] [BCK] [FLR] [CTR]││
- * │  ┌─ ROUTING ──────────────────┐  │ [ L ] [ R ] [ODD] [EVN]││
- * │  │ [🔴 GLOB] [🟡 HTP] [🔵 ACC]│  └────────────────────────┘│
- * │  └────────────────────────────┘  [ CANCEL ]  [ CREATE ]     │
+ * │  └────────────────────────────┘  │ [FRT] [BCK] [FLR] [STR]││
+ * │  ┌─ ROUTING ──────────────────┐  │ [AMB]                  ││
+ * │  │ [🔴 TAKEOVER] [🟡 MERGE]   │  │ [ L ] [ R ]            ││
+ * │  └────────────────────────────┘  └────────────────────────┘│
+ * │                                  [ CANCEL ]  [ CREATE ]     │
  * └──────────────────────────────────────────────────────────────┘
+ * ⚒️ WAVE 7749.32: ODD/EVN purged. CTR→STR. Mix Bus simplified to
+ * TAKEOVER/MERGE. Beam + Atmosphere categories added.
  * 
  * NO MOCKS. NO DEMOS. REAL FILE CREATION.
  * 
@@ -36,13 +39,15 @@ import type { CognitiveDNA, SimulationMeta } from '../../../core/arsenal/lfxType
 import { DEFAULT_COGNITIVE_DNA, DEFAULT_SIMULATION_META } from '../../../core/hephaestus/defaults'
 import { DEFAULT_PHASE_CONFIG_PRO } from '../../../core/hephaestus/phase/PhaseConfigPro'
 import { SmartZoneSelector } from './SmartZoneSelector'
-import { 
-  IntensityIcon, 
-  ColorIcon, 
-  PositionIcon, 
-  BeamIcon, 
+import {
+  IntensityIcon,
+  ColorIcon,
+  PositionIcon,
+  BeamIcon,
   BrainNeuralIcon,
   HephLogoIcon,
+  LaserIcon,
+  SmokeIcon,
 } from '../../icons/LuxIcons'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -70,6 +75,9 @@ const DEFAULT_PARAMS_BY_CATEGORY: Record<EffectCategory, HephParamId[]> = {
   movement: ['pan', 'tilt'],
   optics: ['zoom', 'focus', 'iris'],
   composite: ['intensity', 'color', 'pan', 'tilt'],
+  // ⚒️ WAVE 7749.32: Laser beam geometry + atmosphere fluids (Aether Agnostic §1.2)
+  beam: ['scale_x', 'scale_y', 'gobo_rotation'],
+  atmosphere: ['smoke_pump', 'smoke_density', 'fan_speed'],
 }
 
 /**
@@ -116,6 +124,15 @@ const DEFAULT_BLEND_MODE_BY_PARAM: Record<HephParamId, BlendMode> = {
   globalComp: 'replace',
   width: 'replace',
   direction: 'replace',
+  // WAVE 7749.29: Laser beam geometry + atmosphere fluids — LTP/replace (Aether Agnostic §1.2)
+  scale_x: 'replace',
+  scale_y: 'replace',
+  rot_x: 'replace',
+  rot_y: 'replace',
+  gobo_rotation: 'replace',
+  smoke_pump: 'replace',
+  smoke_density: 'replace',
+  fan_speed: 'replace',
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -123,18 +140,23 @@ const DEFAULT_BLEND_MODE_BY_PARAM: Record<HephParamId, BlendMode> = {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const CATEGORY_OPTIONS: { value: EffectCategory; label: string; icon: React.ReactNode; desc: string }[] = [
-  { value: 'physical',  label: 'Physical',  icon: <IntensityIcon size={20} color="#fbbf24" />,   desc: 'Intensity, Strobe' },
-  { value: 'color',     label: 'Color',     icon: <ColorIcon size={20} color="#a855f7" />,       desc: 'Chromatic' },
-  { value: 'movement',  label: 'Movement',  icon: <PositionIcon size={20} color="#3b82f6" />,    desc: 'Pan, Tilt' },
-  { value: 'optics',    label: 'Optics',    icon: <BeamIcon size={20} color="#14b8a6" />,        desc: 'Zoom, Focus' },
-  { value: 'composite', label: 'Composite', icon: <BrainNeuralIcon size={20} color="#f43f5e" />, desc: 'Multi-param' },
+  { value: 'physical',    label: 'Physical',    icon: <IntensityIcon size={20} color="#fbbf24" />,   desc: 'Intensity, Strobe' },
+  { value: 'color',       label: 'Color',       icon: <ColorIcon size={20} color="#a855f7" />,       desc: 'Chromatic' },
+  { value: 'movement',    label: 'Movement',    icon: <PositionIcon size={20} color="#3b82f6" />,    desc: 'Pan, Tilt' },
+  { value: 'optics',      label: 'Optics',      icon: <BeamIcon size={20} color="#14b8a6" />,        desc: 'Zoom, Focus' },
+  { value: 'composite',   label: 'Composite',   icon: <BrainNeuralIcon size={20} color="#f43f5e" />, desc: 'Multi-param' },
+  // ⚒️ WAVE 7749.32: Laser beam geometry + atmosphere fluids
+  { value: 'beam',        label: 'Beam',        icon: <LaserIcon size={20} color="#22d3ee" />,       desc: 'Laser scale, rotate, gobo spin' },
+  { value: 'atmosphere',  label: 'Atmosphere',  icon: <SmokeIcon size={20} color="#84cc16" />,       desc: 'Smoke pump, density, fan' },
 ]
 
+// ⚒️ WAVE 7749.32: Mix Bus simplified to a 2-option toggle.
+// The runtime only distinguishes 'global' (LTP takeover / dictator) from
+// HTP merge ('htp' / 'ambient' / 'accent' are treated identically by the
+// Railway Switch). The data model keeps all 4 values; the UI collapses them.
 const MIXBUS_OPTIONS: { value: HephMixBus; label: string; color: string; desc: string }[] = [
-  { value: 'global',  label: 'Global',  color: MIXBUS_NEON.global,  desc: 'FX1 — Full takeover' },
-  { value: 'htp',     label: 'HTP',     color: MIXBUS_NEON.htp,     desc: 'FX2 — Transitional' },
-  { value: 'ambient', label: 'Ambient', color: MIXBUS_NEON.ambient, desc: 'FX3 — Atmospheric' },
-  { value: 'accent',  label: 'Accent',  color: MIXBUS_NEON.accent,  desc: 'FX4 — Punchy accents' },
+  { value: 'global', label: 'TAKEOVER', color: MIXBUS_NEON.global, desc: 'LTP — Full replacement, nobody overrides (dictator)' },
+  { value: 'htp',    label: 'MERGE',    color: MIXBUS_NEON.htp,    desc: 'HTP — Highest value wins per channel (additive)' },
 ]
 
 // Duration presets (in ms)
@@ -383,9 +405,9 @@ export const NewClipModal: React.FC<NewClipModalProps> = memo(({
               </div>
             </div>
 
-            {/* Mix Bus — V3 execution bus with neon colors */}
+            {/* ⚒️ WAVE 7749.32: Routing — simplified 2-option toggle (TAKEOVER / MERGE) */}
             <div className="heph-bunker__field">
-              <label className="heph-bunker__label">MIX BUS</label>
+              <label className="heph-bunker__label">ROUTING</label>
               <div className="heph-bunker__route-grid">
                 {MIXBUS_OPTIONS.map((bus) => (
                   <button
@@ -394,14 +416,14 @@ export const NewClipModal: React.FC<NewClipModalProps> = memo(({
                     className={`heph-bunker__route-btn ${mixBus === bus.value ? 'heph-bunker__route-btn--active' : ''}`}
                     onClick={() => setMixBus(bus.value)}
                     title={bus.desc}
-                    style={{ 
+                    style={{
                       '--bus-color': bus.color,
                       '--bus-color-dim': `${bus.color}33`,
                       '--bus-color-glow': `${bus.color}40`,
                     } as React.CSSProperties}
                   >
-                    <span 
-                      className="heph-bunker__route-dot" 
+                    <span
+                      className="heph-bunker__route-dot"
                       style={{ background: bus.color }}
                     />
                     <span className="heph-bunker__route-label">{bus.label}</span>

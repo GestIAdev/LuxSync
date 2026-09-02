@@ -173,6 +173,9 @@ export interface TitanStabilizedState {
   
   /** Raw hi-hat energy [0,1] — high band (5-15kHz) */
   hh_energy?: number
+
+  /** WAVE 7749.7: Raw (pre-EMA) snare transient delta — for onset detection */
+  raw_snare_delta?: number
   
   // ═══════════════════════════════════════════════════════════════════════
   // PALETA ACTUAL (para simulaciones)

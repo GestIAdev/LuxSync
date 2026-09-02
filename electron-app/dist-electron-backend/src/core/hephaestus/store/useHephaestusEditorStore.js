@@ -8,6 +8,8 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { produceWithPatches, enablePatches, applyPatches } from 'immer';
+// WAVE 7749.30: Stepped curve defaults for discrete params (gobo/pattern wheels)
+import { isSteppedParam, getSteppedSlots } from '../types';
 import { bakeOverrides } from '../phase/PhaseOverride';
 import { DEFAULT_COGNITIVE_DNA } from '../defaults';
 enablePatches();
@@ -24,6 +26,11 @@ function computeSpatialUnion(tracks) {
     return Array.from(set);
 }
 function buildTrack(id, init) {
+    // WAVE 7749.30: Discrete params (gobo/pattern wheels) default to stepped mode.
+    // This prevents smooth Bezier curves on indexed selectors, which produce
+    // undefined mechanical states and trigger DarkSpin anti-bounce.
+    const stepped = isSteppedParam(init.paramId);
+    const steps = getSteppedSlots(init.paramId);
     return {
         id,
         paramId: init.paramId,
@@ -35,6 +42,7 @@ function buildTrack(id, init) {
             defaultValue: 0,
             keyframes: [],
             mode: 'absolute',
+            ...(stepped && steps > 1 ? { curveMode: 'stepped', quantizeSteps: steps } : {}),
         },
         dimmerScale: init.dimmerScale ?? 1,
         blendMode: init.blendMode ?? 'max',

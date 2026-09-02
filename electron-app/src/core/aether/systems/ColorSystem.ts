@@ -79,6 +79,37 @@ const WHITE_EXTRACTION_THRESHOLD = 0.15
 // wheel slot "suficientemente cercano" (diferencia Euclidiana en RGB).
 const WHEEL_MATCH_THRESHOLD_SQ = 0.01  // 0.1 en cada canal
 
+// WAVE 7749.40: Hue matching constants for perceptual wheel slot selection.
+// Mechanical color wheels are discrete — the hue-based matcher ensures a
+// dark Royal Blue (low luminance, hue ~240°) correctly snaps to the Blue
+// slot rather than a closer-in-RGB-space but wrong-hue Aquamarine slot.
+const WHEEL_HUE_NEUTRAL_THRESHOLD = 0.15  // s below this → treat as neutral/white
+
+// ── WAVE 7749.40: HSL helpers for perceptual wheel matching ───────────────
+// Inline implementations (no import from ColorTranslator to avoid coupling).
+
+function _rgbToHsl(r255: number, g255: number, b255: number): { h: number; s: number; l: number } {
+  const r = r255 / 255
+  const g = g255 / 255
+  const b = b255 / 255
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  const l = (max + min) / 2
+  if (max === min) return { h: 0, s: 0, l }
+  const d = max - min
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+  let h: number
+  if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6
+  else if (max === g) h = ((b - r) / d + 2) / 6
+  else h = ((r - g) / d + 4) / 6
+  return { h: h * 360, s, l }
+}
+
+function _circularHueDiff(h1: number, h2: number): number {
+  const diff = Math.abs(h1 - h2) % 360
+  return diff > 180 ? 360 - diff : diff
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // COLOR SYSTEM
 // ═══════════════════════════════════════════════════════════════════════════
@@ -341,9 +372,13 @@ export class ColorSystem
   /**
    * Encuentra el slot de rueda de colores más cercano al target RGB.
    *
-   * Algoritmo: nearest-neighbor por distancia Euclidiana en espacio RGB.
-   * (Suficiente para aproximaciones de show; una implementación Lab
-   * más precisa puede sustituir esto en el futuro sin cambiar la interfaz.)
+   * WAVE 7749.40: Algoritmo perceptual hue-based.
+   * - Si el target es cromático (s > 0.15): matching por hue circular,
+   *   con un penalty por diferencia de luminancia para preferir slots
+   *   del mismo brillo. Un Royal Blue oscuro (hue ~246°) ahora coincide
+   *   con Blue (hue 240°) en vez de Aquamarine (también 240° pero más oscuro).
+   * - Si el target es neutro (s ≤ 0.15): busca el slot Open/White
+   *   (el de menor saturación).
    *
    * @returns Valor DMX del slot más cercano, normalizado (0-1).
    */
@@ -352,23 +387,43 @@ export class ColorSystem
     node: IColorNodeData,
   ): number {
     const slots = node.colorWheel!.slots
-    let bestDmx  = slots[0]!.dmxValue
-    let bestDistSq = Number.MAX_VALUE
+    if (slots.length === 0) return 0
+
+    // Convert target to HSL
+    const targetHsl = _rgbToHsl(target.r, target.g, target.b)
+    const targetIsChromatic = targetHsl.s > WHEEL_HUE_NEUTRAL_THRESHOLD
+
+    let bestDmx   = slots[0]!.dmxValue
+    let bestScore = Number.MAX_VALUE
 
     for (let i = 0; i < slots.length; i++) {
-      const slot    = slots[i]!
-      const sr      = slot.previewRgb.r / 255
-      const sg      = slot.previewRgb.g / 255
-      const sb      = slot.previewRgb.b / 255
-      const dr      = target.r - sr
-      const dg      = target.g - sg
-      const db      = target.b - sb
-      const distSq  = dr * dr + dg * dg + db * db
+      const slot      = slots[i]!
+      const slotHsl   = _rgbToHsl(slot.previewRgb.r, slot.previewRgb.g, slot.previewRgb.b)
+      const slotIsChromatic = slotHsl.s > WHEEL_HUE_NEUTRAL_THRESHOLD
 
-      if (distSq < bestDistSq) {
-        bestDistSq = distSq
-        bestDmx    = slot.dmxValue
-        if (distSq < WHEEL_MATCH_THRESHOLD_SQ) break  // suficientemente bueno
+      let score: number
+
+      if (targetIsChromatic && slotIsChromatic) {
+        // ── Chromatic target vs chromatic slot: hue-based matching ──────
+        // Primary: circular hue difference (0-180°)
+        // Secondary: luminance difference penalty (weighted lower)
+        const hueDiff = _circularHueDiff(targetHsl.h, slotHsl.h)
+        const lumDiff = Math.abs(targetHsl.l - slotHsl.l)
+        // Hue is dominant; luminance breaks ties between same-hue slots
+        // (e.g. Blue #0000ff vs Aquamarine #000080, both hue 240°)
+        score = hueDiff + lumDiff * 30  // lumDiff weighted at 30° per 0.5 luminance
+      } else if (!targetIsChromatic && !slotIsChromatic) {
+        // ── Neutral target vs neutral slot (Open/White): luminance match ──
+        score = Math.abs(targetHsl.l - slotHsl.l) * 180
+      } else {
+        // ── Mismatched chromaticity: heavy penalty ──────────────────────
+        // Chromatic target vs neutral slot, or neutral target vs chromatic slot
+        score = 180 + Math.abs(targetHsl.l - slotHsl.l) * 30
+      }
+
+      if (score < bestScore) {
+        bestScore = score
+        bestDmx   = slot.dmxValue
       }
     }
 

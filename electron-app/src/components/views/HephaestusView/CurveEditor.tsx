@@ -32,6 +32,28 @@ import type { HephCurve, HephInterpolation, HephAudioBinding, HephKeyframe } fro
 import { KeyframeContextMenu, BackgroundContextMenu, MultiSelectionContextMenu } from './KeyframeContextMenu'
 
 // ═══════════════════════════════════════════════════════════════════════════
+// WAVE 7749.30: DISCRETE STEPPING HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Quantizes a 0-1 normalized value to the nearest discrete step.
+ * E.g. quantizeStepped(0.42, 8) → 0.428571... (3/7).
+ * Returns the input unchanged if steps <= 1.
+ */
+function quantizeStepped(normalized: number, steps: number): number {
+  if (steps <= 1) return normalized
+  const slot = Math.round(normalized * (steps - 1))
+  return slot / (steps - 1)
+}
+
+/**
+ * Returns true if the curve is in stepped mode with valid quantizeSteps.
+ */
+function isSteppedCurve(curve: HephCurve): boolean {
+  return curve.curveMode === 'stepped' && (curve.quantizeSteps ?? 0) > 1
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -172,15 +194,41 @@ function buildCurvePath(
   const kfs = curve.keyframes
   if (kfs.length === 0) return ''
 
-  let path = `M ${toX(kfs[0].timeMs)} ${toY(kfs[0].value)}`
+  // ⚒️ WAVE 7749.30: Stepped curves render as staircases (hold-style).
+  // Each keyframe value is quantized to the nearest discrete slot, and the
+  // segment is drawn as horizontal-then-vertical, regardless of the
+  // interpolation field. This physically prevents smooth Bezier on gobo wheels.
+  const stepped = isSteppedCurve(curve)
+  const steps = curve.quantizeSteps ?? 0
+  const [rangeMin, rangeMax] = curve.range
+  const rangeSpan = rangeMax - rangeMin || 1
+
+  // For stepped curves, quantize the y-value to the nearest slot
+  const toYStepped = (value: number | { h: number; s: number; l: number }): number => {
+    if (typeof value !== 'number') return toY(value)
+    const normalized = (value - rangeMin) / rangeSpan
+    const quantized = quantizeStepped(normalized, steps)
+    return toY(rangeMin + quantized * rangeSpan)
+  }
+
+  const yFn = stepped ? toYStepped : toY
+
+  let path = `M ${toX(kfs[0].timeMs)} ${yFn(kfs[0].value)}`
 
   for (let i = 0; i < kfs.length - 1; i++) {
     const kf0 = kfs[i]
     const kf1 = kfs[i + 1]
     const x0 = toX(kf0.timeMs)
-    const y0 = toY(kf0.value)
+    const y0 = yFn(kf0.value)
     const x1 = toX(kf1.timeMs)
-    const y1 = toY(kf1.value)
+    const y1 = yFn(kf1.value)
+
+    if (stepped) {
+      // Staircase: horizontal at kf0 level, then vertical at kf1 time.
+      // This is the discrete stepping visual — no smooth interpolation.
+      path += ` L ${x1} ${y0} L ${x1} ${y1}`
+      continue
+    }
 
     switch (kf0.interpolation) {
       case 'hold':
@@ -450,6 +498,17 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
     return lines
   }, [rangeMin, rangeSpan])
 
+  // ⚒️ WAVE 7749.30: Step grid lines for stepped curves — one line per discrete slot
+  const steppedGridLines = useMemo(() => {
+    if (!isSteppedCurve(curve)) return null
+    const steps = curve.quantizeSteps ?? 0
+    const lines: number[] = []
+    for (let i = 0; i < steps; i++) {
+      lines.push(rangeMin + (i / (steps - 1)) * rangeSpan)
+    }
+    return lines
+  }, [curve, rangeMin, rangeSpan])
+
   // ── Color preview strip segments (color curves only) ──
   const STRIP_HEIGHT = 16
   const colorStripSegments = useMemo(() => {
@@ -616,9 +675,15 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
     const timeMs = Math.max(0, Math.min(fromX(pt.x), durationMs))
     const addRangeMin = isColorCurve ? 0 : rangeMin
     const addRangeMax = isColorCurve ? 1 : rangeMax
-    const value = Math.max(addRangeMin, Math.min(fromY(pt.y), addRangeMax))
+    let value = Math.max(addRangeMin, Math.min(fromY(pt.y), addRangeMax))
+    // ⚒️ WAVE 7749.30: Snap to nearest discrete step for stepped curves
+    if (isSteppedCurve(curve)) {
+      const steps = curve.quantizeSteps ?? 0
+      const normalized = (value - addRangeMin) / (addRangeMax - addRangeMin || 1)
+      value = addRangeMin + quantizeStepped(normalized, steps) * (addRangeMax - addRangeMin || 1)
+    }
     onKeyframeAdd(Math.round(timeMs), parseFloat(value.toFixed(4)))
-  }, [getSVGPoint, fromX, fromY, durationMs, rangeMin, rangeMax, onKeyframeAdd, isColorCurve])
+  }, [getSVGPoint, fromX, fromY, durationMs, rangeMin, rangeMax, onKeyframeAdd, isColorCurve, curve])
 
   // ── Click on empty space: Deselect ──
   // NOTE: Keyframes call e.stopPropagation(), so clicks that reach the SVG
@@ -820,7 +885,14 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
         const dragRangeMax = isColorCurve ? 1 : rangeMax
         const deltaYVal = -((pt.y - drag.startY) / plotH) * dragRangeSpan
         let newTimeMs = Math.max(0, Math.min(drag.startTimeMs + deltaXMs, durationMs))
-        const newValue = Math.max(dragRangeMin, Math.min(drag.startValue + deltaYVal, dragRangeMax))
+        let newValue = Math.max(dragRangeMin, Math.min(drag.startValue + deltaYVal, dragRangeMax))
+        // ⚒️ WAVE 7749.30: Snap to nearest discrete step for stepped curves.
+        // This physically prevents non-integer values on gobo/pattern wheels.
+        if (isSteppedCurve(curve)) {
+          const steps = curve.quantizeSteps ?? 0
+          const normalized = (newValue - dragRangeMin) / (dragRangeSpan || 1)
+          newValue = dragRangeMin + quantizeStepped(normalized, steps) * (dragRangeSpan || 1)
+        }
 
         // ⚒️ WAVE 2043.4: MAGNETO — Snap to beat grid (unless Shift is held)
         let didSnap = false
@@ -959,7 +1031,7 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
       window.removeEventListener('mousemove', handleMouseMove)
       window.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [drag, plotW, plotH, visibleDurationMs, rangeSpan, rangeMin, rangeMax, durationMs, curve.keyframes, toX, toY, onKeyframeMove, onBezierHandleMove, getSVGPoint, onMultiSelect, onKeyframeSelect, onBatchKeyframeMove, selectedIndices, snapEnabled, findNearestBeatGrid, onScrub, fromX, onDragEnd, isColorCurve])
+  }, [drag, plotW, plotH, visibleDurationMs, rangeSpan, rangeMin, rangeMax, durationMs, curve, toX, toY, onKeyframeMove, onBezierHandleMove, getSVGPoint, onMultiSelect, onKeyframeSelect, onBatchKeyframeMove, selectedIndices, snapEnabled, findNearestBeatGrid, onScrub, fromX, onDragEnd, isColorCurve])
 
   // ── Wheel: Zoom ──
   const handleWheel = useCallback((e: React.WheelEvent) => {
@@ -1157,6 +1229,23 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
           )
         })}
 
+        {/* ═══ ⚒️ WAVE 7749.30: STEP GRID LINES — discrete slot boundaries for stepped curves ═══ */}
+        {steppedGridLines && steppedGridLines.map((v, i) => {
+          const y = toY(v)
+          return (
+            <line
+              key={`step-grid-${i}`}
+              x1={PADDING.left}
+              y1={y}
+              x2={PADDING.left + plotW}
+              y2={y}
+              stroke="rgba(0,255,136,0.15)"
+              strokeWidth="1"
+              strokeDasharray="4,4"
+            />
+          )
+        })}
+
         {/* ═══ ⚒️ WAVE 2043.6: METRONOME — MUSICAL GRID (replaces arbitrary time grid) ═══ */}
         {/* ⚒️ WAVE 2043.7: SHEET MUSIC — Musical notation + visual hierarchy */}
         
@@ -1261,7 +1350,9 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
         />
 
         {/* ═══ BEZIER HANDLES ═══ */}
+        {/* ⚒️ WAVE 7749.30: Hide bezier handles for stepped curves — no smooth interpolation */}
         {curve.keyframes.map((kf, i) => {
+          if (isSteppedCurve(curve)) return null
           if (kf.interpolation !== 'bezier' || i >= curve.keyframes.length - 1) return null
           const nextKf = curve.keyframes[i + 1]
           const handles = kf.bezierHandles ?? [0.42, 0, 0.58, 1]

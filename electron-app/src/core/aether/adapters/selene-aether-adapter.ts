@@ -206,8 +206,14 @@ export class SeleneAetherAdapter {
     mergeStrategy: 'LTP',
   }
 
-  /** Scratch para canales STROBE (strobeRate, shutter) */
-  private readonly _strobeValues: Record<string, number> = { strobeRate: 0, shutter: 0 }
+  /** Scratch para canales STROBE (strobe, strobeRate, shutter) */
+  // ⚒️ WAVE 7749.35: DUAL-ALIAS — los perfiles de fixture declaran chDef.type
+  // indistintamente como 'strobe' o 'strobeRate'. Escribir AMBOS aliases
+  // garantiza que el NodeResolver encuentre el canal sin importar cómo se
+  // declare en el perfil. Sin esto, los fixtures clásicos con chDef.type='strobe'
+  // pierden el valor y el strobe llega a 0 (o solo a mitad por L0 physics).
+  // Espejo del WAVE 4853 FIX-D del HephaestusAetherAdapter.
+  private readonly _strobeValues: Record<string, number> = { strobe: 0, strobeRate: 0, shutter: 0 }
   private readonly _strobeScratch: {
     nodeId: NodeId
     values: Record<string, number>
@@ -546,6 +552,8 @@ export class SeleneAetherAdapter {
     const scratch = this._strobeScratch
     const vals    = this._strobeValues
 
+    // ⚒️ WAVE 7749.35: DUAL-ALIAS — escribir AMBOS 'strobe' y 'strobeRate'
+    vals.strobe     = strobeRate
     vals.strobeRate = strobeRate
     vals.shutter    = shutter
     scratch.confidence = modifier.confidence
@@ -722,6 +730,12 @@ export class SeleneAetherAdapter {
     const scratch = this._strobeScratch
     const vals    = this._strobeValues
 
+    // ⚒️ WAVE 7749.35: DUAL-ALIAS — escribir AMBOS 'strobe' y 'strobeRate'
+    // para que el NodeResolver encuentre el canal sin importar si el perfil
+    // declara chDef.type='strobe' o 'strobeRate'. Sin el alias 'strobe',
+    // los fixtures clásicos (Pars, 7R) no reciben el valor y el strobe
+    // solo llega a mitad intensidad (por L0 physics que sí escribe ambos).
+    vals.strobe          = strobeRate
     vals.strobeRate      = strobeRate
     vals.shutter         = 1.0
     scratch.confidence   = confidence

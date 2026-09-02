@@ -31,18 +31,22 @@
  * Hephaestus y el Arsenal usan el mismo tipo.
  * 
  * EJES DE CLASIFICACIÓN:
- * - physical:  Intensidad lumínica (dimmer, strobe) — HTP merge
- * - color:     Cromático (HSL, white, amber) — Color blending
- * - movement:  Posicional (pan, tilt) — Position merge
- * - optics:    Óptica de haz (zoom, focus, iris, gobo, prism) — Beam shaping
- * - composite: Multi-parámetro (toca 2+ categorías) — Full merge
+ * - physical:    Intensidad lumínica (dimmer, strobe) — HTP merge
+ * - color:       Cromático (HSL, white, amber) — Color blending
+ * - movement:    Posicional (pan, tilt) — Position merge
+ * - optics:      Óptica de haz (zoom, focus, iris, gobo, prism) — Beam shaping
+ * - composite:   Multi-parámetro (toca 2+ categorías) — Full merge
+ * - beam:        Laser beam geometry (scale_x/y, rot_x/y, gobo_rotation) — WAVE 7749.32
+ * - atmosphere:  Fluids (smoke_pump, smoke_density, fan_speed) — WAVE 7749.32
  */
-export type EffectCategory = 
+export type EffectCategory =
   | 'physical'    // Afecta dimmer/strobe (HTP - brilla por encima de todo)
   | 'color'       // Afecta color/saturación
   | 'movement'    // Afecta pan/tilt
   | 'optics'      // Afecta zoom/focus/iris/gobo/prism (WAVE 2040.9a)
   | 'composite'   // Multi-parámetro complejo (WAVE 2040.9a)
+  | 'beam'        // Laser beam geometry — scale/rotate/gobo_spin (WAVE 7749.32)
+  | 'atmosphere'  // Fluids — smoke/fan (WAVE 7749.32)
 
 /**
  * Fase actual del efecto

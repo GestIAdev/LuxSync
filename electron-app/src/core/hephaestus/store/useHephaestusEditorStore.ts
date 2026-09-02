@@ -17,6 +17,8 @@ import type {
   HephParamId,
   ZoneTarget,
 } from '../types'
+// WAVE 7749.30: Stepped curve defaults for discrete params (gobo/pattern wheels)
+import { isSteppedParam, getSteppedSlots } from '../types'
 import type { PhaseConfigPro } from '../phase/PhaseConfigPro'
 import { bakeOverrides, type PhaseOverride, type PhaseOverrideMap } from '../phase/PhaseOverride'
 import type { CognitiveDNA } from '../../arsenal/lfxTypes'
@@ -162,6 +164,11 @@ function buildTrack(
   id: string,
   init: Partial<HephTrack> & { paramId: HephParamId; zones: ZoneTarget[] },
 ): HephTrack {
+  // WAVE 7749.30: Discrete params (gobo/pattern wheels) default to stepped mode.
+  // This prevents smooth Bezier curves on indexed selectors, which produce
+  // undefined mechanical states and trigger DarkSpin anti-bounce.
+  const stepped = isSteppedParam(init.paramId)
+  const steps = getSteppedSlots(init.paramId)
   return {
     id,
     paramId: init.paramId,
@@ -173,6 +180,7 @@ function buildTrack(
       defaultValue: 0,
       keyframes: [],
       mode: 'absolute',
+      ...(stepped && steps > 1 ? { curveMode: 'stepped' as const, quantizeSteps: steps } : {}),
     },
     dimmerScale: init.dimmerScale ?? 1,
     blendMode: init.blendMode ?? 'max',

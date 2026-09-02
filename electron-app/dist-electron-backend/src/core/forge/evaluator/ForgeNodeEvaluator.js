@@ -125,8 +125,9 @@ export class ForgeNodeEvaluator {
             if (out.is16bit) {
                 const raw16 = Math.round(normalized * 65535);
                 dmxBuffer[bufIdx] = (raw16 >> 8) & 0xFF; // coarse (MSB)
-                const fineIdx = bufIdx + 1;
-                if (fineIdx < DMX_UNIVERSE_SIZE) {
+                // ⚒️ WAVE 7749.35: Use fineDmxOffset instead of bufIdx+1.
+                const fineIdx = baseAddr + (out.fineDmxOffset ?? out.dmxOffset + 1);
+                if (fineIdx >= 0 && fineIdx < DMX_UNIVERSE_SIZE) {
                     dmxBuffer[fineIdx] = raw16 & 0xFF; // fine (LSB)
                 }
             }

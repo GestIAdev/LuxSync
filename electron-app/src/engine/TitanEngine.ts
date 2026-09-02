@@ -157,6 +157,8 @@ export interface EngineAudioMetrics {
   // WAVE 8008: Rhythmic percussion isolated energies from GodEarFFT
   snare_energy?: number  // 0-1 — geometric mean of body (150-250Hz) + crack (2-5kHz)
   hh_energy?: number     // 0-1 — high band (5-15kHz)
+  // WAVE 7749.7: Raw transient delta for onset detection (pre-EMA)
+  raw_snare_delta?: number
   // 🌊 WAVE 8003: Photon block — strobe inputs + wallIntensity from GodEarFFT
   photon?: GodEarPhoton
 }
@@ -801,6 +803,10 @@ export class TitanEngine extends EventEmitter {
                         vibeProfile.id.toLowerCase().includes('ambient') ||
                         vibeProfile.id.toLowerCase().includes('jazz')
     if (isChillVibe) {
+      // ⚒️ WAVE 7749.38: Sincronizar GrandMaster Speed del CommandDeck al
+      // ChillAmbientEngine antes del tick. Así el slider controla la velocidad
+      // de todos los osciladores del chill (morph, ola, movers glaciares).
+      chillAmbientEngine.setSpeedMultiplier(vibeMovementManager.getGlobalSpeedMultiplier())
       const chillFrame = chillAmbientEngine.tick()
       const mf = chillFrame.morphFactor
       // morphFactor bajo (0.20 = abismo) → hueInfluence 260° (azul profundo/índigo)
@@ -914,6 +920,8 @@ export class TitanEngine extends EventEmitter {
         // 🥁 WAVE 8008: Rhythmic percussion isolated energies
         snare_energy: audio.snare_energy,
         hh_energy: audio.hh_energy,
+        // WAVE 7749.7: Raw transient delta for onset detection (pre-EMA)
+        raw_snare_delta: audio.raw_snare_delta,
         // 🌊 WAVE 8003: Photon block — strobe inputs + wallIntensity
         photon: audio.photon,
       },
@@ -2060,6 +2068,8 @@ export class TitanEngine extends EventEmitter {
       crestFactor: Math.max(0, safeNumber(src.crestFactor, 0)),
       snare_energy: clamp01(src.snare_energy, 0),
       hh_energy: clamp01(src.hh_energy, 0),
+      // WAVE 7749.7: Raw transient delta — NOT clamped (can be negative for decay)
+      raw_snare_delta: safeNumber(src.raw_snare_delta, 0),
       photon: src.photon,
     }
   }

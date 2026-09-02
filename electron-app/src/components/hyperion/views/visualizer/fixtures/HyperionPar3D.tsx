@@ -58,7 +58,6 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
   const lensMaterialRef = useRef<THREE.MeshBasicMaterial>(null)
   const haloMaterialRef = useRef<THREE.MeshBasicMaterial>(null)
   const haloOuterRef = useRef<THREE.MeshBasicMaterial>(null)
-  const pointLightRef = useRef<THREE.PointLight>(null)
 
   const { id, selected, hasOverride } = fixture
 
@@ -103,7 +102,6 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
       }
       if (haloMaterialRef.current) haloMaterialRef.current.opacity = 0
       if (haloOuterRef.current) haloOuterRef.current.opacity = 0
-      if (pointLightRef.current) pointLightRef.current.intensity = 0
       return
     }
 
@@ -145,11 +143,12 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
       haloOuterRef.current.opacity = isOn ? liveIntensity * 0.25 : 0
     }
 
-    // PointLight — ilumina el entorno cercano (paredes, suelo)
-    if (pointLightRef.current) {
-      pointLightRef.current.intensity = isOn ? liveIntensity * 2.5 : 0
-      pointLightRef.current.color.copy(liveColor.current)
-    }
+    // 🩸 WAVE 7749.25: PER-FIXTURE POINTLIGHT EXTERMINATED.
+    // Previously each PAR/strobe/generic emitted a real THREE.PointLight.
+    // At warehouse scale (100-200 fixtures) this produced 100-200 dynamic
+    // lights → O(N_lights × N_fragments) fragment shader cost → GPU thermal
+    // throttle. The halo (additive sphere) + HDR lens + Bloom post-processing
+    // already sell the glow without real lighting. Fragment cost is now O(1).
   })
 
   // ── Event Handlers ────────────────────────────────────────────────────────
@@ -217,15 +216,10 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
         />
       </mesh>
 
-      {/* 🔥 WAVE 2212: POINT LIGHT — ilumina el entorno (suelo, paredes cercanas) */}
-      <pointLight
-        ref={pointLightRef}
-        position={[0, -0.1, 0]}
-        intensity={0}
-        distance={3.5}
-        decay={2}
-        color={fixture.color}
-      />
+      {/* 🩸 WAVE 7749.25: PER-FIXTURE POINTLIGHT REMOVED — GPU thermal fix.
+          The real THREE.PointLight that lived here was the L2 GPU melter.
+          Glow is now carried purely by the additive halo spheres + HDR lens
+          + NeonBloom post-processing. Fragment shader cost: O(1) lights. */}
 
       {/* Selection ring */}
       {selected && (

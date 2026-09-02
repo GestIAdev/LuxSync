@@ -166,7 +166,6 @@ function detectFixtureType(oflJson: Record<string, any>, channels: readonly Fixt
 function extractWheels(oflJson: Record<string, any>, channels: readonly FixtureChannel[]): IForgeWheels | null {
   const wheel = oflJson?.wheels?.['Color Wheel']
   const slots: any[] = Array.isArray(wheel?.slots) ? wheel.slots : []
-  const colorSlots = slots.filter((s: any) => Array.isArray(s?.colors) && s.colors.length > 0)
 
   const hasColorWheelChannel = channels.some(c => c.type === 'color_wheel')
   const hasRgb =
@@ -179,22 +178,68 @@ function extractWheels(oflJson: Record<string, any>, channels: readonly FixtureC
     channels.some(c => c.type === 'magenta') &&
     channels.some(c => c.type === 'yellow')
 
+  // WAVE 7749.40: Count ALL slots (including Open) for engine detection.
+  // Previously only colorSlots were counted, causing wheel fixtures with
+  // an Open slot + few colors to be misclassified as 'hybrid' or 'none'.
+  const hasAnySlots = slots.length > 0
+
   let colorEngine: ColorEngineType = 'none'
   if (hasRgb && hasW) colorEngine = 'rgbw'
   else if (hasRgb) colorEngine = 'rgb'
   else if (hasCmy) colorEngine = 'cmy'
-  else if (hasColorWheelChannel && colorSlots.length > 0) colorEngine = 'wheel'
+  else if (hasColorWheelChannel && hasAnySlots) colorEngine = 'wheel'
   else if (hasRgb || hasCmy || hasColorWheelChannel) colorEngine = 'hybrid'
 
-  if (colorSlots.length === 0 && colorEngine === 'none') return null
+  if (slots.length === 0 && colorEngine === 'none') return null
 
-  const colors: WheelColor[] = colorSlots.map((s: any, i: number) => {
-    const hex = String(s.colors[0])
-    return {
-      dmx: Math.round((i / Math.max(1, colorSlots.length)) * 255),
-      name: s.name || s.type || 'Color',
-      rgb: hexToRgb(hex),
+  // ── WAVE 7749.40: Real DMX mapping from availableChannels ───────────────
+  // Build slotNumber → center DMX lookup from the OFL capabilities array.
+  // The OFL spec stores per-slot DMX ranges in availableChannels[channelName]
+  // .capabilities[], with entries like:
+  //   { dmxRange: [8, 15], type: "WheelSlot", slotNumber: 2 }
+  // We compute the center of each range as the slot's DMX value.
+  // Only WheelSlot entries are mapped; WheelRotation entries are skipped.
+  const wheelChannelDef = oflJson?.availableChannels?.['Color Wheel']
+  const wheelCapabilities: any[] = Array.isArray(wheelChannelDef?.capabilities)
+    ? wheelChannelDef.capabilities
+    : []
+
+  const slotDmxLookup = new Map<number, number>() // slotNumber (1-based) → center DMX
+  for (const cap of wheelCapabilities) {
+    if (cap?.type === 'WheelSlot' && typeof cap.slotNumber === 'number' && Array.isArray(cap.dmxRange)) {
+      const [min, max] = cap.dmxRange
+      if (typeof min === 'number' && typeof max === 'number') {
+        slotDmxLookup.set(cap.slotNumber, Math.round((min + max) / 2))
+      }
     }
+  }
+
+  // WAVE 7749.40: Include ALL slots — do NOT filter out Open.
+  // Open slots are assigned white RGB so they can be targeted mathematically
+  // by the neutral fallback in ColorTranslator.
+  const colors: WheelColor[] = slots.map((s: any, i: number) => {
+    const slotNumber = i + 1 // OFL slots are 1-indexed
+    const hasColors = Array.isArray(s?.colors) && s.colors.length > 0
+    const isOpen = !hasColors || s?.type === 'Open'
+
+    let rgb: { r: number; g: number; b: number }
+    let name: string
+
+    if (isOpen) {
+      // Open slot: white/transparent — targetable by neutral fallback
+      rgb = { r: 255, g: 255, b: 255 }
+      name = s?.name || 'Open'
+    } else {
+      const hex = String(s.colors[0])
+      rgb = hexToRgb(hex)
+      name = s.name || s.type || 'Color'
+    }
+
+    // Use real DMX from capabilities if available; fall back to linear spread
+    // only if the OFL fixture lacks capability ranges (rare/legacy).
+    const dmx = slotDmxLookup.get(slotNumber) ?? Math.round((i / Math.max(1, slots.length)) * 255)
+
+    return { dmx, name, rgb }
   })
 
   return {

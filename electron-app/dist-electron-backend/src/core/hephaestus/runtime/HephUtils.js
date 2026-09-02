@@ -62,6 +62,9 @@ export function hslToRgb(h, s, l) {
 const DMX_SCALED_PARAMS = new Set([
     'intensity', 'strobe', 'white', 'amber',
     'zoom', 'focus', 'iris', 'gobo1', 'gobo2', 'prism',
+    // WAVE 7749.29: Laser beam geometry + atmosphere fluids (8-bit DMX, Aether Agnostic §1.2)
+    'scale_x', 'scale_y', 'rot_x', 'rot_y', 'gobo_rotation',
+    'smoke_pump', 'smoke_density', 'fan_speed',
 ]);
 /**
  * ⚒️ WAVE 2030.24: 16-bit movement params.

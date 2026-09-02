@@ -153,6 +153,20 @@ export const DEFAULT_PHYSICS_PROFILES = {
         swapPanTilt: false,
         homePosition: { pan: 127, tilt: 127 },
         tiltLimits: { min: 20, max: 200 }
+    },
+    // ⚡ WAVE 7749.29: Galvo — laser galvanometer. Ultra-low inertia: settle ~1ms,
+    // no belt-slip risk (mirror-on-galvo, not 3kg moving head). Effectively unbounded
+    // vs stepper limits; values tuned for crisp scan without mechanical damage.
+    'galvo': {
+        motorType: 'galvo',
+        maxAcceleration: 10000, // °/s² — galvos accelerate near-instantly
+        maxVelocity: 2000, // °/s — ILDA-grade scan rate
+        safetyCap: false, // no mechanical cap needed; retina guard handles safety
+        invertPan: false,
+        invertTilt: false,
+        swapPanTilt: false,
+        homePosition: { pan: 127, tilt: 127 },
+        tiltLimits: { min: 0, max: 255 } // full range — horizon clamp handled by LaserPhysics
     }
 };
 // ═══════════════════════════════════════════════════════════════════════════

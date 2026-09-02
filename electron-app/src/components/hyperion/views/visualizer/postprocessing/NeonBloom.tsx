@@ -65,7 +65,7 @@ export const NeonBloom: React.FC<NeonBloomProps> = ({
         luminanceSmoothing={luminanceSmoothing}
         radius={radius}
         mipmapBlur
-        levels={5}
+        levels={3}
       />
       
       {/* 🎬 VIGNETTE - Subtle edge darkening for cinematic look */}

@@ -5,12 +5,14 @@
  * 
  * Three-tier architecture:
  * ┌─ TARGET (type/scope) ─────────────────────────────────────────┐
- * │ ALL │ MOVERS │ PARS │ AIR │ FRONT │ BACK │ FLOOR │ CENTER    │
+ * │ ALL │ MOVERS │ PARS │ AIR │ FRONT │ BACK │ FLOOR │ STROBE    │
+ * ├─ POSITION (stage zone) ───────────────────────────────────────┤
+ * │ FRONT │ BACK │ FLOOR │ STROBE │ AMBIENT                      │
  * ├─ SIDE (stereo) ───────────────────────────────────────────────┤
  * │ LEFT │ RIGHT                                                  │
- * ├─ PARITY (index-based) ────────────────────────────────────────┤
- * │ ODD │ EVEN                                                    │
  * └───────────────────────────────────────────────────────────────┘
+ * ⚒️ WAVE 7749.32: ODD/EVN purged (semantically wrong — labeled as
+ * parity but mapped to spatial movers-left/movers-right).
  * 
  * Uses LuxIcons exclusively — no generic emoji garbage.
  * 
@@ -66,13 +68,14 @@ const POSITION_TILES: ZoneTile[] = [
 ]
 
 /**
- * Side + Parity tiles — L/R and ODD/EVEN
+ * ⚒️ WAVE 7749.32: Side tiles — L/R only.
+ * ODD/EVN purged: they were labeled as index-parity but mapped to spatial
+ * zones (movers-left/movers-right), which was semantically wrong and confusing.
+ * Granular mover-side targeting remains available via the ZoneMapper/FixtureSelector.
  */
 const MODIFIER_TILES: ZoneTile[] = [
   { id: 'all-left',    label: 'L',    icon: <span className="smart-zone__arrow">◀</span>, row: 'parity' },
   { id: 'all-right',   label: 'R',    icon: <span className="smart-zone__arrow">▶</span>, row: 'parity' },
-  { id: 'movers-left', label: 'ODD',  icon: <span className="smart-zone__parity">①</span>, row: 'parity' },
-  { id: 'movers-right',label: 'EVN',  icon: <span className="smart-zone__parity">②</span>, row: 'parity' },
 ]
 
 const ALL_TILES = [...TARGET_TILES, ...POSITION_TILES, ...MODIFIER_TILES]
@@ -236,9 +239,9 @@ export const SmartZoneSelector: React.FC<SmartZoneSelectorProps> = ({
         </div>
       </div>
 
-      {/* ROW 3: Modifiers (Side + Parity) */}
+      {/* ROW 3: Side (L/R only — ODD/EVN purged WAVE 7749.32) */}
       <div className="smart-zone__row">
-        <span className="smart-zone__row-label">MOD</span>
+        <span className="smart-zone__row-label">SIDE</span>
         <div className="smart-zone__tiles">
           {MODIFIER_TILES.map(tile => (
             <button

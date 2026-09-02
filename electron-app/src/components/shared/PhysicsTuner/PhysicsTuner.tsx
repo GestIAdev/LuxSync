@@ -86,6 +86,13 @@ const MOTOR_TYPE_INFO: Record<MotorType, {
     description: 'Unidentified motor. Use conservative settings.',
     icon: '❓',
     recommendedAccel: 2000
+  },
+  // ⚡ WAVE 7749.29: Galvo — laser galvanometer. Ultra-low inertia, settle ~1ms.
+  'galvo': {
+    label: 'Galvo (Laser)',
+    description: 'Laser galvanometer. Ultra-low inertia, near-instant settle (~1ms). No belt-slip risk.',
+    icon: '⚡',
+    recommendedAccel: 8000
   }
 }
 

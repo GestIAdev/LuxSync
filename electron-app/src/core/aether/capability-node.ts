@@ -85,11 +85,19 @@ export interface INodeChannelDef {
    */
   readonly defaultValue: number
   /**
-   * ¿Es un canal de 16-bit (ocupa 2 slots DMX consecutivos)?
-   * Si true, `dmxOffset` apunta al byte coarse (MSB) y
-   * `dmxOffset + 1` es el byte fine (LSB).
+   * ¿Es un canal de 16-bit (ocupa 2 slots DMX)?
+   * Si true, `dmxOffset` apunta al byte coarse (MSB).
+   * El byte fine (LSB) vive en `fineDmxOffset` (ver abajo).
    */
   readonly is16bit?: boolean
+  /**
+   * ⚒️ WAVE 7749.35: Offset DMX exacto del byte fine (LSB) para canales 16-bit.
+   * NO asume `dmxOffset + 1` — el fine puede estar en cualquier slot
+   * (ej: 7R Panther tiene [pan, tilt, pan_fine, tilt_fine]).
+   * Si undefined, se asume `dmxOffset + 1` (compatibilidad con dimmer_fine
+   * que ya estaba emparejado con el offset adyacente).
+   */
+  readonly fineDmxOffset?: number
   /**
    * Nombre personalizado para canales de tipo `custom`.
    * Ejemplo: "pump", "fan-speed", "spark-rate".

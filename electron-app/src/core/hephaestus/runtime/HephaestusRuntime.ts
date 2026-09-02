@@ -179,6 +179,8 @@ interface ActiveHephClip {
  *   - zoom/focus/iris/gobo1/gobo2/prism → int 0-255 (extended DMX params)
  *   - color → { r, g, b } each 0-255
  *   - speed/width/direction/globalComp → float 0-1 (engine-internal)
+ *   - WAVE 7749.29: scale_x/scale_y/rot_x/rot_y/gobo_rotation → int 0-255 (BEAM, 8-bit DMX)
+ *   - WAVE 7749.29: smoke_pump/smoke_density/fan_speed → int 0-255 (ATMOSPHERE, 4Hz cue)
  */
 export interface HephFixtureOutput {
   fixtureId: string

@@ -133,6 +133,8 @@ export interface SeleneLuxAudioMetrics {
   // WAVE 8008: Rhythmic percussion isolated energies from GodEarFFT
   snare_energy?: number;  // 0-1 — geometric mean of body + crack
   hh_energy?: number;     // 0-1 — high band (5-15kHz)
+  // WAVE 7749.7: Raw transient delta for onset detection (pre-EMA)
+  raw_snare_delta?: number;
 }
 
 /**
@@ -676,6 +678,8 @@ export class SeleneLux {
         // WAVE 8008: Rhythmic percussion isolated energies
         snare_energy: audioMetrics.snare_energy,
         hh_energy: audioMetrics.hh_energy,
+        // WAVE 7749.7: Raw transient delta for onset detection (pre-EMA)
+        raw_snare_delta: audioMetrics.raw_snare_delta,
         // WAVE 8005.2: Photon block for front channel strobe bypass
         photon: audioMetrics.photon,
       };
@@ -1398,6 +1402,8 @@ export class SeleneLux {
       // WAVE 8008: Rhythmic percussion isolated energies — must survive normalization
       snare_energy: clamp01(src.snare_energy, 0),
       hh_energy: clamp01(src.hh_energy, 0),
+      // WAVE 7749.7: Raw transient delta — NOT clamped (can be negative for decay)
+      raw_snare_delta: safeNumber(src.raw_snare_delta, 0),
       photon: src.photon,
     }
   }

@@ -241,8 +241,15 @@ export interface IOutputDmxConfig {
   readonly cellLabel?: string
   /** Default value DMX (0–255) cuando nada está conectado al input */
   readonly defaultDmxValue: number
-  /** ¿Es canal de 16-bit? Si true, ocupa dmxOffset y dmxOffset+1 */
+  /** ¿Es canal de 16-bit? Si true, ocupa dmxOffset y fineDmxOffset */
   readonly is16bit?: boolean
+  /**
+   * ⚒️ WAVE 7749.35: Offset DMX del byte fine (LSB) para canales 16-bit.
+   * Si undefined, se asume dmxOffset + 1 (compatibilidad legacy).
+   * Necesario porque algunos fixtures (7R Panther) tienen layouts no adyacentes:
+   * [pan, tilt, pan_fine, tilt_fine] — pan_fine está en dmxOffset+2, no +1.
+   */
+  readonly fineDmxOffset?: number
   /** ¿Rotación continua? (convención DMX: 0-127 CW, 128 stop, 129-255 CCW) */
   readonly continuousRotation?: boolean
   /**

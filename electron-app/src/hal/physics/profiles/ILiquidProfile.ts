@@ -43,6 +43,19 @@ export interface ILiquidProfile {
   readonly envelopeTreble: LiquidEnvelopeConfig
 
   // ═══════════════════════════════════════════════════════════════
+  // WAVE 7749.27: LASER DOMAIN — Air & Floor zone envelopes.
+  // Optional with fallback defaults in LiquidEngineBase. Profiles that
+  // want genre-specific laser kinematics can override these.
+  // ═══════════════════════════════════════════════════════════════
+
+  /** Air — Aerial laser (treble + ultraAir velocity). Zero-attack, fast decay.
+   *  Default: gateOn 0.35, decayBase 0.08, crushExponent 2.5, boost 4.0. */
+  readonly envelopeAir?: LiquidEnvelopeConfig
+  /** Floor — Ground sweep laser (spectralFlux + bassDelta onset-driven).
+   *  Default: gateOn 0.12, decayBase 0.12, crushExponent 2.0, boost 3.0. */
+  readonly envelopeFloor?: LiquidEnvelopeConfig
+
+  // ═══════════════════════════════════════════════════════════════
   // BACK R: SCHWARZENEGGER — Aislamiento percusivo de agudos
   // rawRight = max(0, treble - mid × percMidSubtract)
   // if (rawRight > percGate) → pow(gated, percExponent) × percBoost
@@ -221,6 +234,12 @@ export interface ILiquidProfile {
    *  Default 0.70 (~15ms half-life). Lower = faster choke. */
   readonly snareChokeRate?: number
 
+  /** WAVE 7749.7: Impulse decay rate per frame. Default 0.04 (96% decay).
+   *  Techno 0.30 — bridges micro-gaps between irregular onsets without
+   *  creating the sawtooth flicker that 0.60 produced.
+   *  Latino 0.15 — fast enough for staccato Latin percussion. */
+  readonly snareImpulseDecay?: number
+
   // ═══════════════════════════════════════════════════════════════
   // WAVE 2488 — DT-02: MORPHOLOGY UNCHAINED
   // El morphFactor normaliza avgMidProfiler a [0,1] usando:
@@ -394,5 +413,7 @@ export interface ILiquidProfile {
     readonly snareVetoFluxKnee?: number
     readonly snareChokeFrames?: number
     readonly snareChokeRate?: number
+    // WAVE 7749.7: Impulse decay (4.1 override)
+    readonly snareImpulseDecay?: number
   }
 }

@@ -97,15 +97,36 @@ const deg2rad = (d) => d * (Math.PI / 180);
 const GLOW_SPRITE_SIZE = 128;
 const BEAM_SPRITE_W = 64;
 const BEAM_SPRITE_H = 256;
-const SPRITE_CACHE_LIMIT = 150;
+// 🩸 WAVE 7749.25: Lowered from 150 → 64. Discrete fixture palettes rarely
+// exceed this; the lower cap bounds per-worker memory so orphaned workers
+// (if any slip past the HMR fix) stay cheap.
+const SPRITE_CACHE_LIMIT = 64;
+// 🩸 WAVE 7749.25: Color quantization step. Rounding RGB to the nearest 8
+// collapses color-fade churn (e.g. a slow ramp 0→255 produces ~32 unique
+// sprites instead of 256). Visually indistinguishable at 8-bit display depth.
+const COLOR_QUANT_STEP = 8;
 const glowSpriteCache = new Map();
 const beamSpriteCache = new Map();
+/**
+ * 🩸 WAVE 7749.25: Quantize RGB to the nearest COLOR_QUANT_STEP boundary.
+ * Reduces unique sprite keys during color fades (256 → ~32 per channel),
+ * preventing the sprite cache from churning through transient colors.
+ */
+function quantizeColor(r, g, b) {
+    return {
+        r: Math.round(r / COLOR_QUANT_STEP) * COLOR_QUANT_STEP,
+        g: Math.round(g / COLOR_QUANT_STEP) * COLOR_QUANT_STEP,
+        b: Math.round(b / COLOR_QUANT_STEP) * COLOR_QUANT_STEP,
+    };
+}
 /**
  * Build a radial gradient glow sprite (white-hot center → color → transparent edge).
  * Cached per color string. Used for both aura and halo (scaled differently).
  */
 function getGlowSprite(r, g, b) {
-    const colorKey = `rgb(${r},${g},${b})`;
+    // 🩸 WAVE 7749.25: Quantize color so fades collapse into fewer cache keys.
+    const q = quantizeColor(r, g, b);
+    const colorKey = `rgb(${q.r},${q.g},${q.b})`;
     const cached = glowSpriteCache.get(colorKey);
     if (cached)
         return cached;
@@ -128,10 +149,10 @@ function getGlowSprite(r, g, b) {
     const grad = sctx.createRadialGradient(cx, cy, 0, cx, cy, cx);
     // White-hot center → solid color → transparent edge
     grad.addColorStop(0.0, `rgba(255, 255, 255, 1.0)`);
-    grad.addColorStop(0.15, `rgba(${r}, ${g}, ${b}, 0.9)`);
-    grad.addColorStop(0.40, `rgba(${r}, ${g}, ${b}, 0.4)`);
-    grad.addColorStop(0.70, `rgba(${r}, ${g}, ${b}, 0.10)`);
-    grad.addColorStop(1.0, `rgba(${r}, ${g}, ${b}, 0)`);
+    grad.addColorStop(0.15, `rgba(${q.r}, ${q.g}, ${q.b}, 0.9)`);
+    grad.addColorStop(0.40, `rgba(${q.r}, ${q.g}, ${q.b}, 0.4)`);
+    grad.addColorStop(0.70, `rgba(${q.r}, ${q.g}, ${q.b}, 0.10)`);
+    grad.addColorStop(1.0, `rgba(${q.r}, ${q.g}, ${q.b}, 0)`);
     sctx.fillStyle = grad;
     sctx.fillRect(0, 0, GLOW_SPRITE_SIZE, GLOW_SPRITE_SIZE);
     glowSpriteCache.set(colorKey, sprite);
@@ -142,7 +163,9 @@ function getGlowSprite(r, g, b) {
  * Cached per color string. Stamped and rotated/scaled for beam cones.
  */
 function getBeamSprite(r, g, b) {
-    const colorKey = `rgb(${r},${g},${b})`;
+    // 🩸 WAVE 7749.25: Quantize color so fades collapse into fewer cache keys.
+    const q = quantizeColor(r, g, b);
+    const colorKey = `rgb(${q.r},${q.g},${q.b})`;
     const cached = beamSpriteCache.get(colorKey);
     if (cached)
         return cached;
@@ -160,15 +183,37 @@ function getBeamSprite(r, g, b) {
     const sctx = sprite.getContext('2d');
     const grad = sctx.createLinearGradient(0, 0, 0, BEAM_SPRITE_H);
     // Bright at top (fixture source) → transparent at bottom (beam tip)
-    grad.addColorStop(0.0, `rgba(${r}, ${g}, ${b}, 1.0)`);
-    grad.addColorStop(0.15, `rgba(${r}, ${g}, ${b}, 0.85)`);
-    grad.addColorStop(0.50, `rgba(${r}, ${g}, ${b}, 0.40)`);
-    grad.addColorStop(0.85, `rgba(${r}, ${g}, ${b}, 0.08)`);
-    grad.addColorStop(1.0, `rgba(${r}, ${g}, ${b}, 0)`);
+    grad.addColorStop(0.0, `rgba(${q.r}, ${q.g}, ${q.b}, 1.0)`);
+    grad.addColorStop(0.15, `rgba(${q.r}, ${q.g}, ${q.b}, 0.85)`);
+    grad.addColorStop(0.50, `rgba(${q.r}, ${q.g}, ${q.b}, 0.40)`);
+    grad.addColorStop(0.85, `rgba(${q.r}, ${q.g}, ${q.b}, 0.08)`);
+    grad.addColorStop(1.0, `rgba(${q.r}, ${q.g}, ${q.b}, 0)`);
     sctx.fillStyle = grad;
     sctx.fillRect(0, 0, BEAM_SPRITE_W, BEAM_SPRITE_H);
     beamSpriteCache.set(colorKey, sprite);
     return sprite;
+}
+// ═══════════════════════════════════════════════════════════════════════════
+// 🩸 WAVE 7749.25: SPRITE CACHE TEARDOWN — release GPU/CPU memory on SHUTDOWN.
+// Called from the render worker's SHUTDOWN handler so orphaned workers (HMR)
+// don't leak OffscreenCanvas sprite textures. Each sprite holds a GPU texture;
+// .close() releases it synchronously instead of waiting for GC.
+// ═══════════════════════════════════════════════════════════════════════════
+export function disposeFixtureLayerSprites() {
+    for (const sprite of glowSpriteCache.values()) {
+        try {
+            sprite.close();
+        }
+        catch { }
+    }
+    glowSpriteCache.clear();
+    for (const sprite of beamSpriteCache.values()) {
+        try {
+            sprite.close();
+        }
+        catch { }
+    }
+    beamSpriteCache.clear();
 }
 // ═══════════════════════════════════════════════════════════════════════════
 // INDIVIDUAL FIXTURE RENDER FUNCTIONS

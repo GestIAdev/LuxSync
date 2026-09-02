@@ -26,6 +26,42 @@
 import { LiquidEnvelope } from './LiquidEnvelope';
 import { TECHNO_PROFILE } from './profiles/techno';
 // ═══════════════════════════════════════════════════════════════════════════
+// 🩸 WAVE 7749.27: LASER DOMAIN — Fallback envelope configs for Air & Floor.
+// Used when a profile does not define envelopeAir / envelopeFloor.
+// These give the zones their "light-saber" identity: zero-attack, fast decay,
+// high gate, high crush. See WAVE 7749.26 audit for the kinematic rationale.
+// ═══════════════════════════════════════════════════════════════════════════
+const DEFAULT_ENVELOPE_AIR = {
+    name: 'Air (Aerial Laser)',
+    gateOn: 0.35, // High — only sharp HF transients pass (hi-hats blocked)
+    boost: 4.0, // Compensate for high gate
+    crushExponent: 2.5, // Convex — silence stays black, only peaks ignite
+    decayBase: 0.08, // Fast cut ~45-65ms — the saber retracts
+    decayRange: 0.03, // Narrow morph range — laser identity consistent across genres
+    maxIntensity: 1.0, // Full brightness — lasers are binary
+    squelchBase: 0.02, // Minimal — let the gate discriminate
+    squelchSlope: 0.0, // No morph-dependent squelch
+    ghostCap: 0.0, // Absolute black between stabs
+    gateMargin: 0.02, // Tight — fast response
+    riseRate: 1.0, // Instantaneous attack — zero-attack is the laser identity
+    attackSlopeMin: 0.02, // Require minimum velocity — filters out slow swells
+};
+const DEFAULT_ENVELOPE_FLOOR = {
+    name: 'Floor (Ground Sweep Laser)',
+    gateOn: 0.12, // Moderate — above spectralFlux baseline (~0.044-0.076), below arpeggio onsets (0.15-0.40)
+    boost: 3.0, // Compensate for moderate gate
+    crushExponent: 2.0, // Convex — only onset spikes sweep the floor
+    decayBase: 0.12, // Fast sweep ~70ms — tiny trail, faster than kick (0.08)
+    decayRange: 0.05, // Narrow — consistent sweep speed
+    maxIntensity: 0.90, // Near-full — slightly dimmer than air (floor lasers less blinding)
+    squelchBase: 0.04, // Low — let gate + crush discriminate
+    squelchSlope: 0.0, // No morph-dependent squelch
+    ghostCap: 0.0, // Absolute black between sweeps
+    gateMargin: 0.015, // Tight — fast response to onsets
+    riseRate: 1.0, // Instantaneous attack — zero-attack laser identity
+    attackSlopeMin: 0.0, // No minimum velocity — spectralFlux already encodes velocity
+};
+// ═══════════════════════════════════════════════════════════════════════════
 // AGC REBOUND — Constante de hardware, invariante entre perfiles
 // ═══════════════════════════════════════════════════════════════════════════
 const RECOVERY_DURATION = 250;
@@ -137,18 +173,16 @@ export class LiquidEngineBase {
         // KICK_COOLDOWN_MS antes de permitir un nuevo impacto. Evita que el tail
         // del bombo o un sinte re-disparen el detector en el mismo beat.
         this._lastKickImpactTime = 0;
-        // WAVE 6070: Frame Hold para snare — extiende el pulso de la caja ~90ms para hardware DMX
-        this._snareHoldCounter = 0;
-        // WAVE 6070.2: Debounce Anti-Jitter — cooldown de 80ms para evitar re-triggers del mismo clap
-        this._lastSnareTime = 0;
         // WAVE 8008 ADAPTER: Pre-procesador snare_energy EMA → impulso binario
         // Convierte la señal continua del RhythmicPercussionTracker en impulsos
         // compatibles con LiquidEnvelope (diseñado para señales binarias 0/1)
         this._prevSnareEnergy = 0;
-        this._lastSnareOnset = 0;
-        this._lastFluxOnset = 0; // WAVE 7749.4: Separate cooldown for flux trigger
         this._snareImpulse = 0;
+        // WAVE 7749.16: WNS confirmation window — pending onset waiting for WNS.
+        this._snarePendingWns = false;
         this._lastHybridSnare = 0;
+        // WAVE 7749.21: OPUS AUDIT — Slow EMA of spectralFlux to track buildup density
+        this._fluxBaseline = 0;
         // WAVE 7748: HH ENERGY ADAPTER — Pre-allocated state for hi-hat impulse
         // Mirrors _prevSnareEnergy/_lastSnareOnset/_snareImpulse pattern.
         // All scalars, zero allocation in hot path.
@@ -160,8 +194,6 @@ export class LiquidEngineBase {
         // If it sustains > chokeFrames (~50ms at 44Hz = ~2 frames), choke the envelope.
         this._snareSustainFrames = 0;
         this._snareChokeFactor = 1.0;
-        // WAVE 7749.2: Backend telemetry throttle — last log timestamp
-        this._lastSnareTelemetryLog = 0;
         // Kick Veto state
         this._kickVetoFrames = 0;
         // Transient Shaper state (WAVE 2427 → WAVE 2446)
@@ -171,8 +203,7 @@ export class LiquidEngineBase {
         // WAVE 4520.2: 9-zone EMA state
         // Ambient: slow follower of subBass. Attack ~5 frames, release ~33 frames.
         this._ambientEMA = 0;
-        // Air: soft-compressed follower of (treble × 0.6 + highMid × 0.4). Attack ~8 frames, release ~20 frames.
-        this._airEMA = 0;
+        // 🩸 WAVE 7749.27: _airEMA REMOVED — Air zone now uses envAir (LiquidEnvelope).
         // WAVE 4812 M3: Vocal Sustain Detector — EMA rápida de mid para detectar vocales sostenidas.
         // Attack muy rápido (alpha=0.25, ~4 frames) para capturar vocales al instante.
         // Release lento (alpha=0.04, ~25 frames) para que la penalización persista post-frase vocal.
@@ -194,6 +225,9 @@ export class LiquidEngineBase {
         this.envSnare = new LiquidEnvelope(effective.envelopeSnare);
         this.envHighMid = new LiquidEnvelope(effective.envelopeHighMid);
         this.envTreble = new LiquidEnvelope(effective.envelopeTreble);
+        // 🩸 WAVE 7749.27: LASER DOMAIN — Air & Floor envelopes with fallback defaults
+        this.envAir = new LiquidEnvelope(effective.envelopeAir ?? DEFAULT_ENVELOPE_AIR);
+        this.envFloor = new LiquidEnvelope(effective.envelopeFloor ?? DEFAULT_ENVELOPE_FLOOR);
     }
     // ─────────────────────────────────────────────────────────────────────
     // 🌊 WAVE 2435: HOT-SWAP PROFILE — Cambio de género sin destruir instancia
@@ -213,6 +247,9 @@ export class LiquidEngineBase {
         this.envSnare = new LiquidEnvelope(effective.envelopeSnare);
         this.envHighMid = new LiquidEnvelope(effective.envelopeHighMid);
         this.envTreble = new LiquidEnvelope(effective.envelopeTreble);
+        // 🩸 WAVE 7749.27: LASER DOMAIN — hot-swap air & floor envelopes
+        this.envAir = new LiquidEnvelope(effective.envelopeAir ?? DEFAULT_ENVELOPE_AIR);
+        this.envFloor = new LiquidEnvelope(effective.envelopeFloor ?? DEFAULT_ENVELOPE_FLOOR);
     }
     // ─────────────────────────────────────────────────────────────────────
     // PUBLIC API
@@ -331,16 +368,8 @@ export class LiquidEngineBase {
         else {
             this._vocalSustainEMA = this._vocalSustainEMA * 0.96 + bands.mid * 0.04;
         }
-        // Air EMA: soft-compressed follower of (treble × 0.6 + highMid × 0.4)
-        // Compression: 1 - e^(-x*3) — prevents ultraAir spikes from causing hysterics
-        // Attack alpha=0.12 (~8 frames), release alpha=0.05 (~20 frames)
-        const _airSignal = 1.0 - Math.exp(-(bands.treble * 0.60 + bands.highMid * 0.40) * 3.0);
-        if (_airSignal > this._airEMA) {
-            this._airEMA = this._airEMA * 0.88 + _airSignal * 0.12;
-        }
-        else {
-            this._airEMA = this._airEMA * 0.95 + _airSignal * 0.05;
-        }
+        // 🩸 WAVE 7749.27: Air EMA REMOVED — Air zone now processed by envAir
+        // (LiquidEnvelope) later in the pipeline with zero-attack laser kinematics.
         // ═══════════════════════════════════════════════════════════════════
         // 3. SILENCE / AGC TRAP
         // ═══════════════════════════════════════════════════════════════════
@@ -446,24 +475,14 @@ export class LiquidEngineBase {
         this.lastTreble = currentTreble;
         this.lastHighMid = currentHighMid;
         this.lastMid = currentMid;
-        // WAVE 6070: FUSIÓN HÍBRIDA — Transient Shaper (Tiempo) * Espectro Tolerante
-        // 1. ESPECTRO TOLERANTE: Sumamos los agudos en lugar de multiplicarlos.
-        // Así un clap con mucho harshness pero poco treble sobrevive.
-        const rawSpike = highMidDelta + trebleDelta;
-        const snareSpectrum = bands.mid * ((bands.treble * 0.5) + harshness); // Anti-HiHat: treble puro a la mitad, harshness de cajas/claps intacto
-        // rawSpike es el transitorio temporal calculado previamente
-        const rawSnareCalc = (rawSpike * snareSpectrum * 10.0) > 0.19; // Anti-Compresión: ×10.0 + umbral 0.19 atrapa snares aplastados por mastering del drop
-        // WAVE 6070.2: Debounce Anti-Jitter — 45ms permite fusas a 130 BPM (1 impacto = 1 disparo)
-        const isSnareImpact = rawSnareCalc && (now - this._lastSnareTime > 45);
-        if (isSnareImpact && this._snareHoldCounter === 0) {
-            this._snareHoldCounter = 4; // ~90ms de retención para que el DMX respire
-            this._lastSnareTime = now;
-        }
-        const percRaw = this._snareHoldCounter > 0 ? 1.0 : 0.0;
-        if (this._snareHoldCounter > 0) {
-            this._snareHoldCounter--;
-        }
-        let hybridSnare = percRaw;
+        // WAVE 7749.9: LEGACY TRANSIENT SHAPER EXTERMINATED.
+        // The old isSnareImpact / _snareHoldCounter / percRaw path was a separate
+        // detection logic (rawSpike * snareSpectrum * 10.0 > 0.19) that fired on
+        // spectral spikes from hi-hats, synths, and noise — not just snares.
+        // It held percRaw=1.0 for ~90ms (4 frames) after ANY spectral spike,
+        // causing the "fairground lights" effect. Now fully removed.
+        // The ONLY snare detection path is the pure physics rawOnset below.
+        let hybridSnare = 0;
         // ═══════════════════════════════════════════════════════════════════
         // WAVE 8008 ADAPTER: Pre-procesador snare_energy EMA → impulso binario
         // Cuando GodEarFFT V3 suministra snare_energy (EMA continua del
@@ -481,7 +500,6 @@ export class LiquidEngineBase {
             if (this._prevSnareEnergy > 0.10 && rawSnareEnergy < 0.03) {
                 this._prevSnareEnergy = 0;
             }
-            const snareDelta = rawSnareEnergy - this._prevSnareEnergy;
             // ═══════════════════════════════════════════════════════════════════════════
             // WAVE 7749.7: RAW TRANSIENT ONSET DETECTION — The isKick methodology
             // ═══════════════════════════════════════════════════════════════════════════
@@ -501,43 +519,137 @@ export class LiquidEngineBase {
             //
             // THREE triggers (all agnostic, no profile brute-force):
             //
-            // 1. RAW DELTA trigger (NEW — primary): raw_snare_delta > 0.05
-            //    The raw delta catches the actual transient edge. NO EMA FLOOR — the
-            //    raw delta is self-validating (a spike from 0→0.3 is a real transient
-            //    regardless of what the EMA says). This fixes the breakdown recovery lag:
-            //    the EMA takes seconds to climb back, but the raw delta fires immediately.
-            //    Threshold 0.05 (raised from 0.02) — 0.02 was too sensitive, firing on
-            //    sub-bass leakage and hi-hat bleed. 0.05 requires a real transient.
-            //    80ms cooldown for 16th-note fills.
+            // WAVE 7749.9: THE PURIST METRONOME — No cooldowns, no hacks.
+            // The engine operates on pure physics. If the raw signal dictates 4 rapid
+            // hits, the lights flood. If it double-triggers falsely, we see it in
+            // telemetry and fix the math — we don't hide it with cooldowns.
             //
-            // 2. EMA DELTA trigger (backup): snareDelta > 0.008 + EMA > 0.05
-            //    Catches sudden EMA jumps (breakdowns, drops, first beat after silence).
-            //    Kept as backup for cases where raw_snare_delta is unavailable.
+            // All legacy EMA-based triggers (emaOnset, fluxOnset) have been exterminated.
+            // They were firing on negative raw deltas and spectral flux noise during
+            // decays — physically impossible false positives.
             //
-            // 3. FLUX trigger (secondary): spectralFlux > 0.04 + EMA > 0.08
-            //    Catches spectral change events. Separate cooldown.
+            // The snare onset is now a single line of physics:
+            //   1. raw_snare_delta > 0.08 — a real positive transient edge in the crack band
+            //   2. snare_energy > 0.05   — sufficient total energy (not a near-zero jump)
+            //
+            // The Tonality Veto (downstream) acts as the Liquid Morphology filter,
+            // scaling the intensity based on the track's fluid density.
+            // WAVE 7749.16: WNS CONFIRMATION WINDOW — The 1-Frame Latency Fix
+            // The WNS detector has a 1-frame latency: on the first frame of a snare
+            // hit, crack-delta and spectral flux fire immediately, but WNS is still 0
+            // (the HF noise content hasn't been integrated yet). On the next frame,
+            // WNS spikes to 0.1-0.7. In ~90% of cases, RawΔ stays > 0.12 on frame 2
+            // and the onset fires normally. In ~10% of cases, RawΔ drops below 0.12
+            // by frame 2 and the snare is missed — the "1 negro" in a 3-4-1 pattern.
+            //
+            // Solution: when crack+flux say snare but WNS hasn't arrived, set a
+            // "pending" flag. On the next frame, if WNS > 0.05 AND Flux is still
+            // active (> 0.15), fire retroactively — the snare body is still
+            // resonating. If WNS stays 0, it was a kick — discard the pending.
+            //
+            // This is physically motivated: the crack band and flux are fast
+            // detectors (1-frame response), while WNS is a slower detector (2-frame
+            // response). We give WNS 1 extra frame to confirm. Kicks never confirm
+            // because their WNS stays 0 on both frames.
             const rawSnareDelta = input.raw_snare_delta ?? 0;
-            const photonFlux = input.photon?.spectralFlux ?? 0;
-            const rawOnset = rawSnareDelta > 0.05 && (now - this._lastSnareOnset > 80);
-            const emaOnset = snareDelta > 0.008 && rawSnareEnergy > 0.05 && (now - this._lastSnareOnset > 80);
-            const fluxOnset = photonFlux > 0.04 && rawSnareEnergy > 0.08 && (now - this._lastFluxOnset > 80);
-            const snareOnset = rawOnset || emaOnset || fluxOnset;
-            snareOnsetThisFrame = snareOnset;
-            if (snareOnset) {
-                this._lastSnareOnset = now;
-                if (fluxOnset)
-                    this._lastFluxOnset = now;
+            const photon = input.photon;
+            const spectralFlux = photon?.spectralFlux ?? 1; // fallback: allow if no photon
+            const wns = photon?.whiteNoiseScore ?? 1; // fallback: allow if no photon
+            const snareEnergy = input.snare_energy ?? 0;
+            // WAVE 7749.22: DYNAMIC FBL THRESHOLD — Opus Paradox resolved.
+            // During massive buildups (Eric Prydz "Opus"), snare_energy EMA dies to 0
+            // because white noise asphyxiates the RhythmicPercussionTracker. But
+            // spectralFlux baseline (fBL) rises from 0.044 (normal) to 0.06-0.076
+            // (buildup). This is the reliable density signal.
+            // Formula: threshold = 0.12 - max(0, fBL - 0.05) × 2.0, clamped to 0.06.
+            //   fBL = 0.05 (normal) → threshold = 0.12 (strict, hi-hats blocked)
+            //   fBL = 0.06 (buildup) → threshold = 0.10
+            //   fBL = 0.07 (peak)    → threshold = 0.08
+            // Empirical: 8 of 10 missed roll snares (RawΔ 0.08-0.11, Flux 0.22-0.41)
+            // would pass with this scaling. Hi-hats (Flux < 0.15) still blocked by
+            // the spectralFlux gate regardless of threshold.
+            this._fluxBaseline = this._fluxBaseline * 0.98 + spectralFlux * 0.02; // tau ~500ms at 44Hz
+            const dynamicSnareThreshold = 0.12 - (Math.max(0, this._fluxBaseline - 0.05) * 2.0);
+            const finalSnareThreshold = Math.max(0.06, dynamicSnareThreshold);
+            // WAVE 7749.23: DYNAMIC FLUX GATE — Opus Paradox Part 2.
+            // The delta threshold fix (7749.22) worked, but ~150 snares in the roll
+            // have Flux 0.10-0.15 and are blocked by the static 0.15 Flux gate.
+            // During dense buildups, the AGC compresses individual hit flux — a snare
+            // that normally has Flux 0.20 gets crushed to 0.12.
+            // Empirical: kicks max out at Flux 0.097. Snares in the roll: 0.10-0.15.
+            // Gap is clean at 0.10. Dynamic gate scales with fBL, clamped to 0.10.
+            //   fBL = 0.05 (normal)  → Flux gate = 0.15 (strict, hi-hats blocked)
+            //   fBL = 0.08 (buildup) → Flux gate = 0.12
+            //   fBL = 0.10+ (peak)   → Flux gate = 0.10 (clamp — kicks still blocked)
+            const dynamicFluxGate = Math.max(0.10, 0.15 - (Math.max(0, this._fluxBaseline - 0.05) * 1.0));
+            let rawOnset = false;
+            if (rawSnareDelta > finalSnareThreshold && spectralFlux > dynamicFluxGate && this._snareImpulse < 0.15) {
+                if (wns > 0.05) {
+                    // Primary path: all 4 conditions met — fire immediately.
+                    rawOnset = true;
+                }
+                else if (spectralFlux > 0.20) {
+                    // WAVE 7749.18: HIGH-FLUX BYPASS — Synthesized snare detection
+                    // In melodic techno (Anyma, Tale of Us, etc.), snares are synthesized
+                    // noise bursts or electronic claps that don't produce the broadband HF
+                    // noise content WNS expects. They have WNS = 0 across ALL frames.
+                    // But they DO have explosive spectral flux (> 0.20) that kicks never
+                    // reach (kicks are bass-band only, Flux < 0.10) and synth stabs never
+                    // reach (stabs are 0.10-0.15). The Flux > 0.20 threshold cleanly
+                    // separates synthesized snares from kicks/stabs in the WNS = 0 zone.
+                    // Empirical data from techno14melodic (Anyma): 27 synth snares with
+                    // Flux 0.20-0.32, WNS = 0 — all blocked by old WNS gate. 0 kicks with
+                    // Flux > 0.20. Genre-agnostic: works for acoustic (WNS path) and
+                    // electronic (Flux bypass) snares.
+                    rawOnset = true;
+                }
+                else if (snareEnergy > 0.40) {
+                    // WAVE 7749.19: ENERGY-CONDITIONED BORDER ZONE BYPASS
+                    // Some synth snares in melodic techno have moderate Flux (0.15-0.20)
+                    // — not enough to trigger the 0.20 bypass, and WNS = 0 (synthesized).
+                    // These are missed by both the WNS path and the Flux bypass.
+                    // Discriminator: snare_energy. Real snares have high crack-band
+                    // energy (> 0.40) because the noise burst is loud. Kicks in the same
+                    // Flux zone have E < 0.36 (their energy is in the bass band, not the
+                    // crack band). Empirical data:
+                    //   techno11 kicks (Flux 0.15-0.40, WNS=0): E = 0.14-0.36
+                    //   techno15 border snares (Flux 0.15-0.20, WNS=0): E = 0.30-0.87
+                    // Threshold 0.40 sits in the clean gap above kick max (0.36).
+                    rawOnset = true;
+                }
+                else {
+                    // Pending: crack+flux say snare, but WNS hasn't arrived yet.
+                    // Wait 1 frame for WNS confirmation.
+                    this._snarePendingWns = true;
+                }
+            }
+            else if (this._snarePendingWns && wns > 0.05 && this._snareImpulse < 0.15) {
+                // WAVE 7749.17: Confirmation only needs WNS — Flux was already validated
+                // on the pending frame. The snare body's spectral change rate decays
+                // faster than WNS: in 4/57 cases (the "negros"), Flux dropped to 0.11-0.14
+                // on the confirmation frame while WNS arrived strong (0.28-0.70). Requiring
+                // Flux > 0.15 again blocked these real snares. WNS alone is sufficient to
+                // confirm snare vs kick — kicks never produce WNS on either frame.
+                rawOnset = true;
+                this._snarePendingWns = false;
+            }
+            else {
+                // No onset and no pending confirmation — clear the pending flag.
+                this._snarePendingWns = false;
+            }
+            snareOnsetThisFrame = rawOnset;
+            if (rawOnset) {
                 this._snareImpulse = 1.0;
             }
             // WAVE 7749.3: Use pre-decay impulse for THIS frame's output.
             // WAVE 7749.7: Impulse decay is now profile-tunable (snareImpulseDecay).
-            // Default 0.04 (fast). Techno 0.30 (bridges micro-gaps without sawtooth flicker).
+            // WAVE 7749.13: Default 0.40 (techno snap — ~120ms to decay 1.0→0.01).
             const snareImpulseThisFrame = this._snareImpulse;
-            this._snareImpulse *= (p.snareImpulseDecay ?? 0.04);
+            this._snareImpulse *= (p.snareImpulseDecay ?? 0.40);
             this._prevSnareEnergy = rawSnareEnergy;
-            // WAVE 8009.4: Max-blend en lugar de reemplazo — el transient shaper original
-            // sobrevive como respaldo cuando GodEarFFT no detecta snare (techno: body saturado por bombo)
-            hybridSnare = Math.max(percRaw, snareImpulseThisFrame);
+            // WAVE 7749.9: hybridSnare is driven EXCLUSIVELY by the pure physics
+            // impulse. No max-blend with the legacy percRaw (which was exterminated).
+            hybridSnare = snareImpulseThisFrame;
         }
         // ═══════════════════════════════════════════════════════════════════
         // WAVE 7749: SUSTAIN CHOKE — A snare explodes and decays in <100ms.
@@ -546,8 +658,7 @@ export class LiquidEngineBase {
         //
         // Mechanism: Track frames since last TRUE onset. If frames > chokeThreshold,
         // apply exponential decay to hybridSnare. The choke releases instantly
-        // when a new true onset fires. This kills sustained tails within ~100ms
-        // while preserving the initial 90ms hold from _snareHoldCounter.
+        // when a new true onset fires. This kills sustained tails within ~100ms.
         //
         // WAVE 7749.3: HIGH-ENERGY GUARD — In dense techno, snare_energy stays
         // high (0.3-0.6) but flat (no delta → no onsets). The choke was killing
@@ -604,7 +715,10 @@ export class LiquidEngineBase {
             // flatness < floor = pure tonal (vocal/synth) → veto factor 0
             // flatness floor-knee = mixed → linear ramp
             // flatness > knee = noise-like (snare/cymbal) → full pass
-            const flatFloor = p.snareVetoFlatnessFloor ?? 0.12;
+            // WAVE 7749.8: Defaults raised — 0.12→0.04 floor for flatness, 0.15→0.04 for wns,
+            // 0.10→0.05 for flux. These are the fallbacks when no profile override exists.
+            // Profile overrides (techno/latino) now also use 0.04/0.04/0.05.
+            const flatFloor = p.snareVetoFlatnessFloor ?? 0.04;
             const flatKnee = p.snareVetoFlatnessKnee ?? 0.25;
             const flatnessGate = flatness < flatFloor
                 ? 0.0
@@ -615,7 +729,7 @@ export class LiquidEngineBase {
             // wns < floor = no HF broadband (vocal consonant) → veto
             // wns floor-knee = partial (rimshot, clap) → partial pass
             // wns > knee = strong broadband (snare, cymbal) → full pass
-            const wnsFloor = p.snareVetoWnsFloor ?? 0.15;
+            const wnsFloor = p.snareVetoWnsFloor ?? 0.04;
             const wnsKnee = p.snareVetoWnsKnee ?? 0.35;
             const wnsGate = wns < wnsFloor
                 ? 0.0
@@ -626,7 +740,7 @@ export class LiquidEngineBase {
             // A snare hit = explosive flux spike. A vocal sustain = low flux.
             // flux < floor = sustained (vocal tail) → veto
             // flux > knee = explosive (snare) → full pass
-            const fluxFloor = p.snareVetoFluxFloor ?? 0.10;
+            const fluxFloor = p.snareVetoFluxFloor ?? 0.05;
             const fluxKnee = p.snareVetoFluxKnee ?? 0.30;
             const fluxGate = flux < fluxFloor
                 ? 0.0
@@ -644,26 +758,28 @@ export class LiquidEngineBase {
             // WAVE 7749.4: Soft-knee lowered 0.20→0.15. Below 0.15, ramp up linearly
             // (vetoFactor / 0.15) instead of 2x gain, for smoother transition.
             hybridSnare *= (vetoFactor > 0.15 ? 1.0 : (vetoFactor / 0.15));
-            // WAVE 7749.2: Backend Telemetry for Snare Calibration
-            // WAVE 7749.7: Fixed the 134-line blackout — the 200ms throttle was hiding
-            // 8 of every 9 frames, making diagnosis impossible. Now we log:
-            //   - EVERY onset frame (snareOnsetThisFrame) immediately, no throttle
-            //   - Non-onset frames: throttled to 200ms (to see veto state between hits)
-            // This gives the Architect the true rhythmic pattern without blind spots.
-            const shouldLogOnset = snareOnsetThisFrame;
-            const shouldLogThrottled = input.snare_energy !== undefined && input.snare_energy > 0.05 &&
-                (now - this._lastSnareTelemetryLog > 200);
-            if (shouldLogOnset || shouldLogThrottled) {
-                this._lastSnareTelemetryLog = now;
-                console.log(`[SNARE_TELEMETRY] ` +
-                    `E:${input.snare_energy?.toFixed(3) ?? 'N/A'} | ` +
-                    `RawΔ:${input.raw_snare_delta === undefined ? 'UNDEF' : input.raw_snare_delta.toFixed(3)} | ` +
-                    `Flat:${flatness.toFixed(3)} (Gate:${flatnessGate.toFixed(2)}) | ` +
-                    `WNS:${wns.toFixed(3)} (Gate:${wnsGate.toFixed(2)}) | ` +
-                    `Flux:${flux.toFixed(3)} (Gate:${fluxGate.toFixed(2)}) | ` +
-                    `Veto:${vetoFactor.toFixed(3)} -> Out:${hybridSnare.toFixed(3)}` +
-                    (snareOnsetThisFrame ? ' [ONSET]' : ''));
-            }
+            // WAVE 7749.9: Telemetry Transparency — log EVERY frame with no throttling.
+            // We need to see the absolute raw truth of what the math is detecting
+            // frame-by-frame. If there are false positives, we see them and fix the math.
+            // WAVE 7749.22: DISABLED — snare 4D is now production-ready across all
+            // genres (techno acoustic, techno melodic/Anyma, latino). Back R is perfect.
+            // Commented out to stop console spam. Re-enable for future debugging.
+            // console.log(
+            //   `[SNARE_TELEMETRY] ` +
+            //   `E:${input.snare_energy?.toFixed(3) ?? 'N/A'} | ` +
+            //   `RawΔ:${input.raw_snare_delta === undefined ? 'UNDEF' : input.raw_snare_delta.toFixed(3)} | ` +
+            //   `Flat:${flatness.toFixed(3)} (Gate:${flatnessGate.toFixed(2)}) | ` +
+            //   `WNS:${wns.toFixed(3)} (Gate:${wnsGate.toFixed(2)}) | ` +
+            //   `Flux:${flux.toFixed(3)} (Gate:${fluxGate.toFixed(2)}) | ` +
+            //   `Veto:${vetoFactor.toFixed(3)} -> Out:${hybridSnare.toFixed(3)}` +
+            //   (snareOnsetThisFrame ? ' [ONSET]' : '')
+            // )
+            // WAVE 7749.21: OPUS AUDIT — Frame-by-frame diagnostic for buildup collapse.
+            // 🩸 WAVE 7749.25: REMOVED. The diagnostic log was spamming the console at
+            // ~44Hz on every frame with bass/snare activity, contributing to backend
+            // memory pressure and console-pipe leaks. The 3 theories it validated
+            // (delta compression, WNS saturation, retrigger guard) are now confirmed
+            // and patched. Telemetry retired.
         }
         // 2. THE MORPHOLOGIC CENTROID SHIELD (WAVE 2449)
         // El bombo puede coexistir con synths en techno melódico (Anyma) porque el bombo
@@ -812,9 +928,14 @@ export class LiquidEngineBase {
         // ═══════════════════════════════════════════════════════════════════
         // ═══════════════════════════════════════════════════════════════════
         // WAVE 4520.2: 9-ZONE FINAL SIGNALS
+        // 🩸 WAVE 7749.27: LASER DOMAIN — Air & Floor now use LiquidEnvelope.
         // ═══════════════════════════════════════════════════════════════════
-        // floor: instant reaction to subBass+lowMid, gated by AGC recovery
-        const floorIntensity = Math.min(1.0, Math.max(0.0, (bands.subBass * 0.65 + bands.lowMid * 0.35) * recoveryFactor));
+        // floor: Ground sweep laser — spectralFlux + bassDelta onset-driven.
+        // Distinct from frontLeft (subBass amplitude) and frontRight (kick velocity):
+        // reacts to spectral CHANGE (any note onset), not band amplitude.
+        const _flux = photon?.spectralFlux ?? 0;
+        const _floorInput = Math.max(_flux * 0.7, Math.max(0, bassDelta) * 2.0);
+        const floorIntensity = this.envFloor.process(_floorInput, morphFactor, now, isBreakdown);
         // ambient: slow EMA of subBass, no morphGain baseline — NOT gated by recoveryFactor.
         // WAVE 4812 M2: gain=1.0 — el ambient no tiene onda estática; solo brilla cuando
         // hay energía sub-grave real. El morphFactor ya no infla el baseline.
@@ -840,9 +961,11 @@ export class LiquidEngineBase {
             if (ambientIntensity < 0.001)
                 ambientIntensity = 0;
         }
-        // air: soft-compressed EMA, gated by AGC recovery to prevent rebound blasts
-        // WAVE 4826.3 — BOOST AIR: 1.4x directo para resucitar con brillo
-        const airIntensity = Math.min(1.0, Math.max(0.0, this._airEMA * recoveryFactor * 1.4));
+        // 🩸 WAVE 7749.27: Air — Aerial laser. treble + ultraAir velocity-driven.
+        // Spectrally isolated above snare body (2-6kHz): 6-22kHz range.
+        // envAir gives zero-attack, fast decay (0.08), high gate (0.35), high crush (2.5).
+        const _airInput = bands.treble * 0.8 + bands.ultraAir * 0.2;
+        const airIntensity = this.envAir.process(_airInput, morphFactor, now, isBreakdown);
         const frame = {
             bands,
             morphFactor,
@@ -886,6 +1009,9 @@ export class LiquidEngineBase {
         this.envSnare.reset();
         this.envHighMid.reset();
         this.envTreble.reset();
+        // 🩸 WAVE 7749.27: LASER DOMAIN — reset air & floor envelopes
+        this.envAir.reset();
+        this.envFloor.reset();
         this.avgMidProfiler = 0;
         this.lastSilenceTime = 0;
         this.inSilence = false;
@@ -893,7 +1019,6 @@ export class LiquidEngineBase {
         this.strobeStartTime = 0;
         this.lastTreble = 0;
         this._ambientEMA = 0;
-        this._airEMA = 0;
     }
     // ─────────────────────────────────────────────────────────────────────
     // WAVE 2513 — AMBIENT GENERATIVE ENGINE
@@ -967,7 +1092,7 @@ export class LiquidEngineBase {
         this.strobeStartTime = 0;
         this.lastTreble = 0;
         this._vocalSustainEMA = 0;
-        this._airEMA = 0;
+        // 🩸 WAVE 7749.27: _airEMA removed — envAir.reset() handles this in reset()
         // WAVE 7748: Reset HH adapter state
         this._prevHhEnergy = 0;
         this._lastHhOnset = 0;
@@ -975,7 +1100,6 @@ export class LiquidEngineBase {
         // WAVE 7749: Reset Sustain Choke state
         this._snareSustainFrames = 0;
         this._snareChokeFactor = 1.0;
-        this._lastFluxOnset = 0; // WAVE 7749.4: Reset flux onset cooldown
     }
     applyGlacierPalette(morphFactor) {
         return Math.min(1.0, Math.max(0.0, morphFactor));

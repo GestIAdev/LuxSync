@@ -1592,11 +1592,12 @@ class RhythmicPercussionTracker {
         // The crack band (2-5kHz) is where the snare "snap" lives. In techno, the
         // body band is saturated by the kick, so sqrt(body*crack) is nearly constant.
         // But the crack band itself has sharp transients when a snare/clap fires.
-        // We use max(crackDelta, bodyDelta) to catch both rimshots (body-heavy) and
-        // claps (crack-heavy), while ignoring the constant saturation.
+        // WAVE 7749.8: Use ONLY crackDelta — the body band (150-250Hz) is saturated
+        // by the kick drum in techno, producing false deltas on every beat. The crack
+        // band (2-5kHz) is where the snare "snap" lives and is immune to kick bleed.
         const crackDelta = snareCrack - this._prevSnareCrackRaw;
         const bodyDelta = snareBody - this._prevSnareBodyRaw;
-        const rawSnareDelta = Math.max(crackDelta, bodyDelta);
+        const rawSnareDelta = crackDelta;
         this._prevSnareCrackRaw = snareCrack;
         this._prevSnareBodyRaw = snareBody;
         // Keep _prevSnareEnergyRaw for backward compat (unused now but reset() clears it)
@@ -1628,14 +1629,19 @@ class RhythmicPercussionTracker {
         //     `| snareHit=${snareHit ? 1 : 0} hhHit=${hhHit ? 1 : 0} snareAbove=${snareAboveThresh ? 1 : 0} hhAbove=${hhAboveThresh ? 1 : 0}`
         //   );
         // }
+        // WAVE 7749.22: EXTERMINATED — RAWΔ diagnostic log removed. Snare 4D is
+        // production-ready. This was spamming the console every 44 frames.
+        // Re-enable from git history if future debugging is needed.
         // WAVE 7749.7: Diagnostic — log rawSnareDelta every ~44 frames (1s) to verify
         // the value is non-zero before IPC transport
-        this._diagCounter++;
-        if (this._diagCounter % 44 === 0) {
-            console.log(`[🥁 RAWΔ] body=${snareBody.toFixed(4)} crack=${snareCrack.toFixed(4)} ` +
-                `crackDelta=${crackDelta.toFixed(4)} bodyDelta=${bodyDelta.toFixed(4)} ` +
-                `rawSnareDelta=${rawSnareDelta.toFixed(4)} EMA=${this._snareEnergyEMA.toFixed(4)}`);
-        }
+        // this._diagCounter++;
+        // if (this._diagCounter % 44 === 0) {
+        //   console.log(
+        //     `[🥁 RAWΔ] body=${snareBody.toFixed(4)} crack=${snareCrack.toFixed(4)} ` +
+        //     `crackDelta=${crackDelta.toFixed(4)} bodyDelta=${bodyDelta.toFixed(4)} ` +
+        //     `rawSnareDelta=${rawSnareDelta.toFixed(4)} EMA=${this._snareEnergyEMA.toFixed(4)}`
+        //   );
+        // }
         // ── 6. Absence counters ──
         const snareAbsenceMs = this._elapsedMs - this._lastSnareHitMs;
         const hhAbsenceMs = this._elapsedMs - this._lastHHHitMs;

@@ -311,6 +311,19 @@ function _paramFamily(param) {
         case 'gobo2':
         case 'prism':
             return NodeFamily.BEAM;
+        // WAVE 7749.29: Laser beam geometry + gobo spin → BEAM family (Aether Agnostic §1.2)
+        case 'scale_x':
+        case 'scale_y':
+        case 'rot_x':
+        case 'rot_y':
+        case 'gobo_rotation':
+            return NodeFamily.BEAM;
+        // WAVE 7749.29: Atmosphere fluids → ATMOSPHERE family (4Hz cue, NOT L0).
+        // These route through Hephaestus L3+ → AtmosphereCueDriver, never LiquidAetherAdapter.
+        case 'smoke_pump':
+        case 'smoke_density':
+        case 'fan_speed':
+            return NodeFamily.ATMOSPHERE;
         // Engine-internal: no DMX intent
         case 'globalComp':
         case 'width':
@@ -417,6 +430,35 @@ function _populateValues(values, param, output, behavior = 'absolute') {
             break;
         case 'prism':
             values['prism'] = output.normalizedValue;
+            break;
+        // WAVE 7749.29: Laser beam geometry — maps 1:1 to AetherChannelType (Aether Agnostic §1.2)
+        // NodeResolver resolves these via the standard normalized→DMX path on BEAM cells.
+        case 'scale_x':
+            values['scale_x'] = output.normalizedValue;
+            break;
+        case 'scale_y':
+            values['scale_y'] = output.normalizedValue;
+            break;
+        case 'rot_x':
+            values['rot_x'] = output.normalizedValue;
+            break;
+        case 'rot_y':
+            values['rot_y'] = output.normalizedValue;
+            break;
+        case 'gobo_rotation':
+            values['gobo_rotation'] = output.normalizedValue;
+            break;
+        // WAVE 7749.29: Atmosphere fluids — maps to ATMOSPHERE cell channels.
+        // Routed at 4Hz cue rate via AtmosphereCueDriver (blueprint §3.3 Ring 2).
+        // Pyro/interlock channels (emission_gate/fire_*) are ABSENT from HephParamId by design.
+        case 'smoke_pump':
+            values['smoke_pump'] = output.normalizedValue;
+            break;
+        case 'smoke_density':
+            values['smoke_density'] = output.normalizedValue;
+            break;
+        case 'fan_speed':
+            values['fan_speed'] = output.normalizedValue;
             break;
         default:
             break;

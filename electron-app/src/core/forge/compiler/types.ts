@@ -52,6 +52,13 @@ export interface CompiledOutput {
   readonly defaultDmxValue: number
   /** Is 16-bit channel? If true, writes coarse + fine. */
   readonly is16bit: boolean
+  /**
+   * ⚒️ WAVE 7749.35: DMX offset of the fine (LSB) byte for 16-bit channels.
+   * If undefined, assumes dmxOffset + 1 (legacy behavior).
+   * Needed because some fixtures (7R Panther) have non-adjacent layouts:
+   * [pan, tilt, pan_fine, tilt_fine] — pan_fine is at dmxOffset+2, not +1.
+   */
+  readonly fineDmxOffset?: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

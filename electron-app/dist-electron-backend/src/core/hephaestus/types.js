@@ -38,6 +38,29 @@ export const DEFAULT_PHASE_CONFIG = {
     direction: 1,
 };
 // ═══════════════════════════════════════════════════════════════════════════
+// WAVE 7749.30: DISCRETE STEPPING — params that are indexed selectors
+// (gobo/pattern wheels). These use curveMode='stepped' with quantizeSteps.
+// gobo_rotation is CONTINUOUS (mechanical spin), NOT stepped.
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Map of paramId → number of discrete slots for stepped curve mode.
+ * Absent = continuous (default). A gobo wheel with 8 patterns → 8 steps.
+ * The curve value 0..1 maps to slot index 0..(steps-1).
+ */
+export const STEPPED_PARAM_SLOTS = {
+    // Standard gobo wheels: 8 slots is the common ILDA/moving-head default.
+    gobo1: 8,
+    gobo2: 8,
+};
+/** Returns true if this param should default to stepped curve mode. */
+export function isSteppedParam(paramId) {
+    return paramId in STEPPED_PARAM_SLOTS;
+}
+/** Returns the quantizeSteps for a stepped param, or 0 if continuous. */
+export function getSteppedSlots(paramId) {
+    return STEPPED_PARAM_SLOTS[paramId] ?? 0;
+}
+// ═══════════════════════════════════════════════════════════════════════════
 // BEZIER PRESETS
 // ═══════════════════════════════════════════════════════════════════════════
 /**

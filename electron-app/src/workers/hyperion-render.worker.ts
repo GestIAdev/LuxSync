@@ -46,6 +46,7 @@ import {
   renderSelectionLayer,
   renderHUDLayer,
   FIXTURE_CONFIG,
+  disposeFixtureLayerSprites,
 } from '../components/hyperion/views/tactical/layers'
 
 import {
@@ -738,6 +739,9 @@ self.onmessage = (e: MessageEvent<WorkerInboundMessage>) => {
       canvas = null
       physicsStore.clear()
       prevIntensity.clear()
+      // 🩸 WAVE 7749.25: Release sprite cache GPU textures on shutdown so
+      // orphaned workers (HMR reloads) don't leak OffscreenCanvas sprites.
+      disposeFixtureLayerSprites()
       if (glassPort) {
         // 🏓 Return any held buffer before closing the port
         if (currentFrameData) {

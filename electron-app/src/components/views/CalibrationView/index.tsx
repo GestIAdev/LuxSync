@@ -363,14 +363,11 @@ const CalibrationView: React.FC = () => {
     return () => {
       cancelled = true
       try {
-        // 🎯 WAVE 4949: Forzar limpieza del Arbiter al cerrar el panel.
-        // Los overrides manuales del fixture activo deben borrarse para evitar
-        // que colores de calibración persistan y sobreescriban la Vibe.
-        void electron.ipcRenderer.invoke('lux:aether:clearManualOverrides', [
-          `${activeFixtureId}:color`,
-          `${activeFixtureId}:impact`,
-          `${activeFixtureId}:kinetic`,
-        ])
+        // 🎯 WAVE 4949 → WAVE 7749.35: Forzar limpieza del Arbiter al cerrar el panel.
+        // ⚒️ WAVE 7749.35: Use the DEDICATED calibration clear channel instead of
+        // the hot path. This clears ALL 5 families with multi-cell fan-out.
+        // Functions are on window.lux (luxApi), NOT window.electron.
+        window.lux?.aether?.calibrationClearFixture?.(activeFixtureId)
       } catch (e) {
         console.warn('[CalibrationLab] Failed to clear overrides on unmount', e)
       }
@@ -418,12 +415,12 @@ const CalibrationView: React.FC = () => {
     console.log(`[CalibrationLab] 🎯 Pan: ${safePan}° (norm ${panNorm.toFixed(3)}) Tilt: ${safeTilt}° (norm ${tiltNorm.toFixed(3)})`)
 
     try {
-      await window.lux?.aether?.setManualOverrides([
-        {
-          nodeId: `${activeFixtureId}:kinetic`,
-          channels: { pan: panNorm, tilt: tiltNorm },
-        },
-      ])
+      // ⚒️ WAVE 7749.35: Dedicated calibration channel — multi-cell fan-out,
+      // does NOT touch the 44Hz hot path. Functions are on window.lux (luxApi).
+      window.lux?.aether?.calibrationSetOverride?.(
+        `${activeFixtureId}:kinetic`,
+        { pan: panNorm, tilt: tiltNorm },
+      )
     } catch (err) {
       console.error('[CalibrationLab] Position error:', err)
     }
@@ -492,12 +489,12 @@ const CalibrationView: React.FC = () => {
     else if (['red', 'green', 'blue', 'white', 'amber', 'uv', 'color_wheel'].includes(channelType)) family = 'color'
 
     try {
-      await window.lux?.aether?.setManualOverrides([
-        {
-          nodeId: `${activeFixtureId}:${family}`,
-          channels: { [channelType]: normValue },
-        },
-      ])
+      // ⚒️ WAVE 7749.35: Dedicated calibration channel — multi-cell fan-out,
+      // does NOT touch the 44Hz hot path. Functions are on window.lux (luxApi).
+      window.lux?.aether?.calibrationSetOverride?.(
+        `${activeFixtureId}:${family}`,
+        { [channelType]: normValue },
+      )
     } catch (err) {
       console.error('[CalibrationLab] DMX send error:', err)
     }
@@ -620,6 +617,23 @@ const CalibrationView: React.FC = () => {
     reset()
     setSaveStatus('idle')
   }, [reset])
+
+  /**
+   * 🚨 WAVE 7749.35: PANIC — Clear ALL manual overrides globally.
+   * Nuclear option: wipes the entire L2 layer of the NodeArbiter.
+   * Every fixture returns to AI/show control immediately.
+   * Use when fixtures are stuck with residual values from calibration.
+   */
+  const handlePanicUnlock = useCallback(() => {
+    try {
+      window.lux?.aether?.clearAllManualOverrides()
+      setChannelValues({})
+      setActiveTest(null)
+      console.log('[CalibrationLab] 🚨 PANIC — All manual overrides cleared globally')
+    } catch (e) {
+      console.error('[CalibrationLab] PANIC unlock failed:', e)
+    }
+  }, [])
 
   // ═══════════════════════════════════════════════════════════════════════
   // 🎯 WAVE 7669: MODE SWITCH — Anti-Whiplash Arbitration
@@ -1239,6 +1253,15 @@ const CalibrationView: React.FC = () => {
         >
           <span className="full-icon">☀</span>
           <span>FULL ON</span>
+        </button>
+
+        <button
+          className="action-btn panic"
+          onClick={handlePanicUnlock}
+          title="Clear ALL manual overrides globally — use when fixtures are stuck"
+        >
+          <span className="panic-icon">⚠</span>
+          <span>PANIC / UNLOCK ALL</span>
         </button>
       </footer>
     </div>

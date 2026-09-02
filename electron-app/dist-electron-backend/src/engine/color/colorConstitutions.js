@@ -360,11 +360,12 @@ export const CHILL_CONSTITUTION = {
     forbiddenHueRanges: [[340, 360], [0, 150]],
     elasticRotation: 20,
     // ── ESPECTRO ABISAL: VERDE ALGA → CIAN → AZUL + BIOLUMINISCENCIA ────────
-    // [160, 260] = Verde Alga → Cian → Azul Profundo → Índigo (columna principal)
-    // [290, 330] = Magenta Frío → Rosa Boreal → Magenta Vibrante (medusa + aurora)
-    // El motor de color distribuirá ~67% del tiempo en [160,260] y ~33% en
-    // [290,330] por simple proporción de arco.
-    allowedHueRanges: [[160, 260], [290, 330]],
+    // [160, 290] = Verde Alga → Cian → Azul Profundo → Índigo → Azul Rey → Púrpura Boreal
+    // [300, 330] = Magenta Frío → Rosa Boreal → Magenta Vibrante (medusa + aurora)
+    // ⚒️ WAVE 7749.37: Bridged the 260°-290° gap to allow smooth transit through
+    // Royal Blue (270°) and Boreal Purple (280°) without elastic-rotation snapping.
+    // The previous gap forced discontinuous 30°+ jumps between the two arcs.
+    allowedHueRanges: [[160, 290], [300, 330]],
     // ── SATURACIÓN RESPIRATORIA ────────────────────────────────────────────
     // [50, 85]: Piso 50 = bioluminiscencia siempre visible (no lavado).
     //           Techo 85 = evitar plástico neón de saturación 100.
@@ -378,11 +379,13 @@ export const CHILL_CONSTITUTION = {
     // ── ACENTO: PULSO BIOLUMINISCENTE ──────────────────────────────────────
     accentBehavior: 'breathing',
     pulseConfig: { duration: 6000, amplitude: 0.12 },
-    // ── ROTACIÓN FIBONACCI: MAGENTA EN MOVERS ──────────────────────────────
-    // WAVE 7129.7: fibonacciRotationDeg: 100 → Secondary (mover L) aterriza
-    // en [290, 330] (magenta/rosa boreal) cuando primary está en [190, 230].
-    // Antes era 222.5° (PHI_ROTATION) que empujaba a verde/amarillo → clampado a cyan.
-    fibonacciRotationDeg: 100,
+    // ── ROTACIÓN FIBONACCI: ACENTO ANÁLOGO ──────────────────────────────────
+    // ⚒️ WAVE 7749.37: fibonacciRotationDeg: 100 → 60. With 100°, secondary
+    // could land at 260°-360° (crossing the forbidden zone boundary at 340°),
+    // triggering elastic-rotation snaps of 20° steps — discontinuous jumps.
+    // With 60°, secondary stays within the same arc family as primary
+    // (analogous harmony), e.g. primary=200° → secondary=260° (Indigo/Royal Blue).
+    fibonacciRotationDeg: 60,
     // ── TRANSICIONES GLACIARES ─────────────────────────────────────────────
     // WAVE 4755: 20 segundos mínimo. Las corrientes marinas no se apuran.
     // La sección musical (drop, verse) NO impulsa estas transiciones.
@@ -391,6 +394,11 @@ export const CHILL_CONSTITUTION = {
         maxDuration: 30000, // 30 segundos — el glaciar cromático
         easing: 'sine-inout', // Ondas profundas y suaves
     },
+    // ⚒️ WAVE 7749.37: Hue drift velocity cap. At 30°/s with a 20-30s transition,
+    // the hue can theoretically drift 600-900° during one transition — far more
+    // than the 100° arc width. This cap ensures the generated hue doesn't jump
+    // faster than the interpolator can follow, preventing target palette churn.
+    maxHueShiftPerSecond: 30,
     // ── DIMMER BIOLUMINISCENTE ─────────────────────────────────────────────
     // La vida marina siempre brilla, nunca hay oscuridad total.
     dimmingConfig: {

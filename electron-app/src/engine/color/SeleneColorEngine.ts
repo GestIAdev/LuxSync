@@ -522,6 +522,15 @@ export interface GenerationOptions {
   saltChromaticKeys?: Record<number, number>;
 
   /**
+   * ⚒️ WAVE 7749.37: Maximum hue drift velocity (degrees per second).
+   * If set, the engine clamps per-frame hue delta to this value, preventing
+   * the oceanic modulation from sweeping hues faster than the transition
+   * duration can complete. The vibe profile's maxHueShiftPerSecond maps here.
+   * @default undefined (no clamp)
+   */
+  maxHueShiftPerSecond?: number;
+
+  /**
    * WAVE 4760 — Luxury signature overrides para el color secundario.
    *
    * Map de root numérico a hue fijo y saturación máxima opcionales.
@@ -1061,6 +1070,10 @@ export class SeleneColorEngine {
   // per macro-cycle ensures the palette sequence never repeats identically.
   private static _sessionEntropy = 0;
   private static _entropyInitialized = false;
+
+  // ⚒️ WAVE 7749.37: Previous frame's generated hue for drift velocity clamping.
+  // Used by maxHueShiftPerSecond to cap per-frame hue delta.
+  private static _prevGeneratedHue: number | null = null;
   
   // 🌌 WAVE 7719: FIBONACCI MACRO-CYCLE ROTATION
   // Tracks how many full slot-array loops have completed. Each full loop adds
@@ -1642,7 +1655,27 @@ export class SeleneColorEngine {
         );
       }
     }
-    
+
+    // ⚒️ WAVE 7749.37: Hue drift velocity clamp — enforce maxHueShiftPerSecond.
+    // If the constitution defines this cap, clamp the per-frame hue delta to
+    // prevent the oceanic modulation from sweeping hues faster than the
+    // interpolator's transition duration can follow.
+    const maxHueShiftPerSecond = options?.maxHueShiftPerSecond;
+    if (maxHueShiftPerSecond !== undefined && maxHueShiftPerSecond > 0) {
+      const prevHue = SeleneColorEngine._prevGeneratedHue;
+      if (prevHue !== null && Number.isFinite(prevHue)) {
+        // Per-frame max delta: maxHueShiftPerSecond / 60 (assuming ~60fps generate)
+        const maxDeltaPerFrame = maxHueShiftPerSecond / 60;
+        let hueDiff = finalHue - prevHue;
+        // Normalize to shortest path
+        hueDiff = ((hueDiff + 180) % 360 + 360) % 360 - 180;
+        if (Math.abs(hueDiff) > maxDeltaPerFrame) {
+          finalHue = normalizeHue(prevHue + Math.sign(hueDiff) * maxDeltaPerFrame);
+        }
+      }
+      SeleneColorEngine._prevGeneratedHue = finalHue;
+    }
+
     // === E. COLOR PRIMARIO ===
     // 🛡️ WAVE 81: Usar valores corregidos por Anti-Mud Protocol
     // WAVE 0-ALLOC: Mutate scratch palette in place
@@ -2419,7 +2452,8 @@ export class SeleneColorInterpolator {
       this.currentPalette = this.lerpPalette(
         this.currentPalette!,
         this.targetPalette!,
-        this.transitionProgress
+        this.transitionProgress,
+        isChillConstitution, // ⚒️ WAVE 7749.37: smooth secondary/ambient in chill
       );
     } else if (hasAnyPaletteDelta && this.targetPalette) {
       // ⚡ WAVE 3455: MOVER LIVE-TRACK — transición completa pero la paleta sigue cambiando.
@@ -2446,13 +2480,22 @@ export class SeleneColorInterpolator {
    * blackouts, revelando el arcoíris físico entre ventanas de tránsito.
    * Con snap, el Quantizer muestrea siempre el color destino → 1 blackout → limpio.
    */
-  private lerpPalette(from: SelenePalette, to: SelenePalette, t: number): SelenePalette {
+  private lerpPalette(from: SelenePalette, to: SelenePalette, t: number, isChill: boolean = false): SelenePalette {
     // WAVE 0-ALLOC: Mutate pre-allocated _lerpScratch in place
     const out = this._lerpScratch;
+    // ⚒️ WAVE 7749.37: In chill vibe, secondary/ambient use smooth LERP (not hard snap).
+    // The lerpHSL function has a desaturation dip for hue jumps > 60° (washes through
+    // near-white), which turns Magenta → Cyan into Magenta → soft white → Cyan.
+    // The original hard-snap (t=1.0) was for moving-head color wheels (mechanical
+    // gobo slots can't mid-transition). In chill, fixtures are mostly LED PARs/washes
+    // that CAN mid-transition smoothly, so the snap is unnecessary and produces
+    // abrupt color cuts.
+    const secondaryT = isChill ? t : 1.0;
+    const ambientT   = isChill ? t : 1.0;
     this.lerpHSL(from.primary,   to.primary,   t, out.primary);    // Rampa suave
-    this.lerpHSL(from.secondary, to.secondary, 1.0, out.secondary); // ⚡ Snap Mover
+    this.lerpHSL(from.secondary, to.secondary, secondaryT, out.secondary); // Chill: ramp / Mover: snap
     this.lerpHSL(from.accent,    to.accent,    t, out.accent);    // Rampa suave
-    this.lerpHSL(from.ambient,   to.ambient,   1.0, out.ambient); // ⚡ Snap Mover
+    this.lerpHSL(from.ambient,   to.ambient,   ambientT, out.ambient);   // Chill: ramp / Mover: snap
     this.lerpHSL(from.contrast,  to.contrast,  t, out.contrast);  // Rampa suave
     out.meta = t >= 0.5 ? to.meta : from.meta; // Metadata cambia a mitad de transición
     return out;
@@ -2554,7 +2597,7 @@ export class SeleneColorInterpolator {
       const dipCenter = 0.5;
       const dipWidth = 0.25;  // Ancho de la "zona de lavado"
       const distanceFromCenter = Math.abs(t - dipCenter);
-      
+
       // Si estamos cerca del centro, aplicar desaturación
       if (distanceFromCenter < dipWidth) {
         // Factor de desaturación: 1.0 (sin efecto) → 0.3 (máximo lavado) en el centro
@@ -2562,9 +2605,21 @@ export class SeleneColorInterpolator {
         const dipStrength = 0.3;  // Saturación mínima en el dip (30% de la original)
         const normalizedDist = distanceFromCenter / dipWidth;  // 0 en centro, 1 en bordes
         const dipFactor = dipStrength + (1 - dipStrength) * (normalizedDist * normalizedDist);
-        
+
         s = s * dipFactor;
       }
+    }
+
+    // 🛡️ WAVE 7749.40: MECHANICAL WHEEL SAFETY CLAMP
+    // La rueda mecánica de color no puede transitar suavemente por blanco:
+    // si la saturación baja del umbral cromático (0.15), el matcher de rueda
+    // hace snap a Open/White y luego de vuelta al color objetivo, creando un
+    // efecto estroboscópico en stage. Clampamos la saturación mínima a 0.2
+    // (cómodamente por encima del umbral) para que la rueda siempre reciba
+    // un target cromático y mantenga su slot de color durante toda la transición.
+    // Los LEDs aún ven una transición desaturada (wash effect preservado).
+    if (s > 0 && s < 0.2) {
+      s = 0.2;
     }
     
     out.s = s;

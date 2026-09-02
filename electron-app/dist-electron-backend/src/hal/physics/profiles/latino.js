@@ -324,27 +324,30 @@ export const LATINO_PROFILE = {
         backLMidWeight: 0.50, // WAVE 6071: inyección moderada, evita clipping de entrada >1.0
         backLLowMidWeight: 0.45,
         backLTrebleSub: -0.8, // WAVE 6070: conservar inyección de agudos, no quemar
-        // ── WAVE 7572: overrides41 de movers alineados con base domada ─────────
+        // ── WAVE 7749.20: MOVERS — Meloso pero con punch ──────────────
+        // El Galán y La Dama ahora fluyen como miel durante las frases
+        // y caen a negro eléctrico al milisegundo que termina la nota.
+        // Menos boost + decay más largo + attack más exigente = macro-dinámica.
         envelopeTreble: {
-            gateOn: 0.08, // WAVE 7572: 0.02→0.08 — suelo real
+            gateOn: 0.15, // WAVE 7749.20: 0.08→0.15 — ignora ruido de fondo
             squelchBase: 0.12, // WAVE 3492: igual que base
-            boost: 9.0, // WAVE 7572: 12.0→9.0 — megáfono recortado
-            crushExponent: 0.90, // WAVE 7572: 0.60→0.90 — dinámica respetada
-            decayBase: 0.72, // WAVE 4945: transferimos inercia viscosa al mover
-            ghostCap: 0.06,
-            attackSlopeMin: 0.02, // WAVE 7572: -0.05→0.02 — exige transitorio real
+            boost: 5.5, // WAVE 7749.20: 9.0→5.5 — sin clipping de onda cuadrada
+            crushExponent: 0.90, // WAVE 7572: dinámica respetada
+            decayBase: 0.82, // WAVE 7749.20: 0.72→0.82 — miel, sustain fluido
+            ghostCap: 0.00, // WAVE 7749.20: 0.06→0.00 — negro absoluto en silencio
+            attackSlopeMin: 0.05, // WAVE 7749.20: 0.02→0.05 — ignora micro-fluctuaciones
             sustainedFlatVelocityMax: 0.50, // WAVE 6050: umbral absurdo
             sustainedSquelchStartFrames: 9999, // WAVE 6050: nunca penaliza
             // WAVE 6050: riseRate ELIMINADO — comportamiento instantáneo como Techno
         },
         envelopeVocal: {
-            gateOn: 0.08, // WAVE 7572: 0.02→0.08 — suelo real
+            gateOn: 0.12, // WAVE 7749.20: 0.08→0.12 — captura respiración deliberada
             squelchBase: 0.08, // WAVE 3492: piso moderado
-            boost: 5.0, // WAVE 6100: reducido para evitar saturación de siseos vocales
-            crushExponent: 1.0, // WAVE 6100: lineal — elimina inflado de susurros en estrobo
-            decayBase: 0.72, // WAVE 3494: alineado con base
-            ghostCap: 0.04,
-            attackSlopeMin: 0.02, // WAVE 7572: -0.05→0.02 — exige transitorio real
+            boost: 4.5, // WAVE 7749.20: 5.0→4.5 — dinámica natural
+            crushExponent: 1.0, // WAVE 6100: lineal
+            decayBase: 0.85, // WAVE 7749.20: 0.72→0.85 — más miel que el Galán
+            ghostCap: 0.00, // WAVE 7749.20: 0.04→0.00 — negro absoluto para contraste
+            attackSlopeMin: 0.05, // WAVE 7749.20: 0.02→0.05 — derrite sílabas en palabras
             sustainedFlatVelocityMax: 0.50, // WAVE 6050: umbral absurdo
             sustainedSquelchStartFrames: 9999, // WAVE 6050: nunca penaliza
             // WAVE 6050: riseRate ELIMINADO — comportamiento instantáneo como Techno
@@ -395,12 +398,16 @@ export const LATINO_PROFILE = {
             squelchBase: 0.10, // WAVE 6065: blinda front R contra sangrado vocal
             maxIntensity: 0.80,
         },
-        // ── S1: SNARE STACCATO — Back R el TAcka cae a negro ────────
-        // WAVE 2459: decayBase 0.45→0.22 — el TAcka es un disparo, no un reverb.
+        // ── S1: SNARE — Back R el TAcka respira, no ametralla ────────
+        // WAVE 7749.20: decayBase 0.45→0.60 — el override tenía snap de techno.
+        //   El dembow latino RESPIRA: la caja tiene swing ancho, no es un latigazo
+        //   industrial. Con 0.45 la caja caía a negro en ~90ms = flash strobo.
+        //   Con 0.60: 1.0→0.60→0.36→0.22→0.13→0.08 = ~140ms de caída natural.
+        //   El TAcka se siente, no ametralla. Techno se queda con 0.40 (snap puro).
         envelopeSnare: {
             gateOn: 0.55, // WAVE 6050: endurecimiento extremo, solo golpes brutos pasan
             squelchBase: 0.45, // WAVE 6050: asfixia cualquier ruido de fondo que logre pasar el gate
-            decayBase: 0.45,
+            decayBase: 0.60, // WAVE 7749.20: 0.45→0.60 — el TAcka respira, no es techno snap
             decayRange: 0.10,
             ghostCap: 0.01,
             boost: 2.5,
@@ -410,16 +417,20 @@ export const LATINO_PROFILE = {
         // WAVE 7749.3: Real-world desensitization — aligned with techno thresholds.
         // Dense mastered mixes crush flatness and WNS regardless of genre.
         // snareChokeFrames 2→4: allow longer transients before choking.
-        snareVetoFlatnessFloor: 0.02,
+        // WAVE 7749.8: Veto floors raised 0.02→0.04. Raw crackDelta is now clean,
+        // so the low floors are no longer needed and were letting hi-hat bleed through.
+        snareVetoFlatnessFloor: 0.04,
         snareVetoFlatnessKnee: 0.10,
-        snareVetoWnsFloor: 0.02,
+        snareVetoWnsFloor: 0.04,
         snareVetoWnsKnee: 0.20,
         snareVetoFluxFloor: 0.05,
         snareVetoFluxKnee: 0.20,
         snareChokeFrames: 4,
         snareChokeRate: 0.60, // Faster choke — latino TAcka is staccato
-        // WAVE 7749.7: Impulse decay — slightly longer than default 0.04 for
-        // staccato Latin percussion (timbale, güira, conga). Not as long as techno.
-        snareImpulseDecay: 0.15,
+        // WAVE 7749.20: Impulse decay 0.15→0.25 — el 0.15 dejaba re-disparar
+        // cada 2 frames (~45ms) = efecto strobo/flash. Con 0.25: 1.0→0.25→0.06
+        // = 3 frames (~70ms) de refractario. Sigue más rápido que techno (0.40)
+        // porque el dembow es más denso, pero sin ametrallar.
+        snareImpulseDecay: 0.25,
     },
 };

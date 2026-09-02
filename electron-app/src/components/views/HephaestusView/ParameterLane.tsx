@@ -15,6 +15,8 @@
 import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import type { HephCurve, HephParamId, ZoneTarget } from '../../../core/hephaestus/types'
+// WAVE 7749.30: Re-export stepped-param helpers from core types (no layer violation)
+export { STEPPED_PARAM_SLOTS, isSteppedParam, getSteppedSlots } from '../../../core/hephaestus/types'
 import type { EffectZone } from '../../../core/effects/types'
 import { SmartZoneSelector, getZoneBadgeText, getZoneBadgeIcon } from './SmartZoneSelector'
 
@@ -23,23 +25,23 @@ import { SmartZoneSelector, getZoneBadgeText, getZoneBadgeIcon } from './SmartZo
 // WAVE 2030.9: Added categories for proper grouping
 // ═══════════════════════════════════════════════════════════════════════════
 
-export type ParamCategory = 'physical' | 'color' | 'movement' | 'control'
+export type ParamCategory = 'physical' | 'color' | 'movement' | 'control' | 'beam' | 'atmosphere'
 
-export const PARAM_META: Record<HephParamId, { 
+export const PARAM_META: Record<HephParamId, {
   label: string
   color: string
   icon: string
-  category: ParamCategory 
+  category: ParamCategory
 }> = {
   // PHYSICAL - Intensity/brightness controls
   intensity:  { label: 'INTENSITY',  color: '#fbbf24', icon: '☀', category: 'physical' },
   strobe:     { label: 'STROBE',     color: '#ef4444', icon: '⚡', category: 'physical' },
   white:      { label: 'WHITE',      color: '#e2e8f0', icon: '◎', category: 'physical' },
   amber:      { label: 'AMBER',      color: '#f97316', icon: '◉', category: 'physical' },
-  
+
   // COLOR - Chromatic controls
   color:      { label: 'COLOR',      color: '#a855f7', icon: '🎨', category: 'color' },
-  
+
   // MOVEMENT - Pan/Tilt/Zoom/Focus/Iris/Gobo/Prism
   pan:        { label: 'PAN',        color: '#3b82f6', icon: '↔', category: 'movement' },
   tilt:       { label: 'TILT',       color: '#6366f1', icon: '↕', category: 'movement' },
@@ -49,20 +51,38 @@ export const PARAM_META: Record<HephParamId, {
   gobo1:      { label: 'GOBO 1',     color: '#d946ef', icon: '⬡', category: 'movement' },
   gobo2:      { label: 'GOBO 2',     color: '#c026d3', icon: '⬢', category: 'movement' },
   prism:      { label: 'PRISM',      color: '#f43f5e', icon: '◇', category: 'movement' },
-  
+
   // CONTROL - Speed, width, direction, global
   speed:      { label: 'SPEED',      color: '#22d3ee', icon: '⏱', category: 'control' },
   width:      { label: 'WIDTH',      color: '#06b6d4', icon: '⟷', category: 'control' },
   direction:  { label: 'DIRECTION',  color: '#10b981', icon: '→', category: 'control' },
   globalComp: { label: 'GLOBAL',     color: '#8b5cf6', icon: '◈', category: 'control' },
+
+  // WAVE 7749.29: BEAM — Laser galvo geometry (Aether Agnostic §1.2)
+  // #00ff88 matches the Forge FUNCTION_PALETTE 'LASER FX' category color.
+  scale_x:       { label: 'SCALE X',      color: '#00ff88', icon: '⤢', category: 'beam' },
+  scale_y:       { label: 'SCALE Y',      color: '#00ff88', icon: '⤢', category: 'beam' },
+  rot_x:         { label: 'ROT X',        color: '#00cc66', icon: '⟳', category: 'beam' },
+  rot_y:         { label: 'ROT Y',        color: '#00cc66', icon: '⟲', category: 'beam' },
+  gobo_rotation: { label: 'GOBO ROT',     color: '#ffd700', icon: '⟳', category: 'beam' },
+
+  // WAVE 7749.29: ATMOSPHERE — Smoke/haze/fan fluids (4Hz cue rate, NOT pyro)
+  // #6b7280 matches the Forge FUNCTION_PALETTE 'ATMOSPHERE' category color.
+  // emission_gate / fire_valve / fire_ignite are DELIBERATELY ABSENT (quarantine).
+  smoke_pump:    { label: 'SMOKE PUMP',    color: '#6b7280', icon: '💧', category: 'atmosphere' },
+  smoke_density: { label: 'SMOKE DENSITY', color: '#6b7280', icon: '🌫', category: 'atmosphere' },
+  fan_speed:     { label: 'FAN SPEED',     color: '#6b7280', icon: '🌀', category: 'atmosphere' },
 }
 
 /** Category display info */
 export const PARAM_CATEGORIES: Record<ParamCategory, { label: string; icon: string }> = {
-  physical: { label: 'PHYSICAL', icon: '💡' },
-  color:    { label: 'COLOR',    icon: '🎨' },
-  movement: { label: 'MOVEMENT', icon: '🔄' },
-  control:  { label: 'CONTROL',  icon: '🎛' },
+  physical:   { label: 'PHYSICAL',   icon: '💡' },
+  color:      { label: 'COLOR',      icon: '🎨' },
+  movement:   { label: 'MOVEMENT',   icon: '🔄' },
+  control:    { label: 'CONTROL',    icon: '🎛' },
+  // WAVE 7749.29: Laser beam geometry + atmosphere fluids
+  beam:       { label: 'LASER FX',   icon: '⚡' },
+  atmosphere: { label: 'ATMOSPHERE', icon: '🌫' },
 }
 
 /** All available parameter IDs for the add param dropdown - ordered by category */
@@ -74,7 +94,11 @@ export const ALL_PARAM_IDS: HephParamId[] = [
   // Movement
   'pan', 'tilt', 'zoom', 'focus', 'iris', 'gobo1', 'gobo2', 'prism',
   // Control
-  'speed', 'width', 'direction', 'globalComp'
+  'speed', 'width', 'direction', 'globalComp',
+  // WAVE 7749.29: Beam (laser geometry) — scale/rotate/tumble + gobo spin
+  'scale_x', 'scale_y', 'rot_x', 'rot_y', 'gobo_rotation',
+  // WAVE 7749.29: Atmosphere (fluids only — pyro/interlock quarantined, NOT here)
+  'smoke_pump', 'smoke_density', 'fan_speed'
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════

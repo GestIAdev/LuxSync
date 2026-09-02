@@ -98,7 +98,9 @@ export class LiquidAetherAdapter {
         this._epicenter = { x: epicenter.x, y: epicenter.y, z: epicenter.z };
         this._maxRadiusM = maxRadiusM;
         // ── STROBE scratch
-        this._strobeValues = { shutter: 0, strobeRate: 0 };
+        // ⚒️ WAVE 7749.35: DUAL-ALIAS — escribir AMBOS 'strobe' y 'strobeRate'
+        // para compatibilidad con perfiles que declaran chDef.type='strobe' o 'strobeRate'.
+        this._strobeValues = { strobe: 0, shutter: 0, strobeRate: 0 };
         this._strobeScratch = {
             nodeId: '',
             values: this._strobeValues,
@@ -189,7 +191,9 @@ export class LiquidAetherAdapter {
             if (!hasShutter)
                 return;
             // ── Intent L0 — strobe binario modulado por intensidad ─────────
+            // ⚒️ WAVE 7749.35: DUAL-ALIAS — escribir AMBOS 'strobe' y 'strobeRate'
             this._strobeValues['shutter'] = 1.0; // abre el obturador
+            this._strobeValues['strobe'] = strobeIntensity; // 0-1 normalizado (alias)
             this._strobeValues['strobeRate'] = strobeIntensity; // 0-1 normalizado
             this._strobeScratch.nodeId = node.nodeId;
             bus.push(this._strobeScratch);

@@ -289,6 +289,19 @@ export class NodeResolver {
         // the 44Hz oscillation between adjacent DMX steps into a smooth sub-step.
         // Not used for dimmer (LED responds instantly → dithering = visible jitter).
         this._ditherError = new Map();
+        // ⚒️ WAVE 7749.35: 16-bit epsilon deadband — tracks the previous frame's
+        // normalized float and quantized raw16 per channel. When |Δnormalized| < 1/65535,
+        // the previous raw16 is reused to prevent floating-point noise from fluttering
+        // the LSB at 44Hz (mechanical jitter on static manual values).
+        this._prev16bitNorm = new Map();
+        this._prev16bitRaw = new Map();
+        // ⚒️ WAVE 7749.37: 8-bit epsilon deadband — tracks the previous frame's
+        // normalized float and quantized DMX byte per channel. When |Δnormalized| < 1/255,
+        // the previous DMX byte is reused to prevent floating-point noise from crossing
+        // integer boundaries at 44Hz (visible micro-flicker on instant-responding LEDs).
+        // Only applies to non-pan/tilt 8-bit channels (dimmer, color, beam, atmosphere).
+        this._prev8bitNorm = new Map();
+        this._prev8bitDmx = new Map();
         // 🔥 WAVE 4720: IGNITION ENGINE — Pre-computed injection map (patch-time only)
         // Key: DeviceId  Value: array of IgnitionInjection rules
         // Built once in _precomputeIgnitionMap(); iterated O(2-4) times per frame in resolve().
@@ -1207,7 +1220,7 @@ export class NodeResolver {
             if (normalized < 0)
                 normalized = 0;
             // Escalar a DMX: [0, 255]
-            // WAVE 7696: SIGMA-DELTA DITHERING for pan/tilt only.
+            // WAVE 7696: SIGMA-DELTA DITHERING for 8-bit pan/tilt only.
             //
             // WAVE 2523.3 eliminó el dithering global porque los LEDs responden
             // instantáneamente → oscilación visible como temblequeo en dimmer/color.
@@ -1215,12 +1228,19 @@ export class NodeResolver {
             // 1 DMX step en 23ms (un frame @ 44Hz). Si alternamos entre N y N+1 a 44Hz,
             // el motor se asienta físicamente en el promedio → sub-step suave.
             //
+            // ⚒️ WAVE 7749.35: Dithering KILLED for 16-bit mechanical channels.
+            // 16-bit resolution (65536 steps) provides native sub-step smoothness —
+            // temporal dithering only causes physical motor resonance at 44Hz.
+            // The 16-bit split below overwrites the dithered coarse anyway, making
+            // the dithering dead code for 16-bit channels. Only apply to 8-bit pan/tilt.
+            //
             // Sigma-delta modulation: el error fraccional se acumula frame a frame.
             // Cuando el error supera ±0.5, el valor cuantizado salta al step adyacente
             // y el error se descuenta. El promedio temporal converge al valor real.
             // Esto elimina el diente de sierra visible en barridos lentos del chill.
             let dmxValue;
-            if (chDef.type === PAN_COARSE || chDef.type === TILT_COARSE) {
+            if ((chDef.type === PAN_COARSE || chDef.type === TILT_COARSE) && !chDef.is16bit) {
+                // 8-bit pan/tilt — sigma-delta dithering for sub-step smoothness
                 const ditherKey = node.nodeId + ':' + chDef.type;
                 const error = this._ditherError.get(ditherKey) ?? 0;
                 const raw = normalized * 255 + error;
@@ -1230,8 +1250,34 @@ export class NodeResolver {
                 this._ditherError.set(ditherKey, newError > 1 ? 1 : newError < -1 ? -1 : newError);
             }
             else {
-                // Dimmer, color, beam, atmosphere: cuantización directa (sin dithering)
-                dmxValue = sanitizeDmxByte(Math.round(normalized * 255));
+                // Dimmer, color, beam, atmosphere, 16-bit pan/tilt: cuantización directa
+                // ⚒️ WAVE 7749.37: 8-bit epsilon deadband for non-kinetic channels.
+                // If |Δnormalized| < 1/255 (1 LSB at 8-bit), reuse the previous DMX byte
+                // to prevent floating-point noise from crossing integer boundaries at 44Hz.
+                // Skip for 16-bit channels (they have their own deadband below) and for
+                // strobe/shutter channels (those need instant response).
+                if (!chDef.is16bit &&
+                    chDef.type !== 'strobe' &&
+                    chDef.type !== 'shutter') {
+                    const deadKey = node.nodeId + ':8bit:' + chDef.type;
+                    const prevNorm = this._prev8bitNorm.get(deadKey);
+                    const prevDmx = this._prev8bitDmx.get(deadKey);
+                    const EPSILON_8BIT = 1.0 / 255; // ±1 LSB at 8-bit
+                    if (prevNorm !== undefined && prevDmx !== undefined &&
+                        Math.abs(normalized - prevNorm) < EPSILON_8BIT) {
+                        // Static value — reuse previous quantized output (deadband)
+                        dmxValue = prevDmx;
+                    }
+                    else {
+                        // Moving value — quantize fresh
+                        dmxValue = sanitizeDmxByte(Math.round(normalized * 255));
+                        this._prev8bitNorm.set(deadKey, normalized);
+                        this._prev8bitDmx.set(deadKey, dmxValue);
+                    }
+                }
+                else {
+                    dmxValue = sanitizeDmxByte(Math.round(normalized * 255));
+                }
             }
             // Aplicar calibración específica de canal
             if (calibration) {
@@ -1324,7 +1370,10 @@ export class NodeResolver {
             //   console.log(`[KINETIC-DIAG] ${node.nodeId}: CLASSIC-WRITE ${chDef.type}=${safeDmxValue} rawSource=${rawSource} nodeBlocked=${nodeBlocked}`)
             // )
             // Telemetría legacy removida.
-            // Canales 16-bit: escribir byte fine (LSB) en el slot siguiente.
+            // Canales 16-bit: escribir byte fine (LSB) en el slot exacto.
+            // ⚒️ WAVE 7749.35: Use chDef.fineDmxOffset instead of bufIdx+1.
+            // The fine channel may be at ANY offset (e.g. 7R Panther has
+            // [pan, tilt, pan_fine, tilt_fine] — pan_fine is at offset+2).
             // WAVE 7645-16BIT-PHASE2: When the governor or personality remapper
             // modified the coarse byte (finalByte ≠ safeDmxValue), the fine byte
             // must be recalculated from the final coarse to maintain coherence.
@@ -1332,8 +1381,8 @@ export class NodeResolver {
             // byte is set to 0 for predictability — the governor's intent is a
             // fixed floor, not a sub-byte-precision value.
             if (chDef.is16bit) {
-                const fineIdx = bufIdx + 1;
-                if (fineIdx < DMX_UNIVERSE_SIZE) {
+                const fineIdx = baseAddr + (chDef.fineDmxOffset ?? chDef.dmxOffset + 1);
+                if (fineIdx >= 0 && fineIdx < DMX_UNIVERSE_SIZE) {
                     if (finalByte !== safeDmxValue) {
                         // Governor/personality modified the coarse — sync fine to 0
                         // for deterministic governor behavior (clamps/floors are not
@@ -1343,7 +1392,25 @@ export class NodeResolver {
                     else {
                         // No governor modification — use the full 16-bit precision
                         // from the original normalized value.
-                        const raw16 = Math.round(normalized * 65535);
+                        // ⚒️ WAVE 7749.35: Epsilon deadband — if the normalized value
+                        // hasn't changed by more than 1 LSB at 16-bit, reuse the previous
+                        // raw16 to prevent floating-point noise from fluttering the LSB.
+                        const ditherKey16 = node.nodeId + ':16bit:' + chDef.type;
+                        const prevNorm = this._prev16bitNorm.get(ditherKey16);
+                        const prevRaw16 = this._prev16bitRaw.get(ditherKey16);
+                        const EPSILON_16BIT = 1.0 / 65535; // ±1 LSB at 16-bit
+                        let raw16;
+                        if (prevNorm !== undefined && prevRaw16 !== undefined &&
+                            Math.abs(normalized - prevNorm) < EPSILON_16BIT) {
+                            // Static value — reuse previous quantized output (deadband)
+                            raw16 = prevRaw16;
+                        }
+                        else {
+                            // Moving value — quantize fresh
+                            raw16 = Math.round(normalized * 65535);
+                            this._prev16bitNorm.set(ditherKey16, normalized);
+                            this._prev16bitRaw.set(ditherKey16, raw16);
+                        }
                         const safeRaw16 = Number.isFinite(raw16) ? raw16 : 0;
                         buf[fineIdx] = sanitizeDmxByte(safeRaw16 & 0xFF); // byte fine (LSB)
                         // Corregir el coarse para coherencia 16-bit:
@@ -1815,12 +1882,13 @@ export class NodeResolver {
                 continue;
             if (chDef.is16bit) {
                 // WAVE 7608: Split 16-bit value into MSB (coarse) and LSB (fine)
+                // ⚒️ WAVE 7749.35: Use chDef.fineDmxOffset instead of bufIdx+1.
                 const val16 = isPan ? safePan16 : safeTilt16;
                 const coarse = (val16 >> 8) & 0xFF; // MSB → pan/tilt channel
                 const fine = val16 & 0xFF; // LSB → pan_fine/tilt_fine channel
                 buf[bufIdx] = coarse;
-                const fineIdx = bufIdx + 1;
-                if (fineIdx < DMX_UNIVERSE_SIZE) {
+                const fineIdx = baseAddr + (chDef.fineDmxOffset ?? chDef.dmxOffset + 1);
+                if (fineIdx >= 0 && fineIdx < DMX_UNIVERSE_SIZE) {
                     buf[fineIdx] = fine;
                 }
             }

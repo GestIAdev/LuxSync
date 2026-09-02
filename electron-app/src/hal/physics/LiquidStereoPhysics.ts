@@ -65,6 +65,8 @@ export interface LiquidStereoInput {
   // WAVE 8008: Rhythmic percussion isolated energies from GodEarFFT
   snare_energy?: number  // 0-1 — geometric mean of body (150-250Hz) + crack (2-5kHz)
   hh_energy?: number     // 0-1 — high band (5-15kHz)
+  // WAVE 7749.7: Raw (pre-EMA) snare transient delta — pierces compression
+  raw_snare_delta?: number  // positive = onset, negative = decay
   // WAVE 8005.2: Photon block — para bypass frontal durante strobe FFT V3
   photon?: GodEarPhoton
 }
@@ -88,10 +90,13 @@ export interface LiquidStereoResult {
   strobeIntensity: number
 
   // === WAVE 4520.2: 9-ZONE EXPANSION ===
+  // 🩸 WAVE 7749.27: LASER DOMAIN — Floor & Air are now precision laser envelopes.
   /**
-   * Floor — SubBass + LowMid (20-500Hz): Energía rítmica pesada para uplight/uplighting.
-   * Ideal para fixtures al nivel del suelo que deben pulsar con el bombo y el sub.
-   * Señal instantánea, sin envelope — máxima reactividad al bajo.
+   * Floor — Ground sweep laser: spectralFlux + bassDelta onset-driven.
+   * envFloor processes the signal with zero-attack, fast decay (0.12),
+   * high crush (2.0). Reacts to spectral CHANGE (any note onset), not
+   * band amplitude — spectrally distinct from frontLeft (subBass) and
+   * frontRight (kick). Ideal for floor lasers that sweep on arpeggios/stabs.
    */
   floorIntensity: number
   /**
@@ -102,9 +107,10 @@ export interface LiquidStereoResult {
    */
   ambientIntensity: number
   /**
-   * Air — EMA suavizado de (treble × 0.6 + highMid × 0.4) con curva de compresión soft.
-   * Previene parpadeos histéricos en lásers y haze causados por el ultraAir crudo.
-   * Ataque ~8 frames, release ~20 frames. Ideal para atmospheric devices.
+   * Air — Aerial laser: treble + ultraAir velocity-driven (6-22kHz range).
+   * envAir processes the signal with zero-attack (riseRate=1.0), fast decay
+   * (0.08, ~45-65ms), high gate (0.35), high crush (2.5). Spectrally isolated
+   * above the snare body (2-6kHz). Ideal for aerial laser stabs and sharp beams.
    */
   airIntensity: number
 

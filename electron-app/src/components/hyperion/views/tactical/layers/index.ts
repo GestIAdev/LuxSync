@@ -9,6 +9,6 @@
 
 export { renderGridLayer, GRID_CONFIG } from './GridLayer'
 export { renderZoneLayer, ZONE_LABEL_CONFIG } from './ZoneLayer'
-export { renderFixtureLayer, FIXTURE_CONFIG } from './FixtureLayer'
+export { renderFixtureLayer, FIXTURE_CONFIG, disposeFixtureLayerSprites } from './FixtureLayer'
 export { renderSelectionLayer, SELECTION_CONFIG } from './SelectionLayer'
 export { renderHUDLayer, HUD_CONFIG } from './HUDLayer'

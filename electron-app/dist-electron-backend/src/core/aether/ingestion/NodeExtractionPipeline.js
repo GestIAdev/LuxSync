@@ -107,8 +107,14 @@ const ATMOSPHERE_FIXTURE_TYPES = new Set([
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTRAINT & CURVE DEFAULTS
 // ═══════════════════════════════════════════════════════════════════════════
+// ⚒️ WAVE 7749.37: Gamma 2.2 transfer curve for LED dimmers.
+// Linear distribution wastes DMX resolution at the low end where human
+// perception is most sensitive (Weber-Fechner). Gamma 2.2 redistributes
+// the 256 steps to give ~4x more resolution below DMX 50, eliminating
+// the "voltage drop" micro-flicker during slow fades.
 const IMPACT_TRANSFER_CURVE = {
-    type: 'linear',
+    type: 'gamma',
+    gamma: 2.2,
     noiseGate: 0.0,
 };
 const IMPACT_BAND_MIX = {
@@ -535,7 +541,9 @@ export class NodeExtractionPipeline {
             return mapped;
         });
         // WAVE 7644-16BIT-DIMMER: Pair dimmer_fine with coarse dimmer (forge path).
-        return this._pairDimmerFine(mappedNodes);
+        // ⚒️ WAVE 7749.35: Also pair pan_fine/tilt_fine with their coarse channels.
+        const pairedDimmer = this._pairDimmerFine(mappedNodes);
+        return this._pairPanTiltFine(pairedDimmer);
     }
     /**
      * Infiere el sufijo de nodo Aether para canales sin aetherNodeId declarado.
@@ -1033,6 +1041,65 @@ export class NodeExtractionPipeline {
         return result;
     }
     /**
+     * ⚒️ WAVE 7749.35: Pair pan_fine/tilt_fine channels with their coarse pan/tilt.
+     *
+     * Unlike dimmer_fine (which always follows coarse at offset+1), pan_fine and
+     * tilt_fine can be at ANY dmxOffset. Example: the 7R Panther 16ch mode has
+     * [Pan, Tilt, Pan fine, Tilt fine] — pan_fine is at offset+2, not offset+1.
+     *
+     * Pairing rule: pair by type. There is exactly one `pan` and one `pan_fine`
+     * per kinetic node (guaranteed by OFL structure). Same for tilt.
+     * The fine channel's dmxOffset is stored in the coarse channel's
+     * `fineDmxOffset` field so the NodeResolver can write the LSB to the
+     * correct buffer slot without assuming adjacency.
+     *
+     * The fine channel is filtered out of the array to prevent it from
+     * overwriting the LSB with its defaultValue (0) in the classic path.
+     *
+     * @param channels — INodeChannelDef[] to process
+     * @returns New array with pan_fine/tilt_fine absorbed into their coarse channels
+     */
+    _pairPanTiltFine(channels) {
+        let panFineOffset;
+        let tiltFineOffset;
+        let hasPanFine = false;
+        let hasTiltFine = false;
+        // First pass: find pan_fine and tilt_fine channels
+        for (let i = 0; i < channels.length; i++) {
+            const ch = channels[i];
+            if (ch.type === 'pan_fine') {
+                panFineOffset = ch.dmxOffset;
+                hasPanFine = true;
+            }
+            else if (ch.type === 'tilt_fine') {
+                tiltFineOffset = ch.dmxOffset;
+                hasTiltFine = true;
+            }
+        }
+        if (!hasPanFine && !hasTiltFine)
+            return channels;
+        // Second pass: build result, upgrading coarse pan/tilt to 16-bit with
+        // fineDmxOffset, and filtering out the paired fine channels.
+        const result = [];
+        for (let i = 0; i < channels.length; i++) {
+            const ch = channels[i];
+            if (ch.type === 'pan_fine' || ch.type === 'tilt_fine') {
+                // Skip — absorbed into coarse
+                continue;
+            }
+            if (ch.type === 'pan' && hasPanFine && panFineOffset !== undefined) {
+                result.push({ ...ch, is16bit: true, fineDmxOffset: panFineOffset });
+            }
+            else if (ch.type === 'tilt' && hasTiltFine && tiltFineOffset !== undefined) {
+                result.push({ ...ch, is16bit: true, fineDmxOffset: tiltFineOffset });
+            }
+            else {
+                result.push(ch);
+            }
+        }
+        return result;
+    }
+    /**
      * Convierte FixtureChannel[] a INodeChannelDef[].
      * @param kinetic — Si true, usa 128 como default para pan/tilt (centro).
      */
@@ -1072,7 +1139,9 @@ export class NodeExtractionPipeline {
         // WAVE 7644-16BIT-DIMMER: Pair dimmer_fine with coarse dimmer before
         // returning. This absorbs the fine channel into the coarse by setting
         // is16bit=true, mirroring the pan/pan_fine pattern.
-        return this._pairDimmerFine(mappedChannels);
+        // ⚒️ WAVE 7749.35: Also pair pan_fine/tilt_fine with their coarse channels.
+        const pairedDimmer = this._pairDimmerFine(mappedChannels);
+        return this._pairPanTiltFine(pairedDimmer);
     }
     _resolveDefaultValue(ch, kinetic) {
         const type = this._normalizeChannelType(ch.type);

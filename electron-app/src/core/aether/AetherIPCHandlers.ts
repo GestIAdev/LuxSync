@@ -71,6 +71,61 @@ function resolveKineticNodeId(nodeId: string): string {
   return nodeId
 }
 
+// ── WAVE 7749.35: Universal family label → NodeFamily mapping.
+// Used ONLY by resolveNodeIdToAll (calibration path), NOT the hot path.
+const FAMILY_LABEL_TO_ENUM: Record<string, NodeFamily> = {
+  'color': NodeFamily.COLOR,
+  'impact': NodeFamily.IMPACT,
+  'kinetic': NodeFamily.KINETIC,
+  'beam': NodeFamily.BEAM,
+  'atmosphere': NodeFamily.ATMOSPHERE,
+}
+
+/**
+ * ⚒️ WAVE 7749.35: Universal nodeId resolver for multi-cell (Forge Graph) fixtures.
+ *
+ * For flat fixtures (7R, Pars), the nodeId `${fixtureId}:impact` directly matches
+ * a node in the graph → returns [nodeId].
+ *
+ * For multi-cell fixtures (Tungsten), nodes have cell-suffixed IDs like
+ * `${fixtureId}:golden-master:impact`. The flat nodeId doesn't match → we look
+ * up ALL device nodes, filter by family, and return every matching nodeId so
+ * the override is fanned out to ALL cells.
+ *
+ * WARNING: Does graph lookups on EVERY call. Must NOT be used in the 44Hz hot
+ * path — that path uses resolveKineticNodeId (fast). This is ONLY for
+ * user-initiated calibration handlers (low frequency).
+ */
+function resolveNodeIdToAll(nodeId: string): string[] {
+  const orchestrator = getTitanOrchestrator()
+  const graph = orchestrator.getAetherNodeGraph()
+
+  // Fast path: nodeId directly exists in the graph (flat fixture)
+  if (graph.getNodeData(nodeId) != null) return [nodeId]
+
+  // Parse the family label from the suffix (last segment after ':')
+  const lastColon = nodeId.lastIndexOf(':')
+  if (lastColon < 0) return [nodeId]
+
+  const familyLabel = nodeId.substring(lastColon + 1)
+  const familyEnum = FAMILY_LABEL_TO_ENUM[familyLabel]
+  if (!familyEnum) return [nodeId]
+
+  const fixtureId = nodeId.substring(0, lastColon)
+  const deviceNodes = graph.getDeviceNodes?.(fixtureId as any)
+  if (!deviceNodes || deviceNodes.length === 0) return [nodeId]
+
+  const resolved: string[] = []
+  for (const nid of deviceNodes) {
+    const nodeData = graph.getNodeData(nid)
+    if (nodeData && nodeData.family === familyEnum) {
+      resolved.push(nid)
+    }
+  }
+
+  return resolved.length > 0 ? resolved : [nodeId]
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // REGISTRATION
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1543,13 +1598,24 @@ export function registerAetherIPCHandlers(): void {
           return { success: false, error: 'Invalid fixtureId' }
         }
         _calibrationModeFixtures.delete(fixtureId)
-        // 🎯 WAVE 4949: Red de seguridad backend — limpiar overrides manuales
-        // del fixture al salir de calibración para evitar fugas persistentes.
+        // 🎯 WAVE 4949 → WAVE 7749.35: Red de seguridad backend — limpiar overrides
+        // manuales del fixture al salir de calibración para evitar fugas persistentes.
+        // ⚒️ WAVE 7749.35 FIX: Clear ALL 5 families (was only 3 — :beam and :atmosphere
+        // were missing, causing residual overrides that fought the show indefinitely).
+        // ⚒️ WAVE 7749.35: Use resolveNodeIdToAll for multi-cell fixture support.
+        // This is a user-initiated handler (not 44Hz hot path), so graph lookups are safe.
         try {
           const arbiter = getTitanOrchestrator().getAetherArbiter()
-          arbiter.clearManualOverride(`${fixtureId}:color`)
-          arbiter.clearManualOverride(`${fixtureId}:impact`)
-          arbiter.clearManualOverride(resolveKineticNodeId(`${fixtureId}:kinetic`))
+          const families = ['color', 'impact', 'kinetic', 'beam', 'atmosphere']
+          for (const family of families) {
+            const flatNodeId = `${fixtureId}:${family}`
+            const resolvedIds = resolveNodeIdToAll(flatNodeId)
+            for (const resolved of resolvedIds) {
+              if (!arbiter.hasManualPatternLock(resolved)) {
+                arbiter.clearManualOverride(resolved)
+              }
+            }
+          }
         } catch (clearErr) {
           console.warn(`[CalibrationIPC] Safety-net clear failed for ${fixtureId}:`, clearErr)
         }
@@ -1558,6 +1624,59 @@ export function registerAetherIPCHandlers(): void {
       } catch (err) {
         console.error('[CalibrationIPC] exitCalibrationMode error:', err)
         return { success: false, error: String(err) }
+      }
+    }
+  )
+
+  /**
+   * ⚒️ WAVE 7749.35: Calibration override with multi-cell fan-out.
+   *
+   * DEDICATED handler for CalibrationView — does NOT touch the 44Hz hot path
+   * (lux:aether:setManualOverrides). Uses resolveNodeIdToAll to fan out
+   * overrides to ALL cells of multi-cell fixtures (Tungsten).
+   *
+   * User-initiated (slider drag / test button), low frequency — safe for graph lookups.
+   * Payload: { nodeId: string, channels: Record<string, number> }
+   */
+  ipcMain.on(
+    'lux:calibration:setOverride',
+    (_event, payload: ManualOverridePayload) => {
+      try {
+        if (!payload || typeof payload.nodeId !== 'string' || !payload.channels) return
+        const arbiter = getTitanOrchestrator().getAetherArbiter()
+        const resolvedIds = resolveNodeIdToAll(payload.nodeId)
+        for (const resolved of resolvedIds) {
+          arbiter.setManualOverride(resolved, payload.channels)
+        }
+      } catch (err) {
+        console.error('[CalibrationIPC] setOverride error:', err)
+      }
+    }
+  )
+
+  /**
+   * ⚒️ WAVE 7749.35: Calibration clear with multi-cell fan-out.
+   * Clears ALL 5 families for a fixture, fanning out to all cells.
+   * Payload: { fixtureId: string }
+   */
+  ipcMain.on(
+    'lux:calibration:clearFixture',
+    (_event, { fixtureId }: { fixtureId: string }) => {
+      try {
+        if (typeof fixtureId !== 'string' || fixtureId.length === 0) return
+        const arbiter = getTitanOrchestrator().getAetherArbiter()
+        const families = ['color', 'impact', 'kinetic', 'beam', 'atmosphere']
+        for (const family of families) {
+          const resolvedIds = resolveNodeIdToAll(`${fixtureId}:${family}`)
+          for (const resolved of resolvedIds) {
+            if (!arbiter.hasManualPatternLock(resolved)) {
+              arbiter.clearManualOverride(resolved)
+            }
+          }
+        }
+        console.log(`[CalibrationIPC] 🧹 Cleared all 5 families for ${fixtureId}`)
+      } catch (err) {
+        console.error('[CalibrationIPC] clearFixture error:', err)
       }
     }
   )

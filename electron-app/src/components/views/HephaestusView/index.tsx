@@ -333,6 +333,15 @@ const HephaestusView: React.FC = () => {
     setShowNewClipModal(true)
   }, [])
 
+  // ⚒️ WAVE 7749.32: Stable close handler — prevents the 60fps re-render leak
+  // that defeated NewClipModal's memo() and dropped keystrokes in the NAME input.
+  // The inline arrow `() => setShowNewClipModal(false)` created a new function
+  // identity on every HephaestusView render (60fps during playback via
+  // useHephPreview), breaking memo's shallow prop comparison.
+  const handleCloseNewClipModal = useCallback(() => {
+    setShowNewClipModal(false)
+  }, [])
+
   // 🔥 WAVE 2213: Load Show desde Hephaestus
   const handleLoadShow = useCallback(async () => {
     setIsLoadingShow(true)
@@ -706,7 +715,7 @@ const HephaestusView: React.FC = () => {
       {/* ═══ NEW CLIP MODAL ═══ */}
       <NewClipModal
         isOpen={showNewClipModal}
-        onClose={() => setShowNewClipModal(false)}
+        onClose={handleCloseNewClipModal}
         onCreate={handleCreateClip}
       />
     </div>

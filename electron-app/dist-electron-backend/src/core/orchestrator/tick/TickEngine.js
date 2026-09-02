@@ -612,6 +612,8 @@ export class TickEngine {
             // WAVE 8008: Rhythmic percussion isolated energies
             snare_energy: this.audioPipeline.lastAudioData.rhythmic?.snare_energy,
             hh_energy: this.audioPipeline.lastAudioData.rhythmic?.hh_energy,
+            // WAVE 7749.7: Raw transient delta for onset detection (pre-EMA)
+            raw_snare_delta: this.audioPipeline.lastAudioData.rhythmic?.raw_snare_delta,
             // 🌊 WAVE 8003: Photon block — strobe inputs + wallIntensity from GodEarFFT
             photon: this.audioPipeline.lastAudioData.photon,
             // â±ï¸ WAVE 2305: THE INFALLIBLE METRONOME â€” PLL beat prediction

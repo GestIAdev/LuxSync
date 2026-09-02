@@ -160,6 +160,20 @@ export const DEFAULT_PHASE_CONFIG: Readonly<PhaseConfig> = {
  *   'globalComp' → globalComposition (0-1)
  *   'width'      → param interno (beam/chase width, 0-1)
  *   'direction'  → param interno (sweep direction, 0=L→R, 1=R→L)
+ *
+ * WAVE 7749.29 — LASER & ATMOSPHERE FX PRIMITIVES (Aether Agnostic Blueprint §1.2):
+ *   'scale_x'       → pattern horizontal scale (0-1 → 0-255 DMX, BEAM family)
+ *   'scale_y'       → pattern vertical scale   (0-1 → 0-255 DMX, BEAM family)
+ *   'rot_x'         → 3D pattern tumble X axis (0-1 → 0-255 DMX, BEAM family)
+ *   'rot_y'         → 3D pattern tumble Y axis (0-1 → 0-255 DMX, BEAM family)
+ *   'gobo_rotation' → in-plane pattern spin     (0-1 → 0-255 DMX, BEAM family)
+ *   'smoke_pump'    → fog/haze fluid pump       (0-1 → 0-255 DMX, ATMOSPHERE, 4Hz cue)
+ *   'smoke_density' → fluid density/mixture     (0-1 → 0-255 DMX, ATMOSPHERE, 4Hz cue)
+ *   'fan_speed'     → fan velocity              (0-1 → 0-255 DMX, ATMOSPHERE, 4Hz cue)
+ *
+ * SAFETY: emission_gate / fire_valve / fire_ignite are DELIBERATELY ABSENT.
+ * They are hardware interlocks, not animatable FX. Blueprint §3.4 quarantines
+ * them to manual/cue-only paths. They are NOT in HephParamId by design.
  */
 export type HephParamId =
   | 'intensity'
@@ -179,6 +193,42 @@ export type HephParamId =
   | 'globalComp'
   | 'width'
   | 'direction'
+  // WAVE 7749.29: Laser beam geometry + atmosphere fluids (Aether Agnostic §1.2)
+  | 'scale_x'
+  | 'scale_y'
+  | 'rot_x'
+  | 'rot_y'
+  | 'gobo_rotation'
+  | 'smoke_pump'
+  | 'smoke_density'
+  | 'fan_speed'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 7749.30: DISCRETE STEPPING — params that are indexed selectors
+// (gobo/pattern wheels). These use curveMode='stepped' with quantizeSteps.
+// gobo_rotation is CONTINUOUS (mechanical spin), NOT stepped.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Map of paramId → number of discrete slots for stepped curve mode.
+ * Absent = continuous (default). A gobo wheel with 8 patterns → 8 steps.
+ * The curve value 0..1 maps to slot index 0..(steps-1).
+ */
+export const STEPPED_PARAM_SLOTS: Partial<Record<HephParamId, number>> = {
+  // Standard gobo wheels: 8 slots is the common ILDA/moving-head default.
+  gobo1: 8,
+  gobo2: 8,
+}
+
+/** Returns true if this param should default to stepped curve mode. */
+export function isSteppedParam(paramId: HephParamId): boolean {
+  return paramId in STEPPED_PARAM_SLOTS
+}
+
+/** Returns the quantizeSteps for a stepped param, or 0 if continuous. */
+export function getSteppedSlots(paramId: HephParamId): number {
+  return STEPPED_PARAM_SLOTS[paramId] ?? 0
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // KEYFRAME
@@ -296,6 +346,32 @@ export interface HephCurve {
    * Default: 'absolute'
    */
   mode: HephCurveMode
+
+  /**
+   * ⚒️ WAVE 7749.30: Discrete stepping for mechanical pattern banks.
+   *
+   * - 'continuous' (default): smooth Bezier/linear interpolation. Use for
+   *   params with continuous physical meaning (dimmer, pan, tilt, scale_x,
+   *   gobo_rotation, smoke_pump, etc.).
+   * - 'stepped': the curve output is quantized to `quantizeSteps` discrete
+   *   levels. Use for indexed selectors (gobo/pattern wheels) where
+   *   mid-values are undefined mechanical states or trigger DarkSpin
+   *   anti-bounce. The CurveEditor renders a staircase overlay and snaps
+   *   keyframe values to the nearest step.
+   *
+   * When `curveMode === 'stepped'`, `quantizeSteps` MUST be > 1.
+   * CurveEvaluator quantizes the interpolated output via:
+   *   `Math.round(v * (steps - 1)) / (steps - 1)`
+   * (Aether Agnostic Blueprint §6 — discrete stepping for pattern selection.)
+   */
+  curveMode?: 'continuous' | 'stepped'
+
+  /**
+   * ⚒️ WAVE 7749.30: Number of discrete levels for stepped curves.
+   * E.g. an 8-slot gobo wheel → quantizeSteps = 8.
+   * Ignored when curveMode !== 'stepped'. Must be > 1 when set.
+   */
+  quantizeSteps?: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

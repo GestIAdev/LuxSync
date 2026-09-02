@@ -922,6 +922,25 @@ export class SeleneColorEngine {
                     `S:${correctedSat.toFixed(0)} L:${correctedLight.toFixed(0)}`);
             }
         }
+        // ⚒️ WAVE 7749.37: Hue drift velocity clamp — enforce maxHueShiftPerSecond.
+        // If the constitution defines this cap, clamp the per-frame hue delta to
+        // prevent the oceanic modulation from sweeping hues faster than the
+        // interpolator's transition duration can follow.
+        const maxHueShiftPerSecond = options?.maxHueShiftPerSecond;
+        if (maxHueShiftPerSecond !== undefined && maxHueShiftPerSecond > 0) {
+            const prevHue = SeleneColorEngine._prevGeneratedHue;
+            if (prevHue !== null && Number.isFinite(prevHue)) {
+                // Per-frame max delta: maxHueShiftPerSecond / 60 (assuming ~60fps generate)
+                const maxDeltaPerFrame = maxHueShiftPerSecond / 60;
+                let hueDiff = finalHue - prevHue;
+                // Normalize to shortest path
+                hueDiff = ((hueDiff + 180) % 360 + 360) % 360 - 180;
+                if (Math.abs(hueDiff) > maxDeltaPerFrame) {
+                    finalHue = normalizeHue(prevHue + Math.sign(hueDiff) * maxDeltaPerFrame);
+                }
+            }
+            SeleneColorEngine._prevGeneratedHue = finalHue;
+        }
         // === E. COLOR PRIMARIO ===
         // 🛡️ WAVE 81: Usar valores corregidos por Anti-Mud Protocol
         // WAVE 0-ALLOC: Mutate scratch palette in place
@@ -1508,6 +1527,9 @@ SeleneColorEngine.generateCallCount = 0;
 // per macro-cycle ensures the palette sequence never repeats identically.
 SeleneColorEngine._sessionEntropy = 0;
 SeleneColorEngine._entropyInitialized = false;
+// ⚒️ WAVE 7749.37: Previous frame's generated hue for drift velocity clamping.
+// Used by maxHueShiftPerSecond to cap per-frame hue delta.
+SeleneColorEngine._prevGeneratedHue = null;
 // 🌌 WAVE 7719: FIBONACCI MACRO-CYCLE ROTATION
 // Tracks how many full slot-array loops have completed. Each full loop adds
 // 137.5° (Golden Angle A) to the base hue, guaranteeing the clock never
@@ -1665,7 +1687,7 @@ export class SeleneColorInterpolator {
             // Un LERP de 4s produce 4-5 colores intermedios en el HarmonicQuantizer,
             // que el DarkSpinFilter revela como arcoíris en ventanas entre blackouts.
             // El snap genera exactamente 1 cambio → 1 blackout → color destino limpio.
-            this.currentPalette = this.lerpPalette(this.currentPalette, this.targetPalette, this.transitionProgress);
+            this.currentPalette = this.lerpPalette(this.currentPalette, this.targetPalette, this.transitionProgress, isChillConstitution);
         }
         else if (hasAnyPaletteDelta && this.targetPalette) {
             // ⚡ WAVE 3455: MOVER LIVE-TRACK — transición completa pero la paleta sigue cambiando.
@@ -1690,13 +1712,22 @@ export class SeleneColorInterpolator {
      * blackouts, revelando el arcoíris físico entre ventanas de tránsito.
      * Con snap, el Quantizer muestrea siempre el color destino → 1 blackout → limpio.
      */
-    lerpPalette(from, to, t) {
+    lerpPalette(from, to, t, isChill = false) {
         // WAVE 0-ALLOC: Mutate pre-allocated _lerpScratch in place
         const out = this._lerpScratch;
+        // ⚒️ WAVE 7749.37: In chill vibe, secondary/ambient use smooth LERP (not hard snap).
+        // The lerpHSL function has a desaturation dip for hue jumps > 60° (washes through
+        // near-white), which turns Magenta → Cyan into Magenta → soft white → Cyan.
+        // The original hard-snap (t=1.0) was for moving-head color wheels (mechanical
+        // gobo slots can't mid-transition). In chill, fixtures are mostly LED PARs/washes
+        // that CAN mid-transition smoothly, so the snap is unnecessary and produces
+        // abrupt color cuts.
+        const secondaryT = isChill ? t : 1.0;
+        const ambientT = isChill ? t : 1.0;
         this.lerpHSL(from.primary, to.primary, t, out.primary); // Rampa suave
-        this.lerpHSL(from.secondary, to.secondary, 1.0, out.secondary); // ⚡ Snap Mover
+        this.lerpHSL(from.secondary, to.secondary, secondaryT, out.secondary); // Chill: ramp / Mover: snap
         this.lerpHSL(from.accent, to.accent, t, out.accent); // Rampa suave
-        this.lerpHSL(from.ambient, to.ambient, 1.0, out.ambient); // ⚡ Snap Mover
+        this.lerpHSL(from.ambient, to.ambient, ambientT, out.ambient); // Chill: ramp / Mover: snap
         this.lerpHSL(from.contrast, to.contrast, t, out.contrast); // Rampa suave
         out.meta = t >= 0.5 ? to.meta : from.meta; // Metadata cambia a mitad de transición
         return out;

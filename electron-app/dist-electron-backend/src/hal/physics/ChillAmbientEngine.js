@@ -49,14 +49,19 @@
 const TWO_PI = 2 * Math.PI;
 // ── 1. MORPH GLOBAL ────────────────────────────────────────────────────────
 /** Período del seno rápido (s) — pulso principal del océano.
- *  WAVE 7646-CHILL-SPEED: 200s → 60s. A 200s/255 steps, cada step 8-bit
- *  dwellaba ~2.3s (visible flicker en PARs sin DIMMER_FINE). A 60s, el
- *  dwell baja a ~0.7s — below flicker-fusion threshold en visión foveal. */
-const MORPH_FAST_PERIOD_S = 60.0;
+ *  ⚒️ WAVE 7749.37: 60s → 120s. The 60s period swept hueInfluence from 260°→160°
+ *  every 60s (~1.7°/s), causing frequent arc-boundary crossings and triggering
+ *  new palette transitions before the previous one completed. At 120s, the drift
+ *  rate halves to ~0.85°/s, giving 20-30s transitions time to complete.
+ *  The 8-bit flicker that motivated 60s is now handled by the gamma 2.2 transfer
+ *  curve + 8-bit epsilon deadband (WAVE 7749.37), so the morph can slow down
+ *  again without reintroducing stepping artifacts. */
+const MORPH_FAST_PERIOD_S = 120.0;
 /** Período del seno lento (s) — respiración profunda.
- *  WAVE 7646-CHILL-SPEED: 600s → 180s. Mantiene el carácter envolvente
- *  sin llegar al rango de stepping visible en 8-bit. */
-const MORPH_SLOW_PERIOD_S = 180.0;
+ *  ⚒️ WAVE 7749.37: 180s → 360s. Doubled to match the fast period scaling.
+ *  The slow sine provides the underlying "tidal" character — at 360s it breathes
+ *  over 6 minutes, creating truly glacial color evolution. */
+const MORPH_SLOW_PERIOD_S = 360.0;
 /** Peso del seno rápido en la suma ponderada */
 const MORPH_FAST_WEIGHT = 0.60;
 /** Peso del seno lento en la suma ponderada */

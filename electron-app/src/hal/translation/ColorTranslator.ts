@@ -392,9 +392,20 @@ export class ColorTranslator {
     const targetHsl = rgbToHsl(target)
     const targetIsChromatic = targetHsl.s > 0.15
 
-    // Si el target es neutro/blanco: devolver el primer slot (Open/White) directamente
+    // Si el target es neutro/blanco: devolver el slot Open/White directamente.
+    // WAVE 7749.40: En lugar de asumir wheel.colors[0], buscar explícitamente
+    // el slot Open/White (el de menor saturación). Esto es robusto incluso
+    // si el orden de slots cambia o si hay múltiples slots neutros.
     if (!targetIsChromatic) {
-      const openSlot = wheel.colors[0]
+      let openSlot = wheel.colors[0]
+      let minSat = Infinity
+      for (let i = 0; i < wheel.colors.length; i++) {
+        const s = rgbToHsl(wheel.colors[i].rgb)
+        if (s.s < minSat) {
+          minSat = s.s
+          openSlot = wheel.colors[i]
+        }
+      }
       return {
         outputRGB: openSlot.rgb,
         colorWheelDmx: openSlot.dmx,

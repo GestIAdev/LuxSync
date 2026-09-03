@@ -35,12 +35,12 @@ export const TECHNO_PROFILE: ILiquidProfile = {
     gateOn: 0.08,
     boost: 2.7054,
     crushExponent: 1.0,
-    decayBase: 0.40, // WAVE 7749.22: 0.2218→0.40 — subbass respira más, groove más lleno
+    decayBase: 0.30, // WAVE 7749.57: 0.40→0.30 — más pegada, menos meloso
     decayRange: 0.166,
     maxIntensity: 0.5291,
     squelchBase: 0.0613,
     squelchSlope: 0.5788,
-    ghostCap: 0.0357,
+    ghostCap: 0.00,         // WAVE 7749.57: 0.0357→0.00 — sin ghostcaps en ningún perfil
     gateMargin: 0.0288,
   },
 
@@ -60,7 +60,7 @@ export const TECHNO_PROFILE: ILiquidProfile = {
     gateOn: 0.28,
     boost: 3.3013,
     crushExponent: 1.0,
-    decayBase: 0.08,
+    decayBase: 0.06, // WAVE 7749.57: 0.08→0.06 — más snap, más contraste techno
     decayRange: 0.0329,
     maxIntensity: 0.80,   // WAVE 2439.2 Cap de Dimmer — headroom para el slap del Snare
     squelchBase: 0.0388,
@@ -312,11 +312,12 @@ export const TECHNO_PROFILE: ILiquidProfile = {
     snareVetoFluxKnee: 0.20,
     snareChokeFrames: 15,
     snareChokeRate: 0.85,
-    // WAVE 7749.21: Techno snap — 0.40→0.50. Refractario más largo que latino
-    // (0.25). El impulso cae 1.0→0.50→0.25→0.125→0.06 en 4 frames (~90ms).
-    // Latino con 0.25: 1.0→0.25→0.06 en 2 frames (~45ms) — re-dispara más rápido
-    // porque el dembow es más denso. Techno espera más entre hits = contraste puro.
-    snareImpulseDecay: 0.50,
+    // ⚒️ WAVE 7749.60: Techno decay 0.50→0.65. The 0.50 decay produced a
+    // 3-frame visual stutter (1.0→0.50→0.25→0.125) perceived as "3 broken
+    // hits per beat". 0.65 smooths the tail: 1.0→0.65→0.42→0.27→0.18 —
+    // a single cohesive strike with a natural fade. Latino stays at 0.25
+    // (dembow density requires fast re-trigger).
+    snareImpulseDecay: 0.65,
   },
 }
 

@@ -227,6 +227,8 @@ export class TrinityBrain extends EventEmitter {
             photon: analysis.photon,
             // 🥁 WAVE 8008: Rhythmic percussion telemetry — snare/hi-hat isolated energies
             rhythmic: analysis.rhythmic,
+            // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
+            agcGainFactor: analysis.agcGainFactor,
         });
         // Log cada ~30 frames (1 segundo)
         if (this.frameCount % 30 === 0) {

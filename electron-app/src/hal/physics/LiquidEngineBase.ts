@@ -810,7 +810,7 @@ export abstract class LiquidEngineBase {
           // NO TCT restriction — WNS already proves broadband noise.
           rawOnset = true
         } else if (spectralFlux > 0.20 && this._snareReArmed && (snareEnergy > 0.45 || (snareEnergy > 0.15 && wns > 0.05) || (wns > 0.10 && bassE > 0.40 && snareEnergy > 0.05))) {
-          // WAVE 7749.18 → 7749.56: HIGH-FLUX BYPASS — OMNI-GATE v2 contextual.
+          // WAVE 7749.18 → 7749.56 → 7749.58 → 7749.60: HIGH-FLUX BYPASS — OMNI-GATE v3.
           // In melodic techno (Anyma, Tale of Us, etc.), snares are synthesized
           // noise bursts or electronic claps that don't produce the broadband HF
           // noise content WNS expects. They have WNS = 0 across ALL frames.
@@ -826,10 +826,18 @@ export abstract class LiquidEngineBase {
           // Prevents sustained synth sweeps from holding the onset open.
           // ⚒️ WAVE 7749.55 → 7749.56: OMNI-GATE v2 → v3 — hybrid clause 1 +
           // SnareE floor on clause 2.
+          // ⚒️ WAVE 7749.58: BREJCHA BASSΔ DISCRIMINATOR — added bassDelta < 0.05
+          //   to clause 1a to block kick-bleed. 
+          // ⚒️ WAVE 7749.60: BASSΔ LOCK REMOVED — the HF "click" of Brejcha's
+          //   kick hits the FFT 1-2 frames BEFORE the LF sub-bass boom peaks.
+          //   At onset frame, BassDelta is still near zero (the bass hasn't
+          //   risen yet), so the lock was useless AND blocked real snares
+          //   whose bass ducking (sidechain) hadn't registered yet. Reverted
+          //   clause 1a to pure SnareE > 0.45.
           //   Clause 1a (SnareE > 0.45): saturated synth snares (Anyma 0.46+)
-          //     pass without WNS. Gravity kicks (SnareE 0.40-0.60 bleed) are
-          //     borderline — clause 1b catches real snares, clause 1a alone
-          //     may let a few kicks through. See clause 1b for the WNS lock.
+          //     pass without WNS. Brejcha kick-bleed (SnareE 0.7-1.0) also
+          //     passes — accepted trade-off; the WNS paths (1b, 2) and the
+          //     Path 3 rescue handle the discrimination.
           //   Clause 1b (SnareE > 0.15 AND WNS > 0.05): acoustic snares with
           //     crack-band energy + broadband noise. WNS > 0.05 separates
           //     real snares (WNS 0.10+) from Gravity kicks (WNS 0.00-0.05).
@@ -839,10 +847,6 @@ export abstract class LiquidEngineBase {
           //     (gravityverse kicks with WNS 0.12-0.58 from broadband content
           //     but zero crack-band energy). Real snares always have SnareE > 0.05.
           // Blocks:
-          //   - Gravity kicks: SnareE 0.40-0.60 bleed, WNS 0.00 → clause 1a
-          //     borderline, clause 1b fails (WNS = 0), clause 2 fails (WNS = 0).
-          //     Some kicks with SnareE > 0.45 may slip through clause 1a —
-          //     acceptable trade-off for not killing Anyma snares.
           //   - Tehnominimal sweeps: SnareE < 0.15, BassE < 0.40 → all fail.
           //   - Gravityverse bass transients: SnareE = 0 → clause 2 fails
           //     (SnareE > 0.05 required), clause 1 fails (SnareE = 0).
@@ -885,6 +889,21 @@ export abstract class LiquidEngineBase {
         // Requiring RawΔ > 0.02 fulminates phantom snares in noise tails.
         rawOnset = true
         this._snarePendingWns = false
+      } else if (this._snareReArmed && wns > 0.50 && rawSnareDelta > 0.05 && spectralFlux > dynamicFluxGate && this._snareImpulse < 0.15) {
+        // WAVE 7749.58: PATH 3 — WNS-confirmed soft snare.
+        // In latin genres (reggaeton, bachata, cumbia), snares can be soft
+        // with RawΔ below finalSnareThreshold (~0.15) but WNS very high
+        // (> 0.50 = pure broadband noise = real snare/cymbal/güira).
+        // When WNS is this high, we have physical certainty of a real
+        // percussion hit. We can lower the RawΔ requirement to 0.05.
+        // This catches missed snares like reguetonsnare1.md L589
+        // (WNS 0.758, RawΔ 0.097) without opening the door to kicks
+        // (kicks have WNS 0.000 in latin mixes).
+        // TCT guard (_snareReArmed) prevents sustained noise tails from
+        // holding the onset open.
+        rawOnset = true
+        this._snarePendingWns = false
+        this._snareReArmed = false
       } else {
         // No onset and no pending confirmation — clear the pending flag.
         this._snarePendingWns = false
@@ -898,9 +917,12 @@ export abstract class LiquidEngineBase {
 
       // WAVE 7749.3: Use pre-decay impulse for THIS frame's output.
       // WAVE 7749.7: Impulse decay is now profile-tunable (snareImpulseDecay).
-      // WAVE 7749.13: Default 0.40 (techno snap — ~120ms to decay 1.0→0.01).
+      // ⚒️ WAVE 7749.60: Default 0.65 (smooth tail — ~200ms to decay 1.0→0.01).
+      //   Was 0.40 (~120ms) which caused a 3-frame visual stutter (1.0→0.45→0.19)
+      //   perceived as "3 broken hits per beat". 0.65 gives a single cohesive
+      //   strike with a natural fade: 1.0→0.65→0.42→0.27→0.18.
       const snareImpulseThisFrame = this._snareImpulse
-      this._snareImpulse *= (p.snareImpulseDecay ?? 0.40)
+      this._snareImpulse *= (p.snareImpulseDecay ?? 0.65)
       this._prevSnareEnergy = rawSnareEnergy
       // ⚒️ WAVE 7749.52: Track previous delta for TCT re-arm discriminator.
       this._prevRawSnareDelta = rawSnareDelta

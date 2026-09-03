@@ -324,6 +324,8 @@ export class SeleneLux {
                 raw_snare_delta: audioMetrics.raw_snare_delta,
                 // WAVE 8005.2: Photon block for front channel strobe bypass
                 photon: audioMetrics.photon,
+                // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
+                agcGainFactor: audioMetrics.agcGainFactor,
             };
             // 🌊 WAVE 2432: THE SWITCH BIFURCADO — 4.1 o 7.1, sin legacy
             // 🌊 WAVE 2470 HOTFIX V4: Chill SIEMPRE usa liquidEngine71, sin importar liquidLayout.

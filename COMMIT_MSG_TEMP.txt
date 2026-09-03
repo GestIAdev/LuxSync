@@ -1,0 +1,11 @@
+WAVE 7749.55: Stable base before Path 4 implementation
+
+Includes WAVE 7749.58-60 changes:
+- BassDelta lock removed (failed against Brejcha temporal offset)
+- snareImpulseDecay 0.40 -> 0.65 (visual stutter fix)
+- Path 3 (WNS-confirmed soft snare) active
+- Blackout gate in LiquidEnvelope + LiquidEngine41 (minDimmer fix)
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

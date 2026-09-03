@@ -54,7 +54,14 @@ export class LiquidEngine41 extends LiquidEngineBase {
             // RELEASE ENVELOPE: Fast attack (jump to target), slow release (decay at 0.88/frame).
             // Prevents mini-strobo on kick channel — bridges the gap between kick frames
             // with smooth fading instead of 1-frame flash + 19-frame darkness.
+            // ⚒️ WAVE 7749.59: BLACKOUT GATE — the 0.88 exponential decay never reaches
+            //   exactly 0. Without this gate, _frontParSmooth asymptotes to 0.0000001,
+            //   which is still > 0 and triggers the fixture's minDimmer personality floor
+            //   in NodeResolver. This caused permanent minimum dimmer on front PARs in
+            //   latino (default strategy) even during silence/between beats.
             this._frontParSmooth = Math.max(frontParTarget, this._frontParSmooth * LiquidEngine41.FRONTPAR_RELEASE);
+            if (this._frontParSmooth < 0.005)
+                this._frontParSmooth = 0;
             frontPar = this._frontParSmooth;
         }
         // WAVE 7748: BACK STRICT-SPLIT — In strict-split mode, backPar outputs

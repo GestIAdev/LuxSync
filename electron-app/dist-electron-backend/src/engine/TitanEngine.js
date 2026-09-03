@@ -666,6 +666,8 @@ export class TitanEngine extends EventEmitter {
             raw_snare_delta: audio.raw_snare_delta,
             // 🌊 WAVE 8003: Photon block — strobe inputs + wallIntensity
             photon: audio.photon,
+            // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
+            agcGainFactor: audio.agcGainFactor,
         }, elementalMods);
         // ─────────────────────────────────────────────────────────────────────
         // 2. CALCULAR INTENSIDAD GLOBAL  (⚡ WAVE 3504-EXT.2: pure module)

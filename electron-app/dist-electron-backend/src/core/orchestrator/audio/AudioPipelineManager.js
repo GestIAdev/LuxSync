@@ -161,6 +161,8 @@ export class AudioPipelineManager {
                     photon: levels.photon ?? this.lastAudioData.photon,
                     // WAVE 8008: Rhythmic percussion telemetry
                     rhythmic: levels.rhythmic ?? this.lastAudioData.rhythmic,
+                    // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
+                    agcGainFactor: levels.agcGainFactor ?? this.lastAudioData.agcGainFactor,
                 };
                 const wasActive = this.hasRealAudio;
                 this.hasRealAudio = true;
@@ -209,6 +211,8 @@ export class AudioPipelineManager {
                     photon: levels.photon ?? this.lastAudioData.photon,
                     // WAVE 8008: Rhythmic percussion telemetry
                     rhythmic: levels.rhythmic ?? this.lastAudioData.rhythmic,
+                    // ⚒️ WAVE 7749.54: AGC gain factor for Path 3 hybrid gate
+                    agcGainFactor: levels.agcGainFactor ?? this.lastAudioData.agcGainFactor,
                 };
             }
         });

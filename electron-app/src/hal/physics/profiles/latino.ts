@@ -90,7 +90,7 @@ export const LATINO_PROFILE: ILiquidProfile = {
     maxIntensity: 0.85,
     squelchBase: 0.08,     // WAVE 3492: 0.30->0.08 — piso moderado, no hermético
     squelchSlope: 0.15,
-    ghostCap: 0.04,        // WAVE 3492: 0.00->0.04 — hilo de sustain rítmico
+    ghostCap: 0.00,        // WAVE 7749.57: 0.04→0.00 — sin ghostcaps en ningún perfil
     gateMargin: 0.01,
     attackSlopeMin: 0.02,      // WAVE 7572: -0.05→0.02 — exige transitorio real, ignora colchón
     sustainedFlatVelocityMax: 0.50,  // WAVE 6050: umbral absurdo, nunca considera "plano"
@@ -116,7 +116,7 @@ export const LATINO_PROFILE: ILiquidProfile = {
     maxIntensity: 0.85,
     squelchBase: 0.03,
     squelchSlope: 0.15,
-    ghostCap: 0.04,
+    ghostCap: 0.00,        // WAVE 7749.57: 0.04→0.00 — sin ghostcaps en ningún perfil
     gateMargin: 0.01,
   },
 
@@ -163,7 +163,7 @@ export const LATINO_PROFILE: ILiquidProfile = {
     maxIntensity: 0.85,
     squelchBase: 0.12,         // WAVE 3492: 0.30->0.12 — melodías suaves pasan
     squelchSlope: 0.15,
-    ghostCap: 0.06,            // WAVE 3492: 0.00->0.06 — suelo ligerisimo entre notas
+    ghostCap: 0.00,            // WAVE 7749.57: 0.06→0.00 — sin ghostcaps en ningún perfil
     gateMargin: 0.01,
     attackSlopeMin: 0.02,      // WAVE 7572: -0.05→0.02 — exige transitorio real, ignora colchón sostenido
     sustainedFlatVelocityMax: 0.50,  // WAVE 6050: umbral absurdo, nunca considera "plano"
@@ -408,7 +408,7 @@ export const LATINO_PROFILE: ILiquidProfile = {
       decayRange: 0.03,
       crushExponent: 1.5,               // WAVE 6070: compresión moderada
       maxIntensity: 0.95,               // WAVE 6070: techo para evitar clipping lógico
-      ghostCap: 0.04,                   // WAVE 6070: hilo de sustain entre golpes de mid
+      ghostCap: 0.00,                   // WAVE 7749.57: 0.04→0.00 — sin ghostcaps en ningún perfil
       attackSlopeMin: 0.03,             // Motor intacto: solo transientes reales abren compuerta
       sustainedSquelchStartFrames: 9999, // WAVE 6071: nunca penaliza notas sostenidas
       sustainedFlatVelocityMax: 0.50,   // WAVE 6071: umbral absurdo, no detecta "plano"
@@ -451,7 +451,7 @@ export const LATINO_PROFILE: ILiquidProfile = {
       squelchBase: 0.45,     // WAVE 6050: asfixia cualquier ruido de fondo que logre pasar el gate
       decayBase: 0.60,       // WAVE 7749.20: 0.45→0.60 — el TAcka respira, no es techno snap
       decayRange: 0.10,
-      ghostCap: 0.01,
+      ghostCap: 0.00,         // WAVE 7749.57: 0.01→0.00 — sin ghostcaps en ningún perfil
       boost: 2.5,
     },
 

@@ -241,6 +241,15 @@ export class LiquidEnvelope {
         // WAVE 2990: GHOST CAP FLOOR ELIMINATED.
         // The artificial dimmer floor (ghostCap * max(morph, 0.1)) prevented DMX 0.
         // If audio energy is zero, output must be zero. No residual glow.
+        // ⚒️ WAVE 7749.59: BLACKOUT GATE — exponential decay never reaches exactly 0.
+        //   Without this, s.intensity asymptotes to 0.0000001 which is still > 0,
+        //   triggering the fixture's minDimmer personality floor in NodeResolver
+        //   (line 1527: "if rawNormalized > 0 && dmxValue < minDimmer → minDimmer").
+        //   This caused a permanent minimum dimmer on front PARs even in silence.
+        //   The 0.005 threshold is below visible perception (0.5% brightness) but
+        //   cleanly triggers the rawNormalized == 0 path, bypassing minDimmer.
+        if (faded < 0.005)
+            return 0;
         return faded;
     }
     /** WAVE 8009.1: Probe — telemetría read-only del último frame procesado */

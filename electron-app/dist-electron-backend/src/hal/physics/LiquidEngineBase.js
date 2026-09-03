@@ -627,35 +627,6 @@ export class LiquidEngineBase {
                     // Primary path: all 4 conditions met — fire immediately.
                     rawOnset = true;
                 }
-                else if (spectralFlux > 0.20) {
-                    // WAVE 7749.18: HIGH-FLUX BYPASS — Synthesized snare detection
-                    // In melodic techno (Anyma, Tale of Us, etc.), snares are synthesized
-                    // noise bursts or electronic claps that don't produce the broadband HF
-                    // noise content WNS expects. They have WNS = 0 across ALL frames.
-                    // But they DO have explosive spectral flux (> 0.20) that kicks never
-                    // reach (kicks are bass-band only, Flux < 0.10) and synth stabs never
-                    // reach (stabs are 0.10-0.15). The Flux > 0.20 threshold cleanly
-                    // separates synthesized snares from kicks/stabs in the WNS = 0 zone.
-                    // Empirical data from techno14melodic (Anyma): 27 synth snares with
-                    // Flux 0.20-0.32, WNS = 0 — all blocked by old WNS gate. 0 kicks with
-                    // Flux > 0.20. Genre-agnostic: works for acoustic (WNS path) and
-                    // electronic (Flux bypass) snares.
-                    rawOnset = true;
-                }
-                else if (snareEnergy > 0.40) {
-                    // WAVE 7749.19: ENERGY-CONDITIONED BORDER ZONE BYPASS
-                    // Some synth snares in melodic techno have moderate Flux (0.15-0.20)
-                    // — not enough to trigger the 0.20 bypass, and WNS = 0 (synthesized).
-                    // These are missed by both the WNS path and the Flux bypass.
-                    // Discriminator: snare_energy. Real snares have high crack-band
-                    // energy (> 0.40) because the noise burst is loud. Kicks in the same
-                    // Flux zone have E < 0.36 (their energy is in the bass band, not the
-                    // crack band). Empirical data:
-                    //   techno11 kicks (Flux 0.15-0.40, WNS=0): E = 0.14-0.36
-                    //   techno15 border snares (Flux 0.15-0.20, WNS=0): E = 0.30-0.87
-                    // Threshold 0.40 sits in the clean gap above kick max (0.36).
-                    rawOnset = true;
-                }
                 else {
                     // Pending: crack+flux say snare, but WNS hasn't arrived yet.
                     // Wait 1 frame for WNS confirmation.

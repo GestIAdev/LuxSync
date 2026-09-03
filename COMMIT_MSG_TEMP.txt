@@ -1,0 +1,29 @@
+WAVE 7749.45: Fix latino snare strobo — align decay/choke with techno
+
+The latino profile had three WAVE 7749.20 "dembow denso" overrides that
+caused epileptic strobing when combined with the bypass removal (7749.44):
+
+1. snareImpulseDecay 0.25→0.50: The 0.25 made the impulse decay in 2
+   frames (1.0→0.25→0.06 = 45ms), so each onset was an isolated flash.
+   With 3.7 onsets/second (congas+timbales+güira all detected), this
+   produced a 3.7Hz strobe. 0.50 (matching techno) gives 4 frames of
+   sustained impulse, feeding the envelope a glow instead of a spike.
+
+2. snareChokeFrames 4→15: The choke was murdering the channel after
+   only 90ms, killing any sustain. Aligned with techno's 340ms window.
+
+3. snareChokeRate 0.60→0.85: Hard choke (0.60) vs soft choke (0.85).
+   The hard rate snapped the light to black; the soft rate lets it
+   fade naturally.
+
+4. envelopeSnare.decayBase 0.60→0.70: With 270ms between onsets, the
+   0.60 decay dropped the light to ~0.08 between hits (visible gap).
+   0.70 keeps it at ~0.17 — the flashes blend into a continuous pulse.
+
+These were all added for "dembow denso" roll detection (WAVE 7749.20)
+but without the Flux/Energy bypasses (removed in 7749.44), the detector
+now fires on ALL percussion hits, making the fast decay counterproductive.
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

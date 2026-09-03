@@ -764,37 +764,6 @@ export class LiquidEngineBase {
             //   `Veto:${vetoFactor.toFixed(3)} -> Out:${hybridSnare.toFixed(3)}` +
             //   (snareOnsetThisFrame ? ' [ONSET]' : '')
             // )
-            // WAVE 7749.21: OPUS AUDIT — Frame-by-frame diagnostic for buildup collapse.
-            // Logs ONLY when there's relevant activity (avoids 1000+ lines of silence).
-            // Conditions: snareEnergy > 0.05 OR rawSnareDelta > 0.05 OR impulse > 0.01
-            //             OR bassEnergy > 0.15 (kick activity)
-            // Metrics needed to validate the 3 theories:
-            //   1. Delta compression: E + RawΔ + dynamicThreshold (would it fire?)
-            //   2. WNS saturation: WNS + Flux + fluxBaseline (density tracking)
-            //   3. Retrigger guard: Imp + guardThreshold (is it blocking rolls?)
-            // Plus kick-side: BassE + BassΔ + isKick (front zone missing kicks?)
-            // NOTE: _fluxBaseline EMA now updated BEFORE onset detection (WAVE 7749.22)
-            const shouldLog = this._diagSnareEnergy > 0.05 || this._diagRawSnareDelta > 0.05 || this._snareImpulse > 0.01 || this._diagBassEnergy > 0.15;
-            if (shouldLog) {
-                const dynThresh = this._diagFinalThreshold; // actual threshold used this frame
-                const dynGuard = 0.15 - (this._diagSnareEnergy * 0.10); // proposed dynamic guard (not implemented)
-                const guardBlocked = this._diagRawSnareDelta > dynThresh && this._diagFlux > this._diagFluxGate && this._snareImpulse >= 0.15;
-                console.log(`[OPUS_AUDIT] ` +
-                    `E:${this._diagSnareEnergy.toFixed(3)} ` +
-                    `RawΔ:${this._diagRawSnareDelta.toFixed(3)} ` +
-                    `Flux:${this._diagFlux.toFixed(3)} ` +
-                    `WNS:${this._diagWns.toFixed(3)} ` +
-                    `Imp:${this._snareImpulse.toFixed(3)} ` +
-                    `fBL:${this._fluxBaseline.toFixed(3)} ` +
-                    `dynT:${dynThresh.toFixed(3)} ` +
-                    `dynF:${this._diagFluxGate.toFixed(3)} ` +
-                    `dynG:${dynGuard.toFixed(3)} ` +
-                    `blk:${guardBlocked ? 'Y' : 'N'} ` +
-                    `BassE:${this._diagBassEnergy.toFixed(3)} ` +
-                    `BassΔ:${this._diagBassDelta.toFixed(3)} ` +
-                    `K:${this._diagIsKick ? '1' : '0'}` +
-                    (this._diagSnareOnset ? ' [ONSET]' : ''));
-            }
         }
         // 2. THE MORPHOLOGIC CENTROID SHIELD (WAVE 2449)
         // El bombo puede coexistir con synths en techno melódico (Anyma) porque el bombo

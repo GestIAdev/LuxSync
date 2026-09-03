@@ -180,12 +180,6 @@ export class TrinityBrain extends EventEmitter {
     this.frameCount++
     this.lastAudioAnalysis = analysis
 
-    // WAVE 7749.7: Diagnostic — trace raw_snare_delta through the pipeline
-    if (this.frameCount % 44 === 0) {
-      const r = (analysis as any).rhythmic
-      console.log(`[BRAIN] rhythmic=${r ? 'YES' : 'NO'} raw_snare_delta=${r?.raw_snare_delta ?? 'UNDEF'} snare_energy=${r?.snare_energy ?? 'UNDEF'}`)
-    }
-
     // Construir MusicalContext desde AudioAnalysis del Worker
     const context: MusicalContext = {
       // Harmonic - desde analysis

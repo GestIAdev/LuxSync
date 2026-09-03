@@ -291,6 +291,13 @@ export interface ILiquidProfile {
   readonly snareMomentumResetThreshold?: number
   /** Ratio of baseline reset on strong snare. Default 0.70. */
   readonly snareMomentumResetRatio?: number
+  /** ⚒️ WAVE 7749.68: SNARE ENERGY FLOOR — minimum SnareE for onset firing.
+   *  Prevents false onsets in silence/noise where SnareE rises from 0.001 to
+   *  ~0.025 (background noise) and momentum crosses threshold.
+   *  sinsnare.md: 4 falsos eliminados (SnareE 0.024-0.026).
+   *  snarebueno.md: 7 falsos eliminados (SnareE 0.025-0.028).
+   *  Absent = no floor (fire on any momentum crossing). */
+  readonly snareMomentumFloor?: number
 
   // ═══════════════════════════════════════════════════════════════
   // WAVE 2488 — DT-02: MORPHOLOGY UNCHAINED
@@ -476,5 +483,7 @@ export interface ILiquidProfile {
     // WAVE 7749.67: Hybrid reset (4.1 override)
     readonly snareMomentumResetThreshold?: number
     readonly snareMomentumResetRatio?: number
+    // WAVE 7749.68: Snare energy floor (4.1 override)
+    readonly snareMomentumFloor?: number
   }
 }

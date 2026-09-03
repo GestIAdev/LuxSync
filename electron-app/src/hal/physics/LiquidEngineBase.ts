@@ -829,7 +829,11 @@ export abstract class LiquidEngineBase {
         this._snareEmaFast += aF * (snareEnergy - this._snareEmaFast)
         this._snareEmaSlow += aS * (snareEnergy - this._snareEmaSlow)
         let momentum = this._snareEmaFast - this._snareEmaSlow
-        rawOnset = momentum > momoTh && this._snarePrevMomentum <= momoTh
+        // ⚒️ WAVE 7749.68: SNARE ENERGY FLOOR — reject onsets when SnareE is
+        // below floor (background noise in silence). Without this, SnareE
+        // rising from 0.001 to ~0.025 in silence crosses momentum threshold.
+        const snareFloor = p.snareMomentumFloor ?? 0
+        rawOnset = momentum > momoTh && this._snarePrevMomentum <= momoTh && snareEnergy >= snareFloor
         // ⚒️ WAVE 7749.67: HYBRID RESET — on strong snares (momentum > reset
         // threshold), pull emaSlow toward emaFast by resetRatio. This forces
         // momentum back toward 0, allowing re-fire on the next snare in a

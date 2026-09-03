@@ -1,19 +1,21 @@
-WAVE 7749.67: Hybrid reset for EMA momentum snare detector
+WAVE 7749.68: Snare energy floor to eliminate silence false positives
 
-On strong snares (momentum > 0.15), pull emaSlow 70% toward emaFast.
-This forces momentum back toward 0, allowing the detector to re-fire
-on the next snare in a dense burst without waiting for emaSlow to
-decay naturally.
+The EMA momentum detector was firing false onsets in silence/noise where
+SnareE rises from 0.001 to ~0.025 (background noise) and momentum crosses
+the 0.01 threshold.
 
-Validated against golden reference (snareperfecto.md):
-- snareperfecto.md: 32 -> 40 onsets (83% of legacy 48)
-- imposiblesnare.md: 18 (no jitter regression)
-- newsnare.md: 21 (vitaminas preserved)
-- frontdisaster.md: 10 (hi-hats mostly excluded)
+New snareMomentumFloor parameter: reject onsets when SnareE < floor.
+Set to 0.05 in techno profile.
 
-The 8 remaining misses in snareperfecto are snares in decay tails
-(SnareE falling) where momentum is negative — physically undetectable
-by a rising-energy crossover without beat-locking.
+Validated against new logs (Brejcha Gravity session):
+- sinsnare.md:      15 -> 11 (4 falsos en silencio eliminados)
+- snarebueno.md:    31 -> 24 (7 falsos en silencio eliminados)
+- snarecasiperfecto: 29 -> 28 (1 falso eliminado)
+- snareperfecto.md: 40 -> 40 (sin cambio, sin falsos)
+- imposiblesnare:   18 -> 18 (sin cambio)
+- frontdisaster:    10 -> 5  (5 hi-hats extra eliminados)
+
+All eliminated onsets had SnareE 0.024-0.028 (noise, not snares).
 
 Generated with [Devin](https://devin.ai)
 

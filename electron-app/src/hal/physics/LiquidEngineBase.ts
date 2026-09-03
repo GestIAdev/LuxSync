@@ -853,21 +853,24 @@ export abstract class LiquidEngineBase {
           rawOnset = true
           this._snareReArmed = false
         } else if (this._snareReArmed && (
-          snareEnergy > 0.80 ||
-          (snareEnergy > 0.40 && agcGain < 2.5) ||
-          (snareEnergy > 0.40 && wns > 0.15)
+          snareEnergy > 0.75 ||
+          (snareEnergy > 0.25 && wns > 0.05)
         )) {
-          // WAVE 7749.19 → 7749.54: ENERGY BYPASS — OMNI-GATE (AGC-aware hybrid)
-          // Three conditions, any one sufficient:
-          //   1. SnareE > 0.80 — saturated snare (dembow electronic) = almost
-          //      certainly real. Never occurs in Brejcha piano (max 0.66) or
-          //      Anyma synth bleed (max 0.88 sporadic). Dembow saturates 1.000.
-          //   2. SnareE > 0.40 AND AGC < 2.5x — moderate snare with low
-          //      compression. Brejcha falsos have AGC 4.0x → blocked. Dembow
-          //      reals have AGC 1.4-1.6x → pass. Anyma stabs AGC 3.0x → blocked
-          //      (conservative).
-          //   3. SnareE > 0.40 AND WNS > 0.15 — moderate snare with broadband
-          //      confirmation. WNS > 0.15 proves real noise content.
+          // WAVE 7749.19 → 7749.62: ENERGY BYPASS — SnareE-grounded (no AGC).
+          // Two conditions, any one sufficient:
+          //   1. SnareE > 0.75 — saturated snare (dembow electronic, acoustic
+          //      strike) = almost certainly real. Never occurs in Brejcha piano
+          //      (max 0.66) or Anyma synth bleed (sporadic). Dembow saturates
+          //      1.000. Acoustic snares hit 0.85-1.0.
+          //   2. SnareE > 0.25 AND WNS > 0.05 — moderate crack-band energy
+          //      with ANY broadband noise confirmation. This replaces the old
+          //      AGC < 2.5 gate (which was too permissive at verse AGC ~1.6x,
+          //      letting Brejcha kicks with click bleed through). WNS > 0.05
+          //      is a minimal noise floor — kicks have WNS 0.000, so even a
+          //      tiny WNS reading proves it's not a kick. This is stricter
+          //      than AGC < 2.5 because AGC doesn't measure snare-ness, it
+          //      measures compression. WNS measures noise content = physical
+          //      evidence of a real percussion hit.
           // ⚒️ WAVE 7749.52: TCT guard — only fire if previous delta settled.
           rawOnset = true
           this._snareReArmed = false
@@ -889,7 +892,7 @@ export abstract class LiquidEngineBase {
         // Requiring RawΔ > 0.02 fulminates phantom snares in noise tails.
         rawOnset = true
         this._snarePendingWns = false
-      } else if (this._snareReArmed && wns > 0.50 && rawSnareDelta > 0.05 && spectralFlux > dynamicFluxGate && this._snareImpulse < 0.15) {
+      } else if (this._snareReArmed && wns > 0.50 && snareEnergy > 0.10 && rawSnareDelta > 0.05 && spectralFlux > dynamicFluxGate && this._snareImpulse < 0.15) {
         // WAVE 7749.58: PATH 3 — WNS-confirmed soft snare.
         // In latin genres (reggaeton, bachata, cumbia), snares can be soft
         // with RawΔ below finalSnareThreshold (~0.15) but WNS very high
@@ -899,8 +902,38 @@ export abstract class LiquidEngineBase {
         // This catches missed snares like reguetonsnare1.md L589
         // (WNS 0.758, RawΔ 0.097) without opening the door to kicks
         // (kicks have WNS 0.000 in latin mixes).
+        // ⚒️ WAVE 7749.62: snareEnergy > 0.10 floor — HI-HAT SILENCER.
+        //   Minimal techno hi-hats have WNS = 1.0 (pure broadband noise) but
+        //   SnareE = 0.000 (zero crack-band energy). Without this floor, Path 3
+        //   was triggering on every hi-hat in minimal techno. A real snare
+        //   ALWAYS has some crack-band energy (SnareE > 0.10), even soft latin
+        //   snares. Hi-hats/cymbals never do.
         // TCT guard (_snareReArmed) prevents sustained noise tails from
         // holding the onset open.
+        rawOnset = true
+        this._snarePendingWns = false
+        this._snareReArmed = false
+      } else if (this._snareReArmed && snareEnergy > 0.25 && rawSnareDelta > 0.05 && spectralFlux > 0.10 && agcGain < 2.5) {
+        // ⚒️ WAVE 7749.61: PATH 4 — Hybrid Minimal Snare (Valley of Death).
+        // Brejcha-style minimal techno uses hybrid snares that sit in a
+        // "valley of death" between all existing thresholds:
+        //   - SnareE 0.32 (moderate crack-band, below clause 1a's 0.45)
+        //   - RawΔ 0.07-0.10 (below main threshold 0.15)
+        //   - Flux 0.12-0.16 (below high-flux bypass 0.20)
+        //   - WNS 0.00-0.05 (below Path 3's 0.50)
+        // None of the existing paths catch them. But they ARE real snares —
+        // the SnareE > 0.25 floor proves crack-band energy (kicks never have
+        // SnareE > 0.25 without also having Flux < 0.05), and Flux > 0.10
+        // separates them from kicks (Brejcha kicks: Flux 0.03-0.05).
+        // The agcGain < 2.5 safeguard is critical: in quiet breakdowns, AGC
+        // inflates to 3.0x+ and kicks' Flux rises to 0.10-0.15. Without this
+        // guard, Path 4 would false-trigger on AGC-amplified kicks. The 2.5
+        // threshold matches Path 2's existing AGC safeguard (line 857).
+        // Empirical data from curioso.md (Brejcha verse):
+        //   4 missed snares: SnareE 0.32-0.36, RawΔ 0.07-0.10, Flux 0.12-0.16,
+        //   WNS 0.00-0.05, AGC 1.77-1.81x → ALL caught by Path 4. ✅
+        //   0 kicks false-triggered: kicks have Flux 0.03-0.10 but SnareE
+        //   0.04-0.25 (borderline) — SnareE > 0.25 floor blocks them. ✅
         rawOnset = true
         this._snarePendingWns = false
         this._snareReArmed = false

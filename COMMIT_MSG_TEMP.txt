@@ -1,0 +1,28 @@
+WAVE 7749.53: Inject FINESSE_AUDIT telemetry (read-only)
+
+Added [FINESSE_AUDIT] console.log to LiquidEngineBase.ts for
+high-precision leakage diagnosis. Logs ONLY on frames where
+rawOnset is true OR isKick is true OR hybridSnare > 0.1.
+
+Metrics logged:
+  SnareE  - snare_energy (crack band 2-5kHz)
+  RawDelta - raw_snare_delta (pre-EMA transient edge)
+  Flux    - spectralFlux (spectral change rate)
+  WNS     - whiteNoiseScore (broadband HF noise)
+  fBL     - fluxBaseline EMA (density tracker)
+  Gate    - dynamic snare threshold (finalSnareThreshold)
+  Veto    - tonality veto factor (0=blocked, >0.15=passes)
+  BassE   - pureBassEnergy (kick band)
+  BassDelta - bassDelta (kick transient edge)
+  OutSnare- final backRight (after envSnare)
+  OutKick - final frontRight (after envKick)
+
+Added _diagVetoFactor field to capture the veto factor outside
+its if-block scope for the log.
+
+NO DSP gates, thresholds, or logic changed. This is a camera,
+not a scalpel.
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

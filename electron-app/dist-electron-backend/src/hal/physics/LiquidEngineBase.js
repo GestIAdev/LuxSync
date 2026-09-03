@@ -158,6 +158,8 @@ export class LiquidEngineBase {
         this._diagSnareOnset = false;
         this._diagFinalThreshold = 0.12;
         this._diagFluxGate = 0.15;
+        // ⚒️ WAVE 7749.53: FINESSE_AUDIT — tonality veto factor for diagnostic
+        this._diagVetoFactor = 1.0;
         // WAVE 7748: HH ENERGY ADAPTER — Pre-allocated state for hi-hat impulse
         // Mirrors _prevSnareEnergy/_lastSnareOnset/_snareImpulse pattern.
         // All scalars, zero allocation in hot path.
@@ -774,6 +776,8 @@ export class LiquidEngineBase {
             // A vocal consonant: flatnessGate=0.02, wnsGate=0, fluxGate=0.05 → avg=0.02 (suppressed)
             // A techno snare:    flatnessGate=0.34, wnsGate=0, fluxGate=0.97 → avg=0.44 (PASSES)
             const vetoFactor = (flatnessGate + wnsGate + fluxGate) / 3.0;
+            // ⚒️ WAVE 7749.53: capture veto factor for FINESSE_AUDIT
+            this._diagVetoFactor = vetoFactor;
             // WAVE 7749.4: Soft-knee lowered 0.20→0.15. Below 0.15, ramp up linearly
             // (vetoFactor / 0.15) instead of 2x gain, for smoother transition.
             hybridSnare *= (vetoFactor > 0.15 ? 1.0 : (vetoFactor / 0.15));
@@ -819,6 +823,38 @@ export class LiquidEngineBase {
         // En Anyma (morph≈0.8) el decay = decayBase + decayRange×0.8 → más flote, más relleno.
         // En techno industrial (morph≈0.1) el decay = decayBase + decayRange×0.1 → percutivo.
         let backRight = this.envSnare.process(hybridSnare, morphFactor, now, false);
+        // ⚒️ WAVE 7749.53: FINESSE_AUDIT — High-precision telemetry for leakage diagnosis.
+        // Logs ONLY on frames with snare onset, kick activity, or significant snare output.
+        // Purpose: see exactly why massive kicks (Brejcha) cross-talk into the snare band,
+        // and why autotune voices/synths sneak past the tonality veto.
+        // Metrics:
+        //   SnareE  — snare_energy (crack band 2-5kHz)
+        //   RawΔ    — raw_snare_delta (pre-EMA transient edge)
+        //   Flux    — spectralFlux (spectral change rate)
+        //   WNS     — whiteNoiseScore (broadband HF noise)
+        //   fBL     — fluxBaseline EMA (density tracker)
+        //   Gate    — dynamic snare threshold (finalSnareThreshold)
+        //   Veto    — tonality veto factor (0=blocked, >0.15=passes)
+        //   BassE   — pureBassEnergy (kick band)
+        //   BassΔ   — bassDelta (kick transient edge)
+        //   OutSnare— final backRight (after envSnare)
+        //   OutKick — final frontRight (after envKick)
+        if (this._diagSnareOnset || this._diagIsKick || hybridSnare > 0.1) {
+            console.log(`[FINESSE_AUDIT] ` +
+                `SnareE:${this._diagSnareEnergy.toFixed(3)} ` +
+                `RawΔ:${this._diagRawSnareDelta.toFixed(3)} ` +
+                `Flux:${this._diagFlux.toFixed(3)} ` +
+                `WNS:${this._diagWns.toFixed(3)} ` +
+                `fBL:${this._fluxBaseline.toFixed(3)} ` +
+                `Gate:${this._diagFinalThreshold.toFixed(3)} ` +
+                `Veto:${this._diagVetoFactor.toFixed(3)} ` +
+                `BassE:${this._diagBassEnergy.toFixed(3)} ` +
+                `BassΔ:${this._diagBassDelta.toFixed(3)} ` +
+                `OutSnare:${backRight.toFixed(3)} ` +
+                `OutKick:${frontRight.toFixed(3)}` +
+                (this._diagSnareOnset ? ' [ONSET]' : '') +
+                (this._diagIsKick ? ' [KICK]' : ''));
+        }
         // ═══════════════════════════════════════════════════════════════════
         // MOVERS: WAVE 911 (strict-split) vs ENVELOPE CROSS-FILTER (otros)
         // ═══════════════════════════════════════════════════════════════════

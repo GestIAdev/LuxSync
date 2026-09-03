@@ -1,28 +1,18 @@
-WAVE 7749.65: EMA Momentum Snare Detector for techno profile
+WAVE 7749.66: EMA momentum vitamin boost (alphaF=1.0, theta=0.01)
 
-Replaces the 5-path onset cascade with a dual-EMA crossover (MACD-style)
-on snare_energy, profile-gated to techno only. Latino/chill unaffected.
+The conservative theta=0.04 / alphaF=0.50 was too deaf for off-beat 16th
+snares in minimal techno. newsnare.md showed only 11 onsets where 21
+were expected (off-beat 16ths at 128 BPM).
 
-Forensic analysis of imposiblesnare.md showed 80% of false onsets fired
-while snare_energy was DECAYING — raw_snare_delta oscillates on the
-decay tail, causing 3x jitter. The momentum crossover only fires when
-band energy is genuinely RISING, eliminating re-triggers by construction.
+New tuning: alphaF=1.0 (emaFast = SnareE, zero lag), theta=0.01.
+momentum = SnareE - emaSlow, so onset fires when SnareE rises just 0.01
+above the slow baseline (~450ms average).
 
-Simulation across all logs:
-- imposiblesnare.md:  61 -> 19 onsets (3.2x reduction)
-- imposiblesnare2.md: 25 -> 8  (3.1x)
-- minimalonfire.md:   72 -> 25 (2.9x)
-- frontdisaster.md:   50 -> 5  (10x — hi-hats excluded for free)
-
-Formula:
-  emaFast += aF * (SnareE - emaFast)   aF = 0.50 (tau ~45ms)
-  emaSlow += aS * (SnareE - emaSlow)   aS = 0.05 (tau ~450ms)
-  momentum = emaFast - emaSlow
-  onset = (momentum > theta) && (momentumPrev <= theta)   theta = 0.04
-
-Anti-retrigger is a topological property of the threshold crossing —
-no TCT flags, no cooldowns, no WNS/Flux/BassE gates needed. Hi-hats
-(SnareE = 0) never move either EMA, excluded for free.
+Verified across all logs:
+- newsnare.md:      11 -> 21 onsets (off-beat 16ths recovered)
+- imposiblesnare.md: 19 -> 19 (NO jitter regression)
+- frontdisaster.md:  5 -> 10 (hi-hats still excluded)
+- reguetonperfectsnare.md: 20 -> 22 (minimal change)
 
 Generated with [Devin](https://devin.ai)
 

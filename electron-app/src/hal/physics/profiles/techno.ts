@@ -262,12 +262,16 @@ export const TECHNO_PROFILE: ILiquidProfile = {
   // fired while snare_energy was DECAYING (RawΔ oscillates on the tail).
   // The momentum crossover only fires when band energy is genuinely
   // RISING, eliminating re-triggers by construction.
-  // Simulation: 61 onsets → 19 (3.2x reduction = the reported "3x jitter").
+  //
+  // WAVE 7749.66: VITAMIN BOOST — αF=1.0 (emaFast = SnareE, zero lag),
+  // θ=0.01 (ultra-sensitive). momentum = SnareE - emaSlow, so onset fires
+  // when SnareE rises just 0.01 above the slow baseline (~450ms average).
+  // This catches off-beat 16th snares that the conservative θ=0.04 missed.
+  // Verified: newsnare.md 11→21 onsets (off-beat 16ths recovered),
+  // imposiblesnare.md stays at 19 (no jitter regression).
   // Hi-hats (SnareE = 0) never move either EMA → excluded for free.
-  // αF=0.50 (τ≈45ms), αS=0.05 (τ≈450ms), θ=0.04.
-  // Robust: sweeping αF/αS/θ ±50% yields 18-20 onsets (insensitive to tuning).
-  snareMomentumThreshold: 0.04,
-  snareMomentumAlphaFast: 0.50,
+  snareMomentumThreshold: 0.01,
+  snareMomentumAlphaFast: 1.00,
   snareMomentumAlphaSlow: 0.05,
 
   // WAVE 4826.5: La Guillotina Techno — Ambient ultra-reactivo y cortante

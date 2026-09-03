@@ -399,15 +399,14 @@ export const LATINO_PROFILE = {
             maxIntensity: 0.80,
         },
         // ── S1: SNARE — Back R el TAcka respira, no ametralla ────────
-        // WAVE 7749.20: decayBase 0.45→0.60 — el override tenía snap de techno.
-        //   El dembow latino RESPIRA: la caja tiene swing ancho, no es un latigazo
-        //   industrial. Con 0.45 la caja caía a negro en ~90ms = flash strobo.
-        //   Con 0.60: 1.0→0.60→0.36→0.22→0.13→0.08 = ~140ms de caída natural.
-        //   El TAcka se siente, no ametralla. Techno se queda con 0.40 (snap puro).
+        // WAVE 7749.45: decayBase 0.60→0.70 — con 3.7 onsets/segundo de percusión
+        //   latina (congas, timbales, güira), 0.60 dejaba caer el light a ~0.08
+        //   entre hits (270ms) = strobo. Con 0.70: 1.0→0.70→0.49→0.34→0.24→0.17
+        //   = el glow se mantiene entre hits, los flashes se funden en pulso.
         envelopeSnare: {
             gateOn: 0.55, // WAVE 6050: endurecimiento extremo, solo golpes brutos pasan
             squelchBase: 0.45, // WAVE 6050: asfixia cualquier ruido de fondo que logre pasar el gate
-            decayBase: 0.60, // WAVE 7749.20: 0.45→0.60 — el TAcka respira, no es techno snap
+            decayBase: 0.70, // WAVE 7749.45: 0.60→0.70 — glow sostenido entre hits
             decayRange: 0.10,
             ghostCap: 0.01,
             boost: 2.5,
@@ -425,12 +424,12 @@ export const LATINO_PROFILE = {
         snareVetoWnsKnee: 0.20,
         snareVetoFluxFloor: 0.05,
         snareVetoFluxKnee: 0.20,
-        snareChokeFrames: 4,
-        snareChokeRate: 0.60, // Faster choke — latino TAcka is staccato
-        // WAVE 7749.20: Impulse decay 0.15→0.25 — el 0.15 dejaba re-disparar
-        // cada 2 frames (~45ms) = efecto strobo/flash. Con 0.25: 1.0→0.25→0.06
-        // = 3 frames (~70ms) de refractario. Sigue más rápido que techno (0.40)
-        // porque el dembow es más denso, pero sin ametrallar.
-        snareImpulseDecay: 0.25,
+        snareChokeFrames: 15,
+        snareChokeRate: 0.85, // WAVE 7749.45: aligned with techno — soft choke, no staccato murder
+        // WAVE 7749.45: Impulse decay 0.25→0.50 — el 0.25 (añadido en 7749.20 para
+        // dembow denso) causaba strobo: 1.0→0.25→0.06 en 2 frames = flash aislado.
+        // Con 0.50 (igual que techno): 1.0→0.50→0.25→0.125 = 4 frames de sustento,
+        // el envelope recibe input sostenido y produce glow continuo, no flash.
+        snareImpulseDecay: 0.50,
     },
 };

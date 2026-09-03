@@ -231,11 +231,14 @@ export class LiquidAetherAdapter {
       })
     }
 
-    // WAVE 4752 F5: Strobe gating — solo rutar strobe si está activo.
-    // _routeStrobeNodes filtra internamente por zona (floor/ambient/air = block).
-    if (result.strobeActive) {
-      this._routeStrobeNodes(result, bus)
-    }
+    // ⚒️ WAVE 7749.48: REMOVED — LiquidEngine strobe injection.
+    // El LiquidEngineBase.calculateStrobe() detectaba picos de treble y
+    // inyectaba strobeRate=1.0 al bus como L0. Eso competía con los effects
+    // .lfx (L3) que tienen su propia curva de strobe, causando interferencia
+    // cuando ambos estaban activos. El strobe es dominio exclusivo de los
+    // effects — la física reactiva maneja dimmer/color/movement, no strobe.
+    // _routeStrobeNodes() y el scratch de strobe quedan como dead code por
+    // si se necesita reactivar para un vibe específico en el futuro.
   }
 
   // ─────────────────────────────────────────────────────────────────────────

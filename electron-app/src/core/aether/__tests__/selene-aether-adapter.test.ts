@@ -246,14 +246,17 @@ describe('SeleneAetherAdapter — WAVE 4524.4', () => {
     }
   })
 
-  test('Test 4 — Strobe physics: solo pasa con energy<0.85 y confidence>0.5', () => {
+  test('Test 4 — Strobe physics: WAVE 7749.46 neutralized — physicsModifier never emits strobe', () => {
     const { router } = makeRouterMock()
-    const { bus, captured, pushSpy } = makeCaptureBus()
+    const { bus, captured } = makeCaptureBus()
     const adapter = new SeleneAetherAdapter(router)
 
     const baseEffect = makeEffectOutput({ globalComposition: 1 })
 
-    const allowed = makeConsciousness({
+    // Antes: el physicsModifier emitía strobeRate al bus.
+    // Ahora (WAVE 7749.46): _processPhysicsModifier es no-op.
+    // El strobe viene exclusivamente del .lfx (L3 HephaestusAetherAdapter).
+    const withHighConfidence = makeConsciousness({
       physicsModifier: {
         strobeIntensity: 0.8,
         flashIntensity: 0.9,
@@ -270,16 +273,11 @@ describe('SeleneAetherAdapter — WAVE 4524.4', () => {
       } as ConsciousnessOutput['debugInfo'],
     })
 
-    adapter.ingest(allowed, baseEffect, 16, bus)
-    const allowedStrobe = captured.find((i) => i.nodeId === 'impact-1' && i.values['strobeRate'] !== undefined)
-    expect(allowedStrobe).toBeDefined()
-    expect(allowedStrobe!.values['strobeRate']).toBeCloseTo(0.8, 6)
-    expect(allowedStrobe!.values['shutter']).toBe(1)
+    adapter.ingest(withHighConfidence, baseEffect, 16, bus)
+    const strobeIntents = captured.filter((i) => i.values['strobeRate'] !== undefined || i.values['strobe'] !== undefined)
+    expect(strobeIntents).toHaveLength(0)
 
-    captured.length = 0
-    pushSpy.mockClear()
-
-    const blockedByEnergy = makeConsciousness({
+    const withHighEnergy = makeConsciousness({
       physicsModifier: {
         strobeIntensity: 0.8,
         flashIntensity: 0.9,
@@ -296,27 +294,8 @@ describe('SeleneAetherAdapter — WAVE 4524.4', () => {
       } as ConsciousnessOutput['debugInfo'],
     })
 
-    adapter.ingest(blockedByEnergy, baseEffect, 16, bus)
-    expect(pushSpy).not.toHaveBeenCalled()
-
-    const blockedByConfidence = makeConsciousness({
-      physicsModifier: {
-        strobeIntensity: 0.8,
-        flashIntensity: 0.9,
-        confidence: 0.4,
-      },
-      debugInfo: {
-        huntState: 'sleeping',
-        beautyScore: 0,
-        consonance: 0,
-        beautyTrend: 'stable',
-        biasesDetected: [],
-        cyclesInCurrentState: 0,
-        smoothedEnergy: 0.2,
-      } as ConsciousnessOutput['debugInfo'],
-    })
-
-    adapter.ingest(blockedByConfidence, baseEffect, 16, bus)
-    expect(pushSpy).not.toHaveBeenCalled()
+    adapter.ingest(withHighEnergy, baseEffect, 16, bus)
+    const strobeIntents2 = captured.filter((i) => i.values['strobeRate'] !== undefined || i.values['strobe'] !== undefined)
+    expect(strobeIntents2).toHaveLength(0)
   })
 })

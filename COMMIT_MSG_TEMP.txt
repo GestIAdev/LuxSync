@@ -1,0 +1,32 @@
+WAVE 7749.48: Remove L0 LiquidEngine strobe injection — effects own strobe
+
+The LiquidAetherAdapter was injecting strobe intents (strobeRate=1.0,
+shutter=1.0) to all IMPACT nodes whenever calculateStrobe() detected a
+treble peak. This L0 strobe competed with L3 (.lfx) strobe curves,
+causing interference when both were active — especially during effect
+overlaps (e.g. Solar Flare + Seismic Snap).
+
+Root cause: the LiquidEngineBase.calculateStrobe() is a legacy reactive
+strobe detector from before Hephaestus effects existed. Now that every
+strobe effect has its own .lfx curve with precise strobe timing, the
+L0 reactive strobe is redundant and harmful.
+
+Fix: removed the _routeStrobeNodes() call from LiquidAetherAdapter.ingest().
+The strobe scratch objects remain as dead code (commented out) for
+potential future reactivation per-vibe. The calculateStrobe() in
+LiquidEngineBase still runs (harmless — its result is just ignored by
+the adapter).
+
+Tests updated:
+- §2.1-§2.3: now verify L0 NEVER emits shutter/strobe/strobeRate
+- §4.1: now verifies L0 never emits shutter regardless of strobeActive
+- selene-aether-adapter Test 4: verifies physicsModifier never emits
+  strobe (WAVE 7749.46 neutralization)
+
+Combined with WAVE 7749.46 (physicsModifier neutralized) and 7749.47
+(strobeRate in STRICT_PRIORITY), the strobe channel now has exactly
+ONE source: the .lfx curve. If the clip says strobe=1, it fires at 1.
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

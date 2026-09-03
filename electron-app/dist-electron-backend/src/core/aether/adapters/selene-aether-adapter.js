@@ -396,48 +396,14 @@ export class SeleneAetherAdapter {
         this._emitMovement('all', movement, confidence, bus);
     }
     /**
-     * Emite intents de strobe/flash basados en el physicsModifier de Selene.
-     *
-     * Condiciones para emitir:
-     *   - modifier.confidence > 0.5
-     *   - energy < MAX_ENERGY_FOR_PHYSICS_MOD (0.85) → WAVE 450 Energy Override
-     *
-     * Emite a todos los nodos IMPACT (zona 'all').
+     * WAVE 7749.46: NEUTRALIZED — el physicsModifier de Selene competía con las
+     * curvas .lfx del HephaestusRuntime, pisando el strobe con valores de
+     * "contención" (0.3-0.6) heredados del DROP path. Ahora el strobe viene
+     * EXCLUSIVAMENTE de la curva .lfx — si el clip dice strobe=1, se dispara a 1.
+     * No hay modificadores externos ni de seguridad que toquen el canal.
      */
-    _processPhysicsModifier(modifier, consciousness, bus) {
-        // Gate: confianza mínima
-        if (modifier.confidence <= 0.5) {
-            return;
-        }
-        // Gate: WAVE 450 Energy Override — la física tiene VETO en drops/clímax
-        // Leer energía del debugInfo si está disponible (sin alloc, acceso directo)
-        const energy = consciousness.debugInfo?.smoothedEnergy;
-        if (energy !== undefined && energy > MAX_ENERGY_FOR_PHYSICS_MOD) {
-            return;
-        }
-        const nodeIds = this._zoneRouter.resolve('all', NodeFamily.IMPACT);
-        if (nodeIds.length === 0) {
-            return;
-        }
-        // strobeIntensity → canal strobeRate
-        const strobeRate = modifier.strobeIntensity !== undefined
-            ? clamp01(modifier.strobeIntensity)
-            : 0;
-        // flashIntensity → shutter: abierto si > 0.5, cerrado si ≤ 0.5
-        const shutter = modifier.flashIntensity !== undefined
-            ? (modifier.flashIntensity > 0.5 ? 1.0 : 0.0)
-            : 0;
-        const scratch = this._strobeScratch;
-        const vals = this._strobeValues;
-        // ⚒️ WAVE 7749.35: DUAL-ALIAS — escribir AMBOS 'strobe' y 'strobeRate'
-        vals.strobe = strobeRate;
-        vals.strobeRate = strobeRate;
-        vals.shutter = shutter;
-        scratch.confidence = modifier.confidence;
-        for (let i = 0; i < nodeIds.length; i++) {
-            scratch.nodeId = nodeIds[i];
-            bus.push(scratch);
-        }
+    _processPhysicsModifier(_modifier, _consciousness, _bus) {
+        // Intentionally empty — strobe is owned by the .lfx curve, not Selene.
     }
     // ── Helpers de emisión atómica ──────────────────────────────────────────
     /**

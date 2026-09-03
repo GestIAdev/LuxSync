@@ -330,10 +330,13 @@ describe('🌊 LiquidAetherAdapter — Capa L0 del IntentBus', () => {
   // ─────────────────────────────────────────────────────────────────────
   // §2 — Strobe Filtering
   // ─────────────────────────────────────────────────────────────────────
+  // ⚒️ WAVE 7749.48: L0 (LiquidAetherAdapter) ya NO inyecta strobe.
+  // El strobe es dominio exclusivo de los effects .lfx (L3).
+  // Los tests §2.1-§2.3 verifican que L0 NUNCA escribe shutter/strobe/strobeRate.
 
-  describe('§2 — Strobe Filtering (shutter channel gate)', () => {
+  describe('§2 — Strobe Filtering (L0 does NOT inject strobe — WAVE 7749.48)', () => {
 
-    test('§2.1 — Solo el nodo con canal shutter recibe el intent de strobe', () => {
+    test('§2.1 — Con strobeActive=true, L0 NO emite ningún intent de shutter', () => {
       const noStrobeNode    = makeImpactNode({ nodeId: 'par-no-strobe:impact' })
       const strobeCapNode   = makeStrobeCapableNode({ nodeId: 'strobe-001:impact' })
 
@@ -343,13 +346,12 @@ describe('🌊 LiquidAetherAdapter — Capa L0 del IntentBus', () => {
 
       new LiquidAetherAdapter(graph).ingest(makeFrame({ strobeActive: true }), result, bus)
 
-      // Debe haber exactamente UN intent de shutter (del nodo strobe-capable)
+      // L0 no debe emitir ningún intent de shutter — el strobe viene de L3 (.lfx)
       const shutterIntents = bus.captured.filter(i => 'shutter' in i.values)
-      expect(shutterIntents).toHaveLength(1)
-      expect(shutterIntents[0].nodeId).toBe('strobe-001:impact')
+      expect(shutterIntents).toHaveLength(0)
     })
 
-    test('§2.2 — El intent de strobe tiene shutter=1.0 y strobeRate igual a result.strobeIntensity', () => {
+    test('§2.2 — L0 no escribe strobe ni strobeRate aunque strobeActive=true', () => {
       const strobeCapNode  = makeStrobeCapableNode()
       const graph  = makeNodeGraph({ impact: [strobeCapNode] })
       const bus    = makeSpyBus()
@@ -357,11 +359,8 @@ describe('🌊 LiquidAetherAdapter — Capa L0 del IntentBus', () => {
 
       new LiquidAetherAdapter(graph).ingest(makeFrame(), result, bus)
 
-      const strobeIntent = bus.captured.find(i => 'shutter' in i.values)
-      expect(strobeIntent).toBeDefined()
-      expect(strobeIntent!.values['shutter']).toBe(1.0)
-      expect(strobeIntent!.values['strobeRate']).toBeCloseTo(0.9, 5)
-      expect(strobeIntent!.priority).toBe(0)
+      const strobeIntent = bus.captured.find(i => 'shutter' in i.values || 'strobe' in i.values || 'strobeRate' in i.values)
+      expect(strobeIntent).toBeUndefined()
     })
 
     test('§2.3 — Con strobeActive=false, no se emite ningún intent de shutter', () => {
@@ -437,7 +436,7 @@ describe('🌊 LiquidAetherAdapter — Capa L0 del IntentBus', () => {
 
   describe('§4 — Zero-Alloc Stale Cleanup (anti-ghost strobe)', () => {
 
-    test('§4.1 — Un frame con strobeActive=true seguido de uno con strobeActive=false no emite shutter en el segundo frame', () => {
+    test('§4.1 — L0 nunca emite shutter, sin importar strobeActive (WAVE 7749.48)', () => {
       const strobeCapNode = makeStrobeCapableNode()
       const graph   = makeNodeGraph({ impact: [strobeCapNode] })
       const bus     = makeSpyBus()
@@ -447,12 +446,12 @@ describe('🌊 LiquidAetherAdapter — Capa L0 del IntentBus', () => {
 
       const adapter = new LiquidAetherAdapter(graph)
 
-      // Frame 1: strobe activo
+      // Frame 1: strobe activo — L0 no debe emitir shutter
       adapter.ingest(makeFrame(), resultStrobe, bus)
       const shutterCountFrame1 = bus.captured.filter(i => 'shutter' in i.values).length
-      expect(shutterCountFrame1).toBe(1)
+      expect(shutterCountFrame1).toBe(0)
 
-      // Frame 2: strobe inactivo
+      // Frame 2: strobe inactivo — L0 tampoco
       bus.clear()
       adapter.ingest(makeFrame({ now: 2000 }), resultNoStrobe, bus)
       const shutterCountFrame2 = bus.captured.filter(i => 'shutter' in i.values).length

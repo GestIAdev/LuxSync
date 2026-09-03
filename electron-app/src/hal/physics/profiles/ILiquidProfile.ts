@@ -42,6 +42,20 @@ export interface ILiquidProfile {
   /** Mover L — Melodías tonales (Brillo filtrado) */
   readonly envelopeTreble: LiquidEnvelopeConfig
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ⚒️ WAVE 7749.52: ONSET-GATED ZONE ENVELOPES — Floor & Air
+  // Optional with fallback defaults in LiquidEngineBase. Profiles that
+  // want genre-specific zone kinematics can override these.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /** Floor — Ground sweep laser: bassDelta onset-driven. Zero-attack, fast decay.
+   *  Default: gateOn 0.08, decayBase 0.12, crushExponent 2.0, boost 3.0.
+   *  Reacts to transient impact (bassDelta), not sustained amplitude. */
+  readonly envelopeFloor?: LiquidEnvelopeConfig
+  /** Air — Aerial laser: treble + ultraAir velocity-driven. Zero-attack, fast decay.
+   *  Default: gateOn 0.35, decayBase 0.08, crushExponent 2.5, boost 4.0. */
+  readonly envelopeAir?: LiquidEnvelopeConfig
+
   // ═══════════════════════════════════════════════════════════════
   // BACK R: SCHWARZENEGGER — Aislamiento percusivo de agudos
   // rawRight = max(0, treble - mid × percMidSubtract)

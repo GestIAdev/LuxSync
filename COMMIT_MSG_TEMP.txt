@@ -1,0 +1,50 @@
+WAVE 7749.52: Morning Exorcism — Selective TCT + Onset-Gated Zones
+
+Two surgical fixes to the d9d1e507 Golden State base, addressing the
+metric divergence diagnosed in WAVE 7749.48.
+
+FIX 1: Selective TCT for Back R (Morphological Lock)
+  Problem: The High-Flux Bypass (spectralFlux > 0.20) and Energy Bypass
+  (snareEnergy > 0.40) fired on ANY frame with high spectralFlux, including
+  sustained synth sweeps in reggaeton/melodic techno. A synth sweep with
+  filter open has Flux 0.20-0.35 frame after frame → continuous false
+  onsets → hallucinated snare rolls.
+
+  Fix: Added _prevRawSnareDelta tracking + _snareReArmed flag. The detector
+  re-arms only when the previous frame's rawSnareDelta has settled below
+  0.02 (near-zero), proving a sharp transient edge. Paths 2 (High-Flux)
+  and 3 (Energy) now require _snareReArmed to fire. Path 1 (WNS) is EXEMPT
+  — WNS already proves broadband noise, which no synth sweep produces.
+
+  Result: Sustained synth sweeps can no longer hold the snare onset open.
+  Real snare transients (which spike and decay in 1-2 frames) re-arm the
+  detector naturally and fire without restriction.
+
+FIX 2: Onset-Gated Floor & Air Zones
+  Problem: The Golden State floorIntensity was a raw passthrough:
+    (subBass × 0.65 + lowMid × 0.35) × recoveryFactor
+  This reacted to sustained amplitude, not transients. A reggaeton bassline
+  with wobble/LFO caused floorIntensity to oscillate → Front Par strobed.
+  Similarly, _airEMA was a soft follower with ~8 frame attack delay.
+
+  Fix: Restored envFloor and envAir (LiquidEnvelope instances) with
+  fallback defaults. Floor is now fed by bassDelta × 2.0 (transient impact
+  only) — a sustained bassline has bassDelta ≈ 0 after the first frame,
+  so envFloor decays to 0. Air is fed by (treble × 0.6 + highMid × 0.4)
+  through envAir with zero-attack, fast decay (0.08), high gate (0.35).
+
+  Added envelopeFloor? and envelopeAir? to ILiquidProfile for genre-specific
+  overrides. Profiles without these fields use the DEFAULT_ENVELOPE_FLOOR
+  and DEFAULT_ENVELOPE_AIR constants.
+
+  Result: Floor reacts to kick/note onsets, not sustained bass. Air reacts
+  to treble stabs in 1 frame instead of 8. No more strobing on sustained
+  sub-bass or lagging aerial laser responses.
+
+tsc --noEmit: CLEAN
+tsc -p tsconfig.node.json: CLEAN
+dist-electron-backend: rebuilt with both fixes verified
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

@@ -169,6 +169,15 @@ export class LiquidEngineBase {
         // If it sustains > chokeFrames (~50ms at 44Hz = ~2 frames), choke the envelope.
         this._snareSustainFrames = 0;
         this._snareChokeFactor = 1.0;
+        // ⚒️ WAVE 7749.52: SELECTIVE TCT — Morphological lock for synth bypasses.
+        // A real snare transient spikes rawSnareDelta and decays within 1-2 frames.
+        // A sustained synth sweep keeps rawSnareDelta elevated frame after frame.
+        // The High-Flux and Energy bypasses (Paths 2 & 3) must ONLY fire when the
+        // previous frame's delta has settled — proving a sharp transient, not a
+        // sustained signal. The WNS path (Path 1) is exempt: WNS already proves
+        // broadband noise, which no synth sweep produces.
+        this._prevRawSnareDelta = 0;
+        this._snareReArmed = true;
         // Kick Veto state
         this._kickVetoFrames = 0;
         // Transient Shaper state (WAVE 2427 → WAVE 2446)
@@ -178,8 +187,7 @@ export class LiquidEngineBase {
         // WAVE 4520.2: 9-zone EMA state
         // Ambient: slow follower of subBass. Attack ~5 frames, release ~33 frames.
         this._ambientEMA = 0;
-        // Air: soft-compressed follower of (treble × 0.6 + highMid × 0.4). Attack ~8 frames, release ~20 frames.
-        this._airEMA = 0;
+        // 🩸 WAVE 7749.52: _airEMA removed — Air zone now uses envAir (LiquidEnvelope).
         // WAVE 4812 M3: Vocal Sustain Detector — EMA rápida de mid para detectar vocales sostenidas.
         // Attack muy rápido (alpha=0.25, ~4 frames) para capturar vocales al instante.
         // Release lento (alpha=0.04, ~25 frames) para que la penalización persista post-frase vocal.
@@ -201,6 +209,9 @@ export class LiquidEngineBase {
         this.envSnare = new LiquidEnvelope(effective.envelopeSnare);
         this.envHighMid = new LiquidEnvelope(effective.envelopeHighMid);
         this.envTreble = new LiquidEnvelope(effective.envelopeTreble);
+        // ⚒️ WAVE 7749.52: Onset-gated Floor & Air envelopes with fallback defaults.
+        this.envFloor = new LiquidEnvelope(effective.envelopeFloor ?? LiquidEngineBase.DEFAULT_ENVELOPE_FLOOR);
+        this.envAir = new LiquidEnvelope(effective.envelopeAir ?? LiquidEngineBase.DEFAULT_ENVELOPE_AIR);
     }
     // ─────────────────────────────────────────────────────────────────────
     // 🌊 WAVE 2435: HOT-SWAP PROFILE — Cambio de género sin destruir instancia
@@ -220,6 +231,9 @@ export class LiquidEngineBase {
         this.envSnare = new LiquidEnvelope(effective.envelopeSnare);
         this.envHighMid = new LiquidEnvelope(effective.envelopeHighMid);
         this.envTreble = new LiquidEnvelope(effective.envelopeTreble);
+        // ⚒️ WAVE 7749.52: hot-swap air & floor envelopes
+        this.envFloor = new LiquidEnvelope(effective.envelopeFloor ?? LiquidEngineBase.DEFAULT_ENVELOPE_FLOOR);
+        this.envAir = new LiquidEnvelope(effective.envelopeAir ?? LiquidEngineBase.DEFAULT_ENVELOPE_AIR);
     }
     // ─────────────────────────────────────────────────────────────────────
     // PUBLIC API
@@ -338,16 +352,11 @@ export class LiquidEngineBase {
         else {
             this._vocalSustainEMA = this._vocalSustainEMA * 0.96 + bands.mid * 0.04;
         }
-        // Air EMA: soft-compressed follower of (treble × 0.6 + highMid × 0.4)
-        // Compression: 1 - e^(-x*3) — prevents ultraAir spikes from causing hysterics
-        // Attack alpha=0.12 (~8 frames), release alpha=0.05 (~20 frames)
-        const _airSignal = 1.0 - Math.exp(-(bands.treble * 0.60 + bands.highMid * 0.40) * 3.0);
-        if (_airSignal > this._airEMA) {
-            this._airEMA = this._airEMA * 0.88 + _airSignal * 0.12;
-        }
-        else {
-            this._airEMA = this._airEMA * 0.95 + _airSignal * 0.05;
-        }
+        // ⚒️ WAVE 7749.52: Air EMA REMOVED — Air zone now processed by envAir
+        // (LiquidEnvelope with zero-attack, fast decay, high gate, high crush).
+        // The old _airEMA soft-follower had ~8 frame attack delay, causing aerial
+        // lasers to lag behind treble stabs. envAir responds in 1 frame.
+        // The airIntensity is now computed in the 9-ZONE FINAL SIGNALS section below.
         // ═══════════════════════════════════════════════════════════════════
         // 3. SILENCE / AGC TRAP
         // ═══════════════════════════════════════════════════════════════════
@@ -571,13 +580,26 @@ export class LiquidEngineBase {
             //   fBL = 0.10+ (peak)   → Flux gate = 0.10 (clamp — kicks still blocked)
             const dynamicFluxGate = Math.max(0.10, 0.15 - (Math.max(0, this._fluxBaseline - 0.05) * 1.0));
             this._diagFluxGate = dynamicFluxGate;
+            // ⚒️ WAVE 7749.52: SELECTIVE TCT — Delta Decay Test (morphological lock).
+            // A real snare transient spikes rawSnareDelta and decays within 1-2 frames.
+            // A sustained synth sweep keeps rawSnareDelta elevated frame after frame.
+            // We re-arm the detector when the previous frame's delta has settled below
+            // 0.02 (near-zero). This proves a sharp transient edge, not a sustained
+            // signal. The High-Flux (Path 2) and Energy (Path 3) bypasses require
+            // _snareReArmed to fire — they cannot re-trigger on a sustained sweep.
+            // The WNS path (Path 1) is EXEMPT: WNS already proves broadband noise,
+            // which no synth sweep produces. WNS-confirmed onsets fire regardless.
+            if (Math.abs(this._prevRawSnareDelta) < 0.02) {
+                this._snareReArmed = true;
+            }
             let rawOnset = false;
             if (rawSnareDelta > finalSnareThreshold && spectralFlux > dynamicFluxGate && this._snareImpulse < 0.15) {
                 if (wns > 0.05) {
-                    // Primary path: all 4 conditions met — fire immediately.
+                    // Path 1: WNS-confirmed — fire immediately, NO TCT restriction.
+                    // WNS proves broadband noise. Synth sweeps never produce WNS.
                     rawOnset = true;
                 }
-                else if (spectralFlux > 0.20) {
+                else if (spectralFlux > 0.20 && this._snareReArmed) {
                     // WAVE 7749.18: HIGH-FLUX BYPASS — Synthesized snare detection
                     // In melodic techno (Anyma, Tale of Us, etc.), snares are synthesized
                     // noise bursts or electronic claps that don't produce the broadband HF
@@ -590,9 +612,12 @@ export class LiquidEngineBase {
                     // Flux 0.20-0.32, WNS = 0 — all blocked by old WNS gate. 0 kicks with
                     // Flux > 0.20. Genre-agnostic: works for acoustic (WNS path) and
                     // electronic (Flux bypass) snares.
+                    // ⚒️ WAVE 7749.52: TCT guard — only fire if previous delta settled.
+                    // Prevents sustained synth sweeps from holding the onset open.
                     rawOnset = true;
+                    this._snareReArmed = false;
                 }
-                else if (snareEnergy > 0.40) {
+                else if (snareEnergy > 0.40 && this._snareReArmed) {
                     // WAVE 7749.19: ENERGY-CONDITIONED BORDER ZONE BYPASS
                     // Some synth snares in melodic techno have moderate Flux (0.15-0.20)
                     // — not enough to trigger the 0.20 bypass, and WNS = 0 (synthesized).
@@ -604,7 +629,9 @@ export class LiquidEngineBase {
                     //   techno11 kicks (Flux 0.15-0.40, WNS=0): E = 0.14-0.36
                     //   techno15 border snares (Flux 0.15-0.20, WNS=0): E = 0.30-0.87
                     // Threshold 0.40 sits in the clean gap above kick max (0.36).
+                    // ⚒️ WAVE 7749.52: TCT guard — only fire if previous delta settled.
                     rawOnset = true;
+                    this._snareReArmed = false;
                 }
                 else {
                     // Pending: crack+flux say snare, but WNS hasn't arrived yet.
@@ -637,6 +664,8 @@ export class LiquidEngineBase {
             const snareImpulseThisFrame = this._snareImpulse;
             this._snareImpulse *= (p.snareImpulseDecay ?? 0.40);
             this._prevSnareEnergy = rawSnareEnergy;
+            // ⚒️ WAVE 7749.52: Track previous delta for TCT re-arm discriminator.
+            this._prevRawSnareDelta = rawSnareDelta;
             // WAVE 7749.9: hybridSnare is driven EXCLUSIVELY by the pure physics
             // impulse. No max-blend with the legacy percRaw (which was exterminated).
             hybridSnare = snareImpulseThisFrame;
@@ -913,8 +942,16 @@ export class LiquidEngineBase {
         // ═══════════════════════════════════════════════════════════════════
         // WAVE 4520.2: 9-ZONE FINAL SIGNALS
         // ═══════════════════════════════════════════════════════════════════
-        // floor: instant reaction to subBass+lowMid, gated by AGC recovery
-        const floorIntensity = Math.min(1.0, Math.max(0.0, (bands.subBass * 0.65 + bands.lowMid * 0.35) * recoveryFactor));
+        // ⚒️ WAVE 7749.52: Floor — bassDelta onset-driven, envFloor processed.
+        // The old raw passthrough (subBass × 0.65 + lowMid × 0.35) reacted to
+        // sustained amplitude, causing the Front Par to strobe on sustained
+        // sub-bass notes (reggaeton wobble, synth bass). Now we feed ONLY the
+        // bassDelta (transient impact) through envFloor, which has a strict
+        // gate + fast decay. A sustained bassline has bassDelta ≈ 0 after the
+        // first frame → envFloor decays to 0 → no strobe. A kick or note onset
+        // has a sharp bassDelta spike → envFloor fires → floor laser pulses.
+        const _floorInput = Math.max(0, bassDelta) * 2.0; // amplify the small delta
+        const floorIntensity = this.envFloor.process(_floorInput, morphFactor, now, isBreakdown);
         // ambient: slow EMA of subBass, no morphGain baseline — NOT gated by recoveryFactor.
         // WAVE 4812 M2: gain=1.0 — el ambient no tiene onda estática; solo brilla cuando
         // hay energía sub-grave real. El morphFactor ya no infla el baseline.
@@ -940,9 +977,15 @@ export class LiquidEngineBase {
             if (ambientIntensity < 0.001)
                 ambientIntensity = 0;
         }
-        // air: soft-compressed EMA, gated by AGC recovery to prevent rebound blasts
-        // WAVE 4826.3 — BOOST AIR: 1.4x directo para resucitar con brillo
-        const airIntensity = Math.min(1.0, Math.max(0.0, this._airEMA * recoveryFactor * 1.4));
+        // ⚒️ WAVE 7749.52: Air — envAir processed (zero-attack, fast decay).
+        // The old _airEMA soft-follower is replaced by envAir (LiquidEnvelope).
+        // Input: treble × 0.6 + highMid × 0.4 (same spectral source as before,
+        // but now with strict gate + crush instead of soft EMA).
+        // envAir gives zero-attack (riseRate=1.0), fast decay (0.08, ~45-65ms),
+        // high gate (0.35), high crush (2.5). Spectrally isolated above the snare
+        // body (2-6kHz). Ideal for aerial laser stabs and sharp beams.
+        const _airInput = bands.treble * 0.60 + bands.highMid * 0.40;
+        const airIntensity = this.envAir.process(_airInput, morphFactor, now, isBreakdown);
         const frame = {
             bands,
             morphFactor,
@@ -986,6 +1029,9 @@ export class LiquidEngineBase {
         this.envSnare.reset();
         this.envHighMid.reset();
         this.envTreble.reset();
+        // ⚒️ WAVE 7749.52: reset air & floor envelopes
+        this.envAir.reset();
+        this.envFloor.reset();
         this.avgMidProfiler = 0;
         this.lastSilenceTime = 0;
         this.inSilence = false;
@@ -993,7 +1039,10 @@ export class LiquidEngineBase {
         this.strobeStartTime = 0;
         this.lastTreble = 0;
         this._ambientEMA = 0;
-        this._airEMA = 0;
+        // 🩸 WAVE 7749.52: _airEMA removed — envAir.reset() handles this
+        // ⚒️ WAVE 7749.52: reset TCT re-arm state
+        this._prevRawSnareDelta = 0;
+        this._snareReArmed = true;
     }
     // ─────────────────────────────────────────────────────────────────────
     // WAVE 2513 — AMBIENT GENERATIVE ENGINE
@@ -1067,7 +1116,10 @@ export class LiquidEngineBase {
         this.strobeStartTime = 0;
         this.lastTreble = 0;
         this._vocalSustainEMA = 0;
-        this._airEMA = 0;
+        // 🩸 WAVE 7749.52: _airEMA removed — envAir.reset() handles Air state
+        // ⚒️ WAVE 7749.52: reset TCT re-arm state
+        this._prevRawSnareDelta = 0;
+        this._snareReArmed = true;
         // WAVE 7748: Reset HH adapter state
         this._prevHhEnergy = 0;
         this._lastHhOnset = 0;
@@ -1131,3 +1183,37 @@ export class LiquidEngineBase {
     }
 }
 LiquidEngineBase.KICK_COOLDOWN_MS = 150;
+// ⚒️ WAVE 7749.52: Default envelope configs for Floor & Air zones.
+// Used when the profile doesn't declare envelopeFloor/envelopeAir.
+// Floor: bassDelta-driven onset gate. Zero-attack, fast decay (0.12),
+//   high crush (2.0). Reacts to transient impact, not sustained amplitude.
+// Air: treble+highMid velocity-driven. Zero-attack (riseRate=1.0),
+//   fast decay (0.08, ~45-65ms), high gate (0.35), high crush (2.5).
+LiquidEngineBase.DEFAULT_ENVELOPE_FLOOR = {
+    name: 'Floor',
+    gateOn: 0.08, // low — bassDelta transients are small but sharp
+    boost: 3.0, // amplify the small delta signal
+    crushExponent: 2.0, // selective — suppresses sub-threshold noise
+    decayBase: 0.12, // fast decay (~65ms) — floor lasers respond to hits, not sustain
+    decayRange: 0.05, // minimal morph influence
+    maxIntensity: 1.0,
+    squelchBase: 0.30,
+    squelchSlope: 0.20,
+    ghostCap: 0.01, // minimal ghost glow — floor should be dark between hits
+    gateMargin: 0.02, // tight hysteresis — fast response
+    attackSlopeMin: 0.0, // no minimum velocity — bassDelta already encodes velocity
+};
+LiquidEngineBase.DEFAULT_ENVELOPE_AIR = {
+    name: 'Air',
+    gateOn: 0.35, // high — only sharp treble transients pass
+    boost: 4.0, // amplify gated signal
+    crushExponent: 2.5, // very selective — aerial lasers need crisp stabs
+    decayBase: 0.08, // very fast decay (~45ms) — laser stabs are instantaneous
+    decayRange: 0.03, // minimal morph influence
+    maxIntensity: 1.0,
+    squelchBase: 0.40,
+    squelchSlope: 0.20,
+    ghostCap: 0.01, // minimal ghost glow — air should be dark between stabs
+    gateMargin: 0.05, // moderate hysteresis — prevents flicker
+    attackSlopeMin: 0.0,
+};
